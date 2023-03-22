@@ -355,7 +355,7 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
                 } else {
                     debug_assert!(object_id != OBJECT_TABLE_ID);
                 }
-                object_id.set_new_address(new_address);
+                get_object_table().move_object(object_id, new_address);
                 // Determined by measurements in comparison to the mark and compact phases.
                 const TIME_FRACTION_PER_WORD: usize = 10;
                 self.time
@@ -367,7 +367,7 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
             debug_assert_ne!(object as usize, get_object_table() as usize);
             debug_assert!(object_id != OBJECT_TABLE_ID);
             // Free the id of a garbage object in the object table.
-            object_id.free_object_id();
+            get_object_table().free_object_id(object_id);
             self.time.tick()
         }
     }

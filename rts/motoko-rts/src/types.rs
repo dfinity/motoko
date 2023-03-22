@@ -194,8 +194,9 @@ pub struct Value(u32);
 pub const NULL_OBJECT_ID: Value = Value::from_raw(skew(0) as u32);
 
 impl Value {
-    /// Obtain a new object id in the object table for a new object
+    /// Incremental GC mode: Obtain a new object id in the object table for a new object
     /// that resides at the defined address.
+    /// Non-incremental GC mode: Get the skewed pointer.
     pub unsafe fn new_object_id<M: Memory>(mem: &mut M, address: usize) -> Value {
         debug_assert!(!is_skewed(address as u32));
         if get_object_table() != null_mut() {
@@ -203,22 +204,6 @@ impl Value {
         } else {
             Value(skew(address) as u32)
         }
-    }
-
-    /// Free the object if for a deleted object.
-    /// Called by the incremental GC for garbage objects.
-    pub unsafe fn free_object_id(self) {
-        if get_object_table() != null_mut() {
-            get_object_table().free_object_id(self);
-        }
-    }
-
-    /// Record a new address for an object after it has been moved.
-    /// Used by the incremental GC.
-    pub unsafe fn set_new_address(self, new_address: usize) {
-        debug_assert_ne!(get_object_table(), null_mut());
-        debug_assert!(self != NULL_OBJECT_ID);
-        get_object_table().move_object(self, new_address);
     }
 
     /// Create a value from a scalar
@@ -434,7 +419,7 @@ pub struct Obj {
 }
 
 impl Obj {
-    /// Set the object id in incremental GC mode. 
+    /// Set the object id in incremental GC mode.
     /// No relevance in non-incremental GC mode.
     pub unsafe fn initialize_id(&mut self, object_id: Value) {
         debug_assert!(

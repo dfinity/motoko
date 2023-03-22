@@ -212,6 +212,7 @@ impl ObjectTable {
 
     /// Record that an object obtained a new address.
     pub unsafe fn move_object(self: *mut Self, object_id: Value, new_address: usize) {
+        debug_assert!(object_id != NULL_OBJECT_ID);
         debug_assert_eq!(new_address % WORD_SIZE as usize, 0);
         self.write_element(object_id, new_address);
     }

@@ -95,7 +95,6 @@ pub unsafe fn free_bitmap() {
 
     // TODO: Code below can be omitted if no object table is used.
     debug_assert!(BITMAP_ID != NULL_OBJECT_ID);
-    BITMAP_ID.free_object_id();
     BITMAP_ID = NULL_OBJECT_ID;
 }
 
