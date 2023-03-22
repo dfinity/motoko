@@ -13,7 +13,7 @@ unsafe fn region0_load<M: Memory>(_mem: &mut M, offset: u64, dst: &mut [u8]) {
         let _ = r.relative_into_absolute_offset(offset + dst.len() as u64 - 1);
     };
     if false {
-	println!(50, "region0_load({}) {} bytes", offset, dst.len());
+        println!(50, "region0_load({}) {} bytes", offset, dst.len());
     }
 
     crate::ic0_stable::nicer::read(abs_off, dst);

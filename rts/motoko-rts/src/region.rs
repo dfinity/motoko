@@ -104,14 +104,14 @@ impl RegionObject {
     pub unsafe fn relative_into_absolute_offset(&self, offset: u64) -> u64 {
         let av = AccessVector::from_value(&(*self.0).vec_pages);
 
-	if false {
+        if false {
             println!(
-		80,
-		"relative_into_absolute_offset offset={} page_count={}",
-		offset,
-		(*self.0).page_count
+                80,
+                "relative_into_absolute_offset offset={} page_count={}",
+                offset,
+                (*self.0).page_count
             )
-	};
+        };
 
         // assert that offset is currently allocated
         if !((offset / meta_data::size::PAGE_IN_BYTES) < (*self.0).page_count.into()) {
@@ -160,10 +160,13 @@ mod meta_data {
         pub const PAGE_IN_BYTES: u64 = 1 << 16;
         pub const BLOCK_IN_BYTES: u64 = PAGE_IN_BYTES * (PAGES_IN_BLOCK as u64);
 
+        // Static memory footprint, ignoring any dynamically-allocated pages.
+        pub const STATIC_MEM_IN_PAGES: u64 =
+            (super::offset::BLOCK_ZERO + PAGE_IN_BYTES - 1) / PAGE_IN_BYTES;
+
         pub unsafe fn required_pages() -> u64 {
-            use super::offset::BLOCK_ZERO;
-            let meta_data_pages = (BLOCK_ZERO + PAGE_IN_BYTES - 1) / PAGE_IN_BYTES;
-            meta_data_pages + (super::total_allocated_blocks::get() * (PAGES_IN_BLOCK as u64))
+            STATIC_MEM_IN_PAGES
+                + (super::total_allocated_blocks::get() as u64) * (PAGES_IN_BLOCK as u64)
         }
     }
 
@@ -184,10 +187,20 @@ mod meta_data {
         use super::offset;
         use crate::ic0_stable::nicer::{read_u16, write_u16};
 
+        use crate::memory::ic::REGION_TOTAL_ALLOCATED_BLOCKS;
+
         pub fn get() -> u64 {
             read_u16(offset::TOTAL_ALLOCATED_BLOCKS) as u64
         }
         pub fn set(n: u64) {
+            // Here we keep these copies of the total in sync.
+            //
+            // NB. The non-stable one is used when the stable one is
+            // unavailable (temp relocated by stable variable
+            // serialization/deserialization).
+            unsafe {
+                REGION_TOTAL_ALLOCATED_BLOCKS = n as u16;
+            };
             write_u16(offset::TOTAL_ALLOCATED_BLOCKS, n as u16)
         }
     }
@@ -261,6 +274,19 @@ mod meta_data {
     }
 }
 
+// Region manager's total memory size in stable memory, in _pages_.
+#[ic_mem_fn]
+pub unsafe fn region_mem_size<M: Memory>(_mem: &mut M) -> u64 {
+    if crate::memory::ic::REGION_MEM_SIZE_INIT {
+        meta_data::size::STATIC_MEM_IN_PAGES as u64
+            + crate::memory::ic::REGION_TOTAL_ALLOCATED_BLOCKS as u64
+                * (meta_data::size::PAGES_IN_BLOCK as u64)
+    } else {
+        // Before we initialization of anything, give back zero.
+        0
+    }
+}
+
 #[ic_mem_fn]
 pub unsafe fn region_new<M: Memory>(mem: &mut M) -> Value {
     let r_ptr = mem.alloc_words(size_of::<Region>());
@@ -319,10 +345,10 @@ pub unsafe fn region_recover<M: Memory>(mem: &mut M, rid: &RegionId) -> Value {
         match meta_data::block_region_table::get(BlockId(block_id as u16)) {
             None => {}
             Some((rid_, rank)) => {
-		if &rid_ == rid {
+                if &rid_ == rid {
                     av.set_ith_block_id(rank.into(), &BlockId(block_id as u16));
                     recovered_blocks += 1;
-		}
+                }
             }
         }
     }
@@ -332,20 +358,27 @@ pub unsafe fn region_recover<M: Memory>(mem: &mut M, rid: &RegionId) -> Value {
 
 #[ic_mem_fn]
 pub(crate) unsafe fn region_init_<M: Memory>(mem: &mut M) {
-    use meta_data::{offset, size};
-    let min_pages = (offset::BLOCK_ZERO + size::PAGE_IN_BYTES - 1) / size::PAGE_IN_BYTES;
     // detect if we are being called in after upgrade --
     if crate::ic0_stable::nicer::size() == 0 {
-        println!(80, "region_init -- first time.  min_pages = {}", min_pages);
-
-        let _ = crate::ic0_stable::nicer::grow(min_pages);
+        println!(80, "region_init -- first time.");
+        let _ = crate::ic0_stable::nicer::grow(meta_data::size::STATIC_MEM_IN_PAGES as u64);
 
         // Region 0 -- classic API for stable memory, as a dedicated region.
         crate::memory::ic::REGION_0 = crate::region::region_new(mem).as_region();
 
         // Region 1 -- reserved for reclaimed regions' blocks (to do).
         crate::memory::ic::REGION_1 = crate::region::region_new(mem).as_region();
+
+        // Recall that we've done this later, without asking ic0_stable::size.
+        assert_eq!(crate::memory::ic::REGION_MEM_SIZE_INIT, false);
+        crate::memory::ic::REGION_MEM_SIZE_INIT = true;
     } else {
+        println!(80, "region_init -- upgrade time.");
+
+        // Recall that we've done this later, without asking ic0_stable::size.
+        assert_eq!(crate::memory::ic::REGION_MEM_SIZE_INIT, false);
+        crate::memory::ic::REGION_MEM_SIZE_INIT = true;
+
         println!(80, "region_init -- recover regions 0 and 1.");
         crate::memory::ic::REGION_0 = crate::region::region_recover(mem, &RegionId(0)).as_region();
         crate::memory::ic::REGION_1 = crate::region::region_recover(mem, &RegionId(1)).as_region();
@@ -396,7 +429,13 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
     let new_block_count = (old_page_count + new_pages_ + (PAGES_IN_BLOCK - 1)) / PAGES_IN_BLOCK;
     let inc_block_count = new_block_count - old_block_count;
 
-    println!(80, "begin region_grow id={} page_count={} new_pages={}", (*r).id, old_page_count, new_pages);
+    println!(
+        80,
+        "begin region_grow id={} page_count={} new_pages={}",
+        (*r).id,
+        old_page_count,
+        new_pages
+    );
 
     // Update the total number of allocated blocks.
     let old_total_blocks = {
@@ -487,11 +526,7 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
         }
     }
 
-    println!(
-        80,
-        " region_grow id={} done.",
-        (*r).id,
-    );
+    println!(80, " region_grow id={} done.", (*r).id,);
 
     (*r).vec_pages = new_vec_pages;
     old_page_count.into()

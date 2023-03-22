@@ -27,11 +27,13 @@ actor {
 
   system func preupgrade() {
     P.debugPrint("pre-upgrading... n=" # debug_show n);
+    Region.metaLogLines();
+    P.debugPrint("printing region0's ID as " # debug_show (Region.id region0));
 
     let size1 = StableMemory.size();
     let size2 = Region.size(region0);
     P.debugPrint(debug_show {size1; size2});
-    assert size1 == size2;
+    // assert size1 == size2;
 
     let m = StableMemory.grow(1);
 

@@ -933,6 +933,7 @@ module RTS = struct
     E.add_func_import env "rts" "text_singleton" [I32Type] [I32Type];
     E.add_func_import env "rts" "text_size" [I32Type] [I32Type];
     E.add_func_import env "rts" "text_to_buf" [I32Type; I32Type] [];
+    E.add_func_import env "rts" "region_mem_size" [] [I64Type];
     E.add_func_import env "rts" "region_new" [] [I32Type];
     E.add_func_import env "rts" "region_id" [I32Type] [I32Type];
     E.add_func_import env "rts" "region_size" [I32Type] [I64Type];
@@ -4572,7 +4573,8 @@ module StableMem = struct
     E.add_global64 env "__stablemem_size" Mutable 0L
 
   let get_mem_size env =
-    G.i (GlobalGet (nr (E.get_global env "__stablemem_size")))
+    (* G.i (GlobalGet (nr (E.get_global env "__stablemem_size"))) *)
+    E.call_import env "rts" "region_mem_size"      
 
   let set_mem_size env =
     G.i (GlobalSet (nr (E.get_global env "__stablemem_size")))
@@ -4751,6 +4753,7 @@ module StableMem = struct
 
   (* API *)
 
+  (*
   let logical_grow env =
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
@@ -4830,7 +4833,6 @@ module StableMem = struct
     write env true "float64" F64Type 8l
       (G.i (Store {ty = F64Type; align = 0; offset = 0l; sz = None}))
 
-
   let load_blob env =
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
@@ -4865,6 +4867,7 @@ module StableMem = struct
           get_len ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
           IC.system_call env "stable64_write")
     | _ -> assert false
+   *)
 
 end (* StableMemory *)
 
