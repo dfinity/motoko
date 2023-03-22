@@ -34,9 +34,6 @@ SKIP_VALIDATE=${SKIP_VALIDATE:-no}
 ONLY_TYPECHECK=no
 ECHO=echo
 
-# Always do GC in tests, unless it's disabled in `EXTRA_MOC_ARGS`
-EXTRA_MOC_ARGS="--force-gc $EXTRA_MOC_ARGS"
-
 while getopts "adpstirv" o; do
     case "${o}" in
         a)
@@ -252,6 +249,10 @@ do
     # extra flags (allow shell variables there)
     moc_extra_flags="$(eval echo $(grep '//MOC-FLAG' $base.mo | cut -c11- | paste -sd' '))"
     moc_extra_env="$(eval echo $(grep '//MOC-ENV' $base.mo | cut -c10- | paste -sd' '))"
+    if ! grep -q "//MOC-NO-FORCE-GC" $base.mo
+    then
+      EXTRA_MOC_ARGS="--force-gc $EXTRA_MOC_ARGS"
+    fi
     moc_with_flags="env $moc_extra_env moc $moc_extra_flags $EXTRA_MOC_ARGS"
 
     # Typecheck
@@ -444,7 +445,7 @@ do
         fi
 
         flags_var_name="FLAGS_${runner//-/_}"
-        run $mo_base.$runner.comp moc $EXTRA_MOC_ARGS ${!flags_var_name} --hide-warnings -c $mo_file -o $out/$base/$mo_base.$runner.wasm
+        run $mo_base.$runner.comp moc ${!flags_var_name} --hide-warnings -c $mo_file -o $out/$base/$mo_base.$runner.wasm
       done
 
       # mangle drun script
