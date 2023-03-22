@@ -109,7 +109,6 @@ unsafe fn decide_incremental_strategy() -> Option<Strategy> {
 
 const INCREMENT_LIMIT: usize = 4_000_000;
 
-// Free object ids for mark stack pages has been conservatively reserved in the object table.
 pub unsafe fn run_incremental_gc<M: Memory>(mem: &mut M, strategy: Strategy) {
     // Always collect the young generation before the incremental collection of the old generation.
     let mut time = Time::unlimited();
