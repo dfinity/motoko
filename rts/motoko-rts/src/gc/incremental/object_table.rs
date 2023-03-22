@@ -1,6 +1,7 @@
 //! Central object table used by the incremental GC.
-//! Maps object ids to the correponding object addresses in the dynamic heap.
-//! All references to objects in the dynamic heap are routed through this table.
+//!
+//! Maps object ids (being used as object references) to the corresponding object
+//! addresses in the heap. All references to objects are routed through this table.
 //! This enables fast moving of objects in the incremental GC by only updating the
 //! address of the corresponding object in the table. Objects also carry their id
 //! in the header to allow fast lookup of the object id by a given object address.
@@ -12,13 +13,6 @@
 //! (extra indirection via the global object table pointer), but allows a significantly
 //! simpler implementation, since the table can grow at any time without having to move
 //! other objects.
-//!
-//! The dynamic heap can be organized into generations, e.g. old and young generation
-//! with `LAST_HP` splitting both generations. On each GC run, the young generation could
-//! be first collected (classically), before the incremental collection of the (extended)
-//! old generation continues. Mark stack tables for incremental old generation collection
-//! can also be allocated inside the young generation (e.g. because of the write barrier),
-//! if they are additionally registered in the remembered set.
 //!
 //! The object table stores an id-to-address translation as an array. Each array element
 //! can be used to represent object id with the address of an allocated object stored in

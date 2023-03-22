@@ -1,10 +1,10 @@
 //! Heap layout.
 //!
 //! Each object has its object id.
-//! Objects in the heap are indirectly referred to via a central object table, that maps an
-//! object id to the corresponding object address. Fields and array elements store values that
-//! encode an object id if it refers to an object. Objects are handled uniformly, regardless
-//! of whether allocated in the static or the dynamic heap.
+//! All objects are indirectly referred to via a central object table, that maps an object id to
+//! the corresponding object address. Fields and array elements store values that encode an object
+//! id if it refers to an object. Objects are handled uniformly, regardless of whether allocated
+//! in the static or the dynamic heap.
 //!
 //! Value representation:
 //! * Object id:
@@ -18,7 +18,7 @@
 //! Object ids have bit 0 set (skewed), while scalar values have bit 0 clear (left-shifted by 1).
 //!
 //! Exceptions for non-incremental GC mode:
-//!  * Object id = skewed object adddress. No indirection via the object table is used.
+//!  * Object id = skewed object address. No indirection via the object table is used.
 
 // Note [struct representation]
 // ~~~~~~~~~~~~~~~~~~~~~~~~~~~~

@@ -11,7 +11,7 @@
 //! │ previous │   next  | entry[0] |  ...    | entry[top-1] | (free) |
 //! └──────────┴─────────┴──────────┴─────────┴──────────────┴────────┘
 //!
-//! The list is doubly linked for the following purpose (wihout indirection over
+//! The list is doubly linked for the following purpose (without indirection over
 //! the object table):
 //! * `previous` to return to the previous table with preceding entries.
 //! * `next` avoid repeated allocations when the stack shrinks and regrows.
