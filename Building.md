@@ -82,12 +82,13 @@ We make frequent releases, at least weekly. The steps to make a release (say, ve
  * `git commit -am "Releasing 0.8.$MOC_MINOR"`
  * Create a PR from this commit, and label it `automerge-squash`. E.g.
    with `git push origin HEAD:$USER/0.8.$MOC_MINOR`. Mergify will
-   merge it into master without additional approval, within 2 or 3 minutes.
+   merge it into `master` without additional approval, but it will take some
+   time as the title (version number) enters into the `nix` dependency tracking.
  * `git switch master; git pull --rebase`. The release commit should be your `HEAD`
  * `git tag 0.8.$MOC_MINOR -m "Motoko 0.8.$MOC_MINOR"`
  * `git push origin 0.8.$MOC_MINOR`
 
-Pushing the tag should cause GitHub Actions to create a “Release” on the github
+Pushing the tag should cause GitHub Actions to create a “Release” on the GitHub
 project. This will fail if the changelog is not in order (in this case, fix and
 force-push the tag).  It will also fail if the nix cache did not yet contain
 the build artifacts for this revision. In this case, restart the GitHub Action
@@ -111,8 +112,9 @@ squash merge) once CI passes. It will eventually be imported into this
 repo by a scheduled `niv-updater-action`.
 
 Finally tag the base release (so the documentation interpreter can do the right thing):
-* git tag moc-0.8.$MOC_MINOR
-* git push origin moc-0.8.$MOC_MINOR
+* `git switch master && git pull`
+* `git tag moc-0.8.$MOC_MINOR`
+* `git push origin moc-0.8.$MOC_MINOR`
 
 If you want to update the portal documentation, typically to keep in sync with a `dfx` release, follow the instructions in https://github.com/dfinity/portal/blob/master/MAINTENANCE.md.
 
