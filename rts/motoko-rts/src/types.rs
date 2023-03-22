@@ -434,6 +434,8 @@ pub struct Obj {
 }
 
 impl Obj {
+    /// Set the object id in incremental GC mode. 
+    /// No relevance in non-incremental GC mode.
     pub unsafe fn initialize_id(&mut self, object_id: Value) {
         debug_assert!(
             get_object_table() == null_mut() || object_id.get_raw() as usize & MARK_BIT_MASK == 0
@@ -441,24 +443,31 @@ impl Obj {
         self.mark_and_id = object_id.get_raw() as usize;
     }
 
+    /// Object id. Only defined in incremental GC mode with a present object table.
     pub unsafe fn object_id(self: *const Self) -> Value {
-        if get_object_table() != null_mut() {
-            Value::from_raw(((*self).mark_and_id & !MARK_BIT_MASK) as u32)
-        } else {
-            Value::from_raw(skew(self as usize) as u32)
-        }
+        debug_assert_ne!(get_object_table(), null_mut());
+        Value::from_raw(((*self).mark_and_id & !MARK_BIT_MASK) as u32)
     }
 
+    // Low-level pointer. Only defined in non-incremental GC mode with an absent object table.
+    pub unsafe fn get_pointer(self: *const Self) -> Value {
+        debug_assert_eq!(get_object_table(), null_mut());
+        Value::from_raw(skew(self as usize) as u32)
+    }
+
+    // Test the mark bit. Only defined in incremental GC mode with a present object table.
     pub unsafe fn is_marked(self: *const Self) -> bool {
         debug_assert_ne!(get_object_table(), null_mut());
         (*self).mark_and_id & MARK_BIT_MASK != 0
     }
 
+    // Set the mark bit. Only defined in incremental GC mode with a present object table.
     pub unsafe fn mark(self: *mut Self) {
         debug_assert_ne!(get_object_table(), null_mut());
         (*self).mark_and_id |= MARK_BIT_MASK;
     }
 
+    // Clear the mark bit. Only defined in incremental GC mode with a present object table.
     pub unsafe fn unmark(self: *mut Self) {
         debug_assert_ne!(get_object_table(), null_mut());
         (*self).mark_and_id &= !MARK_BIT_MASK;

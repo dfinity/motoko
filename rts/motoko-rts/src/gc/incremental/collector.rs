@@ -218,7 +218,7 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
     pub unsafe fn mark_object(&mut self, value: Value) {
         debug_assert!(self.state.phase == Phase::Mark);
         debug_assert!(!self.state.mark_complete);
-        let object = value.get_object_address() as *mut Obj;
+        let object = get_object_table().get_object_address(value) as *mut Obj;
         self.time.tick();
         debug_assert!(object as usize >= self.generation.start);
         debug_assert!((object as usize) < self.mem.get_heap_pointer());
@@ -241,7 +241,7 @@ impl<'a, M: Memory> GarbageCollector<'a, M> {
             if value == NULL_OBJECT_ID {
                 break;
             }
-            let object = value.get_object_address() as *mut Obj;
+            let object = get_object_table().get_object_address(value) as *mut Obj;
             self.mark_fields(object);
 
             self.time.tick();

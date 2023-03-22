@@ -35,7 +35,6 @@ pub unsafe fn verify_snapshot<M: Memory>(mem: &mut M, verify_roots: bool) {
         );
     }
     verify_heap(mem);
-    (SNAPSHOT as *const Obj).object_id().free_object_id();
     SNAPSHOT = null_mut();
 }
 

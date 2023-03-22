@@ -31,7 +31,10 @@ This scheme makes the following assumptions:
  - libtommath uses mp_calloc() and mp_realloc() _only_ to allocate the `mp_digit *` array.
 */
 
+use core::ptr::null_mut;
+
 use crate::buf::{read_byte, Buf};
+use crate::gc::incremental::object_table::get_object_table;
 use crate::mem_utils::memcpy_bytes;
 use crate::memory::Memory;
 use crate::tommath_bindings::*;
@@ -171,7 +174,12 @@ unsafe fn persist_bigint(i: mp_int) -> Value {
         panic!("persist_bigint: alloc changed?");
     }
     (*r).mp_int = i;
-    (r as *const Obj).object_id()
+    let obj = r as *const Obj;
+    if get_object_table() != null_mut() {
+        obj.object_id()
+    } else {
+        obj.get_pointer()
+    }
 }
 
 #[no_mangle]
