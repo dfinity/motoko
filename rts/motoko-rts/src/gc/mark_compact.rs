@@ -45,6 +45,7 @@ unsafe fn compacting_gc<M: Memory>(mem: &mut M) {
         |hp| ic::HP = hp,
         ic::get_static_roots(),
         crate::continuation_table::continuation_table_loc(),
+        crate::region0::region0_get_ptr_loc(),
         // note_live_size
         |live_size| ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, live_size),
         // note_reclaimed
@@ -67,6 +68,7 @@ pub unsafe fn compacting_gc_internal<
     set_hp: SetHp,
     static_roots: Value,
     continuation_table_ptr_loc: *mut Value,
+    region0_ptr_loc: *mut Value,
     note_live_size: NoteLiveSize,
     note_reclaimed: NoteReclaimed,
 ) {
@@ -81,6 +83,7 @@ pub unsafe fn compacting_gc_internal<
         old_hp,
         static_roots,
         continuation_table_ptr_loc,
+        region0_ptr_loc,
     );
 
     let reclaimed = old_hp - (get_hp() as u32);
@@ -97,6 +100,7 @@ unsafe fn mark_compact<M: Memory, SetHp: Fn(u32)>(
     heap_end: u32,
     static_roots: Value,
     continuation_table_ptr_loc: *mut Value,
+    region0_ptr_loc: *mut Value,
 ) {
     let mem_size = Bytes(heap_end - heap_base);
 
@@ -110,6 +114,13 @@ unsafe fn mark_compact<M: Memory, SetHp: Fn(u32)>(
         // Similar to `mark_root_mutbox_fields`, `continuation_table_ptr_loc` is in static heap so
         // it will be readable when we unthread the continuation table
         thread(continuation_table_ptr_loc);
+    }
+
+    if (*region0_ptr_loc).is_ptr() {
+        mark_object(mem, *region0_ptr_loc);
+        // Similar to `mark_root_mutbox_fields`, `region0_ptr_loc` is in static heap so
+        // it will be readable when we unthread the continuation table
+        thread(region0_ptr_loc);
     }
 
     mark_stack(mem, heap_base);
