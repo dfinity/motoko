@@ -1,34 +1,38 @@
 import Prim "mo:⛔";
 actor a {
+  // Object table and remembered used by the incremental GC.
+  // Remembered set used by the generational GC.
+  let minimumSize = 23_000_000;
+  let arrayLength = 1000_000;
+  let reserve = 3_000;
+
   public func foo() {
-    ignore(Prim.Array_init<()>(2500, ()));
+    ignore(Prim.Array_init<()>(arrayLength, ()));
   };
   public func check_A() {
     Prim.debugPrint("Ignore Diff: Reclaimed: " # debug_show Prim.rts_reclaimed());
-    assert (Prim.rts_reclaimed() > 10000);
+    assert (Prim.rts_reclaimed() > 4 * arrayLength);
     // Generational GC has additional remembered set that is discarded on each GC run
     // Debug mode for generational GC also produces additional memory snapshots for sanity checks
-    assert (Prim.rts_reclaimed() < 512 * 1024);
+    assert (Prim.rts_reclaimed() < 4 * arrayLength + reserve);
 
     Prim.debugPrint("Ignore Diff: Live size: " # debug_show Prim.rts_max_live_size());
-    // 8 at some point
-    assert (Prim.rts_max_live_size() < 100);
+    assert (Prim.rts_max_live_size() < minimumSize);
   };
   flexible var v : [var ()] = [var];
   public func bar() {
-    v := Prim.Array_init<()>(2500, ());
+    v := Prim.Array_init<()>(arrayLength, ());
   };
   public func check_B() {
     Prim.debugPrint("Ignore Diff: Reclaimed: " # debug_show Prim.rts_reclaimed());
-    assert (Prim.rts_reclaimed() > 10000);
+    assert (Prim.rts_reclaimed() > 4 * arrayLength);
     // Generational GC has additional remembered set that is discarded on each GC run
     // Debug mode for generational GC also produces additional memory snapshots for sanity checks
-    assert (Prim.rts_reclaimed() < 1024 * 1024);
+    assert (Prim.rts_reclaimed() < 4 * arrayLength + reserve);
 
     Prim.debugPrint("Ignore Diff: Live size: " # debug_show Prim.rts_max_live_size());
-    // 10_008 at some point
-    assert (Prim.rts_max_live_size() > 10000);
-    assert (Prim.rts_max_live_size() < 11000);
+    assert (Prim.rts_max_live_size() > 4 * arrayLength);
+    assert (Prim.rts_max_live_size() < minimumSize + 4 * arrayLength);
   };
 }
 // no point running these in the interpreter
