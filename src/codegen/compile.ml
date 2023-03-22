@@ -9714,7 +9714,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     IC.performance_counter env
 
   | OtherPrim "trap", [e] ->
-    SR.unit,
+    SR.Unreachable,
     compile_exp_vanilla env ae e ^^
     IC.trap_text env
 
