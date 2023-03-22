@@ -22,7 +22,7 @@ pub(crate) unsafe fn init_generational_write_barrier<M: Memory>(mem: &mut M) {
 /// `location`: location of modified pointer (address of object field or array element).
 ///
 /// As the barrier is called after the write, `*location` refers to the NEW value.
-/// No effect is the write barrier is deactivated.
+/// No effect if the write barrier is deactivated.
 #[ic_mem_fn]
 pub unsafe fn post_write_barrier<M: Memory>(mem: &mut M, location: u32) {
     // Must be an unskewed address.

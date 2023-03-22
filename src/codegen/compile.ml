@@ -7630,12 +7630,12 @@ let unmodified : scope_wrap = fun code -> code
 let potential_pointer typ : bool = 
   (* must not eliminate nested optional types as they refer to a heap object for ??null, ???null etc. *)
   let rec can_be_pointer typ nested_optional = 
-    let open Type in
-    match normalize typ with
+    
+    Type.(match normalize typ with
     | Mut t -> (can_be_pointer t nested_optional)
     | Opt t -> (if nested_optional then true else (can_be_pointer t true))
     | Prim (Null| Bool | Char | Nat8 | Nat16 | Int8 | Int16) | Non | Tup [] -> false
-    | _ -> true in
+    | _ -> true) in
   can_be_pointer typ false
   
 module Var = struct
@@ -9904,7 +9904,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     IC.performance_counter env
 
   | OtherPrim "trap", [e] ->
-    SR.unit,
+    SR.Unreachable,
     compile_exp_vanilla env ae e ^^
     IC.trap_text env
 
