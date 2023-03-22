@@ -4,19 +4,23 @@ actor a {
   };
 
   public func go() : async () {
+    let length = 4 * 1024;
     await ping();
     let s0 = Prim.rts_heap_size();
-    var a = Prim.Array_init<()>(4 * 1024, ());
-    // discard bigger array a
-    a := Prim.Array_init<()>(0, ());
+    ignore Prim.Array_init<()>(length, ());
+    // discard big array
+    // Do not install in variable as it is otherwise
+    // put to the remembered set for young generation
+    // and it would then need a full incremental GC to 
+    // reclaim.
     await ping();
     let s1 = Prim.rts_heap_size();
-    let b = Prim.Array_init<()>(4 * 1024, ());
+    let b = Prim.Array_init<()>(length, ());
     // retain b with subsequent access to it
     await ping();
     let s2 = Prim.rts_heap_size();
     // ensure that b is retained
-    assert(b.size() == 4 * 1024);
+    assert(b.size() == length);
 
     Prim.debugPrint(
       "Ignore Diff: " #
@@ -28,8 +32,8 @@ actor a {
     // Using --forced-gc and allowing young collection for generational GC.
     // It allows for some wiggle room
     let reserve = 1 * 1024;
-    assert (+s1-s0 < 1024);
-    assert (+s2-s0 > 15 * 1024);
+    assert (+s1-s0 < reserve);
+    assert (+s2-s0 + reserve > 4 * length);
   };
 };
 a.go(); //OR-CALL ingress go "DIDL\x00\x00"
