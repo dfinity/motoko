@@ -31,7 +31,9 @@ unsafe fn region0_store<M: Memory>(_mem: &mut M, offset: u64, src: &[u8]) {
 
 #[ic_mem_fn]
 pub unsafe fn region0_get<M: Memory>(_mem: &mut M) -> Value {
-    Value::from_ptr(crate::memory::ic::REGION_0 as usize)
+    let v = Value::from_ptr(crate::memory::ic::REGION_0 as usize);
+    println!(80, "region0_get() ~> {:?}", v);
+    v
 }
 
 #[ic_mem_fn]

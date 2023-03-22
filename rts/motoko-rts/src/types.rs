@@ -160,7 +160,7 @@ pub const TRUE_VALUE: u32 = 0x1;
 
 /// A value in a heap slot
 #[repr(transparent)]
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct Value(u32);
 
 /// A view of `Value` for analyzing the slot contents.
