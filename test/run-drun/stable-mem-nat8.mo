@@ -26,7 +26,7 @@ actor {
   };
 
   system func preupgrade() {
-    P.debugPrint("upgrading... n=" # debug_show n);
+    P.debugPrint("pre-upgrading... n=" # debug_show n);
 
     let size1 = StableMemory.size();
     let size2 = Region.size(region0);
@@ -89,8 +89,8 @@ actor {
   };
 
   system func postupgrade() {
-    P.debugPrint("...size is " # debug_show StableMemory.size());
-    P.debugPrint("...upgraded " # debug_show n);
+    P.debugPrint("...upgraded n=" # debug_show n);
+    P.debugPrint("...region0 size is " # debug_show StableMemory.size() # " pages.");
   };
 
 }

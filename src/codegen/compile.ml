@@ -3519,7 +3519,7 @@ end (* Blob *)
 module Region0 = struct
   (*
     See rts/motoko-rts/src/region.rs
-   *)  
+   *)
   let get env = E.call_import env "rts" "region0_get"
 
   let get_mem_size env = E.call_import env "rts" "region0_size"
@@ -4573,6 +4573,7 @@ module StableMem = struct
 
   let get_mem_size env =
     G.i (GlobalGet (nr (E.get_global env "__stablemem_size")))
+
   let set_mem_size env =
     G.i (GlobalSet (nr (E.get_global env "__stablemem_size")))
 
@@ -6844,7 +6845,8 @@ module Stabilization = struct
 
     StableMem.get_mem_size env ^^
     G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
-    G.if0
+    G.if0 (* 20230321 -- Should we drop this if0 now that the region manager makes it always false? *)
+
       begin (* ensure [0,..,3,...len+4) *)
         compile_const_64 0L ^^
         extend64 get_len ^^
@@ -9601,7 +9603,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     const_sr SR.Vanilla (Arr.ofBlob env)
   | OtherPrim ("arrayToBlob"|"arrayMutToBlob"), e ->
     const_sr SR.Vanilla (Arr.toBlob env)
-        
+
   | OtherPrim "stableMemoryRegion", [] ->
     SR.Vanilla,
     Region0.get env
