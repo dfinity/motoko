@@ -41,7 +41,8 @@ unsafe fn generational_gc<M: Memory>(mem: &mut M) {
 
     let old_limits = get_limits();
     let roots = Roots {
-        static_roots: ic::get_static_roots(), // to do -- Add Region 0
+        static_roots: ic::get_static_roots(),
+        region0_ptr_loc: crate::region0::region0_get_ptr_loc(),
         continuation_table_ptr_loc: crate::continuation_table::continuation_table_loc(),
     };
     let heap = Heap {
@@ -158,6 +159,7 @@ pub struct Heap<'a, M: Memory> {
 pub struct Roots {
     pub static_roots: Value,
     pub continuation_table_ptr_loc: *mut Value,
+    pub region0_ptr_loc: *mut Value,
     // For possible future additional roots, please extend the functionality in:
     // * `mark_root_set`
     // * `thread_initial_phase`
@@ -219,6 +221,11 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
         let continuation_table = *self.heap.roots.continuation_table_ptr_loc;
         if continuation_table.is_ptr() && continuation_table.get_ptr() >= self.generation_base() {
             self.mark_object(continuation_table);
+        }
+
+        let region0 = *self.heap.roots.region0_ptr_loc;
+        if region0.is_ptr() && region0.get_ptr() >= self.generation_base() {
+            self.mark_object(region0);
         }
 
         if self.strategy == Strategy::Young {
@@ -361,6 +368,11 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
         let continuation_table = *self.heap.roots.continuation_table_ptr_loc;
         if continuation_table.is_ptr() && continuation_table.get_ptr() >= self.generation_base() {
             self.thread(self.heap.roots.continuation_table_ptr_loc);
+        }
+
+        let region0 = *self.heap.roots.region0_ptr_loc;
+        if region0.is_ptr() && region0.get_ptr() >= self.generation_base() {
+            self.thread(self.heap.roots.region0_ptr_loc);
         }
 
         // For the young generation GC run, the forward pointers from the old generation must be threaded too.
