@@ -948,7 +948,7 @@ module RTS = struct
     E.add_func_import env "rts" "region0_size" [] [I64Type];
     E.add_func_import env "rts" "region0_get" [] [I32Type];
     E.add_func_import env "rts" "region0_grow" [I64Type] [I64Type];
-    E.add_func_import env "rts" "region0_load_blob" [I64Type; I32Type] [];
+    E.add_func_import env "rts" "region0_load_blob" [I64Type; I32Type] [I32Type];
     E.add_func_import env "rts" "region0_store_blob" [I64Type; I32Type] [];
     E.add_func_import env "rts" "region0_load_word8" [I64Type] [I32Type];
     E.add_func_import env "rts" "region0_store_word8" [I64Type; I32Type] [];
