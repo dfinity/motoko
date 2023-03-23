@@ -169,7 +169,7 @@ impl<'a, M: Memory> MemoryChecker<'a, M> {
             if has_object_header(tag) {
                 let object = pointer as *mut Obj;
                 assert!(has_object_header((*object).tag));
-                self.check_object(object.object_id());
+                self.check_object(object.get_pointer());
             }
             pointer += block_size(pointer as usize).to_bytes().as_usize();
         }
