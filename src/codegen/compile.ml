@@ -8813,7 +8813,7 @@ let rec compile_lexp (env : E.t) ae lexp : G.t * SR.t * G.t =
     store_ptr
 
 (* Common code for a[e] as lexp and as exp.
-Traps or puts the pointer to the field on the stack
+Traps or pushes the pointer to the element on the stack
 *)
 and compile_array_index env ae e1 e2 =
     compile_exp_vanilla env ae e1 ^^ (* offset to array *)
