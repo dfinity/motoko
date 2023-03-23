@@ -30,9 +30,5 @@ pub unsafe fn write_with_barrier<M: Memory>(_mem: &mut M, location: *mut Value, 
 /// Allocation barrier to be called after a new object allocation.
 /// The new object needs to be fully initialized, except for the payload of a blob.
 /// Used for the incremental GC.
-#[ic_mem_fn]
-pub fn allocation_barrier<M: Memory>(_mem: &mut M, _new_object: Value) {}
-
-/// Allocation barrier for RTS-internal use by specific places that do not have
-/// a `Memory` reference. Does not perform an allocation increment.
-pub fn slim_allocation_barrier(_new_object: Value) {}
+#[no_mangle]
+pub unsafe extern "C" fn allocation_barrier(_new_object: Value) {}
