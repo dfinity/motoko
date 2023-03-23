@@ -23,6 +23,9 @@ pub(crate) static mut HP: u32 = 0;
 pub(crate) static mut LAST_HP: u32 = 0;
 
 // For giving the other logic the right number at the right time.
+pub(crate) static mut REGION_SET_MEM_SIZE: Option<u64> = None;
+
+// For giving the other logic the right number at the right time.
 pub(crate) static mut REGION_MEM_SIZE_INIT: bool = false;
 
 // Mirrored field from stable memory, for handling upgrade logic.

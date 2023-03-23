@@ -276,15 +276,29 @@ mod meta_data {
 
 // Region manager's total memory size in stable memory, in _pages_.
 #[ic_mem_fn]
-pub unsafe fn region_mem_size<M: Memory>(_mem: &mut M) -> u64 {
-    if crate::memory::ic::REGION_MEM_SIZE_INIT {
-        meta_data::size::STATIC_MEM_IN_PAGES as u64
-            + crate::memory::ic::REGION_TOTAL_ALLOCATED_BLOCKS as u64
-                * (meta_data::size::PAGES_IN_BLOCK as u64)
-    } else {
-        // Before we initialization of anything, give back zero.
-        0
-    }
+pub unsafe fn region_get_mem_size<M: Memory>(_mem: &mut M) -> u64 {
+    let size = {
+        if let Some(s) = crate::memory::ic::REGION_SET_MEM_SIZE {
+            return s;
+        };
+        if crate::memory::ic::REGION_MEM_SIZE_INIT {
+            meta_data::size::STATIC_MEM_IN_PAGES as u64
+                + crate::memory::ic::REGION_TOTAL_ALLOCATED_BLOCKS as u64
+                    * (meta_data::size::PAGES_IN_BLOCK as u64)
+        } else {
+            // Before we initialization of anything, give back zero.
+            0
+        }
+    };
+    println!(80, "region_get_mem_size() => {}", size);
+    size
+}
+
+// Region manager's total memory size in stable memory, in _pages_.
+#[ic_mem_fn]
+pub unsafe fn region_set_mem_size<M: Memory>(_mem: &mut M, size: u64) {
+    println!(80, "region_set_mem_size({})", size);
+    crate::memory::ic::REGION_SET_MEM_SIZE = Some(size);
 }
 
 #[ic_mem_fn]
@@ -416,7 +430,7 @@ pub unsafe fn region_id<M: Memory>(_mem: &mut M, r: Value) -> u32 {
 #[ic_mem_fn]
 pub unsafe fn region_size<M: Memory>(_mem: &mut M, r: Value) -> u64 {
     if false {
-	println!(80, "region_size({:?})", r);
+        println!(80, "region_size({:?})", r);
     }
     let r = r.as_region();
     (*r).page_count.into()
