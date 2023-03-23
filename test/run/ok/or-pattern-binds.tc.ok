@@ -1,0 +1,4 @@
+or-pattern-binds.mo:5.14-5.19: warning [M0146], this pattern is never matched
+or-pattern-binds.mo:6.5-6.10: warning [M0146], this pattern is never matched
+or-pattern-binds.mo:8.15-8.20: warning [M0146], this pattern is never matched
+or-pattern-binds.mo:23.31-23.33: type error [M0103], cannot infer type of variable
