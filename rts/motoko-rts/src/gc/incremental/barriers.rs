@@ -10,7 +10,7 @@ use crate::{
     types::{is_skewed, Value},
 };
 
-use super::{allocation_increment, post_allocation_barrier, pre_write_barrier, Phase};
+use super::{count_allocation, post_allocation_barrier, pre_write_barrier, Phase};
 
 #[no_mangle]
 pub unsafe extern "C" fn running_gc() -> bool {
@@ -42,9 +42,10 @@ pub unsafe fn write_with_barrier<M: Memory>(mem: &mut M, location: *mut Value, v
 /// Effects:
 /// * Mark new allocations during the GC mark and evacuation phases.
 /// * Resolve pointer forwarding during the GC update phase.
-#[ic_mem_fn]
-pub unsafe fn allocation_barrier<M: Memory>(mem: &mut M, new_object: Value) {
+/// * Keep track of concurrent allocations to adjust the GC increment time limit.
+#[no_mangle]
+pub unsafe extern "C" fn allocation_barrier(new_object: Value) {
     let state = incremental_gc_state();
     post_allocation_barrier(state, new_object);
-    allocation_increment(mem, state);
+    count_allocation(state);
 }

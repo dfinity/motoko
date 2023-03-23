@@ -3924,11 +3924,7 @@ module Arr = struct
   let alloc env = 
     E.call_import env "rts" "alloc_array"
 
-  (* Note: Do not use this iterator for body code that is user-implemented
-     and could perform an allocation. The low-level pointer used during 
-     iteration could become invalid if the body effects an allocation 
-     that moves the array *)
-  let unsafe_iterate env get_array body =
+  let iterate env get_array body =
     let (set_boundary, get_boundary) = new_local env "boundary" in
     let (set_pointer, get_pointer) = new_local env "pointer" in
     let set_array = G.setter_for get_array in
@@ -3977,7 +3973,7 @@ module Arr = struct
     set_r ^^
 
     (* Write elements *)
-    unsafe_iterate env get_r (fun get_pointer ->
+    iterate env get_r (fun get_pointer ->
       get_pointer ^^
       get_x ^^
       store_ptr
@@ -3986,14 +3982,10 @@ module Arr = struct
     Tagged.allocation_barrier env get_r ^^
     get_r
 
-  (* Note: Do not optimize the array iteration by pointer arithmetics,
-     since the incremental GC needs to resolve forwarding on the array 
-     pointer and called user function may trigger GC increments, potentially
-     moving objects (although currently not the newly allocated objects). *)
   let tabulate env =
     let (set_f, get_f) = new_local env "f" in
     let (set_r, get_r) = new_local env "r" in
-    let (set_value, get_value) = new_local env "value" in
+    let (set_i, get_i) = new_local env "i" in
     set_f ^^
 
     (* Allocate *)
@@ -4001,11 +3993,13 @@ module Arr = struct
     alloc env ^^
     set_r ^^
 
-    (* Length *)
-    get_r ^^ 
-    Tagged.load_field env len_field ^^
-    
-    from_0_to_n env (fun get_i ->
+    (* Initial index *)
+    compile_unboxed_const 0l ^^
+    set_i ^^
+
+    (* Write elements *)
+    iterate env get_r (fun get_pointer ->
+      get_pointer ^^
       (* The closure *)
       get_f ^^
       Closure.prepare_closure_call env ^^
@@ -4016,16 +4010,12 @@ module Arr = struct
       get_f ^^
       (* Call *)
       Closure.call_closure env 1 1 ^^
-      set_value ^^
+      store_ptr ^^
 
-      (* Recompute the array element address because the array may be moved
-         by a GC increment triggered by the tabulate function. *)
-      (* Write array element *)
-      get_r ^^
+      (* Increment index *)
       get_i ^^
-      idx env ^^ (* Resolves object forwarding *)
-      get_value ^^
-      store_ptr
+      compile_add_const 1l ^^
+      set_i
     ) ^^
     Tagged.allocation_barrier env get_r ^^
     get_r
@@ -7661,19 +7651,11 @@ module Var = struct
       compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
       E.call_import env "rts" "post_write_barrier"
     | (Some ((HeapInd i), typ), Flags.Incremental) when potential_pointer typ ->
-      let (set_mutbox, get_mutbox) = new_local env "mutbox" in
-      let (set_value, get_value) = new_local env "value" in
-      (* Compute the mutbox field address later, because the right-hand-side of an assignment may 
-         trigger an allocation GC increment that moves and forwards the mutbox, such that the 
-         mutbox field address would become invalid, pointing to the old mutbox state. *)
-      G.i (LocalGet (nr i)) ^^ set_mutbox,
-      SR.Vanilla,
-      set_value ^^
-      get_mutbox ^^
+      G.i (LocalGet (nr i)) ^^
       Tagged.load_forwarding_pointer env ^^
       compile_add_const ptr_unskew ^^
-      compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
-      get_value ^^
+      compile_add_const (Int32.mul MutBox.field Heap.word_size),
+      SR.Vanilla,
       Tagged.write_with_barrier env
     | (Some ((HeapInd i), typ), _) ->
       G.i (LocalGet (nr i)),
@@ -7689,7 +7671,6 @@ module Var = struct
       compile_add_const (Int32.mul MutBox.field Heap.word_size) ^^
       E.call_import env "rts" "post_write_barrier"
     | (Some ((HeapStatic ptr), typ), Flags.Incremental) when potential_pointer typ ->
-      (* Static objects are never moved *)
       compile_unboxed_const ptr ^^
       Tagged.load_forwarding_pointer env ^^
       compile_add_const ptr_unskew ^^
@@ -7697,8 +7678,7 @@ module Var = struct
       SR.Vanilla,
       Tagged.write_with_barrier env
     | (Some ((HeapStatic ptr), typ), _) ->
-      compile_unboxed_const ptr ^^
-      Tagged.check_forwarding env false,
+      compile_unboxed_const ptr,
       SR.Vanilla,
       MutBox.store_field env
     | (Some ((Const _), _), _) -> fatal "set_val: %s is const" var
@@ -9156,20 +9136,11 @@ let rec compile_lexp (env : E.t) ae lexp =
     compile_add_const ptr_unskew ^^
     E.call_import env "rts" "post_write_barrier"
   | IdxLE (e1, e2), Flags.Incremental when potential_pointer (Arr.element_type env e1.note.Note.typ) ->
-    let (set_array, get_array) = new_local env "array" in
-    let (set_index, get_index) = new_local env "index" in
-    let (set_value, get_value) = new_local env "value" in
-    compile_exp_vanilla env ae e1 ^^ set_array ^^
-    compile_exp_vanilla env ae e2 ^^ set_index,
-    (* Compute the array element address later, because the right-hand-side of an assignment may 
-       trigger an allocation GC increment that moves and forwards the array, such that the 
-       element address would become invalid, pointing to the old array state. *)
+    compile_exp_vanilla env ae e1 ^^ (* offset to array *)
+    compile_exp_vanilla env ae e2 ^^ (* idx *)
+    Arr.idx_bigint env ^^
+    compile_add_const ptr_unskew,
     SR.Vanilla,
-    set_value ^^
-    get_array ^^ get_index ^^ 
-    Arr.idx_bigint env ^^ (* Resolve array forwarding immediately before the write. *)
-    compile_add_const ptr_unskew ^^ 
-    get_value ^^
     Tagged.write_with_barrier env
   | IdxLE (e1, e2), _ ->
     compile_exp_vanilla env ae e1 ^^ (* offset to array *)
@@ -9189,18 +9160,11 @@ let rec compile_lexp (env : E.t) ae lexp =
     compile_add_const ptr_unskew ^^
     E.call_import env "rts" "post_write_barrier"
   | DotLE (e, n), Flags.Incremental when potential_pointer (Object.field_type env e.note.Note.typ n) ->
-    let (set_field, get_field) = new_local env "field" in
-    let (set_value, get_value) = new_local env "value" in
-    compile_exp_vanilla env ae e ^^ set_field,
-    (* Compute the object field address later, because the right-hand-side of an assignment may 
-       trigger an allocation GC increment that moves and forwards the object, such that the 
-       field address would become invalid, pointing to the old object state. *)
+    compile_exp_vanilla env ae e ^^
+    (* Only real objects have mutable fields, no need to branch on the tag *)
+    Object.idx env e.note.Note.typ n ^^
+    compile_add_const ptr_unskew,
     SR.Vanilla,
-    set_value ^^
-    get_field ^^
-    Object.idx env e.note.Note.typ n ^^ (* Resolve object forwarding immediately before the write. *)
-    compile_add_const ptr_unskew ^^
-    get_value ^^
     Tagged.write_with_barrier env
   | DotLE (e, n), _ ->
     compile_exp_vanilla env ae e ^^
