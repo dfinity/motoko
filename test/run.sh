@@ -251,9 +251,11 @@ do
     moc_extra_env="$(eval echo $(grep '//MOC-ENV' $base.mo | cut -c10- | paste -sd' '))"
     if ! grep -q "//MOC-NO-FORCE-GC" $base.mo
     then
-      EXTRA_MOC_ARGS="--force-gc $EXTRA_MOC_ARGS"
+      TEST_MOC_ARGS="--force-gc $EXTRA_MOC_ARGS"
+    else
+      TEST_MOC_ARGS=$EXTRA_MOC_ARGS
     fi
-    moc_with_flags="env $moc_extra_env moc $moc_extra_flags $EXTRA_MOC_ARGS"
+    moc_with_flags="env $moc_extra_env moc $moc_extra_flags $TEST_MOC_ARGS"
 
     # Typecheck
     run tc $moc_with_flags --check $base.mo
