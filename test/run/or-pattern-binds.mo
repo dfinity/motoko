@@ -13,11 +13,11 @@ debugPrint (debug_show {a2l; a2r; a4; a5; a6});
 func foo(#a (a7 : Nat) or #b (a7 : Int)) : Nat = a7;
 
 // should reject
-func foo(#a (a7 : Nat) or #b (a7 : Int), b7 : Char) : Nat = a7;
+func bar(#a (a8 : Nat) or #b (a8 : Int), b8 : Char) : Nat = a8;
 // HEH:
 // > foo (#b (-5), 'H');
 // -5 : Nat
 
 
 // should accept
-func foo(#a (a8 : Nat) or #b a8) : Nat = a8;
+func quux(#a (a9 : Nat) or #b a9) : Nat = a9;
