@@ -939,10 +939,18 @@ module RTS = struct
     E.add_func_import env "rts" "region_id" [I32Type] [I32Type];
     E.add_func_import env "rts" "region_size" [I32Type] [I64Type];
     E.add_func_import env "rts" "region_grow" [I32Type; I64Type] [I64Type];
-    E.add_func_import env "rts" "region_load_blob" [I32Type; I32Type; I32Type] [I32Type];
-    E.add_func_import env "rts" "region_store_blob" [I32Type; I32Type; I32Type] [];
-    E.add_func_import env "rts" "region_load_byte" [I32Type; I64Type] [I32Type];
-    E.add_func_import env "rts" "region_store_byte" [I32Type; I64Type; I32Type] [];
+    E.add_func_import env "rts" "region_load_blob" [I32Type; I64Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "region_store_blob" [I32Type; I64Type; I32Type] [];
+    E.add_func_import env "rts" "region_load_word8" [I32Type; I64Type] [I32Type];
+    E.add_func_import env "rts" "region_store_word8" [I32Type; I64Type; I32Type] [];
+    E.add_func_import env "rts" "region_load_word16" [I32Type; I64Type] [I32Type];
+    E.add_func_import env "rts" "region_store_word16" [I32Type; I64Type; I32Type] [];
+    E.add_func_import env "rts" "region_load_word32" [I32Type; I64Type] [I32Type];
+    E.add_func_import env "rts" "region_store_word32" [I32Type; I64Type; I32Type] [];
+    E.add_func_import env "rts" "region_load_word64" [I32Type; I64Type] [I64Type];
+    E.add_func_import env "rts" "region_store_word64" [I32Type; I64Type; I64Type] [];
+    E.add_func_import env "rts" "region_load_float64" [I32Type; I64Type] [F64Type];
+    E.add_func_import env "rts" "region_store_float64" [I32Type; I64Type; F64Type] [];
     E.add_func_import env "rts" "region_next_id" [] [I32Type];
     E.add_func_import env "rts" "region_meta_loglines" [] [];
     E.add_func_import env "rts" "region0_size" [] [I64Type];
@@ -3565,8 +3573,20 @@ module Region = struct
   let load_blob env = E.call_import env "rts" "region_load_blob"
   let store_blob env = E.call_import env "rts" "region_store_blob"
 
-  let load_byte env = E.call_import env "rts" "region_load_byte"
-  let store_byte env = E.call_import env "rts" "region_store_byte"
+  let load_word8 env = E.call_import env "rts" "region_load_word8"
+  let store_word8 env = E.call_import env "rts" "region_store_word8"
+
+  let load_word16 env = E.call_import env "rts" "region_load_word16"
+  let store_word16 env = E.call_import env "rts" "region_store_word16"
+
+  let load_word32 env = E.call_import env "rts" "region_load_word32"
+  let store_word32 env = E.call_import env "rts" "region_store_word32"
+
+  let load_word64 env = E.call_import env "rts" "region_load_word64"
+  let store_word64 env = E.call_import env "rts" "region_store_word64"
+
+  let load_float64 env = E.call_import env "rts" "region_load_float64"
+  let store_float64 env = E.call_import env "rts" "region_store_float64"
 end
 
 module Text = struct
@@ -9521,7 +9541,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla,
     compile_exp_as env ae SR.Vanilla e0 ^^
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
-    Region.load_byte env ^^
+    Region.load_word8 env ^^
     TaggedSmallWord.msb_adjust Type.Nat8
 
   | OtherPrim ("regionStoreNat8"), [e0; e1; e2] ->
@@ -9530,7 +9550,61 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     compile_exp_as env ae SR.Vanilla e2 ^^
     TaggedSmallWord.lsb_adjust Type.Nat8 ^^
-    Region.store_byte env
+    Region.store_word8 env
+
+  | OtherPrim ("regionLoadNat16"), [e0; e1] ->
+    SR.Vanilla,
+    compile_exp_as env ae SR.Vanilla e0 ^^
+    compile_exp_as env ae SR.UnboxedWord64 e1 ^^
+    Region.load_word16 env ^^
+    TaggedSmallWord.msb_adjust Type.Nat16
+
+  | OtherPrim ("regionStoreNat16"), [e0; e1; e2] ->
+    SR.unit,
+    compile_exp_as env ae SR.Vanilla e0 ^^
+    compile_exp_as env ae SR.UnboxedWord64 e1 ^^
+    compile_exp_as env ae SR.Vanilla e2 ^^
+    TaggedSmallWord.lsb_adjust Type.Nat16 ^^
+    Region.store_word16 env
+
+  | OtherPrim ("regionLoadNat32" | "regionLoadInt32"), [e0; e1] ->
+    SR.Vanilla,
+    compile_exp_as env ae SR.Vanilla e0 ^^
+    compile_exp_as env ae SR.UnboxedWord64 e1 ^^
+    Region.load_word32 env
+
+  | OtherPrim ("regionStoreNat32" | "regionStoreInt32"), [e0; e1; e2] ->
+    SR.unit,
+    compile_exp_as env ae SR.Vanilla e0 ^^
+    compile_exp_as env ae SR.UnboxedWord64 e1 ^^
+    compile_exp_as env ae SR.Vanilla e2 ^^
+    Region.store_word32 env
+
+  | OtherPrim ("regionLoadNat64" | "regionLoadInt64"), [e0; e1] ->
+    SR.UnboxedWord64,
+    compile_exp_as env ae SR.Vanilla e0 ^^
+    compile_exp_as env ae SR.UnboxedWord64 e1 ^^
+    Region.load_word64 env
+
+  | OtherPrim ("regionStoreNat64" | "regionStoreInt64"), [e0; e1; e2] ->
+    SR.unit,
+    compile_exp_as env ae SR.Vanilla e0 ^^
+    compile_exp_as env ae SR.UnboxedWord64 e1 ^^
+    compile_exp_as env ae SR.UnboxedWord64 e2 ^^
+    Region.store_word64 env
+
+  | OtherPrim ("regionLoadFloat64"), [e0; e1] ->
+    SR.UnboxedFloat64,
+    compile_exp_as env ae SR.Vanilla e0 ^^
+    compile_exp_as env ae SR.UnboxedWord64 e1 ^^
+    Region.load_float64 env
+
+  | OtherPrim ("regionStoreFloat64"), [e0; e1; e2] ->
+    SR.unit,
+    compile_exp_as env ae SR.Vanilla e0 ^^
+    compile_exp_as env ae SR.UnboxedWord64 e1 ^^
+    compile_exp_as env ae SR.UnboxedFloat64 e2 ^^
+    Region.store_float64 env
 
   (* Other prims, unary *)
 

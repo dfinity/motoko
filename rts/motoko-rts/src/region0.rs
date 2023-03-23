@@ -1,32 +1,18 @@
 //use crate::region::Region;
 use crate::memory::Memory;
-use crate::region::{region_grow, region_size, RegionObject};
+use crate::region::{region_grow, region_size};
 use crate::types::{Blob, Value};
 
 use motoko_rts_macros::ic_mem_fn;
 
-unsafe fn region0_load<M: Memory>(_mem: &mut M, offset: u64, dst: &mut [u8]) {
-    let r = RegionObject(crate::memory::ic::REGION_0.as_region());
-    let abs_off = r.relative_into_absolute_offset(offset);
-    // second bounds check on region:
-    if dst.len() > 1 {
-        let _ = r.relative_into_absolute_offset(offset + dst.len() as u64 - 1);
-    };
-    if false {
-        println!(50, "region0_load({}) {} bytes", offset, dst.len());
-    }
-
-    crate::ic0_stable::nicer::read(abs_off, dst);
+unsafe fn region0_load<M: Memory>(mem: &mut M, offset: u64, dst: &mut [u8]) {
+    let r = crate::memory::ic::REGION_0;
+    crate::region::region_load(mem, r, offset, dst)
 }
 
-unsafe fn region0_store<M: Memory>(_mem: &mut M, offset: u64, src: &[u8]) {
-    let r = RegionObject(crate::memory::ic::REGION_0.as_region());
-    let abs_off = r.relative_into_absolute_offset(offset);
-    // second bounds check on region:
-    if src.len() > 1 {
-        let _ = r.relative_into_absolute_offset(offset + src.len() as u64 - 1);
-    };
-    crate::ic0_stable::nicer::write(abs_off, src);
+unsafe fn region0_store<M: Memory>(mem: &mut M, offset: u64, src: &[u8]) {
+    let r = crate::memory::ic::REGION_0;
+    crate::region::region_store(mem, r, offset, src)
 }
 
 #[ic_mem_fn]
