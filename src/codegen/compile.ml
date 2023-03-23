@@ -9501,11 +9501,11 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_as env ae SR.Vanilla e0 ^^
     Region.id env
 
-  | OtherPrim "regionNextId", [] ->
+  | OtherPrim "regionNextId", [] -> (* TEMP *)
     SR.Vanilla,
     Region.next_id env
 
-  | OtherPrim "regionMetaLogLines", [] ->
+  | OtherPrim "regionMetaLogLines", [] -> (* TEMP *)
     SR.unit,
     Region.meta_loglines env
 
@@ -9519,7 +9519,6 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.UnboxedWord64,
     compile_exp_as env ae SR.Vanilla e0 ^^
     Region.size env
-    (* to do *)
 
   | OtherPrim ("regionLoadBlob"), [e0; e1; e2] ->
     SR.Vanilla,
