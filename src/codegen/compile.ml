@@ -8824,7 +8824,8 @@ and compile_array_index env ae e1 e2 =
      int32_of_big_int would do the wrong thing *)
   | SR.Const (_, Const.Lit (Const.BigInt n))
     when Big_int.le_big_int n (Big_int.big_int_of_int 0x7fffffff)->
-    code_arr ^^ compile_unboxed_const (Big_int.int32_of_big_int n) ^^ Arr.idx env
+    (* Must still include code_idx for possible side-effects! *)
+    code_arr ^^ code_idx ^^ compile_unboxed_const (Big_int.int32_of_big_int n) ^^ Arr.idx env
   | _ ->
     code_arr ^^ code_idx ^^ StackRep.adjust env sr SR.Vanilla ^^ Arr.idx_bigint env
 
