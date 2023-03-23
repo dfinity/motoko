@@ -82,7 +82,7 @@ pub unsafe fn copying_gc_internal<
     // Scavenge to-space
     let mut p = begin_to_space;
     while p < get_hp() {
-        let size = block_size(p);
+        let size = object_size(p);
         scav(mem, begin_from_space, begin_to_space, Value::from_ptr(p));
         p += size.to_bytes().as_usize();
     }
@@ -149,7 +149,7 @@ unsafe fn evac<M: Memory>(
     debug_assert!(!(*ptr_loc).is_forwarded());
     let obj = (*ptr_loc).get_ptr() as *mut Obj;
 
-    let obj_size = block_size(obj as usize);
+    let obj_size = object_size(obj as usize);
 
     // Allocate space in to-space for the object
     let obj_addr = mem.alloc_words(obj_size).get_ptr();
@@ -162,31 +162,20 @@ unsafe fn evac<M: Memory>(
 
     // Set forwarding pointer
     let fwd = obj as *mut FwdPtr;
-    (*fwd).tag = TAG_FWD_PTR;
+    (*fwd).header.tag = TAG_FWD_PTR;
     (*fwd).fwd = Value::from_ptr(obj_loc);
 
     // Update evacuated field
     *ptr_loc = Value::from_ptr(obj_loc);
-
-    // Update forwarding pointer
-    let to_space_obj = obj_addr as *mut Obj;
-    debug_assert!(obj_size.as_usize() > size_of::<Obj>().as_usize());
-    debug_assert!(to_space_obj.tag() >= TAG_OBJECT && to_space_obj.tag() <= TAG_NULL);
-
-    (*to_space_obj).forward = Value::from_ptr(obj_loc);
 }
 
 unsafe fn scav<M: Memory>(
     mem: &mut M,
     begin_from_space: usize,
     begin_to_space: usize,
-    block: Value,
+    object: Value,
 ) {
-    if !block.is_obj() {
-        // Skip `OneWordFiller` and `FreeSpace` that have no regular object header.
-        return;
-    }
-    let obj = block.get_ptr() as *mut Obj;
+    let obj = object.get_ptr() as *mut Obj;
 
     crate::visitor::visit_pointer_fields(
         mem,

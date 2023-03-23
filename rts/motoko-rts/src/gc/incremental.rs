@@ -13,11 +13,11 @@ use motoko_rts_macros::ic_mem_fn;
 use crate::{memory::Memory, types::*, visitor::visit_pointer_fields};
 
 use self::{
-    partitioned_heap::{PartitionedHeap, PartitionedHeapIterator, UNINITIALIZED_HEAP},
+    partitioned_heap::{PartitionedHeap, UNINITIALIZED_HEAP},
     phases::{
-        evacuation_increment::EvacuationIncrement,
+        evacuation_increment::{EvacuationIncrement, EvacuationState},
         mark_increment::{MarkIncrement, MarkState},
-        update_increment::UpdateIncrement,
+        update_increment::{UpdateIncrement, UpdateState},
     },
     roots::Roots,
     time::BoundedTime,
@@ -146,7 +146,8 @@ pub struct State {
     partitioned_heap: PartitionedHeap,
     allocation_count: usize, // Number of allocations during an active GC run.
     mark_state: Option<MarkState>,
-    iterator_state: Option<PartitionedHeapIterator>,
+    evacuation_state: Option<EvacuationState>,
+    update_state: Option<UpdateState>,
 }
 
 /// GC state retained over multiple GC increments.
@@ -155,7 +156,8 @@ static mut STATE: RefCell<State> = RefCell::new(State {
     partitioned_heap: UNINITIALIZED_HEAP,
     allocation_count: 0,
     mark_state: None,
-    iterator_state: None,
+    evacuation_state: None,
+    update_state: None,
 });
 
 /// Incremental GC.
@@ -175,7 +177,8 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         state.partitioned_heap = PartitionedHeap::new(mem, heap_base);
         state.allocation_count = 0;
         state.mark_state = None;
-        state.iterator_state = None;
+        state.evacuation_state = None;
+        state.update_state = None;
     }
 
     /// Each GC schedule point can get a new GC instance that shares the common GC state.

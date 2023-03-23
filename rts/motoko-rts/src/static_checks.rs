@@ -10,7 +10,7 @@ use core::mem::{align_of, size_of};
 const WORD_SIZE: usize = crate::constants::WORD_SIZE as usize;
 
 #[allow(unused)]
-const HEADER_SIZE: usize = 2 * WORD_SIZE;
+const HEADER_SIZE: usize = WORD_SIZE;
 
 // We cannot use `assert_eq` below as `assert_eq` is not const yet
 

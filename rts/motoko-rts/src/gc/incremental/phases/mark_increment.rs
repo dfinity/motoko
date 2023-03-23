@@ -76,9 +76,9 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
             debug_assert!(self.mark_stack.is_empty());
             return;
         }
-        while let Some(value) = self.mark_stack.pop() {
+        while let Some((value, tag_or_slice)) = self.mark_stack.pop() {
             debug_assert!(value.is_ptr());
-            self.mark_fields(value.as_obj());
+            self.mark_fields(value.as_obj(), tag_or_slice);
 
             self.time.tick();
             if self.time.is_over() {
@@ -98,27 +98,28 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
             debug_assert!(
                 object.tag() >= crate::types::TAG_OBJECT && object.tag() <= crate::types::TAG_NULL
             );
-            self.mark_stack.push(self.mem, value);
+            self.mark_stack.push(self.mem, value, object.tag());
         }
     }
 
-    unsafe fn mark_fields(&mut self, object: *mut Obj) {
+    unsafe fn mark_fields(&mut self, object: *mut Obj, tag_or_slice: Tag) {
         visit_pointer_fields(
             self,
             object,
-            object.tag(),
+            tag_or_slice,
             self.heap.base_address(),
             |gc, field_address| {
                 let field_value = *field_address;
                 gc.mark_object(field_value);
             },
             |gc, slice_start, array| {
-                let length = slice_array(array);
-                if (*array).header.tag >= TAG_ARRAY_SLICE_MIN {
-                    gc.mark_stack.push(gc.mem, Value::from_ptr(array as usize));
+                let slice_end = slice_array(array, slice_start);
+                if slice_end != array.len() {
+                    gc.mark_stack
+                        .push(gc.mem, Value::from_ptr(array as usize), slice_end);
                 }
-                gc.time.advance((length - slice_start) as usize);
-                length
+                gc.time.advance((slice_end - slice_start) as usize);
+                slice_end
             },
         );
     }

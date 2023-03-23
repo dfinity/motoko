@@ -9,6 +9,10 @@ use crate::{
     types::*,
 };
 
+pub struct EvacuationState {
+    iterator: PartitionedHeapIterator,
+}
+
 pub struct EvacuationIncrement<'a, M: Memory> {
     mem: &'a mut M,
     heap: &'a mut PartitionedHeap,
@@ -18,19 +22,22 @@ pub struct EvacuationIncrement<'a, M: Memory> {
 
 impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
     pub unsafe fn start_phase(state: &mut State) {
-        debug_assert!(state.iterator_state.is_none());
+        debug_assert!(state.evacuation_state.is_none());
         let heap = &mut state.partitioned_heap;
-        state.iterator_state = Some(PartitionedHeapIterator::new(heap));
+        state.evacuation_state = Some(EvacuationState {
+            iterator: PartitionedHeapIterator::new(heap),
+        });
         heap.plan_evacuations();
     }
 
     pub unsafe fn complete_phase(state: &mut State) {
         debug_assert!(Self::evacuation_completed(state));
-        state.iterator_state = None;
+        state.evacuation_state = None;
     }
 
     pub unsafe fn evacuation_completed(state: &State) -> bool {
-        !state.iterator_state.as_ref().unwrap().has_partition()
+        let evacuation_state = state.evacuation_state.as_ref().unwrap();
+        !evacuation_state.iterator.has_partition()
     }
 
     pub unsafe fn instance(
@@ -39,7 +46,8 @@ impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
         time: &'a mut BoundedTime,
     ) -> EvacuationIncrement<'a, M> {
         let heap = &mut state.partitioned_heap;
-        let iterator = state.iterator_state.as_mut().unwrap();
+        let evacuation_state = state.evacuation_state.as_mut().unwrap();
+        let iterator = &mut evacuation_state.iterator;
         EvacuationIncrement {
             mem,
             heap,
@@ -77,12 +85,11 @@ impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
     unsafe fn evacuate_object(&mut self, original: *mut Obj) {
         debug_assert!(original.tag() >= TAG_OBJECT && original.tag() <= TAG_NULL);
         debug_assert!(!original.is_forwarded());
-        let size = block_size(original as usize);
+        let size = object_size(original as usize);
         let new_address = self.mem.alloc_words(size);
         let copy = new_address.get_ptr() as *mut Obj;
         memcpy_words(copy as usize, original as usize, size);
-        (*copy).forward = new_address;
-        (*original).forward = new_address;
+        (*original).tag = new_address.get_raw();
         debug_assert!(!copy.is_forwarded());
         debug_assert!(original.is_forwarded());
         // Marking is necessary to ensure field updates in the copy.
@@ -100,7 +107,7 @@ impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
 
     #[cfg(feature = "memory_check")]
     unsafe fn clear_object_content(original: *mut Obj) {
-        let object_size = block_size(original as usize);
+        let object_size = object_size(original as usize);
         let header_size = size_of::<Obj>();
         let payload_address = original as usize + header_size.to_bytes().as_usize();
         let payload_size = object_size - header_size;

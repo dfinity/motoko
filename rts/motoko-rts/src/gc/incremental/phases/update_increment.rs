@@ -10,41 +10,54 @@ use crate::{
     visitor::visit_pointer_fields,
 };
 
+pub struct UpdateState {
+    iterator: PartitionedHeapIterator,
+    next_slice: u32,
+}
+
 pub struct UpdateIncrement<'a> {
     time: &'a mut BoundedTime,
     heap: &'a PartitionedHeap,
     iterator: &'a mut PartitionedHeapIterator,
+    next_slice: &'a mut u32,
     updates_needed: bool,
 }
 
 impl<'a> UpdateIncrement<'a> {
     pub unsafe fn start_phase(state: &mut State) {
-        debug_assert!(state.iterator_state.is_none());
+        debug_assert!(state.update_state.is_none());
         let heap = &mut state.partitioned_heap;
-        state.iterator_state = Some(PartitionedHeapIterator::new(heap));
+        state.update_state = Some(UpdateState {
+            iterator: PartitionedHeapIterator::new(heap),
+            next_slice: 0,
+        });
         heap.collect_large_objects();
         heap.plan_updates();
     }
 
     pub unsafe fn complete_phase(state: &mut State) {
         debug_assert!(Self::update_completed(state));
-        state.iterator_state = None;
+        state.update_state = None;
         state.partitioned_heap.complete_collection();
     }
 
     pub unsafe fn update_completed(state: &State) -> bool {
-        !state.iterator_state.as_ref().unwrap().has_partition()
+        let update_state = state.update_state.as_ref().unwrap();
+        !update_state.iterator.has_partition()
     }
 
     pub unsafe fn instance(state: &'a mut State, time: &'a mut BoundedTime) -> UpdateIncrement<'a> {
         let heap = &state.partitioned_heap;
-        let state = state.iterator_state.as_mut().unwrap();
+        let update_state = state.update_state.as_mut().unwrap();
+        let iterator = &mut update_state.iterator;
         let updates_needed = heap.updates_needed();
+        let next_slice = &mut update_state.next_slice;
         UpdateIncrement {
             time,
             heap,
-            iterator: state,
+            iterator,
             updates_needed,
+            next_slice,
         }
     }
 
@@ -78,7 +91,7 @@ impl<'a> UpdateIncrement<'a> {
         while self.iterator.has_object() && !self.time.is_over() {
             let object = self.iterator.current_object();
             self.update_object(object);
-            if self.time.is_over() && object.tag() >= TAG_ARRAY_SLICE_MIN {
+            if self.time.is_over() && *self.next_slice > 0 {
                 // Resume updating the same object later.
                 break;
             }
@@ -95,7 +108,7 @@ impl<'a> UpdateIncrement<'a> {
             // Keep mark bit and later resume updating more slices of this array.
             return;
         }
-        debug_assert!(object.tag() < TAG_ARRAY_SLICE_MIN);
+        debug_assert_eq!(*self.next_slice, 0);
         self.time.tick();
     }
 
@@ -105,19 +118,28 @@ impl<'a> UpdateIncrement<'a> {
             visit_pointer_fields(
                 self,
                 object,
-                object.tag(),
+                if *self.next_slice > 0 {
+                    *self.next_slice
+                } else {
+                    object.tag()
+                },
                 self.heap.base_address(),
                 |gc, field_address| {
                     *field_address = (*field_address).forward_if_possible();
                     gc.time.tick();
                 },
                 |gc, slice_start, array| {
-                    let length = slice_array(array);
-                    gc.time.advance((length - slice_start) as usize);
-                    length
+                    let slice_end = slice_array(array, slice_start);
+                    *gc.next_slice = if slice_end < array.len() {
+                        slice_end
+                    } else {
+                        0
+                    };
+                    gc.time.advance((slice_end - slice_start) as usize);
+                    slice_end
                 },
             );
-            if object.tag() < TAG_ARRAY_SLICE_MIN || self.time.is_over() {
+            if *self.next_slice == 0 || self.time.is_over() {
                 return;
             }
         }

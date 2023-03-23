@@ -57,7 +57,6 @@ pub unsafe fn alloc_stream<M: Memory>(mem: &mut M, size: Bytes<u32>) -> *mut Str
     }
     let ptr = alloc_blob(mem, size + INITIAL_STREAM_FILLED);
     let stream = ptr.as_stream();
-    (*stream).padding = 0;
     (*stream).ptr64 = 0;
     (*stream).start64 = 0;
     (*stream).limit64 = 0;
@@ -112,7 +111,6 @@ impl Stream {
     #[export_name = "stream_stable_dest"]
     pub fn setup_stable_dest(self: *mut Self, start: u64, limit: u64) {
         unsafe {
-            (*self).padding = 0;
             (*self).ptr64 = start;
             (*self).start64 = start;
             (*self).limit64 = limit;
@@ -199,7 +197,6 @@ impl Stream {
         let blob = (self.cache_addr() as *mut Blob).sub(1);
         (*blob).header.tag = TAG_BLOB;
         let ptr = Value::from_ptr(blob as usize);
-        (*blob).header.forward = ptr;
         debug_assert_eq!(blob.len(), (*self).filled);
         allocation_barrier(ptr);
         ptr

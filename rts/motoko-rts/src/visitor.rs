@@ -8,7 +8,8 @@ use crate::types::*;
 ///
 /// * `ctx`: any context passed to the `visit_*` callbacks
 /// * `obj`: the heap object to be visited (note: its heap tag may be invalid)
-/// * `tag`: the heap object's logical tag (or start of array object's suffix slice)
+/// * `tag_or_slice`: the heap object's logical tag, no forwarding pointer, could also encode array slicing
+///    (start of array object's suffix slice)
 /// * `heap_base`: start address of the dynamic heap
 /// * `visit_ptr_field`: callback for individual fields
 /// * `visit_field_range`: callback for determining the suffix slice
@@ -23,7 +24,7 @@ use crate::types::*;
 pub unsafe fn visit_pointer_fields<C, F, G>(
     ctx: &mut C,
     obj: *mut Obj,
-    tag: Tag,
+    tag_or_slice: Tag,
     heap_base: usize,
     visit_ptr_field: F,
     visit_field_range: G,
@@ -31,7 +32,7 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
     F: Fn(&mut C, *mut Value),
     G: Fn(&mut C, u32, *mut Array) -> u32,
 {
-    match tag {
+    match tag_or_slice {
         TAG_OBJECT => {
             let obj = obj as *mut Object;
             let obj_payload = obj.payload_addr();
@@ -43,8 +44,12 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
             }
         }
 
-        TAG_ARRAY | TAG_ARRAY_SLICE_MIN.. => {
-            let slice_start = if tag >= TAG_ARRAY_SLICE_MIN { tag } else { 0 };
+        TAG_ARRAY => {
+            let slice_start = if tag_or_slice > MAX_TAG {
+                tag_or_slice
+            } else {
+                0
+            };
             let array = obj as *mut Array;
             let array_payload = array.payload_addr();
             let stop = visit_field_range(ctx, slice_start, array);

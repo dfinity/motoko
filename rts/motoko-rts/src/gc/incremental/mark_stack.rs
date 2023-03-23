@@ -19,8 +19,10 @@
 //! a new stack table is allocated and linked, unless there already exists
 //! a next table. Only the last table can have free entry space.
 //!
-//! The entries represent pointers to objects to be visited by the GC.
+//! The entries represent pointers to objects to be visited by the GC
 //! (being conceptually gray in the incremental tri-color mark scheme).
+//! The entry additionally stores array slice start information as the
+//! second pair item.
 //!
 //! NOTES:
 //! * The tables are blobs, as their entries must not be analyzed by the GC.
@@ -29,21 +31,21 @@
 use core::ptr::null_mut;
 
 use crate::memory::{alloc_blob, Memory};
-use crate::types::{size_of, Blob, Value};
+use crate::types::{size_of, Blob, Tag, Value};
 
 pub struct MarkStack {
     last: *mut StackTable,
     top: usize, // index of next free entry in the last stack table
 }
 
-pub const STACK_TABLE_CAPACITY: usize = 1018;
+pub const STACK_TABLE_CAPACITY: usize = 1024;
 
 #[repr(C)]
 struct StackTable {
     pub header: Blob,
     pub previous: *mut StackTable,
     pub next: *mut StackTable,
-    pub entries: [Value; STACK_TABLE_CAPACITY],
+    pub entries: [(Value, Tag); STACK_TABLE_CAPACITY],
 }
 
 impl MarkStack {
@@ -55,7 +57,7 @@ impl MarkStack {
         }
     }
 
-    pub unsafe fn push<M: Memory>(&mut self, mem: &mut M, value: Value) {
+    pub unsafe fn push<M: Memory>(&mut self, mem: &mut M, value: Value, tag_or_slice: Tag) {
         debug_assert!(self.last != null_mut());
         if self.top == STACK_TABLE_CAPACITY {
             if (*self.last).next == null_mut() {
@@ -66,11 +68,11 @@ impl MarkStack {
             self.top = 0;
         }
         debug_assert!(self.top < STACK_TABLE_CAPACITY);
-        (*self.last).entries[self.top] = value;
+        (*self.last).entries[self.top] = (value, tag_or_slice);
         self.top += 1;
     }
 
-    pub unsafe fn pop(&mut self) -> Option<Value> {
+    pub unsafe fn pop(&mut self) -> Option<(Value, Tag)> {
         debug_assert!(self.last != null_mut());
         if self.top == 0 {
             if (*self.last).previous == null_mut() {

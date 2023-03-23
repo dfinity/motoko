@@ -420,7 +420,7 @@ impl PartitionedHeap {
             return false;
         }
         bitmap.mark(offset);
-        partition.marked_size += block_size(address).to_bytes().as_usize();
+        partition.marked_size += object_size(address).to_bytes().as_usize();
         true
     }
 
@@ -630,7 +630,7 @@ impl PartitionedHeap {
     }
 
     unsafe fn partitions_length(large_object: *mut Obj) -> usize {
-        let size = block_size(large_object as usize).to_bytes().as_usize();
+        let size = object_size(large_object as usize).to_bytes().as_usize();
         debug_assert!(size > PARTITION_SIZE);
         (size + PARTITION_SIZE - 1) / PARTITION_SIZE
     }
@@ -675,7 +675,7 @@ impl PartitionedHeap {
         for index in range.start..range.end - 1 {
             self.partitions[index].marked_size = PARTITION_SIZE;
         }
-        let object_size = block_size(object as usize).to_bytes().as_usize();
+        let object_size = object_size(object as usize).to_bytes().as_usize();
         self.partitions[range.end - 1].marked_size = object_size % PARTITION_SIZE;
         true
     }

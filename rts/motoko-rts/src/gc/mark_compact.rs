@@ -159,16 +159,16 @@ unsafe fn mark_object<M: Memory>(mem: &mut M, obj: Value) {
 }
 
 unsafe fn mark_stack<M: Memory>(mem: &mut M, heap_base: u32) {
-    while let Some((obj, tag)) = pop_mark_stack() {
-        mark_fields(mem, obj as *mut Obj, tag, heap_base)
+    while let Some((obj, tag_or_slice)) = pop_mark_stack() {
+        mark_fields(mem, obj as *mut Obj, tag_or_slice, heap_base)
     }
 }
 
-unsafe fn mark_fields<M: Memory>(mem: &mut M, obj: *mut Obj, obj_tag: Tag, heap_base: u32) {
+unsafe fn mark_fields<M: Memory>(mem: &mut M, obj: *mut Obj, tag_or_slice: Tag, heap_base: u32) {
     visit_pointer_fields(
         mem,
         obj,
-        obj_tag,
+        tag_or_slice,
         heap_base as usize,
         |mem, field_addr| {
             let field_value = *field_addr;
@@ -181,6 +181,7 @@ unsafe fn mark_fields<M: Memory>(mem: &mut M, obj: *mut Obj, obj_tag: Tag, heap_
         },
         |mem, slice_start, arr| {
             const SLICE_INCREMENT: u32 = 127;
+            const TAG_ARRAY_SLICE_MIN: u32 = MAX_TAG + 1;
             debug_assert!(SLICE_INCREMENT >= TAG_ARRAY_SLICE_MIN);
             if arr.len() - slice_start > SLICE_INCREMENT {
                 let new_start = slice_start + SLICE_INCREMENT;
@@ -227,7 +228,7 @@ unsafe fn update_refs<SetHp: Fn(u32)>(set_hp: SetHp, heap_base: u32) {
         unthread(p, p_new);
 
         // Move the object
-        let p_size_words = block_size(p as usize);
+        let p_size_words = object_size(p as usize);
         if p_new as usize != p as usize {
             memcpy_words(p_new as usize, p as usize, p_size_words);
 
@@ -235,7 +236,6 @@ unsafe fn update_refs<SetHp: Fn(u32)>(set_hp: SetHp, heap_base: u32) {
             // Update forwarding pointer
             let new_obj = p_new as *mut Obj;
             debug_assert!(new_obj.tag() >= TAG_OBJECT && new_obj.tag() <= TAG_NULL);
-            (*new_obj).forward = Value::from_ptr(p_new as usize);
         }
 
         free += p_size_words.to_bytes().as_u32();
