@@ -957,15 +957,16 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
 
 -   `T` is a future `async V`, `U` is a future `async W`, and `V <: W`.
 
--   `T` is an object type `sort0 { fts0 }`, `U` is an object type `sort1 { fts1 }` and
+-   `T` is an object type `<sort0> { fts0 }`, `U` is an object type `<sort1> { fts1 }` and
 
-    -   `sort0` == `sort1`, and, for all fields,
+    -   `<sort0>` == `<sort1>`, and, for all fields,
 
-    -   if field `id : V` is in `fts0` then `id : W` is in `fts1` and `V <: W`, and
+    -   if field `id : W` is in `fts1` then `id : V` is in `fts0` and `V <: W`, and
 
-    -   if mutable field `var id : V` is in `fts0` then `var id : W` is in `fts1` and `V == W`.
+    -   if mutable field `var id : W` is in `fts1` then `var id : V` is in `fts0` and `V == W`.
 
-        (That is, object type `T` is a subtype of object type `U` if they have same sort, every mutable field in `U` super-types the same field in `T` and every mutable field in `U` is mutable in `T` with an equivalent type. In particular, `T` may specify more fields than `U`.)
+        (That is, object type `T` is a subtype of object type `U` if they have same sort, every mutable field in `U` super-types the same field in `T` and every mutable field in `U` is mutable in `T` with an equivalent type. In particular, `T` may specify more fields than `U`.
+         Note that this clause defines subtyping for all sorts of object type, whether `module`, `object` or `actor`.)
 
 -   `T` is a variant type `{ fts0 }`, `U` is a variant type `{ fts1 }` and
 

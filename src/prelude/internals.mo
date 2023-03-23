@@ -519,15 +519,8 @@ func @timer_helper() : async () {
   func Array_init<T>(len : Nat,  x : T) : [var T] {
     (prim "Array.init" : <T>(Nat, T) -> [var T])<T>(len, x)
   };
+
   let now = (prim "time" : () -> Nat64)();
-  let exp = @nextExpiration @timers;
-  let prev = (prim "global_timer_set" : Nat64 -> Nat64) exp;
-
-  // debug { assert prev == 0 };
-
-  if (exp == 0) {
-    return
-  };
 
   var gathered = 0;
   let thunks = Array_init<?(() -> async ())>(10, null); // we want max 10
@@ -565,8 +558,15 @@ func @timer_helper() : async () {
 
   gatherExpired(@timers);
 
-  for (k in thunks.keys()) {
-    ignore switch (thunks[k]) { case (?thunk) ?thunk(); case _ null };
+  let exp = @nextExpiration @timers;
+  ignore (prim "global_timer_set" : Nat64 -> Nat64) exp;
+  if (exp == 0) @timers := null;
+
+  for (o in thunks.vals()) {
+    switch o {
+      case (?thunk) { ignore thunk() };
+      case _ { }
+    }
   }
 };
 
