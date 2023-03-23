@@ -447,7 +447,7 @@ do
         fi
 
         flags_var_name="FLAGS_${runner//-/_}"
-        run $mo_base.$runner.comp moc ${!flags_var_name} --hide-warnings -c $mo_file -o $out/$base/$mo_base.$runner.wasm
+        run $mo_base.$runner.comp moc $EXTRA_MOC_ARGS ${!flags_var_name} --hide-warnings -c $mo_file -o $out/$base/$mo_base.$runner.wasm
       done
 
       # mangle drun script
