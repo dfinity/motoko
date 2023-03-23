@@ -295,14 +295,18 @@ pub unsafe fn region_get_mem_size<M: Memory>(_mem: &mut M) -> u64 {
             0
         }
     };
-    println!(80, "region_get_mem_size() => {}", size);
+    if false {
+        println!(80, "region_get_mem_size() => {}", size);
+    }
     size
 }
 
 // Region manager's total memory size in stable memory, in _pages_.
 #[ic_mem_fn]
 pub unsafe fn region_set_mem_size<M: Memory>(_mem: &mut M, size: u64) {
-    println!(80, "region_set_mem_size({})", size);
+    if false {
+        println!(80, "region_set_mem_size({})", size);
+    }
     crate::memory::ic::REGION_SET_MEM_SIZE = Some(size);
 }
 
@@ -337,10 +341,12 @@ pub unsafe fn region_recover<M: Memory>(mem: &mut M, rid: &RegionId) -> Value {
     let c = meta_data::region_table::get(&rid);
     let page_count = match c {
         Some(RegionSizeInPages(pc)) => {
-            println!(
-                80,
-                "region_recover {:?} => found region record {:?}", rid, c
-            );
+            if false {
+                println!(
+                    80,
+                    "region_recover {:?} => found region record {:?}", rid, c
+                );
+            }
             pc
         }
         _ => {
@@ -379,7 +385,9 @@ pub unsafe fn region_recover<M: Memory>(mem: &mut M, rid: &RegionId) -> Value {
 pub(crate) unsafe fn region_init_<M: Memory>(mem: &mut M) {
     // detect if we are being called in after upgrade --
     if crate::ic0_stable::nicer::size() == 0 {
-        println!(80, "region_init -- first time.");
+        if false {
+            println!(80, "region_init -- first time.");
+        }
         let _ = crate::ic0_stable::nicer::grow(meta_data::size::STATIC_MEM_IN_PAGES as u64);
 
         // Region 0 -- classic API for stable memory, as a dedicated region.
@@ -392,13 +400,17 @@ pub(crate) unsafe fn region_init_<M: Memory>(mem: &mut M) {
         assert_eq!(crate::memory::ic::REGION_MEM_SIZE_INIT, false);
         crate::memory::ic::REGION_MEM_SIZE_INIT = true;
     } else {
-        println!(80, "region_init -- upgrade time.");
+        if false {
+            println!(80, "region_init -- upgrade time.");
+        }
 
         // Recall that we've done this later, without asking ic0_stable::size.
         assert_eq!(crate::memory::ic::REGION_MEM_SIZE_INIT, false);
         crate::memory::ic::REGION_MEM_SIZE_INIT = true;
 
-        println!(80, "region_init -- recover regions 0 and 1.");
+        if false {
+            println!(80, "region_init -- recover regions 0 and 1.");
+        }
         crate::memory::ic::REGION_0 = crate::region::region_recover(mem, &RegionId(0));
         crate::memory::ic::REGION_1 = crate::region::region_recover(mem, &RegionId(1));
     }
@@ -451,13 +463,15 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
     let new_block_count = (old_page_count + new_pages_ + (PAGES_IN_BLOCK - 1)) / PAGES_IN_BLOCK;
     let inc_block_count = new_block_count - old_block_count;
 
-    println!(
-        80,
-        "begin region_grow id={} page_count={} new_pages={}",
-        (*r).id,
-        old_page_count,
-        new_pages
-    );
+    if false {
+        println!(
+            80,
+            "begin region_grow id={} page_count={} new_pages={}",
+            (*r).id,
+            old_page_count,
+            new_pages
+        );
+    }
 
     // Update the total number of allocated blocks.
     let old_total_blocks = {
@@ -503,13 +517,15 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
         new_pages.0.set(i, old_pages.0.get(i));
     }
 
-    println!(
-        80,
-        " region_grow id={} (old_block_count, new_block_count) = ({}, {})",
-        (*r).id,
-        old_block_count,
-        new_block_count
-    );
+    if false {
+        println!(
+            80,
+            " region_grow id={} (old_block_count, new_block_count) = ({}, {})",
+            (*r).id,
+            old_block_count,
+            new_block_count
+        );
+    }
 
     // Record new associations, between the region and each new block:
     // - in block_region_table (stable memory, for persistence).
@@ -521,13 +537,15 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
         // (to do -- handle case where allocating this way has run out.)
         let block_id: u16 = (old_total_blocks + rel_i as u64) as u16;
 
-        println!(
-            50,
-            "  region_grow id={} (slot index) i={} block_id={}",
-            (*r).id,
-            i,
-            block_id
-        );
+        if false {
+            println!(
+                50,
+                "  region_grow id={} (slot index) i={} block_id={}",
+                (*r).id,
+                i,
+                block_id
+            );
+        }
 
         // Update stable memory with new association.
         let assoc = Some((RegionId::from_id((*r).id), i as u16));
@@ -548,7 +566,9 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
         }
     }
 
-    println!(80, " region_grow id={} done.", (*r).id,);
+    if false {
+        println!(80, " region_grow id={} done.", (*r).id,);
+    }
 
     (*r).vec_pages = new_vec_pages;
     old_page_count.into()
@@ -560,14 +580,16 @@ pub unsafe fn region_load_byte<M: Memory>(_mem: &mut M, r: Value, offset: u64) -
     let abs_off = r.relative_into_absolute_offset(offset);
     let mut dst: [u8; 1] = [0];
     crate::ic0_stable::nicer::read(abs_off, &mut dst);
-    println!(
-        80,
-        "region_load_byte({:?}, {} ~> {}) ==> {}",
-        r.id(),
-        offset,
-        abs_off,
-        dst[0]
-    );
+    if false {
+        println!(
+            80,
+            "region_load_byte({:?}, {} ~> {}) ==> {}",
+            r.id(),
+            offset,
+            abs_off,
+            dst[0]
+        );
+    }
     dst[0] as u32
 }
 
@@ -576,14 +598,16 @@ pub unsafe fn region_store_byte<M: Memory>(_mem: &mut M, r: Value, offset: u64, 
     let r = RegionObject::from_value(&r);
     let abs_off = r.relative_into_absolute_offset(offset);
     let src: [u8; 1] = [byte as u8];
-    println!(
-        80,
-        "region_store_byte({:?}, {} ~> {}, {})",
-        r.id(),
-        offset,
-        abs_off,
-        byte
-    );
+    if false {
+        println!(
+            80,
+            "region_store_byte({:?}, {} ~> {}, {})",
+            r.id(),
+            offset,
+            abs_off,
+            byte
+        );
+    }
     crate::ic0_stable::nicer::write(abs_off, &src);
 }
 

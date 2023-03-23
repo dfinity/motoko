@@ -5,22 +5,12 @@ import Region "stable-region/Region";
 
 actor {
   var region0 : Region = StableMemory.region();
-  
+
   stable var n : Nat64 = 0;
   assert (n == StableMemory.size());
 
   func valOfNat64(n : Nat64) : Nat8 { P.natToNat8(P.nat64ToNat(n % 256)); };
   let inc : Nat64 = 1;
-
-  do {
-    Region.metaLogLines();
-    P.debugPrint("printing region0's ID as " # debug_show (Region.id region0));
-
-    let size1 = StableMemory.size();
-    let size2 = Region.size(region0);
-    P.debugPrint(debug_show {size1; size2});
-    assert size1 == size2;
-  };
 
   var i : Nat64 = 0;
   let max = n * 65536;
@@ -34,28 +24,12 @@ actor {
   };
 
   system func preupgrade() {
-    P.debugPrint("pre-upgrading... n=" # debug_show n);
-    Region.metaLogLines();
-    P.debugPrint("printing region0's ID as " # debug_show (Region.id region0));
-
-    let size1 = StableMemory.size();
-    let size2 = Region.size(region0);
-    P.debugPrint(debug_show {size1; size2});
-    // assert size1 == size2;
-
+    P.debugPrint("upgrading..." # debug_show n);
     let m = StableMemory.grow(1);
-
     assert (n == m);
 
     n += 1;
 
-    do {
-      let size1 = StableMemory.size();
-      let size2 = Region.size(region0);
-      P.debugPrint(debug_show {size1; size2});
-      assert size1 == size2;
-    };
-    
     P.debugPrint(debug_show {old = m; new = n; size = StableMemory.size()});
     assert (n == StableMemory.size());
 
@@ -99,8 +73,7 @@ actor {
   };
 
   system func postupgrade() {
-    P.debugPrint("...upgraded n=" # debug_show n);
-    P.debugPrint("...region0 size is " # debug_show StableMemory.size() # " pages.");
+    P.debugPrint("...upgraded" # debug_show n);
   };
 
 }

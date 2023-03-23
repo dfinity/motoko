@@ -32,7 +32,9 @@ unsafe fn region0_store<M: Memory>(_mem: &mut M, offset: u64, src: &[u8]) {
 #[ic_mem_fn]
 pub unsafe fn region0_get<M: Memory>(_mem: &mut M) -> Value {
     let v = crate::memory::ic::REGION_0;
-    println!(80, "region0_get() ~> {:?}", v);
+    if false {
+        println!(80, "region0_get() ~> {:?}", v);
+    }
     v
 }
 
