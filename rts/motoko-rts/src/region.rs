@@ -187,7 +187,7 @@ mod meta_data {
         use super::offset;
         use crate::ic0_stable::nicer::{read_u16, write_u16};
 
-        use crate::memory::ic::REGION_TOTAL_ALLOCATED_BLOCKS;
+        use crate::memory::ic::{REGION_SET_MEM_SIZE, REGION_TOTAL_ALLOCATED_BLOCKS};
 
         pub fn get() -> u64 {
             read_u16(offset::TOTAL_ALLOCATED_BLOCKS) as u64
@@ -200,6 +200,11 @@ mod meta_data {
             // serialization/deserialization).
             unsafe {
                 REGION_TOTAL_ALLOCATED_BLOCKS = n as u16;
+
+                // No longer use the code-gen provided number that we
+                // sometimes need to use, temporarily, for
+                // destabilization.
+                REGION_SET_MEM_SIZE = None;
             };
             write_u16(offset::TOTAL_ALLOCATED_BLOCKS, n as u16)
         }
