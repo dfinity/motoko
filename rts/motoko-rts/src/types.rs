@@ -258,7 +258,7 @@ impl Value {
     }
 
     /// Assumes that the value is a pointer and returns the pointer value. In debug mode panics if
-    /// the value is not a pointer or if it points to a stale object that has been forwarded.
+    /// the value is not a pointer.
     pub fn get_ptr(self) -> usize {
         debug_assert!(self.get().is_ptr());
         unskew(self.0 as usize)

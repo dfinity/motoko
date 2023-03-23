@@ -1,10 +1,74 @@
 # Motoko compiler changelog
 
-* Improve recursive deserialization capacity to match recursive serialization capacity by reducing
-  Wasm stack consumption (#3809).
-  Because of the bounds on recursion depth imposed by fixed-size stack, the
-  advice remains the same: avoid deeply nested recursive data structures.
-  Think "shallow trees good, very long lists bad".
+## 0.8.5 (2023-03-20)
+
+* motoko (`moc`)
+
+  * Performance improvement: Values of variant type that are compile-time known
+    are relegated to the static heap now and don't get allocated each time (#3878).
+
+  * bugfix: the global timer expiration callback was called unnecessarily in the
+    default mechanism (#3883).
+
+## 0.8.4 (2023-03-11)
+
+* motoko (`moc`)
+
+  * Performance improvement: UTF-8 coding and validation is now properly tail recursive (#3842).
+
+  * Performance improvement: eliminated bounds checking for certain array accesses (thanks to nomeata) (#3853).
+
+  * Performance improvement: optimized `{array, blob, text}.size()` operations (thanks to nomeata) (#3863).
+
+  * Performance improvement: efficient tuple results in `switch` statements (thanks to nomeata) (#3865).
+
+  * Performance improvement: more efficient untagging operation (#3873).
+
+  * bugfix: restored a grammar regression caused by `let-else` (#3869).
+
+* motoko-base
+
+  * Add `Array.subArray` function (dfinity/motoko-base#445).
+
+  * BREAKING CHANGE (Minor)
+
+    Optimized `AssocList.{replace, find}` to avoid unnecesary allocation (dfinity/motoko-base#535, dfinity/motoko-base#539).
+    Note: this subtly changes the order in which the key-value pairs occur after replacement. May affect other containers that use `AssocList`.
+
+  * Performance improvement: Optimized deletion for `Trie`/`TrieMap` (dfinity/motoko-base#525).
+
+## 0.8.3 (2023-02-24)
+
+* motoko (`moc`)
+
+  * new 'let-else' construct for handling pattern-match failure (#3836).
+    This is a frequently asked-for feature that allows to change the control-flow
+    of programs when pattern-match failure occurs, thus providing a means against
+    the famous "pyramid of doom" issue. A common example is look-ups:
+    ``` Motoko
+    shared func getUser(user : Text) : async Id {
+      let ?id = Map.get(users, user) else { throw Error.reject("no such user") };
+      id
+    }
+    ```
+    Similarly, an expression like
+    ``` Motoko
+    (label v : Bool { let <pat> = <exp> else break v false; true })
+    ```
+    evaluates to a `Bool`, signifying whether `<pat>` matches `<exp>`.
+
+  * Improve recursive deserialization capacity to match recursive serialization capacity by reducing
+    Wasm stack consumption (#3809).
+    Because of the bounds on recursion depth imposed by fixed-size stack, the
+    advice remains the same: avoid deeply nested recursive data structures.
+    Think "shallow trees good, very long lists bad".
+
+  * bugfix: stack overflow in UTF-8 encode/decode for `moc.js` (#3825).
+
+* motoko-base
+
+  * add missing `unshare : Tree<K, V> -> ()` method to class `RBTree<K, V>`
+    to restore objects from saved state (dfinity/motoko-base#532).
 
 ## 0.8.2 (2023-02-17)
 

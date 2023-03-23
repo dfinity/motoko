@@ -1,6 +1,18 @@
+//MOC-NO-FORCE-GC
 //MOC-ENV MOC_UNLOCK_PRIM=yesplease
 
 import { debugPrint; error; setTimer; cancelTimer } = "mo:⛔";
+
+/*
+The schedule is
+| seconds | reaction |
+|----|-----|
+| 1.0 | YEP! |
+| 2.0 | DIM! |
+| 3.0 | ROOK! |
+| 4.0 | BAT! |
+| 5.0 | BAT! |
+*/
 
 actor {
 
@@ -41,5 +53,6 @@ actor {
 //SKIP run
 //SKIP run-low
 //SKIP run-ir
+//SKIP ic-ref-run
 
 //CALL ingress go "DIDL\x00\x00"

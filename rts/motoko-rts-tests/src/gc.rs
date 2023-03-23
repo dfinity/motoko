@@ -16,9 +16,8 @@ use heap::MotokoHeap;
 use motoko_rts::gc::generational::remembered_set::RememberedSet;
 use motoko_rts::gc::generational::write_barrier::{LAST_HP, REMEMBERED_SET};
 use motoko_rts::gc::incremental::partitioned_heap::PARTITION_SIZE;
-use motoko_rts::gc::incremental::time::BoundedTime;
 use motoko_rts::gc::incremental::{
-    get_partitioned_heap, incremental_gc_state, reset_partitioned_heap, SCHEDULED_INCREMENT_LIMIT,
+    get_partitioned_heap, incremental_gc_state, reset_partitioned_heap,
 };
 use utils::{
     get_scalar_value, make_pointer, read_word, unskew_pointer, ObjectIdx, GC, GC_IMPLS, WORD_SIZE,
@@ -513,12 +512,8 @@ impl GC {
                         static_roots,
                         continuation_table_location: continuation_table_ptr_address,
                     };
-                    IncrementalGC::instance(
-                        heap,
-                        incremental_gc_state(),
-                        BoundedTime::new(SCHEDULED_INCREMENT_LIMIT),
-                    )
-                    .empty_call_stack_increment(roots);
+                    IncrementalGC::instance(heap, incremental_gc_state())
+                        .empty_call_stack_increment(roots);
                 }
                 false
             },

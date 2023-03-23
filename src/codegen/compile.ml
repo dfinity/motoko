@@ -138,6 +138,7 @@ module Const = struct
     | Obj of (string * t) list
     | Unit
     | Array of t list (* also tuples, but not nullary *)
+    | Tag of (string * t)
     | Lit of lit
 
   (* A constant known value together with a vanilla pointer.
@@ -277,7 +278,13 @@ module E = struct
     named_imports : int32 NameEnv.t ref;
     built_in_funcs : lazy_function NameEnv.t ref;
     static_strings : int32 StringEnv.t ref;
-    object_pool : int32 StringEnv.t ref;
+      (* Pool for shared static objects. Their lookup needs to be specifically
+         handled by using the tag and the payload without the forwarding pointer.
+         This is because the forwarding pointer depends on the allocation adddress.
+         The lookup is different to `static_string` that has no such 
+         allocation-dependent content and can thus be immediately looked up by 
+         the string value. *)
+    object_pool : int32 StringEnv.t ref; 
     end_of_static_memory : int32 ref; (* End of statically allocated memory *)
     static_memory : (int32 * string) list ref; (* Content of static memory *)
     static_memory_frozen : bool ref;
@@ -561,11 +568,11 @@ module E = struct
 
   let object_pool_find (env: t) (key: string) : int32 option =
     StringEnv.find_opt key !(env.object_pool)
-    
+
   let object_pool_add (env: t) (key: string) (ptr : int32)  : unit =
     env.object_pool := StringEnv.add key ptr !(env.object_pool);
     ()
-    
+
   let add_static_unskewed (env : t) (data : StaticBytes.t) : int32 =
     Int32.add (add_static env data) ptr_unskew
 
@@ -785,6 +792,13 @@ module FakeMultiVal = struct
   (* A drop-in replacement for E.if_ *)
   let if_ env bt thn els =
     E.if_ env (ty bt) (thn ^^ store env bt) (els ^^ store env bt) ^^
+    load env bt
+
+  (* A block that can be exited from *)
+  let block_ env bt body =
+    E.block_ env (ty bt) (G.with_current_depth (fun depth ->
+      body (store env bt ^^ G.branch_to_ depth)
+    )) ^^
     load env bt
 
 end (* FakeMultiVal *)
@@ -1495,15 +1509,19 @@ module Tagged = struct
 
      The tag is a word at the beginning of the object.
 
-     They forwarding pointer supports object moving in the incremental garbage collection.
+     The (skewed) forwarding pointer supports object moving in the incremental garbage collection.
 
          obj header
      ┌──────┬─────────┬──
      │ tag  │ fwd ptr │ ...
      └──────┴─────────┴──
 
-     All tagged heap objects have a size of at least two words
-     (important for GC, which replaces them with an Indirection).
+     The copying GC requires that all tagged objects in the dynamic heap space have at least
+     two words in order to replace them by `Indirection`. This condition is met as the 
+     object header already occupies two words, and all objects except `Null` even have a size 
+     of at least three words. The `Null` object is a singleton and only lives in static heap 
+     space and is therefore not replaced by `Indirection` during copying GC. (Without forwarding 
+     pointer in the header, the object would be smaller than `Indirection`.)
 
      Attention: This mapping is duplicated in these places
        * here
@@ -1598,6 +1616,63 @@ module Tagged = struct
   let load_tag env =
     load_forwarding_pointer env ^^
     Heap.load_field tag_field
+
+  let check_forwarding env unskewed = 
+    (if !Flags.gc_strategy = Flags.Incremental then
+      let (set_object, get_object) = new_local env "object" in
+      (if unskewed then
+        compile_unboxed_const ptr_skew ^^
+        G.i (Binary (Wasm.Values.I32 I32Op.Add))
+      else G.nop) ^^
+      set_object ^^ get_object ^^
+      load_forwarding_pointer env ^^
+      get_object ^^
+      G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+      E.else_trap_with env "missing object forwarding"  ^^
+      get_object ^^
+      (if unskewed then
+        compile_unboxed_const ptr_unskew ^^
+        G.i (Binary (Wasm.Values.I32 I32Op.Add))
+      else G.nop)
+    else G.nop)
+
+  let check_forwarding_for_store env typ =
+    (if !Flags.gc_strategy = Flags.Incremental then
+      let (set_value, get_value, _) = new_local_ env typ "value" in
+      set_value ^^ check_forwarding env false ^^ get_value
+    else G.nop)
+
+  let load_field env index = 
+    (if !Flags.sanity then check_forwarding env false else G.nop) ^^
+    Heap.load_field index
+
+  let store_field env index =
+    (if !Flags.sanity then check_forwarding_for_store env I32Type else G.nop) ^^
+    Heap.store_field index
+
+  let load_field_unskewed env index =
+    (if !Flags.sanity then check_forwarding env true else G.nop) ^^
+    Heap.load_field_unskewed index
+
+  let load_field64_unskewed env index =
+    (if !Flags.sanity then check_forwarding env true else G.nop) ^^
+    Heap.load_field64_unskewed index
+  
+  let load_field64 env index =
+    (if !Flags.sanity then check_forwarding env false else G.nop) ^^
+    Heap.load_field64 index
+
+  let store_field64 env index =
+    (if !Flags.sanity then check_forwarding_for_store env I64Type else G.nop) ^^
+    Heap.store_field64 index
+
+  let load_field_float64 env index =
+    (if !Flags.sanity then check_forwarding env false else G.nop) ^^
+    Heap.load_field_float64 index
+
+  let store_field_float64 env index =
+    (if !Flags.sanity then check_forwarding_for_store env F64Type else G.nop) ^^
+    Heap.store_field_float64 index
 
   (* Branches based on the tag of the object pointed to,
      leaving the object on the stack afterwards. *)
@@ -1754,14 +1829,14 @@ module MutBox = struct
     
   let load_field env =
     Tagged.load_forwarding_pointer env ^^
-    Heap.load_field field
+    Tagged.load_field env field
 
   let store_field env =
     let (set_mutbox_value, get_mutbox_value) = new_local env "mutbox_value" in
     set_mutbox_value ^^
     Tagged.load_forwarding_pointer env ^^
     get_mutbox_value ^^
-    Heap.store_field field
+    Tagged.store_field env field
 end
 
 
@@ -1839,7 +1914,7 @@ module Opt = struct
 
   let load_some_payload_field env =
     Tagged.load_forwarding_pointer env ^^
-    Heap.load_field some_payload_field
+    Tagged.load_field env some_payload_field
 
   let project env =
     Func.share_code1 env "opt_project" ("x", I32Type) [I32Type] (fun env get_x ->
@@ -1881,16 +1956,22 @@ module Variant = struct
 
   let get_variant_tag env = 
     Tagged.load_forwarding_pointer env ^^
-    Heap.load_field variant_tag_field
+    Tagged.load_field env variant_tag_field
 
   let project env = 
     Tagged.load_forwarding_pointer env ^^
-    Heap.load_field payload_field
+    Tagged.load_field env payload_field
 
   (* Test if the top of the stack points to a variant with this label *)
   let test_is env l =
     get_variant_tag env ^^
     compile_eq_const (hash_variant_label env l)
+
+  let vanilla_lit env i ptr =
+    Tagged.shared_static_obj env Tagged.Variant StaticBytes.[
+      I32 (hash_variant_label env i);
+      I32 ptr
+    ]
 
 end (* Variant *)
 
@@ -1915,14 +1996,14 @@ module Closure = struct
 
   let load_data env i = 
     Tagged.load_forwarding_pointer env ^^
-    Heap.load_field (Int32.add header_size i)
+    Tagged.load_field env (Int32.add header_size i)
 
   let store_data env i = 
     let (set_closure_data, get_closure_data) = new_local env "closure_data" in
     set_closure_data ^^
     Tagged.load_forwarding_pointer env ^^
     get_closure_data ^^
-    Heap.store_field (Int32.add header_size i)
+    Tagged.store_field env (Int32.add header_size i)
 
   let prepare_closure_call env =
     Tagged.load_forwarding_pointer env
@@ -1940,7 +2021,7 @@ module Closure = struct
       FakeMultiVal.ty (Lib.List.make n_res I32Type))) in
     (* get the table index *)
     Tagged.load_forwarding_pointer env ^^
-    Heap.load_field funptr_field ^^
+    Tagged.load_field env funptr_field ^^
     (* All done: Call! *)
     G.i (CallIndirect (nr ty)) ^^
     FakeMultiVal.load env (Lib.List.make n_res I32Type)
@@ -1984,7 +2065,7 @@ module BoxedWord64 = struct
     let (set_i, get_i) = new_local env "boxed_i64" in
     Tagged.alloc env 4l Tagged.Bits64 ^^
     set_i ^^
-    get_i ^^ compile_elem ^^ Heap.store_field64 payload_field ^^
+    get_i ^^ compile_elem ^^ Tagged.store_field64 env payload_field ^^
     Tagged.allocation_barrier env get_i ^^
     get_i
 
@@ -1998,7 +2079,7 @@ module BoxedWord64 = struct
       get_n ^^
       BitTagged.if_tagged_scalar env [I64Type]
         ( get_n ^^ BitTagged.untag env)
-        ( get_n ^^ Tagged.load_forwarding_pointer env ^^ Heap.load_field64 payload_field)
+        ( get_n ^^ Tagged.load_forwarding_pointer env ^^ Tagged.load_field64 env payload_field)
     )
 end (* BoxedWord64 *)
 
@@ -2103,7 +2184,7 @@ module BoxedSmallWord = struct
     let (set_i, get_i) = new_local env "boxed_i32" in
     Tagged.alloc env 3l Tagged.Bits32 ^^
     set_i ^^
-    get_i ^^ compile_elem ^^ Heap.store_field payload_field ^^
+    get_i ^^ compile_elem ^^ Tagged.store_field env payload_field ^^
     Tagged.allocation_barrier env get_i ^^
     get_i
 
@@ -2120,7 +2201,7 @@ module BoxedSmallWord = struct
       get_n ^^
       BitTagged.if_tagged_scalar env [I32Type]
         (get_n ^^ BitTagged.untag_i32)
-        (get_n ^^ Tagged.load_forwarding_pointer env ^^ Heap.load_field payload_field)
+        (get_n ^^ Tagged.load_forwarding_pointer env ^^ Tagged.load_field env payload_field)
     )
 
   let _lit env n = compile_unboxed_const n ^^ box env
@@ -2343,12 +2424,12 @@ module Float = struct
     let (set_i, get_i) = new_local env "boxed_f64" in
     Tagged.alloc env 4l Tagged.Bits64 ^^
     set_i ^^
-    get_i ^^ get_f ^^ Heap.store_field_float64 payload_field ^^
+    get_i ^^ get_f ^^ Tagged.store_field_float64 env payload_field ^^
     Tagged.allocation_barrier env get_i ^^
     get_i
   )
 
-  let unbox env = Tagged.load_forwarding_pointer env ^^ Heap.load_field_float64 payload_field
+  let unbox env = Tagged.load_forwarding_pointer env ^^ Tagged.load_field_float64 env payload_field
 
 end (* Float *)
 
@@ -3364,12 +3445,12 @@ module Object = struct
     (* Set size *)
     get_ri ^^
     compile_unboxed_const sz ^^
-    Heap.store_field size_field ^^
+    Tagged.store_field env size_field ^^
 
     (* Set hash_ptr *)
     get_ri ^^
     compile_unboxed_const hash_ptr ^^
-    Heap.store_field hash_ptr_field ^^
+    Tagged.store_field env hash_ptr_field ^^
 
     (* Write all the fields *)
     let init_field (name, mk_is) : G.t =
@@ -3378,7 +3459,7 @@ module Object = struct
       mk_is () ^^
       let i = FieldEnv.find name name_pos_map in
       let offset = Int32.add header_size i in
-      Heap.store_field offset
+      Tagged.store_field env offset
     in
     G.concat_map init_field fs ^^
 
@@ -3395,7 +3476,7 @@ module Object = struct
 
       get_x ^^ Tagged.load_forwarding_pointer env ^^ set_x ^^
 
-      get_x ^^ Heap.load_field hash_ptr_field ^^
+      get_x ^^ Tagged.load_field env hash_ptr_field ^^
 
       (* Linearly scan through the fields (binary search can come later) *)
       (* unskew h_ptr and advance both to low bound *)
@@ -3493,7 +3574,14 @@ module Blob = struct
 
   let len env = 
     Tagged.load_forwarding_pointer env ^^
-    Heap.load_field len_field
+    Tagged.load_field env len_field
+
+  let len_nat env =
+    Func.share_code1 env "blob_len" ("text", I32Type) [I32Type] (fun env get ->
+      get ^^
+      len env ^^
+      BigNum.from_word32 env
+    )
 
   let vanilla_lit env s =
     Tagged.shared_static_obj env Tagged.Blob StaticBytes.[
@@ -3697,8 +3785,12 @@ module Text = struct
     E.call_import env "rts" "text_size"
   let to_buf env =
     E.call_import env "rts" "text_to_buf"
-  let len env =
-    E.call_import env "rts" "text_len" ^^ BigNum.from_word32 env
+  let len_nat env =
+    Func.share_code1 env "text_len" ("text", I32Type) [I32Type] (fun env get ->
+      get ^^
+      E.call_import env "rts" "text_len" ^^
+      BigNum.from_word32 env
+    )
   let prim_showChar env =
     TaggedSmallWord.untag_codepoint ^^
     E.call_import env "rts" "text_singleton"
@@ -3767,12 +3859,24 @@ module Arr = struct
 
   let len env = 
     Tagged.load_forwarding_pointer env ^^
-    Heap.load_field len_field
+    Tagged.load_field env len_field
 
   (* Static array access. No checking *)
   let load_field env n = 
     Tagged.load_forwarding_pointer env ^^
-    Heap.load_field Int32.(add n header_size)
+    Tagged.load_field env Int32.(add n header_size)
+
+  (* Dynamic array access. Returns the address (not the value) of the field.
+     Does no bounds checking *)
+  let unsafe_idx env =
+    Func.share_code2 env "Array.unsafe_idx" (("array", I32Type), ("idx", I32Type)) [I32Type] (fun env get_array get_idx ->
+      get_idx ^^
+      compile_add_const header_size ^^
+      compile_mul_const element_size ^^
+      get_array ^^
+      Tagged.load_forwarding_pointer env ^^
+      G.i (Binary (Wasm.Values.I32 I32Op.Add))
+    )
 
   (* Dynamic array access. Returns the address (not the value) of the field.
      Does bounds checking *)
@@ -3840,7 +3944,7 @@ module Arr = struct
 
     (* Upper pointer boundary, skewed *)
     get_array ^^ 
-    Heap.load_field len_field ^^
+    Tagged.load_field env len_field ^^
     compile_mul_const element_size ^^
     get_pointer ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
@@ -3930,7 +4034,7 @@ module Arr = struct
       get_len ^^ alloc env ^^ set_r ^^
 
       get_len ^^ from_0_to_n env (fun get_i ->
-        get_r ^^ get_i ^^ idx env ^^
+        get_r ^^ get_i ^^ unsafe_idx env ^^
         get_blob ^^ Blob.payload_ptr_unskewed env ^^
         get_i ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
         G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.(Pack8, ZX)}) ^^
@@ -3953,7 +4057,7 @@ module Arr = struct
       get_len ^^ from_0_to_n env (fun get_i ->
         get_r ^^ Blob.payload_ptr_unskewed env ^^
         get_i ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-        get_a ^^ get_i ^^ idx env ^^
+        get_a ^^ get_i ^^ unsafe_idx env ^^
         load_ptr ^^
         TaggedSmallWord.lsb_adjust Type.Nat8 ^^
         G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.Pack8})
@@ -3980,7 +4084,7 @@ module Tuple = struct
   (* Expects on the stack the pointer to the array. *)
   let load_n env n = 
     Tagged.load_forwarding_pointer env ^^
-    Heap.load_field (Int32.add Arr.header_size n)
+    Tagged.load_field env (Int32.add Arr.header_size n)
 
   (* Takes n elements of the stack and produces an argument tuple *)
   let from_stack env n =
@@ -5603,9 +5707,9 @@ module MakeSerialization (Strm : Stream) = struct
         size_alias (fun () -> get_x ^^ size env (Array t))
       | Array t ->
         size_word env (get_x ^^ Arr.len env) ^^
-        Arr.iterate env get_x (fun get_pointer -> 
-          get_pointer ^^
-          load_ptr ^^
+        get_x ^^ Arr.len env ^^
+        from_0_to_n env (fun get_i ->
+          get_x ^^ get_i ^^ Arr.unsafe_idx env ^^ load_ptr ^^
           size env t
         )
       | Prim Blob ->
@@ -5689,7 +5793,7 @@ module MakeSerialization (Strm : Stream) = struct
           write_byte env get_data_buf (compile_unboxed_const 0l) ^^
           (* Remember the current offset in the tag word *)
           get_x ^^ Tagged.load_forwarding_pointer env ^^ Strm.absolute_offset env get_data_buf ^^
-          Heap.store_field Tagged.tag_field ^^
+          Tagged.store_field env Tagged.tag_field ^^
           (* Leave space in the output buffer for the decoder's bookkeeping *)
           write_word_32 env get_data_buf (compile_unboxed_const 0l) ^^
           write_word_32 env get_data_buf (compile_unboxed_const 0l) ^^
@@ -5763,9 +5867,9 @@ module MakeSerialization (Strm : Stream) = struct
         write_alias (fun () -> get_x ^^ write env (Array t))
       | Array t ->
         write_word_leb env get_data_buf (get_x ^^ Arr.len env) ^^
-        Arr.iterate env get_x (fun get_pointer -> 
-          get_pointer ^^
-          load_ptr ^^
+        get_x ^^ Arr.len env ^^
+        from_0_to_n env (fun get_i ->
+          get_x ^^ get_i ^^ Arr.unsafe_idx env ^^ load_ptr ^^
           write env t
         )
       | Prim Null -> G.nop
@@ -6354,7 +6458,7 @@ module MakeSerialization (Strm : Stream) = struct
           get_len ^^ Arr.alloc env ^^ set_x ^^
           on_alloc get_x ^^
           get_len ^^ from_0_to_n env (fun get_i ->
-            get_x ^^ get_i ^^ Arr.idx env ^^
+            get_x ^^ get_i ^^ Arr.unsafe_idx env ^^
             get_arg_typ ^^ go env t ^^ set_val ^^
             remember_failure get_val ^^
             get_val ^^ store_ptr
@@ -6370,7 +6474,7 @@ module MakeSerialization (Strm : Stream) = struct
         ReadBuf.read_leb128 env get_data_buf ^^ set_len ^^
         get_len ^^ Arr.alloc env ^^ set_x ^^
         get_len ^^ from_0_to_n env (fun get_i ->
-          get_x ^^ get_i ^^ Arr.idx env ^^
+          get_x ^^ get_i ^^ Arr.unsafe_idx env ^^
           get_arg_typ ^^ go env t ^^ set_val ^^
           remember_failure get_val ^^
           get_val ^^ store_ptr
@@ -6864,9 +6968,9 @@ module BlobStream : Stream = struct
 
   let name_for fn_name ts = "@Bl_" ^ fn_name ^ "<" ^ Typ_hash.typ_seq_hash ts ^ ">"
 
-  let absolute_offset _env get_token =
+  let absolute_offset env get_token =
     let filled_field = Int32.add Blob.len_field 9l in (* see invariant in `stream.rs` *)
-    get_token ^^ Heap.load_field_unskewed filled_field
+    get_token ^^ Tagged.load_field_unskewed env filled_field
 
   let checkpoint _env _get_token = G.i Drop
 
@@ -6968,7 +7072,7 @@ module Stabilization = struct
       E.call_import env "rts" "stream_shutdown" ^^
       compile_unboxed_zero ^^ (* no need to write *)
       get_token ^^
-      Heap.load_field64_unskewed ptr64_field ^^
+      Tagged.load_field64_unskewed env ptr64_field ^^
       StableMem.get_mem_size env ^^
       compile_shl64_const (Int64.of_int page_size_bits) ^^
       G.i (Binary (Wasm.Values.I64 I64Op.Sub)) ^^
@@ -6984,9 +7088,9 @@ module Stabilization = struct
       let start64_field = Int32.add ptr64_field 2l in (* see invariant in `stream.rs` *)
       absolute_offset env get_token ^^
       get_token ^^
-      Heap.load_field64_unskewed ptr64_field ^^
+      Tagged.load_field64_unskewed env ptr64_field ^^
       get_token ^^
-      Heap.load_field64_unskewed start64_field ^^
+      Tagged.load_field64_unskewed env start64_field ^^
       G.i (Binary (Wasm.Values.I64 I64Op.Sub)) ^^
       G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
       G.i (Binary (Wasm.Values.I32 I32Op.Add))
@@ -7310,6 +7414,8 @@ module StackRep = struct
       Printf.eprintf "Invalid stack rep join (%s, %s)\n"
         (to_string sr1) (to_string sr2); sr1
 
+  let joins = List.fold_left join Unreachable
+
   let drop env (sr_in : t) =
     match sr_in with
     | Vanilla | UnboxedWord64 | UnboxedWord32 | UnboxedFloat64 -> G.i Drop
@@ -7342,6 +7448,9 @@ module StackRep = struct
     | Const.Array cs ->
       let ptrs = List.map (materialize_const_t env) cs in
       Arr.vanilla_lit env ptrs
+    | Const.Tag (i, c) ->
+      let ptr = materialize_const_t env c in
+      Variant.vanilla_lit env i ptr
     | Const.Lit l -> materialize_lit env l
 
   let adjust env (sr_in : t) sr_out =
@@ -7515,12 +7624,12 @@ let unmodified : scope_wrap = fun code -> code
 let potential_pointer typ : bool = 
   (* must not eliminate nested optional types as they refer to a heap object for ??null, ???null etc. *)
   let rec can_be_pointer typ nested_optional = 
-    let open Type in
-    match normalize typ with
+    
+    Type.(match normalize typ with
     | Mut t -> (can_be_pointer t nested_optional)
     | Opt t -> (if nested_optional then true else (can_be_pointer t true))
     | Prim (Null| Bool | Char | Nat8 | Nat16 | Int8 | Int16) | Non | Tup [] -> false
-    | _ -> true in
+    | _ -> true) in
   can_be_pointer typ false
   
 module Var = struct
@@ -7812,12 +7921,12 @@ module FuncDec = struct
         (* Store the function pointer number: *)
         get_clos ^^
         compile_unboxed_const (E.add_fun_ptr env fi) ^^
-        Heap.store_field Closure.funptr_field ^^
+        Tagged.store_field env Closure.funptr_field ^^
 
         (* Store the length *)
         get_clos ^^
         compile_unboxed_const len ^^
-        Heap.store_field Closure.len_field ^^
+        Tagged.store_field env Closure.len_field ^^
 
         (* Store all captured values *)
         store_env ^^
@@ -8131,6 +8240,8 @@ module PatCode = struct
     | CannotFail of G.t
     | CanFail of (G.t -> G.t)
 
+  let definiteFail = CanFail (fun fail -> fail)
+
   let (^^^) : patternCode -> patternCode -> patternCode = function
     | CannotFail is1 ->
       begin function
@@ -8163,7 +8274,14 @@ module PatCode = struct
           G.if0 G.nop is2
         )
 
-  let orTrap env = with_fail (E.trap_with env "pattern failed")
+  let orElses : patternCode list -> patternCode -> patternCode =
+    List.fold_right orElse
+
+  let orPatternFailure env pcode =
+    with_fail (E.trap_with env "pattern failed") pcode
+
+  let orsPatternFailure env pcodes =
+    orPatternFailure env (orElses pcodes definiteFail)
 
   let with_region at = function
     | CannotFail is -> CannotFail (G.with_region at is)
@@ -9231,6 +9349,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
        thus together also unskewing the pointer and skipping administrative
        fields, effectively arriving at the desired element *)
     G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+    (* Not using Tagged.load_field since it is not a proper pointer to the array start *)
     Heap.load_field Arr.header_size (* loads the element at the byte offset *)
   | GetPastArrayOffset spacing, [e] ->
     let shift =
@@ -9469,7 +9588,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     BigNum.from_word30 env
 
   | OtherPrim "text_len", [e] ->
-    SR.Vanilla, compile_exp_vanilla env ae e ^^ Text.len env
+    SR.Vanilla, compile_exp_vanilla env ae e ^^ Text.len_nat env
   | OtherPrim "text_iter", [e] ->
     SR.Vanilla, compile_exp_vanilla env ae e ^^ Text.iter env
   | OtherPrim "text_iter_done", [e] ->
@@ -9484,7 +9603,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     TaggedSmallWord.msb_adjust Type.Int8
 
   | OtherPrim "blob_size", [e] ->
-    SR.Vanilla, compile_exp_vanilla env ae e ^^ Blob.len env ^^ BigNum.from_word32 env
+    SR.Vanilla, compile_exp_vanilla env ae e ^^ Blob.len_nat env
   | OtherPrim "blob_vals_iter", [e] ->
     SR.Vanilla, compile_exp_vanilla env ae e ^^ Blob.iter env
   | OtherPrim "blob_iter_done", [e] ->
@@ -9753,7 +9872,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     IC.performance_counter env
 
   | OtherPrim "trap", [e] ->
-    SR.unit,
+    SR.Unreachable,
     compile_exp_vanilla env ae e ^^
     IC.trap_text env
 
@@ -10008,7 +10127,17 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | _ -> SR.Unreachable, todo_trap env "compile_prim_invocation" (Arrange_ir.prim p)
   end
 
+(* Compile, infer and return stack representation *)
 and compile_exp (env : E.t) ae exp =
+  compile_exp_with_hint env ae None exp
+
+(* Compile to given stack representation *)
+and compile_exp_as env ae sr_out e =
+  let sr_in, code = compile_exp_with_hint env ae (Some sr_out) e in
+  code ^^ StackRep.adjust env sr_in sr_out
+
+(* Compile, infer and return stack representation, taking the hint into account *)
+and compile_exp_with_hint (env : E.t) ae sr_hint exp =
   (fun (sr,code) -> (sr, G.with_region exp.at code)) @@
   if exp.note.Note.const
   then let (c, fill) = compile_const_exp env ae exp in fill env ae; (SR.Const c, G.nop)
@@ -10034,9 +10163,13 @@ and compile_exp (env : E.t) ae exp =
     compile_lit env l
   | IfE (scrut, e1, e2) ->
     let code_scrut = compile_exp_as_test env ae scrut in
-    let sr1, code1 = compile_exp env ae e1 in
-    let sr2, code2 = compile_exp env ae e2 in
-    let sr = StackRep.join sr1 sr2 in
+    let sr1, code1 = compile_exp_with_hint env ae sr_hint e1 in
+    let sr2, code2 = compile_exp_with_hint env ae sr_hint e2 in
+    (* Use the expected stackrep, if given, else infer from the branches *)
+    let sr = match sr_hint with
+      | Some sr -> sr
+      | None -> StackRep.join sr1 sr2
+    in
     sr,
     code_scrut ^^
     FakeMultiVal.if_ env
@@ -10046,7 +10179,7 @@ and compile_exp (env : E.t) ae exp =
   | BlockE (decs, exp) ->
     let captured = Freevars.captured_vars (Freevars.exp exp) in
     let ae', codeW1 = compile_decs env ae decs captured in
-    let (sr, code2) = compile_exp env ae' exp in
+    let (sr, code2) = compile_exp_with_hint env ae' sr_hint exp in
     (sr, codeW1 code2)
   | LabelE (name, _ty, e) ->
     (* The value here can come from many places -- the expression,
@@ -10068,21 +10201,32 @@ and compile_exp (env : E.t) ae exp =
     ^^
    G.i Unreachable
   | SwitchE (e, cs) ->
-    SR.Vanilla,
     let code1 = compile_exp_vanilla env ae e in
     let (set_i, get_i) = new_local env "switch_in" in
-    let (set_j, get_j) = new_local env "switch_out" in
 
-    let rec go env cs = match cs with
-      | [] -> CanFail (fun k -> k)
-      | {it={pat; exp=e}; _}::cs ->
-          let (ae1, code) = compile_pat_local env ae pat in
-          orElse ( CannotFail get_i ^^^ code ^^^
-                   CannotFail (compile_exp_vanilla env ae1 e) ^^^ CannotFail set_j)
-                 (go env cs)
-          in
-      let code2 = go env cs in
-      code1 ^^ set_i ^^ orTrap env code2 ^^ get_j
+    (* compile subexpressions and collect the provided stack reps *)
+    let codes = List.map (fun {it={pat; exp=e}; _} ->
+      let (ae1, pat_code) = compile_pat_local env ae pat in
+      let (sr, rhs_code) = compile_exp_with_hint env ae1 sr_hint e in
+      (sr, CannotFail get_i ^^^ pat_code ^^^ CannotFail rhs_code)
+      ) cs in
+
+    (* Use the expected stackrep, if given, else infer from the branches *)
+    let final_sr = match sr_hint with
+      | Some sr -> sr
+      | None -> StackRep.joins (List.map fst codes)
+    in
+
+    final_sr,
+    (* Run scrut *)
+    code1 ^^ set_i ^^
+    (* Run rest in block to exit from *)
+    FakeMultiVal.block_ env (StackRep.to_block_type env final_sr) (fun branch_code ->
+       orsPatternFailure env (List.map (fun (sr, c) ->
+          c ^^^ CannotFail (StackRep.adjust env sr final_sr ^^ branch_code)
+       ) codes) ^^
+       G.i Unreachable (* We should always exit using the branch_code *)
+    )
   (* Async-wait lowering support features *)
   | DeclareE (name, typ, e) ->
     let (ae1, i) = VarEnv.add_local_with_heap_ind env ae name typ in
@@ -10144,27 +10288,12 @@ and compile_exp (env : E.t) ae exp =
     Object.lit_raw env fs'
   | _ -> SR.unit, todo_trap env "compile_exp" (Arrange_ir.exp exp)
 
-and compile_exp_as env ae sr_out e =
-  G.with_region e.at (
-    match sr_out, e.it with
-    (* Some optimizations for certain sr_out and expressions *)
-    | _ , BlockE (decs, exp) ->
-      let captured = Freevars.captured_vars (Freevars.exp exp) in
-      let ae', codeW1 = compile_decs env ae decs captured in
-      let code2 = compile_exp_as env ae' sr_out exp in
-      codeW1 code2
-    (* Fallback to whatever stackrep compile_exp chooses *)
-    | _ ->
-      let sr_in, code = compile_exp env ae e in
-      code ^^ StackRep.adjust env sr_in sr_out
-  )
-
 and compile_exp_ignore env ae e =
   let sr, code = compile_exp env ae e in
   code ^^ StackRep.drop env sr
 
 and compile_exp_as_opt env ae sr_out_o e =
-  let sr_in, code = compile_exp env ae e in
+  let sr_in, code = compile_exp_with_hint env ae sr_out_o e in
   G.with_region e.at (
     code ^^
     match sr_out_o with
@@ -10364,28 +10493,32 @@ and alloc_pat env ae how pat : VarEnv.t * G.t  =
 and compile_pat_local env ae pat : VarEnv.t * patternCode =
   (* It returns:
      - the extended environment
-     - the code to do the pattern matching.
+     - the patternCode to do the pattern matching.
        This expects the  undestructed value is on top of the stack,
-       consumes it, and fills the heap
-       If the pattern does not match, it branches to the depth at fail_depth.
+       consumes it, and fills the heap.
+       If the pattern matches, execution continues (with nothing on the stack).
+       If the pattern does not match, it fails (in the sense of PatCode.CanFail)
   *)
   let ae1 = alloc_pat_local env ae pat in
   let fill_code = fill_pat env ae1 pat in
   (ae1, fill_code)
 
-(* Used for let patterns: If the pattern can consume its scrutinee in a better form
-   than vanilla (e.g. unboxed tuple, unboxed 32/64), lets do that.
+(* Used for let patterns:
+   If the pattern can consume its scrutinee in a better form than vanilla (e.g.
+   unboxed tuple, unboxed 32/64), lets do that.
 *)
-and compile_unboxed_pat env ae how pat =
+and compile_unboxed_pat env ae how pat
+  : VarEnv.t * G.t * G.t * SR.t option * G.t =
   (* It returns:
      - the extended environment
      - the code to allocate memory
      - the code to prepare the stack (e.g. push destination addresses)
-     - the desired stack rep
+       before the scrutinee is pushed
+     - the desired stack rep. None means: Do not even push the scrutinee.
      - the code to do the pattern matching.
        This expects the undestructed value is on top of the stack,
        consumes it, and fills the heap
-       If the pattern does not match, it branches to the depth at fail_depth.
+       If the pattern does not match, it traps with pattern failure
   *)
   let (ae1, alloc_code) = alloc_pat env ae how pat in
   let pre_code, sr, fill_code = match pat.it with
@@ -10398,7 +10531,7 @@ and compile_unboxed_pat env ae how pat =
       (* We have to fill the pattern in reverse order, to take things off the
          stack. This is only ok as long as patterns have no side effects.
       *)
-      G.concat_mapi (fun i p -> orTrap env (fill_pat env ae1 p)) (List.rev ps)
+      G.concat_mapi (fun i p -> orPatternFailure env (fill_pat env ae1 p)) (List.rev ps)
     (* Variable patterns *)
     | VarP name ->
       let pre_code, sr, code = Var.set_val env ae1 name in
@@ -10407,7 +10540,7 @@ and compile_unboxed_pat env ae how pat =
     | _ ->
       G.nop,
       Some SR.Vanilla,
-      orTrap env (fill_pat env ae1 pat) in
+      orPatternFailure env (fill_pat env ae1 pat) in
   let pre_code = G.with_region pat.at pre_code in
   let fill_code = G.with_region pat.at fill_code in
   (ae1, alloc_code, pre_code, sr, fill_code)
@@ -10562,8 +10695,12 @@ and compile_const_exp env pre_ae exp : Const.t * (E.t -> VarEnv.t -> unit) =
   | PrimE (ArrayPrim (Const, _), es)
   | PrimE (TupPrim, es) ->
     let (cs, fills) = List.split (List.map (compile_const_exp env pre_ae) es) in
-    Const.t_of_v (Const.Array cs),
+    Const.(t_of_v (Array cs)),
     (fun env ae -> List.iter (fun fill -> fill env ae) fills)
+  | PrimE (TagPrim i, [e]) ->
+    let (arg_ct, fill) = compile_const_exp env pre_ae e in
+    Const.(t_of_v (Tag (i, arg_ct))),
+    fill
 
   | _ -> assert false
 

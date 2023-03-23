@@ -33,7 +33,7 @@ moc.Motoko.saveFile(
     };
   }`
 );
-moc.Motoko.saveFile('text.mo', `let s = "${'.'.repeat(10000)}"; s.size()`); // #3822
+moc.Motoko.saveFile('text.mo', `let s = "${'⛔|'.repeat(10000)}"; s.size()`); // #3822
 
 try {
   assert.equal(moc.Motoko.readFile("empty.mo"), "");

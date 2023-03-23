@@ -24,7 +24,7 @@ static mut USING_INCREMENTAL_GC: bool = false;
 
 // Provided by generated code
 extern "C" {
-    pub(crate) fn get_heap_base() -> u32;
+    fn get_heap_base() -> u32;
     pub(crate) fn get_static_roots() -> Value;
 }
 
@@ -33,12 +33,8 @@ pub(crate) unsafe fn get_aligned_heap_base() -> u32 {
     ((get_heap_base() + 31) / 32) * 32
 }
 
-pub(crate) unsafe fn initialize_memory(align: bool, using_incremental_gc: bool) {
-    HP = if align {
-        get_aligned_heap_base()
-    } else {
-        get_heap_base()
-    };
+pub(crate) unsafe fn initialize_memory(using_incremental_gc: bool) {
+    HP = get_aligned_heap_base();
     LAST_HP = HP;
     USING_INCREMENTAL_GC = using_incremental_gc;
 }

@@ -20,9 +20,10 @@
 //
 // We reuse the opaque nature of blobs (to Motoko) and stick Rust-related information
 // into the leading bytes:
-// - `obj header` contains tag and forwarding pointer
+// - `obj header` contains tag (BLOB) and forwarding pointer
 // - `len` is in blob metadata
-// - 'padding' to align to 64-bit
+// - 'padding' because the compiler automatically align `ptr64` to 64-bit according to
+//    C-memory representation
 // - `ptr64` and `limit64` are the next and past-end pointers into stable memory
 // - `filled` and `cache` are the number of bytes consumed from the blob, and the
 //   staging area of the stream, respectively
@@ -33,7 +34,6 @@
 
 use crate::bigint::{check, mp_get_u32, mp_isneg, mp_iszero};
 use crate::gc::incremental::barriers::allocation_barrier;
-use crate::gc::incremental::{incremental_gc_state, post_allocation_barrier};
 use crate::mem_utils::memcpy_bytes;
 use crate::memory::{alloc_blob, Memory};
 use crate::rts_trap_with;
@@ -63,7 +63,7 @@ pub unsafe fn alloc_stream<M: Memory>(mem: &mut M, size: Bytes<u32>) -> *mut Str
     (*stream).limit64 = 0;
     (*stream).outputter = Stream::no_backing_store;
     (*stream).filled = INITIAL_STREAM_FILLED;
-    allocation_barrier(mem, ptr);
+    allocation_barrier(ptr);
     stream
 }
 
@@ -201,8 +201,7 @@ impl Stream {
         let ptr = Value::from_ptr(blob as usize);
         (*blob).header.forward = ptr;
         debug_assert_eq!(blob.len(), (*self).filled);
-        let state = incremental_gc_state();
-        post_allocation_barrier(state, ptr);
+        allocation_barrier(ptr);
         ptr
     }
 
