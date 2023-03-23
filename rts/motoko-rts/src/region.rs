@@ -201,9 +201,9 @@ mod meta_data {
             unsafe {
                 REGION_TOTAL_ALLOCATED_BLOCKS = n as u16;
 
-                // No longer use the code-gen provided number that we
-                // sometimes need to use, temporarily, for
-                // destabilization.
+                // Invalidate stale number (No longer use the code-gen
+                // provided number that we need to use, temporarily,
+                // for destabilization after an upgrade).
                 REGION_SET_MEM_SIZE = None;
             };
             write_u16(offset::TOTAL_ALLOCATED_BLOCKS, n as u16)
