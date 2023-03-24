@@ -10365,13 +10365,16 @@ and destruct_const_pat ae pat const : VarEnv.t = match pat.it with
       | Some (_, c) -> destruct_const_pat ae pf.it.pat c
       | None -> assert false
     ) ae pfs
-  | AltP (p1, p2) -> destruct_const_pat ae p1 const
+  | AltP (p1, _p2) -> destruct_const_pat ae p1 const
   | TupP ps ->
     let cs = match const with (_ , Const.Array cs) -> cs | (_, Const.Unit) -> [] | _ -> assert false in
     List.fold_left2 destruct_const_pat ae ps cs
   | LitP _ -> raise (Invalid_argument "LitP in static irrefutable pattern")
   | OptP _ -> raise (Invalid_argument "OptP in static irrefutable pattern")
-  | TagP _ -> raise (Invalid_argument "TagP in static irrefutable pattern")
+  | TagP (i, p) -> match const with
+                   | (_, Const.Tag (ic, c)) when i = ic -> assert false; destruct_const_pat ae p c
+                   | (_, Const.Tag _) -> raise (Invalid_argument "TagP mismatch")
+                   | _ -> assert false
 
 and compile_const_dec env pre_ae dec : (VarEnv.t -> VarEnv.t) * (E.t -> VarEnv.t -> unit) =
   (* This returns a _function_ to extend the VarEnv, instead of doing it, because
