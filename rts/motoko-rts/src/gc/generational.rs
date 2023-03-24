@@ -287,7 +287,6 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
             },
             |gc, slice_start, array| {
                 const SLICE_INCREMENT: u32 = 255;
-                const TAG_ARRAY_SLICE_MIN: u32 = MAX_TAG + 1;
                 debug_assert!(SLICE_INCREMENT >= TAG_ARRAY_SLICE_MIN);
                 if array.len() - slice_start > SLICE_INCREMENT {
                     let new_start = slice_start + SLICE_INCREMENT;

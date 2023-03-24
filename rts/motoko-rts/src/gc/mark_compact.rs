@@ -180,7 +180,6 @@ unsafe fn mark_fields<M: Memory>(mem: &mut M, obj: *mut Obj, tag_or_slice: Tag, 
         },
         |mem, slice_start, arr| {
             const SLICE_INCREMENT: u32 = 127;
-            const TAG_ARRAY_SLICE_MIN: u32 = MAX_TAG + 1;
             debug_assert!(SLICE_INCREMENT >= TAG_ARRAY_SLICE_MIN);
             if arr.len() - slice_start > SLICE_INCREMENT {
                 let new_start = slice_start + SLICE_INCREMENT;

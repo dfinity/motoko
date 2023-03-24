@@ -425,6 +425,7 @@ pub const TAG_ONE_WORD_FILLER: Tag = 29;
 pub const TAG_FREE_SPACE: Tag = 31;
 
 pub const MAX_TAG: Tag = 31;
+pub const TAG_ARRAY_SLICE_MIN: u32 = MAX_TAG + 1;
 
 // If disabled for backwards compatibility of:
 // * Threading in compacting and generational GC.

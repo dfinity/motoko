@@ -32,7 +32,6 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
     F: Fn(&mut C, *mut Value),
     G: Fn(&mut C, u32, *mut Array) -> u32,
 {
-    const TAG_ARRAY_SLICE_MIN: u32 = MAX_TAG + 1;
     match tag_or_slice {
         TAG_OBJECT => {
             let obj = obj as *mut Object;
