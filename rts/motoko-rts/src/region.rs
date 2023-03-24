@@ -121,7 +121,7 @@ impl RegionObject {
         // Where is that block located in stable memory (global rank)?
         let block_id = av.get_ith_block_id(block_rank as u32);
 	
-	println!(80, "intra-block index is {} (block is {:?})", intra_block_index, block_id);
+	//println!(80, "intra-block index is {} (block is {:?})", intra_block_index, block_id);
 
         // address of the byte to load from stable memory:
         let offset = meta_data::offset::BLOCK_ZERO
@@ -596,7 +596,7 @@ pub(crate) unsafe fn region_store<M: Memory>(_mem: &mut M, r: Value, offset: u64
         r.check_relative_into_absolute_offset(offset);
     }
     // to do -- handle non-contiguous regions
-    println!(80, "region_store({}, len={})", abs_off, src.len());
+    // println!(80, "region_store({}, len={})", abs_off, src.len());
     crate::ic0_stable::nicer::write(abs_off, src);
 }
 
