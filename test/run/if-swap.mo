@@ -4,7 +4,7 @@ func wantSeeSwap(x : Bool) : Nat =
 ignore(wantSeeSwap(true));
 
 // CHECK-LABEL: (func $wantSeeSwap
-// CHECK-NEXT: local.get $x
+// CHECK:      local.get $x
 // CHECK-NEXT: if (result i32)
 // CHECK-NEXT: i32.const 50
 // CHECK-NEXT: else
