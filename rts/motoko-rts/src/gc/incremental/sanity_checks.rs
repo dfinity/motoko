@@ -119,8 +119,10 @@ impl<'a, M: Memory> MemoryChecker<'a, M> {
             // Forwarding is no longer allowed on a completed GC.
             assert!(!object.is_forwarded());
         }
-        let address = object.get_ptr();
-        self.check_valid_address(address);
+        if !object.is_forwarded() {
+            let address = object.get_ptr();
+            self.check_valid_address(address);
+        }
     }
 
     unsafe fn check_valid_address(&self, address: usize) {
