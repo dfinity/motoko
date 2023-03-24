@@ -10379,10 +10379,11 @@ and destruct_const_pat ae pat const : VarEnv.t = match pat.it with
     List.fold_left2 destruct_const_pat ae ps cs
   | LitP _ -> raise (Invalid_argument "LitP in static irrefutable pattern")
   | OptP _ -> raise (Invalid_argument "OptP in static irrefutable pattern")
-  | TagP (i, p) -> match const with
-                   | (_, Const.Tag (ic, c)) when i = ic -> destruct_const_pat ae p c
-                   | (_, Const.Tag _) -> raise (Invalid_argument "TagP mismatch")
-                   | _ -> assert false
+  | TagP (i, p) ->
+     match const with
+     | (_, Const.Tag (ic, c)) when i = ic -> destruct_const_pat ae p c
+     | (_, Const.Tag _) -> raise (Invalid_argument "TagP mismatch")
+     | _ -> assert false
 
 and compile_const_dec env pre_ae dec : (VarEnv.t -> VarEnv.t) * (E.t -> VarEnv.t -> unit) =
   (* This returns a _function_ to extend the VarEnv, instead of doing it, because
