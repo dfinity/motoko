@@ -1751,7 +1751,7 @@ end (* Tagged *)
 
 module MutBox = struct
   (* Mutable heap objects *)
-  
+
   let field = Tagged.header_size
 
   let alloc env =
@@ -1815,7 +1815,6 @@ module Opt = struct
     E.add_static env StaticBytes.[
       I32 Tagged.(int_of_tag Null);
     ]
-    
   let null_lit env =
     compile_unboxed_const (null_vanilla_lit env)
 
@@ -2365,7 +2364,7 @@ module Float = struct
     get_i ^^ get_f ^^ Tagged.store_field_float64 env payload_field ^^
     Tagged.allocation_barrier env get_i ^^
     get_i
-  )
+    )
 
   let unbox env = Tagged.load_forwarding_pointer env ^^ Tagged.load_field_float64 env payload_field
 
@@ -3379,7 +3378,7 @@ module Object = struct
     let (set_ri, get_ri, ri) = new_local_ env I32Type "obj" in
     Heap.alloc env (Int32.add header_size sz) ^^
     set_ri ^^
-    
+
     (* Set tag *)
     get_ri ^^
     Tagged.(store_tag env Object) ^^
@@ -3959,6 +3958,7 @@ module Arr = struct
       compile_add_const 1l ^^
       set_i
     ) ^^
+
     Tagged.allocation_barrier env get_r ^^
     get_r
 
@@ -7841,7 +7841,7 @@ module FuncDec = struct
         (* Store the tag *)
         get_clos ^^
         Tagged.(store_tag env Closure) ^^
-        
+
         (* Store the function pointer number: *)
         get_clos ^^
         compile_unboxed_const (E.add_fun_ptr env fi) ^^
@@ -9269,7 +9269,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_vanilla env ae e1 ^^ (* skewed pointer to array *)
     Tagged.load_forwarding_pointer env ^^
     compile_exp_vanilla env ae e2 ^^ (* byte offset *)
-    (* Note: the below two lines compile to `i32.add; i32.load offset=13`,
+    (* Note: the below two lines compile to `i32.add; i32.load offset=9`,
        thus together also unskewing the pointer and skipping administrative
        fields, effectively arriving at the desired element *)
     G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
