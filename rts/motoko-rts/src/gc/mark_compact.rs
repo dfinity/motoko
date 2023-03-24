@@ -140,7 +140,6 @@ unsafe fn mark_static_roots<M: Memory>(mem: &mut M, static_roots: Value, heap_ba
 }
 
 unsafe fn mark_object<M: Memory>(mem: &mut M, obj: Value) {
-    debug_assert!(!obj.is_forwarded());
     let obj_tag = obj.tag();
     let obj = obj.get_ptr() as u32;
 

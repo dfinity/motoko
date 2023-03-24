@@ -207,7 +207,7 @@ pub unsafe extern "C" fn text_size(s: Value) -> Bytes<u32> {
     // location so using any of the types to get the length is fine
     // NB. We can't use `s.as_blob()` here as that method checks the tag in debug mode
     s.check_forwarding_pointer();
-    (s.forward().get_ptr() as *mut Blob).len()
+    (s.forward_if_possible().get_ptr() as *mut Blob).len()
 }
 
 /// Compares texts from given offset on for the given number of bytes. All assumed to be in range.

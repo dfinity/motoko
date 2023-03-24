@@ -5,16 +5,15 @@
 //! A write barrier catches all pointers leading from old to young generation.
 //! Compaction is based on the existing Motoko RTS threaded mark & compact GC.
 
+pub mod mark_stack;
 pub mod remembered_set;
 #[cfg(feature = "memory_check")]
 mod sanity_checks;
 pub mod write_barrier;
 
+use self::mark_stack::{alloc_mark_stack, free_mark_stack, pop_mark_stack, push_mark_stack};
 use crate::gc::mark_compact::bitmap::{
     alloc_bitmap, free_bitmap, get_bit, iter_bits, set_bit, BITMAP_ITER_END,
-};
-use crate::gc::mark_compact::mark_stack::{
-    alloc_mark_stack, free_mark_stack, pop_mark_stack, push_mark_stack,
 };
 
 use crate::constants::WORD_SIZE;
@@ -263,21 +262,21 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
         }
         set_bit(obj_idx);
 
-        push_mark_stack(self.heap.mem, pointer as usize, object.tag());
+        push_mark_stack(self.heap.mem, pointer as usize);
         self.marked_space += object_size(pointer as usize).to_bytes().as_usize();
     }
 
     unsafe fn mark_all_reachable(&mut self) {
-        while let Some((obj, tag_or_slice)) = pop_mark_stack() {
-            self.mark_fields(obj as *mut Obj, tag_or_slice);
+        while let Some(obj) = pop_mark_stack() {
+            self.mark_fields(obj as *mut Obj);
         }
     }
 
-    unsafe fn mark_fields(&mut self, object: *mut Obj, tag_or_slice: Tag) {
+    unsafe fn mark_fields(&mut self, object: *mut Obj) {
         visit_pointer_fields(
             self,
             object,
-            tag_or_slice,
+            object.tag(),
             self.generation_base(),
             |gc, field_address| {
                 let field_value = *field_address;
@@ -292,9 +291,13 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
                 debug_assert!(SLICE_INCREMENT >= TAG_ARRAY_SLICE_MIN);
                 if array.len() - slice_start > SLICE_INCREMENT {
                     let new_start = slice_start + SLICE_INCREMENT;
-                    push_mark_stack(gc.heap.mem, array as usize, new_start);
+                    // Remember to visit the array suffix later, store the next visit offset in the tag.
+                    (*array).header.tag = new_start;
+                    push_mark_stack(gc.heap.mem, array as usize);
                     new_start
                 } else {
+                    // No further visits of this array. Restore the tag.
+                    (*array).header.tag = TAG_ARRAY;
                     array.len()
                 }
             },
@@ -396,6 +399,7 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
     }
 
     unsafe fn thread_backward_pointer_fields(&mut self, object: *mut Obj) {
+        debug_assert!(object.tag() <= MAX_TAG);
         visit_pointer_fields(
             &mut (),
             object,

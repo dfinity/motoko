@@ -19,9 +19,7 @@ use motoko_rts::gc::incremental::partitioned_heap::PARTITION_SIZE;
 use motoko_rts::gc::incremental::{
     get_partitioned_heap, incremental_gc_state, reset_partitioned_heap,
 };
-use utils::{
-    get_scalar_value, make_pointer, read_word, unskew_pointer, ObjectIdx, GC, GC_IMPLS, WORD_SIZE,
-};
+use utils::{get_scalar_value, read_word, unskew_pointer, ObjectIdx, GC, GC_IMPLS, WORD_SIZE};
 
 use motoko_rts::gc::copying::copying_gc_internal;
 use motoko_rts::gc::generational::{GenerationalGC, Strategy};
@@ -246,26 +244,17 @@ fn check_dynamic_heap(
             offset += WORD_SIZE;
             offset += words * WORD_SIZE;
         } else {
-            let forward = read_word(heap, offset);
-            offset += WORD_SIZE;
-
-            let is_fowarded = forward != make_pointer(address as u32);
-
             if incremental && tag == TAG_BLOB {
-                assert!(!is_fowarded);
                 // in-heap mark stack blobs
                 let length = read_word(heap, offset);
                 offset += WORD_SIZE + length as usize;
             } else {
-                if incremental {
-                    assert!(tag == TAG_ARRAY || tag >= TAG_ARRAY_SLICE_MIN);
-                } else {
-                    assert_eq!(tag, TAG_ARRAY);
-                }
-
-                if is_fowarded {
+                let is_forwarded = tag > MAX_TAG;
+                if is_forwarded {
                     assert!(incremental);
 
+                    assert!(is_skewed(tag));
+                    let forward = unskew(tag as usize);
                     let forward_offset = forward as usize - heap.as_ptr() as usize;
                     let length = read_word(
                         heap,
@@ -275,6 +264,7 @@ fn check_dynamic_heap(
                     // Skip stale object version that has been relocated during incremental GC.
                     offset += length as usize * WORD_SIZE;
                 } else {
+                    assert_eq!(tag, TAG_ARRAY);
                     let n_fields = read_word(heap, offset);
                     offset += WORD_SIZE;
 
@@ -401,11 +391,7 @@ fn compute_reachable_objects(
 }
 
 fn check_continuation_table(mut offset: usize, continuation_table: &[ObjectIdx], heap: &[u8]) {
-    let table_addr = heap.as_ptr() as usize + offset;
     assert_eq!(read_word(heap, offset), TAG_ARRAY);
-    offset += WORD_SIZE;
-
-    assert_eq!(read_word(heap, offset), make_pointer(table_addr as u32));
     offset += WORD_SIZE;
 
     assert_eq!(read_word(heap, offset), continuation_table.len() as u32);

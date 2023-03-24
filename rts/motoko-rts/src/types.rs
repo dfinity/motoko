@@ -267,7 +267,7 @@ impl Value {
     /// Check the forwarding invariant: An object is either not forwarded or forwarded via only one indirection.
     #[inline]
     pub unsafe fn check_forwarding_pointer(self) {
-        debug_assert!(!self.is_forwarded() || !self.forward().is_forwarded());
+        debug_assert!(!self.is_forwarded() || !self.get_forwarded().is_forwarded());
     }
 
     /// Check whether the object has been forwarded to a different location.
@@ -281,16 +281,16 @@ impl Value {
     /// In debug mode panics if the value is not a pointer or the object has been forwarded.
     pub unsafe fn tag(self) -> Tag {
         let tag = *(self.get_ptr() as *const Tag);
-        debug_assert!(tag <= MAX_TAG);
+        debug_assert!(!USE_FORWARDING || tag <= MAX_TAG);
         tag
     }
 
     /// Get the forwarding pointer if the object has been forwarded. Used by the incremental GC.
     /// In debug mode panics if the object is not forwarded.
-    pub unsafe fn forward(self) -> Value {
+    pub unsafe fn get_forwarded(self) -> Value {
         debug_assert!(self.get_ptr() as *const Obj != null());
         let obj = self.get_ptr() as *const Obj;
-        obj.forward()
+        obj.get_forwarded()
     }
 
     /// Resolve forwarding if the value is a pointer. Otherwise, return the same value.
@@ -298,7 +298,7 @@ impl Value {
         // Ignore null pointers used in text_iter.
         if self.is_ptr() && self.get_ptr() as *const Obj != null() && self.is_forwarded() {
             self.check_forwarding_pointer();
-            self.forward()
+            self.get_forwarded()
         } else {
             self
         }
@@ -426,9 +426,21 @@ pub const TAG_FREE_SPACE: Tag = 31;
 
 pub const MAX_TAG: Tag = 31;
 
-// During the incremental GC, the tag must not be used for the following purposes because it interferes with the forwarding pointer.
-// * Array slicing during GC marking.
-// * Stabilization information, such as stream offset of serialized objects.
+// If disabled for backwards compatibility of:
+// * Threading in compacting and generational GC.
+// * Array slicing in the generational GC.
+pub(crate) static mut USE_FORWARDING: bool = false;
+
+// During the incremental GC, it must be ensured that the following tag modifications do not interfere with forwarding.
+// * Array slicing during GC marking: The slice information can no longer be stored in the object tag but needs to be
+//   remembered on the mark stack.
+// * Stabilization information: The seen sentinel tag and the encoded stream offset is also stored in the tag. These
+//   values are stored in an unskewed representation, with bit 0 been cleared in contrast to the forwarding information.
+//   The stabilization must be carefull not to call compiler or RTS forwarding functionality for these special tags.
+//   Alternatively, the stabilization sharing information could be stored in a separatedly allocated (dynamic) data
+//   structure (similar to remembered set, a mapping structure).
+// * Threading in the compacting and generational GC: The forwarding logic must be disabled for these GCs. Splitting
+//   the runtime system in different builds would simplify this.
 
 // Common parts of any object. Other object pointers can be coerced into a pointer to this.
 #[repr(C)] // See the note at the beginning of this module
@@ -442,18 +454,27 @@ pub struct Obj {
 impl Obj {
     /// Check whether the object's forwarding pointer refers to a different location.
     pub unsafe fn is_forwarded(self: *const Self) -> bool {
-        (*self).tag > MAX_TAG
+        USE_FORWARDING && (*self).tag > MAX_TAG
     }
 
     pub unsafe fn tag(self: *const Self) -> Tag {
-        debug_assert!(!self.is_forwarded());
+        debug_assert!(!USE_FORWARDING || !self.is_forwarded());
         (*self).tag
     }
 
-    pub unsafe fn forward(self: *const Self) -> Value {
+    pub unsafe fn get_forwarded(self: *const Self) -> Value {
+        debug_assert!(USE_FORWARDING);
         debug_assert!(self.is_forwarded());
         debug_assert!(is_skewed((*self).tag));
         Value::from_raw((*self).tag)
+    }
+
+    pub unsafe fn set_forwarded(self: *mut Self, new_object: Value) {
+        debug_assert!(USE_FORWARDING);
+        debug_assert!(new_object.is_ptr());
+        debug_assert!(!new_object.is_forwarded());
+        debug_assert!(!self.is_forwarded());
+        (*self).tag = new_object.get_raw();
     }
 
     pub unsafe fn as_blob(self: *mut Self) -> *mut Blob {
@@ -484,12 +505,12 @@ impl Array {
     }
 
     pub unsafe fn payload_addr(self: *const Self) -> *mut Value {
-        debug_assert!(!self.is_forwarded());
+        debug_assert!(!USE_FORWARDING || !self.is_forwarded());
         self.offset(1) as *mut Value // skip array header
     }
 
     pub unsafe fn get(self: *mut Self, idx: u32) -> Value {
-        debug_assert!(!self.is_forwarded());
+        debug_assert!(!USE_FORWARDING || !self.is_forwarded());
         let slot_addr = self.element_address(idx);
         *(slot_addr as *const Value)
     }
@@ -499,7 +520,7 @@ impl Array {
     /// No incremental pre-update barrier as the previous value is undefined.
     /// Resolve pointer forwarding for the written value if necessary.
     pub unsafe fn initialize<M: Memory>(self: *mut Self, idx: u32, value: Value, mem: &mut M) {
-        debug_assert!(!self.is_forwarded());
+        debug_assert!(!USE_FORWARDING || !self.is_forwarded());
         let slot_addr = self.element_address(idx) as *mut Value;
         let value = value.forward_if_possible();
         *slot_addr = value;
@@ -512,7 +533,7 @@ impl Array {
     /// Uses a incremental pre-update barrier and a generational post-update barrier.
     /// Resolves pointer forwarding for the written value.
     pub unsafe fn set_pointer<M: Memory>(self: *mut Self, idx: u32, value: Value, mem: &mut M) {
-        debug_assert!(!self.is_forwarded());
+        debug_assert!(!USE_FORWARDING || !self.is_forwarded());
         debug_assert!(value.is_ptr());
         let slot_addr = self.element_address(idx) as *mut Value;
         write_with_barrier(mem, slot_addr, value);
@@ -522,7 +543,7 @@ impl Array {
     /// Write a scalar value to an array element.
     /// No need for a write barrier.
     pub unsafe fn set_scalar(self: *mut Self, idx: u32, value: Value) {
-        debug_assert!(!self.is_forwarded());
+        debug_assert!(!USE_FORWARDING || !self.is_forwarded());
         debug_assert!(value.is_scalar());
         let slot_addr = self.element_address(idx);
         *(slot_addr as *mut Value) = value;
@@ -535,7 +556,7 @@ impl Array {
     }
 
     pub unsafe fn len(self: *const Self) -> u32 {
-        debug_assert!(!self.is_forwarded());
+        debug_assert!(!USE_FORWARDING || !self.is_forwarded());
         (*self).len
     }
 }
@@ -553,18 +574,18 @@ impl Object {
     }
 
     pub unsafe fn payload_addr(self: *mut Self) -> *mut Value {
-        debug_assert!(!self.is_forwarded());
+        debug_assert!(!USE_FORWARDING || !self.is_forwarded());
         self.add(1) as *mut Value // skip object header
     }
 
     pub(crate) unsafe fn size(self: *mut Self) -> u32 {
-        debug_assert!(!self.is_forwarded());
+        debug_assert!(!USE_FORWARDING || !self.is_forwarded());
         (*self).size
     }
 
     #[cfg(debug_assertions)]
     pub(crate) unsafe fn get(self: *mut Self, idx: u32) -> Value {
-        debug_assert!(!self.is_forwarded());
+        debug_assert!(!USE_FORWARDING || !self.is_forwarded());
         *self.payload_addr().add(idx as usize)
     }
 }
@@ -594,7 +615,7 @@ impl Closure {
     }
 
     pub(crate) unsafe fn size(self: *mut Self) -> u32 {
-        debug_assert!(!self.is_forwarded());
+        debug_assert!(!USE_FORWARDING || !self.is_forwarded());
         (*self).size
     }
 }
@@ -612,33 +633,33 @@ impl Blob {
     }
 
     pub unsafe fn payload_addr(self: *mut Self) -> *mut u8 {
-        debug_assert!(!self.is_forwarded());
+        debug_assert!(!USE_FORWARDING || !self.is_forwarded());
         self.add(1) as *mut u8 // skip blob header
     }
 
     pub unsafe fn payload_const(self: *const Self) -> *const u8 {
-        debug_assert!(!self.is_forwarded());
+        debug_assert!(!USE_FORWARDING || !self.is_forwarded());
         self.add(1) as *mut u8 // skip blob header
     }
 
     pub unsafe fn len(self: *const Self) -> Bytes<u32> {
-        debug_assert!(!self.is_forwarded());
+        debug_assert!(!USE_FORWARDING || !self.is_forwarded());
         (*self).len
     }
 
     pub unsafe fn get(self: *const Self, idx: u32) -> u8 {
-        debug_assert!(!self.is_forwarded());
+        debug_assert!(!USE_FORWARDING || !self.is_forwarded());
         *self.payload_const().add(idx as usize)
     }
 
     pub unsafe fn set(self: *mut Self, idx: u32, byte: u8) {
-        debug_assert!(!self.is_forwarded());
+        debug_assert!(!USE_FORWARDING || !self.is_forwarded());
         *self.payload_addr().add(idx as usize) = byte;
     }
 
     /// Shrink blob to the given size. Slop after the new size is filled with filler objects.
     pub unsafe fn shrink(self: *mut Self, new_len: Bytes<u32>) {
-        debug_assert!(!self.is_forwarded());
+        debug_assert!(!USE_FORWARDING || !self.is_forwarded());
         let current_len_words = self.len().to_words();
         let new_len_words = new_len.to_words();
 
@@ -678,7 +699,7 @@ impl Stream {
     }
 
     pub unsafe fn as_blob_mut(self: *mut Self) -> *mut Blob {
-        debug_assert!(!self.is_forwarded());
+        debug_assert!(!USE_FORWARDING || !self.is_forwarded());
         self as *mut Blob
     }
 }
@@ -709,12 +730,12 @@ impl BigInt {
     }
 
     pub unsafe fn len(self: *mut Self) -> Bytes<u32> {
-        debug_assert!(!self.is_forwarded());
+        debug_assert!(!USE_FORWARDING || !self.is_forwarded());
         Bytes(((*self).mp_int.alloc as usize * core::mem::size_of::<mp_digit>()) as u32)
     }
 
     pub unsafe fn payload_addr(self: *mut Self) -> *mut mp_digit {
-        debug_assert!(!self.is_forwarded());
+        debug_assert!(!USE_FORWARDING || !self.is_forwarded());
         self.add(1) as *mut mp_digit // skip closure header
     }
 
@@ -734,7 +755,7 @@ impl BigInt {
     /// libtommath function that tries to change it. For example, we cannot confuse input and
     /// output parameters of mp_add() this way.
     pub unsafe fn mp_int_ptr(self: *mut BigInt) -> *const mp_int {
-        debug_assert!(!self.is_forwarded());
+        debug_assert!(!USE_FORWARDING || !self.is_forwarded());
         (*self).mp_int.dp = self.payload_addr();
         &(*self).mp_int
     }
@@ -773,12 +794,12 @@ impl Concat {
     }
 
     pub unsafe fn text1(self: *const Self) -> Value {
-        debug_assert!(!self.is_forwarded());
+        debug_assert!(!USE_FORWARDING || !self.is_forwarded());
         (*self).text1
     }
 
     pub unsafe fn text2(self: *const Self) -> Value {
-        debug_assert!(!self.is_forwarded());
+        debug_assert!(!USE_FORWARDING || !self.is_forwarded());
         (*self).text2
     }
 }

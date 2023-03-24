@@ -1,7 +1,7 @@
 use crate::memory::TestMemory;
 use motoko_rts::{
     gc::incremental::mark_stack::{MarkStack, STACK_TABLE_CAPACITY},
-    types::{Value, Words},
+    types::{Tag, Value, Words},
 };
 
 pub unsafe fn test() {
@@ -23,13 +23,15 @@ unsafe fn test_push_pop(amount: usize, regrow_step: usize) {
     let mut mem = TestMemory::new(Words(64 * 1024));
     let mut stack = MarkStack::new(&mut mem);
     for count in 0..amount {
-        stack.push(&mut mem, Value::from_scalar(count as u32));
+        stack.push(&mut mem, Value::from_scalar(count as u32), count as Tag);
         if count == regrow_step {
             test_push_pop(amount - count, regrow_step);
         }
     }
     for count in (0..amount).rev() {
-        assert_eq!(stack.pop().unwrap().get_scalar() as usize, count);
+        let entry = stack.pop().unwrap();
+        assert_eq!(entry.0.get_scalar() as usize, count);
+        assert_eq!(entry.1, count as Tag);
     }
     assert!(stack.pop().is_none());
 }

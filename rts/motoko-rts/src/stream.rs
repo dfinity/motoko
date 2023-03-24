@@ -43,7 +43,7 @@ use crate::types::{size_of, Blob, Bytes, Stream, Value, TAG_BLOB};
 use motoko_rts_macros::ic_mem_fn;
 
 const MAX_STREAM_SIZE: Bytes<u32> = Bytes((1 << 30) - 1);
-const INITIAL_STREAM_FILLED: Bytes<u32> = Bytes(36);
+const INITIAL_STREAM_FILLED: Bytes<u32> = Bytes(32);
 const STREAM_CHUNK_SIZE: Bytes<u32> = Bytes(128);
 
 #[ic_mem_fn]

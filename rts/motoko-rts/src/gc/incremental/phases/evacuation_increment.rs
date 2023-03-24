@@ -89,7 +89,7 @@ impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
         let new_address = self.mem.alloc_words(size);
         let copy = new_address.get_ptr() as *mut Obj;
         memcpy_words(copy as usize, original as usize, size);
-        (*original).tag = new_address.get_raw();
+        original.set_forwarded(new_address);
         debug_assert!(!copy.is_forwarded());
         debug_assert!(original.is_forwarded());
         // Marking is necessary to ensure field updates in the copy.

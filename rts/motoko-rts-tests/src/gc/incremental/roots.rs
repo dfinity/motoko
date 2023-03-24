@@ -77,7 +77,6 @@ unsafe fn get_roots(heap: &MotokoHeap) -> Roots {
 fn object_id(heap: &MotokoHeap, address: usize) -> u32 {
     let offset = address - heap.heap_base_address();
     const OBJECT_SIZE: usize = size_of::<Array>() + WORD_SIZE;
-    assert_eq!(OBJECT_SIZE, 16);
     assert_eq!(offset % OBJECT_SIZE, 0);
     (offset / OBJECT_SIZE) as u32
 }

@@ -37,6 +37,7 @@ pub(crate) unsafe fn initialize_memory(using_incremental_gc: bool) {
     HP = get_aligned_heap_base();
     LAST_HP = HP;
     USING_INCREMENTAL_GC = using_incremental_gc;
+    USE_FORWARDING = using_incremental_gc;
 }
 
 #[no_mangle]

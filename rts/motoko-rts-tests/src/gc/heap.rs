@@ -395,10 +395,8 @@ fn create_dynamic_heap(
             object_addrs.insert(*obj, heap_start + heap_offset);
 
             // Store object header
-            let address = u32::try_from(heap_start + heap_offset).unwrap();
             write_word(dynamic_heap, heap_offset, TAG_ARRAY);
-            write_word(dynamic_heap, heap_offset + WORD_SIZE, make_pointer(address)); // forwarding pointer
-            heap_offset += 2 * WORD_SIZE;
+            heap_offset += WORD_SIZE;
 
             // Store length: idx + refs
             write_word(
@@ -444,14 +442,8 @@ fn create_dynamic_heap(
     {
         let mut heap_offset = continuation_table_offset;
 
-        let continuation_table_address = u32::try_from(heap_start + heap_offset).unwrap();
         write_word(dynamic_heap, continuation_table_offset, TAG_ARRAY);
-        write_word(
-            dynamic_heap,
-            continuation_table_offset + WORD_SIZE,
-            make_pointer(continuation_table_address),
-        );
-        heap_offset += 2 * WORD_SIZE;
+        heap_offset += WORD_SIZE;
 
         write_word(dynamic_heap, heap_offset, continuation_table.len() as u32);
         heap_offset += WORD_SIZE;
@@ -483,10 +475,8 @@ fn create_static_heap(
 
     // Create static root array. Each element of the array is a MutBox pointing to the actual
     // root.
-    let array_addr = u32::try_from(heap.as_ptr() as usize).unwrap();
     write_word(heap, 0, TAG_ARRAY);
-    write_word(heap, WORD_SIZE, make_pointer(array_addr));
-    write_word(heap, 2 * WORD_SIZE, u32::try_from(roots.len()).unwrap());
+    write_word(heap, WORD_SIZE, u32::try_from(roots.len()).unwrap());
 
     // Current offset in the heap for the next static roots array element
     let mut root_addr_offset = size_of::<Array>().to_bytes().as_usize();
@@ -500,10 +490,9 @@ fn create_static_heap(
         let mutbox_ptr = make_pointer(u32::try_from(mutbox_addr).unwrap());
 
         write_word(heap, mutbox_offset, TAG_MUTBOX);
-        write_word(heap, mutbox_offset + WORD_SIZE, mutbox_ptr);
         write_word(
             heap,
-            mutbox_offset + 2 * WORD_SIZE,
+            mutbox_offset + WORD_SIZE,
             make_pointer(u32::try_from(root_address).unwrap()),
         );
 
