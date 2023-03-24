@@ -278,13 +278,6 @@ module E = struct
     named_imports : int32 NameEnv.t ref;
     built_in_funcs : lazy_function NameEnv.t ref;
     static_strings : int32 StringEnv.t ref;
-      (* Pool for shared static objects. Their lookup needs to be specifically
-         handled by using the tag and the payload without the forwarding pointer.
-         This is because the forwarding pointer depends on the allocation adddress.
-         The lookup is different to `static_string` that has no such 
-         allocation-dependent content and can thus be immediately looked up by 
-         the string value. *)
-    object_pool : int32 StringEnv.t ref; 
     end_of_static_memory : int32 ref; (* End of statically allocated memory *)
     static_memory : (int32 * string) list ref; (* Content of static memory *)
     static_memory_frozen : bool ref;
@@ -332,7 +325,6 @@ module E = struct
     named_imports = ref NameEnv.empty;
     built_in_funcs = ref NameEnv.empty;
     static_strings = ref StringEnv.empty;
-    object_pool = ref StringEnv.empty;
     end_of_static_memory = ref dyn_mem;
     static_memory = ref [];
     static_memory_frozen = ref false;
@@ -533,10 +525,6 @@ module E = struct
     env.end_of_static_memory := Int32.add ptr aligned;
     ptr
 
-  let write_static_memory (env : t) ptr data =
-    env.static_memory := !(env.static_memory) @ [ (ptr, data) ];
-    ()
-
   let add_mutable_static_bytes (env : t) data : int32 =
     let ptr = reserve_static_memory env (Int32.of_int (String.length data)) in
     env.static_memory := !(env.static_memory) @ [ (ptr, data) ];
@@ -565,13 +553,6 @@ module E = struct
       let ptr = add_mutable_static_bytes env b  in
       env.static_strings := StringEnv.add b ptr !(env.static_strings);
       ptr
-
-  let object_pool_find (env: t) (key: string) : int32 option =
-    StringEnv.find_opt key !(env.object_pool)
-
-  let object_pool_add (env: t) (key: string) (ptr : int32)  : unit =
-    env.object_pool := StringEnv.add key ptr !(env.object_pool);
-    ()
 
   let add_static_unskewed (env : t) (data : StaticBytes.t) : int32 =
     Int32.add (add_static env data) ptr_unskew
@@ -1142,6 +1123,22 @@ module Heap = struct
     let offset = Int32.(add (mul word_size i) ptr_unskew) in
     G.i (Store {ty = F64Type; align = 2; offset; sz = None})
 
+  (* Create a heap object with instructions that fill in each word *)
+  let obj env element_instructions : G.t =
+    let (set_heap_obj, get_heap_obj) = new_local env "heap_object" in
+
+    let n = List.length element_instructions in
+    alloc env (Wasm.I32.of_int_u n) ^^
+    set_heap_obj ^^
+
+    let init_elem idx instrs : G.t =
+      get_heap_obj ^^
+      instrs ^^
+      store_field (Wasm.I32.of_int_u idx)
+    in
+    G.concat_mapi init_elem element_instructions ^^
+    get_heap_obj
+
   (* Convenience functions related to memory *)
   (* Copying bytes (works on unskewed memory addresses) *)
   let memcpy env = E.call_import env "rts" "memcpy" ^^ G.i Drop
@@ -1418,17 +1415,6 @@ module BitTagged = struct
      All arithmetic is implemented directly on that representation, see
      module TaggedSmallWord.
   *)
-  let is_pointer env =
-    let (set_value, get_value) = new_local env "is_pointer" in
-    set_value ^^
-    get_value ^^
-    compile_unboxed_const 1l ^^ (* true literal *)
-    G.i (Compare (Wasm.Values.I32 I32Op.Ne)) ^^
-    get_value ^^
-    compile_bitand_const 0x1l ^^
-    G.i (Binary (Wasm.Values.I32 I32Op.And))
-
-  (* Note: `true` is not handled here, needs specific check where needed. *)
   let if_tagged_scalar env retty is1 is2 =
     compile_bitand_const 0x1l ^^
     E.if_ env retty is2 is1
@@ -1436,7 +1422,6 @@ module BitTagged = struct
   (* With two bit-tagged pointers on the stack, decide
      whether both are scalars and invoke is1 (the fast path)
      if so, and otherwise is2 (the slow path).
-     Note: `true` is not handled here, needs specific check where needed.
   *)
   let if_both_tagged_scalar env retty is1 is2 =
     G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
@@ -1499,25 +1484,20 @@ module BitTagged = struct
 end (* BitTagged *)
 
 module Tagged = struct
-  (* Tagged objects all have an object header consisting of a tag and a forwarding pointer.
-     The tag is to describe their runtime type and serves to traverse the heap 
-     (serialization, GC), but also for objectification of arrays.
+  (* Tagged objects have, well, a tag to describe their runtime type.
+     This tag is used to traverse the heap (serialization, GC), but also
+     for objectification of arrays.
 
-     The tag is a word at the beginning of the object.
+     The tag is a word at the beginning of the object. 
+     It also serves to encode the forwarding pointer used by the incremental GC.
+     The forwarding pointer is identified as skewed address to the new object
+     with a value > `max_tag`. During incremental GC, the tag must not be modified
+     for array slicing. Stabilization changes the tags to specific unskewed values
+     that are only visible to the stabilization logic (the incremental GC is stopped
+     at that time).
 
-     The (skewed) forwarding pointer supports object moving in the incremental garbage collection.
-
-         obj header
-     ┌──────┬─────────┬──
-     │ tag  │ fwd ptr │ ...
-     └──────┴─────────┴──
-
-     The copying GC requires that all tagged objects in the dynamic heap space have at least
-     two words in order to replace them by `Indirection`. This condition is met as the 
-     object header already occupies two words, and all objects except `Null` even have a size 
-     of at least three words. The `Null` object is a singleton and only lives in static heap 
-     space and is therefore not replaced by `Indirection` during copying GC. (Without forwarding 
-     pointer in the header, the object would be smaller than `Indirection`.)
+     All tagged heap objects have a size of at least two words
+     (important for GC, which replaces them with an Indirection).
 
      Attention: This mapping is duplicated in these places
        * here
@@ -1581,26 +1561,24 @@ module Tagged = struct
     | CoercionFailure -> 0xfffffffel
     | StableSeen -> 0xffffffffl
 
-  (* The tag *)
-  let header_size = 2l
-  let tag_field = 0l
-  let forwarding_pointer_field = 1l
+  let max_tag = 31l
 
-  (* Note: Post allocation barrier must be applied after initialization *)
-  let alloc env size tag =
-    let (set_object, get_object) = new_local env "new_object" in
-    Heap.alloc env size ^^
-    set_object ^^ get_object ^^
-    compile_unboxed_const (int_of_tag tag) ^^
-    Heap.store_field tag_field ^^
-    get_object ^^ (* object pointer *)
-    get_object ^^ (* forwarding pointer *)
-    Heap.store_field forwarding_pointer_field ^^
-    get_object
+  (* The tag *)
+  let header_size = 1l
+  let tag_field = 0l
 
   let load_forwarding_pointer env =
     (if !Flags.gc_strategy = Flags.Incremental then
-      Heap.load_field forwarding_pointer_field
+      let (set_object, get_object) = new_local env "object" in
+      set_object ^^ get_object ^^
+      Heap.load_field tag_field ^^
+      compile_unboxed_const max_tag ^^
+      G.i (Compare (Wasm.Values.I32 I32Op.GtU)) ^^
+      G.if0 (
+        get_object ^^ Heap.load_field tag_field
+      ) (
+        get_object
+      )
     else
       G.nop)
   
@@ -1621,9 +1599,9 @@ module Tagged = struct
         G.i (Binary (Wasm.Values.I32 I32Op.Add))
       else G.nop) ^^
       set_object ^^ get_object ^^
-      load_forwarding_pointer env ^^
-      get_object ^^
-      G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+      Heap.load_field tag_field ^^
+      compile_unboxed_const max_tag ^^
+      G.i (Compare (Wasm.Values.I32 I32Op.LeU)) ^^
       E.else_trap_with env "missing object forwarding"  ^^
       get_object ^^
       (if unskewed then
@@ -1761,65 +1739,28 @@ module Tagged = struct
     )
   
   let obj env tag element_instructions : G.t =
-    let n = List.length element_instructions in
-    let size = (Int32.add (Wasm.I32.of_int_u n) header_size) in
     let (set_object, get_object) = new_local env "new_object" in
-    alloc env size tag ^^
+    (Heap.obj env @@
+      compile_unboxed_const (int_of_tag tag) ::
+      element_instructions) ^^
     set_object ^^
-    let init_elem idx instrs : G.t =
-      get_object ^^
-      instrs ^^
-      Heap.store_field (Int32.add (Wasm.I32.of_int_u idx) header_size)
-    in
-    G.concat_mapi init_elem element_instructions ^^
     allocation_barrier env get_object ^^
     get_object
-
-  let new_static_obj env tag payload =
-    let payload = StaticBytes.as_bytes payload in
-    let header_size = Int32.(mul Heap.word_size header_size) in
-    let size = Int32.(add header_size (Int32.of_int (String.length payload))) in
-    let unskewed_ptr = E.reserve_static_memory env size in
-    let skewed_ptr = Int32.(add unskewed_ptr ptr_skew) in
-    let tag = bytes_of_int32 (int_of_tag tag) in
-    let forward = bytes_of_int32 skewed_ptr in (* forwarding pointer *)
-    let data = tag ^ forward ^ payload in
-    E.write_static_memory env unskewed_ptr data;
-    skewed_ptr
-
-  let shared_static_obj env tag payload =
-    let tag_word = bytes_of_int32 (int_of_tag tag) in
-    let payload_bytes = StaticBytes.as_bytes payload in
-    let key = tag_word ^ payload_bytes in
-    match E.object_pool_find env key with
-    | Some ptr -> ptr (* no forwarding pointer dereferencing needed as static objects do not move *)
-    | None ->
-      let ptr = new_static_obj env tag payload in
-      E.object_pool_add env key ptr;
-      ptr
 
 end (* Tagged *)
 
 module MutBox = struct
-  (* 
-      Mutable heap objects 
+  (* Mutable heap objects *)
   
-       ┌──────┬─────┬─────────┐
-       │ obj header │ payload │
-       └──────┴─────┴─────────┘
-
-     The object header includes the obj tag (MutBox) and the forwarding pointer.
-  *)
-
   let field = Tagged.header_size
 
   let alloc env =
     Tagged.obj env Tagged.MutBox [ compile_unboxed_zero ]
 
   let static env =
-    let ptr = Tagged.new_static_obj env Tagged.MutBox StaticBytes.[
-      I32 0l; (* zero *)
-    ] in
+    let tag = bytes_of_int32 (Tagged.int_of_tag Tagged.MutBox) in
+    let zero = bytes_of_int32 0l in
+    let ptr = E.add_mutable_static_bytes env (tag ^ zero) in
     E.add_static_root env ptr;
     ptr
     
@@ -1871,7 +1812,9 @@ module Opt = struct
 
   (* This relies on the fact that add_static deduplicates *)
   let null_vanilla_lit env : int32 =
-    Tagged.shared_static_obj env Tagged.Null []
+    E.add_static env StaticBytes.[
+      I32 Tagged.(int_of_tag Null);
+    ]
     
   let null_lit env =
     compile_unboxed_const (null_vanilla_lit env)
@@ -1885,21 +1828,21 @@ module Opt = struct
   let inject env e =
     e ^^
     Func.share_code1 env "opt_inject" ("x", I32Type) [I32Type] (fun env get_x ->
-      get_x ^^ BitTagged.is_pointer env ^^
-      E.if_ env [I32Type] 
+      get_x ^^ BitTagged.if_tagged_scalar env [I32Type]
+        ( get_x ) (* default, no wrapping *)
         ( get_x ^^ Tagged.branch_default env [I32Type]
           ( get_x ) (* default, no wrapping *)
           [ Tagged.Null,
             (* NB: even ?null does not require allocation: We use a static
                singleton for that: *)
-            compile_unboxed_const (Tagged.shared_static_obj env Tagged.Some StaticBytes.[
+            compile_unboxed_const (E.add_static env StaticBytes.[
+              I32 Tagged.(int_of_tag Some);
               I32 (null_vanilla_lit env)
             ])
           ; Tagged.Some,
             Tagged.obj env Tagged.Some [get_x]
           ]
         )
-        ( get_x ) (* default, no wrapping *)
     )
 
   (* This function is used where conceptually, Opt.inject should be used, but
@@ -1914,8 +1857,8 @@ module Opt = struct
 
   let project env =
     Func.share_code1 env "opt_project" ("x", I32Type) [I32Type] (fun env get_x ->
-      get_x ^^ BitTagged.is_pointer env ^^
-      E.if_ env [I32Type] 
+      get_x ^^ BitTagged.if_tagged_scalar env [I32Type]
+        ( get_x ) (* default, no wrapping *)
         ( get_x ^^ Tagged.branch_default env [I32Type]
           ( get_x ) (* default, no wrapping *)
           [ Tagged.Some,
@@ -1924,7 +1867,6 @@ module Opt = struct
             E.trap_with env "Internal error: opt_project: null!"
           ]
         )
-        ( get_x ) (* default, no wrapping *)
     )
 
 end (* Opt *)
@@ -1934,11 +1876,10 @@ module Variant = struct
      optimize and squeeze it in the Tagged tag. We can also later support unboxing
      variants with an argument of type ().
 
-       ┌──────┬─────┬────────────┬─────────┐
-       │ obj header │ varianttag │ payload │
-       └──────┴─────┴────────────┴─────────┘
+       ┌─────────┬────────────┬─────────┐
+       │ heaptag │ varianttag │ payload │
+       └─────────┴────────────┴─────────┘
 
-     The object header includes the obj tag (TAG_VARIANT) and the forwarding pointer.
   *)
 
   let variant_tag_field = Tagged.header_size
@@ -1964,10 +1905,11 @@ module Variant = struct
     compile_eq_const (hash_variant_label env l)
 
   let vanilla_lit env i ptr =
-    Tagged.shared_static_obj env Tagged.Variant StaticBytes.[
-      I32 (hash_variant_label env i);
-      I32 ptr
-    ]
+    E.add_static env StaticBytes.[
+        I32 Tagged.(int_of_tag Variant);
+        I32 (hash_variant_label env i);
+        I32 ptr
+      ]
 
 end (* Variant *)
 
@@ -1978,11 +1920,9 @@ module Closure = struct
 
      The structure of a closure is:
 
-       ┌──────┬─────┬───────┬──────┬──────────────┐
-       │ obj header │ funid │ size │ captured ... │
-       └──────┴─────┴───────┴──────┴──────────────┘
-
-     The object header includes the object tag (TAG_CLOSURE) and the forwarding pointer.
+       ┌─────┬───────┬──────┬──────────────┐
+       │ tag │ funid │ size │ captured ... │
+       └─────┴───────┴──────┴──────────────┘
 
   *)
   let header_size = Int32.add Tagged.header_size 2l
@@ -2023,7 +1963,8 @@ module Closure = struct
     FakeMultiVal.load env (Lib.List.make n_res I32Type)
 
   let static_closure env fi : int32 =
-    Tagged.shared_static_obj env Tagged.Closure StaticBytes.[
+    E.add_static env StaticBytes.[
+      I32 Tagged.(int_of_tag Closure);
       I32 (E.add_fun_ptr env fi);
       I32 0l
     ]
@@ -2039,11 +1980,9 @@ module BoxedWord64 = struct
 
      The heap layout of a BoxedWord64 is:
 
-       ┌──────┬─────┬─────┬─────┐
-       │ obj header │    i64    │
-       └──────┴─────┴─────┴─────┘
-
-     The object header includes the object tag (Bits64) and the forwarding pointer.
+       ┌─────┬─────┬─────┐
+       │ tag │    i64    │
+       └─────┴─────┴─────┘
 
   *)
 
@@ -2053,14 +1992,16 @@ module BoxedWord64 = struct
     if BitTagged.can_tag_const i
     then BitTagged.tag_const i
     else
-      Tagged.shared_static_obj env Tagged.Bits64 StaticBytes.[
+      E.add_static env StaticBytes.[
+        I32 Tagged.(int_of_tag Bits64);
         I64 i
       ]
 
   let compile_box env compile_elem : G.t =
     let (set_i, get_i) = new_local env "boxed_i64" in
-    Tagged.alloc env 4l Tagged.Bits64 ^^
+    Heap.alloc env 3l ^^
     set_i ^^
+    get_i ^^ Tagged.(store_tag env Bits64) ^^
     get_i ^^ compile_elem ^^ Tagged.store_field64 env payload_field ^^
     Tagged.allocation_barrier env get_i ^^
     get_i
@@ -2158,11 +2099,9 @@ module BoxedSmallWord = struct
 
      The heap layout of a BoxedSmallWord is:
 
-       ┌──────┬─────┬─────┐
-       │ obj header │ i32 │
-       └──────┴─────┴─────┘
-
-     The object header includes the object tag (Bits32) and the forwarding pointer.
+       ┌─────┬─────┐
+       │ tag │ i32 │
+       └─────┴─────┘
 
   *)
 
@@ -2172,14 +2111,16 @@ module BoxedSmallWord = struct
     if BitTagged.can_tag_const (Int64.of_int (Int32.to_int i))
     then BitTagged.tag_const (Int64.of_int (Int32.to_int i))
     else
-      Tagged.shared_static_obj env Tagged.Bits32 StaticBytes.[
+      E.add_static env StaticBytes.[
+        I32 Tagged.(int_of_tag Bits32);
         I32 i
       ]
 
   let compile_box env compile_elem : G.t =
     let (set_i, get_i) = new_local env "boxed_i32" in
-    Tagged.alloc env 3l Tagged.Bits32 ^^
+    Heap.alloc env 2l ^^
     set_i ^^
+    get_i ^^ Tagged.(store_tag env Bits32) ^^
     get_i ^^ compile_elem ^^ Tagged.store_field env payload_field ^^
     Tagged.allocation_barrier env get_i ^^
     get_i
@@ -2396,15 +2337,14 @@ module Float = struct
 
      The heap layout of a Float is:
 
-       ┌──────┬─────┬─────┬─────┐
-       │ obj header │    f64    │
-       └──────┴─────┴─────┴─────┘
+       ┌─────┬─────┬─────┐
+       │ tag │    f64    │
+       └─────┴─────┴─────┘
 
      For now the tag stored is that of a Bits64, because the payload is
      treated opaquely by the RTS. We'll introduce a separate tag when the need of
      debug inspection (or GC representation change) arises.
 
-     The object header includes the object tag (Bits64) and the forwarding pointer.
   *)
 
   let payload_field = Tagged.header_size
@@ -2412,14 +2352,16 @@ module Float = struct
   let compile_unboxed_const f = G.i (Const (nr (Wasm.Values.F64 f)))
   
   let vanilla_lit env f =
-    Tagged.shared_static_obj env Tagged.Bits64 StaticBytes.[
+    E.add_static env StaticBytes.[
+      I32 Tagged.(int_of_tag Bits64);
       I64 (Wasm.F64.to_bits f)
     ]
 
   let box env = Func.share_code1 env "box_f64" ("f", F64Type) [I32Type] (fun env get_f ->
     let (set_i, get_i) = new_local env "boxed_f64" in
-    Tagged.alloc env 4l Tagged.Bits64 ^^
+    Heap.alloc env 3l ^^
     set_i ^^
+    get_i ^^ Tagged.(store_tag env Bits64) ^^
     get_i ^^ get_f ^^ Tagged.store_field_float64 env payload_field ^^
     Tagged.allocation_barrier env get_i ^^
     get_i
@@ -3274,7 +3216,8 @@ module BigNumLibtommath : BigNumType = struct
     let size = Int32.of_int (List.length limbs) in
 
     (* cf. mp_int in tommath.h *)
-    let ptr = Tagged.shared_static_obj env Tagged.BigInt StaticBytes.[
+    let ptr = E.add_static env StaticBytes.[
+      I32 Tagged.(int_of_tag BigInt);
       I32 size; (* used *)
       I32 size; (* size; relying on Heap.word_size == size_of(mp_digit) *)
       I32 sign;
@@ -3357,11 +3300,11 @@ module Object = struct
  (* An object with a mutable field1 and immutable field 2 has the following
     heap layout:
 
-    ┌──────┬─────┬──────────┬──────────┬─────────┬─────────────┬───┐
-    │ obj header │ n_fields │ hash_ptr │ ind_ptr │ field2_data │ … │
-    └──────┴─────┴──────────┴┬─────────┴┬────────┴─────────────┴───┘
-         ┌───────────────────┘          │
-         │   ┌──────────────────────────┘
+    ┌────────┬──────────┬──────────┬─────────┬─────────────┬───┐
+    │ Object │ n_fields │ hash_ptr │ ind_ptr │ field2_data │ … │
+    └────────┴──────────┴┬─────────┴┬────────┴─────────────┴───┘
+         ┌───────────────┘          │
+         │   ┌──────────────────────┘
          │   ↓
          │  ╶─┬────────┬─────────────┐
          │    │ ObjInd │ field1_data │
@@ -3369,8 +3312,6 @@ module Object = struct
         ╶─┬─────────────┬─────────────┬───┐
           │ field1_hash │ field2_hash │ … │
           └─────────────┴─────────────┴───┘
-
-    The object header includes the object tag (Object) and the forwarding pointer.
 
     The field hash array lives in static memory (so no size header needed).
     The hash_ptr is skewed.
@@ -3405,7 +3346,8 @@ module Object = struct
 
     let hash_ptr = E.add_static env StaticBytes.[ i32s hashes ] in
 
-    Tagged.shared_static_obj env Tagged.Object StaticBytes.[
+    E.add_static env StaticBytes.[
+      I32 Tagged.(int_of_tag Object);
       I32 (Int32.of_int (List.length fs));
       I32 hash_ptr;
       i32s ptrs;
@@ -3435,9 +3377,13 @@ module Object = struct
 
     (* Allocate memory *)
     let (set_ri, get_ri, ri) = new_local_ env I32Type "obj" in
-    Tagged.alloc env (Int32.add header_size sz) Tagged.Object ^^
+    Heap.alloc env (Int32.add header_size sz) ^^
     set_ri ^^
     
+    (* Set tag *)
+    get_ri ^^
+    Tagged.(store_tag env Object) ^^
+
     (* Set size *)
     get_ri ^^
     compile_unboxed_const sz ^^
@@ -3553,11 +3499,9 @@ end (* Object *)
 module Blob = struct
   (* The layout of a blob object is
 
-     ┌──────┬─────┬─────────┬──────────────────┐
-     │ obj header │ n_bytes │ bytes (padded) … │
-     └──────┴─────┴─────────┴──────────────────┘
-
-    The object header includes the object tag (Blob) and the forwarding pointer.
+     ┌─────┬─────────┬──────────────────┐
+     │ tag │ n_bytes │ bytes (padded) … │
+     └─────┴─────────┴──────────────────┘
 
     This heap object is used for various kinds of binary, non-pointer data.
 
@@ -3580,7 +3524,8 @@ module Blob = struct
     )
 
   let vanilla_lit env s =
-    Tagged.shared_static_obj env Tagged.Blob StaticBytes.[
+    E.add_static env StaticBytes.[
+      I32 Tagged.(int_of_tag Blob);
       I32 (Int32.of_int (String.length s));
       Bytes s;
     ]
@@ -3764,11 +3709,9 @@ module Text = struct
 
   (* The layout of a concatenation node is
 
-     ┌──────┬─────┬─────────┬───────┬───────┐
-     │ obj header │ n_bytes │ text1 │ text2 │
-     └──────┴─────┴─────────┴───────┴───────┘
-
-    The object header includes the object tag (TAG_CONCAT defined in rts/types.rs) and the forwarding pointer
+     ┌─────┬─────────┬───────┬───────┐
+     │ tag │ n_bytes │ text1 │ text2 │
+     └─────┴─────────┴───────┴───────┘
 
     This is internal to rts/text.c, with the exception of GC-related code.
   *)
@@ -3840,11 +3783,9 @@ end (* Text *)
 module Arr = struct
   (* Object layout:
 
-     ┌──────┬─────┬──────────┬────────┬───┐
-     │ obj header │ n_fields │ field1 │ … │
-     └──────┴─────┴──────────┴────────┴───┘
-     
-     The object  header includes the object tag (Array) and the forwarding pointer.
+     ┌─────┬──────────┬────────┬───┐
+     │ tag │ n_fields │ field1 │ … │
+     └─────┴──────────┴────────┴───┘
 
      No difference between mutable and immutable arrays.
   *)
@@ -3908,7 +3849,8 @@ module Arr = struct
      | _ -> assert false
 
   let vanilla_lit env ptrs =
-    Tagged.shared_static_obj env Tagged.Array StaticBytes.[
+    E.add_static env StaticBytes.[
+      I32 Tagged.(int_of_tag Array);
       I32 (Int32.of_int (List.length ptrs));
       i32s ptrs;
     ]
@@ -5625,32 +5567,12 @@ module MakeSerialization (Strm : Stream) = struct
         get_ref_size ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ set_ref_size ^^
         set_inc ^^ inc_data_size get_inc
       in
-      
-      (* the incremental GC leaves array slice information in tag,
-         the slice information can be removed and the tag reset to array
-         as the GC can resume marking from the array beginning *)
-      let clear_array_slicing =
-        let (set_temp, get_temp) = new_local env "temp" in
-        set_temp ^^ 
-        get_temp ^^ compile_unboxed_const Tagged.(int_of_tag StableSeen) ^^
-        G.i (Compare (Wasm.Values.I32 I32Op.Ne)) ^^
-        get_temp ^^ compile_unboxed_const Tagged.(int_of_tag CoercionFailure) ^^
-        G.i (Compare (Wasm.Values.I32 I32Op.Ne)) ^^
-        G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
-        get_temp ^^ compile_unboxed_const Tagged.(int_of_tag ArraySliceMinimum) ^^
-        G.i (Compare (Wasm.Values.I32 I32Op.GeS)) ^^
-        G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
-        G.if1 I32Type begin
-          (compile_unboxed_const Tagged.(int_of_tag Array))
-        end begin
-          get_temp
-        end
-      in
 
       let size_alias size_thing =
+        assert false; (* tag interference with forwarding pointer is not yet solved *)
         (* see Note [mutable stable values] *)
         let (set_tag, get_tag) = new_local env "tag" in
-        get_x ^^ Tagged.load_tag env ^^ clear_array_slicing ^^ set_tag ^^
+        get_x ^^ Tagged.load_tag env ^^ set_tag ^^
         (* Sanity check *)
         get_tag ^^ compile_eq_const Tagged.(int_of_tag StableSeen) ^^
         get_tag ^^ compile_eq_const Tagged.(int_of_tag MutBox) ^^
@@ -5916,7 +5838,9 @@ module MakeSerialization (Strm : Stream) = struct
      comparison.
   *)
   let coercion_error_value env : int32 =
-    Tagged.shared_static_obj env Tagged.CoercionFailure []
+    E.add_static env StaticBytes.[
+      I32 Tagged.(int_of_tag CoercionFailure);
+    ]
 
   (* See Note [Candid subtype checks] *)
   let with_rel_buf_opt env extended get_typtbl_size1 f =
@@ -6965,7 +6889,7 @@ module BlobStream : Stream = struct
   let name_for fn_name ts = "@Bl_" ^ fn_name ^ "<" ^ Typ_hash.typ_seq_hash ts ^ ">"
 
   let absolute_offset env get_token =
-    let filled_field = Int32.add Blob.len_field 9l in (* see invariant in `stream.rs` *)
+    let filled_field = Int32.add Blob.len_field 8l in (* see invariant in `stream.rs` *)
     get_token ^^ Tagged.load_field_unskewed env filled_field
 
   let checkpoint _env _get_token = G.i Drop
@@ -7061,7 +6985,7 @@ module Stabilization = struct
       G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
       E.call_import env "rts" "stream_stable_dest"
 
-    let ptr64_field = Int32.add Blob.len_field 2l (* see invariant in `stream.rs`, padding for 64-bit after Stream header *)
+    let ptr64_field = Int32.add Blob.len_field 1l (* see invariant in `stream.rs` *)
 
     let terminate env get_token get_data_size header_size =
       get_token ^^
@@ -7911,9 +7835,13 @@ module FuncDec = struct
 
       let code =
         (* Allocate a heap object for the closure *)
-        Tagged.alloc env (Int32.add Closure.header_size len) Tagged.Closure ^^
+        Heap.alloc env (Int32.add Closure.header_size len) ^^
         set_clos ^^
 
+        (* Store the tag *)
+        get_clos ^^
+        Tagged.(store_tag env Closure) ^^
+        
         (* Store the function pointer number: *)
         get_clos ^^
         compile_unboxed_const (E.add_fun_ptr env fi) ^^
