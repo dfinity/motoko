@@ -1594,8 +1594,8 @@ module Tagged = struct
     else
       G.nop)
   
-  let store_tag env tag =
-    load_forwarding_pointer env ^^
+  let store_initial_tag env tag =
+    (* no forwarding since the tag is initialized in a new object *)
     compile_unboxed_const (int_of_tag tag) ^^
     Heap.store_field tag_field
     
@@ -2014,7 +2014,7 @@ module BoxedWord64 = struct
     let (set_i, get_i) = new_local env "boxed_i64" in
     Heap.alloc env 3l ^^
     set_i ^^
-    get_i ^^ Tagged.(store_tag env Bits64) ^^
+    get_i ^^ Tagged.(store_initial_tag env Bits64) ^^
     get_i ^^ compile_elem ^^ Tagged.store_field64 env payload_field ^^
     Tagged.allocation_barrier env get_i ^^
     get_i
@@ -2133,7 +2133,7 @@ module BoxedSmallWord = struct
     let (set_i, get_i) = new_local env "boxed_i32" in
     Heap.alloc env 2l ^^
     set_i ^^
-    get_i ^^ Tagged.(store_tag env Bits32) ^^
+    get_i ^^ Tagged.(store_initial_tag env Bits32) ^^
     get_i ^^ compile_elem ^^ Tagged.store_field env payload_field ^^
     Tagged.allocation_barrier env get_i ^^
     get_i
@@ -2374,7 +2374,7 @@ module Float = struct
     let (set_i, get_i) = new_local env "boxed_f64" in
     Heap.alloc env 3l ^^
     set_i ^^
-    get_i ^^ Tagged.(store_tag env Bits64) ^^
+    get_i ^^ Tagged.(store_initial_tag env Bits64) ^^
     get_i ^^ get_f ^^ Tagged.store_field_float64 env payload_field ^^
     Tagged.allocation_barrier env get_i ^^
     get_i
@@ -3395,7 +3395,7 @@ module Object = struct
 
     (* Set tag *)
     get_ri ^^
-    Tagged.(store_tag env Object) ^^
+    Tagged.(store_initial_tag env Object) ^^
 
     (* Set size *)
     get_ri ^^
@@ -7918,7 +7918,7 @@ module FuncDec = struct
 
         (* Store the tag *)
         get_clos ^^
-        Tagged.(store_tag env Closure) ^^
+        Tagged.(store_initial_tag env Closure) ^^
 
         (* Store the function pointer number: *)
         get_clos ^^
