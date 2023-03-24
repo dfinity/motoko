@@ -8780,16 +8780,18 @@ let compile_load_field env typ name =
 
 
 (* compile_lexp is used for expressions on the left of an assignment operator.
-   Produces some preparation code, an expected stack rep, and some pure code taking the value in that rep*)
-let rec compile_lexp (env : E.t) ae lexp =
+   Produces
+   * preparation code, to run first
+   * an expected stack rep
+   * code that expects the value to be written in that stackrep, and consumes it
+*)
+let rec compile_lexp (env : E.t) ae lexp : G.t * SR.t * G.t =
   (fun (code, sr, fill_code) -> G.(with_region lexp.at code, sr, with_region lexp.at fill_code)) @@
   match lexp.it, !Flags.gc_strategy with
   | VarLE var, _ -> Var.set_val env ae var
   | IdxLE (e1, e2), Flags.Generational ->
     let (set_field, get_field) = new_local env "field" in
-    compile_exp_vanilla env ae e1 ^^ (* offset to array *)
-    compile_exp_vanilla env ae e2 ^^ (* idx *)
-    Arr.idx_bigint env ^^
+    compile_array_index env ae e1 e2 ^^
     set_field ^^ (* peepholes to tee *)
     get_field,
     SR.Vanilla,
@@ -8798,9 +8800,7 @@ let rec compile_lexp (env : E.t) ae lexp =
     compile_add_const ptr_unskew ^^
     E.call_import env "rts" "write_barrier"
   | IdxLE (e1, e2), _ ->
-    compile_exp_vanilla env ae e1 ^^ (* offset to array *)
-    compile_exp_vanilla env ae e2 ^^ (* idx *)
-    Arr.idx_bigint env,
+    compile_array_index env ae e1 e2,
     SR.Vanilla,
     store_ptr
   | DotLE (e, n), Flags.Generational ->
@@ -8820,6 +8820,14 @@ let rec compile_lexp (env : E.t) ae lexp =
     Object.idx env e.note.Note.typ n,
     SR.Vanilla,
     store_ptr
+
+(* Common code for a[e] as lexp and as exp.
+Traps or pushes the pointer to the element on the stack
+*)
+and compile_array_index env ae e1 e2 =
+    compile_exp_vanilla env ae e1 ^^ (* offset to array *)
+    compile_exp_vanilla env ae e2 ^^ (* idx *)
+    Arr.idx_bigint env
 
 and compile_prim_invocation (env : E.t) ae p es at =
   (* for more concise code when all arguments and result use the same sr *)
@@ -8966,9 +8974,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     Arr.lit env (List.map (compile_exp_vanilla env ae) es)
   | IdxPrim, [e1; e2] ->
     SR.Vanilla,
-    compile_exp_vanilla env ae e1 ^^ (* offset to array *)
-    compile_exp_vanilla env ae e2 ^^ (* idx *)
-    Arr.idx_bigint env ^^
+    compile_array_index env ae e1 e2 ^^
     load_ptr
   | NextArrayOffset spacing, [e] ->
     let advance_by =
