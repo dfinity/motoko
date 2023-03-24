@@ -10356,6 +10356,7 @@ and compile_const_decs env pre_ae decs : (VarEnv.t -> VarEnv.t) * (E.t -> VarEnv
   go pre_ae decs
 
 and const_exp_matches_pat env pat exp : bool =
+  assert exp.note.Note.const;
   match exp.it with
   | PrimE (TagPrim _, _) ->
      let c, _ = compile_const_exp env VarEnv.empty_ae exp in
