@@ -1574,7 +1574,7 @@ module Tagged = struct
       Heap.load_field tag_field ^^
       compile_unboxed_const max_tag ^^
       G.i (Compare (Wasm.Values.I32 I32Op.GtU)) ^^
-      G.if0 (
+      G.if1 I32Type (
         get_object ^^ Heap.load_field tag_field
       ) (
         get_object
@@ -5551,7 +5551,7 @@ module MakeSerialization (Strm : Stream) = struct
     set_object ^^
     get_object ^^ 
     Heap.load_field Tagged.tag_field ^^ is_serialization_tag env ^^
-    G.if0 (
+    G.if1 I32Type (
       get_object
     ) (
       get_object ^^ Tagged.load_forwarding_pointer env
