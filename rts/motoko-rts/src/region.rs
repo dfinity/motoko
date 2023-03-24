@@ -596,6 +596,7 @@ pub(crate) unsafe fn region_store<M: Memory>(_mem: &mut M, r: Value, offset: u64
         r.check_relative_into_absolute_offset(offset);
     }
     // to do -- handle non-contiguous regions
+    println!(80, "region_store({}, len={})", abs_off, src.len());
     crate::ic0_stable::nicer::write(abs_off, src);
 }
 

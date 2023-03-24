@@ -48,7 +48,7 @@ actor {
     var size : Nat64 = 0;
     let max = i + 65536;
     while (i + size < max) {
-
+      P.debugPrint("i = " # debug_show i # "; size = " # debug_show size);
       P.debugPrint("inspecting the blob at offset " # debug_show i # " and expecting all zeros...");
       P.debugPrint(debug_show StableMemory.loadBlob(i, P.nat64ToNat(size)));
 

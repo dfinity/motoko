@@ -107,7 +107,9 @@ impl Memory for IcMemory {
 
         HP = new_hp as u32;
 
-        Value::from_ptr(old_hp as usize)
+	let v = Value::from_ptr(old_hp as usize);
+	println!(80, "alloc_words(bytes={:?}) ~~> {:?}", bytes, v);
+	v
     }
 }
 
