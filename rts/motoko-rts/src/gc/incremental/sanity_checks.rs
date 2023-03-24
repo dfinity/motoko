@@ -80,12 +80,12 @@ impl<'a, M: Memory> MemoryChecker<'a, M> {
         }
         if !self.visited.contains(value) {
             self.visited.insert(self.mem, value);
-            self.mark_stack.push(self.mem, value);
+            self.mark_stack.push(self.mem, value, 0);
         }
     }
 
     unsafe fn check_all_reachable(&mut self) {
-        while let Some(object) = self.mark_stack.pop() {
+        while let Some((object, _)) = self.mark_stack.pop() {
             self.check_fields(object.get_ptr() as *mut Obj);
         }
     }
@@ -130,7 +130,7 @@ impl<'a, M: Memory> MemoryChecker<'a, M> {
             assert!(!partition.is_free());
             assert!(address >= partition.dynamic_space_start());
         }
-        let size = block_size(address).to_bytes().as_usize();
+        let size = object_size(address).to_bytes().as_usize();
         if size > PARTITION_SIZE {
             let number_of_partitions = (size + PARTITION_SIZE - 1) / PARTITION_SIZE;
             for index in partition_index..partition_index + number_of_partitions {
@@ -138,7 +138,7 @@ impl<'a, M: Memory> MemoryChecker<'a, M> {
             }
         } else {
             assert!(
-                address + block_size(address).to_bytes().as_usize()
+                address + object_size(address).to_bytes().as_usize()
                     <= partition.dynamic_space_end()
             );
         }
