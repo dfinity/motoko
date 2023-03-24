@@ -5547,39 +5547,45 @@ module MakeSerialization (Strm : Stream) = struct
     G.i (Binary (Wasm.Values.I32 I32Op.Or))
 
   let forward_during_serialization env =
-    let (set_object, get_object) = new_local env "object" in
-    set_object ^^
-    get_object ^^ 
-    Heap.load_field Tagged.tag_field ^^ is_serialization_tag env ^^
-    G.if1 I32Type (
-      get_object
-    ) (
-      get_object ^^ Tagged.load_forwarding_pointer env
-    )
+    (if !Flags.gc_strategy == Flags.Incremental then
+      let (set_object, get_object) = new_local env "object" in
+      set_object ^^
+      get_object ^^ 
+      Heap.load_field Tagged.tag_field ^^ is_serialization_tag env ^^
+      G.if1 I32Type (
+        get_object
+      ) (
+        get_object ^^ Tagged.load_forwarding_pointer env
+      )
+    else G.nop)
 
   (* Stream offsets are represented as scalar values in the tag such that 
      they can be distinguished from forwarding pointers *)
   let stream_offset_to_tag env =
-    let (set_offset, get_offset) = new_local env "offset" in
-    set_offset ^^
-    get_offset ^^
-    compile_unboxed_const Tagged.max_tag ^^
-    G.i (Compare (Wasm.Values.I32 I32Op.LeU)) ^^
-    E.then_trap_with env "Too small offset" ^^
-    get_offset ^^
-    G.i (Unary (Wasm.Values.I32 I32Op.Clz)) ^^
-    G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
-    E.then_trap_with env "Too large offset" ^^
-    get_offset ^^ compile_shrU_const 1l
+    (if !Flags.gc_strategy == Flags.Incremental then
+      let (set_offset, get_offset) = new_local env "offset" in
+      set_offset ^^
+      get_offset ^^
+      compile_unboxed_const Tagged.max_tag ^^
+      G.i (Compare (Wasm.Values.I32 I32Op.LeU)) ^^
+      E.then_trap_with env "Too small offset" ^^
+      get_offset ^^
+      G.i (Unary (Wasm.Values.I32 I32Op.Clz)) ^^
+      G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
+      E.then_trap_with env "Too large offset" ^^
+      get_offset ^^ compile_shrU_const 1l
+    else G.nop)
 
   let tag_to_stream_offset env =
-    let (set_offset, get_offset) = new_local env "offset" in
-    set_offset ^^
-    get_offset ^^
-    compile_bitand_const 0x1l ^^
-    E.then_trap_with env "Invalid offset" ^^
-    get_offset ^^ compile_shl_const 1l
-
+    (if !Flags.gc_strategy == Flags.Incremental then
+      let (set_offset, get_offset) = new_local env "offset" in
+      set_offset ^^
+      get_offset ^^
+      compile_bitand_const 0x1l ^^
+      E.then_trap_with env "Invalid offset" ^^
+      get_offset ^^ compile_shl_const 1l
+    else G.nop)
+    
   (* Returns data (in bytes) and reference buffer size (in entries) needed *)
   let rec buffer_size env t =
     let open Type in
