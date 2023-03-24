@@ -1415,6 +1415,17 @@ module BitTagged = struct
      All arithmetic is implemented directly on that representation, see
      module TaggedSmallWord.
   *)
+  let is_pointer env =
+    let (set_value, get_value) = new_local env "is_pointer" in
+    set_value ^^
+    get_value ^^
+    compile_unboxed_const 1l ^^ (* true literal *)
+    G.i (Compare (Wasm.Values.I32 I32Op.Ne)) ^^
+    get_value ^^
+    compile_bitand_const 0x1l ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.And))
+
+  (* Note: `true` is not handled here, needs specific check where needed. *)
   let if_tagged_scalar env retty is1 is2 =
     compile_bitand_const 0x1l ^^
     E.if_ env retty is2 is1
@@ -1422,6 +1433,7 @@ module BitTagged = struct
   (* With two bit-tagged pointers on the stack, decide
      whether both are scalars and invoke is1 (the fast path)
      if so, and otherwise is2 (the slow path).
+     Note: `true` is not handled here, needs specific check where needed.
   *)
   let if_both_tagged_scalar env retty is1 is2 =
     G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
@@ -1827,8 +1839,8 @@ module Opt = struct
   let inject env e =
     e ^^
     Func.share_code1 env "opt_inject" ("x", I32Type) [I32Type] (fun env get_x ->
-      get_x ^^ BitTagged.if_tagged_scalar env [I32Type]
-        ( get_x ) (* default, no wrapping *)
+      get_x ^^ BitTagged.is_pointer env ^^
+      E.if_ env [I32Type] 
         ( get_x ^^ Tagged.branch_default env [I32Type]
           ( get_x ) (* default, no wrapping *)
           [ Tagged.Null,
@@ -1842,6 +1854,7 @@ module Opt = struct
             Tagged.obj env Tagged.Some [get_x]
           ]
         )
+        ( get_x ) (* default, no wrapping *)
     )
 
   (* This function is used where conceptually, Opt.inject should be used, but
@@ -1856,8 +1869,8 @@ module Opt = struct
 
   let project env =
     Func.share_code1 env "opt_project" ("x", I32Type) [I32Type] (fun env get_x ->
-      get_x ^^ BitTagged.if_tagged_scalar env [I32Type]
-        ( get_x ) (* default, no wrapping *)
+      get_x ^^ BitTagged.is_pointer env ^^
+      E.if_ env [I32Type] 
         ( get_x ^^ Tagged.branch_default env [I32Type]
           ( get_x ) (* default, no wrapping *)
           [ Tagged.Some,
@@ -1866,6 +1879,7 @@ module Opt = struct
             E.trap_with env "Internal error: opt_project: null!"
           ]
         )
+        ( get_x ) (* default, no wrapping *)
     )
 
 end (* Opt *)
