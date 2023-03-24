@@ -120,6 +120,8 @@ impl RegionObject {
 
         // Where is that block located in stable memory (global rank)?
         let block_id = av.get_ith_block_id(block_rank as u32);
+	
+	println!(80, "intra-block index is {} (block is {:?})", intra_block_index, block_id);
 
         // address of the byte to load from stable memory:
         let offset = meta_data::offset::BLOCK_ZERO

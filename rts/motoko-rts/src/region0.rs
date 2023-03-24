@@ -110,7 +110,7 @@ pub unsafe fn region0_store_blob<M: Memory>(mem: &mut M, offset: u64, val: u32) 
     let len = blob.len();
     let bytes = blob.payload_const();
     let bytes: &[u8] = core::slice::from_raw_parts(bytes, len.0 as usize);
-    println!(80, "store_blob offset={:?} val={:?}", offset, val);
+    println!(80, "store_blob offset={:?} val={:?}", offset, (val as usize) as *const ());
     region0_store(mem, offset, bytes)
 }
 
