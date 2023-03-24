@@ -57,3 +57,5 @@ assert ([#Monday, #Tuesday, #Wednesday, #Thursday, #Friday, #Saturday, #Sunday].
 
 // check compilation of pattern matching on constant variants
 let (#const a) = #const 42;
+
+assert a == 42;

@@ -10200,7 +10200,7 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
     G.( pre_ae1, nop, (fun ae -> fill env ae; nop), unmodified)
 
   (* A special case for constant expressions *)
-  | LetD (p, e) when Ir_utils.is_irrefutable p && e.note.Note.const ->
+  | LetD (p, e) when e.note.Note.const && (Ir_utils.is_irrefutable p || const_exp_matches_pat env p e) ->
     let extend, fill = compile_const_dec env pre_ae dec in
     G.( extend pre_ae, nop, (fun ae -> fill env ae; nop), unmodified)
 
@@ -10355,6 +10355,13 @@ and compile_const_decs env pre_ae decs : (VarEnv.t -> VarEnv.t) * (E.t -> VarEnv
         (fun env ae -> fill1 env ae; fill2 env ae) in
   go pre_ae decs
 
+and const_exp_matches_pat env pat exp : bool =
+  match exp.it with
+  | PrimE (TagPrim _, _) ->
+     let c, _ = compile_const_exp env VarEnv.empty_ae exp in
+     Option.is_some (try Some (destruct_const_pat VarEnv.empty_ae pat c) with Invalid_argument _ -> None)
+  | _ -> false
+
 and destruct_const_pat ae pat const : VarEnv.t = match pat.it with
   | WildP -> ae
   | VarP v -> VarEnv.add_local_const ae v const
@@ -10372,7 +10379,7 @@ and destruct_const_pat ae pat const : VarEnv.t = match pat.it with
   | LitP _ -> raise (Invalid_argument "LitP in static irrefutable pattern")
   | OptP _ -> raise (Invalid_argument "OptP in static irrefutable pattern")
   | TagP (i, p) -> match const with
-                   | (_, Const.Tag (ic, c)) when i = ic -> assert false; destruct_const_pat ae p c
+                   | (_, Const.Tag (ic, c)) when i = ic -> destruct_const_pat ae p c
                    | (_, Const.Tag _) -> raise (Invalid_argument "TagP mismatch")
                    | _ -> assert false
 
