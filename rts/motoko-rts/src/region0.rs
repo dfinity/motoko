@@ -105,12 +105,12 @@ pub unsafe fn region0_store_float64<M: Memory>(mem: &mut M, offset: u64, val: f6
 }
 
 #[ic_mem_fn]
-pub unsafe fn region0_store_blob<M: Memory>(mem: &mut M, offset: u64, val: u32) {
-    let blob: *const Blob = Value::from_ptr(val as usize).as_blob();
+pub unsafe fn region0_store_blob<M: Memory>(mem: &mut M, offset: u64, blob: Value) {
+    let blob: *const Blob = blob.as_blob();
     let len = blob.len();
     let bytes = blob.payload_const();
     let bytes: &[u8] = core::slice::from_raw_parts(bytes, len.0 as usize);
-    println!(80, "store_blob offset={:?} val={:?}", offset, (val as usize) as *const ());
+    println!(80, "store_blob offset={:?} blob={:?}", offset, blob);
     region0_store(mem, offset, bytes)
 }
 
