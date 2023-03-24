@@ -1,0 +1,7 @@
+Could not find a
+OOPS! You've triggered a compiler bug.
+Please report this at https://github.com/dfinity/motoko/issues/new with the following details:
+
+Motoko (source XXX)
+
+Fatal error: exception Codegen.Compile.CodegenError("set_val: a missing")
