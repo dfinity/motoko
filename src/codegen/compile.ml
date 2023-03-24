@@ -5534,6 +5534,60 @@ module MakeSerialization (Strm : Stream) = struct
     set_typtbl_size (Int32.of_int (List.length offsets));
     set_typtbl_idltyps static_idltyps
 
+  let is_serialization_tag env =
+    let (set_tag, get_tag) = new_local env "original_tag" in
+    set_tag ^^
+    (* regular tag <= max_tag *)
+    get_tag ^^ compile_unboxed_const Tagged.max_tag ^^ G.i (Compare (Wasm.Values.I32 I32Op.LeU)) ^^
+    (* or special StableSeen serialization marker *)
+    get_tag ^^ compile_eq_const Tagged.(int_of_tag StableSeen) ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
+    (* or is special serialization offset in scalar (unskewed, shifted) encoding *)
+    get_tag ^^ compile_bitand_const 0x1l ^^ G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.Or))
+
+  let forward_during_serialization env =
+    let (set_object, get_object) = new_local env "object" in
+    set_object ^^
+    get_object ^^ 
+    Heap.load_field Tagged.tag_field ^^ is_serialization_tag env ^^
+    G.if0 (
+      get_object
+    ) (
+      get_object ^^ Tagged.load_forwarding_pointer env
+    )
+
+  (* Check that the tag is a normal tag that cannot be interpreted as a 
+     forwarding pointer by the regular forwarding pointer resolution logic *)
+  let check_regular_tag env get_object =
+    get_object ^^ Heap.load_field Tagged.tag_field ^^
+    compile_unboxed_const Tagged.max_tag ^^ 
+    G.i (Compare (Wasm.Values.I32 I32Op.LeU)) ^^
+    E.else_trap_with env "irregular tag"
+
+  (* Stream offsets are represented as scalar values in the tag such that 
+     they can be distinguished from forwarding pointers *)
+  let stream_offset_to_tag env =
+    let (set_offset, get_offset) = new_local env "offset" in
+    set_offset ^^
+    get_offset ^^
+    compile_unboxed_const Tagged.max_tag ^^
+    G.i (Compare (Wasm.Values.I32 I32Op.LeU)) ^^
+    E.then_trap_with env "Too small offset" ^^
+    get_offset ^^
+    G.i (Unary (Wasm.Values.I32 I32Op.Clz)) ^^
+    G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
+    E.then_trap_with env "Too large offset" ^^
+    get_offset ^^ compile_shrU_const 1l
+
+  let tag_to_stream_offset env =
+    let (set_offset, get_offset) = new_local env "offset" in
+    set_offset ^^
+    get_offset ^^
+    compile_bitand_const 0x1l ^^
+    E.then_trap_with env "Invalid offset" ^^
+    get_offset ^^ compile_shl_const 1l
+
   (* Returns data (in bytes) and reference buffer size (in entries) needed *)
   let rec buffer_size env t =
     let open Type in
@@ -5541,6 +5595,8 @@ module MakeSerialization (Strm : Stream) = struct
     let name = "@buffer_size<" ^ typ_hash t ^ ">" in
     Func.share_code1 env name ("x", I32Type) [I32Type; I32Type]
     (fun env get_x ->
+      let set_x = G.setter_for get_x in
+      get_x ^^ forward_during_serialization env ^^ set_x ^^
 
       (* Some combinators for writing values *)
       let (set_data_size, get_data_size) = new_local64 env "data_size" in
@@ -5569,10 +5625,10 @@ module MakeSerialization (Strm : Stream) = struct
       in
 
       let size_alias size_thing =
-        assert false; (* tag interference with forwarding pointer is not yet solved *)
         (* see Note [mutable stable values] *)
         let (set_tag, get_tag) = new_local env "tag" in
-        get_x ^^ Tagged.load_tag env ^^ set_tag ^^
+        (* low-level load of the tag without forwarding logic *)
+        get_x ^^ Heap.load_field Tagged.tag_field ^^ set_tag ^^
         (* Sanity check *)
         get_tag ^^ compile_eq_const Tagged.(int_of_tag StableSeen) ^^
         get_tag ^^ compile_eq_const Tagged.(int_of_tag MutBox) ^^
@@ -5593,7 +5649,8 @@ module MakeSerialization (Strm : Stream) = struct
           (* One byte marker, two words scratch space *)
           inc_data_size (compile_unboxed_const 9l) ^^
           (* Mark it as seen *)
-          get_x ^^ Tagged.(store_tag env StableSeen) ^^
+          get_x ^^ compile_unboxed_const Tagged.(int_of_tag StableSeen) ^^ 
+          Heap.store_field Tagged.tag_field ^^
           (* and descend *)
           size_thing ()
         end
@@ -5617,13 +5674,16 @@ module MakeSerialization (Strm : Stream) = struct
           size env t
           ) ts
       | Obj ((Object | Memory), fs) ->
+        check_regular_tag env get_x ^^
         G.concat_map (fun (_h, f) ->
           get_x ^^ Object.load_idx_raw env f.Type.lab ^^
           size env f.typ
           ) (sort_by_hash fs)
       | Array (Mut t) ->
+        (* access array without forwarding logic *)
         size_alias (fun () -> get_x ^^ size env (Array t))
       | Array t ->
+        check_regular_tag env get_x ^^
         size_word env (get_x ^^ Arr.len env) ^^
         get_x ^^ Arr.len env ^^
         from_0_to_n env (fun get_i ->
@@ -5632,19 +5692,23 @@ module MakeSerialization (Strm : Stream) = struct
         )
       | Prim Blob ->
         let (set_len, get_len) = new_local env "len" in
+        check_regular_tag env get_x ^^
         get_x ^^ Blob.len env ^^ set_len ^^
         size_word env get_len ^^
         inc_data_size get_len
       | Prim Text ->
         let (set_len, get_len) = new_local env "len" in
+        check_regular_tag env get_x ^^
         get_x ^^ Text.size env ^^ set_len ^^
         size_word env get_len ^^
         inc_data_size get_len
       | Opt t ->
+        check_regular_tag env get_x ^^
         inc_data_size (compile_unboxed_const 1l) ^^ (* one byte tag *)
         get_x ^^ Opt.is_some env ^^
         G.if0 (get_x ^^ Opt.project env ^^ size env t) G.nop
       | Variant vs ->
+        check_regular_tag env get_x ^^
         List.fold_right (fun (i, {lab = l; typ = t; _}) continue ->
             get_x ^^
             Variant.test_is env l ^^
@@ -5656,6 +5720,7 @@ module MakeSerialization (Strm : Stream) = struct
           ( List.mapi (fun i (_h, f) -> (i,f)) (sort_by_hash vs) )
           ( E.trap_with env "buffer_size: unexpected variant" )
       | Func _ ->
+        check_regular_tag env get_x ^^
         inc_data_size (compile_unboxed_const 1l) ^^ (* one byte tag *)
         get_x ^^ Arr.load_field env 0l ^^ size env (Obj (Actor, [])) ^^
         get_x ^^ Arr.load_field env 1l ^^ size env (Prim Text)
@@ -5665,7 +5730,8 @@ module MakeSerialization (Strm : Stream) = struct
       | Non ->
         E.trap_with env "buffer_size called on value of type None"
       | Mut t ->
-        size_alias (fun () -> get_x ^^ MutBox.load_field env ^^ size env t)
+        (* low-level load of the MutBox field without forwarding logic *)
+        size_alias (fun () -> get_x ^^ Heap.load_field MutBox.field ^^ size env t)
       | _ -> todo "buffer_size" (Arrange_ir.typ t) G.nop
       end ^^
       (* Check 32-bit overflow of buffer_size *)
@@ -5687,6 +5753,8 @@ module MakeSerialization (Strm : Stream) = struct
     Func.share_code3 env name (("x", I32Type), ("data_buffer", I32Type), ("ref_buffer", I32Type)) [I32Type; I32Type]
     (fun env get_x get_data_buf get_ref_buf ->
       let set_ref_buf = G.setter_for get_ref_buf in
+      let set_x = G.setter_for get_x in
+      get_x ^^ forward_during_serialization env ^^ set_x ^^
 
       (* Some combinators for writing values *)
       let open Strm in
@@ -5703,14 +5771,16 @@ module MakeSerialization (Strm : Stream) = struct
         (* see Note [mutable stable values] *)
         (* Check heap tag *)
         let (set_tag, get_tag) = new_local env "tag" in
-        get_x ^^ Tagged.load_tag env ^^ set_tag ^^
+        (* low-level load of the tag without forwarding logic *)
+        get_x ^^ Heap.load_field Tagged.tag_field ^^ set_tag ^^
         get_tag ^^ compile_eq_const Tagged.(int_of_tag StableSeen) ^^
         G.if0
         begin
           (* This is the real data *)
           write_byte env get_data_buf (compile_unboxed_const 0l) ^^
           (* Remember the current offset in the tag word *)
-          get_x ^^ Tagged.load_forwarding_pointer env ^^ Strm.absolute_offset env get_data_buf ^^
+          get_x ^^ 
+          Strm.absolute_offset env get_data_buf ^^ stream_offset_to_tag env ^^
           Tagged.store_field env Tagged.tag_field ^^
           (* Leave space in the output buffer for the decoder's bookkeeping *)
           write_word_32 env get_data_buf (compile_unboxed_const 0l) ^^
@@ -5731,7 +5801,8 @@ module MakeSerialization (Strm : Stream) = struct
           (* Second time we see this *)
           (* Calculate relative offset *)
           let set_offset, get_offset = new_local env "offset" in
-          get_tag ^^ Strm.absolute_offset env get_data_buf ^^ G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
+          get_tag ^^ tag_to_stream_offset env ^^
+          Strm.absolute_offset env get_data_buf ^^ G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
           set_offset ^^
           (* A sanity check *)
           get_offset ^^ compile_unboxed_const 0l ^^
@@ -5777,13 +5848,16 @@ module MakeSerialization (Strm : Stream) = struct
           write env t
         ) ts
       | Obj ((Object | Memory), fs) ->
+        check_regular_tag env get_x ^^
         G.concat_map (fun (_h, f) ->
           get_x ^^ Object.load_idx_raw env f.Type.lab ^^
           write env f.typ
         ) (sort_by_hash fs)
       | Array (Mut t) ->
+        (* access array without forwarding logic *)
         write_alias (fun () -> get_x ^^ write env (Array t))
       | Array t ->
+        check_regular_tag env get_x ^^
         write_word_leb env get_data_buf (get_x ^^ Arr.len env) ^^
         get_x ^^ Arr.len env ^^
         from_0_to_n env (fun get_i ->
@@ -5793,12 +5867,14 @@ module MakeSerialization (Strm : Stream) = struct
       | Prim Null -> G.nop
       | Any -> G.nop
       | Opt t ->
+        check_regular_tag env get_x ^^
         get_x ^^
         Opt.is_some env ^^
         G.if0
           (write_byte env get_data_buf (compile_unboxed_const 1l) ^^ get_x ^^ Opt.project env ^^ write env t)
           (write_byte env get_data_buf (compile_unboxed_const 0l))
       | Variant vs ->
+        check_regular_tag env get_x ^^
         List.fold_right (fun (i, {lab = l; typ = t; _}) continue ->
             get_x ^^
             Variant.test_is env l ^^
@@ -5810,10 +5886,13 @@ module MakeSerialization (Strm : Stream) = struct
           ( List.mapi (fun i (_h, f) -> (i,f)) (sort_by_hash vs) )
           ( E.trap_with env "serialize_go: unexpected variant" )
       | Prim Blob ->
+        check_regular_tag env get_x ^^
         write_blob env get_data_buf get_x
       | Prim Text ->
+        check_regular_tag env get_x ^^
         write_text env get_data_buf get_x
       | Func _ ->
+        check_regular_tag env get_x ^^
         write_byte env get_data_buf (compile_unboxed_const 1l) ^^
         get_x ^^ Arr.load_field env 0l ^^ write env (Obj (Actor, [])) ^^
         get_x ^^ Arr.load_field env 1l ^^ write env (Prim Text)
@@ -5823,8 +5902,9 @@ module MakeSerialization (Strm : Stream) = struct
       | Non ->
         E.trap_with env "serializing value of type None"
       | Mut t ->
+        (* low-level load of the MutBox field without forwarding logic *)
         write_alias (fun () ->
-          get_x ^^ MutBox.load_field env ^^ write env t
+          get_x ^^ Heap.load_field MutBox.field ^^ write env t
         )
       | _ -> todo "serialize" (Arrange_ir.typ t) G.nop
       end ^^
