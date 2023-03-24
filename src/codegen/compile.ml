@@ -7892,7 +7892,7 @@ module PatCode = struct
   jump-label for the fail case. But many patterns cannot fail, in particular
   function arguments that are simple variables. In these cases, we do not want
   to create the block and the (unused) jump label. So we first generate the
-  code, either as plain code (CannotFail) or as code with hole for code to fun
+  code, either as plain code (CannotFail) or as code with hole for code to run
   in case of failure (CanFail).
   *)
 
@@ -10200,9 +10200,14 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
     G.( pre_ae1, nop, (fun ae -> fill env ae; nop), unmodified)
 
   (* A special case for constant expressions *)
-  | LetD (p, e) when e.note.Note.const && (Ir_utils.is_irrefutable p || const_exp_matches_pat env p e) ->
-    let extend, fill = compile_const_dec env pre_ae dec in
-    G.( extend pre_ae, nop, (fun ae -> fill env ae; nop), unmodified)
+  | LetD (p, e) when e.note.Note.const && (Ir_utils.is_irrefutable p || None <> const_exp_matches_pat env p e) ->
+    if Ir_utils.is_irrefutable p || Option.get (const_exp_matches_pat env p e) then
+      begin (* not refuted *)
+        let extend, fill = compile_const_dec env pre_ae dec in
+        G.(extend pre_ae, nop, (fun ae -> fill env ae; nop), unmodified)
+      end
+    else (* refuted *)
+      (pre_ae, G.nop, (fun _ -> E.trap_with env "pattern failed"), unmodified)
 
   | LetD (p, e) ->
     let (pre_ae1, alloc_code, pre_code, sr, fill_code) = compile_unboxed_pat env pre_ae how p in
@@ -10355,13 +10360,13 @@ and compile_const_decs env pre_ae decs : (VarEnv.t -> VarEnv.t) * (E.t -> VarEnv
         (fun env ae -> fill1 env ae; fill2 env ae) in
   go pre_ae decs
 
-and const_exp_matches_pat env pat exp : bool =
+and const_exp_matches_pat env pat exp : bool option =
   assert exp.note.Note.const;
   match exp.it with
   | PrimE (TagPrim _, _) ->
      let c, _ = compile_const_exp env VarEnv.empty_ae exp in
-     Option.is_some (try Some (destruct_const_pat VarEnv.empty_ae pat c) with Invalid_argument _ -> None)
-  | _ -> false
+     (try ignore (destruct_const_pat VarEnv.empty_ae pat c); Some true with Invalid_argument _ -> Some false)
+  | _ -> None
 
 and destruct_const_pat ae pat const : VarEnv.t = match pat.it with
   | WildP -> ae
