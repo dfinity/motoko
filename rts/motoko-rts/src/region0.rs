@@ -110,6 +110,7 @@ pub unsafe fn region0_store_blob<M: Memory>(mem: &mut M, offset: u64, val: u32) 
     let len = blob.len();
     let bytes = blob.payload_const();
     let bytes: &[u8] = core::slice::from_raw_parts(bytes, len.0 as usize);
+    println!(80, "store_blob offset={:?} val={:?}", offset, val);
     region0_store(mem, offset, bytes)
 }
 
@@ -117,6 +118,7 @@ pub unsafe fn region0_store_blob<M: Memory>(mem: &mut M, offset: u64, val: u32) 
 pub unsafe fn region0_load_blob<M: Memory>(mem: &mut M, offset: u64, len: u32) -> Value {
     let blob = crate::memory::alloc_blob(mem, crate::types::Bytes(len)).as_blob_mut();
     let bytes: &mut [u8] = core::slice::from_raw_parts_mut(blob.payload_addr(), len as usize);
+    println!(80, "load_blob offset={:?} len={:?} ~~> Blob @ {:?}, with bytes @ {:?}", offset, len, blob, bytes as *const [u8]);
     region0_load(mem, offset, bytes);
     Value::from_ptr(blob as usize)
 }
