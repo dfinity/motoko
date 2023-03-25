@@ -7937,8 +7937,10 @@ module PatCode = struct
   let orElses : patternCode list -> patternCode -> patternCode =
     List.fold_right orElse
 
+  let patternFailTrap env = E.trap_with env "pattern failed"
+
   let orPatternFailure env pcode =
-    with_fail (E.trap_with env "pattern failed") pcode
+    with_fail (patternFailTrap env) pcode
 
   let orsPatternFailure env pcodes =
     orPatternFailure env (orElses pcodes definiteFail)
@@ -10188,6 +10190,18 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
   (fun (pre_ae, alloc_code, mk_code, wrap) ->
        G.(pre_ae, with_region dec.at alloc_code, fun ae body_code ->
           with_region dec.at (mk_code ae) ^^ wrap body_code)) @@
+
+  (* Set up some helpers, for exclusive usage by the "constant expressions" special case below *)
+  let const_exp_helper, irrefutable_helper =
+    lazy begin
+        let[@warning "-8"] LetD (p, e) = dec.it in
+        const_exp_matches_pat env p e
+      end,
+    lazy begin
+        let[@warning "-8"] LetD (p, _) = dec.it in
+        Ir_utils.is_irrefutable p
+      end in
+
   match dec.it with
   (* A special case for public methods *)
   (* This relies on the fact that in the top-level mutually recursive group, no shadowing happens. *)
@@ -10200,14 +10214,14 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
     G.( pre_ae1, nop, (fun ae -> fill env ae; nop), unmodified)
 
   (* A special case for constant expressions *)
-  | LetD (p, e) when e.note.Note.const && (Ir_utils.is_irrefutable p || None <> const_exp_matches_pat env p e) ->
-    if Ir_utils.is_irrefutable p || Option.get (const_exp_matches_pat env p e) then
+  | LetD (p, e) when e.note.Note.const && (Lazy.force irrefutable_helper || None <> Lazy.force const_exp_helper) ->
+    if Lazy.force irrefutable_helper || Option.get (Lazy.force const_exp_helper) then
       begin (* not refuted *)
         let extend, fill = compile_const_dec env pre_ae dec in
         G.(extend pre_ae, nop, (fun ae -> fill env ae; nop), unmodified)
       end
     else (* refuted *)
-      (pre_ae, G.nop, (fun _ -> E.trap_with env "pattern failed"), unmodified)
+      (pre_ae, G.nop, (fun _ -> PatCode.patternFailTrap env), unmodified)
 
   | LetD (p, e) ->
     let (pre_ae1, alloc_code, pre_code, sr, fill_code) = compile_unboxed_pat env pre_ae how p in
