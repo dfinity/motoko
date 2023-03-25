@@ -10392,7 +10392,11 @@ and destruct_const_pat ae pat const : VarEnv.t = match pat.it with
       | Some (_, c) -> destruct_const_pat ae pf.it.pat c
       | None -> assert false
     ) ae pfs
-  | AltP (p1, _p2) -> destruct_const_pat ae p1 const
+  | AltP (p1, p2) ->
+    begin
+      try destruct_const_pat ae p1 const with
+        Invalid_argument _ -> destruct_const_pat ae p2 const
+    end
   | TupP ps ->
     let cs = match const with (_ , Const.Array cs) -> cs | (_, Const.Unit) -> [] | _ -> assert false in
     List.fold_left2 destruct_const_pat ae ps cs
