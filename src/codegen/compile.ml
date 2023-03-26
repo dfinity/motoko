@@ -7892,7 +7892,7 @@ module PatCode = struct
   jump-label for the fail case. But many patterns cannot fail, in particular
   function arguments that are simple variables. In these cases, we do not want
   to create the block and the (unused) jump label. So we first generate the
-  code, either as plain code (CannotFail) or as code with hole for code to fun
+  code, either as plain code (CannotFail) or as code with hole for code to run
   in case of failure (CanFail).
   *)
 
@@ -7937,8 +7937,10 @@ module PatCode = struct
   let orElses : patternCode list -> patternCode -> patternCode =
     List.fold_right orElse
 
+  let patternFailTrap env = E.trap_with env "pattern failed"
+
   let orPatternFailure env pcode =
-    with_fail (E.trap_with env "pattern failed") pcode
+    with_fail (patternFailTrap env) pcode
 
   let orsPatternFailure env pcodes =
     orPatternFailure env (orElses pcodes definiteFail)
@@ -10194,6 +10196,17 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
   (fun (pre_ae, alloc_code, mk_code, wrap) ->
        G.(pre_ae, with_region dec.at alloc_code, fun ae body_code ->
           with_region dec.at (mk_code ae) ^^ wrap body_code)) @@
+
+  (* Set up some helpers, for exclusive usage by the "constant expressions" special case below *)
+  let const_exp_helper =
+    lazy begin
+        let[@warning "-8"] LetD (p, e) = dec.it in
+        const_exp_matches_pat env p e
+      end in
+  let is_compile_time_matchable () =
+    let lazy const_exp_matches = const_exp_helper in
+    Option.is_some const_exp_matches in
+
   match dec.it with
   (* A special case for public methods *)
   (* This relies on the fact that in the top-level mutually recursive group, no shadowing happens. *)
@@ -10206,9 +10219,15 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
     G.( pre_ae1, nop, (fun ae -> fill env ae; nop), unmodified)
 
   (* A special case for constant expressions *)
-  | LetD (p, e) when Ir_utils.is_irrefutable p && e.note.Note.const ->
-    let extend, fill = compile_const_dec env pre_ae dec in
-    G.( extend pre_ae, nop, (fun ae -> fill env ae; nop), unmodified)
+  | LetD (p, e) when e.note.Note.const && is_compile_time_matchable () ->
+    let is_compile_time_bottom =
+      let lazy const_exp_matches = const_exp_helper in
+      not (Option.get const_exp_matches) in
+    if is_compile_time_bottom then (* refuted *)
+      (pre_ae, G.nop, (fun _ -> PatCode.patternFailTrap env), unmodified)
+    else (* not refuted *)
+      let extend, fill = compile_const_dec env pre_ae dec in
+      G.(extend pre_ae, nop, (fun ae -> fill env ae; nop), unmodified)
 
   | LetD (p, e) ->
     let (pre_ae1, alloc_code, pre_code, sr, fill_code) = compile_unboxed_pat env pre_ae how p in
@@ -10361,6 +10380,15 @@ and compile_const_decs env pre_ae decs : (VarEnv.t -> VarEnv.t) * (E.t -> VarEnv
         (fun env ae -> fill1 env ae; fill2 env ae) in
   go pre_ae decs
 
+and const_exp_matches_pat env pat exp : bool option =
+  assert exp.note.Note.const;
+  match exp.it with
+  | _ when Ir_utils.is_irrefutable pat -> Some true
+  | PrimE (TagPrim _, _) ->
+     let c, _ = compile_const_exp env VarEnv.empty_ae exp in
+     (try ignore (destruct_const_pat VarEnv.empty_ae pat c); Some true with Invalid_argument _ -> Some false)
+  | _ -> None
+
 and destruct_const_pat ae pat const : VarEnv.t = match pat.it with
   | WildP -> ae
   | VarP v -> VarEnv.add_local_const ae v const
@@ -10371,13 +10399,21 @@ and destruct_const_pat ae pat const : VarEnv.t = match pat.it with
       | Some (_, c) -> destruct_const_pat ae pf.it.pat c
       | None -> assert false
     ) ae pfs
-  | AltP (p1, p2) -> destruct_const_pat ae p1 const
+  | AltP (p1, p2) ->
+    begin
+      try destruct_const_pat ae p1 const with
+        Invalid_argument _ -> destruct_const_pat ae p2 const
+    end
   | TupP ps ->
     let cs = match const with (_ , Const.Array cs) -> cs | (_, Const.Unit) -> [] | _ -> assert false in
     List.fold_left2 destruct_const_pat ae ps cs
   | LitP _ -> raise (Invalid_argument "LitP in static irrefutable pattern")
   | OptP _ -> raise (Invalid_argument "OptP in static irrefutable pattern")
-  | TagP _ -> raise (Invalid_argument "TagP in static irrefutable pattern")
+  | TagP (i, p) ->
+     match const with
+     | (_, Const.Tag (ic, c)) when i = ic -> destruct_const_pat ae p c
+     | (_, Const.Tag _) -> raise (Invalid_argument "TagP mismatch")
+     | _ -> assert false
 
 and compile_const_dec env pre_ae dec : (VarEnv.t -> VarEnv.t) * (E.t -> VarEnv.t -> unit) =
   (* This returns a _function_ to extend the VarEnv, instead of doing it, because
