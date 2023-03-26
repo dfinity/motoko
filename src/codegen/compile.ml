@@ -10201,6 +10201,7 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
         let[@warning "-8"] LetD (p, _) = dec.it in
         Ir_utils.is_irrefutable p
       end in
+  let compile_time_matchable pred = Lazy.(force irrefutable_helper || pred (force const_exp_helper)) in
 
   match dec.it with
   (* A special case for public methods *)
@@ -10214,8 +10215,8 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
     G.( pre_ae1, nop, (fun ae -> fill env ae; nop), unmodified)
 
   (* A special case for constant expressions *)
-  | LetD (p, e) when e.note.Note.const && (Lazy.force irrefutable_helper || None <> Lazy.force const_exp_helper) ->
-    if Lazy.force irrefutable_helper || Option.get (Lazy.force const_exp_helper) then
+  | LetD (p, e) when e.note.Note.const && compile_time_matchable Option.is_some ->
+    if compile_time_matchable Option.get then
       begin (* not refuted *)
         let extend, fill = compile_const_dec env pre_ae dec in
         G.(extend pre_ae, nop, (fun ae -> fill env ae; nop), unmodified)
