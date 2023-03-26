@@ -10192,16 +10192,14 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
           with_region dec.at (mk_code ae) ^^ wrap body_code)) @@
 
   (* Set up some helpers, for exclusive usage by the "constant expressions" special case below *)
-  let const_exp_helper, irrefutable_helper =
+  let const_exp_helpers =
     lazy begin
         let[@warning "-8"] LetD (p, e) = dec.it in
-        const_exp_matches_pat env p e
-      end,
-    lazy begin
-        let[@warning "-8"] LetD (p, _) = dec.it in
-        Ir_utils.is_irrefutable p
+        Ir_utils.is_irrefutable p, const_exp_matches_pat env p e
       end in
-  let compile_time_matchable pred = Lazy.(force irrefutable_helper || pred (force const_exp_helper)) in
+  let compile_time_matchable pred =
+    let lazy (irrefutable_helper, const_exp_helper) = const_exp_helpers in
+    irrefutable_helper || pred const_exp_helper in
 
   match dec.it with
   (* A special case for public methods *)
