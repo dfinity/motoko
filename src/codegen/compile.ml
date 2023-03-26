@@ -10384,7 +10384,7 @@ and const_exp_matches_pat env pat exp : bool option =
   assert exp.note.Note.const;
   match exp.it with
   | _ when Ir_utils.is_irrefutable pat -> Some true
-  | PrimE (TagPrim _, _) ->
+  | PrimE ((TupPrim | ArrayPrim (Const, _) | TagPrim _), _) ->
      let c, _ = compile_const_exp env VarEnv.empty_ae exp in
      (try ignore (destruct_const_pat VarEnv.empty_ae pat c); Some true with Invalid_argument _ -> Some false)
   | _ -> None
