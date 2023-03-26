@@ -10197,9 +10197,12 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
         let[@warning "-8"] LetD (p, e) = dec.it in
         const_exp_matches_pat env p e
       end in
-  let compile_time_matchable pred =
-    let lazy const_exp = const_exp_helper in
-    pred const_exp in
+  let is_compile_time_matchable () =
+    let lazy const_exp_matches = const_exp_helper in
+    Option.is_some const_exp_matches in
+  let is_compile_time_bottom () =
+    let lazy const_exp_matches = const_exp_helper in
+    not (Option.get const_exp_matches) in
 
   match dec.it with
   (* A special case for public methods *)
@@ -10213,14 +10216,12 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
     G.( pre_ae1, nop, (fun ae -> fill env ae; nop), unmodified)
 
   (* A special case for constant expressions *)
-  | LetD (p, e) when e.note.Note.const && compile_time_matchable Option.is_some ->
-    if compile_time_matchable Option.get then
-      begin (* not refuted *)
-        let extend, fill = compile_const_dec env pre_ae dec in
-        G.(extend pre_ae, nop, (fun ae -> fill env ae; nop), unmodified)
-      end
-    else (* refuted *)
+  | LetD (p, e) when e.note.Note.const && is_compile_time_matchable () ->
+    if is_compile_time_bottom () then (* refuted *)
       (pre_ae, G.nop, (fun _ -> PatCode.patternFailTrap env), unmodified)
+    else (* not refuted *)
+      let extend, fill = compile_const_dec env pre_ae dec in
+      G.(extend pre_ae, nop, (fun ae -> fill env ae; nop), unmodified)
 
   | LetD (p, e) ->
     let (pre_ae1, alloc_code, pre_code, sr, fill_code) = compile_unboxed_pat env pre_ae how p in
