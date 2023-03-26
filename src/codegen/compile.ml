@@ -10192,14 +10192,14 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
           with_region dec.at (mk_code ae) ^^ wrap body_code)) @@
 
   (* Set up some helpers, for exclusive usage by the "constant expressions" special case below *)
-  let const_exp_helpers =
+  let const_exp_helper =
     lazy begin
         let[@warning "-8"] LetD (p, e) = dec.it in
-        Ir_utils.is_irrefutable p, const_exp_matches_pat env p e
+        const_exp_matches_pat env p e
       end in
   let compile_time_matchable pred =
-    let lazy (irrefutable_helper, const_exp_helper) = const_exp_helpers in
-    irrefutable_helper || pred const_exp_helper in
+    let lazy const_exp = const_exp_helper in
+    pred const_exp in
 
   match dec.it with
   (* A special case for public methods *)
@@ -10376,6 +10376,7 @@ and compile_const_decs env pre_ae decs : (VarEnv.t -> VarEnv.t) * (E.t -> VarEnv
 and const_exp_matches_pat env pat exp : bool option =
   assert exp.note.Note.const;
   match exp.it with
+  | _ when Ir_utils.is_irrefutable pat -> Some true
   | PrimE (TagPrim _, _) ->
      let c, _ = compile_const_exp env VarEnv.empty_ae exp in
      (try ignore (destruct_const_pat VarEnv.empty_ae pat c); Some true with Invalid_argument _ -> Some false)
