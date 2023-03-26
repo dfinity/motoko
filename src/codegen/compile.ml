@@ -10386,32 +10386,36 @@ and const_exp_matches_pat env pat exp : bool option =
   | _ when Ir_utils.is_irrefutable pat -> Some true
   | PrimE (TagPrim _, _) ->
      let c, _ = compile_const_exp env VarEnv.empty_ae exp in
-     (try ignore (destruct_const_pat VarEnv.empty_ae pat c); Some true with Invalid_argument _ -> Some false)
+     (try ignore (destruct_const_pat env VarEnv.empty_ae pat c); Some true with Invalid_argument _ -> Some false)
   | _ -> None
 
-and destruct_const_pat ae pat const : VarEnv.t = match pat.it with
+and destruct_const_pat env ae pat const : VarEnv.t = match pat.it with
   | WildP -> ae
   | VarP v -> VarEnv.add_local_const ae v const
   | ObjP pfs ->
     let fs = match const with (_, Const.Obj fs) -> fs | _ -> assert false in
     List.fold_left (fun ae (pf : pat_field) ->
       match List.find_opt (fun (n, _) -> pf.it.name = n) fs with
-      | Some (_, c) -> destruct_const_pat ae pf.it.pat c
+      | Some (_, c) -> destruct_const_pat env ae pf.it.pat c
       | None -> assert false
     ) ae pfs
   | AltP (p1, p2) ->
     begin
-      try destruct_const_pat ae p1 const with
-        Invalid_argument _ -> destruct_const_pat ae p2 const
+      try destruct_const_pat env ae p1 const with
+        Invalid_argument _ -> destruct_const_pat env ae p2 const
     end
   | TupP ps ->
     let cs = match const with (_ , Const.Array cs) -> cs | (_, Const.Unit) -> [] | _ -> assert false in
-    List.fold_left2 destruct_const_pat ae ps cs
-  | LitP _ -> raise (Invalid_argument "LitP in static irrefutable pattern")
+    List.fold_left2 (destruct_const_pat env) ae ps cs
+  | LitP lp ->
+    begin match const with
+    | (_, Const.Lit lc) when const_lit_of_lit env lp = lc -> ae
+    | _ -> raise (Invalid_argument "LitP mismatch")
+    end
   | OptP _ -> raise (Invalid_argument "OptP in static irrefutable pattern")
   | TagP (i, p) ->
      match const with
-     | (_, Const.Tag (ic, c)) when i = ic -> destruct_const_pat ae p c
+     | (_, Const.Tag (ic, c)) when i = ic -> destruct_const_pat env ae p c
      | (_, Const.Tag _) -> raise (Invalid_argument "TagP mismatch")
      | _ -> assert false
 
@@ -10424,7 +10428,7 @@ and compile_const_dec env pre_ae dec : (VarEnv.t -> VarEnv.t) * (E.t -> VarEnv.t
   (* This should only contain constants (cf. is_const_exp) *)
   | LetD (p, e) ->
     let (const, fill) = compile_const_exp env pre_ae e in
-    (fun ae -> destruct_const_pat ae p const),
+    (fun ae -> destruct_const_pat env ae p const),
     (fun env ae -> fill env ae)
   | VarD _ | RefD _ -> fatal "compile_const_dec: Unexpected VarD/RefD"
 
