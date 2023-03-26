@@ -10200,9 +10200,6 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
   let is_compile_time_matchable () =
     let lazy const_exp_matches = const_exp_helper in
     Option.is_some const_exp_matches in
-  let is_compile_time_bottom () =
-    let lazy const_exp_matches = const_exp_helper in
-    not (Option.get const_exp_matches) in
 
   match dec.it with
   (* A special case for public methods *)
@@ -10217,7 +10214,10 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
 
   (* A special case for constant expressions *)
   | LetD (p, e) when e.note.Note.const && is_compile_time_matchable () ->
-    if is_compile_time_bottom () then (* refuted *)
+    let is_compile_time_bottom =
+      let lazy const_exp_matches = const_exp_helper in
+      not (Option.get const_exp_matches) in
+    if is_compile_time_bottom then (* refuted *)
       (pre_ae, G.nop, (fun _ -> PatCode.patternFailTrap env), unmodified)
     else (* not refuted *)
       let extend, fill = compile_const_dec env pre_ae dec in
