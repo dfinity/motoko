@@ -1879,15 +1879,18 @@ module Opt = struct
   let inject_simple env e = 
     e ^^ Tagged.load_forwarding_pointer env
 
-  (* Only to be directly used during stabilization *)
-  let project_no_forwarding env =
+  let load_some_payload_field env =
+    Tagged.load_forwarding_pointer env ^^
+    Tagged.load_field env some_payload_field
+
+  let project env =
     Func.share_code1 env "opt_project" ("x", I32Type) [I32Type] (fun env get_x ->
       get_x ^^ BitTagged.is_pointer env ^^
       E.if_ env [I32Type] 
-        ( get_x ^^ Tagged.branch_default_no_forwarding env [I32Type]
+        ( get_x ^^ Tagged.branch_default env [I32Type]
           ( get_x ) (* default, no wrapping *)
           [ Tagged.Some,
-            get_x ^^ Heap.load_field some_payload_field
+            get_x ^^ load_some_payload_field env
           ; Tagged.Null,
             E.trap_with env "Internal error: opt_project: null!"
           ]
@@ -1895,9 +1898,21 @@ module Opt = struct
         ( get_x ) (* default, no wrapping *)
     )
 
-  let project env =
-    Tagged.load_forwarding_pointer env ^^
-    project_no_forwarding env
+  (* Only to be directly used during stabilization *)
+  let project_explicit_forwarding env resolve_forward =
+    let (set_x, get_x) = new_local env "x" in
+    set_x ^^
+    get_x ^^ BitTagged.is_pointer env ^^
+    E.if_ env [I32Type] 
+      ( get_x ^^ resolve_forward env ^^ Tagged.branch_default_no_forwarding env [I32Type]
+        ( get_x ) (* default, no wrapping *)
+        [ Tagged.Some,
+          get_x ^^ resolve_forward env ^^ Heap.load_field some_payload_field
+        ; Tagged.Null,
+          E.trap_with env "Internal error: opt_project_no_forwarding: null!"
+        ]
+      )
+      ( get_x ) (* default, no wrapping *)
 
 end (* Opt *)
 
@@ -5757,10 +5772,9 @@ module MakeSerialization (Strm : Stream) = struct
         inc_data_size get_len
       | Opt t ->
         (* special conditional forwarding considering a possible StableSeen in the Array tag *)
-        get_x ^^ forward_during_serialization env ^^ set_x ^^
         inc_data_size (compile_unboxed_const 1l) ^^ (* one byte tag *)
         get_x ^^ Opt.is_some env ^^
-        G.if0 (get_x ^^ Opt.project_no_forwarding env ^^ size env t) G.nop
+        G.if0 (get_x ^^ Opt.project_explicit_forwarding env forward_during_serialization ^^ size env t) G.nop
       | Variant vs ->
         List.fold_right (fun (i, {lab = l; typ = t; _}) continue ->
             get_x ^^
@@ -5921,11 +5935,11 @@ module MakeSerialization (Strm : Stream) = struct
       | Any -> G.nop
       | Opt t ->
         (* special conditional forwarding considering a possible StableSeen in the Array tag *)
-        get_x ^^ forward_during_serialization env ^^ set_x ^^
         get_x ^^
         Opt.is_some env ^^
         G.if0
-          (write_byte env get_data_buf (compile_unboxed_const 1l) ^^ get_x ^^ Opt.project_no_forwarding env ^^ write env t)
+          (write_byte env get_data_buf (compile_unboxed_const 1l) ^^ get_x ^^ 
+            Opt.project_explicit_forwarding env forward_during_serialization ^^ write env t)
           (write_byte env get_data_buf (compile_unboxed_const 0l))
       | Variant vs ->
         List.fold_right (fun (i, {lab = l; typ = t; _}) continue ->
