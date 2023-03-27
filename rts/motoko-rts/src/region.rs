@@ -618,7 +618,7 @@ pub(crate) unsafe fn region_load<M: Memory>(_mem: &mut M, r: Value, offset: u64,
         let mut s = b1_off; // source of bytes, as absolute index.
         let mut d = dst.as_mut_ptr(); // dest for bytes.
 
-        // do initial read (a special case, generally not full block leangth).
+        // do initial read (a special case, generally not full block length).
         read(s, core::slice::from_raw_parts_mut(d, b1_len as usize));
 
         // Advance input and output positions (i, d and s respectively).
@@ -628,6 +628,9 @@ pub(crate) unsafe fn region_load<M: Memory>(_mem: &mut M, r: Value, offset: u64,
         // Do rest of block-sized reads.
         // (invariant: they always occur at the start of a block).
         loop {
+	    if false {
+		println!(80, "load r={:?} s={} i={}", r.id(), s, i);
+	    }
             let (s_, _, b_len) = r.relative_into_absolute_info(offset + i);
             s = s_;
             if i + b_len > dst.len() as u64 {
@@ -672,7 +675,7 @@ pub(crate) unsafe fn region_store<M: Memory>(_mem: &mut M, r: Value, offset: u64
         let mut s = src.as_ptr(); // source for bytes.
         let mut d = b1_off; // dest of bytes, as absolute index.o
 
-        // do initial read (a special case, generally not full block leangth).
+        // do initial read (a special case, generally not full block length).
         write(d, core::slice::from_raw_parts(s, b1_len as usize));
 
         // Advance input and output positions (i, s and d respectively).
@@ -700,7 +703,7 @@ pub(crate) unsafe fn region_store<M: Memory>(_mem: &mut M, r: Value, offset: u64
     }
 }
 
-// -- Region0 load operations.
+// -- Region load operations.
 
 #[ic_mem_fn]
 pub unsafe fn region_load_word8<M: Memory>(mem: &mut M, r: Value, offset: u64) -> u32 {
