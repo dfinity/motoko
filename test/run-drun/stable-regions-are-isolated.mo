@@ -1,20 +1,38 @@
 import P "mo:⛔";
 import Region "stable-region/Region";
 actor {
-  stable var n = 0;
+  var r1 = Region.new();
+  var r2 = Region.new();
 
-  public func testBounds() {
-    P.debugPrint("testBounds");
+  let block_size_in_pages = 128 : Nat64;
+
+  // Interleave growing regions by a block each:
+  do {
+    ignore Region.grow(r1, block_size_in_pages);
+    ignore Region.grow(r2, block_size_in_pages);
+    ignore Region.grow(r1, block_size_in_pages);
+    ignore Region.grow(r2, block_size_in_pages);
+    ignore Region.grow(r1, block_size_in_pages);
+    ignore Region.grow(r2, block_size_in_pages);
   };
 
-  system func preupgrade() {
-    n += 1;
+  func blobOfNat64(n : Nat64) : Blob {
+    let size = P.nat64ToNat(n);
+    let a = P.Array_tabulate<Nat8>(size, func i { P.natToNat8(i % 256) });
+    P.arrayToBlob(a);
   };
 
-  system func postupgrade() {
-    P.debugPrint("...upgraded" # debug_show n);
-  };
+  // A blob that is the size of two region blocks.
+  let big_len = block_size_in_pages * 2 * 65536;
+  let big_blob = blobOfNat64(big_len);
 
+  Region.storeBlob(r1, 0, big_blob);
+  Region.storeBlob(r2, 137, big_blob);
+
+  assert(Region.loadBlob(r1, 0, P.nat64ToNat(big_len)) == big_blob);
+  assert(Region.loadBlob(r2, 137, P.nat64ToNat(big_len)) == big_blob);
+
+  P.debugPrint "done."
 }
 
 //SKIP run
@@ -22,13 +40,4 @@ actor {
 //SKIP run-ir
 // too slow on ic-ref-run:
 //SKIP comp-ref
-// TO DO -- pass run on run-drun
-//xSKIP drun-run
-
-//xCALL upgrade ""
-//xCALL ingress testBounds "DIDL\x00\x00"
-//xCALL upgrade ""
-//xCALL ingress testBounds "DIDL\x00\x00"
-//xCALL upgrade ""
-//xCALL ingress testBounds "DIDL\x00\x00"
-//xCALL upgrade ""
+//xCALL ingress test "DIDL\x00\x00"

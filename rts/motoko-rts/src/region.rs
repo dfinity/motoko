@@ -540,7 +540,7 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
         new_pages.0.set(i, old_pages.0.get(i));
     }
 
-    if false {
+    if true {
         println!(
             80,
             " region_grow id={} (old_block_count, new_block_count) = ({}, {})",
