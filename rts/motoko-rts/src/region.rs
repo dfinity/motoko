@@ -540,7 +540,7 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
         new_pages.0.set(i, old_pages.0.get(i));
     }
 
-    if true {
+    if false {
         println!(
             80,
             " region_grow id={} (old_block_count, new_block_count) = ({}, {})",
@@ -653,18 +653,50 @@ pub(crate) unsafe fn region_load<M: Memory>(_mem: &mut M, r: Value, offset: u64,
 }
 
 pub(crate) unsafe fn region_store<M: Memory>(_mem: &mut M, r: Value, offset: u64, src: &[u8]) {
+    use crate::ic0_stable::nicer::write;
+    use meta_data::size::BLOCK_IN_BYTES;
+
     let r = RegionObject::from_value(&r);
     if src.len() > 1 {
         r.check_relative_into_absolute_offset(offset + src.len() as u64 - 1);
     } else {
         r.check_relative_into_absolute_offset(offset);
     }
-    let (abs_off, b1, _b1_len, b2) = r.relative_into_absolute_span(offset, src.len() as u64);
+    let (b1_off, b1, b1_len, b2) = r.relative_into_absolute_span(offset, src.len() as u64);
     if b1 == b2 {
-        crate::ic0_stable::nicer::write(abs_off, src);
+        write(b1_off, src);
     } else {
-        // to do -- handle non-contiguous regions
-        rts_trap_with("load: to do.");
+        // Case: Staged reads, one per block that holds requested data.
+
+        let mut i = 0; // invariant: i = # of bytes stored.
+        let mut s = src.as_ptr(); // source for bytes.
+        let mut d = b1_off; // dest of bytes, as absolute index.o
+
+        // do initial read (a special case, generally not full block leangth).
+        write(d, core::slice::from_raw_parts(s, b1_len as usize));
+
+        // Advance input and output positions (i, s and d respectively).
+        i += b1_len;
+        s = s.offset(b1_len as isize);
+
+        // Do rest of block-sized reads.
+        // (invariant: they always occur at the start of a block).
+        loop {
+            let (d_, _, b_len) = r.relative_into_absolute_info(offset + i);
+            d = d_;
+            if i + b_len > src.len() as u64 {
+                // case: last (generally partial) block.
+                if i - src.len() as u64 > 0 {
+                    write(d, core::slice::from_raw_parts(s, src.len() - i as usize));
+                }
+                break;
+            } else {
+                // case: internal (full) block.
+                write(d, core::slice::from_raw_parts(s, BLOCK_IN_BYTES as usize));
+                s = s.offset(BLOCK_IN_BYTES as isize);
+                i += BLOCK_IN_BYTES;
+            }
+        }
     }
 }
 
