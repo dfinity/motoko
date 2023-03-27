@@ -107,9 +107,13 @@ impl RegionObject {
         };
     }
 
+    // compute absolute offset (and BlockId) for a relative offset.
+    //
+    // NB: BlockId can be used to do case analysis (same or diff block?) when planning successive reads/writes.
+    //
     // assumes but does not run check_relative_into_absolute_offset for
     // this offset, or some higher one.
-    pub unsafe fn relative_into_absolute_offset(&self, offset: u64) -> u64 {
+    pub unsafe fn relative_into_absolute_offset(&self, offset: u64) -> (u64, BlockId) {
         let av = AccessVector::from_value(&(*self.0).vec_pages);
 
         // Which block (rank relative to this region)?
@@ -120,14 +124,27 @@ impl RegionObject {
 
         // Where is that block located in stable memory (global rank)?
         let block_id = av.get_ith_block_id(block_rank as u32);
-	
-	//println!(80, "intra-block index is {} (block is {:?})", intra_block_index, block_id);
+
+        //println!(80, "intra-block index is {} (block is {:?})", intra_block_index, block_id);
 
         // address of the byte to load from stable memory:
         let offset = meta_data::offset::BLOCK_ZERO
             + block_id.0 as u64 * meta_data::size::BLOCK_IN_BYTES
             + intra_block_index;
-        offset
+        (offset, block_id)
+    }
+
+    // compute the absolute offset, begin block and end block for a relative offset and length.
+    //
+    // NB: BlockIds can be used to do case analysis (same or diff block?) when planning successive reads/writes.
+    pub unsafe fn relative_into_absolute_span(
+        &self,
+        offset: u64,
+        len: u64,
+    ) -> (u64, BlockId, BlockId) {
+        let (off, b1) = self.relative_into_absolute_offset(offset);
+        let (_, b2) = self.relative_into_absolute_offset(offset + len - 1);
+        (off, b1, b2)
     }
 }
 
@@ -577,27 +594,35 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
 
 pub(crate) unsafe fn region_load<M: Memory>(_mem: &mut M, r: Value, offset: u64, dst: &mut [u8]) {
     let r = RegionObject::from_value(&r);
-    let abs_off = r.relative_into_absolute_offset(offset);
     if dst.len() > 1 {
         r.check_relative_into_absolute_offset(offset + dst.len() as u64 - 1);
     } else {
         r.check_relative_into_absolute_offset(offset);
     }
-    // to do -- handle non-contiguous regions
-    crate::ic0_stable::nicer::read(abs_off, dst);
+    let (abs_off, b1, b2) = r.relative_into_absolute_span(offset, dst.len() as u64);
+    if b1 == b2 {
+        // simple case -- only uses a single block, and thus only requires one read.
+        crate::ic0_stable::nicer::read(abs_off, dst);
+    } else {
+        // to do -- handle non-contiguous regions
+        rts_trap_with("load: to do.");
+    }
 }
 
 pub(crate) unsafe fn region_store<M: Memory>(_mem: &mut M, r: Value, offset: u64, src: &[u8]) {
     let r = RegionObject::from_value(&r);
-    let abs_off = r.relative_into_absolute_offset(offset);
     if src.len() > 1 {
         r.check_relative_into_absolute_offset(offset + src.len() as u64 - 1);
     } else {
         r.check_relative_into_absolute_offset(offset);
     }
-    // to do -- handle non-contiguous regions
-    // println!(80, "region_store({}, len={})", abs_off, src.len());
-    crate::ic0_stable::nicer::write(abs_off, src);
+    let (abs_off, b1, b2) = r.relative_into_absolute_span(offset, src.len() as u64);
+    if b1 == b2 {
+        crate::ic0_stable::nicer::write(abs_off, src);
+    } else {
+        // to do -- handle non-contiguous regions
+        rts_trap_with("load: to do.");
+    }
 }
 
 // -- Region0 load operations.
