@@ -10391,13 +10391,8 @@ and compile_const_decs env pre_ae decs : (VarEnv.t -> VarEnv.t) * (E.t -> VarEnv
 
 and const_exp_matches_pat env pat exp : bool option =
   assert exp.note.Note.const;
-  match exp.it with
-  | _ when Ir_utils.is_irrefutable pat -> Some true
-  | LitE _
-  | PrimE (TagPrim _, _) ->
-     let c, _ = compile_const_exp env VarEnv.empty_ae exp in
-     (try ignore (destruct_const_pat env VarEnv.empty_ae pat c); Some true with Invalid_argument _ -> Some false)
-  | _ -> None
+  let c, _ = compile_const_exp env VarEnv.empty_ae exp in
+  (try ignore (destruct_const_pat VarEnv.empty_ae pat c); Some true with Invalid_argument _ -> Some false)
 
 and destruct_const_pat env ae pat const : VarEnv.t = match pat.it with
   | WildP -> ae
