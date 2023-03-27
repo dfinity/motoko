@@ -101,6 +101,15 @@ module Const = struct
     | Float64 of Numerics.Float.t
     | Blob of string
 
+  let lit_eq = function
+    | (Vanilla i, Vanilla j) -> i = j
+    | (BigInt i, BigInt j) -> Big_int.eq_big_int i j
+    | (Word32 i, Word32 j) -> i = j
+    | (Word64 i, Word64 j) -> i = j
+    | (Float64 i, Float64 j) -> i = j
+    | (Bool i, Bool j) -> i = j
+    | (Blob s, Blob t) -> s = t
+    | _ -> false
 
   (* Inlineable functions
 
@@ -10384,6 +10393,7 @@ and const_exp_matches_pat env pat exp : bool option =
   assert exp.note.Note.const;
   match exp.it with
   | _ when Ir_utils.is_irrefutable pat -> Some true
+  | LitE _
   | PrimE (TagPrim _, _) ->
      let c, _ = compile_const_exp env VarEnv.empty_ae exp in
      (try ignore (destruct_const_pat env VarEnv.empty_ae pat c); Some true with Invalid_argument _ -> Some false)
@@ -10409,7 +10419,7 @@ and destruct_const_pat env ae pat const : VarEnv.t = match pat.it with
     List.fold_left2 (destruct_const_pat env) ae ps cs
   | LitP lp ->
     begin match const with
-    | (_, Const.Lit lc) when const_lit_of_lit env lp = lc -> ae
+    | (_, Const.Lit lc) when Const.lit_eq (const_lit_of_lit env lp, lc) -> ae
     | _ -> raise (Invalid_argument "LitP mismatch")
     end
   | OptP _ -> raise (Invalid_argument "OptP in static irrefutable pattern")
