@@ -1579,6 +1579,21 @@ module Tagged = struct
   let header_size = 1l
   let tag_field = 0l
 
+  let check_forwarding_pointer env =
+    let (set_forwarding_pointer, get_forwarding_pointer) = new_local env "forwarding_pointer" in
+    (if !Flags.sanity then
+      set_forwarding_pointer ^^
+      get_forwarding_pointer ^^
+      compile_eq_const (int_of_tag StableSeen) ^^
+      E.then_trap_with env "Invalid forwarding pointer: Stable seen" ^^
+      get_forwarding_pointer ^^
+      compile_bitand_const 0x1l ^^
+      G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
+      E.then_trap_with env "Invalid forwarding pointer: Stream offset" ^^
+      get_forwarding_pointer
+    else
+      G.nop)
+
   let load_forwarding_pointer env =
     (if !Flags.gc_strategy = Flags.Incremental then
       let (set_object, get_object) = new_local env "object" in
@@ -1587,7 +1602,8 @@ module Tagged = struct
       compile_unboxed_const max_tag ^^
       G.i (Compare (Wasm.Values.I32 I32Op.GtU)) ^^
       G.if1 I32Type (
-        get_object ^^ Heap.load_field tag_field
+        get_object ^^ Heap.load_field tag_field ^^
+        check_forwarding_pointer env
       ) (
         get_object
       )
@@ -1599,10 +1615,6 @@ module Tagged = struct
     compile_unboxed_const (int_of_tag tag) ^^
     Heap.store_field tag_field
     
-  let load_tag env =
-    load_forwarding_pointer env ^^
-    Heap.load_field tag_field
-
   let check_forwarding env unskewed = 
     (if !Flags.gc_strategy = Flags.Incremental then
       let (set_object, get_object) = new_local env "object" in
@@ -1660,9 +1672,8 @@ module Tagged = struct
     (if !Flags.sanity then check_forwarding_for_store env F64Type else G.nop) ^^
     Heap.store_field_float64 index
 
-  (* Branches based on the tag of the object pointed to,
-     leaving the object on the stack afterwards. *)
-  let branch_default env retty def (cases : (tag * G.t) list) : G.t =
+  (* Only to be directly called during stabilization *)
+  let branch_default_no_forwarding env retty def (cases : (tag * G.t) list) : G.t =
     let (set_tag, get_tag) = new_local env "tag" in
 
     let rec go = function
@@ -1672,9 +1683,15 @@ module Tagged = struct
         compile_eq_const (int_of_tag tag) ^^
         E.if_ env retty code (go cases)
     in
-    load_tag env ^^
+    Heap.load_field tag_field ^^
     set_tag ^^
     go cases
+
+  (* Branches based on the tag of the object pointed to,
+     leaving the object on the stack afterwards. *)
+  let branch_default env retty def (cases : (tag * G.t) list) : G.t =
+    load_forwarding_pointer env ^^
+    branch_default_no_forwarding env retty def cases
 
   (* like branch_default but also pushes the scrutinee on the stack for the
    * branch's consumption *)
@@ -1861,26 +1878,26 @@ module Opt = struct
   we know for sure that it wouldn’t do anything anyways, except dereferencing the forwarding pointer *)
   let inject_simple env e = 
     e ^^ Tagged.load_forwarding_pointer env
-    
 
-  let load_some_payload_field env =
-    Tagged.load_forwarding_pointer env ^^
-    Tagged.load_field env some_payload_field
-
-  let project env =
+  (* Only to be directly used during stabilization *)
+  let project_no_forwarding env =
     Func.share_code1 env "opt_project" ("x", I32Type) [I32Type] (fun env get_x ->
       get_x ^^ BitTagged.is_pointer env ^^
       E.if_ env [I32Type] 
-        ( get_x ^^ Tagged.branch_default env [I32Type]
+        ( get_x ^^ Tagged.branch_default_no_forwarding env [I32Type]
           ( get_x ) (* default, no wrapping *)
           [ Tagged.Some,
-            get_x ^^ load_some_payload_field env
+            get_x ^^ Heap.load_field some_payload_field
           ; Tagged.Null,
             E.trap_with env "Internal error: opt_project: null!"
           ]
         )
         ( get_x ) (* default, no wrapping *)
     )
+
+  let project env =
+    Tagged.load_forwarding_pointer env ^^
+    project_no_forwarding env
 
 end (* Opt *)
 
@@ -3828,6 +3845,16 @@ module Arr = struct
       G.i (Binary (Wasm.Values.I32 I32Op.Add))
     )
 
+  (* Only to be used during stabilization *)
+  let unsafe_idx_no_forwarding env =
+    Func.share_code2 env "Array.unsafe_idx_no_forwarding" (("array", I32Type), ("idx", I32Type)) [I32Type] (fun env get_array get_idx ->
+      get_idx ^^
+      compile_add_const header_size ^^
+      compile_mul_const element_size ^^
+      get_array ^^
+      G.i (Binary (Wasm.Values.I32 I32Op.Add))
+    )
+
   (* Dynamic array access. Returns the address (not the value) of the field.
      Does bounds checking *)
   let idx env =
@@ -5548,18 +5575,30 @@ module MakeSerialization (Strm : Stream) = struct
     set_typtbl_size (Int32.of_int (List.length offsets));
     set_typtbl_idltyps static_idltyps
 
+  
+  (* Threshold to detect a stream offset in a tag if incremental GC is enabled.
+     The encoded value must larger than the maximum tag, to be distinguishable from 
+     ordinary tags and must be even, i.e. unskewed, to be distinguishable from 
+     forwarding pointers. *)
+  let stream_tag_offset = Int32.(mul (div (add Tagged.max_tag 2l) 2l) 2l)
+  let max_relative_stream_offset = Int32.(div (sub (of_int(0x8000_0000 - 2)) stream_tag_offset) 2l)
+
+  (* Regular tag or encoded stream offset or StableSeen, but no forwarding pointer *)
   let is_serialization_tag env =
+    assert (!Flags.gc_strategy == Flags.Incremental);
     let (set_tag, get_tag) = new_local env "original_tag" in
     set_tag ^^
     (* regular tag <= max_tag *)
     get_tag ^^ compile_unboxed_const Tagged.max_tag ^^ G.i (Compare (Wasm.Values.I32 I32Op.LeU)) ^^
-    (* or special StableSeen serialization marker *)
+    (* or is the special StableSeen serialization marker *)
     get_tag ^^ compile_eq_const Tagged.(int_of_tag StableSeen) ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
     (* or is special serialization offset in scalar (unskewed, shifted) encoding *)
     get_tag ^^ compile_bitand_const 0x1l ^^ G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Or))
 
+  (* Specialized forwarding pointer resolution considering potential serialization tags
+     during the stabilization phase. Only to be used with the incremental GC mode.*)
   let forward_during_serialization env =
     (if !Flags.gc_strategy == Flags.Incremental then
       let (set_object, get_object) = new_local env "object" in
@@ -5574,30 +5613,34 @@ module MakeSerialization (Strm : Stream) = struct
     else G.nop)
 
   (* Stream offsets are represented as scalar values in the tag such that 
-     they can be distinguished from forwarding pointers *)
+     they can be distinguished from forwarding pointers.
+     Their encoding: stream offset << 1 + stream_tag_offset,
+     with stream_tag_offset being an even number > max_tag.
+     For externalization, the stream offset is relative w.r.t. StableMemoryStream.
+     The stream size is limited to max_relative_stream_offset. *)
   let stream_offset_to_tag env =
     (if !Flags.gc_strategy == Flags.Incremental then
       let (set_offset, get_offset) = new_local env "offset" in
       set_offset ^^
       get_offset ^^
-      compile_unboxed_const Tagged.max_tag ^^
-      G.i (Compare (Wasm.Values.I32 I32Op.LeU)) ^^
-      E.then_trap_with env "Too small offset" ^^
+      compile_unboxed_const max_relative_stream_offset ^^
+      G.i (Compare (Wasm.Values.I32 I32Op.GtU)) ^^
+      E.then_trap_with env "Too large stream offset" ^^
       get_offset ^^
-      G.i (Unary (Wasm.Values.I32 I32Op.Clz)) ^^
-      G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
-      E.then_trap_with env "Too large offset" ^^
-      get_offset ^^ compile_shrU_const 1l
+      compile_shl_const 1l ^^
+      compile_add_const stream_tag_offset
     else G.nop)
 
   let tag_to_stream_offset env =
     (if !Flags.gc_strategy == Flags.Incremental then
-      let (set_offset, get_offset) = new_local env "offset" in
-      set_offset ^^
-      get_offset ^^
+      let (set_value, get_value) = new_local env "value" in
+      set_value ^^
+      get_value ^^
       compile_bitand_const 0x1l ^^
-      E.then_trap_with env "Invalid offset" ^^
-      get_offset ^^ compile_shl_const 1l
+      E.then_trap_with env "Invalid stream offset: Odd" ^^
+      get_value ^^
+      compile_sub_const stream_tag_offset ^^
+      compile_shrU_const 1l
     else G.nop)
     
   (* Returns data (in bytes) and reference buffer size (in entries) needed *)
@@ -5610,6 +5653,7 @@ module MakeSerialization (Strm : Stream) = struct
       (* Some combinators for writing values *)
       let (set_data_size, get_data_size) = new_local64 env "data_size" in
       let (set_ref_size, get_ref_size) = new_local env "ref_size" in
+      let set_x = G.setter_for get_x in
       compile_const_64 0L ^^ set_data_size ^^
       compile_unboxed_const 0l ^^ set_ref_size ^^
 
@@ -5636,7 +5680,6 @@ module MakeSerialization (Strm : Stream) = struct
       let size_alias size_thing =
         (* see Note [mutable stable values] *)
         let (set_tag, get_tag) = new_local env "tag" in
-        let set_x = G.setter_for get_x in
         (* special conditional forwarding considering StableSeen *)
         get_x ^^ forward_during_serialization env ^^ set_x ^^
         (* low-level load of the tag without forwarding logic *)
@@ -5693,10 +5736,12 @@ module MakeSerialization (Strm : Stream) = struct
       | Array (Mut t) ->
         size_alias (fun () -> get_x ^^ size env (Array t))
       | Array t ->
-        size_word env (get_x ^^ Arr.len env) ^^
-        get_x ^^ Arr.len env ^^
+        (* special conditional forwarding considering a possible StableSeen in the Array tag *)
+        get_x ^^ forward_during_serialization env ^^ set_x ^^
+        size_word env (get_x ^^ Heap.load_field Arr.len_field) ^^
+        get_x ^^ Heap.load_field Arr.len_field ^^
         from_0_to_n env (fun get_i ->
-          get_x ^^ get_i ^^ Arr.unsafe_idx env ^^ load_ptr ^^
+          get_x ^^ get_i ^^ Arr.unsafe_idx_no_forwarding env ^^ load_ptr ^^
           size env t
         )
       | Prim Blob ->
@@ -5710,9 +5755,11 @@ module MakeSerialization (Strm : Stream) = struct
         size_word env get_len ^^
         inc_data_size get_len
       | Opt t ->
+        (* special conditional forwarding considering a possible StableSeen in the Array tag *)
+        get_x ^^ forward_during_serialization env ^^ set_x ^^
         inc_data_size (compile_unboxed_const 1l) ^^ (* one byte tag *)
         get_x ^^ Opt.is_some env ^^
-        G.if0 (get_x ^^ Opt.project env ^^ size env t) G.nop
+        G.if0 (get_x ^^ Opt.project_no_forwarding env ^^ size env t) G.nop
       | Variant vs ->
         List.fold_right (fun (i, {lab = l; typ = t; _}) continue ->
             get_x ^^
@@ -5757,6 +5804,7 @@ module MakeSerialization (Strm : Stream) = struct
     Func.share_code3 env name (("x", I32Type), ("data_buffer", I32Type), ("ref_buffer", I32Type)) [I32Type; I32Type]
     (fun env get_x get_data_buf get_ref_buf ->
       let set_ref_buf = G.setter_for get_ref_buf in
+      let set_x = G.setter_for get_x in
       
       (* Some combinators for writing values *)
       let open Strm in
@@ -5773,7 +5821,6 @@ module MakeSerialization (Strm : Stream) = struct
         (* see Note [mutable stable values] *)
         (* Check heap tag *)
         let (set_tag, get_tag) = new_local env "tag" in
-        let set_x = G.setter_for get_x in
         (* special conditional forwarding considering the StableSeen and the encoded serialization stream offsets *)
         get_x ^^ forward_during_serialization env ^^ set_x ^^
         (* low-level load of the tag without forwarding logic *)
@@ -5786,7 +5833,7 @@ module MakeSerialization (Strm : Stream) = struct
           (* Remember the current offset in the tag word *)
           get_x ^^ 
           Strm.absolute_offset env get_data_buf ^^ stream_offset_to_tag env ^^
-          Tagged.store_field env Tagged.tag_field ^^
+          Heap.store_field Tagged.tag_field ^^
           (* Leave space in the output buffer for the decoder's bookkeeping *)
           write_word_32 env get_data_buf (compile_unboxed_const 0l) ^^
           write_word_32 env get_data_buf (compile_unboxed_const 0l) ^^
@@ -5819,7 +5866,6 @@ module MakeSerialization (Strm : Stream) = struct
       in
 
       (* Now the actual serialization *)
-
       begin match t with
       | Prim Nat ->
         write_bignum_leb env get_data_buf get_x
@@ -5861,19 +5907,23 @@ module MakeSerialization (Strm : Stream) = struct
         (* access array without forwarding logic *)
         write_alias (fun () -> get_x ^^ write env (Array t))
       | Array t ->
-        write_word_leb env get_data_buf (get_x ^^ Arr.len env) ^^
-        get_x ^^ Arr.len env ^^
+        (* special conditional forwarding considering a possible StableSeen or serialization stream offset in the Array tag *)
+        get_x ^^ forward_during_serialization env ^^ set_x ^^
+        write_word_leb env get_data_buf (get_x ^^ Heap.load_field Arr.len_field) ^^
+        get_x ^^ Heap.load_field Arr.len_field ^^
         from_0_to_n env (fun get_i ->
-          get_x ^^ get_i ^^ Arr.unsafe_idx env ^^ load_ptr ^^
+          get_x ^^ get_i ^^ Arr.unsafe_idx_no_forwarding env ^^ load_ptr ^^
           write env t
         )
       | Prim Null -> G.nop
       | Any -> G.nop
       | Opt t ->
+        (* special conditional forwarding considering a possible StableSeen in the Array tag *)
+        get_x ^^ forward_during_serialization env ^^ set_x ^^
         get_x ^^
         Opt.is_some env ^^
         G.if0
-          (write_byte env get_data_buf (compile_unboxed_const 1l) ^^ get_x ^^ Opt.project env ^^ write env t)
+          (write_byte env get_data_buf (compile_unboxed_const 1l) ^^ get_x ^^ Opt.project_no_forwarding env ^^ write env t)
           (write_byte env get_data_buf (compile_unboxed_const 0l))
       | Variant vs ->
         List.fold_right (fun (i, {lab = l; typ = t; _}) continue ->
