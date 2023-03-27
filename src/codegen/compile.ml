@@ -5650,6 +5650,7 @@ module MakeSerialization (Strm : Stream) = struct
     let name = "@buffer_size<" ^ typ_hash t ^ ">" in
     Func.share_code1 env name ("x", I32Type) [I32Type; I32Type]
     (fun env get_x ->
+
       (* Some combinators for writing values *)
       let (set_data_size, get_data_size) = new_local64 env "data_size" in
       let (set_ref_size, get_ref_size) = new_local env "ref_size" in
@@ -5805,7 +5806,7 @@ module MakeSerialization (Strm : Stream) = struct
     (fun env get_x get_data_buf get_ref_buf ->
       let set_ref_buf = G.setter_for get_ref_buf in
       let set_x = G.setter_for get_x in
-      
+
       (* Some combinators for writing values *)
       let open Strm in
 
@@ -5866,6 +5867,7 @@ module MakeSerialization (Strm : Stream) = struct
       in
 
       (* Now the actual serialization *)
+
       begin match t with
       | Prim Nat ->
         write_bignum_leb env get_data_buf get_x
