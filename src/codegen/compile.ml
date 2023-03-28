@@ -4595,7 +4595,7 @@ module StableMem = struct
 
   let get_mem_size env =
     (* G.i (GlobalGet (nr (E.get_global env "__stablemem_size"))) *)
-    E.call_import env "rts" "region_get_mem_size"      
+    E.call_import env "rts" "region_get_mem_size"
 
   let set_mem_size env =
     (* G.i (GlobalSet (nr (E.get_global env "__stablemem_size"))) *)
@@ -5513,6 +5513,12 @@ module MakeSerialization (Strm : Stream) = struct
         get_x ^^ size env (Prim Blob)
       | Non ->
         E.trap_with env "buffer_size called on value of type None"
+      | Prim Region ->
+
+         size_alias (fun () -> get_x ^^ Heap.load_field MutBox.field ^^ size env t)
+
+      (* inc_data_size (compile_unboxed_const (16l)) (* to do -- plus blob size *) *)
+
       | Mut t ->
         size_alias (fun () -> get_x ^^ Heap.load_field MutBox.field ^^ size env t)
       | _ -> todo "buffer_size" (Arrange_ir.typ t) G.nop
@@ -6636,6 +6642,7 @@ works.
 The type-driven code in this module treats `Type.Mut` to always refer to an
 `ObjInd`; for arrays the mutable case is handled directly.
 
+20230328--noticed this comment; still digesting...
 To detect and preserve aliasing, these steps are taken:
 
  * In `buffer_size`, when we see a mutable thing (`Array` or `ObjInd`), the
