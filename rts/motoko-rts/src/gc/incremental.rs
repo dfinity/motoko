@@ -44,7 +44,9 @@ unsafe fn initialize_incremental_gc<M: Memory>(mem: &mut M) {
 
 #[ic_mem_fn(ic_only)]
 unsafe fn schedule_incremental_gc<M: Memory>(mem: &mut M) {
-    let running = STATE.borrow().phase != Phase::Pause && STATE.borrow().phase != Phase::Stop;
+    let state = STATE.borrow();
+    assert!(state.phase != Phase::Stop);
+    let running = state.phase != Phase::Pause;
     if running || should_start() {
         incremental_gc(mem);
     }
@@ -219,12 +221,12 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
 
     unsafe fn increment(&mut self) {
         match self.state.phase {
-            Phase::Pause | Phase::Stop => {}
             Phase::Mark => MarkIncrement::instance(self.mem, self.state, &mut self.time).run(),
             Phase::Evacuate => {
                 EvacuationIncrement::instance(self.mem, self.state, &mut self.time).run()
             }
             Phase::Update => UpdateIncrement::instance(self.state, &mut self.time).run(),
+            Phase::Pause | Phase::Stop => unreachable!(),
         }
     }
 
