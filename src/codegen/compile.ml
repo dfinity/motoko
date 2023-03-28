@@ -1584,15 +1584,18 @@ module Tagged = struct
 
   (* Note: Post allocation barrier must be applied after initialization *)
   let alloc env size tag =
-    let (set_object, get_object) = new_local env "new_object" in
-    Heap.alloc env size ^^
-    set_object ^^ get_object ^^
-    compile_unboxed_const (int_of_tag tag) ^^
-    Heap.store_field tag_field ^^
-    get_object ^^ (* object pointer *)
-    get_object ^^ (* forwarding pointer *)
-    Heap.store_field forwarding_pointer_field ^^
-    get_object
+    let name = Printf.sprintf "alloc_size<%d>_tag<%d>" (Int32.to_int size) (Int32.to_int (int_of_tag tag)) in
+    Func.share_code0 env name [I32Type] (fun env ->
+      let (set_object, get_object) = new_local env "new_object" in
+      Heap.alloc env size ^^
+      set_object ^^ get_object ^^
+      compile_unboxed_const (int_of_tag tag) ^^
+      Heap.store_field tag_field ^^
+      get_object ^^ (* object pointer *)
+      get_object ^^ (* forwarding pointer *)
+      Heap.store_field forwarding_pointer_field ^^
+      get_object
+    )
 
   let load_forwarding_pointer env =
     (if !Flags.gc_strategy = Flags.Incremental then
