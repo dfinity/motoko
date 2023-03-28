@@ -1536,6 +1536,7 @@ module Tagged = struct
     | CoercionFailure (* Used in the Candid decoder. Static singleton! *)
     | OneWordFiller (* Only used by the RTS *)
     | FreeSpace (* Only used by the RTS *)
+    | Region
 
   (* Tags needs to have the lowest bit set, to allow distinguishing object
      headers from heap locations (object or field addresses).
@@ -1559,6 +1560,7 @@ module Tagged = struct
     | Null -> 27l
     | OneWordFiller -> 29l
     | FreeSpace -> 31l
+    | Region -> 33l
     (* Next two tags won't be seen by the GC, so no need to set the lowest bit
        for `CoercionFailure` and `StableSeen` *)
     | CoercionFailure -> 0xfffffffel
@@ -5430,6 +5432,8 @@ module MakeSerialization (Strm : Stream) = struct
         G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
         get_tag ^^ compile_eq_const Tagged.(int_of_tag Array) ^^
         G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
+        get_tag ^^ compile_eq_const Tagged.(int_of_tag Region) ^^
+        G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
         E.else_trap_with env "object_size/Mut: Unexpected tag" ^^
         (* Check if we have seen this before *)
         get_tag ^^ compile_eq_const Tagged.(int_of_tag StableSeen) ^^
@@ -5555,6 +5559,7 @@ module MakeSerialization (Strm : Stream) = struct
         checkpoint env get_data_buf
       in
 
+      (* 20230328 *)
       let write_alias write_thing =
         (* see Note [mutable stable values] *)
         (* Check heap tag *)
@@ -5638,6 +5643,8 @@ module MakeSerialization (Strm : Stream) = struct
         ) (sort_by_hash fs)
       | Array (Mut t) ->
         write_alias (fun () -> get_x ^^ write env (Array t))
+      | Prim Region ->
+         ( E.trap_with env "to do -- serialize Prim Region" )
       | Array t ->
         write_word_leb env get_data_buf (get_x ^^ Heap.load_field Arr.len_field) ^^
         get_x ^^ Heap.load_field Arr.len_field ^^
@@ -5681,7 +5688,6 @@ module MakeSerialization (Strm : Stream) = struct
         write_alias (fun () ->
           get_x ^^ Heap.load_field MutBox.field ^^ write env t
           )
-      | Prim Region -> todo "region" (Arrange_ir.typ t) G.nop
       | _ -> todo "serialize" (Arrange_ir.typ t) G.nop
       end ^^
       get_data_buf ^^
@@ -6021,6 +6027,7 @@ module MakeSerialization (Strm : Stream) = struct
         )
       in
 
+      (* 20230328 *)
       let read_alias env t read_thing =
         (* see Note [mutable stable values] *)
         let (set_is_ref, get_is_ref) = new_local env "is_ref" in
