@@ -198,6 +198,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     /// * The mark phase can only be started on an empty call stack.
     /// * The update phase can only be completed on an empty call stack.
     pub unsafe fn empty_call_stack_increment(&mut self, roots: Roots) {
+        assert!(self.state.phase != Phase::Stop);
         if self.pausing() {
             self.start_marking(roots);
         }
@@ -408,9 +409,8 @@ unsafe fn count_allocation(state: &mut State) {
     }
 }
 
-/// Stop the GC before performing upgrade. Otherwise, GC increments on allocation
-/// and writes may interfere with the upgrade mechanism that invalidates object tags
-/// during stream serialization.
+/// Stop the GC before performing upgrade. This is only a safe-guard since
+/// the compiler must not schedule the GC during stabilization anyway.
 #[no_mangle]
 pub unsafe extern "C" fn stop_gc_on_upgrade() {
     STATE.get_mut().phase = Phase::Stop;
