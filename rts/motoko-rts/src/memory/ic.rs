@@ -20,7 +20,15 @@ pub(crate) static mut HP: u32 = 0;
 /// Heap pointer after last GC
 pub(crate) static mut LAST_HP: u32 = 0;
 
-static mut USING_INCREMENTAL_GC: bool = false;
+#[derive(PartialEq)]
+pub(crate) enum HeapLayout {
+    /// Linear heap. Used by the copying, compacting, and generational GC.
+    Linear,
+    /// Partitioned heap. Used by the incremental GC.
+    Partitioned,
+}
+
+static mut LAYOUT: HeapLayout = HeapLayout::Linear;
 
 // Provided by generated code
 extern "C" {
@@ -33,10 +41,10 @@ pub(crate) unsafe fn get_aligned_heap_base() -> u32 {
     ((get_heap_base() + 31) / 32) * 32
 }
 
-pub(crate) unsafe fn initialize_memory(using_incremental_gc: bool) {
+pub(crate) unsafe fn initialize_memory(heap_layout: HeapLayout) {
     HP = get_aligned_heap_base();
     LAST_HP = HP;
-    USING_INCREMENTAL_GC = using_incremental_gc;
+    LAYOUT = heap_layout;
 }
 
 #[no_mangle]
@@ -46,10 +54,9 @@ unsafe extern "C" fn get_max_live_size() -> Bytes<u32> {
 
 #[no_mangle]
 unsafe extern "C" fn get_reclaimed() -> Bytes<u64> {
-    if USING_INCREMENTAL_GC {
-        get_partitioned_heap().reclaimed_size()
-    } else {
-        RECLAIMED
+    match LAYOUT {
+        HeapLayout::Partitioned => get_partitioned_heap().reclaimed_size(),
+        HeapLayout::Linear => RECLAIMED,
     }
 }
 
@@ -60,10 +67,9 @@ pub unsafe extern "C" fn get_total_allocations() -> Bytes<u64> {
 
 #[no_mangle]
 pub unsafe extern "C" fn get_heap_size() -> Bytes<u32> {
-    if USING_INCREMENTAL_GC {
-        get_partitioned_heap().occupied_size()
-    } else {
-        Bytes(HP - get_aligned_heap_base())
+    match LAYOUT {
+        HeapLayout::Partitioned => get_partitioned_heap().occupied_size(),
+        HeapLayout::Linear => Bytes(HP - get_aligned_heap_base()),
     }
 }
 
@@ -74,11 +80,9 @@ pub struct IcMemory;
 impl Memory for IcMemory {
     #[inline]
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value {
-        // Use the partitioned heap, if the incremental GC is enabled.
-        if USING_INCREMENTAL_GC {
-            get_partitioned_heap().allocate(self, n)
-        } else {
-            self.linear_alloc_words(n)
+        match LAYOUT {
+            HeapLayout::Partitioned => get_partitioned_heap().allocate(self, n),
+            HeapLayout::Linear => self.linear_alloc_words(n),
         }
     }
 
