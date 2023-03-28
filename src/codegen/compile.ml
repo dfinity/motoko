@@ -9118,9 +9118,7 @@ let rec compile_lexp (env : E.t) ae lexp : G.t * SR.t * G.t =
     compile_add_const ptr_unskew ^^
     E.call_import env "rts" "post_write_barrier"
   | IdxLE (e1, e2), Flags.Incremental when potential_pointer (Arr.element_type env e1.note.Note.typ) ->
-    compile_exp_vanilla env ae e1 ^^ (* offset to array *)
-    compile_exp_vanilla env ae e2 ^^ (* idx *)
-    Arr.idx_bigint env ^^
+    compile_array_index env ae e1 e2 ^^
     compile_add_const ptr_unskew,
     SR.Vanilla,
     Tagged.write_with_barrier env
