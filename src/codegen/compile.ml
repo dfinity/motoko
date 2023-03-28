@@ -1616,6 +1616,7 @@ module Tagged = struct
   let can_have_tag ty tag =
     let open Mo_types.Type in
     match (tag : tag) with
+    | Region -> false (* ??? *)
     | Array ->
       begin match normalize ty with
       | (Con _ | Any) -> true
@@ -5237,6 +5238,7 @@ module MakeSerialization (Strm : Stream) = struct
           | Func (s, c, tbs, ts1, ts2) ->
             List.iter go ts1; List.iter go ts2
           | Prim Blob -> ()
+          | Prim Region -> ()
           | Mut t -> go t
           | _ ->
             Printf.eprintf "type_desc: unexpected type %s\n" (string_of_typ t);
@@ -5296,6 +5298,8 @@ module MakeSerialization (Strm : Stream) = struct
       | Non -> assert false
       | Prim Blob ->
         add_typ Type.(Array (Prim Nat8))
+      | Prim Region ->
+        add_typ (Type.Prim Region)
       | Prim _ -> assert false
       | Tup ts ->
         add_sleb128 idl_record;
@@ -5434,7 +5438,7 @@ module MakeSerialization (Strm : Stream) = struct
         G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
         get_tag ^^ compile_eq_const Tagged.(int_of_tag Region) ^^
         G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
-        E.else_trap_with env "object_size/Mut: Unexpected tag" ^^
+        E.else_trap_with env "object_size/Mut: Unexpected tag." ^^
         (* Check if we have seen this before *)
         get_tag ^^ compile_eq_const Tagged.(int_of_tag StableSeen) ^^
         G.if0 begin
@@ -5588,6 +5592,8 @@ module MakeSerialization (Strm : Stream) = struct
           E.then_trap_with env "unvisited mutable data in serialize_go (ObjInd)" ^^
           get_tag ^^ compile_eq_const Tagged.(int_of_tag Array) ^^
           E.then_trap_with env "unvisited mutable data in serialize_go (Array)" ^^
+          get_tag ^^ compile_eq_const Tagged.(int_of_tag Region) ^^
+          E.then_trap_with env "unvisited mutable data in serialize_go (Region)" ^^
           (* Second time we see this *)
           (* Calculate relative offset *)
           let set_offset, get_offset = new_local env "offset" in
