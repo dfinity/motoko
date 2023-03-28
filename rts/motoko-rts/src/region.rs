@@ -333,6 +333,20 @@ pub unsafe fn region_set_mem_size<M: Memory>(_mem: &mut M, size: u64) {
     crate::memory::ic::REGION_SET_MEM_SIZE = Some(size);
 }
 
+// Helper for commmon logic that reserves low-valued RegionIds in a certain span for future use.
+// When first is some, we are actually reserving.  When first is none, we are checking that the reservation has occured.
+unsafe fn region_reserve_id_span<M: Memory>(_mem: &mut M, first: Option<RegionId>, last: RegionId) {
+    if let Some(first) = first {
+        let next_id = meta_data::total_allocated_regions::get() as u16;
+        assert_eq!(first.0, next_id);
+        assert!(first.0 <= last.0);
+        meta_data::total_allocated_regions::set((last.0 + 1) as u64);
+    } else {
+        let next_id = meta_data::total_allocated_regions::get() as u16;
+        assert!(last.0 < next_id);
+    }
+}
+
 #[ic_mem_fn]
 pub unsafe fn region_new<M: Memory>(mem: &mut M) -> Value {
     let r_ptr = mem.alloc_words(size_of::<Region>());
@@ -419,6 +433,9 @@ pub(crate) unsafe fn region_init_<M: Memory>(mem: &mut M) {
         // Region 1 -- reserved for reclaimed regions' blocks (to do).
         crate::memory::ic::REGION_1 = crate::region::region_new(mem);
 
+        // Regions 2 through 15, reserved for future use by future Motoko compiler-RTS features.
+        region_reserve_id_span(mem, Some(RegionId(2)), RegionId(15));
+
         // Recall that we've done this later, without asking ic0_stable::size.
         assert_eq!(crate::memory::ic::REGION_MEM_SIZE_INIT, false);
         crate::memory::ic::REGION_MEM_SIZE_INIT = true;
@@ -436,6 +453,10 @@ pub(crate) unsafe fn region_init_<M: Memory>(mem: &mut M) {
         }
         crate::memory::ic::REGION_0 = crate::region::region_recover(mem, &RegionId(0));
         crate::memory::ic::REGION_1 = crate::region::region_recover(mem, &RegionId(1));
+
+        // Ensure that regions 2 through 15 are already reserved for
+        // future use by future Motoko compiler-RTS features.
+        region_reserve_id_span(mem, None, RegionId(15));
     }
 }
 
@@ -628,9 +649,9 @@ pub(crate) unsafe fn region_load<M: Memory>(_mem: &mut M, r: Value, offset: u64,
         // Do rest of block-sized reads.
         // (invariant: they always occur at the start of a block).
         loop {
-	    if false {
-		println!(80, "load r={:?} s={} i={}", r.id(), s, i);
-	    }
+            if false {
+                println!(80, "load r={:?} s={} i={}", r.id(), s, i);
+            }
             let (s_, _, b_len) = r.relative_into_absolute_info(offset + i);
             s = s_;
             if i + b_len > dst.len() as u64 {
