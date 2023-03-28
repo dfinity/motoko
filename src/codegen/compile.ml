@@ -5383,6 +5383,7 @@ module MakeSerialization (Strm : Stream) = struct
     set_typtbl_idltyps static_idltyps
 
   (* Returns data (in bytes) and reference buffer size (in entries) needed *)
+  (* 20230328 *)
   let rec buffer_size env t =
     let open Type in
     let t = Type.normalize t in
@@ -5416,6 +5417,7 @@ module MakeSerialization (Strm : Stream) = struct
         set_inc ^^ inc_data_size get_inc
       in
 
+      (* 20230328 *)
       let size_alias size_thing =
         (* see Note [mutable stable values] *)
         let (set_tag, get_tag) = new_local env "tag" in
@@ -5527,6 +5529,7 @@ module MakeSerialization (Strm : Stream) = struct
     )
 
   (* Copies x to the data_buffer, storing references after ref_count entries in ref_base *)
+  (* 20230328 *)
   let rec serialize_go env t =
     let open Type in
     let t = Type.normalize t in
@@ -5671,7 +5674,8 @@ module MakeSerialization (Strm : Stream) = struct
       | Mut t ->
         write_alias (fun () ->
           get_x ^^ Heap.load_field MutBox.field ^^ write env t
-        )
+          )
+      | Prim Region -> todo "region" (Arrange_ir.typ t) G.nop
       | _ -> todo "serialize" (Arrange_ir.typ t) G.nop
       end ^^
       get_data_buf ^^
@@ -5680,7 +5684,7 @@ module MakeSerialization (Strm : Stream) = struct
 
   (* This value is returned by deserialize_go if deserialization fails in a way
      that should be recoverable by opt parsing.
-     By virtue of being a deduped static value, it can be detected by pointer
+     By virtue of being a deduped stati value, it can be detected by pointer
      comparison.
   *)
   let coercion_error_value env : int32 =
@@ -5760,6 +5764,7 @@ module MakeSerialization (Strm : Stream) = struct
     let can_recover = 2l
   end
 
+  (* 20230328 *)
   let rec deserialize_go env t =
     let open Type in
     let t = Type.normalize t in
