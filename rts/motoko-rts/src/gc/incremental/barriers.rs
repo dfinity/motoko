@@ -50,7 +50,7 @@ pub unsafe extern "C" fn allocation_barrier(new_object: Value) -> Value {
     let state = incremental_gc_state();
     if state.phase != Phase::Pause {
         post_allocation_barrier(state, new_object);
-        count_allocation(state);    
+        count_allocation(state);
     }
     new_object
 }
