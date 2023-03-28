@@ -1615,21 +1615,25 @@ module Tagged = struct
 
   let check_forwarding env unskewed = 
     (if !Flags.gc_strategy = Flags.Incremental then
-      let (set_object, get_object) = new_local env "object" in
-      (if unskewed then
-        compile_unboxed_const ptr_skew ^^
-        G.i (Binary (Wasm.Values.I32 I32Op.Add))
-      else G.nop) ^^
-      set_object ^^ get_object ^^
-      load_forwarding_pointer env ^^
-      get_object ^^
-      G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
-      E.else_trap_with env "missing object forwarding"  ^^
-      get_object ^^
-      (if unskewed then
-        compile_unboxed_const ptr_unskew ^^
-        G.i (Binary (Wasm.Values.I32 I32Op.Add))
-      else G.nop)
+      let name = "check_forwarding_" ^ if unskewed then "unskewed" else "skewed" in
+      Func.share_code1 env name ("object", I32Type) [I32Type] (fun env get_object ->
+        let set_object = G.setter_for get_object in
+        (if unskewed then
+          get_object ^^
+          compile_unboxed_const ptr_skew ^^
+          G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+          set_object
+        else G.nop) ^^
+        get_object ^^
+        load_forwarding_pointer env ^^
+        get_object ^^
+        G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+        E.else_trap_with env "missing object forwarding"  ^^
+        get_object ^^
+        (if unskewed then
+          compile_unboxed_const ptr_unskew ^^
+          G.i (Binary (Wasm.Values.I32 I32Op.Add))
+        else G.nop))
     else G.nop)
 
   let check_forwarding_for_store env typ =
