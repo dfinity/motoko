@@ -10220,7 +10220,7 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
   let const_exp_helper =
     lazy begin
         let[@warning "-8"] LetD (p, e) = dec.it in
-        const_exp_matches_pat env p e
+        const_exp_matches_pat env pre_ae p e
       end in
   (*let is_compile_time_matchable () =
     let lazy const_exp_matches = const_exp_helper in
@@ -10403,9 +10403,9 @@ and compile_const_decs env pre_ae decs : (VarEnv.t -> VarEnv.t) * (E.t -> VarEnv
         (fun env ae -> fill1 env ae; fill2 env ae) in
   go pre_ae decs
 
-and const_exp_matches_pat env pat exp : bool option =
+and const_exp_matches_pat env ae pat exp : bool option =
   assert exp.note.Note.const;
-  let c, _ = compile_const_exp env VarEnv.empty_ae exp in
+  let c, _ = compile_const_exp env ae exp in
   (try ignore (destruct_const_pat VarEnv.empty_ae pat c); Some true with Invalid_argument _ -> Some false)
 
 and destruct_const_pat ae pat const : VarEnv.t = match pat.it with
