@@ -69,8 +69,7 @@ pub unsafe fn text_iter<M: Memory>(mem: &mut M, text: Value) -> Value {
         find_leaf(mem, text, todo_addr as *mut _),
         mem,
     );
-    allocation_barrier(iter);
-    iter
+    allocation_barrier(iter)
 }
 
 /// Returns whether the iterator is finished

@@ -30,5 +30,10 @@ pub unsafe fn write_with_barrier<M: Memory>(_mem: &mut M, location: *mut Value, 
 /// Allocation barrier to be called after a new object allocation.
 /// The new object needs to be fully initialized, except for the payload of a blob.
 /// Used for the incremental GC.
+/// `new_object` is the skewed pointer of the newly allocated and initialized object.
+/// Return:
+/// `new_object` for convenience and better performance.
 #[no_mangle]
-pub unsafe extern "C" fn allocation_barrier(_new_object: Value) {}
+pub unsafe extern "C" fn allocation_barrier(new_object: Value) -> Value {
+    new_object
+}
