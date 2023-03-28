@@ -129,8 +129,7 @@ pub unsafe fn base32_of_checksummed_blob<M: Memory>(mem: &mut M, b: Value) -> Va
         blob.shrink(new_len);
     }
 
-    allocation_barrier(r);
-    r
+    allocation_barrier(r)
 }
 
 // tolerant conversion
@@ -207,8 +206,7 @@ pub unsafe fn base32_to_blob<M: Memory>(mem: &mut M, b: Value) -> Value {
     let new_len = Bytes(pump.dest.offset_from(dest) as u32);
     blob.shrink(new_len);
 
-    allocation_barrier(r);
-    r
+    allocation_barrier(r)
 }
 
 /// Encode a blob into its textual representation
@@ -256,8 +254,7 @@ unsafe fn base32_to_principal<M: Memory>(mem: &mut M, b: Value) -> Value {
     // Adjust result length
     let new_len = Bytes(dest as u32 - blob.payload_addr() as u32);
     blob.shrink(new_len);
-    allocation_barrier(r);
-    r
+    allocation_barrier(r)
 }
 
 // Decode an textual principal representation into a blob
@@ -285,6 +282,5 @@ pub unsafe fn blob_of_principal<M: Memory>(mem: &mut M, t: Value) -> Value {
         rts_trap_with("blob_of_principal: invalid principal");
     }
 
-    allocation_barrier(stripped);
-    stripped
+    allocation_barrier(stripped)
 }

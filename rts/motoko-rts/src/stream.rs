@@ -201,8 +201,7 @@ impl Stream {
         let ptr = Value::from_ptr(blob as usize);
         (*blob).header.forward = ptr;
         debug_assert_eq!(blob.len(), (*self).filled);
-        allocation_barrier(ptr);
-        ptr
+        allocation_barrier(ptr)
     }
 
     /// Shut down the stream by outputting all data. Lengths are
