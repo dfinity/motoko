@@ -10216,16 +10216,6 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
        G.(pre_ae, with_region dec.at alloc_code, fun ae body_code ->
           with_region dec.at (mk_code ae) ^^ wrap body_code)) @@
 
-  (* Set up some helpers, for exclusive usage by the "constant expressions" special case below *)
-  let const_exp_helper =
-    lazy begin
-        let[@warning "-8"] LetD (p, e) = dec.it in
-        const_exp_matches_pat env pre_ae p e
-      end in
-  (*let is_compile_time_matchable () =
-    let lazy const_exp_matches = const_exp_helper in
-    Option.is_some const_exp_matches in*)
-
   match dec.it with
   (* A special case for public methods *)
   (* This relies on the fact that in the top-level mutually recursive group, no shadowing happens. *)
@@ -10238,9 +10228,10 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
     G.( pre_ae1, nop, (fun ae -> fill env ae; nop), unmodified)
 
   (* A special case for constant expressions *)
-  | LetD (p, e) when e.note.Note.const (*&& is_compile_time_matchable ()*) ->
+  | LetD (p, e) when e.note.Note.const ->
+    (* constant expression matching with patterns is fully decidable *)
     let is_compile_time_bottom =
-      let lazy const_exp_matches = const_exp_helper in
+      let const_exp_matches = const_exp_matches_pat env pre_ae p e in
       not (Option.get const_exp_matches) in
     if is_compile_time_bottom then (* refuted *)
       (pre_ae, G.nop, (fun _ -> PatCode.patternFailTrap env), unmodified)
