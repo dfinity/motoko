@@ -7165,10 +7165,12 @@ module StackRep = struct
     | Const.Tag (i, c) ->
       let ptr = materialize_const_t env c in
       Variant.vanilla_lit env i ptr
+    | Const.Lit l -> materialize_lit env l
     | Const.Opt c ->
       let ptr = materialize_const_t env c in
-      Opt.vanilla_lit env ptr
-    | Const.Lit l -> materialize_lit env l
+      match c with
+      | (_, Const.(Opt _ | Lit Null)) -> Opt.vanilla_lit env ptr
+      | _ -> ptr (* not option shaped, we can short-circuit *)
 
   let adjust env (sr_in : t) sr_out =
     if eq sr_in sr_out
