@@ -46,6 +46,11 @@ use super::{
 };
 
 /// Size of each partition.
+/// Select the size of the power of two with the smallest WASM memory size in the benchmark.
+/// -> Small partitions below 32 MB are inefficient in terms of both memory and runtime costs
+///    due to the increased frequency of large object handling.
+/// -> Large partitions above 32 MB are a waste for small programs, since the WASM memory is
+///    allocated in that granularity and GC is then triggered later.
 pub const PARTITION_SIZE: usize = 32 * 1024 * 1024;
 
 /// Total number of partitions in the memory.
