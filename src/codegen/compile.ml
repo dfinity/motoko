@@ -5257,7 +5257,7 @@ module MakeSerialization (Strm : Stream) = struct
           | Func (s, c, tbs, ts1, ts2) ->
             List.iter go ts1; List.iter go ts2
           | Prim Blob -> ()
-          | Prim Region -> () (* crusso: delete me? Region is primitive*)
+          | Prim Region -> assert false (* crusso: delete me? Region is primitive*)
           | Mut t -> go t
           | _ ->
             Printf.eprintf "type_desc: unexpected type %s\n" (string_of_typ t);
@@ -5542,7 +5542,7 @@ module MakeSerialization (Strm : Stream) = struct
         E.trap_with env "buffer_size called on value of type None"
       | Prim Region ->
         size_alias (fun () ->
-          inc_data_size (compile_unboxed_const 9l) ^^ (* one byte tag + |(padded) id| + |page_count| *)
+          inc_data_size (compile_unboxed_const 8l) ^^ (* |(padded) id| + |page_count| *)
           get_x ^^ Heap.load_field Region.vec_pages_field ^^ size env (Prim Blob))
       | Mut t ->
         size_alias (fun () -> get_x ^^ Heap.load_field MutBox.field ^^ size env t)
