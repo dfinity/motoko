@@ -3580,6 +3580,19 @@ module Region = struct
   let alloc env get_id get_pagecount get_vec_pages =
     Tagged.obj env Tagged.Region [ get_id; get_pagecount; get_vec_pages ]
 
+  let check_region s env =
+    let (set_region, get_region) = new_local env "region" in
+    set_region ^^
+    get_region ^^ Tagged.load ^^
+    compile_eq_const Tagged.(int_of_tag Region) ^^
+    get_region ^^ Tagged.load ^^
+    compile_eq_const Tagged.(int_of_tag StableSeen) ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
+    E.else_trap_with env ("Internal error: bad region tag "^ s) ^^
+    get_region ^^ Heap.load_field vec_pages_field ^^ Tagged.load ^^
+    compile_eq_const Tagged.(int_of_tag Blob) ^^
+    E.else_trap_with env ("Internal error: bad region.vec_pages" ^ s)
+
   let id env =
     E.call_import env "rts" "region_id" (* TEMP (for testing) *)
   let next_id env =
@@ -5541,7 +5554,8 @@ module MakeSerialization (Strm : Stream) = struct
       | Non ->
         E.trap_with env "buffer_size called on value of type None"
       | Prim Region ->
-        size_alias (fun () ->
+         size_alias (fun () ->
+          get_x ^^ Region.check_region "size_alias" env  ^^
           inc_data_size (compile_unboxed_const 8l) ^^ (* |(padded) id| + |page_count| *)
           get_x ^^ Heap.load_field Region.vec_pages_field ^^ size env (Prim Blob))
       | Mut t ->
@@ -6102,7 +6116,7 @@ module MakeSerialization (Strm : Stream) = struct
             get_memo ^^ get_result ^^ store_unskewed_ptr ^^
             get_memo ^^ compile_add_const 4l ^^ Blob.lit env (typ_hash t) ^^ store_unskewed_ptr
           )
-        end begin
+          end begin
           (* Decoded before. Check type hash *)
           ReadBuf.read_word32 env get_data_buf ^^ Blob.lit env (typ_hash t) ^^
           G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
@@ -6276,21 +6290,17 @@ module MakeSerialization (Strm : Stream) = struct
           )
           )
       | Prim Region ->
-         read_alias env (Prim Region) (fun get_array_typ on_alloc ->
+         read_alias env (Prim Region) (fun get_arg_typ on_alloc ->
           let (set_region, get_region) = new_local env "region" in
-          (with_prim_typ (Prim Region) 
-          begin
-          let (set_id, get_id) = new_local env "id" in
-          let (set_pagecount, get_pagecount) = new_local env "pagecount" in
-          let (set_vec_pages, get_vec_pages) = new_local env "vec_pages" in
-          ReadBuf.read_word32 env get_data_buf ^^ set_id ^^
-          ReadBuf.read_word32 env get_data_buf ^^ set_pagecount ^^
-          with_blob_typ env (read_blob ()) ^^ set_vec_pages ^^
-          Region.alloc env get_id get_pagecount get_vec_pages
-          end) 
-          ^^ set_region
-          ^^ on_alloc get_region
-
+          get_arg_typ ^^
+          compile_eq_const (Int32.neg (Option.get (to_idl_prim t))) ^^
+          E.else_trap_with env "WTF" ^^
+          Region.alloc env (compile_unboxed_const 0l) (compile_unboxed_const 0l) (Blob.lit env "") ^^ set_region ^^
+          on_alloc get_region ^^
+          get_region ^^ ReadBuf.read_word32 env get_data_buf ^^ Heap.store_field Region.id_field ^^
+          get_region ^^ ReadBuf.read_word32 env get_data_buf ^^ Heap.store_field Region.page_count_field ^^
+          get_region ^^ with_blob_typ env (read_blob ()) ^^ Heap.store_field Region.vec_pages_field ^^
+          get_region ^^ Region.check_region "read_alias" env
         )
       | Array t ->
         let (set_len, get_len) = new_local env "len" in
@@ -9557,7 +9567,10 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
   | OtherPrim "regionNew", [] ->
     SR.Vanilla,
-    Region.new_ env
+    let set_region, get_region = new_local env "region" in
+    Region.new_ env ^^ set_region ^^
+    get_region ^^ Region.check_region "region_new" env ^^
+    get_region
 
   | OtherPrim "regionId", [e0] ->
     SR.UnboxedWord32,
@@ -9757,7 +9770,11 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
   | OtherPrim "stableMemoryRegion", [] ->
     SR.Vanilla,
-    Region0.get env
+    let set_region, get_region = new_local env "region" in
+    Region0.get env ^^ set_region ^^
+    get_region ^^ Region.check_region "stableMemoryRegion" env ^^
+    get_region
+
 
   | OtherPrim ("stableMemoryLoadNat32"|"stableMemoryLoadInt32"), [e] ->
     SR.UnboxedWord32,
