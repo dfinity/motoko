@@ -5702,7 +5702,7 @@ module MakeSerialization (Strm : Stream) = struct
 
   (* This value is returned by deserialize_go if deserialization fails in a way
      that should be recoverable by opt parsing.
-     By virtue of being a deduped stati value, it can be detected by pointer
+     By virtue of being a deduped static value, it can be detected by pointer
      comparison.
   *)
   let coercion_error_value env : int32 =
