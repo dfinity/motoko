@@ -60,6 +60,10 @@ const MAX_PARTITIONS: usize = usize::MAX / PARTITION_SIZE;
 
 /// Partitions are only evacuated if the space occupation of alive object in the partition
 /// is greater than this threshold.
+/// Based on benchmark measurements, this rate is tuned to optimize the following metrics
+/// in the order of occurrence:
+/// 1. Lowest heap size (most reclamation).
+/// 2. Lowest WASM memory size (i.e. for minimum heap size).
 pub const SURVIVAL_RATE_THRESHOLD: f64 = 0.85;
 
 /// Heap partition of size `PARTITION_SIZE`.
