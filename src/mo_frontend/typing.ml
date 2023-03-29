@@ -1881,7 +1881,7 @@ and infer_pat' env pat : T.typ * Scope.val_env =
         display_typ_expand t2;
     in
     T.Env.(iter (fun k t1 -> check_same_bind_type k t1 (find k ve2))) ve1;
-    t, T.Env.merge (fun _ t1 t2 -> Lib.Option.map2 T.lub t1 t2) ve1 ve2
+    t, T.Env.merge (fun _ -> Lib.Option.map2 T.lub) ve1 ve2
   | AnnotP (pat1, typ) ->
     let t = check_typ env typ in
     t, check_pat env t pat1
@@ -2015,7 +2015,7 @@ and check_pat' env t pat : Scope.val_env =
         display_typ_expand t2;
     in
     T.Env.(iter (fun k t1 -> check_same_bind_type k t1 (find k ve2))) ve1;
-    T.Env.merge (fun _ t1 t2 -> Lib.Option.map2 T.lub t1 t2) ve1 ve2
+    T.Env.merge (fun _ -> Lib.Option.map2 T.lub) ve1 ve2
   | AnnotP (pat1, typ) ->
     let t' = check_typ env typ in
     if not (T.sub t t') then
