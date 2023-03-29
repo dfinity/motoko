@@ -10231,8 +10231,7 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
   | LetD (p, e) when e.note.Note.const ->
     (* constant expression matching with patterns is fully decidable *)
     let is_compile_time_bottom =
-      let const_exp_matches = const_exp_matches_pat env pre_ae p e in
-      not (Option.get const_exp_matches) in
+      not (const_exp_matches_pat env pre_ae p e) in
     if is_compile_time_bottom then (* refuted *)
       (pre_ae, G.nop, (fun _ -> PatCode.patternFailTrap env), unmodified)
     else (* not refuted *)
@@ -10394,10 +10393,10 @@ and compile_const_decs env pre_ae decs : (VarEnv.t -> VarEnv.t) * (E.t -> VarEnv
         (fun env ae -> fill1 env ae; fill2 env ae) in
   go pre_ae decs
 
-and const_exp_matches_pat env ae pat exp : bool option =
+and const_exp_matches_pat env ae pat exp : bool =
   assert exp.note.Note.const;
   let c, _ = compile_const_exp env ae exp in
-  (try ignore (destruct_const_pat VarEnv.empty_ae pat c); Some true with Invalid_argument _ -> Some false)
+  (try ignore (destruct_const_pat VarEnv.empty_ae pat c); true with Invalid_argument _ -> false)
 
 and destruct_const_pat ae pat const : VarEnv.t = match pat.it with
   | WildP -> ae
