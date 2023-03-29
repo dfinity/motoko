@@ -150,6 +150,7 @@ module Const = struct
     | Unit
     | Array of t list (* also tuples, but not nullary *)
     | Tag of (string * t)
+    | Opt of t
     | Lit of lit
 
   (* A constant known value together with a vanilla pointer.
@@ -1689,7 +1690,13 @@ module Opt = struct
   let null_lit env =
     compile_unboxed_const (null_vanilla_lit env)
 
-  let is_some env =
+  let vanilla_lit env ptr : int32 =
+    E.add_static env StaticBytes.[
+      I32 Tagged.(int_of_tag Some);
+      I32 ptr
+    ]
+
+ let is_some env =
     null_lit env ^^
     G.i (Compare (Wasm.Values.I32 I32Op.Ne))
 
@@ -1703,10 +1710,7 @@ module Opt = struct
           [ Tagged.Null,
             (* NB: even ?null does not require allocation: We use a static
                singleton for that: *)
-            compile_unboxed_const (E.add_static env StaticBytes.[
-              I32 Tagged.(int_of_tag Some);
-              I32 (null_vanilla_lit env)
-            ])
+            compile_unboxed_const (vanilla_lit env (null_vanilla_lit env))
           ; Tagged.Some,
             Tagged.obj env Tagged.Some [get_x]
           ]
@@ -7161,6 +7165,9 @@ module StackRep = struct
     | Const.Tag (i, c) ->
       let ptr = materialize_const_t env c in
       Variant.vanilla_lit env i ptr
+    | Const.Opt c ->
+      let ptr = materialize_const_t env c in
+      Opt.vanilla_lit env ptr
     | Const.Lit l -> materialize_lit env l
 
   let adjust env (sr_in : t) sr_out =
@@ -10215,9 +10222,9 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
         let[@warning "-8"] LetD (p, e) = dec.it in
         const_exp_matches_pat env p e
       end in
-  let is_compile_time_matchable () =
+  (*let is_compile_time_matchable () =
     let lazy const_exp_matches = const_exp_helper in
-    Option.is_some const_exp_matches in
+    Option.is_some const_exp_matches in*)
 
   match dec.it with
   (* A special case for public methods *)
@@ -10231,7 +10238,7 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
     G.( pre_ae1, nop, (fun ae -> fill env ae; nop), unmodified)
 
   (* A special case for constant expressions *)
-  | LetD (p, e) when e.note.Note.const && is_compile_time_matchable () ->
+  | LetD (p, e) when e.note.Note.const (*&& is_compile_time_matchable ()*) ->
     let is_compile_time_bottom =
       let lazy const_exp_matches = const_exp_helper in
       not (Option.get const_exp_matches) in
@@ -10377,6 +10384,10 @@ and compile_const_exp env pre_ae exp : Const.t * (E.t -> VarEnv.t -> unit) =
     let (arg_ct, fill) = compile_const_exp env pre_ae e in
     Const.(t_of_v (Tag (i, arg_ct))),
     fill
+  | PrimE (OptPrim, [e]) ->
+    let (arg_ct, fill) = compile_const_exp env pre_ae e in
+    Const.(t_of_v (Opt arg_ct)),
+    fill
 
   | _ -> assert false
 
@@ -10413,14 +10424,19 @@ and destruct_const_pat ae pat const : VarEnv.t = match pat.it with
         Invalid_argument _ -> destruct_const_pat ae p2 const
     end
   | TupP ps ->
-    let cs = match const with (_ , Const.Array cs) -> cs | (_, Const.Unit) -> [] | _ -> assert false in
+    let cs = match const with (_, Const.Array cs) -> cs | (_, Const.Unit) -> [] | _ -> assert false in
     List.fold_left2 destruct_const_pat ae ps cs
   | LitP lp ->
     begin match const with
     | (_, Const.Lit lc) when Const.lit_eq (const_lit_of_lit lp, lc) -> ae
     | _ -> raise (Invalid_argument "LitP mismatch")
     end
-  | OptP _ -> raise (Invalid_argument "OptP in static irrefutable pattern")
+  | OptP p ->
+    let c = match const with
+      | (_, Const.Opt c) -> c
+      | (_, Const.(Lit Null)) -> raise (Invalid_argument "OptP mismatch")
+      | _ -> assert false in
+    destruct_const_pat ae p c
   | TagP (i, p) ->
      match const with
      | (_, Const.Tag (ic, c)) when i = ic -> destruct_const_pat ae p c
