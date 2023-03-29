@@ -37,7 +37,8 @@
 use core::{array::from_fn, ops::Range, ptr::null_mut};
 
 use crate::{
-    gc::incremental::mark_bitmap::BITMAP_ITERATION_END, memory::Memory, rts_trap_with, types::*,
+    constants::WASM_MEMORY_BYTE_SIZE, gc::incremental::mark_bitmap::BITMAP_ITERATION_END,
+    memory::Memory, rts_trap_with, types::*,
 };
 
 use super::{
@@ -56,7 +57,7 @@ pub const PARTITION_SIZE: usize = 32 * 1024 * 1024;
 /// Total number of partitions in the memory.
 /// For simplicity, the last partition is left unused, to avoid a numeric overflow when
 /// computing the end address of the last partition.
-const MAX_PARTITIONS: usize = usize::MAX / PARTITION_SIZE;
+const MAX_PARTITIONS: usize = (WASM_MEMORY_BYTE_SIZE.0 / PARTITION_SIZE as u64) as usize - 1;
 
 /// Partitions are only evacuated if the space occupation of alive object in the partition
 /// is greater than this threshold.
