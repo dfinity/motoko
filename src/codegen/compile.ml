@@ -10230,13 +10230,11 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
   (* A special case for constant expressions *)
   | LetD (p, e) when e.note.Note.const ->
     (* constant expression matching with patterns is fully decidable *)
-    let is_compile_time_bottom =
-      not (const_exp_matches_pat env pre_ae p e) in
-    if is_compile_time_bottom then (* refuted *)
-      (pre_ae, G.nop, (fun _ -> PatCode.patternFailTrap env), unmodified)
-    else (* not refuted *)
+    if const_exp_matches_pat env pre_ae p e then (* not refuted *)
       let extend, fill = compile_const_dec env pre_ae dec in
       G.(extend pre_ae, nop, (fun ae -> fill env ae; nop), unmodified)
+    else (* refuted *)
+      (pre_ae, G.nop, (fun _ -> PatCode.patternFailTrap env), unmodified)
 
   | LetD (p, e) ->
     let (pre_ae1, alloc_code, pre_code, sr, fill_code) = compile_unboxed_pat env pre_ae how p in
