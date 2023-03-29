@@ -6293,8 +6293,8 @@ module MakeSerialization (Strm : Stream) = struct
          read_alias env (Prim Region) (fun get_arg_typ on_alloc ->
           let (set_region, get_region) = new_local env "region" in
           get_arg_typ ^^
-          compile_eq_const (Int32.neg (Option.get (to_idl_prim t))) ^^
-          E.else_trap_with env "WTF" ^^
+          compile_eq_const (Int32.neg (Option.get (to_idl_prim (Prim Region)))) ^^
+          E.else_trap_with env "read_alias unexpected idl_typ" ^^ (* FAILS! *)
           Region.alloc env (compile_unboxed_const 0l) (compile_unboxed_const 0l) (Blob.lit env "") ^^ set_region ^^
           on_alloc get_region ^^
           get_region ^^ ReadBuf.read_word32 env get_data_buf ^^ Heap.store_field Region.id_field ^^
