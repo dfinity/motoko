@@ -3561,6 +3561,25 @@ module Region = struct
   (*
     See rts/motoko-rts/src/region.rs
    *)
+
+  (* Object layout:
+
+     ┌─────┬──────────┬──────────────────┬─────────────────┐
+     │ tag │ id_field │ page_count_field │ vec_pages_field │
+     └─────┴──────────┴──────────────────┴─────────────────┘
+            (unboxed, low 16 bits, rest 0? padding)
+                        unboxed u32
+                                          Blob
+  *)
+
+  let _header_size = Int32.add Tagged.header_size 3l
+  let id_field = Int32.add Tagged.header_size 0l
+  let page_count_field = Int32.add Tagged.header_size 1l
+  let vec_pages_field = Int32.add Tagged.header_size 2l
+
+  let alloc env get_id get_pagecount get_vec_pages =
+    Tagged.obj env Tagged.Region [ get_id; get_pagecount; get_vec_pages ]
+
   let id env =
     E.call_import env "rts" "region_id" (* TEMP (for testing) *)
   let next_id env =
@@ -5198,7 +5217,7 @@ module MakeSerialization (Strm : Stream) = struct
     | Any -> Some 16l
     | Non -> Some 17l
     | Prim Principal -> Some 24l
-    | Prim Region -> Some 25l
+    | Prim Region -> Some 128l
     | _ -> None
 
   (* some constants, also see rts/idl.c *)
@@ -5238,7 +5257,7 @@ module MakeSerialization (Strm : Stream) = struct
           | Func (s, c, tbs, ts1, ts2) ->
             List.iter go ts1; List.iter go ts2
           | Prim Blob -> ()
-          | Prim Region -> ()
+          | Prim Region -> () (* crusso: delete me? Region is primitive*)
           | Mut t -> go t
           | _ ->
             Printf.eprintf "type_desc: unexpected type %s\n" (string_of_typ t);
@@ -5299,7 +5318,7 @@ module MakeSerialization (Strm : Stream) = struct
       | Prim Blob ->
         add_typ Type.(Array (Prim Nat8))
       | Prim Region ->
-        add_typ (Type.Prim Region)
+        add_sleb128 idl_alias; add_idx t
       | Prim _ -> assert false
       | Tup ts ->
         add_sleb128 idl_record;
@@ -5522,11 +5541,9 @@ module MakeSerialization (Strm : Stream) = struct
       | Non ->
         E.trap_with env "buffer_size called on value of type None"
       | Prim Region ->
-
-         size_alias (fun () -> get_x ^^ Heap.load_field MutBox.field ^^ size env t)
-
-      (* inc_data_size (compile_unboxed_const (16l)) (* to do -- plus blob size *) *)
-
+        size_alias (fun () ->
+          inc_data_size (compile_unboxed_const 9l) ^^ (* one byte tag + |(padded) id| + |page_count| *)
+          get_x ^^ Heap.load_field Region.vec_pages_field ^^ size env (Prim Blob))
       | Mut t ->
         size_alias (fun () -> get_x ^^ Heap.load_field MutBox.field ^^ size env t)
       | _ -> todo "buffer_size" (Arrange_ir.typ t) G.nop
@@ -5650,7 +5667,11 @@ module MakeSerialization (Strm : Stream) = struct
       | Array (Mut t) ->
         write_alias (fun () -> get_x ^^ write env (Array t))
       | Prim Region ->
-         ( E.trap_with env "to do -- serialize Prim Region" )
+        write_alias (fun () ->
+          write_word_32 env get_data_buf (get_x ^^ Heap.load_field Region.id_field) ^^
+          write_word_32 env get_data_buf (get_x ^^ Heap.load_field Region.page_count_field) ^^
+          write_blob env get_data_buf (get_x ^^ Heap.load_field Region.vec_pages_field)
+        )
       | Array t ->
         write_word_leb env get_data_buf (get_x ^^ Heap.load_field Arr.len_field) ^^
         get_x ^^ Heap.load_field Arr.len_field ^^
@@ -6253,6 +6274,23 @@ module MakeSerialization (Strm : Stream) = struct
             remember_failure get_val ^^
             get_val ^^ store_ptr
           )
+          )
+      | Prim Region ->
+         read_alias env (Prim Region) (fun get_array_typ on_alloc ->
+          let (set_region, get_region) = new_local env "region" in
+          (with_prim_typ (Prim Region) 
+          begin
+          let (set_id, get_id) = new_local env "id" in
+          let (set_pagecount, get_pagecount) = new_local env "pagecount" in
+          let (set_vec_pages, get_vec_pages) = new_local env "vec_pages" in
+          ReadBuf.read_word32 env get_data_buf ^^ set_id ^^
+          ReadBuf.read_word32 env get_data_buf ^^ set_pagecount ^^
+          with_blob_typ env (read_blob ()) ^^ set_vec_pages ^^
+          Region.alloc env get_id get_pagecount get_vec_pages
+          end) 
+          ^^ set_region
+          ^^ on_alloc get_region
+
         )
       | Array t ->
         let (set_len, get_len) = new_local env "len" in
@@ -6399,7 +6437,7 @@ module MakeSerialization (Strm : Stream) = struct
           Tagged.obj env Tagged.ObjInd [ compile_unboxed_const 0l ] ^^ set_result ^^
           on_alloc get_result ^^
           get_result ^^
-            get_arg_typ ^^ go env t ^^
+          get_arg_typ ^^ go env t ^^
           Heap.store_field MutBox.field
         )
       | Non ->
