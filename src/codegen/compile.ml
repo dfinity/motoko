@@ -100,15 +100,17 @@ module Const = struct
     | Word64 of int64
     | Float64 of Numerics.Float.t
     | Blob of string
+    | Null
 
   let lit_eq = function
-    | (Vanilla i, Vanilla j) -> i = j
-    | (BigInt i, BigInt j) -> Big_int.eq_big_int i j
-    | (Word32 i, Word32 j) -> i = j
-    | (Word64 i, Word64 j) -> i = j
-    | (Float64 i, Float64 j) -> i = j
-    | (Bool i, Bool j) -> i = j
-    | (Blob s, Blob t) -> s = t
+    | Vanilla i, Vanilla j -> i = j
+    | BigInt i, BigInt j -> Big_int.eq_big_int i j
+    | Word32 i, Word32 j -> i = j
+    | Word64 i, Word64 j -> i = j
+    | Float64 i, Float64 j -> i = j
+    | Bool i, Bool j -> i = j
+    | Blob s, Blob t -> s = t
+    | Null, Null -> true
     | _ -> false
 
   (* Inlineable functions
@@ -7134,13 +7136,14 @@ module StackRep = struct
   *)
   let materialize_lit env (lit : Const.lit) : int32 =
     match lit with
-      | Const.Vanilla n  -> n
-      | Const.Bool n     -> Bool.vanilla_lit n
-      | Const.BigInt n   -> BigNum.vanilla_lit env n
-      | Const.Word32 n   -> BoxedSmallWord.vanilla_lit env n
-      | Const.Word64 n   -> BoxedWord64.vanilla_lit env n
-      | Const.Float64 f  -> Float.vanilla_lit env f
-      | Const.Blob t     -> Blob.vanilla_lit env t
+    | Const.Vanilla n  -> n
+    | Const.Bool n     -> Bool.vanilla_lit n
+    | Const.BigInt n   -> BigNum.vanilla_lit env n
+    | Const.Word32 n   -> BoxedSmallWord.vanilla_lit env n
+    | Const.Word64 n   -> BoxedWord64.vanilla_lit env n
+    | Const.Float64 f  -> Float.vanilla_lit env f
+    | Const.Blob t     -> Blob.vanilla_lit env t
+    | Const.Null       -> Opt.null_vanilla_lit env
 
   let rec materialize_const_t env (p, cv) : int32 =
     Lib.Promise.lazy_value p (fun () -> materialize_const_v env cv)
@@ -8157,7 +8160,7 @@ let nat64_to_int64 n =
   then sub_big_int n (power_int_positive_int 2 64)
   else n
 
-let const_lit_of_lit env : Ir.lit -> Const.lit = function
+let const_lit_of_lit : Ir.lit -> Const.lit = function
   | BoolLit b     -> Const.Bool b
   | IntLit n
   | NatLit n      -> Const.BigInt (Numerics.Nat.to_big_int n)
@@ -8170,13 +8173,13 @@ let const_lit_of_lit env : Ir.lit -> Const.lit = function
   | Int64Lit n    -> Const.Word64 (Big_int.int64_of_big_int (Numerics.Int_64.to_big_int n))
   | Nat64Lit n    -> Const.Word64 (Big_int.int64_of_big_int (nat64_to_int64 (Numerics.Nat64.to_big_int n)))
   | CharLit c     -> Const.Vanilla Int32.(shift_left (of_int c) 8)
-  | NullLit       -> Const.Vanilla (Opt.null_vanilla_lit env)
+  | NullLit       -> Const.Null
   | TextLit t
   | BlobLit t     -> Const.Blob t
   | FloatLit f    -> Const.Float64 f
 
-let const_of_lit env lit =
-  Const.t_of_v (Const.Lit (const_lit_of_lit env lit))
+let const_of_lit _env lit =
+  Const.t_of_v (Const.Lit (const_lit_of_lit lit))
 
 let compile_lit env lit =
   SR.Const (const_of_lit env lit), G.nop
@@ -10363,7 +10366,7 @@ and compile_const_exp env pre_ae exp : Const.t * (E.t -> VarEnv.t -> unit) =
       | _, Const.Array cs -> cs
       | _ -> fatal "compile_const_exp/ProjE: not a static tuple" in
     (List.nth cs i, fill)
-  | LitE l -> Const.(t_of_v (Lit (const_lit_of_lit env l))), (fun _ _ -> ())
+  | LitE l -> Const.(t_of_v (Lit (const_lit_of_lit l))), (fun _ _ -> ())
   | PrimE (TupPrim, []) -> Const.t_of_v Const.Unit, (fun _ _ -> ())
   | PrimE (ArrayPrim (Const, _), es)
   | PrimE (TupPrim, es) ->
@@ -10394,33 +10397,33 @@ and const_exp_matches_pat env pat exp : bool option =
   let c, _ = compile_const_exp env VarEnv.empty_ae exp in
   (try ignore (destruct_const_pat VarEnv.empty_ae pat c); Some true with Invalid_argument _ -> Some false)
 
-and destruct_const_pat env ae pat const : VarEnv.t = match pat.it with
+and destruct_const_pat ae pat const : VarEnv.t = match pat.it with
   | WildP -> ae
   | VarP v -> VarEnv.add_local_const ae v const
   | ObjP pfs ->
     let fs = match const with (_, Const.Obj fs) -> fs | _ -> assert false in
     List.fold_left (fun ae (pf : pat_field) ->
       match List.find_opt (fun (n, _) -> pf.it.name = n) fs with
-      | Some (_, c) -> destruct_const_pat env ae pf.it.pat c
+      | Some (_, c) -> destruct_const_pat ae pf.it.pat c
       | None -> assert false
     ) ae pfs
   | AltP (p1, p2) ->
     begin
-      try destruct_const_pat env ae p1 const with
-        Invalid_argument _ -> destruct_const_pat env ae p2 const
+      try destruct_const_pat ae p1 const with
+        Invalid_argument _ -> destruct_const_pat ae p2 const
     end
   | TupP ps ->
     let cs = match const with (_ , Const.Array cs) -> cs | (_, Const.Unit) -> [] | _ -> assert false in
-    List.fold_left2 (destruct_const_pat env) ae ps cs
+    List.fold_left2 destruct_const_pat ae ps cs
   | LitP lp ->
     begin match const with
-    | (_, Const.Lit lc) when Const.lit_eq (const_lit_of_lit env lp, lc) -> ae
+    | (_, Const.Lit lc) when Const.lit_eq (const_lit_of_lit lp, lc) -> ae
     | _ -> raise (Invalid_argument "LitP mismatch")
     end
   | OptP _ -> raise (Invalid_argument "OptP in static irrefutable pattern")
   | TagP (i, p) ->
      match const with
-     | (_, Const.Tag (ic, c)) when i = ic -> destruct_const_pat env ae p c
+     | (_, Const.Tag (ic, c)) when i = ic -> destruct_const_pat ae p c
      | (_, Const.Tag _) -> raise (Invalid_argument "TagP mismatch")
      | _ -> assert false
 
@@ -10433,7 +10436,7 @@ and compile_const_dec env pre_ae dec : (VarEnv.t -> VarEnv.t) * (E.t -> VarEnv.t
   (* This should only contain constants (cf. is_const_exp) *)
   | LetD (p, e) ->
     let (const, fill) = compile_const_exp env pre_ae e in
-    (fun ae -> destruct_const_pat env ae p const),
+    (fun ae -> destruct_const_pat ae p const),
     (fun env ae -> fill env ae)
   | VarD _ | RefD _ -> fatal "compile_const_dec: Unexpected VarD/RefD"
 
