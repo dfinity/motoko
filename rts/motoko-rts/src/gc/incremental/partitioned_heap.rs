@@ -45,7 +45,7 @@ use super::{
     time::BoundedTime,
 };
 
-/// Size of each parition.
+/// Size of each partition.
 pub const PARTITION_SIZE: usize = 32 * 1024 * 1024;
 
 /// Total number of partitions in the memory.
