@@ -99,6 +99,10 @@ pub struct BitmapIterator {
     /// Start address of the mark bitmap.
     bitmap_pointer: *mut u8,
     /// Index of next bit to continue iteration in the bitmap.
+    /// Invariant during (initialzed and unfinished):
+    /// `lsb(current_word) == (next_bit_index - 1) % size_of::<u64>()`.
+    /// with `lsb` meaning "least significant bit".
+    /// Sentinel: `BITMAP_ITERATION_END` if the iteration is finished.
     next_bit_index: usize,
     /// Current 64-bit word in the bitmap that we are iterating.
     /// Optimization: Reading in 64-bit chunks to check as many bits as
@@ -112,7 +116,10 @@ pub struct BitmapIterator {
 /// `usize::MAX` is not word-aligned and thus not a valid object address.
 pub const BITMAP_ITERATION_END: usize = usize::MAX;
 
+/// Last possible valid value of `next_bit_index`.
 const BIT_INDEX_END: usize = BITMAP_SIZE * u8::BITS as usize;
+
+const _: () = assert!(BIT_INDEX_END < BITMAP_ITERATION_END);
 
 impl BitmapIterator {
     fn new(bitmap_pointer: *mut u8) -> BitmapIterator {
@@ -134,7 +141,7 @@ impl BitmapIterator {
     /// or `BITMAP_ITERATION_END` if there are no more bits set.
     pub fn current_marked_offset(&self) -> usize {
         debug_assert!(self.next_bit_index > 0);
-        if self.next_bit_index == BIT_INDEX_END {
+        if self.next_bit_index == BITMAP_ITERATION_END {
             return BITMAP_ITERATION_END;
         } else {
             (self.next_bit_index - 1) * WORD_SIZE as usize
@@ -144,31 +151,30 @@ impl BitmapIterator {
     /// Advance the iterator to the next marked offset.
     pub fn next(&mut self) {
         debug_assert!(self.next_bit_index <= BIT_INDEX_END);
-
-        if self.next_bit_index == BIT_INDEX_END {
-            return;
-        }
-
         // Outer loop iterates the 64-bit words.
-        loop {
+        while self.next_bit_index < BIT_INDEX_END {
             // Examine the least significant bit(s) in the current word.
             if self.current_word != 0 {
                 let shift = self.current_word.trailing_zeros() as usize;
+                // Two shifts to avoid an overflow in the case of `shift == 63`.
                 self.current_word >>= shift;
                 self.current_word >>= 1;
-                let bit_index = self.next_bit_index + shift;
-                self.next_bit_index = bit_index + 1;
+                self.next_bit_index += shift + 1;
+                // Next set bit found. This could technically even be the
+                // very last bit in the bitmap (although objects are not that small).
                 return;
             }
 
             // Move on to next word, always within a 64-bit boundary.
             self.next_bit_index += self.leading_zeros;
-            if self.next_bit_index == BIT_INDEX_END {
-                return;
+            if self.next_bit_index < BIT_INDEX_END {
+                let word64_index = self.next_bit_index / size_of::<u64>();
+                self.current_word =
+                    unsafe { *(self.bitmap_pointer.add(word64_index) as *const u64) };
+                self.leading_zeros = self.current_word.leading_zeros() as usize;
             }
-            let word64_index = self.next_bit_index / size_of::<u64>();
-            self.current_word = unsafe { *(self.bitmap_pointer.add(word64_index) as *const u64) };
-            self.leading_zeros = self.current_word.leading_zeros() as usize;
         }
+        // Finish the iteration.
+        self.next_bit_index = BITMAP_ITERATION_END;
     }
 }
