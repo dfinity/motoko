@@ -312,16 +312,9 @@ unsafe fn pre_write_barrier<M: Memory>(mem: &mut M, state: &mut State, overwritt
     if state.phase == Phase::Mark {
         let base_address = state.partitioned_heap.base_address();
         if overwritten_value.points_to_or_beyond(base_address) {
-            if !MarkIncrement::<M>::mark_completed(state) {
-                let mut time = BoundedTime::new(0);
-                let mut increment = MarkIncrement::instance(mem, state, &mut time);
-                increment.mark_object(overwritten_value);
-            } else {
-                // Check whether the object is already marked, `mark_object()` returns false if previously marked.
-                debug_assert!(!state
-                    .partitioned_heap
-                    .mark_object(overwritten_value.as_obj()));
-            }
+            let mut time = BoundedTime::new(0);
+            let mut increment = MarkIncrement::instance(mem, state, &mut time);
+            increment.mark_object(overwritten_value);
         }
     }
 }

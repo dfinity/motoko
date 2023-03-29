@@ -90,11 +90,12 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
 
     pub unsafe fn mark_object(&mut self, value: Value) {
         self.time.tick();
-        debug_assert!(!*self.complete);
         debug_assert!((value.get_ptr() >= self.heap.base_address()));
         debug_assert!(!value.is_forwarded());
         let object = value.as_obj();
         if self.heap.mark_object(object) {
+            // A write barrier after a completed mark phase must see the object as already marked.
+            debug_assert!(!*self.complete);
             debug_assert!(
                 object.tag() >= crate::types::TAG_OBJECT && object.tag() <= crate::types::TAG_NULL
             );
