@@ -249,10 +249,10 @@ fn check_dynamic_heap(
             let forward = read_word(heap, offset);
             offset += WORD_SIZE;
 
-            let is_fowarded = forward != make_pointer(address as u32);
+            let is_forwarded = forward != make_pointer(address as u32);
 
             if incremental && tag == TAG_BLOB {
-                assert!(!is_fowarded);
+                assert!(!is_forwarded);
                 // in-heap mark stack blobs
                 let length = read_word(heap, offset);
                 offset += WORD_SIZE + length as usize;
@@ -263,7 +263,7 @@ fn check_dynamic_heap(
                     assert_eq!(tag, TAG_ARRAY);
                 }
 
-                if is_fowarded {
+                if is_forwarded {
                     assert!(incremental);
 
                     let forward_offset = forward as usize - heap.as_ptr() as usize;
