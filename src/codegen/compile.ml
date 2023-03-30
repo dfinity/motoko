@@ -6037,16 +6037,23 @@ module MakeSerialization (Strm : Stream) = struct
           )
         end
         begin
-        get_arg_typ ^^
-        compile_eq_const (Int32.neg (Option.get (to_idl_prim (Prim Region)))) ^^
-        G.if1 I32Type
-        begin
-          compile_unboxed_const (Int32.neg (Option.get (to_idl_prim (Prim Region)))) (*HACK*)
-        end
-        begin
           skip get_arg_typ ^^
           coercion_failed ("IDL error: unexpected IDL type when parsing " ^ string_of_typ t)
         end
+      in
+
+      let with_alias_typ get_arg_typ =
+        get_arg_typ ^^
+        compile_unboxed_const 0l ^^ G.i (Compare (Wasm.Values.I32 I32Op.GeS)) ^^
+        G.if1 I32Type
+        begin
+            with_composite_arg_typ get_arg_typ idl_alias (ReadBuf.read_sleb128 env)
+        end
+        begin
+          get_arg_typ ^^
+          compile_eq_const (Int32.neg (Option.get (to_idl_prim (Prim Region)))) ^^
+          E.else_trap_with env "IDL error: unexpecting primitive alias type" ^^
+          get_arg_typ
         end
       in
 
@@ -6086,7 +6093,7 @@ module MakeSerialization (Strm : Stream) = struct
 
         let (set_arg_typ, get_arg_typ) = new_local env "arg_typ" in
 
-        with_composite_typ idl_alias (ReadBuf.read_sleb128 env) ^^ set_arg_typ ^^
+        with_alias_typ get_idltyp ^^ set_arg_typ ^^
 
         (* Find out if it is a reference or not *)
         ReadBuf.read_byte env get_data_buf ^^ set_is_ref ^^
