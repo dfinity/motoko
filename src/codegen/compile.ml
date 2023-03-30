@@ -6037,8 +6037,16 @@ module MakeSerialization (Strm : Stream) = struct
           )
         end
         begin
+        get_arg_typ ^^
+        compile_eq_const (Int32.neg (Option.get (to_idl_prim (Prim Region)))) ^^
+        G.if1 I32Type
+        begin
+          compile_unboxed_const (Int32.neg (Option.get (to_idl_prim (Prim Region)))) (*HACK*)
+        end
+        begin
           skip get_arg_typ ^^
           coercion_failed ("IDL error: unexpected IDL type when parsing " ^ string_of_typ t)
+        end
         end
       in
 
@@ -6077,6 +6085,7 @@ module MakeSerialization (Strm : Stream) = struct
         let (set_memo, get_memo) = new_local env "memo" in
 
         let (set_arg_typ, get_arg_typ) = new_local env "arg_typ" in
+
         with_composite_typ idl_alias (ReadBuf.read_sleb128 env) ^^ set_arg_typ ^^
 
         (* Find out if it is a reference or not *)
@@ -6292,6 +6301,7 @@ module MakeSerialization (Strm : Stream) = struct
       | Prim Region ->
          read_alias env (Prim Region) (fun get_arg_typ on_alloc ->
           let (set_region, get_region) = new_local env "region" in
+          begin
           get_arg_typ ^^
           compile_eq_const (Int32.neg (Option.get (to_idl_prim (Prim Region)))) ^^
           E.else_trap_with env "read_alias unexpected idl_typ" ^^ (* FAILS! *)
@@ -6299,8 +6309,9 @@ module MakeSerialization (Strm : Stream) = struct
           on_alloc get_region ^^
           get_region ^^ ReadBuf.read_word32 env get_data_buf ^^ Heap.store_field Region.id_field ^^
           get_region ^^ ReadBuf.read_word32 env get_data_buf ^^ Heap.store_field Region.page_count_field ^^
-          get_region ^^ with_blob_typ env (read_blob ()) ^^ Heap.store_field Region.vec_pages_field ^^
+          get_region ^^ (* with_blob_typ env*) (read_blob ()) ^^ Heap.store_field Region.vec_pages_field ^^
           get_region ^^ Region.check_region "read_alias" env
+          end
         )
       | Array t ->
         let (set_len, get_len) = new_local env "len" in
