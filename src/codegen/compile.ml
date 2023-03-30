@@ -6311,12 +6311,12 @@ module MakeSerialization (Strm : Stream) = struct
           begin
           get_arg_typ ^^
           compile_eq_const (Int32.neg (Option.get (to_idl_prim (Prim Region)))) ^^
-          E.else_trap_with env "read_alias unexpected idl_typ" ^^ (* FAILS! *)
+          E.else_trap_with env "read_alias unexpected idl_typ" ^^
           Region.alloc env (compile_unboxed_const 0l) (compile_unboxed_const 0l) (Blob.lit env "") ^^ set_region ^^
           on_alloc get_region ^^
           get_region ^^ ReadBuf.read_word32 env get_data_buf ^^ Heap.store_field Region.id_field ^^
           get_region ^^ ReadBuf.read_word32 env get_data_buf ^^ Heap.store_field Region.page_count_field ^^
-          get_region ^^ (* with_blob_typ env*) (read_blob ()) ^^ Heap.store_field Region.vec_pages_field ^^
+          get_region ^^ read_blob () ^^ Heap.store_field Region.vec_pages_field ^^
           get_region ^^ Region.check_region "read_alias" env
           end
         )
