@@ -1721,7 +1721,6 @@ module Opt = struct
   we know for sure that it wouldn’t do anything anyways *)
   let inject_noop _env e = e
 
-
   let project env =
     Func.share_code1 env "opt_project" ("x", I32Type) [I32Type] (fun env get_x ->
       get_x ^^ BitTagged.if_tagged_scalar env [I32Type]
@@ -7167,10 +7166,13 @@ module StackRep = struct
       Variant.vanilla_lit env i ptr
     | Const.Lit l -> materialize_lit env l
     | Const.Opt c ->
-      let ptr = materialize_const_t env c in
-      match c with
-      | (_, Const.(Opt _ | Lit Null)) -> Opt.vanilla_lit env ptr
-      | _ -> ptr (* not option shaped, we can short-circuit *)
+      let rec kernel = Const.(function
+        | (_, Lit Null) -> None
+        | (_, Opt c) -> kernel c
+        | (_, other) -> Some (materialize_const_v env other)) in
+      match kernel c with
+      | Some ptr -> ptr
+      | None -> Opt.vanilla_lit env (materialize_const_t env c)
 
   let adjust env (sr_in : t) sr_out =
     if eq sr_in sr_out
