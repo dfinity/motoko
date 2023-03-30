@@ -1616,7 +1616,13 @@ module Tagged = struct
   let can_have_tag ty tag =
     let open Mo_types.Type in
     match (tag : tag) with
-    | Region -> false (* ??? *)
+    | Region ->
+      begin match normalize ty with
+      | (Con _ | Any) -> true
+      | (Prim Region) -> true
+      | (Prim _ | Obj _ | Array _ | Tup _ | Opt _ | Variant _ | Func _ | Non) -> false
+      | (Pre | Async _ | Mut _ | Var _ | Typ _) -> assert false
+      end
     | Array ->
       begin match normalize ty with
       | (Con _ | Any) -> true
