@@ -6320,7 +6320,7 @@ module MakeSerialization (Strm : Stream) = struct
           (* sanity check *)
           get_region_typ ^^
           compile_eq_const (Int32.neg (Option.get (to_idl_prim (Prim Region)))) ^^
-          E.else_trap_with env "read_alias unexpected idl_typ" ^^
+          E.else_trap_with env "deserialize_go (Region): unexpected idl_typ" ^^
           Region.alloc env (compile_unboxed_const 0l) (compile_unboxed_const 0l) (Blob.lit env "") ^^ set_region ^^
           on_alloc get_region ^^
           get_region ^^ ReadBuf.read_word32 env get_data_buf ^^ Heap.store_field Region.id_field ^^
