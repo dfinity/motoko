@@ -1,5 +1,5 @@
 // a failing pattern match that can be compiled to a trap
-let (#const b) = #bummer;
+let null = ?42;
 
 // CHECK: (func $init (type
 // CHECK: call $blob_of_principal
