@@ -887,6 +887,29 @@ module Func = struct
 end (* Func *)
 
 module RTS = struct
+  let incremental_gc_imports env =
+    E.add_func_import env "rts" "initialize_incremental_gc" [] [];
+    E.add_func_import env "rts" "schedule_incremental_gc" [] [];
+    E.add_func_import env "rts" "incremental_gc" [] [];
+    E.add_func_import env "rts" "write_with_barrier" [I32Type; I32Type] [];
+    E.add_func_import env "rts" "allocation_barrier" [I32Type] [I32Type];
+    E.add_func_import env "rts" "stop_gc_on_upgrade" [] [];
+    E.add_func_import env "rts" "running_gc" [] [I32Type];
+    ()
+
+  let non_incremental_gc_imports env =
+    E.add_func_import env "rts" "initialize_copying_gc" [] [];
+    E.add_func_import env "rts" "initialize_compacting_gc" [] [];
+    E.add_func_import env "rts" "initialize_generational_gc" [] [];
+    E.add_func_import env "rts" "schedule_copying_gc" [] [];
+    E.add_func_import env "rts" "schedule_compacting_gc" [] [];
+    E.add_func_import env "rts" "schedule_generational_gc" [] [];
+    E.add_func_import env "rts" "copying_gc" [] [];
+    E.add_func_import env "rts" "compacting_gc" [] [];
+    E.add_func_import env "rts" "generational_gc" [] [];
+    E.add_func_import env "rts" "post_write_barrier" [I32Type] [];
+    ()
+
   (* The connection to the C and Rust parts of the RTS *)
   let system_imports env =
     E.add_func_import env "rts" "memcpy" [I32Type; I32Type; I32Type] [I32Type]; (* standard libc memcpy *)
@@ -988,20 +1011,7 @@ module RTS = struct
     E.add_func_import env "rts" "char_is_alphabetic" [I32Type] [I32Type];
     E.add_func_import env "rts" "get_max_live_size" [] [I32Type];
     E.add_func_import env "rts" "get_reclaimed" [] [I64Type];
-    E.add_func_import env "rts" "copying_gc" [] [];
-    E.add_func_import env "rts" "compacting_gc" [] [];
-    E.add_func_import env "rts" "generational_gc" [] [];
-    E.add_func_import env "rts" "incremental_gc" [] [];
-    E.add_func_import env "rts" "initialize_copying_gc" [] [];
-    E.add_func_import env "rts" "initialize_compacting_gc" [] [];
-    E.add_func_import env "rts" "initialize_generational_gc" [] [];
-    E.add_func_import env "rts" "initialize_incremental_gc" [] [];
-    E.add_func_import env "rts" "schedule_copying_gc" [] [];
-    E.add_func_import env "rts" "schedule_compacting_gc" [] [];
-    E.add_func_import env "rts" "schedule_generational_gc" [] [];
-    E.add_func_import env "rts" "schedule_incremental_gc" [] [];
-    E.add_func_import env "rts" "linear_alloc_words" [I32Type] [I32Type];
-    E.add_func_import env "rts" "partitioned_alloc_words" [I32Type] [I32Type];
+    E.add_func_import env "rts" "alloc_words" [I32Type] [I32Type];
     E.add_func_import env "rts" "get_total_allocations" [] [I64Type];
     E.add_func_import env "rts" "get_heap_size" [] [I32Type];
     E.add_func_import env "rts" "alloc_blob" [I32Type] [I32Type];
@@ -1014,11 +1024,10 @@ module RTS = struct
     E.add_func_import env "rts" "stream_shutdown" [I32Type] [];
     E.add_func_import env "rts" "stream_reserve" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "stream_stable_dest" [I32Type; I64Type; I64Type] [];
-    E.add_func_import env "rts" "post_write_barrier" [I32Type] [];
-    E.add_func_import env "rts" "write_with_barrier" [I32Type; I32Type] [];
-    E.add_func_import env "rts" "allocation_barrier" [I32Type] [I32Type];
-    E.add_func_import env "rts" "stop_gc_on_upgrade" [] [];
-    E.add_func_import env "rts" "running_gc" [] [I32Type];
+    if !Flags.gc_strategy == Flags.Incremental then
+      incremental_gc_imports env
+    else
+      non_incremental_gc_imports env;
     ()
 
 end (* RTS *)
@@ -1096,11 +1105,8 @@ module Heap = struct
      (uses dynamic allocation for smaller and more readable code) *)
   let alloc env (n : int32) : G.t =
     compile_unboxed_const n  ^^
-    (if !Flags.gc_strategy = Flags.Incremental then
-      E.call_import env "rts" "partitioned_alloc_words"
-    else
-      E.call_import env "rts" "linear_alloc_words")
-
+    E.call_import env "rts" "alloc_words"
+    
   (* Heap objects *)
 
   (* At this level of abstraction, heap objects are just flat arrays of words *)
@@ -1500,6 +1506,7 @@ end (* BitTagged *)
 
 module Tagged = struct
   (* Tagged objects all have an object header consisting of a tag and a forwarding pointer.
+     The forwarding pointer is only reserved if compiled for the incremental GC.
      The tag is to describe their runtime type and serves to traverse the heap 
      (serialization, GC), but also for objectification of arrays.
 
@@ -1513,11 +1520,9 @@ module Tagged = struct
      └──────┴─────────┴──
 
      The copying GC requires that all tagged objects in the dynamic heap space have at least
-     two words in order to replace them by `Indirection`. This condition is met as the 
-     object header already occupies two words, and all objects except `Null` even have a size 
-     of at least three words. The `Null` object is a singleton and only lives in static heap 
-     space and is therefore not replaced by `Indirection` during copying GC. (Without forwarding 
-     pointer in the header, the object would be smaller than `Indirection`.)
+     two words in order to replace them by `Indirection`. This condition is except for `Null` 
+     that only lives in static heap space and is therefore not replaced by `Indirection` during 
+     copying GC.
 
      Attention: This mapping is duplicated in these places
        * here
@@ -1582,9 +1587,11 @@ module Tagged = struct
     | StableSeen -> 0xffffffffl
 
   (* The tag *)
-  let header_size = 2l
+  let header_size = if !Flags.gc_strategy == Flags.Incremental then 2l else 1l
   let tag_field = 0l
-  let forwarding_pointer_field = 1l
+  let forwarding_pointer_field = 
+    assert (!Flags.gc_strategy != Flags.Incremental);
+    1l
 
   (* Note: Post allocation barrier must be applied after initialization *)
   let alloc env size tag =
@@ -1595,9 +1602,12 @@ module Tagged = struct
       set_object ^^ get_object ^^
       compile_unboxed_const (int_of_tag tag) ^^
       Heap.store_field tag_field ^^
-      get_object ^^ (* object pointer *)
-      get_object ^^ (* forwarding pointer *)
-      Heap.store_field forwarding_pointer_field ^^
+      (if !Flags.gc_strategy == Flags.Incremental then
+        get_object ^^ (* object pointer *)
+        get_object ^^ (* forwarding pointer *)
+        Heap.store_field forwarding_pointer_field 
+      else 
+        G.nop) ^^
       get_object
     )
 
@@ -1784,9 +1794,14 @@ module Tagged = struct
     let unskewed_ptr = E.reserve_static_memory env size in
     let skewed_ptr = Int32.(add unskewed_ptr ptr_skew) in
     let tag = bytes_of_int32 (int_of_tag tag) in
+    let non_incremental_gc_data = tag ^ payload in
     let forward = bytes_of_int32 skewed_ptr in (* forwarding pointer *)
-    let data = tag ^ forward ^ payload in
-    E.write_static_memory env unskewed_ptr data;
+    let incremental_gc_data = tag ^ forward ^ payload in
+    (if !Flags.gc_strategy = Flags.Incremental then
+      E.write_static_memory env unskewed_ptr incremental_gc_data
+    else
+      E.write_static_memory env unskewed_ptr non_incremental_gc_data
+    );
     skewed_ptr
 
   let shared_static_obj env tag payload =
@@ -1811,6 +1826,7 @@ module MutBox = struct
        └──────┴─────┴─────────┘
 
      The object header includes the obj tag (MutBox) and the forwarding pointer.
+     The forwarding pointer is only reserved if compiled for the incremental GC.
   *)
 
   let field = Tagged.header_size
@@ -1941,6 +1957,7 @@ module Variant = struct
        └──────┴─────┴────────────┴─────────┘
 
      The object header includes the obj tag (TAG_VARIANT) and the forwarding pointer.
+     The forwarding pointer is only reserved if compiled for the incremental GC.
   *)
 
   let variant_tag_field = Tagged.header_size
@@ -1985,6 +2002,7 @@ module Closure = struct
        └──────┴─────┴───────┴──────┴──────────────┘
 
      The object header includes the object tag (TAG_CLOSURE) and the forwarding pointer.
+     The forwarding pointer is only reserved if compiled for the incremental GC.
 
   *)
   let header_size = Int32.add Tagged.header_size 2l
@@ -2046,6 +2064,7 @@ module BoxedWord64 = struct
        └──────┴─────┴─────┴─────┘
 
      The object header includes the object tag (Bits64) and the forwarding pointer.
+     The forwarding pointer is only reserved if compiled for the incremental GC.
 
   *)
 
@@ -2061,7 +2080,8 @@ module BoxedWord64 = struct
 
   let compile_box env compile_elem : G.t =
     let (set_i, get_i) = new_local env "boxed_i64" in
-    Tagged.alloc env 4l Tagged.Bits64 ^^
+    let size = if !Flags.gc_strategy = Flags.Incremental then 4l else 3l in
+    Tagged.alloc env size Tagged.Bits64 ^^
     set_i ^^
     get_i ^^ compile_elem ^^ Tagged.store_field64 env payload_field ^^
     get_i ^^
@@ -2165,6 +2185,7 @@ module BoxedSmallWord = struct
        └──────┴─────┴─────┘
 
      The object header includes the object tag (Bits32) and the forwarding pointer.
+     The forwarding pointer is only reserved if compiled for the incremental GC.
 
   *)
 
@@ -2180,7 +2201,8 @@ module BoxedSmallWord = struct
 
   let compile_box env compile_elem : G.t =
     let (set_i, get_i) = new_local env "boxed_i32" in
-    Tagged.alloc env 3l Tagged.Bits32 ^^
+    let size = if !Flags.gc_strategy = Flags.Incremental then 3l else 2l in
+    Tagged.alloc env size Tagged.Bits32 ^^
     set_i ^^
     get_i ^^ compile_elem ^^ Tagged.store_field env payload_field ^^
     get_i ^^
@@ -2407,6 +2429,7 @@ module Float = struct
      debug inspection (or GC representation change) arises.
 
      The object header includes the object tag (Bits64) and the forwarding pointer.
+     The forwarding pointer is only reserved if compiled for the incremental GC.
   *)
 
   let payload_field = Tagged.header_size
@@ -2420,7 +2443,8 @@ module Float = struct
 
   let box env = Func.share_code1 env "box_f64" ("f", F64Type) [I32Type] (fun env get_f ->
     let (set_i, get_i) = new_local env "boxed_f64" in
-    Tagged.alloc env 4l Tagged.Bits64 ^^
+    let size = if !Flags.gc_strategy = Flags.Incremental then 4l else 3l in
+    Tagged.alloc env size Tagged.Bits64 ^^
     set_i ^^
     get_i ^^ get_f ^^ Tagged.store_field_float64 env payload_field ^^
     get_i ^^
@@ -3373,6 +3397,7 @@ module Object = struct
           └─────────────┴─────────────┴───┘
 
     The object header includes the object tag (Object) and the forwarding pointer.
+    The forwarding pointer is only reserved if compiled for the incremental GC.
 
     The field hash array lives in static memory (so no size header needed).
     The hash_ptr is skewed.
@@ -3560,6 +3585,7 @@ module Blob = struct
      └──────┴─────┴─────────┴──────────────────┘
 
     The object header includes the object tag (Blob) and the forwarding pointer.
+    The forwarding pointer is only reserved if compiled for the incremental GC.
 
     This heap object is used for various kinds of binary, non-pointer data.
 
@@ -3768,6 +3794,7 @@ module Text = struct
      └──────┴─────┴─────────┴───────┴───────┘
 
     The object header includes the object tag (TAG_CONCAT defined in rts/types.rs) and the forwarding pointer
+    The forwarding pointer is only reserved if compiled for the incremental GC.
 
     This is internal to rts/text.c, with the exception of GC-related code.
   *)
@@ -3844,6 +3871,7 @@ module Arr = struct
      └──────┴─────┴──────────┴────────┴───┘
      
      The object  header includes the object tag (Array) and the forwarding pointer.
+     The forwarding pointer is only reserved if compiled for the incremental GC.
 
      No difference between mutable and immutable arrays.
   *)
@@ -6975,7 +7003,8 @@ module BlobStream : Stream = struct
   let name_for fn_name ts = "@Bl_" ^ fn_name ^ "<" ^ Typ_hash.typ_seq_hash ts ^ ">"
 
   let absolute_offset env get_token =
-    let filled_field = Int32.add Blob.len_field 9l in (* see invariant in `stream.rs` *)
+    let offset = if !Flags.gc_strategy = Flags.Incremental then 9l else 8l in (* see invariant in `stream.rs` *)
+    let filled_field = Int32.add Blob.len_field offset in
     get_token ^^ Tagged.load_field_unskewed env filled_field
 
   let checkpoint _env _get_token = G.i Drop
@@ -7071,7 +7100,9 @@ module Stabilization = struct
       G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
       E.call_import env "rts" "stream_stable_dest"
 
-    let ptr64_field = Int32.add Blob.len_field 2l (* see invariant in `stream.rs`, padding for 64-bit after Stream header *)
+    let ptr64_field = 
+      let offset = if !Flags.gc_strategy = Flags.Incremental then 2l else 1l in (* see invariant in `stream.rs` *)
+      Int32.add Blob.len_field offset (* see invariant in `stream.rs`, padding for 64-bit after Stream header *)
 
     let terminate env get_token get_data_size header_size =
       get_token ^^
@@ -9359,7 +9390,8 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_vanilla env ae e1 ^^ (* skewed pointer to array *)
     Tagged.load_forwarding_pointer env ^^
     compile_exp_vanilla env ae e2 ^^ (* byte offset *)
-    (* Note: the below two lines compile to `i32.add; i32.load offset=13`,
+    (* Note: the below two lines compile to `i32.add; i32.load offset=OFFSET`
+       with OFFSET = 13 with forwarding pointers and OFFSET = 9 without forwarding pointers,
        thus together also unskewing the pointer and skipping administrative
        fields, effectively arriving at the desired element *)
     G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
