@@ -8189,16 +8189,15 @@ let const_lit_of_lit : Ir.lit -> Const.lit = function
   | BlobLit t     -> Const.Blob t
   | FloatLit f    -> Const.Float64 f
 
-let const_of_lit _env lit =
+let const_of_lit lit =
   Const.t_of_v (Const.Lit (const_lit_of_lit lit))
 
-let compile_lit env lit =
-  SR.Const (const_of_lit env lit), G.nop
+let compile_lit lit =
+  SR.Const (const_of_lit lit), G.nop
 
 let compile_lit_as env sr_out lit =
-  let sr_in, code = compile_lit env lit in
+  let sr_in, code = compile_lit lit in
   code ^^ StackRep.adjust env sr_in sr_out
-
 
 (* helper, traps with message *)
 let then_arithmetic_overflow env =
@@ -9831,7 +9830,7 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
     compile_exp_as env ae sr e2 ^^
     store_code
   | LitE l ->
-    compile_lit env l
+    compile_lit l
   | IfE (scrut, e1, e2) ->
     let code_scrut = compile_exp_as_test env ae scrut in
     let sr1, code1 = compile_exp_with_hint env ae sr_hint e1 in
