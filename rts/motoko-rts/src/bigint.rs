@@ -31,8 +31,8 @@ This scheme makes the following assumptions:
  - libtommath uses mp_calloc() and mp_realloc() _only_ to allocate the `mp_digit *` array.
 */
 
+use crate::barriers::allocation_barrier;
 use crate::buf::{read_byte, Buf};
-use crate::gc::incremental::barriers::allocation_barrier;
 use crate::mem_utils::memcpy_bytes;
 use crate::memory::Memory;
 use crate::tommath_bindings::*;
@@ -45,7 +45,7 @@ unsafe fn mp_alloc<M: Memory>(mem: &mut M, size: Bytes<u32>) -> *mut u8 {
     // NB. Cannot use as_bigint() here as header is not written yet
     let blob = ptr.get_ptr() as *mut BigInt;
     (*blob).header.tag = TAG_BIGINT;
-    (*blob).header.forward = ptr;
+    (*blob).header.init_forward(ptr);
 
     // libtommath stores the size of the object in alloc as count of mp_digits (u64)
     let size = size.as_usize();

@@ -136,3 +136,8 @@ pub fn ic_mem_fn(attr: TokenStream, input: TokenStream) -> TokenStream {
     )
     .into()
 }
+
+#[proc_macro]
+pub fn is_incremental_gc(_item: TokenStream) -> TokenStream {
+    "cfg!(feature = \"incremental_gc\")".parse().unwrap()
+}

@@ -14,18 +14,22 @@ impl TestMemory {
         TestMemory { heap, hp }
     }
 
+    #[cfg(feature = "incremental_gc")]
     pub fn heap_base(&self) -> usize {
         self.heap.as_ptr() as usize
     }
 
+    #[cfg(feature = "incremental_gc")]
     pub fn heap_end(&self) -> usize {
         self.heap_base() + self.heap.len()
     }
 
+    #[cfg(feature = "incremental_gc")]
     pub fn heap_pointer(&self) -> usize {
         self.hp
     }
 
+    #[cfg(feature = "incremental_gc")]
     pub fn set_heap_pointer(&mut self, heap_pointer: usize) {
         assert!(heap_pointer >= self.heap_base());
         assert!(heap_pointer <= self.heap_end());
@@ -46,10 +50,6 @@ impl Memory for TestMemory {
         self.grow_memory(new_hp as u64);
 
         Value::from_ptr(old_hp)
-    }
-
-    unsafe fn linear_alloc_words(&mut self, n: Words<u32>) -> Value {
-        self.alloc_words(n)
     }
 
     unsafe fn grow_memory(&mut self, ptr: u64) {

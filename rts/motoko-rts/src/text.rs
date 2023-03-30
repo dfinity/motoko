@@ -26,7 +26,7 @@
 // Note that `CONCAT_LEN` and `BLOB_LEN` are identical, so no need to check the tag to know the
 // size of the text.
 
-use crate::gc::incremental::barriers::allocation_barrier;
+use crate::barriers::allocation_barrier;
 use crate::mem_utils::memcpy_bytes;
 use crate::memory::{alloc_blob, Memory};
 use crate::rts_trap_with;
@@ -109,7 +109,7 @@ pub unsafe fn text_concat<M: Memory>(mem: &mut M, s1: Value, s2: Value) -> Value
     let r = mem.alloc_words(size_of::<Concat>());
     let r_concat = r.get_ptr() as *mut Concat;
     (*r_concat).header.tag = TAG_CONCAT;
-    (*r_concat).header.forward = r;
+    (*r_concat).header.init_forward(r);
     (*r_concat).n_bytes = new_len;
     (*r_concat).text1 = s1.forward_if_possible();
     (*r_concat).text2 = s2.forward_if_possible();

@@ -10,7 +10,7 @@ use motoko_rts_macros::ic_mem_fn;
 pub unsafe extern "C" fn initialize_copying_gc() {
     use crate::memory::ic;
 
-    ic::initialize_memory(ic::HeapLayout::Linear);
+    ic::initialize_linear_memory();
 }
 
 #[ic_mem_fn(ic_only)]
@@ -148,7 +148,6 @@ unsafe fn evac<M: Memory>(
         return;
     }
 
-    debug_assert!(!(*ptr_loc).is_forwarded());
     let obj = (*ptr_loc).get_ptr() as *mut Obj;
 
     let obj_size = block_size(obj as usize);
@@ -174,8 +173,6 @@ unsafe fn evac<M: Memory>(
     let to_space_obj = obj_addr as *mut Obj;
     debug_assert!(obj_size.as_usize() > size_of::<Obj>().as_usize());
     debug_assert!(to_space_obj.tag() >= TAG_OBJECT && to_space_obj.tag() <= TAG_NULL);
-
-    (*to_space_obj).forward = Value::from_ptr(obj_loc);
 }
 
 unsafe fn scav<M: Memory>(

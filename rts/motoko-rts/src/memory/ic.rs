@@ -2,7 +2,6 @@
 
 use super::Memory;
 use crate::constants::WASM_PAGE_SIZE;
-use crate::gc::incremental::get_partitioned_heap;
 use crate::rts_trap_with;
 use crate::types::*;
 
@@ -12,23 +11,16 @@ use core::arch::wasm32;
 pub(crate) static mut MAX_LIVE: Bytes<u32> = Bytes(0);
 
 /// Amount of garbage collected so far.
+#[cfg(not(feature = "incremental_gc"))]
 pub(crate) static mut RECLAIMED: Bytes<u64> = Bytes(0);
 
 /// Heap pointer
+#[cfg(not(feature = "incremental_gc"))]
 pub(crate) static mut HP: u32 = 0;
 
 /// Heap pointer after last GC
+#[cfg(not(feature = "incremental_gc"))]
 pub(crate) static mut LAST_HP: u32 = 0;
-
-#[derive(PartialEq)]
-pub(crate) enum HeapLayout {
-    /// Linear heap. Used by the copying, compacting, and generational GC.
-    Linear,
-    /// Partitioned heap. Used by the incremental GC.
-    Partitioned,
-}
-
-static mut LAYOUT: HeapLayout = HeapLayout::Linear;
 
 // Provided by generated code
 extern "C" {
@@ -41,10 +33,10 @@ pub(crate) unsafe fn get_aligned_heap_base() -> u32 {
     ((get_heap_base() + 31) / 32) * 32
 }
 
-pub(crate) unsafe fn initialize_memory(heap_layout: HeapLayout) {
+#[cfg(not(feature = "incremental_gc"))]
+pub(crate) unsafe fn initialize_linear_memory() {
     HP = get_aligned_heap_base();
     LAST_HP = HP;
-    LAYOUT = heap_layout;
 }
 
 #[no_mangle]
@@ -52,12 +44,16 @@ unsafe extern "C" fn get_max_live_size() -> Bytes<u32> {
     MAX_LIVE
 }
 
+#[cfg(feature = "incremental_gc")]
 #[no_mangle]
 unsafe extern "C" fn get_reclaimed() -> Bytes<u64> {
-    match LAYOUT {
-        HeapLayout::Partitioned => get_partitioned_heap().reclaimed_size(),
-        HeapLayout::Linear => RECLAIMED,
-    }
+    crate::gc::incremental::get_partitioned_heap().reclaimed_size()
+}
+
+#[cfg(not(feature = "incremental_gc"))]
+#[no_mangle]
+unsafe extern "C" fn get_reclaimed() -> Bytes<u64> {
+    RECLAIMED
 }
 
 #[no_mangle]
@@ -65,12 +61,16 @@ pub unsafe extern "C" fn get_total_allocations() -> Bytes<u64> {
     Bytes(u64::from(get_heap_size().as_u32())) + get_reclaimed()
 }
 
+#[cfg(feature = "incremental_gc")]
 #[no_mangle]
 pub unsafe extern "C" fn get_heap_size() -> Bytes<u32> {
-    match LAYOUT {
-        HeapLayout::Partitioned => get_partitioned_heap().occupied_size(),
-        HeapLayout::Linear => Bytes(HP - get_aligned_heap_base()),
-    }
+    crate::gc::incremental::get_partitioned_heap().occupied_size()
+}
+
+#[cfg(not(feature = "incremental_gc"))]
+#[no_mangle]
+pub unsafe extern "C" fn get_heap_size() -> Bytes<u32> {
+    Bytes(HP - get_aligned_heap_base())
 }
 
 /// Provides a `Memory` implementation, to be used in functions compiled for IC or WASI. The
@@ -78,16 +78,15 @@ pub unsafe extern "C" fn get_heap_size() -> Bytes<u32> {
 pub struct IcMemory;
 
 impl Memory for IcMemory {
+    #[cfg(feature = "incremental_gc")]
     #[inline]
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value {
-        match LAYOUT {
-            HeapLayout::Partitioned => get_partitioned_heap().allocate(self, n),
-            HeapLayout::Linear => self.linear_alloc_words(n),
-        }
+        crate::gc::incremental::get_partitioned_heap().allocate(self, n)
     }
 
+    #[cfg(not(feature = "incremental_gc"))]
     #[inline]
-    unsafe fn linear_alloc_words(&mut self, n: Words<u32>) -> Value {
+    unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value {
         let bytes = n.to_bytes();
         let delta = u64::from(bytes.as_u32());
 

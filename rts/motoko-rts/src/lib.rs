@@ -1,7 +1,12 @@
 //! Implements Motoko runtime system
 
 #![no_std]
-#![feature(arbitrary_self_types, core_intrinsics, panic_info_message)]
+#![feature(
+    arbitrary_self_types,
+    core_intrinsics,
+    panic_info_message,
+    proc_macro_hygiene
+)]
 
 #[macro_use]
 mod print;
@@ -9,6 +14,7 @@ mod print;
 #[cfg(debug_assertions)]
 pub mod debug;
 
+mod barriers;
 pub mod bigint;
 pub mod bitrel;
 #[cfg(feature = "ic")]
@@ -44,21 +50,16 @@ unsafe fn version<M: memory::Memory>(mem: &mut M) -> types::Value {
     text::text_of_str(mem, "0.1")
 }
 
-// Optimized allocation function to be used with non-incremental GC.
+#[cfg(not(feature = "incremental_gc"))]
 #[ic_mem_fn(ic_only)]
-unsafe fn linear_alloc_words<M: memory::Memory>(mem: &mut M, n: types::Words<u32>) -> types::Value {
-    mem.linear_alloc_words(n)
+unsafe fn alloc_words<M: memory::Memory>(mem: &mut M, n: types::Words<u32>) -> types::Value {
+    mem.alloc_words(n)
 }
 
-// Optimized allocation function to be used with the incremental GC.
+#[cfg(feature = "incremental_gc")]
 #[ic_mem_fn(ic_only)]
-unsafe fn partitioned_alloc_words<M: memory::Memory>(
-    mem: &mut M,
-    n: types::Words<u32>,
-) -> types::Value {
-    use crate::gc::incremental::get_partitioned_heap;
-
-    get_partitioned_heap().allocate(mem, n)
+unsafe fn alloc_words<M: memory::Memory>(mem: &mut M, n: types::Words<u32>) -> types::Value {
+    crate::gc::incremental::get_partitioned_heap().allocate(mem, n)
 }
 
 extern "C" {

@@ -428,10 +428,6 @@ impl Memory for PartitionedTestHeap {
         result
     }
 
-    unsafe fn linear_alloc_words(&mut self, _n: Words<u32>) -> Value {
-        unreachable!()
-    }
-
     unsafe fn grow_memory(&mut self, _ptr: u64) {
         unreachable!();
     }

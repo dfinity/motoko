@@ -31,7 +31,7 @@ use self::write_barrier::REMEMBERED_SET;
 unsafe fn initialize_generational_gc<M: Memory>(mem: &mut M) {
     use crate::memory::ic;
 
-    ic::initialize_memory(ic::HeapLayout::Linear);
+    ic::initialize_linear_memory();
     write_barrier::init_generational_write_barrier(mem);
 }
 
@@ -462,7 +462,6 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
                 // Update forwarding pointer
                 let new_obj = new_pointer as *mut Obj;
                 debug_assert!(new_obj.tag() >= TAG_OBJECT && new_obj.tag() <= TAG_NULL);
-                (*new_obj).forward = Value::from_ptr(new_pointer as usize);
             }
 
             free += object_size.to_bytes().as_usize();

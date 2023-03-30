@@ -1,5 +1,5 @@
 use crate::{
-    gc::incremental::barriers::allocation_barrier,
+    barriers::allocation_barrier,
     types::{size_of, Array, Bytes, Value, Words, TAG_ARRAY},
 };
 
@@ -17,7 +17,7 @@ unsafe fn blob_iter<M: crate::memory::Memory>(mem: &mut M, blob: Value) -> Value
     // NB. cannot use as_array() here as we didn't write the header yet
     let iter_array = iter_ptr.get_ptr() as *mut Array;
     (*iter_array).header.tag = TAG_ARRAY;
-    (*iter_array).header.forward = iter_ptr;
+    (*iter_array).header.init_forward(iter_ptr);
     (*iter_array).len = 2;
 
     iter_array.initialize(ITER_BLOB_IDX, blob, mem);
