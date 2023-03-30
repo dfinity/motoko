@@ -6050,6 +6050,7 @@ module MakeSerialization (Strm : Stream) = struct
             with_composite_arg_typ get_arg_typ idl_alias (ReadBuf.read_sleb128 env)
         end
         begin
+          (* sanity check *)
           get_arg_typ ^^
           compile_eq_const (Int32.neg (Option.get (to_idl_prim (Prim Region)))) ^^
           E.else_trap_with env "IDL error: unexpecting primitive alias type" ^^
@@ -6306,10 +6307,10 @@ module MakeSerialization (Strm : Stream) = struct
           )
           )
       | Prim Region ->
-         read_alias env (Prim Region) (fun get_arg_typ on_alloc ->
+         read_alias env (Prim Region) (fun get_region_typ on_alloc ->
           let (set_region, get_region) = new_local env "region" in
-          begin
-          get_arg_typ ^^
+          (* sanity check *)
+          get_region_typ ^^
           compile_eq_const (Int32.neg (Option.get (to_idl_prim (Prim Region)))) ^^
           E.else_trap_with env "read_alias unexpected idl_typ" ^^
           Region.alloc env (compile_unboxed_const 0l) (compile_unboxed_const 0l) (Blob.lit env "") ^^ set_region ^^
@@ -6318,7 +6319,6 @@ module MakeSerialization (Strm : Stream) = struct
           get_region ^^ ReadBuf.read_word32 env get_data_buf ^^ Heap.store_field Region.page_count_field ^^
           get_region ^^ read_blob () ^^ Heap.store_field Region.vec_pages_field ^^
           get_region ^^ Region.check_region "read_alias" env
-          end
         )
       | Array t ->
         let (set_len, get_len) = new_local env "len" in
