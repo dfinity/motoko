@@ -3586,18 +3586,21 @@ module Region = struct
   let alloc env get_id get_pagecount get_vec_pages =
     Tagged.obj env Tagged.Region [ get_id; get_pagecount; get_vec_pages ]
 
-  let check_region s env =
-    let (set_region, get_region) = new_local env "region" in
-    set_region ^^
-    get_region ^^ Tagged.load ^^
-    compile_eq_const Tagged.(int_of_tag Region) ^^
-    get_region ^^ Tagged.load ^^
-    compile_eq_const Tagged.(int_of_tag StableSeen) ^^
-    G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
-    E.else_trap_with env ("Internal error: bad region tag "^ s) ^^
-    get_region ^^ Heap.load_field vec_pages_field ^^ Tagged.load ^^
-    compile_eq_const Tagged.(int_of_tag Blob) ^^
-    E.else_trap_with env ("Internal error: bad region.vec_pages" ^ s)
+  let sanity_check s env =
+    if !Flags.sanity then
+    Func.share_code1 env ("check_region_" ^ s) ("val", I32Type) [I32Type]
+      (fun env get_region ->
+         get_region ^^ Tagged.load ^^
+         compile_eq_const Tagged.(int_of_tag Region) ^^
+         get_region ^^ Tagged.load ^^
+         compile_eq_const Tagged.(int_of_tag StableSeen) ^^
+         G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
+         E.else_trap_with env ("Internal error: bad region tag "^ s) ^^
+         get_region ^^ Heap.load_field vec_pages_field ^^ Tagged.load ^^
+         compile_eq_const Tagged.(int_of_tag Blob) ^^
+         E.else_trap_with env ("Internal error: bad region.vec_pages" ^ s) ^^
+         get_region)
+    else G.nop
 
   let id env =
     E.call_import env "rts" "region_id" (* TEMP (for testing) *)
@@ -5561,7 +5564,6 @@ module MakeSerialization (Strm : Stream) = struct
         E.trap_with env "buffer_size called on value of type None"
       | Prim Region ->
          size_alias (fun () ->
-          get_x ^^ Region.check_region "size_alias" env  ^^
           inc_data_size (compile_unboxed_const 8l) ^^ (* |(padded) id| + |page_count| *)
           get_x ^^ Heap.load_field Region.vec_pages_field ^^ size env (Prim Blob))
       | Mut t ->
@@ -6323,8 +6325,7 @@ module MakeSerialization (Strm : Stream) = struct
           on_alloc get_region ^^
           get_region ^^ ReadBuf.read_word32 env get_data_buf ^^ Heap.store_field Region.id_field ^^
           get_region ^^ ReadBuf.read_word32 env get_data_buf ^^ Heap.store_field Region.page_count_field ^^
-          get_region ^^ read_blob () ^^ Heap.store_field Region.vec_pages_field ^^
-          get_region ^^ Region.check_region "read_alias" env
+          get_region ^^ read_blob () ^^ Heap.store_field Region.vec_pages_field
         )
       | Array t ->
         let (set_len, get_len) = new_local env "len" in
@@ -9591,10 +9592,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
   | OtherPrim "regionNew", [] ->
     SR.Vanilla,
-    let set_region, get_region = new_local env "region" in
-    Region.new_ env ^^ set_region ^^
-    get_region ^^ Region.check_region "region_new" env ^^
-    get_region
+    Region.new_ env ^^ Region.sanity_check "region_new" env
 
   | OtherPrim "regionId", [e0] ->
     SR.UnboxedWord32,
@@ -9794,11 +9792,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
   | OtherPrim "stableMemoryRegion", [] ->
     SR.Vanilla,
-    let set_region, get_region = new_local env "region" in
-    Region0.get env ^^ set_region ^^
-    get_region ^^ Region.check_region "stableMemoryRegion" env ^^
-    get_region
-
+    Region0.get env ^^ Region.sanity_check "stableMemoryRegion" env
 
   | OtherPrim ("stableMemoryLoadNat32"|"stableMemoryLoadInt32"), [e] ->
     SR.UnboxedWord32,
