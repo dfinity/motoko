@@ -145,9 +145,6 @@ and t_exp' context exp =
     FuncE (x, s1, c, typbinds, pat, typs,
       blockE [letP wild_pat (t_async context body)] unitE)
   | FuncE (x, s, c, typbinds, pat, typs, exp1) ->
-(*     if (T.is_local_async_func (typ exp)) then
-        (Printf.printf "(in here):\n%s"
-        (Wasm.Sexpr.to_string 80 (Arrange_ir.exp exp))); *)
     assert (not (T.is_local_async_func (typ exp)));
     assert (not (T.is_shared_func (typ exp)));
     let context' = LabelEnv.add Return Label LabelEnv.empty in
