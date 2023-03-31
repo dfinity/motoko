@@ -4,7 +4,7 @@
 
 * motoko (`moc`)
 
-  * bugfix: avoid compiler crash (regression) when `let`-matching on constant variants (#3901).
+  * bugfix: avoid compiler crash (regression) when `let`-matching on constant variants (#3901, #3903).
 
   * Performance improvement: improved cycle usage when receiving messages (#3893).
 
