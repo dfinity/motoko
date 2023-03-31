@@ -919,7 +919,11 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
         blockE [letP pat {exp with it = Ir.AsyncE (T.Fut, tb,wrap_po e',t)} ] unit
       | _, Ir.ActorE _ -> wrap_po e
       | _ -> assert false
-    else wrap_po e in
+    else
+(*      match control, e.it with
+      | (T.Returns, Ir.AsyncE (s, tb, e', t)) ->
+        { e with it = Ir.AsyncE (s, tb, wrap_po e', t) }
+      |  _ -> *) wrap_po e in
 
   args, wrap_under_async, control, res_tys
 
