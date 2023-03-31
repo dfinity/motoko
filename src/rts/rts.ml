@@ -16,7 +16,7 @@ let load_file env =
     close_in ic;
     Bytes.to_string s
   | None ->
-    Printf.eprintf "Environment variable MOC_DEBUG_RTS not set. Please run moc via the bin/moc wrapper (which should be in your PATH in the nix-shell).";
+    Printf.eprintf "Environment variable %s not set. Please run moc via the bin/moc wrapper (which should be in your PATH in the nix-shell)." env;
     exit 1
 
 let wasm_non_incremental_release : string Lazy.t = lazy (load_file "MOC_NON_INCREMENTAL_RELEASE_RTS")
