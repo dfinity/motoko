@@ -920,11 +920,8 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
       | _, Ir.ActorE _ -> wrap_po e
       | _ -> assert false
     else
-      match control, e.it with
-      | (T.Returns, Ir.AsyncE (s, tb, e', t)) ->
-        { e with it = Ir.AsyncE (s, tb, wrap_po e', t) }
-      |  _ -> wrap_po e in
-
+      wrap_po e
+  in
   args, wrap_under_async, control, res_tys
 
 type import_declaration = Ir.dec list
