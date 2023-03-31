@@ -19,6 +19,7 @@
 // [1]: https://github.com/rust-lang/reference/blob/master/src/types/struct.md
 // [2]: https://doc.rust-lang.org/stable/reference/type-layout.html#the-c-representation
 
+use motoko_rts_macros::*;
 use crate::barriers::{init_with_barrier, write_with_barrier};
 use crate::memory::Memory;
 use crate::tommath_bindings::{mp_digit, mp_int};
@@ -293,7 +294,7 @@ impl Value {
     }
 
     /// Get the forwarding pointer. Used by the incremental GC.
-    #[cfg(feature = "incremental_gc")]
+    #[incremental_gc]
     pub unsafe fn forward(self) -> Value {
         debug_assert!(self.is_obj());
         debug_assert!(self.get_ptr() as *const Obj != null());
@@ -302,7 +303,7 @@ impl Value {
     }
 
     /// Get the forwarding pointer. Used by the incremental GC.
-    #[cfg(not(feature = "incremental_gc"))]
+    #[non_incremental_gc]
     pub unsafe fn forward(self) -> Value {
         self
     }
@@ -459,22 +460,23 @@ pub const TAG_ARRAY_SLICE_MIN: Tag = 32;
 #[repr(C)] // See the note at the beginning of this module
 pub struct Obj {
     pub tag: Tag,
+    // Cannot use `#[incremental_gc]` as Rust only allows non-macro attributes for fields.
     #[cfg(feature = "incremental_gc")]
     /// Forwarding pointer to support object moving in the incremental GC.
     pub forward: Value,
 }
 
 impl Obj {
-    #[cfg(feature = "incremental_gc")]
+    #[incremental_gc]
     pub fn init_forward(&mut self, value: Value) {
         self.forward = value;
     }
 
-    #[cfg(not(feature = "incremental_gc"))]
+    #[non_incremental_gc]
     pub fn init_forward(&mut self, _value: Value) {}
 
     /// Check whether the object's forwarding pointer refers to a different location.
-    #[cfg(feature = "incremental_gc")]
+    #[incremental_gc]
     pub unsafe fn is_forwarded(self: *const Self) -> bool {
         if is_incremental_gc!() {
             (*self).forward.get_ptr() != self as usize
@@ -483,7 +485,7 @@ impl Obj {
         }
     }
 
-    #[cfg(not(feature = "incremental_gc"))]
+    #[non_incremental_gc]
     pub unsafe fn is_forwarded(self: *const Self) -> bool {
         false
     }
@@ -664,6 +666,7 @@ impl Blob {
 pub struct Stream {
     pub header: Blob,
 
+    // Cannot use `#[incremental_gc]` as Rust only allows non-macro attributes for fields.
     #[cfg(feature = "incremental_gc")]
     pub padding: u32, // The insertion of the forwarding pointer in the header implies 1 word padding to 64-bit.
 
@@ -714,12 +717,12 @@ impl BigInt {
         self.add(1) as *mut mp_digit // skip closure header
     }
 
-    #[cfg(feature = "incremental_gc")]
+    #[incremental_gc]
     pub unsafe fn forward(self: *mut Self) -> *mut Self {
         (*self).header.forward.as_bigint()
     }
 
-    #[cfg(not(feature = "incremental_gc"))]
+    #[non_incremental_gc]
     pub unsafe fn forward(self: *mut Self) -> *mut Self {
         self
     }
