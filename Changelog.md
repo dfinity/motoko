@@ -1,5 +1,13 @@
 # Motoko compiler changelog
 
+## 0.8.6 (2023-03-31)
+
+* motoko (`moc`)
+
+  * bugfix: avoid compiler crash (regression) when `let`-matching on constant variants (#3901).
+
+  * Performance improvement: improved cycle usage when receiving messages (#3893).
+
 ## 0.8.5 (2023-03-20)
 
 * motoko (`moc`)
