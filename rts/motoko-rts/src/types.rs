@@ -478,11 +478,7 @@ impl Obj {
     /// Check whether the object's forwarding pointer refers to a different location.
     #[incremental_gc]
     pub unsafe fn is_forwarded(self: *const Self) -> bool {
-        if is_incremental_gc!() {
-            (*self).forward.get_ptr() != self as usize
-        } else {
-            false
-        }
+        (*self).forward.get_ptr() != self as usize
     }
 
     #[non_incremental_gc]
