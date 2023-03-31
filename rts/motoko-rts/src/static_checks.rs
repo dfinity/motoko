@@ -1,7 +1,7 @@
 //! Compile-time assertions to make sure object layouts are as expected
 
-use motoko_rts_macros::*;
 use crate::types::*;
+use motoko_rts_macros::*;
 
 use core::mem::{align_of, size_of};
 

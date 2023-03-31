@@ -19,13 +19,13 @@
 // [1]: https://github.com/rust-lang/reference/blob/master/src/types/struct.md
 // [2]: https://doc.rust-lang.org/stable/reference/type-layout.html#the-c-representation
 
-use motoko_rts_macros::*;
 use crate::barriers::{init_with_barrier, write_with_barrier};
 use crate::memory::Memory;
 use crate::tommath_bindings::{mp_digit, mp_int};
 use core::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
 use core::ptr::null;
 use motoko_rts_macros::is_incremental_gc;
+use motoko_rts_macros::*;
 
 use crate::constants::WORD_SIZE;
 use crate::rts_trap_with;

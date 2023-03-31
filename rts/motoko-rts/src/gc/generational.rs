@@ -29,9 +29,7 @@ use self::write_barrier::REMEMBERED_SET;
 
 #[ic_mem_fn(ic_only)]
 unsafe fn initialize_generational_gc<M: Memory>(mem: &mut M) {
-    use crate::memory::ic;
-
-    ic::initialize_linear_memory();
+    crate::memory::ic::linear_memory::initialize();
     write_barrier::init_generational_write_barrier(mem);
 }
 
@@ -82,28 +80,28 @@ unsafe fn generational_gc<M: Memory>(mem: &mut M) {
 
 #[cfg(feature = "ic")]
 unsafe fn get_limits() -> Limits {
-    assert!(ic::LAST_HP >= ic::get_aligned_heap_base());
-    use crate::memory::ic;
+    use crate::memory::ic::{self, linear_memory};
+    assert!(linear_memory::LAST_HP >= ic::get_aligned_heap_base());
     Limits {
         base: ic::get_aligned_heap_base() as usize,
-        last_free: ic::LAST_HP as usize,
-        free: ic::HP as usize,
+        last_free: linear_memory::LAST_HP as usize,
+        free: linear_memory::HP as usize,
     }
 }
 
 #[cfg(feature = "ic")]
 unsafe fn set_limits(limits: &Limits) {
-    use crate::memory::ic;
-    ic::HP = limits.free as u32;
-    ic::LAST_HP = limits.free as u32;
+    use crate::memory::ic::linear_memory;
+    linear_memory::HP = limits.free as u32;
+    linear_memory::LAST_HP = limits.free as u32;
 }
 
 #[cfg(feature = "ic")]
 unsafe fn update_statistics(old_limits: &Limits, new_limits: &Limits) {
-    use crate::memory::ic;
+    use crate::memory::ic::{self, linear_memory};
     let live_size = Bytes(new_limits.free as u32 - new_limits.base as u32);
     ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, live_size);
-    ic::RECLAIMED += Bytes(old_limits.free as u64 - new_limits.free as u64);
+    linear_memory::RECLAIMED += Bytes(old_limits.free as u64 - new_limits.free as u64);
 }
 
 #[derive(PartialEq, Clone, Copy, Debug)]

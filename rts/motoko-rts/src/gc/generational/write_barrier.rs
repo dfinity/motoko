@@ -12,10 +12,10 @@ pub static mut LAST_HP: u32 = 0;
 #[cfg(feature = "ic")]
 /// (Re-)initialize the write barrier for generational GC.
 pub(crate) unsafe fn init_generational_write_barrier<M: Memory>(mem: &mut M) {
-    use crate::memory::ic;
+    use crate::memory::ic::{self, linear_memory};
     REMEMBERED_SET = Some(RememberedSet::new(mem));
     HEAP_BASE = ic::get_aligned_heap_base();
-    LAST_HP = ic::LAST_HP;
+    LAST_HP = linear_memory::LAST_HP;
 }
 
 /// Write barrier to be called AFTER the pointer store, used for the generational GC.

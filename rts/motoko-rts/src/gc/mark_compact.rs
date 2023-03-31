@@ -19,9 +19,7 @@ use motoko_rts_macros::ic_mem_fn;
 #[no_mangle]
 #[cfg(feature = "ic")]
 pub unsafe extern "C" fn initialize_compacting_gc() {
-    use crate::memory::ic;
-
-    ic::initialize_linear_memory();
+    crate::memory::ic::linear_memory::initialize();
 }
 
 #[ic_mem_fn(ic_only)]
@@ -42,24 +40,24 @@ unsafe fn schedule_compacting_gc<M: Memory>(mem: &mut M) {
 
 #[ic_mem_fn(ic_only)]
 unsafe fn compacting_gc<M: Memory>(mem: &mut M) {
-    use crate::memory::ic;
+    use crate::memory::ic::{self, linear_memory};
 
     compacting_gc_internal(
         mem,
         ic::get_aligned_heap_base(),
         // get_hp
-        || ic::HP as usize,
+        || linear_memory::HP as usize,
         // set_hp
-        |hp| ic::HP = hp,
+        |hp| linear_memory::HP = hp,
         ic::get_static_roots(),
         crate::continuation_table::continuation_table_loc(),
         // note_live_size
         |live_size| ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, live_size),
         // note_reclaimed
-        |reclaimed| ic::RECLAIMED += Bytes(u64::from(reclaimed.as_u32())),
+        |reclaimed| linear_memory::RECLAIMED += Bytes(u64::from(reclaimed.as_u32())),
     );
 
-    ic::LAST_HP = ic::HP;
+    linear_memory::LAST_HP = linear_memory::HP;
 }
 
 pub unsafe fn compacting_gc_internal<

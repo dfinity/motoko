@@ -146,7 +146,8 @@ pub fn incremental_gc(attr: TokenStream, input: TokenStream) -> TokenStream {
     quote!(
         #[cfg(feature = "incremental_gc")]
         #block
-    ).into()
+    )
+    .into()
 }
 
 /// Feature macro for non-incremental GC features, in particular forwarding pointers.
@@ -158,7 +159,8 @@ pub fn non_incremental_gc(attr: TokenStream, input: TokenStream) -> TokenStream 
     quote!(
         #[cfg(not(feature = "incremental_gc"))]
         #block
-    ).into()
+    )
+    .into()
 }
 
 #[proc_macro]
