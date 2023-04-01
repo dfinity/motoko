@@ -1018,8 +1018,9 @@ and check_pat env pat : val_env =
     let ve2 = check_pat env pat2 in
     t <: pat1.note;
     t <: pat2.note;
-    let common i1 i2 =
-      { typ = T.lub i1.typ i2.typ; loc_known = false; const = i1.const && i2.const } in
+    if T.Env.(keys ve1 <> keys ve2) then
+        error env pat.at "set of bindings differ for alternative pattern";
+    let common i1 i2 = { typ = T.lub i1.typ i2.typ; loc_known = false; const = i1.const && i2.const } in
     T.Env.merge (fun _ -> Lib.Option.map2 common) ve1 ve2
 
 and check_pats at env pats ve : val_env =
