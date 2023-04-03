@@ -919,8 +919,9 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
         blockE [letP pat {exp with it = Ir.AsyncE (T.Fut, tb,wrap_po e',t)} ] unit
       | _, Ir.ActorE _ -> wrap_po e
       | _ -> assert false
-    else wrap_po e in
-
+    else
+      wrap_po e
+  in
   args, wrap_under_async, control, res_tys
 
 type import_declaration = Ir.dec list
