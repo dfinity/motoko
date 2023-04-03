@@ -254,6 +254,16 @@ let rec declaration_header :
       end_block buf;
       doc_comment ();
       sep_by buf "\n" (plain_of_doc buf (lvl + 1)) class_doc.fields
+  | Module module_doc ->
+      title buf lvl "";
+      plain_of_obj_sort buf module_doc.sort;
+      bprintf buf "Module `%s" module_doc.name;
+      bprintf buf "`\n";
+      begin_block buf;
+      bprintf buf "module %s" module_doc.name;
+      end_block buf;
+      doc_comment ();
+      sep_by buf "\n" (plain_of_doc buf (lvl + 1)) module_doc.fields
   | Unknown u ->
       title buf lvl (Printf.sprintf "Unknown %s" u);
       doc_comment ()
