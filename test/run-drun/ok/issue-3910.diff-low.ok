@@ -1,13 +1,8 @@
 --- issue-3910.run
 +++ issue-3910.run-low
-@@ -1,4 +1,6 @@
--f0
--f1
--f2
+@@ -1,4 +1,4 @@
+ f0
+ f1
+ f2
 -issue-3910.mo:17.10-17.35: execution error, argument value {trap = true} does not match parameter list
-+OOPS! You've triggered a compiler bug.
-+Please report this at https://github.com/dfinity/motoko/issues/new with the following details:
-+
-+Motoko (source XXX)
-+
-+Fatal error: exception File "ir_passes/await.ml", line 148, characters 4-10: Assertion failed
++issue-3910.mo:17.20-17.32: execution error, value true does not match pattern

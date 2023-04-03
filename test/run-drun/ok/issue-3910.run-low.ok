@@ -1,6 +1,4 @@
-OOPS! You've triggered a compiler bug.
-Please report this at https://github.com/dfinity/motoko/issues/new with the following details:
-
-Motoko (source XXX)
-
-Fatal error: exception File "ir_passes/await.ml", line 148, characters 4-10: Assertion failed
+f0
+f1
+f2
+issue-3910.mo:17.20-17.32: execution error, value true does not match pattern
