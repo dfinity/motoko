@@ -54,7 +54,7 @@ let eq_func_body : T.typ -> Ir.exp -> Ir.exp -> Ir.exp = fun t e1 e2 ->
   (* This is used when constructing equality functions, so e1 e2
      are pure (variables, projections) and can be dropped *)
   if T.singleton t
-  then blockE [expD (ignoreE e1); expD (ignoreE e2)] trueE
+  then blockE [expD (ignoreE e1); expD (ignoreE e2)] (trueE ())
   else if Check_ir.has_prim_eq t
   then primE (RelPrim (t, Operator.EqOp)) [e1; e2]
   else varE (eq_var_for t) -*- (tupE [e1; e2])
@@ -107,16 +107,16 @@ let eq_for : T.typ -> Ir.dec * T.typ list = fun t ->
       (* x1 is null *)
       ( switch_optE (arg2E t)
         (* x2 is null *)
-        trueE
+        (trueE ())
         (* x2 is ?_ *)
-        wildP falseE
+        wildP (falseE ())
         (* ret type *)
         T.bool
       ) (* x1 is ?y1 *)
       ( varP y1 )
       ( switch_optE (arg2E t)
         (* x2 is null *)
-        falseE
+        (falseE ())
         (* x2 is ?_ *)
         ( varP y2 )
         ( eq_func_body t' (varE y1) (varE y2) )
@@ -159,7 +159,7 @@ let eq_for : T.typ -> Ir.dec * T.typ list = fun t ->
                 exp = eq_func_body t' (varE y1) (varE y2);
               }; at = no_region; note = ()
             }) fs @
-            [ { it = { pat = wildP; exp = falseE };
+            [ { it = { pat = wildP; exp = falseE () };
                 at = no_region; note = () } ]
         );
       at = no_region;
@@ -168,7 +168,7 @@ let eq_for : T.typ -> Ir.dec * T.typ list = fun t ->
     ),
     List.map (fun (f : T.field) -> T.normalize f.T.typ) fs
   | T.Non ->
-    define_eq t unreachableE,
+    define_eq t (unreachableE ()),
     []
   | t ->
     raise (Invalid_argument ("Ir_passes.Eq.eq_on: Unexpected type " ^ T.string_of_typ t))
@@ -208,7 +208,7 @@ and t_exp' env = function
     (* Handle singletons here, but beware of side-effects *)
     let e1 = t_exp env exp1 in
     let e2 = t_exp env exp2 in
-    (blockE [expD (ignoreE e1); expD (ignoreE e2)] trueE).it
+    (blockE [expD (ignoreE e1); expD (ignoreE e2)] (trueE ())).it
   | PrimE (RelPrim (ot, Operator.EqOp), [exp1; exp2]) when not (Check_ir.has_prim_eq ot) ->
     let t' = T.normalize ot in
     add_type env t';
@@ -241,7 +241,7 @@ and t_exp' env = function
     LoopE (t_exp env exp1)
   | LabelE (id, typ, exp1) ->
     LabelE (id, typ, t_exp env exp1)
-  | AsyncE (tb, e, typ) -> AsyncE (tb, t_exp env e, typ)
+  | AsyncE (s, tb, e, typ) -> AsyncE (s, tb, t_exp env e, typ)
   | DeclareE (id, typ, exp1) ->
     DeclareE (id, typ, t_exp env exp1)
   | DefineE (id, mut ,exp1) ->
@@ -250,15 +250,25 @@ and t_exp' env = function
     NewObjE (sort, ids, t)
   | SelfCallE (ts, e1, e2, e3) ->
     SelfCallE (ts, t_exp env e1, t_exp env e2, t_exp env e3)
-  | ActorE (ds, fields, {pre; post}, typ) ->
+  | ActorE (ds, fields, {meta; preupgrade; postupgrade; heartbeat; timer; inspect}, typ) ->
     (* Until Actor expressions become their own units,
        we repeat what we do in `comp_unit` below *)
     let env1 = empty_env () in
     let ds' = t_decs env1 ds in
-    let pre' = t_exp env1 pre in
-    let post' = t_exp env1 post in
+    let preupgrade' = t_exp env1 preupgrade in
+    let postupgrade' = t_exp env1 postupgrade in
+    let heartbeat' = t_exp env1 heartbeat in
+    let timer' = t_exp env1 timer in
+    let inspect' = t_exp env1 inspect in
     let decls = eq_decls !(env1.params) in
-    ActorE (decls @ ds', fields, {pre = pre'; post = post'}, typ)
+    ActorE (decls @ ds', fields,
+      {meta;
+       preupgrade = preupgrade';
+       postupgrade = postupgrade';
+       heartbeat = heartbeat';
+       timer = timer';
+       inspect = inspect'
+      }, typ)
 
 and t_lexp env (e : Ir.lexp) = { e with it = t_lexp' env e.it }
 and t_lexp' env = function
@@ -274,6 +284,7 @@ and t_dec' env dec' =
   match dec' with
   | LetD (pat,exp) -> LetD (pat,t_exp env exp)
   | VarD (id, typ, exp) -> VarD (id, typ, t_exp env exp)
+  | RefD (id, typ, lexp) -> RefD (id, typ, t_lexp env lexp)
 
 and t_decs env decs = List.map (t_dec env) decs
 
@@ -286,15 +297,26 @@ and t_comp_unit = function
     let ds' = t_decs env ds in
     let decls = eq_decls !(env.params) in
     ProgU (decls @ ds')
-  | ActorU (as_opt, ds, fields, {pre; post}, typ) ->
+  | ActorU (as_opt, ds, fields, {meta; preupgrade; postupgrade; heartbeat; timer; inspect}, typ) ->
     let env = empty_env () in
     let ds' = t_decs env ds in
-    let pre' = t_exp env pre in
-    let post' = t_exp env post in
+    let preupgrade' = t_exp env preupgrade in
+    let postupgrade' = t_exp env postupgrade in
+    let heartbeat' = t_exp env heartbeat in
+    let timer' = t_exp env timer in
+    let inspect' = t_exp env inspect in
     let decls = eq_decls !(env.params) in
-    ActorU (as_opt, decls @ ds', fields, {pre = pre'; post = post'}, typ)
+    ActorU (as_opt, decls @ ds', fields,
+      {meta;
+       preupgrade = preupgrade';
+       postupgrade = postupgrade';
+       heartbeat = heartbeat';
+       timer = timer';
+       inspect = inspect'
+      }, typ)
 
 (* Entry point for the program transformation *)
 
 let transform (cu, flavor) =
+  assert (not flavor.has_typ_field); (* required for hash_typ *)
   (t_comp_unit cu, {flavor with has_poly_eq = false})

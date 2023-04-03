@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 actor a {
 
   public shared ctxt func c1 () : async () {
@@ -39,7 +39,7 @@ actor a {
   // NB: The following tests are more about Blob than Principal
   // Maybe move to their own tests once we have intro forms for blobs
 
-  public shared query({caller}) func c9() : async Word32 {
+  public shared query({caller}) func c9() : async Nat32 {
     Prim.hashBlob (Prim.blobOfPrincipal caller);
   };
 
@@ -47,8 +47,8 @@ actor a {
       (Prim.blobOfPrincipal caller).size();
   };
 
-  public shared query({caller}) func c11() : async ?Word8 {
-      (Prim.blobOfPrincipal caller).bytes().next();
+  public shared query({caller}) func c11() : async ?Nat8 {
+      (Prim.blobOfPrincipal caller).vals().next();
   };
 
 };

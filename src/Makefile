@@ -22,7 +22,7 @@ ALL_TARGETS = $(NATIVE_TARGETS) $(JS_TARGETS)
 .PHONY: all clean moc mo-doc mo-ide mo-ld moc.js didc deser candid-tests unit-tests didc.js
 
 # let make update check this file every time
-SOURCE_ID = source_id/source_id.ml
+SOURCE_ID = source_id/generated.ml
 
 # This targets is spelled out so that `make`
 # only invokes `dune` once, much faster
@@ -115,8 +115,8 @@ test-parallel:
 	make -C ../test parallel
 	make -C ../samples all
 
-grammar: ../doc/modules/language-guide/examples/grammar.txt
+grammar: ../doc/md/examples/grammar.txt
 
-../doc/modules/language-guide/examples/grammar.txt: mo_frontend/parser.mly gen-grammar/gen-grammar.sh gen-grammar/grammar.sed
+../doc/md/examples/grammar.txt: mo_frontend/parser.mly gen-grammar/gen-grammar.sh gen-grammar/grammar.sed
 	./gen-grammar/gen-grammar.sh $< > $@.tmp
 	mv $@.tmp $@

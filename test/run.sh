@@ -13,6 +13,7 @@
 #    -i: Only check mo to idl generation
 #    -p: Produce perf statistics
 #        only compiles and runs drun, writes stats to $PERF_OUT
+#    -v: Translate to Viper
 #
 
 function realpath() {
@@ -24,14 +25,19 @@ ACCEPT=no
 DTESTS=no
 IDL=no
 PERF=no
-WASMTIME_OPTIONS="--disable-cache --cranelift"
+VIPER=no
+WASMTIME_OPTIONS="--disable-cache"
 WRAP_drun=$(realpath $(dirname $0)/drun-wrapper.sh)
 WRAP_ic_ref_run=$(realpath $(dirname $0)/ic-ref-run-wrapper.sh)
 SKIP_RUNNING=${SKIP_RUNNING:-no}
+SKIP_VALIDATE=${SKIP_VALIDATE:-no}
 ONLY_TYPECHECK=no
 ECHO=echo
 
-while getopts "adpstir" o; do
+# Always do GC in tests, unless it's disabled in `EXTRA_MOC_ARGS`
+EXTRA_MOC_ARGS="--force-gc $EXTRA_MOC_ARGS"
+
+while getopts "adpstirv" o; do
     case "${o}" in
         a)
             ACCEPT=yes
@@ -51,42 +57,52 @@ while getopts "adpstir" o; do
         i)
             IDL=yes
             ;;
+        v)
+            VIPER=yes
+            ;;
     esac
 done
 
 shift $((OPTIND-1))
 
-failures=no
+failures=()
 
 function normalize () {
   if [ -e "$1" ]
   then
-    grep -a -E -v '^Raised by|^Raised at|^Re-raised at|^Re-Raised at|^Called from|^ *at ' $1 |
-    sed 's/\x00//g' |
-    sed 's/\x1b\[[0-9;]*[a-zA-Z]//g' |
-    sed 's/^.*[IW], hypervisor:/hypervisor:/g' |
-    sed 's/wasm:0x[a-f0-9]*:/wasm:0x___:/g' |
-    sed 's/prelude:[^:]*:/prelude:___:/g' |
-    sed 's/prim:[^:]*:/prim:___:/g' |
-    sed 's/ calling func\$[0-9]*/ calling func$NNN/g' |
-    sed 's/rip_addr: [0-9]*/rip_addr: XXX/g' |
-    sed 's,/private/tmp/,/tmp/,g' |
-    sed 's,/tmp/.*dfinity.[^/]*,/tmp/dfinity.XXX,g' |
-    sed 's,/build/.*dfinity.[^/]*,/tmp/dfinity.XXX,g' |
-    sed 's,/tmp/.*ic.[^/]*,/tmp/ic.XXX,g' |
-    sed 's,/build/.*ic.[^/]*,/tmp/ic.XXX,g' |
-    sed 's/^.*run-dfinity\/\.\.\/drun.sh: line/drun.sh: line/g' |
-    sed 's,^.*/idl/_out/,..../idl/_out/,g' | # node puts full paths in error messages
-    sed 's,\([a-zA-Z0-9.-]*\).mo.mangled,\1.mo,g' |
-    sed 's/trap at 0x[a-f0-9]*/trap at 0x___:/g' |
-    sed 's/^\(         [0-9]\+:\).*!/\1 /g' | # wasmtime backtrace locations
-    sed 's/Ignore Diff:.*/Ignore Diff: (ignored)/ig' |
-    sed 's/compiler (revision .*)/compiler (revision XXX)/ig' |
-    # Normalize canister id prefixes in debug prints, added by dfinity 67e9c11
+    grep -a -E -v '^Raised by|^Raised at|^Re-raised at|^Re-Raised at|^Called from|^ +at ' $1 |
+    grep -a -E -v 'note: using the' |
+    sed -e 's/\x00//g' \
+        -e 's/\x1b\[[0-9;]*[a-zA-Z]//g' \
+        -e 's/^.*[IW], hypervisor:/hypervisor:/g' \
+        -e 's/wasm:0x[a-f0-9]*:/wasm:0x___:/g' \
+        -e 's/prelude:[^:]*:/prelude:___:/g' \
+        -e 's/prim:[^:]*:/prim:___:/g' \
+        -e 's/ calling func\$[0-9]*/ calling func$NNN/g' \
+        -e 's/rip_addr: [0-9]*/rip_addr: XXX/g' \
+        -e 's,/private/tmp/,/tmp/,g' \
+        -e 's,/tmp/.*ic.[^/]*,/tmp/ic.XXX,g' \
+        -e 's,/build/.*ic.[^/]*,/tmp/ic.XXX,g' \
+        -e 's,^.*/idl/_out/,..../idl/_out/,g' | # node puts full paths in error messages
+    sed -e 's,\([a-zA-Z0-9.-]*\).mo.mangled,\1.mo,g' \
+        -e 's/trap at 0x[a-f0-9]*/trap at 0x___:/g' \
+        -e 's/^\(         [0-9]\+:\).*!/\1 /g' | # wasmtime backtrace locations
+    sed -e 's/^  \(         [0-9]\+:\).*!/\1 /g' | # wasmtime backtrace locations (later version)
+    sed -e 's/wasm `unreachable` instruction executed/unreachable/g' | # cross-version normalisation
+    sed -e 's/Ignore Diff:.*/Ignore Diff: (ignored)/ig' \
+        -e 's/Motoko (source .*)/Motoko (source XXX)/ig' \
+        -e 's/Motoko [^ ]* (source .*)/Motoko (source XXX)/ig' \
+        -e 's/Motoko compiler [^ ]* (source .*)/Motoko compiler (source XXX)/ig' |
+    # Normalize canister id prefixes in debug prints
     sed 's/\[Canister [0-9a-z\-]*\]/debug.print:/g' |
     # Normalize instruction locations on traps, added by ic-ref ad6ea9e
-    sed 's/region:0x[0-9a-fA-F]\+-0x[0-9a-fA-F]\+/:0.1/g' |
-    cat > $1.norm
+    sed -e 's/region:0x[0-9a-fA-F]\+-0x[0-9a-fA-F]\+/region:0xXXX-0xXXX/g' |
+    # Delete everything after Oom
+    sed -e '/RTS error: Cannot grow memory/q' \
+        -e '/RTS error: Cannot allocate memory/q' |
+    # Delete Viper meta-output
+    sed -e '/^Silicon /d' \
+        > $1.norm
     mv $1.norm $1
   fi
 }
@@ -154,7 +170,7 @@ FLAGS_ic_ref_run=-ref-system-api
 
 if [ $DTESTS = yes -o $PERF = yes ]
 then
-  if drun --version >& /dev/null
+  if drun --help >& /dev/null
   then
     HAVE_drun=yes
   else
@@ -163,7 +179,7 @@ then
       echo "ERROR: Could not run drun, cannot update expected test output"
       exit 1
     else
-      echo "WARNING: Could not run drun, will skip some tests"
+      echo "WARNING: Could not run drun, will skip running some tests"
       HAVE_drun=no
     fi
   fi
@@ -180,7 +196,7 @@ then
       echo "ERROR: Could not run ic-ref-run, cannot update expected test output"
       exit 1
     else
-      echo "WARNING: Could not run ic-ref-run, will skip some tests"
+      echo "WARNING: Could not run ic-ref-run, will skip running some tests"
       HAVE_ic_ref_run=no
     fi
   fi
@@ -192,7 +208,7 @@ do
   if ! [ -r $file ]
   then
     echo "File $file does not exist."
-    failures=yes
+    failures+=("$file")
     continue
   fi
 
@@ -204,12 +220,14 @@ do
   then base=$(basename $file .wat); ext=wat
   elif [ ${file: -4} == ".did" ]
   then base=$(basename $file .did); ext=did
+  elif [ ${file: -4} == ".cmp" ]
+  then base=$(basename $file .cmp); ext=cmp
   elif [ ${file: -5} == ".drun" ]
   then base=$(basename $file .drun); ext=drun
   else
     echo "Unknown file extension in $file"
     echo "Supported extensions: .mo .sh .wat .did .drun"
-    failures=yes
+    failures+=("$file")
     continue
   fi
 
@@ -254,6 +272,20 @@ do
         then
           run didc didc --check $out/$base.did
         fi
+      elif [ $VIPER = 'yes' ]
+      then
+        run vpr $moc_with_flags --viper $base.mo -o $out/$base.vpr
+        vpr_succeeded=$?
+
+        normalize $out/$base.vpr
+        diff_files="$diff_files $base.vpr"
+
+        if [ "$vpr_succeeded" -eq 0 ]
+        then
+	  run silicon java -Xmx2048m -Xss16m -cp $VIPER_SERVER \
+	    viper.silicon.SiliconRunner --logLevel OFF --z3Exe $(which z3) \
+	    $out/$base.vpr
+        fi
       else
         if [ "$SKIP_RUNNING" != yes -a "$PERF" != yes ]
         then
@@ -287,7 +319,7 @@ do
         # installation, so this replaces
         #
         #     actor a { … }
-        #     a.go(); //CALL …
+        #     a.go(); //OR-CALL …
         #
         # with
         #
@@ -296,7 +328,7 @@ do
         #
         # which actually works on the IC platform
 
-	# needs to be in the same directory to preserve relative paths :-(
+        # needs to be in the same directory to preserve relative paths :-(
         mangled=$base.mo.mangled
         sed 's,^.*//OR-CALL,//CALL,g' $base.mo > $mangled
 
@@ -306,15 +338,18 @@ do
         then
           run comp $moc_with_flags $FLAGS_drun --hide-warnings --map -c $mangled -o $out/$base.wasm
           run comp-ref $moc_with_flags $FLAGS_ic_ref_run --hide-warnings --map -c $mangled -o $out/$base.ref.wasm
-	elif [ $PERF = yes ]
-	then
+        elif [ $PERF = yes ]
+        then
           run comp $moc_with_flags --hide-warnings --map -c $mangled -o $out/$base.wasm
-	else
-          run comp $moc_with_flags -wasi-system-api --hide-warnings --map -c $mangled -o $out/$base.wasm
+        else
+          run comp $moc_with_flags -g -wasi-system-api --hide-warnings --map -c $mangled -o $out/$base.wasm
         fi
 
-        run_if wasm valid wasm-validate $out/$base.wasm
-        run_if ref.wasm valid-ref wasm-validate $out/$base.ref.wasm
+        if [ "$SKIP_VALIDATE" != yes ]
+        then
+          run_if wasm valid wasm-validate $out/$base.wasm
+          run_if ref.wasm valid-ref wasm-validate $out/$base.ref.wasm
+        fi
 
         if [ -e $out/$base.wasm ]
         then
@@ -356,7 +391,7 @@ do
               run_if wasm drun-run $WRAP_drun $out/$base.wasm $mangled 222> $out/$base.metrics
               if [ -e $out/$base.metrics -a -n "$PERF_OUT" ]
               then
-                LANG=C perl -ne "print \"gas/$base;\$1\n\" if /^scheduler_cycles_consumed_per_round_sum (\\d+)\$/" $out/$base.metrics >> $PERF_OUT;
+                LANG=C perl -ne "print \"gas/$base;\$1\n\" if /^scheduler_(?:cycles|instructions)_consumed_per_round_sum (\\d+)\$/" $out/$base.metrics >> $PERF_OUT;
               fi
             fi
           else
@@ -367,14 +402,14 @@ do
         # collect size stats
         if [ "$PERF" = yes -a -e "$out/$base.wasm" ]
         then
-	   if [ -n "$PERF_OUT" ]
+           if [ -n "$PERF_OUT" ]
            then
              wasm-strip $out/$base.wasm
              echo "size/$base;$(stat --format=%s $out/$base.wasm)" >> $PERF_OUT
            fi
         fi
 
-	rm -f $mangled
+        rm -f $mangled
       fi
     fi
   ;;
@@ -399,7 +434,7 @@ do
       have_var_name="HAVE_${runner//-/_}"
       if [ ${!have_var_name} != yes ]
       then
-        $ECHO "skipped (no drun)";
+        $ECHO "skipped (no $runner)";
         continue
       fi
 
@@ -478,6 +513,21 @@ do
         run node node -r esm $out/$base.js
       fi
     fi
+    ;;
+  "cmp")
+    # The file is a .cmp file, so we are expected to test compatiblity of the two
+    # files in cmp
+    # Compatibility check
+    $ECHO -n " [cmp]"
+    moc --stable-compatible $(<$base.cmp) > $out/$base.cmp 2>&1
+    succeeded=$?
+    if [ "$succeeded" -eq 0 ]
+    then
+     echo "TRUE" >> $out/$base.cmp
+    else
+     echo "FALSE" >> $out/$base.cmp
+    fi
+    diff_files="$diff_files $base.cmp"
   ;;
   *)
     echo "Unknown extentions $ext";
@@ -499,21 +549,22 @@ do
       fi
     done
   else
-    for file in $diff_files
+    for diff_file in $diff_files
     do
-      if [ -e $ok/$file.ok -o -e $out/$file ]
+      if [ -e $ok/$diff_file.ok -o -e $out/$diff_file ]
       then
-        diff -a -u -N --label "$file (expected)" $ok/$file.ok --label "$file (actual)" $out/$file
-        if [ $? != 0 ]; then failures=yes; fi
+        diff -a -u -N --label "$diff_file (expected)" $ok/$diff_file.ok --label "$diff_file (actual)" $out/$diff_file
+        if [ $? != 0 ]; then failures+=("$file");fi
       fi
     done
   fi
   popd >/dev/null
 done
 
-if [ $failures = yes ]
+if [ ${#failures[@]} -gt 0  ]
 then
-  echo "Some tests failed."
+  echo "Some tests failed:"
+  echo "${failures[@]}"
   exit 1
 else
   $ECHO "All tests passed."

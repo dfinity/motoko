@@ -23,3 +23,14 @@ ingress Completed: Reply: 0x4449444c0000
 Ok: Reply: 0x4449444c0000
 ingress Completed: Reply: 0x4449444c0000
 Ok: Reply: 0x4449444c0000
+debug.print: init'ed 3
+ingress Completed: Reply: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
+ingress Completed: Reply: 0x4449444c0000
+ingress Completed: Reply: 0x4449444c0000
+debug.print: init'ed 4
+debug.print: timer endpoint in 4
+ingress Completed: Reply: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
+ingress Completed: Reply: 0x4449444c0000
+Ok: Reply: 0x4449444c0000

@@ -1,8 +1,0 @@
---- class-import.run
-+++ class-import.run-low
-@@ -4,4 +4,4 @@
- "one" tested
- ("one", "two")
- ("one", "two")tested
--class-import/trap.mo:5.6-5.18: execution error, assertion failure
-+class-import/trap.mo:4.12-6.5: execution error, assertion failure

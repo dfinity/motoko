@@ -1,0 +1,14 @@
+= M0151
+
+This error means that a object literal is missing some fields, maybe because of a typo.
+
+Erroneous code examples:
+
+  { first_name = "Fred" } : { firstName : Text }
+  { firstName = "Fred" } : { firstName : Text; lastName : Text }
+
+If you encounter this error, you need to add the missing field name to the
+object literal.
+
+  { firstName = "Fred" } : { firstName : Text }
+  { firstName = "Fred"; lastName = "Flintstone" } : { firstName : Text; lastName : Text }

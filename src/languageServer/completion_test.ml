@@ -19,8 +19,8 @@ let prefix_test_case file expected =
   let actual = Completion.find_completion_prefix file line column in
   Option.equal ( = ) actual expected
   ||
-  ( Printf.printf "\nExpected: %s\nActual:   %s\n" (show expected) (show actual);
-    false )
+  (Printf.printf "\nExpected: %s\nActual:   %s\n" (show expected) (show actual);
+   false)
 
 let import_relative_test_case root module_path import expected =
   let actual =
@@ -29,8 +29,8 @@ let import_relative_test_case root module_path import expected =
   let show = function None -> "None" | Some s -> "Some " ^ s in
   Option.equal String.equal actual expected
   ||
-  ( Printf.printf "\nExpected: %s\nActual:   %s\n" (show expected) (show actual);
-    false )
+  (Printf.printf "\nExpected: %s\nActual:   %s\n" (show expected) (show actual);
+   false)
 
 let%test "it finds unqualified prefixes" =
   prefix_test_case "filt|" (Some ("", "filt"))

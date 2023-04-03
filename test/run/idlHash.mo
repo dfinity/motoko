@@ -1,13 +1,10 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 
-func testHash(s : Text, h : Word32) {
+func testHash(s : Text, h : Nat32) {
   Prim.debugPrint("Hash for " # s);
   Prim.debugPrint("Expected: " # debug_show h);
   Prim.debugPrint("Actual:   " # debug_show (Prim.idlHash s));
 };
-
-// The lines below can be copied verbatim out of the corresponding JS unit test
-// in dev/experimental/js-dfinity-client/tests/unit-tests/idl.js
 
 testHash("", 0);
 testHash("id", 23515);

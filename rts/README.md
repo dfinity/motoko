@@ -1,8 +1,7 @@
 The Motoko RTS (C and Rust parts)
 =================================
 
-This directory contains the parts of the Motoko runtime implemented in C and
-Rust.
+This directory contains the parts of the Motoko runtime implemented in Rust.
 
 tl;dr
 -----
@@ -20,86 +19,119 @@ Running `make` should produce `mo-rts.wasm`.
 
 If run within `nix-shell`, the environment variables `WASM_CLANG` and `WASM_LD`
 should point to suitable binaries (we track a specific unreleased version of
-`llvm`). If not present, the `Makefile` will try to use `clang-10` and
-`wasm-ld-10`.
+`llvm`). If not present, the `Makefile` will try to use `clang-13` and
+`wasm-ld-13`.
 
 The runtime compiles and links in [libtommath]. It needs the source, so
 `nix-build` and `nix-shell` will set the environment variable `TOMMATHSRC` to
 point to the source in `/nix/store`.
-If not present, the `Makefile` will look in `../../libtommath`, i.e. parallel to the 
-`motoko` repository; this is useful if you need to hack on libtommath.
+
+If not present, the `Makefile` will look in `../../libtommath`, i.e. parallel
+to the `motoko` repository; this is useful if you need to hack on libtommath.
 
 [libtommath]: https://github.com/libtom/libtommath
 
 Exporting and importing functions
 ---------------------------------
 
-To export a function from C to Motoko, use the `export` annotation. This
-will make the function be visible in the final shared library.
+Import and export as if you are importing from or exporting to a C library. Examples:
 
-To import a function, use the `from_rts` annotation, e.g. `alloc_bytes`.
+```rust
+// Expects bigint_trap to be provided at link time. The function should follow
+// C calling conventions
+extern "C" {
+    fn bigint_trap() -> !;
+}
 
-libtommath and memory managment
--------------------------------
+// Provides bigint_add function. The function follows C calling conventions
+#[no_mangle]
+extern "C" fn bigint_add(...) { ... }
+```
 
-We have to make libtommath’s memory management (which expects C-like functions
-`alloc`, `calloc` and `realloc`) work with the Motoko runtime. See the
-comment next to `mp_alloc` in `rts.c` for the techical details.
+libtommath and memory management
+--------------------------------
 
-C tests
--------
-
-To narrow down issues, or do regression testing on the C level, you can interact
-with the code provided by `rts.c` from `test_rts.c`. With
-
-    make test_rts && ./test_rts
-
-this is executed. This is compiled natively, so may not uncover bugs that are tied to
-WebAssembly.
+We have to make libtommath’s memory management (which expects functions
+`alloc`, `calloc` and `realloc`) work with the Motoko runtime.
+See `motoko-rts/src/bigint.rs` for the technical details.
 
 Rust build
 ----------
 
-The rust parts are built from `motoko-rts`, using `xargo` and `cargo`.
+To build Motoko RTS in nix we need pre-fetch Rust dependencies. This works in
+`nix-build` by:
 
-To build this in nix, we need pre-fetch some dependencies (currently
-`compiler_builtins` and `libc`). This works in `nix-build` by:
-
- * Adding`compiler_builtins` as a dependency in `Cargo.toml` (even though not
-   needed), so that it shows up with a hash in `Cargo.lock`
-
- * Building a directory with vendored sources in `default.nix` (see `rustDeps`)
+ * Building a directory with vendored sources in `default.nix`
 
  * Configuring `cargo` to use that vendored directory (see `preBuild`)
 
 If you change dependencies (e.g. bump versions, add more crates),
 
- 1. Add them to `Cargo.toml`
- 2. Make sure that `Cargo.lock` is up to date
- 3. In `default.nix`, invalidate the `sha256` of `rustDeps` (e.g. change one
+ 1. Make sure that `motoko-rts-tests/Cargo.lock` is up to date. This can be
+    done by running `cargo build --target=wasm32-wasi` in `motoko-rts-tests/`
+    directory.
+ 2. In `default.nix`, invalidate the `sha256` of `rtsDeps` (e.g. change one
     character)
- 4. Run `nix-build -A rts`. You should get an error message about the actual
+ 3. Run `nix-build -A rts`. You should get an error message about the actual
     checksum.
- 5. Set that as `sha256` of `rustDeps` in `default.nix`
+ 4. Set that as `sha256` of `rtsDeps` in `default.nix`
 
-Warning: nix will happily use a stale verion of the dependencies if you do not
+Warning: nix will happily use a stale version of the dependencies if you do not
 do step 3.
 
-AFL tests
----------
+**Updating rustc**:
 
-Some tests are best run by AFL (American Fuzzy Lop), which is a whitebox
-fuzzer that instruments the code to get more coverage.
+1. Update Rust version in `nix/default.nix`, in the line with
+   `moz_overlay.rustChannelOf { ... }`.
+   CAVEAT: there is a second `rustChannelOf` for the stable `rustc` too.
+2. Invalidate `rustStdDepsHash` in `default.nix`.
+3. Run `nix-build -A rts`. You should get an error message about the expected
+   value of `rustStdDepsHash`.
+4. Update `rustStdDepsHash` with the expected value in the error message.
 
-You can install `afl` using `nix-env -i afl`.
+(Can this be automated?)
 
-You need to compile the code with instrumentation and then run it using the
-helper script provided:
+--------
+**The above doesn't always work**
 
-```
-make clean
-CLANG=afl-gcc make test_leb128
-./run-afl-leb128.sh
-```
+Sometimes you want to also bump the  `.toml` dependencies...
 
+E.g. when you get `perhaps a crate was updated and forgotten to be
+re-vendored?`, proceed as follows:
+[Invalid recipe deleted. Try `cabal update in `rts/motoko-rts*`,
+ invalidate hashes: {`cargoVendorTools.cargoSha256`, `rustStdDepsHash`, `rtsDeps.sha256`}
+ all at the same time and then `nix-build -A rts -K` to examine the build products.]
 
+Running RTS tests
+-----------------
+
+- Build tests using rustc WASI target: `cargo build --target=wasm32-wasi`
+- Run with wasmtime: `wasmtime target/wasm32-wasi/debug/motoko-rts-tests.wasm`
+
+Debugging the RTS
+-----------------
+
+It is possible to build the RTS and test suite for i686 and debug using native
+debug tools like gdb and rr. You first need to build tommath-related files.
+This is easiest to do in `nix-shell`:
+
+- (in `rts/`) `make _build/libtommath_i686.a` (this step requires headers and
+  libraries for the target)
+- (in `rts/`) `make _build/tommath_bindings.rs` (this step requires `bindgen`)
+
+After these you can build the test suite for `i686-unknown-linux-gnu` target
+outside of `nix-shell`. If you don't have the target installed already, install with
+
+- `rustup +nightly target install i686-unknown-linux-gnu`
+
+Now build i686 executable:
+
+- (in `rts/motoko-rts-tests`) `cargo +nightly build --target=i686-unknown-linux-gnu`
+
+Now you should see an i686 executable
+`rts/motoko-rts-tests/target/i686-unknown-linux-gnu/debug/motoko-rts-tests`
+that you can debug with e.g. `gdb`.
+
+Ideally all of these steps would be done in `nix-shell` or outside, but the
+last command does not work in `nix-shell` because of missing i686 libraries and
+I couldn't figure out how to install those in nix.

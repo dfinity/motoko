@@ -39,7 +39,7 @@ do { let _ = func(#A(5) or #A(_ : Any)) {}; };
 // No coverage check for ill-typed cases
 switch (#A : {#A}) {
   case (#A) {};
-  case (#B : {#A; #B}) {};
+  case ({B = _}) {};
   case _ {};
   case _ {};
 };
@@ -49,3 +49,17 @@ switch (true : Bool) {
   case 1 {};
   case false {};
 };
+
+switch (true : Bool) {
+  case (#geese) {};
+};
+
+// Coverage check for disjoint variants
+switch (#sparrows : { #sparrows }) {
+  case (#geese) {};
+};
+
+func absurd(birds : {#}) =
+  switch birds {
+    case (#geese) {};
+  };

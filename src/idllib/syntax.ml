@@ -81,6 +81,9 @@ and value' =
   | VecV of value list
   | RecordV of field_value list
   | VariantV of field_value
+  | ServiceV of string
+  | FuncV of (string * string)
+  | PrincipalV of string
 and field_value = (field_label * value) Source.phrase
 
 type args = value list Source.phrase

@@ -1,4 +1,4 @@
 import A "nested/a";
-import "nested/b";
+import _ = "nested/b";
 
 let i = A.i;

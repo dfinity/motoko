@@ -1,7 +1,8 @@
 {
+open Mo_def.Trivia
 open Source_token
 open Lexer_lib
-module Utf8 = Wasm.Utf8
+module Utf8 = Lib.Utf8
 
 let region lexbuf =
   let left = convert_pos (Lexing.lexeme_start_p lexbuf) in
@@ -60,7 +61,7 @@ let char lexbuf s =
     | [n] -> n
     | [] -> error lexbuf "empty character literal"
     | _ -> error lexbuf "overlong character literal"
-  with Wasm.Utf8.Utf8 ->
+  with Lib.Utf8.Utf8 ->
     error lexbuf "invalid utf8 in character literal"
 }
 
@@ -140,9 +141,12 @@ rule token mode = parse
   | "|" { OROP }
   | "^" { XOROP }
   | "<<" { SHLOP }
-  | "+>>" { SSHROP }
   | "<<>" { ROTLOP }
   | "<>>" { ROTROP }
+  | "+%" { WRAPADDOP }
+  | "-%" { WRAPSUBOP }
+  | "*%" { WRAPMULOP }
+  | "**%" { WRAPPOWOP }
   | "#" { HASH }
 
   | "==" { EQOP }
@@ -161,10 +165,13 @@ rule token mode = parse
   | "|=" { ORASSIGN }
   | "^=" { XORASSIGN }
   | "<<=" { SHLASSIGN }
-  | ">>=" { USHRASSIGN }
-  | "+>>=" { SSHRASSIGN }
+  | ">>=" { SHRASSIGN }
   | "<<>=" { ROTLASSIGN }
   | "<>>=" { ROTRASSIGN }
+  | "+%=" { WRAPADDASSIGN }
+  | "-%=" { WRAPSUBASSIGN }
+  | "*%=" { WRAPMULASSIGN }
+  | "**%=" { WRAPPOWASSIGN }
   | "#=" { CATASSIGN }
   | "->" { ARROW }
   | "_" { UNDERSCORE }
@@ -184,28 +191,35 @@ rule token mode = parse
   (* If you add keywords, please also update
      - src/idllib/escape.ml
      - emacs/motoko-mode.el
-     - guide/guide.md
+     - src/gen-grammar/grammar.sed
   *)
   | "actor" { ACTOR }
   | "and" { AND }
   | "async" { ASYNC }
+  | "async*" { ASYNCSTAR }
   | "assert" { ASSERT }
   | "await" { AWAIT }
+  | "await*" { AWAITSTAR }
   | "break" { BREAK }
   | "case" { CASE }
   | "catch" { CATCH }
   | "class" { CLASS }
   | "continue" { CONTINUE }
   | "debug" { DEBUG }
+  | "debug_show" { DEBUG_SHOW }
   | "do" { DO }
   | "else" { ELSE }
   | "false" { BOOL false }
   | "flexible" { FLEXIBLE }
   | "for" { FOR }
+  | "from_candid" { FROM_CANDID }
   | "func" { FUNC }
   | "if" { IF }
   | "ignore" { IGNORE }
   | "in" { IN }
+  | "invariant" as s { if mode.verification then INVARIANT else ID s }
+  | "implies" as s { if mode.verification then IMPLIES else ID s }
+  | "old" as s { if mode.verification then OLD else ID s }
   | "import" { IMPORT }
   | "module" { MODULE }
   | "not" { NOT }
@@ -217,19 +231,20 @@ rule token mode = parse
   | "loop" { LOOP }
   | "private" { PRIVATE }
   | "public" { PUBLIC }
+  | "query" { QUERY }
   | "return" { RETURN }
   | "shared" { SHARED }
   | "stable" { STABLE }
+  | "switch" { SWITCH }
   | "system" { SYSTEM }
   | "try" { TRY }
   | "throw" { THROW }
-  | "debug_show" { DEBUG_SHOW }
-  | "query" { QUERY }
-  | "switch" { SWITCH }
+  | "to_candid" { TO_CANDID }
   | "true" { BOOL true }
   | "type" { TYPE }
   | "var" { VAR }
   | "while" { WHILE }
+  | "with" { WITH }
 
   | "prim" as s { if mode.privileged then PRIM else ID s }
   | id as s { ID s }

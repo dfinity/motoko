@@ -9,6 +9,9 @@ old-perf
 coverage
 _coverage
 
+_profile
+_profile_build
+
 *.diff
 *.wat
 *.wat.stderr

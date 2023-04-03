@@ -22,19 +22,26 @@ let rec exp e = match e.it with
   | SwitchE (e, cs)     -> "SwitchE" $$ [exp e] @ List.map case cs
   | LoopE e1            -> "LoopE"   $$ [exp e1]
   | LabelE (i, t, e)    -> "LabelE"  $$ [id i; typ t; exp e]
-  | AsyncE (tb, e, t)   -> "AsyncE"  $$ [typ_bind tb; exp e; typ t]
+  | AsyncE (Type.Fut, tb, e, t) -> "AsyncE"  $$ [typ_bind tb; exp e; typ t]
+  | AsyncE (Type.Cmp, tb, e, t) -> "AsyncE*"  $$ [typ_bind tb; exp e; typ t]
   | DeclareE (i, t, e1) -> "DeclareE" $$ [id i; exp e1]
   | DefineE (i, m, e1)  -> "DefineE" $$ [id i; mut m; exp e1]
   | FuncE (x, s, c, tp, as_, ts, e) ->
     "FuncE" $$ [Atom x; func_sort s; control c] @ List.map typ_bind tp @ args as_ @ [ typ (Type.seq ts); exp e]
   | SelfCallE (ts, exp_f, exp_k, exp_r) ->
     "SelfCallE" $$ [typ (Type.seq ts); exp exp_f; exp exp_k; exp exp_r]
-  | ActorE (ds, fs, u, t) -> "ActorE"  $$ List.map dec ds @ fields fs @ [upgrade u; typ t]
+  | ActorE (ds, fs, u, t) -> "ActorE"  $$ List.map dec ds @ fields fs @ [system u; typ t]
   | NewObjE (s, fs, t)  -> "NewObjE" $$ (Arrange_type.obj_sort s :: fields fs @ [typ t])
   | TryE (e, cs)        -> "TryE" $$ [exp e] @ List.map case cs
 
-and upgrade { pre; post } =
-  "Upgrade" $$ ["Pre" $$ [exp pre]; "Post" $$ [exp post]]
+and system { meta; preupgrade; postupgrade; heartbeat; timer; inspect} = (* TODO: show meta? *)
+  "System" $$ [
+      "Pre" $$ [exp preupgrade];
+      "Post" $$ [exp postupgrade];
+      "Heartbeat" $$ [exp heartbeat];
+      "Timer" $$ [exp timer];
+      "Inspect" $$ [exp inspect];
+    ]
 
 and lexp le = match le.it with
   | VarLE i             -> "VarLE" $$ [id i]
@@ -62,16 +69,25 @@ and prim = function
   | ActorDotPrim n    -> "ActorDotPrim" $$ [Atom n]
   | ArrayPrim (m, t)  -> "ArrayPrim"  $$ [mut m; typ t]
   | IdxPrim           -> Atom "IdxPrim"
+  | NextArrayOffset _ -> Atom "NextArrayOffset"
+  | ValidArrayOffset  -> Atom "ValidArrayOffset"
+  | DerefArrayOffset  -> Atom "DerefArrayOffset"
+  | GetPastArrayOffset _ -> Atom "GetPastArrayOffset"
   | BreakPrim i       -> "BreakPrim"  $$ [id i]
   | RetPrim           -> Atom "RetPrim"
-  | AwaitPrim         -> Atom "AwaitPrim"
+  | AwaitPrim Type.Fut -> Atom "AwaitPrim"
+  | AwaitPrim Type.Cmp -> Atom "AwaitPrim*"
   | AssertPrim        -> Atom "AssertPrim"
   | ThrowPrim         -> Atom "ThrowPrim"
   | ShowPrim t        -> "ShowPrim" $$ [typ t]
   | SerializePrim t   -> "SerializePrim" $$ List.map typ t
   | DeserializePrim t -> "DeserializePrim" $$ List.map typ t
-  | NumConvPrim (t1, t2) -> "NumConvPrim" $$ [prim_ty t1; prim_ty t2]
+  | DeserializeOptPrim t -> "DeserializeOptPrim" $$ List.map typ t
+  | NumConvWrapPrim (t1, t2) -> "NumConvWrapPrim" $$ [prim_ty t1; prim_ty t2]
+  | NumConvTrapPrim (t1, t2) -> "NumConvTrapPrim" $$ [prim_ty t1; prim_ty t2]
   | CastPrim (t1, t2) -> "CastPrim" $$ [typ t1; typ t2]
+  | DecodeUtf8        -> Atom "DecodeUtf8"
+  | EncodeUtf8        -> Atom "EncodeUtf8"
   | ActorOfIdBlob t   -> "ActorOfIdBlob" $$ [typ t]
   | BlobOfIcUrl       -> Atom "BlobOfIcUrl"
   | IcUrlOfBlob       -> Atom "IcUrlOfBlob"
@@ -82,13 +98,22 @@ and prim = function
   | SystemCyclesAvailablePrim -> Atom "SystemCyclesAvailablePrim"
   | SystemCyclesBalancePrim -> Atom "SystemCyclesBalancePrim"
   | SystemCyclesRefundedPrim -> Atom "SystemCyclesRefundedPrim"
+  | SetCertifiedData  -> Atom "SetCertifiedData"
+  | GetCertificate    -> Atom "GetCertificate"
   | OtherPrim s       -> Atom s
-  | CPSAwait          -> Atom "CPSAwait"
-  | CPSAsync t        -> "CPSAsync" $$ [typ t]
+  | CPSAwait (Type.Fut, t) -> "CPSAwait" $$ [typ t]
+  | CPSAwait (Type.Cmp, t) -> "CPSAwait*" $$ [typ t]
+  | CPSAsync (Type.Fut, t) -> "CPSAsync" $$ [typ t]
+  | CPSAsync (Type.Cmp, t) -> "CPSAsync*" $$ [typ t]
+  | ICArgDataPrim     -> Atom "ICArgDataPrim"
+  | ICStableSize t    -> "ICStableSize" $$ [typ t]
+  | ICPerformGC       -> Atom "ICPerformGC"
   | ICReplyPrim ts    -> "ICReplyPrim" $$ List.map typ ts
   | ICRejectPrim      -> Atom "ICRejectPrim"
   | ICCallerPrim      -> Atom "ICCallerPrim"
   | ICCallPrim        -> Atom "ICCallPrim"
+  | ICCallRawPrim     -> Atom "ICCallRawPrim"
+  | ICMethodNamePrim  -> Atom "ICMethodNamePrim"
   | ICStableWrite t   -> "ICStableWrite" $$ [typ t]
   | ICStableRead t    -> "ICStableRead" $$ [typ t]
 
@@ -106,25 +131,20 @@ and pat p = match p.it with
   | TagP (i, p)     -> "TagP"       $$ [ id i; pat p ]
   | AltP (p1,p2)    -> "AltP"       $$ [ pat p1; pat p2 ]
 
-and lit (l:lit) = match l with
+and lit = function
   | NullLit       -> Atom "NullLit"
-  | BoolLit true  -> "BoolLit"   $$ [ Atom "true" ]
-  | BoolLit false -> "BoolLit"   $$ [ Atom "false" ]
-  | NatLit n      -> "NatLit"    $$ [ Atom (Value.Nat.to_pretty_string n) ]
-  | Nat8Lit w     -> "Nat8Lit"   $$ [ Atom (Value.Nat8.to_pretty_string w) ]
-  | Nat16Lit w    -> "Nat16Lit"  $$ [ Atom (Value.Nat16.to_pretty_string w) ]
-  | Nat32Lit w    -> "Nat32Lit"  $$ [ Atom (Value.Nat32.to_pretty_string w) ]
-  | Nat64Lit w    -> "Nat64Lit"  $$ [ Atom (Value.Nat64.to_pretty_string w) ]
-  | IntLit i      -> "IntLit"    $$ [ Atom (Value.Int.to_pretty_string i) ]
-  | Int8Lit w     -> "Int8Lit"   $$ [ Atom (Value.Int_8.to_pretty_string w) ]
-  | Int16Lit w    -> "Int16Lit"  $$ [ Atom (Value.Int_16.to_pretty_string w) ]
-  | Int32Lit w    -> "Int32Lit"  $$ [ Atom (Value.Int_32.to_pretty_string w) ]
-  | Int64Lit w    -> "Int64Lit"  $$ [ Atom (Value.Int_64.to_pretty_string w) ]
-  | Word8Lit w    -> "Word8Lit"  $$ [ Atom (Value.Word8.to_pretty_string w) ]
-  | Word16Lit w   -> "Word16Lit" $$ [ Atom (Value.Word16.to_pretty_string w) ]
-  | Word32Lit w   -> "Word32Lit" $$ [ Atom (Value.Word32.to_pretty_string w) ]
-  | Word64Lit w   -> "Word64Lit" $$ [ Atom (Value.Word64.to_pretty_string w) ]
-  | FloatLit f    -> "FloatLit"  $$ [ Atom (Value.Float.to_pretty_string f) ]
+  | BoolLit b     -> "BoolLit"   $$ [ Atom (if b then "true" else "false") ]
+  | NatLit n      -> "NatLit"    $$ [ Atom (Numerics.Nat.to_pretty_string n) ]
+  | Nat8Lit w     -> "Nat8Lit"   $$ [ Atom (Numerics.Nat8.to_pretty_string w) ]
+  | Nat16Lit w    -> "Nat16Lit"  $$ [ Atom (Numerics.Nat16.to_pretty_string w) ]
+  | Nat32Lit w    -> "Nat32Lit"  $$ [ Atom (Numerics.Nat32.to_pretty_string w) ]
+  | Nat64Lit w    -> "Nat64Lit"  $$ [ Atom (Numerics.Nat64.to_pretty_string w) ]
+  | IntLit i      -> "IntLit"    $$ [ Atom (Numerics.Int.to_pretty_string i) ]
+  | Int8Lit w     -> "Int8Lit"   $$ [ Atom (Numerics.Int_8.to_pretty_string w) ]
+  | Int16Lit w    -> "Int16Lit"  $$ [ Atom (Numerics.Int_16.to_pretty_string w) ]
+  | Int32Lit w    -> "Int32Lit"  $$ [ Atom (Numerics.Int_32.to_pretty_string w) ]
+  | Int64Lit w    -> "Int64Lit"  $$ [ Atom (Numerics.Int_64.to_pretty_string w) ]
+  | FloatLit f    -> "FloatLit"  $$ [ Atom (Numerics.Float.to_pretty_string f) ]
   | CharLit c     -> "CharLit"   $$ [ Atom (string_of_int c) ]
   | TextLit t     -> "TextLit"   $$ [ Atom t ]
   | BlobLit b     -> "BlobLit"   $$ [ Atom (Printf.sprintf "%S" b) ] (* hex might be nicer *)
@@ -140,14 +160,15 @@ and control s = Atom (Arrange_type.control s)
 and dec d = match d.it with
   | LetD (p, e) -> "LetD" $$ [pat p; exp e]
   | VarD (i, t, e) -> "VarD" $$ [id i; typ t; exp e]
+  | RefD (i, t, e) -> "RefD" $$ [id i; typ t; lexp e]
 
 and typ_bind (tb : typ_bind) =
-  Con.to_string tb.it.con $$ [typ tb.it.bound]
+  Type.string_of_con tb.it.con $$ [typ tb.it.bound]
 
 and comp_unit = function
   | LibU (ds, e) -> "LibU" $$ List.map dec ds @ [ exp e ]
   | ProgU ds -> "ProgU" $$ List.map dec ds
-  | ActorU (None, ds, fs, u, t) -> "ActorU"  $$ List.map dec ds @ fields fs @ [upgrade u; typ t]
-  | ActorU (Some as_, ds, fs, u, t) -> "ActorU"  $$ List.map arg as_ @ List.map dec ds @ fields fs @ [upgrade u; typ t]
+  | ActorU (None, ds, fs, u, t) -> "ActorU"  $$ List.map dec ds @ fields fs @ [system u; typ t]
+  | ActorU (Some as_, ds, fs, u, t) -> "ActorU"  $$ List.map arg as_ @ List.map dec ds @ fields fs @ [system u; typ t]
 
 and prog (cu, _flavor) = comp_unit cu

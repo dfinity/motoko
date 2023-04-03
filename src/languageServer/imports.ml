@@ -9,7 +9,10 @@ type import = string * string
 
 let parse_with mode lexbuf parser =
   let tokenizer, _ = Lexer.tokenizer mode lexbuf in
-  Ok (Parsing.parse 0 (parser lexbuf.Lexing.lex_curr_p) tokenizer lexbuf)
+  Ok
+    (Parsing.parse Lexer_lib.mode 0
+       (parser lexbuf.Lexing.lex_curr_p)
+       tokenizer lexbuf)
 
 let parse_string s =
   try
@@ -25,7 +28,8 @@ let match_import : Syntax.dec -> string * string =
  fun dec ->
   let open Syntax in
   match dec.it with
-  | LetD ({ it = VarP { it = name; _ }; _ }, { it = ImportE (s, _); _ }) ->
+  | LetD ({ it = VarP { it = name; _ }; _ }, { it = ImportE (s, _); _ }, None)
+    ->
       (name, s)
   | _ -> ("Can't", "deal with this import format")
 

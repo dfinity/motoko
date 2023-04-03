@@ -1,4 +1,4 @@
-import P = "mo:prim";
+import P = "mo:⛔";
 
 actor Life {
 
@@ -15,16 +15,16 @@ actor Life {
     public func next() : ?Nat { if (i >= u) null else {let j = i; i += 1; ?j} };
   };
 
-  func readBit(bits : [var Word64], index : Nat) : Bool {
-    let bit = P.natToWord64(index);
-    let mask : Word64 = 1 << (bit % 64);
-    (bits[P.word64ToNat(bit >> 6)] & mask) == mask
+  func readBit(bits : [var Nat64], index : Nat) : Bool {
+    let bit = P.natToNat64(index);
+    let mask : Nat64 = 1 << (bit % 64);
+    (bits[P.nat64ToNat(bit >> 6)] & mask) == mask
   };
 
-  func writeBit(bits : [var Word64], index : Nat, v : Bool) {
-    let bit = P.natToWord64(index);
-    let mask : Word64 = 1 << (bit % 64);
-    let i = P.word64ToNat(bit >> 6);
+  func writeBit(bits : [var Nat64], index : Nat, v : Bool) {
+    let bit = P.natToNat64(index);
+    let mask : Nat64 = 1 << (bit % 64);
+    let i = P.nat64ToNat(bit >> 6);
     if v {
       bits[i] |= mask
     }
@@ -37,17 +37,17 @@ actor Life {
 
   type State = {
     #v1 : [[var Cell]];
-    #v2 : {size : Nat; bits : [var Word64]}
+    #v2 : {size : Nat; bits : [var Nat64]}
   };
 
   class Grid(state : State) {
 
-    let (n : Nat, bits : [var Word64]) =
+    let (n : Nat, bits : [var Nat64]) =
       switch state {
         case (#v1 css) {
           let n = css.size();
           let len = (n * n) / 64 + 1;
-          let bits = P.Array_init<Word64>(len, 0);
+          let bits = P.Array_init<Nat64>(len, 0);
           for (i in css.keys()) {
             for (j in css[i].keys()) {
               writeBit(bits, i * n + j, css[i][j]);
@@ -115,24 +115,25 @@ actor Life {
     };
   };
 
-  stable var state : State = do {
-    let n = 32;
-    let len = (n * n) / 64 + 1;
-    let words = P.Array_init(len, 0 : Word64);
+  func newState(size : Nat) : State {
+    let len = (size * size) / 64 + 1;
+    let words = P.Array_init<Nat64>(len, 0);
     for (i in words.keys()) {
-      var word : Word64 = 0;
+      var word : Nat64 = 0;
       for (j in below(64)) {
-        let bit : Word64 = if (Random.next()) 0 else 1;
+        let bit : Nat64 = if (Random.next()) 0 else 1;
         word |= bit;
         word <<= 1;
       };
       words[i] := word;
     };
-    #v2 { size = n; bits = words };
+    #v2 { size = size; bits = words };
   };
 
-  flexible var src = Grid(state);
-  flexible var dst = Grid(state);
+  stable var state : State = newState(32);
+
+  var src = Grid(state);
+  var dst = Grid(newState(src.size()));
 
   func update(c : Nat) {
     var i = c;

@@ -7,24 +7,25 @@
 
 (executable
  (name moc_js)
+ (modes js)
  (modules moc_js)
  (libraries common mo_config idllib)
- (js_of_ocaml (flags --no-extern-fs --no-source-map))
  (preprocess (pps js_of_ocaml-ppx))
 )
 
 (executable
  (name moc_interpreter)
+ (modes js)
  (modules moc_interpreter)
  (libraries common mo_config)
- (js_of_ocaml (flags --no-extern-fs --no-source-map))
  (preprocess (pps js_of_ocaml-ppx))
 )
 
 (executable
  (name didc_js)
+ (modes js)
  (modules didc_js)
- (libraries idllib lang_utils)
+ (libraries lib idllib lang_utils)
  (preprocess (pps js_of_ocaml-ppx))
 )
 

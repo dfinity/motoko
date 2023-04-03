@@ -1,0 +1,13 @@
+invariant-inference.mo:5.11-5.32: type error [M0098], cannot implicitly instantiate function of type
+  <T>(Nat, T) -> [var T]
+to argument of type
+  (Nat, Nat)
+because implicit instantiation of type parameter T is under-constrained with
+  Nat  <:  T  <:  Any
+where
+  Nat  =/=  Any
+so that explicit type instantiation is required
+invariant-inference.mo:15.11-15.13: type error [M0050], literal of type
+  Int
+does not have expected type
+  Nat

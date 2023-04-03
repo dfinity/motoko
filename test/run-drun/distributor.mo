@@ -1,4 +1,5 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
+import Cycles = "cycles/cycles";
 import Lib "distributor/node";
 
 // A naive, distributed map from Nat to Text.
@@ -28,6 +29,7 @@ actor a {
     let i = k % n;
     let node = switch (nodes[i]) {
       case null {
+        Cycles.add(2_000_000_000_000);
         let n = await Lib.Node(i); // dynamically install a new Node
         nodes[i] := ?n;
         n;
@@ -39,6 +41,10 @@ actor a {
 
   // Test
   public func go() : async () {
+    // To get lots of cycles in both drun and ic-ref-run
+    if (Cycles.balance() == 0)
+      await Cycles.provisional_top_up_actor(a, 100_000_000_000_000);
+
     var i = 0;
     while (i < 24) {
       let t = debug_show(i);
@@ -52,3 +58,7 @@ actor a {
 };
 
 a.go() //OR-CALL ingress go "DIDL\x00\x00"
+
+//SKIP run
+//SKIP run-ir
+//SKIP run-low

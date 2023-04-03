@@ -1,10 +1,10 @@
 func go () {
-  let obj1 = module { public func foobar1() = () };
+  let obj1 = module { public func foobar1() { assert true; } };
   obj1.foobar1();
 };
 go();
 
-let obj2 = module { public func foobar2() = () };
+let obj2 = module { public func foobar2() { assert true; } };
 obj2.foobar2();
 
 // CHECK-LABEL: func $init

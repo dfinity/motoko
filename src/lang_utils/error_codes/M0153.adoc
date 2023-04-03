@@ -1,0 +1,12 @@
+= M0153
+
+This error means that an imported Candid file (`.did`) mentions types that
+cannot be represented in Motoko. These are
+
+ * `float32`
+ * `service` types with method names that are not identifiers, e.g. because
+   they contain special characters.
+
+If you encounter this error, and you can, you should avoid these types in the
+service’s interface. If you have no control over the interface, you cannot
+interact with it from Motoko.

@@ -5,15 +5,16 @@
 *)
 type mode = {
   privileged : bool;
-  with_trivia : bool;
+  verification : bool;
 }
 
 let mode : mode = {
   privileged = Option.is_some (Sys.getenv_opt "MOC_UNLOCK_PRIM");
-  with_trivia = false;
+  verification = Option.is_some (Sys.getenv_opt "MOC_UNLOCK_VERIFICATION");
 }
 
 let mode_priv : mode = { mode with privileged = true }
+let mode_verification : mode = { mode with verification = true }
 
 
 exception Error of Source.region * string

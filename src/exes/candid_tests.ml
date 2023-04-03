@@ -40,13 +40,7 @@ let argspec = Arg.align
 
 (* IO *)
 
-let load_file f =
-  let ic = open_in_bin f in
-  let n = in_channel_length ic in
-  let s = Bytes.create n in
-  really_input ic s 0 n;
-  close_in ic;
-  Bytes.to_string s
+module Pretty = Type.MakePretty(Type.ElideStamps)
 
 let write_file f s =
   let oc_ = open_out f in
@@ -54,8 +48,8 @@ let write_file f s =
   close_out oc_
 
 let print_type = function
-  | [t] -> "(" ^ Type.string_of_typ t ^ ")" (* add parens to make this unary *)
-  | ts -> Type.string_of_typ (Type.Tup ts)
+  | [t] -> "(" ^ Pretty.string_of_typ t ^ ")" (* add parens to make this unary *)
+  | ts -> Pretty.string_of_typ (Type.Tup ts)
 
 type expected_behaviour = ShouldPass | ShouldTrap
 
@@ -70,35 +64,39 @@ let mo_of_test tenv test : (string * expected_behaviour, string) result =
     | TextualInput x ->
       match Pipeline.parse_values x with
       | Error msgs -> raise (TextualParseError (x, msgs))
-      | Ok (vals, _) -> Idl_to_mo_value.args vals
+      | Ok (vals, _) -> "(" ^ Idl_to_mo_value.args vals ts ^ " : " ^ print_type ts ^ ")"
   in
   let equal e1 e2     = "assert (" ^ e1 ^ " == " ^ e2 ^ ")\n" in
   let not_equal e1 e2 = "assert (" ^ e1 ^ " != " ^ e2 ^ ")\n" in
-  let ignore e = "ignore (" ^ e ^ ")\n" in
+  let ignore ts e =
+    let open Type in
+    if sub (seq ts) unit then e (* avoid warning about redundant ignore *)
+    else "ignore (" ^ e ^ ")\n" in
 
   try
     let defs =
+      "import Prim \"mo:⛔\";" ^
       String.concat "" (List.map (fun (n,candid_typ) ->
         let mo_typ = Idl_to_mo.check_typ tenv candid_typ in
-        "type " ^ n ^ " = " ^ Type.string_of_typ mo_typ ^ ";\n"
+        "type " ^ n ^ " = " ^ Pretty.string_of_typ mo_typ ^ ";\n"
       ) (Typing.Env.bindings tenv)) ^ "\n" in
 
-    let typ = Idl_to_mo.check_typs tenv (test.it.ttyp) in
+    let ts = Idl_to_mo.check_typs tenv (test.it.ttyp) in
     match test.it.assertion with
     | ParsesAs (_, TextualInput _)
     | ParsesEqual (_, TextualInput _, TextualInput _)
     -> Error "all-textual test case" (* not interesting to us *)
     | ParsesAs (true, i)
-    -> Ok (defs ^ ignore (deser typ i), ShouldPass)
+    -> Ok (defs ^ ignore ts (deser ts i), ShouldPass)
     | ParsesAs (false, i)
-    -> Ok (defs ^ ignore (deser typ i), ShouldTrap)
+    -> Ok (defs ^ ignore ts (deser ts i), ShouldTrap)
     | ParsesEqual (true, i1, i2)
-    -> Ok (defs ^ equal (deser typ i1) (deser typ i2), ShouldPass)
+    -> Ok (defs ^ equal (deser ts i1) (deser ts i2), ShouldPass)
     | ParsesEqual (false, i1, i2)
-    -> Ok (defs ^ not_equal (deser typ i1) (deser typ i2), ShouldPass)
+    -> Ok (defs ^ not_equal (deser ts i1) (deser ts i2), ShouldPass)
   with
-    | Idl_to_mo.UnsupportedCandidFeature what ->
-      Error (what ^ " not supported")
+    | Exception.UnsupportedCandidFeature message ->
+      Error (Diag.string_of_message message)
     | TextualParseError (x, msgs) ->
       Error (Printf.sprintf "Could not parse %S:\n%s" x
           (String.concat ", " (List.map Diag.string_of_message msgs))
@@ -149,7 +147,7 @@ type outcome =
  | UnwantedTrap of (string * string) (* stdout, stderr *)
  | Timeout
  | Ignored of string
- | CantCompile of (string * string) (* stdout, stderr *)
+ | CantCompile of (string * string * string) (* stdout, stderr, src *)
 
 let red s = "\027[31m" ^ s ^ "\027[0m"
 let green s = "\027[32m" ^ s ^ "\027[0m"
@@ -191,9 +189,9 @@ let report_outcome counts expected_fail outcome =
   | _, Ignored why ->
     bump counts.ignored;
     Printf.printf " %s\n" (grey (Printf.sprintf "ignored (%s)" why))
-  | _, CantCompile (stdout, stderr) ->
+  | _, CantCompile (stdout, stderr, src) ->
     bump counts.fail;
-    Printf.printf " %s\n%s%s\n" (red "not ok (cannot compile)") stdout stderr
+    Printf.printf " %s\n%s%s\n%s" (red "not ok (cannot compile)") stdout stderr src
 
 (* Main *)
 let () =
@@ -253,10 +251,10 @@ let () =
             (* Printf.printf "\n%s" src *)
             Unix.putenv "MOC_UNLOCK_PRIM" "yesplease";
             write_file "tmp.mo" src;
-            match run_cmd "moc -wasi-system-api tmp.mo -o tmp.wasm" with
-            | ((Fail | Timeout), stdout, stderr) -> CantCompile (stdout, stderr)
+            match run_cmd "moc -Werror -wasi-system-api tmp.mo -o tmp.wasm" with
+            | ((Fail | Timeout), stdout, stderr) -> CantCompile (stdout, stderr, src)
             | (Ok, _, _) ->
-              match must_not_trap, run_cmd "timeout 10s wasmtime --disable-cache --cranelift tmp.wasm" with
+              match must_not_trap, run_cmd "timeout 10s wasmtime --disable-cache tmp.wasm" with
               | ShouldPass, (Ok, _, _) -> WantedPass
               | ShouldTrap, (Fail, _, _) -> WantedTrap
               | ShouldPass, (Fail, stdout, stderr) -> UnwantedTrap (stdout, stderr)

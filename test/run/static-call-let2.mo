@@ -1,11 +1,11 @@
 func go () {
-  func foobar1() = ();
+  func foobar1() { assert true; };
   let foobaz1 = foobar1;
   foobaz1();
 };
 go();
 
-func foobar2() = ();
+func foobar2() { assert true; };
 let foobaz2 = foobar2;
 foobaz2();
 

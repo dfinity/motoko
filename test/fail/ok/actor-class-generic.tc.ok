@@ -1,1 +1,1 @@
-actor-class-generic.mo:1.1-1.21: type error, actor classes with type parameters are not supported yet
+actor-class-generic.mo:1.1-1.21: type error [M0140], actor classes with type parameters are not supported yet

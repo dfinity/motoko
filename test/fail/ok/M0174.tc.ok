@@ -1,0 +1,2 @@
+M0174.mo:1.1-1.28: type error [M0174], from_candid produces an optional shared type, not type
+  Nat

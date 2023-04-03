@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 
 func print(o : ? Nat) { Prim.debugPrint(debug_show(o));};
 

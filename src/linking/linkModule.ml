@@ -115,7 +115,7 @@ let get_import is_thing j m =
   in go 0l m.imports
 
 let find_imports is_thing libname m : imports =
-  let name = Wasm.Utf8.decode libname in
+  let name = Lib.Utf8.decode libname in
   let rec go i acc = function
     | [] -> List.rev acc
     | imp::is ->
@@ -145,7 +145,7 @@ let count_imports is_thing m =
 
 let remove_export is_thing name : module_' -> module_' = fun m ->
   let to_remove e =
-    not (is_thing e.it.edesc.it <> None && e.it.name = Wasm.Utf8.decode name)
+    not (is_thing e.it.edesc.it <> None && e.it.name = Lib.Utf8.decode name)
   in
   { m with exports = List.filter to_remove m.exports }
 
@@ -249,9 +249,13 @@ let prepend_to_start fi ftype (em : extended_module)  =
   }
 
 let _remove_non_canister_exports (em : extended_module) : extended_module =
+  <<<<<<< gabor/dwarf
   let is_canister_export (exp : export) =
     let name = Wasm.Utf8.encode exp.it.name in
     Lib.String.chop_prefix "canister_" name <> None || name = "_start" in
+  =======
+  let is_canister_export (exp : export) = Lib.String.chop_prefix "canister_" (Lib.Utf8.encode exp.it.name) <> None in
+  >>>>>>> master
   map_module (fun m -> { m with exports = List.filter is_canister_export m.exports }) em
 
 let remove_non_ic_exports (em : extended_module) : extended_module =
@@ -259,8 +263,13 @@ let remove_non_ic_exports (em : extended_module) : extended_module =
    custom types section was only exported for linking, and should not be
    exported in the final module *)
   let is_ic_export (exp : export) =
+  <<<<<<< gabor/dwarf
     let name = Wasm.Utf8.encode exp.it.name in
     Lib.String.chop_prefix "canister_" name <> None || name = "_start"
+  =======
+    Lib.String.chop_prefix "canister_" (Lib.Utf8.encode exp.it.name) <> None ||
+    "_start" = Lib.Utf8.encode exp.it.name
+  >>>>>>> master
   in
 
   let keep_export exp =
@@ -553,8 +562,8 @@ let fill_memory_base_import new_base : module_' -> module_' = fun m ->
       | [] -> assert false
       | imp::is -> match imp.it.idesc.it with
         | GlobalImport _ty
-          when imp.it.module_name = Wasm.Utf8.decode "env" &&
-               imp.it.item_name = Wasm.Utf8.decode "__memory_base" ->
+          when imp.it.module_name = Lib.Utf8.decode "env" &&
+               imp.it.item_name = Lib.Utf8.decode "__memory_base" ->
           Int32.of_int i
         | GlobalImport _ ->
           go (i + 1) is
@@ -580,8 +589,8 @@ let fill_table_base_import new_base : module_' -> module_' = fun m ->
       | [] -> assert false
       | imp::is -> match imp.it.idesc.it with
         | GlobalImport _ty
-          when imp.it.module_name = Wasm.Utf8.decode "env" &&
-               imp.it.item_name = Wasm.Utf8.decode "__table_base" ->
+          when imp.it.module_name = Lib.Utf8.decode "env" &&
+               imp.it.item_name = Lib.Utf8.decode "__table_base" ->
           Int32.of_int i
         | GlobalImport _ ->
           go (i + 1) is
@@ -600,28 +609,38 @@ let fill_table_base_import new_base : module_' -> module_' = fun m ->
 
 (* Concatenation of modules *)
 
-let join_modules (em1 : extended_module) (m2 : module_') (ns2 : name_section) : extended_module =
-  assert (m2.start = None);
+let join_modules
+      (em1 : extended_module) (m2 : module_') (ns2 : name_section)
+      (type_indices : (Wasm.Types.func_type, int32) Hashtbl.t) : extended_module =
   let m1 = em1.module_ in
-  { em1 with
-    module_ = {
-      types = m1.types @ m2.types;
-      globals = m1.globals @ m2.globals;
-      tables = m1.tables @ m2.tables;
-      memories = m1.memories @ m2.memories;
-      funcs = m1.funcs @ m2.funcs;
-      start = m1.start;
-      elems = m1.elems @ m2.elems;
-      data = m1.data @ m2.data;
-      imports = m1.imports @ m2.imports;
-      exports = m1.exports @ m2.exports;
-    };
-    name = {
-      em1.name with
-      function_names = em1.name.function_names @ ns2.function_names;
-      locals_names = em1.name.locals_names @ ns2.locals_names;
+  let joined = 
+    { em1 with
+      module_ = {
+        types = m1.types @ m2.types;
+        globals = m1.globals @ m2.globals;
+        tables = m1.tables @ m2.tables;
+        memories = m1.memories @ m2.memories;
+        funcs = m1.funcs @ m2.funcs;
+        start = m1.start;
+        elems = m1.elems @ m2.elems;
+        data = m1.data @ m2.data;
+        imports = m1.imports @ m2.imports;
+        exports = m1.exports @ m2.exports;
+      };
+      name = {
+        em1.name with
+        function_names = em1.name.function_names @ ns2.function_names;
+        locals_names = em1.name.locals_names @ ns2.locals_names;
+      };
+      motoko = em1.motoko;
     }
-  }
+  in
+  (* If second module has a start, prepend it to the first module's start.
+     OK to use `Hashtbl.find` below as the first module will have a start, so
+     we'll have the unit function in the type section already. *)
+  match m2.start with
+  | None -> joined
+  | Some fi -> prepend_to_start fi.it (Hashtbl.find type_indices (Wasm.Types.FuncType ([], []))) joined
 
 (* The main linking function *)
 
@@ -655,13 +674,13 @@ let find_fun_export (name : name) (exports : export list) : var option =
     if export.it.name = name then
       match export.it.edesc.it with
       | FuncExport var -> Some var
-      | _ -> raise (LinkError (Format.sprintf "Export %s is not a function" (Wasm.Utf8.encode name)))
+      | _ -> raise (LinkError (Format.sprintf "Export %s is not a function" (Lib.Utf8.encode name)))
     else
       None
   ) exports
 
 let remove_got_func_imports (imports : import list) : import list =
-  let got_func_str = Wasm.Utf8.decode "GOT.func" in
+  let got_func_str = Lib.Utf8.decode "GOT.func" in
   List.filter (fun import -> import.it.module_name <> got_func_str) imports
 
 (* Merge global list of a module with a sorted (on global index) list of (global
@@ -691,7 +710,7 @@ let mk_i32_global (i : int32) =
 (* Generate (global index, function index) pairs for GOT.func imports of a
    module. Uses import and export lists of the module so those should be valid. *)
 let collect_got_func_imports (m : module_') : (int32 * int32) list =
-  let got_func_name = Wasm.Utf8.decode "GOT.func" in
+  let got_func_name = Lib.Utf8.decode "GOT.func" in
 
   let get_got_func_import (global_idx, imports) import : (int32 * (int32 * int32) list) =
     if import.it.module_name = got_func_name then
@@ -699,7 +718,7 @@ let collect_got_func_imports (m : module_') : (int32 * int32) list =
       let name = import.it.item_name in
       let fun_idx =
         match find_fun_export name m.exports with
-        | None -> raise (LinkError (Format.sprintf "Can't find export for GOT.func import %s" (Wasm.Utf8.encode name)))
+        | None -> raise (LinkError (Format.sprintf "Can't find export for GOT.func import %s" (Lib.Utf8.encode name)))
         | Some export_idx -> export_idx.it
       in
       let global_idx =
@@ -765,7 +784,7 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
   let global_exports1 = find_exports is_global_export em1.module_ in
 
   let heap_global =
-    match NameMap.find_opt (Wasm.Utf8.decode "__heap_base") global_exports1 with
+    match NameMap.find_opt (Lib.Utf8.decode "__heap_base") global_exports1 with
     | None -> raise (LinkError "First module does not export __heap_base")
     | Some gi -> gi in
 
@@ -869,12 +888,10 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
 
   (* Inject call to "__wasm_call_ctors" *)
   let add_call_ctors =
-    match NameMap.find_opt (Wasm.Utf8.decode "__wasm_call_ctors") fun_exports2 with
+    match NameMap.find_opt (Lib.Utf8.decode "__wasm_call_ctors") fun_exports2 with
     | None -> fun em -> em
     | Some fi -> prepend_to_start (funs2 fi) (add_or_get_ty (Wasm.Types.FuncType ([], [])))
   in
-
-  assert (dm2.globals = []);
 
   let new_table_size =
     Int32.add (Int32.add lib_table_start dylink.table_size) (Int32.of_int (List.length got_func_imports))
@@ -905,6 +922,7 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
     |> remove_fun_imports_name_section fun_resolved21
     |> rename_funcs_name_section funs2
     )
+    type_indices
   |> add_call_ctors
   |> remove_non_ic_exports (* only sane if no additional files get linked in *)
   in

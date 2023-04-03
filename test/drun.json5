@@ -1,9 +1,4 @@
 {
-  scheduler: {
-    scheduler_cores: 1,
-    max_instructions_per_round:   10000000000000,
-    max_instructions_per_message:  1000000000000,
-  },
   metrics: {
     exporter: { file: "/dev/fd/222" }
   },

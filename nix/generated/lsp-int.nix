@@ -7,12 +7,12 @@
 , data-default
 , directory
 , filepath
-, haskell-lsp-types
 , hspec
 , HUnit
 , lens
+, lib
 , lsp-test
-, stdenv
+, lsp-types
 , text
 }:
 mkDerivation {
@@ -26,14 +26,14 @@ mkDerivation {
     data-default
     directory
     filepath
-    haskell-lsp-types
     hspec
     HUnit
     lens
     lsp-test
+    lsp-types
     text
   ];
   description = "Integration tests for the language server";
   license = "unknown";
-  hydraPlatforms = stdenv.lib.platforms.none;
+  mainProgram = "lsp-int";
 }

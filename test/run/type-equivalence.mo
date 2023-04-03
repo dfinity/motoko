@@ -23,8 +23,8 @@ func f(x : C) : C = x : D;
 // Function Types
 
 do {
-type A = (Int, Bool) -> (Word8, Float);
-type B = (Int, Bool) -> (Word8, Float);
+type A = (Int, Bool) -> (Nat8, Float);
+type B = (Int, Bool) -> (Nat8, Float);
 func f(x : A) : A = x : B;
 };
 

@@ -16,7 +16,7 @@ shared(msg) actor class PiggyBank(
 
   public func deposit() : async () {
     let amount = Cycles.available();
-    let limit = capacity - savings;
+    let limit : Nat = capacity - savings;
     let acceptable =
       if (amount <= limit) amount
       else limit;

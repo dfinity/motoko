@@ -1,0 +1,4 @@
+M0127.mo:2.3-2.40: type error [M0127], system function preupgrade is declared with type
+  Bool -> ()
+instead of expected type
+  () -> ()

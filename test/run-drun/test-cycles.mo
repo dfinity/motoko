@@ -1,4 +1,5 @@
-import Prim = "mo:prim";
+
+import Prim = "mo:⛔";
 import Cycles = "cycles/cycles";
 import WalletLib = "cycles/wallet";
 
@@ -7,6 +8,8 @@ actor client {
  func print(t:Text) { Prim.debugPrint("client: " # t); };
 
  public func go() : async () {
+  if (Cycles.balance() == 0)
+    await Cycles.provisional_top_up_actor(client, 3_000_000_000_000);
 
 //  print("balance: " # debug_show(Cycles.balance()) ); // to volatile to show
 
@@ -14,6 +17,7 @@ actor client {
 
   print("accept(0): " # debug_show(Cycles.accept(0)));
 
+  Cycles.add(2_000_000_000_000);
   let wallet : WalletLib.Wallet = await WalletLib.Wallet();
   await wallet.show();
   print ("setting cycles");
@@ -21,7 +25,7 @@ actor client {
   await wallet.show();
 
   // debit from the wallet, crediting this actor via callback
-  let amount : Nat64 = 1000_000;
+  let amount = 1000_000;
   print("# debit");
 //  print("balance: " # debug_show(Cycles.balance()));
   let b = Cycles.balance();
@@ -58,12 +62,12 @@ actor client {
 
 
   // issue a bunch of refund requests, await them in reverse and check the refunds are as expected.
-  func testRefunds(n : Nat64) : async () {
-     if (n == (0 : Nat64)) return;
+  func testRefunds(n : Nat) : async () {
+     if (n == 0) return;
      Cycles.add(n);
      print("refund(" # debug_show(n) # ")");
      let a = wallet.refund(n);
-     await testRefunds( n - (1 : Nat64));
+     await testRefunds( n - 1);
      await a;
      print("refunded: " # debug_show(Cycles.refunded()));
      assert (Cycles.refunded() == n);
@@ -95,4 +99,4 @@ client.go(); //OR-CALL ingress go "DIDL\x00\x00"
 //SKIP run
 //SKIP run-ir
 //SKIP run-low
-
+//SKIP drun-run

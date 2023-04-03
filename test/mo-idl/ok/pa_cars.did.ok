@@ -14,7 +14,7 @@ type DMV =
  service {
    check: (Car) -> (CarInfo);
  };
-type Car_2 = 
+type Car__1 = 
  service {
    reserveSpot: (User, CarInfo, Location, TimeSpan) -> (Result);
  };
@@ -31,4 +31,4 @@ type Car =
    model: text;
    plate: text;
  };
-service : (DMV) -> Car_2
+service : (DMV) -> Car__1

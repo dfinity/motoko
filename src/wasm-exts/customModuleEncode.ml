@@ -129,16 +129,29 @@ let encode (em : extended_module) =
   (* modify reference *)
   let modif r f = r := f !r in
 
-  let rec add_source x = function (* FIXME: use add_string *)
+  let rec add_source filename = function (* FIXME: use add_string *)
     | [] ->
-      sources := !sources @ [ x ];
-      sourcesContent := !sourcesContent @ [ "" ];
+      sources := !sources @ [ filename ];
+      let source_code =
+        try
+          if filename = "prelude" then Prelude.prelude else
+          if filename = "prim" then Prelude.prim_module ~timers:!Mo_config.Flags.global_timer else
+          (*
+          Here we opportunistically see if we can find the source file
+          mentioned in the source location, and if we can, include its source
+          verbatim in the source map
+          *)
+          let ic = Stdlib.open_in filename in
+          let n = in_channel_length ic in
+          let s = Bytes.create n in
+          really_input ic s 0 n;
+          close_in ic;
+          Bytes.to_string s
+        with _ -> "" in
+      sourcesContent := !sourcesContent @ [ source_code ];
       0
-    | h :: t -> if x = h then 0 else 1 + add_source x t
+    | h :: t -> if filename = h then 0 else 1 + add_source filename t
   in
-
-  sources := !sources @ [ "prelude" ];
-  sourcesContent := !sourcesContent @ [ Prelude.prelude ];
 
   let add_string gen strings str = (* FIXME: perform suffix compression? *)
     let strs = !strings in
@@ -302,7 +315,7 @@ let encode (em : extended_module) =
 
     let bool b = vu1 (if b then 1 else 0)
     let string bs = len (String.length bs); put_string s bs
-    let name n = string (Wasm.Utf8.encode n)
+    let name n = string (Lib.Utf8.encode n)
     let list f xs = List.iter f xs
     let opt f xo = Option.iter f xo
     let vec_by l f xs = l (List.length xs); list f xs
@@ -789,6 +802,13 @@ let encode (em : extended_module) =
     let data_section data =
       section 11 (vec memory_segment) data (data <> [])
 
+    (* sourceMappingURL section *)
+
+    let source_mapping_url_section smu =
+      match smu with
+      | Some smu -> custom_section "sourceMappingURL" string smu true
+      | None -> ()
+
     (* Name section *)
 
     let assoc_list : 'a. ('a -> unit) -> (int32 * 'a) list -> unit = fun f xs ->
@@ -806,6 +826,33 @@ let encode (em : extended_module) =
 
       custom_section "name" name_section_body ns
         (ns.module_ <> None || ns.function_names <> [] || ns.locals_names <> [])
+
+    let icp_custom_section name f opt =
+      match opt with
+      | None -> ()
+      | Some (is_public, x) ->
+        section 0 (fun x ->
+          string ("icp:"^ (if is_public then "public " else "private ") ^ name);
+          f x
+        ) x true
+
+    (* Motoko custom section *)
+
+    let motoko_section_body labels =
+      section 0 (vec string) labels (labels <> [])
+
+    let utf8 bs =
+      ignore (Lib.Utf8.decode bs);  (* assert well-formedness *)
+      put_string s bs
+
+    let motoko_sections motoko =
+      icp_custom_section "motoko:stable-types" utf8 motoko.stable_types;
+      icp_custom_section "motoko:compiler" utf8 motoko.compiler;
+      custom_section "motoko" motoko_section_body motoko.labels (motoko.labels <> []) (* TODO: make an icp_section *)
+
+    let candid_sections candid =
+      icp_custom_section "candid:service" utf8 candid.service;
+      icp_custom_section "candid:args" utf8 candid.args
 
     let uleb128 n = vu64 (Int64.of_int n)
     let sleb128 n = vs64 (Int64.of_int n)
@@ -1150,6 +1197,7 @@ let encode (em : extended_module) =
       in
       custom_section ".debug_line" debug_line_section_body () (fs <> [])
 
+
     (* Module *)
 
     let module_ (em : extended_module) =
@@ -1172,6 +1220,9 @@ let encode (em : extended_module) =
       data_section m.data;
       (* other optional sections *)
       name_section em.name;
+      candid_sections em.candid;
+      motoko_sections em.motoko;
+      source_mapping_url_section em.source_mapping_url;
       if !Mo_config.Flags.debug_info then
         begin
           debug_abbrev_section ();

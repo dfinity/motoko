@@ -50,77 +50,75 @@ open Source
 
 let err_unrecognized_url msgs at url msg =
   let open Diag in
-  add_msg msgs {
-      sev = Error;
-      at;
-      cat = "import";
-      text = Printf.sprintf "cannot parse import URL \"%s\": %s" url msg
-    }
+  add_msg msgs
+    (error_message
+       at
+       "M0006"
+       "import"
+       (Printf.sprintf "cannot parse import URL \"%s\": %s" url msg))
 
 let err_unrecognized_alias msgs alias principal msg =
   let open Diag in
-  add_msg msgs {
-      sev = Error;
-      at = no_region;
-      cat = "actor-alias";
-      text = Printf.sprintf "cannot parse principal \"%s\" for actor alias \"%s\": %s" principal alias msg
-    }
+  add_msg msgs
+    (error_message
+       no_region
+       "M0007"
+       "actor-alias"
+       (Printf.sprintf "cannot parse principal \"%s\" for actor alias \"%s\": %s" principal alias msg))
 
 let err_actor_import_without_idl_path msgs at =
   let open Diag in
-  add_msg msgs {
-      sev = Error;
-      at;
-      cat = "import";
-      text = Printf.sprintf "cannot import canister urls without --actor-idl param"
-    }
+  add_msg msgs
+    (error_message
+       at
+       "M0008"
+       "import"
+      (Printf.sprintf "cannot import canister urls without --actor-idl param"))
 
 let err_file_does_not_exist' at full_path =
-  Diag.{
-      sev = Error;
-      at;
-      cat = "import";
-      text = Printf.sprintf "file \"%s\" does not exist" full_path
-    }
+  Diag.error_message
+    at
+    "M0009"
+    "import"
+    (Printf.sprintf "file \"%s\" does not exist" full_path)
 
 let err_file_does_not_exist msgs at full_path =
   Diag.add_msg msgs (err_file_does_not_exist' at full_path)
 
 let err_package_not_defined msgs at pkg =
   let open Diag in
-  add_msg msgs {
-    sev = Error;
-    at;
-    cat = "import";
-    text = Printf.sprintf "package \"%s\" not defined" pkg
-  }
+  add_msg msgs
+    (error_message
+       at
+       "M0010"
+       "import"
+       (Printf.sprintf "package \"%s\" not defined" pkg))
 
 let err_alias_not_defined msgs at alias =
   let open Diag in
-  add_msg msgs {
-    sev = Error;
-    at;
-    cat = "import";
-    text = Printf.sprintf "canister alias \"%s\" not defined" alias
-  }
+  add_msg msgs
+    (error_message
+       at
+       "M0011"
+       "import"
+       (Printf.sprintf "canister alias \"%s\" not defined" alias))
 
 let err_package_file_does_not_exist msgs f pname =
   let open Diag in
-  add_msg msgs {
-    sev = Error;
-    at = no_region;
-    cat = "package";
-    text = Printf.sprintf "file \"%s\" (for package `%s`) does not exist" f pname
-  }
+  add_msg msgs
+    (error_message
+       no_region
+       "M0012"
+       "package"
+       (Printf.sprintf "file \"%s\" (for package `%s`) does not exist" f pname))
 
 let err_prim_pkg msgs =
   let open Diag in
-  add_msg msgs {
-    sev = Error;
-    at = no_region;
-    cat = "package";
-    text = "the \"prim\" package is built-in, and cannot be mapped to a directory"
-    }
+  add_msg msgs
+    (error_message
+       no_region
+       "M0013"
+       "package" "the \"prim\" package is built-in, and cannot be mapped to a directory")
 
 let append_extension : (string -> bool) -> string -> string =
   fun file_exists f ->
@@ -135,6 +133,7 @@ let append_extension : (string -> bool) -> string -> string =
 
 let resolve_lib_import at full_path : (string, Diag.message) result =
   let full_path = append_extension Sys.file_exists full_path in
+  let full_path = Lib.FilePath.normalise full_path in
   if Sys.file_exists full_path
   then Ok full_path
   else Error (err_file_does_not_exist' at full_path)

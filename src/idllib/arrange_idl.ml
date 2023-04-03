@@ -66,7 +66,7 @@ and dec d = match d.it with
   | ImportD (f, fp) ->
      "ImportD" $$ [Atom (if !fp = "" then f else !fp)]
 
-and actor a = match a with
+and actor = function
   | None -> Atom "NoActor"
   | Some t -> 
      "Actor" $$ [typ t]
@@ -84,7 +84,7 @@ let quote ppf s =
   str ppf "\""; str ppf (Lib.String.lightweight_escaped s); str ppf "\"";
   pp_close_box ppf ()
 let text ppf s =
-  if Escape.needs_quote s then quote ppf s else str ppf s
+  if Escape.needs_candid_quote s then quote ppf s else str ppf s
 
 let rec pp_typ ppf t =
   pp_open_hovbox ppf 1;
@@ -239,3 +239,11 @@ let string_of_prog prog =
   pp_prog ppf prog;
   pp_print_flush ppf ();
   Buffer.contents buf
+
+let string_of_args ts =
+  let buf = Buffer.create 100 in
+  let ppf = formatter_of_buffer buf in
+  pp_args ppf ts;
+  pp_print_flush ppf ();
+  Buffer.contents buf
+    

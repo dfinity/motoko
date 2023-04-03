@@ -1,25 +1,27 @@
 open Mo_config
 
+type error_code = string
 type severity = Warning | Error | Info
 type message = {
   sev : severity;
+  code : error_code;
   at : Source.region;
   cat : string;
   text : string
 }
 type messages = message list
 
-let info_message at cat text = {sev = Info; at; cat; text}
-let warning_message at cat text = {sev = Warning; at; cat; text}
-let error_message at cat text = {sev = Error; at; cat; text}
+let info_message at cat text = {sev = Info; code = ""; at; cat; text}
+let warning_message at code cat text = {sev = Warning; code; at; cat; text}
+let error_message at code cat text = {sev = Error; code; at; cat; text}
 
 type 'a result = ('a * messages, messages) Stdlib.result
 
 let return x = Ok (x, [])
 
 let info at cat text = Ok ((), [info_message at cat text])
-let warn at cat text = Ok ((), [warning_message at cat text])
-let error at cat text = Stdlib.Error [error_message at cat text]
+let warn at code cat text = Ok ((), [warning_message at code cat text])
+let error at code cat text = Stdlib.Error [error_message at code cat text]
 
 let map f = function
   | Stdlib.Error msgs -> Stdlib.Error msgs
@@ -58,11 +60,15 @@ let has_errors : messages -> bool =
   List.fold_left (fun b msg -> b || msg.sev == Error) false
 
 let string_of_message msg =
+  let code = match msg.sev, msg.code with
+    | Info, _ -> ""
+    | _, "" -> ""
+    | _, code -> Printf.sprintf " [%s]" code in
   let label = match msg.sev with
-    | Error -> Printf.sprintf "%s error"  msg.cat
-    | Warning -> "warning" 
+    | Error -> Printf.sprintf "%s error" msg.cat
+    | Warning -> "warning"
     | Info -> "info" in
-  Printf.sprintf "%s: %s, %s\n" (Source.string_of_region msg.at) label msg.text
+  Printf.sprintf "%s: %s%s, %s\n" (Source.string_of_region msg.at) label code msg.text
 
 let print_message msg =
   if msg.sev <> Error && not !Flags.print_warnings
@@ -80,8 +86,14 @@ let with_message_store f =
   | _ -> Error msgs
 
 let flush_messages : 'a result -> 'a option = function
-  | Stdlib.Error msgs -> print_messages msgs; None
-  | Ok (x, msgs) -> print_messages msgs; Some x
+  | Stdlib.Error msgs ->
+    print_messages msgs;
+    None
+  | Ok (x, msgs) ->
+    print_messages msgs;
+    if !Flags.warnings_are_errors && msgs <> []
+    then None
+    else Some x
 
 let run r = match flush_messages r with
   | None -> exit 1

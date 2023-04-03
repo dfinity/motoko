@@ -1,4 +1,5 @@
 (library
   (name mo_interpreter)
   (libraries lib mo_config mo_def mo_types mo_values profiler ic)
+  (instrumentation (backend bisect_ppx --bisect-silent yes))
 )

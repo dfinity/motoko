@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 actor a {
   flexible var committed = false;
   public func throws() : () {

@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 
 // let t = "wrong"; // test capture avoidance
 

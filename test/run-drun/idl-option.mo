@@ -1,4 +1,4 @@
-import Prim "mo:prim";
+import Prim "mo:⛔";
 // This test checks that the IDL decoder can
 // do the subtyping from null to option
 actor {

@@ -9,6 +9,9 @@ let string_of_list f xs =
 let string_of_item (item : Lsp_t.completion_item) : string =
   item.Lsp_t.completion_item_label
 
+let markup_content s =
+  Lsp_t.{ markup_content_kind = "markdown"; markup_content_value = s }
+
 let item_of_ide_decl (d : DI.ide_decl) : Lsp_t.completion_item =
   let comp = DI.name_of_ide_decl d in
   match d with
@@ -21,12 +24,12 @@ let item_of_ide_decl (d : DI.ide_decl) : Lsp_t.completion_item =
           completion_item_insertTextFormat = Some 2;
           completion_item_additionalTextEdits = None;
           completion_item_documentation =
-            Some (Pretty.string_of_typ value.DI.typ);
-          completion_item_detail = None;
+            Option.map markup_content value.DI.doc_comment;
+          completion_item_detail = Some (Pretty.string_of_typ value.DI.typ);
         }
   | DI.TypeDecl ty ->
       let con = ty.DI.typ in
-      let eq, params, typ = Type.strings_of_kind (Con.kind con) in
+      let eq, params, typ = Type.strings_of_kind (Cons.kind con) in
       Lsp_t.
         {
           completion_item_label = ty.DI.name;
@@ -35,8 +38,9 @@ let item_of_ide_decl (d : DI.ide_decl) : Lsp_t.completion_item =
           completion_item_insertTextFormat = Some 2;
           completion_item_additionalTextEdits = None;
           completion_item_documentation =
+            Option.map markup_content ty.DI.doc_comment;
+          completion_item_detail =
             Some (Printf.sprintf "type %s%s" ty.DI.name params);
-          completion_item_detail = None;
         }
 
 let import_relative_to_project_root root module_path dependency =
@@ -86,8 +90,8 @@ let find_completion_prefix file line column : (string * string) option =
                       Some (ident, "")
                     else if pos_eq_cursor end_ then Some (ident, prefix)
                     else loop next_token
-                | _ -> loop next_token )
-          | tkn -> loop tkn )
+                | _ -> loop next_token)
+          | tkn -> loop tkn)
     | Parser.EOF -> None
     | _ -> loop (next ())
   in
@@ -100,7 +104,6 @@ let has_prefix (prefix : string) (ide_decl : DI.ide_decl) : bool =
   |> Option.is_some
 
 let opt_bind f = function None -> None | Some x -> f x
-
 let is_capital : string -> bool = fun s -> String.capitalize_ascii s = s
 
 let completions index project_root file_path file_contents line column =
@@ -132,11 +135,16 @@ let completions index project_root file_path file_contents line column =
   match find_completion_prefix file_contents line column with
   | None ->
       (* If we don't have any prefix to work with, just suggest the
-         imported module aliases, as well as top-level definitions in
+         imported module aliases/fields, as well as top-level definitions in
          the current file *)
       let decls = List.map item_of_ide_decl toplevel_decls in
       decls
-      @ List.map (fun (alias, _) -> module_alias_completion_item alias) imported
+      @ List.map
+          (function
+            | Source_file.AliasImport (ident, _)
+            | Source_file.FieldImport (_, ident, _) ->
+                module_alias_completion_item ident)
+          imported
   | Some ("", prefix) ->
       (* Without an alias but with a prefix we filter the toplevel
          identifiers of the current module *)
@@ -145,7 +153,12 @@ let completions index project_root file_path file_contents line column =
       |> List.map item_of_ide_decl
   | Some (alias, prefix) -> (
       let module_path =
-        imported |> List.find_opt (fun (mn, _) -> String.equal mn alias)
+        imported
+        |> List.map (function
+               | Source_file.AliasImport (ident, path)
+               | Source_file.FieldImport (_, ident, path)
+               -> (ident, path))
+        |> List.find_opt (fun (ident, _) -> String.equal alias ident)
       in
       match module_path with
       | Some mp -> (
@@ -156,7 +169,7 @@ let completions index project_root file_path file_contents line column =
               |> List.map item_of_ide_decl
           | None ->
               (* The matching import references a module we haven't loaded *)
-              [] )
+              [])
       (* We only try to add imports for capital aliases. Once we've got
        *  proper scoping information this can be improved *)
       | None when is_capital alias ->
@@ -176,18 +189,23 @@ let completions index project_root file_path file_contents line column =
                 else
                   List.map
                     (fun d ->
+                      let item = item_of_ide_decl d in
                       Lsp_t.
                         {
-                          (item_of_ide_decl d) with
+                          item with
                           completion_item_additionalTextEdits =
                             Some [ import_edit p ];
-                          completion_item_detail = Some p;
+                          completion_item_detail =
+                            Option.map
+                              (fun ty ->
+                                Printf.sprintf "%s (import from \"%s\")" ty p)
+                              item.completion_item_detail;
                         })
                     ds)
               possible_imports
           in
           completions
-      | None -> [] )
+      | None -> [])
 
 let completion_handler index project_root file_path file_contents position =
   let line = position.Lsp_t.position_line in

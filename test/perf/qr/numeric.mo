@@ -2,7 +2,6 @@
  * Module     : numeric.mo
  * Copyright  : 2020 DFINITY Stiftung
  * License    : Apache 2.0 with LLVM Exception
- * Maintainer : Enzo Haussecker <enzo@dfinity.org>
  * Stability  : Experimental
  */
 
@@ -12,7 +11,7 @@ import Iter "iter";
 import List "list";
 import Nat "nat";
 import Option "option";
-import Prim "mo:prim";
+import Prim "mo:⛔";
 import Text "text";
 import Util "util";
 import Version "version";
@@ -37,10 +36,10 @@ module {
       List.append<Bool>(header, List.append<Bool>(body, footer))
     };
 
-    // 
+    //
     let chunks = List.chunksOf<Char>(3, Iter.toList<Char>(Text.toIter(text)));
 
-    // 
+    //
     func step(chunk : List<Char>, accum : ?List<Bool>) : ?List<Bool> {
       switch (parse(chunk), accum) {
         case (?a, ?b) { ?List.append<Bool>(a, b) };
@@ -48,7 +47,7 @@ module {
       }
     };
 
-    // 
+    //
     Option.map<List<Bool>, List<Bool>>(
       render,
       List.foldRight<List<Char>, ?List<Bool>>(chunks, ?null, step)
@@ -58,7 +57,7 @@ module {
 
   func parse(chunk : List<Char>) : ?List<Bool> {
 
-    // 
+    //
     let p = switch (List.len<Char>(chunk)) {
       case 3 ?10;
       case 2 ?07;
@@ -70,8 +69,8 @@ module {
     let n = List.foldLeft<Char, ?Nat>(chunk, ?0, func (char, accum) {
       if (Char.isDigit(char)) {
         Option.map<Nat, Nat>(func (a) {
-          let b = Prim.word32ToNat(
-            Prim.charToWord32(char) - Prim.charToWord32('0')
+          let b = Prim.nat32ToNat(
+            Prim.charToNat32(char) -% Prim.charToNat32('0')
           );
           10 * a + b
         }, accum)
@@ -80,7 +79,7 @@ module {
       }
     });
 
-    // 
+    //
     switch (p, n) {
       case (?a, ?b) { ?Util.padLeftTo(a, Nat.natToBits(b)) };
       case _ null

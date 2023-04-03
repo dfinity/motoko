@@ -1,0 +1,30 @@
+= M0137
+
+This error means that you declared a type or class that explicitly or implicitly references
+an outer type parameter.
+
+Erroneous code examples:
+
+  class C<T>(){
+    type U = T; // type U mentions parameter T of class C
+  };
+
+  class D<T>(){
+    class E(x : T) {
+      public let y : T = x; // class E mentions parameter T of class D in a field
+    };
+  }
+
+To avoid this error, try parameterizing the inner types.
+
+  class C<T>(){
+    type U<T1> = T1;
+  };
+
+  class D<T>(){
+    class E<T1>(x : T1) {
+      public let y : T1 = x;
+    };
+  }
+
+This is a temporary restriction of Motoko that we hope to remove in future.

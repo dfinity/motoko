@@ -1,2 +1,2 @@
-actor-match.mo:7.8-7.14: type error, object pattern cannot consume actor type
+actor-match.mo:7.8-7.14: type error [M0114], object pattern cannot consume actor type
   actor {f : shared () -> (); g : shared () -> ()}

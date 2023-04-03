@@ -58,21 +58,26 @@ let is_motoko_keyword = function
   | "actor"
   | "and"
   | "async"
+  | "async*"
   | "assert"
   | "await"
+  | "await*"
   | "break"
   | "case"
   | "catch"
   | "class"
   | "continue"
   | "debug"
-  | "debug_show"  
+  | "debug_show"
+  | "do"
   | "else"
   | "false"
   | "flexible"
   | "for"
+  | "from_candid"
   | "func"
   | "if"
+  | "ignore"
   | "in"
   | "import"
   | "module"
@@ -93,15 +98,17 @@ let is_motoko_keyword = function
   | "system"
   | "try"
   | "throw"
+  | "to_candid"
   | "true"
   | "type"
   | "var"
   | "while"
+  | "with"
   -> true
   | _
   -> false
 
-(* Escaping (used for IDL → Motoko) *)
+(* Escaping (used for Candid → Motoko) *)
 
 let escape_num h = Printf.sprintf "_%s_" (Lib.Uint32.to_string h)
 
@@ -111,7 +118,15 @@ let escape str =
   then if ends_with_underscore str then str ^ "_" else str
   else escape_num (IdlHash.idl_hash str)
 
-(* Unescaping (used for Motoko → IDL) *)
+let escape_method at str =
+  if is_motoko_keyword str then str ^ "_" else
+  if is_valid_as_id str
+  then if ends_with_underscore str then str ^ "_" else str
+  else raise (Exception.UnsupportedCandidFeature
+    (Diag.error_message at "M0160" "import"
+      (Printf.sprintf "Candid method name '%s' is not a valid Motoko identifier" str)))
+
+(* Unescaping (used for Motoko → Candid) *)
 
 let is_escaped_num str =
   match Lib.String.chop_prefix "_" str with
@@ -139,6 +154,10 @@ let unescape_hash str = match unescape str with
   | Nat h -> h
   | Id s -> IdlHash.idl_hash s
 
-let needs_quote str =
-  not (is_valid_as_id str) || is_candid_keyword str
+let unescape_method str =
+  match Lib.String.chop_suffix "_" str with
+    | Some str' -> str'
+    | _ -> str
 
+let needs_candid_quote str =
+  not (is_valid_as_id str) || is_candid_keyword str

@@ -1,1 +1,1 @@
-(unknown location): package error, file "does-not-exist" (for package `pkg`) does not exist
+(unknown location): package error [M0012], file "does-not-exist" (for package `pkg`) does not exist
