@@ -283,17 +283,17 @@ func cyclesRefunded() : Nat {
     @refund
 };
 
-func cyclesAccept(amount: Nat) : Nat {
+func cyclesAccept(amount : Nat) : Nat {
   (prim "cyclesAccept" : Nat -> Nat) (amount);
 };
 
-func cyclesAdd(amount: Nat) : () {
+func cyclesAdd(amount : Nat) : () {
   if (amount == 0) return;
+  @cycles += amount;
   // trap if @cycles would exceed 2^128
-  if ((@cycles + amount) > 0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFF) {
+  if (@cycles > 0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFF) {
     trap("cannot add more than 2^128 cycles")
   };
-  @cycles += amount;
 };
 
 // certified data
