@@ -1,4 +1,3 @@
-//MOC-FLAG --version
 import Prim "mo:⛔";
 actor {
   Prim.debugPrint ("init'ed 0");
