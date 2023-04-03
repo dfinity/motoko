@@ -256,7 +256,6 @@ let rec declaration_header :
       sep_by buf "\n" (plain_of_doc buf (lvl + 1)) class_doc.fields
   | Module module_doc ->
       title buf lvl "";
-      plain_of_obj_sort buf module_doc.sort;
       bprintf buf "Module `%s" module_doc.name;
       bprintf buf "`\n";
       begin_block buf;

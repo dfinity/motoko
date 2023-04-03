@@ -16,6 +16,7 @@ let space : t = string "\u{00A0}"
 let cls_span : string -> string -> t = fun cls s -> span ~cls (string s)
 let fn_name : string -> t = cls_span "fnname"
 let class_name : string -> t = cls_span "classname"
+let module_name : string -> t = cls_span "modulename"
 let keyword : string -> t = cls_span "keyword"
 let parameter : string -> t = cls_span "parameter"
 let html_type : string -> t = cls_span "type"
@@ -265,6 +266,10 @@ let rec html_of_declaration : env -> Xref.t -> Extract.declaration_doc -> t =
         ++ br'
         ++ string ")")
       ++ list (List.map (html_of_doc env) class_doc.fields)
+  | Module module_doc ->
+      h4 ~cls:"module-declaration" ~id
+        (keyword "module " ++ module_name module_doc.name)
+      ++ list (List.map (html_of_doc env) module_doc.fields)
   | Type type_doc -> html_of_type_doc env type_doc xref
   | Value value_doc ->
       h4 ~cls:"value-declaration" ~id
@@ -304,6 +309,8 @@ let html_of_docs : render_input -> Cow.Html.t =
         li (a ~href:(Uri.of_string ("#type." ^ typ.name)) (string typ.name))
     | Extract.Class cls ->
         li (a ~href:(Uri.of_string ("#type." ^ cls.name)) (string cls.name))
+    | Extract.Module mdl ->
+        li (a ~href:(Uri.of_string ("#type." ^ mdl.name)) (string mdl.name))
     | Extract.Value val' ->
         li (a ~href:(Uri.of_string ("#" ^ val'.name)) (string val'.name))
     | Extract.Unknown typ -> empty
