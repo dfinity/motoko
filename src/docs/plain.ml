@@ -78,7 +78,7 @@ let plain_of_func_sort : Buffer.t -> Syntax.func_sort -> unit =
     | Shared Write -> bprintf buf "shared ")
 
 let plain_of_obj_sort : Buffer.t -> Syntax.obj_sort -> unit =
- fun buf sort ->
+  fun buf sort ->
   Buffer.add_string buf
     Mo_types.Type.(
       match sort.it with
@@ -254,15 +254,16 @@ let rec declaration_header :
       end_block buf;
       doc_comment ();
       sep_by buf "\n" (plain_of_doc buf (lvl + 1)) class_doc.fields
-  | Module module_doc ->
+  | Object obj_doc ->
       title buf lvl "";
-      bprintf buf "Module `%s" module_doc.name;
-      bprintf buf "`\n";
+      plain_of_obj_sort buf obj_doc.sort;
+      bprintf buf "`%s`\n" obj_doc.name;
       begin_block buf;
-      bprintf buf "module %s" module_doc.name;
+      plain_of_obj_sort buf obj_doc.sort;
+      bprintf buf "%s" obj_doc.name;
       end_block buf;
       doc_comment ();
-      sep_by buf "\n" (plain_of_doc buf (lvl + 1)) module_doc.fields
+      sep_by buf "\n" (plain_of_doc buf (lvl + 1)) obj_doc.fields
   | Unknown u ->
       title buf lvl (Printf.sprintf "Unknown %s" u);
       doc_comment ()

@@ -266,10 +266,10 @@ let rec html_of_declaration : env -> Xref.t -> Extract.declaration_doc -> t =
         ++ br'
         ++ string ")")
       ++ list (List.map (html_of_doc env) class_doc.fields)
-  | Module module_doc ->
-      h4 ~cls:"module-declaration" ~id
-        (keyword "module " ++ module_name module_doc.name)
-      ++ list (List.map (html_of_doc env) module_doc.fields)
+  | Object obj_doc ->
+      h4 ~cls:"object-declaration" ~id
+        (html_of_obj_sort obj_doc.sort ++ module_name obj_doc.name)
+      ++ list (List.map (html_of_doc env) obj_doc.fields)
   | Type type_doc -> html_of_type_doc env type_doc xref
   | Value value_doc ->
       h4 ~cls:"value-declaration" ~id
@@ -309,8 +309,8 @@ let html_of_docs : render_input -> Cow.Html.t =
         li (a ~href:(Uri.of_string ("#type." ^ typ.name)) (string typ.name))
     | Extract.Class cls ->
         li (a ~href:(Uri.of_string ("#type." ^ cls.name)) (string cls.name))
-    | Extract.Module mdl ->
-        li (a ~href:(Uri.of_string ("#type." ^ mdl.name)) (string mdl.name))
+    | Extract.Object obj ->
+        li (a ~href:(Uri.of_string ("#type." ^ obj.name)) (string obj.name))
     | Extract.Value val' ->
         li (a ~href:(Uri.of_string ("#" ^ val'.name)) (string val'.name))
     | Extract.Unknown typ -> empty

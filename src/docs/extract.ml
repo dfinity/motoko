@@ -12,7 +12,7 @@ and declaration_doc =
   | Value of value_doc
   | Type of type_doc
   | Class of class_doc
-  | Module of module_doc
+  | Object of object_doc
   | Unknown of string
 
 and function_doc = {
@@ -50,7 +50,7 @@ and class_doc = {
   sort : Syntax.obj_sort;
 }
 
-and module_doc = { name : string; fields : doc list }
+and object_doc = { name : string; fields : doc list; sort : Syntax.obj_sort }
 
 let un_prog prog =
   let comp_unit = Mo_def.CompUnit.comp_unit_of_prog true prog in
@@ -142,11 +142,12 @@ struct
             let mk_field_xref xref = mk_xref (Xref.XClass (name, xref)) in
             Some
               ( mk_xref (Xref.XType name),
-                Module
+                Object
                   {
                     name;
                     fields =
                       List.filter_map (extract_dec_field mk_field_xref) fields;
+                    sort;
                   } )
         | _ -> Some (mk_xref (Xref.XValue name), extract_let_doc rhs name))
     | Source.{ it = Syntax.TypD (name, ty_args, typ); _ } ->
