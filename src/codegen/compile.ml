@@ -1616,7 +1616,13 @@ module Tagged = struct
   let can_have_tag ty tag =
     let open Mo_types.Type in
     match (tag : tag) with
-    | Region -> false (* ??? *)
+    | Region ->
+      begin match normalize ty with
+      | (Con _ | Any) -> true
+      | (Prim Region) -> true
+      | (Prim _ | Obj _ | Array _ | Tup _ | Opt _ | Variant _ | Func _ | Non) -> false
+      | (Pre | Async _ | Mut _ | Var _ | Typ _) -> assert false
+      end
     | Array ->
       begin match normalize ty with
       | (Con _ | Any) -> true
@@ -3580,18 +3586,21 @@ module Region = struct
   let alloc env get_id get_pagecount get_vec_pages =
     Tagged.obj env Tagged.Region [ get_id; get_pagecount; get_vec_pages ]
 
-  let check_region s env =
-    let (set_region, get_region) = new_local env "region" in
-    set_region ^^
-    get_region ^^ Tagged.load ^^
-    compile_eq_const Tagged.(int_of_tag Region) ^^
-    get_region ^^ Tagged.load ^^
-    compile_eq_const Tagged.(int_of_tag StableSeen) ^^
-    G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
-    E.else_trap_with env ("Internal error: bad region tag "^ s) ^^
-    get_region ^^ Heap.load_field vec_pages_field ^^ Tagged.load ^^
-    compile_eq_const Tagged.(int_of_tag Blob) ^^
-    E.else_trap_with env ("Internal error: bad region.vec_pages" ^ s)
+  let sanity_check s env =
+    if !Flags.sanity then
+    Func.share_code1 env ("check_region_" ^ s) ("val", I32Type) [I32Type]
+      (fun env get_region ->
+         get_region ^^ Tagged.load ^^
+         compile_eq_const Tagged.(int_of_tag Region) ^^
+         get_region ^^ Tagged.load ^^
+         compile_eq_const Tagged.(int_of_tag StableSeen) ^^
+         G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
+         E.else_trap_with env ("Internal error: bad region tag "^ s) ^^
+         get_region ^^ Heap.load_field vec_pages_field ^^ Tagged.load ^^
+         compile_eq_const Tagged.(int_of_tag Blob) ^^
+         E.else_trap_with env ("Internal error: bad region.vec_pages" ^ s) ^^
+         get_region)
+    else G.nop
 
   let id env =
     E.call_import env "rts" "region_id" (* TEMP (for testing) *)
@@ -5555,7 +5564,6 @@ module MakeSerialization (Strm : Stream) = struct
         E.trap_with env "buffer_size called on value of type None"
       | Prim Region ->
          size_alias (fun () ->
-          get_x ^^ Region.check_region "size_alias" env  ^^
           inc_data_size (compile_unboxed_const 8l) ^^ (* |(padded) id| + |page_count| *)
           get_x ^^ Heap.load_field Region.vec_pages_field ^^ size env (Prim Blob))
       | Mut t ->
@@ -6042,6 +6050,22 @@ module MakeSerialization (Strm : Stream) = struct
         end
       in
 
+      let with_alias_typ get_arg_typ =
+        get_arg_typ ^^
+        compile_unboxed_const 0l ^^ G.i (Compare (Wasm.Values.I32 I32Op.GeS)) ^^
+        G.if1 I32Type
+        begin
+            with_composite_arg_typ get_arg_typ idl_alias (ReadBuf.read_sleb128 env)
+        end
+        begin
+          (* sanity check *)
+          get_arg_typ ^^
+          compile_eq_const (Int32.neg (Option.get (to_idl_prim (Prim Region)))) ^^
+          E.else_trap_with env "IDL error: unexpecting primitive alias type" ^^
+          get_arg_typ
+        end
+      in
+
       let with_composite_typ idl_tycon_id f =
         with_composite_arg_typ get_idltyp idl_tycon_id f
       in
@@ -6077,7 +6101,8 @@ module MakeSerialization (Strm : Stream) = struct
         let (set_memo, get_memo) = new_local env "memo" in
 
         let (set_arg_typ, get_arg_typ) = new_local env "arg_typ" in
-        with_composite_typ idl_alias (ReadBuf.read_sleb128 env) ^^ set_arg_typ ^^
+
+        with_alias_typ get_idltyp ^^ set_arg_typ ^^
 
         (* Find out if it is a reference or not *)
         ReadBuf.read_byte env get_data_buf ^^ set_is_ref ^^
@@ -6290,17 +6315,17 @@ module MakeSerialization (Strm : Stream) = struct
           )
           )
       | Prim Region ->
-         read_alias env (Prim Region) (fun get_arg_typ on_alloc ->
+         read_alias env (Prim Region) (fun get_region_typ on_alloc ->
           let (set_region, get_region) = new_local env "region" in
-          get_arg_typ ^^
+          (* sanity check *)
+          get_region_typ ^^
           compile_eq_const (Int32.neg (Option.get (to_idl_prim (Prim Region)))) ^^
-          E.else_trap_with env "read_alias unexpected idl_typ" ^^ (* FAILS! *)
+          E.else_trap_with env "deserialize_go (Region): unexpected idl_typ" ^^
           Region.alloc env (compile_unboxed_const 0l) (compile_unboxed_const 0l) (Blob.lit env "") ^^ set_region ^^
           on_alloc get_region ^^
           get_region ^^ ReadBuf.read_word32 env get_data_buf ^^ Heap.store_field Region.id_field ^^
           get_region ^^ ReadBuf.read_word32 env get_data_buf ^^ Heap.store_field Region.page_count_field ^^
-          get_region ^^ with_blob_typ env (read_blob ()) ^^ Heap.store_field Region.vec_pages_field ^^
-          get_region ^^ Region.check_region "read_alias" env
+          get_region ^^ read_blob () ^^ Heap.store_field Region.vec_pages_field
         )
       | Array t ->
         let (set_len, get_len) = new_local env "len" in
@@ -9567,10 +9592,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
   | OtherPrim "regionNew", [] ->
     SR.Vanilla,
-    let set_region, get_region = new_local env "region" in
-    Region.new_ env ^^ set_region ^^
-    get_region ^^ Region.check_region "region_new" env ^^
-    get_region
+    Region.new_ env ^^ Region.sanity_check "region_new" env
 
   | OtherPrim "regionId", [e0] ->
     SR.UnboxedWord32,
@@ -9770,11 +9792,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
   | OtherPrim "stableMemoryRegion", [] ->
     SR.Vanilla,
-    let set_region, get_region = new_local env "region" in
-    Region0.get env ^^ set_region ^^
-    get_region ^^ Region.check_region "stableMemoryRegion" env ^^
-    get_region
-
+    Region0.get env ^^ Region.sanity_check "stableMemoryRegion" env
 
   | OtherPrim ("stableMemoryLoadNat32"|"stableMemoryLoadInt32"), [e] ->
     SR.UnboxedWord32,
