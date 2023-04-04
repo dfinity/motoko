@@ -1,10 +1,11 @@
+//MOC-ENV MOC_UNLOCK_PRIM=yesplease
 import P "mo:⛔";
 import Region "stable-region/Region";
 import Region0 "stable-mem/StableMemory";
 
 actor {
   stable var n = 0;
-  stable var r0 = Region0.region();
+  stable var r0 = (prim "stableMemoryRegion" : () -> Region) ();
   stable var r1 = Region.new();
   stable var r2 = Region.new();
 
