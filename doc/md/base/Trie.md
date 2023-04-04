@@ -496,7 +496,7 @@ for ((k,v) in iter) {
 assert(sum == 74);
 ```
 
-## Module `Build`
+## Moduleaa `Build`
 
 ``` motoko no-repl
 module Build

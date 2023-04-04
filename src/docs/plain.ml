@@ -77,8 +77,18 @@ let plain_of_func_sort : Buffer.t -> Syntax.func_sort -> unit =
     | Shared Query -> bprintf buf "shared query "
     | Shared Write -> bprintf buf "shared ")
 
+let plain_of_obj_sort_title : Buffer.t -> Syntax.obj_sort -> unit =
+ fun buf sort ->
+  Buffer.add_string buf
+    Mo_types.Type.(
+      match sort.it with
+      | Object -> "Object "
+      | Actor -> "Actor "
+      | Module -> "Module "
+      | Memory -> "Memory ")
+
 let plain_of_obj_sort : Buffer.t -> Syntax.obj_sort -> unit =
-  fun buf sort ->
+ fun buf sort ->
   Buffer.add_string buf
     Mo_types.Type.(
       match sort.it with
@@ -241,7 +251,9 @@ let rec declaration_header :
       doc_comment ()
   | Class class_doc ->
       title buf lvl "";
-      plain_of_obj_sort buf class_doc.sort;
+      (match class_doc.sort.it with
+      | Type.Object -> ()
+      | _ -> plain_of_obj_sort_title buf class_doc.sort);
       bprintf buf "Class `%s" class_doc.name;
       plain_of_typ_binders buf plain_render_functions class_doc.type_args;
       bprintf buf "`\n";
@@ -256,7 +268,7 @@ let rec declaration_header :
       sep_by buf "\n" (plain_of_doc buf (lvl + 1)) class_doc.fields
   | Object obj_doc ->
       title buf lvl "";
-      plain_of_obj_sort buf obj_doc.sort;
+      plain_of_obj_sort_title buf obj_doc.sort;
       bprintf buf "`%s`\n" obj_doc.name;
       begin_block buf;
       plain_of_obj_sort buf obj_doc.sort;
