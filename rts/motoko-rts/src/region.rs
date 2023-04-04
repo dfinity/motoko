@@ -165,7 +165,10 @@ mod meta_data {
 
     /// Sizes of table entries, and tables.
     pub mod size {
-        pub const REGION_TABLE_ENTRY: u16 = 8;
+	// Region table entry:
+	// - 8 bytes for the size.
+	// - 4 bytes for future use (including GC visit-marking).
+        pub const REGION_TABLE_ENTRY: u16 = 12;
 
         pub const BLOCK_REGION_TABLE_ENTRY: u16 = 4;
 
