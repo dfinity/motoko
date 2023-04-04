@@ -305,8 +305,9 @@ func getCertificate() : ?Blob = (prim "getCertificate" : () -> ?Blob) ();
 func stableMemorySize() : Nat64 =
   (prim "stableMemorySize" : () -> Nat64) ();
 
-func stableMemoryRegion() : Region =
-  (prim "stableMemoryRegion" : () -> Region) ();
+// 20230404 -- Region0 cannot be exposed this way without more work elsewhere (serialization/deserialization of Region0 should avoid creating a "duplicate singleton" instance, which is semantically wrong).
+// func stableMemoryRegion() : Region =
+//  (prim "stableMemoryRegion" : () -> Region) ();
 
 func stableMemoryGrow(pages : Nat64) : Nat64 =
   (prim "stableMemoryGrow" : Nat64 -> Nat64) pages;
