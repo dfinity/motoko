@@ -434,6 +434,19 @@ impl PartitionedHeap {
         true
     }
 
+    #[cfg(debug_assertions)]
+    pub unsafe fn is_object_marked(&self, object: *mut Obj) -> bool {
+        let address = object as usize;
+        let partition_index = address / PARTITION_SIZE;
+        let partition = self.get_partition(partition_index);
+        if partition.has_large_content() {
+            return self.is_large_object_marked(object);
+        }
+        let bitmap = partition.get_bitmap();
+        let offset = address % PARTITION_SIZE;
+        bitmap.is_marked(offset)
+    }
+
     pub unsafe fn start_collection<M: Memory>(&mut self, mem: &mut M, time: &mut BoundedTime) {
         debug_assert_eq!(self.bitmap_pointer, 0);
         debug_assert!(!self.gc_running);
@@ -688,5 +701,11 @@ impl PartitionedHeap {
         let object_size = block_size(object as usize).to_bytes().as_usize();
         self.partitions[range.end - 1].marked_size = object_size % PARTITION_SIZE;
         true
+    }
+
+    #[cfg(debug_assertions)]
+    unsafe fn is_large_object_marked(&self, object: *mut Obj) -> bool {
+        let range = Self::occupied_partition_range(object);
+        self.partitions[range.start].marked_size > 0
     }
 }

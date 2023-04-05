@@ -102,13 +102,17 @@ impl MarkStack {
         table
     }
 
+    // Check that all the mark stack tables are unmarked, such that they can be collected as garbage.
     #[cfg(debug_assertions)]
-    pub unsafe fn assert_is_garbage(&self) {
+    pub unsafe fn assert_unmarked(&self, heap: &mut super::partitioned_heap::PartitionedHeap) {
+        use crate::types::Obj;
+
         let mut current = self.last;
         while (*current).previous != null_mut() {
             current = (*current).previous;
         }
         while current != null_mut() {
+            debug_assert!(!heap.is_object_marked(current as *mut Obj));
             current = (*current).next;
         }
     }

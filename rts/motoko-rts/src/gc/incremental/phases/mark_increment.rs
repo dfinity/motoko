@@ -129,6 +129,6 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
         *self.complete = true;
 
         #[cfg(debug_assertions)]
-        self.mark_stack.assert_is_garbage();
+        self.mark_stack.assert_unmarked(self.heap);
     }
 }
