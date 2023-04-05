@@ -329,8 +329,8 @@ pub struct PartitionedHeap {
     allocation_index: usize, // Index of the partition currently used for allocations.
     evacuating: bool,
     reclaimed: u64,
-    bitmap_pointer: usize, // Allocation pointer for mark bitmaps.
-    gc_running: bool,      // Create bitmaps for partitions whn allocated during active GC.
+    bitmap_allocation_pointer: usize, // Free pointer for allocation the next mark bitmap.
+    gc_running: bool, // Create bitmaps for partitions whn allocated during active GC.
 }
 
 /// Optimization: Avoiding `Option` or `LazyCell`.
@@ -340,7 +340,7 @@ pub const UNINITIALIZED_HEAP: PartitionedHeap = PartitionedHeap {
     allocation_index: 0,
     evacuating: false,
     reclaimed: 0,
-    bitmap_pointer: 0,
+    bitmap_allocation_pointer: 0,
     gc_running: false,
 };
 
@@ -372,7 +372,7 @@ impl PartitionedHeap {
             allocation_index,
             evacuating: false,
             reclaimed: 0,
-            bitmap_pointer: 0,
+            bitmap_allocation_pointer: 0,
             gc_running: false,
         }
     }
@@ -406,13 +406,13 @@ impl PartitionedHeap {
     }
 
     unsafe fn allocate_bitmap<M: Memory>(&mut self, mem: &mut M) -> *mut u8 {
-        if self.bitmap_pointer % PARTITION_SIZE == 0 {
+        if self.bitmap_allocation_pointer % PARTITION_SIZE == 0 {
             let partition = self.allocate_temporary_partition();
             mem.grow_memory(partition.end_address() as u64);
-            self.bitmap_pointer = partition.start_address();
+            self.bitmap_allocation_pointer = partition.start_address();
         }
-        let bitmap_address = self.bitmap_pointer as *mut u8;
-        self.bitmap_pointer += BITMAP_SIZE;
+        let bitmap_address = self.bitmap_allocation_pointer as *mut u8;
+        self.bitmap_allocation_pointer += BITMAP_SIZE;
         bitmap_address
     }
 
@@ -448,7 +448,7 @@ impl PartitionedHeap {
     }
 
     pub unsafe fn start_collection<M: Memory>(&mut self, mem: &mut M, time: &mut BoundedTime) {
-        debug_assert_eq!(self.bitmap_pointer, 0);
+        debug_assert_eq!(self.bitmap_allocation_pointer, 0);
         debug_assert!(!self.gc_running);
         self.gc_running = true;
         for partition_index in 0..MAX_PARTITIONS {
@@ -498,7 +498,7 @@ impl PartitionedHeap {
             }
         }
         self.evacuating = false;
-        self.bitmap_pointer = 0;
+        self.bitmap_allocation_pointer = 0;
         debug_assert!(self.gc_running);
         self.gc_running = false;
     }
