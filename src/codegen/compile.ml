@@ -7300,15 +7300,15 @@ module VarEnv = struct
   let add_local_const (ae : t) name ty at cv =
       { ae with vars = add_binding name ty at (Const cv : varloc) ae.vars }
 
-  <<<<<<< gabor/dwarf
-  let add_local_local env (ae : t) name ty srcloc i =
-      { ae with vars = add_binding name ty srcloc (Local i) ae.vars }
+  (*<<<<<<< gabor/dwarf*)
+  let add_local_local env (ae : t) name sr ty srcloc i =
+      { ae with vars = add_binding name ty srcloc (Local (sr, i)) ae.vars }
 
-  let add_direct_local env (ae : t) name ty srcloc =
-      let i = E.add_anon_local env I32Type in
+  let add_direct_local env (ae : t) name sr ty srcloc =
+      let i = E.add_anon_local env (SR.to_var_type sr) in
       E.add_local_name env i name;
-      (add_local_local env ae name ty srcloc i, i)
-  =======
+      (add_local_local env ae name sr ty srcloc i, i)
+  (*=======
   let add_local_local env (ae : t) name sr i =
       { ae with vars = NameEnv.add name (Local (sr, i)) ae.vars }
 
@@ -7316,7 +7316,7 @@ module VarEnv = struct
       let i = E.add_anon_local env (SR.to_var_type sr) in
       E.add_local_name env i name;
       (add_local_local env ae name sr i, i)
-  >>>>>>> master
+  >>>>>>> master*)
 
   (* Adds the names to the environment and returns a list of setters *)
   let rec add_arguments env (ae : t) at as_local = function
@@ -7325,15 +7325,15 @@ module VarEnv = struct
       if as_local name then
         let i = E.add_anon_local env I32Type in
         E.add_local_name env i name;
-  <<<<<<< gabor/dwarf
+  (*<<<<<<< gabor/dwarf*)
         (*let ae' = { ae with vars = NameEnv.add name (Local i) ae.vars } in*)
-        let ae' = { ae with vars = add_binding name ty at (Local i) ae.vars } in
+        let ae' = { ae with vars = add_binding name ty at (Local (SR.Vanilla, i)) ae.vars } in
         let ae_final, setters = add_arguments env ae' at as_local names_tys
         in ae_final, G.i (LocalSet (nr i)) :: setters
-  =======
+  (*=======
         let ae' = { ae with vars = NameEnv.add name (Local (SR.Vanilla, i)) ae.vars } in
         add_arguments env ae' as_local names
-  >>>>>>> master
+  >>>>>>> master*)
       else (* needs to go to static memory *)
         let ptr = MutBox.static env in
         let ae' = add_local_heap_static ae name ty at ptr in
@@ -7441,16 +7441,18 @@ module Var = struct
      and code to restore it, including adding to the environment
   *)
   let capture old_env ae0 var : G.t * (E.t -> VarEnv.t -> VarEnv.t * scope_wrap) =
-  <<<<<<< gabor/dwarf
+    (*<<<<<<< gabor/dwarf*)
     match VarEnv.lookup_var' ae0 var with
     | Some (Local i, ty, at) ->
       ( G.i (LocalGet (nr i))
       , fun new_env ae1 ->
-        let ae2, j = VarEnv.add_direct_local new_env ae1 var ty at in
+        (* we use SR.Vanilla in the restored environment. We could use sr;
+           like for parameters hard to predict what’s better *)
+        let ae2, j = VarEnv.add_direct_local new_env ae1 var SR.Vanilla ty at in
         let restore_code = G.i (LocalSet (nr j)) in
         let dw = G.dw_tag_no_children (Die.Variable (* FIXME: Constant? *) (var, at.left, ty, Int32.to_int j))
         in ae2, fun body -> restore_code ^^ dw ^^ body
-  =======
+  (*=======
     match VarEnv.lookup_var ae0 var with
     | Some (Local (sr, i)) ->
       ( G.i (LocalGet (nr i)) ^^ StackRep.adjust old_env sr SR.Vanilla
@@ -7460,7 +7462,7 @@ module Var = struct
         let ae2, j = VarEnv.add_direct_local new_env ae1 var SR.Vanilla in
         let restore_code = G.i (LocalSet (nr j))
         in ae2, fun body -> restore_code ^^ body
-  >>>>>>> master
+  >>>>>>> master*)
       )
     | Some (HeapInd i, ty, at) ->
       ( G.i (LocalGet (nr i))
@@ -7510,17 +7512,20 @@ end
 
 (* This comes late because it also deals with messages *)
 module FuncDec = struct
-<<<. <<<< gabor/dwarf
+  (*<<<<<<< gabor/dwarf*)
   let bind_args env ae0 first_arg :
         (VarEnv.NameEnv.key, Type.typ) annotated_phrase list -> VarEnv.t * G.t =
     let rec go ix ae dw = function
     | [] -> ae, dw
     | {it; at; note}::args ->
+      (* Function arguments are always vanilla, due to subtyping and uniform representation.
+         We keep them as such here for now. We _could_ always unpack those that can be unpacked
+         (Nat32 etc.). It is generally hard to predict which strategy is better. *)
       let ae' = VarEnv.add_local_local env ae it note at (Int32.of_int ix) in
       let dw' = G.dw_tag_no_children (Die.Formal_parameter (it, at.left, note, ix)) in
       go (ix + 1) ae' (dw ^^ dw') args in
     go first_arg ae0 G.nop
-  =======
+  (*=======
   let bind_args env ae0 first_arg args =
     let rec go i ae = function
     | [] -> ae
@@ -7531,7 +7536,7 @@ module FuncDec = struct
       let ae' = VarEnv.add_local_local env ae a.it SR.Vanilla (Int32.of_int i) in
       go (i+1) ae' args in
     go first_arg ae0 args
-  >>>>>>> master
+  >>>>>>> master*)
 
   (* Create a WebAssembly func from a pattern (for the argument) and the body.
    Parameter `captured` should contain the, well, captured local variables that
