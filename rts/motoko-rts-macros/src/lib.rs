@@ -138,7 +138,7 @@ pub fn ic_mem_fn(attr: TokenStream, input: TokenStream) -> TokenStream {
 }
 
 /// Feature macro for incremental GC features, in particular forwarding pointers.
-/// Equivalenyt to using the attribute `#[cfg(feature = "incremental_gc")]`.
+/// Equivalent to using the attribute `#[cfg(feature = "incremental_gc")]`.
 #[proc_macro_attribute]
 pub fn incremental_gc(attr: TokenStream, input: TokenStream) -> TokenStream {
     assert!(attr.is_empty());
