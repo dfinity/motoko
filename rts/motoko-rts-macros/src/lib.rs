@@ -151,7 +151,7 @@ pub fn incremental_gc(attr: TokenStream, input: TokenStream) -> TokenStream {
 }
 
 /// Feature macro for non-incremental GC features, in particular forwarding pointers.
-/// Equivalenyt to using the attribute `#[cfg(not(feature = "incremental_gc"))]`.
+/// Equivalent to using the attribute `#[cfg(not(feature = "incremental_gc"))]`.
 #[proc_macro_attribute]
 pub fn non_incremental_gc(attr: TokenStream, input: TokenStream) -> TokenStream {
     assert!(attr.is_empty());
