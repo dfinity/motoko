@@ -395,7 +395,7 @@ impl PartitionedHeap {
 
     unsafe fn allocate_temporary_partition(&mut self) -> &mut Partition {
         for partition in &mut self.partitions {
-            if partition.free && partition.is_completely_free() {
+            if partition.is_completely_free() {
                 debug_assert_eq!(partition.dynamic_size, 0);
                 partition.free = false;
                 partition.temporary = true;
