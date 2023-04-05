@@ -616,6 +616,7 @@ impl PartitionedHeap {
             partition.large_content = true;
             debug_assert_eq!(partition.static_size, 0);
             debug_assert_eq!(partition.dynamic_size, 0);
+            debug_assert_eq!(partition.marked_size, 0);
             if index == last_index {
                 partition.dynamic_size = size - (number_of_partitions - 1) * PARTITION_SIZE;
 
