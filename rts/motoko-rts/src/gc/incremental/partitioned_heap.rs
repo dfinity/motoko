@@ -461,15 +461,6 @@ impl PartitionedHeap {
                 time.advance(Bytes(BITMAP_SIZE as u32).to_words().as_usize());
             }
         }
-        // GC heuristics to decide whether the new objects in the currrent allocation partition
-        // should be collectable by opening a new allocation partition. This is a tradeoff between
-        // allocating a new partition and retaining young objects in the current GC run.
-        // Threshold obtained by GC benchmark measurements.
-        const OCCUPATION_THRESHOLD: usize = PARTITION_SIZE / 2;
-        if self.allocation_partition().dynamic_size > OCCUPATION_THRESHOLD {
-            // Allow reclaiming objects in current allocation partition.
-            self.start_new_allocation_partition(mem);
-        }
     }
 
     pub fn plan_evacuations(&mut self) {
@@ -581,10 +572,6 @@ impl PartitionedHeap {
         } else {
             self.allocate_in_new_partition(mem, size)
         }
-    }
-
-    pub unsafe fn start_new_allocation_partition<M: Memory>(&mut self, mem: &mut M) {
-        self.allocate_in_new_partition(mem, 0);
     }
 
     // Significant performance gain by not inlining.
