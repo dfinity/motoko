@@ -630,16 +630,15 @@ impl PartitionedHeap {
     }
 
     unsafe fn find_large_space(&self, number_of_partitions: usize) -> usize {
+        let mut start_of_free_range = 0;
         for index in 0..MAX_PARTITIONS {
-            let mut count = 0;
-            while count < number_of_partitions
-                && index + count < MAX_PARTITIONS
-                && self.get_partition(index + count).is_completely_free()
-            {
-                count += 1;
-            }
-            if count == number_of_partitions {
-                return index;
+            // Invariant: [start_of_free_range .. index) contains only free partitions.
+            if self.get_partition(index).is_completely_free() {
+                if index + 1 - start_of_free_range >= number_of_partitions {
+                    return start_of_free_range;
+                }
+            } else {
+                start_of_free_range = index + 1;
             }
         }
         rts_trap_with("Cannot grow memory");
