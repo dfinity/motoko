@@ -1,5 +1,7 @@
 # Motoko compiler changelog
 
+## 0.8.7 (2023-04-06)
+
 * motoko (`moc`)
 
   * bugfix: crash compiling local async functions that pattern match on arguments (#3910, #3916).
