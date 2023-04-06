@@ -867,6 +867,10 @@ let rec check_exp env (exp:Ir.exp) : unit =
       check e1.note.Note.const "constant DotPrim on non-constant subexpression"
     | PrimE (ProjPrim _, [e1]) ->
       check e1.note.Note.const "constant ProjPrim on non-constant subexpression"
+    | PrimE (OptPrim, [e1]) ->
+      check e1.note.Note.const "constant OptPrim with non-constant subexpression"
+    | PrimE (TagPrim _, [e1]) ->
+      check e1.note.Note.const "constant TagPrim with non-constant subexpression"
     | BlockE (ds, e) ->
       List.iter (fun d -> match d.it with
         | VarD _ | RefD _ -> check false "VarD/RefD in constant BlockE"

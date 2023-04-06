@@ -294,6 +294,7 @@
     <dec_var>
     <dec_nonvar>
     <exp_nondec>
+    'let' <pat> '=' <exp> 'else' <exp_nest>
 
 <func_body> ::= 
     '=' <exp>

@@ -494,8 +494,6 @@ rec {
       run        = test_subdir "run"        [ moc ] ;
       run-dbg    = snty_subdir "run"        [ moc ] ;
       ic-ref-run = test_subdir "run-drun"   [ moc ic-ref-run ];
-      ic-ref-run-compacting-gc = compacting_gc_subdir "run-drun" [ moc ic-ref-run ] ;
-      ic-ref-run-generational-gc = generational_gc_subdir "run-drun" [ moc ic-ref-run ] ;
       drun       = test_subdir "run-drun"   [ moc nixpkgs.drun ];
       drun-dbg   = snty_subdir "run-drun"   [ moc nixpkgs.drun ];
       drun-compacting-gc = snty_compacting_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
@@ -535,7 +533,7 @@ rec {
           nixpkgs.ocamlPackages.js_of_ocaml
           nixpkgs.ocamlPackages.js_of_ocaml-ppx
           nixpkgs.nodejs-16_x
-          nixpkgs.nodePackages.uglify-js
+          nixpkgs.nodePackages.terser
         ];
         buildPhase = ''
           patchShebangs .
@@ -543,7 +541,7 @@ rec {
           ./rts/gen.sh ${rts}/rts/
           '' + ''
           make DUNE_OPTS="--profile=release" ${n}.js
-          uglifyjs ${n}.js -o ${n}.min.js -c -m
+          terser ${n}.js -o ${n}.min.js -c -m
         '';
         installPhase = ''
           mkdir -p $out

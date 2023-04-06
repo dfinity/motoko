@@ -100,7 +100,18 @@ module Const = struct
     | Word64 of int64
     | Float64 of Numerics.Float.t
     | Blob of string
+    | Null
 
+  let lit_eq = function
+    | Vanilla i, Vanilla j -> i = j
+    | BigInt i, BigInt j -> Big_int.eq_big_int i j
+    | Word32 i, Word32 j -> i = j
+    | Word64 i, Word64 j -> i = j
+    | Float64 i, Float64 j -> i = j
+    | Bool i, Bool j -> i = j
+    | Blob s, Blob t -> s = t
+    | Null, Null -> true
+    | _ -> false
 
   (* Inlineable functions
 
@@ -138,6 +149,8 @@ module Const = struct
     | Obj of (string * t) list
     | Unit
     | Array of t list (* also tuples, but not nullary *)
+    | Tag of (string * t)
+    | Opt of t
     | Lit of lit
 
   (* A constant known value together with a vanilla pointer.
@@ -423,7 +436,7 @@ module E = struct
 
   let export_global env name =
     add_export env (nr {
-      name = Wasm.Utf8.decode name;
+      name = Lib.Utf8.decode name;
       edesc = nr (GlobalExport (nr (get_global env name)))
     })
 
@@ -480,8 +493,8 @@ module E = struct
       raise (CodegenError "Add all imports before all functions!");
 
     let i = {
-      module_name = Wasm.Utf8.decode modname;
-      item_name = Wasm.Utf8.decode funcname;
+      module_name = Lib.Utf8.decode modname;
+      item_name = Lib.Utf8.decode funcname;
       idesc = nr (FuncImport (nr (func_type env (FuncType (arg_tys, ret_tys)))))
     } in
     let fi = reg env.func_imports (nr i) in
@@ -766,6 +779,13 @@ module FakeMultiVal = struct
   (* A drop-in replacement for E.if_ *)
   let if_ env bt thn els =
     E.if_ env (ty bt) (thn ^^ store env bt) (els ^^ store env bt) ^^
+    load env bt
+
+  (* A block that can be exited from *)
+  let block_ env bt body =
+    E.block_ env (ty bt) (G.with_current_depth (fun depth ->
+      body (store env bt ^^ G.branch_to_ depth)
+    )) ^^
     load env bt
 
 end (* FakeMultiVal *)
@@ -1132,7 +1152,7 @@ module Heap = struct
     )) in
 
     E.add_export env (nr {
-      name = Wasm.Utf8.decode "get_heap_base";
+      name = Lib.Utf8.decode "get_heap_base";
       edesc = nr (FuncExport (nr get_heap_base_fn))
     })
 
@@ -1670,7 +1690,13 @@ module Opt = struct
   let null_lit env =
     compile_unboxed_const (null_vanilla_lit env)
 
-  let is_some env =
+  let vanilla_lit env ptr : int32 =
+    E.add_static env StaticBytes.[
+      I32 Tagged.(int_of_tag Some);
+      I32 ptr
+    ]
+
+ let is_some env =
     null_lit env ^^
     G.i (Compare (Wasm.Values.I32 I32Op.Ne))
 
@@ -1684,10 +1710,7 @@ module Opt = struct
           [ Tagged.Null,
             (* NB: even ?null does not require allocation: We use a static
                singleton for that: *)
-            compile_unboxed_const (E.add_static env StaticBytes.[
-              I32 Tagged.(int_of_tag Some);
-              I32 (null_vanilla_lit env)
-            ])
+            compile_unboxed_const (vanilla_lit env (null_vanilla_lit env))
           ; Tagged.Some,
             Tagged.obj env Tagged.Some [get_x]
           ]
@@ -1697,7 +1720,6 @@ module Opt = struct
   (* This function is used where conceptually, Opt.inject should be used, but
   we know for sure that it wouldn’t do anything anyways *)
   let inject_noop _env e = e
-
 
   let project env =
     Func.share_code1 env "opt_project" ("x", I32Type) [I32Type] (fun env get_x ->
@@ -1742,6 +1764,13 @@ module Variant = struct
   let test_is env l =
     get_variant_tag ^^
     compile_eq_const (hash_variant_label env l)
+
+  let vanilla_lit env i ptr =
+    E.add_static env StaticBytes.[
+        I32 Tagged.(int_of_tag Variant);
+        I32 (hash_variant_label env i);
+        I32 ptr
+      ]
 
 end (* Variant *)
 
@@ -3324,6 +3353,12 @@ module Blob = struct
   let len_field = Int32.add Tagged.header_size 0l
 
   let len env = Heap.load_field len_field
+  let len_nat env =
+    Func.share_code1 env "blob_len" ("text", I32Type) [I32Type] (fun env get ->
+      get ^^
+      len env ^^
+      BigNum.from_word32 env
+    )
 
   let vanilla_lit env s =
     E.add_static env StaticBytes.[
@@ -3512,8 +3547,12 @@ module Text = struct
     E.call_import env "rts" "text_size"
   let to_buf env =
     E.call_import env "rts" "text_to_buf"
-  let len env =
-    E.call_import env "rts" "text_len" ^^ BigNum.from_word32 env
+  let len_nat env =
+    Func.share_code1 env "text_len" ("text", I32Type) [I32Type] (fun env get ->
+      get ^^
+      E.call_import env "rts" "text_len" ^^
+      BigNum.from_word32 env
+    )
   let prim_showChar env =
     TaggedSmallWord.untag_codepoint ^^
     E.call_import env "rts" "text_singleton"
@@ -3575,6 +3614,17 @@ module Arr = struct
 
   (* Static array access. No checking *)
   let load_field n = Heap.load_field Int32.(add n header_size)
+
+  (* Dynamic array access. Returns the address (not the value) of the field.
+     Does no bounds checking *)
+  let unsafe_idx env =
+    Func.share_code2 env "Array.unsafe_idx" (("array", I32Type), ("idx", I32Type)) [I32Type] (fun env get_array get_idx ->
+      get_idx ^^
+      compile_add_const header_size ^^
+      compile_mul_const element_size ^^
+      get_array ^^
+      G.i (Binary (Wasm.Values.I32 I32Op.Add))
+    )
 
   (* Dynamic array access. Returns the address (not the value) of the field.
      Does bounds checking *)
@@ -3718,7 +3768,7 @@ module Arr = struct
       get_len ^^ alloc env ^^ set_r ^^
 
       get_len ^^ from_0_to_n env (fun get_i ->
-        get_r ^^ get_i ^^ idx env ^^
+        get_r ^^ get_i ^^ unsafe_idx env ^^
         get_blob ^^ Blob.payload_ptr_unskewed ^^
         get_i ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
         G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.(Pack8, ZX)}) ^^
@@ -3741,7 +3791,7 @@ module Arr = struct
       get_len ^^ from_0_to_n env (fun get_i ->
         get_r ^^ Blob.payload_ptr_unskewed ^^
         get_i ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-        get_a ^^ get_i ^^ idx env ^^
+        get_a ^^ get_i ^^ unsafe_idx env ^^
         load_ptr ^^
         TaggedSmallWord.lsb_adjust Type.Nat8 ^^
         G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.Pack8})
@@ -4023,7 +4073,7 @@ module IC = struct
           end);
 
       E.add_export env (nr {
-        name = Wasm.Utf8.decode "print_ptr";
+        name = Lib.Utf8.decode "print_ptr";
         edesc = nr (FuncExport (nr (E.built_in env "print_ptr")))
       })
 
@@ -4067,7 +4117,7 @@ module IC = struct
   let default_exports env =
     (* these exports seem to be wanted by the hypervisor/v8 *)
     E.add_export env (nr {
-      name = Wasm.Utf8.decode (
+      name = Lib.Utf8.decode (
         match E.mode env with
         | Flags.WASIMode -> "memory"
         | _  -> "mem"
@@ -4075,7 +4125,7 @@ module IC = struct
       edesc = nr (MemoryExport (nr 0l))
     });
     E.add_export env (nr {
-      name = Wasm.Utf8.decode "table";
+      name = Lib.Utf8.decode "table";
       edesc = nr (TableExport (nr 0l))
     })
 
@@ -4091,7 +4141,7 @@ module IC = struct
     ) in
     let fi = E.add_fun env "canister_init" empty_f in
     E.add_export env (nr {
-      name = Wasm.Utf8.decode "canister_init";
+      name = Lib.Utf8.decode "canister_init";
       edesc = nr (FuncExport (nr fi))
       })
 
@@ -4107,7 +4157,7 @@ module IC = struct
         GC.record_mutator_instructions env (* future: GC.collect_garbage env *)))
     in
     E.add_export env (nr {
-      name = Wasm.Utf8.decode "canister_heartbeat";
+      name = Lib.Utf8.decode "canister_heartbeat";
       edesc = nr (FuncExport (nr fi))
     })
 
@@ -4124,7 +4174,7 @@ module IC = struct
         GC.record_mutator_instructions env (* future: GC.collect_garbage env *)))
     in
     E.add_export env (nr {
-      name = Wasm.Utf8.decode "canister_global_timer";
+      name = Lib.Utf8.decode "canister_global_timer";
       edesc = nr (FuncExport (nr fi))
     })
 
@@ -4137,7 +4187,7 @@ module IC = struct
         (* no need to GC !*)))
     in
     E.add_export env (nr {
-      name = Wasm.Utf8.decode "canister_inspect_message";
+      name = Lib.Utf8.decode "canister_inspect_message";
       edesc = nr (FuncExport (nr fi))
     })
 
@@ -4149,7 +4199,7 @@ module IC = struct
       Lifecycle.trans env Lifecycle.Idle
     )) in
     E.add_export env (nr {
-      name = Wasm.Utf8.decode "_start";
+      name = Lib.Utf8.decode "_start";
       edesc = nr (FuncExport (nr fi))
       })
 
@@ -4179,12 +4229,12 @@ module IC = struct
     )) in
 
     E.add_export env (nr {
-      name = Wasm.Utf8.decode "canister_pre_upgrade";
+      name = Lib.Utf8.decode "canister_pre_upgrade";
       edesc = nr (FuncExport (nr pre_upgrade_fi))
     });
 
     E.add_export env (nr {
-      name = Wasm.Utf8.decode "canister_post_upgrade";
+      name = Lib.Utf8.decode "canister_post_upgrade";
       edesc = nr (FuncExport (nr post_upgrade_fi))
     })
 
@@ -4403,17 +4453,26 @@ module Cycles = struct
 
   let from_word128_ptr env = Func.share_code1 env "from_word128_ptr" ("ptr", I32Type) [I32Type]
     (fun env get_ptr ->
-      get_ptr ^^
-      (G.i (Load {ty = I64Type; align = 0; offset = 0l; sz = None })) ^^
-      BigNum.from_word64 env ^^
-      get_ptr ^^
-      compile_add_const 8l ^^
-      (G.i (Load {ty = I64Type; align = 0; offset = 0l; sz = None })) ^^
-      BigNum.from_word64 env ^^
-      (* shift left 64 bits *)
-      compile_unboxed_const 64l ^^
-      BigNum.compile_lsh env ^^
-      BigNum.compile_add env)
+     let set_lower, get_lower = new_local env "lower" in
+     get_ptr ^^
+     G.i (Load {ty = I64Type; align = 0; offset = 0l; sz = None }) ^^
+     BigNum.from_word64 env ^^
+     set_lower ^^
+     get_ptr ^^
+     G.i (Load {ty = I64Type; align = 0; offset = 8l; sz = None }) ^^
+     G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
+     G.if1 I32Type
+       get_lower
+       begin
+         get_lower ^^
+         get_ptr ^^
+         G.i (Load {ty = I64Type; align = 0; offset = 8l; sz = None }) ^^
+         BigNum.from_word64 env ^^
+         (* shift left 64 bits *)
+         compile_unboxed_const 64l ^^
+         BigNum.compile_lsh env ^^
+         BigNum.compile_add env
+       end)
 
   (* takes a bignum from the stack, traps if ≥2^128, and leaves two 64bit words on the stack *)
   (* only used twice, so ok to not use share_code1; that would require I64Type support in FakeMultiVal *)
@@ -4799,7 +4858,7 @@ module RTS_Exports = struct
       )
     ) in
     E.add_export env (nr {
-      name = Wasm.Utf8.decode "bigint_trap";
+      name = Lib.Utf8.decode "bigint_trap";
       edesc = nr (FuncExport (nr bigint_trap_fi))
     });
 
@@ -4811,7 +4870,7 @@ module RTS_Exports = struct
       )
     ) in
     E.add_export env (nr {
-      name = Wasm.Utf8.decode "rts_trap";
+      name = Lib.Utf8.decode "rts_trap";
       edesc = nr (FuncExport (nr rts_trap_fi))
     });
 
@@ -4825,7 +4884,7 @@ module RTS_Exports = struct
           )
       else E.reuse_import env "ic0" "stable64_write" in
     E.add_export env (nr {
-      name = Wasm.Utf8.decode "stable64_write_moc";
+      name = Lib.Utf8.decode "stable64_write_moc";
       edesc = nr (FuncExport (nr stable64_write_moc_fi))
     })
 
@@ -5370,7 +5429,7 @@ module MakeSerialization (Strm : Stream) = struct
         size_word env (get_x ^^ Heap.load_field Arr.len_field) ^^
         get_x ^^ Heap.load_field Arr.len_field ^^
         from_0_to_n env (fun get_i ->
-          get_x ^^ get_i ^^ Arr.idx env ^^ load_ptr ^^
+          get_x ^^ get_i ^^ Arr.unsafe_idx env ^^ load_ptr ^^
           size env t
         )
       | Prim Blob ->
@@ -5529,7 +5588,7 @@ module MakeSerialization (Strm : Stream) = struct
         write_word_leb env get_data_buf (get_x ^^ Heap.load_field Arr.len_field) ^^
         get_x ^^ Heap.load_field Arr.len_field ^^
         from_0_to_n env (fun get_i ->
-          get_x ^^ get_i ^^ Arr.idx env ^^ load_ptr ^^
+          get_x ^^ get_i ^^ Arr.unsafe_idx env ^^ load_ptr ^^
           write env t
         )
       | Prim Null -> G.nop
@@ -6120,7 +6179,7 @@ module MakeSerialization (Strm : Stream) = struct
           get_len ^^ Arr.alloc env ^^ set_x ^^
           on_alloc get_x ^^
           get_len ^^ from_0_to_n env (fun get_i ->
-            get_x ^^ get_i ^^ Arr.idx env ^^
+            get_x ^^ get_i ^^ Arr.unsafe_idx env ^^
             get_arg_typ ^^ go env t ^^ set_val ^^
             remember_failure get_val ^^
             get_val ^^ store_ptr
@@ -6135,7 +6194,7 @@ module MakeSerialization (Strm : Stream) = struct
         ReadBuf.read_leb128 env get_data_buf ^^ set_len ^^
         get_len ^^ Arr.alloc env ^^ set_x ^^
         get_len ^^ from_0_to_n env (fun get_i ->
-          get_x ^^ get_i ^^ Arr.idx env ^^
+          get_x ^^ get_i ^^ Arr.unsafe_idx env ^^
           get_arg_typ ^^ go env t ^^ set_val ^^
           remember_failure get_val ^^
           get_val ^^ store_ptr
@@ -6988,7 +7047,7 @@ module GCRoots = struct
     )) in
 
     E.add_export env (nr {
-      name = Wasm.Utf8.decode "get_static_roots";
+      name = Lib.Utf8.decode "get_static_roots";
       edesc = nr (FuncExport (nr get_static_roots))
     })
 
@@ -7067,6 +7126,8 @@ module StackRep = struct
       Printf.eprintf "Invalid stack rep join (%s, %s)\n"
         (to_string sr1) (to_string sr2); sr1
 
+  let joins = List.fold_left join Unreachable
+
   let drop env (sr_in : t) =
     match sr_in with
     | Vanilla | UnboxedWord64 | UnboxedWord32 | UnboxedFloat64 -> G.i Drop
@@ -7078,13 +7139,14 @@ module StackRep = struct
   *)
   let materialize_lit env (lit : Const.lit) : int32 =
     match lit with
-      | Const.Vanilla n  -> n
-      | Const.Bool n     -> Bool.vanilla_lit n
-      | Const.BigInt n   -> BigNum.vanilla_lit env n
-      | Const.Word32 n   -> BoxedSmallWord.vanilla_lit env n
-      | Const.Word64 n   -> BoxedWord64.vanilla_lit env n
-      | Const.Float64 f  -> Float.vanilla_lit env f
-      | Const.Blob t     -> Blob.vanilla_lit env t
+    | Const.Vanilla n  -> n
+    | Const.Bool n     -> Bool.vanilla_lit n
+    | Const.BigInt n   -> BigNum.vanilla_lit env n
+    | Const.Word32 n   -> BoxedSmallWord.vanilla_lit env n
+    | Const.Word64 n   -> BoxedWord64.vanilla_lit env n
+    | Const.Float64 f  -> Float.vanilla_lit env f
+    | Const.Blob t     -> Blob.vanilla_lit env t
+    | Const.Null       -> Opt.null_vanilla_lit env
 
   let rec materialize_const_t env (p, cv) : int32 =
     Lib.Promise.lazy_value p (fun () -> materialize_const_v env cv)
@@ -7099,7 +7161,18 @@ module StackRep = struct
     | Const.Array cs ->
       let ptrs = List.map (materialize_const_t env) cs in
       Arr.vanilla_lit env ptrs
+    | Const.Tag (i, c) ->
+      let ptr = materialize_const_t env c in
+      Variant.vanilla_lit env i ptr
     | Const.Lit l -> materialize_lit env l
+    | Const.Opt c ->
+      let rec kernel = Const.(function
+        | (_, Lit Null) -> None
+        | (_, Opt c) -> kernel c
+        | (_, other) -> Some (materialize_const_v env other)) in
+      match kernel c with
+      | Some ptr -> ptr
+      | None -> Opt.vanilla_lit env (materialize_const_t env c)
 
   let adjust env (sr_in : t) sr_out =
     if eq sr_in sr_out
@@ -7826,7 +7899,7 @@ module FuncDec = struct
 
       let fi = E.built_in env name in
       E.add_export env (nr {
-        name = Wasm.Utf8.decode ("canister_update " ^ name);
+        name = Lib.Utf8.decode ("canister_update " ^ name);
         edesc = nr (FuncExport (nr fi))
       })
     | _ -> ()
@@ -7842,13 +7915,15 @@ module PatCode = struct
   jump-label for the fail case. But many patterns cannot fail, in particular
   function arguments that are simple variables. In these cases, we do not want
   to create the block and the (unused) jump label. So we first generate the
-  code, either as plain code (CannotFail) or as code with hole for code to fun
+  code, either as plain code (CannotFail) or as code with hole for code to run
   in case of failure (CanFail).
   *)
 
   type patternCode =
     | CannotFail of G.t
     | CanFail of (G.t -> G.t)
+
+  let definiteFail = CanFail (fun fail -> fail)
 
   let (^^^) : patternCode -> patternCode -> patternCode = function
     | CannotFail is1 ->
@@ -7882,7 +7957,16 @@ module PatCode = struct
           G.if0 G.nop is2
         )
 
-  let orTrap env = with_fail (E.trap_with env "pattern failed")
+  let orElses : patternCode list -> patternCode -> patternCode =
+    List.fold_right orElse
+
+  let patternFailTrap env = E.trap_with env "pattern failed"
+
+  let orPatternFailure env pcode =
+    with_fail (patternFailTrap env) pcode
+
+  let orsPatternFailure env pcodes =
+    orPatternFailure env (orElses pcodes definiteFail)
 
   let with_region at = function
     | CannotFail is -> CannotFail (G.with_region at is)
@@ -8087,7 +8171,7 @@ let nat64_to_int64 n =
   then sub_big_int n (power_int_positive_int 2 64)
   else n
 
-let const_lit_of_lit env : Ir.lit -> Const.lit = function
+let const_lit_of_lit : Ir.lit -> Const.lit = function
   | BoolLit b     -> Const.Bool b
   | IntLit n
   | NatLit n      -> Const.BigInt (Numerics.Nat.to_big_int n)
@@ -8100,21 +8184,20 @@ let const_lit_of_lit env : Ir.lit -> Const.lit = function
   | Int64Lit n    -> Const.Word64 (Big_int.int64_of_big_int (Numerics.Int_64.to_big_int n))
   | Nat64Lit n    -> Const.Word64 (Big_int.int64_of_big_int (nat64_to_int64 (Numerics.Nat64.to_big_int n)))
   | CharLit c     -> Const.Vanilla Int32.(shift_left (of_int c) 8)
-  | NullLit       -> Const.Vanilla (Opt.null_vanilla_lit env)
+  | NullLit       -> Const.Null
   | TextLit t
   | BlobLit t     -> Const.Blob t
   | FloatLit f    -> Const.Float64 f
 
-let const_of_lit env lit =
-  Const.t_of_v (Const.Lit (const_lit_of_lit env lit))
+let const_of_lit lit =
+  Const.t_of_v (Const.Lit (const_lit_of_lit lit))
 
-let compile_lit env lit =
-  SR.Const (const_of_lit env lit), G.nop
+let compile_lit lit =
+  SR.Const (const_of_lit lit), G.nop
 
 let compile_lit_as env sr_out lit =
-  let sr_in, code = compile_lit env lit in
+  let sr_in, code = compile_lit lit in
   code ^^ StackRep.adjust env sr_in sr_out
-
 
 (* helper, traps with message *)
 let then_arithmetic_overflow env =
@@ -8721,16 +8804,18 @@ let compile_load_field env typ name =
 
 
 (* compile_lexp is used for expressions on the left of an assignment operator.
-   Produces some preparation code, an expected stack rep, and some pure code taking the value in that rep*)
-let rec compile_lexp (env : E.t) ae lexp =
+   Produces
+   * preparation code, to run first
+   * an expected stack rep
+   * code that expects the value to be written in that stackrep, and consumes it
+*)
+let rec compile_lexp (env : E.t) ae lexp : G.t * SR.t * G.t =
   (fun (code, sr, fill_code) -> G.(with_region lexp.at code, sr, with_region lexp.at fill_code)) @@
   match lexp.it, !Flags.gc_strategy with
   | VarLE var, _ -> Var.set_val env ae var
   | IdxLE (e1, e2), Flags.Generational ->
     let (set_field, get_field) = new_local env "field" in
-    compile_exp_vanilla env ae e1 ^^ (* offset to array *)
-    compile_exp_vanilla env ae e2 ^^ (* idx *)
-    Arr.idx_bigint env ^^
+    compile_array_index env ae e1 e2 ^^
     set_field ^^ (* peepholes to tee *)
     get_field,
     SR.Vanilla,
@@ -8739,9 +8824,7 @@ let rec compile_lexp (env : E.t) ae lexp =
     compile_add_const ptr_unskew ^^
     E.call_import env "rts" "write_barrier"
   | IdxLE (e1, e2), _ ->
-    compile_exp_vanilla env ae e1 ^^ (* offset to array *)
-    compile_exp_vanilla env ae e2 ^^ (* idx *)
-    Arr.idx_bigint env,
+    compile_array_index env ae e1 e2,
     SR.Vanilla,
     store_ptr
   | DotLE (e, n), Flags.Generational ->
@@ -8761,6 +8844,14 @@ let rec compile_lexp (env : E.t) ae lexp =
     Object.idx env e.note.Note.typ n,
     SR.Vanilla,
     store_ptr
+
+(* Common code for a[e] as lexp and as exp.
+Traps or pushes the pointer to the element on the stack
+*)
+and compile_array_index env ae e1 e2 =
+    compile_exp_vanilla env ae e1 ^^ (* offset to array *)
+    compile_exp_vanilla env ae e2 ^^ (* idx *)
+    Arr.idx_bigint env
 
 and compile_prim_invocation (env : E.t) ae p es at =
   (* for more concise code when all arguments and result use the same sr *)
@@ -8907,9 +8998,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     Arr.lit env (List.map (compile_exp_vanilla env ae) es)
   | IdxPrim, [e1; e2] ->
     SR.Vanilla,
-    compile_exp_vanilla env ae e1 ^^ (* offset to array *)
-    compile_exp_vanilla env ae e2 ^^ (* idx *)
-    Arr.idx_bigint env ^^
+    compile_array_index env ae e1 e2 ^^
     load_ptr
   | NextArrayOffset spacing, [e] ->
     let advance_by =
@@ -9170,7 +9259,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     BigNum.from_word30 env
 
   | OtherPrim "text_len", [e] ->
-    SR.Vanilla, compile_exp_vanilla env ae e ^^ Text.len env
+    SR.Vanilla, compile_exp_vanilla env ae e ^^ Text.len_nat env
   | OtherPrim "text_iter", [e] ->
     SR.Vanilla, compile_exp_vanilla env ae e ^^ Text.iter env
   | OtherPrim "text_iter_done", [e] ->
@@ -9185,7 +9274,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     TaggedSmallWord.msb_adjust Type.Int8
 
   | OtherPrim "blob_size", [e] ->
-    SR.Vanilla, compile_exp_vanilla env ae e ^^ Blob.len env ^^ BigNum.from_word32 env
+    SR.Vanilla, compile_exp_vanilla env ae e ^^ Blob.len_nat env
   | OtherPrim "blob_vals_iter", [e] ->
     SR.Vanilla, compile_exp_vanilla env ae e ^^ Blob.iter env
   | OtherPrim "blob_iter_done", [e] ->
@@ -9454,7 +9543,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     IC.performance_counter env
 
   | OtherPrim "trap", [e] ->
-    SR.unit,
+    SR.Unreachable,
     compile_exp_vanilla env ae e ^^
     IC.trap_text env
 
@@ -9708,7 +9797,17 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | _ -> SR.Unreachable, todo_trap env "compile_prim_invocation" (Arrange_ir.prim p)
   end
 
+(* Compile, infer and return stack representation *)
 and compile_exp (env : E.t) ae exp =
+  compile_exp_with_hint env ae None exp
+
+(* Compile to given stack representation *)
+and compile_exp_as env ae sr_out e =
+  let sr_in, code = compile_exp_with_hint env ae (Some sr_out) e in
+  code ^^ StackRep.adjust env sr_in sr_out
+
+(* Compile, infer and return stack representation, taking the hint into account *)
+and compile_exp_with_hint (env : E.t) ae sr_hint exp =
   (fun (sr,code) -> (sr, G.with_region exp.at code)) @@
   if exp.note.Note.const
   then let (c, fill) = compile_const_exp env ae exp in fill env ae; (SR.Const c, G.nop)
@@ -9731,12 +9830,16 @@ and compile_exp (env : E.t) ae exp =
     compile_exp_as env ae sr e2 ^^
     store_code
   | LitE l ->
-    compile_lit env l
+    compile_lit l
   | IfE (scrut, e1, e2) ->
     let code_scrut = compile_exp_as_test env ae scrut in
-    let sr1, code1 = compile_exp env ae e1 in
-    let sr2, code2 = compile_exp env ae e2 in
-    let sr = StackRep.join sr1 sr2 in
+    let sr1, code1 = compile_exp_with_hint env ae sr_hint e1 in
+    let sr2, code2 = compile_exp_with_hint env ae sr_hint e2 in
+    (* Use the expected stackrep, if given, else infer from the branches *)
+    let sr = match sr_hint with
+      | Some sr -> sr
+      | None -> StackRep.join sr1 sr2
+    in
     sr,
     code_scrut ^^
     FakeMultiVal.if_ env
@@ -9746,7 +9849,7 @@ and compile_exp (env : E.t) ae exp =
   | BlockE (decs, exp) ->
     let captured = Freevars.captured_vars (Freevars.exp exp) in
     let ae', codeW1 = compile_decs env ae decs captured in
-    let (sr, code2) = compile_exp env ae' exp in
+    let (sr, code2) = compile_exp_with_hint env ae' sr_hint exp in
     (sr, codeW1 code2)
   | LabelE (name, _ty, e) ->
     (* The value here can come from many places -- the expression,
@@ -9768,21 +9871,32 @@ and compile_exp (env : E.t) ae exp =
     ^^
    G.i Unreachable
   | SwitchE (e, cs) ->
-    SR.Vanilla,
     let code1 = compile_exp_vanilla env ae e in
     let (set_i, get_i) = new_local env "switch_in" in
-    let (set_j, get_j) = new_local env "switch_out" in
 
-    let rec go env cs = match cs with
-      | [] -> CanFail (fun k -> k)
-      | {it={pat; exp=e}; _}::cs ->
-          let (ae1, code) = compile_pat_local env ae pat in
-          orElse ( CannotFail get_i ^^^ code ^^^
-                   CannotFail (compile_exp_vanilla env ae1 e) ^^^ CannotFail set_j)
-                 (go env cs)
-          in
-      let code2 = go env cs in
-      code1 ^^ set_i ^^ orTrap env code2 ^^ get_j
+    (* compile subexpressions and collect the provided stack reps *)
+    let codes = List.map (fun {it={pat; exp=e}; _} ->
+      let (ae1, pat_code) = compile_pat_local env ae pat in
+      let (sr, rhs_code) = compile_exp_with_hint env ae1 sr_hint e in
+      (sr, CannotFail get_i ^^^ pat_code ^^^ CannotFail rhs_code)
+      ) cs in
+
+    (* Use the expected stackrep, if given, else infer from the branches *)
+    let final_sr = match sr_hint with
+      | Some sr -> sr
+      | None -> StackRep.joins (List.map fst codes)
+    in
+
+    final_sr,
+    (* Run scrut *)
+    code1 ^^ set_i ^^
+    (* Run rest in block to exit from *)
+    FakeMultiVal.block_ env (StackRep.to_block_type env final_sr) (fun branch_code ->
+       orsPatternFailure env (List.map (fun (sr, c) ->
+          c ^^^ CannotFail (StackRep.adjust env sr final_sr ^^ branch_code)
+       ) codes) ^^
+       G.i Unreachable (* We should always exit using the branch_code *)
+    )
   (* Async-wait lowering support features *)
   | DeclareE (name, _, e) ->
     let (ae1, i) = VarEnv.add_local_with_heap_ind env ae name in
@@ -9843,27 +9957,12 @@ and compile_exp (env : E.t) ae exp =
     Object.lit_raw env fs'
   | _ -> SR.unit, todo_trap env "compile_exp" (Arrange_ir.exp exp)
 
-and compile_exp_as env ae sr_out e =
-  G.with_region e.at (
-    match sr_out, e.it with
-    (* Some optimizations for certain sr_out and expressions *)
-    | _ , BlockE (decs, exp) ->
-      let captured = Freevars.captured_vars (Freevars.exp exp) in
-      let ae', codeW1 = compile_decs env ae decs captured in
-      let code2 = compile_exp_as env ae' sr_out exp in
-      codeW1 code2
-    (* Fallback to whatever stackrep compile_exp chooses *)
-    | _ ->
-      let sr_in, code = compile_exp env ae e in
-      code ^^ StackRep.adjust env sr_in sr_out
-  )
-
 and compile_exp_ignore env ae e =
   let sr, code = compile_exp env ae e in
   code ^^ StackRep.drop env sr
 
 and compile_exp_as_opt env ae sr_out_o e =
-  let sr_in, code = compile_exp env ae e in
+  let sr_in, code = compile_exp_with_hint env ae sr_out_o e in
   G.with_region e.at (
     code ^^
     match sr_out_o with
@@ -10063,28 +10162,32 @@ and alloc_pat env ae how pat : VarEnv.t * G.t  =
 and compile_pat_local env ae pat : VarEnv.t * patternCode =
   (* It returns:
      - the extended environment
-     - the code to do the pattern matching.
+     - the patternCode to do the pattern matching.
        This expects the  undestructed value is on top of the stack,
-       consumes it, and fills the heap
-       If the pattern does not match, it branches to the depth at fail_depth.
+       consumes it, and fills the heap.
+       If the pattern matches, execution continues (with nothing on the stack).
+       If the pattern does not match, it fails (in the sense of PatCode.CanFail)
   *)
   let ae1 = alloc_pat_local env ae pat in
   let fill_code = fill_pat env ae1 pat in
   (ae1, fill_code)
 
-(* Used for let patterns: If the pattern can consume its scrutinee in a better form
-   than vanilla (e.g. unboxed tuple, unboxed 32/64), lets do that.
+(* Used for let patterns:
+   If the pattern can consume its scrutinee in a better form than vanilla (e.g.
+   unboxed tuple, unboxed 32/64), lets do that.
 *)
-and compile_unboxed_pat env ae how pat =
+and compile_unboxed_pat env ae how pat
+  : VarEnv.t * G.t * G.t * SR.t option * G.t =
   (* It returns:
      - the extended environment
      - the code to allocate memory
      - the code to prepare the stack (e.g. push destination addresses)
-     - the desired stack rep
+       before the scrutinee is pushed
+     - the desired stack rep. None means: Do not even push the scrutinee.
      - the code to do the pattern matching.
        This expects the undestructed value is on top of the stack,
        consumes it, and fills the heap
-       If the pattern does not match, it branches to the depth at fail_depth.
+       If the pattern does not match, it traps with pattern failure
   *)
   let (ae1, alloc_code) = alloc_pat env ae how pat in
   let pre_code, sr, fill_code = match pat.it with
@@ -10097,7 +10200,7 @@ and compile_unboxed_pat env ae how pat =
       (* We have to fill the pattern in reverse order, to take things off the
          stack. This is only ok as long as patterns have no side effects.
       *)
-      G.concat_mapi (fun i p -> orTrap env (fill_pat env ae1 p)) (List.rev ps)
+      G.concat_mapi (fun i p -> orPatternFailure env (fill_pat env ae1 p)) (List.rev ps)
     (* Variable patterns *)
     | VarP name ->
       let pre_code, sr, code = Var.set_val env ae1 name in
@@ -10106,7 +10209,7 @@ and compile_unboxed_pat env ae how pat =
     | _ ->
       G.nop,
       Some SR.Vanilla,
-      orTrap env (fill_pat env ae1 pat) in
+      orPatternFailure env (fill_pat env ae1 pat) in
   let pre_code = G.with_region pat.at pre_code in
   let fill_code = G.with_region pat.at fill_code in
   (ae1, alloc_code, pre_code, sr, fill_code)
@@ -10115,6 +10218,7 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
   (fun (pre_ae, alloc_code, mk_code, wrap) ->
        G.(pre_ae, with_region dec.at alloc_code, fun ae body_code ->
           with_region dec.at (mk_code ae) ^^ wrap body_code)) @@
+
   match dec.it with
   (* A special case for public methods *)
   (* This relies on the fact that in the top-level mutually recursive group, no shadowing happens. *)
@@ -10127,9 +10231,13 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
     G.( pre_ae1, nop, (fun ae -> fill env ae; nop), unmodified)
 
   (* A special case for constant expressions *)
-  | LetD (p, e) when Ir_utils.is_irrefutable p && e.note.Note.const ->
-    let extend, fill = compile_const_dec env pre_ae dec in
-    G.( extend pre_ae, nop, (fun ae -> fill env ae; nop), unmodified)
+  | LetD (p, e) when e.note.Note.const ->
+    (* constant expression matching with patterns is fully decidable *)
+    if const_exp_matches_pat env pre_ae p e then (* not refuted *)
+      let extend, fill = compile_const_dec env pre_ae dec in
+      G.(extend pre_ae, nop, (fun ae -> fill env ae; nop), unmodified)
+    else (* refuted *)
+      (pre_ae, G.nop, (fun _ -> PatCode.patternFailTrap env), unmodified)
 
   | LetD (p, e) ->
     let (pre_ae1, alloc_code, pre_code, sr, fill_code) = compile_unboxed_pat env pre_ae how p in
@@ -10256,13 +10364,21 @@ and compile_const_exp env pre_ae exp : Const.t * (E.t -> VarEnv.t -> unit) =
       | _, Const.Array cs -> cs
       | _ -> fatal "compile_const_exp/ProjE: not a static tuple" in
     (List.nth cs i, fill)
-  | LitE l -> Const.(t_of_v (Lit (const_lit_of_lit env l))), (fun _ _ -> ())
+  | LitE l -> Const.(t_of_v (Lit (const_lit_of_lit l))), (fun _ _ -> ())
   | PrimE (TupPrim, []) -> Const.t_of_v Const.Unit, (fun _ _ -> ())
   | PrimE (ArrayPrim (Const, _), es)
   | PrimE (TupPrim, es) ->
     let (cs, fills) = List.split (List.map (compile_const_exp env pre_ae) es) in
-    Const.t_of_v (Const.Array cs),
+    Const.(t_of_v (Array cs)),
     (fun env ae -> List.iter (fun fill -> fill env ae) fills)
+  | PrimE (TagPrim i, [e]) ->
+    let (arg_ct, fill) = compile_const_exp env pre_ae e in
+    Const.(t_of_v (Tag (i, arg_ct))),
+    fill
+  | PrimE (OptPrim, [e]) ->
+    let (arg_ct, fill) = compile_const_exp env pre_ae e in
+    Const.(t_of_v (Opt arg_ct)),
+    fill
 
   | _ -> assert false
 
@@ -10278,23 +10394,48 @@ and compile_const_decs env pre_ae decs : (VarEnv.t -> VarEnv.t) * (E.t -> VarEnv
         (fun env ae -> fill1 env ae; fill2 env ae) in
   go pre_ae decs
 
-and destruct_const_pat ae pat const : VarEnv.t = match pat.it with
-  | WildP -> ae
-  | VarP v -> VarEnv.add_local_const ae v const
+and const_exp_matches_pat env ae pat exp : bool =
+  assert exp.note.Note.const;
+  let c, _ = compile_const_exp env ae exp in
+  match destruct_const_pat VarEnv.empty_ae pat c with Some _ -> true | _ -> false
+
+and destruct_const_pat ae pat const : VarEnv.t option = match pat.it with
+  | WildP -> Some ae
+  | VarP v -> Some (VarEnv.add_local_const ae v const)
   | ObjP pfs ->
     let fs = match const with (_, Const.Obj fs) -> fs | _ -> assert false in
     List.fold_left (fun ae (pf : pat_field) ->
-      match List.find_opt (fun (n, _) -> pf.it.name = n) fs with
-      | Some (_, c) -> destruct_const_pat ae pf.it.pat c
-      | None -> assert false
-    ) ae pfs
-  | AltP (p1, p2) -> destruct_const_pat ae p1 const
+      match ae, List.find_opt (fun (n, _) -> pf.it.name = n) fs with
+      | None, _ -> None
+      | Some ae, Some (_, c) -> destruct_const_pat ae pf.it.pat c
+      | _, None -> assert false
+    ) (Some ae) pfs
+  | AltP (p1, p2) ->
+    let l = destruct_const_pat ae p1 const in
+    if l = None then destruct_const_pat ae p2 const
+    else l
   | TupP ps ->
-    let cs = match const with (_ , Const.Array cs) -> cs | (_, Const.Unit) -> [] | _ -> assert false in
-    List.fold_left2 destruct_const_pat ae ps cs
-  | LitP _ -> raise (Invalid_argument "LitP in static irrefutable pattern")
-  | OptP _ -> raise (Invalid_argument "OptP in static irrefutable pattern")
-  | TagP _ -> raise (Invalid_argument "TagP in static irrefutable pattern")
+    let cs = match const with (_, Const.Array cs) -> cs | (_, Const.Unit) -> [] | _ -> assert false in
+    let go ae p c = match ae with
+      | Some ae -> destruct_const_pat ae p c
+      | _ -> None in
+    List.fold_left2 go (Some ae) ps cs
+  | LitP lp ->
+    begin match const with
+    | (_, Const.Lit lc) when Const.lit_eq (const_lit_of_lit lp, lc) -> Some ae
+    | _ -> None
+    end
+  | OptP p ->
+    begin match const with
+      | (_, Const.Opt c) -> destruct_const_pat ae p c
+      | (_, Const.(Lit Null)) -> None
+      | _ -> assert false
+    end
+  | TagP (i, p) ->
+     match const with
+     | (_, Const.Tag (ic, c)) when i = ic -> destruct_const_pat ae p c
+     | (_, Const.Tag _) -> None
+     | _ -> assert false
 
 and compile_const_dec env pre_ae dec : (VarEnv.t -> VarEnv.t) * (E.t -> VarEnv.t -> unit) =
   (* This returns a _function_ to extend the VarEnv, instead of doing it, because
@@ -10305,7 +10446,7 @@ and compile_const_dec env pre_ae dec : (VarEnv.t -> VarEnv.t) * (E.t -> VarEnv.t
   (* This should only contain constants (cf. is_const_exp) *)
   | LetD (p, e) ->
     let (const, fill) = compile_const_exp env pre_ae e in
-    (fun ae -> destruct_const_pat ae p const),
+    (fun ae -> match destruct_const_pat ae p const with Some ae -> ae | _ -> assert false),
     (fun env ae -> fill env ae)
   | VarD _ | RefD _ -> fatal "compile_const_dec: Unexpected VarD/RefD"
 
@@ -10333,7 +10474,7 @@ and export_actor_field env  ae (f : Ir.field) =
     | _ -> assert false in
 
   E.add_export env (nr {
-    name = Wasm.Utf8.decode (match E.mode env with
+    name = Lib.Utf8.decode (match E.mode env with
       | Flags.ICMode | Flags.RefMode ->
         Mo_types.Type.(
         match normalize f.note with
