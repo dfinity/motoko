@@ -1,5 +1,17 @@
 # Motoko compiler changelog
 
+* motoko (`moc`)
+
+  * bugfix: crash compiling local async functions that pattern match on arguments (#3910, #3916).
+
+## 0.8.6 (2023-04-01)
+
+* motoko (`moc`)
+
+  * bugfix: avoid compiler crash (regression) when `let`-matching on constant variants (#3901, #3903).
+
+  * Performance improvement: improved cycle usage when receiving messages (#3893).
+
 ## 0.8.5 (2023-03-20)
 
 * motoko (`moc`)
