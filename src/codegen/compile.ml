@@ -7597,18 +7597,17 @@ module FuncDec = struct
          IC.reply_with_data env
        else G.nop) ^^
       (* Deserialize argument and add params to the environment *)
-  <<<<<<< gabor/dwarf
+  (*<<<<<<< gabor/dwarf
       let arg_names_tys = List.map (fun a -> a.it, a.note) args in
       let ae1, setters = VarEnv.add_argument_locals env ae0 at arg_names_tys in
       Serialization.deserialize env (List.map snd arg_names_tys) ^^
       G.concat (List.rev setters) ^^
-  =======
-      let arg_names = List.map (fun a -> a.it) args in
-      let arg_tys = List.map (fun a -> a.note) args in
-      let ae1 = VarEnv.add_argument_locals env ae0 arg_names in
-      Serialization.deserialize env arg_tys ^^
-      G.concat_map (Var.set_val_vanilla_from_stack env ae1) (List.rev arg_names) ^^
-  >>>>>>> master
+  =======*)
+      let arg_names_tys = List.map (fun a -> a.it, a.note) args in
+      let ae1 = VarEnv.add_argument_locals env ae0 at arg_names_tys in
+      Serialization.deserialize env (List.map snd arg_names_tys) ^^
+      G.concat_map (Var.set_val_vanilla_from_stack env ae1) (List.map fst arg_names_tys) ^^
+        (*>>>>>>> master*)
       mk_body env ae1 ^^
       message_cleanup env sort
     ))
@@ -8924,7 +8923,7 @@ let rec compile_lexp (env : E.t) ae lexp : G.t * SR.t * G.t =
     SR.Vanilla,
     store_ptr
 
-  <<<<<<< gabor/dwarf
+  (*<<<<<<< gabor/dwarf
 and compile_exp (env : E.t) ae exp =
   let opportunity = function
     | VarE _ | LitE _ -> G.nop (* trivially evaluated things don't warrant a debugger stop *)
@@ -8940,7 +8939,7 @@ and compile_exp (env : E.t) ae exp =
     SR.Unreachable,
     G.concat_map (compile_exp_ignore env ae) es ^^
     G.i Unreachable
-  =======
+  =======*)
 (* Common code for a[e] as lexp and as exp.
 Traps or pushes the pointer to the element on the stack
 *)
@@ -8962,7 +8961,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
       | Type.Returns -> List.length ret_tys
       | Type.Replies -> 0
       | Type.Promises -> assert false in
-  >>>>>>> master
+    (*>>>>>>> master*)
 
     let fun_sr, code1 = compile_exp env ae e1 in
 
@@ -9969,7 +9968,7 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
   | SwitchE (e, cs) ->
     let code1 = compile_exp_vanilla env ae e in
     let (set_i, get_i) = new_local env "switch_in" in
-  <<<<<<< gabor/dwarf
+  (*<<<<<<< gabor/dwarf
     let (set_j, get_j) = new_local env "switch_out" in
 
     let rec go env dw_ty0 = function
@@ -9989,7 +9988,7 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
           in
       let dw_ty, code2 = go env G.nop cs in
       dw_ty ^^ G.dw_statement e.at ^^ code1 ^^ set_i ^^ orTrap env code2 ^^ get_j
-  =======
+  =======*)
 
     (* compile subexpressions and collect the provided stack reps *)
     let codes = List.map (fun {it={pat; exp=e}; _} ->
@@ -10014,7 +10013,7 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
        ) codes) ^^
        G.i Unreachable (* We should always exit using the branch_code *)
     )
-  >>>>>>> master
+  (*>>>>>>> master*)
   (* Async-wait lowering support features *)
   | DeclareE (name, _, e) ->
     let ae1, i = VarEnv.add_local_with_heap_ind env ae name exp.note.Ir_def.Note.typ exp.at in
@@ -10319,7 +10318,7 @@ and compile_unboxed_pat env ae how pat
   (* It returns:
      - the extended environment
      - the code to allocate memory
-  <<<<<<< gabor/dwarf
+  (*<<<<<<< gabor/dwarf
      - the arity
      - the code to do the pattern matching:
        This expects the  undestructed value is on top of the stack,
@@ -10331,7 +10330,7 @@ and compile_unboxed_pat env ae how pat
   let arity, fill_code =
     (fun (sr, code) -> sr, G.with_region pat.at code) @@
     match pat.it with
-  =======
+      =======*) (*
      - the code to prepare the stack (e.g. push destination addresses)
        before the scrutinee is pushed
      - the desired stack rep. None means: Do not even push the scrutinee.
@@ -10342,7 +10341,7 @@ and compile_unboxed_pat env ae how pat
   *)
   let (ae1, alloc_code) = alloc_pat env ae how pat in
   let pre_code, sr, fill_code = match pat.it with
-  >>>>>>> master
+    (*>>>>>>> master*)
     (* Nothing to match: Do not even put something on the stack *)
     | WildP -> G.nop, None, G.nop
     (* Tuple patterns *)
@@ -10383,7 +10382,7 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
     G.(pre_ae1, nop, (fun ae -> fill env ae; nop), unmodified)
 
   (* A special case for constant expressions *)
-  <<<<<<< gabor/dwarf
+  (*<<<<<<< gabor/dwarf
   | LetD (p, e) when Ir_utils.is_irrefutable p && e.note.Note.const ->
     let extend, fill = compile_const_dec env pre_ae dec in
     G.(extend pre_ae, nop, (fun ae -> fill env ae; nop), unmodified)
@@ -10393,7 +10392,7 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
     ( pre_ae1, alloc_code,
       (fun ae -> G.dw_statement dec.at ^^ compile_exp_as_opt env ae pat_arity e ^^ fill_code),
       fun body -> G.dw_tag (Die.LexicalBlock dec.at.left) (dw ^^ body)
-  =======
+  =======*)
   | LetD (p, e) when e.note.Note.const ->
     (* constant expression matching with patterns is fully decidable *)
     if const_exp_matches_pat env pre_ae p e then (* not refuted *)
@@ -10407,14 +10406,14 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
     ( pre_ae1, alloc_code,
       (fun ae -> pre_code ^^ compile_exp_as_opt env ae sr e ^^ fill_code),
       unmodified
-  >>>>>>> master
+    (*>>>>>>> master*)
     )
 
   | VarD (name, _, e) ->
     assert AllocHow.(match M.find_opt name how with
                      | Some (LocalMut _ | StoreHeap | StoreStatic) -> true
                      | _ -> false);
-  <<<<<<< gabor/dwarf
+  (*<<<<<<< gabor/dwarf
       let pre_ae1, alloc_code, dw = AllocHow.add_local env pre_ae how name e.note.Note.typ dec.at in
 
       ( pre_ae1,
@@ -10422,7 +10421,7 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
         (fun ae -> G.dw_statement dec.at ^^ compile_exp_vanilla env ae e ^^ Var.set_val env ae name),
         fun body_code -> G.dw_tag (Die.LexicalBlock dec.at.left) (dw ^^ body_code)
       )
-  =======
+  =======*)
     let pre_ae1, alloc_code = AllocHow.add_local env pre_ae how name in
     ( pre_ae1,
       alloc_code,
@@ -10443,7 +10442,7 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
       unmodified
     )
   | RefD _ -> assert false
-  >>>>>>> master
+(*>>>>>>> master*)
 
 and compile_decs_public env pre_ae decs v2en captured_in_body : VarEnv.t * scope_wrap =
   let how = AllocHow.decs pre_ae decs captured_in_body in
@@ -10471,7 +10470,7 @@ and compile_decs env ae decs captured_in_body : VarEnv.t * scope_wrap =
 and compile_const_exp env pre_ae exp : Const.t * (E.t -> VarEnv.t -> unit) =
   match exp.it with
   | FuncE (name, sort, control, typ_binds, args, res_tys, e) ->
-  <<<<<<< gabor/dwarf
+  (*<<<<<<< gabor/dwarf
       let return_tys = match control with
         | Type.Returns -> res_tys
         | Type.Replies -> []
@@ -10483,7 +10482,7 @@ and compile_const_exp env pre_ae exp : Const.t * (E.t -> VarEnv.t -> unit) =
         ) (Freevars.M.keys (Freevars.exp e));
         G.dw_statement e.at ^^ compile_exp_as env ae (StackRep.of_arity (List.length return_tys)) e in
       FuncDec.closed env sort control name args mk_body return_tys exp.at
-  =======
+  =======*)
     let fun_rhs =
 
       (* a few prims cannot be safely inlined *)
@@ -10514,7 +10513,7 @@ and compile_const_exp env pre_ae exp : Const.t * (E.t -> VarEnv.t -> unit) =
       ) (Freevars.M.keys (Freevars.exp e));
       compile_exp_as env ae (StackRep.of_arity (List.length return_tys)) e in
     FuncDec.closed env sort control name args mk_body fun_rhs return_tys exp.at
-  >>>>>>> master
+  (*>>>>>>> master*)
   | BlockE (decs, e) ->
     let (extend, fill1) = compile_const_decs env pre_ae decs in
     let ae' = extend pre_ae in
