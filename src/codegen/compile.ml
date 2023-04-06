@@ -10230,7 +10230,7 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
     )
   (* Async-wait lowering support features *)
   | DeclareE (name, typ, e) ->
-    let (ae1, i) = VarEnv.add_local_with_heap_ind env ae name typ in
+    let ae1, i = VarEnv.add_local_with_heap_ind env ae name typ in
     let sr, code = compile_exp env ae1 e in
     sr,
     MutBox.alloc env ^^ G.i (LocalSet (nr i)) ^^
