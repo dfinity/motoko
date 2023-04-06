@@ -6,7 +6,7 @@ Note: If `moc` is invoked with `-no-timer`, the importing will fail.
 
 Note: The resolution of the timers is in the order of the block rate,
       so durations should be chosen well above that. For frequent
-      canister wake-ups the heatbeat mechanism should be considered.
+      canister wake-ups the heartbeat mechanism should be considered.
 
 Note: Below functionality is active only if the user doesn't explicitly
       implement `system func timer`.
