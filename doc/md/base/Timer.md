@@ -21,6 +21,9 @@ Note: Basing security (e.g. access control) on timers is almost always
       to consider reentrancy issues, and the vanishing of timers on upgrades
       and reinstalls.
 
+Note: For further usage information for timers on the IC please consult
+      https://internetcomputer.org/docs/current/developer-docs/backend/periodic-tasks#timers-library-limitations
+
 ## Type `Duration`
 ``` motoko no-repl
 type Duration = {#seconds : Nat; #nanoseconds : Nat}
