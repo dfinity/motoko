@@ -8,7 +8,6 @@ Note: The resolution of the timers is in the order of the block rate,
       so durations should be chosen well above that. For frequent
       canister wake-ups the heartbeat mechanism should be considered.
 
-
 Note: The functionality described below is enabled only when the actor does not override it by declaring an explicit `system func timer`.
 
 Note: Timers are _not_ persisted across upgrades. One possible strategy
@@ -18,7 +17,9 @@ Note: Timers are _not_ persisted across upgrades. One possible strategy
 
 Note: Basing security (e.g. access control) on timers is almost always
       the wrong choice. Be sure to inform yourself about state-of-the art
-      dApp security.
+      dApp security. If you _must use_ timers for security controls, be sure
+      to consider reentrancy issues, and the vanishing of timers on upgrades
+      and reinstalls.
 
 ## Type `Duration`
 ``` motoko no-repl
