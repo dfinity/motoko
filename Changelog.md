@@ -4,7 +4,11 @@
 
 * motoko (`moc`)
 
-  * bugfix: crash compiling local async functions that pattern match on arguments (#3910, #3916).
+  * Added ability to `mo-doc` for rendering documentation of nested modules (#3918).
+
+  * bugfix: when re-adding recurrent timers, skip over past expirations (#3871).
+
+  * bugfix: eliminated crash compiling local `async` functions that pattern match on arguments (#3910, #3916).
 
 ## 0.8.6 (2023-04-01)
 
