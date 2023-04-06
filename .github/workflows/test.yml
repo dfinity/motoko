@@ -30,6 +30,10 @@ jobs:
     # until https://github.com/cachix/cachix-action/issues/86 is fixed:
     - run: cachix watch-store ic-hs-test &
 
+    - name: Enable core dump
+      if: runner.os == 'Linux' 
+      run: echo 'core.%e.%p' | sudo tee /proc/sys/kernel/core_pattern
+
     - run: nix-env -iA nix-build-uncached -f nix/
 
     - name: "nix-build"
