@@ -100,8 +100,9 @@ pub struct BitmapIterator {
     bitmap_pointer: *mut u8,
     /// Index of next bit to continue iteration in the bitmap.
     /// Invariant during (initialzed and unfinished):
-    /// `lsb(current_word) == (next_bit_index - 1) % size_of::<u64>()`.
-    /// with `lsb` meaning "least significant bit".
+    /// `lsb(current_word) == bitmap.bit(next_bit_index - 1)`.
+    /// with `lsb` meaning "least significant bit" and `bitmap.bit()`
+    /// reading the corresponding bit in the bitmap.
     /// Sentinel: `BITMAP_ITERATION_END` if the iteration is finished.
     next_bit_index: usize,
     /// Current 64-bit word in the bitmap that we are iterating.

@@ -15,6 +15,7 @@ impl BoundedTime {
     }
 
     pub fn advance(&mut self, amount: usize) {
+        debug_assert!(amount > 0);
         self.steps = usize::saturating_add(self.steps, amount);
     }
 

@@ -6,7 +6,8 @@ actor a {
   public func go() : async () {
     await ping();
     let s0 = Prim.rts_heap_size();
-    let length = 4 * 1024 * 1024;
+    // Large enough size to use new allocation partition for the incremental GC.
+    let length = 8 * 1024 * 1024;
     var a = Prim.Array_init<()>(length, ());
     // discard bigger array a
     a := Prim.Array_init<()>(0, ());
@@ -28,7 +29,7 @@ actor a {
     // Checks that GC correctly discards or retains the arrays.
     // Using --forced-gc and allowing young collection for generational GC.
     // It allows for some wiggle room
-    let reserve = 1024;
+    let reserve = 9_000;
     assert (+s1-s0 < reserve);
     assert (+s2-s0 > 4 * +length - reserve);
   };

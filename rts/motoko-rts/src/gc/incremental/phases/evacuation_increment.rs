@@ -92,7 +92,7 @@ impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
         // Determined by measurements in comparison to the mark and update phases.
         const TIME_FRACTION_PER_WORD: f64 = 2.7;
         self.time
-            .advance((size.as_usize() as f64 / TIME_FRACTION_PER_WORD) as usize);
+            .advance(1 + (size.as_usize() as f64 / TIME_FRACTION_PER_WORD) as usize);
 
         #[cfg(feature = "memory_check")]
         Self::clear_object_content(original);

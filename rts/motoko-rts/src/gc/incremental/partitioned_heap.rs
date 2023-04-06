@@ -329,8 +329,8 @@ pub struct PartitionedHeap {
     allocation_index: usize, // Index of the partition currently used for allocations.
     evacuating: bool,
     reclaimed: u64,
-    bitmap_pointer: usize, // Allocation pointer for mark bitmaps.
-    gc_running: bool,      // Create bitmaps for partitions whn allocated during active GC.
+    bitmap_allocation_pointer: usize, // Free pointer for allocation the next mark bitmap.
+    gc_running: bool, // Create bitmaps for partitions whn allocated during active GC.
 }
 
 /// Optimization: Avoiding `Option` or `LazyCell`.
@@ -340,7 +340,7 @@ pub const UNINITIALIZED_HEAP: PartitionedHeap = PartitionedHeap {
     allocation_index: 0,
     evacuating: false,
     reclaimed: 0,
-    bitmap_pointer: 0,
+    bitmap_allocation_pointer: 0,
     gc_running: false,
 };
 
@@ -372,7 +372,7 @@ impl PartitionedHeap {
             allocation_index,
             evacuating: false,
             reclaimed: 0,
-            bitmap_pointer: 0,
+            bitmap_allocation_pointer: 0,
             gc_running: false,
         }
     }
@@ -395,7 +395,7 @@ impl PartitionedHeap {
 
     unsafe fn allocate_temporary_partition(&mut self) -> &mut Partition {
         for partition in &mut self.partitions {
-            if partition.free && partition.is_completely_free() {
+            if partition.is_completely_free() {
                 debug_assert_eq!(partition.dynamic_size, 0);
                 partition.free = false;
                 partition.temporary = true;
@@ -406,13 +406,13 @@ impl PartitionedHeap {
     }
 
     unsafe fn allocate_bitmap<M: Memory>(&mut self, mem: &mut M) -> *mut u8 {
-        if self.bitmap_pointer % PARTITION_SIZE == 0 {
+        if self.bitmap_allocation_pointer % PARTITION_SIZE == 0 {
             let partition = self.allocate_temporary_partition();
             mem.grow_memory(partition.end_address() as u64);
-            self.bitmap_pointer = partition.start_address();
+            self.bitmap_allocation_pointer = partition.start_address();
         }
-        let bitmap_address = self.bitmap_pointer as *mut u8;
-        self.bitmap_pointer += BITMAP_SIZE;
+        let bitmap_address = self.bitmap_allocation_pointer as *mut u8;
+        self.bitmap_allocation_pointer += BITMAP_SIZE;
         bitmap_address
     }
 
@@ -434,8 +434,21 @@ impl PartitionedHeap {
         true
     }
 
+    #[cfg(debug_assertions)]
+    pub unsafe fn is_object_marked(&self, object: *mut Obj) -> bool {
+        let address = object as usize;
+        let partition_index = address / PARTITION_SIZE;
+        let partition = self.get_partition(partition_index);
+        if partition.has_large_content() {
+            return self.is_large_object_marked(object);
+        }
+        let bitmap = partition.get_bitmap();
+        let offset = address % PARTITION_SIZE;
+        bitmap.is_marked(offset)
+    }
+
     pub unsafe fn start_collection<M: Memory>(&mut self, mem: &mut M, time: &mut BoundedTime) {
-        debug_assert_eq!(self.bitmap_pointer, 0);
+        debug_assert_eq!(self.bitmap_allocation_pointer, 0);
         debug_assert!(!self.gc_running);
         self.gc_running = true;
         for partition_index in 0..MAX_PARTITIONS {
@@ -447,10 +460,6 @@ impl PartitionedHeap {
                     .assign(bitmap_address);
                 time.advance(Bytes(BITMAP_SIZE as u32).to_words().as_usize());
             }
-        }
-        if self.allocation_partition().dynamic_size > PARTITION_SIZE / 2 {
-            // Allow reclaiming objects in current allocation partition.
-            self.start_new_allocation_partition(mem);
         }
     }
 
@@ -489,7 +498,7 @@ impl PartitionedHeap {
             }
         }
         self.evacuating = false;
-        self.bitmap_pointer = 0;
+        self.bitmap_allocation_pointer = 0;
         debug_assert!(self.gc_running);
         self.gc_running = false;
     }
@@ -565,10 +574,6 @@ impl PartitionedHeap {
         }
     }
 
-    pub unsafe fn start_new_allocation_partition<M: Memory>(&mut self, mem: &mut M) {
-        self.allocate_in_new_partition(mem, 0);
-    }
-
     // Significant performance gain by not inlining.
     #[inline(never)]
     unsafe fn allocate_in_new_partition<M: Memory>(&mut self, mem: &mut M, size: usize) -> Value {
@@ -603,6 +608,7 @@ impl PartitionedHeap {
             partition.large_content = true;
             debug_assert_eq!(partition.static_size, 0);
             debug_assert_eq!(partition.dynamic_size, 0);
+            debug_assert_eq!(partition.marked_size, 0);
             if index == last_index {
                 partition.dynamic_size = size - (number_of_partitions - 1) * PARTITION_SIZE;
 
@@ -617,16 +623,15 @@ impl PartitionedHeap {
     }
 
     unsafe fn find_large_space(&self, number_of_partitions: usize) -> usize {
+        let mut start_of_free_range = 0;
         for index in 0..MAX_PARTITIONS {
-            let mut count = 0;
-            while count < number_of_partitions
-                && index + count < MAX_PARTITIONS
-                && self.get_partition(index + count).is_completely_free()
-            {
-                count += 1;
-            }
-            if count == number_of_partitions {
-                return index;
+            // Invariant: [start_of_free_range .. index) contains only free partitions.
+            if self.get_partition(index).is_completely_free() {
+                if index + 1 - start_of_free_range >= number_of_partitions {
+                    return start_of_free_range;
+                }
+            } else {
+                start_of_free_range = index + 1;
             }
         }
         rts_trap_with("Cannot grow memory");
@@ -688,5 +693,11 @@ impl PartitionedHeap {
         let object_size = block_size(object as usize).to_bytes().as_usize();
         self.partitions[range.end - 1].marked_size = object_size % PARTITION_SIZE;
         true
+    }
+
+    #[cfg(debug_assertions)]
+    unsafe fn is_large_object_marked(&self, object: *mut Obj) -> bool {
+        let range = Self::occupied_partition_range(object);
+        self.partitions[range.start].marked_size > 0
     }
 }
