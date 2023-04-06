@@ -8453,7 +8453,7 @@ module AllocHow = struct
       let ae1, _ = VarEnv.add_direct_local env ae name sr typ in
       (ae1, G.nop)
     | StoreHeap ->
-      let (ae1, i) = VarEnv.add_local_with_heap_ind env ae name typ in
+      let ae1, i = VarEnv.add_local_with_heap_ind env ae name typ in
       let alloc_code = MutBox.alloc env ^^ G.i (LocalSet (nr i)) in
       (ae1, alloc_code)
     | StoreStatic ->
