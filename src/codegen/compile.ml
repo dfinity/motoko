@@ -7681,15 +7681,15 @@ type scope_wrap = G.t -> G.t
 
 let unmodified : scope_wrap = fun code -> code
 
+let rec can_be_pointer typ nested_optional =     
+  Type.(match normalize typ with
+  | Mut t -> (can_be_pointer t nested_optional)  
+  | Opt t -> (if nested_optional then true else (can_be_pointer t true))
+  | Prim (Null| Bool | Char | Nat8 | Nat16 | Int8 | Int16) | Non | Tup [] -> false
+  | _ -> true) 
+  
 let potential_pointer typ : bool = 
   (* must not eliminate nested optional types as they refer to a heap object for ??null, ???null etc. *)
-  let rec can_be_pointer typ nested_optional = 
-    
-    Type.(match normalize typ with
-    | Mut t -> (can_be_pointer t nested_optional)
-    | Opt t -> (if nested_optional then true else (can_be_pointer t true))
-    | Prim (Null| Bool | Char | Nat8 | Nat16 | Int8 | Int16) | Non | Tup [] -> false
-    | _ -> true) in
   can_be_pointer typ false
   
 module Var = struct
@@ -8486,14 +8486,13 @@ module AllocHow = struct
   (* find the allocHow for the variables currently in scope *)
   (* we assume things are mutable, as we do not know better here *)
   let how_of_ae ae : allocHow = 
-    let locations = M.map (fun (l, _) -> l) ae.VarEnv.vars in 
-    M.map (function
+    M.map (fun (l, _) -> match l with
     | VarEnv.Const _        -> (Const : how)
     | VarEnv.HeapStatic _   -> StoreStatic
     | VarEnv.HeapInd _      -> StoreHeap
     | VarEnv.Local (sr, _)  -> LocalMut sr (* conservatively assume mutable *)
     | VarEnv.PublicMethod _ -> LocalMut SR.Vanilla
-    ) locations
+    ) ae.VarEnv.vars
 
   let decs (ae : VarEnv.t) decs captured_in_body : allocHow =
     let lvl = ae.VarEnv.lvl in
@@ -8516,10 +8515,10 @@ module AllocHow = struct
     match M.find name how with
     | (Const : how) -> (ae, G.nop)
     | LocalImmut sr | LocalMut sr ->
-      let (ae1, i) = VarEnv.add_direct_local env ae name sr typ in
+      let ae1, _ = VarEnv.add_direct_local env ae name sr typ in
       (ae1, G.nop)
     | StoreHeap ->
-      let (ae1, i) = VarEnv.add_local_with_heap_ind env ae name typ in
+      let ae1, i = VarEnv.add_local_with_heap_ind env ae name typ in
       let alloc_code = MutBox.alloc env ^^ G.i (LocalSet (nr i)) in
       (ae1, alloc_code)
     | StoreStatic ->
@@ -10297,7 +10296,7 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
     )
   (* Async-wait lowering support features *)
   | DeclareE (name, typ, e) ->
-    let (ae1, i) = VarEnv.add_local_with_heap_ind env ae name typ in
+    let ae1, i = VarEnv.add_local_with_heap_ind env ae name typ in
     let sr, code = compile_exp env ae1 e in
     sr,
     MutBox.alloc env ^^ G.i (LocalSet (nr i)) ^^
@@ -10645,11 +10644,12 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
       unmodified
     )
 
-  | VarD (name, typ, e) ->
+  | VarD (name, content_typ, e) ->
     assert AllocHow.(match M.find_opt name how with
                      | Some (LocalMut _ | StoreHeap | StoreStatic) -> true
                      | _ -> false);
-    let pre_ae1, alloc_code = AllocHow.add_local env pre_ae how name typ in
+    let var_typ = Type.Mut content_typ in
+    let pre_ae1, alloc_code = AllocHow.add_local env pre_ae how name var_typ in
     ( pre_ae1,
       alloc_code,
       (fun ae -> let pre_code, sr, code = Var.set_val env ae name in
