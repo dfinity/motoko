@@ -10579,11 +10579,12 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
       unmodified
     )
 
-  | VarD (name, typ, e) ->
+  | VarD (name, content_typ, e) ->
     assert AllocHow.(match M.find_opt name how with
                      | Some (LocalMut _ | StoreHeap | StoreStatic) -> true
                      | _ -> false);
-    let pre_ae1, alloc_code = AllocHow.add_local env pre_ae how name typ in
+    let var_typ = Type.Mut content_typ in
+    let pre_ae1, alloc_code = AllocHow.add_local env pre_ae how name var_typ in
     ( pre_ae1,
       alloc_code,
       (fun ae -> let pre_code, sr, code = Var.set_val env ae name in
