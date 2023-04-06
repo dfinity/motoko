@@ -26,8 +26,9 @@ actor a {
        c -= 1;
      };
      if (Prim.rts_heap_size() < mb * 1024 * 1024) {
-      let partitionSizeMB = 32;
-      Prim.debugPrint(debug_show({heap_MB = Prim.rts_heap_size()/1024/1024/partitionSizeMB*partitionSizeMB}));
+      // Difference between incremental and non-incremental GC (due to different object header lengths).
+      let toleranceMB = 2;
+      Prim.debugPrint(debug_show({heap_MB = Prim.rts_heap_size()/1024/1024/toleranceMB*toleranceMB}));
       fillMB(mb);
      }
    };
