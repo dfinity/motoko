@@ -8421,14 +8421,13 @@ module AllocHow = struct
   (* find the allocHow for the variables currently in scope *)
   (* we assume things are mutable, as we do not know better here *)
   let how_of_ae ae : allocHow = 
-    let locations = M.map (fun (l, _) -> l) ae.VarEnv.vars in 
-    M.map (function
+    M.map (fun (l, _) -> match l with
     | VarEnv.Const _        -> (Const : how)
     | VarEnv.HeapStatic _   -> StoreStatic
     | VarEnv.HeapInd _      -> StoreHeap
     | VarEnv.Local (sr, _)  -> LocalMut sr (* conservatively assume mutable *)
     | VarEnv.PublicMethod _ -> LocalMut SR.Vanilla
-    ) locations
+    ) ae.VarEnv.vars
 
   let decs (ae : VarEnv.t) decs captured_in_body : allocHow =
     let lvl = ae.VarEnv.lvl in
