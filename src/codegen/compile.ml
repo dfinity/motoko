@@ -8176,22 +8176,13 @@ module AllocHow = struct
 
   (* find the allocHow for the variables currently in scope *)
   (* we assume things are mutable, as we do not know better here *)
-  <<<<<<< gabor/dwarf
   let how_of_ae ae : allocHow = M.map (fun (l, _, _) ->
     match l with
-    | VarEnv.Const _ -> (Const : how)
-    | VarEnv.HeapStatic _ -> StoreStatic
-    | VarEnv.HeapInd _ -> StoreHeap
-    | VarEnv.Local _ -> LocalMut (* conservatively assume immutable *)
-    | VarEnv.PublicMethod _ -> LocalMut
-  =======
-  let how_of_ae ae : allocHow = M.map (function
     | VarEnv.Const _        -> (Const : how)
     | VarEnv.HeapStatic _   -> StoreStatic
     | VarEnv.HeapInd _      -> StoreHeap
     | VarEnv.Local (sr, _)  -> LocalMut sr (* conservatively assume mutable *)
     | VarEnv.PublicMethod _ -> LocalMut SR.Vanilla
-  >>>>>>> master
     ) ae.VarEnv.vars
 
   let decs (ae : VarEnv.t) decs captured_in_body : allocHow =
@@ -8213,18 +8204,18 @@ module AllocHow = struct
      based on how we want to store them. *)
   let add_local env ae how name typ at : VarEnv.t * G.t * G.t =
     match M.find name how with
-  <<<<<<< gabor/dwarf
+    (*<<<<<<< gabor/dwarf*)
     | (Const : how) -> G.(ae, nop, nop)
-    | LocalImmut | LocalMut ->
-      let ae1, ix = VarEnv.add_direct_local env ae name typ at in
+    | LocalImmut sr | LocalMut sr ->
+      let ae1, ix = VarEnv.add_direct_local env ae name sr typ at in
       G.(ae1, nop,
          dw_tag_no_children (Die.Variable(*FIXME: Constant?*) (name, at.left, typ, Int32.to_int ix)))
-  =======
+  (*=======
     | (Const : how) -> (ae, G.nop)
     | LocalImmut sr | LocalMut sr ->
       let (ae1, i) = VarEnv.add_direct_local env ae name sr in
       (ae1, G.nop)
-  >>>>>>> master
+  >>>>>>> master*)
     | StoreHeap ->
       let ae1, i = VarEnv.add_local_with_heap_ind env ae name typ at in
       let alloc_code = MutBox.alloc env ^^ G.i (LocalSet (nr i)) in
@@ -9584,15 +9575,8 @@ and compile_prim_invocation (env : E.t) ae p es at =
     E.call_import env "rts" "compute_crc32"
 
   | OtherPrim "idlHash", [e] ->
-    SR.Vanilla,
+    SR.Vanilla, (* FIXME: SR.Unreachable?*)
     E.trap_with env "idlHash only implemented in interpreter"
-
-
-  <<<<<<< gabor/dwarf
-    | OtherPrim "idlHash", [e] ->
-      SR.Vanilla,
-      E.trap_with env "idlHash only implemented in interpreter"
-  =======
   | OtherPrim "popcnt8", [e] ->
     SR.Vanilla,
     compile_exp_vanilla env ae e ^^
@@ -9624,7 +9608,6 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla,
     compile_exp_vanilla env ae e ^^
     Text.prim_showChar env
-  >>>>>>> master
 
   | OtherPrim "char_to_upper", [e] ->
     compile_char_to_char_rts env ae e "char_to_upper"
@@ -9962,13 +9945,8 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
   | BlockE (decs, exp) ->
     let captured = Freevars.captured_vars (Freevars.exp exp) in
     let ae', codeW1 = compile_decs env ae decs captured in
-  <<<<<<< gabor/dwarf
-    let (sr, code2) = compile_exp env ae' exp in
-    (sr, codeW1 (G.dw_statement exp.at ^^ code2))
-  =======
     let (sr, code2) = compile_exp_with_hint env ae' sr_hint exp in
-    (sr, codeW1 code2)
-  >>>>>>> master
+    (sr, codeW1 (G.dw_statement exp.at ^^ code2))
   | LabelE (name, _ty, e) ->
     (* The value here can come from many places -- the expression,
        or any of the nested returns. Hard to tell which is the best
@@ -10383,15 +10361,10 @@ and compile_unboxed_pat env ae how pat
     | _ ->
       G.nop,
       Some SR.Vanilla,
-  <<<<<<< gabor/dwarf
-      orTrap env (fill_pat env ae1 pat)
-  in (ae1, alloc_code, arity, fill_code, dw)
-  =======
       orPatternFailure env (fill_pat env ae1 pat) in
-  let pre_code = G.with_region pat.at pre_code in
-  let fill_code = G.with_region pat.at fill_code in
-  (ae1, alloc_code, pre_code, sr, fill_code)
-  >>>>>>> master
+      let pre_code = G.with_region pat.at pre_code in
+      let fill_code = G.with_region pat.at fill_code in
+      (ae1, alloc_code, pre_code, sr, fill_code, dw)
 
 and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wrap) =
   (fun (pre_ae, alloc_code, mk_code, wrap) ->
@@ -10609,11 +10582,6 @@ and compile_const_decs env pre_ae decs : (VarEnv.t -> VarEnv.t) * (E.t -> VarEnv
         (fun env ae -> fill1 env ae; fill2 env ae) in
   go pre_ae decs
 
-  <<<<<<< gabor/dwarf
-and destruct_const_pat ae pat const : VarEnv.t = match pat.it with
-  | WildP -> ae
-  | VarP v -> VarEnv.add_local_const ae v pat.note pat.at const
-  =======
 and const_exp_matches_pat env ae pat exp : bool =
   assert exp.note.Note.const;
   let c, _ = compile_const_exp env ae exp in
@@ -10621,8 +10589,7 @@ and const_exp_matches_pat env ae pat exp : bool =
 
 and destruct_const_pat ae pat const : VarEnv.t option = match pat.it with
   | WildP -> Some ae
-  | VarP v -> Some (VarEnv.add_local_const ae v const)
-  >>>>>>> master
+  | VarP v -> Some (VarEnv.add_local_const ae v pat.note pat.at const)
   | ObjP pfs ->
     let fs = match const with (_, Const.Obj fs) -> fs | _ -> assert false in
     List.fold_left (fun ae (pf : pat_field) ->
@@ -10780,17 +10747,6 @@ and main_actor as_opt mod_env ds fs up =
     let arg_tys = List.map snd arg_names_tys in
     (* Deserialize any arguments *)
     begin match as_opt with
-  <<<<<<< gabor/dwarf
-     | None
-     | Some [] ->
-       (* Liberally accept empty as well as unit argument *)
-       assert (arg_tys = []);
-       Dfinity.system_call env "ic0" "msg_arg_data_size" ^^
-       G.if_ [] (Serialization.deserialize env arg_tys) G.nop
-     | Some (_ :: _) ->
-       Serialization.deserialize env arg_tys ^^
-       G.concat_map (Var.set_val env ae1) List.(rev_map fst arg_names_tys)
-  =======
       | None
       | Some [] ->
         (* Liberally accept empty as well as unit argument *)
@@ -10799,7 +10755,7 @@ and main_actor as_opt mod_env ds fs up =
         G.if0 (Serialization.deserialize env arg_tys) G.nop
       | Some (_ :: _) ->
         Serialization.deserialize env arg_tys ^^
-        G.concat_map (Var.set_val_vanilla_from_stack env ae1) (List.rev arg_names)
+        G.concat_map (Var.set_val_vanilla_from_stack env ae1) (List.rev_map fst arg_names_tys)
     end ^^
     begin
       if up.timer.at <> no_region then
@@ -10809,7 +10765,6 @@ and main_actor as_opt mod_env ds fs up =
         G.i Drop
       else
         G.nop
-  >>>>>>> master
     end ^^
     IC.init_globals env ^^
     (* Continue with decls *)
