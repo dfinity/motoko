@@ -8813,17 +8813,17 @@ let rec compile_lexp (env : E.t) ae lexp : G.t * SR.t * G.t =
     store_ptr
 
 (* Common code for a[e] as lexp and as exp.
-Traps or puts the pointer to the field on the stack
+Traps or pushes the pointer to the element on the stack
 *)
 and compile_array_index env ae e1 e2 =
   let code_arr = compile_exp_vanilla env ae e1 in (* offset to array *)
   let sr, code_idx = compile_exp env ae e2 in (* index *)
   match sr with
   (* If we have a (small) constant index, do not convert to Vanilla and back *)
-  (* I am not bothering with numbers above 2^31-1, where Ocamls'
+  (* I am not bothering with numbers above 2^31-1, where Ocaml's
      int32_of_big_int would do the wrong thing *)
   | SR.Const (_, Const.Lit (Const.BigInt n))
-    when Big_int.le_big_int n (Big_int.big_int_of_int 0x7fffffff)->
+    when Big_int.(le_big_int n (big_int_of_int 0x7fffffff)) ->
     (* Must still include code_idx for possible side-effects! *)
     code_arr ^^ code_idx ^^ compile_unboxed_const (Big_int.int32_of_big_int n) ^^ Arr.idx env
   | _ ->
