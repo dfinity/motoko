@@ -802,7 +802,7 @@ pub(crate) unsafe fn block_size(address: usize) -> Words<u32> {
 
         TAG_OBJ_IND => size_of::<ObjInd>(),
 
-        TAG_ARRAY => {
+        TAG_ARRAY | TAG_ARRAY_SLICE_MIN.. => {
             let array = address as *mut Array;
             let size = array.len();
             size_of::<Array>() + Words(size)
