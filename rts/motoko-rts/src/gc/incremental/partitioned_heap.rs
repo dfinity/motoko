@@ -330,7 +330,7 @@ pub struct PartitionedHeap {
     evacuating: bool,
     reclaimed: u64,
     bitmap_allocation_pointer: usize, // Free pointer for allocating the next mark bitmap.
-    gc_running: bool, // Create bitmaps for partitions whn allocated during active GC.
+    gc_running: bool, // Create bitmaps for partitions when allocated during active GC.
 }
 
 /// Optimization: Avoiding `Option` or `LazyCell`.
