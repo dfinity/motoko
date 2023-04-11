@@ -1,6 +1,6 @@
 //! Partitioned heap used in incremental GC for compacting evacuation.
 //! The heap is divided in equal sized partitions of a large size `PARTITION_SIZE`.
-//! The first partition(s) may contains a static heap space with static objects that are never moved.
+//! The first partition(s) may contain a static heap space with static objects that are never moved.
 //! Beyond the static objects of a partition, the dynamic heap space starts with `dynamic_size`.
 //!
 //! Heap layout, with N = `MAX_PARTITIONS`:
