@@ -5657,7 +5657,7 @@ module MakeSerialization (Strm : Stream) = struct
         G.i (Compare (Wasm.Values.I32 I32Op.Ne)) ^^
         G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
         get_temp ^^ compile_unboxed_const Tagged.(int_of_tag ArraySliceMinimum) ^^
-        G.i (Compare (Wasm.Values.I32 I32Op.GeS)) ^^ (*crusso: why signed? *)
+        G.i (Compare (Wasm.Values.I32 I32Op.GeU)) ^^ (*crusso: why signed? *)
         G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
         G.if1 I32Type begin
           (compile_unboxed_const Tagged.(int_of_tag Array))
@@ -5824,12 +5824,7 @@ module MakeSerialization (Strm : Stream) = struct
           get_tag ^^ compile_eq_const Tagged.(int_of_tag ObjInd) ^^
           E.then_trap_with env "unvisited mutable data in serialize_go (ObjInd)" ^^
           get_tag ^^ compile_eq_const Tagged.(int_of_tag Array) ^^
-            E.then_trap_with env "unvisited mutable data in serialize_go (Array)" ^^
-          (if !Flags.gc_strategy = Flags.Incremental then
-            get_tag ^^ compile_unboxed_const Tagged.(int_of_tag ArraySliceMinimum) ^^
-            G.i (Compare (Wasm.Values.I32 I32Op.GeS)) ^^ (* crusso: why signed? *)
-            E.then_trap_with env "unvisited mutable data in serialize_go (ArraySliceMinimum)"
-           else G.nop) ^^
+          E.then_trap_with env "unvisited mutable data in serialize_go (Array)" ^^
           (* Second time we see this *)
           (* Calculate relative offset *)
           let set_offset, get_offset = new_local env "offset" in
