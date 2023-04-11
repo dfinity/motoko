@@ -1439,7 +1439,7 @@ and infer_exp'' env exp : T.typ =
     let t1 = infer_exp_promote env exp1 in
     (try
        let (t2, t3) = T.as_async_sub s t0 t1 in
-       if not (T.eq t0 t2) then begin
+       if false && not (T.eq t0 t2) then begin
           local_error env exp1.at "M0087"
             "ill-scoped await: expected async type from current scope %s, found async type from other scope %s%s%s"
            (T.string_of_typ_expand t0)

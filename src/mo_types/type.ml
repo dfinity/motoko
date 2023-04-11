@@ -977,7 +977,7 @@ let rec rel_typ rel eq t1 t2 =
     )
   | Async (s1, t11, t12), Async (s2, t21, t22) ->
     s1 = s2 &&
-    eq_typ rel eq t11 t21 &&
+    (*    eq_typ rel eq t11 t21 && *)
     rel_typ rel eq t12 t22
   | _, _ -> false
   end
