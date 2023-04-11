@@ -59,7 +59,7 @@ pub const PARTITION_SIZE: usize = 32 * 1024 * 1024;
 /// computing the end address of the last partition.
 const MAX_PARTITIONS: usize = (WASM_MEMORY_BYTE_SIZE.0 / PARTITION_SIZE as u64) as usize - 1;
 
-/// Partitions are only evacuated if the space occupation of alive object in the partition
+/// Partitions are only evacuated if the space occupation of alive objects in the partition
 /// is greater than this threshold.
 /// Based on benchmark measurements, this rate is tuned to optimize the following metrics
 /// in the order of occurrence:
