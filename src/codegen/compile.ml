@@ -9992,7 +9992,7 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
 
     (* compile subexpressions and collect the provided stack reps *)
     let codes = List.map (fun {it={pat; exp=e}; _} ->
-      let (ae1, pat_code) = compile_pat_local env ae pat in
+      let (ae1, dw_ty1, pat_code, dw) = compile_pat_local env ae pat in
       let (sr, rhs_code) = compile_exp_with_hint env ae1 sr_hint e in
       (sr, CannotFail get_i ^^^ pat_code ^^^ CannotFail rhs_code)
       ) cs in
@@ -10314,7 +10314,7 @@ and compile_pat_local env ae pat : VarEnv.t * G.t * patternCode * G.t =
    unboxed tuple, unboxed 32/64), lets do that.
 *)
 and compile_unboxed_pat env ae how pat
-  : VarEnv.t * G.t * G.t * SR.t option * G.t =
+  : VarEnv.t * G.t * G.t * SR.t option * G.t * G.t =
   (* It returns:
      - the extended environment
      - the code to allocate memory
@@ -10363,7 +10363,7 @@ and compile_unboxed_pat env ae how pat
       orPatternFailure env (fill_pat env ae1 pat) in
       let pre_code = G.with_region pat.at pre_code in
       let fill_code = G.with_region pat.at fill_code in
-      (ae1, alloc_code, pre_code, sr, fill_code, dw)
+      ae1, alloc_code, pre_code, sr, fill_code, dw
 
 and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wrap) =
   (fun (pre_ae, alloc_code, mk_code, wrap) ->
