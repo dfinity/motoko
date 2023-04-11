@@ -7443,7 +7443,7 @@ module Var = struct
   let capture old_env ae0 var : G.t * (E.t -> VarEnv.t -> VarEnv.t * scope_wrap) =
     (*<<<<<<< gabor/dwarf*)
     match VarEnv.lookup_var' ae0 var with
-    | Some (Local i, ty, at) ->
+    | Some (Local (sr, i), ty, at) ->
       ( G.i (LocalGet (nr i))
       , fun new_env ae1 ->
         (* we use SR.Vanilla in the restored environment. We could use sr;
@@ -7521,7 +7521,7 @@ module FuncDec = struct
       (* Function arguments are always vanilla, due to subtyping and uniform representation.
          We keep them as such here for now. We _could_ always unpack those that can be unpacked
          (Nat32 etc.). It is generally hard to predict which strategy is better. *)
-      let ae' = VarEnv.add_local_local env ae it note at (Int32.of_int ix) in
+      let ae' = VarEnv.add_local_local env ae it SR.Vanilla note at (Int32.of_int ix) in
       let dw' = G.dw_tag_no_children (Die.Formal_parameter (it, at.left, note, ix)) in
       go (ix + 1) ae' (dw ^^ dw') args in
     go first_arg ae0 G.nop
@@ -7604,7 +7604,7 @@ module FuncDec = struct
       G.concat (List.rev setters) ^^
   =======*)
       let arg_names_tys = List.map (fun a -> a.it, a.note) args in
-      let ae1 = VarEnv.add_argument_locals env ae0 at arg_names_tys in
+      let ae1, _setters(*FIXME*) = VarEnv.add_argument_locals env ae0 at arg_names_tys in
       Serialization.deserialize env (List.map snd arg_names_tys) ^^
       G.concat_map (Var.set_val_vanilla_from_stack env ae1) (List.map fst arg_names_tys) ^^
         (*>>>>>>> master*)
@@ -8224,10 +8224,10 @@ module AllocHow = struct
       let ae1 = VarEnv.add_local_heap_static ae name typ at ptr in
       G.(ae1, nop, G.dw_tag_no_children (Die.Variable(*FIXME: ByPtr?*) (name, at.left, typ, Int32.to_int ptr)))
 
-  let add_local_for_alias env ae how name : VarEnv.t * G.t =
+  let add_local_for_alias env ae how name typ at : VarEnv.t * G.t =
     match M.find name how with
     | StoreHeap ->
-      let ae1, _ = VarEnv.add_local_with_heap_ind env ae name in
+      let ae1, _ = VarEnv.add_local_with_heap_ind env ae name typ at in
       ae1, G.nop
     | _ -> assert false
 
@@ -10263,7 +10263,7 @@ and fill_pat env ae pat : patternCode =
 
 and alloc_pat_local env ae pat =
   let d = Freevars.pat pat in
-  <<<<<<< gabor/dwarf
+  (*<<<<<<< gabor/dwarf*)
   AllocHow.M.fold (fun v typ (dw_ty, ae, dw) ->
     let ae1, ix = VarEnv.add_direct_local env ae v typ pat.at in
     let prereq_type = G.dw_tag_no_children (Die.Type typ) in
@@ -10272,7 +10272,7 @@ and alloc_pat_local env ae pat =
 
 and alloc_pat env ae how pat : VarEnv.t * G.t * G.t  =
   (fun (ae, code, dw) -> (ae, G.with_region pat.at code, dw)) @@
-  =======
+  (*=======
   AllocHow.M.fold (fun v _ty ae ->
     let (ae1, _i) = VarEnv.add_direct_local env ae v SR.Vanilla
     in ae1
@@ -10280,7 +10280,7 @@ and alloc_pat env ae how pat : VarEnv.t * G.t * G.t  =
 
 and alloc_pat env ae how pat : VarEnv.t * G.t  =
   (fun (ae, code) -> (ae, G.with_region pat.at code)) @@
-  >>>>>>> master
+  >>>>>>> master*)
   let d = Freevars.pat pat in
   AllocHow.M.fold (fun v ty (ae, code0, dw0) ->
     let ae1, code1, dw1 = AllocHow.add_local env ae how v ty pat.at
