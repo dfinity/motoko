@@ -1,3 +1,4 @@
+//MOC-FLAG --force-gc
 import Prim "mo:⛔";
 let s0 = Prim.rts_heap_size();
 let a0 = Prim.rts_total_allocation();

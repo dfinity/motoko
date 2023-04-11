@@ -1,4 +1,3 @@
-//MOC-NO-FORCE-GC
 //MOC-ENV MOC_UNLOCK_PRIM=yesplease
 // test throw on call raw failure
 import Prim "mo:⛔";

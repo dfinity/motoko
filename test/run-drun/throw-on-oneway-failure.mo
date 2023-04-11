@@ -1,4 +1,3 @@
-//MOC-NO-FORCE-GC
 import Prim "mo:⛔";
 // test throw on oneway call failure
 actor self {
