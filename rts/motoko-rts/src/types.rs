@@ -791,7 +791,7 @@ impl FreeSpace {
 /// Handles both objects with header and forwarding pointer
 /// and special blocks such as `OneWordFiller`, `FwdPtr`, and `FreeSpace`
 /// that do not have a forwarding pointer.
-/// Note: Does not support array slicing, not to be called during the 
+/// Note: Does not support array slicing, not to be called during the
 /// mark phase of the compacting, generational, or incremental GC.
 pub(crate) unsafe fn block_size(address: usize) -> Words<u32> {
     let tag = *(address as *mut Tag);
