@@ -185,15 +185,12 @@ let set_out_file files ext =
     | _ -> eprintf "moc: no output file specified"; exit 1
   end
 
-  <<<<<<< gabor/dwarf
 let set_compilation_unit = function
   | [n] ->
     if Compile = !mode
     then Flags.(compilation_unit := n; compilation_dir := ".")
   | _ -> assert false
 
-  =======
-  >>>>>>> master
 (* Main *)
 
 let exit_on_none = function
@@ -226,10 +223,11 @@ let process_files files : unit =
     end
   | Compile ->
     set_out_file files ".wasm";
-  <<<<<<< gabor/dwarf
+  (*<<<<<<< gabor/dwarf
     set_compilation_unit files;
     let module_ = Diag.run Pipeline.(compile_files !Flags.compile_mode !link files) in
-  =======
+  =======*)
+    set_compilation_unit files;
     let source_map_file = !out_file ^ ".map" in
     let (idl_prog, module_) = Diag.run Pipeline.(compile_files !Flags.compile_mode !link files) in
     let module_ = CustomModule.{ module_ with
@@ -239,7 +237,7 @@ let process_files files : unit =
         else None
     } in
 
-  >>>>>>> master
+    (*>>>>>>> master*)
     let oc = open_out !out_file in
     let (source_map, wasm) = CustomModuleEncode.encode module_ in
     output_string oc wasm; close_out oc;
