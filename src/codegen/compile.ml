@@ -5657,7 +5657,7 @@ module MakeSerialization (Strm : Stream) = struct
         G.i (Compare (Wasm.Values.I32 I32Op.Ne)) ^^
         G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
         get_temp ^^ compile_unboxed_const Tagged.(int_of_tag ArraySliceMinimum) ^^
-        G.i (Compare (Wasm.Values.I32 I32Op.GeU)) ^^ (*crusso: why signed? *)
+        G.i (Compare (Wasm.Values.I32 I32Op.GeU)) ^^
         G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
         G.if1 I32Type begin
           (compile_unboxed_const Tagged.(int_of_tag Array))
