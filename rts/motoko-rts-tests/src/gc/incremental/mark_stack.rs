@@ -1,6 +1,6 @@
 use crate::memory::TestMemory;
 use motoko_rts::{
-    gc::incremental::mark_stack::{MarkStack, STACK_TABLE_CAPACITY},
+    gc::incremental::mark_stack::{MarkStack, STACK_EMPTY, STACK_TABLE_CAPACITY},
     types::{Value, Words},
 };
 
@@ -29,7 +29,7 @@ unsafe fn test_push_pop(amount: usize, regrow_step: usize) {
         }
     }
     for count in (0..amount).rev() {
-        assert_eq!(stack.pop().unwrap().get_scalar() as usize, count);
+        assert_eq!(stack.pop().get_scalar() as usize, count);
     }
-    assert!(stack.pop().is_none());
+    assert!(stack.pop() == STACK_EMPTY);
 }

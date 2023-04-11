@@ -38,6 +38,8 @@ pub struct MarkStack {
 
 pub const STACK_TABLE_CAPACITY: usize = 1018;
 
+pub const STACK_EMPTY: Value = Value::from_ptr(0);
+
 #[repr(C)]
 struct StackTable {
     pub header: Blob,
@@ -56,6 +58,7 @@ impl MarkStack {
     }
 
     pub unsafe fn push<M: Memory>(&mut self, mem: &mut M, value: Value) {
+        debug_assert!(value != STACK_EMPTY);
         debug_assert!(self.last != null_mut());
         if self.top == STACK_TABLE_CAPACITY {
             if (*self.last).next == null_mut() {
@@ -70,11 +73,12 @@ impl MarkStack {
         self.top += 1;
     }
 
-    pub unsafe fn pop(&mut self) -> Option<Value> {
+    /// Returns the sentinel `STACK_EMPTY` for an empty stack.
+    pub unsafe fn pop(&mut self) -> Value {
         debug_assert!(self.last != null_mut());
         if self.top == 0 {
             if (*self.last).previous == null_mut() {
-                return None;
+                return STACK_EMPTY;
             }
             self.last = (*self.last).previous;
             self.top = STACK_TABLE_CAPACITY;
@@ -82,7 +86,7 @@ impl MarkStack {
         debug_assert!(self.top > 0);
         self.top -= 1;
         debug_assert!(self.top < STACK_TABLE_CAPACITY);
-        Some((*self.last).entries[self.top])
+        (*self.last).entries[self.top]
     }
 
     pub unsafe fn is_empty(&self) -> bool {
