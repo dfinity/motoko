@@ -10265,7 +10265,7 @@ and alloc_pat_local env ae pat =
   let d = Freevars.pat pat in
   (*<<<<<<< gabor/dwarf*)
   AllocHow.M.fold (fun v typ (dw_ty, ae, dw) ->
-    let ae1, ix = VarEnv.add_direct_local env ae v typ pat.at in
+    let ae1, ix = VarEnv.add_direct_local env ae v SR.Vanilla typ pat.at in
     let prereq_type = G.dw_tag_no_children (Die.Type typ) in
     G.(dw_ty ^^ prereq_type, ae1, dw ^^ dw_tag_no_children (Die.Variable (v, pat.at.left, typ, Int32.to_int ix)))
   ) d (G.nop, ae, G.nop)
@@ -10339,7 +10339,7 @@ and compile_unboxed_pat env ae how pat
        consumes it, and fills the heap
        If the pattern does not match, it traps with pattern failure
   *)
-  let (ae1, alloc_code) = alloc_pat env ae how pat in
+  let ae1, alloc_code, dw = alloc_pat env ae how pat in
   let pre_code, sr, fill_code = match pat.it with
     (*>>>>>>> master*)
     (* Nothing to match: Do not even put something on the stack *)
@@ -10402,9 +10402,9 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
       (pre_ae, G.nop, (fun _ -> PatCode.patternFailTrap env), unmodified)
 
   | LetD (p, e) ->
-    let (pre_ae1, alloc_code, pre_code, sr, fill_code) = compile_unboxed_pat env pre_ae how p in
+    let (pre_ae1, alloc_code, pre_code, sr, fill_code, dw) = compile_unboxed_pat env pre_ae how p in
     ( pre_ae1, alloc_code,
-      (fun ae -> pre_code ^^ compile_exp_as_opt env ae sr e ^^ fill_code),
+      (fun ae -> pre_code ^^ G.dw_statement dec.at ^^ compile_exp_as_opt env ae sr e ^^ fill_code),
       unmodified
     (*>>>>>>> master*)
     )
@@ -10422,7 +10422,7 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
         fun body_code -> G.dw_tag (Die.LexicalBlock dec.at.left) (dw ^^ body_code)
       )
   =======*)
-    let pre_ae1, alloc_code = AllocHow.add_local env pre_ae how name in
+    let pre_ae1, alloc_code, dw = AllocHow.add_local env pre_ae how name e.note.Note.typ dec.at in
     ( pre_ae1,
       alloc_code,
       (fun ae -> let pre_code, sr, code = Var.set_val env ae name in
@@ -10431,7 +10431,7 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
     )
 
   | RefD (name, _, { it = DotLE (e, n); _ }) ->
-    let pre_ae1, alloc_code = AllocHow.add_local_for_alias env pre_ae how name in
+    let pre_ae1, alloc_code = AllocHow.add_local_for_alias env pre_ae how name e.note.Note.typ dec.at in
 
     ( pre_ae1,
       alloc_code,
