@@ -15,3 +15,6 @@ let v8 : { #a : Nat; #c : Nat } = #c (5 + 3);
 let #a a8 or #b a8 or #c a8 = v8;
 
 debugPrint (debug_show {a8});
+
+// should accept
+//func three(#a (a9 : Nat) or #b (a9 : Nat) or #c (a9 : Nat)) : Nat = a9;
