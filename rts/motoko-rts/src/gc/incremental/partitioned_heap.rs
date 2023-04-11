@@ -26,7 +26,7 @@
 //! Huge objects with a size > PARTITION_SIZE are allocated across multiple contiguous free
 //! partitions. For this purpose, a corresponding sequence of contiguous free partitions needs
 //! to be searched. Huge objects stay in their partitions for their entire lifetime, i.e. they
-//! are never evacuated. When becoming garbage, the underlying partitions of a huge blocks are
+//! are never evacuated. When becoming garbage, the underlying partitions of a huge object are
 //! immediately freed. Large object allocation may be prone to external fragmentation problems,
 //! i.e. that no sufficient contiguous free partitions are available on allocation. Currently,
 //! this external fragmentation problem is not handled by moving other partitions which would
