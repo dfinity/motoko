@@ -329,7 +329,7 @@ pub struct PartitionedHeap {
     allocation_index: usize, // Index of the partition currently used for allocations.
     evacuating: bool,
     reclaimed: u64,
-    bitmap_allocation_pointer: usize, // Free pointer for allocation the next mark bitmap.
+    bitmap_allocation_pointer: usize, // Free pointer for allocating the next mark bitmap.
     gc_running: bool, // Create bitmaps for partitions whn allocated during active GC.
 }
 
