@@ -1,7 +1,7 @@
 use crate::{
     gc::incremental::{
         array_slicing::slice_array,
-        mark_stack::MarkStack,
+        mark_stack::{MarkStack, STACK_EMPTY},
         partitioned_heap::PartitionedHeap,
         roots::{visit_roots, Roots},
         time::BoundedTime,
@@ -76,8 +76,14 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
             debug_assert!(self.mark_stack.is_empty());
             return;
         }
-        while let Some(value) = self.mark_stack.pop() {
+        loop {
+            let value = self.mark_stack.pop();
             debug_assert!(value.is_ptr());
+            if value == STACK_EMPTY {
+                self.complete_marking();
+                return;
+            }
+
             self.mark_fields(value.as_obj());
 
             self.time.tick();
@@ -85,7 +91,6 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
                 return;
             }
         }
-        self.complete_marking();
     }
 
     pub unsafe fn mark_object(&mut self, value: Value) {

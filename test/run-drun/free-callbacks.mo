@@ -1,3 +1,4 @@
+//MOC-FLAG --force-gc
 import Prim "mo:⛔";
 actor a {
   public func ping() : async () {
