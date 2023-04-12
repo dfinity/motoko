@@ -5333,7 +5333,6 @@ module MakeSerialization (Strm : Stream) = struct
   (* Globals recording known Candid types
      See Note [Candid subtype checks]
    *)
-
   let register_delayed_globals env =
     (E.add_global32_delayed env "__typtbl" Immutable,
      E.add_global32_delayed env "__typtbl_end" Immutable,
