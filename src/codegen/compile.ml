@@ -293,10 +293,10 @@ module E = struct
       (* Pool for shared static objects. Their lookup needs to be specifically
          handled by using the tag and the payload without the forwarding pointer.
          This is because the forwarding pointer depends on the allocation adddress.
-         The lookup is different to `static_string` that has no such 
-         allocation-dependent content and can thus be immediately looked up by 
+         The lookup is different to `static_string` that has no such
+         allocation-dependent content and can thus be immediately looked up by
          the string value. *)
-    object_pool : int32 StringEnv.t ref; 
+    object_pool : int32 StringEnv.t ref;
     end_of_static_memory : int32 ref; (* End of statically allocated memory *)
     static_memory : (int32 * string) list ref; (* Content of static memory *)
     static_memory_frozen : bool ref;
@@ -608,7 +608,7 @@ module E = struct
     | Flags.MarkCompact -> "compacting"
     | Flags.Copying -> "copying"
     | Flags.Generational -> "generational"
-    | Flags.Incremental -> "incremental"  
+    | Flags.Incremental -> "incremental"
 
   let collect_garbage env =
     (* GC function name = "schedule_"? ("compacting" | "copying" | "generational" | "incremental") "_gc" *)
@@ -1512,7 +1512,7 @@ end (* BitTagged *)
 module Tagged = struct
   (* Tagged objects all have an object header consisting of a tag and a forwarding pointer.
      The forwarding pointer is only reserved if compiled for the incremental GC.
-     The tag is to describe their runtime type and serves to traverse the heap 
+     The tag is to describe their runtime type and serves to traverse the heap
      (serialization, GC), but also for objectification of arrays.
 
      The tag is a word at the beginning of the object.
@@ -1525,8 +1525,8 @@ module Tagged = struct
      └──────┴─────────┴──
 
      The copying GC requires that all tagged objects in the dynamic heap space have at least
-     two words in order to replace them by `Indirection`. This condition is except for `Null` 
-     that only lives in static heap space and is therefore not replaced by `Indirection` during 
+     two words in order to replace them by `Indirection`. This condition is except for `Null`
+     that only lives in static heap space and is therefore not replaced by `Indirection` during
      copying GC.
 
      Attention: This mapping is duplicated in these places
@@ -1562,7 +1562,7 @@ module Tagged = struct
     | ArraySliceMinimum (* Used by the GC for incremental array marking *)
     | StableSeen (* Marker that we have seen this thing before *)
     | CoercionFailure (* Used in the Candid decoder. Static singleton! *)
-    
+
   (* Tags needs to have the lowest bit set, to allow distinguishing object
      headers from heap locations (object or field addresses).
 
@@ -1624,17 +1624,17 @@ module Tagged = struct
       Heap.load_field forwarding_pointer_field
     else
       G.nop)
-  
+
   let store_tag env tag =
     load_forwarding_pointer env ^^
     compile_unboxed_const (int_of_tag tag) ^^
     Heap.store_field tag_field
-    
+
   let load_tag env =
     load_forwarding_pointer env ^^
     Heap.load_field tag_field
 
-  let check_forwarding env unskewed = 
+  let check_forwarding env unskewed =
     (if !Flags.gc_strategy = Flags.Incremental then
       let name = "check_forwarding_" ^ if unskewed then "unskewed" else "skewed" in
       Func.share_code1 env name ("object", I32Type) [I32Type] (fun env get_object ->
@@ -1663,7 +1663,7 @@ module Tagged = struct
       set_value ^^ check_forwarding env false ^^ get_value
     else G.nop)
 
-  let load_field env index = 
+  let load_field env index =
     (if !Flags.sanity then check_forwarding env false else G.nop) ^^
     Heap.load_field index
 
@@ -1678,7 +1678,7 @@ module Tagged = struct
   let load_field64_unskewed env index =
     (if !Flags.sanity then check_forwarding env true else G.nop) ^^
     Heap.load_field64_unskewed index
-  
+
   let load_field64 env index =
     (if !Flags.sanity then check_forwarding env false else G.nop) ^^
     Heap.load_field64 index
@@ -1760,10 +1760,10 @@ module Tagged = struct
   let _branch_typed_with env ty retty branches =
     branch_with env retty (List.filter (fun (tag,c) -> can_have_tag ty tag) branches)
 
-  let allocation_barrier env = 
+  let allocation_barrier env =
     (if !Flags.gc_strategy = Flags.Incremental then
       E.call_import env "rts" "allocation_barrier"
-    else 
+    else
       G.nop)
 
   let write_with_barrier env =
@@ -1826,9 +1826,9 @@ module Tagged = struct
 end (* Tagged *)
 
 module MutBox = struct
-  (* 
-      Mutable heap objects 
-  
+  (*
+      Mutable heap objects
+
        ┌──────┬─────┬─────────┐
        │ obj header │ payload │
        └──────┴─────┴─────────┘
@@ -1848,7 +1848,7 @@ module MutBox = struct
     ] in
     E.add_static_root env ptr;
     ptr
-    
+
   let load_field env =
     Tagged.load_forwarding_pointer env ^^
     Tagged.load_field env (field env)
@@ -1898,7 +1898,7 @@ module Opt = struct
   (* This relies on the fact that add_static deduplicates *)
   let null_vanilla_lit env : int32 =
     Tagged.shared_static_obj env Tagged.Null []
-    
+
   let null_lit env =
     compile_unboxed_const (null_vanilla_lit env)
 
@@ -1917,7 +1917,7 @@ module Opt = struct
       get_x ^^ BitTagged.if_tagged_scalar env [I32Type]
         ( get_x ) (* scalar, no wrapping *)
         ( get_x ^^ BitTagged.is_true_literal env ^^ (* exclude true literal since `branch_default` follows the forwarding pointer *)
-          E.if_ env [I32Type]     
+          E.if_ env [I32Type]
             ( get_x ) (* true literal, no wrapping *)
             ( get_x ^^ Tagged.branch_default env [I32Type]
               ( get_x ) (* default tag, no wrapping *)
@@ -1928,13 +1928,13 @@ module Opt = struct
               ; Tagged.Some,
                 Tagged.obj env Tagged.Some [get_x]
               ]
-            )    
+            )
         )
     )
 
   (* This function is used where conceptually, Opt.inject should be used, but
   we know for sure that it wouldn’t do anything anyways, except dereferencing the forwarding pointer *)
-  let inject_simple env e = 
+  let inject_simple env e =
     e ^^ Tagged.load_forwarding_pointer env
 
   let load_some_payload_field env =
@@ -1946,7 +1946,7 @@ module Opt = struct
       get_x ^^ BitTagged.if_tagged_scalar env [I32Type]
         ( get_x ) (* scalar, no wrapping *)
         ( get_x ^^ BitTagged.is_true_literal env ^^ (* exclude true literal since `branch_default` follows the forwarding pointer *)
-          E.if_ env [I32Type]     
+          E.if_ env [I32Type]
             ( get_x ) (* true literal, no wrapping *)
             ( get_x ^^ Tagged.branch_default env [I32Type]
               ( get_x ) (* default tag, no wrapping *)
@@ -1983,11 +1983,11 @@ module Variant = struct
   let inject env l e =
     Tagged.obj env Tagged.Variant [compile_unboxed_const (hash_variant_label env l); e]
 
-  let get_variant_tag env = 
+  let get_variant_tag env =
     Tagged.load_forwarding_pointer env ^^
     Tagged.load_field env (variant_tag_field env)
 
-  let project env = 
+  let project env =
     Tagged.load_forwarding_pointer env ^^
     Tagged.load_field env (payload_field env)
 
@@ -2024,11 +2024,11 @@ module Closure = struct
   let funptr_field env = Tagged.header_size env
   let len_field env = Int32.add 1l (Tagged.header_size env)
 
-  let load_data env i = 
+  let load_data env i =
     Tagged.load_forwarding_pointer env ^^
     Tagged.load_field env (Int32.add (header_size env) i)
 
-  let store_data env i = 
+  let store_data env i =
     let (set_closure_data, get_closure_data) = new_local env "closure_data" in
     set_closure_data ^^
     Tagged.load_forwarding_pointer env ^^
@@ -2449,7 +2449,7 @@ module Float = struct
   let payload_field env = Tagged.header_size env
 
   let compile_unboxed_const f = G.i (Const (nr (Wasm.Values.F64 f)))
-  
+
   let vanilla_lit env f =
     Tagged.shared_static_obj env Tagged.Bits64 StaticBytes.[
       I64 (Wasm.F64.to_bits f)
@@ -3478,7 +3478,7 @@ module Object = struct
     let (set_ri, get_ri, ri) = new_local_ env I32Type "obj" in
     Tagged.alloc env (Int32.add (header_size env) sz) Tagged.Object ^^
     set_ri ^^
-    
+
     (* Set size *)
     get_ri ^^
     compile_unboxed_const sz ^^
@@ -3547,7 +3547,7 @@ module Object = struct
     )
     else idx_hash_raw env low_bound
 
-  let field_type env obj_type s = 
+  let field_type env obj_type s =
     let _, fields = Type.as_obj_sub [s] obj_type in
     Type.lookup_val_field s fields
 
@@ -3610,7 +3610,7 @@ module Blob = struct
   let header_size env = Int32.add (Tagged.header_size env) 1l
   let len_field env = Int32.add (Tagged.header_size env) 0l
 
-  let len env = 
+  let len env =
     Tagged.load_forwarding_pointer env ^^
     Tagged.load_field env (len_field env)
 
@@ -3633,14 +3633,14 @@ module Blob = struct
     compile_unboxed_const (Int32.add ptr_unskew (E.add_static env StaticBytes.[Bytes s])) ^^
     compile_unboxed_const (Int32.of_int (String.length s))
 
-  let alloc env = 
-    E.call_import env "rts" "alloc_blob" ^^ 
+  let alloc env =
+    E.call_import env "rts" "alloc_blob" ^^
     (* uninitialized blob payload is allowed by the barrier *)
     Tagged.allocation_barrier env
 
   let unskewed_payload_offset env = Int32.(add ptr_unskew (mul Heap.word_size (header_size env)))
   
-  let payload_ptr_unskewed env = 
+  let payload_ptr_unskewed env =
     Tagged.load_forwarding_pointer env ^^
     compile_add_const (unskewed_payload_offset env)
 
@@ -3883,7 +3883,7 @@ module Arr = struct
      ┌──────┬─────┬──────────┬────────┬───┐
      │ obj header │ n_fields │ field1 │ … │
      └──────┴─────┴──────────┴────────┴───┘
-     
+
      The object  header includes the object tag (Array) and the forwarding pointer.
      The forwarding pointer is only reserved if compiled for the incremental GC.
 
@@ -3894,12 +3894,12 @@ module Arr = struct
   let element_size = 4l
   let len_field env = Int32.add (Tagged.header_size env) 0l
 
-  let len env = 
+  let len env =
     Tagged.load_forwarding_pointer env ^^
     Tagged.load_field env (len_field env)
 
   (* Static array access. No checking *)
-  let load_field env n = 
+  let load_field env n =
     Tagged.load_forwarding_pointer env ^^
     Tagged.load_field env Int32.(add n (header_size env))
 
@@ -3962,7 +3962,7 @@ module Arr = struct
 
   (* Does not initialize the fields! *)
   (* Note: Post allocation barrier must be applied after initialization *)
-  let alloc env = 
+  let alloc env =
     E.call_import env "rts" "alloc_array"
 
   let iterate env get_array body =
@@ -3980,7 +3980,7 @@ module Arr = struct
     set_pointer ^^
 
     (* Upper pointer boundary, skewed *)
-    get_array ^^ 
+    get_array ^^
     Tagged.load_field env (len_field env) ^^
     compile_mul_const element_size ^^
     get_pointer ^^
@@ -4119,7 +4119,7 @@ module Tuple = struct
   let compile_unit = compile_unboxed_const unit_vanilla_lit
 
   (* Expects on the stack the pointer to the array. *)
-  let load_n env n = 
+  let load_n env n =
     Tagged.load_forwarding_pointer env ^^
     Tagged.load_field env (Int32.add (Arr.header_size env) n)
 
@@ -5364,7 +5364,6 @@ module MakeSerialization (Strm : Stream) = struct
   (* Globals recording known Candid types
      See Note [Candid subtype checks]
    *)
-              
   let register_delayed_globals env =
     (E.add_global32_delayed env "__typtbl" Immutable,
      E.add_global32_delayed env "__typtbl_end" Immutable,
@@ -5675,20 +5674,20 @@ module MakeSerialization (Strm : Stream) = struct
         get_ref_size ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ set_ref_size ^^
         set_inc ^^ inc_data_size get_inc
       in
-      
+
       (* the incremental GC leaves array slice information in tag,
          the slice information can be removed and the tag reset to array
          as the GC can resume marking from the array beginning *)
       let clear_array_slicing =
         let (set_temp, get_temp) = new_local env "temp" in
-        set_temp ^^ 
+        set_temp ^^
         get_temp ^^ compile_unboxed_const Tagged.(int_of_tag StableSeen) ^^
         G.i (Compare (Wasm.Values.I32 I32Op.Ne)) ^^
         get_temp ^^ compile_unboxed_const Tagged.(int_of_tag CoercionFailure) ^^
         G.i (Compare (Wasm.Values.I32 I32Op.Ne)) ^^
         G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
         get_temp ^^ compile_unboxed_const Tagged.(int_of_tag ArraySliceMinimum) ^^
-        G.i (Compare (Wasm.Values.I32 I32Op.GeS)) ^^
+        G.i (Compare (Wasm.Values.I32 I32Op.GeU)) ^^
         G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
         G.if1 I32Type begin
           (compile_unboxed_const Tagged.(int_of_tag Array))
@@ -7152,12 +7151,12 @@ module Stabilization = struct
   let stabilize env t =
     let (set_dst, get_dst) = new_local env "dst" in
     let (set_len, get_len) = new_local env "len" in
-    
+
     (if !Flags.gc_strategy == Flags.Incremental then
       E.call_import env "rts" "stop_gc_on_upgrade"
     else
       G.nop) ^^
-    
+
 
     Externalization.serialize env [t] ^^
     set_len ^^
@@ -7681,17 +7680,17 @@ type scope_wrap = G.t -> G.t
 
 let unmodified : scope_wrap = fun code -> code
 
-let rec can_be_pointer typ nested_optional =     
+let rec can_be_pointer typ nested_optional =
   Type.(match normalize typ with
-  | Mut t -> (can_be_pointer t nested_optional)  
+  | Mut t -> (can_be_pointer t nested_optional)
   | Opt t -> (if nested_optional then true else (can_be_pointer t true))
   | Prim (Null| Bool | Char | Nat8 | Nat16 | Int8 | Int16) | Non | Tup [] -> false
-  | _ -> true) 
-  
-let potential_pointer typ : bool = 
+  | _ -> true)
+
+let potential_pointer typ : bool =
   (* must not eliminate nested optional types as they refer to a heap object for ??null, ???null etc. *)
   can_be_pointer typ false
-  
+
 module Var = struct
   (* This module is all about looking up Motoko variables in the environment,
      and dealing with mutable variables *)
@@ -8268,8 +8267,8 @@ module FuncDec = struct
         Serialization.deserialize env Type.[Prim Nat32] ^^
         BoxedSmallWord.unbox env ^^
         ContinuationTable.peek_future env ^^
-        set_closure ^^ 
-        get_closure ^^ 
+        set_closure ^^
+        get_closure ^^
         Closure.prepare_closure_call env ^^
         get_closure ^^
         Closure.call_closure env 0 0 ^^
@@ -8485,7 +8484,7 @@ module AllocHow = struct
 
   (* find the allocHow for the variables currently in scope *)
   (* we assume things are mutable, as we do not know better here *)
-  let how_of_ae ae : allocHow = 
+  let how_of_ae ae : allocHow =
     M.map (fun (l, _) -> match l with
     | VarEnv.Const _        -> (Const : how)
     | VarEnv.HeapStatic _   -> StoreStatic
