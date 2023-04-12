@@ -1113,24 +1113,21 @@ and gather_block_decs env decs =
 and gather_dec env scope dec : scope =
   match dec.it with
   | LetD (pat, exp) ->
-    let ve = gather_pat env exp.note.Note.const scope.val_env pat in
-    { val_env = ve }
+    { val_env = gather_pat env exp.note.Note.const scope.val_env pat }
   | VarD (id, t, exp) ->
     check_typ env t;
     check env dec.at
       (not (T.Env.mem id scope.val_env))
       "duplicate variable definition in block";
     let val_info = {typ = T.Mut t; const = false; loc_known = env.lvl = TopLvl} in
-    let ve = T.Env.add id val_info scope.val_env in
-    { val_env = ve }
+    { val_env = T.Env.add id val_info scope.val_env }
   | RefD (id, t, lexp) ->
     check_mut_typ env t;
     check env dec.at
       (not (T.Env.mem id scope.val_env))
       "duplicate variable definition in block";
     let val_info = {typ = t; const = false; loc_known = false} in
-    let ve = T.Env.add id val_info scope.val_env in
-    { val_env = ve }
+    { val_env = T.Env.add id val_info scope.val_env }
 
 (* Programs *)
 
