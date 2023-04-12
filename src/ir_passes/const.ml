@@ -24,7 +24,7 @@ open Lbool
     - no mutable variable are defined, and
     - pattern matching is side-effect free, i.e. irrefutable
   * Functions can be const if they do not require a closure.
-    This is the case if every free variables is
+    This is the case if every free variable is
     - const or
     - bound at the top level (`loc_known = true` below)
   * Literals can be const
