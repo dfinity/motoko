@@ -970,7 +970,10 @@ and gather_pat env const ve0 pat : val_env =
       List.fold_left go ve pats
     | ObjP pfs ->
       List.fold_left go ve (pats_of_obj_pat pfs)
-    | AltP (pat1, _) (* pat2 has the same set of bindings *)
+    | AltP (pat1, pat2) ->
+      let ve1, ve2 = go ve pat1, go ve pat2 in
+      let common i1 i2 = { typ = T.lub i1.typ i2.typ; loc_known = i1.loc_known && i2.loc_known; const = i1.const && i2.const } in
+      T.Env.merge (fun _ -> Lib.Option.map2 common) ve1 ve2
     | OptP pat1
     | TagP (_, pat1) ->
       go ve pat1
@@ -1020,7 +1023,7 @@ and check_pat env pat : val_env =
     t <: pat2.note;
     if T.Env.(keys ve1 <> keys ve2) then
         error env pat.at "set of bindings differ for alternative pattern";
-    let common i1 i2 = { typ = T.lub i1.typ i2.typ; loc_known = false; const = i1.const && i2.const } in
+    let common i1 i2 = { typ = T.lub i1.typ i2.typ; loc_known = i1.loc_known && i2.loc_known; const = i1.const && i2.const } in
     T.Env.merge (fun _ -> Lib.Option.map2 common) ve1 ve2
 
 and check_pats at env pats ve : val_env =
