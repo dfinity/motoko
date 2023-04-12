@@ -495,16 +495,16 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
     unsafe fn thread(&self, field: *mut Value) {
         let pointed = (*field).get_ptr() as *mut Obj;
         assert!(self.should_be_threaded(pointed));
-        let pointed_header = (*pointed).tag;
+        let pointed_header = pointed.tag();
         *field = Value::from_raw(pointed_header);
         (*pointed).tag = field as u32;
     }
 
     unsafe fn unthread(&self, object: *mut Obj, new_location: usize) {
         assert!(self.should_be_threaded(object));
-        let mut header = (*object).tag;
+        let mut header = object.tag();
         while header & 0b1 == 0 {
-            let tmp = (*(header as *const Obj)).tag;
+            let tmp = (header as *const Obj).tag();
             (*(header as *mut Value)) = Value::from_ptr(new_location);
             header = tmp;
         }
