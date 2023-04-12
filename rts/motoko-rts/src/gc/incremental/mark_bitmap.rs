@@ -169,7 +169,8 @@ impl BitmapIterator {
             // Move on to next word, always within a 64-bit boundary.
             self.next_bit_index += self.leading_zeros;
             if self.next_bit_index < BIT_INDEX_END {
-                let word64_index = self.next_bit_index / size_of::<u64>();
+                debug_assert_eq!(self.next_bit_index % u8::BITS as usize, 0);
+                let word64_index = self.next_bit_index / u8::BITS as usize;
                 self.current_word =
                     unsafe { *(self.bitmap_pointer.add(word64_index) as *const u64) };
                 self.leading_zeros = self.current_word.leading_zeros() as usize;
