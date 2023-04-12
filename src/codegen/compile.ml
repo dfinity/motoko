@@ -608,7 +608,7 @@ module E = struct
     | Flags.MarkCompact -> "compacting"
     | Flags.Copying -> "copying"
     | Flags.Generational -> "generational"
-    | Flags.Incremental -> "incremental"  
+    | Flags.Incremental -> "incremental"
 
   let collect_garbage env =
     (* GC function name = "schedule_"? ("compacting" | "copying" | "generational" | "incremental") "_gc" *)
@@ -1607,12 +1607,12 @@ module Tagged = struct
       Heap.load_field forwarding_pointer_field
     else
       G.nop)
-  
+
   let store_tag env tag =
     load_forwarding_pointer env ^^
     compile_unboxed_const (int_of_tag tag) ^^
     Heap.store_field tag_field
-    
+
   let load_tag env =
     load_forwarding_pointer env ^^
     Heap.load_field tag_field
@@ -1646,7 +1646,7 @@ module Tagged = struct
       set_value ^^ check_forwarding env false ^^ get_value
     else G.nop)
 
-  let load_field env index = 
+  let load_field env index =
     (if !Flags.sanity then check_forwarding env false else G.nop) ^^
     Heap.load_field index
 
@@ -1661,7 +1661,7 @@ module Tagged = struct
   let load_field64_unskewed env index =
     (if !Flags.sanity then check_forwarding env true else G.nop) ^^
     Heap.load_field64_unskewed index
-  
+
   let load_field64 env index =
     (if !Flags.sanity then check_forwarding env false else G.nop) ^^
     Heap.load_field64 index
@@ -1743,10 +1743,10 @@ module Tagged = struct
   let _branch_typed_with env ty retty branches =
     branch_with env retty (List.filter (fun (tag,c) -> can_have_tag ty tag) branches)
 
-  let allocation_barrier env = 
+  let allocation_barrier env =
     (if !Flags.gc_strategy = Flags.Incremental then
       E.call_import env "rts" "allocation_barrier"
-    else 
+    else
       G.nop)
 
   let write_with_barrier env =
@@ -2419,7 +2419,7 @@ module Float = struct
   let payload_field = Tagged.header_size
 
   let compile_unboxed_const f = G.i (Const (nr (Wasm.Values.F64 f)))
-  
+
   let vanilla_lit env f =
     Tagged.shared_static_obj env Tagged.Bits64 StaticBytes.[
       I64 (Wasm.F64.to_bits f)
@@ -3515,7 +3515,7 @@ module Object = struct
     )
     else idx_hash_raw env low_bound
 
-  let field_type env obj_type s = 
+  let field_type env obj_type s =
     let _, fields = Type.as_obj_sub [s] obj_type in
     Type.lookup_val_field s fields
 
@@ -3600,8 +3600,8 @@ module Blob = struct
     compile_unboxed_const (Int32.add ptr_unskew (E.add_static env StaticBytes.[Bytes s])) ^^
     compile_unboxed_const (Int32.of_int (String.length s))
 
-  let alloc env = 
-    E.call_import env "rts" "alloc_blob" ^^ 
+  let alloc env =
+    E.call_import env "rts" "alloc_blob" ^^
     (* uninitialized blob payload is allowed by the barrier *)
     Tagged.allocation_barrier env
 
@@ -3945,7 +3945,7 @@ module Arr = struct
     set_pointer ^^
 
     (* Upper pointer boundary, skewed *)
-    get_array ^^ 
+    get_array ^^
     Tagged.load_field env len_field ^^
     compile_mul_const element_size ^^
     get_pointer ^^
@@ -5640,7 +5640,7 @@ module MakeSerialization (Strm : Stream) = struct
         get_ref_size ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ set_ref_size ^^
         set_inc ^^ inc_data_size get_inc
       in
-      
+
       let size_alias size_thing =
         (* see Note [mutable stable values] *)
         let (set_tag, get_tag) = new_local env "tag" in
@@ -7616,17 +7616,17 @@ type scope_wrap = G.t -> G.t
 
 let unmodified : scope_wrap = fun code -> code
 
-let rec can_be_pointer typ nested_optional =     
+let rec can_be_pointer typ nested_optional =
   Type.(match normalize typ with
-  | Mut t -> (can_be_pointer t nested_optional)  
+  | Mut t -> (can_be_pointer t nested_optional)
   | Opt t -> (if nested_optional then true else (can_be_pointer t true))
   | Prim (Null| Bool | Char | Nat8 | Nat16 | Int8 | Int16) | Non | Tup [] -> false
   | _ -> true) 
-  
-let potential_pointer typ : bool = 
+
+let potential_pointer typ : bool =
   (* must not eliminate nested optional types as they refer to a heap object for ??null, ???null etc. *)
   can_be_pointer typ false
-  
+
 module Var = struct
   (* This module is all about looking up Motoko variables in the environment,
      and dealing with mutable variables *)
@@ -8420,7 +8420,7 @@ module AllocHow = struct
 
   (* find the allocHow for the variables currently in scope *)
   (* we assume things are mutable, as we do not know better here *)
-  let how_of_ae ae : allocHow = 
+  let how_of_ae ae : allocHow =
     M.map (fun (l, _) -> match l with
     | VarEnv.Const _        -> (Const : how)
     | VarEnv.HeapStatic _   -> StoreStatic
