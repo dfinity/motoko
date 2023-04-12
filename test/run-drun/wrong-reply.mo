@@ -9,30 +9,31 @@ actor A {
      return 666; // reply to my caller, resuming waiters
    };
 
-   public shared func writer() : async () {
+   public shared func writer() : async Text {
      o := ?(spawn());
      loop await async {
-       Prim.debugPrint("loop");
+//       Prim.debugPrint("loop");
      };
    };
 
-   public shared func reader() : async () {
+   public shared func reader() : async Text {
      switch o {
        case null { await reader() };
        case (?f) {
          Prim.debugPrint("awaiting f");
-         let _ = await f
-       }; // add “reply to my caller” to waiters of r
+         let _ = await f;
+         return "reader's result"
+       }; // add “reply to my caller” to waiters of f
      }
    };
 
    public func go() : async () {
      ignore async {
-       await writer();
-       Prim.debugPrint("WTF writer exited!")
+       let result = await writer();
+       Prim.debugPrint("writers() result: " # result )
      };
      await async {};
-     await reader();
+     let reader_result = await reader();
    }
 
 }
