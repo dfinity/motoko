@@ -293,10 +293,10 @@ module E = struct
       (* Pool for shared static objects. Their lookup needs to be specifically
          handled by using the tag and the payload without the forwarding pointer.
          This is because the forwarding pointer depends on the allocation adddress.
-         The lookup is different to `static_string` that has no such 
-         allocation-dependent content and can thus be immediately looked up by 
+         The lookup is different to `static_string` that has no such
+         allocation-dependent content and can thus be immediately looked up by
          the string value. *)
-    object_pool : int32 StringEnv.t ref; 
+    object_pool : int32 StringEnv.t ref;
     end_of_static_memory : int32 ref; (* End of statically allocated memory *)
     static_memory : (int32 * string) list ref; (* Content of static memory *)
     static_memory_frozen : bool ref;
@@ -1503,7 +1503,7 @@ end (* BitTagged *)
 
 module Tagged = struct
   (* Tagged objects all have an object header consisting of a tag and a forwarding pointer.
-     The tag is to describe their runtime type and serves to traverse the heap 
+     The tag is to describe their runtime type and serves to traverse the heap
      (serialization, GC), but also for objectification of arrays.
 
      The tag is a word at the beginning of the object.
@@ -1516,10 +1516,10 @@ module Tagged = struct
      └──────┴─────────┴──
 
      The copying GC requires that all tagged objects in the dynamic heap space have at least
-     two words in order to replace them by `Indirection`. This condition is met as the 
-     object header already occupies two words, and all objects except `Null` even have a size 
-     of at least three words. The `Null` object is a singleton and only lives in static heap 
-     space and is therefore not replaced by `Indirection` during copying GC. (Without forwarding 
+     two words in order to replace them by `Indirection`. This condition is met as the
+     object header already occupies two words, and all objects except `Null` even have a size
+     of at least three words. The `Null` object is a singleton and only lives in static heap
+     space and is therefore not replaced by `Indirection` during copying GC. (Without forwarding
      pointer in the header, the object would be smaller than `Indirection`.)
 
      Attention: This mapping is duplicated in these places
@@ -1804,9 +1804,9 @@ module Tagged = struct
 end (* Tagged *)
 
 module MutBox = struct
-  (* 
-      Mutable heap objects 
-  
+  (*
+      Mutable heap objects
+
        ┌──────┬─────┬─────────┐
        │ obj header │ payload │
        └──────┴─────┴─────────┘
@@ -1825,7 +1825,7 @@ module MutBox = struct
     ] in
     E.add_static_root env ptr;
     ptr
-    
+
   let load_field env =
     Tagged.load_forwarding_pointer env ^^
     Tagged.load_field env field
@@ -1875,7 +1875,7 @@ module Opt = struct
   (* This relies on the fact that add_static deduplicates *)
   let null_vanilla_lit env : int32 =
     Tagged.shared_static_obj env Tagged.Null []
-    
+
   let null_lit env =
     compile_unboxed_const (null_vanilla_lit env)
 
@@ -1894,7 +1894,7 @@ module Opt = struct
       get_x ^^ BitTagged.if_tagged_scalar env [I32Type]
         ( get_x ) (* scalar, no wrapping *)
         ( get_x ^^ BitTagged.is_true_literal env ^^ (* exclude true literal since `branch_default` follows the forwarding pointer *)
-          E.if_ env [I32Type]     
+          E.if_ env [I32Type]
             ( get_x ) (* true literal, no wrapping *)
             ( get_x ^^ Tagged.branch_default env [I32Type]
               ( get_x ) (* default tag, no wrapping *)
@@ -1905,13 +1905,13 @@ module Opt = struct
               ; Tagged.Some,
                 Tagged.obj env Tagged.Some [get_x]
               ]
-            )    
+            )
         )
     )
 
   (* This function is used where conceptually, Opt.inject should be used, but
   we know for sure that it wouldn’t do anything anyways, except dereferencing the forwarding pointer *)
-  let inject_simple env e = 
+  let inject_simple env e =
     e ^^ Tagged.load_forwarding_pointer env
 
   let load_some_payload_field env =
@@ -1923,7 +1923,7 @@ module Opt = struct
       get_x ^^ BitTagged.if_tagged_scalar env [I32Type]
         ( get_x ) (* scalar, no wrapping *)
         ( get_x ^^ BitTagged.is_true_literal env ^^ (* exclude true literal since `branch_default` follows the forwarding pointer *)
-          E.if_ env [I32Type]     
+          E.if_ env [I32Type]
             ( get_x ) (* true literal, no wrapping *)
             ( get_x ^^ Tagged.branch_default env [I32Type]
               ( get_x ) (* default tag, no wrapping *)
@@ -1959,11 +1959,11 @@ module Variant = struct
   let inject env l e =
     Tagged.obj env Tagged.Variant [compile_unboxed_const (hash_variant_label env l); e]
 
-  let get_variant_tag env = 
+  let get_variant_tag env =
     Tagged.load_forwarding_pointer env ^^
     Tagged.load_field env variant_tag_field
 
-  let project env = 
+  let project env =
     Tagged.load_forwarding_pointer env ^^
     Tagged.load_field env payload_field
 
@@ -1999,11 +1999,11 @@ module Closure = struct
   let funptr_field = Tagged.header_size
   let len_field = Int32.add 1l Tagged.header_size
 
-  let load_data env i = 
+  let load_data env i =
     Tagged.load_forwarding_pointer env ^^
     Tagged.load_field env (Int32.add header_size i)
 
-  let store_data env i = 
+  let store_data env i =
     let (set_closure_data, get_closure_data) = new_local env "closure_data" in
     set_closure_data ^^
     Tagged.load_forwarding_pointer env ^^
@@ -3446,7 +3446,7 @@ module Object = struct
     let (set_ri, get_ri, ri) = new_local_ env I32Type "obj" in
     Tagged.alloc env (Int32.add header_size sz) Tagged.Object ^^
     set_ri ^^
-    
+
     (* Set size *)
     get_ri ^^
     compile_unboxed_const sz ^^
@@ -3577,7 +3577,7 @@ module Blob = struct
   let header_size = Int32.add Tagged.header_size 1l
   let len_field = Int32.add Tagged.header_size 0l
 
-  let len env = 
+  let len env =
     Tagged.load_forwarding_pointer env ^^
     Tagged.load_field env len_field
 
@@ -3606,8 +3606,8 @@ module Blob = struct
     Tagged.allocation_barrier env
 
   let unskewed_payload_offset = Int32.(add ptr_unskew (mul Heap.word_size header_size))
-  
-  let payload_ptr_unskewed env = 
+
+  let payload_ptr_unskewed env =
     Tagged.load_forwarding_pointer env ^^
     compile_add_const unskewed_payload_offset
 
@@ -3849,7 +3849,7 @@ module Arr = struct
      ┌──────┬─────┬──────────┬────────┬───┐
      │ obj header │ n_fields │ field1 │ … │
      └──────┴─────┴──────────┴────────┴───┘
-     
+
      The object  header includes the object tag (Array) and the forwarding pointer.
 
      No difference between mutable and immutable arrays.
@@ -3859,12 +3859,12 @@ module Arr = struct
   let element_size = 4l
   let len_field = Int32.add Tagged.header_size 0l
 
-  let len env = 
+  let len env =
     Tagged.load_forwarding_pointer env ^^
     Tagged.load_field env len_field
 
   (* Static array access. No checking *)
-  let load_field env n = 
+  let load_field env n =
     Tagged.load_forwarding_pointer env ^^
     Tagged.load_field env Int32.(add n header_size)
 
@@ -4084,7 +4084,7 @@ module Tuple = struct
   let compile_unit = compile_unboxed_const unit_vanilla_lit
 
   (* Expects on the stack the pointer to the array. *)
-  let load_n env n = 
+  let load_n env n =
     Tagged.load_forwarding_pointer env ^^
     Tagged.load_field env (Int32.add Arr.header_size n)
 
@@ -5329,7 +5329,7 @@ module MakeSerialization (Strm : Stream) = struct
   (* Globals recording known Candid types
      See Note [Candid subtype checks]
    *)
-              
+        
   let register_delayed_globals env =
     (E.add_global32_delayed env "__typtbl" Immutable,
      E.add_global32_delayed env "__typtbl_end" Immutable,
@@ -8203,8 +8203,8 @@ module FuncDec = struct
         Serialization.deserialize env Type.[Prim Nat32] ^^
         BoxedSmallWord.unbox env ^^
         ContinuationTable.peek_future env ^^
-        set_closure ^^ 
-        get_closure ^^ 
+        set_closure ^^
+        get_closure ^^
         Closure.prepare_closure_call env ^^
         get_closure ^^
         Closure.call_closure env 0 0 ^^
