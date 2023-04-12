@@ -10,7 +10,7 @@
 //!
 //! To access a mark bit of an object, the corresponding bitmap and address offset inside the object's partition
 //! needs to be first determined. The corresponding bit is then accessed at the byte with index
-//! `offset / WORD_SIZE / u8::BITS` and at the bit index `offset % u8::BITS`.
+//! `offset / WORD_SIZE / u8::BITS` and at the bit index `(offset / WORD_SIZE) % u8::BITS`.
 //!
 //! If an object is marked, the corresponding bit is set to `1`. Otherwise, if the object is not marked or
 //! the bit does not denote the start of an object, it is `0`.
