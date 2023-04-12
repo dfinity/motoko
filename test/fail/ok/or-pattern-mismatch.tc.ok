@@ -12,20 +12,3 @@ or-pattern-mismatch.mo:4.6-4.19: warning [M0146], this pattern is never matched
 or-pattern-mismatch.mo:7.10-7.40: type error [M0185], types for alternative pattern variables a4 differ
   Nat
   Int
-or-pattern-mismatch.mo:8.10-8.40: type error [M0185], types for alternative pattern variables a5 differ
-  Nat
-  Int
-or-pattern-mismatch.mo:7.10-7.40: type error [M0185], types for alternative pattern variables a4 differ
-  Nat
-  Int
-or-pattern-mismatch.mo:7.50-7.52: type error [M0096], expression of type
-  Int
-cannot produce expected type
-  Nat
-or-pattern-mismatch.mo:8.10-8.40: type error [M0185], types for alternative pattern variables a5 differ
-  Nat
-  Int
-or-pattern-mismatch.mo:8.61-8.63: type error [M0096], expression of type
-  Int
-cannot produce expected type
-  Nat

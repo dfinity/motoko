@@ -1875,7 +1875,7 @@ and infer_pat' env pat : T.typ * Scope.val_env =
     if T.Env.keys ve1 <> T.Env.keys ve2 then
       error env pat.at "M0184" "different set of bindings in pattern alternatives";
     let check_same_bind_type bind t1 t2 = if not (T.eq t1 t2) then
-      local_error env pat.at "M0185" "types for alternative pattern variables %s differ%a%a"
+      error env pat.at "M0185" "types for alternative pattern variables %s differ%a%a"
         bind
         display_typ_expand t1
         display_typ_expand t2;

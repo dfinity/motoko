@@ -5,4 +5,3 @@ let (#a (a3 : Nat)) or (#b a3) = #b (5 : Int);
 
 // inference
 func foo(#a (a4 : Nat) or #b (a4 : Int)) : Nat = a4;
-func bar(#a (a5 : Nat) or #b (a5 : Int), b5 : Char) : Nat = a5;
