@@ -802,6 +802,8 @@ pub(crate) unsafe fn block_size(address: usize) -> Words<u32> {
 
         TAG_OBJ_IND => size_of::<ObjInd>(),
 
+        // `block_size` is not used during the incremental mark phase and
+        // therefore, does not support array slicing.
         TAG_ARRAY => {
             let array = address as *mut Array;
             let size = array.len();
