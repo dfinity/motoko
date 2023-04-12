@@ -32,6 +32,7 @@ mod phases;
 pub mod roots;
 #[cfg(feature = "memory_check")]
 pub mod sanity_checks;
+pub mod sort;
 pub mod time;
 
 #[ic_mem_fn(ic_only)]
