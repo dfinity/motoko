@@ -1017,8 +1017,7 @@ and check_pat env pat : val_env =
     check_pat_tag env t l pat1;
     ve
   | AltP (pat1, pat2) ->
-    let ve1 = check_pat env pat1 in
-    let ve2 = check_pat env pat2 in
+    let ve1, ve2 = check_pat env pat1, check_pat env pat2 in
     t <: pat1.note;
     t <: pat2.note;
     if T.Env.(keys ve1 <> keys ve2) then
