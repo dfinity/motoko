@@ -99,7 +99,7 @@ pub struct BitmapIterator {
     /// Start address of the mark bitmap.
     bitmap_pointer: *mut u8,
     /// Index of next bit to continue iteration in the bitmap.
-    /// Invariant during (initialzed and unfinished):
+    /// Invariant during (initialized and unfinished):
     /// `lsb(current_word) == bitmap.bit(next_bit_index - 1)`.
     /// with `lsb` meaning "least significant bit" and `bitmap.bit()`
     /// reading the corresponding bit in the bitmap.

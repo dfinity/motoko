@@ -1,4 +1,3 @@
-//MOC-NO-FORCE-GC
 // test throw on local async call failure
 import Prim "mo:⛔";
 

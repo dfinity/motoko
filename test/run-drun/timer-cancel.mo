@@ -1,4 +1,3 @@
-//MOC-NO-FORCE-GC
 import { debugPrint; error; setTimer; cancelTimer } = "mo:⛔";
 
 actor {

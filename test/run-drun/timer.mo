@@ -1,4 +1,3 @@
-//MOC-NO-FORCE-GC
 //MOC-ENV MOC_UNLOCK_PRIM=yesplease
 
 import { debugPrint; error; setTimer; cancelTimer } = "mo:⛔";
