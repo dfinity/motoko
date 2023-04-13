@@ -3975,6 +3975,7 @@ module IC = struct
       E.add_func_import env "ic0" "canister_self_copy" (i32s 3) [];
       E.add_func_import env "ic0" "canister_self_size" [] [I32Type];
       E.add_func_import env "ic0" "canister_status" [] [I32Type];
+      E.add_func_import env "ic0" "is_controller" (i32s 2) [I32Type];
       E.add_func_import env "ic0" "debug_print" (i32s 2) [];
       E.add_func_import env "ic0" "msg_arg_data_copy" (i32s 3) [];
       E.add_func_import env "ic0" "msg_arg_data_size" [] [I32Type];
