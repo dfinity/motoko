@@ -117,35 +117,33 @@ fn test_gc(
     roots: &[ObjectIdx],
     continuation_table: &[ObjectIdx],
 ) {
-    let memory = Rc::new(RefCell::new(MotokoHeap::new(refs, roots, continuation_table, gc)));
-    unsafe { share_memory(Rc::clone(&memory)); }
+    let heap = Rc::new(RefCell::new(MotokoHeap::new(refs, roots, continuation_table, gc)));
+    unsafe { share_memory(Rc::clone(&heap)); }
 
-    let heap = memory.borrow();
     // Check `create_dynamic_heap` sanity
     check_dynamic_heap(
         false, // before gc
         refs,
         roots,
         continuation_table,
-        &**heap.heap(),
-        heap.heap_base_offset(),
-        heap.heap_ptr_offset(),
-        heap.continuation_table_ptr_offset(),
+        &**heap.borrow().heap(),
+        heap.borrow().heap_base_offset(),
+        heap.borrow().heap_ptr_offset(),
+        heap.borrow().continuation_table_ptr_offset(),
     );
 
     for round in 0..3 {
-        let check_all_reclaimed = gc.run(Rc::clone(&memory), round);
+        let check_all_reclaimed = gc.run(Rc::clone(&heap), round);
 
-        let heap = memory.borrow();
-        let heap_base_offset = heap.heap_base_offset();
-        let heap_ptr_offset = heap.heap_ptr_offset();
-        let continuation_table_ptr_offset = heap.continuation_table_ptr_offset();
+        let heap_base_offset = heap.borrow().heap_base_offset();
+        let heap_ptr_offset = heap.borrow().heap_ptr_offset();
+        let continuation_table_ptr_offset = heap.borrow().continuation_table_ptr_offset();
         check_dynamic_heap(
             check_all_reclaimed, // after gc
             refs,
             roots,
             continuation_table,
-            &**heap.heap(),
+            &**heap.borrow().heap(),
             heap_base_offset,
             heap_ptr_offset,
             continuation_table_ptr_offset,
@@ -343,14 +341,13 @@ fn check_continuation_table(mut offset: usize, continuation_table: &[ObjectIdx],
 }
 
 impl GC {
-    fn run(&self, memory: Rc<RefCell<MotokoHeap>>, round: usize) -> bool {
-        let heap = memory.borrow();
-        let heap_base = heap.heap_base_address() as u32;
-        let static_roots = Value::from_ptr(heap.static_root_array_address());
-        let continuation_table_ptr_address = heap.continuation_table_ptr_address() as *mut Value;
+    fn run(&self, heap: Rc<RefCell<MotokoHeap>>, round: usize) -> bool {
+        let heap_base = heap.borrow().heap_base_address() as u32;
+        let static_roots = Value::from_ptr(heap.borrow().static_root_array_address());
+        let continuation_table_ptr_address = heap.borrow().continuation_table_ptr_address() as *mut Value;
 
-        let heap_1 = heap.clone();
-        let heap_2 = heap.clone();
+        let heap_1 = heap.borrow().clone();
+        let heap_2 = heap.borrow().clone();
 
         match self {
             GC::Copying => {
@@ -416,8 +413,8 @@ impl GC {
                     let mut gc = GenerationalGC::new(gc_heap, strategy);
                     gc.run();
                     let free = gc.heap.limits.free;
-                    heap.set_last_ptr_address(free);
-                    heap.set_heap_ptr_address(free);
+                    heap.borrow().set_last_ptr_address(free);
+                    heap.borrow().set_heap_ptr_address(free);
                 }
                 round >= 2
             }
