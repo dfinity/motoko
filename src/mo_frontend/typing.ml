@@ -515,7 +515,7 @@ and check_typ' env typ : T.typ =
   | AsyncT (s, typ0, typ) ->
     let t0 = check_typ env typ0 in
     let t = check_typ env typ in
-    if not env.pre && not (T.shared t) then
+    if not env.pre && s = T.Fut && not (T.shared t) then
       error_shared env t typ.at
         "M0033" "async has non-shared content type%a"
         display_typ_expand t;

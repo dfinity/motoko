@@ -1,0 +1,4 @@
+async-star.mo:17.50-17.52: warning [M0145], this pattern of type
+  ?B__4
+does not cover value
+  null
