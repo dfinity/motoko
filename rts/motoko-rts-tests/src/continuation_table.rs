@@ -1,4 +1,4 @@
-use crate::memory::TestMemory;
+use crate::memory::{TestMemory, set_memory};
 
 use motoko_rts::continuation_table::{
     continuation_count, recall_continuation, remember_continuation,
@@ -14,12 +14,11 @@ pub unsafe fn test() {
 
     // Array will be doubled 3 times, so 256 + 512 + 1024 + 2048 = 3840 words, plus each array will
     // have 2 word header.
-    let mut heap = TestMemory::new(Words(3848));
+    set_memory(TestMemory::new(Words(3848)));
 
     let mut references: [u32; N] = [0; N];
     for i in 0..N {
         references[i] = remember_continuation(
-            &mut heap,
             Value::from_raw(((i as u32) << 2).wrapping_sub(1)),
         );
         assert_eq!(continuation_count(), (i + 1) as u32);
@@ -33,7 +32,6 @@ pub unsafe fn test() {
 
     for i in 0..N / 2 {
         references[i] = remember_continuation(
-            &mut heap,
             Value::from_raw(((i as u32) << 2).wrapping_sub(1)),
         );
         assert_eq!(continuation_count(), (N / 2 + i + 1) as u32);

@@ -1,6 +1,6 @@
 //! Stream tests
 
-use crate::memory::TestMemory;
+use crate::memory::{TestMemory, set_memory};
 
 use motoko_rts::stream::alloc_stream;
 use motoko_rts::types::{Bytes, Stream, Value, Words};
@@ -8,10 +8,10 @@ use motoko_rts::types::{Bytes, Stream, Value, Words};
 pub unsafe fn test() {
     println!("Testing streaming ...");
 
-    let mut mem = TestMemory::new(Words(1024 * 1024));
+    set_memory(TestMemory::new(Words(1024 * 1024)));
 
     println!("  Testing stream creation");
-    let stream = Value::from_ptr(alloc_stream(&mut mem, Bytes(60)) as usize);
+    let stream = Value::from_ptr(alloc_stream(Bytes(60)) as usize);
 
     println!("  Testing stream filling (single bytes)");
     for b in 32..92u8 {
@@ -26,7 +26,7 @@ pub unsafe fn test() {
     assert_eq!(stream.as_blob().len(), Bytes(24));
 
     println!("  Testing stream filling (blocks)");
-    let stream = Value::from_ptr(alloc_stream(&mut mem, Bytes(6000)) as usize);
+    let stream = Value::from_ptr(alloc_stream(Bytes(6000)) as usize);
     let chunk: [u8; 10] = [10, 1, 2, 3, 4, 5, 6, 7, 8, 9];
     for _ in 0..600 {
         stream
@@ -51,7 +51,7 @@ pub unsafe fn test() {
             WRITTEN += n
         }
     }
-    let stream = alloc_stream(&mut mem, Bytes(6000));
+    let stream = alloc_stream(Bytes(6000));
     (*stream).outputter = just_count;
     let place = stream.reserve(Bytes(20));
     *place = 'a' as u8;

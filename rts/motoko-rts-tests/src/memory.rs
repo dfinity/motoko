@@ -1,6 +1,7 @@
-use motoko_rts::memory::Memory;
-use motoko_rts::types::{Value, Words};
+use std::{rc::Rc, cell::RefCell};
 
+use motoko_rts::types::{Value, Words};
+ 
 pub struct TestMemory {
     heap: Box<[u8]>,
     hp: usize,
@@ -26,6 +27,10 @@ impl TestMemory {
     }
 }
 
+pub trait Memory {
+    unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value;
+}
+
 impl Memory for TestMemory {
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value {
         let bytes = n.to_bytes();
@@ -40,4 +45,20 @@ impl Memory for TestMemory {
 
         Value::from_ptr(old_hp)
     }
+}
+
+static mut TEST_MEMORY: Option<Rc<RefCell<dyn Memory>>> = None;
+
+pub unsafe fn set_memory<M: Memory + 'static>(memory: M) {
+    TEST_MEMORY = Some(Rc::new(RefCell::new(memory)));
+}
+
+pub unsafe fn share_memory<M: Memory + 'static>(memory: Rc<RefCell<M>>) {
+    TEST_MEMORY = Some(memory);
+}
+
+// Export back to the RTS for unit testing.
+#[no_mangle]
+pub unsafe extern "C" fn alloc_words(n: Words<u32>) -> Value {
+    TEST_MEMORY.as_mut().unwrap().as_ref().borrow_mut().alloc_words(n)
 }

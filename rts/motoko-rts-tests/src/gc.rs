@@ -21,9 +21,13 @@ use motoko_rts::gc::generational::{GenerationalGC, Limits, Roots, Strategy};
 use motoko_rts::gc::mark_compact::compacting_gc_internal;
 use motoko_rts::types::*;
 
+use std::cell::RefCell;
 use std::fmt::Write;
+use std::rc::Rc;
 
 use fxhash::{FxHashMap, FxHashSet};
+
+use crate::memory::share_memory;
 
 pub fn test() {
     println!("Testing garbage collection ...");
@@ -113,8 +117,10 @@ fn test_gc(
     roots: &[ObjectIdx],
     continuation_table: &[ObjectIdx],
 ) {
-    let mut heap = MotokoHeap::new(refs, roots, continuation_table, gc);
+    let memory = Rc::new(RefCell::new(MotokoHeap::new(refs, roots, continuation_table, gc)));
+    unsafe { share_memory(Rc::clone(&memory)); }
 
+    let heap = memory.borrow();
     // Check `create_dynamic_heap` sanity
     check_dynamic_heap(
         false, // before gc
@@ -128,8 +134,9 @@ fn test_gc(
     );
 
     for round in 0..3 {
-        let check_all_reclaimed = gc.run(&mut heap, round);
+        let check_all_reclaimed = gc.run(Rc::clone(&memory), round);
 
+        let heap = memory.borrow();
         let heap_base_offset = heap.heap_base_offset();
         let heap_ptr_offset = heap.heap_ptr_offset();
         let continuation_table_ptr_offset = heap.continuation_table_ptr_offset();
@@ -336,7 +343,8 @@ fn check_continuation_table(mut offset: usize, continuation_table: &[ObjectIdx],
 }
 
 impl GC {
-    fn run(&self, heap: &mut MotokoHeap, round: usize) -> bool {
+    fn run(&self, memory: Rc<RefCell<MotokoHeap>>, round: usize) -> bool {
+        let heap = memory.borrow();
         let heap_base = heap.heap_base_address() as u32;
         let static_roots = Value::from_ptr(heap.static_root_array_address());
         let continuation_table_ptr_address = heap.continuation_table_ptr_address() as *mut Value;
@@ -348,7 +356,6 @@ impl GC {
             GC::Copying => {
                 unsafe {
                     copying_gc_internal(
-                        heap,
                         heap_base,
                         // get_hp
                         || heap_1.heap_ptr_address(),
@@ -368,7 +375,6 @@ impl GC {
             GC::MarkCompact => {
                 unsafe {
                     compacting_gc_internal(
-                        heap,
                         heap_base,
                         // get_hp
                         || heap_1.heap_ptr_address(),
@@ -391,7 +397,7 @@ impl GC {
                     _ => Strategy::Full,
                 };
                 unsafe {
-                    REMEMBERED_SET = Some(RememberedSet::new(heap));
+                    REMEMBERED_SET = Some(RememberedSet::new());
                     LAST_HP = heap_1.last_ptr_address() as u32;
 
                     let limits = Limits {
@@ -404,7 +410,6 @@ impl GC {
                         continuation_table_ptr_loc: continuation_table_ptr_address,
                     };
                     let gc_heap = motoko_rts::gc::generational::Heap {
-                        mem: heap,
                         limits,
                         roots,
                     };

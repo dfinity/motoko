@@ -1,9 +1,10 @@
+use crate::memory::Memory;
+
 use super::utils::{
     make_pointer, make_scalar, write_word, ObjectIdx, GC, MAX_MARK_STACK_SIZE, WORD_SIZE,
 };
 
 use motoko_rts::gc::mark_compact::mark_stack::INIT_STACK_SIZE;
-use motoko_rts::memory::Memory;
 use motoko_rts::types::*;
 
 use std::cell::{Ref, RefCell};

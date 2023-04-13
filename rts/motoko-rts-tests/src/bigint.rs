@@ -1,4 +1,4 @@
-use crate::memory::TestMemory;
+use crate::memory::{TestMemory, set_memory};
 
 use motoko_rts::bigint::{self, *};
 use motoko_rts::buf::Buf;
@@ -7,12 +7,9 @@ use motoko_rts::types::{Bytes, Value, Words};
 // mp functions below are implemented separately for tests as we can't modify mp_int source code to
 // pass a generic heap argument (then monomorphise it for IC).
 
-// This global is used to pass a reference to heap to the mp functions
-static mut HEAP: *mut TestMemory = std::ptr::null_mut();
-
 #[no_mangle]
 unsafe extern "C" fn mp_calloc(n_elems: usize, elem_size: Bytes<usize>) -> *mut libc::c_void {
-    bigint::mp_calloc(&mut *HEAP, n_elems, elem_size)
+    bigint::mp_calloc(n_elems, elem_size)
 }
 
 #[no_mangle]
@@ -21,15 +18,14 @@ unsafe extern "C" fn mp_realloc(
     old_size: Bytes<u32>,
     new_size: Bytes<u32>,
 ) -> *mut libc::c_void {
-    bigint::mp_realloc(&mut *HEAP, ptr, old_size, new_size)
+    bigint::mp_realloc(ptr, old_size, new_size)
 }
 
 pub unsafe fn test() {
     println!("Testing BigInt ...");
 
     // Not sure how much we will need in these tests but 1G should be enough
-    let mut heap = TestMemory::new(Words(1024 * 1024));
-    HEAP = &mut heap;
+    set_memory(TestMemory::new(Words(1024 * 1024)));
 
     assert!(bigint_eq(
         bigint_pow(bigint_of_word32(70), bigint_of_word32(32)),
@@ -61,9 +57,6 @@ pub unsafe fn test() {
         test_bigint_sleb128(bigint_neg(two_pow_i));
         test_bigint_sleb128(bigint_neg(plus_one));
     }
-
-    HEAP = std::ptr::null_mut();
-    drop(heap);
 }
 
 // Check leb128 encode/decode roundtrip
