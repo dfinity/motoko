@@ -1,25 +1,11 @@
 use crate::memory::{TestMemory, set_memory};
 
-use motoko_rts::bigint::{self, *};
+use motoko_rts::bigint::*;
 use motoko_rts::buf::Buf;
-use motoko_rts::types::{Bytes, Value, Words};
+use motoko_rts::types::{Value, Words};
 
 // mp functions below are implemented separately for tests as we can't modify mp_int source code to
 // pass a generic heap argument (then monomorphise it for IC).
-
-#[no_mangle]
-unsafe extern "C" fn mp_calloc(n_elems: usize, elem_size: Bytes<usize>) -> *mut libc::c_void {
-    bigint::mp_calloc(n_elems, elem_size)
-}
-
-#[no_mangle]
-unsafe extern "C" fn mp_realloc(
-    ptr: *mut libc::c_void,
-    old_size: Bytes<u32>,
-    new_size: Bytes<u32>,
-) -> *mut libc::c_void {
-    bigint::mp_realloc(ptr, old_size, new_size)
-}
 
 pub unsafe fn test() {
     println!("Testing BigInt ...");
