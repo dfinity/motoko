@@ -3,13 +3,13 @@ use crate::bitrel::BitRel;
 use crate::buf::{read_byte, read_word, skip_leb128, Buf};
 use crate::idl_trap_with;
 use crate::leb128::{leb128_decode, sleb128_decode};
-use crate::memory::{alloc_blob, Memory};
+use crate::memory::alloc_blob;
 use crate::types::Words;
 use crate::utf8::utf8_validate;
 
 use core::cmp::min;
 
-use motoko_rts_macros::ic_mem_fn;
+use motoko_rts_macros::export;
 
 //
 // IDL constants
@@ -94,8 +94,8 @@ unsafe fn parse_fields(buf: *mut Buf, n_types: u32) {
 }
 
 // NB. This function assumes the allocation does not need to survive GC
-unsafe fn alloc<M: Memory>(mem: &mut M, size: Words<u32>) -> *mut u8 {
-    alloc_blob(mem, size.to_bytes())
+unsafe fn alloc(size: Words<u32>) -> *mut u8 {
+    alloc_blob(size.to_bytes())
         .as_blob_mut()
         .payload_addr()
 }
@@ -115,9 +115,8 @@ unsafe fn alloc<M: Memory>(mem: &mut M, size: Words<u32>) -> *mut u8 {
 ///
 /// * returns a pointer to the beginning of the list of main types
 ///   (again via pointer argument, for lack of multi-value returns in C ABI)
-#[ic_mem_fn]
-unsafe fn parse_idl_header<M: Memory>(
-    mem: &mut M,
+#[export]
+unsafe fn parse_idl_header(
     extended: bool,
     buf: *mut Buf,
     typtbl_out: *mut *mut *mut u8,
@@ -147,7 +146,7 @@ unsafe fn parse_idl_header<M: Memory>(
     *typtbl_size_out = n_types;
 
     // Allocate the type table to be passed out
-    let typtbl: *mut *mut u8 = alloc(mem, Words(n_types)) as *mut _;
+    let typtbl: *mut *mut u8 = alloc(Words(n_types)) as *mut _;
 
     // Go through the table
     for i in 0..n_types {
@@ -320,8 +319,8 @@ unsafe fn skip_any_vec(buf: *mut Buf, typtbl: *mut *mut u8, t: i32, count: u32) 
 //
 // This is currently implemented recursively, but we could
 // do this in a loop (by maintaining a stack of the t arguments)
-#[no_mangle]
-unsafe extern "C" fn skip_any(buf: *mut Buf, typtbl: *mut *mut u8, t: i32, depth: i32) {
+#[export]
+unsafe fn skip_any(buf: *mut Buf, typtbl: *mut *mut u8, t: i32, depth: i32) {
     if depth > 100 {
         idl_trap_with("skip_any: too deeply nested record");
     }
@@ -477,8 +476,8 @@ If the tag does not exist:
          or at the value past the record
   n:     the number of fields left, including the field pointed to by tb
 */
-#[no_mangle]
-unsafe extern "C" fn find_field(
+#[export]
+unsafe fn find_field(
     tb: *mut Buf,
     buf: *mut Buf,
     typtbl: *mut *mut u8,
@@ -505,8 +504,8 @@ unsafe extern "C" fn find_field(
     0
 }
 
-#[no_mangle]
-unsafe extern "C" fn skip_fields(tb: *mut Buf, buf: *mut Buf, typtbl: *mut *mut u8, n: *mut u8) {
+#[export]
+unsafe fn skip_fields(tb: *mut Buf, buf: *mut Buf, typtbl: *mut *mut u8, n: *mut u8) {
     while *n > 0 {
         skip_leb128(tb);
         let it = sleb128_decode(tb);
@@ -801,13 +800,13 @@ unsafe fn sub(
     return false;
 }
 
-#[no_mangle]
-unsafe extern "C" fn idl_sub_buf_words(typtbl_size1: u32, typtbl_size2: u32) -> u32 {
+#[export]
+unsafe fn idl_sub_buf_words(typtbl_size1: u32, typtbl_size2: u32) -> u32 {
     return BitRel::words(typtbl_size1, typtbl_size2);
 }
 
-#[no_mangle]
-unsafe extern "C" fn idl_sub_buf_init(rel_buf: *mut u32, typtbl_size1: u32, typtbl_size2: u32) {
+#[export]
+unsafe fn idl_sub_buf_init(rel_buf: *mut u32, typtbl_size1: u32, typtbl_size2: u32) {
     let rel = BitRel {
         ptr: rel_buf,
         end: rel_buf.add(idl_sub_buf_words(typtbl_size1, typtbl_size2) as usize),
@@ -817,8 +816,8 @@ unsafe extern "C" fn idl_sub_buf_init(rel_buf: *mut u32, typtbl_size1: u32, typt
     rel.init();
 }
 
-#[no_mangle]
-unsafe extern "C" fn idl_sub(
+#[export]
+unsafe fn idl_sub(
     rel_buf: *mut u32, // a buffer with at least 2 * typtbl_size1 * typtbl_size2 bits
     typtbl1: *mut *mut u8,
     typtbl2: *mut *mut u8,

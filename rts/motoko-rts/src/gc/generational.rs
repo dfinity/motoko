@@ -18,25 +18,24 @@ use crate::gc::mark_compact::bitmap::{
 
 use crate::constants::WORD_SIZE;
 use crate::mem_utils::memcpy_words;
-use crate::memory::Memory;
 use crate::types::*;
 use crate::visitor::{pointer_to_dynamic_heap, visit_pointer_fields};
 
-use motoko_rts_macros::ic_mem_fn;
+use motoko_rts_macros::{export, ic_only};
 
 use self::mark_stack::{free_mark_stack, pop_mark_stack};
 use self::write_barrier::REMEMBERED_SET;
 
-#[ic_mem_fn(ic_only)]
-unsafe fn schedule_generational_gc<M: Memory>(mem: &mut M) {
+#[export(ic_only)]
+unsafe fn schedule_generational_gc() {
     let limits = get_limits();
     if decide_strategy(&limits).is_some() {
-        generational_gc(mem);
+        generational_gc();
     }
 }
 
-#[ic_mem_fn(ic_only)]
-unsafe fn generational_gc<M: Memory>(mem: &mut M) {
+#[export(ic_only)]
+unsafe fn generational_gc() {
     use crate::memory::ic;
 
     let old_limits = get_limits();
@@ -45,7 +44,6 @@ unsafe fn generational_gc<M: Memory>(mem: &mut M) {
         continuation_table_ptr_loc: crate::continuation_table::continuation_table_loc(),
     };
     let heap = Heap {
-        mem,
         limits: get_limits(),
         roots,
     };
@@ -73,10 +71,10 @@ unsafe fn generational_gc<M: Memory>(mem: &mut M) {
         sanity_checks::take_snapshot(&mut gc.heap);
     }
 
-    write_barrier::init_write_barrier(gc.heap.mem);
+    write_barrier::init_write_barrier();
 }
 
-#[cfg(feature = "ic")]
+#[ic_only]
 unsafe fn get_limits() -> Limits {
     assert!(ic::LAST_HP >= ic::get_aligned_heap_base());
     use crate::memory::ic;
@@ -87,14 +85,14 @@ unsafe fn get_limits() -> Limits {
     }
 }
 
-#[cfg(feature = "ic")]
+#[ic_only]
 unsafe fn set_limits(limits: &Limits) {
     use crate::memory::ic;
     ic::HP = limits.free as u32;
     ic::LAST_HP = limits.free as u32;
 }
 
-#[cfg(feature = "ic")]
+#[ic_only]
 unsafe fn update_statistics(old_limits: &Limits, new_limits: &Limits) {
     use crate::memory::ic;
     let live_size = Bytes(new_limits.free as u32 - new_limits.base as u32);
@@ -108,16 +106,16 @@ pub enum Strategy {
     Full,
 }
 
-#[cfg(feature = "ic")]
+#[ic_only]
 static mut OLD_GENERATION_THRESHOLD: usize = 32 * 1024 * 1024;
 
-#[cfg(feature = "ic")]
+#[ic_only]
 static mut PASSED_CRITICAL_LIMIT: bool = false;
 
-#[cfg(feature = "ic")]
+#[ic_only]
 const CRITICAL_MEMORY_LIMIT: usize = (4096 - 512) * 1024 * 1024;
 
-#[cfg(feature = "ic")]
+#[ic_only]
 unsafe fn decide_strategy(limits: &Limits) -> Option<Strategy> {
     const YOUNG_GENERATION_THRESHOLD: usize = 8 * 1024 * 1024;
 
@@ -138,7 +136,7 @@ unsafe fn decide_strategy(limits: &Limits) -> Option<Strategy> {
     }
 }
 
-#[cfg(feature = "ic")]
+#[ic_only]
 unsafe fn update_strategy(strategy: Strategy, limits: &Limits) {
     const GROWTH_RATE: f64 = 2.0;
     if strategy == Strategy::Full {
@@ -149,8 +147,7 @@ unsafe fn update_strategy(strategy: Strategy, limits: &Limits) {
     }
 }
 
-pub struct Heap<'a, M: Memory> {
-    pub mem: &'a mut M,
+pub struct Heap {
     pub limits: Limits,
     pub roots: Roots,
 }
@@ -169,14 +166,14 @@ pub struct Limits {
     pub free: usize,
 }
 
-pub struct GenerationalGC<'a, M: Memory> {
-    pub heap: Heap<'a, M>,
+pub struct GenerationalGC {
+    pub heap: Heap,
     marked_space: usize,
     strategy: Strategy,
 }
 
-impl<'a, M: Memory> GenerationalGC<'a, M> {
-    pub fn new(heap: Heap<M>, strategy: Strategy) -> GenerationalGC<M> {
+impl GenerationalGC {
+    pub fn new(heap: Heap, strategy: Strategy) -> GenerationalGC {
         GenerationalGC {
             heap,
             marked_space: 0,
@@ -198,8 +195,8 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
             Strategy::Full => self.heap.limits.base,
         };
         let heap_size = Bytes((self.heap.limits.free - heap_prefix) as u32);
-        alloc_bitmap(self.heap.mem, heap_size, heap_prefix as u32 / WORD_SIZE);
-        alloc_mark_stack(self.heap.mem);
+        alloc_bitmap(heap_size, heap_prefix as u32 / WORD_SIZE);
+        alloc_mark_stack();
     }
 
     unsafe fn free_mark_structures(&mut self) {
@@ -261,7 +258,7 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
         }
         set_bit(obj_idx);
 
-        push_mark_stack(self.heap.mem, pointer as usize);
+        push_mark_stack(pointer as usize);
         self.marked_space += object_size(pointer as usize).to_bytes().as_usize();
     }
 
@@ -284,14 +281,14 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
                 // Should become a debug assertion in future.
                 gc.barrier_coverage_check(field_address);
             },
-            |gc, slice_start, array| {
+            |_, slice_start, array| {
                 const SLICE_INCREMENT: u32 = 255;
                 debug_assert!(SLICE_INCREMENT >= TAG_ARRAY_SLICE_MIN);
                 if array.len() - slice_start > SLICE_INCREMENT {
                     let new_start = slice_start + SLICE_INCREMENT;
                     // Remember to visit the array suffix later, store the next visit offset in the tag.
                     (*array).header.tag = new_start;
-                    push_mark_stack(gc.heap.mem, array as usize);
+                    push_mark_stack(array as usize);
                     new_start
                 } else {
                     // No further visits of this array. Restore the tag.

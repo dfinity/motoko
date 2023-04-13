@@ -20,7 +20,6 @@
 // [2]: https://doc.rust-lang.org/stable/reference/type-layout.html#the-c-representation
 
 use crate::gc::generational::write_barrier::write_barrier;
-use crate::memory::Memory;
 use crate::tommath_bindings::{mp_digit, mp_int};
 use core::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
 
@@ -427,11 +426,11 @@ impl Array {
     }
 
     /// Write a pointer value to an array element. Uses a post-update barrier.
-    pub unsafe fn set_pointer<M: Memory>(self: *mut Self, idx: u32, value: Value, mem: &mut M) {
+    pub unsafe fn set_pointer(self: *mut Self, idx: u32, value: Value) {
         debug_assert!(value.is_ptr());
         let slot_addr = self.element_address(idx);
         *(slot_addr as *mut Value) = value;
-        write_barrier(mem, slot_addr as u32);
+        write_barrier(slot_addr as u32);
     }
 
     /// Write a scalar value to an array element. No need for a write barrier.

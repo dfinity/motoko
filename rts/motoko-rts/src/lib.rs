@@ -36,17 +36,16 @@ pub mod utf8;
 mod visitor;
 
 use types::Bytes;
+use motoko_rts_macros::{export, ic_only};
 
-use motoko_rts_macros::ic_mem_fn;
-
-#[ic_mem_fn(ic_only)]
-unsafe fn version<M: memory::Memory>(mem: &mut M) -> types::Value {
-    text::text_of_str(mem, "0.1")
+#[export(ic_only)]
+unsafe fn version() -> types::Value {
+    text::text_of_str("0.1")
 }
 
-#[ic_mem_fn(ic_only)]
-unsafe fn alloc_words<M: memory::Memory>(mem: &mut M, n: types::Words<u32>) -> types::Value {
-    mem.alloc_words(n)
+#[export(ic_only)]
+unsafe fn alloc_words(n: types::Words<u32>) -> types::Value {
+    memory::alloc_words(n)
 }
 
 extern "C" {
@@ -92,7 +91,7 @@ pub(crate) unsafe fn rts_trap_with(msg: &str) -> ! {
     trap_with_prefix("RTS error: ", msg)
 }
 
-#[cfg(feature = "ic")]
+#[ic_only]
 #[panic_handler]
 fn panic(info: &core::panic::PanicInfo) -> ! {
     unsafe {

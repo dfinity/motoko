@@ -26,14 +26,14 @@
 // size of the text.
 
 use crate::mem_utils::memcpy_bytes;
-use crate::memory::{alloc_blob, Memory};
+use crate::memory::{alloc_blob, alloc_words};
 use crate::rts_trap_with;
 use crate::types::{size_of, Blob, Bytes, Concat, Stream, Value, TAG_BLOB, TAG_CONCAT};
 
 use core::cmp::{min, Ordering};
 use core::{slice, str};
 
-use motoko_rts_macros::ic_mem_fn;
+use motoko_rts_macros::export;
 
 const MAX_STR_SIZE: Bytes<u32> = Bytes((1 << 30) - 1);
 
@@ -41,27 +41,27 @@ const MAX_STR_SIZE: Bytes<u32> = Bytes((1 << 30) - 1);
 // Make this MAX_STR_SIZE to disable the use of ropes completely, e.g. for debugging
 const MIN_CONCAT_SIZE: Bytes<u32> = Bytes(9);
 
-unsafe fn alloc_text_blob<M: Memory>(mem: &mut M, size: Bytes<u32>) -> Value {
+unsafe fn alloc_text_blob(size: Bytes<u32>) -> Value {
     if size > MAX_STR_SIZE {
         rts_trap_with("alloc_text_blob: Text too large");
     }
-    alloc_blob(mem, size)
+    alloc_blob(size)
 }
 
-#[ic_mem_fn]
-pub unsafe fn text_of_ptr_size<M: Memory>(mem: &mut M, buf: *const u8, n: Bytes<u32>) -> Value {
-    let blob = alloc_text_blob(mem, n);
+#[export]
+pub unsafe fn text_of_ptr_size(buf: *const u8, n: Bytes<u32>) -> Value {
+    let blob = alloc_text_blob(n);
     let payload_addr = blob.as_blob_mut().payload_addr();
     memcpy_bytes(payload_addr as usize, buf as usize, n);
     blob
 }
 
-pub unsafe fn text_of_str<M: Memory>(mem: &mut M, s: &str) -> Value {
-    text_of_ptr_size(mem, s.as_ptr(), Bytes(s.len() as u32))
+pub unsafe fn text_of_str(s: &str) -> Value {
+    text_of_ptr_size(s.as_ptr(), Bytes(s.len() as u32))
 }
 
-#[ic_mem_fn]
-pub unsafe fn text_concat<M: Memory>(mem: &mut M, s1: Value, s2: Value) -> Value {
+#[export]
+pub unsafe fn text_concat(s1: Value, s2: Value) -> Value {
     let blob1_len = text_size(s1);
     let blob2_len = text_size(s2);
 
@@ -82,7 +82,7 @@ pub unsafe fn text_concat<M: Memory>(mem: &mut M, s1: Value, s2: Value) -> Value
         let blob1 = s1.as_blob();
         let blob2 = s2.as_blob();
 
-        let r = alloc_text_blob(mem, new_len);
+        let r = alloc_text_blob(new_len);
         let r_payload: *mut u8 = r.as_blob_mut().payload_addr();
         memcpy_bytes(
             r_payload as usize,
@@ -104,7 +104,7 @@ pub unsafe fn text_concat<M: Memory>(mem: &mut M, s1: Value, s2: Value) -> Value
     }
 
     // Create concat node
-    let r = mem.alloc_words(size_of::<Concat>());
+    let r = alloc_words(size_of::<Concat>());
     let r_concat = r.get_ptr() as *mut Concat;
     (*r_concat).header.tag = TAG_CONCAT;
     (*r_concat).n_bytes = new_len;
@@ -123,8 +123,8 @@ struct Crumb {
     next: *const Crumb,
 }
 
-#[no_mangle]
-unsafe extern "C" fn text_to_buf(mut s: Value, mut buf: *mut u8) {
+#[export]
+unsafe fn text_to_buf(mut s: Value, mut buf: *mut u8) {
     let mut next_crumb: *const Crumb = core::ptr::null();
 
     loop {
@@ -164,8 +164,8 @@ unsafe extern "C" fn text_to_buf(mut s: Value, mut buf: *mut u8) {
     }
 }
 
-#[no_mangle]
-unsafe extern "C" fn stream_write_text(stream: *mut Stream, mut s: Value) {
+#[export]
+unsafe fn stream_write_text(stream: *mut Stream, mut s: Value) {
     loop {
         let s_ptr = s.as_obj();
         if s_ptr.tag() == TAG_BLOB {
@@ -181,22 +181,22 @@ unsafe extern "C" fn stream_write_text(stream: *mut Stream, mut s: Value) {
 }
 
 // Straighten into contiguous memory, if needed (e.g. for system calls)
-#[ic_mem_fn]
-pub unsafe fn blob_of_text<M: Memory>(mem: &mut M, s: Value) -> Value {
+#[export]
+pub unsafe fn blob_of_text(s: Value) -> Value {
     let obj = s.as_obj();
     if obj.tag() == TAG_BLOB {
         s
     } else {
         let concat = obj.as_concat();
-        let r = alloc_text_blob(mem, (*concat).n_bytes);
+        let r = alloc_text_blob((*concat).n_bytes);
         text_to_buf(s, r.as_blob_mut().payload_addr());
         r
     }
 }
 
 /// Size of the text, in bytes
-#[no_mangle]
-pub unsafe extern "C" fn text_size(s: Value) -> Bytes<u32> {
+#[export]
+pub unsafe fn text_size(s: Value) -> Bytes<u32> {
     // We don't know whether the string is a blob or concat, but both types have the length in same
     // location so using any of the types to get the length is fine
     // NB. We can't use `s.as_blob()` here as that method checks the tag in debug mode
@@ -309,8 +309,8 @@ unsafe fn text_get_range(
     (s, offset)
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn text_compare(s1: Value, s2: Value) -> i32 {
+#[export]
+pub unsafe fn text_compare(s1: Value, s2: Value) -> i32 {
     let n1 = text_size(s1);
     let n2 = text_size(s2);
     let n = min(n1, n2);
@@ -353,8 +353,8 @@ pub(crate) unsafe fn blob_compare(s1: Value, s2: Value) -> i32 {
 }
 
 /// Length in characters
-#[no_mangle]
-pub unsafe extern "C" fn text_len(text: Value) -> u32 {
+#[export]
+pub unsafe fn text_len(text: Value) -> u32 {
     if text.tag() == TAG_BLOB {
         let blob = text.as_blob();
         let payload_addr = blob.payload_const();
@@ -399,12 +399,12 @@ pub unsafe fn decode_code_point(s: *const u8, size: *mut u32) -> u32 {
 }
 
 /// Allocate a text from a character
-#[ic_mem_fn]
-pub unsafe fn text_singleton<M: Memory>(mem: &mut M, char: u32) -> Value {
+#[export]
+pub unsafe fn text_singleton(char: u32) -> Value {
     let mut buf = [0u8; 4];
     let str_len = char::from_u32_unchecked(char).encode_utf8(&mut buf).len() as u32;
 
-    let blob_ptr = alloc_text_blob(mem, Bytes(str_len));
+    let blob_ptr = alloc_text_blob(Bytes(str_len));
 
     let blob = blob_ptr.as_blob_mut();
 

@@ -8,23 +8,23 @@ use core::ptr::null_mut;
 use super::write_barrier::REMEMBERED_SET;
 use super::{Heap, Limits, Roots};
 use crate::mem_utils::memcpy_bytes;
-use crate::memory::{alloc_blob, Memory};
+use crate::memory::alloc_blob;
 use crate::types::*;
 use crate::visitor::{pointer_to_dynamic_heap, visit_pointer_fields};
 
 static mut SNAPSHOT: *mut Blob = null_mut();
 
 /// Take a memory snapshot. To be initiated after GC run.
-pub unsafe fn take_snapshot<M: Memory>(heap: &mut Heap<M>) {
+pub unsafe fn take_snapshot(heap: &mut Heap) {
     let length = Bytes(heap.limits.free as u32);
-    let blob = alloc_blob(heap.mem, length).get_ptr() as *mut Blob;
+    let blob = alloc_blob(length).get_ptr() as *mut Blob;
     memcpy_bytes(blob.payload_addr() as usize, 0, length);
     SNAPSHOT = blob;
 }
 
 /// Verify write barrier coverage by comparing the memory against the previous snapshot.
 /// To be initiated before the next GC run. No effect if no snapshpot has been taken.
-pub unsafe fn verify_snapshot<M: Memory>(heap: &Heap<M>, verify_roots: bool) {
+pub unsafe fn verify_snapshot(heap: &Heap, verify_roots: bool) {
     if SNAPSHOT.is_null() {
         return;
     }

@@ -1,11 +1,12 @@
 // This module is only enabled when compiling the RTS for IC or WASI.
 
-use super::Memory;
 use crate::constants::WASM_PAGE_SIZE;
 use crate::rts_trap_with;
 use crate::types::*;
 
 use core::arch::wasm32;
+
+use motoko_rts_macros::export;
 
 /// Maximum live data retained in a GC.
 pub(crate) static mut MAX_LIVE: Bytes<u32> = Bytes(0);
@@ -30,8 +31,8 @@ pub(crate) unsafe fn get_aligned_heap_base() -> u32 {
     ((get_heap_base() + 31) / 32) * 32
 }
 
-#[no_mangle]
-unsafe extern "C" fn init(align: bool) {
+#[export]
+unsafe fn init(align: bool) {
     HP = if align {
         get_aligned_heap_base()
     } else {
@@ -40,49 +41,43 @@ unsafe extern "C" fn init(align: bool) {
     LAST_HP = HP;
 }
 
-#[no_mangle]
-unsafe extern "C" fn get_max_live_size() -> Bytes<u32> {
+#[export]
+unsafe fn get_max_live_size() -> Bytes<u32> {
     MAX_LIVE
 }
 
-#[no_mangle]
-unsafe extern "C" fn get_reclaimed() -> Bytes<u64> {
+#[export]
+unsafe fn get_reclaimed() -> Bytes<u64> {
     RECLAIMED
 }
 
-#[no_mangle]
-unsafe extern "C" fn get_total_allocations() -> Bytes<u64> {
+#[export]
+unsafe fn get_total_allocations() -> Bytes<u64> {
     Bytes(u64::from(get_heap_size().as_u32())) + RECLAIMED
 }
 
-#[no_mangle]
-unsafe extern "C" fn get_heap_size() -> Bytes<u32> {
+#[export]
+unsafe fn get_heap_size() -> Bytes<u32> {
     Bytes(HP - get_aligned_heap_base())
 }
 
-/// Provides a `Memory` implementation, to be used in functions compiled for IC or WASI. The
-/// `Memory` implementation allocates in Wasm heap with Wasm `memory.grow` instruction.
-pub struct IcMemory;
+#[inline]
+pub unsafe fn alloc_words(n: Words<u32>) -> Value {
+    let bytes = n.to_bytes();
+    let delta = u64::from(bytes.as_u32());
 
-impl Memory for IcMemory {
-    #[inline]
-    unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value {
-        let bytes = n.to_bytes();
-        let delta = u64::from(bytes.as_u32());
+    // Update heap pointer
+    let old_hp = u64::from(HP);
+    let new_hp = old_hp + delta;
 
-        // Update heap pointer
-        let old_hp = u64::from(HP);
-        let new_hp = old_hp + delta;
-
-        // Grow memory if needed
-        if new_hp > ((wasm32::memory_size(0) as u64) << 16) {
-            grow_memory(new_hp)
-        }
-
-        HP = new_hp as u32;
-
-        Value::from_ptr(old_hp as usize)
+    // Grow memory if needed
+    if new_hp > ((wasm32::memory_size(0) as u64) << 16) {
+        grow_memory(new_hp)
     }
+
+    HP = new_hp as u32;
+
+    Value::from_ptr(old_hp as usize)
 }
 
 /// Page allocation. Ensures that the memory up to, but excluding, the given pointer is allocated,

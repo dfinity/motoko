@@ -1,19 +1,18 @@
 //! Write barrier, used for generational GC
 
 use super::remembered_set::RememberedSet;
-use crate::memory::Memory;
 use crate::types::Value;
-use motoko_rts_macros::ic_mem_fn;
+use motoko_rts_macros::export;
 
 pub static mut REMEMBERED_SET: Option<RememberedSet> = None;
 pub static mut HEAP_BASE: u32 = 0;
 pub static mut LAST_HP: u32 = 0;
 
 /// (Re-)initialize the write barrier for generational GC.
-#[ic_mem_fn(ic_only)]
-pub unsafe fn init_write_barrier<M: Memory>(mem: &mut M) {
+#[export(ic_only)]
+pub unsafe fn init_write_barrier() {
     use crate::memory::ic;
-    REMEMBERED_SET = Some(RememberedSet::new(mem));
+    REMEMBERED_SET = Some(RememberedSet::new());
     HEAP_BASE = ic::get_aligned_heap_base();
     LAST_HP = ic::LAST_HP;
 }
@@ -23,8 +22,8 @@ pub unsafe fn init_write_barrier<M: Memory>(mem: &mut M) {
 ///
 /// As the barrier is called after the write, `*location` refers to the NEW value.
 /// No effect is the write barrier is deactivated.
-#[ic_mem_fn]
-pub unsafe fn write_barrier<M: Memory>(mem: &mut M, location: u32) {
+#[export]
+pub unsafe fn write_barrier(location: u32) {
     // Must be an unskewed address.
     debug_assert_eq!(location & 0b1, 0);
     // Checks have been optimized according to the frequency of occurrence.
@@ -38,7 +37,7 @@ pub unsafe fn write_barrier<M: Memory>(mem: &mut M, location: u32) {
                 REMEMBERED_SET
                     .as_mut()
                     .unwrap()
-                    .insert(mem, Value::from_raw(location));
+                    .insert(Value::from_raw(location));
             }
         }
     }

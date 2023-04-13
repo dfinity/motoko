@@ -37,7 +37,7 @@ use core::mem::size_of;
 use core::ptr::null_mut;
 
 use crate::constants::WORD_SIZE;
-use crate::memory::{alloc_blob, Memory};
+use crate::memory::alloc_blob;
 use crate::types::{object_size, Blob, Bytes, Value};
 
 pub struct RememberedSet {
@@ -68,15 +68,15 @@ const GROWTH_FACTOR: u32 = 2;
 pub const OCCUPATION_THRESHOLD_PERCENT: u32 = 65;
 
 impl RememberedSet {
-    pub unsafe fn new<M: Memory>(mem: &mut M) -> RememberedSet {
-        let hash_table = new_table(mem, INITIAL_TABLE_LENGTH);
+    pub unsafe fn new() -> RememberedSet {
+        let hash_table = new_table(INITIAL_TABLE_LENGTH);
         RememberedSet {
             hash_table,
             count: 0,
         }
     }
 
-    pub unsafe fn insert<M: Memory>(&mut self, mem: &mut M, value: Value) {
+    pub unsafe fn insert(&mut self, value: Value) {
         debug_assert!(!is_null_ptr_value(value));
         let index = self.hash_index(value);
         let entry = table_get(self.hash_table, index);
@@ -97,11 +97,11 @@ impl RememberedSet {
                 return;
             }
             debug_assert!(!is_null_ptr_value((*current).value));
-            (*current).next_collision_ptr = new_collision_node(mem, value);
+            (*current).next_collision_ptr = new_collision_node(value);
         }
         self.count += 1;
         if self.count > table_length(self.hash_table) * OCCUPATION_THRESHOLD_PERCENT / 100 {
-            self.grow(mem);
+            self.grow();
         }
     }
 
@@ -142,16 +142,16 @@ impl RememberedSet {
         self.count
     }
 
-    unsafe fn grow<M: Memory>(&mut self, mem: &mut M) {
+    unsafe fn grow(&mut self) {
         let old_count = self.count;
         let mut iterator = self.iterate();
         let new_length = table_length(self.hash_table) * GROWTH_FACTOR;
-        self.hash_table = new_table(mem, new_length);
+        self.hash_table = new_table(new_length);
         self.count = 0;
         while iterator.has_next() {
             let value = iterator.current();
             debug_assert!(!is_null_ptr_value(value));
-            self.insert(mem, value);
+            self.insert(value);
             iterator.next();
         }
         assert_eq!(self.count, old_count);
@@ -222,18 +222,18 @@ impl RememberedSetIterator {
     }
 }
 
-unsafe fn new_table<M: Memory>(mem: &mut M, size: u32) -> *mut Blob {
-    let table = alloc_blob(mem, Bytes(size * size_of::<HashEntry>() as u32)).as_blob_mut();
+unsafe fn new_table(size: u32) -> *mut Blob {
+    let table = alloc_blob(Bytes(size * size_of::<HashEntry>() as u32)).as_blob_mut();
     for index in 0..size {
         table_set(table, index, null_ptr_value());
     }
     table
 }
 
-unsafe fn new_collision_node<M: Memory>(mem: &mut M, value: Value) -> *mut CollisionNode {
+unsafe fn new_collision_node(value: Value) -> *mut CollisionNode {
     debug_assert!(!is_null_ptr_value(value));
     let node =
-        alloc_blob(mem, Bytes(size_of::<HashEntry>() as u32)).as_blob_mut() as *mut CollisionNode;
+        alloc_blob(Bytes(size_of::<HashEntry>() as u32)).as_blob_mut() as *mut CollisionNode;
     (*node).entry = HashEntry {
         value,
         next_collision_ptr: null_mut(),
