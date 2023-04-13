@@ -1,4 +1,4 @@
-use crate::memory::{TestMemory, set_memory};
+use crate::memory::{set_memory, TestMemory};
 
 use motoko_rts::principal_id::{base32_of_checksummed_blob, base32_to_blob};
 use motoko_rts::text::{text_compare, text_of_ptr_size};
@@ -15,20 +15,14 @@ pub unsafe fn test() {
 
     let text = text_of_ptr_size(b"abcdefghijklmnop".as_ptr(), Bytes(16));
     let text1 = base32_of_checksummed_blob(text);
-    let text2 = text_of_ptr_size(
-        b"SQ5MBE3BMJRWIZLGM5UGS2TLNRWW433Q".as_ptr(),
-        Bytes(32),
-    );
+    let text2 = text_of_ptr_size(b"SQ5MBE3BMJRWIZLGM5UGS2TLNRWW433Q".as_ptr(), Bytes(32));
     assert_eq!(text_compare(text1, text2), 0);
 
     let text = text_of_ptr_size(b"abcdefghijklmnop".as_ptr(), Bytes(16));
     assert_eq!(
         text_compare(
             base32_of_checksummed_blob(text,),
-            text_of_ptr_size(
-                b"SQ5MBE3BMJRWIZLGM5UGS2TLNRWW433Q".as_ptr(),
-                Bytes(32)
-            )
+            text_of_ptr_size(b"SQ5MBE3BMJRWIZLGM5UGS2TLNRWW433Q".as_ptr(), Bytes(32))
         ),
         0
     );
@@ -68,10 +62,7 @@ pub unsafe fn test() {
     assert_eq!(
         text_compare(
             base32_to_blob(text),
-            text_of_ptr_size(
-                b"\x23\x3f\xf2\x06\xab\xcd\x01".as_ptr(),
-                Bytes(7)
-            )
+            text_of_ptr_size(b"\x23\x3f\xf2\x06\xab\xcd\x01".as_ptr(), Bytes(7))
         ),
         0
     );

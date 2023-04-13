@@ -1,4 +1,4 @@
-use crate::memory::{TestMemory, set_memory};
+use crate::memory::{set_memory, TestMemory};
 
 use motoko_rts::principal_id::{blob_of_principal, principal_of_blob};
 use motoko_rts::text::{text_compare, text_of_ptr_size, text_of_str};
@@ -15,10 +15,7 @@ pub unsafe fn test() {
 
     let text = text_of_str("");
     assert_eq!(
-        text_compare(
-            principal_of_blob(text),
-            text_of_str("aaaaa-aa"),
-        ),
+        text_compare(principal_of_blob(text), text_of_str("aaaaa-aa"),),
         0,
     );
 

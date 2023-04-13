@@ -232,8 +232,7 @@ unsafe fn new_table(size: u32) -> *mut Blob {
 
 unsafe fn new_collision_node(value: Value) -> *mut CollisionNode {
     debug_assert!(!is_null_ptr_value(value));
-    let node =
-        alloc_blob(Bytes(size_of::<HashEntry>() as u32)).as_blob_mut() as *mut CollisionNode;
+    let node = alloc_blob(Bytes(size_of::<HashEntry>() as u32)).as_blob_mut() as *mut CollisionNode;
     (*node).entry = HashEntry {
         value,
         next_collision_ptr: null_mut(),

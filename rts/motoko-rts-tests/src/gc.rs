@@ -117,8 +117,15 @@ fn test_gc(
     roots: &[ObjectIdx],
     continuation_table: &[ObjectIdx],
 ) {
-    let heap = Rc::new(RefCell::new(MotokoHeap::new(refs, roots, continuation_table, gc)));
-    unsafe { share_memory(Rc::clone(&heap)); }
+    let heap = Rc::new(RefCell::new(MotokoHeap::new(
+        refs,
+        roots,
+        continuation_table,
+        gc,
+    )));
+    unsafe {
+        share_memory(Rc::clone(&heap));
+    }
 
     // Check `create_dynamic_heap` sanity
     check_dynamic_heap(
@@ -344,7 +351,8 @@ impl GC {
     fn run(&self, heap: Rc<RefCell<MotokoHeap>>, round: usize) -> bool {
         let heap_base = heap.borrow().heap_base_address() as u32;
         let static_roots = Value::from_ptr(heap.borrow().static_root_array_address());
-        let continuation_table_ptr_address = heap.borrow().continuation_table_ptr_address() as *mut Value;
+        let continuation_table_ptr_address =
+            heap.borrow().continuation_table_ptr_address() as *mut Value;
 
         let heap_1 = heap.borrow().clone();
         let heap_2 = heap.borrow().clone();
@@ -406,10 +414,7 @@ impl GC {
                         static_roots,
                         continuation_table_ptr_loc: continuation_table_ptr_address,
                     };
-                    let gc_heap = motoko_rts::gc::generational::Heap {
-                        limits,
-                        roots,
-                    };
+                    let gc_heap = motoko_rts::gc::generational::Heap { limits, roots };
                     let mut gc = GenerationalGC::new(gc_heap, strategy);
                     gc.run();
                     let free = gc.heap.limits.free;

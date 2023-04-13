@@ -52,10 +52,7 @@ unsafe fn mp_alloc(size: Bytes<u32>) -> *mut u8 {
 }
 
 #[export]
-pub unsafe fn mp_calloc(
-    n_elems: usize,
-    elem_size: Bytes<usize>,
-) -> *mut libc::c_void {
+pub unsafe fn mp_calloc(n_elems: usize, elem_size: Bytes<usize>) -> *mut libc::c_void {
     debug_assert_eq!(elem_size.0, core::mem::size_of::<mp_digit>());
     // Overflow check for the following multiplication
     if n_elems > 1 << 30 {
@@ -519,11 +516,7 @@ pub unsafe fn bigint_leb128_decode(buf: *mut Buf) -> Value {
 /// as indicated by `bits`.
 ///
 #[export(ic_only)]
-pub unsafe fn bigint_leb128_decode_word64(
-    mut leb: u64,
-    mut bits: u64,
-    buf: *mut Buf,
-) -> Value {
+pub unsafe fn bigint_leb128_decode_word64(mut leb: u64, mut bits: u64, buf: *mut Buf) -> Value {
     let continuations = bits as u32 / 8;
     buf.advance(continuations + 1);
 
@@ -586,11 +579,7 @@ pub unsafe fn bigint_sleb128_decode(buf: *mut Buf) -> Value {
 /// as indicated by `bits`.
 ///
 #[export(ic_only)]
-pub unsafe fn bigint_sleb128_decode_word64(
-    mut sleb: u64,
-    mut bits: u64,
-    buf: *mut Buf,
-) -> Value {
+pub unsafe fn bigint_sleb128_decode_word64(mut sleb: u64, mut bits: u64, buf: *mut Buf) -> Value {
     let continuations = bits as u32 / 8;
     buf.advance(continuations + 1);
 

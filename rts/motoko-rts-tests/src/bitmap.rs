@@ -1,4 +1,4 @@
-use crate::memory::{TestMemory, set_memory};
+use crate::memory::{set_memory, TestMemory};
 
 use motoko_rts::constants::WORD_SIZE;
 use motoko_rts::gc::mark_compact::bitmap::{

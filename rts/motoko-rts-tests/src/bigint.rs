@@ -1,4 +1,4 @@
-use crate::memory::{TestMemory, set_memory};
+use crate::memory::{set_memory, TestMemory};
 
 use motoko_rts::bigint::*;
 use motoko_rts::buf::Buf;

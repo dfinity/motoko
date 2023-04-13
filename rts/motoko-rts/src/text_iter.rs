@@ -61,10 +61,7 @@ pub unsafe fn text_iter(text: Value) -> Value {
     array.set_scalar(ITER_POS_IDX, Value::from_scalar(0));
 
     // Initialize blob field
-    array.set_pointer(
-        ITER_BLOB_IDX,
-        find_leaf(text, todo_addr as *mut _),
-    );
+    array.set_pointer(ITER_BLOB_IDX, find_leaf(text, todo_addr as *mut _));
 
     iter
 }
@@ -113,10 +110,7 @@ pub unsafe fn text_iter_next(iter: Value) -> u32 {
             todo_array.set_pointer(TODO_TEXT_IDX, (*concat).text2);
             iter_array.set_scalar(ITER_POS_IDX, Value::from_scalar(0));
             let todo_addr = iter_array.payload_addr().add(ITER_TODO_IDX as usize);
-            iter_array.set_pointer(
-                ITER_BLOB_IDX,
-                find_leaf((*concat).text1, todo_addr),
-            );
+            iter_array.set_pointer(ITER_BLOB_IDX, find_leaf((*concat).text1, todo_addr));
 
             text_iter_next(iter)
         } else {

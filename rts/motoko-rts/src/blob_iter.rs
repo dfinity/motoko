@@ -1,4 +1,7 @@
-use crate::{types::{size_of, Array, Bytes, Value, Words, TAG_ARRAY}, memory::alloc_words};
+use crate::{
+    memory::alloc_words,
+    types::{size_of, Array, Bytes, Value, Words, TAG_ARRAY},
+};
 use motoko_rts_macros::export;
 
 const ITER_BLOB_IDX: u32 = 0;

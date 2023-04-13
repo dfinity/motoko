@@ -95,9 +95,7 @@ unsafe fn parse_fields(buf: *mut Buf, n_types: u32) {
 
 // NB. This function assumes the allocation does not need to survive GC
 unsafe fn alloc(size: Words<u32>) -> *mut u8 {
-    alloc_blob(size.to_bytes())
-        .as_blob_mut()
-        .payload_addr()
+    alloc_blob(size.to_bytes()).as_blob_mut().payload_addr()
 }
 
 /// This function parses the IDL magic header and type description. It

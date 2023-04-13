@@ -35,8 +35,8 @@ pub mod types;
 pub mod utf8;
 mod visitor;
 
-use types::Bytes;
 use motoko_rts_macros::{export, ic_only};
+use types::Bytes;
 
 #[export(ic_only)]
 unsafe fn version() -> types::Value {

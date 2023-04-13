@@ -1,6 +1,6 @@
 //! Stream tests
 
-use crate::memory::{TestMemory, set_memory};
+use crate::memory::{set_memory, TestMemory};
 
 use motoko_rts::stream::alloc_stream;
 use motoko_rts::types::{Bytes, Stream, Value, Words};

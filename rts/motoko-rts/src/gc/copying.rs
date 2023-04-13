@@ -116,11 +116,7 @@ pub unsafe fn copying_gc_internal<
 ///
 /// - ptr_loc: Location of the object to evacuate, e.g. an object field address.
 ///
-unsafe fn evac(
-    begin_from_space: usize,
-    begin_to_space: usize,
-    ptr_loc: usize,
-) {
+unsafe fn evac(begin_from_space: usize, begin_to_space: usize, ptr_loc: usize) {
     // Field holds a skewed pointer to the object to evacuate
     let ptr_loc = ptr_loc as *mut Value;
 
@@ -173,11 +169,7 @@ unsafe fn scav(begin_from_space: usize, begin_to_space: usize, obj: usize) {
 
 // We have a special evacuation routine for "static roots" array: we don't evacuate elements of
 // "static roots", we just scavenge them.
-unsafe fn evac_static_roots(
-    begin_from_space: usize,
-    begin_to_space: usize,
-    roots: *mut Array,
-) {
+unsafe fn evac_static_roots(begin_from_space: usize, begin_to_space: usize, roots: *mut Array) {
     // The array and the objects pointed by the array are all static so we don't evacuate them. We
     // only evacuate fields of objects in the array.
     for i in 0..roots.len() {

@@ -4,7 +4,7 @@ pub mod ic;
 use crate::constants::WASM_HEAP_SIZE;
 use crate::rts_trap_with;
 use crate::types::*;
-use motoko_rts_macros::{ic_only, testing_only, export};
+use motoko_rts_macros::{export, ic_only, testing_only};
 
 #[ic_only]
 pub unsafe fn alloc_words(n: Words<u32>) -> Value {
@@ -12,10 +12,10 @@ pub unsafe fn alloc_words(n: Words<u32>) -> Value {
 }
 
 #[testing_only]
-extern { 
+extern "C" {
     /// Implemented externall in the RTS unit tests.
     /// Peformance optimization: Avoiding a trait for this dependency injection.
-    pub fn alloc_words(n: Words<u32>) -> Value; 
+    pub fn alloc_words(n: Words<u32>) -> Value;
 }
 
 /// Helper for allocating blobs

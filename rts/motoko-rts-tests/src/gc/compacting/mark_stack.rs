@@ -1,4 +1,4 @@
-use crate::memory::{TestMemory, set_memory};
+use crate::memory::{set_memory, TestMemory};
 
 use motoko_rts::gc::mark_compact::mark_stack::{
     alloc_mark_stack, free_mark_stack, grow_stack, pop_mark_stack, push_mark_stack,

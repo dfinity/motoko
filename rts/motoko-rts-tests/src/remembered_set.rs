@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use crate::memory::{TestMemory, set_memory};
+use crate::memory::{set_memory, TestMemory};
 use motoko_rts::gc::generational::remembered_set::{
     RememberedSet, INITIAL_TABLE_LENGTH, OCCUPATION_THRESHOLD_PERCENT,
 };

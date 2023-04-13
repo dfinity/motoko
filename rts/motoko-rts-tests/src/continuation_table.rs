@@ -1,4 +1,4 @@
-use crate::memory::{TestMemory, set_memory};
+use crate::memory::{set_memory, TestMemory};
 
 use motoko_rts::continuation_table::{
     continuation_count, recall_continuation, remember_continuation,
@@ -18,9 +18,7 @@ pub unsafe fn test() {
 
     let mut references: [u32; N] = [0; N];
     for i in 0..N {
-        references[i] = remember_continuation(
-            Value::from_raw(((i as u32) << 2).wrapping_sub(1)),
-        );
+        references[i] = remember_continuation(Value::from_raw(((i as u32) << 2).wrapping_sub(1)));
         assert_eq!(continuation_count(), (i + 1) as u32);
     }
 
@@ -31,9 +29,7 @@ pub unsafe fn test() {
     }
 
     for i in 0..N / 2 {
-        references[i] = remember_continuation(
-            Value::from_raw(((i as u32) << 2).wrapping_sub(1)),
-        );
+        references[i] = remember_continuation(Value::from_raw(((i as u32) << 2).wrapping_sub(1)));
         assert_eq!(continuation_count(), (N / 2 + i + 1) as u32);
     }
 

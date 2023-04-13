@@ -1,7 +1,7 @@
 //! This module implements a simple buffer to be used by the compiler (in generated code)
 
 use crate::idl_trap_with;
-use motoko_rts_macros::{ic_only, export};
+use motoko_rts_macros::{export, ic_only};
 
 #[repr(packed)]
 pub struct Buf {

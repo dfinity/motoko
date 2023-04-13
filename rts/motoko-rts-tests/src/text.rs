@@ -1,6 +1,6 @@
 //! Text and text iterator tests
 
-use crate::memory::{TestMemory, set_memory};
+use crate::memory::{set_memory, TestMemory};
 
 use motoko_rts::text::{
     blob_of_text, decode_code_point, text_compare, text_concat, text_len, text_of_str,
