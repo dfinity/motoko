@@ -201,14 +201,20 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         if self.pausing() {
             self.start_marking(roots);
         }
-        self.increment();
+        if self.state.phase == Phase::Mark {
+            MarkIncrement::instance(self.mem, self.state, &mut self.time).run();
+        }
         if self.mark_completed() {
             self.start_evacuating(roots);
-            self.increment();
+        }
+        if self.state.phase == Phase::Evacuate {
+            EvacuationIncrement::instance(self.mem, self.state, &mut self.time).run();
         }
         if self.evacuation_completed() {
             self.start_updating(roots);
-            self.increment();
+        }
+        if self.state.phase == Phase::Update {
+            UpdateIncrement::instance(self.state, &mut self.time).run();
         }
         if self.updating_completed() {
             self.complete_run(roots);
@@ -217,17 +223,6 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
 
     unsafe fn pausing(&mut self) -> bool {
         self.state.phase == Phase::Pause
-    }
-
-    unsafe fn increment(&mut self) {
-        match self.state.phase {
-            Phase::Mark => MarkIncrement::instance(self.mem, self.state, &mut self.time).run(),
-            Phase::Evacuate => {
-                EvacuationIncrement::instance(self.mem, self.state, &mut self.time).run()
-            }
-            Phase::Update => UpdateIncrement::instance(self.state, &mut self.time).run(),
-            Phase::Pause | Phase::Stop => unreachable!(),
-        }
     }
 
     /// Only to be called when the call stack is empty as pointers on stack are not collected as roots.

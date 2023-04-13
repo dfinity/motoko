@@ -9,7 +9,7 @@ use crate::memory::Memory;
 use crate::types::*;
 use crate::visitor::visit_pointer_fields;
 
-use super::mark_stack::MarkStack;
+use super::mark_stack::{MarkStack, STACK_EMPTY};
 use super::partitioned_heap::PartitionedHeap;
 use super::roots::{visit_roots, Roots};
 
@@ -85,8 +85,12 @@ impl<'a, M: Memory> MemoryChecker<'a, M> {
     }
 
     unsafe fn check_all_reachable(&mut self) {
-        while let Some(object) = self.mark_stack.pop() {
-            self.check_fields(object.get_ptr() as *mut Obj);
+        loop {
+            let value = self.mark_stack.pop();
+            if value == STACK_EMPTY {
+                return;
+            }
+            self.check_fields(value.get_ptr() as *mut Obj);
         }
     }
 

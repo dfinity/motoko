@@ -496,7 +496,7 @@ impl PartitionedHeap {
                 .count(),
             self.free_partitions
         );
-        // Do not use all free partitions for evacuation. 
+        // Do not use all free partitions for evacuation.
         // Leave a reserve for mutator allocations during a GC run.
         const EVACUATION_FRACTION: usize = 2;
         let reserved_partitions =
