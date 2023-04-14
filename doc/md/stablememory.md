@@ -53,7 +53,7 @@ module {
   // Traps on out-of-bounds access.
   loadBlob : (r : Region, offset : Nat64, size : Nat) -> Blob;
 
-  // Write bytes of `blob` beginning at `offset`.
+  // Write all bytes of `blob` to region `r` beginning at `offset`.
   // Traps on out-of-bounds access.
   storeBlob : (r : Region, offset : Nat64, value : Blob) -> ()
 
