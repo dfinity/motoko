@@ -49,7 +49,7 @@ module {
   loadFloat : (r : Region, offset : Nat64) -> Float;
   storeFloat : (r : Region, offset : Nat64, value : Float) -> ();
 
-  // Load `size` bytes starting from `offset` as a `Blob`.
+  // Load `size` bytes starting from `offset` in region `r` as a `Blob`.
   // Traps on out-of-bounds access.
   loadBlob : (r : Region, offset : Nat64, size : Nat) -> Blob;
 
