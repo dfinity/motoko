@@ -232,10 +232,11 @@ Once each regions' vectors have been allocated, the block-region table says how 
 Unlike the Rust design, vector entries can be populated out-of-order.
 
 
-### Special regions
+### Special (reserved) regions
 
-  - Region 0 -- "Reclaimed blocks" region that consists of blocks reclaimed from GC'd regions.
-  - Region 1 -- Anonymous region, for supporting the legacy API that we have today, which lacks `Region` values.
+  - Region 0 -- Anonymous region, for supporting the legacy API that we have today, which lacks `Region` values.
+  - Region 1 -- "Reclaimed blocks" region that consists of blocks reclaimed from GC'd regions.
+  - Regions 2-15 -- Future use by Motoko RTS (TBD).
 
 ### Overview of GC support (future work)
 
@@ -263,14 +264,35 @@ Before reusing that region, each of its block are added to the special "free blo
 
 ### Migration from earlier designs into region system
 
-#### Prior versions
+#### Stable memory format versions
 
- 1. Direct access to IC0 API, with no stable vars.
- 2. Like 1, but with one or more stable vars as well.
+The first 32 bits of stable memory record a version number.
 
-In both cases (1) and (2), we wish to migrate into the region system, with its own internal versioning.
+Including this design, there are three possible verions (`0`, `1`, or `2`):
 
-To do so, we will bump the version of the region system during upgrades, to distinguish it from both (1) and (2),
-which each have their own temporary version numbers during an upgrade.
+ 0. Stable vars only.
+ 1. Stable vars *plus* direct access to IC0 API, including `grow`.
+ 2. Region system, where direct access still works through region zero.
 
+In both cases (`0`) and (`1`), we wish to migrate into the region system (`2`), with its own internal versioning.
+
+To do so, we will bump the version of the region system during upgrades.
+
+##### Version 0 migration.
+
+To migrate from version 0 to version 2, there is nothing additional to do for existing data.
+
+The region system detects this case by measuring the zero-sized stable memory during its initialization.
+
+##### Version 1 migration: Version 1 stable memory *as* region 0 in Version 2.
+
+To migrate from version 1, we must perserve existing data.
+
+In effect, all existing data will retain its logical order as (pre-allocated) region 0.
+
+To accomodate the meta data of the region system (to migrate from version 1 to version 2), we move the first block of region 0, physically.
+
+Then, we reformat the first block of stable memory as the region meta data block.
+
+The rest of the blocks become part of region 0, with its first block stored at the end of physical memory.
 
