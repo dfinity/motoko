@@ -7,6 +7,7 @@ use crate::types::*;
 use motoko_rts_macros::{export, ic_only, testing_only};
 
 #[ic_only]
+#[inline]
 pub unsafe fn alloc_words(n: Words<u32>) -> Value {
     ic::alloc_words(n)
 }
