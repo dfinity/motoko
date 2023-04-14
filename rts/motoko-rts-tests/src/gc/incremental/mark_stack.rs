@@ -21,19 +21,19 @@ pub unsafe fn test() {
 
 unsafe fn test_push_pop(amount: usize, regrow_step: usize) {
     set_memory(TestMemory::new(Words(64 * 1024)));
-    internal_test_push_pop(amount, regrow_step);
+    let mut stack = MarkStack::new();
+    internal_push_pop(&mut stack, amount, regrow_step);
+    assert!(stack.pop() == STACK_EMPTY);
 }
 
-unsafe fn internal_test_push_pop(amount: usize, regrow_step: usize) {
-    let mut stack = MarkStack::new();
+unsafe fn internal_push_pop(stack: &mut MarkStack, amount: usize, regrow_step: usize) {
     for count in 0..amount {
         stack.push(Value::from_scalar(count as u32));
         if count == regrow_step {
-            internal_test_push_pop(amount - count, regrow_step);
+            internal_push_pop(stack, amount - count, regrow_step);
         }
     }
     for count in (0..amount).rev() {
         assert_eq!(stack.pop().get_scalar() as usize, count);
     }
-    assert!(stack.pop() == STACK_EMPTY);
 }
