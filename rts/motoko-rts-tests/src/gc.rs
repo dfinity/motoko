@@ -38,24 +38,24 @@ use fxhash::{FxHashMap, FxHashSet};
 use crate::memory::{set_memory, share_memory, TestMemory};
 
 pub fn test() {
-    // println!("Testing garbage collection ...");
+    println!("Testing garbage collection ...");
 
-    // println!("  Testing pre-defined heaps...");
-    // for test_heap in test_heaps() {
-    //     test_gcs(&test_heap);
-    // }
+    println!("  Testing pre-defined heaps...");
+    for test_heap in test_heaps() {
+        test_gcs(&test_heap);
+    }
 
-    // println!("  Testing random heaps...");
-    // let max_seed = 100;
-    // for seed in 0..max_seed {
-    //     print!("\r{}/{}", seed + 1, max_seed);
-    //     std::io::Write::flush(&mut std::io::stdout()).unwrap();
-    //     test_random_heap(seed, 180);
-    // }
-    // print!("\r");
+    println!("  Testing random heaps...");
+    let max_seed = 100;
+    for seed in 0..max_seed {
+        print!("\r{}/{}", seed + 1, max_seed);
+        std::io::Write::flush(&mut std::io::stdout()).unwrap();
+        test_random_heap(seed, 180);
+    }
+    print!("\r");
 
-    // compacting::test();
-    // generational::test();
+    compacting::test();
+    generational::test();
     incremental::test();
 }
 
