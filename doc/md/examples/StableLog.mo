@@ -55,7 +55,7 @@ actor StableLog {
   };
 
   // Add Blob to the log, and return the index of it.
-  public func add(blob: Blob) : async Index {
+  public func add(blob : Blob) : async Index {
     let elem_i = self.elems_count;
     self.elems_count += 1;
 
