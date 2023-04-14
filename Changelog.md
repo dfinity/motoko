@@ -1,5 +1,60 @@
 # Motoko compiler changelog
 
+## 0.8.7 (2023-04-06)
+
+* motoko (`moc`)
+
+  * Added ability to `mo-doc` for rendering documentation of nested modules (#3918).
+
+  * bugfix: when re-adding recurrent timers, skip over past expirations (#3871).
+
+  * bugfix: eliminated crash compiling local `async` functions that pattern match on arguments (#3910, #3916).
+
+## 0.8.6 (2023-04-01)
+
+* motoko (`moc`)
+
+  * bugfix: avoid compiler crash (regression) when `let`-matching on constant variants (#3901, #3903).
+
+  * Performance improvement: improved cycle usage when receiving messages (#3893).
+
+## 0.8.5 (2023-03-20)
+
+* motoko (`moc`)
+
+  * Performance improvement: Values of variant type that are compile-time known
+    are relegated to the static heap now and don't get allocated each time (#3878).
+
+  * bugfix: the global timer expiration callback was called unnecessarily in the
+    default mechanism (#3883).
+
+## 0.8.4 (2023-03-11)
+
+* motoko (`moc`)
+
+  * Performance improvement: UTF-8 coding and validation is now properly tail recursive (#3842).
+
+  * Performance improvement: eliminated bounds checking for certain array accesses (thanks to nomeata) (#3853).
+
+  * Performance improvement: optimized `{array, blob, text}.size()` operations (thanks to nomeata) (#3863).
+
+  * Performance improvement: efficient tuple results in `switch` statements (thanks to nomeata) (#3865).
+
+  * Performance improvement: more efficient untagging operation (#3873).
+
+  * bugfix: restored a grammar regression caused by `let-else` (#3869).
+
+* motoko-base
+
+  * Add `Array.subArray` function (dfinity/motoko-base#445).
+
+  * BREAKING CHANGE (Minor)
+
+    Optimized `AssocList.{replace, find}` to avoid unnecesary allocation (dfinity/motoko-base#535, dfinity/motoko-base#539).
+    Note: this subtly changes the order in which the key-value pairs occur after replacement. May affect other containers that use `AssocList`.
+
+  * Performance improvement: Optimized deletion for `Trie`/`TrieMap` (dfinity/motoko-base#525).
+
 ## 0.8.3 (2023-02-24)
 
 * motoko (`moc`)
