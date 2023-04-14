@@ -37,7 +37,7 @@ module {
   // Grow current `size` of region `r` by `pagecount` pages.
   // Each page is 64KiB (65536 bytes).
   // Returns previous `size` when able to grow.
-  // Returns `0xFFFF_FFFF_FFFF_FFFF` if remaining pages insufficient.
+  // Returns `0xFFFF_FFFF_FFFF_FFFF` if remaining pages of physical stable memory insufficient.
   grow : (r : Region, new_pages : Nat64) -> (oldpages : Nat64);
 
   loadNat8 : (r : Region, offset : Nat64) -> Nat8;
