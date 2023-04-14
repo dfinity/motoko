@@ -17,10 +17,10 @@ actor StableLog {
   };
 
   type Rep = {
-    bytes: Region;
-    var bytes_count: Nat64; // more fine-grained than "pages"
-    elems: Region;
-    var elems_count: Nat64; // more fine-grained than "pages"
+    bytes : Region;
+    var bytes_count : Nat64; // more fine-grained than "pages"
+    elems : Region;
+    var elems_count : Nat64; // more fine-grained than "pages"
   };
 
   // Grow a region to hold a certain number of total bytes.
