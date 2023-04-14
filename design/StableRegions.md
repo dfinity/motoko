@@ -290,7 +290,7 @@ To migrate from version 1, we must perserve existing data.
 
 In effect, all existing data will retain its logical order as (pre-allocated) region 0.
 
-To accomodate the meta data of the region system (to migrate from version 1 to version 2), we move the first block of region 0, physically.
+To accomodate the meta data of the region system, we move the first block of region 0, physically.
 
 Then, we reformat the first block of stable memory as the region meta data block.
 
