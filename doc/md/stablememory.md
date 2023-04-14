@@ -34,7 +34,7 @@ module {
   // Initially `0`.
   size : (r : Region) -> (pages : Nat64);
 
-  // Grow current `size` of stable memory by `pagecount` pages.
+  // Grow current `size` of region `r` by `pagecount` pages.
   // Each page is 64KiB (65536 bytes).
   // Returns previous `size` when able to grow.
   // Returns `0xFFFF_FFFF_FFFF_FFFF` if remaining pages insufficient.
