@@ -260,3 +260,17 @@ A heap object with a certain region ID lives until GC reclaims it, where the reg
 
 Before reusing that region, each of its block are added to the special "free blocks" region.
 
+
+### Migration from earlier designs into region system
+
+#### Prior versions
+
+ 1. Direct access to IC0 API, with no stable vars.
+ 2. Like 1, but with one or more stable vars as well.
+
+In both cases (1) and (2), we wish to migrate into the region system, with its own internal versioning.
+
+To do so, we will bump the version of the region system during upgrades, to distinguish it from both (1) and (2),
+which each have their own temporary version numbers during an upgrade.
+
+
