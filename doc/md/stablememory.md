@@ -29,7 +29,7 @@ More general `loadBlob` and `storeBlob` operations are also available for readin
 ``` motoko no-repl
 module {
 
-  // Current size of the stable memory, in pages.
+  // Current size of the region `r` in pages.
   // Each page is 64KiB (65536 bytes).
   // Initially `0`.
   size : (r : Region) -> (pages : Nat64);
