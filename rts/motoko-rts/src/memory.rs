@@ -4,42 +4,38 @@ pub mod ic;
 use crate::constants::WASM_HEAP_SIZE;
 use crate::rts_trap_with;
 use crate::types::*;
+use motoko_rts_macros::{export, ic_only, testing_only};
 
-use motoko_rts_macros::ic_mem_fn;
-
-/// A trait for heap allocation. RTS functions allocate in heap via this trait.
-///
-/// To be able to link the RTS with moc-generated code, we implement wrappers around allocating
-/// functions that pass `ic::IcMemory` for the `Memory` arguments, and export these functions with
-/// the expected names for the generated code. For example, for a function like
-///
-/// ```
-/// unsafe fn allocating_function<M: Memory>(mem: &mut M) { ... }
-/// ```
-///
-/// we implement (or generate with a macro)
-///
-/// ```
-/// #[no_mangle]
-/// unsafe extern "C" fn export_name() { allocating_function(crate::memory::ic::IcMemory) }
-/// ```
-///
-/// This function does not take any `Memory` arguments can be used by the generated code.
-pub trait Memory {
-    // General allocator working for all GC variants.
-    unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value;
-    // Optimized version, only to be used by non-incremental GC runtimes.
-    unsafe fn linear_alloc_words(&mut self, n: Words<u32>) -> Value;
-    // Grow the allocated memory size to at least the address of `ptr`.
-    unsafe fn grow_memory(&mut self, ptr: u64);
+#[ic_only]
+#[inline]
+pub unsafe fn alloc_words(n: Words<u32>) -> Value {
+    ic::alloc_words(n)
 }
 
-/// Allocate a new blob.
-/// Note: After initialization, the post allocation barrier needs to be applied to all mutator objects.
-/// For RTS-internal blobs that can be collected by the next GC run, the post allocation barrier can be omitted.
-#[ic_mem_fn]
-pub unsafe fn alloc_blob<M: Memory>(mem: &mut M, size: Bytes<u32>) -> Value {
-    let ptr = mem.alloc_words(size_of::<Blob>() + size.to_words());
+#[ic_only]
+#[inline]
+pub unsafe fn linear_alloc_words(n: Words<u32>) -> Value {
+    ic::linear_alloc_words(n)
+}
+
+#[ic_only]
+pub unsafe fn grow_memory(ptr: u64) {
+    ic::grow_memory(ptr);
+}
+
+#[testing_only]
+extern "C" {
+    /// Implemented externall in the RTS unit tests.
+    /// Peformance optimization: Avoiding a trait for this dependency injection.
+    pub fn alloc_words(n: Words<u32>) -> Value;
+    pub fn linear_alloc_words(n: Words<u32>) -> Value;
+    pub fn grow_memory(ptr: u64);
+}
+
+/// Helper for allocating blobs
+#[export]
+pub unsafe fn alloc_blob(size: Bytes<u32>) -> Value {
+    let ptr = alloc_words(size_of::<Blob>() + size.to_words());
     // NB. Cannot use `as_blob` here as we didn't write the header yet
     let blob = ptr.get_ptr() as *mut Blob;
     (*blob).header.tag = TAG_BLOB;
@@ -51,14 +47,14 @@ pub unsafe fn alloc_blob<M: Memory>(mem: &mut M, size: Bytes<u32>) -> Value {
 
 /// Allocate a new array.
 /// Note: After initialization, the post allocation barrier needs to be applied to all mutator objects.
-#[ic_mem_fn]
-pub unsafe fn alloc_array<M: Memory>(mem: &mut M, len: u32) -> Value {
+#[export]
+pub unsafe fn alloc_array(len: u32) -> Value {
     // Array payload should not be larger than half of the memory
     if len > (WASM_HEAP_SIZE / 2).0 {
         rts_trap_with("Array allocation too large");
     }
 
-    let skewed_ptr = mem.alloc_words(size_of::<Array>() + Words(len));
+    let skewed_ptr = alloc_words(size_of::<Array>() + Words(len));
 
     let ptr: *mut Array = skewed_ptr.get_ptr() as *mut Array;
     (*ptr).header.tag = TAG_ARRAY;

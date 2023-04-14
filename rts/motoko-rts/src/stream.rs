@@ -35,19 +35,19 @@
 use crate::bigint::{check, mp_get_u32, mp_isneg, mp_iszero};
 use crate::gc::incremental::barriers::allocation_barrier;
 use crate::mem_utils::memcpy_bytes;
-use crate::memory::{alloc_blob, Memory};
+use crate::memory::alloc_blob;
 use crate::rts_trap_with;
 use crate::tommath_bindings::{mp_div_2d, mp_int};
 use crate::types::{size_of, Blob, Bytes, Stream, Value, TAG_BLOB};
 
-use motoko_rts_macros::ic_mem_fn;
+use motoko_rts_macros::{export, ic_only};
 
 const MAX_STREAM_SIZE: Bytes<u32> = Bytes((1 << 30) - 1);
 const INITIAL_STREAM_FILLED: Bytes<u32> = Bytes(36);
 const STREAM_CHUNK_SIZE: Bytes<u32> = Bytes(128);
 
-#[ic_mem_fn]
-pub unsafe fn alloc_stream<M: Memory>(mem: &mut M, size: Bytes<u32>) -> *mut Stream {
+#[export]
+pub unsafe fn alloc_stream(size: Bytes<u32>) -> *mut Stream {
     debug_assert_eq!(
         INITIAL_STREAM_FILLED,
         (size_of::<Stream>() - size_of::<Blob>()).to_bytes()
@@ -55,7 +55,7 @@ pub unsafe fn alloc_stream<M: Memory>(mem: &mut M, size: Bytes<u32>) -> *mut Str
     if size > MAX_STREAM_SIZE {
         rts_trap_with("alloc_stream: Cache too large");
     }
-    let ptr = alloc_blob(mem, size + INITIAL_STREAM_FILLED);
+    let ptr = alloc_blob(size + INITIAL_STREAM_FILLED);
     let stream = ptr.as_stream();
     (*stream).padding = 0;
     (*stream).ptr64 = 0;
@@ -97,7 +97,7 @@ impl Stream {
         assert!(false)
     }
 
-    #[cfg(feature = "ic")]
+    #[ic_only]
     fn send_to_stable(self: *mut Self, ptr: *const u8, n: Bytes<u32>) {
         unsafe {
             let next_ptr64 = (*self).ptr64 + n.as_u32() as u64;
@@ -106,7 +106,7 @@ impl Stream {
         }
     }
 
-    #[cfg(feature = "ic")]
+    #[ic_only]
     /// Sets up the bottleneck routine to output towards a range of stable memory
     /// Note: assumes that the entire byte range is writable
     #[export_name = "stream_stable_dest"]

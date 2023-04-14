@@ -1,12 +1,11 @@
-use crate::memory::Memory;
 use crate::text::text_of_ptr_size;
 use crate::types::{Bytes, Value};
 
-use motoko_rts_macros::ic_mem_fn;
+use motoko_rts_macros::export;
 
 // The meaning of the `mode` parameter is documented in motoko-base, function Float.format()
-#[ic_mem_fn]
-unsafe fn float_fmt<M: Memory>(mem: &mut M, a: f64, prec: u32, mode: u32) -> Value {
+#[export]
+unsafe fn float_fmt(a: f64, prec: u32, mode: u32) -> Value {
     // prec and mode are tagged small words (`Nat8`s), so we shift 24 bits. See
     // `TaggedSmallWord.bits_of_type` in compile.ml.
     let mode = mode >> 24;
@@ -34,5 +33,5 @@ unsafe fn float_fmt<M: Memory>(mem: &mut M, a: f64, prec: u32, mode: u32) -> Val
 
     assert!(n_written > 0);
 
-    text_of_ptr_size(mem, buf.as_ptr(), Bytes(n_written as u32))
+    text_of_ptr_size(buf.as_ptr(), Bytes(n_written as u32))
 }

@@ -21,7 +21,6 @@
 
 use crate::gc::generational::write_barrier::post_write_barrier;
 use crate::gc::incremental::barriers::write_with_barrier;
-use crate::memory::Memory;
 use crate::tommath_bindings::{mp_digit, mp_int};
 use core::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
 use core::ptr::null;
@@ -496,23 +495,23 @@ impl Array {
     /// Uses a generational post-update barrier on pointer writes.
     /// No incremental pre-update barrier as the previous value is undefined.
     /// Resolve pointer forwarding for the written value if necessary.
-    pub unsafe fn initialize<M: Memory>(self: *mut Self, idx: u32, value: Value, mem: &mut M) {
+    pub unsafe fn initialize(self: *mut Self, idx: u32, value: Value) {
         let slot_addr = self.element_address(idx) as *mut Value;
         let value = value.forward_if_possible();
         *slot_addr = value;
         if value.is_ptr() {
-            post_write_barrier(mem, slot_addr as u32);
+            post_write_barrier(slot_addr as u32);
         }
     }
 
     /// Write a pointer value to an array element.
     /// Uses a incremental pre-update barrier and a generational post-update barrier.
     /// Resolves pointer forwarding for the written value.
-    pub unsafe fn set_pointer<M: Memory>(self: *mut Self, idx: u32, value: Value, mem: &mut M) {
+    pub unsafe fn set_pointer(self: *mut Self, idx: u32, value: Value) {
         debug_assert!(value.is_ptr());
         let slot_addr = self.element_address(idx) as *mut Value;
-        write_with_barrier(mem, slot_addr, value);
-        post_write_barrier(mem, slot_addr as u32);
+        write_with_barrier(slot_addr, value);
+        post_write_barrier(slot_addr as u32);
     }
 
     /// Write a scalar value to an array element.

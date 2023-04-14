@@ -2,17 +2,17 @@
 
 use crate::gc::incremental::barriers::allocation_barrier;
 use crate::mem_utils::memcpy_bytes;
-use crate::memory::{alloc_blob, Memory};
+use crate::memory::alloc_blob;
 use crate::rts_trap_with;
 use crate::text::{blob_compare, blob_of_text};
 use crate::types::{Bytes, Value, TAG_BLOB};
 
-use motoko_rts_macros::ic_mem_fn;
+use motoko_rts_macros::export;
 
 // CRC32 for blobs. Loosely based on https://rosettacode.org/wiki/CRC-32#Implementation_2
 
-#[no_mangle]
-pub unsafe extern "C" fn compute_crc32(blob: Value) -> u32 {
+#[export]
+pub unsafe fn compute_crc32(blob: Value) -> u32 {
     if blob.tag() != TAG_BLOB {
         panic!("compute_crc32: Blob expected");
     }
@@ -93,12 +93,12 @@ unsafe fn enc_stash(pump: &mut Pump, data: u8) {
 }
 
 /// Encode a blob into an checksum-prepended base32 representation
-pub unsafe fn base32_of_checksummed_blob<M: Memory>(mem: &mut M, b: Value) -> Value {
+pub unsafe fn base32_of_checksummed_blob(b: Value) -> Value {
     let checksum = compute_crc32(b);
     let n = b.as_blob().len();
     let mut data = b.as_blob().payload_const();
 
-    let r = alloc_blob(mem, Bytes((n.as_u32() + 4 + 4) / 5 * 8)); // contains padding
+    let r = alloc_blob(Bytes((n.as_u32() + 4 + 4) / 5 * 8)); // contains padding
     let blob = r.as_blob_mut();
     let dest = blob.payload_addr();
 
@@ -180,12 +180,12 @@ unsafe fn dec_stash(pump: &mut Pump, data: u8) {
     }
 }
 
-pub unsafe fn base32_to_blob<M: Memory>(mem: &mut M, b: Value) -> Value {
+pub unsafe fn base32_to_blob(b: Value) -> Value {
     let n = b.as_blob().len();
     let mut data = b.as_blob().payload_const();
 
     // Every group of 8 characters will yield 5 bytes
-    let r = alloc_blob(mem, Bytes(((n.as_u32() + 7) / 8) * 5)); // we deal with padding later
+    let r = alloc_blob(Bytes(((n.as_u32() + 7) / 8) * 5)); // we deal with padding later
     let blob = r.as_blob_mut();
     let dest = blob.payload_addr();
 
@@ -210,22 +210,22 @@ pub unsafe fn base32_to_blob<M: Memory>(mem: &mut M, b: Value) -> Value {
 }
 
 /// Encode a blob into its textual representation
-#[ic_mem_fn]
-pub unsafe fn principal_of_blob<M: Memory>(mem: &mut M, b: Value) -> Value {
-    let base32 = base32_of_checksummed_blob(mem, b);
-    base32_to_principal(mem, base32)
+#[export]
+pub unsafe fn principal_of_blob(b: Value) -> Value {
+    let base32 = base32_of_checksummed_blob(b);
+    base32_to_principal(base32)
 }
 
 /// Convert a checksum-prepended base32 representation blob into the public principal name format
 /// by hyphenating and lowercasing
-unsafe fn base32_to_principal<M: Memory>(mem: &mut M, b: Value) -> Value {
+unsafe fn base32_to_principal(b: Value) -> Value {
     let blob = b.as_blob();
 
     let n = blob.len();
     let mut data = blob.payload_const();
 
     // Every group of 5 characters will yield 6 bytes (due to the hypen)
-    let r = alloc_blob(mem, Bytes(((n.as_u32() + 4) / 5) * 6));
+    let r = alloc_blob(Bytes(((n.as_u32() + 4) / 5) * 6));
     let blob = r.as_blob_mut();
     let mut dest = blob.payload_addr();
 
@@ -258,10 +258,10 @@ unsafe fn base32_to_principal<M: Memory>(mem: &mut M, b: Value) -> Value {
 }
 
 // Decode an textual principal representation into a blob
-#[ic_mem_fn]
-pub unsafe fn blob_of_principal<M: Memory>(mem: &mut M, t: Value) -> Value {
-    let b0 = blob_of_text(mem, t);
-    let bytes = base32_to_blob(mem, b0);
+#[export]
+pub unsafe fn blob_of_principal(t: Value) -> Value {
+    let b0 = blob_of_text(t);
+    let bytes = base32_to_blob(b0);
 
     // Strip first four bytes
     let bytes_len = bytes.as_blob().len();
@@ -269,7 +269,7 @@ pub unsafe fn blob_of_principal<M: Memory>(mem: &mut M, t: Value) -> Value {
         rts_trap_with("blob_of_principal: principal too short");
     }
 
-    let stripped = alloc_blob(mem, bytes_len - Bytes(4));
+    let stripped = alloc_blob(bytes_len - Bytes(4));
     memcpy_bytes(
         stripped.as_blob_mut().payload_addr() as usize,
         bytes.as_blob().payload_const().add(4) as usize,
@@ -277,7 +277,7 @@ pub unsafe fn blob_of_principal<M: Memory>(mem: &mut M, t: Value) -> Value {
     );
 
     // Check encoding
-    let expected = principal_of_blob(mem, stripped);
+    let expected = principal_of_blob(stripped);
     if blob_compare(b0, expected) != 0 {
         rts_trap_with("blob_of_principal: invalid principal");
     }

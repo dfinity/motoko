@@ -1,3 +1,5 @@
+use crate::memory::Memory;
+
 use super::utils::{
     make_pointer, make_scalar, write_word, ObjectIdx, GC, MAX_MARK_STACK_SIZE, WORD_SIZE,
 };
@@ -5,7 +7,6 @@ use super::utils::{
 use motoko_rts::gc::incremental::get_partitioned_heap;
 use motoko_rts::gc::incremental::partitioned_heap::PARTITION_SIZE;
 use motoko_rts::gc::mark_compact::mark_stack::INIT_STACK_SIZE;
-use motoko_rts::memory::Memory;
 use motoko_rts::types::*;
 
 use std::cell::{Ref, RefCell};

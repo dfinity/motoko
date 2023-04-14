@@ -2,8 +2,10 @@
 
 use crate::buf::{read_byte, Buf};
 
-#[no_mangle]
-pub unsafe extern "C" fn leb128_encode(mut val: u32, mut buf: *mut u8) {
+use motoko_rts_macros::export;
+
+#[export]
+pub unsafe fn leb128_encode(mut val: u32, mut buf: *mut u8) {
     loop {
         let byte = (val & 0b0111_1111) as u8;
         val >>= 7;
@@ -17,8 +19,8 @@ pub unsafe extern "C" fn leb128_encode(mut val: u32, mut buf: *mut u8) {
     }
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn sleb128_encode(mut val: i32, mut buf: *mut u8) {
+#[export]
+pub unsafe fn sleb128_encode(mut val: i32, mut buf: *mut u8) {
     loop {
         let byte = (val & 0b0111_1111) as u8;
         val >>= 7;
@@ -33,8 +35,8 @@ pub unsafe extern "C" fn sleb128_encode(mut val: i32, mut buf: *mut u8) {
     }
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn leb128_decode(buf: *mut Buf) -> u32 {
+#[export]
+pub unsafe fn leb128_decode(buf: *mut Buf) -> u32 {
     leb128_decode_checked(buf).expect("leb128_decode: overflow")
 }
 
@@ -64,8 +66,8 @@ pub unsafe fn leb128_decode_checked(buf: *mut Buf) -> Option<u32> {
     Some(result)
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn sleb128_decode(buf: *mut Buf) -> i32 {
+#[export]
+pub unsafe fn sleb128_decode(buf: *mut Buf) -> i32 {
     sleb128_decode_checked(buf).expect("sleb128_decode: overflow")
 }
 

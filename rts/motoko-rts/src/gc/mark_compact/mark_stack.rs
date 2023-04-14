@@ -1,7 +1,7 @@
 //! A stack for marking heap objects (for GC). There should be no allocation after the stack
 //! otherwise things will break as we push. This invariant is checked in debug builds.
 
-use crate::memory::{alloc_blob, Memory};
+use crate::memory::{alloc_blob, alloc_words};
 use crate::types::{Blob, Tag, Words};
 
 use core::ptr::null_mut;
@@ -21,12 +21,12 @@ pub static mut STACK_TOP: *mut usize = null_mut();
 /// Next free slot in the mark stack
 pub static mut STACK_PTR: *mut usize = null_mut();
 
-pub unsafe fn alloc_mark_stack<M: Memory>(mem: &mut M) {
+pub unsafe fn alloc_mark_stack() {
     debug_assert!(STACK_BLOB_PTR.is_null());
 
     // Allocating an actual object here to not break dump_heap
     // No post allocation barrier as this RTS-internal blob will be collected by the GC.
-    STACK_BLOB_PTR = alloc_blob(mem, INIT_STACK_SIZE.to_bytes()).get_ptr() as *mut Blob;
+    STACK_BLOB_PTR = alloc_blob(INIT_STACK_SIZE.to_bytes()).get_ptr() as *mut Blob;
     STACK_BASE = STACK_BLOB_PTR.payload_addr() as *mut usize;
     STACK_PTR = STACK_BASE;
     STACK_TOP = STACK_BASE.add(INIT_STACK_SIZE.as_usize());
@@ -40,9 +40,9 @@ pub unsafe fn free_mark_stack() {
 }
 
 /// Doubles the stack size
-pub unsafe fn grow_stack<M: Memory>(mem: &mut M) {
+pub unsafe fn grow_stack() {
     let stack_cap: Words<u32> = STACK_BLOB_PTR.len().to_words();
-    let p = mem.alloc_words(stack_cap).get_ptr() as *mut usize;
+    let p = alloc_words(stack_cap).get_ptr() as *mut usize;
 
     // Make sure nothing was allocated after the stack
     debug_assert_eq!(STACK_TOP, p);
@@ -52,11 +52,11 @@ pub unsafe fn grow_stack<M: Memory>(mem: &mut M) {
     STACK_TOP = STACK_BASE.add(new_cap.as_usize());
 }
 
-pub unsafe fn push_mark_stack<M: Memory>(mem: &mut M, obj: usize, obj_tag: Tag) {
+pub unsafe fn push_mark_stack(obj: usize, obj_tag: Tag) {
     // We add 2 words in a push, and `STACK_PTR` and `STACK_TOP` are both multiples of 2, so we can
     // do simple equality check here
     if STACK_PTR == STACK_TOP {
-        grow_stack(mem);
+        grow_stack();
     }
 
     *STACK_PTR = obj;

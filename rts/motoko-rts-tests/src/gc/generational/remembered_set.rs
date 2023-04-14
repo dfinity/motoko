@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use crate::memory::TestMemory;
+use crate::memory::{set_memory, TestMemory};
 use motoko_rts::gc::generational::remembered_set::{
     RememberedSet, INITIAL_TABLE_LENGTH, OCCUPATION_THRESHOLD_PERCENT,
 };
@@ -31,13 +31,13 @@ unsafe fn test_remembered_set(amount: u32) {
 }
 
 unsafe fn test_insert_iterate(amount: u32) {
-    let mut mem = TestMemory::new(Words(2 * amount + 1024 * 1024));
+    set_memory(TestMemory::new(Words(2 * amount + 1024 * 1024)));
 
-    let mut remembered_set = RememberedSet::new(&mut mem);
+    let mut remembered_set = RememberedSet::new();
     let mut test_set: HashSet<u32> = HashSet::new();
     // start at 1 since 0 is the null ptr and not stored in the remembered set
     for value in 1..amount + 1 {
-        remembered_set.insert(&mut mem, Value::from_raw(value));
+        remembered_set.insert(Value::from_raw(value));
         test_set.insert(value);
     }
 
@@ -52,25 +52,25 @@ unsafe fn test_insert_iterate(amount: u32) {
 }
 
 unsafe fn test_duplicates(amount: u32) {
-    let mut mem = TestMemory::new(Words(2 * amount + 1024 * 1024));
+    set_memory(TestMemory::new(Words(2 * amount + 1024 * 1024)));
 
-    let mut remembered_set = RememberedSet::new(&mut mem);
+    let mut remembered_set = RememberedSet::new();
     // start at 1 since 0 is the null ptr and not stored in the remembered set
     for value in 1..amount + 1 {
-        remembered_set.insert(&mut mem, Value::from_raw(value));
+        remembered_set.insert(Value::from_raw(value));
     }
 
     let count = remembered_set.count();
     for value in 1..amount + 1 {
-        remembered_set.insert(&mut mem, Value::from_raw(value));
+        remembered_set.insert(Value::from_raw(value));
         assert_eq!(remembered_set.count(), count);
     }
 }
 
 unsafe fn test_collisions(amount: u32) {
-    let mut mem = TestMemory::new(Words(2 * amount + 1024 * 1024));
+    set_memory(TestMemory::new(Words(2 * amount + 1024 * 1024)));
 
-    let mut remembered_set = RememberedSet::new(&mut mem);
+    let mut remembered_set = RememberedSet::new();
     let mut test_set: HashSet<u32> = HashSet::new();
 
     // start at 1 since 0 is the null ptr and not stored in the remembered set
@@ -81,7 +81,7 @@ unsafe fn test_collisions(amount: u32) {
         } else {
             index
         };
-        remembered_set.insert(&mut mem, Value::from_raw(value));
+        remembered_set.insert(Value::from_raw(value));
         test_set.insert(value);
     }
 

@@ -23,11 +23,11 @@
 //! shrink the table.
 
 use crate::gc::incremental::barriers::allocation_barrier;
-use crate::memory::{alloc_array, Memory};
+use crate::memory::alloc_array;
 use crate::rts_trap_with;
 use crate::types::Value;
 
-use motoko_rts_macros::ic_mem_fn;
+use motoko_rts_macros::{export, ic_only};
 
 const INITIAL_SIZE: u32 = 256;
 
@@ -41,8 +41,8 @@ static mut N_CONTINUATIONS: u32 = 0;
 // Next free slot
 static mut FREE_SLOT: u32 = 0;
 
-unsafe fn create_continuation_table<M: Memory>(mem: &mut M) {
-    TABLE = alloc_array(mem, INITIAL_SIZE);
+unsafe fn create_continuation_table() {
+    TABLE = alloc_array(INITIAL_SIZE);
     FREE_SLOT = 0;
     N_CONTINUATIONS = 0;
 
@@ -53,7 +53,7 @@ unsafe fn create_continuation_table<M: Memory>(mem: &mut M) {
     allocation_barrier(TABLE);
 }
 
-unsafe fn double_continuation_table<M: Memory>(mem: &mut M) {
+unsafe fn double_continuation_table() {
     let old_array = TABLE.as_array();
     let old_size = old_array.len();
 
@@ -61,12 +61,12 @@ unsafe fn double_continuation_table<M: Memory>(mem: &mut M) {
 
     let new_size = old_size * 2;
 
-    TABLE = alloc_array(mem, new_size);
+    TABLE = alloc_array(new_size);
     let new_array = TABLE.as_array();
 
     for i in 0..old_size {
         let old_value = old_array.get(i);
-        new_array.initialize(i, old_value, mem);
+        new_array.initialize(i, old_value);
     }
 
     for i in old_size..new_size {
@@ -79,14 +79,14 @@ pub unsafe fn table_initialized() -> bool {
     TABLE.get_raw() != 0
 }
 
-#[ic_mem_fn]
-pub unsafe fn remember_continuation<M: Memory>(mem: &mut M, ptr: Value) -> u32 {
+#[export]
+pub unsafe fn remember_continuation(ptr: Value) -> u32 {
     if !table_initialized() {
-        create_continuation_table(mem);
+        create_continuation_table();
     }
 
     if FREE_SLOT == TABLE.as_array().len() {
-        double_continuation_table(mem);
+        double_continuation_table();
     }
 
     // Just as a sanity check make sure the ptr is really skewed
@@ -100,7 +100,7 @@ pub unsafe fn remember_continuation<M: Memory>(mem: &mut M, ptr: Value) -> u32 {
 
     FREE_SLOT = table.get(idx).get_scalar();
 
-    table.set_pointer(idx, ptr, mem);
+    table.set_pointer(idx, ptr);
 
     N_CONTINUATIONS += 1;
 
@@ -111,8 +111,8 @@ pub unsafe fn remember_continuation<M: Memory>(mem: &mut M, ptr: Value) -> u32 {
 // Invariant: keep this synchronised with compiler.ml (see future_array_index)
 const FUTURE_ARRAY_INDEX: u32 = 2;
 
-#[no_mangle]
-pub unsafe extern "C" fn peek_future_continuation(idx: u32) -> Value {
+#[export]
+pub unsafe fn peek_future_continuation(idx: u32) -> Value {
     if !table_initialized() {
         rts_trap_with("peek_future_continuation: Continuation table not allocated");
     }
@@ -130,7 +130,7 @@ pub unsafe extern "C" fn peek_future_continuation(idx: u32) -> Value {
     ptr.as_array().get(FUTURE_ARRAY_INDEX)
 }
 
-#[no_mangle]
+#[export]
 pub unsafe fn recall_continuation(idx: u32) -> Value {
     if !table_initialized() {
         rts_trap_with("recall_continuation: Continuation table not allocated");
@@ -157,19 +157,18 @@ pub unsafe fn recall_continuation(idx: u32) -> Value {
     ptr
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn continuation_count() -> u32 {
+#[export]
+pub unsafe fn continuation_count() -> u32 {
     N_CONTINUATIONS
 }
 
-#[cfg(feature = "ic")]
+#[ic_only]
 pub(crate) unsafe fn continuation_table_loc() -> *mut Value {
     &mut TABLE
 }
 
-#[cfg(feature = "ic")]
-#[no_mangle]
-unsafe extern "C" fn continuation_table_size() -> u32 {
+#[export(ic_only)]
+unsafe fn continuation_table_size() -> u32 {
     if !table_initialized() {
         0
     } else {

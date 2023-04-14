@@ -4,11 +4,11 @@ use crate::print::*;
 use crate::types::*;
 
 use core::fmt::Write;
+use motoko_rts_macros::export;
 
 /// Print an object. The argument can be a skewed pointer to a boxed object, or a tagged scalar.
-#[cfg(feature = "ic")]
-#[no_mangle]
-pub unsafe extern "C" fn print_value(value: Value) {
+#[export(ic_only)]
+pub unsafe fn print_value(value: Value) {
     let mut buf = [0u8; 1000];
     let mut write_buf = WriteBuf::new(&mut buf);
 

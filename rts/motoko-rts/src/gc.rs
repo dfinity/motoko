@@ -3,10 +3,12 @@ pub mod generational;
 pub mod incremental;
 pub mod mark_compact;
 
-#[cfg(feature = "ic")]
+use motoko_rts_macros::ic_only;
+
+#[ic_only]
 use crate::types::Bytes;
 
-#[cfg(feature = "ic")]
+#[ic_only]
 unsafe fn should_do_gc(max_live: Bytes<u64>) -> bool {
     use crate::memory::ic::{HP, LAST_HP};
 

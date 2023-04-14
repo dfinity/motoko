@@ -34,14 +34,14 @@ This scheme makes the following assumptions:
 use crate::buf::{read_byte, Buf};
 use crate::gc::incremental::barriers::allocation_barrier;
 use crate::mem_utils::memcpy_bytes;
-use crate::memory::Memory;
+use crate::memory::alloc_words;
 use crate::tommath_bindings::*;
 use crate::types::{size_of, BigInt, Bytes, Stream, Value, TAG_BIGINT};
 
-use motoko_rts_macros::ic_mem_fn;
+use motoko_rts_macros::export;
 
-unsafe fn mp_alloc<M: Memory>(mem: &mut M, size: Bytes<u32>) -> *mut u8 {
-    let ptr = mem.alloc_words(size_of::<BigInt>() + size.to_words());
+unsafe fn mp_alloc(size: Bytes<u32>) -> *mut u8 {
+    let ptr = alloc_words(size_of::<BigInt>() + size.to_words());
     // NB. Cannot use as_bigint() here as header is not written yet
     let blob = ptr.get_ptr() as *mut BigInt;
     (*blob).header.tag = TAG_BIGINT;
@@ -55,19 +55,15 @@ unsafe fn mp_alloc<M: Memory>(mem: &mut M, size: Bytes<u32>) -> *mut u8 {
     blob.payload_addr() as *mut u8
 }
 
-#[ic_mem_fn]
-pub unsafe fn mp_calloc<M: Memory>(
-    mem: &mut M,
-    n_elems: usize,
-    elem_size: Bytes<usize>,
-) -> *mut libc::c_void {
+#[export]
+pub unsafe fn mp_calloc(n_elems: usize, elem_size: Bytes<usize>) -> *mut libc::c_void {
     debug_assert_eq!(elem_size.0, core::mem::size_of::<mp_digit>());
     // Overflow check for the following multiplication
     if n_elems > 1 << 30 {
         bigint_trap();
     }
     let size = Bytes((n_elems * elem_size.0) as u32);
-    let payload = mp_alloc(mem, size) as *mut u32;
+    let payload = mp_alloc(size) as *mut u32;
 
     // NB. alloc_bytes rounds up to words so we do the same here to set the whole buffer
     for i in 0..size.to_words().as_usize() {
@@ -77,9 +73,8 @@ pub unsafe fn mp_calloc<M: Memory>(
     payload as *mut _
 }
 
-#[ic_mem_fn]
-pub unsafe fn mp_realloc<M: Memory>(
-    mem: &mut M,
+#[export]
+pub unsafe fn mp_realloc(
     ptr: *mut libc::c_void,
     old_size: Bytes<u32>,
     new_size: Bytes<u32>,
@@ -90,7 +85,7 @@ pub unsafe fn mp_realloc<M: Memory>(
     debug_assert_eq!(bigint.len(), old_size);
 
     if new_size > bigint.len() {
-        let new_ptr = mp_alloc(mem, new_size);
+        let new_ptr = mp_alloc(new_size);
         memcpy_bytes(new_ptr as usize, ptr as usize, old_size);
         new_ptr as *mut _
     } else if new_size == bigint.len() {
@@ -102,8 +97,8 @@ pub unsafe fn mp_realloc<M: Memory>(
     }
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn mp_free(_ptr: *mut libc::c_void, _size: u32) {}
+#[export]
+pub unsafe fn mp_free(_ptr: *mut libc::c_void, _size: u32) {}
 
 /*
 Note on libtommath error handling
@@ -175,29 +170,27 @@ unsafe fn persist_bigint(i: mp_int) -> Value {
     Value::from_ptr(r as usize)
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn bigint_of_word32(w: u32) -> Value {
+#[export]
+pub unsafe fn bigint_of_word32(w: u32) -> Value {
     let mut i = tmp_bigint();
     mp_set_u32(&mut i, w);
     persist_bigint(i)
 }
 
-#[cfg(feature = "ic")]
-#[no_mangle]
-unsafe extern "C" fn bigint_of_int32(j: i32) -> Value {
+#[export(ic_only)]
+unsafe fn bigint_of_int32(j: i32) -> Value {
     let mut i = tmp_bigint();
     mp_set_i32(&mut i, j);
     persist_bigint(i)
 }
 
-#[cfg(feature = "ic")]
-#[no_mangle]
-unsafe extern "C" fn bigint_to_word32_wrap(p: Value) -> u32 {
+#[export(ic_only)]
+unsafe fn bigint_to_word32_wrap(p: Value) -> u32 {
     mp_get_u32(p.as_bigint().mp_int_ptr())
 }
 
-#[no_mangle]
-unsafe extern "C" fn bigint_to_word32_trap(p: Value) -> u32 {
+#[export]
+unsafe fn bigint_to_word32_trap(p: Value) -> u32 {
     let mp_int = p.as_bigint().mp_int_ptr();
 
     if mp_isneg(mp_int) || mp_count_bits(mp_int) > 32 {
@@ -208,9 +201,8 @@ unsafe extern "C" fn bigint_to_word32_trap(p: Value) -> u32 {
 }
 
 // a : BigInt, msg : Blob
-#[cfg(feature = "ic")]
-#[no_mangle]
-unsafe extern "C" fn bigint_to_word32_trap_with(p: Value, msg: Value) -> u32 {
+#[export(ic_only)]
+unsafe fn bigint_to_word32_trap_with(p: Value, msg: Value) -> u32 {
     let mp_int = p.as_bigint().mp_int_ptr();
 
     if mp_isneg(mp_int) || mp_count_bits(mp_int) > 32 {
@@ -220,15 +212,13 @@ unsafe extern "C" fn bigint_to_word32_trap_with(p: Value, msg: Value) -> u32 {
     mp_get_u32(mp_int)
 }
 
-#[cfg(feature = "ic")]
-#[no_mangle]
-unsafe extern "C" fn bigint_to_word64_wrap(p: Value) -> u64 {
+#[export(ic_only)]
+unsafe fn bigint_to_word64_wrap(p: Value) -> u64 {
     mp_get_u64(p.as_bigint().mp_int_ptr())
 }
 
-#[cfg(feature = "ic")]
-#[no_mangle]
-unsafe extern "C" fn bigint_to_word64_trap(p: Value) -> u64 {
+#[export(ic_only)]
+unsafe fn bigint_to_word64_trap(p: Value) -> u64 {
     let mp_int = p.as_bigint().mp_int_ptr();
 
     if mp_isneg(mp_int) || mp_count_bits(mp_int) > 64 {
@@ -238,25 +228,22 @@ unsafe extern "C" fn bigint_to_word64_trap(p: Value) -> u64 {
     mp_get_u64(mp_int)
 }
 
-#[cfg(feature = "ic")]
-#[no_mangle]
-unsafe extern "C" fn bigint_of_word64(w: u64) -> Value {
+#[export(ic_only)]
+unsafe fn bigint_of_word64(w: u64) -> Value {
     let mut i = tmp_bigint();
     mp_set_u64(&mut i, w);
     persist_bigint(i)
 }
 
-#[cfg(feature = "ic")]
-#[no_mangle]
-unsafe extern "C" fn bigint_of_int64(j: i64) -> Value {
+#[export(ic_only)]
+unsafe fn bigint_of_int64(j: i64) -> Value {
     let mut i = tmp_bigint();
     mp_set_i64(&mut i, j);
     persist_bigint(i)
 }
 
-#[cfg(feature = "ic")]
-#[no_mangle]
-unsafe extern "C" fn bigint_of_float64(j: f64) -> Value {
+#[export(ic_only)]
+unsafe fn bigint_of_float64(j: f64) -> Value {
     // handle fast path: some numbers (when rounded towards zero by `j as i32`)
     // can be represented as `Int` without resorting to heap allocation, i.e.
     // in the range `-1073741824 == 0xc0000000 <= j as i32 <= 0x3fffffff == 1073741823`
@@ -268,9 +255,8 @@ unsafe extern "C" fn bigint_of_float64(j: f64) -> Value {
     persist_bigint(i)
 }
 
-#[cfg(feature = "ic")]
-#[no_mangle]
-unsafe extern "C" fn bigint_to_float64(p: Value) -> f64 {
+#[export(ic_only)]
+unsafe fn bigint_to_float64(p: Value) -> f64 {
     if p.is_scalar() {
         p.get_signed_scalar() as f64
     } else {
@@ -279,37 +265,33 @@ unsafe extern "C" fn bigint_to_float64(p: Value) -> f64 {
     }
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn bigint_eq(a: Value, b: Value) -> bool {
+#[export]
+pub unsafe fn bigint_eq(a: Value, b: Value) -> bool {
     mp_cmp(a.as_bigint().mp_int_ptr(), b.as_bigint().mp_int_ptr()) == 0
 }
 
-#[cfg(feature = "ic")]
-#[no_mangle]
-unsafe extern "C" fn bigint_lt(a: Value, b: Value) -> bool {
+#[export(ic_only)]
+unsafe fn bigint_lt(a: Value, b: Value) -> bool {
     mp_cmp(a.as_bigint().mp_int_ptr(), b.as_bigint().mp_int_ptr()) < 0
 }
 
-#[cfg(feature = "ic")]
-#[no_mangle]
-unsafe extern "C" fn bigint_gt(a: Value, b: Value) -> bool {
+#[export(ic_only)]
+unsafe fn bigint_gt(a: Value, b: Value) -> bool {
     mp_cmp(a.as_bigint().mp_int_ptr(), b.as_bigint().mp_int_ptr()) > 0
 }
 
-#[cfg(feature = "ic")]
-#[no_mangle]
-unsafe extern "C" fn bigint_le(a: Value, b: Value) -> bool {
+#[export(ic_only)]
+unsafe fn bigint_le(a: Value, b: Value) -> bool {
     mp_cmp(a.as_bigint().mp_int_ptr(), b.as_bigint().mp_int_ptr()) <= 0
 }
 
-#[cfg(feature = "ic")]
-#[no_mangle]
-unsafe extern "C" fn bigint_ge(a: Value, b: Value) -> bool {
+#[export(ic_only)]
+unsafe fn bigint_ge(a: Value, b: Value) -> bool {
     mp_cmp(a.as_bigint().mp_int_ptr(), b.as_bigint().mp_int_ptr()) >= 0
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn bigint_add(a: Value, b: Value) -> Value {
+#[export]
+pub unsafe fn bigint_add(a: Value, b: Value) -> Value {
     let mut i = tmp_bigint();
     check(mp_add(
         a.as_bigint().mp_int_ptr(),
@@ -319,8 +301,8 @@ pub unsafe extern "C" fn bigint_add(a: Value, b: Value) -> Value {
     persist_bigint(i)
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn bigint_sub(a: Value, b: Value) -> Value {
+#[export]
+pub unsafe fn bigint_sub(a: Value, b: Value) -> Value {
     let mut i = tmp_bigint();
     check(mp_sub(
         a.as_bigint().mp_int_ptr(),
@@ -330,8 +312,8 @@ pub unsafe extern "C" fn bigint_sub(a: Value, b: Value) -> Value {
     persist_bigint(i)
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn bigint_mul(a: Value, b: Value) -> Value {
+#[export]
+pub unsafe fn bigint_mul(a: Value, b: Value) -> Value {
     let mut i = tmp_bigint();
     check(mp_mul(
         a.as_bigint().mp_int_ptr(),
@@ -341,17 +323,16 @@ pub unsafe extern "C" fn bigint_mul(a: Value, b: Value) -> Value {
     persist_bigint(i)
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn bigint_pow(a: Value, b: Value) -> Value {
+#[export]
+pub unsafe fn bigint_pow(a: Value, b: Value) -> Value {
     let exp = bigint_to_word32_trap(b);
     let mut i = tmp_bigint();
     check(mp_expt_u32(a.as_bigint().mp_int_ptr(), exp, &mut i));
     persist_bigint(i)
 }
 
-#[cfg(feature = "ic")]
-#[no_mangle]
-unsafe extern "C" fn bigint_div(a: Value, b: Value) -> Value {
+#[export(ic_only)]
+unsafe fn bigint_div(a: Value, b: Value) -> Value {
     let mut i = tmp_bigint();
     check(mp_div(
         a.as_bigint().mp_int_ptr(),
@@ -362,9 +343,8 @@ unsafe extern "C" fn bigint_div(a: Value, b: Value) -> Value {
     persist_bigint(i)
 }
 
-#[cfg(feature = "ic")]
-#[no_mangle]
-unsafe extern "C" fn bigint_rem(a: Value, b: Value) -> Value {
+#[export(ic_only)]
+unsafe fn bigint_rem(a: Value, b: Value) -> Value {
     let mut i = tmp_bigint();
     check(mp_div(
         a.as_bigint().mp_int_ptr(),
@@ -375,38 +355,34 @@ unsafe extern "C" fn bigint_rem(a: Value, b: Value) -> Value {
     persist_bigint(i)
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn bigint_neg(a: Value) -> Value {
+#[export]
+pub unsafe fn bigint_neg(a: Value) -> Value {
     let mut i = tmp_bigint();
     check(mp_neg(a.as_bigint().mp_int_ptr(), &mut i));
     persist_bigint(i)
 }
 
-#[cfg(feature = "ic")]
-#[no_mangle]
-unsafe extern "C" fn bigint_abs(a: Value) -> Value {
+#[export(ic_only)]
+unsafe fn bigint_abs(a: Value) -> Value {
     let mut i = tmp_bigint();
     check(mp_abs(a.as_bigint().mp_int_ptr(), &mut i));
     persist_bigint(i)
 }
 
-#[cfg(feature = "ic")]
-#[no_mangle]
-unsafe extern "C" fn bigint_isneg(a: Value) -> bool {
+#[export(ic_only)]
+unsafe fn bigint_isneg(a: Value) -> bool {
     mp_isneg(a.as_bigint().mp_int_ptr())
 }
 
-#[cfg(feature = "ic")]
-#[no_mangle]
-unsafe extern "C" fn bigint_lsh(a: Value, b: i32) -> Value {
+#[export(ic_only)]
+unsafe fn bigint_lsh(a: Value, b: i32) -> Value {
     let mut i = tmp_bigint();
     check(mp_mul_2d(a.as_bigint().mp_int_ptr(), b, &mut i));
     persist_bigint(i)
 }
 
-#[cfg(feature = "ic")]
-#[no_mangle]
-unsafe extern "C" fn bigint_rsh(a: Value, b: i32) -> Value {
+#[export(ic_only)]
+unsafe fn bigint_rsh(a: Value, b: i32) -> Value {
     let mut i = tmp_bigint();
     check(mp_div_2d(
         a.as_bigint().mp_int_ptr(),
@@ -417,13 +393,13 @@ unsafe extern "C" fn bigint_rsh(a: Value, b: i32) -> Value {
     persist_bigint(i)
 }
 
-#[no_mangle]
-unsafe extern "C" fn bigint_count_bits(a: Value) -> i32 {
+#[export]
+unsafe fn bigint_count_bits(a: Value) -> i32 {
     mp_count_bits(a.as_bigint().mp_int_ptr())
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn bigint_leb128_size(a: Value) -> u32 {
+#[export]
+pub unsafe fn bigint_leb128_size(a: Value) -> u32 {
     if mp_iszero(a.as_bigint().mp_int_ptr()) {
         1
     } else {
@@ -450,23 +426,23 @@ unsafe fn bigint_leb128_encode_go(tmp: *mut mp_int, mut buf: *mut u8, add_bit: b
     }
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn bigint_leb128_encode(n: Value, buf: *mut u8) {
+#[export]
+pub unsafe fn bigint_leb128_encode(n: Value, buf: *mut u8) {
     let mut tmp: mp_int = core::mem::zeroed(); // or core::mem::uninitialized?
     check(mp_init_copy(&mut tmp, n.as_bigint().mp_int_ptr()));
     bigint_leb128_encode_go(&mut tmp, buf, false)
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn bigint_leb128_stream_encode(stream: *mut Stream, n: Value) {
+#[export]
+pub unsafe fn bigint_leb128_stream_encode(stream: *mut Stream, n: Value) {
     debug_assert!(!stream.is_forwarded());
     let mut tmp: mp_int = core::mem::zeroed(); // or core::mem::uninitialized?
     check(mp_init_copy(&mut tmp, n.as_bigint().mp_int_ptr()));
     stream.write_leb128(&mut tmp, false)
 }
 
-#[no_mangle]
-unsafe extern "C" fn bigint_2complement_bits(n: Value) -> u32 {
+#[export]
+unsafe fn bigint_2complement_bits(n: Value) -> u32 {
     let mp_int = n.as_bigint().mp_int_ptr();
     if mp_isneg(mp_int) {
         let mut tmp: mp_int = core::mem::zeroed(); // or core::mem::uninitialized?
@@ -478,13 +454,13 @@ unsafe extern "C" fn bigint_2complement_bits(n: Value) -> u32 {
     }
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn bigint_sleb128_size(n: Value) -> u32 {
+#[export]
+pub unsafe fn bigint_sleb128_size(n: Value) -> u32 {
     (bigint_2complement_bits(n) + 6) / 7 // divide by 7, round up
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn bigint_sleb128_encode(n: Value, buf: *mut u8) {
+#[export]
+pub unsafe fn bigint_sleb128_encode(n: Value, buf: *mut u8) {
     let mut tmp: mp_int = core::mem::zeroed(); // or core::mem::uninitialized?
     check(mp_init_copy(&mut tmp, n.as_bigint().mp_int_ptr()));
 
@@ -501,8 +477,8 @@ pub unsafe extern "C" fn bigint_sleb128_encode(n: Value, buf: *mut u8) {
     }
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn bigint_sleb128_stream_encode(stream: *mut Stream, n: Value) {
+#[export]
+pub unsafe fn bigint_sleb128_stream_encode(stream: *mut Stream, n: Value) {
     debug_assert!(!stream.is_forwarded());
     let mut tmp: mp_int = core::mem::zeroed(); // or core::mem::uninitialized?
     check(mp_init_copy(&mut tmp, n.as_bigint().mp_int_ptr()));
@@ -520,8 +496,8 @@ pub unsafe extern "C" fn bigint_sleb128_stream_encode(stream: *mut Stream, n: Va
     }
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn bigint_leb128_decode(buf: *mut Buf) -> Value {
+#[export]
+pub unsafe fn bigint_leb128_decode(buf: *mut Buf) -> Value {
     let mut i = tmp_bigint();
     let mut tmp = tmp_bigint();
 
@@ -545,13 +521,8 @@ pub unsafe extern "C" fn bigint_leb128_decode(buf: *mut Buf) -> Value {
 /// The number of 7-bit chunks are located in the lower portion of `leb`
 /// as indicated by `bits`.
 ///
-#[cfg(feature = "ic")]
-#[no_mangle]
-pub unsafe extern "C" fn bigint_leb128_decode_word64(
-    mut leb: u64,
-    mut bits: u64,
-    buf: *mut Buf,
-) -> Value {
+#[export(ic_only)]
+pub unsafe fn bigint_leb128_decode_word64(mut leb: u64, mut bits: u64, buf: *mut Buf) -> Value {
     let continuations = bits as u32 / 8;
     buf.advance(continuations + 1);
 
@@ -579,8 +550,8 @@ pub unsafe extern "C" fn bigint_leb128_decode_word64(
     bigint_of_word64(acc)
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn bigint_sleb128_decode(buf: *mut Buf) -> Value {
+#[export]
+pub unsafe fn bigint_sleb128_decode(buf: *mut Buf) -> Value {
     let mut i = tmp_bigint();
     let mut tmp = tmp_bigint();
 
@@ -613,13 +584,8 @@ pub unsafe extern "C" fn bigint_sleb128_decode(buf: *mut Buf) -> Value {
 /// The number of 7-bit chunks are located in the lower portion of `sleb`
 /// as indicated by `bits`.
 ///
-#[cfg(feature = "ic")]
-#[no_mangle]
-pub unsafe extern "C" fn bigint_sleb128_decode_word64(
-    mut sleb: u64,
-    mut bits: u64,
-    buf: *mut Buf,
-) -> Value {
+#[export(ic_only)]
+pub unsafe fn bigint_sleb128_decode_word64(mut sleb: u64, mut bits: u64, buf: *mut Buf) -> Value {
     let continuations = bits as u32 / 8;
     buf.advance(continuations + 1);
 

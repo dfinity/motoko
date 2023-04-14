@@ -1,6 +1,6 @@
 //! Stream tests
 
-use crate::memory::TestMemory;
+use crate::memory::{set_memory, TestMemory};
 
 use motoko_rts::stream::alloc_stream;
 use motoko_rts::types::{size_of, Blob, Bytes, Stream, Value, Words};
@@ -8,12 +8,12 @@ use motoko_rts::types::{size_of, Blob, Bytes, Stream, Value, Words};
 pub unsafe fn test() {
     println!("Testing streaming ...");
 
-    let mut mem = TestMemory::new(Words(1024 * 1024));
+    set_memory(TestMemory::new(Words(1024 * 1024)));
 
     const STREAM_SMALL_SIZE: u32 = 60;
 
     println!("  Testing stream creation");
-    let stream = Value::from_ptr(alloc_stream(&mut mem, Bytes(STREAM_SMALL_SIZE)) as usize);
+    let stream = Value::from_ptr(alloc_stream(Bytes(STREAM_SMALL_SIZE)) as usize);
 
     let initial_stream_filled = (size_of::<Stream>() - size_of::<Blob>())
         .to_bytes()
@@ -37,7 +37,7 @@ pub unsafe fn test() {
 
     println!("  Testing stream filling (blocks)");
     const STREAM_LARGE_SIZE: u32 = 6000;
-    let stream = Value::from_ptr(alloc_stream(&mut mem, Bytes(STREAM_LARGE_SIZE)) as usize);
+    let stream = Value::from_ptr(alloc_stream(Bytes(STREAM_LARGE_SIZE)) as usize);
     let chunk: [u8; 10] = [10, 1, 2, 3, 4, 5, 6, 7, 8, 9];
     for _ in 0..STREAM_LARGE_SIZE / chunk.len() as u32 {
         stream
@@ -67,7 +67,7 @@ pub unsafe fn test() {
             WRITTEN += n
         }
     }
-    let stream = alloc_stream(&mut mem, Bytes(STREAM_LARGE_SIZE));
+    let stream = alloc_stream(Bytes(STREAM_LARGE_SIZE));
     (*stream).outputter = just_count;
     const STREAM_RESERVE_SIZE1: u32 = 20;
     let place = stream.reserve(Bytes(STREAM_RESERVE_SIZE1));

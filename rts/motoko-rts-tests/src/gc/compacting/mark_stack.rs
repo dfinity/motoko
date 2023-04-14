@@ -1,10 +1,9 @@
-use crate::memory::TestMemory;
+use crate::memory::{set_memory, TestMemory};
 
 use motoko_rts::gc::mark_compact::mark_stack::{
     alloc_mark_stack, free_mark_stack, grow_stack, pop_mark_stack, push_mark_stack,
     INIT_STACK_SIZE, STACK_BASE, STACK_PTR, STACK_TOP,
 };
-use motoko_rts::memory::Memory;
 use motoko_rts::types::*;
 
 use proptest::test_runner::{Config, TestCaseError, TestCaseResult, TestRunner};
@@ -27,8 +26,10 @@ fn test_push_pop() {
 
     proptest_runner
         .run(&(0u32..1000u32), |n_objs| {
-            let mut mem = TestMemory::new(Words(1024 * 1024));
-            test_(&mut mem, n_objs)
+            unsafe {
+                set_memory(TestMemory::new(Words(1024 * 1024)));
+            }
+            test_(n_objs)
         })
         .unwrap();
 }
@@ -50,14 +51,14 @@ static TAGS: [Tag; 14] = [
     TAG_NULL,
 ];
 
-fn test_<M: Memory>(mem: &mut M, n_objs: u32) -> TestCaseResult {
+fn test_(n_objs: u32) -> TestCaseResult {
     let objs: Vec<u32> = (0..n_objs).collect();
 
     unsafe {
-        alloc_mark_stack(mem);
+        alloc_mark_stack();
 
         for obj in &objs {
-            push_mark_stack(mem, *obj as usize, TAGS[(*obj as usize) % TAGS.len()]);
+            push_mark_stack(*obj as usize, TAGS[(*obj as usize) % TAGS.len()]);
         }
 
         for obj in objs.iter().copied().rev() {
@@ -84,22 +85,22 @@ unsafe fn test_grow_stack() {
     println!("    Testing grow_stack");
 
     // Allow doubling twice
-    let mut mem = TestMemory::new(
+    set_memory(TestMemory::new(
         size_of::<Blob>() + INIT_STACK_SIZE + INIT_STACK_SIZE + INIT_STACK_SIZE * 2,
-    );
+    ));
 
-    alloc_mark_stack(&mut mem);
+    alloc_mark_stack();
 
     let mut current_size = INIT_STACK_SIZE.as_usize();
     assert_eq!(STACK_BASE.add(current_size), STACK_TOP);
     assert_eq!(STACK_BASE, STACK_PTR);
 
-    grow_stack(&mut mem);
+    grow_stack();
     current_size *= 2;
     assert_eq!(STACK_BASE.add(current_size), STACK_TOP);
     assert_eq!(STACK_BASE, STACK_PTR);
 
-    grow_stack(&mut mem);
+    grow_stack();
     current_size *= 2;
     assert_eq!(STACK_BASE.add(current_size), STACK_TOP);
     assert_eq!(STACK_BASE, STACK_PTR);
