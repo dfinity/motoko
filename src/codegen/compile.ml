@@ -4689,8 +4689,12 @@ end (* Cycles *)
 
 module StableMem = struct
 
-  (* start from 1 to avoid accidental reads of 0 *)
-  let version = Int32.of_int 1
+  (* Versions:
+     0. None. Start from 1 to avoid accidental reads of 0.
+     1. First version of StableMem.
+     2. First version of region system.
+   *)
+  let version = Int32.of_int 2
 
   let register_globals env =
     (* size (in pages) *)
