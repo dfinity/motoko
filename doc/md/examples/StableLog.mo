@@ -1,7 +1,6 @@
 import Nat32 "mo:base/Nat32";
 import Nat64 "mo:base/Nat64";
 import Text "mo:base/Text";
-import Array "mo:base/Array";
 import Region "mo:base/Region";
 
 actor StableLog {
