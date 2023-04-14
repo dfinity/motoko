@@ -7,7 +7,6 @@ use crate::{
         time::BoundedTime,
         State,
     },
-    memory::Memory,
     types::*,
     visitor::visit_pointer_fields,
 };
@@ -17,19 +16,18 @@ pub struct MarkState {
     complete: bool,
 }
 
-pub struct MarkIncrement<'a, M: Memory> {
-    mem: &'a mut M,
+pub struct MarkIncrement<'a> {
     time: &'a mut BoundedTime,
     heap: &'a mut PartitionedHeap,
     mark_stack: &'a mut MarkStack,
     complete: &'a mut bool,
 }
 
-impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
-    pub unsafe fn start_phase(mem: &mut M, state: &mut State, time: &mut BoundedTime) {
-        state.partitioned_heap.start_collection(mem, time);
+impl<'a> MarkIncrement<'a> {
+    pub unsafe fn start_phase(state: &mut State, time: &mut BoundedTime) {
+        state.partitioned_heap.start_collection(time);
         debug_assert!(state.mark_state.is_none());
-        let mark_stack = MarkStack::new(mem);
+        let mark_stack = MarkStack::new();
         state.mark_state = Some(MarkState {
             mark_stack,
             complete: false,
@@ -47,15 +45,10 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
         mark_state.complete
     }
 
-    pub unsafe fn instance(
-        mem: &'a mut M,
-        state: &'a mut State,
-        time: &'a mut BoundedTime,
-    ) -> MarkIncrement<'a, M> {
+    pub unsafe fn instance(state: &'a mut State, time: &'a mut BoundedTime) -> MarkIncrement<'a> {
         let heap = &mut state.partitioned_heap;
         let mark_state = state.mark_state.as_mut().unwrap();
         MarkIncrement {
-            mem,
             time,
             heap,
             mark_stack: &mut mark_state.mark_stack,
@@ -104,7 +97,7 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
             debug_assert!(
                 object.tag() >= crate::types::TAG_OBJECT && object.tag() <= crate::types::TAG_NULL
             );
-            self.mark_stack.push(self.mem, value);
+            self.mark_stack.push(value);
         }
     }
 
@@ -121,7 +114,7 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
             |gc, slice_start, array| {
                 let length = slice_array(array);
                 if (*array).header.tag >= TAG_ARRAY_SLICE_MIN {
-                    gc.mark_stack.push(gc.mem, Value::from_ptr(array as usize));
+                    gc.mark_stack.push(Value::from_ptr(array as usize));
                 }
                 gc.time.advance(1 + (length - slice_start) as usize);
                 length

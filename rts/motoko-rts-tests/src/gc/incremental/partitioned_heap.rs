@@ -1,7 +1,9 @@
 use std::{
+    cell::RefCell,
     collections::HashSet,
     io::{stdout, Write},
     mem::size_of,
+    rc::Rc,
 };
 
 use motoko_rts::{
@@ -12,11 +14,14 @@ use motoko_rts::{
         },
         time::BoundedTime,
     },
-    memory::{alloc_array, alloc_blob, Memory},
+    memory::{alloc_array, alloc_blob},
     types::{Array, Blob, Bytes, Obj, Tag, Value, Words, TAG_ARRAY, TAG_BLOB},
 };
 
-use crate::{gc::utils::WORD_SIZE, memory::TestMemory};
+use crate::{
+    gc::utils::WORD_SIZE,
+    memory::{share_memory, Memory, TestMemory},
+};
 
 const NUMBER_OF_OBJECTS: usize = 2 * PARTITION_SIZE / 16;
 const HEAP_SIZE: usize = 4 * PARTITION_SIZE;
@@ -133,7 +138,7 @@ unsafe fn test_freeing_partitions(heap: &mut PartitionedTestHeap, occupied_parti
     println!("    Test freeing partitions...");
     heap.inner.complete_collection();
     let mut time = BoundedTime::new(0);
-    heap.inner.start_collection(&mut heap.memory, &mut time);
+    heap.inner.start_collection(&mut time);
     let mut iterator = PartitionedHeapIterator::new(&heap.inner);
     while iterator.has_partition() {
         let partition = iterator.current_partition(&heap.inner);
@@ -152,7 +157,7 @@ const OBJECT_SIZE: usize = size_of::<Array>() + WORD_SIZE;
 unsafe fn test_reallocations(heap: &mut PartitionedTestHeap) {
     println!("    Test reallocations...");
     let mut time = BoundedTime::new(0);
-    heap.inner.start_collection(&mut heap.memory, &mut time);
+    heap.inner.start_collection(&mut time);
     let remaining_objects = count_objects(&heap.inner);
     allocate_objects(heap);
     assert!(
@@ -260,7 +265,7 @@ unsafe fn test_allocation_sizes(sizes: &[usize], number_of_partitions: usize) {
     let mut heap = PartitionedTestHeap::new(total_partitions * PARTITION_SIZE);
     assert!(heap.inner.occupied_size().as_usize() < PARTITION_SIZE + heap.heap_base());
     let mut time = BoundedTime::new(0);
-    heap.inner.start_collection(&mut heap.memory, &mut time);
+    heap.inner.start_collection(&mut time);
     for size in sizes.iter() {
         assert_eq!(*size % WORD_SIZE, 0);
         assert!(*size >= size_of::<Blob>());
@@ -277,7 +282,7 @@ unsafe fn test_allocation_sizes(sizes: &[usize], number_of_partitions: usize) {
     heap.inner.plan_evacuations();
     heap.inner.collect_large_objects();
     heap.inner.complete_collection();
-    heap.inner.start_collection(&mut heap.memory, &mut time);
+    heap.inner.start_collection(&mut time);
     iterate_large_objects(&heap.inner, &[]);
     assert!(heap.inner.occupied_size().as_usize() < PARTITION_SIZE + heap.heap_base())
 }
@@ -285,7 +290,7 @@ unsafe fn test_allocation_sizes(sizes: &[usize], number_of_partitions: usize) {
 unsafe fn unmark_all_objects(heap: &mut PartitionedTestHeap) {
     heap.inner.complete_collection();
     let mut time = BoundedTime::new(0);
-    heap.inner.start_collection(&mut heap.memory, &mut time);
+    heap.inner.start_collection(&mut time);
 }
 
 unsafe fn iterate_large_objects(heap: &PartitionedHeap, expected_sizes: &[usize]) {
@@ -334,7 +339,7 @@ fn create_test_heap() -> PartitionedTestHeap {
     let mut heap = PartitionedTestHeap::new(HEAP_SIZE);
     let mut time = BoundedTime::new(0);
     unsafe {
-        heap.inner.start_collection(&mut heap.memory, &mut time);
+        heap.inner.start_collection(&mut time);
     }
     allocate_objects(&mut heap);
     let heap_size = heap.inner.occupied_size().as_usize();
@@ -374,29 +379,32 @@ fn reset_progress() {
 }
 
 pub struct PartitionedTestHeap {
-    memory: TestMemory,
+    memory: Rc<RefCell<TestMemory>>,
     inner: PartitionedHeap,
 }
 
 impl PartitionedTestHeap {
     pub fn new(size: usize) -> PartitionedTestHeap {
-        let mut memory = TestMemory::new(Bytes(size as u32).to_words());
-        let heap_base = memory.heap_base();
-        let inner = unsafe { PartitionedHeap::new(&mut memory, heap_base) };
+        let memory = Rc::new(RefCell::new(TestMemory::new(Bytes(size as u32).to_words())));
+        unsafe {
+            share_memory(Rc::clone(&memory));
+        }
+        let heap_base = memory.borrow().heap_base();
+        let inner = unsafe { PartitionedHeap::new(heap_base) };
         PartitionedTestHeap { memory, inner }
     }
 
     pub fn heap_base(&self) -> usize {
-        self.memory.heap_base()
+        self.memory.borrow().heap_base()
     }
 
     pub fn heap_pointer(&self) -> usize {
-        self.memory.heap_pointer()
+        self.memory.borrow().heap_pointer()
     }
 
     pub fn allocate_array(&mut self, elements: &[Value]) -> Value {
         unsafe {
-            let array = alloc_array(self, elements.len() as u32);
+            let array = alloc_array(elements.len() as u32);
             for index in 0..elements.len() {
                 let raw_array = array.as_array();
                 raw_array.set_scalar(index as u32, elements[index]);
@@ -406,7 +414,7 @@ impl PartitionedTestHeap {
     }
 
     pub fn allocate_blob(&mut self, size: usize) -> Value {
-        unsafe { alloc_blob(self, Bytes(size as u32)) }
+        unsafe { alloc_blob(Bytes(size as u32)) }
     }
 }
 
@@ -422,8 +430,9 @@ unsafe fn block_size(block: *const Tag) -> usize {
 
 impl Memory for PartitionedTestHeap {
     unsafe fn alloc_words(&mut self, size: Words<u32>) -> Value {
-        let result = self.inner.allocate(&mut self.memory, size);
+        let result = self.inner.allocate(size);
         self.memory
+            .borrow_mut()
             .set_heap_pointer(result.get_ptr() + size.to_bytes().as_usize());
         result
     }

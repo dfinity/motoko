@@ -5,7 +5,6 @@ use core::ptr::null;
 
 use crate::gc::generational::remembered_set::RememberedSet;
 use crate::gc::incremental::partitioned_heap::PARTITION_SIZE;
-use crate::memory::Memory;
 use crate::types::*;
 use crate::visitor::visit_pointer_fields;
 
@@ -13,17 +12,11 @@ use super::mark_stack::{MarkStack, STACK_EMPTY};
 use super::partitioned_heap::PartitionedHeap;
 use super::roots::{visit_roots, Roots};
 
-pub unsafe fn check_memory<M: Memory>(
-    mem: &mut M,
-    heap: &mut PartitionedHeap,
-    roots: Roots,
-    mode: CheckerMode,
-) {
-    let mark_stack = MarkStack::new(mem);
-    let visited = RememberedSet::new(mem);
+pub unsafe fn check_memory(heap: &mut PartitionedHeap, roots: Roots, mode: CheckerMode) {
+    let mark_stack = MarkStack::new();
+    let visited = RememberedSet::new();
     let mut checker = MemoryChecker {
         mode,
-        mem,
         heap,
         roots,
         mark_stack,
@@ -38,16 +31,15 @@ pub enum CheckerMode {
     UpdateCompletion, // Check update phase completion.
 }
 
-struct MemoryChecker<'a, M: Memory> {
+struct MemoryChecker<'a> {
     mode: CheckerMode,
-    mem: &'a mut M,
     heap: &'a mut PartitionedHeap,
     roots: Roots,
     mark_stack: MarkStack,
     visited: RememberedSet,
 }
 
-impl<'a, M: Memory> MemoryChecker<'a, M> {
+impl<'a> MemoryChecker<'a> {
     // Check whether all reachable objects and pointers in the memory have a plausible state.
     // Note: The heap may contain garbage objects with stale pointers that are no longer valid.
     // Various check modes:
@@ -79,8 +71,8 @@ impl<'a, M: Memory> MemoryChecker<'a, M> {
             assert!(!self.heap.mark_object(object));
         }
         if !self.visited.contains(value) {
-            self.visited.insert(self.mem, value);
-            self.mark_stack.push(self.mem, value);
+            self.visited.insert(value);
+            self.mark_stack.push(value);
         }
     }
 

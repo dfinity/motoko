@@ -36,6 +36,8 @@ impl TestMemory {
 
 pub trait Memory {
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value;
+    unsafe fn linear_alloc_words(&mut self, n: Words<u32>) -> Value;
+    unsafe fn grow_memory(&mut self, ptr: u64);
 }
 
 impl Memory for TestMemory {
@@ -88,4 +90,24 @@ pub unsafe extern "C" fn alloc_words(n: Words<u32>) -> Value {
         .as_ref()
         .borrow_mut()
         .alloc_words(n)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn linear_alloc_words(n: Words<u32>) -> Value {
+    TEST_MEMORY
+        .as_mut()
+        .unwrap()
+        .as_ref()
+        .borrow_mut()
+        .linear_alloc_words(n)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn grow_memory(ptr: u64) {
+    TEST_MEMORY
+        .as_mut()
+        .unwrap()
+        .as_ref()
+        .borrow_mut()
+        .grow_memory(ptr);
 }

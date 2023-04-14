@@ -283,8 +283,7 @@ impl MotokoHeapInner {
 
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value {
         if self.using_incremental_gc {
-            let mut dummy_memory = DummyMemory {};
-            let result = get_partitioned_heap().allocate(&mut dummy_memory, n);
+            let result = get_partitioned_heap().allocate(n);
             self.set_heap_ptr_address(result.get_ptr()); // realign on partition changes
         }
 

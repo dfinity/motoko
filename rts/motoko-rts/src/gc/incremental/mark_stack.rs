@@ -28,7 +28,7 @@
 
 use core::ptr::null_mut;
 
-use crate::memory::{alloc_blob, Memory};
+use crate::memory::alloc_blob;
 use crate::types::{size_of, Blob, Value};
 
 pub struct MarkStack {
@@ -49,20 +49,20 @@ struct StackTable {
 }
 
 impl MarkStack {
-    pub unsafe fn new<M: Memory>(mem: &mut M) -> MarkStack {
-        let table = Self::new_table(mem, null_mut());
+    pub unsafe fn new() -> MarkStack {
+        let table = Self::new_table(null_mut());
         MarkStack {
             last: table,
             top: 0,
         }
     }
 
-    pub unsafe fn push<M: Memory>(&mut self, mem: &mut M, value: Value) {
+    pub unsafe fn push(&mut self, value: Value) {
         debug_assert!(value != STACK_EMPTY);
         debug_assert!(self.last != null_mut());
         if self.top == STACK_TABLE_CAPACITY {
             if (*self.last).next == null_mut() {
-                self.last = Self::new_table(mem, self.last);
+                self.last = Self::new_table(self.last);
             } else {
                 self.last = (*self.last).next;
             }
@@ -94,10 +94,9 @@ impl MarkStack {
         self.top == 0 && (*self.last).previous == null_mut()
     }
 
-    unsafe fn new_table<M: Memory>(mem: &mut M, previous: *mut StackTable) -> *mut StackTable {
+    unsafe fn new_table(previous: *mut StackTable) -> *mut StackTable {
         // No post allocation barrier as this RTS-internal blob will be collected by the GC.
-        let table =
-            alloc_blob(mem, size_of::<StackTable>().to_bytes()).as_blob_mut() as *mut StackTable;
+        let table = alloc_blob(size_of::<StackTable>().to_bytes()).as_blob_mut() as *mut StackTable;
         (*table).previous = previous;
         (*table).next = null_mut();
         if previous != null_mut() {

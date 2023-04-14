@@ -5,18 +5,17 @@ use crate::{
         State,
     },
     mem_utils::memcpy_words,
-    memory::Memory,
+    memory::alloc_words,
     types::*,
 };
 
-pub struct EvacuationIncrement<'a, M: Memory> {
-    mem: &'a mut M,
+pub struct EvacuationIncrement<'a> {
     heap: &'a mut PartitionedHeap,
     iterator: &'a mut PartitionedHeapIterator,
     time: &'a mut BoundedTime,
 }
 
-impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
+impl<'a> EvacuationIncrement<'a> {
     pub unsafe fn start_phase(state: &mut State) {
         debug_assert!(state.iterator_state.is_none());
         let heap = &mut state.partitioned_heap;
@@ -34,14 +33,12 @@ impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
     }
 
     pub unsafe fn instance(
-        mem: &'a mut M,
         state: &'a mut State,
         time: &'a mut BoundedTime,
-    ) -> EvacuationIncrement<'a, M> {
+    ) -> EvacuationIncrement<'a> {
         let heap = &mut state.partitioned_heap;
         let iterator = state.iterator_state.as_mut().unwrap();
         EvacuationIncrement {
-            mem,
             heap,
             iterator,
             time,
@@ -78,7 +75,7 @@ impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
         debug_assert!(original.tag() >= TAG_OBJECT && original.tag() <= TAG_NULL);
         debug_assert!(!original.is_forwarded());
         let size = block_size(original as usize);
-        let new_address = self.mem.alloc_words(size);
+        let new_address = alloc_words(size);
         let copy = new_address.get_ptr() as *mut Obj;
         memcpy_words(copy as usize, original as usize, size);
         (*copy).forward = new_address;

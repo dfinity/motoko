@@ -4,24 +4,24 @@ use motoko_rts::{
     types::{Words, TAG_ARRAY, TAG_ARRAY_SLICE_MIN},
 };
 
-use crate::memory::TestMemory;
+use crate::memory::{set_memory, TestMemory};
 
 pub unsafe fn test() {
     println!("  Testing array slicing...");
 
-    let mut mem = TestMemory::new(Words(1024 * 1024));
+    set_memory(TestMemory::new(Words(1024 * 1024)));
     // multiple of slice increment
-    test_array_slicing(&mut mem, 4096);
+    test_array_slicing(4096);
     // odd remainder of slice increment
-    test_array_slicing(&mut mem, 3999);
+    test_array_slicing(3999);
     // small array
-    test_array_slicing(&mut mem, 10);
+    test_array_slicing(10);
     // empty array
-    test_array_slicing(&mut mem, 0);
+    test_array_slicing(0);
 }
 
-unsafe fn test_array_slicing(mem: &mut TestMemory, array_length: u32) {
-    let array = alloc_array(mem, array_length).as_array();
+unsafe fn test_array_slicing(array_length: u32) {
+    let array = alloc_array(array_length).as_array();
     let mut last_offset = 0;
     loop {
         let new_offset = slice_array(array);

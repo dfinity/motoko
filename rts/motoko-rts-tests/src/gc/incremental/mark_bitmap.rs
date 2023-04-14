@@ -1,10 +1,9 @@
 /// Adopted from compacting GC unit test `bitmap.rs`.
-use crate::memory::TestMemory;
+use crate::memory::{alloc_words, set_memory, TestMemory};
 
 use motoko_rts::constants::WORD_SIZE;
 use motoko_rts::gc::incremental::mark_bitmap::{MarkBitmap, BITMAP_ITERATION_END};
 use motoko_rts::gc::incremental::partitioned_heap::PARTITION_SIZE;
-use motoko_rts::memory::Memory;
 use motoko_rts::types::{Bytes, Value};
 
 use std::collections::HashSet;
@@ -15,8 +14,8 @@ use proptest::test_runner::{Config, TestCaseResult, TestRunner};
 pub unsafe fn test() {
     println!("  Testing mark bitmap ...");
     let bitmap_size = Bytes(PARTITION_SIZE as u32).to_words();
-    let mut mem = TestMemory::new(bitmap_size);
-    let bitmap_pointer = mem.alloc_words(bitmap_size);
+    set_memory(TestMemory::new(bitmap_size));
+    let bitmap_pointer = alloc_words(bitmap_size);
 
     test_mark(bitmap_pointer, vec![0, 33]);
 

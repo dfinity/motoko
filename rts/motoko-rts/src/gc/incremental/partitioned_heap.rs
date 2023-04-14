@@ -42,7 +42,7 @@ use core::{array::from_fn, ops::Range, ptr::null_mut};
 
 use crate::{
     constants::WASM_MEMORY_BYTE_SIZE, gc::incremental::mark_bitmap::BITMAP_ITERATION_END,
-    memory::Memory, rts_trap_with, types::*,
+    memory::grow_memory, rts_trap_with, types::*,
 };
 
 use super::{
@@ -364,9 +364,9 @@ pub const UNINITIALIZED_HEAP: PartitionedHeap = PartitionedHeap {
 };
 
 impl PartitionedHeap {
-    pub unsafe fn new<M: Memory>(mem: &mut M, heap_base: usize) -> PartitionedHeap {
+    pub unsafe fn new(heap_base: usize) -> PartitionedHeap {
         let allocation_index = heap_base / PARTITION_SIZE;
-        mem.grow_memory(((allocation_index + 1) * PARTITION_SIZE) as u64);
+        grow_memory(((allocation_index + 1) * PARTITION_SIZE) as u64);
         let partitions = from_fn(|index| Partition {
             index,
             free: index > allocation_index,
@@ -429,10 +429,10 @@ impl PartitionedHeap {
         rts_trap_with("Cannot grow memory");
     }
 
-    unsafe fn allocate_bitmap<M: Memory>(&mut self, mem: &mut M) -> *mut u8 {
+    unsafe fn allocate_bitmap(&mut self) -> *mut u8 {
         if self.bitmap_allocation_pointer % PARTITION_SIZE == 0 {
             let partition = self.allocate_temporary_partition();
-            mem.grow_memory(partition.end_address() as u64);
+            grow_memory(partition.end_address() as u64);
             self.bitmap_allocation_pointer = partition.start_address();
         }
         let bitmap_address = self.bitmap_allocation_pointer as *mut u8;
@@ -471,14 +471,14 @@ impl PartitionedHeap {
         bitmap.is_marked(offset)
     }
 
-    pub unsafe fn start_collection<M: Memory>(&mut self, mem: &mut M, time: &mut BoundedTime) {
+    pub unsafe fn start_collection(&mut self, time: &mut BoundedTime) {
         debug_assert_eq!(self.bitmap_allocation_pointer, 0);
         debug_assert!(!self.gc_running);
         self.gc_running = true;
         for partition_index in 0..MAX_PARTITIONS {
             let partition = self.get_partition(partition_index);
             if partition.has_dynamic_space() && !partition.has_large_content() {
-                let bitmap_address = self.allocate_bitmap(mem);
+                let bitmap_address = self.allocate_bitmap();
                 self.mutable_partition(partition_index)
                     .bitmap
                     .assign(bitmap_address);
@@ -569,13 +569,9 @@ impl PartitionedHeap {
         self.allocation_index == index
     }
 
-    unsafe fn allocate_free_partition<M: Memory>(
-        &mut self,
-        mem: &mut M,
-        requested_space: usize,
-    ) -> &mut Partition {
+    unsafe fn allocate_free_partition(&mut self, requested_space: usize) -> &mut Partition {
         let bitmap_address = if self.gc_running {
-            self.allocate_bitmap(mem)
+            self.allocate_bitmap()
         } else {
             null_mut()
         };
@@ -607,16 +603,16 @@ impl PartitionedHeap {
         Bytes(self.reclaimed)
     }
 
-    pub unsafe fn allocate<M: Memory>(&mut self, mem: &mut M, words: Words<u32>) -> Value {
+    pub unsafe fn allocate(&mut self, words: Words<u32>) -> Value {
         let size = words.to_bytes().as_usize();
         if size <= PARTITION_SIZE {
-            self.allocate_normal_object(mem, size)
+            self.allocate_normal_object(size)
         } else {
-            self.allocate_large_object(mem, size)
+            self.allocate_large_object(size)
         }
     }
 
-    unsafe fn allocate_normal_object<M: Memory>(&mut self, mem: &mut M, size: usize) -> Value {
+    unsafe fn allocate_normal_object(&mut self, size: usize) -> Value {
         debug_assert!(size <= PARTITION_SIZE);
         let mut allocation_partition = self.allocation_partition();
         debug_assert!(!allocation_partition.free);
@@ -626,18 +622,18 @@ impl PartitionedHeap {
             (*allocation_partition).dynamic_size += size;
             Value::from_ptr(heap_pointer)
         } else {
-            self.allocate_in_new_partition(mem, size)
+            self.allocate_in_new_partition(size)
         }
     }
 
     // Significant performance gain by not inlining.
     #[inline(never)]
-    unsafe fn allocate_in_new_partition<M: Memory>(&mut self, mem: &mut M, size: usize) -> Value {
+    unsafe fn allocate_in_new_partition(&mut self, size: usize) -> Value {
         #[cfg(feature = "memory_check")]
         self.allocation_partition().clear_free_remainder();
 
-        let new_partition = self.allocate_free_partition(mem, size);
-        mem.grow_memory(new_partition.end_address() as u64);
+        let new_partition = self.allocate_free_partition(size);
+        grow_memory(new_partition.end_address() as u64);
         let heap_pointer = new_partition.dynamic_space_end();
         new_partition.dynamic_size += size;
         self.allocation_index = new_partition.index;
@@ -646,7 +642,7 @@ impl PartitionedHeap {
 
     // Significant performance gain by not inlining.
     #[inline(never)]
-    unsafe fn allocate_large_object<M: Memory>(&mut self, mem: &mut M, size: usize) -> Value {
+    unsafe fn allocate_large_object(&mut self, size: usize) -> Value {
         if size > usize::MAX - PARTITION_SIZE {
             panic!("Too large allocation");
         }
@@ -660,7 +656,7 @@ impl PartitionedHeap {
         self.free_partitions -= number_of_partitions;
 
         let end_address = self.get_partition(last_index).end_address();
-        mem.grow_memory(end_address as u64);
+        grow_memory(end_address as u64);
         for index in first_index..last_index + 1 {
             let partition = self.mutable_partition(index);
             debug_assert!(partition.free);
