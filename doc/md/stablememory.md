@@ -29,15 +29,15 @@ More general `loadBlob` and `storeBlob` operations are also available for readin
 ``` motoko no-repl
 module {
 
-  // Current size of the stable memory, in pages.
+  // Current size of the region `r` in pages.
   // Each page is 64KiB (65536 bytes).
   // Initially `0`.
   size : (r : Region) -> (pages : Nat64);
 
-  // Grow current `size` of stable memory by `pagecount` pages.
+  // Grow current `size` of region `r` by `pagecount` pages.
   // Each page is 64KiB (65536 bytes).
   // Returns previous `size` when able to grow.
-  // Returns `0xFFFF_FFFF_FFFF_FFFF` if remaining pages insufficient.
+  // Returns `0xFFFF_FFFF_FFFF_FFFF` if remaining pages of physical stable memory insufficient.
   grow : (r : Region, new_pages : Nat64) -> (oldpages : Nat64);
 
   loadNat8 : (r : Region, offset : Nat64) -> Nat8;
@@ -49,11 +49,11 @@ module {
   loadFloat : (r : Region, offset : Nat64) -> Float;
   storeFloat : (r : Region, offset : Nat64, value : Float) -> ();
 
-  // Load `size` bytes starting from `offset` as a `Blob`.
+  // Load `size` bytes starting from `offset` in region `r` as a `Blob`.
   // Traps on out-of-bounds access.
   loadBlob : (r : Region, offset : Nat64, size : Nat) -> Blob;
 
-  // Write bytes of `blob` beginning at `offset`.
+  // Write all bytes of `blob` to region `r` beginning at `offset`.
   // Traps on out-of-bounds access.
   storeBlob : (r : Region, offset : Nat64, value : Blob) -> ()
 
@@ -73,7 +73,7 @@ The example illustrates the simultaneous use of stable variables and stable memo
 ``` motoko no-repl file=./examples/StableLog.mo
 ```
 
-The shared `add(blob)` function allocates enough stable memory to store the given blob, and writes the blob contents, its size, and its position into the pre-allocated regions.  One region is dedciated to storing the (hetergeneously-sized) blobs, and the other is dedicated to storing their (fixed-sized) meta data.
+The shared `add(blob)` function allocates enough stable memory to store the given blob, and writes the blob contents, its size, and its position into the pre-allocated regions.  One region is dedicated to storing the blobs of varying sizes, and the other is dedicated to storing their (fixed-sized) meta data.
 
 The shared `get(index)` query reads anywhere from the log without traversing any unrelated memory.
 

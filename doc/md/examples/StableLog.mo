@@ -1,8 +1,6 @@
 import Nat32 "mo:base/Nat32";
 import Nat64 "mo:base/Nat64";
 import Text "mo:base/Text";
-import Array "mo:base/Array";
-import Trie "mo:base/Trie";
 import Region "mo:base/Region";
 
 actor StableLog {
@@ -19,10 +17,10 @@ actor StableLog {
   };
 
   type Rep = {
-    bytes: Region;
-    var bytes_count: Nat64; // more fine-grained than "pages"
-    elems: Region;
-    var elems_count: Nat64; // more fine-grained than "pages"
+    bytes : Region;
+    var bytes_count : Nat64; // more fine-grained than "pages"
+    elems : Region;
+    var elems_count : Nat64; // more fine-grained than "pages"
   };
 
   // Grow a region to hold a certain number of total bytes.
@@ -48,7 +46,7 @@ actor StableLog {
   };
 
   // Constant-time random access to previously-logged Blob.
-  public func get(index: Index) : async Blob {
+  public func get(index : Index) : async Blob {
     assert index < self.elems_count;
     let pos = Region.loadNat64(self.elems, index * elem_size);
     let size = Region.loadNat64(self.elems, index * elem_size + 8);
@@ -57,7 +55,7 @@ actor StableLog {
   };
 
   // Add Blob to the log, and return the index of it.
-  public func add(blob: Blob) : async Index {
+  public func add(blob : Blob) : async Index {
     let elem_i = self.elems_count;
     self.elems_count += 1;
 
