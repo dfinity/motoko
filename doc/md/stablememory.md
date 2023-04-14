@@ -73,7 +73,7 @@ The example illustrates the simultaneous use of stable variables and stable memo
 ``` motoko no-repl file=./examples/StableLog.mo
 ```
 
-The shared `add(blob)` function allocates enough stable memory to store the given blob, and writes the blob contents, its size, and its position into the pre-allocated regions.  One region is dedciated to storing the (hetergeneously-sized) blobs, and the other is dedicated to storing their (fixed-sized) meta data.
+The shared `add(blob)` function allocates enough stable memory to store the given blob, and writes the blob contents, its size, and its position into the pre-allocated regions.  One region is dedicated to storing the blobs of varying sizes, and the other is dedicated to storing their (fixed-sized) meta data.
 
 The shared `get(index)` query reads anywhere from the log without traversing any unrelated memory.
 
