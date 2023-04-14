@@ -46,7 +46,7 @@ actor StableLog {
   };
 
   // Constant-time random access to previously-logged Blob.
-  public func get(index: Index) : async Blob {
+  public func get(index : Index) : async Blob {
     assert index < self.elems_count;
     let pos = Region.loadNat64(self.elems, index * elem_size);
     let size = Region.loadNat64(self.elems, index * elem_size + 8);
