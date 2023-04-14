@@ -274,9 +274,9 @@ Including this design, there are three possible verions (`0`, `1`, or `2`):
  1. Stable vars *plus* direct access to IC0 API, including `grow`.
  2. Region system, where direct access still works through region zero.
 
-In both cases (`0`) and (`1`), we wish to migrate into the region system (`2`), with its own internal versioning.
+In the first cases (`0`) and (`1`), we wish to migrate into the region system (`2`), with its own internal versioning.
 
-To do so, we will bump the version of the region system during upgrades.
+To do so, we will read the existing version during upgrades, and apply installation logic that we call "migration".
 
 ##### Version 0 migration.
 
