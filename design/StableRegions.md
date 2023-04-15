@@ -266,17 +266,21 @@ Before reusing that region, each of its block are added to the special "free blo
 
 #### Stable memory format versions
 
-The first 32 bits of stable memory record a version number.
+The first 32 bits of stable memory record a "marker," which indicates how to determine the "version number"
+for Motoko stable memory, which is stored either:
+  - implicitly, when marker is non-zero, and version is `0`.
+  - explicitly, when marker is zero, and version is stored elsewhere (but currently always `1`).
 
 Including this design, there are three possible verions (`0`, `1`, or `2`):
 
- 0. Stable vars only.
+ 0. Stable vars only. (Here, the marker is the always-non-zero serialization size).
  1. Stable vars *plus* direct access to IC0 API, including `grow`.
  2. Region system, where direct access still works through region zero.
 
 In the first cases (`0`) and (`1`), we wish to migrate into the region system (`2`), with its own internal versioning.
 
 To do so, we will read the existing version during upgrades, and apply installation logic that we call "migration".
+
 
 ##### Version 0 migration.
 
