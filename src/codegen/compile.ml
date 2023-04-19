@@ -3435,7 +3435,7 @@ module Blob = struct
         get_x ^^ len env ^^ set_len1 ^^
         get_y ^^ len env ^^ set_len2 ^^
 
-        (* Find mininum length *)
+        (* Find minimum length *)
         begin if op = EqOp then
           (* Early exit for equality *)
           get_len1 ^^ get_len2 ^^ G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
@@ -9475,9 +9475,13 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
   | OtherPrim ("is_controller"), [e] ->
     SR.Vanilla,
+    let set_principal, get_principal = new_local env "principal" in
     compile_exp_vanilla env ae e ^^
-    G.i Drop ^^
-    compile_unboxed_zero
+    set_principal ^^ get_principal ^^
+    Blob.payload_ptr_unskewed ^^
+    get_principal ^^
+    Blob.len env ^^
+    IC.system_call env "is_controller"
 
   | OtherPrim "crc32Hash", [e] ->
     SR.UnboxedWord32,
