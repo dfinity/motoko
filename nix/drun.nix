@@ -3,10 +3,10 @@ pkgs:
     pkgs.rustPlatform_moz_stable.buildRustPackage {
       name = "drun";
 
-      src = pkgs.sources.ic + "/rs";
+      src = pkgs.sources.ic;
 
       # update this after bumping the dfinity/ic pin.
-      # 1. change the hash to something arbitrary (e.g. flip one digit to 0)
+      # 1. change the hash to something arbitrary (e.g. flip one digit to 0 or use `pkgs.lib.fakeSha256`)
       # 2. run nix-build -A drun nix/
       # 3. copy the “expected” hash from the output into this file
       # 4. commit and push
@@ -15,7 +15,7 @@ pkgs:
       # installed. You will normally not be bothered to perform
       # the command therein manually.
 
-      cargoSha256 = "";
+      cargoSha256 = pkgs.lib.fakeSha256;
 
       patchPhase = ''
       cd ../drun-vendor.tar.gz
@@ -34,8 +34,6 @@ pkgs:
 EOF
 
       sed -i -e s/08d86b53188dc6f15c8dc09d8aadece72e39f145e3ae497bb8711936a916335a/536e44802de57cc7d3690c90c80f154f770f48e82b82756c36443b8b47c9b5e7/g librocksdb-sys/.cargo-checksum.json
-
-      cd -
       '';
 
       nativeBuildInputs = with pkgs; [
@@ -63,6 +61,6 @@ EOF
 
       doCheck = false;
 
-      buildAndTestSubdir = "drun";
+      buildAndTestSubdir = "rs/drun";
     };
 }
