@@ -6,10 +6,10 @@
         "homepage": "",
         "owner": "dfinity",
         "repo": "candid",
-        "rev": "0ae3c22c6df17f7e09fb49c5ce5fe77653884e10",
-        "sha256": "0m7pvm4sawamixm30dqx4zlf8vr3966fdpbgad5qjc0zzpzazq51",
+        "rev": "55d34ec060bd9dc735ed577e6924ddac79a415bf",
+        "sha256": "0v7lzp36h4xjg5qx7qcvh5jawxmc80ph1x5rmaddifp9mzb6vjhi",
         "type": "tarball",
-        "url": "https://github.com/dfinity/candid/archive/0ae3c22c6df17f7e09fb49c5ce5fe77653884e10.tar.gz",
+        "url": "https://github.com/dfinity/candid/archive/55d34ec060bd9dc735ed577e6924ddac79a415bf.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "esm": {
@@ -27,10 +27,10 @@
         "homepage": "",
         "owner": "dfinity",
         "repo": "ic",
-        "rev": "7445081734e6d896d090295967d50710975c4f25",
-        "sha256": "1csg0rddcf96ai5mz0vfw8cb96z21ri836ypi9y20p0cjfymsv4g",
+        "rev": "83e7fca6d2c51f140db8b3760b5478254031807c",
+        "sha256": "01mxvjnhpqjcb6vcrsl9c5xjb0xn1ls1ss6gv05bs0q47f7l371i",
         "type": "tarball",
-        "url": "https://github.com/dfinity/ic/archive/7445081734e6d896d090295967d50710975c4f25.tar.gz",
+        "url": "https://github.com/dfinity/ic/archive/83e7fca6d2c51f140db8b3760b5478254031807c.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ic-hs": {
