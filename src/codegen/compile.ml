@@ -9473,6 +9473,12 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_as env ae SR.UnboxedWord64 e ^^
     IC.system_call env "global_timer_set"
 
+  | OtherPrim ("is_controller"), [e] ->
+    SR.Vanilla,
+    compile_exp_vanilla env ae e ^^
+    G.i Drop ^^
+    compile_unboxed_zero
+
   | OtherPrim "crc32Hash", [e] ->
     SR.UnboxedWord32,
     compile_exp_vanilla env ae e ^^
