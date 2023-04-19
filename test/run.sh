@@ -93,8 +93,9 @@ function normalize () {
         -e 's/Motoko (source .*)/Motoko (source XXX)/ig' \
         -e 's/Motoko [^ ]* (source .*)/Motoko (source XXX)/ig' \
         -e 's/Motoko compiler [^ ]* (source .*)/Motoko compiler (source XXX)/ig' |
-    # Normalize canister id prefixes in debug prints
-    sed 's/\[Canister [0-9a-z\-]*\]/debug.print:/g' |
+    # Normalize canister id prefixes and timestamps in debug prints
+    sed -e 's/\[Canister [0-9a-z\-]*\]/debug.print:/g'
+        -e 's/^20.*UTC: debug.print:/debug.print:/g' |
     # Normalize instruction locations on traps, added by ic-ref ad6ea9e
     sed -e 's/region:0x[0-9a-fA-F]\+-0x[0-9a-fA-F]\+/region:0xXXX-0xXXX/g' |
     # Delete everything after Oom
