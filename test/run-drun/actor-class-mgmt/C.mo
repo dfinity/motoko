@@ -1,6 +1,7 @@
 import Prim "mo:⛔";
-actor class C(n : Nat) = this {
+actor class C(n : Nat, contr : Principal) = this {
    stable var upgrades = 0;
+   assert Prim.isController contr;
 
    system func preupgrade () {
      assert not Prim.isController(Prim.principalOfActor this);
@@ -8,6 +9,7 @@ actor class C(n : Nat) = this {
    };
 
    public func observe () : async {args : Nat;  upgrades : Nat} {
-     { args = n;  upgrades }
+     assert Prim.isController contr;
+     { args = n; upgrades }
    };
 }
