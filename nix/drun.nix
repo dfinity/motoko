@@ -41,6 +41,8 @@ EOF
         cd -
       '';
 
+      cargoBuildFlags = ["-vv"];
+
       nativeBuildInputs = with pkgs; [
         pkg-config
         cmake
