@@ -9468,12 +9468,12 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
   (* Other prims, unary *)
 
-  | OtherPrim ("global_timer_set"), [e] ->
+  | OtherPrim "global_timer_set", [e] ->
     SR.UnboxedWord64,
     compile_exp_as env ae SR.UnboxedWord64 e ^^
     IC.system_call env "global_timer_set"
 
-  | OtherPrim ("is_controller"), [e] ->
+  | OtherPrim "is_controller", [e] ->
     SR.Vanilla,
     let set_principal, get_principal = new_local env "principal" in
     compile_exp_vanilla env ae e ^^
@@ -9558,29 +9558,29 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_vanilla env ae e ^^
     IC.trap_text env
 
-  | OtherPrim ("blobToArray"|"blobToArrayMut"), e ->
+  | OtherPrim ("blobToArray" | "blobToArrayMut"), e ->
     const_sr SR.Vanilla (Arr.ofBlob env)
-  | OtherPrim ("arrayToBlob"|"arrayMutToBlob"), e ->
+  | OtherPrim ("arrayToBlob" | "arrayMutToBlob"), e ->
     const_sr SR.Vanilla (Arr.toBlob env)
 
-  | OtherPrim ("stableMemoryLoadNat32"|"stableMemoryLoadInt32"), [e] ->
+  | OtherPrim ("stableMemoryLoadNat32" | "stableMemoryLoadInt32"), [e] ->
     SR.UnboxedWord32,
     compile_exp_as env ae SR.UnboxedWord64 e ^^
     StableMem.load_word32 env
 
-  | OtherPrim ("stableMemoryStoreNat32"|"stableMemoryStoreInt32"), [e1; e2] ->
+  | OtherPrim ("stableMemoryStoreNat32" | "stableMemoryStoreInt32"), [e1; e2] ->
     SR.unit,
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     compile_exp_as env ae SR.UnboxedWord32 e2 ^^
     StableMem.store_word32 env
 
-  | OtherPrim ("stableMemoryLoadNat8"), [e] ->
+  | OtherPrim "stableMemoryLoadNat8", [e] ->
     SR.Vanilla,
     compile_exp_as env ae SR.UnboxedWord64 e ^^
     StableMem.load_word8 env ^^
     TaggedSmallWord.msb_adjust Type.Nat8
 
-  | OtherPrim ("stableMemoryLoadInt8"), [e] ->
+  | OtherPrim "stableMemoryLoadInt8", [e] ->
     SR.Vanilla,
     compile_exp_as env ae SR.UnboxedWord64 e ^^
     StableMem.load_word8 env ^^
@@ -9588,37 +9588,37 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
   (* Other prims, binary *)
 
-  | OtherPrim ("stableMemoryStoreNat8"), [e1; e2] ->
+  | OtherPrim "stableMemoryStoreNat8", [e1; e2] ->
     SR.unit,
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     compile_exp_as env ae SR.Vanilla e2 ^^ TaggedSmallWord.lsb_adjust Type.Nat8 ^^
     StableMem.store_word8 env
 
-  | OtherPrim ("stableMemoryStoreInt8"), [e1; e2] ->
+  | OtherPrim "stableMemoryStoreInt8", [e1; e2] ->
     SR.unit,
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     compile_exp_as env ae SR.Vanilla e2 ^^ TaggedSmallWord.lsb_adjust Type.Int8 ^^
     StableMem.store_word8 env
 
-  | OtherPrim ("stableMemoryLoadNat16"), [e] ->
+  | OtherPrim "stableMemoryLoadNat16", [e] ->
     SR.Vanilla,
     compile_exp_as env ae SR.UnboxedWord64 e ^^
     StableMem.load_word16 env ^^
     TaggedSmallWord.msb_adjust Type.Nat16
 
-  | OtherPrim ("stableMemoryLoadInt16"), [e] ->
+  | OtherPrim "stableMemoryLoadInt16", [e] ->
     SR.Vanilla,
     compile_exp_as env ae SR.UnboxedWord64 e ^^
     StableMem.load_word16 env ^^
     TaggedSmallWord.msb_adjust Type.Int16
 
-  | OtherPrim ("stableMemoryStoreNat16"), [e1; e2] ->
+  | OtherPrim "stableMemoryStoreNat16", [e1; e2] ->
     SR.unit,
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     compile_exp_as env ae SR.Vanilla e2 ^^ TaggedSmallWord.lsb_adjust Type.Nat16 ^^
     StableMem.store_word16 env
 
-  | OtherPrim ("stableMemoryStoreInt16"), [e1; e2] ->
+  | OtherPrim "stableMemoryStoreInt16", [e1; e2] ->
     SR.unit,
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     compile_exp_as env ae SR.Vanilla e2 ^^ TaggedSmallWord.lsb_adjust Type.Int16 ^^
@@ -9635,18 +9635,18 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_as env ae SR.UnboxedWord64 e2 ^^
     StableMem.store_word64 env
 
-  | OtherPrim ("stableMemoryLoadFloat"), [e] ->
+  | OtherPrim "stableMemoryLoadFloat", [e] ->
     SR.UnboxedFloat64,
     compile_exp_as env ae SR.UnboxedWord64 e ^^
     StableMem.load_float64 env
 
-  | OtherPrim ("stableMemoryStoreFloat"), [e1; e2] ->
+  | OtherPrim "stableMemoryStoreFloat", [e1; e2] ->
     SR.unit,
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     compile_exp_as env ae SR.UnboxedFloat64 e2 ^^
     StableMem.store_float64 env
 
-  | OtherPrim ("stableMemoryLoadBlob"), [e1; e2] ->
+  | OtherPrim "stableMemoryLoadBlob", [e1; e2] ->
     SR.Vanilla,
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     compile_exp_as env ae SR.Vanilla e2 ^^
@@ -9654,21 +9654,21 @@ and compile_prim_invocation (env : E.t) ae p es at =
     BigNum.to_word32_with env ^^
     StableMem.load_blob env
 
-  | OtherPrim ("stableMemoryStoreBlob"), [e1; e2] ->
+  | OtherPrim "stableMemoryStoreBlob", [e1; e2] ->
     SR.unit,
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     compile_exp_as env ae SR.Vanilla e2 ^^
     StableMem.store_blob env
 
-  | OtherPrim ("stableMemorySize"), [] ->
+  | OtherPrim "stableMemorySize", [] ->
     SR.UnboxedWord64,
     StableMem.get_mem_size env
-  | OtherPrim ("stableMemoryGrow"), [e] ->
+  | OtherPrim "stableMemoryGrow", [e] ->
     SR.UnboxedWord64,
     compile_exp_as env ae SR.UnboxedWord64 e ^^
     StableMem.logical_grow env
 
-  | OtherPrim ("stableVarQuery"), [] ->
+  | OtherPrim "stableVarQuery", [] ->
     SR.UnboxedTuple 2,
     IC.get_self_reference env ^^
     Blob.lit env Type.(motoko_stable_var_info_fld.lab)
