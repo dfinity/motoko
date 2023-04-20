@@ -22,6 +22,9 @@ pkgs:
         # into the web, so simply remove it
         cargo remove --package ic-btc-adapter ic-btc-validation
 
+        substituteInPlace .cargo/config.toml \
+          --replace "linker = \"clang\"" "linker = \"$CLANG_PATH\""
+
         cd ../drun-vendor.tar.gz
         patch librocksdb-sys/build.rs << EOF
 @@ -118,6 +118,10 @@
@@ -41,8 +44,6 @@ EOF
         cd -
       '';
 
-      cargoBuildFlags = ["-vv"];
-
       nativeBuildInputs = with pkgs; [
         pkg-config
         cmake
@@ -51,7 +52,6 @@ EOF
       buildInputs = with pkgs; [
         openssl
         llvm_13
-        llvmPackages_13.clang-unwrapped
         llvmPackages_13.libclang
         lmdb
         libunwind
