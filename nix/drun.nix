@@ -23,7 +23,8 @@ pkgs:
         cargo remove --package ic-btc-adapter ic-btc-validation
 
         substituteInPlace .cargo/config.toml \
-          --replace "linker = \"clang\"" "linker = \"$CLANG_PATH\""
+          --replace "linker = \"clang\"" "linker = \"$CLANG_PATH\"" \
+          --replace "/usr/bin/mold" "${pkgs.mold}"
 
         cd ../drun-vendor.tar.gz
         patch librocksdb-sys/build.rs << EOF
@@ -53,12 +54,12 @@ EOF
         openssl
         llvm_13
         llvmPackages_13.libclang
+        mold
         lmdb
         libunwind
         libiconv
-      ] ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
-        pkgs.darwin.apple_sdk.frameworks.Security
-      ];
+      ] ++ pkgs.lib.optional pkgs.stdenv.isDarwin
+        pkgs.darwin.apple_sdk.frameworks.Security;
 
       # needed for bindgen
       LIBCLANG_PATH = "${pkgs.llvmPackages_13.libclang.lib}/lib";
