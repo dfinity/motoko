@@ -51,7 +51,7 @@ EOF
       buildInputs = with pkgs; [
         openssl
         llvm_13
-        clang_13
+        llvmPackages_13.clang-unwrapped
         llvmPackages_13.libclang
         lmdb
         libunwind
