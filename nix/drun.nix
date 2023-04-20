@@ -24,7 +24,7 @@ pkgs:
 
         substituteInPlace .cargo/config.toml \
           --replace "linker = \"clang\"" "linker = \"$CLANG_PATH\"" \
-          --replace "/usr/bin/mold" "${pkgs.mold}/bin/mold"
+          --replace ", \"link-arg=-fuse-ld=/usr/bin/mold\"" ""
 
         cd ../drun-vendor.tar.gz
         patch librocksdb-sys/build.rs << EOF
@@ -54,7 +54,6 @@ EOF
         openssl
         llvm_13
         llvmPackages_13.libclang
-        mold
         lmdb
         libunwind
         libiconv
