@@ -24,7 +24,7 @@ pkgs:
 
         substituteInPlace .cargo/config.toml \
           --replace "linker = \"clang\"" "linker = \"$CLANG_PATH\"" \
-          --replace ", \"link-arg=-fuse-ld=/usr/bin/mold\"" ""
+          --replace "\"-C\", \"link-arg=-fuse-ld=/usr/bin/mold\"" ""
 
         cd ../drun-vendor.tar.gz
         patch librocksdb-sys/build.rs << EOF
