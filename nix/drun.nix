@@ -18,7 +18,8 @@ pkgs:
       cargoSha256 = "sha256-WkIe1mFxPWkxgzG94FJ9XIyh8J9WSZ5kK4yaVw39lUA=";
 
       patchPhase = ''
-
+        # for some reason ic-btc-validation tries to reach out
+        # into the web, so simply remove it
         cargo remove --package ic-btc-adapter ic-btc-validation
 
         cd ../drun-vendor.tar.gz
@@ -48,6 +49,7 @@ EOF
       buildInputs = with pkgs; [
         openssl
         llvm_13
+        clang_13
         llvmPackages_13.libclang
         lmdb
         libunwind
