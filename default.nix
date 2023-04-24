@@ -135,7 +135,7 @@ let ocaml_exe = name: bin: rts:
           -t ${nixpkgs.libiconv} \
           $out/bin/*
       '' + ''
-        # also, there is a refernece to /nix/store/…/share/menhir/standard.mly.
+        # also, there is a reference to /nix/store/…/share/menhir/standard.mly.
         # Let's remove that, too
         remove-references-to \
           -t ${staticpkgs.ocamlPackages.menhir} \
