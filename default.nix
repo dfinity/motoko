@@ -770,7 +770,7 @@ rec {
 
   viperServer = nixpkgs.fetchurl {
     url = https://github.com/viperproject/viperserver/releases/download/v.23.01-release/viperserver.jar;
-    sha256 = "sha256-debC9ZpbIjgpEeISCISU0EVySJvf+WsUkUaLuJ526wA=";
+    sha256 = "sha256-rrhvnmu0bTZufJRWmYCj4hmkP3QY7gILNv3yc28TxoA=";
   };
 
   shell = nixpkgs.mkShell {
