@@ -120,9 +120,9 @@ let
           };
         })
 
-        # Rust 1.66
+        # Rust 1.66.1
         (self: super: let
-          rust-channel = self.moz_overlay.rustChannelOf { date = "2022-12-15"; channel = "stable"; };
+          rust-channel = self.moz_overlay.rustChannelOf { date = "2023-01-10"; channel = "stable"; };
         in {
           rustPlatform_moz_stable = self.makeRustPlatform {
             rustc = rust-channel.rust;
