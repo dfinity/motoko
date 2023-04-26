@@ -18,9 +18,6 @@ pkgs:
       cargoSha256 = "sha256-K26OGkEqE0leY7vN2dbqzasT2AfgUucq3UPBEjKA0gc=";
 
       patchPhase = ''
-        # for some reason ic-btc-validation tries to reach out
-        # into the web, so simply remove it
-        cargo remove --package ic-btc-adapter ic-btc-validation
 
         substituteInPlace .cargo/config.toml \
           --replace "linker = \"clang\"" "linker = \"$CLANG_PATH\"" \
