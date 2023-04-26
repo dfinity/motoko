@@ -18,7 +18,6 @@ jobs:
         token: ${{ secrets.NIV_UPDATER_TOKEN }}
     - uses: cachix/install-nix-action@v20
       with:
-        install_url: https://releases.nixos.org/nix/nix-2.13.3/install
         nix_path: nixpkgs=channel:nixos-22.11
     - uses: cachix/cachix-action@v12
       with:
