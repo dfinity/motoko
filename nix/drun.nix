@@ -3,10 +3,10 @@ pkgs:
     pkgs.rustPlatform_moz_stable.buildRustPackage {
       name = "drun";
 
-      src = pkgs.sources.ic + "/rs";
+      src = pkgs.sources.ic;
 
       # update this after bumping the dfinity/ic pin.
-      # 1. change the hash to something arbitrary (e.g. flip one digit to 0)
+      # 1. change the hash to something arbitrary (e.g. flip one digit to 0 or use `pkgs.lib.fakeSha256`)
       # 2. run nix-build -A drun nix/
       # 3. copy the “expected” hash from the output into this file
       # 4. commit and push
@@ -15,11 +15,19 @@ pkgs:
       # installed. You will normally not be bothered to perform
       # the command therein manually.
 
-      cargoSha256 = "sha256-YHLGj2pK9WvGxRW+T2sUUvA6UhNv+sc0m1NlR18sJAc=";
+      cargoSha256 = "sha256-WkIe1mFxPWkxgzG94FJ9XIyh8J9WSZ5kK4yaVw39lUA=";
 
       patchPhase = ''
-      cd ../drun-vendor.tar.gz
-      patch librocksdb-sys/build.rs << EOF
+        # for some reason ic-btc-validation tries to reach out
+        # into the web, so simply remove it
+        cargo remove --package ic-btc-adapter ic-btc-validation
+
+        substituteInPlace .cargo/config.toml \
+          --replace "linker = \"clang\"" "linker = \"$CLANG_PATH\"" \
+          --replace "\"-C\", \"link-arg=-fuse-ld=/usr/bin/mold\"" ""
+
+        cd ../drun-vendor.tar.gz
+        patch librocksdb-sys/build.rs << EOF
 @@ -118,6 +118,10 @@
          config.define("OS_MACOSX", Some("1"));
          config.define("ROCKSDB_PLATFORM_POSIX", Some("1"));
@@ -33,9 +41,8 @@ pkgs:
          config.define("ROCKSDB_PLATFORM_POSIX", Some("1"));
 EOF
 
-      sed -i -e s/08d86b53188dc6f15c8dc09d8aadece72e39f145e3ae497bb8711936a916335a/536e44802de57cc7d3690c90c80f154f770f48e82b82756c36443b8b47c9b5e7/g librocksdb-sys/.cargo-checksum.json
-
-      cd -
+        sed -i -e s/08d86b53188dc6f15c8dc09d8aadece72e39f145e3ae497bb8711936a916335a/536e44802de57cc7d3690c90c80f154f770f48e82b82756c36443b8b47c9b5e7/g librocksdb-sys/.cargo-checksum.json
+        cd -
       '';
 
       nativeBuildInputs = with pkgs; [
@@ -50,9 +57,8 @@ EOF
         lmdb
         libunwind
         libiconv
-      ] ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [
-        pkgs.darwin.apple_sdk.frameworks.Security
-      ];
+      ] ++ pkgs.lib.optional pkgs.stdenv.isDarwin
+        pkgs.darwin.apple_sdk.frameworks.Security;
 
       # needed for bindgen
       LIBCLANG_PATH = "${pkgs.llvmPackages_13.libclang.lib}/lib";
@@ -63,6 +69,6 @@ EOF
 
       doCheck = false;
 
-      buildAndTestSubdir = "drun";
+      buildAndTestSubdir = "rs/drun";
     };
 }

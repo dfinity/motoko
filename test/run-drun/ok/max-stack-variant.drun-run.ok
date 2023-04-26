@@ -35,14 +35,10 @@ debug.print: {bytes = 32_796; length = 32_768; stack = 52; stack_pages = 1}
 debug.print: {bytes = 33_820; length = 33_792; stack = 52; stack_pages = 1}
 debug.print: {bytes = 34_844; length = 34_816; stack = 52; stack_pages = 1}
 debug.print: {bytes = 35_868; length = 35_840; stack = 52; stack_pages = 1}
-debug.print: {bytes = 36_892; length = 36_864; stack = 52; stack_pages = 1}
-debug.print: {bytes = 37_916; length = 37_888; stack = 52; stack_pages = 1}
-debug.print: {bytes = 38_940; length = 38_912; stack = 52; stack_pages = 1}
-debug.print: {bytes = 39_964; length = 39_936; stack = 52; stack_pages = 1}
 debug.print: IC0502: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped: stack overflow
-debug.print: {alloced = 39_936}
+debug.print: {alloced = 35_840}
 debug.print: serialized
-debug.print: {bytes = 39_964; length = 39_936; stack = 0; stack_pages = 1}
+debug.print: {bytes = 35_868; length = 35_840; stack = 0; stack_pages = 1}
 ingress Completed: Reply: 0x4449444c0000
 debug.print: {bytes = 1_052; length = 1_024; stack = 53_324; stack_pages = 1}
 debug.print: {bytes = 2_076; length = 2_048; stack = 106_572; stack_pages = 2}
@@ -75,13 +71,9 @@ debug.print: {bytes = 28_700; length = 28_672; stack = 1_491_020; stack_pages = 
 debug.print: {bytes = 29_724; length = 29_696; stack = 1_544_268; stack_pages = 24}
 debug.print: {bytes = 30_748; length = 30_720; stack = 1_597_516; stack_pages = 25}
 debug.print: {bytes = 31_772; length = 31_744; stack = 1_650_764; stack_pages = 26}
-debug.print: {bytes = 32_796; length = 32_768; stack = 1_704_012; stack_pages = 27}
-debug.print: {bytes = 33_820; length = 33_792; stack = 1_757_260; stack_pages = 27}
-debug.print: {bytes = 34_844; length = 34_816; stack = 1_810_508; stack_pages = 28}
-debug.print: {bytes = 35_868; length = 35_840; stack = 1_863_756; stack_pages = 29}
 debug.print: IC0502: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped: stack overflow
-debug.print: {alloced = 35_840}
+debug.print: {alloced = 31_744}
 debug.print: serialized
 debug.print: deserialized
-debug.print: {bytes = 35_868; length = 35_840; stack = 1_863_704; stack_pages = 29}
+debug.print: {bytes = 31_772; length = 31_744; stack = 1_650_712; stack_pages = 26}
 ingress Completed: Reply: 0x4449444c0000
