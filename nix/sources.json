@@ -90,10 +90,10 @@
         "homepage": "https://wasi.dev",
         "owner": "WebAssembly",
         "repo": "wasi-libc",
-        "rev": "099caae3eb9111a67d2f0e1b4f9f5f98e682482a",
-        "sha256": "1rf2ck7x5hzycz8yhcbmn7whmmypw0fl8lm0rcnjapcnr0cgbckx",
+        "rev": "38f48942fabf1b59e73bca126340b219fa9a78aa",
+        "sha256": "0j2d6p32825a1nf5brm870pwkclwqfy7fxkgyk32y4k3axcsz6z2",
         "type": "tarball",
-        "url": "https://github.com/WebAssembly/wasi-libc/archive/099caae3eb9111a67d2f0e1b4f9f5f98e682482a.tar.gz",
+        "url": "https://github.com/WebAssembly/wasi-libc/archive/38f48942fabf1b59e73bca126340b219fa9a78aa.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs": {
@@ -114,12 +114,12 @@
         "builtin": false,
         "description": "mozilla related nixpkgs (extends nixos/nixpkgs repo)",
         "homepage": null,
-        "owner": "mozilla",
+        "owner": "ggreif",
         "repo": "nixpkgs-mozilla",
-        "rev": "d38863db88e100866b3e494a651ee4962b762fcc",
-        "sha256": "0wb4qw0jyf6s9ynf2w11qizx6shgj0yz6fgcax91p4p8y7lfbryk",
+        "rev": "bb30801a4444bfb81e1e4c177f921a6526ccf234",
+        "sha256": "0yjls0866pd02dxkak558k24b19ljjcizy4r7dpjnsmafn25kx0a",
         "type": "tarball",
-        "url": "https://github.com/mozilla/nixpkgs-mozilla/archive/d38863db88e100866b3e494a651ee4962b762fcc.tar.gz",
+        "url": "https://github.com/ggreif/nixpkgs-mozilla/archive/bb30801a4444bfb81e1e4c177f921a6526ccf234.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ocaml-vlq": {
