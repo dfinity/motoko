@@ -18,6 +18,18 @@ pkgs:
       cargoSha256 = "sha256-Fm4OgEWKMksxR0N5AcC137lPbhDSODrq1lBpQiPaMEw=";
 
       patchPhase = ''
+
+        # `cargo remove` (below) doesn't tolerate legacy spelling
+        # `default_features`, so fix it
+        substituteInPlace rs/embedders/Cargo.toml \
+          --replace "default_features" "default-features"
+
+        substituteInPlace rs/rosetta-api/Cargo.toml \
+          --replace "default_features" "default-features"
+
+        substituteInPlace rs/rosetta-api/ledger_canister_blocks_synchronizer/Cargo.toml \
+          --replace "default_features" "default-features"
+
         # for some reason ic-btc-validation tries to reach out
         # into the web, so simply remove it
         cargo remove --package ic-btc-adapter ic-btc-validation
@@ -25,6 +37,7 @@ pkgs:
         substituteInPlace .cargo/config.toml \
           --replace "linker = \"clang\"" "linker = \"$CLANG_PATH\"" \
           --replace "\"-C\", \"link-arg=-fuse-ld=/usr/bin/mold\"" ""
+
 
         cd ../drun-vendor.tar.gz
         patch librocksdb-sys/build.rs << EOF
