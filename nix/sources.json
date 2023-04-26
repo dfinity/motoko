@@ -114,7 +114,7 @@
         "builtin": false,
         "description": "mozilla related nixpkgs (extends nixos/nixpkgs repo)",
         "homepage": null,
-        "owner": "ggreif",
+        "owner": "mozilla",
         "repo": "nixpkgs-mozilla",
         "rev": "c72bae8641d4486b3bd7b556d577df519f640f9a",
         "sha256": "0yjls0866pd02dxkak558k24b19ljjcizy4r7dpjnsmafn25kx0a",
