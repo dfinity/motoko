@@ -110,16 +110,16 @@
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs-mozilla": {
-        "branch": "master",
+        "branch": "pull/309/head",
         "builtin": false,
         "description": "mozilla related nixpkgs (extends nixos/nixpkgs repo)",
         "homepage": null,
         "owner": "ggreif",
         "repo": "nixpkgs-mozilla",
-        "rev": "bb30801a4444bfb81e1e4c177f921a6526ccf234",
+        "rev": "c72bae8641d4486b3bd7b556d577df519f640f9a",
         "sha256": "0yjls0866pd02dxkak558k24b19ljjcizy4r7dpjnsmafn25kx0a",
         "type": "tarball",
-        "url": "https://github.com/ggreif/nixpkgs-mozilla/archive/bb30801a4444bfb81e1e4c177f921a6526ccf234.tar.gz",
+        "url": "https://github.com/mozilla/nixpkgs-mozilla/archive/c72bae8641d4486b3bd7b556d577df519f640f9a.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ocaml-vlq": {
