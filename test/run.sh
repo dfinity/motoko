@@ -557,7 +557,7 @@ done
 if [ ${#failures[@]} -gt 0  ]
 then
   echo "Some tests failed:"
-  echo "${failures[@]}"
+  tr ' ' '\n' <<< "${failures[@]}" | uniq | xargs echo
   exit 1
 else
   $ECHO "All tests passed."
