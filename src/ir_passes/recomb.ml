@@ -36,7 +36,8 @@ and t_exp' env = function
     let cases' =
       List.map
         (function
-         | {it = { pat = { it = TagP (ptag, ({it = VarP pid; _} as pv)); _ } as pat; exp = { it = PrimE (TagPrim etag, [{ it = VarE _; _}]); _ } as exp }; _} as case ->
+         | {it = { pat = { it = TagP (ptag, ({it = VarP pid; _} as pv)); _ } as pat; exp = { it = PrimE (TagPrim etag, [{ it = VarE eid; _}]); _ } as exp }; _} as case
+           when ptag = etag && pid = eid ->
             { case with it = {pat = { pat with it = TagP (ptag, {pv with it = WildP})}; exp = { exp with it = PrimE (CastPrim (exp1.note.Note.typ, exp.note.Note.typ), [exp1]) } } }
          | {it = { pat; exp }; _} as case ->
             { case with it = {pat; exp = t_exp env exp} })
