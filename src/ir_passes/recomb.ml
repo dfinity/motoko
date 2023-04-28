@@ -1,9 +1,11 @@
-(* Turns rebuilt variants into casts of the same thing. *)
+(* Turns rebuilt variants into casts of the same thing.
+   Also turns catchall cases into wildcard ones when the scrutinee is already a variable. *)
 
 open Ir_def
 open Ir
 open Source
 
+(* The transformation environment is trivial for now *)
 let empty_env () = ()
 
 (* The AST traversal *)
@@ -18,16 +20,20 @@ let empty_env () = ()
 let rec t_exps env = List.map (t_exp env)
 
 and case env scrutinee case = match scrutinee, case with
+  (* switch v { ...; case (#err e) { #err e } } --> switch v { ...; case (#err _) { (prim cast) v } } *)
   | { it = VarE _; _ }, { it = { pat = { it = TagP (ptag, ({it = VarP pid; _} as pv)); _ } as pat
                                ; exp = { it = PrimE (TagPrim etag, [{ it = VarE eid; _}]); _ } as exp }; _ }
     when ptag = etag && pid = eid ->
-    { case with it = {pat = { pat with it = TagP (ptag, {pv with it = WildP})}; exp = { exp with it = PrimE (CastPrim (scrutinee.note.Note.typ, exp.note.Note.typ), [{(t_exp env scrutinee) with at = exp.at}]) } } }
+    { case with it = { pat = { pat with it = TagP (ptag, {pv with it = WildP})}
+                     ; exp = { exp with it = PrimE (CastPrim (scrutinee.note.Note.typ, exp.note.Note.typ),
+                                                    [{(t_exp env scrutinee) with at = exp.at}]) } } }
+  (* switch v { ...; case p p } --> switch v { ...; case _ v } *)
   | { it = VarE _; _ }, { it = { pat = { it = VarP pid; _ } as pat
                                ; exp = { it = VarE eid; _} as exp }; _ }
     when pid = eid ->
     { case with it = {pat = { pat with it = WildP }; exp = {(t_exp env scrutinee) with at = exp.at} } }
   | _, {it = { pat; exp }; _} ->
-    { case with it = {pat; exp = t_exp env exp} }
+    { case with it = { pat; exp = t_exp env exp } }
 
 and t_exp env (e : Ir.exp) =
   { e with it = t_exp' env e.it }
