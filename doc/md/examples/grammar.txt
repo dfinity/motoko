@@ -184,7 +184,7 @@
     <exp_bin> 'and' <exp_bin>
     <exp_bin> 'or' <exp_bin>
     <exp_bin> ':' <typ_nobin>
-    <exp_bin> PIPE <exp_post> ('<' <list(<typ>, ',')> '>')? '(' <list(<exp>, ',')> ')'
+    <exp_bin> '|>' <exp_post> ('<' <list(<typ>, ',')> '>')? '(' <list(<exp>, ',')> ')'
 
 <exp_nondec> ::= 
     <exp_bin>
