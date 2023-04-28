@@ -1,5 +1,6 @@
-let foo = #foo 42;
+let foo : {#foo : Nat; #bar : Char} = #foo 42;
 
 switch foo {
-  case (#foo n) { #foo n }
+  case (#foo n) { #foo n };
+  case o o
 }
