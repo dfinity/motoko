@@ -18,7 +18,7 @@ let empty_env () = ()
 let rec t_exps env = List.map (t_exp env)
 
 and case env scrutinee case = match scrutinee, case with
-  | scrutinee, {it = { pat = { it = TagP (ptag, ({it = VarP pid; _} as pv)); _ } as pat; exp = { it = PrimE (TagPrim etag, [{ it = VarE eid; _}]); _ } as exp }; _}
+  | { it = VarE _; _ }, {it = { pat = { it = TagP (ptag, ({it = VarP pid; _} as pv)); _ } as pat; exp = { it = PrimE (TagPrim etag, [{ it = VarE eid; _}]); _ } as exp }; _}
        when ptag = etag && pid = eid ->
      { case with it = {pat = { pat with it = TagP (ptag, {pv with it = WildP})}; exp = { exp with it = PrimE (CastPrim (scrutinee.note.Note.typ, exp.note.Note.typ), [scrutinee]) } } }
   | _, {it = { pat; exp }; _} ->
