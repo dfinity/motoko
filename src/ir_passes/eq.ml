@@ -198,6 +198,8 @@ let eq_decls : T.typ M.t -> Ir.dec list = fun roots ->
 
 let rec t_exps env = List.map (t_exp env)
 
+and case env ({it = { pat; exp }; _} as case) = { case with it = {pat; exp = t_exp env exp} }
+
 and t_exp env (e : Ir.exp) =
   { e with it = t_exp' env e.it }
 
@@ -222,21 +224,9 @@ and t_exp' env = function
   | IfE (exp1, exp2, exp3) ->
     IfE (t_exp env exp1, t_exp env exp2, t_exp env exp3)
   | SwitchE (exp1, cases) ->
-    let cases' =
-      List.map
-        (fun ({it = { pat; exp }; _} as case) ->
-          { case with it = {pat; exp = t_exp env exp} })
-        cases
-    in
-    SwitchE (t_exp env exp1, cases')
+    SwitchE (t_exp env exp1, List.map (case env) cases)
   | TryE (exp1, cases) ->
-    let cases' =
-      List.map
-        (fun ({it = { pat; exp }; _} as case) ->
-          { case with it = {pat; exp = t_exp env exp} })
-        cases
-    in
-    TryE (t_exp env exp1, cases')
+    TryE (t_exp env exp1, List.map (case env) cases)
   | LoopE exp1 ->
     LoopE (t_exp env exp1)
   | LabelE (id, typ, exp1) ->
