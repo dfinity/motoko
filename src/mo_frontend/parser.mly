@@ -233,6 +233,7 @@ and objblock s dec_fields =
 %token<bool> BOOL
 %token<string> ID
 %token<string> TEXT
+%token PIPE
 %token PRIM
 %token UNDERSCORE
 
@@ -252,6 +253,7 @@ and objblock s dec_fields =
 %left XOROP
 %nonassoc SHLOP SHROP ROTLOP ROTROP
 %left POWOP WRAPPOWOP
+%left PIPE
 
 %type<Mo_def.Syntax.exp> exp(ob) exp_nullary(ob) exp_plain exp_obj exp_nest
 %type<Mo_def.Syntax.typ_item> typ_item
@@ -641,6 +643,9 @@ exp_un(B) :
     { OrE(e1, e2) @? at $sloc }
   | e=exp_bin(B) COLON t=typ_nobin
     { AnnotE(e, t) @? at $sloc }
+  | e1=exp_bin(B) PIPE f = exp_post(B) inst=inst LPAR es=seplist(exp(ob), COMMA) RPAR
+    { let e2 = match es with [] -> e1 | _ -> TupE(e1::es) @? at $sloc in
+      CallE(f, inst, e2) @? at $sloc }
 
 %public exp_nondec(B) :
   | e=exp_bin(B)

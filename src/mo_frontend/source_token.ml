@@ -125,6 +125,7 @@ type token =
   | SPACE of int
   | TAB of int (* shudders *)
   | COMMENT of string
+  | PIPE
 
 let to_parser_token :
     token -> (Parser.token, line_feed trivia) result = function
@@ -246,6 +247,7 @@ let to_parser_token :
   | PRIM -> Ok Parser.PRIM
   | UNDERSCORE -> Ok Parser.UNDERSCORE
   | INVARIANT -> Ok Parser.INVARIANT
+  | PIPE -> Ok Parser.PIPE
   (*Trivia *)
   | SINGLESPACE -> Error (Space 1)
   | SPACE n -> Error (Space n)
@@ -376,6 +378,7 @@ let string_of_parser_token = function
   | Parser.INVARIANT -> "INVARIANT"
   | Parser.IMPLIES -> "IMPLIES"
   | Parser.OLD -> "OLD"
+  | Parser.PIPE -> "PIPE"
 
 let is_lineless_trivia : token -> void trivia option = function
   | SINGLESPACE -> Some (Space 1)

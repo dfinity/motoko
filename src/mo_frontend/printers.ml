@@ -138,6 +138,7 @@ let string_of_symbol = function
   | X (T T_ADDOP) -> unop "+"
   | X (T T_ACTOR) -> "actor"
   | X (T T_INVARIANT) -> "invariant"
+  | X (T T_PIPE) -> "|>"
   (* non-terminals *)
   | X (N N_bl) -> "<bl>"
   | X (N N_case) -> "<case>"

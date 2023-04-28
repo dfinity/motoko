@@ -139,6 +139,7 @@ rule token mode = parse
   | "**" { POWOP }
   | "&" { ANDOP }
   | "|" { OROP }
+  | "|>" { PIPE }
   | "^" { XOROP }
   | "<<" { SHLOP }
   | "<<>" { ROTLOP }
