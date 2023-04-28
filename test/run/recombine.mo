@@ -9,7 +9,7 @@ ignore matchX(foo)
 
 // CHECK: func $matchX
 // CHECK: local.get $switch_in
-// CHECK: local.tee $tag_scrut
+// CHECK-NEXT: local.tee $tag_scrut
 // CHECK: i32.const 5097222
 // CHECK: local.get $foo
 // CHECK-NEXT: br 1 (;@1;)
