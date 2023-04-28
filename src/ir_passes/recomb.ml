@@ -17,6 +17,13 @@ let empty_env () = ()
 
 let rec t_exps env = List.map (t_exp env)
 
+and case env scrutinee case = match scrutinee, case with
+  | scrutinee, {it = { pat = { it = TagP (ptag, ({it = VarP pid; _} as pv)); _ } as pat; exp = { it = PrimE (TagPrim etag, [{ it = VarE eid; _}]); _ } as exp }; _}
+       when ptag = etag && pid = eid ->
+     { case with it = {pat = { pat with it = TagP (ptag, {pv with it = WildP})}; exp = { exp with it = PrimE (CastPrim (scrutinee.note.Note.typ, exp.note.Note.typ), [scrutinee]) } } }
+  | _, {it = { pat; exp }; _} ->
+     { case with it = {pat; exp = t_exp env exp} }
+
 and t_exp env (e : Ir.exp) =
   { e with it = t_exp' env e.it }
 
@@ -32,26 +39,9 @@ and t_exp' env = function
   | IfE (exp1, exp2, exp3) ->
     IfE (t_exp env exp1, t_exp env exp2, t_exp env exp3)
   | SwitchE (exp1, cases) ->
-    let exp1' = t_exp env exp1 in
-    let cases' =
-      List.map
-        (function
-         | {it = { pat = { it = TagP (ptag, ({it = VarP pid; _} as pv)); _ } as pat; exp = { it = PrimE (TagPrim etag, [{ it = VarE eid; _}]); _ } as exp }; _} as case
-           when ptag = etag && pid = eid ->
-            { case with it = {pat = { pat with it = TagP (ptag, {pv with it = WildP})}; exp = { exp with it = PrimE (CastPrim (exp1.note.Note.typ, exp.note.Note.typ), [exp1]) } } }
-         | {it = { pat; exp }; _} as case ->
-            { case with it = {pat; exp = t_exp env exp} })
-        cases
-    in
-    SwitchE (exp1', cases')
+    SwitchE (t_exp env exp1, List.map (case env exp1) cases)
   | TryE (exp1, cases) ->
-    let cases' =
-      List.map
-        (fun ({it = { pat; exp }; _} as case) ->
-          {case with it = {pat; exp = t_exp env exp} })
-        cases
-    in
-    TryE (t_exp env exp1, cases')
+    TryE (t_exp env exp1, List.map (case env exp1) cases)
   | LoopE exp1 ->
     LoopE (t_exp env exp1)
   | LabelE (id, typ, exp1) ->
