@@ -18,11 +18,16 @@ let empty_env () = ()
 let rec t_exps env = List.map (t_exp env)
 
 and case env scrutinee case = match scrutinee, case with
-  | { it = VarE _; _ }, {it = { pat = { it = TagP (ptag, ({it = VarP pid; _} as pv)); _ } as pat; exp = { it = PrimE (TagPrim etag, [{ it = VarE eid; _}]); _ } as exp }; _}
-       when ptag = etag && pid = eid ->
-     { case with it = {pat = { pat with it = TagP (ptag, {pv with it = WildP})}; exp = { exp with it = PrimE (CastPrim (scrutinee.note.Note.typ, exp.note.Note.typ), [scrutinee]) } } }
+  | { it = VarE _; _ }, { it = { pat = { it = TagP (ptag, ({it = VarP pid; _} as pv)); _ } as pat
+                               ; exp = { it = PrimE (TagPrim etag, [{ it = VarE eid; _}]); _ } as exp }; _ }
+    when ptag = etag && pid = eid ->
+    { case with it = {pat = { pat with it = TagP (ptag, {pv with it = WildP})}; exp = { exp with it = PrimE (CastPrim (scrutinee.note.Note.typ, exp.note.Note.typ), [{(t_exp env scrutinee) with at = exp.at}]) } } }
+  | { it = VarE _; _ }, { it = { pat = { it = VarP pid; _ } as pat
+                               ; exp = { it = VarE eid; _} as exp }; _ }
+    when pid = eid ->
+    { case with it = {pat = { pat with it = WildP }; exp = {(t_exp env scrutinee) with at = exp.at} } }
   | _, {it = { pat; exp }; _} ->
-     { case with it = {pat; exp = t_exp env exp} }
+    { case with it = {pat; exp = t_exp env exp} }
 
 and t_exp env (e : Ir.exp) =
   { e with it = t_exp' env e.it }
