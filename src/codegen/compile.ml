@@ -10085,7 +10085,7 @@ and fill_pat env ae pat : patternCode =
   PatCode.with_region pat.at @@
   match pat.it with
   | WildP -> CannotFail (G.i Drop)
-  | OptP { it = WildP; _ } ->
+  | OptP { it = (WildP | TupP []); _ } ->
       CanFail (fun fail_code ->
         Opt.is_some env ^^
         G.if0 G.nop fail_code)
@@ -10102,7 +10102,7 @@ and fill_pat env ae pat : patternCode =
           )
           fail_code
       )
-  | TagP (l, { it = WildP; _ }) ->
+  | TagP (l, { it = (WildP | TupP []); _ }) ->
       CanFail (fun fail_code ->
         Variant.test_is env l ^^
         G.if0 G.nop fail_code)
