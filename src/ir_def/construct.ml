@@ -420,7 +420,7 @@ let switch_textE exp1 cases (pat, exp2) typ1 =
          at = no_region;
          note = ()})
       cases) @
-    [{it = {pat = pat; exp = exp2};
+    [{it = {pat; exp = exp2};
       at = no_region;
       note = ()}]
   in
