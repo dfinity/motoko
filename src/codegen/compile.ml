@@ -10088,8 +10088,7 @@ and fill_pat env ae pat : patternCode =
   | OptP { it = WildP; _ } ->
       CanFail (fun fail_code ->
         Opt.is_some env ^^
-        G.if0 G.nop fail_code
-      )
+        G.if0 G.nop fail_code)
   | OptP p ->
       let (set_x, get_x) = new_local env "opt_scrut" in
       CanFail (fun fail_code ->
@@ -10106,8 +10105,7 @@ and fill_pat env ae pat : patternCode =
   | TagP (l, { it = WildP; _ }) ->
       CanFail (fun fail_code ->
         Variant.test_is env l ^^
-        G.if0 G.nop fail_code
-      )
+        G.if0 G.nop fail_code)
   | TagP (l, p) ->
       let (set_x, get_x) = new_local env "tag_scrut" in
       CanFail (fun fail_code ->
