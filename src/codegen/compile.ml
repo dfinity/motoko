@@ -10084,7 +10084,8 @@ and compile_lit_pat env l =
 and fill_pat env ae pat : patternCode =
   PatCode.with_region pat.at @@
   match pat.it with
-  | WildP -> CannotFail (G.i Drop)
+  | _ when Ir_utils.is_irrefutable_nonbinding pat -> CannotFail (G.i Drop)
+  | WildP -> assert false (* matched above *)
   | OptP p when Ir_utils.is_irrefutable_nonbinding p ->
       CanFail (fun fail_code ->
         Opt.is_some env ^^
