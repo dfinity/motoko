@@ -1,5 +1,5 @@
-(* Optimize (self) tail calls to jumps, avoiding stack overflow,
-   in a single linear pass *)
+(* Optimize local occurrences of identical values rebuilt from
+   bindings after a pattern match *)
 
 open Ir_def
 
