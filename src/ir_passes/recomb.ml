@@ -27,7 +27,7 @@ and case env scrutinee case = match scrutinee, case with
     { case with it = { pat = { pat with it = TagP (ptag, {pv with it = WildP})}
                      ; exp = { exp with it = cast scrutinee.note.Note.typ exp.note.Note.typ
                                              {(t_exp env scrutinee) with at = exp.at} } } }
-  (* switch v { ...; case p p } --> switch v { ...; case _ v } *)
+  (* switch x { ...; case y y } --> switch x { ...; case _ x } *)
   | { it = VarE _; _ }, { it = { pat = { it = VarP pid; _ } as pat
                                ; exp = { it = VarE eid; _} as exp }; _ }
     when pid = eid ->
