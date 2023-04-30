@@ -10082,12 +10082,10 @@ and compile_lit_pat env l =
     todo_trap env "compile_lit_pat" (Arrange_ir.lit l)
 
 and fill_pat env ae pat : patternCode =
-  let irrefutable_nonbinding p =
-    Ir_utils.is_irrefutable p && Freevars.(M.is_empty (pat p)) in
   PatCode.with_region pat.at @@
   match pat.it with
   | WildP -> CannotFail (G.i Drop)
-  | OptP p when irrefutable_nonbinding p ->
+  | OptP p when Ir_utils.is_irrefutable_nonbinding p ->
       CanFail (fun fail_code ->
         Opt.is_some env ^^
         G.if0 G.nop fail_code)
@@ -10104,7 +10102,7 @@ and fill_pat env ae pat : patternCode =
           )
           fail_code
       )
-  | TagP (l, p) when irrefutable_nonbinding p ->
+  | TagP (l, p) when Ir_utils.is_irrefutable_nonbinding p ->
       CanFail (fun fail_code ->
         Variant.test_is env l ^^
         G.if0 G.nop fail_code)
