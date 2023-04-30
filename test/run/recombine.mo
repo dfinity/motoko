@@ -1,6 +1,6 @@
 var foo : {#foo : Nat; #bar : Char} = #foo (40 + 2);
 
-func matchX(foo : {#foo : Nat; #bar : Char}) : {#foo : Nat; #bar : Char} = switch foo {
+func matchX(foo : {#foo : Nat; #bar : Char}) : {#foo : Nat; #bar : Char; #quux : Int} = switch foo {
   case (#foo n) { #foo n };
   case o o
 };

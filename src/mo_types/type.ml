@@ -1178,13 +1178,8 @@ let rec singleton_typ co t =
   | Obj ((Object|Memory|Module), fs) -> List.for_all (singleton_field co) fs
   | Variant [f] -> singleton_field co f
 
-  | Non -> false
-  | Prim _ | Array _ | Opt _ | Async _ | Func _ | Typ _ -> false
-  | Mut t' -> false
-  | Obj (_, _) -> false
-  | Variant _ -> false
-  | Var _ -> false
-  | Con _ -> false
+  | Non | Prim _ | Array _ | Opt _ | Async _ | Func _ | Typ _
+  | Mut _ | Obj (_, _) | Variant _ | Var _ | Con _ -> false
   end
 
 and singleton_field co tf = singleton_typ co tf.typ

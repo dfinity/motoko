@@ -25,8 +25,8 @@ and case env scrutinee case = match scrutinee, case with
                                ; exp = { it = PrimE (TagPrim etag, [{ it = VarE eid; _}]); _ } as exp }; _ }
     when ptag = etag && pid = eid ->
     { case with it = { pat = { pat with it = TagP (ptag, {pv with it = WildP})}
-                     ; exp = { exp with it = PrimE (CastPrim (scrutinee.note.Note.typ, exp.note.Note.typ),
-                                                    [{(t_exp env scrutinee) with at = exp.at}]) } } }
+                     ; exp = { exp with it = cast scrutinee.note.Note.typ exp.note.Note.typ
+                                             {(t_exp env scrutinee) with at = exp.at} } } }
   (* switch v { ...; case p p } --> switch v { ...; case _ v } *)
   | { it = VarE _; _ }, { it = { pat = { it = VarP pid; _ } as pat
                                ; exp = { it = VarE eid; _} as exp }; _ }
@@ -34,6 +34,10 @@ and case env scrutinee case = match scrutinee, case with
     { case with it = {pat = { pat with it = WildP }; exp = {(t_exp env scrutinee) with at = exp.at} } }
   | _, {it = { pat; exp }; _} ->
     { case with it = { pat; exp = t_exp env exp } }
+
+and cast from to_ v =
+  if Mo_types.Type.sub from to_ then v.it
+  else PrimE (CastPrim (from, to_), [v])
 
 and t_exp env (e : Ir.exp) =
   { e with it = t_exp' env e.it }
