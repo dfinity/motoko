@@ -9934,8 +9934,8 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
     compile_exp_vanilla env ae exp_r ^^ set_r ^^
 
     FuncDec.ic_self_call env ts
-      (IC.get_self_reference env ^^
-       IC.actor_public_field env (IC.async_method_name))
+      IC.(get_self_reference env ^^
+          actor_public_field env async_method_name)
       get_future
       get_k
       get_r
@@ -10083,7 +10083,7 @@ and compile_lit_pat env l =
 
 and fill_pat env ae pat : patternCode =
   let irrefutable_nonbinding p =
-    Ir_utils.is_irrefutable pat && Freevars.(M.is_empty (pat p)) in
+    Ir_utils.is_irrefutable p && Freevars.(M.is_empty (pat p)) in
   PatCode.with_region pat.at @@
   match pat.it with
   | WildP -> CannotFail (G.i Drop)
