@@ -20,7 +20,7 @@ let empty_env () = ()
 let rec t_exps env = List.map (t_exp env)
 
 and case env scrutinee case = match scrutinee, case with
-  (* switch v { ...; case (#err e) { #err e } } --> switch v { ...; case (#err _) { (prim cast) v } } *)
+  (* switch x { ...; case (#err y) { #err y } } --> switch x { ...; case (#err _) { (prim cast) x } } *)
   | { it = VarE _; _ }, { it = { pat = { it = TagP (ptag, ({it = VarP pid; _} as pv)); _ } as pat
                                ; exp = { it = PrimE (TagPrim etag, [{ it = VarE eid; _}]); _ } as exp }; _ }
     when ptag = etag && pid = eid ->
