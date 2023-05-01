@@ -135,5 +135,4 @@ and t_comp_unit = function
 (* Entry point for the program transformation *)
 
 let transform (cu, flavor) =
-  assert (not flavor.has_typ_field); (* required for hash_typ *)
-  (t_comp_unit cu, {flavor with has_poly_eq = false})
+  t_comp_unit cu, flavor
