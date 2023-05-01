@@ -8,34 +8,40 @@ pub fn sort<Compare: Fn(usize, usize) -> Ordering>(array: &mut [usize], compare:
     }
 }
 
+/// Special version of quicksort by Niklaus Wirth: https://people.inf.ethz.ch/wirth/AD.pdf, pages 65/66.
 fn quicksort<Compare: Fn(usize, usize) -> Ordering>(array: &mut [usize], compare: &Compare) {
+    // Require at least two elements to avoid the unsigned integer underflow of `backward`.
     debug_assert!(array.len() > 1);
+    // Take the middle element as pivot to optimize for the case of a sorted or nearly sorted array.
     let pivot = array[array.len() / 2];
-    let mut left = 0;
-    let mut right = array.len() - 1;
+    let mut forward = 0;
+    let mut backward = array.len() - 1;
     loop {
-        while compare(array[left], pivot) == Ordering::Less {
-            left += 1;
+        while compare(array[forward], pivot) == Ordering::Less {
+            forward += 1;
         }
-        while compare(array[right], pivot) == Ordering::Greater {
-            right -= 1;
+        while compare(array[backward], pivot) == Ordering::Greater {
+            backward -= 1;
         }
-        if left <= right {
+        if forward <= backward {
             // Cannot use `array.swap()` since it imports `memmove` in debug build.
-            let temporary = array[left];
-            array[left] = array[right];
-            array[right] = temporary;
-            left += 1;
-            right -= 1;
+            let temporary = array[forward];
+            array[forward] = array[backward];
+            array[backward] = temporary;
+            forward += 1;
+            backward -= 1;
         }
-        if left > right {
+        if forward > backward {
             break;
         }
     }
-    if right > 0 {
-        quicksort(&mut array[..right + 1], compare);
+    // Invariant after partitioning: `forward > backward`. Therefore:
+    // * The left partition ends at `backward`.
+    // * The right partition starts at `forward`.
+    if backward > 0 {
+        quicksort(&mut array[..backward + 1], compare);
     }
-    if left < array.len() - 1 {
-        quicksort(&mut array[left..], compare);
+    if forward < array.len() - 1 {
+        quicksort(&mut array[forward..], compare);
     }
 }
