@@ -2,6 +2,7 @@
 import { errorMessage; performanceCounter; rts_heap_size; rts_max_stack_size; debugPrint; } = "mo:⛔";
 
 actor stack {
+    let expectedMinimumSize = 31_000;
 
     public func ser() : async () { await go(false) };
     public func deser() : async () { await go(true) };
@@ -29,7 +30,6 @@ actor stack {
                if deserialize
                  from_candid(b)
                else null;
-
               ()
             }
           } catch e {
@@ -37,7 +37,9 @@ actor stack {
             done := true
           }
         };
-        assert i > 31_000;
+        
+        assert(i > expectedMinimumSize);
+        
         let b = to_candid(l);
         debugPrint("serialized");
 
