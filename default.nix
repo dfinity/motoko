@@ -622,14 +622,9 @@ rec {
     installPhase = "touch $out";
   };
 
-  base-src = stdenv.mkDerivation {
+  base-src = nixpkgs.symlinkJoin {
     name = "base-src";
-    phases = "unpackPhase installPhase";
-    src = nixpkgs.sources.motoko-base + "/src";
-    installPhase = ''
-      mkdir -p $out
-      cp -rv * $out
-    '';
+    paths = "${nixpkgs.sources.motoko-base}/src";
   };
 
   base-tests = stdenv.mkDerivation {
