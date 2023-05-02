@@ -324,7 +324,7 @@ clean:
 	  _build \
 	  mo-rts.wasm \
 	  mo-rts-debug.wasm \
-    mo-rts-incremental.wasm \
+	  mo-rts-incremental.wasm \
 	  mo-rts-incremental-debug.wasm \
 	  motoko-rts/target \
     motoko-rts-tests/target \
