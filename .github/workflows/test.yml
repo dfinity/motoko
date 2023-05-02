@@ -107,10 +107,6 @@ jobs:
     concurrency: ci-${{ github.ref }}
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/github-script@v6
-      with:
-        script: |
-          console.log(${{ toJson(github.event.pull_request.labels.*.name) }});
     - uses: actions/checkout@v3
     - uses: cachix/install-nix-action@v20
       with:
@@ -121,8 +117,6 @@ jobs:
     - name: nix-build
       run: |
         nix-build --arg officialRelease true -A moc
-        ls -al
-        ls -al result/
     # upload-artifact doesn't work for symlink dir
     # https://github.com/actions/upload-artifact/issues/92
     - run: echo "UPLOAD_PATH=$(readlink -f result)" >> $GITHUB_ENV
