@@ -2457,7 +2457,7 @@ module Float = struct
 
   let box env = Func.share_code1 env "box_f64" ("f", F64Type) [I32Type] (fun env get_f ->
     let (set_i, get_i) = new_local env "boxed_f64" in
-    let size = if !Flags.gc_strategy = Flags.Incremental then 4l else 3l in
+    let size = Int32.add (Tagged.header_size env)  2l in
     Tagged.alloc env size Tagged.Bits64 ^^
     set_i ^^
     get_i ^^ get_f ^^ Tagged.store_field_float64 env (payload_field env) ^^
