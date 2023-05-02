@@ -10331,8 +10331,8 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
     compile_exp_vanilla env ae exp_r ^^ set_r ^^
 
     FuncDec.ic_self_call env ts
-      (IC.get_self_reference env ^^
-       IC.actor_public_field env (IC.async_method_name))
+      IC.(get_self_reference env ^^
+          actor_public_field env async_method_name)
       get_future
       get_k
       get_r
@@ -10481,7 +10481,12 @@ and compile_lit_pat env l =
 and fill_pat env ae pat : patternCode =
   PatCode.with_region pat.at @@
   match pat.it with
-  | WildP -> CannotFail (G.i Drop)
+  | _ when Ir_utils.is_irrefutable_nonbinding pat -> CannotFail (G.i Drop)
+  | WildP -> assert false (* matched above *)
+  | OptP p when Ir_utils.is_irrefutable_nonbinding p ->
+      CanFail (fun fail_code ->
+        Opt.is_some env ^^
+        G.if0 G.nop fail_code)
   | OptP p ->
       let (set_x, get_x) = new_local env "opt_scrut" in
       CanFail (fun fail_code ->
@@ -10495,6 +10500,10 @@ and fill_pat env ae pat : patternCode =
           )
           fail_code
       )
+  | TagP (l, p) when Ir_utils.is_irrefutable_nonbinding p ->
+      CanFail (fun fail_code ->
+        Variant.test_is env l ^^
+        G.if0 G.nop fail_code)
   | TagP (l, p) ->
       let (set_x, get_x) = new_local env "tag_scrut" in
       CanFail (fun fail_code ->

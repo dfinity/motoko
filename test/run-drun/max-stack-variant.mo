@@ -4,13 +4,10 @@ import { errorMessage; performanceCounter; rts_heap_size; rts_max_stack_size; de
 actor stack {
     let expectedMinimumSize = 31_000;
 
-    var log : Text = "";
-
     public func ser() : async () { await go(false) };
     public func deser() : async () { await go(true) };
 
     public func go(deserialize : Bool) : async () {
-        log := "";
         var i = 0;
         type List = {
           #some : ((), List);
