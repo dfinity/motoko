@@ -327,6 +327,6 @@ clean:
 	  mo-rts-incremental.wasm \
 	  mo-rts-incremental-debug.wasm \
 	  motoko-rts/target \
-    motoko-rts-tests/target \
+	  motoko-rts-tests/target \
 	  motoko-rts-macros/target \
 	  motoko-rts/cargo-home
