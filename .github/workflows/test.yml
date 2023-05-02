@@ -102,11 +102,16 @@ jobs:
         single-commit: true
 
   artifacts:
-    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'build_artifacts')
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
     needs: tests
     concurrency: ci-${{ github.ref }}
     runs-on: ubuntu-latest
     steps:
+    - uses: actions/github-script@v6
+      with:
+        script: |
+          console.log(github.event.pull_request.labels);
+          console.log(github.event.pull_request.labels.*.name);
     - uses: actions/checkout@v3
     - uses: cachix/install-nix-action@v20
       with:
