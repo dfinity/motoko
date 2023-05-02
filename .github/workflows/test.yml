@@ -111,7 +111,6 @@ jobs:
       with:
         script: |
           console.log(github.event.pull_request.labels);
-          console.log(github.event.pull_request.labels.*.name);
     - uses: actions/checkout@v3
     - uses: cachix/install-nix-action@v20
       with:
