@@ -1974,7 +1974,7 @@ module Variant = struct
      The forwarding pointer is only reserved if compiled for the incremental GC.
   *)
 
-  let variant_tag_field env = Tagged.header_size env
+  let variant_tag_field = Tagged.header_size
   let payload_field env = Int32.add (variant_tag_field env) 1l
 
   let hash_variant_label env : Mo_types.Type.lab -> int32 =
