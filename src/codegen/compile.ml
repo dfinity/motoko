@@ -1597,7 +1597,7 @@ module Tagged = struct
   
   (* The tag *)
   let tag_field = 0l
-  let forwarding_pointer_field = 
+  let forwarding_pointer_field env = 
     assert (!Flags.gc_strategy != Flags.Incremental);
     1l
 
@@ -1613,7 +1613,7 @@ module Tagged = struct
       (if !Flags.gc_strategy == Flags.Incremental then
         get_object ^^ (* object pointer *)
         get_object ^^ (* forwarding pointer *)
-        Heap.store_field forwarding_pointer_field 
+        Heap.store_field (forwarding_pointer_field env)
       else 
         G.nop) ^^
       get_object
@@ -1621,7 +1621,7 @@ module Tagged = struct
 
   let load_forwarding_pointer env =
     (if !Flags.gc_strategy = Flags.Incremental then
-      Heap.load_field forwarding_pointer_field
+      Heap.load_field (forwarding_pointer_field env)
     else
       G.nop)
 
