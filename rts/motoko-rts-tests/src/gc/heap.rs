@@ -8,6 +8,7 @@ use std::convert::TryFrom;
 use std::rc::Rc;
 
 use fxhash::{FxHashMap, FxHashSet};
+use motoko_rts_macros::*;
 
 /// Represents Motoko heaps. Reference counted (implements `Clone`) so we can clone and move values
 /// of this type to GC callbacks.
@@ -66,20 +67,20 @@ impl MotokoHeap {
     }
 
     /// Update the heap pointer given as an address in the current process.
-    #[cfg(not(feature = "incremental_gc"))]
+    #[non_incremental_gc]
     pub fn set_heap_ptr_address(&self, address: usize) {
         self.inner.borrow_mut().set_heap_ptr_address(address)
     }
 
     /// Get the last heap pointer, as address in the current process. The address can be used to mutate
     /// the heap.
-    #[cfg(not(feature = "incremental_gc"))]
+    #[non_incremental_gc]
     pub fn last_ptr_address(&self) -> usize {
         self.inner.borrow().last_ptr_address()
     }
 
     /// Update the last heap pointer given as an address in the current process.
-    #[cfg(not(feature = "incremental_gc"))]
+    #[non_incremental_gc]
     pub fn set_last_ptr_address(&self, address: usize) {
         self.inner.borrow_mut().set_last_ptr_address(address)
     }
@@ -172,13 +173,13 @@ impl MotokoHeapInner {
     }
 
     /// Get last heap pointer (i.e. where the dynamic heap ends last GC run) in the process's address space
-    #[cfg(not(feature = "incremental_gc"))]
+    #[non_incremental_gc]
     fn last_ptr_address(&self) -> usize {
         self.offset_to_address(self._heap_ptr_last)
     }
 
     /// Set last heap pointer
-    #[cfg(not(feature = "incremental_gc"))]
+    #[non_incremental_gc]
     fn set_last_ptr_address(&mut self, address: usize) {
         self._heap_ptr_last = self.address_to_offset(address);
     }
@@ -273,15 +274,22 @@ impl MotokoHeapInner {
         }
     }
 
+    #[non_incremental_gc]
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value {
-        #[cfg(feature = "incremental_gc")]
-        {
-            let mut dummy_memory = DummyMemory {};
-            let result =
-                motoko_rts::gc::incremental::get_partitioned_heap().allocate(&mut dummy_memory, n);
-            self.set_heap_ptr_address(result.get_ptr()); // realign on partition changes
-        }
+        self.linear_alloc_words(n)
+    }
 
+    #[incremental_gc]
+    unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value {
+        let mut dummy_memory = DummyMemory {};
+        let result =
+            motoko_rts::gc::incremental::get_partitioned_heap().allocate(&mut dummy_memory, n);
+        self.set_heap_ptr_address(result.get_ptr()); // realign on partition changes
+
+        self.linear_alloc_words(n)
+    }
+
+    unsafe fn linear_alloc_words(&mut self, n: Words<u32>) -> Value {
         // Update heap pointer
         let old_hp = self.heap_ptr_address();
         let new_hp = old_hp + n.to_bytes().as_usize();
@@ -315,23 +323,22 @@ impl Memory for DummyMemory {
 }
 
 /// Compute the size of the heap to be allocated for the GC test.
+#[non_incremental_gc]
 fn heap_size_for_gc(
     gc: GC,
-    _static_heap_size_bytes: usize,
-    _dynamic_heap_size_bytes: usize,
-    _n_objects: usize,
+    static_heap_size_bytes: usize,
+    dynamic_heap_size_bytes: usize,
+    n_objects: usize,
 ) -> usize {
-    let _total_heap_size_bytes = _static_heap_size_bytes + _dynamic_heap_size_bytes;
+    let total_heap_size_bytes = static_heap_size_bytes + dynamic_heap_size_bytes;
     match gc {
-        #[cfg(not(feature = "incremental_gc"))]
         GC::Copying => {
-            let to_space_bytes = _dynamic_heap_size_bytes;
-            _total_heap_size_bytes + to_space_bytes
+            let to_space_bytes = dynamic_heap_size_bytes;
+            total_heap_size_bytes + to_space_bytes
         }
-        #[cfg(not(feature = "incremental_gc"))]
         GC::MarkCompact => {
             let bitmap_size_bytes = {
-                let dynamic_heap_bytes = Bytes(_dynamic_heap_size_bytes as u32);
+                let dynamic_heap_bytes = Bytes(dynamic_heap_size_bytes as u32);
                 // `...to_words().to_bytes()` below effectively rounds up heap size to word size
                 // then gets the bytes
                 let dynamic_heap_words = dynamic_heap_bytes.to_words();
@@ -344,28 +351,35 @@ fn heap_size_for_gc(
             };
             // In the worst case the entire heap will be pushed to the mark stack, but in tests
             // we limit the size
-            let mark_stack_words = _n_objects.clamp(
+            let mark_stack_words = n_objects.clamp(
                 motoko_rts::gc::mark_compact::mark_stack::INIT_STACK_SIZE.as_usize(),
                 super::utils::MAX_MARK_STACK_SIZE,
             ) + size_of::<Blob>().as_usize();
 
-            _total_heap_size_bytes + bitmap_size_bytes as usize + (mark_stack_words * WORD_SIZE)
+            total_heap_size_bytes + bitmap_size_bytes as usize + (mark_stack_words * WORD_SIZE)
         }
-        #[cfg(not(feature = "incremental_gc"))]
         GC::Generational => {
             const ROUNDS: usize = 3;
             const REMEMBERED_SET_MAXIMUM_SIZE: usize = 1024 * 1024 * WORD_SIZE;
             let size = heap_size_for_gc(
                 GC::MarkCompact,
-                _static_heap_size_bytes,
-                _dynamic_heap_size_bytes,
-                _n_objects,
+                static_heap_size_bytes,
+                dynamic_heap_size_bytes,
+                n_objects,
             );
             size + ROUNDS * REMEMBERED_SET_MAXIMUM_SIZE
         }
-        // temporary partition for mark bitmaps
-        // GC switches to new allocation partition
-        #[cfg(feature = "incremental_gc")]
+    }
+}
+
+#[incremental_gc]
+fn heap_size_for_gc(
+    gc: GC,
+    _static_heap_size_bytes: usize,
+    _dynamic_heap_size_bytes: usize,
+    _n_objects: usize,
+) -> usize {
+    match gc {
         GC::Incremental => 3 * motoko_rts::gc::incremental::partitioned_heap::PARTITION_SIZE,
     }
 }

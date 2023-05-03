@@ -5,15 +5,17 @@
 //
 // To convert an offset into an address, add heap array's address to the offset.
 
-#[cfg(not(feature = "incremental_gc"))]
+#[non_incremental_gc]
 mod compacting;
-#[cfg(not(feature = "incremental_gc"))]
+#[non_incremental_gc]
 mod generational;
 mod heap;
-#[cfg(feature = "incremental_gc")]
+#[incremental_gc]
 mod incremental;
 mod random;
 mod utils;
+
+use motoko_rts_macros::*;
 
 use heap::MotokoHeap;
 use utils::{
@@ -43,16 +45,18 @@ pub fn test() {
     }
     print!("\r");
 
-    #[cfg(not(feature = "incremental_gc"))]
-    {
-        compacting::test();
-        generational::test();
-    }
+    test_gc_components();
+}
 
-    #[cfg(feature = "incremental_gc")]
-    {
-        incremental::test();
-    }
+#[non_incremental_gc]
+fn test_gc_components() {
+    compacting::test();
+    generational::test();
+}
+
+#[incremental_gc]
+fn test_gc_components() {
+    incremental::test();
 }
 
 fn test_heaps() -> Vec<TestHeap> {
@@ -115,8 +119,7 @@ fn test_gcs(heap_descr: &TestHeap) {
         );
     }
 
-    #[cfg(feature = "incremental_gc")]
-    reset_incremental_gc();
+    reset_gc();
 }
 
 fn test_gc(
@@ -127,10 +130,7 @@ fn test_gc(
 ) {
     let mut heap = MotokoHeap::new(refs, roots, continuation_table, gc);
 
-    #[cfg(feature = "incremental_gc")]
-    unsafe {
-        initialize_incremental_gc(&mut heap);
-    }
+    initialize_gc(&mut heap);
 
     // Check `create_dynamic_heap` sanity
     check_dynamic_heap(
@@ -163,21 +163,30 @@ fn test_gc(
     }
 }
 
-#[cfg(feature = "incremental_gc")]
-unsafe fn initialize_incremental_gc(heap: &mut MotokoHeap) {
-    use motoko_rts::gc::incremental::{get_partitioned_heap, IncrementalGC};
-    IncrementalGC::initialize(heap, heap.heap_base_address());
-    let allocation_size = heap.heap_ptr_address() - heap.heap_base_address();
+#[non_incremental_gc]
+fn initialize_gc(_heap: &mut MotokoHeap) {}
 
-    // Synchronize the partitioned heap with one big combined allocation by starting from the base pointer as the heap pointer.
-    let result = get_partitioned_heap().allocate(heap, Bytes(allocation_size as u32).to_words());
-    // Check that the heap pointer (here equals base pointer) is unchanged, i.e. no partition switch has happened.
-    // This is a restriction in the unit test where `MotokoHeap` only supports contiguous bump allocation during initialization.
-    assert_eq!(result.get_ptr(), heap.heap_base_address());
+#[incremental_gc]
+fn initialize_gc(heap: &mut MotokoHeap) {
+    use motoko_rts::gc::incremental::{get_partitioned_heap, IncrementalGC};
+    unsafe {
+        IncrementalGC::initialize(heap, heap.heap_base_address());
+        let allocation_size = heap.heap_ptr_address() - heap.heap_base_address();
+
+        // Synchronize the partitioned heap with one big combined allocation by starting from the base pointer as the heap pointer.
+        let result =
+            get_partitioned_heap().allocate(heap, Bytes(allocation_size as u32).to_words());
+        // Check that the heap pointer (here equals base pointer) is unchanged, i.e. no partition switch has happened.
+        // This is a restriction in the unit test where `MotokoHeap` only supports contiguous bump allocation during initialization.
+        assert_eq!(result.get_ptr(), heap.heap_base_address());
+    }
 }
 
-#[cfg(feature = "incremental_gc")]
-fn reset_incremental_gc() {
+#[non_incremental_gc]
+fn reset_gc() {}
+
+#[incremental_gc]
+fn reset_gc() {
     use crate::memory::TestMemory;
     use motoko_rts::gc::incremental::{partitioned_heap::PARTITION_SIZE, IncrementalGC};
 
@@ -433,25 +442,25 @@ fn check_continuation_table(mut offset: usize, continuation_table: &[ObjectIdx],
 }
 
 impl GC {
+    #[non_incremental_gc]
     fn run(&self, heap: &mut MotokoHeap, _round: usize) -> bool {
-        let _heap_base = heap.heap_base_address() as u32;
+        let heap_base = heap.heap_base_address() as u32;
         let static_roots = Value::from_ptr(heap.static_root_array_address());
         let continuation_table_ptr_address = heap.continuation_table_ptr_address() as *mut Value;
 
-        let _heap_1 = heap.clone();
-        let _heap_2 = heap.clone();
+        let heap_1 = heap.clone();
+        let heap_2 = heap.clone();
 
         match self {
-            #[cfg(not(feature = "incremental_gc"))]
             GC::Copying => {
                 unsafe {
                     motoko_rts::gc::copying::copying_gc_internal(
                         heap,
-                        _heap_base,
+                        heap_base,
                         // get_hp
-                        || _heap_1.heap_ptr_address(),
+                        || heap_1.heap_ptr_address(),
                         // set_hp
-                        move |hp| _heap_2.set_heap_ptr_address(hp as usize),
+                        move |hp| heap_2.set_heap_ptr_address(hp as usize),
                         static_roots,
                         continuation_table_ptr_address,
                         // note_live_size
@@ -463,16 +472,15 @@ impl GC {
                 true
             }
 
-            #[cfg(not(feature = "incremental_gc"))]
             GC::MarkCompact => {
                 unsafe {
                     motoko_rts::gc::mark_compact::compacting_gc_internal(
                         heap,
-                        _heap_base,
+                        heap_base,
                         // get_hp
-                        || _heap_1.heap_ptr_address(),
+                        || heap_1.heap_ptr_address(),
                         // set_hp
-                        move |hp| _heap_2.set_heap_ptr_address(hp as usize),
+                        move |hp| heap_2.set_heap_ptr_address(hp as usize),
                         static_roots,
                         continuation_table_ptr_address,
                         // note_live_size
@@ -484,7 +492,6 @@ impl GC {
                 true
             }
 
-            #[cfg(not(feature = "incremental_gc"))]
             GC::Generational => {
                 use motoko_rts::gc::generational::{
                     remembered_set::RememberedSet,
@@ -498,12 +505,12 @@ impl GC {
                 };
                 unsafe {
                     REMEMBERED_SET = Some(RememberedSet::new(heap));
-                    LAST_HP = _heap_1.last_ptr_address() as u32;
+                    LAST_HP = heap_1.last_ptr_address() as u32;
 
                     let limits = motoko_rts::gc::generational::Limits {
-                        base: _heap_base as usize,
-                        last_free: _heap_1.last_ptr_address(),
-                        free: _heap_1.heap_ptr_address(),
+                        base: heap_base as usize,
+                        last_free: heap_1.last_ptr_address(),
+                        free: heap_1.heap_ptr_address(),
                     };
                     let roots = motoko_rts::gc::generational::Roots {
                         static_roots,
@@ -522,8 +529,15 @@ impl GC {
                 }
                 _round >= 2
             }
+        }
+    }
 
-            #[cfg(feature = "incremental_gc")]
+    #[incremental_gc]
+    fn run(&self, heap: &mut MotokoHeap, _round: usize) -> bool {
+        let static_roots = Value::from_ptr(heap.static_root_array_address());
+        let continuation_table_ptr_address = heap.continuation_table_ptr_address() as *mut Value;
+
+        match self {
             GC::Incremental => unsafe {
                 use motoko_rts::gc::incremental::{incremental_gc_state, IncrementalGC};
                 const INCREMENTS_UNTIL_COMPLETION: usize = 16;

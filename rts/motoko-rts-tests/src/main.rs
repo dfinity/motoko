@@ -1,3 +1,5 @@
+#![feature(proc_macro_hygiene)]
+
 mod bigint;
 mod bitrel;
 mod continuation_table;

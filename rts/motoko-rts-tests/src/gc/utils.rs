@@ -1,4 +1,5 @@
 use byteorder::{ReadBytesExt, WriteBytesExt, LE};
+use motoko_rts_macros::*;
 
 /// A unique object index, used in heap descriptions.
 ///
@@ -10,27 +11,29 @@ pub type ObjectIdx = u32;
 pub const WORD_SIZE: usize = motoko_rts::constants::WORD_SIZE as usize;
 
 // Max allowed size for the mark stack in mark-compact GC tests
-#[cfg(not(feature = "incremental_gc"))]
+#[non_incremental_gc]
 pub const MAX_MARK_STACK_SIZE: usize = 100;
 
 /// Enum for the GC implementations. GC functions are generic so we can't put them into arrays or
 /// other data types, we use this type instead.
+#[non_incremental_gc]
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum GC {
-    #[cfg(not(feature = "incremental_gc"))]
     Copying,
-    #[cfg(not(feature = "incremental_gc"))]
     MarkCompact,
-    #[cfg(not(feature = "incremental_gc"))]
     Generational,
-    #[cfg(feature = "incremental_gc")]
+}
+
+#[incremental_gc]
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum GC {
     Incremental,
 }
 
-#[cfg(not(feature = "incremental_gc"))]
+#[non_incremental_gc]
 pub static GC_IMPLS: [GC; 3] = [GC::Copying, GC::MarkCompact, GC::Generational];
 
-#[cfg(feature = "incremental_gc")]
+#[incremental_gc]
 pub static GC_IMPLS: [GC; 1] = [GC::Incremental];
 
 /// Read a little-endian (Wasm) word from given offset
