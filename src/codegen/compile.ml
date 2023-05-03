@@ -1837,7 +1837,7 @@ module MutBox = struct
      The forwarding pointer is only reserved if compiled for the incremental GC.
   *)
 
-  let field env = Tagged.header_size env
+  let field = Tagged.header_size
 
   let alloc env =
     Tagged.obj env Tagged.MutBox [ compile_unboxed_zero ]
@@ -1893,7 +1893,7 @@ module Opt = struct
 
   *)
 
-  let some_payload_field env = Tagged.header_size env
+  let some_payload_field = Tagged.header_size
 
   (* This relies on the fact that add_static deduplicates *)
   let null_vanilla_lit env : int32 =
@@ -1974,7 +1974,7 @@ module Variant = struct
      The forwarding pointer is only reserved if compiled for the incremental GC.
   *)
 
-  let variant_tag_field env = Tagged.header_size env
+  let variant_tag_field = Tagged.header_size
   let payload_field env = Int32.add (variant_tag_field env) 1l
 
   let hash_variant_label env : Mo_types.Type.lab -> int32 =
@@ -2021,7 +2021,7 @@ module Closure = struct
   *)
   let header_size env = Int32.add (Tagged.header_size env) 2l
 
-  let funptr_field env = Tagged.header_size env
+  let funptr_field = Tagged.header_size
   let len_field env = Int32.add 1l (Tagged.header_size env)
 
   let load_data env i =
@@ -2082,7 +2082,7 @@ module BoxedWord64 = struct
 
   *)
 
-  let payload_field env = Tagged.header_size env
+  let payload_field = Tagged.header_size
 
   let vanilla_lit env i =
     if BitTagged.can_tag_const i
