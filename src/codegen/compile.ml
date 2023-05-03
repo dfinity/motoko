@@ -2021,7 +2021,7 @@ module Closure = struct
   *)
   let header_size env = Int32.add (Tagged.header_size env) 2l
 
-  let funptr_field env = Tagged.header_size env
+  let funptr_field = Tagged.header_size
   let len_field env = Int32.add 1l (Tagged.header_size env)
 
   let load_data env i =
