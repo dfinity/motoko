@@ -1802,12 +1802,12 @@ module Tagged = struct
     let unskewed_ptr = E.reserve_static_memory env size in
     let skewed_ptr = Int32.(add unskewed_ptr ptr_skew) in
     let tag = bytes_of_int32 (int_of_tag tag) in
-    let non_incremental_gc_data = tag ^ payload in
     let forward = bytes_of_int32 skewed_ptr in (* forwarding pointer *)
-    let incremental_gc_data = tag ^ forward ^ payload in
     (if !Flags.gc_strategy = Flags.Incremental then
+      let incremental_gc_data = tag ^ forward ^ payload in
       E.write_static_memory env unskewed_ptr incremental_gc_data
     else
+      let non_incremental_gc_data = tag ^ payload in
       E.write_static_memory env unskewed_ptr non_incremental_gc_data
     );
     skewed_ptr
