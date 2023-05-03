@@ -35,10 +35,14 @@ debug.print: {bytes = 32_796; length = 32_768; stack = 52; stack_pages = 1}
 debug.print: {bytes = 33_820; length = 33_792; stack = 52; stack_pages = 1}
 debug.print: {bytes = 34_844; length = 34_816; stack = 52; stack_pages = 1}
 debug.print: {bytes = 35_868; length = 35_840; stack = 52; stack_pages = 1}
+debug.print: {bytes = 36_892; length = 36_864; stack = 52; stack_pages = 1}
+debug.print: {bytes = 37_916; length = 37_888; stack = 52; stack_pages = 1}
+debug.print: {bytes = 38_940; length = 38_912; stack = 52; stack_pages = 1}
+debug.print: {bytes = 39_964; length = 39_936; stack = 52; stack_pages = 1}
 debug.print: IC0502: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped: stack overflow
-debug.print: {alloced = 35_840}
+debug.print: {alloced = 39_936}
 debug.print: serialized
-debug.print: {bytes = 35_868; length = 35_840; stack = 0; stack_pages = 1}
+debug.print: {bytes = 39_964; length = 39_936; stack = 0; stack_pages = 1}
 ingress Completed: Reply: 0x4449444c0000
 debug.print: {bytes = 1_052; length = 1_024; stack = 53_324; stack_pages = 1}
 debug.print: {bytes = 2_076; length = 2_048; stack = 106_572; stack_pages = 2}
