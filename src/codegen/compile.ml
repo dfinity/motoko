@@ -2082,7 +2082,7 @@ module BoxedWord64 = struct
 
   *)
 
-  let payload_field env = Tagged.header_size env
+  let payload_field = Tagged.header_size
 
   let vanilla_lit env i =
     if BitTagged.can_tag_const i
