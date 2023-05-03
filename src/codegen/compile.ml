@@ -1893,7 +1893,7 @@ module Opt = struct
 
   *)
 
-  let some_payload_field env = Tagged.header_size env
+  let some_payload_field = Tagged.header_size
 
   (* This relies on the fact that add_static deduplicates *)
   let null_vanilla_lit env : int32 =
