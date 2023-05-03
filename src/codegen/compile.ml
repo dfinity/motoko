@@ -1837,7 +1837,7 @@ module MutBox = struct
      The forwarding pointer is only reserved if compiled for the incremental GC.
   *)
 
-  let field env = Tagged.header_size env
+  let field = Tagged.header_size
 
   let alloc env =
     Tagged.obj env Tagged.MutBox [ compile_unboxed_zero ]
