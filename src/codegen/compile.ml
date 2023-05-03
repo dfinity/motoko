@@ -1598,7 +1598,7 @@ module Tagged = struct
   (* The tag *)
   let tag_field = 0l
   let forwarding_pointer_field env = 
-    assert (!Flags.gc_strategy != Flags.Incremental);
+    assert (!Flags.gc_strategy == Flags.Incremental);
     1l
 
   (* Note: Post allocation barrier must be applied after initialization *)
