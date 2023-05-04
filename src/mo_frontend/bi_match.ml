@@ -128,18 +128,20 @@ let bi_match_subs scope_opt tbs subs typ_opt =
       | _ -> None
       )
     | Con (con1, ts1), t2 ->
-      (match Cons.kind con1, t2 with
-      | Def (tbs, t), _ -> (* TBR this may fail to terminate *)
-        bi_match_typ rel eq inst any (open_ ts1 t) t2
-      | Abs (tbs, t), _ when rel != eq ->
-        bi_match_typ rel eq inst any (open_ ts1 t) t2
-      | _ -> None
+      (match Cons.kind con1(*, t2*) with
+       | Def (tbs, t)(*, _*) -> (* TBR this may fail to terminate *)
+         bi_match_typ rel eq inst any (open_ ts1 t) t2
+       | Abs (tbs, t)(*, _*) when rel != eq ->
+         bi_match_typ rel eq inst any (open_ ts1 t) t2
+       | _ -> None
       )
     | t1, Con (con2, ts2) ->
       (match Cons.kind con2 with
-      | Def (tbs, t) -> (* TBR this may fail to terminate *)
-        bi_match_typ rel eq inst any t1 (open_ ts2 t)
-      | _ -> None
+       | Def (tbs, t) -> (* TBR this may fail to terminate *)
+         bi_match_typ rel eq inst any t1 (open_ ts2 t)
+       | Abs (tbs, t) when rel != eq ->
+         bi_match_typ rel eq inst any t1 (open_ ts2 t) (* Like above? ????? *)
+       | _ -> None
       )
     | Prim p1, Prim p2 when p1 = p2 ->
       Some inst
