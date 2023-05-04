@@ -1,0 +1,16 @@
+higher-order.mo:17.37-17.59: warning [M0145], this pattern of type
+  (Int, Char)
+does not cover value
+  (42, '\u{00}' or '\u{01}' or _) or
+  (25, '\u{00}' or '\u{01}' or _) or
+  (0 or 1 or _, _)
+higher-order.mo:18.32-18.43: type error [M0096], expression of type
+  <T <: Int>(T, Char) -> ()
+cannot produce expected type
+  (Int, Char) -> ()
+higher-order.mo:22.1-22.51: type error [M0098], cannot implicitly instantiate function of type
+  <A>(A -> Text) -> ()
+to argument of type
+  (Int, Char) -> Text
+because no instantiation of A__10 makes
+  (Int, Char) -> Text  <:  A__10 -> Text
