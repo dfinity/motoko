@@ -20,3 +20,4 @@ caller((42, 'H'), [(25, 'G')], poly_callee);
 
 func poly_caller<A>(arg : A -> Text) {};
 poly_caller(func(_ : Int, _ : Char) : Text = "YO");
+poly_caller(func() : Text = "YOW");
