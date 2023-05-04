@@ -1,4 +1,3 @@
-//MOC-FLAG --force-gc
 actor {};
 
 // The prelude should not require any code (besides maybe a call to collect) at runtime
