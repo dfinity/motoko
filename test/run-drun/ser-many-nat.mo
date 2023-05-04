@@ -1,4 +1,3 @@
-//MOC-FLAG --force-gc
 //MOC-ENV MOC_UNLOCK_PRIM=yesplease
 import Prim "mo:⛔";
 
