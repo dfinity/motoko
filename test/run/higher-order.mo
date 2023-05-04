@@ -12,4 +12,5 @@ func caller(pair : (Nat, Char), pairs : [(Int, Char)], f : (Int, Char) -> ()) {
   callee (pairs[0].0, pairs[0].1);
 };
 
-caller((42, 'H'), [(25, 'G')], callee)
+caller((42, 'H'), [(25, 'G')], callee);
+caller((42, 'H'), [(25, 'G')], func (42 or 25, 'G' or 'H') {});
