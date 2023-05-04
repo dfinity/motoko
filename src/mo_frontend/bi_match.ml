@@ -74,6 +74,11 @@ let bi_match_subs scope_opt tbs subs typ_opt =
        | None -> None)
     | [], [] -> Some inst
     | _ -> None
+
+  and bi_match_list_tolerant pred wrap p rel eq inst any = function
+    | [x1], xs2 when List.length xs2 <> 1 && pred x1 -> p rel eq inst any x1 (wrap xs2)
+    | xs1, [x2] when List.length xs1 <> 1 && pred x2 -> p rel eq inst any (wrap xs1) x2
+    | xs1, xs2 -> bi_match_list p rel eq inst any xs1 xs2
   in
 
   let update binop c t ce =
@@ -166,10 +171,11 @@ let bi_match_subs scope_opt tbs subs typ_opt =
         match bi_match_binds rel eq inst any tbs1 tbs2 with
         | Some (inst, ts) ->
            let any' = List.fold_right
-                        (fun t -> ConSet.add (fst (as_con t))) ts any
-           in
+                        (fun t -> ConSet.add (fst (as_con t))) ts any in
+           let wrap xs = Tup xs in
+           let flex = function | Con (con, _) -> flexible con | _ -> false in
            (match
-              bi_match_list bi_match_typ rel eq inst any' (List.map (open_ ts) t21) (List.map (open_ ts) t11)
+              bi_match_list_tolerant flex wrap bi_match_typ rel eq inst any' (List.map (open_ ts) t21, List.map (open_ ts) t11)
             with
             | Some inst ->
                bi_match_list bi_match_typ rel eq inst any' (List.map (open_ ts) t12) (List.map (open_ ts) t22)

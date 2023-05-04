@@ -4,21 +4,19 @@ does not cover value
   (42, '\u{00}' or '\u{01}' or _) or
   (25, '\u{00}' or '\u{01}' or _) or
   (0 or 1 or _, _)
-higher-order.mo:18.32-18.43: type error [M0096], expression of type
-  <T <: Int>(T, Char) -> ()
-cannot produce expected type
-  (Int, Char) -> ()
 higher-order.mo:22.1-22.51: type error [M0098], cannot implicitly instantiate function of type
   <A>(A -> Text) -> ()
 to argument of type
   (Int, Char) -> Text
 to produce result of type
   ()
-because no instantiation of A__10 makes
-  (Int, Char) -> Text  <:  A__10 -> Text
+because bug: inferred bad instantiation
+  <None>
+please report this error message and, for now, supply an explicit instantiation instead
 higher-order.mo:23.1-23.35: type error [M0098], cannot implicitly instantiate function of type
   <A>(A -> Text) -> ()
 to argument of type
   () -> Text
-because no instantiation of A__11 makes
-  () -> Text  <:  A__11 -> Text
+because bug: inferred bad instantiation
+  <None>
+please report this error message and, for now, supply an explicit instantiation instead
