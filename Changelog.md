@@ -1,5 +1,11 @@
 # Motoko compiler changelog
 
+## 0.8.8 (2023-05-02)
+
+* motoko (`moc`)
+
+  * Performance improvement: optimised code generation for pattern matching that cannot fail (#3957).
+
 ## 0.8.7 (2023-04-06)
 
 * motoko (`moc`)
