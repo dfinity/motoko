@@ -80,7 +80,7 @@ As a counterpoint to the core values and goals, the engineering organization als
 
 ## Finding more information
 
-For information about using Motoko with the DFINITY Canister SDK, see the [SDK Developer Tools](../../developer-docs/backend/backend-tutorials/index.md).
+For information about using Motoko with the IC SDK for creating and managing canisters, see the [Developer Resources](https://internetcomputer.org/developers).
 
 For background information on various topics relevant to the design, use, or deployment of Motoko services, or the language’s design itself, consider the following resources as a starting point:
 
