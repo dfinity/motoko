@@ -39,3 +39,15 @@ switch(i1.next()) {
   case null {};
 };
 };
+
+assert (Prim.blobGet("\00\01\02", 0) == (0:Nat8));
+assert (Prim.blobGet("\00\01\02", 1) == (1:Nat8));
+assert (Prim.blobGet("\00\01\02", 2) == (2:Nat8));
+
+assert (Prim.blobSlice("\00\01\02", 0, 0) == ("":Blob));
+assert (Prim.blobSlice("\00\01\02", 0, 1) == ("\00":Blob));
+assert (Prim.blobSlice("\00\01\02", 0, 2) == ("\00\01":Blob));
+assert (Prim.blobSlice("\00\01\02", 0, 3) == ("\00\01\02":Blob));
+assert (Prim.blobSlice("\00\01\02", 1, 1) == ("":Blob));
+assert (Prim.blobSlice("\00\01\02", 1, 3) == ("\01\02":Blob));
+assert (Prim.blobSlice("\00\01\02", 2, 3) == ("\02":Blob));
