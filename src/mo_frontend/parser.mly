@@ -324,7 +324,6 @@ seplist1(X, SEP) :
   | x=X { [x] }
   | x=X SEP xs=seplist(X, SEP) { x::xs }
 
-
 (* Basics *)
 
 %inline semicolon :
@@ -643,9 +642,26 @@ exp_un(B) :
     { OrE(e1, e2) @? at $sloc }
   | e=exp_bin(B) COLON t=typ_nobin
     { AnnotE(e, t) @? at $sloc }
-  | e1=exp_bin(B) PIPE f = exp_post(B) inst=inst LPAR es=seplist(exp(ob), COMMA) RPAR
-    { let e2 = match es with [] -> e1 | _ -> TupE(e1::es) @? at $sloc in
+  | e1=exp_bin(B) PIPE f = exp_post(B) inst=inst mk_arg=pipe_arg
+    { let e2 = mk_arg e1 in
       CallE(f, inst, e2) @? at $sloc }
+
+(* Pipe arguments (with one hole) *)
+
+pipe_arg :
+  | UNDERSCORE
+    { fun e -> e }
+  | LPAR mk_es=pipe_args RPAR
+    { fun e ->
+        match mk_es e with
+        | [] -> assert false
+        | [e] -> e
+        | es -> TupE(es) @? at $sloc }
+
+pipe_args :
+  | UNDERSCORE { fun h -> [h] }
+  | UNDERSCORE COMMA es=seplist(exp(ob), COMMA) { fun h -> h::es }
+  | e=exp(ob) COMMA mk_es=pipe_args { fun h -> e::mk_es h }
 
 %public exp_nondec(B) :
   | e=exp_bin(B)
