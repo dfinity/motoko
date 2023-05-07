@@ -18,4 +18,4 @@ syntax2.mo:2.1-2.4: syntax error [M0001], unexpected token 'let', expected one o
   <unop> <exp_bin(ob)>
   <inst> <exp_nullary(ob)>
   [ <exp(ob)> ]
-  |> <exp_post(ob)> <inst> ( seplist(<exp(ob)>,,) )
+  |> <exp_post(ob)> <inst> <pipe_arg>
