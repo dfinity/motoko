@@ -343,8 +343,27 @@ rec {
 
     test_subdir = dir: deps:
       testDerivation {
+  <<<<<<< gabor/dwarf
+        # include from test/ only the common files, plus everything in test/${dir}/
+        src =
+          with nixpkgs.lib;
+          cleanSourceWith {
+            filter = path: type:
+              let relPath = removePrefix (toString ./test + "/") (toString path); in
+              type != "directory" || hasPrefix "${dir}/" "${relPath}/";
+            src = subpath ./test;
+            name = "test-${dir}-src";
+        };
+        buildInputs =
+          deps ++
+          (with nixpkgs; [ wabt bash perl getconf moreutils nodejs-10_x llvm_10 sources.esm ]) ++
+          [ wasmtime
+          ] ++
+          rtsBuildInputs;
+  =======
         src = test_src dir;
         buildInputs = deps ++ testDerivationDeps;
+  >>>>>>> master
 
         checkPhase = ''
             patchShebangs .
@@ -563,6 +582,13 @@ rec {
       recurseForDerivations = true;
     };
 
+  <<<<<<< gabor/dwarf
+  inherit drun;
+  wabt = nixpkgs.wabt;
+  wasmtime = nixpkgs.wasmtime;
+  xargo = nixpkgs.xargo;
+  wasm = nixpkgs.wasm;
+  =======
   inherit (nixpkgs) wabt wasmtime wasm;
 
   filecheck = nixpkgs.runCommandNoCC "FileCheck" {} ''
@@ -572,6 +598,7 @@ rec {
 
   # gitMinimal is used by nix/gitSource.nix; building it here warms the nix cache
   inherit (nixpkgs) gitMinimal;
+  >>>>>>> master
 
   docs = stdenv.mkDerivation {
     name = "docs";
@@ -810,6 +837,13 @@ rec {
       unset XDG_DATA_DIRS
     '';
     ESM=nixpkgs.sources.esm;
+    GUI_FLAGS = ''
+      "-DCURSES_INCLUDE_DIRS=${nixpkgs.ncurses.dev}/include"
+      "-DCURSES_LIBRARIES=${nixpkgs.ncurses}/lib/libncurses.so"
+      "-DPANEL_LIBRARIES=${nixpkgs.ncurses}/lib/libpanel.so"
+      "-DLibEdit_INCLUDE_DIRS=${nixpkgs.libedit.dev}/include"
+      "-DLibEdit_LIBRARIES=${nixpkgs.libedit}/lib/libedit.so"
+    '';
     TOMMATHSRC = nixpkgs.sources.libtommath;
     MUSLSRC = "${nixpkgs.sources.musl-wasi}/libc-top-half/musl";
     MUSL_WASI_SYSROOT = musl-wasi-sysroot;
