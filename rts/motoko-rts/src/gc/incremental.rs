@@ -72,8 +72,8 @@ unsafe fn should_start() -> bool {
     use self::partitioned_heap::PARTITION_SIZE;
     use crate::memory::ic::partitioned_memory;
 
-    const CRITICAL_HEAP_LIMIT: Bytes<u32> = Bytes(u32::MAX - 1024 * 1024 * 1024);
-    const CRITICAL_GROWTH_THRESHOLD: f64 = 0.15;
+    const CRITICAL_HEAP_LIMIT: Bytes<u32> = Bytes(u32::MAX - 768 * 1024 * 1024);
+    const CRITICAL_GROWTH_THRESHOLD: f64 = 0.01;
     const NORMAL_GROWTH_THRESHOLD: f64 = 0.65;
 
     let heap_size = partitioned_memory::get_heap_size();
