@@ -7118,7 +7118,7 @@ module Stabilization = struct
     let (set_dst, get_dst) = new_local env "dst" in
     let (set_len, get_len) = new_local env "len" in
 
-    (if !Flags.gc_strategy == Flags.Incremental then
+    (if !Flags.gc_strategy = Flags.Incremental then
       E.call_import env "rts" "stop_gc_on_upgrade"
     else
       G.nop) ^^
