@@ -7,11 +7,11 @@ actor {};
 // CHECK-NEXT:    call $trans_state
 // CHECK-NEXT:    call $init
 // CHECK-NEXT:    i32.const 0
-// CHECK-NEXT:    call 30
+// CHECK-NEXT:    call 31
 // CHECK-NEXT:    global.set 4
 // CHECK-NEXT:    call ${{copying_gc|compacting_gc|generational_gc}}
 // CHECK-NEXT:    i32.const 0
-// CHECK-NEXT:    call 30
+// CHECK-NEXT:    call 31
 // CHECK-NEXT:    global.get 4
 // CHECK-NEXT:    i64.sub
 // CHECK-NEXT:    global.set 5
