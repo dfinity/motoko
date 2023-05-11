@@ -1036,7 +1036,7 @@ module RTS = struct
     E.add_func_import env "rts" "stream_shutdown" [I32Type] [];
     E.add_func_import env "rts" "stream_reserve" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "stream_stable_dest" [I32Type; I64Type; I64Type] [];
-    if !Flags.gc_strategy == Flags.Incremental then
+    if !Flags.gc_strategy = Flags.Incremental then
       incremental_gc_imports env
     else
       non_incremental_gc_imports env;
@@ -1593,12 +1593,12 @@ module Tagged = struct
 
   (* Declare `env` for lazy computation of the header size when the compile environment with compile flags are defined *)
   let header_size env = 
-    if !Flags.gc_strategy == Flags.Incremental then 2l else 1l
+    if !Flags.gc_strategy = Flags.Incremental then 2l else 1l
   
   (* The tag *)
   let tag_field = 0l
   let forwarding_pointer_field env = 
-    assert (!Flags.gc_strategy == Flags.Incremental);
+    assert (!Flags.gc_strategy = Flags.Incremental);
     1l
 
   (* Note: Post allocation barrier must be applied after initialization *)
@@ -1610,7 +1610,7 @@ module Tagged = struct
       set_object ^^ get_object ^^
       compile_unboxed_const (int_of_tag tag) ^^
       Heap.store_field tag_field ^^
-      (if !Flags.gc_strategy == Flags.Incremental then
+      (if !Flags.gc_strategy = Flags.Incremental then
         get_object ^^ (* object pointer *)
         get_object ^^ (* forwarding pointer *)
         Heap.store_field (forwarding_pointer_field env)
@@ -7152,7 +7152,7 @@ module Stabilization = struct
     let (set_dst, get_dst) = new_local env "dst" in
     let (set_len, get_len) = new_local env "len" in
 
-    (if !Flags.gc_strategy == Flags.Incremental then
+    (if !Flags.gc_strategy = Flags.Incremental then
       E.call_import env "rts" "stop_gc_on_upgrade"
     else
       G.nop) ^^
