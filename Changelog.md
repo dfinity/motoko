@@ -1,5 +1,34 @@
 # Motoko compiler changelog
 
+* motoko (`moc`)
+
+  * **For beta testing:** Add a new _incremental_ GC, enabled with new moc flag `--incremental-gc` (#3837).
+    The incremental garbage collector is designed to scale for large program heap sizes.
+
+    The GC distributes its workload across multiple steps, called increments, that each pause the mutator 
+    (user's program) for only a limited amount of time. As a result, the GC work can fit within the instruction-limited 
+    IC messages, regardless of the heap size and the object structures.
+    
+    According to GC benchmark measurements, the incremental GC is more efficient than the existing copying, compacting, 
+    and generational GC in the following regards:
+    * Scalability: Able to use the full heap space, 3x more object allocations on average.
+    * Shorter interruptions: The GC pause has a maximum limit that is up to 10x shorter.
+    * Lower runtimes: The number of executed instructions is reduced by 10% on average (compared to the copying GC).
+    * Less GC overhead: The amount of GC work in proportion to the user's program work drops by 10-16%.
+    
+    The GC incurs a moderate memory overhead: The allocated WASM memory has been measured to be 9% higher 
+    on average compared to the copying GC, which is the current default GC.
+
+    To activate the incremental GC under `dfx`, the following command-line argument needs to be specified in `dfx.json`:
+
+    ```
+    ...
+      "type" : "motoko"
+      ...
+      "args" : "--incremental-gc"
+    ...
+    ```
+
 ## 0.8.8 (2023-05-02)
 
 * motoko (`moc`)
