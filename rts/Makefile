@@ -111,7 +111,7 @@ CLANG_FLAGS = \
 
 .PHONY: all
 
-all: mo-rts.wasm mo-rts-debug.wasm
+all: mo-rts.wasm mo-rts-copying.wasm mo-rts-generational.wasm mo-rts-debug.wasm
 
 _build:
 	mkdir -p $@
@@ -173,6 +173,8 @@ $(MUSL_WASM_A): $(MUSL_WASM_O)
 #
 
 RTS_RUST_WASM_A=_build/wasm/libmotoko_rts.a
+RTS_RUST_COPYING_WASM_A=_build/wasm/libmotoko_copying_rts.a
+RTS_RUST_GENERATIONAL_WASM_A=_build/wasm/libmotoko_generational_rts.a
 RTS_RUST_DEBUG_WASM_A=_build/wasm/libmotoko_rts_debug.a
 
 # This relies on bash and globstar, see https://stackoverflow.com/questions/2483182/recursive-wildcards-in-gnu-make
@@ -223,12 +225,20 @@ $(TOMMATH_BINDINGS_RS): | _build
 
 
 $(RTS_RUST_WASM_A): $(TOMMATH_BINDINGS_RS) $(RTS_RUST_FILES) $(RTS_CARGO_FILES) | _build/wasm
-	cd motoko-rts && cargo build --release --target=wasm32-unknown-emscripten -Zbuild-std=core,alloc
-	cp motoko-rts/target/wasm32-unknown-emscripten/release/libmotoko_rts.a $@
+	cd motoko-rts && cargo build --features=ic --release --target=wasm32-unknown-emscripten -Zbuild-std=core,alloc
+	ln -f motoko-rts/target/wasm32-unknown-emscripten/release/libmotoko_rts.a $@
+
+$(RTS_RUST_COPYING_WASM_A): $(TOMMATH_BINDINGS_RS) $(RTS_RUST_FILES) $(RTS_CARGO_FILES) | _build/wasm
+	cd motoko-rts && cargo build --features=copying --release --target=wasm32-unknown-emscripten -Zbuild-std=core,alloc -Z unstable-options --out-dir=target/wasm32-unknown-emscripten/copying
+	ln -f motoko-rts/target/wasm32-unknown-emscripten/copying/libmotoko_rts.a $@
+
+$(RTS_RUST_GENERATIONAL_WASM_A): $(TOMMATH_BINDINGS_RS) $(RTS_RUST_FILES) $(RTS_CARGO_FILES) | _build/wasm
+	cd motoko-rts && cargo build --features=generational --release --target=wasm32-unknown-emscripten -Zbuild-std=core,alloc -Z unstable-options --out-dir=target/wasm32-unknown-emscripten/generational
+	ln -f motoko-rts/target/wasm32-unknown-emscripten/generational/libmotoko_rts.a $@
 
 $(RTS_RUST_DEBUG_WASM_A): $(TOMMATH_BINDINGS_RS) $(RTS_RUST_FILES) $(RTS_CARGO_FILES) | _build/wasm
-	cd motoko-rts && cargo build --target=wasm32-unknown-emscripten -Zbuild-std=core,alloc
-	cp motoko-rts/target/wasm32-unknown-emscripten/debug/libmotoko_rts.a $@
+	cd motoko-rts && cargo build --features=ic --target=wasm32-unknown-emscripten -Zbuild-std=core,alloc
+	ln -f motoko-rts/target/wasm32-unknown-emscripten/debug/libmotoko_rts.a $@
 
 #
 # The test suite
@@ -267,6 +277,20 @@ mo-rts.wasm: $(TOMMATH_WASM_A) $(MUSL_WASM_A) $(RTS_RUST_WASM_A)
 		--whole-archive \
 		$+
 
+mo-rts-copying.wasm: $(TOMMATH_WASM_A) $(MUSL_WASM_A) $(RTS_RUST_COPYING_WASM_A)
+	$(WASM_LD) -o $@ \
+		--import-memory --shared --no-entry --gc-sections \
+                $(EXPORTED_SYMBOLS:%=--export=%) \
+		--whole-archive \
+		$+
+
+mo-rts-generational.wasm: $(TOMMATH_WASM_A) $(MUSL_WASM_A) $(RTS_RUST_GENERATIONAL_WASM_A)
+	$(WASM_LD) -o $@ \
+		--import-memory --shared --no-entry --gc-sections \
+                $(EXPORTED_SYMBOLS:%=--export=%) \
+		--whole-archive \
+		$+
+
 mo-rts-debug.wasm: $(RTS_RUST_DEBUG_WASM_A) $(TOMMATH_WASM_A) $(MUSL_WASM_A)
 	$(WASM_LD) -o $@ \
 		--import-memory --shared --no-entry --gc-sections \
@@ -282,8 +306,7 @@ format:
 clean:
 	rm -rf \
 	  _build \
-	  mo-rts.wasm \
-	  mo-rts-debug.wasm \
+	  mo-rts*.wasm \
 	  motoko-rts/target \
 	  motoko-rts-tests/target \
 	  motoko-rts/cargo-home

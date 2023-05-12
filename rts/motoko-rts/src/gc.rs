@@ -1,5 +1,8 @@
+#[cfg(feature = "copying")]
 pub mod copying;
+#[cfg(feature = "generational")]
 pub mod generational;
+#[cfg(feature = "compacting")]
 pub mod mark_compact;
 
 #[cfg(feature = "ic")]

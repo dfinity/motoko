@@ -92,7 +92,7 @@ pub(crate) unsafe fn rts_trap_with(msg: &str) -> ! {
     trap_with_prefix("RTS error: ", msg)
 }
 
-#[cfg(feature = "ic")]
+#[cfg(any(feature = "copying", feature = "compacting", feature = "incremental"))]
 #[panic_handler]
 fn panic(info: &core::panic::PanicInfo) -> ! {
     unsafe {

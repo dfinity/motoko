@@ -76,7 +76,7 @@ unsafe fn generational_gc<M: Memory>(mem: &mut M) {
     write_barrier::init_write_barrier(gc.heap.mem);
 }
 
-#[cfg(feature = "ic")]
+#[cfg(feature = "generational")]
 unsafe fn get_limits() -> Limits {
     assert!(ic::LAST_HP >= ic::get_aligned_heap_base());
     use crate::memory::ic;
@@ -87,14 +87,14 @@ unsafe fn get_limits() -> Limits {
     }
 }
 
-#[cfg(feature = "ic")]
+#[cfg(feature = "generational")]
 unsafe fn set_limits(limits: &Limits) {
     use crate::memory::ic;
     ic::HP = limits.free as u32;
     ic::LAST_HP = limits.free as u32;
 }
 
-#[cfg(feature = "ic")]
+#[cfg(feature = "generational")]
 unsafe fn update_statistics(old_limits: &Limits, new_limits: &Limits) {
     use crate::memory::ic;
     let live_size = Bytes(new_limits.free as u32 - new_limits.base as u32);
@@ -108,16 +108,16 @@ pub enum Strategy {
     Full,
 }
 
-#[cfg(feature = "ic")]
+#[cfg(feature = "generational")]
 static mut OLD_GENERATION_THRESHOLD: usize = 32 * 1024 * 1024;
 
-#[cfg(feature = "ic")]
+#[cfg(feature = "generational")]
 static mut PASSED_CRITICAL_LIMIT: bool = false;
 
-#[cfg(feature = "ic")]
+#[cfg(feature = "generational")]
 const CRITICAL_MEMORY_LIMIT: usize = (4096 - 512) * 1024 * 1024;
 
-#[cfg(feature = "ic")]
+#[cfg(feature = "generational")]
 unsafe fn decide_strategy(limits: &Limits) -> Option<Strategy> {
     const YOUNG_GENERATION_THRESHOLD: usize = 8 * 1024 * 1024;
 
@@ -138,7 +138,7 @@ unsafe fn decide_strategy(limits: &Limits) -> Option<Strategy> {
     }
 }
 
-#[cfg(feature = "ic")]
+#[cfg(feature = "generational")]
 unsafe fn update_strategy(strategy: Strategy, limits: &Limits) {
     const GROWTH_RATE: f64 = 2.0;
     if strategy == Strategy::Full {
