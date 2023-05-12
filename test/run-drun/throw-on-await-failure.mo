@@ -1,3 +1,4 @@
+//MOC-NO-FORCE-GC
 import Prim "mo:⛔";
 // test throw on await of completed future error
 actor self {
