@@ -1012,7 +1012,8 @@ module RTS = struct
     E.add_func_import env "rts" "schedule_compacting_gc" [] [];
     E.add_func_import env "rts" "schedule_generational_gc" [] [];
     E.add_func_import env "rts" "schedule_incremental_gc" [] [];
-    E.add_func_import env "rts" "alloc_words" [I32Type] [I32Type];
+    E.add_func_import env "rts" "linear_alloc_words" [I32Type] [I32Type];
+    E.add_func_import env "rts" "partitioned_alloc_words" [I32Type] [I32Type];
     E.add_func_import env "rts" "get_total_allocations" [] [I64Type];
     E.add_func_import env "rts" "get_heap_size" [] [I32Type];
     E.add_func_import env "rts" "alloc_blob" [I32Type] [I32Type];
@@ -1028,6 +1029,7 @@ module RTS = struct
     E.add_func_import env "rts" "post_write_barrier" [I32Type] [];
     E.add_func_import env "rts" "write_with_barrier" [I32Type; I32Type] [];
     E.add_func_import env "rts" "allocation_barrier" [I32Type] [I32Type];
+    E.add_func_import env "rts" "stop_gc_on_upgrade" [] [];
     E.add_func_import env "rts" "running_gc" [] [I32Type];
     ()
 
@@ -1102,14 +1104,14 @@ module Heap = struct
   let get_max_live_size env =
     E.call_import env "rts" "get_max_live_size"
 
-  let dyn_alloc_words env =
-    E.call_import env "rts" "alloc_words"
-
   (* Static allocation (always words)
      (uses dynamic allocation for smaller and more readable code) *)
   let alloc env (n : int32) : G.t =
     compile_unboxed_const n  ^^
-    dyn_alloc_words env
+    (if !Flags.gc_strategy = Flags.Incremental then
+      E.call_import env "rts" "partitioned_alloc_words"
+    else
+      E.call_import env "rts" "linear_alloc_words")
 
   (* Heap objects *)
 
@@ -1550,11 +1552,12 @@ module Tagged = struct
     | BigInt
     | Concat (* String concatenation, used by rts/text.c *)
     | Null (* For opt. Static singleton! *)
-    | StableSeen (* Marker that we have seen this thing before *)
-    | CoercionFailure (* Used in the Candid decoder. Static singleton! *)
     | OneWordFiller (* Only used by the RTS *)
     | FreeSpace (* Only used by the RTS *)
-    
+    | ArraySliceMinimum (* Used by the GC for incremental array marking *)
+    | StableSeen (* Marker that we have seen this thing before *)
+    | CoercionFailure (* Used in the Candid decoder. Static singleton! *)
+
   (* Tags needs to have the lowest bit set, to allow distinguishing object
      headers from heap locations (object or field addresses).
 
@@ -1577,6 +1580,7 @@ module Tagged = struct
     | Null -> 27l
     | OneWordFiller -> 29l
     | FreeSpace -> 31l
+    | ArraySliceMinimum -> 32l
     (* Next two tags won't be seen by the GC, so no need to set the lowest bit
        for `CoercionFailure` and `StableSeen` *)
     | CoercionFailure -> 0xfffffffel
@@ -3927,7 +3931,7 @@ module Arr = struct
 
   (* Does not initialize the fields! *)
   (* Note: Post allocation barrier must be applied after initialization *)
-  let alloc env = 
+  let alloc env =
     E.call_import env "rts" "alloc_array"
 
   let iterate env get_array body =
@@ -5329,7 +5333,6 @@ module MakeSerialization (Strm : Stream) = struct
   (* Globals recording known Candid types
      See Note [Candid subtype checks]
    *)
-        
   let register_delayed_globals env =
     (E.add_global32_delayed env "__typtbl" Immutable,
      E.add_global32_delayed env "__typtbl_end" Immutable,
@@ -5641,10 +5644,31 @@ module MakeSerialization (Strm : Stream) = struct
         set_inc ^^ inc_data_size get_inc
       in
 
+      (* the incremental GC leaves array slice information in tag,
+         the slice information can be removed and the tag reset to array
+         as the GC can resume marking from the array beginning *)
+      let clear_array_slicing =
+        let (set_temp, get_temp) = new_local env "temp" in
+        set_temp ^^
+        get_temp ^^ compile_unboxed_const Tagged.(int_of_tag StableSeen) ^^
+        G.i (Compare (Wasm.Values.I32 I32Op.Ne)) ^^
+        get_temp ^^ compile_unboxed_const Tagged.(int_of_tag CoercionFailure) ^^
+        G.i (Compare (Wasm.Values.I32 I32Op.Ne)) ^^
+        G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
+        get_temp ^^ compile_unboxed_const Tagged.(int_of_tag ArraySliceMinimum) ^^
+        G.i (Compare (Wasm.Values.I32 I32Op.GeU)) ^^
+        G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
+        G.if1 I32Type begin
+          (compile_unboxed_const Tagged.(int_of_tag Array))
+        end begin
+          get_temp
+        end
+      in
+
       let size_alias size_thing =
         (* see Note [mutable stable values] *)
         let (set_tag, get_tag) = new_local env "tag" in
-        get_x ^^ Tagged.load_tag env ^^ set_tag ^^
+        get_x ^^ Tagged.load_tag env ^^ clear_array_slicing ^^ set_tag ^^
         (* Sanity check *)
         get_tag ^^ compile_eq_const Tagged.(int_of_tag StableSeen) ^^
         get_tag ^^ compile_eq_const Tagged.(int_of_tag MutBox) ^^
@@ -7092,7 +7116,13 @@ module Stabilization = struct
 
   let stabilize env t =
     let (set_dst, get_dst) = new_local env "dst" in
-    let (set_len, get_len) = new_local env "len" in  
+    let (set_len, get_len) = new_local env "len" in
+
+    (if !Flags.gc_strategy = Flags.Incremental then
+      E.call_import env "rts" "stop_gc_on_upgrade"
+    else
+      G.nop) ^^
+
 
     Externalization.serialize env [t] ^^
     set_len ^^
@@ -7621,7 +7651,7 @@ let rec can_be_pointer typ nested_optional =
   | Mut t -> (can_be_pointer t nested_optional)
   | Opt t -> (if nested_optional then true else (can_be_pointer t true))
   | Prim (Null| Bool | Char | Nat8 | Nat16 | Int8 | Int16) | Non | Tup [] -> false
-  | _ -> true) 
+  | _ -> true)
 
 let potential_pointer typ : bool =
   (* must not eliminate nested optional types as they refer to a heap object for ??null, ???null etc. *)

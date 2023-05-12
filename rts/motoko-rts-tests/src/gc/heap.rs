@@ -2,6 +2,8 @@ use super::utils::{
     make_pointer, make_scalar, write_word, ObjectIdx, GC, MAX_MARK_STACK_SIZE, WORD_SIZE,
 };
 
+use motoko_rts::gc::incremental::get_partitioned_heap;
+use motoko_rts::gc::incremental::partitioned_heap::PARTITION_SIZE;
 use motoko_rts::gc::mark_compact::mark_stack::INIT_STACK_SIZE;
 use motoko_rts::memory::Memory;
 use motoko_rts::types::*;
@@ -22,6 +24,14 @@ pub struct MotokoHeap {
 impl Memory for MotokoHeap {
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value {
         self.inner.borrow_mut().alloc_words(n)
+    }
+
+    unsafe fn linear_alloc_words(&mut self, n: Words<u32>) -> Value {
+        self.alloc_words(n)
+    }
+
+    unsafe fn grow_memory(&mut self, ptr: u64) {
+        self.inner.borrow_mut().grow_memory(ptr as usize);
     }
 }
 
@@ -120,6 +130,8 @@ impl MotokoHeap {
 }
 
 struct MotokoHeapInner {
+    /// Using the incremental GC with the partitioned heap.
+    using_incremental_gc: bool,
     /// The heap. This is a boxed slice instead of a vector as growing this wouldn't make sense
     /// (all pointers would have to be updated).
     heap: Box<[u8]>,
@@ -258,6 +270,7 @@ impl MotokoHeapInner {
         );
 
         MotokoHeapInner {
+            using_incremental_gc: gc == GC::Incremental,
             heap: heap.into_boxed_slice(),
             heap_base_offset: static_heap_size_bytes + realign,
             heap_ptr_last: static_heap_size_bytes + realign,
@@ -268,16 +281,19 @@ impl MotokoHeapInner {
     }
 
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value {
-        let bytes = n.to_bytes();
+        if self.using_incremental_gc {
+            let mut dummy_memory = DummyMemory {};
+            let result = get_partitioned_heap().allocate(&mut dummy_memory, n);
+            self.set_heap_ptr_address(result.get_ptr()); // realign on partition changes
+        }
 
         // Update heap pointer
         let old_hp = self.heap_ptr_address();
-        let new_hp = old_hp + bytes.as_usize();
+        let new_hp = old_hp + n.to_bytes().as_usize();
         self.heap_ptr_offset = new_hp - self.heap.as_ptr() as usize;
 
         // Grow memory if needed
         self.grow_memory(new_hp as usize);
-
         Value::from_ptr(old_hp)
     }
 
@@ -291,6 +307,20 @@ impl MotokoHeapInner {
             );
         }
     }
+}
+
+struct DummyMemory {}
+
+impl Memory for DummyMemory {
+    unsafe fn alloc_words(&mut self, _n: Words<u32>) -> Value {
+        unreachable!()
+    }
+
+    unsafe fn linear_alloc_words(&mut self, _n: Words<u32>) -> Value {
+        unreachable!()
+    }
+
+    unsafe fn grow_memory(&mut self, _ptr: u64) {}
 }
 
 /// Compute the size of the heap to be allocated for the GC test.
@@ -337,6 +367,9 @@ fn heap_size_for_gc(
             );
             size + ROUNDS * REMEMBERED_SET_MAXIMUM_SIZE
         }
+        // temporary partition for mark bitmaps
+        // GC switches to new allocation partition
+        GC::Incremental => 3 * PARTITION_SIZE,
     }
 }
 

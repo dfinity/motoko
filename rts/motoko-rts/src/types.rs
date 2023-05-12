@@ -267,7 +267,10 @@ impl Value {
     /// Check that the forwarding pointer is valid.
     #[inline]
     pub unsafe fn check_forwarding_pointer(self) {
-        debug_assert!(self.forward().get_ptr() == self.get_ptr());
+        debug_assert!(
+            self.forward().get_ptr() == self.get_ptr()
+                || self.forward().forward().get_ptr() == self.forward().get_ptr()
+        );
     }
 
     /// Check whether the object's forwarding pointer refers to a different location.
@@ -326,7 +329,7 @@ impl Value {
     /// Get the pointer as `Array` using forwarding. In debug mode panics if the value is not a pointer or the
     /// pointed object is not an `Array`.
     pub unsafe fn as_array(self) -> *mut Array {
-        debug_assert_eq!(self.tag(), TAG_ARRAY);
+        debug_assert!(self.tag() == TAG_ARRAY || self.tag() >= TAG_ARRAY_SLICE_MIN);
         self.check_forwarding_pointer();
         self.forward().get_ptr() as *mut Array
     }
@@ -799,6 +802,8 @@ pub(crate) unsafe fn block_size(address: usize) -> Words<u32> {
 
         TAG_OBJ_IND => size_of::<ObjInd>(),
 
+        // `block_size` is not used during the incremental mark phase and
+        // therefore, does not support array slicing.
         TAG_ARRAY => {
             let array = address as *mut Array;
             let size = array.len();
