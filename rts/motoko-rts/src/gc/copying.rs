@@ -23,7 +23,7 @@ unsafe fn copying_gc<M: Memory>(mem: &mut M) {
 
     copying_gc_internal(
         mem,
-        ic::get_heap_base(),
+        ic::get_aligned_heap_base(),
         // get_hp
         || ic::HP as usize,
         // set_hp
@@ -76,8 +76,8 @@ pub unsafe fn copying_gc_internal<
     // Scavenge to-space
     let mut p = begin_to_space;
     while p < get_hp() {
-        let size = object_size(p);
-        scav(mem, begin_from_space, begin_to_space, p);
+        let size = block_size(p);
+        scav(mem, begin_from_space, begin_to_space, Value::from_ptr(p));
         p += size.to_bytes().as_usize();
     }
 
@@ -129,19 +129,21 @@ unsafe fn evac<M: Memory>(
     // Field holds a skewed pointer to the object to evacuate
     let ptr_loc = ptr_loc as *mut Value;
 
-    let obj = (*ptr_loc).as_obj();
-
     // Check object alignment to avoid undefined behavior. See also static_checks module.
-    debug_assert_eq!(obj as u32 % WORD_SIZE, 0);
+    debug_assert_eq!((*ptr_loc).get_ptr() as u32 % WORD_SIZE, 0);
 
     // Update the field if the object is already evacuated
-    if obj.tag() == TAG_FWD_PTR {
-        let fwd = (*(obj as *const FwdPtr)).fwd;
+    if (*ptr_loc).tag() == TAG_FWD_PTR {
+        let block = (*ptr_loc).get_ptr() as *const FwdPtr;
+        let fwd = (*block).fwd;
         *ptr_loc = fwd;
         return;
     }
 
-    let obj_size = object_size(obj as usize);
+    debug_assert!(!(*ptr_loc).is_forwarded());
+    let obj = (*ptr_loc).get_ptr() as *mut Obj;
+
+    let obj_size = block_size(obj as usize);
 
     // Allocate space in to-space for the object
     let obj_addr = mem.alloc_words(obj_size).get_ptr();
@@ -154,15 +156,31 @@ unsafe fn evac<M: Memory>(
 
     // Set forwarding pointer
     let fwd = obj as *mut FwdPtr;
-    (*fwd).header.tag = TAG_FWD_PTR;
+    (*fwd).tag = TAG_FWD_PTR;
     (*fwd).fwd = Value::from_ptr(obj_loc);
 
     // Update evacuated field
     *ptr_loc = Value::from_ptr(obj_loc);
+
+    // Update forwarding pointer
+    let to_space_obj = obj_addr as *mut Obj;
+    debug_assert!(obj_size.as_usize() > size_of::<Obj>().as_usize());
+    debug_assert!(to_space_obj.tag() >= TAG_OBJECT && to_space_obj.tag() <= TAG_NULL);
+
+    (*to_space_obj).forward = Value::from_ptr(obj_loc);
 }
 
-unsafe fn scav<M: Memory>(mem: &mut M, begin_from_space: usize, begin_to_space: usize, obj: usize) {
-    let obj = obj as *mut Obj;
+unsafe fn scav<M: Memory>(
+    mem: &mut M,
+    begin_from_space: usize,
+    begin_to_space: usize,
+    block: Value,
+) {
+    if !block.is_obj() {
+        // Skip `OneWordFiller` and `FreeSpace` that have no regular object header.
+        return;
+    }
+    let obj = block.get_ptr() as *mut Obj;
 
     crate::visitor::visit_pointer_fields(
         mem,
@@ -188,6 +206,6 @@ unsafe fn evac_static_roots<M: Memory>(
     // only evacuate fields of objects in the array.
     for i in 0..roots.len() {
         let obj = roots.get(i);
-        scav(mem, begin_from_space, begin_to_space, obj.get_ptr());
+        scav(mem, begin_from_space, begin_to_space, obj);
     }
 }

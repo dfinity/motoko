@@ -203,13 +203,17 @@ impl MotokoHeapInner {
             );
         }
 
-        // Each object will be 3 words per object + one word for each reference. Static heap will
+        // Each object will have array header plus one word for id per object + one word for each reference. Static heap will
         // have an array (header + length) with one element, one MutBox for each root. +1 for
         // continuation table pointer.
-        let static_heap_size_bytes = (2 + roots.len() + (roots.len() * 2) + 1) * WORD_SIZE;
+        let static_heap_size_bytes = (size_of::<Array>().as_usize()
+            + roots.len()
+            + (roots.len() * size_of::<MutBox>().as_usize())
+            + 1)
+            * WORD_SIZE;
 
         let dynamic_heap_size_without_continuation_table_bytes = {
-            let object_headers_words = map.len() * 3;
+            let object_headers_words = map.len() * (size_of::<Array>().as_usize() + 1);
             let references_words = map.iter().map(|(_, refs)| refs.len()).sum::<usize>();
             (object_headers_words + references_words) * WORD_SIZE
         };
@@ -232,13 +236,8 @@ impl MotokoHeapInner {
         // that we have general word alignment). So we over-allocate 28 bytes.
         let mut heap = vec![0u8; heap_size + 28];
 
-        // MarkCompact assumes that the dynamic heap starts at a 32-byte multiple
-        let realign = match gc {
-            GC::Copying => 0,
-            GC::MarkCompact | GC::Generational => {
-                (32 - (heap.as_ptr() as usize + static_heap_size_bytes) % 32) % 32
-            }
-        };
+        // Align the dynamic heap starts at a 32-byte multiple.
+        let realign = (32 - (heap.as_ptr() as usize + static_heap_size_bytes) % 32) % 32;
         assert_eq!(realign % 4, 0);
 
         // Maps `ObjectIdx`s into their offsets in the heap
@@ -363,8 +362,10 @@ fn create_dynamic_heap(
             object_addrs.insert(*obj, heap_start + heap_offset);
 
             // Store object header
+            let address = u32::try_from(heap_start + heap_offset).unwrap();
             write_word(dynamic_heap, heap_offset, TAG_ARRAY);
-            heap_offset += WORD_SIZE;
+            write_word(dynamic_heap, heap_offset + WORD_SIZE, make_pointer(address)); // forwarding pointer
+            heap_offset += 2 * WORD_SIZE;
 
             // Store length: idx + refs
             write_word(
@@ -410,8 +411,14 @@ fn create_dynamic_heap(
     {
         let mut heap_offset = continuation_table_offset;
 
+        let continuation_table_address = u32::try_from(heap_start + heap_offset).unwrap();
         write_word(dynamic_heap, continuation_table_offset, TAG_ARRAY);
-        heap_offset += WORD_SIZE;
+        write_word(
+            dynamic_heap,
+            continuation_table_offset + WORD_SIZE,
+            make_pointer(continuation_table_address),
+        );
+        heap_offset += 2 * WORD_SIZE;
 
         write_word(dynamic_heap, heap_offset, continuation_table.len() as u32);
         heap_offset += WORD_SIZE;
@@ -443,8 +450,10 @@ fn create_static_heap(
 
     // Create static root array. Each element of the array is a MutBox pointing to the actual
     // root.
+    let array_addr = u32::try_from(heap.as_ptr() as usize).unwrap();
     write_word(heap, 0, TAG_ARRAY);
-    write_word(heap, WORD_SIZE, u32::try_from(roots.len()).unwrap());
+    write_word(heap, WORD_SIZE, make_pointer(array_addr));
+    write_word(heap, 2 * WORD_SIZE, u32::try_from(roots.len()).unwrap());
 
     // Current offset in the heap for the next static roots array element
     let mut root_addr_offset = size_of::<Array>().to_bytes().as_usize();
@@ -454,19 +463,18 @@ fn create_static_heap(
 
     for root_address in root_addresses {
         // Add a MutBox for the object
+        let mutbox_addr = heap.as_ptr() as usize + mutbox_offset;
+        let mutbox_ptr = make_pointer(u32::try_from(mutbox_addr).unwrap());
+
         write_word(heap, mutbox_offset, TAG_MUTBOX);
+        write_word(heap, mutbox_offset + WORD_SIZE, mutbox_ptr);
         write_word(
             heap,
-            mutbox_offset + WORD_SIZE,
+            mutbox_offset + 2 * WORD_SIZE,
             make_pointer(u32::try_from(root_address).unwrap()),
         );
 
-        let mutbox_addr = heap.as_ptr() as usize + mutbox_offset;
-        write_word(
-            heap,
-            root_addr_offset,
-            make_pointer(u32::try_from(mutbox_addr).unwrap()),
-        );
+        write_word(heap, root_addr_offset, mutbox_ptr);
 
         root_addr_offset += WORD_SIZE;
         mutbox_offset += size_of::<MutBox>().to_bytes().as_usize();
