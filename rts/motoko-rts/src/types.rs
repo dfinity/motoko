@@ -19,12 +19,13 @@
 // [1]: https://github.com/rust-lang/reference/blob/master/src/types/struct.md
 // [2]: https://doc.rust-lang.org/stable/reference/type-layout.html#the-c-representation
 
-use crate::gc::generational::write_barrier::post_write_barrier;
-use crate::gc::incremental::barriers::write_with_barrier;
+use crate::barriers::{init_with_barrier, write_with_barrier};
 use crate::memory::Memory;
 use crate::tommath_bindings::{mp_digit, mp_int};
 use core::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
 use core::ptr::null;
+use motoko_rts_macros::is_incremental_gc;
+use motoko_rts_macros::*;
 
 use crate::constants::WORD_SIZE;
 use crate::rts_trap_with;
@@ -267,16 +268,22 @@ impl Value {
     /// Check that the forwarding pointer is valid.
     #[inline]
     pub unsafe fn check_forwarding_pointer(self) {
-        debug_assert!(
-            self.forward().get_ptr() == self.get_ptr()
-                || self.forward().forward().get_ptr() == self.forward().get_ptr()
-        );
+        if is_incremental_gc!() {
+            debug_assert!(
+                self.forward().get_ptr() == self.get_ptr()
+                    || self.forward().forward().get_ptr() == self.forward().get_ptr()
+            );
+        }
     }
 
     /// Check whether the object's forwarding pointer refers to a different location.
     pub unsafe fn is_forwarded(self) -> bool {
-        self.check_forwarding_pointer();
-        self.forward().get_ptr() != self.get_ptr()
+        if is_incremental_gc!() {
+            self.check_forwarding_pointer();
+            self.forward().get_ptr() != self.get_ptr()
+        } else {
+            false
+        }
     }
 
     /// Get the object tag. No forwarding. Can be applied to any block, regular objects
@@ -287,6 +294,7 @@ impl Value {
     }
 
     /// Get the forwarding pointer. Used by the incremental GC.
+    #[incremental_gc]
     pub unsafe fn forward(self) -> Value {
         debug_assert!(self.is_obj());
         debug_assert!(self.get_ptr() as *const Obj != null());
@@ -294,9 +302,15 @@ impl Value {
         (*obj).forward
     }
 
+    /// Get the forwarding pointer. Used by the incremental GC.
+    #[non_incremental_gc]
+    pub unsafe fn forward(self) -> Value {
+        self
+    }
+
     /// Resolve forwarding if the value is a pointer. Otherwise, return the same value.
     pub unsafe fn forward_if_possible(self) -> Value {
-        if self.is_ptr() && self.get_ptr() as *const Obj != null() {
+        if is_incremental_gc!() && self.is_ptr() && self.get_ptr() as *const Obj != null() {
             // Ignore null pointers used in text_iter.
             self.forward()
         } else {
@@ -446,14 +460,30 @@ pub const TAG_ARRAY_SLICE_MIN: Tag = 32;
 #[repr(C)] // See the note at the beginning of this module
 pub struct Obj {
     pub tag: Tag,
+    // Cannot use `#[incremental_gc]` as Rust only allows non-macro attributes for fields.
+    #[cfg(feature = "incremental_gc")]
     /// Forwarding pointer to support object moving in the incremental GC.
     pub forward: Value,
 }
 
 impl Obj {
+    #[incremental_gc]
+    pub fn init_forward(&mut self, value: Value) {
+        self.forward = value;
+    }
+
+    #[non_incremental_gc]
+    pub fn init_forward(&mut self, _value: Value) {}
+
     /// Check whether the object's forwarding pointer refers to a different location.
+    #[incremental_gc]
     pub unsafe fn is_forwarded(self: *const Self) -> bool {
         (*self).forward.get_ptr() != self as usize
+    }
+
+    #[non_incremental_gc]
+    pub unsafe fn is_forwarded(self: *const Self) -> bool {
+        false
     }
 
     pub unsafe fn tag(self: *const Self) -> Tag {
@@ -498,11 +528,7 @@ impl Array {
     /// Resolve pointer forwarding for the written value if necessary.
     pub unsafe fn initialize<M: Memory>(self: *mut Self, idx: u32, value: Value, mem: &mut M) {
         let slot_addr = self.element_address(idx) as *mut Value;
-        let value = value.forward_if_possible();
-        *slot_addr = value;
-        if value.is_ptr() {
-            post_write_barrier(mem, slot_addr as u32);
-        }
+        init_with_barrier(mem, slot_addr, value);
     }
 
     /// Write a pointer value to an array element.
@@ -512,7 +538,6 @@ impl Array {
         debug_assert!(value.is_ptr());
         let slot_addr = self.element_address(idx) as *mut Value;
         write_with_barrier(mem, slot_addr, value);
-        post_write_barrier(mem, slot_addr as u32);
     }
 
     /// Write a scalar value to an array element.
@@ -636,7 +661,11 @@ impl Blob {
 #[repr(C)] // See the note at the beginning of this module
 pub struct Stream {
     pub header: Blob,
+
+    // Cannot use `#[incremental_gc]` as Rust only allows non-macro attributes for fields.
+    #[cfg(feature = "incremental_gc")]
     pub padding: u32, // The insertion of the forwarding pointer in the header implies 1 word padding to 64-bit.
+
     pub ptr64: u64,
     pub start64: u64,
     pub limit64: u64,
@@ -684,9 +713,19 @@ impl BigInt {
         self.add(1) as *mut mp_digit // skip closure header
     }
 
+    #[incremental_gc]
+    pub unsafe fn forward(self: *mut Self) -> *mut Self {
+        (*self).header.forward.as_bigint()
+    }
+
+    #[non_incremental_gc]
+    pub unsafe fn forward(self: *mut Self) -> *mut Self {
+        self
+    }
+
     pub unsafe fn from_payload(ptr: *mut mp_digit) -> *mut Self {
         let bigint = (ptr as *mut u32).sub(size_of::<BigInt>().as_usize()) as *mut BigInt;
-        (*bigint).header.forward.as_bigint()
+        bigint.forward()
     }
 
     /// Returns pointer to the `mp_int` struct

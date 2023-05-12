@@ -28,8 +28,7 @@ use motoko_rts_macros::ic_mem_fn;
 pub trait Memory {
     // General allocator working for all GC variants.
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value;
-    // Optimized version, only to be used by non-incremental GC runtimes.
-    unsafe fn linear_alloc_words(&mut self, n: Words<u32>) -> Value;
+
     // Grow the allocated memory size to at least the address of `ptr`.
     unsafe fn grow_memory(&mut self, ptr: u64);
 }
@@ -43,7 +42,7 @@ pub unsafe fn alloc_blob<M: Memory>(mem: &mut M, size: Bytes<u32>) -> Value {
     // NB. Cannot use `as_blob` here as we didn't write the header yet
     let blob = ptr.get_ptr() as *mut Blob;
     (*blob).header.tag = TAG_BLOB;
-    (*blob).header.forward = ptr;
+    (*blob).header.init_forward(ptr);
     (*blob).len = size;
 
     ptr
@@ -62,7 +61,7 @@ pub unsafe fn alloc_array<M: Memory>(mem: &mut M, len: u32) -> Value {
 
     let ptr: *mut Array = skewed_ptr.get_ptr() as *mut Array;
     (*ptr).header.tag = TAG_ARRAY;
-    (*ptr).header.forward = skewed_ptr;
+    (*ptr).header.init_forward(skewed_ptr);
     (*ptr).len = len;
 
     skewed_ptr
