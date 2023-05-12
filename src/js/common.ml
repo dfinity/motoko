@@ -222,4 +222,5 @@ let gc_flags option =
   | "copying" -> Flags.gc_strategy := Mo_config.Flags.Copying
   | "marking" -> Flags.gc_strategy := Mo_config.Flags.MarkCompact
   | "generational" -> Flags.gc_strategy := Mo_config.Flags.Generational
+  | "incremental" -> Flags.gc_Strategy := Mo_config.Flags.Incremental
   | _ -> raise (Invalid_argument "gc_flags: Unexpected flag")
