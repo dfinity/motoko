@@ -7,7 +7,6 @@ mod gc;
 mod leb128;
 mod memory;
 mod principal_id;
-mod remembered_set;
 mod stream;
 mod text;
 mod utf8;
@@ -32,7 +31,6 @@ fn main() {
         stream::test();
         text::test();
         utf8::test();
-        remembered_set::test();
     }
 }
 

@@ -29,7 +29,9 @@ pub trait Memory {
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value;
 }
 
-/// Helper for allocating blobs
+/// Allocate a new blob.
+/// Note: After initialization, the post allocation barrier needs to be applied to all mutator objects.
+/// For RTS-internal blobs that can be collected by the next GC run, the post allocation barrier can be omitted.
 #[ic_mem_fn]
 pub unsafe fn alloc_blob<M: Memory>(mem: &mut M, size: Bytes<u32>) -> Value {
     let ptr = mem.alloc_words(size_of::<Blob>() + size.to_words());
@@ -42,7 +44,8 @@ pub unsafe fn alloc_blob<M: Memory>(mem: &mut M, size: Bytes<u32>) -> Value {
     ptr
 }
 
-/// Helper for allocating arrays
+/// Allocate a new array.
+/// Note: After initialization, the post allocation barrier needs to be applied to all mutator objects.
 #[ic_mem_fn]
 pub unsafe fn alloc_array<M: Memory>(mem: &mut M, len: u32) -> Value {
     // Array payload should not be larger than half of the memory

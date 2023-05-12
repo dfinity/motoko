@@ -30,8 +30,7 @@ pub(crate) unsafe fn get_aligned_heap_base() -> u32 {
     ((get_heap_base() + 31) / 32) * 32
 }
 
-#[no_mangle]
-unsafe extern "C" fn init() {
+pub(crate) unsafe fn initialize_memory() {
     HP = get_aligned_heap_base();
     LAST_HP = HP;
 }

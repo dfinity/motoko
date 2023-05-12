@@ -382,7 +382,6 @@ rec {
           EXTRA_MOC_ARGS = "--sanity-checks --generational-gc";
       });
 
-
     perf_subdir = dir: deps:
       (test_subdir dir deps).overrideAttrs (args: {
         checkPhase = ''

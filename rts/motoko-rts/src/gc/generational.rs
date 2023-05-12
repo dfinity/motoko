@@ -7,7 +7,7 @@
 
 pub mod mark_stack;
 pub mod remembered_set;
-#[cfg(debug_assertions)]
+#[cfg(feature = "memory_check")]
 mod sanity_checks;
 pub mod write_barrier;
 
@@ -26,6 +26,12 @@ use motoko_rts_macros::ic_mem_fn;
 
 use self::mark_stack::{free_mark_stack, pop_mark_stack};
 use self::write_barrier::REMEMBERED_SET;
+
+#[ic_mem_fn(ic_only)]
+unsafe fn initialize_generational_gc<M: Memory>(mem: &mut M) {
+    crate::memory::ic::initialize_memory();
+    write_barrier::init_generational_write_barrier(mem);
+}
 
 #[ic_mem_fn(ic_only)]
 unsafe fn schedule_generational_gc<M: Memory>(mem: &mut M) {
@@ -51,13 +57,10 @@ unsafe fn generational_gc<M: Memory>(mem: &mut M) {
     };
     let strategy = decide_strategy(&heap.limits);
 
-    #[cfg(debug_assertions)]
-    let forced_gc = strategy.is_none();
-
     let strategy = strategy.unwrap_or(Strategy::Young);
     let mut gc = GenerationalGC::new(heap, strategy);
 
-    #[cfg(debug_assertions)]
+    #[cfg(feature = "memory_check")]
     sanity_checks::verify_snapshot(&gc.heap, false);
 
     gc.run();
@@ -67,13 +70,12 @@ unsafe fn generational_gc<M: Memory>(mem: &mut M) {
     update_statistics(&old_limits, new_limits);
     update_strategy(strategy, new_limits);
 
-    #[cfg(debug_assertions)]
-    if !forced_gc {
-        sanity_checks::check_memory(&gc.heap.limits, &gc.heap.roots);
-        sanity_checks::take_snapshot(&mut gc.heap);
-    }
+    #[cfg(feature = "memory_check")]
+    sanity_checks::check_memory(&gc.heap.limits, &gc.heap.roots);
+    #[cfg(feature = "memory_check")]
+    sanity_checks::take_snapshot(&mut gc.heap);
 
-    write_barrier::init_write_barrier(gc.heap.mem);
+    write_barrier::init_generational_write_barrier(gc.heap.mem);
 }
 
 #[cfg(feature = "ic")]

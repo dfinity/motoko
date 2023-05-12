@@ -223,6 +223,7 @@ impl RememberedSetIterator {
 }
 
 unsafe fn new_table<M: Memory>(mem: &mut M, size: u32) -> *mut Blob {
+    // No post allocation barrier as this RTS-internal blob will be collected by the GC.
     let table = alloc_blob(mem, Bytes(size * size_of::<HashEntry>() as u32)).as_blob_mut();
     for index in 0..size {
         table_set(table, index, null_ptr_value());
@@ -232,6 +233,7 @@ unsafe fn new_table<M: Memory>(mem: &mut M, size: u32) -> *mut Blob {
 
 unsafe fn new_collision_node<M: Memory>(mem: &mut M, value: Value) -> *mut CollisionNode {
     debug_assert!(!is_null_ptr_value(value));
+    // No post allocation barrier as this RTS-internal blob will be collected by the GC.
     let node =
         alloc_blob(mem, Bytes(size_of::<HashEntry>() as u32)).as_blob_mut() as *mut CollisionNode;
     (*node).entry = HashEntry {

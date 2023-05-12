@@ -19,7 +19,8 @@
 // [1]: https://github.com/rust-lang/reference/blob/master/src/types/struct.md
 // [2]: https://doc.rust-lang.org/stable/reference/type-layout.html#the-c-representation
 
-use crate::gc::generational::write_barrier::write_barrier;
+use crate::gc::generational::write_barrier::post_write_barrier;
+use crate::gc::incremental::barriers::write_with_barrier;
 use crate::memory::Memory;
 use crate::tommath_bindings::{mp_digit, mp_int};
 use core::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
@@ -488,15 +489,31 @@ impl Array {
         *(slot_addr as *const Value)
     }
 
-    /// Write a pointer value to an array element. Uses a post-update barrier.
-    pub unsafe fn set_pointer<M: Memory>(self: *mut Self, idx: u32, value: Value, mem: &mut M) {
-        debug_assert!(value.is_ptr());
-        let slot_addr = self.element_address(idx);
-        *(slot_addr as *mut Value) = value;
-        write_barrier(mem, slot_addr as u32);
+    /// Initialize the element of a newly created array.
+    /// Uses a generational post-update barrier on pointer writes.
+    /// No incremental pre-update barrier as the previous value is undefined.
+    /// Resolve pointer forwarding for the written value if necessary.
+    pub unsafe fn initialize<M: Memory>(self: *mut Self, idx: u32, value: Value, mem: &mut M) {
+        let slot_addr = self.element_address(idx) as *mut Value;
+        let value = value.forward_if_possible();
+        *slot_addr = value;
+        if value.is_ptr() {
+            post_write_barrier(mem, slot_addr as u32);
+        }
     }
 
-    /// Write a scalar value to an array element. No need for a write barrier.
+    /// Write a pointer value to an array element.
+    /// Uses a incremental pre-update barrier and a generational post-update barrier.
+    /// Resolves pointer forwarding for the written value.
+    pub unsafe fn set_pointer<M: Memory>(self: *mut Self, idx: u32, value: Value, mem: &mut M) {
+        debug_assert!(value.is_ptr());
+        let slot_addr = self.element_address(idx) as *mut Value;
+        write_with_barrier(mem, slot_addr, value);
+        post_write_barrier(mem, slot_addr as u32);
+    }
+
+    /// Write a scalar value to an array element.
+    /// No need for a write barrier.
     pub unsafe fn set_scalar(self: *mut Self, idx: u32, value: Value) {
         debug_assert!(value.is_scalar());
         let slot_addr = self.element_address(idx);
