@@ -448,7 +448,7 @@ func Employee(fst : Text, lst : Text) : Employee = object { … }
 `{#sun; #mon; #tue; #wed; #thu; #fri; #sat}`
 
 ``` motoko
-type Day = {#sun; #mon; #tue; #wed; #thu; #fri; #Sat};
+type Day = {#sun; #mon; #tue; #wed; #thu; #fri; #sat};
 
 func toText(d : Day) : Text {
   switch d {
