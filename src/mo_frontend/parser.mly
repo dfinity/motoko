@@ -653,7 +653,7 @@ exp_un(B) :
 
 pipe_arg :
   | UNDERSCORE
-    { fun e -> e }
+    { fun e -> { e with at = at $sloc } }
   | LPAR mk_es=pipe_args RPAR
     { fun e ->
         match mk_es e with
@@ -662,9 +662,13 @@ pipe_arg :
         | es -> TupE(es) @? at $sloc }
 
 pipe_args :
-  | UNDERSCORE { fun h -> [h] }
-  | UNDERSCORE COMMA es=seplist(exp(ob), COMMA) { fun h -> h::es }
-  | e=exp(ob) COMMA mk_es=pipe_args { fun h -> e::mk_es h }
+  | UNDERSCORE
+    { fun h -> [ { h with at = at $sloc } ] }
+  | UNDERSCORE COMMA es=seplist(exp(ob), COMMA)
+    { fun h -> { h with at = at $loc($1) }::es }
+  | e=exp(ob) COMMA mk_es=pipe_args
+    { fun h -> e::mk_es h }
+
 
 %public exp_nondec(B) :
   | e=exp_bin(B)
