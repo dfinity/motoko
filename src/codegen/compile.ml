@@ -9873,7 +9873,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     let set_principal, get_principal = new_local env "principal" in
     compile_exp_vanilla env ae e ^^
     set_principal ^^ get_principal ^^
-    Blob.payload_ptr_unskewed ^^
+    Blob.payload_ptr_unskewed env ^^
     get_principal ^^
     Blob.len env ^^
     IC.system_call env "is_controller"
