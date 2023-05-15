@@ -690,7 +690,6 @@ rec {
     mkdir -p $out
     ln -s ${base-doc} $out/base-doc
     ln -s ${docs} $out/docs
-    # ln -s ${tests.profiling-graphs} $out/flamegraphs
     ln -s ${tests.coverage} $out/coverage
     cd $out;
     # generate a simple index.html, listing the entry points
