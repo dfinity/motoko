@@ -277,9 +277,50 @@ Including this design, there are three possible verions (`0`, `1`, or `2`):
  1. Stable vars *plus* direct access to IC0 API, including `grow`.
  2. Region system, where direct access still works through region zero.
 
-In the first cases (`0`) and (`1`), we wish to migrate into the region system (`2`), with its own internal versioning.
+In the first cases (`0`) and (`1`), we wish to *selectively* migrate into the region system (`2`), with its own internal versioning.
 
-To do so, we will read the existing version during upgrades, and apply installation logic that we call "migration".
+The main factor involved in making this per-canister choice involves
+
+the mandatory block-sized reservation for current and future meta data (8MB).
+
+For canisters that do not store an order of magnitude more than 8MB, it may make sense to
+eschew regions in favor of stable vars for stable data, thereby saving that 8MB of otherwise-wasted space.
+
+##### Explicit, opt-in migration API
+
+The canister migrates from versions 0 and 1 into version 2 using the `init` primitive, exposed in `base` as:
+
+````
+import R "mo:base/Region";
+R.init()
+```
+
+Doing `init` on a canister in version 2 has no effect.
+
+
+A natural place to do `R.init()` is in the initialization code for the
+actor that wishes to use regions.
+
+Critically,
+
+1. There is no provision for "downgrading" back to earlier, pre-region systems.
+
+2. It does not make sense to place calls to `R.init()` in library code,
+   and the compiler or a linter (ideally) would warn about such uses.
+
+
+Until this check about strange placements of `R.init()` can be implemented, all of version 2 (the region system) is additionally guarded by a compiler flag:
+
+```
+  --stable-regions
+```
+
+Without enabling this flag, the region `R.init` primitive will not be compiled by the compiler.
+
+Hence, the absence of the flag acts as a master "off switch".
+
+Using it is another layer of necessary "opt it" to use regions.  Again, this flag serves as a safeguard against unintentional upgrades, which cannot be directly reversed.
+
 
 
 ##### Version 0 migration.
@@ -299,4 +340,3 @@ To accomodate the meta data of the region system, we move the first block of reg
 Then, we reformat the first block of stable memory as the region meta data block.
 
 The rest of the blocks become part of region 0, with its first block stored at the end of physical memory.
-
