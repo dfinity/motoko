@@ -90,4 +90,17 @@ do {
 
   // should read i before executing f()
   assert (i |> (f())(_) == 0);
-}
+};
+
+/* option blocks */
+
+
+let _ = do ? {
+  let none = null;
+  (none |> f1(_)) !
+};
+
+let _ = do ? {
+  let some = ??();
+  (some ! |> f1(_))!;
+};
