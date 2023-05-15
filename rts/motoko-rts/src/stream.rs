@@ -22,8 +22,8 @@
 // into the leading bytes:
 // - `obj header` contains tag (BLOB) and forwarding pointer
 // - `len` is in blob metadata
-// - 'padding' because the compiler automatically align `ptr64` to 64-bit according to
-//    C-memory representation
+// - `ptr64`, `start64`, and `limit64` are each represented as two 32-bit components
+//    in little Endian encoding.
 // - `ptr64` and `limit64` are the next and past-end pointers into stable memory
 // - `filled` and `cache` are the number of bytes consumed from the blob, and the
 //   staging area of the stream, respectively
@@ -38,12 +38,12 @@ use crate::mem_utils::memcpy_bytes;
 use crate::memory::{alloc_blob, Memory};
 use crate::rts_trap_with;
 use crate::tommath_bindings::{mp_div_2d, mp_int};
-use crate::types::{size_of, Blob, Bytes, Stream, Value, TAG_BLOB};
+use crate::types::{read64, size_of, write64, Blob, Bytes, Stream, Value, TAG_BLOB};
 
-use motoko_rts_macros::{ic_mem_fn, is_incremental_gc};
+use motoko_rts_macros::ic_mem_fn;
 
 const MAX_STREAM_SIZE: Bytes<u32> = Bytes((1 << 30) - 1);
-const INITIAL_STREAM_FILLED: Bytes<u32> = Bytes(if is_incremental_gc!() { 36 } else { 32 });
+const INITIAL_STREAM_FILLED: Bytes<u32> = Bytes(32);
 const STREAM_CHUNK_SIZE: Bytes<u32> = Bytes(128);
 
 #[ic_mem_fn]
@@ -57,9 +57,9 @@ pub unsafe fn alloc_stream<M: Memory>(mem: &mut M, size: Bytes<u32>) -> *mut Str
     }
     let ptr = alloc_blob(mem, size + INITIAL_STREAM_FILLED);
     let stream = ptr.as_stream();
-    (*stream).ptr64 = 0;
-    (*stream).start64 = 0;
-    (*stream).limit64 = 0;
+    stream.write_ptr64(0);
+    stream.write_start64(0);
+    stream.write_limit64(0);
     (*stream).outputter = Stream::no_backing_store;
     (*stream).filled = INITIAL_STREAM_FILLED;
     allocation_barrier(ptr);
@@ -73,6 +73,30 @@ extern "C" {
 }
 
 impl Stream {
+    pub unsafe fn write_ptr64(self: *mut Self, value: u64) {
+        write64(&mut (*self).ptr_lower, &mut (*self).ptr_upper, value);
+    }
+
+    pub unsafe fn read_ptr64(self: *const Self) -> u64 {
+        read64((*self).ptr_lower, (*self).ptr_upper)
+    }
+
+    pub unsafe fn write_start64(self: *mut Self, value: u64) {
+        write64(&mut (*self).start_lower, &mut (*self).start_upper, value);
+    }
+
+    pub unsafe fn read_start64(self: *const Self) -> u64 {
+        read64((*self).start_lower, (*self).start_upper)
+    }
+
+    pub unsafe fn write_limit64(self: *mut Self, value: u64) {
+        write64(&mut (*self).limit_lower, &mut (*self).limit_upper, value);
+    }
+
+    pub unsafe fn read_limit64(self: *const Self) -> u64 {
+        read64((*self).limit_lower, (*self).limit_upper)
+    }
+
     #[inline]
     pub unsafe fn cache_addr(self: *const Self) -> *const u8 {
         self.add(1) as *const u8 // skip closure header
@@ -99,9 +123,9 @@ impl Stream {
     #[cfg(feature = "ic")]
     fn send_to_stable(self: *mut Self, ptr: *const u8, n: Bytes<u32>) {
         unsafe {
-            let next_ptr64 = (*self).ptr64 + n.as_u32() as u64;
-            stable64_write_moc((*self).ptr64, ptr as u64, n.as_u32() as u64);
-            (*self).ptr64 = next_ptr64
+            let next_ptr64 = self.read_ptr64() + n.as_u32() as u64;
+            stable64_write_moc(self.read_ptr64(), ptr as u64, n.as_u32() as u64);
+            self.write_ptr64(next_ptr64);
         }
     }
 
@@ -111,9 +135,9 @@ impl Stream {
     #[export_name = "stream_stable_dest"]
     pub fn setup_stable_dest(self: *mut Self, start: u64, limit: u64) {
         unsafe {
-            (*self).ptr64 = start;
-            (*self).start64 = start;
-            (*self).limit64 = limit;
+            self.write_ptr64(start);
+            self.write_start64(start);
+            self.write_limit64(limit);
             (*self).outputter = Self::send_to_stable;
         }
     }
@@ -122,7 +146,7 @@ impl Stream {
     #[export_name = "stream_write"]
     pub fn cache_bytes(self: *mut Self, ptr: *const u8, n: Bytes<u32>) {
         unsafe {
-            if (*self).limit64 != 0 && n > STREAM_CHUNK_SIZE
+            if self.read_limit64() != 0 && n > STREAM_CHUNK_SIZE
                 || (*self).filled + n > (*self).header.len
             {
                 self.flush();

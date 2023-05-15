@@ -1137,7 +1137,8 @@ module Heap = struct
 
   (* Although we occasionally want to treat two consecutive
      32 bit fields as one 64 bit number *)
-
+  
+  (* Requires little Endian encoding, see also `Stream` in `types.rs` *)
   let load_field64_unskewed (i : int32) : G.t =
     let offset = Int32.mul word_size i in
     G.i (Load {ty = I64Type; align = 2; offset; sz = None})
@@ -7016,7 +7017,7 @@ module BlobStream : Stream = struct
   let name_for fn_name ts = "@Bl_" ^ fn_name ^ "<" ^ Typ_hash.typ_seq_hash ts ^ ">"
 
   let absolute_offset env get_token =
-    let offset = if !Flags.gc_strategy = Flags.Incremental then 9l else 8l in (* see invariant in `stream.rs` *)
+    let offset = 8l in (* see invariant in `stream.rs` *)
     let filled_field = Int32.add (Blob.len_field env) offset in
     get_token ^^ Tagged.load_field_unskewed env filled_field
 
@@ -7114,7 +7115,7 @@ module Stabilization = struct
       E.call_import env "rts" "stream_stable_dest"
 
     let ptr64_field env = 
-      let offset = if !Flags.gc_strategy = Flags.Incremental then 2l else 1l in (* see invariant in `stream.rs` *)
+      let offset = 1l in (* see invariant in `stream.rs` *)
       Int32.add (Blob.len_field env) offset (* see invariant in `stream.rs`, padding for 64-bit after Stream header *)
 
     let terminate env get_token get_data_size header_size =
