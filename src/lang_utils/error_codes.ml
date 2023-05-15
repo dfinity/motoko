@@ -140,7 +140,7 @@ let error_codes : (string * string option) list =
     "M0134", None; (* Class body type mismatch *)
     "M0135", None; (* Actor class has non-async return type *)
     "M0136", None; (* Empty block type mismatch *)
-    "M0137", Some([%blob "lang_utils/error_codes/M0137.adoc"]); (* Type definition references type paramater from outer scope *)
+    "M0137", Some([%blob "lang_utils/error_codes/M0137.adoc"]); (* Type definition references type parameter from outer scope *)
     "M0138", None; (* Actor classes are not supported *)
     "M0139", None; (* Inner actor classes are not supported *)
     "M0140", None; (* Actor classes with type parameters are not supported *)
@@ -163,7 +163,7 @@ let error_codes : (string * string option) list =
     "M0157", Some([%blob "lang_utils/error_codes/M0157.adoc"]); (* block contains non-productive type definitions *)
     "M0158", Some([%blob "lang_utils/error_codes/M0158.adoc"]); (* a public class cannot be anonymous, please provide a name *)
     (* "M0159" DEFUNCT Word deprecation *)
-    "M0160", None;
+    "M0160", None; (* Candid method name is not a valid Motoko identifier *)
     "M0161", None; (* Candid float32 type cannot be imported as a Motoko type *)
     "M0162", None; (* Candid service constructor type not supported as Motoko type *)
     "M0163", None; (* Cannot import a Candid service constructor *)

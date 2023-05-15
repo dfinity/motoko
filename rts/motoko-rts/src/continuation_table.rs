@@ -22,6 +22,7 @@
 //! the free list. Since all indices are relative to the payload begin, they stay valid. We never
 //! shrink the table.
 
+use crate::barriers::allocation_barrier;
 use crate::memory::{alloc_array, Memory};
 use crate::rts_trap_with;
 use crate::types::Value;
@@ -49,6 +50,7 @@ unsafe fn create_continuation_table<M: Memory>(mem: &mut M) {
     for i in 0..INITIAL_SIZE {
         table.set_scalar(i, Value::from_scalar(i + 1));
     }
+    allocation_barrier(TABLE);
 }
 
 unsafe fn double_continuation_table<M: Memory>(mem: &mut M) {
@@ -64,16 +66,13 @@ unsafe fn double_continuation_table<M: Memory>(mem: &mut M) {
 
     for i in 0..old_size {
         let old_value = old_array.get(i);
-        if old_value.is_ptr() {
-            new_array.set_pointer(i, old_value, mem);
-        } else {
-            new_array.set_scalar(i, old_value);
-        }
+        new_array.initialize(i, old_value, mem);
     }
 
     for i in old_size..new_size {
         new_array.set_scalar(i, Value::from_scalar(i + 1));
     }
+    allocation_barrier(TABLE);
 }
 
 pub unsafe fn table_initialized() -> bool {

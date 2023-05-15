@@ -1,8 +1,5 @@
-use super::utils::{
-    make_pointer, make_scalar, write_word, ObjectIdx, GC, MAX_MARK_STACK_SIZE, WORD_SIZE,
-};
+use super::utils::{make_pointer, make_scalar, write_word, ObjectIdx, GC, WORD_SIZE};
 
-use motoko_rts::gc::mark_compact::mark_stack::INIT_STACK_SIZE;
 use motoko_rts::memory::Memory;
 use motoko_rts::types::*;
 
@@ -11,6 +8,7 @@ use std::convert::TryFrom;
 use std::rc::Rc;
 
 use fxhash::{FxHashMap, FxHashSet};
+use motoko_rts_macros::*;
 
 /// Represents Motoko heaps. Reference counted (implements `Clone`) so we can clone and move values
 /// of this type to GC callbacks.
@@ -22,6 +20,10 @@ pub struct MotokoHeap {
 impl Memory for MotokoHeap {
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value {
         self.inner.borrow_mut().alloc_words(n)
+    }
+
+    unsafe fn grow_memory(&mut self, ptr: u64) {
+        self.inner.borrow_mut().grow_memory(ptr as usize);
     }
 }
 
@@ -65,17 +67,20 @@ impl MotokoHeap {
     }
 
     /// Update the heap pointer given as an address in the current process.
+    #[non_incremental_gc]
     pub fn set_heap_ptr_address(&self, address: usize) {
         self.inner.borrow_mut().set_heap_ptr_address(address)
     }
 
     /// Get the last heap pointer, as address in the current process. The address can be used to mutate
     /// the heap.
+    #[non_incremental_gc]
     pub fn last_ptr_address(&self) -> usize {
         self.inner.borrow().last_ptr_address()
     }
 
     /// Update the last heap pointer given as an address in the current process.
+    #[non_incremental_gc]
     pub fn set_last_ptr_address(&self, address: usize) {
         self.inner.borrow_mut().set_last_ptr_address(address)
     }
@@ -128,7 +133,7 @@ struct MotokoHeapInner {
     heap_base_offset: usize,
 
     /// Last dynamic heap end, used for generational gc testing
-    heap_ptr_last: usize,
+    _heap_ptr_last: usize,
 
     /// Where the dynamic heap ends, i.e. the heap pointer
     heap_ptr_offset: usize,
@@ -168,13 +173,15 @@ impl MotokoHeapInner {
     }
 
     /// Get last heap pointer (i.e. where the dynamic heap ends last GC run) in the process's address space
+    #[non_incremental_gc]
     fn last_ptr_address(&self) -> usize {
-        self.offset_to_address(self.heap_ptr_last)
+        self.offset_to_address(self._heap_ptr_last)
     }
 
     /// Set last heap pointer
+    #[non_incremental_gc]
     fn set_last_ptr_address(&mut self, address: usize) {
-        self.heap_ptr_last = self.address_to_offset(address);
+        self._heap_ptr_last = self.address_to_offset(address);
     }
 
     /// Get static root array address in the process's address space
@@ -203,13 +210,17 @@ impl MotokoHeapInner {
             );
         }
 
-        // Each object will be 3 words per object + one word for each reference. Static heap will
+        // Each object will have array header plus one word for id per object + one word for each reference. Static heap will
         // have an array (header + length) with one element, one MutBox for each root. +1 for
         // continuation table pointer.
-        let static_heap_size_bytes = (2 + roots.len() + (roots.len() * 2) + 1) * WORD_SIZE;
+        let static_heap_size_bytes = (size_of::<Array>().as_usize()
+            + roots.len()
+            + (roots.len() * size_of::<MutBox>().as_usize())
+            + 1)
+            * WORD_SIZE;
 
         let dynamic_heap_size_without_continuation_table_bytes = {
-            let object_headers_words = map.len() * 3;
+            let object_headers_words = map.len() * (size_of::<Array>().as_usize() + 1);
             let references_words = map.iter().map(|(_, refs)| refs.len()).sum::<usize>();
             (object_headers_words + references_words) * WORD_SIZE
         };
@@ -232,13 +243,8 @@ impl MotokoHeapInner {
         // that we have general word alignment). So we over-allocate 28 bytes.
         let mut heap = vec![0u8; heap_size + 28];
 
-        // MarkCompact assumes that the dynamic heap starts at a 32-byte multiple
-        let realign = match gc {
-            GC::Copying => 0,
-            GC::MarkCompact | GC::Generational => {
-                (32 - (heap.as_ptr() as usize + static_heap_size_bytes) % 32) % 32
-            }
-        };
+        // Align the dynamic heap starts at a 32-byte multiple.
+        let realign = (32 - (heap.as_ptr() as usize + static_heap_size_bytes) % 32) % 32;
         assert_eq!(realign % 4, 0);
 
         // Maps `ObjectIdx`s into their offsets in the heap
@@ -261,24 +267,36 @@ impl MotokoHeapInner {
         MotokoHeapInner {
             heap: heap.into_boxed_slice(),
             heap_base_offset: static_heap_size_bytes + realign,
-            heap_ptr_last: static_heap_size_bytes + realign,
+            _heap_ptr_last: static_heap_size_bytes + realign,
             heap_ptr_offset: total_heap_size_bytes + realign,
             static_root_array_offset: realign,
             continuation_table_ptr_offset: continuation_table_ptr_offset + realign,
         }
     }
 
+    #[non_incremental_gc]
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value {
-        let bytes = n.to_bytes();
+        self.linear_alloc_words(n)
+    }
 
+    #[incremental_gc]
+    unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value {
+        let mut dummy_memory = DummyMemory {};
+        let result =
+            motoko_rts::gc::incremental::get_partitioned_heap().allocate(&mut dummy_memory, n);
+        self.set_heap_ptr_address(result.get_ptr()); // realign on partition changes
+
+        self.linear_alloc_words(n)
+    }
+
+    unsafe fn linear_alloc_words(&mut self, n: Words<u32>) -> Value {
         // Update heap pointer
         let old_hp = self.heap_ptr_address();
-        let new_hp = old_hp + bytes.as_usize();
+        let new_hp = old_hp + n.to_bytes().as_usize();
         self.heap_ptr_offset = new_hp - self.heap.as_ptr() as usize;
 
         // Grow memory if needed
         self.grow_memory(new_hp as usize);
-
         Value::from_ptr(old_hp)
     }
 
@@ -294,7 +312,18 @@ impl MotokoHeapInner {
     }
 }
 
+struct DummyMemory {}
+
+impl Memory for DummyMemory {
+    unsafe fn alloc_words(&mut self, _n: Words<u32>) -> Value {
+        unreachable!()
+    }
+
+    unsafe fn grow_memory(&mut self, _ptr: u64) {}
+}
+
 /// Compute the size of the heap to be allocated for the GC test.
+#[non_incremental_gc]
 fn heap_size_for_gc(
     gc: GC,
     static_heap_size_bytes: usize,
@@ -322,8 +351,10 @@ fn heap_size_for_gc(
             };
             // In the worst case the entire heap will be pushed to the mark stack, but in tests
             // we limit the size
-            let mark_stack_words = n_objects.clamp(INIT_STACK_SIZE.as_usize(), MAX_MARK_STACK_SIZE)
-                + size_of::<Blob>().as_usize();
+            let mark_stack_words = n_objects.clamp(
+                motoko_rts::gc::mark_compact::mark_stack::INIT_STACK_SIZE.as_usize(),
+                super::utils::MAX_MARK_STACK_SIZE,
+            ) + size_of::<Blob>().as_usize();
 
             total_heap_size_bytes + bitmap_size_bytes as usize + (mark_stack_words * WORD_SIZE)
         }
@@ -341,6 +372,18 @@ fn heap_size_for_gc(
     }
 }
 
+#[incremental_gc]
+fn heap_size_for_gc(
+    gc: GC,
+    _static_heap_size_bytes: usize,
+    _dynamic_heap_size_bytes: usize,
+    _n_objects: usize,
+) -> usize {
+    match gc {
+        GC::Incremental => 3 * motoko_rts::gc::incremental::partitioned_heap::PARTITION_SIZE,
+    }
+}
+
 /// Given a heap description (as a map from objects to objects), and the dynamic part of the heap
 /// (as an array), initialize the dynamic heap with objects.
 ///
@@ -351,6 +394,7 @@ fn create_dynamic_heap(
     continuation_table: &[ObjectIdx],
     dynamic_heap: &mut [u8],
 ) -> FxHashMap<ObjectIdx, usize> {
+    let incremental = cfg!(feature = "incremental_gc");
     let heap_start = dynamic_heap.as_ptr() as usize;
 
     // Maps objects to their addresses
@@ -363,8 +407,14 @@ fn create_dynamic_heap(
             object_addrs.insert(*obj, heap_start + heap_offset);
 
             // Store object header
+            let address = u32::try_from(heap_start + heap_offset).unwrap();
             write_word(dynamic_heap, heap_offset, TAG_ARRAY);
             heap_offset += WORD_SIZE;
+
+            if incremental {
+                write_word(dynamic_heap, heap_offset, make_pointer(address)); // forwarding pointer
+                heap_offset += WORD_SIZE;
+            }
 
             // Store length: idx + refs
             write_word(
@@ -410,8 +460,18 @@ fn create_dynamic_heap(
     {
         let mut heap_offset = continuation_table_offset;
 
-        write_word(dynamic_heap, continuation_table_offset, TAG_ARRAY);
+        let continuation_table_address = u32::try_from(heap_start + heap_offset).unwrap();
+        write_word(dynamic_heap, heap_offset, TAG_ARRAY);
         heap_offset += WORD_SIZE;
+
+        if incremental {
+            write_word(
+                dynamic_heap,
+                heap_offset,
+                make_pointer(continuation_table_address),
+            );
+            heap_offset += WORD_SIZE;
+        }
 
         write_word(dynamic_heap, heap_offset, continuation_table.len() as u32);
         heap_offset += WORD_SIZE;
@@ -436,6 +496,7 @@ fn create_static_heap(
     continuation_table_offset: usize,
     heap: &mut [u8],
 ) {
+    let incremental = cfg!(feature = "incremental_gc");
     let root_addresses: Vec<usize> = roots
         .iter()
         .map(|obj| *object_addrs.get(obj).unwrap())
@@ -443,33 +504,52 @@ fn create_static_heap(
 
     // Create static root array. Each element of the array is a MutBox pointing to the actual
     // root.
-    write_word(heap, 0, TAG_ARRAY);
-    write_word(heap, WORD_SIZE, u32::try_from(roots.len()).unwrap());
+    let array_addr = u32::try_from(heap.as_ptr() as usize).unwrap();
+    let mut offset = 0;
+    write_word(heap, offset, TAG_ARRAY);
+    offset += WORD_SIZE;
+
+    if incremental {
+        write_word(heap, offset, make_pointer(array_addr));
+        offset += WORD_SIZE;
+    }
+
+    write_word(heap, offset, u32::try_from(roots.len()).unwrap());
+    offset += WORD_SIZE;
 
     // Current offset in the heap for the next static roots array element
     let mut root_addr_offset = size_of::<Array>().to_bytes().as_usize();
+    assert_eq!(offset, root_addr_offset);
 
     // Current offset in the heap for the MutBox of the next root
     let mut mutbox_offset = (size_of::<Array>().as_usize() + roots.len()) * WORD_SIZE;
 
     for root_address in root_addresses {
         // Add a MutBox for the object
-        write_word(heap, mutbox_offset, TAG_MUTBOX);
+        let mutbox_addr = heap.as_ptr() as usize + mutbox_offset;
+        let mutbox_ptr = make_pointer(u32::try_from(mutbox_addr).unwrap());
+
+        offset = mutbox_offset;
+        write_word(heap, offset, TAG_MUTBOX);
+        offset += WORD_SIZE;
+
+        if incremental {
+            write_word(heap, offset, mutbox_ptr);
+            offset += WORD_SIZE;
+        }
+
         write_word(
             heap,
-            mutbox_offset + WORD_SIZE,
+            offset,
             make_pointer(u32::try_from(root_address).unwrap()),
         );
+        offset += WORD_SIZE;
 
-        let mutbox_addr = heap.as_ptr() as usize + mutbox_offset;
-        write_word(
-            heap,
-            root_addr_offset,
-            make_pointer(u32::try_from(mutbox_addr).unwrap()),
-        );
+        write_word(heap, root_addr_offset, mutbox_ptr);
 
         root_addr_offset += WORD_SIZE;
         mutbox_offset += size_of::<MutBox>().to_bytes().as_usize();
+        assert_eq!(offset, mutbox_offset);
     }
 
     // Write continuation table pointer as the last word in static heap

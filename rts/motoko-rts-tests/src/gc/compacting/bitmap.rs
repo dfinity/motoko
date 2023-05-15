@@ -13,8 +13,8 @@ use proptest::strategy::Strategy;
 use proptest::test_runner::{Config, TestCaseError, TestCaseResult, TestRunner};
 
 pub unsafe fn test() {
-    println!("Testing bitmap ...");
-    println!("  Testing set_bit/get_bit");
+    println!("  Testing bitmap ...");
+    println!("    Testing set_bit/get_bit");
 
     {
         let mut mem = TestMemory::new(Words(1024));
@@ -36,7 +36,7 @@ pub unsafe fn test() {
         })
         .unwrap();
 
-    println!("  Testing bit iteration");
+    println!("    Testing bit iteration");
     proptest_runner
         .run(&bit_index_set_strategy(), |bits| {
             // Same as above
