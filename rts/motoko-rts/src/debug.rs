@@ -109,7 +109,7 @@ unsafe fn print_heap(heap_start: u32, heap_end: u32) {
         print(&write_buf);
         write_buf.reset();
 
-        let obj_size = object_size(p as usize);
+        let obj_size = block_size(p as usize);
         p += obj_size.to_bytes().as_u32();
         i += obj_size;
     }
@@ -122,6 +122,12 @@ unsafe fn print_tagged_scalar(buf: &mut WriteBuf, p: u32) {
 /// Print boxed object at address `p`.
 pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
     let _ = write!(buf, "{:#x}: ", p);
+
+    let forward = (*(p as *mut Value)).forward();
+    if forward.get_ptr() != p {
+        let _ = write!(buf, "<forwarded to {:#x}>", forward.get_ptr());
+        return;
+    }
 
     let obj = p as *mut Obj;
     let tag = obj.tag();
@@ -159,7 +165,7 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
             let obj_ind = obj as *const ObjInd;
             let _ = write!(buf, "<ObjInd field={:#x}>", (*obj_ind).field.get_raw());
         }
-        TAG_ARRAY => {
+        TAG_ARRAY | TAG_ARRAY_SLICE_MIN.. => {
             let array = obj as *mut Array;
             let _ = write!(buf, "<Array len={:#x}", (*array).len);
 

@@ -83,6 +83,7 @@ dependencies = [
  "fxhash",
  "libc",
  "motoko-rts",
+ "motoko-rts-macros",
  "oorandom",
  "proptest",
 ]

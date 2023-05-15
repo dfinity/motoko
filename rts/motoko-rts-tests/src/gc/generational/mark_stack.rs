@@ -10,7 +10,7 @@ use motoko_rts::types::*;
 use proptest::test_runner::{Config, TestCaseError, TestCaseResult, TestRunner};
 
 pub unsafe fn test() {
-    println!("  Testing generational GC mark stack ...");
+    println!("  Testing mark stack ...");
 
     test_push_pop();
     test_grow_stack();

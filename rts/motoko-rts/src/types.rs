@@ -19,10 +19,13 @@
 // [1]: https://github.com/rust-lang/reference/blob/master/src/types/struct.md
 // [2]: https://doc.rust-lang.org/stable/reference/type-layout.html#the-c-representation
 
-use crate::gc::generational::write_barrier::write_barrier;
+use crate::barriers::{init_with_barrier, write_with_barrier};
 use crate::memory::Memory;
 use crate::tommath_bindings::{mp_digit, mp_int};
 use core::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
+use core::ptr::null;
+use motoko_rts_macros::is_incremental_gc;
+use motoko_rts_macros::*;
 
 use crate::constants::WORD_SIZE;
 use crate::rts_trap_with;
@@ -262,57 +265,127 @@ impl Value {
         unskew(self.0 as usize)
     }
 
-    /// Get the object tag. In debug mode panics if the value is not a pointer.
-    pub unsafe fn tag(self) -> Tag {
-        debug_assert!(self.get().is_ptr());
-        (self.get_ptr() as *mut Obj).tag()
+    /// Check that the forwarding pointer is valid.
+    #[inline]
+    pub unsafe fn check_forwarding_pointer(self) {
+        if is_incremental_gc!() {
+            debug_assert!(
+                self.forward().get_ptr() == self.get_ptr()
+                    || self.forward().forward().get_ptr() == self.forward().get_ptr()
+            );
+        }
     }
 
-    /// Get the pointer as `Obj`. In debug mode panics if the value is not a pointer.
+    /// Check whether the object's forwarding pointer refers to a different location.
+    pub unsafe fn is_forwarded(self) -> bool {
+        if is_incremental_gc!() {
+            self.check_forwarding_pointer();
+            self.forward().get_ptr() != self.get_ptr()
+        } else {
+            false
+        }
+    }
+
+    /// Get the object tag. No forwarding. Can be applied to any block, regular objects
+    /// with a header as well as `OneWordFiller`, `FwdPtr`, and `FreeSpace`.
+    /// In debug mode panics if the value is not a pointer.
+    pub unsafe fn tag(self) -> Tag {
+        *(self.get_ptr() as *const Tag)
+    }
+
+    /// Get the forwarding pointer. Used by the incremental GC.
+    #[incremental_gc]
+    pub unsafe fn forward(self) -> Value {
+        debug_assert!(self.is_obj());
+        debug_assert!(self.get_ptr() as *const Obj != null());
+        let obj = self.get_ptr() as *const Obj;
+        (*obj).forward
+    }
+
+    /// Get the forwarding pointer. Used by the incremental GC.
+    #[non_incremental_gc]
+    pub unsafe fn forward(self) -> Value {
+        self
+    }
+
+    /// Resolve forwarding if the value is a pointer. Otherwise, return the same value.
+    pub unsafe fn forward_if_possible(self) -> Value {
+        if is_incremental_gc!() && self.is_ptr() && self.get_ptr() as *const Obj != null() {
+            // Ignore null pointers used in text_iter.
+            self.forward()
+        } else {
+            self
+        }
+    }
+
+    /// Determines whether the value refers to an object with a regular header that contains a forwarding pointer.
+    /// Returns `false` for pointers to special `OneWordFiller`, `FwdPtr`, and `FreeSpace` blocks that do not have
+    /// a regular object header.
+    pub unsafe fn is_obj(self) -> bool {
+        let tag = self.tag();
+        tag != TAG_FWD_PTR && tag != TAG_ONE_WORD_FILLER && tag != TAG_FREE_SPACE
+    }
+
+    /// Get the pointer as `Obj` using forwarding. In debug mode panics if the value is not a pointer.
     pub unsafe fn as_obj(self) -> *mut Obj {
         debug_assert!(self.get().is_ptr());
-        self.get_ptr() as *mut Obj
+        self.check_forwarding_pointer();
+        self.forward().get_ptr() as *mut Obj
     }
 
-    /// Get the pointer as `Array`. In debug mode panics if the value is not a pointer or the
+    /// Get the pointer as `MutBox` using forwarding. In debug mode panics if the value is not a pointer.
+    pub unsafe fn as_mutbox(self) -> *mut MutBox {
+        debug_assert_eq!(self.tag(), TAG_MUTBOX);
+        self.check_forwarding_pointer();
+        self.forward().get_ptr() as *mut MutBox
+    }
+
+    /// Get the pointer as `Array` using forwarding. In debug mode panics if the value is not a pointer or the
     /// pointed object is not an `Array`.
     pub unsafe fn as_array(self) -> *mut Array {
-        debug_assert_eq!(self.tag(), TAG_ARRAY);
-        self.get_ptr() as *mut Array
+        debug_assert!(self.tag() == TAG_ARRAY || self.tag() >= TAG_ARRAY_SLICE_MIN);
+        self.check_forwarding_pointer();
+        self.forward().get_ptr() as *mut Array
     }
 
-    /// Get the pointer as `Concat`. In debug mode panics if the value is not a pointer or the
+    /// Get the pointer as `Concat` using forwarding. In debug mode panics if the value is not a pointer or the
     /// pointed object is not a `Concat`.
     pub unsafe fn as_concat(self) -> *const Concat {
         debug_assert_eq!(self.tag(), TAG_CONCAT);
-        self.get_ptr() as *const Concat
+        self.check_forwarding_pointer();
+        self.forward().get_ptr() as *const Concat
     }
 
-    /// Get the pointer as `Blob`. In debug mode panics if the value is not a pointer or the
+    /// Get the pointer as `Blob` using forwarding. In debug mode panics if the value is not a pointer or the
     /// pointed object is not a `Blob`.
     pub unsafe fn as_blob(self) -> *const Blob {
         debug_assert_eq!(self.tag(), TAG_BLOB);
-        self.get_ptr() as *const Blob
+        self.check_forwarding_pointer();
+        self.forward().get_ptr() as *const Blob
     }
 
+    /// Get the pointer as mutable `Blob` using forwarding.
     pub unsafe fn as_blob_mut(self) -> *mut Blob {
         debug_assert_eq!(self.tag(), TAG_BLOB);
-        self.get_ptr() as *mut Blob
+        self.check_forwarding_pointer();
+        self.forward().get_ptr() as *mut Blob
     }
 
-    /// Get the pointer as `Stream`, which is a glorified `Blob`.
+    /// Get the pointer as `Stream` using forwarding, which is a glorified `Blob`.
     /// In debug mode panics if the value is not a pointer or the
     /// pointed object is not a `Blob`.
     pub unsafe fn as_stream(self) -> *mut Stream {
         debug_assert_eq!(self.tag(), TAG_BLOB);
-        self.get_ptr() as *mut Stream
+        self.check_forwarding_pointer();
+        self.forward().get_ptr() as *mut Stream
     }
 
-    /// Get the pointer as `BigInt`. In debug mode panics if the value is not a pointer or the
+    /// Get the pointer as `BigInt` using forwarding. In debug mode panics if the value is not a pointer or the
     /// pointed object is not a `BigInt`.
     pub unsafe fn as_bigint(self) -> *mut BigInt {
         debug_assert_eq!(self.tag(), TAG_BIGINT);
-        self.get_ptr() as *mut BigInt
+        self.check_forwarding_pointer();
+        self.forward().get_ptr() as *mut BigInt
     }
 
     pub fn as_tiny(self) -> i32 {
@@ -367,7 +440,7 @@ pub const TAG_CLOSURE: Tag = 11;
 pub const TAG_SOME: Tag = 13;
 pub const TAG_VARIANT: Tag = 15;
 pub const TAG_BLOB: Tag = 17;
-pub const TAG_FWD_PTR: Tag = 19;
+pub const TAG_FWD_PTR: Tag = 19; // Only used by the copying GC - not to be confused with forwarding pointer in the header used for incremental GC.
 pub const TAG_BITS32: Tag = 21;
 pub const TAG_BIGINT: Tag = 23;
 pub const TAG_CONCAT: Tag = 25;
@@ -387,9 +460,32 @@ pub const TAG_ARRAY_SLICE_MIN: Tag = 32;
 #[repr(C)] // See the note at the beginning of this module
 pub struct Obj {
     pub tag: Tag,
+    // Cannot use `#[incremental_gc]` as Rust only allows non-macro attributes for fields.
+    #[cfg(feature = "incremental_gc")]
+    /// Forwarding pointer to support object moving in the incremental GC.
+    pub forward: Value,
 }
 
 impl Obj {
+    #[incremental_gc]
+    pub fn init_forward(&mut self, value: Value) {
+        self.forward = value;
+    }
+
+    #[non_incremental_gc]
+    pub fn init_forward(&mut self, _value: Value) {}
+
+    /// Check whether the object's forwarding pointer refers to a different location.
+    #[incremental_gc]
+    pub unsafe fn is_forwarded(self: *const Self) -> bool {
+        (*self).forward.get_ptr() != self as usize
+    }
+
+    #[non_incremental_gc]
+    pub unsafe fn is_forwarded(self: *const Self) -> bool {
+        false
+    }
+
     pub unsafe fn tag(self: *const Self) -> Tag {
         (*self).tag
     }
@@ -426,15 +522,26 @@ impl Array {
         *(slot_addr as *const Value)
     }
 
-    /// Write a pointer value to an array element. Uses a post-update barrier.
-    pub unsafe fn set_pointer<M: Memory>(self: *mut Self, idx: u32, value: Value, mem: &mut M) {
-        debug_assert!(value.is_ptr());
-        let slot_addr = self.element_address(idx);
-        *(slot_addr as *mut Value) = value;
-        write_barrier(mem, slot_addr as u32);
+    /// Initialize the element of a newly created array.
+    /// Uses a generational post-update barrier on pointer writes.
+    /// No incremental pre-update barrier as the previous value is undefined.
+    /// Resolve pointer forwarding for the written value if necessary.
+    pub unsafe fn initialize<M: Memory>(self: *mut Self, idx: u32, value: Value, mem: &mut M) {
+        let slot_addr = self.element_address(idx) as *mut Value;
+        init_with_barrier(mem, slot_addr, value);
     }
 
-    /// Write a scalar value to an array element. No need for a write barrier.
+    /// Write a pointer value to an array element.
+    /// Uses a incremental pre-update barrier and a generational post-update barrier.
+    /// Resolves pointer forwarding for the written value.
+    pub unsafe fn set_pointer<M: Memory>(self: *mut Self, idx: u32, value: Value, mem: &mut M) {
+        debug_assert!(value.is_ptr());
+        let slot_addr = self.element_address(idx) as *mut Value;
+        write_with_barrier(mem, slot_addr, value);
+    }
+
+    /// Write a scalar value to an array element.
+    /// No need for a write barrier.
     pub unsafe fn set_scalar(self: *mut Self, idx: u32, value: Value) {
         debug_assert!(value.is_scalar());
         let slot_addr = self.element_address(idx);
@@ -507,11 +614,11 @@ pub struct Blob {
 
 impl Blob {
     pub unsafe fn payload_addr(self: *mut Self) -> *mut u8 {
-        self.add(1) as *mut u8 // skip closure header
+        self.add(1) as *mut u8 // skip blob header
     }
 
     pub unsafe fn payload_const(self: *const Self) -> *const u8 {
-        self.add(1) as *mut u8 // skip closure header
+        self.add(1) as *mut u8 // skip blob header
     }
 
     pub unsafe fn len(self: *const Self) -> Bytes<u32> {
@@ -538,12 +645,13 @@ impl Blob {
         if slop == Words(1) {
             let filler = (self.payload_addr() as *mut u32).add(new_len_words.as_usize())
                 as *mut OneWordFiller;
-            (*filler).header.tag = TAG_ONE_WORD_FILLER;
+            (*filler).tag = TAG_ONE_WORD_FILLER;
         } else if slop != Words(0) {
+            debug_assert!(slop >= size_of::<FreeSpace>());
             let filler =
                 (self.payload_addr() as *mut u32).add(new_len_words.as_usize()) as *mut FreeSpace;
-            (*filler).header.tag = TAG_FREE_SPACE;
-            (*filler).words = slop - Words(1);
+            (*filler).tag = TAG_FREE_SPACE;
+            (*filler).words = slop - size_of::<FreeSpace>();
         }
 
         (*self).len = new_len;
@@ -555,6 +663,11 @@ impl Blob {
 #[repr(C)] // See the note at the beginning of this module
 pub struct Stream {
     pub header: Blob,
+
+    // Cannot use `#[incremental_gc]` as Rust only allows non-macro attributes for fields.
+    #[cfg(feature = "incremental_gc")]
+    pub padding: u32, // The insertion of the forwarding pointer in the header implies 1 word padding to 64-bit.
+
     pub ptr64: u64,   // Use `ptr64_read()` and `ptr64_write()` to access.
     pub start64: u64, // Use `start64_read()` and `start64_write()` to access.
     pub limit64: u64, // Use `limit64_read()` and `limit64_write()` to access.
@@ -562,10 +675,23 @@ pub struct Stream {
     pub filled: Bytes<u32>,                                    // cache data follows ..
 }
 
-/// A forwarding pointer placed by the GC in place of an evacuated object.
+impl Stream {
+    pub unsafe fn is_forwarded(self: *const Self) -> bool {
+        (self as *const Obj).is_forwarded()
+    }
+
+    pub unsafe fn as_blob_mut(self: *mut Self) -> *mut Blob {
+        debug_assert!(!self.is_forwarded());
+        self as *mut Blob
+    }
+}
+
+/// Only used by the copying GC - not to be confused with the forwarding pointer in the general object header
+/// that is used by the incremental GC.
+/// A forwarding pointer placed by the copying GC in place of an evacuated object.
 #[repr(C)] // See the note at the beginning of this module
 pub struct FwdPtr {
-    pub header: Obj,
+    pub tag: Tag,
     pub fwd: Value,
 }
 
@@ -589,8 +715,19 @@ impl BigInt {
         self.add(1) as *mut mp_digit // skip closure header
     }
 
+    #[incremental_gc]
+    pub unsafe fn forward(self: *mut Self) -> *mut Self {
+        (*self).header.forward.as_bigint()
+    }
+
+    #[non_incremental_gc]
+    pub unsafe fn forward(self: *mut Self) -> *mut Self {
+        self
+    }
+
     pub unsafe fn from_payload(ptr: *mut mp_digit) -> *mut Self {
-        (ptr as *mut u32).sub(size_of::<BigInt>().as_usize()) as *mut BigInt
+        let bigint = (ptr as *mut u32).sub(size_of::<BigInt>().as_usize()) as *mut BigInt;
+        bigint.forward()
     }
 
     /// Returns pointer to the `mp_int` struct
@@ -674,37 +811,42 @@ pub struct Bits32 {
 /// Marks one word empty space in heap
 #[repr(C)] // See the note at the beginning of this module
 pub struct OneWordFiller {
-    pub header: Obj,
+    pub tag: Tag,
 }
 
 /// Marks arbitrary sized emtpy space in heap
 #[repr(C)] // See the note at the beginning of this module
 pub struct FreeSpace {
-    pub header: Obj,
+    pub tag: Tag,
     pub words: Words<u32>,
 }
 
 impl FreeSpace {
     /// Size of the free space (includes object header)
     pub unsafe fn size(self: *mut Self) -> Words<u32> {
-        (*self).words + size_of::<Obj>()
+        (*self).words + size_of::<FreeSpace>()
     }
 }
 
-/// Returns object size in words
-pub(crate) unsafe fn object_size(obj: usize) -> Words<u32> {
-    let obj = obj as *mut Obj;
-    match obj.tag() {
+/// Returns the heap block size in words.
+/// Handles both objects with header and forwarding pointer
+/// and special blocks such as `OneWordFiller`, `FwdPtr`, and `FreeSpace`
+/// that do not have a forwarding pointer.
+pub(crate) unsafe fn block_size(address: usize) -> Words<u32> {
+    let tag = *(address as *mut Tag);
+    match tag {
         TAG_OBJECT => {
-            let object = obj as *mut Object;
+            let object = address as *mut Object;
             let size = object.size();
             size_of::<Object>() + Words(size)
         }
 
         TAG_OBJ_IND => size_of::<ObjInd>(),
 
+        // `block_size` is not used during the incremental mark phase and
+        // therefore, does not support array slicing.
         TAG_ARRAY => {
-            let array = obj as *mut Array;
+            let array = address as *mut Array;
             let size = array.len();
             size_of::<Array>() + Words(size)
         }
@@ -714,7 +856,7 @@ pub(crate) unsafe fn object_size(obj: usize) -> Words<u32> {
         TAG_MUTBOX => size_of::<MutBox>(),
 
         TAG_CLOSURE => {
-            let closure = obj as *mut Closure;
+            let closure = address as *mut Closure;
             let size = closure.size();
             size_of::<Closure>() + Words(size)
         }
@@ -724,7 +866,7 @@ pub(crate) unsafe fn object_size(obj: usize) -> Words<u32> {
         TAG_VARIANT => size_of::<Variant>(),
 
         TAG_BLOB => {
-            let blob = obj as *mut Blob;
+            let blob = address as *mut Blob;
             size_of::<Blob>() + blob.len().to_words()
         }
 
@@ -735,7 +877,7 @@ pub(crate) unsafe fn object_size(obj: usize) -> Words<u32> {
         TAG_BITS32 => size_of::<Bits32>(),
 
         TAG_BIGINT => {
-            let bigint = obj as *mut BigInt;
+            let bigint = address as *mut BigInt;
             size_of::<BigInt>() + bigint.len().to_words()
         }
 
@@ -746,7 +888,7 @@ pub(crate) unsafe fn object_size(obj: usize) -> Words<u32> {
         TAG_ONE_WORD_FILLER => size_of::<OneWordFiller>(),
 
         TAG_FREE_SPACE => {
-            let free_space = obj as *mut FreeSpace;
+            let free_space = address as *mut FreeSpace;
             free_space.size()
         }
 
