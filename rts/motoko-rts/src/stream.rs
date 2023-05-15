@@ -29,6 +29,8 @@
 //              (from `compile.ml`) in sync with the layout!
 // - Note: `len` and `filled` are relative to the encompassing blob.
 
+use core::ptr::{addr_of, addr_of_mut};
+
 use crate::bigint::{check, mp_get_u32, mp_isneg, mp_iszero};
 use crate::mem_utils::memcpy_bytes;
 use crate::memory::{alloc_blob, Memory};
@@ -52,10 +54,10 @@ pub unsafe fn alloc_stream<M: Memory>(mem: &mut M, size: Bytes<u32>) -> *mut Str
         rts_trap_with("alloc_stream: Cache too large");
     }
     let stream = alloc_blob(mem, size + INITIAL_STREAM_FILLED).as_stream();
-    (*stream).ptr64 = 0;
-    (*stream).start64 = 0;
-    (*stream).limit64 = 0;
-    (*stream).outputter = Stream::no_backing_store;
+    stream.write_ptr64(0);
+    stream.write_start64(0);
+    stream.write_limit64(0);
+    stream.write_outputter(Stream::no_backing_store);
     (*stream).filled = INITIAL_STREAM_FILLED;
     stream
 }
@@ -67,6 +69,49 @@ extern "C" {
 }
 
 impl Stream {
+    pub unsafe fn write_ptr64(self: *mut Self, value: u64) {
+        let ptr64_field = addr_of_mut!((*self).ptr64);
+        ptr64_field.write_unaligned(value);
+    }
+
+    pub unsafe fn read_ptr64(self: *const Self) -> u64 {
+        let ptr64_field = addr_of!((*self).ptr64);
+        ptr64_field.read_unaligned()
+    }
+
+    pub unsafe fn write_start64(self: *mut Self, value: u64) {
+        let start64_field = addr_of_mut!((*self).start64);
+        start64_field.write_unaligned(value);
+    }
+
+    pub unsafe fn read_start64(self: *const Self) -> u64 {
+        let start64_field = addr_of!((*self).start64);
+        start64_field.read_unaligned()
+    }
+
+    pub unsafe fn write_limit64(self: *mut Self, value: u64) {
+        let limit64_field = addr_of_mut!((*self).limit64);
+        limit64_field.write_unaligned(value);
+    }
+
+    pub unsafe fn read_limit64(self: *const Self) -> u64 {
+        let limit64_field = addr_of!((*self).limit64);
+        limit64_field.read_unaligned()
+    }
+
+    pub unsafe fn read_outputter(self: *const Self) -> fn(*mut Self, *const u8, Bytes<u32>) -> () {
+        let outputter_field = addr_of!((*self).outputter);
+        outputter_field.read_unaligned()
+    }
+
+    pub unsafe fn write_outputter(
+        self: *mut Self,
+        value: fn(*mut Self, *const u8, Bytes<u32>) -> (),
+    ) {
+        let outputter_field = addr_of_mut!((*self).outputter);
+        outputter_field.write_unaligned(value);
+    }
+
     #[inline]
     pub unsafe fn cache_addr(self: *const Self) -> *const u8 {
         self.add(1) as *const u8 // skip closure header
@@ -81,7 +126,7 @@ impl Stream {
     fn flush(self: *mut Self) {
         unsafe {
             if (*self).filled > INITIAL_STREAM_FILLED {
-                ((*self).outputter)(
+                (self.read_outputter())(
                     self,
                     self.cache_addr(),
                     (*self).filled - INITIAL_STREAM_FILLED,
@@ -98,9 +143,9 @@ impl Stream {
     #[cfg(feature = "ic")]
     fn send_to_stable(self: *mut Self, ptr: *const u8, n: Bytes<u32>) {
         unsafe {
-            let next_ptr64 = (*self).ptr64 + n.as_u32() as u64;
-            stable64_write_moc((*self).ptr64, ptr as u64, n.as_u32() as u64);
-            (*self).ptr64 = next_ptr64
+            let next_ptr64 = self.read_ptr64() + n.as_u32() as u64;
+            stable64_write_moc(self.read_ptr64(), ptr as u64, n.as_u32() as u64);
+            self.write_ptr64(next_ptr64);
         }
     }
 
@@ -110,10 +155,10 @@ impl Stream {
     #[export_name = "stream_stable_dest"]
     pub fn setup_stable_dest(self: *mut Self, start: u64, limit: u64) {
         unsafe {
-            (*self).ptr64 = start;
-            (*self).start64 = start;
-            (*self).limit64 = limit;
-            (*self).outputter = Self::send_to_stable;
+            self.write_ptr64(start);
+            self.write_start64(start);
+            self.write_limit64(limit);
+            self.write_outputter(Self::send_to_stable);
         }
     }
 
@@ -121,11 +166,11 @@ impl Stream {
     #[export_name = "stream_write"]
     pub fn cache_bytes(self: *mut Self, ptr: *const u8, n: Bytes<u32>) {
         unsafe {
-            if (*self).limit64 != 0 && n > STREAM_CHUNK_SIZE
+            if self.read_limit64() != 0 && n > STREAM_CHUNK_SIZE
                 || (*self).filled + n > (*self).header.len
             {
                 self.flush();
-                ((*self).outputter)(self, ptr, n);
+                (self.read_outputter())(self, ptr, n);
             } else {
                 let dest = self
                     .as_blob_mut()

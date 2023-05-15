@@ -550,14 +550,16 @@ impl Blob {
     }
 }
 
+// Note: The 64-bit fields must be accessed by dedicated read and write functions to avoid misaligned access errors.
+// Moreover, the latest Rust versions seems to require the function-typed field `outputter` to be 64-bit aligned too.
 #[repr(C)] // See the note at the beginning of this module
 pub struct Stream {
     pub header: Blob,
-    pub ptr64: u64,
-    pub start64: u64,
-    pub limit64: u64,
-    pub outputter: fn(*mut Self, *const u8, Bytes<u32>) -> (),
-    pub filled: Bytes<u32>, // cache data follows ..
+    pub ptr64: u64,   // Use `ptr64_read()` and `ptr64_write()` to access.
+    pub start64: u64, // Use `start64_read()` and `start64_write()` to access.
+    pub limit64: u64, // Use `limit64_read()` and `limit64_write()` to access.
+    pub outputter: fn(*mut Self, *const u8, Bytes<u32>) -> (), // Use `outputter_read()` and `outputter_write()` to access.
+    pub filled: Bytes<u32>,                                    // cache data follows ..
 }
 
 /// A forwarding pointer placed by the GC in place of an evacuated object.

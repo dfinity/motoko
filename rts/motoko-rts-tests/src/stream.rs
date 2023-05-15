@@ -52,7 +52,10 @@ pub unsafe fn test() {
         }
     }
     let stream = alloc_stream(&mut mem, Bytes(6000));
-    (*stream).outputter = just_count;
+    assert_eq!(stream.read_ptr64(), 0);
+    assert_eq!(stream.read_start64(), 0);
+    assert_eq!(stream.read_limit64(), 0);
+    stream.write_outputter(just_count);
     let place = stream.reserve(Bytes(20));
     *place = 'a' as u8;
     *place.add(1) = 'b' as u8;
