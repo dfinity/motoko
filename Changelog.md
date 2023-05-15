@@ -1,5 +1,13 @@
 # Motoko compiler changelog
 
+## 0.9.1 (2023-05-15)
+
+* motoko (`moc`)
+
+  * Added implementation for `ic0.is_controller` as a primitive (#3935).
+
+  * Added ability to enable the new incremental GC in the Motoko Playground (#3976).
+
 ## 0.9.0 (2023-05-12)
 
 * motoko (`moc`)
