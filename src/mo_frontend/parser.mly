@@ -643,14 +643,11 @@ exp_un(B) :
   | e=exp_bin(B) COLON t=typ_nobin
     { AnnotE(e, t) @? at $sloc }
   | e1=exp_bin(B) PIPE f = exp_post(B) inst=inst mk_arg=pipe_arg
-    { match e1.it with
-      | VarE x ->
-        CallE(f, inst, mk_arg e1) @? at $sloc
-      | _ ->
-        let x = anon_id "hole" e1.at @@ e1.at in
-        BlockE [LetD (VarP x @! x.at, e1, None) @? e1.at;
-                ExpD (CallE(f, inst, mk_arg (dup_var x)) @? at $sloc) @? at $sloc
-               ] @? at $sloc }
+    { let x = anon_id "hole" e1.at @@ e1.at in
+      BlockE [
+        LetD (VarP x @! x.at, e1, None) @? e1.at;
+        ExpD (CallE(f, inst, mk_arg (dup_var x)) @? at $sloc) @? at $sloc
+      ] @? at $sloc }
 
 (* Pipe arguments (with one hole) *)
 

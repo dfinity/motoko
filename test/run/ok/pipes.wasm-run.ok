@@ -21,13 +21,3 @@ f
 f
 #A
 #B
-assertion failed at pipes.mo:92.3-92.30
-Error: failed to run main module `_out/pipes.wasm`
-
-Caused by:
-    0: failed to invoke command default
-    1: wasm trap: unreachable
-       wasm backtrace:
-         0: init
-         1: _start
-       
