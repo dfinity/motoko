@@ -77,3 +77,16 @@ let 532 = "hello".chars() |> map(_, Prim.charToNat32) |> sum _;
 
 let 532 = Prim.charToNat32 |> map("hello".chars(), _) |> sum (_);
 
+
+/* eval order, continued */
+
+do {
+  // check eval order preserved, even for piped lvalues
+  var i = 0;
+  func f() : Nat -> Nat {
+    func (j : Nat) : Nat { i := 1; i };
+  };
+
+  // should read i before executing f()
+  assert (i |> (f())(_) == 0);
+}
