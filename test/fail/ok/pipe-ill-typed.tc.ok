@@ -1,0 +1,4 @@
+pipe-ill-typed.mo:6.16-6.18: type error [M0096], expression of type
+  {#B}
+cannot produce expected type
+  {#A}

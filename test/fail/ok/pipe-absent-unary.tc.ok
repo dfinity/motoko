@@ -1,0 +1,9 @@
+pipe-absent-unary.mo:3.12-3.13: syntax error [M0001], unexpected token ';', expected one of token or <phrase> sequence:
+  .<nat>
+  !
+  <pipe_arg>
+  <exp_nullary(ob)>
+  . <id>
+  <inst> <pipe_arg>
+  <inst> <exp_nullary(ob)>
+  [ <exp(ob)> ]
