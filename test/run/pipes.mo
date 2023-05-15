@@ -84,7 +84,8 @@ do {
   // check eval order preserved, even for piped lvalues
   var i = 0;
   func f() : Nat -> Nat {
-    func (j : Nat) : Nat { i := 1; i };
+    i := 1;
+    func (j : Nat) : Nat { j };
   };
 
   // should read i before executing f()

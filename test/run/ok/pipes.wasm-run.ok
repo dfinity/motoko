@@ -21,7 +21,7 @@ f
 f
 #A
 #B
-assertion failed at pipes.mo:91.3-91.30
+assertion failed at pipes.mo:92.3-92.30
 Error: failed to run main module `_out/pipes.wasm`
 
 Caused by:
