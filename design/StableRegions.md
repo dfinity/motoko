@@ -309,7 +309,7 @@ Including this design, there are three possible verions (`0`, `1`, or `2`).  See
 
 In the first cases (`0`) and (`1`), we wish to *selectively* migrate into the region system (`2`), with its own internal versioning.
 
-#### Trade-off discussion
+#### Trade offs
 
 The main factor involved in making the per-canister choice of stable memory format involves the mandatory block-sized reservation for current and future meta data (8MB).
 
@@ -318,7 +318,13 @@ eschew regions in favor of stable vars for stable data, thereby saving that 8MB 
 
 Canisters can do this by not using any stable memory API (only stable vars), or by using the experimental API and not enabling the compiler flag for regions.
 
-#### Opt-in discussion
+#### Opt-in mechanism
+
+The opt-in mechanism for using version 2 consists of doing both:
+
+ - Enabling the compiler flag.
+ - Using either `Region.new` or `StableMemory.grow` on a fresh canister,
+   or "upgrading" from a canister using version 1.
 
 Critically,
 
