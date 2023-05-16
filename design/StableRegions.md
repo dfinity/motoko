@@ -282,6 +282,8 @@ Initially, all of version 2 (the region system) is guarded by a compiler flag:
   --stable-regions
 ```
 
+A section below describes the opt in mechanism, after some more relevant background.
+
 #### Key points
 
 - Migration from earlier versions requires an explicit opt-in with the compiler flag.
