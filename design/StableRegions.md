@@ -299,6 +299,7 @@ A section below describes the opt in mechanism, after some more relevant backgro
 
 - Migration to version 2 from version 1 occurs on upgrade, when the compiler flag is set.
 
+We summarize the conditions for "opt in" again below.
 
 #### Format version details
 
