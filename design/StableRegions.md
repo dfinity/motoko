@@ -264,63 +264,69 @@ Before reusing that region, each of its block are added to the special "free blo
 
 ### Migration from earlier designs into region system
 
-#### Stable memory format versions
-
-The first 32 bits of stable memory record a "marker," which indicates how to determine the "version number"
-for Motoko stable memory, which is stored either:
-  - implicitly, when marker is non-zero, and version is `0`.
-  - explicitly, when marker is zero, and version is stored elsewhere (but currently always `1`).
+#### Version overview
 
 Including this design, there are three possible verions (`0`, `1`, or `2`):
 
- 0. Stable vars only. (Here, the marker is the always-non-zero serialization size).
+ 0. Stable vars only.
  1. Stable vars *plus* direct access to IC0 API, including `grow`.
- 2. Region system, where direct access still works through region zero.
-
-In the first cases (`0`) and (`1`), we wish to *selectively* migrate into the region system (`2`), with its own internal versioning.
-
-The main factor involved in making this per-canister choice involves
-
-the mandatory block-sized reservation for current and future meta data (8MB).
-
-For canisters that do not store an order of magnitude more than 8MB, it may make sense to
-eschew regions in favor of stable vars for stable data, thereby saving that 8MB of otherwise-wasted space.
-
-##### Explicit, opt-in migration API
-
-The canister migrates from versions 0 and 1 into version 2 using the `init` primitive, exposed in `base` as:
-
-````
-import R "mo:base/Region";
-R.init()
-```
-
-Doing `init` on a canister in version 2 has no effect.
+    This access is exposed via the Experimental Stable Memory API.
+ 2. This Region system, where direct access still works through region zero.
 
 
-A natural place to do `R.init()` is in the initialization code for the
-actor that wishes to use regions.
+#### Compiler flag
 
-Critically,
-
-1. There is no provision for "downgrading" back to earlier, pre-region systems.
-
-2. It does not make sense to place calls to `R.init()` in library code,
-   and the compiler or a linter (ideally) would warn about such uses.
-
-
-Until this check about strange placements of `R.init()` can be implemented, all of version 2 (the region system) is additionally guarded by a compiler flag:
+Initially, all of version 2 (the region system) is guarded by a compiler flag:
 
 ```
   --stable-regions
 ```
 
-Without enabling this flag, the region `R.init` primitive will not be compiled by the compiler.
+#### Key points
 
-Hence, the absence of the flag acts as a master "off switch".
+- Migration from earlier versions requires an explicit opt-in with the compiler flag.
+- (Our intention is to make this flag set automatically in the future, but not initially.)
 
-Using it is another layer of necessary "opt it" to use regions.  Again, this flag serves as a safeguard against unintentional upgrades, which cannot be directly reversed.
+- Version 0:
+  - will never be forced to "migrate" to other versions (assuming no stable memory API use).
+  - will never incur the space overhead of the region system.
 
+- Migration to version 2 from version 0 occurs when the compiler flag is set, and either:
+ - An initial region is allocated via `Region.new`.
+ - Experimental Stable Memory function `grow` is invoked for the first time.
+
+- Migration to version 2 from version 1 occurs on upgrade, when the compiler flag is set.
+
+
+#### Format version details
+
+The first 32 bits of stable memory record a "marker," which indicates how to determine the "version number"
+for Motoko stable memory.  This version number is stored either:
+  - *implicitly*, when the marker is non-zero, and version is `0`.
+  - *explicitly*, when the marker is zero, and version is stored elsewhere (but currently always `1`).
+
+Including this design, there are three possible verions (`0`, `1`, or `2`).  See preceeding section.
+
+In the first cases (`0`) and (`1`), we wish to *selectively* migrate into the region system (`2`), with its own internal versioning.
+
+#### Trade-off discussion
+
+The main factor involved in making the per-canister choice of stable memory format involves the mandatory block-sized reservation for current and future meta data (8MB).
+
+For canisters that do not store an order of magnitude more than 8MB, it may make sense to
+eschew regions in favor of stable vars for stable data, thereby saving that 8MB of otherwise-wasted space.
+
+Canisters can do this by not using any stable memory API (only stable vars), or by using the experimental API and not enabling the compiler flag for regions.
+
+#### Opt-in discussion
+
+Critically,
+
+1. There is no provision for "downgrading" back to earlier, pre-region systems.
+
+2. Since they opt into the system, it does not make sense to place calls to `R.new()` in library code without adequate documentation.  It may make sense to _never_ place them there, depending on the policy for controlling and managing regions.
+
+Until checks about unexpected placements of `R.new()` can be implemented, without enabling this flag, the region `R.new` primitive will not be compiled by the compiler.  Hence, the absence of the flag acts as a master "off switch".
 
 
 ##### Version 0 migration.
@@ -329,9 +335,11 @@ To migrate from version 0 to version 2, there is nothing additional to do for ex
 
 The region system detects this case by measuring the zero-sized stable memory during its initialization.
 
-##### Version 1 migration: Version 1 stable memory *as* region 0 in Version 2.
+##### Version 1 migration.
 
-To migrate from version 1, we must perserve existing data.
+Migrating version 1 stable memory renames it as "region 0" in Version 2.
+
+Critically, to migrate from version 1, we must perserve existing data, but reorganize it slightly.
 
 In effect, all existing data will retain its logical order as (pre-allocated) region 0.
 
