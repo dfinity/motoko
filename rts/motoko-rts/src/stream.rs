@@ -38,7 +38,7 @@ use crate::mem_utils::memcpy_bytes;
 use crate::memory::{alloc_blob, Memory};
 use crate::rts_trap_with;
 use crate::tommath_bindings::{mp_div_2d, mp_int};
-use crate::types::{read64, size_of, write64, Blob, Bytes, Stream, Value, TAG_BLOB};
+use crate::types::{size_of, Blob, Bytes, Stream, Value, TAG_BLOB};
 
 use motoko_rts_macros::ic_mem_fn;
 
@@ -73,30 +73,6 @@ extern "C" {
 }
 
 impl Stream {
-    pub unsafe fn write_ptr64(self: *mut Self, value: u64) {
-        write64(&mut (*self).ptr_lower, &mut (*self).ptr_upper, value);
-    }
-
-    pub unsafe fn read_ptr64(self: *const Self) -> u64 {
-        read64((*self).ptr_lower, (*self).ptr_upper)
-    }
-
-    pub unsafe fn write_start64(self: *mut Self, value: u64) {
-        write64(&mut (*self).start_lower, &mut (*self).start_upper, value);
-    }
-
-    pub unsafe fn read_start64(self: *const Self) -> u64 {
-        read64((*self).start_lower, (*self).start_upper)
-    }
-
-    pub unsafe fn write_limit64(self: *mut Self, value: u64) {
-        write64(&mut (*self).limit_lower, &mut (*self).limit_upper, value);
-    }
-
-    pub unsafe fn read_limit64(self: *const Self) -> u64 {
-        read64((*self).limit_lower, (*self).limit_upper)
-    }
-
     #[inline]
     pub unsafe fn cache_addr(self: *const Self) -> *const u8 {
         self.add(1) as *const u8 // skip closure header

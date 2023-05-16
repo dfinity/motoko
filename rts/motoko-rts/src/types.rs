@@ -685,15 +685,6 @@ pub struct Stream {
     pub filled: Bytes<u32>, // cache data follows ..
 }
 
-pub fn read64(lower: u32, upper: u32) -> u64 {
-    ((upper as u64) << 32) + lower as u64
-}
-
-pub fn write64(lower: &mut u32, upper: &mut u32, value: u64) {
-    *upper = (value >> 32) as u32;
-    *lower = (value & u32::MAX as u64) as u32;
-}
-
 impl Stream {
     pub unsafe fn is_forwarded(self: *const Self) -> bool {
         (self as *const Obj).is_forwarded()
@@ -703,6 +694,39 @@ impl Stream {
         debug_assert!(!self.is_forwarded());
         self as *mut Blob
     }
+
+    pub unsafe fn write_ptr64(self: *mut Self, value: u64) {
+        write64(&mut (*self).ptr_lower, &mut (*self).ptr_upper, value);
+    }
+
+    pub unsafe fn read_ptr64(self: *const Self) -> u64 {
+        read64((*self).ptr_lower, (*self).ptr_upper)
+    }
+
+    pub unsafe fn write_start64(self: *mut Self, value: u64) {
+        write64(&mut (*self).start_lower, &mut (*self).start_upper, value);
+    }
+
+    pub unsafe fn read_start64(self: *const Self) -> u64 {
+        read64((*self).start_lower, (*self).start_upper)
+    }
+
+    pub unsafe fn write_limit64(self: *mut Self, value: u64) {
+        write64(&mut (*self).limit_lower, &mut (*self).limit_upper, value);
+    }
+
+    pub unsafe fn read_limit64(self: *const Self) -> u64 {
+        read64((*self).limit_lower, (*self).limit_upper)
+    }
+}
+
+pub fn read64(lower: u32, upper: u32) -> u64 {
+    ((upper as u64) << u32::BITS) + lower as u64
+}
+
+pub fn write64(lower: &mut u32, upper: &mut u32, value: u64) {
+    *upper = (value >> u32::BITS) as u32;
+    *lower = (value & u32::MAX as u64) as u32;
 }
 
 /// Only used by the copying GC - not to be confused with the forwarding pointer in the general object header
