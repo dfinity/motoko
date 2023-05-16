@@ -353,4 +353,7 @@ let prim trap =
   | "encodeUtf8" ->
       fun _ v k -> k (Blob (as_text v))
 
+  | "is_controller" ->
+      fun _ v k -> k (Bool false)
+
   | s -> trap.trap ("Value.prim: " ^ s)
