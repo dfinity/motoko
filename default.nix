@@ -12,6 +12,13 @@ let stdenv = nixpkgs.stdenv; in
 
 let subpath = import ./nix/gitSource.nix; in
 
+let ic-hs-pkgs = import nixpkgs.sources.ic-hs { inherit (nixpkgs) system; }; in
+let ic-ref-run =
+  # copy out the binary, to remove dependencies on the libraries
+  nixpkgs.runCommandNoCC "ic-ref-run" {} ''
+      mkdir -p $out/bin
+      cp ${ic-hs-pkgs.ic-hs}/bin/ic-ref-run $out/bin
+  ''; in
 
 let haskellPackages = nixpkgs.haskellPackages.override {
       overrides = import nix/haskell-packages.nix nixpkgs subpath;
@@ -252,6 +259,8 @@ rec {
         mkdir -p $out/rts
         cp mo-rts.wasm $out/rts
         cp mo-rts-debug.wasm $out/rts
+        cp mo-rts-incremental.wasm $out/rts
+        cp mo-rts-incremental-debug.wasm $out/rts
       '';
 
       # This needs to be self-contained. Remove mention of nix path in debug
@@ -262,6 +271,11 @@ rec {
           -t ${rtsDeps} \
           -t ${rustStdDeps} \
           $out/rts/mo-rts.wasm $out/rts/mo-rts-debug.wasm
+        remove-references-to \
+          -t ${nixpkgs.rustc-nightly} \
+          -t ${rtsDeps} \
+          -t ${rustStdDeps} \
+          $out/rts/mo-rts-incremental.wasm $out/rts/mo-rts-incremental-debug.wasm
       '';
 
       allowedRequisites = [];
@@ -293,6 +307,8 @@ rec {
 
   # “our” Haskell packages
   inherit (haskellPackages) lsp-int qc-motoko;
+
+  inherit ic-ref-run;
 
   tests = let
     testDerivationArgs = {
@@ -352,12 +368,7 @@ rec {
       (test_subdir dir deps).overrideAttrs (args: {
           EXTRA_MOC_ARGS = "--sanity-checks";
       });
-
-    compacting_gc_subdir = dir: deps:
-      (test_subdir dir deps).overrideAttrs (args: {
-          EXTRA_MOC_ARGS = "--compacting-gc";
-      });
-
+      
     generational_gc_subdir = dir: deps:
       (test_subdir dir deps).overrideAttrs (args: {
           EXTRA_MOC_ARGS = "--generational-gc";
@@ -373,6 +384,10 @@ rec {
           EXTRA_MOC_ARGS = "--sanity-checks --generational-gc";
       });
 
+    snty_incremental_gc_subdir = dir: deps:
+      (test_subdir dir deps).overrideAttrs (args: {
+          EXTRA_MOC_ARGS = "--sanity-checks --incremental-gc";
+      });
 
     perf_subdir = dir: deps:
       (test_subdir dir deps).overrideAttrs (args: {
@@ -484,11 +499,12 @@ rec {
   in fix_names ({
       run        = test_subdir "run"        [ moc ] ;
       run-dbg    = snty_subdir "run"        [ moc ] ;
-      ic-ref-run = test_subdir "run-drun"   [ moc ic-ref-run ];
+      # ic-ref-run = test_subdir "run-drun"   [ moc ic-ref-run ];
       drun       = test_subdir "run-drun"   [ moc nixpkgs.drun ];
       drun-dbg   = snty_subdir "run-drun"   [ moc nixpkgs.drun ];
       drun-compacting-gc = snty_compacting_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
       drun-generational-gc = snty_generational_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
+      drun-incremental-gc = snty_incremental_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
       fail       = test_subdir "fail"       [ moc ];
       repl       = test_subdir "repl"       [ moc ];
       ld         = test_subdir "ld"         ([ mo-ld ] ++ ldTestDeps);
@@ -613,14 +629,9 @@ rec {
     installPhase = "touch $out";
   };
 
-  base-src = stdenv.mkDerivation {
+  base-src = nixpkgs.symlinkJoin {
     name = "base-src";
-    phases = "unpackPhase installPhase";
-    src = nixpkgs.sources.motoko-base + "/src";
-    installPhase = ''
-      mkdir -p $out
-      cp -rv * $out
-    '';
+    paths = "${nixpkgs.sources.motoko-base}/src";
   };
 
   base-tests = stdenv.mkDerivation {
@@ -747,6 +758,7 @@ rec {
       base-doc
       docs
       report-site
+      ic-ref-run
       shell
       check-formatting
       check-rts-formatting
