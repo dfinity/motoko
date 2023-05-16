@@ -299,6 +299,7 @@ A section below describes the opt in mechanism, after some more relevant backgro
 
 - Migration to version 2 from version 1 occurs on upgrade, when the compiler flag is set.
 
+We summarize the conditions for "opt in" again below.
 
 #### Format version details
 
@@ -335,7 +336,6 @@ Critically,
 2. Since they opt into the system, it does not make sense to place calls to `R.new()` in library code without adequate documentation.  It may make sense to _never_ place them there, depending on the policy for controlling and managing regions.
 
 Until checks about unexpected placements of `R.new()` can be implemented, without enabling this flag, the region `R.new` primitive will not be compiled by the compiler.  Hence, the absence of the flag acts as a master "off switch".
-
 
 ##### Version 0 migration.
 
