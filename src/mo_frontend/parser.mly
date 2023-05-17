@@ -243,6 +243,7 @@ and objblock s dec_fields =
 %nonassoc ELSE WHILE
 
 %left COLON
+%left PIPE
 %left OR
 %left AND
 %nonassoc EQOP NEQOP LEOP LTOP GTOP GEOP
@@ -253,7 +254,7 @@ and objblock s dec_fields =
 %left XOROP
 %nonassoc SHLOP SHROP ROTLOP ROTROP
 %left POWOP WRAPPOWOP
-%left PIPE
+
 
 %type<Mo_def.Syntax.exp> exp(ob) exp_nullary(ob) exp_plain exp_obj exp_nest
 %type<Mo_def.Syntax.typ_item> typ_item
@@ -579,6 +580,8 @@ exp_nullary(B) :
     { VarE(x) @? at $sloc }
   | PRIM s=TEXT
     { PrimE(s) @? at $sloc }
+  | UNDERSCORE
+    { VarE ("_" @@ at $sloc) @? at $sloc }
 
 exp_post(B) :
   | e=exp_nullary(B)
@@ -642,32 +645,12 @@ exp_un(B) :
     { OrE(e1, e2) @? at $sloc }
   | e=exp_bin(B) COLON t=typ_nobin
     { AnnotE(e, t) @? at $sloc }
-  | e1=exp_bin(B) PIPE f = exp_post(B) inst=inst mk_arg=pipe_arg
-    { let x = anon_id "hole" e1.at @@ e1.at in
+  | e1=exp_bin(B) PIPE e2=exp_bin(ob)
+    { let x = "_" @@ e1.at in
       BlockE [
         LetD (VarP x @! x.at, e1, None) @? e1.at;
-        ExpD (CallE(f, inst, mk_arg (dup_var x)) @? at $sloc) @? at $sloc
+        ExpD e2 @? e2.at
       ] @? at $sloc }
-
-(* Pipe arguments (with one hole) *)
-
-pipe_arg :
-  | UNDERSCORE
-    { fun e -> { e with at = at $sloc } }
-  | LPAR mk_es=pipe_args RPAR
-    { fun e ->
-        match mk_es e with
-        | [] -> assert false
-        | [e] -> e
-        | es -> TupE(es) @? at $sloc }
-
-pipe_args :
-  | UNDERSCORE
-    { fun h -> [ { h with at = at $sloc } ] }
-  | UNDERSCORE COMMA es=seplist(exp(ob), COMMA)
-    { fun h -> { h with at = at $loc($1) }::es }
-  | e=exp(ob) COMMA mk_es=pipe_args
-    { fun h -> e::mk_es h }
 
 
 %public exp_nondec(B) :

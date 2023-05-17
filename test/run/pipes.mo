@@ -104,3 +104,10 @@ let _ = do ? {
   let some = ??();
   (some ! |> f1(_))!;
 };
+
+
+/* non-linear, free-form piping */
+
+let 5 = 2 |> _ * _ |> _ + 1;
+
+

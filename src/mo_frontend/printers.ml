@@ -23,7 +23,7 @@ let string_of_symbol = function
   | X (T T_SHROP) -> binop " >>"
   | X (T T_SHRASSIGN) -> binop ">>="
   | X (T T_UNDERSCORE) -> "_"
-  | X (T T_TYPE) -> "type"
+  | X (T T_TYPE) -> "type"x
   | X (T T_TRY) -> "try"
   | X (T T_THROW) -> "throw"
   | X (T T_TEXT) -> "<text>"
@@ -188,8 +188,6 @@ let string_of_symbol = function
   | X (N N_pat_plain) -> "<pat_plain>"
   | X (N N_pat_un) -> "<pat_un>"
   | X (N N_path) -> "<path>"
-  | X (N N_pipe_arg) -> "<pipe_arg>"
-  | X (N N_pipe_args) -> "<pipe_args>"
   | X (N N_annot_opt) -> "<annot_opt>"
   | X (N N_seplist_case_semicolon_) ->  "seplist(<case>,<semicolon>)"
   | X (N N_seplist_dec_SEMICOLON_) -> "seplist(<dec>,;)"
