@@ -1,3 +1,0 @@
-pipe-non-linear.mo:3.28-3.29: syntax error [M0001], unexpected token '_', expected one of token or <phrase> sequence:
-  )
-  seplist(<exp(ob)>,,)
