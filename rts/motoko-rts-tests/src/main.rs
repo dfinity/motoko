@@ -1,5 +1,6 @@
+#![feature(proc_macro_hygiene)]
+
 mod bigint;
-mod bitmap;
 mod bitrel;
 mod continuation_table;
 mod crc32;
@@ -7,7 +8,6 @@ mod gc;
 mod leb128;
 mod memory;
 mod principal_id;
-mod remembered_set;
 mod stream;
 mod text;
 mod utf8;
@@ -22,7 +22,6 @@ fn main() {
 
     unsafe {
         bigint::test();
-        bitmap::test();
         bitrel::test();
         continuation_table::test();
         crc32::test();
@@ -32,7 +31,6 @@ fn main() {
         stream::test();
         text::test();
         utf8::test();
-        remembered_set::test();
     }
 }
 
