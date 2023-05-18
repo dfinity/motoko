@@ -4,6 +4,7 @@ syntax5.mo:3.1: syntax error [M0001], unexpected end of input, expected one of t
   !
   <exp_nullary(ob)>
   <binop> <exp(ob)>
+  |> <exp_bin(ob)>
   or <exp_bin(ob)>
   <unassign> <exp(ob)>
   implies <exp_bin(ob)>
@@ -17,4 +18,3 @@ syntax5.mo:3.1: syntax error [M0001], unexpected end of input, expected one of t
   <unop> <exp_bin(ob)>
   <inst> <exp_nullary(ob)>
   [ <exp(ob)> ]
-  |> <exp_post(ob)> <inst> <pipe_arg>
