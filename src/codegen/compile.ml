@@ -1138,7 +1138,7 @@ module Heap = struct
   (* Although we occasionally want to treat two consecutive
      32 bit fields as one 64 bit number *)
   
-  (* Requires little Endian encoding, see also `Stream` in `types.rs` *)
+  (* Requires little-endian encoding, see also `Stream` in `types.rs` *)
   let load_field64_unskewed (i : int32) : G.t =
     let offset = Int32.mul word_size i in
     G.i (Load {ty = I64Type; align = 2; offset; sz = None})
