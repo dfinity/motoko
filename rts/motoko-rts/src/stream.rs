@@ -23,7 +23,7 @@
 // - `obj header` contains tag (BLOB) and forwarding pointer
 // - `len` is in blob metadata
 // - `ptr64`, `start64`, and `limit64` are each represented as two 32-bit components
-//    in little Endian encoding.
+//    in little endian encoding.
 // - `ptr64` and `limit64` are the next and past-end pointers into stable memory
 // - `filled` and `cache` are the number of bytes consumed from the blob, and the
 //   staging area of the stream, respectively

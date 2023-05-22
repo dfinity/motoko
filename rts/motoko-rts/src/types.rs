@@ -666,17 +666,17 @@ impl Blob {
 pub struct Stream {
     pub header: Blob,
 
-    /// Components of the 64-bit `ptr` value. Little-Endian encoding.
+    /// Components of the 64-bit `ptr` value. Little-endian encoding.
     /// Use `read_ptr64()` and `write_ptr64()` to access.
     pub ptr_lower: u32,
     pub ptr_upper: u32,
 
-    /// Components of the 64-bit `start` value. Little-Endian encoding.
+    /// Components of the 64-bit `start` value. Little-endian encoding.
     /// Use `read_start64()` and `write_start64()` to access.
     pub start_lower: u32,
     pub start_upper: u32,
 
-    /// Components of the 64-bit `limit` value. Little-Endian encoding.
+    /// Components of the 64-bit `limit` value. Little-endian encoding.
     /// Use `read_limit64()` and `write_limit64()` to access.
     pub limit_lower: u32,
     pub limit_upper: u32,
