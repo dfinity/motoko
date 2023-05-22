@@ -1,1 +1,1 @@
-func three(#a () or #b () or #c ()) {};
+func three(#a or #b or #c) {};
