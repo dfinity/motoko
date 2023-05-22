@@ -100,7 +100,7 @@ let character =
   | "\\u{" hexnum '}'
 
 let multiline_character =
-  [^'`']
+  [^''']
 
 let nat = num | "0x" hexnum
 let frac = num
@@ -112,7 +112,7 @@ let float =
   | "0x" hexnum ('.' hexfrac?)? ('p' | 'P') sign? num
 let char = '\'' (character | byte+) '\''
 let text = '"' character* '"'
-let multiline_text = '`' multiline_character* '`'
+let multiline_text = "''" multiline_character* "''"
 let id = ((letter  | '_') ((letter | digit | '_')*))
 let privileged_id = "@" id
 
@@ -185,7 +185,7 @@ rule token mode = parse
   | float as s { FLOAT s }
   | char as s { CHAR (char lexbuf s) }
   | text as s { TEXT (text lexbuf s) }
-  | multiline_text as s { TEXT (text lexbuf s) }
+  | multiline_text as s { TEXT (text lexbuf (text lexbuf s)) }
   | '"'character*('\n'|eof)
     { error lexbuf "unclosed text literal" }
   | '"'character*['\x00'-'\x09''\x0b'-'\x1f''\x7f']
