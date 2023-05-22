@@ -1017,8 +1017,8 @@ and check_pat env pat : val_env =
   | AltP (pat1, pat2) ->
     let ve1 = check_pat env pat1 in
     let ve2 = check_pat env pat2 in
-    t <: pat1.note;
-    t <: pat2.note;
+    pat1.note <: t;
+    pat2.note <: t;
     check env pat.at (T.Env.is_empty ve1 && T.Env.is_empty ve2)
       "variables are not allowed in pattern alternatives";
     T.Env.empty
