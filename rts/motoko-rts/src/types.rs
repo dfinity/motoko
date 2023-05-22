@@ -721,7 +721,7 @@ impl Stream {
 }
 
 pub fn read64(lower: u32, upper: u32) -> u64 {
-    ((upper as u64) << u32::BITS) + lower as u64
+    ((upper as u64) << u32::BITS) | lower as u64
 }
 
 pub fn write64(lower: &mut u32, upper: &mut u32, value: u64) {
