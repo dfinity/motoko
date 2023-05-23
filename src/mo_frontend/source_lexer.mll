@@ -264,7 +264,7 @@ rule token mode = parse
   | '\n' { Lexing.new_line lexbuf; LINEFEED LF }
   | eof { EOF }
 
-  | utf8 { error lexbuf "malformed operator: kento" }
+  | utf8 { error lexbuf "malformed operator" }
   | _ { error lexbuf "malformed UTF-8 encoding" }
 
 and comment buf start = parse
