@@ -91,16 +91,15 @@ let utf8 = ascii | utf8enc
 let utf8_no_nl = ascii_no_nl | utf8enc
 
 let byte = '\\'hexdigit hexdigit
-let escape = ['n''r''t''\\''\'''\"']
+let escape = ['t''\\''\'''\"']
 let character =
     [^'"''\\''\x00'-'\x1f''\x7f'-'\xff']
   | utf8enc
   | byte
   | '\\'escape
   | "\\u{" hexnum '}'
-
-let multiline_character =
-  [^''']
+  | '\n'
+  | '\r'
 
 let nat = num | "0x" hexnum
 let frac = num
@@ -112,7 +111,6 @@ let float =
   | "0x" hexnum ('.' hexfrac?)? ('p' | 'P') sign? num
 let char = '\'' (character | byte+) '\''
 let text = '"' character* '"'
-let multiline_text = "''" multiline_character* "''"
 let id = ((letter  | '_') ((letter | digit | '_')*))
 let privileged_id = "@" id
 
@@ -185,9 +183,6 @@ rule token mode = parse
   | float as s { FLOAT s }
   | char as s { CHAR (char lexbuf s) }
   | text as s { TEXT (text lexbuf s) }
-  | multiline_text as s { TEXT (text lexbuf (text lexbuf s)) }
-  | '"'character*('\n'|eof)
-    { error lexbuf "unclosed text literal" }
   | '"'character*['\x00'-'\x09''\x0b'-'\x1f''\x7f']
     { error lexbuf "illegal control character in text literal" }
   | '"'character*'\\'_
@@ -269,7 +264,7 @@ rule token mode = parse
   | '\n' { Lexing.new_line lexbuf; LINEFEED LF }
   | eof { EOF }
 
-  | utf8 { error lexbuf "malformed operator" }
+  | utf8 { error lexbuf "malformed operator: kento" }
   | _ { error lexbuf "malformed UTF-8 encoding" }
 
 and comment buf start = parse

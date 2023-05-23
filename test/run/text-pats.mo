@@ -12,14 +12,9 @@ switch (?"foo") {
   case _ assert false;
 };
 
-switch "foo" {
-  case ''foo'' assert true;
-  case _ assert false;
-};
-
-switch ''foo
-'' {
-  case ''foo
-'' assert true;
+switch "foo
+" {
+  case "foo
+" assert true;
   case _ assert false;
 };
