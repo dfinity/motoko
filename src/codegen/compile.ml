@@ -2524,7 +2524,7 @@ module ReadBuf = struct
     incr_delta ^^
     compile_shrU_const 16l
 
-  let is_empty env get_buf =
+  let is_empty get_buf =
     get_end get_buf ^^ get_ptr get_buf ^^
     G.i (Compare (Wasm.Values.I32 I64Op.Eq))
 
@@ -6051,6 +6051,15 @@ module MakeSerialization (Strm : Stream) = struct
 
     val get_ptr : G.t -> G.t
     val set_ptr : G.t -> G.t -> G.t
+
+
+
+    val advance : G.t -> G.t -> G.t
+    val alloc : E.t -> (G.t -> G.t) -> G.t
+    val set_end : G.t -> G.t -> G.t
+    val get_end : G.t -> G.t
+    val set_size : G.t -> G.t -> G.t
+    val is_empty : G.t -> G.t
   end
 
   module (*Blob-*)Deserializers (*val env : E.t*) : RawReaders = struct
@@ -6064,6 +6073,10 @@ module MakeSerialization (Strm : Stream) = struct
 
     let get_ptr buf = ReadBuf.get_ptr buf
     let set_ptr buf start = ReadBuf.set_ptr buf start
+    let set_size buf start = ReadBuf.set_size buf start
+    let is_empty = ReadBuf.is_empty
+
+    let advance, alloc, set_end, get_end = ReadBuf.(advance, alloc, set_end, get_end)
   end
 
   let rec deserialize_go env t =
@@ -6214,7 +6227,7 @@ module MakeSerialization (Strm : Stream) = struct
         read_leb128 env get_data_buf ^^ set_len ^^
         let (set_ptr0, get_ptr0) = new_local env "x" in
         get_ptr get_data_buf ^^ set_ptr0 ^^
-        ReadBuf.advance get_data_buf get_len ^^
+        advance get_data_buf get_len ^^
         (* validate *)
         get_ptr0 ^^ get_len ^^ E.call_import env "rts" "utf8_validate" ^^
         (* copy *)
@@ -6234,7 +6247,7 @@ module MakeSerialization (Strm : Stream) = struct
         compile_unboxed_const 0l ^^ G.i (Compare (Wasm.Values.I32 I32Op.GeS)) ^^
         G.if1 I32Type
         begin
-          ReadBuf.alloc env (fun get_typ_buf ->
+          alloc env (fun get_typ_buf ->
             (* Update typ_buf *)
             set_ptr get_typ_buf (
               get_typtbl ^^
@@ -6242,7 +6255,7 @@ module MakeSerialization (Strm : Stream) = struct
               G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
               load_unskewed_ptr
             ) ^^
-            ReadBuf.set_end get_typ_buf (ReadBuf.get_end get_data_buf) ^^
+            set_end get_typ_buf (get_end get_data_buf) ^^
             (* read sleb128 *)
             read_sleb128 env get_typ_buf ^^
             (* Check it is the expected value *)
@@ -6263,7 +6276,7 @@ module MakeSerialization (Strm : Stream) = struct
         compile_unboxed_const 0l ^^ G.i (Compare (Wasm.Values.I32 I32Op.GeS)) ^^
         G.if1 I32Type
         begin
-          ReadBuf.alloc env (fun get_typ_buf ->
+          alloc env (fun get_typ_buf ->
             (* Update typ_buf *)
             set_ptr get_typ_buf (
               get_typtbl ^^
@@ -6271,7 +6284,7 @@ module MakeSerialization (Strm : Stream) = struct
               G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
               load_unskewed_ptr
             ) ^^
-            ReadBuf.set_end get_typ_buf (ReadBuf.get_end get_data_buf) ^^
+            set_end get_typ_buf (get_end get_data_buf) ^^
             (* read sleb128 *)
             read_sleb128 env get_typ_buf ^^
             (* Check it is the expected type constructor *)
@@ -6342,7 +6355,7 @@ module MakeSerialization (Strm : Stream) = struct
           E.else_trap_with env "Odd offset" ^^
 
           get_ptr get_data_buf ^^ set_cur ^^
-          ReadBuf.advance get_data_buf (get_offset ^^ compile_add_const (-4l))
+          advance get_data_buf (get_offset ^^ compile_add_const (-4l))
         end G.nop ^^
 
         (* Remember location of ptr *)
@@ -6780,12 +6793,12 @@ module MakeSerialization (Strm : Stream) = struct
       Stack.with_words env "get_maintyps_ptr" 1l (fun get_maintyps_ptr ->
 
       (* Set up read buffers *)
-      ReadBuf.alloc env (fun get_data_buf -> ReadBuf.alloc env (fun get_ref_buf ->
+      alloc env (fun get_data_buf -> alloc env (fun get_ref_buf ->
 
       set_ptr get_data_buf get_data_start ^^
-      ReadBuf.set_size get_data_buf get_data_size ^^
+      Deserializers.set_size get_data_buf get_data_size ^^
       set_ptr get_ref_buf get_refs_start ^^
-      ReadBuf.set_size get_ref_buf (get_refs_size ^^ compile_mul_const Heap.word_size) ^^
+      set_size get_ref_buf (get_refs_size ^^ compile_mul_const Heap.word_size) ^^
 
       (* Go! *)
       Bool.lit extended ^^ get_data_buf ^^ get_typtbl_ptr ^^ get_typtbl_size_ptr ^^ get_maintyps_ptr ^^
@@ -6795,9 +6808,9 @@ module MakeSerialization (Strm : Stream) = struct
       with_rel_buf_opt env extended (get_typtbl_size_ptr ^^ load_unskewed_ptr) (fun get_rel_buf_opt ->
 
       (* set up a dedicated read buffer for the list of main types *)
-      ReadBuf.alloc env (fun get_main_typs_buf ->
+      alloc env (fun get_main_typs_buf ->
         set_ptr get_main_typs_buf (get_maintyps_ptr ^^ load_unskewed_ptr) ^^
-        ReadBuf.set_end get_main_typs_buf (ReadBuf.get_end get_data_buf) ^^
+        set_end get_main_typs_buf (get_end get_data_buf) ^^
         read_leb128 env get_main_typs_buf ^^ set_arg_count ^^
 
         G.concat_map (fun t ->
@@ -6860,9 +6873,9 @@ module MakeSerialization (Strm : Stream) = struct
            get_arg_count ^^ compile_sub_const 1l ^^ set_arg_count
          end ^^
 
-        ReadBuf.is_empty env get_data_buf ^^
+        is_empty get_data_buf ^^
         E.else_trap_with env ("IDL error: left-over bytes " ^ ts_name) ^^
-        ReadBuf.is_empty env get_ref_buf ^^
+        is_empty get_ref_buf ^^
         E.else_trap_with env ("IDL error: left-over references " ^ ts_name)
       ))))))
 
