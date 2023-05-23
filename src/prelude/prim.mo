@@ -267,6 +267,7 @@ func blobOfPrincipal(id : Principal) : Blob = (prim "cast" : Principal -> Blob) 
 func principalOfBlob(act : Blob) : Principal = (prim "cast" : Blob -> Principal) act;
 
 func principalOfActor(act : actor {}) : Principal = (prim "cast" : (actor {}) -> Principal) act;
+func isController(p : Principal) : Bool = (prim "is_controller" : Principal -> Bool) p;
 
 // Untyped dynamic actor creation from blobs
 let createActor : (wasm : Blob, argument : Blob) -> async Principal = @create_actor_helper;
@@ -283,16 +284,17 @@ func cyclesRefunded() : Nat {
     @refund
 };
 
-func cyclesAccept(amount: Nat) : Nat {
+func cyclesAccept(amount : Nat) : Nat {
   (prim "cyclesAccept" : Nat -> Nat) (amount);
 };
 
-func cyclesAdd(amount: Nat) : () {
+func cyclesAdd(amount : Nat) : () {
+  if (amount == 0) return;
+  @cycles += amount;
   // trap if @cycles would exceed 2^128
-  if ((@cycles + amount) > 0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFF) {
+  if (@cycles > 0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFF) {
     trap("cannot add more than 2^128 cycles")
   };
-  @cycles += amount;
 };
 
 // certified data

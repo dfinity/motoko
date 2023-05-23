@@ -1,87 +1,9 @@
 ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
 ingress Completed: Reply: 0x4449444c0000
-debug.print: {bytes = 1_052; length = 1_024; stack = 52; stack_pages = 1}
-debug.print: {bytes = 2_076; length = 2_048; stack = 52; stack_pages = 1}
-debug.print: {bytes = 3_100; length = 3_072; stack = 52; stack_pages = 1}
-debug.print: {bytes = 4_124; length = 4_096; stack = 52; stack_pages = 1}
-debug.print: {bytes = 5_148; length = 5_120; stack = 52; stack_pages = 1}
-debug.print: {bytes = 6_172; length = 6_144; stack = 52; stack_pages = 1}
-debug.print: {bytes = 7_196; length = 7_168; stack = 52; stack_pages = 1}
-debug.print: {bytes = 8_220; length = 8_192; stack = 52; stack_pages = 1}
-debug.print: {bytes = 9_244; length = 9_216; stack = 52; stack_pages = 1}
-debug.print: {bytes = 10_268; length = 10_240; stack = 52; stack_pages = 1}
-debug.print: {bytes = 11_292; length = 11_264; stack = 52; stack_pages = 1}
-debug.print: {bytes = 12_316; length = 12_288; stack = 52; stack_pages = 1}
-debug.print: {bytes = 13_340; length = 13_312; stack = 52; stack_pages = 1}
-debug.print: {bytes = 14_364; length = 14_336; stack = 52; stack_pages = 1}
-debug.print: {bytes = 15_388; length = 15_360; stack = 52; stack_pages = 1}
-debug.print: {bytes = 16_412; length = 16_384; stack = 52; stack_pages = 1}
-debug.print: {bytes = 17_436; length = 17_408; stack = 52; stack_pages = 1}
-debug.print: {bytes = 18_460; length = 18_432; stack = 52; stack_pages = 1}
-debug.print: {bytes = 19_484; length = 19_456; stack = 52; stack_pages = 1}
-debug.print: {bytes = 20_508; length = 20_480; stack = 52; stack_pages = 1}
-debug.print: {bytes = 21_532; length = 21_504; stack = 52; stack_pages = 1}
-debug.print: {bytes = 22_556; length = 22_528; stack = 52; stack_pages = 1}
-debug.print: {bytes = 23_580; length = 23_552; stack = 52; stack_pages = 1}
-debug.print: {bytes = 24_604; length = 24_576; stack = 52; stack_pages = 1}
-debug.print: {bytes = 25_628; length = 25_600; stack = 52; stack_pages = 1}
-debug.print: {bytes = 26_652; length = 26_624; stack = 52; stack_pages = 1}
-debug.print: {bytes = 27_676; length = 27_648; stack = 52; stack_pages = 1}
-debug.print: {bytes = 28_700; length = 28_672; stack = 52; stack_pages = 1}
-debug.print: {bytes = 29_724; length = 29_696; stack = 52; stack_pages = 1}
-debug.print: {bytes = 30_748; length = 30_720; stack = 52; stack_pages = 1}
-debug.print: {bytes = 31_772; length = 31_744; stack = 52; stack_pages = 1}
-debug.print: {bytes = 32_796; length = 32_768; stack = 52; stack_pages = 1}
-debug.print: {bytes = 33_820; length = 33_792; stack = 52; stack_pages = 1}
-debug.print: {bytes = 34_844; length = 34_816; stack = 52; stack_pages = 1}
-debug.print: {bytes = 35_868; length = 35_840; stack = 52; stack_pages = 1}
-debug.print: {bytes = 36_892; length = 36_864; stack = 52; stack_pages = 1}
-debug.print: {bytes = 37_916; length = 37_888; stack = 52; stack_pages = 1}
-debug.print: {bytes = 38_940; length = 38_912; stack = 52; stack_pages = 1}
-debug.print: {bytes = 39_964; length = 39_936; stack = 52; stack_pages = 1}
 debug.print: IC0502: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped: stack overflow
-debug.print: {alloced = 39_936}
 debug.print: serialized
-debug.print: {bytes = 39_964; length = 39_936; stack = 0; stack_pages = 1}
 ingress Completed: Reply: 0x4449444c0000
-debug.print: {bytes = 1_052; length = 1_024; stack = 53_324; stack_pages = 1}
-debug.print: {bytes = 2_076; length = 2_048; stack = 106_572; stack_pages = 2}
-debug.print: {bytes = 3_100; length = 3_072; stack = 159_820; stack_pages = 3}
-debug.print: {bytes = 4_124; length = 4_096; stack = 213_068; stack_pages = 4}
-debug.print: {bytes = 5_148; length = 5_120; stack = 266_316; stack_pages = 5}
-debug.print: {bytes = 6_172; length = 6_144; stack = 319_564; stack_pages = 5}
-debug.print: {bytes = 7_196; length = 7_168; stack = 372_812; stack_pages = 6}
-debug.print: {bytes = 8_220; length = 8_192; stack = 426_060; stack_pages = 7}
-debug.print: {bytes = 9_244; length = 9_216; stack = 479_308; stack_pages = 8}
-debug.print: {bytes = 10_268; length = 10_240; stack = 532_556; stack_pages = 9}
-debug.print: {bytes = 11_292; length = 11_264; stack = 585_804; stack_pages = 9}
-debug.print: {bytes = 12_316; length = 12_288; stack = 639_052; stack_pages = 10}
-debug.print: {bytes = 13_340; length = 13_312; stack = 692_300; stack_pages = 11}
-debug.print: {bytes = 14_364; length = 14_336; stack = 745_548; stack_pages = 12}
-debug.print: {bytes = 15_388; length = 15_360; stack = 798_796; stack_pages = 13}
-debug.print: {bytes = 16_412; length = 16_384; stack = 852_044; stack_pages = 14}
-debug.print: {bytes = 17_436; length = 17_408; stack = 905_292; stack_pages = 14}
-debug.print: {bytes = 18_460; length = 18_432; stack = 958_540; stack_pages = 15}
-debug.print: {bytes = 19_484; length = 19_456; stack = 1_011_788; stack_pages = 16}
-debug.print: {bytes = 20_508; length = 20_480; stack = 1_065_036; stack_pages = 17}
-debug.print: {bytes = 21_532; length = 21_504; stack = 1_118_284; stack_pages = 18}
-debug.print: {bytes = 22_556; length = 22_528; stack = 1_171_532; stack_pages = 18}
-debug.print: {bytes = 23_580; length = 23_552; stack = 1_224_780; stack_pages = 19}
-debug.print: {bytes = 24_604; length = 24_576; stack = 1_278_028; stack_pages = 20}
-debug.print: {bytes = 25_628; length = 25_600; stack = 1_331_276; stack_pages = 21}
-debug.print: {bytes = 26_652; length = 26_624; stack = 1_384_524; stack_pages = 22}
-debug.print: {bytes = 27_676; length = 27_648; stack = 1_437_772; stack_pages = 22}
-debug.print: {bytes = 28_700; length = 28_672; stack = 1_491_020; stack_pages = 23}
-debug.print: {bytes = 29_724; length = 29_696; stack = 1_544_268; stack_pages = 24}
-debug.print: {bytes = 30_748; length = 30_720; stack = 1_597_516; stack_pages = 25}
-debug.print: {bytes = 31_772; length = 31_744; stack = 1_650_764; stack_pages = 26}
-debug.print: {bytes = 32_796; length = 32_768; stack = 1_704_012; stack_pages = 27}
-debug.print: {bytes = 33_820; length = 33_792; stack = 1_757_260; stack_pages = 27}
-debug.print: {bytes = 34_844; length = 34_816; stack = 1_810_508; stack_pages = 28}
-debug.print: {bytes = 35_868; length = 35_840; stack = 1_863_756; stack_pages = 29}
 debug.print: IC0502: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped: stack overflow
-debug.print: {alloced = 35_840}
 debug.print: serialized
 debug.print: deserialized
-debug.print: {bytes = 35_868; length = 35_840; stack = 1_863_704; stack_pages = 29}
 ingress Completed: Reply: 0x4449444c0000

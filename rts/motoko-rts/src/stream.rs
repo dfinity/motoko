@@ -14,13 +14,16 @@
 
 // Layout of a stream node:
 //
-//      ┌────────────┬─────┬───────┬─────────┬─────────┬───────────┬────────┬──────────┐
-//      │ tag (blob) │ len │ ptr64 │ start64 │ limit64 │ outputter │ filled │ cache... │
-//      └────────────┴─────┴───┴───┴────┴────┴────┴────┴───────────┴────────┴──────────┘
+// ┌────────────┬─────┬─────────┬───────┬─────────┬─────────┬───────────┬────────┬──────────┐
+// │ obj header │ len │ padding | ptr64 │ start64 │ limit64 │ outputter │ filled │ cache... │
+// └────────────┴─────┴─────────┴───────┴─────────┴─────────┴───────────┴────────┴──────────┘
 //
 // We reuse the opaque nature of blobs (to Motoko) and stick Rust-related information
 // into the leading bytes:
-// - `tag` and `len` are blob metadata
+// - `obj header` contains tag (BLOB) and forwarding pointer
+// - `len` is in blob metadata
+// - 'padding' because the compiler automatically align `ptr64` to 64-bit according to
+//    C-memory representation
 // - `ptr64` and `limit64` are the next and past-end pointers into stable memory
 // - `filled` and `cache` are the number of bytes consumed from the blob, and the
 //   staging area of the stream, respectively
@@ -29,6 +32,7 @@
 //              (from `compile.ml`) in sync with the layout!
 // - Note: `len` and `filled` are relative to the encompassing blob.
 
+use crate::barriers::allocation_barrier;
 use crate::bigint::{check, mp_get_u32, mp_isneg, mp_iszero};
 use crate::mem_utils::memcpy_bytes;
 use crate::memory::{alloc_blob, Memory};
@@ -36,10 +40,10 @@ use crate::rts_trap_with;
 use crate::tommath_bindings::{mp_div_2d, mp_int};
 use crate::types::{size_of, Blob, Bytes, Stream, Value, TAG_BLOB};
 
-use motoko_rts_macros::ic_mem_fn;
+use motoko_rts_macros::{ic_mem_fn, is_incremental_gc};
 
 const MAX_STREAM_SIZE: Bytes<u32> = Bytes((1 << 30) - 1);
-const INITIAL_STREAM_FILLED: Bytes<u32> = Bytes(32);
+const INITIAL_STREAM_FILLED: Bytes<u32> = Bytes(if is_incremental_gc!() { 36 } else { 32 });
 const STREAM_CHUNK_SIZE: Bytes<u32> = Bytes(128);
 
 #[ic_mem_fn]
@@ -51,12 +55,14 @@ pub unsafe fn alloc_stream<M: Memory>(mem: &mut M, size: Bytes<u32>) -> *mut Str
     if size > MAX_STREAM_SIZE {
         rts_trap_with("alloc_stream: Cache too large");
     }
-    let stream = alloc_blob(mem, size + INITIAL_STREAM_FILLED).as_stream();
+    let ptr = alloc_blob(mem, size + INITIAL_STREAM_FILLED);
+    let stream = ptr.as_stream();
     (*stream).ptr64 = 0;
     (*stream).start64 = 0;
     (*stream).limit64 = 0;
     (*stream).outputter = Stream::no_backing_store;
     (*stream).filled = INITIAL_STREAM_FILLED;
+    allocation_barrier(ptr);
     stream
 }
 
@@ -70,11 +76,6 @@ impl Stream {
     #[inline]
     pub unsafe fn cache_addr(self: *const Self) -> *const u8 {
         self.add(1) as *const u8 // skip closure header
-    }
-
-    #[inline]
-    pub unsafe fn as_blob_mut(self: *mut Self) -> *mut Blob {
-        self as *mut Blob
     }
 
     /// make sure that the cache is empty
@@ -195,8 +196,10 @@ impl Stream {
         (*self).filled -= INITIAL_STREAM_FILLED;
         let blob = (self.cache_addr() as *mut Blob).sub(1);
         (*blob).header.tag = TAG_BLOB;
+        let ptr = Value::from_ptr(blob as usize);
+        (*blob).header.init_forward(ptr);
         debug_assert_eq!(blob.len(), (*self).filled);
-        Value::from_ptr(blob as usize)
+        allocation_barrier(ptr)
     }
 
     /// Shut down the stream by outputting all data. Lengths are
