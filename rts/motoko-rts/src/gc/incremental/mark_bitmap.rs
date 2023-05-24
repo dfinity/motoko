@@ -46,7 +46,9 @@ impl MarkBitmap {
     }
 
     /// Assign and initialize the bitmap memory at the defined address.
+    /// The `bitmap_address` must be 64-bit-aligned for fast iteration.
     pub unsafe fn assign(&mut self, bitmap_address: *mut u8) {
+        debug_assert_eq!(bitmap_address as usize % size_of::<u64>(), 0);
         memzero(
             bitmap_address as usize,
             Bytes(BITMAP_SIZE as u32).to_words(),
@@ -96,7 +98,7 @@ impl MarkBitmap {
 /// The iterator separates advancing `next()` from inspection `current_marked_offset()`
 /// to better support the incremental evacuation and update GC increments.
 pub struct BitmapIterator {
-    /// Start address of the mark bitmap.
+    /// Start address of the mark bitmap. Must be 64-bit-aligned.
     bitmap_pointer: *mut u8,
     /// Index of next bit to continue iteration in the bitmap.
     /// Invariant during (initialized and unfinished):
@@ -123,6 +125,7 @@ const BIT_INDEX_END: usize = BITMAP_SIZE * u8::BITS as usize;
 const _: () = assert!(BIT_INDEX_END < BITMAP_ITERATION_END);
 
 impl BitmapIterator {
+    /// The `bitmap_pointer` must be 64-bit-aligned.
     fn new(bitmap_pointer: *mut u8) -> BitmapIterator {
         debug_assert_ne!(bitmap_pointer, null_mut());
         debug_assert_eq!(PARTITION_SIZE % size_of::<u64>(), 0);
@@ -171,6 +174,7 @@ impl BitmapIterator {
             if self.next_bit_index < BIT_INDEX_END {
                 debug_assert_eq!(self.next_bit_index % u8::BITS as usize, 0);
                 let word64_index = self.next_bit_index / u8::BITS as usize;
+                // The bitmap pointer is guaranteed to be always 64-bit aligned, see `BitmapIterator::new()`.
                 self.current_word =
                     unsafe { *(self.bitmap_pointer.add(word64_index) as *const u64) };
                 self.leading_zeros = self.current_word.leading_zeros() as usize;

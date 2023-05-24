@@ -658,17 +658,29 @@ impl Blob {
     }
 }
 
+/// Note: Do not declare 64-bit fields, as otherwise, the objects are expected to be 64-bit aligned.
+/// This is not the case in the current heap design.
+/// Moreover, fields would also get 64-bit aligned causing implicit paddding.
+
 #[repr(C)] // See the note at the beginning of this module
 pub struct Stream {
     pub header: Blob,
 
-    // Cannot use `#[incremental_gc]` as Rust only allows non-macro attributes for fields.
-    #[cfg(feature = "incremental_gc")]
-    pub padding: u32, // The insertion of the forwarding pointer in the header implies 1 word padding to 64-bit.
+    /// Components of the 64-bit `ptr` value. Little-endian encoding.
+    /// Use `read_ptr64()` and `write_ptr64()` to access.
+    pub ptr_lower: u32,
+    pub ptr_upper: u32,
 
-    pub ptr64: u64,
-    pub start64: u64,
-    pub limit64: u64,
+    /// Components of the 64-bit `start` value. Little-endian encoding.
+    /// Use `read_start64()` and `write_start64()` to access.
+    pub start_lower: u32,
+    pub start_upper: u32,
+
+    /// Components of the 64-bit `limit` value. Little-endian encoding.
+    /// Use `read_limit64()` and `write_limit64()` to access.
+    pub limit_lower: u32,
+    pub limit_upper: u32,
+
     pub outputter: fn(*mut Self, *const u8, Bytes<u32>) -> (),
     pub filled: Bytes<u32>, // cache data follows ..
 }
@@ -682,6 +694,39 @@ impl Stream {
         debug_assert!(!self.is_forwarded());
         self as *mut Blob
     }
+
+    pub unsafe fn write_ptr64(self: *mut Self, value: u64) {
+        write64(&mut (*self).ptr_lower, &mut (*self).ptr_upper, value);
+    }
+
+    pub unsafe fn read_ptr64(self: *const Self) -> u64 {
+        read64((*self).ptr_lower, (*self).ptr_upper)
+    }
+
+    pub unsafe fn write_start64(self: *mut Self, value: u64) {
+        write64(&mut (*self).start_lower, &mut (*self).start_upper, value);
+    }
+
+    pub unsafe fn read_start64(self: *const Self) -> u64 {
+        read64((*self).start_lower, (*self).start_upper)
+    }
+
+    pub unsafe fn write_limit64(self: *mut Self, value: u64) {
+        write64(&mut (*self).limit_lower, &mut (*self).limit_upper, value);
+    }
+
+    pub unsafe fn read_limit64(self: *const Self) -> u64 {
+        read64((*self).limit_lower, (*self).limit_upper)
+    }
+}
+
+pub fn read64(lower: u32, upper: u32) -> u64 {
+    ((upper as u64) << u32::BITS) | lower as u64
+}
+
+pub fn write64(lower: &mut u32, upper: &mut u32, value: u64) {
+    *upper = (value >> u32::BITS) as u32;
+    *lower = (value & u32::MAX as u64) as u32;
 }
 
 /// Only used by the copying GC - not to be confused with the forwarding pointer in the general object header
