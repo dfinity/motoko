@@ -1,0 +1,11 @@
+or-pattern-bug.mo:9.17-9.19: warning [M0146], this pattern is never matched
+or-pattern-bug.mo:11.10-11.33: warning [M0145], this pattern of type
+  {#a; #b; #c}
+does not cover value
+  #c
+or-pattern-bug.mo:12.11-12.13: warning [M0146], this pattern is never matched
+or-pattern-bug.mo:12.17-12.19: warning [M0146], this pattern is never matched
+or-pattern-bug.mo:12.10-12.27: warning [M0145], this pattern of type
+  {#d}
+does not cover value
+  #d
