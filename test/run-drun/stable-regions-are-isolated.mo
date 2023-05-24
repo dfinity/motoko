@@ -1,3 +1,5 @@
+//MOC-FLAG --stable-regions
+
 import P "mo:⛔";
 import Region "stable-region/Region";
 import Region0 "stable-mem/StableMemory";
