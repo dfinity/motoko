@@ -9,7 +9,7 @@ use motoko_rts::types::{Value, Words};
 const GROW_LIMIT: u32 = INITIAL_TABLE_LENGTH * OCCUPATION_THRESHOLD_PERCENT / 100;
 
 pub unsafe fn test() {
-    println!("Testing remembered set ...");
+    println!("  Testing remembered set ...");
 
     test_remembered_set(0);
     test_remembered_set(1);
@@ -31,8 +31,6 @@ unsafe fn test_remembered_set(amount: u32) {
 }
 
 unsafe fn test_insert_iterate(amount: u32) {
-    println!("  Testing insert/iterate {amount}");
-
     let mut mem = TestMemory::new(Words(2 * amount + 1024 * 1024));
 
     let mut remembered_set = RememberedSet::new(&mut mem);
@@ -54,8 +52,6 @@ unsafe fn test_insert_iterate(amount: u32) {
 }
 
 unsafe fn test_duplicates(amount: u32) {
-    println!("  Testing duplicates {amount}");
-
     let mut mem = TestMemory::new(Words(2 * amount + 1024 * 1024));
 
     let mut remembered_set = RememberedSet::new(&mut mem);
@@ -72,8 +68,6 @@ unsafe fn test_duplicates(amount: u32) {
 }
 
 unsafe fn test_collisions(amount: u32) {
-    println!("  Testing collisions {amount}");
-
     let mut mem = TestMemory::new(Words(2 * amount + 1024 * 1024));
 
     let mut remembered_set = RememberedSet::new(&mut mem);

@@ -267,6 +267,7 @@ func blobOfPrincipal(id : Principal) : Blob = (prim "cast" : Principal -> Blob) 
 func principalOfBlob(act : Blob) : Principal = (prim "cast" : Blob -> Principal) act;
 
 func principalOfActor(act : actor {}) : Principal = (prim "cast" : (actor {}) -> Principal) act;
+func isController(p : Principal) : Bool = (prim "is_controller" : Principal -> Bool) p;
 
 // Untyped dynamic actor creation from blobs
 let createActor : (wasm : Blob, argument : Blob) -> async Principal = @create_actor_helper;

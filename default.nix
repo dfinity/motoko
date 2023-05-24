@@ -195,7 +195,7 @@ rec {
         name = "motoko-rts-deps";
         src = subpath ./rts;
         sourceRoot = "rts/motoko-rts-tests";
-        sha256 = "sha256-RvzNAfxKK9b7JzaZAvE6Etgbh+ARehFrkWqukI1yL8A=";
+        sha256 = "sha256-bmJF19LIvTMZnj78XF30lxqRlvQaZ0YlqCO2wnwmiNg=";
         copyLockfile = true;
       };
 
@@ -259,6 +259,8 @@ rec {
         mkdir -p $out/rts
         cp mo-rts.wasm $out/rts
         cp mo-rts-debug.wasm $out/rts
+        cp mo-rts-incremental.wasm $out/rts
+        cp mo-rts-incremental-debug.wasm $out/rts
       '';
 
       # This needs to be self-contained. Remove mention of nix path in debug
@@ -269,6 +271,11 @@ rec {
           -t ${rtsDeps} \
           -t ${rustStdDeps} \
           $out/rts/mo-rts.wasm $out/rts/mo-rts-debug.wasm
+        remove-references-to \
+          -t ${nixpkgs.rustc-nightly} \
+          -t ${rtsDeps} \
+          -t ${rustStdDeps} \
+          $out/rts/mo-rts-incremental.wasm $out/rts/mo-rts-incremental-debug.wasm
       '';
 
       allowedRequisites = [];
@@ -361,12 +368,7 @@ rec {
       (test_subdir dir deps).overrideAttrs (args: {
           EXTRA_MOC_ARGS = "--sanity-checks";
       });
-
-    compacting_gc_subdir = dir: deps:
-      (test_subdir dir deps).overrideAttrs (args: {
-          EXTRA_MOC_ARGS = "--compacting-gc";
-      });
-
+      
     generational_gc_subdir = dir: deps:
       (test_subdir dir deps).overrideAttrs (args: {
           EXTRA_MOC_ARGS = "--generational-gc";
@@ -382,6 +384,10 @@ rec {
           EXTRA_MOC_ARGS = "--sanity-checks --generational-gc";
       });
 
+    snty_incremental_gc_subdir = dir: deps:
+      (test_subdir dir deps).overrideAttrs (args: {
+          EXTRA_MOC_ARGS = "--sanity-checks --incremental-gc";
+      });
 
     perf_subdir = dir: deps:
       (test_subdir dir deps).overrideAttrs (args: {
@@ -493,11 +499,12 @@ rec {
   in fix_names ({
       run        = test_subdir "run"        [ moc ] ;
       run-dbg    = snty_subdir "run"        [ moc ] ;
-      ic-ref-run = test_subdir "run-drun"   [ moc ic-ref-run ];
+      # ic-ref-run = test_subdir "run-drun"   [ moc ic-ref-run ];
       drun       = test_subdir "run-drun"   [ moc nixpkgs.drun ];
       drun-dbg   = snty_subdir "run-drun"   [ moc nixpkgs.drun ];
       drun-compacting-gc = snty_compacting_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
       drun-generational-gc = snty_generational_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
+      drun-incremental-gc = snty_incremental_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
       fail       = test_subdir "fail"       [ moc ];
       repl       = test_subdir "repl"       [ moc ];
       ld         = test_subdir "ld"         ([ mo-ld ] ++ ldTestDeps);
