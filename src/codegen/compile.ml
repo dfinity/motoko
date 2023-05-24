@@ -4701,13 +4701,16 @@ module StableMem = struct
     E.add_global64 env "__stablemem_size" Mutable 0L
 
   let get_mem_size env =
-    (* G.i (GlobalGet (nr (E.get_global env "__stablemem_size"))) *)
-    E.call_import env "rts" "region_get_mem_size"
+    if !Flags.use_stable_regions then
+      E.call_import env "rts" "region_get_mem_size"
+    else
+      G.i (GlobalGet (nr (E.get_global env "__stablemem_size")))
 
   let set_mem_size env =
-    (* G.i (GlobalSet (nr (E.get_global env "__stablemem_size"))) *)
-    E.call_import env "rts" "region_set_mem_size"
-
+    if !Flags.use_stable_regions then
+      E.call_import env "rts" "region_set_mem_size"
+    else
+      G.i (GlobalSet (nr (E.get_global env "__stablemem_size")))
 
   (* stable memory bounds check *)
   let guard env =

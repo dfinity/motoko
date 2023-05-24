@@ -141,6 +141,11 @@ let argspec = [
     set_mode Compile ()), (* similar to --idl *)
       " compile and emit signature of stable types to `.most` file";
 
+  "--stable-regions",
+  Arg.Unit (fun () ->
+    Flags.use_stable_regions := true),
+      " Use stable regions for stable memory (8MB minimum footprint)";
+
   "--generational-gc",
   Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.Generational),
   " use generational GC";

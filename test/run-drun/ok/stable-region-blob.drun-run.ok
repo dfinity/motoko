@@ -3,103 +3,48 @@ debug.print: Begin
 debug.print: # regionMetaLogLines {
 debug.print:  log_id = 0;
 debug.print:  total_allocated_blocks = 0;
-debug.print:  total_allocated_regions = 2;
+debug.print:  total_allocated_regions = 16;
 debug.print: }
-debug.print: Created region 2
+debug.print: Created region 16
 debug.print: # regionMetaLogLines {
 debug.print:  log_id = 1;
 debug.print:  total_allocated_blocks = 0;
-debug.print:  total_allocated_regions = 3;
+debug.print:  total_allocated_regions = 17;
 debug.print: }
-debug.print: Created regions 3 and 4
+debug.print: Created regions 17 and 18
 debug.print: # regionMetaLogLines {
 debug.print:  log_id = 2;
 debug.print:  total_allocated_blocks = 0;
-debug.print:  total_allocated_regions = 5;
+debug.print:  total_allocated_regions = 19;
 debug.print: }
-debug.print: region_grow id=2 (old_block_count, new_block_count) = (0, 19)
-debug.print:   region_grow id=2 (slot index) i=0 block_id=0
-debug.print:   region_grow id=2 (slot index) i=1 block_id=1
-debug.print:   region_grow id=2 (slot index) i=2 block_id=2
-debug.print:   region_grow id=2 (slot index) i=3 block_id=3
-debug.print:   region_grow id=2 (slot index) i=4 block_id=4
-debug.print:   region_grow id=2 (slot index) i=5 block_id=5
-debug.print:   region_grow id=2 (slot index) i=6 block_id=6
-debug.print:   region_grow id=2 (slot index) i=7 block_id=7
-debug.print:   region_grow id=2 (slot index) i=8 block_id=8
-debug.print:   region_grow id=2 (slot index) i=9 block_id=9
-debug.print:   region_grow id=2 (slot index) i=10 block_id=10
-debug.print:   region_grow id=2 (slot index) i=11 block_id=11
-debug.print:   region_grow id=2 (slot index) i=12 block_id=12
-debug.print:   region_grow id=2 (slot index) i=13 block_id=13
-debug.print:   region_grow id=2 (slot index) i=14 block_id=14
-debug.print:   region_grow id=2 (slot index) i=15 block_id=15
-debug.print:   region_grow id=2 (slot index) i=16 block_id=16
-debug.print:   region_grow id=2 (slot index) i=17 block_id=17
-debug.print:   region_grow id=2 (slot index) i=18 block_id=18
-debug.print: region_grow id=3 (old_block_count, new_block_count) = (0, 2)
-debug.print:   region_grow id=3 (slot index) i=0 block_id=19
-debug.print:   region_grow id=3 (slot index) i=1 block_id=20
-debug.print: region_grow id=4 (old_block_count, new_block_count) = (0, 1)
-debug.print:   region_grow id=4 (slot index) i=0 block_id=21
 debug.print: Grew all regions.
 debug.print: # regionMetaLogLines {
 debug.print:  log_id = 3;
 debug.print:  total_allocated_blocks = 22;
-debug.print:  total_allocated_regions = 5;
+debug.print:  total_allocated_regions = 19;
 debug.print: }
-debug.print: region_grow id=2 (old_block_count, new_block_count) = (19, 37)
-debug.print:   region_grow id=2 (slot index) i=19 block_id=22
-debug.print:   region_grow id=2 (slot index) i=20 block_id=23
-debug.print:   region_grow id=2 (slot index) i=21 block_id=24
-debug.print:   region_grow id=2 (slot index) i=22 block_id=25
-debug.print:   region_grow id=2 (slot index) i=23 block_id=26
-debug.print:   region_grow id=2 (slot index) i=24 block_id=27
-debug.print:   region_grow id=2 (slot index) i=25 block_id=28
-debug.print:   region_grow id=2 (slot index) i=26 block_id=29
-debug.print:   region_grow id=2 (slot index) i=27 block_id=30
-debug.print:   region_grow id=2 (slot index) i=28 block_id=31
-debug.print:   region_grow id=2 (slot index) i=29 block_id=32
-debug.print:   region_grow id=2 (slot index) i=30 block_id=33
-debug.print:   region_grow id=2 (slot index) i=31 block_id=34
-debug.print:   region_grow id=2 (slot index) i=32 block_id=35
-debug.print:   region_grow id=2 (slot index) i=33 block_id=36
-debug.print:   region_grow id=2 (slot index) i=34 block_id=37
-debug.print:   region_grow id=2 (slot index) i=35 block_id=38
-debug.print:   region_grow id=2 (slot index) i=36 block_id=39
-debug.print: region_grow id=3 (old_block_count, new_block_count) = (2, 3)
-debug.print:   region_grow id=3 (slot index) i=2 block_id=40
-debug.print: region_grow id=4 (old_block_count, new_block_count) = (1, 1)
 debug.print: Grew all regions, again.
 debug.print: # regionMetaLogLines {
 debug.print:  log_id = 4;
 debug.print:  total_allocated_blocks = 41;
-debug.print:  total_allocated_regions = 5;
+debug.print:  total_allocated_regions = 19;
 debug.print: }
 debug.print: Storing data into region 2.
-debug.print: region_store_byte(RegionId(2), 8978569 ~> 9371781, 137)
 debug.print: Loading data from region 2.
-debug.print: region_load_byte(RegionId(2), 8978569 ~> 9371781) ==> 137
 debug.print: 137
 debug.print: Done.
 debug.print: Storing data into region 3.
-debug.print: region_store_byte(RegionId(3), 8978431 ~> 168755195, 138)
 debug.print: Loading data from region 3.
-debug.print: region_load_byte(RegionId(3), 8978431 ~> 168755195) ==> 138
 debug.print: 138
 debug.print: Done.
 debug.print: Storing data into region 4.
-debug.print: region_store_byte(RegionId(4), 1048713 ~> 177602693, 139)
 debug.print: Loading data from region 4.
-debug.print: region_load_byte(RegionId(4), 1048713 ~> 177602693) ==> 139
 debug.print: 139
 debug.print: Done.
 debug.print: re-Loading data from region 2.
-debug.print: region_load_byte(RegionId(2), 8978569 ~> 9371781) ==> 137
 debug.print: 137
 debug.print: Done.
 debug.print: re-Loading data from region 3.
-debug.print: region_load_byte(RegionId(3), 8978431 ~> 168755195) ==> 138
 debug.print: 138
 debug.print: Done.
 ingress Completed: Reply: 0x4449444c0000
