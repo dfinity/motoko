@@ -4794,7 +4794,7 @@ module StableMem = struct
             IC.system_call env "stable64_write"))
     | _ -> assert false
 
-  let _read_word32 env =
+  let read_word32 env =
     read env false "word32" I32Type 4l load_unskewed_ptr
   let write_word32 env =
     write env false "word32" I32Type 4l store_unskewed_ptr
@@ -4886,7 +4886,6 @@ module StableMem = struct
 
   (* API *)
 
-  (*
   let logical_grow env =
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
@@ -5000,7 +4999,6 @@ module StableMem = struct
           get_len ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
           IC.system_call env "stable64_write")
     | _ -> assert false
-   *)
 
 end (* StableMemory *)
 
@@ -9887,8 +9885,11 @@ and compile_prim_invocation (env : E.t) ae p es at =
     const_sr SR.Vanilla (Arr.toBlob env)
 
   | OtherPrim "stableMemoryRegion", [] ->
-    SR.Vanilla,
-    Region0.get env ^^ Region.sanity_check "stableMemoryRegion" env
+     SR.Vanilla,
+     if !Flags.use_stable_regions then
+       Region0.get env ^^ Region.sanity_check "stableMemoryRegion" env
+     else
+       E.trap_with env (Printf.sprintf "stable regions not enabled.")
 
   | OtherPrim ("stableMemoryLoadNat32"|"stableMemoryLoadInt32"), [e] ->
     SR.UnboxedWord32,
@@ -9899,12 +9900,19 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.unit,
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     compile_exp_as env ae SR.UnboxedWord32 e2 ^^
-    Region0.store_word32 env
-
+    if !Flags.use_stable_regions then
+      Region0.store_word32 env
+    else
+      StableMem.store_word32 env
+      
   | OtherPrim ("stableMemoryLoadNat8"), [e] ->
     SR.Vanilla,
     compile_exp_as env ae SR.UnboxedWord64 e ^^
-    Region0.load_word8 env ^^
+    if !Flags.use_stable_regions then
+      Region0.load_word8 env
+    else
+      StableMem.load_word8 env
+    ^^
     TaggedSmallWord.msb_adjust Type.Nat8
 
   | OtherPrim ("stableMemoryLoadInt8"), [e] ->
@@ -10108,7 +10116,9 @@ and compile_prim_invocation (env : E.t) ae p es at =
     *)
     SR.Vanilla,
     Stabilization.destabilize env ty ^^
-    E.call_import env "rts" "region_init"
+      if !Flags.use_stable_regions then
+        E.call_import env "rts" "region_init"
+      else G.nop
 
   | ICStableWrite ty, [e] ->
     SR.unit,
