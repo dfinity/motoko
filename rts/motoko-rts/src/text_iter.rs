@@ -12,6 +12,7 @@
 
 use core::ptr::null_mut;
 
+use crate::barriers::allocation_barrier;
 use crate::memory::{alloc_array, Memory};
 use crate::rts_trap_with;
 use crate::text::decode_code_point;
@@ -31,8 +32,10 @@ unsafe fn find_leaf<M: Memory>(mem: &mut M, mut text: Value, todo: *mut Value) -
         // Add right node to TODOs
         let new_todo = alloc_array(mem, 2);
         let new_todo_array = new_todo.as_array();
-        new_todo_array.set_pointer(TODO_TEXT_IDX, (*concat).text2, mem);
-        new_todo_array.set_pointer(TODO_LINK_IDX, *todo, mem);
+        // No pre-update barrier for object initialization, but do perform post-update barrier.
+        new_todo_array.initialize(TODO_TEXT_IDX, (*concat).text2, mem);
+        new_todo_array.initialize(TODO_LINK_IDX, *todo, mem);
+        allocation_barrier(new_todo);
         *todo = new_todo;
 
         // Follow left node
@@ -60,14 +63,13 @@ pub unsafe fn text_iter<M: Memory>(mem: &mut M, text: Value) -> Value {
     // Initialize position field
     array.set_scalar(ITER_POS_IDX, Value::from_scalar(0));
 
-    // Initialize blob field
-    array.set_pointer(
+    // Initialize blob field, no pre-update barrier, but post-update barrier.
+    array.initialize(
         ITER_BLOB_IDX,
         find_leaf(mem, text, todo_addr as *mut _),
         mem,
     );
-
-    iter
+    allocation_barrier(iter)
 }
 
 /// Returns whether the iterator is finished
@@ -114,6 +116,7 @@ pub unsafe fn text_iter_next<M: Memory>(mem: &mut M, iter: Value) -> u32 {
             todo_array.set_pointer(TODO_TEXT_IDX, (*concat).text2, mem);
             iter_array.set_scalar(ITER_POS_IDX, Value::from_scalar(0));
             let todo_addr = iter_array.payload_addr().add(ITER_TODO_IDX as usize);
+
             iter_array.set_pointer(
                 ITER_BLOB_IDX,
                 find_leaf(mem, (*concat).text1, todo_addr),
@@ -127,6 +130,7 @@ pub unsafe fn text_iter_next<M: Memory>(mem: &mut M, iter: Value) -> u32 {
 
             iter_array.set_pointer(ITER_BLOB_IDX, text, mem);
             iter_array.set_scalar(ITER_POS_IDX, Value::from_scalar(0));
+
             iter_array.set_pointer(ITER_TODO_IDX, todo_array.get(TODO_LINK_IDX), mem);
 
             text_iter_next(mem, iter)

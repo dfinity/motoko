@@ -1195,7 +1195,7 @@ In detail, if `<url>` is of the form:
 
 The case sensitivity of file references depends on the host operating system so it is recommended not to distinguish resources by filename casing alone.
 
-(Remark: when building multi-canister projects with the DFINITY Canister SDK, Motoko programs can typically import canisters by alias (e.g. `import C "canister:counter"`), without specifying low-level canister ids (e.g. `import C "ic:lg264-qjkae"`). The SDK tooling takes care of supplying the appropriate command-line arguments to the Motoko compiler.)
+(Remark: when building multi-canister projects with the [IC SDK](https://internetcomputer.org/docs/current/developer-docs/setup/install), Motoko programs can typically import canisters by alias (e.g. `import C "canister:counter"`), without specifying low-level canister ids (e.g. `import C "ic:lg264-qjkae"`). The SDK tooling takes care of supplying the appropriate command-line arguments to the Motoko compiler.)
 
 (Remark: sensible choices for `<pat>` are identifiers, such as `Array`, or object patterns like `{ cons; nil = empty }`, which allow selective importing of individual fields, under original or other names.)
 

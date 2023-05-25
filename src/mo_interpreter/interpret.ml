@@ -322,7 +322,11 @@ let array_vals a at =
       V.local_func 0 1 (fun c v k' ->
         if !i = Array.length a
         then k' V.Null
-        else let v = V.Opt a.(!i) in incr i; k' v
+        else
+          let wi = match a.(!i) with
+            | V.Mut r -> !r
+            | w -> w in
+          let v = V.Opt wi in incr i; k' v
       )
     in k (V.Obj (V.Env.singleton "next" next))
   )
