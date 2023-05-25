@@ -235,6 +235,7 @@ and objblock s dec_fields =
 %token<string> TEXT
 %token PRIM
 %token UNDERSCORE
+%token COMPOSITE
 
 %nonassoc IMPLIES (* see assertions.mly *)
 
@@ -359,16 +360,20 @@ seplist1(X, SEP) :
 %inline mode_opt :
   | (* empty *) { Type.Write }
   | QUERY { Type.Query }
+  | COMPOSITE QUERY { Type.Composite }
 
 %inline func_sort_opt :
   | (* empty *) { Type.Local @@ no_region }
   | SHARED m=mode_opt { Type.Shared m @@ at $sloc }
   | QUERY { Type.Shared Type.Query @@ at $sloc }
+  | COMPOSITE QUERY { Type.Shared Type.Composite @@ at $sloc }
+
 
 %inline shared_pat_opt :
   | (* empty *) { Type.Local @@ no_region }
   | SHARED m=mode_opt op=pat_opt { Type.Shared (m, op (at $sloc)) @@ at $sloc  }
   | QUERY op=pat_opt { Type.Shared (Type.Query, op (at $sloc)) @@ at $sloc }
+  | COMPOSITE QUERY op=pat_opt { Type.Shared (Type.Composite, op (at $sloc)) @@ at $sloc }
 
 
 (* Paths *)

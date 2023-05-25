@@ -10900,7 +10900,9 @@ and export_actor_field env  ae (f : Ir.field) =
         |  Func(Shared sort,_,_,_,_) ->
            (match sort with
             | Write -> "canister_update " ^ f.it.name
-            | Query -> "canister_query " ^ f.it.name)
+            | Query -> "canister_query " ^ f.it.name
+            | Composite -> "canister_composite_query " ^ f.it.name
+           )
         | _ -> assert false)
       | _ -> assert false);
     edesc = nr (FuncExport (nr fi))

@@ -26,6 +26,8 @@ let string_of_mode m =
   match m.it with
   | Oneway -> " oneway"
   | Query -> " query"
+  | Composite -> " composite_query"
+
 
 let ($$) head inner = Node (head, inner)
 
