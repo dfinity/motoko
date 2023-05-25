@@ -715,7 +715,7 @@ and infer_inst env sort tbs typs at =
   | {T.bound; sort = T.Scope; _}::tbs', typs' ->
     assert (List.for_all (fun tb -> tb.T.sort = T.Type) tbs');
     (match env.async with
-     | (C.AwaitCap c | C.AsyncCap c) when sort = T.Shared T.Query || sort = T.Shared T.Write ->
+     | (C.AwaitCap c | C.AsyncCap c) when sort = T.Shared T.Query || sort = T.Shared T.Write || sort = T.Local ->
         (T.Con(c,[])::ts, at::ats)
      | (C.CompositeAwaitCap c | C.CompositeCap c) when sort = T.Shared T.Query || sort = T.Shared T.Composite ->
         (T.Con(c,[])::ts, at::ats)
