@@ -429,6 +429,7 @@ impl PartitionedHeap {
         rts_trap_with("Cannot grow memory");
     }
 
+    /// The returned bitmap address is guaranteed to be 64-bit-aligned.
     unsafe fn allocate_bitmap<M: Memory>(&mut self, mem: &mut M) -> *mut u8 {
         if self.bitmap_allocation_pointer % PARTITION_SIZE == 0 {
             let partition = self.allocate_temporary_partition();
@@ -437,6 +438,10 @@ impl PartitionedHeap {
         }
         let bitmap_address = self.bitmap_allocation_pointer as *mut u8;
         self.bitmap_allocation_pointer += BITMAP_SIZE;
+        debug_assert_eq!(
+            bitmap_address as usize % size_of::<u64>().to_bytes().as_usize(),
+            0
+        );
         bitmap_address
     }
 
