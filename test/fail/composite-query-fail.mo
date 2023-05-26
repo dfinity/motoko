@@ -32,7 +32,7 @@ actor Composites {
    };
 
    public composite query func cqo() : async () {
-     o(); // reject oneway call (fails)
+     o(); // reject oneway call
    };
 
    public composite query func cqf() : async () {
