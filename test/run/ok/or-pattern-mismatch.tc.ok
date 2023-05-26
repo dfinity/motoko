@@ -14,6 +14,3 @@ or-pattern-mismatch.mo:6.6-6.20: warning [M0146], this pattern is never matched
 or-pattern-mismatch.mo:9.10-9.41: warning [M0185], imprecise type for alternative pattern variables a6 given
   Nat
   Bool
-or-pattern-mismatch.mo:9.10-9.41: warning [M0185], imprecise type for alternative pattern variables a6 given
-  Nat
-  Bool

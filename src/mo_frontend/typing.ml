@@ -1876,7 +1876,7 @@ and infer_pat' env pat : T.typ * Scope.val_env =
       error env pat.at "M0184" "different set of bindings in pattern alternatives";
     let warn_lossy_bind_type bind t1 t2 = if not (T.eq t1 t2) then
       let common = T.lub t1 t2 in
-      if T.(not (eq t1 common || eq common t2)) then
+      if not env.pre && T.(not (eq t1 common || eq common t2)) then
       warn env pat.at "M0185" "imprecise type for alternative pattern variables %s given%a%a"
         bind
         display_typ_expand t1
