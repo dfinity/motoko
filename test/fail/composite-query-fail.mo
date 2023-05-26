@@ -53,4 +53,20 @@ actor Composites {
      // actually, it might be safe to allow this, but disallow await* (coz lazy)
    };
 
+   // bad update
+   public func n() : async() {
+      ignore cq(); // reject
+   };
+
+   // bad oneway
+   public func p() : () {
+      ignore cq(); // reject
+      ignore async { cq() }; // reject
+   };
+
+   // bad query
+   public query func r() : async () {
+      ignore cq(); // reject
+   };
+
 }

@@ -5597,6 +5597,8 @@ module MakeSerialization (Strm : Stream) = struct
             add_leb128 0; (* no annotation *)
           | Shared Query, _ ->
             add_leb128 1; add_u8 1; (* query *)
+          | Shared Composite, _ ->
+            add_leb128 1; add_u8 3; (* composite *)
           | _ -> assert false
         end
       | Obj (Actor, fs) ->

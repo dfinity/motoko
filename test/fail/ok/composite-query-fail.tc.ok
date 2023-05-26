@@ -5,3 +5,7 @@ composite-query-fail.mo:39.13-39.16: type error [M0047], send capability require
 composite-query-fail.mo:43.13-43.16: type error [M0047], send capability required, but not available (need an enclosing async expression or function body)
 composite-query-fail.mo:47.13-47.21: type error [M0037], misplaced async expression; try enclosing in an async function
 composite-query-fail.mo:52.13-52.22: type error [M0037], misplaced async expression; try enclosing in an async function
+composite-query-fail.mo:58.14-58.18: type error [M0047], send capability required, but not available (need an enclosing async expression or function body)
+composite-query-fail.mo:63.14-63.18: type error [M0047], send capability required, but not available (need an enclosing async expression or function body)
+composite-query-fail.mo:64.22-64.26: type error [M0047], send capability required, but not available (need an enclosing async expression or function body)
+composite-query-fail.mo:69.14-69.18: type error [M0047], send capability required, but not available (need an enclosing async expression or function body)
