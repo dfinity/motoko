@@ -11,6 +11,3 @@ or-pattern-mismatch.mo:6.5-6.32: warning [M0185], inconsistent type for alternat
   Int
 or-pattern-mismatch.mo:6.5-6.21: warning [M0146], this pattern is never matched
 or-pattern-mismatch.mo:6.6-6.20: warning [M0146], this pattern is never matched
-or-pattern-mismatch.mo:9.10-9.41: warning [M0185], inconsistent type for alternative pattern variables a6 given
-  Nat
-  Bool
