@@ -91,7 +91,7 @@ let utf8 = ascii | utf8enc
 let utf8_no_nl = ascii_no_nl | utf8enc
 
 let byte = '\\'hexdigit hexdigit
-let escape = ['t''\\''\'''\"']
+let escape = ['\n''\r''t''\\''\'''\"']
 let character =
     [^'"''\\''\x00'-'\x1f''\x7f'-'\xff']
   | utf8enc
@@ -99,7 +99,6 @@ let character =
   | '\\'escape
   | "\\u{" hexnum '}'
   | '\n'
-  | '\r'
 
 let nat = num | "0x" hexnum
 let frac = num
@@ -183,6 +182,8 @@ rule token mode = parse
   | float as s { FLOAT s }
   | char as s { CHAR (char lexbuf s) }
   | text as s { TEXT (text lexbuf s) }
+  | '"'character*eof
+    { error lexbuf "unclosed text literal" }
   | '"'character*['\x00'-'\x09''\x0b'-'\x1f''\x7f']
     { error lexbuf "illegal control character in text literal" }
   | '"'character*'\\'_
