@@ -6,10 +6,10 @@
         "homepage": "",
         "owner": "dfinity",
         "repo": "candid",
-        "rev": "9301221a118e89710fc41791951f797394d4def0",
-        "sha256": "0x2mk5gxpikd3xkh2qigk1sm5gz5fwn1j3acksa3jv0na7aal0v2",
+        "rev": "331217bae379cbebfa531a140f2186c99fae1425",
+        "sha256": "095w2a4lxy2gd7vfjxn7jszm4x3srw8xlxb1zzd096y6h047rxlj",
         "type": "tarball",
-        "url": "https://github.com/dfinity/candid/archive/9301221a118e89710fc41791951f797394d4def0.tar.gz",
+        "url": "https://github.com/dfinity/candid/archive/331217bae379cbebfa531a140f2186c99fae1425.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "esm": {
@@ -90,10 +90,10 @@
         "homepage": "https://wasi.dev",
         "owner": "WebAssembly",
         "repo": "wasi-libc",
-        "rev": "38f48942fabf1b59e73bca126340b219fa9a78aa",
-        "sha256": "0j2d6p32825a1nf5brm870pwkclwqfy7fxkgyk32y4k3axcsz6z2",
+        "rev": "a6f871343313220b76009827ed0153586361c0d5",
+        "sha256": "0ips3cb4r8ixyrn4va70ggfjkk455305j87jrm8398zzy0ys43vr",
         "type": "tarball",
-        "url": "https://github.com/WebAssembly/wasi-libc/archive/38f48942fabf1b59e73bca126340b219fa9a78aa.tar.gz",
+        "url": "https://github.com/WebAssembly/wasi-libc/archive/a6f871343313220b76009827ed0153586361c0d5.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs": {
