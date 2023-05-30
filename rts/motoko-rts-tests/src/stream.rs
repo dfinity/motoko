@@ -4,6 +4,7 @@ use crate::memory::TestMemory;
 
 use motoko_rts::stream::alloc_stream;
 use motoko_rts::types::{size_of, Blob, Bytes, Stream, Value, Words};
+use motoko_rts_macros::is_incremental_gc;
 
 pub unsafe fn test() {
     println!("Testing streaming ...");
@@ -33,7 +34,8 @@ pub unsafe fn test() {
     println!("  Testing stream decay");
     let blob = stream.as_stream().split();
     assert_eq!(blob.as_blob().len(), Bytes(STREAM_SMALL_SIZE));
-    assert_eq!(stream.as_blob().len(), Bytes(24));
+    const REMAINDER: u32 = if is_incremental_gc!() { 20 } else { 24 };
+    assert_eq!(stream.as_blob().len(), Bytes(REMAINDER));
 
     println!("  Testing stream filling (blocks)");
     const STREAM_LARGE_SIZE: u32 = 6000;
