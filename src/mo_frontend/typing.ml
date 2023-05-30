@@ -1877,7 +1877,7 @@ and infer_pat' env pat : T.typ * Scope.val_env =
     let warn_lossy_bind_type bind t1 t2 = if not (T.eq t1 t2) then
       let common = T.lub t1 t2 in
       if T.(not (eq t1 common || eq common t2)) then
-      warn env pat.at "M0185" "imprecise type for alternative pattern variables %s given%a%a"
+      warn env pat.at "M0185" "inconsistent type for alternative pattern variables %s given%a%a"
         bind
         display_typ_expand t1
         display_typ_expand t2;
@@ -2013,7 +2013,7 @@ and check_pat' env t pat : Scope.val_env =
     let warn_lossy_bind_type bind t1 t2 =
       let common = T.lub t1 t2 in
       if T.(not (eq t1 common || eq common t2)) then
-      warn env pat.at "M0185" "imprecise type for alternative pattern variables %s given%a%a"
+      warn env pat.at "M0185" "inconsistent type for alternative pattern variables %s given%a%a"
         bind
         display_typ_expand t1
         display_typ_expand t2;
