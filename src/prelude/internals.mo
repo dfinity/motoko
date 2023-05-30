@@ -313,11 +313,12 @@ func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>) {
   var result : ?(@Result<T>) = null;
   var ws : @Waiter<T> = w_null;
   var rs : @Cont<Error> = r_null;
+  let getRefund = @cycles != 0;
 
   func fulfill(t : T) {
     switch result {
       case null {
-        let refund = @getSystemRefund();
+        let refund = if getRefund @getSystemRefund() else 0;
         result := ?(#ok (refund, t));
         let ws_ = ws;
         ws := w_null;

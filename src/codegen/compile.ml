@@ -4171,6 +4171,7 @@ module Lifecycle = struct
     | PostPreUpgrade (* an invalid state *)
     | InPostUpgrade
 
+
   let string_of_state state = match state with
     | PreInit -> "PreInit"
     | InInit -> "InInit"
@@ -7883,22 +7884,20 @@ module FuncDec = struct
     ))
 
   let message_start env sort = match sort with
+      | Type.Shared Type.Composite
       | Type.Shared Type.Write ->
         Lifecycle.trans env Lifecycle.InUpdate
       | Type.Shared Type.Query ->
         Lifecycle.trans env Lifecycle.InQuery
-      | Type.Shared Type.Composite ->
-        Lifecycle.trans env Lifecycle.InQuery (* TBR *)
       | _ -> assert false
 
   let message_cleanup env sort = match sort with
+      | Type.Shared Type.Composite
       | Type.Shared Type.Write ->
         GC.collect_garbage env ^^
         Lifecycle.trans env Lifecycle.Idle
       | Type.Shared Type.Query ->
         Lifecycle.trans env Lifecycle.PostQuery
-      | Type.Shared Type.Composite ->
-        Lifecycle.trans env Lifecycle.PostQuery (* TBR *)
       | _ -> assert false
 
   let compile_const_message outer_env outer_ae sort control args mk_body ret_tys at : E.func_with_names =
