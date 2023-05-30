@@ -1,13 +1,25 @@
-or-pattern-mismatch.mo:2.5-2.23: warning [M0185], inconsistent type for alternative pattern variables a1 given
+or-pattern-mismatch.mo:2.5-2.23: warning [M0185], pattern variable a1 has type
+  Any
+because its types in the pattern alternatives are inconsistent:
+type in left pattern is
   Nat
+type in right pattern is
   Char
 or-pattern-mismatch.mo:4.5-4.20: warning [M0146], this pattern is never matched
 or-pattern-mismatch.mo:4.6-4.19: warning [M0146], this pattern is never matched
-or-pattern-mismatch.mo:5.5-5.32: warning [M0185], inconsistent type for alternative pattern variables a4 given
+or-pattern-mismatch.mo:5.5-5.32: warning [M0185], pattern variable a4 has type
+  Any
+because its types in the pattern alternatives are inconsistent:
+type in left pattern is
   Char
+type in right pattern is
   Int
-or-pattern-mismatch.mo:6.5-6.32: warning [M0185], inconsistent type for alternative pattern variables a5 given
+or-pattern-mismatch.mo:6.5-6.32: warning [M0185], pattern variable a5 has type
+  Any
+because its types in the pattern alternatives are inconsistent:
+type in left pattern is
   Char
+type in right pattern is
   Int
 or-pattern-mismatch.mo:6.5-6.21: warning [M0146], this pattern is never matched
 or-pattern-mismatch.mo:6.6-6.20: warning [M0146], this pattern is never matched
