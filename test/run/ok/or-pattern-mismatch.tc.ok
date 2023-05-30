@@ -1,16 +1,16 @@
-or-pattern-mismatch.mo:2.5-2.23: warning [M0185], imprecise type for alternative pattern variables a1 given
+or-pattern-mismatch.mo:2.5-2.23: warning [M0185], inconsistent type for alternative pattern variables a1 given
   Nat
   Char
 or-pattern-mismatch.mo:4.5-4.20: warning [M0146], this pattern is never matched
 or-pattern-mismatch.mo:4.6-4.19: warning [M0146], this pattern is never matched
-or-pattern-mismatch.mo:5.5-5.32: warning [M0185], imprecise type for alternative pattern variables a4 given
+or-pattern-mismatch.mo:5.5-5.32: warning [M0185], inconsistent type for alternative pattern variables a4 given
   Char
   Int
-or-pattern-mismatch.mo:6.5-6.32: warning [M0185], imprecise type for alternative pattern variables a5 given
+or-pattern-mismatch.mo:6.5-6.32: warning [M0185], inconsistent type for alternative pattern variables a5 given
   Char
   Int
 or-pattern-mismatch.mo:6.5-6.21: warning [M0146], this pattern is never matched
 or-pattern-mismatch.mo:6.6-6.20: warning [M0146], this pattern is never matched
-or-pattern-mismatch.mo:9.10-9.41: warning [M0185], imprecise type for alternative pattern variables a6 given
+or-pattern-mismatch.mo:9.10-9.41: warning [M0185], inconsistent type for alternative pattern variables a6 given
   Nat
   Bool
