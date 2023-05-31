@@ -1360,7 +1360,7 @@ let decode_msg_typ tfs =
   Variant
     (List.sort compare_field (List.filter_map (fun tf ->
        match normalize tf.typ with
-       | Func(Shared _, _, tbs, ts1, ts2) ->
+       | Func(Shared (Write | Query), _, tbs, ts1, ts2) ->
          Some { tf with
            typ =
              Func(Local, Returns, [], [],
