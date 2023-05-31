@@ -1864,6 +1864,8 @@ and infer_pat' env pat : T.typ * Scope.val_env =
     let t1, ve = infer_pat env pat1 in
     T.Variant [T.{lab = id.it; typ = t1; depr = None}], ve
   | AltP (pat1, pat2) ->
+    error env pat.at "M0184"
+        "or-pattern needs annotation";
     let t1, ve1 = infer_pat env pat1 in
     let t2, ve2 = infer_pat env pat2 in
     let t = T.lub t1 t2 in
