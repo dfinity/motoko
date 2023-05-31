@@ -1866,7 +1866,7 @@ and infer_pat' env pat : T.typ * Scope.val_env =
   | AltP (pat1, pat2) ->
     error env pat.at "M0184"
         "or-pattern needs annotation";
-    let t1, ve1 = infer_pat env pat1 in
+    (*let t1, ve1 = infer_pat env pat1 in
     let t2, ve2 = infer_pat env pat2 in
     let t = T.lub t1 t2 in
     if not (T.compatible t1 t2) then
@@ -1876,7 +1876,7 @@ and infer_pat' env pat : T.typ * Scope.val_env =
         display_typ_expand t2;
     if ve1 <> T.Env.empty || ve2 <> T.Env.empty then
       error env pat.at "M0105" "variables are not allowed in pattern alternatives";
-    t, T.Env.empty
+    t, T.Env.empty*)
   | AnnotP (pat1, typ) ->
     let t = check_typ env typ in
     t, check_pat env t pat1
