@@ -49,6 +49,8 @@ let text lexbuf s =
   let b = Buffer.create (String.length s) in
   let i = ref 1 in
   while !i < String.length s - 1 do
+    let raw = s.[!i] in
+    if raw = '\n' then Lexing.new_line lexbuf;
     let bs = codepoint lexbuf s i in
     Buffer.add_substring b bs 0 (String.length bs)
   done;
@@ -91,7 +93,7 @@ let utf8 = ascii | utf8enc
 let utf8_no_nl = ascii_no_nl | utf8enc
 
 let byte = '\\'hexdigit hexdigit
-let escape = ['\n''\r''t''\\''\'''\"']
+let escape = ['n''r''t''\\''\'''\"']
 let character =
     [^'"''\\''\x00'-'\x1f''\x7f'-'\xff']
   | utf8enc
@@ -267,6 +269,8 @@ rule token mode = parse
 
   | utf8 { error lexbuf "malformed operator" }
   | _ { error lexbuf "malformed UTF-8 encoding" }
+
+and com
 
 and comment buf start = parse
   | "*/" as s { Buffer.add_string buf s }
