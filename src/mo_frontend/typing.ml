@@ -136,11 +136,10 @@ let error_in modes env at code fmt =
 let plural cs = if T.ConSet.cardinal cs = 1 then "" else "s"
 
 let warn_lossy_bind_type env at bind t1 t2 =
-  let common = T.lub t1 t2 in
-  if T.(not (eq t1 common || eq common t2)) then
+  if not T.(sub t1 t2 || sub t2 t1) then
     warn env at "M0185" "pattern variable %s has larger type%a\nbecause its types in the pattern alternatives are unrelated smaller types:\ntype in left pattern is%a\ntype in right pattern is%a"
       bind
-      display_typ_expand common
+      display_typ_expand (T.lub t1 t2)
       display_typ_expand t1
       display_typ_expand t2
 
