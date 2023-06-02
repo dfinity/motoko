@@ -3676,7 +3676,7 @@ module Blob = struct
     get_blob
 
   (* Lexicographic blob comparison. Expects two blobs on the stack.
-     Either specialized to a specific comparision operator, and returns a boolean,
+     Either specialized to a specific comparison operator, and returns a boolean,
      or implements the generic comparison, returning -1, 0 or 1 as Int8.
   *)
   let rec compare env op =
