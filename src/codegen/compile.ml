@@ -3680,13 +3680,10 @@ module Blob = struct
      or implements the generic comparison, returning -1, 0 or 1 as Int8.
   *)
   let rec compare env op =
-    let word32_cmp get_a get_b =
-        (* Wasm has no compare instruction for Word32 that returns -1, 0, 1. Here is one *)
-        get_a ^^ get_b ^^ G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
-        G.if0 (compile_unboxed_const (TaggedSmallWord.vanilla_lit Type.Int8 (-1)) ^^ G.i Return) G.nop ^^
-        get_a ^^ get_b ^^ G.i (Compare (Wasm.Values.I32 I32Op.GtU)) ^^
-        G.if0 (compile_unboxed_const (TaggedSmallWord.vanilla_lit Type.Int8 1) ^^ G.i Return) G.nop ^^
-        compile_unboxed_const (TaggedSmallWord.vanilla_lit Type.Int8 0) in
+    (* return convention for the generic comparison function *)
+    let is_lt = compile_unboxed_const (TaggedSmallWord.vanilla_lit Type.Int8 (-1)) in
+    let is_gt = compile_unboxed_const (TaggedSmallWord.vanilla_lit Type.Int8 1) in
+    let is_eq = compile_unboxed_const (TaggedSmallWord.vanilla_lit Type.Int8 0) in
     let open Operator in
     let name = match op with
         | Some LtOp -> "Blob.compare_lt"
@@ -3757,7 +3754,8 @@ module Blob = struct
             | Some LeOp -> get_a ^^ get_b ^^ G.i (Compare (Wasm.Values.I32 I32Op.LeU))
             | Some GeOp -> get_a ^^ get_b ^^ G.i (Compare (Wasm.Values.I32 I32Op.GeU))
             | Some EqOp -> Bool.lit false
-            | None -> word32_cmp get_a get_b
+            | None -> get_a ^^ get_b ^^ G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
+                      G.if1 I32Type is_lt is_gt
             | _ -> assert false
             end ^^
             G.i Return
@@ -3768,7 +3766,12 @@ module Blob = struct
         | Some LeOp -> get_len1 ^^ get_len2 ^^ G.i (Compare (Wasm.Values.I32 I32Op.LeU))
         | Some GeOp -> get_len1 ^^ get_len2 ^^ G.i (Compare (Wasm.Values.I32 I32Op.GeU))
         | Some EqOp -> Bool.lit true (* NB: Different length handled above *)
-        | None -> word32_cmp get_len1 get_len2
+        | None ->
+            get_len1 ^^ get_len2 ^^ G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
+            G.if1 I32Type is_lt (
+              get_len1 ^^ get_len2 ^^ G.i (Compare (Wasm.Values.I32 I32Op.GtU)) ^^
+              G.if1 I32Type is_gt is_eq
+            )
         | _ -> assert false
       end
   )
