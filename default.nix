@@ -320,7 +320,7 @@ rec {
     };
 
     testDerivationDeps =
-      (with nixpkgs; [ wabt bash perl getconf moreutils nodejs-16_x ]) ++
+      (with nixpkgs; [ wabt bash perl getconf moreutils nodejs-18_x ]) ++
       [ filecheck wasmtime ];
 
 
@@ -539,7 +539,7 @@ rec {
         buildInputs = commonBuildInputs nixpkgs ++ [
           nixpkgs.ocamlPackages.js_of_ocaml
           nixpkgs.ocamlPackages.js_of_ocaml-ppx
-          nixpkgs.nodejs-16_x
+          nixpkgs.nodejs-18_x
           nixpkgs.nodePackages.terser
         ];
         buildPhase = ''
