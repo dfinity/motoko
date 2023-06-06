@@ -4,6 +4,6 @@
   (wrapped false)
 
   (preprocess (pps ppx_blob))
-  (preprocessor_deps (glob_files error_codes/*.adoc))
+  (preprocessor_deps (glob_files error_codes/*.md))
   (instrumentation (backend bisect_ppx --bisect-silent yes))
 )

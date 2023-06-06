@@ -4,11 +4,11 @@
 
 The *Motoko Programming Language Guide* introduces key features of the general-purpose Motoko programming language and provides examples and reference information to help you learn the nuances of the language and the practical implications of how to apply it.
 
-The Motoko programming language is optimized for developing programs that run on the Internet Computer blockchain network and to work with the DFINITY Canister Software Development Kit (SDK). You could, in principle, also write programs using Motoko for more traditional platforms and to run in other contexts, though support for this is currently best-effort and incomplete. This guide attempts to strike a balance between highlighting features that are uniquely suited to running on the Internet Computer and features that are generally-applicable or well-suited for programs running on all targets.
+The Motoko programming language is optimized for developing programs that run on the Internet Computer blockchain network and to work with the [IC SDK](https://internetcomputer.org/docs/current/developer-docs/setup/install). You could, in principle, also write programs using Motoko for more traditional platforms and to run in other contexts, though support for this is currently best-effort and incomplete. This guide attempts to strike a balance between highlighting features that are uniquely suited to running on the Internet Computer and features that are generally-applicable or well-suited for programs running on all targets.
 
 ## Intended audience
 
-This guide provides reference information and examples for programmers who want to explore or plan to use the Motoko programming language. Most of the information in this guide is applicable independent of whether you are developing programs to run on the Internet Computer or working with the DFINITY Canister SDK.
+This guide provides reference information and examples for programmers who want to explore or plan to use the Motoko programming language. Most of the information in this guide is applicable independent of whether you are developing programs to run on the Internet Computer or working with the [IC SDK](https://internetcomputer.org/docs/current/developer-docs/setup/install).
 
 The guide assumes you are familiar with basic programming principles and terminology and have at least some experience writing programs in a high-level programming language such as C++ or Rust, or have practical experience working with a scripting language such as JavaScript or TypeScript. In addition, Motoko incorporates some aspects of functional programming, so you might find some knowledge of functional programming design principles helpful in learning to use Motoko.
 
@@ -66,7 +66,7 @@ The following principles represent the secondary values of the engineering organ
 
 2.  Performance, so that Motoko provides reasonably fast operation initially and continues to improves as the language evolves.
 
-3.  Readiness, so the Motoko comes with "batteries included" in the form of libraries and examples and out-of-the-box integration with the DFINITY Canister SDK.
+3.  Readiness, so the Motoko comes with "batteries included" in the form of libraries and examples and out-of-the-box integration with the [IC SDK](https://internetcomputer.org/docs/current/developer-docs/setup/install).
 
 ### Non-goals
 
@@ -80,7 +80,7 @@ As a counterpoint to the core values and goals, the engineering organization als
 
 ## Finding more information
 
-For information about using Motoko with the DFINITY Canister SDK, see the [SDK Developer Tools](../../developer-docs/backend/backend-tutorials/index.md).
+For information about using Motoko with the IC SDK for creating and managing canisters, see the [Developer Resources](https://internetcomputer.org/developers).
 
 For background information on various topics relevant to the design, use, or deployment of Motoko services, or the language’s design itself, consider the following resources as a starting point:
 
