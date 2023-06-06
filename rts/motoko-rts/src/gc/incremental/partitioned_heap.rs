@@ -221,6 +221,11 @@ impl Partition {
         self.marked_size as f64 / dynamic_heap_space as f64
     }
 
+    pub fn dynamic_occupation_ratio(&self) -> f64 {
+        let dynamic_heap_space = PARTITION_SIZE - self.static_size;
+        self.dynamic_size as f64 / dynamic_heap_space as f64
+    }
+
     pub fn has_large_content(&self) -> bool {
         self.large_content
     }
@@ -492,7 +497,10 @@ impl PartitionedHeap {
         }
     }
 
-    pub fn plan_evacuations(&mut self) {
+    pub unsafe fn plan_evacuations<M: Memory>(&mut self, mem: &mut M) {
+        if self.should_evacuate_allocation_partition() {
+            self.start_new_allocation_partition(mem);
+        }
         let ranked_partitions = self.rank_partitions_by_garbage();
         debug_assert_eq!(
             self.partitions
@@ -647,6 +655,21 @@ impl PartitionedHeap {
         new_partition.dynamic_size += size;
         self.allocation_index = new_partition.index;
         Value::from_ptr(heap_pointer)
+    }
+
+    // GC heuristics to decide whether the new objects in the currrent allocation partition
+    // should be collectable by opening a new allocation partition. This is a tradeoff between
+    // allocating a new partition and retaining young objects in the current GC run.
+    unsafe fn should_evacuate_allocation_partition(&mut self) -> bool {
+        // Threshold obtained by GC benchmark measurements.
+        const OCCUPATION_THRESHOLD: f64 = 0.95;
+        let allocation_partition = self.allocation_partition();
+        allocation_partition.is_evacuation_candidate()
+            && allocation_partition.dynamic_occupation_ratio() > OCCUPATION_THRESHOLD
+    }
+
+    unsafe fn start_new_allocation_partition<M: Memory>(&mut self, mem: &mut M) {
+        self.allocate_in_new_partition(mem, 0);
     }
 
     // Significant performance gain by not inlining.

@@ -28,7 +28,7 @@ pub unsafe fn test() {
 }
 
 unsafe fn test_normal_size_scenario() {
-    let mut heap = create_test_heap();
+    let mut heap: PartitionedTestHeap = create_test_heap();
     let occupied_partitions = 2 + heap.heap_pointer() / PARTITION_SIZE;
     test_allocation_partitions(&heap.inner, occupied_partitions);
     test_iteration(&heap.inner, 1024);
@@ -115,7 +115,7 @@ unsafe fn iterate_partition(
 unsafe fn test_evacuation_plan(heap: &mut PartitionedTestHeap, occupied_partitions: usize) {
     println!("    Test evacuation plan...");
     unmark_all_objects(heap);
-    heap.inner.plan_evacuations();
+    heap.inner.plan_evacuations(&mut heap.memory);
     let mut iterator = PartitionedHeapIterator::new(&heap.inner);
     while iterator.has_partition() {
         let partition = iterator.current_partition(&heap.inner);
@@ -274,7 +274,7 @@ unsafe fn test_allocation_sizes(sizes: &[usize], number_of_partitions: usize) {
     );
     iterate_large_objects(&heap.inner, sizes);
     unmark_all_objects(&mut heap);
-    heap.inner.plan_evacuations();
+    heap.inner.plan_evacuations(&mut heap.memory);
     heap.inner.collect_large_objects();
     heap.inner.complete_collection();
     heap.inner.start_collection(&mut heap.memory, &mut time);
