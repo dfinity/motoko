@@ -657,7 +657,7 @@ impl PartitionedHeap {
         Value::from_ptr(heap_pointer)
     }
 
-    // GC heuristics to decide whether the new objects in the currrent allocation partition
+    // GC heuristics to decide whether the new objects in the current allocation partition
     // should be collectable by opening a new allocation partition. This is a tradeoff between
     // allocating a new partition and retaining young objects in the current GC run.
     unsafe fn should_evacuate_allocation_partition(&mut self) -> bool {
