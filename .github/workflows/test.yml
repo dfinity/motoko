@@ -35,7 +35,9 @@ jobs:
     - run: nix-env -iA nix-build-uncached -f nix/
 
     - name: "nix-build"
-      run: nix-build --max-jobs 4 -A all-systems-go
+      run: |
+        nix show-derivation /nix/store/v37v69dy1l9krqwwnkm06argiqs3ajps-ic-ref-run.drv
+        nix-build --max-jobs 4 -A all-systems-go
 
     - name: Calculate performance delta
       if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && github.event_name == 'pull_request'
