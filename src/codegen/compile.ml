@@ -1137,7 +1137,8 @@ module Heap = struct
 
   (* Although we occasionally want to treat two consecutive
      32 bit fields as one 64 bit number *)
-
+  
+  (* Requires little-endian encoding, see also `Stream` in `types.rs` *)
   let load_field64_unskewed (i : int32) : G.t =
     let offset = Int32.mul word_size i in
     G.i (Load {ty = I64Type; align = 2; offset; sz = None})
@@ -3674,29 +3675,37 @@ module Blob = struct
 
     get_blob
 
-  (* Lexicographic blob comparison. Expects two blobs on the stack *)
+  (* Lexicographic blob comparison. Expects two blobs on the stack.
+     Either specialized to a specific comparison operator, and returns a boolean,
+     or implements the generic comparison, returning -1, 0 or 1 as Int8.
+  *)
   let rec compare env op =
+    (* return convention for the generic comparison function *)
+    let is_lt = compile_unboxed_const (TaggedSmallWord.vanilla_lit Type.Int8 (-1)) in
+    let is_gt = compile_unboxed_const (TaggedSmallWord.vanilla_lit Type.Int8 1) in
+    let is_eq = compile_unboxed_const (TaggedSmallWord.vanilla_lit Type.Int8 0) in
     let open Operator in
     let name = match op with
-        | LtOp -> "Blob.compare_lt"
-        | LeOp -> "Blob.compare_le"
-        | GeOp -> "Blob.compare_ge"
-        | GtOp -> "Blob.compare_gt"
-        | EqOp -> "Blob.compare_eq"
-        | NeqOp -> assert false in
+        | Some LtOp -> "Blob.compare_lt"
+        | Some LeOp -> "Blob.compare_le"
+        | Some GeOp -> "Blob.compare_ge"
+        | Some GtOp -> "Blob.compare_gt"
+        | Some EqOp -> "Blob.compare_eq"
+        | Some NeqOp -> "Blob.compare_neq"
+        | None -> "Blob.compare" in
     Func.share_code2 env name (("x", I32Type), ("y", I32Type)) [I32Type] (fun env get_x get_y ->
-      let set_x = G.setter_for get_x in
-      let set_y = G.setter_for get_y in
-      get_x ^^ Tagged.load_forwarding_pointer env ^^ set_x ^^
-      get_y ^^ Tagged.load_forwarding_pointer env ^^ set_y ^^
-
       match op with
         (* Some operators can be reduced to the negation of other operators *)
-        | LtOp ->  get_x ^^ get_y ^^ compare env GeOp ^^ Bool.neg
-        | GtOp ->  get_x ^^ get_y ^^ compare env LeOp ^^ Bool.neg
-        | NeqOp -> assert false
+        | Some LtOp -> get_x ^^ get_y ^^ compare env (Some GeOp) ^^ Bool.neg
+        | Some GtOp -> get_x ^^ get_y ^^ compare env (Some LeOp) ^^ Bool.neg
+        | Some NeqOp -> get_x ^^ get_y ^^ compare env (Some EqOp) ^^ Bool.neg
         | _ ->
       begin
+        let set_x = G.setter_for get_x in
+        let set_y = G.setter_for get_y in
+        get_x ^^ Tagged.load_forwarding_pointer env ^^ set_x ^^
+        get_y ^^ Tagged.load_forwarding_pointer env ^^ set_y ^^
+
         let (set_len1, get_len1) = new_local env "len1" in
         let (set_len2, get_len2) = new_local env "len2" in
         let (set_len, get_len) = new_local env "len" in
@@ -3707,7 +3716,7 @@ module Blob = struct
         get_y ^^ len env ^^ set_len2 ^^
 
         (* Find minimum length *)
-        begin if op = EqOp then
+        begin if op = Some EqOp then
           (* Early exit for equality *)
           get_len1 ^^ get_len2 ^^ G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
           G.if0 G.nop (Bool.lit false ^^ G.i Return) ^^
@@ -3731,7 +3740,6 @@ module Blob = struct
           G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.(Pack8, ZX)}) ^^
           set_a ^^
 
-
           get_y ^^
           payload_ptr_unskewed env ^^
           get_i ^^
@@ -3743,9 +3751,11 @@ module Blob = struct
           G.if0 G.nop (
             (* first non-equal elements *)
             begin match op with
-            | LeOp -> get_a ^^ get_b ^^ G.i (Compare (Wasm.Values.I32 I32Op.LeU))
-            | GeOp -> get_a ^^ get_b ^^ G.i (Compare (Wasm.Values.I32 I32Op.GeU))
-            | EqOp -> Bool.lit false
+            | Some LeOp -> get_a ^^ get_b ^^ G.i (Compare (Wasm.Values.I32 I32Op.LeU))
+            | Some GeOp -> get_a ^^ get_b ^^ G.i (Compare (Wasm.Values.I32 I32Op.GeU))
+            | Some EqOp -> Bool.lit false
+            | None -> get_a ^^ get_b ^^ G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
+                      G.if1 I32Type is_lt is_gt
             | _ -> assert false
             end ^^
             G.i Return
@@ -3753,9 +3763,15 @@ module Blob = struct
         ) ^^
         (* Common prefix is same *)
         match op with
-        | LeOp -> get_len1 ^^ get_len2 ^^ G.i (Compare (Wasm.Values.I32 I32Op.LeU))
-        | GeOp -> get_len1 ^^ get_len2 ^^ G.i (Compare (Wasm.Values.I32 I32Op.GeU))
-        | EqOp -> Bool.lit true
+        | Some LeOp -> get_len1 ^^ get_len2 ^^ G.i (Compare (Wasm.Values.I32 I32Op.LeU))
+        | Some GeOp -> get_len1 ^^ get_len2 ^^ G.i (Compare (Wasm.Values.I32 I32Op.GeU))
+        | Some EqOp -> Bool.lit true (* NB: Different length handled above *)
+        | None ->
+            get_len1 ^^ get_len2 ^^ G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
+            G.if1 I32Type is_lt (
+              get_len1 ^^ get_len2 ^^ G.i (Compare (Wasm.Values.I32 I32Op.GtU)) ^^
+              G.if1 I32Type is_gt is_eq
+            )
         | _ -> assert false
       end
   )
@@ -3858,12 +3874,9 @@ module Text = struct
         | EqOp -> "Text.compare_eq"
         | NeqOp -> assert false in
     Func.share_code2 env name (("x", I32Type), ("y", I32Type)) [I32Type] (fun env get_x get_y ->
-      let set_x = G.setter_for get_x in
-      let set_y = G.setter_for get_y in
-      get_x ^^ Tagged.load_forwarding_pointer env ^^ set_x ^^
-      get_y ^^ Tagged.load_forwarding_pointer env ^^ set_y ^^
-
-      get_x ^^ get_y ^^ E.call_import env "rts" "text_compare" ^^
+      get_x ^^ Tagged.load_forwarding_pointer env ^^
+      get_y ^^ Tagged.load_forwarding_pointer env ^^
+      E.call_import env "rts" "text_compare" ^^
       compile_unboxed_const 0l ^^
       match op with
         | LtOp -> G.i (Compare (Wasm.Values.I32 I32Op.LtS))
@@ -7059,7 +7072,7 @@ module BlobStream : Stream = struct
   let name_for fn_name ts = "@Bl_" ^ fn_name ^ "<" ^ Typ_hash.typ_seq_hash ts ^ ">"
 
   let absolute_offset env get_token =
-    let offset = if !Flags.gc_strategy = Flags.Incremental then 9l else 8l in (* see invariant in `stream.rs` *)
+    let offset = 8l in (* see invariant in `stream.rs` *)
     let filled_field = Int32.add (Blob.len_field env) offset in
     get_token ^^ Tagged.load_field_unskewed env filled_field
 
@@ -7157,7 +7170,7 @@ module Stabilization = struct
       E.call_import env "rts" "stream_stable_dest"
 
     let ptr64_field env = 
-      let offset = if !Flags.gc_strategy = Flags.Incremental then 2l else 1l in (* see invariant in `stream.rs` *)
+      let offset = 1l in (* see invariant in `stream.rs` *)
       Int32.add (Blob.len_field env) offset (* see invariant in `stream.rs`, padding for 64-bit after Stream header *)
 
     let terminate env get_token get_data_size header_size =
@@ -8283,12 +8296,12 @@ module FuncDec = struct
     set_meth_pair2 ^^ set_meth_pair1 ^^
     get_meth_pair1 ^^ Arr.load_field env 0l ^^
     get_meth_pair2 ^^ Arr.load_field env 0l ^^
-    Blob.compare env Operator.EqOp ^^
+    Blob.compare env (Some Operator.EqOp) ^^
     G.if1 I32Type
     begin
       get_meth_pair1 ^^ Arr.load_field env 1l ^^
       get_meth_pair2 ^^ Arr.load_field env 1l ^^
-      Blob.compare env Operator.EqOp
+      Blob.compare env (Some Operator.EqOp)
     end
     begin
       Bool.lit false
@@ -9176,7 +9189,7 @@ let compile_eq env =
   let open Type in
   function
   | Prim Text -> Text.compare env Operator.EqOp
-  | Prim (Blob|Principal) | Obj (Actor, _) -> Blob.compare env Operator.EqOp
+  | Prim (Blob|Principal) | Obj (Actor, _) -> Blob.compare env (Some Operator.EqOp)
   | Func (Shared _, _, _, _, _) -> FuncDec.equate_msgref env
   | Prim (Nat | Int) -> BigNum.compile_eq env
   | Prim (Int64 | Nat64) -> G.i (Compare (Wasm.Values.I64 I64Op.Eq))
@@ -9211,7 +9224,7 @@ let compile_relop env t op =
   let open Operator in
   match t, op with
   | Type.(Prim Text), _ -> Text.compare env op
-  | Type.(Prim (Blob|Principal)), _ -> Blob.compare env op
+  | Type.(Prim (Blob|Principal)), _ -> Blob.compare env (Some op)
   | _, EqOp -> compile_eq env t
   | Type.(Prim (Nat | Nat8 | Nat16 | Nat32 | Nat64 | Int | Int8 | Int16 | Int32 | Int64 | Char as t1)), op1 ->
     compile_comparison env t1 op1
@@ -9710,6 +9723,11 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_vanilla env ae e2 ^^
     E.call_import env "rts" "text_compare" ^^
     TaggedSmallWord.msb_adjust Type.Int8
+  | OtherPrim "blob_compare", [e1; e2] ->
+    SR.Vanilla,
+    compile_exp_vanilla env ae e1 ^^
+    compile_exp_vanilla env ae e2 ^^
+    Blob.compare env None
 
   | OtherPrim "blob_size", [e] ->
     SR.Vanilla, compile_exp_vanilla env ae e ^^ Blob.len_nat env

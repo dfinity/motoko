@@ -133,7 +133,8 @@ pub unsafe fn iter_bits() -> BitmapIter {
     let current_word = if blob_len_64bit_words == 0 {
         0
     } else {
-        *(BITMAP_PTR as *const u64)
+        let bitmap_ptr64 = BITMAP_PTR as *const u64;
+        bitmap_ptr64.read_unaligned()
     };
 
     debug_assert!(BITMAP_PTR as usize >= BITMAP_FORBIDDEN_PTR as usize);
@@ -190,7 +191,9 @@ impl BitmapIter {
                 return BITMAP_ITER_END;
             }
             self.current_word = unsafe {
-                *(BITMAP_FORBIDDEN_PTR.add(self.current_bit_idx as usize / 8) as *const u64)
+                let ptr64 =
+                    BITMAP_FORBIDDEN_PTR.add(self.current_bit_idx as usize / 8) as *const u64;
+                ptr64.read_unaligned()
             };
             self.leading_zeros = self.current_word.leading_zeros();
         }
