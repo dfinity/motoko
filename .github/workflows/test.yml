@@ -37,7 +37,7 @@ jobs:
     - name: "nix-build"
       run: |
         nix-instantiate -A ic-ref-run
-        nix show-derivation /nix/store/v37v69dy1l9krqwwnkm06argiqs3ajps-ic-ref-run.drv
+        nix show-derivation /nix/store/zv2h01nyvf0scph2110bwnig0csqppj9-ic-ref-run.drv
         nix-store --realise --substituters https://ic-hs-test.cachix.org /nix/store/r1qhqrav1h74c296hdbfyl21qjjbipnm-ic-ref-run || true
         nix-build --max-jobs 4 -A all-systems-go
 
