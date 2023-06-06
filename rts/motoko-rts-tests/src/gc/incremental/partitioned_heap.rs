@@ -28,7 +28,7 @@ pub unsafe fn test() {
 }
 
 unsafe fn test_normal_size_scenario() {
-    let mut heap: PartitionedTestHeap = create_test_heap();
+    let mut heap = create_test_heap();
     let occupied_partitions = 2 + heap.heap_pointer() / PARTITION_SIZE;
     test_allocation_partitions(&heap.inner, occupied_partitions);
     test_iteration(&heap.inner, 1024);
