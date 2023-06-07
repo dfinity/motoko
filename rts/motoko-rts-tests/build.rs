@@ -3,6 +3,8 @@ fn main() {
 
     match target.as_str() {
         "wasm64-unknown-unknown" => {
+            println!("cargo:rustc-link-search=native=../_build");
+            // println!("cargo:rustc-link-lib=static=tommath");
         }
         
         "wasm32-wasi" => {
