@@ -1835,8 +1835,8 @@ and infer_pat env pat : T.typ * Scope.val_env * (T.typ -> unit) =
   if not env.pre then
     pat.note <- T.normalize t;
   let widen = match pat.it with
-    | TagP (id, _) -> fun t -> if not env.pre then (Printf.printf "YEAH: %s\n" id.it; pat.note <- T.normalize t)
-    | ParP _ | AltP _ -> fun t -> (if not env.pre then (Printf.printf "ZOOM\n"; pat.note <- T.normalize t); match w with Some f -> f t | _ -> assert false)
+    | TagP (id, _) -> fun t -> if not env.pre then pat.note <- T.normalize t
+    | ParP _ | AltP _ -> fun t -> (if not env.pre then pat.note <- T.normalize t; match w with Some f -> f t | _ -> assert false)
     | _ -> fun t -> (match w with Some f -> f t | _ -> ()) in
   t, ve, widen
 
@@ -1879,7 +1879,7 @@ and infer_pat' env pat : T.typ * Scope.val_env * (T.typ -> unit) option =
     if ve1 <> T.Env.empty || ve2 <> T.Env.empty then
       error env pat.at "M0105" "variables are not allowed in pattern alternatives";
     w1 t; w2 t;
-    t, T.Env.empty, Some (fun t -> if not env.pre then Printf.printf "XXXX\n"; w1 t; w2 t)
+    t, T.Env.empty, Some (fun t -> w1 t; w2 t)
   | AnnotP (pat1, typ) ->
     let t = check_typ env typ in
     t, check_pat env t pat1, None
