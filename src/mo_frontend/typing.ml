@@ -1836,7 +1836,7 @@ and infer_pat env pat : T.typ * Scope.val_env * (T.typ -> unit) =
     pat.note <- T.normalize t;
   let widen = match pat.it with
     | TagP (id, _) -> fun t -> if not env.pre then (Printf.printf "YEAH: %s\n" id.it; pat.note <- T.normalize t)
-    | AltP _ -> fun t -> (if not env.pre then (Printf.printf "ZOOM\n"; pat.note <- T.normalize t); match w with Some f -> f t | _ -> assert false)
+    | ParP _ | AltP _ -> fun t -> (if not env.pre then (Printf.printf "ZOOM\n"; pat.note <- T.normalize t); match w with Some f -> f t | _ -> assert false)
     | _ -> fun t -> (match w with Some f -> f t | _ -> ()) in
   t, ve, widen
 
