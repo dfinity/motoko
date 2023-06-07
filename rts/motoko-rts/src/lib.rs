@@ -5,11 +5,15 @@
     arbitrary_self_types,
     core_intrinsics,
     panic_info_message,
-    proc_macro_hygiene
+    proc_macro_hygiene,
+    // We do not need simd but this flag enables `core::arch:wasm64`.
+    // See https://github.com/rust-lang/rust/issues/90599
+    simd_wasm64
 )]
 
+
 #[macro_use]
-mod print;
+pub mod print;
 
 #[cfg(debug_assertions)]
 pub mod debug;

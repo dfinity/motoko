@@ -2,6 +2,9 @@ fn main() {
     let target = std::env::var("TARGET").unwrap();
 
     match target.as_str() {
+        "wasm64-unknown-unknown" => {
+        }
+        
         "wasm32-wasi" => {
             println!("cargo:rustc-link-search=native=../_build");
             println!("cargo:rustc-link-lib=static=tommath");

@@ -9,7 +9,7 @@ use super::Memory;
 use crate::constants::WASM_PAGE_SIZE;
 use crate::rts_trap_with;
 use crate::types::{Bytes, Value};
-use core::arch::wasm32;
+use core::arch::wasm64;
 use motoko_rts_macros::*;
 
 // Provided by generated code
@@ -45,9 +45,9 @@ unsafe fn grow_memory(ptr: u64) {
     };
     let page_size = u64::from(WASM_PAGE_SIZE.as_u32());
     let total_pages_needed = ((ptr + page_size - 1) / page_size) as usize;
-    let current_pages = wasm32::memory_size(0);
+    let current_pages = wasm64::memory_size(0);
     if total_pages_needed > current_pages {
-        if wasm32::memory_grow(0, total_pages_needed - current_pages) == core::usize::MAX {
+        if wasm64::memory_grow(0, total_pages_needed - current_pages) == core::usize::MAX {
             // replica signals that there is not enough memory
             rts_trap_with("Cannot grow memory");
         }

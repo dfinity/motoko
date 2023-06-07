@@ -62,12 +62,12 @@ TOMMATH_FLAGS = \
 #       and will need tweaks/additions below.
 #       Similarly we define include guards (to suppress certain headers), but those should be
 #       pretty stable.
-#       TODO: run `wasm2wat mo-rts.wasm | grep -F '(import' | grep __fwritex_` expecting empty.
+#       TODO: run `wasm2wat --enable-memory64 mo-rts.wasm | grep -F '(import' | grep __fwritex_` expecting empty.
 #
 #       See also https://stackoverflow.com/questions/1597007/creating-c-macro-with-and-line-token-concatenation-with-positioning-macr
 
 MUSL_FLAGS = \
-  -isystem $(MUSLSRC)/arch/wasm32 \
+  -isystem $(MUSLSRC)/arch/wasm64 \
   -isystem $(MUSLSRC)/src/include \
   -isystem $(MUSLSRC)/src/internal \
   -isystem $(MUSL_WASI_SYSROOT)/include \
@@ -100,7 +100,7 @@ CLANG_FLAGS = \
    -fpic \
    -fvisibility=hidden \
    --std=c11 \
-   --target=wasm32-emscripten \
+   --target=wasm64-unknown \
    -fno-builtin -ffreestanding \
    --optimize=s \
    -resource-dir=$(wildcard $(WASM_CLANG_LIB)/lib/clang/*)
@@ -219,11 +219,11 @@ $(TOMMATH_BINDINGS_RS): | _build
 	# macros like `mp_get_u32` and `mp_isneg` need to be manually implemented.
 
 RTS_DEPENDENCIES=$(TOMMATH_BINDINGS_RS) $(RTS_RUST_FILES) $(RTS_CARGO_FILES) | _build/wasm
-RTS_BUILD=cd motoko-rts && cargo build --target=wasm32-unknown-emscripten -Zbuild-std=core,alloc
+RTS_BUILD=cd motoko-rts && cargo build --target=wasm64-unknown-unknown -Zbuild-std=core,alloc
 RTS_DEBUG_BUILD=$(RTS_BUILD)
 RTS_RELEASE_BUILD=$(RTS_BUILD) --release
-RTS_DEBUG_TARGET=motoko-rts/target/wasm32-unknown-emscripten/debug/libmotoko_rts.a
-RTS_RELEASE_TARGET=motoko-rts/target/wasm32-unknown-emscripten/release/libmotoko_rts.a
+RTS_DEBUG_TARGET=motoko-rts/target/wasm64-unknown-unknown/debug/libmotoko_rts.a
+RTS_RELEASE_TARGET=motoko-rts/target/wasm64-unknown-unknown/release/libmotoko_rts.a
 
 RTS_RUST_NON_INCREMENTAL_WASM_A=_build/wasm/libmotoko_rts.a
 RTS_RUST_NON_INCREMENTAL_DEBUG_WASM_A=_build/wasm/libmotoko_rts_debug.a
@@ -251,9 +251,9 @@ $(RTS_RUST_INCREMENTAL_DEBUG_WASM_A): $(RTS_DEPENDENCIES)
 # The test suite
 #
 
-TEST_DEPENDENCIES=$(TOMMATH_WASM_A) $(TOMMATH_BINDINGS_RS)
-TEST_BUILD=cd motoko-rts-tests && cargo build --target=wasm32-wasi
-TEST_RUN=wasmtime --disable-cache motoko-rts-tests/target/wasm32-wasi/debug/motoko-rts-tests.wasm
+TEST_DEPENDENCIES=#$(TOMMATH_WASM_A) $(TOMMATH_BINDINGS_RS)
+TEST_BUILD=cd motoko-rts-tests && cargo build --target=wasm64-unknown-unknown -Zbuild-std=core,alloc,std,panic_abort
+TEST_RUN=wasmtime --disable-cache --wasm-features=memory64 motoko-rts-tests/target/wasm64-unknown-unknown/debug/motoko-rts-tests.wasm
 
 .PHONY: test
 
@@ -288,11 +288,13 @@ EXPORTED_SYMBOLS=\
   fmod \
   log \
 
-WASM_A_DEPENDENCIES=$(TOMMATH_WASM_A) $(MUSL_WASM_A)
-LINKER_OPTIONS=\
-  --import-memory --shared --no-entry --gc-sections \
-  $(EXPORTED_SYMBOLS:%=--export=%) \
-  --whole-archive
+WASM_A_DEPENDENCIES=#$(TOMMATH_WASM_A) $(MUSL_WASM_A)
+# LINKER_OPTIONS=\
+#   -mwasm64 --import-memory --shared --no-entry --gc-sections \
+#   $(EXPORTED_SYMBOLS:%=--export=%) \
+#   --whole-archive
+LINKER_OPTIONS=-mwasm64 --import-memory --shared --no-entry --gc-sections --warn-unresolved-symbols
+
 
 mo-rts.wasm: $(RTS_RUST_NON_INCREMENTAL_WASM_A) $(WASM_A_DEPENDENCIES)
 	$(WASM_LD) -o $@ \

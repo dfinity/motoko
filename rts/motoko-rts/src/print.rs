@@ -61,13 +61,13 @@ macro_rules! format {
 
 /// A buffer that implements `core::fmt::Write`. `Write` methods will write to the buffer until
 /// it's filled and then ignore the rest, without failing.
-pub(crate) struct WriteBuf<'a> {
+pub struct WriteBuf<'a> {
     buf: &'a mut [u8],
     offset: usize,
 }
 
 impl<'a> WriteBuf<'a> {
-    pub(crate) fn new(buf: &'a mut [u8]) -> Self {
+    pub fn new(buf: &'a mut [u8]) -> Self {
         Self { buf, offset: 0 }
     }
 
@@ -96,7 +96,7 @@ impl<'a> fmt::Write for WriteBuf<'a> {
     }
 }
 
-pub(crate) unsafe fn print(buf: &WriteBuf) {
+pub unsafe fn print(buf: &WriteBuf) {
     buf.print()
 }
 

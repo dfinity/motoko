@@ -12,7 +12,6 @@ path = "../src/lib.rs"
 incremental_gc = []
 
 [dependencies]
-libc = { version = "0.2.112", default_features = false }
 motoko-rts-macros = { path = "../../motoko-rts-macros" }
 
 [profile.dev]

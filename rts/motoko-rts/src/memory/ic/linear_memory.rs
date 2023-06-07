@@ -1,4 +1,4 @@
-use core::arch::wasm32;
+use core::arch::wasm64;
 
 use super::{get_aligned_heap_base, IcMemory, Memory};
 use crate::types::*;
@@ -43,7 +43,7 @@ impl Memory for IcMemory {
         let new_hp = old_hp + delta;
 
         // Grow memory if needed
-        if new_hp > ((wasm32::memory_size(0) as u64) << 16) {
+        if new_hp > ((wasm64::memory_size(0) as u64) << 16) {
             self.grow_memory(new_hp)
         }
 
