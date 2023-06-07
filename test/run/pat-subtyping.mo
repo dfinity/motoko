@@ -1,4 +1,4 @@
-func magic() : None = magic();
+func magic() : None = magic();             func three(#a or #b) {};
 
 if false {
 

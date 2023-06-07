@@ -1824,17 +1824,20 @@ and inconsistent t ts =
 (* Patterns *)
 
 and infer_pat_exhaustive warnOrError env pat : T.typ * Scope.val_env =
-  let t, ve = infer_pat env pat in
+  let t, ve, _ = infer_pat env pat in
   if not env.pre then
     coverage_pat warnOrError env pat t;
   t, ve
 
-and infer_pat env pat : T.typ * Scope.val_env =
+and infer_pat env pat : T.typ * Scope.val_env * (T.typ -> unit) =
   assert (pat.note = T.Pre);
   let t, ve = infer_pat' env pat in
   if not env.pre then
     pat.note <- T.normalize t;
-  t, ve
+  let widen = match pat.it with
+    | TagP _ -> fun t -> if not env.pre then pat.note <- T.normalize t
+    | _ -> ignore in
+  t, ve, widen
 
 and infer_pat' env pat : T.typ * Scope.val_env =
   match pat.it with
@@ -1858,14 +1861,14 @@ and infer_pat' env pat : T.typ * Scope.val_env =
     let (s, tfs), ve = infer_pat_fields pat.at env pfs [] T.Env.empty in
     T.Obj (s, tfs), ve
   | OptP pat1 ->
-    let t1, ve = infer_pat env pat1 in
+    let t1, ve, _ = infer_pat env pat1 in
     T.Opt t1, ve
   | TagP (id, pat1) ->
-    let t1, ve = infer_pat env pat1 in
+    let t1, ve, _ = infer_pat env pat1 in
     T.Variant [T.{lab = id.it; typ = t1; depr = None}], ve
   | AltP (pat1, pat2) ->
-    let t1, ve1 = infer_pat env pat1 in
-    let t2, ve2 = infer_pat env pat2 in
+    let t1, ve1, w1 = infer_pat env pat1 in
+    let t2, ve2, w2 = infer_pat env pat2 in
     let t = T.lub t1 t2 in
     if not (T.compatible t1 t2) then
       error env pat.at "M0104"
@@ -1874,18 +1877,19 @@ and infer_pat' env pat : T.typ * Scope.val_env =
         display_typ_expand t2;
     if ve1 <> T.Env.empty || ve2 <> T.Env.empty then
       error env pat.at "M0105" "variables are not allowed in pattern alternatives";
+    w1 t; w2 t;
     t, T.Env.empty
   | AnnotP (pat1, typ) ->
     let t = check_typ env typ in
     t, check_pat env t pat1
   | ParP pat1 ->
-    infer_pat env pat1
+    let t1, ve, _ = infer_pat env pat1 in t1, ve
 
 and infer_pats at env pats ts ve : T.typ list * Scope.val_env =
   match pats with
   | [] -> List.rev ts, ve
   | pat::pats' ->
-    let t, ve1 = infer_pat env pat in
+    let t, ve1, _ = infer_pat env pat in
     let ve' = disjoint_union env at "M0017" "duplicate binding for %s in pattern" ve ve1 in
     infer_pats at env pats' (t::ts) ve'
 
@@ -1893,7 +1897,7 @@ and infer_pat_fields at env pfs ts ve : (T.obj_sort * T.field list) * Scope.val_
   match pfs with
   | [] -> (T.Object, List.sort T.compare_field ts), ve
   | pf::pfs' ->
-    let typ, ve1 = infer_pat env pf.it.pat in
+    let typ, ve1, _ = infer_pat env pf.it.pat in
     let ve' = disjoint_union env at "M0017" "duplicate binding for %s in pattern" ve ve1 in
     infer_pat_fields at env pfs' (T.{ lab = pf.it.id.it; typ; depr = None }::ts) ve'
 
@@ -1929,6 +1933,7 @@ and check_pat_exhaustive warnOrError env t pat : Scope.val_env =
 
 and check_pat env t pat : Scope.val_env =
   assert (pat.note = T.Pre);
+  let snd (_, snd, _) = snd in
   if t = T.Pre then snd (infer_pat env pat) else
   let t' = T.normalize t in
   let ve = check_pat' env t' pat in
@@ -2585,7 +2590,7 @@ and infer_dec_typdecs env dec : Scope.t =
     let ve0 = check_class_shared_pat {env with pre = true} shared_pat obj_sort in
     let cs, tbs, te, ce = check_typ_binds {env with pre = true} binds in
     let env' = adjoin_typs (adjoin_vals {env with pre = true} ve0) te ce in
-    let _, ve = infer_pat env' pat in
+    let _, ve, _ = infer_pat env' pat in
     let tbs', cs' =
       if obj_sort.it = T.Actor then
         List.tl tbs, List.tl cs
@@ -2672,7 +2677,7 @@ and infer_dec_valdecs env dec : Scope.t =
     let cs, tbs, te, ce = check_typ_binds env typ_binds in
     let env' = adjoin_typs env te ce in
     let c = T.Env.find id.it env.typs in
-    let t1, _ = infer_pat {env' with pre = true} pat in
+    let t1, _, _ = infer_pat {env' with pre = true} pat in
     let ts1 = match pat.it with TupP _ -> T.seq_of_tup t1 | _ -> [t1] in
     let t2 =
       if obj_sort.it = T.Actor then
