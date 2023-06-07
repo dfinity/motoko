@@ -104,8 +104,7 @@ unsafe fn record_gc_stop<M: Memory>() {
     let static_size = Bytes(ic::get_aligned_heap_base());
     debug_assert!(heap_size >= static_size);
     let dynamic_size = heap_size - static_size;
-    let live_set = dynamic_size;
-    ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, live_set);
+    ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, dynamic_size);
 }
 
 /// GC phases per run. Each of the following phases is performed in potentially multiple increments.
