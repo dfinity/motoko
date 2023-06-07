@@ -22,11 +22,12 @@ TOMMATHFILES = \
    mp_decr mp_add_d mp_sub_d
 
 MUSLFILES = \
-  pow pow_data sin cos tan asin acos atan atan2 exp exp_data log log_data fmod \
-  floor scalbn frexp strlen strnlen memcpy memset memchr memcmp snprintf vsnprintf vfprintf \
-  __math_oflow __math_uflow __math_xflow __math_divzero __math_invalid \
-  __rem_pio2 __rem_pio2_large __sin __cos __tan \
-  stubs
+	memcpy
+#   pow pow_data sin cos tan asin acos atan atan2 exp exp_data log log_data fmod \
+#   floor scalbn frexp strlen strnlen memcpy memset memchr memcmp snprintf vsnprintf vfprintf \
+#   __math_oflow __math_uflow __math_xflow __math_divzero __math_invalid \
+#   __rem_pio2 __rem_pio2_large __sin __cos __tan \
+#   stubs
 
 TOMMATHSRC ?= $(CURDIR)/../../libtommath
 MUSLSRC ?= $(CURDIR)/../../wasi-libc/libc-top-half/musl
@@ -100,7 +101,7 @@ CLANG_FLAGS = \
    -fpic \
    -fvisibility=hidden \
    --std=c11 \
-   --target=wasm64-unknown \
+   --target=wasm64 \
    -fno-builtin -ffreestanding \
    --optimize=s \
    -resource-dir=$(wildcard $(WASM_CLANG_LIB)/lib/clang/*)
@@ -219,11 +220,12 @@ $(TOMMATH_BINDINGS_RS): | _build
 	# macros like `mp_get_u32` and `mp_isneg` need to be manually implemented.
 
 RTS_DEPENDENCIES=$(TOMMATH_BINDINGS_RS) $(RTS_RUST_FILES) $(RTS_CARGO_FILES) | _build/wasm
-RTS_BUILD=cd motoko-rts && cargo build --target=wasm64-unknown-unknown -Zbuild-std=core,alloc
+RTS_BUILD=cd motoko-rts && cargo rustc --target=wasm32-unknown-unknown -Zbuild-std=core,alloc 
 RTS_DEBUG_BUILD=$(RTS_BUILD)
 RTS_RELEASE_BUILD=$(RTS_BUILD) --release
 RTS_DEBUG_TARGET=motoko-rts/target/wasm64-unknown-unknown/debug/libmotoko_rts.a
 RTS_RELEASE_TARGET=motoko-rts/target/wasm64-unknown-unknown/release/libmotoko_rts.a
+COMPILER_FLAGS=-C link-args=-fPIC -C relocation-model=pic
 
 RTS_RUST_NON_INCREMENTAL_WASM_A=_build/wasm/libmotoko_rts.a
 RTS_RUST_NON_INCREMENTAL_DEBUG_WASM_A=_build/wasm/libmotoko_rts_debug.a
@@ -232,19 +234,19 @@ RTS_RUST_INCREMENTAL_WASM_A=_build/wasm/libmotoko_rts_incremental.a
 RTS_RUST_INCREMENTAL_DEBUG_WASM_A=_build/wasm/libmotoko_rts_incremental_debug.a
 
 $(RTS_RUST_NON_INCREMENTAL_WASM_A): $(RTS_DEPENDENCIES)
-	$(RTS_RELEASE_BUILD)
+	$(RTS_RELEASE_BUILD) -- $(COMPILER_FLAGS)
 	cp $(RTS_RELEASE_TARGET) $@
 
 $(RTS_RUST_NON_INCREMENTAL_DEBUG_WASM_A): $(RTS_DEPENDENCIES)
-	$(RTS_DEBUG_BUILD)
+	$(RTS_DEBUG_BUILD) -- $(COMPILER_FLAGS)
 	cp $(RTS_DEBUG_TARGET) $@
 
 $(RTS_RUST_INCREMENTAL_WASM_A): $(RTS_DEPENDENCIES)
-	$(RTS_RELEASE_BUILD) --features incremental_gc
+	$(RTS_RELEASE_BUILD) --features incremental_gc -- $(COMPILER_FLAGS)
 	cp $(RTS_RELEASE_TARGET) $@
 
 $(RTS_RUST_INCREMENTAL_DEBUG_WASM_A): $(RTS_DEPENDENCIES)
-	$(RTS_DEBUG_BUILD) --features incremental_gc
+	$(RTS_DEBUG_BUILD) --features incremental_gc -- $(COMPILER_FLAGS)
 	cp $(RTS_DEBUG_TARGET) $@
 
 #
@@ -273,28 +275,40 @@ test-incremental: $(TEST_DEPENDENCIES)
 
 # These symbols from musl are used by the code generator directly
 EXPORTED_SYMBOLS=\
-  __wasm_call_ctors \
-  memcpy \
-  memcmp \
-  tan \
-  asin \
-  acos \
-  atan \
-  atan2 \
-  pow \
-  sin \
-  cos \
-  exp \
-  fmod \
-  log \
+	alloc_words \
+#   __wasm_call_ctors \
+#   memcpy \
+#   memcmp \
+#   tan \
+#   asin \
+#   acos \
+#   atan \
+#   atan2 \
+#   pow \
+#   sin \
+#   cos \
+#   exp \
+#   fmod \
+#   log \
 
-WASM_A_DEPENDENCIES=#$(TOMMATH_WASM_A) $(MUSL_WASM_A)
+# WASM_A_DEPENDENCIES=#$(TOMMATH_WASM_A) $(MUSL_WASM_A)
+WASM_A_DEPENDENCIES=$(MUSL_WASM_A)
+LINKER_OPTIONS=\
+  -mwasm64 --import-memory --shared --no-entry --gc-sections \
+  $(EXPORTED_SYMBOLS:%=--export=%) \
+  --whole-archive
+#LINKER_OPTIONS=-mwasm64 --import-memory --shared --gc-sections --no-entry $(EXPORTED_SYMBOLS:%=--export=%)
+#LINKER_OPTIONS=--no-entry --whole-archive -mwasm64 $(EXPORTED_SYMBOLS:%=--export=%)
+
+#LINKER_OPTIONS=-mwasm64 --import-memory -r --no-entry --warn-unresolved-symbols $(EXPORTED_SYMBOLS:%=--export=%)
+
+#LINKER_OPTIONS=-mwasm64 --import-memory -r --no-entry --warn-unresolved-symbols $(EXPORTED_SYMBOLS:%=--export=%) --whole-archive
+
 # LINKER_OPTIONS=\
-#   -mwasm64 --import-memory --shared --no-entry --gc-sections \
+#   --import-memory --no-entry --gc-sections \
 #   $(EXPORTED_SYMBOLS:%=--export=%) \
+#   -mwasm64 --warn-unresolved-symbols \
 #   --whole-archive
-LINKER_OPTIONS=-mwasm64 --import-memory --shared --no-entry --gc-sections --warn-unresolved-symbols
-
 
 mo-rts.wasm: $(RTS_RUST_NON_INCREMENTAL_WASM_A) $(WASM_A_DEPENDENCIES)
 	$(WASM_LD) -o $@ \
