@@ -61,3 +61,16 @@ macro_rules! print {
         println!($($arg)*);
     })
 }
+
+#[macro_export]
+macro_rules! panic {
+    ($($arg:tt)*) => ({
+        use core::fmt::Write;
+        let mut output = String::from("[PANIC] ");
+        write!(&mut output, $($arg)*).unwrap();
+        crate::print::wasmtime_println(&output);
+        unsafe {
+            core::intrinsics::abort();
+        }
+    })
+}
