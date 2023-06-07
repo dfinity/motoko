@@ -1,14 +1,15 @@
 #![feature(proc_macro_hygiene)]
 
+#[macro_use]
 mod print;
 
 // // mod bigint;
 // // mod bitrel;
-// // mod continuation_table;
+mod continuation_table;
 // // mod crc32;
 // // mod gc;
 // // mod leb128;
-// // mod memory;
+mod memory;
 // // mod principal_id;
 // // mod stream;
 // // mod text;
@@ -23,11 +24,11 @@ fn main() {
     }
 
     unsafe {
-        println!("Test Main");
+        println!("Tests started");
         test_read_write_64_bit();
         // bigint::test();
         // bitrel::test();
-        // continuation_table::test();
+        continuation_table::test();
         // crc32::test();
         // gc::test();
         // leb128::test();
@@ -35,6 +36,7 @@ fn main() {
         // stream::test();
         // text::test();
         // utf8::test();
+        println!("Tests completed");
     }
 }
 
