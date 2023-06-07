@@ -1831,41 +1831,42 @@ and infer_pat_exhaustive warnOrError env pat : T.typ * Scope.val_env =
 
 and infer_pat env pat : T.typ * Scope.val_env * (T.typ -> unit) =
   assert (pat.note = T.Pre);
-  let t, ve = infer_pat' env pat in
+  let t, ve, w = infer_pat' env pat in
   if not env.pre then
     pat.note <- T.normalize t;
   let widen = match pat.it with
-    | TagP _ -> fun t -> if not env.pre then pat.note <- T.normalize t
-    | _ -> ignore in
+    | TagP (id, _) -> fun t -> if not env.pre then (Printf.printf "YEAH: %s\n" id.it; pat.note <- T.normalize t)
+    | AltP _ -> fun t -> (if not env.pre then (Printf.printf "ZOOM\n"; pat.note <- T.normalize t); match w with Some f -> f t | _ -> assert false)
+    | _ -> fun t -> (match w with Some f -> f t | _ -> ()) in
   t, ve, widen
 
-and infer_pat' env pat : T.typ * Scope.val_env =
+and infer_pat' env pat : T.typ * Scope.val_env * (T.typ -> unit) option =
   match pat.it with
   | WildP ->
     error env pat.at "M0102" "cannot infer type of wildcard"
   | VarP _ ->
     error env pat.at "M0103" "cannot infer type of variable"
   | LitP lit ->
-    T.Prim (infer_lit env lit pat.at), T.Env.empty
+    T.Prim (infer_lit env lit pat.at), T.Env.empty, None
   | SignP (op, lit) ->
     let t1 = T.Prim (infer_lit env lit pat.at) in
     let t = Operator.type_unop op t1 in
     if not (Operator.has_unop op t) then
       error env pat.at "M0059" "operator is not defined for operand type%a"
         display_typ_expand t;
-    t, T.Env.empty
+    t, T.Env.empty, None
   | TupP pats ->
     let ts, ve = infer_pats pat.at env pats [] T.Env.empty in
-    T.Tup ts, ve
+    T.Tup ts, ve, None
   | ObjP pfs ->
     let (s, tfs), ve = infer_pat_fields pat.at env pfs [] T.Env.empty in
-    T.Obj (s, tfs), ve
+    T.Obj (s, tfs), ve, None
   | OptP pat1 ->
     let t1, ve, _ = infer_pat env pat1 in
-    T.Opt t1, ve
+    T.Opt t1, ve, None
   | TagP (id, pat1) ->
     let t1, ve, _ = infer_pat env pat1 in
-    T.Variant [T.{lab = id.it; typ = t1; depr = None}], ve
+    T.Variant [T.{lab = id.it; typ = t1; depr = None}], ve, None
   | AltP (pat1, pat2) ->
     let t1, ve1, w1 = infer_pat env pat1 in
     let t2, ve2, w2 = infer_pat env pat2 in
@@ -1878,12 +1879,12 @@ and infer_pat' env pat : T.typ * Scope.val_env =
     if ve1 <> T.Env.empty || ve2 <> T.Env.empty then
       error env pat.at "M0105" "variables are not allowed in pattern alternatives";
     w1 t; w2 t;
-    t, T.Env.empty
+    t, T.Env.empty, Some (fun t -> if not env.pre then Printf.printf "XXXX\n"; w1 t; w2 t)
   | AnnotP (pat1, typ) ->
     let t = check_typ env typ in
-    t, check_pat env t pat1
+    t, check_pat env t pat1, None
   | ParP pat1 ->
-    let t1, ve, _ = infer_pat env pat1 in t1, ve
+    let t1, ve, w = infer_pat env pat1 in t1, ve, Some w
 
 and infer_pats at env pats ts ve : T.typ list * Scope.val_env =
   match pats with
