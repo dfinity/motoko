@@ -69,8 +69,6 @@ macro_rules! panic {
         let mut output = String::from("[PANIC] ");
         write!(&mut output, $($arg)*).unwrap();
         crate::print::wasmtime_println(&output);
-        unsafe {
-            core::intrinsics::abort();
-        }
+        std::process::exit(1);
     })
 }

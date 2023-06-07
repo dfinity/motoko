@@ -1,4 +1,4 @@
-#![feature(proc_macro_hygiene, core_intrinsics)]
+#![feature(proc_macro_hygiene)]
 
 mod print;
 
@@ -14,41 +14,40 @@ mod print;
 // // mod text;
 // // mod utf8;
 
-// use motoko_rts::types::{read64, write64, Bytes};
+use motoko_rts::types::{read64, write64, Bytes};
 
-// fn main() {
-//     // if std::mem::size_of::<usize>() != 4 {
-//     //     println!("Motoko RTS only works on 32-bit architectures");
-//     //     std::process::exit(1);
-//     // }
+fn main() {
+    if std::mem::size_of::<usize>() != 8 {
+        println!("Motoko RTS only works on 64-bit architectures");
+        std::process::exit(1);
+    }
 
-//     unsafe {
-//         //println!("Test Main");
-//         println("Motoko RTS tests running...");
-//         // test_read_write_64_bit();
-//         // bigint::test();
-//         // bitrel::test();
-//         // continuation_table::test();
-//         // crc32::test();
-//         // gc::test();
-//         // leb128::test();
-//         // principal_id::test();
-//         // stream::test();
-//         // text::test();
-//         // utf8::test();
-//     }
-// }
+    unsafe {
+        println!("Test Main");
+        test_read_write_64_bit();
+        // bigint::test();
+        // bitrel::test();
+        // continuation_table::test();
+        // crc32::test();
+        // gc::test();
+        // leb128::test();
+        // principal_id::test();
+        // stream::test();
+        // text::test();
+        // utf8::test();
+    }
+}
 
-// fn test_read_write_64_bit() {
-//     println!("Testing 64-bit read-write");
-//     const TEST_VALUE: u64 = 0x1234_5678_9abc_def0;
-//     let mut lower = 0u32;
-//     let mut upper = 0u32;
-//     write64(&mut lower, &mut upper, TEST_VALUE);
-//     assert_eq!(lower, 0x9abc_def0);
-//     assert_eq!(upper, 0x1234_5678);
-//     assert_eq!(read64(lower, upper), TEST_VALUE);
-// }
+fn test_read_write_64_bit() {
+    println!("Testing 64-bit read-write");
+    const TEST_VALUE: u64 = 0x1234_5678_9abc_def0;
+    let mut lower = 0u32;
+    let mut upper = 0u32;
+    write64(&mut lower, &mut upper, TEST_VALUE);
+    assert_eq!(lower, 0x9abc_def0);
+    assert_eq!(upper, 0x1234_5678);
+    assert_eq!(read64(lower, upper), TEST_VALUE);
+}
 
 // Called by the RTS to panic
 #[no_mangle]
@@ -74,19 +73,6 @@ extern "C" fn bigint_trap() -> ! {
 unsafe extern "C" fn print_ptr(ptr: usize, len: u32) {
     let str: &[u8] = core::slice::from_raw_parts(ptr as *const u8, len as usize);
     println!("[RTS] {}", &String::from_utf8_lossy(str));
-}
-
-use motoko_rts::types::Bytes;
-
-pub fn main() {
-    unsafe {
-        println!("SECOND TEST RUST WASM64");
-        println!("MACRO PRINT TEST");
-        print!("TEST2");
-        motoko_rts::println!(100, "TEST RTS MESSAGE");
-        println!("THIRD TEST RUST WASM64");
-        panic!("TEST PANIC");
-    }
 }
 
 // Program entry point by wasmtime
