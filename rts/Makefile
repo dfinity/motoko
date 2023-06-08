@@ -23,11 +23,11 @@ TOMMATHFILES = \
 
 MUSLFILES = \
 	memcpy
-#   pow pow_data sin cos tan asin acos atan atan2 exp exp_data log log_data fmod \
-#   floor scalbn frexp strlen strnlen memcpy memset memchr memcmp snprintf vsnprintf vfprintf \
-#   __math_oflow __math_uflow __math_xflow __math_divzero __math_invalid \
-#   __rem_pio2 __rem_pio2_large __sin __cos __tan \
-#   stubs
+#    pow pow_data sin cos tan asin acos atan atan2 exp exp_data log log_data fmod \
+#    floor scalbn frexp strlen strnlen memcpy memset memchr memcmp snprintf vsnprintf vfprintf \
+#    __math_oflow __math_uflow __math_xflow __math_divzero __math_invalid \
+#    __rem_pio2 __rem_pio2_large __sin __cos __tan \
+#    stubs
 
 TOMMATHSRC ?= $(CURDIR)/../../libtommath
 MUSLSRC ?= $(CURDIR)/../../wasi-libc/libc-top-half/musl
@@ -68,7 +68,7 @@ TOMMATH_FLAGS = \
 #       See also https://stackoverflow.com/questions/1597007/creating-c-macro-with-and-line-token-concatenation-with-positioning-macr
 
 MUSL_FLAGS = \
-  -isystem $(MUSLSRC)/arch/wasm64 \
+  -isystem $(MUSLSRC)/arch/wasm32 \
   -isystem $(MUSLSRC)/src/include \
   -isystem $(MUSLSRC)/src/internal \
   -isystem $(MUSL_WASI_SYSROOT)/include \
@@ -281,7 +281,7 @@ $(RTS_RUST_INCREMENTAL_DEBUG_WASM_A): $(RTS_RUST_INCREMENTAL_DEBUG_LLVM_IR)
 # The test suite
 #
 
-TEST_DEPENDENCIES=#$(TOMMATH_WASM_A) $(TOMMATH_BINDINGS_RS)
+TEST_DEPENDENCIES=$(TOMMATH_WASM_A) $(TOMMATH_BINDINGS_RS)
 TEST_BUILD=cd motoko-rts-tests && cargo build --target=wasm64-unknown-unknown -Zbuild-std=core,alloc,std,panic_abort
 TEST_RUN=wasmtime --disable-cache --wasm-features=memory64 motoko-rts-tests/target/wasm64-unknown-unknown/debug/motoko-rts-tests.wasm
 
@@ -303,40 +303,29 @@ test-incremental: $(TEST_DEPENDENCIES)
 
 # These symbols from musl are used by the code generator directly
 EXPORTED_SYMBOLS=\
-	alloc_words \
-#   __wasm_call_ctors \
-#   memcpy \
-#   memcmp \
-#   tan \
-#   asin \
-#   acos \
-#   atan \
-#   atan2 \
-#   pow \
-#   sin \
-#   cos \
-#   exp \
-#   fmod \
-#   log \
+    __wasm_call_ctors \
+    memcpy \
+	
+#    __wasm_call_ctors \
+#    memcpy \
+#    memcmp \
+#    tan \
+#    asin \
+#    acos \
+#    atan \
+#    atan2 \
+#    pow \
+#    sin \
+#    cos \
+#    exp \
+#    fmod \
+#    log \
 
-# WASM_A_DEPENDENCIES=#$(TOMMATH_WASM_A) $(MUSL_WASM_A)
-WASM_A_DEPENDENCIES=#$(MUSL_WASM_A)
+WASM_A_DEPENDENCIES=$(TOMMATH_WASM_A) $(MUSL_WASM_A)
 LINKER_OPTIONS=\
   -mwasm64 --import-memory --shared --no-entry --gc-sections \
   $(EXPORTED_SYMBOLS:%=--export=%) \
   --whole-archive
-#LINKER_OPTIONS=-mwasm64 --import-memory --shared --gc-sections --no-entry $(EXPORTED_SYMBOLS:%=--export=%)
-#LINKER_OPTIONS=--no-entry --whole-archive -mwasm64 $(EXPORTED_SYMBOLS:%=--export=%)
-
-#LINKER_OPTIONS=-mwasm64 --import-memory -r --no-entry --warn-unresolved-symbols $(EXPORTED_SYMBOLS:%=--export=%)
-
-#LINKER_OPTIONS=-mwasm64 --import-memory -r --no-entry --warn-unresolved-symbols $(EXPORTED_SYMBOLS:%=--export=%) --whole-archive
-
-# LINKER_OPTIONS=\
-#   --import-memory --no-entry --gc-sections \
-#   $(EXPORTED_SYMBOLS:%=--export=%) \
-#   -mwasm64 --warn-unresolved-symbols \
-#   --whole-archive
 
 mo-rts.wasm: $(RTS_RUST_NON_INCREMENTAL_WASM_A) $(WASM_A_DEPENDENCIES)
 	$(WASM_LD) -o $@ \
