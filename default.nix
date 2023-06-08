@@ -29,7 +29,7 @@ let emscripten_17 = stdenv.mkDerivation {
       ./emsdk activate latest
       source ./emsdk_env.sh
       '';
-}; in
+  }; in
 
 let ic-hs-pkgs = import nixpkgs.sources.ic-hs { inherit (nixpkgs) system; }; in
 let ic-ref-run =

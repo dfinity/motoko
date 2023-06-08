@@ -129,7 +129,6 @@ _build/i686:
 
 vpath %.c $(MUSLSRC)/src/math $(MUSLSRC)/src/stdio $(MUSLSRC)/src/string $(MUSLSRC)/src/ctype $(TOMMATHSRC)
 
-
 #
 # Building the libtommath files
 #
@@ -261,7 +260,7 @@ RTS_RUST_NON_INCREMENTAL_DEBUG_WASM_A=_build/wasm/libmotoko_rts_debug.o
 RTS_RUST_INCREMENTAL_WASM_A=_build/wasm/libmotoko_rts_incremental.o
 RTS_RUST_INCREMENTAL_DEBUG_WASM_A=_build/wasm/libmotoko_rts_incremental_debug.o
 
-RTS_EMSCRIPTEN=emcc -c --target=wasm64-unknown-emscripten -fpic
+RTS_EMSCRIPTEN=./emscripten.sh -c --target=wasm64-unknown-emscripten -fpic
 RTS_EMSCRIPTEN_DEBUG=$(RTS_EMSCRIPTEN)
 RTS_EMSCRIPTEN_RELEASE=$(RTS_EMSCRIPTEN) -O2
 
