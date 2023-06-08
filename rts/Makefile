@@ -361,4 +361,7 @@ clean:
 	  motoko-rts/target \
 	  motoko-rts-tests/target \
 	  motoko-rts-macros/target \
-	  motoko-rts/cargo-home
+	  motoko-rts/cargo-home \
+
+clean-all: clean
+	rm -rf emsdk

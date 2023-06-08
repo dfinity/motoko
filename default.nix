@@ -12,25 +12,6 @@ let stdenv = nixpkgs.stdenv; in
 
 let subpath = import ./nix/gitSource.nix; in
 
-let emscripten_17 = stdenv.mkDerivation {
-  name = "emscripten_17";
-  
-  src = builtins.fetchGit {
-    url = "https://github.com/emscripten-core/emsdk.git"; 
-    ref = "main";
-    rev = "775ba048040f663abbca9ca66e264ee795f64ef3";
-  };
-
-  buildInputs = with nixpkgs; [ python3 ];
-
-  installPhase = ''
-      echo "--- INSTALLING EMSCRIPTEN ---"
-      ./emsdk install latest
-      ./emsdk activate latest
-      source ./emsdk_env.sh
-      '';
-  }; in
-
 let ic-hs-pkgs = import nixpkgs.sources.ic-hs { inherit (nixpkgs) system; }; in
 let ic-ref-run =
   # copy out the binary, to remove dependencies on the libraries
@@ -245,8 +226,7 @@ rec {
 
       nativeBuildInputs = [ nixpkgs.makeWrapper nixpkgs.removeReferencesTo nixpkgs.cacert ];
 
-      # buildInputs = [ rtsBuildInputs emscripten_17 ];
-      buildInputs = [ rtsBuildInputs ];
+      buildInputs = rtsBuildInputs;
 
       preBuild = ''
         export CARGO_HOME=$PWD/cargo-home
