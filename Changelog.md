@@ -1,5 +1,7 @@
 # Motoko compiler changelog
 
+## 0.9.2 (2023-06-05)
+
 * motoko (`moc`)
 
   * Added implementation for `ic0.canister_version` as a primitive (#4027).
