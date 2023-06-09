@@ -219,46 +219,64 @@ $(TOMMATH_BINDINGS_RS): | _build
 	# macros like `mp_get_u32` and `mp_isneg` need to be manually implemented.
 
 RTS_DEPENDENCIES=$(TOMMATH_BINDINGS_RS) $(RTS_RUST_FILES) $(RTS_CARGO_FILES) | _build/wasm
-RTS_BUILD=cd motoko-rts && cargo rustc --target=wasm64-unknown-unknown -Zbuild-std=core,alloc
+COMPILER_FLAGS=--emit=llvm-ir -C target-feature=-bulk-memory
+RTS_BUILD=cd motoko-rts && RUSTFLAGS="${COMPILER_FLAGS}" cargo build --target=wasm64-unknown-unknown -Zbuild-std=core
 RTS_DEBUG_BUILD=$(RTS_BUILD)
 RTS_RELEASE_BUILD=$(RTS_BUILD) --release
-LLVM_IR_TARGET=deps/*.ll
-RTS_DEBUG_TARGET=motoko-rts/target/wasm64-unknown-unknown/debug/$(LLVM_IR_TARGET)
-RTS_RELEASE_TARGET=motoko-rts/target/wasm64-unknown-unknown/release/$(LLVM_IR_TARGET)
-COMPILER_FLAGS=--emit=llvm-ir -C target-feature=-bulk-memory
 
-RTS_RUST_NON_INCREMENTAL_LLVM_IR=_build/wasm/libmotoko_rts.ll
-RTS_RUST_NON_INCREMENTAL_DEBUG_LLVM_IR=_build/wasm/libmotoko_rts_debug.ll
+RTS_DEBUG_TARGET_FOLDER=motoko-rts/target/wasm64-unknown-unknown/debug
+RTS_RELEASE_TARGET_FOLDER=motoko-rts/target/wasm64-unknown-unknown/release
 
-RTS_RUST_INCREMENTAL_LLVM_IR=_build/wasm/libmotoko_rts_incremental.ll
-RTS_RUST_INCREMENTAL_DEBUG_LLVM_IR=_build/wasm/libmotoko_rts_incremental_debug.ll
+RTS_DEBUG_TARGET=$(RTS_DEBUG_TARGET_FOLDER)/deps/motoko_rts-*.ll
+RTS_RELEASE_TARGET=$(RTS_RELEASE_TARGET_FOLDER)/deps/motoko_rts-*.ll
+
+CORE_DEBUG_TARGET=$(RTS_DEBUG_TARGET_FOLDER)/deps/core-*.ll
+CORE_RELEASE_TARGET=$(RTS_RELEASE_TARGET_FOLDER)/deps/core-*.ll
+
+BUILD_FOLDER=_build/wasm
+
+RTS_RUST_NON_INCREMENTAL_LLVM_IR=$(BUILD_FOLDER)/libmotoko_rts.ll
+RTS_RUST_NON_INCREMENTAL_DEBUG_LLVM_IR=$(BUILD_FOLDER)/libmotoko_rts_debug.ll
+
+RTS_RUST_INCREMENTAL_LLVM_IR=$(BUILD_FOLDER)/libmotoko_rts_incremental.ll
+RTS_RUST_INCREMENTAL_DEBUG_LLVM_IR=$(BUILD_FOLDER)/libmotoko_rts_incremental_debug.ll
+
+CORE_DEBUG_LLVM_IR=$(BUILD_FOLDER)/core_debug.ll
+CORE_RELEASE_LLVM_IR=$(BUILD_FOLDER)/core.ll
 
 $(RTS_RUST_NON_INCREMENTAL_LLVM_IR): $(RTS_DEPENDENCIES)
-	rm -f $(RTS_RELEASE_TARGET)
-	$(RTS_RELEASE_BUILD) -- $(COMPILER_FLAGS)
+	rm -rf $(RTS_RELEASE_TARGET_FOLDER)
+	$(RTS_RELEASE_BUILD)
+	cp $(CORE_RELEASE_TARGET) -T $(CORE_RELEASE_LLVM_IR)
 	cp $(RTS_RELEASE_TARGET) -T $@
 
 $(RTS_RUST_NON_INCREMENTAL_DEBUG_LLVM_IR): $(RTS_DEPENDENCIES)
-	rm -f $(RTS_DEBUG_TARGET) 
-	$(RTS_DEBUG_BUILD) -- $(COMPILER_FLAGS)
+	rm -rf $(RTS_DEBUG_TARGET_FOLDER) 
+	$(RTS_DEBUG_BUILD)
+	cp $(CORE_DEBUG_TARGET) -T $(CORE_DEBUG_LLVM_IR)
 	cp $(RTS_DEBUG_TARGET) -T $@
 
 $(RTS_RUST_INCREMENTAL_LLVM_IR): $(RTS_DEPENDENCIES)
-	rm -f $(RTS_RELEASE_TARGET)
-	$(RTS_RELEASE_BUILD) --features incremental_gc -- $(COMPILER_FLAGS)
+	rm -rf $(RTS_RELEASE_TARGET_FOLDER)
+	$(RTS_RELEASE_BUILD) --features incremental_gc
+	cp $(CORE_RELEASE_TARGET) -T $(CORE_RELEASE_LLVM_IR)
 	cp $(RTS_RELEASE_TARGET) -T $@
 
 $(RTS_RUST_INCREMENTAL_DEBUG_LLVM_IR): $(RTS_DEPENDENCIES)
-	rm -f $(RTS_DEBUG_TARGET)
-	$(RTS_DEBUG_BUILD) --features incremental_gc -- $(COMPILER_FLAGS)
+	rm -rf $(RTS_DEBUG_TARGET_FOLDER)
+	$(RTS_DEBUG_BUILD) --features incremental_gc
+	cp $(CORE_DEBUG_TARGET) -T $(CORE_DEBUG_LLVM_IR)
 	cp $(RTS_DEBUG_TARGET) -T $@
 
 
-RTS_RUST_NON_INCREMENTAL_WASM_A=_build/wasm/libmotoko_rts.o
-RTS_RUST_NON_INCREMENTAL_DEBUG_WASM_A=_build/wasm/libmotoko_rts_debug.o
+RTS_RUST_NON_INCREMENTAL_WASM_A=$(BUILD_FOLDER)/libmotoko_rts.o
+RTS_RUST_NON_INCREMENTAL_DEBUG_WASM_A=$(BUILD_FOLDER)/libmotoko_rts_debug.o
 
-RTS_RUST_INCREMENTAL_WASM_A=_build/wasm/libmotoko_rts_incremental.o
-RTS_RUST_INCREMENTAL_DEBUG_WASM_A=_build/wasm/libmotoko_rts_incremental_debug.o
+RTS_RUST_INCREMENTAL_WASM_A=$(BUILD_FOLDER)/libmotoko_rts_incremental.o
+RTS_RUST_INCREMENTAL_DEBUG_WASM_A=$(BUILD_FOLDER)/libmotoko_rts_incremental_debug.o
+
+CORE_WASM_A=$(BUILD_FOLDER)/core.o
+CORE_DEBUG_WASM_A=$(BUILD_FOLDER)/core_debug.o
 
 RTS_EMSCRIPTEN=./emscripten.sh -c --target=wasm64-unknown-emscripten -fpic
 RTS_EMSCRIPTEN_DEBUG=$(RTS_EMSCRIPTEN)
@@ -274,6 +292,12 @@ $(RTS_RUST_INCREMENTAL_WASM_A): $(RTS_RUST_INCREMENTAL_LLVM_IR)
 	$(RTS_EMSCRIPTEN_RELEASE) -o $@ $+
 
 $(RTS_RUST_INCREMENTAL_DEBUG_WASM_A): $(RTS_RUST_INCREMENTAL_DEBUG_LLVM_IR)
+	$(RTS_EMSCRIPTEN_DEBUG) -o $@ $+
+
+$(CORE_WASM_A): $(CORE_RELEASE_LLVM_IR)
+	$(RTS_EMSCRIPTEN_RELEASE) -o $@ $+
+
+$(CORE_DEBUG_WASM_A): $(CORE_DEBUG_LLVM_IR)
 	$(RTS_EMSCRIPTEN_DEBUG) -o $@ $+
 
 #
@@ -326,22 +350,22 @@ LINKER_OPTIONS=\
   $(EXPORTED_SYMBOLS:%=--export=%) \
   --whole-archive
 
-mo-rts.wasm: $(RTS_RUST_NON_INCREMENTAL_WASM_A) $(WASM_A_DEPENDENCIES)
+mo-rts.wasm: $(RTS_RUST_NON_INCREMENTAL_WASM_A) $(CORE_WASM_A) $(WASM_A_DEPENDENCIES)
 	$(WASM_LD) -o $@ \
 		$(LINKER_OPTIONS) \
 		$+
 
-mo-rts-debug.wasm: $(RTS_RUST_NON_INCREMENTAL_DEBUG_WASM_A) $(WASM_A_DEPENDENCIES)
+mo-rts-debug.wasm: $(RTS_RUST_NON_INCREMENTAL_DEBUG_WASM_A) $(CORE_DEBUG_WASM_A) $(WASM_A_DEPENDENCIES)
 	$(WASM_LD) -o $@ \
 		$(LINKER_OPTIONS) \
 		$+
 
-mo-rts-incremental.wasm: $(RTS_RUST_INCREMENTAL_WASM_A) $(WASM_A_DEPENDENCIES)
+mo-rts-incremental.wasm: $(RTS_RUST_INCREMENTAL_WASM_A) $(CORE_WASM_A) $(WASM_A_DEPENDENCIES)
 	$(WASM_LD) -o $@ \
 		$(LINKER_OPTIONS) \
 		$+
 
-mo-rts-incremental-debug.wasm: $(RTS_RUST_INCREMENTAL_DEBUG_WASM_A) $(WASM_A_DEPENDENCIES)
+mo-rts-incremental-debug.wasm: $(RTS_RUST_INCREMENTAL_DEBUG_WASM_A) $(CORE_DEBUG_WASM_A) $(WASM_A_DEPENDENCIES)
 	$(WASM_LD) -o $@ \
 		$(LINKER_OPTIONS) \
 		$+

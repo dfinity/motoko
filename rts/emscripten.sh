@@ -17,7 +17,6 @@ then
         cd emsdk
     fi
     source ./emsdk_env.sh
-    emcc --version
     cd ..
 fi
 echo "emcc $@"
