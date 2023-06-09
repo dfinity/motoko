@@ -77,6 +77,7 @@ let skip n = guard (skip n)
 
 let expect b s msg = require (guard get s = b) s (pos s - 1) msg
 let illegal s pos b = error s pos ("illegal opcode " ^ string_of_byte b)
+let unsupported_bulk_memory s pos = error s pos "bulk memory operation not yet supported"
 
 let at f s =
   let left = pos s in
@@ -124,7 +125,6 @@ let rec vsN n s =
   then (if b land 0x40 = 0 then x else Int64.(logor x (logxor (-1L) 0x7fL)))
   else Int64.(logor x (shift_left (vsN (n - 7) s) 7))
 
-let vu1 s = Int64.to_int (vuN 1 s)
 let vu32 s = Int64.to_int32 (vuN 32 s)
 let vu64 s = vuN 64 s
 let vs7 s = Int64.to_int (vsN 7 s)
@@ -248,6 +248,7 @@ let math_prefix s =
   | 0x05 -> i64_trunc_sat_f32_u
   | 0x06 -> i64_trunc_sat_f64_s
   | 0x07 -> i64_trunc_sat_f64_u
+  | 0x0a | 0x0b -> unsupported_bulk_memory s pos
   | b -> illegal s pos b
 
 let rec instr s =
