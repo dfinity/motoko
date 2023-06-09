@@ -219,13 +219,13 @@ $(TOMMATH_BINDINGS_RS): | _build
 	# macros like `mp_get_u32` and `mp_isneg` need to be manually implemented.
 
 RTS_DEPENDENCIES=$(TOMMATH_BINDINGS_RS) $(RTS_RUST_FILES) $(RTS_CARGO_FILES) | _build/wasm
-RTS_BUILD=cd motoko-rts && cargo rustc --target=wasm64-unknown-unknown -Zbuild-std=core,alloc 
+RTS_BUILD=cd motoko-rts && cargo rustc --target=wasm64-unknown-unknown -Zbuild-std=core,alloc
 RTS_DEBUG_BUILD=$(RTS_BUILD)
 RTS_RELEASE_BUILD=$(RTS_BUILD) --release
 LLVM_IR_TARGET=deps/*.ll
 RTS_DEBUG_TARGET=motoko-rts/target/wasm64-unknown-unknown/debug/$(LLVM_IR_TARGET)
 RTS_RELEASE_TARGET=motoko-rts/target/wasm64-unknown-unknown/release/$(LLVM_IR_TARGET)
-COMPILER_FLAGS=--emit=llvm-ir
+COMPILER_FLAGS=--emit=llvm-ir -C target-feature=-bulk-memory
 
 RTS_RUST_NON_INCREMENTAL_LLVM_IR=_build/wasm/libmotoko_rts.ll
 RTS_RUST_NON_INCREMENTAL_DEBUG_LLVM_IR=_build/wasm/libmotoko_rts_debug.ll
