@@ -2,20 +2,24 @@ pat-inconsistent.mo:2.13-2.21: warning [M0145], this pattern of type
   Nat
 does not cover value
   0 or 3 or _
+pat-inconsistent.mo:3.19-3.21: warning [M0146], this pattern is never matched
 pat-inconsistent.mo:3.13-3.22: warning [M0145], this pattern of type
-  Int
+  Nat
 does not cover value
   0 or 2 or _
 pat-inconsistent.mo:5.13-5.29: warning [M0145], this pattern of type
-  Int
+  Nat
 does not cover value
-  0 or -1 or _
+  0 or 3 or _
 pat-inconsistent.mo:6.31-6.44: warning [M0146], this pattern is never matched
 pat-inconsistent.mo:7.34-7.50: warning [M0146], this pattern is never matched
+pat-inconsistent.mo:8.14-8.21: warning [M0146], this pattern is never matched
+pat-inconsistent.mo:8.15-8.17: warning [M0146], this pattern is never matched
+pat-inconsistent.mo:8.25-8.32: warning [M0146], this pattern is never matched
+pat-inconsistent.mo:8.29-8.31: warning [M0146], this pattern is never matched
 pat-inconsistent.mo:8.13-8.33: warning [M0145], this pattern of type
-  (Int, Int)
+  (Nat, Nat)
 does not cover value
-  (-1, 0 or 1 or _) or
   (2, 0 or 1 or _) or
   (0 or 1 or _, _)
 pat-inconsistent.mo:9.20-9.22: warning [M0146], this pattern is never matched

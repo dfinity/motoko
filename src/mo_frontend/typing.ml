@@ -1866,7 +1866,7 @@ and infer_pat' env pat : T.typ * Scope.val_env =
   | AltP (pat1, pat2) ->
     let t1, ve1 = infer_pat env pat1 in
     let t2, ve2 = infer_pat env pat2 in
-    let t = T.lub t1 t2 in
+    let t = T.glb t1 t2 in
     if not (T.compatible t1 t2) then
       error env pat.at "M0104"
         "pattern branches have incompatible types,\nleft consumes%a\nright consumes%a"
