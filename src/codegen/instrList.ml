@@ -9,7 +9,7 @@ features are
 
 open Wasm_exts.Ast
 open Wasm.Source
-open Wasm.Values
+open Wasm_exts.Values
 
 let combine_shifts const op = function
   | I32 opl, ({it = I32 l'; _} as cl), I32 opr, I32 r' when opl = opr ->

@@ -29,9 +29,7 @@ easily apply diffs from the original code (possibly manually).
  * These conventions mostly follow standard practice in language semantics.
  *)
 
-open Wasm.Types
-module Values = Wasm.Values
-module Memory = Wasm.Memory
+open Types
 open Wasm.Source
 
 

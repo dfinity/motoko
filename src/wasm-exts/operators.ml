@@ -14,8 +14,8 @@ easily apply diffs from the original code (possibly manually).
 *)
 
 open Wasm.Source
-open Wasm.Types
-open Wasm.Values
+open Types
+open Values
 open Ast
 
 
