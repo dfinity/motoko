@@ -12,7 +12,7 @@
 
   * Added implementation for `ic0.canister_version` as a primitive (#4027).
 
-  * Added a more efficient `Prim.blobCompare` (#4009).
+  * Added a more efficient `Prim.blobCompare` (thanks to nomeata) (#4009).
 
   * bugfix: minor error in grammar for `async*` expressions (#4005).
 
