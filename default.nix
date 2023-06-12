@@ -320,7 +320,7 @@ rec {
     };
 
     testDerivationDeps =
-      (with nixpkgs; [ wabt bash perl getconf moreutils nodejs-16_x ]) ++
+      (with nixpkgs; [ wabt bash perl getconf moreutils nodejs-18_x ]) ++
       [ filecheck wasmtime ];
 
 
@@ -499,7 +499,7 @@ rec {
   in fix_names ({
       run        = test_subdir "run"        [ moc ] ;
       run-dbg    = snty_subdir "run"        [ moc ] ;
-      # ic-ref-run = test_subdir "run-drun"   [ moc ic-ref-run ];
+      ic-ref-run = test_subdir "run-drun"   [ moc ic-ref-run ];
       drun       = test_subdir "run-drun"   [ moc nixpkgs.drun ];
       drun-dbg   = snty_subdir "run-drun"   [ moc nixpkgs.drun ];
       drun-compacting-gc = snty_compacting_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
@@ -539,7 +539,7 @@ rec {
         buildInputs = commonBuildInputs nixpkgs ++ [
           nixpkgs.ocamlPackages.js_of_ocaml
           nixpkgs.ocamlPackages.js_of_ocaml-ppx
-          nixpkgs.nodejs-16_x
+          nixpkgs.nodejs-18_x
           nixpkgs.nodePackages.terser
         ];
         buildPhase = ''
