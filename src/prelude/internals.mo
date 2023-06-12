@@ -416,7 +416,7 @@ func @install_actor_helper(
         let accepted = (prim "cyclesAccept" : Nat -> Nat) (available);
         @cycles += accepted;
         let { canister_id } =
-          await @ic00.create_canister { settings with sender_canister_version = null };
+          await @ic00.create_canister { settings with sender_canister_version = ?(prim "canister_version" : () -> Nat64)() };
         (#install, canister_id)
       };
       case (#install principal1) {
@@ -434,7 +434,7 @@ func @install_actor_helper(
     canister_id;
     wasm_module;
     arg;
-    sender_canister_version = null
+    sender_canister_version = ?(prim "canister_version" : () -> Nat64)()
   };
   return canister_id;
 };
@@ -448,13 +448,13 @@ func @create_actor_helper(wasm_module : Blob, arg : Blob) : async Principal = as
   let accepted = (prim "cyclesAccept" : Nat -> Nat) (available);
   @cycles += accepted;
   let { canister_id } =
-    await @ic00.create_canister { settings = null; sender_canister_version = null };
+    await @ic00.create_canister { settings = null; sender_canister_version = ?(prim "canister_version" : () -> Nat64)() };
   await @ic00.install_code {
     mode = #install;
     canister_id;
     wasm_module;
     arg;
-    sender_canister_version = null
+    sender_canister_version = ?(prim "canister_version" : () -> Nat64)()
   };
   return canister_id;
 };
