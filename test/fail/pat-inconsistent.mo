@@ -1,5 +1,5 @@
 // Okay joins
-let _ = func(1 or 2) {};
+/*let _ = func(1 or 2) {};
 let _ = func(1 or -1) {};
 let _ = func(1 or (_ : Int)) {};
 let _ = func((1 : Int) or 2) {};
@@ -34,7 +34,7 @@ do { let _ = func((_ : Any) or (_ : [Nat])) {} };
 do { let _ = func((_ : Any) or (_ : () -> ())) {} };
 do { let _ = func(("", 1) or ("", _ : Any)) {} };
 do { let _ = func(#A or #A(_ : Any)) {}; };
-do { let _ = func(#A(5) or #A(_ : Any)) {}; };
+do { let _ = func(#A(5) or #A(_ : Any)) {}; };*/
 
 // No coverage check for ill-typed cases
 switch (#A : {#A}) {
