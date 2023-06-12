@@ -4,6 +4,36 @@ import Cs "actor-class-mgmt/C";
 
 actor a {
 
+
+    type Change_origin = {
+        #from_user : {
+            user_id : Principal;
+        };
+        #from_canister : {
+            canister_id : Principal;
+            canister_version : ?Nat64;
+        };
+    };
+
+    type Change_details = {
+        #creation : { controllers : [Principal] };
+        #code_uninstall;
+        #code_deployment : {
+            mode : { #install; #reinstall; #upgrade};
+            module_hash : Blob;
+        };
+        #controllers_change : {
+            controllers : [Principal];
+        };
+    };
+
+    type Change = {
+        timestamp_nanos : Nat64;
+        canister_version : Nat64;
+        origin : Change_origin;
+        details : Change_details;
+    };
+
   let ic00 = actor "aaaaa-aa" :
     actor {
       create_canister : {
@@ -14,6 +44,16 @@ actor a {
         freezing_threshold: ?Nat;
        }
      } -> async { canister_id : Principal };
+
+      canister_info : {
+          canister_id : Principal;
+          num_requested_changes : ?Nat64;
+      } -> async {
+          total_num_changes : Nat64;
+          recent_changes : [Change];
+          module_hash : ?Blob;
+          controllers : [Principal];
+      };
    };
 
   let default_settings = { settings = null };
@@ -70,8 +110,14 @@ actor a {
         (system Cs.C)(#reinstall c4)(5, null);
       assert ({args = 5; upgrades = 0} == (await c5.observe()));
       assert (c5 == c4);
-    };
 
+      let info = await ic00.canister_info {
+          canister_id = p;
+          num_requested_changes = null
+      };
+
+      Prim.debugPrint (debug_show info);
+    };
   };
 
 }

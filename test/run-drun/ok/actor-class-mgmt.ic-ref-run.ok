@@ -3,4 +3,4 @@
 => update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0...
 <= replied: ()
 => update go()
-<= replied: ()
+<= rejected (RC_CANISTER_REJECT): Unsupported management function canister_info
