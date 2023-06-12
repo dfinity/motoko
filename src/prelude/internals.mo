@@ -456,7 +456,7 @@ func @create_actor_helper(wasm_module : Blob, arg : Blob) : async Principal = as
     canister_id;
     wasm_module;
     arg;
-    sender_canister_version
+    sender_canister_version = ?(prim "canister_version" : () -> Nat64)()
   };
   return canister_id;
 };
