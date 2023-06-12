@@ -115,6 +115,7 @@ let string_of_symbol = function
   | X (T T_DEBUG) -> "debug"
   | X (T T_CONTINUE) -> "continue"
   | X (T T_COMMA) -> ","
+  | X (T T_COMPOSITE) -> "composite"
   | X (T T_COLON) -> ":"
   | X (T T_CLASS) -> "class"
   | X (T T_CHAR) ->  "<char>"
