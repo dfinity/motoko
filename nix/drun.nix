@@ -15,7 +15,7 @@ pkgs:
       # installed. You will normally not be bothered to perform
       # the command therein manually.
 
-      cargoSha256 = "sha256-xc7Q7cFMeW/0xO34N0jEVyYxJ/hOSNvloxDumBQNo5E=";
+      cargoSha256 = "sha256-M1ZeS2XPcggswqQMGuDcSX0I4xyFFFd9CHMLdfx6QC4=";
 
       patchPhase = ''
 
