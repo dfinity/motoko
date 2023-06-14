@@ -161,17 +161,17 @@ stable memory state can fully describe the region objects that will be rebuilt w
 
  - A singleton, heap-allocated object with mutable fields.
  - While being heap-allocated, the object is also `stable` (can be stored in a `stable var`, etc).
- - `RegionObject { size_in_pages: Nat64; id: Nat16; vec_capacity: Nat16; vec_ptr: Nat32 }`
- - Field `size_in_pages` gives the number of pages allocated to the Region.
+ - `RegionObject { id: u16, padding: u16, page_count: u32; vec_pages: Value }`
  - Field `id` gives the Region's numerical id as an index into the `region` table.
- - Fields `vec_capacity` and `vec_ptr` work with `size_in_pages`
+ - Padding is needed for alignment of larger fields.
+ - Field `page_count` gives the number of pages allocated to the Region.
+ - Field `vec_pages` points at a heap-allocated `Blob` value, and it works with `page_count`
    to represent a growable vector that we call the region's **"access
    vector"** (because "blocks vector" sounds a bit strange, and its
    used to support O(1) access operations):
-   - the access vector's address is held in `vec_ptr` and it has `vec_capacity` slots.
-   - the first `size_in_pages + 127 / 128` slots of `vec_ptr` contain a valid page block ID for the region.
-   - the access vector doubles when it grows.
-   - no region has more than 32k page blocks, so a `Nat16` suffices for `capacity`,
+   - the access vector has `vec_capacity` slots.
+   - each slot is a `u16`.
+   - the first `size_in_pages + 127 / 128` slots contain a valid page block ID for the region.
    - during an upgrade, the access vectors get serialized and deserialized as data `Blobs` (as if no pointers are inside each).
 
 
