@@ -18,7 +18,7 @@ actor a {
       #code_uninstall;
       #code_deployment : {
           mode : { #install; #reinstall; #upgrade};
-          module_hash : Blob;
+          // module_hash : Blob; // introduces non-determinism when codegen improves
       };
       #controllers_change : {
           controllers : [Principal];
@@ -49,7 +49,7 @@ actor a {
       } -> async {
           total_num_changes : Nat64;
           recent_changes : [Change];
-          module_hash : ?Blob;
+          // module_hash : ?Blob;
           controllers : [Principal];
       };
    };
