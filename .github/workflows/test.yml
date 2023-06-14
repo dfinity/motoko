@@ -35,6 +35,8 @@ jobs:
 
     - run: nix-env -iA nix-build-uncached -f nix/
 
+    - run: echo '${{ github.ref }}'
+
     - name: "pre-build `drun`"
       if: startsWith(github.ref, 'refs/heads/')
       run: echo '${{ github.ref }}'; nix-build --max-jobs 1 -A tidbits.drun
