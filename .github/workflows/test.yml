@@ -7,7 +7,8 @@ jobs:
 
   warmup:
     if: github.ref == 'refs/heads/gabor/pre-warm'
-    run: nix-build --max-jobs 1 -A tidbits.drun
+    steps:
+      - run: nix-build --max-jobs 1 -A tidbits.drun
 
   tests:
     strategy:
