@@ -110,9 +110,26 @@ let check_prog (env: typ I.Env.t) actor : M.typ =
           M.{lab = id; typ = M.Typ c; depr = None}::fs
        | _ -> assert false) !occs fs in
      M.Obj (M.Actor, List.sort M.compare_field fs)
-  | Some {it=ClassT _; at; _} ->
-     raise (UnsupportedCandidFeature
-       (Diag.error_message at "M0163" "import" "cannot import a Candid service constructor"))
+  | Some {it=ClassT (ts1, t); at; _} ->
+    (*@HACK: import service constructors as instantiated services *)
+    (*TODO: fix dfx to derive the correct instantiated candid instead *)
+    begin
+     let t' = check_typ' env occs t in
+     match M.normalize t' with
+     | M.Obj (M.Actor, fs) ->
+       (* TODO: why do we only check and include the mentioned types (occs),
+         and not all of the .did declared ones (available to the caller, if not here? *)
+       let fs = M.Env.fold (fun id t fs ->
+         match t with
+         | M.Con (c, _) ->
+           (* TODO: consider adding deprecation as types can disappear even
+             across compatible .dids *)
+           M.{lab = id; typ = M.Typ c; depr = None}::fs
+         | _ -> assert false) !occs fs
+       in
+       M.Obj (M.Actor, List.sort M.compare_field fs)
+     | _ -> assert false
+    end
   | None -> assert false
   | _ -> assert false
 
