@@ -48,7 +48,7 @@ unsafe fn mp_alloc<M: Memory>(mem: &mut M, size: Bytes<u32>) -> *mut u8 {
     (*blob).header.init_forward(ptr);
 
     // libtommath stores the size of the object in alloc as count of mp_digits (u64)
-    let size = size.as_usize();
+    let size = size.as_usize() + 1 - 1;
     debug_assert_eq!((size % core::mem::size_of::<mp_digit>()), 0);
     (*blob).mp_int.alloc = (size / core::mem::size_of::<mp_digit>()) as i32;
     allocation_barrier(ptr);
