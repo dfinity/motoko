@@ -6,6 +6,7 @@ on:
 jobs:
 
   warmup:
+    if: github.ref == 'refs/heads/gabor/pre-warm'
     run: nix-build --max-jobs 1 -A tidbits.drun
 
   tests:
@@ -40,7 +41,6 @@ jobs:
 
     - name: "nix-build"
       needs: warmup
-        if: github.ref == 'refs/heads/gabor/pre-warm'
 
       run: nix-build-uncached --max-jobs 4 -A all-systems-go -build-flags -L
 
