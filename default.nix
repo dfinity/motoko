@@ -775,7 +775,8 @@ rec {
     sha256 = "sha256-debC8ZpbIjgpEeISCISU0EVySJvf+WsUkUaLuJ526wA=";
   };
 
-  shell = nixpkgs.mkShell {
+  shell = nixpkgs.drun;
+  shellX = nixpkgs.mkShell {
     name = "motoko-shell";
 
     #
