@@ -421,6 +421,9 @@ pub unsafe fn region_recover<M: Memory>(mem: &mut M, rid: &RegionId) -> Value {
     Value::from_ptr(region as usize)
 }
 
+// NB. This code path requires that the region system already be installed,
+//     Or that there is no pre-existing use of ESM.
+// See also: region_migration_from_esm().
 #[ic_mem_fn]
 pub(crate) unsafe fn region_init_<M: Memory>(mem: &mut M) {
     // detect if we are being called in after upgrade --
@@ -461,6 +464,31 @@ pub(crate) unsafe fn region_init_<M: Memory>(mem: &mut M) {
         // future use by future Motoko compiler-RTS features.
         region_reserve_id_span(mem, None, RegionId(15));
     }
+}
+
+// NB. This code assumes pre-existing use of ESM (version 1 stable memory).
+//     It makes this existing data into region 0 by rescuing the first block of data
+//     and re-locating it to be the final block region 0, physically.
+//     It installs the region system.
+//     After this code runs, region_init() can be used in subsequent upgrades
+//     to re-initialize the region system.
+#[ic_mem_fn]
+pub unsafe fn region_migration_from_esm<M: Memory>(mem: &mut M) -> Value {
+
+    
+    // allocate a block-sized blob on the heap (8MB).
+    // copy the first block of data into that blob, using a stable memory read of a blob.
+    // copy the first block of data from temp blob into new "final block" (logically still first) for region 0.
+    // initialize the meta data for the region system in vacated first block.
+    use crate::ic0_stable::nicer::read;
+
+    let len = meta_data::size::BLOCK_IN_BYTES;
+    let blob_val = crate::memory::alloc_blob(mem, crate::types::Bytes(len));
+    let blob = blob_val.as_blob_mut();
+    let bytes: &mut [u8] = core::slice::from_raw_parts_mut(blob.payload_addr(), len as usize);
+    read(0, bytes);
+    
+    // to do 
 }
 
 // Utility for logging global region manager state (in stable memory).

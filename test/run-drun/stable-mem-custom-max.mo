@@ -9,7 +9,10 @@ actor {
     assert (max - 1) == StableMemory.grow(1);
     assert max == StableMemory.size();
     assert max == StableMemory.grow(0);
-    assert 0xFFFF_FFFF_FFFF_FFFF == StableMemory.grow(1);
+    let x = StableMemory.grow(1);
+    P.debugPrint(debug_show x);
+    P.debugPrint(debug_show 0xFFFF_FFFF_FFFF_FFFF);
+    assert 0xFFFF_FFFF_FFFF_FFFF == x;
     assert 0xFFFF_FFFF_FFFF_FFFF == StableMemory.grow(1024);
   }
 }
