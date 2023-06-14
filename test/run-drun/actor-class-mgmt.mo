@@ -26,7 +26,7 @@ actor a {
   };
 
   type Change = {
-      timestamp_nanos : Nat64;
+      // timestamp_nanos : Nat64; // just omit this
       canister_version : Nat64;
       origin : Change_origin;
       details : Change_details;
@@ -111,7 +111,7 @@ actor a {
 
       let info = await ic00.canister_info {
           canister_id = p;
-          num_requested_changes = null
+          num_requested_changes = ?4
       };
 
       Prim.debugPrint (debug_show info);
