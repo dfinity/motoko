@@ -36,7 +36,7 @@ jobs:
     - run: nix-env -iA nix-build-uncached -f nix/
 
     - name: "pre-build `drun`"
-      if: startsWith(github.ref, 'refs/heads/gabor/')
+      if: startsWith(github.ref, 'refs/heads/')
       run: nix-build --max-jobs 1 -A tidbits.drun
 
     - name: "nix-build"
