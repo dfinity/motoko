@@ -19,10 +19,6 @@ pkgs:
 
       patchPhase = ''
 
-        substituteInPlace .cargo/config.toml \
-          --replace "linker = \"clang\"" "linker = \"$CLANG_PATH\"" \
-          --replace "\"-C\", \"link-arg=-fuse-ld=/usr/bin/mold\"" ""
-
         cd ../drun-vendor.tar.gz
         patch librocksdb-sys/build.rs << EOF
 @@ -118,6 +118,10 @@
