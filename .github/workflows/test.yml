@@ -35,8 +35,8 @@ jobs:
 
     - run: nix-env -iA nix-build-uncached -f nix/
 
-    - name: "pre-puild `drun`"
-      if: ${{ github.ref == 'refs/heads/gabor/pre-warm' }}
+    - name: "pre-build `drun`"
+      if: startsWith(github.ref, 'refs/heads/gabor/')
       run: nix-build --max-jobs 1 -A tidbits.drun
 
     - name: "nix-build"
