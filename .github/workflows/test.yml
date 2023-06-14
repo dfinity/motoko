@@ -4,6 +4,10 @@ on:
      branches: [ master ]
   pull_request: {}
 jobs:
+
+  warmup:
+    run: nix-build --max-jobs 1 -A tidbits.drun
+
   tests:
     strategy:
       matrix:
@@ -35,6 +39,9 @@ jobs:
     - run: nix-env -iA nix-build-uncached -f nix/
 
     - name: "nix-build"
+      needs: warmup
+        if: github.ref == 'refs/heads/gabor/pre-warm'
+
       run: nix-build-uncached --max-jobs 4 -A all-systems-go -build-flags -L
 
     - name: Calculate performance delta
