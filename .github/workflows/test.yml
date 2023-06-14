@@ -37,7 +37,7 @@ jobs:
 
     - name: "pre-build `drun`"
       if: startsWith(github.ref, 'refs/heads/')
-      run: nix-build --max-jobs 1 -A tidbits.drun
+      run: echo '${{ github.ref }}'; nix-build --max-jobs 1 -A tidbits.drun
 
     - name: "nix-build"
       run: nix-build-uncached --max-jobs 4 -A all-systems-go -build-flags -L
