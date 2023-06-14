@@ -1,0 +1,2 @@
+service-import.mo:10.1-10.33: import error [M0153], file service-import/rwlgt-iiaaa-aaaaa-aaaaa-cai.did uses Candid types without corresponding Motoko type
+rwlgt-iiaaa-aaaaa-aaaaa-cai.did:1.11-3.2: import error [M0163], cannot import a Candid service constructor
