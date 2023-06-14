@@ -1,3 +1,4 @@
 ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
 ingress Completed: Reply: 0x4449444c0000
-ingress Completed: Reject: IC0302: Management canister has no method 'canister_info'
+debug.print: {controllers = [rwlgt-iiaaa-aaaaa-aaaaa-cai]; module_hash = ?"\F1\40\E6\08\F6\7F\FC\BC\02\1D\66\5D\03\46\1B\DF\DA\25\89\92\6F\67\BC\7B\C4\D0\27\8C\93\2A\90\66"; recent_changes = []; total_num_changes = 4}
+ingress Completed: Reply: 0x4449444c0000
