@@ -317,7 +317,7 @@ pub unsafe fn region_get_mem_size<M: Memory>(_mem: &mut M) -> u64 {
                 + crate::memory::ic::REGION_TOTAL_ALLOCATED_BLOCKS as u64
                     * (meta_data::size::PAGES_IN_BLOCK as u64)
         } else {
-            // Before we initialization of anything, give back zero.
+            // Before initialization of anything, give back zero.
             0
         }
     };

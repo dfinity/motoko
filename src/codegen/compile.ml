@@ -10016,7 +10016,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     compile_exp_as env ae SR.UnboxedFloat64 e2 ^^
     if !Flags.use_stable_regions then
-     Region0.store_float64 env
+      Region0.store_float64 env
     else
       StableMem.store_float64 env
 
