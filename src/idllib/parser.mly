@@ -106,9 +106,9 @@ ref_typ :
 
 field_typ :
   | n=NAT COLON t=data_typ
-    { { label = Id (Uint32.of_string n) @@ at $loc(n); typ = t } @@ at $sloc } 
+    { { label = Id (Uint32.of_string n) @@ at $loc(n); typ = t } @@ at $sloc }
   | name=name COLON t=data_typ
-    { { label = Named name.it @@ at $loc(name); typ = t } @@ at $sloc } 
+    { { label = Named name.it @@ at $loc(name); typ = t } @@ at $sloc }
 
 record_typ :
   | f=field_typ { fun _ -> f }
@@ -118,7 +118,7 @@ record_typ :
 variant_typ :
   | f=field_typ { f }
   | name=name
-    { { label = Named name.it @@ at $loc(name); typ = PrimT Null @@ no_region } @@ at $sloc } 
+    { { label = Named name.it @@ at $loc(name); typ = PrimT Null @@ no_region } @@ at $sloc }
   | n=NAT
     { { label = Id (Uint32.of_string n) @@ at $loc(n); typ = PrimT Null @@ no_region } @@ at $sloc }
 
