@@ -118,8 +118,6 @@ unsafe fn mark_compact<M: Memory, SetHp: Fn(u32)>(
 
     if (*region0_ptr_loc).is_ptr() {
         mark_object(mem, *region0_ptr_loc);
-        // Similar to `mark_root_mutbox_fields`, `region0_ptr_loc` is in static heap so
-        // it will be readable when we unthread the continuation table
         thread(region0_ptr_loc);
     }
 
