@@ -36,7 +36,9 @@ jobs:
 
     - name: "pre-build `drun`"
       if: startsWith(github.head_ref, 'gabor/pre-warm')
-      run: nix-build --max-jobs 1 -A tidbits.drun
+      run: |
+        nix-build --max-jobs 1 -A tidbits.drun
+        nix-store --gc --print-live
 
     - name: "nix-build"
       run: nix-build-uncached --max-jobs 4 -A all-systems-go -build-flags -L
