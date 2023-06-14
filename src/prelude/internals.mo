@@ -11,8 +11,6 @@ type @Iter<T_> = {next : () -> ?T_};
 
 var @cycles : Nat = 0;
 
-// var @region0 : Region = TODO
-
 // Function called by backend to add funds to call.
 // DO NOT RENAME without modifying compilation.
 func @add_cycles() {
