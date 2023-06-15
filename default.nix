@@ -570,7 +570,7 @@ rec {
       recurseForDerivations = true;
     };
 
-  inherit (nixpkgs) wabt wasmtime wasm;
+  inherit (nixpkgs) drun wabt wasmtime wasm;
 
   filecheck = nixpkgs.runCommandNoCC "FileCheck" {} ''
     mkdir -p $out/bin
@@ -773,10 +773,6 @@ rec {
   viperServer = nixpkgs.fetchurl {
     url = https://github.com/viperproject/viperserver/releases/download/v.22.11-release/viperserver.jar;
     sha256 = "sha256-debC8ZpbIjgpEeISCISU0EVySJvf+WsUkUaLuJ526wA=";
-  };
-
-  tidbits = with nixpkgs; {
-    drun = drun;
   };
 
   shell = nixpkgs.mkShell {
