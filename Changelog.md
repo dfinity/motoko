@@ -2,7 +2,7 @@
 
 * motoko (`moc`)
 
-  * Allow canister imports of service constructors, silently ignoring the service arguments to import the instantiated service. Improves DX using dfx. #4041
+  * Allow canister imports of service constructors, ignoring the service arguments to import the instantiated service instead (with a warning). Improves DX using dfx. (#4041)
 
 ## 0.9.2 (2023-06-10)
 
