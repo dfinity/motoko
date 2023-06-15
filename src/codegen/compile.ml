@@ -34,7 +34,10 @@ Pointers are skewed (translated) -1 relative to the actual offset.
 See documentation of module BitTagged for more detail.
 *)
 let ptr_skew = -1l
+let ptr_skew_64 = -1L
+
 let ptr_unskew = 1l
+let ptr_unskew_64 = 1L
 
 (* Generating function names for functions parametrized by prim types *)
 let prim_fun_name p stem = Printf.sprintf "%s<%s>" stem (Type.string_of_prim p)
@@ -289,7 +292,7 @@ module E = struct
     global_names : int32 NameEnv.t ref;
     named_imports : int32 NameEnv.t ref;
     built_in_funcs : lazy_function NameEnv.t ref;
-    static_strings : int32 StringEnv.t ref;
+    static_strings : int64 StringEnv.t ref;
       (* Pool for shared static objects. Their lookup needs to be specifically
          handled by using the tag and the payload without the forwarding pointer.
          This is because the forwarding pointer depends on the allocation adddress.
@@ -297,8 +300,8 @@ module E = struct
          allocation-dependent content and can thus be immediately looked up by
          the string value. *)
     object_pool : int32 StringEnv.t ref;
-    end_of_static_memory : int32 ref; (* End of statically allocated memory *)
-    static_memory : (int32 * string) list ref; (* Content of static memory *)
+    end_of_static_memory : int64 ref; (* End of statically allocated memory *)
+    static_memory : (int64 * string) list ref; (* Content of static memory *)
     static_memory_frozen : bool ref;
       (* Sanity check: Nothing should bump end_of_static_memory once it has been read *)
     static_roots : int32 list ref;
@@ -538,21 +541,35 @@ module E = struct
   let then_trap_with env msg = G.if0 (trap_with env msg) G.nop
   let else_trap_with env msg = G.if0 G.nop (trap_with env msg)
 
-  let reserve_static_memory (env : t) size : int32 =
+  let word_size_64 = 8L
+
+  let reserve_static_memory (env : t) size : int64 =
     if !(env.static_memory_frozen) then raise (Invalid_argument "Static memory frozen");
     let ptr = !(env.end_of_static_memory) in
-    let aligned = Int32.logand (Int32.add size 3l) (Int32.lognot 3l) in
-    env.end_of_static_memory := Int32.add ptr aligned;
+    let round_bit_mask = Int64.sub word_size_64 1L in
+    (* remove superfluous check *)
+    assert (round_bit_mask == 7L); 
+    let aligned = Int64.logand (Int64.add size round_bit_mask) (Int64.lognot round_bit_mask) in
+    env.end_of_static_memory := Int64.add ptr aligned;
     ptr
+
+  (* TODO: Remove temporary 32-bit function during 64-bit port, leads to overflow *)
+  let reserve_static_memory_32 (env: t) (size: int32) : int32 = 
+    Wasm.I32_convert.wrap_i64 (reserve_static_memory env (Wasm.I64_convert.extend_i32_u size))
 
   let write_static_memory (env : t) ptr data =
     env.static_memory := !(env.static_memory) @ [ (ptr, data) ];
     ()
 
-  let add_mutable_static_bytes (env : t) data : int32 =
-    let ptr = reserve_static_memory env (Int32.of_int (String.length data)) in
+  (* TODO: Remove temporary 32-bit function during 64-bit port, leads to overflow *)
+  let write_static_memory (env : t) (ptr: int32) data =
+    env.static_memory := !(env.static_memory) @ [ ((Wasm.I64_convert.extend_i32_u ptr), data) ];
+    ()
+
+  let add_mutable_static_bytes (env : t) data : int64 =
+    let ptr = reserve_static_memory env (Int64.of_int (String.length data)) in
     env.static_memory := !(env.static_memory) @ [ (ptr, data) ];
-    Int32.(add ptr ptr_skew) (* Return a skewed pointer *)
+    Int64.(add ptr ptr_skew_64) (* Return a skewed pointer *)
 
   let add_fun_ptr (env : t) fi : int32 =
     match FunEnv.find_opt fi !(env.func_ptrs) with
@@ -569,7 +586,7 @@ module E = struct
   let get_end_of_table env : int32 =
     !(env.end_of_table)
 
-  let add_static (env : t) (data : StaticBytes.t) : int32 =
+  let add_static (env : t) (data : StaticBytes.t) : int64 =
     let b = StaticBytes.as_bytes data in
     match StringEnv.find_opt b !(env.static_strings)  with
     | Some ptr -> ptr
@@ -578,6 +595,10 @@ module E = struct
       env.static_strings := StringEnv.add b ptr !(env.static_strings);
       ptr
 
+  (* TODO: Remove temporary 32-bit function during 64-bit port, leads to overflow *)
+  let add_static_32 (env : t) (data : StaticBytes.t) : int32 =
+    Wasm.I32_convert.wrap_i64 (add_static env data)
+  
   let object_pool_find (env: t) (key: string) : int32 option =
     StringEnv.find_opt key !(env.object_pool)
 
@@ -585,10 +606,14 @@ module E = struct
     env.object_pool := StringEnv.add key ptr !(env.object_pool);
     ()
 
-  let add_static_unskewed (env : t) (data : StaticBytes.t) : int32 =
-    Int32.add (add_static env data) ptr_unskew
+  let add_static_unskewed (env : t) (data : StaticBytes.t) : int64 =
+    Int64.add (add_static env data) ptr_unskew_64
 
-  let get_end_of_static_memory env : int32 =
+  (* TODO: Remove temporary 32-bit function during 64-bit port, leads to overflow *)
+  let add_static_unskewed_32 (env : t) (data : StaticBytes.t) : int32 =
+    Wasm.I32_convert.wrap_i64 (add_static_unskewed env data)
+
+  let get_end_of_static_memory env : int64 =
     env.static_memory_frozen := true;
     !(env.end_of_static_memory)
 
@@ -602,8 +627,7 @@ module E = struct
     !(env.static_memory)
 
   let mem_size env =
-    (* TODO: Port properly to 64 bit *)
-    Wasm.I64_convert.extend_i32_s (Int32.(add (div (get_end_of_static_memory env) page_size) 1l))
+    Int64.(add (div (get_end_of_static_memory env) page_size64) 1L)
 
   let gc_strategy_name gc_strategy = match gc_strategy with
     | Flags.MarkCompact -> "compacting"
@@ -930,6 +954,7 @@ module RTS = struct
 
   (* The connection to the C and Rust parts of the RTS *)
   let system_imports env =
+    E.add_func_import env "rts" "test_rts" [] [];
     (* TODO: Support 64-bit
     E.add_func_import env "rts" "memcpy" [I32Type; I32Type; I32Type] [I32Type]; (* standard libc memcpy *)
     E.add_func_import env "rts" "memcmp" [I32Type; I32Type; I32Type] [I32Type];
@@ -1099,8 +1124,12 @@ end (* GC *)
 module Heap = struct
   (* General heap object functionality (allocation, setting fields, reading fields) *)
 
-  (* Memory addresses are 32 bit (I32Type). *)
+  (* Memory addresses are 32 bit (I32Type). TODO: Port to 64-bit *)
   let word_size = 4l
+
+  (* Memory addresses are 64 bit (I64Type). *)
+  let word_size_64 = 8L
+
 
   (* The heap base global can only be used late, see conclude_module
      and GHC.register *)
@@ -1177,7 +1206,7 @@ module Heap = struct
   let memcmp env = E.call_import env "rts" "memcmp"
 
   let register env =
-    let get_heap_base_fn = E.add_fun env "get_heap_base" (Func.of_body env [] [I32Type] (fun env ->
+    let get_heap_base_fn = E.add_fun env "get_heap_base" (Func.of_body env [] [I64Type] (fun env ->
       get_heap_base env
     )) in
 
@@ -1205,16 +1234,16 @@ module Stack = struct
      grows downwards.)
   *)
 
-  let end_ () = Int32.mul (Int32.of_int (!Flags.rts_stack_pages)) page_size
+  let end_ () = Int64.mul (Int64.of_int (!Flags.rts_stack_pages)) page_size64
 
   let register_globals env =
     (* stack pointer *)
-    E.add_global32 env "__stack_pointer" Mutable (end_());
+    E.add_global64 env "__stack_pointer" Mutable (end_());
     (* frame pointer *)
-    E.add_global32 env "__frame_pointer" Mutable (end_());
+    E.add_global64 env "__frame_pointer" Mutable (end_());
     (* low watermark *)
     if !Flags.measure_rts_stack then
-      E.add_global32 env "__stack_min" Mutable (end_());
+      E.add_global64 env "__stack_min" Mutable (end_());
     E.export_global env "__stack_pointer"
 
   let get_stack_ptr env =
@@ -1229,17 +1258,17 @@ module Stack = struct
 
   let get_max_stack_size env =
     if !Flags.measure_rts_stack then
-      compile_unboxed_const (end_()) ^^
+      compile_const_64 (end_()) ^^
       get_min env ^^
-      G.i (Binary (Wasm_exts.Values.I32 I32Op.Sub))
+      G.i (Binary (Wasm_exts.Values.I64 I32Op.Sub))
     else (* report max available *)
-      compile_unboxed_const (end_())
+      compile_const_64 (end_())
 
   let update_stack_min env =
     if !Flags.measure_rts_stack then
     get_stack_ptr env ^^
     get_min env ^^
-    G.i (Compare (Wasm_exts.Values.I32 I32Op.LtU)) ^^
+    G.i (Compare (Wasm_exts.Values.I64 I32Op.LtU)) ^^
     (G.if0
        (get_stack_ptr env ^^
         set_min env)
@@ -1812,7 +1841,7 @@ module Tagged = struct
     let payload = StaticBytes.as_bytes payload in
     let header_size = Int32.(mul Heap.word_size (header_size env)) in
     let size = Int32.(add header_size (Int32.of_int (String.length payload))) in
-    let unskewed_ptr = E.reserve_static_memory env size in
+    let unskewed_ptr = E.reserve_static_memory_32 env size in
     let skewed_ptr = Int32.(add unskewed_ptr ptr_skew) in
     let tag = bytes_of_int32 (int_of_tag tag) in
     let forward = bytes_of_int32 skewed_ptr in (* forwarding pointer *)
@@ -3458,7 +3487,7 @@ module Object = struct
       |> List.split
     in
 
-    let hash_ptr = E.add_static env StaticBytes.[ i32s hashes ] in
+    let hash_ptr = E.add_static_32 env StaticBytes.[ i32s hashes ] in
 
     Tagged.shared_static_obj env Tagged.Object StaticBytes.[
       I32 (Int32.of_int (List.length fs));
@@ -3486,7 +3515,7 @@ module Object = struct
     let hashes = fs |>
       List.map (fun (n,_) -> E.hash env n) |>
       List.sort compare in
-    let hash_ptr = E.add_static env StaticBytes.[ i32s hashes ] in
+    let hash_ptr = E.add_static_32 env StaticBytes.[ i32s hashes ] in
 
     (* Allocate memory *)
     let (set_ri, get_ri, ri) = new_local_ env I32Type "obj" in
@@ -3644,7 +3673,7 @@ module Blob = struct
   let lit env s = compile_unboxed_const (vanilla_lit env s)
 
   let lit_ptr_len env s =
-    compile_unboxed_const (Int32.add ptr_unskew (E.add_static env StaticBytes.[Bytes s])) ^^
+    compile_unboxed_const (Int32.add ptr_unskew (E.add_static_32 env StaticBytes.[Bytes s])) ^^
     compile_unboxed_const (Int32.of_int (String.length s))
 
   let alloc env =
@@ -4223,7 +4252,7 @@ module Lifecycle = struct
     | InPostUpgrade -> 10l
 
   let ptr () = Stack.end_ ()
-  let end_ () = Int32.add (Stack.end_ ()) Heap.word_size
+  let end_ () = Int64.add (Stack.end_ ()) Heap.word_size_64
 
   (* Which states may come before this *)
   let pre_states = function
@@ -4242,11 +4271,11 @@ module Lifecycle = struct
     | InPostUpgrade -> [InInit]
 
   let get env =
-    compile_unboxed_const (ptr ()) ^^
+    compile_const_64 (ptr ()) ^^
     load_unskewed_ptr
 
   let set env new_state =
-    compile_unboxed_const (ptr ()) ^^
+    compile_const_64 (ptr ()) ^^
     compile_unboxed_const (int_of_state new_state) ^^
     store_unskewed_ptr
 
@@ -4351,7 +4380,7 @@ module IC = struct
   let system_call env funcname = E.call_import env "ic0" funcname
 
   let register env =
-      Func.define_built_in env "print_ptr" [("ptr", I32Type); ("len", I32Type)] [] (fun env ->
+      Func.define_built_in env "print_ptr" [("ptr", I64Type); ("len", I32Type)] [] (fun env ->
         (* TODO: Support 64-bit
         match E.mode env with
         | Flags.WasmMode -> G.i Nop
@@ -5662,7 +5691,7 @@ module MakeSerialization (Strm : Stream) = struct
   (* See Note [Candid subtype checks] *)
   let set_delayed_globals (env : E.t) (set_typtbl, set_typtbl_end, set_typtbl_size, set_typtbl_idltyps) =
     let typdesc, offsets, idltyps = type_desc env (E.get_typtbl_typs env) in
-    let static_typedesc = E.add_static_unskewed env [StaticBytes.Bytes typdesc] in
+    let static_typedesc = E.add_static_unskewed_32 env [StaticBytes.Bytes typdesc] in
     let static_typtbl =
       let bytes = StaticBytes.i32s
         (List.map (fun offset ->
@@ -11062,7 +11091,7 @@ and conclude_module env (* set_serialization_globals *) start_fi_o =
 
   (* add beginning-of-heap pointer, may be changed by linker *)
   (* needs to happen here now that we know the size of static memory *)
-  let set_heap_base = E.add_global32_delayed env "__heap_base" Immutable in
+  let set_heap_base = E.add_global64_delayed env "__heap_base" Immutable in
   E.export_global env "__heap_base";
 
   Heap.register env;
@@ -11075,6 +11104,8 @@ and conclude_module env (* set_serialization_globals *) start_fi_o =
 
   (* Wrap the start function with the RTS initialization *)
   let rts_start_fi = E.add_fun env "rts_start" (Func.of_body env [] [] (fun env1 ->
+    E.call_import env "rts" ("test_rts") ^^
+
     (* TODO: Support 64-bit
     E.call_import env "rts" ("initialize_" ^ E.gc_strategy_name !Flags.gc_strategy ^ "_gc") ^^
     *)
@@ -11102,7 +11133,7 @@ and conclude_module env (* set_serialization_globals *) start_fi_o =
 
   let data = List.map (fun (offset, init) -> nr {
     index = nr 0l;
-    offset = nr (G.to_instr_list (compile_unboxed_const offset));
+    offset = nr (G.to_instr_list (compile_const_64 offset));
     init;
     }) (E.get_static_memory env) in
 

@@ -399,9 +399,9 @@ let set_global global value = fun m ->
     | [] -> assert false
     | g::gs when i = Int32.to_int global ->
       let open Wasm_exts.Types in
-      assert (g.it.gtype = GlobalType (I32Type, Immutable));
+      assert (g.it.gtype = GlobalType (I64Type, Immutable));
       let g = phrase (fun g' ->
-        { g' with value = [Const (Wasm_exts.Values.I32 value @@ g.at) @@ g.at] @@ g.at }
+        { g' with value = [Const (Wasm_exts.Values.I64 (Int64.of_int (Int32.to_int value)) @@ g.at) @@ g.at] @@ g.at }
       ) g in
       g :: gs
     | g::gs -> g :: go (i+1) gs
@@ -501,9 +501,9 @@ let read_global gi (m : module_') : int32 =
   let n_impo = count_imports is_global_import m in
   let g = List.nth m.globals (Int32.(to_int (sub gi n_impo))) in
   let open Wasm_exts.Types in
-  assert (g.it.gtype = GlobalType (I32Type, Immutable));
+  assert (g.it.gtype = GlobalType (I64Type, Immutable));
   match g.it.value.it with
-  | [{ it = Const {it = Wasm_exts.Values.I32 i;_}; _}] -> i
+  | [{ it = Const {it = Wasm_exts.Values.I64 i;_}; _}] -> Int32.of_int (Int64.to_int i)
   | _ -> assert false
 
 let read_table_size (m : module_') : int32 =

@@ -109,6 +109,12 @@ use motoko_rts_macros::*;
 //     trap_with_prefix("RTS error: ", msg)
 // }
 
+#[no_mangle]
+pub unsafe fn test_rts() {
+    loop {}
+    // println!(100, "TEST RTS WASM64!");
+}
+
 #[cfg(feature = "ic")]
 #[panic_handler]
 fn panic(info: &core::panic::PanicInfo) -> ! {
