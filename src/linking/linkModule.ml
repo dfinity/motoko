@@ -569,7 +569,7 @@ let fill_memory_base_import new_base : module_' -> module_' = fun m ->
           else sub i 1l
         )
 
-let fill_table_base_import new_base : module_' -> module_' = fun m ->
+let fill_table_base64_import new_base : module_' -> module_' = fun m ->
   (* We need to find the right import,
      replace all uses of get_global of that import with the constant,
      and finally rename all globals
@@ -596,7 +596,34 @@ let fill_table_base_import new_base : module_' -> module_' = fun m ->
           else sub i 1l
         )
 
+let fill_table_base32_import new_base : module_' -> module_' = fun m ->
+  (* We need to find the right import,
+      replace all uses of get_global of that import with the constant,
+      and finally rename all globals
+  *)
+  let base_global =
+    let rec go i = function
+      | [] -> assert false
+      | imp::is -> match imp.it.idesc.it with
+        | GlobalImport _ty
+          when imp.it.module_name = Lib.Utf8.decode "env" &&
+                imp.it.item_name = Lib.Utf8.decode "__table_base32" ->
+          Int32.of_int i
+        | GlobalImport _ ->
+          go (i + 1) is
+        | _ ->
+          go i is
+    in go 0 m.imports in
 
+    m |> fill_global base_global new_base
+      |> remove_imports is_global_import [(base_global, base_global)]
+      |> rename_globals Int32.(fun i ->
+          if i < base_global then i
+          else if i = base_global then assert false
+          else sub i 1l
+        )
+
+        
 (* Concatenation of modules *)
 
 let join_modules
@@ -793,7 +820,8 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
   (* Fill in memory and table base pointers *)
   let dm2 = em2.module_
     |> fill_memory_base_import lib_heap_start
-    |> fill_table_base_import lib_table_start in
+    |> fill_table_base64_import lib_table_start 
+    |> fill_table_base32_import lib_table_start in
 
   let got_func_imports = collect_got_func_imports dm2 in
 

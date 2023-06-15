@@ -344,7 +344,8 @@ EXPORTED_SYMBOLS=\
 #    fmod \
 #    log \
 
-WASM_A_DEPENDENCIES=$(TOMMATH_WASM_A) $(MUSL_WASM_A)
+# WASM_A_DEPENDENCIES=$(TOMMATH_WASM_A) $(MUSL_WASM_A)
+WASM_A_DEPENDENCIES=
 LINKER_OPTIONS=\
   -mwasm64 --import-memory --shared --no-entry --gc-sections \
   $(EXPORTED_SYMBOLS:%=--export=%) \

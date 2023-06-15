@@ -902,6 +902,7 @@ end (* Func *)
 
 module RTS = struct
   let incremental_gc_imports env =
+    (* TODO: Support 64-bit
     E.add_func_import env "rts" "initialize_incremental_gc" [] [];
     E.add_func_import env "rts" "schedule_incremental_gc" [] [];
     E.add_func_import env "rts" "incremental_gc" [] [];
@@ -909,9 +910,11 @@ module RTS = struct
     E.add_func_import env "rts" "allocation_barrier" [I32Type] [I32Type];
     E.add_func_import env "rts" "stop_gc_on_upgrade" [] [];
     E.add_func_import env "rts" "running_gc" [] [I32Type];
+    *)
     ()
 
   let non_incremental_gc_imports env =
+    (* TODO: Support 64-bit
     E.add_func_import env "rts" "initialize_copying_gc" [] [];
     E.add_func_import env "rts" "initialize_compacting_gc" [] [];
     E.add_func_import env "rts" "initialize_generational_gc" [] [];
@@ -922,10 +925,12 @@ module RTS = struct
     E.add_func_import env "rts" "compacting_gc" [] [];
     E.add_func_import env "rts" "generational_gc" [] [];
     E.add_func_import env "rts" "post_write_barrier" [I32Type] [];
+    *)
     ()
 
   (* The connection to the C and Rust parts of the RTS *)
   let system_imports env =
+    (* TODO: Support 64-bit
     E.add_func_import env "rts" "memcpy" [I32Type; I32Type; I32Type] [I32Type]; (* standard libc memcpy *)
     E.add_func_import env "rts" "memcmp" [I32Type; I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "version" [] [I32Type];
@@ -1042,6 +1047,7 @@ module RTS = struct
       incremental_gc_imports env
     else
       non_incremental_gc_imports env;
+    *)
     ()
 
 end (* RTS *)
@@ -4345,8 +4351,8 @@ module IC = struct
   let system_call env funcname = E.call_import env "ic0" funcname
 
   let register env =
-
       Func.define_built_in env "print_ptr" [("ptr", I32Type); ("len", I32Type)] [] (fun env ->
+        (* TODO: Support 64-bit
         match E.mode env with
         | Flags.WasmMode -> G.i Nop
         | Flags.ICMode | Flags.RefMode ->
@@ -4397,6 +4403,8 @@ module IC = struct
             E.call_import env "wasi_unstable" "fd_write" ^^
             G.i Drop)
           end);
+          *)
+          G.nop);
 
       E.add_export env (nr {
         name = Lib.Utf8.decode "print_ptr";
@@ -4520,9 +4528,12 @@ module IC = struct
   let export_wasi_start env =
     assert (E.mode env = Flags.WASIMode);
     let fi = E.add_fun env "_start" (Func.of_body env [] [] (fun env1 ->
+      (* TODO: Support 64-bit
       Lifecycle.trans env Lifecycle.InInit ^^
       G.i (Call (nr (E.built_in env "init"))) ^^
       Lifecycle.trans env Lifecycle.Idle
+      *)
+      G.nop
     )) in
     E.add_export env (nr {
       name = Lib.Utf8.decode "_start";
@@ -5178,6 +5189,7 @@ end (* StableMemory *)
 
 module RTS_Exports = struct
   let system_exports env =
+    (* TODO: Support 64-bit
     let bigint_trap_fi = E.add_fun env "bigint_trap" (
       Func.of_body env [] [] (fun env ->
         E.trap_with env "bigint function error"
@@ -5213,7 +5225,8 @@ module RTS_Exports = struct
       name = Lib.Utf8.decode "stable64_write_moc";
       edesc = nr (FuncExport (nr stable64_write_moc_fi))
     })
-
+    *)
+    ()
 end (* RTS_Exports *)
 
 
@@ -7401,7 +7414,7 @@ end
 
 module GCRoots = struct
   let register env static_roots =
-
+    (* TODO: Support 64-bit
     let get_static_roots = E.add_fun env "get_static_roots" (Func.of_body env [] [I32Type] (fun env ->
       compile_unboxed_const static_roots
     )) in
@@ -7410,6 +7423,8 @@ module GCRoots = struct
       name = Lib.Utf8.decode "get_static_roots";
       edesc = nr (FuncExport (nr get_static_roots))
     })
+    *)
+    ()
 
   let store_static_roots env =
     Arr.vanilla_lit env (E.get_static_roots env)
@@ -11028,14 +11043,18 @@ and metadata name value =
            List.mem name !Flags.public_metadata_names,
            value)
 
-and conclude_module env set_serialization_globals start_fi_o =
+and conclude_module env (* set_serialization_globals *) start_fi_o =
 
   FuncDec.export_async_method env;
 
+  (* TODO: Support 64-bit
   (* See Note [Candid subtype checks] *)
   Serialization.set_delayed_globals env set_serialization_globals;
+  *)
 
+  (* TODO: Support 64-bit
   let static_roots = GCRoots.store_static_roots env in
+  *)
 
   (* declare before building GC *)
 
@@ -11045,19 +11064,26 @@ and conclude_module env set_serialization_globals start_fi_o =
   E.export_global env "__heap_base";
 
   Heap.register env;
+  (* TODO: Support 64-bit
   GCRoots.register env static_roots;
+  *)
   IC.register env;
 
   set_heap_base (E.get_end_of_static_memory env);
 
   (* Wrap the start function with the RTS initialization *)
   let rts_start_fi = E.add_fun env "rts_start" (Func.of_body env [] [] (fun env1 ->
+    (* TODO: Support 64-bit
     E.call_import env "rts" ("initialize_" ^ E.gc_strategy_name !Flags.gc_strategy ^ "_gc") ^^
+    *)
     match start_fi_o with
     | Some fi ->
       G.i (Call fi)
     | None ->
+      (* TODO: Support 64-bit
       Lifecycle.set env Lifecycle.PreInit
+      *)
+      G.nop
   )) in
 
   IC.default_exports env;
@@ -11133,9 +11159,11 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
   GC.register_globals env;
   StableMem.register_globals env;
   Serialization.Registers.register_globals env;
-
+  
+  (* TODO: Support 64-bit
   (* See Note [Candid subtype checks] *)
   let set_serialization_globals = Serialization.register_delayed_globals env in
+  *)
 
   IC.system_imports env;
   RTS.system_imports env;
@@ -11153,4 +11181,5 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
       Some (nr (E.built_in env "init"))
   in
 
-  conclude_module env set_serialization_globals start_fi_o
+  conclude_module env (* set_serialization_globals *) start_fi_o
+  
