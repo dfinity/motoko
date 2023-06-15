@@ -12,7 +12,9 @@ actor {
   let max = n * 65536;
   while (i < max) {
     let v = valOfNat64(i);
-    assert (StableMemory.loadInt8(i) == v);
+    let x = StableMemory.loadInt8(i); // temp
+    P.debugPrint (debug_show {x; v}); // temp
+    assert (x == v);                  // temp
     StableMemory.storeInt8(i, ^v);
     assert (StableMemory.loadInt8(i) == ^v);
     StableMemory.storeInt8(i, v);
