@@ -4528,12 +4528,14 @@ module IC = struct
   let export_wasi_start env =
     assert (E.mode env = Flags.WASIMode);
     let fi = E.add_fun env "_start" (Func.of_body env [] [] (fun env1 ->
-      (* TODO: Support 64-bit
+      (* TODO: Support in 64-bit
       Lifecycle.trans env Lifecycle.InInit ^^
-      G.i (Call (nr (E.built_in env "init"))) ^^
+      *)
+      G.i (Call (nr (E.built_in env "init"))) 
+      (* TODO: Support in 64-bit
+      ^^
       Lifecycle.trans env Lifecycle.Idle
       *)
-      G.nop
     )) in
     E.add_export env (nr {
       name = Lib.Utf8.decode "_start";

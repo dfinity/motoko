@@ -38,6 +38,7 @@ module Types = {
   public type Principal = prim "Principal";
 };
 
+/* TODO: Reenable later in 64-bit support
 func abs(x : Int) : Nat { (prim "abs" : Int -> Nat) x };
 func shiftLeft(x : Nat, shift : Nat32) : Nat { (prim "lsh_Nat" : (Nat, Nat32) -> Nat) (x, shift) };
 func shiftRight(x : Nat, shift : Nat32) : Nat { (prim "rsh_Nat" : (Nat, Nat32) -> Nat) (x, shift) };
@@ -380,3 +381,4 @@ let call_raw = @call_raw;
 
 func performanceCounter(counter : Nat32) : Nat64 =
   (prim "performanceCounter" : (Nat32) -> Nat64) counter;
+*/

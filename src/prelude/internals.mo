@@ -6,7 +6,7 @@ are used by the desugarer, by ir-to-ir-passes or by `mo:⛔`), but not user
 visible. All names here are prefixed with `@`, so they are invisible from user
 code, and cannot be shadowed.
 */
-
+/* TODO: Reenable later in 64-bit support
 type @Iter<T_> = {next : () -> ?T_};
 
 var @cycles : Nat = 0;
@@ -627,3 +627,4 @@ func @cancelTimer(id : Nat) {
 
 func @set_global_timer(time : Nat64) = ignore (prim "global_timer_set" : Nat64 -> Nat64) time;
 
+*/
