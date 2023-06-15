@@ -1260,7 +1260,7 @@ module Stack = struct
     if !Flags.measure_rts_stack then
       compile_const_64 (end_()) ^^
       get_min env ^^
-      G.i (Binary (Wasm_exts.Values.I64 I32Op.Sub))
+      G.i (Binary (Wasm_exts.Values.I64 I64Op.Sub))
     else (* report max available *)
       compile_const_64 (end_())
 
@@ -1268,7 +1268,7 @@ module Stack = struct
     if !Flags.measure_rts_stack then
     get_stack_ptr env ^^
     get_min env ^^
-    G.i (Compare (Wasm_exts.Values.I64 I32Op.LtU)) ^^
+    G.i (Compare (Wasm_exts.Values.I64 I64Op.LtU)) ^^
     (G.if0
        (get_stack_ptr env ^^
         set_min env)
@@ -1278,45 +1278,59 @@ module Stack = struct
   let stack_overflow env =
     Func.share_code0 env "stack_overflow" [] (fun env ->
       (* read last word of reserved page to force trap *)
-      compile_unboxed_const 0xFFFF_FFFCl ^^
+      compile_const_64 0xFFFF_FFFF_FFFF_FFFCL ^^
       G.i (Load {ty = I32Type; align = 2; offset = 0L; sz = None}) ^^
       G.i Unreachable
     )
 
   let alloc_words env n =
-    let n_bytes = Int32.mul n Heap.word_size in
+    let n_bytes = Int64.mul n Heap.word_size_64 in
     (* avoid absurd allocations *)
-    assert Int32.(to_int n_bytes < !Flags.rts_stack_pages * to_int page_size);
+    assert Int64.(to_int n_bytes < !Flags.rts_stack_pages * to_int page_size64);
     (* alloc words *)
     get_stack_ptr env ^^
-    compile_unboxed_const n_bytes ^^
-    G.i (Binary (Wasm_exts.Values.I32 I32Op.Sub)) ^^
+    compile_const_64 n_bytes ^^
+    G.i (Binary (Wasm_exts.Values.I64 I64Op.Sub)) ^^
     set_stack_ptr env ^^
     update_stack_min env ^^
     get_stack_ptr env ^^
     (* check for stack overflow, if necessary *)
-    if n_bytes >= page_size then
+    if n_bytes >= page_size64 then
       get_stack_ptr env ^^
-      G.i (Unary (Wasm_exts.Values.I32 I32Op.Clz)) ^^
+      G.i (Unary (Wasm_exts.Values.I64 I64Op.Clz)) ^^
       G.if0
         G.nop (* we found leading zeros, i.e. no wraparound *)
         (stack_overflow env)
     else
       G.nop
 
+  (* TODO: Remove this temporary legacy function for 64-bit port *)
+  let alloc_words_32 env n = 
+      alloc_words env (Wasm.I64_convert.extend_i32_u n)
+
   let free_words env n =
     get_stack_ptr env ^^
-    compile_unboxed_const (Int32.mul n Heap.word_size) ^^
-    G.i (Binary (Wasm_exts.Values.I32 I32Op.Add)) ^^
+    compile_const_64 (Int64.mul n Heap.word_size_64) ^^
+    G.i (Binary (Wasm_exts.Values.I64 I64Op.Add)) ^^
     set_stack_ptr env
+
+  (* TODO: Remove this temporary legacy function for 64-bit port *)
+  let free_words_32 env n = 
+    free_words env (Wasm.I64_convert.extend_i32_u n)
 
   (* TODO: why not just remember and reset the stack pointer, instead of calling free_words? Also below *)
   let with_words env name n f =
-    let (set_x, get_x) = new_local env name in
+    let (set_x, get_x) = new_local64 env name in
     alloc_words env n ^^ set_x ^^
     f get_x ^^
     free_words env n
 
+  (* TODO: Remove this temporary legacy function for 64-bit port *)
+  let with_words_32 env name n f =
+    let (set_x, get_x) = new_local env name in
+    alloc_words_32 env n ^^ set_x ^^
+    f get_x ^^
+    free_words_32 env n
 
   let dynamic_alloc_words env get_n =
     get_stack_ptr env ^^
@@ -1365,7 +1379,7 @@ module Stack = struct
   (* Enter/exit a new frame of `n` words, saving and restoring prev frame pointer *)
   let with_frame env name n f =
     (* reserve space for n words + saved frame_ptr *)
-    alloc_words env (Int32.add n 1l) ^^
+    alloc_words_32 env (Int32.add n 1l) ^^
     (* store the current frame_ptr at offset 0*)
     get_frame_ptr env ^^
     G.i (Store {ty = I32Type; align = 2; offset = 0L; sz = None}) ^^
@@ -1384,7 +1398,7 @@ module Stack = struct
     G.i (Load {ty = I32Type; align = 2; offset = 0L; sz = None}) ^^
     set_frame_ptr env ^^
     (* free the frame *)
-    free_words env (Int32.add n 1l)
+    free_words_32 env (Int32.add n 1l)
 
   (* read local n of current frame *)
   let get_local env n =
@@ -2545,7 +2559,7 @@ module ReadBuf = struct
     set_end get_buf
       (get_ptr get_buf ^^ get_size ^^ G.i (Binary (Wasm_exts.Values.I32 I32Op.Add)))
 
-  let alloc env f = Stack.with_words env "buf" 2l f
+  let alloc env f = Stack.with_words_32 env "buf" 2l f
 
   let advance get_buf get_delta =
     set_ptr get_buf (get_ptr get_buf ^^ get_delta ^^ G.i (Binary (Wasm_exts.Values.I32 I32Op.Add)))
@@ -4381,18 +4395,21 @@ module IC = struct
 
   let register env =
       Func.define_built_in env "print_ptr" [("ptr", I64Type); ("len", I32Type)] [] (fun env ->
-        (* TODO: Support 64-bit
         match E.mode env with
         | Flags.WasmMode -> G.i Nop
         | Flags.ICMode | Flags.RefMode ->
+          assert false;
+          (* TODO: Port to 64 bit 
             G.i (LocalGet (nr 0l)) ^^
             G.i (LocalGet (nr 1l)) ^^
             system_call env "debug_print"
+           *)
         | Flags.WASIMode -> begin
-          let get_ptr = G.i (LocalGet (nr 0l)) in
+          (*TODO: Port to 64-bit: Reserve buffer in 32-bit space because fd_write is still using 32-bit pointers, do not convert to 32-bit *)
+          let get_ptr = G.i (LocalGet (nr 0l)) ^^ G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) in
           let get_len = G.i (LocalGet (nr 1l)) in
-
-          Stack.with_words env "io_vec" 6l (fun get_iovec_ptr ->
+          
+          Stack.with_words env "io_vec" 6L (fun get_iovec_ptr ->
             (* We use the iovec functionality to append a newline *)
             get_iovec_ptr ^^
             get_ptr ^^
@@ -4403,7 +4420,9 @@ module IC = struct
             G.i (Store {ty = I32Type; align = 2; offset = 4L; sz = None}) ^^
 
             get_iovec_ptr ^^
-            get_iovec_ptr ^^ compile_add_const 16l ^^
+            get_iovec_ptr ^^ 
+            G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^ (* TODO: Ensure that the stack pointer is in 32-bit space *)
+            compile_add_const 16l ^^
             G.i (Store {ty = I32Type; align = 2; offset = 8L; sz = None}) ^^
 
             get_iovec_ptr ^^
@@ -4420,21 +4439,26 @@ module IC = struct
 
             compile_unboxed_const 1l (* stdout *) ^^
             get_iovec_ptr ^^
+            G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^ (* TODO: Ensure that the stack pointer is in 32-bit space *)
             compile_unboxed_const 1l (* one string segment (2 doesn't work) *) ^^
-            get_iovec_ptr ^^ compile_add_const 20l ^^ (* out for bytes written, we ignore that *)
+            get_iovec_ptr ^^ 
+            G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^ (* TODO: Ensure that the stack pointer is in 32-bit space *)
+            compile_add_const 20l ^^ (* out for bytes written, we ignore that *)
             E.call_import env "wasi_unstable" "fd_write" ^^
             G.i Drop ^^
 
             compile_unboxed_const 1l (* stdout *) ^^
-            get_iovec_ptr ^^ compile_add_const 8l ^^
+            get_iovec_ptr ^^ 
+            G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^ (* TODO: Ensure that the stack pointer is in 32-bit space *)
+            compile_add_const 8l ^^
             compile_unboxed_const 1l (* one string segment *) ^^
-            get_iovec_ptr ^^ compile_add_const 20l ^^ (* out for bytes written, we ignore that *)
+            get_iovec_ptr ^^ 
+            G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^ (* TODO: Ensure that the stack pointer is in 32-bit space *)
+            compile_add_const 20l ^^ (* out for bytes written, we ignore that *)
             E.call_import env "wasi_unstable" "fd_write" ^^
             G.i Drop)
           end);
-          *)
-          G.nop);
-
+          
       E.add_export env (nr {
         name = Lib.Utf8.decode "print_ptr";
         edesc = nr (FuncExport (nr (E.built_in env "print_ptr")))
@@ -4863,7 +4887,7 @@ module Cycles = struct
 
   let balance env =
     Func.share_code0 env "cycle_balance" [I32Type] (fun env ->
-      Stack.with_words env "dst" 4l (fun get_dst ->
+      Stack.with_words_32 env "dst" 4l (fun get_dst ->
         get_dst ^^
         IC.cycle_balance env ^^
         get_dst ^^
@@ -4880,7 +4904,7 @@ module Cycles = struct
 
   let accept env =
     Func.share_code1 env "cycle_accept" ("cycles", I32Type) [I32Type] (fun env get_x ->
-      Stack.with_words env "dst" 4l (fun get_dst ->
+      Stack.with_words_32 env "dst" 4l (fun get_dst ->
         get_x ^^
         to_two_word64 env ^^
         get_dst ^^
@@ -4892,7 +4916,7 @@ module Cycles = struct
 
   let available env =
     Func.share_code0 env "cycle_available" [I32Type] (fun env ->
-      Stack.with_words env "dst" 4l (fun get_dst ->
+      Stack.with_words_32 env "dst" 4l (fun get_dst ->
         get_dst ^^
         IC.cycles_available env ^^
         get_dst ^^
@@ -4902,7 +4926,7 @@ module Cycles = struct
 
   let refunded env =
     Func.share_code0 env "cycle_refunded" [I32Type] (fun env ->
-      Stack.with_words env "dst" 4l (fun get_dst ->
+      Stack.with_words_32 env "dst" 4l (fun get_dst ->
         get_dst ^^
         IC.cycles_refunded env ^^
         get_dst ^^
@@ -4985,7 +5009,7 @@ module StableMem = struct
         (fun env get_offset ->
           let words = Int32.div (Int32.add bytes 3l) 4l in
           add_guard env guarded get_offset bytes ^^
-          Stack.with_words env "temp_ptr" words (fun get_temp_ptr ->
+          Stack.with_words_32 env "temp_ptr" words (fun get_temp_ptr ->
             get_temp_ptr ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
             get_offset ^^
             compile_const_64 (Int64.of_int32 bytes) ^^
@@ -5001,7 +5025,7 @@ module StableMem = struct
         (fun env get_offset get_value ->
           let words = Int32.div (Int32.add bytes 3l) 4l in
           add_guard env guarded get_offset bytes ^^
-          Stack.with_words env "temp_ptr" words (fun get_temp_ptr ->
+          Stack.with_words_32 env "temp_ptr" words (fun get_temp_ptr ->
             get_temp_ptr ^^ get_value ^^ store ^^
             get_offset ^^
             get_temp_ptr ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
@@ -5022,7 +5046,7 @@ module StableMem = struct
       Func.share_code1 env "__stablemem_read_and_clear_word32"
         ("offset", I64Type) [I32Type]
         (fun env get_offset ->
-          Stack.with_words env "temp_ptr" 1l (fun get_temp_ptr ->
+          Stack.with_words_32 env "temp_ptr" 1l (fun get_temp_ptr ->
             let (set_word, get_word) = new_local env "word" in
             (* read word *)
             get_temp_ptr ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
@@ -6334,7 +6358,7 @@ module MakeSerialization (Strm : Stream) = struct
       in
 
       let with_record_typ f = with_composite_typ idl_record (fun get_typ_buf ->
-        Stack.with_words env "get_n_ptr" 1l (fun get_n_ptr ->
+        Stack.with_words_32 env "get_n_ptr" 1l (fun get_n_ptr ->
           get_n_ptr ^^
           ReadBuf.read_leb128 env get_typ_buf ^^
           store_unskewed_ptr ^^
@@ -6811,9 +6835,9 @@ module MakeSerialization (Strm : Stream) = struct
       compile_unboxed_const 0l ^^ set_refs_size (* none yet *) ^^
 
       (* Allocate space for out parameters of parse_idl_header *)
-      Stack.with_words env "get_typtbl_size_ptr" 1l (fun get_typtbl_size_ptr ->
-      Stack.with_words env "get_typtbl_ptr" 1l (fun get_typtbl_ptr ->
-      Stack.with_words env "get_maintyps_ptr" 1l (fun get_maintyps_ptr ->
+      Stack.with_words_32 env "get_typtbl_size_ptr" 1l (fun get_typtbl_size_ptr ->
+      Stack.with_words_32 env "get_typtbl_ptr" 1l (fun get_typtbl_ptr ->
+      Stack.with_words_32 env "get_maintyps_ptr" 1l (fun get_maintyps_ptr ->
 
       (* Set up read buffers *)
       ReadBuf.alloc env (fun get_data_buf -> ReadBuf.alloc env (fun get_ref_buf ->
