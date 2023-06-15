@@ -111,8 +111,7 @@ use motoko_rts_macros::*;
 
 #[no_mangle]
 pub unsafe fn test_rts() {
-    loop {}
-    // println!(100, "TEST RTS WASM64!");
+    println!(100, "TEST RTS WASM64!");
 }
 
 #[cfg(feature = "ic")]

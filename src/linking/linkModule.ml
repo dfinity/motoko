@@ -408,12 +408,12 @@ let set_global global value = fun m ->
   in
   { m with globals = go 0 m.globals }
 
-let fill_global (global : int32) (value : int32) : module_' -> module_' = fun m ->
+let fill_global (global : int32) (value : Wasm_exts.Values.value) : module_' -> module_' = fun m ->
   let rec instr' = function
     | Block (ty, is) -> Block (ty, instrs is)
     | Loop (ty, is) -> Loop (ty, instrs is)
     | If (ty, is1, is2) -> If (ty, instrs is1, instrs is2)
-    | GlobalGet v when v.it = global -> Const (Wasm_exts.Values.I32 value @@ v.at)
+    | GlobalGet v when v.it = global -> Const (value @@ v.at)
     | GlobalSet v when v.it = global -> assert false
     | i -> i
   and instr i = phrase instr' i
@@ -561,7 +561,7 @@ let fill_memory_base_import new_base : module_' -> module_' = fun m ->
           go i is
     in go 0 m.imports in
 
-    m |> fill_global base_global new_base
+    m |> fill_global base_global (Wasm_exts.Values.I64 (I64_convert.extend_i32_u new_base))
       |> remove_imports is_global_import [(base_global, base_global)]
       |> rename_globals Int32.(fun i ->
           if i < base_global then i
@@ -588,7 +588,7 @@ let fill_table_base64_import new_base : module_' -> module_' = fun m ->
           go i is
     in go 0 m.imports in
 
-    m |> fill_global base_global new_base
+    m |> fill_global base_global (Wasm_exts.Values.I64 (I64_convert.extend_i32_u new_base))
       |> remove_imports is_global_import [(base_global, base_global)]
       |> rename_globals Int32.(fun i ->
           if i < base_global then i
@@ -615,7 +615,7 @@ let fill_table_base32_import new_base : module_' -> module_' = fun m ->
           go i is
     in go 0 m.imports in
 
-    m |> fill_global base_global new_base
+    m |> fill_global base_global (Wasm_exts.Values.I32 new_base)
       |> remove_imports is_global_import [(base_global, base_global)]
       |> rename_globals Int32.(fun i ->
           if i < base_global then i
