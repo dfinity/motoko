@@ -9911,20 +9911,20 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | OtherPrim ("stableMemoryLoadNat8"), [e] ->
     SR.Vanilla,
     compile_exp_as env ae SR.UnboxedWord64 e ^^
-    if !Flags.use_stable_regions then
+    (if !Flags.use_stable_regions then
       Region0.load_word8 env
     else
-      StableMem.load_word8 env
+      StableMem.load_word8 env)
     ^^
     TaggedSmallWord.msb_adjust Type.Nat8
 
   | OtherPrim ("stableMemoryLoadInt8"), [e] ->
     SR.Vanilla,
     compile_exp_as env ae SR.UnboxedWord64 e ^^
-    if !Flags.use_stable_regions then
+    (if !Flags.use_stable_regions then
       Region0.load_word8 env
     else
-      StableMem.load_word8 env
+      StableMem.load_word8 env)
     ^^
     TaggedSmallWord.msb_adjust Type.Int8
 
@@ -9951,20 +9951,20 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | OtherPrim ("stableMemoryLoadNat16"), [e] ->
     SR.Vanilla,
     compile_exp_as env ae SR.UnboxedWord64 e ^^
-    if !Flags.use_stable_regions then
+    (if !Flags.use_stable_regions then
       Region0.load_word16 env
     else
-      StableMem.load_word16 env
+      StableMem.load_word16 env)
     ^^
     TaggedSmallWord.msb_adjust Type.Nat16
 
   | OtherPrim ("stableMemoryLoadInt16"), [e] ->
     SR.Vanilla,
     compile_exp_as env ae SR.UnboxedWord64 e ^^
-    if !Flags.use_stable_regions then
+    (if !Flags.use_stable_regions then
       Region0.load_word16 env
     else
-      StableMem.load_word16 env
+      StableMem.load_word16 env)
     ^^
     TaggedSmallWord.msb_adjust Type.Int16
 

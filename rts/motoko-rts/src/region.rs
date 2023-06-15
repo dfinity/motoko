@@ -473,8 +473,9 @@ pub(crate) unsafe fn region_init_<M: Memory>(mem: &mut M) {
 //     After this code runs, region_init() can be used in subsequent upgrades
 //     to re-initialize the region system.
 #[ic_mem_fn]
-pub unsafe fn region_migration_from_esm<M: Memory>(mem: &mut M) -> Value {
+pub unsafe fn region_migration_from_esm<M: Memory>(_mem: &mut M) -> Value {
 
+    /*
     
     // allocate a block-sized blob on the heap (8MB).
     // copy the first block of data into that blob, using a stable memory read of a blob.
@@ -487,8 +488,10 @@ pub unsafe fn region_migration_from_esm<M: Memory>(mem: &mut M) -> Value {
     let blob = blob_val.as_blob_mut();
     let bytes: &mut [u8] = core::slice::from_raw_parts_mut(blob.payload_addr(), len as usize);
     read(0, bytes);
-    
-    // to do 
+
+     */    
+    // to do
+    todo!()
 }
 
 // Utility for logging global region manager state (in stable memory).
