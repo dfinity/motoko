@@ -107,6 +107,8 @@ let check_prog (env: typ I.Env.t) actor : M.typ =
         let t' = check_typ' env occs t in
         match M.normalize t' with
         | M.Obj (M.Actor, fs) ->
+          Diag.print_messages [Diag.warning_message at "M0163" "import"
+            "importing Candid service constructor as instantiated service"];
           fs
         | _ -> assert false
       end
