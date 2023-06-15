@@ -22,7 +22,7 @@ TOMMATHFILES = \
    mp_decr mp_add_d mp_sub_d
 
 MUSLFILES = \
-	memcpy
+	memcpy memset
 #    pow pow_data sin cos tan asin acos atan atan2 exp exp_data log log_data fmod \
 #    floor scalbn frexp strlen strnlen memcpy memset memchr memcmp snprintf vsnprintf vfprintf \
 #    __math_oflow __math_uflow __math_xflow __math_divzero __math_invalid \
@@ -344,8 +344,7 @@ EXPORTED_SYMBOLS=\
 #    fmod \
 #    log \
 
-# WASM_A_DEPENDENCIES=$(TOMMATH_WASM_A) $(MUSL_WASM_A)
-WASM_A_DEPENDENCIES=
+WASM_A_DEPENDENCIES=$(TOMMATH_WASM_A) $(MUSL_WASM_A)
 LINKER_OPTIONS=\
   -mwasm64 --import-memory --shared --no-entry --gc-sections \
   $(EXPORTED_SYMBOLS:%=--export=%) \
