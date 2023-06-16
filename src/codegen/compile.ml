@@ -548,13 +548,13 @@ module E = struct
     let ptr = !(env.end_of_static_memory) in
     let round_bit_mask = Int64.sub word_size_64 1L in
     (* remove superfluous check *)
-    assert (round_bit_mask == 7L); 
+    assert (round_bit_mask == 7L);
     let aligned = Int64.logand (Int64.add size round_bit_mask) (Int64.lognot round_bit_mask) in
     env.end_of_static_memory := Int64.add ptr aligned;
     ptr
 
   (* TODO: Remove temporary 32-bit function during 64-bit port, leads to overflow *)
-  let reserve_static_memory_32 (env: t) (size: int32) : int32 = 
+  let reserve_static_memory_32 (env: t) (size: int32) : int32 =
     Wasm.I32_convert.wrap_i64 (reserve_static_memory env (Wasm.I64_convert.extend_i32_u size))
 
   let write_static_memory (env : t) ptr data =
@@ -598,7 +598,7 @@ module E = struct
   (* TODO: Remove temporary 32-bit function during 64-bit port, leads to overflow *)
   let add_static_32 (env : t) (data : StaticBytes.t) : int32 =
     Wasm.I32_convert.wrap_i64 (add_static env data)
-  
+
   let object_pool_find (env: t) (key: string) : int32 option =
     StringEnv.find_opt key !(env.object_pool)
 
@@ -1156,7 +1156,7 @@ module Heap = struct
   let alloc env (n : int32) : G.t =
     compile_unboxed_const n  ^^
     E.call_import env "rts" "alloc_words"
-    
+
   (* Heap objects *)
 
   (* At this level of abstraction, heap objects are just flat arrays of words *)
@@ -1176,7 +1176,7 @@ module Heap = struct
 
   (* Although we occasionally want to treat two consecutive
      32 bit fields as one 64 bit number *)
-  
+
   (* Requires little-endian encoding, see also `Stream` in `types.rs` *)
   let load_field64_unskewed (i : int32) : G.t =
     let offset = Wasm.I64_convert.extend_i32_s (Int32.mul word_size i) in
@@ -1306,7 +1306,7 @@ module Stack = struct
       G.nop
 
   (* TODO: Remove this temporary legacy function for 64-bit port *)
-  let alloc_words_32 env n = 
+  let alloc_words_32 env n =
       alloc_words env (Wasm.I64_convert.extend_i32_u n)
 
   let free_words env n =
@@ -1316,7 +1316,7 @@ module Stack = struct
     set_stack_ptr env
 
   (* TODO: Remove this temporary legacy function for 64-bit port *)
-  let free_words_32 env n = 
+  let free_words_32 env n =
     free_words env (Wasm.I64_convert.extend_i32_u n)
 
   (* TODO: why not just remember and reset the stack pointer, instead of calling free_words? Also below *)
@@ -1649,12 +1649,12 @@ module Tagged = struct
     | StableSeen -> 0xffffffffl
 
   (* Declare `env` for lazy computation of the header size when the compile environment with compile flags are defined *)
-  let header_size env = 
+  let header_size env =
     if !Flags.gc_strategy = Flags.Incremental then 2l else 1l
-  
+
   (* The tag *)
   let tag_field = 0l
-  let forwarding_pointer_field env = 
+  let forwarding_pointer_field env =
     assert (!Flags.gc_strategy = Flags.Incremental);
     1l
 
@@ -1671,7 +1671,7 @@ module Tagged = struct
         get_object ^^ (* object pointer *)
         get_object ^^ (* forwarding pointer *)
         Heap.store_field (forwarding_pointer_field env)
-      else 
+      else
         G.nop) ^^
       get_object
     )
@@ -3689,7 +3689,7 @@ module Blob = struct
   let lit env s = compile_unboxed_const (vanilla_lit env s)
 
   let lit_ptr_len env s =
-    compile_unboxed_const (Int32.add ptr_unskew (E.add_static_32 env StaticBytes.[Bytes s])) ^^
+    compile_const_64 (Int64.add ptr_unskew_64 (E.add_static env StaticBytes.[Bytes s])) ^^
     compile_unboxed_const (Int32.of_int (String.length s))
 
   let alloc env =
@@ -4403,26 +4403,35 @@ module IC = struct
 
   let system_call env funcname = E.call_import env "ic0" funcname
 
+  let narrow_to_ptr32 env get_ptr =
+    get_ptr ^^
+    compile_const_64 0xffff_ffffL ^^
+    G.i (Compare (Wasm_exts.Values.I64 I64Op.LeU)) ^^
+    E.else_trap_with env "cannot narrow pointer to 32 bit" ^^ (* TODO: If narrow fails during print, the trap print leads to stack overflow *)
+    get_ptr ^^
+    G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64))
+
   let register env =
       Func.define_built_in env "print_ptr" [("ptr", I64Type); ("len", I32Type)] [] (fun env ->
         match E.mode env with
         | Flags.WasmMode -> G.i Nop
         | Flags.ICMode | Flags.RefMode ->
           assert false;
-          (* TODO: Port to 64 bit 
+          (* TODO: Port to 64 bit
             G.i (LocalGet (nr 0l)) ^^
             G.i (LocalGet (nr 1l)) ^^
             system_call env "debug_print"
            *)
         | Flags.WASIMode -> begin
-          (*TODO: Port to 64-bit: Reserve buffer in 32-bit space because fd_write is still using 32-bit pointers, do not convert to 32-bit *)
-          let get_ptr = G.i (LocalGet (nr 0l)) ^^ G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) in
+          (* wasmtime legacy: `fd_write` is still using 32-bit pointers in 64-bit mode *)
+          (* TODO: Port to 64-bit: Reserve buffer in 32-bit space and copy the text to that area *)
+          let get_ptr = G.i (LocalGet (nr 0l)) in
           let get_len = G.i (LocalGet (nr 1l)) in
-          
+
           Stack.with_words env "io_vec" 6L (fun get_iovec_ptr ->
             (* We use the iovec functionality to append a newline *)
             get_iovec_ptr ^^
-            get_ptr ^^
+            narrow_to_ptr32 env get_ptr ^^
             G.i (Store {ty = I32Type; align = 2; offset = 0L; sz = None}) ^^
 
             get_iovec_ptr ^^
@@ -4430,8 +4439,7 @@ module IC = struct
             G.i (Store {ty = I32Type; align = 2; offset = 4L; sz = None}) ^^
 
             get_iovec_ptr ^^
-            get_iovec_ptr ^^ 
-            G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^ (* TODO: Ensure that the stack pointer is in 32-bit space *)
+            narrow_to_ptr32 env get_iovec_ptr ^^ (* TODO: Ensure that the stack pointer is always in 32-bit space *)
             compile_add_const 16l ^^
             G.i (Store {ty = I32Type; align = 2; offset = 8L; sz = None}) ^^
 
@@ -4448,27 +4456,23 @@ module IC = struct
             *)
 
             compile_unboxed_const 1l (* stdout *) ^^
-            get_iovec_ptr ^^
-            G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^ (* TODO: Ensure that the stack pointer is in 32-bit space *)
+            narrow_to_ptr32 env get_iovec_ptr ^^
             compile_unboxed_const 1l (* one string segment (2 doesn't work) *) ^^
-            get_iovec_ptr ^^ 
-            G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^ (* TODO: Ensure that the stack pointer is in 32-bit space *)
+            narrow_to_ptr32 env get_iovec_ptr ^^
             compile_add_const 20l ^^ (* out for bytes written, we ignore that *)
             E.call_import env "wasi_unstable" "fd_write" ^^
             G.i Drop ^^
 
             compile_unboxed_const 1l (* stdout *) ^^
-            get_iovec_ptr ^^ 
-            G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^ (* TODO: Ensure that the stack pointer is in 32-bit space *)
+            narrow_to_ptr32 env get_iovec_ptr ^^
             compile_add_const 8l ^^
             compile_unboxed_const 1l (* one string segment *) ^^
-            get_iovec_ptr ^^ 
-            G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^ (* TODO: Ensure that the stack pointer is in 32-bit space *)
+            narrow_to_ptr32 env get_iovec_ptr ^^
             compile_add_const 20l ^^ (* out for bytes written, we ignore that *)
             E.call_import env "wasi_unstable" "fd_write" ^^
             G.i Drop)
           end);
-          
+
       E.add_export env (nr {
         name = Lib.Utf8.decode "print_ptr";
         edesc = nr (FuncExport (nr (E.built_in env "print_ptr")))
@@ -4594,7 +4598,7 @@ module IC = struct
       (* TODO: Support in 64-bit
       Lifecycle.trans env Lifecycle.InInit ^^
       *)
-      G.i (Call (nr (E.built_in env "init"))) 
+      G.i (Call (nr (E.built_in env "init")))
       (* TODO: Support in 64-bit
       ^^
       Lifecycle.trans env Lifecycle.Idle
@@ -7213,7 +7217,7 @@ module Stabilization = struct
       G.i (Binary (Wasm_exts.Values.I64 I64Op.Add)) ^^
       E.call_import env "rts" "stream_stable_dest"
 
-    let ptr64_field env = 
+    let ptr64_field env =
       let offset = 1l in (* see invariant in `stream.rs` *)
       Int32.add (Blob.len_field env) offset (* see invariant in `stream.rs`, padding for 64-bit after Stream header *)
 
@@ -7634,11 +7638,11 @@ module StackRep = struct
     | Vanilla, UnboxedFloat64 -> Float.unbox env
 
     | Const (_, Const.Lit (Const.Bool b)), Vanilla -> Bool.lit b
-    
+
     (* TODO: Remove subsequent extra temporary line during 64-bit port *)
     | Const (_, Const.Lit (Const.Blob t)), Vanilla -> compile_const_64  (Wasm.I64_convert.extend_i32_u (Blob.vanilla_lit env t))
     (* end *)
-    
+
     | Const c, Vanilla -> compile_unboxed_const (materialize_const_t env c)
     | Const (_, Const.Lit (Const.Word32 n)), UnboxedWord32 -> compile_unboxed_const n
     | Const (_, Const.Lit (Const.Word64 n)), UnboxedWord64 -> compile_const_64 n
@@ -11227,7 +11231,7 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
   GC.register_globals env;
   StableMem.register_globals env;
   Serialization.Registers.register_globals env;
-  
+
   (* TODO: Support 64-bit
   (* See Note [Candid subtype checks] *)
   let set_serialization_globals = Serialization.register_delayed_globals env in
@@ -11250,4 +11254,3 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
   in
 
   conclude_module env (* set_serialization_globals *) start_fi_o
-  

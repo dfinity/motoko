@@ -121,7 +121,7 @@ pub unsafe fn blob_of_text(s: u64) -> u64 {
     if *tag == 17 {
         s
     } else {
-        loop {}
+        panic!("Not supported");
     }
 }
 
