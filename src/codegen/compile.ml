@@ -4580,7 +4580,9 @@ module IC = struct
     match E.mode env with
     | Flags.WasmMode -> G.i Unreachable
     | Flags.WASIMode -> print_ptr_len env ^^ G.i Unreachable
+    (* TODO: Reenable in 64-bit support
     | Flags.ICMode | Flags.RefMode -> ic_trap env ^^ G.i Unreachable
+    *)
 
   let trap_with env s =
     Blob.lit_ptr_len env s ^^ trap_ptr_len env
@@ -5341,9 +5343,10 @@ module RTS_Exports = struct
       name = Lib.Utf8.decode "bigint_trap";
       edesc = nr (FuncExport (nr bigint_trap_fi))
     });
+    *)
 
     let rts_trap_fi = E.add_fun env "rts_trap" (
-      Func.of_body env ["str", I32Type; "len", I32Type] [] (fun env ->
+      Func.of_body env ["str", I64Type; "len", I32Type] [] (fun env ->
         let get_str = G.i (LocalGet (nr 0l)) in
         let get_len = G.i (LocalGet (nr 1l)) in
         get_str ^^ get_len ^^ IC.trap_ptr_len env
@@ -5354,6 +5357,7 @@ module RTS_Exports = struct
       edesc = nr (FuncExport (nr rts_trap_fi))
     });
 
+    (* TODO: Support 64-bit
     let stable64_write_moc_fi =
       if E.mode env = Flags.WASIMode then
         E.add_fun env "stable64_write_moc" (
