@@ -954,8 +954,8 @@ module RTS = struct
 
   (* The connection to the C and Rust parts of the RTS *)
   let system_imports env =
+    E.add_func_import env "rts" "memcpy" [I64Type; I64Type; I64Type] [I64Type]; (* standard libc memcpy *)
     (* TODO: Support 64-bit
-    E.add_func_import env "rts" "memcpy" [I32Type; I32Type; I32Type] [I32Type]; (* standard libc memcpy *)
     E.add_func_import env "rts" "memcmp" [I32Type; I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "version" [] [I32Type];
     E.add_func_import env "rts" "parse_idl_header" [I32Type; I32Type; I32Type; I32Type; I32Type] [];
@@ -4403,15 +4403,31 @@ module IC = struct
 
   let system_call env funcname = E.call_import env "ic0" funcname
 
-  let narrow_to_ptr32 env get_ptr =
-    get_ptr ^^
-    compile_const_64 0xffff_ffffL ^^
-    G.i (Compare (Wasm_exts.Values.I64 I64Op.LeU)) ^^
-    E.else_trap_with env "cannot narrow pointer to 32 bit" ^^ (* TODO: If narrow fails during print, the trap print leads to stack overflow *)
-    get_ptr ^^
-    G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64))
-
   let register env =
+      (* Since the wasmtime `fd_write` function still only supports 32-bit pointers, we allocate a static buffer for the text output in the 32-bit space. *)
+      let print_buffer = match E.mode env with
+      | Flags.WASIMode -> 
+        begin 
+          let length = 256 in
+          let zero_data = String.make length '\x00' in
+          (E.add_static env StaticBytes.[Bytes zero_data], length)
+        end
+      | _ -> (-1L, 0) in
+
+      let narrow_to_ptr32 env get_ptr =
+        get_ptr ^^
+        compile_const_64 0xffff_ffffL ^^
+        G.i (Compare (Wasm_exts.Values.I64 I64Op.LeU)) ^^
+        E.else_trap_with env "cannot narrow pointer to 32 bit" ^^ (* TODO: If narrow fails during print, the trap print leads to an infinite recursion and a stack overflow *)
+        get_ptr ^^
+        G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) in
+    
+      let min env first second = 
+        first ^^
+        second ^^
+        G.i (Compare (Wasm_exts.Values.I32 I32Op.LtU)) ^^
+        G.if1 I32Type (first) (second) in
+
       Func.define_built_in env "print_ptr" [("ptr", I64Type); ("len", I32Type)] [] (fun env ->
         match E.mode env with
         | Flags.WasmMode -> G.i Nop
@@ -4424,14 +4440,26 @@ module IC = struct
            *)
         | Flags.WASIMode -> begin
           (* wasmtime legacy: `fd_write` is still using 32-bit pointers in 64-bit mode *)
-          (* TODO: Port to 64-bit: Reserve buffer in 32-bit space and copy the text to that area *)
           let get_ptr = G.i (LocalGet (nr 0l)) in
           let get_len = G.i (LocalGet (nr 1l)) in
 
           Stack.with_words env "io_vec" 6L (fun get_iovec_ptr ->
+            let (buffer_ptr, buffer_length) = print_buffer in
+
+            (* Truncate the text if it does not fit into the buffer **)
+            min env (compile_unboxed_const (Int32.of_int buffer_length)) get_len ^^
+            G.setter_for get_len ^^
+
+            (* Copy the text to the static buffer in 32-bit space *)
+            compile_const_64 buffer_ptr ^^
+            get_ptr ^^
+            get_len ^^
+            G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
+            Heap.memcpy env ^^
+
             (* We use the iovec functionality to append a newline *)
             get_iovec_ptr ^^
-            narrow_to_ptr32 env get_ptr ^^
+            narrow_to_ptr32 env (compile_const_64 buffer_ptr) ^^ (* This is safe because the buffer resides in 32-bit space *)
             G.i (Store {ty = I32Type; align = 2; offset = 0L; sz = None}) ^^
 
             get_iovec_ptr ^^
@@ -4439,7 +4467,7 @@ module IC = struct
             G.i (Store {ty = I32Type; align = 2; offset = 4L; sz = None}) ^^
 
             get_iovec_ptr ^^
-            narrow_to_ptr32 env get_iovec_ptr ^^ (* TODO: Ensure that the stack pointer is always in 32-bit space *)
+            narrow_to_ptr32 env get_iovec_ptr ^^ (* The stack pointer should always be in the 32-bit space *)
             compile_add_const 16l ^^
             G.i (Store {ty = I32Type; align = 2; offset = 8L; sz = None}) ^^
 
