@@ -47,6 +47,8 @@ pub mod print;
 
 // use types::Bytes;
 
+use core::intrinsics::size_of;
+
 use motoko_rts_macros::*;
 
 // #[ic_mem_fn(ic_only)]
@@ -110,13 +112,18 @@ use motoko_rts_macros::*;
 // }
 
 // TODO: Remove temporary code used during 64-bit porting
+const fn skew(ptr: u64) -> u64 {
+    ptr.wrapping_sub(1)
+}
+
+// TODO: Remove temporary code used during 64-bit porting
 const fn unskew(value: u64) -> u64 {
     value.wrapping_add(1)
 }
 
 // TODO: Remove temporary code used during 64-bit porting
 #[no_mangle]
-pub unsafe fn blob_of_text(s: u64) -> u64 {
+pub unsafe extern "C" fn blob_of_text(s: u64) -> u64 {
     let tag = unskew(s) as *mut u32;
     if *tag == 17 {
         s
@@ -125,9 +132,99 @@ pub unsafe fn blob_of_text(s: u64) -> u64 {
     }
 }
 
+// TODO: Remove temporary code used during 64-bit porting
+#[no_mangle]
+pub unsafe extern "C" fn bigint_to_word64_trap(_p: u32) -> u64 {
+    panic!("Not supported");
+}
+
+// TODO: Remove temporary code used during 64-bit porting
+#[no_mangle]
+pub unsafe extern "C" fn bigint_lt(_left: u32, _right: u32) -> u32 {
+    panic!("Not supported");
+}
+
+// TODO: Remove temporary code used during 64-bit porting
+#[no_mangle]
+pub unsafe extern "C" fn bigint_of_int64(_value: u64) -> u32 {
+    panic!("Not supported");
+}
+
+// TODO: Remove temporary code used during 64-bit porting
+#[no_mangle]
+pub unsafe extern "C" fn bigint_of_word64(_value: u64) -> u32 {
+    panic!("Not supported");
+}
+
+// TODO: Remove temporary code used during 64-bit porting
+#[no_mangle]
+pub unsafe extern "C" fn bigint_to_word32_wrap(_p: u32) -> u32 {
+    panic!("Not supported");
+}
+
+// TODO: Remove temporary code used during 64-bit porting
+#[no_mangle]
+pub unsafe extern "C" fn bigint_2complement_bits(_p: u32) -> u32 {
+    panic!("Not supported");
+}
+
+// TODO: Remove temporary code used during 64-bit porting
+#[no_mangle]
+pub unsafe extern "C" fn bigint_add(_left: u32, right: u32) -> u32 {
+    panic!("Not supported");
+}
+
+// TODO: Remove temporary code used during 64-bit porting
+static mut HP: u64 = 0;
+
+// TODO: Remove temporary code used during 64-bit porting
+#[no_mangle]
+pub unsafe extern "C" fn test_initialize() {
+    HP = get_heap_base();
+}
+
+extern "C" {
+    fn get_heap_base() -> u64;
+}
+
+// TODO: Remove temporary code used during 64-bit porting
+#[no_mangle]
+pub unsafe extern "C" fn alloc_array(length: u64) -> u64 {
+    use core::arch::wasm64;
+    const HEADER_SIZE: u64 = 2;
+    let bytes = (length + HEADER_SIZE) * size_of::<u64>() as u64;
+    let old_hp = HP;
+    HP += bytes;
+    if HP > (wasm64::memory_size(0) << 16) as u64 {
+        grow_memory(HP)
+    }
+    println!(100, "ALLOCATED {old_hp} {length} {bytes}");
+    skew(old_hp)
+}
+
+unsafe fn grow_memory(ptr: u64) {
+    use core::arch::wasm64;
+    const WASM_PAGE_SIZE: u64 = 64 * 1024;
+    debug_assert_eq!(0xFFFF_FFFF_FFFF_0000, u64::MAX - WASM_PAGE_SIZE + 1);
+    if ptr > 0xFFFF_0000 {
+        // spare the last wasm memory page
+        panic!("Cannot grow memory")
+    };
+    let page_size = u64::from(WASM_PAGE_SIZE);
+    let total_pages_needed = (ptr + page_size - 1) / page_size;
+    let current_pages = wasm64::memory_size(0) as u64;
+    if total_pages_needed > current_pages {
+        if wasm64::memory_grow(0, (total_pages_needed - current_pages) as usize) == usize::MAX {
+            // replica signals that there is not enough memory
+            panic!("Cannot grow memory");
+        }
+    }
+}
+
 #[cfg(feature = "ic")]
 #[panic_handler]
 fn panic(info: &core::panic::PanicInfo) -> ! {
+    unsafe { println!(100, "PANIC"); }
     loop {}
     // unsafe {
     //     if let Some(msg) = info.payload().downcast_ref::<&str>() {

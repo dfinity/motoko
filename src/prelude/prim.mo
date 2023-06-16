@@ -227,11 +227,13 @@ func exp(f : Float) : Float = (prim "fexp" : Float -> Float) f;
 func log(f : Float) : Float = (prim "flog" : Float -> Float) f;
 
 // Array utilities
+*/
 
 func Array_init<T>(len : Nat,  x : T) : [var T] {
   (prim "Array.init" : <T>(Nat, T) -> [var T])<T>(len, x)
 };
 
+/* TODO: Reenable later in 64-bit support
 func Array_tabulate<T>(len : Nat,  gen : Nat -> T) : [T] {
   (prim "Array.tabulate" : <T>(Nat, Nat -> T) -> [T])<T>(len, gen)
 };
