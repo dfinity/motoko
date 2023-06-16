@@ -109,9 +109,20 @@ use motoko_rts_macros::*;
 //     trap_with_prefix("RTS error: ", msg)
 // }
 
+// TODO: Remove temporary code used during 64-bit porting
+const fn unskew(value: u64) -> u64 {
+    value.wrapping_add(1)
+}
+
+// TODO: Remove temporary code used during 64-bit porting
 #[no_mangle]
-pub unsafe fn test_rts() {
-    println!(100, "TEST RTS WASM64!");
+pub unsafe fn blob_of_text(s: u64) -> u64 {
+    let tag = unskew(s) as *mut u32;
+    if *tag == 17 {
+        s
+    } else {
+        loop {}
+    }
 }
 
 #[cfg(feature = "ic")]

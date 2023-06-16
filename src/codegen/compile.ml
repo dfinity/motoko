@@ -954,7 +954,6 @@ module RTS = struct
 
   (* The connection to the C and Rust parts of the RTS *)
   let system_imports env =
-    E.add_func_import env "rts" "test_rts" [] [];
     (* TODO: Support 64-bit
     E.add_func_import env "rts" "memcpy" [I32Type; I32Type; I32Type] [I32Type]; (* standard libc memcpy *)
     E.add_func_import env "rts" "memcmp" [I32Type; I32Type; I32Type] [I32Type];
@@ -1018,7 +1017,9 @@ module RTS = struct
     E.add_func_import env "rts" "peek_future_continuation" [I32Type] [I32Type];
     E.add_func_import env "rts" "continuation_count" [] [I32Type];
     E.add_func_import env "rts" "continuation_table_size" [] [I32Type];
-    E.add_func_import env "rts" "blob_of_text" [I32Type] [I32Type];
+    *)
+    E.add_func_import env "rts" "blob_of_text" [I64Type] [I64Type];
+    (* TODO: Support 64-bit
     E.add_func_import env "rts" "text_compare" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "text_concat" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "text_iter_done" [I32Type] [I32Type];
@@ -3678,6 +3679,7 @@ module Blob = struct
       BigNum.from_word32 env
     )
 
+  (* TODO: Port to 64-bit *)
   let vanilla_lit env s =
     Tagged.shared_static_obj env Tagged.Blob StaticBytes.[
       I32 (Int32.of_int (String.length s));
@@ -3695,11 +3697,19 @@ module Blob = struct
     (* uninitialized blob payload is allowed by the barrier *)
     Tagged.allocation_barrier env
 
+  (* TODO: Port to 64-bit *)
   let unskewed_payload_offset env = Int32.(add ptr_unskew (mul Heap.word_size (header_size env)))
-  
+
+  let unskewed_payload_offset_64 env = Wasm.I64_convert.extend_i32_s (unskewed_payload_offset env)
+
+  (* TODO: Port to 64-bit *)
   let payload_ptr_unskewed env =
     Tagged.load_forwarding_pointer env ^^
     compile_add_const (unskewed_payload_offset env)
+
+  let payload_ptr_unskewed_64 env =
+    Tagged.load_forwarding_pointer env ^^
+    compile_add64_const (unskewed_payload_offset_64 env)
 
   let as_ptr_len env = Func.share_code1 env "as_ptr_size" ("x", I32Type) [I32Type; I32Type] (
     fun env get_x ->
@@ -4475,10 +4485,10 @@ module IC = struct
   let print_ptr_len env = G.i (Call (nr (E.built_in env "print_ptr")))
 
   let print_text env =
-    Func.share_code1 env "print_text" ("str", I32Type) [] (fun env get_str ->
-      let (set_blob, get_blob) = new_local env "blob" in
+    Func.share_code1 env "print_text" ("str", I64Type) [] (fun env get_str ->
+      let (set_blob, get_blob) = new_local64 env "blob" in
       get_str ^^ Text.to_blob env ^^ set_blob ^^
-      get_blob ^^ Blob.payload_ptr_unskewed env ^^
+      get_blob ^^ Blob.payload_ptr_unskewed_64 env ^^
       get_blob ^^ Blob.len env ^^
       print_ptr_len env
     )
@@ -7624,6 +7634,11 @@ module StackRep = struct
     | Vanilla, UnboxedFloat64 -> Float.unbox env
 
     | Const (_, Const.Lit (Const.Bool b)), Vanilla -> Bool.lit b
+    
+    (* TODO: Remove subsequent extra temporary line during 64-bit port *)
+    | Const (_, Const.Lit (Const.Blob t)), Vanilla -> compile_const_64  (Wasm.I64_convert.extend_i32_u (Blob.vanilla_lit env t))
+    (* end *)
+    
     | Const c, Vanilla -> compile_unboxed_const (materialize_const_t env c)
     | Const (_, Const.Lit (Const.Word32 n)), UnboxedWord32 -> compile_unboxed_const n
     | Const (_, Const.Lit (Const.Word64 n)), UnboxedWord64 -> compile_const_64 n
@@ -11128,8 +11143,6 @@ and conclude_module env (* set_serialization_globals *) start_fi_o =
 
   (* Wrap the start function with the RTS initialization *)
   let rts_start_fi = E.add_fun env "rts_start" (Func.of_body env [] [] (fun env1 ->
-    E.call_import env "rts" ("test_rts") ^^
-
     (* TODO: Support 64-bit
     E.call_import env "rts" ("initialize_" ^ E.gc_strategy_name !Flags.gc_strategy ^ "_gc") ^^
     *)
@@ -11207,8 +11220,6 @@ and conclude_module env (* set_serialization_globals *) start_fi_o =
   | Some rts -> Linking.LinkModule.link emodule "rts" rts
 
 let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
-  Printf.printf "Compiling Motoko";
-
   let env = E.mk_global mode rts IC.trap_with (Lifecycle.end_ ()) in
 
   IC.register_globals env;
