@@ -104,12 +104,16 @@ unsafe fn mark_compact<M: Memory, SetHp: Fn(u32)>(
     static_roots: Value,
     continuation_table_ptr_loc: *mut Value,
 ) {
-    let mem_size = Bytes(heap_end - heap_base);
+    {
+        let skew_aligned_heap_base = heap_base - 32;
+        let mem_size = Bytes(heap_end - skew_aligned_heap_base);
 
-    alloc_bitmap(mem, mem_size, heap_base / WORD_SIZE);
+        alloc_bitmap(mem, mem_size, skew_aligned_heap_base / WORD_SIZE);
+    }
     alloc_mark_stack(mem);
 
-    mark_static_roots(mem, static_roots, heap_base);
+    let skewed_heap_base = heap_base - 1;
+    mark_static_roots(mem, static_roots, skewed_heap_base);
 
     if (*continuation_table_ptr_loc).is_ptr() {
         mark_object(mem, *continuation_table_ptr_loc);
@@ -118,9 +122,9 @@ unsafe fn mark_compact<M: Memory, SetHp: Fn(u32)>(
         thread(continuation_table_ptr_loc);
     }
 
-    mark_stack(mem, heap_base);
+    mark_stack(mem, skewed_heap_base);
 
-    update_refs(set_hp, heap_base);
+    update_refs(set_hp, skewed_heap_base);
 
     free_mark_stack();
     free_bitmap();
@@ -141,10 +145,10 @@ unsafe fn mark_static_roots<M: Memory>(mem: &mut M, static_roots: Value, heap_ba
 
 unsafe fn mark_object<M: Memory>(mem: &mut M, obj: Value) {
     let obj_tag = obj.tag();
-    let obj = obj.get_ptr() as u32;
+    let obj = obj.get_raw();
 
     // Check object alignment to avoid undefined behavior. See also static_checks module.
-    debug_assert_eq!(obj % WORD_SIZE, 0);
+    debug_assert_eq!(obj % WORD_SIZE, WORD_SIZE - 1);
 
     let obj_idx = obj / WORD_SIZE;
 
@@ -159,7 +163,7 @@ unsafe fn mark_object<M: Memory>(mem: &mut M, obj: Value) {
 
 unsafe fn mark_stack<M: Memory>(mem: &mut M, heap_base: u32) {
     while let Some((obj, tag)) = pop_mark_stack() {
-        mark_fields(mem, obj as *mut Obj, tag, heap_base)
+        mark_fields(mem, (obj + 1) as *mut Obj, tag, heap_base)
     }
 }
 
@@ -184,7 +188,7 @@ unsafe fn mark_fields<M: Memory>(mem: &mut M, obj: *mut Obj, obj_tag: Tag, heap_
             if arr.len() - slice_start > SLICE_INCREMENT {
                 let new_start = slice_start + SLICE_INCREMENT;
                 // push an entire (suffix) array slice
-                push_mark_stack(mem, arr as usize, new_start);
+                push_mark_stack(mem, arr as usize - 1, new_start);
                 new_start
             } else {
                 arr.len()
@@ -197,7 +201,7 @@ unsafe fn mark_fields<M: Memory>(mem: &mut M, obj: *mut Obj, obj_tag: Tag, heap_
 unsafe fn mark_root_mutbox_fields<M: Memory>(mem: &mut M, mutbox: *mut MutBox, heap_base: u32) {
     let field_addr = &mut (*mutbox).field;
     if pointer_to_dynamic_heap(field_addr, heap_base as usize) {
-        mark_object(mem, *field_addr);
+        mark_object(mem, *field_addr);assert!(false);
         // It's OK to thread forward pointers here as the static objects won't be moved, so we will
         // be able to unthread objects pointed by these fields later.
         thread(field_addr);
@@ -214,12 +218,13 @@ unsafe fn mark_root_mutbox_fields<M: Memory>(mem: &mut M, mutbox: *mut MutBox, h
 /// - Thread forward pointers of the object
 ///
 unsafe fn update_refs<SetHp: Fn(u32)>(set_hp: SetHp, heap_base: u32) {
-    let mut free = heap_base;
+    let mut free = heap_base + 1; // unskew
+    debug_assert_eq!(free % WORD_SIZE, 0);
 
     let mut bitmap_iter = iter_bits();
     let mut bit = bitmap_iter.next();
     while bit != BITMAP_ITER_END {
-        let p = (bit * WORD_SIZE) as *mut Obj;
+        let p = ((bit + 1) * WORD_SIZE) as *mut Obj;
         let p_new = free;
 
         // Update backwards references to the object's new location and restore object header

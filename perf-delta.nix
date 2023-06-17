@@ -16,7 +16,7 @@ let
   diff-stats = nixpkgs.stdenvNoCC.mkDerivation {
     name = "diff-stats";
     src = ./test/diff-stats.pl;
-    phases = [ "installPhase fixupPhase" ];
+    phases = "installPhase fixupPhase";
     buildInputs = [ nixpkgs.perl ];
     installPhase = ''
       mkdir -p $out/bin
@@ -37,7 +37,7 @@ let
         do
           # ignore all errors
           echo -n $file
-          if timeout 10s moc $file --omit-metadata motoko:compiler --force-gc --compacting-gc -no-check-ir -ref-system-api -o $file.wasm 2>/dev/null
+          if timeout 10s moc $file --omit-metadata motoko:compiler --force-gc --copying-gc -no-check-ir -ref-system-api -o $file.wasm 2>/dev/null
           then echo " ok"
           else echo " failed (ignored)"
           fi

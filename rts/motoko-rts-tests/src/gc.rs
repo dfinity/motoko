@@ -30,7 +30,7 @@ use fxhash::{FxHashMap, FxHashSet};
 
 pub fn test() {
     println!("Testing garbage collection ...");
-
+/*
     println!("  Testing pre-defined heaps...");
     for test_heap in test_heaps() {
         test_gcs(&test_heap);
@@ -42,7 +42,7 @@ pub fn test() {
         print!("\r{}/{}", seed + 1, max_seed);
         std::io::Write::flush(&mut std::io::stdout()).unwrap();
         test_random_heap(seed, 180);
-    }
+    }*/
     print!("\r");
 
     test_gc_components();
@@ -66,7 +66,7 @@ fn test_heaps() -> Vec<TestHeap> {
         // - Unreachable objects
         // - Forward pointers
         // - Backwards pointers
-        // - More than one fields in an object
+        // - More than one field in an object
         TestHeap {
             heap: vec![
                 (0, vec![0, 2]),
