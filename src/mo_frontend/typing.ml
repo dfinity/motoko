@@ -1872,7 +1872,9 @@ and infer_pat' env pat : T.typ * Scope.val_env =
     let t1, ve = infer_pat env pat1 in
     T.Variant [T.{lab = id.it; typ = t1; depr = None}], ve
   | AltP (pat1, pat2) ->
-    let t1, ve1 = infer_pat env pat1 in
+    error env pat.at "M0184"
+        "cannot infer the type of this or-pattern, please add a type annotation";
+    (*let t1, ve1 = infer_pat env pat1 in
     let t2, ve2 = infer_pat env pat2 in
     let t = T.lub t1 t2 in
     if not (T.compatible t1 t2) then
@@ -1883,7 +1885,7 @@ and infer_pat' env pat : T.typ * Scope.val_env =
     if T.Env.keys ve1 <> T.Env.keys ve2 then
       error env pat.at "M0184" "different set of bindings in pattern alternatives";
     if not env.pre then T.Env.(iter (fun k t1 -> warn_lossy_bind_type env pat.at k t1 (find k ve2))) ve1;
-    t, T.Env.merge (fun _ -> Lib.Option.map2 T.lub) ve1 ve2
+    t, T.Env.merge (fun _ -> Lib.Option.map2 T.lub) ve1 ve2*)
   | AnnotP (pat1, typ) ->
     let t = check_typ env typ in
     t, check_pat env t pat1

@@ -107,7 +107,7 @@ let error_codes : (string * string option) list =
     "M0101", None; (* Switch with inconsistent branch types *)
     "M0102", None; (* Cannot infer type of wildcard *)
     "M0103", None; (* Cannot infer type of variable *)
-    "M0104", None; (* Pattern branches have incompatible types *)
+    (* "M0104" DEFUNCT Pattern branches have incompatible types *)
     (* "M0105" DEFUNCT Variables are not allowed in pattern alternatives *)
     "M0106", None; (* Shared function cannot take a context pattern *)
     "M0107", None; (* Non-actor class cannot take a context pattern *)
@@ -187,6 +187,7 @@ let error_codes : (string * string option) list =
     "M0181", None; (* Verification mode assertions not allowed *)
     "M0182", None; (* Timer defined by user when -no-timer flag is specified *)
     "M0183", None; (* Incompatible async sorts *)
-    "M0184", None; (* Different set of bindings in pattern alternatives *)
-    "M0185", None; (* Types inconsistent for alternative pattern variables, losing information *)
+    "M0184", None; (* Cannot infer or-pattern, please use an annotation *)
+    "M0185", None; (* Different set of bindings in pattern alternatives *)
+    "M0186", None; (* Types inconsistent for alternative pattern variables, losing information *)
   ]
