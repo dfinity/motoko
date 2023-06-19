@@ -4404,6 +4404,7 @@ module IC = struct
       E.add_func_import env "ic0" "canister_self_copy" (i32s 3) [];
       E.add_func_import env "ic0" "canister_self_size" [] [I32Type];
       E.add_func_import env "ic0" "canister_status" [] [I32Type];
+      E.add_func_import env "ic0" "canister_version" [] [I64Type];
       E.add_func_import env "ic0" "is_controller" (i32s 2) [I32Type];
       E.add_func_import env "ic0" "debug_print" (i32s 2) [];
       E.add_func_import env "ic0" "msg_arg_data_copy" (i32s 3) [];
@@ -4552,12 +4553,16 @@ module IC = struct
       })
 
 
-  let performance_counter env =
+  let ic_system_call call env =
     match E.mode env with
     | Flags.(ICMode | RefMode) ->
-      system_call env "performance_counter"
+      system_call env call
     | _ ->
-      E.trap_with env "cannot get performance counter when running locally"
+      E.trap_with env Printf.(sprintf "cannot get %s when running locally" call)
+
+  let performance_counter = ic_system_call "performance_counter"
+  let is_controller = ic_system_call "is_controller"
+  let canister_version = ic_system_call "canister_version"
 
   let print_ptr_len env = G.i (Call (nr (E.built_in env "print_ptr")))
 
@@ -10068,7 +10073,11 @@ and compile_prim_invocation (env : E.t) ae p es at =
     Blob.payload_ptr_unskewed env ^^
     get_principal ^^
     Blob.len env ^^
-    IC.system_call env "is_controller"
+    IC.is_controller env
+
+  | OtherPrim "canister_version", [] ->
+    SR.UnboxedWord64,
+    IC.canister_version env
 
   | OtherPrim "crc32Hash", [e] ->
     SR.UnboxedWord32,
