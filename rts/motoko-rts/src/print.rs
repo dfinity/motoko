@@ -100,6 +100,6 @@ pub unsafe fn print(buf: &WriteBuf) {
     buf.print()
 }
 
-// pub(crate) unsafe fn print_str(str: &str) {
-//     print_ptr(str.as_ptr() as usize, str.len() as u32)
-// }
+pub(crate) unsafe fn print_str(str: &str) {
+    print_ptr(str.as_ptr() as usize, str.len() as u32)
+}

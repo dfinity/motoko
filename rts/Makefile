@@ -22,7 +22,9 @@ TOMMATHFILES = \
    mp_decr mp_add_d mp_sub_d
 
 MUSLFILES = \
-	memcpy memset
+   memcpy memset memchr memcmp \
+   stubs
+
 #    pow pow_data sin cos tan asin acos atan atan2 exp exp_data log log_data fmod \
 #    floor scalbn frexp strlen strnlen memcpy memset memchr memcmp snprintf vsnprintf vfprintf \
 #    __math_oflow __math_uflow __math_xflow __math_divzero __math_invalid \
@@ -68,7 +70,7 @@ TOMMATH_FLAGS = \
 #       See also https://stackoverflow.com/questions/1597007/creating-c-macro-with-and-line-token-concatenation-with-positioning-macr
 
 MUSL_FLAGS = \
-  -isystem $(MUSLSRC)/arch/wasm32 \
+  -isystem $(MUSLSRC)/arch/wasm64 \
   -isystem $(MUSLSRC)/src/include \
   -isystem $(MUSLSRC)/src/internal \
   -isystem $(MUSL_WASI_SYSROOT)/include \
@@ -181,7 +183,7 @@ TOMMATH_BINDINGS_RS=_build/tommath_bindings.rs
 $(TOMMATH_BINDINGS_RS): | _build
 	bindgen $(TOMMATHSRC)/tommath.h \
 	    -o $@ \
-	    --use-core --ctypes-prefix=libc --no-layout-tests \
+	    --use-core --ctypes-prefix="crate::libc_declarations" --no-layout-tests \
 	    --allowlist-function mp_init \
 	    --allowlist-function mp_init_copy \
 	    --allowlist-function mp_set_u32 \
@@ -326,23 +328,20 @@ test-incremental: $(TEST_DEPENDENCIES)
 
 # These symbols from musl are used by the code generator directly
 EXPORTED_SYMBOLS=\
-    __wasm_call_ctors \
-    memcpy \
-	
-#    __wasm_call_ctors \
-#    memcpy \
-#    memcmp \
-#    tan \
-#    asin \
-#    acos \
-#    atan \
-#    atan2 \
-#    pow \
-#    sin \
-#    cos \
-#    exp \
-#    fmod \
-#    log \
+   __wasm_call_ctors \
+   memcpy \
+   memcmp \
+   tan \
+   asin \
+   acos \
+   atan \
+   atan2 \
+   pow \
+   sin \
+   cos \
+   exp \
+   fmod \
+   log \
 
 WASM_A_DEPENDENCIES=$(TOMMATH_WASM_A) $(MUSL_WASM_A)
 LINKER_OPTIONS=\

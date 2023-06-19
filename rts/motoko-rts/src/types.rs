@@ -21,13 +21,13 @@
 
 use crate::barriers::{init_with_barrier, write_with_barrier};
 use crate::memory::Memory;
-// use crate::tommath_bindings::{mp_digit, mp_int};
+use crate::tommath_bindings::{mp_digit, mp_int};
 use core::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
 use core::ptr::null;
 use motoko_rts_macros::is_incremental_gc;
 use motoko_rts_macros::*;
 
-use crate::constants::WORD_SIZE;
+use crate::constants::{WORD_SIZE, WORD_SIZE_64};
 use crate::rts_trap_with;
 
 pub fn size_of<T>() -> Words<u32> {
@@ -46,6 +46,16 @@ impl Words<u32> {
 
     pub fn as_u32(self) -> u32 {
         self.0
+    }
+
+    pub fn as_usize(self) -> usize {
+        self.0 as usize
+    }
+}
+
+impl Words<usize> {
+    pub fn to_bytes(self) -> Bytes<usize> {
+        Bytes(self.0 * WORD_SIZE_64)
     }
 
     pub fn as_usize(self) -> usize {
@@ -117,6 +127,18 @@ impl Bytes<u32> {
 
     pub fn as_u32(self) -> u32 {
         self.0
+    }
+
+    pub fn as_usize(self) -> usize {
+        self.0 as usize
+    }
+}
+
+impl Bytes<usize> {
+    // Rounds up
+    pub fn to_words(self) -> Words<usize> {
+        // Rust issue for adding ceiling_div: https://github.com/rust-lang/rfcs/issues/2844
+        Words((self.0 + WORD_SIZE_64 - 1) / WORD_SIZE_64)
     }
 
     pub fn as_usize(self) -> usize {
@@ -380,13 +402,13 @@ impl Value {
         self.forward().get_ptr() as *mut Stream
     }
 
-    // /// Get the pointer as `BigInt` using forwarding. In debug mode panics if the value is not a pointer or the
-    // /// pointed object is not a `BigInt`.
-    // pub unsafe fn as_bigint(self) -> *mut BigInt {
-    //     debug_assert_eq!(self.tag(), TAG_BIGINT);
-    //     self.check_forwarding_pointer();
-    //     self.forward().get_ptr() as *mut BigInt
-    // }
+    /// Get the pointer as `BigInt` using forwarding. In debug mode panics if the value is not a pointer or the
+    /// pointed object is not a `BigInt`.
+    pub unsafe fn as_bigint(self) -> *mut BigInt {
+        debug_assert_eq!(self.tag(), TAG_BIGINT);
+        self.check_forwarding_pointer();
+        self.forward().get_ptr() as *mut BigInt
+    }
 
     pub fn as_tiny(self) -> i32 {
         debug_assert!(self.is_scalar());
@@ -738,55 +760,55 @@ pub struct FwdPtr {
     pub fwd: Value,
 }
 
-// #[repr(C)] // See the note at the beginning of this module
-// pub struct BigInt {
-//     pub header: Obj,
-//     /// The data following now must describe is the `mp_int` struct.
-//     /// The data pointer (mp_int.dp) is irrelevant, and will be changed to point to
-//     /// the data within this object before it is used.
-//     /// (NB: If we have a non-moving GC, we can make this an invariant)
-//     pub mp_int: mp_int,
-//     // data follows ..
-// }
+#[repr(C)] // See the note at the beginning of this module
+pub struct BigInt {
+    pub header: Obj,
+    /// The data following now must describe is the `mp_int` struct.
+    /// The data pointer (mp_int.dp) is irrelevant, and will be changed to point to
+    /// the data within this object before it is used.
+    /// (NB: If we have a non-moving GC, we can make this an invariant)
+    pub mp_int: mp_int,
+    // data follows ..
+}
 
-// impl BigInt {
-//     pub unsafe fn len(self: *mut Self) -> Bytes<u32> {
-//         Bytes(((*self).mp_int.alloc as usize * core::mem::size_of::<mp_digit>()) as u32)
-//     }
+impl BigInt {
+    pub unsafe fn len(self: *mut Self) -> Bytes<u32> {
+        Bytes(((*self).mp_int.alloc as usize * core::mem::size_of::<mp_digit>()) as u32)
+    }
 
-//     pub unsafe fn payload_addr(self: *mut Self) -> *mut mp_digit {
-//         self.add(1) as *mut mp_digit // skip closure header
-//     }
+    pub unsafe fn payload_addr(self: *mut Self) -> *mut mp_digit {
+        self.add(1) as *mut mp_digit // skip closure header
+    }
 
-//     #[incremental_gc]
-//     pub unsafe fn forward(self: *mut Self) -> *mut Self {
-//         (*self).header.forward.as_bigint()
-//     }
+    #[incremental_gc]
+    pub unsafe fn forward(self: *mut Self) -> *mut Self {
+        (*self).header.forward.as_bigint()
+    }
 
-//     #[non_incremental_gc]
-//     pub unsafe fn forward(self: *mut Self) -> *mut Self {
-//         self
-//     }
+    #[non_incremental_gc]
+    pub unsafe fn forward(self: *mut Self) -> *mut Self {
+        self
+    }
 
-//     pub unsafe fn from_payload(ptr: *mut mp_digit) -> *mut Self {
-//         let bigint = (ptr as *mut u32).sub(size_of::<BigInt>().as_usize()) as *mut BigInt;
-//         bigint.forward()
-//     }
+    pub unsafe fn from_payload(ptr: *mut mp_digit) -> *mut Self {
+        let bigint = (ptr as *mut u32).sub(size_of::<BigInt>().as_usize()) as *mut BigInt;
+        bigint.forward()
+    }
 
-//     /// Returns pointer to the `mp_int` struct
-//     ///
-//     /// It fixes up the dp pointer. Instead of doing it here
-//     /// this could be done on allocation and every object move.
-//     ///
-//     /// Note that this returns a `const` pointer. This is very nice, as together with the const
-//     /// annotation on the libtommath API, this should prevent us from passing this pointer to a
-//     /// libtommath function that tries to change it. For example, we cannot confuse input and
-//     /// output parameters of mp_add() this way.
-//     pub unsafe fn mp_int_ptr(self: *mut BigInt) -> *const mp_int {
-//         (*self).mp_int.dp = self.payload_addr();
-//         &(*self).mp_int
-//     }
-// }
+    /// Returns pointer to the `mp_int` struct
+    ///
+    /// It fixes up the dp pointer. Instead of doing it here
+    /// this could be done on allocation and every object move.
+    ///
+    /// Note that this returns a `const` pointer. This is very nice, as together with the const
+    /// annotation on the libtommath API, this should prevent us from passing this pointer to a
+    /// libtommath function that tries to change it. For example, we cannot confuse input and
+    /// output parameters of mp_add() this way.
+    pub unsafe fn mp_int_ptr(self: *mut BigInt) -> *const mp_int {
+        (*self).mp_int.dp = self.payload_addr();
+        &(*self).mp_int
+    }
+}
 
 #[repr(C)] // See the note at the beginning of this module
 pub struct MutBox {
@@ -919,10 +941,10 @@ pub(crate) unsafe fn block_size(address: usize) -> Words<u32> {
 
         TAG_BITS32 => size_of::<Bits32>(),
 
-        // TAG_BIGINT => {
-        //     let bigint = address as *mut BigInt;
-        //     size_of::<BigInt>() + bigint.len().to_words()
-        // }
+        TAG_BIGINT => {
+            let bigint = address as *mut BigInt;
+            size_of::<BigInt>() + bigint.len().to_words()
+        }
 
         TAG_CONCAT => size_of::<Concat>(),
 

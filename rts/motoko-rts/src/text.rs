@@ -30,7 +30,8 @@ use crate::barriers::allocation_barrier;
 use crate::mem_utils::memcpy_bytes;
 use crate::memory::{alloc_blob, Memory};
 use crate::rts_trap_with;
-use crate::types::{size_of, Blob, Bytes, Concat, Value, TAG_BLOB, TAG_CONCAT};
+use crate::types::{size_of, Blob, Bytes, Concat, Stream, Value, TAG_BLOB, TAG_CONCAT};
+use crate::libc_declarations::memcmp;
 
 use core::cmp::{min, Ordering};
 use core::{slice, str};
@@ -167,21 +168,21 @@ unsafe extern "C" fn text_to_buf(mut s: Value, mut buf: *mut u8) {
     }
 }
 
-// #[no_mangle]
-// unsafe extern "C" fn stream_write_text(stream: *mut Stream, mut s: Value) {
-//     loop {
-//         let s_ptr = s.as_obj();
-//         if s_ptr.tag() == TAG_BLOB {
-//             let blob = s_ptr.as_blob();
-//             stream.cache_bytes(blob.payload_addr(), blob.len());
-//             break;
-//         } else {
-//             let concat = s_ptr.as_concat();
-//             stream_write_text(stream, concat.text1());
-//             s = concat.text2()
-//         }
-//     }
-// }
+#[no_mangle]
+unsafe extern "C" fn stream_write_text(stream: *mut Stream, mut s: Value) {
+    loop {
+        let s_ptr = s.as_obj();
+        if s_ptr.tag() == TAG_BLOB {
+            let blob = s_ptr.as_blob();
+            stream.cache_bytes(blob.payload_addr(), blob.len());
+            break;
+        } else {
+            let concat = s_ptr.as_concat();
+            stream_write_text(stream, concat.text1());
+            s = concat.text2()
+        }
+    }
+}
 
 // Straighten into contiguous memory, if needed (e.g. for system calls)
 #[ic_mem_fn]
@@ -215,65 +216,64 @@ unsafe fn text_compare_range(
     offset2: Bytes<u32>,
     n: Bytes<u32>,
 ) -> Ordering {
-    unimplemented!();
-    // // Follow the left/right strings of concat nodes until we reach to blobs or concats that cannot
-    // // be split further (the range spans left and right strings)
-    // let (s1, offset1) = text_get_range(s1, offset1, n);
-    // let (s2, offset2) = text_get_range(s2, offset2, n);
+    // Follow the left/right strings of concat nodes until we reach to blobs or concats that cannot
+    // be split further (the range spans left and right strings)
+    let (s1, offset1) = text_get_range(s1, offset1, n);
+    let (s2, offset2) = text_get_range(s2, offset2, n);
 
-    // let s1_obj = s1.as_obj();
-    // let s2_obj = s2.as_obj();
+    let s1_obj = s1.as_obj();
+    let s2_obj = s2.as_obj();
 
-    // // Decompose concats
-    // if s1_obj.tag() == TAG_CONCAT {
-    //     let s1_concat = s1_obj.as_concat();
-    //     let n_compared = text_size(s1_concat.text1()) - offset1;
-    //     let cmp = text_compare_range(s1_concat.text1(), offset1, s2, offset2, n_compared);
-    //     match cmp {
-    //         Ordering::Less | Ordering::Greater => cmp,
-    //         Ordering::Equal => text_compare_range(
-    //             s1_concat.text2(),
-    //             Bytes(0),
-    //             s2,
-    //             offset2 + n_compared,
-    //             n - n_compared,
-    //         ),
-    //     }
-    // } else if s2_obj.tag() == TAG_CONCAT {
-    //     let s2_concat = s2_obj.as_concat();
-    //     let n_compared = text_size(s2_concat.text1()) - offset2;
-    //     let cmp = text_compare_range(s1, offset1, s2_concat.text1(), offset2, n_compared);
-    //     match cmp {
-    //         Ordering::Less | Ordering::Greater => cmp,
-    //         Ordering::Equal => text_compare_range(
-    //             s1,
-    //             offset1 + n_compared,
-    //             s2_concat.text2(),
-    //             Bytes(0),
-    //             n - n_compared,
-    //         ),
-    //     }
-    // } else {
-    //     debug_assert_eq!(s1_obj.tag(), TAG_BLOB);
-    //     debug_assert_eq!(s2_obj.tag(), TAG_BLOB);
+    // Decompose concats
+    if s1_obj.tag() == TAG_CONCAT {
+        let s1_concat = s1_obj.as_concat();
+        let n_compared = text_size(s1_concat.text1()) - offset1;
+        let cmp = text_compare_range(s1_concat.text1(), offset1, s2, offset2, n_compared);
+        match cmp {
+            Ordering::Less | Ordering::Greater => cmp,
+            Ordering::Equal => text_compare_range(
+                s1_concat.text2(),
+                Bytes(0),
+                s2,
+                offset2 + n_compared,
+                n - n_compared,
+            ),
+        }
+    } else if s2_obj.tag() == TAG_CONCAT {
+        let s2_concat = s2_obj.as_concat();
+        let n_compared = text_size(s2_concat.text1()) - offset2;
+        let cmp = text_compare_range(s1, offset1, s2_concat.text1(), offset2, n_compared);
+        match cmp {
+            Ordering::Less | Ordering::Greater => cmp,
+            Ordering::Equal => text_compare_range(
+                s1,
+                offset1 + n_compared,
+                s2_concat.text2(),
+                Bytes(0),
+                n - n_compared,
+            ),
+        }
+    } else {
+        debug_assert_eq!(s1_obj.tag(), TAG_BLOB);
+        debug_assert_eq!(s2_obj.tag(), TAG_BLOB);
 
-    //     let s1_blob = s1_obj.as_blob();
-    //     let s2_blob = s2_obj.as_blob();
+        let s1_blob = s1_obj.as_blob();
+        let s2_blob = s2_obj.as_blob();
 
-    //     let cmp = libc::memcmp(
-    //         s1_blob.payload_addr().add(offset1.as_usize()) as *const _,
-    //         s2_blob.payload_addr().add(offset2.as_usize()) as *const _,
-    //         n.as_usize(),
-    //     );
+        let cmp = memcmp(
+            s1_blob.payload_addr().add(offset1.as_usize()) as *const _,
+            s2_blob.payload_addr().add(offset2.as_usize()) as *const _,
+            n.as_usize(),
+        );
 
-    //     if cmp < 0 {
-    //         Ordering::Less
-    //     } else if cmp == 0 {
-    //         Ordering::Equal
-    //     } else {
-    //         Ordering::Greater
-    //     }
-    // }
+        if cmp < 0 {
+            Ordering::Less
+        } else if cmp == 0 {
+            Ordering::Equal
+        } else {
+            Ordering::Greater
+        }
+    }
 }
 
 /// Follow left/right strings of concat nodes until we reach to a BLOB or a CONCAT that can't be
@@ -336,26 +336,25 @@ pub unsafe extern "C" fn text_compare(s1: Value, s2: Value) -> i32 {
 }
 
 pub(crate) unsafe fn blob_compare(s1: Value, s2: Value) -> i32 {
-    unimplemented!();
-    // let n1 = text_size(s1);
-    // let n2 = text_size(s2);
-    // let n = min(n1, n2);
+    let n1 = text_size(s1);
+    let n2 = text_size(s2);
+    let n = min(n1, n2);
 
-    // let payload1 = s1.as_blob().payload_const();
-    // let payload2 = s2.as_blob().payload_const();
-    // let cmp = libc::memcmp(payload1 as *const _, payload2 as *const _, n.as_usize());
+    let payload1 = s1.as_blob().payload_const();
+    let payload2 = s2.as_blob().payload_const();
+    let cmp = memcmp(payload1 as *const _, payload2 as *const _, n.as_usize());
 
-    // if cmp == 0 {
-    //     if n1 < n2 {
-    //         -1
-    //     } else if n1 > n2 {
-    //         1
-    //     } else {
-    //         0
-    //     }
-    // } else {
-    //     cmp
-    // }
+    if cmp == 0 {
+        if n1 < n2 {
+            -1
+        } else if n1 > n2 {
+            1
+        } else {
+            0
+        }
+    } else {
+        cmp
+    }
 }
 
 /// Length in characters
