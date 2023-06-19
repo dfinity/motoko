@@ -1,7 +1,6 @@
 use crate::memory::Memory;
 use crate::text::text_of_ptr_size;
 use crate::types::{Bytes, Value};
-// use crate::libc_declarations::{snprintf, c_double};
 
 use motoko_rts_macros::ic_mem_fn;
 
@@ -14,29 +13,17 @@ unsafe fn float_fmt<M: Memory>(mem: &mut M, a: f64, prec: u32, mode: u32) -> Val
     let prec = core::cmp::min(prec >> 24, 100) as usize;
 
     // 320 bytes needed for max precision (1.7e308)
-    let buf = [0u8; 320];
-
-    // NB. Using snprintf because I think only 0 and 3 are supposed by Rust's built-in formatter
-    let fmt = match mode {
-        0 => "%.*f\0",
-        1 => "%.*e\0",
-        2 => "%.*g\0",
-        3 => "%.*a\0",
+    const BUFFER_LENGTH: usize = 320;
+    let buffer = match mode {
+        0 => format!(BUFFER_LENGTH, "{:.*}", prec, a),
+        1 => format!(BUFFER_LENGTH, "{:.*e}", prec, a),
+        2 => format!(BUFFER_LENGTH, "{:.*}", prec, a),
+        3 => panic!("float_fmt: unsupported mode"),
+        4 => format!(BUFFER_LENGTH, "{}", a),
         _ => panic!("float_fmt: unrecognized mode"),
     };
 
-    // TODO: Support in 64-bit port
-    unimplemented!()
+    // TODO: Certain modes are not supported such as hexadecimal output (mode 3).
 
-    // let n_written = snprintf(
-    //     buf.as_ptr() as *mut _,
-    //     320,
-    //     fmt.as_ptr() as *const _,
-    //     prec,
-    //     a as c_double,
-    // );
-
-    // assert!(n_written > 0);
-
-    // text_of_ptr_size(mem, buf.as_ptr(), Bytes(n_written as u32))
+    text_of_ptr_size(mem, buffer.as_ptr(), Bytes(BUFFER_LENGTH as u32))
 }

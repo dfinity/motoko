@@ -11,7 +11,6 @@
     simd_wasm64
 )]
 
-
 #[macro_use]
 mod print;
 
@@ -32,8 +31,8 @@ mod float;
 pub mod gc;
 #[cfg(feature = "ic")]
 mod idl;
-mod libc_declarations;
 pub mod leb128;
+mod libc_declarations;
 mod mem_utils;
 pub mod memory;
 pub mod principal_id;

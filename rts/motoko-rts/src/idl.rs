@@ -3,10 +3,10 @@ use crate::bitrel::BitRel;
 use crate::buf::{read_byte, read_word, skip_leb128, Buf};
 use crate::idl_trap_with;
 use crate::leb128::{leb128_decode, sleb128_decode};
+use crate::libc_declarations::{c_void, memcmp};
 use crate::memory::{alloc_blob, Memory};
 use crate::types::Words;
 use crate::utf8::utf8_validate;
-use crate::libc_declarations::{memcmp, c_void};
 
 use core::cmp::min;
 
@@ -58,11 +58,7 @@ unsafe fn is_primitive_type(ty: i32) -> bool {
 // TBR; based on Text.text_compare
 unsafe fn utf8_cmp(len1: u32, p1: *mut u8, len2: u32, p2: *mut u8) -> i32 {
     let len = min(len1, len2);
-    let cmp = memcmp(
-        p1 as *mut c_void,
-        p2 as *mut c_void,
-        len as usize,
-    );
+    let cmp = memcmp(p1 as *mut c_void, p2 as *mut c_void, len as usize);
     if cmp != 0 {
         return cmp;
     } else if len1 > len {

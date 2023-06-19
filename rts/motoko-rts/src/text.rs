@@ -27,11 +27,11 @@
 // size of the text.
 
 use crate::barriers::allocation_barrier;
+use crate::libc_declarations::memcmp;
 use crate::mem_utils::memcpy_bytes;
 use crate::memory::{alloc_blob, Memory};
 use crate::rts_trap_with;
 use crate::types::{size_of, Blob, Bytes, Concat, Stream, Value, TAG_BLOB, TAG_CONCAT};
-use crate::libc_declarations::memcmp;
 
 use core::cmp::{min, Ordering};
 use core::{slice, str};

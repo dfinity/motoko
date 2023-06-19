@@ -33,11 +33,11 @@ This scheme makes the following assumptions:
 
 use crate::barriers::allocation_barrier;
 use crate::buf::{read_byte, Buf};
+use crate::libc_declarations::c_void;
 use crate::mem_utils::memcpy_bytes;
 use crate::memory::Memory;
 use crate::tommath_bindings::*;
 use crate::types::{size_of, BigInt, Bytes, Stream, Value, TAG_BIGINT};
-use crate::libc_declarations::c_void;
 
 use motoko_rts_macros::ic_mem_fn;
 
@@ -88,7 +88,6 @@ pub unsafe fn mp_realloc<M: Memory>(
     // TODO: Remove these temporary downcasts during 64-bit port
     let old_size = Bytes(old_size.as_usize() as u32);
     let new_size = Bytes(new_size.as_usize() as u32);
-
 
     let bigint = BigInt::from_payload(ptr as *mut mp_digit);
 

@@ -39,7 +39,12 @@ pub(crate) fn wasmtime_println(text: &str) {
         const IO_VECTOR_ARRAY_LENGTH: i32 = 1;
         let written_pointer = (&mut WRITTEN) as *mut i32;
 
-        fd_write(STANDARDD_OUTPUT, io_vector_array as i32, IO_VECTOR_ARRAY_LENGTH, written_pointer as i32);
+        fd_write(
+            STANDARDD_OUTPUT,
+            io_vector_array as i32,
+            IO_VECTOR_ARRAY_LENGTH,
+            written_pointer as i32,
+        );
     }
 }
 
