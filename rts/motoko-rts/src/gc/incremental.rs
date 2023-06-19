@@ -100,16 +100,11 @@ unsafe fn record_gc_start<M: Memory>() {
 unsafe fn record_gc_stop<M: Memory>() {
     use crate::memory::ic::{self, partitioned_memory};
 
-    let current_allocations = partitioned_memory::get_total_allocations();
-    debug_assert!(current_allocations >= LAST_ALLOCATIONS);
-    let growth_during_gc = current_allocations - LAST_ALLOCATIONS;
     let heap_size = partitioned_memory::get_heap_size();
     let static_size = Bytes(ic::get_aligned_heap_base());
     debug_assert!(heap_size >= static_size);
     let dynamic_size = heap_size - static_size;
-    debug_assert!(growth_during_gc.0 <= dynamic_size.as_usize() as u64);
-    let live_set = dynamic_size - Bytes(growth_during_gc.0 as u32);
-    ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, live_set);
+    ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, dynamic_size);
 }
 
 /// GC phases per run. Each of the following phases is performed in potentially multiple increments.
