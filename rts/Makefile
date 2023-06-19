@@ -22,7 +22,10 @@ TOMMATHFILES = \
    mp_decr mp_add_d mp_sub_d
 
 MUSLFILES = \
-   memcpy memset memchr memcmp \
+   pow pow_data sin cos tan asin acos atan atan2 exp exp_data log log_data fmod \
+   floor scalbn frexp strlen strnlen memcpy memset memchr memcmp \
+   __math_oflow __math_uflow __math_xflow __math_divzero __math_invalid \
+   __rem_pio2 __rem_pio2_large __sin __cos __tan \
    stubs
 
 #    pow pow_data sin cos tan asin acos atan atan2 exp exp_data log log_data fmod \
@@ -69,8 +72,9 @@ TOMMATH_FLAGS = \
 #
 #       See also https://stackoverflow.com/questions/1597007/creating-c-macro-with-and-line-token-concatenation-with-positioning-macr
 
+# libc does not yet have a 64-bit port, using 32-bit version instead.
 MUSL_FLAGS = \
-  -isystem $(MUSLSRC)/arch/wasm64 \
+  -isystem $(MUSLSRC)/arch/wasm32 \
   -isystem $(MUSLSRC)/src/include \
   -isystem $(MUSLSRC)/src/internal \
   -isystem $(MUSL_WASI_SYSROOT)/include \
@@ -125,6 +129,14 @@ _build/wasm:
 _build/i686:
 	mkdir -p $@
 
+# 
+# Common configuration
+# 
+
+RTS_EMSCRIPTEN=./emscripten.sh -c --target=wasm64-unknown-emscripten -fpic
+RTS_EMSCRIPTEN_DEBUG=$(RTS_EMSCRIPTEN)
+RTS_EMSCRIPTEN_RELEASE=$(RTS_EMSCRIPTEN) -O2
+
 #
 # Let make automatically search these directorys (tommath and musl) for .c files
 #
@@ -162,9 +174,11 @@ $(TOMMATH_i686_A): $(TOMMATH_i686_O)
 MUSL_WASM_O=$(MUSLFILES:%=_build/wasm/musl_%.o)
 MUSL_WASM_A=_build/libmusl.a
 
-_build/wasm/musl_%.o: %.c | _build/wasm
-	$(WASM_CLANG) $(CLANG_FLAGS) $(MUSL_FLAGS) $< --output $@
+_build/wasm/musl_%.bc: %.c | _build/wasm
+	$(WASM_CLANG) $(CLANG_FLAGS) $(MUSL_FLAGS) -emit-llvm $< --output $@
 
+_build/wasm/musl_%.o: _build/wasm/musl_%.bc
+	$(RTS_EMSCRIPTEN_RELEASE) -o $@ $< 
 
 $(MUSL_WASM_A): $(MUSL_WASM_O)
 	llvm-ar rcs $@ $^
@@ -279,10 +293,6 @@ RTS_RUST_INCREMENTAL_DEBUG_WASM_A=$(BUILD_FOLDER)/libmotoko_rts_incremental_debu
 
 CORE_WASM_A=$(BUILD_FOLDER)/core.o
 CORE_DEBUG_WASM_A=$(BUILD_FOLDER)/core_debug.o
-
-RTS_EMSCRIPTEN=./emscripten.sh -c --target=wasm64-unknown-emscripten -fpic
-RTS_EMSCRIPTEN_DEBUG=$(RTS_EMSCRIPTEN)
-RTS_EMSCRIPTEN_RELEASE=$(RTS_EMSCRIPTEN) -O2
 
 $(RTS_RUST_NON_INCREMENTAL_WASM_A): $(RTS_RUST_NON_INCREMENTAL_LLVM_IR)
 	$(RTS_EMSCRIPTEN_RELEASE) -o $@ $+
