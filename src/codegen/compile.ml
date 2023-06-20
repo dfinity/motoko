@@ -3903,10 +3903,9 @@ module Region = struct
                                           Blob
   *)
 
-  let _header_size = Int32.add Tagged.header_size 3l
-  let id_field = Int32.add Tagged.header_size 0l
-  let page_count_field = Int32.add Tagged.header_size 1l
-  let vec_pages_field = Int32.add Tagged.header_size 2l
+  let id_field env = Int32.add (Tagged.header_size env) 0l
+  let page_count_field env = Int32.add (Tagged.header_size env) 1l
+  let vec_pages_field env = Int32.add (Tagged.header_size env) 2l
 
   let alloc env get_id get_pagecount get_vec_pages =
     Tagged.obj env Tagged.Region [ get_id; get_pagecount; get_vec_pages ]
@@ -3915,13 +3914,13 @@ module Region = struct
     if !Flags.sanity then
     Func.share_code1 env ("check_region_" ^ s) ("val", I32Type) [I32Type]
       (fun env get_region ->
-         get_region ^^ Tagged.load ^^
+         get_region ^^ Tagged.load_forwarding_pointer env ^^
          compile_eq_const Tagged.(int_of_tag Region) ^^
-         get_region ^^ Tagged.load ^^
+         get_region ^^ Tagged.load_forwarding_pointer env ^^ (* <-- needed? *)
          compile_eq_const Tagged.(int_of_tag StableSeen) ^^
          G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
          E.else_trap_with env ("Internal error: bad region tag "^ s) ^^
-         get_region ^^ Heap.load_field vec_pages_field ^^ Tagged.load ^^
+         get_region ^^ Heap.load_field (vec_pages_field env) ^^ Tagged.load_forwarding_pointer env ^^
          compile_eq_const Tagged.(int_of_tag Blob) ^^
          E.else_trap_with env ("Internal error: bad region.vec_pages" ^ s) ^^
          get_region)
@@ -5976,7 +5975,7 @@ module MakeSerialization (Strm : Stream) = struct
       | Prim Region ->
          size_alias (fun () ->
           inc_data_size (compile_unboxed_const 8l) ^^ (* |(padded) id| + |page_count| *)
-          get_x ^^ Heap.load_field Region.vec_pages_field ^^ size env (Prim Blob))
+          get_x ^^ Heap.load_field (Region.vec_pages_field env) ^^ size env (Prim Blob))
       | Mut t ->
         size_alias (fun () -> get_x ^^ MutBox.load_field env ^^ size env t)
       | _ -> todo "buffer_size" (Arrange_ir.typ t) G.nop
@@ -6102,9 +6101,9 @@ module MakeSerialization (Strm : Stream) = struct
         write_alias (fun () -> get_x ^^ write env (Array t))
       | Prim Region ->
         write_alias (fun () ->
-          write_word_32 env get_data_buf (get_x ^^ Heap.load_field Region.id_field) ^^
-          write_word_32 env get_data_buf (get_x ^^ Heap.load_field Region.page_count_field) ^^
-          write_blob env get_data_buf (get_x ^^ Heap.load_field Region.vec_pages_field)
+          write_word_32 env get_data_buf (get_x ^^ Heap.load_field (Region.id_field env)) ^^
+          write_word_32 env get_data_buf (get_x ^^ Heap.load_field (Region.page_count_field env)) ^^
+          write_blob env get_data_buf (get_x ^^ Heap.load_field (Region.vec_pages_field env))
         )
       | Array t ->
         write_word_leb env get_data_buf (get_x ^^ Arr.len env) ^^
@@ -6736,9 +6735,10 @@ module MakeSerialization (Strm : Stream) = struct
           E.else_trap_with env "deserialize_go (Region): unexpected idl_typ" ^^
           Region.alloc env (compile_unboxed_const 0l) (compile_unboxed_const 0l) (Blob.lit env "") ^^ set_region ^^
           on_alloc get_region ^^
-          get_region ^^ ReadBuf.read_word32 env get_data_buf ^^ Heap.store_field Region.id_field ^^
-          get_region ^^ ReadBuf.read_word32 env get_data_buf ^^ Heap.store_field Region.page_count_field ^^
-          get_region ^^ read_blob () ^^ Heap.store_field Region.vec_pages_field
+          get_region ^^ ReadBuf.read_word32 env get_data_buf ^^ Heap.store_field (Region.id_field env) ^^
+          get_region ^^ ReadBuf.read_word32 env get_data_buf ^^ Heap.store_field (Region.page_count_field env) ^^
+          get_region ^^ read_blob () ^^ Heap.store_field (Region.vec_pages_field env)
+        )
       | Array t ->
         let (set_len, get_len) = new_local env "len" in
         let (set_x, get_x) = new_local env "x" in
