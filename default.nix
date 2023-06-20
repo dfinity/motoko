@@ -759,7 +759,7 @@ rec {
       docs
       report-site
       ic-ref-run
-      shell
+      # shell
       check-formatting
       check-rts-formatting
       check-generated
