@@ -56,9 +56,9 @@ unsafe fn is_primitive_type(ty: i32) -> bool {
 }
 
 // TBR; based on Text.text_compare
-unsafe fn utf8_cmp(len1: u32, p1: *mut u8, len2: u32, p2: *mut u8) -> i32 {
+unsafe fn utf8_cmp(len1: usize, p1: *mut u8, len2: usize, p2: *mut u8) -> i32 {
     let len = min(len1, len2);
-    let cmp = memcmp(p1 as *mut c_void, p2 as *mut c_void, len as usize);
+    let cmp = memcmp(p1 as *mut c_void, p2 as *mut c_void, len);
     if cmp != 0 {
         return cmp;
     } else if len1 > len {
@@ -92,7 +92,7 @@ unsafe fn parse_fields(buf: *mut Buf, n_types: u32) {
 
 // NB. This function assumes the allocation does not need to survive GC
 // Therefore, no post allocation barrier is applied.
-unsafe fn alloc<M: Memory>(mem: &mut M, size: Words<u32>) -> *mut u8 {
+unsafe fn alloc<M: Memory>(mem: &mut M, size: Words<usize>) -> *mut u8 {
     alloc_blob(mem, size.to_bytes())
         .as_blob_mut()
         .payload_addr()
@@ -145,7 +145,7 @@ unsafe fn parse_idl_header<M: Memory>(
     *typtbl_size_out = n_types;
 
     // Allocate the type table to be passed out
-    let typtbl: *mut *mut u8 = alloc(mem, Words(n_types)) as *mut _;
+    let typtbl: *mut *mut u8 = alloc(mem, Words(n_types as usize)) as *mut _;
 
     // Go through the table
     for i in 0..n_types {
@@ -204,7 +204,7 @@ unsafe fn parse_idl_header<M: Memory>(
                 let (len, p) = leb128_decode_ptr(buf);
                 buf.advance(len);
                 // Method names must be valid unicode
-                utf8_validate(p as *const _, len);
+                utf8_validate(p as *const _, len as usize);
                 // Method names must be in order
                 if last_p != core::ptr::null_mut() {
                     let cmp = memcmp(
@@ -291,7 +291,7 @@ unsafe fn skip_blob(buf: *mut Buf) {
 unsafe fn skip_text(buf: *mut Buf) {
     let (len, p) = leb128_decode_ptr(buf);
     buf.advance(len); // advance first; does the bounds check
-    utf8_validate(p as *const _, len);
+    utf8_validate(p as *const _, len as usize);
 }
 
 unsafe fn skip_any_vec(buf: *mut Buf, typtbl: *mut *mut u8, t: i32, count: u32) {
@@ -770,7 +770,7 @@ unsafe fn sub(
                         Buf::advance(&mut tb1, len1);
                         t11 = sleb128_decode(&mut tb1);
                         n1 -= 1;
-                        cmp = utf8_cmp(len1, p1, len2, p2);
+                        cmp = utf8_cmp(len1 as usize, p1, len2 as usize, p2);
                         if cmp < 0 && n1 > 0 {
                             continue;
                         };

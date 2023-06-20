@@ -22,7 +22,7 @@ pub unsafe extern "C" fn compute_crc32(blob: Value) -> u32 {
 
     let mut crc: u32 = !0;
 
-    for i in 0..len.as_u32() {
+    for i in 0..len.as_usize() {
         let octet = blob.get(i);
         crc = (crc >> 8) ^ CRC_TABLE[usize::from((crc & 0xFF) as u8 ^ octet)];
     }
@@ -98,7 +98,7 @@ pub unsafe fn base32_of_checksummed_blob<M: Memory>(mem: &mut M, b: Value) -> Va
     let n = b.as_blob().len();
     let mut data = b.as_blob().payload_const();
 
-    let r = alloc_blob(mem, Bytes((n.as_u32() + 4 + 4) / 5 * 8)); // contains padding
+    let r = alloc_blob(mem, Bytes((n.as_usize() + 4 + 4) / 5 * 8)); // contains padding
     let blob = r.as_blob_mut();
     let dest = blob.payload_addr();
 
@@ -114,7 +114,7 @@ pub unsafe fn base32_of_checksummed_blob<M: Memory>(mem: &mut M, b: Value) -> Va
     enc_stash(&mut pump, (checksum >> 8) as u8);
     enc_stash(&mut pump, checksum as u8);
 
-    for _ in 0..n.as_u32() {
+    for _ in 0..n.as_usize() {
         enc_stash(&mut pump, *data);
         data = data.add(1);
     }
@@ -125,7 +125,7 @@ pub unsafe fn base32_of_checksummed_blob<M: Memory>(mem: &mut M, b: Value) -> Va
         stash_enc_base32(pump.pending_data as u8, pump.dest);
         pump.dest = pump.dest.add(1);
         // Discount padding
-        let new_len = Bytes(pump.dest.offset_from(dest) as u32);
+        let new_len = Bytes(pump.dest.offset_from(dest) as usize);
         blob.shrink(new_len);
     }
 
@@ -185,7 +185,7 @@ pub unsafe fn base32_to_blob<M: Memory>(mem: &mut M, b: Value) -> Value {
     let mut data = b.as_blob().payload_const();
 
     // Every group of 8 characters will yield 5 bytes
-    let r = alloc_blob(mem, Bytes(((n.as_u32() + 7) / 8) * 5)); // we deal with padding later
+    let r = alloc_blob(mem, Bytes(((n.as_usize() + 7) / 8) * 5)); // we deal with padding later
     let blob = r.as_blob_mut();
     let dest = blob.payload_addr();
 
@@ -197,13 +197,13 @@ pub unsafe fn base32_to_blob<M: Memory>(mem: &mut M, b: Value) -> Value {
         pending_data: 0,
     };
 
-    for _ in 0..n.as_u32() {
+    for _ in 0..n.as_usize() {
         dec_stash(&mut pump, *data);
         data = data.add(1);
     }
 
     // Adjust resulting blob len
-    let new_len = Bytes(pump.dest.offset_from(dest) as u32);
+    let new_len = Bytes(pump.dest.offset_from(dest) as usize);
     blob.shrink(new_len);
 
     allocation_barrier(r)
@@ -225,12 +225,12 @@ unsafe fn base32_to_principal<M: Memory>(mem: &mut M, b: Value) -> Value {
     let mut data = blob.payload_const();
 
     // Every group of 5 characters will yield 6 bytes (due to the hypen)
-    let r = alloc_blob(mem, Bytes(((n.as_u32() + 4) / 5) * 6));
+    let r = alloc_blob(mem, Bytes(((n.as_usize() + 4) / 5) * 6));
     let blob = r.as_blob_mut();
     let mut dest = blob.payload_addr();
 
     let mut n_written = 0;
-    for i in 0..n.as_u32() {
+    for i in 0..n.as_usize() {
         let mut byte = *data;
         data = data.add(1);
 
@@ -244,7 +244,7 @@ unsafe fn base32_to_principal<M: Memory>(mem: &mut M, b: Value) -> Value {
         n_written += 1;
 
         // If quintet done, add hyphen
-        if n_written % 5 == 0 && i + 1 < n.as_u32() {
+        if n_written % 5 == 0 && i + 1 < n.as_usize() {
             n_written = 0;
             *dest = b'-';
             dest = dest.add(1);
@@ -252,7 +252,7 @@ unsafe fn base32_to_principal<M: Memory>(mem: &mut M, b: Value) -> Value {
     }
 
     // Adjust result length
-    let new_len = Bytes(dest as u32 - blob.payload_addr() as u32);
+    let new_len = Bytes(dest as usize - blob.payload_addr() as usize);
     blob.shrink(new_len);
     allocation_barrier(r)
 }

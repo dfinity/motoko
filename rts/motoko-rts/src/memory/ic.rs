@@ -14,20 +14,20 @@ use motoko_rts_macros::*;
 
 // Provided by generated code
 extern "C" {
-    fn get_heap_base() -> u32;
+    fn get_heap_base() -> usize;
     pub(crate) fn get_static_roots() -> Value;
 }
 
-pub(crate) unsafe fn get_aligned_heap_base() -> u32 {
+pub(crate) unsafe fn get_aligned_heap_base() -> usize {
     // align to 32 bytes
     ((get_heap_base() + 31) / 32) * 32
 }
 
 /// Maximum live data retained in a GC.
-pub(crate) static mut MAX_LIVE: Bytes<u32> = Bytes(0);
+pub(crate) static mut MAX_LIVE: Bytes<usize> = Bytes(0);
 
 #[no_mangle]
-unsafe extern "C" fn get_max_live_size() -> Bytes<u32> {
+unsafe extern "C" fn get_max_live_size() -> Bytes<usize> {
     MAX_LIVE
 }
 
@@ -37,14 +37,15 @@ pub struct IcMemory;
 
 /// Page allocation. Ensures that the memory up to, but excluding, the given pointer is allocated,
 /// with the slight exception of not allocating the extra page for address 0xFFFF_0000.
-unsafe fn grow_memory(ptr: u64) {
-    debug_assert_eq!(0xFFFF_0000, usize::MAX - WASM_PAGE_SIZE.as_usize() + 1);
-    if ptr > 0xFFFF_0000 {
+unsafe fn grow_memory(ptr: usize) {
+    const MEMORY_LIMIT: usize = 0xFFFF_FFFF_FFFF_0000;
+    debug_assert_eq!(MEMORY_LIMIT, usize::MAX - WASM_PAGE_SIZE.as_usize() + 1);
+    if ptr > MEMORY_LIMIT {
         // spare the last wasm memory page
         rts_trap_with("Cannot grow memory")
     };
-    let page_size = u64::from(WASM_PAGE_SIZE.as_u32());
-    let total_pages_needed = ((ptr + page_size - 1) / page_size) as usize;
+    let page_size = WASM_PAGE_SIZE.as_usize();
+    let total_pages_needed = (ptr + page_size - 1) / page_size;
     let current_pages = wasm64::memory_size(0);
     if total_pages_needed > current_pages {
         if wasm64::memory_grow(0, total_pages_needed - current_pages) == core::usize::MAX {

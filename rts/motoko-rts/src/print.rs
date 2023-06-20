@@ -8,7 +8,7 @@ use core::fmt;
 extern "C" {
     // `print_ptr` is implemented by the code generator and has different implementations depending
     // on the target platform (WASI or IC).
-    fn print_ptr(ptr: usize, len: u32);
+    fn print_ptr(ptr: usize, len: usize);
 }
 
 /*
@@ -76,7 +76,7 @@ impl<'a> WriteBuf<'a> {
     }
 
     pub(crate) unsafe fn print(&self) {
-        print_ptr(self.buf.as_ptr() as usize, self.offset as u32)
+        print_ptr(self.buf.as_ptr() as usize, self.offset)
     }
 }
 
@@ -101,5 +101,5 @@ pub unsafe fn print(buf: &WriteBuf) {
 }
 
 pub(crate) unsafe fn print_str(str: &str) {
-    print_ptr(str.as_ptr() as usize, str.len() as u32)
+    print_ptr(str.as_ptr() as usize, str.len())
 }

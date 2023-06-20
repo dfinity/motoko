@@ -56,18 +56,18 @@ unsafe fn version<M: memory::Memory>(mem: &mut M) -> types::Value {
 
 #[non_incremental_gc]
 #[ic_mem_fn(ic_only)]
-unsafe fn alloc_words<M: memory::Memory>(mem: &mut M, n: types::Words<u32>) -> types::Value {
+unsafe fn alloc_words<M: memory::Memory>(mem: &mut M, n: types::Words<usize>) -> types::Value {
     mem.alloc_words(n)
 }
 
 #[incremental_gc]
 #[ic_mem_fn(ic_only)]
-unsafe fn alloc_words<M: memory::Memory>(mem: &mut M, n: types::Words<u32>) -> types::Value {
+unsafe fn alloc_words<M: memory::Memory>(mem: &mut M, n: types::Words<usize>) -> types::Value {
     crate::gc::incremental::get_partitioned_heap().allocate(mem, n)
 }
 
 extern "C" {
-    fn rts_trap(msg: *const u8, len: Bytes<u32>) -> !;
+    fn rts_trap(msg: *const u8, len: Bytes<usize>) -> !;
 }
 
 pub(crate) unsafe fn trap_with_prefix(prefix: &str, msg: &str) -> ! {
@@ -98,7 +98,7 @@ pub(crate) unsafe fn trap_with_prefix(prefix: &str, msg: &str) -> ! {
         b_idx += 1;
     }
 
-    rts_trap(c_str.as_ptr(), Bytes(b_idx as u32));
+    rts_trap(c_str.as_ptr(), Bytes(b_idx));
 }
 
 pub(crate) unsafe fn idl_trap_with(msg: &str) -> ! {
