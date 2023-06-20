@@ -3576,8 +3576,10 @@ module Region0 = struct
    *)
   let get env = E.call_import env "rts" "region0_get"
 
-  let get_mem_size env = E.call_import env "rts" "region0_size"
-  let logical_grow env = E.call_import env "rts" "region0_grow"
+  let get_mem_size env = E.call_import env "rts" "region0_size"  
+  let logical_grow env =
+    (* compile_const_64 (Int64.of_int (!Flags.max_stable_pages)) *)
+    E.call_import env "rts" "region0_grow"
 
   let load_blob env = E.call_import env "rts" "region0_load_blob"
   let store_blob env = E.call_import env "rts" "region0_store_blob"
