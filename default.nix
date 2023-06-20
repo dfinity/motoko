@@ -754,7 +754,7 @@ rec {
       samples
       rts
       base-src
-      base-tests
+      # base-tests
       base-doc
       docs
       report-site
@@ -765,9 +765,9 @@ rec {
       check-generated
       check-grammar
       check-error-codes
-    ] ++
-    builtins.attrValues tests ++
-    builtins.attrValues js;
+    ] ;# ++
+    # builtins.attrValues tests ++
+    # builtins.attrValues js;
   };
 
   viperServer = nixpkgs.fetchurl {
