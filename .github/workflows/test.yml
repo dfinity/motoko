@@ -17,7 +17,7 @@ jobs:
         fetch-depth: 0
         # fetch PR commit, not predicted merge commit
         ref: ${{ github.event.pull_request.head.sha }}
-    - uses: cachix/install-nix-action@v20
+    - uses: cachix/install-nix-action@v22
       with:
         install_url: https://releases.nixos.org/nix/nix-2.13.3/install
 
@@ -33,6 +33,12 @@ jobs:
     - run: cachix watch-store ic-hs-test &
 
     - run: nix-env -iA nix-build-uncached -f nix/
+
+    - name: "pre-build `drun`"
+      if: startsWith(github.head_ref, 'update/ic-')
+      run: |
+        nix-build --max-jobs 1 -A drun
+        nix-store --gc --print-roots | grep /motoko/
 
     - name: "nix-build"
       run: nix-build-uncached --max-jobs 4 -A all-systems-go -build-flags -L
@@ -84,7 +90,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-    - uses: cachix/install-nix-action@v20
+    - uses: cachix/install-nix-action@v22
       with:
         install_url: https://releases.nixos.org/nix/nix-2.13.3/install
     - uses: cachix/cachix-action@v12
@@ -100,3 +106,30 @@ jobs:
         branch: gh-pages
         folder: report-site-copy
         single-commit: true
+
+  artifacts:
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'build_artifacts')
+    needs: tests
+    concurrency: ci-${{ github.ref }}
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - uses: cachix/install-nix-action@v22
+      with:
+        install_url: https://releases.nixos.org/nix/nix-2.13.3/install
+    - uses: cachix/cachix-action@v12
+      with:
+        name: ic-hs-test
+    - name: nix-build
+      run: |
+        nix-build --arg officialRelease true -A moc
+    # upload-artifact doesn't work for symlink dir
+    # https://github.com/actions/upload-artifact/issues/92
+    - run: echo "UPLOAD_PATH=$(readlink -f result)" >> $GITHUB_ENV
+    - name: upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: moc
+        path: ${{ env.UPLOAD_PATH }}
+        retention-days: 5
+

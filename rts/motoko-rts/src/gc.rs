@@ -1,13 +1,18 @@
+#[non_incremental_gc]
 pub mod copying;
+#[non_incremental_gc]
 pub mod generational;
+#[incremental_gc]
+pub mod incremental;
+#[non_incremental_gc]
 pub mod mark_compact;
 
-#[cfg(feature = "ic")]
-use crate::types::Bytes;
+use motoko_rts_macros::*;
 
 #[cfg(feature = "ic")]
-unsafe fn should_do_gc(max_live: Bytes<u64>) -> bool {
-    use crate::memory::ic::{HP, LAST_HP};
+#[non_incremental_gc]
+unsafe fn should_do_gc(max_live: crate::types::Bytes<u64>) -> bool {
+    use crate::memory::ic::linear_memory::{HP, LAST_HP};
 
     // A factor of last heap size. We allow at most this much allocation before doing GC.
     const HEAP_GROWTH_FACTOR: f64 = 1.5;

@@ -1,5 +1,78 @@
 # Motoko compiler changelog
 
+## 0.9.3 (2023-06-19)
+
+* motoko (`moc`)
+
+  * Added fields `sender_canister_version` for actor class version tracking (#4036).
+
+## 0.9.2 (2023-06-10)
+
+* motoko (`moc`)
+
+  * BREAKING CHANGE (Minor):
+
+    `or`-patterns in function definitions cannot be inferred any more. The new error
+    message suggests to add a type annotation instead. This became necessary in order
+    to avoid potentially unsound types (#4012).
+
+  * Added implementation for `ic0.canister_version` as a primitive (#4027).
+
+  * Added a more efficient `Prim.blobCompare` (thanks to nomeata) (#4009).
+
+  * bugfix: minor error in grammar for `async*` expressions (#4005).
+
+* motoko-base
+
+  * Add `Principal.isController` function (dfinity/motoko-base#558).
+
+## 0.9.1 (2023-05-15)
+
+* motoko (`moc`)
+
+  * Added implementation for `ic0.is_controller` as a primitive (#3935).
+
+  * Added ability to enable the new incremental GC in the Motoko Playground (#3976).
+
+## 0.9.0 (2023-05-12)
+
+* motoko (`moc`)
+
+  * **For beta testing:** Add a new _incremental_ GC, enabled with new moc flag `--incremental-gc` (#3837).
+    The incremental garbage collector is designed to scale for large program heap sizes.
+
+    The GC distributes its workload across multiple steps, called increments, that each pause the mutator
+    (user's program) for only a limited amount of time. As a result, the GC work can fit within the instruction-limited
+    IC messages, regardless of the heap size and the object structures.
+
+    According to GC benchmark measurements, the incremental GC is more efficient than the existing copying, compacting,
+    and generational GC in the following regards:
+    * Scalability: Able to use the full heap space, 3x more object allocations on average.
+    * Shorter interruptions: The GC pause has a maximum limit that is up to 10x shorter.
+    * Lower runtimes: The number of executed instructions is reduced by 10% on average (compared to the copying GC).
+    * Less GC overhead: The amount of GC work in proportion to the user's program work drops by 10-16%.
+
+    The GC incurs a moderate memory overhead: The allocated WASM memory has been measured to be 9% higher
+    on average compared to the copying GC, which is the current default GC.
+
+    To activate the incremental GC under `dfx`, the following command-line argument needs to be specified in `dfx.json`:
+
+    ```
+    ...
+      "type" : "motoko"
+      ...
+      "args" : "--incremental-gc"
+    ...
+    ```
+
+  * bugfix: `array.vals()` now returns a working iterator for mutable arrays (#3497, #3967).
+
+## 0.8.8 (2023-05-02)
+
+* motoko (`moc`)
+
+  * Performance improvement: optimised code generation for pattern matching that cannot fail (#3957).
+
 ## 0.8.7 (2023-04-06)
 
 * motoko (`moc`)

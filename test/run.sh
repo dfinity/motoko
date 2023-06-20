@@ -34,9 +34,6 @@ SKIP_VALIDATE=${SKIP_VALIDATE:-no}
 ONLY_TYPECHECK=no
 ECHO=echo
 
-# Always do GC in tests, unless it's disabled in `EXTRA_MOC_ARGS`
-EXTRA_MOC_ARGS="--force-gc $EXTRA_MOC_ARGS"
-
 while getopts "adpstirv" o; do
     case "${o}" in
         a)
@@ -93,8 +90,9 @@ function normalize () {
         -e 's/Motoko (source .*)/Motoko (source XXX)/ig' \
         -e 's/Motoko [^ ]* (source .*)/Motoko (source XXX)/ig' \
         -e 's/Motoko compiler [^ ]* (source .*)/Motoko compiler (source XXX)/ig' |
-    # Normalize canister id prefixes in debug prints
-    sed 's/\[Canister [0-9a-z\-]*\]/debug.print:/g' |
+    # Normalize canister id prefixes and timestamps in debug prints
+    sed -e 's/\[Canister [0-9a-z\-]*\]/debug.print:/g' \
+        -e 's/^20.*UTC: debug.print:/debug.print:/g' |
     # Normalize instruction locations on traps, added by ic-ref ad6ea9e
     sed -e 's/region:0x[0-9a-fA-F]\+-0x[0-9a-fA-F]\+/region:0xXXX-0xXXX/g' |
     # Delete everything after Oom
@@ -252,7 +250,13 @@ do
     # extra flags (allow shell variables there)
     moc_extra_flags="$(eval echo $(grep '//MOC-FLAG' $base.mo | cut -c11- | paste -sd' '))"
     moc_extra_env="$(eval echo $(grep '//MOC-ENV' $base.mo | cut -c10- | paste -sd' '))"
-    moc_with_flags="env $moc_extra_env moc $moc_extra_flags $EXTRA_MOC_ARGS"
+    if ! grep -q "//MOC-NO-FORCE-GC" $base.mo
+    then
+      TEST_MOC_ARGS="--force-gc $EXTRA_MOC_ARGS"
+    else
+      TEST_MOC_ARGS=$EXTRA_MOC_ARGS
+    fi
+    moc_with_flags="env $moc_extra_env moc $moc_extra_flags $TEST_MOC_ARGS"
 
     # Typecheck
     run tc $moc_with_flags --check $base.mo
@@ -556,7 +560,7 @@ done
 if [ ${#failures[@]} -gt 0  ]
 then
   echo "Some tests failed:"
-  echo "${failures[@]}"
+  tr ' ' '\n' <<< "${failures[@]}" | uniq | xargs echo
   exit 1
 else
   $ECHO "All tests passed."
