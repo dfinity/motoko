@@ -85,6 +85,32 @@ let commonBuildInputs = pkgs:
     pkgs.ocamlPackages.ppx_inline_test
     pkgs.ocamlPackages.bisect_ppx
     pkgs.ocamlPackages.uucp
+    pkgs.obelisk
+    pkgs.perl
+    pkgs.removeReferencesTo
+  ]; in
+
+let commonBuildInputsX = pkgs:
+  [
+    pkgs.dune_3
+    pkgs.ocamlPackages.ocaml
+    pkgs.ocamlPackages.atdgen
+    pkgs.ocamlPackages.checkseum
+    pkgs.ocamlPackages.findlib
+    pkgs.ocamlPackages.menhir
+    pkgs.ocamlPackages.menhirLib
+    pkgs.ocamlPackages.cow
+    pkgs.ocamlPackages.num
+    pkgs.ocamlPackages.stdint
+    pkgs.ocamlPackages.wasm
+    pkgs.ocamlPackages.vlq
+    pkgs.ocamlPackages.zarith
+    pkgs.ocamlPackages.yojson
+    pkgs.ocamlPackages.ppxlib
+    pkgs.ocamlPackages.ppx_blob
+    pkgs.ocamlPackages.ppx_inline_test
+    pkgs.ocamlPackages.bisect_ppx
+    pkgs.ocamlPackages.uucp
     # pkgs.obelisk
     pkgs.perl
     pkgs.removeReferencesTo
@@ -788,16 +814,16 @@ rec {
         builtins.attrValues coverage_bins;
       in
       nixpkgs.lib.lists.unique (builtins.filter (i: !(builtins.elem i dont_build)) (
-        # commonBuildInputs nixpkgs ++
+        commonBuildInputsX nixpkgs ++
         rts.buildInputs ++
         js.moc.buildInputs ++
         docs.buildInputs ++
         check-rts-formatting.buildInputs ++
         builtins.concatMap (d: d.buildInputs or []) (builtins.attrValues tests) ++
         [ nixpkgs.ncurses
-          nixpkgs.ocamlPackages.merlin
-          nixpkgs.ocamlformat
-          nixpkgs.ocamlPackages.utop
+          # nixpkgs.ocamlPackages.merlin
+          # nixpkgs.ocamlformat
+          # nixpkgs.ocamlPackages.utop
           nixpkgs.fswatch
           nixpkgs.niv
           nixpkgs.nix-update
