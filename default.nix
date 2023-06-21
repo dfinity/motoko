@@ -90,32 +90,6 @@ let commonBuildInputs = pkgs:
     pkgs.removeReferencesTo
   ]; in
 
-let commonBuildInputsX = pkgs:
-  [
-    pkgs.dune_3
-    pkgs.ocamlPackages.ocaml
-    pkgs.ocamlPackages.atdgen
-    pkgs.ocamlPackages.checkseum
-    pkgs.ocamlPackages.findlib
-    pkgs.ocamlPackages.menhir
-    pkgs.ocamlPackages.menhirLib
-    pkgs.ocamlPackages.cow
-    pkgs.ocamlPackages.num
-    pkgs.ocamlPackages.stdint
-    pkgs.ocamlPackages.wasm
-    pkgs.ocamlPackages.vlq
-    pkgs.ocamlPackages.zarith
-    pkgs.ocamlPackages.yojson
-    pkgs.ocamlPackages.ppxlib
-    pkgs.ocamlPackages.ppx_blob
-    pkgs.ocamlPackages.ppx_inline_test
-    pkgs.ocamlPackages.bisect_ppx
-    pkgs.ocamlPackages.uucp
-    # pkgs.obelisk
-    pkgs.perl
-    pkgs.removeReferencesTo
-  ]; in
-
 let ocaml_exe = name: bin: rts:
   let
     profile =
@@ -814,7 +788,7 @@ rec {
         builtins.attrValues coverage_bins;
       in
       nixpkgs.lib.lists.unique (builtins.filter (i: !(builtins.elem i dont_build)) (
-        commonBuildInputsX nixpkgs ++
+        commonBuildInputs nixpkgs ++
         rts.buildInputs ++
         js.moc.buildInputs ++
         docs.buildInputs ++
