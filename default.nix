@@ -713,7 +713,7 @@ rec {
       name = "check-grammar";
       src = subpath ./src/gen-grammar;
       phases = "unpackPhase buildPhase installPhase";
-      buildInputs = [ nixpkgs.diffutils nixpkgs.bash nixpkgs.obelisk ];
+      buildInputs = [ nixpkgs.diffutils nixpkgs.bash ];
       buildPhase = ''
         patchShebangs .
         ./gen-grammar.sh ${./src/mo_frontend/parser.mly} > expected
