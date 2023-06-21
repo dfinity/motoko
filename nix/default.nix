@@ -50,7 +50,7 @@ let
             # Additional ocaml package
             ocamlPackages = super.ocamlPackages // rec {
 
-              # downgrade `wasmjs_of_ocaml(-compiler)` until we have figured out the bug related to 4.1.0
+              # upgrade `js_of_ocaml(-compiler)` until we have figured out the bug related to 4.1.0 (which is in nixpkgs)
               js_of_ocaml-compiler = super.ocamlPackages.js_of_ocaml-compiler.overrideAttrs (_: rec {
                 version = "5.0.1";
                 src = self.fetchurl {
