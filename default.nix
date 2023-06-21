@@ -85,7 +85,7 @@ let commonBuildInputs = pkgs:
     pkgs.ocamlPackages.ppx_inline_test
     pkgs.ocamlPackages.bisect_ppx
     pkgs.ocamlPackages.uucp
-    pkgs.obelisk
+    # pkgs.obelisk
     pkgs.perl
     pkgs.removeReferencesTo
   ]; in
@@ -713,7 +713,7 @@ rec {
       name = "check-grammar";
       src = subpath ./src/gen-grammar;
       phases = "unpackPhase buildPhase installPhase";
-      buildInputs = [ nixpkgs.diffutils nixpkgs.bash ];
+      buildInputs = [ nixpkgs.diffutils nixpkgs.bash nixpkgs.obelisk ];
       buildPhase = ''
         patchShebangs .
         ./gen-grammar.sh ${./src/mo_frontend/parser.mly} > expected
