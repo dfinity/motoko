@@ -808,7 +808,7 @@ rec {
     # build dependencies of the two to provide a build environment that offers
     # both, while not actually building `moc`
     #
-    propagatedBuildInputsX =
+    propagatedBuildInputs =
       let dont_build =
         [ moc mo-ld didc deser candid-tests ] ++
         builtins.attrValues coverage_bins;
@@ -819,7 +819,7 @@ rec {
         # js.moc.buildInputs ++
         # docs.buildInputs ++
         # check-rts-formatting.buildInputs ++
-        builtins.concatMap (d: d.buildInputs or []) (builtins.attrValues tests) ++
+        # builtins.concatMap (d: d.buildInputs or []) (builtins.attrValues tests) ++
         [ nixpkgs.ncurses
           # nixpkgs.ocamlPackages.merlin
           # nixpkgs.ocamlformat
