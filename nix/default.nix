@@ -49,11 +49,6 @@ let
         (self: super: {
             # Additional ocaml package
             ocamlPackages = super.ocamlPackages // rec {
-              obelisk = import ./ocaml-obelisk.nix {
-                inherit (self) lib fetchFromGitHub ocaml dune_3;
-                inherit (self) ocamlPackages;
-                inherit (self.stdenv) mkDerivation;
-              };
 
               # downgrade `wasmjs_of_ocaml(-compiler)` until we have figured out the bug related to 4.1.0
               js_of_ocaml-compiler = super.ocamlPackages.js_of_ocaml-compiler.overrideAttrs (_: rec {
@@ -103,7 +98,7 @@ let
 
         # Rust nightly
         (self: super: let
-          rust-channel = self.moz_overlay.rustChannelOf { date = "2022-10-30"; channel = "nightly"; };
+          rust-channel = self.moz_overlay.rustChannelOf { date = "2023-04-21"; channel = "nightly"; };
         in rec {
           rustc-nightly = rust-channel.rust.override {
             targets = [

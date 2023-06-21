@@ -7,7 +7,7 @@
 
 pub mod mark_stack;
 pub mod remembered_set;
-#[cfg(debug_assertions)]
+#[cfg(feature = "memory_check")]
 mod sanity_checks;
 pub mod write_barrier;
 
@@ -26,6 +26,12 @@ use motoko_rts_macros::ic_mem_fn;
 
 use self::mark_stack::{free_mark_stack, pop_mark_stack};
 use self::write_barrier::REMEMBERED_SET;
+
+#[ic_mem_fn(ic_only)]
+unsafe fn initialize_generational_gc<M: Memory>(mem: &mut M) {
+    crate::memory::ic::linear_memory::initialize();
+    write_barrier::init_generational_write_barrier(mem);
+}
 
 #[ic_mem_fn(ic_only)]
 unsafe fn schedule_generational_gc<M: Memory>(mem: &mut M) {
@@ -51,13 +57,10 @@ unsafe fn generational_gc<M: Memory>(mem: &mut M) {
     };
     let strategy = decide_strategy(&heap.limits);
 
-    #[cfg(debug_assertions)]
-    let forced_gc = strategy.is_none();
-
     let strategy = strategy.unwrap_or(Strategy::Young);
     let mut gc = GenerationalGC::new(heap, strategy);
 
-    #[cfg(debug_assertions)]
+    #[cfg(feature = "memory_check")]
     sanity_checks::verify_snapshot(&gc.heap, false);
 
     gc.run();
@@ -67,39 +70,38 @@ unsafe fn generational_gc<M: Memory>(mem: &mut M) {
     update_statistics(&old_limits, new_limits);
     update_strategy(strategy, new_limits);
 
-    #[cfg(debug_assertions)]
-    if !forced_gc {
-        sanity_checks::check_memory(&gc.heap.limits, &gc.heap.roots);
-        sanity_checks::take_snapshot(&mut gc.heap);
-    }
+    #[cfg(feature = "memory_check")]
+    sanity_checks::check_memory(&gc.heap.limits, &gc.heap.roots);
+    #[cfg(feature = "memory_check")]
+    sanity_checks::take_snapshot(&mut gc.heap);
 
-    write_barrier::init_write_barrier(gc.heap.mem);
+    write_barrier::init_generational_write_barrier(gc.heap.mem);
 }
 
 #[cfg(feature = "ic")]
 unsafe fn get_limits() -> Limits {
-    assert!(ic::LAST_HP >= ic::get_aligned_heap_base());
-    use crate::memory::ic;
+    use crate::memory::ic::{self, linear_memory};
+    assert!(linear_memory::LAST_HP >= ic::get_aligned_heap_base());
     Limits {
         base: ic::get_aligned_heap_base() as usize,
-        last_free: ic::LAST_HP as usize,
-        free: ic::HP as usize,
+        last_free: linear_memory::LAST_HP as usize,
+        free: linear_memory::HP as usize,
     }
 }
 
 #[cfg(feature = "ic")]
 unsafe fn set_limits(limits: &Limits) {
-    use crate::memory::ic;
-    ic::HP = limits.free as u32;
-    ic::LAST_HP = limits.free as u32;
+    use crate::memory::ic::linear_memory;
+    linear_memory::HP = limits.free as u32;
+    linear_memory::LAST_HP = limits.free as u32;
 }
 
 #[cfg(feature = "ic")]
 unsafe fn update_statistics(old_limits: &Limits, new_limits: &Limits) {
-    use crate::memory::ic;
+    use crate::memory::ic::{self, linear_memory};
     let live_size = Bytes(new_limits.free as u32 - new_limits.base as u32);
     ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, live_size);
-    ic::RECLAIMED += Bytes(old_limits.free as u64 - new_limits.free as u64);
+    linear_memory::RECLAIMED += Bytes(old_limits.free as u64 - new_limits.free as u64);
 }
 
 #[derive(PartialEq, Clone, Copy, Debug)]
@@ -262,7 +264,7 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
         set_bit(obj_idx);
 
         push_mark_stack(self.heap.mem, pointer as usize);
-        self.marked_space += object_size(pointer as usize).to_bytes().as_usize();
+        self.marked_space += block_size(pointer as usize).to_bytes().as_usize();
     }
 
     unsafe fn mark_all_reachable(&mut self) {
@@ -450,10 +452,14 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
             self.unthread(old_pointer, new_pointer);
 
             // Move the object
-            let object_size = object_size(old_pointer as usize);
+            let object_size = block_size(old_pointer as usize);
             if new_pointer as usize != old_pointer as usize {
                 memcpy_words(new_pointer as usize, old_pointer as usize, object_size);
                 debug_assert!(object_size.as_usize() > size_of::<Obj>().as_usize());
+
+                // Update forwarding pointer
+                let new_obj = new_pointer as *mut Obj;
+                debug_assert!(new_obj.tag() >= TAG_OBJECT && new_obj.tag() <= TAG_NULL);
             }
 
             free += object_size.to_bytes().as_usize();

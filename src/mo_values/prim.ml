@@ -247,6 +247,12 @@ let prim trap =
                             (let a, b = Value.as_text a, Value.as_text b in
                              if a = b then 0 else if a < b then -1 else 1)))
      | _ -> assert false)
+  | "blob_compare" -> fun _ v k ->
+    (match Value.as_tup v with
+     | [a; b] -> k (Int8 (Int_8.of_int
+                            (let a, b = Value.as_blob a, Value.as_blob b in
+                             if a = b then 0 else if a < b then -1 else 1)))
+     | _ -> assert false)
   | "text_iter" -> fun _ v k ->
     let s = Lib.Utf8.decode (Value.as_text v) in
     let i = Seq.map (fun c -> Char c) (List.to_seq s) in
@@ -352,5 +358,11 @@ let prim trap =
 
   | "encodeUtf8" ->
       fun _ v k -> k (Blob (as_text v))
+
+  | "is_controller" ->
+      fun _ v k -> k (Bool false)
+
+  | "canister_version" ->
+      fun _ v k -> as_unit v; k (Nat64 (Numerics.Nat64.of_int 42))
 
   | s -> trap.trap ("Value.prim: " ^ s)
