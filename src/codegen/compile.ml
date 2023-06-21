@@ -997,6 +997,7 @@ module RTS = struct
     E.add_func_import env "rts" "text_singleton" [I32Type] [I32Type];
     E.add_func_import env "rts" "text_size" [I32Type] [I32Type];
     E.add_func_import env "rts" "text_to_buf" [I32Type; I32Type] [];
+    E.add_func_import env "rts" "region_init" [] [];
     E.add_func_import env "rts" "region_get_mem_size" [] [I64Type];
     E.add_func_import env "rts" "region_set_mem_size" [I64Type] [];
     E.add_func_import env "rts" "region_new" [] [I32Type];
