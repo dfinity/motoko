@@ -1,6 +1,7 @@
 // This module is only enabled when compiling the RTS for IC or WASI.
 
 use motoko_rts_macros::ic_mem_fn;
+
 #[non_incremental_gc]
 pub mod linear_memory;
 #[incremental_gc]
@@ -9,6 +10,7 @@ pub mod partitioned_memory;
 use super::Memory;
 use crate::constants::WASM_PAGE_SIZE;
 use crate::rts_trap_with;
+
 use crate::types::*;
 //use crate::print::*;
 
@@ -35,6 +37,10 @@ pub(crate) static mut REGION_1: Value = Value::from_scalar(0);
 
 /// TEMP -- for logging during testing.
 pub(crate) static mut NEXT_REGION_LOG_ID: u16 = 0;
+
+use crate::types::{Bytes, Value};
+use core::arch::wasm32;
+use motoko_rts_macros::*;
 
 // Provided by generated code
 extern "C" {
@@ -63,33 +69,6 @@ unsafe extern "C" fn get_max_live_size() -> Bytes<u32> {
 /// Provides a `Memory` implementation, to be used in functions compiled for IC or WASI. The
 /// `Memory` implementation allocates in Wasm heap with Wasm `memory.grow` instruction.
 pub struct IcMemory;
-
-/* 20230620 TBD
-
-impl Memory for IcMemory {
-    #[inline]
-    unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value {
-        let bytes = n.to_bytes();
-        let delta = u64::from(bytes.as_u32());
-
-        // Update heap pointer
-        let old_hp = u64::from(HP);
-        let new_hp = old_hp + delta;
-
-        // Grow memory if needed
-        if new_hp > ((wasm32::memory_size(0) as u64) << 16) {
-            grow_memory(new_hp)
-        }
-
-        HP = new_hp as u32;
-
-        let v = Value::from_ptr(old_hp as usize);
-        //println!(80, "alloc_words(bytes={:?}) ~~> {:?}", bytes, v);
-        v
-    }
-}
-
-*/
 
 /// Page allocation. Ensures that the memory up to, but excluding, the given pointer is allocated,
 /// with the slight exception of not allocating the extra page for address 0xFFFF_0000.
