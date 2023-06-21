@@ -1,3 +1,4 @@
+//MOC-NO-FORCE-GC
 import Prim "mo:⛔";
 // test throw on send failure
 actor self {

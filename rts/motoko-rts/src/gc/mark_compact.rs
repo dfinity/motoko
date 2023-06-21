@@ -16,6 +16,12 @@ use crate::visitor::{pointer_to_dynamic_heap, visit_pointer_fields};
 
 use motoko_rts_macros::ic_mem_fn;
 
+#[no_mangle]
+#[cfg(feature = "ic")]
+pub unsafe extern "C" fn initialize_compacting_gc() {
+    crate::memory::ic::linear_memory::initialize();
+}
+
 #[ic_mem_fn(ic_only)]
 unsafe fn schedule_compacting_gc<M: Memory>(mem: &mut M) {
     // 512 MiB slack for mark stack + allocation area for the next message
@@ -34,25 +40,25 @@ unsafe fn schedule_compacting_gc<M: Memory>(mem: &mut M) {
 
 #[ic_mem_fn(ic_only)]
 unsafe fn compacting_gc<M: Memory>(mem: &mut M) {
-    use crate::memory::ic;
+    use crate::memory::ic::{self, linear_memory};
 
     compacting_gc_internal(
         mem,
         ic::get_aligned_heap_base(),
         // get_hp
-        || ic::HP as usize,
+        || linear_memory::HP as usize,
         // set_hp
-        |hp| ic::HP = hp,
+        |hp| linear_memory::HP = hp,
         ic::get_static_roots(),
         crate::continuation_table::continuation_table_loc(),
         crate::region0::region0_get_ptr_loc(),
         // note_live_size
         |live_size| ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, live_size),
         // note_reclaimed
-        |reclaimed| ic::RECLAIMED += Bytes(u64::from(reclaimed.as_u32())),
+        |reclaimed| linear_memory::RECLAIMED += Bytes(u64::from(reclaimed.as_u32())),
     );
 
-    ic::LAST_HP = ic::HP;
+    linear_memory::LAST_HP = linear_memory::HP;
 }
 
 pub unsafe fn compacting_gc_internal<
@@ -229,9 +235,14 @@ unsafe fn update_refs<SetHp: Fn(u32)>(set_hp: SetHp, heap_base: u32) {
         unthread(p, p_new);
 
         // Move the object
-        let p_size_words = object_size(p as usize);
+        let p_size_words = block_size(p as usize);
         if p_new as usize != p as usize {
             memcpy_words(p_new as usize, p as usize, p_size_words);
+
+            debug_assert!(p_size_words.as_usize() > size_of::<Obj>().as_usize());
+            // Update forwarding pointer
+            let new_obj = p_new as *mut Obj;
+            debug_assert!(new_obj.tag() >= TAG_OBJECT && new_obj.tag() <= TAG_NULL);
         }
 
         free += p_size_words.to_bytes().as_u32();

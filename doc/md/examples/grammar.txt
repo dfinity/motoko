@@ -191,7 +191,7 @@
     <exp_bin> <binassign> <exp>
     'return' <exp>?
     'async' <exp_nest>
-    'async*' <block>
+    'async*' <exp_nest>
     'await' <exp_nest>
     'await*' <exp_nest>
     'assert' <exp_nest>
