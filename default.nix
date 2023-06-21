@@ -808,8 +808,7 @@ rec {
     # build dependencies of the two to provide a build environment that offers
     # both, while not actually building `moc`
     #
-    dontDetectOcamlConflicts = true;
-    propagatedBuildInputs =
+    propagatedBuildInputsX =
       let dont_build =
         [ moc mo-ld didc deser candid-tests ] ++
         builtins.attrValues coverage_bins;
