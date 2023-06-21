@@ -104,7 +104,7 @@ Blob.hash(blob) // => 1_818_567_776
 
 ## Function `compare`
 ``` motoko no-repl
-func compare(blob1 : Blob, blob2 : Blob) : {#less; #equal; #greater}
+func compare(b1 : Blob, b2 : Blob) : {#less; #equal; #greater}
 ```
 
 General purpose comparison function for `Blob` by comparing the value of

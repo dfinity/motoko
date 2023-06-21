@@ -4,6 +4,12 @@
 
   * Allow canister imports of Candid service constructors, ignoring the service arguments to import the instantiated service instead (with a warning). Improves DX using dfx. (#4041)
 
+## 0.9.3 (2023-06-19)
+
+* motoko (`moc`)
+
+  * Added fields `sender_canister_version` for actor class version tracking (#4036).
+
 ## 0.9.2 (2023-06-10)
 
 * motoko (`moc`)
