@@ -816,9 +816,9 @@ rec {
       nixpkgs.lib.lists.unique (builtins.filter (i: !(builtins.elem i dont_build)) (
         commonBuildInputsX nixpkgs ++
         rts.buildInputs ++
-        js.moc.buildInputs ++
-        docs.buildInputs ++
-        check-rts-formatting.buildInputs ++
+        # js.moc.buildInputs ++
+        # docs.buildInputs ++
+        # check-rts-formatting.buildInputs ++
         builtins.concatMap (d: d.buildInputs or []) (builtins.attrValues tests) ++
         [ nixpkgs.ncurses
           # nixpkgs.ocamlPackages.merlin
