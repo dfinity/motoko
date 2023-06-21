@@ -11,9 +11,6 @@ use super::Memory;
 use crate::constants::WASM_PAGE_SIZE;
 use crate::rts_trap_with;
 
-use crate::types::*;
-//use crate::print::*;
-
 use crate::types::{Bytes, Value};
 use core::arch::wasm32;
 use motoko_rts_macros::*;
@@ -37,10 +34,6 @@ pub(crate) static mut REGION_1: Value = Value::from_scalar(0);
 
 /// TEMP -- for logging during testing.
 pub(crate) static mut NEXT_REGION_LOG_ID: u16 = 0;
-
-use crate::types::{Bytes, Value};
-use core::arch::wasm32;
-use motoko_rts_macros::*;
 
 // Provided by generated code
 extern "C" {

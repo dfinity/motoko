@@ -24,6 +24,8 @@ pub unsafe fn region0_get<M: Memory>(_mem: &mut M) -> Value {
     v
 }
 
+// Expose Region0 object to GC algorithms.
+#[allow(dead_code)]
 #[cfg(feature = "ic")]
 pub(crate) unsafe fn region0_get_ptr_loc() -> *mut Value {
     &mut crate::memory::ic::REGION_0
