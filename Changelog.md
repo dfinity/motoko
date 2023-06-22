@@ -1,5 +1,9 @@
 # Motoko compiler changelog
 
+* motoko (`moc`)
+
+  * Allow optional terminal semicolons in Candid imports (#4042).
+
 ## 0.9.3 (2023-06-19)
 
 * motoko (`moc`)
