@@ -513,7 +513,7 @@ rec {
       perf       = perf_subdir "perf"       [ moc nixpkgs.drun ];
       bench      = perf_subdir "bench"      [ moc nixpkgs.drun ];
       viper      = test_subdir "viper"      [ moc nixpkgs.which nixpkgs.openjdk nixpkgs.z3 ];
-      inherit qc lsp unit candid profiling-graphs;
+      inherit qc lsp unit candid;
     }) // { recurseForDerivations = true; };
 
   samples = stdenv.mkDerivation {
@@ -687,7 +687,6 @@ rec {
     mkdir -p $out
     ln -s ${base-doc} $out/base-doc
     ln -s ${docs} $out/docs
-    ln -s ${tests.profiling-graphs} $out/flamegraphs
     cd $out;
     # generate a simple index.html, listing the entry points
     ( echo docs/overview-slides.html;
