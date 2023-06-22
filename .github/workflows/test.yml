@@ -40,6 +40,8 @@ jobs:
         nix-build --max-jobs 1 -A drun
         nix-store --gc --print-roots | grep /motoko/
 
+    - run: nix-store -q --tree $(nix-instantiate -A shell)
+
     - name: "nix-build"
       run: nix-build-uncached --max-jobs 4 -A all-systems-go -build-flags -L
 
