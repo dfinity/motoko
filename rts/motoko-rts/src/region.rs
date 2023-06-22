@@ -429,24 +429,31 @@ pub unsafe fn region_recover<M: Memory>(mem: &mut M, rid: &RegionId) -> Value {
 //     After this code runs, region_init() can be used in subsequent upgrades
 //     to re-initialize the region system.
 #[ic_mem_fn]
-pub(crate) unsafe fn region_migration<M: Memory>(_mem: &mut M, prior_version: i32, curr_version: i32) {
+pub(crate) unsafe fn region_migration<M: Memory>(
+    _mem: &mut M,
+    prior_version: i32,
+    curr_version: i32,
+) {
     if prior_version == 1 && curr_version == 2 {
-	println!(80, "region migration: {} ~> {}", prior_version, curr_version);
-	todo!()
+        println!(
+            80,
+            "region migration: {} ~> {}", prior_version, curr_version
+        );
+        todo!()
 
-	/*
-	// allocate a block-sized blob on the heap (8MB).
-	// copy the first block of data into that blob, using a stable memory read of a blob.
-	// copy the first block of data from temp blob into new "final block" (logically still first) for region 0.
-	// initialize the meta data for the region system in vacated first block.
-	    use crate::ic0_stable::nicer::read;
+        /*
+        // allocate a block-sized blob on the heap (8MB).
+        // copy the first block of data into that blob, using a stable memory read of a blob.
+        // copy the first block of data from temp blob into new "final block" (logically still first) for region 0.
+        // initialize the meta data for the region system in vacated first block.
+            use crate::ic0_stable::nicer::read;
 
-	    let len = meta_data::size::BLOCK_IN_BYTES;
-	    let blob_val = crate::memory::alloc_blob(mem, crate::types::Bytes(len));
-	    let blob = blob_val.as_blob_mut();
-	    let bytes: &mut [u8] = core::slice::from_raw_parts_mut(blob.payload_addr(), len as usize);
-	    read(0, bytes);
-	 */
+            let len = meta_data::size::BLOCK_IN_BYTES;
+            let blob_val = crate::memory::alloc_blob(mem, crate::types::Bytes(len));
+            let blob = blob_val.as_blob_mut();
+            let bytes: &mut [u8] = core::slice::from_raw_parts_mut(blob.payload_addr(), len as usize);
+            read(0, bytes);
+         */
     }
 }
 
