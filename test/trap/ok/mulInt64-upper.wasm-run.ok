@@ -3,9 +3,8 @@ Error: failed to run main module `_out/mulInt64-upper.wasm`
 
 Caused by:
     0: failed to invoke command default
-    1: wasm trap: unreachable
-       wasm backtrace:
+    1: error while executing at wasm backtrace:
          0: mul<Int64>
          1: init
          2: _start
-       
+    2: wasm trap: unreachable
