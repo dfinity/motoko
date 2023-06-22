@@ -2,6 +2,7 @@
 
 import P "mo:⛔";
 import M "../stable-mem/StableMemory";
+import Region "../stable-region/Region";
 
 actor {
 
@@ -24,5 +25,9 @@ actor {
         i := i + 1;
     };
 
-    P.debugPrint ("actor1: checked.");
+    P.debugPrint ("actor1: checked region0.");
+
+    stable var r1 = Region.new();
+
+    P.debugPrint ("actor1: allocated another region.");
 }

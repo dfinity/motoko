@@ -10116,7 +10116,10 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
   | OtherPrim "regionNew", [] ->
     SR.Vanilla,
-    Region.new_ env ^^ Region.sanity_check "region_new" env
+    if !Flags.use_stable_regions then
+      Region.new_ env ^^ Region.sanity_check "region_new" env
+    else
+      E.trap_with env (Printf.sprintf "stable regions not enabled.")
 
   | OtherPrim "regionId", [e0] ->
     SR.UnboxedWord32,
