@@ -83,11 +83,9 @@ let commonBuildInputs = pkgs:
     pkgs.ocamlPackages.ppxlib
     pkgs.ocamlPackages.ppx_blob
     pkgs.ocamlPackages.ppx_inline_test
-    pkgs.ocamlPackages.ocaml-migrate-parsetree
-    pkgs.ocamlPackages.ppx_tools_versioned
     pkgs.ocamlPackages.bisect_ppx
-    pkgs.ocamlPackages.obelisk
     pkgs.ocamlPackages.uucp
+    pkgs.obelisk
     pkgs.perl
     pkgs.removeReferencesTo
   ]; in
@@ -331,9 +329,6 @@ rec {
     testDerivation = args:
       stdenv.mkDerivation (testDerivationArgs // args);
 
-    ocamlTestDerivation = args:
-      staticpkgs.stdenv.mkDerivation (testDerivationArgs // args);
-
     # we test each subdirectory of test/ in its own derivation with
     # cleaner dependencies, for more parallelism, more caching
     # and better feedback about what aspect broke
@@ -428,9 +423,9 @@ rec {
       '';
     };
 
-    unit = ocamlTestDerivation {
+    unit = testDerivation {
       src = subpath ./src;
-      buildInputs = commonBuildInputs staticpkgs;
+      buildInputs = commonBuildInputs nixpkgs;
       checkPhase = ''
         patchShebangs .
         make DUNE_OPTS="--display=short" unit-tests
@@ -570,7 +565,7 @@ rec {
       recurseForDerivations = true;
     };
 
-  inherit (nixpkgs) wabt wasmtime wasm;
+  inherit (nixpkgs) drun wabt wasmtime wasm;
 
   filecheck = nixpkgs.runCommandNoCC "FileCheck" {} ''
     mkdir -p $out/bin
@@ -715,7 +710,7 @@ rec {
       name = "check-grammar";
       src = subpath ./src/gen-grammar;
       phases = "unpackPhase buildPhase installPhase";
-      buildInputs = [ nixpkgs.diffutils nixpkgs.bash nixpkgs.ocamlPackages.obelisk ];
+      buildInputs = [ nixpkgs.diffutils nixpkgs.bash nixpkgs.obelisk ];
       buildPhase = ''
         patchShebangs .
         ./gen-grammar.sh ${./src/mo_frontend/parser.mly} > expected
