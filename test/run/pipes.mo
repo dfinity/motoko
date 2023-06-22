@@ -108,6 +108,8 @@ let _ = do ? {
 
 /* non-linear, free-form piping */
 
-let 5 = 2 |> _ * _ |> _ + 1;
+let five = 2 |> _ * _ |> _ + 1;
+
+assert (five == 5);
 
 
