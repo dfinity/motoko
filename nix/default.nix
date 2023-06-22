@@ -66,8 +66,10 @@ let
                 meta = builtins.removeAttrs js_of_ocaml-compiler.meta [ "mainProgram" ];
               };
 
-              logs = super.ocamlPackages.logs.overrideAttrs (_: rec {
-                jsooSupport = false;
+              logs = super.ocamlPackages.logs.override { jsooSupport = false; };
+
+              utop = super.ocamlPackages.utop.overrideAttrs (_: rec {
+                propagatedBuildInputs = with super.ocamlPackages; [ findlib lambda-term zed logs ];
               });
 
               # downgrade wasm until we have support for 2.0.0
