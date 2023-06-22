@@ -73,8 +73,7 @@ let
               js_of_ocaml = with super.ocamlPackages; buildDunePackage {
                 pname = "js_of_ocaml";
 
-                inherit (js_of_ocaml-compiler) version src;
-                duneVersion = "3";
+                inherit (js_of_ocaml-compiler) version src duneVersion;
 
                 buildInputs = [ ppxlib ];
                 propagatedBuildInputs = [ js_of_ocaml-compiler uchar ];
