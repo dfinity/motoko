@@ -81,19 +81,6 @@ let
                 meta = builtins.removeAttrs js_of_ocaml-compiler.meta [ "mainProgram" ];
               };
 
-
-              js_of_ocaml-ppx = with super.ocamlPackages; buildDunePackage {
-                pname = "js_of_ocaml-ppx";
-
-                inherit (js_of_ocaml-compiler) version src;
-                duneVersion = "3";
-
-                buildInputs = [ js_of_ocaml ];
-                propagatedBuildInputs = [ ppxlib ];
-
-                meta = builtins.removeAttrs js_of_ocaml-compiler.meta [ "mainProgram" ];
-              };
-
               # downgrade wasm until we have support for 2.0.0
               # (https://github.com/dfinity/motoko/pull/3364)
               wasm = super.ocamlPackages.wasm.overrideAttrs (_: rec {
