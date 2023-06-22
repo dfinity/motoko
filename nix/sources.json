@@ -40,10 +40,10 @@
         "homepage": "",
         "owner": "dfinity",
         "repo": "ic-hs",
-        "rev": "4628771102861bbb3ccee8e83e5565d177c85df9",
-        "sha256": "07m5sc30clw3sfja2xk268y6iyg7b8m9il68sdf47447cvnmqra2",
+        "rev": "52369fa1b03dcdf760c65951643a431efaca0360",
+        "sha256": "19bz04i9g92s3zqq9qwqagcrkm9a4w8hvndzkfafkl2c33j0i4vi",
         "type": "tarball",
-        "url": "https://github.com/dfinity/ic-hs/archive/4628771102861bbb3ccee8e83e5565d177c85df9.tar.gz",
+        "url": "https://github.com/dfinity/ic-hs/archive/52369fa1b03dcdf760c65951643a431efaca0360.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "libtommath": {
@@ -97,16 +97,16 @@
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs": {
-        "branch": "release-22.11",
+        "branch": "release-23.05",
         "builtin": true,
         "description": "Nixpkgs/NixOS branches that track the Nixpkgs/NixOS channels",
         "homepage": null,
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "eaf03591711b46d21abc7082a8ebee4681f9dbeb",
-        "sha256": "1shmhx8562gf2fnm74gyax1x24xdi8mlzhqnzgmglsd1c7jijgi1",
+        "rev": "652af6eb88e1bc633bc6dc44827519f6e7284dbb",
+        "sha256": "0hi1a2yjkb2ljbq3jb35rqh5h3zdjmdx2vdg91g8fa5hxf7wzz70",
         "type": "tarball",
-        "url": "https://github.com/NixOS/nixpkgs/archive/eaf03591711b46d21abc7082a8ebee4681f9dbeb.tar.gz",
+        "url": "https://github.com/NixOS/nixpkgs/archive/652af6eb88e1bc633bc6dc44827519f6e7284dbb.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs-mozilla": {
