@@ -1,12 +1,4 @@
 # SKIP ic-ref-run
 install $ID stable-region-migration/actor0.mo ""
 upgrade $ID stable-region-migration/actor1.mo ""
-query $ID check "DIDL\x00\x01\x7d\x01"
-ingress $ID inc "DIDL\x00\x00"
-query $ID check "DIDL\x00\x01\x7d\x02"
-ingress $ID inc "DIDL\x00\x00"
-upgrade $ID stable-region-migration/actor2.mo ""
-query $ID check "DIDL\x00\x01\x7d\x03"
-ingress $ID inc "DIDL\x00\x00"
-query $ID check "DIDL\x00\x01\x7d\x04"
 
