@@ -329,9 +329,6 @@ rec {
     testDerivation = args:
       stdenv.mkDerivation (testDerivationArgs // args);
 
-    ocamlTestDerivation = args:
-      staticpkgs.stdenv.mkDerivation (testDerivationArgs // args);
-
     # we test each subdirectory of test/ in its own derivation with
     # cleaner dependencies, for more parallelism, more caching
     # and better feedback about what aspect broke
@@ -426,9 +423,9 @@ rec {
       '';
     };
 
-    unit = ocamlTestDerivation {
+    unit = testDerivation {
       src = subpath ./src;
-      buildInputs = commonBuildInputs staticpkgs;
+      buildInputs = commonBuildInputs nixpkgs;
       checkPhase = ''
         patchShebangs .
         make DUNE_OPTS="--display=short" unit-tests
@@ -513,7 +510,7 @@ rec {
       perf       = perf_subdir "perf"       [ moc nixpkgs.drun ];
       bench      = perf_subdir "bench"      [ moc nixpkgs.drun ];
       viper      = test_subdir "viper"      [ moc nixpkgs.which nixpkgs.openjdk nixpkgs.z3 ];
-      inherit qc lsp candid profiling-graphs coverage;
+      inherit qc lsp unit candid profiling-graphs coverage;
     }) // { recurseForDerivations = true; };
 
   samples = stdenv.mkDerivation {
