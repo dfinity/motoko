@@ -2,12 +2,9 @@ import Prim "mo:⛔";
 
 module {
 
-  public let nextId = Prim.regionNextId; // TEMP (for testing).
-
-  public let metaLogLines = Prim.regionMetaLogLines; // TEMP (for testing).
+  public let region0 = Prim.stableMemoryRegion;
 
   public let new = Prim.regionNew;
-
   public let id = Prim.regionId;
 
   public let size = Prim.regionSize;

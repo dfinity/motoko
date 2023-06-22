@@ -1017,8 +1017,6 @@ module RTS = struct
     E.add_func_import env "rts" "region_store_word64" [I32Type; I64Type; I64Type] [];
     E.add_func_import env "rts" "region_load_float64" [I32Type; I64Type] [F64Type];
     E.add_func_import env "rts" "region_store_float64" [I32Type; I64Type; F64Type] [];
-    E.add_func_import env "rts" "region_next_id" [] [I32Type];
-    E.add_func_import env "rts" "region_meta_loglines" [] [];
     E.add_func_import env "rts" "region0_size" [] [I64Type];
     E.add_func_import env "rts" "region0_get" [] [I32Type];
     E.add_func_import env "rts" "region0_grow" [I64Type; I64Type] [I64Type];
@@ -3928,10 +3926,6 @@ module Region = struct
 
   let id env =
     E.call_import env "rts" "region_id" (* TEMP (for testing) *)
-  let next_id env =
-    E.call_import env "rts" "region_next_id" (* TEMP (for testing) *)
-  let meta_loglines env =
-    E.call_import env "rts" "region_meta_loglines" (* TEMP (for testing) *)
   let new_ env =
     E.call_import env "rts" "region_new"
   let size env =
@@ -7538,18 +7532,19 @@ module Stabilization = struct
               E.then_trap_with env (Printf.sprintf
                 "higher stable memory version (expected %s)"
                 (Int32.to_string StableMem.version)) ^^
-
+(*
               (* check for version 1 into version 2 migration. *)
               if !Flags.use_stable_regions then
                 get_version ^^
                 compile_unboxed_const StableMem.version ^^
                 G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
-                (E.call_import env "rts" "region_migration") ^^
-                G.nop
+                G.if0
+                  (E.call_import env "rts" "region_migration")
+                  G.nop
               else
                 G.nop
               ^^
-
+*)
               (* restore StableMem bytes [0..4) *)
               compile_const_64 0L ^^
               get_M ^^
@@ -10116,23 +10111,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
   | OtherPrim "regionNew", [] ->
     SR.Vanilla,
-    if !Flags.use_stable_regions then
-      Region.new_ env ^^ Region.sanity_check "region_new" env
-    else
-      E.trap_with env (Printf.sprintf "stable regions not enabled.")
-
-  | OtherPrim "regionId", [e0] ->
-    SR.UnboxedWord32,
-    compile_exp_as env ae SR.Vanilla e0 ^^
-    Region.id env
-
-  | OtherPrim "regionNextId", [] -> (* TEMP *)
-    SR.Vanilla,
-    Region.next_id env
-
-  | OtherPrim "regionMetaLogLines", [] -> (* TEMP *)
-    SR.unit,
-    Region.meta_loglines env
+    Region.new_ env ^^ Region.sanity_check "region_new" env
 
   | OtherPrim ("regionGrow"), [e0; e1] ->
     SR.UnboxedWord64,
@@ -10337,6 +10316,11 @@ and compile_prim_invocation (env : E.t) ae p es at =
        Region0.get env ^^ Region.sanity_check "stableMemoryRegion" env
      else
        E.trap_with env (Printf.sprintf "stable regions not enabled.")
+
+  | OtherPrim "regionId", [e0] ->
+     SR.UnboxedWord32,
+     compile_exp_as env ae SR.Vanilla e0 ^^
+     Region.id env
 
   | OtherPrim ("stableMemoryLoadNat32" | "stableMemoryLoadInt32"), [e] ->
     SR.UnboxedWord32,

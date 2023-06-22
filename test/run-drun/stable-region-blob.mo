@@ -6,17 +6,10 @@ actor {
 
   P.debugPrint("Begin");
 
-  Region.metaLogLines();
-
-  let nextId = Region.nextId();
-  // assert nextId == 2;
-
   let r2 = Region.new();
   let r2_id = Region.id r2;
 
   P.debugPrint("Created region " # (debug_show r2_id));
-
-  Region.metaLogLines();
 
   // assert r2_id == 2;
   assert (Region.size r2) == 0;
@@ -25,21 +18,17 @@ actor {
 
   P.debugPrint("Created regions " # (debug_show (Region.id r3)) # " and " # (debug_show (Region.id r4)));
 
-  Region.metaLogLines();
-
   assert Region.grow(r2, 137 * 17) == 0;
   assert Region.grow(r3, 137) == 0;
   assert Region.grow(r4, 17) == 0;
 
   P.debugPrint("Grew all regions.");
-  Region.metaLogLines();
 
   assert Region.grow(r2, 137 * 17) == 137 * 17;
   assert Region.grow(r3, 137) == 137;
   assert Region.grow(r4, 17) == 17;
 
   P.debugPrint("Grew all regions, again.");
-  Region.metaLogLines();
 
   P.debugPrint("Storing data into region 2.");
   let addr : Nat64 = 137 << 16 + 137;

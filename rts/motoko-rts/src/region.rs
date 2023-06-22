@@ -1,4 +1,4 @@
-use crate::memory::{alloc_blob, ic::NEXT_REGION_LOG_ID, Memory};
+use crate::memory::{alloc_blob, Memory};
 use crate::rts_trap_with;
 use crate::types::{size_of, Blob, Bytes, Region, Value, TAG_REGION};
 
@@ -301,8 +301,9 @@ mod meta_data {
 }
 
 #[ic_mem_fn]
-pub unsafe fn region_next_id<M: Memory>(_mem: &mut M) -> Value {
-    Value::from_scalar(meta_data::total_allocated_regions::get() as u32)
+pub unsafe fn region_id<M: Memory>(_mem: &mut M, r: Value) -> u32 {
+    let r = r.as_region();
+    (*r).id.into()
 }
 
 // Region manager's total memory size in stable memory, in _pages_.
@@ -428,7 +429,7 @@ pub unsafe fn region_recover<M: Memory>(mem: &mut M, rid: &RegionId) -> Value {
 //     After this code runs, region_init() can be used in subsequent upgrades
 //     to re-initialize the region system.
 #[ic_mem_fn]
-pub(crate) unsafe fn region_migration<M: Memory>(mem: &mut M) {
+pub(crate) unsafe fn region_migration<M: Memory>(_mem: &mut M) {
     println!(80, "region migration");
 
     /*
@@ -491,34 +492,6 @@ pub(crate) unsafe fn region_init_<M: Memory>(mem: &mut M) {
         // future use by future Motoko compiler-RTS features.
         region_reserve_id_span(mem, None, RegionId(15));
     }
-}
-
-// Utility for logging global region manager state (in stable memory).
-// For sanity-checking during testing and for future trouble-shooting.
-// (Perhaps we can keep this here, and just not commit to it when exposing final API?)
-#[ic_mem_fn]
-pub unsafe fn region_meta_loglines<M: Memory>(_mem: &mut M) {
-    let log_id = NEXT_REGION_LOG_ID;
-    NEXT_REGION_LOG_ID += 1;
-    println!(50, "# regionMetaLogLines {{");
-    println!(50, " log_id = {};", log_id);
-    println!(
-        50,
-        " total_allocated_blocks = {};",
-        meta_data::total_allocated_blocks::get()
-    );
-    println!(
-        50,
-        " total_allocated_regions = {};",
-        meta_data::total_allocated_regions::get()
-    );
-    println!(50, "}}");
-}
-
-#[ic_mem_fn]
-pub unsafe fn region_id<M: Memory>(_mem: &mut M, r: Value) -> u32 {
-    let r = r.as_region();
-    (*r).id.into()
 }
 
 #[ic_mem_fn]

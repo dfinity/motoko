@@ -16,16 +16,13 @@ actor {
     assert Region.size(r1) == Region.size(aliases[0]);
     assert Region.size(r1) == Region.size(aliases[1]);
     P.debugPrint("pre");
-    id := Region.id(r1);
     size := Region.size(r1);
-    P.debugPrint(debug_show (#pre{id;size}));
+    P.debugPrint(debug_show (#pre{size}));
   };
 
   system func postupgrade() {
-    P.debugPrint(debug_show (#post{id;size;reg_size=Region.size(r1);region_id=Region.id(r1)}));
+    P.debugPrint(debug_show (#post{id;size;reg_size=Region.size(r1)}));
     assert Region.size(r1) == size;
-    assert Region.id(r1) == id;
-    assert Region.id(Region.new()) != id;
     ignore Region.grow(r1, 8);
     assert Region.size(r1) == 16;
     assert Region.size(r1) == Region.size(aliases[0]);

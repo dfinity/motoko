@@ -32,9 +32,6 @@ pub(crate) static mut REGION_0: Value = Value::from_scalar(0);
 // pub(crate) static mut REGION_1: Value = Value::from_ptr(0);
 pub(crate) static mut REGION_1: Value = Value::from_scalar(0);
 
-/// TEMP -- for logging during testing.
-pub(crate) static mut NEXT_REGION_LOG_ID: u16 = 0;
-
 // Provided by generated code
 extern "C" {
     fn get_heap_base() -> u32;

@@ -1,4 +1,4 @@
-for i in stable-region-*.mo region0-stable-mem-*.mo stable-mem-*.mo; do
+for i in stable-regions-*.mo stable-region-*.mo region0-stable-mem-*.mo stable-mem-*.mo; do
     echo $i;
     if ../run.sh -d $i ; then
 	echo `date` $i >> success.log ;

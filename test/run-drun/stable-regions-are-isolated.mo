@@ -5,7 +5,7 @@ import Region "stable-region/Region";
 import Region0 "stable-mem/StableMemory";
 
 actor {
-  var r0 = Region0.region();
+  var r0 = Region.region0();
   var r1 = Region.new();
   var r2 = Region.new();
 

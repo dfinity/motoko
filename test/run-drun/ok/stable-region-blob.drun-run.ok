@@ -1,34 +1,9 @@
 ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
 debug.print: Begin
-debug.print: # regionMetaLogLines {
-debug.print:  log_id = 0;
-debug.print:  total_allocated_blocks = 0;
-debug.print:  total_allocated_regions = 16;
-debug.print: }
 debug.print: Created region 16
-debug.print: # regionMetaLogLines {
-debug.print:  log_id = 1;
-debug.print:  total_allocated_blocks = 0;
-debug.print:  total_allocated_regions = 17;
-debug.print: }
 debug.print: Created regions 17 and 18
-debug.print: # regionMetaLogLines {
-debug.print:  log_id = 2;
-debug.print:  total_allocated_blocks = 0;
-debug.print:  total_allocated_regions = 19;
-debug.print: }
 debug.print: Grew all regions.
-debug.print: # regionMetaLogLines {
-debug.print:  log_id = 3;
-debug.print:  total_allocated_blocks = 22;
-debug.print:  total_allocated_regions = 19;
-debug.print: }
 debug.print: Grew all regions, again.
-debug.print: # regionMetaLogLines {
-debug.print:  log_id = 4;
-debug.print:  total_allocated_blocks = 41;
-debug.print:  total_allocated_regions = 19;
-debug.print: }
 debug.print: Storing data into region 2.
 debug.print: Loading data from region 2.
 debug.print: 137

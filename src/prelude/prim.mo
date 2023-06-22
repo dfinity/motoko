@@ -377,19 +377,17 @@ func stableMemoryStoreBlob(offset : Nat64, val :  Blob) : () =
 func stableVarQuery() : shared query () -> async {size : Nat64} =
   (prim "stableVarQuery" : () -> (shared query () -> async {size : Nat64})) () ;
 
-// multiple stable memory regions
+// stable regions
 
-func regionNextId() : Nat32 =
-  (prim "regionNextId" : () -> Nat32) (); // TEMP (for testing).
-
-func regionMetaLogLines() : () =
-  (prim "regionMetaLogLines" : () -> ()) (); // TEMP (for testing).
-
-func regionId(r : Region) : Nat32 =
-  (prim "regionId" : Region -> Nat32) r; // TEMP (for testing).
+// Returns the region assigned to the original stable memory interface.
+func stableMemoryRegion() : Region =
+  (prim "stableMemoryRegion" : () -> Region) ();
 
 func regionNew() : Region =
   (prim "regionNew" : () -> Region) ();
+
+func regionId(r : Region) : Nat32 = // Only for internal use (compiler tests.)
+  (prim "regionId" : Region -> Nat32) r;
 
 func regionSize(r : Region) : Nat64 =
   (prim "regionSize" : Region -> Nat64) r;
