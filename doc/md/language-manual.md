@@ -215,7 +215,6 @@ Some types have several categories. For example, type `Int` is both arithmetic (
 | `-`      | A        | numeric negation |
 | `+`      | A        | numeric identity |
 | `^`      | B        | bitwise negation |
-| `!`      |          | null break       |
 
 ### Relational operators
 
@@ -464,6 +463,8 @@ The syntax of an *expression* is as follows:
   <unop> <exp>                                   unary operator
   <exp> <binop> <exp>                            binary operator
   <exp> <relop> <exp>                            binary relational operator
+  _                                              placeholder expression
+  <exp> |> <exp>                                 pipe operator
   ( <exp>,* )                                    tuple
   <exp> . <nat>                                  tuple projection
   ? <exp>                                        option injection
@@ -1753,6 +1754,53 @@ Otherwise, `exp2` is evaluated to a result `r2`. If `r2` is `trap`, the expressi
 Otherwise, `r1` and `r2` are values `v1` and `v2` and the expression returns the Boolean result of `v1 <relop> v2`.
 
 For equality and inequality, the meaning of `v1 <relop> v2` depends on the compile-time, static choice of `T` (not the run-time types of `v1` and `v2`, which, due to subtyping, may be more precise).
+
+### Pipe operators and placeholder expressions
+
+The pipe expression `<exp1> |> <exp2>` is syntactic sugar for a `let` binding to a reserved
+placeholder identifier, `p`, referenced by the placeholder expression `_`:
+
+``` bnf
+{ let p = <exp1>; <exp2> }
+```
+
+The placeholder identifier, `p`, is a fixed, reserved identifier that cannot be bound by any other expression or pattern other than a pipe operation, and can only be referenced using the placeholder expression `_`.
+
+`|>` has lowest precedence amongst all operators except `:` and associates to the left.
+
+Judicious use of the pipe operator allows one to express a more complicated nested expression by piping arguments of that expression into their nested positions within that expression.
+
+For example:
+
+``` motoko
+Iter.range(0, 10) |>
+  Iter.toList _ |>
+    List.filter<Nat>(_, func n { n % 3 == 0 }) |>
+      { multiples = _};
+```
+
+may, according to taste, be a more readable rendition of:
+
+``` motoko
+{ multiples =
+   List.filter<Nat>(
+     Iter.toList(Iter.range(0, 10)),
+     func n { n % 3 == 0 }) };
+```
+
+Above, each occurence of `_` refers to the value of the left-hand-size of the nearest enclosing
+pipe operation, after associating nested pipes to the left.
+
+Note that evaluation order of the two examples is different, but consistently left-to-right.
+
+:::note
+
+Although syntactically identical, the placeholder expression is
+semantically distinct from, and should not be confused with, the wildcard pattern `_`.
+Occurrences of the forms can be distinguished by their syntactic role as pattern or
+expression.
+
+:::
 
 ### Tuples
 
