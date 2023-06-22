@@ -51,29 +51,20 @@ let
             ocamlPackages = super.ocamlPackages // rec {
 
               # upgrade `js_of_ocaml(-compiler)` until we have figured out the bug related to 4.1.0 (which is in nixpkgs)
-              js_of_ocaml-compiler = with super.ocamlPackages; buildDunePackage rec {
-                pname = "js_of_ocaml-compiler";
+              js_of_ocaml-compiler = super.ocamlPackages.js_of_ocaml-compiler.overrideAttrs (_: rec {
                 version = "5.0.1";
-                duneVersion = "3";
-
                 src = self.fetchurl {
                   url = "https://github.com/ocsigen/js_of_ocaml/releases/download/${version}/js_of_ocaml-${version}.tbz";
                   sha256 = "sha256-eiEPHKFqdCOBlH3GfD2Nn0yU+/IHOHRLE1OJeYW2EGk=";
                 };
-
-                nativeBuildInputs = [ menhir ];
-                buildInputs = [ cmdliner ppxlib ];
-
-                propagatedBuildInputs = [ menhirLib yojson findlib ];
-
-                inherit (super.ocamlPackages.js_of_ocaml-compiler) meta configurePlatforms;
-              };
+              });
 
               # inline recipe from https://github.com/NixOS/nixpkgs/blob/master/pkgs/development/tools/ocaml/js_of_ocaml/default.nix
               js_of_ocaml = with super.ocamlPackages; buildDunePackage {
                 pname = "js_of_ocaml";
 
-                inherit (js_of_ocaml-compiler) version src duneVersion;
+                inherit (js_of_ocaml-compiler) version src;
+                duneVersion = "3";
 
                 buildInputs = [ ppxlib ];
                 propagatedBuildInputs = [ js_of_ocaml-compiler uchar ];
