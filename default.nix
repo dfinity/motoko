@@ -793,7 +793,7 @@ rec {
         js.moc.buildInputs ++
         docs.buildInputs ++
         check-rts-formatting.buildInputs ++
-        # builtins.concatMap (d: d.buildInputs or []) (builtins.attrValues tests) ++
+        builtins.concatMap (d: d.buildInputs or []) (builtins.attrValues tests) ++
         [ nixpkgs.ncurses
           nixpkgs.ocamlPackages.merlin
           nixpkgs.ocamlformat
