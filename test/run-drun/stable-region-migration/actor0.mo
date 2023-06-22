@@ -1,7 +1,7 @@
 import P "mo:⛔";
 import M "../stable-mem/StableMemory";
 
-actor FillUp {
+actor {
 
     // measure out three blocks' worth of bytes.
     let pageInBytes = 1 << 16 : Nat64;
