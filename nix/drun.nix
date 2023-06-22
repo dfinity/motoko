@@ -15,13 +15,9 @@ pkgs:
       # installed. You will normally not be bothered to perform
       # the command therein manually.
 
-      cargoSha256 = "sha256-Cji4LXCWj7B9wwYiZTgVhQoDXJS5Gu2JNRo7GyhATl0=";
+      cargoSha256 = "sha256-QwDlku8E3CW0DD5OEJ0ejjrsMQVzieHhy7c5w9Rl5A4=";
 
       patchPhase = ''
-
-        substituteInPlace .cargo/config.toml \
-          --replace "linker = \"clang\"" "linker = \"$CLANG_PATH\"" \
-          --replace "\"-C\", \"link-arg=-fuse-ld=/usr/bin/mold\"" ""
 
         cd ../drun-vendor.tar.gz
         patch librocksdb-sys/build.rs << EOF
