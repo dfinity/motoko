@@ -998,7 +998,7 @@ module RTS = struct
     E.add_func_import env "rts" "text_size" [I32Type] [I32Type];
     E.add_func_import env "rts" "text_to_buf" [I32Type; I32Type] [];
     E.add_func_import env "rts" "region_init" [] [];
-    E.add_func_import env "rts" "region_migration" [] [];
+    E.add_func_import env "rts" "region_migration" [I32Type; I32Type] [];
     E.add_func_import env "rts" "region_get_mem_size" [] [I64Type];
     E.add_func_import env "rts" "region_set_mem_size" [I64Type] [];
     E.add_func_import env "rts" "region_new" [] [I32Type];
@@ -5015,7 +5015,7 @@ module StableMem = struct
      1. First version of StableMem.
      2. First version of region system.
    *)
-  let version =
+  let version () =
     if !Flags.use_stable_regions then
       Int32.of_int 2
     else
@@ -7468,7 +7468,7 @@ module Stabilization = struct
         get_M ^^
           compile_add64_const (Int64.sub page_size64 4L) ^^
         (* TODO bump version? *)
-        compile_unboxed_const StableMem.version ^^
+        compile_unboxed_const (StableMem.version()) ^^
         StableMem.write_word32 env
 
       end
@@ -7527,24 +7527,12 @@ module Stabilization = struct
 
               (* check version *)
               get_version ^^
-              compile_unboxed_const StableMem.version ^^
+              compile_unboxed_const (StableMem.version()) ^^
               G.i (Compare (Wasm.Values.I32 I32Op.GtU)) ^^
               E.then_trap_with env (Printf.sprintf
                 "higher stable memory version (expected %s)"
-                (Int32.to_string StableMem.version)) ^^
-(*
-              (* check for version 1 into version 2 migration. *)
-              if !Flags.use_stable_regions then
-                get_version ^^
-                compile_unboxed_const StableMem.version ^^
-                G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
-                G.if0
-                  (E.call_import env "rts" "region_migration")
-                  G.nop
-              else
-                G.nop
-              ^^
-*)
+                (Int32.to_string (StableMem.version()))) ^^
+
               (* restore StableMem bytes [0..4) *)
               compile_const_64 0L ^^
               get_M ^^
@@ -7571,6 +7559,15 @@ module Stabilization = struct
               get_N ^^
               compile_add64_const 4L ^^
               set_offset
+              ^^
+              (* check for version 1 into version 2 migration. *)
+              if !Flags.use_stable_regions then
+                get_version ^^
+                compile_unboxed_const (StableMem.version()) ^^
+                E.call_import env "rts" "region_migration"
+              else
+                G.nop
+
             end
             begin
               (* Sub-Case: stable vars with no Regions/Experimental API. *)
@@ -10111,7 +10108,10 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
   | OtherPrim "regionNew", [] ->
     SR.Vanilla,
-    Region.new_ env ^^ Region.sanity_check "region_new" env
+    if !Flags.use_stable_regions then
+      Region.new_ env ^^ Region.sanity_check "region_new" env
+    else
+      E.trap_with env (Printf.sprintf "stable regions not enabled.")
 
   | OtherPrim ("regionGrow"), [e0; e1] ->
     SR.UnboxedWord64,
