@@ -531,7 +531,13 @@ pub unsafe fn region_size<M: Memory>(_mem: &mut M, r: Value) -> u64 {
 }
 
 #[ic_mem_fn]
-pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u64 {
+pub unsafe fn region_grow<M: Memory>(
+    mem: &mut M,
+    r: Value,
+    new_pages: u64,
+    _max_pages: u64,
+) -> u64 {
+    // to do -- use max_pages.
     use meta_data::size::{required_pages, PAGES_IN_BLOCK};
     let r = r.as_region();
     let new_pages_ = new_pages as u32;

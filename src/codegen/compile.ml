@@ -1003,7 +1003,7 @@ module RTS = struct
     E.add_func_import env "rts" "region_new" [] [I32Type];
     E.add_func_import env "rts" "region_id" [I32Type] [I32Type];
     E.add_func_import env "rts" "region_size" [I32Type] [I64Type];
-    E.add_func_import env "rts" "region_grow" [I32Type; I64Type] [I64Type];
+    E.add_func_import env "rts" "region_grow" [I32Type; I64Type; I64Type] [I64Type];
     E.add_func_import env "rts" "region_load_blob" [I32Type; I64Type; I32Type] [I32Type];
     E.add_func_import env "rts" "region_store_blob" [I32Type; I64Type; I32Type] [];
     E.add_func_import env "rts" "region_load_word8" [I32Type; I64Type] [I32Type];
@@ -1020,7 +1020,7 @@ module RTS = struct
     E.add_func_import env "rts" "region_meta_loglines" [] [];
     E.add_func_import env "rts" "region0_size" [] [I64Type];
     E.add_func_import env "rts" "region0_get" [] [I32Type];
-    E.add_func_import env "rts" "region0_grow" [I64Type] [I64Type];
+    E.add_func_import env "rts" "region0_grow" [I64Type; I64Type] [I64Type];
     E.add_func_import env "rts" "region0_load_blob" [I64Type; I32Type] [I32Type];
     E.add_func_import env "rts" "region0_store_blob" [I64Type; I32Type] [];
     E.add_func_import env "rts" "region0_load_word8" [I64Type] [I32Type];
@@ -3865,7 +3865,7 @@ module Region0 = struct
 
   let get_mem_size env = E.call_import env "rts" "region0_size"  
   let logical_grow env =
-    (* compile_const_64 (Int64.of_int (!Flags.max_stable_pages)) *)
+    compile_const_64 (Int64.of_int (!Flags.max_stable_pages)) ^^
     E.call_import env "rts" "region0_grow"
 
   let load_blob env = E.call_import env "rts" "region0_load_blob"
@@ -3936,6 +3936,7 @@ module Region = struct
   let size env =
     E.call_import env "rts" "region_size"
   let grow env =
+    compile_const_64 (Int64.of_int (!Flags.max_stable_pages)) ^^
     E.call_import env "rts" "region_grow"
   let load_blob env = E.call_import env "rts" "region_load_blob"
   let store_blob env = E.call_import env "rts" "region_store_blob"
