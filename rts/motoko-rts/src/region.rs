@@ -555,10 +555,11 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64, max_
     // while respecting the global maximum limit on pages.
     let old_total_blocks = {
         let c = meta_data::total_allocated_blocks::get();
-        let mut c_ = c + inc_block_count as u64;
+        let c_ = c + inc_block_count as u64;
         let max_blocks = (max_pages_ + (PAGES_IN_BLOCK - 1)) / PAGES_IN_BLOCK;
         if c_ > max_blocks.into() {
-            c_ = max_blocks.into();
+            // Signals an error.
+            return 0xFFFF_FFFF_FFFF_FFFF;
         };
         meta_data::total_allocated_blocks::set(c_);
         c
