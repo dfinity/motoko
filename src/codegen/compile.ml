@@ -998,6 +998,7 @@ module RTS = struct
     E.add_func_import env "rts" "text_size" [I32Type] [I32Type];
     E.add_func_import env "rts" "text_to_buf" [I32Type; I32Type] [];
     E.add_func_import env "rts" "region_init" [] [];
+    E.add_func_import env "rts" "region_migration" [] [];
     E.add_func_import env "rts" "region_get_mem_size" [] [I64Type];
     E.add_func_import env "rts" "region_set_mem_size" [I64Type] [];
     E.add_func_import env "rts" "region_new" [] [I32Type];
@@ -7538,6 +7539,17 @@ module Stabilization = struct
                 "higher stable memory version (expected %s)"
                 (Int32.to_string StableMem.version)) ^^
 
+              (* check for version 1 into version 2 migration. *)
+              if !Flags.use_stable_regions then
+                get_version ^^
+                compile_unboxed_const StableMem.version ^^
+                G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
+                (E.call_import env "rts" "region_migration") ^^
+                G.nop
+              else
+                G.nop
+              ^^
+
               (* restore StableMem bytes [0..4) *)
               compile_const_64 0L ^^
               get_M ^^
@@ -7567,7 +7579,6 @@ module Stabilization = struct
             end
             begin
               (* Sub-Case: stable vars with no Regions/Experimental API. *)
-              E.trap_with env ("Non-zero case, if0 false.") ^^
               (* assert mem_size == 0 *)
               StableMem.get_mem_size env ^^
               G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
