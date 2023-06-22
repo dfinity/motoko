@@ -301,6 +301,7 @@ The following table defines the relative precedence and associativity of operato
 | (higher)   | none          | `else`, `while`                                                                                                               |
 | (higher)   | right         | `:=`, `+=`, `-=`, `*=`, `/=`, `%=`, `**=`, `#=`, `&=`, `\|=`, `^=`, `<<=`, `>>=`, `<<>=`, `<>>=`, `+%=`, `-%=`, `*%=`, `**%=` |
 | (higher)   | left          | `:`                                                                                                                           |
+| (higher)   | left          | `|`                                                                                                                           |
 | (higher)   | left          | `or`                                                                                                                          |
 | (higher)   | left          | `and`                                                                                                                         |
 | (higher)   | none          | `==`, `!=`, `<`, `>`, `<=`, `>`, `>=`                                                                                         |
@@ -1776,7 +1777,7 @@ For example:
 Iter.range(0, 10) |>
   Iter.toList _ |>
     List.filter<Nat>(_, func n { n % 3 == 0 }) |>
-      { multiples = _};
+      { multiples = _ };
 ```
 
 may, according to taste, be a more readable rendition of:
