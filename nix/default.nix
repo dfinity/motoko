@@ -66,6 +66,10 @@ let
                 meta = builtins.removeAttrs js_of_ocaml-compiler.meta [ "mainProgram" ];
               };
 
+              logs = super.ocamlPackages.logs.overrideAttrs (_: rec {
+                jsooSupport = false;
+              });
+
               # downgrade wasm until we have support for 2.0.0
               # (https://github.com/dfinity/motoko/pull/3364)
               wasm = super.ocamlPackages.wasm.overrideAttrs (_: rec {
