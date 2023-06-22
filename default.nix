@@ -513,7 +513,7 @@ rec {
       perf       = perf_subdir "perf"       [ moc nixpkgs.drun ];
       bench      = perf_subdir "bench"      [ moc nixpkgs.drun ];
       viper      = test_subdir "viper"      [ moc nixpkgs.which nixpkgs.openjdk nixpkgs.z3 ];
-      inherit qc lsp;
+      inherit qc lsp candid;
     }) // { recurseForDerivations = true; };
 
   samples = stdenv.mkDerivation {
