@@ -1761,7 +1761,7 @@ The pipe expression `<exp1> |> <exp2>` is syntactic sugar for a `let` binding to
 placeholder identifier, `p`, referenced by the placeholder expression `_`:
 
 ``` bnf
-{ let p = <exp1>; <exp2> }
+do { let p = <exp1>; <exp2> }
 ```
 
 The placeholder identifier, `p`, is a fixed, reserved identifier that cannot be bound by any other expression or pattern other than a pipe operation, and can only be referenced using the placeholder expression `_`.
