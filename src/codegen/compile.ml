@@ -3859,7 +3859,7 @@ end (* Blob *)
 
 module Region0 = struct
   (*
-    See rts/motoko-rts/src/region.rs
+    See rts/motoko-rts/src/region0.rs
    *)
   let get env = E.call_import env "rts" "region0_get"
 
@@ -5020,7 +5020,11 @@ module StableMem = struct
      1. First version of StableMem.
      2. First version of region system.
    *)
-  let version = Int32.of_int 2
+  let version =
+    if !Flags.use_stable_regions then
+      Int32.of_int 2
+    else
+      Int32.of_int 1
 
   let register_globals env =
     (* size (in pages) *)
@@ -5820,7 +5824,6 @@ module MakeSerialization (Strm : Stream) = struct
     set_typtbl_idltyps static_idltyps
 
   (* Returns data (in bytes) and reference buffer size (in entries) needed *)
-  (* 20230328 *)
   let rec buffer_size env t =
     let open Type in
     let t = Type.normalize t in
@@ -5992,7 +5995,6 @@ module MakeSerialization (Strm : Stream) = struct
     )
 
   (* Copies x to the data_buffer, storing references after ref_count entries in ref_base *)
-  (* 20230328 *)
   let rec serialize_go env t =
     let open Type in
     let t = Type.normalize t in
@@ -6012,7 +6014,6 @@ module MakeSerialization (Strm : Stream) = struct
         checkpoint env get_data_buf
       in
 
-      (* 20230328 *)
       let write_alias write_thing =
         (* see Note [mutable stable values] *)
         (* Check heap tag *)
@@ -6234,7 +6235,6 @@ module MakeSerialization (Strm : Stream) = struct
     let can_recover = 2l
   end
 
-  (* 20230328 *)
   let rec deserialize_go env t =
     let open Type in
     let t = Type.normalize t in
@@ -6501,7 +6501,6 @@ module MakeSerialization (Strm : Stream) = struct
         )
       in
 
-      (* 20230328 *)
       let read_alias env t read_thing =
         (* see Note [mutable stable values] *)
         let (set_is_ref, get_is_ref) = new_local env "is_ref" in
