@@ -446,8 +446,8 @@ pub(crate) unsafe fn region_migration<M: Memory>(
             if false {
                 println!(80, "region_init -- recover regions 0 and 1.");
             }
-            crate::memory::ic::REGION_0 = crate::region::region_recover(mem, &RegionId(0));
-            crate::memory::ic::REGION_1 = crate::region::region_recover(mem, &RegionId(1));
+            crate::memory::ic::REGION_0 = region_recover(mem, &RegionId(0));
+            crate::memory::ic::REGION_1 = region_recover(mem, &RegionId(1));
 
             // Ensure that regions 2 through 15 are already reserved for
             // future use by future Motoko compiler-RTS features.
@@ -486,10 +486,10 @@ pub(crate) unsafe fn region_init_<M: Memory>(mem: &mut M) {
         let _ = crate::ic0_stable::nicer::grow(meta_data::size::STATIC_MEM_IN_PAGES as u64);
 
         // Region 0 -- classic API for stable memory, as a dedicated region.
-        crate::memory::ic::REGION_0 = crate::region::region_new(mem);
+        crate::memory::ic::REGION_0 = region_new(mem);
 
         // Region 1 -- reserved for reclaimed regions' blocks (to do).
-        crate::memory::ic::REGION_1 = crate::region::region_new(mem);
+        crate::memory::ic::REGION_1 = region_new(mem);
 
         // Regions 2 through 15, reserved for future use by future Motoko compiler-RTS features.
         region_reserve_id_span(mem, Some(RegionId(2)), RegionId(15));
