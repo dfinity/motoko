@@ -11044,7 +11044,7 @@ and conclude_module env set_serialization_globals start_fi_o =
   (* needs to happen here now that we know the size of static memory *)
   let set_heap_base = E.add_global32_delayed env "__heap_base" Immutable in
   E.export_global env "__heap_base";
-  let set_heap_pointer = E.add_global32 env "HP" Mutable 0l in
+  let _set_heap_pointer = E.add_global32 env "HP" Mutable 0l in
   E.export_global env "HP";
 
   Heap.register env;
