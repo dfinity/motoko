@@ -2,14 +2,7 @@
 
 It can sometimes be hard to read deeply nested expressions involving several function applications.
 
-``` motoko
-import Iter "mo:base/Iter";
-import List "mo:base/List";
-
-{ multiples =
-   List.filter<Nat>(
-     Iter.toList(Iter.range(0, 10)),
-     func n { n % 3 == 0 }) };
+``` motoko file=./examples/Unpiped.mo#L4-L8
 ```
 
 This expression take the range of numbers `0`..`10`, converts it to a list, filters the list for multiples of three and returns a record containing the result.
@@ -19,14 +12,7 @@ The operator evaluates the first argument `<exp1>`, and lets you refer to its va
 
 Using this, you can write the former expression as:
 
-``` motoko
-import Iter "mo:base/Iter";
-import List "mo:base/List";
-
-Iter.range(0, 10) |>
-  Iter.toList _ |>
-    List.filter<Nat>(_, func n { n % 3 == 0 }) |>
-      { multiples = _ };
+``` motoko file=./examples/Piped.mo#L4-L8
 ```
 
 Now, the textual order of operations corresponds to our English explanation above: this expression takes the range of numbers `0`..`10`, converts it to a list, filters the list for multiples of three and returns a record containing the result.
