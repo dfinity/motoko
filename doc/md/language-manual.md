@@ -53,21 +53,21 @@ In the definition of some lexemes, the quick reference uses the symbol `␣` to 
 
 Single line comments are all characters following `//` until the end of the same line.
 
-``` motoko
+``` motoko no-repl
 // single line comment
 x = 1
 ```
 
 Single or multi-line comments are any sequence of characters delimited by `/*` and `*/`:
 
-``` motoko
+``` motoko no-repl
 /* multi-line comments
    look like this, as in C and friends */
 ```
 
 Comments delimited by `/*` and `*/` may be nested, provided the nesting is well-bracketed.
 
-``` motoko
+``` motoko no-repl
 /// I'm a documentation comment
 /// for a function
 ```
@@ -1773,7 +1773,7 @@ Judicious use of the pipe operator allows one to express a more complicated nest
 
 For example:
 
-``` motoko
+``` motoko no-repl
 Iter.range(0, 10) |>
   Iter.toList _ |>
     List.filter<Nat>(_, func n { n % 3 == 0 }) |>
@@ -1782,7 +1782,7 @@ Iter.range(0, 10) |>
 
 may, according to taste, be a more readable rendition of:
 
-``` motoko
+``` motoko no-repl
 { multiples =
    List.filter<Nat>(
      Iter.toList(Iter.range(0, 10)),
