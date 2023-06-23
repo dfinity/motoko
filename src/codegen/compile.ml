@@ -7560,7 +7560,7 @@ module Stabilization = struct
               compile_add64_const 4L ^^
               set_offset
               ^^
-              (* check for version 1 into version 2 migration. *)
+              (* region manager migration/initialization, with pre-existing stable data. *)
               if !Flags.use_stable_regions then
                 get_version ^^
                 compile_unboxed_const (StableMem.version()) ^^

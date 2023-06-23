@@ -422,30 +422,43 @@ pub unsafe fn region_recover<M: Memory>(mem: &mut M, rid: &RegionId) -> Value {
     Value::from_ptr(region as usize)
 }
 
-// NB. This code assumes pre-existing use of ESM (version 1 stable memory).
-//     It makes this existing data into region 0 by rescuing the first block of data
-//     and re-locating it to be the final block region 0, physically.
-//     It installs the region system.
-//     After this code runs, region_init() can be used in subsequent upgrades
-//     to re-initialize the region system.
+//
+// region manager migration/initialization, with pre-existing stable data.
+//
+// Valid cases:
+//  - from version 1 into version 2.
+//  - from version 2 into version 2.
+//
 #[ic_mem_fn]
 pub(crate) unsafe fn region_migration<M: Memory>(
-    _mem: &mut M,
-    prior_version: i32,
-    curr_version: i32,
+    mem: &mut M,
+    from_version: i32,
+    into_version: i32,
 ) {
-    if prior_version == 1 && curr_version == 2 {
-        println!(
-            80,
-            "region migration: {} ~> {}", prior_version, curr_version
-        );
-        todo!()
+    assert_eq!(into_version, 2);
+    match from_version {
+        0 => unreachable!(),
+        2 => {
+            // Recall that we've done this later, without asking ic0_stable::size.
+            assert_eq!(crate::memory::ic::REGION_MEM_SIZE_INIT, false);
+            crate::memory::ic::REGION_MEM_SIZE_INIT = true;
 
-        /*
-        // allocate a block-sized blob on the heap (8MB).
-        // copy the first block of data into that blob, using a stable memory read of a blob.
-        // copy the first block of data from temp blob into new "final block" (logically still first) for region 0.
-        // initialize the meta data for the region system in vacated first block.
+            if false {
+                println!(80, "region_init -- recover regions 0 and 1.");
+            }
+            crate::memory::ic::REGION_0 = crate::region::region_recover(mem, &RegionId(0));
+            crate::memory::ic::REGION_1 = crate::region::region_recover(mem, &RegionId(1));
+
+            // Ensure that regions 2 through 15 are already reserved for
+            // future use by future Motoko compiler-RTS features.
+            region_reserve_id_span(mem, None, RegionId(15));
+        }
+        1 => {
+            /*
+            // allocate a block-sized blob on the heap (8MB).
+            // copy the first block of data into that blob, using a stable memory read of a blob.
+            // copy the first block of data from temp blob into new "final block" (logically still first) for region 0.
+            // initialize the meta data for the region system in vacated first block.
             use crate::ic0_stable::nicer::read;
 
             let len = meta_data::size::BLOCK_IN_BYTES;
@@ -453,16 +466,19 @@ pub(crate) unsafe fn region_migration<M: Memory>(
             let blob = blob_val.as_blob_mut();
             let bytes: &mut [u8] = core::slice::from_raw_parts_mut(blob.payload_addr(), len as usize);
             read(0, bytes);
-         */
+             */
+        }
+        _ => unreachable!(),
     }
 }
 
-// NB. This code path requires that the region system already be installed,
-//     Or that there is no pre-existing use of ESM.
-// See also: region_migration_from_esm().
+// NB. Runs during canister destabilization, after a possible region_migration.
+//     Checks for absence of any stable memory (region manager),
+//     and only when absent, intializes it.
+//
+// See also: region_migration().
 #[ic_mem_fn]
 pub(crate) unsafe fn region_init_<M: Memory>(mem: &mut M) {
-    // detect if we are being called in after upgrade --
     if crate::ic0_stable::nicer::size() == 0 {
         if false {
             println!(80, "region_init -- first time.");
@@ -482,23 +498,9 @@ pub(crate) unsafe fn region_init_<M: Memory>(mem: &mut M) {
         assert_eq!(crate::memory::ic::REGION_MEM_SIZE_INIT, false);
         crate::memory::ic::REGION_MEM_SIZE_INIT = true;
     } else {
-        if false {
-            println!(80, "region_init -- upgrade time.");
-        }
-
-        // Recall that we've done this later, without asking ic0_stable::size.
-        assert_eq!(crate::memory::ic::REGION_MEM_SIZE_INIT, false);
-        crate::memory::ic::REGION_MEM_SIZE_INIT = true;
-
-        if false {
-            println!(80, "region_init -- recover regions 0 and 1.");
-        }
-        crate::memory::ic::REGION_0 = crate::region::region_recover(mem, &RegionId(0));
-        crate::memory::ic::REGION_1 = crate::region::region_recover(mem, &RegionId(1));
-
-        // Ensure that regions 2 through 15 are already reserved for
-        // future use by future Motoko compiler-RTS features.
-        region_reserve_id_span(mem, None, RegionId(15));
+        // if the size is non-zero, we've already initialized the region manager,
+        // during region_migration.
+        assert_eq!(crate::memory::ic::REGION_MEM_SIZE_INIT, true);
     }
 }
 
