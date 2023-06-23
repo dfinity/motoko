@@ -6,8 +6,10 @@ use crate::types::*;
 /// Amount of garbage collected so far.
 pub(crate) static mut RECLAIMED: Bytes<u64> = Bytes(0);
 
-/// Heap pointer
-pub(crate) static mut HP: u32 = 0;
+// Heap pointer
+extern "C" {
+    pub static mut HP: u32;
+}
 
 /// Heap pointer after last GC
 pub(crate) static mut LAST_HP: u32 = 0;
