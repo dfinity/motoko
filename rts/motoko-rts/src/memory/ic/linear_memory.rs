@@ -8,15 +8,19 @@ pub(crate) static mut RECLAIMED: Bytes<u64> = Bytes(0);
 
 // Heap pointer
 extern "C" {
-    pub static mut HP: u32;
+    pub static HP: u32;
+    pub(crate) fn setHP(new_hp: u32);
 }
+
+#[inline]
+pub(crate) unsafe fn getHP() -> u32 { &HP as *const _ as u32 }
 
 /// Heap pointer after last GC
 pub(crate) static mut LAST_HP: u32 = 0;
 
 pub(crate) unsafe fn initialize() {
-    HP = get_aligned_heap_base();
-    LAST_HP = HP;
+    setHP(get_aligned_heap_base());
+    LAST_HP = getHP();
 }
 
 #[no_mangle]
@@ -41,7 +45,7 @@ impl Memory for IcMemory {
         let delta = u64::from(bytes.as_u32());
 
         // Update heap pointer
-        let old_hp = u64::from(HP);
+        let old_hp = u64::from(getHP());
         let new_hp = old_hp + delta;
 
         // Grow memory if needed
@@ -50,7 +54,7 @@ impl Memory for IcMemory {
         }
 
         debug_assert!(new_hp <= u64::from(core::u32::MAX));
-        HP = new_hp as u32;
+        setHP(new_hp as u32);
 
         Value::from_ptr(old_hp as usize)
     }
