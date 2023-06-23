@@ -428,24 +428,76 @@ pub unsafe fn region_recover<M: Memory>(mem: &mut M, rid: &RegionId) -> Value {
 //
 #[ic_mem_fn]
 pub(crate) unsafe fn region_migration_from_v1_into_v2<M: Memory>(mem: &mut M) {
-    // allocate a block-sized blob on the heap (8MB).
-    // copy the first block of data into that blob, using a stable memory read of a blob.
-    // copy the first block of data from temp blob into new "final block" (logically still first) for region 0.
-    // initialize the meta data for the region system in vacated first block.
-    use crate::ic0_stable::nicer::read;
+    // Grow region0 to nearest block boundary, and add a block to fit a region manager meta data.
+    //
+    // Existing stable data becomes region 0, with first block relocated for region manager meta data.
+    //
+    // - allocate a block-sized blob on the heap (8MB).
+    // - copy the head block of data into that blob, using a stable memory read of a blob.
+    // - copy the head block of data from temp blob into new "final block" (logically still first) for region 0.
+    // - initialize the meta data for the region system in vacated initial block.
 
-    let len = meta_data::size::BLOCK_IN_BYTES;
-    let blob_val = crate::memory::alloc_blob(mem, crate::types::Bytes(len as u32));
-    let blob = blob_val.as_blob_mut();
-    let bytes: &mut [u8] = core::slice::from_raw_parts_mut(blob.payload_addr(), len as usize);
-    read(0, bytes);
+    use crate::ic0_stable::nicer::{grow, read, size, write};
 
-    println!(
-        80,
-        "region_migration_from_v1_into_v2: read first block into a blob."
+    let header_len = meta_data::size::BLOCK_IN_BYTES as u32;
+
+    let region0_pages = size() as u32;
+
+    let region0_blocks =
+        (region0_pages + (meta_data::size::PAGES_IN_BLOCK - 1)) / (meta_data::size::PAGES_IN_BLOCK);
+
+    grow(
+        (meta_data::size::PAGES_IN_BLOCK + // <-- For new region manager
+	 /* Bump out region0 to nearest block boundary: */
+	 region0_blocks * meta_data::size::PAGES_IN_BLOCK
+            - region0_pages)
+            .into(),
     );
 
-    todo!();
+    // Temp for the head block, which we move to be physically last.
+    let header_val = crate::memory::alloc_blob(mem, crate::types::Bytes(header_len as u32));
+    let header_blob = header_val.as_blob_mut();
+    let header_bytes: &mut [u8] =
+        core::slice::from_raw_parts_mut(header_blob.payload_addr(), header_len as usize);
+
+    // Block of zeros for over-writing the first block as meta data.
+    let zeros_val = crate::memory::alloc_blob(mem, crate::types::Bytes(header_len as u32));
+    let zeros_blob = zeros_val.as_blob_mut();
+    let zeros_bytes: &mut [u8] =
+        core::slice::from_raw_parts_mut(zeros_blob.payload_addr(), header_len as usize);
+    for i in 0..zeros_bytes.len() {
+        // Zero out Blob on heap -- Necessary, or guarrenteed?
+        zeros_bytes[i] = 0;
+    }
+
+    read(0, header_bytes); // Save first block as "head block".
+    write(0, zeros_bytes); // Zero out first block.
+                           // Re-write head block as physically after all other data in region0.
+    write(
+        (region0_pages * (meta_data::size::PAGE_IN_BYTES as u32)).into(),
+        header_bytes,
+    );
+
+    /* Initialize region0's table entries, for "recovery". */
+
+    /* head block is physically last, but logically first. */
+    meta_data::block_region_table::set(BlockId(region0_blocks as u16), Some((RegionId(0), 0)));
+    meta_data::region_table::set(&RegionId(0), Some(RegionSizeInPages(region0_pages as u64)));
+
+    /* Any other blocks that follow head block remain in place, physically and logically. */
+    for block_i in 1..region0_blocks {
+        meta_data::block_region_table::set(
+            BlockId(block_i as u16),
+            Some((RegionId(0), block_i as u16)),
+        );
+    }
+
+    crate::memory::ic::REGION_0 = region_recover(mem, &RegionId(0));
+    crate::memory::ic::REGION_1 = region_recover(mem, &RegionId(1));
+
+    // Ensure that regions 2 through 15 are already reserved for
+    // future use by future Motoko compiler-RTS features.
+    region_reserve_id_span(mem, None, RegionId(15));
 }
 
 //
@@ -454,10 +506,6 @@ pub(crate) unsafe fn region_migration_from_v1_into_v2<M: Memory>(mem: &mut M) {
 //
 #[ic_mem_fn]
 pub(crate) unsafe fn region_migration_from_v2_into_v2<M: Memory>(mem: &mut M) {
-    // Recall that we've done this later, without asking ic0_stable::size.
-    assert_eq!(crate::memory::ic::REGION_MEM_SIZE_INIT, false);
-    crate::memory::ic::REGION_MEM_SIZE_INIT = true;
-
     if false {
         println!(80, "region_init -- recover regions 0 and 1.");
     }
@@ -483,6 +531,11 @@ pub(crate) unsafe fn region_migration<M: Memory>(
     into_version: i32,
 ) {
     assert_eq!(into_version, 2);
+
+    // Recall that we've done this later, without asking ic0_stable::size.
+    assert_eq!(crate::memory::ic::REGION_MEM_SIZE_INIT, false);
+    crate::memory::ic::REGION_MEM_SIZE_INIT = true;
+
     match from_version {
         0 => unreachable!(),
         2 => region_migration_from_v2_into_v2(mem),
