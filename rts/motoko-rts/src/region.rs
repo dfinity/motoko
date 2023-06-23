@@ -462,34 +462,26 @@ pub(crate) unsafe fn region_migration_from_v1_into_v2<M: Memory>(mem: &mut M) {
             .into(),
     );
 
-    // Temp for the head block, which we moe to be physically last.
+    // Temp for the head block, which we move to be physically last.
     let header_val = crate::memory::alloc_blob(mem, crate::types::Bytes(header_len as u32));
     let header_blob = header_val.as_blob_mut();
     let header_bytes: &mut [u8] =
         core::slice::from_raw_parts_mut(header_blob.payload_addr(), header_len as usize);
 
-    // Block of zeros for over-writing the first block as meta data.
-    let zeros_val = crate::memory::alloc_blob(mem, crate::types::Bytes(header_len as u32));
-    let zeros_blob = zeros_val.as_blob_mut();
-    let zeros_bytes: &mut [u8] =
-        core::slice::from_raw_parts_mut(zeros_blob.payload_addr(), header_len as usize);
-    for i in 0..zeros_bytes.len() {
-        // Zero out Blob on heap -- Necessary, or guarrenteed?
-        zeros_bytes[i] = 0;
-    }
-
+    // Move it:
     read(0, header_bytes); // Save first block as "head block".
-    write(0, zeros_bytes); // Zero out first block.
-
-    // Re-write head block as physically after all other data in region0.
     write(
-        (region0_pages * (meta_data::size::PAGE_IN_BYTES as u32)).into(),
+        (region0_blocks * (meta_data::size::BLOCK_IN_BYTES as u32)).into(),
         header_bytes,
     );
 
-    /* Initialize meta data as if there are two regions, 0 and 1. */
-    /* - Region 0 is the existing stable data. */
-    /* - Region 1 is empty. */
+    // Zero-out the temp blob.
+    for i in 0..header_bytes.len() {
+        header_bytes[i] = 0;
+    }
+    write(0, header_bytes); // Zero out first block, for region manager meta data.
+
+    /* Initialize meta data as if there is only region 0. */
     meta_data::total_allocated_blocks::set(region0_blocks.into());
     meta_data::total_allocated_regions::set(1);
 
