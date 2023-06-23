@@ -6,18 +6,18 @@ use crate::types::{Blob, Value};
 use motoko_rts_macros::ic_mem_fn;
 
 unsafe fn region0_load<M: Memory>(mem: &mut M, offset: u64, dst: &mut [u8]) {
-    let r = crate::memory::ic::REGION_0;
+    let r = crate::region::REGION_0;
     crate::region::region_load(mem, r, offset, dst)
 }
 
 unsafe fn region0_store<M: Memory>(mem: &mut M, offset: u64, src: &[u8]) {
-    let r = crate::memory::ic::REGION_0;
+    let r = crate::region::REGION_0;
     crate::region::region_store(mem, r, offset, src)
 }
 
 #[ic_mem_fn]
 pub unsafe fn region0_get<M: Memory>(_mem: &mut M) -> Value {
-    let v = crate::memory::ic::REGION_0;
+    let v = crate::region::REGION_0;
     if false {
         println!(80, "region0_get() ~> {:?}", v);
     }
@@ -28,17 +28,17 @@ pub unsafe fn region0_get<M: Memory>(_mem: &mut M) -> Value {
 #[allow(dead_code)]
 #[cfg(feature = "ic")]
 pub(crate) unsafe fn region0_get_ptr_loc() -> *mut Value {
-    &mut crate::memory::ic::REGION_0
+    &mut crate::region::REGION_0
 }
 
 #[ic_mem_fn]
 pub unsafe fn region0_size<M: Memory>(mem: &mut M) -> u64 {
-    region_size(mem, crate::memory::ic::REGION_0)
+    region_size(mem, crate::region::REGION_0)
 }
 
 #[ic_mem_fn]
 pub unsafe fn region0_grow<M: Memory>(mem: &mut M, new_pages: u64, max_pages: u64) -> u64 {
-    region_grow(mem, crate::memory::ic::REGION_0, new_pages, max_pages)
+    region_grow(mem, crate::region::REGION_0, new_pages, max_pages)
 }
 
 // -- Region0 load operations.

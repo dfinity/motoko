@@ -997,8 +997,7 @@ module RTS = struct
     E.add_func_import env "rts" "text_singleton" [I32Type] [I32Type];
     E.add_func_import env "rts" "text_size" [I32Type] [I32Type];
     E.add_func_import env "rts" "text_to_buf" [I32Type; I32Type] [];
-    E.add_func_import env "rts" "region_init" [] [];
-    E.add_func_import env "rts" "region_migration" [I32Type; I32Type] [];
+    E.add_func_import env "rts" "region_init" [I32Type] [];
     E.add_func_import env "rts" "region_get_mem_size" [] [I64Type];
     E.add_func_import env "rts" "region_set_mem_size" [I64Type] [];
     E.add_func_import env "rts" "region_new" [] [I32Type];
@@ -7473,7 +7472,7 @@ module Stabilization = struct
 
       end
 
-  let destabilize env ty =
+  let destabilize env ty save_version =
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
       let (set_pages, get_pages) = new_local64 env "pages" in
@@ -7509,7 +7508,8 @@ module Stabilization = struct
           G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
           G.if0
             begin
-              (* Sub-Case: Regions/Experimental API and stable vars. *)
+              (* Sub-Case: version 1 or 2:
+                 Regions/Experimental API and stable vars. *)
               let (set_M, get_M) = new_local64 env "M" in
               let (set_version, get_version) = new_local env "version" in
               let (set_N, get_N) = new_local64 env "N" in
@@ -7524,7 +7524,9 @@ module Stabilization = struct
               compile_add64_const (Int64.sub page_size64 4L) ^^
               StableMem.read_and_clear_word32 env ^^
               set_version ^^
-
+              get_version ^^
+              save_version ^^
+                
               (* check version *)
               get_version ^^
               compile_unboxed_const (StableMem.version()) ^^
@@ -7559,18 +7561,10 @@ module Stabilization = struct
               get_N ^^
               compile_add64_const 4L ^^
               set_offset
-              ^^
-              (* region manager migration/initialization, with pre-existing stable data. *)
-              if !Flags.use_stable_regions then
-                get_version ^^
-                compile_unboxed_const (StableMem.version()) ^^
-                E.call_import env "rts" "region_migration"
-              else
-                G.nop
-
             end
             begin
-              (* Sub-Case: stable vars with no Regions/Experimental API. *)
+              (* Sub-Case: Version 0.
+                 Stable vars with NO Regions/Experimental API. *)
               (* assert mem_size == 0 *)
               StableMem.get_mem_size env ^^
               G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
@@ -7582,7 +7576,10 @@ module Stabilization = struct
 
               (* set offset *)
               compile_const_64 4L ^^
-              set_offset
+              set_offset ^^
+              
+              compile_unboxed_const (Int32.of_int 0) ^^
+              save_version
             end ^^ (* if_ *)
 
           let (set_blob, get_blob) = new_local env "blob" in
@@ -10599,8 +10596,10 @@ and compile_prim_invocation (env : E.t) ae p es at =
         2. return v
     *)
     SR.Vanilla,
-    Stabilization.destabilize env ty ^^
+    let (set_version, get_version) = new_local env "version" in
+    Stabilization.destabilize env ty set_version ^^
       if !Flags.use_stable_regions then
+        get_version ^^
         E.call_import env "rts" "region_init"
       else G.nop
 
