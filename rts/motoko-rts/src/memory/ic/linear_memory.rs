@@ -13,7 +13,9 @@ extern "C" {
 }
 
 #[inline]
-pub(crate) unsafe fn getHP() -> u32 { &HP as *const _ as u32 }
+pub(crate) unsafe fn getHP() -> u32 {
+    &HP as *const _ as u32
+}
 
 /// Heap pointer after last GC
 pub(crate) static mut LAST_HP: u32 = 0;
