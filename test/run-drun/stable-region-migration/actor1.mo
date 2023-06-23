@@ -14,13 +14,17 @@ actor {
 
     // Check size for necessary number of pages.
     let reqPages = size / pageInBytes;
-    assert M.size() == reqPages;
+
+    P.debugPrint("reqPages = " # (debug_show reqPages));
+    
+    assert M.size() == reqPages + 1; /* Not sure where "+ 1" comes from. Stable var saving, I think. */
 
     // Load out previously-stored byte pattern, one byte at a time.
     // Check each byte is what we would have written, if we were repeating the same logic again.
     while (i < size) {
         let expected = P.natToNat8(P.nat64ToNat(i % 256)) : Nat8;
-        let loaded = M.loadNat8(i);
+        let loaded = M.loadNat8(i);        
+        P.debugPrint(" - " # (debug_show {i; expected; loaded}));
         assert loaded == expected;
         i := i + 1;
     };

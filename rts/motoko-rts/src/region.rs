@@ -382,7 +382,7 @@ pub unsafe fn region_recover<M: Memory>(mem: &mut M, rid: &RegionId) -> Value {
     let c = meta_data::region_table::get(&rid);
     let page_count = match c {
         Some(RegionSizeInPages(pc)) => {
-            if false {
+            if true {
                 println!(
                     80,
                     "region_recover {:?} => found region record {:?}", rid, c
@@ -412,6 +412,14 @@ pub unsafe fn region_recover<M: Memory>(mem: &mut M, rid: &RegionId) -> Value {
             None => {}
             Some((rid_, rank)) => {
                 if &rid_ == rid {
+                    println!(
+                        80,
+                        "region_recover {:?} => found region record, block_id={:?}, rank={:?}",
+                        rid,
+                        block_id,
+                        rank
+                    );
+
                     av.set_ith_block_id(rank.into(), &BlockId(block_id as u16));
                     recovered_blocks += 1;
                 }
@@ -454,7 +462,7 @@ pub(crate) unsafe fn region_migration_from_v1_into_v2<M: Memory>(mem: &mut M) {
             .into(),
     );
 
-    // Temp for the head block, which we move to be physically last.
+    // Temp for the head block, which we moe to be physically last.
     let header_val = crate::memory::alloc_blob(mem, crate::types::Bytes(header_len as u32));
     let header_blob = header_val.as_blob_mut();
     let header_bytes: &mut [u8] =
@@ -472,32 +480,46 @@ pub(crate) unsafe fn region_migration_from_v1_into_v2<M: Memory>(mem: &mut M) {
 
     read(0, header_bytes); // Save first block as "head block".
     write(0, zeros_bytes); // Zero out first block.
-                           // Re-write head block as physically after all other data in region0.
+
+    // Re-write head block as physically after all other data in region0.
     write(
         (region0_pages * (meta_data::size::PAGE_IN_BYTES as u32)).into(),
         header_bytes,
     );
 
-    /* Initialize region0's table entries, for "recovery". */
+    /* Initialize meta data as if there are two regions, 0 and 1. */
+    /* - Region 0 is the existing stable data. */
+    /* - Region 1 is empty. */
+    meta_data::total_allocated_blocks::set(region0_blocks.into());
+    meta_data::total_allocated_regions::set(1);
+
+    /*
+     * Initialize region0's table entries, for "recovery".
+     */
 
     /* head block is physically last, but logically first. */
-    meta_data::block_region_table::set(BlockId(region0_blocks as u16), Some((RegionId(0), 0)));
+    let head_block_id = region0_blocks - 1;
+
+    meta_data::block_region_table::set(BlockId(head_block_id as u16), Some((RegionId(0), 0)));
     meta_data::region_table::set(&RegionId(0), Some(RegionSizeInPages(region0_pages as u64)));
 
-    /* Any other blocks that follow head block remain in place, physically and logically. */
-    for block_i in 1..region0_blocks {
+    /* Any other blocks that follow head block are numbered [0,...,head_block_id) */
+    /* They're logical placements are [1,...,) -- one more than their new identity, as a number. */
+    for i in 0..head_block_id {
         meta_data::block_region_table::set(
-            BlockId(block_i as u16),
-            Some((RegionId(0), block_i as u16)),
+            BlockId((i) as u16),
+            Some((RegionId(0), (i + 1) as u16)),
         );
     }
-
+    /* "Recover" the region data into a heap object. */
     crate::memory::ic::REGION_0 = region_recover(mem, &RegionId(0));
-    crate::memory::ic::REGION_1 = region_recover(mem, &RegionId(1));
+
+    // Region 1 -- reserved for reclaimed regions' blocks (to do).
+    crate::memory::ic::REGION_1 = region_new(mem);
 
     // Ensure that regions 2 through 15 are already reserved for
     // future use by future Motoko compiler-RTS features.
-    region_reserve_id_span(mem, None, RegionId(15));
+    region_reserve_id_span(mem, Some(RegionId(2)), RegionId(15));
 }
 
 //

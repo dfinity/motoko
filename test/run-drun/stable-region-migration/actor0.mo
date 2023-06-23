@@ -11,6 +11,9 @@ actor {
 
     // Grow to the necessary number of pages.
     let reqPages = size / pageInBytes;
+
+    P.debugPrint("reqPages = " # (debug_show reqPages));
+    
     assert M.grow(reqPages) == 0;
     assert M.size() == reqPages;
     
