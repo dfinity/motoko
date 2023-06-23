@@ -1052,8 +1052,12 @@ module GC = struct
     E.call_import env "ic0" "performance_counter"
 
   let register_globals env =
-    (E.add_global64 env "__mutator_instructions" Mutable 0L;
-     E.add_global64 env "__collector_instructions" Mutable 0L)
+    begin
+      E.add_global64 env "__mutator_instructions" Mutable 0L;
+      E.add_global64 env "__collector_instructions" Mutable 0L;
+      E.add_global32 env "HP" Mutable 0l;
+      E.export_global env "HP"
+    end
 
   let get_mutator_instructions env =
     G.i (GlobalGet (nr (E.get_global env "__mutator_instructions")))
@@ -1064,6 +1068,11 @@ module GC = struct
     G.i (GlobalGet (nr (E.get_global env "__collector_instructions")))
   let set_collector_instructions env =
     G.i (GlobalSet (nr (E.get_global env "__collector_instructions")))
+
+  let get_heap_pointer env =
+    G.i (GlobalGet (nr (E.get_global env "HP")))
+  let set_heap_pointer env =
+    G.i (GlobalSet (nr (E.get_global env "HP")))
 
   let record_mutator_instructions env =
     match E.mode env with
@@ -1116,7 +1125,7 @@ module Heap = struct
   (* Static allocation (always words)
      (uses dynamic allocation for smaller and more readable code) *)
   let alloc env (n : int32) : G.t =
-    compile_unboxed_const n  ^^
+    compile_unboxed_const n ^^
     E.call_import env "rts" "alloc_words"
     
   (* Heap objects *)
@@ -1606,9 +1615,28 @@ module Tagged = struct
   let alloc env size tag =
     let name = Printf.sprintf "alloc_size<%d>_tag<%d>" (Int32.to_int size) (Int32.to_int (int_of_tag tag)) in
     Func.share_code0 env name [I32Type] (fun env ->
-      let (set_object, get_object) = new_local env "new_object" in
-      Heap.alloc env size ^^
-      set_object ^^ get_object ^^
+      let set_object, get_object = new_local env "new_object" in
+      (if size < 64l then
+        Heap.(
+        GC.get_heap_pointer env ^^
+        set_object ^^ (* speculate *)
+        GC.get_heap_pointer env ^^
+        compile_add_const Int32.(mul size word_size) ^^ (* FIXME: forwarding? *)
+        GC.set_heap_pointer env ^^
+        GC.get_heap_pointer env ^^
+          (* mask FIXME use logarithm *)
+        compile_bitand_const 0xFF00l ^^
+        G.if0
+          (get_object ^^
+           compile_sub_const 1l ^^ (* skew *)
+           set_object)
+          (get_object ^^ GC.set_heap_pointer env ^^ (* restore *)
+           alloc env size ^^
+           set_object))
+        else
+          Heap.alloc env size ^^
+           set_object) ^^
+      get_object ^^
       compile_unboxed_const (int_of_tag tag) ^^
       Heap.store_field tag_field ^^
       (if !Flags.gc_strategy = Flags.Incremental then
@@ -1650,7 +1678,7 @@ module Tagged = struct
         load_forwarding_pointer env ^^
         get_object ^^
         G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
-        E.else_trap_with env "missing object forwarding"  ^^
+        E.else_trap_with env "missing object forwarding" ^^
         get_object ^^
         (if unskewed then
           compile_unboxed_const ptr_unskew ^^
@@ -2401,7 +2429,7 @@ module TaggedSmallWord = struct
         get_exp ^^
         compile_unboxed_const 0l ^^
         G.i (Compare (Wasm.Values.I32 I32Op.GeS)) ^^
-        E.else_trap_with env "negative power"  ^^
+        E.else_trap_with env "negative power" ^^
         get_n ^^ get_exp ^^ compile_nat_power env ty
       )
 
@@ -4893,7 +4921,7 @@ module StableMem = struct
           get_offset ^^
           compile_const_64 (Int64.of_int page_size_bits) ^^
           G.i (Binary (Wasm.Values.I64 I64Op.ShrU)) ^^
-          get_mem_size env  ^^
+          get_mem_size env ^^
           G.i (Compare (Wasm.Values.I64 I64Op.LtU)) ^^
           E.else_trap_with env "StableMemory offset out of bounds")
     | _ -> assert false
@@ -7218,7 +7246,7 @@ module Stabilization = struct
         get_N ^^
         extend64 get_len ^^
         compile_add64_const 16L ^^
-        StableMem.ensure env  ^^
+        StableMem.ensure env ^^
 
         get_N ^^
         get_len ^^
@@ -8156,7 +8184,7 @@ module FuncDec = struct
       get_meth_pair ^^ Arr.load_field env 1l ^^ Blob.as_ptr_len env ^^
       (* The reply and reject callback *)
       push_continuations ^^
-      set_cb_index  ^^ get_cb_index ^^
+      set_cb_index ^^ get_cb_index ^^
       (* initiate call *)
       IC.system_call env "call_new" ^^
       cleanup_callback env ^^ get_cb_index ^^
@@ -9661,7 +9689,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_vanilla env ae e ^^
     Serialization.buffer_size env t ^^
     G.i Drop ^^
-    compile_add_const tydesc_len  ^^
+    compile_add_const tydesc_len ^^
     G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
 
   (* Other prims, unary *)
@@ -11044,8 +11072,6 @@ and conclude_module env set_serialization_globals start_fi_o =
   (* needs to happen here now that we know the size of static memory *)
   let set_heap_base = E.add_global32_delayed env "__heap_base" Immutable in
   E.export_global env "__heap_base";
-  let _set_heap_pointer = E.add_global32 env "HP" Mutable 0l in
-  E.export_global env "HP";
 
   Heap.register env;
   GCRoots.register env static_roots;
