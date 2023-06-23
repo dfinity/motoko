@@ -284,14 +284,6 @@ let resolve imports exports : (int32 * int32) list =
     | None -> []
     ) imports)
 
-let resolve' imports exports : (int32 * int32) list =
-  List.flatten (List.map (fun (fi, name) ->
-                    (* Printf.eprintf "Import: %s\n" (Lib.Utf8.encode name);*)
-    match NameMap.find_opt name exports with
-    | Some fi' -> [ (fi, fi') ]
-    | None -> []
-    ) imports)
-
 let calculate_renaming n_imports1 n_things1 n_imports2 resolved12 resolved21 : (renumbering * renumbering) =
   let open Int32 in
 
@@ -422,43 +414,6 @@ let fill_global (global : int32) (value : int32) : module_' -> module_' = fun m 
     | If (ty, is1, is2) -> If (ty, instrs is1, instrs is2)
     | GlobalGet v when v.it = global -> Const (Wasm.Values.I32 value @@ v.at)
     | GlobalSet v when v.it = global -> assert false
-    | i -> i
-  and instr i = phrase instr' i
-  and instrs is = List.map instr is in
-
-  let func' f = { f with body = instrs f.body } in
-  let func = phrase func' in
-  let funcs = List.map func in
-
-  let const = phrase instrs in
-
-  let global' g = { g with value = const g.value } in
-  let global = phrase global' in
-  let globals = List.map global in
-
-  let table_segment' (s : var list segment') = { s with offset = const s.offset; } in
-  let table_segment = phrase (table_segment') in
-  let table_segments = List.map table_segment in
-
-  let memory_segment' (s : string segment') = { s with offset = const s.offset; } in
-  let memory_segment = phrase (memory_segment') in
-  let memory_segments = List.map memory_segment in
-
-
-  { m with
-    funcs = funcs m.funcs;
-    globals = globals m.globals;
-    elems = table_segments m.elems;
-    data = memory_segments m.data;
-  }
-
-let redirect_global global it : module_' -> module_' = fun m ->
-  let rec instr' = function
-    | Block (ty, is) -> Block (ty, instrs is)
-    | Loop (ty, is) -> Loop (ty, instrs is)
-    | If (ty, is1, is2) -> If (ty, instrs is1, instrs is2)
-    | GlobalGet v when v.it = global -> GlobalGet {v with it}
-    | GlobalSet v when v.it = global -> GlobalSet {v with it}
     | i -> i
   and instr i = phrase instr' i
   and instrs is = List.map instr is in
@@ -620,36 +575,6 @@ let fill_memory_base_import new_base : module_' -> module_' =
 let fill_table_base_import new_base : module_' -> module_' =
   fill_item_import "env" "__table_base" new_base
 
-
-let redirect_item_import modul item to_global (m : module_') : module_' =
-  (* We need to find the right import,
-     replace all uses of get_global of that import with the XXXXXXXX,
-     and finally rename all globals
-  *)
-  let base_global =
-    let rec go i = function
-      | [] -> assert false
-      | imp::is -> match imp.it.idesc.it with
-        | GlobalImport _ty
-          when imp.it.module_name = Lib.Utf8.decode modul &&
-               imp.it.item_name = Lib.Utf8.decode item ->
-          Int32.of_int i
-        | GlobalImport _ ->
-          go (i + 1) is
-        | _ ->
-          go i is
-    in go 0 m.imports in
-
-    m |> redirect_global base_global Int32.(sub to_global one)
-      |> remove_imports is_global_import [base_global, base_global]
-      |> rename_globals Int32.(fun i ->
-          if i < base_global then i
-          else if i = base_global then assert false
-          else sub i one
-        )
-
-let redirect_heap_pointer_import to_global =
-  redirect_item_import "GOT.mem" "HP" to_global
 
 (* Concatenation of modules *)
 
@@ -832,11 +757,6 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
     | None -> raise (LinkError "First module does not export __heap_base")
     | Some gi -> gi in
 
-  let heap_pointer =
-    match NameMap.find_opt (Lib.Utf8.decode "HP") global_exports1 with
-    | None -> raise (LinkError "First module does not export HP")
-    | Some gi -> gi in
-
   let dylink = match em2.dylink with
     | Some dylink -> dylink
     | None -> raise (LinkError "Second module does not have a dylink section") in
@@ -852,8 +772,7 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
   (* Fill in memory and table base pointers *)
   let dm2 = em2.module_
     |> fill_memory_base_import lib_heap_start
-    |> fill_table_base_import lib_table_start(*
-    |> redirect_heap_pointer_import heap_pointer*) in
+    |> fill_table_base_import lib_table_start in
 
   let got_func_imports = collect_got_func_imports dm2 in
 
@@ -882,7 +801,7 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
   let global_exports2 = find_exports is_global_export dm2 in
   (* Resolve imports, to produce a renumbering *)
   let global_resolved12 = resolve global_required1 global_exports2 in
-  let global_resolved21 = resolve' global_required2 global_exports1 in
+  let global_resolved21 = resolve global_required2 global_exports1 in
   let (globals1, globals2) =
     calculate_renaming
       (count_imports is_global_import em1.module_)
