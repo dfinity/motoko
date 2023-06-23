@@ -382,7 +382,7 @@ pub unsafe fn region_recover<M: Memory>(mem: &mut M, rid: &RegionId) -> Value {
     let c = meta_data::region_table::get(&rid);
     let page_count = match c {
         Some(RegionSizeInPages(pc)) => {
-            if true {
+            if false {
                 println!(
                     80,
                     "region_recover {:?} => found region record {:?}", rid, c
@@ -412,14 +412,15 @@ pub unsafe fn region_recover<M: Memory>(mem: &mut M, rid: &RegionId) -> Value {
             None => {}
             Some((rid_, rank)) => {
                 if &rid_ == rid {
-                    println!(
-                        80,
-                        "region_recover {:?} => found region record, block_id={:?}, rank={:?}",
-                        rid,
-                        block_id,
-                        rank
-                    );
-
+		    if false {
+			println!(
+                            80,
+                            "region_recover {:?} => found region record, block_id={:?}, rank={:?}",
+                            rid,
+                            block_id,
+                            rank
+			);
+		    };
                     av.set_ith_block_id(rank.into(), &BlockId(block_id as u16));
                     recovered_blocks += 1;
                 }
