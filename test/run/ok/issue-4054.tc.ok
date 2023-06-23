@@ -1,0 +1,2 @@
+issue-4054.mo:2.12-2.16: type error [M0014], non-static expression in library or module
+issue-4054.mo:3.12-3.16: type error [M0014], non-static expression in library or module
