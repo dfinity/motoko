@@ -424,6 +424,53 @@ pub unsafe fn region_recover<M: Memory>(mem: &mut M, rid: &RegionId) -> Value {
 
 //
 // region manager migration/initialization, with pre-existing stable data.
+// Case: Version 1 into version 2.
+//
+#[ic_mem_fn]
+pub(crate) unsafe fn region_migration_from_v1_into_v2<M: Memory>(mem: &mut M) {
+    // allocate a block-sized blob on the heap (8MB).
+    // copy the first block of data into that blob, using a stable memory read of a blob.
+    // copy the first block of data from temp blob into new "final block" (logically still first) for region 0.
+    // initialize the meta data for the region system in vacated first block.
+    use crate::ic0_stable::nicer::read;
+
+    let len = meta_data::size::BLOCK_IN_BYTES;
+    let blob_val = crate::memory::alloc_blob(mem, crate::types::Bytes(len as u32));
+    let blob = blob_val.as_blob_mut();
+    let bytes: &mut [u8] = core::slice::from_raw_parts_mut(blob.payload_addr(), len as usize);
+    read(0, bytes);
+
+    println!(
+        80,
+        "region_migration_from_v1_into_v2: read first block into a blob."
+    );
+
+    todo!();
+}
+
+//
+// region manager migration/initialization, with pre-existing stable data.
+// Case: Version 2 into version 2 ("Trivial migration" case).
+//
+#[ic_mem_fn]
+pub(crate) unsafe fn region_migration_from_v2_into_v2<M: Memory>(mem: &mut M) {
+    // Recall that we've done this later, without asking ic0_stable::size.
+    assert_eq!(crate::memory::ic::REGION_MEM_SIZE_INIT, false);
+    crate::memory::ic::REGION_MEM_SIZE_INIT = true;
+
+    if false {
+        println!(80, "region_init -- recover regions 0 and 1.");
+    }
+    crate::memory::ic::REGION_0 = region_recover(mem, &RegionId(0));
+    crate::memory::ic::REGION_1 = region_recover(mem, &RegionId(1));
+
+    // Ensure that regions 2 through 15 are already reserved for
+    // future use by future Motoko compiler-RTS features.
+    region_reserve_id_span(mem, None, RegionId(15));
+}
+
+//
+// region manager migration/initialization, with pre-existing stable data.
 //
 // Valid cases:
 //  - from version 1 into version 2.
@@ -438,36 +485,8 @@ pub(crate) unsafe fn region_migration<M: Memory>(
     assert_eq!(into_version, 2);
     match from_version {
         0 => unreachable!(),
-        2 => {
-            // Recall that we've done this later, without asking ic0_stable::size.
-            assert_eq!(crate::memory::ic::REGION_MEM_SIZE_INIT, false);
-            crate::memory::ic::REGION_MEM_SIZE_INIT = true;
-
-            if false {
-                println!(80, "region_init -- recover regions 0 and 1.");
-            }
-            crate::memory::ic::REGION_0 = region_recover(mem, &RegionId(0));
-            crate::memory::ic::REGION_1 = region_recover(mem, &RegionId(1));
-
-            // Ensure that regions 2 through 15 are already reserved for
-            // future use by future Motoko compiler-RTS features.
-            region_reserve_id_span(mem, None, RegionId(15));
-        }
-        1 => {
-            /*
-            // allocate a block-sized blob on the heap (8MB).
-            // copy the first block of data into that blob, using a stable memory read of a blob.
-            // copy the first block of data from temp blob into new "final block" (logically still first) for region 0.
-            // initialize the meta data for the region system in vacated first block.
-            use crate::ic0_stable::nicer::read;
-
-            let len = meta_data::size::BLOCK_IN_BYTES;
-            let blob_val = crate::memory::alloc_blob(mem, crate::types::Bytes(len));
-            let blob = blob_val.as_blob_mut();
-            let bytes: &mut [u8] = core::slice::from_raw_parts_mut(blob.payload_addr(), len as usize);
-            read(0, bytes);
-             */
-        }
+        2 => region_migration_from_v2_into_v2(mem),
+        1 => region_migration_from_v1_into_v2(mem),
         _ => unreachable!(),
     }
 }
