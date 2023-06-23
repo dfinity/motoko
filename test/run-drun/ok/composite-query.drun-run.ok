@@ -4,7 +4,7 @@ debug.print: init
 ingress Completed: Reply: 0x4449444c0000
 Ok: Reply: 0x4449444c0000
 Ok: Reply: 0x4449444c0000
-Err: IC0517: Query calls re-entering the same canister are not allowed yet.
-Err: IC0517: Query calls re-entering the same canister are not allowed yet.
+Ok: Reply: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
 Ok: Reply: 0x4449444c0000
 Ok: Reply: 0x4449444c0000

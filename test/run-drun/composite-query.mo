@@ -19,11 +19,11 @@ actor Composites {
    };
 
    public composite query func cq2() : async () {
-      await q(); // dynamically fails due to unsupported recursion
+      await q(); // should succeed (though recursive)
    };
 
    public composite query func cq3() : async () {
-      await cq2(); // dynamically fails due to unsupported recursion
+      await cq2(); // should succeed (though recursive)
    };
 
    public composite query func cq4() : async () {
