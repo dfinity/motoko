@@ -141,7 +141,12 @@ impl RegionObject {
         // Where is that block located in stable memory (global rank)?
         let block_id = av.get_ith_block_id(block_rank as u32);
 
-        //println!(80, "intra-block index is {} (block is {:?})", intra_block_index, block_id);
+        if false {
+            println!(
+                80,
+                "intra-block index is {} (block is {:?})", intra_block_index, block_id
+            );
+        }
 
         // address of the byte to load from stable memory:
         let offset = meta_data::offset::BLOCK_ZERO
@@ -177,7 +182,7 @@ mod meta_data {
     pub mod max {
         pub const BLOCKS: u16 = 32768;
 
-        pub const REGIONS: u16 = 32767;
+        //pub const REGIONS: u16 = 32767;
     }
 
     /// Sizes of table entries, and tables.
@@ -192,15 +197,15 @@ mod meta_data {
         pub const BLOCK_REGION_TABLE: u64 =
             super::max::BLOCKS as u64 * BLOCK_REGION_TABLE_ENTRY as u64;
 
-        pub const REGION_TABLE: u64 = super::max::REGIONS as u64 * REGION_TABLE_ENTRY as u64;
+        //pub const REGION_TABLE: u64 = super::max::REGIONS as u64 * REGION_TABLE_ENTRY as u64;
 
         pub const PAGES_IN_BLOCK: u32 = 128;
         pub const PAGE_IN_BYTES: u64 = 1 << 16;
         pub const BLOCK_IN_BYTES: u64 = PAGE_IN_BYTES * (PAGES_IN_BLOCK as u64);
 
         // Static memory footprint, ignoring any dynamically-allocated pages.
-        pub const STATIC_MEM_IN_PAGES: u64 =
-            (super::offset::BLOCK_ZERO + PAGE_IN_BYTES - 1) / PAGE_IN_BYTES;
+        pub const STATIC_MEM_IN_PAGES: u64 = PAGES_IN_BLOCK as u64; /* One block for meta data, plus future use TBD. */
+        /* OLD DEF = (super::offset::BLOCK_ZERO + PAGE_IN_BYTES - 1) / PAGE_IN_BYTES; */
 
         pub unsafe fn required_pages() -> u64 {
             STATIC_MEM_IN_PAGES
@@ -218,7 +223,8 @@ mod meta_data {
 
         pub const REGION_TABLE: u64 = BLOCK_REGION_TABLE + super::size::BLOCK_REGION_TABLE;
 
-        pub const BLOCK_ZERO: u64 = REGION_TABLE + super::size::REGION_TABLE;
+        /* One block for meta data, plus future use TBD. */
+        pub const BLOCK_ZERO: u64 = super::size::BLOCK_IN_BYTES;
     }
 
     pub mod total_allocated_blocks {
@@ -559,8 +565,8 @@ pub(crate) unsafe fn region_migration_from_v2_into_v2<M: Memory>(mem: &mut M) {
     if false {
         println!(80, "region_init -- recover regions 0 and 1.");
     }
-    crate::region::REGION_0 = region_recover(mem, &RegionId(0));
-    crate::region::REGION_1 = region_recover(mem, &RegionId(1));
+    REGION_0 = region_recover(mem, &RegionId(0));
+    REGION_1 = region_recover(mem, &RegionId(1));
 
     // Ensure that regions 2 through 15 are already reserved for
     // future use by future Motoko compiler-RTS features.
@@ -580,7 +586,7 @@ pub(crate) unsafe fn region_init<M: Memory>(mem: &mut M, from_version: i32) {
     assert_eq!(crate::region::REGION_MEM_SIZE_INIT, false);
     crate::region::REGION_MEM_SIZE_INIT = true;
 
-    if false {
+    if true {
         println!(80, "region_init from_version={}", from_version);
     }
 

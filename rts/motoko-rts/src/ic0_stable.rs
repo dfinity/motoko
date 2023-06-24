@@ -29,7 +29,7 @@ pub mod nicer {
         // SAFETY: This is safe because of the ic0 api guarantees.
         unsafe {
             if false {
-                println!(50, "read({})", offset);
+                println!(50, "read({}, {} bytes)", offset, dst.len());
             }
             stable64_read(dst.as_ptr() as u64, offset, dst.len() as u64)
         }
@@ -39,7 +39,7 @@ pub mod nicer {
         // SAFETY: This is safe because of the ic0 api guarantees.
         unsafe {
             if false {
-                println!(50, "write({})", offset);
+                println!(50, "write({}, {} bytes)", offset, src.len());
             }
             stable64_write(offset, src.as_ptr() as u64, src.len() as u64)
         }

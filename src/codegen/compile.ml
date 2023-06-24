@@ -10593,7 +10593,8 @@ and compile_prim_invocation (env : E.t) ae p es at =
         1. return record of nulls
       * On upgrade:
         1. deserialize stable store to v : ty,
-        2. return v
+        2. possibly run region manager initialization logic.
+        3. return v
     *)
     SR.Vanilla,
     let (set_version, get_version) = new_local env "version" in

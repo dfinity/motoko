@@ -24,7 +24,7 @@ actor {
     while (i < size) {
         let expected = P.natToNat8(P.nat64ToNat(i % 256)) : Nat8;
         let loaded = M.loadNat8(i);        
-        P.debugPrint(" - " # (debug_show {i; expected; loaded}));
+        //P.debugPrint(" - " # (debug_show {i; expected; loaded}));
         assert loaded == expected;
         i := i + 1;
     };
