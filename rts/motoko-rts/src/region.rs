@@ -586,7 +586,7 @@ pub(crate) unsafe fn region_init<M: Memory>(mem: &mut M, from_version: i32) {
     assert_eq!(crate::region::REGION_MEM_SIZE_INIT, false);
     crate::region::REGION_MEM_SIZE_INIT = true;
 
-    if true {
+    if false {
         println!(80, "region_init from_version={}", from_version);
     }
 
