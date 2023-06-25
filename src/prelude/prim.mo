@@ -70,10 +70,6 @@ func rts_callback_table_size() : Nat { (prim "rts_callback_table_size" : () -> N
 func rts_mutator_instructions() : Nat { (prim "rts_mutator_instructions" : () -> Nat) () };
 func rts_collector_instructions() : Nat { (prim "rts_collector_instructions" : () -> Nat) () };
 
-// Hashing
-
-func hashBlob(b : Blob) : Nat32 { (prim "crc32Hash" : Blob -> Nat32) b };
-
 // Total conversions (fixed to big)
 
 let int64ToInt = @int64ToInt;
@@ -131,6 +127,12 @@ func charIsWhitespace(c : Char) : Bool = (prim "char_is_whitespace" : Char -> Bo
 func charIsLowercase(c : Char) : Bool = (prim "char_is_lowercase" : Char -> Bool) c;
 func charIsUppercase(c : Char) : Bool = (prim "char_is_uppercase" : Char -> Bool) c;
 func charIsAlphabetic(c : Char) : Bool = (prim "char_is_alphabetic" : Char -> Bool) c;
+
+// Blob functions
+
+func blobCompare(b1 : Blob, b2 : Blob) : Int8 = (prim "blob_compare" : (Blob, Blob) -> Int8) (b1, b2);
+func hashBlob(b : Blob) : Nat32 { (prim "crc32Hash" : Blob -> Nat32) b };
+
 
 // Text conversion
 func decodeUtf8(b : Blob) : ?Text = (prim "decodeUtf8" : Blob -> ?Text) b;
@@ -267,6 +269,8 @@ func blobOfPrincipal(id : Principal) : Blob = (prim "cast" : Principal -> Blob) 
 func principalOfBlob(act : Blob) : Principal = (prim "cast" : Blob -> Principal) act;
 
 func principalOfActor(act : actor {}) : Principal = (prim "cast" : (actor {}) -> Principal) act;
+func isController(p : Principal) : Bool = (prim "is_controller" : Principal -> Bool) p;
+func canisterVersion() : Nat64 = (prim "canister_version" : () -> Nat64) ();
 
 // Untyped dynamic actor creation from blobs
 let createActor : (wasm : Blob, argument : Blob) -> async Principal = @create_actor_helper;

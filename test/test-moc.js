@@ -33,7 +33,7 @@ moc.Motoko.saveFile(
     };
   }`
 );
-moc.Motoko.saveFile('text.mo', `let s = "${'⛔|'.repeat(10000)}"; s.size()`); // #3822
+moc.Motoko.saveFile("text.mo", `let s = "${"⛔|".repeat(10000)}"; s.size()`); // #3822
 
 try {
   assert.equal(moc.Motoko.readFile("empty.mo"), "");
@@ -102,6 +102,8 @@ try {
         },
         severity: 1,
         source: "bad.mo",
+        code: "M0001",
+        category: "syntax",
         message:
           "unexpected end of input, expected one of token or <phrase> sequence:\n  <exp_bin(ob)>",
       },
@@ -130,6 +132,8 @@ try {
         },
         severity: 1,
         source: "bad.mo",
+        category: "syntax",
+        code: "M0001",
         message:
           "unexpected end of input, expected one of token or <phrase> sequence:\n  <exp_bin(ob)>",
       },
@@ -158,9 +162,8 @@ try {
   // Check that long text literals type-check without error
   assert.deepStrictEqual(moc.Motoko.check("text.mo"), {
     code: null,
-    diagnostics: []
+    diagnostics: [],
   });
-}
-catch (err) {
+} catch (err) {
   assert.fail(err);
 }
