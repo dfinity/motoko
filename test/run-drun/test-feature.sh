@@ -1,8 +1,10 @@
-for i in stable-region-migration.drun \
-	     stable-regions-*.mo \
-	     stable-region-*.mo \
-	     region0-stable-mem-*.mo \
-	     stable-mem-*.mo;
+for i in \
+    stable-regions-new-each-upgrade.mo \
+    stable-region-migration.drun \
+	stable-regions-*.mo \
+	stable-region-*.mo \
+	region0-stable-mem-*.mo \
+	stable-mem-*.mo;
 do
     echo $i;
     if ../run.sh -d $i ; then
