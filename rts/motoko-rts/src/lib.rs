@@ -26,6 +26,7 @@ pub mod continuation_table;
 #[cfg(feature = "ic")]
 mod float;
 pub mod gc;
+#[cfg(feature = "ic")]
 mod ic0_stable;
 #[cfg(feature = "ic")]
 mod idl;
