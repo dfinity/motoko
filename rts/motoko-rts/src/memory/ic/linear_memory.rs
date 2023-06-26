@@ -36,7 +36,7 @@ pub unsafe extern "C" fn get_heap_size() -> Bytes<u32> {
 }
 
 impl Memory for IcMemory {
-    #[inline(never)]
+    #[inline]
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value {
         let bytes = n.to_bytes();
         let delta = u64::from(bytes.as_u32());
