@@ -10,9 +10,10 @@ pub(crate) static mut RECLAIMED: Bytes<u64> = Bytes(0);
 extern "C" {
     pub static HP: u32;
     pub(crate) fn setHP(new_hp: u32);
+    pub(crate) fn GetHP() -> u32;
 }
 
-#[inline(never)]
+#[inline]
 pub(crate) unsafe fn getHP() -> u32 {
     &HP as *const _ as u32
 }
@@ -40,8 +41,6 @@ pub unsafe extern "C" fn get_heap_size() -> Bytes<u32> {
     Bytes(HP - get_aligned_heap_base())
 }
 
-static mut COUNT: u32 = 0;
-
 impl Memory for IcMemory {
     #[inline(never)]
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value {
@@ -49,7 +48,7 @@ impl Memory for IcMemory {
         let delta = u64::from(bytes.as_u32());
 
         // Update heap pointer
-        let old_hp = u64::from(getHP());
+        let old_hp = u64::from(GetHP());
         let new_hp = old_hp + delta;
 
         // Grow memory if needed
@@ -59,13 +58,6 @@ impl Memory for IcMemory {
 
         debug_assert!(new_hp <= u64::from(core::u32::MAX));
         setHP(new_hp as u32);
-        let newhp = getHP();
-        assert_eq!(new_hp as u32, newhp);
-
-        const LIM: u32 = 11;
-        //if COUNT > LIM { println!(100, "when {}, old: {:#x}, newHP: {:#x}", COUNT, old_hp, newhp) }
-        COUNT+=1;
-        assert!(COUNT < LIM + 5);
 
         Value::from_ptr(old_hp as usize)
     }
