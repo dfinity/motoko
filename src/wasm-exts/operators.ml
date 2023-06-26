@@ -230,6 +230,7 @@ let f64_reinterpret_i64 = Convert (F64 F64Op.ReinterpretInt)
 let memory_size = MemorySize
 let memory_grow = MemoryGrow
 
-(* Manual extension *)
+(* Manual extension for specific bulk-memory operations *)
 let memory_fill = MemoryFill
 let memory_copy = MemoryCopy
+(* End of manual extension *)
