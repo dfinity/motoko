@@ -33,7 +33,7 @@ unsafe fn copying_gc<M: Memory>(mem: &mut M) {
         // get_hp
         || linear_memory::getHP() as usize,
         // set_hp
-        |hp| linear_memory::setHP(hp),
+        |hp| { linear_memory::setHP(hp); },
         ic::get_static_roots(),
         crate::continuation_table::continuation_table_loc(),
         // note_live_size
