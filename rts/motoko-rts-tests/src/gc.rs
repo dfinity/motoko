@@ -446,6 +446,7 @@ impl GC {
     fn run(&self, heap: &mut MotokoHeap, _round: usize) -> bool {
         let heap_base = heap.heap_base_address() as u32;
         let static_roots = Value::from_ptr(heap.static_root_array_address());
+        let mut region_0 = Value::from_scalar(0);
         let continuation_table_ptr_address = heap.continuation_table_ptr_address() as *mut Value;
 
         let heap_1 = heap.clone();
@@ -463,6 +464,7 @@ impl GC {
                         move |hp| heap_2.set_heap_ptr_address(hp as usize),
                         static_roots,
                         continuation_table_ptr_address,
+                        &mut region_0,
                         // note_live_size
                         |_live_size| {},
                         // note_reclaimed
@@ -483,6 +485,7 @@ impl GC {
                         move |hp| heap_2.set_heap_ptr_address(hp as usize),
                         static_roots,
                         continuation_table_ptr_address,
+                        &mut region_0,
                         // note_live_size
                         |_live_size| {},
                         // note_reclaimed
@@ -515,6 +518,7 @@ impl GC {
                     let roots = motoko_rts::gc::generational::Roots {
                         static_roots,
                         continuation_table_ptr_loc: continuation_table_ptr_address,
+                        region0_ptr_loc: &mut region_0,
                     };
                     let gc_heap = motoko_rts::gc::generational::Heap {
                         mem: heap,
