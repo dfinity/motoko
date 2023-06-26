@@ -63,7 +63,7 @@ impl Memory for IcMemory {
         assert_eq!(new_hp as u32, newhp);
 
         const LIM: u32 = 11;
-        if COUNT > LIM { println!(100, "when {}, old: {:#x}, newHP: {:#x}", COUNT, old_hp, newhp) }
+        //if COUNT > LIM { println!(100, "when {}, old: {:#x}, newHP: {:#x}", COUNT, old_hp, newhp) }
         COUNT+=1;
         assert!(COUNT < LIM + 5);
 
