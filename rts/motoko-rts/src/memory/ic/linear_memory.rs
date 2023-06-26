@@ -38,7 +38,7 @@ pub unsafe extern "C" fn get_total_allocations() -> Bytes<u64> {
 
 #[no_mangle]
 pub unsafe extern "C" fn get_heap_size() -> Bytes<u32> {
-    Bytes(HP - get_aligned_heap_base())
+    Bytes(getHP() - get_aligned_heap_base())
 }
 
 impl Memory for IcMemory {
