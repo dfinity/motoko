@@ -1056,7 +1056,6 @@ module GC = struct
       E.add_global64 env "__mutator_instructions" Mutable 0L;
       E.add_global64 env "__collector_instructions" Mutable 0L;
       E.add_global32 env "HP" Mutable 0l;
-      E.export_global env "HP"
     end
 
   let get_mutator_instructions env =
@@ -5245,7 +5244,7 @@ module RTS_Exports = struct
       )
     ) in
     E.add_export env (nr {
-      name = Lib.Utf8.decode "GetHP";
+      name = Lib.Utf8.decode "getHP";
       edesc = nr (FuncExport (nr get_hp_fi))
     });
 
