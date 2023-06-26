@@ -1629,17 +1629,14 @@ module Tagged = struct
         GC.set_heap_pointer env ^^
         GC.get_heap_pointer env ^^
         compile_bitand_const (overflow_mask size_in_bytes) ^^
-        G.if0
+        G.if1 I32Type
           (get_object ^^
-           compile_sub_const 1l ^^ (* skew *)
-           set_object)
+           compile_sub_const 1l (* skew *))
           (get_object ^^ GC.set_heap_pointer env ^^ (* restore *)
-           alloc(*_nocheck FIXME*) env size ^^
-           set_object))
-        else
-          Heap.alloc(*_nocheck FIXME*) env size ^^
-           set_object) ^^
-      get_object ^^
+           alloc(*_nocheck FIXME*) env size))
+       else
+         Heap.alloc(*_nocheck FIXME*) env size) ^^
+      set_object ^^ get_object ^^
       compile_unboxed_const (int_of_tag tag) ^^
       Heap.store_field tag_field ^^
       (if !Flags.gc_strategy = Flags.Incremental then
