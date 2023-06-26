@@ -12,7 +12,7 @@ extern "C" {
     pub(crate) fn setHP(new_hp: u32);
 }
 
-#[inline]
+#[inline(never)]
 pub(crate) unsafe fn getHP() -> u32 {
     &HP as *const _ as u32
 }
