@@ -1610,30 +1610,34 @@ module Tagged = struct
     assert (!Flags.gc_strategy = Flags.Incremental);
     1l
 
-  (* Note: Post allocation barrier must be applied after initialization *)
+  (* Note: post-allocation barrier must be applied after initialization *)
   let alloc env size tag =
     let name = Printf.sprintf "alloc_size<%d>_tag<%d>" (Int32.to_int size) (Int32.to_int (int_of_tag tag)) in
+    let overflow_mask n =
+      let n = Int32.to_int n in
+      Int32.(logand 0xFFFFl (shift_left minus_one (16 - Numerics.Nat16.(to_int (clz (of_int n)))))) in
+
     Func.share_code0 env name [I32Type] (fun env ->
       let set_object, get_object = new_local env "new_object" in
-      (if size < 64l then
+      (if size < 0x2000l then
         Heap.(
         GC.get_heap_pointer env ^^
         set_object ^^ (* speculate *)
         GC.get_heap_pointer env ^^
-        compile_add_const Int32.(mul size word_size) ^^ (* FIXME: forwarding? *)
+        let size_in_bytes = Int32.(mul size word_size) in
+        compile_add_const size_in_bytes ^^ (* FIXME: forwarding? *)
         GC.set_heap_pointer env ^^
         GC.get_heap_pointer env ^^
-          (* mask FIXME use logarithm *)
-        compile_bitand_const 0xFF00l ^^
+        compile_bitand_const (overflow_mask size_in_bytes) ^^
         G.if0
           (get_object ^^
            compile_sub_const 1l ^^ (* skew *)
            set_object)
           (get_object ^^ GC.set_heap_pointer env ^^ (* restore *)
-           alloc env size ^^
+           alloc(*_nocheck FIXME*) env size ^^
            set_object))
         else
-          Heap.alloc env size ^^
+          Heap.alloc(*_nocheck FIXME*) env size ^^
            set_object) ^^
       get_object ^^
       compile_unboxed_const (int_of_tag tag) ^^
