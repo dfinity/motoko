@@ -9,8 +9,8 @@ pub(crate) static mut RECLAIMED: Bytes<u64> = Bytes(0);
 // Heap pointer
 extern "C" {
     pub static HP: u32;
-    pub(crate) fn setHP(new_hp: u32) -> usize;
-    //pub(crate) fn GetHP() -> u32;
+    pub(crate) fn setHP(new_hp: u32);
+    pub(crate) fn GetHP() -> u32;
 }
 
 #[inline]
@@ -48,7 +48,7 @@ impl Memory for IcMemory {
         let delta = u64::from(bytes.as_u32());
 
         // Update heap pointer
-        let old_hp = u64::from(getHP());
+        let old_hp = u64::from(GetHP());
         let new_hp = old_hp + delta;
 
         // Grow memory if needed
@@ -57,8 +57,9 @@ impl Memory for IcMemory {
         }
 
         debug_assert!(new_hp <= u64::from(core::u32::MAX));
+        setHP(new_hp as u32);
 
-        Value::from_ptr(setHP(new_hp as u32))
+        Value::from_ptr(old_hp as usize)
     }
 
     #[inline(never)]
