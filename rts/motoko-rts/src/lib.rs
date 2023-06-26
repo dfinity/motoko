@@ -34,7 +34,9 @@ pub mod leb128;
 mod mem_utils;
 pub mod memory;
 pub mod principal_id;
+#[cfg(feature = "ic")]
 pub mod region;
+#[cfg(feature = "ic")]
 pub mod region0;
 mod static_checks;
 pub mod stream;
