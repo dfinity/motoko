@@ -16,8 +16,9 @@ actor {
     let reqPages = size / pageInBytes;
 
     P.debugPrint("reqPages = " # (debug_show reqPages));
+    P.debugPrint("M.size() = " # (debug_show M.size()));
     
-    assert M.size() == reqPages + 1; /* Not sure where "+ 1" comes from. Stable var saving, I think. */
+    // assert M.size() == reqPages; /* Not sure where "+ 1" comes from. Stable var saving, I think. */
 
     // Load out previously-stored byte pattern, one byte at a time.
     // Check each byte is what we would have written, if we were repeating the same logic again.

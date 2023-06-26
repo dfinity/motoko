@@ -487,11 +487,12 @@ pub(crate) unsafe fn region_migration_from_v1_into_v2<M: Memory>(mem: &mut M) {
     // - copy the head block of data from temp blob into new "final block" (logically still first) for region 0.
     // - initialize the meta data for the region system in vacated initial block.
 
-    use crate::ic0_stable::nicer::{grow, read, size, write};
+    use crate::ic0_stable::nicer::{grow, read, write};
 
     let header_len = meta_data::size::BLOCK_IN_BYTES as u32;
 
-    let region0_pages = size() as u32;
+    //let region0_pages = size() as u32;
+    let region0_pages = region_get_mem_size(mem) as u32;
 
     let region0_blocks =
         (region0_pages + (meta_data::size::PAGES_IN_BLOCK - 1)) / (meta_data::size::PAGES_IN_BLOCK);
