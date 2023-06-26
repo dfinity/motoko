@@ -16,9 +16,8 @@ jobs:
       with:
         # This is needed to be able to push and trigger CI with that push
         token: ${{ secrets.NIV_UPDATER_TOKEN }}
-    - uses: cachix/install-nix-action@v20
+    - uses: cachix/install-nix-action@v22
       with:
-        install_url: https://releases.nixos.org/nix/nix-2.13.3/install
         nix_path: nixpkgs=channel:nixos-22.11
     - uses: cachix/cachix-action@v12
       with:

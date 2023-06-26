@@ -1,5 +1,40 @@
 # Motoko compiler changelog
 
+* motoko (`moc`)
+
+  * Allow canister imports of Candid service constructors, ignoring the service arguments to
+    import the instantiated service instead (with a warning) (#4041).
+
+  * Allow optional terminal semicolons in Candid imports (#4042).
+
+  * bugfix: allow signed float literals as static expressions in modules (#4063).
+
+## 0.9.3 (2023-06-19)
+
+* motoko (`moc`)
+
+  * Added fields `sender_canister_version` for actor class version tracking (#4036).
+
+## 0.9.2 (2023-06-10)
+
+* motoko (`moc`)
+
+  * BREAKING CHANGE (Minor):
+
+    `or`-patterns in function definitions cannot be inferred any more. The new error
+    message suggests to add a type annotation instead. This became necessary in order
+    to avoid potentially unsound types (#4012).
+
+  * Added implementation for `ic0.canister_version` as a primitive (#4027).
+
+  * Added a more efficient `Prim.blobCompare` (thanks to nomeata) (#4009).
+
+  * bugfix: minor error in grammar for `async*` expressions (#4005).
+
+* motoko-base
+
+  * Add `Principal.isController` function (dfinity/motoko-base#558).
+
 ## 0.9.1 (2023-05-15)
 
 * motoko (`moc`)

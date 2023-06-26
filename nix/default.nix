@@ -36,12 +36,6 @@ let
            sources = import sourcesnix { sourcesFile = ./sources.json; pkgs = super; };
         })
 
-        # wasmtime not broken
-        # (was marked broken on darwin in https://github.com/NixOS/nixpkgs/pull/173671)
-        (self: super: {
-           wasmtime = super.wasmtime.overrideAttrs (o: { meta = o.meta // { broken = false; };});
-        })
-
         # Selecting the ocaml version
         # Also update ocaml-version in src/*/.ocamlformat!
         (self: super: { ocamlPackages = self.ocaml-ng.ocamlPackages_4_12; })
@@ -49,13 +43,8 @@ let
         (self: super: {
             # Additional ocaml package
             ocamlPackages = super.ocamlPackages // rec {
-              obelisk = import ./ocaml-obelisk.nix {
-                inherit (self) lib fetchFromGitHub ocaml dune_3;
-                inherit (self) ocamlPackages;
-                inherit (self.stdenv) mkDerivation;
-              };
 
-              # downgrade `wasmjs_of_ocaml(-compiler)` until we have figured out the bug related to 4.1.0
+              # upgrade `js_of_ocaml(-compiler)` until we have figured out the bug related to 4.1.0 (which is in nixpkgs)
               js_of_ocaml-compiler = super.ocamlPackages.js_of_ocaml-compiler.overrideAttrs (_: rec {
                 version = "5.0.1";
                 src = self.fetchurl {
@@ -72,7 +61,6 @@ let
                 duneVersion = "3";
 
                 buildInputs = [ ppxlib ];
-
                 propagatedBuildInputs = [ js_of_ocaml-compiler uchar ];
 
                 meta = builtins.removeAttrs js_of_ocaml-compiler.meta [ "mainProgram" ];
