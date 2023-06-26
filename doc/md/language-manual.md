@@ -83,10 +83,12 @@ All comments are treated as whitespace.
 The following keywords are reserved and may not be used as identifiers:
 
 ``` bnf
-actor and assert async async* await await* break case catch class continue debug
-debug_show do else flexible false for from_candid func if ignore import
-in module not null object or label let loop private public query return
-shared stable switch system throw to_candid true try type var while with
+
+actor and assert async async* await await* break case catch class
+composite continue debug debug_show do else flexible false for
+from_candid func if ignore import in module not null object or label
+let loop private public query return shared stable switch system throw
+to_candid true try type var while with
 ```
 
 ### Identifiers
@@ -407,8 +409,11 @@ The syntax of a *declaration* is as follows:
 The syntax of a shared function qualifier with call-context pattern is as follows:
 
 ``` bnf
+<query> ::=
+ composite? query
+
 <shared-pat> ::=
-  shared query? <pat>?
+  shared <query>? <pat>?
 ```
 
 For `<shared-pat>`, an absent `<pat>?` is shorthand for the wildcard pattern `_`.
@@ -566,7 +571,7 @@ Type expressions are used to specify the types of arguments, constraints (a.k.a 
 <sort> ::= (actor | module | object)
 
 <shared> ::=                                 shared function type qualifier
-  shared query?
+  shared <query>?
 
 <path> ::=                                   paths
   <id>                                         type identifier
@@ -785,7 +790,7 @@ If `<typ1>` or `<typ2>` (or both) is a tuple type, then the length of that tuple
 
 The optional `<shared>` qualifier specifies whether the function value is shared, which further constrains the form of `<typ-params>`, `<typ1>` and `<typ2>` (see [Sharability](#sharability) below).
 
-(Note that a `<shared>` function may itself be `shared` or `shared query`, determining the persistence of its state changes.)
+(Note that a `<shared>` function may itself be `shared` or `shared query` or `shared composite query`, determining the persistence of its state changes.)
 
 ### Async types
 
@@ -918,9 +923,12 @@ Given a vector of type arguments instantiating a vector of type parameters, each
 
 A type `T` is well-formed only if (recursively) its constituent types are well-formed, and:
 
--   if `T` is `async U` then `U` is shared, and
+-   if `T` is `async U` or `async* U` then `U` is shared, and
 
--   if `T` is `shared query? U -> V`, `U` is shared and `V == ()` or `V == async W` with `W` shared, and
+-   if `T` is `shared <query>? U -> V`:
+    - `U` is shared and,
+    - `V == ()` and `<query>?` is absent, or
+    - `V == async W` with `W` shared, and
 
 -   if `T` is `C<T0, …​, Tn>` where:
 
@@ -1264,7 +1272,10 @@ The argument type of `inspect` depends on the interface of the enclosing actor. 
 
 -   `arg : Blob`: the raw, binary content of the message argument;
 
--   `msg : <variant>`: a variant of *decoding* functions, where `<variant> == {…​; #<id>: () → T; …​}` contains one variant per shared function, `<id>`, of the actor. The variant’s tag identifies the function to be called; The variant’s argument is a function that, when applied, returns the (decoded) argument of the call as a value of type `T`.
+-   `msg : <variant>`: a variant of *decoding* functions, where `<variant> == {…​; #<id>: () → T; …​}` contains one variant per `shared` or `shared query` function, `<id>`, of the actor
+    (`shared composite query` functions are ignored).
+    The variant’s tag identifies the function to be called; The variant’s argument is a function that, when applied, returns the (decoded) argument of the call as a value of type `T`.
+
 
 Using a variant, tagged with `#<id>`, allows the return type, `T`, of the decoding function to vary with the argument type (also `T`) of the shared function `<id>`.
 
@@ -1561,7 +1572,7 @@ Note that requirement 1. imposes further constraints on the field types of `T`. 
 
 -   all public fields must be non-`var` (immutable) `shared` functions (the public interface of an actor can only provide asynchronous messaging via shared functions);
 
-Because actor construction is asynchronous, an actor declaration can only occur in an asynchronous context (i.e. in the body of a (non-`query`) `shared` function, `async` expression or `async*` expression).
+Because actor construction is asynchronous, an actor declaration can only occur in an asynchronous context (i.e. in the body of a (non-`<query>`) `shared` function, `async` expression or `async*` expression).
 
 Evaluation of `<sort>? <id>? =? { <dec-field>;* }` proceeds by binding `<id>` (if present), to the eventual value `v`, and evaluating the declarations in `<dec>;*`. If the evaluation of `<dec>;*` traps, so does the object declaration. Otherwise, `<dec>;*` produces a set of bindings for identifiers in `Id`. let `v0`, …​, `vn` be the values or locations bound to identifiers `<id0>`, …​, `<idn>`. The result of the object declaration is the object `v == sort { <id0> = v1, …​, <idn> = vn}`.
 
@@ -1680,7 +1691,7 @@ where:
 
 -   `async?` is present, if only if, `<sort>` == `actor`.
 
-Note `<shared-pat>?` must not be of the form `shared query <pat>?`: a constructor, unlike a function, cannot be a query.
+Note `<shared-pat>?` must not be of the form `shared <query> <pat>?`: a constructor, unlike a function, cannot be a `query` or `composite query`.
 
 An absent `<shared-pat>?` defaults to `shared` when `sort` = `actor`.
 
@@ -1972,7 +1983,7 @@ The call expression `<exp1> <T0,…​,Tn>? <exp2>` evaluates `exp1` to a result
 
 Otherwise, `exp2` is evaluated to a result `r2`. If `r2` is `trap`, the expression results in `trap`.
 
-Otherwise, `r1` is a function value, `<shared-pat>? func <X0 <: V0, …​, n <: Vn> <pat1> { <exp> }` (for some implicit environment), and `r2` is a value `v2`. If `<shared-pat>` is present and of the form `shared query? <pat>` then evaluation continues by matching the record value `{caller = p}` against `<pat>`, where `p` is the `Principal` invoking the function (typically a user or canister). Matching continues by matching `v1` against `<pat1>`. If pattern matching succeeds with some bindings, then evaluation returns the result of `<exp>` in the environment of the function value (not shown) extended with those bindings. Otherwise, some pattern match has failed and the call results in `trap`.
+Otherwise, `r1` is a function value, `<shared-pat>? func <X0 <: V0, …​, n <: Vn> <pat1> { <exp> }` (for some implicit environment), and `r2` is a value `v2`. If `<shared-pat>` is present and of the form `shared <query>? <pat>` then evaluation continues by matching the record value `{caller = p}` against `<pat>`, where `p` is the `Principal` invoking the function (typically a user or canister). Matching continues by matching `v1` against `<pat1>`. If pattern matching succeeds with some bindings, then evaluation returns the result of `<exp>` in the environment of the function value (not shown) extended with those bindings. Otherwise, some pattern match has failed and the call results in `trap`.
 
 :::note
 
@@ -1994,7 +2005,7 @@ Now, a caller can handle these errors using enclosing `try ... catch ...` expres
 
 The function expression `<shared-pat>? func < X0 <: T0, …​, Xn <: Tn > <pat1> (: U2)? =? <block-or-exp>` has type `<shared>? < X0 <: T0, ..., Xn <: Tn > U1-> U2` if, under the assumption that `X0 <: T0, …​, Xn <: Tn`:
 
--   `<shared-pat>?` is of the form `shared query? <pat>` if and only if `<shared>?` is `shared query?` (the `query` modifiers must agree);
+-   `<shared-pat>?` is of the form `shared <query>? <pat>` if and only if `<shared>?` is `shared <query>?` (the `<query>` modifiers must agree, i.e. are either both absent, both `query`, or both `composite query`);
 
 -   all the types in `T0, …​, Tn` and `U2` are well-formed and well-constrained;
 
@@ -2008,11 +2019,14 @@ The function expression `<shared-pat>? func < X0 <: T0, …​, Xn <: Tn > <pat1
 
 `<shared-pat>? func <typ-params>? <pat1> (: <typ>)? =? <block-or-exp>` evaluates to a function value (a.k.a. closure), denoted `<shared-pat>? func <typ-params>? <pat1> = <exp>`, that stores the code of the function together with the bindings from the current evaluation environment (not shown) needed to evaluate calls to the function value.
 
-Note that a `<shared-pat>` function may itself be `shared <pat>` or `shared query <pat>`:
+Note that a `<shared-pat>` function may itself be `shared <pat>` or `shared query <pat>` or  `shared composite query <pat>`.
 
 -   A `shared <pat>` function may be invoked from a remote caller. Unless causing a trap, the effects on the callee persist beyond completion of the call.
 
 -   A `shared query <pat>` function may be also be invoked from a remote caller, but the effects on the callee are transient and discarded once the call has completed with a result (whether a value or error).
+
+-   A `shared composite query <pat>` function may only be invoked as an ingress message, not from a remote caller. Like a query, the effects on the callee are transient and discarded once the call has completed with a result (whether a value or error).
+
 
 In either case, `<pat>` provides access to a context value identifying the *caller* of the shared (query) function.
 
@@ -2021,6 +2035,17 @@ In either case, `<pat>` provides access to a context value identifying the *call
 The context type is a record to allow extension with further fields in future releases.
 
 :::
+
+Shared functions have different capabilities dependent on their qualification as `shared`, `shared query` or `shared composite query`.
+
+A `shared` function may call any `shared` or `shared query` function, but no `shared composite query` function.
+A `shared query` function may not call any `shared`, `shared query` or `shared composite query` function.
+A `shared composite query` function may call any `shared query` or `shared composite query` function, but no `shared` function.
+
+All varieties of shared functions may call unshared functions.
+
+Composite queries, though composable, can only be called externally (from a frontend) and cannot be initiated from an actor.
+
 
 ### Blocks
 
