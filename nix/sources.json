@@ -40,10 +40,10 @@
         "homepage": "",
         "owner": "dfinity",
         "repo": "ic-hs",
-        "rev": "52369fa1b03dcdf760c65951643a431efaca0360",
-        "sha256": "19bz04i9g92s3zqq9qwqagcrkm9a4w8hvndzkfafkl2c33j0i4vi",
+        "rev": "c2cedde6eb5e6e19bc804261b5ff908f5393508d",
+        "sha256": "113wvlhi4581zg3x765h66i5kkm8z08baj94ckk9bxg489rkn6wl",
         "type": "tarball",
-        "url": "https://github.com/dfinity/ic-hs/archive/52369fa1b03dcdf760c65951643a431efaca0360.tar.gz",
+        "url": "https://github.com/dfinity/ic-hs/archive/c2cedde6eb5e6e19bc804261b5ff908f5393508d.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "libtommath": {
@@ -90,10 +90,10 @@
         "homepage": "https://wasi.dev",
         "owner": "WebAssembly",
         "repo": "wasi-libc",
-        "rev": "aecd368c6dedc417037afa136139eccc4490e56e",
-        "sha256": "0blg6w5z7jvrdzskjvnqpqxhyv1a8alv54xjm8ww2p1538xa7f99",
+        "rev": "bd950eb128bff337153de217b11270f948d04bb4",
+        "sha256": "1w1aahki27wb17k8hsh7zv6g114y1n5j2db5kc2l2sqviy2w58dj",
         "type": "tarball",
-        "url": "https://github.com/WebAssembly/wasi-libc/archive/aecd368c6dedc417037afa136139eccc4490e56e.tar.gz",
+        "url": "https://github.com/WebAssembly/wasi-libc/archive/bd950eb128bff337153de217b11270f948d04bb4.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs": {

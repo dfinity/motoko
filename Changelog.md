@@ -7,6 +7,8 @@
 
   * Allow optional terminal semicolons in Candid imports (#4042).
 
+  * bugfix: allow signed float literals as static expressions in modules (#4063).
+
 ## 0.9.3 (2023-06-19)
 
 * motoko (`moc`)
