@@ -43,7 +43,7 @@ pub unsafe extern "C" fn get_heap_size() -> Bytes<u32> {
 static mut COUNT: u32 = 0;
 
 impl Memory for IcMemory {
-    #[inline]
+    #[inline(never)]
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value {
         let bytes = n.to_bytes();
         let delta = u64::from(bytes.as_u32());
@@ -63,7 +63,7 @@ impl Memory for IcMemory {
         assert_eq!(new_hp as u32, newhp);
 
         const LIM: u32 = 11;
-        //if COUNT > LIM { println!(100, "when {}, old: {:#x}, newHP: {:#x}", COUNT, old_hp, newhp) }
+        if COUNT > LIM { println!(100, "when {}, old: {:#x}, newHP: {:#x}", COUNT, old_hp, newhp) }
         COUNT+=1;
         assert!(COUNT < LIM + 5);
 
