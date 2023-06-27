@@ -34,10 +34,6 @@ pub(crate) static mut REGION_TOTAL_ALLOCATED_BLOCKS: u16 = 0;
 // pub(crate) static mut REGION_0: Value = Value::from_ptr(0);
 pub(crate) static mut REGION_0: Value = Value::from_scalar(0);
 
-// Region 1 -- reserved for reclaimed regions' blocks (to do).
-// pub(crate) static mut REGION_1: Value = Value::from_ptr(0);
-pub(crate) static mut REGION_1: Value = Value::from_scalar(0);
-
 // This impl encapsulates encoding of optional region IDs within a u16.
 // Used by block-region table to encode the (optional) region ID of a block.
 impl RegionId {
@@ -462,11 +458,8 @@ pub(crate) unsafe fn region_migration_from_v0_into_v2<M: Memory>(mem: &mut M) {
         // Region 0 -- classic API for stable memory, as a dedicated region.
         REGION_0 = region_new(mem);
 
-        // Region 1 -- reserved for reclaimed regions' blocks (to do).
-        REGION_1 = region_new(mem);
-
-        // Regions 2 through 15, reserved for future use by future Motoko compiler-RTS features.
-        region_reserve_id_span(mem, Some(RegionId(2)), RegionId(15));
+        // Regions 1 through 15, reserved for future use by future Motoko compiler-RTS features.
+        region_reserve_id_span(mem, Some(RegionId(1)), RegionId(15));
     } else {
         unreachable!()
     }
@@ -549,12 +542,9 @@ pub(crate) unsafe fn region_migration_from_v1_into_v2<M: Memory>(mem: &mut M) {
     /* "Recover" the region data into a heap object. */
     crate::region::REGION_0 = region_recover(mem, &RegionId(0));
 
-    // Region 1 -- reserved for reclaimed regions' blocks (to do).
-    crate::region::REGION_1 = region_new(mem);
-
     // Ensure that regions 2 through 15 are already reserved for
     // future use by future Motoko compiler-RTS features.
-    region_reserve_id_span(mem, Some(RegionId(2)), RegionId(15));
+    region_reserve_id_span(mem, Some(RegionId(1)), RegionId(15));
 }
 
 //
@@ -564,10 +554,9 @@ pub(crate) unsafe fn region_migration_from_v1_into_v2<M: Memory>(mem: &mut M) {
 #[ic_mem_fn]
 pub(crate) unsafe fn region_migration_from_v2_into_v2<M: Memory>(mem: &mut M) {
     if false {
-        println!(80, "region_init -- recover regions 0 and 1.");
+        println!(80, "region_init -- recover region 0, and reserve 1--15.");
     }
     REGION_0 = region_recover(mem, &RegionId(0));
-    REGION_1 = region_recover(mem, &RegionId(1));
 
     // Ensure that regions 2 through 15 are already reserved for
     // future use by future Motoko compiler-RTS features.
