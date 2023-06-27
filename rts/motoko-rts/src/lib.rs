@@ -56,6 +56,12 @@ unsafe fn alloc_words<M: memory::Memory>(mem: &mut M, n: types::Words<u32>) -> t
     mem.alloc_words(n)
 }
 
+#[non_incremental_gc]
+#[ic_mem_fn(ic_only)]
+unsafe fn grow_memory<M: memory::Memory>(mem: &mut M, ptr: u64) {
+    mem.grow_memory(ptr)
+}
+
 #[incremental_gc]
 #[ic_mem_fn(ic_only)]
 unsafe fn alloc_words<M: memory::Memory>(mem: &mut M, n: types::Words<u32>) -> types::Value {
