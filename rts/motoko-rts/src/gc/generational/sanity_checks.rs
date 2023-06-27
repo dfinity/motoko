@@ -157,7 +157,7 @@ impl<'a> MemoryChecker<'a> {
         let pointer = object.get_ptr();
         assert!(pointer < self.limits.free);
         let tag = object.tag();
-        assert!(tag >= TAG_OBJECT && tag <= TAG_NULL);
+        assert!(tag >= TAG_OBJECT && tag <= TAG_NULL || tag == TAG_REGION);
     }
 
     unsafe fn check_heap(&self) {
