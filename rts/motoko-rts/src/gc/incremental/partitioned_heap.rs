@@ -556,6 +556,7 @@ impl PartitionedHeap {
     }
 
     pub unsafe fn complete_collection(&mut self) {
+        self.synchronize_heap_pointer();
         for partition in &mut self.partitions {
             let marked_size = partition.marked_size;
             partition.update = false;
