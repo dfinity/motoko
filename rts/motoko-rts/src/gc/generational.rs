@@ -471,7 +471,10 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
 
                 // Update forwarding pointer
                 let new_obj = new_pointer as *mut Obj;
-                debug_assert!(new_obj.tag() >= TAG_OBJECT && new_obj.tag() <= TAG_NULL);
+                debug_assert!(
+                    (new_obj.tag() >= TAG_OBJECT && new_obj.tag() <= TAG_NULL)
+                        || new_obj.tag() == TAG_REGION
+                );
             }
 
             free += object_size.to_bytes().as_usize();
@@ -517,7 +520,7 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
             (*(header as *mut Value)) = Value::from_ptr(new_location);
             header = tmp;
         }
-        assert!(header >= TAG_OBJECT && header <= TAG_NULL);
+        debug_assert!((header >= TAG_OBJECT && header <= TAG_NULL) || header == TAG_REGION);
         (*object).tag = header;
     }
 
