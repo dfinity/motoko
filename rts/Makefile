@@ -277,7 +277,6 @@ test-incremental: $(TEST_DEPENDENCIES)
 # These symbols from musl are used by the code generator directly
 EXPORTED_SYMBOLS=\
   __wasm_call_ctors \
-  memcpy \
   memcmp \
   tan \
   asin \
