@@ -182,7 +182,10 @@ unsafe fn evac<M: Memory>(
     // Update forwarding pointer
     let to_space_obj = obj_addr as *mut Obj;
     debug_assert!(obj_size.as_usize() > size_of::<Obj>().as_usize());
-    debug_assert!(to_space_obj.tag() >= TAG_OBJECT && to_space_obj.tag() <= TAG_NULL);
+    debug_assert!(
+        to_space_obj.tag() >= TAG_OBJECT && to_space_obj.tag() <= TAG_NULL
+            || to_space_obj.tag() == TAG_REGION
+    );
 }
 
 unsafe fn scav<M: Memory>(

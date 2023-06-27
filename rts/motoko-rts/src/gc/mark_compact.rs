@@ -242,7 +242,10 @@ unsafe fn update_refs<SetHp: Fn(u32)>(set_hp: SetHp, heap_base: u32) {
             debug_assert!(p_size_words.as_usize() > size_of::<Obj>().as_usize());
             // Update forwarding pointer
             let new_obj = p_new as *mut Obj;
-            debug_assert!(new_obj.tag() >= TAG_OBJECT && new_obj.tag() <= TAG_NULL);
+            debug_assert!(
+                (new_obj.tag() >= TAG_OBJECT && new_obj.tag() <= TAG_NULL)
+                    || new_obj.tag() == TAG_REGION
+            );
         }
 
         free += p_size_words.to_bytes().as_u32();
@@ -294,7 +297,7 @@ unsafe fn unthread(obj: *mut Obj, new_loc: u32) {
     }
 
     // At the end of the chain is the original header for the object
-    debug_assert!(header >= TAG_OBJECT && header <= TAG_NULL);
+    debug_assert!((header >= TAG_OBJECT && header <= TAG_NULL) || header == TAG_REGION);
 
     (*obj).tag = header;
 }
