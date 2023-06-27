@@ -20,8 +20,6 @@ pkgs:
       patchPhase = ''
 
         cd ../drun-vendor.tar.gz
-        echo "TEST Cargo.lock"
-        ls -la Cargo.lock
         patch librocksdb-sys/build.rs << EOF
 @@ -118,6 +118,10 @@
          config.define("OS_MACOSX", Some("1"));
