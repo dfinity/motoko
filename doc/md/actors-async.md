@@ -184,7 +184,8 @@ The `query` modifier is reflected in the type of a query function:
 
 As before, in `query` declarations and actor types the `shared` keyword can be omitted.
 
-## Messaging Restrictions
+
+## Messaging restrictions
 
 The Internet Computer places restrictions on when and how canisters are allowed to communicate. These restrictions are enforced dynamically on the Internet Computer but prevented statically in Motoko, ruling out a class of dynamic execution errors. Two examples are:
 
@@ -238,3 +239,31 @@ The last two lines above *instantiate* the actor class twice. The first invocati
 For now, the Motoko compiler gives an error when compiling programs that do not consist of a single actor or actor class. Compiled programs may still, however, reference imported actor classes. For more information, see [Importing actor classes](modules-and-imports.md#importing-actor-classes) and [Actor classes](actor-classes.md#actor-classes).
 
 :::
+
+## Composite query functions
+
+Although queries can be fast, when called from a frontend, yet trusted though slower, when called from an actor,
+they are also limited in what they can do. In particular, they cannot themselves issue further messages, including queries.
+
+To address this limitation, the Internet Computer supports another flavour of query function called a *composite query*.
+Like plain queries, the state changes made by a composite query are transient, isolated and never committed.
+Unlike plain queries, composite queries can call query functions and composite query functions, on the same and other actors, provided those actors reside on the same subnet.
+
+As a contrived example, consider generalising the previous `Counter` actor to a class of counters.
+Each instance of the class provides an additional `composite query` to sum the values
+of a given array of counters:
+
+``` motoko file=./examples/CounterWithCompositeQuery.mo
+```
+
+Declaring sum as a `composite query` enables it call the `peek` queries of its argument counters.
+
+While *update* message can call plain query functions, they cannot call composite query functions.
+This distinction, which is dictated by the current capabilites of the IC,
+explains why query functions and composite query functions are regarded as distinct types of shared functions.
+
+The `composite query` modifier is reflected in the type of a composite query function:
+
+``` motoko no-repl
+  sum : shared composite query ([Counter]) -> async Nat
+```
