@@ -8,16 +8,14 @@ import Region0 "stable-mem/StableMemory";
 // correct aliasing of all region0 objects, pre and post upgrade
 actor {
 
-  stable let r0 = Region0.region();
+  stable let r0 = Region.region0();
   ignore Region.grow(r0, 1);
-
-  P.debugPrint "grow three big regions: done.";
 
   system func preupgrade() {
   };
 
   public func sanityTest() {
-    let r01 = Region0.region();
+    let r01 = Region.region0();
     P.debugPrint(debug_show {s0 = Region.size(r0);  s01 = Region.size(r01)});
     assert Region.size(r0) == Region.size(r01);
     ignore Region.grow(r0, 1);
