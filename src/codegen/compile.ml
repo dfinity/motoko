@@ -3908,9 +3908,10 @@ module Region = struct
     Tagged.obj env Tagged.Region [ get_id; get_pagecount; get_vec_pages ]
 
   let sanity_check s env =
-    if !Flags.sanity && !Flags.gc_strategy <> Flags.MarkCompact then
+    if !Flags.sanity (* && !Flags.gc_strategy <> Flags.MarkCompact *) then
     Func.share_code1 env ("check_region_" ^ s) ("val", I32Type) [I32Type]
       (fun env get_region ->
+        (*
          get_region ^^ Tagged.load_forwarding_pointer env ^^
          compile_eq_const Tagged.(int_of_tag Region) ^^
          get_region ^^ Tagged.load_forwarding_pointer env ^^ (* <-- needed? *)
@@ -3920,6 +3921,7 @@ module Region = struct
          get_region ^^ Heap.load_field (vec_pages_field env) ^^ Tagged.load_forwarding_pointer env ^^
          compile_eq_const Tagged.(int_of_tag Blob) ^^
          E.else_trap_with env ("Internal error: bad region.vec_pages" ^ s) ^^
+         *)
          get_region)
     else G.nop
 
