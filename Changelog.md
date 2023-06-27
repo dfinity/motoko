@@ -2,7 +2,12 @@
 
 * motoko (`moc`)
 
+  * Allow canister imports of Candid service constructors, ignoring the service arguments to
+    import the instantiated service instead (with a warning) (#4041).
+
   * Allow optional terminal semicolons in Candid imports (#4042).
+
+  * bugfix: allow signed float literals as static expressions in modules (#4063).
 
 ## 0.9.3 (2023-06-19)
 
