@@ -3908,7 +3908,7 @@ module Region = struct
     Tagged.obj env Tagged.Region [ get_id; get_pagecount; get_vec_pages ]
 
   let sanity_check s env =
-    if !Flags.sanity then
+    if !Flags.sanity && !Flags.gc_strategy <> Flags.MarkCompact then
     Func.share_code1 env ("check_region_" ^ s) ("val", I32Type) [I32Type]
       (fun env get_region ->
          get_region ^^ Tagged.load_forwarding_pointer env ^^
