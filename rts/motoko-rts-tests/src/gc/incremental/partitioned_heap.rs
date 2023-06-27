@@ -21,6 +21,18 @@ use crate::{gc::utils::WORD_SIZE, memory::TestMemory};
 const NUMBER_OF_OBJECTS: usize = 2 * PARTITION_SIZE / 16;
 const HEAP_SIZE: usize = 4 * PARTITION_SIZE;
 
+static mut HP: u32 = 0;
+
+#[no_mangle]
+pub unsafe extern "C" fn getHP() -> u32 {
+    HP
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn setHP(new_hp: u32) {
+    HP = new_hp;
+}
+
 pub unsafe fn test() {
     println!("  Testing partitioned heap...");
     test_normal_size_scenario();
@@ -329,7 +341,7 @@ unsafe fn occupied_space(partition: &Partition) -> usize {
     occupied_space
 }
 
-fn create_test_heap() -> PartitionedTestHeap {
+unsafe fn create_test_heap() -> PartitionedTestHeap {
     println!("    Create test heap...");
     let mut heap = PartitionedTestHeap::new(HEAP_SIZE);
     let mut time = BoundedTime::new(0);

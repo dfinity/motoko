@@ -193,6 +193,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     /// * The update phase can only be completed on an empty call stack.
     pub unsafe fn empty_call_stack_increment(&mut self, roots: Roots) {
         assert!(self.state.phase != Phase::Stop);
+        self.state.partitioned_heap.synchronize_heap_pointer();
         if self.pausing() {
             self.start_marking(roots);
         }

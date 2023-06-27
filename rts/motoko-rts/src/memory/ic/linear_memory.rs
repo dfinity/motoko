@@ -1,4 +1,4 @@
-use core::arch::wasm32;
+// use core::arch::wasm32;
 
 use super::{get_aligned_heap_base, IcMemory, Memory};
 use crate::types::*;

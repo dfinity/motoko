@@ -50,16 +50,15 @@ unsafe fn version<M: memory::Memory>(mem: &mut M) -> types::Value {
     text::text_of_str(mem, "0.1")
 }
 
-#[non_incremental_gc]
 #[ic_mem_fn(ic_only)]
-unsafe fn alloc_words<M: memory::Memory>(mem: &mut M, n: types::Words<u32>) -> types::Value {
-    mem.alloc_words(n)
+unsafe fn grow_memory<M: memory::Memory>(mem: &mut M, ptr: u64) {
+    mem.grow_memory(ptr)
 }
 
 #[non_incremental_gc]
 #[ic_mem_fn(ic_only)]
-unsafe fn grow_memory<M: memory::Memory>(mem: &mut M, ptr: u64) {
-    mem.grow_memory(ptr)
+unsafe fn alloc_words<M: memory::Memory>(mem: &mut M, n: types::Words<u32>) -> types::Value {
+    mem.alloc_words(n)
 }
 
 #[incremental_gc]
