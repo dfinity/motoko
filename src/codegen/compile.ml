@@ -9723,14 +9723,14 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
   | OtherPrim "precompose2", [e1; e2] ->
     SR.Vanilla,
-   compile_exp_vanilla env ae e1 ^^
-    compile_exp_vanilla env ae e2 ^^
     let set_clos, get_clos = new_local env "closure" in
     Tagged.alloc env Int32.(add (Closure.header_size env) 2l) Tagged.Closure ^^
     set_clos ^^ get_clos ^^
-    Closure.store_data env 1l ^^
-    get_clos ^^
+    compile_exp_vanilla env ae e1 ^^
     Closure.store_data env 0l ^^
+    get_clos ^^
+    compile_exp_vanilla env ae e2 ^^
+    Closure.store_data env 1l ^^
     get_clos ^^
     compile_unboxed_const 2l ^^
     Tagged.store_field env (Closure.len_field env) ^^
@@ -9747,12 +9747,11 @@ and compile_prim_invocation (env : E.t) ae p es at =
         G.i (LocalGet (nr 2l)) ^^
         G.i (LocalGet (nr 0l)) ^^
         Closure.load_data env 0l ^^
-E.trap_with env "INSIDE" ^^
         Closure.call_closure env 2 1 ^^
 
         G.i (LocalGet (nr 0l)) ^^
         Closure.load_data env 1l ^^ (* self *)
-        Closure.call_closure env 2 1)) in
+        Closure.call_closure env 1 1)) in
 
     (*let fi = E.built_in env "__precomp2" in assert (fi = 325l);*)
     get_clos ^^
