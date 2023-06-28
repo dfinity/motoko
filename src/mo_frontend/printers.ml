@@ -189,7 +189,6 @@ let string_of_symbol = function
   | X (N N_pat_plain) -> "<pat_plain>"
   | X (N N_pat_un) -> "<pat_un>"
   | X (N N_path) -> "<path>"
-  (*   | X (N N_query) -> "<query>" *)
   | X (N N_annot_opt) -> "<annot_opt>"
   | X (N N_seplist_case_semicolon_) ->  "seplist(<case>,<semicolon>)"
   | X (N N_seplist_dec_SEMICOLON_) -> "seplist(<dec>,;)"
