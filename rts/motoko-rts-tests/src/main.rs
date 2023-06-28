@@ -15,8 +15,6 @@ mod memory;
 // // mod text;
 // // mod utf8;
 
-use motoko_rts::types::{read64, write64, Bytes};
-
 fn main() {
     if std::mem::size_of::<usize>() != 8 {
         println!("Motoko RTS only works on 64-bit architectures");
@@ -25,7 +23,6 @@ fn main() {
 
     unsafe {
         println!("Tests started");
-        test_read_write_64_bit();
         // bigint::test();
         // bitrel::test();
         continuation_table::test();
@@ -40,21 +37,10 @@ fn main() {
     }
 }
 
-fn test_read_write_64_bit() {
-    println!("Testing 64-bit read-write");
-    const TEST_VALUE: u64 = 0x1234_5678_9abc_def0;
-    let mut lower = 0u32;
-    let mut upper = 0u32;
-    write64(&mut lower, &mut upper, TEST_VALUE);
-    assert_eq!(lower, 0x9abc_def0);
-    assert_eq!(upper, 0x1234_5678);
-    assert_eq!(read64(lower, upper), TEST_VALUE);
-}
-
 // Called by the RTS to panic
 #[no_mangle]
-extern "C" fn rts_trap(ptr: *const u8, len: Bytes<u32>) -> ! {
-    let msg = unsafe { std::slice::from_raw_parts(ptr, len.as_usize()) };
+extern "C" fn rts_trap(ptr: *const u8, len: u32) -> ! {
+    let msg = unsafe { std::slice::from_raw_parts(ptr, len as usize) };
     match core::str::from_utf8(msg) {
         Err(err) => panic!(
             "rts_trap_with called with non-UTF8 string (error={:?}, string={:?})",
