@@ -270,8 +270,6 @@ rule token mode = parse
   | utf8 { error lexbuf "malformed operator" }
   | _ { error lexbuf "malformed UTF-8 encoding" }
 
-and com
-
 and comment buf start = parse
   | "*/" as s { Buffer.add_string buf s }
   | "/*" as s {
