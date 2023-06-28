@@ -10,7 +10,6 @@ pub(crate) static mut RECLAIMED: Bytes<u64> = Bytes(0);
 extern "C" {
     pub(crate) fn setHP(new_hp: u32);
     pub(crate) fn getHP() -> u32;
-    pub(crate) fn bumpHP(bytes: u64) -> u32;
 }
 
 /// Heap pointer after last GC
@@ -41,7 +40,7 @@ impl Memory for IcMemory {
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value {
         let bytes = n.to_bytes();
         let delta = u64::from(bytes.as_u32());
-        /*
+
         // Update heap pointer
         let old_hp = u64::from(getHP());
         let new_hp = old_hp + delta;
@@ -55,8 +54,6 @@ impl Memory for IcMemory {
         setHP(new_hp as u32);
 
         Value::from_ptr(old_hp as usize)
-         */
-        Value::from_raw(bumpHP(delta))
     }
 
     #[inline(never)]
