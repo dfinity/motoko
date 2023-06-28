@@ -5234,8 +5234,6 @@ module RTS_Exports = struct
       edesc = nr (FuncExport (nr set_hp_fi))
     });
 
-
-
     let get_hp_fi = E.add_fun env "__get_hp" (
       Func.of_body env [] [I32Type] (fun env ->
         GC.get_heap_pointer env
@@ -5245,9 +5243,6 @@ module RTS_Exports = struct
       name = Lib.Utf8.decode "getHP";
       edesc = nr (FuncExport (nr get_hp_fi))
     });
-
-
-
 
     let stable64_write_moc_fi =
       if E.mode env = Flags.WASIMode then
