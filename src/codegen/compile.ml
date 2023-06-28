@@ -1055,7 +1055,7 @@ module GC = struct
     begin
       E.add_global64 env "__mutator_instructions" Mutable 0L;
       E.add_global64 env "__collector_instructions" Mutable 0L;
-      E.add_global32 env "HP" Mutable 0l;
+      E.add_global32 env "_HP" Mutable 0l;
     end
 
   let get_mutator_instructions env =
@@ -1069,9 +1069,9 @@ module GC = struct
     G.i (GlobalSet (nr (E.get_global env "__collector_instructions")))
 
   let get_heap_pointer env =
-    G.i (GlobalGet (nr (E.get_global env "HP")))
+    G.i (GlobalGet (nr (E.get_global env "_HP")))
   let set_heap_pointer env =
-    G.i (GlobalSet (nr (E.get_global env "HP")))
+    G.i (GlobalSet (nr (E.get_global env "_HP")))
 
   let record_mutator_instructions env =
     match E.mode env with
