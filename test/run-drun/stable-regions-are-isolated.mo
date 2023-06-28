@@ -1,4 +1,5 @@
 //MOC-FLAG --stable-regions
+//MOC-FLAG --sanity-checks
 
 import P "mo:⛔";
 import Region "stable-region/Region";
