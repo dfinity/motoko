@@ -4340,21 +4340,21 @@ module IC = struct
 
   let register env =
 
-    Func.define_built_in env "__precomp2" ["arg1", I32Type; "arg2", I32Type; "env", I32Type] [I32Type] (fun env ->
-        G.i (LocalGet (nr 2l)) ^^
+    Func.define_built_in env "__precomp2" ["env", I32Type; "arg1", I32Type; "arg2", I32Type] [I32Type] (fun env ->
+        G.i (LocalGet (nr 0l)) ^^
+E.trap_with env "INSIDE" ^^
         Closure.load_data env 1l ^^
         Closure.prepare_closure_call env ^^
-
-        G.i (LocalGet (nr 0l)) ^^
         G.i (LocalGet (nr 1l)) ^^
         G.i (LocalGet (nr 2l)) ^^
+        G.i (LocalGet (nr 0l)) ^^
         Closure.load_data env 0l ^^ (* self *)
         Closure.prepare_closure_call env ^^
-        G.i (LocalGet (nr 2l)) ^^
+        G.i (LocalGet (nr 0l)) ^^
         Closure.load_data env 0l ^^
         Closure.call_closure env 2 1 ^^
 
-        G.i (LocalGet (nr 2l)) ^^
+        G.i (LocalGet (nr 0l)) ^^
         Closure.load_data env 1l ^^ (* self *)
         Closure.call_closure env 1 1);
 
@@ -9731,7 +9731,10 @@ and compile_prim_invocation (env : E.t) ae p es at =
     Closure.store_data env 1l ^^
     get_clos ^^
     Closure.store_data env 0l ^^
-    let fi = E.built_in env "__precomp2" in
+    get_clos ^^
+    compile_unboxed_const 2l ^^
+    Tagged.store_field env (Closure.len_field env) ^^
+    let fi = E.built_in env "__precomp2" in assert (fi = 325l);
     get_clos ^^
     compile_unboxed_const fi ^^
     Tagged.store_field env (Closure.funptr_field env) ^^
