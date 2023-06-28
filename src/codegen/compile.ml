@@ -40,7 +40,7 @@ let ptr_unskew = 1l
 let prim_fun_name p stem = Printf.sprintf "%s<%s>" stem (Type.string_of_prim p)
 
 (* Helper functions to produce annotated terms (Wasm.AST) *)
-let nr x = Wasm.Source.{ it = x; at = no_region }
+let nr x = { Wasm.Source.it = x; Wasm.Source.at = Wasm.Source.no_region }
 
 let todo fn se x = Printf.eprintf "%s: %s" fn (Wasm.Sexpr.to_string 80 se); x
 
@@ -523,13 +523,6 @@ module E = struct
       | Some fi -> fi
       | _ ->
         raise (Invalid_argument (Printf.sprintf "Function import not declared: %s\n" name))
-
-  let call_export (env : t) name =
-    let open Wasm.Source in
-    match List.find_opt (fun e -> e.it.name = Lib.Utf8.decode name) (get_exports env) with
-      | Some {it = {edesc = { it = FuncExport i; _ }; _}; _} -> G.i (Call i)
-      | _ ->
-        raise (Invalid_argument (Printf.sprintf "Function export not declared: %s\n" name))
 
   let get_rts (env : t) = env.rts
 
@@ -1030,8 +1023,7 @@ module RTS = struct
     E.add_func_import env "rts" "char_is_alphabetic" [I32Type] [I32Type];
     E.add_func_import env "rts" "get_max_live_size" [] [I32Type];
     E.add_func_import env "rts" "get_reclaimed" [] [I64Type];
-    (*E.add_func_import env "rts" "alloc_words" [I32Type] [I32Type];*)
-    E.add_func_import env "rts" "grow_memory" [I64Type] [];
+    E.add_func_import env "rts" "alloc_words" [I32Type] [I32Type];
     E.add_func_import env "rts" "get_total_allocations" [] [I64Type];
     E.add_func_import env "rts" "get_heap_size" [] [I32Type];
     E.add_func_import env "rts" "alloc_blob" [I32Type] [I32Type];
@@ -1131,10 +1123,10 @@ module Heap = struct
 
   (* Static allocation (always words)
      (uses dynamic allocation for smaller and more readable code) *)
-  let allocX env (n : int32) : G.t =
-    compile_const_64 (Int64.of_int (Int32.to_int n * 4)) ^^
-    E.call_export env "bumpHP"
-
+  let alloc env (n : int32) : G.t =
+    compile_unboxed_const n ^^
+    E.call_import env "rts" "alloc_words"
+    
   (* Heap objects *)
 
   (* At this level of abstraction, heap objects are just flat arrays of words *)
@@ -1641,9 +1633,9 @@ module Tagged = struct
           (get_object ^^
            compile_sub_const 1l (* skew *))
           (get_object ^^ GC.set_heap_pointer env ^^ (* restore *)
-           allocX(*_nocheck FIXME*) env size))
+           alloc(*_nocheck FIXME*) env size))
        else
-         Heap.allocX(*_nocheck FIXME*) env size) ^^
+         Heap.alloc(*_nocheck FIXME*) env size) ^^
       set_object ^^ get_object ^^
       compile_unboxed_const (int_of_tag tag) ^^
       Heap.store_field tag_field ^^
@@ -5257,31 +5249,6 @@ module RTS_Exports = struct
       edesc = nr (FuncExport (nr get_hp_fi))
     });
 
-    let bump_hp_fi = E.add_fun env "__bump_hp" (
-      Func.of_body env ["bytes", I64Type] [I32Type] (fun env ->
-        GC.get_heap_pointer env ^^
-        compile_sub_const 1l ^^ (* result FIXME: use skew *)
-        G.i (LocalGet (nr 0l)) ^^
-        GC.get_heap_pointer env ^^
-        G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-        G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
-        G.i (LocalSet (nr 0l)) ^^ G.i (LocalGet (nr 0l)) ^^ (* new HP *)
-        G.i MemorySize ^^
-        G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-        G.i (Compare (Wasm.Values.I64 I64Op.GtU)) ^^
-        G.if0
-          (G.i (LocalGet (nr 0l)) ^^
-           E.call_import env "rts" "grow_memory")
-          G.nop ^^
-        G.i (LocalGet (nr 0l)) ^^
-        G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
-        GC.set_heap_pointer env
-      )
-    ) in
-    E.add_export env (nr {
-      name = Lib.Utf8.decode "bumpHP";
-      edesc = nr (FuncExport (nr bump_hp_fi))
-    });
 
 
 
