@@ -542,7 +542,7 @@ let set_table_size new_size : module_' -> module_' = fun m ->
   | _ -> raise (LinkError "Expect one table in first module")
 
 
-let fill_item_import modul item new_base (m : module_') : module_' =
+let fill_item_import module_name item_name new_base (m : module_') : module_' =
   (* We need to find the right import,
      replace all uses of get_global of that import with the constant,
      and finally rename all globals
@@ -552,8 +552,8 @@ let fill_item_import modul item new_base (m : module_') : module_' =
       | [] -> assert false
       | imp::is -> match imp.it.idesc.it with
         | GlobalImport _ty
-          when imp.it.module_name = Lib.Utf8.decode modul &&
-               imp.it.item_name = Lib.Utf8.decode item ->
+          when imp.it.module_name = Lib.Utf8.decode module_name &&
+               imp.it.item_name = Lib.Utf8.decode item_name ->
           Int32.of_int i
         | GlobalImport _ ->
           go (i + 1) is
