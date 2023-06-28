@@ -1620,22 +1620,19 @@ module Tagged = struct
     Func.share_code0 env name [I32Type] (fun env ->
       let set_object, get_object = new_local env "new_object" in
       (if size < 0x2000l then
-        Heap.(
-        GC.get_heap_pointer env ^^
-        set_object ^^ (* speculate *)
-        GC.get_heap_pointer env ^^
-        let size_in_bytes = Int32.(mul size word_size) in
-        compile_add_const size_in_bytes ^^ (* FIXME: forwarding? *)
-        GC.set_heap_pointer env ^^
-        GC.get_heap_pointer env ^^
-        compile_bitand_const (overflow_mask size_in_bytes) ^^
-        G.if1 I32Type
-          (get_object ^^
-           compile_sub_const 1l (* skew *))
-          (get_object ^^ GC.set_heap_pointer env ^^ (* restore *)
-           alloc(*_nocheck FIXME*) env size))
+         GC.get_heap_pointer env ^^
+         compile_sub_const 1l ^^ (* skew *)
+         GC.get_heap_pointer env ^^
+         let size_in_bytes = Int32.(mul size Heap.word_size) in
+         compile_add_const size_in_bytes ^^
+         GC.set_heap_pointer env ^^
+         GC.get_heap_pointer env ^^
+         compile_bitand_const (overflow_mask size_in_bytes) ^^
+         G.if0
+           G.nop (* no page crossing *)
+           (Heap.alloc env 0l ^^ G.i Drop) (* ensure that the page is allocated *)
        else
-         Heap.alloc(*_nocheck FIXME*) env size) ^^
+         Heap.alloc env size) ^^
       set_object ^^ get_object ^^
       compile_unboxed_const (int_of_tag tag) ^^
       Heap.store_field tag_field ^^
