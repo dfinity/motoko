@@ -38,6 +38,7 @@ impl MotokoHeap {
         map: &[(ObjectIdx, Vec<ObjectIdx>)],
         roots: &[ObjectIdx],
         continuation_table: &[ObjectIdx],
+        region0_ptr_loc: &[ObjectIdx],
         gc: GC,
     ) -> MotokoHeap {
         MotokoHeap {

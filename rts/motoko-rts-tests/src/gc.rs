@@ -76,6 +76,7 @@ fn test_heaps() -> Vec<TestHeap> {
             ],
             roots: vec![0, 2, 3],
             continuation_table: vec![0],
+            region0_ptr_loc: vec![0],
         },
         // Tests pointing to the same object in multiple fields of an object. Also has unreachable
         // objects.
@@ -83,12 +84,14 @@ fn test_heaps() -> Vec<TestHeap> {
             heap: vec![(0, vec![]), (1, vec![]), (2, vec![])],
             roots: vec![1],
             continuation_table: vec![0, 0],
+            region0_ptr_loc: vec![0],
         },
         // Root points backwards in heap. Caught a bug in mark-compact collector.
         TestHeap {
             heap: vec![(0, vec![]), (1, vec![2]), (2, vec![1])],
             roots: vec![2],
             continuation_table: vec![],
+            region0_ptr_loc: vec![0],
         },
     ]
 }
@@ -106,6 +109,7 @@ struct TestHeap {
     heap: Vec<(ObjectIdx, Vec<ObjectIdx>)>,
     roots: Vec<ObjectIdx>,
     continuation_table: Vec<ObjectIdx>,
+    region0_ptr_loc: Vec<ObjectIdx>,
 }
 
 /// Test all GC implementations with the given heap
@@ -116,6 +120,7 @@ fn test_gcs(heap_descr: &TestHeap) {
             &heap_descr.heap,
             &heap_descr.roots,
             &heap_descr.continuation_table,
+            &heap_descr.region0_ptr_loc,
         );
     }
 
@@ -127,8 +132,9 @@ fn test_gc(
     refs: &[(ObjectIdx, Vec<ObjectIdx>)],
     roots: &[ObjectIdx],
     continuation_table: &[ObjectIdx],
+    region0_ptr_loc: &[ObjectIdx],
 ) {
-    let mut heap = MotokoHeap::new(refs, roots, continuation_table, gc);
+    let mut heap = MotokoHeap::new(refs, roots, continuation_table, region0_ptr_loc, gc);
 
     initialize_gc(&mut heap);
 
