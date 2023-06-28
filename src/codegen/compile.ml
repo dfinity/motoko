@@ -4339,7 +4339,7 @@ module IC = struct
   let system_call env funcname = E.call_import env "ic0" funcname
 
   let register env =
-
+(*
     Func.define_built_in env "__precomp2" ["env", I32Type; "arg1", I32Type; "arg2", I32Type] [I32Type] (fun env ->
         G.i (LocalGet (nr 0l)) ^^
 E.trap_with env "INSIDE" ^^
@@ -4357,7 +4357,7 @@ E.trap_with env "INSIDE" ^^
         G.i (LocalGet (nr 0l)) ^^
         Closure.load_data env 1l ^^ (* self *)
         Closure.call_closure env 1 1);
-
+ *)
       Func.define_built_in env "print_ptr" [("ptr", I32Type); ("len", I32Type)] [] (fun env ->
         match E.mode env with
         | Flags.WasmMode -> G.i Nop
@@ -9734,9 +9734,29 @@ and compile_prim_invocation (env : E.t) ae p es at =
     get_clos ^^
     compile_unboxed_const 2l ^^
     Tagged.store_field env (Closure.len_field env) ^^
-    let fi = E.built_in env "__precomp2" in assert (fi = 325l);
+
+    let fi = E.add_fun env "precomp2" (Func.of_body env ["env", I32Type; "arg1", I32Type; "arg2", I32Type] [I32Type] (fun env ->
+        G.i (LocalGet (nr 0l)) ^^
+        Closure.load_data env 1l ^^
+        Closure.prepare_closure_call env ^^
+
+        G.i (LocalGet (nr 0l)) ^^
+        Closure.load_data env 0l ^^ (* self *)
+        Closure.prepare_closure_call env ^^
+        G.i (LocalGet (nr 1l)) ^^
+        G.i (LocalGet (nr 2l)) ^^
+        G.i (LocalGet (nr 0l)) ^^
+        Closure.load_data env 0l ^^
+E.trap_with env "INSIDE" ^^
+        Closure.call_closure env 2 1 ^^
+
+        G.i (LocalGet (nr 0l)) ^^
+        Closure.load_data env 1l ^^ (* self *)
+        Closure.call_closure env 2 1)) in
+
+    (*let fi = E.built_in env "__precomp2" in assert (fi = 325l);*)
     get_clos ^^
-    compile_unboxed_const fi ^^
+    compile_unboxed_const (E.add_fun_ptr env fi) ^^
     Tagged.store_field env (Closure.funptr_field env) ^^
     get_clos ^^
     Tagged.allocation_barrier env
