@@ -166,7 +166,8 @@ impl RegionObject {
         len: u64,
     ) -> (u64, BlockId, u64, BlockId) {
         let (off, b1, b1_len) = self.relative_into_absolute_info(offset);
-        let (_, b2, _) = self.relative_into_absolute_info(offset + len - 1);
+        let final_offset = if len > 0 { offset + len - 1 } else { offset };
+        let (_, b2, _) = self.relative_into_absolute_info(final_offset);
         (off, b1, b1_len, b2)
     }
 }
@@ -489,6 +490,7 @@ pub(crate) unsafe fn region_migration_from_v1_into_v2<M: Memory>(mem: &mut M) {
 
     let region0_blocks =
         (region0_pages + (meta_data::size::PAGES_IN_BLOCK - 1)) / (meta_data::size::PAGES_IN_BLOCK);
+    assert!(region0_blocks > 0);
 
     grow(
         (meta_data::size::PAGES_IN_BLOCK + // <-- For new region manager
@@ -526,7 +528,7 @@ pub(crate) unsafe fn region_migration_from_v1_into_v2<M: Memory>(mem: &mut M) {
      */
 
     /* head block is physically last, but logically first. */
-    let head_block_id = region0_blocks - 1;
+    let head_block_id = region0_blocks - 1; /* invariant: region0_blocks is non-zero. */
 
     meta_data::block_region_table::set(BlockId(head_block_id as u16), Some((RegionId(0), 0)));
     meta_data::region_table::set(&RegionId(0), Some(RegionSizeInPages(region0_pages as u64)));
