@@ -15,12 +15,28 @@ pkgs:
       # installed. You will normally not be bothered to perform
       # the command therein manually.
 
-      cargoSha256 = "sha256-QwDlku8E3CW0DD5OEJ0ejjrsMQVzieHhy7c5w9Rl5A4=";
+      cargoSha256 = "sha256-QwDlku8E3CW0DD5OEJ0ekjrsMQVzieHhy7c5w9Rl5A4=";
+
+
+
+      cargoLock = {
+        lockFile = "${pkgs.sources.ic}/Cargo.lock";
+        outputHashes = {
+          "ciborium-0.2.1" = "sha256-WJG3f4GThHIOsDZ1mTiE83FFxQ/J7u2vqrx+2ClUPD4=";
+          "derive_more-0.99.8-alpha.0" = "sha256-tEsfYC9oCAsDjinCsUDgRg3q6ruvayuA1lRmsEP9cys=";
+          "ic-btc-interface-0.1.0" = "sha256-BDIST/gKHE7M2doCS3VsqRQ902PS/zN4kZQqSdlQZtE=";
+          "ic-btc-validation-0.1.0" = "sha256-DRrZ0MX6Qykh+IbEpmWPYvT5XxsiED0jPp6l0Ci+Leo=";
+          "jsonrpc-0.12.1" = "sha256-3FtdZlt2PqVDkE5iKWYIp1eiIELsaYlUPRSP2Xp8ejM=";
+          "libssh2-sys-0.2.23" = "sha256-9Hb7CnPF+lxrVO1NAhS7EXcPVWZutJXr6UWxpptzk4U=";
+          "lmdb-rkv-0.14.99" = "sha256-dqxWgtNZ/qRukQLiDawjHRwdPgfzm/sVcWwudwX9rD8=";
+          "pprof-0.10.1" = "sha256-ioZ8AyFTUUev8MDZapto0yXC6G+dZzg+7ZNtTR87Rg4=";
+        };
+      };
 
       patchPhase = ''
-
-        cd ../drun-vendor.tar.gz
-        patch librocksdb-sys/build.rs << EOF
+pwd
+        cd ../cargo-vendor-dir
+        patch librocksdb-sys*/build.rs << EOF
 @@ -118,6 +118,10 @@
          config.define("OS_MACOSX", Some("1"));
          config.define("ROCKSDB_PLATFORM_POSIX", Some("1"));
@@ -34,7 +50,7 @@ pkgs:
          config.define("ROCKSDB_PLATFORM_POSIX", Some("1"));
 EOF
 
-        sed -i -e s/08d86b53188dc6f15c8dc09d8aadece72e39f145e3ae497bb8711936a916335a/536e44802de57cc7d3690c90c80f154f770f48e82b82756c36443b8b47c9b5e7/g librocksdb-sys/.cargo-checksum.json
+        # sed -i -e s/08d86b53188dc6f15c8dc09d8aadece72e39f145e3ae497bb8711936a916335a/536e44802de57cc7d3690c90c80f154f770f48e82b82756c36443b8b47c9b5e7/g librocksdb-sys/.cargo-checksum.json
         cd -
       '';
 
