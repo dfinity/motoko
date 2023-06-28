@@ -13,7 +13,8 @@
     'module'
 
 <query> ::= 
-    'composite'? 'query'
+    'query'
+    'composite' 'query'
 
 <func_sort_opt> ::= 
     <empty>
