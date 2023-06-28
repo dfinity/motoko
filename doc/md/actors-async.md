@@ -197,7 +197,7 @@ These restrictions are surfaced in Motoko as restrictions on the context in whic
 
 In Motoko, an expression occurs in an *asynchronous context* if it appears in the body of an `async` expression, which may be the body of a (shared or local) function or a stand-alone expression. The only exception are `query` functions, whose body is not considered to open an asynchronous context.
 
-In Motoko calling a shared function is an error unless the function is called in an asynchronouus context. In addition, calling a shared function from an actor class constructor is also an error.
+In Motoko calling a shared function is an error unless the function is called in an asynchronous context. In addition, calling a shared function from an actor class constructor is also an error.
 
 The `await` construct is only allowed in an asynchronous context.
 
@@ -242,12 +242,13 @@ For now, the Motoko compiler gives an error when compiling programs that do not 
 
 ## Composite query functions
 
-Although queries can be fast, when called from a frontend, yet trusted though slower, when called from an actor,
-they are also limited in what they can do. In particular, they cannot themselves issue further messages, including queries.
+Although queries can be fast, when called from a frontend, yet trusted though slower, when called from an actor, they are also limited in what they can do.
+In particular, they cannot themselves issue further messages, including queries.
 
 To address this limitation, the Internet Computer supports another flavour of query function called a *composite query*.
-Like plain queries, the state changes made by a composite query are transient, isolated and never committed.
-Unlike plain queries, composite queries can call query functions and composite query functions, on the same and other actors, provided those actors reside on the same subnet.
+Like plain queries, the state changes made by a composite query are transient, isolated and never committed. Moreover, composite queries cannot call update functions, including those
+implicit in `async` expressions (which require update calls under the hood).
+Unlike plain queries, composite queries can call query functions and composite query functions, on the same and other actors, but only provided those actors reside on the same subnet.
 
 As a contrived example, consider generalising the previous `Counter` actor to a class of counters.
 Each instance of the class provides an additional `composite query` to sum the values
@@ -256,14 +257,21 @@ of a given array of counters:
 ``` motoko file=./examples/CounterWithCompositeQuery.mo
 ```
 
-Declaring sum as a `composite query` enables it call the `peek` queries of its argument counters.
+Declaring `sum` as a `composite query` enables it call the `peek` queries of its argument counters.
 
-While *update* message can call plain query functions, they cannot call composite query functions.
+While *update* message can call plain query functions, they cannot call *composite* query functions.
 This distinction, which is dictated by the current capabilites of the IC,
 explains why query functions and composite query functions are regarded as distinct types of shared functions.
 
-The `composite query` modifier is reflected in the type of a composite query function:
+Note that the `composite query` modifier is reflected in the type of a composite query function:
 
 ``` motoko no-repl
   sum : shared composite query ([Counter]) -> async Nat
 ```
+
+Since only a composite query can call another composite query, you may be wondering how any composite query gets called at all?
+The answer to this chicken-and-egg problem is that composite queries are initiated
+outside the IC, typically by an application (such as a browser
+frontend) sending an ingress message invoking a composite query on a backend
+actor on the IC.
+
