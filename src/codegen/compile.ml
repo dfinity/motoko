@@ -40,7 +40,7 @@ let ptr_unskew = 1l
 let prim_fun_name p stem = Printf.sprintf "%s<%s>" stem (Type.string_of_prim p)
 
 (* Helper functions to produce annotated terms (Wasm.AST) *)
-let nr x = { Wasm.Source.it = x; Wasm.Source.at = Wasm.Source.no_region }
+let nr x = Wasm.Source.{ it = x; at = no_region }
 
 let todo fn se x = Printf.eprintf "%s: %s" fn (Wasm.Sexpr.to_string 80 se); x
 
@@ -1650,7 +1650,7 @@ module Tagged = struct
         load_forwarding_pointer env ^^
         get_object ^^
         G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
-        E.else_trap_with env "missing object forwarding"  ^^
+        E.else_trap_with env "missing object forwarding" ^^
         get_object ^^
         (if unskewed then
           compile_unboxed_const ptr_unskew ^^
@@ -2401,7 +2401,7 @@ module TaggedSmallWord = struct
         get_exp ^^
         compile_unboxed_const 0l ^^
         G.i (Compare (Wasm.Values.I32 I32Op.GeS)) ^^
-        E.else_trap_with env "negative power"  ^^
+        E.else_trap_with env "negative power" ^^
         get_n ^^ get_exp ^^ compile_nat_power env ty
       )
 
@@ -4897,7 +4897,7 @@ module StableMem = struct
           get_offset ^^
           compile_const_64 (Int64.of_int page_size_bits) ^^
           G.i (Binary (Wasm.Values.I64 I64Op.ShrU)) ^^
-          get_mem_size env  ^^
+          get_mem_size env ^^
           G.i (Compare (Wasm.Values.I64 I64Op.LtU)) ^^
           E.else_trap_with env "StableMemory offset out of bounds")
     | _ -> assert false
@@ -7224,7 +7224,7 @@ module Stabilization = struct
         get_N ^^
         extend64 get_len ^^
         compile_add64_const 16L ^^
-        StableMem.ensure env  ^^
+        StableMem.ensure env ^^
 
         get_N ^^
         get_len ^^
@@ -8166,7 +8166,7 @@ module FuncDec = struct
       get_meth_pair ^^ Arr.load_field env 1l ^^ Blob.as_ptr_len env ^^
       (* The reply and reject callback *)
       push_continuations ^^
-      set_cb_index  ^^ get_cb_index ^^
+      set_cb_index ^^ get_cb_index ^^
       (* initiate call *)
       IC.system_call env "call_new" ^^
       cleanup_callback env ^^ get_cb_index ^^
@@ -9671,7 +9671,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_vanilla env ae e ^^
     Serialization.buffer_size env t ^^
     G.i Drop ^^
-    compile_add_const tydesc_len  ^^
+    compile_add_const tydesc_len ^^
     G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
 
   (* Other prims, unary *)
