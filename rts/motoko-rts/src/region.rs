@@ -764,7 +764,7 @@ pub(crate) unsafe fn region_load<M: Memory>(_mem: &mut M, r: Value, offset: u64,
             s = s_;
             if i + b_len > dst.len() as u64 {
                 // case: last (generally partial) block.
-                if i - dst.len() as u64 > 0 {
+                if dst.len() as u64 > i {
                     read(
                         s,
                         core::slice::from_raw_parts_mut(d, dst.len() - i as usize),
@@ -818,7 +818,7 @@ pub(crate) unsafe fn region_store<M: Memory>(_mem: &mut M, r: Value, offset: u64
             d = d_;
             if i + b_len > src.len() as u64 {
                 // case: last (generally partial) block.
-                if i - src.len() as u64 > 0 {
+                if src.len() as u64 > i {
                     write(d, core::slice::from_raw_parts(s, src.len() - i as usize));
                 }
                 break;
