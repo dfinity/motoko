@@ -238,7 +238,7 @@ and objblock s dec_fields =
 
 %nonassoc IMPLIES (* see assertions.mly *)
 
-%nonassoc RETURN_NO_ARG IF_NO_ELSE LOOP_NO_WHILE LET_NO_ELSE
+%nonassoc RETURN_NO_ARG IF_NO_ELSE LOOP_NO_WHILE
 %nonassoc ELSE WHILE
 
 %left COLON
@@ -610,9 +610,9 @@ exp_un(B) :
     { OptE(e) @? at $sloc }
   | op=unop e=exp_un(ob)
     { match op, e.it with
-      | (PosOp | NegOp), LitE {contents = PreLit (s, Type.Nat)} ->
+      | (PosOp | NegOp), LitE {contents = PreLit (s, (Type.(Nat | Float) as typ))} ->
         let signed = match op with NegOp -> "-" ^ s | _ -> "+" ^ s in
-        LitE(ref (PreLit (signed, Type.Int))) @? at $sloc
+        LitE(ref (PreLit (signed, Type.(if typ = Nat then Int else typ)))) @? at $sloc
       | _ -> UnE(ref Type.Pre, op, e) @? at $sloc
     }
   | op=unassign e=exp_un(ob)
@@ -655,7 +655,7 @@ exp_un(B) :
     { RetE(e) @? at $sloc }
   | ASYNC e=exp_nest
     { AsyncE(Type.Fut, scope_bind (anon_id "async" (at $sloc)) (at $sloc), e) @? at $sloc }
-  | ASYNCSTAR e=block
+  | ASYNCSTAR e=exp_nest
     { AsyncE(Type.Cmp, scope_bind (anon_id "async*" (at $sloc)) (at $sloc), e) @? at $sloc }
   | AWAIT e=exp_nest
     { AwaitE(Type.Fut, e) @? at $sloc }
@@ -796,9 +796,9 @@ pat_un :
     { OptP(p) @! at $sloc }
   | op=unop l=lit
     { match op, l with
-      | (PosOp | NegOp), PreLit (s, Type.Nat) ->
+      | (PosOp | NegOp), PreLit (s, (Type.(Nat | Float) as typ)) ->
         let signed = match op with NegOp -> "-" ^ s | _ -> "+" ^ s in
-        LitP(ref (PreLit (signed, Type.Int))) @! at $sloc
+        LitP(ref (PreLit (signed, Type.(if typ = Nat then Int else typ)))) @! at $sloc
       | _ -> SignP(op, ref l) @! at $sloc
     }
 
@@ -835,12 +835,9 @@ dec_var :
     { VarD(x, annot_exp e t) @? at $sloc }
 
 dec_nonvar :
-  | LET p=pat EQ e=exp(ob) %prec LET_NO_ELSE
+  | LET p=pat EQ e=exp(ob)
     { let p', e' = normalize_let p e in
       LetD (p', e', None) @? at $sloc }
-  | LET p=pat EQ e=exp(ob) ELSE fail=exp_nest
-    { let p', e' = normalize_let p e in
-      LetD (p', e', Some fail) @? at $sloc }
   | TYPE x=typ_id tps=typ_params_opt EQ t=typ
     { TypD(x, tps, t) @? at $sloc }
   | s=obj_sort xf=id_opt EQ? efs=obj_body
@@ -883,6 +880,9 @@ dec :
     { d }
   | e=exp_nondec(ob)
     { ExpD e @? at $sloc }
+  | LET p=pat EQ e=exp(ob) ELSE fail=exp_nest
+    { let p', e' = normalize_let p e in
+      LetD (p', e', Some fail) @? at $sloc }
 
 func_body :
   | EQ e=exp(ob) { (false, e) }

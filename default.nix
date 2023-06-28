@@ -83,11 +83,9 @@ let commonBuildInputs = pkgs:
     pkgs.ocamlPackages.ppxlib
     pkgs.ocamlPackages.ppx_blob
     pkgs.ocamlPackages.ppx_inline_test
-    pkgs.ocamlPackages.ocaml-migrate-parsetree
-    pkgs.ocamlPackages.ppx_tools_versioned
     pkgs.ocamlPackages.bisect_ppx
-    pkgs.ocamlPackages.obelisk
     pkgs.ocamlPackages.uucp
+    pkgs.obelisk
     pkgs.perl
     pkgs.removeReferencesTo
   ]; in
@@ -162,14 +160,14 @@ rec {
       cargoVendorTools = nixpkgs.rustPlatform.buildRustPackage rec {
         name = "cargo-vendor-tools";
         src = subpath "./rts/${name}/";
-        cargoSha256 = "sha256-gzLk4kNBSbd8ujJ/7mNs/vwCu76ASqtyoVU84PdaJCw=";
+        cargoSha256 = "sha256-E6GTFvmZMjGsVlec7aH3QaizqIET6Dz8Csh0N1jeX+M=";
       };
 
       # Path to vendor-rust-std-deps, provided by cargo-vendor-tools
       vendorRustStdDeps = "${cargoVendorTools}/bin/vendor-rust-std-deps";
 
       # SHA256 of Rust std deps
-      rustStdDepsHash = "sha256-dGQzospDaIlGKWu08b8oaXJgIsniBVxI//zc6/LywIE=";
+      rustStdDepsHash = "sha256-A3WPIx+weu4wIYV7cweGkRxYGAPt7srxBAtMEyPOkhI=";
 
       # Vendor directory for Rust std deps
       rustStdDeps = nixpkgs.stdenvNoCC.mkDerivation {
@@ -195,7 +193,7 @@ rec {
         name = "motoko-rts-deps";
         src = subpath ./rts;
         sourceRoot = "rts/motoko-rts-tests";
-        sha256 = "sha256-jCk92mPwXd8H8zEH4OMdcEwFM8IiYdlhYdYr+WzDW5E=";
+        sha256 = "sha256-DRX2IJzJ5rDGoutUssqO4TaHwvKO3rUR7MUpWIIKvKU=";
         copyLockfile = true;
       };
 
@@ -259,6 +257,8 @@ rec {
         mkdir -p $out/rts
         cp mo-rts.wasm $out/rts
         cp mo-rts-debug.wasm $out/rts
+        cp mo-rts-incremental.wasm $out/rts
+        cp mo-rts-incremental-debug.wasm $out/rts
       '';
 
       # This needs to be self-contained. Remove mention of nix path in debug
@@ -269,6 +269,11 @@ rec {
           -t ${rtsDeps} \
           -t ${rustStdDeps} \
           $out/rts/mo-rts.wasm $out/rts/mo-rts-debug.wasm
+        remove-references-to \
+          -t ${nixpkgs.rustc-nightly} \
+          -t ${rtsDeps} \
+          -t ${rustStdDeps} \
+          $out/rts/mo-rts-incremental.wasm $out/rts/mo-rts-incremental-debug.wasm
       '';
 
       allowedRequisites = [];
@@ -313,7 +318,7 @@ rec {
     };
 
     testDerivationDeps =
-      (with nixpkgs; [ wabt bash perl getconf moreutils nodejs-16_x ]) ++
+      (with nixpkgs; [ wabt bash perl getconf moreutils nodejs-18_x ]) ++
       [ filecheck wasmtime ];
 
 
@@ -323,9 +328,6 @@ rec {
 
     testDerivation = args:
       stdenv.mkDerivation (testDerivationArgs // args);
-
-    ocamlTestDerivation = args:
-      staticpkgs.stdenv.mkDerivation (testDerivationArgs // args);
 
     # we test each subdirectory of test/ in its own derivation with
     # cleaner dependencies, for more parallelism, more caching
@@ -361,12 +363,7 @@ rec {
       (test_subdir dir deps).overrideAttrs (args: {
           EXTRA_MOC_ARGS = "--sanity-checks";
       });
-
-    compacting_gc_subdir = dir: deps:
-      (test_subdir dir deps).overrideAttrs (args: {
-          EXTRA_MOC_ARGS = "--compacting-gc";
-      });
-
+      
     generational_gc_subdir = dir: deps:
       (test_subdir dir deps).overrideAttrs (args: {
           EXTRA_MOC_ARGS = "--generational-gc";
@@ -382,6 +379,10 @@ rec {
           EXTRA_MOC_ARGS = "--sanity-checks --generational-gc";
       });
 
+    snty_incremental_gc_subdir = dir: deps:
+      (test_subdir dir deps).overrideAttrs (args: {
+          EXTRA_MOC_ARGS = "--sanity-checks --incremental-gc";
+      });
 
     perf_subdir = dir: deps:
       (test_subdir dir deps).overrideAttrs (args: {
@@ -422,9 +423,9 @@ rec {
       '';
     };
 
-    unit = ocamlTestDerivation {
+    unit = testDerivation {
       src = subpath ./src;
-      buildInputs = commonBuildInputs staticpkgs;
+      buildInputs = commonBuildInputs nixpkgs;
       checkPhase = ''
         patchShebangs .
         make DUNE_OPTS="--display=short" unit-tests
@@ -494,12 +495,11 @@ rec {
       run        = test_subdir "run"        [ moc ] ;
       run-dbg    = snty_subdir "run"        [ moc ] ;
       ic-ref-run = test_subdir "run-drun"   [ moc ic-ref-run ];
-      ic-ref-run-compacting-gc = compacting_gc_subdir "run-drun" [ moc ic-ref-run ] ;
-      ic-ref-run-generational-gc = generational_gc_subdir "run-drun" [ moc ic-ref-run ] ;
       drun       = test_subdir "run-drun"   [ moc nixpkgs.drun ];
       drun-dbg   = snty_subdir "run-drun"   [ moc nixpkgs.drun ];
       drun-compacting-gc = snty_compacting_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
       drun-generational-gc = snty_generational_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
+      drun-incremental-gc = snty_incremental_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
       fail       = test_subdir "fail"       [ moc ];
       repl       = test_subdir "repl"       [ moc ];
       ld         = test_subdir "ld"         ([ mo-ld ] ++ ldTestDeps);
@@ -534,8 +534,8 @@ rec {
         buildInputs = commonBuildInputs nixpkgs ++ [
           nixpkgs.ocamlPackages.js_of_ocaml
           nixpkgs.ocamlPackages.js_of_ocaml-ppx
-          nixpkgs.nodejs-16_x
-          nixpkgs.nodePackages.uglify-js
+          nixpkgs.nodejs-18_x
+          nixpkgs.nodePackages.terser
         ];
         buildPhase = ''
           patchShebangs .
@@ -543,7 +543,7 @@ rec {
           ./rts/gen.sh ${rts}/rts/
           '' + ''
           make DUNE_OPTS="--profile=release" ${n}.js
-          uglifyjs ${n}.js -o ${n}.min.js -c -m
+          terser ${n}.js -o ${n}.min.js -c -m
         '';
         installPhase = ''
           mkdir -p $out
@@ -565,7 +565,7 @@ rec {
       recurseForDerivations = true;
     };
 
-  inherit (nixpkgs) wabt wasmtime wasm;
+  inherit (nixpkgs) drun wabt wasmtime wasm;
 
   filecheck = nixpkgs.runCommandNoCC "FileCheck" {} ''
     mkdir -p $out/bin
@@ -624,14 +624,9 @@ rec {
     installPhase = "touch $out";
   };
 
-  base-src = stdenv.mkDerivation {
+  base-src = nixpkgs.symlinkJoin {
     name = "base-src";
-    phases = "unpackPhase installPhase";
-    src = nixpkgs.sources.motoko-base + "/src";
-    installPhase = ''
-      mkdir -p $out
-      cp -rv * $out
-    '';
+    paths = "${nixpkgs.sources.motoko-base}/src";
   };
 
   base-tests = stdenv.mkDerivation {
@@ -715,7 +710,7 @@ rec {
       name = "check-grammar";
       src = subpath ./src/gen-grammar;
       phases = "unpackPhase buildPhase installPhase";
-      buildInputs = [ nixpkgs.diffutils nixpkgs.bash nixpkgs.ocamlPackages.obelisk ];
+      buildInputs = [ nixpkgs.diffutils nixpkgs.bash nixpkgs.obelisk ];
       buildPhase = ''
         patchShebangs .
         ./gen-grammar.sh ${./src/mo_frontend/parser.mly} > expected

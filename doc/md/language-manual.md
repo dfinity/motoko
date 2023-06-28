@@ -956,15 +956,16 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
 
 -   `T` is a future `async V`, `U` is a future `async W`, and `V <: W`.
 
--   `T` is an object type `sort0 { fts0 }`, `U` is an object type `sort1 { fts1 }` and
+-   `T` is an object type `<sort0> { fts0 }`, `U` is an object type `<sort1> { fts1 }` and
 
-    -   `sort0` == `sort1`, and, for all fields,
+    -   `<sort0>` == `<sort1>`, and, for all fields,
 
-    -   if field `id : V` is in `fts0` then `id : W` is in `fts1` and `V <: W`, and
+    -   if field `id : W` is in `fts1` then `id : V` is in `fts0` and `V <: W`, and
 
-    -   if mutable field `var id : V` is in `fts0` then `var id : W` is in `fts1` and `V == W`.
+    -   if mutable field `var id : W` is in `fts1` then `var id : V` is in `fts0` and `V == W`.
 
-        (That is, object type `T` is a subtype of object type `U` if they have same sort, every mutable field in `U` super-types the same field in `T` and every mutable field in `U` is mutable in `T` with an equivalent type. In particular, `T` may specify more fields than `U`.)
+        (That is, object type `T` is a subtype of object type `U` if they have same sort, every mutable field in `U` super-types the same field in `T` and every mutable field in `U` is mutable in `T` with an equivalent type. In particular, `T` may specify more fields than `U`.
+         Note that this clause defines subtyping for all sorts of object type, whether `module`, `object` or `actor`.)
 
 -   `T` is a variant type `{ fts0 }`, `U` is a variant type `{ fts1 }` and
 
@@ -1193,7 +1194,7 @@ In detail, if `<url>` is of the form:
 
 The case sensitivity of file references depends on the host operating system so it is recommended not to distinguish resources by filename casing alone.
 
-(Remark: when building multi-canister projects with the DFINITY Canister SDK, Motoko programs can typically import canisters by alias (e.g. `import C "canister:counter"`), without specifying low-level canister ids (e.g. `import C "ic:lg264-qjkae"`). The SDK tooling takes care of supplying the appropriate command-line arguments to the Motoko compiler.)
+(Remark: when building multi-canister projects with the [IC SDK](https://internetcomputer.org/docs/current/developer-docs/setup/install), Motoko programs can typically import canisters by alias (e.g. `import C "canister:counter"`), without specifying low-level canister ids (e.g. `import C "ic:lg264-qjkae"`). The SDK tooling takes care of supplying the appropriate command-line arguments to the Motoko compiler.)
 
 (Remark: sensible choices for `<pat>` are identifiers, such as `Array`, or object patterns like `{ cons; nil = empty }`, which allow selective importing of individual fields, under original or other names.)
 

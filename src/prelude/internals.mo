@@ -387,13 +387,15 @@ module @ManagementCanister = {
 let @ic00 = actor "aaaaa-aa" :
   actor {
     create_canister : {
-      settings : ?@ManagementCanister.canister_settings
+      settings : ?@ManagementCanister.canister_settings;
+      sender_canister_version : ?Nat64
     } -> async { canister_id : Principal };
     install_code : {
       mode : { #install; #reinstall; #upgrade };
       canister_id : Principal;
       wasm_module : @ManagementCanister.wasm_module;
       arg : Blob;
+      sender_canister_version : ?Nat64
     } -> async ()
  };
 
@@ -412,9 +414,10 @@ func @install_actor_helper(
       case (#new settings) {
         let available = (prim "cyclesAvailable" : () -> Nat) ();
         let accepted = (prim "cyclesAccept" : Nat -> Nat) (available);
+        let sender_canister_version = ?(prim "canister_version" : () -> Nat64)();
         @cycles += accepted;
         let { canister_id } =
-          await @ic00.create_canister(settings);
+          await @ic00.create_canister { settings with sender_canister_version };
         (#install, canister_id)
       };
       case (#install principal1) {
@@ -427,12 +430,13 @@ func @install_actor_helper(
         (#upgrade, (prim "cast" : (actor {}) -> Principal) actor2)
       }
     };
-  await @ic00.install_code({
+  await @ic00.install_code {
     mode;
     canister_id;
     wasm_module;
-    arg
-  });
+    arg;
+    sender_canister_version = ?(prim "canister_version" : () -> Nat64)()
+  };
   return canister_id;
 };
 
@@ -443,15 +447,17 @@ func @install_actor_helper(
 func @create_actor_helper(wasm_module : Blob, arg : Blob) : async Principal = async {
   let available = (prim "cyclesAvailable" : () -> Nat) ();
   let accepted = (prim "cyclesAccept" : Nat -> Nat) (available);
+  let sender_canister_version = ?(prim "canister_version" : () -> Nat64)();
   @cycles += accepted;
   let { canister_id } =
-    await @ic00.create_canister({settings = null});
-  await @ic00.install_code({
+    await @ic00.create_canister { settings = null; sender_canister_version };
+  await @ic00.install_code {
     mode = #install;
     canister_id;
     wasm_module;
     arg;
-  });
+    sender_canister_version = ?(prim "canister_version" : () -> Nat64)()
+  };
   return canister_id;
 };
 
@@ -519,15 +525,8 @@ func @timer_helper() : async () {
   func Array_init<T>(len : Nat,  x : T) : [var T] {
     (prim "Array.init" : <T>(Nat, T) -> [var T])<T>(len, x)
   };
+
   let now = (prim "time" : () -> Nat64)();
-  let exp = @nextExpiration @timers;
-  let prev = (prim "global_timer_set" : Nat64 -> Nat64) exp;
-
-  // debug { assert prev == 0 };
-
-  if (exp == 0) {
-    return
-  };
 
   var gathered = 0;
   let thunks = Array_init<?(() -> async ())>(10, null); // we want max 10
@@ -539,9 +538,10 @@ func @timer_helper() : async () {
       if (n.expire[0] > 0 and n.expire[0] <= now and gathered < thunks.size()) {
         thunks[gathered] := ?(n.job);
         switch (n.delay) {
-          case (?delay) if (delay != 0) {
-            // re-add the node
-            let expire = n.expire[0] + delay;
+          case (null or ?0) ();
+          case (?delay) {
+            // re-add the node, skipping past expirations
+            let expire = n.expire[0] + delay * (1 + (now - n.expire[0]) / delay);
             n.expire[0] := 0;
             // N.B. reinsert only works on pruned nodes
             func reinsert(m : ?@Node) : @Node = switch m {
@@ -554,7 +554,6 @@ func @timer_helper() : async () {
             };
             @timers := ?reinsert(@prune(@timers));
           };
-          case _ ()
         };
         n.expire[0] := 0;
         gathered += 1;
@@ -565,8 +564,15 @@ func @timer_helper() : async () {
 
   gatherExpired(@timers);
 
-  for (k in thunks.keys()) {
-    ignore switch (thunks[k]) { case (?thunk) ?thunk(); case _ null };
+  let exp = @nextExpiration @timers;
+  ignore (prim "global_timer_set" : Nat64 -> Nat64) exp;
+  if (exp == 0) @timers := null;
+
+  for (o in thunks.vals()) {
+    switch o {
+      case (?thunk) { ignore thunk() };
+      case _ { }
+    }
   }
 };
 

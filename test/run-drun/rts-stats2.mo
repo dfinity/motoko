@@ -1,34 +1,44 @@
 import Prim "mo:⛔";
 actor a {
-  public func foo() {
-    ignore(Prim.Array_init<()>(2500, ()));
+  func runGC(): async() {
+    var count = 0;
+    // run multiple GC increments for the incremental GC
+    while (count < 3) {
+      await async();
+      count += 1;
+    }
+  };
+
+  let length = 8 * 1024 * 1024; 
+  public func foo(): async() {
+    ignore(Prim.Array_init<()>(length, ())); 
+    await runGC();
   };
   public func check_A() {
     Prim.debugPrint("Ignore Diff: Reclaimed: " # debug_show Prim.rts_reclaimed());
-    assert (Prim.rts_reclaimed() > 10000);
+    assert (Prim.rts_reclaimed() > 4 * length);
     // Generational GC has additional remembered set that is discarded on each GC run
     // Debug mode for generational GC also produces additional memory snapshots for sanity checks
-    assert (Prim.rts_reclaimed() < 512 * 1024);
+    assert (Prim.rts_reclaimed() < 5 * length);
 
     Prim.debugPrint("Ignore Diff: Live size: " # debug_show Prim.rts_max_live_size());
-    // 8 at some point
-    assert (Prim.rts_max_live_size() < 100);
+    assert (Prim.rts_max_live_size() < 250_000);
   };
   flexible var v : [var ()] = [var];
-  public func bar() {
-    v := Prim.Array_init<()>(2500, ());
+  public func bar(): async() {
+    v := Prim.Array_init<()>(length, ()); // larger amount to trigger incremental GC
+    await runGC();
   };
   public func check_B() {
     Prim.debugPrint("Ignore Diff: Reclaimed: " # debug_show Prim.rts_reclaimed());
-    assert (Prim.rts_reclaimed() > 10000);
+    assert (Prim.rts_reclaimed() > 4 * length);
     // Generational GC has additional remembered set that is discarded on each GC run
     // Debug mode for generational GC also produces additional memory snapshots for sanity checks
-    assert (Prim.rts_reclaimed() < 1024 * 1024);
+    assert (Prim.rts_reclaimed() < 8 * length);
 
     Prim.debugPrint("Ignore Diff: Live size: " # debug_show Prim.rts_max_live_size());
-    // 10_008 at some point
-    assert (Prim.rts_max_live_size() > 10000);
-    assert (Prim.rts_max_live_size() < 11000);
+    assert (Prim.rts_max_live_size() > 4 * length);
+    assert (Prim.rts_max_live_size() < 5 * length);
   };
 }
 // no point running these in the interpreter

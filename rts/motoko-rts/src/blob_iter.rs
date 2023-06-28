@@ -1,4 +1,7 @@
-use crate::types::{size_of, Array, Bytes, Value, Words, TAG_ARRAY};
+use crate::{
+    barriers::allocation_barrier,
+    types::{size_of, Array, Bytes, Value, Words, TAG_ARRAY},
+};
 
 use motoko_rts_macros::ic_mem_fn;
 
@@ -14,12 +17,13 @@ unsafe fn blob_iter<M: crate::memory::Memory>(mem: &mut M, blob: Value) -> Value
     // NB. cannot use as_array() here as we didn't write the header yet
     let iter_array = iter_ptr.get_ptr() as *mut Array;
     (*iter_array).header.tag = TAG_ARRAY;
+    (*iter_array).header.init_forward(iter_ptr);
     (*iter_array).len = 2;
 
-    iter_array.set_pointer(ITER_BLOB_IDX, blob, mem);
+    iter_array.initialize(ITER_BLOB_IDX, blob, mem);
     iter_array.set_scalar(ITER_POS_IDX, Value::from_scalar(0));
 
-    iter_ptr
+    allocation_barrier(iter_ptr)
 }
 
 /// Returns whether the iterator is finished
