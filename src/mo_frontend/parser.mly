@@ -357,23 +357,19 @@ seplist1(X, SEP) :
   | (* empty *) { Type.Object @@ no_region }
   | s=obj_sort { s }
 
-%inline mode_opt :
-  | (* empty *) { Type.Write }
+%inline query:
   | QUERY { Type.Query }
   | COMPOSITE QUERY { Type.Composite }
 
 %inline func_sort_opt :
   | (* empty *) { Type.Local @@ no_region }
-  | SHARED m=mode_opt { Type.Shared m @@ at $sloc }
-  | QUERY { Type.Shared Type.Query @@ at $sloc }
-  | COMPOSITE QUERY { Type.Shared Type.Composite @@ at $sloc }
-
+  | SHARED qo=query? { Type.Shared (Lib.Option.get qo Type.Write) @@ at $sloc }
+  | q=query { Type.Shared q @@ at $sloc }
 
 %inline shared_pat_opt :
   | (* empty *) { Type.Local @@ no_region }
-  | SHARED m=mode_opt op=pat_opt { Type.Shared (m, op (at $sloc)) @@ at $sloc  }
-  | QUERY op=pat_opt { Type.Shared (Type.Query, op (at $sloc)) @@ at $sloc }
-  | COMPOSITE QUERY op=pat_opt { Type.Shared (Type.Composite, op (at $sloc)) @@ at $sloc }
+  | SHARED qo=query? op=pat_opt { Type.Shared (Lib.Option.get qo Type.Write, op (at $sloc)) @@ at $sloc }
+  | q=query op=pat_opt { Type.Shared (q, op (at $sloc)) @@ at $sloc }
 
 
 (* Paths *)

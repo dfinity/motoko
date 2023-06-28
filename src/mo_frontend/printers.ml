@@ -177,6 +177,7 @@ let string_of_symbol = function
   | X (N N_option_EQ_) -> "=?"
   | X (N N_option_exp_nullary_ob__) -> "<exp_nullary(ob)>?"
   | X (N N_option_typ_args_) -> "<typ_args>?"
+  | X (N N_option_query_) -> "<query>?"
   | X (N N_parse_module_header) -> "<parse_module_header>"
   | X (N N_parse_prog) -> "<parse_prog>"
   | X (N N_parse_prog_interactive) -> "<parse_prog_interactive>"

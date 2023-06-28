@@ -12,22 +12,19 @@
     'actor'
     'module'
 
-<mode_opt> ::= 
-    <empty>
+<query> ::= 
     'query'
     'composite' 'query'
 
 <func_sort_opt> ::= 
     <empty>
-    'shared' <mode_opt>
-    'query'
-    'composite' 'query'
+    'shared' <query>?
+    <query>
 
 <shared_pat_opt> ::= 
     <empty>
-    'shared' <mode_opt> <pat_plain>?
-    'query' <pat_plain>?
-    'composite' 'query' <pat_plain>?
+    'shared' <query>? <pat_plain>?
+    <query> <pat_plain>?
 
 <typ_obj> ::= 
     '{' <list(<typ_field>, ';')> '}'
