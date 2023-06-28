@@ -358,8 +358,10 @@ seplist1(X, SEP) :
   | s=obj_sort { s }
 
 %inline query:
-  | QUERY { Type.Query }
-  | COMPOSITE QUERY { Type.Composite }
+  | co=COMPOSITE? QUERY
+    { match co with
+      | None -> Type.Query
+      | _ -> Type.Composite }
 
 %inline func_sort_opt :
   | (* empty *) { Type.Local @@ no_region }
