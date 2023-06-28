@@ -381,6 +381,7 @@ pub unsafe fn region_new<M: Memory>(mem: &mut M) -> Value {
     // NB. cannot use as_region() here as we didn't write the header yet
     let region = r_ptr.get_ptr() as *mut Region;
     (*region).header.tag = TAG_REGION;
+    (*region).header.init_forward(r_ptr);
     (*region).id = next_id;
     (*region).page_count = 0;
     (*region).vec_pages = alloc_blob(mem, Bytes(0));
@@ -419,6 +420,7 @@ pub unsafe fn region_recover<M: Memory>(mem: &mut M, rid: &RegionId) -> Value {
     // NB. cannot use as_region() here as we didn't write the header yet
     let region = r_ptr.get_ptr() as *mut Region;
     (*region).header.tag = TAG_REGION;
+    (*region).header.init_forward(r_ptr);
     (*region).id = rid.0;
     (*region).page_count = page_count as u32;
 
