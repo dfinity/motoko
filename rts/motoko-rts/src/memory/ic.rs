@@ -19,8 +19,9 @@ extern "C" {
 }
 
 pub(crate) unsafe fn get_aligned_heap_base() -> usize {
-    // align to 32 bytes
-    ((get_heap_base() + 31) / 32) * 32
+    // Required for the mark bitmap in the compacting GC.
+    const BYTE_ALIGNMENT: usize = usize::BITS as usize;
+    ((get_heap_base() + (BYTE_ALIGNMENT - 1)) / BYTE_ALIGNMENT) * BYTE_ALIGNMENT
 }
 
 /// Maximum live data retained in a GC.

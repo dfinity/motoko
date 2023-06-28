@@ -45,8 +45,6 @@ pub mod types;
 pub mod utf8;
 mod visitor;
 
-use types::Bytes;
-
 use motoko_rts_macros::*;
 
 #[ic_mem_fn(ic_only)]
@@ -67,7 +65,7 @@ unsafe fn alloc_words<M: memory::Memory>(mem: &mut M, n: types::Words<usize>) ->
 }
 
 extern "C" {
-    fn rts_trap(msg: *const u8, len: Bytes<usize>) -> !;
+    fn rts_trap(msg: *const u8, len: u32) -> !;
 }
 
 pub(crate) unsafe fn trap_with_prefix(prefix: &str, msg: &str) -> ! {
@@ -98,7 +96,8 @@ pub(crate) unsafe fn trap_with_prefix(prefix: &str, msg: &str) -> ! {
         b_idx += 1;
     }
 
-    rts_trap(c_str.as_ptr(), Bytes(b_idx));
+    assert!(b_idx <= u32::MAX as usize);
+    rts_trap(c_str.as_ptr(), b_idx as u32);
 }
 
 pub(crate) unsafe fn idl_trap_with(msg: &str) -> ! {

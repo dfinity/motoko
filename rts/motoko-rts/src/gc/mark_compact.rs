@@ -8,7 +8,7 @@ pub mod mark_stack;
 use bitmap::{alloc_bitmap, free_bitmap, get_bit, iter_bits, set_bit, BITMAP_ITER_END};
 use mark_stack::{alloc_mark_stack, free_mark_stack, pop_mark_stack, push_mark_stack};
 
-use crate::constants::WORD_SIZE;
+use crate::constants::{WORD_SIZE, WASM_HEAP_SIZE};
 use crate::mem_utils::memcpy_words;
 use crate::memory::Memory;
 use crate::types::*;
@@ -25,15 +25,14 @@ pub unsafe extern "C" fn initialize_compacting_gc() {
 #[ic_mem_fn(ic_only)]
 unsafe fn schedule_compacting_gc<M: Memory>(mem: &mut M) {
     // 512 MiB slack for mark stack + allocation area for the next message
-    let slack: u64 = 512 * 1024 * 1024;
-    let heap_size_bytes: u64 =
-        u64::from(crate::constants::WASM_HEAP_SIZE.as_u32()) * u64::from(WORD_SIZE);
+    let slack: Words<usize> = Bytes(512 * 1024 * 1024).to_words();
     // Larger than necessary to keep things simple
-    let max_bitmap_size_bytes = heap_size_bytes / 32;
+    // Caution: Do not call `WASM_HEAP_SIZE.to_bytes()` as it overflows.
+    let max_bitmap_size_bytes = WASM_HEAP_SIZE / u8::BITS as usize;
     // NB. `max_live` is evaluated in compile time to a constant
-    let max_live: Bytes<u64> = Bytes(heap_size_bytes - slack - max_bitmap_size_bytes);
+    let max_live: Words<usize> = WASM_HEAP_SIZE - slack - max_bitmap_size_bytes;
 
-    if super::should_do_gc(max_live) {
+    if super::should_do_gc(max_live.to_bytes()) {
         compacting_gc(mem);
     }
 }
@@ -46,7 +45,7 @@ unsafe fn compacting_gc<M: Memory>(mem: &mut M) {
         mem,
         ic::get_aligned_heap_base(),
         // get_hp
-        || linear_memory::HP as usize,
+        || linear_memory::HP,
         // set_hp
         |hp| linear_memory::HP = hp,
         ic::get_static_roots(),
@@ -54,7 +53,7 @@ unsafe fn compacting_gc<M: Memory>(mem: &mut M) {
         // note_live_size
         |live_size| ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, live_size),
         // note_reclaimed
-        |reclaimed| linear_memory::RECLAIMED += Bytes(u64::from(reclaimed.as_u32())),
+        |reclaimed| linear_memory::RECLAIMED += reclaimed,
     );
 
     linear_memory::LAST_HP = linear_memory::HP;
@@ -63,12 +62,12 @@ unsafe fn compacting_gc<M: Memory>(mem: &mut M) {
 pub unsafe fn compacting_gc_internal<
     M: Memory,
     GetHp: Fn() -> usize,
-    SetHp: Fn(u32),
-    NoteLiveSize: Fn(Bytes<u32>),
-    NoteReclaimed: Fn(Bytes<u32>),
+    SetHp: Fn(usize),
+    NoteLiveSize: Fn(Bytes<usize>),
+    NoteReclaimed: Fn(Bytes<usize>),
 >(
     mem: &mut M,
-    heap_base: u32,
+    heap_base: usize,
     get_hp: GetHp,
     set_hp: SetHp,
     static_roots: Value,
@@ -76,9 +75,9 @@ pub unsafe fn compacting_gc_internal<
     note_live_size: NoteLiveSize,
     note_reclaimed: NoteReclaimed,
 ) {
-    let old_hp = get_hp() as u32;
+    let old_hp = get_hp();
 
-    assert_eq!(heap_base % 32, 0);
+    assert_eq!(heap_base % usize::BITS as usize, 0);
 
     mark_compact(
         mem,
@@ -89,18 +88,18 @@ pub unsafe fn compacting_gc_internal<
         continuation_table_ptr_loc,
     );
 
-    let reclaimed = old_hp - (get_hp() as u32);
+    let reclaimed = old_hp - get_hp();
     note_reclaimed(Bytes(reclaimed));
 
-    let live = get_hp() as u32 - heap_base;
+    let live = get_hp() - heap_base;
     note_live_size(Bytes(live));
 }
 
-unsafe fn mark_compact<M: Memory, SetHp: Fn(u32)>(
+unsafe fn mark_compact<M: Memory, SetHp: Fn(usize)>(
     mem: &mut M,
     set_hp: SetHp,
-    heap_base: u32,
-    heap_end: u32,
+    heap_base: usize,
+    heap_end: usize,
     static_roots: Value,
     continuation_table_ptr_loc: *mut Value,
 ) {
@@ -126,7 +125,7 @@ unsafe fn mark_compact<M: Memory, SetHp: Fn(u32)>(
     free_bitmap();
 }
 
-unsafe fn mark_static_roots<M: Memory>(mem: &mut M, static_roots: Value, heap_base: u32) {
+unsafe fn mark_static_roots<M: Memory>(mem: &mut M, static_roots: Value, heap_base: usize) {
     let root_array = static_roots.as_array();
 
     // Static objects are not in the dynamic heap so don't need marking.
@@ -134,14 +133,14 @@ unsafe fn mark_static_roots<M: Memory>(mem: &mut M, static_roots: Value, heap_ba
         let obj = root_array.get(i).as_obj();
         // Root array should only have pointers to other static MutBoxes
         debug_assert_eq!(obj.tag(), TAG_MUTBOX); // check tag
-        debug_assert!((obj as u32) < heap_base); // check that MutBox is static
+        debug_assert!((obj as usize) < heap_base); // check that MutBox is static
         mark_root_mutbox_fields(mem, obj as *mut MutBox, heap_base);
     }
 }
 
 unsafe fn mark_object<M: Memory>(mem: &mut M, obj: Value) {
     let obj_tag = obj.tag();
-    let obj = obj.get_ptr() as u32;
+    let obj = obj.get_ptr();
 
     // Check object alignment to avoid undefined behavior. See also static_checks module.
     debug_assert_eq!(obj % WORD_SIZE, 0);
@@ -157,18 +156,18 @@ unsafe fn mark_object<M: Memory>(mem: &mut M, obj: Value) {
     push_mark_stack(mem, obj as usize, obj_tag);
 }
 
-unsafe fn mark_stack<M: Memory>(mem: &mut M, heap_base: u32) {
+unsafe fn mark_stack<M: Memory>(mem: &mut M, heap_base: usize) {
     while let Some((obj, tag)) = pop_mark_stack() {
         mark_fields(mem, obj as *mut Obj, tag, heap_base)
     }
 }
 
-unsafe fn mark_fields<M: Memory>(mem: &mut M, obj: *mut Obj, obj_tag: Tag, heap_base: u32) {
+unsafe fn mark_fields<M: Memory>(mem: &mut M, obj: *mut Obj, obj_tag: Tag, heap_base: usize) {
     visit_pointer_fields(
         mem,
         obj,
         obj_tag,
-        heap_base as usize,
+        heap_base,
         |mem, field_addr| {
             let field_value = *field_addr;
             mark_object(mem, field_value);
@@ -179,7 +178,7 @@ unsafe fn mark_fields<M: Memory>(mem: &mut M, obj: *mut Obj, obj_tag: Tag, heap_
             }
         },
         |mem, slice_start, arr| {
-            const SLICE_INCREMENT: u32 = 127;
+            const SLICE_INCREMENT: usize = 127;
             debug_assert!(SLICE_INCREMENT >= TAG_ARRAY_SLICE_MIN);
             if arr.len() - slice_start > SLICE_INCREMENT {
                 let new_start = slice_start + SLICE_INCREMENT;
@@ -194,9 +193,9 @@ unsafe fn mark_fields<M: Memory>(mem: &mut M, obj: *mut Obj, obj_tag: Tag, heap_
 }
 
 /// Specialized version of `mark_fields` for root `MutBox`es.
-unsafe fn mark_root_mutbox_fields<M: Memory>(mem: &mut M, mutbox: *mut MutBox, heap_base: u32) {
+unsafe fn mark_root_mutbox_fields<M: Memory>(mem: &mut M, mutbox: *mut MutBox, heap_base: usize) {
     let field_addr = &mut (*mutbox).field;
-    if pointer_to_dynamic_heap(field_addr, heap_base as usize) {
+    if pointer_to_dynamic_heap(field_addr, heap_base) {
         mark_object(mem, *field_addr);
         // It's OK to thread forward pointers here as the static objects won't be moved, so we will
         // be able to unthread objects pointed by these fields later.
@@ -213,7 +212,7 @@ unsafe fn mark_root_mutbox_fields<M: Memory>(mem: &mut M, mutbox: *mut MutBox, h
 ///
 /// - Thread forward pointers of the object
 ///
-unsafe fn update_refs<SetHp: Fn(u32)>(set_hp: SetHp, heap_base: u32) {
+unsafe fn update_refs<SetHp: Fn(usize)>(set_hp: SetHp, heap_base: usize) {
     let mut free = heap_base;
 
     let mut bitmap_iter = iter_bits();
@@ -227,8 +226,8 @@ unsafe fn update_refs<SetHp: Fn(u32)>(set_hp: SetHp, heap_base: u32) {
 
         // Move the object
         let p_size_words = block_size(p as usize);
-        if p_new as usize != p as usize {
-            memcpy_words(p_new as usize, p as usize, p_size_words);
+        if p_new != p as usize {
+            memcpy_words(p_new, p as usize, p_size_words);
 
             debug_assert!(p_size_words.as_usize() > size_of::<Obj>().as_usize());
             // Update forwarding pointer
@@ -236,7 +235,7 @@ unsafe fn update_refs<SetHp: Fn(u32)>(set_hp: SetHp, heap_base: u32) {
             debug_assert!(new_obj.tag() >= TAG_OBJECT && new_obj.tag() <= TAG_NULL);
         }
 
-        free += p_size_words.to_bytes().as_u32();
+        free += p_size_words.to_bytes().as_usize();
 
         // Thread forward pointers of the object
         thread_fwd_pointers(p_new as *mut Obj, heap_base);
@@ -248,12 +247,12 @@ unsafe fn update_refs<SetHp: Fn(u32)>(set_hp: SetHp, heap_base: u32) {
 }
 
 /// Thread forward pointers in object
-unsafe fn thread_fwd_pointers(obj: *mut Obj, heap_base: u32) {
+unsafe fn thread_fwd_pointers(obj: *mut Obj, heap_base: usize) {
     visit_pointer_fields(
         &mut (),
         obj,
         obj.tag(),
-        heap_base as usize,
+        heap_base,
         |_, field_addr| {
             if (*field_addr).get_ptr() > obj as usize {
                 thread(field_addr)
@@ -269,18 +268,18 @@ unsafe fn thread(field: *mut Value) {
     let pointed = (*field).as_obj();
     let pointed_header = pointed.tag();
     *field = Value::from_raw(pointed_header);
-    (*pointed).tag = field as u32;
+    (*pointed).tag = field as usize;
 }
 
 /// Unthread all references at given header, replacing with `new_loc`. Restores object header.
-unsafe fn unthread(obj: *mut Obj, new_loc: u32) {
+unsafe fn unthread(obj: *mut Obj, new_loc: usize) {
     let mut header = obj.tag();
 
     // All objects and fields are word-aligned, and tags have the lowest bit set, so use the lowest
     // bit to distinguish a header (tag) from a field address.
     while header & 0b1 == 0 {
         let tmp = (header as *const Obj).tag();
-        (*(header as *mut Value)) = Value::from_ptr(new_loc as usize);
+        (*(header as *mut Value)) = Value::from_ptr(new_loc);
         header = tmp;
     }
 

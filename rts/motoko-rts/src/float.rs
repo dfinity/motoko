@@ -18,12 +18,12 @@ unsafe fn float_fmt<M: Memory>(mem: &mut M, a: f64, prec: u32, mode: u32) -> Val
         0 => format!(BUFFER_LENGTH, "{:.*}", prec, a),
         1 => format!(BUFFER_LENGTH, "{:.*e}", prec, a),
         2 => format!(BUFFER_LENGTH, "{:.*}", prec, a),
-        3 => panic!("float_fmt: unsupported mode"),
+        3 => panic!("float_fmt: unsupported mode"), // TODO: Support this mode (or deprecate in base library).
         4 => format!(BUFFER_LENGTH, "{}", a),
         _ => panic!("float_fmt: unrecognized mode"),
     };
 
     // TODO: Certain modes are not supported such as hexadecimal output (mode 3).
 
-    text_of_ptr_size(mem, buffer.as_ptr(), Bytes(BUFFER_LENGTH as u32))
+    text_of_ptr_size(mem, buffer.as_ptr(), Bytes(BUFFER_LENGTH))
 }

@@ -40,24 +40,24 @@ impl Memory for IcMemory {
 
         // Update heap pointer
         let old_hp = HP;
-        if (old_hp > usize::MAX - delta) {
+        if old_hp > usize::MAX - delta {
             panic!("Out of memory");
         }
 
         let new_hp = old_hp + delta;
 
         // Grow memory if needed
-        if new_hp > ((wasm64::memory_size(0) as u64) << 16) {
+        if new_hp > (wasm64::memory_size(0) << 16) {
             self.grow_memory(new_hp)
         }
 
         HP = new_hp;
 
-        Value::from_ptr(old_hp as usize)
+        Value::from_ptr(old_hp)
     }
 
     #[inline(never)]
-    unsafe fn grow_memory(&mut self, ptr: u64) {
+    unsafe fn grow_memory(&mut self, ptr: usize) {
         super::grow_memory(ptr);
     }
 }

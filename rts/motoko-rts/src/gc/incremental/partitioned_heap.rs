@@ -60,13 +60,13 @@ use super::{
 pub const PARTITION_SIZE: usize = 32 * 1024 * 1024;
 
 // TODO: Redesign for 64-bit support by using a dynamic partition list
-/// Wasm memory size (4 GiB) in bytes. Note: Represented as `u64` in order not to overflow.
-const WASM_MEMORY_BYTE_SIZE: Bytes<u64> = Bytes(4 * 1024 * 1024 * 1024);
+/// Wasm memory size (4 GiB) in bytes. Note: `usize` must be 64 bit in order not to overflow.
+const WASM_MEMORY_BYTE_SIZE: Bytes<usize> = Bytes(4 * 1024 * 1024 * 1024);
 
 /// Total number of partitions in the memory.
 /// For simplicity, the last partition is left unused, to avoid a numeric overflow when
 /// computing the end address of the last partition.
-const MAX_PARTITIONS: usize = (WASM_MEMORY_BYTE_SIZE.0 / PARTITION_SIZE as u64) as usize - 1;
+const MAX_PARTITIONS: usize = (WASM_MEMORY_BYTE_SIZE.0 / PARTITION_SIZE) - 1;
 
 /// Partitions are only evacuated if the space occupation of alive objects in the partition
 /// is greater than this threshold.
@@ -182,23 +182,23 @@ impl Partition {
         use crate::constants::WORD_SIZE;
         debug_assert!(self.dynamic_space_end() <= self.end_address());
         let remaining_space = self.end_address() - self.dynamic_space_end();
-        debug_assert_eq!(remaining_space % WORD_SIZE as usize, 0);
+        debug_assert_eq!(remaining_space % WORD_SIZE, 0);
         debug_assert!(remaining_space <= PARTITION_SIZE);
         if remaining_space == 0 {
             return;
         }
         let block = self.dynamic_space_end() as *mut Tag;
-        if remaining_space == WORD_SIZE as usize {
+        if remaining_space == WORD_SIZE {
             *block = TAG_ONE_WORD_FILLER;
         } else {
             *block = TAG_FREE_SPACE;
             let header_size = size_of::<FreeSpace>().to_bytes().as_usize();
             debug_assert!(remaining_space >= header_size);
             let free_space = block as *mut FreeSpace;
-            (*free_space).words = Bytes((remaining_space - header_size) as u32).to_words();
+            (*free_space).words = Bytes(remaining_space - header_size).to_words();
             // Clear the remainder of the free space.
             let clear_start = free_space as usize + header_size;
-            let clear_length = Bytes((remaining_space - header_size) as u32);
+            let clear_length = Bytes(remaining_space - header_size);
             crate::mem_utils::memzero(clear_start, clear_length.to_words());
             debug_assert_eq!(free_space.size().to_bytes().as_usize(), remaining_space);
         }
@@ -350,7 +350,7 @@ pub struct PartitionedHeap {
     allocation_index: usize, // Index of the partition currently used for allocations.
     free_partitions: usize,  // Number of free partitions.
     evacuating: bool,
-    reclaimed: u64,
+    reclaimed: usize,
     bitmap_allocation_pointer: usize, // Free pointer for allocating the next mark bitmap.
     gc_running: bool, // Create bitmaps for partitions when allocated during active GC.
 }
@@ -370,7 +370,7 @@ pub const UNINITIALIZED_HEAP: PartitionedHeap = PartitionedHeap {
 impl PartitionedHeap {
     pub unsafe fn new<M: Memory>(mem: &mut M, heap_base: usize) -> PartitionedHeap {
         let allocation_index = heap_base / PARTITION_SIZE;
-        mem.grow_memory(((allocation_index + 1) * PARTITION_SIZE) as u64);
+        mem.grow_memory((allocation_index + 1) * PARTITION_SIZE);
         let partitions = from_fn(|index| Partition {
             index,
             free: index > allocation_index,
@@ -437,13 +437,13 @@ impl PartitionedHeap {
     unsafe fn allocate_bitmap<M: Memory>(&mut self, mem: &mut M) -> *mut u8 {
         if self.bitmap_allocation_pointer % PARTITION_SIZE == 0 {
             let partition = self.allocate_temporary_partition();
-            mem.grow_memory(partition.end_address() as u64);
+            mem.grow_memory(partition.end_address());
             self.bitmap_allocation_pointer = partition.start_address();
         }
         let bitmap_address = self.bitmap_allocation_pointer as *mut u8;
         self.bitmap_allocation_pointer += BITMAP_SIZE;
         debug_assert_eq!(
-            bitmap_address as usize % size_of::<u64>().to_bytes().as_usize(),
+            bitmap_address as usize % size_of::<usize>().to_bytes().as_usize(),
             0
         );
         bitmap_address
@@ -491,7 +491,7 @@ impl PartitionedHeap {
                 self.mutable_partition(partition_index)
                     .bitmap
                     .assign(bitmap_address);
-                time.advance(Bytes(BITMAP_SIZE as u32).to_words().as_usize());
+                time.advance(Bytes(BITMAP_SIZE).to_words().as_usize());
             }
         }
     }
@@ -553,7 +553,7 @@ impl PartitionedHeap {
             if partition.to_be_evacuated() {
                 debug_assert!(partition.index != self.allocation_index);
                 debug_assert!(partition.dynamic_size >= marked_size);
-                self.reclaimed += (partition.dynamic_size - marked_size) as u64;
+                self.reclaimed += partition.dynamic_size - marked_size;
             }
             if partition.to_be_evacuated() || partition.temporary {
                 partition.free();
@@ -603,20 +603,20 @@ impl PartitionedHeap {
         rts_trap_with("Cannot grow memory");
     }
 
-    pub fn occupied_size(&self) -> Bytes<u32> {
+    pub fn occupied_size(&self) -> Bytes<usize> {
         let occupied_size: usize = self
             .partitions
             .iter()
             .map(|partition| partition.static_size + partition.dynamic_size)
             .sum();
-        Bytes(occupied_size as u32)
+        Bytes(occupied_size)
     }
 
-    pub fn reclaimed_size(&self) -> Bytes<u64> {
+    pub fn reclaimed_size(&self) -> Bytes<usize> {
         Bytes(self.reclaimed)
     }
 
-    pub unsafe fn allocate<M: Memory>(&mut self, mem: &mut M, words: Words<u32>) -> Value {
+    pub unsafe fn allocate<M: Memory>(&mut self, mem: &mut M, words: Words<usize>) -> Value {
         let size = words.to_bytes().as_usize();
         if size <= PARTITION_SIZE {
             self.allocate_normal_object(mem, size)
@@ -646,7 +646,7 @@ impl PartitionedHeap {
         self.allocation_partition().clear_free_remainder();
 
         let new_partition = self.allocate_free_partition(mem, size);
-        mem.grow_memory(new_partition.end_address() as u64);
+        mem.grow_memory(new_partition.end_address());
         let heap_pointer = new_partition.dynamic_space_end();
         new_partition.dynamic_size += size;
         self.allocation_index = new_partition.index;
@@ -669,7 +669,7 @@ impl PartitionedHeap {
         self.free_partitions -= number_of_partitions;
 
         let end_address = self.get_partition(last_index).end_address();
-        mem.grow_memory(end_address as u64);
+        mem.grow_memory(end_address);
         for index in first_index..last_index + 1 {
             let partition = self.mutable_partition(index);
             debug_assert!(partition.free);
@@ -747,7 +747,7 @@ impl PartitionedHeap {
             let size = partition.dynamic_size;
             partition.update = false;
             partition.free();
-            self.reclaimed += size as u64;
+            self.reclaimed += size;
         }
     }
 

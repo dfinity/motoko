@@ -41,7 +41,7 @@ use crate::types::{size_of, BigInt, Bytes, Stream, Value, TAG_BIGINT};
 
 use motoko_rts_macros::ic_mem_fn;
 
-unsafe fn mp_alloc<M: Memory>(mem: &mut M, size: Bytes<u32>) -> *mut u8 {
+unsafe fn mp_alloc<M: Memory>(mem: &mut M, size: Bytes<usize>) -> *mut u8 {
     let ptr = mem.alloc_words(size_of::<BigInt>() + size.to_words());
     // NB. Cannot use as_bigint() here as header is not written yet
     let blob = ptr.get_ptr() as *mut BigInt;
@@ -51,7 +51,9 @@ unsafe fn mp_alloc<M: Memory>(mem: &mut M, size: Bytes<u32>) -> *mut u8 {
     // libtommath stores the size of the object in alloc as count of mp_digits (u64)
     let size = size.as_usize();
     debug_assert_eq!((size % core::mem::size_of::<mp_digit>()), 0);
-    (*blob).mp_int.alloc = (size / core::mem::size_of::<mp_digit>()) as i32;
+    let count = size / core::mem::size_of::<mp_digit>();
+    assert!(count <= i32::MAX as usize);
+    (*blob).mp_int.alloc = count as i32;
     allocation_barrier(ptr);
     blob.payload_addr() as *mut u8
 }
@@ -67,12 +69,12 @@ pub unsafe fn mp_calloc<M: Memory>(
     if n_elems > 1 << 30 {
         bigint_trap();
     }
-    let size = Bytes((n_elems * elem_size.0) as u32);
-    let payload = mp_alloc(mem, size) as *mut u32;
+    let size = Bytes(n_elems * elem_size.0);
+    let payload = mp_alloc(mem, size) as *mut usize;
 
     // NB. alloc_bytes rounds up to words so we do the same here to set the whole buffer
     for i in 0..size.to_words().as_usize() {
-        *payload.add(i as usize) = 0;
+        *payload.add(i) = 0;
     }
 
     payload as *mut _
@@ -86,8 +88,8 @@ pub unsafe fn mp_realloc<M: Memory>(
     new_size: Bytes<usize>,
 ) -> *mut c_void {
     // TODO: Remove these temporary downcasts during 64-bit port
-    let old_size = Bytes(old_size.as_usize() as u32);
-    let new_size = Bytes(new_size.as_usize() as u32);
+    let old_size = Bytes(old_size.as_usize());
+    let new_size = Bytes(new_size.as_usize());
 
     let bigint = BigInt::from_payload(ptr as *mut mp_digit);
 
@@ -219,7 +221,9 @@ unsafe extern "C" fn bigint_to_word32_trap_with(p: Value, msg: Value) -> u32 {
     let mp_int = p.as_bigint().mp_int_ptr();
 
     if mp_isneg(mp_int) || mp_count_bits(mp_int) > 32 {
-        crate::rts_trap(msg.as_blob().payload_const(), msg.as_blob().len());
+        let length = msg.as_blob().len().as_usize();
+        assert!(length <= u32::MAX as usize);
+        crate::rts_trap(msg.as_blob().payload_const(), length as u32);
     }
 
     mp_get_u32(mp_int)
@@ -266,7 +270,7 @@ unsafe extern "C" fn bigint_of_float64(j: f64) -> Value {
     // can be represented as `Int` without resorting to heap allocation, i.e.
     // in the range `-1073741824 == 0xc0000000 <= j as i32 <= 0x3fffffff == 1073741823`
     if j < 1073741824.0 && j > -1073741825.0 {
-        return Value::from_signed_scalar(j as i32);
+        return Value::from_signed_scalar(j as isize);
     }
     let mut i = tmp_bigint();
     check(mp_set_double(&mut i, j));
@@ -557,7 +561,7 @@ pub unsafe extern "C" fn bigint_leb128_decode_word64(
     mut bits: u64,
     buf: *mut Buf,
 ) -> Value {
-    let continuations = bits as u32 / 8;
+    let continuations = bits as usize / 8;
     buf.advance(continuations + 1);
 
     let mut mask: u64 = 0b111_1111; // sliding mask
@@ -568,14 +572,14 @@ pub unsafe extern "C" fn bigint_leb128_decode_word64(
             if continuations == 4 {
                 break;
             }
-            return Value::from_signed_scalar(acc as i32);
+            return Value::from_signed_scalar(acc as isize);
         }
         bits -= 8;
         mask <<= 7;
         leb >>= 1;
     }
 
-    let tentative = (acc as i32) << 1 >> 1; // top two bits must match
+    let tentative = (acc as isize) << 1 >> 1; // top two bits must match
     if tentative as u64 == acc {
         // roundtrip is valid
         return Value::from_signed_scalar(tentative);
@@ -625,7 +629,7 @@ pub unsafe extern "C" fn bigint_sleb128_decode_word64(
     mut bits: u64,
     buf: *mut Buf,
 ) -> Value {
-    let continuations = bits as u32 / 8;
+    let continuations = bits as usize / 8;
     buf.advance(continuations + 1);
 
     let mut mask: u64 = 0b111_1111; // sliding mask
@@ -637,7 +641,7 @@ pub unsafe extern "C" fn bigint_sleb128_decode_word64(
                 break;
             }
             let sext = 25 - 7 * continuations; // this many top bits will get a copy of the sign
-            return Value::from_signed_scalar((acc as i32) << sext >> sext);
+            return Value::from_signed_scalar((acc as isize) << sext >> sext);
         }
         bits -= 8;
         mask <<= 7;
@@ -645,7 +649,7 @@ pub unsafe extern "C" fn bigint_sleb128_decode_word64(
     }
 
     let signed = (acc as i64) << 29 >> 29; // sign extend
-    let tentative = (signed as i32) << 1 >> 1; // top two bits must match
+    let tentative = (signed as isize) << 1 >> 1; // top two bits must match
     if tentative as i64 == signed {
         // roundtrip is valid
         return Value::from_signed_scalar(tentative);

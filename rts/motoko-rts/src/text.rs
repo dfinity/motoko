@@ -397,10 +397,10 @@ pub unsafe fn decode_code_point(s: *const u8, size: *mut usize) -> u32 {
 
     for i in 1..size {
         value <<= 6;
-        value += ((*s.add(i)) & 0b00111111);
+        value += (*s.add(i)) & 0b00111111;
     }
 
-    value
+    value as u32
 }
 
 /// Allocate a text from a character

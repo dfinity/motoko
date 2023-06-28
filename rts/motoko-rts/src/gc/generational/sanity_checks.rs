@@ -16,7 +16,7 @@ static mut SNAPSHOT: *mut Blob = null_mut();
 
 /// Take a memory snapshot. To be initiated after GC run.
 pub unsafe fn take_snapshot<M: Memory>(heap: &mut Heap<M>) {
-    let length = Bytes(heap.limits.free as u32);
+    let length = Bytes(heap.limits.free);
     // No post allocation barrier as this RTS-internal blob will be collected by the GC.
     let blob = alloc_blob(heap.mem, length).get_ptr() as *mut Blob;
     memcpy_bytes(blob.payload_addr() as usize, 0, length);
@@ -80,7 +80,7 @@ unsafe fn verify_heap(limits: &Limits) {
 unsafe fn relevant_field(current_field: *mut Value, last_free: usize) -> bool {
     if (current_field as usize) < last_free {
         let value = *current_field;
-        value.is_ptr() && value.get_ptr() as usize >= last_free
+        value.is_ptr() && value.get_ptr() >= last_free
     } else {
         false
     }
@@ -89,12 +89,12 @@ unsafe fn relevant_field(current_field: *mut Value, last_free: usize) -> bool {
 unsafe fn verify_field(current_field: *mut Value) {
     let memory_copy = SNAPSHOT.payload_addr() as usize;
     let previous_field = (memory_copy + current_field as usize) as *mut Value;
-    if *previous_field != *current_field && !recorded(current_field as u32) {
+    if *previous_field != *current_field && !recorded(current_field as usize) {
         panic!("Missing write barrier at {:#x}", current_field as usize);
     }
 }
 
-unsafe fn recorded(value: u32) -> bool {
+unsafe fn recorded(value: usize) -> bool {
     match &REMEMBERED_SET {
         None => panic!("No remembered set"),
         Some(remembered_set) => remembered_set.contains(Value::from_raw(value)),
@@ -128,7 +128,7 @@ impl<'a> MemoryChecker<'a> {
             assert!((obj as usize) < self.limits.base);
             let mutbox = obj as *mut MutBox;
             let field_addr = &mut (*mutbox).field;
-            if pointer_to_dynamic_heap(field_addr, self.limits.base as usize) {
+            if pointer_to_dynamic_heap(field_addr, self.limits.base) {
                 let object = *field_addr;
                 self.check_object(object);
             }
@@ -163,11 +163,11 @@ impl<'a> MemoryChecker<'a> {
     unsafe fn check_heap(&self) {
         let mut pointer = self.limits.base;
         while pointer < self.limits.free {
-            let block = Value::from_ptr(pointer as usize);
+            let block = Value::from_ptr(pointer);
             if block.tag() != TAG_ONE_WORD_FILLER {
                 self.check_object(block);
             }
-            pointer += block_size(pointer as usize).to_bytes().as_usize();
+            pointer += block_size(pointer).to_bytes().as_usize();
         }
     }
 }

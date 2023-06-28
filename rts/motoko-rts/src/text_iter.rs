@@ -89,7 +89,7 @@ pub unsafe extern "C" fn text_iter_done(iter: Value) -> usize {
 
 /// Returns next character in the iterator, advances the iterator
 #[ic_mem_fn]
-pub unsafe fn text_iter_next<M: Memory>(mem: &mut M, iter: Value) -> usize {
+pub unsafe fn text_iter_next<M: Memory>(mem: &mut M, iter: Value) -> u32 {
     let iter_array = iter.as_array();
 
     let blob = iter_array.get(ITER_BLOB_IDX).as_blob();

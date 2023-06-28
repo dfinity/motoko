@@ -10,6 +10,7 @@ impl BoundedTime {
         BoundedTime { steps: 0, limit }
     }
 
+    // TODO: Saturating add is probably no longer needed in 64-bit (if that makes it faster).
     pub fn tick(&mut self) {
         self.steps = usize::saturating_add(self.steps, 1);
     }

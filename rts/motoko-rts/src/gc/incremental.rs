@@ -38,7 +38,7 @@ pub mod time;
 #[ic_mem_fn(ic_only)]
 unsafe fn initialize_incremental_gc<M: Memory>(mem: &mut M) {
     use crate::memory::ic;
-    IncrementalGC::<M>::initialize(mem, ic::get_aligned_heap_base() as usize);
+    IncrementalGC::<M>::initialize(mem, ic::get_aligned_heap_base());
 }
 
 #[ic_mem_fn(ic_only)]
@@ -65,14 +65,14 @@ unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
 }
 
 #[cfg(feature = "ic")]
-static mut LAST_ALLOCATIONS: Bytes<u64> = Bytes(0u64);
+static mut LAST_ALLOCATIONS: Bytes<usize> = Bytes(0);
 
 #[cfg(feature = "ic")]
 unsafe fn should_start() -> bool {
     use self::partitioned_heap::PARTITION_SIZE;
     use crate::memory::ic::partitioned_memory;
 
-    const CRITICAL_HEAP_LIMIT: Bytes<u32> = Bytes(u32::MAX - 768 * 1024 * 1024);
+    const CRITICAL_HEAP_LIMIT: Bytes<usize> = Bytes(usize::MAX - 768 * 1024 * 1024);
     const CRITICAL_GROWTH_THRESHOLD: f64 = 0.01;
     const NORMAL_GROWTH_THRESHOLD: f64 = 0.65;
 
@@ -107,8 +107,8 @@ unsafe fn record_gc_stop<M: Memory>() {
     let static_size = Bytes(ic::get_aligned_heap_base());
     debug_assert!(heap_size >= static_size);
     let dynamic_size = heap_size - static_size;
-    debug_assert!(growth_during_gc.0 <= dynamic_size.as_usize() as u64);
-    let live_set = dynamic_size - Bytes(growth_during_gc.0 as u32);
+    debug_assert!(growth_during_gc <= dynamic_size);
+    let live_set = dynamic_size - growth_during_gc;
     ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, live_set);
 }
 

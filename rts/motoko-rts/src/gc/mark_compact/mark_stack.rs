@@ -7,7 +7,7 @@ use crate::types::{Blob, Tag, Words};
 use core::ptr::null_mut;
 
 /// Initial stack size
-pub const INIT_STACK_SIZE: Words<u32> = Words(64);
+pub const INIT_STACK_SIZE: Words<usize> = Words(64);
 
 /// Pointer to the `blob` object for the mark stack. Used to get the capacity of the stack.
 static mut STACK_BLOB_PTR: *mut Blob = null_mut();
@@ -41,13 +41,13 @@ pub unsafe fn free_mark_stack() {
 
 /// Doubles the stack size
 pub unsafe fn grow_stack<M: Memory>(mem: &mut M) {
-    let stack_cap: Words<u32> = STACK_BLOB_PTR.len().to_words();
+    let stack_cap: Words<usize> = STACK_BLOB_PTR.len().to_words();
     let p = mem.alloc_words(stack_cap).get_ptr() as *mut usize;
 
     // Make sure nothing was allocated after the stack
     debug_assert_eq!(STACK_TOP, p);
 
-    let new_cap: Words<u32> = stack_cap * 2;
+    let new_cap: Words<usize> = stack_cap * 2;
     (*STACK_BLOB_PTR).len = new_cap.to_bytes();
     STACK_TOP = STACK_BASE.add(new_cap.as_usize());
 }
@@ -60,7 +60,7 @@ pub unsafe fn push_mark_stack<M: Memory>(mem: &mut M, obj: usize, obj_tag: Tag) 
     }
 
     *STACK_PTR = obj;
-    *STACK_PTR.add(1) = obj_tag as usize;
+    *STACK_PTR.add(1) = obj_tag;
     STACK_PTR = STACK_PTR.add(2);
 }
 
@@ -71,5 +71,5 @@ pub unsafe fn pop_mark_stack() -> Option<(usize, Tag)> {
     STACK_PTR = STACK_PTR.sub(2);
     let p = *STACK_PTR;
     let tag = *STACK_PTR.add(1);
-    return Some((p, tag as u32));
+    return Some((p, tag));
 }

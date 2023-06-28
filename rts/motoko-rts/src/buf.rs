@@ -1,6 +1,7 @@
 //! This module implements a simple buffer to be used by the compiler (in generated code)
 
 use crate::idl_trap_with;
+use core::{mem::size_of, array::from_fn};
 
 #[repr(packed)]
 pub struct Buf {
@@ -12,7 +13,7 @@ pub struct Buf {
 
 impl Buf {
     #[cfg(feature = "ic")]
-    pub(crate) unsafe fn advance(self: *mut Self, n: u32) {
+    pub(crate) unsafe fn advance(self: *mut Self, n: usize) {
         advance(self, n)
     }
 }
@@ -29,28 +30,32 @@ pub(crate) unsafe fn read_byte(buf: *mut Buf) -> u8 {
     byte
 }
 
+const WORD_SIZE: usize = size_of::<usize>();
+
 #[cfg(feature = "ic")]
 /// Read a little-endian word
-pub(crate) unsafe fn read_word(buf: *mut Buf) -> u32 {
-    if (*buf).ptr.add(3) >= (*buf).end {
+pub(crate) unsafe fn read_word(buf: *mut Buf) -> usize {
+    if (*buf).ptr.add(WORD_SIZE - 1) >= (*buf).end {
         idl_trap_with("word read out of buffer");
     }
 
     let p = (*buf).ptr;
-    let word = u32::from_le_bytes([*p, *p.add(1), *p.add(2), *p.add(3)]);
 
-    (*buf).ptr = (*buf).ptr.add(4);
+    let bytes: [u8; WORD_SIZE] = from_fn(|count| *p.add(count));
+    let word = usize::from_le_bytes(bytes);
+
+    (*buf).ptr = (*buf).ptr.add(WORD_SIZE);
 
     word
 }
 
 #[cfg(feature = "ic")]
-unsafe fn advance(buf: *mut Buf, n: u32) {
-    if (*buf).ptr.add(n as usize) > (*buf).end {
+unsafe fn advance(buf: *mut Buf, n: usize) {
+    if (*buf).ptr.add(n) > (*buf).end {
         idl_trap_with("advance out of buffer");
     }
 
-    (*buf).ptr = (*buf).ptr.add(n as usize);
+    (*buf).ptr = (*buf).ptr.add(n);
 }
 
 /// Can also be used for sleb

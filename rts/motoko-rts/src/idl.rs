@@ -10,6 +10,8 @@ use crate::utf8::utf8_validate;
 
 use core::cmp::min;
 
+// TODO: Check inhowfar IDL needs to be upgraded to 64-bit.
+
 use motoko_rts_macros::ic_mem_fn;
 
 //
@@ -202,7 +204,7 @@ unsafe fn parse_idl_header<M: Memory>(
             for _ in 0..leb128_decode(buf) {
                 // Name
                 let (len, p) = leb128_decode_ptr(buf);
-                buf.advance(len);
+                buf.advance(len as usize);
                 // Method names must be valid unicode
                 utf8_validate(p as *const _, len as usize);
                 // Method names must be in order
@@ -226,7 +228,7 @@ unsafe fn parse_idl_header<M: Memory>(
         } else {
             // Future type
             let n = leb128_decode(buf);
-            buf.advance(n);
+            buf.advance(n as usize);
         }
     }
 
@@ -246,7 +248,7 @@ unsafe fn parse_idl_header<M: Memory>(
             for _ in 0..leb128_decode(&mut tmp_buf) {
                 // Name
                 let len = leb128_decode(&mut tmp_buf);
-                Buf::advance(&mut tmp_buf, len);
+                Buf::advance(&mut tmp_buf, len as usize);
                 // Type
                 let t = sleb128_decode(&mut tmp_buf);
                 if !(t >= 0 && (t as u32) < n_types) {
@@ -285,12 +287,12 @@ unsafe fn read_byte_tag(buf: *mut Buf) -> u8 {
 
 unsafe fn skip_blob(buf: *mut Buf) {
     let len = leb128_decode(buf);
-    buf.advance(len);
+    buf.advance(len as usize);
 }
 
 unsafe fn skip_text(buf: *mut Buf) {
     let (len, p) = leb128_decode_ptr(buf);
-    buf.advance(len); // advance first; does the bounds check
+    buf.advance(len as usize); // advance first; does the bounds check
     utf8_validate(p as *const _, len as usize);
 }
 
@@ -439,7 +441,7 @@ unsafe extern "C" fn skip_any(buf: *mut Buf, typtbl: *mut *mut u8, t: i32, depth
                 // Future type
                 let n_data = leb128_decode(buf);
                 let n_ref = leb128_decode(buf);
-                buf.advance(n_data);
+                buf.advance(n_data as usize);
                 if n_ref > 0 {
                     idl_trap_with("skip_any: skipping references");
                 }
@@ -543,8 +545,8 @@ unsafe fn sub(
     t2: i32,
 ) -> bool {
     if t1 >= 0 && t2 >= 0 {
-        let t1 = t1 as u32;
-        let t2 = t2 as u32;
+        let t1 = t1 as usize;
+        let t2 = t2 as usize;
         if rel.visited(p, t1, t2) {
             // visited? (bit 0)
             // return assumed or determined result
@@ -759,7 +761,7 @@ unsafe fn sub(
                         break 'return_false;
                     };
                     let (len2, p2) = leb128_decode_ptr(&mut tb2);
-                    Buf::advance(&mut tb2, len2);
+                    Buf::advance(&mut tb2, len2 as usize);
                     let t21 = sleb128_decode(&mut tb2);
                     let mut len1: u32;
                     let mut p1: *mut u8;
@@ -767,7 +769,7 @@ unsafe fn sub(
                     let mut cmp: i32;
                     loop {
                         (len1, p1) = leb128_decode_ptr(&mut tb1);
-                        Buf::advance(&mut tb1, len1);
+                        Buf::advance(&mut tb1, len1 as usize);
                         t11 = sleb128_decode(&mut tb1);
                         n1 -= 1;
                         cmp = utf8_cmp(len1 as usize, p1, len2 as usize, p2);
@@ -793,19 +795,19 @@ unsafe fn sub(
     }
     // remember negative result ...
     if t1 >= 0 && t2 >= 0 {
-        rel.disprove(p, t1 as u32, t2 as u32);
+        rel.disprove(p, t1 as usize, t2 as usize);
     }
     // .. only then return false
     return false;
 }
 
 #[no_mangle]
-unsafe extern "C" fn idl_sub_buf_words(typtbl_size1: u32, typtbl_size2: u32) -> u32 {
+unsafe extern "C" fn idl_sub_buf_words(typtbl_size1: usize, typtbl_size2: usize) -> usize {
     return BitRel::words(typtbl_size1, typtbl_size2);
 }
 
 #[no_mangle]
-unsafe extern "C" fn idl_sub_buf_init(rel_buf: *mut u32, typtbl_size1: u32, typtbl_size2: u32) {
+unsafe extern "C" fn idl_sub_buf_init(rel_buf: *mut usize, typtbl_size1: usize, typtbl_size2: usize) {
     let rel = BitRel {
         ptr: rel_buf,
         end: rel_buf.add(idl_sub_buf_words(typtbl_size1, typtbl_size2) as usize),
@@ -817,17 +819,17 @@ unsafe extern "C" fn idl_sub_buf_init(rel_buf: *mut u32, typtbl_size1: u32, typt
 
 #[no_mangle]
 unsafe extern "C" fn idl_sub(
-    rel_buf: *mut u32, // a buffer with at least 2 * typtbl_size1 * typtbl_size2 bits
+    rel_buf: *mut usize, // a buffer with at least 2 * typtbl_size1 * typtbl_size2 bits
     typtbl1: *mut *mut u8,
     typtbl2: *mut *mut u8,
     typtbl_end1: *mut u8,
     typtbl_end2: *mut u8,
-    typtbl_size1: u32,
-    typtbl_size2: u32,
+    typtbl_size1: usize,
+    typtbl_size2: usize,
     t1: i32,
     t2: i32,
 ) -> bool {
-    debug_assert!(rel_buf != (0 as *mut u32));
+    debug_assert!(rel_buf != (0 as *mut usize));
 
     let rel = BitRel {
         ptr: rel_buf,

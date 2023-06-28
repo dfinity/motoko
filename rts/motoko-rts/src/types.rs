@@ -778,7 +778,7 @@ pub struct Null {
 #[repr(C)] // See the note at the beginning of this module
 pub struct Bits64 {
     pub header: Obj,
-    bits: usize,
+    pub bits: usize,
 }
 
 /// Marks one word empty space in heap
