@@ -1631,7 +1631,7 @@ module Tagged = struct
         compile_bitand_const (overflow_mask size_in_bytes) ^^
         G.if1 I32Type
           (get_object ^^
-           compile_sub_const 1l (* skew *))
+           compile_add_const ptr_skew)
           (get_object ^^ GC.set_heap_pointer env ^^ (* restore *)
            alloc(*_nocheck FIXME*) env size))
        else
