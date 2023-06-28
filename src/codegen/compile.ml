@@ -4182,7 +4182,7 @@ module Lifecycle = struct
     | InPreUpgrade
     | PostPreUpgrade (* an invalid state *)
     | InPostUpgrade
-
+    | InComposite
 
   let string_of_state state = match state with
     | PreInit -> "PreInit"
@@ -4194,6 +4194,7 @@ module Lifecycle = struct
     | InPreUpgrade -> "InPreUpgrade"
     | PostPreUpgrade -> "PostPreUpgrade"
     | InPostUpgrade -> "InPostUpgrade"
+    | InComposite -> "InComposite"
 
   let int_of_state = function
     | PreInit -> 0l (* Automatically null *)
@@ -4209,6 +4210,7 @@ module Lifecycle = struct
     | InPreUpgrade -> 8l
     | PostPreUpgrade -> 9l
     | InPostUpgrade -> 10l
+    | InComposite -> 11l
 
   let ptr () = Stack.end_ ()
   let end_ () = Int32.add (Stack.end_ ()) Heap.word_size
@@ -4221,13 +4223,14 @@ module Lifecycle = struct
     | Started -> [InStart]
     *)
     | InInit -> [PreInit]
-    | Idle -> [InInit; InUpdate; InPostUpgrade]
+    | Idle -> [InInit; InUpdate; InPostUpgrade; InComposite]
     | InUpdate -> [Idle]
     | InQuery -> [Idle]
     | PostQuery -> [InQuery]
     | InPreUpgrade -> [Idle]
     | PostPreUpgrade -> [InPreUpgrade]
     | InPostUpgrade -> [InInit]
+    | InComposite -> [Idle]
 
   let get env =
     compile_unboxed_const (ptr ()) ^^
@@ -7901,20 +7904,22 @@ module FuncDec = struct
     ))
 
   let message_start env sort = match sort with
-      | Type.Shared Type.Composite
       | Type.Shared Type.Write ->
         Lifecycle.trans env Lifecycle.InUpdate
       | Type.Shared Type.Query ->
         Lifecycle.trans env Lifecycle.InQuery
+      | Type.Shared Type.Composite ->
+        Lifecycle.trans env Lifecycle.InComposite
       | _ -> assert false
 
   let message_cleanup env sort = match sort with
-      | Type.Shared Type.Composite
       | Type.Shared Type.Write ->
         GC.collect_garbage env ^^
         Lifecycle.trans env Lifecycle.Idle
       | Type.Shared Type.Query ->
         Lifecycle.trans env Lifecycle.PostQuery
+      | Type.Shared Type.Composite ->
+        Lifecycle.trans env Lifecycle.Idle
       | _ -> assert false
 
   let compile_const_message outer_env outer_ae sort control args mk_body ret_tys at : E.func_with_names =
