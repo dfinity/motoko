@@ -40,7 +40,7 @@ let ptr_unskew = 1l
 let prim_fun_name p stem = Printf.sprintf "%s<%s>" stem (Type.string_of_prim p)
 
 (* Helper functions to produce annotated terms (Wasm.AST) *)
-let nr x = { Wasm.Source.it = x; Wasm.Source.at = Wasm.Source.no_region }
+let nr x = Wasm.Source.{ it = x; at = no_region }
 
 let todo fn se x = Printf.eprintf "%s: %s" fn (Wasm.Sexpr.to_string 80 se); x
 

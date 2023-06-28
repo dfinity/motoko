@@ -40,10 +40,10 @@
         "homepage": "",
         "owner": "dfinity",
         "repo": "ic-hs",
-        "rev": "f092a2d5fb6fc00428b683444323fc87d1cab87c",
-        "sha256": "0dli1c3v1im09xx94hvfbc67sw6iqv9w5ggd8f57rx0r5vb0gsnb",
+        "rev": "b1444b4c60b314f57b87dfe28ec5fc909763703d",
+        "sha256": "0gs7vb9n80a4nvpf7fsgbxsvwgz6mv4sf7zjl4pjhgx4mxgfgcpr",
         "type": "tarball",
-        "url": "https://github.com/dfinity/ic-hs/archive/f092a2d5fb6fc00428b683444323fc87d1cab87c.tar.gz",
+        "url": "https://github.com/dfinity/ic-hs/archive/b1444b4c60b314f57b87dfe28ec5fc909763703d.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "libtommath": {
@@ -64,10 +64,10 @@
         "homepage": null,
         "owner": "dfinity",
         "repo": "motoko-base",
-        "rev": "5f700d087aa3d2d036861df87146aede4c096eb4",
-        "sha256": "0f4hsa1dl1j20cni7c1w8z4a8kfkisaafrsbf9xsrh4h4p33l6n7",
+        "rev": "430ab5849839376540bd090e4dd22aab9ae241a6",
+        "sha256": "13f4j6srgi4vdkir9b5q0isl9wd87m9gc5lrfnyrkfzyj8qv0wid",
         "type": "tarball",
-        "url": "https://github.com/dfinity/motoko-base/archive/5f700d087aa3d2d036861df87146aede4c096eb4.tar.gz",
+        "url": "https://github.com/dfinity/motoko-base/archive/430ab5849839376540bd090e4dd22aab9ae241a6.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "motoko-matchers": {
@@ -90,10 +90,10 @@
         "homepage": "https://wasi.dev",
         "owner": "WebAssembly",
         "repo": "wasi-libc",
-        "rev": "aecd368c6dedc417037afa136139eccc4490e56e",
-        "sha256": "0blg6w5z7jvrdzskjvnqpqxhyv1a8alv54xjm8ww2p1538xa7f99",
+        "rev": "bd950eb128bff337153de217b11270f948d04bb4",
+        "sha256": "1w1aahki27wb17k8hsh7zv6g114y1n5j2db5kc2l2sqviy2w58dj",
         "type": "tarball",
-        "url": "https://github.com/WebAssembly/wasi-libc/archive/aecd368c6dedc417037afa136139eccc4490e56e.tar.gz",
+        "url": "https://github.com/WebAssembly/wasi-libc/archive/bd950eb128bff337153de217b11270f948d04bb4.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs": {
