@@ -2,7 +2,14 @@ import Prim "mo:⛔";
 
 actor A {
 
-    func dummy({ canister_id : Principal;
+    let ic00 = actor "aaaaa-aa" : actor {
+      canister_info : {
+        canister_id : Principal;
+        num_requested_changes : ?Nat64;
+      } -> async Prim.Info;
+    };
+
+    public func dummy({ canister_id : Principal;
                  num_requested_changes : ?Nat64; }) : async Prim.Info
     {
         Prim.debugPrint "POST";
@@ -19,9 +26,11 @@ actor A {
         {
             canister_id = p;
             num_requested_changes = n
-        } }, dummy);
+        } }, ic00.canister_info);
 
     public func go() : async () {
+        let info0 = await ic00.canister_info { canister_id = Prim.principalOfActor A; num_requested_changes = ?4 };
+        Prim.debugPrint(debug_show info0);
         let info = await pc(Prim.principalOfActor A, ?4);
         Prim.debugPrint(debug_show info)
     }

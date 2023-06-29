@@ -427,9 +427,5 @@ func performanceCounter(counter : Nat32) : Nat64 =
 
 
 
-func precompose2(pre : (Principal, ?Nat64) -> BBB, post : BBB -> async Info) : (Principal, ?Nat64) -> async Info =
-  (prim "precompose2" : ((Principal, ?Nat64) -> BBB, BBB -> async Info) -> (Principal, ?Nat64) -> async Info)(pre, post);
-/*
 func precompose2(pre : (Principal, ?Nat64) -> BBB, post : shared BBB -> async Info) : shared (Principal, ?Nat64) -> async Info =
   (prim "precompose2" : ((Principal, ?Nat64) -> BBB, shared BBB -> async Info) -> shared (Principal, ?Nat64) -> async Info)(pre, post);
-*/
