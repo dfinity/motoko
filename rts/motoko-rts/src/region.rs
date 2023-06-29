@@ -34,8 +34,10 @@ pub(crate) static mut REGION_MEM_SIZE_INIT: bool = false;
 // Mirrored field from stable memory, for handling upgrade logic.
 pub(crate) static mut REGION_TOTAL_ALLOCATED_BLOCKS: u16 = 0;
 
+pub(crate) const NO_REGION: Value = Value::from_ptr(0);
+
 // Region 0 -- classic API for stable memory, as a dedicated region.
-pub(crate) static mut REGION_0: Option<Value> = None;
+pub(crate) static mut REGION_0: Value = NO_REGION;
 
 // This impl encapsulates encoding of optional region IDs within a u16.
 // Used by block-region table to encode the (optional) region ID of a block.
@@ -469,7 +471,7 @@ pub(crate) unsafe fn region_migration_from_v0_into_v2<M: Memory>(mem: &mut M) {
         let _ = crate::ic0_stable::nicer::grow(meta_data::size::STATIC_MEM_IN_PAGES as u64);
 
         // Region 0 -- classic API for stable memory, as a dedicated region.
-        REGION_0 = Some(region_new(mem));
+        REGION_0 = region_new(mem);
 
         // Regions 1 through 15, reserved for future use by future Motoko compiler-RTS features.
         region_reserve_id_span(mem, Some(RegionId(1)), RegionId(15));
@@ -553,7 +555,7 @@ pub(crate) unsafe fn region_migration_from_v1_into_v2<M: Memory>(mem: &mut M) {
         );
     }
     /* "Recover" the region data into a heap object. */
-    crate::region::REGION_0 = Some(region_recover(mem, &RegionId(0)));
+    REGION_0 = region_recover(mem, &RegionId(0));
 
     // Ensure that regions 2 through 15 are already reserved for
     // future use by future Motoko compiler-RTS features.
@@ -568,7 +570,7 @@ pub(crate) unsafe fn region_migration_from_v2_into_v2<M: Memory>(mem: &mut M) {
     if false {
         println!(80, "region_init -- recover region 0, and reserve 1--15.");
     }
-    REGION_0 = Some(region_recover(mem, &RegionId(0)));
+    REGION_0 = region_recover(mem, &RegionId(0));
 
     // Ensure that regions 2 through 15 are already reserved for
     // future use by future Motoko compiler-RTS features.
