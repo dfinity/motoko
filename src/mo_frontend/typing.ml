@@ -424,9 +424,11 @@ and check_AsyncCap env s at : T.typ * (T.con -> C.async_cap) =
    | C.AsyncCap c -> T.Con(c, []), fun c' -> C.AwaitCap c'
    | C.CompositeCap c -> T.Con(c, []), fun c' -> C.CompositeAwaitCap c'
    | C.QueryCap c -> T.Con(c, []), fun _c' -> C.ErrorCap
-   | C.ErrorCap
-   | C.CompositeAwaitCap _
+   | C.ErrorCap ->
+      error env at "M0037" "misplaced %s; a query cannot contain an %s" s s
    | C.NullCap -> error env at "M0037" "misplaced %s; try enclosing in an async function" s
+   | C.CompositeAwaitCap _ ->
+      error env at "M0037" "misplaced %s; a composite query cannot contain an %s" s s
 
 and check_AwaitCap env s at =
    match env.async with
@@ -717,14 +719,26 @@ and infer_inst env sort tbs typs at =
     (match env.async with
      | (C.AwaitCap c | C.AsyncCap c) when sort = T.Shared T.Query || sort = T.Shared T.Write || sort = T.Local ->
         (T.Con(c,[])::ts, at::ats)
-     | (C.CompositeAwaitCap c | C.CompositeCap c) when sort = T.Shared T.Query || sort = T.Shared T.Composite ->
-        (T.Con(c,[])::ts, at::ats)
+     | (C.AwaitCap c | C.AsyncCap c) when sort = T.Shared T.Composite ->
+        error env at "M0186"
+         "composite send capability required, but not available\n  (cannot call a `composite query` function from a non-`composite query` function)"
+     | (C.CompositeAwaitCap c | C.CompositeCap c) ->
+       begin
+         match sort with
+         | T.(Shared (Composite | Query)) ->
+           (T.Con(c,[])::ts, at::ats)
+         | T.((Shared Write) | Local) ->
+           error env at "M0187"
+             "send capability required, but not available\n  (cannot call a `shared` function from a `composite query` function; only calls to `query` and `composite query` functions are allowed)"
+       end
      | C.ErrorCap
-     | C.QueryCap _
+     | C.QueryCap _ ->
+        error env at "M0188"
+         "send capability required, but not available\n  (cannot call a `shared` function from a `query` function)"
      | C.NullCap
      | _ ->
         error env at "M0047"
-          "send capability required, but not available (need an enclosing async expression or function body)"
+          "send capability required, but not available\n (need an enclosing async expression or function body)"
     )
   | tbs', typs' ->
     assert (List.for_all (fun tb -> tb.T.sort = T.Type) tbs');
