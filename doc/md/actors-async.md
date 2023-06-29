@@ -275,3 +275,32 @@ outside the IC, typically by an application (such as a browser
 frontend) sending an ingress message invoking a composite query on a backend
 actor on the IC.
 
+:::danger
+
+The Internet Computer's semantics of composite queries, like queries, ensures that state changes made by a composite query are isolated from other inter-canister calls,
+including recursive queries, composite or not, to the same actor.
+
+In particular, like a query, a composite query call rolls back its state on function exit, but is also does not pass state changes to sub-query or sub-composite-query calls.
+Therefore, repeated calls (which includes recursive calls) have different semantics from the more familiar sequential calls that accumulate state changes.
+
+In sequential calls to queries made by a composite query, the internal state changes of preceeding queries will have no effect on subsequent queries, nor will
+the queries observe any local state changes made by the enclosing composite query.
+Local states changes made by the composite query are, however, preserved across the calls until finally being rolled-back on exit from the composite query.
+
+This semantics can lead to surprising behaviour for users accustomed to ordinary imperative programming.
+
+Consider this contrived example containing the composite query `test` that calls query `q` and composite query `cq`.
+
+
+``` motoko no-repl file=./examples/CompositeSemantics.mo
+```
+
+When `state` is `0`, a call to `test` returns
+
+```
+{s0 = 0; s1 = 0; s2 = 0; s3 = 3_000}
+```
+
+because none of the local updates to `state` are visible to any of the callers or callees.
+
+:::

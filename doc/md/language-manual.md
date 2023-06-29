@@ -1264,7 +1264,7 @@ During an upgrade, a trap occurring in the implicit call to `preupgrade()` or `p
 
 ##### `inspect`
 
-Given a record of message attributes, this function produces a `Bool` that indicates whether to accept or decline the message by returning `true` or `false`. The function is invoked (by the system) on each ingress message (excluding non-replicated queries). Similar to a query, any side-effects of an invocation are transient and discarded. A call that traps due to some fault has the same result as returning `false` (message denial).
+Given a record of message attributes, this function produces a `Bool` that indicates whether to accept or decline the message by returning `true` or `false`. The function is invoked (by the system) on each ingress message issue as an Internet Computer *update call* (i.e. excluding non-replicated query calls). Similar to a query, any side-effects of an invocation are transient and discarded. A call that traps due to some fault has the same result as returning `false` (message denial).
 
 The argument type of `inspect` depends on the interface of the enclosing actor. In particular, the formal argument of `inspect` is a record of fields of the following types:
 
@@ -1272,10 +1272,8 @@ The argument type of `inspect` depends on the interface of the enclosing actor. 
 
 -   `arg : Blob`: the raw, binary content of the message argument;
 
--   `msg : <variant>`: a variant of *decoding* functions, where `<variant> == {…​; #<id>: () → T; …​}` contains one variant per `shared` or `shared query` function, `<id>`, of the actor
-    (`shared composite query` functions are ignored).
+-   `msg : <variant>`: a variant of *decoding* functions, where `<variant> == {…​; #<id>: () → T; …​}` contains one variant per `shared` or `shared query` function, `<id>`, of the actor.
     The variant’s tag identifies the function to be called; The variant’s argument is a function that, when applied, returns the (decoded) argument of the call as a value of type `T`.
-
 
 Using a variant, tagged with `#<id>`, allows the return type, `T`, of the decoding function to vary with the argument type (also `T`) of the shared function `<id>`.
 
@@ -1284,6 +1282,12 @@ The variant’s argument is a function so that one can avoid the expense of mess
 :::danger
 
 An actor that fails to declare system field `inspect` will simply accept all ingress messages.
+
+:::
+
+:::note
+
+Any `shared composite query` function in the interface is *not* included in `<variant>` since, unlike a `shared query`, it can only be invoked as a non-replicated query call, never as an update call.
 
 :::
 
@@ -2025,7 +2029,9 @@ Note that a `<shared-pat>` function may itself be `shared <pat>` or `shared quer
 
 -   A `shared query <pat>` function may be also be invoked from a remote caller, but the effects on the callee are transient and discarded once the call has completed with a result (whether a value or error).
 
--   A `shared composite query <pat>` function may only be invoked as an ingress message, not from a remote caller. Like a query, the effects on the callee are transient and discarded once the call has completed with a result (whether a value or error).
+-   A `shared composite query <pat>` function may only be invoked as an ingress message, not from a remote caller.
+    Like a query, the effects on the callee are transient and discarded once the call has completed with a result (whether a value or error).
+    In addition, intermediate state changes made by the call are not obserable by any of its own `query`  or `composite query` callees.
 
 
 In either case, `<pat>` provides access to a context value identifying the *caller* of the shared (query) function.
