@@ -35,7 +35,9 @@ pub(crate) static mut REGION_MEM_SIZE_INIT: bool = false;
 // Mirrored field from stable memory, for handling upgrade logic.
 pub(crate) static mut REGION_TOTAL_ALLOCATED_BLOCKS: u16 = 0;
 
-pub(crate) const NO_REGION: Value = Value::from_ptr(0);
+// Scalar sentinel value recognized in the GC as "no root", i.e. (!`is_ptr()`).
+// Same design like `continuation_table::TABLE`.
+pub(crate) const NO_REGION: Value = Value::from_scalar(0);
 
 // Region 0 -- classic API for stable memory, as a dedicated region.
 pub(crate) static mut REGION_0: Value = NO_REGION;
