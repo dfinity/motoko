@@ -1,3 +1,4 @@
+use crate::barriers::{init_with_barrier, write_with_barrier};
 use crate::memory::{alloc_blob, Memory};
 use crate::rts_trap_with;
 use crate::types::{size_of, Blob, Bytes, Region, Value, TAG_REGION};
@@ -341,7 +342,7 @@ unsafe fn alloc_region<M: Memory>(
     // The padding must be initialized with zero because it is read by the compiler-generated code.
     (*region).zero_padding = 0;
     (*region).page_count = page_count;
-    (*region).vec_pages = vec_pages;
+    init_with_barrier(mem, &mut (*region).vec_pages, vec_pages);
 
     r_ptr
 }
@@ -734,7 +735,7 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64, max_
         println!(80, " region_grow id={} done.", (*r).id,);
     }
 
-    (*r).vec_pages = new_vec_pages;
+    write_with_barrier(mem, &mut (*r).vec_pages, new_vec_pages);
     old_page_count.into()
 }
 
