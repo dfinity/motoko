@@ -13,9 +13,13 @@ pub struct RegionId(pub u16);
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct RegionSizeInPages(pub u64);
 
+// Note: Use this type only in local variables, as it contains raw pointers
+// that are not handled by the GCs.
 #[derive(Clone)]
 pub struct AccessVector(pub *mut Blob);
 
+// Note: Use this type only in local variables, as it contains raw pointers
+// that are not handled by the GCs.
 #[derive(Clone)]
 pub struct RegionObject(pub *mut Region);
 
@@ -31,8 +35,7 @@ pub(crate) static mut REGION_MEM_SIZE_INIT: bool = false;
 pub(crate) static mut REGION_TOTAL_ALLOCATED_BLOCKS: u16 = 0;
 
 // Region 0 -- classic API for stable memory, as a dedicated region.
-// pub(crate) static mut REGION_0: Value = Value::from_ptr(0);
-pub(crate) static mut REGION_0: Value = Value::from_scalar(0);
+pub(crate) static mut REGION_0: Option<Value> = None;
 
 // This impl encapsulates encoding of optional region IDs within a u16.
 // Used by block-region table to encode the (optional) region ID of a block.
@@ -84,8 +87,8 @@ impl RegionSizeInPages {
 }
 
 impl AccessVector {
-    pub fn from_value(v: &Value) -> Self {
-        AccessVector(v.get_ptr() as *mut Blob)
+    pub unsafe fn from_value(v: &Value) -> Self {
+        AccessVector(v.as_blob_mut())
     }
 
     pub unsafe fn set_ith_block_id(&self, i: u32, block_id: &BlockId) {
@@ -320,6 +323,27 @@ mod meta_data {
     }
 }
 
+unsafe fn alloc_region<M: Memory>(
+    mem: &mut M,
+    id: u16,
+    page_count: u32,
+    vec_pages: Value,
+) -> Value {
+    let r_ptr = mem.alloc_words(size_of::<Region>());
+
+    // NB. cannot use as_region() here as we didn't write the header yet
+    let region = r_ptr.get_ptr() as *mut Region;
+    (*region).header.tag = TAG_REGION;
+    (*region).header.init_forward(r_ptr);
+    (*region).id = id;
+    // The padding must be initialized with zero because it is read by the compiler-generated code.
+    (*region).zero_padding = 0;
+    (*region).page_count = page_count;
+    (*region).vec_pages = vec_pages;
+
+    r_ptr
+}
+
 #[ic_mem_fn]
 pub unsafe fn region_id<M: Memory>(_mem: &mut M, r: Value) -> u32 {
     let r = r.as_region();
@@ -373,31 +397,23 @@ unsafe fn region_reserve_id_span<M: Memory>(_mem: &mut M, first: Option<RegionId
 
 #[ic_mem_fn]
 pub unsafe fn region_new<M: Memory>(mem: &mut M) -> Value {
-    let r_ptr = mem.alloc_words(size_of::<Region>());
-
     let next_id = meta_data::total_allocated_regions::get() as u16;
     meta_data::total_allocated_regions::set(next_id as u64 + 1);
 
-    // NB. cannot use as_region() here as we didn't write the header yet
-    let region = r_ptr.get_ptr() as *mut Region;
-    (*region).header.tag = TAG_REGION;
-    (*region).header.init_forward(r_ptr);
-    (*region).id = next_id;
-    (*region).page_count = 0;
-    (*region).vec_pages = alloc_blob(mem, Bytes(0));
+    let vec_pages = alloc_blob(mem, Bytes(0));
+    let r_ptr = alloc_region(mem, next_id, 0, vec_pages);
 
     // Update Region table.
     {
-        let r_id = RegionId::from_id((*region).id);
+        let r_id = RegionId::from_id(next_id);
         let c = meta_data::region_table::get(&r_id);
         // sanity check: Region table says that this region is available.
         assert_eq!(c, None);
         meta_data::region_table::set(&r_id, Some(RegionSizeInPages(0)));
     }
-    Value::from_ptr(region as usize)
+    r_ptr
 }
 
-#[ic_mem_fn]
 pub unsafe fn region_recover<M: Memory>(mem: &mut M, rid: &RegionId) -> Value {
     use meta_data::size::PAGES_IN_BLOCK;
     let c = meta_data::region_table::get(&rid);
@@ -415,19 +431,14 @@ pub unsafe fn region_recover<M: Memory>(mem: &mut M, rid: &RegionId) -> Value {
             rts_trap_with("region_recover failed: Expected Some(RegionSizeInPages(_))");
         }
     };
-    let r_ptr = mem.alloc_words(size_of::<Region>());
-
-    // NB. cannot use as_region() here as we didn't write the header yet
-    let region = r_ptr.get_ptr() as *mut Region;
-    (*region).header.tag = TAG_REGION;
-    (*region).header.init_forward(r_ptr);
-    (*region).id = rid.0;
-    (*region).page_count = page_count as u32;
 
     let block_count = (page_count as u32 + PAGES_IN_BLOCK - 1) / PAGES_IN_BLOCK;
-    (*region).vec_pages = alloc_blob(mem, Bytes(block_count * 2));
+    let vec_pages = alloc_blob(mem, Bytes(block_count * 2));
+
+    let r_ptr = alloc_region(mem, rid.0, page_count as u32, vec_pages);
+
     let tb = meta_data::total_allocated_blocks::get();
-    let av = AccessVector((*region).vec_pages.as_blob_mut());
+    let av = AccessVector(vec_pages.as_blob_mut());
     let mut recovered_blocks = 0;
     for block_id in 0..tb {
         match meta_data::block_region_table::get(BlockId(block_id as u16)) {
@@ -450,16 +461,15 @@ pub unsafe fn region_recover<M: Memory>(mem: &mut M, rid: &RegionId) -> Value {
         }
     }
     assert_eq!(recovered_blocks, block_count);
-    Value::from_ptr(region as usize)
+    r_ptr
 }
 
-#[ic_mem_fn]
 pub(crate) unsafe fn region_migration_from_v0_into_v2<M: Memory>(mem: &mut M) {
     if crate::ic0_stable::nicer::size() == 0 {
         let _ = crate::ic0_stable::nicer::grow(meta_data::size::STATIC_MEM_IN_PAGES as u64);
 
         // Region 0 -- classic API for stable memory, as a dedicated region.
-        REGION_0 = region_new(mem);
+        REGION_0 = Some(region_new(mem));
 
         // Regions 1 through 15, reserved for future use by future Motoko compiler-RTS features.
         region_reserve_id_span(mem, Some(RegionId(1)), RegionId(15));
@@ -472,7 +482,6 @@ pub(crate) unsafe fn region_migration_from_v0_into_v2<M: Memory>(mem: &mut M) {
 // region manager migration/initialization, with pre-existing stable data.
 // Case: Version 1 into version 2.
 //
-#[ic_mem_fn]
 pub(crate) unsafe fn region_migration_from_v1_into_v2<M: Memory>(mem: &mut M) {
     // Grow region0 to nearest block boundary, and add a block to fit a region manager meta data.
     //
@@ -544,7 +553,7 @@ pub(crate) unsafe fn region_migration_from_v1_into_v2<M: Memory>(mem: &mut M) {
         );
     }
     /* "Recover" the region data into a heap object. */
-    crate::region::REGION_0 = region_recover(mem, &RegionId(0));
+    crate::region::REGION_0 = Some(region_recover(mem, &RegionId(0)));
 
     // Ensure that regions 2 through 15 are already reserved for
     // future use by future Motoko compiler-RTS features.
@@ -555,12 +564,11 @@ pub(crate) unsafe fn region_migration_from_v1_into_v2<M: Memory>(mem: &mut M) {
 // region manager migration/initialization, with pre-existing stable data.
 // Case: Version 2 into version 2 ("Trivial migration" case).
 //
-#[ic_mem_fn]
 pub(crate) unsafe fn region_migration_from_v2_into_v2<M: Memory>(mem: &mut M) {
     if false {
         println!(80, "region_init -- recover region 0, and reserve 1--15.");
     }
-    REGION_0 = region_recover(mem, &RegionId(0));
+    REGION_0 = Some(region_recover(mem, &RegionId(0)));
 
     // Ensure that regions 2 through 15 are already reserved for
     // future use by future Motoko compiler-RTS features.
@@ -920,7 +928,7 @@ pub unsafe fn region_store_float64<M: Memory>(mem: &mut M, r: Value, offset: u64
 
 #[ic_mem_fn]
 pub unsafe fn region_store_blob<M: Memory>(mem: &mut M, r: Value, offset: u64, blob: Value) {
-    let blob: *const Blob = blob.as_blob();
+    let blob = blob.as_blob();
     let len = blob.len();
     let bytes = blob.payload_const();
     let bytes: &[u8] = core::slice::from_raw_parts(bytes, len.0 as usize);

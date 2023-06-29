@@ -348,11 +348,12 @@ impl Value {
         self.forward().get_ptr() as *mut Array
     }
 
-    /// Get the pointer as `Region`. In debug mode panics if the value is not a pointer or the
+    /// Get the pointer as `Region` using forwarding. In debug mode panics if the value is not a pointer or the
     /// pointed object is not an `Region`.
     pub unsafe fn as_region(self) -> *mut Region {
         debug_assert_eq!(self.tag(), TAG_REGION);
-        self.get_ptr() as *mut Region
+        self.check_forwarding_pointer();
+        self.forward().get_ptr() as *mut Region
     }
 
     /// Get the pointer as `Concat` using forwarding. In debug mode panics if the value is not a pointer or the
@@ -572,7 +573,8 @@ impl Array {
 pub struct Region {
     pub header: Obj,
     pub id: u16,
-    pub padding: u16,
+    // Note: Must initialize this part as it is read by the compiler-generated code.
+    pub zero_padding: u16, 
     pub page_count: u32,
     pub vec_pages: Value, // Blob of u16's (each a page block ID).
 }
