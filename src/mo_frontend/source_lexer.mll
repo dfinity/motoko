@@ -49,8 +49,7 @@ let text lexbuf s =
   let b = Buffer.create (String.length s) in
   let i = ref 1 in
   while !i < String.length s - 1 do
-    let raw = s.[!i] in
-    if raw = '\n' then Lexing.new_line lexbuf;
+    if s.[!i] = '\n' then Lexing.new_line lexbuf;
     let bs = codepoint lexbuf s i in
     Buffer.add_substring b bs 0 (String.length bs)
   done;
