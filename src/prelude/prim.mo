@@ -420,5 +420,16 @@ func performanceCounter(counter : Nat32) : Nat64 =
          controllers : [Principal];
    };
 
-func precompose2<A1, A2, B>(pre : (A1, A2) -> B, post : B -> async Info) : (A1, A2) -> async Info =
-  (prim "precompose2" : ((A1, A2) -> B, B -> async Info) -> (A1, A2) -> async Info)(pre, post);
+
+   type BBB =
+{ canister_id : Principal;
+  num_requested_changes : ?Nat64; };
+
+
+
+func precompose2(pre : (Principal, ?Nat64) -> BBB, post : BBB -> async Info) : (Principal, ?Nat64) -> async Info =
+  (prim "precompose2" : ((Principal, ?Nat64) -> BBB, BBB -> async Info) -> (Principal, ?Nat64) -> async Info)(pre, post);
+/*
+func precompose2(pre : (Principal, ?Nat64) -> BBB, post : shared BBB -> async Info) : shared (Principal, ?Nat64) -> async Info =
+  (prim "precompose2" : ((Principal, ?Nat64) -> BBB, shared BBB -> async Info) -> shared (Principal, ?Nat64) -> async Info)(pre, post);
+*/

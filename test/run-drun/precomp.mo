@@ -14,13 +14,12 @@ actor A {
         }
     };
 
-    let pc = Prim.precompose2<Principal, ?Nat64, { canister_id : Principal;
-                 num_requested_changes : ?Nat64; }>(func(p, n)
-                                                        { Prim.debugPrint "PRE";
-                                                          {
-                                                              canister_id = p;
-                                                              num_requested_changes = n
-                                                          } }, dummy);
+    let pc = Prim.precompose2(func(p, n) {
+        Prim.debugPrint "PRE";
+        {
+            canister_id = p;
+            num_requested_changes = n
+        } }, dummy);
 
     public func go() : async () {
         let info = await pc(Prim.principalOfActor A, ?4);
