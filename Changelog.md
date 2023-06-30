@@ -2,6 +2,20 @@
 
 * motoko (`moc`)
 
+  * Allow multiline text literals (#3995).
+    For example,
+
+    ```
+    "A horse walks into a bar.
+    The barman says: `Why the long face?`"
+    ```
+
+    parses as:
+    
+    ```
+    "A horse walks into a bar.\nThe barman says: `Why the long face?`"
+    ```
+
   * Added pipe operator `<exp1> |> <exp2>` and placeholder expression `_`  (#3987).
     For example:
 
@@ -48,7 +62,6 @@
     and can call both `query` and other `composite query` functions.
 
     See the documentation for full details.
-
   * Allow canister imports of Candid service constructors, ignoring the service arguments to
     import the instantiated service instead (with a warning) (#4041).
 

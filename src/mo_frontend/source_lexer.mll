@@ -49,6 +49,7 @@ let text lexbuf s =
   let b = Buffer.create (String.length s) in
   let i = ref 1 in
   while !i < String.length s - 1 do
+    if s.[!i] = '\n' then Lexing.new_line lexbuf;
     let bs = codepoint lexbuf s i in
     Buffer.add_substring b bs 0 (String.length bs)
   done;
@@ -98,6 +99,7 @@ let character =
   | byte
   | '\\'escape
   | "\\u{" hexnum '}'
+  | '\n'
 
 let nat = num | "0x" hexnum
 let frac = num
@@ -182,7 +184,7 @@ rule token mode = parse
   | float as s { FLOAT s }
   | char as s { CHAR (char lexbuf s) }
   | text as s { TEXT (text lexbuf s) }
-  | '"'character*('\n'|eof)
+  | '"'character*eof
     { error lexbuf "unclosed text literal" }
   | '"'character*['\x00'-'\x09''\x0b'-'\x1f''\x7f']
     { error lexbuf "illegal control character in text literal" }

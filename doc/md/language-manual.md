@@ -172,6 +172,7 @@ character ::=
   | '\\'escape
   | '\\'hexdigit hexdigit
   | "\\u{" hexnum '}'
+  | '\n'        // literal newline
 
 char := '\'' character '\''
 ```
@@ -183,6 +184,8 @@ A text literal is `"`-delimited sequence of characters:
 ``` bnf
 text ::= '"' character* '"'
 ```
+
+Note that a text literal may span multiple lines.
 
 ### Literals
 
