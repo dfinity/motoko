@@ -3,6 +3,8 @@
 #[macro_use]
 mod print;
 
+mod libc_stub;
+
 // // mod bigint;
 // // mod bitrel;
 mod continuation_table;
@@ -58,8 +60,8 @@ extern "C" fn bigint_trap() -> ! {
 
 // Called by the RTS for debug prints
 #[no_mangle]
-unsafe extern "C" fn print_ptr(ptr: usize, len: u32) {
-    let str: &[u8] = core::slice::from_raw_parts(ptr as *const u8, len as usize);
+unsafe extern "C" fn print_ptr(ptr: usize, len: usize) {
+    let str: &[u8] = core::slice::from_raw_parts(ptr as *const u8, len);
     println!("[RTS] {}", &String::from_utf8_lossy(str));
 }
 
