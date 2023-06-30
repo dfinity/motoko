@@ -1802,7 +1802,7 @@ may, according to taste, be a more readable rendition of:
 Above, each occurence of `_` refers to the value of the left-hand-size of the nearest enclosing
 pipe operation, after associating nested pipes to the left.
 
-Note that evaluation order of the two examples is different, but consistently left-to-right.
+Note that the evaluation order of the two examples is different, but consistently left-to-right.
 
 :::note
 
