@@ -2,6 +2,18 @@
 
 * motoko (`moc`)
 
+  * Allow multiline text literals (#3995).
+    For example,
+
+    ```
+    "A horse walks into a bar.
+    The barman says: `Why the long face?`"
+    ```
+
+    parses as:
+
+    "A horse walks into a bar.\nThe barman says: `Why the long face?`".
+
   * Allow canister imports of Candid service constructors, ignoring the service arguments to
     import the instantiated service instead (with a warning) (#4041).
 
