@@ -2031,7 +2031,7 @@ Note that a `<shared-pat>` function may itself be `shared <pat>` or `shared quer
 
 -   A `shared composite query <pat>` function may only be invoked as an ingress message, not from a remote caller.
     Like a query, the effects on the callee are transient and discarded once the call has completed with a result (whether a value or error).
-    In addition, intermediate state changes made by the call are not obserable by any of its own `query`  or `composite query` callees.
+    In addition, intermediate state changes made by the call are not observable by any of its own `query`  or `composite query` callees.
 
 
 In either case, `<pat>` provides access to a context value identifying the *caller* of the shared (query) function.
