@@ -28,7 +28,7 @@ do { let p = <exp1>; <exp2> }
 The otherwise inaccessible placeholder identifier `p` can only referenced by the placeholder expression `_`.
 
 
-Note that using `_` as an expression outside of pipe operation, where it is undefined, is an error.
+Note that using `_` as an expression outside of a pipe operation, where it is undefined, is an error.
 
 For example:
 
