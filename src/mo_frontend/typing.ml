@@ -137,7 +137,7 @@ let plural cs = if T.ConSet.cardinal cs = 1 then "" else "s"
 
 let warn_lossy_bind_type env at bind t1 t2 =
   if not T.(sub t1 t2 || sub t2 t1) then
-    warn env at "M0186" "pattern variable %s has larger type%a\nbecause its types in the pattern alternatives are unrelated smaller types:\ntype in left pattern is%a\ntype in right pattern is%a"
+    warn env at "M0190" "pattern variable %s has larger type%a\nbecause its types in the pattern alternatives are unrelated smaller types:\ntype in left pattern is%a\ntype in right pattern is%a"
       bind
       display_typ_expand (T.lub t1 t2)
       display_typ_expand t1
@@ -1913,7 +1913,7 @@ and infer_pat' env pat : T.typ * Scope.val_env =
         display_typ_expand t1
         display_typ_expand t2;
     if T.Env.keys ve1 <> T.Env.keys ve2 then
-      error env pat.at "M0185" "different set of bindings in pattern alternatives";
+      error env pat.at "M0189" "different set of bindings in pattern alternatives";
     if not env.pre then T.Env.(iter (fun k t1 -> warn_lossy_bind_type env pat.at k t1 (find k ve2))) ve1;
     t, T.Env.merge (fun _ -> Lib.Option.map2 T.lub) ve1 ve2*)
   | AnnotP (pat1, typ) ->
@@ -2041,7 +2041,7 @@ and check_pat' env t pat : Scope.val_env =
     let ve1 = check_pat env t pat1 in
     let ve2 = check_pat env t pat2 in
     if T.Env.keys ve1 <> T.Env.keys ve2 then
-      error env pat.at "M0185" "different set of bindings in pattern alternatives";
+      error env pat.at "M0189" "different set of bindings in pattern alternatives";
     T.Env.(iter (fun k t1 -> warn_lossy_bind_type env pat.at k t1 (find k ve2))) ve1;
     T.Env.merge (fun _ -> Lib.Option.map2 T.lub) ve1 ve2
   | AnnotP (pat1, typ) ->
