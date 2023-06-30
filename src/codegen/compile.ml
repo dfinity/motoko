@@ -6575,7 +6575,7 @@ module MakeSerialization (Strm : Stream) = struct
           ) ^^
           get_x ^^
           Tagged.allocation_barrier env ^^
-          set_x (* discard result *)
+          G.i Drop
         )
       | Array t ->
         let (set_len, get_len) = new_local env "len" in
@@ -8057,7 +8057,7 @@ module FuncDec = struct
 
         get_clos ^^
         Tagged.allocation_barrier env ^^
-        set_clos (* discard the result *)
+        G.i Drop
       in
 
       if is_local
