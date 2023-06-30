@@ -118,6 +118,7 @@ type token =
   | TEXT of string
   | PRIM
   | UNDERSCORE
+  | COMPOSITE
   | INVARIANT
   (* Trivia *)
   | LINEFEED of line_feed
@@ -245,6 +246,7 @@ let to_parser_token :
   | TEXT s -> Ok (Parser.TEXT s)
   | PRIM -> Ok Parser.PRIM
   | UNDERSCORE -> Ok Parser.UNDERSCORE
+  | COMPOSITE -> Ok Parser.COMPOSITE
   | INVARIANT -> Ok Parser.INVARIANT
   (*Trivia *)
   | SINGLESPACE -> Error (Space 1)
@@ -373,6 +375,7 @@ let string_of_parser_token = function
   | Parser.TEXT _ -> "TEXT of string"
   | Parser.PRIM -> "PRIM"
   | Parser.UNDERSCORE -> "UNDERSCORE"
+  | Parser.COMPOSITE -> "COMPOSITE"
   | Parser.INVARIANT -> "INVARIANT"
   | Parser.IMPLIES -> "IMPLIES"
   | Parser.OLD -> "OLD"
