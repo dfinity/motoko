@@ -1617,11 +1617,11 @@ module Tagged = struct
 
     Func.share_code0 env name [I32Type] (fun env ->
       let set_object, get_object = new_local env "new_object" in
-      (if !Flags.gc_strategy <> Flags.Incremental && size < 0x2000l then
+      let size_in_bytes = Int32.(mul size Heap.word_size) in
+      (if !Flags.gc_strategy <> Flags.Incremental && size_in_bytes < 0x8000l then
          GC.get_heap_pointer env ^^
          compile_sub_const 1l ^^ (* skew *)
          GC.get_heap_pointer env ^^
-         let size_in_bytes = Int32.(mul size Heap.word_size) in
          compile_add_const size_in_bytes ^^
          GC.set_heap_pointer env ^^
          GC.get_heap_pointer env ^^
