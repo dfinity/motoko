@@ -16,7 +16,7 @@ actor This {
        let o2 = from_candid blob : ? (actor { f : /* composite */ query () -> async (); });
        assert o2 == null;
 
-       // can't deserialized as update
+       // can't deserialize as update
        let o3 = from_candid blob : ? (actor { f : /* composite  query */ () -> async (); });
        assert o2 == null;
 
