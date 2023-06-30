@@ -1052,11 +1052,9 @@ module GC = struct
     E.call_import env "ic0" "performance_counter"
 
   let register_globals env =
-    begin
-      E.add_global64 env "__mutator_instructions" Mutable 0L;
-      E.add_global64 env "__collector_instructions" Mutable 0L;
-      E.add_global32 env "_HP" Mutable 0l;
-    end
+    E.add_global64 env "__mutator_instructions" Mutable 0L;
+    E.add_global64 env "__collector_instructions" Mutable 0L;
+    E.add_global32 env "_HP" Mutable 0l
 
   let get_mutator_instructions env =
     G.i (GlobalGet (nr (E.get_global env "__mutator_instructions")))
@@ -5446,12 +5444,12 @@ module MakeSerialization (Strm : Stream) = struct
 
   module Registers = struct
     let register_globals env =
-     (E.add_global32 env "@@rel_buf_opt" Mutable 0l;
+      E.add_global32 env "@@rel_buf_opt" Mutable 0l;
       E.add_global32 env "@@data_buf" Mutable 0l;
       E.add_global32 env "@@ref_buf" Mutable 0l;
       E.add_global32 env "@@typtbl" Mutable 0l;
       E.add_global32 env "@@typtbl_end" Mutable 0l;
-      E.add_global32 env "@@typtbl_size" Mutable 0l)
+      E.add_global32 env "@@typtbl_size" Mutable 0l
 
     let get_rel_buf_opt env =
       G.i (GlobalGet (nr (E.get_global env "@@rel_buf_opt")))
