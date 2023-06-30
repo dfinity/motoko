@@ -25,7 +25,8 @@ placeholder identifier, `p`, before returning `<exp2>`:
 do { let p = <exp1>; <exp2> }
 ```
 
-The otherwise inaccessible placeholder identifier `p` can only referenced by the placeholder expression `_`.
+The otherwise inaccessible placeholder identifier `p` can only referenced by the placeholder expression `_`. 
+Multiple references to `_` are allowed and refer to the same value within the same pipe operation.
 
 
 Note that using `_` as an expression outside of a pipe operation, where it is undefined, is an error.
