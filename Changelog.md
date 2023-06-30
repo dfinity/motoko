@@ -195,7 +195,7 @@
 
   * BREAKING CHANGE (Minor)
 
-    Optimized `AssocList.{replace, find}` to avoid unnecesary allocation (dfinity/motoko-base#535, dfinity/motoko-base#539).
+    Optimized `AssocList.{replace, find}` to avoid unnecessary allocation (dfinity/motoko-base#535, dfinity/motoko-base#539).
     Note: this subtly changes the order in which the key-value pairs occur after replacement. May affect other containers that use `AssocList`.
 
   * Performance improvement: Optimized deletion for `Trie`/`TrieMap` (dfinity/motoko-base#525).
