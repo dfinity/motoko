@@ -18,6 +18,7 @@ let func_sort = function
   | Local -> "Local"
   | Shared Write -> "Shared"
   | Shared Query -> "Shared Query"
+  | Shared Composite -> "Shared Composite"
 
 let prim = function
   | Null -> Atom "Null"

@@ -14,7 +14,7 @@ type obj_sort =
  | Memory          (* (codegen only): stable memory serialization format *)
 
 type async_sort = Fut | Cmp
-type shared_sort = Query | Write
+type shared_sort = Query | Write | Composite
 type 'a shared = Local | Shared of 'a
 type func_sort = shared_sort shared
 type eff = Triv | Await
@@ -95,6 +95,7 @@ let tag_func_sort = function
   | Local -> 0
   | Shared Write -> 1
   | Shared Query -> 2
+  | Shared Composite -> 3
 
 let tag_obj_sort = function
   | Object -> 0
@@ -1363,7 +1364,7 @@ let decode_msg_typ tfs =
   Variant
     (List.sort compare_field (List.filter_map (fun tf ->
        match normalize tf.typ with
-       | Func(Shared _, _, tbs, ts1, ts2) ->
+       | Func(Shared (Write | Query), _, tbs, ts1, ts2) ->
          Some { tf with
            typ =
              Func(Local, Returns, [], [],
@@ -1433,6 +1434,7 @@ let string_of_func_sort = function
   | Local -> ""
   | Shared Write -> "shared "
   | Shared Query -> "shared query "
+  | Shared Composite -> "shared composite query " (* TBR *)
 
 (* PrettyPrinter configurations *)
 
