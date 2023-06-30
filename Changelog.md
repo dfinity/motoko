@@ -1,17 +1,17 @@
 # Motoko compiler changelog
 
+## 0.9.4 (2023-07-01)
+
 * motoko (`moc`)
 
   * Allow multiline text literals (#3995).
     For example,
-
     ```
     "A horse walks into a bar.
     The barman says: `Why the long face?`"
     ```
 
     parses as:
-    
     ```
     "A horse walks into a bar.\nThe barman says: `Why the long face?`"
     ```
