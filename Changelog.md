@@ -39,7 +39,6 @@
     and can call both `query` and other `composite query` functions.
 
     See the documentation for full details.
-    
   * Allow canister imports of Candid service constructors, ignoring the service arguments to
     import the instantiated service instead (with a warning) (#4041).
 
