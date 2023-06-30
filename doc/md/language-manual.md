@@ -170,7 +170,7 @@ character ::=
   | '\\'escape
   | '\\'hexdigit hexdigit
   | "\\u{" hexnum '}'
-  | "\n"
+  | `\n`        // literal newline
 
 char := '\'' character '\''
 ```
