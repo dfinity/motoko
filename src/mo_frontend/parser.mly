@@ -233,6 +233,7 @@ and objblock s dec_fields =
 %token<bool> BOOL
 %token<string> ID
 %token<string> TEXT
+%token PIPE
 %token PRIM
 %token UNDERSCORE
 %token COMPOSITE
@@ -243,6 +244,7 @@ and objblock s dec_fields =
 %nonassoc ELSE WHILE
 
 %left COLON
+%left PIPE
 %left OR
 %left AND
 %nonassoc EQOP NEQOP LEOP LTOP GTOP GEOP
@@ -579,6 +581,8 @@ exp_nullary(B) :
     { VarE(x) @? at $sloc }
   | PRIM s=TEXT
     { PrimE(s) @? at $sloc }
+  | UNDERSCORE
+    { VarE ("_" @@ at $sloc) @? at $sloc }
 
 exp_post(B) :
   | e=exp_nullary(B)
@@ -642,6 +646,13 @@ exp_un(B) :
     { OrE(e1, e2) @? at $sloc }
   | e=exp_bin(B) COLON t=typ_nobin
     { AnnotE(e, t) @? at $sloc }
+  | e1=exp_bin(B) PIPE e2=exp_bin(ob)
+    { let x = "_" @@ e1.at in
+      BlockE [
+        LetD (VarP x @! x.at, e1, None) @? e1.at;
+        ExpD e2 @? e2.at
+      ] @? at $sloc }
+
 
 %public exp_nondec(B) :
   | e=exp_bin(B)
