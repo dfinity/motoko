@@ -16,6 +16,27 @@
     "A horse walks into a bar.\nThe barman says: `Why the long face?`"
     ```
 
+  * Added pipe operator `<exp1> |> <exp2>` and placeholder expression `_`  (#3987).
+    For example:
+
+    ``` motoko
+    Iter.range(0, 10) |>
+      Iter.toList _ |>
+        List.filter<Nat>(_, func n { n % 3 == 0 }) |>
+          { multiples = _ };
+    ```
+
+    may, according to taste, be a more readable rendition of:
+
+    ``` motoko
+    { multiples =
+       List.filter<Nat>(
+         Iter.toList(Iter.range(0, 10)),
+           func n { n % 3 == 0 }) };
+    ```
+
+    However, beware the change of evaluation order for code with side-effects.
+
   * BREAKING CHANGE (Minor):
 
     New keyword `composite` allows one to declare Internet Computer *composite queries* (#4003).
