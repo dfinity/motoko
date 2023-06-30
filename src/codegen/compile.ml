@@ -1610,6 +1610,7 @@ module Tagged = struct
 
   (* Note: post-allocation barrier must be applied after initialization *)
   let alloc env size tag =
+    assert (size > 1l);
     let name = Printf.sprintf "alloc_size<%d>_tag<%d>" (Int32.to_int size) (Int32.to_int (int_of_tag tag)) in
     let overflow_mask n =
       let n = Int32.to_int n in
