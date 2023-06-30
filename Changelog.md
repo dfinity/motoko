@@ -11,9 +11,10 @@
     ```
 
     parses as:
+    ```
+    "A horse walks into a bar.\nThe barman says: `Why the long face?`"
+    ```
 
-    `"A horse walks into a bar.\nThe barman says: `Why the long face?`"`.
- 
   * BREAKING CHANGE (Minor):
 
     New keyword `composite` allows one to declare Internet Computer *composite queries* (#4003).
