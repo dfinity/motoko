@@ -42,6 +42,7 @@ no-timer-set.mo:3.10-3.18: type error [M0119], object field setTimer is not cont
     arctan2 : (Float, Float) -> Float;
     arrayMutToBlob : [var Nat8] -> Blob;
     arrayToBlob : [Nat8] -> Blob;
+    blobCompare : (Blob, Blob) -> Int8;
     blobOfPrincipal : Principal -> Blob;
     blobToArray : Blob -> [Nat8];
     blobToArrayMut : Blob -> [var Nat8];
@@ -54,6 +55,7 @@ no-timer-set.mo:3.10-3.18: type error [M0119], object field setTimer is not cont
     btstNat64 : (Nat64, Nat64) -> Bool;
     btstNat8 : (Nat8, Nat8) -> Bool;
     call_raw : (Principal, Text, Blob) -> async Blob;
+    canisterVersion : () -> Nat64;
     charIsAlphabetic : Char -> Bool;
     charIsLowercase : Char -> Bool;
     charIsUppercase : Char -> Bool;
