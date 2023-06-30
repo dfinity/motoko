@@ -18,7 +18,6 @@
 
   * Added pipe operator `<exp1> |> <exp2>` and placeholder expression `_`  (#3987).
     For example:
-
     ``` motoko
     Iter.range(0, 10) |>
       Iter.toList _ |>
@@ -27,7 +26,6 @@
     ```
 
     may, according to taste, be a more readable rendition of:
-
     ``` motoko
     { multiples =
        List.filter<Nat>(
@@ -42,7 +40,6 @@
     New keyword `composite` allows one to declare Internet Computer *composite queries* (#4003).
 
     For example,
-
     ``` motoko
     public shared composite query func sum(counters : [Counter]) : async Nat {
       var sum = 0;
@@ -54,7 +51,6 @@
     ```
 
     has type:
-
     ``` motoko
     shared composite query [Counter] -> async Nat
     ```
@@ -62,6 +58,7 @@
     and can call both `query` and other `composite query` functions.
 
     See the documentation for full details.
+
   * Allow canister imports of Candid service constructors, ignoring the service arguments to
     import the instantiated service instead (with a warning) (#4041).
 
@@ -69,6 +66,11 @@
 
   * bugfix: allow signed float literals as static expressions in modules (#4063).
 
+  * bugfix: improved reporting of patterns with record types in error messages (#4002).
+
+* motoko-base
+
+  * Added more `Array` (and `Text`) utility functions (dfinity/motoko-base⁠#56).
 
 ## 0.9.3 (2023-06-19)
 
