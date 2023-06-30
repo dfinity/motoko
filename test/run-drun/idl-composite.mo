@@ -20,7 +20,7 @@ actor This {
        let o3 = from_candid blob : ? (actor { f : /* composite  query */ () -> async (); });
        assert o2 == null;
 
-       // can't deserialized as oneway
+       // can't deserialize as oneway
        let o4 = from_candid blob : ? (actor { f : /* composite  query */ () -> (); });
        assert o2 == null;
 
