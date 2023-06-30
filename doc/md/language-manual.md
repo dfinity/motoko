@@ -183,7 +183,7 @@ A text literal is `"`-delimited sequence of characters:
 text ::= '"' character* '"'
 ```
 
-Note, a text literal may span multiple lines.
+Note that a text literal may span multiple lines.
 
 ### Literals
 
