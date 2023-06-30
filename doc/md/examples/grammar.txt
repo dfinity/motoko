@@ -157,6 +157,7 @@
     <exp_obj>
     <exp_plain>
     <id>
+    '_'
 
 <exp_post> ::= 
     <exp_nullary>
@@ -188,6 +189,7 @@
     <exp_bin> 'and' <exp_bin>
     <exp_bin> 'or' <exp_bin>
     <exp_bin> ':' <typ_nobin>
+    <exp_bin> '|>' <exp_bin>
 
 <exp_nondec> ::= 
     <exp_bin>
