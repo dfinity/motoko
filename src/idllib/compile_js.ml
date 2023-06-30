@@ -112,7 +112,7 @@ let pp_mode ppf m =
   match m.it with
   | Oneway -> str ppf "'oneway'"
   | Query -> str ppf "'query'"
-  | Composite -> str ppf "'composite_query'" (* TBR *)
+  | Composite -> str ppf "'composite_query'"
 
 let rec concat ppf f sep list =
   match list with
