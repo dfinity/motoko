@@ -36,7 +36,9 @@ Exploiting subtyping, the formal argument can omit record fields it does not req
 
 :::note
 
-Confusingly, a `shared query` function *can* be called using a regular HTTP call to obtain a certified response: this is why the variant type also includes `shared query` functions.
+Confusingly, a `shared query` function *can* be called using a regular HTTP update call to obtain a certified response: this is why the variant type also includes `shared query` functions.
+A `shared composite query` function, on the other hand,  *cannot* be called as an update call, and only with the faster, but uncertified, HTTP query call.
+This is why the `inspect` variant type includes `shared query` functions, but not `shared composite query` functions.
 
 :::
 

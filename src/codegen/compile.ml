@@ -4182,6 +4182,7 @@ module Lifecycle = struct
     | InPreUpgrade
     | PostPreUpgrade (* an invalid state *)
     | InPostUpgrade
+    | InComposite
 
   let string_of_state state = match state with
     | PreInit -> "PreInit"
@@ -4193,6 +4194,7 @@ module Lifecycle = struct
     | InPreUpgrade -> "InPreUpgrade"
     | PostPreUpgrade -> "PostPreUpgrade"
     | InPostUpgrade -> "InPostUpgrade"
+    | InComposite -> "InComposite"
 
   let int_of_state = function
     | PreInit -> 0l (* Automatically null *)
@@ -4208,6 +4210,7 @@ module Lifecycle = struct
     | InPreUpgrade -> 8l
     | PostPreUpgrade -> 9l
     | InPostUpgrade -> 10l
+    | InComposite -> 11l
 
   let ptr () = Stack.end_ ()
   let end_ () = Int32.add (Stack.end_ ()) Heap.word_size
@@ -4220,13 +4223,14 @@ module Lifecycle = struct
     | Started -> [InStart]
     *)
     | InInit -> [PreInit]
-    | Idle -> [InInit; InUpdate; InPostUpgrade]
+    | Idle -> [InInit; InUpdate; InPostUpgrade; InComposite]
     | InUpdate -> [Idle]
     | InQuery -> [Idle]
     | PostQuery -> [InQuery]
     | InPreUpgrade -> [Idle]
     | PostPreUpgrade -> [InPreUpgrade]
     | InPostUpgrade -> [InInit]
+    | InComposite -> [Idle]
 
   let get env =
     compile_unboxed_const (ptr ()) ^^
@@ -5614,6 +5618,8 @@ module MakeSerialization (Strm : Stream) = struct
             add_leb128 0; (* no annotation *)
           | Shared Query, _ ->
             add_leb128 1; add_u8 1; (* query *)
+          | Shared Composite, _ ->
+            add_leb128 1; add_u8 3; (* composite *)
           | _ -> assert false
         end
       | Obj (Actor, fs) ->
@@ -7902,6 +7908,8 @@ module FuncDec = struct
         Lifecycle.trans env Lifecycle.InUpdate
       | Type.Shared Type.Query ->
         Lifecycle.trans env Lifecycle.InQuery
+      | Type.Shared Type.Composite ->
+        Lifecycle.trans env Lifecycle.InComposite
       | _ -> assert false
 
   let message_cleanup env sort = match sort with
@@ -7910,6 +7918,8 @@ module FuncDec = struct
         Lifecycle.trans env Lifecycle.Idle
       | Type.Shared Type.Query ->
         Lifecycle.trans env Lifecycle.PostQuery
+      | Type.Shared Type.Composite ->
+        Lifecycle.trans env Lifecycle.Idle
       | _ -> assert false
 
   let compile_const_message outer_env outer_ae sort control args mk_body ret_tys at : E.func_with_names =
@@ -10926,7 +10936,9 @@ and export_actor_field env  ae (f : Ir.field) =
         |  Func(Shared sort,_,_,_,_) ->
            (match sort with
             | Write -> "canister_update " ^ f.it.name
-            | Query -> "canister_query " ^ f.it.name)
+            | Query -> "canister_query " ^ f.it.name
+            | Composite -> "canister_composite_query " ^ f.it.name
+           )
         | _ -> assert false)
       | _ -> assert false);
     edesc = nr (FuncExport (nr fi))

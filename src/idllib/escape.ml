@@ -67,6 +67,7 @@ let is_motoko_keyword = function
   | "catch"
   | "class"
   | "continue"
+  | "composite"
   | "debug"
   | "debug_show"
   | "do"
