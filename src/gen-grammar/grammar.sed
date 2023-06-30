@@ -40,6 +40,7 @@ s/WRAPMULOP/\'*%\'/g
 s/WRAPPOWOP/\'**%\'/g
 s/ANDASSIGN/\'\&=\'/g
 s/ACTOR/\'actor\'/g
+s/COMPOSITE/\'composite\'/g
 s/IGNORE/\'ignore\'/g
 s/IMPORT/\'import\'/g
 s/XOROP/\'^\'/g

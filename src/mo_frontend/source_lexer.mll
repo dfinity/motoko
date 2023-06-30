@@ -205,6 +205,7 @@ rule token mode = parse
   | "case" { CASE }
   | "catch" { CATCH }
   | "class" { CLASS }
+  | "composite" { COMPOSITE }
   | "continue" { CONTINUE }
   | "debug" { DEBUG }
   | "debug_show" { DEBUG_SHOW }
