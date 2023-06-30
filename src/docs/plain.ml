@@ -74,6 +74,7 @@ let plain_of_func_sort : Buffer.t -> Syntax.func_sort -> unit =
   Mo_types.Type.(
     match sort.it with
     | Local -> ()
+    | Shared Composite -> bprintf buf "shared composite query "
     | Shared Query -> bprintf buf "shared query "
     | Shared Write -> bprintf buf "shared ")
 

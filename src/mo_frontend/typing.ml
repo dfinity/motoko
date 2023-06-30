@@ -411,6 +411,10 @@ let rec infer_async_cap env sort cs tbs at =
     { env with typs = T.Env.add T.default_scope_var c env.typs;
                scopes = T.ConEnv.add c at env.scopes;
                async = C.QueryCap c }
+  | (T.Shared T.Composite) , c::_,  { T.sort = T.Scope; _ }::_ ->
+    { env with typs = T.Env.add T.default_scope_var c env.typs;
+               scopes = T.ConEnv.add c at env.scopes;
+               async = C.CompositeCap c }
   | T.Shared _, _, _ -> assert false (* impossible given sugaring *)
   | _ -> { env with async = C.NullCap }
 
@@ -418,15 +422,22 @@ and check_AsyncCap env s at : T.typ * (T.con -> C.async_cap) =
    match env.async with
    | C.AwaitCap c
    | C.AsyncCap c -> T.Con(c, []), fun c' -> C.AwaitCap c'
+   | C.CompositeCap c -> T.Con(c, []), fun c' -> C.CompositeAwaitCap c'
    | C.QueryCap c -> T.Con(c, []), fun _c' -> C.ErrorCap
-   | C.ErrorCap
+   | C.ErrorCap ->
+      error env at "M0037" "misplaced %s; a query cannot contain an %s" s s
    | C.NullCap -> error env at "M0037" "misplaced %s; try enclosing in an async function" s
+   | C.CompositeAwaitCap _ ->
+      error env at "M0037" "misplaced %s; a composite query cannot contain an %s" s s
 
 and check_AwaitCap env s at =
    match env.async with
    | C.AwaitCap c -> T.Con(c, [])
+   | C.CompositeAwaitCap c -> T.Con(c, [])
    | C.AsyncCap _
-   | C.QueryCap _ ->
+   | C.QueryCap _
+   | C.CompositeCap _
+     ->
      error env at "M0038" "misplaced %s; try enclosing in an async expression" s
    | C.ErrorCap
    | C.NullCap -> error env at "M0038" "misplaced %s" s
@@ -435,8 +446,10 @@ and check_ErrorCap env s at =
    match env.async with
    | C.AwaitCap c -> ()
    | C.ErrorCap -> ()
+   | C.CompositeAwaitCap c -> ()
    | C.AsyncCap _
-   | C.QueryCap _ ->
+   | C.QueryCap _
+   | C.CompositeCap _ ->
      error env at "M0039" "misplaced %s; try enclosing in an async expression or query function" s
    | C.NullCap -> error env at "M0039" "misplaced %s" s
 
@@ -444,7 +457,10 @@ and scope_of_env env =
   match env.async with
    | C.AsyncCap c
    | C.QueryCap c
-   | C.AwaitCap c -> Some (T.Con(c,[]))
+   | C.CompositeCap c
+   | C.CompositeAwaitCap c
+   | C.AwaitCap c ->
+      Some (T.Con(c,[]))
    | C.ErrorCap -> None
    | C.NullCap -> None
 
@@ -694,28 +710,42 @@ and check_con_env env at ce =
     error env at "M0156" "block contains expansive type definitions%s" msg
   end;
 
-and infer_inst env tbs typs at =
+and infer_inst env sort tbs typs at =
   let ts = List.map (check_typ env) typs in
   let ats = List.map (fun typ -> typ.at) typs in
   match tbs,typs with
   | {T.bound; sort = T.Scope; _}::tbs', typs' ->
     assert (List.for_all (fun tb -> tb.T.sort = T.Type) tbs');
     (match env.async with
+     | (C.AwaitCap c | C.AsyncCap c) when sort = T.Shared T.Query || sort = T.Shared T.Write || sort = T.Local ->
+        (T.Con(c,[])::ts, at::ats)
+     | (C.AwaitCap c | C.AsyncCap c) when sort = T.Shared T.Composite ->
+        error env at "M0186"
+         "composite send capability required, but not available\n  (cannot call a `composite query` function from a non-`composite query` function)"
+     | (C.CompositeAwaitCap c | C.CompositeCap c) ->
+       begin
+         match sort with
+         | T.(Shared (Composite | Query)) ->
+           (T.Con(c,[])::ts, at::ats)
+         | T.((Shared Write) | Local) ->
+           error env at "M0187"
+             "send capability required, but not available\n  (cannot call a `shared` function from a `composite query` function; only calls to `query` and `composite query` functions are allowed)"
+       end
      | C.ErrorCap
-     | C.QueryCap _
-     | C.NullCap ->
+     | C.QueryCap _ ->
+        error env at "M0188"
+         "send capability required, but not available\n  (cannot call a `shared` function from a `query` function)"
+     | C.NullCap
+     | _ ->
         error env at "M0047"
-          "send capability required, but not available (need an enclosing async expression or function body)"
-     | C.AwaitCap c
-     | C.AsyncCap c ->
-      (T.Con(c,[])::ts, at::ats)
+          "send capability required, but not available\n (need an enclosing async expression or function body)"
     )
   | tbs', typs' ->
     assert (List.for_all (fun tb -> tb.T.sort = T.Type) tbs');
     ts, ats
 
-and check_inst_bounds env tbs inst at =
-  let ts, ats = infer_inst env tbs inst at in
+and check_inst_bounds env sort tbs inst at =
+  let ts, ats = infer_inst env sort tbs inst at in
   check_typ_bounds env tbs ts ats at;
   ts
 
@@ -1737,7 +1767,7 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
     | _, Some _ ->
       (* explicit instantiation, check argument against instantiated domain *)
       let typs = match inst.it with None -> [] | Some typs -> typs in
-      let ts = check_inst_bounds env tbs typs at in
+      let ts = check_inst_bounds env sort tbs typs at in
       let t_arg' = T.open_ ts t_arg in
       let t_ret' = T.open_ ts t_ret in
       if not env.pre then check_exp_strong env t_arg' exp2;
@@ -1864,7 +1894,9 @@ and infer_pat' env pat : T.typ * Scope.val_env =
     let t1, ve = infer_pat env pat1 in
     T.Variant [T.{lab = id.it; typ = t1; depr = None}], ve
   | AltP (pat1, pat2) ->
-    let t1, ve1 = infer_pat env pat1 in
+    error env pat.at "M0184"
+        "cannot infer the type of this or-pattern, please add a type annotation";
+    (*let t1, ve1 = infer_pat env pat1 in
     let t2, ve2 = infer_pat env pat2 in
     let t = T.lub t1 t2 in
     if not (T.compatible t1 t2) then
@@ -1874,7 +1906,7 @@ and infer_pat' env pat : T.typ * Scope.val_env =
         display_typ_expand t2;
     if ve1 <> T.Env.empty || ve2 <> T.Env.empty then
       error env pat.at "M0105" "variables are not allowed in pattern alternatives";
-    t, T.Env.empty
+    t, T.Env.empty*)
   | AnnotP (pat1, typ) ->
     let t = check_typ env typ in
     t, check_pat env t pat1

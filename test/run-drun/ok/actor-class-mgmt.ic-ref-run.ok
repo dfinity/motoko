@@ -1,6 +1,7 @@
-=> update provisional_create_canister_with_cycles(record {settings = null; qgqjpK = null; amount = null})
+=> update provisional_create_canister_with_cycles(record {settings = null; qgqjpK = null; amount = null; ddww...
 <= replied: (record {hymijyo = principal "rwlgt-iiaaa-aaaaa-aaaaa-cai"})
 => update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0...
 <= replied: ()
 => update go()
+debug.print: {controllers = [rwlgt-iiaaa-aaaaa-aaaaa-cai]; recent_changes = [{canister_version = 0; details = #creation({controllers = [rwlgt-iiaaa-aaaaa-aaaaa-cai]}); origin = #from_canister({canister_id = rwlgt-iiaaa-aaaaa-aaaaa-cai; canister_version = null})}, {canister_version = 1; details = #code_deployment({mode = #install}); origin = #from_canister({canister_id = rwlgt-iiaaa-aaaaa-aaaaa-cai; canister_version = ?18})}, {canister_version = 3; details = #code_deployment({mode = #upgrade}); origin = #from_canister({canister_id = rwlgt-iiaaa-aaaaa-aaaaa-cai; canister_version = ?22})}, {canister_version = 5; details = #code_deployment({mode = #reinstall}); origin = #from_canister({canister_id = rwlgt-iiaaa-aaaaa-aaaaa-cai; canister_version = ?26})}]; total_num_changes = 4}
 <= replied: ()

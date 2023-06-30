@@ -17,9 +17,7 @@ jobs:
         fetch-depth: 0
         # fetch PR commit, not predicted merge commit
         ref: ${{ github.event.pull_request.head.sha }}
-    - uses: cachix/install-nix-action@v20
-      with:
-        install_url: https://releases.nixos.org/nix/nix-2.13.3/install
+    - uses: cachix/install-nix-action@v22
 
     # We are using the ic-hs-test cachix cache that is also used by
     # dfinity/ic-hs. This is partly laziness (on need to set up a separate
@@ -33,6 +31,12 @@ jobs:
     - run: cachix watch-store ic-hs-test &
 
     - run: nix-env -iA nix-build-uncached -f nix/
+
+    - name: "pre-build `drun`"
+      if: startsWith(github.head_ref, 'update/ic-')
+      run: |
+        nix-build --max-jobs 1 -A drun
+        nix-store --gc --print-roots | grep /motoko/
 
     - name: "nix-build"
       run: nix-build-uncached --max-jobs 4 -A all-systems-go -build-flags -L
@@ -84,9 +88,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-    - uses: cachix/install-nix-action@v20
-      with:
-        install_url: https://releases.nixos.org/nix/nix-2.13.3/install
+    - uses: cachix/install-nix-action@v22
     - uses: cachix/cachix-action@v12
       with:
         name: ic-hs-test
@@ -108,9 +110,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-    - uses: cachix/install-nix-action@v20
-      with:
-        install_url: https://releases.nixos.org/nix/nix-2.13.3/install
+    - uses: cachix/install-nix-action@v22
     - uses: cachix/cachix-action@v12
       with:
         name: ic-hs-test

@@ -26,6 +26,8 @@ let string_of_mode m =
   match m.it with
   | Oneway -> " oneway"
   | Query -> " query"
+  | Composite -> " composite_query"
+
 
 let ($$) head inner = Node (head, inner)
 
@@ -45,7 +47,7 @@ and typ_meth (tb : typ_meth)
   = tb.it.var.it $$ [typ tb.it.meth]
 
 and mode m = Atom (string_of_mode m)
-  
+
 and typ t = match t.it with
   | VarT s        -> "VarT" $$ [id s]
   | PrimT p             -> "PrimT" $$ [Atom (string_of_prim p)]
@@ -68,7 +70,7 @@ and dec d = match d.it with
 
 and actor = function
   | None -> Atom "NoActor"
-  | Some t -> 
+  | Some t ->
      "Actor" $$ [typ t]
 
 and prog prog = "Decs" $$ List.map dec prog.it.decs @ [actor prog.it.actor]
@@ -167,7 +169,7 @@ let rec is_linebreak_type t =
   | RecordT fs | VariantT fs -> List.length fs > 1
   | VecT t | OptT t -> is_linebreak_type t
   | _ -> false
-  
+
 let pp_dec ppf d =
   pp_open_vbox ppf 1;
   (match d.it with
@@ -232,7 +234,7 @@ let string_of_typ t =
   pp_typ ppf t;
   pp_print_flush ppf ();
   Buffer.contents buf
-  
+
 let string_of_prog prog =
   let buf = Buffer.create 100 in
   let ppf = formatter_of_buffer buf in
@@ -246,4 +248,3 @@ let string_of_args ts =
   pp_args ppf ts;
   pp_print_flush ppf ();
   Buffer.contents buf
-    

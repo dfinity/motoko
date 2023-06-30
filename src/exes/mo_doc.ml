@@ -23,6 +23,11 @@ let argspec = [
       "<format>  specifies the generated format. One of `html`, `adoc`, or `plain` Defaults to `html`"
     ]
 
+let invalid s =
+    Printf.printf "Unexpected positional argument: %s\n\n" s;
+    Arg.usage argspec usage;
+    exit 1
+
 let () =
-  Arg.parse argspec ignore usage;
+  Arg.parse argspec invalid usage;
   Docs.start !format !source !output

@@ -40,7 +40,7 @@ let ptr_unskew = 1l
 let prim_fun_name p stem = Printf.sprintf "%s<%s>" stem (Type.string_of_prim p)
 
 (* Helper functions to produce annotated terms (Wasm.AST) *)
-let nr x = { Wasm.Source.it = x; Wasm.Source.at = Wasm.Source.no_region }
+let nr x = Wasm.Source.{ it = x; at = no_region }
 
 let todo fn se x = Printf.eprintf "%s: %s" fn (Wasm.Sexpr.to_string 80 se); x
 
@@ -1650,7 +1650,7 @@ module Tagged = struct
         load_forwarding_pointer env ^^
         get_object ^^
         G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
-        E.else_trap_with env "missing object forwarding"  ^^
+        E.else_trap_with env "missing object forwarding" ^^
         get_object ^^
         (if unskewed then
           compile_unboxed_const ptr_unskew ^^
@@ -2401,7 +2401,7 @@ module TaggedSmallWord = struct
         get_exp ^^
         compile_unboxed_const 0l ^^
         G.i (Compare (Wasm.Values.I32 I32Op.GeS)) ^^
-        E.else_trap_with env "negative power"  ^^
+        E.else_trap_with env "negative power" ^^
         get_n ^^ get_exp ^^ compile_nat_power env ty
       )
 
@@ -3675,29 +3675,37 @@ module Blob = struct
 
     get_blob
 
-  (* Lexicographic blob comparison. Expects two blobs on the stack *)
+  (* Lexicographic blob comparison. Expects two blobs on the stack.
+     Either specialized to a specific comparison operator, and returns a boolean,
+     or implements the generic comparison, returning -1, 0 or 1 as Int8.
+  *)
   let rec compare env op =
+    (* return convention for the generic comparison function *)
+    let is_lt = compile_unboxed_const (TaggedSmallWord.vanilla_lit Type.Int8 (-1)) in
+    let is_gt = compile_unboxed_const (TaggedSmallWord.vanilla_lit Type.Int8 1) in
+    let is_eq = compile_unboxed_const (TaggedSmallWord.vanilla_lit Type.Int8 0) in
     let open Operator in
     let name = match op with
-        | LtOp -> "Blob.compare_lt"
-        | LeOp -> "Blob.compare_le"
-        | GeOp -> "Blob.compare_ge"
-        | GtOp -> "Blob.compare_gt"
-        | EqOp -> "Blob.compare_eq"
-        | NeqOp -> assert false in
+        | Some LtOp -> "Blob.compare_lt"
+        | Some LeOp -> "Blob.compare_le"
+        | Some GeOp -> "Blob.compare_ge"
+        | Some GtOp -> "Blob.compare_gt"
+        | Some EqOp -> "Blob.compare_eq"
+        | Some NeqOp -> "Blob.compare_neq"
+        | None -> "Blob.compare" in
     Func.share_code2 env name (("x", I32Type), ("y", I32Type)) [I32Type] (fun env get_x get_y ->
-      let set_x = G.setter_for get_x in
-      let set_y = G.setter_for get_y in
-      get_x ^^ Tagged.load_forwarding_pointer env ^^ set_x ^^
-      get_y ^^ Tagged.load_forwarding_pointer env ^^ set_y ^^
-
       match op with
         (* Some operators can be reduced to the negation of other operators *)
-        | LtOp ->  get_x ^^ get_y ^^ compare env GeOp ^^ Bool.neg
-        | GtOp ->  get_x ^^ get_y ^^ compare env LeOp ^^ Bool.neg
-        | NeqOp -> assert false
+        | Some LtOp -> get_x ^^ get_y ^^ compare env (Some GeOp) ^^ Bool.neg
+        | Some GtOp -> get_x ^^ get_y ^^ compare env (Some LeOp) ^^ Bool.neg
+        | Some NeqOp -> get_x ^^ get_y ^^ compare env (Some EqOp) ^^ Bool.neg
         | _ ->
       begin
+        let set_x = G.setter_for get_x in
+        let set_y = G.setter_for get_y in
+        get_x ^^ Tagged.load_forwarding_pointer env ^^ set_x ^^
+        get_y ^^ Tagged.load_forwarding_pointer env ^^ set_y ^^
+
         let (set_len1, get_len1) = new_local env "len1" in
         let (set_len2, get_len2) = new_local env "len2" in
         let (set_len, get_len) = new_local env "len" in
@@ -3708,7 +3716,7 @@ module Blob = struct
         get_y ^^ len env ^^ set_len2 ^^
 
         (* Find minimum length *)
-        begin if op = EqOp then
+        begin if op = Some EqOp then
           (* Early exit for equality *)
           get_len1 ^^ get_len2 ^^ G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
           G.if0 G.nop (Bool.lit false ^^ G.i Return) ^^
@@ -3732,7 +3740,6 @@ module Blob = struct
           G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.(Pack8, ZX)}) ^^
           set_a ^^
 
-
           get_y ^^
           payload_ptr_unskewed env ^^
           get_i ^^
@@ -3744,9 +3751,11 @@ module Blob = struct
           G.if0 G.nop (
             (* first non-equal elements *)
             begin match op with
-            | LeOp -> get_a ^^ get_b ^^ G.i (Compare (Wasm.Values.I32 I32Op.LeU))
-            | GeOp -> get_a ^^ get_b ^^ G.i (Compare (Wasm.Values.I32 I32Op.GeU))
-            | EqOp -> Bool.lit false
+            | Some LeOp -> get_a ^^ get_b ^^ G.i (Compare (Wasm.Values.I32 I32Op.LeU))
+            | Some GeOp -> get_a ^^ get_b ^^ G.i (Compare (Wasm.Values.I32 I32Op.GeU))
+            | Some EqOp -> Bool.lit false
+            | None -> get_a ^^ get_b ^^ G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
+                      G.if1 I32Type is_lt is_gt
             | _ -> assert false
             end ^^
             G.i Return
@@ -3754,9 +3763,15 @@ module Blob = struct
         ) ^^
         (* Common prefix is same *)
         match op with
-        | LeOp -> get_len1 ^^ get_len2 ^^ G.i (Compare (Wasm.Values.I32 I32Op.LeU))
-        | GeOp -> get_len1 ^^ get_len2 ^^ G.i (Compare (Wasm.Values.I32 I32Op.GeU))
-        | EqOp -> Bool.lit true
+        | Some LeOp -> get_len1 ^^ get_len2 ^^ G.i (Compare (Wasm.Values.I32 I32Op.LeU))
+        | Some GeOp -> get_len1 ^^ get_len2 ^^ G.i (Compare (Wasm.Values.I32 I32Op.GeU))
+        | Some EqOp -> Bool.lit true (* NB: Different length handled above *)
+        | None ->
+            get_len1 ^^ get_len2 ^^ G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
+            G.if1 I32Type is_lt (
+              get_len1 ^^ get_len2 ^^ G.i (Compare (Wasm.Values.I32 I32Op.GtU)) ^^
+              G.if1 I32Type is_gt is_eq
+            )
         | _ -> assert false
       end
   )
@@ -3859,12 +3874,9 @@ module Text = struct
         | EqOp -> "Text.compare_eq"
         | NeqOp -> assert false in
     Func.share_code2 env name (("x", I32Type), ("y", I32Type)) [I32Type] (fun env get_x get_y ->
-      let set_x = G.setter_for get_x in
-      let set_y = G.setter_for get_y in
-      get_x ^^ Tagged.load_forwarding_pointer env ^^ set_x ^^
-      get_y ^^ Tagged.load_forwarding_pointer env ^^ set_y ^^
-
-      get_x ^^ get_y ^^ E.call_import env "rts" "text_compare" ^^
+      get_x ^^ Tagged.load_forwarding_pointer env ^^
+      get_y ^^ Tagged.load_forwarding_pointer env ^^
+      E.call_import env "rts" "text_compare" ^^
       compile_unboxed_const 0l ^^
       match op with
         | LtOp -> G.i (Compare (Wasm.Values.I32 I32Op.LtS))
@@ -4170,6 +4182,7 @@ module Lifecycle = struct
     | InPreUpgrade
     | PostPreUpgrade (* an invalid state *)
     | InPostUpgrade
+    | InComposite
 
   let string_of_state state = match state with
     | PreInit -> "PreInit"
@@ -4181,6 +4194,7 @@ module Lifecycle = struct
     | InPreUpgrade -> "InPreUpgrade"
     | PostPreUpgrade -> "PostPreUpgrade"
     | InPostUpgrade -> "InPostUpgrade"
+    | InComposite -> "InComposite"
 
   let int_of_state = function
     | PreInit -> 0l (* Automatically null *)
@@ -4196,6 +4210,7 @@ module Lifecycle = struct
     | InPreUpgrade -> 8l
     | PostPreUpgrade -> 9l
     | InPostUpgrade -> 10l
+    | InComposite -> 11l
 
   let ptr () = Stack.end_ ()
   let end_ () = Int32.add (Stack.end_ ()) Heap.word_size
@@ -4208,13 +4223,14 @@ module Lifecycle = struct
     | Started -> [InStart]
     *)
     | InInit -> [PreInit]
-    | Idle -> [InInit; InUpdate; InPostUpgrade]
+    | Idle -> [InInit; InUpdate; InPostUpgrade; InComposite]
     | InUpdate -> [Idle]
     | InQuery -> [Idle]
     | PostQuery -> [InQuery]
     | InPreUpgrade -> [Idle]
     | PostPreUpgrade -> [InPreUpgrade]
     | InPostUpgrade -> [InInit]
+    | InComposite -> [Idle]
 
   let get env =
     compile_unboxed_const (ptr ()) ^^
@@ -4281,6 +4297,7 @@ module IC = struct
       E.add_func_import env "ic0" "canister_self_copy" (i32s 3) [];
       E.add_func_import env "ic0" "canister_self_size" [] [I32Type];
       E.add_func_import env "ic0" "canister_status" [] [I32Type];
+      E.add_func_import env "ic0" "canister_version" [] [I64Type];
       E.add_func_import env "ic0" "is_controller" (i32s 2) [I32Type];
       E.add_func_import env "ic0" "debug_print" (i32s 2) [];
       E.add_func_import env "ic0" "msg_arg_data_copy" (i32s 3) [];
@@ -4385,12 +4402,16 @@ module IC = struct
       })
 
 
-  let performance_counter env =
+  let ic_system_call call env =
     match E.mode env with
     | Flags.(ICMode | RefMode) ->
-      system_call env "performance_counter"
+      system_call env call
     | _ ->
-      E.trap_with env "cannot get performance counter when running locally"
+      E.trap_with env Printf.(sprintf "cannot get %s when running locally" call)
+
+  let performance_counter = ic_system_call "performance_counter"
+  let is_controller = ic_system_call "is_controller"
+  let canister_version = ic_system_call "canister_version"
 
   let print_ptr_len env = G.i (Call (nr (E.built_in env "print_ptr")))
 
@@ -4876,7 +4897,7 @@ module StableMem = struct
           get_offset ^^
           compile_const_64 (Int64.of_int page_size_bits) ^^
           G.i (Binary (Wasm.Values.I64 I64Op.ShrU)) ^^
-          get_mem_size env  ^^
+          get_mem_size env ^^
           G.i (Compare (Wasm.Values.I64 I64Op.LtU)) ^^
           E.else_trap_with env "StableMemory offset out of bounds")
     | _ -> assert false
@@ -5597,6 +5618,8 @@ module MakeSerialization (Strm : Stream) = struct
             add_leb128 0; (* no annotation *)
           | Shared Query, _ ->
             add_leb128 1; add_u8 1; (* query *)
+          | Shared Composite, _ ->
+            add_leb128 1; add_u8 3; (* composite *)
           | _ -> assert false
         end
       | Obj (Actor, fs) ->
@@ -7201,7 +7224,7 @@ module Stabilization = struct
         get_N ^^
         extend64 get_len ^^
         compile_add64_const 16L ^^
-        StableMem.ensure env  ^^
+        StableMem.ensure env ^^
 
         get_N ^^
         get_len ^^
@@ -7885,6 +7908,8 @@ module FuncDec = struct
         Lifecycle.trans env Lifecycle.InUpdate
       | Type.Shared Type.Query ->
         Lifecycle.trans env Lifecycle.InQuery
+      | Type.Shared Type.Composite ->
+        Lifecycle.trans env Lifecycle.InComposite
       | _ -> assert false
 
   let message_cleanup env sort = match sort with
@@ -7893,6 +7918,8 @@ module FuncDec = struct
         Lifecycle.trans env Lifecycle.Idle
       | Type.Shared Type.Query ->
         Lifecycle.trans env Lifecycle.PostQuery
+      | Type.Shared Type.Composite ->
+        Lifecycle.trans env Lifecycle.Idle
       | _ -> assert false
 
   let compile_const_message outer_env outer_ae sort control args mk_body ret_tys at : E.func_with_names =
@@ -8139,7 +8166,7 @@ module FuncDec = struct
       get_meth_pair ^^ Arr.load_field env 1l ^^ Blob.as_ptr_len env ^^
       (* The reply and reject callback *)
       push_continuations ^^
-      set_cb_index  ^^ get_cb_index ^^
+      set_cb_index ^^ get_cb_index ^^
       (* initiate call *)
       IC.system_call env "call_new" ^^
       cleanup_callback env ^^ get_cb_index ^^
@@ -8242,12 +8269,12 @@ module FuncDec = struct
     set_meth_pair2 ^^ set_meth_pair1 ^^
     get_meth_pair1 ^^ Arr.load_field env 0l ^^
     get_meth_pair2 ^^ Arr.load_field env 0l ^^
-    Blob.compare env Operator.EqOp ^^
+    Blob.compare env (Some Operator.EqOp) ^^
     G.if1 I32Type
     begin
       get_meth_pair1 ^^ Arr.load_field env 1l ^^
       get_meth_pair2 ^^ Arr.load_field env 1l ^^
-      Blob.compare env Operator.EqOp
+      Blob.compare env (Some Operator.EqOp)
     end
     begin
       Bool.lit false
@@ -9135,7 +9162,7 @@ let compile_eq env =
   let open Type in
   function
   | Prim Text -> Text.compare env Operator.EqOp
-  | Prim (Blob|Principal) | Obj (Actor, _) -> Blob.compare env Operator.EqOp
+  | Prim (Blob|Principal) | Obj (Actor, _) -> Blob.compare env (Some Operator.EqOp)
   | Func (Shared _, _, _, _, _) -> FuncDec.equate_msgref env
   | Prim (Nat | Int) -> BigNum.compile_eq env
   | Prim (Int64 | Nat64) -> G.i (Compare (Wasm.Values.I64 I64Op.Eq))
@@ -9170,7 +9197,7 @@ let compile_relop env t op =
   let open Operator in
   match t, op with
   | Type.(Prim Text), _ -> Text.compare env op
-  | Type.(Prim (Blob|Principal)), _ -> Blob.compare env op
+  | Type.(Prim (Blob|Principal)), _ -> Blob.compare env (Some op)
   | _, EqOp -> compile_eq env t
   | Type.(Prim (Nat | Nat8 | Nat16 | Nat32 | Nat64 | Int | Int8 | Int16 | Int32 | Int64 | Char as t1)), op1 ->
     compile_comparison env t1 op1
@@ -9644,7 +9671,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_vanilla env ae e ^^
     Serialization.buffer_size env t ^^
     G.i Drop ^^
-    compile_add_const tydesc_len  ^^
+    compile_add_const tydesc_len ^^
     G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
 
   (* Other prims, unary *)
@@ -9669,6 +9696,11 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_vanilla env ae e2 ^^
     E.call_import env "rts" "text_compare" ^^
     TaggedSmallWord.msb_adjust Type.Int8
+  | OtherPrim "blob_compare", [e1; e2] ->
+    SR.Vanilla,
+    compile_exp_vanilla env ae e1 ^^
+    compile_exp_vanilla env ae e2 ^^
+    Blob.compare env None
 
   | OtherPrim "blob_size", [e] ->
     SR.Vanilla, compile_exp_vanilla env ae e ^^ Blob.len_nat env
@@ -9877,7 +9909,11 @@ and compile_prim_invocation (env : E.t) ae p es at =
     Blob.payload_ptr_unskewed env ^^
     get_principal ^^
     Blob.len env ^^
-    IC.system_call env "is_controller"
+    IC.is_controller env
+
+  | OtherPrim "canister_version", [] ->
+    SR.UnboxedWord64,
+    IC.canister_version env
 
   | OtherPrim "crc32Hash", [e] ->
     SR.UnboxedWord32,
@@ -10900,7 +10936,9 @@ and export_actor_field env  ae (f : Ir.field) =
         |  Func(Shared sort,_,_,_,_) ->
            (match sort with
             | Write -> "canister_update " ^ f.it.name
-            | Query -> "canister_query " ^ f.it.name)
+            | Query -> "canister_query " ^ f.it.name
+            | Composite -> "canister_composite_query " ^ f.it.name
+           )
         | _ -> assert false)
       | _ -> assert false);
     edesc = nr (FuncExport (nr fi))
