@@ -1758,14 +1758,24 @@ For equality and inequality, the meaning of `v1 <relop> v2` depends on the compi
 
 ### Pipe operators and placeholder expressions
 
-The pipe expression `<exp1> |> <exp2>` is syntactic sugar for a `let` binding to a reserved
-placeholder identifier, `p`, referenced by the placeholder expression `_`:
+The pipe expression `<exp1> |> <exp2>` binds the value of `<exp1>` to the special placeholder expression `_`, that can be referenced in `<exp2>` (and recursively in `<exp1>`).
+Referencing the placeholder expression outside of a pipe operation is a compile-time error.
+
+The pipe expression `<exp1> |> <exp2>` is just syntactic sugar for a `let` binding to a
+placeholder identifier, `p`:
 
 ``` bnf
 do { let p = <exp1>; <exp2> }
 ```
 
-The placeholder identifier, `p`, is a fixed, reserved identifier that cannot be bound by any other expression or pattern other than a pipe operation, and can only be referenced using the placeholder expression `_`.
+The placeholder expression `_` is just syntactic sugar for the expression referencing the placeholder identifier:
+
+``` bnf
+p
+```
+
+The placeholder identifier, `p`, is a fixed, reserved identifier that cannot be bound by any other expression or pattern other than a pipe operation,
+and can only be referenced using the placeholder expression `_`.
 
 `|>` has lowest precedence amongst all operators except `:` and associates to the left.
 
