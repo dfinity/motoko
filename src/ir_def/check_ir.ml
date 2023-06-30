@@ -79,7 +79,7 @@ let initial_env flavor : env =
     rets = None;
     async = Async_cap.(match initial_cap() with
                        | (NullCap | ErrorCap) -> None
-                       | (QueryCap c | AwaitCap c | AsyncCap c) -> Some c);
+                       | (QueryCap c | AwaitCap c | AsyncCap c | CompositeCap c | CompositeAwaitCap c) -> Some c);
     seen = ref T.ConSet.empty;
     check_run;
   }
@@ -271,7 +271,7 @@ and check_typ_field env s tf : unit =
      "typ field in non-typ_field flavor";
     check_con env c
   | t, Some T.Actor when not (T.is_shared_func t) ->
-    error env no_region "actor field %s must have shared function type" tf.T.lab
+    error env no_region "actor field %s must have shared function type, found %s" tf.T.lab (T.string_of_typ t)
   | t, _ -> check_typ env t
 
 and check_typ_binds_acyclic env cs ts  =
