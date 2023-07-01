@@ -426,6 +426,6 @@ func performanceCounter(counter : Nat32) : Nat64 =
   num_requested_changes : ?Nat64; };
 
 
-
 func precompose2(pre : (Principal, ?Nat64) -> BBB, post : shared BBB -> async Info) : (Principal, ?Nat64) -> async Info =
-  (prim "precompose2" : ((Principal, ?Nat64) -> BBB, shared BBB -> async Info) -> (Principal, ?Nat64) -> async Info)(pre, post);
+  (prim "precompose2" : ((Principal, ?Nat64) -> BBB, BBB -> async Info) -> (Principal, ?Nat64) -> async Info)
+    (pre, func (bbb : BBB) : async Info { await post bbb });

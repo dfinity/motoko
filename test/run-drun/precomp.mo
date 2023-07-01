@@ -1,5 +1,24 @@
 import Prim "mo:⛔";
 
+module {
+
+    let ic00 = actor "aaaaa-aa" : actor {
+      canister_info : {
+        canister_id : Principal;
+        num_requested_changes : ?Nat64;
+      } -> async Prim.Info;
+    };
+
+    let pc = /*Prim.precompose2*/(func(p:Principal, n:?Nat64) : Prim.BBB {
+        Prim.debugPrint "PRE";
+        {
+            canister_id = p;
+            num_requested_changes = n
+        } }, ic00.canister_info);
+
+};
+
+/*
 actor A {
 
     let ic00 = actor "aaaaa-aa" : actor {
@@ -37,3 +56,4 @@ actor A {
 };
 
 A.go(); //OR-CALL ingress go "DIDL\x00\x00"
+*/

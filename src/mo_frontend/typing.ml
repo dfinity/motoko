@@ -1593,8 +1593,8 @@ and check_exp' env0 t exp : T.typ =
     List.iter (check_exp env (T.as_immut t')) exps;
     t
   | AsyncE (s1, tb, exp1), T.Async (s2, t1', t') ->
-    error_in [Flags.WASIMode; Flags.WasmMode] env exp1.at "M0086"
-      "async expressions are not supported";
+    (*error_in [Flags.WASIMode; Flags.WasmMode] env exp1.at "M0086"
+      "async expressions are not supported";*)
     let t1, next_cap = check_AsyncCap env "async expression" exp.at in
     if s1 <> s2 then begin
       local_error env exp.at "M0183"
