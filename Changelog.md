@@ -1,5 +1,9 @@
 # Motoko compiler changelog
 
+* motoko (`moc`)
+
+  * Allow indentifiers in `or`-patterns (#3807).
+
 ## 0.9.4 (2023-07-01)
 
 * motoko (`moc`)
