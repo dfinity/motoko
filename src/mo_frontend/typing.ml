@@ -2021,7 +2021,7 @@ and check_pat' env t pat : Scope.val_env =
     if not env.pre && s = T.Actor then
       local_error env pat.at "M0114" "object pattern cannot consume actor type%a"
         display_typ_expand t;
-    check_pat_fields env s tfs pfs' T.Env.empty pat.at
+    check_pat_fields env t tfs pfs' T.Env.empty pat.at
   | OptP pat1 ->
     let t1 = try T.as_opt_sub t with Invalid_argument _ ->
       error env pat.at "M0115" "option pattern cannot consume expected type%a"
@@ -2105,20 +2105,20 @@ and check_pats env ts pats ve at : Scope.val_env =
   in
   go ts pats ve
 
-and check_pat_fields env s tfs pfs ve at : Scope.val_env =
+and check_pat_fields env t tfs pfs ve at : Scope.val_env =
   match tfs, pfs with
   | _, [] -> ve
   | [], pf::_ ->
     error env pf.at "M0119"
       "object field %s is not contained in expected type%a"
       pf.it.id.it
-      display_typ (T.Obj (s, tfs))
+      display_typ_expand t
   | T.{lab; typ = Typ _; _}::tfs', _ ->  (* TODO: remove the namespace hack *)
-    check_pat_fields env s tfs' pfs ve at
+    check_pat_fields env t tfs' pfs ve at
   | T.{lab; typ; depr}::tfs', pf::pfs' ->
     match compare pf.it.id.it lab with
-    | -1 -> check_pat_fields env s [] pfs ve at
-    | +1 -> check_pat_fields env s tfs' pfs ve at
+    | -1 -> check_pat_fields env t [] pfs ve at
+    | +1 -> check_pat_fields env t tfs' pfs ve at
     | _ ->
       if T.is_mut typ then
         error env pf.at "M0120" "cannot pattern match mutable field %s" lab;
@@ -2129,7 +2129,7 @@ and check_pat_fields env s tfs pfs ve at : Scope.val_env =
       match pfs' with
       | pf'::_ when pf'.it.id.it = lab ->
         error env pf'.at "M0121" "duplicate field %s in object pattern" lab
-      | _ -> check_pat_fields env s tfs' pfs' ve' at
+      | _ -> check_pat_fields env t tfs' pfs' ve' at
 
 and compare_pat_field pf1 pf2 = compare pf1.it.id.it pf2.it.id.it
 

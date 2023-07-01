@@ -54,21 +54,21 @@ In the definition of some lexemes, the quick reference uses the symbol `␣` to 
 
 Single line comments are all characters following `//` until the end of the same line.
 
-``` motoko
+``` motoko no-repl
 // single line comment
 x = 1
 ```
 
 Single or multi-line comments are any sequence of characters delimited by `/*` and `*/`:
 
-``` motoko
+``` motoko no-repl
 /* multi-line comments
    look like this, as in C and friends */
 ```
 
 Comments delimited by `/*` and `*/` may be nested, provided the nesting is well-bracketed.
 
-``` motoko
+``` motoko no-repl
 /// I'm a documentation comment
 /// for a function
 ```
@@ -173,6 +173,7 @@ character ::=
   | '\\'escape
   | '\\'hexdigit hexdigit
   | "\\u{" hexnum '}'
+  | '\n'        // literal newline
 
 char := '\'' character '\''
 ```
@@ -184,6 +185,8 @@ A text literal is `"`-delimited sequence of characters:
 ``` bnf
 text ::= '"' character* '"'
 ```
+
+Note that a text literal may span multiple lines.
 
 ### Literals
 
@@ -218,7 +221,6 @@ Some types have several categories. For example, type `Int` is both arithmetic (
 | `-`      | A        | numeric negation |
 | `+`      | A        | numeric identity |
 | `^`      | B        | bitwise negation |
-| `!`      |          | null break       |
 
 ### Relational operators
 
@@ -305,6 +307,7 @@ The following table defines the relative precedence and associativity of operato
 | (higher)   | none          | `else`, `while`                                                                                                               |
 | (higher)   | right         | `:=`, `+=`, `-=`, `*=`, `/=`, `%=`, `**=`, `#=`, `&=`, `\|=`, `^=`, `<<=`, `>>=`, `<<>=`, `<>>=`, `+%=`, `-%=`, `*%=`, `**%=` |
 | (higher)   | left          | `:`                                                                                                                           |
+| (higher)   | left          | `|>`                                                                                                                           |
 | (higher)   | left          | `or`                                                                                                                          |
 | (higher)   | left          | `and`                                                                                                                         |
 | (higher)   | none          | `==`, `!=`, `<`, `>`, `<=`, `>`, `>=`                                                                                         |
@@ -470,6 +473,8 @@ The syntax of an *expression* is as follows:
   <unop> <exp>                                   unary operator
   <exp> <binop> <exp>                            binary operator
   <exp> <relop> <exp>                            binary relational operator
+  _                                              placeholder expression
+  <exp> |> <exp>                                 pipe operator
   ( <exp>,* )                                    tuple
   <exp> . <nat>                                  tuple projection
   ? <exp>                                        option injection
@@ -1770,6 +1775,63 @@ Otherwise, `exp2` is evaluated to a result `r2`. If `r2` is `trap`, the expressi
 Otherwise, `r1` and `r2` are values `v1` and `v2` and the expression returns the Boolean result of `v1 <relop> v2`.
 
 For equality and inequality, the meaning of `v1 <relop> v2` depends on the compile-time, static choice of `T` (not the run-time types of `v1` and `v2`, which, due to subtyping, may be more precise).
+
+### Pipe operators and placeholder expressions
+
+The pipe expression `<exp1> |> <exp2>` binds the value of `<exp1>` to the special placeholder expression `_`, that can be referenced in `<exp2>` (and recursively in `<exp1>`).
+Referencing the placeholder expression outside of a pipe operation is a compile-time error.
+
+The pipe expression `<exp1> |> <exp2>` is just syntactic sugar for a `let` binding to a
+placeholder identifier, `p`:
+
+``` bnf
+do { let p = <exp1>; <exp2> }
+```
+
+The placeholder expression `_` is just syntactic sugar for the expression referencing the placeholder identifier:
+
+``` bnf
+p
+```
+
+The placeholder identifier, `p`, is a fixed, reserved identifier that cannot be bound by any other expression or pattern other than a pipe operation,
+and can only be referenced using the placeholder expression `_`.
+
+`|>` has lowest precedence amongst all operators except `:` and associates to the left.
+
+Judicious use of the pipe operator allows one to express a more complicated nested expression by piping arguments of that expression into their nested positions within that expression.
+
+For example:
+
+``` motoko no-repl
+Iter.range(0, 10) |>
+  Iter.toList _ |>
+    List.filter<Nat>(_, func n { n % 3 == 0 }) |>
+      { multiples = _ };
+```
+
+may, according to taste, be a more readable rendition of:
+
+``` motoko no-repl
+{ multiples =
+   List.filter<Nat>(
+     Iter.toList(Iter.range(0, 10)),
+     func n { n % 3 == 0 }) };
+```
+
+Above, each occurence of `_` refers to the value of the left-hand-size of the nearest enclosing
+pipe operation, after associating nested pipes to the left.
+
+Note that the evaluation order of the two examples is different, but consistently left-to-right.
+
+:::note
+
+Although syntactically identical, the placeholder expression is
+semantically distinct from, and should not be confused with, the wildcard pattern `_`.
+Occurrences of the forms can be distinguished by their syntactic role as pattern or
+expression.
+
+:::
 
 ### Tuples
 

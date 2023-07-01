@@ -1,13 +1,45 @@
 # Motoko compiler changelog
 
+## 0.9.4 (2023-07-01)
+
 * motoko (`moc`)
+
+  * Allow multiline text literals (#3995).
+    For example,
+    ```
+    "A horse walks into a bar.
+    The barman says: `Why the long face?`"
+    ```
+
+    parses as:
+    ```
+    "A horse walks into a bar.\nThe barman says: `Why the long face?`"
+    ```
+
+  * Added pipe operator `<exp1> |> <exp2>` and placeholder expression `_`  (#3987).
+    For example:
+    ``` motoko
+    Iter.range(0, 10) |>
+      Iter.toList _ |>
+        List.filter<Nat>(_, func n { n % 3 == 0 }) |>
+          { multiples = _ };
+    ```
+
+    may, according to taste, be a more readable rendition of:
+    ``` motoko
+    { multiples =
+       List.filter<Nat>(
+         Iter.toList(Iter.range(0, 10)),
+           func n { n % 3 == 0 }) };
+    ```
+
+    However, beware the change of evaluation order for code with side-effects.
 
   * BREAKING CHANGE (Minor):
 
     New keyword `composite` allows one to declare Internet Computer *composite queries* (#4003).
 
     For example,
-
     ``` motoko
     public shared composite query func sum(counters : [Counter]) : async Nat {
       var sum = 0;
@@ -19,7 +51,6 @@
     ```
 
     has type:
-
     ``` motoko
     shared composite query [Counter] -> async Nat
     ```
@@ -35,6 +66,11 @@
 
   * bugfix: allow signed float literals as static expressions in modules (#4063).
 
+  * bugfix: improved reporting of patterns with record types in error messages (#4002).
+
+* motoko-base
+
+  * Added more `Array` (and `Text`) utility functions (thanks to roman-kashitsyn) (dfinity/motoko-base⁠#564).
 
 ## 0.9.3 (2023-06-19)
 
@@ -159,7 +195,7 @@
 
   * BREAKING CHANGE (Minor)
 
-    Optimized `AssocList.{replace, find}` to avoid unnecesary allocation (dfinity/motoko-base#535, dfinity/motoko-base#539).
+    Optimized `AssocList.{replace, find}` to avoid unnecessary allocation (dfinity/motoko-base#535, dfinity/motoko-base#539).
     Note: this subtly changes the order in which the key-value pairs occur after replacement. May affect other containers that use `AssocList`.
 
   * Performance improvement: Optimized deletion for `Trie`/`TrieMap` (dfinity/motoko-base#525).

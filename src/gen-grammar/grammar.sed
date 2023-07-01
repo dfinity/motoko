@@ -73,6 +73,7 @@ s/RBRACKET/\']\'/g
 s/QUEST/\'?\'/g
 s/BANG/\'!\'/g
 s/QUERY/\'query\'/g
+s/PIPE/\'|>\'/g
 s/PUBLIC/\'public\'/g
 s/PRIVATE/\'private\'/g
 s/POWOP/\'**\'/g
