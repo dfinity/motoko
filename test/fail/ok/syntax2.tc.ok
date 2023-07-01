@@ -5,6 +5,7 @@ syntax2.mo:2.1-2.4: syntax error [M0001], unexpected token 'let', expected one o
   <exp_nullary(ob)>
   <binop> <exp(ob)>
   ; seplist(<dec>,<semicolon>)
+  |> <exp_bin(ob)>
   or <exp_bin(ob)>
   <unassign> <exp(ob)>
   implies <exp_bin(ob)>

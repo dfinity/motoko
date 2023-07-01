@@ -123,6 +123,7 @@ let rec typ t =
        I.FuncT (
          (match s with
           | Query -> [I.Query @@ no_region]
+          | Composite -> [I.Composite @@ no_region]
           | Write -> []),
          t1, args ts)
      | _ -> assert false)

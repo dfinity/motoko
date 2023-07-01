@@ -189,4 +189,7 @@ let error_codes : (string * string option) list =
     "M0183", None; (* Incompatible async sorts *)
     "M0184", None; (* Cannot infer or-pattern, please use an annotation *)
     "M0185", None; (* Importing Candid service constructor as instantiated service *)
+    "M0186", None; (* Send capability required (calling shared from composite) *)
+    "M0187", None; (* Send capability required (calling composite from non-composite) *)
+    "M0188", None; (* Send capability required (calling shared from query) *)
   ]

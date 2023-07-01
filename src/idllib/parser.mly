@@ -54,7 +54,7 @@ let record_fields get_label fs =
 %token FUNC TYPE SERVICE IMPORT PRINCIPAL
 %token SEMICOLON COMMA PERIOD COLON EQ
 %token NOTCOLON EQQ NOTEQ
-%token OPT VEC RECORD VARIANT BLOB ONEWAY QUERY
+%token OPT VEC RECORD VARIANT BLOB ONEWAY QUERY COMPOSITE_QUERY
 %token<string> NAT
 %token<string> ID
 %token<string> TEXT
@@ -152,6 +152,7 @@ param_typ :
 func_mode :
   | ONEWAY { Oneway @@ at $sloc }
   | QUERY { Query @@ at $sloc }
+  | COMPOSITE_QUERY { Composite @@ at $sloc }
 
 func_modes_opt :
   | (* empty *) { [] }
