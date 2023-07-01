@@ -70,7 +70,7 @@
 
 * motoko-base
 
-  * Added more `Array` (and `Text`) utility functions (dfinity/motoko-base⁠#564).
+  * Added more `Array` (and `Text`) utility functions (thanks to roman-kashitsyn) (dfinity/motoko-base⁠#564).
 
 ## 0.9.3 (2023-06-19)
 
