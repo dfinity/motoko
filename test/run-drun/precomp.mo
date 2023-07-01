@@ -24,6 +24,7 @@ module {
 */
 
 actor A {
+    public let sf = shared func() : async () {};
 
     let ic00 = actor "aaaaa-aa" : actor {
       canister_info : {
