@@ -1,6 +1,6 @@
 ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
 ingress Completed: Reply: 0x4449444c0000
+debug.print: {controllers = [2vxsx-fae]; module_hash = ?"\05\9F\51\3C\52\5E\ED\B1\29\AC\BC\87\6A\0D\90\F5\A0\63\8F\9E\91\6E\C8\D0\70\03\A5\23\75\6F\A7\AC"; recent_changes = [{canister_version = 0; details = #creation({controllers = [2vxsx-fae]}); origin = #from_user({user_id = 2vxsx-fae}); timestamp_nanos = 1_688_226_056_882_341_000}, {canister_version = 1; details = #code_deployment({mode = #install; module_hash = "\05\9F\51\3C\52\5E\ED\B1\29\AC\BC\87\6A\0D\90\F5\A0\63\8F\9E\91\6E\C8\D0\70\03\A5\23\75\6F\A7\AC"}); origin = #from_user({user_id = 2vxsx-fae}); timestamp_nanos = 1_688_226_056_917_514_000}]; total_num_changes = 2}
 debug.print: PRE
-debug.print: POST
-debug.print: {controllers = []; module_hash = null; recent_changes = []; total_num_changes = 0}
+debug.print: {controllers = [2vxsx-fae]; module_hash = ?"\05\9F\51\3C\52\5E\ED\B1\29\AC\BC\87\6A\0D\90\F5\A0\63\8F\9E\91\6E\C8\D0\70\03\A5\23\75\6F\A7\AC"; recent_changes = [{canister_version = 0; details = #creation({controllers = [2vxsx-fae]}); origin = #from_user({user_id = 2vxsx-fae}); timestamp_nanos = 1_688_226_056_882_341_000}, {canister_version = 1; details = #code_deployment({mode = #install; module_hash = "\05\9F\51\3C\52\5E\ED\B1\29\AC\BC\87\6A\0D\90\F5\A0\63\8F\9E\91\6E\C8\D0\70\03\A5\23\75\6F\A7\AC"}); origin = #from_user({user_id = 2vxsx-fae}); timestamp_nanos = 1_688_226_056_917_514_000}]; total_num_changes = 2}
 ingress Completed: Reply: 0x4449444c0000

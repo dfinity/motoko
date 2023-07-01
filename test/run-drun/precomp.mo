@@ -1,5 +1,7 @@
-import Prim "mo:⛔";
+//MOC-ENV MOC_UNLOCK_PRIM=yesplease
 
+import Prim "mo:⛔";
+/*
 module {
 
     let ic00 = actor "aaaaa-aa" : actor {
@@ -9,16 +11,18 @@ module {
       } -> async Prim.Info;
     };
 
-    let pc = /*Prim.precompose2*/(func(p:Principal, n:?Nat64) : Prim.BBB {
+    let pc = /*Prim.precompose2*/
+      (prim "precompose2" : ((Principal, ?Nat64) -> Prim.BBB, Prim.BBB -> async Prim.Info) -> (Principal, ?Nat64) -> async Prim.Info)
+      (func(p, n) {
         Prim.debugPrint "PRE";
         {
             canister_id = p;
             num_requested_changes = n
-        } }, ic00.canister_info);
+        } }, func (bbb : Prim.BBB) : async Prim.Info { await ic00.canister_info bbb });
 
 };
+*/
 
-/*
 actor A {
 
     let ic00 = actor "aaaaa-aa" : actor {
@@ -40,12 +44,14 @@ actor A {
         }
     };
 
-    let pc = Prim.precompose2(func(p, n) {
+    let pc = /*Prim.precompose2*/
+      (prim "precompose2" : ((Principal, ?Nat64) -> Prim.BBB, Prim.BBB -> async Prim.Info) -> (Principal, ?Nat64) -> async Prim.Info)
+      (func(p, n) {
         Prim.debugPrint "PRE";
         {
             canister_id = p;
             num_requested_changes = n
-        } }, ic00.canister_info);
+        } }, func (bbb : Prim.BBB) : async Prim.Info { await ic00.canister_info bbb });
 
     public func go() : async () {
         let info0 = await ic00.canister_info { canister_id = Prim.principalOfActor A; num_requested_changes = ?4 };
@@ -55,5 +61,5 @@ actor A {
     }
 };
 
-A.go(); //OR-CALL ingress go "DIDL\x00\x00"
-*/
+//A.go(); //OR-CALL ingress go "DIDL\x00\x00"
+

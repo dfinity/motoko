@@ -58,7 +58,7 @@ let rec exp m e = match e.it with
   (* Transparent *)
   | AnnotE (exp1, _) | IgnoreE exp1 | DoOptE exp1 -> exp m exp1
   | BlockE ds -> List.iter (dec m) ds
-  | CallE ({ it = AnnotE ({ it = PrimE "precompose2"; _}, _); _}, _, exp1) -> assert false
+  | CallE ({ it = AnnotE ({ it = PrimE "precompose2"; _}, _); _}, _, exp1) -> exp m exp1
 
 
   (* Clearly non-static *)

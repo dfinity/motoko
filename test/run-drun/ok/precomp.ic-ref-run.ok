@@ -3,7 +3,7 @@
 => update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0...
 <= replied: ()
 => update go()
+debug.print: {controllers = [w7x7r-cok77-xa]; module_hash = ?"\E1\22\56\DE\9F\C1\1B\BA\50\6F\47\08\B0\77\EE\35\D9\45\A9\5D\18\A9\15\52\17\6A\E9\56\C8\58\40\AA"; recent_changes = [{canister_version = 0; details = #creation({controllers = [w7x7r-cok77-xa]}); origin = #from_user({user_id = w7x7r-cok77-xa}); timestamp_nanos = 0}, {canister_version = 1; details = #code_deployment({mode = #install; module_hash = "\E1\22\56\DE\9F\C1\1B\BA\50\6F\47\08\B0\77\EE\35\D9\45\A9\5D\18\A9\15\52\17\6A\E9\56\C8\58\40\AA"}); origin = #from_user({user_id = w7x7r-cok77-xa}); timestamp_nanos = 5}]; total_num_changes = 2}
 debug.print: PRE
-debug.print: POST
-debug.print: {controllers = []; module_hash = null; recent_changes = []; total_num_changes = 0}
+debug.print: {controllers = [w7x7r-cok77-xa]; module_hash = ?"\E1\22\56\DE\9F\C1\1B\BA\50\6F\47\08\B0\77\EE\35\D9\45\A9\5D\18\A9\15\52\17\6A\E9\56\C8\58\40\AA"; recent_changes = [{canister_version = 0; details = #creation({controllers = [w7x7r-cok77-xa]}); origin = #from_user({user_id = w7x7r-cok77-xa}); timestamp_nanos = 0}, {canister_version = 1; details = #code_deployment({mode = #install; module_hash = "\E1\22\56\DE\9F\C1\1B\BA\50\6F\47\08\B0\77\EE\35\D9\45\A9\5D\18\A9\15\52\17\6A\E9\56\C8\58\40\AA"}); origin = #from_user({user_id = w7x7r-cok77-xa}); timestamp_nanos = 5}]; total_num_changes = 2}
 <= replied: ()
