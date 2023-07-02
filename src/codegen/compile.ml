@@ -10323,8 +10323,8 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
 
   | SwitchE (e, cs) when single_case e cs ->
     let code1 = compile_exp_vanilla env ae e in
-    let [{it={pat; exp}; _}] = cs in
-    let ae1, pat_code = compile_pat_local env ae pat in
+    let [{it={pat={it=TagP (_, pat');_} as pat; exp}; _}] = cs in
+    let ae1, pat_code = compile_pat_local env ae {pat with it=TagP ("", pat')} in
     let sr, rhs_code = compile_exp_with_hint env ae1 sr_hint exp in
 
     (* Use the expected stackrep, if given, else infer from the branches *)
@@ -10575,6 +10575,8 @@ and fill_pat env ae pat : patternCode =
           )
           fail_code
       )
+  | TagP ("", p) when Ir_utils.is_irrefutable_nonbinding p ->
+      CannotFail (G.i Drop)
   | TagP (l, p) when Ir_utils.is_irrefutable_nonbinding p ->
       CanFail (fun fail_code ->
         Variant.test_is env l ^^
