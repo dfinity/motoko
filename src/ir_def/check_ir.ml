@@ -469,6 +469,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
           error env exp1.at "field name %s does not exist in type\n  %s"
             n (T.string_of_typ_expand t1)
       end
+    | PreppedPrim, [exp1; exp2] -> () (* TODO: exp1 should be Prepped or ActorDot, codom exp1 = dom exp2 *)
     | ArrayPrim (mut, t0), exps ->
       List.iter (fun e -> typ e <: t0) exps;
       let t1 = T.Array (match mut with Const -> t0 | Var -> T.Mut t0) in

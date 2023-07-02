@@ -123,6 +123,7 @@ and prim =
   | TagPrim of id                     (* variant injection *)
   | DotPrim of Type.lab               (* object projection *)
   | ActorDotPrim of Type.lab          (* actor field access *)
+  | PreppedPrim                       (* preparing function to run before an awaitable function *)
   | ArrayPrim of mut * Type.typ       (* array constructor *)
   | IdxPrim                           (* array indexing *)
   | BreakPrim of id                   (* break *)
@@ -267,6 +268,7 @@ let map_prim t_typ t_id p =
   | ProjPrim _
   | OptPrim
   | TagPrim _
+  | PreppedPrim
   | DotPrim _
   | ActorDotPrim _ -> p
   | ArrayPrim (m, t) -> ArrayPrim (m, t_typ t)

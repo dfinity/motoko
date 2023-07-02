@@ -189,6 +189,8 @@ and exp' at note = function
   | S.CallE ({it=S.AnnotE ({it=S.PrimE "getCertificate";_},_);_}, _, {it=S.TupE es;_}) ->
     I.PrimE (I.GetCertificate, [])
   (* Other *)
+  | S.CallE ({it=S.AnnotE ({it=S.PrimE "precompose2";_},_);_}, _, {it=S.TupE es;_}) ->
+    I.PrimE (I.PreppedPrim, exps es)
   | S.CallE ({it=S.AnnotE ({it=S.PrimE p;_},_);_}, _, {it=S.TupE es;_}) ->
     I.PrimE (I.OtherPrim p, exps es)
   | S.CallE ({it=S.AnnotE ({it=S.PrimE p;_},_);_}, _, e) ->

@@ -133,6 +133,11 @@ let is_awaitable_func exp =
   | T.Func (T.Shared _, T.Promises, _, _, _) -> true
   | _ -> false
 
+let is_prepared_func exp = assert false;
+  match exp.it with
+  | PrimE (PreppedPrim, _) -> true
+  | _ -> false
+
 (* Given sequence type ts, bind e of type (seq ts) to a
  sequence of expressions supplied to decs d_of_es,
  preserving effects of e when the sequence type is empty.
@@ -248,6 +253,7 @@ let transform prog =
     | VarE id -> exp'
     | AssignE (exp1, exp2) ->
       AssignE (t_lexp exp1, t_exp exp2)
+    | PrimE (PreppedPrim, _) -> assert false
     | PrimE (CPSAwait (Fut, cont_typ), [a; kr]) ->
       begin match cont_typ with
         | Func(_, _, [], _, []) ->
@@ -308,6 +314,10 @@ let transform prog =
       let v_ret = fresh_var "v" t_ret in
       let v_fail = fresh_var "e" t_fail in
       ([v_ret; v_fail] -->* (callE (t_exp exp1) [t0] (tupE [varE v_ret; varE v_fail]))).it
+    | PrimE (CallPrim typs, [exp1; exp2]) when is_prepared_func exp1 ->
+       match exp1.it with
+       | PrimE (PreppedPrim, [pre; post]) -> t_exp' { exp with it = PrimE (CallPrim typs, [post; { exp1 with it = PrimE (CallPrim typs, [pre; exp2]) }])}
+       | _ -> assert(false)
     | PrimE (CallPrim typs, [exp1; exp2]) when is_awaitable_func exp1 ->
       let ts1,ts2 =
         match typ exp1 with

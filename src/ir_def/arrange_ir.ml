@@ -23,7 +23,7 @@ let rec exp e = match e.it with
   | LoopE e1            -> "LoopE"   $$ [exp e1]
   | LabelE (i, t, e)    -> "LabelE"  $$ [id i; typ t; exp e]
   | AsyncE (Type.Fut, tb, e, t) -> "AsyncE"  $$ [typ_bind tb; exp e; typ t]
-  | AsyncE (Type.Cmp, tb, e, t) -> "AsyncE*"  $$ [typ_bind tb; exp e; typ t]
+  | AsyncE (Type.Cmp, tb, e, t) -> "AsyncE*" $$ [typ_bind tb; exp e; typ t]
   | DeclareE (i, t, e1) -> "DeclareE" $$ [id i; exp e1]
   | DefineE (i, m, e1)  -> "DefineE" $$ [id i; mut m; exp e1]
   | FuncE (x, s, c, tp, as_, ts, e) ->
@@ -89,6 +89,7 @@ and prim = function
   | DecodeUtf8        -> Atom "DecodeUtf8"
   | EncodeUtf8        -> Atom "EncodeUtf8"
   | ActorOfIdBlob t   -> "ActorOfIdBlob" $$ [typ t]
+  | PreppedPrim       -> Atom "PreppedPrim"
   | BlobOfIcUrl       -> Atom "BlobOfIcUrl"
   | IcUrlOfBlob       -> Atom "IcUrlOfBlob"
   | SelfRef t         -> "SelfRef"    $$ [typ t]

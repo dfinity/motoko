@@ -45,20 +45,28 @@ actor A {
         }
     };
 
-    let pc = /*Prim.precompose2*/
-      (prim "precompose2" : ((Principal, ?Nat64) -> Prim.BBB, Prim.BBB -> async Prim.Info) -> (Principal, ?Nat64) -> async Prim.Info)
+   /* let pc = /*Prim.precompose2*/
+      (prim "precompose2" : ((Principal, ?Nat64) -> Prim.BBB, shared Prim.BBB -> async Prim.Info) -> (Principal, ?Nat64) -> async Prim.Info)
       (func(p, n) {
         Prim.debugPrint "PRE";
         {
             canister_id = p;
             num_requested_changes = n
-        } }, func (bbb : Prim.BBB) : async Prim.Info { await ic00.canister_info bbb });
+        } }, ic00.canister_info);*/
 
     public func go() : async () {
         let info0 = await ic00.canister_info { canister_id = Prim.principalOfActor A; num_requested_changes = ?4 };
         Prim.debugPrint(debug_show info0);
-        let info = await pc(Prim.principalOfActor A, ?4);
-        Prim.debugPrint(debug_show info)
+    let pcX = /*Prim.precompose2*/
+      (prim "precompose2" : ((Principal, ?Nat64) -> Prim.BBB, shared Prim.BBB -> async Prim.Info) -> (Principal, ?Nat64) -> async Prim.Info)
+      (func(p, n) {
+        Prim.debugPrint "PRE";
+        {
+            canister_id = p;
+            num_requested_changes = n
+        } }, ic00.canister_info)(Prim.principalOfActor A, ?4);
+        /*let info = await pcX(Prim.principalOfActor A, ?4);
+        Prim.debugPrint(debug_show info)*/
     }
 };
 
