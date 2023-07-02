@@ -10251,7 +10251,7 @@ and compile_exp_as env ae sr_out e =
   code ^^ StackRep.adjust env sr_in sr_out
 
 and single_case e cs = match cs with
-  | [{it={pat={it=TagP _;_}; _}; _}] -> true
+  | [{it={pat={it=TagP _;_}; _}; _}] -> true (* FIXME: check type! *)
   | _ -> false
 
 (* Compile, infer and return stack representation, taking the hint into account *)
@@ -10581,6 +10581,9 @@ and fill_pat env ae pat : patternCode =
       CanFail (fun fail_code ->
         Variant.test_is env l ^^
         G.if0 G.nop fail_code)
+  | TagP ("", p) ->
+      CannotFail (Variant.project env) ^^^
+      fill_pat env ae p
   | TagP (l, p) ->
       let (set_x, get_x) = new_local env "tag_scrut" in
       CanFail (fun fail_code ->

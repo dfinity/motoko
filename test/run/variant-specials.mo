@@ -1,7 +1,7 @@
-func specials(one : { #one }, two : { #c0; #c1 }) {
+func specials(one : { #one : Nat }, two : { #c0; #c1 }) {
   var count = 0;
   switch one {
-    case (#one) count += 1;
+    case (#one i) count += i;
   };
 
   switch two {
@@ -13,10 +13,10 @@ func specials(one : { #one }, two : { #c0; #c1 }) {
 };
 
 
-specials(#one, #c1)
+specials(#one 42, #c1)
 
 //CHECK: func $specials
-//CHECK: i32.const 5544550
+//CHECK-NOT: i32.const 5544550
 //CHECK: local.set $count
 
 //CHECK: i32.const 22125
