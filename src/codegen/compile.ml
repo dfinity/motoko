@@ -10250,7 +10250,7 @@ and compile_exp_as env ae sr_out e =
   let sr_in, code = compile_exp_with_hint env ae (Some sr_out) e in
   code ^^ StackRep.adjust env sr_in sr_out
 
-and single_case e cs = match cs with
+and single_case e (cs : Ir.case list) = match cs with
   | [{it={pat={it=TagP _;_}; _}; _}] -> true (* FIXME: check type! *)
   | _ -> false
 
@@ -10323,7 +10323,7 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
 
   | SwitchE (e, cs) when single_case e cs ->
     let code1 = compile_exp_vanilla env ae e in
-    let [{it={pat={it=TagP (_, pat');_} as pat; exp}; _}] = cs in
+    let [@warning "-8"] [{it={pat={it=TagP (_, pat');_} as pat; exp}; _}] = cs in
     let ae1, pat_code = compile_pat_local env ae {pat with it=TagP ("", pat')} in
     let sr, rhs_code = compile_exp_with_hint env ae1 sr_hint exp in
 
