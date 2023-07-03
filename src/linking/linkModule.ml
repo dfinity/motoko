@@ -415,7 +415,7 @@ let fill_global (global : int32) (value : Wasm_exts.Values.value) : module_' -> 
     | If (ty, is1, is2) -> If (ty, instrs to_32 is1, instrs to_32 is2)
     | GlobalGet v when v.it = global -> 
       let encoded_value = match (to_32, value) with
-      | (true, I64 number) -> (Wasm_exts.Values.I32 (Int32.of_int (Int64.to_int number)))
+      | (true, Wasm_exts.Values.I64 number) -> (Wasm_exts.Values.I32 (Int32.of_int (Int64.to_int number)))
       | _ -> value in
       Const (encoded_value @@ v.at)
     | GlobalGet v when v.it = global -> Const (value @@ v.at)
