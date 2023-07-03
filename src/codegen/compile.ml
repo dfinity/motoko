@@ -10264,6 +10264,33 @@ and simplify_cases e (cs : Ir.case list) =
      [c1; {c2 with it = {exp; pat = {pat2 with it=TagP ("", pat')}}}]
   | _ -> cs
 
+
+
+and ascending_remainders env e =
+  let typ = e.note.Note.typ in
+  match typ with
+  | Type.(Variant fs) ->
+     let hashes = List.map Type.(fun {lab; _} -> Variant.hash_variant_label env lab) fs in
+     let num = List.length hashes in
+     let open Set.Make(Int32) in
+     let iterate f = Seq.unfold (fun b -> if (b <> 0l) then Some (b, f b) else None) in
+     for divisor = 2 to 100000 do
+       let divisor = Int32.of_int divisor in
+       let rems = List.map Int32.(fun h -> rem h divisor) hashes in
+       let set = of_list rems in
+       if cardinal set = num then
+         begin
+           (*Printf.eprintf "Found a divisor: %d, num: %d\n" (Int32.to_int divisor) num;*)
+           let min = min_elt set in
+           let ideally = Int32.(Seq.map (add (sub min one)) (iterate (fun n -> sub n one) (of_int num))) in
+           if equal set (of_seq ideally) then
+             Printf.eprintf "YAY, consecutive, start: %d, num: %d\n" (Int32.to_int min) num
+         end
+     done
+  | _ -> ()
+
+
+
 (* Compile, infer and return stack representation, taking the hint into account *)
 and compile_exp_with_hint (env : E.t) ae sr_hint exp =
   (fun (sr,code) -> (sr, G.with_region exp.at code)) @@
@@ -10350,7 +10377,7 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
        G.i Unreachable (* We should always exit using the branch_code *)
     )
 
-  | SwitchE (e, cs) ->
+  | SwitchE (e, cs) -> ascending_remainders env e;
     let code1 = compile_exp_vanilla env ae e in
     let (set_i, get_i) = new_local env "switch_in" in
     (* compile subexpressions and collect the provided stack reps *)
