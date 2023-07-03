@@ -10255,10 +10255,14 @@ and single_case e (cs : Ir.case list) =
   | [{it={pat={it=TagP (l, _);_}; _}; _}], Type.(Variant [{lab; _}]) -> l = lab
   | _ -> false
 
-and double_case e (cs : Ir.case list) =
+and simplify_cases e (cs : Ir.case list) =
   match cs, e.note.Note.typ with
-  | [{it={pat={it=TagP _(*FIXME: irrefutable*);_}; _}; _}; {it={pat={it=TagP _;_}; _}; _}], Type.(Variant [_; _]) -> true
-  | _ -> false
+  (* for a 2-cased variant type, the second second comparison can be omitted when the first pattern
+     (with irrefutable subpattern) didn't match *)
+  | [{it={pat={it=TagP (_, ip);_}; _}; _} as c1; {it={pat={it=TagP (_, pat');_} as pat2; exp}; _} as c2], Type.(Variant [_; _])
+       when Ir_utils.is_irrefutable ip ->
+     [c1; {c2 with it = {exp; pat = {pat2 with it=TagP ("", pat')}}}]
+  | _ -> cs
 
 (* Compile, infer and return stack representation, taking the hint into account *)
 and compile_exp_with_hint (env : E.t) ae sr_hint exp =
@@ -10325,8 +10329,6 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
     ^^
    G.i Unreachable
 
-
-
   | SwitchE (e, cs) when single_case e cs ->
     let code1 = compile_exp_vanilla env ae e in
     let [@warning "-8"] [{it={pat={it=TagP (_, pat');_} as pat; exp}; _}] = cs in
@@ -10348,36 +10350,6 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
        G.i Unreachable (* We should always exit using the branch_code *)
     )
 
-
-  | SwitchE (e, cs) when double_case e cs ->
-     let code1 = compile_exp_vanilla env ae e in
-     let [@warning "-8"] (*[p1; p2]*)cs = match cs with
-       [p1; {it={pat={it=TagP (_, pat');_} as pat; exp}; _} as case] -> [p1; {case with it = {exp; pat = {pat with it=TagP ("", pat')}}}] in
-    let (set_i, get_i) = new_local env "switch_in" in
-    (* compile subexpressions and collect the provided stack reps *)
-    let codes = List.map (fun {it={pat; exp=e}; _} ->
-      let (ae1, pat_code) = compile_pat_local env ae pat in
-      let (sr, rhs_code) = compile_exp_with_hint env ae1 sr_hint e in
-      (sr, CannotFail get_i ^^^ pat_code ^^^ CannotFail rhs_code)
-      ) cs in
-
-    (* Use the expected stackrep, if given, else infer from the branches *)
-    let final_sr = match sr_hint with
-      | Some sr -> sr
-      | None -> StackRep.joins (List.map fst codes)
-    in
-
-    final_sr,
-    (* Run scrut *)
-    code1 ^^ set_i ^^
-    (* Run rest in block to exit from *)
-    FakeMultiVal.block_ env (StackRep.to_block_type env final_sr) (fun branch_code ->
-       orsPatternFailure env (List.map (fun (sr, c) ->
-          c ^^^ CannotFail (StackRep.adjust env sr final_sr ^^ branch_code)
-       ) codes) ^^
-       G.i Unreachable (* We should always exit using the branch_code *)
-    )
-
   | SwitchE (e, cs) ->
     let code1 = compile_exp_vanilla env ae e in
     let (set_i, get_i) = new_local env "switch_in" in
@@ -10386,7 +10358,7 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
       let (ae1, pat_code) = compile_pat_local env ae pat in
       let (sr, rhs_code) = compile_exp_with_hint env ae1 sr_hint e in
       (sr, CannotFail get_i ^^^ pat_code ^^^ CannotFail rhs_code)
-      ) cs in
+      ) (simplify_cases e cs) in
 
     (* Use the expected stackrep, if given, else infer from the branches *)
     let final_sr = match sr_hint with
