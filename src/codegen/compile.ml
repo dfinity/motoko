@@ -961,7 +961,6 @@ module RTS = struct
     (* TODO: Remove this temporary 64-bit port code *)
     E.add_func_import env "rts" "test_initialize" [] []; 
 
-    E.add_func_import env "rts" "memcpy" [I64Type; I64Type; I64Type] [I64Type]; (* standard libc memcpy *)
     (* TODO: Support 64-bit
     E.add_func_import env "rts" "memcmp" [I32Type; I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "version" [] [I32Type];
@@ -1226,7 +1225,7 @@ module Heap = struct
 
   (* Convenience functions related to memory *)
   (* Copying bytes (works on unskewed memory addresses) *)
-  let memcpy env = E.call_import env "rts" "memcpy" ^^ G.i Drop
+  let memcpy env = G.i MemoryCopy
   (* Comparing bytes (works on unskewed memory addresses) *)
   let memcmp env = E.call_import env "rts" "memcmp"
 

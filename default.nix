@@ -83,8 +83,6 @@ let commonBuildInputs = pkgs:
     pkgs.ocamlPackages.ppxlib
     pkgs.ocamlPackages.ppx_blob
     pkgs.ocamlPackages.ppx_inline_test
-    pkgs.ocamlPackages.ocaml-migrate-parsetree
-    pkgs.ocamlPackages.ppx_tools_versioned
     pkgs.ocamlPackages.bisect_ppx
     pkgs.ocamlPackages.uucp
     pkgs.obelisk
@@ -331,9 +329,6 @@ rec {
     testDerivation = args:
       stdenv.mkDerivation (testDerivationArgs // args);
 
-    ocamlTestDerivation = args:
-      staticpkgs.stdenv.mkDerivation (testDerivationArgs // args);
-
     # we test each subdirectory of test/ in its own derivation with
     # cleaner dependencies, for more parallelism, more caching
     # and better feedback about what aspect broke
@@ -428,9 +423,9 @@ rec {
       '';
     };
 
-    unit = ocamlTestDerivation {
+    unit = testDerivation {
       src = subpath ./src;
-      buildInputs = commonBuildInputs staticpkgs;
+      buildInputs = commonBuildInputs nixpkgs;
       checkPhase = ''
         patchShebangs .
         make DUNE_OPTS="--display=short" unit-tests
@@ -499,7 +494,8 @@ rec {
   in fix_names ({
       run        = test_subdir "run"        [ moc ] ;
       run-dbg    = snty_subdir "run"        [ moc ] ;
-      ic-ref-run = test_subdir "run-drun"   [ moc ic-ref-run ];
+      # ic-ref does not yet support Wasm bulk-memory operations
+      # ic-ref-run = test_subdir "run-drun"   [ moc ic-ref-run ];
       drun       = test_subdir "run-drun"   [ moc nixpkgs.drun ];
       drun-dbg   = snty_subdir "run-drun"   [ moc nixpkgs.drun ];
       drun-compacting-gc = snty_compacting_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;

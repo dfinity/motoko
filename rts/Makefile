@@ -90,7 +90,9 @@ MUSL_FLAGS = \
   -D__NEED_off_t \
   -D__NEED_locale_t \
   -Dsqrt=__builtin_sqrt \
-  -Dfabs=__builtin_fabs
+  -Dfabs=__builtin_fabs \
+  -mbulk-memory \
+  -DBULK_MEMORY_THRESHOLD=32
 
 #
 # clang flags
@@ -229,7 +231,7 @@ $(TOMMATH_BINDINGS_RS): | _build
 	# macros like `mp_get_u32` and `mp_isneg` need to be manually implemented.
 
 RTS_DEPENDENCIES=$(TOMMATH_BINDINGS_RS) $(RTS_RUST_FILES) $(RTS_CARGO_FILES) | _build/wasm
-COMPILER_FLAGS=--emit=llvm-ir -C target-feature=-bulk-memory
+COMPILER_FLAGS=--emit=llvm-ir
 RTS_BUILD=cd motoko-rts && RUSTFLAGS="${COMPILER_FLAGS}" cargo build --target=wasm64-unknown-unknown -Zbuild-std=core
 RTS_DEBUG_BUILD=$(RTS_BUILD)
 RTS_RELEASE_BUILD=$(RTS_BUILD) --release
@@ -333,7 +335,6 @@ test-incremental: $(TEST_DEPENDENCIES)
 # These symbols from musl are used by the code generator directly
 EXPORTED_SYMBOLS=\
    __wasm_call_ctors \
-   memcpy \
    memcmp \
    tan \
    asin \

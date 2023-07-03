@@ -128,6 +128,10 @@ impl Partition {
         self.dynamic_size
     }
 
+    pub fn occuped_size(&self) -> usize {
+        self.dynamic_size + self.static_size
+    }
+
     pub fn marked_size(&self) -> usize {
         self.marked_size
     }
@@ -352,6 +356,7 @@ pub struct PartitionedHeap {
     reclaimed: usize,
     bitmap_allocation_pointer: usize, // Free pointer for allocating the next mark bitmap.
     gc_running: bool, // Create bitmaps for partitions when allocated during active GC.
+    precomputed_heap_size: usize, // Occupied heap size, excluding the dynamic heap in the allocation partition.
 }
 
 /// Optimization: Avoiding `Option` or `LazyCell`.
@@ -364,6 +369,7 @@ pub const UNINITIALIZED_HEAP: PartitionedHeap = PartitionedHeap {
     reclaimed: 0,
     bitmap_allocation_pointer: 0,
     gc_running: false,
+    precomputed_heap_size: 0,
 };
 
 impl PartitionedHeap {
@@ -399,6 +405,7 @@ impl PartitionedHeap {
             reclaimed: 0,
             bitmap_allocation_pointer: 0,
             gc_running: false,
+            precomputed_heap_size: heap_base,
         }
     }
 
@@ -480,6 +487,7 @@ impl PartitionedHeap {
     }
 
     pub unsafe fn start_collection<M: Memory>(&mut self, mem: &mut M, time: &mut BoundedTime) {
+        self.check_occupied_size();
         debug_assert_eq!(self.bitmap_allocation_pointer, 0);
         debug_assert!(!self.gc_running);
         self.gc_running = true;
@@ -555,6 +563,7 @@ impl PartitionedHeap {
                 self.reclaimed += partition.dynamic_size - marked_size;
             }
             if partition.to_be_evacuated() || partition.temporary {
+                self.precomputed_heap_size -= partition.dynamic_size;
                 partition.free();
                 self.free_partitions += 1;
             }
@@ -563,13 +572,18 @@ impl PartitionedHeap {
         self.bitmap_allocation_pointer = 0;
         debug_assert!(self.gc_running);
         self.gc_running = false;
+        self.check_occupied_size();
     }
 
     pub fn updates_needed(&self) -> bool {
         self.evacuating
     }
 
-    fn allocation_partition(&mut self) -> &mut Partition {
+    fn allocation_partition(&self) -> &Partition {
+        &self.partitions[self.allocation_index]
+    }
+
+    fn mut_allocation_partition(&mut self) -> &mut Partition {
         &mut self.partitions[self.allocation_index]
     }
 
@@ -602,13 +616,18 @@ impl PartitionedHeap {
         rts_trap_with("Cannot grow memory");
     }
 
+    fn check_occupied_size(&self) {
+        debug_assert_eq!(
+            self.partitions
+                .iter()
+                .map(|partition| partition.static_size + partition.dynamic_size)
+                .sum::<usize>(),
+            self.occupied_size().as_usize()
+        );
+    }
+
     pub fn occupied_size(&self) -> Bytes<usize> {
-        let occupied_size: usize = self
-            .partitions
-            .iter()
-            .map(|partition| partition.static_size + partition.dynamic_size)
-            .sum();
-        Bytes(occupied_size)
+        Bytes(self.precomputed_heap_size + self.allocation_partition().dynamic_size)
     }
 
     pub fn reclaimed_size(&self) -> Bytes<usize> {
@@ -626,7 +645,7 @@ impl PartitionedHeap {
 
     unsafe fn allocate_normal_object<M: Memory>(&mut self, mem: &mut M, size: usize) -> Value {
         debug_assert!(size <= PARTITION_SIZE);
-        let mut allocation_partition = self.allocation_partition();
+        let mut allocation_partition = self.mut_allocation_partition();
         debug_assert!(!allocation_partition.free);
         let heap_pointer = allocation_partition.dynamic_space_end();
         debug_assert!(size <= allocation_partition.end_address());
@@ -643,6 +662,8 @@ impl PartitionedHeap {
     unsafe fn allocate_in_new_partition<M: Memory>(&mut self, mem: &mut M, size: usize) -> Value {
         #[cfg(feature = "memory_check")]
         self.allocation_partition().clear_free_remainder();
+
+        self.precomputed_heap_size += self.allocation_partition().dynamic_size;
 
         let new_partition = self.allocate_free_partition(mem, size);
         mem.grow_memory(new_partition.end_address());
@@ -686,6 +707,7 @@ impl PartitionedHeap {
             } else {
                 partition.dynamic_size = PARTITION_SIZE;
             }
+            self.precomputed_heap_size += partition.dynamic_size;
         }
         let first_partition = self.mutable_partition(first_index);
         Value::from_ptr(first_partition.dynamic_space_start())
@@ -747,6 +769,7 @@ impl PartitionedHeap {
             partition.update = false;
             partition.free();
             self.reclaimed += size;
+            self.precomputed_heap_size -= size;
         }
     }
 

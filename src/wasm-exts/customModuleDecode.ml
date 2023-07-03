@@ -5,6 +5,7 @@ With adjustments from memory64.
 
 The changes are:
  * Support for additional custom sections
+ * Manual selective support for bulk-memory operations `memory_copy` and `memory_fill` (WebAssembly/spec@7fa2f20).
 
 The code is otherwise as untouched as possible, so that we can relatively
 easily apply diffs from the original code (possibly manually).
@@ -224,6 +225,7 @@ let var s = vu32 s
 
 let op s = u8 s
 let end_ s = expect 0x0b s "END opcode expected"
+let zero s = expect 0x00 s "zero byte expected"
 
 let memop s =
   let align = vu32 s in
@@ -248,7 +250,10 @@ let math_prefix s =
   | 0x05 -> i64_trunc_sat_f32_u
   | 0x06 -> i64_trunc_sat_f64_s
   | 0x07 -> i64_trunc_sat_f64_u
-  | 0x0a | 0x0b -> unsupported_bulk_memory s pos
+  (* Manual extension for specific bulk-memory operations *)
+  | 0x0a -> zero s; zero s; memory_copy
+  | 0x0b -> zero s; memory_fill
+  (* End of manual extension *)
   | b -> illegal s pos b
 
 let rec instr s =
