@@ -1054,7 +1054,10 @@ module GC = struct
   let register_globals env =
     E.add_global64 env "__mutator_instructions" Mutable 0L;
     E.add_global64 env "__collector_instructions" Mutable 0L;
-    E.add_global32 env "_HP" Mutable 0l
+    if !Flags.gc_strategy <> Flags.Incremental then
+      E.add_global32 env "_HP" Mutable 0l
+    else
+      ()
 
   let get_mutator_instructions env =
     G.i (GlobalGet (nr (E.get_global env "__mutator_instructions")))
@@ -1067,9 +1070,15 @@ module GC = struct
     G.i (GlobalSet (nr (E.get_global env "__collector_instructions")))
 
   let get_heap_pointer env =
-    G.i (GlobalGet (nr (E.get_global env "_HP")))
+    if !Flags.gc_strategy <> Flags.Incremental then
+      G.i (GlobalGet (nr (E.get_global env "_HP")))
+    else
+      assert false
   let set_heap_pointer env =
-    G.i (GlobalSet (nr (E.get_global env "_HP")))
+    if !Flags.gc_strategy <> Flags.Incremental then
+      G.i (GlobalSet (nr (E.get_global env "_HP")))
+    else
+      assert false
 
   let record_mutator_instructions env =
     match E.mode env with
@@ -1614,14 +1623,16 @@ module Tagged = struct
     let name = Printf.sprintf "alloc_size<%d>_tag<%d>" (Int32.to_int size) (Int32.to_int (int_of_tag tag)) in
     let overflow_mask n =
       let n = Int32.to_int n in
-      Int32.(logand 0xFFFFl (shift_left minus_one (16 - Numerics.Nat16.(to_int (clz (of_int n)))))) in
+      let page_mask = Int32.sub page_size 1l in
+      Int32.(logand page_mask (shift_left minus_one (16 - Numerics.Nat16.(to_int (clz (of_int n)))))) in
 
     Func.share_code0 env name [I32Type] (fun env ->
       let set_object, get_object = new_local env "new_object" in
       let size_in_bytes = Int32.(mul size Heap.word_size) in
-      (if !Flags.gc_strategy <> Flags.Incremental && size_in_bytes < 0x8000l then
+      let half_page_size = Int32.div page_size 2l in
+      (if !Flags.gc_strategy <> Flags.Incremental && size_in_bytes < half_page_size then
          GC.get_heap_pointer env ^^
-         compile_sub_const 1l ^^ (* skew *)
+         compile_add_const ptr_skew ^^
          GC.get_heap_pointer env ^^
          compile_add_const size_in_bytes ^^
          GC.set_heap_pointer env ^^
@@ -5226,27 +5237,30 @@ module RTS_Exports = struct
       edesc = nr (FuncExport (nr rts_trap_fi))
     });
 
-    let set_hp_fi = E.add_fun env "__set_hp" (
-      Func.of_body env ["new_hp", I32Type] [] (fun env ->
-        G.i (LocalGet (nr 0l)) ^^
-        GC.set_heap_pointer env
-      )
-    ) in
-    E.add_export env (nr {
-      name = Lib.Utf8.decode "setHP";
-      edesc = nr (FuncExport (nr set_hp_fi))
-    });
+    if !Flags.gc_strategy <> Flags.Incremental then 
+      let set_hp_fi = 
+        E.add_fun env "__set_hp" (
+        Func.of_body env ["new_hp", I32Type] [] (fun env ->
+          G.i (LocalGet (nr 0l)) ^^
+          GC.set_heap_pointer env
+        )
+      ) in
+      E.add_export env (nr {
+        name = Lib.Utf8.decode "setHP";
+        edesc = nr (FuncExport (nr set_hp_fi))
+      });
 
-    let get_hp_fi = E.add_fun env "__get_hp" (
-      Func.of_body env [] [I32Type] (fun env ->
-        GC.get_heap_pointer env
-      )
-    ) in
-    E.add_export env (nr {
-      name = Lib.Utf8.decode "getHP";
-      edesc = nr (FuncExport (nr get_hp_fi))
-    });
-
+      let get_hp_fi = E.add_fun env "__get_hp" (
+        Func.of_body env [] [I32Type] (fun env ->
+          GC.get_heap_pointer env
+        )
+      ) in
+      E.add_export env (nr {
+        name = Lib.Utf8.decode "getHP";
+        edesc = nr (FuncExport (nr get_hp_fi))
+      });
+    else
+      ();
     let stable64_write_moc_fi =
       if E.mode env = Flags.WASIMode then
         E.add_fun env "stable64_write_moc" (
