@@ -1635,7 +1635,6 @@ module Tagged = struct
       let half_page_size = Int32.div page_size 2l in
       (if !Flags.gc_strategy <> Flags.Incremental && size_in_bytes < half_page_size then
          GC.get_heap_pointer env ^^
-         compile_add_const ptr_skew ^^
          GC.get_heap_pointer env ^^
          compile_add_const size_in_bytes ^^
          GC.set_heap_pointer env ^^

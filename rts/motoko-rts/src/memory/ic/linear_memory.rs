@@ -6,9 +6,9 @@ use crate::types::*;
 /// Amount of garbage collected so far.
 pub(crate) static mut RECLAIMED: Bytes<u64> = Bytes(0);
 
-// Heap pointer
+// Heap pointer (skewed)
 extern "C" {
-    pub(crate) fn setHP(new_hp: u32);
+    pub(crate) fn setHP(new_hp: u32); // usize????
     pub(crate) fn getHP() -> u32;
 }
 
@@ -16,8 +16,8 @@ extern "C" {
 pub(crate) static mut LAST_HP: u32 = 0;
 
 pub(crate) unsafe fn initialize() {
-    setHP(get_aligned_heap_base());
-    LAST_HP = getHP();
+    LAST_HP = get_aligned_heap_base();
+    setHP(LAST_HP - 1);
 }
 
 #[no_mangle]
@@ -32,7 +32,7 @@ pub unsafe extern "C" fn get_total_allocations() -> Bytes<u64> {
 
 #[no_mangle]
 pub unsafe extern "C" fn get_heap_size() -> Bytes<u32> {
-    Bytes(getHP() - get_aligned_heap_base())
+    Bytes(getHP() + 1 - get_aligned_heap_base())
 }
 
 impl Memory for IcMemory {
@@ -53,7 +53,7 @@ impl Memory for IcMemory {
         debug_assert!(new_hp <= u64::from(core::u32::MAX));
         setHP(new_hp as u32);
 
-        Value::from_ptr(old_hp as usize)
+        Value::from_raw(old_hp as u32)
     }
 
     #[inline(never)]

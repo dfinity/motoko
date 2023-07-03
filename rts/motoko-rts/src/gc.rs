@@ -22,5 +22,5 @@ unsafe fn should_do_gc(max_live: crate::types::Bytes<u64>) -> bool {
         (u64::from(LAST_HP) + max_live.0) / 2,
     );
 
-    u64::from(getHP()) >= heap_limit
+    u64::from(getHP() + 1) >= heap_limit
 }
