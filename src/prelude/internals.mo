@@ -16,7 +16,9 @@ var @cycles : Nat = 0;
 func @add_cycles() {
   let cycles = @cycles;
   @reset_cycles();
-  (prim "cyclesAdd" : (Nat) -> ()) (cycles);
+  if (cycles != 0) {
+    (prim "cyclesAdd" : (Nat) -> ()) (cycles);
+  }
 };
 
 // Function called by backend to zero cycles on context switch.
@@ -311,11 +313,12 @@ func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>) {
   var result : ?(@Result<T>) = null;
   var ws : @Waiter<T> = w_null;
   var rs : @Cont<Error> = r_null;
+  let getRefund = @cycles != 0;
 
   func fulfill(t : T) {
     switch result {
       case null {
-        let refund = @getSystemRefund();
+        let refund = if getRefund @getSystemRefund() else 0;
         result := ?(#ok (refund, t));
         let ws_ = ws;
         ws := w_null;

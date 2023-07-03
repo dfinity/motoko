@@ -43,7 +43,7 @@ let ptr_unskew_64 = 1L
 let prim_fun_name p stem = Printf.sprintf "%s<%s>" stem (Type.string_of_prim p)
 
 (* Helper functions to produce annotated terms (Wasm.AST) *)
-let nr x = { Wasm.Source.it = x; Wasm.Source.at = Wasm.Source.no_region }
+let nr x = Wasm.Source.{ it = x; at = no_region }
 
 let todo fn se x = Printf.eprintf "%s: %s" fn (Wasm.Sexpr.to_string 80 se); x
 
@@ -1729,7 +1729,7 @@ module Tagged = struct
         load_forwarding_pointer env ^^
         get_object ^^
         G.i (Compare (Wasm_exts.Values.I32 I32Op.Eq)) ^^
-        E.else_trap_with env "missing object forwarding"  ^^
+        E.else_trap_with env "missing object forwarding" ^^
         get_object ^^
         (if unskewed then
           compile_unboxed_const ptr_unskew ^^
@@ -2485,7 +2485,7 @@ module TaggedSmallWord = struct
         get_exp ^^
         compile_unboxed_const 0l ^^
         G.i (Compare (Wasm_exts.Values.I32 I32Op.GeS)) ^^
-        E.else_trap_with env "negative power"  ^^
+        E.else_trap_with env "negative power" ^^
         get_n ^^ get_exp ^^ compile_nat_power env ty
       )
 
@@ -4292,6 +4292,7 @@ module Lifecycle = struct
     | InPreUpgrade
     | PostPreUpgrade (* an invalid state *)
     | InPostUpgrade
+    | InComposite
 
   let string_of_state state = match state with
     | PreInit -> "PreInit"
@@ -4303,6 +4304,7 @@ module Lifecycle = struct
     | InPreUpgrade -> "InPreUpgrade"
     | PostPreUpgrade -> "PostPreUpgrade"
     | InPostUpgrade -> "InPostUpgrade"
+    | InComposite -> "InComposite"
 
   let int_of_state = function
     | PreInit -> 0l (* Automatically null *)
@@ -4318,6 +4320,7 @@ module Lifecycle = struct
     | InPreUpgrade -> 8l
     | PostPreUpgrade -> 9l
     | InPostUpgrade -> 10l
+    | InComposite -> 11l
 
   let ptr () = Stack.end_ ()
   let end_ () = Int64.add (Stack.end_ ()) Heap.word_size_64
@@ -4330,13 +4333,14 @@ module Lifecycle = struct
     | Started -> [InStart]
     *)
     | InInit -> [PreInit]
-    | Idle -> [InInit; InUpdate; InPostUpgrade]
+    | Idle -> [InInit; InUpdate; InPostUpgrade; InComposite]
     | InUpdate -> [Idle]
     | InQuery -> [Idle]
     | PostQuery -> [InQuery]
     | InPreUpgrade -> [Idle]
     | PostPreUpgrade -> [InPreUpgrade]
     | InPostUpgrade -> [InInit]
+    | InComposite -> [Idle]
 
   let get env =
     compile_const_64 (ptr ()) ^^
@@ -5054,7 +5058,7 @@ module StableMem = struct
           get_offset ^^
           compile_const_64 (Int64.of_int page_size_bits) ^^
           G.i (Binary (Wasm_exts.Values.I64 I64Op.ShrU)) ^^
-          get_mem_size env  ^^
+          get_mem_size env ^^
           G.i (Compare (Wasm_exts.Values.I64 I64Op.LtU)) ^^
           E.else_trap_with env "StableMemory offset out of bounds")
     | _ -> assert false
@@ -5779,6 +5783,8 @@ module MakeSerialization (Strm : Stream) = struct
             add_leb128 0; (* no annotation *)
           | Shared Query, _ ->
             add_leb128 1; add_u8 1; (* query *)
+          | Shared Composite, _ ->
+            add_leb128 1; add_u8 3; (* composite *)
           | _ -> assert false
         end
       | Obj (Actor, fs) ->
@@ -7384,7 +7390,7 @@ module Stabilization = struct
         get_N ^^
         extend64 get_len ^^
         compile_add64_const 16L ^^
-        StableMem.ensure env  ^^
+        StableMem.ensure env ^^
 
         get_N ^^
         get_len ^^
@@ -8075,6 +8081,8 @@ module FuncDec = struct
         Lifecycle.trans env Lifecycle.InUpdate
       | Type.Shared Type.Query ->
         Lifecycle.trans env Lifecycle.InQuery
+      | Type.Shared Type.Composite ->
+        Lifecycle.trans env Lifecycle.InComposite
       | _ -> assert false
 
   let message_cleanup env sort = match sort with
@@ -8083,6 +8091,8 @@ module FuncDec = struct
         Lifecycle.trans env Lifecycle.Idle
       | Type.Shared Type.Query ->
         Lifecycle.trans env Lifecycle.PostQuery
+      | Type.Shared Type.Composite ->
+        Lifecycle.trans env Lifecycle.Idle
       | _ -> assert false
 
   let compile_const_message outer_env outer_ae sort control args mk_body ret_tys at : E.func_with_names =
@@ -8329,7 +8339,7 @@ module FuncDec = struct
       get_meth_pair ^^ Arr.load_field env 1l ^^ Blob.as_ptr_len env ^^
       (* The reply and reject callback *)
       push_continuations ^^
-      set_cb_index  ^^ get_cb_index ^^
+      set_cb_index ^^ get_cb_index ^^
       (* initiate call *)
       IC.system_call env "call_new" ^^
       cleanup_callback env ^^ get_cb_index ^^
@@ -9834,7 +9844,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_vanilla env ae e ^^
     Serialization.buffer_size env t ^^
     G.i Drop ^^
-    compile_add_const tydesc_len  ^^
+    compile_add_const tydesc_len ^^
     G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
 
   (* Other prims, unary *)
@@ -11099,7 +11109,9 @@ and export_actor_field env  ae (f : Ir.field) =
         |  Func(Shared sort,_,_,_,_) ->
            (match sort with
             | Write -> "canister_update " ^ f.it.name
-            | Query -> "canister_query " ^ f.it.name)
+            | Query -> "canister_query " ^ f.it.name
+            | Composite -> "canister_composite_query " ^ f.it.name
+           )
         | _ -> assert false)
       | _ -> assert false);
     edesc = nr (FuncExport (nr fi))

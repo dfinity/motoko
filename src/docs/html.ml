@@ -78,6 +78,7 @@ let html_of_func_sort : Syntax.func_sort -> t =
   Mo_types.Type.(
     match sort.Source.it with
     | Local -> empty
+    | Shared Composite -> keyword "shared composite query "
     | Shared Query -> keyword "shared query "
     | Shared Write -> keyword "shared ")
 

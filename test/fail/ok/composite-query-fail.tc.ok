@@ -1,0 +1,20 @@
+composite-query-fail.mo:27.13-27.17: type error [M0188], send capability required, but not available
+  (cannot call a `shared` function from a `query` function)
+composite-query-fail.mo:31.13-31.16: type error [M0187], send capability required, but not available
+  (cannot call a `shared` function from a `composite query` function; only calls to `query` and `composite query` functions are allowed)
+composite-query-fail.mo:35.6-35.9: type error [M0187], send capability required, but not available
+  (cannot call a `shared` function from a `composite query` function; only calls to `query` and `composite query` functions are allowed)
+composite-query-fail.mo:39.13-39.16: type error [M0187], send capability required, but not available
+  (cannot call a `shared` function from a `composite query` function; only calls to `query` and `composite query` functions are allowed)
+composite-query-fail.mo:43.13-43.16: type error [M0187], send capability required, but not available
+  (cannot call a `shared` function from a `composite query` function; only calls to `query` and `composite query` functions are allowed)
+composite-query-fail.mo:47.13-47.21: type error [M0037], misplaced async expression; a composite query cannot contain an async expression
+composite-query-fail.mo:52.13-52.22: type error [M0037], misplaced async expression; a composite query cannot contain an async expression
+composite-query-fail.mo:58.14-58.18: type error [M0186], composite send capability required, but not available
+  (cannot call a `composite query` function from a non-`composite query` function)
+composite-query-fail.mo:63.14-63.18: type error [M0186], composite send capability required, but not available
+  (cannot call a `composite query` function from a non-`composite query` function)
+composite-query-fail.mo:64.22-64.26: type error [M0186], composite send capability required, but not available
+  (cannot call a `composite query` function from a non-`composite query` function)
+composite-query-fail.mo:69.14-69.18: type error [M0188], send capability required, but not available
+  (cannot call a `shared` function from a `query` function)
