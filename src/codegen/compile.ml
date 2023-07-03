@@ -10250,8 +10250,9 @@ and compile_exp_as env ae sr_out e =
   let sr_in, code = compile_exp_with_hint env ae (Some sr_out) e in
   code ^^ StackRep.adjust env sr_in sr_out
 
-and single_case e (cs : Ir.case list) = match cs with
-  | [{it={pat={it=TagP _;_}; _}; _}] -> true (* FIXME: check type! *)
+and single_case e (cs : Ir.case list) =
+  match cs, e.note.Note.typ with
+  | [{it={pat={it=TagP (l, _);_}; _}; _}], Type.(Variant [{lab; _}]) -> l = lab
   | _ -> false
 
 (* Compile, infer and return stack representation, taking the hint into account *)
