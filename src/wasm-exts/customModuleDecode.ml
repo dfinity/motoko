@@ -78,7 +78,6 @@ let skip n = guard (skip n)
 
 let expect b s msg = require (guard get s = b) s (pos s - 1) msg
 let illegal s pos b = error s pos ("illegal opcode " ^ string_of_byte b)
-let unsupported_bulk_memory s pos = error s pos "bulk memory operation not yet supported"
 
 let at f s =
   let left = pos s in

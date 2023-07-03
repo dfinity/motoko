@@ -71,7 +71,6 @@ module Promise = Lib.Promise
 open Dwarf5.Meta
 
 open CustomModule
-open Types
 
 (* Version *)
 
