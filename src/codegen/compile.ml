@@ -1131,6 +1131,9 @@ module Heap = struct
   let alloc env (n : int32) : G.t =
     compile_unboxed_const n ^^
     E.call_import env "rts" "alloc_words"
+
+  let ensure_allocated env =
+    alloc env 0l ^^ G.i Drop (* dummy allocation, ensures that the page HP points into is backed *)
     
   (* Heap objects *)
 
@@ -1640,7 +1643,7 @@ module Tagged = struct
          compile_bitand_const (overflow_mask size_in_bytes) ^^
          G.if0
            G.nop (* no page crossing *)
-           (Heap.alloc env 0l ^^ G.i Drop) (* ensure that the page is allocated *)
+           (Heap.ensure_allocated env) (* ensure that HP's page is allocated *)
        else
          Heap.alloc env size) ^^
       set_object ^^ get_object ^^
