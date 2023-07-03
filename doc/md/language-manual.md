@@ -1391,8 +1391,7 @@ The or pattern `<pat1> or <pat2>` is a disjunctive pattern.
 
 The result of matching `<pat1> or <pat2>` against a value is the result of matching `<pat1>`, if it succeeds, or the result of matching `<pat2>`, if the first match fails.
 
-(Note, a disjunctive pattern may contain identifier (`<id>`) patterns with the restriction that both alternatives must bind the same identifiers and these must
-obtain values of the same type.)
+(Note, an `or`-pattern may contain identifier (`<id>`) patterns with the restriction that both alternatives must bind the same set of identifiers. Each identifier's type is the least upper bound of its type in `<pat1>` and `<pat2>`.
 
 ### Expression declaration
 
