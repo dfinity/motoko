@@ -3,6 +3,13 @@
 * motoko (`moc`)
 
   * Allow indentifiers in `or`-patterns (#3807).
+    Bindings in alternatives must mention the same identifiers and have compatible types:
+    ``` Motoko
+    let verbose = switch result {
+      case (#ok) "All is good!";
+      case (#warning why or #error why) "There is some problem: " # why;
+    }
+    ```
 
 ## 0.9.4 (2023-07-01)
 
