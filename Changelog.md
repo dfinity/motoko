@@ -2,8 +2,8 @@
 
 * motoko (`moc`)
 
-  * Performance improvement: improved cycle allocating fixed-size objects (#4064).
-    Benchmarks indicate up to 10% less cycle consumption for allocation-heavy code,
+  * Performance improvement: improved cycle consumption allocating fixed-size objects (#4064).
+    Benchmarks indicate up to 10% less cycles burned for allocation-heavy code,
     and 2.5% savings in realistic applications.
 
 ## 0.9.4 (2023-07-01)
