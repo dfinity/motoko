@@ -38,29 +38,30 @@ pub unsafe fn test() {
 
     println!("    Testing bit iteration");
     proptest_runner
-        .run(&bit_index_set_strategy(), |bits| {
+        .run(&bit_index_vec_strategy(), |bits| {
             // Same as above
             let mut mem = TestMemory::new(Words(2051));
-            test_bit_iter(&mut mem, bits)
+            let mut hash_set = HashSet::new();
+            for value in bits {
+                hash_set.insert(value);
+            }
+            test_bit_iter(&mut mem, hash_set)
         })
         .unwrap();
 }
 
+const MAX_TEST_BIT_INDEX: usize = u16::MAX as usize;
+
 /// Generates vectors of bit indices
-fn bit_index_vec_strategy() -> impl Strategy<Value = Vec<u16>> {
-    proptest::collection::vec(0u16..u16::MAX, 0..1_000)
+fn bit_index_vec_strategy() -> impl Strategy<Value = Vec<usize>> {
+    proptest::collection::vec(0..MAX_TEST_BIT_INDEX, 0..1_000)
 }
 
-/// Same as `bit_index_vec_strategy`, but generates sets
-fn bit_index_set_strategy() -> impl Strategy<Value = HashSet<u16>> {
-    proptest::collection::hash_set(0u16..u16::MAX, 0..1_000)
-}
-
-fn test_set_get_proptest<M: Memory>(mem: &mut M, bits: Vec<u16>) -> TestCaseResult {
+fn test_set_get_proptest<M: Memory>(mem: &mut M, bits: Vec<usize>) -> TestCaseResult {
     test_set_get(mem, bits).map_err(|err| TestCaseError::Fail(err.into()))
 }
 
-fn test_set_get<M: Memory>(mem: &mut M, mut bits: Vec<u16>) -> Result<(), String> {
+fn test_set_get<M: Memory>(mem: &mut M, mut bits: Vec<usize>) -> Result<(), String> {
     if bits.is_empty() {
         return Ok(());
     }
@@ -68,32 +69,32 @@ fn test_set_get<M: Memory>(mem: &mut M, mut bits: Vec<u16>) -> Result<(), String
     unsafe {
         alloc_bitmap(
             mem,
-            Bytes((u32::from(*bits.iter().max().unwrap()) + 1) * WORD_SIZE),
+            Bytes((*bits.iter().max().unwrap() + 1) * WORD_SIZE),
             0,
         );
 
         for bit in &bits {
-            set_bit(u32::from(*bit));
-            if !get_bit(u32::from(*bit)) {
+            set_bit(*bit);
+            if !get_bit(*bit) {
                 return Err("set-get error".to_string());
             }
         }
 
         bits.sort();
 
-        let mut last_bit: Option<u16> = None;
+        let mut last_bit: Option<usize> = None;
         for bit in bits {
             // Bits from the last set bit up to current bit should be 0
             if let Some(last_bit) = last_bit {
                 for i in last_bit + 1..bit {
-                    if get_bit(u32::from(i)) {
+                    if get_bit(i) {
                         return Err(format!("get_bit({}) of unset bit is true", i));
                     }
                 }
             }
 
             // Current bit should be set
-            if !get_bit(u32::from(bit)) {
+            if !get_bit(bit) {
                 return Err("get_bit of set bit is false".to_string());
             }
 
@@ -106,18 +107,18 @@ fn test_set_get<M: Memory>(mem: &mut M, mut bits: Vec<u16>) -> Result<(), String
     Ok(())
 }
 
-fn test_bit_iter<M: Memory>(mem: &mut M, bits: HashSet<u16>) -> TestCaseResult {
+fn test_bit_iter<M: Memory>(mem: &mut M, bits: HashSet<usize>) -> TestCaseResult {
     // If the max bit is N, the heap size is at least N+1 words
-    let heap_size = Words(u32::from(
+    let heap_size = Words(
         bits.iter().max().map(|max_bit| max_bit + 1).unwrap_or(0),
-    ))
+    )
     .to_bytes();
 
     unsafe {
         alloc_bitmap(mem, heap_size, 0);
 
         for bit in bits.iter() {
-            set_bit(u32::from(*bit));
+            set_bit(*bit);
         }
 
         let mut bits_sorted = bits.into_iter().collect::<Vec<_>>();
@@ -134,7 +135,7 @@ fn test_bit_iter<M: Memory>(mem: &mut M, bits: HashSet<u16>) -> TestCaseResult {
                     ));
                 }
                 map_bit => {
-                    if map_bit != u32::from(vec_bit) {
+                    if map_bit != vec_bit {
                         return Err(TestCaseError::Fail(
                             format!(
                                 "bitmap iterator yields {}, but actual bit is {}",

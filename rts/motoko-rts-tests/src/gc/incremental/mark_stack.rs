@@ -33,12 +33,12 @@ unsafe fn internal_push_pop(
     regrow_step: usize,
 ) {
     for count in 0..amount {
-        stack.push(mem, Value::from_scalar(count as u32));
+        stack.push(mem, Value::from_scalar(count));
         if count == regrow_step {
             internal_push_pop(mem, stack, amount - count, regrow_step);
         }
     }
     for count in (0..amount).rev() {
-        assert_eq!(stack.pop().get_scalar() as usize, count);
+        assert_eq!(stack.pop().get_scalar(), count);
     }
 }

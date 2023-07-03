@@ -1,7 +1,6 @@
 //! This module implements a simple buffer to be used by the compiler (in generated code)
 
 use crate::idl_trap_with;
-use core::{array::from_fn, mem::size_of};
 
 #[repr(packed)]
 pub struct Buf {
@@ -30,18 +29,18 @@ pub(crate) unsafe fn read_byte(buf: *mut Buf) -> u8 {
     byte
 }
 
-const WORD_SIZE: usize = size_of::<usize>();
-
 #[cfg(feature = "ic")]
 /// Read a little-endian word
 pub(crate) unsafe fn read_word(buf: *mut Buf) -> usize {
+    const WORD_SIZE: usize = core::mem::size_of::<usize>();
+
     if (*buf).ptr.add(WORD_SIZE - 1) >= (*buf).end {
         idl_trap_with("word read out of buffer");
     }
 
     let p = (*buf).ptr;
 
-    let bytes: [u8; WORD_SIZE] = from_fn(|count| *p.add(count));
+    let bytes: [u8; WORD_SIZE] = core::array::from_fn(|count| *p.add(count));
     let word = usize::from_le_bytes(bytes);
 
     (*buf).ptr = (*buf).ptr.add(WORD_SIZE);

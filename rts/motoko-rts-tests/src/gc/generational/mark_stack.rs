@@ -26,26 +26,26 @@ fn test_push_pop() {
     });
 
     proptest_runner
-        .run(&(0u32..1000u32), |n_objs| {
+        .run(&(0usize..1000usize), |n_objs| {
             let mut mem = TestMemory::new(Words(1024 * 1024));
             test_(&mut mem, n_objs)
         })
         .unwrap();
 }
 
-fn test_<M: Memory>(mem: &mut M, n_objs: u32) -> TestCaseResult {
-    let objs: Vec<u32> = (0..n_objs).collect();
+fn test_<M: Memory>(mem: &mut M, n_objs: usize) -> TestCaseResult {
+    let objs: Vec<usize> = (0..n_objs).collect();
 
     unsafe {
         alloc_mark_stack(mem);
 
         for obj in &objs {
-            push_mark_stack(mem, *obj as usize);
+            push_mark_stack(mem, *obj);
         }
 
         for obj in objs.iter().copied().rev() {
             let popped = pop_mark_stack();
-            if popped != Some(obj as usize) {
+            if popped != Some(obj) {
                 free_mark_stack();
                 return Err(TestCaseError::Fail(
                     format!(

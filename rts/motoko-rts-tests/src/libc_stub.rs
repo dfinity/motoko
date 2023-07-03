@@ -1,8 +1,8 @@
 #![allow(non_camel_case_types, dead_code, unused_variables)]
 
-pub(crate) type size_t = usize;
-pub(crate) type c_char = i8;
-pub(crate) type c_int = i32;
+pub type size_t = usize;
+pub type c_char = i8;
+pub type c_int = i32;
 
 pub type mp_digit = u32;
 pub type mp_sign = c_int;

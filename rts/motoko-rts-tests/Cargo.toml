@@ -8,8 +8,8 @@ edition = "2018"
 incremental_gc = ["motoko-rts/incremental_gc"]
 
 [dependencies]
-# byteorder = "1.4.3"
-# fxhash = "0.2.1"
+byteorder = "1.4.3"
+fxhash = "0.2.1"
 # libc = { version = "0.2.139", default_features = false }
 motoko-rts = { path = "../motoko-rts/native" }
 oorandom = "11.1.3"

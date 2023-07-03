@@ -8,7 +8,7 @@ pub mod mark_stack;
 use bitmap::{alloc_bitmap, free_bitmap, get_bit, iter_bits, set_bit, BITMAP_ITER_END};
 use mark_stack::{alloc_mark_stack, free_mark_stack, pop_mark_stack, push_mark_stack};
 
-use crate::constants::{WASM_HEAP_SIZE, WORD_SIZE};
+use crate::constants::WORD_SIZE;
 use crate::mem_utils::memcpy_words;
 use crate::memory::Memory;
 use crate::types::*;
@@ -24,6 +24,8 @@ pub unsafe extern "C" fn initialize_compacting_gc() {
 
 #[ic_mem_fn(ic_only)]
 unsafe fn schedule_compacting_gc<M: Memory>(mem: &mut M) {
+    use crate::constants::WASM_HEAP_SIZE;
+
     // 512 MiB slack for mark stack + allocation area for the next message
     let slack: Words<usize> = Bytes(512 * 1024 * 1024).to_words();
     // Larger than necessary to keep things simple

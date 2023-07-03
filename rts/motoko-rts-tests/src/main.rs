@@ -5,11 +5,11 @@ mod print;
 
 mod libc_stub;
 
-// // mod bigint;
+// mod bigint; // TODO: Support once WASI 64-bit is available.
 mod bitrel;
 mod continuation_table;
 mod crc32;
-// // mod gc;
+mod gc;
 mod leb128;
 mod memory;
 mod principal_id;
@@ -25,11 +25,11 @@ fn main() {
 
     unsafe {
         println!("Tests started");
-        // bigint::test();
+        // bigint::test(); // TODO: Support once WASI 64-bit is available.
         bitrel::test();
         continuation_table::test();
         crc32::test();
-        // gc::test();
+        gc::test();
         leb128::test();
         principal_id::test();
         stream::test();

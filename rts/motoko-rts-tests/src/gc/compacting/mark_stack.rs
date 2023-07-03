@@ -26,14 +26,14 @@ fn test_push_pop() {
     });
 
     proptest_runner
-        .run(&(0u32..1000u32), |n_objs| {
+        .run(&(0usize..1000usize), |n_objs| {
             let mut mem = TestMemory::new(Words(1024 * 1024));
             test_(&mut mem, n_objs)
         })
         .unwrap();
 }
 
-static TAGS: [Tag; 14] = [
+static TAGS: [Tag; 13] = [
     TAG_OBJECT,
     TAG_OBJ_IND,
     TAG_ARRAY,
@@ -44,25 +44,24 @@ static TAGS: [Tag; 14] = [
     TAG_VARIANT,
     TAG_BLOB,
     TAG_FWD_PTR,
-    TAG_BITS32,
     TAG_BIGINT,
     TAG_CONCAT,
     TAG_NULL,
 ];
 
-fn test_<M: Memory>(mem: &mut M, n_objs: u32) -> TestCaseResult {
-    let objs: Vec<u32> = (0..n_objs).collect();
+fn test_<M: Memory>(mem: &mut M, n_objs: usize) -> TestCaseResult {
+    let objs: Vec<usize> = (0..n_objs).collect();
 
     unsafe {
         alloc_mark_stack(mem);
 
         for obj in &objs {
-            push_mark_stack(mem, *obj as usize, TAGS[(*obj as usize) % TAGS.len()]);
+            push_mark_stack(mem, *obj, TAGS[*obj % TAGS.len()]);
         }
 
         for obj in objs.iter().copied().rev() {
             let popped = pop_mark_stack();
-            if popped != Some((obj as usize, TAGS[(obj as usize) % TAGS.len()])) {
+            if popped != Some((obj, TAGS[obj % TAGS.len()])) {
                 free_mark_stack();
                 return Err(TestCaseError::Fail(
                     format!(
