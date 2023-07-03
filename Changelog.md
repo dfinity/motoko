@@ -2,7 +2,7 @@
 
 * motoko (`moc`)
 
-  * Allow indentifiers in `or`-patterns (#3807).
+  * Allow identifiers in `or`-patterns (#3807).
     Bindings in alternatives must mention the same identifiers and have compatible types:
     ``` Motoko
     let verbose = switch result {
