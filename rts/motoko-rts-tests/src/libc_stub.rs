@@ -69,21 +69,12 @@ pub extern "C" fn mp_init_copy(a: *mut mp_int, b: *const mp_int) -> mp_err {
 }
 
 #[no_mangle]
-pub extern "C" fn mp_div_2d(
-        a: *const mp_int,
-        b: c_int,
-        c: *mut mp_int,
-        d: *mut mp_int,
-    ) -> mp_err {
+pub extern "C" fn mp_div_2d(a: *const mp_int, b: c_int, c: *mut mp_int, d: *mut mp_int) -> mp_err {
     unimplemented!()
 }
 
 #[no_mangle]
-pub extern "C" fn mp_mul_2d(
-        a: *const mp_int,
-        b: c_int,
-        c: *mut mp_int,
-    ) -> mp_err {
+pub extern "C" fn mp_mul_2d(a: *const mp_int, b: c_int, c: *mut mp_int) -> mp_err {
     unimplemented!()
 }
 
@@ -119,11 +110,16 @@ pub extern "C" fn mp_sub(a: *const mp_int, b: *const mp_int, c: *mut mp_int) -> 
 
 #[no_mangle]
 pub extern "C" fn mp_mul(a: *const mp_int, b: *const mp_int, c: *mut mp_int) -> mp_err {
-    unimplemented!()    
+    unimplemented!()
 }
 
 #[no_mangle]
-pub extern "C" fn mp_div(a: *const mp_int, b: *const mp_int, c: *mut mp_int, d: *mut mp_int) -> mp_err {
+pub extern "C" fn mp_div(
+    a: *const mp_int,
+    b: *const mp_int,
+    c: *mut mp_int,
+    d: *mut mp_int,
+) -> mp_err {
     unimplemented!()
 }
 

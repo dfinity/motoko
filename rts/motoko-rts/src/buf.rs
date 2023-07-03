@@ -1,7 +1,7 @@
 //! This module implements a simple buffer to be used by the compiler (in generated code)
 
 use crate::idl_trap_with;
-use core::{mem::size_of, array::from_fn};
+use core::{array::from_fn, mem::size_of};
 
 #[repr(packed)]
 pub struct Buf {

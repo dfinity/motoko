@@ -18,8 +18,8 @@ unsafe fn should_do_gc(max_live: crate::types::Bytes<usize>) -> bool {
     const HEAP_GROWTH_FACTOR: f64 = 1.5;
 
     let heap_limit = core::cmp::min(
-    (LAST_HP as f64 * HEAP_GROWTH_FACTOR) as usize,
-        (LAST_HP + max_live.as_usize()) / 2
+        (LAST_HP as f64 * HEAP_GROWTH_FACTOR) as usize,
+        (LAST_HP + max_live.as_usize()) / 2,
     );
 
     HP >= heap_limit

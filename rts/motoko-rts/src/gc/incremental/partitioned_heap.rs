@@ -41,8 +41,7 @@
 use core::{array::from_fn, ops::Range, ptr::null_mut};
 
 use crate::{
-    gc::incremental::mark_bitmap::BITMAP_ITERATION_END,
-    memory::Memory, rts_trap_with, types::*,
+    gc::incremental::mark_bitmap::BITMAP_ITERATION_END, memory::Memory, rts_trap_with, types::*,
 };
 
 use super::{

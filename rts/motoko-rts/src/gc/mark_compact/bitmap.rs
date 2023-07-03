@@ -69,13 +69,17 @@ unsafe fn get_bitmap_forbidden_size() -> usize {
     BITMAP_PTR as usize - BITMAP_FORBIDDEN_PTR as usize
 }
 
-pub unsafe fn alloc_bitmap<M: Memory>(mem: &mut M, heap_size: Bytes<usize>, heap_prefix_words: usize) {
+pub unsafe fn alloc_bitmap<M: Memory>(
+    mem: &mut M,
+    heap_size: Bytes<usize>,
+    heap_prefix_words: usize,
+) {
     // See Note "How the Wasm-heap maps to the bitmap" above
     debug_assert_eq!(heap_prefix_words % BITS_PER_BYTE, 0);
     // We will have at most this many objects in the heap, each requiring a bit
     let n_bits = heap_size.to_words().as_usize();
     BITMAP_SIZE = (n_bits + (BITS_PER_BYTE - 1)) / BITS_PER_BYTE;
-    // Also round allocation up to word size to make iteration efficient. 
+    // Also round allocation up to word size to make iteration efficient.
     let bitmap_bytes = Bytes(((BITMAP_SIZE + WORD_SIZE - 1) / WORD_SIZE) * WORD_SIZE);
     // Allocating an actual object here as otherwise dump_heap gets confused
     // No post allocation barrier as this RTS-internal blob will be collected by the GC.
@@ -183,7 +187,8 @@ impl BitmapIter {
             self.current_bit_idx += self.leading_zeros;
             unsafe {
                 debug_assert_eq!(
-                    (self.current_bit_idx - get_bitmap_forbidden_size() * BITS_PER_BYTE) % usize::BITS as usize,
+                    (self.current_bit_idx - get_bitmap_forbidden_size() * BITS_PER_BYTE)
+                        % usize::BITS as usize,
                     0
                 )
             }
@@ -191,8 +196,8 @@ impl BitmapIter {
                 return BITMAP_ITER_END;
             }
             self.current_word = unsafe {
-                let ptr =
-                    BITMAP_FORBIDDEN_PTR.add(self.current_bit_idx as usize / BITS_PER_BYTE) as *const usize;
+                let ptr = BITMAP_FORBIDDEN_PTR.add(self.current_bit_idx as usize / BITS_PER_BYTE)
+                    as *const usize;
                 *ptr
             };
             self.leading_zeros = self.current_word.leading_zeros() as usize;

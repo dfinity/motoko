@@ -807,7 +807,11 @@ unsafe extern "C" fn idl_sub_buf_words(typtbl_size1: usize, typtbl_size2: usize)
 }
 
 #[no_mangle]
-unsafe extern "C" fn idl_sub_buf_init(rel_buf: *mut usize, typtbl_size1: usize, typtbl_size2: usize) {
+unsafe extern "C" fn idl_sub_buf_init(
+    rel_buf: *mut usize,
+    typtbl_size1: usize,
+    typtbl_size2: usize,
+) {
     let rel = BitRel {
         ptr: rel_buf,
         end: rel_buf.add(idl_sub_buf_words(typtbl_size1, typtbl_size2) as usize),

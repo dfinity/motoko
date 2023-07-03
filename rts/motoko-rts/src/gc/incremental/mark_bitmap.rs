@@ -5,7 +5,7 @@
 //! of a GC run.
 //!
 //! A bitmap is represented in raw memory (no object header, no blob) of the fixed size
-//! `PARTITION_SIZE / WORD_SIZE / u8::BITS` bytes. For simplicity, the bitmaps is not shortened for partitions 
+//! `PARTITION_SIZE / WORD_SIZE / u8::BITS` bytes. For simplicity, the bitmaps is not shortened for partitions
 //! that also accommodate static space besides dynamic space.
 //!
 //! To access a mark bit of an object, the corresponding bitmap and address offset inside the object's partition
@@ -49,10 +49,7 @@ impl MarkBitmap {
     /// Assign and initialize the bitmap memory at the defined address.
     pub unsafe fn assign(&mut self, bitmap_address: *mut u8) {
         debug_assert_eq!(bitmap_address as usize % WORD_SIZE, 0);
-        memzero(
-            bitmap_address as usize,
-            Bytes(BITMAP_SIZE).to_words(),
-        );
+        memzero(bitmap_address as usize, Bytes(BITMAP_SIZE).to_words());
         debug_assert_eq!(self.pointer, null_mut());
         self.pointer = bitmap_address;
     }

@@ -234,8 +234,7 @@ unsafe fn new_table<M: Memory>(mem: &mut M, size: usize) -> *mut Blob {
 unsafe fn new_collision_node<M: Memory>(mem: &mut M, value: Value) -> *mut CollisionNode {
     debug_assert!(!is_null_ptr_value(value));
     // No post allocation barrier as this RTS-internal blob will be collected by the GC.
-    let node =
-        alloc_blob(mem, Bytes(size_of::<HashEntry>())).as_blob_mut() as *mut CollisionNode;
+    let node = alloc_blob(mem, Bytes(size_of::<HashEntry>())).as_blob_mut() as *mut CollisionNode;
     (*node).entry = HashEntry {
         value,
         next_collision_ptr: null_mut(),
@@ -245,8 +244,7 @@ unsafe fn new_collision_node<M: Memory>(mem: &mut M, value: Value) -> *mut Colli
 
 unsafe fn table_get(table: *mut Blob, index: usize) -> *mut HashEntry {
     debug_assert!(table != null_mut());
-    let entry =
-        (table.payload_addr() as usize + index * size_of::<HashEntry>()) as *mut HashEntry;
+    let entry = (table.payload_addr() as usize + index * size_of::<HashEntry>()) as *mut HashEntry;
     debug_assert!(
         entry as usize + size_of::<HashEntry>()
             <= table as usize + block_size(table as usize).to_bytes().as_usize()

@@ -35,7 +35,13 @@ impl BitRel {
         memzero(self.ptr as usize, Words(bytes / WORD_SIZE));
     }
 
-    unsafe fn locate_ptr_bit(&self, p: bool, i_j: usize, j_i: usize, bit: usize) -> (*mut usize, usize) {
+    unsafe fn locate_ptr_bit(
+        &self,
+        p: bool,
+        i_j: usize,
+        j_i: usize,
+        bit: usize,
+    ) -> (*mut usize, usize) {
         let size1 = self.size1;
         let size2 = self.size2;
         let (base, i, j) = if p { (0, i_j, j_i) } else { (size1, j_i, i_j) };

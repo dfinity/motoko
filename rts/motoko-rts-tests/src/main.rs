@@ -6,16 +6,16 @@ mod print;
 mod libc_stub;
 
 // // mod bigint;
-// // mod bitrel;
+mod bitrel;
 mod continuation_table;
-// // mod crc32;
+mod crc32;
 // // mod gc;
-// // mod leb128;
+mod leb128;
 mod memory;
-// // mod principal_id;
-// // mod stream;
-// // mod text;
-// // mod utf8;
+mod principal_id;
+mod stream;
+mod text;
+mod utf8;
 
 fn main() {
     if std::mem::size_of::<usize>() != 8 {
@@ -26,15 +26,15 @@ fn main() {
     unsafe {
         println!("Tests started");
         // bigint::test();
-        // bitrel::test();
+        bitrel::test();
         continuation_table::test();
-        // crc32::test();
+        crc32::test();
         // gc::test();
-        // leb128::test();
-        // principal_id::test();
-        // stream::test();
-        // text::test();
-        // utf8::test();
+        leb128::test();
+        principal_id::test();
+        stream::test();
+        text::test();
+        utf8::test();
         println!("Tests completed");
     }
 }
