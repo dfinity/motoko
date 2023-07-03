@@ -409,31 +409,36 @@ let set_global global value = fun m ->
   { m with globals = go 0 m.globals }
 
 let fill_global (global : int32) (value : Wasm_exts.Values.value) : module_' -> module_' = fun m ->
-  let rec instr' = function
-    | Block (ty, is) -> Block (ty, instrs is)
-    | Loop (ty, is) -> Loop (ty, instrs is)
-    | If (ty, is1, is2) -> If (ty, instrs is1, instrs is2)
+  let rec instr' to_32 = function
+    | Block (ty, is) -> Block (ty, instrs to_32 is)
+    | Loop (ty, is) -> Loop (ty, instrs to_32 is)
+    | If (ty, is1, is2) -> If (ty, instrs to_32 is1, instrs to_32 is2)
+    | GlobalGet v when v.it = global -> 
+      let encoded_value = match (to_32, value) with
+      | (true, I64 number) -> (Wasm_exts.Values.I32 (Int32.of_int (Int64.to_int number)))
+      | _ -> value in
+      Const (encoded_value @@ v.at)
     | GlobalGet v when v.it = global -> Const (value @@ v.at)
     | GlobalSet v when v.it = global -> assert false
     | i -> i
-  and instr i = phrase instr' i
-  and instrs is = List.map instr is in
+  and instr to_32 i = phrase (instr' to_32) i
+  and instrs to_32 is = List.map (instr to_32) is in
 
-  let func' f = { f with body = instrs f.body } in
+  let func' f = { f with body = instrs false f.body } in
   let func = phrase func' in
   let funcs = List.map func in
 
-  let const = phrase instrs in
+  let const to_32 = phrase (instrs to_32) in
 
-  let global' g = { g with value = const g.value } in
+  let global' g = { g with value = const false g.value } in
   let global = phrase global' in
   let globals = List.map global in
 
-  let table_segment' (s : var list segment') = { s with offset = const s.offset; } in
+  let table_segment' (s : var list segment') = { s with offset = const true s.offset; } in
   let table_segment = phrase (table_segment') in
   let table_segments = List.map table_segment in
 
-  let memory_segment' (s : string segment') = { s with offset = const s.offset; } in
+  let memory_segment' (s : string segment') = { s with offset = const false s.offset; } in
   let memory_segment = phrase (memory_segment') in
   let memory_segments = List.map memory_segment in
 

@@ -5344,7 +5344,6 @@ end (* StableMemory *)
 
 module RTS_Exports = struct
   let system_exports env =
-    (* TODO: Support 64-bit
     let bigint_trap_fi = E.add_fun env "bigint_trap" (
       Func.of_body env [] [] (fun env ->
         E.trap_with env "bigint function error"
@@ -5354,40 +5353,37 @@ module RTS_Exports = struct
       name = Lib.Utf8.decode "bigint_trap";
       edesc = nr (FuncExport (nr bigint_trap_fi))
     });
-    *)
+   
 
-    let rts_trap_fi = E.add_fun env "rts_trap" (
-      (* `libc` stil uses 32-bit length parameter for `rts_trap` *)
-      Func.of_body env ["str", I64Type; "len", I32Type] [] (fun env ->
-        let get_str = G.i (LocalGet (nr 0l)) in
-        let get_len = G.i (LocalGet (nr 1l)) in
-        get_str ^^ 
-        get_len ^^ 
-        G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
-        IC.trap_ptr_len env
-      )
-    ) in
-    E.add_export env (nr {
-      name = Lib.Utf8.decode "rts_trap";
-      edesc = nr (FuncExport (nr rts_trap_fi))
-    });
+  let rts_trap_fi = E.add_fun env "rts_trap" (
+    (* `libc` stil uses 32-bit length parameter for `rts_trap` *)
+    Func.of_body env ["str", I64Type; "len", I32Type] [] (fun env ->
+      let get_str = G.i (LocalGet (nr 0l)) in
+      let get_len = G.i (LocalGet (nr 1l)) in
+      get_str ^^ 
+      get_len ^^ 
+      G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
+      IC.trap_ptr_len env
+    )
+  ) in
+  E.add_export env (nr {
+    name = Lib.Utf8.decode "rts_trap";
+    edesc = nr (FuncExport (nr rts_trap_fi))
+  });
 
-    (* TODO: Support 64-bit
-    let stable64_write_moc_fi =
-      if E.mode env = Flags.WASIMode then
-        E.add_fun env "stable64_write_moc" (
-            Func.of_body env ["to", I64Type; "from", I64Type; "len", I64Type] []
-              (fun env ->
-                E.trap_with env "stable64_write_moc is not supposed to be called in WASI"
-              )
-          )
-      else E.reuse_import env "ic0" "stable64_write" in
-    E.add_export env (nr {
-      name = Lib.Utf8.decode "stable64_write_moc";
-      edesc = nr (FuncExport (nr stable64_write_moc_fi))
-    })
-    *)
-    ()
+  let stable64_write_moc_fi =
+    if E.mode env = Flags.WASIMode then
+      E.add_fun env "stable64_write_moc" (
+          Func.of_body env ["to", I64Type; "from", I64Type; "len", I64Type] []
+            (fun env ->
+              E.trap_with env "stable64_write_moc is not supposed to be called in WASI"
+            )
+        )
+    else E.reuse_import env "ic0" "stable64_write" in
+  E.add_export env (nr {
+    name = Lib.Utf8.decode "stable64_write_moc";
+    edesc = nr (FuncExport (nr stable64_write_moc_fi))
+  })
 end (* RTS_Exports *)
 
 
@@ -7577,18 +7573,17 @@ end
 
 module GCRoots = struct
   let register env static_roots =
-    (* TODO: Support 64-bit
-    let get_static_roots = E.add_fun env "get_static_roots" (Func.of_body env [] [I32Type] (fun env ->
-      compile_unboxed_const static_roots
+    let get_static_roots = E.add_fun env "get_static_roots" (Func.of_body env [] [I64Type] (fun env ->
+      compile_unboxed_const static_roots ^^
+      (* TODO: Port to 64-bit, remove this provisional conversion *)
+      G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
     )) in
 
     E.add_export env (nr {
       name = Lib.Utf8.decode "get_static_roots";
       edesc = nr (FuncExport (nr get_static_roots))
     })
-    *)
-    ()
-
+   
   let store_static_roots env =
     Arr.vanilla_lit env (E.get_static_roots env)
 
@@ -11230,9 +11225,7 @@ and conclude_module env (* set_serialization_globals *) start_fi_o =
   Serialization.set_delayed_globals env set_serialization_globals;
   *)
 
-  (* TODO: Support 64-bit
-  let static_roots = GCRoots.store_static_roots env in
-  *)
+  let static_roots = GCRoots.store_static_roots env in 
 
   (* declare before building GC *)
 
@@ -11242,9 +11235,7 @@ and conclude_module env (* set_serialization_globals *) start_fi_o =
   E.export_global env "__heap_base";
 
   Heap.register env;
-  (* TODO: Support 64-bit
   GCRoots.register env static_roots;
-  *)
   IC.register env;
 
   set_heap_base (E.get_end_of_static_memory env);
