@@ -958,9 +958,6 @@ module RTS = struct
 
   (* The connection to the C and Rust parts of the RTS *)
   let system_imports env =
-    (* TODO: Remove this temporary 64-bit port code *)
-    E.add_func_import env "rts" "test_initialize" [] []; 
-
     (* TODO: Support 64-bit
     E.add_func_import env "rts" "memcmp" [I32Type; I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "version" [] [I32Type];
@@ -974,33 +971,33 @@ module RTS = struct
     E.add_func_import env "rts" "bigint_of_word32" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_of_int32" [I32Type] [I32Type];
     *)
-    E.add_func_import env "rts" "bigint_to_word32_wrap" [I32Type] [I32Type];
+    (* E.add_func_import env "rts" "bigint_to_word32_wrap" [I64Type] [I32Type]; *)
     (* TODO: Use 64-bit argument during 64-bit port
     E.add_func_import env "rts" "bigint_to_word32_trap" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_to_word32_trap_with" [I32Type; I32Type] [I32Type];
     *)
-    E.add_func_import env "rts" "bigint_of_word64" [I64Type] [I32Type];
-    E.add_func_import env "rts" "bigint_of_int64" [I64Type] [I32Type];
+    (* E.add_func_import env "rts" "bigint_of_word64" [I64Type] [I64Type];
+    E.add_func_import env "rts" "bigint_of_int64" [I64Type] [I64Type]; *)
     (* TODO: Use 64-bit argument during 64-bit port
     E.add_func_import env "rts" "bigint_of_float64" [F64Type] [I32Type];
     E.add_func_import env "rts" "bigint_to_float64" [I32Type] [F64Type];
     E.add_func_import env "rts" "bigint_to_word64_wrap" [I32Type] [I64Type];
     *)
     (* TODO: Use 64-bit argument during 64-bit port *)
-    E.add_func_import env "rts" "bigint_to_word64_trap" [I32Type] [I64Type];
+    (* E.add_func_import env "rts" "bigint_to_word64_trap" [I64Type] [I64Type]; *)
     (* TODO: Support 64-bit
     E.add_func_import env "rts" "bigint_eq" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_isneg" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_count_bits" [I32Type] [I32Type];
     *)
-    E.add_func_import env "rts" "bigint_2complement_bits" [I32Type] [I32Type];
-    E.add_func_import env "rts" "bigint_lt" [I32Type; I32Type] [I32Type];
+    (* E.add_func_import env "rts" "bigint_2complement_bits" [I64Type] [I32Type];
+    E.add_func_import env "rts" "bigint_lt" [I64Type; I64Type] [I32Type]; *)
     (* TODO: Use 64-bit argument during 64-bit port
     E.add_func_import env "rts" "bigint_gt" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_le" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_ge" [I32Type; I32Type] [I32Type];
     *)
-    E.add_func_import env "rts" "bigint_add" [I32Type; I32Type] [I32Type];
+    (* E.add_func_import env "rts" "bigint_add" [I64Type; I64Type] [I64Type]; *)
     (* TODO: Use 64-bit argument during 64-bit port
     E.add_func_import env "rts" "bigint_sub" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_mul" [I32Type; I32Type] [I32Type];
@@ -1078,7 +1075,7 @@ module RTS = struct
     E.add_func_import env "rts" "get_heap_size" [] [I32Type];
     E.add_func_import env "rts" "alloc_blob" [I32Type] [I32Type];
     *)
-    E.add_func_import env "rts" "alloc_array" [I64Type] [I64Type];
+    (* E.add_func_import env "rts" "alloc_array" [I64Type] [I64Type]; *)
     (* TODO: Support 64-bit
     E.add_func_import env "rts" "alloc_stream" [I32Type] [I32Type];
     E.add_func_import env "rts" "stream_write" [I32Type; I32Type; I32Type] [];
@@ -3696,9 +3693,16 @@ module Blob = struct
   let header_size env = Int32.add (Tagged.header_size env) 1l
   let len_field env = Int32.add (Tagged.header_size env) 0l
 
+  (* TODO: Port to 64-bit *)
   let len env =
     Tagged.load_forwarding_pointer env ^^
     Tagged.load_field env (len_field env)
+  
+  (* TODO: Port correctly to 64-bit *)
+  let len_64 env =
+    Tagged.load_forwarding_pointer env ^^
+    Tagged.load_field env (len_field env) ^^
+    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
 
   let len_nat env =
     Func.share_code1 env "blob_len" ("text", I32Type) [I32Type] (fun env get ->
@@ -3718,7 +3722,7 @@ module Blob = struct
 
   let lit_ptr_len env s =
     compile_const_64 (Int64.add ptr_unskew_64 (E.add_static env StaticBytes.[Bytes s])) ^^
-    compile_unboxed_const (Int32.of_int (String.length s))
+    compile_const_64 (Int64.of_int (String.length s))
 
   let alloc env =
     E.call_import env "rts" "alloc_blob" ^^
@@ -4463,21 +4467,21 @@ module IC = struct
         end
       | _ -> (-1L, 0) in
 
-      let narrow_to_ptr32 env get_ptr =
-        get_ptr ^^
+      let narrow_to_32 env get_value =
+        get_value ^^
         compile_const_64 0xffff_ffffL ^^
         G.i (Compare (Wasm_exts.Values.I64 I64Op.LeU)) ^^
-        E.else_trap_with env "cannot narrow pointer to 32 bit" ^^ (* Note: If narrow fails during print, the trap print leads to an infinite recursion and a stack overflow *)
-        get_ptr ^^
+        E.else_trap_with env "cannot narrow to 32 bit" ^^ (* Note: If narrow fails during print, the trap print leads to an infinite recursion and a stack overflow *)
+        get_value ^^
         G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) in
     
       let min env first second = 
         first ^^
         second ^^
-        G.i (Compare (Wasm_exts.Values.I32 I32Op.LtU)) ^^
-        G.if1 I32Type (first) (second) in
+        G.i (Compare (Wasm_exts.Values.I64 I64Op.LtU)) ^^
+        G.if1 I64Type (first) (second) in
 
-      Func.define_built_in env "print_ptr" [("ptr", I64Type); ("len", I32Type)] [] (fun env ->
+      Func.define_built_in env "print_ptr" [("ptr", I64Type); ("len", I64Type)] [] (fun env ->
         match E.mode env with
         | Flags.WasmMode -> G.i Nop
         | Flags.ICMode | Flags.RefMode ->
@@ -4496,27 +4500,26 @@ module IC = struct
             let (buffer_ptr, buffer_length) = print_buffer in
 
             (* Truncate the text if it does not fit into the buffer **)
-            min env (compile_unboxed_const (Int32.of_int buffer_length)) get_len ^^
+            min env (compile_const_64 (Int64.of_int buffer_length)) get_len ^^
             G.setter_for get_len ^^
 
             (* Copy the text to the static buffer in 32-bit space *)
             compile_const_64 buffer_ptr ^^
             get_ptr ^^
             get_len ^^
-            G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
             Heap.memcpy env ^^
 
             (* We use the iovec functionality to append a newline *)
             get_iovec_ptr ^^
-            narrow_to_ptr32 env (compile_const_64 buffer_ptr) ^^ (* This is safe because the buffer resides in 32-bit space *)
+            narrow_to_32 env (compile_const_64 buffer_ptr) ^^ (* This is safe because the buffer resides in 32-bit space *)
             G.i (Store {ty = I32Type; align = 2; offset = 0L; sz = None}) ^^
 
             get_iovec_ptr ^^
-            get_len ^^
+            narrow_to_32 env get_len ^^
             G.i (Store {ty = I32Type; align = 2; offset = 4L; sz = None}) ^^
 
             get_iovec_ptr ^^
-            narrow_to_ptr32 env get_iovec_ptr ^^ (* The stack pointer should always be in the 32-bit space *)
+            narrow_to_32 env get_iovec_ptr ^^ (* The stack pointer should always be in the 32-bit space *)
             compile_add_const 16l ^^
             G.i (Store {ty = I32Type; align = 2; offset = 8L; sz = None}) ^^
 
@@ -4533,18 +4536,18 @@ module IC = struct
             *)
 
             compile_unboxed_const 1l (* stdout *) ^^
-            narrow_to_ptr32 env get_iovec_ptr ^^
+            narrow_to_32 env get_iovec_ptr ^^
             compile_unboxed_const 1l (* one string segment (2 doesn't work) *) ^^
-            narrow_to_ptr32 env get_iovec_ptr ^^
+            narrow_to_32 env get_iovec_ptr ^^
             compile_add_const 20l ^^ (* out for bytes written, we ignore that *)
             E.call_import env "wasi_unstable" "fd_write" ^^
             G.i Drop ^^
 
             compile_unboxed_const 1l (* stdout *) ^^
-            narrow_to_ptr32 env get_iovec_ptr ^^
+            narrow_to_32 env get_iovec_ptr ^^
             compile_add_const 8l ^^
             compile_unboxed_const 1l (* one string segment *) ^^
-            narrow_to_ptr32 env get_iovec_ptr ^^
+            narrow_to_32 env get_iovec_ptr ^^
             compile_add_const 20l ^^ (* out for bytes written, we ignore that *)
             E.call_import env "wasi_unstable" "fd_write" ^^
             G.i Drop)
@@ -4574,7 +4577,7 @@ module IC = struct
       let (set_blob, get_blob) = new_local64 env "blob" in
       get_str ^^ Text.to_blob env ^^ set_blob ^^
       get_blob ^^ Blob.payload_ptr_unskewed_64 env ^^
-      get_blob ^^ Blob.len env ^^
+      get_blob ^^ Blob.len_64 env ^^
       print_ptr_len env
     )
 
@@ -5354,10 +5357,14 @@ module RTS_Exports = struct
     *)
 
     let rts_trap_fi = E.add_fun env "rts_trap" (
+      (* `libc` stil uses 32-bit length parameter for `rts_trap` *)
       Func.of_body env ["str", I64Type; "len", I32Type] [] (fun env ->
         let get_str = G.i (LocalGet (nr 0l)) in
         let get_len = G.i (LocalGet (nr 1l)) in
-        get_str ^^ get_len ^^ IC.trap_ptr_len env
+        get_str ^^ 
+        get_len ^^ 
+        G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
+        IC.trap_ptr_len env
       )
     ) in
     E.add_export env (nr {
@@ -11244,9 +11251,6 @@ and conclude_module env (* set_serialization_globals *) start_fi_o =
 
   (* Wrap the start function with the RTS initialization *)
   let rts_start_fi = E.add_fun env "rts_start" (Func.of_body env [] [] (fun env1 ->
-    (* TODO: Remove this temporary 64-bit porting code *)
-    E.call_import env "rts" "test_initialize" ^^
-
     (* TODO: Support 64-bit
     E.call_import env "rts" ("initialize_" ^ E.gc_strategy_name !Flags.gc_strategy ^ "_gc") ^^
     *)
