@@ -46,9 +46,9 @@ unsafe fn compacting_gc<M: Memory>(mem: &mut M) {
         mem,
         ic::get_aligned_heap_base(),
         // get_hp
-        || (linear_memory::getHP() + 1) as usize,
+        || linear_memory::get_hp_unskewed(),
         // set_hp
-        |hp| linear_memory::setHP(hp - 1),
+        |hp| linear_memory::set_hp_unskewed(hp),
         ic::get_static_roots(),
         crate::continuation_table::continuation_table_loc(),
         // note_live_size
@@ -57,13 +57,13 @@ unsafe fn compacting_gc<M: Memory>(mem: &mut M) {
         |reclaimed| linear_memory::RECLAIMED += Bytes(u64::from(reclaimed.as_u32())),
     );
 
-    linear_memory::LAST_HP = linear_memory::getHP() + 1;
+    linear_memory::LAST_HP = linear_memory::get_hp_unskewed() as u32;
 }
 
 pub unsafe fn compacting_gc_internal<
     M: Memory,
     GetHp: Fn() -> usize,
-    SetHp: Fn(u32),
+    SetHp: Fn(usize),
     NoteLiveSize: Fn(Bytes<u32>),
     NoteReclaimed: Fn(Bytes<u32>),
 >(
@@ -96,7 +96,7 @@ pub unsafe fn compacting_gc_internal<
     note_live_size(Bytes(live));
 }
 
-unsafe fn mark_compact<M: Memory, SetHp: Fn(u32)>(
+unsafe fn mark_compact<M: Memory, SetHp: Fn(usize)>(
     mem: &mut M,
     set_hp: SetHp,
     heap_base: u32,
@@ -213,7 +213,7 @@ unsafe fn mark_root_mutbox_fields<M: Memory>(mem: &mut M, mutbox: *mut MutBox, h
 ///
 /// - Thread forward pointers of the object
 ///
-unsafe fn update_refs<SetHp: Fn(u32)>(set_hp: SetHp, heap_base: u32) {
+unsafe fn update_refs<SetHp: Fn(usize)>(set_hp: SetHp, heap_base: u32) {
     let mut free = heap_base;
 
     let mut bitmap_iter = iter_bits();
@@ -244,7 +244,7 @@ unsafe fn update_refs<SetHp: Fn(u32)>(set_hp: SetHp, heap_base: u32) {
         bit = bitmap_iter.next();
     }
 
-    set_hp(free);
+    set_hp(free as usize);
 }
 
 /// Thread forward pointers in object

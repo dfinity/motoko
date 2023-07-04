@@ -31,9 +31,9 @@ unsafe fn copying_gc<M: Memory>(mem: &mut M) {
         mem,
         ic::get_aligned_heap_base(),
         // get_hp
-        || (linear_memory::getHP() + 1) as usize,
+        || linear_memory::get_hp_unskewed(),
         // set_hp
-        |hp| linear_memory::setHP(hp - 1),
+        |hp| linear_memory::set_hp_unskewed(hp),
         ic::get_static_roots(),
         crate::continuation_table::continuation_table_loc(),
         // note_live_size
@@ -42,13 +42,13 @@ unsafe fn copying_gc<M: Memory>(mem: &mut M) {
         |reclaimed| linear_memory::RECLAIMED += Bytes(u64::from(reclaimed.as_u32())),
     );
 
-    linear_memory::LAST_HP = linear_memory::getHP() + 1;
+    linear_memory::LAST_HP = linear_memory::get_hp_unskewed() as u32;
 }
 
 pub unsafe fn copying_gc_internal<
     M: Memory,
     GetHp: Fn() -> usize,
-    SetHp: FnMut(u32),
+    SetHp: FnMut(usize),
     NoteLiveSize: Fn(Bytes<u32>),
     NoteReclaimed: Fn(Bytes<u32>),
 >(
@@ -105,7 +105,7 @@ pub unsafe fn copying_gc_internal<
 
     // Reset the heap pointer
     let new_hp = begin_from_space + (end_to_space - begin_to_space);
-    set_hp(new_hp as u32);
+    set_hp(new_hp);
 }
 
 /// Evacuate (copy) an object in from-space to to-space.
