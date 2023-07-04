@@ -12,8 +12,12 @@ extern "C" {
     pub(crate) fn getHP() -> u32;
 }
 
-pub(crate) unsafe fn set_hp_unskewed(new_hp: usize){ setHP(new_hp as u32 - 1) }
-pub(crate) unsafe fn get_hp_unskewed() -> usize { getHP() as usize + 1 }
+pub(crate) unsafe fn set_hp_unskewed(new_hp: usize) {
+    setHP(skew(new_hp) as u32)
+}
+pub(crate) unsafe fn get_hp_unskewed() -> usize {
+    unskew(getHP() as usize)
+}
 
 /// Heap pointer after last GC
 pub(crate) static mut LAST_HP: usize = 0;
