@@ -2425,7 +2425,7 @@ module TaggedSmallWord = struct
 
         (* handle exp == 0 *)
         get_exp ^^ G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
-        G.if1 I32Type get_acc (* done *)
+        (G.if1 I32Type get_acc (* done *)
         begin
           G.loop0 begin
             (* Are we done? *)
@@ -2449,7 +2449,7 @@ module TaggedSmallWord = struct
           (* Multiply a last time *)
           get_acc ^^ get_n ^^ G.i (Binary (Wasm.Values.I32 I32Op.Mul))
           (* Accumulator was shifted, so no further shift needed here *)
-        end ^^
+        end) ^^
         compile_bitor_const (tag_of_type ty)
       )
 
@@ -9099,7 +9099,7 @@ let compile_binop env t op : SR.t * SR.t * G.t =
       (fun env get_n get_exp ->
         let (set_res, get_res) = new_local env "res" in
         let bits = TaggedSmallWord.bits_of_type ty in
-        get_exp ^^
+        get_exp ^^ TaggedSmallWord.lsb_adjust ty ^^
         G.if1 I32Type
           begin
             get_n ^^ compile_shrU_const Int32.(sub 33l (of_int bits)) ^^
@@ -9150,9 +9150,9 @@ let compile_binop env t op : SR.t * SR.t * G.t =
       (fun env get_n get_exp ->
         let (set_res, get_res) = new_local env "res" in
         let bits = TaggedSmallWord.bits_of_type ty in
-        get_exp ^^ compile_unboxed_zero ^^
+        get_exp ^^ TaggedSmallWord.lsb_adjust ty ^^ compile_unboxed_zero ^^
         G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^ E.then_trap_with env "negative power" ^^
-        get_exp ^^
+        get_exp ^^ TaggedSmallWord.lsb_adjust ty ^^
         G.if1 I32Type
           begin
             get_n ^^ compile_shrS_const Int32.(sub 33l (of_int bits)) ^^
