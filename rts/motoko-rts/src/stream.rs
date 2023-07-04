@@ -14,16 +14,16 @@
 
 // Layout of a stream node:
 //
-// ┌────────────┬─────┬─────────┬───────┬─────────┬─────────┬───────────┬────────┬──────────┐
-// │ obj header │ len │ padding |  ptr  │  start  │  limit  │ outputter │ filled │ cache... │
-// └────────────┴─────┴─────────┴───────┴─────────┴─────────┴───────────┴────────┴──────────┘
+// ┌────────────┬─────┬──────┬───────┬───────┬───────────┬────────┬──────────┬──────────┐
+// │ obj header │ len │ ptr  │ start │ limit │ outputter │ filled │ cache... │          │
+// └────────────┴─────┴──────┴───────┴───────┴───────────┴────────┴──────────┴──────────┘
 //
 // We reuse the opaque nature of blobs (to Motoko) and stick Rust-related information
 // into the leading bytes:
 // - `obj header` contains tag (BLOB) and forwarding pointer
 // - `len` is in blob metadata
-// - `start` is a 64-bit pointer
-// - `ptr` and `limit` are the next and past-end 64-bit pointers into stable memory
+// - `start` is a pointer
+// - `ptr` and `limit` are the next and past-end pointers into stable memory
 // - `filled` and `cache` are the number of bytes consumed from the blob, and the
 //   staging area of the stream, respectively
 // - `outputter` is the function to be called when `len - filled` approaches zero.
