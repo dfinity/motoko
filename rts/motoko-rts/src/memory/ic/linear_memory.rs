@@ -8,12 +8,12 @@ pub(crate) static mut RECLAIMED: Bytes<u64> = Bytes(0);
 
 // Heap pointer (skewed)
 extern "C" {
-    fn setHP(new_hp: u32);
+    fn setHP(new_hp: usize);
     fn getHP() -> u32;
 }
 
 pub(crate) unsafe fn set_hp_unskewed(new_hp: usize) {
-    setHP(skew(new_hp) as u32)
+    setHP(skew(new_hp))
 }
 pub(crate) unsafe fn get_hp_unskewed() -> usize {
     unskew(getHP() as usize)
@@ -58,7 +58,7 @@ impl Memory for IcMemory {
         }
 
         debug_assert!(new_hp <= u64::from(core::u32::MAX));
-        setHP(new_hp as u32);
+        setHP(new_hp as usize);
 
         Value::from_raw(old_hp as u32)
     }
