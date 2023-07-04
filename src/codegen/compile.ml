@@ -2295,6 +2295,14 @@ module TaggedSmallWord = struct
     | Type.(Int16|Nat16) -> 16
     | _ -> 32
 
+  (* tag small words, todo set bit 1 *)
+  let tag_of_type = function
+    | Type.Int8 -> Int32.shift_left 1l 2
+    | Type.Nat8 -> Int32.shift_left 2l 2
+    | Type.Int16 -> Int32.shift_left 3l 2
+    | Type.Nat16 -> Int32.shift_left 4l 2
+    | _ -> 0l
+
   let shift_of_type ty = Int32.of_int (32 - bits_of_type ty)
 
   let bitwidth_mask_of_type = function
@@ -2325,7 +2333,9 @@ module TaggedSmallWord = struct
   (* Makes sure that the word payload (e.g. operation result) is in the MSB bits of the word. *)
   let msb_adjust = function
     | Type.(Int32|Nat32) -> G.nop
-    | ty -> shift_leftWordNtoI32 (shift_of_type ty)
+    | ty ->
+       shift_leftWordNtoI32 (shift_of_type ty) ^^
+       compile_bitor_const (tag_of_type ty)
 
   (* Makes sure that the word representation invariant is restored. *)
   let sanitize_word_result = function
@@ -9541,7 +9551,8 @@ and compile_prim_invocation (env : E.t) ae p es at =
     | (Nat|Int), (Nat8|Nat16|Int8|Int16) ->
       SR.Vanilla,
       compile_exp_vanilla env ae e ^^
-      Prim.prim_intToWordNShifted env (TaggedSmallWord.shift_of_type t2)
+      Prim.prim_intToWordNShifted env (TaggedSmallWord.shift_of_type t2) ^^
+      compile_bitor_const (TaggedSmallWord.tag_of_type t2)
 
     | (Nat|Int), (Nat32|Int32) ->
       SR.UnboxedWord32,
@@ -9554,11 +9565,13 @@ and compile_prim_invocation (env : E.t) ae p es at =
       BigNum.truncate_to_word64 env
 
     | Nat64, Int64 | Int64, Nat64
-    | Nat32, Int32 | Int32, Nat32
+    | Nat32, Int32 | Int32, Nat32 ->
+      compile_exp env ae e
     | Nat16, Int16 | Int16, Nat16
     | Nat8, Int8 | Int8, Nat8 ->
-      compile_exp env ae e
-
+      SR.UnboxedWord32,
+      compile_exp_vanilla env ae e ^^
+      TaggedSmallWord.lsb_adjust t1
     | Char, Nat32 ->
       SR.UnboxedWord32,
       compile_exp_vanilla env ae e ^^
