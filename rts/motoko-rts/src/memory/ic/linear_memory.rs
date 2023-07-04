@@ -8,8 +8,8 @@ pub(crate) static mut RECLAIMED: Bytes<u64> = Bytes(0);
 
 // Heap pointer (skewed)
 extern "C" {
-    pub(crate) fn setHP(new_hp: u32);
-    pub(crate) fn getHP() -> u32;
+    fn setHP(new_hp: u32);
+    fn getHP() -> u32;
 }
 
 pub(crate) unsafe fn set_hp_unskewed(new_hp: usize) {
