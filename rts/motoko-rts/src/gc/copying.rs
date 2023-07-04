@@ -42,7 +42,7 @@ unsafe fn copying_gc<M: Memory>(mem: &mut M) {
         |reclaimed| linear_memory::RECLAIMED += Bytes(u64::from(reclaimed.as_u32())),
     );
 
-    linear_memory::LAST_HP = linear_memory::get_hp_unskewed() as u32;
+    linear_memory::LAST_HP = linear_memory::get_hp_unskewed();
 }
 
 pub unsafe fn copying_gc_internal<
@@ -53,7 +53,7 @@ pub unsafe fn copying_gc_internal<
     NoteReclaimed: Fn(Bytes<u32>),
 >(
     mem: &mut M,
-    heap_base: u32,
+    heap_base: usize,
     get_hp: GetHp,
     mut set_hp: SetHp,
     static_roots: Value,

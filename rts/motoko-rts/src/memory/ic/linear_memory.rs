@@ -8,7 +8,7 @@ pub(crate) static mut RECLAIMED: Bytes<u64> = Bytes(0);
 
 // Heap pointer (skewed)
 extern "C" {
-    pub(crate) fn setHP(new_hp: u32); // usize????
+    pub(crate) fn setHP(new_hp: u32);
     pub(crate) fn getHP() -> u32;
 }
 
@@ -16,11 +16,11 @@ pub(crate) unsafe fn set_hp_unskewed(new_hp: usize){ setHP(new_hp as u32 - 1) }
 pub(crate) unsafe fn get_hp_unskewed() -> usize { getHP() as usize + 1 }
 
 /// Heap pointer after last GC
-pub(crate) static mut LAST_HP: u32 = 0;
+pub(crate) static mut LAST_HP: usize = 0;
 
 pub(crate) unsafe fn initialize() {
     LAST_HP = get_aligned_heap_base();
-    set_hp_unskewed(LAST_HP as usize);
+    set_hp_unskewed(LAST_HP);
 }
 
 #[no_mangle]
@@ -35,7 +35,7 @@ pub unsafe extern "C" fn get_total_allocations() -> Bytes<u64> {
 
 #[no_mangle]
 pub unsafe extern "C" fn get_heap_size() -> Bytes<u32> {
-    Bytes(get_hp_unskewed() as u32 - get_aligned_heap_base())
+    Bytes((get_hp_unskewed() - get_aligned_heap_base()) as u32)
 }
 
 impl Memory for IcMemory {
