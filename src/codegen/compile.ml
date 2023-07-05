@@ -2349,7 +2349,9 @@ module TaggedSmallWord = struct
   (* Makes sure that the word representation invariant is restored. *)
   let sanitize_word_result = function
     | Type.(Nat32|Int32) -> G.nop
-    | ty -> compile_bitand_const (mask_of_type ty)
+    | ty ->
+       compile_bitand_const (mask_of_type ty) ^^
+       compile_bitor_const (tag_of_type ty)
 
   (* Sets the number (according to the type's word invariant) of LSBs. *)
   let compile_word_padding = function
@@ -2473,7 +2475,7 @@ module TaggedSmallWord = struct
        (fun env get_n get_by ->
         let open Wasm.Values in
         let beside_adjust = compile_rotr_const (Int32.of_int (bits_of_type ty)) in
-        get_n ^^ get_n ^^ beside_adjust ^^ G.i (Binary (I32 I32Op.Or)) ^^
+        get_n ^^ compile_bitand_const (mask_of_type ty) ^^ get_n ^^ compile_bitand_const (mask_of_type ty) ^^ beside_adjust ^^ G.i (Binary (I32 I32Op.Or)) ^^
         get_by ^^ lsb_adjust ty ^^ clamp_shift_amount ty ^^ G.i (Binary (I32 I32Op.Rotl)) ^^
         sanitize_word_result ty
        )
@@ -2483,7 +2485,7 @@ module TaggedSmallWord = struct
        (fun env get_n get_by ->
         let open Wasm.Values in
         let beside_adjust = compile_rotl_const (Int32.of_int (bits_of_type ty)) in
-        get_n ^^ get_n ^^ beside_adjust ^^ G.i (Binary (I32 I32Op.Or)) ^^
+        get_n ^^compile_bitand_const (mask_of_type ty) ^^ get_n ^^ compile_bitand_const (mask_of_type ty) ^^ beside_adjust ^^ G.i (Binary (I32 I32Op.Or)) ^^
         get_by ^^ lsb_adjust ty ^^ clamp_shift_amount ty ^^ G.i (Binary (I32 I32Op.Rotr)) ^^
         sanitize_word_result ty
        )
