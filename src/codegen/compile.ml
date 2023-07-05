@@ -143,7 +143,7 @@ module Const = struct
   *)
 
   type v =
-    | Fun of (unit -> int64) * fun_rhs (* function pointer calculated upon first use *)
+    | Fun of (unit -> int32) * fun_rhs (* function pointer calculated upon first use *)
     | Message of int64 (* anonymous message, only temporary *)
     | Obj of (string * t) list
     | Unit
@@ -259,7 +259,7 @@ module E = struct
   module StringEnv = Env.Make(String)
   module LabSet = Set.Make(String)
 
-  module FunEnv = Env.Make(Int64)
+  module FunEnv = Env.Make(Int32)
   type local_names = (int32 * string) list (* For the debug section: Names of locals *)
   type func_with_names = func * local_names
   type lazy_function = (int32, func_with_names) Lib.AllocOnUse.t
@@ -554,16 +554,14 @@ module E = struct
     env.static_memory := !(env.static_memory) @ [ (ptr, data) ];
     Int64.(add ptr ptr_skew) (* Return a skewed pointer *)
 
-  let add_fun_ptr (env : t) fi : int64 =
-    let fp32 = match FunEnv.find_opt fi !(env.func_ptrs) with
+  let add_fun_ptr (env : t) fi : int32 =
+    match FunEnv.find_opt fi !(env.func_ptrs) with
     | Some fp -> fp
     | None ->
       let fp = !(env.end_of_table) in
       env.func_ptrs := FunEnv.add fi fp !(env.func_ptrs);
       env.end_of_table := Int32.add !(env.end_of_table) 1l;
       fp
-    in
-    Wasm.I64_convert.extend_i32_u fp32
 
   let get_elems env =
     FunEnv.bindings !(env.func_ptrs)
@@ -2061,7 +2059,7 @@ module Closure = struct
 
   let static_closure env fi : int64 =
     Tagged.shared_static_obj env Tagged.Closure StaticBytes.[
-      I64 (E.add_fun_ptr env fi);
+      I64 (Wasm.I64_convert.extend_i32_u (E.add_fun_ptr env fi));
       I64 0L
     ]
 
@@ -7845,9 +7843,8 @@ module Internals = struct
   let call_prelude_function env ae var =
     match VarEnv.lookup_var ae var with
     | Some (VarEnv.Const (_, Const.Fun (mk_fi, _))) ->
-      let function_index = Int64.to_int32 (mk_fi()) in
        compile_unboxed_zero ^^ (* A dummy closure *)
-       G.i (Call (nr function_index))
+       G.i (Call (nr (mk_fi())))
     | _ -> assert false
 
   let add_cycles env ae = call_prelude_function env ae "@add_cycles"
@@ -7942,7 +7939,7 @@ module FuncDec = struct
     end else begin
       assert (control = Type.Returns);
       let lf = E.make_lazy_function pre_env name in
-      ( Const.t_of_v (Const.Fun ((fun () -> Wasm.I64_convert.extend_i32_u (Lib.AllocOnUse.use lf)), fun_rhs)), fun env ae ->
+      ( Const.t_of_v (Const.Fun ((fun () -> Lib.AllocOnUse.use lf), fun_rhs)), fun env ae ->
         let restore_no_env _env ae _ = ae, unmodified in
         Lib.AllocOnUse.def lf (lazy (compile_local_function env ae restore_no_env args mk_body ret_tys at))
       )
@@ -7983,7 +7980,7 @@ module FuncDec = struct
         then compile_local_function env ae restore_env args mk_body ret_tys at
         else assert false (* no first class shared functions yet *) in
 
-      let fi = Wasm.I64_convert.extend_i32_u (E.add_fun env name f) in
+      let fi = E.add_fun env name f in
 
       let code =
         (* Allocate a heap object for the closure *)
@@ -7992,7 +7989,7 @@ module FuncDec = struct
 
         (* Store the function pointer number: *)
         get_clos ^^
-        compile_unboxed_const (E.add_fun_ptr env fi) ^^
+        compile_unboxed_const (Wasm.I64_convert.extend_i32_u (E.add_fun_ptr env fi)) ^^
         Tagged.store_field env (Closure.funptr_field env) ^^
 
         (* Store the length *)
@@ -8112,9 +8109,9 @@ module FuncDec = struct
       set_cb_index ^^
 
       (* return arguments for the ic.call *)
-      compile_unboxed_const (E.add_fun_ptr env (Wasm.I64_convert.extend_i32_s (E.built_in env reply_name))) ^^
+      compile_unboxed_const (Wasm.I64_convert.extend_i32_u (E.add_fun_ptr env (E.built_in env reply_name))) ^^
       get_cb_index ^^
-      compile_unboxed_const (E.add_fun_ptr env (Wasm.I64_convert.extend_i32_s (E.built_in env reject_name))) ^^
+      compile_unboxed_const (Wasm.I64_convert.extend_i32_u (E.add_fun_ptr env (E.built_in env reject_name))) ^^
       get_cb_index
 
   let closures_to_reply_reject_callbacks env ts =
@@ -8135,7 +8132,7 @@ module FuncDec = struct
         G.i (LocalGet (nr 0l)) ^^
         ContinuationTable.recall env ^^
         G.i Drop);
-    compile_unboxed_const (E.add_fun_ptr env (Wasm.I64_convert.extend_i32_s (E.built_in env name)))
+    compile_unboxed_const (Wasm.I64_convert.extend_i32_u (E.add_fun_ptr env (E.built_in env name)))
 
   let ic_call_threaded env purpose get_meth_pair push_continuations
     add_data add_cycles =
@@ -9293,8 +9290,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
          code1 ^^
          compile_unboxed_zero ^^ (* A dummy closure *)
          compile_exp_as env ae (StackRep.of_arity n_args) e2 ^^ (* the args *)
-         let function_index = Int64.to_int32 (mk_fi()) in
-         G.i (Call (nr function_index)) ^^
+         G.i (Call (nr (mk_fi()))) ^^
          FakeMultiVal.load env (Lib.List.make return_arity I64Type)
       | _, Type.Local ->
          let (set_clos, get_clos) = new_local env "clos" in
@@ -11055,7 +11051,7 @@ and conclude_module env set_serialization_globals start_fi_o =
   let elems = List.map (fun (fi, fp) -> nr {
     index = nr 0l;
     offset = nr (G.to_instr_list (compile_const_32 fp));
-    init = [ nr (Int64.to_int32 fi) ];
+    init = [ nr fi ];
     }) (E.get_elems env) in
 
   let table_sz = E.get_end_of_table env in
