@@ -5834,7 +5834,7 @@ module MakeSerialization (Strm : Stream) = struct
           (* TODO: Support serialization beyond 32-bit *)
           get_offset ^^ compile_unboxed_const 0xffff_ffffL ^^
           G.i (Compare (Wasm_exts.Values.I32 I32Op.LeU)) ^^
-          E.else_trap_with env "64-bit addresses not yet supported during serialization" ^^
+          E.else_trap_with env "64-bit offsets not yet supported during serialization" ^^
           (* Write the offset to the output buffer *)
           write_word_32 env get_data_buf get_offset
         end
@@ -6925,7 +6925,7 @@ deserializing values of reference types (actors and functions).
 
 The subtype test is performed directly on the expected and actual
 candid type tables using RTS functions `idl_sub_buf_words`,
-`idl_sub_buf_init` and `idl_sub`.  One type table and vector of types
+`idl_sub_buf_init` and `idl_sub`. One type table and vector of types
 is generated statically from the list of statically known types
 encountered during code generation, the other is determined
 dynamically by, e.g. message payload. The latter will vary with
@@ -6954,7 +6954,7 @@ Currently, we only perform Candid subtype checks when decoding proper
 (not extended) Candid values. Extended values are required for
 stable variables only: we can omit the check, because compatibility
 should already be enforced by the static signature compatibility
-check.  We use the `null`-ness of the word buffer pointer to
+check. We use the `null`-ness of the word buffer pointer to
 dynamically determine whether to omit or perform Candid subtype checks.
 
 NB: Extending `idl_sub` to support extended, "stable" types (with mutable,
@@ -7105,7 +7105,7 @@ module Stabilization = struct
 
     let finalize_buffer _ = G.nop (* everything is outputted already *)
 
-    (* Returns a 32-bit unsigned int that is the number of bytes that would
+    (* Returns a 64-bit unsigned int that is the number of bytes that would
        have been written to stable memory if flushed. The difference
        of two such numbers will always be an exact byte distance. *)
     let absolute_offset env get_token =
