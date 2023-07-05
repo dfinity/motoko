@@ -2377,7 +2377,8 @@ module TaggedSmallWord = struct
     in lsb_adjust ty ^^ set_b ^^ lsb_adjust ty ^^
        compile_unboxed_one ^^ get_b ^^ clamp_shift_amount ty ^^
        G.i (Binary (Wasm.Values.I32 I32Op.Shl)) ^^
-       G.i (Binary (Wasm.Values.I32 I32Op.And))
+       G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
+       msb_adjust ty
 
   (* Code points occupy 21 bits, so can always be tagged scalars *)
   let untag_codepoint = compile_shrU_const 8l
@@ -8737,8 +8738,10 @@ let compile_unop env t op =
      compile_xor64_const (-1L)
   | NotOp, Type.(Prim (Nat8|Nat16|Nat32|Int8|Int16|Int32 as ty)) ->
      StackRep.of_type t, StackRep.of_type t,
+     compile_bitand_const (TaggedSmallWord.mask_of_type ty) ^^
      compile_unboxed_const (TaggedSmallWord.mask_of_type ty) ^^
-     G.i (Binary (Wasm.Values.I32 I32Op.Xor))
+     G.i (Binary (Wasm.Values.I32 I32Op.Xor)) ^^
+     compile_bitor_const (TaggedSmallWord.tag_of_type ty)
   | _ ->
     todo "compile_unop"
       (Wasm.Sexpr.Node ("BinOp", [ Arrange_ops.unop op ]))
@@ -9632,9 +9635,10 @@ and compile_prim_invocation (env : E.t) ae p es at =
       compile_exp env ae e
     | Nat16, Int16 | Int16, Nat16
     | Nat8, Int8 | Int8, Nat8 ->
-       SR.UnboxedWord32, (* FISHY!*)
+      SR.Vanilla,
       compile_exp_vanilla env ae e ^^
-      TaggedSmallWord.lsb_adjust t1
+      TaggedSmallWord.lsb_adjust t1 ^^ (* optimize? *)
+      TaggedSmallWord.msb_adjust t2
     | Char, Nat32 ->
       SR.UnboxedWord32,
       compile_exp_vanilla env ae e ^^
@@ -10067,11 +10071,13 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | OtherPrim "popcnt8", [e] ->
     SR.Vanilla,
     compile_exp_vanilla env ae e ^^
+    TaggedSmallWord.lsb_adjust Type.Nat8 ^^
     G.i (Unary (Wasm.Values.I32 I32Op.Popcnt)) ^^
     TaggedSmallWord.msb_adjust Type.Nat8
   | OtherPrim "popcnt16", [e] ->
     SR.Vanilla,
     compile_exp_vanilla env ae e ^^
+    TaggedSmallWord.lsb_adjust Type.Nat16 ^^
     G.i (Unary (Wasm.Values.I32 I32Op.Popcnt)) ^^
     TaggedSmallWord.msb_adjust Type.Nat16
   | OtherPrim "popcnt32", [e] ->
