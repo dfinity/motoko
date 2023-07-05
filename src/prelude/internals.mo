@@ -95,7 +95,7 @@ func @text_chars(xs : Text) : () -> @Iter<Char> =
         ?((prim "text_iter_next" : TextIter -> Char) i)
     };
   };
-
+*/
 
 // Internal helper functions for the show translation
 
@@ -146,6 +146,7 @@ func @text_of_Nat(x : Nat) : Text {
   @text_of_num(x, 10, 3, @digits_dec);
 };
 
+/*
 func @text_of_Int(x : Int) : Text {
   if (x == 0) "0" else (if (x < 0) "-" else "+") #
   @text_of_Nat((prim "abs" : Int -> Nat) x)

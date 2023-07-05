@@ -7423,7 +7423,7 @@ module StackRep = struct
     | Vanilla -> [I64Type]
     | UnboxedWord64 -> [I64Type]
     | UnboxedFloat64 -> [F64Type]
-    | UnboxedTuple n -> Lib.List.make n I32Type
+    | UnboxedTuple n -> Lib.List.make n I64Type
     | Const _ -> []
     | Unreachable -> []
 
@@ -7848,9 +7848,9 @@ module FuncDec = struct
    Parameter `captured` should contain the, well, captured local variables that
    the function will find in the closure. *)
   let compile_local_function outer_env outer_ae restore_env args mk_body ret_tys at =
-    let arg_names = List.map (fun a -> a.it, I32Type) args in
+    let arg_names = List.map (fun a -> a.it, I64Type) args in
     let return_arity = List.length ret_tys in
-    let retty = Lib.List.make return_arity I32Type in
+    let retty = Lib.List.make return_arity I64Type in
     let ae0 = VarEnv.mk_fun_ae outer_ae in
     Func.of_body outer_env (["clos", I64Type] @ arg_names) retty (fun env -> G.with_region at (
       let get_closure = G.i (LocalGet (nr 0l)) ^^ Tagged.load_forwarding_pointer env in
