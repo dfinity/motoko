@@ -1,5 +1,7 @@
 # Motoko compiler changelog
 
+## 0.9.5 (2023-07-05)
+
 * motoko (`moc`)
 
   * Allow identifiers in `or`-patterns (#3807).
@@ -14,6 +16,11 @@
   * Performance improvement: improved cycle consumption allocating fixed-size objects (#4064).
     Benchmarks indicate up to 10% less cycles burned for allocation-heavy code,
     and 2.5% savings in realistic applications.
+
+  * Administrative: binary build artefacts are now available according to standard naming
+    conventions (thanks to EnzoPlayer0ne) (#3997).
+    Please consider transitioning to downloading binaries following the new scheme,
+    as legacy naming will be discontinued at some point in the future.
 
 ## 0.9.4 (2023-07-01)
 
