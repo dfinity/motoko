@@ -107,8 +107,8 @@ let error_codes : (string * string option) list =
     "M0101", None; (* Switch with inconsistent branch types *)
     "M0102", None; (* Cannot infer type of wildcard *)
     "M0103", None; (* Cannot infer type of variable *)
-    (* "M0104", DEFUNCT; Pattern branches have incompatible types *)
-    "M0105", None; (* Variables are not allowed in pattern alternatives *)
+    (* "M0104" DEFUNCT Pattern branches have incompatible types *)
+    (* "M0105" DEFUNCT Variables are not allowed in pattern alternatives *)
     "M0106", None; (* Shared function cannot take a context pattern *)
     "M0107", None; (* Non-actor class cannot take a context pattern *)
     "M0108", None; (* Actor class cannot take a context pattern *)
@@ -192,4 +192,6 @@ let error_codes : (string * string option) list =
     "M0186", None; (* Send capability required (calling shared from composite) *)
     "M0187", None; (* Send capability required (calling composite from non-composite) *)
     "M0188", None; (* Send capability required (calling shared from query) *)
+    "M0189", None; (* Different set of bindings in pattern alternatives *)
+    "M0190", None; (* Types inconsistent for alternative pattern variables, losing information *)
   ]

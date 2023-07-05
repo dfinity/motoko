@@ -135,6 +135,14 @@ let error_in modes env at code fmt =
 
 let plural cs = if T.ConSet.cardinal cs = 1 then "" else "s"
 
+let warn_lossy_bind_type env at bind t1 t2 =
+  if not T.(sub t1 t2 || sub t2 t1) then
+    warn env at "M0190" "pattern variable %s has larger type%a\nbecause its types in the pattern alternatives are unrelated smaller types:\ntype in left pattern is%a\ntype in right pattern is%a"
+      bind
+      display_typ_expand (T.lub t1 t2)
+      display_typ_expand t1
+      display_typ_expand t2
+
 (* Currently unused *)
 let _warn_in modes env at code fmt =
   ignore (diag_in type_warning modes env at code fmt)
@@ -1904,9 +1912,10 @@ and infer_pat' env pat : T.typ * Scope.val_env =
         "pattern branches have incompatible types,\nleft consumes%a\nright consumes%a"
         display_typ_expand t1
         display_typ_expand t2;
-    if ve1 <> T.Env.empty || ve2 <> T.Env.empty then
-      error env pat.at "M0105" "variables are not allowed in pattern alternatives";
-    t, T.Env.empty*)
+    if T.Env.keys ve1 <> T.Env.keys ve2 then
+      error env pat.at "M0189" "different set of bindings in pattern alternatives";
+    if not env.pre then T.Env.(iter (fun k t1 -> warn_lossy_bind_type env pat.at k t1 (find k ve2))) ve1;
+    t, T.Env.merge (fun _ -> Lib.Option.map2 T.lub) ve1 ve2*)
   | AnnotP (pat1, typ) ->
     let t = check_typ env typ in
     t, check_pat env t pat1
@@ -2031,9 +2040,10 @@ and check_pat' env t pat : Scope.val_env =
   | AltP (pat1, pat2) ->
     let ve1 = check_pat env t pat1 in
     let ve2 = check_pat env t pat2 in
-    if ve1 <> T.Env.empty || ve2 <> T.Env.empty then
-      error env pat.at "M0105" "variables are not allowed in pattern alternatives";
-    T.Env.empty
+    if T.Env.keys ve1 <> T.Env.keys ve2 then
+      error env pat.at "M0189" "different set of bindings in pattern alternatives";
+    T.Env.(iter (fun k t1 -> warn_lossy_bind_type env pat.at k t1 (find k ve2))) ve1;
+    T.Env.merge (fun _ -> Lib.Option.map2 T.lub) ve1 ve2
   | AnnotP (pat1, typ) ->
     let t' = check_typ env typ in
     if not (T.sub t t') then

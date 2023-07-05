@@ -1,5 +1,20 @@
 # Motoko compiler changelog
 
+* motoko (`moc`)
+
+  * Allow identifiers in `or`-patterns (#3807).
+    Bindings in alternatives must mention the same identifiers and have compatible types:
+    ``` Motoko
+    let verbose = switch result {
+      case (#ok) "All is good!";
+      case (#warning why or #error why) "There is some problem: " # why;
+    }
+    ```
+
+  * Performance improvement: improved cycle consumption allocating fixed-size objects (#4064).
+    Benchmarks indicate up to 10% less cycles burned for allocation-heavy code,
+    and 2.5% savings in realistic applications.
+
 ## 0.9.4 (2023-07-01)
 
 * motoko (`moc`)
