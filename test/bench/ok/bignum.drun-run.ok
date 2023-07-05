@@ -1,24 +1,6 @@
 ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
 ingress Completed: Reply: 0x4449444c0000
 debug.print: {cycles = 2_493_335; size = +59_652}
-debug.print: used:572, alloc: 573
-debug.print: used:3, alloc: 5
-debug.print: used:5, alloc: 7
-debug.print: used:9, alloc: 11
-debug.print: used:18, alloc: 19
-debug.print: used:36, alloc: 37
-debug.print: used:72, alloc: 73
-debug.print: used:143, alloc: 145
-debug.print: used:286, alloc: 287
 ingress Completed: Reply: 0x4449444c0000
 debug.print: {cycles = 103_041_496; size = +1_817_872}
-debug.print: used:3, alloc: 4
-debug.print: used:5, alloc: 6
-debug.print: used:9, alloc: 10
-debug.print: used:18, alloc: 19
-debug.print: used:36, alloc: 37
-debug.print: used:72, alloc: 73
-debug.print: used:143, alloc: 144
-debug.print: used:286, alloc: 287
-debug.print: used:572, alloc: 573
 ingress Completed: Reply: 0x4449444c0000
