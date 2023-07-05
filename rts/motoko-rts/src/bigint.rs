@@ -442,16 +442,16 @@ unsafe extern "C" fn bigint_rsh(a: Value, b: i32) -> Value {
 }
 
 #[no_mangle]
-unsafe extern "C" fn bigint_count_bits(a: Value) -> i32 {
-    mp_count_bits(a.as_bigint().mp_int_ptr())
+unsafe extern "C" fn bigint_count_bits(a: Value) -> usize {
+    mp_count_bits(a.as_bigint().mp_int_ptr()) as usize
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn bigint_leb128_size(a: Value) -> u32 {
+pub unsafe extern "C" fn bigint_leb128_size(a: Value) -> usize {
     if mp_iszero(a.as_bigint().mp_int_ptr()) {
         1
     } else {
-        (bigint_count_bits(a) as u32 + 6) / 7 // divide by 7, round up
+        (bigint_count_bits(a) + 6) / 7 // divide by 7, round up
     }
 }
 
@@ -490,20 +490,20 @@ pub unsafe extern "C" fn bigint_leb128_stream_encode(stream: *mut Stream, n: Val
 }
 
 #[no_mangle]
-unsafe extern "C" fn bigint_2complement_bits(n: Value) -> u32 {
+unsafe extern "C" fn bigint_2complement_bits(n: Value) -> usize {
     let mp_int = n.as_bigint().mp_int_ptr();
     if mp_isneg(mp_int) {
         let mut tmp: mp_int = core::mem::zeroed(); // or core::mem::uninitialized?
         check(mp_init_copy(&mut tmp, mp_int));
         check(mp_incr(&mut tmp));
-        1 + mp_count_bits(&tmp) as u32
+        1 + mp_count_bits(&tmp) as usize
     } else {
-        1 + mp_count_bits(mp_int) as u32
+        1 + mp_count_bits(mp_int) as usize
     }
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn bigint_sleb128_size(n: Value) -> u32 {
+pub unsafe extern "C" fn bigint_sleb128_size(n: Value) -> usize {
     (bigint_2complement_bits(n) + 6) / 7 // divide by 7, round up
 }
 

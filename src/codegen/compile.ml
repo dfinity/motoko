@@ -954,8 +954,8 @@ module RTS = struct
     E.add_func_import env "rts" "bigint_to_word64_trap_with" [I64Type; I64Type] [I64Type];
     E.add_func_import env "rts" "bigint_eq" [I64Type; I64Type] [I32Type];
     E.add_func_import env "rts" "bigint_isneg" [I64Type] [I32Type];
-    E.add_func_import env "rts" "bigint_count_bits" [I64Type] [I32Type];
-    E.add_func_import env "rts" "bigint_2complement_bits" [I64Type] [I32Type];
+    E.add_func_import env "rts" "bigint_count_bits" [I64Type] [I64Type];
+    E.add_func_import env "rts" "bigint_2complement_bits" [I64Type] [I64Type];
     E.add_func_import env "rts" "bigint_lt" [I64Type; I64Type] [I32Type];
     E.add_func_import env "rts" "bigint_gt" [I64Type; I64Type] [I32Type];
     E.add_func_import env "rts" "bigint_le" [I64Type; I64Type] [I32Type];
@@ -970,12 +970,12 @@ module RTS = struct
     E.add_func_import env "rts" "bigint_lsh" [I64Type; I32Type] [I64Type];
     E.add_func_import env "rts" "bigint_rsh" [I64Type; I32Type] [I64Type];
     E.add_func_import env "rts" "bigint_abs" [I64Type] [I64Type];
-    E.add_func_import env "rts" "bigint_leb128_size" [I64Type] [I32Type];
+    E.add_func_import env "rts" "bigint_leb128_size" [I64Type] [I64Type];
     E.add_func_import env "rts" "bigint_leb128_encode" [I64Type; I64Type] [];
     E.add_func_import env "rts" "bigint_leb128_stream_encode" [I64Type; I64Type] [];
     E.add_func_import env "rts" "bigint_leb128_decode" [I64Type] [I64Type];
     E.add_func_import env "rts" "bigint_leb128_decode_word64" [I64Type; I64Type; I64Type] [I64Type];
-    E.add_func_import env "rts" "bigint_sleb128_size" [I64Type] [I32Type];
+    E.add_func_import env "rts" "bigint_sleb128_size" [I64Type] [I64Type];
     E.add_func_import env "rts" "bigint_sleb128_encode" [I64Type; I64Type] [];
     E.add_func_import env "rts" "bigint_sleb128_stream_encode" [I64Type; I64Type] [];
     E.add_func_import env "rts" "bigint_sleb128_decode" [I64Type] [I64Type];
@@ -1433,6 +1433,7 @@ module BitTagged = struct
   (* Note: `true` is not handled here, needs specific check where needed. *)
   let if_tagged_scalar env retty is1 is2 =
     compile_bitand_const 0x1L ^^
+    compile_eq_const 0x1L ^^
     E.if_ env retty is2 is1
 
   (* With two bit-tagged pointers on the stack, decide
@@ -1443,6 +1444,7 @@ module BitTagged = struct
   let if_both_tagged_scalar env retty is1 is2 =
     G.i (Binary (Wasm_exts.Values.I64 I64Op.Or)) ^^
     compile_bitand_const 0x1L ^^
+    compile_eq_const 0x1L ^^
     E.if_ env retty is2 is1
 
   (* 64 bit numbers *)
@@ -1458,7 +1460,7 @@ module BitTagged = struct
 
   (* dynamic *)
   let if_can_tag_i64 env retty is1 is2 =
-    Func.share_code1 env "can_tag_i64" ("x", I64Type) [I64Type] (fun env get_x ->
+    Func.share_code1 env "can_tag_i64" ("x", I64Type) [I32Type] (fun env get_x ->
       (* checks that all but the low 62 bits are either all 0 or all 1 *)
       get_x ^^ compile_shl_const 1L ^^
       get_x ^^ G.i (Binary (Wasm_exts.Values.I64 I64Op.Xor)) ^^
