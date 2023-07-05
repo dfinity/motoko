@@ -1,5 +1,7 @@
 # Motoko compiler changelog
 
+  * Allow controllers to call `__motoko_stable_var_info` query endpoint (#4103).
+
 ## 0.9.5 (2023-07-05)
 
 * motoko (`moc`)
