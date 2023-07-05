@@ -8723,9 +8723,8 @@ let compile_unop env t op =
       compile_eq_const 0x80000000l ^^
       then_arithmetic_overflow env ^^
       compile_unboxed_zero ^^
-      get_n ^^ compile_bitand_const (TaggedSmallWord.mask_of_type p) ^^
+      get_n ^^ TaggedSmallWord.lsb_adjust p ^^
       G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
-      TaggedSmallWord.lsb_adjust p ^^
       TaggedSmallWord.msb_adjust p
     )
   | NegOp, Type.(Prim Float) ->
@@ -9017,7 +9016,7 @@ let compile_binop env t op : SR.t * SR.t * G.t =
 
   | Type.Prim Type.(Nat32|Int32),             WAddOp -> G.i (Binary (Wasm.Values.I32 I32Op.Add))
   | Type.Prim (Type.(Nat8|Nat16|Int8|Int16) as ty),  WAddOp ->
-    Func.share_code2 env (prim_fun_name ty "add")
+    Func.share_code2 env (prim_fun_name ty "wadd")
       (("a", I32Type), ("b", I32Type)) [I32Type]
       (fun env get_a get_b ->
         get_a ^^ TaggedSmallWord.lsb_adjust ty ^^
@@ -9071,9 +9070,11 @@ let compile_binop env t op : SR.t * SR.t * G.t =
       (("a", I32Type), ("b", I32Type)) [I32Type]
       (fun env get_a get_b ->
         let (set_res, get_res) = new_local env "res" in
-        get_a ^^ get_b ^^ G.i (Binary (Wasm.Values.I32 I32Op.DivS)) ^^
+        get_a ^^ TaggedSmallWord.lsb_adjust ty ^^
+        get_b ^^  TaggedSmallWord.lsb_adjust ty ^^
+        G.i (Binary (Wasm.Values.I32 I32Op.DivS)) ^^
         TaggedSmallWord.msb_adjust ty ^^ set_res ^^
-        get_a ^^ compile_eq_const 0x80000000l ^^ (*FIX me, mask tag*)
+        get_a ^^ compile_bitand_const (TaggedSmallWord.mask_of_type ty) ^^ compile_eq_const 0x80000000l ^^
         E.if_ env (StackRep.to_block_type env SR.UnboxedWord32)
           begin
             get_b ^^ TaggedSmallWord.lsb_adjust ty ^^ compile_eq_const (-1l) ^^
