@@ -933,7 +933,7 @@ module RTS = struct
   let system_imports env =
     E.add_func_import env "rts" "memcmp" [I64Type; I64Type; I64Type] [I32Type];
     E.add_func_import env "rts" "version" [] [I64Type];
-    E.add_func_import env "rts" "parse_idl_header" [I64Type; I64Type; I64Type; I64Type; I64Type] [];
+    E.add_func_import env "rts" "parse_idl_header" [I32Type; I64Type; I64Type; I64Type; I64Type] [];
     E.add_func_import env "rts" "idl_sub_buf_words" [I64Type; I64Type] [I64Type];
     E.add_func_import env "rts" "idl_sub_buf_init" [I64Type; I64Type; I64Type] [];
     E.add_func_import env "rts" "idl_sub"
@@ -980,8 +980,8 @@ module RTS = struct
     E.add_func_import env "rts" "bigint_sleb128_stream_encode" [I64Type; I64Type] [];
     E.add_func_import env "rts" "bigint_sleb128_decode" [I64Type] [I64Type];
     E.add_func_import env "rts" "bigint_sleb128_decode_word64" [I64Type; I64Type; I64Type] [I64Type];
-    E.add_func_import env "rts" "leb128_encode" [I32Type; I32Type] [];
-    E.add_func_import env "rts" "sleb128_encode" [I32Type; I32Type] [];
+    E.add_func_import env "rts" "leb128_encode" [I32Type; I64Type] [];
+    E.add_func_import env "rts" "sleb128_encode" [I32Type; I64Type] [];
     E.add_func_import env "rts" "utf8_valid" [I64Type; I64Type] [I32Type];
     E.add_func_import env "rts" "utf8_validate" [I64Type; I64Type] [];
     E.add_func_import env "rts" "skip_leb128" [I64Type] [];
@@ -995,7 +995,7 @@ module RTS = struct
     E.add_func_import env "rts" "continuation_table_size" [] [I64Type];
     E.add_func_import env "rts" "blob_of_text" [I64Type] [I64Type];
     E.add_func_import env "rts" "text_compare" [I64Type; I64Type] [I32Type];
-    E.add_func_import env "rts" "text_concat" [I64Type; I64Type] [I32Type];
+    E.add_func_import env "rts" "text_concat" [I64Type; I64Type] [I64Type];
     E.add_func_import env "rts" "text_iter_done" [I64Type] [I64Type];
     E.add_func_import env "rts" "text_iter" [I64Type] [I64Type];
     E.add_func_import env "rts" "text_iter_next" [I64Type] [I32Type];
@@ -1021,13 +1021,13 @@ module RTS = struct
     E.add_func_import env "rts" "exp" [F64Type] [F64Type]; (* musl *)
     E.add_func_import env "rts" "log" [F64Type] [F64Type]; (* musl *)
     E.add_func_import env "rts" "fmod" [F64Type; F64Type] [F64Type]; (* remainder, musl *)
-    E.add_func_import env "rts" "float_fmt" [F64Type; I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "float_fmt" [F64Type; I32Type; I32Type] [I64Type];
     E.add_func_import env "rts" "char_to_upper" [I32Type] [I32Type];
     E.add_func_import env "rts" "char_to_lower" [I32Type] [I32Type];
-    E.add_func_import env "rts" "char_is_whitespace" [I32Type] [I32Type];
-    E.add_func_import env "rts" "char_is_lowercase" [I32Type] [I32Type];
-    E.add_func_import env "rts" "char_is_uppercase" [I32Type] [I32Type];
-    E.add_func_import env "rts" "char_is_alphabetic" [I32Type] [I32Type];
+    E.add_func_import env "rts" "char_is_whitespace" [I32Type] [I64Type];
+    E.add_func_import env "rts" "char_is_lowercase" [I32Type] [I64Type];
+    E.add_func_import env "rts" "char_is_uppercase" [I32Type] [I64Type];
+    E.add_func_import env "rts" "char_is_alphabetic" [I32Type] [I64Type];
     E.add_func_import env "rts" "get_max_live_size" [] [I64Type];
     E.add_func_import env "rts" "get_reclaimed" [] [I64Type];
     E.add_func_import env "rts" "alloc_words" [I64Type] [I64Type];
