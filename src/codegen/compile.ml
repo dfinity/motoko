@@ -8716,15 +8716,17 @@ let compile_unop env t op =
         get_n ^^
         G.i (Binary (Wasm.Values.I64 I64Op.Sub))
       )
-  | NegOp, Type.(Prim (Int8 | Int16 | Int32)) ->
+  | NegOp, Type.(Prim ((Int8 | Int16 | Int32) as p)) ->
     StackRep.of_type t, StackRep.of_type t,
     Func.share_code1 env "neg32_trap" ("n", I32Type) [I32Type] (fun env get_n ->
-      get_n ^^
+      get_n ^^ compile_bitand_const (TaggedSmallWord.mask_of_type p) ^^
       compile_eq_const 0x80000000l ^^
       then_arithmetic_overflow env ^^
       compile_unboxed_zero ^^
-      get_n ^^
-      G.i (Binary (Wasm.Values.I32 I32Op.Sub))
+      get_n ^^ compile_bitand_const (TaggedSmallWord.mask_of_type p) ^^
+      G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
+      TaggedSmallWord.lsb_adjust p ^^
+      TaggedSmallWord.msb_adjust p
     )
   | NegOp, Type.(Prim Float) ->
     SR.UnboxedFloat64, SR.UnboxedFloat64,
@@ -9071,7 +9073,7 @@ let compile_binop env t op : SR.t * SR.t * G.t =
         let (set_res, get_res) = new_local env "res" in
         get_a ^^ get_b ^^ G.i (Binary (Wasm.Values.I32 I32Op.DivS)) ^^
         TaggedSmallWord.msb_adjust ty ^^ set_res ^^
-        get_a ^^ compile_eq_const 0x80000000l ^^
+        get_a ^^ compile_eq_const 0x80000000l ^^ (*FIX me, mask tag*)
         E.if_ env (StackRep.to_block_type env SR.UnboxedWord32)
           begin
             get_b ^^ TaggedSmallWord.lsb_adjust ty ^^ compile_eq_const (-1l) ^^
@@ -9303,9 +9305,23 @@ let compile_comparison env t op =
   match t with
     | Nat | Int -> BigNum.compile_relop env bigintop
     | Nat64 -> G.i (Compare (Wasm.Values.I64 u64op))
-    | Nat8 | Nat16 | Nat32 | Char -> G.i (Compare (Wasm.Values.I32 u32op))
+    | Nat32 | Char -> G.i (Compare (Wasm.Values.I32 u32op))
+    | Nat8 | Nat16 ->
+      (* optimize to previous case? *)
+      let (set_i, get_i) = new_local env "val" in
+      let (set_j, get_j) = new_local env "val" in
+      TaggedSmallWord.lsb_adjust t ^^ set_j ^^
+      TaggedSmallWord.lsb_adjust t ^^ set_i ^^
+      get_i ^^ get_j ^^ G.i (Compare (Wasm.Values.I32 u32op))
     | Int64 -> G.i (Compare (Wasm.Values.I64 s64op))
-    | Int8 | Int16 | Int32 -> G.i (Compare (Wasm.Values.I32 s32op))
+    | Int32 -> G.i (Compare (Wasm.Values.I32 s32op))
+    | Int8 | Int16  ->
+      (*TODO: share code? *)
+      let (set_i, get_i) = new_local env "val" in
+      let (set_j, get_j) = new_local env "val" in
+      TaggedSmallWord.lsb_adjust t ^^ set_j ^^
+      TaggedSmallWord.lsb_adjust t ^^ set_i ^^
+      get_i ^^ get_j ^^ G.i (Compare (Wasm.Values.I32 s32op))
     | _ -> todo_trap env "compile_comparison" (Arrange_type.prim t)
 
 let compile_relop env t op =
@@ -9613,7 +9629,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
       compile_exp env ae e
     | Nat16, Int16 | Int16, Nat16
     | Nat8, Int8 | Int8, Nat8 ->
-      SR.UnboxedWord32,
+       SR.UnboxedWord32, (* FISHY!*)
       compile_exp_vanilla env ae e ^^
       TaggedSmallWord.lsb_adjust t1
     | Char, Nat32 ->
