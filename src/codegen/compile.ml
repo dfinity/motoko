@@ -668,20 +668,15 @@ let compile_op32_const op i =
     compile_const_32 i ^^
     G.i (Binary (Wasm_exts.Values.I32 op))
 let compile_add32_const = compile_op32_const I32Op.Add
-let compile_sub32_const = compile_op32_const I32Op.Sub
-let compile_mul32_const = compile_op32_const I32Op.Mul
+let _compile_sub32_const = compile_op32_const I32Op.Sub
+let _compile_mul32_const = compile_op32_const I32Op.Mul
 let compile_divU32_const = compile_op32_const I32Op.DivU
 let compile_shrU32_const = function
   | 0l -> G.nop | n -> compile_op32_const I32Op.ShrU n
-let compile_shrS32_const = function
+let _compile_shrS32_const = function
   | 0l -> G.nop | n -> compile_op32_const I32Op.ShrS n
 let compile_shl32_const = function
   | 0l -> G.nop | n -> compile_op32_const I32Op.Shl n
-let compile_bitand32_const = compile_op32_const I32Op.And
-let _compile_bitor32_const = function
-  | 0l -> G.nop | n -> compile_op32_const I32Op.Or n
-let compile_xor32_const = function
-  | 0l -> G.nop | n -> compile_op32_const I32Op.Xor n
 let compile_eq32_const i =
   compile_const_32 i ^^
   G.i (Compare (Wasm_exts.Values.I32 I32Op.Eq))
@@ -1146,16 +1141,6 @@ module Heap = struct
   let store_field (i : int64) : G.t =
     let offset = Int64.(add (mul word_size i) ptr_unskew) in
     G.i (Store {ty = I64Type; align = 3; offset; sz = None})
-
-  (* 32-bit integer access functions *)
-
-  let load_field32 (i : int64) : G.t =
-    let offset = Int64.(add (mul word_size i) ptr_unskew) in
-    G.i (Load {ty = I32Type; align = 2; offset; sz = None})
-
-  let store_field32 (i : int64) : G.t =
-    let offset = Int64.(add (mul word_size i) ptr_unskew) in
-    G.i (Store {ty = I32Type; align = 2; offset; sz = None})
 
   (* Or even as a single 64 bit float *)
 
@@ -1679,14 +1664,6 @@ module Tagged = struct
   let load_field_unskewed env index =
     (if !Flags.sanity then check_forwarding env true else G.nop) ^^
     Heap.load_field_unskewed index
-
-  let load_field32 env index =
-    (if !Flags.sanity then check_forwarding env false else G.nop) ^^
-    Heap.load_field32 index
-
-  let store_field32 env index =
-    (if !Flags.sanity then check_forwarding_for_store env I32Type else G.nop) ^^
-    Heap.store_field32 index
 
   let load_field_float64 env index =
     (if !Flags.sanity then check_forwarding env false else G.nop) ^^
@@ -8544,13 +8521,6 @@ module AllocHow = struct
 end (* AllocHow *)
 
 (* The actual compiler code that looks at the AST *)
-
-(* wraps a bigint in range [0…2^32-1] into range [-2^31…2^31-1] *)
-let nat32_to_int32 n =
-  let open Big_int in
-  if ge_big_int n (power_int_positive_int 2 31)
-  then sub_big_int n (power_int_positive_int 2 32)
-  else n
 
 (* wraps a bigint in range [0…2^64-1] into range [-2^63…2^63-1] *)
 let nat64_to_int64 n =
