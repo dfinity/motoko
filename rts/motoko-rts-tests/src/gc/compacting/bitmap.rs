@@ -67,11 +67,7 @@ fn test_set_get<M: Memory>(mem: &mut M, mut bits: Vec<usize>) -> Result<(), Stri
     }
 
     unsafe {
-        alloc_bitmap(
-            mem,
-            Bytes((*bits.iter().max().unwrap() + 1) * WORD_SIZE),
-            0,
-        );
+        alloc_bitmap(mem, Bytes((*bits.iter().max().unwrap() + 1) * WORD_SIZE), 0);
 
         for bit in &bits {
             set_bit(*bit);
@@ -109,10 +105,7 @@ fn test_set_get<M: Memory>(mem: &mut M, mut bits: Vec<usize>) -> Result<(), Stri
 
 fn test_bit_iter<M: Memory>(mem: &mut M, bits: HashSet<usize>) -> TestCaseResult {
     // If the max bit is N, the heap size is at least N+1 words
-    let heap_size = Words(
-        bits.iter().max().map(|max_bit| max_bit + 1).unwrap_or(0),
-    )
-    .to_bytes();
+    let heap_size = Words(bits.iter().max().map(|max_bit| max_bit + 1).unwrap_or(0)).to_bytes();
 
     unsafe {
         alloc_bitmap(mem, heap_size, 0);

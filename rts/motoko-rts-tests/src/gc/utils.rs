@@ -5,7 +5,7 @@ use motoko_rts_macros::*;
 
 /// A unique object index, used in heap descriptions.
 ///
-/// These are written as scalar values in object payloads, so they can be at most `usize::BITS - 1` bits. 
+/// These are written as scalar values in object payloads, so they can be at most `usize::BITS - 1` bits.
 /// Larger values will cause test failure in `make_scalar` below.
 pub type ObjectIdx = usize;
 

@@ -239,12 +239,14 @@ impl MotokoHeapInner {
         );
 
         const HEAP_ALIGNMENT: usize = usize::BITS as usize;
-        // The Worst-case unalignment is one word less than the intended heap alignment 
+        // The Worst-case unalignment is one word less than the intended heap alignment
         // (assuming that we have general word alignment). So we over-allocate `HEAP_ALIGNMENT - WORD_SIZE` bytes.
         let mut heap = vec![0u8; heap_size + HEAP_ALIGNMENT - WORD_SIZE];
 
         // Align the dynamic heap start.
-        let realign = (HEAP_ALIGNMENT - (heap.as_ptr() as usize + static_heap_size_bytes) % HEAP_ALIGNMENT) % HEAP_ALIGNMENT;
+        let realign = (HEAP_ALIGNMENT
+            - (heap.as_ptr() as usize + static_heap_size_bytes) % HEAP_ALIGNMENT)
+            % HEAP_ALIGNMENT;
         assert_eq!(realign % WORD_SIZE, 0);
 
         // Maps `ObjectIdx`s into their offsets in the heap
@@ -345,7 +347,8 @@ fn heap_size_for_gc(
                 let mark_bit_bytes = dynamic_heap_words.to_bytes();
 
                 // The bitmap implementation rounds up to word-alignment.
-                (((mark_bit_bytes.as_usize() + WORD_SIZE - 1) / WORD_SIZE) * WORD_SIZE) + size_of::<Blob>().to_bytes().as_usize()
+                (((mark_bit_bytes.as_usize() + WORD_SIZE - 1) / WORD_SIZE) * WORD_SIZE)
+                    + size_of::<Blob>().to_bytes().as_usize()
             };
             // In the worst case the entire heap will be pushed to the mark stack, but in tests
             // we limit the size
@@ -415,11 +418,7 @@ fn create_dynamic_heap(
             }
 
             // Store length: idx + refs
-            write_word(
-                dynamic_heap,
-                heap_offset,
-                refs.len() + 1,
-            );
+            write_word(dynamic_heap, heap_offset, refs.len() + 1);
             heap_offset += WORD_SIZE;
 
             // Store object value (idx)
@@ -450,10 +449,8 @@ fn create_dynamic_heap(
     let n_objects = refs.len();
     // fields+1 for the scalar field (idx)
     let n_fields: usize = refs.iter().map(|(_, fields)| fields.len() + 1).sum();
-    let continuation_table_offset = (size_of::<Array>() * n_objects)
-        .to_bytes()
-        .as_usize()
-        + n_fields * WORD_SIZE;
+    let continuation_table_offset =
+        (size_of::<Array>() * n_objects).to_bytes().as_usize() + n_fields * WORD_SIZE;
 
     {
         let mut heap_offset = continuation_table_offset;
@@ -536,11 +533,7 @@ fn create_static_heap(
             offset += WORD_SIZE;
         }
 
-        write_word(
-            heap,
-            offset,
-            make_pointer(root_address),
-        );
+        write_word(heap, offset, make_pointer(root_address));
         offset += WORD_SIZE;
 
         write_word(heap, root_addr_offset, mutbox_ptr);

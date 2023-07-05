@@ -250,7 +250,16 @@ unsafe fn test_large_size_scenario() {
     test_allocation_sizes(&[6 * WORD_SIZE, LARGE, LARGE, 9 * WORD_SIZE], 5);
     test_allocation_sizes(&[6 * WORD_SIZE, EXTRA_LARGE, 4 * WORD_SIZE], 3);
     test_allocation_sizes(&[6 * WORD_SIZE, EXTRA_LARGE, LARGE, 4 * WORD_SIZE], 6);
-    test_allocation_sizes(&[6 * WORD_SIZE, EXTRA_LARGE, 8 * WORD_SIZE, LARGE, 4 * WORD_SIZE], 6);
+    test_allocation_sizes(
+        &[
+            6 * WORD_SIZE,
+            EXTRA_LARGE,
+            8 * WORD_SIZE,
+            LARGE,
+            4 * WORD_SIZE,
+        ],
+        6,
+    );
 }
 
 unsafe fn test_allocation_sizes(sizes: &[usize], number_of_partitions: usize) {
@@ -410,9 +419,7 @@ impl PartitionedTestHeap {
 
 unsafe fn block_size(block: *const Tag) -> usize {
     match *block {
-        TAG_ARRAY => {
-            size_of::<Array>() + (block as *const Array).len() * WORD_SIZE
-        }
+        TAG_ARRAY => size_of::<Array>() + (block as *const Array).len() * WORD_SIZE,
         TAG_BLOB => size_of::<Blob>() + (block as *const Blob).len().as_usize(),
         _ => unimplemented!(),
     }
