@@ -2859,10 +2859,10 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     )
 
   let try_comp_unbox2 name fast slow env =
-    Func.share_code2 env name (("a", I64Type), ("b", I64Type)) [I64Type]
+    Func.share_code2 env name (("a", I64Type), ("b", I64Type)) [I32Type]
       (fun env get_a get_b ->
         get_a ^^ get_b ^^
-        BitTagged.if_both_tagged_scalar env [I64Type]
+        BitTagged.if_both_tagged_scalar env [I32Type]
           begin
             get_a ^^
             get_b ^^
@@ -2879,14 +2879,14 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
           end)
 
   let compile_eq env =
-    Func.share_code2 env "B_eq" (("a", I64Type), ("b", I64Type)) [I64Type]
+    Func.share_code2 env "B_eq" (("a", I64Type), ("b", I64Type)) [I32Type]
       (fun env get_a get_b ->
         get_a ^^ get_b ^^
         G.i (Compare (Wasm_exts.Values.I64 I64Op.Eq)) ^^
-        G.if1 I64Type
+        G.if1 I32Type
           (Bool.lit true)
           (get_a ^^ get_b ^^
-           BitTagged.if_both_tagged_scalar env [I64Type]
+           BitTagged.if_both_tagged_scalar env [I32Type]
              (Bool.lit false)
              begin
                get_a ^^ BitTagged.if_tagged_scalar env [I64Type]
