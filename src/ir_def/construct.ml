@@ -114,6 +114,7 @@ let primE prim es =
     | OtherPrim "array_len" -> T.nat
     | OtherPrim "blob_size" -> T.nat
     | OtherPrim "text_len" -> T.nat
+    | OtherPrim "is_controller" -> T.bool
     | _ -> assert false (* implement more as needed *)
   in
   let effs = List.map eff es in
