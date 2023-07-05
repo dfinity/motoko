@@ -8718,7 +8718,7 @@ let compile_unop env t op =
       )
   | NegOp, Type.(Prim ((Int8 | Int16 | Int32) as p)) ->
     StackRep.of_type t, StackRep.of_type t,
-    Func.share_code1 env "neg32_trap" ("n", I32Type) [I32Type] (fun env get_n ->
+    Func.share_code1 env (prim_fun_name p "neg32_trap") ("n", I32Type) [I32Type] (fun env get_n ->
       get_n ^^ compile_bitand_const (TaggedSmallWord.mask_of_type p) ^^
       compile_eq_const 0x80000000l ^^
       then_arithmetic_overflow env ^^
