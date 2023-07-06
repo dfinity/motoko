@@ -1,0 +1,106 @@
+issue1356.mo.mangled:39:11: error: CHECK: expected string not found in input
+// CHECK: i32.const 704643072
+          ^
+<stdin>:280:15: note: scanning from here
+ (func $match8 (type 4) (param $clos i32) (param $n i32) (result i32)
+              ^
+<stdin>:287:2: note: possible intended match here
+ i32.const 704643080
+ ^
+issue1356.mo.mangled:45:11: error: CHECK: expected string not found in input
+// CHECK: i32.const 2752512
+          ^
+<stdin>:303:16: note: scanning from here
+ (func $match16 (type 4) (param $clos i32) (param $n i32) (result i32)
+               ^
+<stdin>:310:2: note: possible intended match here
+ i32.const 2752528
+ ^
+
+Input file: <stdin>
+Check file: issue1356.mo.mangled
+
+-dump-input=help explains the following input dump.
+
+Input was:
+<<<<<<
+            .
+            .
+            .
+          275:  br 2 (;@1;) 
+          276:  end 
+          277:  end 
+          278:  unreachable 
+          279:  end) 
+          280:  (func $match8 (type 4) (param $clos i32) (param $n i32) (result i32) 
+check:39'0                   X~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ error: no match found
+          281:  (local $switch_in i32) 
+check:39'0     ~~~~~~~~~~~~~~~~~~~~~~~~
+          282:  local.get $n 
+check:39'0     ~~~~~~~~~~~~~~
+          283:  local.set $switch_in 
+check:39'0     ~~~~~~~~~~~~~~~~~~~~~~
+          284:  block (result i32) ;; label = @1 
+check:39'0     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+          285:  block (result i32) ;; label = @2 
+check:39'0     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+          286:  local.get $switch_in 
+check:39'0     ~~~~~~~~~~~~~~~~~~~~~~
+          287:  i32.const 704643080 
+check:39'0     ~~~~~~~~~~~~~~~~~~~~~
+check:39'1      ?                    possible intended match
+          288:  i32.ne 
+check:39'0     ~~~~~~~~
+          289:  if ;; label = @3 
+check:39'0     ~~~~~~~~~~~~~~~~~~
+          290:  i32.const 0 
+check:39'0     ~~~~~~~~~~~~~
+          291:  br 1 (;@2;) 
+check:39'0     ~~~~~~~~~~~~~
+          292:  end 
+check:39'0     ~~~~~
+            .
+            .
+            .
+          298:  i32.const 0 
+check:39'0     ~~~~~~~~~~~~~
+          299:  br 1 (;@1;) 
+check:39'0     ~~~~~~~~~~~~~
+          300:  end 
+check:39'0     ~~~~~
+          301:  unreachable 
+check:39'0     ~~~~~~~~~~~~~
+          302:  end) 
+check:39'0     ~~~~~~
+          303:  (func $match16 (type 4) (param $clos i32) (param $n i32) (result i32) 
+check:39'0     ~~~~~~~~~~~~~~~
+check:45'0                    X~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ error: no match found
+          304:  (local $switch_in i32) 
+check:45'0     ~~~~~~~~~~~~~~~~~~~~~~~~
+          305:  local.get $n 
+check:45'0     ~~~~~~~~~~~~~~
+          306:  local.set $switch_in 
+check:45'0     ~~~~~~~~~~~~~~~~~~~~~~
+          307:  block (result i32) ;; label = @1 
+check:45'0     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+          308:  block (result i32) ;; label = @2 
+check:45'0     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+          309:  local.get $switch_in 
+check:45'0     ~~~~~~~~~~~~~~~~~~~~~~
+          310:  i32.const 2752528 
+check:45'0     ~~~~~~~~~~~~~~~~~~~
+check:45'1      ?                  possible intended match
+          311:  i32.ne 
+check:45'0     ~~~~~~~~
+          312:  if ;; label = @3 
+check:45'0     ~~~~~~~~~~~~~~~~~~
+          313:  i32.const 0 
+check:45'0     ~~~~~~~~~~~~~
+          314:  br 1 (;@2;) 
+check:45'0     ~~~~~~~~~~~~~
+          315:  end 
+check:45'0     ~~~~~
+            .
+            .
+            .
+>>>>>>

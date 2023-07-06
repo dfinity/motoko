@@ -1,0 +1,46 @@
+words.mo.mangled:182:11: error: CHECK: expected string not found in input
+// CHECK: i32.const 299302912
+          ^
+<stdin>:605:23: note: scanning from here
+ call $checkpointDelta
+                      ^
+<stdin>:607:2: note: possible intended match here
+ i32.const 299302928
+ ^
+
+Input file: <stdin>
+Check file: words.mo.mangled
+
+-dump-input=help explains the following input dump.
+
+Input was:
+<<<<<<
+             .
+             .
+             .
+           600:  i32.const -642383856 
+           601:  i32.const 299302928 
+           602:  i32.sub 
+           603:  call $printN16ln 
+           604:  i32.const 0 
+           605:  call $checkpointDelta 
+check:182'0                           X error: no match found
+           606:  i32.const 0 
+check:182'0     ~~~~~~~~~~~~~
+           607:  i32.const 299302928 
+check:182'0     ~~~~~~~~~~~~~~~~~~~~~
+check:182'1      ?                    possible intended match
+           608:  i32.const 458768 
+check:182'0     ~~~~~~~~~~~~~~~~~~
+           609:  i32.const 16 
+check:182'0     ~~~~~~~~~~~~~~
+           610:  i32.shr_u 
+check:182'0     ~~~~~~~~~~~
+           611:  i32.mul 
+check:182'0     ~~~~~~~~~
+           612:  call $printN16ln 
+check:182'0     ~~~~~~~~~~~~~~~~~~
+             .
+             .
+             .
+>>>>>>
