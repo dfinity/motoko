@@ -1,5 +1,8 @@
 # Motoko compiler changelog
 
+  * Allow canister controllers to call the `__motoko_stable_var_info` query endpoint (#4103).
+    (Previously only self-queries were permitted.)
+
 ## 0.9.5 (2023-07-05)
 
 * motoko (`moc`)
