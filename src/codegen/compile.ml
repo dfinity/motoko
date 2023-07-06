@@ -2060,6 +2060,7 @@ module Closure = struct
     (* get the table index *)
     Tagged.load_forwarding_pointer env ^^
     Tagged.load_field env (funptr_field env) ^^
+    G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
     (* All done: Call! *)
     G.i (CallIndirect (nr ty)) ^^
     FakeMultiVal.load env (Lib.List.make n_res I64Type)
@@ -2279,15 +2280,15 @@ module TaggedSmallWord = struct
   (* Checks (n < 0xD800 || 0xE000 ≤ n ≤ 0x10FFFF),
      ensuring the codepoint range and the absence of surrogates. *)
   let check_and_tag_codepoint env =
-    Func.share_code1 env "Nat32->Char" ("n", I32Type) [I32Type] (fun env get_n ->
-      get_n ^^ compile_const_32 0xD800l ^^
-      G.i (Compare (Wasm_exts.Values.I32 I32Op.GeU)) ^^
-      get_n ^^ compile_const_32 0xE000l ^^
-      G.i (Compare (Wasm_exts.Values.I32 I32Op.LtU)) ^^
-      G.i (Binary (Wasm_exts.Values.I32 I32Op.And)) ^^
-      get_n ^^ compile_const_32 0x10FFFFl ^^
-      G.i (Compare (Wasm_exts.Values.I32 I32Op.GtU)) ^^
-      G.i (Binary (Wasm_exts.Values.I32 I32Op.Or)) ^^
+    Func.share_code1 env "Nat32->Char" ("n", I64Type) [I64Type] (fun env get_n ->
+      get_n ^^ compile_unboxed_const 0xD800L ^^
+      compile_comparison I64Op.GeU ^^
+      get_n ^^ compile_unboxed_const 0xE000L ^^
+      compile_comparison I64Op.LtU ^^
+      G.i (Binary (Wasm_exts.Values.I64 I64Op.And)) ^^
+      get_n ^^ compile_unboxed_const 0x10FFFFL ^^
+      compile_comparison I32Op.GtU ^^
+      G.i (Binary (Wasm_exts.Values.I64 I64Op.Or)) ^^
       E.then_trap_with env "codepoint out of range" ^^
       get_n ^^ tag_codepoint
     )
@@ -3777,6 +3778,7 @@ module Text = struct
     )
   let prim_showChar env =
     TaggedSmallWord.untag_codepoint ^^
+    G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
     E.call_import env "rts" "text_singleton"
   let to_blob env = E.call_import env "rts" "blob_of_text"
 
