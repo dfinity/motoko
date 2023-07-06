@@ -509,6 +509,7 @@ rec {
       run-deser  = test_subdir "run-deser"  [ deser ];
       perf       = perf_subdir "perf"       [ moc nixpkgs.drun ];
       bench      = perf_subdir "bench"      [ moc nixpkgs.drun ];
+      bench-opt  = perf_subdir "bench"      [ moc nixpkgs.drun ic-wasm ];
       viper      = test_subdir "viper"      [ moc nixpkgs.which nixpkgs.openjdk nixpkgs.z3 ];
       inherit qc lsp unit candid profiling-graphs coverage;
     }) // { recurseForDerivations = true; };
@@ -571,6 +572,14 @@ rec {
     mkdir -p $out/bin
     cp ${nixpkgs.llvm}/bin/FileCheck $out/bin
   '';
+
+  ic-wasm =
+    nixpkgs.rustPlatform.buildRustPackage {
+      name = "ic-wasm";
+      src = nixpkgs.sources.ic-wasm;
+      cargoSha256 = "sha256-iGCju0JG+jkysmDAeTfjNCYaSfg7N3Qqq8HpPlRHMgU=";
+      doCheck = false;
+    };
 
   # gitMinimal is used by nix/gitSource.nix; building it here warms the nix cache
   inherit (nixpkgs) gitMinimal;
