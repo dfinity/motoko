@@ -438,8 +438,9 @@ and export_footprint self_id expr =
   ([ letD (var v typ) (
        funcE v (Shared Query) Promises [bind1] [] [ret_typ] (
            (asyncE T.Fut bind2
-              (blockE [expD (assertE (primE (I.RelPrim (caller, Operator.EqOp))
-                                        [primE I.ICCallerPrim []; selfRefE caller]));
+              (blockE [expD (assertE (orE (primE (I.RelPrim (caller, Operator.EqOp))
+                                             [primE I.ICCallerPrim []; selfRefE caller])
+                                        (primE (I.OtherPrim "is_controller") [primE I.ICCallerPrim []])));
                        letD size (primE (I.ICStableSize expr.note.Note.typ) [expr])
                  ]
                  (newObjE T.Object
