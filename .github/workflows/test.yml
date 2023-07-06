@@ -116,7 +116,7 @@ jobs:
         name: ic-hs-test
     - name: nix-build
       run: |
-        nix-build --arg officialRelease true -A moc
+        nix-build --arg officialRelease true -A js
     # upload-artifact doesn't work for symlink dir
     # https://github.com/actions/upload-artifact/issues/92
     - run: echo "UPLOAD_PATH=$(readlink -f result)" >> $GITHUB_ENV
