@@ -38,7 +38,6 @@ module Types = {
   public type Principal = prim "Principal";
 };
 
-/* TODO: Reenable later in 64-bit support
 func abs(x : Int) : Nat { (prim "abs" : Int -> Nat) x };
 func shiftLeft(x : Nat, shift : Nat32) : Nat { (prim "lsh_Nat" : (Nat, Nat32) -> Nat) (x, shift) };
 func shiftRight(x : Nat, shift : Nat32) : Nat { (prim "rsh_Nat" : (Nat, Nat32) -> Nat) (x, shift) };
@@ -47,7 +46,6 @@ func shiftRight(x : Nat, shift : Nat32) : Nat { (prim "rsh_Nat" : (Nat, Nat32) -
 func idlHash(x : Text) : Nat32 { (prim "idlHash" : Text -> Nat32) x };
 
 // Printing
-*/
 
 func debugPrint(x : Text) { (prim "print" : Text -> ()) x };
 
@@ -231,7 +229,6 @@ func Array_init<T>(len : Nat,  x : T) : [var T] {
   (prim "Array.init" : <T>(Nat, T) -> [var T])<T>(len, x)
 };
 
-/* TODO: Reenable later in 64-bit support
 func Array_tabulate<T>(len : Nat,  gen : Nat -> T) : [T] {
   (prim "Array.tabulate" : <T>(Nat, Nat -> T) -> [T])<T>(len, gen)
 };
@@ -385,4 +382,3 @@ let call_raw = @call_raw;
 
 func performanceCounter(counter : Nat32) : Nat64 =
   (prim "performanceCounter" : (Nat32) -> Nat64) counter;
-*/
