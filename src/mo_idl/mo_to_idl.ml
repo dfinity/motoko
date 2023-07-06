@@ -55,8 +55,7 @@ module MakeState() = struct
       end
     | _ -> assert false
 
-  let prim p =
-    match p with
+  let prim = function
     | Null -> I.PrimT I.Null
     | Bool -> I.PrimT I.Bool
     | Nat -> I.PrimT I.Nat
