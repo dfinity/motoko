@@ -9023,12 +9023,11 @@ let compile_binop env t op : SR.t * SR.t * G.t =
   | Type.Prim (Type.(Nat8|Nat16|Int8|Int16) as ty),  WAddOp ->
     Func.share_code2 env (prim_fun_name ty "wadd")
       (("a", I32Type), ("b", I32Type)) [I32Type]
-      (fun env get_a get_b -> TaggedSmallWord.(
-        get_a ^^ compile_bitand_const (mask_of_type ty) ^^
-        get_b ^^ compile_bitand_const (mask_of_type ty) ^^
+      (fun env get_a get_b ->
+        get_a ^^ TaggedSmallWord.lsb_adjust ty ^^
+        get_b ^^ TaggedSmallWord.lsb_adjust ty ^^
         G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-        compile_bitor_const (mask_of_type ty)
-      ))
+        TaggedSmallWord.msb_adjust ty)
   | Type.(Prim Int32),                        AddOp -> compile_Int32_kernel env "add" I64Op.Add
   | Type.Prim Type.(Int8 | Int16 as ty),      AddOp -> compile_smallInt_kernel env ty "add" I32Op.Add
   | Type.(Prim Nat32),                        AddOp -> compile_Nat32_kernel env "add" I64Op.Add
