@@ -484,7 +484,7 @@ unsafe extern "C" fn find_field(
     typtbl: *mut *mut u8,
     tag: u32,
     n: *mut u8,
-) -> u32 {
+) -> bool {
     while *n > 0 {
         let last_p = (*tb).ptr;
         let this_tag = leb128_decode(tb);
@@ -494,15 +494,15 @@ unsafe extern "C" fn find_field(
             *n -= 1;
         } else if tag == this_tag {
             *n -= 1;
-            return 1;
+            return true;
         } else {
             // Rewind reading tag
             (*tb).ptr = last_p;
-            return 0;
+            return false;
         }
     }
 
-    0
+    false
 }
 
 #[no_mangle]

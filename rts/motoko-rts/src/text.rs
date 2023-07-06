@@ -315,7 +315,7 @@ unsafe fn text_get_range(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn text_compare(s1: Value, s2: Value) -> i32 {
+pub unsafe extern "C" fn text_compare(s1: Value, s2: Value) -> isize {
     let n1 = text_size(s1);
     let n2 = text_size(s2);
     let n = min(n1, n2);
@@ -335,14 +335,14 @@ pub unsafe extern "C" fn text_compare(s1: Value, s2: Value) -> i32 {
     }
 }
 
-pub(crate) unsafe fn blob_compare(s1: Value, s2: Value) -> i32 {
+pub(crate) unsafe fn blob_compare(s1: Value, s2: Value) -> isize {
     let n1 = text_size(s1);
     let n2 = text_size(s2);
     let n = min(n1, n2);
 
     let payload1 = s1.as_blob().payload_const();
     let payload2 = s2.as_blob().payload_const();
-    let cmp = memcmp(payload1 as *const _, payload2 as *const _, n.as_usize());
+    let cmp = memcmp(payload1 as *const _, payload2 as *const _, n.as_usize()) as isize;
 
     if cmp == 0 {
         if n1 < n2 {
