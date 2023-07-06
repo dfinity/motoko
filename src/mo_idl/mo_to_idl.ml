@@ -130,9 +130,9 @@ module MakeState() = struct
             | Write -> []),
            t1, args ts)
        | _ -> assert false)
-    | Func _ -> assert false
-    | Async _ -> assert false
-    | Mut t -> assert false
+    | Func _
+    | Async _
+    | Mut _
     | Pre -> assert false
     ) @@ no_region
   and field {lab; typ=t; _} =
