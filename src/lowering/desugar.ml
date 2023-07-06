@@ -351,7 +351,7 @@ and call_system_func_opt name es obj_typ =
            (unitE ())
         | "inspect" ->
           let _, tfs = T.as_obj obj_typ in
-          let caller = fresh_var "caller" T.principal in
+          let caller = fresh_var "caller" T.caller in
           let arg = fresh_var "arg" T.blob in
           let msg_typ = T.decode_msg_typ tfs in
           let msg = fresh_var "msg" msg_typ in
@@ -435,13 +435,16 @@ and export_footprint self_id expr =
   let bind1  = typ_arg scope_con1 Scope scope_bound in
   let bind2 = typ_arg scope_con2 Scope scope_bound in
   let ret_typ = T.Obj(Object,[{lab = "size"; typ = T.nat64; depr = None}]) in
+  let caller = fresh_var "caller" caller in
   ([ letD (var v typ) (
        funcE v (Shared Query) Promises [bind1] [] [ret_typ] (
            (asyncE T.Fut bind2
-              (blockE [expD (assertE (orE (primE (I.RelPrim (caller, Operator.EqOp))
-                                             [primE I.ICCallerPrim []; selfRefE caller])
-                                        (primE (I.OtherPrim "is_controller") [primE I.ICCallerPrim []])));
-                       letD size (primE (I.ICStableSize expr.note.Note.typ) [expr])
+              (blockE [
+                   letD caller (primE I.ICCallerPrim []);
+                   expD (assertE (orE (primE (I.RelPrim (principal, Operator.EqOp))
+                                         [varE caller; selfRefE principal])
+                                    (primE (I.OtherPrim "is_controller") [varE caller])));
+                   letD size (primE (I.ICStableSize expr.note.Note.typ) [expr])
                  ]
                  (newObjE T.Object
                    [{ it = Ir.{name = "size"; var = id_of_var size};
