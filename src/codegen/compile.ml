@@ -647,16 +647,16 @@ end
 
 let compile_comparison rel = 
   G.i (Compare (Wasm_exts.Values.I64 rel)) ^^
-  G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendSI32))
+  G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
 let compile_comparison_32 rel = 
-    G.i (Compare (Wasm_exts.Values.I32 rel)) ^^
-    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendSI32))
+  G.i (Compare (Wasm_exts.Values.I32 rel)) ^^
+  G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
 let compile_test op =
   G.i (Test (Wasm_exts.Values.I64 op)) ^^
-  G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendSI32))
+  G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
 let compile_comparison_f64 rel = 
   G.i (Compare (Wasm_exts.Values.F64 rel)) ^^
-  G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendSI32))
+  G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
 
 let compile_unboxed_const i = G.i (Const (nr (Wasm_exts.Values.I64 i)))
 let compile_const_32 i = G.i (Const (nr (Wasm_exts.Values.I32 i)))
@@ -1412,7 +1412,7 @@ module Bool = struct
   let neg = compile_test I64Op.Eqz
 
   let from_int32 = 
-    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendSI32))
+    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
 
 end (* Bool *)
 
@@ -1521,7 +1521,7 @@ module BitTagged = struct
     E.if_ env retty is1 is2
 
   let tag_i32 =
-    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendSI32)) ^^
+    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
     compile_shl_const 1L
 
   let untag_i32 =
@@ -3128,7 +3128,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     set_a ^^
     get_a ^^ BitTagged.if_can_tag_u32 env [I64Type]
       (get_a ^^ BitTagged.tag_i32)
-      (get_a ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendSI32)) ^^ Num.from_word64 env)
+      (get_a ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^ Num.from_word64 env)
 
   let from_word64 env =
     let set_a, get_a = new_local env "a" in
@@ -4390,7 +4390,7 @@ module IC = struct
       E.trap_with env Printf.(sprintf "cannot get %s when running locally" call)
 
   let performance_counter env = ic_system_call "performance_counter" env ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
-  let is_controller env = ic_system_call "is_controller" env ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendSI32))
+  let is_controller env = ic_system_call "is_controller" env ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
   let canister_version env = ic_system_call "canister_version" env ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
 
   let print_ptr_len env = G.i (Call (nr (E.built_in env "print_ptr")))
@@ -4954,7 +4954,7 @@ module StableMem = struct
 
   let _read_word32 env =  
     read env false "word32" I32Type 4L load_word32 ^^
-    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendSI32))
+    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
   let write_word32 env =
     G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
     write env false "word32" I32Type 4L store_word32
