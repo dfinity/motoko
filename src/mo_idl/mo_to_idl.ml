@@ -196,6 +196,8 @@ let actor progs =
 
 let prog (progs, senv) : I.prog =
   env := Env.empty;
+  stamp := Stamp.empty;
+  type_map := TypeMap.empty;
   let actor = actor progs in
   if actor = None then chase_decs senv;
   let decs = gather_decs () in
@@ -204,6 +206,8 @@ let prog (progs, senv) : I.prog =
 
 let of_actor_type t : I.prog =
   env := Env.empty;
+  stamp := Stamp.empty;
+  type_map := TypeMap.empty;  
   let actor = Some (typ t) in
   let decs = gather_decs () in
   let prog = I.{decs = decs; actor = actor} in
@@ -211,6 +215,8 @@ let of_actor_type t : I.prog =
 
 let of_service_type ts t : I.typ list * I.prog =
   env := Env.empty;
+  stamp := Stamp.empty;
+  type_map := TypeMap.empty;
   let args = List.map typ ts  in
   let actor = Some (typ t) in
   let decs = gather_decs () in
