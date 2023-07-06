@@ -51,7 +51,6 @@ func idlHash(x : Text) : Nat32 { (prim "idlHash" : Text -> Nat32) x };
 
 func debugPrint(x : Text) { (prim "print" : Text -> ()) x };
 
-/* TODO: Reenable later in 64-bit support
 func debugPrintNat(x : Nat) { debugPrint (@text_of_Nat x) };
 func debugPrintInt(x : Int) { debugPrint (@text_of_Int x) };
 func debugPrintChar(x : Char) { debugPrint (charToText x) };
@@ -227,7 +226,6 @@ func exp(f : Float) : Float = (prim "fexp" : Float -> Float) f;
 func log(f : Float) : Float = (prim "flog" : Float -> Float) f;
 
 // Array utilities
-*/
 
 func Array_init<T>(len : Nat,  x : T) : [var T] {
   (prim "Array.init" : <T>(Nat, T) -> [var T])<T>(len, x)
