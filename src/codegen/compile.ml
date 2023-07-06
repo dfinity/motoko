@@ -9023,11 +9023,12 @@ let compile_binop env t op : SR.t * SR.t * G.t =
   | Type.Prim (Type.(Nat8|Nat16|Int8|Int16) as ty),  WAddOp ->
     Func.share_code2 env (prim_fun_name ty "wadd")
       (("a", I32Type), ("b", I32Type)) [I32Type]
-      (fun env get_a get_b ->
-        get_a ^^ TaggedSmallWord.lsb_adjust ty ^^
-        get_b ^^ TaggedSmallWord.lsb_adjust ty ^^
+      (fun env get_a get_b -> TaggedSmallWord.(
+        get_a ^^ compile_bitand_const (mask_of_type ty) ^^
+        get_b ^^ compile_bitand_const (mask_of_type ty) ^^
         G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-        TaggedSmallWord.msb_adjust ty)
+        compile_bitor_const (mask_of_type ty)
+      ))
   | Type.(Prim Int32),                        AddOp -> compile_Int32_kernel env "add" I64Op.Add
   | Type.Prim Type.(Int8 | Int16 as ty),      AddOp -> compile_smallInt_kernel env ty "add" I32Op.Add
   | Type.(Prim Nat32),                        AddOp -> compile_Nat32_kernel env "add" I64Op.Add
@@ -9247,29 +9248,36 @@ let compile_binop env t op : SR.t * SR.t * G.t =
   | Type.(Prim Nat),                          PowOp -> BigNum.compile_unsigned_pow env
   | Type.(Prim Float),                        PowOp -> E.call_import env "rts" "pow" (* musl *)
   | Type.(Prim (Nat64|Int64)),                AndOp -> G.i (Binary (Wasm.Values.I64 I64Op.And))
-  | Type.(Prim (Nat8|Nat16|Nat32|Int8|Int16|Int32)),
-                                              AndOp -> G.i (Binary (Wasm.Values.I32 I32Op.And))
+  | Type.(Prim ((Nat8|Nat16|Nat32|Int8|Int16|Int32) as ty)),  AndOp -> TaggedSmallWord.(
+      G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
+      sanitize_word_result ty)
   | Type.(Prim (Nat64|Int64)),                OrOp  -> G.i (Binary (Wasm.Values.I64 I64Op.Or))
-  | Type.(Prim (Nat8|Nat16|Nat32|Int8|Int16|Int32)),
-                                              OrOp  -> G.i (Binary (Wasm.Values.I32 I32Op.Or))
+  | Type.(Prim ((Nat8|Nat16|Nat32|Int8|Int16|Int32) as ty)), OrOp  -> TaggedSmallWord.(
+      G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
+      sanitize_word_result ty)
   | Type.(Prim (Nat64|Int64)),                XorOp -> G.i (Binary (Wasm.Values.I64 I64Op.Xor))
-  | Type.(Prim (Nat8|Nat16|Nat32|Int8|Int16|Int32)),
-                                              XorOp -> G.i (Binary (Wasm.Values.I32 I32Op.Xor))
+  | Type.(Prim (Nat8|Nat16|Nat32|Int8|Int16|Int32 as ty)),  XorOp -> TaggedSmallWord.(
+      G.i (Binary (Wasm.Values.I32 I32Op.Xor)) ^^
+      sanitize_word_result ty)
   | Type.(Prim (Nat64|Int64)),                ShLOp -> G.i (Binary (Wasm.Values.I64 I64Op.Shl))
-  | Type.(Prim (Nat8|Nat16|Nat32|Int8|Int16|Int32 as ty)),
-                                              ShLOp -> TaggedSmallWord.(
-     lsb_adjust ty ^^ clamp_shift_amount ty ^^
-     G.i (Binary (Wasm.Values.I32 I32Op.Shl)))
+  | Type.(Prim (Nat8|Nat16|Nat32|Int8|Int16|Int32 as ty)),      ShLOp -> TaggedSmallWord.(
+      let (set_n, get_n) = new_local env "n" in
+      let (set_s, get_s) = new_local env "s" in
+      set_s ^^ set_n ^^
+      get_n ^^ compile_bitand_const (mask_of_type ty) ^^
+      get_s ^^ lsb_adjust ty ^^ clamp_shift_amount ty ^^
+      G.i (Binary (Wasm.Values.I32 I32Op.Shl)) ^^
+      compile_bitor_const (tag_of_type ty))
   | Type.(Prim Nat64),                        ShROp -> G.i (Binary (Wasm.Values.I64 I64Op.ShrU))
   | Type.(Prim (Nat8|Nat16|Nat32 as ty)),     ShROp -> TaggedSmallWord.(
-     lsb_adjust ty ^^ clamp_shift_amount ty ^^
-     G.i (Binary (Wasm.Values.I32 I32Op.ShrU)) ^^
-     sanitize_word_result ty)
+      lsb_adjust ty ^^ clamp_shift_amount ty ^^
+      G.i (Binary (Wasm.Values.I32 I32Op.ShrU)) ^^
+      sanitize_word_result ty)
   | Type.(Prim Int64),                        ShROp -> G.i (Binary (Wasm.Values.I64 I64Op.ShrS))
   | Type.(Prim (Int8|Int16|Int32 as ty)),     ShROp -> TaggedSmallWord.(
-     lsb_adjust ty ^^ clamp_shift_amount ty ^^
-     G.i (Binary (Wasm.Values.I32 I32Op.ShrS)) ^^
-     sanitize_word_result ty)
+      lsb_adjust ty ^^ clamp_shift_amount ty ^^
+      G.i (Binary (Wasm.Values.I32 I32Op.ShrS)) ^^
+      sanitize_word_result ty)
   | Type.(Prim (Nat64|Int64)),                RotLOp -> G.i (Binary (Wasm.Values.I64 I64Op.Rotl))
   | Type.(Prim (Nat32|Int32)),                RotLOp -> G.i (Binary (Wasm.Values.I32 I32Op.Rotl))
   | Type.(Prim (Nat8|Nat16|Int8|Int16 as ty)),
