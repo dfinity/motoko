@@ -794,6 +794,7 @@ rec {
         builtins.attrValues coverage_bins;
       in
       nixpkgs.lib.lists.unique (builtins.filter (i: !(builtins.elem i dont_build)) (
+        [ic-wasm] ++
         commonBuildInputs nixpkgs ++
         rts.buildInputs ++
         js.moc.buildInputs ++
