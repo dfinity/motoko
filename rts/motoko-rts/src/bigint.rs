@@ -169,7 +169,11 @@ unsafe fn persist_bigint(i: mp_int) -> Value {
     }
     let r = BigInt::from_payload(i.dp);
     if (*r).mp_int.alloc != i.alloc {
-        panic!("persist_bigint: alloc changed?");
+        panic!(
+            "persist_bigint: alloc changed? heap {} stack {}",
+            (*r).mp_int.alloc,
+            i.alloc
+        );
     }
     (*r).mp_int = i;
     Value::from_ptr(r as usize)
