@@ -528,12 +528,22 @@ module E = struct
     | [t] -> ValBlockType (Some t)
     | ts -> VarBlockType (nr (func_type env (FuncType ([], ts))))
 
-  let if_ env tys thn els = G.if_ (as_block_type env tys) thn els
+
+  let prepare_branch_condition =
+    G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64))
+  let if0 then_block else_block =
+    prepare_branch_condition ^^
+    G.if0 then_block else_block
+  let if1 return_type then_block else_block =
+    prepare_branch_condition ^^
+    G.if1 return_type then_block else_block
+
+  let if_ env tys thn els = prepare_branch_condition ^^ G.if_ (as_block_type env tys) thn els
   let block_ env tys bdy = G.block_ (as_block_type env tys) bdy
 
   let trap_with env msg = env.trap_with env msg
-  let then_trap_with env msg = G.if0 (trap_with env msg) G.nop
-  let else_trap_with env msg = G.if0 G.nop (trap_with env msg)
+  let then_trap_with env msg = if0 (trap_with env msg) G.nop
+  let else_trap_with env msg = if0 G.nop (trap_with env msg)
 
   let word_size = 8L
 
@@ -634,6 +644,20 @@ end
 
 (* Function called compile_* return a list of instructions (and maybe other stuff) *)
 
+
+let compile_comparison rel = 
+  G.i (Compare (Wasm_exts.Values.I64 rel)) ^^
+  G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendSI32))
+let compile_comparison_32 rel = 
+    G.i (Compare (Wasm_exts.Values.I32 rel)) ^^
+    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendSI32))
+let compile_test op =
+  G.i (Test (Wasm_exts.Values.I64 op)) ^^
+  G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendSI32))
+let compile_comparison_f64 rel = 
+  G.i (Compare (Wasm_exts.Values.F64 rel)) ^^
+  G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendSI32))
+
 let compile_unboxed_const i = G.i (Const (nr (Wasm_exts.Values.I64 i)))
 let compile_const_32 i = G.i (Const (nr (Wasm_exts.Values.I32 i)))
 let compile_unboxed_zero = compile_unboxed_const 0L
@@ -659,9 +683,9 @@ let compile_xor_const = function
   | 0L -> G.nop | n -> compile_op_const I64Op.Xor n
 let compile_rel_const rel i =
   compile_unboxed_const i ^^
-  G.i (Compare (Wasm_exts.Values.I64 rel))
+  compile_comparison rel
 let compile_eq_const = function
-  | 0L -> G.i (Test (Wasm_exts.Values.I64 I64Op.Eqz))
+  | 0L -> compile_test I64Op.Eqz
   | i -> compile_rel_const I64Op.Eq i
 
 let compile_op32_const op i =
@@ -679,7 +703,7 @@ let compile_shl32_const = function
   | 0l -> G.nop | n -> compile_op32_const I32Op.Shl n
 let compile_eq32_const i =
   compile_const_32 i ^^
-  G.i (Compare (Wasm_exts.Values.I32 I32Op.Eq))
+  compile_comparison_32 I32Op.Eq
 
 (* more random utilities *)
 
@@ -730,7 +754,7 @@ let new_local32 env name =
 (* Iterates while cond is true. *)
 let compile_while env cond body =
     G.loop0 (
-      cond ^^ G.if0 (body ^^ G.i (Br (nr 1l))) G.nop
+      cond ^^ E.if0 (body ^^ G.i (Br (nr 1l))) G.nop
     )
 
 (* Expects a number n on the stack. Iterates from m to below that number. *)
@@ -744,7 +768,7 @@ let from_m_to_n env m mk_body =
     compile_while env
       ( get_i ^^
         get_n ^^
-        G.i (Compare (Wasm_exts.Values.I64 I64Op.LtU))
+        compile_comparison I64Op.LtU
       ) (
         mk_body get_i ^^
 
@@ -1221,8 +1245,8 @@ module Stack = struct
     if !Flags.measure_rts_stack then
     get_stack_ptr env ^^
     get_min env ^^
-    G.i (Compare (Wasm_exts.Values.I64 I64Op.LtU)) ^^
-    (G.if0
+    compile_comparison I64Op.LtU ^^
+    (E.if0
        (get_stack_ptr env ^^
         set_min env)
       G.nop)
@@ -1251,7 +1275,7 @@ module Stack = struct
     if n_bytes >= page_size then
       get_stack_ptr env ^^
       G.i (Unary (Wasm_exts.Values.I64 I64Op.Clz)) ^^
-      G.if0
+      E.if0
         G.nop (* we found leading zeros, i.e. no wraparound *)
         (stack_overflow env)
     else
@@ -1274,8 +1298,8 @@ module Stack = struct
     get_stack_ptr env ^^
     compile_divU_const Heap.word_size ^^
     get_n ^^
-    G.i (Compare (Wasm_exts.Values.I64 I64Op.LtU)) ^^
-    (G.if0
+    compile_comparison I64Op.LtU ^^
+    (E.if0
       (stack_overflow env)
       G.nop) ^^
     get_stack_ptr env ^^
@@ -1329,7 +1353,7 @@ module Stack = struct
     (* assert frame_ptr == stack_ptr *)
     get_frame_ptr env ^^
     get_stack_ptr env ^^
-    G.i (Compare (Wasm_exts.Values.I64 I64Op.Eq)) ^^
+    compile_comparison I64Op.Eq ^^
     E.else_trap_with env "frame_ptr <> stack_ptr" ^^
     (* restore the saved frame_ptr *)
     get_frame_ptr env ^^
@@ -1374,22 +1398,21 @@ module ContinuationTable = struct
 end (* ContinuationTable *)
 
 module Bool = struct
-  (* Boolean literals are either 0 or 1, at StackRep Vanilla
+  (* Boolean literals are either 0 or non-zero (e.g. if they origin from RTS or external API).
      They need not be shifted before put in the heap,
      because the "zero page" never contains GC-ed objects
   *)
 
   let vanilla_lit = function
     | false -> 0L
-    | true -> 1L
+    | true -> 1L (* or any other non-zero value *)
 
-  let lit b = compile_const_32 (Int64.to_int32 (vanilla_lit b))
+  let lit b = compile_unboxed_const (vanilla_lit b)
 
-  let neg = G.i (Test (Wasm_exts.Values.I64 I64Op.Eqz))
+  let neg = compile_test I64Op.Eqz
 
-  let from_int64 =
-    lit false ^^
-    G.i (Compare (Wasm_exts.Values.I64 I64Op.Ne))
+  let from_int32 = 
+    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendSI32))
 
 end (* Bool *)
 
@@ -1464,18 +1487,18 @@ module BitTagged = struct
 
   (* dynamic *)
   let if_can_tag_i64 env retty is1 is2 =
-    Func.share_code1 env "can_tag_i64" ("x", I64Type) [I32Type] (fun env get_x ->
+    Func.share_code1 env "can_tag_i64" ("x", I64Type) [I64Type] (fun env get_x ->
       (* checks that all but the low 62 bits are either all 0 or all 1 *)
       get_x ^^ compile_shl_const 1L ^^
       get_x ^^ G.i (Binary (Wasm_exts.Values.I64 I64Op.Xor)) ^^
       compile_shrU_const 63L ^^
-      G.i (Test (Wasm_exts.Values.I64 I64Op.Eqz))
+      compile_test I64Op.Eqz
     ) ^^
     E.if_ env retty is1 is2
 
   let if_can_tag_u64 env retty is1 is2 =
     compile_shrU_const 62L ^^
-    G.i (Test (Wasm_exts.Values.I64 I64Op.Eqz)) ^^
+    compile_test I64Op.Eqz ^^
     E.if_ env retty is1 is2
 
   let tag = compile_shl_const 1L
@@ -1494,7 +1517,7 @@ module BitTagged = struct
 
   let if_can_tag_u32 env retty is1 is2 =
     compile_shrU32_const 30l ^^
-    G.i (Test (Wasm_exts.Values.I32 I32Op.Eqz)) ^^
+    compile_test I32Op.Eqz ^^
     E.if_ env retty is1 is2
 
   let tag_i32 =
@@ -1503,7 +1526,7 @@ module BitTagged = struct
 
   let untag_i32 =
     compile_shrS_const 1L ^^
-    G.i (Convert (Wasm_exts.Values.I64 I32Op.WrapI64))
+    G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64))
 
 end (* BitTagged *)
 
@@ -1644,7 +1667,7 @@ module Tagged = struct
         get_object ^^
         load_forwarding_pointer env ^^
         get_object ^^
-        G.i (Compare (Wasm_exts.Values.I64 I64Op.Eq)) ^^
+        compile_comparison I64Op.Eq ^^
         E.else_trap_with env "missing object forwarding" ^^
         get_object ^^
         (if unskewed then
@@ -1756,7 +1779,8 @@ module Tagged = struct
     set_value ^^ set_location ^^
     (* performance gain by first checking the GC state *)
     E.call_import env "rts" "running_gc" ^^
-    G.if0 (
+    Bool.from_int32 ^^
+    E.if0 (
       get_location ^^ get_value ^^
       E.call_import env "rts" "write_with_barrier"
     ) (
@@ -1893,7 +1917,7 @@ module Opt = struct
 
  let is_some env =
     null_lit env ^^
-    G.i (Compare (Wasm_exts.Values.I64 I64Op.Ne))
+    compile_comparison I64Op.Ne
 
   let inject env e =
     e ^^
@@ -2110,7 +2134,7 @@ module Word64 = struct
   let compile_unsigned_rem env = G.i (Binary (Wasm_exts.Values.I64 I64Op.RemU))
   let compile_unsigned_sub env =
     Func.share_code2 env "nat_sub" (("n1", I64Type), ("n2", I64Type)) [I64Type] (fun env get_n1 get_n2 ->
-      get_n1 ^^ get_n2 ^^ G.i (Compare (Wasm_exts.Values.I64 I64Op.LtU)) ^^
+      get_n1 ^^ get_n2 ^^ compile_comparison I64Op.LtU ^^
       E.then_trap_with env "Natural subtraction underflow" ^^
       get_n1 ^^ get_n2 ^^ G.i (Binary (Wasm_exts.Values.I64 I64Op.Sub))
     )
@@ -2127,17 +2151,17 @@ module Word64 = struct
         compile_unboxed_const 1L ^^ set_acc ^^
 
         (* handle exp == 0 *)
-        get_exp ^^ G.i (Test (Wasm_exts.Values.I64 I64Op.Eqz)) ^^
-        G.if1 I64Type get_acc (* done *)
+        get_exp ^^ compile_test I64Op.Eqz ^^
+        E.if1 I64Type get_acc (* done *)
         begin
           G.loop0 begin
             (* Are we done? *)
-            get_exp ^^ compile_unboxed_const 1L ^^ G.i (Compare (Wasm_exts.Values.I64 I64Op.LeU)) ^^
-            G.if0 G.nop (* done *)
+            get_exp ^^ compile_unboxed_const 1L ^^ compile_comparison I64Op.LeU ^^
+            E.if0 G.nop (* done *)
             begin
               (* Check low bit of exp to see if we need to multiply *)
-              get_exp ^^ compile_shl_const 63L ^^ G.i (Test (Wasm_exts.Values.I64 I64Op.Eqz)) ^^
-              G.if0 G.nop
+              get_exp ^^ compile_shl_const 63L ^^ compile_test I64Op.Eqz ^^
+              E.if0 G.nop
               begin
                 (* Multiply! *)
                 get_acc ^^ get_n ^^ G.i (Binary (Wasm_exts.Values.I64 I64Op.Mul)) ^^ set_acc
@@ -2160,13 +2184,13 @@ module Word64 = struct
       (fun env get_n get_exp ->
         get_exp ^^
         compile_unboxed_const 0L ^^
-        G.i (Compare (Wasm_exts.Values.I64 I64Op.GeS)) ^^
+        compile_comparison I64Op.GeS ^^
         E.else_trap_with env "negative power" ^^
         get_n ^^ get_exp ^^ compile_unsigned_pow env
       )
 
-  let _compile_eq env = G.i (Compare (Wasm_exts.Values.I64 I64Op.Eq))
-  let compile_relop env i64op = G.i (Compare (Wasm_exts.Values.I64 i64op))
+  let _compile_eq env = compile_comparison I64Op.Eq
+  let compile_relop env i64op = compile_comparison i64op
 
 end (* BoxedWord64 *)
 
@@ -2294,17 +2318,17 @@ module TaggedSmallWord = struct
         compile_unboxed_const (const_of_type ty 1L) ^^ set_acc ^^
 
         (* handle exp == 0 *)
-        get_exp ^^ G.i (Test (Wasm_exts.Values.I64 I64Op.Eqz)) ^^
-        G.if1 I64Type get_acc (* done *)
+        get_exp ^^ compile_test I64Op.Eqz ^^
+        E.if1 I64Type get_acc (* done *)
         begin
           G.loop0 begin
             (* Are we done? *)
-            get_exp ^^ compile_unboxed_const 1L ^^ G.i (Compare (Wasm_exts.Values.I64 I64Op.LeU)) ^^
-            G.if0 G.nop (* done *)
+            get_exp ^^ compile_unboxed_const 1L ^^ compile_comparison I64Op.LeU ^^
+            E.if0 G.nop (* done *)
             begin
               (* Check low bit of exp to see if we need to multiply *)
-              get_exp ^^ compile_shl_const 63L ^^ G.i (Test (Wasm_exts.Values.I64 I64Op.Eqz)) ^^
-              G.if0 G.nop
+              get_exp ^^ compile_shl_const 63L ^^ compile_test I64Op.Eqz ^^
+              E.if0 G.nop
               begin
                 (* Multiply! *)
                 get_acc ^^ get_n ^^ G.i (Binary (Wasm_exts.Values.I64 I64Op.Mul)) ^^ set_acc
@@ -2328,7 +2352,7 @@ module TaggedSmallWord = struct
       (fun env get_n get_exp ->
         get_exp ^^
         compile_unboxed_const 0L ^^
-        G.i (Compare (Wasm_exts.Values.I64 I64Op.GeS)) ^^
+        compile_comparison I64Op.GeS ^^
         E.else_trap_with env "negative power" ^^
         get_n ^^ get_exp ^^ compile_nat_power env ty
       )
@@ -2445,7 +2469,7 @@ module ReadBuf = struct
   let check_space env get_buf get_delta =
     get_delta ^^
     get_end get_buf ^^ get_ptr get_buf ^^ G.i (Binary (Wasm_exts.Values.I64 I64Op.Sub)) ^^
-    G.i (Compare (Wasm_exts.Values.I64 I64Op.LeU)) ^^
+    compile_comparison I64Op.LeU ^^
     E.else_trap_with env "IDL error: out of bounds read"
 
   let check_page_end env get_buf incr_delta =
@@ -2455,7 +2479,7 @@ module ReadBuf = struct
 
   let is_empty env get_buf =
     get_end get_buf ^^ get_ptr get_buf ^^
-    G.i (Compare (Wasm_exts.Values.I64 I64Op.Eq))
+    compile_comparison I64Op.Eq
 
   let read_byte env get_buf =
     check_space env get_buf (compile_unboxed_const 1L) ^^
@@ -2477,7 +2501,7 @@ module ReadBuf = struct
 
   let speculative_read_word64 env get_buf =
     check_page_end env get_buf (compile_add_const 8L) ^^
-    G.if1 I64Type
+    E.if1 I64Type
       (compile_unboxed_const (-1L))
       begin
         get_ptr get_buf ^^
@@ -2716,7 +2740,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
               get_b ^^
             slow env ^^ set_res ^^ get_res ^^
             fits_in_vanilla env ^^
-            G.if1 I64Type
+            E.if1 I64Type
               (get_res ^^ Num.truncate_to_word64 env ^^ BitTagged.tag)
               get_res
           end)
@@ -2752,8 +2776,8 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
         compile_unboxed_const 64L ^^
         get_a ^^ G.i (Unary (Wasm_exts.Values.I64 I64Op.Clz)) ^^ G.i (Binary (Wasm_exts.Values.I64 I64Op.Sub)) ^^
         get_b ^^ G.i (Binary (Wasm_exts.Values.I64 I64Op.Mul)) ^^
-        compile_unboxed_const 64L ^^ G.i (Compare (Wasm_exts.Values.I64 I64Op.LeU)) ^^
-        G.if1 I64Type
+        compile_unboxed_const 64L ^^ compile_comparison I64Op.LeU ^^
+        E.if1 I64Type
           begin
             get_a ^^ get_b ^^ Word64.compile_unsigned_pow env ^^ set_res ^^
             get_res ^^ BitTagged.if_can_tag_i64 env [I64Type]
@@ -2765,7 +2789,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
             get_b ^^ Num.from_signed_word64 env ^^
             Num.compile_unsigned_pow env ^^ set_res ^^
             get_res ^^ fits_in_vanilla env ^^
-            G.if1 I64Type
+            E.if1 I64Type
               (get_res ^^ Num.truncate_to_word64 env ^^ BitTagged.tag)
               get_res
           end
@@ -2779,7 +2803,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
           get_b ^^
         Num.compile_unsigned_pow env ^^ set_res ^^
         get_res ^^ fits_in_vanilla env ^^
-        G.if1 I64Type
+        E.if1 I64Type
           (get_res ^^ Num.truncate_to_word64 env ^^ BitTagged.tag)
           get_res
       end)
@@ -2805,7 +2829,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
           let set_res, get_res = new_local env "res" in
           set_res ^^ get_res ^^
           get_amount ^^ compile_rel_const I32Op.LeU 63L ^^
-          G.if1 I32Type
+          E.if1 I64Type
             get_res
             (get_n ^^ compile_shrS_const 1L ^^ Num.from_word64 env ^^ get_amount ^^ Num.compile_lsh env)
         )
@@ -2829,7 +2853,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
           let set_res, get_res = new_local env "res" in
           set_res ^^ get_res ^^
           fits_in_vanilla env ^^
-          G.if1 I64Type
+          E.if1 I64Type
             (get_res ^^ Num.truncate_to_word64 env ^^ BitTagged.tag)
             get_res
         end)
@@ -2838,7 +2862,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     let set_n, get_n = new_local env "n" in
     set_n ^^ get_n ^^
     BitTagged.if_tagged_scalar env [I64Type]
-      (get_n ^^ compile_unboxed_const 0L ^^ G.i (Compare (Wasm_exts.Values.I64 I64Op.LtS)))
+      (get_n ^^ compile_unboxed_const 0L ^^ compile_comparison I64Op.LtS)
       (get_n ^^ Num.compile_is_negative env)
 
   let vanilla_lit env = function
@@ -2851,7 +2875,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       get_n ^^ BitTagged.if_tagged_scalar env [I64Type]
         begin
           get_n ^^ compile_eq_const 0x8000_0000_0000_0000L ^^ (* -2^62 shifted *)
-          G.if1 I64Type
+          E.if1 I64Type
             (compile_unboxed_const 0x4000_0000_0000_0000L ^^ Num.from_word64 env)
             begin
               compile_unboxed_const 0L ^^
@@ -2863,10 +2887,10 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     )
 
   let try_comp_unbox2 name fast slow env =
-    Func.share_code2 env name (("a", I64Type), ("b", I64Type)) [I32Type]
+    Func.share_code2 env name (("a", I64Type), ("b", I64Type)) [I64Type]
       (fun env get_a get_b ->
         get_a ^^ get_b ^^
-        BitTagged.if_both_tagged_scalar env [I32Type]
+        BitTagged.if_both_tagged_scalar env [I64Type]
           begin
             get_a ^^
             get_b ^^
@@ -2883,14 +2907,14 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
           end)
 
   let compile_eq env =
-    Func.share_code2 env "B_eq" (("a", I64Type), ("b", I64Type)) [I32Type]
+    Func.share_code2 env "B_eq" (("a", I64Type), ("b", I64Type)) [I64Type]
       (fun env get_a get_b ->
         get_a ^^ get_b ^^
-        G.i (Compare (Wasm_exts.Values.I64 I64Op.Eq)) ^^
-        G.if1 I32Type
+        compile_comparison I64Op.Eq ^^
+        E.if1 I64Type
           (Bool.lit true)
           (get_a ^^ get_b ^^
-           BitTagged.if_both_tagged_scalar env [I32Type]
+           BitTagged.if_both_tagged_scalar env [I64Type]
              (Bool.lit false)
              begin
                get_a ^^ BitTagged.if_tagged_scalar env [I64Type]
@@ -2920,7 +2944,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
         | 32 | 64 -> G.i Drop ^^ Bool.lit true
         | 8 | 16 ->
           compile_bitand_const Int64.(logor 1L (shift_left minus_one (n + 1))) ^^
-          G.i (Test (Wasm_exts.Values.I64 I64Op.Eqz))
+          compile_test I64Op.Eqz
         | _ -> assert false
       )
       (fun env -> Num.fits_unsigned_bits env n)
@@ -2936,7 +2960,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
            G.i (Binary (Wasm_exts.Values.I64 I64Op.Xor)) ^^
            compile_bitand_const
              Int64.(shift_left minus_one n) ^^
-           G.i (Test (Wasm_exts.Values.I64 I64Op.Eqz))
+           compile_test I64Op.Eqz
         | _ -> assert false
       )
       (fun env -> Num.fits_signed_bits env n)
@@ -2948,13 +2972,13 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
         fun _ ->
         let set_a, get_a = new_local env "a" in
         set_a ^^
-        get_a ^^ compile_unboxed_const 0L ^^ G.i (Compare (Wasm_exts.Values.I64 I64Op.LtS)) ^^
-        G.if1 I64Type
+        get_a ^^ compile_unboxed_const 0L ^^ compile_comparison I64Op.LtS ^^
+        E.if1 I64Type
           begin
             get_a ^^
             (* -2^62 is small enough for compact representation, but 2^62 isn't *)
             compile_eq_const 0x8000_0000_0000_0000L ^^ (* i.e. -2^62 shifted *)
-            G.if1 I64Type
+            E.if1 I64Type
               (compile_unboxed_const 0x4000_0000_0000_0000L ^^ Num.from_word64 env)
               begin
                 (* absolute value works directly on shifted representation *)
@@ -2981,8 +3005,8 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     compile_bitand_const 0b1000000010000000100000001000000010000000L ^^
     let set_eom, get_eom = new_local env "eom" in
     set_eom ^^ get_eom ^^
-    G.i (Test (Wasm_exts.Values.I64 I64Op.Eqz)) ^^
-    G.if1 I64Type
+    compile_test I64Op.Eqz ^^
+    E.if1 I64Type
       begin
         Num.compile_load_from_data_buf env get_data_buf signed
       end
@@ -3255,22 +3279,22 @@ module BigNumLibtommath : BigNumType = struct
   let compile_lsh env = E.call_import env "rts" "bigint_lsh"
   let compile_rsh env = E.call_import env "rts" "bigint_rsh"
 
-  let compile_eq env = E.call_import env "rts" "bigint_eq"
-  let compile_is_negative env = E.call_import env "rts" "bigint_isneg"
+  let compile_eq env = E.call_import env "rts" "bigint_eq" ^^ Bool.from_int32
+  let compile_is_negative env = E.call_import env "rts" "bigint_isneg" ^^ Bool.from_int32
   let compile_relop env = function
-      | Lt -> E.call_import env "rts" "bigint_lt"
-      | Le -> E.call_import env "rts" "bigint_le"
-      | Ge -> E.call_import env "rts" "bigint_ge"
-      | Gt -> E.call_import env "rts" "bigint_gt"
+      | Lt -> E.call_import env "rts" "bigint_lt" ^^ Bool.from_int32
+      | Le -> E.call_import env "rts" "bigint_le" ^^ Bool.from_int32
+      | Ge -> E.call_import env "rts" "bigint_ge" ^^ Bool.from_int32
+      | Gt -> E.call_import env "rts" "bigint_gt" ^^ Bool.from_int32
 
   let fits_signed_bits env bits =
     E.call_import env "rts" "bigint_2complement_bits" ^^
     compile_unboxed_const (Int64.of_int bits) ^^
-    G.i (Compare (Wasm_exts.Values.I64 I64Op.LeU))
+    compile_comparison I64Op.LeU
   let fits_unsigned_bits env bits =
     E.call_import env "rts" "bigint_count_bits" ^^
     compile_unboxed_const (Int64.of_int bits) ^^
-    G.i (Compare (Wasm_exts.Values.I64 I64Op.LeU))
+    compile_comparison I64Op.LeU
 
 end (* BigNumLibtommath *)
 
@@ -3433,8 +3457,8 @@ module Object = struct
       set_x ^^
       G.loop0 (
           get_h_ptr ^^ load_unskewed_ptr ^^
-          get_hash ^^ G.i (Compare (Wasm_exts.Values.I64 I64Op.Eq)) ^^
-          G.if0
+          get_hash ^^ compile_comparison I64Op.Eq ^^
+          E.if0
             (get_x ^^ G.i Return)
             (get_h_ptr ^^ compile_add_const Heap.word_size ^^ set_h_ptr ^^
              get_x ^^ compile_add_const Heap.word_size ^^ set_x ^^
@@ -3448,7 +3472,7 @@ module Object = struct
     if indirect
     then
       let name = Printf.sprintf "obj_idx_ind<%d>" low_bound in
-      Func.share_code2 env name (("x", I64Type), ("hash", I64Type)) [I32Type] (fun env get_x get_hash ->
+      Func.share_code2 env name (("x", I64Type), ("hash", I64Type)) [I64Type] (fun env get_x get_hash ->
       get_x ^^ get_hash ^^
       idx_hash_raw env low_bound ^^
       load_ptr ^^ Tagged.load_forwarding_pointer env ^^
@@ -3626,13 +3650,13 @@ module Blob = struct
         (* Find minimum length *)
         begin if op = Some EqOp then
           (* Early exit for equality *)
-          get_len1 ^^ get_len2 ^^ G.i (Compare (Wasm_exts.Values.I64 I64Op.Eq)) ^^
-          G.if0 G.nop (Bool.lit false ^^ G.i Return) ^^
+          get_len1 ^^ get_len2 ^^ compile_comparison I64Op.Eq ^^
+          E.if0 G.nop (Bool.lit false ^^ G.i Return) ^^
 
           get_len1 ^^ set_len
         else
-          get_len1 ^^ get_len2 ^^ G.i (Compare (Wasm_exts.Values.I64 I64Op.LeU)) ^^
-          G.if0
+          get_len1 ^^ get_len2 ^^ compile_comparison I64Op.LeU ^^
+          E.if0
             (get_len1 ^^ set_len)
             (get_len2 ^^ set_len)
         end ^^
@@ -3655,15 +3679,15 @@ module Blob = struct
           G.i (Load {ty = I64Type; align = 0; offset = 0L; sz = Some Wasm_exts.Types.(Pack8, ZX)}) ^^
           set_b ^^
 
-          get_a ^^ get_b ^^ G.i (Compare (Wasm_exts.Values.I64 I64Op.Eq)) ^^
-          G.if0 G.nop (
+          get_a ^^ get_b ^^ compile_comparison I64Op.Eq ^^
+          E.if0 G.nop (
             (* first non-equal elements *)
             begin match op with
-            | Some LeOp -> get_a ^^ get_b ^^ G.i (Compare (Wasm_exts.Values.I64 I64Op.LeU))
-            | Some GeOp -> get_a ^^ get_b ^^ G.i (Compare (Wasm_exts.Values.I64 I64Op.GeU))
+            | Some LeOp -> get_a ^^ get_b ^^ compile_comparison I64Op.LeU
+            | Some GeOp -> get_a ^^ get_b ^^ compile_comparison I64Op.GeU
             | Some EqOp -> Bool.lit false
-            | None -> get_a ^^ get_b ^^ G.i (Compare (Wasm_exts.Values.I64 I64Op.LtU)) ^^
-                      G.if1 I32Type is_lt is_gt
+            | None -> get_a ^^ get_b ^^ compile_comparison I64Op.LtU ^^
+                      E.if1 I64Type is_lt is_gt
             | _ -> assert false
             end ^^
             G.i Return
@@ -3671,14 +3695,14 @@ module Blob = struct
         ) ^^
         (* Common prefix is same *)
         match op with
-        | Some LeOp -> get_len1 ^^ get_len2 ^^ G.i (Compare (Wasm_exts.Values.I64 I64Op.LeU))
-        | Some GeOp -> get_len1 ^^ get_len2 ^^ G.i (Compare (Wasm_exts.Values.I64 I64Op.GeU))
+        | Some LeOp -> get_len1 ^^ get_len2 ^^ compile_comparison I64Op.LeU
+        | Some GeOp -> get_len1 ^^ get_len2 ^^ compile_comparison I64Op.GeU
         | Some EqOp -> Bool.lit true (* NB: Different length handled above *)
         | None ->
-            get_len1 ^^ get_len2 ^^ G.i (Compare (Wasm_exts.Values.I64 I64Op.LtU)) ^^
-            G.if1 I32Type is_lt (
-              get_len1 ^^ get_len2 ^^ G.i (Compare (Wasm_exts.Values.I64 I64Op.GtU)) ^^
-              G.if1 I32Type is_gt is_eq
+            get_len1 ^^ get_len2 ^^ compile_comparison I64Op.LtU ^^
+            E.if1 I64Type is_lt (
+              get_len1 ^^ get_len2 ^^ compile_comparison I64Op.GtU ^^
+              E.if1 I64Type is_gt is_eq
             )
         | _ -> assert false
       end
@@ -3761,7 +3785,8 @@ module Text = struct
     set_blob ^^
     get_blob ^^ Blob.as_ptr_len env ^^
     E.call_import env "rts" "utf8_valid" ^^
-    G.if1 I32Type (Opt.inject_simple env get_blob) (Opt.null_lit env)
+    Bool.from_int32 ^^
+    E.if1 I64Type (Opt.inject_simple env get_blob) (Opt.null_lit env)
 
 
   let iter env =
@@ -3787,11 +3812,11 @@ module Text = struct
       E.call_import env "rts" "text_compare" ^^
       compile_unboxed_const 0L ^^
       match op with
-        | LtOp -> G.i (Compare (Wasm_exts.Values.I64 I64Op.LtS))
-        | LeOp -> G.i (Compare (Wasm_exts.Values.I64 I64Op.LeS))
-        | GtOp -> G.i (Compare (Wasm_exts.Values.I64 I64Op.GtS))
-        | GeOp -> G.i (Compare (Wasm_exts.Values.I64 I64Op.GeS))
-        | EqOp -> G.i (Compare (Wasm_exts.Values.I64 I64Op.Eq))
+        | LtOp -> compile_comparison I64Op.LtS
+        | LeOp -> compile_comparison I64Op.LeS
+        | GtOp -> compile_comparison I64Op.GtS
+        | GeOp -> compile_comparison I64Op.GeS
+        | EqOp -> compile_comparison I64Op.Eq
         | NeqOp -> assert false
     )
 
@@ -3846,7 +3871,7 @@ module Arr = struct
       (* Check the upper bound *)
       get_idx ^^
       get_array ^^ len env ^^
-      G.i (Compare (Wasm_exts.Values.I64 I64Op.LtU)) ^^
+      compile_comparison I64Op.LtU ^^
       E.else_trap_with env "Array index out of bounds" ^^
 
       get_idx ^^
@@ -3914,7 +3939,7 @@ module Arr = struct
     compile_while env
     ( get_pointer ^^
       get_boundary ^^
-      G.i (Compare (Wasm_exts.Values.I64 I64Op.LtU))
+      compile_comparison I64Op.LtU
     ) (
       body get_pointer ^^
 
@@ -4161,7 +4186,7 @@ module Lifecycle = struct
           ("internal error: unexpected state entering " ^ string_of_state new_state)
         | (s::ss) ->
           get env ^^ compile_eq_const (int_of_state s) ^^
-          G.if0 (G.i (Br (nr 1l))) G.nop ^^
+          E.if0 (G.i (Br (nr 1l))) G.nop ^^
           go ss
         in go (pre_states new_state)
         ) ^^
@@ -4268,7 +4293,7 @@ module IC = struct
       let narrow_to_32 env get_value =
         get_value ^^
         compile_unboxed_const 0xffff_ffffL ^^
-        G.i (Compare (Wasm_exts.Values.I64 I64Op.LeU)) ^^
+        compile_comparison I64Op.LeU ^^
         E.else_trap_with env "cannot narrow to 32 bit" ^^ (* Note: If narrow fails during print, the trap print leads to an infinite recursion and a stack overflow *)
         get_value ^^
         G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) in
@@ -4276,8 +4301,8 @@ module IC = struct
       let min env first second = 
         first ^^
         second ^^
-        G.i (Compare (Wasm_exts.Values.I64 I64Op.LtU)) ^^
-        G.if1 I64Type (first) (second) in
+        compile_comparison I64Op.LtU ^^
+        E.if1 I64Type (first) (second) in
 
       Func.define_built_in env "print_ptr" [("ptr", I64Type); ("len", I64Type)] [] (fun env ->
         match E.mode env with
@@ -4491,7 +4516,7 @@ module IC = struct
       Lifecycle.trans env Lifecycle.InPreUpgrade ^^
       (* check status is stopped or trap on outstanding callbacks *)
       system_call env "canister_status" ^^ compile_eq32_const status_stopped ^^
-      G.if0
+      E.if0
        (G.nop)
        (ContinuationTable.count env ^^
           E.then_trap_with env "canister_pre_upgrade attempted with outstanding message callbacks (try stopping the canister before upgrade)") ^^
@@ -4523,7 +4548,7 @@ module IC = struct
   let get_self_reference env =
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
-      Func.share_code0 env "canister_self" [I32Type] (fun env ->
+      Func.share_code0 env "canister_self" [I64Type] (fun env ->
         Blob.of_size_copy env
           (fun env -> system_call env "canister_self_size" ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)))
           (fun env -> system_call env "canister_self_copy" ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)))
@@ -4585,8 +4610,8 @@ module IC = struct
       system_call env "msg_reject_code" ^^ set_code ^^
       List.fold_right (fun (tag, const) code ->
         get_code ^^ compile_unboxed_const const ^^
-        G.i (Compare (Wasm_exts.Values.I64 I64Op.Eq)) ^^
-        G.if1 I64Type
+        compile_comparison I64Op.Eq ^^
+        E.if1 I64Type
           (Variant.inject env tag Tuple.compile_unit)
           code)
         ["system_fatal", 1L;
@@ -4644,7 +4669,7 @@ module IC = struct
     let (set_str2, get_str2) = new_local env "str2" in
     system_call env "canister_self_size" ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^ set_len1 ^^
     system_call env "msg_caller_size" ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^ set_len2 ^^
-    get_len1 ^^ get_len2 ^^ G.i (Compare (Wasm_exts.Values.I64 I64Op.Eq)) ^^
+    get_len1 ^^ get_len2 ^^ compile_comparison I64Op.Eq ^^
     E.else_trap_with env "not a self-call" ^^
 
     get_len1 ^^ Blob.dyn_alloc_scratch env ^^ set_str1 ^^
@@ -4715,7 +4740,8 @@ module IC = struct
     | Flags.ICMode
     | Flags.RefMode ->
       system_call env "data_certificate_present" ^^
-      G.if1 I32Type
+      Bool.from_int32 ^^
+      E.if1 I64Type
       begin
         Opt.inject_simple env (
           Blob.of_size_copy env
@@ -4731,7 +4757,7 @@ end (* IC *)
 
 module Cycles = struct
 
-  let from_word128_ptr env = Func.share_code1 env "from_word128_ptr" ("ptr", I32Type) [I32Type]
+  let from_word128_ptr env = Func.share_code1 env "from_word128_ptr" ("ptr", I64Type) [I64Type]
     (fun env get_ptr ->
      let set_lower, get_lower = new_local env "lower" in
      get_ptr ^^
@@ -4740,8 +4766,8 @@ module Cycles = struct
      set_lower ^^
      get_ptr ^^
      G.i (Load {ty = I64Type; align = 0; offset = 8L; sz = None }) ^^
-     G.i (Test (Wasm_exts.Values.I64 I64Op.Eqz)) ^^
-     G.if1 I64Type
+     compile_test I64Op.Eqz ^^
+     E.if1 I64Type
        get_lower
        begin
          get_lower ^^
@@ -4850,7 +4876,7 @@ module StableMem = struct
           compile_unboxed_const (Int64.of_int page_size_bits) ^^
           G.i (Binary (Wasm_exts.Values.I64 I64Op.ShrU)) ^^
           get_mem_size env ^^
-          G.i (Compare (Wasm_exts.Values.I64 I64Op.LtU)) ^^
+          compile_comparison I64Op.LtU ^^
           E.else_trap_with env "StableMemory offset out of bounds")
     | _ -> assert false
 
@@ -4868,14 +4894,14 @@ module StableMem = struct
           set_sum ^^
           get_sum ^^
           get_offset ^^
-          G.i (Compare (Wasm_exts.Values.I64 I64Op.LtU)) ^^
+          compile_comparison I64Op.LtU ^^
           E.then_trap_with env "StableMemory range overflow" ^^
           get_sum
           ^^
           get_mem_size env ^^
           compile_unboxed_const (Int64.of_int page_size_bits) ^^
           G.i (Binary (Wasm_exts.Values.I64 I64Op.Shl)) ^^
-          G.i (Compare (Wasm_exts.Values.I64 I64Op.LeU)) ^^
+          compile_comparison I64Op.LeU ^^
           E.else_trap_with env "StableMemory range out of bounds")
     | _ -> assert false
 
@@ -4928,8 +4954,8 @@ module StableMem = struct
     read env false "word32" I32Type 4L load_word32 ^^
     G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendSI32))
   let write_word32 env =
-    G.i (Convert (Wasm_exts.Values.I64 I64Op.WrapI64)) ^^
-    write env false "word32" I64Type 4L store_word32
+    G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
+    write env false "word32" I32Type 4L store_word32
 
   (* read and clear word32 from stable mem offset on stack *)
   let read_and_clear_word32 env =
@@ -4979,8 +5005,8 @@ module StableMem = struct
 
           get_pages_needed ^^
           compile_unboxed_const 0L ^^
-          G.i (Compare (Wasm_exts.Values.I64 I64Op.GtS)) ^^
-          G.if1 I64Type
+          compile_comparison I64Op.GtS ^^
+          E.if1 I64Type
             (get_pages_needed ^^
              IC.system_call env "stable64_grow")
             get_size)
@@ -5001,7 +5027,7 @@ module StableMem = struct
           (* check for overflow *)
           get_sum ^^
           get_offset ^^
-          G.i (Compare (Wasm_exts.Values.I64 I64Op.LtU)) ^^
+          compile_comparison I64Op.LtU ^^
           E.then_trap_with env "Range overflow" ^^
           (* ensure page *)
           get_sum ^^
@@ -5011,7 +5037,7 @@ module StableMem = struct
           ensure_pages env ^^
           (* Check result *)
           compile_unboxed_const 0L ^^
-          G.i (Compare (Wasm_exts.Values.I64 I64Op.LtS)) ^^
+          compile_comparison I64Op.LtS ^^
           E.then_trap_with env "Out of stable memory.")
     | _ -> assert false
 
@@ -5031,8 +5057,8 @@ module StableMem = struct
           get_pages ^^
           G.i (Binary (Wasm_exts.Values.I64 I64Op.Add)) ^^
           compile_unboxed_const (Int64.of_int (!Flags.max_stable_pages)) ^^
-          G.i (Compare (Wasm_exts.Values.I64 I64Op.GtU)) ^^
-          G.if1 I64Type
+          compile_comparison I64Op.GtU ^^
+          E.if1 I64Type
             begin
              compile_unboxed_const (-1L) ^^
              G.i Return
@@ -5053,8 +5079,8 @@ module StableMem = struct
               (* Check result *)
               get_ensured ^^
               compile_unboxed_const 0L ^^
-              G.i (Compare (Wasm_exts.Values.I64 I64Op.LtS)) ^^
-              G.if1 I64Type
+              compile_comparison I64Op.LtS ^^
+              E.if1 I64Type
                 ((* propagate failure -1; preserve logical size *)
                  get_ensured)
                 ((* update logical size *)
@@ -5248,7 +5274,7 @@ module BumpStream : Stream = struct
 
   let check_filled env get_data_buf get_data_size =
     get_data_buf ^^ get_data_size ^^ G.i (Binary (Wasm_exts.Values.I64 I64Op.Add)) ^^
-    G.i (Compare (Wasm_exts.Values.I64 I64Op.Eq)) ^^
+    compile_comparison I64Op.Eq ^^
     E.else_trap_with env "data buffer not filled"
 
   let terminate env get_data_buf get_data_size header_size =
@@ -5667,15 +5693,14 @@ module MakeSerialization (Strm : Stream) = struct
         let (set_temp, get_temp) = new_local env "temp" in
         set_temp ^^
         get_temp ^^ compile_unboxed_const Tagged.(int_of_tag StableSeen) ^^
-        G.i (Compare (Wasm_exts.Values.I64 I64Op.Ne)) ^^
+        compile_comparison I64Op.Ne ^^
         get_temp ^^ compile_unboxed_const Tagged.(int_of_tag CoercionFailure) ^^
-        G.i (Compare (Wasm_exts.Values.I64 I64Op.Ne)) ^^
+        compile_comparison I64Op.Ne ^^
         G.i (Binary (Wasm_exts.Values.I64 I64Op.And)) ^^
         get_temp ^^ compile_unboxed_const Tagged.(int_of_tag ArraySliceMinimum) ^^
-        G.i (Compare (Wasm_exts.Values.I64 I64Op.GeU)) ^^
+        compile_comparison I64Op.GeU ^^
         G.i (Binary (Wasm_exts.Values.I64 I64Op.And)) ^^
-        Bool.from_int64 ^^
-        G.if1 I64Type begin
+        E.if1 I64Type begin
           (compile_unboxed_const Tagged.(int_of_tag Array))
         end begin
           get_temp
@@ -5697,7 +5722,7 @@ module MakeSerialization (Strm : Stream) = struct
         E.else_trap_with env "object_size/Mut: Unexpected tag" ^^
         (* Check if we have seen this before *)
         get_tag ^^ compile_eq_const Tagged.(int_of_tag StableSeen) ^^
-        G.if0 begin
+        E.if0 begin
           (* Seen before *)
           (* One byte marker, one word offset *)
           (* TODO: Support 64-bit pointer in serialization *)
@@ -5757,12 +5782,12 @@ module MakeSerialization (Strm : Stream) = struct
       | Opt t ->
         inc_data_size (compile_unboxed_const 1L) ^^ (* one byte tag *)
         get_x ^^ Opt.is_some env ^^
-        G.if0 (get_x ^^ Opt.project env ^^ size env t) G.nop
+        E.if0 (get_x ^^ Opt.project env ^^ size env t) G.nop
       | Variant vs ->
         List.fold_right (fun (i, {lab = l; typ = t; _}) continue ->
             get_x ^^
             Variant.test_is env l ^^
-            G.if0
+            E.if0
               ( size_word env (compile_unboxed_const (Int64.of_int i)) ^^
                 get_x ^^ Variant.project env ^^ size env t
               ) continue
@@ -5786,11 +5811,11 @@ module MakeSerialization (Strm : Stream) = struct
       (* TODO: Support 64-bit buffer *)
       get_data_size ^^
       compile_shrU_const 32L ^^
-      G.i (Test (Wasm_exts.Values.I64 I64Op.Eqz)) ^^
+      compile_test I64Op.Eqz ^^
       E.else_trap_with env "buffer_size overflow" ^^
       (* Convert to 32-bit *)
       get_data_size ^^
-      G.i (Convert (Wasm_exts.Values.I64 I64Op.WrapI64)) ^^
+      G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
       get_ref_size
     )
 
@@ -5821,7 +5846,7 @@ module MakeSerialization (Strm : Stream) = struct
         let (set_tag, get_tag) = new_local env "tag" in
         get_x ^^ Tagged.load_tag env ^^ set_tag ^^
         get_tag ^^ compile_eq_const Tagged.(int_of_tag StableSeen) ^^
-        G.if0
+        E.if0
         begin
           (* This is the real data *)
           write_byte env get_data_buf (compile_unboxed_const 0L) ^^
@@ -5852,11 +5877,11 @@ module MakeSerialization (Strm : Stream) = struct
           set_offset ^^
           (* A sanity check *)
           get_offset ^^ compile_unboxed_const 0L ^^
-          G.i (Compare (Wasm_exts.Values.I32 I32Op.LtS)) ^^
+          compile_comparison I32Op.LtS ^^
           E.else_trap_with env "Odd offset" ^^
           (* TODO: Support serialization beyond 32-bit *)
           get_offset ^^ compile_unboxed_const 0xffff_ffffL ^^
-          G.i (Compare (Wasm_exts.Values.I32 I32Op.LeU)) ^^
+          compile_comparison I32Op.LeU ^^
           E.else_trap_with env "64-bit offsets not yet supported during serialization" ^^
           (* Write the offset to the output buffer *)
           write_word_32 env get_data_buf get_offset
@@ -5916,14 +5941,14 @@ module MakeSerialization (Strm : Stream) = struct
       | Opt t ->
         get_x ^^
         Opt.is_some env ^^
-        G.if0
+        E.if0
           (write_byte env get_data_buf (compile_unboxed_const 1L) ^^ get_x ^^ Opt.project env ^^ write env t)
           (write_byte env get_data_buf (compile_unboxed_const 0L))
       | Variant vs ->
         List.fold_right (fun (i, {lab = l; typ = t; _}) continue ->
             get_x ^^
             Variant.test_is env l ^^
-            G.if0
+            E.if0
               ( write_word_leb env get_data_buf (compile_unboxed_const (Int64.of_int i)) ^^
                 get_x ^^ Variant.project env ^^ write env t)
               continue
@@ -6056,7 +6081,7 @@ module MakeSerialization (Strm : Stream) = struct
       *)
       get_depth ^^
       get_typtbl_size ^^ compile_add_const 1L ^^ compile_mul_const 2L ^^
-      G.i (Compare (Wasm_exts.Values.I64 I64Op.LeU)) ^^
+      compile_comparison I64Op.LeU ^^
       E.else_trap_with env ("IDL error: circular record read") ^^
 
       (* Remember data buffer position, to detect progress *)
@@ -6070,8 +6095,8 @@ module MakeSerialization (Strm : Stream) = struct
           (* set up frame arguments *)
           ( (* Reset depth counter if we made progress *)
             ReadBuf.get_ptr get_data_buf ^^ get_old_pos ^^
-            G.i (Compare (Wasm_exts.Values.I64 I64Op.Eq)) ^^
-            G.if1 I64Type
+            compile_comparison I64Op.Eq ^^
+            E.if1 I64Type
               (Stack.get_prev_local env 1L ^^ compile_add_const 1L)
               (compile_unboxed_const 0L)
             ) ^^
@@ -6097,14 +6122,14 @@ module MakeSerialization (Strm : Stream) = struct
       *)
       let (set_failed, get_failed) = new_local env "failed" in
       let set_failure = compile_unboxed_const 1L ^^ set_failed in
-      let when_failed f = get_failed ^^ G.if0 f G.nop in
+      let when_failed f = get_failed ^^ E.if0 f G.nop in
 
       (* This looks at a value and if it is coercion_error_value, sets the failure flag.
          This propagates the error out of arrays, records, etc.
        *)
       let remember_failure get_val =
           get_val ^^ compile_eq_const (coercion_error_value env) ^^
-          G.if0 set_failure G.nop
+          E.if0 set_failure G.nop
       in
 
       (* This sets the failure flag and puts coercion_error_value on the stack *)
@@ -6123,7 +6148,7 @@ module MakeSerialization (Strm : Stream) = struct
 
       let with_prim_typ t f =
         check_prim_typ t ^^
-        G.if1 I64Type f
+        E.if1 I64Type f
           ( skip get_idltyp ^^
             coercion_failed ("IDL error: unexpected IDL type when parsing " ^ string_of_typ t)
           )
@@ -6136,7 +6161,7 @@ module MakeSerialization (Strm : Stream) = struct
           set_b ^^
           get_b ^^
           compile_eq_const 0L ^^
-          G.if1 I64Type
+          E.if1 I64Type
           begin code0
           end begin
             get_b ^^ compile_eq_const 1L ^^
@@ -6165,7 +6190,7 @@ module MakeSerialization (Strm : Stream) = struct
         (* at most 29 bytes, according to
            https://sdk.dfinity.org/docs/interface-spec/index.html#principal
         *)
-        get_len ^^ compile_unboxed_const 29L ^^ G.i (Compare (Wasm_exts.Values.I32 I32Op.LeU)) ^^
+        get_len ^^ compile_unboxed_const 29L ^^ compile_comparison I32Op.LeU ^^
         E.else_trap_with env "IDL error: principal too long" ^^
 
         get_len ^^ Blob.alloc env ^^ set_x ^^
@@ -6196,8 +6221,8 @@ module MakeSerialization (Strm : Stream) = struct
       (* returns true if get_arg_typ is a composite type of this id *)
       let check_composite_typ get_arg_typ idl_tycon_id =
         get_arg_typ ^^
-        compile_unboxed_const 0L ^^ G.i (Compare (Wasm_exts.Values.I64 I64Op.GeS)) ^^
-        G.if1 I64Type
+        compile_unboxed_const 0L ^^ compile_comparison I64Op.GeS ^^
+        E.if1 I64Type
         begin
           ReadBuf.alloc env (fun get_typ_buf ->
             (* Update typ_buf *)
@@ -6225,8 +6250,8 @@ module MakeSerialization (Strm : Stream) = struct
       let with_composite_arg_typ get_arg_typ idl_tycon_id f =
         (* make sure index is not negative *)
         get_arg_typ ^^
-        compile_unboxed_const 0L ^^ G.i (Compare (Wasm_exts.Values.I64 I64Op.GeS)) ^^
-        G.if1 I64Type
+        compile_unboxed_const 0L ^^ compile_comparison I64Op.GeS ^^
+        E.if1 I64Type
         begin
           ReadBuf.alloc env (fun get_typ_buf ->
             (* Update typ_buf *)
@@ -6241,7 +6266,7 @@ module MakeSerialization (Strm : Stream) = struct
             ReadBuf.read_sleb128 env get_typ_buf ^^
             (* Check it is the expected type constructor *)
             compile_eq_const (Wasm.I64_convert.extend_i32_s idl_tycon_id) ^^
-            G.if1 I64Type
+            E.if1 I64Type
             begin
               f get_typ_buf
             end
@@ -6274,7 +6299,7 @@ module MakeSerialization (Strm : Stream) = struct
         with_composite_typ idl_vec (fun get_typ_buf ->
           ReadBuf.read_sleb128 env get_typ_buf ^^
           compile_eq_const (-5L) (* Nat8 *) ^^
-          G.if1 I64Type
+          E.if1 I64Type
             f
             begin
               skip get_idltyp ^^
@@ -6298,12 +6323,12 @@ module MakeSerialization (Strm : Stream) = struct
 
         (* If it is a reference, temporarily set the read buffer to that place *)
         get_is_ref ^^
-        G.if0 begin
+        E.if0 begin
           let (set_offset, get_offset) = new_local env "offset" in
           ReadBuf.read_word32 env get_data_buf ^^ set_offset ^^
           (* A sanity check *)
           get_offset ^^ compile_unboxed_const 0L ^^
-          G.i (Compare (Wasm_exts.Values.I64 I64Op.LtS)) ^^
+          compile_comparison I64Op.LtS ^^
           E.else_trap_with env "Odd offset" ^^
 
           ReadBuf.get_ptr get_data_buf ^^ set_cur ^^
@@ -6315,7 +6340,7 @@ module MakeSerialization (Strm : Stream) = struct
         (* Did we decode this already? *)
         ReadBuf.read_word32 env get_data_buf ^^ set_result ^^
         get_result ^^ compile_eq_const 0L ^^
-        G.if0 begin
+        E.if0 begin
           (* No, not yet decoded *)
           (* Skip over type hash field *)
           ReadBuf.read_word32 env get_data_buf ^^ compile_eq_const 0L ^^
@@ -6333,13 +6358,13 @@ module MakeSerialization (Strm : Stream) = struct
         end begin
           (* Decoded before. Check type hash *)
           ReadBuf.read_word32 env get_data_buf ^^ Blob.lit env (typ_hash t) ^^
-          G.i (Compare (Wasm_exts.Values.I64 I64Op.Eq)) ^^
+          compile_comparison I64Op.Eq ^^
           E.else_trap_with env ("Stable memory error: Aliased at wrong type, expected: " ^ typ_hash t)
         end ^^
 
         (* If this was a reference, reset read buffer *)
         get_is_ref ^^
-        G.if0 (ReadBuf.set_ptr get_data_buf get_cur) G.nop ^^
+        E.if0 (ReadBuf.set_ptr get_data_buf get_cur) G.nop ^^
 
         get_result
       in
@@ -6356,7 +6381,7 @@ module MakeSerialization (Strm : Stream) = struct
       | Prim Int ->
         (* Subtyping with nat *)
         check_prim_typ (Prim Nat) ^^
-        G.if1 I64Type
+        E.if1 I64Type
           begin
             BigNum.compile_load_from_data_buf env get_data_buf false
           end
@@ -6439,7 +6464,8 @@ module MakeSerialization (Strm : Stream) = struct
             (* skip all possible intermediate extra fields *)
             get_typ_buf ^^ get_data_buf ^^ get_typtbl ^^ compile_unboxed_const (Int64.of_int i) ^^ get_n_ptr ^^
             E.call_import env "rts" "find_field" ^^
-            G.if1 I64Type
+            Bool.from_int32 ^^
+            E.if1 I64Type
               begin
                 ReadBuf.read_sleb128 env get_typ_buf ^^
                 go env t ^^ set_val ^^
@@ -6468,7 +6494,8 @@ module MakeSerialization (Strm : Stream) = struct
               (* skip all possible intermediate extra fields *)
               get_typ_buf ^^ get_data_buf ^^ get_typtbl ^^ compile_unboxed_const (Wasm.I64_convert.extend_i32_u (Lib.Uint32.to_int32 h)) ^^ get_n_ptr ^^
               E.call_import env "rts" "find_field" ^^
-              G.if1 I64Type
+              Bool.from_int32 ^^
+              E.if1 I64Type
                 begin
                   ReadBuf.read_sleb128 env get_typ_buf ^^
                   go env f.typ ^^ set_val ^^
@@ -6524,13 +6551,13 @@ module MakeSerialization (Strm : Stream) = struct
         Tagged.allocation_barrier env
       | Opt t ->
         check_prim_typ (Prim Null) ^^
-        G.if1 I64Type (Opt.null_lit env)
+        E.if1 I64Type (Opt.null_lit env)
         begin
           check_prim_typ Any ^^ (* reserved *)
-          G.if1 I64Type (Opt.null_lit env)
+          E.if1 I64Type (Opt.null_lit env)
           begin
             check_composite_typ get_idltyp idl_opt ^^
-            G.if1 I64Type
+            E.if1 I64Type
             begin
               let (set_arg_typ, get_arg_typ) = new_local env "arg_typ" in
               with_composite_typ idl_opt (ReadBuf.read_sleb128 env) ^^ set_arg_typ ^^
@@ -6539,7 +6566,7 @@ module MakeSerialization (Strm : Stream) = struct
                 ; let (set_val, get_val) = new_local env "val" in
                   get_arg_typ ^^ go_can_recover env t ^^ set_val ^^
                   get_val ^^ compile_eq_const (coercion_error_value env) ^^
-                  G.if1 I64Type
+                  E.if1 I64Type
                     (* decoding failed, but this is opt, so: return null *)
                     (Opt.null_lit env)
                     (* decoding succeeded, return opt value *)
@@ -6558,7 +6585,7 @@ module MakeSerialization (Strm : Stream) = struct
                 let (set_val, get_val) = new_local env "val" in
                 get_idltyp ^^ go_can_recover env t ^^ set_val ^^
                 get_val ^^ compile_eq_const (coercion_error_value env) ^^
-                G.if1 I64Type
+                E.if1 I64Type
                   (* decoding failed, but this is opt, so: return null *)
                   (Opt.null_lit env)
                   (* decoding succeeded, return opt value *)
@@ -6577,7 +6604,7 @@ module MakeSerialization (Strm : Stream) = struct
           ReadBuf.read_leb128 env get_data_buf ^^ set_tagidx ^^
 
           get_tagidx ^^ get_n ^^
-          G.i (Compare (Wasm_exts.Values.I64 I64Op.LtU)) ^^
+          compile_comparison I64Op.LtU ^^
           E.else_trap_with env "IDL error: variant index out of bounds" ^^
 
           (* Zoom past the previous entries *)
@@ -6594,7 +6621,7 @@ module MakeSerialization (Strm : Stream) = struct
 
           List.fold_right (fun (h, {lab = l; typ = t; _}) continue ->
               get_tag ^^ compile_eq_const (Wasm.I64_convert.extend_i32_u (Lib.Uint32.to_int32 h)) ^^
-              G.if1 I64Type
+              E.if1 I64Type
                 ( Variant.inject env l (
                   get_arg_typ ^^ go env t ^^ set_val ^^
                   remember_failure get_val ^^
@@ -6608,7 +6635,7 @@ module MakeSerialization (Strm : Stream) = struct
       | Func _ ->
         (* See Note [Candid subtype checks] *)
         get_rel_buf_opt ^^
-        G.if1 I64Type
+        E.if1 I64Type
           begin
             get_rel_buf_opt ^^
             get_typtbl ^^
@@ -6618,7 +6645,7 @@ module MakeSerialization (Strm : Stream) = struct
             idl_sub env t
           end
           (Bool.lit true) ^^ (* if we don't have a subtype memo table, assume the types are ok *)
-        G.if1 I64Type
+        E.if1 I64Type
           (with_composite_typ idl_func (fun _get_typ_buf ->
             read_byte_tagged
               [ E.trap_with env "IDL error: unexpected function reference"
@@ -6631,7 +6658,7 @@ module MakeSerialization (Strm : Stream) = struct
       | Obj (Actor, _) ->
         (* See Note [Candid subtype checks] *)
         get_rel_buf_opt ^^
-        G.if1 I64Type
+        E.if1 I64Type
           begin
             get_rel_buf_opt ^^
             get_typtbl ^^
@@ -6641,7 +6668,7 @@ module MakeSerialization (Strm : Stream) = struct
             idl_sub env t
           end
           (Bool.lit true) ^^
-        G.if1 I64Type
+        E.if1 I64Type
           (with_composite_typ idl_service
              (fun _get_typ_buf -> read_actor_data ()))
           (skip get_idltyp ^^
@@ -6683,7 +6710,7 @@ module MakeSerialization (Strm : Stream) = struct
       get_data_size ^^
       compile_add_const tydesc_len ^^
       compile_unboxed_const tydesc_len ^^
-      G.i (Compare (Wasm_exts.Values.I64 I64Op.LtU)) ^^
+      compile_comparison I64Op.LtU ^^
       E.then_trap_with env "serialization overflow" ^^
 
       let (set_data_start, get_data_start) = new_local env "data_start" in
@@ -6701,7 +6728,7 @@ module MakeSerialization (Strm : Stream) = struct
 
       (* Sanity check: Did we fill exactly the buffer *)
       get_refs_start ^^ get_refs_size ^^ compile_mul_const Heap.word_size ^^ G.i (Binary (Wasm_exts.Values.I64 I64Op.Add)) ^^
-      G.i (Compare (Wasm_exts.Values.I64 I64Op.Eq)) ^^
+      compile_comparison I64Op.Eq ^^
       E.else_trap_with env "reference buffer not filled" ^^
 
       (* Verify that the stream is correctly filled *)
@@ -6772,13 +6799,13 @@ module MakeSerialization (Strm : Stream) = struct
             | _ ->
               (get_can_recover, fun msg ->
                 get_can_recover ^^
-                G.if1 I64Type
+                E.if1 I64Type
                    (compile_unboxed_const (coercion_error_value env))
                    (E.trap_with env msg)))
           in
           get_arg_count ^^
           compile_eq_const 0L ^^
-          G.if1 I64Type
+          E.if1 I64Type
            (default_or_trap ("IDL error: too few arguments " ^ ts_name))
            (begin
               begin
@@ -6806,7 +6833,7 @@ module MakeSerialization (Strm : Stream) = struct
              ^^ set_val ^^
              get_arg_count ^^ compile_sub_const 1L ^^ set_arg_count ^^
              get_val ^^ compile_eq_const (coercion_error_value env) ^^
-             (G.if1 I64Type
+             (E.if1 I64Type
                (default_or_trap "IDL error: coercion failure encountered")
                get_val)
             end)
@@ -7159,8 +7186,8 @@ module Stabilization = struct
     set_dst ^^
 
     StableMem.get_mem_size env ^^
-    G.i (Test (Wasm_exts.Values.I64 I64Op.Eqz)) ^^
-    G.if0
+    compile_test I64Op.Eqz ^^
+    E.if0
       begin (* ensure [0,..,3,...len+4) *)
         compile_unboxed_const 0L ^^
         get_len ^^
@@ -7254,8 +7281,8 @@ module Stabilization = struct
       set_pages ^^
 
       get_pages ^^
-      G.i (Test (Wasm_exts.Values.I64 I64Op.Eqz)) ^^
-      G.if1 I64Type
+      compile_test I64Op.Eqz ^^
+      E.if1 I64Type
         begin
           let (_, fs) = Type.as_obj ty in
           let fs' = List.map
@@ -7263,7 +7290,7 @@ module Stabilization = struct
            fs
           in
           StableMem.get_mem_size env ^^
-          G.i (Test (Wasm_exts.Values.I64 I64Op.Eqz)) ^^
+          compile_test I64Op.Eqz ^^
           E.else_trap_with env "StableMem.mem_size non-zero" ^^
           Object.lit_raw env fs'
         end
@@ -7276,8 +7303,8 @@ module Stabilization = struct
           set_marker ^^
 
           get_marker ^^
-          G.i (Test (Wasm_exts.Values.I64 I64Op.Eqz)) ^^
-          G.if0
+          compile_test I64Op.Eqz ^^
+          E.if0
             begin
               let (set_M, get_M) = new_local env "M" in
               let (set_version, get_version) = new_local env "version" in
@@ -7297,7 +7324,7 @@ module Stabilization = struct
               (* check version *)
               get_version ^^
               compile_unboxed_const StableMem.version ^^
-              G.i (Compare (Wasm_exts.Values.I64 I64Op.GtU)) ^^
+              compile_comparison I64Op.GtU ^^
               E.then_trap_with env (Printf.sprintf
                 "higher stable memory version (expected %s)"
                 (Int64.to_string StableMem.version)) ^^
@@ -7332,7 +7359,7 @@ module Stabilization = struct
             begin
               (* assert mem_size == 0 *)
               StableMem.get_mem_size env ^^
-              G.i (Test (Wasm_exts.Values.I64 I64Op.Eqz)) ^^
+              compile_test I64Op.Eqz ^^
               E.else_trap_with env "unexpected, non-zero stable memory size" ^^
 
               (* set len *)
@@ -8148,9 +8175,9 @@ module FuncDec = struct
       IC.set_call_perform_message env ^^
       IC.get_call_perform_status env ^^
       compile_unboxed_const 0L ^^
-      G.i (Compare (Wasm_exts.Values.I64 I64Op.Ne)) ^^
+      compile_comparison I64Op.Ne ^^
       (* save error code, cleanup on error *)
-      G.if0
+      E.if0
       begin (* send failed *)
         if !Flags.trap_on_call_error then
           E.trap_with env message
@@ -8237,7 +8264,7 @@ module FuncDec = struct
     get_meth_pair1 ^^ Arr.load_field env 0L ^^
     get_meth_pair2 ^^ Arr.load_field env 0L ^^
     Blob.compare env (Some Operator.EqOp) ^^
-    G.if1 I32Type
+    E.if1 I64Type
     begin
       get_meth_pair1 ^^ Arr.load_field env 1L ^^
       get_meth_pair2 ^^ Arr.load_field env 1L ^^
@@ -8322,13 +8349,13 @@ module PatCode = struct
           let inner_fail = G.new_depth_label () in
           let inner_fail_code = Bool.lit false ^^ G.branch_to_ inner_fail in
           G.labeled_block1 I64Type inner_fail (is1 inner_fail_code ^^ Bool.lit true) ^^
-          G.if0 G.nop (is2 fail_code)
+          E.if0 G.nop (is2 fail_code)
         )
       | CannotFail is2 -> CannotFail (
           let inner_fail = G.new_depth_label () in
           let inner_fail_code = Bool.lit false ^^ G.branch_to_ inner_fail in
           G.labeled_block1 I64Type inner_fail (is1 inner_fail_code ^^ Bool.lit true) ^^
-          G.if0 G.nop is2
+          E.if0 G.nop is2
         )
 
   let orElses : patternCode list -> patternCode -> patternCode =
@@ -8625,8 +8652,8 @@ let additiveInt64_shortcut fast env get_a get_b slow =
   get_a ^^ get_a ^^ compile_shl_const 1L ^^ G.i (Binary (Wasm_exts.Values.I64 I64Op.Xor)) ^^ compile_shrU_const 63L ^^
   get_b ^^ get_b ^^ compile_shl_const 1L ^^ G.i (Binary (Wasm_exts.Values.I64 I64Op.Xor)) ^^ compile_shrU_const 63L ^^
   G.i (Binary (Wasm_exts.Values.I64 I64Op.Or)) ^^
-  G.i (Test (Wasm_exts.Values.I64 I64Op.Eqz)) ^^
-  G.if1 I64Type
+  compile_test I64Op.Eqz ^^
+  E.if1 I64Type
     (get_a ^^ get_b ^^ fast)
     slow
 
@@ -8634,38 +8661,38 @@ let mulInt64_shortcut fast env get_a get_b slow =
   get_a ^^ get_a ^^ compile_shl_const 1L ^^ G.i (Binary (Wasm_exts.Values.I64 I64Op.Xor)) ^^ G.i (Unary (Wasm_exts.Values.I64 I64Op.Clz)) ^^
   get_b ^^ get_b ^^ compile_shl_const 1L ^^ G.i (Binary (Wasm_exts.Values.I64 I64Op.Xor)) ^^ G.i (Unary (Wasm_exts.Values.I64 I64Op.Clz)) ^^
   G.i (Binary (Wasm_exts.Values.I64 I64Op.Add)) ^^
-  compile_unboxed_const 65L ^^ G.i (Compare (Wasm_exts.Values.I64 I64Op.GeU)) ^^
-  G.if1 I64Type
+  compile_unboxed_const 65L ^^ compile_comparison I64Op.GeU ^^
+  E.if1 I64Type
     (get_a ^^ get_b ^^ fast)
     slow
 
 let powInt64_shortcut fast env get_a get_b slow =
-  get_b ^^ G.i (Test (Wasm_exts.Values.I64 I64Op.Eqz)) ^^
-  G.if1 I64Type
+  get_b ^^ compile_test I64Op.Eqz ^^
+  E.if1 I64Type
     (compile_unboxed_const 1L) (* ^0 *)
     begin (* ^(1+n) *)
-      get_a ^^ compile_unboxed_const (-1L) ^^ G.i (Compare (Wasm_exts.Values.I64 I64Op.Eq)) ^^
-      G.if1 I64Type
+      get_a ^^ compile_unboxed_const (-1L) ^^ compile_comparison I64Op.Eq ^^
+      E.if1 I64Type
         begin (* -1 ** (1+exp) == if even (1+exp) then 1 else -1 *)
           get_b ^^ compile_unboxed_const 1L ^^
-          G.i (Binary (Wasm_exts.Values.I64 I64Op.And)) ^^ G.i (Test (Wasm_exts.Values.I64 I64Op.Eqz)) ^^
-          G.if1 I64Type
+          G.i (Binary (Wasm_exts.Values.I64 I64Op.And)) ^^ compile_test I64Op.Eqz ^^
+          E.if1 I64Type
             (compile_unboxed_const 1L)
             get_a
         end
         begin
           get_a ^^ compile_shrS_const 1L ^^
-          G.i (Test (Wasm_exts.Values.I64 I64Op.Eqz)) ^^
-          G.if1 I64Type
+          compile_test I64Op.Eqz ^^
+          E.if1 I64Type
             get_a (* {0,1}^(1+n) *)
             begin
               get_b ^^ compile_unboxed_const 64L ^^
-              G.i (Compare (Wasm_exts.Values.I64 I64Op.GeU)) ^^ then_arithmetic_overflow env ^^
+              compile_comparison I64Op.GeU ^^ then_arithmetic_overflow env ^^
               get_a ^^ get_a ^^ compile_shl_const 1L ^^ G.i (Binary (Wasm_exts.Values.I64 I64Op.Xor)) ^^
               G.i (Unary (Wasm_exts.Values.I64 I64Op.Clz)) ^^ compile_sub_const 63L ^^
               get_b ^^ G.i (Binary (Wasm_exts.Values.I64 I64Op.Mul)) ^^
-              compile_unboxed_const (-63L) ^^ G.i (Compare (Wasm_exts.Values.I64 I64Op.GeS)) ^^
-              G.if1 I64Type
+              compile_unboxed_const (-63L) ^^ compile_comparison I64Op.GeS ^^
+              E.if1 I64Type
                 (get_a ^^ get_b ^^ fast)
                 slow
             end
@@ -8699,8 +8726,8 @@ let additiveNat64_shortcut fast env get_a get_b slow =
   get_a ^^ compile_shrU_const 62L ^^
   get_b ^^ compile_shrU_const 62L ^^
   G.i (Binary (Wasm_exts.Values.I64 I64Op.Or)) ^^
-  G.i (Test (Wasm_exts.Values.I64 I64Op.Eqz)) ^^
-  G.if1 I64Type
+  compile_test I64Op.Eqz ^^
+  E.if1 I64Type
     (get_a ^^ get_b ^^ fast)
     slow
 
@@ -8708,25 +8735,25 @@ let mulNat64_shortcut fast env get_a get_b slow =
   get_a ^^ G.i (Unary (Wasm_exts.Values.I64 I64Op.Clz)) ^^
   get_b ^^ G.i (Unary (Wasm_exts.Values.I64 I64Op.Clz)) ^^
   G.i (Binary (Wasm_exts.Values.I64 I64Op.Add)) ^^
-  compile_unboxed_const 64L ^^ G.i (Compare (Wasm_exts.Values.I64 I64Op.GeU)) ^^
-  G.if1 I64Type
+  compile_unboxed_const 64L ^^ compile_comparison I64Op.GeU ^^
+  E.if1 I64Type
     (get_a ^^ get_b ^^ fast)
     slow
 
 let powNat64_shortcut fast env get_a get_b slow =
-  get_b ^^ G.i (Test (Wasm_exts.Values.I64 I64Op.Eqz)) ^^
-  G.if1 I64Type
+  get_b ^^ compile_test I64Op.Eqz ^^
+  E.if1 I64Type
     (compile_unboxed_const 1L) (* ^0 *)
     begin (* ^(1+n) *)
       get_a ^^ compile_shrU_const 1L ^^
-      G.i (Test (Wasm_exts.Values.I64 I64Op.Eqz)) ^^
-      G.if1 I64Type
+      compile_test I64Op.Eqz ^^
+      E.if1 I64Type
         get_a (* {0,1}^(1+n) *)
         begin
-          get_b ^^ compile_unboxed_const 64L ^^ G.i (Compare (Wasm_exts.Values.I64 I64Op.GeU)) ^^ then_arithmetic_overflow env ^^
+          get_b ^^ compile_unboxed_const 64L ^^ compile_comparison I64Op.GeU ^^ then_arithmetic_overflow env ^^
           get_a ^^ G.i (Unary (Wasm_exts.Values.I64 I64Op.Clz)) ^^ compile_sub_const 64L ^^
-          get_b ^^ G.i (Binary (Wasm_exts.Values.I64 I64Op.Mul)) ^^ compile_unboxed_const (-64L) ^^ G.i (Compare (Wasm_exts.Values.I64 I64Op.GeS)) ^^
-          G.if1 I64Type
+          get_b ^^ G.i (Binary (Wasm_exts.Values.I64 I64Op.Mul)) ^^ compile_unboxed_const (-64L) ^^ compile_comparison I64Op.GeS ^^
+          E.if1 I64Type
             (get_a ^^ get_b ^^ fast)
             slow
         end
@@ -8759,7 +8786,7 @@ let compile_Nat64_kernel env name op shortcut =
 (* helper, expects i64 on stack *)
 let enforce_32_unsigned_bits env =
   compile_bitand_const 0xFFFF_FFFF_0000_0000L ^^
-  G.i (Test (Wasm_exts.Values.I64 I64Op.Eqz)) ^^
+  compile_test I64Op.Eqz ^^
   else_arithmetic_overflow env
 
 (* helper, expects two identical i64s on stack *)
@@ -8876,7 +8903,7 @@ let compile_binop env t op : SR.t * SR.t * G.t =
     compile_Nat64_kernel env "sub" BigNum.compile_unsigned_sub
       (fun env get_a get_b ->
         additiveNat64_shortcut
-          (G.i (Compare (Wasm_exts.Values.I64 I64Op.GeU)) ^^
+          (compile_comparison I64Op.GeU ^^
            else_arithmetic_overflow env ^^
            get_a ^^ get_b ^^ G.i (Binary (Wasm_exts.Values.I64 I64Op.Sub)))
           env get_a get_b)
@@ -8930,17 +8957,15 @@ let compile_binop env t op : SR.t * SR.t * G.t =
         let (set_res, get_res) = new_local env "res" in
         let bits = TaggedSmallWord.bits_of_type ty in
         get_exp ^^
-        Bool.from_int64 ^^
-        G.if1 I64Type
+        E.if1 I64Type
           begin
             get_n ^^ compile_shrU_const Int64.(sub 33L (of_int bits)) ^^
-            Bool.from_int64 ^^
-            G.if1 I64Type
+            E.if1 I64Type
               begin
                 unsigned_dynamics get_n ^^ compile_sub_const (Int64.of_int bits) ^^
                 get_exp ^^ TaggedSmallWord.lsb_adjust ty ^^ G.i (Binary (Wasm_exts.Values.I64 I64Op.Mul)) ^^
                 compile_unboxed_const (-30L) ^^
-                G.i (Compare (Wasm_exts.Values.I64 I64Op.LtS)) ^^ then_arithmetic_overflow env ^^
+                compile_comparison I64Op.LtS ^^ then_arithmetic_overflow env ^^
                 get_n ^^ TaggedSmallWord.lsb_adjust ty ^^
                 get_exp ^^ TaggedSmallWord.lsb_adjust ty ^^
                 TaggedSmallWord.compile_nat_power env Type.Nat32 ^^ set_res ^^
@@ -8957,19 +8982,17 @@ let compile_binop env t op : SR.t * SR.t * G.t =
       (fun env get_n get_exp ->
         let (set_res, get_res) = new_local env "res" in
         get_exp ^^
-        Bool.from_int64 ^^
-        G.if1 I64Type
+        E.if1 I64Type
           begin
             get_n ^^ compile_shrU_const 1L ^^
-            Bool.from_int64 ^^
-            G.if1 I64Type
+            E.if1 I64Type
               begin
                 get_exp ^^ compile_unboxed_const 32L ^^
-                G.i (Compare (Wasm_exts.Values.I64 I64Op.GeU)) ^^ then_arithmetic_overflow env ^^
+                compile_comparison I64Op.GeU ^^ then_arithmetic_overflow env ^^
                 unsigned_dynamics get_n ^^ compile_sub_const 32L ^^
                 get_exp ^^ TaggedSmallWord.lsb_adjust Type.Nat32 ^^ G.i (Binary (Wasm_exts.Values.I64 I64Op.Mul)) ^^
                 compile_unboxed_const (-62L) ^^
-                G.i (Compare (Wasm_exts.Values.I64 I64Op.LtS)) ^^ then_arithmetic_overflow env ^^
+                compile_comparison I64Op.LtS ^^ then_arithmetic_overflow env ^^
                 get_n ^^
                 get_exp ^^
                 Word64.compile_unsigned_pow env ^^
@@ -8986,19 +9009,17 @@ let compile_binop env t op : SR.t * SR.t * G.t =
         let (set_res, get_res) = new_local env "res" in
         let bits = TaggedSmallWord.bits_of_type ty in
         get_exp ^^ compile_unboxed_zero ^^
-        G.i (Compare (Wasm_exts.Values.I64 I64Op.LtS)) ^^ E.then_trap_with env "negative power" ^^
+        compile_comparison I64Op.LtS ^^ E.then_trap_with env "negative power" ^^
         get_exp ^^
-        Bool.from_int64 ^^
-        G.if1 I64Type
+        E.if1 I64Type
           begin
             get_n ^^ compile_shrS_const Int64.(sub 33L (of_int bits)) ^^
-            Bool.from_int64 ^^
-            G.if1 I64Type
+            E.if1 I64Type
               begin
                 signed_dynamics get_n ^^ compile_sub_const (Int64.of_int (bits - 1)) ^^
                 get_exp ^^ TaggedSmallWord.lsb_adjust ty ^^ G.i (Binary (Wasm_exts.Values.I64 I64Op.Mul)) ^^
                 compile_unboxed_const (-30L) ^^
-                G.i (Compare (Wasm_exts.Values.I64 I64Op.LtS)) ^^ then_arithmetic_overflow env ^^
+                compile_comparison I64Op.LtS ^^ then_arithmetic_overflow env ^^
                 get_n ^^ TaggedSmallWord.lsb_adjust ty ^^
                 get_exp ^^ TaggedSmallWord.lsb_adjust ty ^^
                 TaggedSmallWord.compile_nat_power env Type.Nat32 ^^
@@ -9015,24 +9036,21 @@ let compile_binop env t op : SR.t * SR.t * G.t =
       (fun env get_n get_exp ->
         let (set_res, get_res) = new_local env "res" in
         get_exp ^^ compile_unboxed_zero ^^
-        G.i (Compare (Wasm_exts.Values.I64 I64Op.LtS)) ^^ E.then_trap_with env "negative power" ^^
+        compile_comparison I64Op.LtS ^^ E.then_trap_with env "negative power" ^^
         get_exp ^^
-        Bool.from_int64 ^^
-        G.if1 I64Type
+        E.if1 I64Type
           begin
-            get_n ^^ compile_unboxed_one ^^ G.i (Compare (Wasm_exts.Values.I64 I64Op.LeS)) ^^
-            get_n ^^ compile_unboxed_const (-1L) ^^ G.i (Compare (Wasm_exts.Values.I64 I64Op.GeS)) ^^
+            get_n ^^ compile_unboxed_one ^^ compile_comparison I64Op.LeS ^^
+            get_n ^^ compile_unboxed_const (-1L) ^^ compile_comparison I64Op.GeS ^^
             G.i (Binary (Wasm_exts.Values.I64 I64Op.And)) ^^
-            Bool.from_int64 ^^
-            G.if1 I64Type
+            E.if1 I64Type
               begin
-                get_n ^^ compile_unboxed_zero ^^ G.i (Compare (Wasm_exts.Values.I64 I64Op.LtS)) ^^
-                G.if1 I64Type
+                get_n ^^ compile_unboxed_zero ^^ compile_comparison I64Op.LtS ^^
+                E.if1 I64Type
                   begin
                     (* -1 ** (1+exp) == if even (1+exp) then 1 else -1 *)
                     get_exp ^^ compile_unboxed_one ^^ G.i (Binary (Wasm_exts.Values.I64 I64Op.And)) ^^
-                    Bool.from_int64 ^^
-                    G.if1 I64Type
+                    E.if1 I64Type
                       get_n
                       compile_unboxed_one
                   end
@@ -9040,11 +9058,11 @@ let compile_binop env t op : SR.t * SR.t * G.t =
               end
               begin
                 get_exp ^^ compile_unboxed_const 32L ^^
-                G.i (Compare (Wasm_exts.Values.I64 I64Op.GeU)) ^^ then_arithmetic_overflow env ^^
+                compile_comparison I64Op.GeU ^^ then_arithmetic_overflow env ^^
                 signed_dynamics get_n ^^ compile_sub_const 31L ^^
                 get_exp ^^ TaggedSmallWord.lsb_adjust Type.Int32 ^^ G.i (Binary (Wasm_exts.Values.I64 I64Op.Mul)) ^^
                 compile_unboxed_const (-62L) ^^
-                G.i (Compare (Wasm_exts.Values.I64 I64Op.LtS)) ^^ then_arithmetic_overflow env ^^
+                compile_comparison I64Op.LtS ^^ then_arithmetic_overflow env ^^
                 get_n ^^
                 get_exp ^^
                 Word64.compile_unsigned_pow env ^^
@@ -9071,7 +9089,7 @@ let compile_binop env t op : SR.t * SR.t * G.t =
     let (set_exp, get_exp) = new_local env "exp" in
     set_exp ^^ get_exp ^^
     compile_unboxed_const 0L ^^
-    G.i (Compare (Wasm_exts.Values.I64 I64Op.LtS)) ^^
+    compile_comparison I64Op.LtS ^^
     E.then_trap_with env "negative power" ^^
     get_exp ^^
     compile_Int64_kernel
@@ -9118,11 +9136,11 @@ let compile_eq env =
   | Prim (Blob|Principal) | Obj (Actor, _) -> Blob.compare env (Some Operator.EqOp)
   | Func (Shared _, _, _, _, _) -> FuncDec.equate_msgref env
   | Prim (Nat | Int) -> BigNum.compile_eq env
-  | Prim (Int64 | Nat64) -> G.i (Compare (Wasm_exts.Values.I64 I64Op.Eq))
+  | Prim (Int64 | Nat64) -> compile_comparison I64Op.Eq
   | Prim (Bool | Int8 | Nat8 | Int16 | Nat16 | Int32 | Nat32 | Char) ->
-    G.i (Compare (Wasm_exts.Values.I64 I64Op.Eq))
+    compile_comparison I64Op.Eq
   | Non -> G.i Unreachable
-  | Prim Float -> G.i (Compare (Wasm_exts.Values.F64 F64Op.Eq))
+  | Prim Float -> compile_comparison_f64 F64Op.Eq
   | t -> todo_trap env "compile_eq" (Arrange_type.typ t)
 
 let get_relops = Operator.(function
@@ -9133,13 +9151,13 @@ let get_relops = Operator.(function
   | NeqOp -> assert false
   | _ -> failwith "uncovered relop")
 
-let compile_comparison env t op =
+let compile_comparison_op env t op =
   let bigintop, u64op, s64op = get_relops op in
   let open Type in
   match t with
     | Nat | Int -> BigNum.compile_relop env bigintop
-    | Nat8 | Nat16 | Nat32 | Nat64 | Char -> G.i (Compare (Wasm_exts.Values.I64 u64op))
-    | Int8 | Int16 | Int32 | Int64 -> G.i (Compare (Wasm_exts.Values.I64 s64op))
+    | Nat8 | Nat16 | Nat32 | Nat64 | Char -> compile_comparison u64op
+    | Int8 | Int16 | Int32 | Int64 -> compile_comparison s64op
     | _ -> todo_trap env "compile_comparison" (Arrange_type.prim t)
 
 let compile_relop env t op =
@@ -9151,11 +9169,11 @@ let compile_relop env t op =
   | Type.(Prim (Blob|Principal)), _ -> Blob.compare env (Some op)
   | _, EqOp -> compile_eq env t
   | Type.(Prim (Nat | Nat8 | Nat16 | Nat32 | Nat64 | Int | Int8 | Int16 | Int32 | Int64 | Char as t1)), op1 ->
-    compile_comparison env t1 op1
-  | Type.(Prim Float), GtOp -> G.i (Compare (Wasm_exts.Values.F64 F64Op.Gt))
-  | Type.(Prim Float), GeOp -> G.i (Compare (Wasm_exts.Values.F64 F64Op.Ge))
-  | Type.(Prim Float), LeOp -> G.i (Compare (Wasm_exts.Values.F64 F64Op.Le))
-  | Type.(Prim Float), LtOp -> G.i (Compare (Wasm_exts.Values.F64 F64Op.Lt))
+    compile_comparison_op env t1 op1
+  | Type.(Prim Float), GtOp -> compile_comparison_f64 F64Op.Gt
+  | Type.(Prim Float), GeOp -> compile_comparison_f64 F64Op.Ge
+  | Type.(Prim Float), LeOp -> compile_comparison_f64 F64Op.Le
+  | Type.(Prim Float), LtOp -> compile_comparison_f64 F64Op.Lt
   | _ -> todo_trap env "compile_relop" (Arrange_ops.relop op)
 
 let compile_load_field env typ name =
@@ -9325,7 +9343,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | RelPrim (Type.(Prim Bool), Operator.EqOp), [e1; {it = LitE (BoolLit false); _}] ->
     SR.bool,
     compile_exp_as_test env ae e1 ^^
-    G.i (Test (Wasm_exts.Values.I32 I32Op.Eqz))
+    compile_test I32Op.Eqz
   | RelPrim (t, op), [e1;e2] ->
     let sr, code = compile_relop env t op in
     SR.bool,
@@ -9384,7 +9402,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.bool,
     compile_exp_vanilla env ae e1 ^^
     compile_exp_vanilla env ae e2 ^^
-    G.i (Compare (Wasm_exts.Values.I64 I64Op.LtU))
+    compile_comparison I64Op.LtU
   | DerefArrayOffset, [e1; e2] ->
     SR.Vanilla,
     compile_exp_vanilla env ae e1 ^^ (* skewed pointer to array *)
@@ -9416,7 +9434,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | AssertPrim, [e1] ->
     SR.unit,
     compile_exp_as env ae SR.bool e1 ^^
-    G.if0 G.nop (IC.fail_assert env at)
+    E.if0 G.nop (IC.fail_assert env at)
   | RetPrim, [e] ->
     SR.Unreachable,
     compile_exp_as env ae (StackRep.of_arity (E.get_return_arity env)) e ^^
@@ -9582,7 +9600,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
       set_val ^^
       get_val ^^
       compile_eq_const (Serialization.coercion_error_value env) ^^
-      G.if1 I64Type
+      E.if1 I64Type
         (Opt.null_lit env)
         (Opt.inject env get_val)
     | ts ->
@@ -9598,7 +9616,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
           | get_val::ls' ->
             get_val ^^
             compile_eq_const (Serialization.coercion_error_value env) ^^
-            G.if1 I64Type
+            E.if1 I64Type
               (Opt.null_lit env)
               (go ls')
           | [] ->
@@ -10427,11 +10445,11 @@ and compile_lit_pat env l =
   match l with
   | NullLit ->
     compile_lit_as env SR.Vanilla l ^^
-    G.i (Compare (Wasm_exts.Values.I64 I64Op.Eq))
+    compile_comparison I64Op.Eq
   | BoolLit true ->
     G.nop
   | BoolLit false ->
-    G.i (Test (Wasm_exts.Values.I64 I64Op.Eqz))
+    compile_test I64Op.Eqz
   | (NatLit _ | IntLit _) ->
     compile_lit_as env SR.Vanilla l ^^
     BigNum.compile_eq env
@@ -10479,14 +10497,14 @@ and fill_pat env ae pat : patternCode =
   | OptP p when Ir_utils.is_irrefutable_nonbinding p ->
       CanFail (fun fail_code ->
         Opt.is_some env ^^
-        G.if0 G.nop fail_code)
+        E.if0 G.nop fail_code)
   | OptP p ->
       let (set_x, get_x) = new_local env "opt_scrut" in
       CanFail (fun fail_code ->
         set_x ^^
         get_x ^^
         Opt.is_some env ^^
-        G.if0
+        E.if0
           ( get_x ^^
             Opt.project env ^^
             with_fail fail_code (fill_pat env ae p)
@@ -10496,14 +10514,14 @@ and fill_pat env ae pat : patternCode =
   | TagP (l, p) when Ir_utils.is_irrefutable_nonbinding p ->
       CanFail (fun fail_code ->
         Variant.test_is env l ^^
-        G.if0 G.nop fail_code)
+        E.if0 G.nop fail_code)
   | TagP (l, p) ->
       let (set_x, get_x) = new_local env "tag_scrut" in
       CanFail (fun fail_code ->
         set_x ^^
         get_x ^^
         Variant.test_is env l ^^
-        G.if0
+        E.if0
           ( get_x ^^
             Variant.project env ^^
             with_fail fail_code (fill_pat env ae p)
@@ -10513,7 +10531,7 @@ and fill_pat env ae pat : patternCode =
   | LitP l ->
       CanFail (fun fail_code ->
         compile_lit_pat env l ^^
-        G.if0 G.nop fail_code)
+        E.if0 G.nop fail_code)
   | VarP name ->
       CannotFail (Var.set_val_vanilla_from_stack env ae name)
   | TupP ps ->
@@ -10961,7 +10979,8 @@ and main_actor as_opt mod_env ds fs up =
         (* Liberally accept empty as well as unit argument *)
         assert (arg_tys = []);
         IC.system_call env "msg_arg_data_size" ^^
-        G.if0 (Serialization.deserialize env arg_tys) G.nop
+        Bool.from_int32 ^^
+        E.if0 (Serialization.deserialize env arg_tys) G.nop
       | Some (_ :: _) ->
         Serialization.deserialize env arg_tys ^^
         G.concat_map (Var.set_val_vanilla_from_stack env ae1) (List.rev arg_names)

@@ -117,6 +117,9 @@ let optimize : instr list -> instr list = fun is ->
     (* Null shifts can be eliminated *)
     | l', {it = Const {it = I32 0l; _}; _} :: {it = Binary (I32 I32Op.(Shl|ShrS|ShrU)); _} :: r' ->
       go l' r'
+    (* Widen followed by narrow is pointless - but not the opposite! *)
+    | {it = Convert (I64 I64Op.ExtendSI32) | Convert (I64 I64Op.ExtendUI32); _} :: l', {it = Convert (I64 I32Op.WrapI64); _} :: r' -> 
+      go l' r'
     (* Look further *)
     | _, i::r' -> go (i::l) r'
     (* Done looking *)
