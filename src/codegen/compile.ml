@@ -6002,12 +6002,12 @@ module MakeSerialization (Strm : Stream) = struct
         write_word_32 env get_data_buf (get_x ^^ BoxedSmallWord.unbox env)
       | Prim Char ->
         write_word_32 env get_data_buf (get_x ^^ TaggedSmallWord.untag_codepoint)
-      | Prim (Int16|Nat16) ->
+      | Prim ((Int16|Nat16) as ty) ->
         reserve env get_data_buf 2l ^^
-        get_x ^^ TaggedSmallWord.lsb_adjust Nat16 ^^
+        get_x ^^ TaggedSmallWord.lsb_adjust ty ^^
         G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.Pack16})
-      | Prim (Int8|Nat8) ->
-        write_byte env get_data_buf (get_x ^^ TaggedSmallWord.lsb_adjust Nat8)
+      | Prim ((Int8|Nat8) as ty) ->
+        write_byte env get_data_buf (get_x ^^ TaggedSmallWord.lsb_adjust ty)
       | Prim Bool ->
         write_byte env get_data_buf get_x
       | Tup [] -> (* e(()) = null *)
@@ -6510,17 +6510,17 @@ module MakeSerialization (Strm : Stream) = struct
           ReadBuf.read_word32 env get_data_buf ^^
           TaggedSmallWord.check_and_tag_codepoint env
         end
-      | Prim (Int16|Nat16) ->
+      | Prim ((Int16|Nat16) as ty) ->
         with_prim_typ t
         begin
           ReadBuf.read_word16 env get_data_buf ^^
-          TaggedSmallWord.msb_adjust Nat16
+          TaggedSmallWord.msb_adjust ty
         end
-      | Prim (Int8|Nat8) ->
+      | Prim ((Int8|Nat8) as ty) ->
         with_prim_typ t
         begin
           ReadBuf.read_byte env get_data_buf ^^
-          TaggedSmallWord.msb_adjust Nat8
+          TaggedSmallWord.msb_adjust ty
         end
       | Prim Bool ->
         with_prim_typ t
