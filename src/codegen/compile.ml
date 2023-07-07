@@ -4287,7 +4287,7 @@ module IC = struct
       let print_buffer = match E.mode env with
       | Flags.WASIMode -> 
         begin 
-          let length = 256 in
+          let length = 512 in
           let zero_data = String.make length '\x00' in
           (E.add_static env StaticBytes.[Bytes zero_data], length)
         end
