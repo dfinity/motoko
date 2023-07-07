@@ -8984,7 +8984,7 @@ let compile_binop env t op : SR.t * SR.t * G.t =
             Bool.from_int64 ^^
             E.if1 I64Type
               begin
-                let overflow_boundary = -Int.(sub bits 2) in
+                let overflow_boundary = -Int.(sub (mul bits 2) 2) in
                 get_exp ^^ TaggedSmallWord.lsb_adjust ty ^^ compile_unboxed_const (Int64.of_int bits) ^^
                 compile_comparison I64Op.GeU ^^ then_arithmetic_overflow env ^^
                 unsigned_dynamics get_n ^^ compile_sub_const (Int64.of_int bits) ^^
@@ -9030,7 +9030,7 @@ let compile_binop env t op : SR.t * SR.t * G.t =
                   get_n (* n@{0,1} ** (1+exp) == n *)
               end
               begin
-                let overflow_boundary = -Int.(sub bits 2) in
+                let overflow_boundary = -Int.(sub (mul bits 2) 2) in
                 get_exp ^^ TaggedSmallWord.lsb_adjust ty ^^ compile_unboxed_const (Int64.of_int bits) ^^
                 compile_comparison I64Op.GeU ^^ then_arithmetic_overflow env ^^
                 signed_dynamics get_n ^^ compile_sub_const (Int64.of_int (Int.sub bits 1)) ^^
