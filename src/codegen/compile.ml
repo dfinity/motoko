@@ -1622,7 +1622,7 @@ module Tagged = struct
   let alloc env size tag =
     assert (size > 1l);
     let name = Printf.sprintf "alloc_size<%d>_tag<%d>" (Int32.to_int size) (Int32.to_int (int_of_tag tag)) in
-    (* Computes a mask for the bumped HP, so that the existence of non-zero bits under it
+    (* Computes a (conservative) mask for the bumped HP, so that the existence of non-zero bits under it
        guarantees that a page boundary crossing didn't happen (i.e. no ripple-carry). *)
     let overflow_mask increment =
       let n = Int32.to_int increment in
