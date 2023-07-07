@@ -694,7 +694,7 @@ let compile_op32_const op i =
 let compile_add32_const = compile_op32_const I32Op.Add
 let _compile_sub32_const = compile_op32_const I32Op.Sub
 let _compile_mul32_const = compile_op32_const I32Op.Mul
-let compile_divU32_const = compile_op32_const I32Op.DivU
+let _compile_divU32_const = compile_op32_const I32Op.DivU
 let compile_shrU32_const = function
   | 0l -> G.nop | n -> compile_op32_const I32Op.ShrU n
 let _compile_shrS32_const = function
@@ -1411,8 +1411,11 @@ module Bool = struct
 
   let neg = compile_test I64Op.Eqz
 
-  let from_int32 = 
+  let from_rts_int32 = 
     G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
+
+  let to_rts_int32 =
+    G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64))
 
   let from_int64 =
     compile_unboxed_const 0L ^^
@@ -1783,7 +1786,7 @@ module Tagged = struct
     set_value ^^ set_location ^^
     (* performance gain by first checking the GC state *)
     E.call_import env "rts" "running_gc" ^^
-    Bool.from_int32 ^^
+    Bool.from_rts_int32 ^^
     E.if0 (
       get_location ^^ get_value ^^
       E.call_import env "rts" "write_with_barrier"
@@ -2467,10 +2470,10 @@ module ReadBuf = struct
     set_ptr get_buf (get_ptr get_buf ^^ get_delta ^^ G.i (Binary (Wasm_exts.Values.I64 I64Op.Add)))
 
   let read_leb128 env get_buf =
-    get_buf ^^ E.call_import env "rts" "leb128_decode"
+    get_buf ^^ E.call_import env "rts" "leb128_decode" ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
 
   let read_sleb128 env get_buf =
-    get_buf ^^ E.call_import env "rts" "sleb128_decode"
+    get_buf ^^ E.call_import env "rts" "sleb128_decode" ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
 
   let check_space env get_buf get_delta =
     get_delta ^^
@@ -2491,18 +2494,21 @@ module ReadBuf = struct
     check_space env get_buf (compile_unboxed_const 1L) ^^
     get_ptr get_buf ^^
     G.i (Load {ty = I32Type; align = 0; offset = 0L; sz = Some Wasm_exts.Types.(Pack8, ZX)}) ^^
+    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
     advance get_buf (compile_unboxed_const 1L)
 
   let read_word16 env get_buf =
     check_space env get_buf (compile_unboxed_const 2L) ^^
     get_ptr get_buf ^^
     G.i (Load {ty = I32Type; align = 0; offset = 0L; sz = Some Wasm_exts.Types.(Pack16, ZX)}) ^^
+    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
     advance get_buf (compile_unboxed_const 2L)
 
   let read_word32 env get_buf =
     check_space env get_buf (compile_unboxed_const 4L) ^^
     get_ptr get_buf ^^
     G.i (Load {ty = I32Type; align = 0; offset = 0L; sz = None}) ^^
+    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
     advance get_buf (compile_unboxed_const 4L)
 
   let speculative_read_word64 env get_buf =
@@ -2649,38 +2655,29 @@ let signed_dynamics get_x =
   G.i (Binary (Wasm_exts.Values.I64 I64Op.Xor)) ^^
   G.i (Unary (Wasm_exts.Values.I64 I64Op.Clz))
 
-(* helper, measures the dynamics of the unsigned i32, returns (32 - effective bits) *)
-let unsigned_dynamics32 get_x =
-  get_x ^^
-  G.i (Unary (Wasm_exts.Values.I32 I32Op.Clz))
-
-(* helper, measures the dynamics of the signed i32, returns (32 - effective bits) *)
-let signed_dynamics32 get_x =
-  get_x ^^ compile_shl32_const 1l ^^
-  get_x ^^
-  G.i (Binary (Wasm_exts.Values.I32 I32Op.Xor)) ^^
-  G.i (Unary (Wasm_exts.Values.I32 I32Op.Clz))
-
 module I32Leb = struct
   let compile_size dynamics get_x =
-    get_x ^^ G.if1 I32Type
+    get_x ^^ E.if1 I64Type
       begin
-        compile_const_32 38l ^^
+        compile_unboxed_const 38L ^^
         dynamics get_x ^^
-        G.i (Binary (Wasm_exts.Values.I32 I32Op.Sub)) ^^
-        compile_divU32_const 7l
+        G.i (Binary (Wasm_exts.Values.I64 I64Op.Sub)) ^^
+        compile_divU_const 7L
       end
-      (compile_const_32 1l)
+      (compile_unboxed_const 1L)
 
-  let compile_leb128_size get_x = compile_size unsigned_dynamics32 get_x
-  let compile_sleb128_size get_x = compile_size signed_dynamics32 get_x
+  let compile_leb128_size get_x = compile_size unsigned_dynamics get_x
+  let compile_sleb128_size get_x = compile_size signed_dynamics get_x
 
   let compile_store_to_data_buf_unsigned env get_x get_buf =
-    get_x ^^ get_buf ^^ E.call_import env "rts" "leb128_encode" ^^
+    get_x ^^ G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^ 
+    get_buf ^^ 
+    E.call_import env "rts" "leb128_encode" ^^
     compile_leb128_size get_x
 
   let compile_store_to_data_buf_signed env get_x get_buf =
-    get_x ^^ get_buf ^^ E.call_import env "rts" "sleb128_encode" ^^
+    get_x ^^ G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
+    get_buf ^^ E.call_import env "rts" "sleb128_encode" ^^
     compile_sleb128_size get_x
 end
 
@@ -3278,7 +3275,7 @@ module BigNumLibtommath : BigNumType = struct
   let assert_nonneg env =
     Func.share_code1 env "assert_nonneg" ("n", I64Type) [I64Type] (fun env get_n ->
       get_n ^^
-      E.call_import env "rts" "bigint_isneg" ^^ Bool.from_int32 ^^
+      E.call_import env "rts" "bigint_isneg" ^^ Bool.from_rts_int32 ^^
       E.then_trap_with env "Natural subtraction underflow" ^^
       get_n
     )
@@ -3297,13 +3294,13 @@ module BigNumLibtommath : BigNumType = struct
   let compile_lsh env = E.call_import env "rts" "bigint_lsh"
   let compile_rsh env = E.call_import env "rts" "bigint_rsh"
 
-  let compile_eq env = E.call_import env "rts" "bigint_eq" ^^ Bool.from_int32
-  let compile_is_negative env = E.call_import env "rts" "bigint_isneg" ^^ Bool.from_int32
+  let compile_eq env = E.call_import env "rts" "bigint_eq" ^^ Bool.from_rts_int32
+  let compile_is_negative env = E.call_import env "rts" "bigint_isneg" ^^ Bool.from_rts_int32
   let compile_relop env = function
-      | Lt -> E.call_import env "rts" "bigint_lt" ^^ Bool.from_int32
-      | Le -> E.call_import env "rts" "bigint_le" ^^ Bool.from_int32
-      | Ge -> E.call_import env "rts" "bigint_ge" ^^ Bool.from_int32
-      | Gt -> E.call_import env "rts" "bigint_gt" ^^ Bool.from_int32
+      | Lt -> E.call_import env "rts" "bigint_lt" ^^ Bool.from_rts_int32
+      | Le -> E.call_import env "rts" "bigint_le" ^^ Bool.from_rts_int32
+      | Ge -> E.call_import env "rts" "bigint_ge" ^^ Bool.from_rts_int32
+      | Gt -> E.call_import env "rts" "bigint_gt" ^^ Bool.from_rts_int32
 
   let fits_signed_bits env bits =
     E.call_import env "rts" "bigint_2complement_bits" ^^
@@ -3804,7 +3801,7 @@ module Text = struct
     set_blob ^^
     get_blob ^^ Blob.as_ptr_len env ^^
     E.call_import env "rts" "utf8_valid" ^^
-    Bool.from_int32 ^^
+    Bool.from_rts_int32 ^^
     E.if1 I64Type (Opt.inject_simple env get_blob) (Opt.null_lit env)
 
 
@@ -3813,7 +3810,7 @@ module Text = struct
   let iter_done env =
     E.call_import env "rts" "text_iter_done"
   let iter_next env =
-    E.call_import env "rts" "text_iter_next" ^^ Bool.from_int32 ^^
+    E.call_import env "rts" "text_iter_next" ^^ Bool.from_rts_int32 ^^
     TaggedSmallWord.tag_codepoint
 
   let compare env op =
@@ -4759,7 +4756,7 @@ module IC = struct
     | Flags.ICMode
     | Flags.RefMode ->
       system_call env "data_certificate_present" ^^
-      Bool.from_int32 ^^
+      Bool.from_rts_int32 ^^
       E.if1 I64Type
       begin
         Opt.inject_simple env (
@@ -5321,12 +5318,12 @@ module BumpStream : Stream = struct
     advance_data_buf get_data_buf
 
   let write_word_32 env get_data_buf code =
-    get_data_buf ^^ code ^^
+    get_data_buf ^^ code ^^ G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
     G.i (Store {ty = I32Type; align = 0; offset = 0L; sz = None}) ^^
     compile_unboxed_const Heap.word_size ^^ advance_data_buf get_data_buf
 
   let write_byte _env get_data_buf code =
-    get_data_buf ^^ code ^^
+    get_data_buf ^^ code ^^ G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^    
     G.i (Store {ty = I32Type; align = 0; offset = 0L; sz = Some Wasm_exts.Types.Pack8}) ^^
     compile_unboxed_const 1L ^^ advance_data_buf get_data_buf
 
@@ -5832,9 +5829,7 @@ module MakeSerialization (Strm : Stream) = struct
       compile_shrU_const 32L ^^
       compile_test I64Op.Eqz ^^
       E.else_trap_with env "buffer_size overflow" ^^
-      (* Convert to 32-bit *)
       get_data_size ^^
-      G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
       get_ref_size
     )
 
@@ -5928,7 +5923,7 @@ module MakeSerialization (Strm : Stream) = struct
         write_word_32 env get_data_buf (get_x ^^ TaggedSmallWord.untag_codepoint)
       | Prim (Int16|Nat16) ->
         reserve env get_data_buf 2L ^^
-        get_x ^^ TaggedSmallWord.lsb_adjust Nat16 ^^
+        get_x ^^ TaggedSmallWord.lsb_adjust Nat16 ^^ G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
         G.i (Store {ty = I32Type; align = 0; offset = 0L; sz = Some Wasm_exts.Types.Pack16})
       | Prim (Int8|Nat8) ->
         write_byte env get_data_buf (get_x ^^ TaggedSmallWord.lsb_adjust Nat8)
@@ -6131,7 +6126,7 @@ module MakeSerialization (Strm : Stream) = struct
       let go_can_recover = go' true in
 
       let skip get_typ =
-        get_data_buf ^^ get_typtbl ^^ get_typ ^^ compile_unboxed_const 0L ^^
+        get_data_buf ^^ get_typtbl ^^ get_typ ^^  G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^ compile_const_32 0l ^^
         E.call_import env "rts" "skip_any"
       in
 
@@ -6481,9 +6476,9 @@ module MakeSerialization (Strm : Stream) = struct
 
           G.concat_mapi (fun i t ->
             (* skip all possible intermediate extra fields *)
-            get_typ_buf ^^ get_data_buf ^^ get_typtbl ^^ compile_unboxed_const (Int64.of_int i) ^^ get_n_ptr ^^
+            get_typ_buf ^^ get_data_buf ^^ get_typtbl ^^ compile_const_32 (Int32.of_int i) ^^ get_n_ptr ^^
             E.call_import env "rts" "find_field" ^^
-            Bool.from_int32 ^^
+            Bool.from_rts_int32 ^^
             E.if1 I64Type
               begin
                 ReadBuf.read_sleb128 env get_typ_buf ^^
@@ -6511,9 +6506,9 @@ module MakeSerialization (Strm : Stream) = struct
           Object.lit_raw env (List.map (fun (h,f) ->
             f.Type.lab, fun () ->
               (* skip all possible intermediate extra fields *)
-              get_typ_buf ^^ get_data_buf ^^ get_typtbl ^^ compile_unboxed_const (Wasm.I64_convert.extend_i32_u (Lib.Uint32.to_int32 h)) ^^ get_n_ptr ^^
+              get_typ_buf ^^ get_data_buf ^^ get_typtbl ^^ compile_const_32 (Lib.Uint32.to_int32 h) ^^ get_n_ptr ^^
               E.call_import env "rts" "find_field" ^^
-              Bool.from_int32 ^^
+              Bool.from_rts_int32 ^^
               E.if1 I64Type
                 begin
                   ReadBuf.read_sleb128 env get_typ_buf ^^
@@ -6798,7 +6793,7 @@ module MakeSerialization (Strm : Stream) = struct
       ReadBuf.set_size get_ref_buf (get_refs_size ^^ compile_mul_const Heap.word_size) ^^
 
       (* Go! *)
-      Bool.lit extended ^^ get_data_buf ^^ get_typtbl_ptr ^^ get_typtbl_size_ptr ^^ get_maintyps_ptr ^^
+      Bool.lit extended ^^ Bool.to_rts_int32 ^^ get_data_buf ^^ get_typtbl_ptr ^^ get_typtbl_size_ptr ^^ get_maintyps_ptr ^^
       E.call_import env "rts" "parse_idl_header" ^^
 
       (* Allocate memo table, if necessary *)
@@ -6865,7 +6860,8 @@ module MakeSerialization (Strm : Stream) = struct
            get_data_buf ^^
            get_typtbl_ptr ^^ load_unskewed_ptr ^^
            ReadBuf.read_sleb128 env get_main_typs_buf ^^
-           compile_unboxed_const 0L ^^
+           G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
+           compile_const_32 0l ^^
            E.call_import env "rts" "skip_any" ^^
            get_arg_count ^^ compile_sub_const 1L ^^ set_arg_count
          end ^^
@@ -7078,7 +7074,7 @@ module BlobStream : Stream = struct
 
   let write_word_32 env get_token code =
     reserve env get_token Heap.word_size ^^
-    code ^^
+    code ^^ G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
     G.i (Store {ty = I32Type; align = 0; offset = 0L; sz = None})
 
   let write_byte env get_token code =
@@ -10943,7 +10939,7 @@ and main_actor as_opt mod_env ds fs up =
         (* Liberally accept empty as well as unit argument *)
         assert (arg_tys = []);
         IC.system_call env "msg_arg_data_size" ^^
-        Bool.from_int32 ^^
+        Bool.from_rts_int32 ^^
         E.if0 (Serialization.deserialize env arg_tys) G.nop
       | Some (_ :: _) ->
         Serialization.deserialize env arg_tys ^^
