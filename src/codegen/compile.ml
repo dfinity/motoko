@@ -10125,6 +10125,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | OtherPrim "clz16", [e] -> SR.Vanilla, compile_exp_vanilla env ae e ^^ TaggedSmallWord.clz_kernel Type.Nat16
   | OtherPrim "clzInt8", [e] -> SR.Vanilla, compile_exp_vanilla env ae e ^^ TaggedSmallWord.clz_kernel Type.Int8
   | OtherPrim "clzInt16", [e] -> SR.Vanilla, compile_exp_vanilla env ae e ^^ TaggedSmallWord.clz_kernel Type.Int16
+  | OtherPrim "clz32", [e] -> SR.UnboxedWord32, compile_exp_as env ae SR.UnboxedWord32 e ^^ G.i (Unary (Wasm.Values.I32 I32Op.Clz))
   | OtherPrim "clz64", [e] -> SR.UnboxedWord64, compile_exp_as env ae SR.UnboxedWord64 e ^^ G.i (Unary (Wasm.Values.I64 I64Op.Clz))
   | OtherPrim "ctz8", [e] -> SR.Vanilla, compile_exp_vanilla env ae e ^^ TaggedSmallWord.ctz_kernel Type.Nat8
   | OtherPrim "ctz16", [e] -> SR.Vanilla, compile_exp_vanilla env ae e ^^ TaggedSmallWord.ctz_kernel Type.Nat16
