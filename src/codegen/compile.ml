@@ -3162,7 +3162,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     let set_a, get_a = new_local env "a" in
     set_a ^^ get_a ^^
     BitTagged.if_tagged_scalar env [I64Type]
-      (get_a ^^ BitTagged.untag_i32)
+      (get_a ^^ BitTagged.untag)
       (get_a ^^ Num.truncate_to_word32 env)
 
   let to_word64 env =
@@ -3200,12 +3200,12 @@ end
 
 module BigNumLibtommath : BigNumType = struct
 
-  let to_word32 env = E.call_import env "rts" "bigint_to_word32_trap"
+  let to_word32 env = E.call_import env "rts" "bigint_to_word32_trap" ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
   let to_word64 env = E.call_import env "rts" "bigint_to_word64_trap"
-  let to_word32_with env = E.call_import env "rts" "bigint_to_word32_trap_with"
+  let to_word32_with env = E.call_import env "rts" "bigint_to_word32_trap_with" ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
   let to_word64_with env = E.call_import env "rts" "bigint_to_word64_trap_with"
 
-  let truncate_to_word32 env = E.call_import env "rts" "bigint_to_word32_wrap"
+  let truncate_to_word32 env = E.call_import env "rts" "bigint_to_word32_wrap" ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
   let truncate_to_word64 env = E.call_import env "rts" "bigint_to_word64_wrap"
 
   let from_word32 env = E.call_import env "rts" "bigint_of_word32"
