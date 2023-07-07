@@ -10086,17 +10086,17 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_vanilla env ae e ^^
     TaggedSmallWord.lsb_adjust Type.Nat16 ^^
     G.i (Unary (Wasm.Values.I32 I32Op.Popcnt)) ^^
-      TaggedSmallWord.msb_adjust Type.Nat16
+    TaggedSmallWord.msb_adjust Type.Nat16
   | OtherPrim "popcntInt8", [e] ->
     SR.Vanilla,
     compile_exp_vanilla env ae e ^^
-    TaggedSmallWord.lsb_adjust Type.Int8 ^^
+    TaggedSmallWord.lsb_adjust Type.Nat8 ^^ (*?*)
     G.i (Unary (Wasm.Values.I32 I32Op.Popcnt)) ^^
     TaggedSmallWord.msb_adjust Type.Int8
   | OtherPrim "popcntInt16", [e] ->
     SR.Vanilla,
     compile_exp_vanilla env ae e ^^
-    TaggedSmallWord.lsb_adjust Type.Int16 ^^
+    TaggedSmallWord.lsb_adjust Type.Nat16 ^^ (*?*)
     G.i (Unary (Wasm.Values.I32 I32Op.Popcnt)) ^^
     TaggedSmallWord.msb_adjust Type.Int16
   | OtherPrim "popcnt32", [e] ->
