@@ -144,7 +144,6 @@ do {
     printI32ln(Prim.popcntInt32 d); // -15 = 0xfffffff1 = 0b1111_1111_1111_1111_1111_1111_1111_0001 (population = 29)
     printN32ln(Prim.clzNat32 e); // 20000 = 0x00004e20 (leading zeros = 17)
     printN32ln(Prim.ctzNat32 e); // 20000 = 0x00004e20 (trailing zeros = 5)
-
     printBit(Prim.btstNat32(e, 5 : Nat32)); // 20000 = 0x00004e20 (result = true)
     printBit(Prim.btstNat32(e, 31 : Nat32)); // 20000 = 0x00004e20 (result = false)
     printBit(Prim.btstNat32(e, 37 : Nat32)); // 20000 = 0x00004e20 (mod 32, result = true)
