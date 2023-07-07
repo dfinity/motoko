@@ -3797,7 +3797,7 @@ module Text = struct
   let iter_done env =
     E.call_import env "rts" "text_iter_done"
   let iter_next env =
-    E.call_import env "rts" "text_iter_next" ^^
+    E.call_import env "rts" "text_iter_next" ^^ Bool.from_int32 ^^
     TaggedSmallWord.tag_codepoint
 
   let compare env op =
@@ -4080,7 +4080,7 @@ module Tuple = struct
     if n = 0 then compile_unit
     else
       let name = Printf.sprintf "to_%i_tuple" n in
-      let args = Lib.List.table n (fun i -> Printf.sprintf "arg%i" i, I32Type) in
+      let args = Lib.List.table n (fun i -> Printf.sprintf "arg%i" i, I64Type) in
       Func.share_code env name args [I64Type] (fun env ->
         Arr.lit env (Lib.List.table n (fun i -> G.i (LocalGet (nr (Int32.of_int i)))))
       )
@@ -7645,7 +7645,7 @@ module VarEnv = struct
     | None -> assert false
 
   let add_local_with_heap_ind env (ae : t) name typ =
-      let i = E.add_anon_local env I32Type in
+      let i = E.add_anon_local env I64Type in
       E.add_local_name env i name;
       ({ ae with vars = NameEnv.add name ((HeapInd i), typ) ae.vars }, i)
 
@@ -7671,7 +7671,7 @@ module VarEnv = struct
     | [] -> ae
     | ((name, typ) :: remainder) ->
       if as_local name then
-        let i = E.add_anon_local env I32Type in
+        let i = E.add_anon_local env I64Type in
         E.add_local_name env i name;
         let ae' = { ae with vars = NameEnv.add name ((Local (SR.Vanilla, i)), typ) ae.vars } in
         add_arguments env ae' as_local remainder
