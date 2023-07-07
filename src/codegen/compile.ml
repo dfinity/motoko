@@ -9489,25 +9489,15 @@ and compile_prim_invocation (env : E.t) ae p es at =
         BigNum.truncate_to_word32 env ^^
         TaggedSmallWord.msb_adjust pty)
 
-    | (Nat8|Nat16), Nat ->
+    | (Nat8|Nat16|Nat32), Nat ->
       SR.Vanilla,
       compile_exp_vanilla env ae e ^^
       Prim.prim_shiftWordNtoUnsigned env (TaggedSmallWord.shift_of_type t1)
 
-    | (Int8|Int16), Int ->
+    | (Int8|Int16|Int32), Int ->
       SR.Vanilla,
       compile_exp_vanilla env ae e ^^
       Prim.prim_shiftWordNtoSigned env (TaggedSmallWord.shift_of_type t1)
-
-    | Nat32, Nat ->
-      SR.Vanilla,
-      compile_exp_vanilla env ae e ^^
-      Prim.prim_word64toNat env
-
-    | Int32, Int ->
-      SR.Vanilla,
-      compile_exp_vanilla env ae e ^^
-      Prim.prim_word64toInt env
 
     | Nat64, Nat ->
       SR.Vanilla,
