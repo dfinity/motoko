@@ -1,4 +1,4 @@
-words.mo.mangled:182:11: error: CHECK: expected string not found in input
+words.mo.mangled:181:11: error: CHECK: expected string not found in input
 // CHECK: i32.const 299302912
           ^
 <stdin>:610:23: note: scanning from here
@@ -20,26 +20,26 @@ Input was:
              .
            605:  i32.const -642383856 
            606:  i32.const 299302928 
-           607:  i32.sub 
+           607:  call $wsub<Nat16> 
            608:  call $printN16ln 
            609:  i32.const 0 
            610:  call $checkpointDelta 
-check:182'0                           X error: no match found
+check:181'0                           X error: no match found
            611:  i32.const 0 
-check:182'0     ~~~~~~~~~~~~~
+check:181'0     ~~~~~~~~~~~~~
            612:  i32.const 299302928 
-check:182'0     ~~~~~~~~~~~~~~~~~~~~~
-check:182'1      ?                    possible intended match
+check:181'0     ~~~~~~~~~~~~~~~~~~~~~
+check:181'1      ?                    possible intended match
            613:  i32.const 458768 
-check:182'0     ~~~~~~~~~~~~~~~~~~
-           614:  i32.const 16 
-check:182'0     ~~~~~~~~~~~~~~
-           615:  i32.shr_u 
-check:182'0     ~~~~~~~~~~~
-           616:  i32.mul 
-check:182'0     ~~~~~~~~~
-           617:  call $printN16ln 
-check:182'0     ~~~~~~~~~~~~~~~~~~
+check:181'0     ~~~~~~~~~~~~~~~~~~
+           614:  call $wmul<Nat16> 
+check:181'0     ~~~~~~~~~~~~~~~~~~~
+           615:  call $printN16ln 
+check:181'0     ~~~~~~~~~~~~~~~~~~
+           616:  i32.const 0 
+check:181'0     ~~~~~~~~~~~~~
+           617:  i32.const 299302928 
+check:181'0     ~~~~~~~~~~~~~~~~~~~~~
              .
              .
              .
