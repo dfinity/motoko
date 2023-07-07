@@ -9047,8 +9047,15 @@ let compile_binop env t op : SR.t * SR.t * G.t =
   | Type.(Prim Nat32),                        SubOp -> compile_Nat32_kernel env "sub" I64Op.Sub
   | Type.(Prim (Nat8|Nat16 as ty)),           SubOp -> compile_smallNat_kernel env ty "sub" I32Op.Sub
   | Type.(Prim Float),                        SubOp -> G.i (Binary (Wasm.Values.F64 F64Op.Sub))
-  | Type.Prim Type.(Nat8|Nat16|Nat32|Int8|Int16|Int32 as ty),
-                                              WMulOp -> TaggedSmallWord.compile_word_mul env ty
+  | Type.Prim Type.(Nat32|Int32 as ty),       WMulOp -> TaggedSmallWord.compile_word_mul env ty
+  | Type.Prim Type.(Nat8|Nat16|Int8|Int16 as ty), WMulOp ->
+    Func.share_code2 env (prim_fun_name ty "wmul")  (* TODO: optimize *)
+      (("a", I32Type), ("b", I32Type)) [I32Type]
+      (fun env get_a get_b ->
+        get_a ^^ TaggedSmallWord.lsb_adjust ty ^^
+        get_b ^^ TaggedSmallWord.lsb_adjust ty ^^
+        G.i (Binary (Wasm.Values.I32 I32Op.Mul)) ^^
+        TaggedSmallWord.msb_adjust ty)
   | Type.(Prim Int32),                        MulOp -> compile_Int32_kernel env "mul" I64Op.Mul
   | Type.(Prim Int16),                        MulOp -> compile_smallInt_kernel env Type.Int16 "mul" I32Op.Mul
   | Type.(Prim Int8),                         MulOp -> compile_smallInt_kernel' env Type.Int8 "mul"
