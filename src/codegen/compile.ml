@@ -1045,7 +1045,7 @@ module RTS = struct
     E.add_func_import env "rts" "exp" [F64Type] [F64Type]; (* musl *)
     E.add_func_import env "rts" "log" [F64Type] [F64Type]; (* musl *)
     E.add_func_import env "rts" "fmod" [F64Type; F64Type] [F64Type]; (* remainder, musl *)
-    E.add_func_import env "rts" "float_fmt" [F64Type; I32Type; I32Type] [I64Type];
+    E.add_func_import env "rts" "float_fmt" [F64Type; I64Type; I64Type] [I64Type];
     E.add_func_import env "rts" "char_to_upper" [I32Type] [I32Type];
     E.add_func_import env "rts" "char_to_lower" [I32Type] [I32Type];
     E.add_func_import env "rts" "char_is_whitespace" [I32Type] [I32Type];
