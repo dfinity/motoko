@@ -991,8 +991,8 @@ module RTS = struct
     E.add_func_import env "rts" "bigint_div" [I64Type; I64Type] [I64Type];
     E.add_func_import env "rts" "bigint_pow" [I64Type; I64Type] [I64Type];
     E.add_func_import env "rts" "bigint_neg" [I64Type] [I64Type];
-    E.add_func_import env "rts" "bigint_lsh" [I64Type; I32Type] [I64Type];
-    E.add_func_import env "rts" "bigint_rsh" [I64Type; I32Type] [I64Type];
+    E.add_func_import env "rts" "bigint_lsh" [I64Type; I64Type] [I64Type];
+    E.add_func_import env "rts" "bigint_rsh" [I64Type; I64Type] [I64Type];
     E.add_func_import env "rts" "bigint_abs" [I64Type] [I64Type];
     E.add_func_import env "rts" "bigint_leb128_size" [I64Type] [I64Type];
     E.add_func_import env "rts" "bigint_leb128_encode" [I64Type; I64Type] [];
@@ -2825,27 +2825,23 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
 
   (*
     Note [left shifting compact Nat]
-    For compact Nats (i.e. non-heap allocated ones) we perform the shift in the i64 domain.
-    We have to ensure that the shift amount was smaller than 64, due to Wasm semantics.
-    Otherwise we have to fall back to bignum arithmetic. We have two choices:
-     - reuse the 64-bit shift result going to heap (not currently, amount must be less than 65 for this to work)
-     - convert the original base to bigum and do the shift there.
+    For compact Nats with a number fitting in 32 bits (in scalar value representation) and a shift amount of 
+    less or equal 32, we perform a fast shift. Otherwise, the bignum shift via RTS is applied.
    *)
 
   let compile_lsh env =
     Func.share_code2 env "B_lsh" (("n", I64Type), ("amount", I64Type)) [I64Type]
     (fun env get_n get_amount ->
+      get_amount ^^ TaggedSmallWord.lsb_adjust Type.Nat32 ^^ G.setter_for get_amount ^^
       get_n ^^
       BitTagged.if_tagged_scalar env [I64Type]
         ( (* see Note [left shifting compact Nat] *)
-          get_n ^^
-          get_amount ^^
-          G.i (Binary (Wasm_exts.Values.I64 I64Op.Shl)) ^^
-          let set_res, get_res = new_local env "res" in
-          set_res ^^ get_res ^^
-          get_amount ^^ compile_rel_const I32Op.LeU 63L ^^
+          get_n ^^ compile_bitand_const 0xFFFF_FFFF_0000_0000L ^^
+          compile_eq_const 0L ^^
+          get_amount ^^ compile_rel_const I32Op.LeU 32L ^^
+          G.i (Binary (Wasm_exts.Values.I64 I64Op.And)) ^^
           E.if1 I64Type
-            get_res
+            (get_n ^^ get_amount ^^ G.i (Binary (Wasm_exts.Values.I64 I64Op.Shl))) (* we shift the scalar encoding *)
             (get_n ^^ compile_shrS_const 1L ^^ Num.from_word64 env ^^ get_amount ^^ Num.compile_lsh env)
         )
         (get_n ^^ get_amount ^^ Num.compile_lsh env))
@@ -2853,11 +2849,11 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
   let compile_rsh env =
     Func.share_code2 env "B_rsh" (("n", I64Type), ("amount", I64Type)) [I64Type]
     (fun env get_n get_amount ->
+      get_amount ^^ TaggedSmallWord.lsb_adjust Type.Nat32 ^^ G.setter_for get_amount ^^
       get_n ^^
       BitTagged.if_tagged_scalar env [I64Type]
         begin
-          get_n ^^
-          get_amount ^^
+          get_n ^^ get_amount ^^ 
           G.i (Binary (Wasm_exts.Values.I64 I64Op.ShrU)) ^^
           compile_bitand_const 0xFFFF_FFFF_FFFF_FFFEL ^^
           get_amount ^^ compile_rel_const I64Op.LeU 63L ^^

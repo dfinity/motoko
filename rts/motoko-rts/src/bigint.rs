@@ -422,19 +422,19 @@ unsafe extern "C" fn bigint_isneg(a: Value) -> bool {
 
 #[cfg(feature = "ic")]
 #[no_mangle]
-unsafe extern "C" fn bigint_lsh(a: Value, b: i32) -> Value {
+unsafe extern "C" fn bigint_lsh(a: Value, b: isize) -> Value {
     let mut i = tmp_bigint();
-    check(mp_mul_2d(a.as_bigint().mp_int_ptr(), b, &mut i));
+    check(mp_mul_2d(a.as_bigint().mp_int_ptr(), b as i32, &mut i));
     persist_bigint(i)
 }
 
 #[cfg(feature = "ic")]
 #[no_mangle]
-unsafe extern "C" fn bigint_rsh(a: Value, b: i32) -> Value {
+unsafe extern "C" fn bigint_rsh(a: Value, b: isize) -> Value {
     let mut i = tmp_bigint();
     check(mp_div_2d(
         a.as_bigint().mp_int_ptr(),
-        b,
+        b as i32,
         &mut i,
         core::ptr::null_mut(),
     ));
