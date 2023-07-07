@@ -3262,7 +3262,7 @@ module BigNumLibtommath : BigNumType = struct
   let assert_nonneg env =
     Func.share_code1 env "assert_nonneg" ("n", I64Type) [I64Type] (fun env get_n ->
       get_n ^^
-      E.call_import env "rts" "bigint_isneg" ^^
+      E.call_import env "rts" "bigint_isneg" ^^ Bool.from_int32 ^^
       E.then_trap_with env "Natural subtraction underflow" ^^
       get_n
     )
