@@ -1048,10 +1048,10 @@ module RTS = struct
     E.add_func_import env "rts" "float_fmt" [F64Type; I32Type; I32Type] [I64Type];
     E.add_func_import env "rts" "char_to_upper" [I32Type] [I32Type];
     E.add_func_import env "rts" "char_to_lower" [I32Type] [I32Type];
-    E.add_func_import env "rts" "char_is_whitespace" [I32Type] [I64Type];
-    E.add_func_import env "rts" "char_is_lowercase" [I32Type] [I64Type];
-    E.add_func_import env "rts" "char_is_uppercase" [I32Type] [I64Type];
-    E.add_func_import env "rts" "char_is_alphabetic" [I32Type] [I64Type];
+    E.add_func_import env "rts" "char_is_whitespace" [I32Type] [I32Type];
+    E.add_func_import env "rts" "char_is_lowercase" [I32Type] [I32Type];
+    E.add_func_import env "rts" "char_is_uppercase" [I32Type] [I32Type];
+    E.add_func_import env "rts" "char_is_alphabetic" [I32Type] [I32Type];
     E.add_func_import env "rts" "get_max_live_size" [] [I64Type];
     E.add_func_import env "rts" "get_reclaimed" [] [I64Type];
     E.add_func_import env "rts" "alloc_words" [I64Type] [I64Type];
@@ -10359,8 +10359,11 @@ and compile_char_to_char_rts env ae exp rts_fn =
   SR.Vanilla,
   compile_exp_vanilla env ae exp ^^
   TaggedSmallWord.untag_codepoint ^^
+  G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
   E.call_import env "rts" rts_fn ^^
+  G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
   TaggedSmallWord.tag_codepoint
+
 
 (* Compile a prim of type Char -> Bool to a RTS call. The RTS function should
    have type int32_t -> int32_t where the return value is 0 for 'false' and 1
@@ -10369,9 +10372,11 @@ and compile_char_to_bool_rts (env : E.t) (ae : VarEnv.t) exp rts_fn =
   SR.bool,
   compile_exp_vanilla env ae exp ^^
   TaggedSmallWord.untag_codepoint ^^
+  G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
   (* The RTS function returns Motoko True/False values (which are represented as
      1 and 0, respectively) so we don't need any marshalling *)
-  E.call_import env "rts" rts_fn
+  E.call_import env "rts" rts_fn ^^
+  Bool.from_rts_int32
 
 (*
 The compilation of declarations (and patterns!) needs to handle mutual recursion.
