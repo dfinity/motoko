@@ -31,8 +31,9 @@ pub(crate) unsafe fn read_byte(buf: *mut Buf) -> u8 {
 
 #[cfg(feature = "ic")]
 /// Read a little-endian word
-pub(crate) unsafe fn read_word(buf: *mut Buf) -> usize {
-    const WORD_SIZE: usize = core::mem::size_of::<usize>();
+pub(crate) unsafe fn read_word(buf: *mut Buf) -> u32 {
+    // IDL buffer is still 32-bit-based.
+    const WORD_SIZE: usize = core::mem::size_of::<u32>();
 
     if (*buf).ptr.add(WORD_SIZE - 1) >= (*buf).end {
         idl_trap_with("word read out of buffer");
@@ -41,7 +42,7 @@ pub(crate) unsafe fn read_word(buf: *mut Buf) -> usize {
     let p = (*buf).ptr;
 
     let bytes: [u8; WORD_SIZE] = core::array::from_fn(|count| *p.add(count));
-    let word = usize::from_le_bytes(bytes);
+    let word = u32::from_le_bytes(bytes);
 
     (*buf).ptr = (*buf).ptr.add(WORD_SIZE);
 
