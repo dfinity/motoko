@@ -1,22 +1,155 @@
 # Motoko compiler changelog
 
+  * Allow canister controllers to call the `__motoko_stable_var_info` query endpoint (#4103).
+    (Previously only self-queries were permitted.)
+
+## 0.9.5 (2023-07-05)
+
+* motoko (`moc`)
+
+  * Allow identifiers in `or`-patterns (#3807).
+    Bindings in alternatives must mention the same identifiers and have compatible types:
+    ``` Motoko
+    let verbose = switch result {
+      case (#ok) "All is good!";
+      case (#warning why or #error why) "There is some problem: " # why;
+    }
+    ```
+
+  * Performance improvement: improved cycle consumption allocating fixed-size objects (#4064).
+    Benchmarks indicate up to 10% less cycles burned for allocation-heavy code,
+    and 2.5% savings in realistic applications.
+
+  * Administrative: binary build artefacts are now available according to standard naming
+    conventions (thanks to EnzoPlayer0ne) (#3997).
+    Please consider transitioning to downloading binaries following the new scheme,
+    as legacy naming will be discontinued at some point in the future.
+
+## 0.9.4 (2023-07-01)
+
+* motoko (`moc`)
+
+  * Allow multiline text literals (#3995).
+    For example,
+    ```
+    "A horse walks into a bar.
+    The barman says: `Why the long face?`"
+    ```
+
+    parses as:
+    ```
+    "A horse walks into a bar.\nThe barman says: `Why the long face?`"
+    ```
+
+  * Added pipe operator `<exp1> |> <exp2>` and placeholder expression `_`  (#3987).
+    For example:
+    ``` motoko
+    Iter.range(0, 10) |>
+      Iter.toList _ |>
+        List.filter<Nat>(_, func n { n % 3 == 0 }) |>
+          { multiples = _ };
+    ```
+
+    may, according to taste, be a more readable rendition of:
+    ``` motoko
+    { multiples =
+       List.filter<Nat>(
+         Iter.toList(Iter.range(0, 10)),
+           func n { n % 3 == 0 }) };
+    ```
+
+    However, beware the change of evaluation order for code with side-effects.
+
+  * BREAKING CHANGE (Minor):
+
+    New keyword `composite` allows one to declare Internet Computer *composite queries* (#4003).
+
+    For example,
+    ``` motoko
+    public shared composite query func sum(counters : [Counter]) : async Nat {
+      var sum = 0;
+      for (counter in counters.vals())  {
+        sum += await counter.peek();
+      };
+      sum
+    }
+    ```
+
+    has type:
+    ``` motoko
+    shared composite query [Counter] -> async Nat
+    ```
+
+    and can call both `query` and other `composite query` functions.
+
+    See the documentation for full details.
+
+  * Allow canister imports of Candid service constructors, ignoring the service arguments to
+    import the instantiated service instead (with a warning) (#4041).
+
+  * Allow optional terminal semicolons in Candid imports (#4042).
+
+  * bugfix: allow signed float literals as static expressions in modules (#4063).
+
+  * bugfix: improved reporting of patterns with record types in error messages (#4002).
+
+* motoko-base
+
+  * Added more `Array` (and `Text`) utility functions (thanks to roman-kashitsyn) (dfinity/motoko-base⁠#564).
+
+## 0.9.3 (2023-06-19)
+
+* motoko (`moc`)
+
+  * Added fields `sender_canister_version` for actor class version tracking (#4036).
+
+## 0.9.2 (2023-06-10)
+
+* motoko (`moc`)
+
+  * BREAKING CHANGE (Minor):
+
+    `or`-patterns in function definitions cannot be inferred any more. The new error
+    message suggests to add a type annotation instead. This became necessary in order
+    to avoid potentially unsound types (#4012).
+
+  * Added implementation for `ic0.canister_version` as a primitive (#4027).
+
+  * Added a more efficient `Prim.blobCompare` (thanks to nomeata) (#4009).
+
+  * bugfix: minor error in grammar for `async*` expressions (#4005).
+
+* motoko-base
+
+  * Add `Principal.isController` function (dfinity/motoko-base#558).
+
+## 0.9.1 (2023-05-15)
+
+* motoko (`moc`)
+
+  * Added implementation for `ic0.is_controller` as a primitive (#3935).
+
+  * Added ability to enable the new incremental GC in the Motoko Playground (#3976).
+
+## 0.9.0 (2023-05-12)
+
 * motoko (`moc`)
 
   * **For beta testing:** Add a new _incremental_ GC, enabled with new moc flag `--incremental-gc` (#3837).
     The incremental garbage collector is designed to scale for large program heap sizes.
 
-    The GC distributes its workload across multiple steps, called increments, that each pause the mutator 
-    (user's program) for only a limited amount of time. As a result, the GC work can fit within the instruction-limited 
+    The GC distributes its workload across multiple steps, called increments, that each pause the mutator
+    (user's program) for only a limited amount of time. As a result, the GC work can fit within the instruction-limited
     IC messages, regardless of the heap size and the object structures.
-    
-    According to GC benchmark measurements, the incremental GC is more efficient than the existing copying, compacting, 
+
+    According to GC benchmark measurements, the incremental GC is more efficient than the existing copying, compacting,
     and generational GC in the following regards:
     * Scalability: Able to use the full heap space, 3x more object allocations on average.
     * Shorter interruptions: The GC pause has a maximum limit that is up to 10x shorter.
     * Lower runtimes: The number of executed instructions is reduced by 10% on average (compared to the copying GC).
     * Less GC overhead: The amount of GC work in proportion to the user's program work drops by 10-16%.
-    
-    The GC incurs a moderate memory overhead: The allocated WASM memory has been measured to be 9% higher 
+
+    The GC incurs a moderate memory overhead: The allocated WASM memory has been measured to be 9% higher
     on average compared to the copying GC, which is the current default GC.
 
     To activate the incremental GC under `dfx`, the following command-line argument needs to be specified in `dfx.json`:
@@ -28,6 +161,8 @@
       "args" : "--incremental-gc"
     ...
     ```
+
+  * bugfix: `array.vals()` now returns a working iterator for mutable arrays (#3497, #3967).
 
 ## 0.8.8 (2023-05-02)
 
@@ -85,7 +220,7 @@
 
   * BREAKING CHANGE (Minor)
 
-    Optimized `AssocList.{replace, find}` to avoid unnecesary allocation (dfinity/motoko-base#535, dfinity/motoko-base#539).
+    Optimized `AssocList.{replace, find}` to avoid unnecessary allocation (dfinity/motoko-base#535, dfinity/motoko-base#539).
     Note: this subtly changes the order in which the key-value pairs occur after replacement. May affect other containers that use `AssocList`.
 
   * Performance improvement: Optimized deletion for `Trie`/`TrieMap` (dfinity/motoko-base#525).

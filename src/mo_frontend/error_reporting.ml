@@ -16,6 +16,7 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_SHROP -> SHROP
       | T_SHRASSIGN -> SHRASSIGN
       | T_UNDERSCORE -> UNDERSCORE
+      | T_COMPOSITE -> COMPOSITE
       | T_TYPE -> TYPE
       | T_TRY -> TRY
       | T_THROW -> THROW
@@ -131,3 +132,4 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_WRAPSUBASSIGN -> WRAPSUBASSIGN
       | T_WRAPMULASSIGN -> WRAPMULASSIGN
       | T_WRAPPOWASSIGN -> WRAPPOWASSIGN
+      | T_PIPE -> PIPE

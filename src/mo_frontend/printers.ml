@@ -115,6 +115,7 @@ let string_of_symbol = function
   | X (T T_DEBUG) -> "debug"
   | X (T T_CONTINUE) -> "continue"
   | X (T T_COMMA) -> ","
+  | X (T T_COMPOSITE) -> "composite"
   | X (T T_COLON) -> ":"
   | X (T T_CLASS) -> "class"
   | X (T T_CHAR) ->  "<char>"
@@ -138,6 +139,7 @@ let string_of_symbol = function
   | X (T T_ADDOP) -> unop "+"
   | X (T T_ACTOR) -> "actor"
   | X (T T_INVARIANT) -> "invariant"
+  | X (T T_PIPE) -> "|>"
   (* non-terminals *)
   | X (N N_bl) -> "<bl>"
   | X (N N_case) -> "<case>"
@@ -176,6 +178,7 @@ let string_of_symbol = function
   | X (N N_option_EQ_) -> "=?"
   | X (N N_option_exp_nullary_ob__) -> "<exp_nullary(ob)>?"
   | X (N N_option_typ_args_) -> "<typ_args>?"
+  | X (N N_option_query_) -> "<query>?"
   | X (N N_parse_module_header) -> "<parse_module_header>"
   | X (N N_parse_prog) -> "<parse_prog>"
   | X (N N_parse_prog_interactive) -> "<parse_prog_interactive>"
