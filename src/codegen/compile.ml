@@ -2633,13 +2633,25 @@ let name_from_relop = function
   | Ge -> "B_ge"
   | Gt -> "B_gt"
 
-(* helper, measures the dynamics of the unsigned i32, returns (32 - effective bits) *)
+(* helper, measures the dynamics of the unsigned i64, returns (64 - effective bits) *)
 let unsigned_dynamics get_x =
+  get_x ^^
+  G.i (Unary (Wasm_exts.Values.I64 I64Op.Clz))
+
+(* helper, measures the dynamics of the signed i64, returns (64 - effective bits) *)
+let signed_dynamics get_x =
+  get_x ^^ compile_shl_const 1L ^^
+  get_x ^^
+  G.i (Binary (Wasm_exts.Values.I64 I64Op.Xor)) ^^
+  G.i (Unary (Wasm_exts.Values.I64 I64Op.Clz))
+
+(* helper, measures the dynamics of the unsigned i32, returns (32 - effective bits) *)
+let unsigned_dynamics32 get_x =
   get_x ^^
   G.i (Unary (Wasm_exts.Values.I32 I32Op.Clz))
 
 (* helper, measures the dynamics of the signed i32, returns (32 - effective bits) *)
-let signed_dynamics get_x =
+let signed_dynamics32 get_x =
   get_x ^^ compile_shl32_const 1l ^^
   get_x ^^
   G.i (Binary (Wasm_exts.Values.I32 I32Op.Xor)) ^^
@@ -2656,8 +2668,8 @@ module I32Leb = struct
       end
       (compile_const_32 1l)
 
-  let compile_leb128_size get_x = compile_size unsigned_dynamics get_x
-  let compile_sleb128_size get_x = compile_size signed_dynamics get_x
+  let compile_leb128_size get_x = compile_size unsigned_dynamics32 get_x
+  let compile_sleb128_size get_x = compile_size signed_dynamics32 get_x
 
   let compile_store_to_data_buf_unsigned env get_x get_buf =
     get_x ^^ get_buf ^^ E.call_import env "rts" "leb128_encode" ^^
@@ -8803,52 +8815,53 @@ let compile_Int32_kernel env name op =
        (("a", I64Type), ("b", I64Type)) [I64Type]
        (fun env get_a get_b ->
          let (set_res, get_res) = new_local env "res" in
-         get_a ^^
-         get_b ^^
+         get_a ^^ compile_shrS_const 32L ^^
+         get_b ^^ compile_shrS_const 32L ^^
          G.i (Binary (Wasm_exts.Values.I64 op)) ^^
          set_res ^^ get_res ^^ get_res ^^
          enforce_32_signed_bits env ^^
-         get_res)
+         get_res ^^ compile_shl_const 32L)
 
 let compile_Nat32_kernel env name op =
      Func.share_code2 env (prim_fun_name Type.Nat32 name)
        (("a", I64Type), ("b", I64Type)) [I64Type]
        (fun env get_a get_b ->
          let (set_res, get_res) = new_local env "res" in
-         get_a ^^
-         get_b ^^
+         get_a ^^ compile_shrS_const 32L ^^
+         get_b ^^ compile_shrS_const 32L ^^
          G.i (Binary (Wasm_exts.Values.I64 op)) ^^
          set_res ^^ get_res ^^
          enforce_32_unsigned_bits env ^^
-         get_res)
+         get_res ^^ compile_shl_const 32L)
 
-(* Customisable kernels for 8/16bit arithmetic via 32 bits. *)
+(* Customisable kernels for 8/16bit arithmetic via 64 bits. *)
 
-(* helper, expects i32 on stack *)
+(* helper, expects i64 on stack *)
 let enforce_unsigned_bits env n =
   compile_bitand_const Int64.(shift_left minus_one n) ^^
   then_arithmetic_overflow env
 
-let enforce_16_unsigned_bits env = enforce_unsigned_bits env 16
+let enforce_16_unsigned_bits env = enforce_unsigned_bits env 48
 
-(* helper, expects two identical i32s on stack *)
+(* helper, expects two identical i64s on stack *)
 let enforce_signed_bits env n =
-  compile_shl_const 1L ^^ G.i (Binary (Wasm_exts.Values.I32 I32Op.Xor)) ^^
+  compile_shl_const 1L ^^ 
+  G.i (Binary (Wasm_exts.Values.I64 I64Op.Xor)) ^^
   enforce_unsigned_bits env n
 
-let enforce_16_signed_bits env = enforce_signed_bits env 16
+let enforce_16_signed_bits env = enforce_signed_bits env 48
 
 let compile_smallInt_kernel' env ty name op =
   Func.share_code2 env (prim_fun_name ty name)
     (("a", I64Type), ("b", I64Type)) [I64Type]
     (fun env get_a get_b ->
       let (set_res, get_res) = new_local env "res" in
-      get_a ^^ compile_shrS_const 16L ^^
-      get_b ^^ compile_shrS_const 16L ^^
+      get_a ^^ compile_shrS_const 48L ^^
+      get_b ^^ compile_shrS_const 48L ^^
       op ^^
       set_res ^^ get_res ^^ get_res ^^
       enforce_16_signed_bits env ^^
-      get_res ^^ compile_shl_const 16L)
+      get_res ^^ compile_shl_const 48L)
 
 let compile_smallInt_kernel env ty name op =
   compile_smallInt_kernel' env ty name (G.i (Binary (Wasm_exts.Values.I64 op)))
@@ -8858,12 +8871,12 @@ let compile_smallNat_kernel' env ty name op =
     (("a", I64Type), ("b", I64Type)) [I64Type]
     (fun env get_a get_b ->
       let (set_res, get_res) = new_local env "res" in
-      get_a ^^ compile_shrU_const 16L ^^
-      get_b ^^ compile_shrU_const 16L ^^
+      get_a ^^ compile_shrU_const 48L ^^
+      get_b ^^ compile_shrU_const 48L ^^
       op ^^
       set_res ^^ get_res ^^
       enforce_16_unsigned_bits env ^^
-      get_res ^^ compile_shl_const 16L)
+      get_res ^^ compile_shl_const 48L)
 
 let compile_smallNat_kernel env ty name op =
   compile_smallNat_kernel' env ty name (G.i (Binary (Wasm_exts.Values.I64 op)))
