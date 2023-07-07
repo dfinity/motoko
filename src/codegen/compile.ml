@@ -2659,7 +2659,7 @@ module I32Leb = struct
   let compile_size dynamics get_x =
     get_x ^^ E.if1 I64Type
       begin
-        compile_unboxed_const 38L ^^
+        compile_unboxed_const 70L ^^
         dynamics get_x ^^
         G.i (Binary (Wasm_exts.Values.I64 I64Op.Sub)) ^^
         compile_divU_const 7L
