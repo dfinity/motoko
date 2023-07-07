@@ -9021,7 +9021,7 @@ let compile_binop env t op : SR.t * SR.t * G.t =
 
   | Type.Prim Type.(Nat32|Int32),             WAddOp -> G.i (Binary (Wasm.Values.I32 I32Op.Add))
   | Type.Prim (Type.(Nat8|Nat16|Int8|Int16) as ty),  WAddOp ->
-    Func.share_code2 env (prim_fun_name ty "wadd")
+    Func.share_code2 env (prim_fun_name ty "wadd")  (* TODO: optimize *)
       (("a", I32Type), ("b", I32Type)) [I32Type]
       (fun env get_a get_b ->
         get_a ^^ TaggedSmallWord.lsb_adjust ty ^^
@@ -9033,8 +9033,15 @@ let compile_binop env t op : SR.t * SR.t * G.t =
   | Type.(Prim Nat32),                        AddOp -> compile_Nat32_kernel env "add" I64Op.Add
   | Type.Prim Type.(Nat8 | Nat16 as ty),      AddOp -> compile_smallNat_kernel env ty "add" I32Op.Add
   | Type.(Prim Float),                        AddOp -> G.i (Binary (Wasm.Values.F64 F64Op.Add))
-  | Type.Prim Type.(Nat8|Nat16|Nat32|Int8|Int16|Int32),
-                                              WSubOp -> G.i (Binary (Wasm.Values.I32 I32Op.Sub))
+  | Type.Prim Type.(Nat32|Int32),             WSubOp -> G.i (Binary (Wasm.Values.I32 I32Op.Sub))
+  | Type.Prim (Type.(Nat8|Nat16|Int8|Int16) as ty), WSubOp ->
+    Func.share_code2 env (prim_fun_name ty "wsub")  (* TODO: optimize *)
+      (("a", I32Type), ("b", I32Type)) [I32Type]
+      (fun env get_a get_b ->
+        get_a ^^ TaggedSmallWord.lsb_adjust ty ^^
+        get_b ^^ TaggedSmallWord.lsb_adjust ty ^^
+        G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
+        TaggedSmallWord.msb_adjust ty)
   | Type.(Prim Int32),                        SubOp -> compile_Int32_kernel env "sub" I64Op.Sub
   | Type.(Prim (Int8|Int16 as ty)),           SubOp -> compile_smallInt_kernel env ty "sub" I32Op.Sub
   | Type.(Prim Nat32),                        SubOp -> compile_Nat32_kernel env "sub" I64Op.Sub
