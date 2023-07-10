@@ -24,9 +24,6 @@ pub mod nicer {
     pub fn read(offset: u64, dst: &mut [u8]) {
         // SAFETY: This is safe because of the ic0 api guarantees.
         unsafe {
-            if false {
-                println!(50, "read({}, {} bytes)", offset, dst.len());
-            }
             stable64_read_moc(dst.as_ptr() as u64, offset, dst.len() as u64)
         }
     }
