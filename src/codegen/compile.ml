@@ -40,7 +40,7 @@ let ptr_unskew = 1l
 let prim_fun_name p stem = Printf.sprintf "%s<%s>" stem (Type.string_of_prim p)
 
 (* Helper functions to produce annotated terms (Wasm.AST) *)
-let nr x = { Wasm.Source.it = x; Wasm.Source.at = Wasm.Source.no_region }
+let nr x = Wasm.Source.{ it = x; at = no_region }
 
 let todo fn se x = Printf.eprintf "%s: %s" fn (Wasm.Sexpr.to_string 80 se); x
 
@@ -1052,8 +1052,10 @@ module GC = struct
     E.call_import env "ic0" "performance_counter"
 
   let register_globals env =
-    (E.add_global64 env "__mutator_instructions" Mutable 0L;
-     E.add_global64 env "__collector_instructions" Mutable 0L)
+    E.add_global64 env "__mutator_instructions" Mutable 0L;
+    E.add_global64 env "__collector_instructions" Mutable 0L;
+    if !Flags.gc_strategy <> Flags.Incremental then
+      E.add_global32 env "_HP" Mutable 0l
 
   let get_mutator_instructions env =
     G.i (GlobalGet (nr (E.get_global env "__mutator_instructions")))
@@ -1064,6 +1066,17 @@ module GC = struct
     G.i (GlobalGet (nr (E.get_global env "__collector_instructions")))
   let set_collector_instructions env =
     G.i (GlobalSet (nr (E.get_global env "__collector_instructions")))
+
+  let get_heap_pointer env =
+    if !Flags.gc_strategy <> Flags.Incremental then
+      G.i (GlobalGet (nr (E.get_global env "_HP")))
+    else
+      assert false
+  let set_heap_pointer env =
+    if !Flags.gc_strategy <> Flags.Incremental then
+      G.i (GlobalSet (nr (E.get_global env "_HP")))
+    else
+      assert false
 
   let record_mutator_instructions env =
     match E.mode env with
@@ -1116,8 +1129,11 @@ module Heap = struct
   (* Static allocation (always words)
      (uses dynamic allocation for smaller and more readable code) *)
   let alloc env (n : int32) : G.t =
-    compile_unboxed_const n  ^^
+    compile_unboxed_const n ^^
     E.call_import env "rts" "alloc_words"
+
+  let ensure_allocated env =
+    alloc env 0l ^^ G.i Drop (* dummy allocation, ensures that the page HP points into is backed *)
     
   (* Heap objects *)
 
@@ -1602,12 +1618,33 @@ module Tagged = struct
     assert (!Flags.gc_strategy = Flags.Incremental);
     1l
 
-  (* Note: Post allocation barrier must be applied after initialization *)
+  (* Note: post-allocation barrier must be applied after initialization *)
   let alloc env size tag =
+    assert (size > 1l);
     let name = Printf.sprintf "alloc_size<%d>_tag<%d>" (Int32.to_int size) (Int32.to_int (int_of_tag tag)) in
+    (* Computes a (conservative) mask for the bumped HP, so that the existence of non-zero bits under it
+       guarantees that a page boundary crossing didn't happen (i.e. no ripple-carry). *)
+    let overflow_mask n =
+      let n = Int32.to_int n in
+      let page_mask = Int32.sub page_size 1l in
+      Int32.(logand page_mask (shift_left minus_one (16 - Numerics.Nat16.(to_int (clz (of_int n)))))) in
+
     Func.share_code0 env name [I32Type] (fun env ->
-      let (set_object, get_object) = new_local env "new_object" in
-      Heap.alloc env size ^^
+      let set_object, get_object = new_local env "new_object" in
+      let size_in_bytes = Int32.(mul size Heap.word_size) in
+      let half_page_size = Int32.div page_size 2l in
+      (if !Flags.gc_strategy <> Flags.Incremental && size_in_bytes < half_page_size then
+         GC.get_heap_pointer env ^^
+         GC.get_heap_pointer env ^^
+         compile_add_const size_in_bytes ^^
+         GC.set_heap_pointer env ^^
+         GC.get_heap_pointer env ^^
+         compile_bitand_const (overflow_mask size_in_bytes) ^^
+         G.if0
+           G.nop (* no page crossing *)
+           (Heap.ensure_allocated env) (* ensure that HP's page is allocated *)
+       else
+         Heap.alloc env size) ^^
       set_object ^^ get_object ^^
       compile_unboxed_const (int_of_tag tag) ^^
       Heap.store_field tag_field ^^
@@ -1650,7 +1687,7 @@ module Tagged = struct
         load_forwarding_pointer env ^^
         get_object ^^
         G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
-        E.else_trap_with env "missing object forwarding"  ^^
+        E.else_trap_with env "missing object forwarding" ^^
         get_object ^^
         (if unskewed then
           compile_unboxed_const ptr_unskew ^^
@@ -2401,7 +2438,7 @@ module TaggedSmallWord = struct
         get_exp ^^
         compile_unboxed_const 0l ^^
         G.i (Compare (Wasm.Values.I32 I32Op.GeS)) ^^
-        E.else_trap_with env "negative power"  ^^
+        E.else_trap_with env "negative power" ^^
         get_n ^^ get_exp ^^ compile_nat_power env ty
       )
 
@@ -4182,6 +4219,7 @@ module Lifecycle = struct
     | InPreUpgrade
     | PostPreUpgrade (* an invalid state *)
     | InPostUpgrade
+    | InComposite
 
   let string_of_state state = match state with
     | PreInit -> "PreInit"
@@ -4193,6 +4231,7 @@ module Lifecycle = struct
     | InPreUpgrade -> "InPreUpgrade"
     | PostPreUpgrade -> "PostPreUpgrade"
     | InPostUpgrade -> "InPostUpgrade"
+    | InComposite -> "InComposite"
 
   let int_of_state = function
     | PreInit -> 0l (* Automatically null *)
@@ -4208,6 +4247,7 @@ module Lifecycle = struct
     | InPreUpgrade -> 8l
     | PostPreUpgrade -> 9l
     | InPostUpgrade -> 10l
+    | InComposite -> 11l
 
   let ptr () = Stack.end_ ()
   let end_ () = Int32.add (Stack.end_ ()) Heap.word_size
@@ -4220,13 +4260,14 @@ module Lifecycle = struct
     | Started -> [InStart]
     *)
     | InInit -> [PreInit]
-    | Idle -> [InInit; InUpdate; InPostUpgrade]
+    | Idle -> [InInit; InUpdate; InPostUpgrade; InComposite]
     | InUpdate -> [Idle]
     | InQuery -> [Idle]
     | PostQuery -> [InQuery]
     | InPreUpgrade -> [Idle]
     | PostPreUpgrade -> [InPreUpgrade]
     | InPostUpgrade -> [InInit]
+    | InComposite -> [Idle]
 
   let get env =
     compile_unboxed_const (ptr ()) ^^
@@ -4893,7 +4934,7 @@ module StableMem = struct
           get_offset ^^
           compile_const_64 (Int64.of_int page_size_bits) ^^
           G.i (Binary (Wasm.Values.I64 I64Op.ShrU)) ^^
-          get_mem_size env  ^^
+          get_mem_size env ^^
           G.i (Compare (Wasm.Values.I64 I64Op.LtU)) ^^
           E.else_trap_with env "StableMemory offset out of bounds")
     | _ -> assert false
@@ -5198,6 +5239,31 @@ module RTS_Exports = struct
       edesc = nr (FuncExport (nr rts_trap_fi))
     });
 
+    if !Flags.gc_strategy <> Flags.Incremental then
+    begin
+      let set_hp_fi =
+        E.add_fun env "__set_hp" (
+        Func.of_body env ["new_hp", I32Type] [] (fun env ->
+          G.i (LocalGet (nr 0l)) ^^
+          GC.set_heap_pointer env
+        )
+      ) in
+      E.add_export env (nr {
+        name = Lib.Utf8.decode "setHP";
+        edesc = nr (FuncExport (nr set_hp_fi))
+      });
+
+      let get_hp_fi = E.add_fun env "__get_hp" (
+        Func.of_body env [] [I32Type] (fun env ->
+          GC.get_heap_pointer env
+        )
+      ) in
+      E.add_export env (nr {
+        name = Lib.Utf8.decode "getHP";
+        edesc = nr (FuncExport (nr get_hp_fi))
+      })
+    end;
+
     let stable64_write_moc_fi =
       if E.mode env = Flags.WASIMode then
         E.add_fun env "stable64_write_moc" (
@@ -5400,12 +5466,12 @@ module MakeSerialization (Strm : Stream) = struct
 
   module Registers = struct
     let register_globals env =
-     (E.add_global32 env "@@rel_buf_opt" Mutable 0l;
+      E.add_global32 env "@@rel_buf_opt" Mutable 0l;
       E.add_global32 env "@@data_buf" Mutable 0l;
       E.add_global32 env "@@ref_buf" Mutable 0l;
       E.add_global32 env "@@typtbl" Mutable 0l;
       E.add_global32 env "@@typtbl_end" Mutable 0l;
-      E.add_global32 env "@@typtbl_size" Mutable 0l)
+      E.add_global32 env "@@typtbl_size" Mutable 0l
 
     let get_rel_buf_opt env =
       G.i (GlobalGet (nr (E.get_global env "@@rel_buf_opt")))
@@ -5614,6 +5680,8 @@ module MakeSerialization (Strm : Stream) = struct
             add_leb128 0; (* no annotation *)
           | Shared Query, _ ->
             add_leb128 1; add_u8 1; (* query *)
+          | Shared Composite, _ ->
+            add_leb128 1; add_u8 3; (* composite *)
           | _ -> assert false
         end
       | Obj (Actor, fs) ->
@@ -6529,7 +6597,7 @@ module MakeSerialization (Strm : Stream) = struct
           ) ^^
           get_x ^^
           Tagged.allocation_barrier env ^^
-          set_x (* discard result *)
+          G.i Drop
         )
       | Array t ->
         let (set_len, get_len) = new_local env "len" in
@@ -7218,7 +7286,7 @@ module Stabilization = struct
         get_N ^^
         extend64 get_len ^^
         compile_add64_const 16L ^^
-        StableMem.ensure env  ^^
+        StableMem.ensure env ^^
 
         get_N ^^
         get_len ^^
@@ -7902,6 +7970,8 @@ module FuncDec = struct
         Lifecycle.trans env Lifecycle.InUpdate
       | Type.Shared Type.Query ->
         Lifecycle.trans env Lifecycle.InQuery
+      | Type.Shared Type.Composite ->
+        Lifecycle.trans env Lifecycle.InComposite
       | _ -> assert false
 
   let message_cleanup env sort = match sort with
@@ -7910,6 +7980,8 @@ module FuncDec = struct
         Lifecycle.trans env Lifecycle.Idle
       | Type.Shared Type.Query ->
         Lifecycle.trans env Lifecycle.PostQuery
+      | Type.Shared Type.Composite ->
+        Lifecycle.trans env Lifecycle.Idle
       | _ -> assert false
 
   let compile_const_message outer_env outer_ae sort control args mk_body ret_tys at : E.func_with_names =
@@ -8011,7 +8083,7 @@ module FuncDec = struct
 
         get_clos ^^
         Tagged.allocation_barrier env ^^
-        set_clos (* discard the result *)
+        G.i Drop
       in
 
       if is_local
@@ -8156,7 +8228,7 @@ module FuncDec = struct
       get_meth_pair ^^ Arr.load_field env 1l ^^ Blob.as_ptr_len env ^^
       (* The reply and reject callback *)
       push_continuations ^^
-      set_cb_index  ^^ get_cb_index ^^
+      set_cb_index ^^ get_cb_index ^^
       (* initiate call *)
       IC.system_call env "call_new" ^^
       cleanup_callback env ^^ get_cb_index ^^
@@ -9661,7 +9733,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_vanilla env ae e ^^
     Serialization.buffer_size env t ^^
     G.i Drop ^^
-    compile_add_const tydesc_len  ^^
+    compile_add_const tydesc_len ^^
     G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
 
   (* Other prims, unary *)
@@ -10926,7 +10998,9 @@ and export_actor_field env  ae (f : Ir.field) =
         |  Func(Shared sort,_,_,_,_) ->
            (match sort with
             | Write -> "canister_update " ^ f.it.name
-            | Query -> "canister_query " ^ f.it.name)
+            | Query -> "canister_query " ^ f.it.name
+            | Composite -> "canister_composite_query " ^ f.it.name
+           )
         | _ -> assert false)
       | _ -> assert false);
     edesc = nr (FuncExport (nr fi))

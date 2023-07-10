@@ -233,8 +233,10 @@ and objblock s dec_fields =
 %token<bool> BOOL
 %token<string> ID
 %token<string> TEXT
+%token PIPE
 %token PRIM
 %token UNDERSCORE
+%token COMPOSITE
 
 %nonassoc IMPLIES (* see assertions.mly *)
 
@@ -242,6 +244,7 @@ and objblock s dec_fields =
 %nonassoc ELSE WHILE
 
 %left COLON
+%left PIPE
 %left OR
 %left AND
 %nonassoc EQOP NEQOP LEOP LTOP GTOP GEOP
@@ -356,19 +359,19 @@ seplist1(X, SEP) :
   | (* empty *) { Type.Object @@ no_region }
   | s=obj_sort { s }
 
-%inline mode_opt :
-  | (* empty *) { Type.Write }
+%inline query:
   | QUERY { Type.Query }
+  | COMPOSITE QUERY { Type.Composite }
 
 %inline func_sort_opt :
   | (* empty *) { Type.Local @@ no_region }
-  | SHARED m=mode_opt { Type.Shared m @@ at $sloc }
-  | QUERY { Type.Shared Type.Query @@ at $sloc }
+  | SHARED qo=query? { Type.Shared (Lib.Option.get qo Type.Write) @@ at $sloc }
+  | q=query { Type.Shared q @@ at $sloc }
 
 %inline shared_pat_opt :
   | (* empty *) { Type.Local @@ no_region }
-  | SHARED m=mode_opt op=pat_opt { Type.Shared (m, op (at $sloc)) @@ at $sloc  }
-  | QUERY op=pat_opt { Type.Shared (Type.Query, op (at $sloc)) @@ at $sloc }
+  | SHARED qo=query? op=pat_opt { Type.Shared (Lib.Option.get qo Type.Write, op (at $sloc)) @@ at $sloc }
+  | q=query op=pat_opt { Type.Shared (q, op (at $sloc)) @@ at $sloc }
 
 
 (* Paths *)
@@ -578,6 +581,8 @@ exp_nullary(B) :
     { VarE(x) @? at $sloc }
   | PRIM s=TEXT
     { PrimE(s) @? at $sloc }
+  | UNDERSCORE
+    { VarE ("_" @@ at $sloc) @? at $sloc }
 
 exp_post(B) :
   | e=exp_nullary(B)
@@ -641,6 +646,13 @@ exp_un(B) :
     { OrE(e1, e2) @? at $sloc }
   | e=exp_bin(B) COLON t=typ_nobin
     { AnnotE(e, t) @? at $sloc }
+  | e1=exp_bin(B) PIPE e2=exp_bin(ob)
+    { let x = "_" @@ e1.at in
+      BlockE [
+        LetD (VarP x @! x.at, e1, None) @? e1.at;
+        ExpD e2 @? e2.at
+      ] @? at $sloc }
+
 
 %public exp_nondec(B) :
   | e=exp_bin(B)
