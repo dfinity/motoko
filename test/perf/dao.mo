@@ -7,7 +7,7 @@ import Result "assetstorage/Result";
 import Error "assetstorage/Error";
 import ICRaw "assetstorage/ExperimentalInternetComputer";
 import List "assetstorage/List";
-import Time "assetstorage/Time";
+//import Time "assetstorage/Time";
 import Types "dao/dao-types";
 
 shared({caller = creator}) actor class DAO() = Self {
@@ -83,7 +83,7 @@ shared({caller = creator}) actor class DAO() = Self {
 
             let proposal : Types.Proposal = {
                 id = proposal_id;
-                timestamp = Time.now();
+                timestamp = 42424242; //Time.now();
                 proposer = caller;
                 payload;
                 state = #open;
