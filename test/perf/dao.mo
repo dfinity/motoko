@@ -8,7 +8,7 @@ import Error "assetstorage/Error";
 import ICRaw "assetstorage/ExperimentalInternetComputer";
 import List "assetstorage/List";
 import Time "assetstorage/Time";
-import Types "./dao-types";
+import Types "dao/dao-types";
 
 shared actor class DAO(init : Types.BasicDaoStableStorage) = Self {
     stable var accounts = Types.accounts_fromArray(init.accounts);

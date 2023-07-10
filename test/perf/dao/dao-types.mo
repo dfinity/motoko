@@ -1,9 +1,9 @@
-import Result "assetstorage/Result";
-import Trie "assetstorage/Trie";
-import Int "assetstorage/Int";
-import Nat "assetstorage/Nat";
-import List "assetstorage/List";
-import Principal "assetstorage/Principal";
+import Result "../assetstorage/Result";
+import Trie "../assetstorage/Trie";
+import Int "../assetstorage/Int";
+import Nat "../assetstorage/Nat";
+import List "../assetstorage/List";
+import Principal "../assetstorage/Principal";
 
 module {
   public type Result<T, E> = Result.Result<T, E>;
