@@ -235,10 +235,19 @@ shared actor class DAO() = Self {
         };
         proposal_put(proposal.id, updated);
     };
+
+
+    public query func sample_proposal() : (payload: Types.ProposalPayload) =
+        {
+            method = "dummy";
+            canister_id = actorToPrincipal Self;
+            message = "" : Blob;
+        };
 };
 
 
 //CALL query list_proposals 0x4449444C0000
+//CALL query sample_proposal 0x4449444C0000
 //XCALL ingress store 0x4449444C016d7b02710004414243440400010203
 //XCALL query list 0x4449444C0000
 //XCALL query retrieve 0x4449444C0001710441424344
