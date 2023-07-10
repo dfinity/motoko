@@ -10,9 +10,9 @@ import List "assetstorage/List";
 import Time "assetstorage/Time";
 import Types "dao/dao-types";
 
-shared actor class DAO() = Self {
+shared({caller = creator}) actor class DAO() = Self {
     let nominal = { amount_e8s = 30000 };
-    let init : Types.BasicDaoStableStorage = { accounts = []
+    let init : Types.BasicDaoStableStorage = { accounts = [{ owner = creator; tokens = { amount_e8s = 3000000 } }]
                                              ; proposals = []
                                              ; system_params = {
                                                    transfer_fee = nominal;
