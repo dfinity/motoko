@@ -667,15 +667,6 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64, max_
         // (to do -- handle case where allocating this way has run out.)
         let block_id: u16 = (old_total_blocks + rel_i as u64) as u16;
 
-        if false {
-            println!(
-                50,
-                "  region_grow id={} (slot index) i={} block_id={}",
-                (*r).id,
-                i,
-                block_id
-            );
-        }
 
         // Update stable memory with new association.
         let assoc = Some((RegionId::from_id((*r).id), i as u16));
@@ -768,7 +759,7 @@ pub(crate) unsafe fn region_store<M: Memory>(_mem: &mut M, r: Value, offset: u64
         let mut s = src.as_ptr(); // source for bytes.
         let mut d = b1_off; // dest of bytes, as absolute index.o
 
-        // do initial read (a special case, generally not full block length).
+        // do initial write (a special case, generally not full block length).
         write(d, core::slice::from_raw_parts(s, b1_len as usize));
 
         // Advance input and output positions (i, s and d respectively).
