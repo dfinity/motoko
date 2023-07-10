@@ -15,10 +15,6 @@ pkgs:
       # installed. You will normally not be bothered to perform
       # the command therein manually.
 
-      cargoSha256 = "sha256-QwDlku8E3CW0DD5OEJ0ekjrsMQVzieHhy7c5w9Rl5A4=";
-
-
-
       cargoLock = {
         lockFile = "${pkgs.sources.ic}/Cargo.lock";
         outputHashes = {
@@ -48,7 +44,6 @@ pwd
          config.define("ROCKSDB_PLATFORM_POSIX", Some("1"));
 EOF
 
-        # sed -i -e s/08d86b53188dc6f15c8dc09d8aadece72e39f145e3ae497bb8711936a916335a/536e44802de57cc7d3690c90c80f154f770f48e82b82756c36443b8b47c9b5e7/g librocksdb-sys/.cargo-checksum.json
         cd -
       '';
 
