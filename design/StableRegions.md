@@ -250,7 +250,7 @@ A region with a particular ID is first initially allocated by a global, bumped c
 
 When that happens, the region table is marked (TO DO) indicating that region is in use.
 
-The region heap object with that ID witnesses its lifetime, and is reclaimed by GC when it goes out of scope.
+The region heap object with that ID witnesses its lifetime, and is reclaimed by GC when it becomes unreachable.
 
 When the bump counter reaches its maximum value, the allocation algorithm changes to scanning the regions,
 looking for the first available one (with minimum ID).
