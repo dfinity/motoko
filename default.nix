@@ -791,26 +791,26 @@ rec {
       let dont_build =
         [ moc mo-ld didc deser candid-tests ] ++
         builtins.attrValues coverage_bins;
-      in
-      nixpkgs.lib.lists.unique (builtins.filter (i: !(builtins.elem i dont_build)) (
-        [ic-wasm] ++
+      in with nixpkgs;
+      [ ic-wasm ] ++
+      lib.lists.unique (builtins.filter (i: !(builtins.elem i dont_build)) (
         commonBuildInputs nixpkgs ++
         rts.buildInputs ++
         js.moc.buildInputs ++
         docs.buildInputs ++
         check-rts-formatting.buildInputs ++
         builtins.concatMap (d: d.buildInputs or []) (builtins.attrValues tests) ++
-        [ nixpkgs.ncurses
-          nixpkgs.ocamlPackages.merlin
-          nixpkgs.ocamlformat
-          nixpkgs.ocamlPackages.utop
-          nixpkgs.fswatch
-          nixpkgs.niv
-          nixpkgs.nix-update
-          nixpkgs.rlwrap # for `rlwrap moc`
-          nixpkgs.difftastic
-          nixpkgs.openjdk nixpkgs.z3 nixpkgs.jq # for viper dev
-        ] ++ nixpkgs.lib.optional stdenv.isDarwin nixpkgs.darwin.apple_sdk.frameworks.Security
+        [ ncurses
+          ocamlPackages.merlin
+          ocamlPackages.utop
+          ocamlformat
+          fswatch
+          niv
+          nix-update
+          rlwrap # for `rlwrap moc`
+          openjdk z3 # for viper dev
+          difftastic
+        ] ++ lib.optional stdenv.isDarwin darwin.apple_sdk.frameworks.Security
       ));
 
     shellHook = llvmEnv + ''
