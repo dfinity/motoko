@@ -252,6 +252,7 @@ shared({caller = creator}) actor class DAO() = Self {
             message = to_candid ({amount = nominal; to = Principal.fromActor Self} : Types.TransferArgs);
         };
     };
+
     public query func sample_vote() : async (payload : Types.VoteArgs) {
         { proposal_id = 1; vote = #yes };
     };
