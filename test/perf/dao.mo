@@ -237,7 +237,7 @@ shared actor class DAO() = Self {
     };
 
     // Below methods just for the sake of candid generation...
-    public query func sample_dummy_proposal() : async (payload: Types.ProposalPayload) {
+    public query func sample_dummy_proposal() : async (payload : Types.ProposalPayload) {
         {
             method = "dummy";
             canister_id = Principal.fromActor Self;
@@ -245,12 +245,15 @@ shared actor class DAO() = Self {
         };
     };
 
-    public query func sample_transfer_proposal() : async (payload: Types.ProposalPayload) {
+    public query func sample_transfer_proposal() : async (payload : Types.ProposalPayload) {
         {
             method = "transfer";
             canister_id = Principal.fromActor Self;
             message = to_candid ({amount = nominal; to = Principal.fromActor Self} : Types.TransferArgs);
         };
+    };
+    public query func sample_vote() : async (payload : Types.VoteArgs) {
+        { proposal_id = 1; vote = #yes };
     };
 };
 
@@ -262,3 +265,12 @@ shared actor class DAO() = Self {
 //CALL query sample_transfer_proposal 0x4449444C0000
 //CALL ingress submit_proposal 0x4449444c026c03e1edeb4a71b3c4b1f20468c7ebc4d009016d7b0100087472616e73666572010a000000000000000001012a4449444c026c02fbca0168d8a38ca80d016c01b9ef9380087d0100010a00000000000000000101b0ea01
 //CALL query list_proposals 0x4449444C0000
+//CALL query list_accounts 0x4449444C0000
+
+//CALL query get_proposal 0x4449444c00017d00
+//CALL query get_proposal 0x4449444c00017d01
+//CALL query get_proposal 0x4449444c00017d0f
+
+//CALL query sample_vote 0x4449444C0000
+//CALL ingress vote 0x4449444c026c02ea99cff204018882e69c0a7d6b02c1c0017fa7d2f0027f01000101
+//CALL query get_proposal 0x4449444c00017d01
