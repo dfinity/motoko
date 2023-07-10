@@ -19,9 +19,6 @@ unsafe fn region0_store<M: Memory>(mem: &mut M, offset: u64, src: &[u8]) {
 pub unsafe fn region0_get<M: Memory>(_mem: &mut M) -> Value {
     assert_ne!(REGION_0, NO_REGION);
     let v = REGION_0;
-    if false {
-        println!(80, "region0_get() ~> {:?}", v);
-    }
     v
 }
 
