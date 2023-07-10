@@ -726,12 +726,6 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64, max_
 
         new_pages.set_ith_block_id(i, &BlockId(block_id));
 
-        if true {
-            // temp sanity testing: read back the data we just wrote.
-            let block_id_ = new_pages.get_ith_block_id(i);
-            assert_eq!(BlockId(block_id), block_id_);
-        }
-    }
 
     if false {
         println!(80, " region_grow id={} done.", (*r).id,);
