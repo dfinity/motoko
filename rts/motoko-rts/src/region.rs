@@ -718,11 +718,6 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64, max_
         let assoc = Some((RegionId::from_id((*r).id), i as u16));
         meta_data::block_region_table::set(BlockId(block_id), assoc.clone());
 
-        if true {
-            // temp sanity testing: read back the data we just wrote.
-            let assoc_ = meta_data::block_region_table::get(BlockId(block_id));
-            assert_eq!(assoc, assoc_)
-        }
 
         new_pages.set_ith_block_id(i, &BlockId(block_id));
 
