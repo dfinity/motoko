@@ -10,7 +10,16 @@ import List "assetstorage/List";
 import Time "assetstorage/Time";
 import Types "dao/dao-types";
 
-shared actor class DAO(init : Types.BasicDaoStableStorage) = Self {
+shared actor class DAO() = Self {
+    let nominal = { amount_e8s = 30000 };
+    let init : Types.BasicDaoStableStorage = { accounts = []
+                                             ; proposals = []
+                                             ; system_params = {
+                                                   transfer_fee = nominal;
+                                                   proposal_vote_threshold = nominal;
+                                                   proposal_submission_deposit = nominal
+                                               }
+                                             };
     stable var accounts = Types.accounts_fromArray(init.accounts);
     stable var proposals = Types.proposals_fromArray(init.proposals);
     stable var next_proposal_id : Nat = 0;
@@ -229,7 +238,7 @@ shared actor class DAO(init : Types.BasicDaoStableStorage) = Self {
 };
 
 
-//CALL query list 0x4449444C0000
-//CALL ingress store 0x4449444C016d7b02710004414243440400010203
-//CALL query list 0x4449444C0000
-//CALL query retrieve 0x4449444C0001710441424344
+//CALL query list_proposals 0x4449444C0000
+//XCALL ingress store 0x4449444C016d7b02710004414243440400010203
+//XCALL query list 0x4449444C0000
+//XCALL query retrieve 0x4449444C0001710441424344
