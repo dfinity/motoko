@@ -61,7 +61,9 @@ impl RegionId {
     pub fn into_u16(opreg: Option<RegionId>) -> u16 {
         match opreg {
             None => 0,
-            Some(id) => id.0 + 1,
+            Some(id) => 
+            assert!(id < meta::max::REGIONS);
+            id.0 + 1,
         }
     }
 }
@@ -97,17 +99,17 @@ impl AccessVector {
     }
 
     pub unsafe fn set_ith_block_id(&self, i: u32, block_id: &BlockId) {
-        let block_id_upper: u8 = ((block_id.0 & 0xff00) >> 8) as u8;
-        let block_id_lower: u8 = ((block_id.0 & 0x00ff) >> 0) as u8;
+        let block_id_upper: u8 = (block_id.0 >> 8) as u8;
+        let block_id_lower: u8 = block_id.0 as u8;
 
         // Update heap memory with new association. Little endian.
         // (write u16 to slot i in new_pages.)
-        self.0.set(i * 2 + 0, block_id_lower);
+        self.0.set(i * 2, block_id_lower);
         self.0.set(i * 2 + 1, block_id_upper);
     }
 
     pub unsafe fn get_ith_block_id(&self, i: u32) -> BlockId {
-        let lower: u16 = self.0.get(i * 2 + 0) as u16;
+        let lower: u16 = self.0.get(i * 2) as u16;
         let upper: u16 = self.0.get(i * 2 + 1) as u16;
         BlockId(upper << 8 | lower)
     }
@@ -371,18 +373,12 @@ pub unsafe fn region_get_mem_size<M: Memory>(_mem: &mut M) -> u64 {
             0
         }
     };
-    if false {
-        println!(80, "region_get_mem_size() => {}", size);
-    }
     size
 }
 
 // Region manager's total memory size in stable memory, in _pages_.
 #[ic_mem_fn]
 pub unsafe fn region_set_mem_size<M: Memory>(_mem: &mut M, size: u64) {
-    if false {
-        println!(80, "region_set_mem_size({})", size);
-    }
     crate::region::REGION_SET_MEM_SIZE = Some(size);
 }
 
@@ -424,12 +420,6 @@ pub unsafe fn region_recover<M: Memory>(mem: &mut M, rid: &RegionId) -> Value {
     let c = meta_data::region_table::get(&rid);
     let page_count = match c {
         Some(RegionSizeInPages(pc)) => {
-            if false {
-                println!(
-                    80,
-                    "region_recover {:?} => found region record {:?}", rid, c
-                );
-            }
             pc
         }
         _ => {
@@ -450,15 +440,6 @@ pub unsafe fn region_recover<M: Memory>(mem: &mut M, rid: &RegionId) -> Value {
             None => {}
             Some((rid_, rank)) => {
                 if &rid_ == rid {
-                    if false {
-                        println!(
-                            80,
-                            "region_recover {:?} => found region record, block_id={:?}, rank={:?}",
-                            rid,
-                            block_id,
-                            rank
-                        );
-                    };
                     av.set_ith_block_id(rank.into(), &BlockId(block_id as u16));
                     recovered_blocks += 1;
                 }
@@ -570,9 +551,6 @@ pub(crate) unsafe fn region_migration_from_v1_into_v2<M: Memory>(mem: &mut M) {
 // Case: Version 2 into version 2 ("Trivial migration" case).
 //
 pub(crate) unsafe fn region_migration_from_v2_into_v2<M: Memory>(mem: &mut M) {
-    if false {
-        println!(80, "region_init -- recover region 0, and reserve 1--15.");
-    }
     REGION_0 = region_recover(mem, &RegionId(0));
 
     // Ensure that regions 2 through 15 are already reserved for
@@ -593,9 +571,6 @@ pub(crate) unsafe fn region_init<M: Memory>(mem: &mut M, from_version: i32) {
     assert_eq!(crate::region::REGION_MEM_SIZE_INIT, false);
     crate::region::REGION_MEM_SIZE_INIT = true;
 
-    if false {
-        println!(80, "region_init from_version={}", from_version);
-    }
 
     match from_version {
         0 => region_migration_from_v0_into_v2(mem),
@@ -607,9 +582,6 @@ pub(crate) unsafe fn region_init<M: Memory>(mem: &mut M, from_version: i32) {
 
 #[ic_mem_fn]
 pub unsafe fn region_size<M: Memory>(_mem: &mut M, r: Value) -> u64 {
-    if false {
-        println!(80, "region_size({:?})", r);
-    }
     let r = r.as_region();
     (*r).page_count.into()
 }
@@ -625,15 +597,6 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64, max_
     let new_block_count = (old_page_count + new_pages_ + (PAGES_IN_BLOCK - 1)) / PAGES_IN_BLOCK;
     let inc_block_count = new_block_count - old_block_count;
 
-    if false {
-        println!(
-            80,
-            "begin region_grow id={} page_count={} new_pages={}",
-            (*r).id,
-            old_page_count,
-            new_pages
-        );
-    }
 
     // Update the total number of allocated blocks,
     // while respecting the global maximum limit on pages.

@@ -8,7 +8,6 @@ pub mod partitioned_memory;
 use super::Memory;
 use crate::constants::WASM_PAGE_SIZE;
 use crate::rts_trap_with;
-
 use crate::types::{Bytes, Value};
 use core::arch::wasm32;
 use motoko_rts_macros::*;

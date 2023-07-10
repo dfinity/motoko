@@ -31,9 +31,6 @@ pub mod nicer {
     pub fn write(offset: u64, src: &[u8]) {
         // SAFETY: This is safe because of the ic0 api guarantees.
         unsafe {
-            if false {
-                println!(50, "write({}, {} bytes)", offset, src.len());
-            }
             stable64_write_moc(offset, src.as_ptr() as u64, src.len() as u64)
         }
     }
