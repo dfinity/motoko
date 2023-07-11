@@ -1,5 +1,16 @@
 # Motoko compiler changelog
 
+## 0.9.6 (2023-07-07)
+
+* motoko (`moc`)
+
+  * Allow canister controllers to call the `__motoko_stable_var_info` query endpoint (#4103).
+    (Previously only self-queries were permitted.)
+
+  * Performance improvement: reduced cycle consumption for allocating objects (#4095).
+
+  * bugfix: reduced memory consumption in the Motoko Playground (#4106).
+
 ## 0.9.5 (2023-07-05)
 
 * motoko (`moc`)
