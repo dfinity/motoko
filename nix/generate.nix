@@ -78,17 +78,16 @@ let
   );
 
 in
-allGenerated.overrideAttrs (
-  old: {
-    shellHook = if pkgs.lib.inNixShell then
-      ''
-        dest=${toString ./generated}
+allGenerated.overrideAttrs {
+  shellHook = if pkgs.lib.inNixShell then
+    ''
+      dest=${toString ./generated}
 
-        rm -f $dest/*.nix $dest/README.md
-        cp -v -t $dest/ ${allGenerated}/*
-        chmod u-w -R $dest/*
+      rm -f $dest/*.nix $dest/README.md
+      cp -v -t $dest/ ${allGenerated}/*
+      chmod u-w -R $dest/*
 
-        exit 0
-      '' else null;
-  }
-)
+      exit 0
+    '' else null;
+}
+

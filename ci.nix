@@ -1,7 +1,7 @@
 { src ? { rev = null; }, labels ? {}, releaseVersion ? "latest" }:
 let
   nixpkgs = import ./nix { };
-  inject-rev = drv: drv.overrideAttrs (attrs: { rev = src.rev; });
+  inject-rev = drv: drv.overrideAttrs { rev = src.rev; };
   removeRecurseForDerivations = nixpkgs.lib.filterAttrsRecursive (k: v: k != "recurseForDerivations");
 
   linux = removeRecurseForDerivations (import ./default.nix { system = "x86_64-linux"; });
