@@ -445,27 +445,27 @@ func Employee(fst : Text, lst : Text) : Employee = object { … }
 
 ## Variants
 
-`{#Sun; #Mon; #Tue; #Wed; #Thu; #Fri; #Sat}`
+`{#sun; #mon; #tue; #wed; #thu; #fri; #sat}`
 
 ``` motoko
-type Day = {#Sun; #Mon; #Tue; #Wed; #Thu; #Fri; #Sat};
+type Day = {#sun; #mon; #tue; #wed; #thu; #fri; #sat};
 
 func toText(d : Day) : Text {
   switch d {
-     case (#Sun) "Sunday";
-     case (#Mon) "Monday";
-     case (#Tue) "Tuesday";
-     case (#Wed) "Wednesday";
-     case (#Thu) "Thursday";
-     case (#Fri) "Friday";
-     case (#Sat) "Saturday";
+     case (#sun) "Sunday";
+     case (#mon) "Monday";
+     case (#tue) "Tuesday";
+     case (#wed) "Wednesday";
+     case (#thu) "Thursday";
+     case (#fri) "Friday";
+     case (#sat) "Saturday";
    };
 };
 
-func sort(d : Day) : { #WeekDay; #WeekEnd } {
+func sort(d : Day) : { #weekDay; #weekEnd } {
   switch d {
-    case (#Sun or #Sat) #WeekEnd;  // or pattern
-    case _ #WeekDay;  // wildcard pattern
+    case (#sun or #sat) #weekEnd;  // or pattern
+    case _ #weekDay;  // wildcard pattern
   };
 };
 ```
@@ -833,19 +833,19 @@ Despite their different names, `Stack` and `List` are equivalent types.
 `WeekDay <: Day`
 
 ``` motoko
-type WeekDay = {#Mon; #Tue; #Wed; #Thu; #Fri};
+type WeekDay = {#mon; #tue; #wed; #thu; #fri};
 
-type Day = {#Sun; #Mon; #Tue; #Wed; #Thu; #Fri; #Sat};
+type Day = {#sun; #mon; #tue; #wed; #thu; #fri; #sat};
 
 func toText(d : Day) : Text {
   switch d
-   { case (#Sun) "Sunday";
-     case (#Mon) "Monday";
+   { case (#sun) "Sunday";
+     case (#mon) "Monday";
      //...
    };
 };
 
-let mon : WeekDay = #Mon;
+let mon : WeekDay = #mon;
 let t = toText(mon); // also works, since WeekDay <: Day
 ```
 

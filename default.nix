@@ -360,29 +360,29 @@ rec {
 
     # Run a variant with sanity checking on
     snty_subdir = dir: deps:
-      (test_subdir dir deps).overrideAttrs (args: {
+      (test_subdir dir deps).overrideAttrs {
           EXTRA_MOC_ARGS = "--sanity-checks";
-      });
+      };
       
     generational_gc_subdir = dir: deps:
-      (test_subdir dir deps).overrideAttrs (args: {
+      (test_subdir dir deps).overrideAttrs {
           EXTRA_MOC_ARGS = "--generational-gc";
-      });
+      };
 
     snty_compacting_gc_subdir = dir: deps:
-      (test_subdir dir deps).overrideAttrs (args: {
+      (test_subdir dir deps).overrideAttrs {
           EXTRA_MOC_ARGS = "--sanity-checks --compacting-gc";
-      });
+      };
 
     snty_generational_gc_subdir = dir: deps:
-      (test_subdir dir deps).overrideAttrs (args: {
+      (test_subdir dir deps).overrideAttrs {
           EXTRA_MOC_ARGS = "--sanity-checks --generational-gc";
-      });
+      };
 
     snty_incremental_gc_subdir = dir: deps:
-      (test_subdir dir deps).overrideAttrs (args: {
+      (test_subdir dir deps).overrideAttrs {
           EXTRA_MOC_ARGS = "--sanity-checks --incremental-gc";
-      });
+      };
 
     perf_subdir = dir: deps:
       (test_subdir dir deps).overrideAttrs (args: {
@@ -462,7 +462,7 @@ rec {
 
 
     fix_names = builtins.mapAttrs (name: deriv:
-      deriv.overrideAttrs (_old: { name = "test-${name}"; })
+      deriv.overrideAttrs { name = "test-${name}"; }
     );
 
     coverage = testDerivation {
@@ -508,7 +508,7 @@ rec {
       trap       = test_subdir "trap"       [ moc ];
       run-deser  = test_subdir "run-deser"  [ deser ];
       perf       = perf_subdir "perf"       [ moc nixpkgs.drun ];
-      bench      = perf_subdir "bench"      [ moc nixpkgs.drun ];
+      bench      = perf_subdir "bench"      [ moc nixpkgs.drun ic-wasm ];
       viper      = test_subdir "viper"      [ moc nixpkgs.which nixpkgs.openjdk nixpkgs.z3 ];
       inherit qc lsp unit candid profiling-graphs coverage;
     }) // { recurseForDerivations = true; };
@@ -565,12 +565,20 @@ rec {
       recurseForDerivations = true;
     };
 
-  inherit (nixpkgs) drun wabt wasmtime wasm;
+  inherit (nixpkgs) drun wabt wasmtime wasm nix-update;
 
   filecheck = nixpkgs.runCommandNoCC "FileCheck" {} ''
     mkdir -p $out/bin
     cp ${nixpkgs.llvm}/bin/FileCheck $out/bin
   '';
+
+  ic-wasm =
+    nixpkgs.rustPlatform.buildRustPackage {
+      name = "ic-wasm";
+      src = nixpkgs.sources.ic-wasm;
+      cargoSha256 = "sha256-iGCju0JG+jkysmDAeTfjNCYaSfg7N3Qqq8HpPlRHMgU=";
+      doCheck = false;
+    };
 
   # gitMinimal is used by nix/gitSource.nix; building it here warms the nix cache
   inherit (nixpkgs) gitMinimal;
@@ -783,25 +791,26 @@ rec {
       let dont_build =
         [ moc mo-ld didc deser candid-tests ] ++
         builtins.attrValues coverage_bins;
-      in
-      nixpkgs.lib.lists.unique (builtins.filter (i: !(builtins.elem i dont_build)) (
+      in with nixpkgs;
+      [ ic-wasm ] ++
+      lib.lists.unique (builtins.filter (i: !(builtins.elem i dont_build)) (
         commonBuildInputs nixpkgs ++
         rts.buildInputs ++
         js.moc.buildInputs ++
         docs.buildInputs ++
         check-rts-formatting.buildInputs ++
         builtins.concatMap (d: d.buildInputs or []) (builtins.attrValues tests) ++
-        [ nixpkgs.ncurses
-          nixpkgs.ocamlPackages.merlin
-          nixpkgs.ocamlformat
-          nixpkgs.ocamlPackages.utop
-          nixpkgs.fswatch
-          nixpkgs.niv
-          nixpkgs.nix-update
-          nixpkgs.rlwrap # for `rlwrap moc`
-          nixpkgs.difftastic
-          nixpkgs.openjdk nixpkgs.z3 nixpkgs.jq # for viper dev
-        ] ++ nixpkgs.lib.optional stdenv.isDarwin nixpkgs.darwin.apple_sdk.frameworks.Security
+        [ ncurses
+          ocamlPackages.merlin
+          ocamlPackages.utop
+          ocamlformat
+          fswatch
+          niv
+          nix-update
+          rlwrap # for `rlwrap moc`
+          openjdk z3 # for viper dev
+          difftastic
+        ] ++ lib.optional stdenv.isDarwin darwin.apple_sdk.frameworks.Security
       ));
 
     shellHook = llvmEnv + ''
