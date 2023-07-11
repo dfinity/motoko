@@ -921,7 +921,6 @@ pub(crate) unsafe fn block_size(address: usize) -> Words<u32> {
 
         TAG_BIGINT => {
             let bigint = address as *mut BigInt;
-            (*bigint).mp_int.alloc = (*bigint).mp_int.used;
             size_of::<BigInt>() + bigint.len().to_words()
         }
 

@@ -51,7 +51,6 @@ unsafe fn mp_alloc<M: Memory>(mem: &mut M, size: Bytes<u32>) -> *mut u8 {
     let size = size.as_usize();
     debug_assert_eq!((size % core::mem::size_of::<mp_digit>()), 0);
     (*blob).mp_int.alloc = (size / core::mem::size_of::<mp_digit>()) as i32;
-    (*blob).mp_int.used = (*blob).mp_int.alloc; // Otherwise, `block_size() in `allocation_barrier()` may already shorten the object.
     allocation_barrier(ptr);
     blob.payload_addr() as *mut u8
 }
@@ -170,11 +169,7 @@ unsafe fn persist_bigint(i: mp_int) -> Value {
     }
     let r = BigInt::from_payload(i.dp);
     if (*r).mp_int.alloc != i.alloc {
-        panic!(
-            "persist_bigint: alloc changed? heap {} stack {}",
-            (*r).mp_int.alloc,
-            i.alloc
-        );
+        panic!("persist_bigint: alloc changed?");
     }
     (*r).mp_int = i;
     Value::from_ptr(r as usize)
