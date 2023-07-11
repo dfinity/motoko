@@ -17,7 +17,7 @@ on:
     types: niv-updater-nudge
   schedule:
     # * is a special character in YAML so you have to quote this string
-    # Run every monday
+    # Run every Monday
     - cron:  '0 0 * * 0'
 jobs:
   niv-updater:
