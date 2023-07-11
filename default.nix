@@ -360,29 +360,29 @@ rec {
 
     # Run a variant with sanity checking on
     snty_subdir = dir: deps:
-      (test_subdir dir deps).overrideAttrs (_: {
+      (test_subdir dir deps).overrideAttrs {
           EXTRA_MOC_ARGS = "--sanity-checks";
-      });
+      };
       
     generational_gc_subdir = dir: deps:
-      (test_subdir dir deps).overrideAttrs (_: {
+      (test_subdir dir deps).overrideAttrs {
           EXTRA_MOC_ARGS = "--generational-gc";
-      });
+      };
 
     snty_compacting_gc_subdir = dir: deps:
-      (test_subdir dir deps).overrideAttrs (_: {
+      (test_subdir dir deps).overrideAttrs {
           EXTRA_MOC_ARGS = "--sanity-checks --compacting-gc";
-      });
+      };
 
     snty_generational_gc_subdir = dir: deps:
-      (test_subdir dir deps).overrideAttrs (_: {
+      (test_subdir dir deps).overrideAttrs {
           EXTRA_MOC_ARGS = "--sanity-checks --generational-gc";
-      });
+      };
 
     snty_incremental_gc_subdir = dir: deps:
-      (test_subdir dir deps).overrideAttrs (_: {
+      (test_subdir dir deps).overrideAttrs {
           EXTRA_MOC_ARGS = "--sanity-checks --incremental-gc";
-      });
+      };
 
     perf_subdir = dir: deps:
       (test_subdir dir deps).overrideAttrs (args: {
@@ -462,7 +462,7 @@ rec {
 
 
     fix_names = builtins.mapAttrs (name: deriv:
-      deriv.overrideAttrs (_: { name = "test-${name}"; })
+      deriv.overrideAttrs { name = "test-${name}"; }
     );
 
     coverage = testDerivation {
