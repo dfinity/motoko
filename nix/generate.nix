@@ -78,7 +78,7 @@ let
   );
 
 in
-allGenerated.overrideAttrs {
+allGenerated.overrideAttrs (_: {
   shellHook = if pkgs.lib.inNixShell then
     ''
       dest=${toString ./generated}
@@ -89,5 +89,5 @@ allGenerated.overrideAttrs {
 
       exit 0
     '' else null;
-}
+})
 
