@@ -274,4 +274,5 @@ shared({caller = creator}) actor class DAO() = Self {
 
 //CALL query sample_vote 0x4449444C0000
 //CALL ingress vote 0x4449444c026c02ea99cff204018882e69c0a7d6b02c1c0017fa7d2f0027f01000101
+//CALL ingress vote 0x4449444c026c02ea99cff204018882e69c0a7d6b02c1c0017fa7d2f0027f01000101
 //CALL query get_proposal 0x4449444c00017d01
