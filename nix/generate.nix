@@ -4,7 +4,7 @@
 #
 # to update
 
-{ pkgs ? import ../nix {} }:
+{ pkgs ? import ../nix { } }:
 
 let
 
@@ -21,7 +21,7 @@ let
   # Finally the `src` attribute in the `default.nix` will be defined as
   # `src_subst` such that it can be pointed to local or niv-managed
   # sources.
-  haskellSrc2nixWithDoc = {name, src, src_subst, extraCabal2nixOptions}:
+  haskellSrc2nixWithDoc = { name, src, src_subst, extraCabal2nixOptions }:
     let
       drv = pkgs.haskellPackages.haskellSrc2nix {
         inherit name extraCabal2nixOptions src;
@@ -45,7 +45,7 @@ let
     haskellSrc2nixWithDoc {
       inherit name extraCabal2nixOptions;
       src = import ./gitSource.nix path;
-      src_subst = "import ../gitSource.nix \"${path}\"";
+      src_subst = ''import ../gitSource.nix "${path}"'';
     };
 
   packages = {
@@ -56,39 +56,30 @@ let
     # See #2954 for what to do when a custom package should become necessary.
   };
 
-  allGenerated = pkgs.runCommandNoCC "generated" {
-    buildInputs = [ pkgs.nixpkgs-fmt ];
-  } (
-    ''
-    mkdir -p $out
-    '' + builtins.concatStringsSep "" (
-      pkgs.lib.flip pkgs.lib.mapAttrsToList packages (
-        n: pkg: ''
-          cp ${pkg}/default.nix $out/${n}.nix
-        ''
-      )
-    ) + ''
-      chmod u+w $out/*.nix
-      nixpkgs-fmt $out/*.nix
-      echo <<__END__ > $out/README.md
-      The contents of this directory are automatically generated.
-      To update, please run nix-shell generate.nix
-      __END__
-    ''
-  );
+  allGenerated =
+    pkgs.runCommandNoCC "generated" { buildInputs = [ pkgs.nixpkgs-fmt ]; } (''
+      mkdir -p $out
+    '' + builtins.concatStringsSep ""
+      (pkgs.lib.flip pkgs.lib.mapAttrsToList packages (n: pkg: ''
+        cp ${pkg}/default.nix $out/${n}.nix
+      '')) + ''
+        chmod u+w $out/*.nix
+        nixpkgs-fmt $out/*.nix
+        echo <<__END__ > $out/README.md
+        The contents of this directory are automatically generated.
+        To update, please run nix-shell generate.nix
+        __END__
+      '');
 
-in
-allGenerated.overrideAttrs (
-  old: {
-    shellHook = if pkgs.lib.inNixShell then
-      ''
-        dest=${toString ./generated}
+in allGenerated.overrideAttrs {
+  shellHook = if pkgs.lib.inNixShell then ''
+    dest=${toString ./generated}
 
-        rm -f $dest/*.nix $dest/README.md
-        cp -v -t $dest/ ${allGenerated}/*
-        chmod u-w -R $dest/*
+    rm -f $dest/*.nix $dest/README.md
+    cp -v -t $dest/ ${allGenerated}/*
+    chmod u-w -R $dest/*
 
-        exit 0
-      '' else null;
-  }
-)
+    exit 0
+  '' else
+    null;
+}

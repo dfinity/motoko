@@ -753,7 +753,7 @@ and declare_pat pat : val_env =
   | ObjP pfs -> declare_pat_fields pfs V.Env.empty
   | OptP pat1
   | TagP (_, pat1)
-  | AltP (pat1, _)    (* both have empty binders *)
+  | AltP (pat1, _) (* pat2 has the same identifiers *)
   | AnnotP (pat1, _)
   | ParP pat1 -> declare_pat pat1
 
