@@ -2725,6 +2725,23 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
   (* creates a boxed bignum from a signed i64 *)
   let box env = compile_shrS_const 1L ^^ Num.from_signed_word64 env
 
+  let can_use_fath_path env get_a get_b =
+    (* Check whether both arguments `a` and `b` are scalars that fit within 32 bit.
+       This is to guarantee overflow-free 64-bit arithmetics, such as `add`, `sub`, or `mul`.
+       However, this does not work for `pow` as it can overflow for smaller arguments. *)
+    (* check that both arguments are scalars, none a skewed pointers *)
+    get_a ^^ get_b ^^
+    G.i (Binary (Wasm_exts.Values.I64 I64Op.Or)) ^^
+    compile_bitand_const 0x1L ^^
+    compile_eq_const 0x0L ^^
+    get_a ^^ get_b ^^
+    (* check that their values fit into 32 bits *)
+    G.i (Binary (Wasm_exts.Values.I64 I64Op.Or)) ^^
+    compile_bitand_const 0xFFFF_FFFF_0000_0000L ^^
+    compile_eq_const 0x0L ^^
+    G.i (Binary (Wasm_exts.Values.I64 I64Op.And))
+
+
   (* check if both arguments are tagged scalars,
      if so, perform the fast path.
      Otherwise make sure that both arguments are in heap representation,
@@ -2735,8 +2752,8 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     Func.share_code2 env name (("a", I64Type), ("b", I64Type)) [I64Type]
       (fun env get_a get_b ->
         let set_res, get_res = new_local env "res" in
-        get_a ^^ get_b ^^
-        BitTagged.if_both_tagged_scalar env [I64Type]
+        can_use_fath_path env get_a get_b ^^
+        E.if1 I64Type
           begin
             get_a ^^ 
             get_b ^^ 
