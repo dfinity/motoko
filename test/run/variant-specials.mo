@@ -12,7 +12,6 @@ func specials(one : { #one : Nat }, two : { #c0; #c1 }) {
   count += 123;
 };
 
-
 specials(#one 42, #c1)
 
 //CHECK: func $specials
