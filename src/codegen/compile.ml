@@ -10317,13 +10317,15 @@ and single_case e (cs : Ir.case list) =
   | [{it={pat={it=TagP (l, _);_}; _}; _}], Type.(Variant [{lab; _}]) -> l = lab
   | _ -> false
 
+and known_tag_pat p = TagP ("", p)
+
 and simplify_cases e (cs : Ir.case list) =
   match cs, e.note.Note.typ with
   (* for a 2-cased variant type, the second second comparison can be omitted when the first pattern
      (with irrefutable subpattern) didn't match *)
   | [{it={pat={it=TagP (_, ip);_}; _}; _} as c1; {it={pat={it=TagP (_, pat');_} as pat2; exp}; _} as c2], Type.(Variant [_; _])
        when Ir_utils.is_irrefutable ip ->
-     [c1; {c2 with it = {exp; pat = {pat2 with it=TagP ("", pat')}}}]
+     [c1; {c2 with it = {exp; pat = {pat2 with it = known_tag_pat pat'}}}]
   | _ -> cs
 
 
@@ -10421,7 +10423,7 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
   | SwitchE (e, cs) when single_case e cs ->
     let code1 = compile_exp_vanilla env ae e in
     let [@warning "-8"] [{it={pat={it=TagP (_, pat');_} as pat; exp}; _}] = cs in
-    let ae1, pat_code = compile_pat_local env ae {pat with it=TagP ("", pat')} in
+    let ae1, pat_code = compile_pat_local env ae {pat with it = known_tag_pat pat'} in
     let sr, rhs_code = compile_exp_with_hint env ae1 sr_hint exp in
 
     (* Use the expected stackrep, if given, else infer from the branches *)
@@ -10442,6 +10444,7 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
   | SwitchE (e, cs) ->
     let code1 = compile_exp_vanilla env ae e in
     let (set_i, get_i) = new_local env "switch_in" in
+
     (* compile subexpressions and collect the provided stack reps *)
     let codes = List.map (fun {it={pat; exp=e}; _} ->
       let (ae1, pat_code) = compile_pat_local env ae pat in
@@ -10672,15 +10675,14 @@ and fill_pat env ae pat : patternCode =
           )
           fail_code
       )
-  | TagP ("", p) when Ir_utils.is_irrefutable_nonbinding p ->
-      CannotFail (G.i Drop)
+  | TagP ("", p) ->
+    if Ir_utils.is_irrefutable_nonbinding p
+    then CannotFail (G.i Drop)
+    else CannotFail (Variant.project env) ^^^ fill_pat env ae p
   | TagP (l, p) when Ir_utils.is_irrefutable_nonbinding p ->
       CanFail (fun fail_code ->
         Variant.test_is env l ^^
         G.if0 G.nop fail_code)
-  | TagP ("", p) ->
-      CannotFail (Variant.project env) ^^^
-      fill_pat env ae p
   | TagP (l, p) ->
       let (set_x, get_x) = new_local env "tag_scrut" in
       CanFail (fun fail_code ->
