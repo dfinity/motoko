@@ -10328,7 +10328,7 @@ and simplify_cases e (cs : Ir.case list) =
 
 
 
-and ascending_remainders env e =
+and _ascending_remainders env e =
   let typ = e.note.Note.typ in
   match typ with
   | Type.(Variant fs) ->
@@ -10439,7 +10439,7 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
        G.i Unreachable (* We should always exit using the branch_code *)
     )
 
-  | SwitchE (e, cs) -> ascending_remainders env e;
+  | SwitchE (e, cs) ->
     let code1 = compile_exp_vanilla env ae e in
     let (set_i, get_i) = new_local env "switch_in" in
     (* compile subexpressions and collect the provided stack reps *)
