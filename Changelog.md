@@ -1,5 +1,9 @@
 # Motoko compiler changelog
 
+* motoko (`moc`)
+
+  * Performance improvement: lower the default allocation for bignums (#4102).
+
 ## 0.9.6 (2023-07-07)
 
 * motoko (`moc`)
