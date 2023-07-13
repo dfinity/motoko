@@ -147,13 +147,6 @@ impl RegionObject {
         // Where is that block located in stable memory (global rank)?
         let block_id = av.get_ith_block_id(block_rank as u32);
 
-        if false {
-            println!(
-                80,
-                "intra-block index is {} (block is {:?})", intra_block_index, block_id
-            );
-        }
-
         // address of the byte to load from stable memory:
         let offset = meta_data::offset::BLOCK_ZERO
             + block_id.0 as u64 * meta_data::size::BLOCK_IN_BYTES
@@ -647,16 +640,6 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64, max_
         new_pages.0.set(i, old_pages.0.get(i));
     }
 
-    if false {
-        println!(
-            80,
-            " region_grow id={} (old_block_count, new_block_count) = ({}, {})",
-            (*r).id,
-            old_block_count,
-            new_block_count
-        );
-    }
-
     // Record new associations, between the region and each new block:
     // - in block_region_table (stable memory, for persistence).
     // - in region representation (heap memory, for fast access operations).
@@ -712,9 +695,6 @@ pub(crate) unsafe fn region_load<M: Memory>(_mem: &mut M, r: Value, offset: u64,
         // Do rest of block-sized reads.
         // (invariant: they always occur at the start of a block).
         loop {
-            if false {
-                println!(80, "load r={:?} s={} i={}", r.id(), s, i);
-            }
             let (s_, _, b_len) = r.relative_into_absolute_info(offset + i);
             s = s_;
             if i + b_len > dst.len() as u64 {

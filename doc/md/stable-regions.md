@@ -1,4 +1,4 @@
-# Stable Memory
+# Stable Regions
 
 The `Region` library provides low-level access to Internet Computer stable memory.
 
@@ -40,7 +40,10 @@ module {
   // Returns `0xFFFF_FFFF_FFFF_FFFF` if remaining pages of physical stable memory insufficient.
   grow : (r : Region, new_pages : Nat64) -> (oldpages : Nat64);
 
+  // read ("load") a byte from a region, by offset.
   loadNat8 : (r : Region, offset : Nat64) -> Nat8;
+
+  // write ("store") a byte into a region, by offset.
   storeNat8 : (r : Region, offset : Nat64, value: Nat8) -> ();
 
   // ... and similar for Nat16, Nat32, Nat64,
@@ -70,7 +73,7 @@ To demonstrate the `Region` library, we present a simple implementation of a log
 
 The example illustrates the simultaneous use of stable variables and stable memory. It uses a single stable variable to keep track of the two regions and their size in bytes, but stores the contents of the log directly in stable memory.
 
-``` motoko no-repl file=./examples/StableLog.mo
+``` motoko no-repl file=./StableMultiLog.mo-donotcheck
 ```
 
 The shared `add(blob)` function allocates enough stable memory to store the given blob, and writes the blob contents, its size, and its position into the pre-allocated regions.  One region is dedicated to storing the blobs of varying sizes, and the other is dedicated to storing their (fixed-sized) meta data.
