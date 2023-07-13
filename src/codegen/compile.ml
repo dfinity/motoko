@@ -9045,8 +9045,8 @@ let compile_binop env t op : SR.t * SR.t * G.t =
               end
               begin
                 let overflow_type = match ty with
-                | Type.Nat32 -> Type.Nat64 
-                | Type.(Nat8 | Nat16) -> Type.Nat32 
+                | Type.Int32 -> Type.Int64 
+                | Type.(Int8 | Int16) -> Type.Int32 
                 | _ -> assert false in
                 let overflow_type_bits = TaggedSmallWord.bits_of_type overflow_type in
                 let overflow_boundary = -Int.(sub (mul overflow_type_bits 2) 2) in
@@ -9059,11 +9059,12 @@ let compile_binop env t op : SR.t * SR.t * G.t =
                 get_n ^^ get_exp ^^
                 TaggedSmallWord.compile_nat_power env ty ^^
                 set_res ^^ 
-                get_res ^^ enforce_signed_bits env bits ^^
+                get_res ^^ get_res ^^ enforce_signed_bits env bits ^^
                 get_res
               end
           end
-          compile_unboxed_one) (* x ** 0 == 1 *)
+          (compile_unboxed_const
+             Int64.(shift_left one (to_int (TaggedSmallWord.shift_of_type ty))))) (* x ** 0 == 1 *)
   | Type.(Prim Int),                          PowOp ->
     let pow = BigNum.compile_unsigned_pow env in
     let (set_n, get_n) = new_local env "n" in
