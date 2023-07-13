@@ -197,7 +197,6 @@ mod meta_data {
         pub const BLOCK_REGION_TABLE: u64 =
             super::max::BLOCKS as u64 * BLOCK_REGION_TABLE_ENTRY as u64;
 
-        //pub const REGION_TABLE: u64 = super::max::REGIONS as u64 * REGION_TABLE_ENTRY as u64;
 
         pub const PAGES_IN_BLOCK: u32 = 128;
         pub const PAGE_IN_BYTES: u64 = 1 << 16;
