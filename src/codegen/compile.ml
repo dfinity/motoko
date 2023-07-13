@@ -9039,7 +9039,8 @@ let compile_binop env t op : SR.t * SR.t * G.t =
                     get_exp ^^ TaggedSmallWord.lsb_adjust ty ^^ compile_unboxed_one ^^ G.i (Binary (Wasm_exts.Values.I64 I64Op.And)) ^^
                     E.if1 I64Type
                       get_n
-                      compile_unboxed_one
+                    (compile_unboxed_const
+                      Int64.(shift_left one (to_int (TaggedSmallWord.shift_of_type ty))))
                   end
                   get_n (* n@{0,1} ** (1+exp) == n *)
               end
