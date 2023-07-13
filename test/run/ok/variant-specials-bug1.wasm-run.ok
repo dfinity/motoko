@@ -1,5 +1,5 @@
 pattern failed
-Error: failed to run main module `_out/variant-specials-bug.wasm`
+Error: failed to run main module `_out/variant-specials-bug1.wasm`
 
 Caused by:
     0: failed to invoke command default
