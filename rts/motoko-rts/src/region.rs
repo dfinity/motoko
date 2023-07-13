@@ -169,7 +169,8 @@ impl RegionObject {
         len: u64,
     ) -> (u64, BlockId, u64, BlockId) {
         let (off, b1, b1_len) = self.relative_into_absolute_info(offset);
-        let final_offset = if len > 0 { offset + len - 1 } else { offset };
+        if (len = 0) return (off, b1, b1_len, b1);
+        let final_offset =  offset + len - 1;
         let (_, b2, _) = self.relative_into_absolute_info(final_offset);
         (off, b1, b1_len, b2)
     }
