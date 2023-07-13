@@ -205,7 +205,6 @@ mod meta_data {
 
         // Static memory footprint, ignoring any dynamically-allocated pages.
         pub const STATIC_MEM_IN_PAGES: u64 = PAGES_IN_BLOCK as u64; /* One block for meta data, plus future use TBD. */
-        /* OLD DEF = (super::offset::BLOCK_ZERO + PAGE_IN_BYTES - 1) / PAGE_IN_BYTES; */
 
         pub unsafe fn required_pages() -> u64 {
             STATIC_MEM_IN_PAGES
