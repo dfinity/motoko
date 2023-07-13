@@ -1624,10 +1624,13 @@ module Tagged = struct
     let name = Printf.sprintf "alloc_size<%d>_tag<%d>" (Int32.to_int size) (Int32.to_int (int_of_tag tag)) in
     (* Computes a (conservative) mask for the bumped HP, so that the existence of non-zero bits under it
        guarantees that a page boundary crossing didn't happen (i.e. no ripple-carry). *)
-    let overflow_mask n =
-      let n = Int32.to_int n in
+    let overflow_mask increment =
+      let n = Int32.to_int increment in
+      assert (n > 0 && n < 0x8000);
       let page_mask = Int32.sub page_size 1l in
-      Int32.(logand page_mask (shift_left minus_one (16 - Numerics.Nat16.(to_int (clz (of_int n)))))) in
+      (* We can extend the mask to the right if the bump increment is a power of two. *)
+      let ext = if Numerics.Nat16.(to_int (popcnt (of_int n))) = 1 then increment else 0l in
+      Int32.(logor ext (logand page_mask (shift_left minus_one (16 - Numerics.Nat16.(to_int (clz (of_int n))))))) in
 
     Func.share_code0 env name [I32Type] (fun env ->
       let set_object, get_object = new_local env "new_object" in
@@ -1635,7 +1638,6 @@ module Tagged = struct
       let half_page_size = Int32.div page_size 2l in
       (if !Flags.gc_strategy <> Flags.Incremental && size_in_bytes < half_page_size then
          GC.get_heap_pointer env ^^
-         compile_add_const ptr_skew ^^
          GC.get_heap_pointer env ^^
          compile_add_const size_in_bytes ^^
          GC.set_heap_pointer env ^^
