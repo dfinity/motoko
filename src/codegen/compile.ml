@@ -8952,8 +8952,7 @@ let compile_binop env t op : SR.t * SR.t * G.t =
   | Type.(Prim (Nat8|Nat16|Nat32 as ty)),     DivOp -> G.i (Binary (Wasm_exts.Values.I64 I64Op.DivU)) ^^
                                                        TaggedSmallWord.msb_adjust ty
   | Type.(Prim (Nat8|Nat16|Nat32)),           ModOp -> G.i (Binary (Wasm_exts.Values.I64 I64Op.RemU))
-  | Type.(Prim Int32),                        DivOp -> G.i (Binary (Wasm_exts.Values.I64 I64Op.DivS))
-  | Type.(Prim (Int8|Int16 as ty)),           DivOp ->
+  | Type.(Prim (Int8|Int16|Int32 as ty)),           DivOp ->
     Func.share_code2 env (prim_fun_name ty "div")
       (("a", I64Type), ("b", I64Type)) [I64Type]
       (fun env get_a get_b ->
