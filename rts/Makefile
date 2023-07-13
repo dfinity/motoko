@@ -45,6 +45,7 @@ TOMMATH_FLAGS = \
   -DMP_FREE=mp_free \
   -DMP_MEMSET=0 \
   -DMP_FIXED_CUTOFFS \
+  -DMP_PREC=4 \
   -DMP_NO_FILE \
   -D__STDC_IEC_559__ \
 
@@ -182,33 +183,33 @@ $(TOMMATH_BINDINGS_RS): | _build
 	bindgen $(TOMMATHSRC)/tommath.h \
 	    -o $@ \
 	    --use-core --ctypes-prefix=libc --no-layout-tests \
-	    --whitelist-function mp_init \
-	    --whitelist-function mp_init_copy \
-	    --whitelist-function mp_set_u32 \
-	    --whitelist-function mp_set_i32 \
-	    --whitelist-function mp_get_i32 \
-	    --whitelist-function mp_set_u64 \
-	    --whitelist-function mp_set_i64 \
-	    --whitelist-function mp_get_i64 \
-	    --whitelist-function mp_set_double \
-	    --whitelist-function mp_get_double \
-	    --whitelist-function mp_count_bits \
-	    --whitelist-function mp_cmp \
-	    --whitelist-function mp_add \
-	    --whitelist-function mp_sub \
-	    --whitelist-function mp_mul \
-	    --whitelist-function mp_div \
-	    --whitelist-function mp_div_2d \
-	    --whitelist-function mp_neg \
-	    --whitelist-function mp_abs \
-	    --whitelist-function mp_mul_2d \
-	    --whitelist-function mp_expt_u32 \
-	    --whitelist-function mp_2expt \
-	    --whitelist-function mp_incr \
-	    --blacklist-type __int32_t \
-	    --blacklist-type __int64_t \
-	    --blacklist-type __uint32_t \
-	    --blacklist-type __uint64_t \
+	    --allowlist-function mp_init \
+	    --allowlist-function mp_init_copy \
+	    --allowlist-function mp_set_u32 \
+	    --allowlist-function mp_set_i32 \
+	    --allowlist-function mp_get_i32 \
+	    --allowlist-function mp_set_u64 \
+	    --allowlist-function mp_set_i64 \
+	    --allowlist-function mp_get_i64 \
+	    --allowlist-function mp_set_double \
+	    --allowlist-function mp_get_double \
+	    --allowlist-function mp_count_bits \
+	    --allowlist-function mp_cmp \
+	    --allowlist-function mp_add \
+	    --allowlist-function mp_sub \
+	    --allowlist-function mp_mul \
+	    --allowlist-function mp_div \
+	    --allowlist-function mp_div_2d \
+	    --allowlist-function mp_neg \
+	    --allowlist-function mp_abs \
+	    --allowlist-function mp_mul_2d \
+	    --allowlist-function mp_expt_u32 \
+	    --allowlist-function mp_2expt \
+	    --allowlist-function mp_incr \
+	    --blocklist-type __int32_t \
+	    --blocklist-type __int64_t \
+	    --blocklist-type __uint32_t \
+	    --blocklist-type __uint64_t \
             -- $(TOMMATH_FLAGS)
 
 	# Whitelist parameters used as libtommath.h has lots of definitions that we don't

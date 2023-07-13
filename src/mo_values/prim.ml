@@ -362,4 +362,7 @@ let prim trap =
   | "is_controller" ->
       fun _ v k -> k (Bool false)
 
+  | "canister_version" ->
+      fun _ v k -> as_unit v; k (Nat64 (Numerics.Nat64.of_int 42))
+
   | s -> trap.trap ("Value.prim: " ^ s)
