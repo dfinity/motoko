@@ -292,7 +292,7 @@ mod meta_data {
             match r {
                 None => write_u16(index(&b), RegionId::into_u16(None)),
                 Some((r, j)) => {
-                    write_u16(index(&b) + 0, RegionId::into_u16(Some(r)));
+                    write_u16(index(&b), RegionId::into_u16(Some(r)));
                     write_u16(index(&b) + 2, j)
                 }
             }
