@@ -278,7 +278,7 @@ mod meta_data {
             offset::BLOCK_REGION_TABLE + (b.0 as u64 * size::BLOCK_REGION_TABLE_ENTRY as u64)
         }
 
-        /// Some means that the block is in use.
+        /// Some(r, j) means that the block is in use by region r, at slot j.
         /// None means that the block is available for (re-)allocation.
         pub fn get(b: BlockId) -> Option<(RegionId, u16)> {
             let raw = read_u16(index(&b));
