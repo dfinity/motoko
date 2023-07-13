@@ -657,7 +657,7 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64, max_
 
 
         new_pages.set_ith_block_id(i, &BlockId(block_id));
-
+    }
 
 
     write_with_barrier(mem, &mut (*r).vec_pages, new_vec_pages);
