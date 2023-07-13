@@ -8993,9 +8993,18 @@ let compile_binop env t op : SR.t * SR.t * G.t =
             Bool.from_int64 ^^
             E.if1 I64Type
               begin
-                let overflow_boundary = -Int.(sub (mul bits 2) 2) in
-                get_exp ^^ TaggedSmallWord.lsb_adjust ty ^^ compile_unboxed_const (Int64.of_int bits) ^^
-                compile_comparison I64Op.GeU ^^ then_arithmetic_overflow env ^^
+                let overflow_type = match ty with
+                | Type.Nat32 -> Type.Nat64 
+                | Type.(Nat8 | Nat16) -> Type.Nat32 
+                | _ -> assert false in
+                let overflow_type_bits = TaggedSmallWord.bits_of_type overflow_type in
+                let overflow_boundary = -Int.(sub (mul overflow_type_bits 2) 2) in
+                (if ty = Type.Nat32 
+                then
+                  get_exp ^^ TaggedSmallWord.lsb_adjust ty ^^ compile_unboxed_const (Int64.of_int bits) ^^
+                  compile_comparison I64Op.GeU ^^ then_arithmetic_overflow env 
+                else
+                  G.nop) ^^
                 unsigned_dynamics get_n ^^ compile_sub_const (Int64.of_int bits) ^^
                 get_exp ^^ TaggedSmallWord.lsb_adjust ty ^^ G.i (Binary (Wasm_exts.Values.I64 I64Op.Mul)) ^^
                 compile_unboxed_const (Int64.of_int overflow_boundary) ^^
