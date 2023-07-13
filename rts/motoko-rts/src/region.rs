@@ -286,7 +286,7 @@ mod meta_data {
             rid.map(|r| (r, read_u16(index(&b) + 2)))
         }
 
-        /// Some means that the block is in use.
+        /// Some(r, j) means that the block is in use by region r, at slot j.
         /// None means that the block is available for (re-)allocation.
         pub fn set(b: BlockId, r: Option<(RegionId, u16)>) {
             match r {
