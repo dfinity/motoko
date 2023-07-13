@@ -1,4 +1,4 @@
-assertion failed at variant-specials-bug.mo:4.16-4.28
+pattern failed
 Error: failed to run main module `_out/variant-specials-bug.wasm`
 
 Caused by:
