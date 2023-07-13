@@ -2812,7 +2812,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
         E.if1 I64Type
           begin
             get_a ^^ get_b ^^ Word64.compile_unsigned_pow env ^^ set_res ^^
-            get_res ^^ BitTagged.if_can_tag_i64 env [I64Type]
+            get_res ^^ BitTagged.if_can_tag_u64 env [I64Type]
               (get_res ^^ BitTagged.tag)
               (get_res ^^ Num.from_word64 env)
           end
