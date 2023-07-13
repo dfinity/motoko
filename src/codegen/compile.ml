@@ -2803,28 +2803,13 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
         get_a ^^ compile_shrS_const 1L ^^ set_a ^^
         get_b ^^ compile_shrS_const 1L ^^ set_b ^^
 
-        (* estimate bitcount of result: `bits(a) * b <= 64` guarantees
-           the absence of overflow in 64-bit arithmetic *)
-        compile_unboxed_const 64L ^^
-        get_a ^^ G.i (Unary (Wasm_exts.Values.I64 I64Op.Clz)) ^^ G.i (Binary (Wasm_exts.Values.I64 I64Op.Sub)) ^^
-        get_b ^^ G.i (Binary (Wasm_exts.Values.I64 I64Op.Mul)) ^^
-        compile_unboxed_const 64L ^^ compile_comparison I64Op.LeU ^^
+        get_a ^^ Num.from_signed_word64 env ^^
+        get_b ^^ Num.from_signed_word64 env ^^
+        Num.compile_unsigned_pow env ^^ set_res ^^
+        get_res ^^ fits_in_vanilla env ^^
         E.if1 I64Type
-          begin
-            get_a ^^ get_b ^^ Word64.compile_unsigned_pow env ^^ set_res ^^
-            get_res ^^ BitTagged.if_can_tag_u64 env [I64Type]
-              (get_res ^^ BitTagged.tag)
-              (get_res ^^ Num.from_word64 env)
-          end
-          begin
-            get_a ^^ Num.from_signed_word64 env ^^
-            get_b ^^ Num.from_signed_word64 env ^^
-            Num.compile_unsigned_pow env ^^ set_res ^^
-            get_res ^^ fits_in_vanilla env ^^
-            E.if1 I64Type
-              (get_res ^^ Num.truncate_to_word64 env ^^ BitTagged.tag)
-              get_res
-          end
+          (get_res ^^ Num.truncate_to_word64 env ^^ BitTagged.tag)
+          get_res
       end
       begin
         get_a ^^ BitTagged.if_tagged_scalar env [I64Type]
