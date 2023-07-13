@@ -183,7 +183,6 @@ mod meta_data {
     pub mod max {
         pub const BLOCKS: u16 = 32768;
 
-        //pub const REGIONS: u16 = 32767;
     }
 
     /// Sizes of table entries, and tables.
