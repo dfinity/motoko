@@ -9005,7 +9005,7 @@ let compile_binop env t op : SR.t * SR.t * G.t =
                   compile_comparison I64Op.GeU ^^ then_arithmetic_overflow env 
                 else
                   G.nop) ^^
-                unsigned_dynamics get_n ^^ compile_sub_const (Int64.of_int bits) ^^
+                unsigned_dynamics (get_n ^^ TaggedSmallWord.lsb_adjust ty) ^^ compile_sub_const (Int64.of_int bits) ^^
                 get_exp ^^ TaggedSmallWord.lsb_adjust ty ^^ G.i (Binary (Wasm_exts.Values.I64 I64Op.Mul)) ^^
                 compile_unboxed_const (Int64.of_int overflow_boundary) ^^
                 compile_comparison I64Op.LtS ^^ then_arithmetic_overflow env ^^
@@ -9048,17 +9048,26 @@ let compile_binop env t op : SR.t * SR.t * G.t =
                   get_n (* n@{0,1} ** (1+exp) == n *)
               end
               begin
-                let overflow_boundary = -Int.(sub (mul bits 2) 2) in
-                get_exp ^^ TaggedSmallWord.lsb_adjust ty ^^ compile_unboxed_const (Int64.of_int bits) ^^
-                compile_comparison I64Op.GeU ^^ then_arithmetic_overflow env ^^
-                signed_dynamics get_n ^^ compile_sub_const (Int64.of_int (Int.sub bits 1)) ^^
+                let overflow_type = match ty with
+                | Type.Nat32 -> Type.Nat64 
+                | Type.(Nat8 | Nat16) -> Type.Nat32 
+                | _ -> assert false in
+                let overflow_type_bits = TaggedSmallWord.bits_of_type overflow_type in
+                let overflow_boundary = -Int.(sub (mul overflow_type_bits 2) 2) in
+                (if ty = Type.Nat32 
+                then
+                  get_exp ^^ TaggedSmallWord.lsb_adjust ty ^^ compile_unboxed_const (Int64.of_int bits) ^^
+                  compile_comparison I64Op.GeU ^^ then_arithmetic_overflow env 
+                else
+                  G.nop) ^^
+                signed_dynamics (get_n ^^ TaggedSmallWord.lsb_adjust ty) ^^ compile_sub_const (Int64.of_int (Int.sub bits 1)) ^^
                 get_exp ^^ TaggedSmallWord.lsb_adjust Type.Int32 ^^ G.i (Binary (Wasm_exts.Values.I64 I64Op.Mul)) ^^
                 compile_unboxed_const (Int64.of_int overflow_boundary) ^^
                 compile_comparison I64Op.LtS ^^ then_arithmetic_overflow env ^^
-                get_n ^^
-                get_exp ^^
+                get_n ^^ get_exp ^^
                 TaggedSmallWord.compile_nat_power env ty ^^
-                set_res ^^ get_res ^^ get_res ^^ enforce_signed_bits env bits ^^
+                set_res ^^ 
+                get_res ^^ enforce_signed_bits env bits ^^
                 get_res
               end
           end
