@@ -9016,7 +9016,7 @@ let compile_binop env t op : SR.t * SR.t * G.t =
           (compile_unboxed_const
              Int64.(shift_left one (to_int (TaggedSmallWord.shift_of_type ty))))) (* x ** 0 == 1 *)
   | Type.(Prim ((Int8|Int16|Int32) as ty)),         PowOp ->
-    Func.share_code2 env (prim_fun_name Type.Int32 "pow")
+    Func.share_code2 env (prim_fun_name ty "pow")
       (("n", I64Type), ("exp", I64Type)) [I64Type]
       (fun env get_n get_exp ->
         let (set_res, get_res) = new_local env "res" in
