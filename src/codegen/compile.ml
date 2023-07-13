@@ -10325,7 +10325,7 @@ and known_tag_pat p = TagP ("", p)
 and simplify_cases e (cs : Ir.case list) =
   match cs, e.note.Note.typ with
   (* for a 2-cased variant type, the second comparison can be omitted when the first pattern
-     (with irrefutable subpattern) didn't match, and the patternn types line up *)
+     (with irrefutable subpattern) didn't match, and the pattern types line up *)
   | [{it={pat={it=TagP (l1, ip); _}; _}; _} as c1; {it={pat={it=TagP (l2, pat'); _} as pat2; exp}; _} as c2], Type.(Variant [{lab=el1; _}; {lab=el2; _}])
        when Ir_utils.is_irrefutable ip
             && (l1 = el1 || l1 = el2)
