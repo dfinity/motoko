@@ -10653,7 +10653,7 @@ and fill_pat env ae pat : patternCode =
           )
           fail_code
       )
-  | TagP ("", p) ->
+  | TagP ("", p) -> (* these only come from known_tag_pat *)
     if Ir_utils.is_irrefutable_nonbinding p
     then CannotFail (G.i Drop)
     else CannotFail (Variant.project env) ^^^ fill_pat env ae p
