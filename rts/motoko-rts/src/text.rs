@@ -391,13 +391,13 @@ pub unsafe fn decode_code_point(s: *const u8, size: *mut usize) -> u32 {
             return *s as u32;
         } else {
             *size = leading_ones;
-            (leading_ones, ((*s << leading_ones) >> leading_ones))
+            (leading_ones, ((*s << leading_ones) >> leading_ones) as u32)
         }
     };
 
     for i in 1..size {
         value <<= 6;
-        value += (*s.add(i)) & 0b00111111;
+        value += ((*s.add(i)) & 0b00111111) as u32;
     }
 
     value as u32
