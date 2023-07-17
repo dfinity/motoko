@@ -565,7 +565,10 @@ pub unsafe extern "C" fn bigint_leb128_decode(buf: *mut Buf) -> Value {
     persist_bigint(i)
 }
 
-/// Decode at most 5 bytes of LEB128 data to a compact bignum `Value`.
+const BITS_PER_CHUNK: usize = 7;
+const MAX_CHUNKS_PER_WORD: usize = (usize::BITS as usize + BITS_PER_CHUNK - 1) / BITS_PER_CHUNK;
+    
+/// Decode at most 10 bytes of LEB128 data to a compact bignum `Value`.
 /// The number of 7-bit chunks are located in the lower portion of `leb`
 /// as indicated by `bits`.
 ///
@@ -584,7 +587,7 @@ pub unsafe extern "C" fn bigint_leb128_decode_word64(
     loop {
         acc |= leb & mask;
         if bits < 8 {
-            if continuations == 4 {
+            if continuations == MAX_CHUNKS_PER_WORD - 1 {
                 break;
             }
             return Value::from_signed_scalar(acc as isize);
@@ -633,7 +636,7 @@ pub unsafe extern "C" fn bigint_sleb128_decode(buf: *mut Buf) -> Value {
     persist_bigint(i)
 }
 
-/// Decode at most 5 bytes of SLEB128 data to a compact bignum `Value`.
+/// Decode at most 10 bytes of SLEB128 data to a compact bignum `Value`.
 /// The number of 7-bit chunks are located in the lower portion of `sleb`
 /// as indicated by `bits`.
 ///
@@ -644,6 +647,10 @@ pub unsafe extern "C" fn bigint_sleb128_decode_word64(
     mut bits: u64,
     buf: *mut Buf,
 ) -> Value {
+    const BITS_IN_LAST_CHUNK: usize = usize::BITS as usize % BITS_PER_CHUNK;
+    const _: () = assert!(BITS_IN_LAST_CHUNK > 0);
+    const SIGN_BITS_IN_LAST_CHUNK: u32 = usize::BITS - (BITS_IN_LAST_CHUNK + 1) as u32;
+
     let continuations = bits as usize / 8;
     buf.advance(continuations + 1);
 
@@ -652,10 +659,10 @@ pub unsafe extern "C" fn bigint_sleb128_decode_word64(
     loop {
         acc |= sleb & mask;
         if bits < 8 {
-            if continuations == 4 {
+            if continuations == MAX_CHUNKS_PER_WORD - 1 {
                 break;
             }
-            let sext = 25 - 7 * continuations; // this many top bits will get a copy of the sign
+            let sext = usize::BITS as usize - (BITS_PER_CHUNK * (continuations + 1)); // this many top bits will get a copy of the sign
             return Value::from_signed_scalar((acc as isize) << sext >> sext);
         }
         bits -= 8;
@@ -663,7 +670,8 @@ pub unsafe extern "C" fn bigint_sleb128_decode_word64(
         sleb >>= 1;
     }
 
-    let signed = (acc as i64) << 29 >> 29; // sign extend
+
+    let signed = (acc as i64) << SIGN_BITS_IN_LAST_CHUNK >> SIGN_BITS_IN_LAST_CHUNK; // sign extend
     let tentative = (signed as isize) << 1 >> 1; // top two bits must match
     if tentative as i64 == signed {
         // roundtrip is valid

@@ -3016,7 +3016,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     let set_a, get_a = new_local env "a" in
     set_a ^^ get_a ^^
     compile_xor_const (-1L) ^^
-    compile_bitand_const 0b1000000010000000100000001000000010000000L ^^
+    compile_bitand_const 0x8080_8080_8080_8080L ^^
     let set_eom, get_eom = new_local env "eom" in
     set_eom ^^ get_eom ^^
     compile_test I64Op.Eqz ^^
