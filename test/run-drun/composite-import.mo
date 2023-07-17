@@ -9,22 +9,28 @@ import Prim = "mo:⛔";
 import imported1 "ic:rwlgt-iiaaa-aaaaa-aaaaa-cai";
 import imported2 "canister:self";
 actor a {
-  public func go() : async (actor { cq : composite query () -> async () }) = async {
-    imported1;
+  public func go1() : async (actor { cq : composite query () -> async () }) = async {
+     imported1;
   };
+
+  public func go2() : async (actor { cq : composite query () -> async () }) = async {
+     imported2;
+  };
+
 
   public composite query func cq() : async () {
+    Prim.debugPrint "cq()";
+    if false await imported1.cq();
+    if false await imported2.cq();
   };
 
-  public func go2() : async (actor {}) = async await (imported1.go());
-  public func go3() : async (actor {}) = async await (imported2.go());
 };
-//CALL ingress go "DIDL\x00\x00"
+//CALL ingress go1 "DIDL\x00\x00"
 //CALL ingress go2 "DIDL\x00\x00"
-//CALL ingress go3 "DIDL\x00\x00"
-
+//CALL query cq "DIDL\x00\x00"
 
 //SKIP run
 //SKIP run-ir
 //SKIP run-low
 //SKIP ic-ref-run
+

@@ -2,6 +2,8 @@
 
 * motoko (`moc`)
 
+  * bugfix: don't crash on import of Candid composite queries (#4128).
+
   * Allow identifiers in `or`-patterns (#3807).
     Bindings in alternatives must mention the same identifiers and have compatible types:
     ``` Motoko
