@@ -2473,7 +2473,7 @@ module ReadBuf = struct
     get_buf ^^ E.call_import env "rts" "leb128_decode" ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
 
   let read_sleb128 env get_buf =
-    get_buf ^^ E.call_import env "rts" "sleb128_decode" ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
+    get_buf ^^ E.call_import env "rts" "sleb128_decode" ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendSI32))
 
   let check_space env get_buf get_delta =
     get_delta ^^
