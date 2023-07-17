@@ -9874,18 +9874,19 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | OtherPrim "popcnt32", [e] ->
     SR.Vanilla,
     compile_exp_vanilla env ae e ^^
-    G.i (Unary (Wasm_exts.Values.I64 I64Op.Popcnt))
+    G.i (Unary (Wasm_exts.Values.I64 I64Op.Popcnt)) ^^
+    TaggedSmallWord.msb_adjust Type.Nat32
   | OtherPrim "popcnt64", [e] ->
     SR.UnboxedWord64,
     compile_exp_as env ae SR.UnboxedWord64 e ^^
     G.i (Unary (Wasm_exts.Values.I64 I64Op.Popcnt))
   | OtherPrim "clz8", [e] -> SR.Vanilla, compile_exp_vanilla env ae e ^^ TaggedSmallWord.clz_kernel Type.Nat8
   | OtherPrim "clz16", [e] -> SR.Vanilla, compile_exp_vanilla env ae e ^^ TaggedSmallWord.clz_kernel Type.Nat16
-  | OtherPrim "clz32", [e] -> SR.Vanilla, compile_exp_vanilla env ae e ^^ G.i (Unary (Wasm_exts.Values.I64 I64Op.Clz))
+  | OtherPrim "clz32", [e] -> SR.Vanilla, compile_exp_vanilla env ae e ^^ TaggedSmallWord.clz_kernel Type.Nat32
   | OtherPrim "clz64", [e] -> SR.UnboxedWord64, compile_exp_as env ae SR.UnboxedWord64 e ^^ G.i (Unary (Wasm_exts.Values.I64 I64Op.Clz))
   | OtherPrim "ctz8", [e] -> SR.Vanilla, compile_exp_vanilla env ae e ^^ TaggedSmallWord.ctz_kernel Type.Nat8
   | OtherPrim "ctz16", [e] -> SR.Vanilla, compile_exp_vanilla env ae e ^^ TaggedSmallWord.ctz_kernel Type.Nat16
-  | OtherPrim "ctz32", [e] -> SR.Vanilla, compile_exp_vanilla env ae e ^^ G.i (Unary (Wasm_exts.Values.I64 I64Op.Ctz))
+  | OtherPrim "ctz32", [e] -> SR.Vanilla, compile_exp_vanilla env ae e ^^ TaggedSmallWord.ctz_kernel Type.Nat32
   | OtherPrim "ctz64", [e] -> SR.UnboxedWord64, compile_exp_as env ae SR.UnboxedWord64 e ^^ G.i (Unary (Wasm_exts.Values.I64 I64Op.Ctz))
 
   | OtherPrim "conv_Char_Text", [e] ->
