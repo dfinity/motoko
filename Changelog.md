@@ -2,6 +2,8 @@
 
 * motoko (`moc`)
 
+  * bugfix: don't crash on import of Candid composite queries (#4128).
+
   * Performance improvement: lower the default allocation for bignums (#4102).
 
 ## 0.9.6 (2023-07-07)
