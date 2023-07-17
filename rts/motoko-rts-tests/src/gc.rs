@@ -450,7 +450,7 @@ fn check_continuation_table(mut offset: usize, continuation_table: &[ObjectIdx],
 impl GC {
     #[non_incremental_gc]
     fn run(&self, heap: &mut MotokoHeap, _round: usize) -> bool {
-        let heap_base = heap.heap_base_address() as u32;
+        let heap_base = heap.heap_base_address();
         let static_roots = Value::from_ptr(heap.static_root_array_address());
         let mut region_0 = Value::from_scalar(0);
         let continuation_table_ptr_address = heap.continuation_table_ptr_address() as *mut Value;
@@ -514,7 +514,7 @@ impl GC {
                 };
                 unsafe {
                     REMEMBERED_SET = Some(RememberedSet::new(heap));
-                    LAST_HP = heap_1.last_ptr_address() as u32;
+                    LAST_HP = heap_1.last_ptr_address();
 
                     let limits = motoko_rts::gc::generational::Limits {
                         base: heap_base as usize,

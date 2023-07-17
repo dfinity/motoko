@@ -349,7 +349,7 @@ let catch = Prim Error
 
 (* Shared call context *)
 
-let caller = Prim Principal
+let caller = principal
 let ctxt = Obj (Object,[{ lab = "caller"; typ = caller; depr = None}])
 
 let prim = function
