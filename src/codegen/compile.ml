@@ -9443,7 +9443,8 @@ and compile_prim_invocation (env : E.t) ae p es at =
     | Char, Nat32 ->
       SR.Vanilla,
       compile_exp_vanilla env ae e ^^
-      TaggedSmallWord.untag_codepoint
+      TaggedSmallWord.untag_codepoint ^^
+      TaggedSmallWord.msb_adjust Type.Nat32
 
     | _ -> SR.Unreachable, todo_trap env "compile_prim_invocation" (Arrange_ir.prim p)
     end
