@@ -962,8 +962,8 @@ module RTS = struct
     E.add_func_import env "rts" "idl_sub_buf_init" [I64Type; I64Type; I64Type] [];
     E.add_func_import env "rts" "idl_sub"
       [I64Type; I64Type; I64Type; I64Type; I64Type; I64Type; I64Type; I32Type; I32Type] [I32Type];
-    E.add_func_import env "rts" "leb128_decode" [I64Type] [I32Type];
-    E.add_func_import env "rts" "sleb128_decode" [I64Type] [I32Type];
+    E.add_func_import env "rts" "leb128_decode" [I64Type] [I64Type];
+    E.add_func_import env "rts" "sleb128_decode" [I64Type] [I64Type];
     E.add_func_import env "rts" "bigint_of_word32" [I32Type] [I64Type];
     E.add_func_import env "rts" "bigint_of_int32" [I32Type] [I64Type];
     E.add_func_import env "rts" "bigint_to_word32_wrap" [I64Type] [I32Type];
@@ -1004,8 +1004,8 @@ module RTS = struct
     E.add_func_import env "rts" "bigint_sleb128_stream_encode" [I64Type; I64Type] [];
     E.add_func_import env "rts" "bigint_sleb128_decode" [I64Type] [I64Type];
     E.add_func_import env "rts" "bigint_sleb128_decode_word64" [I64Type; I64Type; I64Type] [I64Type];
-    E.add_func_import env "rts" "leb128_encode" [I32Type; I64Type] [];
-    E.add_func_import env "rts" "sleb128_encode" [I32Type; I64Type] [];
+    E.add_func_import env "rts" "leb128_encode" [I64Type; I64Type] [];
+    E.add_func_import env "rts" "sleb128_encode" [I64Type; I64Type] [];
     E.add_func_import env "rts" "utf8_valid" [I64Type; I64Type] [I32Type];
     E.add_func_import env "rts" "utf8_validate" [I64Type; I64Type] [];
     E.add_func_import env "rts" "skip_leb128" [I64Type] [];
@@ -2470,10 +2470,10 @@ module ReadBuf = struct
     set_ptr get_buf (get_ptr get_buf ^^ get_delta ^^ G.i (Binary (Wasm_exts.Values.I64 I64Op.Add)))
 
   let read_leb128 env get_buf =
-    get_buf ^^ E.call_import env "rts" "leb128_decode" ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
+    get_buf ^^ E.call_import env "rts" "leb128_decode"
 
   let read_sleb128 env get_buf =
-    get_buf ^^ E.call_import env "rts" "sleb128_decode" ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendSI32))
+    get_buf ^^ E.call_import env "rts" "sleb128_decode"
 
   let check_space env get_buf get_delta =
     get_delta ^^
@@ -2670,14 +2670,13 @@ module I32Leb = struct
   let compile_sleb128_size get_x = compile_size signed_dynamics get_x
 
   let compile_store_to_data_buf_unsigned env get_x get_buf =
-    get_x ^^ G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^ 
-    get_buf ^^ 
+    get_x ^^ get_buf ^^ 
     E.call_import env "rts" "leb128_encode" ^^
     compile_leb128_size get_x
 
   let compile_store_to_data_buf_signed env get_x get_buf =
-    get_x ^^ G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
-    get_buf ^^ E.call_import env "rts" "sleb128_encode" ^^
+    get_x ^^ get_buf ^^ 
+    E.call_import env "rts" "sleb128_encode" ^^
     compile_sleb128_size get_x
 end
 

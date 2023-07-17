@@ -17,20 +17,20 @@ pub unsafe fn test() {
     roundtrip_signed(1).unwrap();
     roundtrip_signed(0).unwrap();
     roundtrip_signed(-1).unwrap();
-    roundtrip_signed(i32::MIN).unwrap(); // -2147483648
-    roundtrip_signed(i32::MAX).unwrap(); // 2147483647
+    roundtrip_signed(isize::MIN).unwrap();
+    roundtrip_signed(isize::MAX).unwrap();
 
     proptest_runner
-        .run(&proptest::num::i32::ANY, roundtrip_signed)
+        .run(&proptest::num::isize::ANY, roundtrip_signed)
         .unwrap();
 
     roundtrip_unsigned(1).unwrap();
     roundtrip_unsigned(0).unwrap();
-    roundtrip_unsigned(u32::MIN).unwrap();
-    roundtrip_unsigned(u32::MAX).unwrap();
+    roundtrip_unsigned(usize::MIN).unwrap();
+    roundtrip_unsigned(usize::MAX).unwrap();
 
     proptest_runner
-        .run(&proptest::num::u32::ANY, roundtrip_unsigned)
+        .run(&proptest::num::usize::ANY, roundtrip_unsigned)
         .unwrap();
 
     // Check overflows
@@ -39,27 +39,42 @@ pub unsafe fn test() {
         0b1111_1111,
         0b1111_1111,
         0b1111_1111,
-        0b0111_0111,
-    ]); // i32::MIN - 1
+        0b1111_1111,
+        0b1111_1111,
+        0b1111_1111,
+        0b1111_1111,
+        0b1111_1111,
+        0b0001_0001,
+    ]); // isize::MIN - 1
 
     check_signed_decode_overflow(&[
         0b1000_0000,
         0b1000_0000,
         0b1000_0000,
         0b1000_0000,
-        0b0000_1000,
-    ]); // i32::MAX + 1
+        0b1000_0000,
+        0b1000_0000,
+        0b1000_0000,
+        0b1000_0000,
+        0b1000_0000,
+        0b0000_0001,
+    ]); // isize::MAX + 1
 
     check_unsigned_decode_overflow(&[
         0b1000_0000,
         0b1000_0000,
         0b1000_0000,
         0b1000_0000,
-        0b0001_0000,
-    ]); // u32::MAX + 1
+        0b1000_0000,
+        0b1000_0000,
+        0b1000_0000,
+        0b1000_0000,
+        0b1000_0000,
+        0b0000_0010,
+    ]); // usize::MAX + 1
 }
 
-fn roundtrip_signed(val: i32) -> TestCaseResult {
+fn roundtrip_signed(val: isize) -> TestCaseResult {
     unsafe {
         let mut buf = [0u8; 100];
         sleb128_encode(val, buf.as_mut_ptr());
@@ -86,7 +101,7 @@ fn roundtrip_signed(val: i32) -> TestCaseResult {
     }
 }
 
-fn roundtrip_unsigned(val: u32) -> TestCaseResult {
+fn roundtrip_unsigned(val: usize) -> TestCaseResult {
     unsafe {
         let mut buf = [0u8; 100];
         leb128_encode(val, buf.as_mut_ptr());
