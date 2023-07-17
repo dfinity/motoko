@@ -2657,9 +2657,11 @@ let signed_dynamics get_x =
 
 module I32Leb = struct
   let compile_size dynamics get_x =
-    get_x ^^ E.if1 I64Type
+    get_x ^^ Bool.from_int64 ^^
+    E.if1 I64Type
       begin
-        compile_unboxed_const 70L ^^
+        (* Add (7-1) to prepare division by 7 that is rounded up *)
+        compile_unboxed_const (Int64.of_int (Int.add 64 (Int.sub 7 1))) ^^
         dynamics get_x ^^
         G.i (Binary (Wasm_exts.Values.I64 I64Op.Sub)) ^^
         compile_divU_const 7L
