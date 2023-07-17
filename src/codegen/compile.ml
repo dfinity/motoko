@@ -5317,9 +5317,11 @@ module BumpStream : Stream = struct
     advance_data_buf get_data_buf
 
   let write_word_32 env get_data_buf code =
+    let word32_size = 4L in
     get_data_buf ^^ code ^^ G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
     G.i (Store {ty = I32Type; align = 0; offset = 0L; sz = None}) ^^
-    compile_unboxed_const Heap.word_size ^^ advance_data_buf get_data_buf
+    compile_unboxed_const word32_size ^^ 
+    advance_data_buf get_data_buf
 
   let write_byte _env get_data_buf code =
     get_data_buf ^^ code ^^ G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^    
@@ -7072,7 +7074,8 @@ module BlobStream : Stream = struct
     G.i Drop
 
   let write_word_32 env get_token code =
-    reserve env get_token Heap.word_size ^^
+    let word32_size = 4L in
+    reserve env get_token word32_size ^^
     code ^^ G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
     G.i (Store {ty = I32Type; align = 0; offset = 0L; sz = None})
 
