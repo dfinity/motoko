@@ -16,23 +16,17 @@ pub mod nicer {
 
     pub fn grow(pages: u64) -> i64 {
         // SAFETY: This is safe because of the ic0 api guarantees.
-        unsafe {
-            stable64_grow_moc(pages)
-        }
+        unsafe { stable64_grow_moc(pages) }
     }
 
     pub fn read(offset: u64, dst: &mut [u8]) {
         // SAFETY: This is safe because of the ic0 api guarantees.
-        unsafe {
-            stable64_read_moc(dst.as_ptr() as u64, offset, dst.len() as u64)
-        }
+        unsafe { stable64_read_moc(dst.as_ptr() as u64, offset, dst.len() as u64) }
     }
 
     pub fn write(offset: u64, src: &[u8]) {
         // SAFETY: This is safe because of the ic0 api guarantees.
-        unsafe {
-            stable64_write_moc(offset, src.as_ptr() as u64, src.len() as u64)
-        }
+        unsafe { stable64_write_moc(offset, src.as_ptr() as u64, src.len() as u64) }
     }
 
     // Little endian.

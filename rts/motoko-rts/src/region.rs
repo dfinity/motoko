@@ -61,9 +61,10 @@ impl RegionId {
     pub fn into_u16(opreg: Option<RegionId>) -> u16 {
         match opreg {
             None => 0,
-            Some(id) => 
-            assert!(id < meta::max::REGIONS);
-            id.0 + 1,
+            Some(id) => {
+                assert!(id.0 <= meta_data::max::REGIONS);
+                id.0 + 1
+            }
         }
     }
 }
@@ -169,8 +170,10 @@ impl RegionObject {
         len: u64,
     ) -> (u64, BlockId, u64, BlockId) {
         let (off, b1, b1_len) = self.relative_into_absolute_info(offset);
-        if (len = 0) return (off, b1, b1_len, b1);
-        let final_offset =  offset + len - 1;
+        if len == 0 {
+            return (off, b1.clone(), b1_len, b1);
+        };
+        let final_offset = offset + len - 1;
         let (_, b2, _) = self.relative_into_absolute_info(final_offset);
         (off, b1, b1_len, b2)
     }
@@ -182,7 +185,7 @@ mod meta_data {
     /// Maximum number of entities.
     pub mod max {
         pub const BLOCKS: u16 = 32768;
-
+        pub const REGIONS: u16 = 32767;
     }
 
     /// Sizes of table entries, and tables.
@@ -196,7 +199,6 @@ mod meta_data {
 
         pub const BLOCK_REGION_TABLE: u64 =
             super::max::BLOCKS as u64 * BLOCK_REGION_TABLE_ENTRY as u64;
-
 
         pub const PAGES_IN_BLOCK: u32 = 128;
         pub const PAGE_IN_BYTES: u64 = 1 << 16;
@@ -410,9 +412,7 @@ pub unsafe fn region_recover<M: Memory>(mem: &mut M, rid: &RegionId) -> Value {
     use meta_data::size::PAGES_IN_BLOCK;
     let c = meta_data::region_table::get(&rid);
     let page_count = match c {
-        Some(RegionSizeInPages(pc)) => {
-            pc
-        }
+        Some(RegionSizeInPages(pc)) => pc,
         _ => {
             rts_trap_with("region_recover failed: Expected Some(RegionSizeInPages(_))");
         }
@@ -562,7 +562,6 @@ pub(crate) unsafe fn region_init<M: Memory>(mem: &mut M, from_version: i32) {
     assert_eq!(crate::region::REGION_MEM_SIZE_INIT, false);
     crate::region::REGION_MEM_SIZE_INIT = true;
 
-
     match from_version {
         0 => region_migration_from_v0_into_v2(mem),
         2 => region_migration_from_v2_into_v2(mem),
@@ -587,7 +586,6 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64, max_
     let old_block_count = (old_page_count + (PAGES_IN_BLOCK - 1)) / PAGES_IN_BLOCK;
     let new_block_count = (old_page_count + new_pages_ + (PAGES_IN_BLOCK - 1)) / PAGES_IN_BLOCK;
     let inc_block_count = new_block_count - old_block_count;
-
 
     // Update the total number of allocated blocks,
     // while respecting the global maximum limit on pages.
@@ -648,15 +646,12 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64, max_
         // (to do -- handle case where allocating this way has run out.)
         let block_id: u16 = (old_total_blocks + rel_i as u64) as u16;
 
-
         // Update stable memory with new association.
         let assoc = Some((RegionId::from_id((*r).id), i as u16));
         meta_data::block_region_table::set(BlockId(block_id), assoc.clone());
 
-
         new_pages.set_ith_block_id(i, &BlockId(block_id));
     }
-
 
     write_with_barrier(mem, &mut (*r).vec_pages, new_vec_pages);
     old_page_count.into()
