@@ -9635,7 +9635,8 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla,
     compile_exp_vanilla env ae e1 ^^
     compile_exp_vanilla env ae e2 ^^
-    Blob.compare env None
+    Blob.compare env None ^^
+    TaggedSmallWord.msb_adjust Type.Int8
 
   | OtherPrim "blob_size", [e] ->
     SR.Vanilla, compile_exp_vanilla env ae e ^^ Blob.len_nat env
