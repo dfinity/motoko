@@ -1,0 +1,6 @@
+OOPS! You've triggered a compiler bug.
+Please report this at https://github.com/dfinity/motoko/issues/new with the following details:
+
+Motoko (source XXX)
+
+Fatal error: exception File "mo_idl/idl_to_mo.ml", line 35, characters 9-15: Assertion failed
