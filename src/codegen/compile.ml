@@ -706,7 +706,23 @@ let bytes_of_int64 (i : int64) : string =
   Buffer.add_char b (Char.chr ((i lsr 56) land 0xff));
   Buffer.contents b
 
-(* Anlogous to Lib.Uint32.compare *)
+(* helper, traps with message *)
+let else_losing_precision env =
+  E.else_trap_with env "losing precision"
+
+(* helper, expects i64 on stack *)
+let narrow_to_32_unsigned_bits env =
+  compile_bitand_const 0xFFFF_FFFF_0000_0000L ^^
+  compile_test I64Op.Eqz ^^
+  else_losing_precision env
+
+(* helper, expects two identical i64s on stack *)
+let narrow_to_32_signed_bits env =
+  compile_shl_const 1L ^^
+  G.i (Binary (Wasm_exts.Values.I64 I64Op.Xor)) ^^
+  narrow_to_32_unsigned_bits env
+
+(* Analogous to Lib.Uint32.compare *)
 let compare_uint64 i1 i2 =
   if i1 < 0L && i2 >= 0L then 1
   else if i1 >= 0L && i2 < 0L then -1
@@ -2536,7 +2552,6 @@ sig
   (* word from SR.Vanilla, trapping, unsigned semantics *)
   val to_word32 : E.t -> G.t
   val to_word64 : E.t -> G.t
-  val to_word32_with : E.t -> G.t (* with error message on stack (ptr/len) *)
   val to_word64_with : E.t -> G.t (* with error message on stack (ptr/len) *)
 
   (* word from SR.Vanilla, lossy, raw bits *)
@@ -2953,8 +2968,8 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
   let fits_signed_bits env n =
     let set_a, get_a = new_local env "a" in
     try_unbox I64Type (fun _ -> match n with
-        | 32 | 64 -> G.i Drop ^^ Bool.lit true
-        | 8 | 16 ->
+        | 64 -> G.i Drop ^^ Bool.lit true
+        | 8 | 16 | 32 ->
            set_a ^^
            get_a ^^ get_a ^^ compile_shrS_const 1L ^^
            G.i (Binary (Wasm_exts.Values.I64 I64Op.Xor)) ^^
@@ -3161,7 +3176,8 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     let set_a, get_a = new_local env "a" in
     set_a ^^ get_a ^^
     BitTagged.if_tagged_scalar env [I32Type]
-      (get_a ^^ BitTagged.untag_i32)
+      (get_a ^^ BitTagged.untag_i32 ^^ narrow_to_32_signed_bits env ^^
+      get_a ^^ BitTagged.untag_i32)
       (get_a ^^ Num.to_word32 env)
 
   let to_word64_with env =
@@ -3172,22 +3188,12 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     BitTagged.if_tagged_scalar env [I64Type]
       (get_a ^^ BitTagged.untag)
       (get_a ^^ get_err_msg ^^ Num.to_word64_with env)
-
-  let to_word32_with env =
-    let set_a, get_a = new_local env "a" in
-    let set_err_msg, get_err_msg = new_local env "err_msg" in
-    set_err_msg ^^ set_a ^^
-    get_a ^^
-    BitTagged.if_tagged_scalar env [I32Type]
-      (get_a ^^ BitTagged.untag_i32)
-      (get_a ^^ get_err_msg ^^ Num.to_word32_with env)
 end
 
 module BigNumLibtommath : BigNumType = struct
 
   let to_word32 env = E.call_import env "rts" "bigint_to_word32_trap" ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
   let to_word64 env = E.call_import env "rts" "bigint_to_word64_trap"
-  let to_word32_with env = E.call_import env "rts" "bigint_to_word32_trap_with" ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
   let to_word64_with env = E.call_import env "rts" "bigint_to_word64_trap_with"
 
   let truncate_to_word32 env = E.call_import env "rts" "bigint_to_word32_wrap" ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
@@ -8699,7 +8705,7 @@ let compile_unop env t op =
     BigNum.compile_neg env
   | NegOp, Type.(Prim (Int8 | Int16 | Int32 | Int64)) ->
     StackRep.of_type t, StackRep.of_type t,
-    Func.share_code1 env "neg32_trap" ("n", I64Type) [I64Type] (fun env get_n ->
+    Func.share_code1 env "neg_trap" ("n", I64Type) [I64Type] (fun env get_n ->
       get_n ^^
       compile_eq_const 0x8000_0000_0000_0000L ^^
       then_arithmetic_overflow env ^^
