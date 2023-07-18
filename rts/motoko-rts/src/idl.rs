@@ -94,6 +94,7 @@ unsafe fn parse_fields(buf: *mut Buf, n_types: u32) {
 }
 
 // NB. This function assumes the allocation does not need to survive GC
+// Therefore, no post allocation barrier is applied.
 unsafe fn alloc<M: Memory>(mem: &mut M, size: Words<u32>) -> *mut u8 {
     alloc_blob(mem, size.to_bytes())
         .as_blob_mut()
@@ -189,8 +190,8 @@ unsafe fn parse_idl_header<M: Memory>(
             // Annotations
             for _ in 0..leb128_decode(buf) {
                 let a = read_byte(buf);
-                if !(1 <= a && a <= 2) {
-                    idl_trap_with("func annotation not within 1..2");
+                if !(1 <= a && a <= 3) {
+                    idl_trap_with("func annotation not within 1..3");
                 }
                 // TODO: shouldn't we also check
                 // * 1 (query) or 2 (oneway), but not both
@@ -658,27 +659,31 @@ unsafe fn sub(
                 }
                 // check annotations (that we care about)
                 // TODO: more generally, we would check equality of 256-bit bit-vectors,
-                // but validity ensures each entry is 1 or 2 (for now)
+                // but validity ensures each entry is 1, 2 or 3 (for now)
                 // c.f. https://github.com/dfinity/candid/issues/318
                 let mut a11 = false;
                 let mut a12 = false;
+                let mut a13 = false;
                 for _ in 0..leb128_decode(&mut tb1) {
                     match read_byte(&mut tb1) {
                         1 => a11 = true,
                         2 => a12 = true,
+                        3 => a13 = true,
                         _ => {}
                     }
                 }
                 let mut a21 = false;
                 let mut a22 = false;
+                let mut a23 = false;
                 for _ in 0..leb128_decode(&mut tb2) {
                     match read_byte(&mut tb2) {
                         1 => a21 = true,
                         2 => a22 = true,
+                        3 => a23 = true,
                         _ => {}
                     }
                 }
-                if (a11 == a21) && (a12 == a22) {
+                if (a11 == a21) && (a12 == a22) && (a13 == a23) {
                     return true;
                 } else {
                     break 'return_false;

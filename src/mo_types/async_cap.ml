@@ -7,6 +7,8 @@ type async_cap =
   | AsyncCap of T.con  (* can async, send (i.e. in a func of async type or shared func) *)
   | AwaitCap of T.con  (* can async, send, try, catch, await (i.e. in an async expression *)
   | NullCap            (* none of the above *)
+  | CompositeCap of T.con (* can (query) async (i.e. in a shared composite query func) *)
+  | CompositeAwaitCap of T.con (* can send a (composite or vanilla) query, try, catch, await (i.e. in a composite query func) *)
 
 let top_cap = Cons.fresh "$top-level" (T.Def([],T.Any))
 

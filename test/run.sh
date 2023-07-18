@@ -34,9 +34,6 @@ SKIP_VALIDATE=${SKIP_VALIDATE:-no}
 ONLY_TYPECHECK=no
 ECHO=echo
 
-# Always do GC in tests, unless it's disabled in `EXTRA_MOC_ARGS`
-EXTRA_MOC_ARGS="--force-gc $EXTRA_MOC_ARGS"
-
 while getopts "adpstirv" o; do
     case "${o}" in
         a)
@@ -165,6 +162,7 @@ fi
 
 HAVE_drun=no
 HAVE_ic_ref_run=no
+HAVE_ic_wasm=no
 
 FLAGS_drun=
 FLAGS_ic_ref_run=-ref-system-api
@@ -183,6 +181,10 @@ then
       echo "WARNING: Could not run drun, will skip running some tests"
       HAVE_drun=no
     fi
+  fi
+  if ic-wasm --help >& /dev/null
+  then
+    HAVE_ic_wasm=yes
   fi
 fi
 
@@ -253,7 +255,13 @@ do
     # extra flags (allow shell variables there)
     moc_extra_flags="$(eval echo $(grep '//MOC-FLAG' $base.mo | cut -c11- | paste -sd' '))"
     moc_extra_env="$(eval echo $(grep '//MOC-ENV' $base.mo | cut -c10- | paste -sd' '))"
-    moc_with_flags="env $moc_extra_env moc $moc_extra_flags $EXTRA_MOC_ARGS"
+    if ! grep -q "//MOC-NO-FORCE-GC" $base.mo
+    then
+      TEST_MOC_ARGS="--force-gc $EXTRA_MOC_ARGS"
+    else
+      TEST_MOC_ARGS=$EXTRA_MOC_ARGS
+    fi
+    moc_with_flags="env $moc_extra_env moc $moc_extra_flags $TEST_MOC_ARGS"
 
     # Typecheck
     run tc $moc_with_flags --check $base.mo
@@ -342,6 +350,9 @@ do
         elif [ $PERF = yes ]
         then
           run comp $moc_with_flags --hide-warnings --map -c $mangled -o $out/$base.wasm
+          if [ $HAVE_ic_wasm = yes ]; then
+            run opt ic-wasm -o $out/$base.opt.wasm $out/$base.wasm shrink --optimize O3 --keep-name-section
+          fi
         else
           run comp $moc_with_flags -g -wasi-system-api --hide-warnings --map -c $mangled -o $out/$base.wasm
         fi
@@ -386,6 +397,7 @@ do
               then
                 LANG=C perl -ne "print \"gas/$base;\$1\n\" if /^scheduler_(?:cycles|instructions)_consumed_per_round_sum (\\d+)\$/" $out/$base.metrics >> $PERF_OUT;
               fi
+              run_if opt.wasm drun-run-opt $WRAP_drun $out/$base.opt.wasm $mangled
             fi
           else
             run_if wasm wasm-run wasmtime $WASMTIME_OPTIONS $out/$base.wasm
@@ -557,7 +569,7 @@ done
 if [ ${#failures[@]} -gt 0  ]
 then
   echo "Some tests failed:"
-  echo "${failures[@]}"
+  tr ' ' '\n' <<< "${failures[@]}" | uniq | xargs echo
   exit 1
 else
   $ECHO "All tests passed."

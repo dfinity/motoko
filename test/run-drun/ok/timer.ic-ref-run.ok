@@ -1,4 +1,4 @@
-=> update provisional_create_canister_with_cycles(record {settings = null; qgqjpK = null; amount = null})
+=> update provisional_create_canister_with_cycles(record {settings = null; qgqjpK = null; amount = null; ddww...
 <= replied: (record {hymijyo = principal "rwlgt-iiaaa-aaaaa-aaaaa-cai"})
 => update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0...
 <= replied: ()
@@ -6,10 +6,7 @@
 debug.print: YEP!
 debug.print: DIM!
 debug.print: ROOK!
-debug.print: DIM!
-debug.print: DIM!
 debug.print: BATT!
 debug.print: BATT!
-debug.print: BATT!
-debug.print: {count = 8}
+debug.print: {count = 5}
 <= replied: ()

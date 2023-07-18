@@ -38,7 +38,7 @@ use core::ptr::null_mut;
 
 use crate::constants::WORD_SIZE;
 use crate::memory::{alloc_blob, Memory};
-use crate::types::{object_size, Blob, Bytes, Value};
+use crate::types::{block_size, Blob, Bytes, Value};
 
 pub struct RememberedSet {
     hash_table: *mut Blob,
@@ -223,6 +223,7 @@ impl RememberedSetIterator {
 }
 
 unsafe fn new_table<M: Memory>(mem: &mut M, size: u32) -> *mut Blob {
+    // No post allocation barrier as this RTS-internal blob will be collected by the GC.
     let table = alloc_blob(mem, Bytes(size * size_of::<HashEntry>() as u32)).as_blob_mut();
     for index in 0..size {
         table_set(table, index, null_ptr_value());
@@ -232,6 +233,7 @@ unsafe fn new_table<M: Memory>(mem: &mut M, size: u32) -> *mut Blob {
 
 unsafe fn new_collision_node<M: Memory>(mem: &mut M, value: Value) -> *mut CollisionNode {
     debug_assert!(!is_null_ptr_value(value));
+    // No post allocation barrier as this RTS-internal blob will be collected by the GC.
     let node =
         alloc_blob(mem, Bytes(size_of::<HashEntry>() as u32)).as_blob_mut() as *mut CollisionNode;
     (*node).entry = HashEntry {
@@ -247,7 +249,7 @@ unsafe fn table_get(table: *mut Blob, index: u32) -> *mut HashEntry {
         (table.payload_addr() as u32 + index * size_of::<HashEntry>() as u32) as *mut HashEntry;
     debug_assert!(
         entry as u32 + size_of::<HashEntry>() as u32
-            <= table as u32 + object_size(table as usize).to_bytes().as_u32()
+            <= table as u32 + block_size(table as usize).to_bytes().as_u32()
     );
     entry
 }
