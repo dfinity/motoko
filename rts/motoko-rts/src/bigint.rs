@@ -565,7 +565,9 @@ pub unsafe extern "C" fn bigint_leb128_decode(buf: *mut Buf) -> Value {
     persist_bigint(i)
 }
 
+#[cfg(feature = "ic")]
 const BITS_PER_CHUNK: usize = 7;
+#[cfg(feature = "ic")]
 const MAX_CHUNKS_PER_WORD: usize = (usize::BITS as usize + BITS_PER_CHUNK - 1) / BITS_PER_CHUNK;
 
 /// Decode at most 10 bytes of LEB128 data to a compact bignum `Value`.
