@@ -9522,6 +9522,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     | Nat32, Char ->
       SR.Vanilla,
       compile_exp_vanilla env ae e ^^
+      TaggedSmallWord.lsb_adjust Type.Nat32 ^^
       TaggedSmallWord.check_and_tag_codepoint env
 
     | Float, Int ->
