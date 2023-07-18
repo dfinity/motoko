@@ -9034,8 +9034,18 @@ let compile_binop env t op : SR.t * SR.t * G.t =
     Func.share_code2 env (prim_fun_name ty "div")
       (("a", I64Type), ("b", I64Type)) [I64Type]
       (fun env get_a get_b ->
+        let (set_res, get_res) = new_local env "res" in
         get_a ^^ get_b ^^ G.i (Binary (Wasm_exts.Values.I64 I64Op.DivS)) ^^
-        TaggedSmallWord.msb_adjust ty)
+        TaggedSmallWord.msb_adjust ty ^^ set_res ^^
+        get_a ^^ compile_eq_const 0x8000_0000_0000_0000L ^^
+        E.if_ env [I64Type]
+          begin
+            get_b ^^ TaggedSmallWord.lsb_adjust ty ^^ compile_eq_const (-1L) ^^
+            E.if_ env [I64Type]
+              (G.i Unreachable)
+              get_res
+          end
+          get_res)
   | Type.(Prim Float),                        DivOp -> G.i (Binary (Wasm_exts.Values.F64 F64Op.Div))
   | Type.(Prim Float),                        ModOp -> E.call_import env "rts" "fmod" (* musl *)
   | Type.(Prim (Int8|Int16|Int32)),           ModOp -> G.i (Binary (Wasm_exts.Values.I64 I64Op.RemS))
