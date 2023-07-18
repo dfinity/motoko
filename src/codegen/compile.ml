@@ -403,20 +403,6 @@ module E = struct
     let gi = reg env.globals (g, name) in
     env.global_names := NameEnv.add name gi !(env.global_names)
 
-  let add_global32_delayed (env : t) name mut : int32 -> unit =
-    let p = Lib.Promise.make () in
-    add_global env name p;
-    (fun init ->
-      Lib.Promise.fulfill p (nr {
-        gtype = GlobalType (I32Type, mut);
-        value = nr (G.to_instr_list (G.i (Const (nr (Wasm_exts.Values.I32 init)))))
-      })
-    )
-
-  let add_global32 (env : t) name mut init =
-    add_global32_delayed env name mut init
-
-  (* TODO, refactor with previous two *)
   let add_global64_delayed (env : t) name mut : int64 -> unit =
     let p = Lib.Promise.make () in
     add_global env name p;
@@ -1079,7 +1065,7 @@ module GC = struct
   (* Record mutator/gc instructions counts *)
 
   let instruction_counter env =
-    compile_unboxed_zero ^^
+    compile_const_32 0l ^^
     E.call_import env "ic0" "performance_counter"
 
   let register_globals env =
@@ -1180,7 +1166,7 @@ module Heap = struct
   (* Copying bytes (works on unskewed memory addresses) *)
   let memcpy env = G.i MemoryCopy
   (* Comparing bytes (works on unskewed memory addresses) *)
-  let memcmp env = E.call_import env "rts" "memcmp"
+  let memcmp env = E.call_import env "rts" "memcmp" ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
 
   let register env =
     let get_heap_base_fn = E.add_fun env "get_heap_base" (Func.of_body env [] [I64Type] (fun env ->
@@ -4217,8 +4203,8 @@ module IC = struct
 
   let register_globals env =
     (* result of last ic0.call_perform  *)
-    E.add_global32 env "__call_perform_status" Mutable 0l;
-    E.add_global32 env "__call_perform_message" Mutable 0l
+    E.add_global64 env "__call_perform_status" Mutable 0L;
+    E.add_global64 env "__call_perform_message" Mutable 0L
     (* NB: __call_perform_message is not a root so text contents *must* be static *)
 
   let get_call_perform_status env =
@@ -4294,6 +4280,56 @@ module IC = struct
 
   let system_call env funcname = E.call_import env "ic0" funcname
 
+  let narrow_to_32 env get_value =
+    get_value ^^
+    compile_unboxed_const 0xffff_ffffL ^^
+    compile_comparison I64Op.LeU ^^
+    E.else_trap_with env "cannot narrow to 32 bit" ^^ (* Note: If narrow fails during print, the trap print leads to an infinite recursion and a stack overflow *)
+    get_value ^^
+    G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64))
+
+  (* TODO: Refactor when IC has proper 64-bit support *)
+  let prepare_ic_system_call_1 env =
+    let (set_arg1, get_arg1) = new_local env "arg1" in
+    set_arg1 ^^
+    narrow_to_32 env get_arg1
+  
+  let prepare_ic_system_call_2 env =
+    let (set_arg1, get_arg1) = new_local env "arg1" in
+    let (set_arg2, get_arg2) = new_local env "arg2" in
+    set_arg2 ^^ set_arg1 ^^
+    narrow_to_32 env get_arg1 ^^
+    narrow_to_32 env get_arg2
+
+  let prepare_ic_system_call_3 env =
+    let (set_arg1, get_arg1) = new_local env "arg1" in
+    let (set_arg2, get_arg2) = new_local env "arg2" in
+    let (set_arg3, get_arg3) = new_local env "arg3" in
+    set_arg3 ^^ set_arg2 ^^ set_arg1 ^^
+    narrow_to_32 env get_arg1 ^^
+    narrow_to_32 env get_arg2 ^^
+    narrow_to_32 env get_arg3
+
+  let prepare_ic_system_call_8 env =
+    let (set_arg1, get_arg1) = new_local env "arg1" in
+    let (set_arg2, get_arg2) = new_local env "arg2" in
+    let (set_arg3, get_arg3) = new_local env "arg3" in
+    let (set_arg4, get_arg4) = new_local env "arg4" in
+    let (set_arg5, get_arg5) = new_local env "arg5" in
+    let (set_arg6, get_arg6) = new_local env "arg6" in
+    let (set_arg7, get_arg7) = new_local env "arg7" in
+    let (set_arg8, get_arg8) = new_local env "arg8" in
+    set_arg8 ^^ set_arg7 ^^ set_arg6 ^^ set_arg5 ^^
+    set_arg4 ^^ set_arg3 ^^ set_arg2 ^^ set_arg1 ^^
+    narrow_to_32 env get_arg1 ^^
+    narrow_to_32 env get_arg2 ^^
+    narrow_to_32 env get_arg3 ^^
+    narrow_to_32 env get_arg4 ^^
+    narrow_to_32 env get_arg5 ^^
+    narrow_to_32 env get_arg6 ^^
+    narrow_to_32 env get_arg7 ^^
+    narrow_to_32 env get_arg8
+
   let register env =
       (* Since the wasmtime `fd_write` function still only supports 32-bit pointers, we allocate a static buffer for the text output in the 32-bit space. *)
       let print_buffer = match E.mode env with
@@ -4306,14 +4342,6 @@ module IC = struct
         end
       | _ -> (-1L, 0) in
 
-      let narrow_to_32 env get_value =
-        get_value ^^
-        compile_unboxed_const 0xffff_ffffL ^^
-        compile_comparison I64Op.LeU ^^
-        E.else_trap_with env "cannot narrow to 32 bit" ^^ (* Note: If narrow fails during print, the trap print leads to an infinite recursion and a stack overflow *)
-        get_value ^^
-        G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) in
-    
       let min env first second = 
         first ^^
         second ^^
@@ -4327,6 +4355,7 @@ module IC = struct
           (* TODO: Port IC function calls to 64 bit *)
           G.i (LocalGet (nr 0l)) ^^
           G.i (LocalGet (nr 1l)) ^^
+          prepare_ic_system_call_2 env ^^
           system_call env "debug_print"
         | Flags.WASIMode -> begin
           (* wasmtime legacy: `fd_write` is still using 32-bit pointers in 64-bit mode *)
@@ -4403,9 +4432,11 @@ module IC = struct
     | _ ->
       E.trap_with env Printf.(sprintf "cannot get %s when running locally" call)
 
-  let performance_counter env = ic_system_call "performance_counter" env ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
+  let performance_counter env = 
+    prepare_ic_system_call_1 env ^^
+    ic_system_call "performance_counter" env ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
   let is_controller env = ic_system_call "is_controller" env ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
-  let canister_version env = ic_system_call "canister_version" env ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
+  let canister_version env = ic_system_call "canister_version" env
 
   let print_ptr_len env = G.i (Call (nr (E.built_in env "print_ptr")))
 
@@ -4422,7 +4453,13 @@ module IC = struct
   let _compile_static_print env s =
     Blob.lit_ptr_len env s ^^ print_ptr_len env
 
-  let ic_trap env = system_call env "trap"
+  let ic_trap env =
+    Func.share_code2 env "ic_trap" (("ptr", I64Type), ("len", I64Type)) [] (fun env get_ptr get_length ->
+      (* TODO: IC needs to be ported to 64-bit *)
+      narrow_to_32 env get_ptr ^^ (* consider copying buffer to 32-bit, similar to `print_ptr` *)
+      narrow_to_32 env get_length ^^
+      system_call env "trap"
+    )
 
   let trap_ptr_len env =
     match E.mode env with
@@ -4572,7 +4609,9 @@ module IC = struct
       Func.share_code0 env "canister_self" [I64Type] (fun env ->
         Blob.of_size_copy env
           (fun env -> system_call env "canister_self_size" ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)))
-          (fun env -> system_call env "canister_self_copy" ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)))
+          (fun env -> 
+            prepare_ic_system_call_3 env ^^
+            system_call env "canister_self_copy")
           (fun env -> compile_unboxed_const 0L)
       )
     | _ ->
@@ -4590,7 +4629,9 @@ module IC = struct
     | Flags.ICMode | Flags.RefMode ->
       Blob.of_size_copy env
         (fun env -> system_call env "msg_caller_size" ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)))
-        (fun env -> system_call env "msg_caller_copy" ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)))
+        (fun env -> 
+          prepare_ic_system_call_3 env ^^
+          system_call env "msg_caller_copy")
         (fun env -> compile_unboxed_const 0L)
     | _ ->
       E.trap_with env (Printf.sprintf "cannot get caller when running locally")
@@ -4610,7 +4651,9 @@ module IC = struct
     | Flags.ICMode | Flags.RefMode ->
       Blob.of_size_copy env
         (fun env -> system_call env "msg_arg_data_size" ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)))
-        (fun env -> system_call env "msg_arg_data_copy" ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)))
+        (fun env -> 
+          prepare_ic_system_call_3 env ^^
+          system_call env "msg_arg_data_copy")
         (fun env -> compile_unboxed_const 0L)
     | _ ->
       E.trap_with env (Printf.sprintf "cannot get arg_data when running locally")
@@ -4621,6 +4664,7 @@ module IC = struct
       arg_instrs ^^
       Text.to_blob env ^^
       Blob.as_ptr_len env ^^
+      prepare_ic_system_call_2 env ^^
       system_call env "msg_reject"
     | _ ->
       E.trap_with env (Printf.sprintf "cannot reject when running locally")
@@ -4628,7 +4672,9 @@ module IC = struct
   let error_code env =
      Func.share_code0 env "error_code" [I64Type] (fun env ->
       let (set_code, get_code) = new_local env "code" in
-      system_call env "msg_reject_code" ^^ set_code ^^
+      system_call env "msg_reject_code" ^^ 
+      G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
+      set_code ^^
       List.fold_right (fun (tag, const) code ->
         get_code ^^ compile_unboxed_const const ^^
         compile_comparison I64Op.Eq ^^
@@ -4646,7 +4692,9 @@ module IC = struct
     Func.share_code0 env "error_message" [I64Type] (fun env ->
       Blob.of_size_copy env
         (fun env -> system_call env "msg_reject_msg_size" ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)))
-        (fun env -> system_call env "msg_reject_msg_copy" ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)))
+        (fun env ->
+          prepare_ic_system_call_3 env ^^
+          system_call env "msg_reject_msg_copy")
         (fun env -> compile_unboxed_const 0L)
     )
 
@@ -4662,6 +4710,7 @@ module IC = struct
       fun env get_data_start get_data_size ->
         get_data_start ^^
         get_data_size ^^
+        prepare_ic_system_call_2 env ^^
         system_call env "msg_reply_data_append" ^^
         system_call env "msg_reply"
    )
@@ -4695,11 +4744,13 @@ module IC = struct
 
     get_len1 ^^ Blob.dyn_alloc_scratch env ^^ set_str1 ^^
     get_str1 ^^ compile_unboxed_const 0L ^^ get_len1 ^^
-    system_call env "canister_self_copy" ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
+    prepare_ic_system_call_3 env ^^
+    system_call env "canister_self_copy" ^^
 
     get_len2 ^^ Blob.dyn_alloc_scratch env ^^ set_str2 ^^
     get_str2 ^^ compile_unboxed_const 0L ^^ get_len2 ^^
-    system_call env "msg_caller_copy" ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
+    prepare_ic_system_call_3 env ^^
+    system_call env "msg_caller_copy" ^^
 
     get_str1 ^^ get_str2 ^^ get_len1 ^^ Heap.memcmp env ^^
     compile_eq_const 0L ^^
@@ -4711,6 +4762,7 @@ module IC = struct
     match E.mode env with
     | Flags.ICMode
     | Flags.RefMode ->
+      prepare_ic_system_call_1 env ^^
       system_call env "canister_cycle_balance128"
     | _ ->
       E.trap_with env "cannot read balance when running locally"
@@ -4727,6 +4779,7 @@ module IC = struct
     match E.mode env with
     | Flags.ICMode
     | Flags.RefMode ->
+      prepare_ic_system_call_1 env ^^
       system_call env "msg_cycles_accept128"
     | _ ->
       E.trap_with env "cannot accept cycles when running locally"
@@ -4735,6 +4788,7 @@ module IC = struct
     match E.mode env with
     | Flags.ICMode
     | Flags.RefMode ->
+      prepare_ic_system_call_1 env ^^
       system_call env "msg_cycles_available128"
     | _ ->
       E.trap_with env "cannot get cycles available when running locally"
@@ -4743,6 +4797,7 @@ module IC = struct
     match E.mode env with
     | Flags.ICMode
     | Flags.RefMode ->
+      prepare_ic_system_call_1 env ^^
       system_call env "msg_cycles_refunded128"
     | _ ->
       E.trap_with env "cannot get cycles refunded when running locally"
@@ -5001,7 +5056,8 @@ module StableMem = struct
             compile_unboxed_const 4L ^^
             IC.system_call env "stable64_write" ^^
             (* return word *)
-            get_word
+            get_word ^^
+            G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
         ))
     | _ -> assert false
 
@@ -6044,8 +6100,12 @@ module MakeSerialization (Strm : Stream) = struct
         get_typtbl_size1 ^^
         get_typtbl_size env ^^
         get_idltyp1 ^^
+        G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
         get_idltyp2 ^^
-        E.call_import env "rts" "idl_sub")
+        G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
+        E.call_import env "rts" "idl_sub" ^^
+        G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
+        )
 
   (* The main deserialization function, generated once per type hash.
 
@@ -7275,7 +7335,6 @@ module Stabilization = struct
         get_M ^^
         compile_add_const (Int64.sub page_size 12L) ^^
         StableMem.get_mem_size env ^^
-        G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
         (* TODO: write word64 *)
         StableMem.write_word32 env ^^
 
@@ -8089,7 +8148,9 @@ module FuncDec = struct
          (fun env ->
            Blob.of_size_copy env
            (fun env -> IC.system_call env "msg_arg_data_size" ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)))
-           (fun env -> IC.system_call env "msg_arg_data_copy" ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)))
+           (fun env -> 
+            IC.prepare_ic_system_call_3 env ^^
+            IC.system_call env "msg_arg_data_copy")
            (fun env -> compile_unboxed_const 0L)))
     in
     Func.define_built_in env reply_name ["env", I64Type] [] (fun env ->
@@ -8183,16 +8244,20 @@ module FuncDec = struct
       push_continuations ^^
       set_cb_index ^^ get_cb_index ^^
       (* initiate call *)
+      IC.prepare_ic_system_call_8 env ^^
       IC.system_call env "call_new" ^^
       cleanup_callback env ^^ get_cb_index ^^
+      IC.prepare_ic_system_call_2 env ^^
       IC.system_call env "call_on_cleanup" ^^
       (* the data *)
       add_data get_cb_index ^^
+      IC.prepare_ic_system_call_2 env ^^
       IC.system_call env "call_data_append" ^^
       (* the cycles *)
       add_cycles ^^
       (* done! *)
       IC.system_call env "call_perform" ^^
+      G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
       IC.set_call_perform_status env ^^
       Blob.lit env message ^^
       IC.set_call_perform_message env ^^
@@ -8258,13 +8323,16 @@ module FuncDec = struct
       (* The reject callback *)
       ignoring_callback env ^^
       compile_unboxed_zero ^^
+      IC.prepare_ic_system_call_8 env ^^
       IC.system_call env "call_new" ^^
       (* the data *)
       get_arg ^^ Serialization.serialize env ts ^^
+      IC.prepare_ic_system_call_2 env ^^
       IC.system_call env "call_data_append" ^^
       (* the cycles *)
       add_cycles ^^
       IC.system_call env "call_perform" ^^
+      G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
       (* This is a one-shot function: just remember error code *)
       (if !Flags.trap_on_call_error then
          (* legacy: discard status, proceed as if all well *)
@@ -9617,8 +9685,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_vanilla env ae e ^^
     Serialization.buffer_size env t ^^
     G.i Drop ^^
-    compile_add_const tydesc_len ^^
-    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
+    compile_add_const tydesc_len
 
   (* Other prims, unary *)
 
