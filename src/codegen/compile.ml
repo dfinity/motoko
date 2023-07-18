@@ -4301,7 +4301,8 @@ module IC = struct
         begin 
           let length = 512 in
           let zero_data = String.make length '\x00' in
-          (E.add_static env StaticBytes.[Bytes zero_data], length)
+          let static_ptr = E.add_static env StaticBytes.[Bytes zero_data] in
+          ((Int64.add static_ptr ptr_skew), length)
         end
       | _ -> (-1L, 0) in
 
