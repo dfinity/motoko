@@ -43,7 +43,7 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [ ubuntu-latest, macos-latest ]
+        os: [ ubuntu-latest, macos-latest, macos-m1-13 ]
     needs: changelog
     runs-on: ${{ matrix.os }}
     steps:
