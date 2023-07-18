@@ -8917,7 +8917,7 @@ let enforce_unsigned_bits env n =
   compile_bitand_const Int64.(shift_left minus_one n) ^^
   then_arithmetic_overflow env
 
-let enforce_16_unsigned_bits env = enforce_unsigned_bits env 48
+let enforce_16_unsigned_bits env = enforce_unsigned_bits env 16
 
 (* helper, expects two identical i64s on stack *)
 let enforce_signed_bits env n =
@@ -8925,7 +8925,7 @@ let enforce_signed_bits env n =
   G.i (Binary (Wasm_exts.Values.I64 I64Op.Xor)) ^^
   enforce_unsigned_bits env n
 
-let enforce_16_signed_bits env = enforce_signed_bits env 48
+let enforce_16_signed_bits env = enforce_signed_bits env 16
 
 let compile_smallInt_kernel' env ty name op =
   Func.share_code2 env (prim_fun_name ty name)
