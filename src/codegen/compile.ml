@@ -8697,21 +8697,11 @@ let compile_unop env t op =
   | NegOp, Type.(Prim Int) ->
     SR.Vanilla, SR.Vanilla,
     BigNum.compile_neg env
-  | NegOp, Type.(Prim Int64) ->
-      SR.UnboxedWord64, SR.UnboxedWord64,
-      Func.share_code1 env "neg_trap" ("n", I64Type) [I64Type] (fun env get_n ->
-        get_n ^^
-        compile_eq_const 0x8000000000000000L ^^
-        then_arithmetic_overflow env ^^
-        compile_unboxed_zero ^^
-        get_n ^^
-        G.i (Binary (Wasm_exts.Values.I64 I64Op.Sub))
-      )
-  | NegOp, Type.(Prim (Int8 | Int16 | Int32)) ->
+  | NegOp, Type.(Prim (Int8 | Int16 | Int32 | Int64)) ->
     StackRep.of_type t, StackRep.of_type t,
     Func.share_code1 env "neg32_trap" ("n", I64Type) [I64Type] (fun env get_n ->
       get_n ^^
-      compile_eq_const 0x80000000L ^^
+      compile_eq_const 0x8000_0000_0000_0000L ^^
       then_arithmetic_overflow env ^^
       compile_unboxed_zero ^^
       get_n ^^
