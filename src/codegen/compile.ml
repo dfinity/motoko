@@ -4518,6 +4518,11 @@ module IC = struct
     let fi = E.add_fun env "_start" (Func.of_body env [] [] (fun env1 ->
       Lifecycle.trans env Lifecycle.InInit ^^
       G.i (Call (nr (E.built_in env "init"))) ^^
+      (if !Flags.sanity then
+        (* also test the GC in WASI mode if sanity checks are enabled *)
+        GC.collect_garbage env
+      else
+        G.nop) ^^
       Lifecycle.trans env Lifecycle.Idle
     )) in
     E.add_export env (nr {
