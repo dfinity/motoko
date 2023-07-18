@@ -2288,7 +2288,7 @@ module TaggedSmallWord = struct
      ensuring the codepoint range and the absence of surrogates. *)
   let check_and_tag_codepoint env =
     Func.share_code1 env "Nat32->Char" ("n", I64Type) [I64Type] (fun env get_n ->
-      get_n ^^ lsb_adjust Type.Nat32 ^^ G.setter_for get_n ^^
+      get_n ^^ G.setter_for get_n ^^
       get_n ^^ compile_unboxed_const 0xD800L ^^
       compile_comparison I64Op.GeU ^^
       get_n ^^ compile_unboxed_const 0xE000L ^^
