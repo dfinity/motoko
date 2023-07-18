@@ -103,11 +103,13 @@ jobs:
         folder: report-site-copy
         single-commit: true
 
-  artifacts-ubuntu:
+  artifacts:
     if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'build_artifacts')
     needs: tests
     concurrency: ci-${{ github.ref }}
-    runs-on: ubuntu-latest
+    strategy:
+      os: [ ubuntu-latest, macos-latest ]
+    runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v3
     - uses: cachix/install-nix-action@v22
@@ -123,31 +125,6 @@ jobs:
     - name: upload artifacts
       uses: actions/upload-artifact@v3
       with:
-        name: moc-ubuntu
+        name: moc-${{ matrix.os }}
         path: ${{ env.UPLOAD_PATH }}
         retention-days: 5
-
-  artifacts-macos:
-    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'build_artifacts')
-    needs: tests
-    concurrency: ci-${{ github.ref }}
-    runs-on: macos-latest
-    steps:
-    - uses: actions/checkout@v3
-    - uses: cachix/install-nix-action@v22
-    - uses: cachix/cachix-action@v12
-      with:
-        name: ic-hs-test
-    - name: nix-build
-      run: |
-        nix-build --arg officialRelease true -A moc
-    # upload-artifact doesn't work for symlink dir
-    # https://github.com/actions/upload-artifact/issues/92
-    - run: echo "UPLOAD_PATH=$(readlink -f result)" >> $GITHUB_ENV
-    - name: upload artifacts
-      uses: actions/upload-artifact@v3
-      with:
-        name: moc-macos
-        path: ${{ env.UPLOAD_PATH }}
-        retention-days: 5
-
