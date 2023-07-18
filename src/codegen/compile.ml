@@ -2956,8 +2956,8 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
 
   let fits_unsigned_bits env n =
     try_unbox I64Type (fun _ -> match n with
-        | 32 | 64 -> G.i Drop ^^ Bool.lit true
-        | 8 | 16 ->
+        | 64 -> G.i Drop ^^ Bool.lit true
+        | 8 | 16 | 32 ->
           compile_bitand_const Int64.(logor 1L (shift_left minus_one (n + 1))) ^^
           compile_test I64Op.Eqz
         | _ -> assert false
