@@ -567,7 +567,7 @@ pub unsafe extern "C" fn bigint_leb128_decode(buf: *mut Buf) -> Value {
 
 const BITS_PER_CHUNK: usize = 7;
 const MAX_CHUNKS_PER_WORD: usize = (usize::BITS as usize + BITS_PER_CHUNK - 1) / BITS_PER_CHUNK;
-    
+
 /// Decode at most 10 bytes of LEB128 data to a compact bignum `Value`.
 /// The number of 7-bit chunks are located in the lower portion of `leb`
 /// as indicated by `bits`.
@@ -669,7 +669,6 @@ pub unsafe extern "C" fn bigint_sleb128_decode_word64(
         mask <<= 7;
         sleb >>= 1;
     }
-
 
     let signed = (acc as i64) << SIGN_BITS_IN_LAST_CHUNK >> SIGN_BITS_IN_LAST_CHUNK; // sign extend
     let tentative = (signed as isize) << 1 >> 1; // top two bits must match
