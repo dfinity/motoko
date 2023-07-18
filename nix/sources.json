@@ -27,10 +27,10 @@
         "homepage": "",
         "owner": "dfinity",
         "repo": "ic",
-        "rev": "2aa53020f13c68b1f1ef41ef2b8cb54db845683a",
-        "sha256": "0fnmnfy01b7min3faspwa46kxk0fz0d53gqy6048088ygfsyzr1a",
+        "rev": "629f7fc8e82ff52e6373a528dcd29f9066563ad4",
+        "sha256": "1jadgk4jfgvkw3i5nlxikg0wi6144d46sca165g9xgqpsr8hkm00",
         "type": "tarball",
-        "url": "https://github.com/dfinity/ic/archive/2aa53020f13c68b1f1ef41ef2b8cb54db845683a.tar.gz",
+        "url": "https://github.com/dfinity/ic/archive/629f7fc8e82ff52e6373a528dcd29f9066563ad4.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ic-hs": {
@@ -40,10 +40,10 @@
         "homepage": "",
         "owner": "dfinity",
         "repo": "ic-hs",
-        "rev": "603523393bfe97dcf934434fac8915ddc25c780a",
-        "sha256": "17v14d5ryhkw8zhlc1bhk63kv197nsl63ccfv8ibq5q6xnw4i75j",
+        "rev": "e727fecab6bad1401a65a50773637e46b8a14e0e",
+        "sha256": "183xcavjkfsa2hgx9s67qxg7hfykykmw0wbzd4458rkiqb164wmc",
         "type": "tarball",
-        "url": "https://github.com/dfinity/ic-hs/archive/603523393bfe97dcf934434fac8915ddc25c780a.tar.gz",
+        "url": "https://github.com/dfinity/ic-hs/archive/e727fecab6bad1401a65a50773637e46b8a14e0e.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ic-wasm": {
