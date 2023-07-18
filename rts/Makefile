@@ -220,7 +220,7 @@ $(TOMMATH_BINDINGS_RS): | _build
 	# macros like `mp_get_u32` and `mp_isneg` need to be manually implemented.
 
 RTS_DEPENDENCIES=$(TOMMATH_BINDINGS_RS) $(RTS_RUST_FILES) $(RTS_CARGO_FILES) | _build/wasm
-RTS_BUILD=cd motoko-rts && cargo build --target=wasm32-unknown-emscripten -Zbuild-std=core,alloc
+RTS_BUILD=cd motoko-rts && cargo build --target=wasm32-unknown-emscripten -Zdebuginfo=none -Zbuild-std=core,alloc
 RTS_DEBUG_BUILD=$(RTS_BUILD)
 RTS_RELEASE_BUILD=$(RTS_BUILD) --release
 RTS_DEBUG_TARGET=motoko-rts/target/wasm32-unknown-emscripten/debug/libmotoko_rts.a
