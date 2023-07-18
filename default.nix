@@ -494,22 +494,25 @@ rec {
   in fix_names ({
       run        = test_subdir "run"        [ moc ] ;
       run-dbg    = snty_subdir "run"        [ moc ] ;
-      # ic-ref does not yet support Wasm bulk-memory operations
-      # ic-ref-run = test_subdir "run-drun"   [ moc ic-ref-run ];
-      drun       = test_subdir "run-drun"   [ moc nixpkgs.drun ];
-      drun-dbg   = snty_subdir "run-drun"   [ moc nixpkgs.drun ];
-      drun-compacting-gc = snty_compacting_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
-      drun-generational-gc = snty_generational_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
-      drun-incremental-gc = snty_incremental_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
+      run-incremental-gc = snty_incremental_gc_subdir "run" [ moc ] ;
+      # TODO: drun and ic-ref do not yet support Wasm64
+      # ic-ref-run = test_subdir "run-drun"   [ moc ic-ref-run ];      
+      # drun       = test_subdir "run-drun"   [ moc nixpkgs.drun ];
+      # drun-dbg   = snty_subdir "run-drun"   [ moc nixpkgs.drun ];
+      # drun-compacting-gc = snty_compacting_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
+      # drun-generational-gc = snty_generational_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
+      # drun-incremental-gc = snty_incremental_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
       fail       = test_subdir "fail"       [ moc ];
       repl       = test_subdir "repl"       [ moc ];
-      ld         = test_subdir "ld"         ([ mo-ld ] ++ ldTestDeps);
+      # TODO: Upgrade LD tests for 64-bit
+      # ld         = test_subdir "ld"         ([ mo-ld ] ++ ldTestDeps);
       idl        = test_subdir "idl"        [ didc ];
       mo-idl     = test_subdir "mo-idl"     [ moc didc ];
       trap       = test_subdir "trap"       [ moc ];
       run-deser  = test_subdir "run-deser"  [ deser ];
-      perf       = perf_subdir "perf"       [ moc nixpkgs.drun ];
-      bench      = perf_subdir "bench"      [ moc nixpkgs.drun ];
+      # TODO: drun used in perf and bench does not yet support Wasm64
+      # perf       = perf_subdir "perf"       [ moc nixpkgs.drun ];
+      # bench      = perf_subdir "bench"      [ moc nixpkgs.drun ];
       viper      = test_subdir "viper"      [ moc nixpkgs.which nixpkgs.openjdk nixpkgs.z3 ];
       inherit qc lsp unit candid profiling-graphs coverage;
     }) // { recurseForDerivations = true; };
