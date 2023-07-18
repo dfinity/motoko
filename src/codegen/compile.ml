@@ -1624,10 +1624,13 @@ module Tagged = struct
     let name = Printf.sprintf "alloc_size<%d>_tag<%d>" (Int32.to_int size) (Int32.to_int (int_of_tag tag)) in
     (* Computes a (conservative) mask for the bumped HP, so that the existence of non-zero bits under it
        guarantees that a page boundary crossing didn't happen (i.e. no ripple-carry). *)
-    let overflow_mask n =
-      let n = Int32.to_int n in
+    let overflow_mask increment =
+      let n = Int32.to_int increment in
+      assert (n > 0 && n < 0x8000);
       let page_mask = Int32.sub page_size 1l in
-      Int32.(logand page_mask (shift_left minus_one (16 - Numerics.Nat16.(to_int (clz (of_int n)))))) in
+      (* We can extend the mask to the right if the bump increment is a power of two. *)
+      let ext = if Numerics.Nat16.(to_int (popcnt (of_int n))) = 1 then increment else 0l in
+      Int32.(logor ext (logand page_mask (shift_left minus_one (16 - Numerics.Nat16.(to_int (clz (of_int n))))))) in
 
     Func.share_code0 env name [I32Type] (fun env ->
       let set_object, get_object = new_local env "new_object" in
@@ -10312,6 +10315,24 @@ and compile_exp_as env ae sr_out e =
   let sr_in, code = compile_exp_with_hint env ae (Some sr_out) e in
   code ^^ StackRep.adjust env sr_in sr_out
 
+and single_case e (cs : Ir.case list) =
+  match cs, e.note.Note.typ with
+  | [{it={pat={it=TagP (l, _);_}; _}; _}], Type.(Variant [{lab; _}]) -> l = lab
+  | _ -> false
+
+and known_tag_pat p = TagP ("", p)
+
+and simplify_cases e (cs : Ir.case list) =
+  match cs, e.note.Note.typ with
+  (* for a 2-cased variant type, the second comparison can be omitted when the first pattern
+     (with irrefutable subpattern) didn't match, and the pattern types line up *)
+  | [{it={pat={it=TagP (l1, ip); _}; _}; _} as c1; {it={pat={it=TagP (l2, pat'); _} as pat2; exp}; _} as c2], Type.(Variant [{lab=el1; _}; {lab=el2; _}])
+       when Ir_utils.is_irrefutable ip
+            && (l1 = el1 || l1 = el2)
+            && (l2 = el1 || l2 = el2) ->
+     [c1; {c2 with it = {exp; pat = {pat2 with it = known_tag_pat pat'}}}]
+  | _ -> cs
+
 (* Compile, infer and return stack representation, taking the hint into account *)
 and compile_exp_with_hint (env : E.t) ae sr_hint exp =
   (fun (sr,code) -> (sr, G.with_region exp.at code)) @@
@@ -10376,6 +10397,28 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
     )
     ^^
    G.i Unreachable
+
+  | SwitchE (e, cs) when single_case e cs ->
+    let code1 = compile_exp_vanilla env ae e in
+    let [@warning "-8"] [{it={pat={it=TagP (_, pat');_} as pat; exp}; _}] = cs in
+    let ae1, pat_code = compile_pat_local env ae {pat with it = known_tag_pat pat'} in
+    let sr, rhs_code = compile_exp_with_hint env ae1 sr_hint exp in
+
+    (* Use the expected stackrep, if given, else infer from the branches *)
+    let final_sr = match sr_hint with
+      | Some sr -> sr
+      | None -> sr
+    in
+
+    final_sr,
+    (* Run rest in block to exit from *)
+    FakeMultiVal.block_ env (StackRep.to_block_type env final_sr) (fun branch_code ->
+       orsPatternFailure env (List.map (fun (sr, c) ->
+          c ^^^ CannotFail (StackRep.adjust env sr final_sr ^^ branch_code)
+       ) [sr, CannotFail code1 ^^^ pat_code ^^^ CannotFail rhs_code]) ^^
+       G.i Unreachable (* We should always exit using the branch_code *)
+    )
+
   | SwitchE (e, cs) ->
     let code1 = compile_exp_vanilla env ae e in
     let (set_i, get_i) = new_local env "switch_in" in
@@ -10385,7 +10428,7 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
       let (ae1, pat_code) = compile_pat_local env ae pat in
       let (sr, rhs_code) = compile_exp_with_hint env ae1 sr_hint e in
       (sr, CannotFail get_i ^^^ pat_code ^^^ CannotFail rhs_code)
-      ) cs in
+      ) (simplify_cases e cs) in
 
     (* Use the expected stackrep, if given, else infer from the branches *)
     let final_sr = match sr_hint with
@@ -10610,6 +10653,10 @@ and fill_pat env ae pat : patternCode =
           )
           fail_code
       )
+  | TagP ("", p) -> (* these only come from known_tag_pat *)
+    if Ir_utils.is_irrefutable_nonbinding p
+    then CannotFail (G.i Drop)
+    else CannotFail (Variant.project env) ^^^ fill_pat env ae p
   | TagP (l, p) when Ir_utils.is_irrefutable_nonbinding p ->
       CanFail (fun fail_code ->
         Variant.test_is env l ^^

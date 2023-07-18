@@ -27,10 +27,10 @@
         "homepage": "",
         "owner": "dfinity",
         "repo": "ic",
-        "rev": "6df4f4d17da00861c3182c91e99081286bf21483",
-        "sha256": "0glxidx5d7hwnij96cl255x099rlnd7zslgfhxadi9ygs4d9jb58",
+        "rev": "629f7fc8e82ff52e6373a528dcd29f9066563ad4",
+        "sha256": "1jadgk4jfgvkw3i5nlxikg0wi6144d46sca165g9xgqpsr8hkm00",
         "type": "tarball",
-        "url": "https://github.com/dfinity/ic/archive/6df4f4d17da00861c3182c91e99081286bf21483.tar.gz",
+        "url": "https://github.com/dfinity/ic/archive/629f7fc8e82ff52e6373a528dcd29f9066563ad4.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ic-hs": {
@@ -40,10 +40,22 @@
         "homepage": "",
         "owner": "dfinity",
         "repo": "ic-hs",
-        "rev": "f802ac37b8a980336ce1d9199a3986f9a6ef0026",
-        "sha256": "0q9ycc3v19vwm766vc3kh8wyc6kycclnqd11s7m6rjjs7595s1xb",
+        "rev": "e727fecab6bad1401a65a50773637e46b8a14e0e",
+        "sha256": "183xcavjkfsa2hgx9s67qxg7hfykykmw0wbzd4458rkiqb164wmc",
         "type": "tarball",
-        "url": "https://github.com/dfinity/ic-hs/archive/f802ac37b8a980336ce1d9199a3986f9a6ef0026.tar.gz",
+        "url": "https://github.com/dfinity/ic-hs/archive/e727fecab6bad1401a65a50773637e46b8a14e0e.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "ic-wasm": {
+        "branch": "main",
+        "description": "A collection of libraries and tools for transforming Wasm canisters running on the Internet Computer",
+        "homepage": null,
+        "owner": "dfinity",
+        "repo": "ic-wasm",
+        "rev": "42d911dd249ffb01c04ca429ae09006c2b047a3a",
+        "sha256": "11pf3b7650dpbkyg36b18yd91i3v5h8iksxsgz3y3lb45pyivx1j",
+        "type": "tarball",
+        "url": "https://github.com/dfinity/ic-wasm/archive/42d911dd249ffb01c04ca429ae09006c2b047a3a.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "libtommath": {
@@ -64,10 +76,10 @@
         "homepage": null,
         "owner": "dfinity",
         "repo": "motoko-base",
-        "rev": "f842b4a7ea8c968377c6fe7a7df7bd1519c1ca56",
-        "sha256": "1r65il7j3ppadpkznms32xvyl6qlp108d4c7p14nq8g3xrh7f2pv",
+        "rev": "9037e2c2d9947084c93278f4be6bac4517f2ab8f",
+        "sha256": "093sfzxchbr6j8ly4nym9qyk1ljsv5pf0jlslbz0rr701y6ynwy9",
         "type": "tarball",
-        "url": "https://github.com/dfinity/motoko-base/archive/f842b4a7ea8c968377c6fe7a7df7bd1519c1ca56.tar.gz",
+        "url": "https://github.com/dfinity/motoko-base/archive/9037e2c2d9947084c93278f4be6bac4517f2ab8f.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "motoko-matchers": {
@@ -103,10 +115,10 @@
         "homepage": null,
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "f553c016a31277246f8d3724d3b1eee5e8c0842c",
-        "sha256": "1dng9sib7d3rq8hwx991fsql7z72lkyps5n7z6wjiqpflr4qwkzw",
+        "rev": "f52b81a0a3be8398047a7bf95f616d59964bf167",
+        "sha256": "0x08f05w927m4yqnmn7qvksll9z7r0lsszmnngbd4fg1bafc7rd1",
         "type": "tarball",
-        "url": "https://github.com/NixOS/nixpkgs/archive/f553c016a31277246f8d3724d3b1eee5e8c0842c.tar.gz",
+        "url": "https://github.com/NixOS/nixpkgs/archive/f52b81a0a3be8398047a7bf95f616d59964bf167.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs-mozilla": {

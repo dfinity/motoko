@@ -1,5 +1,15 @@
 # Motoko compiler changelog
 
+## 0.9.7 (2023-07-18)
+
+* motoko (`moc`)
+
+  * Performance improvement: lower the default allocation for bignums (#4102).
+
+  * Performance improvement: generate better code for pattern matches on some small variants (#4093).
+
+  * bugfix: don't crash on import of Candid composite queries (#4128).
+
 ## 0.9.6 (2023-07-07)
 
 * motoko (`moc`)
