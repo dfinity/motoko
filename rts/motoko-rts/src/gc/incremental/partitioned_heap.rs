@@ -58,9 +58,9 @@ use super::{
 ///    allocated in that granularity and GC is then triggered later.
 pub const PARTITION_SIZE: usize = 32 * 1024 * 1024;
 
-// TODO: Redesign for 64-bit support by using a dynamic partition list
-/// Wasm memory size (4 GiB) in bytes. Note: `usize` must be 64 bit in order not to overflow.
-const WASM_MEMORY_BYTE_SIZE: Bytes<usize> = Bytes(4 * 1024 * 1024 * 1024);
+// TODO: Redesign for 64-bit support by using a dynamic partition list.
+/// Currently limited to 48 GB.
+const WASM_MEMORY_BYTE_SIZE: Bytes<usize> = Bytes(48 * 1024 * 1024 * 1024);
 
 /// Total number of partitions in the memory.
 /// For simplicity, the last partition is left unused, to avoid a numeric overflow when
