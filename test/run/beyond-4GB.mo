@@ -2,7 +2,7 @@
 import P "mo:⛔";
 do {
 
-  // 5 GB allocations
+  let expectedSize = 10 * 1024 * 1024 * 1024; // 10 GB
   var c = 5;
 
   while(c > 0) {
@@ -10,8 +10,9 @@ do {
     c -= 1;
   };
 
-  P.debugPrint("Memory: " # debug_show(P.rts_memory_size()));
-  P.debugPrint("Heap: " # debug_show(P.rts_heap_size()));
+  
+  assert(P.rts_memory_size() > expectedSize);
+  assert(P.rts_heap_size() > expectedSize);
 }
 
 //SKIP run
