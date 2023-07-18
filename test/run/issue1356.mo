@@ -5,7 +5,7 @@ func matchNat(n : Nat) : Bool =
                   ; case _ false };
 // CHECK-LABEL: (func $matchNat
 // CHECK:        local.get $switch_in
-// CHECK-NEXT:   i32.const 2147483646
+// CHECK-NEXT:   i64.const 2147483646
 // CHECK-NEXT:   call $B_eq
 
 /*
@@ -28,23 +28,23 @@ func matchInt(n : Int) : Bool =
                   ; case _ false };
 // CHECK-LABEL: (func $matchInt
 // CHECK:        local.get $switch_in
-// CHECK-NEXT:   i32.const -2147483648
+// CHECK-NEXT:   i64.const -2147483648
 // CHECK-NEXT:   $B_eq
 // CHECK:        local.get $switch_in
-// CHECK-NEXT:   i32.const 2147483646
+// CHECK-NEXT:   i64.const 2147483646
 // CHECK-NEXT:   $B_eq
 
 func match8(n : Nat8) : Bool = switch n { case 42 true; case _ false };
 // CHECK-LABEL: (func $match8
-// CHECK:        i32.const 704643072
-// CHECK-NEXT:   i32.ne
-// N.B.: 704643072 == 0x2a000000 == 42 << 24
+// CHECK:        i64.const 3026418949592973312
+// CHECK-NEXT:   i64.eq
+// N.B.: 3026418949592973312 == 0x2a00_0000_0000_0000 == 42 << 56
 
 func match16(n : Nat16) : Bool = switch n { case 42 true; case _ false };
 // CHECK-LABEL: (func $match16
-// CHECK:        i32.const 2752512
-// CHECK-NEXT:   i32.ne
-// N.B.: 2752512 == 0x002a0000 == 42 << 16
+// CHECK:        i64.const 11821949021847552
+// CHECK-NEXT:   i64.eq
+// N.B.: 11821949021847552 == 0x002a_0000_0000_0000 == 42 << 48
 
 // NB: reverse order, so that things appear in order
 assert (match16(42));

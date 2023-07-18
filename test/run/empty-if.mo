@@ -7,7 +7,7 @@ barX();
 foo();
 
 // CHECK: func $foo
-// CHECK: i32.eq
+// CHECK: i64.eq
 // CHECK-NEXT: drop
 // CHECK: func $barX
 

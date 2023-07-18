@@ -47,7 +47,7 @@ assert(arrayInt == deserArrayInt (serArrayInt arrayInt));
 
 let heapDifference = Prim.rts_heap_size() : Int - started_with;
 // Difference between incremental and non-incremental GC
-assert(heapDifference == +8_744 or heapDifference == +9_144);
+assert(heapDifference == +2_560 or heapDifference == +9_144);
 
 //SKIP run
 //SKIP run-ir
