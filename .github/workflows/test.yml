@@ -30,11 +30,10 @@ jobs:
     # until https://github.com/cachix/cachix-action/issues/86 is fixed:
     - run: cachix watch-store ic-hs-test &
 
-    - run: nix-channel --add https://nixos.org/channels/nixos-unstable nixos-unstable
-
-    - run: nix-channel --update
-
-    - run: nix-env -iA nix-build-uncached -f nix/
+    - run: |
+        nix-channel --add https://nixos.org/channels/nixos-unstable nixos-unstable
+        nix-channel --update
+        nix-env -iA nix-build-uncached -f nix/
 
     - name: "pre-build `drun`"
       if: startsWith(github.head_ref, 'update/ic-')
