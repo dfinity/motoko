@@ -35,6 +35,7 @@ let
     wasmtime
     rust-bindgen
     python3
+    bash
     gitMinimal
   ] ++ pkgs.lib.optional pkgs.stdenv.isDarwin [
     libiconv

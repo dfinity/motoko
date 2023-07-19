@@ -130,7 +130,7 @@ _build/i686:
 # Common configuration
 # 
 
-RTS_EMSCRIPTEN=ls -la && ./emscripten.sh -c --target=wasm64-unknown-emscripten -fpic
+RTS_EMSCRIPTEN=./emscripten.sh -c --target=wasm64-unknown-emscripten -fpic
 RTS_EMSCRIPTEN_DEBUG=$(RTS_EMSCRIPTEN)
 RTS_EMSCRIPTEN_RELEASE=$(RTS_EMSCRIPTEN) -O2
 
