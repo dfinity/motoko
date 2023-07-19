@@ -3,16 +3,9 @@
 version = 3
 
 [[package]]
-name = "libc"
-version = "0.2.146"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f92be4933c13fd498862a9e02a3055f8a8d9c039ce33db97306fd5a6caa7f29b"
-
-[[package]]
 name = "motoko-rts"
 version = "0.1.0"
 dependencies = [
- "libc",
  "motoko-rts-macros",
 ]
 
