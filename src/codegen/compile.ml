@@ -8911,7 +8911,8 @@ let compile_Nat32_kernel env name op =
 (* helper, expects i64 on stack *)
 let enforce_unsigned_bits env n =
   compile_bitand_const Int64.(shift_left minus_one n) ^^
-  then_arithmetic_overflow env
+  compile_test I64Op.Eqz ^^
+  else_arithmetic_overflow env
 
 let enforce_16_unsigned_bits env = enforce_unsigned_bits env 16
 
