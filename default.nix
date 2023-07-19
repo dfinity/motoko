@@ -21,7 +21,7 @@ let ic-ref-run =
   ''; in
 
 let
-  nixos-unstable = import <nixos-unstable> {};
+  nixos-unstable = import nixpkgs.sources.nixpkgs-unstable {};
 in
 
 let haskellPackages = nixpkgs.haskellPackages.override {
