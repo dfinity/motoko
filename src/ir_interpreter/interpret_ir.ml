@@ -656,7 +656,7 @@ and declare_pat pat : val_env =
   | ObjP pfs -> declare_pats (pats_of_obj_pat pfs) V.Env.empty
   | OptP pat1
   | TagP (_, pat1) -> declare_pat pat1
-  | AltP (pat1, pat2) -> declare_pat pat1
+  | AltP (pat1, _pat2) -> declare_pat pat1 (* pat2 has the same bindings *)
 
 and declare_pats pats ve : val_env =
   match pats with

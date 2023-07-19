@@ -6,15 +6,25 @@ use crate::types::*;
 /// Amount of garbage collected so far.
 pub(crate) static mut RECLAIMED: Bytes<usize> = Bytes(0);
 
-/// Heap pointer
-pub(crate) static mut HP: usize = 0;
+// Heap pointer (skewed)
+extern "C" {
+    fn setHP(new_hp: usize);
+    fn getHP() -> usize;
+}
+
+pub(crate) unsafe fn set_hp_unskewed(new_hp: usize) {
+    setHP(skew(new_hp))
+}
+pub(crate) unsafe fn get_hp_unskewed() -> usize {
+    unskew(getHP() as usize)
+}
 
 /// Heap pointer after last GC
 pub(crate) static mut LAST_HP: usize = 0;
 
 pub(crate) unsafe fn initialize() {
-    HP = get_aligned_heap_base();
-    LAST_HP = HP;
+    LAST_HP = get_aligned_heap_base();
+    set_hp_unskewed(LAST_HP);
 }
 
 #[no_mangle]
@@ -29,7 +39,7 @@ pub unsafe extern "C" fn get_total_allocations() -> Bytes<usize> {
 
 #[no_mangle]
 pub unsafe extern "C" fn get_heap_size() -> Bytes<usize> {
-    Bytes(HP - get_aligned_heap_base())
+    Bytes(get_hp_unskewed() - get_aligned_heap_base())
 }
 
 impl Memory for IcMemory {
@@ -39,8 +49,8 @@ impl Memory for IcMemory {
         let delta = bytes.as_usize();
 
         // Update heap pointer
-        let old_hp = HP;
-        if old_hp > usize::MAX - delta {
+        let old_hp = getHP();
+        if old_hp >= usize::MAX - delta {
             panic!("Out of memory");
         }
 
@@ -51,9 +61,9 @@ impl Memory for IcMemory {
             self.grow_memory(new_hp)
         }
 
-        HP = new_hp;
+        setHP(new_hp);
 
-        Value::from_ptr(old_hp)
+        Value::from_raw(old_hp)
     }
 
     #[inline(never)]

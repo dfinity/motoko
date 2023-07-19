@@ -1085,8 +1085,10 @@ module GC = struct
     E.call_import env "ic0" "performance_counter"
 
   let register_globals env =
-    (E.add_global64 env "__mutator_instructions" Mutable 0L;
-     E.add_global64 env "__collector_instructions" Mutable 0L)
+    E.add_global64 env "__mutator_instructions" Mutable 0L;
+    E.add_global64 env "__collector_instructions" Mutable 0L;
+    if !Flags.gc_strategy <> Flags.Incremental then
+      E.add_global64 env "_HP" Mutable 0L
 
   let get_mutator_instructions env =
     G.i (GlobalGet (nr (E.get_global env "__mutator_instructions")))
@@ -1097,6 +1099,17 @@ module GC = struct
     G.i (GlobalGet (nr (E.get_global env "__collector_instructions")))
   let set_collector_instructions env =
     G.i (GlobalSet (nr (E.get_global env "__collector_instructions")))
+
+  let get_heap_pointer env =
+    if !Flags.gc_strategy <> Flags.Incremental then
+      G.i (GlobalGet (nr (E.get_global env "_HP")))
+    else
+      assert false
+  let set_heap_pointer env =
+    if !Flags.gc_strategy <> Flags.Incremental then
+      G.i (GlobalSet (nr (E.get_global env "_HP")))
+    else
+      assert false
 
   let record_mutator_instructions env =
     match E.mode env with
@@ -1149,9 +1162,12 @@ module Heap = struct
   (* Static allocation (always words)
      (uses dynamic allocation for smaller and more readable code) *)
   let alloc env (n : int64) : G.t =
-    compile_unboxed_const n  ^^
+    compile_unboxed_const n ^^
     E.call_import env "rts" "alloc_words"
 
+  let ensure_allocated env =
+    alloc env 0L ^^ G.i Drop (* dummy allocation, ensures that the page HP points into is backed *)
+    
   (* Heap objects *)
 
   (* At this level of abstraction, heap objects are just flat arrays of words *)
@@ -1629,12 +1645,36 @@ module Tagged = struct
     assert (!Flags.gc_strategy = Flags.Incremental);
     1L
 
-  (* Note: Post allocation barrier must be applied after initialization *)
+  (* Note: post-allocation barrier must be applied after initialization *)
   let alloc env size tag =
+    assert (size > 1L);
     let name = Printf.sprintf "alloc_size<%d>_tag<%d>" (Int64.to_int size) (Int64.to_int (int_of_tag tag)) in
+    (* Computes a (conservative) mask for the bumped HP, so that the existence of non-zero bits under it
+       guarantees that a page boundary crossing didn't happen (i.e. no ripple-carry). *)
+    let overflow_mask increment =
+      let n = Int64.to_int increment in
+      assert (n > 0 && n < 0x8000);
+      let page_mask = Int64.sub page_size 1L in
+      (* We can extend the mask to the right if the bump increment is a power of two. *)
+      let ext = if Numerics.Nat16.(to_int (popcnt (of_int n))) = 1 then increment else 0L in
+      Int64.(logor ext (logand page_mask (shift_left minus_one (16 - Numerics.Nat16.(to_int (clz (of_int n))))))) in
+
     Func.share_code0 env name [I64Type] (fun env ->
-      let (set_object, get_object) = new_local env "new_object" in
-      Heap.alloc env size ^^
+      let set_object, get_object = new_local env "new_object" in
+      let size_in_bytes = Int64.(mul size Heap.word_size) in
+      let half_page_size = Int64.div page_size 2L in
+      (if !Flags.gc_strategy <> Flags.Incremental && size_in_bytes < half_page_size then
+         GC.get_heap_pointer env ^^
+         GC.get_heap_pointer env ^^
+         compile_add_const size_in_bytes ^^
+         GC.set_heap_pointer env ^^
+         GC.get_heap_pointer env ^^
+         compile_bitand_const (overflow_mask size_in_bytes) ^^
+         E.if0
+           G.nop (* no page crossing *)
+           (Heap.ensure_allocated env) (* ensure that HP's page is allocated *)
+       else
+         Heap.alloc env size) ^^
       set_object ^^ get_object ^^
       compile_unboxed_const (int_of_tag tag) ^^
       Heap.store_field tag_field ^^
@@ -5263,6 +5303,31 @@ module RTS_Exports = struct
     edesc = nr (FuncExport (nr rts_trap_fi))
   });
 
+  if !Flags.gc_strategy <> Flags.Incremental then
+  begin
+    let set_hp_fi =
+      E.add_fun env "__set_hp" (
+      Func.of_body env ["new_hp", I64Type] [] (fun env ->
+        G.i (LocalGet (nr 0l)) ^^
+        GC.set_heap_pointer env
+      )
+    ) in
+    E.add_export env (nr {
+      name = Lib.Utf8.decode "setHP";
+      edesc = nr (FuncExport (nr set_hp_fi))
+    });
+
+    let get_hp_fi = E.add_fun env "__get_hp" (
+      Func.of_body env [] [I64Type] (fun env ->
+        GC.get_heap_pointer env
+      )
+    ) in
+    E.add_export env (nr {
+      name = Lib.Utf8.decode "getHP";
+      edesc = nr (FuncExport (nr get_hp_fi))
+    })
+  end;
+
   let stable64_write_moc_fi =
     if E.mode env = Flags.WASIMode then
       E.add_fun env "stable64_write_moc" (
@@ -5466,12 +5531,12 @@ module MakeSerialization (Strm : Stream) = struct
 
   module Registers = struct
     let register_globals env =
-     (E.add_global64 env "@@rel_buf_opt" Mutable 0L;
-      E.add_global64 env "@@data_buf" Mutable 0L;
-      E.add_global64 env "@@ref_buf" Mutable 0L;
-      E.add_global64 env "@@typtbl" Mutable 0L;
-      E.add_global64 env "@@typtbl_end" Mutable 0L;
-      E.add_global64 env "@@typtbl_size" Mutable 0L)
+     E.add_global64 env "@@rel_buf_opt" Mutable 0L;
+     E.add_global64 env "@@data_buf" Mutable 0L;
+     E.add_global64 env "@@ref_buf" Mutable 0L;
+     E.add_global64 env "@@typtbl" Mutable 0L;
+     E.add_global64 env "@@typtbl_end" Mutable 0L;
+     E.add_global64 env "@@typtbl_size" Mutable 0L
 
     let get_rel_buf_opt env =
       G.i (GlobalGet (nr (E.get_global env "@@rel_buf_opt")))
@@ -6610,7 +6675,7 @@ module MakeSerialization (Strm : Stream) = struct
           ) ^^
           get_x ^^
           Tagged.allocation_barrier env ^^
-          set_x (* discard result *)
+          G.i Drop
         )
       | Array t ->
         let (set_len, get_len) = new_local env "len" in
@@ -8093,7 +8158,7 @@ module FuncDec = struct
 
         get_clos ^^
         Tagged.allocation_barrier env ^^
-        set_clos (* discard the result *)
+        G.i Drop
       in
 
       if is_local
@@ -10283,6 +10348,24 @@ and compile_exp_as env ae sr_out e =
   let sr_in, code = compile_exp_with_hint env ae (Some sr_out) e in
   code ^^ StackRep.adjust env sr_in sr_out
 
+and single_case e (cs : Ir.case list) =
+  match cs, e.note.Note.typ with
+  | [{it={pat={it=TagP (l, _);_}; _}; _}], Type.(Variant [{lab; _}]) -> l = lab
+  | _ -> false
+
+and known_tag_pat p = TagP ("", p)
+
+and simplify_cases e (cs : Ir.case list) =
+  match cs, e.note.Note.typ with
+  (* for a 2-cased variant type, the second comparison can be omitted when the first pattern
+     (with irrefutable subpattern) didn't match, and the pattern types line up *)
+  | [{it={pat={it=TagP (l1, ip); _}; _}; _} as c1; {it={pat={it=TagP (l2, pat'); _} as pat2; exp}; _} as c2], Type.(Variant [{lab=el1; _}; {lab=el2; _}])
+       when Ir_utils.is_irrefutable ip
+            && (l1 = el1 || l1 = el2)
+            && (l2 = el1 || l2 = el2) ->
+     [c1; {c2 with it = {exp; pat = {pat2 with it = known_tag_pat pat'}}}]
+  | _ -> cs
+
 (* Compile, infer and return stack representation, taking the hint into account *)
 and compile_exp_with_hint (env : E.t) ae sr_hint exp =
   (fun (sr,code) -> (sr, G.with_region exp.at code)) @@
@@ -10347,6 +10430,28 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
     )
     ^^
    G.i Unreachable
+
+  | SwitchE (e, cs) when single_case e cs ->
+    let code1 = compile_exp_vanilla env ae e in
+    let [@warning "-8"] [{it={pat={it=TagP (_, pat');_} as pat; exp}; _}] = cs in
+    let ae1, pat_code = compile_pat_local env ae {pat with it = known_tag_pat pat'} in
+    let sr, rhs_code = compile_exp_with_hint env ae1 sr_hint exp in
+
+    (* Use the expected stackrep, if given, else infer from the branches *)
+    let final_sr = match sr_hint with
+      | Some sr -> sr
+      | None -> sr
+    in
+
+    final_sr,
+    (* Run rest in block to exit from *)
+    FakeMultiVal.block_ env (StackRep.to_block_type env final_sr) (fun branch_code ->
+       orsPatternFailure env (List.map (fun (sr, c) ->
+          c ^^^ CannotFail (StackRep.adjust env sr final_sr ^^ branch_code)
+       ) [sr, CannotFail code1 ^^^ pat_code ^^^ CannotFail rhs_code]) ^^
+       G.i Unreachable (* We should always exit using the branch_code *)
+    )
+
   | SwitchE (e, cs) ->
     let code1 = compile_exp_vanilla env ae e in
     let (set_i, get_i) = new_local env "switch_in" in
@@ -10356,7 +10461,7 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
       let (ae1, pat_code) = compile_pat_local env ae pat in
       let (sr, rhs_code) = compile_exp_with_hint env ae1 sr_hint e in
       (sr, CannotFail get_i ^^^ pat_code ^^^ CannotFail rhs_code)
-      ) cs in
+      ) (simplify_cases e cs) in
 
     (* Use the expected stackrep, if given, else infer from the branches *)
     let final_sr = match sr_hint with
@@ -10584,6 +10689,10 @@ and fill_pat env ae pat : patternCode =
           )
           fail_code
       )
+  | TagP ("", p) -> (* these only come from known_tag_pat *)
+    if Ir_utils.is_irrefutable_nonbinding p
+    then CannotFail (G.i Drop)
+    else CannotFail (Variant.project env) ^^^ fill_pat env ae p
   | TagP (l, p) when Ir_utils.is_irrefutable_nonbinding p ->
       CanFail (fun fail_code ->
         Variant.test_is env l ^^

@@ -45,6 +45,7 @@ TOMMATH_FLAGS = \
   -DMP_FREE=mp_free \
   -DMP_MEMSET=0 \
   -DMP_FIXED_CUTOFFS \
+  -DMP_PREC=4 \
   -DMP_NO_FILE \
   -D__STDC_IEC_559__ \
 

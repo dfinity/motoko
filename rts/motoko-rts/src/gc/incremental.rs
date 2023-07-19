@@ -101,7 +101,7 @@ unsafe fn record_gc_stop<M: Memory>() {
     use crate::memory::ic::{self, partitioned_memory};
 
     let heap_size = partitioned_memory::get_heap_size();
-    let static_size = Bytes(ic::get_aligned_heap_base());
+    let static_size = Bytes(ic::get_aligned_heap_base() as u32);
     debug_assert!(heap_size >= static_size);
     let dynamic_size = heap_size - static_size;
     ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, dynamic_size);

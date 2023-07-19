@@ -1,5 +1,48 @@
 # Motoko compiler changelog
 
+## 0.9.7 (2023-07-18)
+
+* motoko (`moc`)
+
+  * Performance improvement: lower the default allocation for bignums (#4102).
+
+  * Performance improvement: generate better code for pattern matches on some small variants (#4093).
+
+  * bugfix: don't crash on import of Candid composite queries (#4128).
+
+## 0.9.6 (2023-07-07)
+
+* motoko (`moc`)
+
+  * Allow canister controllers to call the `__motoko_stable_var_info` query endpoint (#4103).
+    (Previously only self-queries were permitted.)
+
+  * Performance improvement: reduced cycle consumption for allocating objects (#4095).
+
+  * bugfix: reduced memory consumption in the Motoko Playground (#4106).
+
+## 0.9.5 (2023-07-05)
+
+* motoko (`moc`)
+
+  * Allow identifiers in `or`-patterns (#3807).
+    Bindings in alternatives must mention the same identifiers and have compatible types:
+    ``` Motoko
+    let verbose = switch result {
+      case (#ok) "All is good!";
+      case (#warning why or #error why) "There is some problem: " # why;
+    }
+    ```
+
+  * Performance improvement: improved cycle consumption allocating fixed-size objects (#4064).
+    Benchmarks indicate up to 10% less cycles burned for allocation-heavy code,
+    and 2.5% savings in realistic applications.
+
+  * Administrative: binary build artefacts are now available according to standard naming
+    conventions (thanks to EnzoPlayer0ne) (#3997).
+    Please consider transitioning to downloading binaries following the new scheme,
+    as legacy naming will be discontinued at some point in the future.
+
 ## 0.9.4 (2023-07-01)
 
 * motoko (`moc`)

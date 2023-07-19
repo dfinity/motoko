@@ -162,6 +162,7 @@ fi
 
 HAVE_drun=no
 HAVE_ic_ref_run=no
+HAVE_ic_wasm=no
 
 FLAGS_drun=
 FLAGS_ic_ref_run=-ref-system-api
@@ -180,6 +181,10 @@ then
       echo "WARNING: Could not run drun, will skip running some tests"
       HAVE_drun=no
     fi
+  fi
+  if ic-wasm --help >& /dev/null
+  then
+    HAVE_ic_wasm=yes
   fi
 fi
 
@@ -345,6 +350,9 @@ do
         elif [ $PERF = yes ]
         then
           run comp $moc_with_flags --hide-warnings --map -c $mangled -o $out/$base.wasm
+          if [ $HAVE_ic_wasm = yes ]; then
+            run opt ic-wasm -o $out/$base.opt.wasm $out/$base.wasm shrink --optimize O3 --keep-name-section
+          fi
         else
           run comp $moc_with_flags -g -wasi-system-api --hide-warnings --map -c $mangled -o $out/$base.wasm
         fi
@@ -389,6 +397,7 @@ do
               then
                 LANG=C perl -ne "print \"gas/$base;\$1\n\" if /^scheduler_(?:cycles|instructions)_consumed_per_round_sum (\\d+)\$/" $out/$base.metrics >> $PERF_OUT;
               fi
+              run_if opt.wasm drun-run-opt $WRAP_drun $out/$base.opt.wasm $mangled
             fi
           else
             run_if wasm wasm-run wasmtime $WASMTIME_OPTIONS $out/$base.wasm

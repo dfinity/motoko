@@ -85,14 +85,14 @@ unsafe fn get_limits() -> Limits {
     Limits {
         base: ic::get_aligned_heap_base(),
         last_free: linear_memory::LAST_HP,
-        free: linear_memory::HP,
+        free: linear_memory::get_hp_unskewed(),
     }
 }
 
 #[cfg(feature = "ic")]
 unsafe fn set_limits(limits: &Limits) {
     use crate::memory::ic::linear_memory;
-    linear_memory::HP = limits.free;
+    linear_memory::set_hp_unskewed(limits.free);
     linear_memory::LAST_HP = limits.free;
 }
 
