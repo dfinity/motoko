@@ -20,6 +20,10 @@ let ic-ref-run =
       cp ${ic-hs-pkgs.ic-hs}/bin/ic-ref-run $out/bin
   ''; in
 
+let
+  nixos-unstable = import <nixos-unstable> {};
+in
+
 let haskellPackages = nixpkgs.haskellPackages.override {
       overrides = import nix/haskell-packages.nix nixpkgs subpath;
     }; in
@@ -35,9 +39,7 @@ let
     wasmtime
     rust-bindgen
     python3
-    bash
-    cacert
-    gitMinimal
+    nixos-unstable.emscripten
   ] ++ pkgs.lib.optional pkgs.stdenv.isDarwin [
     libiconv
   ];
@@ -56,12 +58,6 @@ let
     # But for some reason it does not handle building for Wasm well, so
     # there we use plain clang-13. There is no stdlib there anyways.
     export CLANG="${nixpkgs.clang_13}/bin/clang"
-  '';
-
-  gitEnv = ''
-    export SSL_CERT_FILE=${nixpkgs.cacert}/etc/ssl/certs/ca-bundle.crt
-    export SYSTEM_CERTIFICATE_PATH="$SSL_CERT_FILE"
-    export GIT_SSL_CAINFO="$SSL_CERT_FILE"
   '';
 in
 
@@ -251,7 +247,6 @@ rec {
         __END__
 
         
-        export EMSCRIPTEN17=${emscripten17}
         ${llvmEnv}
         export TOMMATHSRC=${nixpkgs.sources.libtommath}
         export MUSLSRC=${nixpkgs.sources.musl-wasi}/libc-top-half/musl
@@ -793,11 +788,6 @@ rec {
     sha256 = "sha256-debC8ZpbIjgpEeISCISU0EVySJvf+WsUkUaLuJ526wA=";
   };
 
-  emscripten17 = nixpkgs.fetchzip {
-    url = https://github.com/emscripten-core/emsdk/archive/refs/tags/3.1.43.zip;
-    sha256 = "sha256-TnTIIyHgpcWMwXntobbJAi9cMFS+JeKz907pF9Uwzr8=";
-  };
-
   shell = nixpkgs.mkShell {
     name = "motoko-shell";
 
@@ -848,7 +838,6 @@ rec {
     MOTOKO_BASE = base-src;
     CANDID_TESTS = "${nixpkgs.sources.candid}/test";
     VIPER_SERVER = "${viperServer}";
-    EMSCRIPTEN17 = "${emscripten17}";
 
     # allow building this as a derivation, so that hydra builds and caches
     # the dependencies of shell.
