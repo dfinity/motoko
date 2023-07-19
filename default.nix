@@ -250,7 +250,8 @@ rec {
           "directory" = "$(stripHash ${allDeps})"
         __END__
 
-        ${gitEnv}
+        
+        export EMSCRIPTEN17=${emscripten17}
         ${llvmEnv}
         export TOMMATHSRC=${nixpkgs.sources.libtommath}
         export MUSLSRC=${nixpkgs.sources.musl-wasi}/libc-top-half/musl
@@ -792,6 +793,11 @@ rec {
     sha256 = "sha256-debC8ZpbIjgpEeISCISU0EVySJvf+WsUkUaLuJ526wA=";
   };
 
+  emscripten17 = nixpkgs.fetchzip {
+    url = https://github.com/emscripten-core/emsdk/archive/refs/tags/3.1.43.zip;
+    sha256 = "sha256-TnTIIyHgpcWMwXntobbJAi9cMFS+JeKz907pF9Uwzr8=";
+  };
+
   shell = nixpkgs.mkShell {
     name = "motoko-shell";
 
@@ -842,6 +848,7 @@ rec {
     MOTOKO_BASE = base-src;
     CANDID_TESTS = "${nixpkgs.sources.candid}/test";
     VIPER_SERVER = "${viperServer}";
+    EMSCRIPTEN17 = "${emscripten17}";
 
     # allow building this as a derivation, so that hydra builds and caches
     # the dependencies of shell.
