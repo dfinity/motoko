@@ -2312,21 +2312,15 @@ module TaggedSmallWord = struct
     lsb_adjust ty ^^
     G.i (Binary (Wasm_exts.Values.I64 I64Op.Mul))
 
-  let compile_nat_power env ty =
+  let compile_nat_power env =
     (* Square- and multiply exponentiation *)
-    let name = prim_fun_name ty "wpow_nat" in
-    Func.share_code2 env name (("n", I64Type), ("exp", I64Type)) [I64Type]
+    Func.share_code2 env "wpow_nat" (("n", I64Type), ("exp", I64Type)) [I64Type]
       (fun env get_n get_exp ->
         let set_n = G.setter_for get_n in
         let set_exp = G.setter_for get_exp in
         let (set_acc, get_acc) = new_local env "acc" in
 
-        (* unshift arguments *)
-        get_exp ^^ lsb_adjust ty ^^ set_exp ^^
-        get_n ^^ lsb_adjust ty ^^ set_n ^^
-
-        (* The accumulator starts with and stays shifted, so no other shifts needed. *)
-        compile_unboxed_const (const_of_type ty 1L) ^^ set_acc ^^
+        compile_unboxed_const 1L ^^ set_acc ^^
 
         (* handle exp == 0 *)
         get_exp ^^ compile_test I64Op.Eqz ^^
@@ -2353,19 +2347,17 @@ module TaggedSmallWord = struct
           end ^^
           (* Multiply a last time *)
           get_acc ^^ get_n ^^ G.i (Binary (Wasm_exts.Values.I64 I64Op.Mul))
-          (* Accumulator was shifted, so no further shift needed here *)
         end
       )
 
-  let compile_int_power env ty =
-    let name = prim_fun_name ty "wpow_int" in
-    Func.share_code2 env name (("n", I64Type), ("exp", I64Type)) [I64Type]
+  let compile_int_power env =
+    Func.share_code2 env "wpow_int" (("n", I64Type), ("exp", I64Type)) [I64Type]
       (fun env get_n get_exp ->
         get_exp ^^
         compile_unboxed_const 0L ^^
         compile_comparison I64Op.GeS ^^
         E.else_trap_with env "negative power" ^^
-        get_n ^^ get_exp ^^ compile_nat_power env ty
+        get_n ^^ get_exp ^^ compile_nat_power env
       )
 
 
@@ -9046,19 +9038,36 @@ let compile_binop env t op : SR.t * SR.t * G.t =
   | Type.(Prim Float),                        DivOp -> G.i (Binary (Wasm_exts.Values.F64 F64Op.Div))
   | Type.(Prim Float),                        ModOp -> E.call_import env "rts" "fmod" (* musl *)
   | Type.(Prim (Int8|Int16|Int32)),           ModOp -> G.i (Binary (Wasm_exts.Values.I64 I64Op.RemS))
-  | Type.(Prim (Nat8|Nat16|Nat32 as ty)),     WPowOp -> TaggedSmallWord.compile_nat_power env ty
-  | Type.(Prim (Int8|Int16|Int32 as ty)),     WPowOp -> TaggedSmallWord.compile_int_power env ty
+  | Type.(Prim (Nat8|Nat16|Nat32 as ty)),     WPowOp -> 
+    Func.share_code2 env (prim_fun_name ty "wpow")
+      (("n", I64Type), ("exp", I64Type)) [I64Type]
+      (fun env get_n get_exp ->
+        get_n ^^ TaggedSmallWord.lsb_adjust ty ^^
+        get_exp ^^ TaggedSmallWord.lsb_adjust ty ^^
+        TaggedSmallWord.compile_nat_power env ^^
+        TaggedSmallWord.msb_adjust ty)
+  | Type.(Prim (Int8|Int16|Int32 as ty)),     WPowOp -> 
+    Func.share_code2 env (prim_fun_name ty "wpow")
+      (("n", I64Type), ("exp", I64Type)) [I64Type]
+      (fun env get_n get_exp ->
+        get_n ^^ TaggedSmallWord.lsb_adjust ty ^^
+        get_exp ^^ TaggedSmallWord.lsb_adjust ty ^^
+        TaggedSmallWord.compile_int_power env ^^
+        TaggedSmallWord.msb_adjust ty)
   | Type.(Prim ((Nat8|Nat16|Nat32) as ty)),         PowOp ->
     Func.share_code2 env (prim_fun_name ty "pow")
       (("n", I64Type), ("exp", I64Type)) [I64Type]
       (fun env get_n get_exp ->
         let (set_res, get_res) = new_local env "res" in
         let bits = TaggedSmallWord.bits_of_type ty in
-        get_exp ^^ TaggedSmallWord.lsb_adjust ty ^^
-        Bool.from_int64 ^^
+        let set_n = G.setter_for get_n in
+        let set_exp = G.setter_for get_exp in
+        get_n ^^ TaggedSmallWord.lsb_adjust ty ^^ set_n ^^
+        get_exp ^^ TaggedSmallWord.lsb_adjust ty ^^ set_exp ^^
+        get_exp ^^ Bool.from_int64 ^^
         E.if1 I64Type
           begin
-            get_n ^^ TaggedSmallWord.lsb_adjust ty ^^ compile_shrU_const 1L ^^
+            get_n ^^ compile_shrU_const 1L ^^
             Bool.from_int64 ^^
             E.if1 I64Type
               begin
@@ -9068,19 +9077,18 @@ let compile_binop env t op : SR.t * SR.t * G.t =
                 | _ -> assert false in
                 let overflow_type_bits = TaggedSmallWord.bits_of_type overflow_type in
                 let overflow_boundary = -Int.(sub (mul overflow_type_bits 2) 2) in
-                get_exp ^^ TaggedSmallWord.lsb_adjust ty ^^ compile_unboxed_const 64L ^^
+                get_exp ^^ compile_unboxed_const 64L ^^
                 compile_comparison I64Op.GeU ^^ then_arithmetic_overflow env ^^
-                unsigned_dynamics (get_n ^^ TaggedSmallWord.lsb_adjust ty) ^^ compile_sub_const (Int64.of_int bits) ^^
-                get_exp ^^ TaggedSmallWord.lsb_adjust ty ^^ G.i (Binary (Wasm_exts.Values.I64 I64Op.Mul)) ^^
+                unsigned_dynamics get_n ^^ compile_sub_const (Int64.of_int bits) ^^
+                get_exp ^^ G.i (Binary (Wasm_exts.Values.I64 I64Op.Mul)) ^^
                 compile_unboxed_const (Int64.of_int overflow_boundary) ^^
                 compile_comparison I64Op.LtS ^^ then_arithmetic_overflow env ^^
                 get_n ^^ get_exp ^^
-                TaggedSmallWord.compile_nat_power env ty ^^ 
-                set_res ^^
+                TaggedSmallWord.compile_nat_power env ^^ set_res ^^
                 get_res ^^ enforce_unsigned_bits env bits ^^
-                get_res
+                get_res ^^ TaggedSmallWord.msb_adjust ty
               end
-              get_n (* n@{0,1} ** (1+exp) == n *)
+              (get_n ^^ TaggedSmallWord.msb_adjust ty) (* n@{0,1} ** (1+exp) == n *)
           end
           (compile_unboxed_const
              Int64.(shift_left one (to_int (TaggedSmallWord.shift_of_type ty))))) (* x ** 0 == 1 *)
@@ -9090,28 +9098,31 @@ let compile_binop env t op : SR.t * SR.t * G.t =
       (fun env get_n get_exp ->
         let (set_res, get_res) = new_local env "res" in
         let bits = TaggedSmallWord.bits_of_type ty in
+        let set_n = G.setter_for get_n in
+        let set_exp = G.setter_for get_exp in
+        get_n ^^ TaggedSmallWord.lsb_adjust ty ^^ set_n ^^
+        get_exp ^^ TaggedSmallWord.lsb_adjust ty ^^ set_exp ^^
         get_exp ^^ compile_unboxed_zero ^^
         compile_comparison I64Op.LtS ^^ E.then_trap_with env "negative power" ^^
-        get_exp ^^ TaggedSmallWord.lsb_adjust ty ^^ 
-        Bool.from_int64 ^^
+        get_exp ^^ Bool.from_int64 ^^
         E.if1 I64Type
           begin
-            get_n ^^ TaggedSmallWord.lsb_adjust ty ^^ compile_unboxed_one ^^ compile_comparison I64Op.LeS ^^
-            get_n ^^ TaggedSmallWord.lsb_adjust ty ^^ compile_unboxed_const (-1L) ^^ compile_comparison I64Op.GeS ^^
+            get_n ^^ compile_unboxed_one ^^ compile_comparison I64Op.LeS ^^
+            get_n ^^ compile_unboxed_const (-1L) ^^ compile_comparison I64Op.GeS ^^
             G.i (Binary (Wasm_exts.Values.I64 I64Op.And)) ^^
             E.if1 I64Type
               begin
-                get_n ^^ TaggedSmallWord.lsb_adjust ty ^^ compile_unboxed_zero ^^ compile_comparison I64Op.LtS ^^
+                get_n ^^ compile_unboxed_zero ^^ compile_comparison I64Op.LtS ^^
                 E.if1 I64Type
                   begin
                     (* -1 ** (1+exp) == if even (1+exp) then 1 else -1 *)
-                    get_exp ^^ TaggedSmallWord.lsb_adjust ty ^^ compile_unboxed_one ^^ G.i (Binary (Wasm_exts.Values.I64 I64Op.And)) ^^
+                    get_exp ^^ compile_unboxed_one ^^ G.i (Binary (Wasm_exts.Values.I64 I64Op.And)) ^^
                     E.if1 I64Type
-                      get_n
-                    (compile_unboxed_const
-                      Int64.(shift_left one (to_int (TaggedSmallWord.shift_of_type ty))))
+                      (get_n ^^ TaggedSmallWord.msb_adjust ty)
+                      (compile_unboxed_const
+                        Int64.(shift_left one (to_int (TaggedSmallWord.shift_of_type ty))))
                   end
-                  get_n (* n@{0,1} ** (1+exp) == n *)
+                  (get_n ^^ TaggedSmallWord.msb_adjust ty) (* n@{0,1} ** (1+exp) == n *)
               end
               begin
                 let overflow_type = match ty with
@@ -9120,17 +9131,17 @@ let compile_binop env t op : SR.t * SR.t * G.t =
                 | _ -> assert false in
                 let overflow_type_bits = TaggedSmallWord.bits_of_type overflow_type in
                 let overflow_boundary = -Int.(sub (mul overflow_type_bits 2) 2) in
-                get_exp ^^ TaggedSmallWord.lsb_adjust ty ^^ compile_unboxed_const 64L ^^
+                get_exp ^^ compile_unboxed_const 64L ^^
                 compile_comparison I64Op.GeU ^^ then_arithmetic_overflow env ^^
-                signed_dynamics (get_n ^^ TaggedSmallWord.lsb_adjust ty) ^^ compile_sub_const (Int64.of_int (Int.sub bits 1)) ^^
-                get_exp ^^ TaggedSmallWord.lsb_adjust Type.Int32 ^^ G.i (Binary (Wasm_exts.Values.I64 I64Op.Mul)) ^^
+                signed_dynamics get_n ^^ compile_sub_const (Int64.of_int (Int.sub bits 1)) ^^
+                get_exp ^^ TaggedSmallWord.msb_adjust ty ^^ TaggedSmallWord.lsb_adjust Type.Int32 ^^
+                G.i (Binary (Wasm_exts.Values.I64 I64Op.Mul)) ^^
                 compile_unboxed_const (Int64.of_int overflow_boundary) ^^
                 compile_comparison I64Op.LtS ^^ then_arithmetic_overflow env ^^
                 get_n ^^ get_exp ^^
-                TaggedSmallWord.compile_nat_power env ty ^^
-                set_res ^^ 
+                TaggedSmallWord.compile_nat_power env ^^ set_res ^^ 
                 get_res ^^ get_res ^^ enforce_signed_bits env bits ^^
-                get_res
+                get_res ^^ TaggedSmallWord.msb_adjust ty
               end
           end
           (compile_unboxed_const
