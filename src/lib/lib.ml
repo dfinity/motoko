@@ -507,6 +507,11 @@ struct
     | Some y -> y
     | None -> x
 
+  let map2 (f : 'a -> 'b -> 'c) (a : 'a option) (b : 'b option) =
+    match a, b with
+    | Some a, Some b -> Some (f a b)
+    | _ -> None
+
   module Syntax =
   struct
     let (let+) x f = Option.map f x

@@ -32,6 +32,7 @@ let check_modes ms =
   | [] -> (M.Write, M.Promises)
   | [{it=Oneway; _}] -> (M.Write, M.Returns)
   | [{it=Query; _}] -> (M.Query, M.Promises)
+  | [{it=Composite; _}] -> (M.Composite, M.Promises)
   | _ -> assert false
 
 let check_label lab : M.lab =
@@ -97,24 +98,34 @@ and check_meth env occs (m: typ_meth) =
 
 let check_prog (env: typ I.Env.t) actor : M.typ =
   let occs = ref M.Env.empty in
-  match actor with
-  | Some {it=ServT ms; _} ->
-     let fs = List.map (check_meth env occs) ms in
-     (* TODO: why do we only check and include the mentioned types (occs),
-        and not all of the .did declared ones (available to the caller, if not here? *)
-     let fs = M.Env.fold (fun id t fs ->
+  let fs = match actor with
+    | Some {it=ServT ms; _} ->
+      List.map (check_meth env occs) ms
+    | Some {it=ClassT (ts1, t); at; _} ->
+      (*@HACK: import service constructors as instantiated services *)
+      (*TODO: fix dfx to derive the correct instantiated candid instead *)
+      begin
+        let t' = check_typ' env occs t in
+        match M.normalize t' with
+        | M.Obj (M.Actor, fs) ->
+          Diag.print_messages [Diag.warning_message at "M0185" "import"
+            "importing Candid service constructor as instantiated service"];
+          fs
+        | _ -> assert false
+      end
+    | None -> assert false
+    | _ -> assert false
+  (* TODO: why do we only check and include the mentioned types (occs),
+     and not all of the .did declared ones (available to the caller), if not mentioned here? *)
+  in
+  let fs1 = M.Env.fold (fun id t fs ->
        match t with
        | M.Con (c, _) ->
           (* TODO: consider adding deprecation as types can disappear even
              across compatible .dids *)
           M.{lab = id; typ = M.Typ c; depr = None}::fs
        | _ -> assert false) !occs fs in
-     M.Obj (M.Actor, List.sort M.compare_field fs)
-  | Some {it=ClassT _; at; _} ->
-     raise (UnsupportedCandidFeature
-       (Diag.error_message at "M0163" "import" "cannot import a Candid service constructor"))
-  | None -> assert false
-  | _ -> assert false
+  M.Obj (M.Actor, List.sort M.compare_field fs1)
 
 let check_typ env t = check_typ' env (ref M.Env.empty) t
 let check_typs env t = check_typs' env (ref M.Env.empty) t
