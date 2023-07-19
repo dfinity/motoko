@@ -48,7 +48,6 @@ func idlHash(x : Text) : Nat32 { (prim "idlHash" : Text -> Nat32) x };
 // Printing
 
 func debugPrint(x : Text) { (prim "print" : Text -> ()) x };
-
 func debugPrintNat(x : Nat) { debugPrint (@text_of_Nat x) };
 func debugPrintInt(x : Int) { debugPrint (@text_of_Int x) };
 func debugPrintChar(x : Char) { debugPrint (charToText x) };

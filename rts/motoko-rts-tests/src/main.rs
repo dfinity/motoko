@@ -3,9 +3,7 @@
 #[macro_use]
 mod print;
 
-mod libc_stub;
-
-// mod bigint; // TODO: Support once WASI 64-bit is available.
+mod bigint;
 mod bitrel;
 mod continuation_table;
 mod crc32;
@@ -25,7 +23,7 @@ fn main() {
 
     unsafe {
         println!("Tests started");
-        // bigint::test(); // TODO: Support once WASI 64-bit is available.
+        bigint::test();
         bitrel::test();
         continuation_table::test();
         crc32::test();

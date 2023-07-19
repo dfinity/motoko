@@ -6,6 +6,7 @@ are used by the desugarer, by ir-to-ir-passes or by `mo:⛔`), but not user
 visible. All names here are prefixed with `@`, so they are invisible from user
 code, and cannot be shadowed.
 */
+
 type @Iter<T_> = {next : () -> ?T_};
 
 var @cycles : Nat = 0;
@@ -94,6 +95,7 @@ func @text_chars(xs : Text) : () -> @Iter<Char> =
         ?((prim "text_iter_next" : TextIter -> Char) i)
     };
   };
+
 
 // Internal helper functions for the show translation
 
@@ -631,5 +633,6 @@ func @cancelTimer(id : Nat) {
     @timers := null
   }
 };
+
 
 func @set_global_timer(time : Nat64) = ignore (prim "global_timer_set" : Nat64 -> Nat64) time;
