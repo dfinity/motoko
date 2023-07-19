@@ -39,7 +39,7 @@ pub unsafe fn post_write_barrier<M: Memory>(mem: &mut M, location: usize) {
                 REMEMBERED_SET
                     .as_mut()
                     .unwrap()
-                    .insert(mem, Value::from_raw(location as u32));
+                    .insert(mem, Value::from_raw(location));
             }
         }
     }

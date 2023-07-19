@@ -19,7 +19,7 @@ unsafe fn should_do_gc(max_live: crate::types::Bytes<usize>) -> bool {
 
     let heap_limit = core::cmp::min(
         (LAST_HP as f64 * HEAP_GROWTH_FACTOR) as usize,
-        (LAST_HP + max_live.0) / 2,
+        (LAST_HP + max_live.as_usize()) / 2,
     );
 
     get_hp_unskewed() >= heap_limit
