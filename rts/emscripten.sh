@@ -1,3 +1,5 @@
+#!/usr/bin/env bash
+
 # Installing emscripten 17
 # TODO: We would better have a nix package for emscripten 17.
 
