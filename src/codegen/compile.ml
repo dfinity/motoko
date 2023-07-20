@@ -8956,8 +8956,8 @@ let compile_Nat32_kernel env name op =
        (("a", I64Type), ("b", I64Type)) [I64Type]
        (fun env get_a get_b ->
          let (set_res, get_res) = new_local env "res" in
-         get_a ^^ compile_shrS_const 32L ^^
-         get_b ^^ compile_shrS_const 32L ^^
+         get_a ^^ compile_shrU_const 32L ^^
+         get_b ^^ compile_shrU_const 32L ^^
          G.i (Binary (Wasm_exts.Values.I64 op)) ^^
          set_res ^^ get_res ^^
          enforce_32_unsigned_bits env ^^
