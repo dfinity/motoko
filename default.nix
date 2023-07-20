@@ -766,9 +766,10 @@ rec {
       deser
       samples
       rts
-      base-src
-      base-tests
-      base-doc
+      # TODO: Include base libraries once 64-bit support is enabled there too for the test runs.
+      # base-src
+      # base-tests
+      # base-doc
       docs
       report-site
       ic-ref-run
