@@ -520,8 +520,9 @@ rec {
       # perf       = perf_subdir "perf"       [ moc nixpkgs.drun ];
       # bench      = perf_subdir "bench"      [ moc nixpkgs.drun ic-wasm ];
       # viper      = test_subdir "viper"      [ moc nixpkgs.which nixpkgs.openjdk nixpkgs.z3 ];
-      # TODO: Re-enable profiling-graphs when 64-bit support is available for IC
-      inherit qc lsp unit candid coverage;
+      # TODO: Re-enable when 64-bit support is available for running these tests
+      # inherit qc lsp unit candid profiling-graphs coverage;
+      inherit lsp unit coverage;
     }) // { recurseForDerivations = true; };
 
   samples = stdenv.mkDerivation {
@@ -771,8 +772,9 @@ rec {
       # base-src
       # base-tests
       # base-doc
-      docs
-      report-site
+      # docs
+      # TODO: No profiling graphs currently reported since the benchmark would require 64-bit drun
+      # report-site
       ic-ref-run
       shell
       check-formatting
@@ -781,8 +783,10 @@ rec {
       check-grammar
       check-error-codes
     ] ++
-    builtins.attrValues tests ++
-    builtins.attrValues js;
+    builtins.attrValues tests
+    # TODO: Enable 64-bit in node.js for moc.js tests
+    # ++ builtins.attrValues js
+    ;
   };
 
   viperServer = nixpkgs.fetchurl {
