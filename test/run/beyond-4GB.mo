@@ -2,11 +2,11 @@
 import P "mo:⛔";
 do {
 
-  let expectedSize = 10 * 1024 * 1024 * 1024; // 10 GB
+  let expectedSize = 5 * 1024 * 1024 * 1024; // 10 GB
   var c = 5;
 
   while(c > 0) {
-    let a : [var Nat8] = P.Array_init<Nat8>(1024*1024*1024/4, 0xFF);
+    let a : [var Nat8] = P.Array_init<Nat8>(1024*1024*1024/8, 0xFF);
     c -= 1;
   };
 
