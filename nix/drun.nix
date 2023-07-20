@@ -28,7 +28,6 @@ pkgs:
       };
 
       patchPhase = ''
-pwd
         cd ../cargo-vendor-dir
         patch librocksdb-sys*/build.rs << EOF
 @@ -118,6 +118,10 @@
