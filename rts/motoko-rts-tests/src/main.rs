@@ -12,6 +12,7 @@ mod stream;
 mod text;
 mod utf8;
 
+use motoko_rts::mem_utils::{legacy_memcpy, legacy_memset};
 use motoko_rts::types::{read64, write64, Bytes};
 
 fn main() {
@@ -70,4 +71,14 @@ extern "C" fn bigint_trap() -> ! {
 unsafe extern "C" fn print_ptr(ptr: usize, len: u32) {
     let str: &[u8] = core::slice::from_raw_parts(ptr as *const u8, len as usize);
     println!("[RTS] {}", String::from_utf8_lossy(str));
+}
+
+#[no_mangle]
+unsafe extern "C" fn memory_copy(to: usize, from: usize, length: Bytes<u32>) {
+    legacy_memcpy(to, from, length);
+}
+
+#[no_mangle]
+unsafe extern "C" fn memory_fill(to: usize, value: i32, length: Bytes<u32>) {
+    legacy_memset(to, value, length);
 }

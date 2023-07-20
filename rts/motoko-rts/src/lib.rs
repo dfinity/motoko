@@ -29,7 +29,7 @@ pub mod gc;
 #[cfg(feature = "ic")]
 mod idl;
 pub mod leb128;
-mod mem_utils;
+pub mod mem_utils;
 pub mod memory;
 pub mod principal_id;
 mod static_checks;

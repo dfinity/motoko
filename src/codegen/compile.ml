@@ -924,6 +924,8 @@ module RTS = struct
 
   (* The connection to the C and Rust parts of the RTS *)
   let system_imports env =
+    E.add_func_import env "rts" "legacy_memcpy" [I32Type; I32Type; I32Type] [];
+    E.add_func_import env "rts" "legacy_memset" [I32Type; I32Type; I32Type] [];
     E.add_func_import env "rts" "memcmp" [I32Type; I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "version" [] [I32Type];
     E.add_func_import env "rts" "parse_idl_header" [I32Type; I32Type; I32Type; I32Type; I32Type] [];
@@ -1178,7 +1180,19 @@ module Heap = struct
 
   (* Convenience functions related to memory *)
   (* Copying bytes (works on unskewed memory addresses) *)
-  let memcpy env = G.i MemoryCopy
+  let memcpy env = 
+    if E.mode env = Flags.ICMode then
+      E.call_import env "rts" "legacy_memcpy"
+    else
+      G.i MemoryCopy
+
+  (* Used for memory zero-initializtion in the RTS *)
+  let memset env =
+    if E.mode env = Flags.ICMode then
+      E.call_import env "rts" "legacy_memset"
+    else
+      G.i MemoryFill
+
   (* Comparing bytes (works on unskewed memory addresses) *)
   let memcmp env = E.call_import env "rts" "memcmp"
 
@@ -5219,6 +5233,32 @@ end (* StableMemory *)
 
 module RTS_Exports = struct
   let system_exports env =
+    let memory_copy_fi = E.add_fun env "memory_copy" (
+      Func.of_body env ["to", I32Type; "from", I32Type; "byte_length", I32Type] [] (fun env ->
+        G.i (LocalGet (nr 0l)) ^^
+        G.i (LocalGet (nr 1l)) ^^
+        G.i (LocalGet (nr 2l)) ^^
+        Heap.memcpy env
+      )
+    ) in
+    E.add_export env (nr {
+      name = Lib.Utf8.decode "memory_copy";
+      edesc = nr (FuncExport (nr memory_copy_fi))
+    });
+
+    let memory_fill_fi = E.add_fun env "memory_fill" (
+      Func.of_body env ["to", I32Type; "value", I32Type; "byte_length", I32Type] [] (fun env ->
+        G.i (LocalGet (nr 0l)) ^^
+        G.i (LocalGet (nr 1l)) ^^
+        G.i (LocalGet (nr 2l)) ^^
+        Heap.memset env
+      )
+    ) in
+    E.add_export env (nr {
+      name = Lib.Utf8.decode "memory_fill";
+      edesc = nr (FuncExport (nr memory_fill_fi))
+    });
+
     let bigint_trap_fi = E.add_fun env "bigint_trap" (
       Func.of_body env [] [] (fun env ->
         E.trap_with env "bigint function error"
