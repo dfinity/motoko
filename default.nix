@@ -522,7 +522,7 @@ rec {
       # viper      = test_subdir "viper"      [ moc nixpkgs.which nixpkgs.openjdk nixpkgs.z3 ];
       # TODO: Re-enable when 64-bit support is available for running these tests
       # inherit qc lsp unit candid profiling-graphs coverage;
-      inherit lsp unit coverage;
+      inherit qc lsp unit;
     }) // { recurseForDerivations = true; };
 
   samples = stdenv.mkDerivation {
