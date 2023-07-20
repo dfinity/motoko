@@ -62,6 +62,38 @@ for (c in Text.toIter("abc")) {
 }
 ```
 
+## Function `toArray`
+``` motoko no-repl
+func toArray(t : Text) : [Char]
+```
+
+Creates a new `Array` containing characters of the given `Text`.
+
+Equivalent to `Iter.toArray(t.chars())`.
+
+```motoko include=import
+assert Text.toArray("Café") == ['C', 'a', 'f', 'é'];
+```
+
+Runtime: O(t.size())
+Space: O(t.size())
+
+## Function `toVarArray`
+``` motoko no-repl
+func toVarArray(t : Text) : [var Char]
+```
+
+Creates a new mutable `Array` containing characters of the given `Text`.
+
+Equivalent to `Iter.toArrayMut(t.chars())`.
+
+```motoko include=import
+assert Text.toVarArray("Café") == [var 'C', 'a', 'f', 'é'];
+```
+
+Runtime: O(t.size())
+Space: O(t.size())
+
 ## Function `fromIter`
 ``` motoko no-repl
 func fromIter(cs : Iter.Iter<Char>) : Text

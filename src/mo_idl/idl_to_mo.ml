@@ -32,6 +32,7 @@ let check_modes ms =
   | [] -> (M.Write, M.Promises)
   | [{it=Oneway; _}] -> (M.Write, M.Returns)
   | [{it=Query; _}] -> (M.Query, M.Promises)
+  | [{it=Composite; _}] -> (M.Composite, M.Promises)
   | _ -> assert false
 
 let check_label lab : M.lab =
