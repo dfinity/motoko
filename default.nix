@@ -519,8 +519,9 @@ rec {
       # TODO: drun used in perf and bench does not yet support Wasm64
       # perf       = perf_subdir "perf"       [ moc nixpkgs.drun ];
       # bench      = perf_subdir "bench"      [ moc nixpkgs.drun ic-wasm ];
-      viper      = test_subdir "viper"      [ moc nixpkgs.which nixpkgs.openjdk nixpkgs.z3 ];
-      inherit qc lsp unit candid profiling-graphs coverage;
+      # viper      = test_subdir "viper"      [ moc nixpkgs.which nixpkgs.openjdk nixpkgs.z3 ];
+      # TODO: Re-enable profiling-graphs when 64-bit support is available for IC
+      inherit qc lsp unit candid coverage;
     }) // { recurseForDerivations = true; };
 
   samples = stdenv.mkDerivation {
