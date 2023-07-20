@@ -1186,7 +1186,7 @@ module Heap = struct
     else
       G.i MemoryCopy
 
-  (* Used for memory zero-initializtion in the RTS *)
+  (* Used for memory zero-initialization in the RTS *)
   let memset env =
     if E.mode env = Flags.ICMode then
       E.call_import env "rts" "legacy_memset"
