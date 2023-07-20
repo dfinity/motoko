@@ -5,13 +5,13 @@ use crate::types::{size_of, Blob, Bytes, Region, Value, TAG_REGION};
 
 use motoko_rts_macros::ic_mem_fn;
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct BlockId(pub u16);
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct RegionId(pub u16);
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct RegionSizeInPages(pub u64);
 
 // Note: Use this type only in local variables, as it contains raw pointers
@@ -380,7 +380,7 @@ pub unsafe fn region_set_mem_size<M: Memory>(_mem: &mut M, size: u64) {
 unsafe fn region_reserve_id_span<M: Memory>(_mem: &mut M, first: Option<RegionId>, last: RegionId) {
     if let Some(first) = first {
         let next_id = meta_data::total_allocated_regions::get() as u16;
-        assert_eq!(first.0, next_id);
+        assert!(first.0 == next_id);
         assert!(first.0 <= last.0);
         meta_data::total_allocated_regions::set((last.0 + 1) as u64);
     } else {
@@ -402,7 +402,7 @@ pub unsafe fn region_new<M: Memory>(mem: &mut M) -> Value {
         let r_id = RegionId::from_id(next_id);
         let c = meta_data::region_table::get(&r_id);
         // sanity check: Region table says that this region is available.
-        assert_eq!(c, None);
+        assert!(c == None);
         meta_data::region_table::set(&r_id, Some(RegionSizeInPages(0)));
     }
     r_ptr
@@ -437,7 +437,7 @@ pub unsafe fn region_recover<M: Memory>(mem: &mut M, rid: &RegionId) -> Value {
             }
         }
     }
-    assert_eq!(recovered_blocks, block_count);
+    assert!(recovered_blocks == block_count);
     r_ptr
 }
 
@@ -559,7 +559,7 @@ pub(crate) unsafe fn region_migration_from_v2_into_v2<M: Memory>(mem: &mut M) {
 #[ic_mem_fn]
 pub(crate) unsafe fn region_init<M: Memory>(mem: &mut M, from_version: i32) {
     // Recall that we've done this later, without asking ic0_stable::size.
-    assert_eq!(crate::region::REGION_MEM_SIZE_INIT, false);
+    assert!(crate::region::REGION_MEM_SIZE_INIT == false);
     crate::region::REGION_MEM_SIZE_INIT = true;
 
     match from_version {
@@ -618,7 +618,7 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64, max_
         let c = meta_data::region_table::get(&r_id);
 
         // Region table agrees with heap object's field.
-        assert_eq!(c, Some(RegionSizeInPages(old_page_count.into())));
+        assert!(c == Some(RegionSizeInPages(old_page_count.into())));
 
         // Increase both:
         (*r).page_count += new_pages_;
