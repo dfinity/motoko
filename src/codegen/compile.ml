@@ -6852,8 +6852,13 @@ module MakeSerialization (Strm : Stream) = struct
     )
 
 
-  let deserialize_from_blob extended env ts =
-    let open Deserializers in
+
+
+
+
+
+  let deserialize_from_blob (readers : (module RawReaders)) extended env ts =
+    let open (val readers) in
     let ts_name = typ_seq_hash ts in
     let name =
       (* TODO(#3185): this specialization on `extended` seems redundant,
@@ -6973,7 +6978,7 @@ module MakeSerialization (Strm : Stream) = struct
   let deserialize env ts =
     IC.arg_data env ^^
     Bool.lit false ^^ (* can't recover *)
-    deserialize_from_blob false env ts
+    deserialize_from_blob (module Deserializers : RawReaders) false env ts
 
 (*
 Note [speculating for short (S)LEB encoded bignums]
@@ -7486,11 +7491,13 @@ module Stabilization = struct
           extend64 get_len ^^
           IC.system_call env "stable64_read" ^^
 
+
+
           let (set_val, get_val) = new_local env "val" in
           (* deserialize blob to val *)
           get_blob ^^
           Bool.lit false ^^ (* can't recover *)
-          Serialization.deserialize_from_blob true env [ty] ^^
+          Serialization.deserialize_from_blob Serialization.(module Deserializers : RawReaders) true env [ty] ^^
           set_val ^^
 
           (* clear blob contents *)
@@ -9725,13 +9732,13 @@ and compile_prim_invocation (env : E.t) ae p es at =
     StackRep.of_arity (List.length ts),
     compile_exp_vanilla env ae e ^^
     Bool.lit false ^^ (* can't recover *)
-    Serialization.deserialize_from_blob false env ts
+    Serialization.(deserialize_from_blob (module Deserializers : RawReaders)) false env ts
 
   | DeserializeOptPrim ts, [e] ->
     SR.Vanilla,
     compile_exp_vanilla env ae e ^^
     Bool.lit true ^^ (* can (!) recover *)
-    Serialization.deserialize_from_blob false env ts ^^
+    Serialization.(deserialize_from_blob (module Deserializers : RawReaders)) false env ts ^^
     begin match ts with
     | [] ->
       (* return some () *)
