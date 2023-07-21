@@ -6130,6 +6130,7 @@ module MakeSerialization (Strm : Stream) = struct
   end
 
   module type RawReaders = sig
+    val substrate_type : Wasm.Types.value_type
     val read_byte : E.t -> G.t -> G.t
     val read_word16 : E.t -> G.t -> G.t
     val read_word32 : E.t -> G.t -> G.t
@@ -6151,24 +6152,12 @@ module MakeSerialization (Strm : Stream) = struct
     val is_empty : G.t -> G.t
   end
 
-  module (*Blob-*)Deserializers (*val env : E.t*) : RawReaders = struct
-    let read_byte env get_data_buf = ReadBuf.read_byte env get_data_buf
-    let read_word16 env get_data_buf = ReadBuf.read_word16 env get_data_buf
-    let read_word32 env get_data_buf = ReadBuf.read_word32 env get_data_buf
-    let read_word64 env get_data_buf = ReadBuf.read_word64 env get_data_buf
-    let read_leb128 env get_data_buf = ReadBuf.read_leb128 env get_data_buf
-    let read_sleb128 env get_data_buf = ReadBuf.read_sleb128 env get_data_buf
-    let read_blob env get_data_buf get_len = ReadBuf.read_blob env get_data_buf get_len
-
-    let get_ptr buf = ReadBuf.get_ptr buf
-    let set_ptr buf start = ReadBuf.set_ptr buf start
-    let set_size buf start = ReadBuf.set_size buf start
-    let is_empty = ReadBuf.is_empty
-
-    let advance, alloc, set_end, get_end = ReadBuf.(advance, alloc, set_end, get_end)
+  module BlobDeserializers (*val env : E.t*) : RawReaders = struct
+    let substrate_type = I32Type
+    include ReadBuf
   end
 
-  let rec deserialize_go env t =
+  let rec deserialize_go (readers : (module RawReaders)) env t =
     let open Type in
     let t = Type.normalize t in
     let name = "@deserialize_go<" ^ typ_hash t ^ ">" in
@@ -6194,7 +6183,8 @@ module MakeSerialization (Strm : Stream) = struct
       G.i (Compare (Wasm.Values.I32 I32Op.LeU)) ^^
       E.else_trap_with env ("IDL error: circular record read") ^^
 
-      let open Deserializers in
+      let deserialize_go = deserialize_go readers in
+      let open (val readers) in
 
       (* Remember data buffer position, to detect progress *)
       let (set_old_pos, get_old_pos) = new_local env "old_pos" in
@@ -6857,7 +6847,7 @@ module MakeSerialization (Strm : Stream) = struct
 
 
 
-  let deserialize_from_blob (readers : (module RawReaders)) extended env ts =
+  let deserialize_from (readers : (module RawReaders)) extended env ts =
     let open (val readers) in
     let ts_name = typ_seq_hash ts in
     let name =
@@ -6867,7 +6857,7 @@ module MakeSerialization (Strm : Stream) = struct
       if extended
       then "@deserialize_extended<" ^ ts_name ^ ">"
       else "@deserialize<" ^ ts_name ^ ">" in
-    Func.share_code2 env name (("blob", I32Type), ("can_recover", I32Type)) (List.map (fun _ -> I32Type) ts) (fun env get_blob get_can_recover ->
+    Func.share_code2 env name (("blob", substrate_type), ("can_recover", I32Type)) (List.map (fun _ -> I32Type) ts) (fun env get_blob get_can_recover ->
       let (set_data_size, get_data_size) = new_local env "data_size" in
       let (set_refs_size, get_refs_size) = new_local env "refs_size" in
       let (set_data_start, get_data_start) = new_local env "data_start" in
@@ -6890,7 +6880,7 @@ module MakeSerialization (Strm : Stream) = struct
       alloc env (fun get_data_buf -> alloc env (fun get_ref_buf ->
 
       set_ptr get_data_buf get_data_start ^^
-      Deserializers.set_size get_data_buf get_data_size ^^
+      set_size get_data_buf get_data_size ^^
       set_ptr get_ref_buf get_refs_start ^^
       set_size get_ref_buf (get_refs_size ^^ compile_mul_const Heap.word_size) ^^
 
@@ -6944,7 +6934,7 @@ module MakeSerialization (Strm : Stream) = struct
                 (* recovery mode *)
                 can_recover ^^
                 Stack.set_local env StackArgs.can_recover ^^
-                deserialize_go env t
+                deserialize_go readers env t
              )
              ^^ set_val ^^
              get_arg_count ^^ compile_sub_const 1l ^^ set_arg_count ^^
@@ -6978,7 +6968,7 @@ module MakeSerialization (Strm : Stream) = struct
   let deserialize env ts =
     IC.arg_data env ^^
     Bool.lit false ^^ (* can't recover *)
-    deserialize_from_blob (module Deserializers : RawReaders) false env ts
+    deserialize_from (module BlobDeserializers : RawReaders) false env ts
 
 (*
 Note [speculating for short (S)LEB encoded bignums]
@@ -7387,7 +7377,7 @@ module Stabilization = struct
 
   let destabilize env ty =
     match E.mode env with
-    | Flags.ICMode | Flags.RefMode ->
+    | Flags.(ICMode | RefMode) ->
       let (set_pages, get_pages) = new_local64 env "pages" in
       IC.system_call env "stable64_size" ^^
       set_pages ^^
@@ -7451,7 +7441,7 @@ module Stabilization = struct
               (* restore mem_size *)
               get_M ^^
               compile_add64_const (Int64.sub page_size64 12L) ^^
-              extend64 (StableMem.read_and_clear_word32 env) ^^ (*TODO: use 64 bits *)
+              extend64 (StableMem.read_and_clear_word32 env) ^^ (* TODO: use 64 bits *)
               StableMem.set_mem_size env ^^
 
               StableMem.get_mem_size env ^^
@@ -7483,6 +7473,15 @@ module Stabilization = struct
               set_offset
             end ^^ (* if_ *)
 
+
+            if false then
+              begin
+
+                (*TODO*)
+                compile_unboxed_zero
+              end
+            else
+              begin
           let (set_blob, get_blob) = new_local env "blob" in
           (* read blob from stable memory *)
           get_len ^^ Blob.alloc env ^^ set_blob ^^
@@ -7491,13 +7490,11 @@ module Stabilization = struct
           extend64 get_len ^^
           IC.system_call env "stable64_read" ^^
 
-
-
           let (set_val, get_val) = new_local env "val" in
           (* deserialize blob to val *)
           get_blob ^^
           Bool.lit false ^^ (* can't recover *)
-          Serialization.deserialize_from_blob Serialization.(module Deserializers : RawReaders) true env [ty] ^^
+          Serialization.(deserialize_from (module BlobDeserializers : RawReaders)) true env [ty] ^^
           set_val ^^
 
           (* clear blob contents *)
@@ -7512,6 +7509,7 @@ module Stabilization = struct
 
           (* return val *)
           get_val
+         end
         end
     | _ -> assert false
 end
@@ -9732,13 +9730,13 @@ and compile_prim_invocation (env : E.t) ae p es at =
     StackRep.of_arity (List.length ts),
     compile_exp_vanilla env ae e ^^
     Bool.lit false ^^ (* can't recover *)
-    Serialization.(deserialize_from_blob (module Deserializers : RawReaders)) false env ts
+    Serialization.(deserialize_from (module BlobDeserializers : RawReaders)) false env ts
 
   | DeserializeOptPrim ts, [e] ->
     SR.Vanilla,
     compile_exp_vanilla env ae e ^^
     Bool.lit true ^^ (* can (!) recover *)
-    Serialization.(deserialize_from_blob (module Deserializers : RawReaders)) false env ts ^^
+    Serialization.(deserialize_from (module BlobDeserializers : RawReaders)) false env ts ^^
     begin match ts with
     | [] ->
       (* return some () *)
