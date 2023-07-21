@@ -52,8 +52,8 @@ func idlHash(x : Text) : Nat32 { (prim "idlHash" : Text -> Nat32) x };
 // Printing
 
 func debugPrint(x : Text) { (prim "print" : Text -> ()) x };
-func debugPrintNat(x : Nat) { debugPrint(@ text_of_Nat x) };
-func debugPrintInt(x : Int) { debugPrint(@ text_of_Int x) };
+func debugPrintNat(x : Nat) { debugPrint(@text_of_Nat x) };
+func debugPrintInt(x : Int) { debugPrint(@text_of_Int x) };
 func debugPrintChar(x : Char) { debugPrint(charToText x) };
 
 // Trapping
@@ -86,14 +86,14 @@ func rts_collector_instructions() : Nat {
 
 // Total conversions (fixed to big)
 
-let int64ToInt = @ int64ToInt;
-let int32ToInt = @ int32ToInt;
-let int16ToInt = @ int16ToInt;
-let int8ToInt = @ int8ToInt;
-let nat64ToNat = @ nat64ToNat;
-let nat32ToNat = @ nat32ToNat;
-let nat16ToNat = @ nat16ToNat;
-let nat8ToNat = @ nat8ToNat;
+let int64ToInt = @int64ToInt;
+let int32ToInt = @int32ToInt;
+let int16ToInt = @int16ToInt;
+let int8ToInt = @int8ToInt;
+let nat64ToNat = @nat64ToNat;
+let nat32ToNat = @nat32ToNat;
+let nat16ToNat = @nat16ToNat;
+let nat8ToNat = @nat8ToNat;
 
 // Trapping conversions (big to fixed)
 
@@ -215,7 +215,7 @@ func intToFloat(n : Int) : Float = (prim "num_conv_Int_Float" : Int -> Float)(n)
 func floatToInt64(f : Float) : Int64 = (prim "num_conv_Float_Int64" : Float -> Int64)(f);
 func int64ToFloat(n : Int64) : Float = (prim "num_conv_Int64_Float" : Int64 -> Float)(n);
 
-let floatToText = @ text_of_Float;
+let floatToText = @text_of_Float;
 
 // Configurable Float formatter
 // mode:
@@ -287,7 +287,7 @@ func isController(p : Principal) : Bool = (prim "is_controller" : Principal -> B
 func canisterVersion() : Nat64 = (prim "canister_version" : () -> Nat64)();
 
 // Untyped dynamic actor creation from blobs
-let createActor : (wasm : Blob, argument : Blob) -> async Principal = @ create_actor_helper;
+let createActor : (wasm : Blob, argument : Blob) -> async Principal = @create_actor_helper;
 
 func cyclesBalance() : Nat {
   (prim "cyclesBalance" : () -> Nat)();
@@ -298,7 +298,7 @@ func cyclesAvailable() : Nat {
 };
 
 func cyclesRefunded() : Nat {
-  @ refund;
+  @refund;
 };
 
 func cyclesAccept(amount : Nat) : Nat {
@@ -307,9 +307,9 @@ func cyclesAccept(amount : Nat) : Nat {
 
 func cyclesAdd(amount : Nat) : () {
   if (amount == 0) return;
-  @ cycles += amount;
+  @cycles += amount;
   // trap if @cycles would exceed 2^128
-  if (@ cycles > 0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFF) {
+  if (@cycles > 0xFFFFFFFF_FFFFFFFF_FFFFFFFF_FFFFFFFF) {
     trap("cannot add more than 2^128 cycles");
   };
 };
@@ -367,6 +367,6 @@ func stableMemoryStoreBlob(offset : Nat64, val : Blob) : () = (prim "stableMemor
 // Returns a query that computes the current actor's stable variable statistics (for now, the current size, in bytes, of serialized stable variable data).
 func stableVarQuery() : shared query () -> async { size : Nat64 } = (prim "stableVarQuery" : () -> (shared query () -> async { size : Nat64 }))();
 
-let call_raw = @ call_raw;
+let call_raw = @call_raw;
 
 func performanceCounter(counter : Nat32) : Nat64 = (prim "performanceCounter" : (Nat32) -> Nat64) counter;
