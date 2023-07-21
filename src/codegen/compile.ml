@@ -1181,17 +1181,15 @@ module Heap = struct
   (* Convenience functions related to memory *)
   (* Copying bytes (works on unskewed memory addresses) *)
   let memcpy env = 
-    if E.mode env = Flags.RefMode then
-      E.call_import env "rts" "legacy_memcpy"
-    else
-      G.i MemoryCopy
+    match E.mode env with
+    | Flags.ICMode | Flags.RefMode -> E.call_import env "rts" "legacy_memcpy"
+    | _ -> G.i MemoryCopy
 
   (* Used for memory zero-initialization in the RTS *)
   let memset env =
-    if E.mode env = Flags.RefMode then
-      E.call_import env "rts" "legacy_memset"
-    else
-      G.i MemoryFill
+    match E.mode env with
+    | Flags.ICMode | Flags.RefMode -> E.call_import env "rts" "legacy_memset"
+    | _ -> G.i MemoryFill
 
   (* Comparing bytes (works on unskewed memory addresses) *)
   let memcmp env = E.call_import env "rts" "memcmp"
