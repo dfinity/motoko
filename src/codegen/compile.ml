@@ -997,9 +997,9 @@ module RTS = struct
     E.add_func_import env "rts" "text_singleton" [I32Type] [I32Type];
     E.add_func_import env "rts" "text_size" [I32Type] [I32Type];
     E.add_func_import env "rts" "text_to_buf" [I32Type; I32Type] [];
-    E.add_func_import env "rts" "region_init" [I32Type] [];
+    E.add_func_import env "rts" "region_init" [I32Type; I64Type] [];
     E.add_func_import env "rts" "region_get_mem_size" [] [I64Type];
-    E.add_func_import env "rts" "region_set_mem_size" [I64Type] [];
+    (*  E.add_func_import env "rts" "region_set_mem_size" [I64Type] []; *)
     E.add_func_import env "rts" "region_new" [] [I32Type];
     E.add_func_import env "rts" "region_id" [I32Type] [I32Type];
     E.add_func_import env "rts" "region_size" [I32Type] [I64Type];
@@ -5090,10 +5090,7 @@ module StableMem = struct
       G.i (GlobalGet (nr (E.get_global env "__stablemem_size")))
 
   let set_mem_size env =
-    if !Flags.use_stable_regions then
-      E.call_import env "rts" "region_set_mem_size"
-    else
-      G.i (GlobalSet (nr (E.get_global env "__stablemem_size")))
+    G.i (GlobalSet (nr (E.get_global env "__stablemem_size")))
 
   (* stable memory bounds check *)
   let guard env =
@@ -5447,7 +5444,7 @@ module RTS_Exports = struct
       name = Lib.Utf8.decode "stable64_write_moc";
       edesc = nr (FuncExport (nr stable64_write_moc_fi))
     });
-  
+
     let stable64_read_moc_fi =
       if E.mode env = Flags.WASIMode then
         E.add_fun env "stable64_read_moc" (
@@ -7601,7 +7598,7 @@ module Stabilization = struct
 
       end
 
-  let destabilize env ty save_version =
+  let destabilize env ty save_version save_region0_size =
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
       let (set_pages, get_pages) = new_local64 env "pages" in
@@ -7619,9 +7616,9 @@ module Stabilization = struct
            (fun f -> (f.Type.lab, fun () -> Opt.null_lit env))
            fs
           in
-          StableMem.get_mem_size env ^^
+(*          StableMem.get_mem_size env ^^
           G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
-          E.else_trap_with env "StableMem.mem_size non-zero" ^^
+          E.else_trap_with env "StableMem.mem_size non-zero" ^^ *)
           Object.lit_raw env fs'
         end
         begin
@@ -7642,6 +7639,7 @@ module Stabilization = struct
               let (set_M, get_M) = new_local64 env "M" in
               let (set_version, get_version) = new_local env "version" in
               let (set_N, get_N) = new_local64 env "N" in
+              let (set_mem_size, get_mem_size) = new_local64 env "mem_size" in
 
               IC.system_call env "stable64_size" ^^
               compile_sub64_const 1L ^^
@@ -7655,7 +7653,7 @@ module Stabilization = struct
               set_version ^^
               get_version ^^
               save_version ^^
-                
+
               (* check version *)
               get_version ^^
               compile_unboxed_const (StableMem.version()) ^^
@@ -7675,9 +7673,15 @@ module Stabilization = struct
               get_M ^^
               compile_add64_const (Int64.sub page_size64 12L) ^^
               extend64 (StableMem.read_and_clear_word32 env) ^^ (*TODO: use 64 bits *)
+              set_mem_size ^^
+
+              get_mem_size ^^
               StableMem.set_mem_size env ^^
 
-              StableMem.get_mem_size env ^^
+              get_mem_size ^^
+              save_region0_size ^^
+
+              get_mem_size ^^
               compile_shl64_const (Int64.of_int page_size_bits) ^^
               set_N ^^
 
@@ -7695,10 +7699,11 @@ module Stabilization = struct
               (* Sub-Case: Version 0.
                  Stable vars with NO Regions/Experimental API. *)
               (* assert mem_size == 0 *)
+(*              
               StableMem.get_mem_size env ^^
               G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
               E.else_trap_with env "unexpected, non-zero stable memory size" ^^
-
+ *)
               (* set len *)
               get_marker ^^
               set_len ^^
@@ -7706,7 +7711,7 @@ module Stabilization = struct
               (* set offset *)
               compile_const_64 4L ^^
               set_offset ^^
-              
+
               compile_unboxed_const (Int32.of_int 0) ^^
               save_version
             end ^^ (* if_ *)
@@ -10731,9 +10736,11 @@ and compile_prim_invocation (env : E.t) ae p es at =
     *)
     SR.Vanilla,
     let (set_version, get_version) = new_local env "version" in
-    Stabilization.destabilize env ty set_version ^^
+    let (set_region0_size, get_region0_size) = new_local64 env "version" in
+    Stabilization.destabilize env ty set_version set_region0_size ^^
       if !Flags.use_stable_regions then
         get_version ^^
+        get_region0_size ^^
         E.call_import env "rts" "region_init"
       else G.nop
 

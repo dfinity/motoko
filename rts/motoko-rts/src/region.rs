@@ -26,8 +26,10 @@ pub struct RegionObject(pub *mut Region);
 
 const NIL_REGION_ID: u16 = 0;
 
+/*
 // For giving the other logic the right number at the right time.
 pub(crate) static mut REGION_SET_MEM_SIZE: Option<u64> = None;
+ */
 
 // For giving the other logic the right number at the right time.
 pub(crate) static mut REGION_MEM_SIZE_INIT: bool = false;
@@ -231,7 +233,7 @@ mod meta_data {
         use super::offset;
         use crate::ic0_stable::nicer::{read_u16, write_u16};
 
-        use crate::region::{REGION_SET_MEM_SIZE, REGION_TOTAL_ALLOCATED_BLOCKS};
+        use crate::region::REGION_TOTAL_ALLOCATED_BLOCKS;
 
         pub fn get() -> u64 {
             read_u16(offset::TOTAL_ALLOCATED_BLOCKS) as u64
@@ -245,10 +247,12 @@ mod meta_data {
             unsafe {
                 REGION_TOTAL_ALLOCATED_BLOCKS = n as u16;
 
-                // Invalidate stale number (No longer use the code-gen
-                // provided number that we need to use, temporarily,
-                // for destabilization after an upgrade).
-                REGION_SET_MEM_SIZE = None;
+                /*
+                                // Invalidate stale number (No longer use the code-gen
+                                // provided number that we need to use, temporarily,
+                                // for destabilization after an upgrade).
+                                REGION_SET_MEM_SIZE = None;
+                */
             };
             write_u16(offset::TOTAL_ALLOCATED_BLOCKS, n as u16)
         }
@@ -353,27 +357,19 @@ pub unsafe fn region_id<M: Memory>(_mem: &mut M, r: Value) -> u32 {
 // Region manager's total memory size in stable memory, in _pages_.
 #[ic_mem_fn]
 pub unsafe fn region_get_mem_size<M: Memory>(_mem: &mut M) -> u64 {
-    let size = {
-        if let Some(s) = crate::region::REGION_SET_MEM_SIZE {
-            return s;
-        };
-        if crate::region::REGION_MEM_SIZE_INIT {
-            meta_data::size::STATIC_MEM_IN_PAGES as u64
-                + crate::region::REGION_TOTAL_ALLOCATED_BLOCKS as u64
-                    * (meta_data::size::PAGES_IN_BLOCK as u64)
-        } else {
-            // Before initialization of anything, give back zero.
-            0
-        }
-    };
-    size
+    assert!(crate::region::REGION_MEM_SIZE_INIT);
+    meta_data::size::STATIC_MEM_IN_PAGES as u64
+        + crate::region::REGION_TOTAL_ALLOCATED_BLOCKS as u64
+            * meta_data::size::PAGES_IN_BLOCK as u64
 }
 
+/*
 // Region manager's total memory size in stable memory, in _pages_.
 #[ic_mem_fn]
 pub unsafe fn region_set_mem_size<M: Memory>(_mem: &mut M, size: u64) {
     crate::region::REGION_SET_MEM_SIZE = Some(size);
 }
+*/
 
 // Helper for commmon logic that reserves low-valued RegionIds in a certain span for future use.
 // When first is some, we are actually reserving.  When first is none, we are checking that the reservation has occured.
@@ -459,7 +455,10 @@ pub(crate) unsafe fn region_migration_from_v0_into_v2<M: Memory>(mem: &mut M) {
 // region manager migration/initialization, with pre-existing stable data.
 // Case: Version 1 into version 2.
 //
-pub(crate) unsafe fn region_migration_from_v1_into_v2<M: Memory>(mem: &mut M) {
+pub(crate) unsafe fn region_migration_from_v1_into_v2<M: Memory>(
+    mem: &mut M,
+    version1_mem_size: u64,
+) {
     // Grow region0 to nearest block boundary, and add a block to fit a region manager meta data.
     //
     // Existing stable data becomes region 0, with first block relocated for region manager meta data.
@@ -473,8 +472,7 @@ pub(crate) unsafe fn region_migration_from_v1_into_v2<M: Memory>(mem: &mut M) {
 
     let header_len = meta_data::size::BLOCK_IN_BYTES as u32;
 
-    //let region0_pages = size() as u32;
-    let region0_pages = region_get_mem_size(mem) as u32;
+    let region0_pages = version1_mem_size as u32;
 
     let region0_blocks =
         (region0_pages + (meta_data::size::PAGES_IN_BLOCK - 1)) / (meta_data::size::PAGES_IN_BLOCK);
@@ -557,15 +555,19 @@ pub(crate) unsafe fn region_migration_from_v2_into_v2<M: Memory>(mem: &mut M) {
 //  - from version 2 into version 2.
 //
 #[ic_mem_fn]
-pub(crate) unsafe fn region_init<M: Memory>(mem: &mut M, from_version: i32) {
+pub(crate) unsafe fn region_init<M: Memory>(
+    mem: &mut M,
+    from_version: u32,
+    version1_mem_size: u64,
+) {
     // Recall that we've done this later, without asking ic0_stable::size.
     assert_eq!(crate::region::REGION_MEM_SIZE_INIT, false);
     crate::region::REGION_MEM_SIZE_INIT = true;
 
     match from_version {
         0 => region_migration_from_v0_into_v2(mem),
+        1 => region_migration_from_v1_into_v2(mem, version1_mem_size),
         2 => region_migration_from_v2_into_v2(mem),
-        1 => region_migration_from_v1_into_v2(mem),
         _ => unreachable!(),
     }
 }
