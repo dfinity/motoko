@@ -184,7 +184,8 @@ The `query` modifier is reflected in the type of a query function:
 
 As before, in `query` declarations and actor types the `shared` keyword can be omitted.
 
-## Messaging Restrictions
+
+## Messaging restrictions
 
 The Internet Computer places restrictions on when and how canisters are allowed to communicate. These restrictions are enforced dynamically on the Internet Computer but prevented statically in Motoko, ruling out a class of dynamic execution errors. Two examples are:
 
@@ -196,7 +197,7 @@ These restrictions are surfaced in Motoko as restrictions on the context in whic
 
 In Motoko, an expression occurs in an *asynchronous context* if it appears in the body of an `async` expression, which may be the body of a (shared or local) function or a stand-alone expression. The only exception are `query` functions, whose body is not considered to open an asynchronous context.
 
-In Motoko calling a shared function is an error unless the function is called in an asynchronouus context. In addition, calling a shared function from an actor class constructor is also an error.
+In Motoko calling a shared function is an error unless the function is called in an asynchronous context. In addition, calling a shared function from an actor class constructor is also an error.
 
 The `await` construct is only allowed in an asynchronous context.
 
@@ -236,5 +237,70 @@ The last two lines above *instantiate* the actor class twice. The first invocati
 :::note
 
 For now, the Motoko compiler gives an error when compiling programs that do not consist of a single actor or actor class. Compiled programs may still, however, reference imported actor classes. For more information, see [Importing actor classes](modules-and-imports.md#importing-actor-classes) and [Actor classes](actor-classes.md#actor-classes).
+
+:::
+
+## Composite query functions
+
+Although queries can be fast, when called from a frontend, yet trusted though slower, when called from an actor, they are also limited in what they can do.
+In particular, they cannot themselves issue further messages, including queries.
+
+To address this limitation, the Internet Computer supports another flavour of query function called a *composite query*.
+Like plain queries, the state changes made by a composite query are transient, isolated and never committed. Moreover, composite queries cannot call update functions, including those
+implicit in `async` expressions (which require update calls under the hood).
+Unlike plain queries, composite queries can call query functions and composite query functions, on the same and other actors, but only provided those actors reside on the same subnet.
+
+As a contrived example, consider generalising the previous `Counter` actor to a class of counters.
+Each instance of the class provides an additional `composite query` to sum the values
+of a given array of counters:
+
+``` motoko file=./examples/CounterWithCompositeQuery.mo
+```
+
+Declaring `sum` as a `composite query` enables it call the `peek` queries of its argument counters.
+
+While *update* message can call plain query functions, they cannot call *composite* query functions.
+This distinction, which is dictated by the current capabilites of the IC,
+explains why query functions and composite query functions are regarded as distinct types of shared functions.
+
+Note that the `composite query` modifier is reflected in the type of a composite query function:
+
+``` motoko no-repl
+  sum : shared composite query ([Counter]) -> async Nat
+```
+
+Since only a composite query can call another composite query, you may be wondering how any composite query gets called at all?
+The answer to this chicken-and-egg problem is that composite queries are initiated
+outside the IC, typically by an application (such as a browser
+frontend) sending an ingress message invoking a composite query on a backend
+actor on the IC.
+
+:::danger
+
+The Internet Computer's semantics of composite queries, like queries, ensures that state changes made by a composite query are isolated from other inter-canister calls,
+including recursive queries, composite or not, to the same actor.
+
+In particular, like a query, a composite query call rolls back its state on function exit, but is also does not pass state changes to sub-query or sub-composite-query calls.
+Therefore, repeated calls (which includes recursive calls) have different semantics from the more familiar sequential calls that accumulate state changes.
+
+In sequential calls to queries made by a composite query, the internal state changes of preceeding queries will have no effect on subsequent queries, nor will
+the queries observe any local state changes made by the enclosing composite query.
+Local states changes made by the composite query are, however, preserved across the calls until finally being rolled-back on exit from the composite query.
+
+This semantics can lead to surprising behaviour for users accustomed to ordinary imperative programming.
+
+Consider this contrived example containing the composite query `test` that calls query `q` and composite query `cq`.
+
+
+``` motoko no-repl file=./examples/CompositeSemantics.mo
+```
+
+When `state` is `0`, a call to `test` returns
+
+```
+{s0 = 0; s1 = 0; s2 = 0; s3 = 3_000}
+```
+
+because none of the local updates to `state` are visible to any of the callers or callees.
 
 :::

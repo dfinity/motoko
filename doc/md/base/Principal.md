@@ -113,6 +113,19 @@ let principal = Principal.fromText("un4fu-tqaaa-aaaab-qadjq-cai");
 Principal.isAnonymous(principal) // => false
 ```
 
+## Function `isController`
+``` motoko no-repl
+func isController(p : Principal) : Bool
+```
+
+Checks if the given principal can control this canister.
+
+Example:
+```motoko include=import
+let principal = Principal.fromText("un4fu-tqaaa-aaaab-qadjq-cai");
+Principal.isController(principal) // => false
+```
+
 ## Function `hash`
 ``` motoko no-repl
 func hash(principal : Principal) : Hash.Hash

@@ -83,11 +83,9 @@ let commonBuildInputs = pkgs:
     pkgs.ocamlPackages.ppxlib
     pkgs.ocamlPackages.ppx_blob
     pkgs.ocamlPackages.ppx_inline_test
-    pkgs.ocamlPackages.ocaml-migrate-parsetree
-    pkgs.ocamlPackages.ppx_tools_versioned
     pkgs.ocamlPackages.bisect_ppx
-    pkgs.ocamlPackages.obelisk
     pkgs.ocamlPackages.uucp
+    pkgs.obelisk
     pkgs.perl
     pkgs.removeReferencesTo
   ]; in
@@ -195,7 +193,7 @@ rec {
         name = "motoko-rts-deps";
         src = subpath ./rts;
         sourceRoot = "rts/motoko-rts-tests";
-        sha256 = "sha256-DRX2IJzJ5rDGoutUssqO4TaHwvKO3rUR7MUpWIIKvKU=";
+        sha256 = "sha256-jN5nx5UNBHlYKnC0kk90h6mWPUNrqPS7Wln2TixbGgA=";
         copyLockfile = true;
       };
 
@@ -331,9 +329,6 @@ rec {
     testDerivation = args:
       stdenv.mkDerivation (testDerivationArgs // args);
 
-    ocamlTestDerivation = args:
-      staticpkgs.stdenv.mkDerivation (testDerivationArgs // args);
-
     # we test each subdirectory of test/ in its own derivation with
     # cleaner dependencies, for more parallelism, more caching
     # and better feedback about what aspect broke
@@ -365,29 +360,29 @@ rec {
 
     # Run a variant with sanity checking on
     snty_subdir = dir: deps:
-      (test_subdir dir deps).overrideAttrs (args: {
+      (test_subdir dir deps).overrideAttrs {
           EXTRA_MOC_ARGS = "--sanity-checks";
-      });
+      };
       
     generational_gc_subdir = dir: deps:
-      (test_subdir dir deps).overrideAttrs (args: {
+      (test_subdir dir deps).overrideAttrs {
           EXTRA_MOC_ARGS = "--generational-gc";
-      });
+      };
 
     snty_compacting_gc_subdir = dir: deps:
-      (test_subdir dir deps).overrideAttrs (args: {
+      (test_subdir dir deps).overrideAttrs {
           EXTRA_MOC_ARGS = "--sanity-checks --compacting-gc";
-      });
+      };
 
     snty_generational_gc_subdir = dir: deps:
-      (test_subdir dir deps).overrideAttrs (args: {
+      (test_subdir dir deps).overrideAttrs {
           EXTRA_MOC_ARGS = "--sanity-checks --generational-gc";
-      });
+      };
 
     snty_incremental_gc_subdir = dir: deps:
-      (test_subdir dir deps).overrideAttrs (args: {
+      (test_subdir dir deps).overrideAttrs {
           EXTRA_MOC_ARGS = "--sanity-checks --incremental-gc";
-      });
+      };
 
     perf_subdir = dir: deps:
       (test_subdir dir deps).overrideAttrs (args: {
@@ -428,9 +423,9 @@ rec {
       '';
     };
 
-    unit = ocamlTestDerivation {
+    unit = testDerivation {
       src = subpath ./src;
-      buildInputs = commonBuildInputs staticpkgs;
+      buildInputs = commonBuildInputs nixpkgs;
       checkPhase = ''
         patchShebangs .
         make DUNE_OPTS="--display=short" unit-tests
@@ -467,7 +462,7 @@ rec {
 
 
     fix_names = builtins.mapAttrs (name: deriv:
-      deriv.overrideAttrs (_old: { name = "test-${name}"; })
+      deriv.overrideAttrs { name = "test-${name}"; }
     );
 
     coverage = testDerivation {
@@ -499,7 +494,7 @@ rec {
   in fix_names ({
       run        = test_subdir "run"        [ moc ] ;
       run-dbg    = snty_subdir "run"        [ moc ] ;
-      # ic-ref-run = test_subdir "run-drun"   [ moc ic-ref-run ];
+      ic-ref-run = test_subdir "run-drun"   [ moc ic-ref-run ];
       drun       = test_subdir "run-drun"   [ moc nixpkgs.drun ];
       drun-dbg   = snty_subdir "run-drun"   [ moc nixpkgs.drun ];
       drun-compacting-gc = snty_compacting_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
@@ -513,7 +508,7 @@ rec {
       trap       = test_subdir "trap"       [ moc ];
       run-deser  = test_subdir "run-deser"  [ deser ];
       perf       = perf_subdir "perf"       [ moc nixpkgs.drun ];
-      bench      = perf_subdir "bench"      [ moc nixpkgs.drun ];
+      bench      = perf_subdir "bench"      [ moc nixpkgs.drun ic-wasm ];
       viper      = test_subdir "viper"      [ moc nixpkgs.which nixpkgs.openjdk nixpkgs.z3 ];
       inherit qc lsp unit candid profiling-graphs coverage;
     }) // { recurseForDerivations = true; };
@@ -570,12 +565,20 @@ rec {
       recurseForDerivations = true;
     };
 
-  inherit (nixpkgs) wabt wasmtime wasm;
+  inherit (nixpkgs) drun wabt wasmtime wasm nix-update;
 
   filecheck = nixpkgs.runCommandNoCC "FileCheck" {} ''
     mkdir -p $out/bin
     cp ${nixpkgs.llvm}/bin/FileCheck $out/bin
   '';
+
+  ic-wasm =
+    nixpkgs.rustPlatform.buildRustPackage {
+      name = "ic-wasm";
+      src = nixpkgs.sources.ic-wasm;
+      cargoSha256 = "sha256-iGCju0JG+jkysmDAeTfjNCYaSfg7N3Qqq8HpPlRHMgU=";
+      doCheck = false;
+    };
 
   # gitMinimal is used by nix/gitSource.nix; building it here warms the nix cache
   inherit (nixpkgs) gitMinimal;
@@ -715,7 +718,7 @@ rec {
       name = "check-grammar";
       src = subpath ./src/gen-grammar;
       phases = "unpackPhase buildPhase installPhase";
-      buildInputs = [ nixpkgs.diffutils nixpkgs.bash nixpkgs.ocamlPackages.obelisk ];
+      buildInputs = [ nixpkgs.diffutils nixpkgs.bash nixpkgs.obelisk ];
       buildPhase = ''
         patchShebangs .
         ./gen-grammar.sh ${./src/mo_frontend/parser.mly} > expected
@@ -788,25 +791,26 @@ rec {
       let dont_build =
         [ moc mo-ld didc deser candid-tests ] ++
         builtins.attrValues coverage_bins;
-      in
-      nixpkgs.lib.lists.unique (builtins.filter (i: !(builtins.elem i dont_build)) (
+      in with nixpkgs;
+      [ ic-wasm ] ++
+      lib.lists.unique (builtins.filter (i: !(builtins.elem i dont_build)) (
         commonBuildInputs nixpkgs ++
         rts.buildInputs ++
         js.moc.buildInputs ++
         docs.buildInputs ++
         check-rts-formatting.buildInputs ++
         builtins.concatMap (d: d.buildInputs or []) (builtins.attrValues tests) ++
-        [ nixpkgs.ncurses
-          nixpkgs.ocamlPackages.merlin
-          nixpkgs.ocamlformat
-          nixpkgs.ocamlPackages.utop
-          nixpkgs.fswatch
-          nixpkgs.niv
-          nixpkgs.nix-update
-          nixpkgs.rlwrap # for `rlwrap moc`
-          nixpkgs.difftastic
-          nixpkgs.openjdk nixpkgs.z3 nixpkgs.jq # for viper dev
-        ] ++ nixpkgs.lib.optional stdenv.isDarwin nixpkgs.darwin.apple_sdk.frameworks.Security
+        [ ncurses
+          ocamlPackages.merlin
+          ocamlPackages.utop
+          ocamlformat
+          fswatch
+          niv
+          nix-update
+          rlwrap # for `rlwrap moc`
+          openjdk z3 # for viper dev
+          difftastic
+        ] ++ lib.optional stdenv.isDarwin darwin.apple_sdk.frameworks.Security
       ));
 
     shellHook = llvmEnv + ''
