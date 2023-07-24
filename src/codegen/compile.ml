@@ -7235,6 +7235,36 @@ module Stabilization = struct
       compile_unboxed_zero ^^
       G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.(Pack8, ZX)})
 
+    let read_word16 env get_buf =
+      compile_const_64 0L ^^
+      get_buf ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+      compile_const_64 2L ^^
+      IC.system_call env "stable64_read" ^^
+      advance get_buf (compile_unboxed_const 2l) ^^
+      compile_unboxed_zero ^^
+      G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.(Pack16, ZX)})
+
+    let read_word32 env get_buf =
+      compile_const_64 0L ^^
+      get_buf ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+      compile_const_64 4L ^^
+      IC.system_call env "stable64_read" ^^
+      advance get_buf (compile_unboxed_const 4l) ^^
+      compile_unboxed_zero ^^
+      G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = None})
+
+    let read_word64 env get_buf =
+      compile_const_64 0L ^^
+      get_buf ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+      compile_const_64 8L ^^
+      IC.system_call env "stable64_read" ^^
+      advance get_buf (compile_unboxed_const 8l) ^^
+      compile_unboxed_zero ^^
+      G.i (Load {ty = I64Type; align = 0; offset = 0l; sz = None})
+
+
+    let alloc = ReadBuf.alloc
+    
 
           (*let read_blob = load_blob*)
   end
