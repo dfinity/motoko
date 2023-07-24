@@ -9674,10 +9674,9 @@ and compile_prim_invocation (env : E.t) ae p es at =
       compile_exp_vanilla env ae e ^^
       compile_shrU_const 8l
     | Nat16, Nat32 ->
-      SR.Vanilla,
+      SR.UnboxedWord32,
       compile_exp_vanilla env ae e ^^
-      compile_shrU_const 16l ^^
-      BoxedSmallWord.box env
+      compile_shrU_const 16l
     | _ -> SR.Unreachable, todo_trap env "compile_prim_invocation" (Arrange_ir.prim p)
     end
 
