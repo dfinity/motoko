@@ -129,7 +129,6 @@ func nat16ToInt16(n : Nat16) : Int16 = (prim "num_wrap_Nat16_Int16" : Nat16 -> I
 func int8ToNat8(n : Int8) : Nat8 = (prim "num_wrap_Int8_Nat8" : Int8 -> Nat8) n;
 func nat8ToInt8(n : Nat8) : Int8 = (prim "num_wrap_Nat8_Int8" : Nat8 -> Int8) n;
 
-// Adjacent widths
 func nat8ToNat16(n : Nat8) : Nat16 = (prim "num_conv_Nat8_Nat16" : Nat8 -> Nat16) n;
 
 // Char conversion and properties
