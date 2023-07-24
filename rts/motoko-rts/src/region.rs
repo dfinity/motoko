@@ -536,11 +536,10 @@ pub unsafe fn region_size<M: Memory>(_mem: &mut M, r: Value) -> u64 {
 }
 
 #[ic_mem_fn]
-pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64, max_pages: u64) -> u64 {
+pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u64 {
     use meta_data::size::{required_pages, PAGES_IN_BLOCK};
     let r = r.as_region();
     let new_pages_ = new_pages as u32;
-    let max_pages_ = max_pages as u32;
     let old_page_count = (*r).page_count;
     let old_block_count = (old_page_count + (PAGES_IN_BLOCK - 1)) / PAGES_IN_BLOCK;
     let new_block_count = (old_page_count + new_pages_ + (PAGES_IN_BLOCK - 1)) / PAGES_IN_BLOCK;
@@ -551,11 +550,6 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64, max_
     let old_total_blocks = {
         let c = meta_data::total_allocated_blocks::get();
         let c_ = c + inc_block_count as u64;
-        let max_blocks = (max_pages_ + (PAGES_IN_BLOCK - 1)) / PAGES_IN_BLOCK;
-        if c_ > max_blocks.into() {
-            // Signals an error.
-            return 0xFFFF_FFFF_FFFF_FFFF;
-        };
         meta_data::total_allocated_blocks::set(c_);
         c
     };
@@ -567,7 +561,10 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64, max_
         let need = required_pages();
         if have < need {
             let diff = need - have;
-            crate::ic0_stable::nicer::grow(diff);
+            if crate::ic0_stable::nicer::grow(diff) == 0xFFFF_FFFF_FFFF_FFFF {
+                meta_data::total_allocated_blocks::set(old_total_blocks); // revert block allocation
+                return 0xFFFF_FFFF_FFFF_FFFF; // Propagate error
+            }
         }
     }
 
