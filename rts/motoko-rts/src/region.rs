@@ -26,12 +26,6 @@ pub struct RegionObject(pub *mut Region);
 
 const NIL_REGION_ID: u16 = 0;
 
-// For giving the other logic the right number at the right time.
-pub(crate) static mut REGION_SET_MEM_SIZE: Option<u64> = None;
-
-// For giving the other logic the right number at the right time.
-pub(crate) static mut REGION_MEM_SIZE_INIT: bool = false;
-
 // Mirrored field from stable memory, for handling upgrade logic.
 pub(crate) static mut REGION_TOTAL_ALLOCATED_BLOCKS: u16 = 0;
 
@@ -231,7 +225,7 @@ mod meta_data {
         use super::offset;
         use crate::ic0_stable::nicer::{read_u16, write_u16};
 
-        use crate::region::{REGION_SET_MEM_SIZE, REGION_TOTAL_ALLOCATED_BLOCKS};
+        use crate::region::REGION_TOTAL_ALLOCATED_BLOCKS;
 
         pub fn get() -> u64 {
             read_u16(offset::TOTAL_ALLOCATED_BLOCKS) as u64
@@ -244,11 +238,6 @@ mod meta_data {
             // serialization/deserialization).
             unsafe {
                 REGION_TOTAL_ALLOCATED_BLOCKS = n as u16;
-
-                // Invalidate stale number (No longer use the code-gen
-                // provided number that we need to use, temporarily,
-                // for destabilization after an upgrade).
-                REGION_SET_MEM_SIZE = None;
             };
             write_u16(offset::TOTAL_ALLOCATED_BLOCKS, n as u16)
         }
@@ -532,10 +521,6 @@ pub(crate) unsafe fn region_migration_from_v2_into_v2<M: Memory>(mem: &mut M) {
 //
 #[ic_mem_fn]
 pub(crate) unsafe fn region_init<M: Memory>(mem: &mut M, from_version: i32) {
-    // Recall that we've done this later, without asking ic0_stable::size.
-    assert_eq!(crate::region::REGION_MEM_SIZE_INIT, false);
-    crate::region::REGION_MEM_SIZE_INIT = true;
-
     match from_version {
         0 => region_migration_from_v0_into_v2(mem),
         2 => region_migration_from_v2_into_v2(mem),
