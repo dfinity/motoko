@@ -7201,7 +7201,13 @@ end
    * ../../design/StableMemory.md
 *)
 
+
+
+
 module Stabilization = struct
+  module StableReader : Serialization.RawReaders = struct
+    
+  end
 
   let extend64 code = code ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
 
@@ -7476,40 +7482,39 @@ module Stabilization = struct
 
             if false then
               begin
-
                 (*TODO*)
                 compile_unboxed_zero
               end
             else
               begin
-          let (set_blob, get_blob) = new_local env "blob" in
-          (* read blob from stable memory *)
-          get_len ^^ Blob.alloc env ^^ set_blob ^^
-          extend64 (get_blob ^^ Blob.payload_ptr_unskewed env) ^^
-          get_offset ^^
-          extend64 get_len ^^
-          IC.system_call env "stable64_read" ^^
+                let (set_blob, get_blob) = new_local env "blob" in
+                (* read blob from stable memory *)
+                get_len ^^ Blob.alloc env ^^ set_blob ^^
+                extend64 (get_blob ^^ Blob.payload_ptr_unskewed env) ^^
+                get_offset ^^
+                extend64 get_len ^^
+                IC.system_call env "stable64_read" ^^
 
-          let (set_val, get_val) = new_local env "val" in
-          (* deserialize blob to val *)
-          get_blob ^^
-          Bool.lit false ^^ (* can't recover *)
-          Serialization.(deserialize_from (module BlobDeserializers : RawReaders)) true env [ty] ^^
-          set_val ^^
+                let (set_val, get_val) = new_local env "val" in
+                (* deserialize blob to val *)
+                get_blob ^^
+                Bool.lit false ^^ (* can't recover *)
+                Serialization.(deserialize_from (module BlobDeserializers : RawReaders)) true env [ty] ^^
+                set_val ^^
 
-          (* clear blob contents *)
-          get_blob ^^
-          Blob.clear env ^^
+                (* clear blob contents *)
+                get_blob ^^
+                Blob.clear env ^^
 
-          (* copy zeros from blob to stable memory *)
-          get_offset ^^
-          extend64 (get_blob ^^ Blob.payload_ptr_unskewed env) ^^
-          extend64 (get_blob ^^ Blob.len env) ^^
-          IC.system_call env "stable64_write" ^^
+                (* copy zeros from blob to stable memory *)
+                get_offset ^^
+                extend64 (get_blob ^^ Blob.payload_ptr_unskewed env) ^^
+                extend64 (get_blob ^^ Blob.len env) ^^
+                IC.system_call env "stable64_write" ^^
 
-          (* return val *)
-          get_val
-         end
+                (* return val *)
+                get_val
+              end
         end
     | _ -> assert false
 end
