@@ -7206,7 +7206,37 @@ end
 
 module Stabilization = struct
   module StableReader : Serialization.RawReaders = struct
-    
+    (* FIXME: for now we only cover the first 4 GB of stable memory, so we can stay in 32 bits *)
+    (* TODO: do we need `guard_range` calls? *)
+    let substrate_type = I32Type
+
+    let get_ptr get_buf =
+      get_buf ^^ G.i (Load {ty = I32Type; align = 2; offset = 0l; sz = None})
+    let get_end get_buf =
+      get_buf ^^ G.i (Load {ty = I32Type; align = 2; offset = Heap.word_size; sz = None})
+    let set_ptr get_buf new_val =
+      get_buf ^^ new_val ^^ G.i (Store {ty = I32Type; align = 2; offset = 0l; sz = None})
+    let set_end get_buf new_val =
+      get_buf ^^ new_val ^^ G.i (Store {ty = I32Type; align = 2; offset = Heap.word_size; sz = None})
+    let set_size get_buf get_size =
+      set_end get_buf
+        (get_ptr get_buf ^^ get_size ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)))
+
+
+    let advance get_buf get_delta =
+      set_ptr get_buf (get_ptr get_buf ^^ get_delta ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)))
+
+    let read_byte env get_buf =
+      compile_const_64 0L ^^
+      get_buf ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+      compile_const_64 1L ^^
+      IC.system_call env "stable64_read" ^^
+      advance get_buf (compile_unboxed_const 1l) ^^
+      compile_unboxed_zero ^^
+      G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.(Pack8, ZX)})
+
+
+          (*let read_blob = load_blob*)
   end
 
   let extend64 code = code ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
