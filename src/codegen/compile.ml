@@ -3899,7 +3899,7 @@ module Region0 = struct
    *)
   let get env = E.call_import env "rts" "region0_get"
 
-  let get_mem_size env = E.call_import env "rts" "region0_size"  
+  let get_mem_size env = E.call_import env "rts" "region0_size"
   let logical_grow env =
     E.call_import env "rts" "region0_grow"
 
