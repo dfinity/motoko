@@ -1134,7 +1134,7 @@ module Heap = struct
 
   let ensure_allocated env =
     alloc env 0l ^^ G.i Drop (* dummy allocation, ensures that the page HP points into is backed *)
-    
+
   (* Heap objects *)
 
   (* At this level of abstraction, heap objects are just flat arrays of words *)
@@ -1153,7 +1153,7 @@ module Heap = struct
 
   (* Although we occasionally want to treat two consecutive
      32 bit fields as one 64 bit number *)
-  
+
   (* Requires little-endian encoding, see also `Stream` in `types.rs` *)
   let load_field64_unskewed (i : int32) : G.t =
     let offset = Int32.mul word_size i in
@@ -1609,12 +1609,12 @@ module Tagged = struct
     | StableSeen -> 0xffffffffl
 
   (* Declare `env` for lazy computation of the header size when the compile environment with compile flags are defined *)
-  let header_size env = 
+  let header_size env =
     if !Flags.gc_strategy = Flags.Incremental then 2l else 1l
-  
+
   (* The tag *)
   let tag_field = 0l
-  let forwarding_pointer_field env = 
+  let forwarding_pointer_field env =
     assert (!Flags.gc_strategy = Flags.Incremental);
     1l
 
@@ -1655,7 +1655,7 @@ module Tagged = struct
         get_object ^^ (* object pointer *)
         get_object ^^ (* forwarding pointer *)
         Heap.store_field (forwarding_pointer_field env)
-      else 
+      else
         G.nop) ^^
       get_object
     )
@@ -3680,7 +3680,7 @@ module Blob = struct
     Tagged.allocation_barrier env
 
   let unskewed_payload_offset env = Int32.(add ptr_unskew (mul Heap.word_size (header_size env)))
-  
+
   let payload_ptr_unskewed env =
     Tagged.load_forwarding_pointer env ^^
     compile_add_const (unskewed_payload_offset env)
@@ -7203,7 +7203,7 @@ module Stabilization = struct
       G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
       E.call_import env "rts" "stream_stable_dest"
 
-    let ptr64_field env = 
+    let ptr64_field env =
       let offset = 1l in (* see invariant in `stream.rs` *)
       Int32.add (Blob.len_field env) offset (* see invariant in `stream.rs`, padding for 64-bit after Stream header *)
 
@@ -9669,7 +9669,13 @@ and compile_prim_invocation (env : E.t) ae p es at =
       SR.UnboxedFloat64,
       compile_exp_as env ae SR.UnboxedWord64 e ^^
       G.i (Convert (Wasm.Values.F64 F64Op.ConvertSI64))
-
+    | Nat8, Nat16 ->
+      SR.Vanilla,
+      compile_exp_vanilla env ae e ^^
+      compile_shrU_const 8l
+      (* takes an i32 *)
+      (* let compile_shrU_const = compile_op_const I32Op.ShrU *)
+      (* Prim.prim_shiftWordNtoUnsigned env (TaggedSmallWord.shift_of_type t1) *)
     | _ -> SR.Unreachable, todo_trap env "compile_prim_invocation" (Arrange_ir.prim p)
     end
 
