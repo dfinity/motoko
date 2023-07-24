@@ -350,31 +350,6 @@ pub unsafe fn region_id<M: Memory>(_mem: &mut M, r: Value) -> u32 {
     (*r).id.into()
 }
 
-// Region manager's total memory size in stable memory, in _pages_.
-#[ic_mem_fn]
-pub unsafe fn region_get_mem_size<M: Memory>(_mem: &mut M) -> u64 {
-    let size = {
-        if let Some(s) = crate::region::REGION_SET_MEM_SIZE {
-            return s;
-        };
-        if crate::region::REGION_MEM_SIZE_INIT {
-            meta_data::size::STATIC_MEM_IN_PAGES as u64
-                + crate::region::REGION_TOTAL_ALLOCATED_BLOCKS as u64
-                    * (meta_data::size::PAGES_IN_BLOCK as u64)
-        } else {
-            // Before initialization of anything, give back zero.
-            0
-        }
-    };
-    size
-}
-
-// Region manager's total memory size in stable memory, in _pages_.
-#[ic_mem_fn]
-pub unsafe fn region_set_mem_size<M: Memory>(_mem: &mut M, size: u64) {
-    crate::region::REGION_SET_MEM_SIZE = Some(size);
-}
-
 // Helper for commmon logic that reserves low-valued RegionIds in a certain span for future use.
 // When first is some, we are actually reserving.  When first is none, we are checking that the reservation has occured.
 unsafe fn region_reserve_id_span<M: Memory>(_mem: &mut M, first: Option<RegionId>, last: RegionId) {
@@ -469,12 +444,11 @@ pub(crate) unsafe fn region_migration_from_v1_into_v2<M: Memory>(mem: &mut M) {
     // - copy the head block of data from temp blob into new "final block" (logically still first) for region 0.
     // - initialize the meta data for the region system in vacated initial block.
 
-    use crate::ic0_stable::nicer::{grow, read, write};
+    use crate::ic0_stable::nicer::{size, grow, read, write};
 
     let header_len = meta_data::size::BLOCK_IN_BYTES as u32;
 
-    //let region0_pages = size() as u32;
-    let region0_pages = region_get_mem_size(mem) as u32;
+    let region0_pages = size() as u32; // TODO check for truncation
 
     let region0_blocks =
         (region0_pages + (meta_data::size::PAGES_IN_BLOCK - 1)) / (meta_data::size::PAGES_IN_BLOCK);

@@ -998,8 +998,6 @@ module RTS = struct
     E.add_func_import env "rts" "text_size" [I32Type] [I32Type];
     E.add_func_import env "rts" "text_to_buf" [I32Type; I32Type] [];
     E.add_func_import env "rts" "region_init" [I32Type] [];
-    E.add_func_import env "rts" "region_get_mem_size" [] [I64Type];
-    E.add_func_import env "rts" "region_set_mem_size" [I64Type] [];
     E.add_func_import env "rts" "region_new" [] [I32Type];
     E.add_func_import env "rts" "region_id" [I32Type] [I32Type];
     E.add_func_import env "rts" "region_size" [I32Type] [I64Type];
@@ -5084,16 +5082,10 @@ module StableMem = struct
     E.add_global64 env "__stablemem_size" Mutable 0L
 
   let get_mem_size env =
-    if !Flags.use_stable_regions then
-      E.call_import env "rts" "region_get_mem_size"
-    else
-      G.i (GlobalGet (nr (E.get_global env "__stablemem_size")))
+    G.i (GlobalGet (nr (E.get_global env "__stablemem_size")))
 
   let set_mem_size env =
-    if !Flags.use_stable_regions then
-      E.call_import env "rts" "region_set_mem_size"
-    else
-      G.i (GlobalSet (nr (E.get_global env "__stablemem_size")))
+    G.i (GlobalSet (nr (E.get_global env "__stablemem_size")))
 
   (* stable memory bounds check *)
   let guard env =
@@ -5145,6 +5137,7 @@ module StableMem = struct
         guard_range env)
     else G.nop
 
+  (* TODO: crusso in read/write could avoid stack allocation by reserving and re-using scratch memory instead *)
   let read env guarded name typ bytes load =
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
@@ -5215,7 +5208,7 @@ module StableMem = struct
   let ensure_pages env =
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
-      Func.share_code1 env "__stablemem_grow"
+      Func.share_code1 env "__stablemem_ensure_pages"
         ("pages", I64Type) [I64Type]
         (fun env get_pages ->
           let (set_size, get_size) = new_local64 env "size" in
@@ -5447,7 +5440,7 @@ module RTS_Exports = struct
       name = Lib.Utf8.decode "stable64_write_moc";
       edesc = nr (FuncExport (nr stable64_write_moc_fi))
     });
-  
+
     let stable64_read_moc_fi =
       if E.mode env = Flags.WASIMode then
         E.add_fun env "stable64_read_moc" (
@@ -5462,35 +5455,40 @@ module RTS_Exports = struct
       edesc = nr (FuncExport (nr stable64_read_moc_fi))
     });
 
-  let stable64_grow_moc_fi =
-      if E.mode env = Flags.WASIMode then
-        E.add_fun env "stable64_grow_moc" (
-            Func.of_body env ["newPages", I64Type] [I64Type]
-              (fun env ->
-                E.trap_with env "stable64_grow_moc is not supposed to be called in WASI"
-              )
-          )
-      else E.reuse_import env "ic0" "stable64_grow" in
+    let stable64_grow_moc_fi =
+      E.add_fun env "stable64_grow_moc" (
+        Func.of_body env ["newPages", I64Type] [I64Type]
+          (fun env ->
+            match E.mode env with
+            | Flags.ICMode | Flags.RefMode ->
+              G.i (LocalGet (nr 0l)) ^^
+              StableMem.logical_grow env
+            | _ ->
+              E.trap_with env "stable64_grow_moc is not supposed to be called in WASI" (* improve me *)
+        ))
+    in
     E.add_export env (nr {
       name = Lib.Utf8.decode "stable64_grow_moc";
       edesc = nr (FuncExport (nr stable64_grow_moc_fi))
     });
 
-  let stable64_size_moc_fi =
-      if E.mode env = Flags.WASIMode then
-        E.add_fun env "stable64_size_moc" (
-            Func.of_body env [] [I64Type]
-              (fun env ->
-                E.trap_with env "stable64_size_moc is not supposed to be called in WASI"
-              )
+    let stable64_size_moc_fi =
+      E.add_fun env "stable64_size_moc" (
+        Func.of_body env [] [I64Type]
+          (fun env ->
+            match E.mode env with
+            | Flags.ICMode | Flags.RefMode ->
+               StableMem.get_mem_size env
+            | _ ->
+               E.trap_with env "stable64_size_moc is not supposed to be called in WASI" (* improve me *)
           )
-      else E.reuse_import env "ic0" "stable64_size" in
+        )
+    in
     E.add_export env (nr {
       name = Lib.Utf8.decode "stable64_size_moc";
       edesc = nr (FuncExport (nr stable64_size_moc_fi))
     })
 
-  
 end (* RTS_Exports *)
 
 
