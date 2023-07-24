@@ -9,24 +9,33 @@ module {
     public class GCRandomTest() {
         let seed = 4711;
         let random = Random.Random(seed);
+        let types = Types.allocationTypes();
 
         var root : Values.RandomValue = #none;
 
         var allocationCount = 0;
+        let allocationPerType = Prim.Array_init<Nat>(types.size(), 0);
 
         func maxAlive() : Nat {
-            assert(allocationCount > 0);
+            assert (allocationCount > 0);
             let averageObjectSize = Prim.rts_total_allocation() / allocationCount;
             (Prim.rts_heap_size() + averageObjectSize - 1) / averageObjectSize;
         };
 
         func randomAllocate() {
             Prim.debugPrint("Random allocation");
-            let types = Types.allocationTypes();
-            let factory = types[random.next() % types.size()];
-            let randomValue = factory.instantiate(random);
-            allocationCount += 1;
-            append(randomValue);
+            let index = random.next() % types.size();
+            let factory = types[index];
+            let canAllocate = switch (factory.allocationLimit) {
+                case null true;
+                case (?limit) { allocationPerType[index] < limit };
+            };
+            if (canAllocate) {
+                let randomValue = factory.instantiate(random);
+                allocationCount += 1;
+                allocationPerType[index] += 1;
+                append(randomValue);
+            };
         };
 
         func append(value : Values.RandomValue) {
