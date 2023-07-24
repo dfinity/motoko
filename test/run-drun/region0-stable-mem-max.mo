@@ -5,7 +5,10 @@ import StableMemory "stable-mem/StableMemory";
 actor {
   let max : Nat64 = 65536;
   public func testGrow() : async () {
-    assert 0  == StableMemory.grow(max - 1);
+  
+    let o = StableMemory.grow(max - 1); P.debugPrint(debug_show(o)); assert (o == 0);
+
+
     assert (max - 1) == StableMemory.grow(1);
     assert max == StableMemory.size();
     assert max == StableMemory.grow(0);
