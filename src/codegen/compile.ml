@@ -9673,9 +9673,11 @@ and compile_prim_invocation (env : E.t) ae p es at =
       SR.Vanilla,
       compile_exp_vanilla env ae e ^^
       compile_shrU_const 8l
-      (* takes an i32 *)
-      (* let compile_shrU_const = compile_op_const I32Op.ShrU *)
-      (* Prim.prim_shiftWordNtoUnsigned env (TaggedSmallWord.shift_of_type t1) *)
+    | Nat16, Nat32 ->
+      SR.Vanilla,
+      compile_exp_vanilla env ae e ^^
+      compile_shrU_const 16l ^^
+      BoxedSmallWord.box env
     | _ -> SR.Unreachable, todo_trap env "compile_prim_invocation" (Arrange_ir.prim p)
     end
 

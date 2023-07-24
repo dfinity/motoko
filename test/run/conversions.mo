@@ -172,7 +172,12 @@ test_Int_Int64(-0x8000000000000000, -0x8000000000000000);
 wrap_Int_Int64(0x8000000000000000, -0x8000000000000000);
 wrap_Int_Int64(0x8000000000000001, -0x7fffffffffffffff);
 
-// Nat8 <--> Nat16
-let n8 : Nat8 = 0x12;
-let n16 : Nat16 = 0x12;
+// NatN <--> Nat2N
+let n8 : Nat8 = 12;
+let n16 : Nat16 = 12;
+let n32 : Nat32 = 12;
+let n64 : Nat64 = 12;
+
 assert (Prim.nat8ToNat16 n8 == n16);
+assert (Prim.nat16ToNat32 n16 == n32);
+// assert (Prim.nat32ToNat64 n32 == n64);
