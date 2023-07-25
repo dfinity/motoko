@@ -171,6 +171,8 @@ let structural_equality t =
     match t with
     | T.Var _ | T.Pre | T.Non | T.Async _ | T.Mut _ -> assert false
     | T.Any | T.Typ _ -> fun v1 v2 -> Bool true
+    | T.Prim T.Error
+    | T.Prim T.Region -> assert false
     | T.Prim p -> eq_prim p
     | T.Con (c, ts) -> (
         match Mo_types.Cons.kind c with
@@ -190,7 +192,7 @@ let structural_equality t =
         fun v1 v2 ->
           match (v1, v2) with
           | Null, Null -> Bool true
-          | Null, Opt _ 
+          | Null, Opt _
           | Opt _, Null -> Bool false
           | Opt v1, Opt v2 -> go t v1 v2
           | _, _ -> assert false )
