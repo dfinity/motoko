@@ -7205,6 +7205,9 @@ end
 
 
 module Stabilization = struct
+
+  let extend64 code = code ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
+
   module StableReader : Serialization.RawReaders = struct
     (* FIXME: for now we only cover the first 4 GB of stable memory, so we can stay in 32 bits *)
     (* TODO: do we need `guard_range` calls? *)
@@ -7228,7 +7231,7 @@ module Stabilization = struct
 
     let read_byte env get_buf =
       compile_const_64 0L ^^
-      get_buf ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+      extend64 get_buf ^^
       compile_const_64 1L ^^
       IC.system_call env "stable64_read" ^^
       advance get_buf (compile_unboxed_const 1l) ^^
@@ -7237,7 +7240,7 @@ module Stabilization = struct
 
     let read_word16 env get_buf =
       compile_const_64 0L ^^
-      get_buf ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+      extend64 get_buf ^^
       compile_const_64 2L ^^
       IC.system_call env "stable64_read" ^^
       advance get_buf (compile_unboxed_const 2l) ^^
@@ -7246,7 +7249,7 @@ module Stabilization = struct
 
     let read_word32 env get_buf =
       compile_const_64 0L ^^
-      get_buf ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+      extend64 get_buf ^^
       compile_const_64 4L ^^
       IC.system_call env "stable64_read" ^^
       advance get_buf (compile_unboxed_const 4l) ^^
@@ -7255,7 +7258,7 @@ module Stabilization = struct
 
     let read_word64 env get_buf =
       compile_const_64 0L ^^
-      get_buf ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+      extend64 get_buf ^^
       compile_const_64 8L ^^
       IC.system_call env "stable64_read" ^^
       advance get_buf (compile_unboxed_const 8l) ^^
@@ -7275,8 +7278,6 @@ module Stabilization = struct
 
           (*let read_blob = load_blob*)
   end
-
-  let extend64 code = code ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
 
   (* The below stream implementation is geared towards the
      tail section of stable memory, where the serialised
@@ -7547,10 +7548,12 @@ module Stabilization = struct
             end ^^ (* if_ *)
 
 
-            if false then
+            if true then
               begin
-                (*TODO*)
-                compile_unboxed_zero
+                (* deserialize directly to val *)
+                get_offset ^^ G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
+                Bool.lit false ^^ (* can't recover *)
+                Serialization.(deserialize_from (module StableReader : RawReaders)) true env [ty]
               end
             else
               begin
