@@ -7263,6 +7263,13 @@ module Stabilization = struct
       G.i (Load {ty = I64Type; align = 0; offset = 0l; sz = None})
 
 
+    let read_blob env get_buf get_len = E.trap_with env "read_blob"
+    let read_leb128 env get_buf = E.trap_with env "read_leb128"
+    let read_sleb128 env get_buf = E.trap_with env "read_sleb128"
+
+
+    let is_empty get_buf = G.i Unreachable
+
     let alloc = ReadBuf.alloc
     
 
