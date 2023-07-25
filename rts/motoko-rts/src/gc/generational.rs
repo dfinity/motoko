@@ -105,7 +105,7 @@ unsafe fn update_statistics(old_limits: &Limits, new_limits: &Limits) {
     linear_memory::RECLAIMED += Bytes(old_limits.free as u64 - new_limits.free as u64);
 }
 
-#[derive(PartialEq, Clone, Copy, Debug)]
+#[derive(PartialEq, Clone, Copy)]
 pub enum Strategy {
     Young,
     Full,
