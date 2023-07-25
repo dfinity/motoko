@@ -1,0 +1,8 @@
+region-ops.mo:4.3-4.11: type error [M0060], operator is not defined for operand types
+  Region
+and
+  Region
+region-ops.mo:8.3-8.11: type error [M0060], operator is not defined for operand types
+  Region
+and
+  Region
