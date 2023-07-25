@@ -76,10 +76,10 @@
         "homepage": null,
         "owner": "dfinity",
         "repo": "motoko-base",
-        "rev": "9037e2c2d9947084c93278f4be6bac4517f2ab8f",
-        "sha256": "093sfzxchbr6j8ly4nym9qyk1ljsv5pf0jlslbz0rr701y6ynwy9",
+        "rev": "fbf51ef4e2d7aa215fac7f54406b28d0bc376321",
+        "sha256": "1y03xlmadgqmksqqh5h1cqr5zjy39l4p4mdcdc2kff8hhjsinsms",
         "type": "tarball",
-        "url": "https://github.com/dfinity/motoko-base/archive/9037e2c2d9947084c93278f4be6bac4517f2ab8f.tar.gz",
+        "url": "https://github.com/dfinity/motoko-base/archive/fbf51ef4e2d7aa215fac7f54406b28d0bc376321.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "motoko-matchers": {
@@ -102,10 +102,10 @@
         "homepage": "https://wasi.dev",
         "owner": "WebAssembly",
         "repo": "wasi-libc",
-        "rev": "bd950eb128bff337153de217b11270f948d04bb4",
-        "sha256": "1w1aahki27wb17k8hsh7zv6g114y1n5j2db5kc2l2sqviy2w58dj",
+        "rev": "9f51a7102085ec6a6ced5778f0864c9af9f50000",
+        "sha256": "0j1ah34fmdsa1srsl49c8xly8bdg1cs7k2ji1avkv9d4dhmp2ls1",
         "type": "tarball",
-        "url": "https://github.com/WebAssembly/wasi-libc/archive/bd950eb128bff337153de217b11270f948d04bb4.tar.gz",
+        "url": "https://github.com/WebAssembly/wasi-libc/archive/9f51a7102085ec6a6ced5778f0864c9af9f50000.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs": {
