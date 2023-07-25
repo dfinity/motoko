@@ -36,9 +36,9 @@ pub unsafe fn region0_size<M: Memory>(mem: &mut M) -> u64 {
 }
 
 #[ic_mem_fn]
-pub unsafe fn region0_grow<M: Memory>(mem: &mut M, new_pages: u64, max_pages: u64) -> u64 {
+pub unsafe fn region0_grow<M: Memory>(mem: &mut M, new_pages: u64) -> u64 {
     assert_ne!(REGION_0, NO_REGION);
-    region_grow(mem, REGION_0, new_pages, max_pages)
+    region_grow(mem, REGION_0, new_pages)
 }
 
 // -- Region0 load operations.

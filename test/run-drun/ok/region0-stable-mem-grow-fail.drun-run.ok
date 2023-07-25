@@ -1,3 +1,2 @@
 ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
-debug.print: 0
-ingress Err: IC0502: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped: stable memory out of bounds
+ingress Completed: Reply: 0x4449444c0000

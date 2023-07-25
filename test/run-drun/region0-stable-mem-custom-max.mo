@@ -3,7 +3,7 @@ import P "mo:⛔";
 import StableMemory "stable-mem/StableMemory";
 
 actor {
-  let max : Nat64 = 16384;
+  let max : Nat64 = 16384 - 128; // -128 to account for stable_regions metadata block
   public func testGrow() : async () {
     assert 0  == StableMemory.grow(max - 1);
     assert (max - 1) == StableMemory.grow(1);

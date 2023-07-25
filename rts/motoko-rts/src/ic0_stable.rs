@@ -2,7 +2,7 @@ extern "C" {
     pub fn stable64_write_moc(offset: u64, src: u64, size: u64);
     pub fn stable64_read_moc(dst: u64, offset: u64, size: u64);
     pub fn stable64_size_moc() -> u64;
-    pub fn stable64_grow_moc(additional_pages: u64) -> i64;
+    pub fn stable64_grow_moc(additional_pages: u64) -> u64;
 }
 
 // to do -- rename this module something better.
@@ -14,7 +14,7 @@ pub mod nicer {
         unsafe { stable64_size_moc() }
     }
 
-    pub fn grow(pages: u64) -> i64 {
+    pub fn grow(pages: u64) -> u64 {
         // SAFETY: This is safe because of the ic0 api guarantees.
         unsafe { stable64_grow_moc(pages) }
     }

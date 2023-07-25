@@ -201,9 +201,8 @@ mod meta_data {
         // Static memory footprint, ignoring any dynamically-allocated pages.
         pub const STATIC_MEM_IN_PAGES: u64 = PAGES_IN_BLOCK as u64; /* One block for meta data, plus future use TBD. */
 
-        pub unsafe fn required_pages() -> u64 {
-            STATIC_MEM_IN_PAGES
-                + (super::total_allocated_blocks::get() as u64) * (PAGES_IN_BLOCK as u64)
+        pub unsafe fn total_required_pages(total_allocated_blocks: u64) -> u64 {
+            STATIC_MEM_IN_PAGES + (total_allocated_blocks * (PAGES_IN_BLOCK as u64))
         }
     }
 
@@ -536,11 +535,10 @@ pub unsafe fn region_size<M: Memory>(_mem: &mut M, r: Value) -> u64 {
 }
 
 #[ic_mem_fn]
-pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64, max_pages: u64) -> u64 {
-    use meta_data::size::{required_pages, PAGES_IN_BLOCK};
+pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u64 {
+    use meta_data::size::{total_required_pages, PAGES_IN_BLOCK};
     let r = r.as_region();
     let new_pages_ = new_pages as u32;
-    let max_pages_ = max_pages as u32;
     let old_page_count = (*r).page_count;
     let old_block_count = (old_page_count + (PAGES_IN_BLOCK - 1)) / PAGES_IN_BLOCK;
     let new_block_count = (old_page_count + new_pages_ + (PAGES_IN_BLOCK - 1)) / PAGES_IN_BLOCK;
@@ -548,28 +546,23 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64, max_
 
     // Update the total number of allocated blocks,
     // while respecting the global maximum limit on pages.
-    let old_total_blocks = {
-        let c = meta_data::total_allocated_blocks::get();
-        let c_ = c + inc_block_count as u64;
-        let max_blocks = (max_pages_ + (PAGES_IN_BLOCK - 1)) / PAGES_IN_BLOCK;
-        if c_ > max_blocks.into() {
-            // Signals an error.
-            return 0xFFFF_FFFF_FFFF_FFFF;
-        };
-        meta_data::total_allocated_blocks::set(c_);
-        c
-    };
+    let old_total_blocks = meta_data::total_allocated_blocks::get();
+    let new_total_blocks = old_total_blocks + inc_block_count as u64;
 
     // Actually grow stable memory with more pages
     // (but only if needed, by first checking if someone else did it already).
     {
         let have = crate::ic0_stable::nicer::size();
-        let need = required_pages();
+        let need = total_required_pages(new_total_blocks);
         if have < need {
             let diff = need - have;
-            crate::ic0_stable::nicer::grow(diff);
+            if crate::ic0_stable::nicer::grow(diff) == 0xFFFF_FFFF_FFFF_FFFF {
+                return 0xFFFF_FFFF_FFFF_FFFF; // Propagate error
+            }
         }
     }
+
+    meta_data::total_allocated_blocks::set(new_total_blocks); // commit allocation
 
     // Update this region's page count, in both places where we record it (heap object, region table).
     {
