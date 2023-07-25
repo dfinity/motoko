@@ -817,6 +817,7 @@ let serializable allow_mut t =
       match t with
       | Var _ | Pre -> assert false
       | Prim Error -> false
+      | Prim Region -> allow_mut (* stable, but not shared *)
       | Any | Non | Prim _ | Typ _ -> true
       | Async _ -> false
       | Mut t -> allow_mut && go t
