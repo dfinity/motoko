@@ -240,7 +240,7 @@ Unlike the Rust design, vector entries can be populated out-of-order.
 
 ### Overview of GC support (future work)
 
-- Regions are reprensented (see special subsection) with heap objects that are `stable`, but mutable.
+- Regions are represented (see special subsection) with heap objects that are `stable`, but mutable.
 - They have special GC headers to recognize their special structure.
 - The Region table keeps track of which available IDs are in use as Region heap values are GC'd.
 
