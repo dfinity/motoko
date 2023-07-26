@@ -79,7 +79,7 @@ reasons.  See Q&A for more discussion.
 ## Questions and answers
 
 ### Q: What determines the 8MB non-empty region minimum?
-
+Mostly, we want to reduce the amount of metadata we need to track, so instead of per-page metadata (lots) we only need per-block metadata (less).
 This size comes from wanting to grow a region by more than one page at
 a time (in terms of the way that the canister interacts with the
 system API, at least).  Rather than actually grow by a single page,
