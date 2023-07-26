@@ -178,8 +178,8 @@ mod meta_data {
 
     /// Maximum number of entities.
     pub mod max {
-        pub const BLOCKS: u16 = 32768;
-        pub const REGIONS: u16 = 32767;
+        pub const BLOCKS: u16 = 32 * 1024;
+        pub const REGIONS: u16 = 32 * 1024 - 1;
     }
 
     /// Sizes of table entries, and tables.
@@ -329,6 +329,7 @@ unsafe fn alloc_region<M: Memory>(
     (*region).page_count = page_count;
     init_with_barrier(mem, &mut (*region).vec_pages, vec_pages);
 
+    allocation_barrier(r_ptr);
     r_ptr
 }
 
@@ -358,6 +359,7 @@ pub unsafe fn region_new<M: Memory>(mem: &mut M) -> Value {
     meta_data::total_allocated_regions::set(next_id as u64 + 1);
 
     let vec_pages = alloc_blob(mem, Bytes(0));
+    allocation_barrier(vec_pages);
     let r_ptr = alloc_region(mem, next_id, 0, vec_pages);
 
     // Update Region table.
@@ -401,6 +403,7 @@ pub unsafe fn region_recover<M: Memory>(mem: &mut M, rid: &RegionId) -> Value {
         }
     }
     assert_eq!(recovered_blocks, block_count);
+    allocation_barrier(vec_pages);
     r_ptr
 }
 
@@ -451,9 +454,10 @@ pub(crate) unsafe fn region_migration_from_v1_into_v2<M: Memory>(mem: &mut M) {
     );
 
     // Temp for the head block, which we move to be physically last.
-    let header_val = crate::memory::alloc_blob(mem, crate::types::Bytes(header_len as u32));
+    // NB: no allocation_barrier is required: header_val is temporary and can be reclaimed by the next GC increment/run.
+    let header_val = crate::memory::alloc_blob(mem, crate::types::Bytes(header_len));
     let header_blob = header_val.as_blob_mut();
-    let header_bytes: &mut [u8] =
+    let header_bytes =
         core::slice::from_raw_parts_mut(header_blob.payload_addr(), header_len as usize);
 
     // Move it:
@@ -522,8 +526,8 @@ pub(crate) unsafe fn region_migration_from_v2_into_v2<M: Memory>(mem: &mut M) {
 pub(crate) unsafe fn region_init<M: Memory>(mem: &mut M, from_version: i32) {
     match from_version {
         0 => region_migration_from_v0_into_v2(mem),
-        2 => region_migration_from_v2_into_v2(mem),
         1 => region_migration_from_v1_into_v2(mem),
+        2 => region_migration_from_v2_into_v2(mem),
         _ => unreachable!(),
     }
 }
@@ -605,6 +609,7 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
         new_pages.set_ith_block_id(i, &BlockId(block_id));
     }
 
+    allocation_barrier(new_vec_pages);
     write_with_barrier(mem, &mut (*r).vec_pages, new_vec_pages);
     old_page_count.into()
 }
@@ -678,7 +683,7 @@ pub(crate) unsafe fn region_store<M: Memory>(_mem: &mut M, r: Value, offset: u64
     if b1 == b2 {
         write(b1_off, src);
     } else {
-        // Case: Staged reads, one per block that holds requested data.
+        // Case: Staged writes, one per block that holds requested data.
 
         let mut i = 0; // invariant: i = # of bytes stored.
         let mut s = src.as_ptr(); // source for bytes.
@@ -691,7 +696,7 @@ pub(crate) unsafe fn region_store<M: Memory>(_mem: &mut M, r: Value, offset: u64
         i += b1_len;
         s = s.offset(b1_len as isize);
 
-        // Do rest of block-sized reads.
+        // Do rest of block-sized writes.
         // (invariant: they always occur at the start of a block).
         loop {
             let (d_, _, b_len) = r.relative_into_absolute_info(offset + i);
@@ -716,9 +721,9 @@ pub(crate) unsafe fn region_store<M: Memory>(_mem: &mut M, r: Value, offset: u64
 
 #[ic_mem_fn]
 pub unsafe fn region_load_word8<M: Memory>(mem: &mut M, r: Value, offset: u64) -> u32 {
-    let mut byte: [u8; 1] = [0];
-    region_load(mem, r, offset, &mut byte);
-    byte[0] as u32
+    let mut bytes: [u8; 1] = [0];
+    region_load(mem, r, offset, &mut bytes);
+    core::primitive::u8::from_le_bytes(bytes).into()
 }
 
 #[ic_mem_fn]
@@ -755,15 +760,15 @@ pub unsafe fn region_load_blob<M: Memory>(mem: &mut M, r: Value, offset: u64, le
     let blob = blob_val.as_blob_mut();
     let bytes: &mut [u8] = core::slice::from_raw_parts_mut(blob.payload_addr(), len as usize);
     region_load(mem, r, offset, bytes);
+    allocation_barrier(blob_val);
     blob_val
 }
 
 // -- Region store operations.
 
 #[ic_mem_fn]
-pub unsafe fn region_store_word8<M: Memory>(mem: &mut M, r: Value, offset: u64, byte: u32) {
-    let mut byte: [u8; 1] = [byte as u8];
-    region_store(mem, r, offset, &mut byte);
+pub unsafe fn region_store_word8<M: Memory>(mem: &mut M, r: Value, offset: u64, val: u32) {
+    region_store(mem, r, offset, &core::primitive::u8::to_le_bytes(val as u8))
 }
 
 #[ic_mem_fn]

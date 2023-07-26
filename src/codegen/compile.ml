@@ -3969,7 +3969,7 @@ module Region = struct
          compile_eq_const Tagged.(int_of_tag StableSeen) ^^
          G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
          E.else_trap_with env ("Internal error: bad region tag "^ s) ^^
-         get_region ^^ Tagged.load_field env (vec_pages_field env) ^^ Tagged.load_tag env ^^
+         get_region ^^ load_field env vec_pages_field ^^ Tagged.load_tag env ^^
          compile_eq_const Tagged.(int_of_tag Blob) ^^
          E.else_trap_with env ("Internal error: bad region.vec_pages" ^ s) ^^
          get_region)
@@ -5790,7 +5790,6 @@ module MakeSerialization (Strm : Stream) = struct
           | Func (s, c, tbs, ts1, ts2) ->
             List.iter go ts1; List.iter go ts2
           | Prim Blob -> ()
-          | Prim Region -> assert false (* crusso: delete me? Region is primitive*)
           | Mut t -> go t
           | _ ->
             Printf.eprintf "type_desc: unexpected type %s\n" (string_of_typ t);

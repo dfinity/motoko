@@ -18,8 +18,7 @@ unsafe fn region0_store<M: Memory>(mem: &mut M, offset: u64, src: &[u8]) {
 #[ic_mem_fn]
 pub unsafe fn region0_get<M: Memory>(_mem: &mut M) -> Value {
     assert_ne!(REGION_0, NO_REGION);
-    let v = REGION_0;
-    v
+    REGION_0
 }
 
 // Expose Region0 object to GC algorithms.
@@ -47,7 +46,7 @@ pub unsafe fn region0_grow<M: Memory>(mem: &mut M, new_pages: u64) -> u64 {
 pub unsafe fn region0_load_word8<M: Memory>(mem: &mut M, offset: u64) -> u32 {
     let mut byte: [u8; 1] = [0];
     region0_load(mem, offset, &mut byte);
-    byte[0] as u32
+    core::primitive::u8::from_le_bytes(bytes).into()
 }
 
 #[ic_mem_fn]
@@ -82,8 +81,7 @@ pub unsafe fn region0_load_float64<M: Memory>(mem: &mut M, offset: u64) -> f64 {
 
 #[ic_mem_fn]
 pub unsafe fn region0_store_word8<M: Memory>(mem: &mut M, offset: u64, byte: u32) {
-    let mut byte: [u8; 1] = [byte as u8];
-    region0_store(mem, offset, &mut byte);
+    region0_store(mem, offset, &core::primitive::u8::to_le_bytes(val as u8))
 }
 
 #[ic_mem_fn]
@@ -111,7 +109,7 @@ pub unsafe fn region0_store_blob<M: Memory>(mem: &mut M, offset: u64, blob: Valu
     let blob = blob.as_blob();
     let len = blob.len();
     let bytes = blob.payload_const();
-    let bytes: &[u8] = core::slice::from_raw_parts(bytes, len.0 as usize);
+    let bytes: &[u8] = core::slice::from_raw_parts(bytes, len.as_usize());
     region0_store(mem, offset, bytes)
 }
 
@@ -121,5 +119,6 @@ pub unsafe fn region0_load_blob<M: Memory>(mem: &mut M, offset: u64, len: u32) -
     let blob = blob_val.as_blob_mut();
     let bytes: &mut [u8] = core::slice::from_raw_parts_mut(blob.payload_addr(), len as usize);
     region0_load(mem, offset, bytes);
+    allocation_barrier(blob_val);
     blob_val
 }

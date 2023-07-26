@@ -580,7 +580,7 @@ pub struct Region {
 }
 
 impl Region {
-    // (See also: RegonObject used in region.rs)
+    // (See also: RegionObject used in region.rs)
     pub unsafe fn payload_addr(self: *const Self) -> *mut Value {
         self.offset(1) as *mut Value // skip region header
     }

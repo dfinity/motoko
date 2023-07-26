@@ -79,8 +79,9 @@ reasons.  See Q&A for more discussion.
 ## Questions and answers
 
 ### Q: What determines the 8MB non-empty region minimum?
+
 Mostly, we want to reduce the amount of metadata we need to track, so instead of per-page metadata (lots) we only need per-block metadata (less).
-This size comes from wanting to grow a region by more than one page at
+This size means we grow a region by more than one physical page at
 a time (in terms of the way that the canister interacts with the
 system API, at least).  Rather than actually grow by a single page,
 the implementation grows by a "page block" (8MB) at a time.
@@ -124,7 +125,9 @@ User-facing region allocator operations:
  - `region_load` -- read some data from the region.
  - `region_store` -- store some data into the region.
 
-And a special operation, for testing our design for future GC integration (bonus):
+### FUTURE WORK
+
+Add a special operation, for testing our design for future GC integration (bonus):
 
 - `region_release` -- release region and reuse region's page blocks.
 
