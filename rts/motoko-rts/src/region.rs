@@ -119,6 +119,14 @@ impl RegionObject {
         RegionId((*self.0).id)
     }
 
+    pub unsafe fn check_relative_range(&self, offset: u64, len: u64) {
+        if (u64::MAX - len < offset)
+            || ((offset + len) / meta_data::size::PAGE_IN_BYTES >= (*self.0).page_count.into())
+        {
+            rts_trap_with("region access out of bounds.");
+        }
+    }
+
     pub unsafe fn check_relative_into_absolute_offset(&self, offset: u64) {
         if !((offset / meta_data::size::PAGE_IN_BYTES) < (*self.0).page_count.into()) {
             rts_trap_with("region access out of bounds.");
@@ -620,7 +628,7 @@ pub(crate) unsafe fn region_load<M: Memory>(_mem: &mut M, r: Value, offset: u64,
 
     let r = RegionObject::from_value(&r);
     if dst.len() > 1 {
-        r.check_relative_into_absolute_offset(offset + dst.len() as u64 - 1);
+        r.check_relative_range(offset, dst.len() as u64);
     } else {
         r.check_relative_into_absolute_offset(offset);
     }
@@ -675,7 +683,7 @@ pub(crate) unsafe fn region_store<M: Memory>(_mem: &mut M, r: Value, offset: u64
 
     let r = RegionObject::from_value(&r);
     if src.len() > 1 {
-        r.check_relative_into_absolute_offset(offset + src.len() as u64 - 1);
+        r.check_relative_range(offset, src.len() as u64);
     } else {
         r.check_relative_into_absolute_offset(offset);
     }
