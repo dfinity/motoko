@@ -1,4 +1,4 @@
-use crate::barriers::{init_with_barrier, write_with_barrier};
+use crate::barriers::{allocation_barrier, init_with_barrier, write_with_barrier};
 use crate::memory::{alloc_blob, Memory};
 use crate::rts_trap_with;
 use crate::types::{size_of, Blob, Bytes, Region, Value, TAG_REGION};

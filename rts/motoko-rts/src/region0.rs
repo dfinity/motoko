@@ -1,4 +1,4 @@
-//use crate::region::Region;
+use crate::barriers::allocation_barrier;
 use crate::memory::Memory;
 use crate::region::{region_grow, region_size, NO_REGION, REGION_0};
 use crate::types::Value;
@@ -46,7 +46,7 @@ pub unsafe fn region0_grow<M: Memory>(mem: &mut M, new_pages: u64) -> u64 {
 pub unsafe fn region0_load_word8<M: Memory>(mem: &mut M, offset: u64) -> u32 {
     let mut byte: [u8; 1] = [0];
     region0_load(mem, offset, &mut byte);
-    core::primitive::u8::from_le_bytes(bytes).into()
+    core::primitive::u8::from_le_bytes(byte).into()
 }
 
 #[ic_mem_fn]
@@ -80,7 +80,7 @@ pub unsafe fn region0_load_float64<M: Memory>(mem: &mut M, offset: u64) -> f64 {
 // -- Region0 store operations.
 
 #[ic_mem_fn]
-pub unsafe fn region0_store_word8<M: Memory>(mem: &mut M, offset: u64, byte: u32) {
+pub unsafe fn region0_store_word8<M: Memory>(mem: &mut M, offset: u64, val: u32) {
     region0_store(mem, offset, &core::primitive::u8::to_le_bytes(val as u8))
 }
 
