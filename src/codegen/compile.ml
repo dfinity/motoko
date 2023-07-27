@@ -6857,7 +6857,7 @@ module MakeSerialization (Strm : Stream) = struct
       if extended
       then "@deserialize_extended<" ^ ts_name ^ ">"
       else "@deserialize<" ^ ts_name ^ ">" in
-    Func.share_code2 env name (("blob", substrate_type), ("can_recover", I32Type)) (List.map (fun _ -> I32Type) ts) (fun env get_blob get_can_recover ->
+    Func.share_code2 env name (("substrate", substrate_type), ("can_recover", I32Type)) (List.map (fun _ -> I32Type) ts) (fun env get_substrate get_can_recover ->
       let (set_data_size, get_data_size) = new_local env "data_size" in
       let (set_refs_size, get_refs_size) = new_local env "refs_size" in
       let (set_data_start, get_data_start) = new_local env "data_start" in
@@ -7213,7 +7213,7 @@ module Stabilization = struct
     (* TODO: do we need `guard_range` calls? *)
     let substrate_type = I32Type
 
-    let get_ptr get_buf =
+    let get_ptr get_buf = G.i Unreachable ^^
       get_buf ^^ G.i (Load {ty = I32Type; align = 2; offset = 0l; sz = None})
     let get_end get_buf =
       get_buf ^^ G.i (Load {ty = I32Type; align = 2; offset = Heap.word_size; sz = None})
@@ -7247,7 +7247,7 @@ module Stabilization = struct
       compile_unboxed_zero ^^
       G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.(Pack16, ZX)})
 
-    let read_word32 env get_buf =
+    let read_word32 env get_buf = E.trap_with env "read_word32" ^^
       compile_const_64 0L ^^
       extend64 get_buf ^^
       compile_const_64 4L ^^
