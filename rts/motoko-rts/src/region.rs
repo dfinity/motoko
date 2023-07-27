@@ -1,6 +1,7 @@
 use crate::barriers::{allocation_barrier, init_with_barrier, write_with_barrier};
 use crate::memory::{alloc_blob, Memory};
 use crate::rts_trap_with;
+use crate::trap_with_prefix;
 use crate::types::{size_of, Blob, Bytes, Region, Value, TAG_REGION};
 
 use motoko_rts_macros::ic_mem_fn;
@@ -119,25 +120,35 @@ impl RegionObject {
         RegionId((*self.0).id)
     }
 
+    pub unsafe fn trap_with(&self, msg: &str) -> ! {
+        let prefix = if (*self.0).id == 0 {
+            "StableMemory "
+        } else {
+            "Region "
+        };
+        trap_with_prefix(prefix, msg)
+    }
+
+    // Check both offset and [offset,.., offset + len) within bounds *)
+    // c.f. StableMem.guard_range in compile.ml *)
+    // TODO: simplify and specialize on len
     pub unsafe fn check_relative_range(&self, offset: u64, len: u64) {
-        if (u64::MAX - len < offset)
-            || ((offset + len) / meta_data::size::PAGE_IN_BYTES >= (*self.0).page_count.into())
-        {
-            rts_trap_with("region access out of bounds.");
+        if len <= 1 {
+            if offset >= ((*self.0).page_count as u64) * meta_data::size::PAGE_IN_BYTES {
+                self.trap_with("offset out of bounds");
+            }
+        } else {
+            if u64::MAX - len < offset {
+                self.trap_with("range overflow")
+            };
+            if offset + len > (((*self.0).page_count as u64) * meta_data::size::PAGE_IN_BYTES) {
+                self.trap_with("range out of bounds");
+            };
         }
     }
 
-    pub unsafe fn check_relative_into_absolute_offset(&self, offset: u64) {
-        if !((offset / meta_data::size::PAGE_IN_BYTES) < (*self.0).page_count.into()) {
-            rts_trap_with("region access out of bounds.");
-        };
-    }
-
-    // computes absolute offset, BlockId, and remaining length (of the
+    // Computes absolute offset, BlockId, and remaining length (of the
     // given block) for a relative offset.
-    //
-    // assumes but does not run check_relative_into_absolute_offset for
-    // this offset, or some higher one.
     pub unsafe fn relative_into_absolute_info(&self, offset: u64) -> (u64, BlockId, u64) {
         let av = AccessVector::from_value(&(*self.0).vec_pages);
 
@@ -627,11 +638,13 @@ pub(crate) unsafe fn region_load<M: Memory>(_mem: &mut M, r: Value, offset: u64,
     use meta_data::size::BLOCK_IN_BYTES;
 
     let r = RegionObject::from_value(&r);
-    if dst.len() > 1 {
-        r.check_relative_range(offset, dst.len() as u64);
-    } else {
-        r.check_relative_into_absolute_offset(offset);
-    }
+
+    r.check_relative_range(offset, dst.len() as u64);
+
+    if dst.len() == 0 {
+        return;
+    };
+
     let (b1_off, b1, b1_len, b2) = r.relative_into_absolute_span(offset, dst.len() as u64);
     if b1 == b2 {
         // Case: only uses a single block, and thus only requires one read.
@@ -682,11 +695,13 @@ pub(crate) unsafe fn region_store<M: Memory>(_mem: &mut M, r: Value, offset: u64
     use meta_data::size::BLOCK_IN_BYTES;
 
     let r = RegionObject::from_value(&r);
-    if src.len() > 1 {
-        r.check_relative_range(offset, src.len() as u64);
-    } else {
-        r.check_relative_into_absolute_offset(offset);
-    }
+
+    r.check_relative_range(offset, src.len() as u64);
+
+    if src.len() == 0 {
+        return;
+    };
+
     let (b1_off, b1, b1_len, b2) = r.relative_into_absolute_span(offset, src.len() as u64);
     if b1 == b2 {
         write(b1_off, src);

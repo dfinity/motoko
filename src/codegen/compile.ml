@@ -5089,40 +5089,45 @@ module StableMem = struct
   let guard env =
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
-      Func.share_code1 env "__stablemem_guard"
-        ("offset", I64Type) []
-        (fun env get_offset ->
-          get_offset ^^
-          compile_const_64 (Int64.of_int page_size_bits) ^^
-          G.i (Binary (Wasm.Values.I64 I64Op.ShrU)) ^^
-          get_mem_size env ^^
-          G.i (Compare (Wasm.Values.I64 I64Op.LtU)) ^^
-          E.else_trap_with env "StableMemory offset out of bounds")
+       get_mem_size env ^^
+       compile_const_64 (Int64.of_int page_size_bits) ^^
+       G.i (Binary (Wasm.Values.I64 I64Op.Shl)) ^^
+       G.i (Compare (Wasm.Values.I64 I64Op.GeU)) ^^
+       E.then_trap_with env "StableMemory offset out of bounds"
     | _ -> assert false
 
-  (* check [offset,.., offset + size) within bounds, assumes size > 0 *)
+  (* check both offset and [offset,.., offset + size) within bounds *)
+  (* c.f. region.rs check_relative_range *)
+  (* TODO: specialize on size *)
   let guard_range env =
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
       Func.share_code2 env "__stablemem_guard_range"
         (("offset", I64Type), ("size", I32Type)) []
         (fun env get_offset get_size ->
-          let (set_sum, get_sum) = new_local64 env "sum" in
-          get_offset ^^
-          get_size ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-          G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
-          set_sum ^^
-          get_sum ^^
-          get_offset ^^
-          G.i (Compare (Wasm.Values.I64 I64Op.LtU)) ^^
-          E.then_trap_with env "StableMemory range overflow" ^^
-          get_sum
-          ^^
-          get_mem_size env ^^
-          compile_const_64 (Int64.of_int page_size_bits) ^^
-          G.i (Binary (Wasm.Values.I64 I64Op.Shl)) ^^
-          G.i (Compare (Wasm.Values.I64 I64Op.LeU)) ^^
-          E.else_trap_with env "StableMemory range out of bounds")
+          get_size ^^
+          compile_unboxed_one ^^
+          G.i (Compare (Wasm.Values.I32 I64Op.LeU)) ^^
+          G.if0 begin
+            get_offset ^^
+            guard env
+          end
+          begin
+            compile_const_64 (Int64.minus_one) ^^
+            get_size ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+            G.i (Binary (Wasm.Values.I64 I64Op.Sub)) ^^
+            get_offset ^^
+            G.i (Compare (Wasm.Values.I64 I64Op.LtU)) ^^
+            E.then_trap_with env "StableMemory range overflow" ^^
+            get_offset ^^
+            get_size ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+            G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
+            get_mem_size env ^^
+            compile_const_64 (Int64.of_int page_size_bits) ^^
+            G.i (Binary (Wasm.Values.I64 I64Op.Shl)) ^^
+            G.i (Compare (Wasm.Values.I64 I64Op.GtU)) ^^
+            E.then_trap_with env "StableMemory range out of bounds"
+          end)
     | _ -> assert false
 
   let add_guard env guarded get_offset bytes =
