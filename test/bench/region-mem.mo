@@ -1,6 +1,14 @@
 //MOC-FLAG --force-gc --stable-regions
-import { performanceCounter; rts_heap_size; debugPrint } = "mo:⛔";
-import { new;  size; grow; loadNat16; storeNat16 } = "../run-drun/stable-region/Region";
+import {
+   performanceCounter;
+   rts_heap_size;
+   debugPrint;
+   regionNew = new;
+   regionSize = size;
+   regionGrow = grow;
+   regionLoadNat16 = loadNat16;
+   regionStoreNat16 = storeNat16;
+} = "mo:⛔";
 
 actor stablemem {
 

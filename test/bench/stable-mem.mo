@@ -1,6 +1,14 @@
 //MOC-FLAG --force-gc
-import { performanceCounter; rts_heap_size; debugPrint } = "mo:⛔";
-import { size; grow; loadNat16; storeNat16 } = "../run-drun/stable-mem/StableMemory";
+import {
+   performanceCounter;
+   rts_heap_size;
+   debugPrint;
+   stableMemorySize = size;
+   stableMemoryGrow = grow;
+   stableMemoryLoadNat16 = loadNat16;
+   stableMemoryStoreNat16 = storeNat16;
+} = "mo:⛔";
+
 
 actor stablemem {
 
