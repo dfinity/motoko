@@ -405,8 +405,6 @@ pub unsafe fn region_recover<M: Memory>(mem: &mut M, rid: &RegionId) -> Value {
     let block_count = (page_count as u32 + PAGES_IN_BLOCK - 1) / PAGES_IN_BLOCK;
     let vec_pages = alloc_blob(mem, Bytes(block_count * 2));
 
-    let r_ptr = alloc_region(mem, rid.0, page_count as u32, vec_pages);
-
     let tb = meta_data::total_allocated_blocks::get();
     let av = AccessVector(vec_pages.as_blob_mut());
     let mut recovered_blocks = 0;
@@ -423,6 +421,8 @@ pub unsafe fn region_recover<M: Memory>(mem: &mut M, rid: &RegionId) -> Value {
     }
     assert_eq!(recovered_blocks, block_count);
     allocation_barrier(vec_pages);
+
+    let r_ptr = alloc_region(mem, rid.0, page_count as u32, vec_pages);
     r_ptr
 }
 
