@@ -6,6 +6,14 @@ use crate::types::{size_of, Blob, Bytes, Region, Value, TAG_REGION};
 
 use motoko_rts_macros::ic_mem_fn;
 
+unsafe fn region_trap_with(msg: &str) -> ! {
+    trap_with_prefix("Region ", msg)
+}
+
+unsafe fn stable_memory_trap_with(msg: &str) -> ! {
+    trap_with_prefix("StableMemory ", msg)
+}
+
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct BlockId(pub u16);
 
@@ -121,12 +129,11 @@ impl RegionObject {
     }
 
     pub unsafe fn trap_with(&self, msg: &str) -> ! {
-        let prefix = if (*self.0).id == 0 {
-            "StableMemory "
+        if (*self.0).id == 0 {
+            stable_memory_trap_with(msg)
         } else {
-            "Region "
+            region_trap_with(msg)
         };
-        trap_with_prefix(prefix, msg)
     }
 
     // Check both offset and [offset,.., offset + len) within bounds *)
@@ -375,6 +382,11 @@ unsafe fn region_reserve_id_span<M: Memory>(_mem: &mut M, first: Option<RegionId
 #[ic_mem_fn]
 pub unsafe fn region_new<M: Memory>(mem: &mut M) -> Value {
     let next_id = meta_data::total_allocated_regions::get() as u16;
+
+    if next_id == 32767 {
+        trap_with_prefix("Region ", "out of regions")
+    };
+
     meta_data::total_allocated_regions::set(next_id as u64 + 1);
 
     let vec_pages = alloc_blob(mem, Bytes(0));

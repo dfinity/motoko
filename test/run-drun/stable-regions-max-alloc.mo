@@ -1,26 +1,31 @@
 //MOC-FLAG --stable-regions
 import P "mo:⛔";
-import {new; size} "stable-region/Region";
+import {new; size } "stable-region/Region";
 
+// test region allocation is finite
 actor {
 
   public func go() : async() {
-    var n = 16; // first 16 regions are reserved
-    while (n < 32767) {
-      var r1 = new();
+    var n : Nat32 = 16; // first 16 regions are reserved
+    loop {
+      let r1 = new();
       assert size(r1) == 0;
       n += 1;
-    };
-    P.debugPrint(debug_show {alloced = n});
-    try {
-      await async {
-        let r = new();
-        P.debugPrint("new failed to fail");
-        assert false;
+    } while (n < 32768);
+    P.debugPrint(debug_show {alloced = n - 1});
+    var c = 0;
+    while (c < 3) {
+      try {
+        await async {
+          let r = new();
+          P.debugPrint("new failed to fail");
+          assert false;
+        }
       }
-    }
-    catch e {
-      P.debugPrint("ok");
+      catch e {
+        P.debugPrint("caught:" # P.errorMessage(e));
+      };
+      c += 1;
     }
   };
 
