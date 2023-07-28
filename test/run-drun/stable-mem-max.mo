@@ -3,7 +3,7 @@ import StableMemory "stable-mem/StableMemory";
 
 actor {
   let max : Nat64 = 65536;
-  public func testGrow() : async () {
+  public query func testGrow() : async () {
     assert 0  == StableMemory.grow(max - 1);
     assert (max - 1) == StableMemory.grow(1);
     assert max == StableMemory.size();
@@ -19,6 +19,6 @@ actor {
 // too slow on ic-ref-run:
 //SKIP comp-ref
 
-//CALL ingress testGrow "DIDL\x00\x00"
+//CALL query testGrow "DIDL\x00\x00"
 
 
