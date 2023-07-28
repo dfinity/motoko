@@ -408,7 +408,8 @@ pub unsafe fn region_recover<M: Memory>(mem: &mut M, rid: &RegionId) -> Value {
     let tb = meta_data::total_allocated_blocks::get();
     let av = AccessVector(vec_pages.as_blob_mut());
     let mut recovered_blocks = 0;
-    for block_id in 0..tb {
+    let mut block_id = 0;
+    while recovered_blocks < block_count && block_id < tb {
         match meta_data::block_region_table::get(BlockId(block_id as u16)) {
             None => {}
             Some((rid_, rank)) => {
@@ -418,6 +419,7 @@ pub unsafe fn region_recover<M: Memory>(mem: &mut M, rid: &RegionId) -> Value {
                 }
             }
         }
+        block_id += 1;
     }
     assert_eq!(recovered_blocks, block_count);
     allocation_barrier(vec_pages);
