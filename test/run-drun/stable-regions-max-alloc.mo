@@ -7,8 +7,10 @@ actor {
 
   public func go() : async() {
     var n : Nat32 = 16; // first 16 regions are reserved
+//    assert P.regionId(P.stableMemoryRegion()) == 0;
     loop {
       let r1 = new();
+//      assert P.regionId(r) == n;
       assert size(r1) == 0;
       n += 1;
     } while (n < 32768);
