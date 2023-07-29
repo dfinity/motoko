@@ -9,12 +9,13 @@ actor {
     var n : Nat32 = 16; // first 16 regions are reserved
 //    assert P.regionId(P.stableMemoryRegion()) == 0;
     loop {
-      let r1 = new();
+      let r = new();
 //      assert P.regionId(r) == n;
-      assert size(r1) == 0;
+//      P.debugPrint(debug_show {n; id = P.regionId(r)});
+      assert size(r) == 0;
       n += 1;
-    } while (n < 32768);
-    P.debugPrint(debug_show {alloced = n - 1});
+    } while (n < 32767);
+    P.debugPrint(debug_show {alloced = n});
     var c = 0;
     while (c < 3) {
       try {

@@ -383,7 +383,7 @@ unsafe fn region_reserve_id_span<M: Memory>(_mem: &mut M, first: Option<RegionId
 pub unsafe fn region_new<M: Memory>(mem: &mut M) -> Value {
     let next_id = meta_data::total_allocated_regions::get() as u16;
 
-    if next_id == 32767 {
+    if next_id == meta_data::max::REGIONS {
         trap_with_prefix("Region ", "out of regions")
     };
 
@@ -441,17 +441,23 @@ pub unsafe fn region_recover<M: Memory>(mem: &mut M, rid: &RegionId) -> Value {
 }
 
 pub(crate) unsafe fn region_migration_from_v0_into_v2<M: Memory>(mem: &mut M) {
-    if crate::ic0_stable::nicer::size() == 0 {
-        let _ = crate::ic0_stable::nicer::grow(meta_data::size::STATIC_MEM_IN_PAGES as u64);
+    use crate::ic0_stable::nicer::{grow, size};
 
-        // Region 0 -- classic API for stable memory, as a dedicated region.
-        REGION_0 = region_new(mem);
+    assert!(size() == 0);
 
-        // Regions 1 through 15, reserved for future use by future Motoko compiler-RTS features.
-        region_reserve_id_span(mem, Some(RegionId(1)), RegionId(15));
-    } else {
-        unreachable!()
-    }
+    let prev_pages = grow(meta_data::size::STATIC_MEM_IN_PAGES as u64);
+
+    if prev_pages == u64::MAX {
+        region_trap_with("migration failure (insufficient pages)");
+    };
+
+    debug_assert!(prev_pages == 0);
+
+    // Region 0 -- classic API for stable memory, as a dedicated region.
+    REGION_0 = region_new(mem);
+
+    // Regions 1 through 15, reserved for future use by future Motoko compiler-RTS features.
+    region_reserve_id_span(mem, Some(RegionId(1)), RegionId(15));
 }
 
 //
@@ -478,13 +484,19 @@ pub(crate) unsafe fn region_migration_from_v1_into_v2<M: Memory>(mem: &mut M) {
         (region0_pages + (meta_data::size::PAGES_IN_BLOCK - 1)) / (meta_data::size::PAGES_IN_BLOCK);
     assert!(region0_blocks > 0);
 
-    grow(
+    let prev_pages = grow(
         (meta_data::size::PAGES_IN_BLOCK + // <-- For new region manager
 	 /* Bump out region0 to nearest block boundary: */
 	 region0_blocks * meta_data::size::PAGES_IN_BLOCK
             - region0_pages)
             .into(),
     );
+
+    if prev_pages == u64::MAX {
+        region_trap_with("migration failure (insufficient pages)")
+    };
+
+    debug_assert!(prev_pages == region0_pages.into());
 
     // Temp for the head block, which we move to be physically last.
     // NB: no allocation_barrier is required: header_val is temporary and can be reclaimed by the next GC increment/run.
@@ -593,8 +605,8 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
         let need = total_required_pages(new_total_blocks);
         if have < need {
             let diff = need - have;
-            if crate::ic0_stable::nicer::grow(diff) == 0xFFFF_FFFF_FFFF_FFFF {
-                return 0xFFFF_FFFF_FFFF_FFFF; // Propagate error
+            if crate::ic0_stable::nicer::grow(diff) == u64::MAX {
+                return u64::MAX; // Propagate error
             }
         }
     }
