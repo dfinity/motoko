@@ -1,0 +1,4 @@
+ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
+debug.print: unsafe precondition(s) violated: slice::from_raw_parts_mut requires the pointer to be aligned and non-null, and the total size of the slice not to exceed `isize::MAX`
+debug.print: panic occurred in file '/nix/store/gk20iidznjrgkpw9d70vsbhafdpg2s94-rust-1.71.0-nightly-2023-04-20-8bdcc62cb/lib/rustlib/src/rust/library/core/src/panicking.rs' at line 126
+ingress Err: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: RTS error: RTS panicked
