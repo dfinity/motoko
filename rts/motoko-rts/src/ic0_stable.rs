@@ -42,6 +42,18 @@ pub mod nicer {
     }
 
     // Little endian.
+    pub fn read_u32(offset: u64) -> u32 {
+        let mut res: [u8; 4] = [0; 4];
+        read(offset, &mut res);
+        core::primitive::u32::from_le_bytes(res)
+    }
+
+    // Little endian.
+    pub fn write_u32(offset: u64, value: u32) {
+        write(offset, &core::primitive::u32::to_le_bytes(value));
+    }
+
+    // Little endian.
     pub fn read_u64(offset: u64) -> u64 {
         let mut res: [u8; 8] = [0; 8];
         read(offset, &mut res);

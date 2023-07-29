@@ -202,6 +202,11 @@ impl RegionObject {
 // Mutable meta data stored in stable memory header (See motoko/design/StableRegions.md)
 mod meta_data {
 
+    pub mod version {
+        pub const MAGIC: &[u8; 8] = b"MOREGION";
+        pub const VERSION: u32 = 2;
+    }
+
     /// Maximum number of entities.
     pub mod max {
         pub const BLOCKS: u16 = 32 * 1024;
@@ -214,6 +219,8 @@ mod meta_data {
         // - 8 bytes for the size.
         // - 4 bytes for future use (including GC visit-marking).
         pub const REGION_TABLE_ENTRY: u16 = 12;
+
+        pub const REGION_TABLE: u64 = super::max::REGIONS as u64 * REGION_TABLE_ENTRY as u64;
 
         pub const BLOCK_REGION_TABLE_ENTRY: u16 = 4;
 
@@ -234,13 +241,20 @@ mod meta_data {
 
     /// Offsets into stable memory for statically-sized fields and tables.
     pub mod offset {
-        pub const TOTAL_ALLOCATED_BLOCKS: u64 = 0;
 
-        pub const TOTAL_ALLOCATED_REGIONS: u64 = 2;
+        pub const MAGIC: u64 = 0;
 
-        pub const BLOCK_REGION_TABLE: u64 = 4;
+        pub const VERSION: u64 = MAGIC + 8;
+
+        pub const TOTAL_ALLOCATED_BLOCKS: u64 = VERSION + 4;
+
+        pub const TOTAL_ALLOCATED_REGIONS: u64 = TOTAL_ALLOCATED_BLOCKS + 2;
+
+        pub const BLOCK_REGION_TABLE: u64 = TOTAL_ALLOCATED_REGIONS + 2;
 
         pub const REGION_TABLE: u64 = BLOCK_REGION_TABLE + super::size::BLOCK_REGION_TABLE;
+
+        pub const FREE: u64 = REGION_TABLE + super::size::REGION_TABLE;
 
         /* One block for meta data, plus future use TBD. */
         pub const BLOCK_ZERO: u64 = super::size::BLOCK_IN_BYTES;
@@ -286,6 +300,7 @@ mod meta_data {
         use super::{offset, size};
         use crate::ic0_stable::nicer::{read_u16, write_u16};
         use crate::region::{BlockId, RegionId};
+        use core::mem::size_of;
 
         // Compute an offset in stable memory for a particular block ID (based zero).
         fn index(b: &BlockId) -> u64 {
@@ -295,9 +310,10 @@ mod meta_data {
         /// Some(r, j) means that the block is in use by region r, at slot j.
         /// None means that the block is available for (re-)allocation.
         pub fn get(b: BlockId) -> Option<(RegionId, u16)> {
-            let raw = read_u16(index(&b));
+            let offset = index(&b);
+            let raw = read_u16(offset);
             let rid = RegionId::from_u16(raw);
-            rid.map(|r| (r, read_u16(index(&b) + 2)))
+            rid.map(|r| (r, read_u16(offset + size_of::<u16>() as u64)))
         }
 
         /// Some(r, j) means that the block is in use by region r, at slot j.
@@ -306,8 +322,9 @@ mod meta_data {
             match r {
                 None => write_u16(index(&b), RegionId::into_u16(None)),
                 Some((r, j)) => {
-                    write_u16(index(&b), RegionId::into_u16(Some(r)));
-                    write_u16(index(&b) + 2, j)
+                    let offset = index(&b);
+                    write_u16(offset, RegionId::into_u16(Some(r)));
+                    write_u16(offset + size_of::<u16>() as u64, j)
                 }
             }
         }
@@ -335,6 +352,13 @@ mod meta_data {
             write_u64(index(r), RegionSizeInPages::into_u64(s))
         }
     }
+}
+
+fn write_magic() {
+    use crate::ic0_stable::nicer::{size, write, write_u32};
+    assert!(size() > 0);
+    write(meta_data::offset::MAGIC, meta_data::version::MAGIC);
+    write_u32(meta_data::offset::VERSION, meta_data::version::VERSION);
 }
 
 unsafe fn alloc_region<M: Memory>(
@@ -441,7 +465,8 @@ pub unsafe fn region_recover<M: Memory>(mem: &mut M, rid: &RegionId) -> Value {
 }
 
 pub(crate) unsafe fn region_migration_from_v0_into_v2<M: Memory>(mem: &mut M) {
-    use crate::ic0_stable::nicer::{grow, size};
+    use crate::ic0_stable::nicer::{grow, size, write};
+    use meta_data::size::{PAGES_IN_BLOCK, PAGE_IN_BYTES};
 
     assert!(size() == 0);
 
@@ -452,6 +477,15 @@ pub(crate) unsafe fn region_migration_from_v0_into_v2<M: Memory>(mem: &mut M) {
     };
 
     debug_assert!(prev_pages == 0);
+
+    // Zero metadata region, for good measure.
+    let zero_page: [u8; PAGE_IN_BYTES as usize] = [0; PAGE_IN_BYTES as usize];
+    for i in 0..PAGES_IN_BLOCK {
+        write((i as u64) * (PAGE_IN_BYTES as u64), &zero_page); //core::slice::from_raw_parts(&zero_page, zero_page.len()));
+    }
+
+    // Write magic header
+    write_magic();
 
     // Region 0 -- classic API for stable memory, as a dedicated region.
     REGION_0 = region_new(mem);
@@ -500,6 +534,7 @@ pub(crate) unsafe fn region_migration_from_v1_into_v2<M: Memory>(mem: &mut M) {
 
     // Temp for the head block, which we move to be physically last.
     // NB: no allocation_barrier is required: header_val is temporary and can be reclaimed by the next GC increment/run.
+    // TODO: instead of allocating an 8MB blob, just stack-allocate a tmp page and zero page, and transfer/zero-init via the stack, using a loop.
     let header_val = crate::memory::alloc_blob(mem, crate::types::Bytes(header_len));
     let header_blob = header_val.as_blob_mut();
     let header_bytes =
@@ -517,6 +552,9 @@ pub(crate) unsafe fn region_migration_from_v1_into_v2<M: Memory>(mem: &mut M) {
         header_bytes[i] = 0;
     }
     write(0, header_bytes); // Zero out first block, for region manager meta data.
+
+    // Write magic header
+    write_magic();
 
     /* Initialize meta data as if there is only region 0. */
     meta_data::total_allocated_blocks::set(region0_blocks.into());
@@ -552,7 +590,21 @@ pub(crate) unsafe fn region_migration_from_v1_into_v2<M: Memory>(mem: &mut M) {
 // region manager migration/initialization, with pre-existing stable data.
 // Case: Version 2 into version 2 ("Trivial migration" case).
 //
-pub(crate) unsafe fn region_migration_from_v2_into_v2<M: Memory>(mem: &mut M) {
+pub(crate) unsafe fn region_migration_from_v2plus_into_v2<M: Memory>(mem: &mut M) {
+    use crate::ic0_stable::nicer::{read, read_u32, size};
+
+    // Check if the magic in the memory corresponds to this object.
+    assert!(size() > 1);
+    let mut magic_bytes: [u8; 8] = [0; 8];
+    read(meta_data::offset::MAGIC, &mut magic_bytes);
+    if &magic_bytes != meta_data::version::MAGIC {
+        region_trap_with("migration failure (bad magic bytes)")
+    };
+    let version = read_u32(meta_data::offset::VERSION);
+    if version > meta_data::version::VERSION {
+        region_trap_with("migration failure (unexpected higher version)")
+    };
+
     REGION_0 = region_recover(mem, &RegionId(0));
 
     // Ensure that regions 2 through 15 are already reserved for
@@ -569,10 +621,11 @@ pub(crate) unsafe fn region_migration_from_v2_into_v2<M: Memory>(mem: &mut M) {
 //
 #[ic_mem_fn]
 pub(crate) unsafe fn region_init<M: Memory>(mem: &mut M, from_version: i32) {
+    debug_assert!(meta_data::offset::FREE < meta_data::offset::BLOCK_ZERO);
     match from_version {
         0 => region_migration_from_v0_into_v2(mem),
         1 => region_migration_from_v1_into_v2(mem),
-        2 => region_migration_from_v2_into_v2(mem),
+        2 => region_migration_from_v2plus_into_v2(mem),
         _ => unreachable!(),
     }
 }
@@ -593,13 +646,12 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
     let new_block_count = (old_page_count + new_pages_ + (PAGES_IN_BLOCK - 1)) / PAGES_IN_BLOCK;
     let inc_block_count = new_block_count - old_block_count;
 
-    // Update the total number of allocated blocks,
-    // while respecting the global maximum limit on pages.
+    // Determine the required total number of allocated blocks,
     let old_total_blocks = meta_data::total_allocated_blocks::get();
     let new_total_blocks = old_total_blocks + inc_block_count as u64;
 
-    // Actually grow stable memory with more pages
-    // (but only if needed, by first checking if someone else did it already).
+    // Actually grow stable memory with more pages as required,
+    // while respecting the global maximum limit on pages.
     {
         let have = crate::ic0_stable::nicer::size();
         let need = total_required_pages(new_total_blocks);
@@ -611,7 +663,8 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
         }
     }
 
-    meta_data::total_allocated_blocks::set(new_total_blocks); // commit allocation
+    // Commit the allocation
+    meta_data::total_allocated_blocks::set(new_total_blocks);
 
     // Update this region's page count, in both places where we record it (heap object, region table).
     {
@@ -649,7 +702,7 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
 
         // Update stable memory with new association.
         let assoc = Some((RegionId::from_id((*r).id), i as u16));
-        meta_data::block_region_table::set(BlockId(block_id), assoc.clone());
+        meta_data::block_region_table::set(BlockId(block_id), assoc);
 
         new_pages.set_ith_block_id(i, &BlockId(block_id));
     }
