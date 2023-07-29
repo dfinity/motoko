@@ -857,11 +857,29 @@ pub unsafe fn region_load_float64<M: Memory>(mem: &mut M, r: Value, offset: u64)
 }
 
 #[ic_mem_fn]
-pub unsafe fn region_load_blob<M: Memory>(mem: &mut M, r: Value, offset: u64, len: u32) -> Value {
+pub(crate) unsafe fn region_load_blob<M: Memory>(
+    mem: &mut M,
+    r: Value,
+    offset: u64,
+    len: u32,
+) -> Value {
     let blob_val = crate::memory::alloc_blob(mem, crate::types::Bytes(len));
     let blob = blob_val.as_blob_mut();
-    let bytes: &mut [u8] = core::slice::from_raw_parts_mut(blob.payload_addr(), len as usize);
-    region_load(mem, r, offset, bytes);
+
+    if len < (isize::MAX as u32) {
+        let bytes: &mut [u8] = core::slice::from_raw_parts_mut(blob.payload_addr(), len as usize);
+        region_load(mem, r, offset, bytes);
+    } else {
+        assert!((len / 2) < isize::MAX as u32);
+        let bytes_low: &mut [u8] =
+            core::slice::from_raw_parts_mut(blob.payload_addr(), (len / 2) as usize);
+        region_load(mem, r, offset, bytes_low);
+        let bytes_high: &mut [u8] = core::slice::from_raw_parts_mut(
+            blob.payload_addr().add((len / 2) as usize),
+            (len - len / 2) as usize,
+        );
+        region_load(mem, r, offset + (len / 2) as u64, bytes_high);
+    }
     allocation_barrier(blob_val);
     blob_val
 }
@@ -904,10 +922,19 @@ pub unsafe fn region_store_float64<M: Memory>(mem: &mut M, r: Value, offset: u64
 }
 
 #[ic_mem_fn]
-pub unsafe fn region_store_blob<M: Memory>(mem: &mut M, r: Value, offset: u64, blob: Value) {
+pub(crate) unsafe fn region_store_blob<M: Memory>(mem: &mut M, r: Value, offset: u64, blob: Value) {
     let blob = blob.as_blob();
-    let len = blob.len();
+    let len = blob.len().0;
     let bytes = blob.payload_const();
-    let bytes: &[u8] = core::slice::from_raw_parts(bytes, len.0 as usize);
-    region_store(mem, r, offset, bytes)
+    if len < (isize::MAX as u32) {
+        let bytes: &[u8] = core::slice::from_raw_parts(bytes, len as usize);
+        region_store(mem, r, offset, bytes);
+    } else {
+        assert!((len / 2) < isize::MAX as u32);
+        let bytes_low: &[u8] = core::slice::from_raw_parts(bytes, (len / 2) as usize);
+        region_store(mem, r, offset, bytes_low);
+        let bytes_high: &[u8] =
+            core::slice::from_raw_parts(bytes.add((len / 2) as usize), (len - len / 2) as usize);
+        region_store(mem, r, offset + (len / 2) as u64, bytes_high);
+    }
 }

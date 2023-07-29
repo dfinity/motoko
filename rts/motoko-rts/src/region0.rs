@@ -1,4 +1,3 @@
-use crate::barriers::allocation_barrier;
 use crate::memory::Memory;
 use crate::region::{region_grow, region_size, NO_REGION, REGION_0};
 use crate::types::Value;
@@ -106,19 +105,11 @@ pub unsafe fn region0_store_float64<M: Memory>(mem: &mut M, offset: u64, val: f6
 
 #[ic_mem_fn]
 pub unsafe fn region0_store_blob<M: Memory>(mem: &mut M, offset: u64, blob: Value) {
-    let blob = blob.as_blob();
-    let len = blob.len();
-    let bytes = blob.payload_const();
-    let bytes: &[u8] = core::slice::from_raw_parts(bytes, len.as_usize());
-    region0_store(mem, offset, bytes)
+    crate::region::region_store_blob(mem, REGION_0, offset, blob)
 }
 
 #[ic_mem_fn]
 pub unsafe fn region0_load_blob<M: Memory>(mem: &mut M, offset: u64, len: u32) -> Value {
-    let blob_val = crate::memory::alloc_blob(mem, crate::types::Bytes(len));
-    let blob = blob_val.as_blob_mut();
-    let bytes: &mut [u8] = core::slice::from_raw_parts_mut(blob.payload_addr(), len as usize);
-    region0_load(mem, offset, bytes);
-    allocation_barrier(blob_val);
-    blob_val
+    assert_ne!(REGION_0, NO_REGION);
+    crate::region::region_load_blob(mem, REGION_0, offset, len)
 }
