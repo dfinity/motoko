@@ -7568,7 +7568,7 @@ module Stabilization = struct
             IC.system_call env "stable64_write"
           end ^^
 
-        (* let M = pagesize * ic0.stable64_size64() - 1 *)
+        (* let M = pagesize * ic0.stable64_size() - 1 *)
         (* M is beginning of last page *)
         let (set_M, get_M) = new_local64 env "M" in
         IC.system_call env "stable64_size" ^^
@@ -10233,6 +10233,14 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | OtherPrim "rts_collector_instructions", [] ->
     SR.Vanilla,
     GC.get_collector_instructions env ^^ BigNum.from_word64 env
+
+  | OtherPrim "rts_stable_memory_size", [] ->
+    SR.Vanilla,
+    IC.ic_system_call "stable64_size" env ^^ BigNum.from_word64 env
+
+  | OtherPrim "rts_logical_stable_memory_size", [] ->
+    SR.Vanilla,
+    StableMem.get_mem_size env ^^ BigNum.from_word64 env
 
   (* Regions *)
 

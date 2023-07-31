@@ -470,7 +470,15 @@ pub(crate) unsafe fn region_migration_from_v0_into_v2<M: Memory>(mem: &mut M) {
 
     assert!(size() == 0);
 
-    let prev_pages = grow(meta_data::size::STATIC_MEM_IN_PAGES as u64);
+    // pages required for meta_data (9/ 960KiB), much less than PAGES_IN_BLOCK (128/ 8MB) for a full block
+    let meta_data_pages =
+        (meta_data::offset::FREE - 1 + (PAGE_IN_BYTES as u64 - 1)) / PAGE_IN_BYTES as u64;
+
+    assert!(meta_data_pages <= PAGES_IN_BLOCK as u64);
+
+    // initially, only allocate meta_data_pages, not a full block, to reduce overhead for
+    // canisters that don't allocate regions
+    let prev_pages = grow(meta_data_pages);
 
     if prev_pages == u64::MAX {
         region_trap_with("migration failure (insufficient pages)");
@@ -480,8 +488,8 @@ pub(crate) unsafe fn region_migration_from_v0_into_v2<M: Memory>(mem: &mut M) {
 
     // Zero metadata region, for good measure.
     let zero_page: [u8; PAGE_IN_BYTES as usize] = [0; PAGE_IN_BYTES as usize];
-    for i in 0..PAGES_IN_BLOCK {
-        write((i as u64) * (PAGE_IN_BYTES as u64), &zero_page); //core::slice::from_raw_parts(&zero_page, zero_page.len()));
+    for i in 0..meta_data_pages {
+        write((i as u64) * (PAGE_IN_BYTES as u64), &zero_page);
     }
 
     // Write magic header

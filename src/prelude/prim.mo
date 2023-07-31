@@ -70,6 +70,8 @@ func rts_callback_table_count() : Nat { (prim "rts_callback_table_count" : () ->
 func rts_callback_table_size() : Nat { (prim "rts_callback_table_size" : () -> Nat) () };
 func rts_mutator_instructions() : Nat { (prim "rts_mutator_instructions" : () -> Nat) () };
 func rts_collector_instructions() : Nat { (prim "rts_collector_instructions" : () -> Nat) () };
+func rts_stable_memory_size() : Nat { (prim "rts_stable_memory_size" : () -> Nat) () };
+func rts_logical_stable_memory_size() : Nat { (prim "rts_logical_stable_memory_size" : () -> Nat) () };
 
 // Total conversions (fixed to big)
 
