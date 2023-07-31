@@ -128,10 +128,10 @@
         "homepage": null,
         "owner": "mozilla",
         "repo": "nixpkgs-mozilla",
-        "rev": "c72bae8641d4486b3bd7b556d577df519f640f9a",
-        "sha256": "0yjls0866pd02dxkak558k24b19ljjcizy4r7dpjnsmafn25kx0a",
+        "rev": "1b9dec4f11948872c5fade47eee584324df4282d",
+        "sha256": "0qvrxvpb2vfk52y8d86lnvm5bmg3flfh9d92bzxp1j9z3xz1qzk8",
         "type": "tarball",
-        "url": "https://github.com/mozilla/nixpkgs-mozilla/archive/c72bae8641d4486b3bd7b556d577df519f640f9a.tar.gz",
+        "url": "https://github.com/mozilla/nixpkgs-mozilla/archive/1b9dec4f11948872c5fade47eee584324df4282d.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ocaml-vlq": {
