@@ -163,7 +163,7 @@ no-timer-set.mo:3.10-3.18: type error [M0119], object field setTimer is not cont
     principalOfActor : (actor {}) -> Principal;
     principalOfBlob : Blob -> Principal;
     regionGrow : (Region, Nat64) -> Nat64;
-    regionId : Region -> Nat32;
+    regionId : Region -> Nat;
     regionLoadBlob : (Region, Nat64, Nat) -> Blob;
     regionLoadFloat : (Region, Nat64) -> Float;
     regionLoadInt16 : (Region, Nat64) -> Int16;
@@ -190,11 +190,13 @@ no-timer-set.mo:3.10-3.18: type error [M0119], object field setTimer is not cont
     rts_callback_table_size : () -> Nat;
     rts_collector_instructions : () -> Nat;
     rts_heap_size : () -> Nat;
+    rts_logical_stable_memory_size : () -> Nat;
     rts_max_live_size : () -> Nat;
     rts_max_stack_size : () -> Nat;
     rts_memory_size : () -> Nat;
     rts_mutator_instructions : () -> Nat;
     rts_reclaimed : () -> Nat;
+    rts_stable_memory_size : () -> Nat;
     rts_total_allocation : () -> Nat;
     rts_version : () -> Text;
     setCertifiedData : Blob -> ();

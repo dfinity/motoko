@@ -6,11 +6,11 @@ import {new; size } "stable-region/Region";
 actor {
 
   public func go() : async() {
-    var n : Nat32 = 16; // first 16 regions are reserved
-//    assert P.regionId(P.stableMemoryRegion()) == 0;
+    var n = 16; // first 16 regions are reserved
+    assert P.regionId(P.stableMemoryRegion()) == 0;
     loop {
       let r = new();
-//      assert P.regionId(r) == n;
+      assert P.regionId(r) == n;
 //      P.debugPrint(debug_show {n; id = P.regionId(r)});
       assert size(r) == 0;
       n += 1;

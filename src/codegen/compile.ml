@@ -10456,9 +10456,10 @@ and compile_prim_invocation (env : E.t) ae p es at =
        E.trap_with env (Printf.sprintf "stable regions not enabled.")
 
   | OtherPrim "regionId", [e0] ->
-     SR.UnboxedWord32,
+     SR.Vanilla,
      compile_exp_as env ae SR.Vanilla e0 ^^
-     Region.id env
+     Region.id env ^^
+     BigNum.from_word32 env
 
   | OtherPrim ("stableMemoryLoadNat32" | "stableMemoryLoadInt32"), [e] ->
     SR.UnboxedWord32,

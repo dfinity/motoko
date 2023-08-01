@@ -388,8 +388,8 @@ func stableMemoryRegion() : Region =
 func regionNew() : Region =
   (prim "regionNew" : () -> Region) ();
 
-func regionId(r : Region) : Nat32 = // Only for internal use (compiler tests.)
-  (prim "regionId" : Region -> Nat32) r;
+func regionId(r : Region) : Nat =
+  (prim "regionId" : Region -> Nat) r;
 
 func regionSize(r : Region) : Nat64 =
   (prim "regionSize" : Region -> Nat64) r;
