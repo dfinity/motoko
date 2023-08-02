@@ -66,7 +66,7 @@ unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
 }
 
 #[cfg(feature = "ic")]
-static mut ALLOCATIONS_ON_LAST_GC_RUN: Bytes<u64> = Bytes(0u64);
+static mut ALLOCATIONS_AT_LAST_GC_RUN: Bytes<u64> = Bytes(0u64);
 
 #[cfg(feature = "ic")]
 unsafe fn should_start() -> bool {
@@ -85,8 +85,8 @@ unsafe fn should_start() -> bool {
     };
 
     let current_allocations = partitioned_memory::get_total_allocations();
-    debug_assert!(current_allocations >= ALLOCATIONS_ON_LAST_GC_RUN);
-    let absolute_growth = current_allocations - ALLOCATIONS_ON_LAST_GC_RUN;
+    debug_assert!(current_allocations >= ALLOCATIONS_AT_LAST_GC_RUN);
+    let absolute_growth = current_allocations - ALLOCATIONS_AT_LAST_GC_RUN;
     let relative_growth = absolute_growth.0 as f64 / heap_size.as_usize() as f64;
     relative_growth > growth_threshold && heap_size.as_usize() >= PARTITION_SIZE
 }
@@ -94,7 +94,7 @@ unsafe fn should_start() -> bool {
 #[cfg(feature = "ic")]
 unsafe fn record_gc_start<M: Memory>() {
     use crate::memory::ic::partitioned_memory;
-    ALLOCATIONS_ON_LAST_GC_RUN = partitioned_memory::get_total_allocations();
+    ALLOCATIONS_AT_LAST_GC_RUN = partitioned_memory::get_total_allocations();
 }
 
 #[cfg(feature = "ic")]
@@ -128,7 +128,7 @@ unsafe fn record_gc_stop<M: Memory>() {
 /// In particular, it also addresses the case of a single message allocating a huge amount of memory that eventually
 /// triggers the GC start.
 const INCREMENT_BASE_LIMIT: usize = 3_500_000; // Increment limit without concurrent allocations.
-const LATEST_ALLOCATION_FACTOR: usize = 1; // Additional time factor per heap growth since the last GC scheduling, i.e. last IC message.
+const LATEST_ALLOCATION_FACTOR: f64 = 0.25; // Additional time factor per heap growth since the last GC scheduling, i.e. last IC message.
 
 // Performance note: Storing the phase-specific state in the enum would be nicer but it is much slower.
 #[derive(PartialEq)]
@@ -186,7 +186,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         let latest_heap_growth = current_heap_size - state.last_heap_size;
         let limit = usize::saturating_add(
             INCREMENT_BASE_LIMIT,
-            usize::saturating_mul(latest_heap_growth, LATEST_ALLOCATION_FACTOR),
+            (latest_heap_growth as f64 * LATEST_ALLOCATION_FACTOR) as usize,
         );
         let time = BoundedTime::new(limit);
         IncrementalGC { mem, state, time }
