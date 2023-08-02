@@ -4,7 +4,7 @@ open Syntax
 open Source
 
 module Env = Typing.Env
-module TS = Set.Make(String)           
+module TS = Set.Make(String)
 
 type typ_info = {
     var : string;
@@ -24,7 +24,7 @@ let as_tuple fs =
   else
     None
 
-(* Gather type definitions from actor and sort the definitions in topological order *)              
+(* Gather type definitions from actor and sort the definitions in topological order *)
 let chase_env env actor =
   let new_env = ref [] in
   let seen = ref TS.empty in
@@ -81,10 +81,10 @@ let infer_rec env_list =
   in
   List.iter (fun {var;typ;_} -> go typ; seen := TS.add var !seen) env_list;
   !recs
-  
+
 let str ppf s = pp_print_string ppf s; pp_print_cut ppf ()
 let id ppf s = str ppf s.it; pp_print_cut ppf ()
-let space = pp_print_space             
+let space = pp_print_space
 let kwd ppf s = str ppf s; space ppf ()
 let quote_name ppf s = pp_open_hbox ppf (); str ppf "'"; str ppf (Lib.String.lightweight_escaped s); str ppf "'"; pp_close_box ppf (); pp_print_cut ppf ()
 
@@ -112,6 +112,7 @@ let pp_mode ppf m =
   match m.it with
   | Oneway -> str ppf "'oneway'"
   | Query -> str ppf "'query'"
+  | Composite -> str ppf "'composite_query'"
 
 let rec concat ppf f sep list =
   match list with
@@ -161,7 +162,7 @@ and pp_modes ppf modes =
   str ppf "[";
   concat ppf pp_mode "," modes;
   str ppf "]";
-  pp_close_box ppf ()  
+  pp_close_box ppf ()
 
 and pp_fields ppf fs =
   pp_open_box ppf 1;
@@ -175,7 +176,7 @@ and pp_fields ppf fs =
      concat ppf pp_typ "," typs;
      str ppf ")");
   pp_close_box ppf ()
-  
+
 and pp_field ppf tf =
   pp_open_box ppf 1;
   let f_name =
@@ -233,7 +234,7 @@ let pp_actor ppf t recs =
         str ppf var.it;
    | _ -> assert false
   );
-  pp_close_box ppf ()    
+  pp_close_box ppf ()
 
 let pp_header ppf () =
   pp_open_vbox ppf 1;

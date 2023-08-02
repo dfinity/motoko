@@ -12,7 +12,7 @@
 
 use core::ptr::null_mut;
 
-use crate::gc::incremental::barriers::allocation_barrier;
+use crate::barriers::allocation_barrier;
 use crate::memory::{alloc_array, Memory};
 use crate::rts_trap_with;
 use crate::text::decode_code_point;
@@ -69,8 +69,7 @@ pub unsafe fn text_iter<M: Memory>(mem: &mut M, text: Value) -> Value {
         find_leaf(mem, text, todo_addr as *mut _),
         mem,
     );
-    allocation_barrier(iter);
-    iter
+    allocation_barrier(iter)
 }
 
 /// Returns whether the iterator is finished

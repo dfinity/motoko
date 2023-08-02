@@ -39,13 +39,18 @@ pub unsafe fn write_with_barrier<M: Memory>(mem: &mut M, location: *mut Value, v
 /// The new object needs to be fully initialized, except for the payload of a blob.
 /// Used for the incremental GC.
 /// `new_object` is the skewed pointer of the newly allocated and initialized object.
+/// Return:
+/// `new_object` for convenience and better performance.
 /// Effects:
 /// * Mark new allocations during the GC mark and evacuation phases.
 /// * Resolve pointer forwarding during the GC update phase.
 /// * Keep track of concurrent allocations to adjust the GC increment time limit.
 #[no_mangle]
-pub unsafe extern "C" fn allocation_barrier(new_object: Value) {
+pub unsafe extern "C" fn allocation_barrier(new_object: Value) -> Value {
     let state = incremental_gc_state();
-    post_allocation_barrier(state, new_object);
-    count_allocation(state);
+    if state.phase != Phase::Pause {
+        post_allocation_barrier(state, new_object);
+        count_allocation(state);
+    }
+    new_object
 }

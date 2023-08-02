@@ -38,6 +38,8 @@ pub unsafe fn test() {
             test_iterator_proptest(bitmap_pointer, bits)
         })
         .unwrap();
+
+    test_last_bit(bitmap_pointer);
 }
 
 fn bit_index_vector_strategy() -> impl Strategy<Value = Vec<u16>> {
@@ -106,6 +108,23 @@ fn test_iterator(bitmap_pointer: Value, bits: HashSet<u16>) {
             assert_eq!(actual_address, expected_address);
             bitmap_iterator.next();
         }
+        assert_eq!(
+            bitmap_iterator.current_marked_offset(),
+            BITMAP_ITERATION_END
+        );
+        bitmap.release();
+    }
+}
+
+fn test_last_bit(bitmap_pointer: Value) {
+    const LAST_OFFSET: usize = PARTITION_SIZE - WORD_SIZE as usize;
+    unsafe {
+        let mut bitmap = MarkBitmap::new();
+        bitmap.assign(bitmap_pointer.get_ptr() as *mut u8);
+        bitmap.mark(LAST_OFFSET);
+        let mut bitmap_iterator = bitmap.iterate();
+        assert_eq!(bitmap_iterator.current_marked_offset(), LAST_OFFSET);
+        bitmap_iterator.next();
         assert_eq!(
             bitmap_iterator.current_marked_offset(),
             BITMAP_ITERATION_END

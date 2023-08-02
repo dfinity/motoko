@@ -1,7 +1,7 @@
 use crate::{
     gc::incremental::{
         array_slicing::slice_array,
-        mark_stack::MarkStack,
+        mark_stack::{MarkStack, STACK_EMPTY},
         partitioned_heap::PartitionedHeap,
         roots::{visit_roots, Roots},
         time::BoundedTime,
@@ -76,8 +76,14 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
             debug_assert!(self.mark_stack.is_empty());
             return;
         }
-        while let Some(value) = self.mark_stack.pop() {
+        loop {
+            let value = self.mark_stack.pop();
             debug_assert!(value.is_ptr());
+            if value == STACK_EMPTY {
+                self.complete_marking();
+                return;
+            }
+
             self.mark_fields(value.as_obj());
 
             self.time.tick();
@@ -85,16 +91,16 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
                 return;
             }
         }
-        self.complete_marking();
     }
 
     pub unsafe fn mark_object(&mut self, value: Value) {
         self.time.tick();
-        debug_assert!(!*self.complete);
         debug_assert!((value.get_ptr() >= self.heap.base_address()));
         debug_assert!(!value.is_forwarded());
         let object = value.as_obj();
         if self.heap.mark_object(object) {
+            // A write barrier after a completed mark phase must see the object as already marked.
+            debug_assert!(!*self.complete);
             debug_assert!(
                 object.tag() >= crate::types::TAG_OBJECT && object.tag() <= crate::types::TAG_NULL
             );
@@ -117,7 +123,7 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
                 if (*array).header.tag >= TAG_ARRAY_SLICE_MIN {
                     gc.mark_stack.push(gc.mem, Value::from_ptr(array as usize));
                 }
-                gc.time.advance((length - slice_start) as usize);
+                gc.time.advance(1 + (length - slice_start) as usize);
                 length
             },
         );
@@ -128,6 +134,6 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
         *self.complete = true;
 
         #[cfg(debug_assertions)]
-        self.mark_stack.assert_is_garbage();
+        self.mark_stack.assert_unmarked(self.heap);
     }
 }

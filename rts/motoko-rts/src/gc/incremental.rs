@@ -32,19 +32,20 @@ mod phases;
 pub mod roots;
 #[cfg(feature = "memory_check")]
 pub mod sanity_checks;
+pub mod sort;
 pub mod time;
 
 #[ic_mem_fn(ic_only)]
 unsafe fn initialize_incremental_gc<M: Memory>(mem: &mut M) {
     use crate::memory::ic;
-    ic::initialize_memory(true);
-    assert_eq!(ic::HP, ic::get_aligned_heap_base()); // No dynamic heap allocations so far.
-    IncrementalGC::<M>::initialize(mem, ic::get_aligned_heap_base() as usize);
+    IncrementalGC::<M>::initialize(mem, ic::get_aligned_heap_base());
 }
 
 #[ic_mem_fn(ic_only)]
 unsafe fn schedule_incremental_gc<M: Memory>(mem: &mut M) {
-    let running = STATE.borrow().phase != Phase::Pause && STATE.borrow().phase != Phase::Stop;
+    let state = STATE.borrow();
+    assert!(state.phase != Phase::Stop);
+    let running = state.phase != Phase::Pause;
     if running || should_start() {
         incremental_gc(mem);
     }
@@ -69,20 +70,20 @@ static mut LAST_ALLOCATIONS: Bytes<u64> = Bytes(0u64);
 #[cfg(feature = "ic")]
 unsafe fn should_start() -> bool {
     use self::partitioned_heap::PARTITION_SIZE;
-    use crate::memory::ic;
+    use crate::memory::ic::partitioned_memory;
 
-    const CRITICAL_HEAP_LIMIT: Bytes<u32> = Bytes(u32::MAX - 1024 * 1024 * 1024);
-    const CRITICAL_GROWTH_THRESHOLD: f64 = 0.15;
+    const CRITICAL_HEAP_LIMIT: Bytes<u32> = Bytes(u32::MAX - 768 * 1024 * 1024);
+    const CRITICAL_GROWTH_THRESHOLD: f64 = 0.01;
     const NORMAL_GROWTH_THRESHOLD: f64 = 0.65;
 
-    let heap_size = ic::get_heap_size();
+    let heap_size = partitioned_memory::get_heap_size();
     let growth_threshold = if heap_size > CRITICAL_HEAP_LIMIT {
         CRITICAL_GROWTH_THRESHOLD
     } else {
         NORMAL_GROWTH_THRESHOLD
     };
 
-    let current_allocations = ic::get_total_allocations();
+    let current_allocations = partitioned_memory::get_total_allocations();
     debug_assert!(current_allocations >= LAST_ALLOCATIONS);
     let absolute_growth = current_allocations - LAST_ALLOCATIONS;
     let relative_growth = absolute_growth.0 as f64 / heap_size.as_usize() as f64;
@@ -91,24 +92,19 @@ unsafe fn should_start() -> bool {
 
 #[cfg(feature = "ic")]
 unsafe fn record_gc_start<M: Memory>() {
-    use crate::memory::ic;
-    LAST_ALLOCATIONS = ic::get_total_allocations();
+    use crate::memory::ic::partitioned_memory;
+    LAST_ALLOCATIONS = partitioned_memory::get_total_allocations();
 }
 
 #[cfg(feature = "ic")]
 unsafe fn record_gc_stop<M: Memory>() {
-    use crate::memory::ic;
+    use crate::memory::ic::{self, partitioned_memory};
 
-    let current_allocations = ic::get_total_allocations();
-    debug_assert!(current_allocations >= LAST_ALLOCATIONS);
-    let growth_during_gc = current_allocations - LAST_ALLOCATIONS;
-    let heap_size = ic::get_heap_size();
-    let static_size = Bytes(ic::get_aligned_heap_base());
+    let heap_size = partitioned_memory::get_heap_size();
+    let static_size = Bytes(ic::get_aligned_heap_base() as u32);
     debug_assert!(heap_size >= static_size);
     let dynamic_size = heap_size - static_size;
-    debug_assert!(growth_during_gc.0 <= dynamic_size.as_usize() as u64);
-    let live_set = dynamic_size - Bytes(growth_during_gc.0 as u32);
-    ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, live_set);
+    ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, dynamic_size);
 }
 
 /// GC phases per run. Each of the following phases is performed in potentially multiple increments.
@@ -196,17 +192,24 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     /// * The mark phase can only be started on an empty call stack.
     /// * The update phase can only be completed on an empty call stack.
     pub unsafe fn empty_call_stack_increment(&mut self, roots: Roots) {
+        assert!(self.state.phase != Phase::Stop);
         if self.pausing() {
             self.start_marking(roots);
         }
-        self.increment();
+        if self.state.phase == Phase::Mark {
+            MarkIncrement::instance(self.mem, self.state, &mut self.time).run();
+        }
         if self.mark_completed() {
             self.start_evacuating(roots);
-            self.increment();
+        }
+        if self.state.phase == Phase::Evacuate {
+            EvacuationIncrement::instance(self.mem, self.state, &mut self.time).run();
         }
         if self.evacuation_completed() {
             self.start_updating(roots);
-            self.increment();
+        }
+        if self.state.phase == Phase::Update {
+            UpdateIncrement::instance(self.state, &mut self.time).run();
         }
         if self.updating_completed() {
             self.complete_run(roots);
@@ -215,17 +218,6 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
 
     unsafe fn pausing(&mut self) -> bool {
         self.state.phase == Phase::Pause
-    }
-
-    unsafe fn increment(&mut self) {
-        match self.state.phase {
-            Phase::Pause | Phase::Stop => {}
-            Phase::Mark => MarkIncrement::instance(self.mem, self.state, &mut self.time).run(),
-            Phase::Evacuate => {
-                EvacuationIncrement::instance(self.mem, self.state, &mut self.time).run()
-            }
-            Phase::Update => UpdateIncrement::instance(self.state, &mut self.time).run(),
-        }
     }
 
     /// Only to be called when the call stack is empty as pointers on stack are not collected as roots.
@@ -309,16 +301,9 @@ unsafe fn pre_write_barrier<M: Memory>(mem: &mut M, state: &mut State, overwritt
     if state.phase == Phase::Mark {
         let base_address = state.partitioned_heap.base_address();
         if overwritten_value.points_to_or_beyond(base_address) {
-            if !MarkIncrement::<M>::mark_completed(state) {
-                let mut time = BoundedTime::new(0);
-                let mut increment = MarkIncrement::instance(mem, state, &mut time);
-                increment.mark_object(overwritten_value);
-            } else {
-                // Check whether the object is already marked, `mark_object()` returns false if previously marked.
-                debug_assert!(!state
-                    .partitioned_heap
-                    .mark_object(overwritten_value.as_obj()));
-            }
+            let mut time = BoundedTime::new(0);
+            let mut increment = MarkIncrement::instance(mem, state, &mut time);
+            increment.mark_object(overwritten_value);
         }
     }
 }
@@ -406,9 +391,8 @@ unsafe fn count_allocation(state: &mut State) {
     }
 }
 
-/// Stop the GC before performing upgrade. Otherwise, GC increments on allocation
-/// and writes may interfere with the upgrade mechanism that invalidates object tags
-/// during stream serialization.
+/// Stop the GC before performing upgrade. This is only a safe-guard since
+/// the compiler must not schedule the GC during stabilization anyway.
 #[no_mangle]
 pub unsafe extern "C" fn stop_gc_on_upgrade() {
     STATE.get_mut().phase = Phase::Stop;
@@ -421,9 +405,4 @@ pub unsafe fn incremental_gc_state() -> &'static mut State {
 pub unsafe fn get_partitioned_heap() -> &'static mut PartitionedHeap {
     debug_assert!(STATE.get_mut().partitioned_heap.is_initialized());
     &mut STATE.get_mut().partitioned_heap
-}
-
-/// Only for RTS unit tests
-pub unsafe fn reset_partitioned_heap() {
-    STATE.get_mut().partitioned_heap = UNINITIALIZED_HEAP;
 }

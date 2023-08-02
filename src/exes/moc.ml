@@ -148,10 +148,6 @@ let argspec = [
   "--incremental-gc",
   Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.Incremental),
   " use incremental GC";
-
-  "--no-gc",
-  Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.No),
-  " use no GC";
     
   "--compacting-gc",
   Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.MarkCompact),

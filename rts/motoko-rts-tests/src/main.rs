@@ -1,5 +1,6 @@
+#![feature(proc_macro_hygiene)]
+
 mod bigint;
-mod bitmap;
 mod bitrel;
 mod continuation_table;
 mod crc32;
@@ -11,7 +12,7 @@ mod stream;
 mod text;
 mod utf8;
 
-use motoko_rts::types::Bytes;
+use motoko_rts::types::{read64, write64, Bytes};
 
 fn main() {
     if std::mem::size_of::<usize>() != 4 {
@@ -20,8 +21,8 @@ fn main() {
     }
 
     unsafe {
+        test_read_write_64_bit();
         bigint::test();
-        bitmap::test();
         bitrel::test();
         continuation_table::test();
         crc32::test();
@@ -32,6 +33,17 @@ fn main() {
         text::test();
         utf8::test();
     }
+}
+
+fn test_read_write_64_bit() {
+    println!("Testing 64-bit read-write");
+    const TEST_VALUE: u64 = 0x1234_5678_9abc_def0;
+    let mut lower = 0u32;
+    let mut upper = 0u32;
+    write64(&mut lower, &mut upper, TEST_VALUE);
+    assert_eq!(lower, 0x9abc_def0);
+    assert_eq!(upper, 0x1234_5678);
+    assert_eq!(read64(lower, upper), TEST_VALUE);
 }
 
 // Called by the RTS to panic

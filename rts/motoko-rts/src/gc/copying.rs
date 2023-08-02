@@ -8,7 +8,7 @@ use motoko_rts_macros::ic_mem_fn;
 #[no_mangle]
 #[cfg(feature = "ic")]
 pub unsafe extern "C" fn initialize_copying_gc() {
-    crate::memory::ic::initialize_memory(false);
+    crate::memory::ic::linear_memory::initialize();
 }
 
 #[ic_mem_fn(ic_only)]
@@ -25,35 +25,35 @@ unsafe fn schedule_copying_gc<M: Memory>(mem: &mut M) {
 
 #[ic_mem_fn(ic_only)]
 unsafe fn copying_gc<M: Memory>(mem: &mut M) {
-    use crate::memory::ic;
+    use crate::memory::ic::{self, linear_memory};
 
     copying_gc_internal(
         mem,
         ic::get_aligned_heap_base(),
         // get_hp
-        || ic::HP as usize,
+        || linear_memory::get_hp_unskewed(),
         // set_hp
-        |hp| ic::HP = hp,
+        |hp| linear_memory::set_hp_unskewed(hp),
         ic::get_static_roots(),
         crate::continuation_table::continuation_table_loc(),
         // note_live_size
         |live_size| ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, live_size),
         // note_reclaimed
-        |reclaimed| ic::RECLAIMED += Bytes(u64::from(reclaimed.as_u32())),
+        |reclaimed| linear_memory::RECLAIMED += Bytes(u64::from(reclaimed.as_u32())),
     );
 
-    ic::LAST_HP = ic::HP;
+    linear_memory::LAST_HP = linear_memory::get_hp_unskewed();
 }
 
 pub unsafe fn copying_gc_internal<
     M: Memory,
     GetHp: Fn() -> usize,
-    SetHp: FnMut(u32),
+    SetHp: FnMut(usize),
     NoteLiveSize: Fn(Bytes<u32>),
     NoteReclaimed: Fn(Bytes<u32>),
 >(
     mem: &mut M,
-    heap_base: u32,
+    heap_base: usize,
     get_hp: GetHp,
     mut set_hp: SetHp,
     static_roots: Value,
@@ -105,7 +105,7 @@ pub unsafe fn copying_gc_internal<
 
     // Reset the heap pointer
     let new_hp = begin_from_space + (end_to_space - begin_to_space);
-    set_hp(new_hp as u32);
+    set_hp(new_hp);
 }
 
 /// Evacuate (copy) an object in from-space to to-space.
@@ -146,7 +146,6 @@ unsafe fn evac<M: Memory>(
         return;
     }
 
-    debug_assert!(!(*ptr_loc).is_forwarded());
     let obj = (*ptr_loc).get_ptr() as *mut Obj;
 
     let obj_size = block_size(obj as usize);
@@ -172,8 +171,6 @@ unsafe fn evac<M: Memory>(
     let to_space_obj = obj_addr as *mut Obj;
     debug_assert!(obj_size.as_usize() > size_of::<Obj>().as_usize());
     debug_assert!(to_space_obj.tag() >= TAG_OBJECT && to_space_obj.tag() <= TAG_NULL);
-
-    (*to_space_obj).forward = Value::from_ptr(obj_loc);
 }
 
 unsafe fn scav<M: Memory>(

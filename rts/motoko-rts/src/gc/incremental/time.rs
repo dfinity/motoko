@@ -11,14 +11,15 @@ impl BoundedTime {
     }
 
     pub fn tick(&mut self) {
-        self.steps += 1;
+        self.steps = usize::saturating_add(self.steps, 1);
     }
 
     pub fn advance(&mut self, amount: usize) {
-        self.steps += amount;
+        debug_assert!(amount > 0);
+        self.steps = usize::saturating_add(self.steps, amount);
     }
 
     pub fn is_over(&self) -> bool {
-        self.steps > self.limit
+        self.steps >= self.limit
     }
 }

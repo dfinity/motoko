@@ -26,7 +26,7 @@
 // Note that `CONCAT_LEN` and `BLOB_LEN` are identical, so no need to check the tag to know the
 // size of the text.
 
-use crate::gc::incremental::barriers::allocation_barrier;
+use crate::barriers::allocation_barrier;
 use crate::mem_utils::memcpy_bytes;
 use crate::memory::{alloc_blob, Memory};
 use crate::rts_trap_with;
@@ -56,8 +56,7 @@ pub unsafe fn text_of_ptr_size<M: Memory>(mem: &mut M, buf: *const u8, n: Bytes<
     let blob = alloc_text_blob(mem, n);
     let payload_addr = blob.as_blob_mut().payload_addr();
     memcpy_bytes(payload_addr as usize, buf as usize, n);
-    allocation_barrier(blob);
-    blob
+    allocation_barrier(blob)
 }
 
 pub unsafe fn text_of_str<M: Memory>(mem: &mut M, s: &str) -> Value {
@@ -98,8 +97,7 @@ pub unsafe fn text_concat<M: Memory>(mem: &mut M, s1: Value, s2: Value) -> Value
             blob2.payload_const() as usize,
             blob2_len,
         );
-        allocation_barrier(r);
-        return r;
+        return allocation_barrier(r);
     }
 
     // Check max size
@@ -111,12 +109,11 @@ pub unsafe fn text_concat<M: Memory>(mem: &mut M, s1: Value, s2: Value) -> Value
     let r = mem.alloc_words(size_of::<Concat>());
     let r_concat = r.get_ptr() as *mut Concat;
     (*r_concat).header.tag = TAG_CONCAT;
-    (*r_concat).header.forward = r;
+    (*r_concat).header.init_forward(r);
     (*r_concat).n_bytes = new_len;
     (*r_concat).text1 = s1.forward_if_possible();
     (*r_concat).text2 = s2.forward_if_possible();
-    allocation_barrier(r);
-    r
+    allocation_barrier(r)
 }
 
 // Leaving breadcrumbs in the destination buffer for which concat node/blob to continue
@@ -196,8 +193,7 @@ pub unsafe fn blob_of_text<M: Memory>(mem: &mut M, s: Value) -> Value {
         let concat = obj.as_concat();
         let r = alloc_text_blob(mem, (*concat).n_bytes);
         text_to_buf(s, r.as_blob_mut().payload_addr());
-        allocation_barrier(r);
-        r
+        allocation_barrier(r)
     }
 }
 
@@ -420,6 +416,5 @@ pub unsafe fn text_singleton<M: Memory>(mem: &mut M, char: u32) -> Value {
         blob.set(i, buf[i as usize]);
     }
 
-    allocation_barrier(blob_ptr);
-    blob_ptr
+    allocation_barrier(blob_ptr)
 }

@@ -322,7 +322,11 @@ let array_vals a at =
       V.local_func 0 1 (fun c v k' ->
         if !i = Array.length a
         then k' V.Null
-        else let v = V.Opt a.(!i) in incr i; k' v
+        else
+          let wi = match a.(!i) with
+            | V.Mut r -> !r
+            | w -> w in
+          let v = V.Opt wi in incr i; k' v
       )
     in k (V.Obj (V.Env.singleton "next" next))
   )
@@ -749,7 +753,7 @@ and declare_pat pat : val_env =
   | ObjP pfs -> declare_pat_fields pfs V.Env.empty
   | OptP pat1
   | TagP (_, pat1)
-  | AltP (pat1, _)    (* both have empty binders *)
+  | AltP (pat1, _) (* pat2 has the same identifiers *)
   | AnnotP (pat1, _)
   | ParP pat1 -> declare_pat pat1
 
@@ -768,42 +772,18 @@ and declare_pat_fields pfs ve : val_env =
     declare_pat_fields pfs' (V.Env.adjoin ve ve')
 
 and define_id env id v =
-  Lib.Promise.fulfill (find id.it env.vals) v
+  define_id' env id.it v
+
+and define_id' env id v =
+  Lib.Promise.fulfill (find id env.vals) v
 
 and define_pat env pat v =
-  match pat.it with
-  | WildP -> true
-  | LitP _ | SignP _ | AltP _ -> match_pat pat v <> None
-  | VarP id ->
-    define_id env id v;
-    true
-  | TupP pats ->
-    define_pats env pats (V.as_tup v)
-  | ObjP pfs ->
-    define_pat_fields env pfs (V.as_obj v)
-  | OptP pat1 ->
-    (match v with
-    | V.Opt v1 -> define_pat env pat1 v1
-    | V.Null -> false
-    | _ -> assert false
-    )
-  | TagP (i, pat1) ->
-    let lab, v1 = V.as_variant v in
-    if lab = i.it
-    then define_pat env pat1 v1
-    else false
-  | AnnotP (pat1, _)
-  | ParP pat1 -> define_pat env pat1 v
-
-and define_pats env pats vs =
-  List.for_all2 (fun pat v -> define_pat env pat v) pats vs
-
-and define_pat_fields env pfs vs =
-  List.for_all (fun pf -> define_pat_field env vs pf) pfs
-
-and define_pat_field env vs pf =
-  let v = V.Env.find pf.it.id.it vs in
-  define_pat env pf.it.pat v
+  match match_pat pat v with
+  | Some ve ->
+     V.Env.iter (fun id d  -> define_id' env id (Lib.Promise.value d)) ve;
+     true
+  | None ->
+     false
 
 and match_lit lit v : bool =
   match !lit, v with
