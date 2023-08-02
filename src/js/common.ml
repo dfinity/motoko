@@ -225,4 +225,5 @@ let gc_flags option =
   | "marking" -> Flags.gc_strategy := Mo_config.Flags.MarkCompact
   | "generational" -> Flags.gc_strategy := Mo_config.Flags.Generational
   | "incremental" -> Flags.gc_strategy := Mo_config.Flags.Incremental
+  | "no" -> Flags.gc_strategy := Mo_config.Flags.No
   | _ -> raise (Invalid_argument "gc_flags: Unexpected flag")

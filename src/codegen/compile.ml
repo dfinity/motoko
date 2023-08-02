@@ -609,12 +609,16 @@ module E = struct
     | Flags.Copying -> "copying"
     | Flags.Generational -> "generational"
     | Flags.Incremental -> "incremental"
+    | _ -> assert false
 
   let collect_garbage env =
-    (* GC function name = "schedule_"? ("compacting" | "copying" | "generational" | "incremental") "_gc" *)
-    let name = gc_strategy_name !Flags.gc_strategy in
-    let gc_fn = if !Flags.force_gc then name else "schedule_" ^ name in
-    call_import env "rts" (gc_fn ^ "_gc")
+    if !Flags.gc_strategy <> Flags.No then
+      (* GC function name = "schedule_"? ("compacting" | "copying" | "generational" | "incremental") "_gc" *)
+      let name = gc_strategy_name !Flags.gc_strategy in
+      let gc_fn = if !Flags.force_gc then name else "schedule_" ^ name in
+      call_import env "rts" (gc_fn ^ "_gc")
+    else
+      G.nop
 
   (* See Note [Candid subtype checks] *)
   (* NB: we don't bother detecting duplicate registrations here because the code sharing machinery
