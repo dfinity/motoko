@@ -20,11 +20,10 @@ dependencies manually, which can take several hours.
 ## Installation using Nix
 
 If you want just to _use_ `moc`, you can install the `moc` binary into your `nix`
-environment by running
+environment with
 ```
 $ nix-env -i -f . -A moc
 ```
-in a check-out of the `motoko` repository.
 
 ## Development using Nix
 
