@@ -11178,7 +11178,10 @@ and conclude_module env set_serialization_globals start_fi_o =
 
   (* Wrap the start function with the RTS initialization *)
   let rts_start_fi = E.add_fun env "rts_start" (Func.of_body env [] [] (fun env1 ->
-    E.call_import env "rts" ("initialize_" ^ E.gc_strategy_name !Flags.gc_strategy ^ "_gc") ^^
+    (if !Flags.gc_strategy <> Flags.No then
+      E.call_import env "rts" ("initialize_" ^ E.gc_strategy_name !Flags.gc_strategy ^ "_gc")
+    else 
+      E.call_import env "rts" ("initialize_copying_gc")) ^^
     match start_fi_o with
     | Some fi ->
       G.i (Call fi)
