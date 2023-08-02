@@ -43,12 +43,13 @@ unsafe fn initialize_incremental_gc<M: Memory>(mem: &mut M) {
 
 #[ic_mem_fn(ic_only)]
 unsafe fn schedule_incremental_gc<M: Memory>(mem: &mut M) {
-    let state = STATE.borrow();
+    let state = STATE.get_mut();
     assert!(state.phase != Phase::Stop);
     let running = state.phase != Phase::Pause;
     if running || should_start() {
         incremental_gc(mem);
     }
+    state.last_heap_size = state.partitioned_heap.occupied_size().as_usize();
 }
 
 #[ic_mem_fn(ic_only)]
@@ -65,7 +66,7 @@ unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
 }
 
 #[cfg(feature = "ic")]
-static mut LAST_ALLOCATIONS: Bytes<u64> = Bytes(0u64);
+static mut ALLOCATIONS_ON_LAST_GC_RUN: Bytes<u64> = Bytes(0u64);
 
 #[cfg(feature = "ic")]
 unsafe fn should_start() -> bool {
@@ -84,8 +85,8 @@ unsafe fn should_start() -> bool {
     };
 
     let current_allocations = partitioned_memory::get_total_allocations();
-    debug_assert!(current_allocations >= LAST_ALLOCATIONS);
-    let absolute_growth = current_allocations - LAST_ALLOCATIONS;
+    debug_assert!(current_allocations >= ALLOCATIONS_ON_LAST_GC_RUN);
+    let absolute_growth = current_allocations - ALLOCATIONS_ON_LAST_GC_RUN;
     let relative_growth = absolute_growth.0 as f64 / heap_size.as_usize() as f64;
     relative_growth > growth_threshold && heap_size.as_usize() >= PARTITION_SIZE
 }
@@ -93,7 +94,7 @@ unsafe fn should_start() -> bool {
 #[cfg(feature = "ic")]
 unsafe fn record_gc_start<M: Memory>() {
     use crate::memory::ic::partitioned_memory;
-    LAST_ALLOCATIONS = partitioned_memory::get_total_allocations();
+    ALLOCATIONS_ON_LAST_GC_RUN = partitioned_memory::get_total_allocations();
 }
 
 #[cfg(feature = "ic")]
@@ -121,11 +122,13 @@ unsafe fn record_gc_stop<M: Memory>() {
 /// Finally, all the evacuated and temporary partitions are freed.
 /// The temporary partitions store mark bitmaps.
 
-/// The limit on the GC increment has a fix base with a linear increase depending on the number of
-/// allocations that were performed during a running GC. The allocation-proportional term adapts
-/// to the allocation rate and helps the GC to reduce reclamation latency.
+/// The limit on the GC increment has a fix base with a linear increase depending on the amount of memory of
+/// allocations that were performed in the current IC message.
+/// The allocation-proportional term adapts to the allocation rate and helps the GC to reduce reclamation latency.
+/// In particular, it also addresses the case of a single message allocating a huge amount of memory that eventually
+/// triggers the GC start.
 const INCREMENT_BASE_LIMIT: usize = 3_500_000; // Increment limit without concurrent allocations.
-const INCREMENT_ALLOCATION_FACTOR: usize = 10; // Additional time factor per concurrent allocation.
+const LATEST_ALLOCATION_FACTOR: usize = 1; // Additional time factor per heap growth since the last GC scheduling, i.e. last IC message.
 
 // Performance note: Storing the phase-specific state in the enum would be nicer but it is much slower.
 #[derive(PartialEq)]
@@ -140,7 +143,7 @@ enum Phase {
 pub struct State {
     phase: Phase,
     partitioned_heap: PartitionedHeap,
-    allocation_count: usize, // Number of allocations during an active GC run.
+    last_heap_size: usize, // Heap size at the last GC scheduling point, i.e. the end of the last IC message.
     mark_state: Option<MarkState>,
     iterator_state: Option<PartitionedHeapIterator>,
 }
@@ -149,7 +152,7 @@ pub struct State {
 static mut STATE: RefCell<State> = RefCell::new(State {
     phase: Phase::Pause,
     partitioned_heap: UNINITIALIZED_HEAP,
-    allocation_count: 0,
+    last_heap_size: 0,
     mark_state: None,
     iterator_state: None,
 });
@@ -169,7 +172,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         let state = STATE.get_mut();
         state.phase = Phase::Pause;
         state.partitioned_heap = PartitionedHeap::new(mem, heap_base);
-        state.allocation_count = 0;
+        state.last_heap_size = heap_base;
         state.mark_state = None;
         state.iterator_state = None;
     }
@@ -178,11 +181,13 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     /// This is because the memory implementation is not stored as global variable.
     pub unsafe fn instance(mem: &'a mut M, state: &'a mut State) -> IncrementalGC<'a, M> {
         debug_assert!(state.partitioned_heap.is_initialized());
+        let current_heap_size = state.partitioned_heap.occupied_size().as_usize();
+        assert!(state.last_heap_size <= current_heap_size);
+        let latest_heap_growth = current_heap_size - state.last_heap_size;
         let limit = usize::saturating_add(
             INCREMENT_BASE_LIMIT,
-            usize::saturating_mul(state.allocation_count, INCREMENT_ALLOCATION_FACTOR),
+            usize::saturating_mul(latest_heap_growth, LATEST_ALLOCATION_FACTOR),
         );
-        state.allocation_count = 0;
         let time = BoundedTime::new(limit);
         IncrementalGC { mem, state, time }
     }
@@ -214,6 +219,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         if self.updating_completed() {
             self.complete_run(roots);
         }
+        self.state.last_heap_size = self.state.partitioned_heap.occupied_size().as_usize();
     }
 
     unsafe fn pausing(&mut self) -> bool {
@@ -381,13 +387,6 @@ unsafe fn update_new_allocation(state: &State, new_object: Value) {
             },
             |_, _, array| array.len(),
         );
-    }
-}
-
-/// Count a concurrent allocation to increase the next scheduled GC increment.
-unsafe fn count_allocation(state: &mut State) {
-    if state.phase != Phase::Pause {
-        state.allocation_count += 1;
     }
 }
 

@@ -10,7 +10,7 @@ use crate::{
     types::{is_skewed, Value},
 };
 
-use super::{count_allocation, post_allocation_barrier, pre_write_barrier, Phase};
+use super::{post_allocation_barrier, pre_write_barrier, Phase};
 
 #[no_mangle]
 pub unsafe extern "C" fn running_gc() -> bool {
@@ -50,7 +50,6 @@ pub unsafe extern "C" fn allocation_barrier(new_object: Value) -> Value {
     let state = incremental_gc_state();
     if state.phase != Phase::Pause {
         post_allocation_barrier(state, new_object);
-        count_allocation(state);
     }
     new_object
 }
