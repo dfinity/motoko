@@ -102,10 +102,10 @@
         "homepage": "https://wasi.dev",
         "owner": "WebAssembly",
         "repo": "wasi-libc",
-        "rev": "bd950eb128bff337153de217b11270f948d04bb4",
-        "sha256": "1w1aahki27wb17k8hsh7zv6g114y1n5j2db5kc2l2sqviy2w58dj",
+        "rev": "9f51a7102085ec6a6ced5778f0864c9af9f50000",
+        "sha256": "0j1ah34fmdsa1srsl49c8xly8bdg1cs7k2ji1avkv9d4dhmp2ls1",
         "type": "tarball",
-        "url": "https://github.com/WebAssembly/wasi-libc/archive/bd950eb128bff337153de217b11270f948d04bb4.tar.gz",
+        "url": "https://github.com/WebAssembly/wasi-libc/archive/9f51a7102085ec6a6ced5778f0864c9af9f50000.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs": {
@@ -128,10 +128,10 @@
         "homepage": null,
         "owner": "mozilla",
         "repo": "nixpkgs-mozilla",
-        "rev": "c72bae8641d4486b3bd7b556d577df519f640f9a",
-        "sha256": "0yjls0866pd02dxkak558k24b19ljjcizy4r7dpjnsmafn25kx0a",
+        "rev": "1ca9ee7192f973fd67b0988bdd77b8c11ae245a6",
+        "sha256": "0f6x1lxi6ks5404ggnlmnj6d91834qya2hb4fbkfcxiids2wq17d",
         "type": "tarball",
-        "url": "https://github.com/mozilla/nixpkgs-mozilla/archive/c72bae8641d4486b3bd7b556d577df519f640f9a.tar.gz",
+        "url": "https://github.com/mozilla/nixpkgs-mozilla/archive/1ca9ee7192f973fd67b0988bdd77b8c11ae245a6.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ocaml-vlq": {
