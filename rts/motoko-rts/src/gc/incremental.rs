@@ -70,9 +70,10 @@ static mut LAST_ALLOCATIONS: Bytes<u64> = Bytes(0u64);
 #[cfg(feature = "ic")]
 unsafe fn should_start() -> bool {
     use self::partitioned_heap::PARTITION_SIZE;
-    use crate::memory::ic::partitioned_memory;
+    use crate::memory::{ic::partitioned_memory, MEMORY_RESERVE};
 
-    const CRITICAL_HEAP_LIMIT: Bytes<u32> = Bytes(u32::MAX - 768 * 1024 * 1024);
+    const CRITICAL_HEAP_LIMIT: Bytes<u32> =
+        Bytes(u32::MAX - 768 * 1024 * 1024 - MEMORY_RESERVE as u32);
     const CRITICAL_GROWTH_THRESHOLD: f64 = 0.01;
     const NORMAL_GROWTH_THRESHOLD: f64 = 0.65;
 

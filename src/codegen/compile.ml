@@ -5242,6 +5242,22 @@ module RTS_Exports = struct
       edesc = nr (FuncExport (nr rts_trap_fi))
     });
 
+    (* Keep a memory reserve when in update or init state. 
+       This reserve can be used by queries, composite queries, and upgrades. *)
+    let keep_memory_reserve_fi = E.add_fun env "keep_memory_reserve" (
+      Func.of_body env [] [I32Type] (fun env ->
+        Lifecycle.get env ^^
+        compile_eq_const Lifecycle.(int_of_state InUpdate) ^^
+        Lifecycle.get env ^^
+        compile_eq_const Lifecycle.(int_of_state InInit) ^^
+        G.i (Binary (Wasm.Values.I32 I32Op.Or))
+      )
+    ) in
+    E.add_export env (nr {
+      name = Lib.Utf8.decode "keep_memory_reserve";
+      edesc = nr (FuncExport (nr keep_memory_reserve_fi))
+    });
+
     if !Flags.gc_strategy <> Flags.Incremental then
     begin
       let set_hp_fi =
