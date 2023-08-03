@@ -9674,9 +9674,13 @@ and compile_prim_invocation (env : E.t) ae p es at =
       compile_exp_vanilla env ae e ^^
       compile_shrU_const 8l
     | Nat16, Nat32 ->
-      SR.UnboxedWord32,
+      SR.Vanilla,
       compile_exp_vanilla env ae e ^^
-      compile_shrU_const 16l
+      compile_shrU_const 15l
+    | Nat32, Nat64 ->
+      SR.UnboxedWord64,
+      compile_exp_as env ae SR.UnboxedWord32 e ^^
+      G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
     | _ -> SR.Unreachable, todo_trap env "compile_prim_invocation" (Arrange_ir.prim p)
     end
 
