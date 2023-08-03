@@ -61,7 +61,7 @@ type trap = { trap : 'a. string -> 'a  }
 let num_conv_trap_prim trap t1 t2 =
   let module T = Type in
   match t1, t2 with
-  | T.Nat, T.(Nat8|Nat16|Nat32|Nat64)
+  | T.Nat, T.(T.Nat8|Nat16|Nat32|Nat64)
   | T.Int, T.(Int8|Int16|Int32|Int64)
   | T.(Nat8|Nat16|Nat32|Nat64), T.Nat
   | T.(Int8|Int16|Int32|Int64), T.Int
