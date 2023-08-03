@@ -180,4 +180,4 @@ let n64 : Nat64 = 12;
 
 assert (Prim.nat8ToNat16 n8 == n16);
 assert (Prim.nat16ToNat32 n16 == n32);
-// assert (Prim.nat32ToNat64 n32 == n64);
+assert (Prim.nat32ToNat64 n32 == n64);
