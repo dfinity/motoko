@@ -74,6 +74,9 @@ let num_conv_trap_prim trap t1 t2 =
   | T.Int8, T.Int16
   | T.Int16, T.Int32
   | T.Int32, T.Int64
+  | T.Int64, T.Int32
+  | T.Int32, T.Int16
+  | T.Int16, T.Int8
   | T.Nat32, T.Char
   -> fun v -> (try of_big_int_trap t2 (as_big_int t1 v)
                with Invalid_argument msg -> trap.trap msg)

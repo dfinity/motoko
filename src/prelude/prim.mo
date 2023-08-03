@@ -142,6 +142,10 @@ func int8ToInt16(n : Int8) : Int16 = (prim "num_conv_Int8_Int16" : Int8 -> Int16
 func int16ToInt32(n : Int16) : Int32 = (prim "num_conv_Int16_Int32" : Int16 -> Int32) n;
 func int32ToInt64(n : Int32) : Int64 = (prim "num_conv_Int32_Int64" : Int32 -> Int64) n;
 
+func int64ToInt32(n : Int64) : Int32 = (prim "num_conv_Int64_Int32" : Int64 -> Int32) n;
+func int32ToInt16(n : Int32) : Int16 = (prim "num_conv_Int32_Int16" : Int32 -> Int16) n;
+func int16ToInt8(n : Int16) : Int8 = (prim "num_conv_Int16_Int8" : Int16 -> Int8) n;
+
 // Char conversion and properties
 
 func charToNat32(c : Char) : Nat32 = (prim "num_wrap_Char_Nat32" : Char -> Nat32) c;

@@ -195,3 +195,7 @@ let i64 : Int64 = -12;
 assert (Prim.int8ToInt16 i8 == i16);
 assert (Prim.int16ToInt32 i16 == i32);
 assert (Prim.int32ToInt64 i32 == i64);
+
+assert (Prim.int64ToInt32 i64 == i32);
+assert (Prim.int32ToInt16 i32 == i16);
+assert (Prim.int16ToInt8 i16 == i8);

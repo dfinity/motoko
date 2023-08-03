@@ -9719,6 +9719,40 @@ and compile_prim_invocation (env : E.t) ae p es at =
       SR.UnboxedWord64,
       compile_exp_as env ae SR.UnboxedWord32 e ^^
       G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32))
+    | Int16, (Int8 as pty)->
+      SR.Vanilla,
+      let num_bits = (TaggedSmallWord.bits_of_type pty) in
+      compile_exp_vanilla env ae e ^^
+      compile_shl_const (Int32.of_int num_bits) ^^
+      compile_shrS_const (Int32.of_int num_bits) ^^
+      compile_exp_vanilla env ae e ^^
+      compile_eq env Type.(Prim Nat16) ^^
+      E.else_trap_with env "losing precision 1" ^^
+      compile_exp_vanilla env ae e ^^
+      compile_shl_const (Int32.of_int num_bits)
+    | Int32, (Int16 as pty)->
+      SR.Vanilla,
+      let num_bits = (TaggedSmallWord.bits_of_type pty) in
+      compile_exp_as env ae SR.UnboxedWord32 e ^^
+      compile_shl_const (Int32.of_int num_bits) ^^
+      compile_shrS_const (Int32.of_int num_bits) ^^
+      compile_exp_as env ae SR.UnboxedWord32 e ^^
+      compile_eq env Type.(Prim Nat32) ^^
+      E.else_trap_with env "losing precision 2" ^^
+      compile_exp_as env ae SR.UnboxedWord32 e ^^
+      compile_shl_const (Int32.of_int num_bits)
+      (* kento *)
+    | Int64, (Int32 as pty) ->
+      SR.UnboxedWord32,
+      compile_exp_as env ae SR.UnboxedWord64 e ^^
+      let num_bits = (TaggedSmallWord.bits_of_type pty) in
+      compile_shl64_const (Int64.of_int num_bits) ^^
+      compile_shrS64_const (Int64.of_int num_bits) ^^
+      compile_exp_as env ae SR.UnboxedWord64 e ^^
+      compile_eq env Type.(Prim Nat64) ^^
+      E.else_trap_with env "losing precision 3" ^^
+      compile_exp_as env ae SR.UnboxedWord64 e ^^
+      G.i (Convert (Wasm.Values.I32 I32Op.WrapI64))
     | _ -> SR.Unreachable, todo_trap env "compile_prim_invocation" (Arrange_ir.prim p)
     end
 
