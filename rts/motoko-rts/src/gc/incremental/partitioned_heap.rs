@@ -557,7 +557,7 @@ impl PartitionedHeap {
             if partition.to_be_evacuated() {
                 debug_assert!(partition.index != self.allocation_index);
                 debug_assert!(partition.dynamic_size >= marked_size);
-                self.reclaimed += (partition.dynamic_size - marked_size) as u64;
+                self.reclaimed += partition.dynamic_size as u64;
             }
             if partition.to_be_evacuated() || partition.temporary {
                 self.precomputed_heap_size -= partition.dynamic_size;
