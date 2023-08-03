@@ -9699,10 +9699,12 @@ and compile_prim_invocation (env : E.t) ae p es at =
       E.else_trap_with env "losing precision" ^^
       compile_exp_as env ae SR.UnboxedWord32 e ^^
       compile_shl_const (Int32.of_int num_bits)
-    | Nat64, Nat32->
+    | Nat64, (Nat32 as pty) ->
       SR.UnboxedWord32,
+      let num_bits = (TaggedSmallWord.bits_of_type pty) in
+      let max_val = Int64.(sub (shift_left 1L num_bits) 1L) in
       compile_exp_as env ae SR.UnboxedWord64 e ^^
-      compile_const_64 (Int64.of_int32 Int32.max_int) ^^
+      compile_const_64 max_val ^^
       G.i (Compare (Wasm.Values.I64 I64Op.LeU)) ^^
       E.else_trap_with env "losing precision" ^^
       compile_exp_as env ae SR.UnboxedWord64 e ^^

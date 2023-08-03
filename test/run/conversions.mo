@@ -173,29 +173,60 @@ wrap_Int_Int64(0x8000000000000000, -0x8000000000000000);
 wrap_Int_Int64(0x8000000000000001, -0x7fffffffffffffff);
 
 // NatN <--> Nat2N
-let n8 : Nat8 = 12;
-let n16 : Nat16 = 12;
-let n32 : Nat32 = 12;
-let n64 : Nat64 = 12;
+func test_Nat8_Nat16(n1 : Nat8, n2 : Nat16) {
+  assert (Prim.nat8ToNat16 n1 == n2);
+  assert (Prim.nat16ToNat8 n2 == n1);
+};
+func test_Nat16_Nat32(n1 : Nat16, n2 : Nat32) {
+  assert (Prim.nat16ToNat32 n1 == n2);
+  assert (Prim.nat32ToNat16 n2 == n1);
+};
+func test_Nat32_Nat64(n1 : Nat32, n2 : Nat64) {
+  assert (Prim.nat32ToNat64 n1 == n2);
+  assert (Prim.nat64ToNat32 n2 == n1);
+};
 
-assert (Prim.nat8ToNat16 n8 == n16);
-assert (Prim.nat16ToNat32 n16 == n32);
-assert (Prim.nat32ToNat64 n32 == n64);
-
-assert (Prim.nat64ToNat32 n64 == n32);
-assert (Prim.nat32ToNat16 n32 == n16);
-assert (Prim.nat16ToNat8 n16 == n8);
+test_Nat8_Nat16(0, 0);
+test_Nat8_Nat16(1, 1);
+test_Nat8_Nat16(0xff, 0xff);
+test_Nat16_Nat32(0, 0);
+test_Nat16_Nat32(1, 1);
+test_Nat16_Nat32(0xffff, 0xffff);
+test_Nat32_Nat64(0, 0);
+test_Nat32_Nat64(1, 1);
+test_Nat32_Nat64(0xffffffff, 0xffffffff);
 
 // IntN <--> Int2N
-let i8 : Int8 = -12;
-let i16 : Int16 = -12;
-let i32 : Int32 = -12;
-let i64 : Int64 = -12;
+func test_Int8_Int16(n1 : Int8, n2 : Int16) {
+  assert (Prim.int8ToInt16 n1 == n2);
+  assert (Prim.int16ToInt8 n2 == n1);
+};
 
-assert (Prim.int8ToInt16 i8 == i16);
-assert (Prim.int16ToInt32 i16 == i32);
-assert (Prim.int32ToInt64 i32 == i64);
+func test_Int16_Int32(n1 : Int16, n2 : Int32) {
+  assert (Prim.int16ToInt32 n1 == n2);
+  assert (Prim.int32ToInt16 n2 == n1);
+};
 
-assert (Prim.int64ToInt32 i64 == i32);
-assert (Prim.int32ToInt16 i32 == i16);
-assert (Prim.int16ToInt8 i16 == i8);
+func test_Int32_Int64(n1 : Int32, n2 : Int64) {
+  assert (Prim.int32ToInt64 n1 == n2);
+  assert (Prim.int64ToInt32 n2 == n1);
+};
+
+test_Int8_Int16(0, 0);
+test_Int8_Int16(1, 1);
+test_Int8_Int16(-1, -1);
+test_Int8_Int16(0x7f, 0x7f);
+test_Int8_Int16(-0x7f, -0x7f);
+test_Int8_Int16(-0x80, -0x80);
+test_Int16_Int32(0, 0);
+test_Int16_Int32(1, 1);
+test_Int16_Int32(-1, -1);
+test_Int16_Int32(0x7fff, 0x7fff);
+test_Int16_Int32(-0x7fff, -0x7fff);
+test_Int16_Int32(-0x8000, -0x8000);
+test_Int32_Int64(0, 0);
+test_Int32_Int64(1, 1);
+test_Int32_Int64(-1, -1);
+test_Int32_Int64(0x7fffffff, 0x7fffffff);
+test_Int32_Int64(-0x7fffffff, -0x7fffffff);
+test_Int32_Int64(-0x80000000, -0x80000000);
