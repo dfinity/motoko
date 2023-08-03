@@ -7217,7 +7217,7 @@ module Stabilization = struct
     (* TODO: do we need `guard_range` calls? *)
     let substrate_type = I32Type
 
-    let get_ptr get_buf = G.i Unreachable ^^
+    let get_ptr get_buf =
       get_buf ^^ G.i (Load {ty = I32Type; align = 2; offset = 0l; sz = None})
     let get_end get_buf =
       get_buf ^^ G.i (Load {ty = I32Type; align = 2; offset = Heap.word_size; sz = None})
@@ -7228,7 +7228,6 @@ module Stabilization = struct
     let set_size get_buf get_size =
       set_end get_buf
         (get_ptr get_buf ^^ get_size ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)))
-
 
     let advance get_buf get_delta =
       set_ptr get_buf (get_ptr get_buf ^^ get_delta ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)))
@@ -7550,7 +7549,6 @@ module Stabilization = struct
               compile_const_64 4L ^^
               set_offset
             end ^^ (* if_ *)
-
 
             if true then
               begin
