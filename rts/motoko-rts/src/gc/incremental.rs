@@ -72,22 +72,32 @@ unsafe fn should_start() -> bool {
     use self::partitioned_heap::PARTITION_SIZE;
     use crate::memory::ic::partitioned_memory;
 
-    const CRITICAL_HEAP_LIMIT: Bytes<u32> = Bytes(u32::MAX - 768 * 1024 * 1024);
-    const CRITICAL_GROWTH_THRESHOLD: f64 = 0.01;
-    const NORMAL_GROWTH_THRESHOLD: f64 = 0.65;
-
     let heap_size = partitioned_memory::get_heap_size();
-    let growth_threshold = if heap_size > CRITICAL_HEAP_LIMIT {
-        CRITICAL_GROWTH_THRESHOLD
-    } else {
-        NORMAL_GROWTH_THRESHOLD
-    };
+    if heap_size.as_usize() < PARTITION_SIZE {
+        return false;
+    }
+
+    const ABSOLUT_GROWTH_THRESHOLD: Bytes<u64> = Bytes(512 * 1024 * 1024);
 
     let current_allocations = partitioned_memory::get_total_allocations();
     debug_assert!(current_allocations >= LAST_ALLOCATIONS);
     let absolute_growth = current_allocations - LAST_ALLOCATIONS;
+    if absolute_growth > ABSOLUT_GROWTH_THRESHOLD {
+        return true;
+    }
+
+    const CRITICAL_HEAP_LIMIT: Bytes<u32> = Bytes(u32::MAX - 768 * 1024 * 1024);
+    const CRITICAL_RELATIVE_GROWTH_THRESHOLD: f64 = 0.01;
+    const NORMAL_RELATIVE_GROWTH_THRESHOLD: f64 = 0.65;
+
+    let relative_growth_threshold = if heap_size > CRITICAL_HEAP_LIMIT {
+        CRITICAL_RELATIVE_GROWTH_THRESHOLD
+    } else {
+        NORMAL_RELATIVE_GROWTH_THRESHOLD
+    };
+
     let relative_growth = absolute_growth.0 as f64 / heap_size.as_usize() as f64;
-    relative_growth > growth_threshold && heap_size.as_usize() >= PARTITION_SIZE
+    relative_growth > relative_growth_threshold
 }
 
 #[cfg(feature = "ic")]
@@ -124,7 +134,7 @@ unsafe fn record_gc_stop<M: Memory>() {
 /// The limit on the GC increment has a fix base with a linear increase depending on the number of
 /// allocations that were performed during a running GC. The allocation-proportional term adapts
 /// to the allocation rate and helps the GC to reduce reclamation latency.
-const INCREMENT_BASE_LIMIT: usize = 3_500_000; // Increment limit without concurrent allocations.
+const INCREMENT_BASE_LIMIT: usize = 7_000_000; // Increment limit without concurrent allocations.
 const INCREMENT_ALLOCATION_FACTOR: usize = 10; // Additional time factor per concurrent allocation.
 
 // Performance note: Storing the phase-specific state in the enum would be nicer but it is much slower.
