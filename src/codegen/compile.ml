@@ -9681,6 +9681,18 @@ and compile_prim_invocation (env : E.t) ae p es at =
       SR.UnboxedWord64,
       compile_exp_as env ae SR.UnboxedWord32 e ^^
       G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
+    | Int8, Int16 ->
+      SR.Vanilla,
+      compile_exp_vanilla env ae e ^^
+      compile_shrS_const 8l
+    | Int16, Int32 ->
+      SR.Vanilla,
+      compile_exp_vanilla env ae e ^^
+      compile_shrS_const 15l
+    | Int32, Int64 ->
+      SR.UnboxedWord64,
+      compile_exp_as env ae SR.UnboxedWord32 e ^^
+      G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32))
     | _ -> SR.Unreachable, todo_trap env "compile_prim_invocation" (Arrange_ir.prim p)
     end
 

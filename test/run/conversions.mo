@@ -181,3 +181,13 @@ let n64 : Nat64 = 12;
 assert (Prim.nat8ToNat16 n8 == n16);
 assert (Prim.nat16ToNat32 n16 == n32);
 assert (Prim.nat32ToNat64 n32 == n64);
+
+// IntN <--> Int2N
+let i8 : Int8 = -12;
+let i16 : Int16 = -12;
+let i32 : Int32 = -12;
+let i64 : Int64 = -12;
+
+assert (Prim.int8ToInt16 i8 == i16);
+assert (Prim.int16ToInt32 i16 == i32);
+assert (Prim.int32ToInt64 i32 == i64);
