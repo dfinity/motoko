@@ -134,6 +134,10 @@ func nat8ToNat16(n : Nat8) : Nat16 = (prim "num_conv_Nat8_Nat16" : Nat8 -> Nat16
 func nat16ToNat32(n : Nat16) : Nat32 = (prim "num_conv_Nat16_Nat32" : Nat16 -> Nat32) n;
 func nat32ToNat64(n : Nat32) : Nat64 = (prim "num_conv_Nat32_Nat64" : Nat32 -> Nat64) n;
 
+func nat64ToNat32(n : Nat64) : Nat32 = (prim "num_conv_Nat64_Nat32" : Nat64 -> Nat32) n;
+func nat32ToNat16(n : Nat32) : Nat16 = (prim "num_conv_Nat32_Nat16" : Nat32 -> Nat16) n;
+func nat16ToNat8(n : Nat16) : Nat8 = (prim "num_conv_Nat16_Nat8" : Nat16 -> Nat8) n;
+
 func int8ToInt16(n : Int8) : Int16 = (prim "num_conv_Int8_Int16" : Int8 -> Int16) n;
 func int16ToInt32(n : Int16) : Int32 = (prim "num_conv_Int16_Int32" : Int16 -> Int32) n;
 func int32ToInt64(n : Int32) : Int64 = (prim "num_conv_Int32_Int64" : Int32 -> Int64) n;

@@ -68,6 +68,9 @@ let num_conv_trap_prim trap t1 t2 =
   | T.Nat8, T.Nat16
   | T.Nat16, T.Nat32
   | T.Nat32, T.Nat64
+  | T.Nat64, T.Nat32
+  | T.Nat32, T.Nat16
+  | T.Nat16, T.Nat8
   | T.Int8, T.Int16
   | T.Int16, T.Int32
   | T.Int32, T.Int64

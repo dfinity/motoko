@@ -182,6 +182,10 @@ assert (Prim.nat8ToNat16 n8 == n16);
 assert (Prim.nat16ToNat32 n16 == n32);
 assert (Prim.nat32ToNat64 n32 == n64);
 
+assert (Prim.nat64ToNat32 n64 == n32);
+assert (Prim.nat32ToNat16 n32 == n16);
+assert (Prim.nat16ToNat8 n16 == n8);
+
 // IntN <--> Int2N
 let i8 : Int8 = -12;
 let i16 : Int16 = -12;
