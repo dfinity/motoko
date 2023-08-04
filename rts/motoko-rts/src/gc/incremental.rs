@@ -57,7 +57,7 @@ unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
     use self::roots::root_set;
     let state = STATE.get_mut();
     if state.phase == Phase::Pause {
-        record_gc_start::<M>();
+        record_gc_start::<M>(state);
     }
     IncrementalGC::instance(mem, state).empty_call_stack_increment(root_set());
     if state.phase == Phase::Pause {
@@ -92,9 +92,18 @@ unsafe fn should_start() -> bool {
 }
 
 #[cfg(feature = "ic")]
-unsafe fn record_gc_start<M: Memory>() {
+unsafe fn record_gc_start<M: Memory>(state: &mut State) {
     use crate::memory::ic::partitioned_memory;
     ALLOCATIONS_AT_LAST_GC_RUN = partitioned_memory::get_total_allocations();
+
+    // Heuristics: Tolerate a certain heap growth before the start of a GC run without extra GC increment costs.
+    // This only applies to the allocations before a GC start but not for allocations during a running GC.
+    const GROWTH_TOLERANCE: usize = 256 * 1024 * 1024;
+    let current_heap_size = partitioned_memory::get_heap_size();
+    state.last_heap_size = core::cmp::min(
+        state.last_heap_size.saturating_add(GROWTH_TOLERANCE),
+        current_heap_size.as_usize(),
+    );
 }
 
 #[cfg(feature = "ic")]
