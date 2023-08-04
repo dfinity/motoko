@@ -97,7 +97,7 @@ unsafe fn record_gc_start<M: Memory>(state: &mut State) {
     ALLOCATIONS_AT_LAST_GC_RUN = partitioned_memory::get_total_allocations();
 
     // Heuristics: Tolerate a certain heap growth before the start of a GC run without extra GC increment costs.
-    // This only applies to the allocations before a GC start but not for allocations during a running GC.
+    // This only applies to the allocations before a GC start but not to allocations during a running GC.
     const GROWTH_TOLERANCE: usize = 256 * 1024 * 1024;
     let current_heap_size = partitioned_memory::get_heap_size();
     state.last_heap_size = core::cmp::min(
