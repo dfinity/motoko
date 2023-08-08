@@ -3668,13 +3668,11 @@ module Blob = struct
       BigNum.from_word32 env
     )
 
-  let vanilla_lit env s =
+  let static_lit env s =
     Tagged.shared_static_obj env Tagged.Blob StaticBytes.[
       I32 (Int32.of_int (String.length s));
       Bytes s;
     ]
-
-  let lit env s = compile_unboxed_const (vanilla_lit env s)
 
   let lit_ptr_len env s =
     compile_unboxed_const (Int32.add ptr_unskew (E.add_static env StaticBytes.[Bytes s])) ^^
@@ -3690,6 +3688,19 @@ module Blob = struct
   let payload_ptr_unskewed env =
     Tagged.load_forwarding_pointer env ^^
     compile_add_const (unskewed_payload_offset env)
+
+  (* TODO: Implement dynamic sharing with lazy instantiation on the heap, 
+    the static memory only denotes singleton address per upgrade mode, 
+    the static singleton address needs to be re-initialized on upgrade *)
+  let lit env s = 
+    let blob_length = Int32.of_int (String.length s) in
+    let (set_new_blob, get_new_blob) = new_local env "new_blob" in
+    compile_unboxed_const blob_length ^^ alloc env ^^ set_new_blob ^^
+    get_new_blob ^^ payload_ptr_unskewed env ^^ (* target address *)
+    compile_unboxed_const (static_lit env s) ^^ payload_ptr_unskewed env ^^ (* source address *)
+    compile_unboxed_const blob_length ^^ (* copy length *)
+    Heap.memcpy env ^^
+    get_new_blob
 
   let as_ptr_len env = Func.share_code1 env "as_ptr_size" ("x", I32Type) [I32Type; I32Type] (
     fun env get_x ->
@@ -7629,7 +7640,7 @@ module StackRep = struct
     | Const.Word32 n   -> BoxedSmallWord.vanilla_lit env n
     | Const.Word64 n   -> BoxedWord64.vanilla_lit env n
     | Const.Float64 f  -> Float.vanilla_lit env f
-    | Const.Blob t     -> Blob.vanilla_lit env t
+    | Const.Blob t     -> assert false
     | Const.Null       -> Opt.null_vanilla_lit env
 
   let rec materialize_const_t env (p, cv) : int32 =
@@ -7678,6 +7689,7 @@ module StackRep = struct
     | Vanilla, UnboxedFloat64 -> Float.unbox env
 
     | Const (_, Const.Lit (Const.Bool b)), Vanilla -> Bool.lit b
+    | Const (_, Const.Lit (Const.Blob t)), Vanilla -> Blob.lit env t
     | Const c, Vanilla -> compile_unboxed_const (materialize_const_t env c)
     | Const (_, Const.Lit (Const.Word32 n)), UnboxedWord32 -> compile_unboxed_const n
     | Const (_, Const.Lit (Const.Word64 n)), UnboxedWord64 -> compile_const_64 n
