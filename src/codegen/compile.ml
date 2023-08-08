@@ -7155,8 +7155,49 @@ module BlobStream : Stream = struct
 
 end
 
+module Stabilization = struct
+  (* TODO: Define memory layout and predefined address for actor object *)
+  let register_globals env =
+    (* Only reserve static memory without appending a data segment.
+       This is necessary because data segments are overwritten on upgrade
+       and we need to retain the old actor object address at this location. 
+       The Wasm memory is guaranteed to be zero-initialized on canister installation.
+    *)
+    let static_address = E.reserve_static_memory env Heap.word_size in
+    E.add_global32 env "__actor_object" Mutable static_address;
+    ()
 
-(* Stabilization (serialization to/from stable memory) of both:
+  let actor_address env =
+    G.i (GlobalGet (nr (E.get_global env "__actor_object")))
+
+  let load_actor env =
+    actor_address env ^^ load_unskewed_ptr
+    
+  let save_actor env =
+    let (set_value, get_value) = new_local env "value" in
+    set_value ^^
+    actor_address env ^^ get_value ^^ store_unskewed_ptr
+
+  let empty_actor env t =
+    let (_, fs) = Type.as_obj t in
+    let fs' = List.map
+      (fun f -> (f.Type.lab, fun () -> Opt.null_lit env))
+      fs
+    in
+    Object.lit_raw env fs'
+
+  let stabilize env t =
+    save_actor env
+
+  let destabilize env t =
+    load_actor env ^^
+    G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
+    G.if1 I32Type
+      (empty_actor env t)
+      (load_actor env)
+end
+
+(* OldStabilization (serialization to/from stable memory) of both:
    * stable variables; and
    * virtual stable memory.
    c.f.
@@ -7164,7 +7205,7 @@ end
    * ../../design/StableMemory.md
 *)
 
-module Stabilization = struct
+module OldStabilization = struct
 
   let extend64 code = code ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
 
@@ -11253,6 +11294,7 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
   GC.register_globals env;
   StableMem.register_globals env;
   Serialization.Registers.register_globals env;
+  Stabilization.register_globals env;
 
   (* See Note [Candid subtype checks] *)
   let set_serialization_globals = Serialization.register_delayed_globals env in
