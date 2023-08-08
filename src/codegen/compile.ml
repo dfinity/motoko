@@ -665,7 +665,7 @@ let compile_eq_const = function
 let compile_op64_const op i =
     compile_const_64 i ^^
     G.i (Binary (Wasm.Values.I64 op))
-let compile_add64_const = compile_op64_const I64Op.Add
+let _compile_add64_const = compile_op64_const I64Op.Add
 let compile_sub64_const = compile_op64_const I64Op.Sub
 let compile_mul64_const = compile_op64_const I64Op.Mul
 let _compile_divU64_const = compile_op64_const I64Op.DivU
@@ -1139,9 +1139,11 @@ module Heap = struct
 
   (* At this level of abstraction, heap objects are just flat arrays of words *)
 
+(*
   let load_field_unskewed (i : int32) : G.t =
     let offset = Int32.mul word_size i in
     G.i (Load {ty = I32Type; align = 2; offset; sz = None})
+*)
 
   let load_field (i : int32) : G.t =
     let offset = Int32.(add (mul word_size i) ptr_unskew) in
@@ -1153,11 +1155,13 @@ module Heap = struct
 
   (* Although we occasionally want to treat two consecutive
      32 bit fields as one 64 bit number *)
-  
+
   (* Requires little-endian encoding, see also `Stream` in `types.rs` *)
+(*
   let load_field64_unskewed (i : int32) : G.t =
     let offset = Int32.mul word_size i in
     G.i (Load {ty = I64Type; align = 2; offset; sz = None})
+*)
 
   let load_field64 (i : int32) : G.t =
     let offset = Int32.(add (mul word_size i) ptr_unskew) in
@@ -1712,6 +1716,7 @@ module Tagged = struct
     (if !Flags.sanity then check_forwarding_for_store env I32Type else G.nop) ^^
     Heap.store_field index
 
+(*
   let load_field_unskewed env index =
     (if !Flags.sanity then check_forwarding env true else G.nop) ^^
     Heap.load_field_unskewed index
@@ -1719,6 +1724,7 @@ module Tagged = struct
   let load_field64_unskewed env index =
     (if !Flags.sanity then check_forwarding env true else G.nop) ^^
     Heap.load_field64_unskewed index
+*)
 
   let load_field64 env index =
     (if !Flags.sanity then check_forwarding env false else G.nop) ^^
@@ -3826,6 +3832,7 @@ module Blob = struct
 
   let dyn_alloc_scratch env = alloc env ^^ payload_ptr_unskewed env
 
+(*
   (* TODO: rewrite using MemoryFill *)
   let clear env =
     Func.share_code1 env "blob_clear" ("x", I32Type) [] (fun env get_x ->
@@ -3849,6 +3856,7 @@ module Blob = struct
         get_ptr ^^
         compile_add_const Heap.word_size ^^
         set_ptr))
+*)
 
 end (* Blob *)
 
@@ -4916,7 +4924,7 @@ end (* Cycles *)
 module StableMem = struct
 
   (* start from 1 to avoid accidental reads of 0 *)
-  let version = Int32.of_int 1
+  let _version = Int32.of_int 1
 
   let register_globals env =
     (* size (in pages) *)
@@ -5009,11 +5017,11 @@ module StableMem = struct
             IC.system_call env "stable64_write"))
     | _ -> assert false
 
+(*
   let _read_word32 env =
     read env false "word32" I32Type 4l load_unskewed_ptr
   let write_word32 env =
     write env false "word32" I32Type 4l store_unskewed_ptr
-
 
   (* read and clear word32 from stable mem offset on stack *)
   let read_and_clear_word32 env =
@@ -5041,6 +5049,7 @@ module StableMem = struct
             get_word
         ))
     | _ -> assert false
+*)
 
   (* ensure_pages : ensure at least num pages allocated,
      growing (real) stable memory if needed *)
@@ -5070,6 +5079,7 @@ module StableMem = struct
             get_size)
     | _ -> assert false
 
+(*
   (* ensure stable memory includes [offset..offset+size), assumes size > 0 *)
   let ensure env =
     match E.mode env with
@@ -5098,6 +5108,7 @@ module StableMem = struct
           G.i (Compare (Wasm.Values.I64 I64Op.LtS)) ^^
           E.then_trap_with env "Out of stable memory.")
     | _ -> assert false
+*)
 
   (* API *)
 
@@ -7082,6 +7093,7 @@ end (* MakeSerialization *)
 
 module Serialization = MakeSerialization(BumpStream)
 
+(*
 module BlobStream : Stream = struct
   let create env get_data_size set_token get_token header =
     let header_size = Int32.of_int (String.length header) in
@@ -7154,6 +7166,7 @@ module BlobStream : Stream = struct
     BigNum.compile_store_to_stream_signed env
 
 end
+*)
 
 module Stabilization = struct
   (* TODO: Define memory layout and predefined address for actor object *)
@@ -7197,6 +7210,7 @@ module Stabilization = struct
       (load_actor env)
 end
 
+(*
 (* OldStabilization (serialization to/from stable memory) of both:
    * stable variables; and
    * virtual stable memory.
@@ -7507,6 +7521,7 @@ module OldStabilization = struct
         end
     | _ -> assert false
 end
+*)
 
 module GCRoots = struct
   let register env static_roots =
