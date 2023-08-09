@@ -209,7 +209,7 @@ mod meta_data {
 
     /// Maximum number of entities.
     pub mod max {
-        pub const BLOCKS: u16 = 32 * 1024;
+        pub const BLOCKS: u32 = 64 * 1024;
         pub const REGIONS: u16 = 32 * 1024 - 1;
     }
 
@@ -227,7 +227,7 @@ mod meta_data {
         pub const BLOCK_REGION_TABLE: u64 =
             super::max::BLOCKS as u64 * BLOCK_REGION_TABLE_ENTRY as u64;
 
-        pub const PAGES_IN_BLOCK: u32 = 128;
+        pub const PAGES_IN_BLOCK: u32 = 64;
         pub const PAGE_IN_BYTES: u64 = 1 << 16;
         pub const BLOCK_IN_BYTES: u64 = PAGE_IN_BYTES * (PAGES_IN_BLOCK as u64);
 
