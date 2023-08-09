@@ -80,10 +80,10 @@ unsafe fn generational_gc<M: Memory>(mem: &mut M) {
 
 #[cfg(feature = "ic")]
 unsafe fn get_limits() -> Limits {
-    use crate::memory::ic::{self, linear_memory};
-    assert!(linear_memory::LAST_HP >= ic::get_aligned_heap_base());
+    use crate::{memory::ic::linear_memory, persistence::HEAP_START};
+    assert!(linear_memory::LAST_HP >= HEAP_START);
     Limits {
-        base: ic::get_aligned_heap_base(),
+        base: HEAP_START,
         last_free: linear_memory::LAST_HP,
         free: (linear_memory::get_hp_unskewed()),
     }

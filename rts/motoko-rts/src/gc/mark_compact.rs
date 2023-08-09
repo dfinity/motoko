@@ -11,6 +11,7 @@ use mark_stack::{alloc_mark_stack, free_mark_stack, pop_mark_stack, push_mark_st
 use crate::constants::WORD_SIZE;
 use crate::mem_utils::memcpy_words;
 use crate::memory::Memory;
+use crate::persistence::HEAP_START;
 use crate::types::*;
 use crate::visitor::{pointer_to_dynamic_heap, visit_pointer_fields};
 
@@ -44,7 +45,7 @@ unsafe fn compacting_gc<M: Memory>(mem: &mut M) {
 
     compacting_gc_internal(
         mem,
-        ic::get_aligned_heap_base(),
+        HEAP_START,
         // get_hp
         || linear_memory::get_hp_unskewed(),
         // set_hp

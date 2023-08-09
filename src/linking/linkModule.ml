@@ -766,6 +766,9 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
   let lib_heap_start = align dylink.memory_alignment old_heap_start in
   let new_heap_start = align 4l (Int32.add lib_heap_start dylink.memory_size) in
 
+  (* Data segments must fit below 4MB according to the persistent heap layout. *)
+  assert ((Int32.to_int new_heap_start) <= 4 * 1024 * 1024);
+
   let old_table_size = read_table_size em1.module_ in
   let lib_table_start = align dylink.table_alignment old_table_size in
 

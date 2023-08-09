@@ -1,7 +1,7 @@
 use core::arch::wasm32;
 
-use super::{get_aligned_heap_base, IcMemory, Memory};
-use crate::types::*;
+use super::{IcMemory, Memory};
+use crate::{persistence::HEAP_START, types::*};
 
 /// Amount of garbage collected so far.
 pub(crate) static mut RECLAIMED: Bytes<u64> = Bytes(0);
@@ -23,7 +23,7 @@ pub(crate) unsafe fn get_hp_unskewed() -> usize {
 pub(crate) static mut LAST_HP: usize = 0;
 
 pub(crate) unsafe fn initialize() {
-    LAST_HP = get_aligned_heap_base();
+    LAST_HP = HEAP_START;
     set_hp_unskewed(LAST_HP);
 }
 
@@ -39,7 +39,7 @@ pub unsafe extern "C" fn get_total_allocations() -> Bytes<u64> {
 
 #[no_mangle]
 pub unsafe extern "C" fn get_heap_size() -> Bytes<u32> {
-    Bytes((get_hp_unskewed() - get_aligned_heap_base()) as u32)
+    Bytes((get_hp_unskewed() - HEAP_START) as u32)
 }
 
 impl Memory for IcMemory {

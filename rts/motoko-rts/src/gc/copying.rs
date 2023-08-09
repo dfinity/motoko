@@ -1,6 +1,7 @@
 use crate::constants::WORD_SIZE;
 use crate::mem_utils::{memcpy_bytes, memcpy_words};
 use crate::memory::Memory;
+use crate::persistence::HEAP_START;
 use crate::types::*;
 
 use motoko_rts_macros::ic_mem_fn;
@@ -29,7 +30,7 @@ unsafe fn copying_gc<M: Memory>(mem: &mut M) {
 
     copying_gc_internal(
         mem,
-        ic::get_aligned_heap_base(),
+        HEAP_START,
         // get_hp
         || linear_memory::get_hp_unskewed(),
         // set_hp

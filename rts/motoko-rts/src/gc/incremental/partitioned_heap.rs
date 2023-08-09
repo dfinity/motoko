@@ -371,6 +371,11 @@ pub const UNINITIALIZED_HEAP: PartitionedHeap = PartitionedHeap {
 
 impl PartitionedHeap {
     pub unsafe fn new<M: Memory>(mem: &mut M, heap_base: usize) -> PartitionedHeap {
+        println!(
+            100,
+            "INITIALIZE PARTITIONED HEAP {}",
+            size_of::<PartitionedHeap>().to_bytes().as_usize()
+        );
         let allocation_index = heap_base / PARTITION_SIZE;
         mem.grow_memory(((allocation_index + 1) * PARTITION_SIZE) as u64);
         let partitions = from_fn(|index| Partition {

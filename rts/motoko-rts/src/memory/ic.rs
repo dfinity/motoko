@@ -14,13 +14,7 @@ use motoko_rts_macros::*;
 
 // Provided by generated code
 extern "C" {
-    fn get_heap_base() -> usize;
     pub(crate) fn get_static_roots() -> Value;
-}
-
-pub(crate) unsafe fn get_aligned_heap_base() -> usize {
-    // align to 32 bytes
-    ((get_heap_base() + 31) / 32) * 32
 }
 
 /// Maximum live data retained in a GC.

@@ -31,6 +31,7 @@ mod idl;
 pub mod leb128;
 mod mem_utils;
 pub mod memory;
+pub mod persistence;
 pub mod principal_id;
 mod static_checks;
 pub mod stream;

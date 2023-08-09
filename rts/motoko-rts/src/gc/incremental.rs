@@ -10,7 +10,7 @@ use core::cell::RefCell;
 
 use motoko_rts_macros::ic_mem_fn;
 
-use crate::{memory::Memory, types::*, visitor::visit_pointer_fields};
+use crate::{memory::Memory, persistence::HEAP_START, types::*, visitor::visit_pointer_fields};
 
 use self::{
     partitioned_heap::{PartitionedHeap, PartitionedHeapIterator, UNINITIALIZED_HEAP},
@@ -37,8 +37,7 @@ pub mod time;
 
 #[ic_mem_fn(ic_only)]
 unsafe fn initialize_incremental_gc<M: Memory>(mem: &mut M) {
-    use crate::memory::ic;
-    IncrementalGC::<M>::initialize(mem, ic::get_aligned_heap_base());
+    IncrementalGC::<M>::initialize(mem, HEAP_START);
 }
 
 #[ic_mem_fn(ic_only)]
@@ -101,7 +100,7 @@ unsafe fn record_gc_stop<M: Memory>() {
     use crate::memory::ic::{self, partitioned_memory};
 
     let heap_size = partitioned_memory::get_heap_size();
-    let static_size = Bytes(ic::get_aligned_heap_base() as u32);
+    let static_size = Bytes(HEAP_START as u32);
     debug_assert!(heap_size >= static_size);
     let dynamic_size = heap_size - static_size;
     ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, dynamic_size);
@@ -166,6 +165,11 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     /// (Re-)Initialize the entire incremental garbage collector.
     /// Called on a runtime system start with incremental GC and also during RTS testing.
     pub unsafe fn initialize(mem: &'a mut M, heap_base: usize) {
+        println!(
+            100,
+            "INITIALIZE INCREMENTAL GC {}",
+            &mut STATE.borrow_mut().partitioned_heap as *mut PartitionedHeap as usize
+        );
         let state = STATE.get_mut();
         state.phase = Phase::Pause;
         state.partitioned_heap = PartitionedHeap::new(mem, heap_base);
