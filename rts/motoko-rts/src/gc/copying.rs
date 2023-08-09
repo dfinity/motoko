@@ -1,14 +1,15 @@
 use crate::constants::WORD_SIZE;
 use crate::mem_utils::{memcpy_bytes, memcpy_words};
 use crate::memory::Memory;
-use crate::persistence::HEAP_START;
 use crate::types::*;
 
 use motoko_rts_macros::ic_mem_fn;
 
 #[no_mangle]
 #[cfg(feature = "ic")]
+#[allow(unreachable_code)]
 pub unsafe extern "C" fn initialize_copying_gc() {
+    panic!("Copying GC is not supported with the persistent heap");
     crate::memory::ic::linear_memory::initialize();
 }
 
@@ -26,7 +27,7 @@ unsafe fn schedule_copying_gc<M: Memory>(mem: &mut M) {
 
 #[ic_mem_fn(ic_only)]
 unsafe fn copying_gc<M: Memory>(mem: &mut M) {
-    use crate::memory::ic::{self, linear_memory};
+    use crate::memory::ic::{self, linear_memory, HEAP_START};
 
     copying_gc_internal(
         mem,

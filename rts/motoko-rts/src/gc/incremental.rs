@@ -6,14 +6,18 @@
 //! - Focus on reclaiming high-garbage partitions.
 //! - Compacting heap space with partition evacuations.
 //! - Incremental copying enabled by forwarding pointers.
-use core::cell::RefCell;
 
 use motoko_rts_macros::ic_mem_fn;
 
-use crate::{memory::Memory, persistence::HEAP_START, types::*, visitor::visit_pointer_fields};
+use crate::{
+    memory::Memory,
+    persistence::{get_incremenmtal_gc_state, HEAP_START, initialize_memory},
+    types::*,
+    visitor::visit_pointer_fields,
+};
 
 use self::{
-    partitioned_heap::{PartitionedHeap, PartitionedHeapIterator, UNINITIALIZED_HEAP},
+    partitioned_heap::{PartitionedHeap, PartitionedHeapIterator},
     phases::{
         evacuation_increment::EvacuationIncrement,
         mark_increment::{MarkIncrement, MarkState},
@@ -37,12 +41,14 @@ pub mod time;
 
 #[ic_mem_fn(ic_only)]
 unsafe fn initialize_incremental_gc<M: Memory>(mem: &mut M) {
-    IncrementalGC::<M>::initialize(mem, HEAP_START);
+    println!(100, "INITIALIZE INCREMENTAL GC");
+    initialize_memory(mem);
+    IncrementalGC::<M>::initialize(mem, get_incremenmtal_gc_state(), HEAP_START);
 }
 
 #[ic_mem_fn(ic_only)]
 unsafe fn schedule_incremental_gc<M: Memory>(mem: &mut M) {
-    let state = STATE.borrow();
+    let state = get_incremenmtal_gc_state();
     assert!(state.phase != Phase::Stop);
     let running = state.phase != Phase::Pause;
     if running || should_start() {
@@ -53,7 +59,7 @@ unsafe fn schedule_incremental_gc<M: Memory>(mem: &mut M) {
 #[ic_mem_fn(ic_only)]
 unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
     use self::roots::root_set;
-    let state = STATE.get_mut();
+    let state = get_incremenmtal_gc_state();
     if state.phase == Phase::Pause {
         record_gc_start::<M>();
     }
@@ -136,6 +142,7 @@ enum Phase {
     Stop,     // GC stopped on canister upgrade.
 }
 
+/// GC state retained over multiple GC increments.
 pub struct State {
     phase: Phase,
     partitioned_heap: PartitionedHeap,
@@ -143,15 +150,6 @@ pub struct State {
     mark_state: Option<MarkState>,
     iterator_state: Option<PartitionedHeapIterator>,
 }
-
-/// GC state retained over multiple GC increments.
-static mut STATE: RefCell<State> = RefCell::new(State {
-    phase: Phase::Pause,
-    partitioned_heap: UNINITIALIZED_HEAP,
-    allocation_count: 0,
-    mark_state: None,
-    iterator_state: None,
-});
 
 /// Incremental GC.
 /// Each GC call has its new GC instance that shares the common GC state `STATE`.
@@ -164,13 +162,7 @@ pub struct IncrementalGC<'a, M: Memory> {
 impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     /// (Re-)Initialize the entire incremental garbage collector.
     /// Called on a runtime system start with incremental GC and also during RTS testing.
-    pub unsafe fn initialize(mem: &'a mut M, heap_base: usize) {
-        println!(
-            100,
-            "INITIALIZE INCREMENTAL GC {}",
-            &mut STATE.borrow_mut().partitioned_heap as *mut PartitionedHeap as usize
-        );
-        let state = STATE.get_mut();
+    pub unsafe fn initialize(mem: &'a mut M, state: &mut State, heap_base: usize) {
         state.phase = Phase::Pause;
         state.partitioned_heap = PartitionedHeap::new(mem, heap_base);
         state.allocation_count = 0;
@@ -196,6 +188,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     /// * The mark phase can only be started on an empty call stack.
     /// * The update phase can only be completed on an empty call stack.
     pub unsafe fn empty_call_stack_increment(&mut self, roots: Roots) {
+        println!(100, "GC INCREMENT");
         assert!(self.state.phase != Phase::Stop);
         if self.pausing() {
             self.start_marking(roots);
@@ -399,14 +392,12 @@ unsafe fn count_allocation(state: &mut State) {
 /// the compiler must not schedule the GC during stabilization anyway.
 #[no_mangle]
 pub unsafe extern "C" fn stop_gc_on_upgrade() {
-    STATE.get_mut().phase = Phase::Stop;
-}
-
-pub unsafe fn incremental_gc_state() -> &'static mut State {
-    STATE.get_mut()
+    get_incremenmtal_gc_state().phase = Phase::Stop;
 }
 
 pub unsafe fn get_partitioned_heap() -> &'static mut PartitionedHeap {
-    debug_assert!(STATE.get_mut().partitioned_heap.is_initialized());
-    &mut STATE.get_mut().partitioned_heap
+    debug_assert!(get_incremenmtal_gc_state()
+        .partitioned_heap
+        .is_initialized());
+    &mut get_incremenmtal_gc_state().partitioned_heap
 }

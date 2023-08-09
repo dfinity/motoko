@@ -35,7 +35,7 @@ pub struct MarkBitmap {
     pointer: *mut u8,
 }
 
-pub const DEFAULT_MARK_BITMAP: MarkBitmap = MarkBitmap {
+const DEFAULT_MARK_BITMAP: MarkBitmap = MarkBitmap {
     pointer: null_mut(),
 };
 

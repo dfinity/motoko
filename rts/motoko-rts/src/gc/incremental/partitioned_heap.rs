@@ -46,7 +46,7 @@ use crate::{
 };
 
 use super::{
-    mark_bitmap::{BitmapIterator, MarkBitmap, BITMAP_SIZE, DEFAULT_MARK_BITMAP},
+    mark_bitmap::{BitmapIterator, MarkBitmap, BITMAP_SIZE},
     sort::sort,
     time::BoundedTime,
 };
@@ -85,20 +85,6 @@ pub struct Partition {
     evacuate: bool,      // Specifies whether the partition is to be evacuated or being evacuated.
     update: bool,        // Specifies whether the pointers in the partition have to be updated.
 }
-
-/// Optimization: Avoiding `Option` or `Lazy`.
-const UNINITIALIZED_PARTITION: Partition = Partition {
-    index: usize::MAX,
-    free: false,
-    large_content: false,
-    marked_size: 0,
-    static_size: 0,
-    dynamic_size: 0,
-    bitmap: DEFAULT_MARK_BITMAP,
-    temporary: false,
-    evacuate: false,
-    update: false,
-};
 
 impl Partition {
     pub fn get_index(&self) -> usize {
@@ -356,26 +342,8 @@ pub struct PartitionedHeap {
     precomputed_heap_size: usize, // Occupied heap size, excluding the dynamic heap in the allocation partition.
 }
 
-/// Optimization: Avoiding `Option` or `LazyCell`.
-pub const UNINITIALIZED_HEAP: PartitionedHeap = PartitionedHeap {
-    partitions: [UNINITIALIZED_PARTITION; MAX_PARTITIONS],
-    heap_base: 0,
-    allocation_index: 0,
-    free_partitions: 0,
-    evacuating: false,
-    reclaimed: 0,
-    bitmap_allocation_pointer: 0,
-    gc_running: false,
-    precomputed_heap_size: 0,
-};
-
 impl PartitionedHeap {
     pub unsafe fn new<M: Memory>(mem: &mut M, heap_base: usize) -> PartitionedHeap {
-        println!(
-            100,
-            "INITIALIZE PARTITIONED HEAP {}",
-            size_of::<PartitionedHeap>().to_bytes().as_usize()
-        );
         let allocation_index = heap_base / PARTITION_SIZE;
         mem.grow_memory(((allocation_index + 1) * PARTITION_SIZE) as u64);
         let partitions = from_fn(|index| Partition {

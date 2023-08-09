@@ -6,7 +6,7 @@ use core::mem::size_of;
 
 use motoko_rts_macros::ic_mem_fn;
 
-use crate::{barriers::write_with_barrier, memory::Memory, types::Value};
+use crate::{barriers::write_with_barrier, gc::incremental::State, memory::Memory, types::Value};
 
 const FINGERPRINT: [char; 32] = [
     'M', 'O', 'T', 'O', 'K', 'O', ' ', 'O', 'R', 'T', 'H', 'O', 'G', 'O', 'N', 'A', 'L', ' ', 'P',
@@ -21,6 +21,7 @@ struct PersistentMetadata {
     fingerprint: [char; 32],
     version: usize,
     actor: Value, // Must be added to the root set, use forwarding
+    incremental_gc_state: State,
 }
 
 const METATDATA_ADDRESS: usize = 4 * 1024 * 1024;
@@ -62,16 +63,16 @@ impl PersistentMetadata {
     }
 }
 
-#[ic_mem_fn]
 pub unsafe fn initialize_memory<M: Memory>(mem: &mut M) {
     mem.grow_memory(HEAP_START as u64);
     let metadata = PersistentMetadata::get();
     if metadata.is_initialized() {
+        println!(100, "MEMORY REUSED");
         metadata.check_version();
     } else {
+        println!(100, "MEMORY INITIALIZED");
         metadata.initialize();
     }
-    println!(100, "MEMORY INITIALIZED {HEAP_START:#x}");
 }
 
 /// Returns scalar 0 if no actor is stored.
@@ -87,4 +88,9 @@ pub unsafe fn save_actor<M: Memory>(mem: &mut M, actor: Value) {
     let metadata = PersistentMetadata::get();
     let location = &mut (*metadata).actor as *mut Value;
     write_with_barrier(mem, location, actor);
+}
+
+pub(crate) unsafe fn get_incremenmtal_gc_state() -> &'static mut State {
+    let metadata = PersistentMetadata::get();
+    &mut (*metadata).incremental_gc_state
 }

@@ -1,7 +1,7 @@
 use core::arch::wasm32;
 
-use super::{IcMemory, Memory};
-use crate::{persistence::HEAP_START, types::*};
+use super::{IcMemory, Memory, HEAP_START};
+use crate::types::*;
 
 /// Amount of garbage collected so far.
 pub(crate) static mut RECLAIMED: Bytes<u64> = Bytes(0);

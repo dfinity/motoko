@@ -11,7 +11,6 @@ use mark_stack::{alloc_mark_stack, free_mark_stack, pop_mark_stack, push_mark_st
 use crate::constants::WORD_SIZE;
 use crate::mem_utils::memcpy_words;
 use crate::memory::Memory;
-use crate::persistence::HEAP_START;
 use crate::types::*;
 use crate::visitor::{pointer_to_dynamic_heap, visit_pointer_fields};
 
@@ -19,7 +18,9 @@ use motoko_rts_macros::ic_mem_fn;
 
 #[no_mangle]
 #[cfg(feature = "ic")]
+#[allow(unreachable_code)]
 pub unsafe extern "C" fn initialize_compacting_gc() {
+    panic!("Compacting GC is not supported with the persistent heap");
     crate::memory::ic::linear_memory::initialize();
 }
 
@@ -41,7 +42,7 @@ unsafe fn schedule_compacting_gc<M: Memory>(mem: &mut M) {
 
 #[ic_mem_fn(ic_only)]
 unsafe fn compacting_gc<M: Memory>(mem: &mut M) {
-    use crate::memory::ic::{self, linear_memory};
+    use crate::memory::ic::{self, linear_memory, HEAP_START};
 
     compacting_gc_internal(
         mem,

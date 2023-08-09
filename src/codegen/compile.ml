@@ -924,7 +924,6 @@ module RTS = struct
 
   (* The connection to the C and Rust parts of the RTS *)
   let system_imports env =
-    E.add_func_import env "rts" "initialize_memory" [] [];
     E.add_func_import env "rts" "load_actor" [] [I32Type];
     E.add_func_import env "rts" "save_actor" [I32Type] [];
     E.add_func_import env "rts" "memcpy" [I32Type; I32Type; I32Type] [I32Type]; (* standard libc memcpy *)
@@ -11078,7 +11077,6 @@ and compile_init_func mod_env ((cu, flavor) : Ir.prog) =
   | ProgU ds ->
     Func.define_built_in mod_env "init" [] [] (fun env ->
       let _ae, codeW = compile_decs env VarEnv.empty_ae ds Freevars.S.empty in
-      E.call_import mod_env "rts" "initialize_memory" ^^
       codeW G.nop
     )
   | ActorU (as_opt, ds, fs, up, _t) ->
@@ -11171,9 +11169,6 @@ and main_actor as_opt mod_env ds fs up =
     env.E.stable_types := metadata "motoko:stable-types" up.meta.sig_;
     env.E.service := metadata "candid:service" up.meta.candid.service;
     env.E.args := metadata "candid:args" up.meta.candid.args;
-
-    (* Initialize persistent memory *)
-    E.call_import mod_env "rts" "initialize_memory" ^^
 
     (* Deserialize any arguments *)
     begin match as_opt with

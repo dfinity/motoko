@@ -28,7 +28,9 @@ use self::mark_stack::{free_mark_stack, pop_mark_stack};
 use self::write_barrier::REMEMBERED_SET;
 
 #[ic_mem_fn(ic_only)]
+#[allow(unreachable_code, unused_variables)]
 unsafe fn initialize_generational_gc<M: Memory>(mem: &mut M) {
+    panic!("Generational GC is not supported with the persistent heap");
     crate::memory::ic::linear_memory::initialize();
     write_barrier::init_generational_write_barrier(mem);
 }
@@ -80,7 +82,7 @@ unsafe fn generational_gc<M: Memory>(mem: &mut M) {
 
 #[cfg(feature = "ic")]
 unsafe fn get_limits() -> Limits {
-    use crate::{memory::ic::linear_memory, persistence::HEAP_START};
+    use crate::memory::ic::{linear_memory, HEAP_START};
     assert!(linear_memory::LAST_HP >= HEAP_START);
     Limits {
         base: HEAP_START,

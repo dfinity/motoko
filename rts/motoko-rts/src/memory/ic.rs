@@ -12,6 +12,10 @@ use crate::types::{Bytes, Value};
 use core::arch::wasm32;
 use motoko_rts_macros::*;
 
+// TODO: Remove once the classical GCs have been removed.
+#[non_incremental_gc]
+pub const HEAP_START: usize = 4 * 1024 * 1024 + 128 * 1024;
+
 // Provided by generated code
 extern "C" {
     pub(crate) fn get_static_roots() -> Value;
