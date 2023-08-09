@@ -9676,7 +9676,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     | Nat16, Nat32 ->
       SR.Vanilla,
       compile_exp_vanilla env ae e ^^
-      compile_shrU_const 15l
+      compile_shrU_const 15l (* resulting Nat32 will always be unboxed *)
     | Nat32, Nat64 ->
       SR.UnboxedWord64,
       compile_exp_as env ae SR.UnboxedWord32 e ^^
@@ -9714,7 +9714,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     | Int16, Int32 ->
       SR.Vanilla,
       compile_exp_vanilla env ae e ^^
-      compile_shrS_const 15l
+      compile_shrS_const 15l (* resulting Int32 will always be unboxed *)
     | Int32, Int64 ->
       SR.UnboxedWord64,
       compile_exp_as env ae SR.UnboxedWord32 e ^^
