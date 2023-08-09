@@ -418,3 +418,41 @@ pub unsafe fn text_singleton<M: Memory>(mem: &mut M, char: u32) -> Value {
 
     allocation_barrier(blob_ptr)
 }
+
+/// Convert a Text value into lower case (generally a different length).
+#[ic_mem_fn]
+pub unsafe fn text_to_lowercase<M: Memory>(mem: &mut M, text: Value) -> Value {
+    // Cannot directly use str::to_lowercase because it creates a std::String.
+    // Our approach:
+    // 1. Compute the Blob version of the Text (not needed, but makes the rest easier).
+    // 2. Iterate over each Char of the Blob and lowercase it, computing that size.
+    // 3. Allocate output Blob for lowercase Text, and fill it in.
+
+    // 1. Compute Blob version of Text.
+    let blob = blob_of_text(mem, text).as_blob_mut();
+    let chars = str::from_utf8_unchecked(slice::from_raw_parts(
+        blob.payload_addr() as *const u8,
+        blob.len().as_usize(),
+    ))
+    .chars();
+
+    // 2. Compute the length of output Blob that we will need.
+    let mut lowercase_len = 0;
+    let chars_ = chars.clone();
+    for c in chars_ {
+        lowercase_len += c.to_lowercase().len();
+    }
+
+    // 3. Allocate and fill output Blob.
+    let lowercase = alloc_blob(mem, Bytes(lowercase_len as u32));
+    let mut lowercase_i = 0;
+    let target_ptr: *mut char = lowercase.as_blob_mut().payload_addr() as *mut char;
+    for c in chars {
+        let lc = c.to_lowercase();
+        for cc in lc {
+            *target_ptr.offset(lowercase_i) = cc;
+            lowercase_i += 1;
+        }
+    }
+    lowercase
+}
