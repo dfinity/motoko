@@ -141,6 +141,9 @@ func encodeUtf8(t : Text) : Blob = (prim "encodeUtf8" : Text -> Blob) t;
 // Text comparison
 func textCompare(t1 : Text, t2 : Text) : Int8 = (prim "text_compare" : (Text, Text) -> Int8) (t1, t2);
 
+// Text lowercase
+func textLowercase(t : Text) : Text = (prim "text_lowercase" : (Text) -> Text) (t);
+
 // Exotic bitwise operations
 func popcntNat8(w : Nat8) : Nat8 = (prim "popcnt8" : Nat8 -> Nat8) w;
 func clzNat8(w : Nat8) : Nat8 = (prim "clz8" : Nat8 -> Nat8) w;

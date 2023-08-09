@@ -421,7 +421,7 @@ pub unsafe fn text_singleton<M: Memory>(mem: &mut M, char: u32) -> Value {
 
 /// Convert a Text value into lower case (generally a different length).
 #[ic_mem_fn]
-pub unsafe fn text_to_lowercase<M: Memory>(mem: &mut M, text: Value) -> Value {
+pub unsafe fn text_lowercase<M: Memory>(mem: &mut M, text: Value) -> Value {
     // Cannot directly use str::to_lowercase because it creates a std::String.
     // Our approach:
     // 1. Compute the Blob version of the Text (not needed, but makes the rest easier).
@@ -440,7 +440,9 @@ pub unsafe fn text_to_lowercase<M: Memory>(mem: &mut M, text: Value) -> Value {
     let mut lowercase_len = 0;
     let chars_ = chars.clone();
     for c in chars_ {
-        lowercase_len += c.to_lowercase().len();
+        for _ in c.to_lowercase() {
+            lowercase_len += 1;
+        }
     }
 
     // 3. Allocate and fill output Blob.
@@ -454,5 +456,6 @@ pub unsafe fn text_to_lowercase<M: Memory>(mem: &mut M, text: Value) -> Value {
             lowercase_i += 1;
         }
     }
+    assert_eq!(lowercase_i, lowercase_len as isize);
     lowercase
 }
