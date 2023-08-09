@@ -204,7 +204,8 @@ func test_Int8_Int16(n1 : Int8, n2 : Int16) {
 
 func test_Int16_Int32(n1 : Int16, n2 : Int32) {
   assert (Prim.int16ToInt32 n1 == n2);
-  assert (Prim.int32ToInt16 n2 == n1);
+  // "side effect" should only be printed once
+  assert (Prim.int32ToInt16((Prim.debugPrint "side effect", n2).1) == n1);
 };
 
 func test_Int32_Int64(n1 : Int32, n2 : Int64) {
