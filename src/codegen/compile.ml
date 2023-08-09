@@ -9692,21 +9692,19 @@ and compile_prim_invocation (env : E.t) ae p es at =
       compile_shl_const (Int32.of_int num_bits)
     | Nat32, (Nat16 as pty)->
       SR.Vanilla,
-      let num_bits = (TaggedSmallWord.bits_of_type pty) in
-      let max_val = Int32.(sub (shift_left 1l num_bits) 1l) in
+      let num_bits = Int32.of_int (TaggedSmallWord.bits_of_type pty) in
       compile_exp_as env ae SR.UnboxedWord32 e ^^
-      compile_rel_const I32Op.LeU max_val ^^
-      E.else_trap_with env "losing precision" ^^
+      compile_shrU_const num_bits ^^
+      E.then_trap_with env "losing precision" ^^
       compile_exp_as env ae SR.UnboxedWord32 e ^^
-      compile_shl_const (Int32.of_int num_bits)
+      compile_shl_const num_bits
     | Nat64, (Nat32 as pty) ->
       SR.UnboxedWord32,
-      let num_bits = (TaggedSmallWord.bits_of_type pty) in
-      let max_val = Int64.(sub (shift_left 1L num_bits) 1L) in
+      let num_bits = Int64.of_int (TaggedSmallWord.bits_of_type pty) in
       compile_exp_as env ae SR.UnboxedWord64 e ^^
-      compile_const_64 max_val ^^
-      G.i (Compare (Wasm.Values.I64 I64Op.LeU)) ^^
-      E.else_trap_with env "losing precision" ^^
+      compile_shrU64_const num_bits ^^
+      G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
+      E.then_trap_with env "losing precision" ^^
       compile_exp_as env ae SR.UnboxedWord64 e ^^
       G.i (Convert (Wasm.Values.I32 I32Op.WrapI64))
     | Int8, Int16 ->
