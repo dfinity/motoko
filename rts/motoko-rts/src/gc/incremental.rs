@@ -11,7 +11,7 @@ use motoko_rts_macros::ic_mem_fn;
 
 use crate::{
     memory::Memory,
-    persistence::{get_incremenmtal_gc_state, HEAP_START, initialize_memory},
+    persistence::{get_incremenmtal_gc_state, initialize_memory, HEAP_START},
     types::*,
     visitor::visit_pointer_fields,
 };

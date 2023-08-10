@@ -51,7 +51,7 @@ unsafe fn compacting_gc<M: Memory>(mem: &mut M) {
         || linear_memory::get_hp_unskewed(),
         // set_hp
         |hp| linear_memory::set_hp_unskewed(hp),
-        ic::get_static_roots(),
+        ic::linear_memory::get_static_roots(),
         crate::continuation_table::continuation_table_loc(),
         // note_live_size
         |live_size| ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, live_size),

@@ -10,10 +10,11 @@ pub struct Roots {
 
 #[cfg(feature = "ic")]
 pub unsafe fn root_set() -> Roots {
-    use crate::memory::ic;
+    use crate::continuation_table::continuation_table_loc;
+    use crate::persistence::get_static_root;
     Roots {
-        static_roots: ic::get_static_roots(),
-        continuation_table_location: crate::continuation_table::continuation_table_loc(),
+        static_roots: get_static_root(),
+        continuation_table_location: continuation_table_loc(),
     }
 }
 

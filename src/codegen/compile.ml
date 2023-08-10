@@ -301,8 +301,9 @@ module E = struct
     static_memory : (int32 * string) list ref; (* Content of static memory *)
     static_memory_frozen : bool ref;
       (* Sanity check: Nothing should bump end_of_static_memory once it has been read *)
-    static_roots : int32 list ref;
-      (* GC roots in static memory. (Everything that may be mutable.) *)
+    static_variables : int32 ref;
+      (* Number of static variables (MutBox), accessed by index via the runtime system,
+         and belonging to the GC root set. *)
 
     (* Types accumulated in global typtbl (for candid subtype checks)
        See Note [Candid subtype checks]
@@ -348,7 +349,7 @@ module E = struct
     end_of_static_memory = ref dyn_mem;
     static_memory = ref [];
     static_memory_frozen = ref false;
-    static_roots = ref [];
+    static_variables = ref 0l;
     typtbl_typs = ref [];
     (* Metadata *)
     args = ref None;
@@ -592,11 +593,13 @@ module E = struct
     env.static_memory_frozen := true;
     !(env.end_of_static_memory)
 
-  let add_static_root (env : t) ptr =
-    env.static_roots := ptr :: !(env.static_roots)
+  let add_static_variable (env : t) : int32 =
+    let index = !(env.static_variables) in
+    env.static_variables := Int32.add index 1l;
+    index
 
-  let get_static_roots (env : t) =
-    !(env.static_roots)
+  let count_static_variables (env : t) =
+    !(env.static_variables)
 
   let get_static_memory env =
     !(env.static_memory)
@@ -924,8 +927,10 @@ module RTS = struct
 
   (* The connection to the C and Rust parts of the RTS *)
   let system_imports env =
-    E.add_func_import env "rts" "load_actor" [] [I32Type];
-    E.add_func_import env "rts" "save_actor" [I32Type] [];
+    E.add_func_import env "rts" "load_stable_actor" [] [I32Type];
+    E.add_func_import env "rts" "save_stable_actor" [I32Type] [];
+    E.add_func_import env "rts" "set_static_root" [I32Type] [];
+    E.add_func_import env "rts" "get_static_root" [] [I32Type];
     E.add_func_import env "rts" "memcpy" [I32Type; I32Type; I32Type] [I32Type]; (* standard libc memcpy *)
     E.add_func_import env "rts" "memcmp" [I32Type; I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "version" [] [I32Type];
@@ -1890,13 +1895,6 @@ module MutBox = struct
 
   let alloc env =
     Tagged.obj env Tagged.MutBox [ compile_unboxed_zero ]
-
-  let static env =
-    let ptr = Tagged.new_static_obj env Tagged.MutBox StaticBytes.[
-      I32 0l; (* zero *)
-    ] in
-    E.add_static_root env ptr;
-    ptr
 
   let load_field env =
     Tagged.load_forwarding_pointer env ^^
@@ -7182,9 +7180,9 @@ end
 *)
 
 module Stabilization = struct
-  let load_actor env = E.call_import env "rts" "load_actor"
+  let load_stable_actor env = E.call_import env "rts" "load_stable_actor"
     
-  let save_actor env = E.call_import env "rts" "save_actor"
+  let save_stable_actor env = E.call_import env "rts" "save_stable_actor"
     
   let empty_actor env t =
     let (_, fs) = Type.as_obj t in
@@ -7195,14 +7193,14 @@ module Stabilization = struct
     Object.lit_raw env fs'
 
   let stabilize env t =
-    save_actor env
+    save_stable_actor env
 
   let destabilize env t =
-    load_actor env ^^
+    load_stable_actor env ^^
     G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
     G.if1 I32Type
       (empty_actor env t)
-      (load_actor env)
+      (load_stable_actor env)
 end
 
 (*
@@ -7519,20 +7517,20 @@ end
 *)
 
 module GCRoots = struct
-  let register env static_roots =
+  let create_root_array env = Func.share_code0 env "create_root_array" [I32Type] (fun env ->
+    let length = Int32.to_int (E.count_static_variables env) in
+    let variables = Lib.List.table length (fun _ -> MutBox.alloc env) in
+    Arr.lit env variables
+  )
 
-    let get_static_roots = E.add_fun env "get_static_roots" (Func.of_body env [] [I32Type] (fun env ->
-      compile_unboxed_const static_roots
-    )) in
+  let register_static_variables env =
+    create_root_array env ^^
+    E.call_import env "rts" "set_static_root"
 
-    E.add_export env (nr {
-      name = Lib.Utf8.decode "get_static_roots";
-      edesc = nr (FuncExport (nr get_static_roots))
-    })
-
-  let store_static_roots env =
-    Arr.vanilla_lit env (E.get_static_roots env)
-
+  let get_static_variable env index = 
+    E.call_import env "rts" "get_static_root" ^^
+    compile_unboxed_const index ^^
+    Arr.idx env
 end (* GCRoots *)
 
 module StackRep = struct
@@ -7700,9 +7698,9 @@ module VarEnv = struct
     (* A Wasm Local of the current function, that points to memory location,
        which is a MutBox.  Used for mutable captured data *)
     | HeapInd of int32
-    (* A static mutable memory location (static address of a MutBox object) *)
-    (* TODO: Do we need static immutable? *)
-    | HeapStatic of int32
+    (* A static variable accessed by an index via the runtime system, refers to a MutBox,
+       belonging to the GC root set *)
+    | Static of int32
     (* Not materialized (yet), statically known constant, static location on demand *)
     | Const of Const.t
     (* public method *)
@@ -7711,7 +7709,7 @@ module VarEnv = struct
   let is_non_local : varloc -> bool = function
     | Local _
     | HeapInd _ -> false
-    | HeapStatic _
+    | Static _
     | PublicMethod _
     | Const _ -> true
 
@@ -7771,8 +7769,8 @@ module VarEnv = struct
       E.add_local_name env i name;
       ({ ae with vars = NameEnv.add name ((HeapInd i), typ) ae.vars }, i)
 
-  let add_local_heap_static (ae : t) name ptr typ =
-      { ae with vars = NameEnv.add name ((HeapStatic ptr), typ) ae.vars }
+  let add_static_variable (ae : t) name index typ =
+      { ae with vars = NameEnv.add name ((Static index), typ) ae.vars }
 
   let add_local_public_method (ae : t) name (fi, exported_name) typ =
       { ae with vars = NameEnv.add name ((PublicMethod (fi, exported_name) : varloc), typ) ae.vars }
@@ -7797,9 +7795,9 @@ module VarEnv = struct
         E.add_local_name env i name;
         let ae' = { ae with vars = NameEnv.add name ((Local (SR.Vanilla, i)), typ) ae.vars } in
         add_arguments env ae' as_local remainder
-      else (* needs to go to static memory *)
-        let ptr = MutBox.static env in
-        let ae' = add_local_heap_static ae name ptr typ in
+      else
+        let index = E.add_static_variable env in
+        let ae' = add_static_variable ae name index typ in
         add_arguments env ae' as_local remainder
 
   let add_argument_locals env (ae : t) =
@@ -7866,24 +7864,27 @@ module Var = struct
       G.i (LocalGet (nr i)),
       SR.Vanilla,
       MutBox.store_field env
-    | (Some ((HeapStatic ptr), typ), Flags.Generational) when potential_pointer typ ->
-      compile_unboxed_const ptr,
+    | (Some ((Static index), typ), Flags.Generational) when potential_pointer typ ->
+      let (set_static_variable, get_static_variable) = new_local env "static_variable" in
+      GCRoots.get_static_variable env index ^^
+      Tagged.load_forwarding_pointer env ^^ (* not needed for this GC, but only for forward pointer sanity checks *)
+      set_static_variable ^^
+      get_static_variable,
       SR.Vanilla,
       MutBox.store_field env ^^
-      compile_unboxed_const ptr ^^
-      Tagged.load_forwarding_pointer env ^^ (* not needed for this GC, but only for forward pointer sanity checks *)
+      get_static_variable ^^
       compile_add_const ptr_unskew ^^
       compile_add_const (Int32.mul (MutBox.field env) Heap.word_size) ^^
       E.call_import env "rts" "post_write_barrier"
-    | (Some ((HeapStatic ptr), typ), Flags.Incremental) when potential_pointer typ ->
-      compile_unboxed_const ptr ^^
+    | (Some ((Static index), typ), Flags.Incremental) when potential_pointer typ ->
+      GCRoots.get_static_variable env index ^^
       Tagged.load_forwarding_pointer env ^^
       compile_add_const ptr_unskew ^^
       compile_add_const (Int32.mul (MutBox.field env) Heap.word_size),
       SR.Vanilla,
       Tagged.write_with_barrier env
-    | (Some ((HeapStatic ptr), typ), _) ->
-      compile_unboxed_const ptr,
+    | (Some ((Static index), typ), _) ->
+      GCRoots.get_static_variable env index,
       SR.Vanilla,
       MutBox.store_field env
     | (Some ((Const _), _), _) -> fatal "set_val: %s is const" var
@@ -7914,8 +7915,10 @@ module Var = struct
       sr, G.i (LocalGet (nr i))
     | Some (HeapInd i) ->
       SR.Vanilla, G.i (LocalGet (nr i)) ^^ MutBox.load_field env
-    | Some (HeapStatic i) ->
-      SR.Vanilla, compile_unboxed_const i ^^ MutBox.load_field env
+    | Some (Static index) ->
+      SR.Vanilla, 
+      GCRoots.get_static_variable env index ^^
+      MutBox.load_field env
     | Some (Const c) ->
       SR.Const c, G.nop
     | Some (PublicMethod (_, name)) ->
@@ -7956,12 +7959,12 @@ module Var = struct
      In the IR, mutable fields of objects are pre-allocated as MutBox objects,
      to allow the async/await.
      So we expect the variable to be in a HeapInd (pointer to MutBox on the heap),
-     or HeapStatic (statically known MutBox in the static memory) and we use
-     the pointer.
+     or Static (static variable represented as a MutBox that is accessed via the 
+     runtime system) and we use the pointer.
   *)
   let get_aliased_box env ae var = match VarEnv.lookup_var ae var with
     | Some (HeapInd i) -> G.i (LocalGet (nr i))
-    | Some (HeapStatic i) -> compile_unboxed_const i
+    | Some (Static index) -> GCRoots.get_static_variable env index
     | _ -> assert false
 
   let capture_aliased_box env ae var = match VarEnv.lookup_var ae var with
@@ -8633,7 +8636,7 @@ module AllocHow = struct
   let how_of_ae ae : allocHow =
     M.map (fun (l, _) -> match l with
     | VarEnv.Const _        -> (Const : how)
-    | VarEnv.HeapStatic _   -> StoreStatic
+    | VarEnv.Static _       -> StoreStatic
     | VarEnv.HeapInd _      -> StoreHeap
     | VarEnv.Local (sr, _)  -> LocalMut sr (* conservatively assume mutable *)
     | VarEnv.PublicMethod _ -> LocalMut SR.Vanilla
@@ -8667,8 +8670,8 @@ module AllocHow = struct
       let alloc_code = MutBox.alloc env ^^ G.i (LocalSet (nr i)) in
       (ae1, alloc_code)
     | StoreStatic ->
-      let ptr = MutBox.static env in
-      let ae1 = VarEnv.add_local_heap_static ae name ptr typ in
+      let index = E.add_static_variable env in
+      let ae1 = VarEnv.add_static_variable ae name index typ in
       (ae1, G.nop)
 
   let add_local_for_alias env ae how name typ : VarEnv.t * G.t =
@@ -11209,8 +11212,6 @@ and conclude_module env set_serialization_globals start_fi_o =
   (* See Note [Candid subtype checks] *)
   Serialization.set_delayed_globals env set_serialization_globals;
 
-  let static_roots = GCRoots.store_static_roots env in
-
   (* declare before building GC *)
 
   (* add beginning-of-heap pointer, may be changed by linker *)
@@ -11219,7 +11220,6 @@ and conclude_module env set_serialization_globals start_fi_o =
   E.export_global env "__heap_base";
 
   Heap.register env;
-  GCRoots.register env static_roots;
   IC.register env;
 
   set_heap_base (E.get_end_of_static_memory env);
@@ -11227,6 +11227,7 @@ and conclude_module env set_serialization_globals start_fi_o =
   (* Wrap the start function with the RTS initialization *)
   let rts_start_fi = E.add_fun env "rts_start" (Func.of_body env [] [] (fun env1 ->
     E.call_import env "rts" ("initialize_" ^ E.gc_strategy_name !Flags.gc_strategy ^ "_gc") ^^
+    GCRoots.register_static_variables env ^^
     match start_fi_o with
     | Some fi ->
       G.i (Call fi)

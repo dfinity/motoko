@@ -49,7 +49,7 @@ unsafe fn generational_gc<M: Memory>(mem: &mut M) {
 
     let old_limits = get_limits();
     let roots = Roots {
-        static_roots: ic::get_static_roots(),
+        static_roots: ic::linear_memory::get_static_roots(),
         continuation_table_ptr_loc: crate::continuation_table::continuation_table_loc(),
     };
     let heap = Heap {

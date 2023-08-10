@@ -12,6 +12,10 @@ extern "C" {
     fn getHP() -> u32;
 }
 
+pub(crate) fn get_static_roots() -> Value {
+    unimplemented!()
+}
+
 pub(crate) unsafe fn set_hp_unskewed(new_hp: usize) {
     setHP(skew(new_hp))
 }

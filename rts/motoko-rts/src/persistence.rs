@@ -13,15 +13,16 @@ const FINGERPRINT: [char; 32] = [
     'E', 'R', 'S', 'I', 'S', 'T', 'E', 'N', 'C', 'E', ' ', '3', '2',
 ];
 const VERSION: usize = 1;
-const NO_ACTOR: Value = Value::from_scalar(0);
+const NO_OBJECT: Value = Value::from_scalar(0);
 
 // Use a long-term representation by relying on C layout.
 #[repr(C)]
 struct PersistentMetadata {
     fingerprint: [char; 32],
     version: usize,
-    actor: Value, // Must be added to the root set, use forwarding
+    stable_actor: Value, // Must be added to the root set, use forwarding
     incremental_gc_state: State,
+    static_root: Value,
 }
 
 const METATDATA_ADDRESS: usize = 4 * 1024 * 1024;
@@ -41,7 +42,9 @@ impl PersistentMetadata {
     unsafe fn is_initialized(self: *mut Self) -> bool {
         // Wasm memory is zero-initialized according to the Wasm specification.
         let initialized = (*self).version != 0;
-        assert!(initialized || (*self).fingerprint == ['\0'; 32] && (*self).actor == NO_ACTOR);
+        assert!(
+            initialized || (*self).fingerprint == ['\0'; 32] && (*self).stable_actor == NO_OBJECT
+        );
         initialized
     }
 
@@ -59,7 +62,8 @@ impl PersistentMetadata {
         debug_assert!(!self.is_initialized());
         (*self).fingerprint = FINGERPRINT;
         (*self).version = VERSION;
-        (*self).actor = NO_ACTOR;
+        (*self).stable_actor = NO_OBJECT;
+        (*self).static_root = NO_OBJECT;
     }
 }
 
@@ -77,20 +81,34 @@ pub unsafe fn initialize_memory<M: Memory>(mem: &mut M) {
 
 /// Returns scalar 0 if no actor is stored.
 #[no_mangle]
-pub unsafe extern "C" fn load_actor() -> Value {
+pub unsafe extern "C" fn load_stable_actor() -> Value {
     let metadata = PersistentMetadata::get();
-    (*metadata).actor.forward_if_possible()
+    (*metadata).stable_actor.forward_if_possible()
 }
 
 #[ic_mem_fn]
-pub unsafe fn save_actor<M: Memory>(mem: &mut M, actor: Value) {
-    assert!(actor != NO_ACTOR);
+pub unsafe fn save_stable_actor<M: Memory>(mem: &mut M, actor: Value) {
+    assert!(actor != NO_OBJECT);
     let metadata = PersistentMetadata::get();
-    let location = &mut (*metadata).actor as *mut Value;
+    let location = &mut (*metadata).stable_actor as *mut Value;
     write_with_barrier(mem, location, actor);
 }
 
 pub(crate) unsafe fn get_incremenmtal_gc_state() -> &'static mut State {
     let metadata = PersistentMetadata::get();
     &mut (*metadata).incremental_gc_state
+}
+
+#[ic_mem_fn]
+pub unsafe fn set_static_root<M: Memory>(mem: &mut M, value: Value) {
+    let metadata = PersistentMetadata::get();
+    let location = &mut (*metadata).static_root as *mut Value;
+    write_with_barrier(mem, location, value);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn get_static_root() -> Value {
+    let metadata = PersistentMetadata::get();
+    assert!((*metadata).static_root != NO_OBJECT);
+    (*metadata).static_root
 }
