@@ -75,7 +75,7 @@ jobs:
     - name: create .cache/nix
       run: |
         sudo mkdir /Users/runner/.cache/nix
-        sudo chown -R $(id -u):$(id -g)
+        sudo chown -R $(id -u):$(id -g) /Users/runner/.cache/nix
 
     - name: "nix-build"
       # these are the dependencies listed in release-files. Sorry for the duplication

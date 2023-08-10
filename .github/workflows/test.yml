@@ -95,7 +95,7 @@ jobs:
     - name: create .cache/nix
       run: |
         sudo mkdir /Users/runner/.cache/nix
-        sudo chown -R $(id -u):$(id -g)
+        sudo chown -R $(id -u):$(id -g) /Users/runner/.cache/nix
 
     - run: nix-env -iA nix-build-uncached -f nix/
 
