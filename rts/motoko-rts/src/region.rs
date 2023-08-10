@@ -36,7 +36,7 @@ pub struct RegionObject(pub *mut Region);
 const NIL_REGION_ID: u16 = 0;
 
 // Mirrored field from stable memory, for handling upgrade logic.
-pub(crate) static mut REGION_TOTAL_ALLOCATED_BLOCKS: u16 = 0;
+pub(crate) static mut REGION_TOTAL_ALLOCATED_BLOCKS: u32 = 0;
 
 // Scalar sentinel value recognized in the GC as "no root", i.e. (!`is_ptr()`).
 // Same design like `continuation_table::TABLE`.
@@ -248,9 +248,9 @@ mod meta_data {
 
         pub const TOTAL_ALLOCATED_BLOCKS: u64 = VERSION + 4;
 
-        pub const TOTAL_ALLOCATED_REGIONS: u64 = TOTAL_ALLOCATED_BLOCKS + 2;
+        pub const TOTAL_ALLOCATED_REGIONS: u64 = TOTAL_ALLOCATED_BLOCKS + 4;
 
-        pub const BLOCK_REGION_TABLE: u64 = TOTAL_ALLOCATED_REGIONS + 2;
+        pub const BLOCK_REGION_TABLE: u64 = TOTAL_ALLOCATED_REGIONS + 8;
 
         pub const REGION_TABLE: u64 = BLOCK_REGION_TABLE + super::size::BLOCK_REGION_TABLE;
 
@@ -262,35 +262,35 @@ mod meta_data {
 
     pub mod total_allocated_blocks {
         use super::offset;
-        use crate::ic0_stable::nicer::{read_u16, write_u16};
+        use crate::ic0_stable::nicer::{read_u32, write_u32};
 
         use crate::region::REGION_TOTAL_ALLOCATED_BLOCKS;
 
-        pub fn get() -> u64 {
-            read_u16(offset::TOTAL_ALLOCATED_BLOCKS) as u64
+        pub fn get() -> u32 {
+            read_u32(offset::TOTAL_ALLOCATED_BLOCKS)
         }
-        pub fn set(n: u64) {
+        pub fn set(n: u32) {
             // Here we keep these copies of the total in sync.
             //
             // NB. The non-stable one is used when the stable one is
             // unavailable (temp relocated by stable variable
             // serialization/deserialization).
             unsafe {
-                REGION_TOTAL_ALLOCATED_BLOCKS = n as u16;
+                REGION_TOTAL_ALLOCATED_BLOCKS = n;
             };
-            write_u16(offset::TOTAL_ALLOCATED_BLOCKS, n as u16)
+            write_u32(offset::TOTAL_ALLOCATED_BLOCKS, n)
         }
     }
 
     pub mod total_allocated_regions {
         use super::offset;
-        use crate::ic0_stable::nicer::{read_u16, write_u16};
+        use crate::ic0_stable::nicer::{read_u64, write_u64};
 
         pub fn get() -> u64 {
-            read_u16(offset::TOTAL_ALLOCATED_REGIONS) as u64
+            read_u64(offset::TOTAL_ALLOCATED_REGIONS)
         }
         pub fn set(n: u64) {
-            write_u16(offset::TOTAL_ALLOCATED_REGIONS, n as u16)
+            write_u64(offset::TOTAL_ALLOCATED_REGIONS, n)
         }
     }
 
@@ -445,7 +445,7 @@ pub unsafe fn region_recover<M: Memory>(mem: &mut M, rid: &RegionId) -> Value {
     let av = AccessVector(vec_pages.as_blob_mut());
     let mut recovered_blocks = 0;
     let mut block_id: u16 = 0;
-    while recovered_blocks < block_count && (block_id as u64) < tb {
+    while recovered_blocks < block_count && (block_id as u32) < tb {
         match meta_data::block_region_table::get(BlockId(block_id)) {
             None => {}
             Some((rid_, rank)) => {
@@ -673,7 +673,7 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
 
     // Determine the required total number of allocated blocks,
     let old_total_blocks = meta_data::total_allocated_blocks::get();
-    let new_total_blocks = old_total_blocks + inc_block_count as u64;
+    let new_total_blocks = old_total_blocks as u64 + inc_block_count as u64;
 
     // Actually grow stable memory with more pages as required,
     // while respecting the global maximum limit on pages.
@@ -689,7 +689,7 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
     }
 
     // Commit the allocation
-    meta_data::total_allocated_blocks::set(new_total_blocks);
+    meta_data::total_allocated_blocks::set(new_total_blocks as u32);
 
     // Update this region's page count, in both places where we record it (heap object, region table).
     {
@@ -720,10 +720,10 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
     // - in region representation (heap memory, for fast access operations).
     for i in old_block_count..new_block_count {
         // rel_i starts at zero.
-        let rel_i: u16 = (i - old_block_count as u32) as u16;
+        let rel_i: u16 = (i - old_block_count) as u16;
 
         // (to do -- handle case where allocating this way has run out.)
-        let block_id: u16 = (old_total_blocks + rel_i as u64) as u16;
+        let block_id: u16 = (old_total_blocks + rel_i as u32) as u16;
 
         // Update stable memory with new association.
         let assoc = Some((RegionId::from_id((*r).id), i as u16));
