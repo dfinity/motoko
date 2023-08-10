@@ -7,7 +7,7 @@ jobs:
   tests:
     strategy:
       matrix:
-        os: [ ubuntu-latest, macos-latest, macos-m1-13, apple-silicon-m1 ]
+        os: [ ubuntu-latest, macos-latest, macos-latest-xl-arm64 ]
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
