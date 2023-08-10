@@ -93,7 +93,6 @@ jobs:
 
     - uses: DeterminateSystems/nix-installer-action@main
     - run: sudo mkdir /Users/runner/.cache/nix
-    - uses: DeterminateSystems/magic-nix-cache-action@main
 
     - run: nix-env -iA nix-build-uncached -f nix/
 

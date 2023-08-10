@@ -73,7 +73,6 @@ jobs:
     - uses: actions/checkout@v3
     - uses: DeterminateSystems/nix-installer-action@main
     - run: sudo mkdir /Users/runner/.cache/nix
-    - uses: DeterminateSystems/magic-nix-cache-action@main
 
     - name: "nix-build"
       # these are the dependencies listed in release-files. Sorry for the duplication
