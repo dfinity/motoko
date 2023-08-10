@@ -3,6 +3,7 @@ import Prim "mo:⛔";
 func check(t : Text, lc : Text) {
     Prim.debugPrint(t);
     Prim.debugPrint(Prim.textLowercase(t));
+    Prim.debugPrint(lc);
     assert Prim.textLowercase(t) == lc;
 };
 
