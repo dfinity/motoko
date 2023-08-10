@@ -9684,13 +9684,12 @@ and compile_prim_invocation (env : E.t) ae p es at =
     | Nat16, (Nat8 as pty)->
       SR.Vanilla,
       let num_bits = (TaggedSmallWord.bits_of_type pty) in
-      let max_val = Int32.(shift_left (sub (shift_left 1l num_bits) 1l) 16) in
       let (set_val, get_val) = new_local env "convertee" in
       compile_exp_vanilla env ae e ^^
       set_val ^^
       get_val ^^
-      compile_rel_const I32Op.LeU max_val ^^
-      E.else_trap_with env "losing precision" ^^
+      compile_shrU_const (Int32.of_int (32 - num_bits)) ^^
+      E.then_trap_with env "losing precision" ^^
       get_val ^^
       compile_shl_const (Int32.of_int num_bits)
     | Nat32, (Nat16 as pty)->
