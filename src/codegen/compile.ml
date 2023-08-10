@@ -7552,6 +7552,15 @@ module Stabilization = struct
 
             if true then
               begin
+                let set_blob, get_blob = new_local env "blob" in
+                (* read blob from stable memory *)
+                compile_unboxed_const 0x8000l ^^ Blob.alloc env ^^ set_blob ^^
+                extend64 (get_blob ^^ Blob.payload_ptr_unskewed env) ^^
+                get_offset ^^
+                compile_const_64 0x8000L ^^
+                IC.system_call env "stable64_read" ^^
+
+
                 (* deserialize directly to val *)
                 get_offset ^^ G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
                 get_len ^^
