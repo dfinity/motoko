@@ -1,3 +1,10 @@
 import Prim "mo:⛔";
 
-Prim.debugPrint(Prim.textLowercase("989823489324 zxyw WORLD THIS IS A TEST 1234"));
+func check(t : Text, lc : Text) {
+    Prim.debugPrint(t);
+    Prim.debugPrint(Prim.textLowercase(t));
+    assert Prim.textLowercase(t) == lc;
+};
+
+check("ABCDCEFGHIJABCDCEFGHIJABCDCEFGHIJABCDCEFGHIJABCDCEFGHIJ 1234 X",
+      "abcdcefghijabcdcefghijabcdcefghijabcdcefghijabcdcefghij 1234 x");

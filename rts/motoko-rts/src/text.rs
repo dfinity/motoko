@@ -430,10 +430,11 @@ pub unsafe fn text_lowercase<M: Memory>(mem: &mut M, text: Value) -> Value {
 
     // 1. Compute Blob version of Text.
     let blob = blob_of_text(mem, text).as_blob_mut();
-    let chars = str::from_utf8_unchecked(slice::from_raw_parts(
+    let chars = str::from_utf8(slice::from_raw_parts(
         blob.payload_addr() as *const u8,
         blob.len().as_usize(),
     ))
+    .expect("from_utf8")
     .chars();
 
     // 2. Compute the length of output Blob that we will need.
@@ -446,13 +447,12 @@ pub unsafe fn text_lowercase<M: Memory>(mem: &mut M, text: Value) -> Value {
     }
 
     // 3. Allocate and fill output Blob.
-    let lowercase = alloc_blob(mem, Bytes(lowercase_len as u32));
+    let lowercase = alloc_blob(mem, Bytes(lowercase_len * 4 as u32));
     let mut lowercase_i = 0;
     let target_ptr: *mut char = lowercase.as_blob_mut().payload_addr() as *mut char;
     for c in chars {
-        let lc = c.to_lowercase();
-        for cc in lc {
-            *target_ptr.offset(lowercase_i) = cc;
+        for c in c.to_lowercase() {
+            *target_ptr.offset(lowercase_i) = c;
             lowercase_i += 1;
         }
     }
