@@ -92,7 +92,10 @@ jobs:
         ref: ${{ github.event.pull_request.head.sha }}
 
     - uses: DeterminateSystems/nix-installer-action@main
-    - run: sudo mkdir /Users/runner/.cache/nix
+    - name: create .cache/nix
+      run: |
+        sudo mkdir /Users/runner/.cache/nix
+        sudo chown -R $(id -u):$(id -g)
 
     - run: nix-env -iA nix-build-uncached -f nix/
 
