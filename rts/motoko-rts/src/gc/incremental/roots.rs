@@ -1,21 +1,25 @@
-use crate::{types::Value, visitor::pointer_to_dynamic_heap};
+use motoko_rts_macros::ic_mem_fn;
+
+use crate::{memory::Memory, types::Value, visitor::pointer_to_dynamic_heap};
+
+use super::barriers::write_with_barrier;
+
+/// Root referring to all canister variables.
+/// This root is reinitialized on each canister upgrade.
+/// The scalar sentinel denotes an uninitialized root.
+static mut STATIC_ROOT: Value = Value::from_scalar(0);
 
 /// GC root set.
-#[derive(Clone, Copy)]
-pub struct Roots {
-    pub static_roots: Value,
-    pub continuation_table_location: *mut Value,
-    // If new roots are added in future, extend `visit_roots()`.
-}
+pub type Roots = [*mut Value; 3];
 
 #[cfg(feature = "ic")]
 pub unsafe fn root_set() -> Roots {
-    use crate::continuation_table::continuation_table_loc;
-    use crate::persistence::get_static_root;
-    Roots {
-        static_roots: get_static_root(),
-        continuation_table_location: continuation_table_loc(),
-    }
+    use crate::{continuation_table::continuation_table_loc, persistence::stable_actor_location};
+    [
+        static_root_location(),
+        continuation_table_loc(),
+        stable_actor_location(),
+    ]
 }
 
 pub unsafe fn visit_roots<C, V: Fn(&mut C, *mut Value)>(
@@ -24,39 +28,26 @@ pub unsafe fn visit_roots<C, V: Fn(&mut C, *mut Value)>(
     context: &mut C,
     visit_field: V,
 ) {
-    visit_static_roots(roots.static_roots, heap_base, context, &visit_field);
-    visit_continuation_table(
-        roots.continuation_table_location,
-        heap_base,
-        context,
-        &visit_field,
-    );
-}
-
-unsafe fn visit_static_roots<C, V: Fn(&mut C, *mut Value)>(
-    static_roots: Value,
-    heap_base: usize,
-    context: &mut C,
-    visit_field: &V,
-) {
-    let root_array = static_roots.as_array();
-    for index in 0..root_array.len() {
-        let mutbox = root_array.get(index).as_mutbox();
-        debug_assert!((mutbox as usize) < heap_base);
-        let field = &mut (*mutbox).field;
-        if pointer_to_dynamic_heap(field, heap_base) {
-            visit_field(context, field);
+    for location in roots {
+        // TODO: Check whether all pointers lead to dynamic heap, no static heap
+        if pointer_to_dynamic_heap(location, heap_base) {
+            visit_field(context, location);
         }
     }
 }
 
-unsafe fn visit_continuation_table<C, V: Fn(&mut C, *mut Value)>(
-    continuation_table_location: *mut Value,
-    heap_base: usize,
-    context: &mut C,
-    visit_field: &V,
-) {
-    if pointer_to_dynamic_heap(continuation_table_location, heap_base) {
-        visit_field(context, continuation_table_location);
-    }
+unsafe fn static_root_location() -> *mut Value {
+    &mut STATIC_ROOT as *mut Value
+}
+
+#[ic_mem_fn]
+pub unsafe fn set_static_root<M: Memory>(mem: &mut M, value: Value) {
+    let location = &mut STATIC_ROOT as *mut Value;
+    write_with_barrier(mem, location, value);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn get_static_root() -> Value {
+    assert!(STATIC_ROOT.is_ptr());
+    STATIC_ROOT
 }

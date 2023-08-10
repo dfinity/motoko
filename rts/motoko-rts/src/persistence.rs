@@ -22,7 +22,6 @@ struct PersistentMetadata {
     version: usize,
     stable_actor: Value, // Must be added to the root set, use forwarding
     incremental_gc_state: State,
-    static_root: Value,
 }
 
 const METATDATA_ADDRESS: usize = 4 * 1024 * 1024;
@@ -63,7 +62,6 @@ impl PersistentMetadata {
         (*self).fingerprint = FINGERPRINT;
         (*self).version = VERSION;
         (*self).stable_actor = NO_OBJECT;
-        (*self).static_root = NO_OBJECT;
     }
 }
 
@@ -99,16 +97,7 @@ pub(crate) unsafe fn get_incremenmtal_gc_state() -> &'static mut State {
     &mut (*metadata).incremental_gc_state
 }
 
-#[ic_mem_fn]
-pub unsafe fn set_static_root<M: Memory>(mem: &mut M, value: Value) {
+pub(crate) unsafe fn stable_actor_location() -> *mut Value {
     let metadata = PersistentMetadata::get();
-    let location = &mut (*metadata).static_root as *mut Value;
-    write_with_barrier(mem, location, value);
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn get_static_root() -> Value {
-    let metadata = PersistentMetadata::get();
-    assert!((*metadata).static_root != NO_OBJECT);
-    (*metadata).static_root
+    &mut (*metadata).stable_actor as *mut Value
 }
