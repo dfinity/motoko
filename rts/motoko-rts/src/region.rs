@@ -7,7 +7,7 @@ use crate::types::{size_of, Blob, Bytes, Region, Value, TAG_REGION};
 use motoko_rts_macros::ic_mem_fn;
 
 unsafe fn region_trap_with(msg: &str) -> ! {
-    trap_with_prefix("Region ", msg)
+    trap_with_prefix("Region error: ", msg)
 }
 
 unsafe fn stable_memory_trap_with(msg: &str) -> ! {
@@ -408,7 +408,7 @@ pub unsafe fn region_new<M: Memory>(mem: &mut M) -> Value {
     let next_id = meta_data::total_allocated_regions::get() as u16;
 
     if next_id == meta_data::max::REGIONS {
-        trap_with_prefix("Region ", "out of regions")
+        region_trap_with("out of regions")
     };
 
     meta_data::total_allocated_regions::set(next_id as u64 + 1);
