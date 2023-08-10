@@ -17,18 +17,9 @@ jobs:
         fetch-depth: 0
         # fetch PR commit, not predicted merge commit
         ref: ${{ github.event.pull_request.head.sha }}
-    - uses: cachix/install-nix-action@v22
+    - uses: DeterminateSystems/nix-installer-action@v4
 
-    # We are using the ic-hs-test cachix cache that is also used by
-    # dfinity/ic-hs. This is partly laziness (on need to set up a separate
-    # cache), but also to get the ic-ref-test binary without rebuilding
-    - uses: cachix/cachix-action@v12
-      with:
-        name: ic-hs-test
-        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
-
-    # until https://github.com/cachix/cachix-action/issues/86 is fixed:
-    - run: cachix watch-store ic-hs-test &
+    - uses: DeterminateSystems/magic-nix-cache-action@main
 
     - run: nix-env -iA nix-build-uncached -f nix/
 
@@ -88,8 +79,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-    - uses: cachix/install-nix-action@v22
-    - uses: cachix/cachix-action@v12
+    - uses: DeterminateSystems/nix-installer-action@v4
+    - uses: DeterminateSystems/magic-nix-cache-action@main
       with:
         name: ic-hs-test
     - name: Fetch report
@@ -110,8 +101,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-    - uses: cachix/install-nix-action@v22
-    - uses: cachix/cachix-action@v12
+    - uses: DeterminateSystems/nix-installer-action@v4
+    - uses: DeterminateSystems/magic-nix-cache-action@main
       with:
         name: ic-hs-test
     - name: nix-build
