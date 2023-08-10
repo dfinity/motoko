@@ -37,10 +37,10 @@ jobs:
         nix-build --max-jobs 1 -A rts
         nix-store --gc --print-roots | grep /motoko/
 
-    - name: "pre-build `ic-wasm`"
+    - name: "pre-build `ic-ref-run`"
       if: startsWith(github.head_ref, '')
       run: |
-        nix-build --max-jobs 1 -A ic-wasm
+        nix-build --max-jobs 1 -A ic-ref-run
         nix-store --gc --print-roots | grep /motoko/
 
     - name: "pre-build `drun`"
