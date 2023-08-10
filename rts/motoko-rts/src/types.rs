@@ -452,10 +452,10 @@ pub const TAG_FWD_PTR: Tag = 19; // Only used by the copying GC - not to be conf
 pub const TAG_BITS32: Tag = 21;
 pub const TAG_BIGINT: Tag = 23;
 pub const TAG_CONCAT: Tag = 25;
-pub const TAG_NULL: Tag = 27;
-pub const TAG_ONE_WORD_FILLER: Tag = 29;
-pub const TAG_FREE_SPACE: Tag = 31;
-pub const TAG_REGION: Tag = 33;
+pub const TAG_REGION: Tag = 27;
+pub const TAG_NULL: Tag = 29;
+pub const TAG_ONE_WORD_FILLER: Tag = 31;
+pub const TAG_FREE_SPACE: Tag = 33;
 
 // Special value to visit only a range of array fields.
 // This and all values above it are reserved and mean

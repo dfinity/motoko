@@ -103,7 +103,6 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
             debug_assert!(!*self.complete);
             debug_assert!(
                 object.tag() >= crate::types::TAG_OBJECT && object.tag() <= crate::types::TAG_NULL
-                    || object.tag() == crate::types::TAG_REGION
             );
             self.mark_stack.push(self.mem, value);
         }
