@@ -43,13 +43,12 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [ ubuntu-latest, macos-latest, macos-latest-xl-arm64 ]
+        os: [ ubuntu-latest, macos-latest ]
     needs: changelog
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v3
     - uses: cachix/install-nix-action@v22
-    - run: sudo mkdir /Users/runner/.cache/nix
     - uses: cachix/cachix-action@v12
       if: startsWith(github.ref, 'refs/heads/')
       with:
@@ -65,6 +64,22 @@ jobs:
       # these are the dependencies listed in release-files. Sorry for the duplication
       run: |
         nix-build --max-jobs 1 --arg officialRelease true -A moc -A mo-ide -A mo-doc -A js.moc -A js.moc_interpreter
+
+  # Now build the release on both linux and darwin
+  build-m1:
+    needs: changelog
+    runs-on: "macos-latest-xl-arm64"
+    steps:
+    - uses: actions/checkout@v3
+    - uses: DeterminateSystems/nix-installer-action@main
+    - run: sudo mkdir /Users/runner/.cache/nix
+    - uses: DeterminateSystems/magic-nix-cache-action@main
+
+    - name: "nix-build"
+      # these are the dependencies listed in release-files. Sorry for the duplication
+      run: |
+        nix-build --max-jobs 1 --arg officialRelease true -A moc -A mo-ide -A mo-doc -A js.moc -A js.moc_interpreter
+
 
   # Finally do the upload. Hopefully the previous job has uploaded the
   # build product to the cachix cache, as we cannot build the darwin products on
