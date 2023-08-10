@@ -444,13 +444,13 @@ pub unsafe fn region_recover<M: Memory>(mem: &mut M, rid: &RegionId) -> Value {
     let tb = meta_data::total_allocated_blocks::get();
     let av = AccessVector(vec_pages.as_blob_mut());
     let mut recovered_blocks = 0;
-    let mut block_id = 0;
-    while recovered_blocks < block_count && block_id < tb {
-        match meta_data::block_region_table::get(BlockId(block_id as u16)) {
+    let mut block_id: u16 = 0;
+    while recovered_blocks < block_count && (block_id as u64) < tb {
+        match meta_data::block_region_table::get(BlockId(block_id)) {
             None => {}
             Some((rid_, rank)) => {
                 if &rid_ == rid {
-                    av.set_ith_block_id(rank.into(), &BlockId(block_id as u16));
+                    av.set_ith_block_id(rank.into(), &BlockId(block_id));
                     recovered_blocks += 1;
                 }
             }
@@ -520,7 +520,13 @@ pub(crate) unsafe fn region_migration_from_v1_into_v2<M: Memory>(mem: &mut M) {
 
     let header_len = meta_data::size::BLOCK_IN_BYTES as u32;
 
-    let region0_pages = size() as u32; // TODO check for truncation
+    let stable_mem_pages = size();
+
+    if stable_mem_pages > (meta_data::size::PAGES_IN_BLOCK * meta_data::max::BLOCKS as u32) as u64 {
+        region_trap_with("migration failure (too many pages for region0 )")
+    };
+
+    let region0_pages = stable_mem_pages as u32;
 
     let region0_blocks =
         (region0_pages + (meta_data::size::PAGES_IN_BLOCK - 1)) / (meta_data::size::PAGES_IN_BLOCK);
@@ -647,9 +653,20 @@ pub unsafe fn region_size<M: Memory>(_mem: &mut M, r: Value) -> u64 {
 #[ic_mem_fn]
 pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u64 {
     use meta_data::size::{total_required_pages, PAGES_IN_BLOCK};
+
+    let max_pages_in_region = meta_data::max::BLOCKS as u32 * PAGES_IN_BLOCK;
+
     let r = r.as_region();
-    let new_pages_ = new_pages as u32;
     let old_page_count = (*r).page_count;
+
+    if new_pages > (max_pages_in_region - old_page_count) as u64 {
+        return u64::MAX;
+    }
+
+    debug_assert!(max_pages_in_region <= u32::MAX);
+
+    let new_pages_ = new_pages as u32;
+
     let old_block_count = (old_page_count + (PAGES_IN_BLOCK - 1)) / PAGES_IN_BLOCK;
     let new_block_count = (old_page_count + new_pages_ + (PAGES_IN_BLOCK - 1)) / PAGES_IN_BLOCK;
     let inc_block_count = new_block_count - old_block_count;
