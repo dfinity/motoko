@@ -1166,7 +1166,7 @@ module Heap = struct
 
   let ensure_allocated env =
     alloc env 0l ^^ G.i Drop (* dummy allocation, ensures that the page HP points into is backed *)
-    
+
   (* Heap objects *)
 
   (* At this level of abstraction, heap objects are just flat arrays of words *)
@@ -1185,7 +1185,7 @@ module Heap = struct
 
   (* Although we occasionally want to treat two consecutive
      32 bit fields as one 64 bit number *)
-  
+
   (* Requires little-endian encoding, see also `Stream` in `types.rs` *)
   let load_field64_unskewed (i : int32) : G.t =
     let offset = Int32.mul word_size i in
@@ -1632,10 +1632,10 @@ module Tagged = struct
     | Bits32 -> 21l
     | BigInt -> 23l
     | Concat -> 25l
-    | Null -> 27l
-    | OneWordFiller -> 29l
-    | FreeSpace -> 31l
-    | Region -> 33l
+    | Region -> 27l
+    | Null -> 29l
+    | OneWordFiller -> 31l
+    | FreeSpace -> 33l
     | ArraySliceMinimum -> 34l
     (* Next two tags won't be seen by the GC, so no need to set the lowest bit
        for `CoercionFailure` and `StableSeen` *)
@@ -1643,12 +1643,12 @@ module Tagged = struct
     | StableSeen -> 0xffffffffl
 
   (* Declare `env` for lazy computation of the header size when the compile environment with compile flags are defined *)
-  let header_size env = 
+  let header_size env =
     if !Flags.gc_strategy = Flags.Incremental then 2l else 1l
-  
+
   (* The tag *)
   let tag_field = 0l
-  let forwarding_pointer_field env = 
+  let forwarding_pointer_field env =
     assert (!Flags.gc_strategy = Flags.Incremental);
     1l
 
@@ -1689,7 +1689,7 @@ module Tagged = struct
         get_object ^^ (* object pointer *)
         get_object ^^ (* forwarding pointer *)
         Heap.store_field (forwarding_pointer_field env)
-      else 
+      else
         G.nop) ^^
       get_object
     )
@@ -3721,7 +3721,7 @@ module Blob = struct
     Tagged.allocation_barrier env
 
   let unskewed_payload_offset env = Int32.(add ptr_unskew (mul Heap.word_size (header_size env)))
-  
+
   let payload_ptr_unskewed env =
     Tagged.load_forwarding_pointer env ^^
     compile_add_const (unskewed_payload_offset env)
@@ -7462,7 +7462,7 @@ module Stabilization = struct
       G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
       E.call_import env "rts" "stream_stable_dest"
 
-    let ptr64_field env = 
+    let ptr64_field env =
       let offset = 1l in (* see invariant in `stream.rs` *)
       Int32.add (Blob.len_field env) offset (* see invariant in `stream.rs`, padding for 64-bit after Stream header *)
 
@@ -7655,7 +7655,7 @@ module Stabilization = struct
               set_version ^^
               get_version ^^
               save_version ^^
-                
+
               (* check version *)
               get_version ^^
               compile_unboxed_const (StableMem.version()) ^^
@@ -7706,7 +7706,7 @@ module Stabilization = struct
               (* set offset *)
               compile_const_64 4L ^^
               set_offset ^^
-              
+
               compile_unboxed_const (Int32.of_int 0) ^^
               save_version
             end ^^ (* if_ *)
