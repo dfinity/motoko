@@ -52,7 +52,7 @@ module StaticBytes = struct
 
   type t_ =
     | I32 of int32
-    | I64 of int64
+    (* | I64 of int64 *)
     | Seq of t
     | Bytes of string
 
@@ -62,7 +62,7 @@ module StaticBytes = struct
 
   let rec add : Buffer.t -> t_ -> unit = fun buf -> function
     | I32 i -> Buffer.add_int32_le buf i
-    | I64 i -> Buffer.add_int64_le buf i
+    (* | I64 i -> Buffer.add_int64_le buf i *)
     | Seq xs -> List.iter (add buf) xs
     | Bytes b -> Buffer.add_string buf b
 
@@ -2474,9 +2474,9 @@ module Float = struct
 
   let compile_unboxed_const f = G.i (Const (nr (Wasm.Values.F64 f)))
 
-  let vanilla_lit env f =
-    Tagged.shared_static_obj env Tagged.Bits64 StaticBytes.[
-      I64 (Wasm.F64.to_bits f)
+  let lit env f =
+    Tagged.obj env Tagged.Bits64 [
+      compile_const_64 (Wasm.F64.to_bits f)
     ]
 
   let box env = Func.share_code1 env "box_f64" ("f", F64Type) [I32Type] (fun env get_f ->
@@ -7567,7 +7567,7 @@ module StackRep = struct
     | Const.Lit (Const.BigInt n) -> BigNum.lit env n
     | Const.Lit (Const.Word32 n) -> BoxedSmallWord.lit env n
     | Const.Lit (Const.Word64 n) -> BoxedWord64.lit env n
-    | Const.Lit (Const.Float64 f) -> compile_unboxed_const (Float.vanilla_lit env f) (* TODO: Redesign for heap allocations *)
+    | Const.Lit (Const.Float64 f) -> Float.lit env f
     | Const.Opt c -> Opt.inject env (materialize_constant env c)
     | Const.Fun (get_fi, _) -> compile_unboxed_const (Closure.static_closure env (get_fi ())) (* TODO: Redesign for heap allocations *)
     | Const.Message fi -> assert false
