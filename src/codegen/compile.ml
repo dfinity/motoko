@@ -161,6 +161,8 @@ module Const = struct
 
   let t_of_v v = (Lib.Promise.make (), v)
 
+  let get_value (_, v) = v
+
 end (* Const *)
 
 module SR = struct
@@ -7600,7 +7602,7 @@ module StackRep = struct
     | UnboxedTuple n -> G.table n (fun _ -> G.i Drop)
     | Const _ | Unreachable -> G.nop
 
-  (* Materializes a Const.lit: If necessary, puts
+  (* (* Materializes a Const.lit: If necessary, puts
      bytes into static memory, and returns a vanilla value.
   *)
   let materialize_lit env (lit : Const.lit) : int32 =
@@ -7631,7 +7633,28 @@ module StackRep = struct
       let ptr = materialize_const_t env c in
       Variant.vanilla_lit env i ptr
     | Const.Lit l -> materialize_lit env l
-    | Const.Opt c -> assert false (* TODO: Handle case, e.g. part of array literal *)
+    | Const.Opt c -> assert false TODO: Handle case, e.g. part of array literal *)
+
+  (* let rec new_materialize_lazy env (promise, value) : G.t =
+    Lib.Promise.lazy_value promise (fun () -> new_materialize_constant env value) *)
+
+  let rec materialize_constant env = function
+    | Const.Lit (Const.Bool b) -> Bool.lit b
+    | Const.Lit (Const.Blob t) -> Blob.lit env t
+    | Const.Lit (Const.Null) -> Opt.null_lit env
+    | Const.Lit (Const.BigInt n) -> compile_unboxed_const (BigNum.vanilla_lit env n) (* TODO: Redesign for heap allocations *)
+    | Const.Lit (Const.Word32 n) -> compile_unboxed_const (BoxedSmallWord.vanilla_lit env n) (* TODO: Redesign for heap allocations *)
+    | Const.Lit (Const.Word64 n) -> compile_unboxed_const (BoxedWord64.vanilla_lit env n) (* TODO: Redesign for heap allocations *)
+    | Const.Lit (Const.Float64 f) -> compile_unboxed_const (Float.vanilla_lit env f) (* TODO: Redesign for heap allocations *)
+    | Const.Opt c -> Opt.inject env (materialize_constant env (Const.get_value c))
+    | Const.Fun (get_fi, _) -> compile_unboxed_const (Closure.static_closure env (get_fi ())) (* TODO: Redesign for heap allocations *)
+    | Const.Message fi -> assert false
+    | Const.Unit -> compile_unboxed_const Tuple.unit_vanilla_lit (* TODO: Redesign for heap allocations *)
+    | Const.Tag (i, c) -> Variant.inject env i (materialize_constant env (Const.get_value c))
+
+    | Const.Lit (Const.Vanilla n) -> assert false
+    | Const.Array cs -> assert false
+    | Const.Obj l -> assert false
 
   let adjust env (sr_in : t) sr_out =
     if eq sr_in sr_out
@@ -7652,18 +7675,19 @@ module StackRep = struct
     | UnboxedFloat64, Vanilla -> Float.box env
     | Vanilla, UnboxedFloat64 -> Float.unbox env
 
-    | Const (_, Const.Lit (Const.Bool b)), Vanilla -> Bool.lit b
+    | Const (_, value), Vanilla -> materialize_constant env value
+    (* | Const (_, Const.Lit (Const.Bool b)), Vanilla -> Bool.lit b
     | Const (_, Const.Lit (Const.Blob t)), Vanilla -> Blob.lit env t
     | Const (_, Const.Lit (Const.Null)), Vanilla -> Opt.null_lit env
-    | Const (_, Const.Opt c), Vanilla -> Opt.inject env (compile_unboxed_const (materialize_const_t env c))
-    | Const c, Vanilla -> compile_unboxed_const (materialize_const_t env c)
+    | Const (_, Const.Opt c), Vanilla -> Opt.inject env (materialize_const_t env c))
+    | Const c, Vanilla -> compile_unboxed_const (materialize_const_t env c) *)
     | Const (_, Const.Lit (Const.Word32 n)), UnboxedWord32 -> compile_unboxed_const n
     | Const (_, Const.Lit (Const.Word64 n)), UnboxedWord64 -> compile_const_64 n
     | Const (_, Const.Lit (Const.Float64 f)), UnboxedFloat64 -> Float.compile_unboxed_const f
     | Const c, UnboxedTuple 0 -> G.nop
     | Const (_, Const.Array cs), UnboxedTuple n ->
       assert (n = List.length cs);
-      G.concat_map (fun c -> compile_unboxed_const (materialize_const_t env c)) cs
+      G.concat_map (fun c -> materialize_constant env (Const.get_value c)) cs
     | _, _ ->
       Printf.eprintf "Unknown stack_rep conversion %s -> %s\n"
         (to_string sr_in) (to_string sr_out);
