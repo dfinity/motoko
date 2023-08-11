@@ -35,6 +35,8 @@ pub struct RegionObject(pub *mut Region);
 
 const NIL_REGION_ID: u16 = 0;
 
+const LAST_RESERVED_REGION_ID: u16 = 15;
+
 // Mirrored field from stable memory, for handling upgrade logic.
 pub(crate) static mut REGION_TOTAL_ALLOCATED_BLOCKS: u32 = 0;
 
@@ -401,15 +403,21 @@ pub unsafe fn region_id<M: Memory>(_mem: &mut M, r: Value) -> u32 {
 
 // Helper for commmon logic that reserves low-valued RegionIds in a certain span for future use.
 // When first is some, we are actually reserving.  When first is none, we are checking that the reservation has occured.
-unsafe fn region_reserve_id_span<M: Memory>(_mem: &mut M, first: Option<RegionId>, last: RegionId) {
-    if let Some(first) = first {
-        let next_id = meta_data::total_allocated_regions::get() as u16;
-        assert_eq!(first.0, next_id);
-        assert!(first.0 <= last.0);
-        meta_data::total_allocated_regions::set((last.0 + 1) as u64);
-    } else {
-        let next_id = meta_data::total_allocated_regions::get() as u16;
-        assert!(last.0 < next_id);
+unsafe fn region_reserve_id_span<M: Memory>(
+    _mem: &mut M,
+    first_opt: Option<RegionId>,
+    last: RegionId,
+) {
+    let next_id = meta_data::total_allocated_regions::get();
+    match first_opt {
+        Some(first) => {
+            assert_eq!(first.0 as u64, next_id);
+            assert!(first.0 <= last.0);
+            meta_data::total_allocated_regions::set((last.0 + 1) as u64);
+        }
+        None => {
+            assert!((last.0 as u64) < next_id);
+        }
     }
 }
 
@@ -512,8 +520,8 @@ pub(crate) unsafe fn region_migration_from_v0_into_v2<M: Memory>(mem: &mut M) {
     // Region 0 -- classic API for stable memory, as a dedicated region.
     REGION_0 = region_new(mem);
 
-    // Regions 1 through 15, reserved for future use by future Motoko compiler-RTS features.
-    region_reserve_id_span(mem, Some(RegionId(1)), RegionId(15));
+    // Regions 1 through LAST_RESERVED_REGION_ID, reserved for future use by future Motoko compiler-RTS features.
+    region_reserve_id_span(mem, Some(RegionId(1)), RegionId(LAST_RESERVED_REGION_ID));
 }
 
 //
@@ -607,9 +615,9 @@ pub(crate) unsafe fn region_migration_from_v1_into_v2<M: Memory>(mem: &mut M) {
     /* "Recover" the region data into a heap object. */
     REGION_0 = region_recover(mem, &RegionId(0));
 
-    // Ensure that regions 2 through 15 are already reserved for
+    // Ensure that regions 1 through LAST_RESERVED_REGION_ID are already reserved for
     // future use by future Motoko compiler-RTS features.
-    region_reserve_id_span(mem, Some(RegionId(1)), RegionId(15));
+    region_reserve_id_span(mem, Some(RegionId(1)), RegionId(LAST_RESERVED_REGION_ID));
 }
 
 //
@@ -633,9 +641,9 @@ pub(crate) unsafe fn region_migration_from_v2plus_into_v2<M: Memory>(mem: &mut M
 
     REGION_0 = region_recover(mem, &RegionId(0));
 
-    // Ensure that regions 2 through 15 are already reserved for
+    // Ensure that regions 1 through LAST_RESERVED_REGION_ID are already reserved for
     // future use by future Motoko compiler-RTS features.
-    region_reserve_id_span(mem, None, RegionId(15));
+    region_reserve_id_span(mem, None, RegionId(LAST_RESERVED_REGION_ID));
 }
 
 //
