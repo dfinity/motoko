@@ -381,3 +381,47 @@ let call_raw = @call_raw;
 
 func performanceCounter(counter : Nat32) : Nat64 =
   (prim "performanceCounter" : (Nat32) -> Nat64) counter;
+
+
+
+  type Change_origin = {
+     #from_user : {
+       user_id : Principal;
+     };
+     #from_canister : {
+       canister_id : Principal;
+       canister_version : ?Nat64;
+     };
+   };
+
+   type Change_details = {
+     #creation : { controllers : [Principal] };
+     #code_uninstall;
+     #code_deployment : {
+       mode : { #install; #reinstall; #upgrade};
+       module_hash : Blob;
+     };
+     #controllers_change : {
+       controllers : [Principal];
+     };
+   };
+
+   type Change = {
+     timestamp_nanos : Nat64;
+     canister_version : Nat64;
+     origin : Change_origin;
+     details : Change_details;
+   };
+
+   type Info = {
+         total_num_changes : Nat64;
+         recent_changes : [Change];
+         module_hash : ?Blob;
+         controllers : [Principal];
+   };
+
+
+   type BBB =
+{ canister_id : Principal;
+  num_requested_changes : ?Nat64; };
+

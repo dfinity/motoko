@@ -477,7 +477,7 @@ module E = struct
     Lib.AllocOnUse.use (lookup_built_in env name)
 
   let define_built_in (env : t) name mk_fun : unit =
-    Lib.AllocOnUse.def  (lookup_built_in env name) mk_fun
+    Lib.AllocOnUse.def (lookup_built_in env name) mk_fun
 
   let get_return_arity (env : t) = env.return_arity
 
@@ -4383,6 +4383,23 @@ module IC = struct
   let system_call env funcname = E.call_import env "ic0" funcname
 
   let register env =
+    Func.define_built_in env "precomp2" ["env", I32Type; "arg1", I32Type; "arg2", I32Type] [I32Type] (fun env ->
+        G.i (LocalGet (nr 0l)) ^^
+        Closure.load_data env 1l ^^
+        Closure.prepare_closure_call env ^^
+
+        G.i (LocalGet (nr 0l)) ^^
+        Closure.load_data env 0l ^^ (* self *)
+        Closure.prepare_closure_call env ^^
+        G.i (LocalGet (nr 1l)) ^^
+        G.i (LocalGet (nr 2l)) ^^
+        G.i (LocalGet (nr 0l)) ^^
+        Closure.load_data env 0l ^^
+        Closure.call_closure env 2 1 ^^
+
+        G.i (LocalGet (nr 0l)) ^^
+        Closure.load_data env 1l ^^ (* self *)
+        Closure.call_closure env 1 1);
 
       Func.define_built_in env "print_ptr" [("ptr", I32Type); ("len", I32Type)] [] (fun env ->
         match E.mode env with
@@ -9775,6 +9792,48 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.bool, compile_exp_vanilla env ae e ^^ Blob.iter_done env
   | OtherPrim "blob_iter_next", [e] ->
     SR.Vanilla, compile_exp_vanilla env ae e ^^ Blob.iter_next env
+
+
+
+  | OtherPrim "precompose2", [e1; e2] ->
+    SR.Vanilla,
+    let set_clos, get_clos = new_local env "closure" in
+    Tagged.alloc env Int32.(add (Closure.header_size env) 2l) Tagged.Closure ^^
+    set_clos ^^ get_clos ^^
+    compile_exp_vanilla env ae e1 ^^
+    Closure.store_data env 0l ^^
+    get_clos ^^
+    compile_exp_vanilla env ae e2 ^^
+    Closure.store_data env 1l ^^
+    get_clos ^^
+    compile_unboxed_const 2l ^^
+    Tagged.store_field env (Closure.len_field env) ^^
+(*
+    let fi = E.add_fun env "precomp2" (Func.of_body env ["env", I32Type; "arg1", I32Type; "arg2", I32Type] [I32Type] (fun env ->
+        G.i (LocalGet (nr 0l)) ^^
+        Closure.load_data env 1l ^^
+        Closure.prepare_closure_call env ^^
+
+        G.i (LocalGet (nr 0l)) ^^
+        Closure.load_data env 0l ^^ (* self *)
+        Closure.prepare_closure_call env ^^
+        G.i (LocalGet (nr 1l)) ^^
+        G.i (LocalGet (nr 2l)) ^^
+        G.i (LocalGet (nr 0l)) ^^
+        Closure.load_data env 0l ^^
+        Closure.call_closure env 2 1 ^^
+
+        G.i (LocalGet (nr 0l)) ^^
+        Closure.load_data env 1l ^^ (* self *)
+        Closure.call_closure env 1 1)) in
+ *)
+    let fi = E.built_in env "precomp2" in
+    get_clos ^^
+    compile_unboxed_const (E.add_fun_ptr env fi) ^^
+    Tagged.store_field env (Closure.funptr_field env) ^^
+    get_clos ^^
+    Tagged.allocation_barrier env
+
 
   | OtherPrim "lsh_Nat", [e1; e2] ->
     SR.Vanilla,
