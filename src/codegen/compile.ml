@@ -2106,6 +2106,15 @@ module BoxedWord64 = struct
 
   let payload_field = Tagged.header_size
 
+  let lit env i =
+    if BitTagged.can_tag_const i
+    then 
+      compile_unboxed_const (BitTagged.tag_const i)
+    else
+      Tagged.obj env Tagged.Bits64 [
+        compile_const_64 i
+      ]
+
   let compile_box env compile_elem : G.t =
     let (set_i, get_i) = new_local env "boxed_i64" in
     let size = if !Flags.gc_strategy = Flags.Incremental then 4l else 3l in
@@ -2114,11 +2123,6 @@ module BoxedWord64 = struct
     get_i ^^ compile_elem ^^ Tagged.store_field64 env (payload_field env) ^^
     get_i ^^
     Tagged.allocation_barrier env
-
-  let lit env i =
-    if BitTagged.can_tag_const i
-    then compile_unboxed_const (BitTagged.tag_const i)
-    else compile_box env (compile_const_64 i)
 
   let box env = Func.share_code1 env "box_i64" ("n", I64Type) [I32Type] (fun env get_n ->
       get_n ^^ BitTagged.if_can_tag_i64 env [I32Type]
@@ -2224,6 +2228,15 @@ module BoxedSmallWord = struct
 
   let payload_field env = Tagged.header_size env
 
+  let lit env i =
+    if BitTagged.can_tag_const (Int64.of_int (Int32.to_int i))
+    then
+      compile_unboxed_const (BitTagged.tag_const (Int64.of_int (Int32.to_int i)))
+    else
+      Tagged.obj env Tagged.Bits32 [
+        compile_unboxed_const i
+      ]
+
   let compile_box env compile_elem : G.t =
     let (set_i, get_i) = new_local env "boxed_i32" in
     let size = if !Flags.gc_strategy = Flags.Incremental then 3l else 2l in
@@ -2232,11 +2245,6 @@ module BoxedSmallWord = struct
     get_i ^^ compile_elem ^^ Tagged.store_field env (payload_field env) ^^
     get_i ^^
     Tagged.allocation_barrier env
-
-  let lit env i =
-    if BitTagged.can_tag_const (Int64.of_int (Int32.to_int i))
-    then compile_unboxed_const (BitTagged.tag_const (Int64.of_int (Int32.to_int i)))
-    else compile_box env (compile_unboxed_const i)
 
   let box env = Func.share_code1 env "box_i32" ("n", I32Type) [I32Type] (fun env get_n ->
       get_n ^^ compile_shrU_const 30l ^^
