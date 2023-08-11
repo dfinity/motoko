@@ -575,10 +575,8 @@ pub(crate) unsafe fn region_migration_from_v1_into_v2<M: Memory>(mem: &mut M) {
         header_bytes,
     );
 
-    // Zero-out the temp blob.
-    for i in 0..header_bytes.len() {
-        header_bytes[i] = 0;
-    }
+    crate::mem_utils::memzero_bytes((header_blob.payload_addr()) as usize, Bytes(header_len));
+
     write(0, header_bytes); // Zero out first block, for region manager meta data.
 
     // Write magic header
@@ -724,13 +722,14 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
     );
     let old_vec_byte_count = old_block_count * meta_data::bytes_of::<u16>() as u32;
 
-    let new_pages = AccessVector::from_value(&new_vec_pages);
-    let old_pages = AccessVector::from_value(&(*r).vec_pages);
-
     // Copy old region-block associations into new heap object.
-    for i in 0..old_vec_byte_count {
-        new_pages.0.set(i, old_pages.0.get(i));
-    }
+    crate::mem_utils::memcpy_bytes(
+        new_vec_pages.as_blob_mut().payload_addr() as usize,
+        (*r).vec_pages.as_blob().payload_const() as usize,
+        Bytes(old_vec_byte_count),
+    );
+
+    let new_pages = AccessVector::from_value(&new_vec_pages);
 
     // Record new associations, between the region and each new block:
     // - in block_region_table (stable memory, for persistence).
