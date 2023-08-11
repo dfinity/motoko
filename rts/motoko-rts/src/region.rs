@@ -108,11 +108,13 @@ impl AccessVector {
 
         // Update heap memory with new association. Little endian.
         // (write u16 to slot i in new_pages.)
+        debug_assert!(i * 2 + 1 < self.0.len().as_u32());
         self.0.set(i * 2, block_id_lower);
         self.0.set(i * 2 + 1, block_id_upper);
     }
 
     pub unsafe fn get_ith_block_id(&self, i: u32) -> BlockId {
+        debug_assert!(i * 2 + 1 < self.0.len().as_u32());
         let lower: u16 = self.0.get(i * 2) as u16;
         let upper: u16 = self.0.get(i * 2 + 1) as u16;
         BlockId(upper << 8 | lower)
