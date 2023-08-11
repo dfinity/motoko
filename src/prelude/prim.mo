@@ -237,6 +237,13 @@ func blobToArrayMut(b : Blob) : [var Nat8] = (prim "blobToArrayMut" : (Blob) -> 
 func arrayToBlob(a : [Nat8]) : Blob = (prim "arrayToBlob" : [Nat8] -> Blob) a;
 func arrayMutToBlob(a : [var Nat8]) : Blob = (prim "arrayMutToBlob" : [var Nat8] -> Blob) a;
 
+// Gets the byte at the given offset in the blob.
+// The offset must be less than the length of the blob.
+func blobGet(b : Blob, offset : Nat) : Nat8 = (prim "blobGet" : (Blob, Nat) -> Nat8) (b, offset);
+
+// Creates and returns a new blob which contains the bytes of the given blob `from` the given offset (inclusive) `to` the given offset (exclusive).
+// The offsets must be less than the length of the blob.
+func blobSlice(b : Blob, from : Nat, to : Nat) : Blob = (prim "blobSlice" : (Blob, Nat, Nat) -> Blob) (b, from, to);
 
 // Error codes
 type ErrorCode = {

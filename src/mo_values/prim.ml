@@ -291,6 +291,23 @@ let prim trap =
     k (Blob (String.of_seq (Seq.map (fun v ->
       Char.chr (Nat8.to_int (Value.as_nat8 !(Value.as_mut v)))
     ) (Array.to_seq (Value.as_array v)))))
+  (* returns a single nat8 at the given index *)
+  | "blobGet" -> fun _ v k ->
+    (match Value.as_tup v with
+    | [a; b] -> let (a, b) = (Value.as_blob a, Int.to_int (as_int b)) in
+      if b < 0 || b >= String.length a (* check bounds *)
+      then trap.trap "blob index out of bounds"
+      else k (Nat8 (Nat8.of_int (Char.code (String.get a b))))
+    | _ -> assert false)
+  (* returns a new blob that contains a subset [from,to) of the given blob *)
+  (* in the future negative values could be used to offset from the end, nat :< int *)
+  | "blobSlice" -> fun _ v k ->
+    (match Value.as_tup v with
+    | [a; b; c] -> let (a, b, c) = (Value.as_blob a, Int.to_int (as_int b), Int.to_int (as_int c)) in
+      if c < b || b < 0 || b > String.length a (* check bounds, b <= c *)
+      then trap.trap "blob index out of bounds"
+      else k (Blob (String.sub a b (c - b)))
+    | _ -> assert false)
 
   | "cast" -> fun _ v k -> k v
 
