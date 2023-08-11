@@ -2224,14 +2224,6 @@ module BoxedSmallWord = struct
 
   let payload_field env = Tagged.header_size env
 
-  let vanilla_lit env i =
-    if BitTagged.can_tag_const (Int64.of_int (Int32.to_int i))
-    then BitTagged.tag_const (Int64.of_int (Int32.to_int i))
-    else
-      Tagged.shared_static_obj env Tagged.Bits32 StaticBytes.[
-        I32 i
-      ]
-
   let compile_box env compile_elem : G.t =
     let (set_i, get_i) = new_local env "boxed_i32" in
     let size = if !Flags.gc_strategy = Flags.Incremental then 3l else 2l in
@@ -2240,6 +2232,11 @@ module BoxedSmallWord = struct
     get_i ^^ compile_elem ^^ Tagged.store_field env (payload_field env) ^^
     get_i ^^
     Tagged.allocation_barrier env
+
+  let lit env i =
+    if BitTagged.can_tag_const (Int64.of_int (Int32.to_int i))
+    then compile_unboxed_const (BitTagged.tag_const (Int64.of_int (Int32.to_int i)))
+    else compile_box env (compile_unboxed_const i)
 
   let box env = Func.share_code1 env "box_i32" ("n", I32Type) [I32Type] (fun env get_n ->
       get_n ^^ compile_shrU_const 30l ^^
@@ -7563,7 +7560,7 @@ module StackRep = struct
     | Const.Lit (Const.Blob t) -> Blob.lit env t
     | Const.Lit (Const.Null) -> Opt.null_lit env
     | Const.Lit (Const.BigInt n) -> compile_unboxed_const (BigNum.vanilla_lit env n) (* TODO: Redesign for heap allocations *)
-    | Const.Lit (Const.Word32 n) -> compile_unboxed_const (BoxedSmallWord.vanilla_lit env n) (* TODO: Redesign for heap allocations *)
+    | Const.Lit (Const.Word32 n) -> BoxedSmallWord.lit env n
     | Const.Lit (Const.Word64 n) -> BoxedWord64.lit env n
     | Const.Lit (Const.Float64 f) -> compile_unboxed_const (Float.vanilla_lit env f) (* TODO: Redesign for heap allocations *)
     | Const.Opt c -> Opt.inject env (materialize_constant env c)
