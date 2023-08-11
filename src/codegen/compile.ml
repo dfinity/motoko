@@ -9681,10 +9681,10 @@ and compile_prim_invocation (env : E.t) ae p es at =
       SR.UnboxedWord64,
       compile_exp_as env ae SR.UnboxedWord32 e ^^
       G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
-    | Nat16, (Nat8 as pty)->
+    | Nat16, (Nat8 as pty) ->
       SR.Vanilla,
       let num_bits = (TaggedSmallWord.bits_of_type pty) in
-      let (set_val, get_val) = new_local env "convertee" in
+      let set_val, get_val = new_local env "convertee" in
       compile_exp_vanilla env ae e ^^
       set_val ^^
       get_val ^^
@@ -9692,10 +9692,10 @@ and compile_prim_invocation (env : E.t) ae p es at =
       E.then_trap_with env "losing precision" ^^
       get_val ^^
       compile_shl_const (Int32.of_int num_bits)
-    | Nat32, (Nat16 as pty)->
+    | Nat32, (Nat16 as pty) ->
       SR.Vanilla,
       let num_bits = Int32.of_int (TaggedSmallWord.bits_of_type pty) in
-      let (set_val, get_val) = new_local env "convertee" in
+      let set_val, get_val = new_local env "convertee" in
       compile_exp_as env ae SR.UnboxedWord32 e ^^
       set_val ^^
       get_val ^^
@@ -9706,7 +9706,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     | Nat64, (Nat32 as pty) ->
       SR.UnboxedWord32,
       let num_bits = Int64.of_int (TaggedSmallWord.bits_of_type pty) in
-      let (set_val, get_val) = new_local64 env "convertee" in
+      let set_val, get_val = new_local64 env "convertee" in
       compile_exp_as env ae SR.UnboxedWord64 e ^^
       set_val ^^
       get_val ^^
@@ -9727,10 +9727,10 @@ and compile_prim_invocation (env : E.t) ae p es at =
       SR.UnboxedWord64,
       compile_exp_as env ae SR.UnboxedWord32 e ^^
       G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32))
-    | Int16, (Int8 as pty)->
+    | Int16, (Int8 as pty) ->
       SR.Vanilla,
       let num_bits = (TaggedSmallWord.bits_of_type pty) in
-      let (set_val, get_val) = new_local env "convertee" in
+      let set_val, get_val = new_local env "convertee" in
       compile_exp_vanilla env ae e ^^
       set_val ^^
       get_val ^^
@@ -9741,10 +9741,10 @@ and compile_prim_invocation (env : E.t) ae p es at =
       E.else_trap_with env "losing precision" ^^
       get_val ^^
       compile_shl_const (Int32.of_int num_bits)
-    | Int32, (Int16 as pty)->
+    | Int32, (Int16 as pty) ->
       SR.Vanilla,
       let num_bits = (TaggedSmallWord.bits_of_type pty) in
-      let (set_val, get_val) = new_local env "convertee" in
+      let set_val, get_val = new_local env "convertee" in
       compile_exp_as env ae SR.UnboxedWord32 e ^^
       set_val ^^
       get_val ^^
@@ -9758,7 +9758,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     | Int64, (Int32 as pty) ->
       SR.UnboxedWord32,
       let num_bits = (TaggedSmallWord.bits_of_type pty) in
-      let (set_val, get_val) = new_local64 env "convertee" in
+      let set_val, get_val = new_local64 env "convertee" in
       compile_exp_as env ae SR.UnboxedWord64 e ^^
       set_val ^^
       get_val ^^
