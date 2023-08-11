@@ -7571,7 +7571,7 @@ module StackRep = struct
     | Const.Opt c -> Opt.inject env (materialize_constant env c)
     | Const.Fun (get_fi, _) -> Closure.alloc env (get_fi ())
     | Const.Message fi -> assert false
-    | Const.Unit -> compile_unboxed_const Tuple.unit_vanilla_lit (* TODO: Redesign for heap allocations *)
+    | Const.Unit -> Tuple.compile_unit
     | Const.Tag (i, c) -> Variant.inject env i (materialize_constant env c)
 
     | Const.Lit (Const.Vanilla n) -> assert false
