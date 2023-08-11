@@ -102,7 +102,7 @@ module Const = struct
     | Blob of string
     | Null
 
-  let lit_eq = function
+  let lit_eq l1 l2 = match l1, l2 with
     | Vanilla i, Vanilla j -> i = j
     | BigInt i, BigInt j -> Big_int.eq_big_int i j
     | Word32 i, Word32 j -> i = j
@@ -146,22 +146,16 @@ module Const = struct
   type v =
     | Fun of (unit -> int32) * fun_rhs (* function pointer calculated upon first use *)
     | Message of int32 (* anonymous message, only temporary *)
-    | Obj of (string * t) list
+    | Obj of (string * v) list
     | Unit
-    | Array of t list (* also tuples, but not nullary *)
-    | Tag of (string * t)
-    | Opt of t
+    | Array of v list (* also tuples, but not nullary *)
+    | Tag of (string * v)
+    | Opt of v
     | Lit of lit
 
-  (* A constant known value together with a vanilla pointer.
-     Typically a static memory location, could be an unboxed scalar.
-     Filled on demand.
-   *)
-  and t = (int32 Lib.Promise.t * v)
-
-  let t_of_v v = (Lib.Promise.make (), v)
-
-  let get_value (_, v) = v
+  let eq v1 v2 = match v1, v2 with
+    | Lit l1, Lit l2 -> lit_eq l1 l2
+    | _ -> v1 = v2
 
 end (* Const *)
 
@@ -181,7 +175,7 @@ module SR = struct
     | UnboxedWord32
     | UnboxedFloat64
     | Unreachable
-    | Const of Const.t
+    | Const of Const.v
 
   let unit = UnboxedTuple 0
 
@@ -190,16 +184,9 @@ module SR = struct
   (* Because t contains Const.t, and that contains Const.v, and that contains
      Const.lit, and that contains Big_int, we cannot just use normal `=`. So we
      have to write our own equality.
-
-     This equalty is, I believe, used when joining branches. So for Const, we
-     just compare the promises, and do not descend into the Const.v. This is
-     conservative; the only downside is that if a branch returns different
-     Const.t with (semantically) the same Const.v we do not propagate that as
-     Const, but materialize before the branch.
-     Which is not really expected or important.
   *)
   let eq (t1 : t) (t2 : t) = match t1, t2 with
-    | Const (p1, _), Const (p2, _) -> p1 == p2
+    | Const c1, Const c2 -> Const.eq c1 c2
     | _ -> t1 = t2
 
   let to_var_type : t -> value_type = function
@@ -7579,11 +7566,11 @@ module StackRep = struct
     | Const.Lit (Const.Word32 n) -> compile_unboxed_const (BoxedSmallWord.vanilla_lit env n) (* TODO: Redesign for heap allocations *)
     | Const.Lit (Const.Word64 n) -> BoxedWord64.lit env n
     | Const.Lit (Const.Float64 f) -> compile_unboxed_const (Float.vanilla_lit env f) (* TODO: Redesign for heap allocations *)
-    | Const.Opt c -> Opt.inject env (materialize_constant env (Const.get_value c))
+    | Const.Opt c -> Opt.inject env (materialize_constant env c)
     | Const.Fun (get_fi, _) -> compile_unboxed_const (Closure.static_closure env (get_fi ())) (* TODO: Redesign for heap allocations *)
     | Const.Message fi -> assert false
     | Const.Unit -> compile_unboxed_const Tuple.unit_vanilla_lit (* TODO: Redesign for heap allocations *)
-    | Const.Tag (i, c) -> Variant.inject env i (materialize_constant env (Const.get_value c))
+    | Const.Tag (i, c) -> Variant.inject env i (materialize_constant env c)
 
     | Const.Lit (Const.Vanilla n) -> assert false
     | Const.Array cs -> assert false
@@ -7608,14 +7595,14 @@ module StackRep = struct
     | UnboxedFloat64, Vanilla -> Float.box env
     | Vanilla, UnboxedFloat64 -> Float.unbox env
 
-    | Const (_, value), Vanilla -> materialize_constant env value
-    | Const (_, Const.Lit (Const.Word32 n)), UnboxedWord32 -> compile_unboxed_const n
-    | Const (_, Const.Lit (Const.Word64 n)), UnboxedWord64 -> compile_const_64 n
-    | Const (_, Const.Lit (Const.Float64 f)), UnboxedFloat64 -> Float.compile_unboxed_const f
+    | Const value, Vanilla -> materialize_constant env value
+    | Const Const.Lit (Const.Word32 n), UnboxedWord32 -> compile_unboxed_const n
+    | Const Const.Lit (Const.Word64 n), UnboxedWord64 -> compile_const_64 n
+    | Const Const.Lit (Const.Float64 f), UnboxedFloat64 -> Float.compile_unboxed_const f
     | Const c, UnboxedTuple 0 -> G.nop
-    | Const (_, Const.Array cs), UnboxedTuple n ->
+    | Const Const.Array cs, UnboxedTuple n ->
       assert (n = List.length cs);
-      G.concat_map (fun c -> materialize_constant env (Const.get_value c)) cs
+      G.concat_map (fun c -> materialize_constant env c) cs
     | _, _ ->
       Printf.eprintf "Unknown stack_rep conversion %s -> %s\n"
         (to_string sr_in) (to_string sr_out);
@@ -7637,8 +7624,8 @@ module VarEnv = struct
     (* A static variable accessed by an index via the runtime system, refers to a MutBox,
        belonging to the GC root set *)
     | Static of int32
-    (* Not materialized (yet), statically known constant, static location on demand *)
-    | Const of Const.t
+    (* Constant literals can reside in dynamic heap *)
+    | Const of Const.v
     (* public method *)
     | PublicMethod of int32 * string
 
@@ -7917,7 +7904,7 @@ end (* Var *)
 module Internals = struct
   let call_prelude_function env ae var =
     match VarEnv.lookup_var ae var with
-    | Some (VarEnv.Const (_, Const.Fun (mk_fi, _))) ->
+    | Some (VarEnv.Const Const.Fun (mk_fi, _)) ->
        compile_unboxed_zero ^^ (* A dummy closure *)
        G.i (Call (nr (mk_fi ())))
     | _ -> assert false
@@ -8008,13 +7995,13 @@ module FuncDec = struct
     if Type.is_shared_sort sort
     then begin
       let (fi, fill) = E.reserve_fun pre_env name in
-      ( Const.t_of_v (Const.Message fi), fun env ae ->
+      ( Const.Message fi, fun env ae ->
         fill (compile_const_message env ae sort control args mk_body ret_tys at)
       )
     end else begin
       assert (control = Type.Returns);
       let lf = E.make_lazy_function pre_env name in
-      ( Const.t_of_v (Const.Fun ((fun () -> Lib.AllocOnUse.use lf), fun_rhs)), fun env ae ->
+      ( Const.Fun ((fun () -> Lib.AllocOnUse.use lf), fun_rhs), fun env ae ->
         let restore_no_env _env ae _ = ae, unmodified in
         Lib.AllocOnUse.def lf (lazy (compile_local_function env ae restore_no_env args mk_body ret_tys at))
       )
@@ -8654,7 +8641,7 @@ let const_lit_of_lit : Ir.lit -> Const.lit = function
   | FloatLit f    -> Const.Float64 f
 
 let const_of_lit lit =
-  Const.t_of_v (Const.Lit (const_lit_of_lit lit))
+  Const.Lit (const_lit_of_lit lit)
 
 let compile_lit lit =
   SR.Const (const_of_lit lit), G.nop
@@ -9347,7 +9334,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
     (* we duplicate this pattern match to emulate pattern guards *)
     let call_as_prim = match fun_sr, sort with
-      | SR.Const (_, Const.Fun (mk_fi, Const.PrimWrapper prim)), _ ->
+      | SR.Const Const.Fun (mk_fi, Const.PrimWrapper prim), _ ->
          begin match n_args, e2.it with
          | 0, _ -> true
          | 1, _ -> true
@@ -9357,7 +9344,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
       | _ -> false in
 
     begin match fun_sr, sort with
-      | SR.Const (_, Const.Fun (mk_fi, Const.PrimWrapper prim)), _ when call_as_prim ->
+      | SR.Const Const.Fun (mk_fi, Const.PrimWrapper prim), _ when call_as_prim ->
          assert (sort = Type.Local);
          (* Handle argument tuples *)
          begin match n_args, e2.it with
@@ -9376,7 +9363,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
            (* ugly case; let's just call this as a function for now *)
            raise (Invalid_argument "call_as_prim was true?")
          end
-      | SR.Const (_, Const.Fun (mk_fi, _)), _ ->
+      | SR.Const Const.Fun (mk_fi, _), _ ->
          assert (sort = Type.Local);
          StackRep.of_arity return_arity,
 
@@ -9457,7 +9444,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | DotPrim name, [e] ->
     let sr, code1 = compile_exp env ae e in
     begin match sr with
-    | SR.Const (_, Const.Obj fs) ->
+    | SR.Const Const.Obj fs ->
       let c = List.assoc name fs in
       SR.Const c, code1
     | _ ->
@@ -10779,7 +10766,7 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
   | LetD ({it = VarP v; _}, e) when E.NameEnv.mem v v2en ->
     let (const, fill) = compile_const_exp env pre_ae e in
     let fi = match const with
-      | (_, Const.Message fi) -> fi
+      | Const.Message fi -> fi
       | _ -> assert false in
     let pre_ae1 = VarEnv.add_local_public_method pre_ae v (fi, (E.NameEnv.find v v2en)) e.note.Note.typ in
     G.( pre_ae1, nop, (fun ae -> fill env ae; nop), unmodified)
@@ -10849,7 +10836,7 @@ and compile_decs env ae decs captured_in_body : VarEnv.t * scope_wrap =
 (* This compiles expressions determined to be const as per the analysis in
    ir_passes/const.ml. See there for more details.
 *)
-and compile_const_exp env pre_ae exp : Const.t * (E.t -> VarEnv.t -> unit) =
+and compile_const_exp env pre_ae exp : Const.v * (E.t -> VarEnv.t -> unit) =
   match exp.it with
   | FuncE (name, sort, control, typ_binds, args, res_tys, e) ->
     let fun_rhs =
@@ -10905,34 +10892,34 @@ and compile_const_exp env pre_ae exp : Const.t * (E.t -> VarEnv.t -> unit) =
             | _ -> fatal "compile_const_exp/ObjE: \"%s\" not found" f.it.var
           in f.it.name, st) fs
     in
-    (Const.t_of_v (Const.Obj static_fs), fun _ _ -> ())
+    (Const.Obj static_fs), fun _ _ -> ()
   | PrimE (DotPrim name, [e]) ->
     let (object_ct, fill) = compile_const_exp env pre_ae e in
     let fs = match object_ct with
-      | _, Const.Obj fs -> fs
+      | Const.Obj fs -> fs
       | _ -> fatal "compile_const_exp/DotE: not a static object" in
     let member_ct = List.assoc name fs in
     (member_ct, fill)
   | PrimE (ProjPrim i, [e]) ->
     let (object_ct, fill) = compile_const_exp env pre_ae e in
     let cs = match object_ct with
-      | _, Const.Array cs -> cs
+      | Const.Array cs -> cs
       | _ -> fatal "compile_const_exp/ProjE: not a static tuple" in
     (List.nth cs i, fill)
-  | LitE l -> Const.(t_of_v (Lit (const_lit_of_lit l))), (fun _ _ -> ())
-  | PrimE (TupPrim, []) -> Const.t_of_v Const.Unit, (fun _ _ -> ())
+  | LitE l -> Const.(Lit (const_lit_of_lit l)), (fun _ _ -> ())
+  | PrimE (TupPrim, []) -> Const.Unit, (fun _ _ -> ())
   | PrimE (ArrayPrim (Const, _), es)
   | PrimE (TupPrim, es) ->
     let (cs, fills) = List.split (List.map (compile_const_exp env pre_ae) es) in
-    Const.(t_of_v (Array cs)),
+    (Const.Array cs),
     (fun env ae -> List.iter (fun fill -> fill env ae) fills)
   | PrimE (TagPrim i, [e]) ->
     let (arg_ct, fill) = compile_const_exp env pre_ae e in
-    Const.(t_of_v (Tag (i, arg_ct))),
+    (Const.Tag (i, arg_ct)),
     fill
   | PrimE (OptPrim, [e]) ->
     let (arg_ct, fill) = compile_const_exp env pre_ae e in
-    Const.(t_of_v (Opt arg_ct)),
+    (Const.Opt arg_ct),
     fill
 
   | _ -> assert false
@@ -10958,7 +10945,7 @@ and destruct_const_pat ae pat const : VarEnv.t option = match pat.it with
   | WildP -> Some ae
   | VarP v -> Some (VarEnv.add_local_const ae v const pat.note)
   | ObjP pfs ->
-    let fs = match const with (_, Const.Obj fs) -> fs | _ -> assert false in
+    let fs = match const with Const.Obj fs -> fs | _ -> assert false in
     List.fold_left (fun ae (pf : pat_field) ->
       match ae, List.find_opt (fun (n, _) -> pf.it.name = n) fs with
       | None, _ -> None
@@ -10970,26 +10957,26 @@ and destruct_const_pat ae pat const : VarEnv.t option = match pat.it with
     if l = None then destruct_const_pat ae p2 const
     else l
   | TupP ps ->
-    let cs = match const with (_, Const.Array cs) -> cs | (_, Const.Unit) -> [] | _ -> assert false in
+    let cs = match const with Const.Array cs -> cs | Const.Unit -> [] | _ -> assert false in
     let go ae p c = match ae with
       | Some ae -> destruct_const_pat ae p c
       | _ -> None in
     List.fold_left2 go (Some ae) ps cs
   | LitP lp ->
     begin match const with
-    | (_, Const.Lit lc) when Const.lit_eq (const_lit_of_lit lp, lc) -> Some ae
+    | Const.Lit lc when Const.lit_eq (const_lit_of_lit lp) lc -> Some ae
     | _ -> None
     end
   | OptP p ->
     begin match const with
-      | (_, Const.Opt c) -> destruct_const_pat ae p c
-      | (_, Const.(Lit Null)) -> None
+      | Const.Opt c -> destruct_const_pat ae p c
+      | Const.(Lit Null) -> None
       | _ -> assert false
     end
   | TagP (i, p) ->
      match const with
-     | (_, Const.Tag (ic, c)) when i = ic -> destruct_const_pat ae p c
-     | (_, Const.Tag _) -> None
+     | Const.Tag (ic, c) when i = ic -> destruct_const_pat ae p c
+     | Const.Tag _ -> None
      | _ -> assert false
 
 and compile_const_dec env pre_ae dec : (VarEnv.t -> VarEnv.t) * (E.t -> VarEnv.t -> unit) =
