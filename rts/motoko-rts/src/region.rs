@@ -195,6 +195,7 @@ impl RegionObject {
         if len == 0 {
             return (off, b1.clone(), b1_len, b1);
         };
+        debug_assert!(u64::MAX - offset >= len - 1);
         let final_offset = offset + len - 1;
         let (_, b2, _) = self.relative_into_absolute_info(final_offset);
         (off, b1, b1_len, b2)
@@ -203,6 +204,10 @@ impl RegionObject {
 
 // Mutable meta data stored in stable memory header (See motoko/design/StableRegions.md)
 mod meta_data {
+
+    pub const fn bytes_of<T>() -> u64 {
+        core::mem::size_of::<T>() as u64
+    }
 
     pub mod version {
         pub const MAGIC: &[u8; 8] = b"MOREGION";
@@ -217,14 +222,16 @@ mod meta_data {
 
     /// Sizes of table entries, and tables.
     pub mod size {
+        use super::bytes_of;
+
         // Region table entry:
         // - 8 bytes for the size.
         // - 4 bytes for future use (including GC visit-marking).
-        pub const REGION_TABLE_ENTRY: u16 = 12;
+        pub const REGION_TABLE_ENTRY: u16 = (bytes_of::<u64>() + bytes_of::<u32>()) as u16;
 
         pub const REGION_TABLE: u64 = super::max::REGIONS as u64 * REGION_TABLE_ENTRY as u64;
 
-        pub const BLOCK_REGION_TABLE_ENTRY: u16 = 4;
+        pub const BLOCK_REGION_TABLE_ENTRY: u16 = (bytes_of::<u16>() + bytes_of::<u16>()) as u16;
 
         pub const BLOCK_REGION_TABLE: u64 =
             super::max::BLOCKS as u64 * BLOCK_REGION_TABLE_ENTRY as u64;
@@ -244,15 +251,17 @@ mod meta_data {
     /// Offsets into stable memory for statically-sized fields and tables.
     pub mod offset {
 
+        use super::bytes_of;
+
         pub const MAGIC: u64 = 0;
 
-        pub const VERSION: u64 = MAGIC + 8;
+        pub const VERSION: u64 = MAGIC + bytes_of::<u64>();
 
-        pub const TOTAL_ALLOCATED_BLOCKS: u64 = VERSION + 4;
+        pub const TOTAL_ALLOCATED_BLOCKS: u64 = VERSION + bytes_of::<u32>();
 
-        pub const TOTAL_ALLOCATED_REGIONS: u64 = TOTAL_ALLOCATED_BLOCKS + 4;
+        pub const TOTAL_ALLOCATED_REGIONS: u64 = TOTAL_ALLOCATED_BLOCKS + bytes_of::<u32>();
 
-        pub const BLOCK_REGION_TABLE: u64 = TOTAL_ALLOCATED_REGIONS + 8;
+        pub const BLOCK_REGION_TABLE: u64 = TOTAL_ALLOCATED_REGIONS + bytes_of::<u64>();
 
         pub const REGION_TABLE: u64 = BLOCK_REGION_TABLE + super::size::BLOCK_REGION_TABLE;
 
@@ -299,10 +308,9 @@ mod meta_data {
     pub mod block_region_table {
         // invariant: all blocks whose IDs are below the total_allocated_blocks are valid.
 
-        use super::{offset, size};
+        use super::{bytes_of, offset, size};
         use crate::ic0_stable::nicer::{read_u16, write_u16};
         use crate::region::{BlockId, RegionId};
-        use core::mem::size_of;
 
         // Compute an offset in stable memory for a particular block ID (based zero).
         fn index(b: &BlockId) -> u64 {
@@ -315,7 +323,7 @@ mod meta_data {
             let offset = index(&b);
             let raw = read_u16(offset);
             let rid = RegionId::from_u16(raw);
-            rid.map(|r| (r, read_u16(offset + size_of::<u16>() as u64)))
+            rid.map(|r| (r, read_u16(offset + bytes_of::<u16>())))
         }
 
         /// Some(r, j) means that the block is in use by region r, at slot j.
@@ -326,7 +334,7 @@ mod meta_data {
                 Some((r, j)) => {
                     let offset = index(&b);
                     write_u16(offset, RegionId::into_u16(Some(r)));
-                    write_u16(offset + size_of::<u16>() as u64, j)
+                    write_u16(offset + bytes_of::<u16>(), j)
                 }
             }
         }
@@ -431,7 +439,9 @@ pub unsafe fn region_new<M: Memory>(mem: &mut M) -> Value {
 }
 
 pub unsafe fn region_recover<M: Memory>(mem: &mut M, rid: &RegionId) -> Value {
+    use meta_data::bytes_of;
     use meta_data::size::PAGES_IN_BLOCK;
+
     let c = meta_data::region_table::get(&rid);
     let page_count = match c {
         Some(RegionSizeInPages(pc)) => pc,
@@ -440,8 +450,10 @@ pub unsafe fn region_recover<M: Memory>(mem: &mut M, rid: &RegionId) -> Value {
         }
     };
 
+    debug_assert!(page_count < (u32::MAX - (PAGES_IN_BLOCK - 1)) as u64);
+
     let block_count = (page_count as u32 + PAGES_IN_BLOCK - 1) / PAGES_IN_BLOCK;
-    let vec_pages = alloc_blob(mem, Bytes(block_count * 2));
+    let vec_pages = alloc_blob(mem, Bytes(block_count * bytes_of::<u16>() as u32));
 
     let tb = meta_data::total_allocated_blocks::get();
     let av = AccessVector(vec_pages.as_blob_mut());
@@ -706,8 +718,11 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
         meta_data::region_table::set(&r_id, Some(RegionSizeInPages((*r).page_count.into())));
     }
 
-    let new_vec_pages = alloc_blob(mem, Bytes(new_block_count * 2));
-    let old_vec_byte_count = old_block_count * 2;
+    let new_vec_pages = alloc_blob(
+        mem,
+        Bytes(new_block_count * meta_data::bytes_of::<u16>() as u32),
+    );
+    let old_vec_byte_count = old_block_count * meta_data::bytes_of::<u16>() as u32;
 
     let new_pages = AccessVector::from_value(&new_vec_pages);
     let old_pages = AccessVector::from_value(&(*r).vec_pages);
