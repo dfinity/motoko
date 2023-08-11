@@ -931,6 +931,7 @@ module RTS = struct
     E.add_func_import env "rts" "save_stable_actor" [I32Type] [];
     E.add_func_import env "rts" "set_static_root" [I32Type] [];
     E.add_func_import env "rts" "get_static_root" [] [I32Type];
+    E.add_func_import env "rts" "null_singleton" [] [I32Type];
     E.add_func_import env "rts" "memcpy" [I32Type; I32Type; I32Type] [I32Type]; (* standard libc memcpy *)
     E.add_func_import env "rts" "memcmp" [I32Type; I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "version" [] [I32Type];
@@ -1916,9 +1917,9 @@ module Opt = struct
        │ null │
        └──────┘
 
-       A special null value. It is fully static, and because it is unique, can
-       be recognized by pointer comparison (only the GC will care about the heap
-       tag).
+       A special null value. This is a singleton object stored in the persistent memory
+       and retained across all objects. This serves for efficient null checks by using 
+       pointer comparison (and applying pointer forwarding resolution beforehand).
 
 
     2. ┌──────┬─────────┐
@@ -1942,21 +1943,17 @@ module Opt = struct
 
   let some_payload_field = Tagged.header_size
 
-  (* This relies on the fact that add_static deduplicates *)
-  let null_vanilla_lit env : int32 =
-    Tagged.shared_static_obj env Tagged.Null []
-
   let null_lit env =
-    compile_unboxed_const (null_vanilla_lit env)
+    E.call_import env "rts" "null_singleton" (* forwarding pointer already resolved *)
 
-  let vanilla_lit env ptr : int32 =
-    Tagged.shared_static_obj env Tagged.Some StaticBytes.[
-      I32 ptr
-    ]
-
- let is_some env =
+  let is_some env =
+    (* resolve forwarding pointer on pointer equality check *)
+    Tagged.load_forwarding_pointer env ^^
     null_lit env ^^
     G.i (Compare (Wasm.Values.I32 I32Op.Ne))
+
+  let alloc_some env get_payload =
+    Tagged.obj env Tagged.Some [ get_payload ]
 
   let inject env e =
     e ^^
@@ -1968,13 +1965,8 @@ module Opt = struct
             ( get_x ) (* true literal, no wrapping *)
             ( get_x ^^ Tagged.branch_default env [I32Type]
               ( get_x ) (* default tag, no wrapping *)
-              [ Tagged.Null,
-                (* NB: even ?null does not require allocation: We use a static
-                  singleton for that: *)
-                compile_unboxed_const (vanilla_lit env (null_vanilla_lit env))
-              ; Tagged.Some,
-                Tagged.obj env Tagged.Some [get_x]
-              ]
+              [ Tagged.Null, alloc_some env get_x
+              ; Tagged.Some, alloc_some env get_x ]
             )
         )
     )
@@ -3689,9 +3681,6 @@ module Blob = struct
     Tagged.load_forwarding_pointer env ^^
     compile_add_const (unskewed_payload_offset env)
 
-  (* TODO: Implement dynamic sharing with lazy instantiation on the heap, 
-    the static memory only denotes singleton address per upgrade mode, 
-    the static singleton address needs to be re-initialized on upgrade *)
   let lit env s = 
     let blob_length = Int32.of_int (String.length s) in
     let (set_new_blob, get_new_blob) = new_local env "new_blob" in
@@ -7622,8 +7611,8 @@ module StackRep = struct
     | Const.Word32 n   -> BoxedSmallWord.vanilla_lit env n
     | Const.Word64 n   -> BoxedWord64.vanilla_lit env n
     | Const.Float64 f  -> Float.vanilla_lit env f
-    | Const.Blob t     -> assert false
-    | Const.Null       -> Opt.null_vanilla_lit env
+    | Const.Blob t     -> assert false (* TODO: Handle case, e.g. part of array literal *)
+    | Const.Null       -> assert false (* TODO: Handle case, e.g. part of array literal *)
 
   let rec materialize_const_t env (p, cv) : int32 =
     Lib.Promise.lazy_value p (fun () -> materialize_const_v env cv)
@@ -7642,14 +7631,7 @@ module StackRep = struct
       let ptr = materialize_const_t env c in
       Variant.vanilla_lit env i ptr
     | Const.Lit l -> materialize_lit env l
-    | Const.Opt c ->
-      let rec kernel = Const.(function
-        | (_, Lit Null) -> None
-        | (_, Opt c) -> kernel c
-        | (_, other) -> Some (materialize_const_v env other)) in
-      match kernel c with
-      | Some ptr -> ptr
-      | None -> Opt.vanilla_lit env (materialize_const_t env c)
+    | Const.Opt c -> assert false (* TODO: Handle case, e.g. part of array literal *)
 
   let adjust env (sr_in : t) sr_out =
     if eq sr_in sr_out
@@ -7672,6 +7654,8 @@ module StackRep = struct
 
     | Const (_, Const.Lit (Const.Bool b)), Vanilla -> Bool.lit b
     | Const (_, Const.Lit (Const.Blob t)), Vanilla -> Blob.lit env t
+    | Const (_, Const.Lit (Const.Null)), Vanilla -> Opt.null_lit env
+    | Const (_, Const.Opt c), Vanilla -> Opt.inject env (compile_unboxed_const (materialize_const_t env c))
     | Const c, Vanilla -> compile_unboxed_const (materialize_const_t env c)
     | Const (_, Const.Lit (Const.Word32 n)), UnboxedWord32 -> compile_unboxed_const n
     | Const (_, Const.Lit (Const.Word64 n)), UnboxedWord64 -> compile_const_64 n

@@ -10,15 +10,19 @@ use super::barriers::write_with_barrier;
 static mut STATIC_ROOT: Value = Value::from_scalar(0);
 
 /// GC root set.
-pub type Roots = [*mut Value; 3];
+pub type Roots = [*mut Value; 4];
 
 #[cfg(feature = "ic")]
 pub unsafe fn root_set() -> Roots {
-    use crate::{continuation_table::continuation_table_loc, persistence::stable_actor_location};
+    use crate::{
+        continuation_table::continuation_table_loc,
+        persistence::{null_singleton_location, stable_actor_location},
+    };
     [
         static_root_location(),
         continuation_table_loc(),
         stable_actor_location(),
+        null_singleton_location(),
     ]
 }
 
