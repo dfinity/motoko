@@ -660,6 +660,22 @@ impl Blob {
         *self.payload_addr().add(idx as usize) = byte;
     }
 
+    pub unsafe fn payload_addr_u16(self: *mut Self) -> *mut u16 {
+        self.add(1) as *mut u16 // skip blob header
+    }
+
+    pub unsafe fn payload_const_u16(self: *const Self) -> *const u16 {
+        self.add(1) as *mut u16 // skip blob header
+    }
+
+    pub unsafe fn get_u16(self: *const Self, idx: u32) -> u16 {
+        *self.payload_const_u16().add(idx as usize)
+    }
+
+    pub unsafe fn set_u16(self: *mut Self, idx: u32, value: u16) {
+        *self.payload_addr_u16().add(idx as usize) = value;
+    }
+
     /// Shrink blob to the given size. Slop after the new size is filled with filler objects.
     pub unsafe fn shrink(self: *mut Self, new_len: Bytes<u32>) {
         let current_len_words = self.len().to_words();
