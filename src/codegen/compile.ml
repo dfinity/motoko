@@ -7571,42 +7571,6 @@ module StackRep = struct
     | UnboxedTuple n -> G.table n (fun _ -> G.i Drop)
     | Const _ | Unreachable -> G.nop
 
-  (* (* Materializes a Const.lit: If necessary, puts
-     bytes into static memory, and returns a vanilla value.
-  *)
-  let materialize_lit env (lit : Const.lit) : int32 =
-    match lit with
-    | Const.Vanilla n  -> n
-    | Const.Bool n     -> Bool.vanilla_lit n
-    | Const.BigInt n   -> BigNum.vanilla_lit env n
-    | Const.Word32 n   -> BoxedSmallWord.vanilla_lit env n
-    | Const.Word64 n   -> BoxedWord64.vanilla_lit env n
-    | Const.Float64 f  -> Float.vanilla_lit env f
-    | Const.Blob t     -> assert false (* TODO: Handle case, e.g. part of array literal *)
-    | Const.Null       -> assert false (* TODO: Handle case, e.g. part of array literal *)
-
-  let rec materialize_const_t env (p, cv) : int32 =
-    Lib.Promise.lazy_value p (fun () -> materialize_const_v env cv)
-
-  and materialize_const_v env = function
-    | Const.Fun (get_fi, _) -> Closure.static_closure env (get_fi ())
-    | Const.Message fi -> assert false
-    | Const.Obj fs ->
-      let fs' = List.map (fun (n, c) -> (n, materialize_const_t env c)) fs in
-      Object.vanilla_lit env fs'
-    | Const.Unit -> Tuple.unit_vanilla_lit
-    | Const.Array cs ->
-      let ptrs = List.map (materialize_const_t env) cs in
-      Arr.vanilla_lit env ptrs
-    | Const.Tag (i, c) ->
-      let ptr = materialize_const_t env c in
-      Variant.vanilla_lit env i ptr
-    | Const.Lit l -> materialize_lit env l
-    | Const.Opt c -> assert false TODO: Handle case, e.g. part of array literal *)
-
-  (* let rec new_materialize_lazy env (promise, value) : G.t =
-    Lib.Promise.lazy_value promise (fun () -> new_materialize_constant env value) *)
-
   let rec materialize_constant env = function
     | Const.Lit (Const.Bool b) -> Bool.lit b
     | Const.Lit (Const.Blob t) -> Blob.lit env t
@@ -7645,11 +7609,6 @@ module StackRep = struct
     | Vanilla, UnboxedFloat64 -> Float.unbox env
 
     | Const (_, value), Vanilla -> materialize_constant env value
-    (* | Const (_, Const.Lit (Const.Bool b)), Vanilla -> Bool.lit b
-    | Const (_, Const.Lit (Const.Blob t)), Vanilla -> Blob.lit env t
-    | Const (_, Const.Lit (Const.Null)), Vanilla -> Opt.null_lit env
-    | Const (_, Const.Opt c), Vanilla -> Opt.inject env (materialize_const_t env c))
-    | Const c, Vanilla -> compile_unboxed_const (materialize_const_t env c) *)
     | Const (_, Const.Lit (Const.Word32 n)), UnboxedWord32 -> compile_unboxed_const n
     | Const (_, Const.Lit (Const.Word64 n)), UnboxedWord64 -> compile_const_64 n
     | Const (_, Const.Lit (Const.Float64 f)), UnboxedFloat64 -> Float.compile_unboxed_const f
