@@ -6859,7 +6859,13 @@ module MakeSerialization (Strm : Stream) = struct
           on_alloc get_region ^^
           get_region ^^ ReadBuf.read_word32 env get_data_buf ^^ Region.store_field env Region.id_field ^^
           get_region ^^ ReadBuf.read_word32 env get_data_buf ^^ Region.store_field env Region.page_count_field ^^
-          get_region ^^ read_blob () ^^ Region.store_field env Region.vec_pages_field
+          (*@Luc: vec_pages_field object field update! do we need a write_barrier or is the allocation barrier enough?
+            Note that Region.alloc above already containes an allocation_barrier, but we later update the vec_pages_field.
+           *)
+          get_region ^^ read_blob () ^^ Region.store_field env Region.vec_pages_field ^^
+          get_region ^^
+          Tagged.allocation_barrier env ^^
+          G.i Drop
         )
       | Array t ->
         let (set_len, get_len) = new_local env "len" in
