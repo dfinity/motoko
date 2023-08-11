@@ -2653,7 +2653,7 @@ sig
   val compile_load_from_data_buf : E.t -> G.t -> bool -> G.t
 
   (* literals *)
-  val vanilla_lit : E.t -> Big_int.big_int -> int32
+  val lit : E.t -> Big_int.big_int -> G.t
 
   (* arithmetic *)
   val compile_abs : E.t -> G.t
@@ -2963,10 +2963,10 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       (get_n ^^ compile_unboxed_const 0l ^^ G.i (Compare (Wasm.Values.I32 I32Op.LtS)))
       (get_n ^^ Num.compile_is_negative env)
 
-  let vanilla_lit env = function
+  let lit env = function
     | n when Big_int.is_int_big_int n && BitTagged.can_tag_const (Big_int.int64_of_big_int n) ->
-      BitTagged.tag_const (Big_int.int64_of_big_int n)
-    | n -> Num.vanilla_lit env n
+      compile_unboxed_const (BitTagged.tag_const (Big_int.int64_of_big_int n))
+    | n -> Num.lit env n
 
   let compile_neg env =
     Func.share_code1 env "B_neg" ("n", I32Type) [I32Type] (fun env get_n ->
@@ -3317,7 +3317,7 @@ module BigNumLibtommath : BigNumType = struct
     | false -> get_data_buf ^^ E.call_import env "rts" "bigint_leb128_decode"
     | true -> get_data_buf ^^ E.call_import env "rts" "bigint_sleb128_decode"
 
-  let vanilla_lit env n =
+  let lit env n =
     (* See enum mp_sign *)
     let sign = if Big_int.sign_big_int n >= 0 then 0l else 1l in
 
@@ -3331,22 +3331,19 @@ module BigNumLibtommath : BigNumType = struct
         then []
         else
           let (a, b) = Big_int.quomod_big_int n twoto28 in
-          [ Big_int.int32_of_big_int b ] @ go a
+          [ compile_unboxed_const (Big_int.int32_of_big_int b) ] @ go a
       in go n
     in
     (* how many 32 bit digits *)
     let size = Int32.of_int (List.length limbs) in
 
     (* cf. mp_int in tommath.h *)
-    let ptr = Tagged.shared_static_obj env Tagged.BigInt StaticBytes.[
-      I32 size; (* used *)
-      I32 size; (* size; relying on Heap.word_size == size_of(mp_digit) *)
-      I32 sign;
-      I32 0l; (* dp; this will be patched in BigInt::mp_int_ptr in the RTS when used *)
-      i32s limbs
-
-    ] in
-    ptr
+    Tagged.obj env Tagged.BigInt ([
+      compile_unboxed_const size; (* used *)
+      compile_unboxed_const size; (* size; relying on Heap.word_size == size_of(mp_digit) *)
+      compile_unboxed_const sign;
+      compile_unboxed_const 0l; (* dp; this will be patched in BigInt::mp_int_ptr in the RTS when used *)
+    ] @ limbs)
 
   let assert_nonneg env =
     Func.share_code1 env "assert_nonneg" ("n", I32Type) [I32Type] (fun env get_n ->
@@ -4819,7 +4816,7 @@ module Cycles = struct
     let (set_val, get_val) = new_local env "cycles" in
     set_val ^^
     get_val ^^
-    compile_unboxed_const (BigNum.vanilla_lit env (Big_int.power_int_positive_int 2 128)) ^^
+    BigNum.lit env (Big_int.power_int_positive_int 2 128) ^^
     BigNum.compile_relop env Lt ^^
     E.else_trap_with env "cycles out of bounds" ^^
 
@@ -7567,7 +7564,7 @@ module StackRep = struct
     | Const.Lit (Const.Bool b) -> Bool.lit b
     | Const.Lit (Const.Blob t) -> Blob.lit env t
     | Const.Lit (Const.Null) -> Opt.null_lit env
-    | Const.Lit (Const.BigInt n) -> compile_unboxed_const (BigNum.vanilla_lit env n) (* TODO: Redesign for heap allocations *)
+    | Const.Lit (Const.BigInt n) -> BigNum.lit env n
     | Const.Lit (Const.Word32 n) -> BoxedSmallWord.lit env n
     | Const.Lit (Const.Word64 n) -> BoxedWord64.lit env n
     | Const.Lit (Const.Float64 f) -> compile_unboxed_const (Float.vanilla_lit env f) (* TODO: Redesign for heap allocations *)
