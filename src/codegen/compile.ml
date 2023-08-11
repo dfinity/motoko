@@ -2037,12 +2037,6 @@ module Variant = struct
     get_variant_tag env ^^
     compile_eq_const (hash_variant_label env l)
 
-  let vanilla_lit env i ptr =
-    Tagged.shared_static_obj env Tagged.Variant StaticBytes.[
-      I32 (hash_variant_label env i);
-      I32 ptr
-    ]
-
 end (* Variant *)
 
 
@@ -2125,14 +2119,6 @@ module BoxedWord64 = struct
 
   let payload_field = Tagged.header_size
 
-  let vanilla_lit env i =
-    if BitTagged.can_tag_const i
-    then BitTagged.tag_const i
-    else
-      Tagged.shared_static_obj env Tagged.Bits64 StaticBytes.[
-        I64 i
-      ]
-
   let compile_box env compile_elem : G.t =
     let (set_i, get_i) = new_local env "boxed_i64" in
     let size = if !Flags.gc_strategy = Flags.Incremental then 4l else 3l in
@@ -2141,6 +2127,11 @@ module BoxedWord64 = struct
     get_i ^^ compile_elem ^^ Tagged.store_field64 env (payload_field env) ^^
     get_i ^^
     Tagged.allocation_barrier env
+
+  let lit env i =
+    if BitTagged.can_tag_const i
+    then compile_unboxed_const (BitTagged.tag_const i)
+    else compile_box env (compile_const_64 i)
 
   let box env = Func.share_code1 env "box_i64" ("n", I64Type) [I32Type] (fun env get_n ->
       get_n ^^ BitTagged.if_can_tag_i64 env [I32Type]
@@ -3477,22 +3468,6 @@ module Object = struct
 
   module FieldEnv = Env.Make(String)
 
-  (* This is for static objects *)
-  let vanilla_lit env (fs : (string * int32) list) : int32 =
-    let (hashes, ptrs) = fs
-      |> List.map (fun (n, ptr) -> (Mo_types.Hash.hash n,ptr))
-      |> List.sort compare
-      |> List.split
-    in
-
-    let hash_ptr = E.add_static env StaticBytes.[ i32s hashes ] in
-
-    Tagged.shared_static_obj env Tagged.Object StaticBytes.[
-      I32 (Int32.of_int (List.length fs));
-      I32 hash_ptr;
-      i32s ptrs;
-    ]
-
   (* This is for non-recursive objects, i.e. ObjNewE *)
   (* The instructions in the field already create the indirection if needed *)
   let lit_raw env (fs : (string * (unit -> G.t)) list ) =
@@ -4010,12 +3985,6 @@ module Arr = struct
   let element_type env typ = match Type.promote typ with
      | Type.Array element_type -> element_type
      | _ -> assert false
-
-  let vanilla_lit env ptrs =
-    Tagged.shared_static_obj env Tagged.Array StaticBytes.[
-      I32 (Int32.of_int (List.length ptrs));
-      i32s ptrs;
-    ]
 
   (* Compile an array literal. *)
   let lit env element_instructions =
@@ -7644,7 +7613,7 @@ module StackRep = struct
     | Const.Lit (Const.Null) -> Opt.null_lit env
     | Const.Lit (Const.BigInt n) -> compile_unboxed_const (BigNum.vanilla_lit env n) (* TODO: Redesign for heap allocations *)
     | Const.Lit (Const.Word32 n) -> compile_unboxed_const (BoxedSmallWord.vanilla_lit env n) (* TODO: Redesign for heap allocations *)
-    | Const.Lit (Const.Word64 n) -> compile_unboxed_const (BoxedWord64.vanilla_lit env n) (* TODO: Redesign for heap allocations *)
+    | Const.Lit (Const.Word64 n) -> BoxedWord64.lit env n
     | Const.Lit (Const.Float64 f) -> compile_unboxed_const (Float.vanilla_lit env f) (* TODO: Redesign for heap allocations *)
     | Const.Opt c -> Opt.inject env (materialize_constant env (Const.get_value c))
     | Const.Fun (get_fi, _) -> compile_unboxed_const (Closure.static_closure env (get_fi ())) (* TODO: Redesign for heap allocations *)
