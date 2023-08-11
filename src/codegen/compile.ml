@@ -2078,10 +2078,10 @@ module Closure = struct
     G.i (CallIndirect (nr ty)) ^^
     FakeMultiVal.load env (Lib.List.make n_res I32Type)
 
-  let static_closure env fi : int32 =
-    Tagged.shared_static_obj env Tagged.Closure StaticBytes.[
-      I32 (E.add_fun_ptr env fi);
-      I32 0l
+  let alloc env fi =
+    Tagged.obj env Tagged.Closure [
+      compile_unboxed_const (E.add_fun_ptr env fi);
+      compile_unboxed_const 0l
     ]
 
 end (* Closure *)
@@ -7569,7 +7569,7 @@ module StackRep = struct
     | Const.Lit (Const.Word64 n) -> BoxedWord64.lit env n
     | Const.Lit (Const.Float64 f) -> Float.lit env f
     | Const.Opt c -> Opt.inject env (materialize_constant env c)
-    | Const.Fun (get_fi, _) -> compile_unboxed_const (Closure.static_closure env (get_fi ())) (* TODO: Redesign for heap allocations *)
+    | Const.Fun (get_fi, _) -> Closure.alloc env (get_fi ())
     | Const.Message fi -> assert false
     | Const.Unit -> compile_unboxed_const Tuple.unit_vanilla_lit (* TODO: Redesign for heap allocations *)
     | Const.Tag (i, c) -> Variant.inject env i (materialize_constant env c)
