@@ -7573,10 +7573,7 @@ module StackRep = struct
     | Const.Message fi -> assert false
     | Const.Unit -> Tuple.compile_unit
     | Const.Tag (i, c) -> Variant.inject env i (materialize_constant env c)
-
-    | Const.Lit (Const.Vanilla n) -> assert false
-    | Const.Array cs -> assert false
-    | Const.Obj l -> assert false
+    | _ -> assert false
 
   let adjust env (sr_in : t) sr_out =
     if eq sr_in sr_out
