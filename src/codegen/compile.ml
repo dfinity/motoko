@@ -567,7 +567,7 @@ module E = struct
       let ptr = add_mutable_static_bytes env b  in
       env.static_strings := StringEnv.add b ptr !(env.static_strings);
       ptr
-
+  
   let object_pool_find (env: t) (key: string) : int32 option =
     StringEnv.find_opt key !(env.object_pool)
 
@@ -1574,7 +1574,7 @@ module Tagged = struct
     | Bits32 (* Contains a 32 bit unsigned number *)
     | BigInt
     | Concat (* String concatenation, used by rts/text.c *)
-    | Null (* For opt. Static singleton! *)
+    | Null (* For opt. Singleton in persistent heap *)
     | OneWordFiller (* Only used by the RTS *)
     | FreeSpace (* Only used by the RTS *)
     | ArraySliceMinimum (* Used by the GC for incremental array marking *)
@@ -3626,14 +3626,11 @@ module Blob = struct
       BigNum.from_word32 env
     )
 
-  let static_lit env s =
-    Tagged.shared_static_obj env Tagged.Blob StaticBytes.[
-      I32 (Int32.of_int (String.length s));
-      Bytes s;
-    ]
+  let static_data env s =
+    compile_unboxed_const (Int32.add ptr_unskew (E.add_static env StaticBytes.[Bytes s]))
 
   let lit_ptr_len env s =
-    compile_unboxed_const (Int32.add ptr_unskew (E.add_static env StaticBytes.[Bytes s])) ^^
+    static_data env s ^^
     compile_unboxed_const (Int32.of_int (String.length s))
 
   let alloc env =
@@ -3652,7 +3649,7 @@ module Blob = struct
     let (set_new_blob, get_new_blob) = new_local env "new_blob" in
     compile_unboxed_const blob_length ^^ alloc env ^^ set_new_blob ^^
     get_new_blob ^^ payload_ptr_unskewed env ^^ (* target address *)
-    compile_unboxed_const (static_lit env s) ^^ payload_ptr_unskewed env ^^ (* source address *)
+    static_data env s ^^ (* source address *)
     compile_unboxed_const blob_length ^^ (* copy length *)
     Heap.memcpy env ^^
     get_new_blob
