@@ -279,13 +279,6 @@ module E = struct
     named_imports : int32 NameEnv.t ref;
     built_in_funcs : lazy_function NameEnv.t ref;
     static_strings : int32 StringEnv.t ref;
-      (* Pool for shared static objects. Their lookup needs to be specifically
-         handled by using the tag and the payload without the forwarding pointer.
-         This is because the forwarding pointer depends on the allocation adddress.
-         The lookup is different to `static_string` that has no such
-         allocation-dependent content and can thus be immediately looked up by
-         the string value. *)
-    object_pool : int32 StringEnv.t ref;
     end_of_static_memory : int32 ref; (* End of statically allocated memory *)
     static_memory : (int32 * string) list ref; (* Content of static memory *)
     static_memory_frozen : bool ref;
@@ -334,7 +327,6 @@ module E = struct
     named_imports = ref NameEnv.empty;
     built_in_funcs = ref NameEnv.empty;
     static_strings = ref StringEnv.empty;
-    object_pool = ref StringEnv.empty;
     end_of_static_memory = ref dyn_mem;
     static_memory = ref [];
     static_memory_frozen = ref false;
@@ -535,10 +527,6 @@ module E = struct
     env.end_of_static_memory := Int32.add ptr aligned;
     ptr
 
-  let write_static_memory (env : t) ptr data =
-    env.static_memory := !(env.static_memory) @ [ (ptr, data) ];
-    ()
-
   let add_mutable_static_bytes (env : t) data : int32 =
     let ptr = reserve_static_memory env (Int32.of_int (String.length data)) in
     env.static_memory := !(env.static_memory) @ [ (ptr, data) ];
@@ -568,13 +556,6 @@ module E = struct
       env.static_strings := StringEnv.add b ptr !(env.static_strings);
       ptr
   
-  let object_pool_find (env: t) (key: string) : int32 option =
-    StringEnv.find_opt key !(env.object_pool)
-
-  let object_pool_add (env: t) (key: string) (ptr : int32)  : unit =
-    env.object_pool := StringEnv.add key ptr !(env.object_pool);
-    ()
-
   let add_static_unskewed (env : t) (data : StaticBytes.t) : int32 =
     Int32.add (add_static env data) ptr_unskew
 
@@ -675,17 +656,6 @@ let compile_xor64_const = function
 let compile_eq64_const i =
   compile_const_64 i ^^
   G.i (Compare (Wasm.Values.I64 I64Op.Eq))
-
-(* more random utilities *)
-
-let bytes_of_int32 (i : int32) : string =
-  let b = Buffer.create 4 in
-  let i = Int32.to_int i in
-  Buffer.add_char b (Char.chr (i land 0xff));
-  Buffer.add_char b (Char.chr ((i lsr 8) land 0xff));
-  Buffer.add_char b (Char.chr ((i lsr 16) land 0xff));
-  Buffer.add_char b (Char.chr ((i lsr 24) land 0xff));
-  Buffer.contents b
 
 (* A common variant of todo *)
 
@@ -1838,34 +1808,6 @@ module Tagged = struct
     G.concat_mapi init_elem element_instructions ^^
     get_object ^^
     allocation_barrier env
-
-  let new_static_obj env tag payload =
-    let payload = StaticBytes.as_bytes payload in
-    let header_size = Int32.(mul Heap.word_size (header_size env)) in
-    let size = Int32.(add header_size (Int32.of_int (String.length payload))) in
-    let unskewed_ptr = E.reserve_static_memory env size in
-    let skewed_ptr = Int32.(add unskewed_ptr ptr_skew) in
-    let tag = bytes_of_int32 (int_of_tag tag) in
-    let forward = bytes_of_int32 skewed_ptr in (* forwarding pointer *)
-    (if !Flags.gc_strategy = Flags.Incremental then
-      let incremental_gc_data = tag ^ forward ^ payload in
-      E.write_static_memory env unskewed_ptr incremental_gc_data
-    else
-      let non_incremental_gc_data = tag ^ payload in
-      E.write_static_memory env unskewed_ptr non_incremental_gc_data
-    );
-    skewed_ptr
-
-  let shared_static_obj env tag payload =
-    let tag_word = bytes_of_int32 (int_of_tag tag) in
-    let payload_bytes = StaticBytes.as_bytes payload in
-    let key = tag_word ^ payload_bytes in
-    match E.object_pool_find env key with
-    | Some ptr -> ptr (* no forwarding pointer dereferencing needed as static objects do not move *)
-    | None ->
-      let ptr = new_static_obj env tag payload in
-      E.object_pool_add env key ptr;
-      ptr
 
 end (* Tagged *)
 
@@ -6019,11 +5961,11 @@ module MakeSerialization (Strm : Stream) = struct
 
   (* This value is returned by deserialize_go if deserialization fails in a way
      that should be recoverable by opt parsing.
-     By virtue of being a deduped static value, it can be detected by pointer
-     comparison.
+     It is an (invalid) sentinel pointer value (in skewed format) and can be used for pointer comparison.
+     It will be never placed on the heap and must not be dereferenced.
+     If unskewed, it refers to the unallocated last Wasm memory page.
   *)
-  let coercion_error_value env : int32 =
-    Tagged.shared_static_obj env Tagged.CoercionFailure []
+  let coercion_error_value env = 0xffff_fffdl
 
   (* See Note [Candid subtype checks] *)
   let with_rel_buf_opt env extended get_typtbl_size1 f =
