@@ -67,7 +67,7 @@ impl RegionId {
         match opreg {
             None => 0,
             Some(id) => {
-                assert!(id.0 <= meta_data::max::REGIONS);
+                debug_assert!(id.0 <= meta_data::max::REGIONS);
                 id.0 + 1
             }
         }
@@ -94,7 +94,12 @@ impl RegionSizeInPages {
     pub fn into_u64(opreg: Option<RegionSizeInPages>) -> u64 {
         match opreg {
             None => 0,
-            Some(s) => s.0 + 1,
+            Some(s) => {
+                debug_assert!(
+                    s.0 <= meta_data::max::BLOCKS as u64 * meta_data::size::PAGES_IN_BLOCK as u64
+                );
+                s.0 + 1
+            }
         }
     }
 }
@@ -519,6 +524,8 @@ pub(crate) unsafe fn region_migration_from_v0_into_v2<M: Memory>(mem: &mut M) {
 
     // Region 0 -- classic API for stable memory, as a dedicated region.
     REGION_0 = region_new(mem);
+
+    assert!((*REGION_0.as_region()).id == 0);
 
     // Regions 1 through LAST_RESERVED_REGION_ID, reserved for future use by future Motoko compiler-RTS features.
     region_reserve_id_span(mem, Some(RegionId(1)), RegionId(LAST_RESERVED_REGION_ID));
