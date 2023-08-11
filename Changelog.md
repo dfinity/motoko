@@ -1,5 +1,13 @@
 # Motoko compiler changelog
 
+## 0.9.8 (2023-08-11)
+
+* motoko (`moc`)
+
+  * Added numerical type conversions between adjacent fixed-width types (#4139).
+
+  * Administrative: legacy-named release artefacts are no longer created (#4111).
+
 ## 0.9.7 (2023-07-18)
 
 * motoko (`moc`)
