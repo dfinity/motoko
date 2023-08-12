@@ -420,6 +420,19 @@ unsafe fn region_reserve_id_span<M: Memory>(
 
 #[ic_mem_fn]
 pub unsafe fn region_new<M: Memory>(mem: &mut M) -> Value {
+
+    match crate::stable_mem::get_version() {
+        0 => {
+            assert_eq!(crate::stable_mem::size(),0);
+            region_migration_from_v0_into_v2(mem);
+        },
+        1 => {
+            region_migration_from_v1_into_v2(mem);
+        },
+        2 => {},
+        _ => { assert!(false); }
+    };
+
     let next_id = meta_data::total_allocated_regions::get() as u16;
 
     if next_id == meta_data::max::REGIONS {
@@ -484,10 +497,11 @@ pub unsafe fn region_recover<M: Memory>(mem: &mut M, rid: &RegionId) -> Value {
 }
 
 pub(crate) unsafe fn region_migration_from_v0_into_v2<M: Memory>(mem: &mut M) {
-    use crate::stable_mem::{grow, size, write};
+    use crate::stable_mem::{grow, size, write, get_version};
     use meta_data::size::{PAGES_IN_BLOCK, PAGE_IN_BYTES};
 
-    assert!(size() == 0);
+    assert!(get_version()==0);
+    assert_eq!(size(), 0);
 
     // pages required for meta_data (9/ 960KiB), much less than PAGES_IN_BLOCK (128/ 8MB) for a full block
     let meta_data_pages =
@@ -514,6 +528,8 @@ pub(crate) unsafe fn region_migration_from_v0_into_v2<M: Memory>(mem: &mut M) {
     // Write magic header
     write_magic();
 
+    crate::stable_mem::set_version(2);
+
     // Region 0 -- classic API for stable memory, as a dedicated region.
     REGION_0 = region_new(mem);
 
@@ -521,6 +537,7 @@ pub(crate) unsafe fn region_migration_from_v0_into_v2<M: Memory>(mem: &mut M) {
 
     // Regions 1 through LAST_RESERVED_REGION_ID, reserved for future use by future Motoko compiler-RTS features.
     region_reserve_id_span(mem, Some(RegionId(1)), RegionId(LAST_RESERVED_REGION_ID));
+
 }
 
 //
@@ -611,12 +628,16 @@ pub(crate) unsafe fn region_migration_from_v1_into_v2<M: Memory>(mem: &mut M) {
             Some((RegionId(0), (i + 1) as u16)),
         );
     }
+
+    crate::stable_mem::set_version(2);
+
     /* "Recover" the region data into a heap object. */
     REGION_0 = region_recover(mem, &RegionId(0));
 
     // Ensure that regions 1 through LAST_RESERVED_REGION_ID are already reserved for
     // future use by future Motoko compiler-RTS features.
     region_reserve_id_span(mem, Some(RegionId(1)), RegionId(LAST_RESERVED_REGION_ID));
+
 }
 
 //
@@ -653,13 +674,18 @@ pub(crate) unsafe fn region_migration_from_v2plus_into_v2<M: Memory>(mem: &mut M
 //  - from version 2 into version 2.
 //
 #[ic_mem_fn]
-pub(crate) unsafe fn region_init<M: Memory>(mem: &mut M, from_version: i32) {
+pub(crate) unsafe fn region_init<M: Memory>(mem: &mut M, use_stable_regions: i32) {
     debug_assert!(meta_data::offset::FREE < meta_data::offset::BLOCK_ZERO);
-    match from_version {
-        0 => region_migration_from_v0_into_v2(mem),
-        1 => region_migration_from_v1_into_v2(mem),
-        2 => region_migration_from_v2plus_into_v2(mem),
-        _ => unreachable!(),
+    match crate::stable_mem::get_version() {
+        0 => {
+            assert!(crate::stable_mem::size() == 0);
+            if use_stable_regions != 0 { region_migration_from_v0_into_v2(mem);
+        }; },
+        1 => {
+            assert!(crate::stable_mem::size() > 0);
+            if use_stable_regions != 0 { region_migration_from_v1_into_v2(mem); };
+        },
+        _ => region_migration_from_v2plus_into_v2(mem), //check format & recover region0
     }
 }
 

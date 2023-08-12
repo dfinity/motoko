@@ -5069,21 +5069,24 @@ module StableMem = struct
      1. First version of StableMem.
      2. First version of region system.
    *)
-  let version () =
-    if !Flags.use_stable_regions then
-      Int32.of_int 2
-    else
-      Int32.of_int 1
+  let version () = Int32.of_int 2
 
   let register_globals env =
     (* size (in pages) *)
-    E.add_global64 env "__stablemem_size" Mutable 0L
+    E.add_global64 env "__stablemem_size" Mutable 0L;
+    E.add_global32 env "__stablemem_version" Mutable 0l
 
   let get_mem_size env =
     G.i (GlobalGet (nr (E.get_global env "__stablemem_size")))
 
   let set_mem_size env =
     G.i (GlobalSet (nr (E.get_global env "__stablemem_size")))
+
+  let get_version env =
+    G.i (GlobalGet (nr (E.get_global env "__stablemem_version")))
+
+  let set_version env =
+    G.i (GlobalSet (nr (E.get_global env "__stablemem_version")))
 
   (* stable memory bounds check *)
   let guard env =
@@ -5313,6 +5316,33 @@ module StableMem = struct
             end)
    | _ -> assert false
 
+  (* like logical grow, but triggers change in version *)
+  let grow env =
+    match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+      Func.share_code1 env "__stablemem_grow"
+        ("pages", I64Type) [I64Type] (fun env get_pages ->
+          let (set_res, get_res) = new_local64 env "size" in
+          (* logical grow *)
+          get_pages ^^
+          logical_grow env ^^
+          set_res ^^
+          (* if version is 0, and mem_size > 0; set version = 1 *)
+          get_version env ^^
+          G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
+          get_mem_size env ^^
+          compile_const_64 0L ^^
+          G.i (Compare (Wasm.Values.I64 I32Op.GtU)) ^^
+          G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
+          (G.if0 begin
+             compile_unboxed_const 1l ^^
+             set_version env
+           end
+             G.nop) ^^
+          (* return res *)
+          get_res)
+   | _ -> assert false
+
   let load_word32 env =
     read env true "word32" I32Type 4l load_unskewed_ptr
   let store_word32 env =
@@ -5490,6 +5520,41 @@ module RTS_Exports = struct
     E.add_export env (nr {
       name = Lib.Utf8.decode "moc_stable_mem_size";
       edesc = nr (FuncExport (nr moc_stable_mem_size_fi))
+    });
+
+    let moc_stable_mem_get_version_fi =
+      E.add_fun env "moc_stable_mem_get_version" (
+        Func.of_body env [] [I32Type]
+          (fun env ->
+            match E.mode env with
+            | Flags.ICMode | Flags.RefMode ->
+               StableMem.get_version env
+            | _ ->
+               E.trap_with env "moc_stable_mem_get_version is not supposed to be called in WASI" (* improve me *)
+          )
+        )
+    in
+    E.add_export env (nr {
+      name = Lib.Utf8.decode "moc_stable_mem_get_version";
+      edesc = nr (FuncExport (nr moc_stable_mem_get_version_fi))
+    });
+
+    let moc_stable_mem_set_version_fi =
+      E.add_fun env "moc_stable_mem_set_version" (
+        Func.of_body env ["version", I32Type] []
+          (fun env ->
+            match E.mode env with
+            | Flags.ICMode | Flags.RefMode ->
+               G.i (LocalGet (nr 0l)) ^^
+               StableMem.set_version env
+            | _ ->
+               E.trap_with env "moc_stable_mem_set_version is not supposed to be called in WASI" (* improve me *)
+          )
+        )
+    in
+    E.add_export env (nr {
+      name = Lib.Utf8.decode "moc_stable_mem_set_version";
+      edesc = nr (FuncExport (nr moc_stable_mem_set_version_fi))
     })
 
 end (* RTS_Exports *)
@@ -7600,9 +7665,9 @@ module Stabilization = struct
 
         (* save version at M + (pagesize - 4) *)
         get_M ^^
-          compile_add64_const (Int64.sub page_size64 4L) ^^
+        compile_add64_const (Int64.sub page_size64 4L) ^^
         (* TODO bump version? *)
-        compile_unboxed_const (StableMem.version()) ^^
+        StableMem.get_version env ^^
         StableMem.write_word32 env
 
       end
@@ -7628,6 +7693,8 @@ module Stabilization = struct
           StableMem.get_mem_size env ^^
           G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
           E.else_trap_with env "StableMem.mem_size non-zero" ^^
+          compile_unboxed_const 0l ^^
+          StableMem.set_version env ^^
           Object.lit_raw env fs'
         end
         begin
@@ -10351,10 +10418,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
   | OtherPrim "regionNew", [] ->
     SR.Vanilla,
-    if !Flags.use_stable_regions then
-      Region.new_ env ^^ Region.sanity_check "region_new" env
-    else
-      E.trap_with env (Printf.sprintf "stable regions not enabled.")
+    Region.new_ env ^^ Region.sanity_check "region_new" env
 
   | OtherPrim ("regionGrow"), [e0; e1] ->
     SR.UnboxedWord64,
@@ -10726,9 +10790,9 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.UnboxedWord64,
     compile_exp_as env ae SR.UnboxedWord64 e ^^
     if !Flags.use_stable_regions then
-      Region0.logical_grow env
+      Region0.logical_grow env (*TODO rename*)
     else
-      StableMem.logical_grow env
+      StableMem.grow env
 
   | OtherPrim "stableVarQuery", [] ->
     SR.UnboxedTuple 2,
@@ -10844,12 +10908,9 @@ and compile_prim_invocation (env : E.t) ae p es at =
         3. return v
     *)
     SR.Vanilla,
-    let (set_version, get_version) = new_local env "version" in
-    Stabilization.destabilize env ty set_version ^^
-      if !Flags.use_stable_regions then
-        get_version ^^
-        E.call_import env "rts" "region_init"
-      else G.nop
+    Stabilization.destabilize env ty (StableMem.set_version env) ^^
+    compile_unboxed_const (if !Flags.use_stable_regions then 1l else 0l) ^^
+    E.call_import env "rts" "region_init"
 
   | ICStableWrite ty, [e] ->
     SR.unit,
