@@ -5430,36 +5430,36 @@ module RTS_Exports = struct
       })
     end;
 
-    let stable64_write_moc_fi =
+    let ic0_stable64_write_fi =
       if E.mode env = Flags.WASIMode then
-        E.add_fun env "stable64_write_moc" (
+        E.add_fun env "ic0_stable64_write" (
             Func.of_body env ["to", I64Type; "from", I64Type; "len", I64Type] []
               (fun env ->
-                E.trap_with env "stable64_write_moc is not supposed to be called in WASI"
+                E.trap_with env "ic0_stable64_write is not supposed to be called in WASI"
               )
           )
       else E.reuse_import env "ic0" "stable64_write" in
     E.add_export env (nr {
-      name = Lib.Utf8.decode "stable64_write_moc";
-      edesc = nr (FuncExport (nr stable64_write_moc_fi))
+      name = Lib.Utf8.decode "ic0_stable64_write";
+      edesc = nr (FuncExport (nr ic0_stable64_write_fi))
     });
 
-    let stable64_read_moc_fi =
+    let ic0_stable64_read_fi =
       if E.mode env = Flags.WASIMode then
-        E.add_fun env "stable64_read_moc" (
+        E.add_fun env "ic0_stable64_read" (
             Func.of_body env ["dst", I64Type; "offset", I64Type; "len", I64Type] []
               (fun env ->
-                E.trap_with env "stable64_read_moc is not supposed to be called in WASI"
+                E.trap_with env "ic0_stable64_read is not supposed to be called in WASI"
               )
           )
       else E.reuse_import env "ic0" "stable64_read" in
     E.add_export env (nr {
-      name = Lib.Utf8.decode "stable64_read_moc";
-      edesc = nr (FuncExport (nr stable64_read_moc_fi))
+      name = Lib.Utf8.decode "ic0_stable64_read";
+      edesc = nr (FuncExport (nr ic0_stable64_read_fi))
     });
 
-    let stable64_grow_moc_fi =
-      E.add_fun env "stable64_grow_moc" (
+    let moc_stable_mem_grow_fi =
+      E.add_fun env "moc_stable_mem_grow" (
         Func.of_body env ["newPages", I64Type] [I64Type]
           (fun env ->
             match E.mode env with
@@ -5467,29 +5467,29 @@ module RTS_Exports = struct
               G.i (LocalGet (nr 0l)) ^^
               StableMem.logical_grow env
             | _ ->
-              E.trap_with env "stable64_grow_moc is not supposed to be called in WASI" (* improve me *)
+              E.trap_with env "moc_stable_mem_grow is not supposed to be called in WASI" (* improve me *)
         ))
     in
     E.add_export env (nr {
-      name = Lib.Utf8.decode "stable64_grow_moc";
-      edesc = nr (FuncExport (nr stable64_grow_moc_fi))
+      name = Lib.Utf8.decode "moc_stable_mem_grow";
+      edesc = nr (FuncExport (nr moc_stable_mem_grow_fi))
     });
 
-    let stable64_size_moc_fi =
-      E.add_fun env "stable64_size_moc" (
+    let moc_stable_mem_size_fi =
+      E.add_fun env "moc_stable_mem_size" (
         Func.of_body env [] [I64Type]
           (fun env ->
             match E.mode env with
             | Flags.ICMode | Flags.RefMode ->
                StableMem.get_mem_size env
             | _ ->
-               E.trap_with env "stable64_size_moc is not supposed to be called in WASI" (* improve me *)
+               E.trap_with env "moc_stable_mem_size is not supposed to be called in WASI" (* improve me *)
           )
         )
     in
     E.add_export env (nr {
-      name = Lib.Utf8.decode "stable64_size_moc";
-      edesc = nr (FuncExport (nr stable64_size_moc_fi))
+      name = Lib.Utf8.decode "moc_stable_mem_size";
+      edesc = nr (FuncExport (nr moc_stable_mem_size_fi))
     })
 
 end (* RTS_Exports *)

@@ -27,7 +27,7 @@ pub mod continuation_table;
 mod float;
 pub mod gc;
 //#[cfg(feature = "ic")]
-mod ic0_stable;
+mod stable_mem;
 #[cfg(feature = "ic")]
 mod idl;
 pub mod leb128;
