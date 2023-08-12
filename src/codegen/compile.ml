@@ -3975,7 +3975,7 @@ module Region = struct
          get_region)
     else G.nop
 
-  (* TODO: all these opns must resolve forwarding pointers here or in RTS *)
+  (* NB: all these opns must resolve forwarding pointers here or in RTS *)
   let id env =
     E.call_import env "rts" "region_id" (* TEMP (for testing) *)
   let new_ env =

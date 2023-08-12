@@ -26,8 +26,6 @@ pub mod continuation_table;
 #[cfg(feature = "ic")]
 mod float;
 pub mod gc;
-//#[cfg(feature = "ic")]
-mod stable_mem;
 #[cfg(feature = "ic")]
 mod idl;
 pub mod leb128;
@@ -35,6 +33,8 @@ mod mem_utils;
 pub mod memory;
 pub mod principal_id;
 pub mod region;
+//#[cfg(feature = "ic")]
+mod stable_mem;
 //#[cfg(feature = "ic")]
 pub mod region0;
 mod static_checks;

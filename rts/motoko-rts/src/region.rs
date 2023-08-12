@@ -272,7 +272,7 @@ mod meta_data {
 
     pub mod total_allocated_blocks {
         use super::offset;
-        use crate::stable_mem::util::{read_u32, write_u32};
+        use crate::stable_mem::{read_u32, write_u32};
 
         use crate::region::REGION_TOTAL_ALLOCATED_BLOCKS;
 
@@ -294,7 +294,7 @@ mod meta_data {
 
     pub mod total_allocated_regions {
         use super::offset;
-        use crate::stable_mem::util::{read_u64, write_u64};
+        use crate::stable_mem::{read_u64, write_u64};
 
         pub fn get() -> u64 {
             read_u64(offset::TOTAL_ALLOCATED_REGIONS)
@@ -308,8 +308,8 @@ mod meta_data {
         // invariant: all blocks whose IDs are below the total_allocated_blocks are valid.
 
         use super::{bytes_of, offset, size};
-        use crate::stable_mem::util::{read_u16, write_u16};
         use crate::region::{BlockId, RegionId};
+        use crate::stable_mem::{read_u16, write_u16};
 
         // Compute an offset in stable memory for a particular block ID (based zero).
         fn index(b: &BlockId) -> u64 {
@@ -345,7 +345,7 @@ mod meta_data {
         // invariant (for now, pre-GC integration):
         //  all regions whose IDs are below the total_allocated_regions are valid.
         use super::{offset, size};
-        use crate::stable_mem::util::{read_u64, write_u64};
+        use crate::stable_mem::{read_u64, write_u64};
 
         fn index(r: &RegionId) -> u64 {
             offset::REGION_TABLE + r.0 as u64 * size::REGION_TABLE_ENTRY as u64
@@ -364,7 +364,7 @@ mod meta_data {
 }
 
 fn write_magic() {
-    use crate::stable_mem::util::{size, write, write_u32};
+    use crate::stable_mem::{size, write, write_u32};
     assert!(size() > 0);
     write(meta_data::offset::MAGIC, meta_data::version::MAGIC);
     write_u32(meta_data::offset::VERSION, meta_data::version::VERSION);
@@ -484,7 +484,7 @@ pub unsafe fn region_recover<M: Memory>(mem: &mut M, rid: &RegionId) -> Value {
 }
 
 pub(crate) unsafe fn region_migration_from_v0_into_v2<M: Memory>(mem: &mut M) {
-    use crate::stable_mem::util::{grow, size, write};
+    use crate::stable_mem::{grow, size, write};
     use meta_data::size::{PAGES_IN_BLOCK, PAGE_IN_BYTES};
 
     assert!(size() == 0);
@@ -537,7 +537,7 @@ pub(crate) unsafe fn region_migration_from_v1_into_v2<M: Memory>(mem: &mut M) {
     // - copy the head block of data from temp blob into new "final block" (logically still first) for region 0.
     // - initialize the meta data for the region system in vacated initial block.
 
-    use crate::stable_mem::util::{grow, read, size, write};
+    use crate::stable_mem::{grow, read, size, write};
 
     let header_len = meta_data::size::BLOCK_IN_BYTES as u32;
 
@@ -624,7 +624,7 @@ pub(crate) unsafe fn region_migration_from_v1_into_v2<M: Memory>(mem: &mut M) {
 // Case: Version 2 into version 2 ("Trivial migration" case).
 //
 pub(crate) unsafe fn region_migration_from_v2plus_into_v2<M: Memory>(mem: &mut M) {
-    use crate::stable_mem::util::{read, read_u32, size};
+    use crate::stable_mem::{read, read_u32, size};
 
     // Check if the magic in the memory corresponds to this object.
     assert!(size() > 1);
@@ -697,11 +697,11 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
     // Actually grow stable memory with more pages as required,
     // while respecting the global maximum limit on pages.
     {
-        let have = crate::stable_mem::util::size();
+        let have = crate::stable_mem::size();
         let need = total_required_pages(new_total_blocks);
         if have < need {
             let diff = need - have;
-            if crate::stable_mem::util::grow(diff) == u64::MAX {
+            if crate::stable_mem::grow(diff) == u64::MAX {
                 return u64::MAX; // Propagate error
             }
         }
@@ -761,7 +761,7 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
 }
 
 pub(crate) unsafe fn region_load<M: Memory>(_mem: &mut M, r: Value, offset: u64, dst: &mut [u8]) {
-    use crate::stable_mem::util::read;
+    use crate::stable_mem::read;
     use meta_data::size::BLOCK_IN_BYTES;
 
     let r = RegionObject::from_value(&r);
@@ -818,7 +818,7 @@ pub(crate) unsafe fn region_load<M: Memory>(_mem: &mut M, r: Value, offset: u64,
 }
 
 pub(crate) unsafe fn region_store<M: Memory>(_mem: &mut M, r: Value, offset: u64, src: &[u8]) {
-    use crate::stable_mem::util::write;
+    use crate::stable_mem::write;
     use meta_data::size::BLOCK_IN_BYTES;
 
     let r = RegionObject::from_value(&r);
