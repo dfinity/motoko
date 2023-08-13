@@ -420,17 +420,18 @@ unsafe fn region_reserve_id_span<M: Memory>(
 
 #[ic_mem_fn]
 pub unsafe fn region_new<M: Memory>(mem: &mut M) -> Value {
-
     match crate::stable_mem::get_version() {
         0 => {
-            assert_eq!(crate::stable_mem::size(),0);
+            assert_eq!(crate::stable_mem::size(), 0);
             region_migration_from_v0_into_v2(mem);
-        },
+        }
         1 => {
             region_migration_from_v1_into_v2(mem);
-        },
-        2 => {},
-        _ => { assert!(false); }
+        }
+        2 => {}
+        _ => {
+            assert!(false);
+        }
     };
 
     let next_id = meta_data::total_allocated_regions::get() as u16;
@@ -497,10 +498,10 @@ pub unsafe fn region_recover<M: Memory>(mem: &mut M, rid: &RegionId) -> Value {
 }
 
 pub(crate) unsafe fn region_migration_from_v0_into_v2<M: Memory>(mem: &mut M) {
-    use crate::stable_mem::{grow, size, write, get_version};
+    use crate::stable_mem::{get_version, grow, size, write};
     use meta_data::size::{PAGES_IN_BLOCK, PAGE_IN_BYTES};
 
-    assert!(get_version()==0);
+    assert!(get_version() == 0);
     assert_eq!(size(), 0);
 
     // pages required for meta_data (9/ 960KiB), much less than PAGES_IN_BLOCK (128/ 8MB) for a full block
@@ -537,7 +538,6 @@ pub(crate) unsafe fn region_migration_from_v0_into_v2<M: Memory>(mem: &mut M) {
 
     // Regions 1 through LAST_RESERVED_REGION_ID, reserved for future use by future Motoko compiler-RTS features.
     region_reserve_id_span(mem, Some(RegionId(1)), RegionId(LAST_RESERVED_REGION_ID));
-
 }
 
 //
@@ -637,7 +637,6 @@ pub(crate) unsafe fn region_migration_from_v1_into_v2<M: Memory>(mem: &mut M) {
     // Ensure that regions 1 through LAST_RESERVED_REGION_ID are already reserved for
     // future use by future Motoko compiler-RTS features.
     region_reserve_id_span(mem, Some(RegionId(1)), RegionId(LAST_RESERVED_REGION_ID));
-
 }
 
 //
@@ -679,12 +678,16 @@ pub(crate) unsafe fn region_init<M: Memory>(mem: &mut M, use_stable_regions: i32
     match crate::stable_mem::get_version() {
         0 => {
             assert!(crate::stable_mem::size() == 0);
-            if use_stable_regions != 0 { region_migration_from_v0_into_v2(mem);
-        }; },
+            if use_stable_regions != 0 {
+                region_migration_from_v0_into_v2(mem);
+            };
+        }
         1 => {
             assert!(crate::stable_mem::size() > 0);
-            if use_stable_regions != 0 { region_migration_from_v1_into_v2(mem); };
-        },
+            if use_stable_regions != 0 {
+                region_migration_from_v1_into_v2(mem);
+            };
+        }
         _ => region_migration_from_v2plus_into_v2(mem), //check format & recover region0
     }
 }
