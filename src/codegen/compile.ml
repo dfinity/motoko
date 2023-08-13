@@ -532,6 +532,10 @@ module E = struct
     | ts -> VarBlockType (nr (func_type env (FuncType ([], ts))))
 
   let if_ env tys thn els = G.if_ (as_block_type env tys) thn els
+  let multi_if_ env tys1 tys2 thn els =
+    G.if_
+      (VarBlockType (nr (func_type env (FuncType (tys1, tys2)))))
+      thn els
   let block_ env tys bdy = G.block_ (as_block_type env tys) bdy
 
   let trap_with env msg = env.trap_with env msg
@@ -3920,6 +3924,8 @@ module Region0 = struct
 
   let load_float64 env = E.call_import env "rts" "region0_load_float64"
   let store_float64 env = E.call_import env "rts" "region0_store_float64"
+
+
 end
 
 module Region = struct
@@ -4001,6 +4007,7 @@ module Region = struct
 
   let load_float64 env = E.call_import env "rts" "region_load_float64"
   let store_float64 env = E.call_import env "rts" "region_store_float64"
+
 end
 
 module Text = struct
@@ -5408,6 +5415,14 @@ module StableMem = struct
           get_len ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
           IC.system_call env "stable64_write")
     | _ -> assert false
+
+  let if_regions env tys1 tys2 is1 is2 =
+    get_version env ^^
+    compile_unboxed_const (version()) ^^
+    G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+    E.multi_if_ env tys1 tys2
+      is1
+      is2
 
 end (* StableMemory *)
 
@@ -10617,6 +10632,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | OtherPrim ("arrayToBlob" | "arrayMutToBlob"), e ->
     const_sr SR.Vanilla (Arr.toBlob env)
 
+  (*TODO: delete me*)
   | OtherPrim "stableMemoryRegion", [] ->
      SR.Vanilla,
      if !Flags.use_stable_regions then
@@ -10633,37 +10649,33 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | OtherPrim ("stableMemoryLoadNat32" | "stableMemoryLoadInt32"), [e] ->
     SR.UnboxedWord32,
     compile_exp_as env ae SR.UnboxedWord64 e ^^
-    if !Flags.use_stable_regions then
-      Region0.load_word32 env
-    else
-      StableMem.load_word32 env
+    StableMem.if_regions env [I64Type] [I32Type]
+      (Region0.load_word32 env)
+      (StableMem.load_word32 env)
 
   | OtherPrim ("stableMemoryStoreNat32" | "stableMemoryStoreInt32"), [e1; e2] ->
     SR.unit,
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     compile_exp_as env ae SR.UnboxedWord32 e2 ^^
-    if !Flags.use_stable_regions then
-      Region0.store_word32 env
-    else
-      StableMem.store_word32 env
+    StableMem.if_regions env [I64Type; I32Type] []
+      (Region0.store_word32 env)
+      (StableMem.store_word32 env)
 
   | OtherPrim "stableMemoryLoadNat8", [e] ->
     SR.Vanilla,
     compile_exp_as env ae SR.UnboxedWord64 e ^^
-    (if !Flags.use_stable_regions then
-      Region0.load_word8 env
-    else
-      StableMem.load_word8 env)
+    StableMem.if_regions env [I64Type] [I32Type]
+      (Region0.load_word8 env)
+      (StableMem.load_word8 env)
     ^^
     TaggedSmallWord.msb_adjust Type.Nat8
 
   | OtherPrim "stableMemoryLoadInt8", [e] ->
     SR.Vanilla,
     compile_exp_as env ae SR.UnboxedWord64 e ^^
-    (if !Flags.use_stable_regions then
-      Region0.load_word8 env
-    else
-      StableMem.load_word8 env)
+    StableMem.if_regions env [I64Type] [I32Type]
+      (Region0.load_word8 env)
+      (StableMem.load_word8 env)
     ^^
     TaggedSmallWord.msb_adjust Type.Int8
 
@@ -10673,37 +10685,33 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.unit,
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     compile_exp_as env ae SR.Vanilla e2 ^^ TaggedSmallWord.lsb_adjust Type.Nat8 ^^
-    if !Flags.use_stable_regions then
-      Region0.store_word8 env
-    else
-      StableMem.store_word8 env
+    StableMem.if_regions env [I64Type; I32Type] []
+      (Region0.store_word8 env)
+      (StableMem.store_word8 env)
 
   | OtherPrim "stableMemoryStoreInt8", [e1; e2] ->
     SR.unit,
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     compile_exp_as env ae SR.Vanilla e2 ^^ TaggedSmallWord.lsb_adjust Type.Int8 ^^
-    if !Flags.use_stable_regions then
-      Region0.store_word8 env
-    else
-      StableMem.store_word8 env
+    StableMem.if_regions env [I64Type; I32Type] []
+      (Region0.store_word8 env)
+      (StableMem.store_word8 env)
 
   | OtherPrim "stableMemoryLoadNat16", [e] ->
     SR.Vanilla,
     compile_exp_as env ae SR.UnboxedWord64 e ^^
-    (if !Flags.use_stable_regions then
-      Region0.load_word16 env
-    else
-      StableMem.load_word16 env)
+    StableMem.if_regions env [I64Type] [I32Type]
+      (Region0.load_word16 env)
+      (StableMem.load_word16 env)
     ^^
     TaggedSmallWord.msb_adjust Type.Nat16
 
   | OtherPrim "stableMemoryLoadInt16", [e] ->
     SR.Vanilla,
     compile_exp_as env ae SR.UnboxedWord64 e ^^
-    (if !Flags.use_stable_regions then
-      Region0.load_word16 env
-    else
-      StableMem.load_word16 env)
+    StableMem.if_regions env [I64Type] [I32Type]
+      (Region0.load_word16 env)
+      (StableMem.load_word16 env)
     ^^
     TaggedSmallWord.msb_adjust Type.Int16
 
@@ -10711,53 +10719,47 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.unit,
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     compile_exp_as env ae SR.Vanilla e2 ^^ TaggedSmallWord.lsb_adjust Type.Nat16 ^^
-    if !Flags.use_stable_regions then
-      Region0.store_word16 env
-    else
-      StableMem.store_word16 env
+    StableMem.if_regions env [I64Type; I32Type] []
+      (Region0.store_word16 env)
+      (StableMem.store_word16 env)
 
   | OtherPrim "stableMemoryStoreInt16", [e1; e2] ->
     SR.unit,
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     compile_exp_as env ae SR.Vanilla e2 ^^ TaggedSmallWord.lsb_adjust Type.Int16 ^^
-    if !Flags.use_stable_regions then
-      Region0.store_word16 env
-    else
-      StableMem.store_word16 env
+    StableMem.if_regions env  [I64Type; I32Type] []
+      (Region0.store_word16 env)
+      (StableMem.store_word16 env)
 
   | OtherPrim ("stableMemoryLoadNat64" | "stableMemoryLoadInt64"), [e] ->
     SR.UnboxedWord64,
     compile_exp_as env ae SR.UnboxedWord64 e ^^
-    if !Flags.use_stable_regions then
-      Region0.load_word64 env
-    else
-      StableMem.load_word64 env
+    StableMem.if_regions env [I64Type] [I64Type]
+      (Region0.load_word64 env)
+      (StableMem.load_word64 env)
 
   | OtherPrim ("stableMemoryStoreNat64" | "stableMemoryStoreInt64"), [e1; e2] ->
     SR.unit,
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     compile_exp_as env ae SR.UnboxedWord64 e2 ^^
-    if !Flags.use_stable_regions then
-      Region0.store_word64 env
-    else
-      StableMem.store_word64 env
+    StableMem.if_regions env [I64Type; I64Type] []
+      (Region0.store_word64 env)
+      (StableMem.store_word64 env)
 
   | OtherPrim "stableMemoryLoadFloat", [e] ->
     SR.UnboxedFloat64,
     compile_exp_as env ae SR.UnboxedWord64 e ^^
-    if !Flags.use_stable_regions then
-      Region0.load_float64 env
-    else
-      StableMem.load_float64 env
+    StableMem.if_regions env [I64Type] [F64Type]
+      (Region0.load_float64 env)
+      (StableMem.load_float64 env)
 
   | OtherPrim "stableMemoryStoreFloat", [e1; e2] ->
     SR.unit,
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     compile_exp_as env ae SR.UnboxedFloat64 e2 ^^
-    if !Flags.use_stable_regions then
-      Region0.store_float64 env
-    else
-      StableMem.store_float64 env
+    StableMem.if_regions env [I64Type; F64Type] []
+      (Region0.store_float64 env)
+      (StableMem.store_float64 env)
 
   | OtherPrim "stableMemoryLoadBlob", [e1; e2] ->
     SR.Vanilla,
@@ -10765,34 +10767,30 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_as env ae SR.Vanilla e2 ^^
     Blob.lit env "Blob size out of bounds" ^^
     BigNum.to_word32_with env ^^
-    if !Flags.use_stable_regions then
-      Region0.load_blob env
-    else
-      StableMem.load_blob env
+    StableMem.if_regions env [I64Type; I32Type] [I32Type]
+      (Region0.load_blob env)
+      (StableMem.load_blob env)
 
   | OtherPrim "stableMemoryStoreBlob", [e1; e2] ->
     SR.unit,
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     compile_exp_as env ae SR.Vanilla e2 ^^
-    if !Flags.use_stable_regions then
-      Region0.store_blob env
-    else
-      StableMem.store_blob env
+    StableMem.if_regions env [I64Type; I32Type] []
+      (Region0.store_blob env)
+      (StableMem.store_blob env)
 
   | OtherPrim "stableMemorySize", [] ->
     SR.UnboxedWord64,
-    if !Flags.use_stable_regions then
-      Region0.get_mem_size env
-    else
-      StableMem.get_mem_size env
+    StableMem.if_regions env [] [I64Type]
+      (Region0.get_mem_size env)
+      (StableMem.get_mem_size env)
 
   | OtherPrim "stableMemoryGrow", [e] ->
     SR.UnboxedWord64,
     compile_exp_as env ae SR.UnboxedWord64 e ^^
-    if !Flags.use_stable_regions then
-      Region0.logical_grow env (*TODO rename*)
-    else
-      StableMem.grow env
+    StableMem.if_regions env [I64Type] [I64Type]
+      (Region0.logical_grow env)
+      (StableMem.grow env)
 
   | OtherPrim "stableVarQuery", [] ->
     SR.UnboxedTuple 2,
