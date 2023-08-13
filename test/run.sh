@@ -196,8 +196,7 @@ then
   else
     if [ $ACCEPT = yes ]
     then
-      echo "ERROR: Could not run ic-ref-run, cannot update expected test output"
-      exit 1
+      echo "WARNING: Could not run ic-ref-run, cannot update expected test output"
     else
       echo "WARNING: Could not run ic-ref-run, will skip running some tests"
       HAVE_ic_ref_run=no
