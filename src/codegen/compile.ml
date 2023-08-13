@@ -5416,6 +5416,9 @@ module StableMem = struct
           IC.system_call env "stable64_write")
     | _ -> assert false
 
+
+  (*
+  (* This version uses multi-value blocks to produce shorted code, but confuses wasm-opt. *)
   let if_regions env tys1 tys2 is1 is2 =
     get_version env ^^
     compile_unboxed_const (version()) ^^
@@ -5423,6 +5426,18 @@ module StableMem = struct
     E.multi_if_ env tys1 tys2
       is1
       is2
+  *)
+  let if_regions env tys1 tys2 is1 is2 =
+    let locals = List.mapi (fun i ty -> new_local_ env ty (Printf.sprintf "arg_%i" i)) tys1 in
+    let getters = List.fold_right (fun (_ ,get, _) is -> get ^^ is) locals G.nop in
+    let setters = List.fold_right (fun (set, _, _) is -> is ^^ set) locals G.nop in
+    setters ^^
+    get_version env ^^
+    compile_unboxed_const (version()) ^^
+    G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+    E.if_ env tys2
+      (getters ^^ is1)
+      (getters ^^ is2)
 
 end (* StableMemory *)
 
