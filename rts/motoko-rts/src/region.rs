@@ -4,7 +4,9 @@ use crate::rts_trap_with;
 use crate::trap_with_prefix;
 use crate::types::{size_of, Blob, Bytes, Region, Value, TAG_REGION};
 
-const VERSION_NO_STABLE_MEMORY: u32 = 0;
+// Versions
+// Should agree with constants StableMem.version_no_stable_memory etc. in compile.ml
+const VERSION_NO_STABLE_MEMORY: u32 = 0; // never manifest in serialized form
 const VERSION_SOME_STABLE_MEMORY: u32 = 1;
 const VERSION_REGIONS: u32 = 2;
 

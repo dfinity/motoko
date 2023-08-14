@@ -5078,7 +5078,7 @@ module StableMem = struct
 
   (* Versioning (c.f. Region.rs) *)
   (* NB: these constants must agree with VERSION_NO_STABLE_MEMORY etc. in Region.rs *)
-  let version_no_stable_memory = Int32.of_int 0
+  let version_no_stable_memory = Int32.of_int 0 (* never manifest in serialized form *)
   let version_some_stable_memory = Int32.of_int 1
   let version_regions = Int32.of_int 2
   let version_max = version_regions
