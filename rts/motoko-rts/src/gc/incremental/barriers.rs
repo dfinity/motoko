@@ -6,11 +6,12 @@ use motoko_rts_macros::ic_mem_fn;
 
 use crate::{
     memory::Memory,
-    persistence::get_incremental_gc_state,
     types::{is_skewed, Value},
 };
 
-use super::{count_allocation, post_allocation_barrier, pre_write_barrier, Phase};
+use super::{
+    count_allocation, get_incremental_gc_state, post_allocation_barrier, pre_write_barrier, Phase,
+};
 
 #[no_mangle]
 pub unsafe extern "C" fn running_gc() -> bool {

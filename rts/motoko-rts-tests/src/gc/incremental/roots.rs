@@ -65,13 +65,16 @@ unsafe fn check_visit_continuation_table(heap: &MotokoHeap, continuation_ids: &[
 }
 
 unsafe fn get_roots(heap: &MotokoHeap) -> Roots {
-    let static_roots = Value::from_ptr(heap.static_root_array_address());
+    let static_root = heap.static_root_array_address() as *mut Value;
     let continuation_table_location = heap.continuation_table_ptr_address() as *mut Value;
+    let unused_root = &mut Value::from_scalar(0) as *mut Value;
     assert_ne!(continuation_table_location, null_mut());
-    Roots {
-        static_roots,
+    [
+        static_root,
         continuation_table_location,
-    }
+        unused_root,
+        unused_root,
+    ]
 }
 
 fn object_id(heap: &MotokoHeap, address: usize) -> u32 {

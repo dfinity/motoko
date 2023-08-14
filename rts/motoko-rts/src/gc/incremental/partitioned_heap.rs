@@ -73,6 +73,8 @@ const MAX_PARTITIONS: usize = (WASM_MEMORY_BYTE_SIZE.0 / PARTITION_SIZE as u64) 
 pub const SURVIVAL_RATE_THRESHOLD: f64 = 0.85;
 
 /// Heap partition of size `PARTITION_SIZE`.
+/// Use a long-term representation by relying on C layout.
+#[repr(C)]
 pub struct Partition {
     index: usize,        // Index of the partition `0..MAX_PARTITIONS`.
     free: bool,          // Denotes a free partition (which may still contain static space).
@@ -85,6 +87,22 @@ pub struct Partition {
     evacuate: bool,      // Specifies whether the partition is to be evacuated or being evacuated.
     update: bool,        // Specifies whether the pointers in the partition have to be updated.
 }
+
+/// For RTS unit testing only.
+/// Optimization: Avoiding `Option` or `Lazy`.
+#[cfg(not(feature = "ic"))]
+const UNINITIALIZED_PARTITION: Partition = Partition {
+    index: usize::MAX,
+    free: false,
+    large_content: false,
+    marked_size: 0,
+    static_size: 0,
+    dynamic_size: 0,
+    bitmap: super::mark_bitmap::DEFAULT_MARK_BITMAP,
+    temporary: false,
+    evacuate: false,
+    update: false,
+};
 
 impl Partition {
     pub fn get_index(&self) -> usize {
@@ -222,6 +240,8 @@ impl Partition {
 
 /// Iterates over all partitions and their contained marked objects, by skipping
 /// free partitions, the subsequent partitions of large objects, and unmarked objects.
+/// Use a long-term representation by relying on C layout.
+#[repr(C)]
 pub struct PartitionedHeapIterator {
     partition_index: usize,
     bitmap_iterator: Option<BitmapIterator>,
@@ -330,6 +350,8 @@ impl PartitionedHeapIterator {
 }
 
 /// Partitioned heap used by the incremental GC.
+/// Use a long-term representation by relying on C layout.
+#[repr(C)]
 pub struct PartitionedHeap {
     partitions: [Partition; MAX_PARTITIONS],
     heap_base: usize,
@@ -341,6 +363,21 @@ pub struct PartitionedHeap {
     gc_running: bool, // Create bitmaps for partitions when allocated during active GC.
     precomputed_heap_size: usize, // Occupied heap size, excluding the dynamic heap in the allocation partition.
 }
+
+/// For RTS unit testing only.
+/// Optimization: Avoiding `Option` or `LazyCell`.
+#[cfg(not(feature = "ic"))]
+pub const UNINITIALIZED_HEAP: PartitionedHeap = PartitionedHeap {
+    partitions: [UNINITIALIZED_PARTITION; MAX_PARTITIONS],
+    heap_base: 0,
+    allocation_index: 0,
+    free_partitions: 0,
+    evacuating: false,
+    reclaimed: 0,
+    bitmap_allocation_pointer: 0,
+    gc_running: false,
+    precomputed_heap_size: 0,
+};
 
 impl PartitionedHeap {
     pub unsafe fn new<M: Memory>(mem: &mut M, heap_base: usize) -> PartitionedHeap {

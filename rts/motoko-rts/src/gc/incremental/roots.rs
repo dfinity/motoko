@@ -1,12 +1,11 @@
 use motoko_rts_macros::ic_mem_fn;
 
-use crate::{memory::Memory, types::Value, visitor::pointer_to_dynamic_heap};
-
-use super::barriers::write_with_barrier;
+use crate::{types::Value, visitor::pointer_to_dynamic_heap};
 
 /// Root referring to all canister variables.
 /// This root is reinitialized on each canister upgrade.
 /// The scalar sentinel denotes an uninitialized root.
+#[cfg(feature = "ic")]
 static mut STATIC_ROOT: Value = Value::from_scalar(0);
 
 /// GC root set.
@@ -40,17 +39,21 @@ pub unsafe fn visit_roots<C, V: Fn(&mut C, *mut Value)>(
     }
 }
 
+#[cfg(feature = "ic")]
 unsafe fn static_root_location() -> *mut Value {
     &mut STATIC_ROOT as *mut Value
 }
 
-#[ic_mem_fn]
-pub unsafe fn set_static_root<M: Memory>(mem: &mut M, value: Value) {
+#[ic_mem_fn(ic_only)]
+pub unsafe fn set_static_root<M: crate::memory::Memory>(mem: &mut M, value: Value) {
+    use super::barriers::write_with_barrier;
+
     let location = &mut STATIC_ROOT as *mut Value;
     write_with_barrier(mem, location, value);
 }
 
 #[no_mangle]
+#[cfg(feature = "ic")]
 pub unsafe extern "C" fn get_static_root() -> Value {
     assert!(STATIC_ROOT.is_ptr());
     STATIC_ROOT

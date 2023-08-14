@@ -9,12 +9,7 @@
 
 use motoko_rts_macros::ic_mem_fn;
 
-use crate::{
-    memory::Memory,
-    persistence::{get_incremental_gc_state, initialize_memory, HEAP_START},
-    types::*,
-    visitor::visit_pointer_fields,
-};
+use crate::{memory::Memory, types::*, visitor::visit_pointer_fields};
 
 use self::{
     partitioned_heap::{PartitionedHeap, PartitionedHeapIterator},
@@ -41,7 +36,8 @@ pub mod time;
 
 #[ic_mem_fn(ic_only)]
 unsafe fn initialize_incremental_gc<M: Memory>(mem: &mut M) {
-    println!(100, "INITIALIZE INCREMENTAL GC");
+    use crate::persistence::{initialize_memory, HEAP_START};
+
     initialize_memory(mem);
     IncrementalGC::<M>::initialize(mem, get_incremental_gc_state(), HEAP_START);
 }
@@ -104,6 +100,7 @@ unsafe fn record_gc_start<M: Memory>() {
 #[cfg(feature = "ic")]
 unsafe fn record_gc_stop<M: Memory>() {
     use crate::memory::ic::{self, partitioned_memory};
+    use crate::persistence::HEAP_START;
 
     let heap_size = partitioned_memory::get_heap_size();
     let static_size = Bytes(HEAP_START as u32);
@@ -134,6 +131,7 @@ const INCREMENT_ALLOCATION_FACTOR: usize = 10; // Additional time factor per con
 
 // Performance note: Storing the phase-specific state in the enum would be nicer but it is much slower.
 #[derive(PartialEq)]
+#[repr(C)]
 enum Phase {
     Pause,    // Inactive, waiting for the next GC run.
     Mark,     // Incremental marking.
@@ -143,6 +141,8 @@ enum Phase {
 }
 
 /// GC state retained over multiple GC increments.
+/// Use a long-term representation by relying on C layout.
+#[repr(C)]
 pub struct State {
     phase: Phase,
     partitioned_heap: PartitionedHeap,
@@ -188,7 +188,6 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     /// * The mark phase can only be started on an empty call stack.
     /// * The update phase can only be completed on an empty call stack.
     pub unsafe fn empty_call_stack_increment(&mut self, roots: Roots) {
-        println!(100, "GC INCREMENT");
         assert!(self.state.phase != Phase::Stop);
         if self.pausing() {
             self.start_marking(roots);
@@ -396,8 +395,27 @@ pub unsafe extern "C" fn stop_gc_on_upgrade() {
 }
 
 pub unsafe fn get_partitioned_heap() -> &'static mut PartitionedHeap {
-    debug_assert!(get_incremental_gc_state()
-        .partitioned_heap
-        .is_initialized());
+    debug_assert!(get_incremental_gc_state().partitioned_heap.is_initialized());
     &mut get_incremental_gc_state().partitioned_heap
+}
+
+#[cfg(feature = "ic")]
+pub unsafe fn get_incremental_gc_state() -> &'static mut State {
+    crate::persistence::get_incremental_gc_state()
+}
+
+// For RTS unit testing only.
+#[cfg(not(feature = "ic"))]
+static mut TEST_GC_STATE: State = State {
+    phase: Phase::Pause,
+    partitioned_heap: partitioned_heap::UNINITIALIZED_HEAP,
+    allocation_count: 0,
+    mark_state: None,
+    iterator_state: None,
+};
+
+// For RTS unit testing only.
+#[cfg(not(feature = "ic"))]
+pub unsafe fn get_incremental_gc_state() -> &'static mut State {
+    &mut TEST_GC_STATE
 }

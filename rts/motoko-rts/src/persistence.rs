@@ -86,6 +86,7 @@ impl PersistentMetadata {
 
 /// Initialize fresh peristent memory after the canister installation or
 /// reuse the persistent memory on a canister upgrade.
+#[cfg(feature = "ic")]
 pub unsafe fn initialize_memory<M: Memory>(mem: &mut M) {
     mem.grow_memory(HEAP_START as u64);
     let metadata = PersistentMetadata::get();
@@ -146,6 +147,7 @@ pub(crate) unsafe fn null_singleton_location() -> *mut Value {
 }
 
 // GC root pointer required for GC marking and updating.
+#[cfg(feature = "ic")]
 pub(crate) unsafe fn get_incremental_gc_state() -> &'static mut State {
     let metadata = PersistentMetadata::get();
     &mut (*metadata).incremental_gc_state

@@ -168,9 +168,11 @@ fn initialize_gc(_heap: &mut MotokoHeap) {}
 
 #[incremental_gc]
 fn initialize_gc(heap: &mut MotokoHeap) {
-    use motoko_rts::gc::incremental::{get_partitioned_heap, IncrementalGC};
+    use motoko_rts::gc::incremental::{
+        get_incremental_gc_state, get_partitioned_heap, IncrementalGC,
+    };
     unsafe {
-        IncrementalGC::initialize(heap, heap.heap_base_address());
+        IncrementalGC::initialize(heap, get_incremental_gc_state(), heap.heap_base_address());
         let allocation_size = heap.heap_ptr_address() - heap.heap_base_address();
 
         // Synchronize the partitioned heap with one big combined allocation by starting from the base pointer as the heap pointer.
@@ -188,11 +190,13 @@ fn reset_gc() {}
 #[incremental_gc]
 fn reset_gc() {
     use crate::memory::TestMemory;
-    use motoko_rts::gc::incremental::{partitioned_heap::PARTITION_SIZE, IncrementalGC};
+    use motoko_rts::gc::incremental::{
+        get_incremental_gc_state, partitioned_heap::PARTITION_SIZE, IncrementalGC,
+    };
 
     let mut memory = TestMemory::new(Words(PARTITION_SIZE as u32));
     unsafe {
-        IncrementalGC::initialize(&mut memory, 0);
+        IncrementalGC::initialize(&mut memory, get_incremental_gc_state(), 0);
     }
 }
 
@@ -534,19 +538,22 @@ impl GC {
 
     #[incremental_gc]
     fn run(&self, heap: &mut MotokoHeap, _round: usize) -> bool {
-        let static_roots = Value::from_ptr(heap.static_root_array_address());
-        let continuation_table_ptr_address = heap.continuation_table_ptr_address() as *mut Value;
+        let static_root = heap.static_root_array_address() as *mut Value;
+        let continuation_table_location = heap.continuation_table_ptr_address() as *mut Value;
+        let unused_root = &mut Value::from_scalar(0) as *mut Value;
 
         match self {
             GC::Incremental => unsafe {
-                use motoko_rts::gc::incremental::{incremental_gc_state, IncrementalGC};
+                use motoko_rts::gc::incremental::{get_incremental_gc_state, IncrementalGC};
                 const INCREMENTS_UNTIL_COMPLETION: usize = 16;
                 for _ in 0..INCREMENTS_UNTIL_COMPLETION {
-                    let roots = motoko_rts::gc::incremental::roots::Roots {
-                        static_roots,
-                        continuation_table_location: continuation_table_ptr_address,
-                    };
-                    IncrementalGC::instance(heap, incremental_gc_state())
+                    let roots = [
+                        static_root,
+                        continuation_table_location,
+                        unused_root,
+                        unused_root,
+                    ];
+                    IncrementalGC::instance(heap, get_incremental_gc_state())
                         .empty_call_stack_increment(roots);
                 }
                 false

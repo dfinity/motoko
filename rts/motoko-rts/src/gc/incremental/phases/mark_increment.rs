@@ -12,6 +12,8 @@ use crate::{
     visitor::visit_pointer_fields,
 };
 
+/// Use a long-term representation by relying on C layout.
+#[repr(C)]
 pub struct MarkState {
     mark_stack: MarkStack,
     complete: bool,

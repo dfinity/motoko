@@ -31,11 +31,13 @@ const BITMAP_FRACTION: usize = (WORD_SIZE * u8::BITS) as usize;
 pub const BITMAP_SIZE: usize = PARTITION_SIZE / BITMAP_FRACTION;
 
 /// Partition-associated mark bitmap.
+/// Use a long-term representation by relying on C layout.
+#[repr(C)]
 pub struct MarkBitmap {
     pointer: *mut u8,
 }
 
-const DEFAULT_MARK_BITMAP: MarkBitmap = MarkBitmap {
+pub(crate) const DEFAULT_MARK_BITMAP: MarkBitmap = MarkBitmap {
     pointer: null_mut(),
 };
 
@@ -97,6 +99,7 @@ impl MarkBitmap {
 /// Adopted and adjusted from `mark_compact/bitmap.rs`.
 /// The iterator separates advancing `next()` from inspection `current_marked_offset()`
 /// to better support the incremental evacuation and update GC increments.
+#[repr(C)]
 pub struct BitmapIterator {
     /// Start address of the mark bitmap. Must be 64-bit-aligned.
     bitmap_pointer: *mut u8,
