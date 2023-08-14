@@ -23,11 +23,11 @@ pub unsafe extern "C" fn print_value(value: Value) {
 pub unsafe fn dump_heap(
     heap_base: u32,
     hp: u32,
-    static_roots: Value,
-    continuation_table_loc: *mut Value,
+    static_root_location: *mut Value,
+    continuation_table_location: *mut Value,
 ) {
-    print_continuation_table(continuation_table_loc);
-    print_static_roots(static_roots);
+    print_continuation_table(continuation_table_location);
+    print_static_roots(*static_root_location);
     print_heap(heap_base, hp);
 }
 
