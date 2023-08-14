@@ -6,7 +6,7 @@ use motoko_rts_macros::ic_mem_fn;
 
 use crate::{
     memory::Memory,
-    persistence::get_incremenmtal_gc_state,
+    persistence::get_incremental_gc_state,
     types::{is_skewed, Value},
 };
 
@@ -14,7 +14,7 @@ use super::{count_allocation, post_allocation_barrier, pre_write_barrier, Phase}
 
 #[no_mangle]
 pub unsafe extern "C" fn running_gc() -> bool {
-    get_incremenmtal_gc_state().phase != Phase::Pause
+    get_incremental_gc_state().phase != Phase::Pause
 }
 
 /// Write a potential pointer value with a pre-update barrier and resolving pointer forwarding.
@@ -30,7 +30,7 @@ pub unsafe fn write_with_barrier<M: Memory>(mem: &mut M, location: *mut Value, v
     debug_assert!(!is_skewed(location as u32));
     debug_assert_ne!(location, core::ptr::null_mut());
 
-    let state = get_incremenmtal_gc_state();
+    let state = get_incremental_gc_state();
     pre_write_barrier(mem, state, *location);
     *location = value.forward_if_possible();
 }
@@ -47,7 +47,7 @@ pub unsafe fn write_with_barrier<M: Memory>(mem: &mut M, location: *mut Value, v
 /// * Keep track of concurrent allocations to adjust the GC increment time limit.
 #[no_mangle]
 pub unsafe extern "C" fn allocation_barrier(new_object: Value) -> Value {
-    let state = get_incremenmtal_gc_state();
+    let state = get_incremental_gc_state();
     if state.phase != Phase::Pause {
         post_allocation_barrier(state, new_object);
         count_allocation(state);

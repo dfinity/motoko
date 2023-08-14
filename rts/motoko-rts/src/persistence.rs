@@ -146,7 +146,7 @@ pub(crate) unsafe fn null_singleton_location() -> *mut Value {
 }
 
 // GC root pointer required for GC marking and updating.
-pub(crate) unsafe fn get_incremenmtal_gc_state() -> &'static mut State {
+pub(crate) unsafe fn get_incremental_gc_state() -> &'static mut State {
     let metadata = PersistentMetadata::get();
     &mut (*metadata).incremental_gc_state
 }

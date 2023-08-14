@@ -11,7 +11,7 @@ use motoko_rts_macros::ic_mem_fn;
 
 use crate::{
     memory::Memory,
-    persistence::{get_incremenmtal_gc_state, initialize_memory, HEAP_START},
+    persistence::{get_incremental_gc_state, initialize_memory, HEAP_START},
     types::*,
     visitor::visit_pointer_fields,
 };
@@ -43,12 +43,12 @@ pub mod time;
 unsafe fn initialize_incremental_gc<M: Memory>(mem: &mut M) {
     println!(100, "INITIALIZE INCREMENTAL GC");
     initialize_memory(mem);
-    IncrementalGC::<M>::initialize(mem, get_incremenmtal_gc_state(), HEAP_START);
+    IncrementalGC::<M>::initialize(mem, get_incremental_gc_state(), HEAP_START);
 }
 
 #[ic_mem_fn(ic_only)]
 unsafe fn schedule_incremental_gc<M: Memory>(mem: &mut M) {
-    let state = get_incremenmtal_gc_state();
+    let state = get_incremental_gc_state();
     assert!(state.phase != Phase::Stop);
     let running = state.phase != Phase::Pause;
     if running || should_start() {
@@ -59,7 +59,7 @@ unsafe fn schedule_incremental_gc<M: Memory>(mem: &mut M) {
 #[ic_mem_fn(ic_only)]
 unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
     use self::roots::root_set;
-    let state = get_incremenmtal_gc_state();
+    let state = get_incremental_gc_state();
     if state.phase == Phase::Pause {
         record_gc_start::<M>();
     }
@@ -392,12 +392,12 @@ unsafe fn count_allocation(state: &mut State) {
 /// the compiler must not schedule the GC during stabilization anyway.
 #[no_mangle]
 pub unsafe extern "C" fn stop_gc_on_upgrade() {
-    get_incremenmtal_gc_state().phase = Phase::Stop;
+    get_incremental_gc_state().phase = Phase::Stop;
 }
 
 pub unsafe fn get_partitioned_heap() -> &'static mut PartitionedHeap {
-    debug_assert!(get_incremenmtal_gc_state()
+    debug_assert!(get_incremental_gc_state()
         .partitioned_heap
         .is_initialized());
-    &mut get_incremenmtal_gc_state().partitioned_heap
+    &mut get_incremental_gc_state().partitioned_heap
 }
