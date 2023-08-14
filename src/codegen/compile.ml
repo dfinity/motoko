@@ -5076,17 +5076,17 @@ end (* Cycles *)
 
 module StableMem = struct
 
-  (* Versions:
-     0. None. Start from 1 to avoid accidental reads of 0.
-     1. First version of StableMem.
-     2. First version of region system.
-   *)
-  let version () = Int32.of_int 2
+  (* Versioning (c.f. Region.rs) *)
+  (* NB: these constants must agree with VERSION_NO_STABLE_MEMORY etc. in Region.rs *)
+  let version_no_stable_memory = Int32.of_int 0
+  let version_some_stable_memory = Int32.of_int 1
+  let version_regions = Int32.of_int 2
+  let version_max = version_regions
 
   let register_globals env =
     (* size (in pages) *)
     E.add_global64 env "__stablemem_size" Mutable 0L;
-    E.add_global32 env "__stablemem_version" Mutable 0l
+    E.add_global32 env "__stablemem_version" Mutable version_no_stable_memory
 
   let get_mem_size env =
     G.i (GlobalGet (nr (E.get_global env "__stablemem_size")))
@@ -5278,8 +5278,6 @@ module StableMem = struct
           E.then_trap_with env "Out of stable memory.")
     | _ -> assert false
 
-  (* API *)
-
   let logical_grow env =
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
@@ -5339,7 +5337,8 @@ module StableMem = struct
           get_pages ^^
           logical_grow env ^^
           set_res ^^
-          (* if version is 0, and mem_size > 0; set version = 1 *)
+          (* if version = version_no_stable_memory and mem_size > 0 then
+             set version := version_some_stable_memory *)
           get_version env ^^
           G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
           get_mem_size env ^^
@@ -5347,7 +5346,7 @@ module StableMem = struct
           G.i (Compare (Wasm.Values.I64 I32Op.GtU)) ^^
           G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
           (G.if0 begin
-             compile_unboxed_const 1l ^^
+             compile_unboxed_const version_some_stable_memory ^^
              set_version env
            end
              G.nop) ^^
@@ -5422,23 +5421,13 @@ module StableMem = struct
     | _ -> assert false
 
 
-  (*
-  (* This version uses multi-value blocks to produce shorted code, but confuses wasm-opt. *)
-  let if_regions env tys1 tys2 is1 is2 =
-    get_version env ^^
-    compile_unboxed_const (version()) ^^
-    G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
-    E.multi_if_ env tys1 tys2
-      is1
-      is2
-  *)
   let if_regions env tys1 tys2 is1 is2 =
     let locals = List.mapi (fun i ty -> new_local_ env ty (Printf.sprintf "arg_%i" i)) tys1 in
     let getters = List.fold_right (fun (_ ,get, _) is -> get ^^ is) locals G.nop in
     let setters = List.fold_right (fun (set, _, _) is -> is ^^ set) locals G.nop in
     setters ^^
     get_version env ^^
-    compile_unboxed_const (version()) ^^
+    compile_unboxed_const version_regions ^^
     G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
     E.if_ env tys2
       (getters ^^ is1)
@@ -7621,6 +7610,12 @@ module Stabilization = struct
     G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
     G.if0
       begin
+        (* assert StableMem.get_version() == StableMem.version_no_stable_memory *)
+        StableMem.get_version env ^^
+        compile_unboxed_const StableMem.version_no_stable_memory ^^
+        G.i (Compare (Wasm.Values.I32 I32Op.GtU)) ^^
+        E.else_trap_with env "StableMem.get_version() != version_no_stable_memory" ^^
+
         (* Case-true: Stable variables only --
            no use of either regions or experimental API. *)
         (* ensure [0,..,3,...len+4) *)
@@ -7701,7 +7696,20 @@ module Stabilization = struct
         (* save version at M + (pagesize - 4) *)
         get_M ^^
         compile_add64_const (Int64.sub page_size64 4L) ^^
-        (* TODO bump version? *)
+
+        (* assert StableMem.version_no_stable_memory < StableMem.get_version() *)
+        StableMem.get_version env ^^
+        compile_unboxed_const StableMem.version_no_stable_memory ^^
+        G.i (Compare (Wasm.Values.I32 I32Op.GtU)) ^^
+        E.else_trap_with env "StableMem.get_version() == version_no_stable_memory" ^^
+
+        (* assert StableMem.get_version() <=  StableMem.version_max *)
+        StableMem.get_version env ^^
+        compile_unboxed_const StableMem.version_max ^^
+        G.i (Compare (Wasm.Values.I32 I32Op.LeU)) ^^
+        E.else_trap_with env "StableMem.get_version() > version_max" ^^
+
+        (* record the version *)
         StableMem.get_version env ^^
         StableMem.write_word32 env
 
@@ -7766,11 +7774,11 @@ module Stabilization = struct
 
               (* check version *)
               get_version ^^
-              compile_unboxed_const (StableMem.version()) ^^
+              compile_unboxed_const (StableMem.version_max) ^^
               G.i (Compare (Wasm.Values.I32 I32Op.GtU)) ^^
               E.then_trap_with env (Printf.sprintf
-                "higher stable memory version (expected %s)"
-                (Int32.to_string (StableMem.version()))) ^^
+                "higher stable memory version (expected 1..%s)"
+                (Int32.to_string StableMem.version_max)) ^^
 
               (* restore StableMem bytes [0..4) *)
               compile_const_64 0L ^^

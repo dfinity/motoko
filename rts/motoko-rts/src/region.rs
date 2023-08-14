@@ -4,6 +4,10 @@ use crate::rts_trap_with;
 use crate::trap_with_prefix;
 use crate::types::{size_of, Blob, Bytes, Region, Value, TAG_REGION};
 
+const VERSION_NO_STABLE_MEMORY: u32 = 0;
+const VERSION_SOME_STABLE_MEMORY: u32 = 1;
+const VERSION_REGIONS: u32 = 2;
+
 use motoko_rts_macros::ic_mem_fn;
 
 unsafe fn region_trap_with(msg: &str) -> ! {
@@ -421,14 +425,14 @@ unsafe fn region_reserve_id_span<M: Memory>(
 #[ic_mem_fn]
 pub unsafe fn region_new<M: Memory>(mem: &mut M) -> Value {
     match crate::stable_mem::get_version() {
-        0 => {
+        VERSION_NO_STABLE_MEMORY => {
             assert_eq!(crate::stable_mem::size(), 0);
-            region_migration_from_v0_into_v2(mem);
+            region_migration_from_no_stable_memory(mem);
         }
-        1 => {
-            region_migration_from_v1_into_v2(mem);
+        VERSION_SOME_STABLE_MEMORY => {
+            region_migration_from_some_stable_memory(mem);
         }
-        2 => {}
+        VERSION_REGIONS => {}
         _ => {
             assert!(false);
         }
@@ -497,11 +501,11 @@ pub unsafe fn region_recover<M: Memory>(mem: &mut M, rid: &RegionId) -> Value {
     r_ptr
 }
 
-pub(crate) unsafe fn region_migration_from_v0_into_v2<M: Memory>(mem: &mut M) {
+pub(crate) unsafe fn region_migration_from_no_stable_memory<M: Memory>(mem: &mut M) {
     use crate::stable_mem::{get_version, grow, size, write};
     use meta_data::size::{PAGES_IN_BLOCK, PAGE_IN_BYTES};
 
-    assert!(get_version() == 0);
+    assert!(get_version() == VERSION_NO_STABLE_MEMORY);
     assert_eq!(size(), 0);
 
     // pages required for meta_data (9/ 960KiB), much less than PAGES_IN_BLOCK (128/ 8MB) for a full block
@@ -529,7 +533,7 @@ pub(crate) unsafe fn region_migration_from_v0_into_v2<M: Memory>(mem: &mut M) {
     // Write magic header
     write_magic();
 
-    crate::stable_mem::set_version(2);
+    crate::stable_mem::set_version(VERSION_REGIONS);
 
     // Region 0 -- classic API for stable memory, as a dedicated region.
     REGION_0 = region_new(mem);
@@ -544,7 +548,7 @@ pub(crate) unsafe fn region_migration_from_v0_into_v2<M: Memory>(mem: &mut M) {
 // region manager migration/initialization, with pre-existing stable data.
 // Case: Version 1 into version 2.
 //
-pub(crate) unsafe fn region_migration_from_v1_into_v2<M: Memory>(mem: &mut M) {
+pub(crate) unsafe fn region_migration_from_some_stable_memory<M: Memory>(mem: &mut M) {
     // Grow region0 to nearest block boundary, and add a block to fit a region manager meta data.
     //
     // Existing stable data becomes region 0, with first block relocated for region manager meta data.
@@ -629,7 +633,7 @@ pub(crate) unsafe fn region_migration_from_v1_into_v2<M: Memory>(mem: &mut M) {
         );
     }
 
-    crate::stable_mem::set_version(2);
+    crate::stable_mem::set_version(VERSION_REGIONS);
 
     /* "Recover" the region data into a heap object. */
     REGION_0 = region_recover(mem, &RegionId(0));
@@ -643,7 +647,7 @@ pub(crate) unsafe fn region_migration_from_v1_into_v2<M: Memory>(mem: &mut M) {
 // region manager migration/initialization, with pre-existing stable data.
 // Case: Version 2 into version 2 ("Trivial migration" case).
 //
-pub(crate) unsafe fn region_migration_from_v2plus_into_v2<M: Memory>(mem: &mut M) {
+pub(crate) unsafe fn region_migration_from_regions_plus<M: Memory>(mem: &mut M) {
     use crate::stable_mem::{read, read_u32, size};
 
     // Check if the magic in the memory corresponds to this object.
@@ -668,27 +672,23 @@ pub(crate) unsafe fn region_migration_from_v2plus_into_v2<M: Memory>(mem: &mut M
 //
 // region manager migration/initialization, with pre-existing stable data.
 //
-// Valid cases:
-//  - from version 1 into version 2.
-//  - from version 2 into version 2.
-//
 #[ic_mem_fn]
 pub(crate) unsafe fn region_init<M: Memory>(mem: &mut M, use_stable_regions: i32) {
     debug_assert!(meta_data::offset::FREE < meta_data::offset::BLOCK_ZERO);
     match crate::stable_mem::get_version() {
-        0 => {
+        VERSION_NO_STABLE_MEMORY => {
             assert!(crate::stable_mem::size() == 0);
             if use_stable_regions != 0 {
-                region_migration_from_v0_into_v2(mem);
+                region_migration_from_no_stable_memory(mem);
             };
         }
-        1 => {
+        VERSION_SOME_STABLE_MEMORY => {
             assert!(crate::stable_mem::size() > 0);
             if use_stable_regions != 0 {
-                region_migration_from_v1_into_v2(mem);
+                region_migration_from_some_stable_memory(mem);
             };
         }
-        _ => region_migration_from_v2plus_into_v2(mem), //check format & recover region0
+        _ => region_migration_from_regions_plus(mem), //check format & recover region0
     }
 }
 
