@@ -532,11 +532,16 @@ module E = struct
     | ts -> VarBlockType (nr (func_type env (FuncType ([], ts))))
 
   let if_ env tys thn els = G.if_ (as_block_type env tys) thn els
-  let multi_if_ env tys1 tys2 thn els =
+
+  (* NB: confuses wasm-opt, don't use for now
+  let _multi_if_ env tys1 tys2 thn els =
     G.if_
       (VarBlockType (nr (func_type env (FuncType (tys1, tys2)))))
       thn els
+  *)
+
   let block_ env tys bdy = G.block_ (as_block_type env tys) bdy
+
 
   let trap_with env msg = env.trap_with env msg
   let then_trap_with env msg = G.if0 (trap_with env msg) G.nop
