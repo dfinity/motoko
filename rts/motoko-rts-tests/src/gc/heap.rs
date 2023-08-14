@@ -219,13 +219,17 @@ impl MotokoHeapInner {
         // Two pointers, one to the static root array, and the other to the continuation table.
         let root_pointers_size_bytes = 2 * WORD_SIZE;
 
-        // Each object will have array header plus one word for id per object + one word for each reference. 
-        // The static root is an array (header + length) with one element, one MutBox for each static variable. 
-        let static_root_set_size_bytes = (size_of::<Array>().as_usize() + roots.len()
+        // Each object will have array header plus one word for id per object + one word for each reference.
+        // The static root is an array (header + length) with one element, one MutBox for each static variable.
+        let static_root_set_size_bytes = (size_of::<Array>().as_usize()
+            + roots.len()
             + roots.len() * size_of::<MutBox>().as_usize())
             * WORD_SIZE;
 
-        let continuation_table_size_byes = (size_of::<Array>() + Words(continuation_table.len() as u32)).to_bytes().as_usize();
+        let continuation_table_size_byes = (size_of::<Array>()
+            + Words(continuation_table.len() as u32))
+        .to_bytes()
+        .as_usize();
 
         let dynamic_objects_size_bytes = {
             let object_headers_words = map.len() * (size_of::<Array>().as_usize() + 1);
@@ -233,7 +237,8 @@ impl MotokoHeapInner {
             (object_headers_words + references_words) * WORD_SIZE
         };
 
-        let dynamic_heap_size_bytes = dynamic_objects_size_bytes + static_root_set_size_bytes + continuation_table_size_byes;
+        let dynamic_heap_size_bytes =
+            dynamic_objects_size_bytes + static_root_set_size_bytes + continuation_table_size_byes;
 
         let total_heap_size_bytes = root_pointers_size_bytes + dynamic_heap_size_bytes;
 
@@ -412,7 +417,7 @@ fn create_dynamic_heap(
         let mut heap_offset = 0;
         for (obj, refs) in refs {
             object_addrs.insert(*obj, heap_start + heap_offset);
-            
+
             // Store object header
             let address = u32::try_from(heap_start + heap_offset).unwrap();
             write_word(dynamic_heap, heap_offset, TAG_ARRAY);
@@ -434,7 +439,7 @@ fn create_dynamic_heap(
             // Store object value (idx)
             write_word(dynamic_heap, heap_offset, make_scalar(*obj));
             heap_offset += WORD_SIZE;
-            
+
             // Leave space for the fields
             heap_offset += refs.len() * WORD_SIZE;
         }
@@ -474,11 +479,7 @@ fn create_dynamic_heap(
             heap_offset += WORD_SIZE;
 
             if incremental {
-                write_word(
-                    dynamic_heap,
-                    heap_offset,
-                    make_pointer(mutbox_address),
-                );
+                write_word(dynamic_heap, heap_offset, make_pointer(mutbox_address));
                 heap_offset += WORD_SIZE;
             }
 
@@ -504,13 +505,13 @@ fn create_dynamic_heap(
         assert_eq!(static_roots.len(), root_mutboxes.len());
         write_word(dynamic_heap, heap_offset, root_mutboxes.len() as u32);
         heap_offset += WORD_SIZE;
-        
+
         for mutbox_address in root_mutboxes {
             write_word(dynamic_heap, heap_offset, make_pointer(mutbox_address));
             heap_offset += WORD_SIZE;
         }
     }
-    
+
     let continuation_table_address = u32::try_from(heap_start + heap_offset).unwrap();
     {
         write_word(dynamic_heap, heap_offset, TAG_ARRAY);

@@ -32,9 +32,14 @@ unsafe fn check_visit_static_roots(heap: &MotokoHeap, root_ids: &[ObjectIdx]) {
         |context, field| {
             let object = *field;
             let array = object.as_array();
-            if array.len() == 1 {
-                let id = object_id(&heap, array as usize);
-                context.push(id);
+            if array.len() == root_ids.len() as u32 {
+                for index in 0..array.len() {
+                    let mutbox_value = array.get(index);
+                    let mutbox = mutbox_value.as_mutbox();
+                    let root_address = (*mutbox).field.get_ptr();
+                    let root_id = object_id(heap, root_address);
+                    context.push(root_id);
+                }
             }
         },
     );
@@ -51,7 +56,7 @@ unsafe fn check_visit_continuation_table(heap: &MotokoHeap, continuation_ids: &[
         |context, field| {
             let object = *field;
             let array = object.as_array();
-            if array.len() != 1 {
+            if array.len() == continuation_ids.len() as u32 {
                 assert_eq!(context.len(), 0);
                 for index in 0..array.len() {
                     let element = array.get(index);

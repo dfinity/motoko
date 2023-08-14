@@ -220,7 +220,7 @@ fn check_dynamic_heap(
     heap: &[u8],
     heap_base_offset: usize,
     heap_ptr_offset: usize,
-    static_root_array_variable_offset: usize, 
+    static_root_array_variable_offset: usize,
     continuation_table_variable_offset: usize,
 ) {
     let incremental = cfg!(feature = "incremental_gc");
@@ -235,10 +235,12 @@ fn check_dynamic_heap(
     // Maps objects to their addresses (not offsets!). Used when debugging duplicate objects.
     let mut seen: FxHashMap<ObjectIdx, usize> = Default::default();
 
-    let static_root_array_address = unskew_pointer(read_word(heap, static_root_array_variable_offset));
+    let static_root_array_address =
+        unskew_pointer(read_word(heap, static_root_array_variable_offset));
     let static_root_array_offset = static_root_array_address as usize - heap.as_ptr() as usize;
 
-    let continuation_table_address = unskew_pointer(read_word(heap, continuation_table_variable_offset));
+    let continuation_table_address =
+        unskew_pointer(read_word(heap, continuation_table_variable_offset));
     let continuation_table_offset = continuation_table_address as usize - heap.as_ptr() as usize;
 
     while offset < heap_ptr_offset {
@@ -464,7 +466,7 @@ fn read_mutbox_field(mutbox_address: u32, heap: &[u8]) -> u32 {
     let incremental = cfg!(feature = "incremental_gc");
 
     let mut mutbox_offset = mutbox_address as usize - heap.as_ptr() as usize;
-        
+
     let mutbox_tag = read_word(heap, mutbox_offset);
     assert_eq!(mutbox_tag, TAG_MUTBOX);
     mutbox_offset += WORD_SIZE;
@@ -517,7 +519,8 @@ impl GC {
     fn run(&self, heap: &mut MotokoHeap, _round: usize) -> bool {
         let heap_base = heap.heap_base_address();
         let static_roots = Value::from_ptr(heap.static_root_array_variable_address());
-        let continuation_table_ptr_address = heap.continuation_table_variable_address() as *mut Value;
+        let continuation_table_ptr_address =
+            heap.continuation_table_variable_address() as *mut Value;
 
         let heap_1 = heap.clone();
         let heap_2 = heap.clone();
