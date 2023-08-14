@@ -867,7 +867,6 @@ module RTS = struct
     E.add_func_import env "rts" "incremental_gc" [] [];
     E.add_func_import env "rts" "write_with_barrier" [I32Type; I32Type] [];
     E.add_func_import env "rts" "allocation_barrier" [I32Type] [I32Type];
-    E.add_func_import env "rts" "stop_gc_on_upgrade" [] [];
     E.add_func_import env "rts" "running_gc" [] [I32Type];
     ()
 

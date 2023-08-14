@@ -45,7 +45,6 @@ unsafe fn initialize_incremental_gc<M: Memory>(mem: &mut M) {
 #[ic_mem_fn(ic_only)]
 unsafe fn schedule_incremental_gc<M: Memory>(mem: &mut M) {
     let state = get_incremental_gc_state();
-    assert!(state.phase != Phase::Stop);
     let running = state.phase != Phase::Pause;
     if running || should_start() {
         incremental_gc(mem);
@@ -137,7 +136,6 @@ enum Phase {
     Mark,     // Incremental marking.
     Evacuate, // Incremental evacuation compaction.
     Update,   // Incremental pointer updates.
-    Stop,     // GC stopped on canister upgrade.
 }
 
 /// GC state retained over multiple GC increments.
@@ -188,7 +186,6 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     /// * The mark phase can only be started on an empty call stack.
     /// * The update phase can only be completed on an empty call stack.
     pub unsafe fn empty_call_stack_increment(&mut self, roots: Roots) {
-        assert!(self.state.phase != Phase::Stop);
         if self.pausing() {
             self.start_marking(roots);
         }
@@ -333,9 +330,6 @@ unsafe fn post_allocation_barrier(state: &mut State, new_object: Value) {
 ///     The fields may still point to old object locations that are forwarded.
 /// * During the update phase
 ///   - New objects do not need to be marked as they are allocated in non-evacuated partitions.
-/// * When GC is stopped on canister upgrade:
-///   - The GC will not resume and thus marking is irrelevant.
-///   - This is necessary because the upgrade serialization alters tags to store other information.
 unsafe fn mark_new_allocation(state: &mut State, new_object: Value) {
     debug_assert!(state.phase == Phase::Mark || state.phase == Phase::Evacuate);
     let object = new_object.get_ptr() as *mut Obj;
@@ -360,9 +354,6 @@ unsafe fn mark_new_allocation(state: &mut State, new_object: Value) {
 ///     and pointer writes must be handled by barriers.
 ///   - Allocation barrier: Resolve the forwarding for all pointers in the new allocation.
 ///   - Write barrier: Resolve forwarding for the written pointer value.
-/// * When the GC is stopped on canister upgrade:
-///   - The GC will not resume and thus pointer updates are irrelevant. The runtime system
-///     continues to resolve the forwarding for all remaining old pointers.
 unsafe fn update_new_allocation(state: &State, new_object: Value) {
     debug_assert!(state.phase == Phase::Update);
     if state.partitioned_heap.updates_needed() {
@@ -385,13 +376,6 @@ unsafe fn count_allocation(state: &mut State) {
     if state.phase != Phase::Pause {
         state.allocation_count += 1;
     }
-}
-
-/// Stop the GC before performing upgrade. This is only a safe-guard since
-/// the compiler must not schedule the GC during stabilization anyway.
-#[no_mangle]
-pub unsafe extern "C" fn stop_gc_on_upgrade() {
-    get_incremental_gc_state().phase = Phase::Stop;
 }
 
 pub unsafe fn get_partitioned_heap() -> &'static mut PartitionedHeap {
