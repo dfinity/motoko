@@ -3913,8 +3913,6 @@ module Region = struct
   let init_region env =
     E.call_import env "rts" "init_region"
 
-  let sanity_check s env = G.i Nop (* should be dead code soon *)
-
   (* field accessors *)
   (* NB: all these opns must resolve forwarding pointers here or in RTS *)
   let id env =
@@ -10545,7 +10543,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
   | OtherPrim "regionNew", [] ->
     SR.Vanilla,
-    Region.new_ env ^^ Region.sanity_check "region_new" env
+    Region.new_ env
 
   | OtherPrim "regionId", [e0] ->
      SR.Vanilla,
