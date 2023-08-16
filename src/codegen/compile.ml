@@ -7293,7 +7293,8 @@ module GCRoots = struct
   let get_static_variable env index = 
     E.call_import env "rts" "get_static_root" ^^
     compile_unboxed_const index ^^
-    Arr.idx env
+    Arr.idx env ^^
+    load_ptr
 end (* GCRoots *)
 
 module StackRep = struct
