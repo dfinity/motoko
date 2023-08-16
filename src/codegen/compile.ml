@@ -629,7 +629,6 @@ let compile_eq_const = function
 let compile_op64_const op i =
     compile_const_64 i ^^
     G.i (Binary (Wasm.Values.I64 op))
-let _compile_add64_const = compile_op64_const I64Op.Add
 let compile_sub64_const = compile_op64_const I64Op.Sub
 let compile_mul64_const = compile_op64_const I64Op.Mul
 let _compile_divU64_const = compile_op64_const I64Op.DivU
@@ -1060,12 +1059,6 @@ module Heap = struct
 
   (* At this level of abstraction, heap objects are just flat arrays of words *)
 
-(*
-  let load_field_unskewed (i : int32) : G.t =
-    let offset = Int32.mul word_size i in
-    G.i (Load {ty = I32Type; align = 2; offset; sz = None})
-*)
-
   let load_field (i : int32) : G.t =
     let offset = Int32.(add (mul word_size i) ptr_unskew) in
     G.i (Load {ty = I32Type; align = 2; offset; sz = None})
@@ -1078,12 +1071,6 @@ module Heap = struct
      32 bit fields as one 64 bit number *)
 
   (* Requires little-endian encoding, see also `Stream` in `types.rs` *)
-(*
-  let load_field64_unskewed (i : int32) : G.t =
-    let offset = Int32.mul word_size i in
-    G.i (Load {ty = I64Type; align = 2; offset; sz = None})
-*)
-
   let load_field64 (i : int32) : G.t =
     let offset = Int32.(add (mul word_size i) ptr_unskew) in
     G.i (Load {ty = I64Type; align = 2; offset; sz = None})
@@ -1599,16 +1586,6 @@ module Tagged = struct
   let store_field env index =
     (if !Flags.sanity then check_forwarding_for_store env I32Type else G.nop) ^^
     Heap.store_field index
-
-(*
-  let load_field_unskewed env index =
-    (if !Flags.sanity then check_forwarding env true else G.nop) ^^
-    Heap.load_field_unskewed index
-
-  let load_field64_unskewed env index =
-    (if !Flags.sanity then check_forwarding env true else G.nop) ^^
-    Heap.load_field64_unskewed index
-*)
 
   let load_field64 env index =
     (if !Flags.sanity then check_forwarding env false else G.nop) ^^
@@ -3642,32 +3619,6 @@ module Blob = struct
 
   let dyn_alloc_scratch env = alloc env ^^ payload_ptr_unskewed env
 
-(*
-  (* TODO: rewrite using MemoryFill *)
-  let clear env =
-    Func.share_code1 env "blob_clear" ("x", I32Type) [] (fun env get_x ->
-      let (set_ptr, get_ptr) = new_local env "ptr" in
-      let (set_len, get_len) = new_local env "len" in
-      get_x ^^
-      as_ptr_len env ^^
-      set_len ^^
-      set_ptr ^^
-
-      (* round to word size *)
-      get_len ^^
-      compile_add_const (Int32.sub Heap.word_size 1l) ^^
-      compile_divU_const Heap.word_size ^^
-
-      (* clear all words *)
-      from_0_to_n env (fun get_i ->
-        get_ptr ^^
-        compile_unboxed_const 0l ^^
-        store_unskewed_ptr ^^
-        get_ptr ^^
-        compile_add_const Heap.word_size ^^
-        set_ptr))
-*)
-
 end (* Blob *)
 
 module Text = struct
@@ -4724,10 +4675,6 @@ end (* Cycles *)
 
 
 module StableMem = struct
-
-  (* start from 1 to avoid accidental reads of 0 *)
-  let _version = Int32.of_int 1
-
   let register_globals env =
     (* size (in pages) *)
     E.add_global64 env "__stablemem_size" Mutable 0L
@@ -4819,40 +4766,6 @@ module StableMem = struct
             IC.system_call env "stable64_write"))
     | _ -> assert false
 
-(*
-  let _read_word32 env =
-    read env false "word32" I32Type 4l load_unskewed_ptr
-  let write_word32 env =
-    write env false "word32" I32Type 4l store_unskewed_ptr
-
-  (* read and clear word32 from stable mem offset on stack *)
-  let read_and_clear_word32 env =
-    match E.mode env with
-    | Flags.ICMode | Flags.RefMode ->
-      Func.share_code1 env "__stablemem_read_and_clear_word32"
-        ("offset", I64Type) [I32Type]
-        (fun env get_offset ->
-          Stack.with_words env "temp_ptr" 1l (fun get_temp_ptr ->
-            let (set_word, get_word) = new_local env "word" in
-            (* read word *)
-            get_temp_ptr ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-            get_offset ^^
-            compile_const_64 4L ^^
-            IC.system_call env "stable64_read" ^^
-            get_temp_ptr ^^ load_unskewed_ptr ^^
-            set_word ^^
-            (* write 0 *)
-            get_temp_ptr ^^ compile_unboxed_const 0l ^^ store_unskewed_ptr ^^
-            get_offset ^^
-            get_temp_ptr ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-            compile_const_64 4L ^^
-            IC.system_call env "stable64_write" ^^
-            (* return word *)
-            get_word
-        ))
-    | _ -> assert false
-*)
-
   (* ensure_pages : ensure at least num pages allocated,
      growing (real) stable memory if needed *)
   let ensure_pages env =
@@ -4880,37 +4793,6 @@ module StableMem = struct
              IC.system_call env "stable64_grow")
             get_size)
     | _ -> assert false
-
-(*
-  (* ensure stable memory includes [offset..offset+size), assumes size > 0 *)
-  let ensure env =
-    match E.mode env with
-    | Flags.ICMode | Flags.RefMode ->
-      Func.share_code2 env "__stablemem_ensure"
-        (("offset", I64Type), ("size", I64Type)) []
-        (fun env get_offset get_size ->
-          let (set_sum, get_sum) = new_local64 env "sum" in
-          get_offset ^^
-          get_size ^^
-          G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
-          set_sum ^^
-          (* check for overflow *)
-          get_sum ^^
-          get_offset ^^
-          G.i (Compare (Wasm.Values.I64 I64Op.LtU)) ^^
-          E.then_trap_with env "Range overflow" ^^
-          (* ensure page *)
-          get_sum ^^
-          compile_const_64 (Int64.of_int page_size_bits) ^^
-          G.i (Binary (Wasm.Values.I64 I64Op.ShrU)) ^^
-          compile_add64_const 1L ^^
-          ensure_pages env ^^
-          (* Check result *)
-          compile_const_64 0L ^^
-          G.i (Compare (Wasm.Values.I64 I64Op.LtS)) ^^
-          E.then_trap_with env "Out of stable memory.")
-    | _ -> assert false
-*)
 
   (* API *)
 
@@ -6870,81 +6752,6 @@ end (* MakeSerialization *)
 
 module Serialization = MakeSerialization(BumpStream)
 
-(*
-module BlobStream : Stream = struct
-  let create env get_data_size set_token get_token header =
-    let header_size = Int32.of_int (String.length header) in
-    get_data_size ^^ compile_add_const header_size ^^
-    E.call_import env "rts" "alloc_stream" ^^ set_token ^^ (* allocation barrier called in alloc_stream *)
-    get_token ^^
-    Blob.lit env header ^^
-    E.call_import env "rts" "stream_write_text"
-
-  let check_filled env get_token get_data_size =
-    G.i Drop
-
-  let terminate env get_token _get_data_size _header_size =
-    get_token ^^ E.call_import env "rts" "stream_split" ^^
-    let set_blob, get_blob = new_local env "blob" in
-    set_blob ^^
-    get_blob ^^ Blob.payload_ptr_unskewed env ^^
-    get_blob ^^ Blob.len env
-
-  let finalize_buffer code = code
-
-  let name_for fn_name ts = "@Bl_" ^ fn_name ^ "<" ^ Typ_hash.typ_seq_hash ts ^ ">"
-
-  let absolute_offset env get_token =
-    let offset = 8l in (* see invariant in `stream.rs` *)
-    let filled_field = Int32.add Blob.len_field offset in
-    get_token ^^ Tagged.load_field_unskewed env filled_field
-
-  let checkpoint _env _get_token = G.i Drop
-
-  let reserve env get_token bytes =
-    get_token ^^ compile_unboxed_const bytes ^^ E.call_import env "rts" "stream_reserve"
-
-  let write_word_leb env get_token code =
-    let set_word, get_word = new_local env "word" in
-    code ^^ set_word ^^
-    I32Leb.compile_store_to_data_buf_unsigned env get_word
-      (get_token ^^ I32Leb.compile_leb128_size get_word ^^ E.call_import env "rts" "stream_reserve") ^^
-    G.i Drop
-
-  let write_word_32 env get_token code =
-    reserve env get_token Heap.word_size ^^
-    code ^^
-    G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = None})
-
-  let write_byte env get_token code =
-    get_token ^^ code ^^
-    E.call_import env "rts" "stream_write_byte"
-
-  let write_blob env get_token get_x =
-    let set_len, get_len = new_local env "len" in
-    get_x ^^ Blob.len env ^^ set_len ^^
-    write_word_leb env get_token get_len ^^
-    get_token ^^
-    get_x ^^ Blob.payload_ptr_unskewed env ^^
-    get_len ^^
-    E.call_import env "rts" "stream_write"
-
-  let write_text env get_token get_x =
-    write_word_leb env get_token (get_x ^^ Text.size env) ^^
-    get_token ^^ get_x ^^
-    E.call_import env "rts" "stream_write_text"
-
-  let write_bignum_leb env get_token get_x =
-    get_token ^^ get_x ^^
-    BigNum.compile_store_to_stream_unsigned env
-
-  let write_bignum_sleb env get_token get_x =
-    get_token ^^ get_x ^^
-    BigNum.compile_store_to_stream_signed env
-
-end
-*)
-
 module Stabilization = struct
   let load_stable_actor env = E.call_import env "rts" "load_stable_actor"
     
@@ -6970,7 +6777,8 @@ module Stabilization = struct
 end
 
 (*
-(* OldStabilization (serialization to/from stable memory) of both:
+(* OldStabilization as migration code: 
+  Deserializing a last time from explicit stable memory into the stable heap:
    * stable variables; and
    * virtual stable memory.
    c.f.
@@ -6979,177 +6787,69 @@ end
 *)
 
 module OldStabilization = struct
+  (* start from 1 to avoid accidental reads of 0 *)
+  let stable_memory_version = Int32.of_int 1
 
   let extend64 code = code ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
+  let compile_add64_const = compile_op64_const I64Op.Add
 
-  (* The below stream implementation is geared towards the
-     tail section of stable memory, where the serialised
-     stable variables go. As such a few intimate details of
-     the stable memory layout are burnt in, such as the
-     variable `N` from the design document. *)
-  module StableMemoryStream : Stream = struct
-    include BlobStream
+  let _read_word32 env =
+    StableMem.read env false "word32" I32Type 4l load_unskewed_ptr
+  let write_word32 env =
+    StableMem.write env false "word32" I32Type 4l store_unskewed_ptr
 
-    let name_for fn_name ts = "@Sm_" ^ fn_name ^ "<" ^ Typ_hash.typ_seq_hash ts ^ ">"
-
-    let create env get_data_size set_token get_token header =
-      create env (compile_unboxed_const 0x8000l) set_token get_token header ^^
-        (* TODO: push header directly? *)
-
-      let (set_len, get_len) = new_local env "len" in
-      get_data_size ^^
-      compile_add_const (Int32.of_int (String.length header)) ^^
-      set_len ^^
-
-      let (set_dst, get_dst) = new_local64 env "dst" in
-      StableMem.get_mem_size env ^^
-      compile_shl64_const (Int64.of_int page_size_bits) ^^
-      compile_add64_const 4L ^^ (* `N` is now on the stack *)
-      set_dst ^^
-
-      get_dst ^^
-      extend64 get_len ^^
-      StableMem.ensure env ^^
-
-      get_token ^^
-      get_dst ^^
-      get_dst ^^ extend64 get_len ^^
-      G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
-      E.call_import env "rts" "stream_stable_dest"
-
-    let ptr64_field env = 
-      let offset = 1l in (* see invariant in `stream.rs` *)
-      Int32.add Blob.len_field offset (* see invariant in `stream.rs`, padding for 64-bit after Stream header *)
-
-    let terminate env get_token get_data_size header_size =
-      get_token ^^
-      E.call_import env "rts" "stream_shutdown" ^^
-      compile_unboxed_zero ^^ (* no need to write *)
-      get_token ^^
-      Tagged.load_field64_unskewed env (ptr64_field env) ^^
-      StableMem.get_mem_size env ^^
-      compile_shl64_const (Int64.of_int page_size_bits) ^^
-      G.i (Binary (Wasm.Values.I64 I64Op.Sub)) ^^
-      compile_sub64_const 4L ^^  (* `N` is now subtracted *)
-      G.i (Convert (Wasm.Values.I32 I32Op.WrapI64))
-
-    let finalize_buffer _ = G.nop (* everything is outputted already *)
-
-    (* Returns a 32-bit unsigned int that is the number of bytes that would
-       have been written to stable memory if flushed. The difference
-       of two such numbers will always be an exact byte distance. *)
-    let absolute_offset env get_token =
-      let start64_field = Int32.add (ptr64_field env) 2l in (* see invariant in `stream.rs` *)
-      absolute_offset env get_token ^^
-      get_token ^^
-      Tagged.load_field64_unskewed env (ptr64_field env) ^^
-      get_token ^^
-      Tagged.load_field64_unskewed env start64_field ^^
-      G.i (Binary (Wasm.Values.I64 I64Op.Sub)) ^^
-      G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
-      G.i (Binary (Wasm.Values.I32 I32Op.Add))
-  end
-
-  module Externalization = MakeSerialization(StableMemoryStream)
-
-  let stabilize env t =
-    let (set_dst, get_dst) = new_local env "dst" in
-    let (set_len, get_len) = new_local env "len" in
-
-    E.call_import env "rts" "stop_gc_on_upgrade" ^^
-
-
-    Externalization.serialize env [t] ^^
-    set_len ^^
-    set_dst ^^
-
-    StableMem.get_mem_size env ^^
-    G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
-    G.if0
-      begin (* ensure [0,..,3,...len+4) *)
-        compile_const_64 0L ^^
-        extend64 get_len ^^
-        compile_add64_const 4L ^^  (* reserve one word for size *)
-        StableMem.ensure env ^^
-
-        (* write len to initial word of stable memory*)
-        compile_const_64 0L ^^
-        get_len ^^
-        StableMem.write_word32 env ^^
-
-        (* copy data to following stable memory *)
-        Externalization.Strm.finalize_buffer
-          begin
+  (* read and clear word32 from stable mem offset on stack *)
+  let read_and_clear_word32 env =
+    match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+      Func.share_code1 env "__stablemem_read_and_clear_word32"
+        ("offset", I64Type) [I32Type]
+        (fun env get_offset ->
+          Stack.with_words env "temp_ptr" 1l (fun get_temp_ptr ->
+            let (set_word, get_word) = new_local env "word" in
+            (* read word *)
+            get_temp_ptr ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+            get_offset ^^
             compile_const_64 4L ^^
-            extend64 get_dst ^^
-            extend64 get_len ^^
-            IC.system_call env "stable64_write"
-          end
-      end
-      begin
-        let (set_N, get_N) = new_local64 env "N" in
+            IC.system_call env "stable64_read" ^^
+            get_temp_ptr ^^ load_unskewed_ptr ^^
+            set_word ^^
+            (* write 0 *)
+            get_temp_ptr ^^ compile_unboxed_const 0l ^^ store_unskewed_ptr ^^
+            get_offset ^^
+            get_temp_ptr ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+            compile_const_64 4L ^^
+            IC.system_call env "stable64_write" ^^
+            (* return word *)
+            get_word
+        ))
+    | _ -> assert false
 
-        (* let N = !size * page_size *)
-        StableMem.get_mem_size env ^^
-        compile_shl64_const (Int64.of_int page_size_bits) ^^
-        set_N ^^
+  (* TODO: rewrite using MemoryFill *)
+  let blob_clear env =
+    Func.share_code1 env "blob_clear" ("x", I32Type) [] (fun env get_x ->
+      let (set_ptr, get_ptr) = new_local env "ptr" in
+      let (set_len, get_len) = new_local env "len" in
+      get_x ^^
+      Blob.as_ptr_len env ^^
+      set_len ^^
+      set_ptr ^^
 
-        (* grow mem to page including address
-           N + 4 + len + 4 + 4 + 4 = N + len + 16
-        *)
-        get_N ^^
-        extend64 get_len ^^
-        compile_add64_const 16L ^^
-        StableMem.ensure env ^^
+      (* round to word size *)
+      get_len ^^
+      compile_add_const (Int32.sub Heap.word_size 1l) ^^
+      compile_divU_const Heap.word_size ^^
 
-        get_N ^^
-        get_len ^^
-        StableMem.write_word32 env ^^
+      (* clear all words *)
+      from_0_to_n env (fun get_i ->
+        get_ptr ^^
+        compile_unboxed_const 0l ^^
+        store_unskewed_ptr ^^
+        get_ptr ^^
+        compile_add_const Heap.word_size ^^
+        set_ptr))
 
-        (* copy data to following stable memory *)
-        Externalization.Strm.finalize_buffer
-          begin
-            get_N ^^
-            compile_add64_const 4L ^^
-            extend64 get_dst ^^
-            extend64 get_len ^^
-            IC.system_call env "stable64_write"
-          end ^^
-
-        (* let M = pagesize * ic0.stable64_size64() - 1 *)
-        (* M is beginning of last page *)
-        let (set_M, get_M) = new_local64 env "M" in
-        IC.system_call env "stable64_size" ^^
-        compile_sub64_const 1L ^^
-        compile_shl64_const (Int64.of_int page_size_bits) ^^
-        set_M ^^
-
-        (* store mem_size at M + (pagesize - 12) *)
-        get_M ^^
-        compile_add64_const (Int64.sub page_size64 12L) ^^
-        StableMem.get_mem_size env ^^
-        G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
-        (* TODO: write word64 *)
-        StableMem.write_word32 env ^^
-
-        (* save first word at M + (pagesize - 8);
-           mark first word as 0 *)
-        get_M ^^
-        compile_add64_const (Int64.sub page_size64 8L) ^^
-        compile_const_64 0L ^^
-        StableMem.read_and_clear_word32 env ^^
-        StableMem.write_word32 env ^^
-
-        (* save version at M + (pagesize - 4) *)
-        get_M ^^
-          compile_add64_const (Int64.sub page_size64 4L) ^^
-        (* TODO bump version? *)
-        compile_unboxed_const StableMem.version ^^
-        StableMem.write_word32 env
-
-      end
-
-  let destabilize env ty =
+  let _destabilize env ty =
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
       let (set_pages, get_pages) = new_local64 env "pages" in
@@ -7175,7 +6875,7 @@ module OldStabilization = struct
           let (set_len, get_len) = new_local env "len" in
           let (set_offset, get_offset) = new_local64 env "offset" in
           compile_const_64 0L ^^
-          StableMem.read_and_clear_word32 env ^^
+          read_and_clear_word32 env ^^
           set_marker ^^
 
           get_marker ^^
@@ -7194,28 +6894,28 @@ module OldStabilization = struct
               (* read version *)
               get_M ^^
               compile_add64_const (Int64.sub page_size64 4L) ^^
-              StableMem.read_and_clear_word32 env ^^
+              read_and_clear_word32 env ^^
               set_version ^^
 
               (* check version *)
               get_version ^^
-              compile_unboxed_const StableMem.version ^^
+              compile_unboxed_const stable_memory_version ^^
               G.i (Compare (Wasm.Values.I32 I32Op.GtU)) ^^
               E.then_trap_with env (Printf.sprintf
                 "higher stable memory version (expected %s)"
-                (Int32.to_string StableMem.version)) ^^
+                (Int32.to_string stable_memory_version)) ^^
 
               (* restore StableMem bytes [0..4) *)
               compile_const_64 0L ^^
               get_M ^^
               compile_add64_const (Int64.sub page_size64 8L) ^^
-              StableMem.read_and_clear_word32 env ^^
-              StableMem.write_word32 env ^^
+              read_and_clear_word32 env ^^
+              write_word32 env ^^
 
               (* restore mem_size *)
               get_M ^^
               compile_add64_const (Int64.sub page_size64 12L) ^^
-              extend64 (StableMem.read_and_clear_word32 env) ^^ (*TODO: use 64 bits *)
+              extend64 (read_and_clear_word32 env) ^^ (*TODO: use 64 bits *)
               StableMem.set_mem_size env ^^
 
               StableMem.get_mem_size env ^^
@@ -7224,7 +6924,7 @@ module OldStabilization = struct
 
               (* set len *)
               get_N ^^
-              StableMem.read_and_clear_word32 env ^^
+              read_and_clear_word32 env ^^
               set_len ^^
 
               (* set offset *)
@@ -7264,7 +6964,7 @@ module OldStabilization = struct
 
           (* clear blob contents *)
           get_blob ^^
-          Blob.clear env ^^
+          blob_clear env ^^
 
           (* copy zeros from blob to stable memory *)
           get_offset ^^
