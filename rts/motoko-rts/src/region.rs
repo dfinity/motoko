@@ -424,6 +424,18 @@ pub unsafe fn region_id<M: Memory>(_mem: &mut M, r: Value) -> u32 {
     (*r).id.into()
 }
 
+#[ic_mem_fn]
+pub unsafe fn region_page_count<M: Memory>(_mem: &mut M, r: Value) -> u32 {
+    let r = r.as_region();
+    (*r).page_count
+}
+
+#[ic_mem_fn]
+pub unsafe fn region_vec_pages<M: Memory>(_mem: &mut M, r: Value) -> Value {
+    let r = r.as_region();
+    (*r).vec_pages
+}
+
 // Helper for commmon logic that reserves low-valued RegionIds in a certain span for future use.
 // When first is some, we are actually reserving.  When first is none, we are checking that the reservation has occured.
 unsafe fn region_reserve_id_span<M: Memory>(

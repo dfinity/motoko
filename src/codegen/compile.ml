@@ -1002,6 +1002,8 @@ module RTS = struct
     E.add_func_import env "rts" "init_region" [I32Type; I32Type; I32Type; I32Type] [];
     E.add_func_import env "rts" "region_new" [] [I32Type];
     E.add_func_import env "rts" "region_id" [I32Type] [I32Type];
+    E.add_func_import env "rts" "region_page_count" [I32Type] [I32Type];
+    E.add_func_import env "rts" "region_vec_pages" [I32Type] [I32Type];
     E.add_func_import env "rts" "region_size" [I32Type] [I64Type];
     E.add_func_import env "rts" "region_grow" [I32Type; I64Type] [I64Type];
     E.add_func_import env "rts" "region_load_blob" [I32Type; I64Type; I32Type] [I32Type];
@@ -3939,50 +3941,25 @@ module Region = struct
                                           Blob
   *)
 
-  let id_field env = Int32.add (Tagged.header_size env) 0l
-  let page_count_field env = Int32.add (Tagged.header_size env) 1l
-  let vec_pages_field env = Int32.add (Tagged.header_size env) 2l
-
-  let load_field env region_field =
-    let field = region_field env in
-    assert (field = id_field env || field = page_count_field env || field = vec_pages_field env);
-    Tagged.load_forwarding_pointer env ^^
-    Tagged.load_field env field
-
-  let _store_field env region_field =
-    let field = region_field env in
-    assert (field = id_field env || field = page_count_field env || field = vec_pages_field env);
-    let (set_value, get_value) = new_local env "value" in
-    set_value ^^
-    Tagged.load_forwarding_pointer env ^^
-    get_value ^^
-    Tagged.store_field env field
-
   let alloc_region env =
     E.call_import env "rts" "alloc_region"
 
   let init_region env =
     E.call_import env "rts" "init_region"
 
-  let sanity_check s env =
-    if !Flags.sanity then
-    Func.share_code1 env ("check_region_" ^ s) ("val", I32Type) [I32Type]
-      (fun env get_region ->
-         get_region ^^ Tagged.load_tag env ^^
-         compile_eq_const Tagged.(int_of_tag Region) ^^
-         get_region ^^ Tagged.load_tag env ^^ (* repeated, optimize? *)
-         compile_eq_const Tagged.(int_of_tag StableSeen) ^^
-         G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
-         E.else_trap_with env ("Internal error: bad region tag "^ s) ^^
-         get_region ^^ load_field env vec_pages_field ^^ Tagged.load_tag env ^^
-         compile_eq_const Tagged.(int_of_tag Blob) ^^
-         E.else_trap_with env ("Internal error: bad region.vec_pages" ^ s) ^^
-         get_region)
-    else G.nop
+  let sanity_check s env = G.i Drop (* should be dead code soon *)
 
+  (* field accessors *)
   (* NB: all these opns must resolve forwarding pointers here or in RTS *)
   let id env =
     E.call_import env "rts" "region_id" (* TEMP (for testing) *)
+
+  let page_count env =
+    E.call_import env "rts" "region_page_count"
+
+  let vec_pages env =
+    E.call_import env "rts" "region_page_count"
+
   let new_ env =
     E.call_import env "rts" "region_new"
   let size env =
@@ -6106,7 +6083,7 @@ module MakeSerialization (Strm : Stream) = struct
       | Prim Region ->
          size_alias (fun () ->
           inc_data_size (compile_unboxed_const 8l) ^^ (* |(padded) id| + |page_count| *)
-          get_x ^^ Region.load_field env Region.vec_pages_field ^^ size env (Prim Blob))
+          get_x ^^ Region.vec_pages env ^^ size env (Prim Blob))
       | Mut t ->
         size_alias (fun () -> get_x ^^ MutBox.load_field env ^^ size env t)
       | _ -> todo "buffer_size" (Arrange_ir.typ t) G.nop
@@ -6230,9 +6207,9 @@ module MakeSerialization (Strm : Stream) = struct
         write_alias (fun () -> get_x ^^ write env (Array t))
       | Prim Region ->
         write_alias (fun () ->
-          write_word_32 env get_data_buf (get_x ^^ Region.load_field env Region.id_field) ^^
-          write_word_32 env get_data_buf (get_x ^^ Region.load_field env Region.page_count_field) ^^
-          write_blob env get_data_buf (get_x ^^ Region.load_field env Region.vec_pages_field)
+          write_word_32 env get_data_buf (get_x ^^ Region.id env) ^^
+          write_word_32 env get_data_buf (get_x ^^ Region.page_count env) ^^
+          write_blob env get_data_buf (get_x ^^ Region.vec_pages env)
         )
       | Array t ->
         write_word_leb env get_data_buf (get_x ^^ Arr.len env) ^^
