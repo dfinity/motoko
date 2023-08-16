@@ -370,26 +370,52 @@ fn write_magic() {
     write_u32(meta_data::offset::VERSION, meta_data::version::VERSION);
 }
 
+#[ic_mem_fn]
 unsafe fn alloc_region<M: Memory>(
     mem: &mut M,
-    id: u16,
+    id: u32,
     page_count: u32,
     vec_pages: Value,
 ) -> Value {
     let r_ptr = mem.alloc_words(size_of::<Region>());
-
     // NB. cannot use as_region() here as we didn't write the header yet
     let region = r_ptr.get_ptr() as *mut Region;
     (*region).header.tag = TAG_REGION;
     (*region).header.init_forward(r_ptr);
-    (*region).id = id;
+    debug_assert!(id <= meta_data::max::REGIONS as u32);
+    (*region).id = id as u16;
     // The padding must be initialized with zero because it is read by the compiler-generated code.
     (*region).zero_padding = 0;
+    debug_assert!(
+        page_count
+            <= (vec_pages.as_blob().len().as_u32() / meta_data::bytes_of::<u16>() as u32)
+                * meta_data::size::PAGES_IN_BLOCK
+    );
     (*region).page_count = page_count;
     init_with_barrier(mem, &mut (*region).vec_pages, vec_pages);
 
     allocation_barrier(r_ptr);
     r_ptr
+}
+
+#[ic_mem_fn]
+unsafe fn init_region<M: Memory>(
+    mem: &mut M,
+    r: Value,
+    id: u32,
+    page_count: u32,
+    vec_pages: Value,
+) {
+    let r = r.as_region();
+    debug_assert!(id <= meta_data::max::REGIONS as u32);
+    (*r).id = id as u16;
+    debug_assert!(
+        page_count
+            <= (vec_pages.as_blob().len().as_u32() / meta_data::bytes_of::<u16>() as u32)
+                * meta_data::size::PAGES_IN_BLOCK
+    );
+    (*r).page_count = page_count;
+    write_with_barrier(mem, &mut (*r).vec_pages, vec_pages);
 }
 
 #[ic_mem_fn]
@@ -430,7 +456,7 @@ pub unsafe fn region_new<M: Memory>(mem: &mut M) -> Value {
 
     let vec_pages = alloc_blob(mem, Bytes(0));
     allocation_barrier(vec_pages);
-    let r_ptr = alloc_region(mem, next_id, 0, vec_pages);
+    let r_ptr = alloc_region(mem, next_id as u32, 0, vec_pages);
 
     // Update Region table.
     {
@@ -479,7 +505,7 @@ pub unsafe fn region_recover<M: Memory>(mem: &mut M, rid: &RegionId) -> Value {
     assert_eq!(recovered_blocks, block_count);
     allocation_barrier(vec_pages);
 
-    let r_ptr = alloc_region(mem, rid.0, page_count as u32, vec_pages);
+    let r_ptr = alloc_region(mem, rid.0 as u32, page_count as u32, vec_pages);
     r_ptr
 }
 

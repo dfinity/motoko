@@ -998,6 +998,8 @@ module RTS = struct
     E.add_func_import env "rts" "text_size" [I32Type] [I32Type];
     E.add_func_import env "rts" "text_to_buf" [I32Type; I32Type] [];
     E.add_func_import env "rts" "region_init" [I32Type] [];
+    E.add_func_import env "rts" "alloc_region" [I32Type; I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "init_region" [I32Type; I32Type; I32Type; I32Type] [];
     E.add_func_import env "rts" "region_new" [] [I32Type];
     E.add_func_import env "rts" "region_id" [I32Type] [I32Type];
     E.add_func_import env "rts" "region_size" [I32Type] [I64Type];
@@ -3947,7 +3949,7 @@ module Region = struct
     Tagged.load_forwarding_pointer env ^^
     Tagged.load_field env field
 
-  let store_field env region_field =
+  let _store_field env region_field =
     let field = region_field env in
     assert (field = id_field env || field = page_count_field env || field = vec_pages_field env);
     let (set_value, get_value) = new_local env "value" in
@@ -3956,8 +3958,11 @@ module Region = struct
     get_value ^^
     Tagged.store_field env field
 
-  let alloc env get_id get_pagecount get_vec_pages =
-    Tagged.obj env Tagged.Region [ get_id; get_pagecount; get_vec_pages ]
+  let alloc_region env =
+    E.call_import env "rts" "alloc_region"
+
+  let init_region env =
+    E.call_import env "rts" "init_region"
 
   let sanity_check s env =
     if !Flags.sanity then
@@ -6855,17 +6860,19 @@ module MakeSerialization (Strm : Stream) = struct
           get_region_typ ^^
           compile_eq_const (Int32.neg (Option.get (to_idl_prim (Prim Region)))) ^^
           E.else_trap_with env "deserialize_go (Region): unexpected idl_typ" ^^
-          Region.alloc env (compile_unboxed_const 0l) (compile_unboxed_const 0l) (Blob.lit env "") ^^ set_region ^^
+          (* pre-allocate a region object, with dummy fields *)
+          compile_unboxed_const 0l ^^ (* id *)
+          compile_unboxed_const 0l ^^ (* pagecount *)
+          Blob.lit env "" ^^ (* vec_pages *)
+          Region.alloc_region env ^^
+          set_region ^^
           on_alloc get_region ^^
-          get_region ^^ ReadBuf.read_word32 env get_data_buf ^^ Region.store_field env Region.id_field ^^
-          get_region ^^ ReadBuf.read_word32 env get_data_buf ^^ Region.store_field env Region.page_count_field ^^
-          (*@Luc: vec_pages_field object field update! do we need a write_barrier or is the allocation barrier enough?
-            Note that Region.alloc above already containes an allocation_barrier, but we later update the vec_pages_field.
-           *)
-          get_region ^^ read_blob () ^^ Region.store_field env Region.vec_pages_field ^^
+          (* read and initialize the region's fields *)
           get_region ^^
-          Tagged.allocation_barrier env ^^
-          G.i Drop
+          ReadBuf.read_word32 env get_data_buf ^^ (* id *)
+          ReadBuf.read_word32 env get_data_buf ^^ (* pagecount *)
+          read_blob () ^^ (* vec_pages *)
+          Region.init_region env
         )
       | Array t ->
         let (set_len, get_len) = new_local env "len" in
