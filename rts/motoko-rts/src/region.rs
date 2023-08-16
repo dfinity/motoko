@@ -425,6 +425,19 @@ unsafe fn region_reserve_id_span<M: Memory>(
 }
 
 #[ic_mem_fn]
+pub unsafe fn region0_get<M: Memory>(_mem: &mut M) -> Value {
+    debug_assert_ne!(REGION_0, NO_REGION);
+    REGION_0
+}
+
+// Expose Region0 object to GC algorithms as root
+#[allow(dead_code)]
+#[cfg(feature = "ic")]
+pub(crate) unsafe fn region0_get_ptr_loc() -> *mut Value {
+    &mut REGION_0
+}
+
+#[ic_mem_fn]
 pub unsafe fn region_new<M: Memory>(mem: &mut M) -> Value {
     match crate::stable_mem::get_version() {
         VERSION_NO_STABLE_MEMORY => {
@@ -675,7 +688,7 @@ pub(crate) unsafe fn region_migration_from_regions_plus<M: Memory>(mem: &mut M) 
 // region manager migration/initialization, with pre-existing stable data.
 //
 #[ic_mem_fn]
-pub(crate) unsafe fn region_init<M: Memory>(mem: &mut M, use_stable_regions: i32) {
+pub(crate) unsafe fn region_init<M: Memory>(mem: &mut M, use_stable_regions: u32) {
     debug_assert!(meta_data::offset::FREE < meta_data::offset::BLOCK_ZERO);
     match crate::stable_mem::get_version() {
         VERSION_NO_STABLE_MEMORY => {
