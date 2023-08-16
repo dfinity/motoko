@@ -257,8 +257,6 @@ rec {
         mkdir -p $out/rts
         cp mo-rts.wasm $out/rts
         cp mo-rts-debug.wasm $out/rts
-        cp mo-rts-incremental.wasm $out/rts
-        cp mo-rts-incremental-debug.wasm $out/rts
       '';
 
       # This needs to be self-contained. Remove mention of nix path in debug
@@ -269,11 +267,6 @@ rec {
           -t ${rtsDeps} \
           -t ${rustStdDeps} \
           $out/rts/mo-rts.wasm $out/rts/mo-rts-debug.wasm
-        remove-references-to \
-          -t ${nixpkgs.rustc-nightly} \
-          -t ${rtsDeps} \
-          -t ${rustStdDeps} \
-          $out/rts/mo-rts-incremental.wasm $out/rts/mo-rts-incremental-debug.wasm
       '';
 
       allowedRequisites = [];
@@ -362,26 +355,6 @@ rec {
     snty_subdir = dir: deps:
       (test_subdir dir deps).overrideAttrs {
           EXTRA_MOC_ARGS = "--sanity-checks";
-      };
-      
-    generational_gc_subdir = dir: deps:
-      (test_subdir dir deps).overrideAttrs {
-          EXTRA_MOC_ARGS = "--generational-gc";
-      };
-
-    snty_compacting_gc_subdir = dir: deps:
-      (test_subdir dir deps).overrideAttrs {
-          EXTRA_MOC_ARGS = "--sanity-checks --compacting-gc";
-      };
-
-    snty_generational_gc_subdir = dir: deps:
-      (test_subdir dir deps).overrideAttrs {
-          EXTRA_MOC_ARGS = "--sanity-checks --generational-gc";
-      };
-
-    snty_incremental_gc_subdir = dir: deps:
-      (test_subdir dir deps).overrideAttrs {
-          EXTRA_MOC_ARGS = "--sanity-checks --incremental-gc";
       };
 
     perf_subdir = dir: deps:
@@ -497,9 +470,6 @@ rec {
       ic-ref-run = test_subdir "run-drun"   [ moc ic-ref-run ];
       drun       = test_subdir "run-drun"   [ moc nixpkgs.drun ];
       drun-dbg   = snty_subdir "run-drun"   [ moc nixpkgs.drun ];
-      drun-compacting-gc = snty_compacting_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
-      drun-generational-gc = snty_generational_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
-      drun-incremental-gc = snty_incremental_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
       fail       = test_subdir "fail"       [ moc ];
       repl       = test_subdir "repl"       [ moc ];
       ld         = test_subdir "ld"         ([ mo-ld ] ++ ldTestDeps);

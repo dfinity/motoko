@@ -4,8 +4,6 @@ module M = Map.Make(String)
 
 type compile_mode = WasmMode | ICMode | RefMode | WASIMode
 
-type gc_strategy = MarkCompact | Copying | Generational | Incremental
-
 let trace = ref false
 let verbose = ref false
 let print_warnings = ref true
@@ -39,7 +37,6 @@ let omit_metadata_names : string list ref = ref []
 let compiled = ref false
 let error_detail = ref 2
 let sanity = ref false
-let gc_strategy = ref Copying
 let force_gc = ref false
 let global_timer = ref true
 let experimental_field_aliasing = ref false

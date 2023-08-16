@@ -24,8 +24,6 @@ use crate::memory::Memory;
 use crate::tommath_bindings::{mp_digit, mp_int};
 use core::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
 use core::ptr::null;
-use motoko_rts_macros::is_incremental_gc;
-use motoko_rts_macros::*;
 
 use crate::constants::WORD_SIZE;
 use crate::rts_trap_with;
@@ -268,22 +266,16 @@ impl Value {
     /// Check that the forwarding pointer is valid.
     #[inline]
     pub unsafe fn check_forwarding_pointer(self) {
-        if is_incremental_gc!() {
-            debug_assert!(
-                self.forward().get_ptr() == self.get_ptr()
-                    || self.forward().forward().get_ptr() == self.forward().get_ptr()
-            );
-        }
+        debug_assert!(
+            self.forward().get_ptr() == self.get_ptr()
+                || self.forward().forward().get_ptr() == self.forward().get_ptr()
+        );
     }
 
     /// Check whether the object's forwarding pointer refers to a different location.
     pub unsafe fn is_forwarded(self) -> bool {
-        if is_incremental_gc!() {
-            self.check_forwarding_pointer();
-            self.forward().get_ptr() != self.get_ptr()
-        } else {
-            false
-        }
+        self.check_forwarding_pointer();
+        self.forward().get_ptr() != self.get_ptr()
     }
 
     /// Get the object tag. No forwarding. Can be applied to any block, regular objects
@@ -294,7 +286,6 @@ impl Value {
     }
 
     /// Get the forwarding pointer. Used by the incremental GC.
-    #[incremental_gc]
     pub unsafe fn forward(self) -> Value {
         debug_assert!(self.is_obj());
         debug_assert!(self.get_ptr() as *const Obj != null());
@@ -302,15 +293,9 @@ impl Value {
         (*obj).forward
     }
 
-    /// Get the forwarding pointer. Used by the incremental GC.
-    #[non_incremental_gc]
-    pub unsafe fn forward(self) -> Value {
-        self
-    }
-
     /// Resolve forwarding if the value is a pointer. Otherwise, return the same value.
     pub unsafe fn forward_if_possible(self) -> Value {
-        if is_incremental_gc!() && self.is_ptr() && self.get_ptr() as *const Obj != null() {
+        if self.is_ptr() && self.get_ptr() as *const Obj != null() {
             // Ignore null pointers used in text_iter.
             self.forward()
         } else {
@@ -460,30 +445,18 @@ pub const TAG_ARRAY_SLICE_MIN: Tag = 32;
 #[repr(C)] // See the note at the beginning of this module
 pub struct Obj {
     pub tag: Tag,
-    // Cannot use `#[incremental_gc]` as Rust only allows non-macro attributes for fields.
-    #[cfg(feature = "incremental_gc")]
     /// Forwarding pointer to support object moving in the incremental GC.
     pub forward: Value,
 }
 
 impl Obj {
-    #[incremental_gc]
     pub fn init_forward(&mut self, value: Value) {
         self.forward = value;
     }
 
-    #[non_incremental_gc]
-    pub fn init_forward(&mut self, _value: Value) {}
-
     /// Check whether the object's forwarding pointer refers to a different location.
-    #[incremental_gc]
     pub unsafe fn is_forwarded(self: *const Self) -> bool {
         (*self).forward.get_ptr() != self as usize
-    }
-
-    #[non_incremental_gc]
-    pub unsafe fn is_forwarded(self: *const Self) -> bool {
-        false
     }
 
     pub unsafe fn tag(self: *const Self) -> Tag {
@@ -758,14 +731,8 @@ impl BigInt {
         self.add(1) as *mut mp_digit // skip closure header
     }
 
-    #[incremental_gc]
     pub unsafe fn forward(self: *mut Self) -> *mut Self {
         (*self).header.forward.as_bigint()
-    }
-
-    #[non_incremental_gc]
-    pub unsafe fn forward(self: *mut Self) -> *mut Self {
-        self
     }
 
     pub unsafe fn from_payload(ptr: *mut mp_digit) -> *mut Self {

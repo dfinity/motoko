@@ -141,22 +141,6 @@ let argspec = [
     set_mode Compile ()), (* similar to --idl *)
       " compile and emit signature of stable types to `.most` file";
 
-  "--generational-gc",
-  Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.Generational),
-  " use generational GC";
-
-  "--incremental-gc",
-  Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.Incremental),
-  " use incremental GC";
-    
-  "--compacting-gc",
-  Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.MarkCompact),
-  " use compacting GC";
-
-  "--copying-gc",
-  Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.Copying),
-  " use copying GC (default)";
-
   "--force-gc",
   Arg.Unit (fun () -> Flags.force_gc := true),
   " disable GC scheduling, always do GC after an update message (for testing)";

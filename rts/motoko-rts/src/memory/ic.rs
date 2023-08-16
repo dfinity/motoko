@@ -1,8 +1,5 @@
 // This module is only enabled when compiling the RTS for IC or WASI.
 
-#[non_incremental_gc]
-pub mod linear_memory;
-#[incremental_gc]
 pub mod partitioned_memory;
 
 use super::Memory;
@@ -10,11 +7,6 @@ use crate::constants::WASM_PAGE_SIZE;
 use crate::rts_trap_with;
 use crate::types::Bytes;
 use core::arch::wasm32;
-use motoko_rts_macros::*;
-
-// TODO: Remove once the classical GCs have been removed.
-#[non_incremental_gc]
-pub const HEAP_START: usize = 4 * 1024 * 1024 + 128 * 1024;
 
 /// Maximum live data retained in a GC.
 pub(crate) static mut MAX_LIVE: Bytes<u32> = Bytes(0);
