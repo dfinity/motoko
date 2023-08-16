@@ -10560,6 +10560,12 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla,
     Region.new_ env ^^ Region.sanity_check "region_new" env
 
+  | OtherPrim "regionId", [e0] ->
+     SR.Vanilla,
+     compile_exp_as env ae SR.Vanilla e0 ^^
+     Region.id env ^^
+     BigNum.from_word32 env
+
   | OtherPrim ("regionGrow"), [e0; e1] ->
     SR.UnboxedWord64,
     compile_exp_as env ae SR.Vanilla e0 ^^
@@ -10756,17 +10762,6 @@ and compile_prim_invocation (env : E.t) ae p es at =
     const_sr SR.Vanilla (Arr.ofBlob env)
   | OtherPrim ("arrayToBlob" | "arrayMutToBlob"), e ->
     const_sr SR.Vanilla (Arr.toBlob env)
-
-  (*TODO: delete me*)
-  | OtherPrim "stableMemoryRegion", [] ->
-     SR.Vanilla,
-     StableMemoryInterface.get_region0 env
-
-  | OtherPrim "regionId", [e0] ->
-     SR.Vanilla,
-     compile_exp_as env ae SR.Vanilla e0 ^^
-     Region.id env ^^
-     BigNum.from_word32 env
 
   | OtherPrim ("stableMemoryLoadNat32" | "stableMemoryLoadInt32"), [e] ->
     SR.UnboxedWord32,

@@ -392,11 +392,6 @@ func stableVarQuery() : shared query () -> async { size : Nat64 } = (prim "stabl
 
 // stable regions
 
-// Returns the region assigned to the original stable memory interface. 
-// DO NOT MERGE - will break aliasing after upgrade
-func stableMemoryRegion() : Region =
-  (prim "stableMemoryRegion" : () -> Region) ();
-
 func regionNew() : Region =
   (prim "regionNew" : () -> Region) ();
 
