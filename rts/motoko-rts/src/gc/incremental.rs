@@ -71,20 +71,20 @@ unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
 #[cfg(feature = "ic")]
 unsafe fn should_start() -> bool {
     use self::partitioned_heap::PARTITION_SIZE;
-    use crate::memory::ic::partitioned_memory;
+    use crate::memory::ic;
 
     const CRITICAL_HEAP_LIMIT: Bytes<u32> = Bytes(u32::MAX - 768 * 1024 * 1024);
     const CRITICAL_GROWTH_THRESHOLD: f64 = 0.01;
     const NORMAL_GROWTH_THRESHOLD: f64 = 0.65;
 
-    let heap_size = partitioned_memory::get_heap_size();
+    let heap_size = ic::get_heap_size();
     let growth_threshold = if heap_size > CRITICAL_HEAP_LIMIT {
         CRITICAL_GROWTH_THRESHOLD
     } else {
         NORMAL_GROWTH_THRESHOLD
     };
 
-    let current_allocations = partitioned_memory::get_total_allocations();
+    let current_allocations = ic::get_total_allocations();
     let state = get_incremental_gc_state();
     debug_assert!(current_allocations >= state.statistics.last_allocations);
     let absolute_growth = current_allocations - state.statistics.last_allocations;
@@ -94,18 +94,18 @@ unsafe fn should_start() -> bool {
 
 #[cfg(feature = "ic")]
 unsafe fn record_gc_start<M: Memory>() {
-    use crate::memory::ic::partitioned_memory;
+    use crate::memory::ic;
 
     let state = get_incremental_gc_state();
-    state.statistics.last_allocations = partitioned_memory::get_total_allocations();
+    state.statistics.last_allocations = ic::get_total_allocations();
 }
 
 #[cfg(feature = "ic")]
 unsafe fn record_gc_stop<M: Memory>() {
-    use crate::memory::ic::partitioned_memory;
+    use crate::memory::ic;
     use crate::persistence::HEAP_START;
 
-    let heap_size = partitioned_memory::get_heap_size();
+    let heap_size = ic::get_heap_size();
     let static_size = Bytes(HEAP_START as u32);
     debug_assert!(heap_size >= static_size);
     let dynamic_size = heap_size - static_size;
