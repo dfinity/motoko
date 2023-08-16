@@ -291,8 +291,7 @@ impl Memory for DummyMemory {
 }
 
 /// Compute the size of the heap to be allocated for the GC test.
-fn heap_size_for_gc(
-) -> usize {
+fn heap_size_for_gc() -> usize {
     3 * PARTITION_SIZE
 }
 
@@ -324,7 +323,7 @@ fn create_dynamic_heap(
 
             write_word(dynamic_heap, heap_offset, make_pointer(address)); // forwarding pointer
             heap_offset += WORD_SIZE;
-            
+
             // Store length: idx + refs
             write_word(
                 dynamic_heap,
@@ -377,7 +376,7 @@ fn create_dynamic_heap(
 
             write_word(dynamic_heap, heap_offset, make_pointer(mutbox_address));
             heap_offset += WORD_SIZE;
-            
+
             let root_ptr = *object_addrs.get(root_id).unwrap();
             write_word(dynamic_heap, heap_offset, make_pointer(root_ptr as u32));
             heap_offset += WORD_SIZE;
@@ -394,7 +393,7 @@ fn create_dynamic_heap(
             make_pointer(static_root_array_address),
         );
         heap_offset += WORD_SIZE;
-        
+
         assert_eq!(static_roots.len(), root_mutboxes.len());
         write_word(dynamic_heap, heap_offset, root_mutboxes.len() as u32);
         heap_offset += WORD_SIZE;
@@ -416,7 +415,7 @@ fn create_dynamic_heap(
             make_pointer(continuation_table_address),
         );
         heap_offset += WORD_SIZE;
-        
+
         write_word(dynamic_heap, heap_offset, continuation_table.len() as u32);
         heap_offset += WORD_SIZE;
 

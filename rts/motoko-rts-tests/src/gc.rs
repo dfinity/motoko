@@ -11,9 +11,7 @@ mod random;
 mod utils;
 
 use heap::MotokoHeap;
-use utils::{
-    get_scalar_value, make_pointer, read_word, unskew_pointer, ObjectIdx, WORD_SIZE,
-};
+use utils::{get_scalar_value, make_pointer, read_word, unskew_pointer, ObjectIdx, WORD_SIZE};
 
 use motoko_rts::types::*;
 
@@ -262,7 +260,7 @@ fn check_dynamic_heap(
                 offset += WORD_SIZE + length as usize;
             } else {
                 assert!(tag == TAG_ARRAY || tag >= TAG_ARRAY_SLICE_MIN);
-                
+
                 if is_forwarded {
                     let forward_offset = forward as usize - heap.as_ptr() as usize;
                     let length = read_word(
@@ -404,7 +402,7 @@ fn check_static_root_array(mut offset: usize, roots: &[ObjectIdx], heap: &[u8]) 
 
     assert_eq!(read_word(heap, offset), make_pointer(array_address as u32));
     offset += WORD_SIZE;
-    
+
     assert_eq!(read_word(heap, offset), roots.len() as u32);
     offset += WORD_SIZE;
 
@@ -438,7 +436,7 @@ fn check_continuation_table(mut offset: usize, continuation_table: &[ObjectIdx],
 
     assert_eq!(read_word(heap, offset), make_pointer(table_addr as u32));
     offset += WORD_SIZE;
- 
+
     assert_eq!(read_word(heap, offset), continuation_table.len() as u32);
     offset += WORD_SIZE;
 

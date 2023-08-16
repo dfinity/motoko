@@ -16,6 +16,11 @@ pub unsafe extern "C" fn get_heap_size() -> Bytes<u32> {
     crate::gc::incremental::get_partitioned_heap().occupied_size()
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn get_max_live_size() -> Bytes<u32> {
+    crate::gc::incremental::get_max_live_size()
+}
+
 impl Memory for IcMemory {
     #[inline]
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value {

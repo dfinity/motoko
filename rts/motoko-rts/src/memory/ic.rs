@@ -5,16 +5,7 @@ pub mod partitioned_memory;
 use super::Memory;
 use crate::constants::WASM_PAGE_SIZE;
 use crate::rts_trap_with;
-use crate::types::Bytes;
 use core::arch::wasm32;
-
-/// Maximum live data retained in a GC.
-pub(crate) static mut MAX_LIVE: Bytes<u32> = Bytes(0);
-
-#[no_mangle]
-unsafe extern "C" fn get_max_live_size() -> Bytes<u32> {
-    MAX_LIVE
-}
 
 /// Provides a `Memory` implementation, to be used in functions compiled for IC or WASI. The
 /// `Memory` implementation allocates in Wasm heap with Wasm `memory.grow` instruction.

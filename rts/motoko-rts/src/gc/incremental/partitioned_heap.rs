@@ -88,9 +88,7 @@ pub struct Partition {
     update: bool,        // Specifies whether the pointers in the partition have to be updated.
 }
 
-/// For RTS unit testing only.
 /// Optimization: Avoiding `Option` or `Lazy`.
-#[cfg(not(feature = "ic"))]
 const UNINITIALIZED_PARTITION: Partition = Partition {
     index: usize::MAX,
     free: false,
@@ -364,9 +362,7 @@ pub struct PartitionedHeap {
     precomputed_heap_size: usize, // Occupied heap size, excluding the dynamic heap in the allocation partition.
 }
 
-/// For RTS unit testing only.
 /// Optimization: Avoiding `Option` or `LazyCell`.
-#[cfg(not(feature = "ic"))]
 pub const UNINITIALIZED_HEAP: PartitionedHeap = PartitionedHeap {
     partitions: [UNINITIALIZED_PARTITION; MAX_PARTITIONS],
     heap_base: 0,

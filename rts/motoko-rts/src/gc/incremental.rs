@@ -6,13 +6,17 @@
 //! - Focus on reclaiming high-garbage partitions.
 //! - Compacting heap space with partition evacuations.
 //! - Incremental copying enabled by forwarding pointers.
+//!
+//! The entire GC state including the scheduling statistics must be
+//! retained across upgrades and therefore be stored part of the
+//! persistent metadata, cf. `persistence::PersistentMetadata`.
 
 use motoko_rts_macros::ic_mem_fn;
 
 use crate::{memory::Memory, types::*, visitor::visit_pointer_fields};
 
 use self::{
-    partitioned_heap::{PartitionedHeap, PartitionedHeapIterator},
+    partitioned_heap::{PartitionedHeap, PartitionedHeapIterator, UNINITIALIZED_HEAP},
     phases::{
         evacuation_increment::EvacuationIncrement,
         mark_increment::{MarkIncrement, MarkState},
@@ -65,9 +69,6 @@ unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
 }
 
 #[cfg(feature = "ic")]
-static mut LAST_ALLOCATIONS: Bytes<u64> = Bytes(0u64);
-
-#[cfg(feature = "ic")]
 unsafe fn should_start() -> bool {
     use self::partitioned_heap::PARTITION_SIZE;
     use crate::memory::ic::partitioned_memory;
@@ -84,8 +85,9 @@ unsafe fn should_start() -> bool {
     };
 
     let current_allocations = partitioned_memory::get_total_allocations();
-    debug_assert!(current_allocations >= LAST_ALLOCATIONS);
-    let absolute_growth = current_allocations - LAST_ALLOCATIONS;
+    let state = get_incremental_gc_state();
+    debug_assert!(current_allocations >= state.statistics.last_allocations);
+    let absolute_growth = current_allocations - state.statistics.last_allocations;
     let relative_growth = absolute_growth.0 as f64 / heap_size.as_usize() as f64;
     relative_growth > growth_threshold && heap_size.as_usize() >= PARTITION_SIZE
 }
@@ -93,19 +95,31 @@ unsafe fn should_start() -> bool {
 #[cfg(feature = "ic")]
 unsafe fn record_gc_start<M: Memory>() {
     use crate::memory::ic::partitioned_memory;
-    LAST_ALLOCATIONS = partitioned_memory::get_total_allocations();
+
+    let state = get_incremental_gc_state();
+    state.statistics.last_allocations = partitioned_memory::get_total_allocations();
 }
 
 #[cfg(feature = "ic")]
 unsafe fn record_gc_stop<M: Memory>() {
-    use crate::memory::ic::{self, partitioned_memory};
+    use crate::memory::ic::partitioned_memory;
     use crate::persistence::HEAP_START;
 
     let heap_size = partitioned_memory::get_heap_size();
     let static_size = Bytes(HEAP_START as u32);
     debug_assert!(heap_size >= static_size);
     let dynamic_size = heap_size - static_size;
-    ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, dynamic_size);
+    let state = get_incremental_gc_state();
+    state.statistics.max_live = ::core::cmp::max(state.statistics.max_live, dynamic_size);
+}
+
+// Persistent GC statistics used for scheduling and diagnostics.
+#[cfg(feature = "ic")]
+struct Statistics {
+    // Total number of allocation at the start of the last GC run.
+    last_allocations: Bytes<u64>,
+    // Maximum heap size the end of a GC run.
+    max_live: Bytes<u32>,
 }
 
 /// GC phases per run. Each of the following phases is performed in potentially multiple increments.
@@ -147,7 +161,23 @@ pub struct State {
     allocation_count: usize, // Number of allocations during an active GC run.
     mark_state: Option<MarkState>,
     iterator_state: Option<PartitionedHeapIterator>,
+    #[cfg(feature = "ic")]
+    statistics: Statistics,
 }
+
+/// Optimization: Avoiding `Option` or `Lazy`.
+pub(crate) const UNINITIALIZED_STATE: State = State {
+    phase: Phase::Pause,
+    partitioned_heap: UNINITIALIZED_HEAP,
+    allocation_count: 0,
+    mark_state: None,
+    iterator_state: None,
+    #[cfg(feature = "ic")]
+    statistics: Statistics {
+        last_allocations: Bytes(0),
+        max_live: Bytes(0),
+    },
+};
 
 /// Incremental GC.
 /// Each GC call has its new GC instance that shares the common GC state `STATE`.
@@ -388,15 +418,14 @@ pub unsafe fn get_incremental_gc_state() -> &'static mut State {
     crate::persistence::get_incremental_gc_state()
 }
 
+#[cfg(feature = "ic")]
+pub unsafe fn get_max_live_size() -> Bytes<u32> {
+    get_incremental_gc_state().statistics.max_live
+}
+
 // For RTS unit testing only.
 #[cfg(not(feature = "ic"))]
-static mut TEST_GC_STATE: State = State {
-    phase: Phase::Pause,
-    partitioned_heap: partitioned_heap::UNINITIALIZED_HEAP,
-    allocation_count: 0,
-    mark_state: None,
-    iterator_state: None,
-};
+static mut TEST_GC_STATE: State = UNINITIALIZED_STATE;
 
 // For RTS unit testing only.
 #[cfg(not(feature = "ic"))]

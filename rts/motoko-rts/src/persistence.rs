@@ -6,7 +6,7 @@ use motoko_rts_macros::ic_mem_fn;
 
 use crate::{
     barriers::{allocation_barrier, write_with_barrier},
-    gc::incremental::State,
+    gc::incremental::{State, UNINITIALIZED_STATE},
     memory::Memory,
     types::{size_of, Null, Value, TAG_NULL},
 };
@@ -81,6 +81,7 @@ impl PersistentMetadata {
         (*self).version = VERSION;
         (*self).stable_actor = DEFAULT_VALUE;
         (*self).null_singleton = alloc_null(mem);
+        (*self).incremental_gc_state = UNINITIALIZED_STATE;
     }
 }
 
