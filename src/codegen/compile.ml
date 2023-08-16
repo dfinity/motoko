@@ -3947,7 +3947,7 @@ module Region = struct
   let init_region env =
     E.call_import env "rts" "init_region"
 
-  let sanity_check s env = G.i Drop (* should be dead code soon *)
+  let sanity_check s env = G.i Nop (* should be dead code soon *)
 
   (* field accessors *)
   (* NB: all these opns must resolve forwarding pointers here or in RTS *)
@@ -3958,14 +3958,17 @@ module Region = struct
     E.call_import env "rts" "region_page_count"
 
   let vec_pages env =
-    E.call_import env "rts" "region_page_count"
+    E.call_import env "rts" "region_vec_pages"
 
   let new_ env =
     E.call_import env "rts" "region_new"
+
   let size env =
     E.call_import env "rts" "region_size"
+
   let grow env =
     E.call_import env "rts" "region_grow"
+
   let load_blob env = E.call_import env "rts" "region_load_blob"
   let store_blob env = E.call_import env "rts" "region_store_blob"
 
