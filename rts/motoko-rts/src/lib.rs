@@ -35,8 +35,6 @@ pub mod principal_id;
 pub mod region;
 //#[cfg(feature = "ic")]
 mod stable_mem;
-//#[cfg(feature = "ic")]
-pub mod region0;
 mod static_checks;
 pub mod stream;
 pub mod text;

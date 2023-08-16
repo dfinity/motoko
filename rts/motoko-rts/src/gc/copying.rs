@@ -36,7 +36,7 @@ unsafe fn copying_gc<M: Memory>(mem: &mut M) {
         |hp| linear_memory::set_hp_unskewed(hp),
         ic::get_static_roots(),
         crate::continuation_table::continuation_table_loc(),
-        crate::region0::region0_get_ptr_loc(),
+        crate::region::region0_get_ptr_loc(),
         // note_live_size
         |live_size| ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, live_size),
         // note_reclaimed

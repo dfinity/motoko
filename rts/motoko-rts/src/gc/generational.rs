@@ -48,7 +48,7 @@ unsafe fn generational_gc<M: Memory>(mem: &mut M) {
     let old_limits = get_limits();
     let roots = Roots {
         static_roots: ic::get_static_roots(),
-        region0_ptr_loc: crate::region0::region0_get_ptr_loc(),
+        region0_ptr_loc: crate::region::region0_get_ptr_loc(),
         continuation_table_ptr_loc: crate::continuation_table::continuation_table_loc(),
     };
     let heap = Heap {
