@@ -5029,6 +5029,13 @@ module Cycles = struct
 
 end (* Cycles *)
 
+(* Low-level, almost raw access to IC stable memory.
+   Essentially a virtual page allocator
+   * enforcing limit --max-stable-pages not exceeded
+   * tracking virtual page count, ignoring physical pages added for stable variable serialization (global`__stable_mem_size`)
+   * recording current format of contents (global `__stable_version`)
+   Used to implement stable variable serialization, (experimental) stable memory library and Region type (see region.rs)
+*)
 module StableMem = struct
 
   (* Versioning (c.f. Region.rs) *)
@@ -5348,22 +5355,29 @@ module StableMem = struct
           IC.system_call env "stable64_write")
     | _ -> assert false
 
-end (* StableMemory *)
+end (* StableMem *)
 
 
-(* StableMemory API *)
-(* Use StableMem until we've switched to regions, then use region0; *)
-module StableMemory = struct
+(* StableMemoryInterface *)
+(* Core, legacy interface to IC stable memory, used to implement prims `stableMemoryXXX` of
+   library `ExperimentalStableMemory.mo`.
+   Each operation dispatches on the state of `StableMem.get_version()`.
+   * StableMem.version_no_stable_memory/StableMem.version_some_stable_memory:
+     * use StableMem directly
+     * switch to version_some_stable_memory on non-trivial grow.
+   * StableMem.version_regions: use Region.mo
+*)
+module StableMemoryInterface = struct
 
   (* Helpers *)
-  let get env = E.call_import env "rts" "region0_get"
+  let get_region0 env = E.call_import env "rts" "region0_get"
 
   let if_regions env args tys is1 is2 =
     StableMem.get_version env ^^
     compile_unboxed_const StableMem.version_regions ^^
     G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
     E.if_ env tys
-      (get env ^^ args ^^ is1 env)
+      (get_region0 env ^^ args ^^ is1 env)
       (args ^^ is2 env)
 
   (* Prims *)
@@ -10746,7 +10760,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
   (*TODO: delete me*)
   | OtherPrim "stableMemoryRegion", [] ->
      SR.Vanilla,
-     StableMemory.get env
+     StableMemoryInterface.get_region0 env
 
   | OtherPrim "regionId", [e0] ->
      SR.Vanilla,
@@ -10757,24 +10771,24 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | OtherPrim ("stableMemoryLoadNat32" | "stableMemoryLoadInt32"), [e] ->
     SR.UnboxedWord32,
     compile_exp_as env ae SR.UnboxedWord64 e ^^
-    StableMemory.load_word32 env
+    StableMemoryInterface.load_word32 env
 
   | OtherPrim ("stableMemoryStoreNat32" | "stableMemoryStoreInt32"), [e1; e2] ->
     SR.unit,
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     compile_exp_as env ae SR.UnboxedWord32 e2 ^^
-    StableMemory.store_word32 env
+    StableMemoryInterface.store_word32 env
 
   | OtherPrim "stableMemoryLoadNat8", [e] ->
     SR.Vanilla,
     compile_exp_as env ae SR.UnboxedWord64 e ^^
-    StableMemory.load_word8 env ^^
+    StableMemoryInterface.load_word8 env ^^
     TaggedSmallWord.msb_adjust Type.Nat8
 
   | OtherPrim "stableMemoryLoadInt8", [e] ->
     SR.Vanilla,
     compile_exp_as env ae SR.UnboxedWord64 e ^^
-    StableMemory.load_word8 env
+    StableMemoryInterface.load_word8 env
     ^^
     TaggedSmallWord.msb_adjust Type.Int8
 
@@ -10784,59 +10798,59 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.unit,
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     compile_exp_as env ae SR.Vanilla e2 ^^ TaggedSmallWord.lsb_adjust Type.Nat8 ^^
-    StableMemory.store_word8 env
+    StableMemoryInterface.store_word8 env
 
   | OtherPrim "stableMemoryStoreInt8", [e1; e2] ->
     SR.unit,
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     compile_exp_as env ae SR.Vanilla e2 ^^ TaggedSmallWord.lsb_adjust Type.Int8 ^^
-    StableMemory.store_word8 env
+    StableMemoryInterface.store_word8 env
 
   | OtherPrim "stableMemoryLoadNat16", [e] ->
     SR.Vanilla,
     compile_exp_as env ae SR.UnboxedWord64 e ^^
-    StableMemory.load_word16 env ^^
+    StableMemoryInterface.load_word16 env ^^
     TaggedSmallWord.msb_adjust Type.Nat16
 
   | OtherPrim "stableMemoryLoadInt16", [e] ->
     SR.Vanilla,
     compile_exp_as env ae SR.UnboxedWord64 e ^^
-    StableMemory.load_word16 env ^^
+    StableMemoryInterface.load_word16 env ^^
     TaggedSmallWord.msb_adjust Type.Int16
 
   | OtherPrim "stableMemoryStoreNat16", [e1; e2] ->
     SR.unit,
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     compile_exp_as env ae SR.Vanilla e2 ^^ TaggedSmallWord.lsb_adjust Type.Nat16 ^^
-    StableMemory.store_word16 env
+    StableMemoryInterface.store_word16 env
 
   | OtherPrim "stableMemoryStoreInt16", [e1; e2] ->
     SR.unit,
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     compile_exp_as env ae SR.Vanilla e2 ^^ TaggedSmallWord.lsb_adjust Type.Int16 ^^
-    StableMemory.store_word16 env
+    StableMemoryInterface.store_word16 env
 
   | OtherPrim ("stableMemoryLoadNat64" | "stableMemoryLoadInt64"), [e] ->
     SR.UnboxedWord64,
     compile_exp_as env ae SR.UnboxedWord64 e ^^
-    StableMemory.load_word64 env
+    StableMemoryInterface.load_word64 env
 
   | OtherPrim ("stableMemoryStoreNat64" | "stableMemoryStoreInt64"), [e1; e2] ->
     SR.unit,
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     compile_exp_as env ae SR.UnboxedWord64 e2 ^^
-    StableMemory.store_word64 env
+    StableMemoryInterface.store_word64 env
 
   | OtherPrim "stableMemoryLoadFloat", [e] ->
     SR.UnboxedFloat64,
     compile_exp_as env ae SR.UnboxedWord64 e ^^
-    StableMemory.load_float64 env
+    StableMemoryInterface.load_float64 env
 
   | OtherPrim "stableMemoryStoreFloat", [e1; e2] ->
     SR.unit,
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     compile_exp_as env ae SR.UnboxedFloat64 e2 ^^
-    StableMemory.store_float64 env
+    StableMemoryInterface.store_float64 env
 
   | OtherPrim "stableMemoryLoadBlob", [e1; e2] ->
     SR.Vanilla,
@@ -10844,22 +10858,22 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_as env ae SR.Vanilla e2 ^^
     Blob.lit env "Blob size out of bounds" ^^
     BigNum.to_word32_with env ^^
-    StableMemory.load_blob env
+    StableMemoryInterface.load_blob env
 
   | OtherPrim "stableMemoryStoreBlob", [e1; e2] ->
     SR.unit,
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     compile_exp_as env ae SR.Vanilla e2 ^^
-    StableMemory.store_blob env
+    StableMemoryInterface.store_blob env
 
   | OtherPrim "stableMemorySize", [] ->
     SR.UnboxedWord64,
-    StableMemory.size env
+    StableMemoryInterface.size env
 
   | OtherPrim "stableMemoryGrow", [e] ->
     SR.UnboxedWord64,
     compile_exp_as env ae SR.UnboxedWord64 e ^^
-    StableMemory.grow env
+    StableMemoryInterface.grow env
 
   | OtherPrim "stableVarQuery", [] ->
     SR.UnboxedTuple 2,
