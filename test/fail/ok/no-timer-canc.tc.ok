@@ -226,7 +226,6 @@ no-timer-canc.mo:3.10-3.21: type error [M0119], object field cancelTimer is not 
     stableMemoryLoadNat32 : Nat64 -> Nat32;
     stableMemoryLoadNat64 : Nat64 -> Nat64;
     stableMemoryLoadNat8 : Nat64 -> Nat8;
-    stableMemoryRegion : () -> Region;
     stableMemorySize : () -> Nat64;
     stableMemoryStoreBlob : (Nat64, Blob) -> ();
     stableMemoryStoreFloat : (Nat64, Float) -> ();
