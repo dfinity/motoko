@@ -1,14 +1,14 @@
 //! Stream tests
 
-use crate::memory::TestMemory;
+use crate::memory::{initialize_test_memory, reset_test_memory};
 
 use motoko_rts::stream::alloc_stream;
-use motoko_rts::types::{size_of, Blob, Bytes, Stream, Value, Words};
+use motoko_rts::types::{size_of, Blob, Bytes, Stream, Value};
 
 pub unsafe fn test() {
     println!("Testing streaming ...");
 
-    let mut mem = TestMemory::new(Words(1024 * 1024));
+    let mut mem = initialize_test_memory();
 
     const STREAM_SMALL_SIZE: u32 = 60;
 
@@ -87,4 +87,6 @@ pub unsafe fn test() {
     assert_eq!(WRITTEN, Bytes(STREAM_LARGE_SIZE + STREAM_RESERVE_SIZE1)); // all at once
     stream.shutdown();
     assert_eq!(WRITTEN, Bytes(STREAM_LARGE_SIZE + STREAM_RESERVE_SIZE1 + 1)); // u8 too
+
+    reset_test_memory();
 }

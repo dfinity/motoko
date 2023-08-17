@@ -16,7 +16,7 @@ use motoko_rts_macros::ic_mem_fn;
 use crate::{memory::Memory, types::*, visitor::visit_pointer_fields};
 
 use self::{
-    partitioned_heap::{PartitionedHeap, PartitionedHeapIterator, UNINITIALIZED_HEAP},
+    partitioned_heap::{PartitionedHeap, PartitionedHeapIterator},
     phases::{
         evacuation_increment::EvacuationIncrement,
         mark_increment::{MarkIncrement, MarkState},
@@ -40,10 +40,9 @@ pub mod time;
 
 #[ic_mem_fn(ic_only)]
 unsafe fn initialize_incremental_gc<M: Memory>(mem: &mut M) {
-    use crate::persistence::{initialize_memory, HEAP_START};
+    use crate::persistence::initialize_memory;
 
     initialize_memory(mem);
-    IncrementalGC::<M>::initialize(mem, get_incremental_gc_state(), HEAP_START);
 }
 
 #[ic_mem_fn(ic_only)]
@@ -114,7 +113,6 @@ unsafe fn record_gc_stop<M: Memory>() {
 }
 
 // Persistent GC statistics used for scheduling and diagnostics.
-#[cfg(feature = "ic")]
 struct Statistics {
     // Total number of allocation at the start of the last GC run.
     last_allocations: Bytes<u64>,
@@ -161,23 +159,8 @@ pub struct State {
     allocation_count: usize, // Number of allocations during an active GC run.
     mark_state: Option<MarkState>,
     iterator_state: Option<PartitionedHeapIterator>,
-    #[cfg(feature = "ic")]
     statistics: Statistics,
 }
-
-/// Optimization: Avoiding `Option` or `Lazy`.
-pub(crate) const UNINITIALIZED_STATE: State = State {
-    phase: Phase::Pause,
-    partitioned_heap: UNINITIALIZED_HEAP,
-    allocation_count: 0,
-    mark_state: None,
-    iterator_state: None,
-    #[cfg(feature = "ic")]
-    statistics: Statistics {
-        last_allocations: Bytes(0),
-        max_live: Bytes(0),
-    },
-};
 
 /// Incremental GC.
 /// Each GC call has its new GC instance that shares the common GC state `STATE`.
@@ -190,12 +173,20 @@ pub struct IncrementalGC<'a, M: Memory> {
 impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     /// (Re-)Initialize the entire incremental garbage collector.
     /// Called on a runtime system start with incremental GC and also during RTS testing.
-    pub unsafe fn initialize(mem: &'a mut M, state: &mut State, heap_base: usize) {
-        state.phase = Phase::Pause;
-        state.partitioned_heap = PartitionedHeap::new(mem, heap_base);
-        state.allocation_count = 0;
-        state.mark_state = None;
-        state.iterator_state = None;
+    pub unsafe fn initial_gc_state(mem: &'a mut M, heap_base: usize) -> State {
+        let partitioned_heap = PartitionedHeap::new(mem, heap_base);
+        let statistics = Statistics {
+            last_allocations: Bytes(0),
+            max_live: Bytes(0),
+        };
+        State {
+            phase: Phase::Pause,
+            partitioned_heap,
+            allocation_count: 0,
+            mark_state: None,
+            iterator_state: None,
+            statistics,
+        }
     }
 
     /// Each GC schedule point can get a new GC instance that shares the common GC state.
@@ -423,12 +414,22 @@ pub unsafe fn get_max_live_size() -> Bytes<u32> {
     get_incremental_gc_state().statistics.max_live
 }
 
-// For RTS unit testing only.
+/// For RTS unit testing only.
 #[cfg(not(feature = "ic"))]
-static mut TEST_GC_STATE: State = UNINITIALIZED_STATE;
+static mut TEST_GC_STATE: Option<State> = None;
 
-// For RTS unit testing only.
+/// For RTS unit testing only.
 #[cfg(not(feature = "ic"))]
 pub unsafe fn get_incremental_gc_state() -> &'static mut State {
-    &mut TEST_GC_STATE
+    let state = TEST_GC_STATE.as_mut().unwrap();
+    // Read the statistics to get rid of unused warnings.
+    assert!(state.statistics.last_allocations == Bytes(0));
+    assert!(state.statistics.max_live == Bytes(0));
+    state
+}
+
+/// For RTS unit testing only.
+#[cfg(not(feature = "ic"))]
+pub unsafe fn set_incremental_gc_state(state: Option<State>) {
+    TEST_GC_STATE = state;
 }

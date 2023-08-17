@@ -1,8 +1,8 @@
-use crate::memory::TestMemory;
+use crate::memory::{initialize_test_memory, reset_test_memory, TestMemory};
 
 use motoko_rts::bigint::{self, *};
 use motoko_rts::buf::Buf;
-use motoko_rts::types::{Bytes, Value, Words};
+use motoko_rts::types::{Bytes, Value};
 
 // mp functions below are implemented separately for tests as we can't modify mp_int source code to
 // pass a generic heap argument (then monomorphise it for IC).
@@ -27,8 +27,7 @@ unsafe extern "C" fn mp_realloc(
 pub unsafe fn test() {
     println!("Testing BigInt ...");
 
-    // Not sure how much we will need in these tests but 1G should be enough
-    let mut heap = TestMemory::new(Words(1024 * 1024));
+    let mut heap = initialize_test_memory();
     HEAP = &mut heap;
 
     assert!(bigint_eq(
@@ -63,6 +62,7 @@ pub unsafe fn test() {
     }
 
     HEAP = std::ptr::null_mut();
+    reset_test_memory();
     drop(heap);
 }
 

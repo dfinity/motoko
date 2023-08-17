@@ -147,10 +147,11 @@ fn test_gc(
 
 fn initialize_gc(heap: &mut MotokoHeap) {
     use motoko_rts::gc::incremental::{
-        get_incremental_gc_state, get_partitioned_heap, IncrementalGC,
+        get_partitioned_heap, set_incremental_gc_state, IncrementalGC,
     };
     unsafe {
-        IncrementalGC::initialize(heap, get_incremental_gc_state(), heap.heap_base_address());
+        let state = IncrementalGC::initial_gc_state(heap, heap.heap_base_address());
+        set_incremental_gc_state(Some(state));
         let allocation_size = heap.heap_ptr_address() - heap.heap_base_address();
 
         // Synchronize the partitioned heap with one big combined allocation by starting from the base pointer as the heap pointer.
@@ -163,14 +164,9 @@ fn initialize_gc(heap: &mut MotokoHeap) {
 }
 
 fn reset_gc() {
-    use crate::memory::TestMemory;
-    use motoko_rts::gc::incremental::{
-        get_incremental_gc_state, partitioned_heap::PARTITION_SIZE, IncrementalGC,
-    };
-
-    let mut memory = TestMemory::new(Words(PARTITION_SIZE as u32));
+    use motoko_rts::gc::incremental::set_incremental_gc_state;
     unsafe {
-        IncrementalGC::initialize(&mut memory, get_incremental_gc_state(), 0);
+        set_incremental_gc_state(None);
     }
 }
 

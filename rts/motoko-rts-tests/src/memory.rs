@@ -1,5 +1,7 @@
+use motoko_rts::gc::incremental::partitioned_heap::PARTITION_SIZE;
+use motoko_rts::gc::incremental::{set_incremental_gc_state, IncrementalGC};
 use motoko_rts::memory::Memory;
-use motoko_rts::types::{Value, Words};
+use motoko_rts::types::{Bytes, Value, Words};
 
 pub struct TestMemory {
     heap: Box<[u8]>,
@@ -58,4 +60,15 @@ impl Memory for TestMemory {
             );
         }
     }
+}
+
+pub unsafe fn initialize_test_memory() -> TestMemory {
+    let mut memory = TestMemory::new(Bytes(PARTITION_SIZE as u32).to_words());
+    let state = IncrementalGC::initial_gc_state(&mut memory, 0);
+    set_incremental_gc_state(Some(state));
+    memory
+}
+
+pub unsafe fn reset_test_memory() {
+    set_incremental_gc_state(None);
 }

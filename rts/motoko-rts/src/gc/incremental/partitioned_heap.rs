@@ -88,20 +88,6 @@ pub struct Partition {
     update: bool,        // Specifies whether the pointers in the partition have to be updated.
 }
 
-/// Optimization: Avoiding `Option` or `Lazy`.
-const UNINITIALIZED_PARTITION: Partition = Partition {
-    index: usize::MAX,
-    free: false,
-    large_content: false,
-    marked_size: 0,
-    static_size: 0,
-    dynamic_size: 0,
-    bitmap: super::mark_bitmap::DEFAULT_MARK_BITMAP,
-    temporary: false,
-    evacuate: false,
-    update: false,
-};
-
 impl Partition {
     pub fn get_index(&self) -> usize {
         self.index
@@ -361,19 +347,6 @@ pub struct PartitionedHeap {
     gc_running: bool, // Create bitmaps for partitions when allocated during active GC.
     precomputed_heap_size: usize, // Occupied heap size, excluding the dynamic heap in the allocation partition.
 }
-
-/// Optimization: Avoiding `Option` or `LazyCell`.
-pub const UNINITIALIZED_HEAP: PartitionedHeap = PartitionedHeap {
-    partitions: [UNINITIALIZED_PARTITION; MAX_PARTITIONS],
-    heap_base: 0,
-    allocation_index: 0,
-    free_partitions: 0,
-    evacuating: false,
-    reclaimed: 0,
-    bitmap_allocation_pointer: 0,
-    gc_running: false,
-    precomputed_heap_size: 0,
-};
 
 impl PartitionedHeap {
     pub unsafe fn new<M: Memory>(mem: &mut M, heap_base: usize) -> PartitionedHeap {

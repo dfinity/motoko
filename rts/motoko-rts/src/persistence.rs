@@ -6,7 +6,7 @@ use motoko_rts_macros::ic_mem_fn;
 
 use crate::{
     barriers::{allocation_barrier, write_with_barrier},
-    gc::incremental::{State, UNINITIALIZED_STATE},
+    gc::incremental::{IncrementalGC, State},
     memory::Memory,
     types::{size_of, Null, Value, TAG_NULL},
 };
@@ -31,12 +31,12 @@ struct PersistentMetadata {
     // Reference to the stable sub-record of the actor, comprising all stable actor fields. Set before upgrade.
     // Constitutes a GC root and requires pointer forwarding.
     stable_actor: Value,
-    // Singleton of the top-level null value. To be retained across upgrades.
-    // Constitutes a GC root and requires pointer forwarding.
-    null_singleton: Value,
     // The state of the incremental GC including the partitioned heap description.
     // The GC continues work after upgrades.
     incremental_gc_state: State,
+    // Singleton of the top-level null value. To be retained across upgrades.
+    // Constitutes a GC root and requires pointer forwarding.
+    null_singleton: Value,
 }
 
 const METATDATA_ADDRESS: usize = 4 * 1024 * 1024;
@@ -80,8 +80,8 @@ impl PersistentMetadata {
         (*self).fingerprint = FINGERPRINT;
         (*self).version = VERSION;
         (*self).stable_actor = DEFAULT_VALUE;
-        (*self).null_singleton = alloc_null(mem);
-        (*self).incremental_gc_state = UNINITIALIZED_STATE;
+        (*self).incremental_gc_state = IncrementalGC::initial_gc_state(mem, HEAP_START);
+        (*self).null_singleton = DEFAULT_VALUE;
     }
 }
 
@@ -95,7 +95,16 @@ pub unsafe fn initialize_memory<M: Memory>(mem: &mut M) {
         metadata.check_version();
     } else {
         metadata.initialize(mem);
+        allocate_initial_objects(mem);
     }
+}
+
+/// Allocate initial objects only after the partitioned heap has been initialized.
+#[cfg(feature = "ic")]
+unsafe fn allocate_initial_objects<M: Memory>(mem: &mut M) {
+    let metadata = PersistentMetadata::get();
+    debug_assert!((*metadata).null_singleton == DEFAULT_VALUE);
+    (*metadata).null_singleton = alloc_null(mem);
 }
 
 /// Returns the stable sub-record of the actor of the upgraded canister version.
@@ -123,6 +132,7 @@ pub(crate) unsafe fn stable_actor_location() -> *mut Value {
 
 unsafe fn alloc_null<M: Memory>(mem: &mut M) -> Value {
     let value = mem.alloc_words(size_of::<Null>());
+    debug_assert!(value.get_ptr() >= HEAP_START);
     let null = value.get_ptr() as *mut Null;
     (*null).header.tag = TAG_NULL;
     (*null).header.init_forward(value);
@@ -136,12 +146,15 @@ unsafe fn alloc_null<M: Memory>(mem: &mut M) -> Value {
 /// NOTE: The forwarding pointer of the other comparison argument needs
 /// to be resolved too.
 #[no_mangle]
+#[cfg(feature = "ic")]
 pub unsafe extern "C" fn null_singleton() -> Value {
     let metadata = PersistentMetadata::get();
+    debug_assert!((*metadata).null_singleton != DEFAULT_VALUE);
     (*metadata).null_singleton.forward_if_possible()
 }
 
 // GC root pointer required for GC marking and updating.
+#[cfg(feature = "ic")]
 pub(crate) unsafe fn null_singleton_location() -> *mut Value {
     let metadata = PersistentMetadata::get();
     &mut (*metadata).null_singleton as *mut Value
