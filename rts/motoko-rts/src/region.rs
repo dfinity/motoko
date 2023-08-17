@@ -426,19 +426,19 @@ unsafe fn init_region<M: Memory>(
 
 #[ic_mem_fn]
 pub unsafe fn region_id<M: Memory>(_mem: &mut M, r: Value) -> u32 {
-    let r = r.as_region();
+    let r = r.as_untagged_region();
     (*r).id.into()
 }
 
 #[ic_mem_fn]
 pub unsafe fn region_page_count<M: Memory>(_mem: &mut M, r: Value) -> u32 {
-    let r = r.as_region();
+    let r = r.as_untagged_region();
     (*r).page_count
 }
 
 #[ic_mem_fn]
 pub unsafe fn region_vec_pages<M: Memory>(_mem: &mut M, r: Value) -> Value {
-    let r = r.as_region();
+    let r = r.as_untagged_region();
     (*r).vec_pages
 }
 

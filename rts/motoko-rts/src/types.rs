@@ -348,15 +348,16 @@ impl Value {
         self.forward().get_ptr() as *mut Array
     }
 
-    /// Get the pointer as `Region` using forwarding. In debug mode panics if the value is not a pointer or the
-    /// pointed object is not an `Region`.
+    /// Get the pointer as `Region` using forwarding.
     pub unsafe fn as_region(self) -> *mut Region {
-//        debug_assert!(self.tag() == TAG_REGION || self.tag() == TAG_STABLE_SEEN);
-        //        debug_assert_eq!(self.tag(), TAG_REGION);
-        if self.tag() == TAG_REGION || self.tag() == TAG_STABLE_SEEN {
-            println!(100, "weird tag {:#x}", self.tag());
-            println!(100, "stable_seen tag {:#x}", TAG_STABLE_SEEN);
-        }
+        debug_assert!(self.tag() == TAG_REGION);
+        self.check_forwarding_pointer();
+        self.forward().get_ptr() as *mut Region
+    }
+
+    /// Get the pointer as `Region` using forwarding, without checking the tag.
+    /// NB: One cannot check the tag during stabilization.
+    pub unsafe fn as_untagged_region(self) -> *mut Region {
         self.check_forwarding_pointer();
         self.forward().get_ptr() as *mut Region
     }
@@ -469,7 +470,7 @@ pub const TAG_FREE_SPACE: Tag = 33;
 //            higher than all other tags defined above
 pub const TAG_ARRAY_SLICE_MIN: Tag = 34;
 
-pub const TAG_STABLE_SEEN: Tag = 4294967295; //0xffffffff;
+pub const TAG_STABLE_SEEN: Tag = 0xffff_ffff;
 
 // Common parts of any object. Other object pointers can be coerced into a pointer to this.
 #[repr(C)] // See the note at the beginning of this module

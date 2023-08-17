@@ -1,4 +1,4 @@
-//MOC-FLAG --stable-regions --compacting-gc 
+//MOC-FLAG --stable-regions --compacting-gc
 import P "mo:⛔";
 import StableMemory "stable-mem/StableMemory";
 import Region "stable-region/Region";
