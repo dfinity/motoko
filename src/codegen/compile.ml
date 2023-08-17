@@ -7076,6 +7076,7 @@ module StackRep = struct
     | Const _ | Unreachable -> G.nop
 
   let rec materialize_constant env = function
+    | Const.Lit (Const.Vanilla l) -> compile_unboxed_const l
     | Const.Lit (Const.Bool b) -> Bool.lit b
     | Const.Lit (Const.Blob t) -> Blob.lit env t
     | Const.Lit (Const.Null) -> Opt.null_lit env
@@ -7088,6 +7089,7 @@ module StackRep = struct
     | Const.Message fi -> assert false
     | Const.Unit -> Tuple.compile_unit
     | Const.Tag (i, c) -> Variant.inject env i (materialize_constant env c)
+    | Const.Array cs -> Arr.lit env (List.map (fun c -> materialize_constant env c) cs)
     | _ -> assert false
 
   let adjust env (sr_in : t) sr_out =
