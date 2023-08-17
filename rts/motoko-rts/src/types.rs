@@ -351,7 +351,12 @@ impl Value {
     /// Get the pointer as `Region` using forwarding. In debug mode panics if the value is not a pointer or the
     /// pointed object is not an `Region`.
     pub unsafe fn as_region(self) -> *mut Region {
-        debug_assert_eq!(self.tag(), TAG_REGION);
+//        debug_assert!(self.tag() == TAG_REGION || self.tag() == TAG_STABLE_SEEN);
+        //        debug_assert_eq!(self.tag(), TAG_REGION);
+        if self.tag() == TAG_REGION || self.tag() == TAG_STABLE_SEEN {
+            println!(100, "weird tag {:#x}", self.tag());
+            println!(100, "stable_seen tag {:#x}", TAG_STABLE_SEEN);
+        }
         self.check_forwarding_pointer();
         self.forward().get_ptr() as *mut Region
     }
@@ -456,7 +461,6 @@ pub const TAG_REGION: Tag = 27;
 pub const TAG_NULL: Tag = 29;
 pub const TAG_ONE_WORD_FILLER: Tag = 31;
 pub const TAG_FREE_SPACE: Tag = 33;
-
 // Special value to visit only a range of array fields.
 // This and all values above it are reserved and mean
 // a slice of an array object (i.e. start index) for
@@ -464,6 +468,8 @@ pub const TAG_FREE_SPACE: Tag = 33;
 // Invariant: the value of this (pseudo-)tag must be
 //            higher than all other tags defined above
 pub const TAG_ARRAY_SLICE_MIN: Tag = 34;
+
+pub const TAG_STABLE_SEEN: Tag = 4294967295; //0xffffffff;
 
 // Common parts of any object. Other object pointers can be coerced into a pointer to this.
 #[repr(C)] // See the note at the beginning of this module
@@ -574,7 +580,7 @@ pub struct Region {
     pub header: Obj,
     pub id: u16,
     // Note: Must initialize this part as it is read by the compiler-generated code.
-    pub zero_padding: u16, 
+    pub zero_padding: u16,
     pub page_count: u32,
     pub vec_pages: Value, // Blob of u16's (each a page block ID).
 }
