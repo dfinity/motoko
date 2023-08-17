@@ -21,16 +21,15 @@
         "version": "3.2.25"
     },
     "ic": {
-        "branch": "master",
-        "builtin": false,
+        "branch": "luc/stable-heap-on-release",
         "description": "Internet Computer blockchain source: the client/replica software run by nodes",
         "homepage": "",
-        "owner": "dfinity",
+        "owner": "luc-blaeser",
         "repo": "ic",
-        "rev": "629f7fc8e82ff52e6373a528dcd29f9066563ad4",
-        "sha256": "1jadgk4jfgvkw3i5nlxikg0wi6144d46sca165g9xgqpsr8hkm00",
+        "rev": "af7331a313bc76a12d0d8bb9e6f8ddc72c2a6b5d",
+        "sha256": "1w66vfsk9cvvcdlhhsiyf4zqms9l0mkmfpkdmwlpdjcs1ikjf1bb",
         "type": "tarball",
-        "url": "https://github.com/dfinity/ic/archive/629f7fc8e82ff52e6373a528dcd29f9066563ad4.tar.gz",
+        "url": "https://github.com/luc-blaeser/ic/archive/af7331a313bc76a12d0d8bb9e6f8ddc72c2a6b5d.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ic-hs": {
