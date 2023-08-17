@@ -470,8 +470,6 @@ pub const TAG_FREE_SPACE: Tag = 33;
 //            higher than all other tags defined above
 pub const TAG_ARRAY_SLICE_MIN: Tag = 34;
 
-pub const TAG_STABLE_SEEN: Tag = 0xffff_ffff;
-
 // Common parts of any object. Other object pointers can be coerced into a pointer to this.
 #[repr(C)] // See the note at the beginning of this module
 pub struct Obj {
