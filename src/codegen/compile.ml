@@ -1768,10 +1768,20 @@ module Opt = struct
     E.call_import env "rts" "null_singleton" (* forwarding pointer already resolved *)
 
   let is_some env =
-    (* resolve forwarding pointer on pointer equality check *)
-    Tagged.load_forwarding_pointer env ^^
-    null_lit env ^^
-    G.i (Compare (Wasm.Values.I32 I32Op.Ne))
+    Func.share_code1 env "is_some" ("x", I32Type) [I32Type] (fun env get_x ->
+      get_x ^^ BitTagged.if_tagged_scalar env [I32Type]
+        ( Bool.lit true ) (* scalar *)
+        ( get_x ^^ BitTagged.is_true_literal env ^^ (* exclude true literal since `branch_default` follows the forwarding pointer *)
+          E.if_ env [I32Type]
+            ( Bool.lit true ) (* true literal *)
+            ( (* pointer to object, resolve forwarding pointer on null pointer equality check *)
+              get_x ^^
+              Tagged.load_forwarding_pointer env ^^
+              null_lit env ^^
+              G.i (Compare (Wasm.Values.I32 I32Op.Ne))
+            )
+        )
+    )
 
   let alloc_some env get_payload =
     Tagged.obj env Tagged.Some [ get_payload ]
