@@ -2320,7 +2320,7 @@ module Float = struct
 
   let unbox env = Tagged.load_forwarding_pointer env ^^ Tagged.load_field_float64 env payload_field
 
-  let lit env f = (compile_const_64 (Wasm.F64.to_bits f)) ^^ box env
+  let lit env f = (compile_unboxed_const f) ^^ box env
 
 end (* Float *)
 
