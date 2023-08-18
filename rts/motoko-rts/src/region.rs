@@ -1,6 +1,5 @@
 use crate::barriers::{allocation_barrier, init_with_barrier, write_with_barrier};
 use crate::memory::{alloc_blob, Memory};
-use crate::rts_trap_with;
 use crate::trap_with_prefix;
 use crate::types::{read64, size_of, write64, Blob, Bytes, Region, Value, TAG_REGION};
 
@@ -236,7 +235,8 @@ mod meta_data {
 
         pub const REGION_TABLE: u64 = super::max::REGIONS as u64 * REGION_TABLE_ENTRY as u64;
 
-        pub const BLOCK_REGION_TABLE_ENTRY: u16 = (bytes_of::<u16>() + bytes_of::<u16>()) as u16;
+        pub const BLOCK_REGION_TABLE_ENTRY: u16 =
+            (bytes_of::<u64>() + bytes_of::<u16>() + bytes_of::<u8>()) as u16;
 
         pub const BLOCK_REGION_TABLE: u64 =
             super::max::BLOCKS as u64 * BLOCK_REGION_TABLE_ENTRY as u64;
@@ -315,31 +315,40 @@ mod meta_data {
 
         use super::{bytes_of, offset, size};
         use crate::region::{BlockId, RegionId};
-        use crate::stable_mem::{read_u16, write_u16};
+        use crate::stable_mem::{read_u8, write_u8, read_u16, write_u16, read_u64, write_u64};
 
         // Compute an offset in stable memory for a particular block ID (based zero).
         fn index(b: &BlockId) -> u64 {
             offset::BLOCK_REGION_TABLE + (b.0 as u64 * size::BLOCK_REGION_TABLE_ENTRY as u64)
         }
 
-        /// Some(r, j) means that the block is in use by region r, at slot j.
+        /// Some(r, j, c) means that the block is in use by region r, at slot j with c allocated pages.
         /// None means that the block is available for (re-)allocation.
-        pub fn get(b: BlockId) -> Option<(RegionId, u16)> {
-            let offset = index(&b);
-            let raw = read_u16(offset) as u64; // FIX ME
-            let rid = RegionId::from_u64(raw);
-            rid.map(|r| (r, read_u16(offset + bytes_of::<u16>()))) // FIXME
+        pub fn get(b: BlockId) -> Option<(RegionId, u16, u8)> {
+            let region_offset = index(&b);
+            let rank_offset = region_offset + bytes_of::<u64>();
+            let page_count_offset = rank_offset + bytes_of::<u16>();
+            let region = read_u64(region_offset);
+            let rid = RegionId::from_u64(region);
+            rid.map(|r| (r, read_u16(rank_offset),read_u8(page_count_offset)))
         }
 
-        /// Some(r, j) means that the block is in use by region r, at slot j.
+        /// Some(r, j, c) means that the block is in use by region r, at slot j with c allocated pages.
         /// None means that the block is available for (re-)allocation.
-        pub fn set(b: BlockId, r: Option<(RegionId, u16)>) {
+        pub fn set(b: BlockId, r: Option<(RegionId, u16, u8)>) {
+            let region_offset = index(&b);
+            let rank_offset = region_offset + bytes_of::<u64>();
+            let page_count_offset = rank_offset + bytes_of::<u16>();
             match r {
-                None => write_u16(index(&b), RegionId::into_u64(None) as u16),
-                Some((r, j)) => {
-                    let offset = index(&b);
-                    write_u16(offset, RegionId::into_u64(Some(r)) as u16); //FIXME
-                    write_u16(offset + bytes_of::<u16>(), j) // FIXME
+                None => {
+                    write_u64(region_offset, RegionId::into_u64(None));
+                    write_u16(rank_offset, 0);
+                    write_u8(page_count_offset, 0);
+                },
+                Some((r, j, c)) => {
+                    write_u64(region_offset, RegionId::into_u64(Some(r)));
+                    write_u16(rank_offset, j);
+                    write_u8(page_count_offset, c);
                 }
             }
         }
@@ -517,27 +526,41 @@ pub unsafe fn region_recover<M: Memory>(mem: &mut M, rid: &RegionId) -> Value {
     use meta_data::bytes_of;
     use meta_data::size::PAGES_IN_BLOCK;
 
-    let c = meta_data::region_table::get(&rid);
-    let page_count = match c {
-        Some(RegionSizeInPages(pc)) => pc,
-        _ => {
-            rts_trap_with("region_recover failed: Expected Some(RegionSizeInPages(_))");
+    if rid.0 >= meta_data::total_allocated_regions::get() {
+         region_trap_with("cannot recover un-allocated region");
+    };
+
+    let tb = meta_data::total_allocated_blocks::get();
+
+    // determine page_count of this region
+    let mut page_count : u32 = 0;
+    {
+        let mut block_id: u16 = 0;
+        while (block_id as u32) < tb {
+            match meta_data::block_region_table::get(BlockId(block_id)) {
+                None => {}
+                Some((rid_, _rank, block_page_count)) => {
+                    if &rid_ == rid {
+                        page_count += block_page_count as u32;
+                    }
+                }
+            }
+            block_id += 1;
         }
     };
 
-    debug_assert!(page_count < (u32::MAX - (PAGES_IN_BLOCK - 1)) as u64);
+    debug_assert!(page_count < (u32::MAX - (PAGES_IN_BLOCK - 1)));
 
-    let block_count = (page_count as u32 + PAGES_IN_BLOCK - 1) / PAGES_IN_BLOCK;
+    let block_count = (page_count + PAGES_IN_BLOCK - 1) / PAGES_IN_BLOCK;
     let vec_pages = alloc_blob(mem, Bytes(block_count * bytes_of::<u16>() as u32));
 
-    let tb = meta_data::total_allocated_blocks::get();
     let av = AccessVector(vec_pages.as_blob_mut());
     let mut recovered_blocks = 0;
     let mut block_id: u16 = 0;
     while recovered_blocks < block_count && (block_id as u32) < tb {
         match meta_data::block_region_table::get(BlockId(block_id)) {
             None => {}
-            Some((rid_, rank)) => {
+            Some((rid_, rank, _page_count)) => {
                 if &rid_ == rid {
                     av.set_ith_block_id(rank.into(), &BlockId(block_id));
                     recovered_blocks += 1;
@@ -597,6 +620,18 @@ pub(crate) unsafe fn region_migration_from_no_stable_memory<M: Memory>(mem: &mut
     region_reserve_id_span(mem, Some(RegionId(1)), RegionId(LAST_RESERVED_REGION_ID));
 }
 
+pub fn block_page_count(rank: u16, block_count: u32, page_count: u32) -> u8 {
+  debug_assert!(block_count > 0);
+  debug_assert!((rank as u32) < block_count);
+  debug_assert_eq!(block_count, (page_count + (meta_data::size::PAGES_IN_BLOCK as u32 - 1)) / meta_data::size::PAGES_IN_BLOCK);
+  if (rank as u32) == block_count - 1 {
+        // final, partial block
+      (page_count % meta_data::size::PAGES_IN_BLOCK as u32) as u8
+  }
+  else { // internal, full block
+      meta_data::size::PAGES_IN_BLOCK as u8
+  }
+}
 //
 // region manager migration/initialization, with pre-existing stable data.
 // Case: Version 1 into version 2.
@@ -671,19 +706,26 @@ pub(crate) unsafe fn region_migration_from_some_stable_memory<M: Memory>(mem: &m
      * Initialize region0's table entries, for "recovery".
      */
 
-    /* head block is physically last, but logically first. */
-    let head_block_id = region0_blocks - 1; /* invariant: region0_blocks is non-zero. */
+    /* head block is physically last block, but logically first block in region. */
+    let head_block_id : u16 = (region0_blocks - 1) as u16; /* invariant: region0_blocks is non-zero. */
+    let head_block_region = RegionId(0);
+    let head_block_rank : u16 = 0;
+    let head_block_page_count: u8 = block_page_count(head_block_rank, region0_blocks, region0_pages);
+    meta_data::block_region_table::set(
+        BlockId(head_block_id as u16),
+        Some((head_block_region, head_block_rank, head_block_page_count)));
 
-    meta_data::block_region_table::set(BlockId(head_block_id as u16), Some((RegionId(0), 0)));
     meta_data::region_table::set(&RegionId(0), Some(RegionSizeInPages(region0_pages as u64)));
 
     /* Any other blocks that follow head block are numbered [0,...,head_block_id) */
     /* They're logical placements are [1,...,) -- one more than their new identity, as a number. */
     for i in 0..head_block_id {
+        let rank = i + 1;
+        let page_count: u8 =
+            block_page_count(rank, region0_blocks, region0_pages);
         meta_data::block_region_table::set(
-            BlockId((i) as u16),
-            Some((RegionId(0), (i + 1) as u16)),
-        );
+            BlockId(i),
+            Some((RegionId(0), rank, page_count)))
     }
 
     crate::stable_mem::set_version(VERSION_REGIONS);
@@ -803,6 +845,16 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
         // Increase both:
         (*r).page_count += new_pages_;
         meta_data::region_table::set(&r_id, Some(RegionSizeInPages((*r).page_count.into())));
+        if old_block_count > 0 {
+            let last_block_rank = (old_block_count - 1) as u16;
+            let last_block_id =
+                AccessVector((*r).vec_pages.as_blob_mut()).get_ith_block_id(last_block_rank as u32);
+            debug_assert_eq!((*r).page_count, old_page_count + new_pages_);
+            let last_page_count = block_page_count(last_block_rank, new_block_count,
+                                                   (*r).page_count);
+            let assoc = Some((r_id, last_block_rank, last_page_count));
+            meta_data::block_region_table::set(last_block_id, assoc);
+        }
     }
 
     let new_vec_pages = alloc_blob(
@@ -831,7 +883,8 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
         let block_id: u16 = (old_total_blocks + rel_i as u32) as u16;
 
         // Update stable memory with new association.
-        let assoc = Some((RegionId::from_id(r.read_id64()), i as u16));
+        let block_page_count = block_page_count(i as u16, new_block_count, (*r).page_count);
+        let assoc = Some((RegionId::from_id(r.read_id64()), i as u16, block_page_count));
         meta_data::block_region_table::set(BlockId(block_id), assoc);
 
         new_pages.set_ith_block_id(i, &BlockId(block_id));
