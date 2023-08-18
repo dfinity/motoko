@@ -572,18 +572,28 @@ impl Array {
 #[repr(C)] // See the note at the beginning of this module
 pub struct Region {
     pub header: Obj,
-    pub id: u16,
-    // Note: Must initialize this part as it is read by the compiler-generated code.
-    pub zero_padding: u16, 
+    // 64-bit id split into lower and higher for alignment reasons
+    pub id_lower: u32,
+    pub id_upper: u32,
     pub page_count: u32,
     pub vec_pages: Value, // Blob of u16's (each a page block ID).
 }
 
 impl Region {
+
     // (See also: RegionObject used in region.rs)
     pub unsafe fn payload_addr(self: *const Self) -> *mut Value {
         self.offset(1) as *mut Value // skip region header
     }
+
+    pub unsafe fn write_id64(self: *mut Self, value: u64) {
+        write64(&mut (*self).id_lower, &mut (*self).id_upper, value);
+    }
+
+    pub unsafe fn read_id64(self: *const Self) -> u64 {
+        read64((*self).id_lower, (*self).id_upper)
+    }
+
 }
 
 #[repr(C)] // See the note at the beginning of this module

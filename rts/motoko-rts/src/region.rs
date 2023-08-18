@@ -2,7 +2,7 @@ use crate::barriers::{allocation_barrier, init_with_barrier, write_with_barrier}
 use crate::memory::{alloc_blob, Memory};
 use crate::rts_trap_with;
 use crate::trap_with_prefix;
-use crate::types::{size_of, Blob, Bytes, Region, Value, TAG_REGION};
+use crate::types::{size_of, Blob, Bytes, Region, Value, TAG_REGION, read64, write64};
 
 // Versions
 // Should agree with constants StableMem.version_no_stable_memory etc. in compile.ml
@@ -24,7 +24,7 @@ unsafe fn stable_memory_trap_with(msg: &str) -> ! {
 pub struct BlockId(pub u16);
 
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub struct RegionId(pub u16);
+pub struct RegionId(pub u64);
 
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct RegionSizeInPages(pub u64);
@@ -39,9 +39,9 @@ pub struct AccessVector(pub *mut Blob);
 #[derive(Clone)]
 pub struct RegionObject(pub *mut Region);
 
-const NIL_REGION_ID: u16 = 0;
+const NIL_REGION_ID: u64 = 0;
 
-const LAST_RESERVED_REGION_ID: u16 = 15;
+const LAST_RESERVED_REGION_ID: u64 = 15;
 
 // Mirrored field from stable memory, for handling upgrade logic.
 pub(crate) static mut REGION_TOTAL_ALLOCATED_BLOCKS: u32 = 0;
@@ -53,23 +53,23 @@ pub(crate) const NO_REGION: Value = Value::from_scalar(0);
 // Region 0 -- classic API for stable memory, as a dedicated region.
 pub(crate) static mut REGION_0: Value = NO_REGION;
 
-// This impl encapsulates encoding of optional region IDs within a u16.
+// This impl encapsulates encoding of optional region IDs within a u64.
 // Used by block-region table to encode the (optional) region ID of a block.
 impl RegionId {
-    pub fn id_is_nil(id: u16) -> bool {
+    pub fn id_is_nil(id: u64) -> bool {
         id == NIL_REGION_ID
     }
-    pub fn from_id(id: u16) -> Self {
+    pub fn from_id(id: u64) -> Self {
         RegionId(id)
     }
-    pub fn from_u16(id: u16) -> Option<Self> {
+    pub fn from_u64(id: u64) -> Option<Self> {
         if Self::id_is_nil(id) {
             None
         } else {
             Some(RegionId(id - 1))
         }
     }
-    pub fn into_u16(opreg: Option<RegionId>) -> u16 {
+    pub fn into_u64(opreg: Option<RegionId>) -> u64 {
         match opreg {
             None => 0,
             Some(id) => {
@@ -132,11 +132,11 @@ impl RegionObject {
     }
 
     pub unsafe fn id(&self) -> RegionId {
-        RegionId((*self.0).id)
+        RegionId(read64((*self.0).id_lower, (*self.0).id_upper))
     }
 
     pub unsafe fn trap_with(&self, msg: &str) -> ! {
-        if (*self.0).id == 0 {
+        if (*self).id() == RegionId(0) {
             stable_memory_trap_with(msg)
         } else {
             region_trap_with(msg)
@@ -222,7 +222,7 @@ mod meta_data {
     /// Maximum number of entities.
     pub mod max {
         pub const BLOCKS: u16 = 32 * 1024;
-        pub const REGIONS: u16 = 32 * 1024 - 1;
+        pub const REGIONS: u64 = 32 * 1024 - 1; // u64::MAX - 1;
     }
 
     /// Sizes of table entries, and tables.
@@ -326,20 +326,20 @@ mod meta_data {
         /// None means that the block is available for (re-)allocation.
         pub fn get(b: BlockId) -> Option<(RegionId, u16)> {
             let offset = index(&b);
-            let raw = read_u16(offset);
-            let rid = RegionId::from_u16(raw);
-            rid.map(|r| (r, read_u16(offset + bytes_of::<u16>())))
+            let raw = read_u16(offset) as u64; // FIX ME
+            let rid = RegionId::from_u64(raw);
+            rid.map(|r| (r, read_u16(offset + bytes_of::<u16>()))) // FIXME
         }
 
         /// Some(r, j) means that the block is in use by region r, at slot j.
         /// None means that the block is available for (re-)allocation.
         pub fn set(b: BlockId, r: Option<(RegionId, u16)>) {
             match r {
-                None => write_u16(index(&b), RegionId::into_u16(None)),
+                None => write_u16(index(&b), RegionId::into_u64(None) as u16),
                 Some((r, j)) => {
                     let offset = index(&b);
-                    write_u16(offset, RegionId::into_u16(Some(r)));
-                    write_u16(offset + bytes_of::<u16>(), j)
+                    write_u16(offset, RegionId::into_u64(Some(r)) as u16);  //FIXME
+                    write_u16(offset + bytes_of::<u16>(), j) // FIXME
                 }
             }
         }
@@ -378,7 +378,7 @@ fn write_magic() {
 
 unsafe fn alloc_region<M: Memory>(
     mem: &mut M,
-    id: u16,
+    id: u64,
     page_count: u32,
     vec_pages: Value,
 ) -> Value {
@@ -388,9 +388,7 @@ unsafe fn alloc_region<M: Memory>(
     let region = r_ptr.get_ptr() as *mut Region;
     (*region).header.tag = TAG_REGION;
     (*region).header.init_forward(r_ptr);
-    (*region).id = id;
-    // The padding must be initialized with zero because it is read by the compiler-generated code.
-    (*region).zero_padding = 0;
+    write64(&mut (*region).id_lower, &mut (*region).id_upper, id);
     (*region).page_count = page_count;
     init_with_barrier(mem, &mut (*region).vec_pages, vec_pages);
 
@@ -399,9 +397,9 @@ unsafe fn alloc_region<M: Memory>(
 }
 
 #[ic_mem_fn]
-pub unsafe fn region_id<M: Memory>(_mem: &mut M, r: Value) -> u32 {
+pub unsafe fn region_id<M: Memory>(_mem: &mut M, r: Value) -> u64 {
     let r = r.as_region();
-    (*r).id.into()
+    read64((*r).id_lower, (*r).id_upper)
 }
 
 // Helper for commmon logic that reserves low-valued RegionIds in a certain span for future use.
@@ -453,18 +451,19 @@ pub unsafe fn region_new<M: Memory>(mem: &mut M) -> Value {
         }
     };
 
-    let next_id = meta_data::total_allocated_regions::get() as u16;
+    let next_id = meta_data::total_allocated_regions::get();
 
     if next_id == meta_data::max::REGIONS {
         region_trap_with("out of regions")
     };
 
-    meta_data::total_allocated_regions::set(next_id as u64 + 1);
+    meta_data::total_allocated_regions::set(next_id + 1);
 
     let vec_pages = alloc_blob(mem, Bytes(0));
     allocation_barrier(vec_pages);
     let r_ptr = alloc_region(mem, next_id, 0, vec_pages);
 
+/* TBD
     // Update Region table.
     {
         let r_id = RegionId::from_id(next_id);
@@ -473,6 +472,7 @@ pub unsafe fn region_new<M: Memory>(mem: &mut M) -> Value {
         assert_eq!(c, None);
         meta_data::region_table::set(&r_id, Some(RegionSizeInPages(0)));
     }
+*/
     r_ptr
 }
 
@@ -553,7 +553,8 @@ pub(crate) unsafe fn region_migration_from_no_stable_memory<M: Memory>(mem: &mut
     // Region 0 -- classic API for stable memory, as a dedicated region.
     REGION_0 = region_new(mem);
 
-    assert!((*REGION_0.as_region()).id == 0);
+    assert!((*REGION_0.as_region()).id_lower == 0);
+    assert!((*REGION_0.as_region()).id_upper == 0);
 
     // Regions 1 through LAST_RESERVED_REGION_ID, reserved for future use by future Motoko compiler-RTS features.
     region_reserve_id_span(mem, Some(RegionId(1)), RegionId(LAST_RESERVED_REGION_ID));
@@ -756,7 +757,7 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
 
     // Update this region's page count, in both places where we record it (heap object, region table).
     {
-        let r_id = RegionId::from_id((*r).id);
+        let r_id = RegionId::from_id(r.read_id64());
         let c = meta_data::region_table::get(&r_id);
 
         // Region table agrees with heap object's field.
@@ -793,7 +794,7 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
         let block_id: u16 = (old_total_blocks + rel_i as u32) as u16;
 
         // Update stable memory with new association.
-        let assoc = Some((RegionId::from_id((*r).id), i as u16));
+        let assoc = Some((RegionId::from_id(r.read_id64()), i as u16));
         meta_data::block_region_table::set(BlockId(block_id), assoc);
 
         new_pages.set_ith_block_id(i, &BlockId(block_id));
