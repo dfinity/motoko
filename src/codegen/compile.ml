@@ -7086,21 +7086,25 @@ module StackRep = struct
     | Const _ | Unreachable -> G.nop
 
   let rec materialize_constant env = function
-    | Const.Lit (Const.Vanilla l) -> compile_unboxed_const l
-    | Const.Lit (Const.Bool b) -> Bool.lit b
-    | Const.Lit (Const.Blob t) -> Blob.lit env t
+    | Const.Lit (Const.Vanilla value) -> compile_unboxed_const value
+    | Const.Lit (Const.Bool number) -> Bool.lit number
+    | Const.Lit (Const.Blob payload) -> Blob.lit env payload
     | Const.Lit (Const.Null) -> Opt.null_lit env
-    | Const.Lit (Const.BigInt n) -> BigNum.lit env n
-    | Const.Lit (Const.Word32 n) -> BoxedSmallWord.lit env n
-    | Const.Lit (Const.Word64 n) -> BoxedWord64.lit env n
-    | Const.Lit (Const.Float64 f) -> Float.lit env f
-    | Const.Opt c -> Opt.inject env (materialize_constant env c)
+    | Const.Lit (Const.BigInt number) -> BigNum.lit env number
+    | Const.Lit (Const.Word32 number) -> BoxedSmallWord.lit env number
+    | Const.Lit (Const.Word64 number) -> BoxedWord64.lit env number
+    | Const.Lit (Const.Float64 number) -> Float.lit env number
+    | Const.Opt value -> Opt.inject env (materialize_constant env value)
     | Const.Fun (get_fi, _) -> Closure.alloc env (get_fi ())
-    | Const.Message fi -> assert false
+    | Const.Message _ -> assert false
     | Const.Unit -> Tuple.compile_unit
-    | Const.Tag (i, c) -> Variant.inject env i (materialize_constant env c)
-    | Const.Array cs -> Arr.lit env (List.map (fun c -> materialize_constant env c) cs)
-    | _ -> assert false
+    | Const.Tag (tag, value) -> Variant.inject env tag (materialize_constant env value)
+    | Const.Array elements -> 
+        let materialized_elements = List.map (materialize_constant env) elements in
+        Arr.lit env materialized_elements
+    | Const.Obj fields -> 
+        let materialized_fields = List.map (fun (name, value) -> (name, (fun () -> materialize_constant env value))) fields in
+        Object.lit_raw env materialized_fields
 
   let adjust env (sr_in : t) sr_out =
     if eq sr_in sr_out
