@@ -2,7 +2,7 @@ use crate::barriers::{allocation_barrier, init_with_barrier, write_with_barrier}
 use crate::memory::{alloc_blob, Memory};
 use crate::rts_trap_with;
 use crate::trap_with_prefix;
-use crate::types::{size_of, Blob, Bytes, Region, Value, TAG_REGION, read64, write64};
+use crate::types::{read64, size_of, write64, Blob, Bytes, Region, Value, TAG_REGION};
 
 // Versions
 // Should agree with constants StableMem.version_no_stable_memory etc. in compile.ml
@@ -338,7 +338,7 @@ mod meta_data {
                 None => write_u16(index(&b), RegionId::into_u64(None) as u16),
                 Some((r, j)) => {
                     let offset = index(&b);
-                    write_u16(offset, RegionId::into_u64(Some(r)) as u16);  //FIXME
+                    write_u16(offset, RegionId::into_u64(Some(r)) as u16); //FIXME
                     write_u16(offset + bytes_of::<u16>(), j) // FIXME
                 }
             }
@@ -376,6 +376,7 @@ fn write_magic() {
     write_u32(meta_data::offset::VERSION, meta_data::version::VERSION);
 }
 
+#[ic_mem_fn]
 unsafe fn alloc_region<M: Memory>(
     mem: &mut M,
     id: u64,
@@ -383,12 +384,17 @@ unsafe fn alloc_region<M: Memory>(
     vec_pages: Value,
 ) -> Value {
     let r_ptr = mem.alloc_words(size_of::<Region>());
-
     // NB. cannot use as_region() here as we didn't write the header yet
     let region = r_ptr.get_ptr() as *mut Region;
     (*region).header.tag = TAG_REGION;
     (*region).header.init_forward(r_ptr);
+    debug_assert!(id <= meta_data::max::REGIONS);
     write64(&mut (*region).id_lower, &mut (*region).id_upper, id);
+    debug_assert!(
+        page_count
+            <= (vec_pages.as_blob().len().as_u32() / meta_data::bytes_of::<u16>() as u32)
+                * meta_data::size::PAGES_IN_BLOCK
+    );
     (*region).page_count = page_count;
     init_with_barrier(mem, &mut (*region).vec_pages, vec_pages);
 
@@ -397,9 +403,41 @@ unsafe fn alloc_region<M: Memory>(
 }
 
 #[ic_mem_fn]
+unsafe fn init_region<M: Memory>(
+    mem: &mut M,
+    r: Value,
+    id: u64,
+    page_count: u32,
+    vec_pages: Value,
+) {
+    let r = r.as_region();
+    debug_assert!(id <= meta_data::max::REGIONS);
+    r.write_id64(id);
+    debug_assert!(
+        page_count
+            <= (vec_pages.as_blob().len().as_u32() / meta_data::bytes_of::<u16>() as u32)
+                * meta_data::size::PAGES_IN_BLOCK
+    );
+    (*r).page_count = page_count;
+    write_with_barrier(mem, &mut (*r).vec_pages, vec_pages);
+}
+
+#[ic_mem_fn]
 pub unsafe fn region_id<M: Memory>(_mem: &mut M, r: Value) -> u64 {
     let r = r.as_region();
     read64((*r).id_lower, (*r).id_upper)
+}
+
+#[ic_mem_fn]
+pub unsafe fn region_page_count<M: Memory>(_mem: &mut M, r: Value) -> u32 {
+    let r = r.as_untagged_region();
+    (*r).page_count
+}
+
+#[ic_mem_fn]
+pub unsafe fn region_vec_pages<M: Memory>(_mem: &mut M, r: Value) -> Value {
+    let r = r.as_untagged_region();
+    (*r).vec_pages
 }
 
 // Helper for commmon logic that reserves low-valued RegionIds in a certain span for future use.
@@ -463,7 +501,6 @@ pub unsafe fn region_new<M: Memory>(mem: &mut M) -> Value {
     allocation_barrier(vec_pages);
     let r_ptr = alloc_region(mem, next_id, 0, vec_pages);
 
-/* TBD
     // Update Region table.
     {
         let r_id = RegionId::from_id(next_id);
@@ -472,7 +509,7 @@ pub unsafe fn region_new<M: Memory>(mem: &mut M) -> Value {
         assert_eq!(c, None);
         meta_data::region_table::set(&r_id, Some(RegionSizeInPages(0)));
     }
-*/
+    
     r_ptr
 }
 

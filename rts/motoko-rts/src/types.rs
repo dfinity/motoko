@@ -348,10 +348,16 @@ impl Value {
         self.forward().get_ptr() as *mut Array
     }
 
-    /// Get the pointer as `Region` using forwarding. In debug mode panics if the value is not a pointer or the
-    /// pointed object is not an `Region`.
+    /// Get the pointer as `Region` using forwarding.
     pub unsafe fn as_region(self) -> *mut Region {
-        debug_assert_eq!(self.tag(), TAG_REGION);
+        debug_assert!(self.tag() == TAG_REGION);
+        self.check_forwarding_pointer();
+        self.forward().get_ptr() as *mut Region
+    }
+
+    /// Get the pointer as `Region` using forwarding, without checking the tag.
+    /// NB: One cannot check the tag during stabilization.
+    pub unsafe fn as_untagged_region(self) -> *mut Region {
         self.check_forwarding_pointer();
         self.forward().get_ptr() as *mut Region
     }
@@ -572,7 +578,7 @@ impl Array {
 #[repr(C)] // See the note at the beginning of this module
 pub struct Region {
     pub header: Obj,
-    // 64-bit id split into lower and higher for alignment reasons
+    // 64-bit id split into lower and upper halves for alignment reasons
     pub id_lower: u32,
     pub id_upper: u32,
     pub page_count: u32,
@@ -580,7 +586,6 @@ pub struct Region {
 }
 
 impl Region {
-
     // (See also: RegionObject used in region.rs)
     pub unsafe fn payload_addr(self: *const Self) -> *mut Value {
         self.offset(1) as *mut Value // skip region header
@@ -593,7 +598,6 @@ impl Region {
     pub unsafe fn read_id64(self: *const Self) -> u64 {
         read64((*self).id_lower, (*self).id_upper)
     }
-
 }
 
 #[repr(C)] // See the note at the beginning of this module
