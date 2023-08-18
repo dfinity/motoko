@@ -112,12 +112,8 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
             }
         }
 
-        TAG_BITS64 | TAG_BITS32 | TAG_BLOB | TAG_BIGINT => {
+        TAG_BITS64 | TAG_BITS32 | TAG_BLOB | TAG_BIGINT | TAG_NULL => {
             // These don't have pointers, skip
-        }
-
-        TAG_NULL => {
-            rts_trap_with("encountered NULL object tag in visit_pointer_fields");
         }
 
         TAG_FWD_PTR | TAG_ONE_WORD_FILLER | TAG_FREE_SPACE | _ => {
