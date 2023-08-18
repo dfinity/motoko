@@ -1943,15 +1943,6 @@ module BoxedWord64 = struct
 
   let payload_field = Tagged.header_size
 
-  let lit env i =
-    if BitTagged.can_tag_const i
-    then 
-      compile_unboxed_const (BitTagged.tag_const i)
-    else
-      Tagged.obj env Tagged.Bits64 [
-        compile_const_64 i
-      ]
-
   let compile_box env compile_elem : G.t =
     let (set_i, get_i) = new_local env "boxed_i64" in
     let size = 4l in
@@ -1960,6 +1951,13 @@ module BoxedWord64 = struct
     get_i ^^ compile_elem ^^ Tagged.store_field64 env payload_field ^^
     get_i ^^
     Tagged.allocation_barrier env
+
+  let lit env i =
+    if BitTagged.can_tag_const i
+    then 
+      compile_unboxed_const (BitTagged.tag_const i)
+    else
+      compile_box env (compile_const_64 i)
 
   let box env = Func.share_code1 env "box_i64" ("n", I64Type) [I32Type] (fun env get_n ->
       get_n ^^ BitTagged.if_can_tag_i64 env [I32Type]
@@ -2310,11 +2308,6 @@ module Float = struct
 
   let compile_unboxed_const f = G.i (Const (nr (Wasm.Values.F64 f)))
 
-  let lit env f =
-    Tagged.obj env Tagged.Bits64 [
-      compile_const_64 (Wasm.F64.to_bits f)
-    ]
-
   let box env = Func.share_code1 env "box_f64" ("f", F64Type) [I32Type] (fun env get_f ->
     let (set_i, get_i) = new_local env "boxed_f64" in
     let size = Int32.add Tagged.header_size  2l in
@@ -2326,6 +2319,8 @@ module Float = struct
   )
 
   let unbox env = Tagged.load_forwarding_pointer env ^^ Tagged.load_field_float64 env payload_field
+
+  let lit env f = (compile_const_64 (Wasm.F64.to_bits f)) ^^ box env
 
 end (* Float *)
 
