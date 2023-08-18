@@ -509,7 +509,7 @@ pub unsafe fn region_new<M: Memory>(mem: &mut M) -> Value {
         assert_eq!(c, None);
         meta_data::region_table::set(&r_id, Some(RegionSizeInPages(0)));
     }
-    
+
     r_ptr
 }
 
