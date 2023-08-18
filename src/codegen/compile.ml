@@ -1125,7 +1125,10 @@ module Stack = struct
      grows downwards.)
   *)
 
-  let end_ () = Int32.mul (Int32.of_int (!Flags.rts_stack_pages)) page_size
+  (* Predefined constant stack size of 2MB, according to the persistent memory layout. *)
+  let stack_size = 2 * 1024 * 1024
+
+  let end_ () = Int32.of_int stack_size 
 
   let register_globals env =
     (* stack pointer *)
@@ -1177,7 +1180,7 @@ module Stack = struct
   let alloc_words env n =
     let n_bytes = Int32.mul n Heap.word_size in
     (* avoid absurd allocations *)
-    assert Int32.(to_int n_bytes < !Flags.rts_stack_pages * to_int page_size);
+    assert (Int32.(to_int n_bytes) < stack_size);
     (* alloc words *)
     get_stack_ptr env ^^
     compile_unboxed_const n_bytes ^^

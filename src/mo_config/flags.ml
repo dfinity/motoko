@@ -41,6 +41,4 @@ let force_gc = ref false
 let global_timer = ref true
 let experimental_field_aliasing = ref false
 let ocaml_js = ref false
-let rts_stack_pages_default = 32 (* 2MB *)
-let rts_stack_pages : int ref = ref rts_stack_pages_default
 let trap_on_call_error = ref false
