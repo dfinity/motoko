@@ -66,7 +66,7 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
     }
 
     pub unsafe fn mark_roots(&mut self, roots: Roots) {
-        visit_roots(roots, self.heap.base_address(), self, |gc, field| {
+        visit_roots(roots, self, |gc, field| {
             gc.mark_object(*field);
             gc.time.tick();
         });
@@ -115,7 +115,6 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
             self,
             object,
             object.tag(),
-            self.heap.base_address(),
             |gc, field_address| {
                 let field_value = *field_address;
                 gc.mark_object(field_value);

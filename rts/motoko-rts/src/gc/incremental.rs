@@ -383,7 +383,6 @@ unsafe fn update_new_allocation(state: &State, new_object: Value) {
             &mut (),
             object,
             object.tag(),
-            state.partitioned_heap.base_address(),
             |_, field| {
                 *field = (*field).forward_if_possible();
             },

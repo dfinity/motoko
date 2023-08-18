@@ -9,7 +9,6 @@ use crate::types::*;
 /// * `ctx`: any context passed to the `visit_*` callbacks
 /// * `obj`: the heap object to be visited (note: its heap tag may be invalid)
 /// * `tag`: the heap object's logical tag (or start of array object's suffix slice)
-/// * `heap_base`: start address of the dynamic heap
 /// * `visit_ptr_field`: callback for individual fields
 /// * `visit_field_range`: callback for determining the suffix slice
 ///   Arguments:
@@ -24,7 +23,6 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
     ctx: &mut C,
     obj: *mut Obj,
     tag: Tag,
-    heap_base: usize,
     visit_ptr_field: F,
     visit_field_range: G,
 ) where
@@ -37,7 +35,7 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
             let obj_payload = obj.payload_addr();
             for i in 0..obj.size() {
                 let field_addr = obj_payload.add(i as usize);
-                if pointer_to_dynamic_heap(field_addr, heap_base) {
+                if is_pointer_field(field_addr) {
                     visit_ptr_field(ctx, obj_payload.add(i as usize));
                 }
             }
@@ -51,7 +49,7 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
             debug_assert!(stop <= array.len());
             for i in slice_start..stop {
                 let field_addr = array_payload.add(i as usize);
-                if pointer_to_dynamic_heap(field_addr, heap_base) {
+                if is_pointer_field(field_addr) {
                     visit_ptr_field(ctx, field_addr);
                 }
             }
@@ -60,7 +58,7 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
         TAG_MUTBOX => {
             let mutbox = obj as *mut MutBox;
             let field_addr = &mut (*mutbox).field;
-            if pointer_to_dynamic_heap(field_addr, heap_base) {
+            if is_pointer_field(field_addr) {
                 visit_ptr_field(ctx, field_addr);
             }
         }
@@ -70,7 +68,7 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
             let closure_payload = closure.payload_addr();
             for i in 0..closure.size() {
                 let field_addr = closure_payload.add(i as usize);
-                if pointer_to_dynamic_heap(field_addr, heap_base) {
+                if is_pointer_field(field_addr) {
                     visit_ptr_field(ctx, field_addr);
                 }
             }
@@ -79,7 +77,7 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
         TAG_SOME => {
             let some = obj as *mut Some;
             let field_addr = &mut (*some).field;
-            if pointer_to_dynamic_heap(field_addr, heap_base) {
+            if is_pointer_field(field_addr) {
                 visit_ptr_field(ctx, field_addr);
             }
         }
@@ -87,7 +85,7 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
         TAG_VARIANT => {
             let variant = obj as *mut Variant;
             let field_addr = &mut (*variant).field;
-            if pointer_to_dynamic_heap(field_addr, heap_base) {
+            if is_pointer_field(field_addr) {
                 visit_ptr_field(ctx, field_addr);
             }
         }
@@ -95,11 +93,11 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
         TAG_CONCAT => {
             let concat = obj as *mut Concat;
             let field1_addr = &mut (*concat).text1;
-            if pointer_to_dynamic_heap(field1_addr, heap_base) {
+            if is_pointer_field(field1_addr) {
                 visit_ptr_field(ctx, field1_addr);
             }
             let field2_addr = &mut (*concat).text2;
-            if pointer_to_dynamic_heap(field2_addr, heap_base) {
+            if is_pointer_field(field2_addr) {
                 visit_ptr_field(ctx, field2_addr);
             }
         }
@@ -107,7 +105,7 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
         TAG_OBJ_IND => {
             let obj_ind = obj as *mut ObjInd;
             let field_addr = &mut (*obj_ind).field;
-            if pointer_to_dynamic_heap(field_addr, heap_base) {
+            if is_pointer_field(field_addr) {
                 visit_ptr_field(ctx, field_addr);
             }
         }
@@ -122,10 +120,18 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
     }
 }
 
-pub unsafe fn pointer_to_dynamic_heap(field_addr: *mut Value, heap_base: usize) -> bool {
-    // NB. pattern matching on `field_addr.get()` generates inefficient code
-    let field_value = (*field_addr).get_raw();
-    // NOTE: Pointers to static space is no longer allowed.
-    debug_assert!(!is_ptr(field_value) || unskew(field_value as usize) >= heap_base);
-    is_ptr(field_value)
+// Temporary function can be later removed.
+pub unsafe fn is_pointer_field(field_addr: *mut Value) -> bool {
+    let field_value = *field_addr;
+    check_field_value(field_value);
+    field_value.is_ptr()
 }
+
+// Temporary check, can be later removed.
+#[cfg(feature = "ic")]
+fn check_field_value(value: Value) {
+    debug_assert!(value.is_scalar() || value.get_ptr() >= crate::persistence::HEAP_START);
+}
+
+#[cfg(not(feature = "ic"))]
+fn check_field_value(_value: Value) {}

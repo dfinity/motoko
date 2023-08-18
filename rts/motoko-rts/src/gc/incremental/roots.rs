@@ -1,6 +1,6 @@
 use motoko_rts_macros::ic_mem_fn;
 
-use crate::{types::Value, visitor::pointer_to_dynamic_heap};
+use crate::{types::Value, visitor::is_pointer_field};
 
 /// Root referring to all canister variables.
 /// This root is reinitialized on each canister upgrade.
@@ -27,13 +27,11 @@ pub unsafe fn root_set() -> Roots {
 
 pub unsafe fn visit_roots<C, V: Fn(&mut C, *mut Value)>(
     roots: Roots,
-    heap_base: usize,
     context: &mut C,
     visit_field: V,
 ) {
     for location in roots {
-        // TODO: Check whether all pointers lead to dynamic heap, no static heap
-        if pointer_to_dynamic_heap(location, heap_base) {
+        if is_pointer_field(location) {
             visit_field(context, location);
         }
     }
