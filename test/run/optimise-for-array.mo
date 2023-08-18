@@ -92,7 +92,7 @@ check6[1] := "mutable";
 // this passes the IR type check, which demonstrates that no name capture happens
 for (check6 in check6.vals()) { ignore check6 };
 
-// DON'TCHECK: i32.load offset=(5 or 9)
+// DON'TCHECK: i32.load offset=9
 // CHECK:      i32.load offset=
 // CHECK:      i32.const 2
 // CHECK:      i32.shl
@@ -101,7 +101,7 @@ for (check7 in [].vals(Prim.debugPrint "want to see you")) { };
 
 // CHECK:      local.set $num8
 // CHECK-NOT:  call $@immut_array_size
-// DON'TCHECK: i32.load offset=(5 or 9)
+// DON'TCHECK: i32.load offset=9
 // CHECK:      i32.load offset=
 // CHECK:      i32.const 1
 // CHECK:      i32.shl
