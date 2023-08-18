@@ -155,6 +155,7 @@ module Const = struct
 
   let eq v1 v2 = match v1, v2 with
     | Lit l1, Lit l2 -> lit_eq l1 l2
+    | Fun (f1_fp, _), Fun (f2_fp, _) -> f1_fp() = f2_fp()
     | _ -> v1 = v2
 
 end (* Const *)
