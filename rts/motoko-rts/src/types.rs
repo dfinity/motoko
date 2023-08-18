@@ -348,10 +348,16 @@ impl Value {
         self.forward().get_ptr() as *mut Array
     }
 
-    /// Get the pointer as `Region` using forwarding. In debug mode panics if the value is not a pointer or the
-    /// pointed object is not an `Region`.
+    /// Get the pointer as `Region` using forwarding.
     pub unsafe fn as_region(self) -> *mut Region {
-        debug_assert_eq!(self.tag(), TAG_REGION);
+        debug_assert!(self.tag() == TAG_REGION);
+        self.check_forwarding_pointer();
+        self.forward().get_ptr() as *mut Region
+    }
+
+    /// Get the pointer as `Region` using forwarding, without checking the tag.
+    /// NB: One cannot check the tag during stabilization.
+    pub unsafe fn as_untagged_region(self) -> *mut Region {
         self.check_forwarding_pointer();
         self.forward().get_ptr() as *mut Region
     }
@@ -574,7 +580,7 @@ pub struct Region {
     pub header: Obj,
     pub id: u16,
     // Note: Must initialize this part as it is read by the compiler-generated code.
-    pub zero_padding: u16, 
+    pub zero_padding: u16,
     pub page_count: u32,
     pub vec_pages: Value, // Blob of u16's (each a page block ID).
 }
