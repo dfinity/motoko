@@ -62,8 +62,7 @@ and dec' =
 
 (* Program *)
 
-type prog_note = { filename : string; trivia : Trivia.triv_table }
-type prog = (prog', prog_note) Source.annotated_phrase
+type prog = (prog', string) Source.annotated_phrase
 and prog' = { decs : dec list; actor : typ option }
 
 (* Values *)

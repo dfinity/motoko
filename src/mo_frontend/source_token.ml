@@ -1,4 +1,4 @@
-open Mo_def.Trivia
+open Trivia
 
 type token =
   | EOF

@@ -275,3 +275,6 @@ module Make (Cfg : Config) = struct
     pp_print_flush ppf ();
     Buffer.contents buf
 end
+
+(* Defaults *)
+include Make (Default)
