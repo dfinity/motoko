@@ -133,6 +133,7 @@ module Make (Cfg : Config) = struct
     str ppf "}";
     pp_close_box ppf ()
   and pp_field ppf is_variant f =
+    pp_doc ppf f.at;
     let hide_type = is_variant && f.it.typ.it = PrimT Null in
     pp_open_hovbox ppf 1;
     (match f.it.label.it with
@@ -172,7 +173,7 @@ module Make (Cfg : Config) = struct
     | _ -> pp_typ ppf m.it.meth);
     pp_close_box ppf ()
 
-  and pp_trivia ppf at =
+  and pp_doc ppf at =
     match Cfg.trivia with
     | Some t ->
       let pos = Trivia.{ line = at.left.line; column = at.right.column } in
@@ -243,7 +244,7 @@ module Make (Cfg : Config) = struct
     pp_print_cut ppf ()
 
   let pp_prog ppf prog =
-    pp_trivia ppf prog.at;
+    pp_doc ppf prog.at;
     pp_open_vbox ppf 0;
     List.iter (fun d ->
         pp_dec ppf d;
