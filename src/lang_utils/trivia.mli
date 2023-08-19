@@ -19,6 +19,8 @@ type trivia_info = {
   trailing_trivia : void trivia list;
 }
 
+val string_of_trivia_info : trivia_info -> string
+
 val deprecated_of_trivia_info : trivia_info -> string option
 
 val doc_comment_of_trivia_info : trivia_info -> string option
