@@ -180,7 +180,12 @@ module Make (Cfg : Config) = struct
         lookup_trivia Source.(parser_pos.left.line, parser_pos.left.column) |> Option.get
       in
       (match Trivia.doc_comment_of_trivia_info (find_trivia at) with
-      | Some s -> "*" $$ [Atom s; it]
+      | Some s ->
+        String.split_on_char '\n' s
+          |> List.iter (fun s ->
+            str ppf "// ";
+            str ppf s;
+            str ppf "\n")
       | None -> it)
     | None -> ()
 
