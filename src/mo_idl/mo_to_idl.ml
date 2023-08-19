@@ -8,8 +8,7 @@ module E = Syntax
 module I = Idllib.Syntax
 
 module type Config = sig
-  (* TODO: possibly discard or change to `E.prog` instead of trivia table? *)
-  val mo_trivia : Trivia.triv_table option
+  val trivia : Trivia.triv_table option
 end
 
 (* use a functor to allocate temporary shared state *)
@@ -215,7 +214,7 @@ end
 
 let prog (progs, senv) : I.prog =
   let prog = CompUnit.combine_progs progs in
-  let module State = MakeState(struct let mo_trivia = Some prog.note.Syntax.trivia end) in
+  let module State = MakeState(struct let trivia = Some prog.note.Syntax.trivia end) in
   let open State in
   let actor = actor prog in
   if actor = None then chase_decs senv;
