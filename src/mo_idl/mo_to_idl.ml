@@ -180,6 +180,7 @@ module MakeState(Cfg : Config) = struct
 
   let gather_decs () =
     Env.fold (fun id t list ->
+        (* TODO: pass corresponding Motoko source region *)
         let dec = I.TypD (id @@ no_region, t) @@ no_region in
         dec::list
       ) !env []
@@ -211,7 +212,7 @@ let prog (progs, senv) : I.prog =
   let actor = actor prog in
   if actor = None then chase_decs senv;
   let decs = gather_decs () in
-  let it = I.{decs = decs; actor = actor} in
+  let it = I.{decs; actor} in
   {it; at = prog.at; note = I.{filename = ""; trivia}}
 
 let of_actor_type t : I.prog =
@@ -219,7 +220,7 @@ let of_actor_type t : I.prog =
   let open State in
   let actor = Some (typ t) in
   let decs = gather_decs () in
-  let prog = I.{decs = decs; actor = actor} in
+  let prog = I.{decs; actor} in
   {it = prog; at = no_region; note = I.{filename = ""; trivia = empty_triv_table}}
 
 let of_service_type ts t : I.typ list * I.prog =
@@ -228,6 +229,6 @@ let of_service_type ts t : I.typ list * I.prog =
   let args = List.map typ ts  in
   let actor = Some (typ t) in
   let decs = gather_decs () in
-  let prog = I.{decs = decs; actor = actor} in
+  let prog = I.{decs; actor} in
   args,
   {it = prog; at = no_region; note = I.{filename = ""; trivia = empty_triv_table}}
