@@ -175,17 +175,24 @@ module Make (Cfg : Config) = struct
     pp_close_box ppf ()
 
   and pp_doc ppf at =
+    let open Trivia in
     match Cfg.trivia with
     | Some t ->
-      let pos = Trivia.{ line = at.left.line; column = at.left.column } in
-      let trivia = Trivia.PosHashtbl.find_opt t pos in
-      (match Option.bind trivia Trivia.doc_comment_of_trivia_info with
-      | Some s ->
-        String.split_on_char '\n' s
-          |> List.iter (fun s ->
-            str ppf "/// ";
-            str ppf s;
-            pp_force_newline ppf ())
+      let pos = { line = at.left.line; column = at.left.column } in
+      let trivia = PosHashtbl.find_opt t pos in
+      (match trivia with
+      | Some t ->
+        List.iter (function
+        | LineComment s ->
+          str ppf "/// ";
+          str ppf s;
+          pp_force_newline ppf ()
+        | BlockComment s ->
+          str ppf "/** ";
+          str ppf s;
+          str ppf " */";
+          pp_force_newline ppf ())
+        (docs_of_trivia_info t)
       | None -> ())
     | None -> ()
 
