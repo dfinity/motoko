@@ -81,24 +81,29 @@ let deprecated_of_trivia_info : trivia_info -> string option =
   in
   if lines = [] then None else Some (String.concat "\n" lines)
 
-let doc_comment_of_trivia_info : trivia_info -> string option =
- fun info ->
-  let lines =
-    List.filter_map
-      (function
-        | Comment s -> (
-            match Lib.String.chop_prefix "///" s with
-            | Some "" -> Some ""
-            | Some line_comment ->
-                (* We expect a documentation line comment to start with a space
-                 *  (which we remove here) *)
-                Lib.String.chop_prefix " " line_comment
-            | None ->
-                Option.bind
-                  (Lib.String.chop_prefix "/**" s)
-                  (Lib.String.chop_suffix "*/")
-                |> Option.map String.trim )
-        | _ -> None)
-      info.leading_trivia
-  in
+type doc = LineComment of string | BlockComment of string
+
+let docs_of_trivia_info (info : trivia_info) : doc list =
+  List.filter_map
+    (function
+      | Comment s -> (
+          match Lib.String.chop_prefix "///" s with
+          | Some "" -> Some (LineComment "")
+          | Some line_comment ->
+              (* We expect a documentation line comment to start with a space
+              *  (which we remove here) *)
+              Lib.String.chop_prefix " " line_comment
+              |> Option.map (fun c -> LineComment c)
+          | None ->
+              Option.bind
+                (Lib.String.chop_prefix "/**" s)
+                (Lib.String.chop_suffix "*/")
+              |> Option.map String.trim
+              |> Option.map (fun c -> BlockComment c))
+      | _ -> None)
+    info.leading_trivia
+ 
+let doc_comment_of_trivia_info (info : trivia_info) : string option =
+  let docs = docs_of_trivia_info info in
+  let lines = List.map (function BlockComment s | LineComment s -> s) docs in
   if lines = [] then None else Some (String.concat "\n" lines)
