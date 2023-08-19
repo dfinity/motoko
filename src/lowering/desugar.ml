@@ -403,7 +403,7 @@ and call_system_func_opt name es obj_typ =
           callE (varE (var id.it note)) [] (tupE []))
     | _ -> None) es
 and build_candid ts obj_typ =
-let open Idllib in
+  let open Idllib in
   let (args, prog) = Mo_idl.Mo_to_idl.of_service_type ts obj_typ in
   let module WithComments = Arrange_idl.Make(struct let trivia = Some prog.note.Syntax.trivia end) in
   I.{
