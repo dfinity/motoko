@@ -11,7 +11,7 @@ module MakeState() = struct
 
   let env = ref Env.empty
 
-  let triv_table = PosHashtbl.create 0
+  let trivia = Trivia.PosHashtbl.create 0
 
   (* For monomorphization *)
   module Stamp = Type.ConEnv
@@ -207,14 +207,14 @@ let prog (progs, senv) : I.prog =
   if actor = None then chase_decs senv;
   let decs = gather_decs () in
   let prog = I.{decs = decs; actor = actor} in
-  {it = prog; at = no_region; note = {filename = ""; trivia = triv_table}}
+  {it = prog; at = no_region; note = {filename = ""; trivia}}
 
 let of_actor_type t : I.prog =
   let open MakeState() in
   let actor = Some (typ t) in
   let decs = gather_decs () in
   let prog = I.{decs = decs; actor = actor} in
-  {it = prog; at = no_region; note = {filename = ""; trivia = triv_table}}
+  {it = prog; at = no_region; note = {filename = ""; trivia}}
 
 let of_service_type ts t : I.typ list * I.prog =
   let open MakeState() in
@@ -223,4 +223,4 @@ let of_service_type ts t : I.typ list * I.prog =
   let decs = gather_decs () in
   let prog = I.{decs = decs; actor = actor} in
   args,
-  {it = prog; at = no_region; note = {filename = ""; trivia = triv_table}}
+  {it = prog; at = no_region; note = {filename = ""; trivia}}
