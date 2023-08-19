@@ -165,6 +165,7 @@ module Make (Cfg : Config) = struct
     str ppf ")"
 
   and pp_meth ppf m =
+    pp_doc ppf m.at;
     pp_open_hovbox ppf 1;
     text ppf m.it.var.it;
     kwd ppf ":";
@@ -196,6 +197,7 @@ module Make (Cfg : Config) = struct
     | _ -> false
 
   let pp_dec ppf d =
+    pp_doc ppf d.at;
     pp_open_vbox ppf 1;
     (match d.it with
     | TypD (id, typ) ->
@@ -215,6 +217,9 @@ module Make (Cfg : Config) = struct
     pp_close_box ppf ()
 
   let pp_actor ppf actor =
+    (match actor with
+    | Some {at; _} -> pp_doc ppf at;
+    | None -> ());
     (match actor with
     | None -> ()
     | Some {it=ServT ms; _} ->
