@@ -16,15 +16,6 @@ module MakeState(Cfg : Config) = struct
 
   let env = ref Env.empty
 
-  let trivia = PosHashtbl.create 0
-
-  let triv it at =
-    let trivia = Trivia.PosHashtbl.find_opt trivia Trivia.{ line = at.left.line; column = at.right.column } in
-    (match trivia with
-    | Some t -> ()
-    | None -> ());
-    it Source.(@@) at
-
   (* For monomorphization *)
   module Stamp = Type.ConEnv
   let stamp = ref Stamp.empty
@@ -214,7 +205,8 @@ end
 
 let prog (progs, senv) : I.prog =
   let prog = CompUnit.combine_progs progs in
-  let module State = MakeState(struct let trivia = Some prog.note.Syntax.trivia end) in
+  let trivia = prog.note.E.trivia in
+  let module State = MakeState(struct let trivia = Some trivia end) in
   let open State in
   let actor = actor prog in
   if actor = None then chase_decs senv;
@@ -223,19 +215,19 @@ let prog (progs, senv) : I.prog =
   {it; at = prog.at; note = I.{filename = ""; trivia}}
 
 let of_actor_type t : I.prog =
-  let module State = MakeState(struct let mo_trivia = None end) in
+  let module State = MakeState(struct let trivia = None end) in
   let open State in
   let actor = Some (typ t) in
   let decs = gather_decs () in
   let prog = I.{decs = decs; actor = actor} in
-  {it = prog; at = no_region; note = I.{filename = ""; trivia}}
+  {it = prog; at = no_region; note = I.{filename = ""; trivia = empty_triv_table}}
 
 let of_service_type ts t : I.typ list * I.prog =
-  let module State = MakeState(struct let mo_trivia = None end) in
+  let module State = MakeState(struct let trivia = None end) in
   let open State in
   let args = List.map typ ts  in
   let actor = Some (typ t) in
   let decs = gather_decs () in
   let prog = I.{decs = decs; actor = actor} in
   args,
-  {it = prog; at = no_region; note = I.{filename = ""; trivia}}
+  {it = prog; at = no_region; note = I.{filename = ""; trivia = empty_triv_table}}
