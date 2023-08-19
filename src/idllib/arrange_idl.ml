@@ -175,18 +175,15 @@ module Make (Cfg : Config) = struct
   and pp_trivia ppf at =
     match Cfg.triv_table with
     | Some table ->
-      let rec lookup_trivia (line, column) =
-        Trivia.PosHashtbl.find_opt table Trivia.{ line; column }
-      and find_trivia (parser_pos : Source.region) : Trivia.trivia_info =
-        lookup_trivia Source.(parser_pos.left.line, parser_pos.left.column) |> Option.get
-      in
-      (match Trivia.doc_comment_of_trivia_info (find_trivia at) with
+      let pos = Trivia.{ line = at.left.line; column = at.right.column } in
+      let trivia = Option.get (Trivia.PosHashtbl.find_opt table pos) in
+      (match Trivia.doc_comment_of_trivia_info trivia with
       | Some s ->
         String.split_on_char '\n' s
           |> List.iter (fun s ->
             str ppf "// ";
             str ppf s;
-            str ppf "\n")
+            pp_force_newline ppf ())
       | None -> ())
     | None -> ()
 
