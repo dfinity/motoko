@@ -1,1 +1,0 @@
-module { /** Comment */ let x = 0; }
