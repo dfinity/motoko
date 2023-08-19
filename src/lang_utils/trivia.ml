@@ -33,6 +33,11 @@ type trivia_info = {
   trailing_trivia : void trivia list;
 }
 
+let string_of_trivia_info (info : trivia_info) : string =
+    let leading = List.map (string_of_trivia string_of_line_feed) info.leading_trivia |> String.concat ", " in
+    let trailing = List.map (string_of_trivia (fun _ -> "")) info.trailing_trivia |> String.concat ", " in
+    Printf.sprintf "Leading: [%s]; Trailing: [%s]" leading trailing
+
 type pos = { line : int; column : int }
 
 let pos_of_lexpos : Lexing.position -> pos =
