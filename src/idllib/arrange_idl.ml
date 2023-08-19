@@ -183,7 +183,7 @@ module Make (Cfg : Config) = struct
       | Some s ->
         String.split_on_char '\n' s
           |> List.iter (fun s ->
-            str ppf "// ";
+            str ppf "/// ";
             str ppf s;
             pp_force_newline ppf ())
       | None -> ())
