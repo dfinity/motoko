@@ -2,6 +2,7 @@ open Mo_def
 open Mo_types
 
 open Source
+open Trivia
 open Type
 module E = Syntax
 module I = Idllib.Syntax
@@ -11,7 +12,7 @@ module MakeState() = struct
 
   let env = ref Env.empty
 
-  let trivia = Trivia.PosHashtbl.create 0
+  let trivia = PosHashtbl.create 0
 
   (* For monomorphization *)
   module Stamp = Type.ConEnv
@@ -202,25 +203,28 @@ module MakeState() = struct
 end
 
 let prog (progs, senv) : I.prog =
-  let open MakeState() in
+  let module State = MakeState() in
+  let open State in
   let actor = actor progs in
   if actor = None then chase_decs senv;
   let decs = gather_decs () in
   let prog = I.{decs = decs; actor = actor} in
-  {it = prog; at = no_region; note = {filename = ""; trivia}}
+  {it = prog; at = no_region; note = I.{filename = ""; trivia}}
 
 let of_actor_type t : I.prog =
-  let open MakeState() in
+  let module State = MakeState() in
+  let open State in
   let actor = Some (typ t) in
   let decs = gather_decs () in
   let prog = I.{decs = decs; actor = actor} in
-  {it = prog; at = no_region; note = {filename = ""; trivia}}
+  {it = prog; at = no_region; note = I.{filename = ""; trivia}}
 
 let of_service_type ts t : I.typ list * I.prog =
-  let open MakeState() in
+  let module State = MakeState() in
+  let open State in
   let args = List.map typ ts  in
   let actor = Some (typ t) in
   let decs = gather_decs () in
   let prog = I.{decs = decs; actor = actor} in
   args,
-  {it = prog; at = no_region; note = {filename = ""; trivia}}
+  {it = prog; at = no_region; note = I.{filename = ""; trivia}}
