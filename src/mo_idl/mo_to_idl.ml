@@ -8,6 +8,7 @@ module E = Syntax
 module I = Idllib.Syntax
 
 module type Config = sig
+  (* TODO: possibly discard or change to `E.prog` instead of trivia table? *)
   val mo_trivia : Trivia.triv_table option
 end
 
@@ -219,8 +220,8 @@ let prog (progs, senv) : I.prog =
   let actor = actor prog in
   if actor = None then chase_decs senv;
   let decs = gather_decs () in
-  let prog = I.{decs = decs; actor = actor} in
-  {it = prog; at = no_region; note = I.{filename = ""; trivia}}
+  let it = I.{decs = decs; actor = actor} in
+  {it; at = prog.at; note = I.{filename = ""; trivia}}
 
 let of_actor_type t : I.prog =
   let module State = MakeState(struct let mo_trivia = None end) in
