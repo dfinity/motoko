@@ -7,8 +7,12 @@ open Type
 module E = Syntax
 module I = Idllib.Syntax
 
+module type Config = sig
+  val mo_trivia : Trivia.triv_table option
+end
+
 (* use a functor to allocate temporary shared state *)
-module MakeState() = struct
+module MakeState(Cfg : Config) = struct
 
   let env = ref Env.empty
 
@@ -183,9 +187,8 @@ module MakeState() = struct
       ) !env []
 
 
-  let actor progs =
+  let actor prog =
     let open E in
-    let prog = CompUnit.combine_progs progs in
     let { body = cub; _ } = (CompUnit.comp_unit_of_prog false prog).it in
     match cub.it with
     | ProgU _ | ModuleU _ -> None
@@ -203,16 +206,17 @@ module MakeState() = struct
 end
 
 let prog (progs, senv) : I.prog =
-  let module State = MakeState() in
+  let prog = CompUnit.combine_progs progs in
+  let module State = MakeState(struct let mo_trivia = Some prog.note.Syntax.trivia end) in
   let open State in
-  let actor = actor progs in
+  let actor = actor prog in
   if actor = None then chase_decs senv;
   let decs = gather_decs () in
   let prog = I.{decs = decs; actor = actor} in
   {it = prog; at = no_region; note = I.{filename = ""; trivia}}
 
 let of_actor_type t : I.prog =
-  let module State = MakeState() in
+  let module State = MakeState(struct let mo_trivia = None end) in
   let open State in
   let actor = Some (typ t) in
   let decs = gather_decs () in
@@ -220,7 +224,7 @@ let of_actor_type t : I.prog =
   {it = prog; at = no_region; note = I.{filename = ""; trivia}}
 
 let of_service_type ts t : I.typ list * I.prog =
-  let module State = MakeState() in
+  let module State = MakeState(struct let mo_trivia = None end) in
   let open State in
   let args = List.map typ ts  in
   let actor = Some (typ t) in
