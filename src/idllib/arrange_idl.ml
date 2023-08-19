@@ -177,7 +177,7 @@ module Make (Cfg : Config) = struct
   and pp_doc ppf at =
     match Cfg.trivia with
     | Some t ->
-      let pos = Trivia.{ line = at.left.line; column = at.right.column } in
+      let pos = Trivia.{ line = at.left.line; column = at.left.column } in
       let trivia = Trivia.PosHashtbl.find_opt t pos in
       (match Option.bind trivia Trivia.doc_comment_of_trivia_info with
       | Some s ->
@@ -217,9 +217,6 @@ module Make (Cfg : Config) = struct
     pp_close_box ppf ()
 
   let pp_actor ppf actor =
-    (match actor with
-    | Some {at; _} -> pp_doc ppf at;
-    | None -> ());
     (match actor with
     | None -> ()
     | Some {it=ServT ms; _} ->

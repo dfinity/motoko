@@ -7,12 +7,8 @@ open Type
 module E = Syntax
 module I = Idllib.Syntax
 
-module type Config = sig
-  val trivia : Trivia.triv_table option
-end
-
 (* use a functor to allocate temporary shared state *)
-module MakeState(Cfg : Config) = struct
+module MakeState() = struct
 
   let env = ref Env.empty
 
@@ -207,8 +203,7 @@ end
 let prog (progs, senv) : I.prog =
   let prog = CompUnit.combine_progs progs in
   let trivia = prog.note.E.trivia in
-  let module State = MakeState(struct let trivia = Some trivia end) in
-  let open State in
+  let open MakeState() in
   let actor = actor prog in
   if actor = None then chase_decs senv;
   let decs = gather_decs () in
@@ -216,16 +211,14 @@ let prog (progs, senv) : I.prog =
   {it; at = prog.at; note = I.{filename = ""; trivia}}
 
 let of_actor_type t : I.prog =
-  let module State = MakeState(struct let trivia = None end) in
-  let open State in
+  let open MakeState() in
   let actor = Some (typ t) in
   let decs = gather_decs () in
   let prog = I.{decs; actor} in
   {it = prog; at = no_region; note = I.{filename = ""; trivia = empty_triv_table}}
 
 let of_service_type ts t : I.typ list * I.prog =
-  let module State = MakeState(struct let trivia = None end) in
-  let open State in
+  let open MakeState() in
   let args = List.map typ ts  in
   let actor = Some (typ t) in
   let decs = gather_decs () in
