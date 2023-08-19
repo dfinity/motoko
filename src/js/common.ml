@@ -104,7 +104,9 @@ let js_candid source =
   Mo_types.Cons.session (fun _ -> 
     js_result (Pipeline.generate_idl [Js.to_string source])
       (fun prog ->
-        let code = Idllib.Arrange_idl.string_of_prog prog in
+        let open Idllib in
+        let module WithComments = Arrange_idl.Make(struct let trivia = Some prog.note.Syntax.trivia end) in
+        let code = WithComments.string_of_prog prog in
         Js.some (Js.string code)))
 
 let js_stable_compatible pre post =

@@ -404,9 +404,10 @@ and call_system_func_opt name es obj_typ =
     | _ -> None) es
 and build_candid ts obj_typ =
   let (args, prog) = Mo_idl.Mo_to_idl.of_service_type ts obj_typ in
+  let module WithComments = Idllib.Arrange_idl.Make(struct let trivia = Some prog.note.trivia end) in
   I.{
-   args = Idllib.Arrange_idl.string_of_args args;
-   service = Idllib.Arrange_idl.string_of_prog prog;
+   args = WithComments.string_of_args args;
+   service = WithComments.string_of_prog prog;
   }
 
 and export_interface txt =

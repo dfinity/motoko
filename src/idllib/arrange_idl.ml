@@ -78,11 +78,11 @@ and prog prog = "Decs" $$ List.map dec prog.it.decs @ [actor prog.it.actor]
 
 (* Pretty printing  *)
 module type Config = sig
-  val triv_table : Trivia.trivia_info Trivia.PosHashtbl.t option
+  val trivia : Trivia.trivia_info Trivia.PosHashtbl.t option
 end
 
 module Default = struct
-  let triv_table = None
+  let trivia = None
 end
 
 module Make (Cfg : Config) = struct
@@ -173,11 +173,11 @@ module Make (Cfg : Config) = struct
     pp_close_box ppf ()
 
   and pp_trivia ppf at =
-    match Cfg.triv_table with
-    | Some table ->
+    match Cfg.trivia with
+    | Some t ->
       let pos = Trivia.{ line = at.left.line; column = at.right.column } in
-      let trivia = Option.get (Trivia.PosHashtbl.find_opt table pos) in
-      (match Trivia.doc_comment_of_trivia_info trivia with
+      let trivia = Trivia.PosHashtbl.find_opt t pos in
+      (match Option.bind trivia Trivia.doc_comment_of_trivia_info with
       | Some s ->
         String.split_on_char '\n' s
           |> List.iter (fun s ->
@@ -215,6 +215,9 @@ module Make (Cfg : Config) = struct
 
   let pp_actor ppf actor =
     (match actor with
+    | Some {at; _} -> pp_trivia ppf at
+    | _ -> ());
+    (match actor with
     | None -> ()
     | Some {it=ServT ms; _} ->
       pp_open_vbox ppf 2;
@@ -243,6 +246,7 @@ module Make (Cfg : Config) = struct
     pp_print_cut ppf ()
 
   let pp_prog ppf prog =
+    pp_trivia ppf prog.at;
     pp_open_vbox ppf 0;
     List.iter (fun d ->
         pp_dec ppf d;
