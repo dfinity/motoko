@@ -55,7 +55,7 @@ and scope = typ
 and bind_sort = Scope | Type
 and bind = {var : var; sort: bind_sort; bound : typ}
 
-and field = {lab : lab; typ : typ; depr : string option}
+and field = {lab : lab; typ : typ; triv : Trivia.trivia_info option}
 
 and con = kind Cons.t
 and kind =

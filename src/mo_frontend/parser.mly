@@ -769,8 +769,8 @@ vis :
   | PUBLIC {
     let at = at $sloc in
     let trivia = Trivia.find_trivia !triv_table at in
-    let depr = Trivia.deprecated_of_trivia_info trivia in
-    Public depr @@ at }
+    (* let depr = Trivia.deprecated_of_trivia_info trivia in *)
+    Public triv @@ at }
   | SYSTEM { System @@ at $sloc }
 
 stab :
