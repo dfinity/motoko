@@ -136,6 +136,7 @@ module MakeState() = struct
     | Pre -> assert false
     ) @@ no_region
   and field {lab; typ=t; _} =
+    (* TODO: pass corresponding Motoko source region *)
     let open Idllib.Escape in
     match unescape lab with
     | Nat nat ->
@@ -158,6 +159,7 @@ module MakeState() = struct
         | Typ c ->
            list
         | _ ->
+          (* TODO: pass corresponding Motoko source region *)
            let meth =
              I.{var = Idllib.Escape.unescape_method f.lab @@ no_region;
                 meth = typ f.typ} @@ no_region in
