@@ -18,6 +18,13 @@ module MakeState(Cfg : Config) = struct
 
   let trivia = PosHashtbl.create 0
 
+  let triv it at =
+    let trivia = Trivia.PosHashtbl.find_opt trivia Trivia.{ line = at.left.line; column = at.right.column } in
+    (match trivia with
+    | Some t -> ()
+    | None -> ());
+    it Source.(@@) at
+
   (* For monomorphization *)
   module Stamp = Type.ConEnv
   let stamp = ref Stamp.empty
