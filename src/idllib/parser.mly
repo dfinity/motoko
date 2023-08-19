@@ -207,7 +207,7 @@ parse_prog :
     {
       (* let trivia = !triv_table in *)
       let trivia = Trivia.PosHashtbl.create 0 in
-      fun filename -> {it = {decs=ds; actor=actor}; at = at $sloc; note = {filename=filename; trivia=trivia}} }
+      fun filename -> {it = {decs=ds; actor=actor}; at = at $sloc; note = {filename; trivia}} }
 
 (* Values *)
 
@@ -291,6 +291,6 @@ parse_tests :
     {
       (* let trivia = !triv_table in *)
       let trivia = Trivia.PosHashtbl.create 0 in
-      fun filename -> {it = {tdecs; tests}; at = at $sloc; note = {filename=filename; trivia=trivia}} }
+      fun filename -> {it = {tdecs; tests}; at = at $sloc; note = {filename; trivia}} }
 
 %%
