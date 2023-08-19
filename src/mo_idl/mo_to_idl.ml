@@ -212,7 +212,10 @@ let prog (progs, senv) : I.prog =
   if actor = None then chase_decs senv;
   let decs = gather_decs () in
   let it = I.{decs = decs; actor = actor} in
-  {it; at = prog.at; note = I.{filename = ""; trivia}}
+  let at = match actor with
+  | Some a -> a.at
+  | None -> no_region in
+  {it; at; note = I.{filename = ""; trivia}}
 
 let of_actor_type t : I.prog =
   let module State = MakeState(struct let trivia = None end) in

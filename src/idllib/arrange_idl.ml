@@ -215,9 +215,6 @@ module Make (Cfg : Config) = struct
 
   let pp_actor ppf actor =
     (match actor with
-    | Some {at; _} -> pp_trivia ppf at
-    | _ -> ());
-    (match actor with
     | None -> ()
     | Some {it=ServT ms; _} ->
       pp_open_vbox ppf 2;
