@@ -186,7 +186,7 @@ module Make (Cfg : Config) = struct
             str ppf "// ";
             str ppf s;
             str ppf "\n")
-      | None -> it)
+      | None -> ())
     | None -> ()
 
   let rec is_linebreak_type t =
