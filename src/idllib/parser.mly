@@ -288,9 +288,6 @@ test :
 
 parse_tests :
   | tdecs=endlist(def, SEMICOLON) tests=seplist(test, SEMICOLON) EOF
-    {
-      (* let trivia = !triv_table in *)
-      let trivia = Trivia.PosHashtbl.create 0 in
-      fun filename -> {it = {tdecs; tests}; at = at $sloc; note = {filename; trivia}} }
+    { fun filename -> {it = {tdecs; tests}; at = at $sloc; note = filename} }
 
 %%
