@@ -75,13 +75,14 @@ and actor = function
 
 and prog prog = "Decs" $$ List.map dec prog.it.decs @ [actor prog.it.actor]
 
+
 (* Pretty printing  *)
 module type Config = sig
-  val trivia : Trivia.trivia_info Trivia.PosHashtbl.t option
+  val triv_table : Trivia.trivia_info Trivia.PosHashtbl.t option
 end
 
 module Default = struct
-  let trivia = None
+  let triv_table = None
 end
 
 module Make (Cfg : Config) = struct
@@ -172,7 +173,7 @@ module Make (Cfg : Config) = struct
     pp_close_box ppf ()
 
   and pp_trivia ppf at =
-    match Cfg.trivia with
+    match Cfg.triv_table with
     | Some table ->
       let rec lookup_trivia (line, column) =
         Trivia.PosHashtbl.find_opt table Trivia.{ line; column }
