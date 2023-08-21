@@ -579,7 +579,9 @@ module E = struct
     Int32.(add (div (get_end_of_static_memory env) page_size) 1l)
 
   let collect_garbage env =
-    call_import env "rts" "schedule_incremental_gc"
+    let name = "incremental_gc" in
+    let gc_fn = if !Flags.force_gc then name else "schedule_" ^ name in
+    call_import env "rts" gc_fn
 
   (* See Note [Candid subtype checks] *)
   (* NB: we don't bother detecting duplicate registrations here because the code sharing machinery
