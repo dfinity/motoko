@@ -504,21 +504,13 @@ impl Array {
         init_with_barrier(mem, slot_addr, value);
     }
 
-    /// Write a pointer value to an array element.
-    /// Uses a incremental pre-update barrier and a generational post-update barrier.
+    /// Write a value to an array element.
+    /// The written and overwritten value can be a scalar or a pointer.
+    /// Applies an incremental pre-update barrier when needed.
     /// Resolves pointer forwarding for the written value.
-    pub unsafe fn set_pointer<M: Memory>(self: *mut Self, idx: u32, value: Value, mem: &mut M) {
-        debug_assert!(value.is_ptr());
+    pub unsafe fn set<M: Memory>(self: *mut Self, idx: u32, value: Value, mem: &mut M) {
         let slot_addr = self.element_address(idx) as *mut Value;
         write_with_barrier(mem, slot_addr, value);
-    }
-
-    /// Write a scalar value to an array element.
-    /// No need for a write barrier.
-    pub unsafe fn set_scalar(self: *mut Self, idx: u32, value: Value) {
-        debug_assert!(value.is_scalar());
-        let slot_addr = self.element_address(idx);
-        *(slot_addr as *mut Value) = value;
     }
 
     #[inline]

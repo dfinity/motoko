@@ -26,7 +26,7 @@ pub unsafe fn test() {
     }
 
     for i in 0..N / 2 {
-        let c = recall_continuation(references[i]);
+        let c = recall_continuation(&mut heap, references[i]);
         assert_eq!(c.get_ptr(), pointers[i].get_ptr());
         assert_eq!(continuation_count(), (N - i - 1) as u32);
     }
@@ -38,7 +38,7 @@ pub unsafe fn test() {
 
     for i in (0..N).rev() {
         assert_eq!(
-            recall_continuation(references[i]).get_ptr(),
+            recall_continuation(&mut heap, references[i]).get_ptr(),
             pointers[i].get_ptr(),
         );
         assert_eq!(continuation_count(), i as u32);

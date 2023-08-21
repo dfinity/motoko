@@ -102,13 +102,10 @@ impl<'a, M: Memory> MemoryChecker<'a, M> {
             0,
             |gc, field_address| {
                 let value = *field_address;
-                // Ignore null pointers used in `text_iter`.
-                if value.get_ptr() as *const Obj != null() {
-                    if value.get_ptr() >= gc.heap.base_address() {
-                        gc.check_object(value);
-                    } else {
-                        gc.check_object_header(value);
-                    }
+                if value.is_ptr() {
+                    gc.check_object(value);
+                } else {
+                    gc.check_object_header(value);
                 }
             },
             |_, _, array| array.len(),
