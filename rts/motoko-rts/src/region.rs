@@ -221,19 +221,12 @@ mod meta_data {
     /// Maximum number of entities.
     pub mod max {
         pub const BLOCKS: u16 = 32 * 1024;
-        pub const REGIONS: u64 = 32 * 1024 - 1; // u64::MAX - 1;
+        pub const REGIONS: u64 = u64::MAX - 1;
     }
 
     /// Sizes of table entries, and tables.
     pub mod size {
         use super::bytes_of;
-
-        // Region table entry:
-        // - 8 bytes for the size.
-        // - 4 bytes for future use (including GC visit-marking).
-        pub const REGION_TABLE_ENTRY: u16 = (bytes_of::<u64>() + bytes_of::<u32>()) as u16;
-
-        pub const REGION_TABLE: u64 = super::max::REGIONS as u64 * REGION_TABLE_ENTRY as u64;
 
         pub const BLOCK_REGION_TABLE_ENTRY: u16 =
             (bytes_of::<u64>() + bytes_of::<u16>() + bytes_of::<u8>()) as u16;
@@ -268,9 +261,7 @@ mod meta_data {
 
         pub const BLOCK_REGION_TABLE: u64 = TOTAL_ALLOCATED_REGIONS + bytes_of::<u64>();
 
-        pub const REGION_TABLE: u64 = BLOCK_REGION_TABLE + super::size::BLOCK_REGION_TABLE;
-
-        pub const FREE: u64 = REGION_TABLE + super::size::REGION_TABLE;
+        pub const FREE: u64 = BLOCK_REGION_TABLE + super::size::BLOCK_REGION_TABLE;
 
         /* One block for meta data, plus future use TBD. */
         pub const BLOCK_ZERO: u64 = super::size::BLOCK_IN_BYTES;
@@ -351,29 +342,6 @@ mod meta_data {
                     write_u8(page_count_offset, c);
                 }
             }
-        }
-    }
-
-    pub mod region_table {
-        use crate::region::{RegionId, RegionSizeInPages};
-
-        // invariant (for now, pre-GC integration):
-        //  all regions whose IDs are below the total_allocated_regions are valid.
-        use super::{offset, size};
-        use crate::stable_mem::{read_u64, write_u64};
-
-        fn index(r: &RegionId) -> u64 {
-            offset::REGION_TABLE + r.0 as u64 * size::REGION_TABLE_ENTRY as u64
-        }
-
-        /// Some(_) gives the size in pages.
-        /// None means that the region is not in use.
-        pub fn get(r: &RegionId) -> Option<RegionSizeInPages> {
-            RegionSizeInPages::from_u64(read_u64(index(r)))
-        }
-
-        pub fn set(r: &RegionId, s: Option<RegionSizeInPages>) {
-            write_u64(index(r), RegionSizeInPages::into_u64(s))
         }
     }
 }
@@ -509,15 +477,6 @@ pub unsafe fn region_new<M: Memory>(mem: &mut M) -> Value {
     let vec_pages = alloc_blob(mem, Bytes(0));
     allocation_barrier(vec_pages);
     let r_ptr = alloc_region(mem, next_id, 0, vec_pages);
-
-    // Update Region table.
-    {
-        let r_id = RegionId::from_id(next_id);
-        let c = meta_data::region_table::get(&r_id);
-        // sanity check: Region table says that this region is available.
-        assert_eq!(c, None);
-        meta_data::region_table::set(&r_id, Some(RegionSizeInPages(0)));
-    }
 
     r_ptr
 }
@@ -723,8 +682,6 @@ pub(crate) unsafe fn region_migration_from_some_stable_memory<M: Memory>(mem: &m
         Some((head_block_region, head_block_rank, head_block_page_count)),
     );
 
-    meta_data::region_table::set(&RegionId(0), Some(RegionSizeInPages(region0_pages as u64)));
-
     /* Any other blocks that follow head block are numbered [0,...,head_block_id) */
     /* They're logical placements are [1,...,) -- one more than their new identity, as a number. */
     for i in 0..head_block_id {
@@ -842,14 +799,9 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
     // Update this region's page count, in both places where we record it (heap object, region table).
     {
         let r_id = RegionId::from_id(r.read_id64());
-        let c = meta_data::region_table::get(&r_id);
-
-        // Region table agrees with heap object's field.
-        assert_eq!(c, Some(RegionSizeInPages(old_page_count.into())));
 
         // Increase both:
         (*r).page_count += new_pages_;
-        meta_data::region_table::set(&r_id, Some(RegionSizeInPages((*r).page_count.into())));
         if old_block_count > 0 {
             let last_block_rank = (old_block_count - 1) as u16;
             let last_block_id =
