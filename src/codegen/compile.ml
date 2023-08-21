@@ -6762,6 +6762,11 @@ end (* MakeSerialization *)
 module Serialization = MakeSerialization(BumpStream)
 
 module Stabilization = struct
+  let restore_stable_memory env =
+    (* TODO: Check version and if needed, migrate from old serialized stable format. *)
+    IC.system_call env "stable64_size" ^^
+    StableMem.set_mem_size env
+
   let load_stable_actor env = E.call_import env "rts" "load_stable_actor"
     
   let save_stable_actor env = E.call_import env "rts" "save_stable_actor"
@@ -6780,9 +6785,10 @@ module Stabilization = struct
   let destabilize env t =
     load_stable_actor env ^^
     G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
-    G.if1 I32Type
+    (G.if1 I32Type
       (empty_actor env t)
-      (load_stable_actor env)
+      (load_stable_actor env)) ^^
+    restore_stable_memory env
 end
 
 (*
