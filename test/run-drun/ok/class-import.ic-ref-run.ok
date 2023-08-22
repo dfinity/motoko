@@ -7,7 +7,5 @@ debug.print: empty
 debug.print: () tested
 debug.print: one
 debug.print: "one" tested
-debug.print: ("one", "two")
-debug.print: ("one", "two")tested
 debug.print: caught trap
 <= replied: ()

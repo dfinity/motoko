@@ -4,7 +4,5 @@ debug.print: empty
 debug.print: () tested
 debug.print: one
 debug.print: "one" tested
-debug.print: ("one", "two")
-debug.print: ("one", "two")tested
 debug.print: caught trap
 ingress Completed: Reply: 0x4449444c0000

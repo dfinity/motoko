@@ -2,8 +2,9 @@ import Prim "mo:⛔";
 import Cycles = "cycles/cycles";
 import M0 "class-import/empty";
 import M1 "class-import/one";
-import M2 "class-import/two";
 import M3 "class-import/trap";
+// Too many class imports exceed the maximum data segment size of 2MB,
+// in particular if they are compiled with sanity checks.
 
 actor a {
  public func go() : async () {
@@ -20,11 +21,6 @@ actor a {
    Cycles.add(2_000_000_000_000);
    let one : M1.One = await M1.One("one");
    await one.test();
-
-   // test two arg class
-   Cycles.add(2_000_000_000_000);
-   let two : M2.Two = await M2.Two("one","two");
-   await two.test();
 
    // test non-trapping install
    try {
@@ -54,8 +50,7 @@ a.go() //OR-CALL ingress go "DIDL\x00\x00"
 //SKIP run-ir
 //SKIP run-low
 
-// check exactly 4 embedded wasms
-//CHECK:  canister_update __motoko_async_helper
+// check exactly 3 embedded wasms
 //CHECK:  canister_update __motoko_async_helper
 //CHECK:  canister_update __motoko_async_helper
 //CHECK:  canister_update __motoko_async_helper
