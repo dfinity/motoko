@@ -571,8 +571,7 @@ pub(crate) unsafe fn region_migration_from_no_stable_memory<M: Memory>(mem: &mut
     // Region 0 -- classic API for stable memory, as a dedicated region.
     REGION_0 = region_new(mem);
 
-    assert!((*REGION_0.as_region()).id_lower == 0);
-    assert!((*REGION_0.as_region()).id_upper == 0);
+    assert_eq!(REGION_0.as_region().read_id64(), 0);
 
     // Regions 1 through LAST_RESERVED_REGION_ID, reserved for future use by future Motoko compiler-RTS features.
     region_reserve_id_span(mem, Some(RegionId(1)), RegionId(LAST_RESERVED_REGION_ID));
