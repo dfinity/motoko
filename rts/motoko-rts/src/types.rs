@@ -586,16 +586,11 @@ pub struct Region {
 }
 
 impl Region {
-    // (See also: RegionObject used in region.rs)
-    pub unsafe fn payload_addr(self: *const Self) -> *mut Value {
-        self.offset(1) as *mut Value // skip region header
-    }
-
     pub unsafe fn write_id64(self: *mut Self, value: u64) {
         write64(&mut (*self).id_lower, &mut (*self).id_upper, value);
     }
 
-    pub unsafe fn read_id64(self: *const Self) -> u64 {
+    pub unsafe fn read_id64(self: *mut Self) -> u64 {
         read64((*self).id_lower, (*self).id_upper)
     }
 }

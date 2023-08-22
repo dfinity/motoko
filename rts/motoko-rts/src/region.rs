@@ -1,13 +1,17 @@
 use crate::barriers::{allocation_barrier, init_with_barrier, write_with_barrier};
 use crate::memory::{alloc_blob, Memory};
 use crate::trap_with_prefix;
-use crate::types::{read64, size_of, write64, Blob, Bytes, Region, Value, TAG_REGION};
+use crate::types::{size_of, Blob, Bytes, Region, Value, TAG_REGION};
 
 // Versions
 // Should agree with constants StableMem.version_no_stable_memory etc. in compile.ml
 const VERSION_NO_STABLE_MEMORY: u32 = 0; // never manifest in serialized form
 const VERSION_SOME_STABLE_MEMORY: u32 = 1;
 const VERSION_REGIONS: u32 = 2;
+
+const _: () = assert!(meta_data::size::PAGES_IN_BLOCK <= u8::MAX as u32);
+const _: () = assert!(meta_data::max::BLOCKS <= u16::MAX);
+const _: () = assert!(meta_data::max::REGIONS <= u64::MAX-1);
 
 use motoko_rts_macros::ic_mem_fn;
 
@@ -401,8 +405,8 @@ unsafe fn init_region<M: Memory>(
 
 #[ic_mem_fn]
 pub unsafe fn region_id<M: Memory>(_mem: &mut M, r: Value) -> u64 {
-    let r = r.as_region();
-    read64((*r).id_lower, (*r).id_upper)
+    let r = r.as_untagged_region();
+    r.read_id64()
 }
 
 #[ic_mem_fn]
