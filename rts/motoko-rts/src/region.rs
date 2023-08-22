@@ -11,7 +11,7 @@ const VERSION_REGIONS: u32 = 2;
 
 const _: () = assert!(meta_data::size::PAGES_IN_BLOCK <= u8::MAX as u32);
 const _: () = assert!(meta_data::max::BLOCKS <= u16::MAX);
-const _: () = assert!(meta_data::max::REGIONS <= u64::MAX-1);
+const _: () = assert!(meta_data::max::REGIONS <= u64::MAX - 1);
 
 use motoko_rts_macros::ic_mem_fn;
 
