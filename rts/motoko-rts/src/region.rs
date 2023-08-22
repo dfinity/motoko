@@ -131,7 +131,7 @@ impl RegionObject {
     }
 
     pub unsafe fn id(&self) -> RegionId {
-        RegionId(read64((*self.0).id_lower, (*self.0).id_upper))
+        RegionId(self.0.read_id64())
     }
 
     pub unsafe fn trap_with(&self, msg: &str) -> ! {
@@ -366,7 +366,7 @@ unsafe fn alloc_region<M: Memory>(
     (*region).header.tag = TAG_REGION;
     (*region).header.init_forward(r_ptr);
     debug_assert!(id <= meta_data::max::REGIONS);
-    write64(&mut (*region).id_lower, &mut (*region).id_upper, id);
+    region.write_id64(id);
     debug_assert!(
         page_count
             <= (vec_pages.as_blob().len().as_u32() / meta_data::bytes_of::<u16>() as u32)
