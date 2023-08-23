@@ -334,18 +334,13 @@ mod meta_data {
             let region_offset = index(&b);
             let rank_offset = region_offset + bytes_of::<u64>();
             let page_count_offset = rank_offset + bytes_of::<u16>();
-            match r {
-                None => {
-                    write_u64(region_offset, RegionId::into_u64(None));
-                    write_u16(rank_offset, 0);
-                    write_u8(page_count_offset, 0);
-                }
-                Some((r, j, c)) => {
-                    write_u64(region_offset, RegionId::into_u64(Some(r)));
-                    write_u16(rank_offset, j);
-                    write_u8(page_count_offset, c);
-                }
-            }
+            let (region_id, rank, allocated_pages) = match r {
+                None => (None, 0, 0),
+                Some((r, j, c)) => (Some(r), j, c),
+            };
+            write_u64(region_offset, RegionId::into_u64(region_id));
+            write_u16(rank_offset, rank);
+            write_u8(page_count_offset, allocated_pages);
         }
     }
 }
