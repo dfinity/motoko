@@ -498,8 +498,7 @@ pub unsafe fn region_recover<M: Memory>(mem: &mut M, rid: &RegionId) -> Value {
     // determine page_count of this region
     let mut page_count: u32 = 0;
     {
-        let mut block_id: u16 = 0;
-        while (block_id as u32) < tb {
+        for block_id in 0..tb as u16 {
             match meta_data::block_region_table::get(BlockId(block_id)) {
                 None => {}
                 Some((rid_, _rank, block_page_count)) => {
@@ -508,7 +507,6 @@ pub unsafe fn region_recover<M: Memory>(mem: &mut M, rid: &RegionId) -> Value {
                     }
                 }
             }
-            block_id += 1;
         }
     };
     debug_assert!(page_count < (u32::MAX - (PAGES_IN_BLOCK - 1)));
