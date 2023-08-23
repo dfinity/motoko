@@ -1,5 +1,5 @@
 ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
-debug.print: {l1 = 9; s1 = 9}
+debug.print: {l1 = 6; s1 = 6}
 debug.print: {l2 = 256; s2 = 256}
 ingress Completed: Reply: 0x4449444c0000
 debug.print: {l1 = 256; s1 = 258}

@@ -2,10 +2,11 @@
 import P "mo:⛔";
 import {new; size } "stable-region/Region";
 
-// test region allocation is finite
+// test region allocation is infinite
 actor {
 
   public func go() : async() {
+    var l = 65536*8;
     var n = 16; // first 16 regions are reserved
     loop {
       let r = new();
@@ -13,22 +14,8 @@ actor {
 //      P.debugPrint(debug_show {n; id = P.regionId(r)});
       assert size(r) == 0;
       n += 1;
-    } while (n < 32767);
+    } while (n < l);
     P.debugPrint(debug_show {alloced = n});
-    var c = 0;
-    while (c < 3) {
-      try {
-        await async {
-          let r = new();
-          P.debugPrint("new failed to fail");
-          assert false;
-        }
-      }
-      catch e {
-        P.debugPrint("caught:" # P.errorMessage(e));
-      };
-      c += 1;
-    }
   };
 
 }

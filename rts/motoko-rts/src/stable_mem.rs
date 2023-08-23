@@ -38,6 +38,18 @@ pub fn write(offset: u64, src: &[u8]) {
 }
 
 // Little endian.
+pub fn read_u8(offset: u64) -> u8 {
+    let mut res: [u8; 1] = [0; 1];
+    read(offset, &mut res);
+    core::primitive::u8::from_le_bytes(res)
+}
+
+// Little endian.
+pub fn write_u8(offset: u64, value: u8) {
+    write(offset, &core::primitive::u8::to_le_bytes(value));
+}
+
+// Little endian.
 pub fn read_u16(offset: u64) -> u16 {
     let mut res: [u8; 2] = [0; 2];
     read(offset, &mut res);

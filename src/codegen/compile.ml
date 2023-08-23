@@ -1007,10 +1007,10 @@ module RTS = struct
     E.add_func_import env "rts" "text_size" [I32Type] [I32Type];
     E.add_func_import env "rts" "text_to_buf" [I32Type; I32Type] [];
     E.add_func_import env "rts" "region_init" [I32Type] [];
-    E.add_func_import env "rts" "alloc_region" [I32Type; I32Type; I32Type] [I32Type];
-    E.add_func_import env "rts" "init_region" [I32Type; I32Type; I32Type; I32Type] [];
+    E.add_func_import env "rts" "alloc_region" [I64Type; I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "init_region" [I32Type; I64Type; I32Type; I32Type] [];
     E.add_func_import env "rts" "region_new" [] [I32Type];
-    E.add_func_import env "rts" "region_id" [I32Type] [I32Type];
+    E.add_func_import env "rts" "region_id" [I32Type] [I64Type];
     E.add_func_import env "rts" "region_page_count" [I32Type] [I32Type];
     E.add_func_import env "rts" "region_vec_pages" [I32Type] [I32Type];
     E.add_func_import env "rts" "region_size" [I32Type] [I64Type];
@@ -3916,7 +3916,7 @@ module Region = struct
   (* field accessors *)
   (* NB: all these opns must resolve forwarding pointers here or in RTS *)
   let id env =
-    E.call_import env "rts" "region_id" (* TEMP (for testing) *)
+    E.call_import env "rts" "region_id"
 
   let page_count env =
     E.call_import env "rts" "region_page_count"
@@ -6272,7 +6272,7 @@ module MakeSerialization (Strm : Stream) = struct
         E.trap_with env "buffer_size called on value of type None"
       | Prim Region ->
          size_alias (fun () ->
-          inc_data_size (compile_unboxed_const 8l) ^^ (* |(padded) id| + |page_count| *)
+          inc_data_size (compile_unboxed_const 12l) ^^ (* |id| + |page_count| = 8 + 4 *)
           get_x ^^ Region.vec_pages env ^^ size env (Prim Blob))
       | Mut t ->
         size_alias (fun () -> get_x ^^ MutBox.load_field env ^^ size env t)
@@ -6397,7 +6397,9 @@ module MakeSerialization (Strm : Stream) = struct
         write_alias (fun () -> get_x ^^ write env (Array t))
       | Prim Region ->
         write_alias (fun () ->
-          write_word_32 env get_data_buf (get_x ^^ Region.id env) ^^
+          reserve env get_data_buf 8l ^^
+          get_x ^^ Region.id env ^^
+          G.i (Store {ty = I64Type; align = 0; offset = 0l; sz = None}) ^^
           write_word_32 env get_data_buf (get_x ^^ Region.page_count env) ^^
           write_blob env get_data_buf (get_x ^^ Region.vec_pages env)
         )
@@ -7028,7 +7030,7 @@ module MakeSerialization (Strm : Stream) = struct
           compile_eq_const (Int32.neg (Option.get (to_idl_prim (Prim Region)))) ^^
           E.else_trap_with env "deserialize_go (Region): unexpected idl_typ" ^^
           (* pre-allocate a region object, with dummy fields *)
-          compile_unboxed_const 0l ^^ (* id *)
+          compile_const_64 0L ^^ (* id *)
           compile_unboxed_const 0l ^^ (* pagecount *)
           Blob.lit env "" ^^ (* vec_pages *)
           Region.alloc_region env ^^
@@ -7036,7 +7038,7 @@ module MakeSerialization (Strm : Stream) = struct
           on_alloc get_region ^^
           (* read and initialize the region's fields *)
           get_region ^^
-          ReadBuf.read_word32 env get_data_buf ^^ (* id *)
+          ReadBuf.read_word64 env get_data_buf ^^ (* id *)
           ReadBuf.read_word32 env get_data_buf ^^ (* pagecount *)
           read_blob () ^^ (* vec_pages *)
           Region.init_region env
@@ -10549,7 +10551,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
      SR.Vanilla,
      compile_exp_as env ae SR.Vanilla e0 ^^
      Region.id env ^^
-     BigNum.from_word32 env
+     BigNum.from_word64 env
 
   | OtherPrim ("regionGrow"), [e0; e1] ->
     SR.UnboxedWord64,
