@@ -333,6 +333,13 @@ impl Value {
         self.forward().get_ptr() as *mut Array
     }
 
+    /// Get the pointer as `Object` using forwarding. In debug mode panics if the value is not a pointer.
+    pub unsafe fn as_object(self) -> *mut Object {
+        debug_assert!(self.get().is_ptr());
+        self.check_forwarding_pointer();
+        self.forward().get_ptr() as *mut Object
+    }
+
     /// Get the pointer as `Concat` using forwarding. In debug mode panics if the value is not a pointer or the
     /// pointed object is not a `Concat`.
     pub unsafe fn as_concat(self) -> *const Concat {

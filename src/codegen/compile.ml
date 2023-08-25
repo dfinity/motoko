@@ -864,6 +864,7 @@ module RTS = struct
     E.add_func_import env "rts" "running_gc" [] [I32Type];
     E.add_func_import env "rts" "load_stable_actor" [] [I32Type];
     E.add_func_import env "rts" "save_stable_actor" [I32Type] [];
+    E.add_func_import env "rts" "contains_field" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "set_static_root" [I32Type] [];
     E.add_func_import env "rts" "get_static_root" [] [I32Type];
     E.add_func_import env "rts" "null_singleton" [] [I32Type];
@@ -3549,6 +3550,12 @@ module Object = struct
       (* Return the pointer to the object *)
       get_ri ^^
       Tagged.allocation_barrier env
+
+  (* Reflection used by orthogonal persistence: 
+     Check whether an (actor) object contains a specific field *)
+  let contains_field env field =
+    compile_unboxed_const (E.hash env field) ^^
+    E.call_import env "rts" "contains_field"
  
   (* Returns a pointer to the object field (without following the field indirection) *)
   let idx_hash_raw env low_bound =
@@ -6778,24 +6785,38 @@ module Stabilization = struct
   let load_stable_actor env = E.call_import env "rts" "load_stable_actor"
     
   let save_stable_actor env = E.call_import env "rts" "save_stable_actor"
-    
-  let empty_actor env t =
-    let (_, fs) = Type.as_obj t in
-    let fs' = List.map
-      (fun f -> (f.Type.lab, fun () -> Opt.null_lit env))
-      fs
-    in
-    Object.lit_raw env fs'
 
-  let stabilize env t =
+  let create_actor env actor_type get_field_value =
+    let (_, field_declarations) = Type.as_obj actor_type in
+    let field_initializers = List.map
+      (fun field -> (field.Type.lab, fun () -> (get_field_value field.Type.lab)))
+      field_declarations
+    in
+    Object.lit_raw env field_initializers
+
+  let empty_actor env actor_type =
+    create_actor env actor_type (fun _ ->  Opt.null_lit env)
+
+  let recover_actor env actor_type =
+    let recover_field field = 
+      load_stable_actor env ^^
+      Object.contains_field env field ^^
+      (G.if1 I32Type
+        (load_stable_actor env ^^ Object.load_idx_raw env field)
+        (Opt.null_lit env)
+      ) in
+    create_actor env actor_type recover_field
+
+  let stabilize env actor_type =
     save_stable_actor env
 
-  let destabilize env t =
+  let destabilize env actor_type =
     load_stable_actor env ^^
     G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
     (G.if1 I32Type
-      (empty_actor env t)
-      (load_stable_actor env)) ^^
+      (empty_actor env actor_type)
+      (recover_actor env actor_type)
+    ) ^^
     restore_stable_memory env
 end
 

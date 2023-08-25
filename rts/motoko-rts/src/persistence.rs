@@ -130,6 +130,26 @@ pub(crate) unsafe fn stable_actor_location() -> *mut Value {
     &mut (*metadata).stable_actor as *mut Value
 }
 
+#[no_mangle]
+#[cfg(feature = "ic")]
+pub unsafe extern "C" fn contains_field(actor: Value, field_hash: u32) -> bool {
+    use crate::constants::WORD_SIZE;
+
+    let object = actor.as_object();
+    let hash_blob = (*object).hash_blob.as_blob();
+    assert_eq!(hash_blob.len().as_u32() % WORD_SIZE, 0);
+    let number_of_fields = hash_blob.len().as_u32() / WORD_SIZE;
+    let mut current_address = hash_blob.payload_const() as u32;
+    for _ in 0..number_of_fields {
+        let hash_address = current_address as *mut u32;
+        if *hash_address == field_hash {
+            return true;
+        }
+        current_address += WORD_SIZE;
+    }
+    false
+}
+
 unsafe fn alloc_null<M: Memory>(mem: &mut M) -> Value {
     let value = mem.alloc_words(size_of::<Null>());
     debug_assert!(value.get_ptr() >= HEAP_START);
