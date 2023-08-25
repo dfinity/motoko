@@ -123,7 +123,6 @@ unsafe fn print_tagged_scalar(buf: &mut WriteBuf, p: u32) {
 pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
     let _ = write!(buf, "{:#x}: ", p);
 
-
     let obj = p as *mut Obj;
     let forward = (*obj).forward;
     if forward.get_ptr() != p {

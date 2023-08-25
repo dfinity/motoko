@@ -527,7 +527,7 @@ impl Array {
 #[repr(C)] // See the note at the beginning of this module
 pub struct Object {
     pub header: Obj,
-    pub size: u32,     // Number of elements
+    pub size: u32,        // Number of elements
     pub hash_blob: Value, // Pointer to a blob containing the hashes of the object field labels.
 }
 
