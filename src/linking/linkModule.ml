@@ -274,6 +274,7 @@ let remove_non_ic_exports (em : extended_module) : extended_module =
 (* Generic linking logic *)
 
 exception LinkError of string
+exception TooLargeDataSegments of string
 
 type renumbering = int32 -> int32
 
@@ -768,7 +769,7 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
 
   (* Data segments must fit below 4MB according to the persistent heap layout. *)
   (if (Int32.to_int new_heap_start) > 4 * 1024 * 1024 then
-    (raise (LinkError "The Wasm data segment size exceeds the supported maxmimum of 2MB."))
+    (raise (TooLargeDataSegments "The Wasm data segment size exceeds the supported maxmimum of 2MB."))
   else
     ()
   );

@@ -297,7 +297,11 @@ let () =
   process_metadata_names "public" !Flags.public_metadata_names;
   process_metadata_names "omit" !Flags.omit_metadata_names;
   try
-    process_files !args
+    match process_files !args with
+      (* TODO: Find a better place to gracefully handle the input-dependent linker error *)
+    | exception Linking.LinkModule.TooLargeDataSegments error_message ->
+      Printf.eprintf "Error: %s" error_message; ()
+    | () -> ()
   with
   | Sys_error msg ->
     (* IO error *)
