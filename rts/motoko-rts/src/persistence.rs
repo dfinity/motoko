@@ -16,30 +16,33 @@ const FINGERPRINT: [char; 32] = [
     'E', 'R', 'S', 'I', 'S', 'T', 'E', 'N', 'C', 'E', ' ', '3', '2',
 ];
 const VERSION: usize = 1;
-// The `Value` representation in the default-initialized Wasm memory.
-// The GC ignores this value since it is a scalar representation.
+/// The `Value` representation in the default-initialized Wasm memory.
+/// The GC ignores this value since it is a scalar representation.
 const DEFAULT_VALUE: Value = Value::from_scalar(0);
 
-// Use a long-term representation by relying on C layout.
-// The `Value` references belong to the GC root set and require forwarding pointer resolution.
+/// The persistent metadata stored at the defined location `METADTA_ADDRESS` in memory.
+/// Use a long-term representation by relying on C layout.
+/// The `Value` references belong to the GC root set and require forwarding pointer resolution.
 #[repr(C)]
 struct PersistentMetadata {
-    // Predefined character sequence in the memory to double check the orthogonal persistence mode.
+    /// Predefined character sequence in the memory to double check the orthogonal persistence mode.
     fingerprint: [char; 32],
-    // Version of the orthogonal persistence. To be increased on every persistent memory layout modification.
+    /// Version of the orthogonal persistence. To be increased on every persistent memory layout modification.
     version: usize,
-    // Reference to the stable sub-record of the actor, comprising all stable actor fields. Set before upgrade.
-    // Constitutes a GC root and requires pointer forwarding.
+    /// Reference to the stable sub-record of the actor, comprising all stable actor fields. Set before upgrade.
+    /// Constitutes a GC root and requires pointer forwarding.
     stable_actor: Value,
-    // The state of the incremental GC including the partitioned heap description.
-    // The GC continues work after upgrades.
+    /// The state of the incremental GC including the partitioned heap description.
+    /// The GC continues work after upgrades.
     incremental_gc_state: State,
-    // Singleton of the top-level null value. To be retained across upgrades.
-    // Constitutes a GC root and requires pointer forwarding.
+    /// Singleton of the top-level null value. To be retained across upgrades.
+    /// Constitutes a GC root and requires pointer forwarding.
     null_singleton: Value,
 }
 
+/// Location of the persistent metadata. Prereseved and fixed forever.
 const METATDATA_ADDRESS: usize = 4 * 1024 * 1024;
+/// The reserved maximum size of the metadata, contains a reserve for future extension of the metadata.
 const METADATA_RESERVE: usize = 128 * 1024;
 
 // TODO: Include partition table in reserved space.
