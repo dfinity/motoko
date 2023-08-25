@@ -38,7 +38,6 @@ actor a {
    system func postupgrade() {
      // if we get here, destabilization has succeeded
      Prim.debugPrint "postupgrade!";
-     assert false; // trap to avoid saving state to disk
    }
 
 }
