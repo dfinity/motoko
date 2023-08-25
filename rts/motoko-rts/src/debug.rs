@@ -123,13 +123,14 @@ unsafe fn print_tagged_scalar(buf: &mut WriteBuf, p: u32) {
 pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
     let _ = write!(buf, "{:#x}: ", p);
 
-    let forward = (*(p as *mut Value)).forward();
+
+    let obj = p as *mut Obj;
+    let forward = (*obj).forward;
     if forward.get_ptr() != p {
         let _ = write!(buf, "<forwarded to {:#x}>", forward.get_ptr());
         return;
     }
 
-    let obj = p as *mut Obj;
     let tag = obj.tag();
 
     if tag == 0 {
