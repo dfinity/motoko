@@ -124,12 +124,14 @@ pub unsafe fn save_stable_actor<M: Memory>(mem: &mut M, actor: Value) {
     write_with_barrier(mem, location, actor);
 }
 
-// GC root pointer required for GC marking and updating.
+/// GC root pointer required for GC marking and updating.
 pub(crate) unsafe fn stable_actor_location() -> *mut Value {
     let metadata = PersistentMetadata::get();
     &mut (*metadata).stable_actor as *mut Value
 }
 
+/// Determine whether an object contains a specific field.
+/// Used for upgrading to an actor with additional stable fields.
 #[no_mangle]
 #[cfg(feature = "ic")]
 pub unsafe extern "C" fn contains_field(actor: Value, field_hash: u32) -> bool {
