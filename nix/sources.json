@@ -21,16 +21,16 @@
         "version": "3.2.25"
     },
     "ic": {
-        "branch": "master",
+        "branch": "pull/124/head",
         "builtin": false,
         "description": "Internet Computer blockchain source: the client/replica software run by nodes",
         "homepage": "",
         "owner": "dfinity",
         "repo": "ic",
-        "rev": "629f7fc8e82ff52e6373a528dcd29f9066563ad4",
-        "sha256": "1jadgk4jfgvkw3i5nlxikg0wi6144d46sca165g9xgqpsr8hkm00",
+        "rev": "aa293129bce86f46cc34bb25ed50f0edb924a501",
+        "sha256": "1z5azm0b2kb76mrigqb6i81hb2mh8psp4ffragvsyqa242rl0yrc",
         "type": "tarball",
-        "url": "https://github.com/dfinity/ic/archive/629f7fc8e82ff52e6373a528dcd29f9066563ad4.tar.gz",
+        "url": "https://github.com/dfinity/ic/archive/aa293129bce86f46cc34bb25ed50f0edb924a501.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ic-hs": {
@@ -76,10 +76,10 @@
         "homepage": null,
         "owner": "dfinity",
         "repo": "motoko-base",
-        "rev": "5bbf04cf82d9ffea685e91584d6e830e3e6f25f2",
-        "sha256": "16prry3hnr171a4w17jxd9f62r3ly7dwrg5pszz8yzxf1hmv3d6w",
+        "rev": "1f52c6b8fe64b15ae6ea68fc0fc2130b2112f6ce",
+        "sha256": "1vam0mbyia55a1ik8jylv1amvq8sm5ibshjcy8wkhzwmwqsjx35n",
         "type": "tarball",
-        "url": "https://github.com/dfinity/motoko-base/archive/5bbf04cf82d9ffea685e91584d6e830e3e6f25f2.tar.gz",
+        "url": "https://github.com/dfinity/motoko-base/archive/1f52c6b8fe64b15ae6ea68fc0fc2130b2112f6ce.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "motoko-matchers": {
