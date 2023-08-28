@@ -6787,8 +6787,9 @@ module Stabilization = struct
     
   let save_stable_actor env = E.call_import env "rts" "save_stable_actor"
 
-  let register_stable_type env actor_type = 
-    Blob.lit env "" ^^
+  let register_stable_type env actor_type =
+    let type_descriptor = Persistence.encode_stable_type actor_type in
+    Blob.lit env type_descriptor ^^
     E.call_import env "rts" "register_stable_type"
 
   let create_actor env actor_type get_field_value =

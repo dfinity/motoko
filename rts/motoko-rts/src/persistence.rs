@@ -10,7 +10,7 @@ use crate::{
     barriers::{allocation_barrier, write_with_barrier},
     gc::incremental::{IncrementalGC, State},
     memory::Memory,
-    persistence::compatibility::check_memory_compatibility,
+    persistence::compatibility::memory_compatible,
     types::{size_of, Null, Value, TAG_BLOB, TAG_NULL},
 };
 
@@ -184,8 +184,8 @@ pub unsafe fn register_stable_type<M: Memory>(mem: &mut M, new_type: Value) {
     assert_eq!(new_type.tag(), TAG_BLOB);
     let metadata = PersistentMetadata::get();
     let old_type = (*metadata).stable_type.forward_if_possible();
-    if old_type != DEFAULT_VALUE {
-        check_memory_compatibility(old_type, new_type);
+    if old_type != DEFAULT_VALUE && !memory_compatible(old_type, new_type) {
+        panic!("Memory-incompatible program upgrade");
     }
     let location = &mut (*metadata).stable_type as *mut Value;
     write_with_barrier(mem, location, new_type);
