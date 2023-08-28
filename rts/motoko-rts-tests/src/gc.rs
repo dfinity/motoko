@@ -468,6 +468,7 @@ fn run(heap: &mut MotokoHeap) -> bool {
                 continuation_table_location,
                 unused_root,
                 unused_root,
+                unused_root,
             ];
             IncrementalGC::instance(heap, get_incremental_gc_state())
                 .empty_call_stack_increment(roots);

@@ -862,6 +862,7 @@ module RTS = struct
     E.add_func_import env "rts" "write_with_barrier" [I32Type; I32Type] [];
     E.add_func_import env "rts" "allocation_barrier" [I32Type] [I32Type];
     E.add_func_import env "rts" "running_gc" [] [I32Type];
+    E.add_func_import env "rts" "register_stable_type" [I32Type] [];
     E.add_func_import env "rts" "load_stable_actor" [] [I32Type];
     E.add_func_import env "rts" "save_stable_actor" [I32Type] [];
     E.add_func_import env "rts" "contains_field" [I32Type; I32Type] [I32Type];
@@ -6786,6 +6787,10 @@ module Stabilization = struct
     
   let save_stable_actor env = E.call_import env "rts" "save_stable_actor"
 
+  let register_stable_type env actor_type = 
+    Blob.lit env "" ^^
+    E.call_import env "rts" "register_stable_type"
+
   let create_actor env actor_type get_field_value =
     let (_, field_declarations) = Type.as_obj actor_type in
     let field_initializers = List.map
@@ -6811,6 +6816,7 @@ module Stabilization = struct
     save_stable_actor env
 
   let destabilize env actor_type =
+    register_stable_type env actor_type ^^
     load_stable_actor env ^^
     G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
     (G.if1 I32Type

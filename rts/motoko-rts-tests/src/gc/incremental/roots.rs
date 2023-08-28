@@ -69,6 +69,7 @@ unsafe fn get_roots(heap: &MotokoHeap) -> Roots {
         continuation_table_location,
         unused_root,
         unused_root,
+        unused_root,
     ]
 }
 

@@ -2,13 +2,16 @@
 //!
 //! Persistent metadata table, located at 4MB, in the static partition space.
 
+mod compatibility;
+
 use motoko_rts_macros::ic_mem_fn;
 
 use crate::{
     barriers::{allocation_barrier, write_with_barrier},
     gc::incremental::{IncrementalGC, State},
     memory::Memory,
-    types::{size_of, Null, Value, TAG_NULL},
+    persistence::compatibility::check_memory_compatibility,
+    types::{size_of, Null, Value, TAG_BLOB, TAG_NULL},
 };
 
 const FINGERPRINT: [char; 32] = [
@@ -32,6 +35,9 @@ struct PersistentMetadata {
     /// Reference to the stable sub-record of the actor, comprising all stable actor fields. Set before upgrade.
     /// Constitutes a GC root and requires pointer forwarding.
     stable_actor: Value,
+    /// Reference to the stable type descriptor blob, serving for heap compatibility checks on upgrades.
+    /// Constitutes a GC root and requires pointer forwarding.
+    stable_type: Value,
     /// The state of the incremental GC including the partitioned heap description.
     /// The GC continues work after upgrades.
     incremental_gc_state: State,
@@ -63,6 +69,7 @@ impl PersistentMetadata {
             initialized
                 || (*self).fingerprint == ['\0'; 32]
                     && (*self).stable_actor == DEFAULT_VALUE
+                    && (*self).stable_type == DEFAULT_VALUE
                     && (*self).null_singleton == DEFAULT_VALUE
         );
         initialized
@@ -83,6 +90,7 @@ impl PersistentMetadata {
         (*self).fingerprint = FINGERPRINT;
         (*self).version = VERSION;
         (*self).stable_actor = DEFAULT_VALUE;
+        (*self).stable_type = DEFAULT_VALUE;
         (*self).incremental_gc_state = IncrementalGC::initial_gc_state(mem, HEAP_START);
         (*self).null_singleton = DEFAULT_VALUE;
     }
@@ -107,7 +115,7 @@ pub unsafe fn initialize_memory<M: Memory>(mem: &mut M) {
 unsafe fn allocate_initial_objects<M: Memory>(mem: &mut M) {
     let metadata = PersistentMetadata::get();
     debug_assert!((*metadata).null_singleton == DEFAULT_VALUE);
-    (*metadata).null_singleton = alloc_null(mem);
+    (*metadata).null_singleton = allocate_null(mem);
 }
 
 /// Returns the stable sub-record of the actor of the upgraded canister version.
@@ -115,6 +123,7 @@ unsafe fn allocate_initial_objects<M: Memory>(mem: &mut M) {
 #[no_mangle]
 pub unsafe extern "C" fn load_stable_actor() -> Value {
     let metadata = PersistentMetadata::get();
+    assert!((*metadata).stable_type.forward_if_possible() != DEFAULT_VALUE);
     (*metadata).stable_actor.forward_if_possible()
 }
 
@@ -122,7 +131,8 @@ pub unsafe extern "C" fn load_stable_actor() -> Value {
 #[ic_mem_fn]
 pub unsafe fn save_stable_actor<M: Memory>(mem: &mut M, actor: Value) {
     assert!(actor != DEFAULT_VALUE);
-    let metadata = PersistentMetadata::get();
+    let metadata: *mut PersistentMetadata = PersistentMetadata::get();
+    assert!((*metadata).stable_type.forward_if_possible() != DEFAULT_VALUE);
     let location = &mut (*metadata).stable_actor as *mut Value;
     write_with_barrier(mem, location, actor);
 }
@@ -155,7 +165,7 @@ pub unsafe extern "C" fn contains_field(actor: Value, field_hash: u32) -> bool {
     false
 }
 
-unsafe fn alloc_null<M: Memory>(mem: &mut M) -> Value {
+unsafe fn allocate_null<M: Memory>(mem: &mut M) -> Value {
     let value = mem.alloc_words(size_of::<Null>());
     debug_assert!(value.get_ptr() >= HEAP_START);
     let null = value.get_ptr() as *mut Null;
@@ -163,6 +173,28 @@ unsafe fn alloc_null<M: Memory>(mem: &mut M) -> Value {
     (*null).header.init_forward(value);
     allocation_barrier(value);
     value
+}
+
+/// Register the stable actor type on canister installation and upgrade.
+/// The type is stored in the persistent metadata memory for later retrieval on canister upgrades.
+/// On an upgrade, the memory compatibility between the new and existing stable type is checked.
+/// The `new_type` value points to a blob encoding the new stable actor type.
+#[ic_mem_fn]
+pub unsafe fn register_stable_type<M: Memory>(mem: &mut M, new_type: Value) {
+    assert_eq!(new_type.tag(), TAG_BLOB);
+    let metadata = PersistentMetadata::get();
+    let old_type = (*metadata).stable_type.forward_if_possible();
+    if old_type != DEFAULT_VALUE {
+        check_memory_compatibility(old_type, new_type);
+    }
+    let location = &mut (*metadata).stable_type as *mut Value;
+    write_with_barrier(mem, location, new_type);
+}
+
+/// GC root pointer required for GC marking and updating.
+pub(crate) unsafe fn stable_type_location() -> *mut Value {
+    let metadata = PersistentMetadata::get();
+    &mut (*metadata).stable_type as *mut Value
 }
 
 /// Get the null singleton used for top-level optional types.
