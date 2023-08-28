@@ -184,7 +184,7 @@ pub unsafe fn register_stable_type<M: Memory>(mem: &mut M, new_type: Value) {
     assert_eq!(new_type.tag(), TAG_BLOB);
     let metadata = PersistentMetadata::get();
     let old_type = (*metadata).stable_type.forward_if_possible();
-    if old_type != DEFAULT_VALUE && !memory_compatible(old_type, new_type) {
+    if old_type != DEFAULT_VALUE && !memory_compatible(mem, old_type, new_type) {
         panic!("Memory-incompatible program upgrade");
     }
     let location = &mut (*metadata).stable_type as *mut Value;

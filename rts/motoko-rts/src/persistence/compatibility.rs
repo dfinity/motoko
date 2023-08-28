@@ -45,7 +45,11 @@
 //! ------- | --------
 //! Nat     | -1l
 
-use crate::types::{size_of, Value};
+use crate::{
+    mem_utils::memzero_bytes,
+    memory::{alloc_blob, Memory},
+    types::{size_of, Bytes, Value},
+};
 
 const OBJECT_ENCODING_TAG: i32 = 1;
 
@@ -168,7 +172,58 @@ struct Field {
     type_index: i32,
 }
 
-fn type_compatible(
+/// To break recursion and optimize repeated checks
+struct SubTypeCache {
+    bitmap: *mut u8,
+    count_new_types: usize,
+    count_old_types: usize,
+}
+
+impl SubTypeCache {
+    pub unsafe fn new<M: Memory>(
+        mem: &mut M,
+        new_types: &TypeTable,
+        old_types: &TypeTable,
+    ) -> SubTypeCache {
+        let count_new_types = new_types.count_types();
+        let count_old_types = old_types.count_types();
+        let bit_size = count_new_types * count_old_types;
+        let byte_size = Bytes((bit_size as u32 + u8::BITS - 1) / u8::BITS);
+        let blob = alloc_blob(mem, byte_size);
+        let bitmap = blob.as_blob_mut().payload_addr();
+        memzero_bytes(bitmap as usize, byte_size);
+        SubTypeCache {
+            bitmap,
+            count_new_types,
+            count_old_types,
+        }
+    }
+
+    pub unsafe fn visited(&self, new_type_index: i32, old_type_index: i32) -> bool {
+        let (byte, bit_index) = self.position(new_type_index, old_type_index);
+        (*byte >> bit_index) & 0b1 != 0
+    }
+
+    pub unsafe fn visit(&mut self, new_type_index: i32, old_type_index: i32) {
+        let (byte, bit_index) = self.position(new_type_index, old_type_index);
+        *byte |= 0b1 << bit_index;
+    }
+
+    unsafe fn position(&self, new_type_index: i32, old_type_index: i32) -> (*mut u8, usize) {
+        assert!(new_type_index >= 0);
+        assert!(old_type_index >= 0);
+        assert!((new_type_index as usize) < self.count_new_types);
+        assert!((old_type_index as usize) < self.count_old_types);
+        let index = new_type_index as usize * self.count_old_types + old_type_index as usize;
+        let byte_index = index / u8::BITS as usize;
+        let bit_index = index % u8::BITS as usize;
+        let byte = self.bitmap.add(byte_index);
+        (byte, bit_index)
+    }
+}
+
+unsafe fn type_compatible(
+    cache: &mut SubTypeCache,
     _new_type_table: &TypeTable,
     new_type_index: i32,
     _old_type_table: &TypeTable,
@@ -177,30 +232,41 @@ fn type_compatible(
     unsafe {
         println!(100, "COMPATIBLE {new_type_index} {old_type_index}");
     }
-    if new_type_index < 0 {
+    if new_type_index >= 0 && old_type_index >= 0 {
+        if cache.visited(new_type_index, old_type_index) {
+            return true;
+        }
+        cache.visit(new_type_index, old_type_index);
+
+        // TODO: Implement check
+        unimplemented!()
+    } else if new_type_index < 0 {
         new_type_index == old_type_index
     } else {
         false
     }
 }
 
-// TODO: Unit test this funcionality
-
-// TODO: Use visited table for handling recursion and avoiding repeated type checks.
-
-/// Test whether the new stable type complies with the existing old stable type.
-/// Both arguments point to blobs encoding a stable actor type.
-pub unsafe fn memory_compatible(old_type: Value, new_type: Value) -> bool {
-    let new_type_table = TypeTable::new(new_type);
-    let old_type_table = TypeTable::new(old_type);
+unsafe fn compatible_actor_fields<M: Memory>(
+    mem: &mut M,
+    new_type_table: TypeTable,
+    old_type_table: TypeTable,
+) -> bool {
+    let mut cache = SubTypeCache::new(mem, &new_type_table, &old_type_table);
     let new_actor = new_type_table.get_actor();
     let old_actor = old_type_table.get_actor();
     for new_field_index in 0..new_actor.count_fields() {
         let new_field = new_actor.get_field(new_field_index);
-        println!(100, "CHECK ACTOR FIELD {} {}", new_field.label_hash, old_actor.find_field(new_field.label_hash).is_some());
+        println!(
+            100,
+            "CHECK ACTOR FIELD {} {}",
+            new_field.label_hash,
+            old_actor.find_field(new_field.label_hash).is_some()
+        );
         match old_actor.find_field(new_field.label_hash) {
             Some(old_field) => {
                 if !type_compatible(
+                    &mut cache,
                     &new_type_table,
                     new_field.type_index,
                     &old_type_table,
@@ -213,34 +279,16 @@ pub unsafe fn memory_compatible(old_type: Value, new_type: Value) -> bool {
         }
     }
     true
-
-    // // TODO: Implement supported sub-type relations
-
-    // // Identical types
-    // let old_descriptor = old_type.as_blob();
-    // let new_descriptor = new_type.as_blob();
-    // let old_size = old_descriptor.len().as_usize();
-    // let new_size = new_descriptor.len().as_usize();
-    // if old_size != new_size {
-    //     return false;
-    // }
-
-    // assert_eq!(old_size, new_size);
-    // let comparison = memcmp(
-    //     old_descriptor.payload_const() as *const c_void,
-    //     new_descriptor.payload_const() as *const c_void,
-    //     old_size,
-    // );
-
-    // comparison == 0
 }
 
-// pub unsafe fn print_type_descriptor(value: Value) {
-//     let descriptor = value.as_blob();
-//     let size = descriptor.len().as_usize();
-//     println!(100, "OUTPUT {}", size);
-//     for index in 0..size {
-//         println!(100, "{:#x} ", *descriptor.payload_const().add(index));
-//     }
-//     println!(100, "---");
-// }
+// TODO: Unit test this funcionality
+
+// TODO: Use visited table for handling recursion and avoiding repeated type checks.
+
+/// Test whether the new stable type complies with the existing old stable type.
+/// Both arguments point to blobs encoding a stable actor type.
+pub unsafe fn memory_compatible<M: Memory>(mem: &mut M, old_type: Value, new_type: Value) -> bool {
+    let new_type_table = TypeTable::new(new_type);
+    let old_type_table = TypeTable::new(old_type);
+    compatible_actor_fields(mem, new_type_table, old_type_table)
+}
