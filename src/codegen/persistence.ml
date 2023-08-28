@@ -45,9 +45,7 @@ module TypeTable = struct
     match typ with
     | Prim _ -> table
     | _ when contains_type table typ -> table
-    | _ -> 
-      Printf.printf "ADD TYPE %s\n" (Type.string_of_typ typ);
-      List.append table [typ]
+    | _ -> List.append table [typ]
 end
 
 let rec collect_type table typ =
@@ -59,7 +57,7 @@ let rec collect_type table typ =
     let field_types = List.map (fun field -> field.typ) field_list in
     collect_types table field_types
   | _ -> 
-    Printf.printf "ERROR TYPE %s\n" (Type.string_of_typ typ);
+    Printf.printf "UNSUPPORTED PERSISTENT TYPE %s\n" (Type.string_of_typ typ);
     assert false
 
 and collect_types table type_list =

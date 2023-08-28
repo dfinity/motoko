@@ -172,19 +172,21 @@ struct Field {
     type_index: i32,
 }
 
-/// To break recursion and optimize repeated checks
-struct SubTypeCache {
+/// Cache for remembering previous type compatibility checks.
+/// Necessary to avoid infinite loops on type recursion.
+/// Helpful to optimize repeated checks.
+struct TypeCheckCache {
     bitmap: *mut u8,
     count_new_types: usize,
     count_old_types: usize,
 }
 
-impl SubTypeCache {
+impl TypeCheckCache {
     pub unsafe fn new<M: Memory>(
         mem: &mut M,
         new_types: &TypeTable,
         old_types: &TypeTable,
-    ) -> SubTypeCache {
+    ) -> TypeCheckCache {
         let count_new_types = new_types.count_types();
         let count_old_types = old_types.count_types();
         let bit_size = count_new_types * count_old_types;
@@ -192,7 +194,7 @@ impl SubTypeCache {
         let blob = alloc_blob(mem, byte_size);
         let bitmap = blob.as_blob_mut().payload_addr();
         memzero_bytes(bitmap as usize, byte_size);
-        SubTypeCache {
+        TypeCheckCache {
             bitmap,
             count_new_types,
             count_old_types,
@@ -223,15 +225,12 @@ impl SubTypeCache {
 }
 
 unsafe fn type_compatible(
-    cache: &mut SubTypeCache,
+    cache: &mut TypeCheckCache,
     _new_type_table: &TypeTable,
     new_type_index: i32,
     _old_type_table: &TypeTable,
     old_type_index: i32,
 ) -> bool {
-    unsafe {
-        println!(100, "COMPATIBLE {new_type_index} {old_type_index}");
-    }
     if new_type_index >= 0 && old_type_index >= 0 {
         if cache.visited(new_type_index, old_type_index) {
             return true;
@@ -252,17 +251,11 @@ unsafe fn compatible_actor_fields<M: Memory>(
     new_type_table: TypeTable,
     old_type_table: TypeTable,
 ) -> bool {
-    let mut cache = SubTypeCache::new(mem, &new_type_table, &old_type_table);
+    let mut cache = TypeCheckCache::new(mem, &new_type_table, &old_type_table);
     let new_actor = new_type_table.get_actor();
     let old_actor = old_type_table.get_actor();
     for new_field_index in 0..new_actor.count_fields() {
         let new_field = new_actor.get_field(new_field_index);
-        println!(
-            100,
-            "CHECK ACTOR FIELD {} {}",
-            new_field.label_hash,
-            old_actor.find_field(new_field.label_hash).is_some()
-        );
         match old_actor.find_field(new_field.label_hash) {
             Some(old_field) => {
                 if !type_compatible(
@@ -282,8 +275,6 @@ unsafe fn compatible_actor_fields<M: Memory>(
 }
 
 // TODO: Unit test this funcionality
-
-// TODO: Use visited table for handling recursion and avoiding repeated type checks.
 
 /// Test whether the new stable type complies with the existing old stable type.
 /// Both arguments point to blobs encoding a stable actor type.
