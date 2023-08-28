@@ -19,7 +19,7 @@ pkgs:
         lockFile = "${pkgs.sources.ic}/Cargo.lock";
         outputHashes = {
           "derive_more-0.99.8-alpha.0" = "sha256-tEsfYC9oCAsDjinCsUDgRg3q6ruvayuA1lRmsEP9cys=";
-          "ic-btc-interface-0.1.0" = "sha256-H1lTXZSX1yRQ+2zvGmp+b52o5RL8KBUkE2/8dHZB+4Q=";
+          "ic-btc-interface-0.1.0" = "sha256-VecEMFjoeiRi0VgJ9CeDoOzdyJbJNiZ5MBmiV1+b7As=";
           "jsonrpc-0.12.1" = "sha256-3FtdZlt2PqVDkE5iKWYIp1eiIELsaYlUPRSP2Xp8ejM=";
           "libssh2-sys-0.2.23" = "sha256-9Hb7CnPF+lxrVO1NAhS7EXcPVWZutJXr6UWxpptzk4U=";
           "lmdb-rkv-0.14.99" = "sha256-dqxWgtNZ/qRukQLiDawjHRwdPgfzm/sVcWwudwX9rD8=";
