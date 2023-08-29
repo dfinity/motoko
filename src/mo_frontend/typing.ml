@@ -22,7 +22,8 @@ type ret_env = T.typ option
 type val_env  = (T.typ * avl) T.Env.t
 
 (* separate maps for values and types; entries only for _public_ elements *)
-type visibility_env = T.src T.Env.t * T.src T.Env.t
+type visibility_src = {depr : string option; region : Source.region; id_region : Source.region}
+type visibility_env = visibility_src T.Env.t * visibility_src T.Env.t
 
 let available env = T.Env.map (fun ty -> (ty, Available)) env
 
@@ -2141,7 +2142,7 @@ and pub_fields dec_fields : visibility_env =
 
 and pub_field dec_field xs : visibility_env =
   match dec_field.it with
-  | {vis = { it = Public depr; _}; dec; _} -> pub_dec T.{depr = depr; region = dec_field.at} dec xs
+  | {vis = { it = Public depr; at; _}; dec; _} -> pub_dec {depr = depr; region = dec_field.at; id_region = at} dec xs
   | _ -> xs
 
 and pub_dec src dec xs : visibility_env =
@@ -2169,7 +2170,7 @@ and pub_pat_field src pf xs =
   pub_pat src pf.it.pat xs
 
 and pub_typ_id src id (xs, ys) : visibility_env =
-  (T.Env.add id.it src xs, ys)
+  (T.Env.add id.it {src with id_region = id.at} xs, ys)
 
 and pub_val_id src id (xs, ys) : visibility_env =
   (xs, T.Env.add id.it src ys)
@@ -2185,7 +2186,7 @@ and object_of_scope env sort dec_fields scope at =
     T.Env.fold
       (fun id c tfs ->
         match T.Env.find_opt id pub_typ with
-        | Some src -> T.{lab = id; typ = T.Typ c; src}::tfs
+        | Some src -> T.{lab = id; typ = T.Typ c; src = {depr = src.depr; region = src.region}}::tfs
         | _ -> tfs
       ) scope.Scope.typ_env  []
   in
@@ -2193,7 +2194,7 @@ and object_of_scope env sort dec_fields scope at =
     T.Env.fold
       (fun id t tfs ->
         match T.Env.find_opt id pub_val with
-        | Some src -> T.{lab = id; typ = t; src}::tfs
+        | Some src -> T.{lab = id; typ = t; src = {depr = src.depr; region = src.region}}::tfs
         | _ -> tfs
       ) scope.Scope.val_env tfs
   in
@@ -2238,7 +2239,7 @@ and infer_obj env s dec_fields at : T.typ =
       List.iter (fun T.{lab; typ; _} ->
         if not (T.is_typ typ) && not (T.is_shared_func typ) then
           let _, pub_val = pub_fields dec_fields in
-          error env ((T.Env.find lab pub_val).T.region) "M0124"
+          error env ((T.Env.find lab pub_val).id_region) "M0124"
             "public actor field %s has non-shared function type%a"
             lab
             display_typ_expand typ
