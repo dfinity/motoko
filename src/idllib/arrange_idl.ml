@@ -224,6 +224,7 @@ module Make (Cfg : Config) = struct
     pp_close_box ppf ()
 
   let pp_actor ppf actor =
+    Option.iter (fun a -> pp_doc ppf a.at) actor;
     (match actor with
     | None -> ()
     | Some {it=ServT ms; _} ->
