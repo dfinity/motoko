@@ -85,8 +85,8 @@ let transform prog =
 
   and t_prim p = Ir.map_prim t_typ (fun id -> id) p
 
-  and t_field {lab; typ; depr} =
-    { lab; typ = t_typ typ; depr }
+  and t_field {lab; typ; src} =
+    { lab; typ = t_typ typ; src }
   in
 
   let rec t_exp (exp : exp) =
