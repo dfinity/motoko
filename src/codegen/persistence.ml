@@ -7,8 +7,9 @@
   // Primitive types are encoded by negative indices.
   // All numbers (type indices etc.) are encoded as little endian i32.
   <type_table> ::= length:i32 (<type>)^length
-  <type> ::= <object>
-  <object> ::= 1l field_list
+  <type> ::= <object> | <mutable>
+  <object> ::= 1l <field_list>
+  <mutable> ::= 2l type_index:i32
   <field_list> ::= length:i32 (<field>)^length
   <field> ::= label_hash:i32 type_index:i32
   
@@ -56,6 +57,8 @@ let rec collect_type table typ =
   | Obj (Object, field_list) ->
     let field_types = List.map (fun field -> field.typ) field_list in
     collect_types table field_types
+  | Mut var_type ->
+    collect_type table var_type
   | _ -> 
     Printf.printf "UNSUPPORTED PERSISTENT TYPE %s\n" (Type.string_of_typ typ);
     assert false
@@ -89,6 +92,9 @@ let encode_complex_type table typ =
   | Obj (Object, field_list) -> 
     encode_i32 1l ^ 
     encode_list (encode_field table) field_list
+  | Mut var_type ->
+    encode_i32 2l ^
+    encode_i32 (type_index table var_type)
   | _ -> assert false
 
 let encode_type_table table =

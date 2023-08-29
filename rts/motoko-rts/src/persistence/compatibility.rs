@@ -33,8 +33,9 @@
 //!
 //! ```
 //! <type_table> ::= length:i32 (<type>)^length
-//! <type> ::= <object>
-//! <object> ::= 1l field_list
+//! <type> ::= <object> | <mutable>
+//! <object> ::= 1l <field_list>
+//! <mutable> ::= 2l type_index:i32
 //! <field_list> ::= length:i32 (<field>)^length
 //! <field> ::= label_hash:i32 type_index:i32
 //! ```
@@ -51,12 +52,14 @@ use crate::{
     types::{size_of, Bytes, Value},
 };
 
-const OBJECT_ENCODING_TAG: i32 = 1;
+pub const OBJECT_ENCODING_TAG: i32 = 1;
+pub const MUTABLE_ENCODING_TAG: i32 = 2;
 
 const ACTOR_TYPE_INDEX: i32 = 0;
 
 const OBJECT_ENCODING_HEADER: usize = 2; // object_tag field_list_length
 const FIELD_ENCODING_LENGTH: usize = 2; // label_hash type_index
+const MUTABLE_ENCODING_LENGTH: usize = 2; // object_tag type_index
 
 struct EncodedData {
     words: *const i32,
@@ -117,19 +120,21 @@ impl TypeTable {
     unsafe fn get_actor(&self) -> ObjectType {
         match self.get_type(ACTOR_TYPE_INDEX) {
             Type::Object(object_type) => object_type,
-            // _ => panic!("Invalid stable type encoding")
+            _ => panic!("Invalid stable type encoding"),
         }
     }
 }
 
 enum Type {
     Object(ObjectType),
+    Mutable(MutableType),
 }
 
 impl Type {
     unsafe fn size(data: EncodedData) -> usize {
         match Self::get_type(data) {
             Self::Object(object_type) => object_type.size(),
+            Self::Mutable(mutable_type) => mutable_type.size(),
         }
     }
 
@@ -137,6 +142,7 @@ impl Type {
         let tag = data.read(0);
         match tag {
             OBJECT_ENCODING_TAG => Self::Object(ObjectType::new(data)),
+            MUTABLE_ENCODING_TAG => Self::Mutable(MutableType::new(data)),
             _ => unimplemented!(),
         }
     }
@@ -187,6 +193,22 @@ impl ObjectType {
 struct Field {
     label_hash: i32,
     type_index: i32,
+}
+
+struct MutableType {
+    type_index: i32,
+}
+
+impl MutableType {
+    unsafe fn new(data: EncodedData) -> MutableType {
+        assert_eq!(data.read(0), MUTABLE_ENCODING_TAG);
+        let type_index = data.read(1);
+        MutableType { type_index }
+    }
+
+    unsafe fn size(&self) -> usize {
+        MUTABLE_ENCODING_LENGTH
+    }
 }
 
 /// Cache for remembering previous type compatibility checks.
@@ -282,6 +304,14 @@ impl CompatibilityChecker {
         true
     }
 
+    unsafe fn mutable_compatible(
+        &mut self,
+        new_mutable: &MutableType,
+        old_mutable: &MutableType,
+    ) -> bool {
+        self.type_compatible(new_mutable.type_index, old_mutable.type_index)
+    }
+
     unsafe fn type_compatible(&mut self, new_type_index: i32, old_type_index: i32) -> bool {
         if new_type_index < 0 || old_type_index < 0 {
             return new_type_index == old_type_index;
@@ -296,6 +326,11 @@ impl CompatibilityChecker {
             (Type::Object(new_object), Type::Object(old_object)) => {
                 self.object_compatible(new_object, old_object)
             }
+            (Type::Object(_), _) => false,
+            (Type::Mutable(new_mutable), Type::Mutable(old_mutable)) => {
+                self.mutable_compatible(new_mutable, old_mutable)
+            }
+            (Type::Mutable(_), _) => false,
         }
     }
 

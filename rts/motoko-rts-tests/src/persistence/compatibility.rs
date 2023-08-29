@@ -1,5 +1,7 @@
 use motoko_rts::memory::{alloc_blob, Memory};
-use motoko_rts::persistence::compatibility::memory_compatible;
+use motoko_rts::persistence::compatibility::{
+    memory_compatible, MUTABLE_ENCODING_TAG, OBJECT_ENCODING_TAG,
+};
 use motoko_rts::types::{Bytes, Value};
 use std::hash::Hasher;
 use std::{collections::hash_map::DefaultHasher, hash::Hash};
@@ -45,12 +47,14 @@ impl BinaryData {
 #[derive(Clone)]
 enum Type {
     Object(ObjectType),
+    Mutable(MutableType),
 }
 
 impl Type {
     fn serialize(&self, output: &mut BinaryData) {
         match &self {
             Self::Object(object_type) => object_type.serialize(output),
+            Self::Mutable(mutable_type) => mutable_type.serialize(output),
         }
     }
 }
@@ -86,12 +90,23 @@ struct ObjectType {
 
 impl ObjectType {
     fn serialize(&self, output: &mut BinaryData) {
-        const OBJECT_TAG: i32 = 1;
-        output.write_i32(OBJECT_TAG);
+        output.write_i32(OBJECT_ENCODING_TAG);
         output.write_i32(self.fields.len() as i32);
         for field in &self.fields {
             field.serialize(output);
         }
+    }
+}
+
+#[derive(Clone)]
+struct MutableType {
+    variable_type: TypeReference,
+}
+
+impl MutableType {
+    fn serialize(&self, output: &mut BinaryData) {
+        output.write_i32(MUTABLE_ENCODING_TAG);
+        output.write_i32(self.variable_type.index);
     }
 }
 
@@ -144,6 +159,7 @@ unsafe fn test_sucessful_cases(heap: &mut TestMemory) {
     test_empty_actor(heap);
     test_reordered_actor_fields(heap);
     test_removed_actor_fields(heap);
+    test_mutable_fields(heap);
     test_added_actor_fields(heap);
     test_removed_object_fields(heap);
     test_direct_recursive_type(heap);
@@ -224,6 +240,21 @@ unsafe fn test_added_actor_fields(heap: &mut TestMemory) {
     assert!(is_compatible(heap, old_type, new_type));
 }
 
+unsafe fn test_mutable_fields(heap: &mut TestMemory) {
+    let actor_type = Type::Object(ObjectType {
+        fields: vec![Field {
+            name: String::from("ActorField"),
+            field_type: TypeReference { index: 1 },
+        }],
+    });
+    let mutable_type = Type::Mutable(MutableType {
+        variable_type: TypeReference::nat(),
+    });
+    let old_types = vec![actor_type.clone(), mutable_type.clone()];
+    let new_types = vec![actor_type.clone(), mutable_type.clone()];
+    assert!(are_compatible(heap, old_types, new_types));
+}
+
 unsafe fn test_removed_object_fields(heap: &mut TestMemory) {
     let actor_type = Type::Object(ObjectType {
         fields: vec![Field {
@@ -301,6 +332,8 @@ unsafe fn test_indirect_recursive_type(heap: &mut TestMemory) {
 
 unsafe fn test_failing_cases(heap: &mut TestMemory) {
     test_added_object_fields(heap);
+    test_mutable_mismatch(heap);
+    test_immutable_mismatch(heap);
     test_recursion_mismatch(heap);
 }
 
@@ -368,5 +401,47 @@ unsafe fn test_added_object_fields(heap: &mut TestMemory) {
 
     let old_types = vec![actor_type.clone(), old_type];
     let new_types = vec![actor_type.clone(), new_type];
+    assert!(!are_compatible(heap, old_types, new_types));
+}
+
+unsafe fn test_mutable_mismatch(heap: &mut TestMemory) {
+    let old_actor = Type::Object(ObjectType {
+        fields: vec![Field {
+            name: String::from("ActorField"),
+            field_type: TypeReference { index: 1 },
+        }],
+    });
+    let mutable_type = Type::Mutable(MutableType {
+        variable_type: TypeReference::nat(),
+    });
+    let new_actor = Type::Object(ObjectType {
+        fields: vec![Field {
+            name: String::from("ActorField"),
+            field_type: TypeReference::nat(),
+        }],
+    });
+    let old_types = vec![old_actor, mutable_type];
+    let new_types = vec![new_actor];
+    assert!(!are_compatible(heap, old_types, new_types));
+}
+
+unsafe fn test_immutable_mismatch(heap: &mut TestMemory) {
+    let old_actor = Type::Object(ObjectType {
+        fields: vec![Field {
+            name: String::from("ActorField"),
+            field_type: TypeReference::nat(),
+        }],
+    });
+    let new_actor = Type::Object(ObjectType {
+        fields: vec![Field {
+            name: String::from("ActorField"),
+            field_type: TypeReference { index: 1 },
+        }],
+    });
+    let mutable_type = Type::Mutable(MutableType {
+        variable_type: TypeReference::nat(),
+    });
+    let old_types = vec![old_actor];
+    let new_types = vec![new_actor, mutable_type];
     assert!(!are_compatible(heap, old_types, new_types));
 }
