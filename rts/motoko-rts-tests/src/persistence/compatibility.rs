@@ -145,6 +145,7 @@ unsafe fn test_sucessful_cases(heap: &mut TestMemory) {
     test_reordered_actor_fields(heap);
     test_removed_actor_fields(heap);
     test_added_actor_fields(heap);
+    test_removed_object_fields(heap);
     test_direct_recursive_type(heap);
     test_indirect_recursive_type(heap);
 }
@@ -223,6 +224,39 @@ unsafe fn test_added_actor_fields(heap: &mut TestMemory) {
     assert!(is_compatible(heap, old_type, new_type));
 }
 
+unsafe fn test_removed_object_fields(heap: &mut TestMemory) {
+    let actor_type = Type::Object(ObjectType {
+        fields: vec![Field {
+            name: String::from("ActorField"),
+            field_type: TypeReference { index: 1 },
+        }],
+    });
+
+    let field1 = Field {
+        name: String::from("Field1"),
+        field_type: TypeReference::nat(),
+    };
+    let field2 = Field {
+        name: String::from("Field2"),
+        field_type: TypeReference::nat(),
+    };
+    let field3 = Field {
+        name: String::from("Field3"),
+        field_type: TypeReference::nat(),
+    };
+
+    let old_type = Type::Object(ObjectType {
+        fields: vec![field1.clone(), field2.clone(), field3.clone()],
+    });
+    let new_type = Type::Object(ObjectType {
+        fields: vec![field2.clone()],
+    });
+
+    let old_types = vec![actor_type.clone(), old_type];
+    let new_types = vec![actor_type.clone(), new_type];
+    assert!(are_compatible(heap, old_types, new_types));
+}
+
 unsafe fn test_direct_recursive_type(heap: &mut TestMemory) {
     let actor_field = Field {
         name: String::from("ActorField"),
@@ -266,6 +300,7 @@ unsafe fn test_indirect_recursive_type(heap: &mut TestMemory) {
 }
 
 unsafe fn test_failing_cases(heap: &mut TestMemory) {
+    test_added_object_fields(heap);
     test_recursion_mismatch(heap);
 }
 
@@ -300,5 +335,38 @@ unsafe fn test_recursion_mismatch(heap: &mut TestMemory) {
     });
     let old_types = vec![old_actor, recursive_type];
     let new_types = vec![new_actor, non_recursive_type];
+    assert!(!are_compatible(heap, old_types, new_types));
+}
+
+unsafe fn test_added_object_fields(heap: &mut TestMemory) {
+    let actor_type = Type::Object(ObjectType {
+        fields: vec![Field {
+            name: String::from("ActorField"),
+            field_type: TypeReference { index: 1 },
+        }],
+    });
+
+    let field1 = Field {
+        name: String::from("Field1"),
+        field_type: TypeReference::nat(),
+    };
+    let field2 = Field {
+        name: String::from("Field2"),
+        field_type: TypeReference::nat(),
+    };
+    let field3 = Field {
+        name: String::from("Field3"),
+        field_type: TypeReference::nat(),
+    };
+
+    let old_type = Type::Object(ObjectType {
+        fields: vec![field2.clone()],
+    });
+    let new_type = Type::Object(ObjectType {
+        fields: vec![field1.clone(), field2.clone(), field3.clone()],
+    });
+
+    let old_types = vec![actor_type.clone(), old_type];
+    let new_types = vec![actor_type.clone(), new_type];
     assert!(!are_compatible(heap, old_types, new_types));
 }

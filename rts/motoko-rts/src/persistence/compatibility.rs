@@ -241,96 +241,87 @@ impl TypeCheckCache {
     }
 }
 
-unsafe fn object_compatible(
-    cache: &mut TypeCheckCache,
-    new_type_table: &TypeTable,
-    new_object: &ObjectType,
-    old_type_table: &TypeTable,
-    old_object: &ObjectType,
-) -> bool {
-    for field_index in 0..new_object.count_fields() {
-        let new_field = new_object.get_field(field_index);
-        match old_object.find_field(new_field.label_hash) {
-            None => {
-                return false;
-            }
-            Some(old_field) => {
-                if !type_compatible(
-                    cache,
-                    new_type_table,
-                    new_field.type_index,
-                    old_type_table,
-                    old_field.type_index,
-                ) {
-                    return false;
-                }
-            }
-        }
-    }
-    true
-}
-
-unsafe fn type_compatible(
-    cache: &mut TypeCheckCache,
-    new_type_table: &TypeTable,
-    new_type_index: i32,
-    old_type_table: &TypeTable,
-    old_type_index: i32,
-) -> bool {
-    if new_type_index < 0 || old_type_index < 0 {
-        return new_type_index == old_type_index;
-    }
-    if cache.visited(new_type_index, old_type_index) {
-        return true;
-    }
-    cache.visit(new_type_index, old_type_index);
-    let new_type = new_type_table.get_type(new_type_index);
-    let old_type = old_type_table.get_type(old_type_index);
-    match (&new_type, &old_type) {
-        (Type::Object(new_object), Type::Object(old_object)) => object_compatible(
-            cache,
-            new_type_table,
-            new_object,
-            old_type_table,
-            old_object,
-        ),
-    }
-}
-
-unsafe fn compatible_actor_fields<M: Memory>(
-    mem: &mut M,
+struct CompatibilityChecker {
+    cache: TypeCheckCache,
     new_type_table: TypeTable,
     old_type_table: TypeTable,
-) -> bool {
-    let mut cache = TypeCheckCache::new(mem, &new_type_table, &old_type_table);
-    let new_actor = new_type_table.get_actor();
-    let old_actor = old_type_table.get_actor();
-    for new_field_index in 0..new_actor.count_fields() {
-        let new_field = new_actor.get_field(new_field_index);
-        match old_actor.find_field(new_field.label_hash) {
-            Some(old_field) => {
-                if !type_compatible(
-                    &mut cache,
-                    &new_type_table,
-                    new_field.type_index,
-                    &old_type_table,
-                    old_field.type_index,
-                ) {
-                    return false;
-                }
-            }
-            None => {}
-        }
-    }
-    true
 }
 
-// TODO: Unit test this funcionality
+impl CompatibilityChecker {
+    unsafe fn new<M: Memory>(
+        mem: &mut M,
+        new_type_table: TypeTable,
+        old_type_table: TypeTable,
+    ) -> CompatibilityChecker {
+        let cache = TypeCheckCache::new(mem, &new_type_table, &old_type_table);
+        CompatibilityChecker {
+            cache,
+            new_type_table,
+            old_type_table,
+        }
+    }
+
+    unsafe fn object_compatible(
+        &mut self,
+        new_object: &ObjectType,
+        old_object: &ObjectType,
+    ) -> bool {
+        for field_index in 0..new_object.count_fields() {
+            let new_field = new_object.get_field(field_index);
+            match old_object.find_field(new_field.label_hash) {
+                None => {
+                    return false;
+                }
+                Some(old_field) => {
+                    if !self.type_compatible(new_field.type_index, old_field.type_index) {
+                        return false;
+                    }
+                }
+            }
+        }
+        true
+    }
+
+    unsafe fn type_compatible(&mut self, new_type_index: i32, old_type_index: i32) -> bool {
+        if new_type_index < 0 || old_type_index < 0 {
+            return new_type_index == old_type_index;
+        }
+        if self.cache.visited(new_type_index, old_type_index) {
+            return true;
+        }
+        self.cache.visit(new_type_index, old_type_index);
+        let new_type = self.new_type_table.get_type(new_type_index);
+        let old_type = self.old_type_table.get_type(old_type_index);
+        match (&new_type, &old_type) {
+            (Type::Object(new_object), Type::Object(old_object)) => {
+                self.object_compatible(new_object, old_object)
+            }
+        }
+    }
+
+    unsafe fn compatible_actor_fields(&mut self) -> bool {
+        let new_actor = self.new_type_table.get_actor();
+        let old_actor = self.old_type_table.get_actor();
+        for new_field_index in 0..new_actor.count_fields() {
+            let new_field = new_actor.get_field(new_field_index);
+            match old_actor.find_field(new_field.label_hash) {
+                Some(old_field) => {
+                    if !self.type_compatible(new_field.type_index, old_field.type_index) {
+                        return false;
+                    }
+                }
+                None => {}
+            }
+        }
+        true
+    }
+}
 
 /// Test whether the new stable type complies with the existing old stable type.
 /// Both arguments point to blobs encoding a stable actor type.
 pub unsafe fn memory_compatible<M: Memory>(mem: &mut M, old_type: Value, new_type: Value) -> bool {
     let new_type_table = TypeTable::new(new_type);
     let old_type_table = TypeTable::new(old_type);
-    compatible_actor_fields(mem, new_type_table, old_type_table)
+    let mut checker = CompatibilityChecker::new(mem, new_type_table, old_type_table);
+    checker.compatible_actor_fields()
 }
