@@ -2,22 +2,24 @@
 //!
 //! Persistent metadata table, located at 4MB, in the static partition space.
 
-mod compatibility;
+pub mod compatibility;
 
 use motoko_rts_macros::ic_mem_fn;
 
 use crate::{
     barriers::{allocation_barrier, write_with_barrier},
-    gc::incremental::{IncrementalGC, State},
+    gc::incremental::State,
     memory::Memory,
     persistence::compatibility::memory_compatible,
     types::{size_of, Null, Value, TAG_BLOB, TAG_NULL},
 };
 
+#[cfg(feature = "ic")]
 const FINGERPRINT: [char; 32] = [
     'M', 'O', 'T', 'O', 'K', 'O', ' ', 'O', 'R', 'T', 'H', 'O', 'G', 'O', 'N', 'A', 'L', ' ', 'P',
     'E', 'R', 'S', 'I', 'S', 'T', 'E', 'N', 'C', 'E', ' ', '3', '2',
 ];
+#[cfg(feature = "ic")]
 const VERSION: usize = 1;
 /// The `Value` representation in the default-initialized Wasm memory.
 /// The GC ignores this value since it is a scalar representation.
@@ -52,7 +54,6 @@ const METATDATA_ADDRESS: usize = 4 * 1024 * 1024;
 const METADATA_RESERVE: usize = 128 * 1024;
 
 // TODO: Include partition table in reserved space.
-#[cfg(feature = "ic")]
 pub const HEAP_START: usize = METATDATA_ADDRESS + METADATA_RESERVE;
 
 const _: () = assert!(core::mem::size_of::<PersistentMetadata>() <= METADATA_RESERVE);
@@ -62,6 +63,7 @@ impl PersistentMetadata {
         METATDATA_ADDRESS as *mut Self
     }
 
+    #[cfg(feature = "ic")]
     unsafe fn is_initialized(self: *mut Self) -> bool {
         // Wasm memory is zero-initialized according to the Wasm specification.
         let initialized = (*self).version != 0;
@@ -75,6 +77,7 @@ impl PersistentMetadata {
         initialized
     }
 
+    #[cfg(feature = "ic")]
     unsafe fn check_version(self: *const Self) {
         if (*self).version != VERSION {
             panic!(
@@ -85,7 +88,9 @@ impl PersistentMetadata {
         }
     }
 
+    #[cfg(feature = "ic")]
     unsafe fn initialize<M: Memory>(self: *mut Self, mem: &mut M) {
+        use crate::gc::incremental::IncrementalGC;
         debug_assert!(!self.is_initialized());
         (*self).fingerprint = FINGERPRINT;
         (*self).version = VERSION;
@@ -137,6 +142,7 @@ pub unsafe fn save_stable_actor<M: Memory>(mem: &mut M, actor: Value) {
     write_with_barrier(mem, location, actor);
 }
 
+#[cfg(feature = "ic")]
 /// GC root pointer required for GC marking and updating.
 pub(crate) unsafe fn stable_actor_location() -> *mut Value {
     let metadata = PersistentMetadata::get();
@@ -165,9 +171,8 @@ pub unsafe extern "C" fn contains_field(actor: Value, field_hash: u32) -> bool {
     false
 }
 
-unsafe fn allocate_null<M: Memory>(mem: &mut M) -> Value {
+pub unsafe fn allocate_null<M: Memory>(mem: &mut M) -> Value {
     let value = mem.alloc_words(size_of::<Null>());
-    debug_assert!(value.get_ptr() >= HEAP_START);
     let null = value.get_ptr() as *mut Null;
     (*null).header.tag = TAG_NULL;
     (*null).header.init_forward(value);
@@ -192,6 +197,7 @@ pub unsafe fn register_stable_type<M: Memory>(mem: &mut M, new_type: Value) {
 }
 
 /// GC root pointer required for GC marking and updating.
+#[cfg(feature = "ic")]
 pub(crate) unsafe fn stable_type_location() -> *mut Value {
     let metadata = PersistentMetadata::get();
     &mut (*metadata).stable_type as *mut Value
