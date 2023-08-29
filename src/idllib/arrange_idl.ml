@@ -188,10 +188,12 @@ module Make (Cfg : Config) = struct
           str ppf s;
           pp_force_newline ppf ()
         | BlockComment s ->
-          str ppf "/** ";
-          str ppf s;
-          str ppf " */";
-          pp_force_newline ppf ())
+          List.iter (fun line ->
+            if String.length line > 0 then (
+              str ppf "/// ";
+              str ppf line;
+              pp_force_newline ppf ()))
+          (String.split_on_char '\n' s))
         (docs_of_trivia_info t)
       | None -> ())
     | None -> ()
