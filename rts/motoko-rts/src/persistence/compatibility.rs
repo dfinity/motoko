@@ -74,11 +74,11 @@ impl EncodedData {
         *location
     }
 
-    unsafe fn sub_view(&self, offset: usize, length: usize) -> EncodedData {
-        assert!(offset + length <= self.size);
+    unsafe fn sub_view(&self, offset: usize) -> EncodedData {
+        assert!(offset <= self.size);
         EncodedData {
             words: self.words.add(offset),
-            size: length,
+            size: self.size - offset,
         }
     }
 }
@@ -105,16 +105,13 @@ impl TypeTable {
 
     unsafe fn get_type(&self, type_index: i32) -> Type {
         assert!(type_index <= self.count_types() as i32);
-        assert_eq!(type_index, 0); // TODO: Skip over other types
-        let start = 1;
-        let tag = self.data.read(start);
-        assert_eq!(tag, OBJECT_ENCODING_TAG);
-        let count_fields = self.data.read(start + 1);
-        assert!(count_fields >= 0);
-        let size = OBJECT_ENCODING_HEADER + count_fields as usize * FIELD_ENCODING_LENGTH;
-        let type_view = self.data.sub_view(start, size);
-        let object_type = ObjectType::new(type_view);
-        Type::Object(object_type)
+        let mut start = 1;
+        for _ in 0..type_index {
+            let type_view = self.data.sub_view(start);
+            start += Type::size(type_view);
+        }
+        let type_view = self.data.sub_view(start);
+        Type::get_type(type_view)
     }
 
     unsafe fn get_actor(&self) -> ObjectType {
@@ -129,6 +126,22 @@ enum Type {
     Object(ObjectType),
 }
 
+impl Type {
+    unsafe fn size(data: EncodedData) -> usize {
+        match Self::get_type(data) {
+            Self::Object(object_type) => object_type.size(),
+        }
+    }
+
+    unsafe fn get_type(data: EncodedData) -> Type {
+        let tag = data.read(0);
+        match tag {
+            OBJECT_ENCODING_TAG => Self::Object(ObjectType::new(data)),
+            _ => unimplemented!(),
+        }
+    }
+}
+
 struct ObjectType {
     data: EncodedData,
 }
@@ -137,6 +150,10 @@ impl ObjectType {
     unsafe fn new(data: EncodedData) -> ObjectType {
         assert_eq!(data.read(0), OBJECT_ENCODING_TAG);
         ObjectType { data }
+    }
+
+    unsafe fn size(&self) -> usize {
+        OBJECT_ENCODING_HEADER + self.count_fields() * FIELD_ENCODING_LENGTH
     }
 
     unsafe fn count_fields(&self) -> usize {
@@ -224,25 +241,59 @@ impl TypeCheckCache {
     }
 }
 
+unsafe fn object_compatible(
+    cache: &mut TypeCheckCache,
+    new_type_table: &TypeTable,
+    new_object: &ObjectType,
+    old_type_table: &TypeTable,
+    old_object: &ObjectType,
+) -> bool {
+    for field_index in 0..new_object.count_fields() {
+        let new_field = new_object.get_field(field_index);
+        match old_object.find_field(new_field.label_hash) {
+            None => {
+                return false;
+            }
+            Some(old_field) => {
+                if !type_compatible(
+                    cache,
+                    new_type_table,
+                    new_field.type_index,
+                    old_type_table,
+                    old_field.type_index,
+                ) {
+                    return false;
+                }
+            }
+        }
+    }
+    true
+}
+
 unsafe fn type_compatible(
     cache: &mut TypeCheckCache,
-    _new_type_table: &TypeTable,
+    new_type_table: &TypeTable,
     new_type_index: i32,
-    _old_type_table: &TypeTable,
+    old_type_table: &TypeTable,
     old_type_index: i32,
 ) -> bool {
-    if new_type_index >= 0 && old_type_index >= 0 {
-        if cache.visited(new_type_index, old_type_index) {
-            return true;
-        }
-        cache.visit(new_type_index, old_type_index);
-
-        // TODO: Implement check
-        unimplemented!()
-    } else if new_type_index < 0 {
-        new_type_index == old_type_index
-    } else {
-        false
+    if new_type_index < 0 || old_type_index < 0 {
+        return new_type_index == old_type_index;
+    }
+    if cache.visited(new_type_index, old_type_index) {
+        return true;
+    }
+    cache.visit(new_type_index, old_type_index);
+    let new_type = new_type_table.get_type(new_type_index);
+    let old_type = old_type_table.get_type(old_type_index);
+    match (&new_type, &old_type) {
+        (Type::Object(new_object), Type::Object(old_object)) => object_compatible(
+            cache,
+            new_type_table,
+            new_object,
+            old_type_table,
+            old_object,
+        ),
     }
 }
 

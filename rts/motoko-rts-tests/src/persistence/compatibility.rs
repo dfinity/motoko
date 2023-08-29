@@ -42,75 +42,55 @@ impl BinaryData {
     }
 }
 
-#[derive(PartialEq, Clone)]
+#[derive(Clone)]
 enum Type {
-    Nat,
     Object(ObjectType),
 }
 
 impl Type {
-    fn is_primitive(&self) -> bool {
+    fn serialize(&self, output: &mut BinaryData) {
         match &self {
-            Self::Nat => true,
-            Self::Object(_) => false,
-        }
-    }
-
-    fn inner_types(&self) -> Vec<Type> {
-        match &self {
-            Self::Nat => vec![],
-            Self::Object(object_type) => object_type.inner_types(),
-        }
-    }
-
-    fn serialize(&self, output: &mut BinaryData, table: &TypeTable) {
-        match &self {
-            Self::Nat => unreachable!(),
-            Self::Object(object_type) => object_type.serialize(output, table),
-        }
-    }
-
-    fn type_id(&self, table: &TypeTable) -> i32 {
-        const NAT_TYPE_ID: i32 = -1;
-        match &self {
-            Self::Nat => NAT_TYPE_ID,
-            Self::Object(_) => table.index_of(self),
+            Self::Object(object_type) => object_type.serialize(output),
         }
     }
 }
 
-#[derive(PartialEq, Clone)]
+#[derive(Clone)]
+struct TypeReference {
+    index: i32,
+}
+
+impl TypeReference {
+    fn nat() -> TypeReference {
+        TypeReference { index: -1 }
+    }
+}
+
+#[derive(Clone)]
 struct Field {
     name: String,
-    field_type: Type,
+    field_type: TypeReference,
 }
 
 impl Field {
-    fn serialize(&self, output: &mut BinaryData, table: &TypeTable) {
+    fn serialize(&self, output: &mut BinaryData) {
         output.write_hash(&self.name);
-        output.write_i32(self.field_type.type_id(table));
+        output.write_i32(self.field_type.index);
     }
 }
 
-#[derive(PartialEq, Clone)]
+#[derive(Clone)]
 struct ObjectType {
     fields: Vec<Field>,
 }
 
 impl ObjectType {
-    fn inner_types(&self) -> Vec<Type> {
-        self.fields
-            .iter()
-            .map(|field| field.field_type.clone())
-            .collect()
-    }
-
-    fn serialize(&self, output: &mut BinaryData, table: &TypeTable) {
+    fn serialize(&self, output: &mut BinaryData) {
         const OBJECT_TAG: i32 = 1;
         output.write_i32(OBJECT_TAG);
         output.write_i32(self.fields.len() as i32);
         for field in &self.fields {
-            field.serialize(output, table);
+            field.serialize(output);
         }
     }
 }
@@ -120,49 +100,36 @@ struct TypeTable {
 }
 
 impl TypeTable {
-    fn new(actor_type: Type) -> TypeTable {
-        let mut table = TypeTable { types: vec![] };
-        table.collect_types(actor_type);
-        table
-    }
-
-    fn collect_types(&mut self, current_type: Type) {
-        if !current_type.is_primitive() && !self.types.contains(&current_type) {
-            self.types.push(current_type.clone());
-            for inner_type in current_type.inner_types() {
-                self.collect_types(inner_type);
-            }
-        }
-    }
-
-    fn index_of(&self, search_type: &Type) -> i32 {
-        assert!(!search_type.is_primitive());
-        for index in 0..self.types.len() {
-            if self.types.get(index).unwrap() == search_type {
-                return index as i32;
-            }
-        }
-        unreachable!()
+    fn new(types: Vec<Type>) -> TypeTable {
+        TypeTable { types }
     }
 
     fn serialize(&self) -> BinaryData {
         let mut output = BinaryData::new();
         output.write_i32(self.types.len() as i32);
         for current_type in &self.types {
-            current_type.serialize(&mut output, &self);
+            current_type.serialize(&mut output);
         }
         output
     }
 }
 
-unsafe fn build<M: Memory>(mem: &mut M, actor_type: Type) -> Value {
-    TypeTable::new(actor_type).serialize().make_blob(mem)
+unsafe fn build<M: Memory>(mem: &mut M, types: Vec<Type>) -> Value {
+    TypeTable::new(types).serialize().make_blob(mem)
+}
+
+unsafe fn are_compatible<M: Memory>(
+    mem: &mut M,
+    old_types: Vec<Type>,
+    new_types: Vec<Type>,
+) -> bool {
+    let old_type_blob = build(mem, old_types);
+    let new_type_blob = build(mem, new_types);
+    memory_compatible(mem, old_type_blob, new_type_blob)
 }
 
 unsafe fn is_compatible<M: Memory>(mem: &mut M, old_type: Type, new_type: Type) -> bool {
-    let old_type_blob = build(mem, old_type);
-    let new_type_blob = build(mem, new_type);
-    memory_compatible(mem, old_type_blob, new_type_blob)
+    are_compatible(mem, vec![old_type], vec![new_type])
 }
 
 pub unsafe fn test() {
@@ -178,6 +145,8 @@ unsafe fn test_sucessful_cases(heap: &mut TestMemory) {
     test_reordered_actor_fields(heap);
     test_removed_actor_fields(heap);
     test_added_actor_fields(heap);
+    test_direct_recursive_type(heap);
+    test_indirect_recursive_type(heap);
 }
 
 unsafe fn test_empty_actor(heap: &mut TestMemory) {
@@ -189,11 +158,11 @@ unsafe fn test_empty_actor(heap: &mut TestMemory) {
 unsafe fn test_reordered_actor_fields(heap: &mut TestMemory) {
     let field1 = Field {
         name: String::from("Field1"),
-        field_type: Type::Nat,
+        field_type: TypeReference::nat(),
     };
     let field2 = Field {
         name: String::from("Field2"),
-        field_type: Type::Nat,
+        field_type: TypeReference::nat(),
     };
 
     let old_type = Type::Object(ObjectType {
@@ -209,15 +178,15 @@ unsafe fn test_reordered_actor_fields(heap: &mut TestMemory) {
 unsafe fn test_removed_actor_fields(heap: &mut TestMemory) {
     let field1 = Field {
         name: String::from("Field1"),
-        field_type: Type::Nat,
+        field_type: TypeReference::nat(),
     };
     let field2 = Field {
         name: String::from("Field2"),
-        field_type: Type::Nat,
+        field_type: TypeReference::nat(),
     };
     let field3 = Field {
         name: String::from("Field3"),
-        field_type: Type::Nat,
+        field_type: TypeReference::nat(),
     };
 
     let old_type = Type::Object(ObjectType {
@@ -233,15 +202,15 @@ unsafe fn test_removed_actor_fields(heap: &mut TestMemory) {
 unsafe fn test_added_actor_fields(heap: &mut TestMemory) {
     let field1 = Field {
         name: String::from("Field1"),
-        field_type: Type::Nat,
+        field_type: TypeReference::nat(),
     };
     let field2 = Field {
         name: String::from("Field2"),
-        field_type: Type::Nat,
+        field_type: TypeReference::nat(),
     };
     let field3 = Field {
         name: String::from("Field3"),
-        field_type: Type::Nat,
+        field_type: TypeReference::nat(),
     };
 
     let old_type = Type::Object(ObjectType {
@@ -254,4 +223,82 @@ unsafe fn test_added_actor_fields(heap: &mut TestMemory) {
     assert!(is_compatible(heap, old_type, new_type));
 }
 
-unsafe fn test_failing_cases(_heap: &mut TestMemory) {}
+unsafe fn test_direct_recursive_type(heap: &mut TestMemory) {
+    let actor_field = Field {
+        name: String::from("ActorField"),
+        field_type: TypeReference { index: 1 },
+    };
+    let actor_type = Type::Object(ObjectType {
+        fields: vec![actor_field],
+    });
+    let recursive_field = Field {
+        name: String::from("RecursiveField"),
+        field_type: TypeReference { index: 1 },
+    };
+    let recursive_type = Type::Object(ObjectType {
+        fields: vec![recursive_field],
+    });
+    let types = vec![actor_type, recursive_type];
+    assert!(are_compatible(heap, types.clone(), types.clone()));
+}
+
+unsafe fn test_indirect_recursive_type(heap: &mut TestMemory) {
+    let actor_type = Type::Object(ObjectType {
+        fields: vec![Field {
+            name: String::from("ActorField"),
+            field_type: TypeReference { index: 1 },
+        }],
+    });
+    let first_type = Type::Object(ObjectType {
+        fields: vec![Field {
+            name: String::from("Field1"),
+            field_type: TypeReference { index: 2 },
+        }],
+    });
+    let second_type = Type::Object(ObjectType {
+        fields: vec![Field {
+            name: String::from("Field2"),
+            field_type: TypeReference { index: 1 },
+        }],
+    });
+    let types = vec![actor_type, first_type, second_type];
+    assert!(are_compatible(heap, types.clone(), types.clone()));
+}
+
+unsafe fn test_failing_cases(heap: &mut TestMemory) {
+    test_recursion_mismatch(heap);
+}
+
+unsafe fn test_recursion_mismatch(heap: &mut TestMemory) {
+    let old_actor_field = Field {
+        name: String::from("ActorField"),
+        field_type: TypeReference { index: 1 },
+    };
+    let old_actor = Type::Object(ObjectType {
+        fields: vec![old_actor_field],
+    });
+    let recursive_field = Field {
+        name: String::from("Field"),
+        field_type: TypeReference { index: 1 },
+    };
+    let recursive_type = Type::Object(ObjectType {
+        fields: vec![recursive_field],
+    });
+    let new_actor_field = Field {
+        name: String::from("ActorField"),
+        field_type: TypeReference { index: 1 },
+    };
+    let new_actor = Type::Object(ObjectType {
+        fields: vec![new_actor_field],
+    });
+    let non_recursive_field = Field {
+        name: String::from("Field"),
+        field_type: TypeReference::nat(),
+    };
+    let non_recursive_type = Type::Object(ObjectType {
+        fields: vec![non_recursive_field],
+    });
+    let old_types = vec![old_actor, recursive_type];
+    let new_types = vec![new_actor, non_recursive_type];
+    assert!(!are_compatible(heap, old_types, new_types));
+}
