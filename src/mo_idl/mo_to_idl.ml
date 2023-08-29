@@ -136,7 +136,6 @@ module MakeState() = struct
     | Pre -> assert false
     ) @@ no_region
   and field {lab; typ = t; src = {region; _}} =
-    (* TODO: pass corresponding Motoko source region *)
     let open Idllib.Escape in
     match unescape lab with
     | Nat nat ->
@@ -159,7 +158,7 @@ module MakeState() = struct
         | Typ c ->
            list
         | _ ->
-          (* TODO: pass corresponding Motoko source region *)
+          (* TODO: pass corresponding Motoko source region? *)
            let meth =
              I.{var = Idllib.Escape.unescape_method f.lab @@ no_region;
                 meth = typ f.typ} @@ no_region in
@@ -178,7 +177,7 @@ module MakeState() = struct
 
   let gather_decs () =
     Env.fold (fun id t list ->
-        (* TODO: pass corresponding Motoko source region *)
+        (* TODO: pass corresponding Motoko source region? *)
         let dec = I.TypD (id @@ no_region, t) @@ no_region in
         dec::list
       ) !env []
