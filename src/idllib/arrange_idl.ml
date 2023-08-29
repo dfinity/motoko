@@ -253,13 +253,13 @@ module Make (Cfg : Config) = struct
     pp_print_cut ppf ()
 
   let pp_prog ppf prog =
-    pp_doc ppf prog.at;
     pp_open_vbox ppf 0;
     List.iter (fun d ->
         pp_dec ppf d;
         str ppf ";";
         pp_print_cut ppf ()
       ) prog.it.decs;
+    pp_doc ppf prog.at;
     pp_actor ppf prog.it.actor;
     pp_close_box ppf ()
 
