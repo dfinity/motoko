@@ -55,7 +55,7 @@ and scope = typ
 and bind_sort = Scope | Type
 and bind = {var : var; sort: bind_sort; bound : typ}
 
-and src = {depr : string option; region : Source.region option}
+and src = {depr : string option; region : Source.region}
 and field = {lab : lab; typ : typ; src : src}
 
 and con = kind Cons.t

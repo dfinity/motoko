@@ -2185,8 +2185,8 @@ and object_of_scope env sort dec_fields scope at =
     T.Env.fold
       (fun id c tfs ->
         match T.Env.find_opt id pub_typ with
-        | Some (r, Some depr) -> T.{lab = id; typ = T.Typ c; src = {depr = Some depr; region = Some r}}::tfs
-        | Some (r, None) -> T.{lab = id; typ = T.Typ c; src = {depr = None; region = Some r}}::tfs
+        | Some (r, Some depr) -> T.{lab = id; typ = T.Typ c; src = {depr = Some depr; region = r}}::tfs
+        | Some (r, None) -> T.{lab = id; typ = T.Typ c; src = {depr = None; region = r}}::tfs
         | _ -> tfs
       ) scope.Scope.typ_env  []
   in
@@ -2194,8 +2194,8 @@ and object_of_scope env sort dec_fields scope at =
     T.Env.fold
       (fun id t tfs ->
         match T.Env.find_opt id pub_val with
-        | Some (r, Some depr) -> T.{lab = id; typ = t; src = {depr = Some depr; region = Some r}}::tfs
-        | Some (r, None) -> T.{lab = id; typ = t; src = {depr = None; region = Some r}}::tfs
+        | Some (r, Some depr) -> T.{lab = id; typ = t; src = {depr = Some depr; region = r}}::tfs
+        | Some (r, None) -> T.{lab = id; typ = t; src = {depr = None; region = r}}::tfs
         | _ -> tfs
       ) scope.Scope.val_env tfs
   in

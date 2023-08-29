@@ -135,14 +135,14 @@ module MakeState() = struct
     | Mut _
     | Pre -> assert false
     ) @@ no_region
-  and field {lab; typ=t; _} =
+  and field {lab; typ = t; src = {region; _}} =
     (* TODO: pass corresponding Motoko source region *)
     let open Idllib.Escape in
     match unescape lab with
     | Nat nat ->
-       I.{label = I.Id nat @@ no_region; typ = typ t} @@ no_region
+       I.{label = I.Id nat @@ no_region; typ = typ t} @@ region
     | Id id ->
-       I.{label = I.Named id @@ no_region; typ = typ t} @@ no_region
+       I.{label = I.Named id @@ no_region; typ = typ t} @@ region
   and fields fs =
     List.map field
       (List.filter (fun f -> not (is_typ f.typ)) fs)

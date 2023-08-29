@@ -61,7 +61,7 @@ and scope = typ
 and bind_sort = Scope | Type
 
 and bind = {var : var; sort: bind_sort; bound : typ}
-and src = {depr : string option; region : Source.region option}
+and src = {depr : string option; region : Source.region}
 and field = {lab : lab; typ : typ; src : src}
 
 and con = kind Cons.t
@@ -69,7 +69,7 @@ and kind =
   | Def of bind list * typ
   | Abs of bind list * typ
 
-let empty_src = {depr = None; region = None}
+let empty_src = {depr = None; region = Source.no_region}
 
 (* Efficient comparison *)
 let tag_prim = function
