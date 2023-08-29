@@ -1,6 +1,6 @@
 use motoko_rts::memory::{alloc_blob, Memory};
 use motoko_rts::persistence::compatibility::{
-    memory_compatible, MUTABLE_ENCODING_TAG, OBJECT_ENCODING_TAG,
+    memory_compatible, MUTABLE_ENCODING_TAG, OBJECT_ENCODING_TAG, OPTION_ENCODING_TAG,
 };
 use motoko_rts::types::{Bytes, Value};
 use std::hash::Hasher;
@@ -48,6 +48,7 @@ impl BinaryData {
 enum Type {
     Object(ObjectType),
     Mutable(MutableType),
+    Option(OptionType),
 }
 
 impl Type {
@@ -55,6 +56,7 @@ impl Type {
         match &self {
             Self::Object(object_type) => object_type.serialize(output),
             Self::Mutable(mutable_type) => mutable_type.serialize(output),
+            Self::Option(option_type) => option_type.serialize(output),
         }
     }
 }
@@ -107,6 +109,18 @@ impl MutableType {
     fn serialize(&self, output: &mut BinaryData) {
         output.write_i32(MUTABLE_ENCODING_TAG);
         output.write_i32(self.variable_type.index);
+    }
+}
+
+#[derive(Clone)]
+struct OptionType {
+    option_type: TypeReference,
+}
+
+impl OptionType {
+    fn serialize(&self, output: &mut BinaryData) {
+        output.write_i32(OPTION_ENCODING_TAG);
+        output.write_i32(self.option_type.index);
     }
 }
 
@@ -164,6 +178,7 @@ unsafe fn test_sucessful_cases(heap: &mut TestMemory) {
     test_removed_object_fields(heap);
     test_direct_recursive_type(heap);
     test_indirect_recursive_type(heap);
+    test_option_types(heap);
 }
 
 unsafe fn test_empty_actor(heap: &mut TestMemory) {
@@ -330,11 +345,26 @@ unsafe fn test_indirect_recursive_type(heap: &mut TestMemory) {
     assert!(are_compatible(heap, types.clone(), types.clone()));
 }
 
+unsafe fn test_option_types(heap: &mut TestMemory) {
+    let actor_type = Type::Object(ObjectType {
+        fields: vec![Field {
+            name: String::from("OptionalField"),
+            field_type: TypeReference { index: 1 },
+        }],
+    });
+    let option_type = Type::Option(OptionType {
+        option_type: TypeReference::nat(),
+    });
+    let types = vec![actor_type, option_type];
+    assert!(are_compatible(heap, types.clone(), types.clone()));
+}
+
 unsafe fn test_failing_cases(heap: &mut TestMemory) {
     test_added_object_fields(heap);
     test_mutable_mismatch(heap);
     test_immutable_mismatch(heap);
     test_recursion_mismatch(heap);
+    test_option_mismatch(heap);
 }
 
 unsafe fn test_recursion_mismatch(heap: &mut TestMemory) {
@@ -443,5 +473,26 @@ unsafe fn test_immutable_mismatch(heap: &mut TestMemory) {
     });
     let old_types = vec![old_actor];
     let new_types = vec![new_actor, mutable_type];
+    assert!(!are_compatible(heap, old_types, new_types));
+}
+
+unsafe fn test_option_mismatch(heap: &mut TestMemory) {
+    let old_actor = Type::Object(ObjectType {
+        fields: vec![Field {
+            name: String::from("OptionalField"),
+            field_type: TypeReference { index: 1 },
+        }],
+    });
+    let option_type = Type::Option(OptionType {
+        option_type: TypeReference::nat(),
+    });
+    let new_actor = Type::Object(ObjectType {
+        fields: vec![Field {
+            name: String::from("OptionalField"),
+            field_type: TypeReference::nat(),
+        }],
+    });
+    let old_types = vec![old_actor, option_type];
+    let new_types = vec![new_actor];
     assert!(!are_compatible(heap, old_types, new_types));
 }

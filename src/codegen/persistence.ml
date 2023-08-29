@@ -7,9 +7,10 @@
   // Primitive types are encoded by negative indices.
   // All numbers (type indices etc.) are encoded as little endian i32.
   <type_table> ::= length:i32 (<type>)^length
-  <type> ::= <object> | <mutable>
+  <type> ::= <object> | <mutable> | <option>
   <object> ::= 1l <field_list>
   <mutable> ::= 2l type_index:i32
+  <option> ::= 3l type_index:i32
   <field_list> ::= length:i32 (<field>)^length
   <field> ::= label_hash:i32 type_index:i32
   
@@ -32,12 +33,16 @@ module TypeTable = struct
   let length table = List.length table
 
   let index_of table typ =
-    match Lib.List.index_of typ table with
-    | Some index -> index
-    | None -> assert false
+    let rec get_index table index =
+      match table with
+      | [] -> assert false
+      | current::remainder ->
+          if Type.eq current typ then index
+          else get_index remainder (Int.add index 1) in
+    get_index table 0
 
   let contains_type table typ =
-    match List.find_opt (fun entry -> entry = typ) table with
+    match List.find_opt (fun entry -> Type.eq entry typ) table with
     | Some _ -> true
     | None -> false
 
@@ -45,23 +50,31 @@ module TypeTable = struct
     let open Type in
     match typ with
     | Prim _ -> table
-    | _ when contains_type table typ -> table
     | _ -> List.append table [typ]
 end
 
 let rec collect_type table typ =
-  let table = TypeTable.add_type table typ in
-  let open Type in
-  match typ with
-  | Prim _ -> table
-  | Obj (Object, field_list) ->
-    let field_types = List.map (fun field -> field.typ) field_list in
-    collect_types table field_types
-  | Mut var_type ->
-    collect_type table var_type
-  | _ -> 
-    Printf.printf "UNSUPPORTED PERSISTENT TYPE %s\n" (Type.string_of_typ typ);
-    assert false
+  if TypeTable.contains_type table typ then
+    table
+  else  
+    (let table = TypeTable.add_type table typ in
+    let open Type in
+    match typ with
+    | Prim _ -> table
+    | Obj (Object, field_list) ->
+      let field_types = List.map (fun field -> field.typ) field_list in
+      collect_types table field_types
+    | Mut var_type ->
+      collect_type table var_type
+    | Opt opt_type ->
+      collect_type table opt_type
+    | Con (construction, type_list) -> 
+      (match Mo_types.Cons.kind construction with
+      | Abs _ -> assert false
+      | Def (_, type_definition) -> collect_type table type_definition)
+    | _ ->
+      Printf.printf "UNSUPPORTED PERSISTENT TYPE %s\n" (Type.string_of_typ typ);
+      assert false)
 
 and collect_types table type_list =
   match type_list with
@@ -95,6 +108,9 @@ let encode_complex_type table typ =
   | Mut var_type ->
     encode_i32 2l ^
     encode_i32 (type_index table var_type)
+  | Opt opt_type ->
+    encode_i32 3l ^
+    encode_i32 (type_index table opt_type)
   | _ -> assert false
 
 let encode_type_table table =

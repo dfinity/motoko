@@ -33,9 +33,10 @@
 //!
 //! ```
 //! <type_table> ::= length:i32 (<type>)^length
-//! <type> ::= <object> | <mutable>
+//! <type> ::= <object> | <mutable> | <option>
 //! <object> ::= 1l <field_list>
 //! <mutable> ::= 2l type_index:i32
+//! <option> ::= 3l type_index:i32
 //! <field_list> ::= length:i32 (<field>)^length
 //! <field> ::= label_hash:i32 type_index:i32
 //! ```
@@ -54,12 +55,14 @@ use crate::{
 
 pub const OBJECT_ENCODING_TAG: i32 = 1;
 pub const MUTABLE_ENCODING_TAG: i32 = 2;
+pub const OPTION_ENCODING_TAG: i32 = 3;
 
 const ACTOR_TYPE_INDEX: i32 = 0;
 
 const OBJECT_ENCODING_HEADER: usize = 2; // object_tag field_list_length
 const FIELD_ENCODING_LENGTH: usize = 2; // label_hash type_index
 const MUTABLE_ENCODING_LENGTH: usize = 2; // object_tag type_index
+const OPTION_ENCODING_LENGTH: usize = 2; // object_tag type_index
 
 struct EncodedData {
     words: *const i32,
@@ -95,7 +98,7 @@ impl TypeTable {
         let blob = value.as_blob();
         assert_eq!(blob.len().as_usize() % size_of::<i32>().as_usize(), 0);
         let words = blob.payload_const() as *const i32;
-        let size = blob.len().as_usize() / size_of::<i32>().as_usize();
+        let size = blob.len().as_usize() / size_of::<i32>().to_bytes().as_usize();
         let data = EncodedData::new(words, size);
         TypeTable { data }
     }
@@ -107,6 +110,7 @@ impl TypeTable {
     }
 
     unsafe fn get_type(&self, type_index: i32) -> Type {
+        assert!(type_index >= 0);
         assert!(type_index <= self.count_types() as i32);
         let mut start = 1;
         for _ in 0..type_index {
@@ -128,6 +132,7 @@ impl TypeTable {
 enum Type {
     Object(ObjectType),
     Mutable(MutableType),
+    Option(OptionType),
 }
 
 impl Type {
@@ -135,6 +140,7 @@ impl Type {
         match Self::get_type(data) {
             Self::Object(object_type) => object_type.size(),
             Self::Mutable(mutable_type) => mutable_type.size(),
+            Self::Option(option_type) => option_type.size(),
         }
     }
 
@@ -143,6 +149,7 @@ impl Type {
         match tag {
             OBJECT_ENCODING_TAG => Self::Object(ObjectType::new(data)),
             MUTABLE_ENCODING_TAG => Self::Mutable(MutableType::new(data)),
+            OPTION_ENCODING_TAG => Self::Option(OptionType::new(data)),
             _ => unimplemented!(),
         }
     }
@@ -208,6 +215,22 @@ impl MutableType {
 
     unsafe fn size(&self) -> usize {
         MUTABLE_ENCODING_LENGTH
+    }
+}
+
+struct OptionType {
+    type_index: i32,
+}
+
+impl OptionType {
+    unsafe fn new(data: EncodedData) -> OptionType {
+        assert_eq!(data.read(0), OPTION_ENCODING_TAG);
+        let type_index = data.read(1);
+        OptionType { type_index }
+    }
+
+    unsafe fn size(&self) -> usize {
+        OPTION_ENCODING_LENGTH
     }
 }
 
@@ -312,6 +335,14 @@ impl CompatibilityChecker {
         self.type_compatible(new_mutable.type_index, old_mutable.type_index)
     }
 
+    unsafe fn option_compatible(
+        &mut self,
+        new_option: &OptionType,
+        old_option: &OptionType,
+    ) -> bool {
+        self.type_compatible(new_option.type_index, old_option.type_index)
+    }
+
     unsafe fn type_compatible(&mut self, new_type_index: i32, old_type_index: i32) -> bool {
         if new_type_index < 0 || old_type_index < 0 {
             return new_type_index == old_type_index;
@@ -331,6 +362,10 @@ impl CompatibilityChecker {
                 self.mutable_compatible(new_mutable, old_mutable)
             }
             (Type::Mutable(_), _) => false,
+            (Type::Option(new_option), Type::Option(old_option)) => {
+                self.option_compatible(new_option, old_option)
+            }
+            (Type::Option(_), _) => false,
         }
     }
 
