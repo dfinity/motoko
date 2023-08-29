@@ -22,7 +22,7 @@ type ret_env = T.typ option
 type val_env  = (T.typ * avl) T.Env.t
 
 (* separate maps for values and types; entries only for _public_ elements *)
-type visibility_env = (region * string option) T.Env.t * (region * string option) T.Env.t
+type visibility_env = T.src T.Env.t * T.src T.Env.t
 
 let available env = T.Env.map (fun ty -> (ty, Available)) env
 
@@ -2141,38 +2141,38 @@ and pub_fields dec_fields : visibility_env =
 
 and pub_field dec_field xs : visibility_env =
   match dec_field.it with
-  | {vis = { it = Public depr; _}; dec; _} -> pub_dec depr dec xs
+  | {vis = { it = Public depr; _}; dec; _} -> pub_dec T.{depr = depr; region = dec_field.at} dec xs
   | _ -> xs
 
-and pub_dec depr dec xs : visibility_env =
+and pub_dec src dec xs : visibility_env =
   match dec.it with
   | ExpD _ -> xs
-  | LetD (pat, _, _) -> pub_pat depr pat xs
-  | VarD (id, _) -> pub_val_id depr id xs
+  | LetD (pat, _, _) -> pub_pat src pat xs
+  | VarD (id, _) -> pub_val_id src id xs
   | ClassD (_, id, _, _, _, _, _, _) ->
-    pub_val_id depr {id with note = ()} (pub_typ_id depr id xs)
-  | TypD (id, _, _) -> pub_typ_id depr id xs
+    pub_val_id src {id with note = ()} (pub_typ_id src id xs)
+  | TypD (id, _, _) -> pub_typ_id src id xs
 
-and pub_pat depr pat xs : visibility_env =
+and pub_pat src pat xs : visibility_env =
   match pat.it with
   | WildP | LitP _ | SignP _ -> xs
-  | VarP id -> pub_val_id depr id xs
-  | TupP pats -> List.fold_right (pub_pat depr) pats xs
-  | ObjP pfs -> List.fold_right (pub_pat_field depr) pfs xs
+  | VarP id -> pub_val_id src id xs
+  | TupP pats -> List.fold_right (pub_pat src) pats xs
+  | ObjP pfs -> List.fold_right (pub_pat_field src) pfs xs
   | AltP (pat1, _)
   | OptP pat1
   | TagP (_, pat1)
   | AnnotP (pat1, _)
-  | ParP pat1 -> pub_pat depr pat1 xs
+  | ParP pat1 -> pub_pat src pat1 xs
 
-and pub_pat_field depr pf xs =
-  pub_pat depr pf.it.pat xs
+and pub_pat_field src pf xs =
+  pub_pat src pf.it.pat xs
 
-and pub_typ_id depr id (xs, ys) : visibility_env =
-  (T.Env.add id.it (id.at, depr) xs, ys)
+and pub_typ_id src id (xs, ys) : visibility_env =
+  (T.Env.add id.it src xs, ys)
 
-and pub_val_id depr id (xs, ys) : visibility_env =
-  (xs, T.Env.add id.it (id.at, depr) ys)
+and pub_val_id src id (xs, ys) : visibility_env =
+  (xs, T.Env.add id.it src ys)
 
 
 (* Object/Scope transformations *)
@@ -2185,7 +2185,7 @@ and object_of_scope env sort dec_fields scope at =
     T.Env.fold
       (fun id c tfs ->
         match T.Env.find_opt id pub_typ with
-        | Some (r, depr) -> T.{lab = id; typ = T.Typ c; src = {depr; region = r}}::tfs
+        | Some src -> T.{lab = id; typ = T.Typ c; src}::tfs
         | _ -> tfs
       ) scope.Scope.typ_env  []
   in
@@ -2193,7 +2193,7 @@ and object_of_scope env sort dec_fields scope at =
     T.Env.fold
       (fun id t tfs ->
         match T.Env.find_opt id pub_val with
-        | Some (r, depr) -> T.{lab = id; typ = t; src = {depr; region = r}}::tfs
+        | Some src -> T.{lab = id; typ = t; src}::tfs
         | _ -> tfs
       ) scope.Scope.val_env tfs
   in
@@ -2238,7 +2238,7 @@ and infer_obj env s dec_fields at : T.typ =
       List.iter (fun T.{lab; typ; _} ->
         if not (T.is_typ typ) && not (T.is_shared_func typ) then
           let _, pub_val = pub_fields dec_fields in
-          error env (fst (T.Env.find lab pub_val)) "M0124"
+          error env ((T.Env.find lab pub_val).T.region) "M0124"
             "public actor field %s has non-shared function type%a"
             lab
             display_typ_expand typ
