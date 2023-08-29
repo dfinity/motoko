@@ -158,10 +158,9 @@ module MakeState() = struct
         | Typ c ->
            list
         | _ ->
-          (* TODO: pass corresponding Motoko source region? *)
            let meth =
              I.{var = Idllib.Escape.unescape_method f.lab @@ no_region;
-                meth = typ f.typ} @@ no_region in
+                meth = typ f.typ} @@ f.src.region in
            meth :: list
       ) fs []
 
