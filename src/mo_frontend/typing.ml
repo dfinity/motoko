@@ -22,7 +22,7 @@ type ret_env = T.typ option
 type val_env  = (T.typ * avl) T.Env.t
 
 (* separate maps for values and types; entries only for _public_ elements *)
-type visibility_src = {depr : string option; region : Source.region; id_region : Source.region}
+type visibility_src = {depr : string option; id_region : Source.region; field_region : Source.region}
 type visibility_env = visibility_src T.Env.t * visibility_src T.Env.t
 
 let available env = T.Env.map (fun ty -> (ty, Available)) env
@@ -2142,7 +2142,7 @@ and pub_fields dec_fields : visibility_env =
 
 and pub_field dec_field xs : visibility_env =
   match dec_field.it with
-  | {vis = { it = Public depr; at; _}; dec; _} -> pub_dec {depr = depr; region = dec_field.at; id_region = at} dec xs
+  | {vis = { it = Public depr; at; _}; dec; _} -> pub_dec {depr = depr; id_region = at; field_region = dec_field.at} dec xs
   | _ -> xs
 
 and pub_dec src dec xs : visibility_env =
@@ -2186,7 +2186,7 @@ and object_of_scope env sort dec_fields scope at =
     T.Env.fold
       (fun id c tfs ->
         match T.Env.find_opt id pub_typ with
-        | Some src -> T.{lab = id; typ = T.Typ c; src = {depr = src.depr; region = src.region}}::tfs
+        | Some src -> T.{lab = id; typ = T.Typ c; src = {depr = src.depr; region = src.field_region}}::tfs
         | _ -> tfs
       ) scope.Scope.typ_env  []
   in
@@ -2194,7 +2194,7 @@ and object_of_scope env sort dec_fields scope at =
     T.Env.fold
       (fun id t tfs ->
         match T.Env.find_opt id pub_val with
-        | Some src -> T.{lab = id; typ = t; src = {depr = src.depr; region = src.region}}::tfs
+        | Some src -> T.{lab = id; typ = t; src = {depr = src.depr; region = src.field_region}}::tfs
         | _ -> tfs
       ) scope.Scope.val_env tfs
   in
