@@ -7286,8 +7286,15 @@ module Stabilization = struct
       compile_unboxed_zero ^^
       G.i (Load {ty = I64Type; align = 0; offset = 0l; sz = None})
 
-
-    let read_blob env get_buf get_len = E.trap_with env "read_blob"
+    let read_blob env get_buf get_len =
+      let set_blob, get_blob = new_local env "blob" in
+      get_len ^^ Blob.alloc env ^^ set_blob ^^
+      extend64 (get_blob ^^ Blob.payload_ptr_unskewed env) ^^
+      extend64 (*FOR NOW, FIXME*) get_buf ^^
+      extend64 get_len ^^
+      IC.system_call env "stable64_read" ^^
+      get_blob
+    
     let read_leb128 env get_buf = E.trap_with env "read_leb128"
     let read_sleb128 env get_buf = E.trap_with env "read_sleb128"
 
