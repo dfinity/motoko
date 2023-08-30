@@ -188,22 +188,22 @@ then
   fi
 fi
 
-# if [ $DTESTS = yes ]
-# then
-#   if ic-ref-run --help >& /dev/null
-#   then
-#     HAVE_ic_ref_run=yes
-#   else
-#     if [ $ACCEPT = yes ]
-#     then
-#       echo "ERROR: Could not run ic-ref-run, cannot update expected test output"
-#       exit 1
-#     else
-#       echo "WARNING: Could not run ic-ref-run, will skip running some tests"
-#       HAVE_ic_ref_run=no
-#     fi
-#   fi
-# fi
+if [ $DTESTS = yes ]
+then
+  if ic-ref-run --help >& /dev/null
+  then
+    HAVE_ic_ref_run=yes
+  else
+    if [ $ACCEPT = yes ]
+    then
+      echo "ERROR: Could not run ic-ref-run, cannot update expected test output"
+      exit 1
+    else
+      echo "WARNING: Could not run ic-ref-run, will skip running some tests"
+      HAVE_ic_ref_run=no
+    fi
+  fi
+fi
 
 
 for file in "$@";
