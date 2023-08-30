@@ -6884,6 +6884,24 @@ module MakeSerialization (Strm : Stream) = struct
       set_ptr get_ref_buf get_refs_start ^^
       set_size get_ref_buf (get_refs_size ^^ compile_mul_const Heap.word_size) ^^
 
+
+
+
+      if extended then
+           begin
+             
+             read_blob env get_data_start (compile_unboxed_const 0x1000l (*FIXME: make configurable*)) ^^
+               let set_datablob_start, get_datablob_start = new_local env "blob" in
+               Blob.payload_ptr_unskewed env ^^ set_datablob_start ^^
+               (* Go! *)
+               Bool.lit extended ^^ get_datablob_start ^^ get_typtbl_ptr ^^ get_typtbl_size_ptr ^^ get_maintyps_ptr ^^
+                 E.call_import env "rts" "parse_idl_header"
+                 ^^ E.trap_with env "parse_idl_header DONE"
+           end
+         else
+           G.nop ^^
+
+        
       (* Go! *)
       Bool.lit extended ^^ get_data_buf ^^ get_typtbl_ptr ^^ get_typtbl_size_ptr ^^ get_maintyps_ptr ^^
       E.call_import env "rts" "parse_idl_header" ^^
@@ -7552,6 +7570,7 @@ module Stabilization = struct
 
             if true then
               begin
+                (*
                 let set_blob, get_blob = new_local env "blob" in
                 (* read blob from stable memory *)
                 compile_unboxed_const 0x8000l ^^ Blob.alloc env ^^ set_blob ^^
@@ -7559,7 +7578,7 @@ module Stabilization = struct
                 get_offset ^^
                 compile_const_64 0x8000L ^^
                 IC.system_call env "stable64_read" ^^
-
+                 *)
 
                 (* deserialize directly to val *)
                 get_offset ^^ G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
