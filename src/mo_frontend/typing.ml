@@ -2142,7 +2142,7 @@ and pub_fields dec_fields : visibility_env =
 
 and pub_field dec_field xs : visibility_env =
   match dec_field.it with
-  | {vis = { it = Public depr; at; _}; dec; _} -> pub_dec {depr = depr; id_region = at; field_region = dec_field.at} dec xs
+  | {vis = { it = Public depr; _}; dec; _} -> pub_dec T.{depr = depr; region = dec_field.at} dec xs
   | _ -> xs
 
 and pub_dec src dec xs : visibility_env =
@@ -2170,10 +2170,10 @@ and pub_pat_field src pf xs =
   pub_pat src pf.it.pat xs
 
 and pub_typ_id src id (xs, ys) : visibility_env =
-  (T.Env.add id.it {src with id_region = id.at} xs, ys)
+  (T.Env.add id.it T.{depr = src.depr; id_region = id.at; field_region = src.region} xs, ys)
 
 and pub_val_id src id (xs, ys) : visibility_env =
-  (xs, T.Env.add id.it src ys)
+  (xs, T.Env.add id.it T.{depr = src.depr; id_region = id.at; field_region = src.region} ys)
 
 
 (* Object/Scope transformations *)
