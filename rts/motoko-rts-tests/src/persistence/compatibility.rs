@@ -61,7 +61,7 @@ impl Type {
     }
 }
 
-#[derive(Clone)]
+#[derive(PartialEq, Clone)]
 struct TypeReference {
     index: i32,
 }
@@ -252,14 +252,57 @@ unsafe fn is_compatible<M: Memory>(mem: &mut M, old_type: Type, new_type: Type) 
 pub unsafe fn test() {
     println!("  Testing memory compatibility...");
     let mut heap = initialize_test_memory();
+    test_primitive_types(&mut heap);
     test_sucessful_cases(&mut heap);
     test_failing_cases(&mut heap);
     reset_test_memory();
 }
 
+unsafe fn test_primitive_types(heap: &mut TestMemory) {
+    let mut is_compatible = |first: &TypeReference, second: &TypeReference| {
+        let old_types = Type::Object(ObjectType {
+            fields: vec![Field {
+                name: String::from("Field"),
+                field_type: first.clone(),
+            }],
+        });
+        let new_types = Type::Object(ObjectType {
+            fields: vec![Field {
+                name: String::from("Field"),
+                field_type: second.clone(),
+            }],
+        });
+        is_compatible(heap, old_types, new_types)
+    };
+    let all_types = [
+        TypeReference::null(),
+        TypeReference::bool(),
+        TypeReference::nat(),
+        TypeReference::nat8(),
+        TypeReference::nat16(),
+        TypeReference::nat32(),
+        TypeReference::nat64(),
+        TypeReference::int(),
+        TypeReference::int8(),
+        TypeReference::int16(),
+        TypeReference::int32(),
+        TypeReference::int64(),
+        TypeReference::float(),
+        TypeReference::char(),
+        TypeReference::text(),
+        TypeReference::blob(),
+        TypeReference::principal(),
+    ];
+    for first in &all_types {
+        for second in &all_types {
+            assert_eq!(is_compatible(first, second), first == second);
+        }
+    }
+}
+
 unsafe fn test_sucessful_cases(heap: &mut TestMemory) {
     test_empty_actor(heap);
-    test_matching_primitives(heap);
+    test_multiple_primitive_fields(heap);
     test_reordered_actor_fields(heap);
     test_removed_actor_fields(heap);
     test_mutable_fields(heap);
@@ -276,7 +319,7 @@ unsafe fn test_empty_actor(heap: &mut TestMemory) {
     assert!(is_compatible(heap, old_type, new_type));
 }
 
-unsafe fn test_matching_primitives(heap: &mut TestMemory) {
+unsafe fn test_multiple_primitive_fields(heap: &mut TestMemory) {
     let fields = vec![
         Field {
             name: String::from("NullField"),
