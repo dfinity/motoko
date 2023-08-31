@@ -7,10 +7,11 @@
   // Primitive types are encoded by negative indices.
   // All numbers (type indices etc.) are encoded as little endian i32.
   <type_table> ::= length:i32 (<type>)^length
-  <type> ::= <object> | <mutable> | <option>
+  <type> ::= <object> | <mutable> | <option> | <array>
   <object> ::= 1l <field_list>
   <mutable> ::= 2l type_index:i32
   <option> ::= 3l type_index:i32
+  <array> ::= 4l type_index:i32
   <field_list> ::= length:i32 (<field>)^length
   <field> ::= label_hash:i32 type_index:i32
   
@@ -68,13 +69,24 @@ module TypeTable = struct
     let open Type in
     match typ with
     | Prim _ -> table
+    | Con _ -> assert false
     | _ -> List.append table [typ]
 end
 
+let normalize_type typ =
+  let open Type in
+  match typ with
+  | Con (constructor, _) ->
+    (match Mo_types.Cons.kind constructor with
+    | Abs _ -> assert false
+    | Def (_, type_definition) -> type_definition)
+  | _ -> typ
+
 let rec collect_type table typ =
+  let typ = normalize_type typ in
   if TypeTable.contains_type table typ then
     table
-  else  
+  else
     (let table = TypeTable.add_type table typ in
     let open Type in
     match typ with
@@ -82,14 +94,12 @@ let rec collect_type table typ =
     | Obj (Object, field_list) ->
       let field_types = List.map (fun field -> field.typ) field_list in
       collect_types table field_types
-    | Mut var_type ->
-      collect_type table var_type
-    | Opt opt_type ->
-      collect_type table opt_type
-    | Con (construction, type_list) -> 
-      (match Mo_types.Cons.kind construction with
-      | Abs _ -> assert false
-      | Def (_, type_definition) -> collect_type table type_definition)
+    | Mut variable_type ->
+      collect_type table variable_type
+    | Opt optional_type ->
+      collect_type table optional_type
+    | Array element_type ->
+      collect_type table element_type
     | _ ->
       Printf.printf "UNSUPPORTED PERSISTENT TYPE %s\n" (Type.string_of_typ typ);
       assert false)
@@ -128,6 +138,7 @@ let primitive_type_index primitive_type =
 
 let type_index table typ =
   let open Type in
+  let typ = normalize_type typ in
   match typ with
   | Prim primitive_type -> primitive_type_index primitive_type
   | _ -> Int32.of_int (TypeTable.index_of table typ)
@@ -141,15 +152,19 @@ let encode_field table field =
 let encode_complex_type table typ =
   let open Type in
   match typ with
+  | Prim _ -> assert false
   | Obj (Object, field_list) -> 
     encode_i32 1l ^ 
     encode_list (encode_field table) field_list
-  | Mut var_type ->
+  | Mut variable_type ->
     encode_i32 2l ^
-    encode_i32 (type_index table var_type)
-  | Opt opt_type ->
+    encode_i32 (type_index table variable_type)
+  | Opt optional_type ->
     encode_i32 3l ^
-    encode_i32 (type_index table opt_type)
+    encode_i32 (type_index table optional_type)
+  | Array element_type ->
+    encode_i32 4l ^
+    encode_i32 (type_index table element_type)
   | _ -> assert false
 
 let encode_type_table table =

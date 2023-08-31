@@ -1,6 +1,7 @@
 use motoko_rts::memory::{alloc_blob, Memory};
 use motoko_rts::persistence::compatibility::{
-    memory_compatible, MUTABLE_ENCODING_TAG, OBJECT_ENCODING_TAG, OPTION_ENCODING_TAG,
+    memory_compatible, ARRAY_ENCODING_TAG, MUTABLE_ENCODING_TAG, OBJECT_ENCODING_TAG,
+    OPTION_ENCODING_TAG,
 };
 use motoko_rts::types::{Bytes, Value};
 use std::hash::Hasher;
@@ -49,6 +50,7 @@ enum Type {
     Object(ObjectType),
     Mutable(MutableType),
     Option(OptionType),
+    Array(ArrayType),
 }
 
 impl Type {
@@ -57,6 +59,7 @@ impl Type {
             Self::Object(object_type) => object_type.serialize(output),
             Self::Mutable(mutable_type) => mutable_type.serialize(output),
             Self::Option(option_type) => option_type.serialize(output),
+            Self::Array(array_type) => array_type.serialize(output),
         }
     }
 }
@@ -212,6 +215,18 @@ impl OptionType {
     }
 }
 
+#[derive(Clone)]
+struct ArrayType {
+    array_type: TypeReference,
+}
+
+impl ArrayType {
+    fn serialize(&self, output: &mut BinaryData) {
+        output.write_i32(ARRAY_ENCODING_TAG);
+        output.write_i32(self.array_type.index);
+    }
+}
+
 struct TypeTable {
     types: Vec<Type>,
 }
@@ -311,6 +326,9 @@ unsafe fn test_sucessful_cases(heap: &mut TestMemory) {
     test_direct_recursive_type(heap);
     test_indirect_recursive_type(heap);
     test_option_types(heap);
+    test_flat_array_types(heap);
+    test_nested_array_types(heap);
+    test_recursive_array_types(heap);
 }
 
 unsafe fn test_empty_actor(heap: &mut TestMemory) {
@@ -568,12 +586,59 @@ unsafe fn test_option_types(heap: &mut TestMemory) {
     assert!(are_compatible(heap, types.clone(), types.clone()));
 }
 
+unsafe fn test_flat_array_types(heap: &mut TestMemory) {
+    let actor_type = Type::Object(ObjectType {
+        fields: vec![Field {
+            name: String::from("ArrayField"),
+            field_type: TypeReference { index: 1 },
+        }],
+    });
+    let array_type = Type::Array(ArrayType {
+        array_type: TypeReference::nat(),
+    });
+    let types = vec![actor_type, array_type];
+    assert!(are_compatible(heap, types.clone(), types.clone()));
+}
+
+unsafe fn test_nested_array_types(heap: &mut TestMemory) {
+    let actor_type = Type::Object(ObjectType {
+        fields: vec![Field {
+            name: String::from("ArrayField"),
+            field_type: TypeReference { index: 1 },
+        }],
+    });
+    let outer_array_type = Type::Array(ArrayType {
+        array_type: TypeReference { index: 2 },
+    });
+    let inner_array_type = Type::Array(ArrayType {
+        array_type: TypeReference::nat(),
+    });
+    let types = vec![actor_type, outer_array_type, inner_array_type];
+    assert!(are_compatible(heap, types.clone(), types.clone()));
+}
+
+unsafe fn test_recursive_array_types(heap: &mut TestMemory) {
+    let actor_type = Type::Object(ObjectType {
+        fields: vec![Field {
+            name: String::from("ArrayField"),
+            field_type: TypeReference { index: 1 },
+        }],
+    });
+    let recursive_array_type = Type::Array(ArrayType {
+        array_type: TypeReference { index: 1 },
+    });
+    let types = vec![actor_type, recursive_array_type];
+    assert!(are_compatible(heap, types.clone(), types.clone()));
+}
+
 unsafe fn test_failing_cases(heap: &mut TestMemory) {
     test_added_object_fields(heap);
     test_mutable_mismatch(heap);
     test_immutable_mismatch(heap);
     test_recursion_mismatch(heap);
     test_option_mismatch(heap);
+    test_array_mismatch(heap);
+    test_array_mutability_mismatch(heap);
 }
 
 unsafe fn test_recursion_mismatch(heap: &mut TestMemory) {
@@ -698,10 +763,58 @@ unsafe fn test_option_mismatch(heap: &mut TestMemory) {
     let new_actor = Type::Object(ObjectType {
         fields: vec![Field {
             name: String::from("OptionalField"),
-            field_type: TypeReference::null(),
+            field_type: TypeReference::float(),
         }],
     });
     let old_types = vec![old_actor, option_type];
     let new_types = vec![new_actor];
+    assert!(!are_compatible(heap, old_types, new_types));
+}
+
+unsafe fn test_array_mismatch(heap: &mut TestMemory) {
+    let old_actor = Type::Object(ObjectType {
+        fields: vec![Field {
+            name: String::from("ArrayField"),
+            field_type: TypeReference { index: 1 },
+        }],
+    });
+    let array_type = Type::Array(ArrayType {
+        array_type: TypeReference::nat(),
+    });
+    let new_actor = Type::Object(ObjectType {
+        fields: vec![Field {
+            name: String::from("ArrayField"),
+            field_type: TypeReference::text(),
+        }],
+    });
+    let old_types = vec![old_actor, array_type];
+    let new_types = vec![new_actor];
+    assert!(!are_compatible(heap, old_types, new_types));
+}
+
+unsafe fn test_array_mutability_mismatch(heap: &mut TestMemory) {
+    let old_actor = Type::Object(ObjectType {
+        fields: vec![Field {
+            name: String::from("ArrayField"),
+            field_type: TypeReference { index: 1 },
+        }],
+    });
+    let immutable_array_type = Type::Array(ArrayType {
+        array_type: TypeReference::nat(),
+    });
+    let new_actor = Type::Object(ObjectType {
+        fields: vec![Field {
+            name: String::from("ArrayField"),
+            field_type: TypeReference { index: 1 },
+        }],
+    });
+    let mutable_array_type = Type::Array(ArrayType {
+        array_type: TypeReference { index: 2 },
+    });
+    let mutable_variable = Type::Mutable(MutableType {
+        variable_type: TypeReference::nat(),
+    });
+    let old_types = vec![old_actor, immutable_array_type];
+    let new_types = vec![new_actor, mutable_array_type, mutable_variable];
     assert!(!are_compatible(heap, old_types, new_types));
 }

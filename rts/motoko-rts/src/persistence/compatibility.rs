@@ -33,10 +33,11 @@
 //!
 //! ```
 //! <type_table> ::= length:i32 (<type>)^length
-//! <type> ::= <object> | <mutable> | <option>
+//! <type> ::= <object> | <mutable> | <option> | <array>
 //! <object> ::= 1l <field_list>
 //! <mutable> ::= 2l type_index:i32
 //! <option> ::= 3l type_index:i32
+//! <array> ::= 4l type_index:i32
 //! <field_list> ::= length:i32 (<field>)^length
 //! <field> ::= label_hash:i32 type_index:i32
 //! ```
@@ -71,13 +72,15 @@ use crate::{
 pub const OBJECT_ENCODING_TAG: i32 = 1;
 pub const MUTABLE_ENCODING_TAG: i32 = 2;
 pub const OPTION_ENCODING_TAG: i32 = 3;
+pub const ARRAY_ENCODING_TAG: i32 = 4;
 
 const ACTOR_TYPE_INDEX: i32 = 0;
 
 const OBJECT_ENCODING_HEADER: usize = 2; // object_tag field_list_length
 const FIELD_ENCODING_LENGTH: usize = 2; // label_hash type_index
-const MUTABLE_ENCODING_LENGTH: usize = 2; // object_tag type_index
-const OPTION_ENCODING_LENGTH: usize = 2; // object_tag type_index
+const MUTABLE_ENCODING_LENGTH: usize = 2; // mutable_tag type_index
+const OPTION_ENCODING_LENGTH: usize = 2; // option_tag type_index
+const ARRAY_ENCODING_LENGTH: usize = 2; // array_tag type_index
 
 struct EncodedData {
     words: *const i32,
@@ -148,6 +151,7 @@ enum Type {
     Object(ObjectType),
     Mutable(MutableType),
     Option(OptionType),
+    Array(ArrayType),
 }
 
 impl Type {
@@ -156,6 +160,7 @@ impl Type {
             Self::Object(object_type) => object_type.size(),
             Self::Mutable(mutable_type) => mutable_type.size(),
             Self::Option(option_type) => option_type.size(),
+            Self::Array(array_type) => array_type.size(),
         }
     }
 
@@ -165,6 +170,7 @@ impl Type {
             OBJECT_ENCODING_TAG => Self::Object(ObjectType::new(data)),
             MUTABLE_ENCODING_TAG => Self::Mutable(MutableType::new(data)),
             OPTION_ENCODING_TAG => Self::Option(OptionType::new(data)),
+            ARRAY_ENCODING_TAG => Self::Array(ArrayType::new(data)),
             _ => unimplemented!(),
         }
     }
@@ -246,6 +252,22 @@ impl OptionType {
 
     unsafe fn size(&self) -> usize {
         OPTION_ENCODING_LENGTH
+    }
+}
+
+struct ArrayType {
+    type_index: i32,
+}
+
+impl ArrayType {
+    unsafe fn new(data: EncodedData) -> ArrayType {
+        assert_eq!(data.read(0), ARRAY_ENCODING_TAG);
+        let type_index = data.read(1);
+        ArrayType { type_index }
+    }
+
+    unsafe fn size(&self) -> usize {
+        ARRAY_ENCODING_LENGTH
     }
 }
 
@@ -358,6 +380,10 @@ impl CompatibilityChecker {
         self.type_compatible(new_option.type_index, old_option.type_index)
     }
 
+    unsafe fn array_compatible(&mut self, new_array: &ArrayType, old_array: &ArrayType) -> bool {
+        self.type_compatible(new_array.type_index, old_array.type_index)
+    }
+
     unsafe fn type_compatible(&mut self, new_type_index: i32, old_type_index: i32) -> bool {
         if new_type_index < 0 || old_type_index < 0 {
             return new_type_index == old_type_index;
@@ -381,6 +407,10 @@ impl CompatibilityChecker {
                 self.option_compatible(new_option, old_option)
             }
             (Type::Option(_), _) => false,
+            (Type::Array(new_array), Type::Array(old_array)) => {
+                self.array_compatible(new_array, old_array)
+            }
+            (Type::Array(_), _) => false,
         }
     }
 
