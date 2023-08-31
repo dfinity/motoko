@@ -34,10 +34,12 @@
 //! ```
 //! <type_table> ::= length:i32 (<type>)^length
 //! <type> ::= <object> | <mutable> | <option> | <array>
+//! <type> ::= <object> | <mutable> | <option> | <array> | <tuple>
 //! <object> ::= 1l <field_list>
 //! <mutable> ::= 2l type_index:i32
 //! <option> ::= 3l type_index:i32
 //! <array> ::= 4l type_index:i32
+//! <tuple> ::= 5l length:i32 (type_index:i32)^length
 //! <field_list> ::= length:i32 (<field>)^length
 //! <field> ::= label_hash:i32 type_index:i32
 //! ```
@@ -73,11 +75,12 @@ pub const OBJECT_ENCODING_TAG: i32 = 1;
 pub const MUTABLE_ENCODING_TAG: i32 = 2;
 pub const OPTION_ENCODING_TAG: i32 = 3;
 pub const ARRAY_ENCODING_TAG: i32 = 4;
+pub const TUPLE_ENCODING_TAG: i32 = 5;
 
 const ACTOR_TYPE_INDEX: i32 = 0;
 
 const TYPE_TAG_LENGTH: usize = 1;
-const FIELD_LIST_HEADER: usize = 1; // field_list_length
+const LENGTH_HEADER: usize = 1;
 const TYPE_INDEX_LENGTH: usize = 1;
 const FIELD_ENCODING_LENGTH: usize = 2; // label_hash type_index
 
@@ -151,6 +154,7 @@ enum Type {
     Mutable(TypeIndex),
     Option(TypeIndex),
     Array(TypeIndex),
+    Tuple(TypeList),
 }
 
 impl Type {
@@ -161,6 +165,7 @@ impl Type {
                 Self::Mutable(type_index) => type_index.size(),
                 Self::Option(type_index) => type_index.size(),
                 Self::Array(type_index) => type_index.size(),
+                Self::Tuple(tuple_list) => tuple_list.size(),
             }
     }
 
@@ -172,6 +177,7 @@ impl Type {
             MUTABLE_ENCODING_TAG => Self::Mutable(TypeIndex::new(data)),
             OPTION_ENCODING_TAG => Self::Option(TypeIndex::new(data)),
             ARRAY_ENCODING_TAG => Self::Array(TypeIndex::new(data)),
+            TUPLE_ENCODING_TAG => Self::Tuple(TypeList::new(data)),
             _ => unimplemented!(),
         }
     }
@@ -187,7 +193,7 @@ impl FieldList {
     }
 
     unsafe fn size(&self) -> usize {
-        FIELD_LIST_HEADER + self.count_fields() * FIELD_ENCODING_LENGTH
+        LENGTH_HEADER + self.count_fields() * FIELD_ENCODING_LENGTH
     }
 
     unsafe fn count_fields(&self) -> usize {
@@ -197,7 +203,7 @@ impl FieldList {
     }
 
     unsafe fn get_field(&self, field_index: usize) -> Field {
-        let field_offset = FIELD_LIST_HEADER + field_index * FIELD_ENCODING_LENGTH;
+        let field_offset = LENGTH_HEADER + field_index * FIELD_ENCODING_LENGTH;
         let label_hash = self.data.read(field_offset);
         let type_index = self.data.read(field_offset + 1);
         Field {
@@ -220,6 +226,32 @@ impl FieldList {
 struct Field {
     label_hash: i32,
     type_index: i32,
+}
+
+struct TypeList {
+    data: EncodedData,
+}
+
+impl TypeList {
+    unsafe fn new(data: EncodedData) -> TypeList {
+        TypeList { data }
+    }
+
+    unsafe fn size(&self) -> usize {
+        LENGTH_HEADER + self.count_items() * TYPE_INDEX_LENGTH
+    }
+
+    unsafe fn count_items(&self) -> usize {
+        let count = self.data.read(0);
+        assert!(count >= 0);
+        count as usize
+    }
+
+    unsafe fn get_item(&self, item_index: usize) -> TypeIndex {
+        let item_offset = LENGTH_HEADER + item_index * TYPE_INDEX_LENGTH;
+        let type_index = self.data.read(item_offset);
+        TypeIndex { type_index }
+    }
 }
 
 struct TypeIndex {
@@ -338,6 +370,22 @@ impl CompatibilityChecker {
         self.type_compatible(new_type.type_index, old_type.type_index)
     }
 
+    unsafe fn compatible_type_list(&mut self, new_tuple: &TypeList, old_tuple: &TypeList) -> bool {
+        let new_count = new_tuple.count_items();
+        let old_count = old_tuple.count_items();
+        if new_count != old_count {
+            return false;
+        }
+        for item_index in 0..new_count {
+            let new_item = new_tuple.get_item(item_index);
+            let old_item = old_tuple.get_item(item_index);
+            if !self.compatible_type_indices(&new_item, &old_item) {
+                return false;
+            }
+        }
+        true
+    }
+
     unsafe fn type_compatible(&mut self, new_type_index: i32, old_type_index: i32) -> bool {
         if new_type_index < 0 || old_type_index < 0 {
             return new_type_index == old_type_index;
@@ -365,6 +413,10 @@ impl CompatibilityChecker {
                 self.compatible_type_indices(new_element, old_element)
             }
             (Type::Array(_), _) => false,
+            (Type::Tuple(new_type_list), Type::Tuple(old_type_list)) => {
+                self.compatible_type_list(new_type_list, old_type_list)
+            }
+            (Type::Tuple(_), _) => false,
         }
     }
 

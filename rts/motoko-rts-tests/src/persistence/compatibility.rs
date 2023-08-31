@@ -1,7 +1,7 @@
 use motoko_rts::memory::{alloc_blob, Memory};
 use motoko_rts::persistence::compatibility::{
     memory_compatible, ARRAY_ENCODING_TAG, MUTABLE_ENCODING_TAG, OBJECT_ENCODING_TAG,
-    OPTION_ENCODING_TAG,
+    OPTION_ENCODING_TAG, TUPLE_ENCODING_TAG,
 };
 use motoko_rts::types::{Bytes, Value};
 use std::hash::Hasher;
@@ -51,6 +51,7 @@ enum Type {
     Mutable(TypeReference),
     Option(TypeReference),
     Array(TypeReference),
+    Tuple(TypeList),
 }
 
 impl Type {
@@ -71,6 +72,10 @@ impl Type {
             Self::Array(type_reference) => {
                 output.write_i32(ARRAY_ENCODING_TAG);
                 output.write_i32(type_reference.index);
+            }
+            Self::Tuple(type_list) => {
+                output.write_i32(TUPLE_ENCODING_TAG);
+                type_list.serialize(output);
             }
         }
     }
@@ -202,6 +207,20 @@ impl FieldList {
     }
 }
 
+#[derive(Clone)]
+struct TypeList {
+    items: Vec<TypeReference>,
+}
+
+impl TypeList {
+    fn serialize(&self, output: &mut BinaryData) {
+        output.write_i32(self.items.len() as i32);
+        for item in &self.items {
+            output.write_i32(item.index);
+        }
+    }
+}
+
 struct TypeTable {
     types: Vec<Type>,
 }
@@ -304,6 +323,10 @@ unsafe fn test_sucessful_cases(heap: &mut TestMemory) {
     test_flat_array_types(heap);
     test_nested_array_types(heap);
     test_recursive_array_types(heap);
+    test_empty_tuple_types(heap);
+    test_simple_tuple_types(heap);
+    test_nested_tuple_types(heap);
+    test_recursive_tuple_types(heap);
 }
 
 unsafe fn test_empty_actor(heap: &mut TestMemory) {
@@ -594,6 +617,70 @@ unsafe fn test_recursive_array_types(heap: &mut TestMemory) {
     assert!(are_compatible(heap, types.clone(), types.clone()));
 }
 
+unsafe fn test_empty_tuple_types(heap: &mut TestMemory) {
+    let actor_type = Type::Object(FieldList {
+        fields: vec![Field {
+            name: String::from("TupleField"),
+            field_type: TypeReference { index: 1 },
+        }],
+    });
+    let unit_type = Type::Tuple(TypeList { items: vec![] });
+    let types = vec![actor_type, unit_type];
+    assert!(are_compatible(heap, types.clone(), types.clone()));
+}
+
+unsafe fn test_simple_tuple_types(heap: &mut TestMemory) {
+    let actor_type = Type::Object(FieldList {
+        fields: vec![Field {
+            name: String::from("TupleField"),
+            field_type: TypeReference { index: 1 },
+        }],
+    });
+    let tuple_type = Type::Tuple(TypeList {
+        items: vec![
+            TypeReference::nat(),
+            TypeReference::text(),
+            TypeReference::int32(),
+        ],
+    });
+    let types = vec![actor_type, tuple_type];
+    assert!(are_compatible(heap, types.clone(), types.clone()));
+}
+
+unsafe fn test_nested_tuple_types(heap: &mut TestMemory) {
+    let actor_type = Type::Object(FieldList {
+        fields: vec![Field {
+            name: String::from("TupleField"),
+            field_type: TypeReference { index: 1 },
+        }],
+    });
+    let outer_tuple_type = Type::Tuple(TypeList {
+        items: vec![TypeReference { index: 2 }],
+    });
+    let inner_tuple_type = Type::Tuple(TypeList {
+        items: vec![TypeReference::nat()],
+    });
+    let types = vec![actor_type, outer_tuple_type, inner_tuple_type];
+    assert!(are_compatible(heap, types.clone(), types.clone()));
+}
+
+unsafe fn test_recursive_tuple_types(heap: &mut TestMemory) {
+    let actor_type = Type::Object(FieldList {
+        fields: vec![Field {
+            name: String::from("TupleField"),
+            field_type: TypeReference { index: 1 },
+        }],
+    });
+    let first_tuple_type = Type::Tuple(TypeList {
+        items: vec![TypeReference { index: 2 }],
+    });
+    let second_tuple_type = Type::Tuple(TypeList {
+        items: vec![TypeReference { index: 1 }],
+    });
+    let types = vec![actor_type, first_tuple_type, second_tuple_type];
+    assert!(are_compatible(heap, types.clone(), types.clone()));
+}
+
 unsafe fn test_failing_cases(heap: &mut TestMemory) {
     test_added_object_fields(heap);
     test_mutable_mismatch(heap);
@@ -602,6 +689,7 @@ unsafe fn test_failing_cases(heap: &mut TestMemory) {
     test_option_mismatch(heap);
     test_array_mismatch(heap);
     test_array_mutability_mismatch(heap);
+    test_reordered_tuple_types(heap);
 }
 
 unsafe fn test_recursion_mismatch(heap: &mut TestMemory) {
@@ -765,5 +853,29 @@ unsafe fn test_array_mutability_mismatch(heap: &mut TestMemory) {
     let mutable_variable = Type::Mutable(TypeReference::nat());
     let old_types = vec![old_actor, immutable_array_type];
     let new_types = vec![new_actor, mutable_array_type, mutable_variable];
+    assert!(!are_compatible(heap, old_types, new_types));
+}
+
+unsafe fn test_reordered_tuple_types(heap: &mut TestMemory) {
+    let old_actor = Type::Object(FieldList {
+        fields: vec![Field {
+            name: String::from("TupleField"),
+            field_type: TypeReference { index: 1 },
+        }],
+    });
+    let old_tuple = Type::Tuple(TypeList {
+        items: vec![TypeReference::nat(), TypeReference::text()],
+    });
+    let new_actor = Type::Object(FieldList {
+        fields: vec![Field {
+            name: String::from("TupleField"),
+            field_type: TypeReference { index: 1 },
+        }],
+    });
+    let new_tuple = Type::Tuple(TypeList {
+        items: vec![TypeReference::text(), TypeReference::nat()],
+    });
+    let old_types = vec![old_actor, old_tuple];
+    let new_types = vec![new_actor, new_tuple];
     assert!(!are_compatible(heap, old_types, new_types));
 }

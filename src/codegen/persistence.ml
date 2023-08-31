@@ -7,11 +7,12 @@
   // Primitive types are encoded by negative indices.
   // All numbers (type indices etc.) are encoded as little endian i32.
   <type_table> ::= length:i32 (<type>)^length
-  <type> ::= <object> | <mutable> | <option> | <array>
+  <type> ::= <object> | <mutable> | <option> | <array> | <tuple>
   <object> ::= 1l <field_list>
   <mutable> ::= 2l type_index:i32
   <option> ::= 3l type_index:i32
   <array> ::= 4l type_index:i32
+  <tuple> ::= 5l length:i32 (type_index:i32)^length
   <field_list> ::= length:i32 (<field>)^length
   <field> ::= label_hash:i32 type_index:i32
   
@@ -100,6 +101,8 @@ let rec collect_type table typ =
       collect_type table optional_type
     | Array element_type ->
       collect_type table element_type
+    | Tup type_list ->
+      collect_types table type_list
     | _ ->
       Printf.printf "UNSUPPORTED PERSISTENT TYPE %s\n" (Type.string_of_typ typ);
       assert false)
@@ -148,6 +151,9 @@ let encode_field table field =
   let field_hash = Hash.hash field.lab in
   encode_i32 field_hash ^ 
   encode_i32 (type_index table field.typ)
+
+let encode_tuple_item table typ =
+  encode_i32 (type_index table typ)
   
 let encode_complex_type table typ =
   let open Type in
@@ -165,6 +171,9 @@ let encode_complex_type table typ =
   | Array element_type ->
     encode_i32 4l ^
     encode_i32 (type_index table element_type)
+  | Tup type_list ->
+    encode_i32 5l ^
+    encode_list (encode_tuple_item table) type_list
   | _ -> assert false
 
 let encode_type_table table =
