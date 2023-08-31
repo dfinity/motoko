@@ -74,13 +74,13 @@ module TypeTable = struct
     | _ -> List.append table [typ]
 end
 
-let normalize_type typ =
+let rec normalize_type typ =
   let open Type in
   match typ with
   | Con (constructor, _) ->
     (match Mo_types.Cons.kind constructor with
     | Abs _ -> assert false
-    | Def (_, type_definition) -> type_definition)
+    | Def (_, type_definition) -> normalize_type type_definition)
   | _ -> typ
 
 let rec collect_type table typ =
