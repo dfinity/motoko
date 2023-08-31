@@ -27,7 +27,7 @@ export LANG=C.UTF-8
 # it doesn't work reliably and slows down the test significantly.
 # so until DFN-1269 fixes this properly, let's just not run
 # affected tests on drun (only ic-ref-run).
-EXTRA_BATCHES=1
+EXTRA_BATCHES=32
 
 # on darwin, I have seen
 #   thread 'MR Batch Processor' has overflowed its stack
