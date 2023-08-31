@@ -1134,7 +1134,7 @@ module Heap = struct
 
   let ensure_allocated env =
     alloc env 0l ^^ G.i Drop (* dummy allocation, ensures that the page HP points into is backed *)
-    
+
   (* Heap objects *)
 
   (* At this level of abstraction, heap objects are just flat arrays of words *)
@@ -1153,7 +1153,7 @@ module Heap = struct
 
   (* Although we occasionally want to treat two consecutive
      32 bit fields as one 64 bit number *)
-  
+
   (* Requires little-endian encoding, see also `Stream` in `types.rs` *)
   let load_field64_unskewed (i : int32) : G.t =
     let offset = Int32.mul word_size i in
@@ -1609,12 +1609,12 @@ module Tagged = struct
     | StableSeen -> 0xffffffffl
 
   (* Declare `env` for lazy computation of the header size when the compile environment with compile flags are defined *)
-  let header_size env = 
+  let header_size env =
     if !Flags.gc_strategy = Flags.Incremental then 2l else 1l
-  
+
   (* The tag *)
   let tag_field = 0l
-  let forwarding_pointer_field env = 
+  let forwarding_pointer_field env =
     assert (!Flags.gc_strategy = Flags.Incremental);
     1l
 
@@ -1655,7 +1655,7 @@ module Tagged = struct
         get_object ^^ (* object pointer *)
         get_object ^^ (* forwarding pointer *)
         Heap.store_field (forwarding_pointer_field env)
-      else 
+      else
         G.nop) ^^
       get_object
     )
@@ -3680,7 +3680,7 @@ module Blob = struct
     Tagged.allocation_barrier env
 
   let unskewed_payload_offset env = Int32.(add ptr_unskew (mul Heap.word_size (header_size env)))
-  
+
   let payload_ptr_unskewed env =
     Tagged.load_forwarding_pointer env ^^
     compile_add_const (unskewed_payload_offset env)
@@ -7219,7 +7219,7 @@ module Stabilization = struct
       G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
       E.call_import env "rts" "stream_stable_dest"
 
-    let ptr64_field env = 
+    let ptr64_field env =
       let offset = 1l in (* see invariant in `stream.rs` *)
       Int32.add (Blob.len_field env) offset (* see invariant in `stream.rs`, padding for 64-bit after Stream header *)
 
@@ -9685,7 +9685,106 @@ and compile_prim_invocation (env : E.t) ae p es at =
       SR.UnboxedFloat64,
       compile_exp_as env ae SR.UnboxedWord64 e ^^
       G.i (Convert (Wasm.Values.F64 F64Op.ConvertSI64))
-
+    | Nat8, Nat16 ->
+      SR.Vanilla,
+      compile_exp_vanilla env ae e ^^
+      compile_shrU_const 8l
+    | Nat16, Nat32 ->
+      SR.Vanilla,
+      compile_exp_vanilla env ae e ^^
+      compile_shrU_const 15l (* resulting Nat32 will always be unboxed *)
+    | Nat32, Nat64 ->
+      SR.UnboxedWord64,
+      compile_exp_as env ae SR.UnboxedWord32 e ^^
+      G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
+    | Nat16, (Nat8 as pty) ->
+      SR.Vanilla,
+      let num_bits = (TaggedSmallWord.bits_of_type pty) in
+      let set_val, get_val = new_local env "convertee" in
+      compile_exp_vanilla env ae e ^^
+      set_val ^^
+      get_val ^^
+      compile_shrU_const (Int32.of_int (32 - num_bits)) ^^
+      E.then_trap_with env "losing precision" ^^
+      get_val ^^
+      compile_shl_const (Int32.of_int num_bits)
+    | Nat32, (Nat16 as pty) ->
+      SR.Vanilla,
+      let num_bits = Int32.of_int (TaggedSmallWord.bits_of_type pty) in
+      let set_val, get_val = new_local env "convertee" in
+      compile_exp_as env ae SR.UnboxedWord32 e ^^
+      set_val ^^
+      get_val ^^
+      compile_shrU_const num_bits ^^
+      E.then_trap_with env "losing precision" ^^
+      get_val ^^
+      compile_shl_const num_bits
+    | Nat64, (Nat32 as pty) ->
+      SR.UnboxedWord32,
+      let num_bits = Int64.of_int (TaggedSmallWord.bits_of_type pty) in
+      let set_val, get_val = new_local64 env "convertee" in
+      compile_exp_as env ae SR.UnboxedWord64 e ^^
+      set_val ^^
+      get_val ^^
+      compile_shrU64_const num_bits ^^
+      G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
+      E.then_trap_with env "losing precision" ^^
+      get_val ^^
+      G.i (Convert (Wasm.Values.I32 I32Op.WrapI64))
+    | Int8, Int16 ->
+      SR.Vanilla,
+      compile_exp_vanilla env ae e ^^
+      compile_shrS_const 8l
+    | Int16, Int32 ->
+      SR.Vanilla,
+      compile_exp_vanilla env ae e ^^
+      compile_shrS_const 15l (* resulting Int32 will always be unboxed *)
+    | Int32, Int64 ->
+      SR.UnboxedWord64,
+      compile_exp_as env ae SR.UnboxedWord32 e ^^
+      G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32))
+    | Int16, (Int8 as pty) ->
+      SR.Vanilla,
+      let num_bits = (TaggedSmallWord.bits_of_type pty) in
+      let set_val, get_val = new_local env "convertee" in
+      compile_exp_vanilla env ae e ^^
+      set_val ^^
+      get_val ^^
+      compile_shl_const (Int32.of_int num_bits) ^^
+      compile_shrS_const (Int32.of_int num_bits) ^^
+      get_val ^^
+      compile_eq env Type.(Prim Nat16) ^^
+      E.else_trap_with env "losing precision" ^^
+      get_val ^^
+      compile_shl_const (Int32.of_int num_bits)
+    | Int32, (Int16 as pty) ->
+      SR.Vanilla,
+      let num_bits = (TaggedSmallWord.bits_of_type pty) in
+      let set_val, get_val = new_local env "convertee" in
+      compile_exp_as env ae SR.UnboxedWord32 e ^^
+      set_val ^^
+      get_val ^^
+      compile_shl_const (Int32.of_int num_bits) ^^
+      compile_shrS_const (Int32.of_int num_bits) ^^
+      get_val ^^
+      compile_eq env Type.(Prim Nat32) ^^
+      E.else_trap_with env "losing precision" ^^
+      get_val ^^
+      compile_shl_const (Int32.of_int num_bits)
+    | Int64, (Int32 as pty) ->
+      SR.UnboxedWord32,
+      let num_bits = (TaggedSmallWord.bits_of_type pty) in
+      let set_val, get_val = new_local64 env "convertee" in
+      compile_exp_as env ae SR.UnboxedWord64 e ^^
+      set_val ^^
+      get_val ^^
+      compile_shl64_const (Int64.of_int num_bits) ^^
+      compile_shrS64_const (Int64.of_int num_bits) ^^
+      get_val ^^
+      compile_eq env Type.(Prim Nat64) ^^
+      E.else_trap_with env "losing precision" ^^
+      get_val ^^
+      G.i (Convert (Wasm.Values.I32 I32Op.WrapI64))
     | _ -> SR.Unreachable, todo_trap env "compile_prim_invocation" (Arrange_ir.prim p)
     end
 
