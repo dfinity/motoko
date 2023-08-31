@@ -66,9 +66,97 @@ struct TypeReference {
     index: i32,
 }
 
+// Keep identical to `compatibility.rs` and `persistence.ml`.
+const NULL_ENCODING_TAG: i32 = -1;
+const BOOL_ENCODING_TAG: i32 = -2;
+const NAT_ENCODING_TAG: i32 = -3;
+const NAT8_ENCODING_TAG: i32 = -4;
+const NAT16_ENCODING_TAG: i32 = -5;
+const NAT32_ENCODING_TAG: i32 = -6;
+const NAT64_ENCODING_TAG: i32 = -7;
+const INT_ENCODING_TAG: i32 = -8;
+const INT8_ENCODING_TAG: i32 = -9;
+const INT16_ENCODING_TAG: i32 = -10;
+const INT32_ENCODING_TAG: i32 = -11;
+const INT64_ENCODING_TAG: i32 = -12;
+const FLOAT_ENCODING_TAG: i32 = -13;
+const CHAR_ENCODING_TAG: i32 = -14;
+const TEXT_ENCODING_TAG: i32 = -15;
+const BLOB_ENCODING_TAG: i32 = -16;
+const PRINCIPAL_ENCODING_TAG: i32 = -16;
+
 impl TypeReference {
-    fn nat() -> TypeReference {
-        TypeReference { index: -1 }
+    fn primitive(index: i32) -> Self {
+        assert!(index < 0);
+        TypeReference { index }
+    }
+
+    fn null() -> Self {
+        Self::primitive(NULL_ENCODING_TAG)
+    }
+
+    fn bool() -> Self {
+        Self::primitive(BOOL_ENCODING_TAG)
+    }
+
+    fn nat() -> Self {
+        Self::primitive(NAT_ENCODING_TAG)
+    }
+
+    fn nat8() -> Self {
+        Self::primitive(NAT8_ENCODING_TAG)
+    }
+
+    fn nat16() -> Self {
+        Self::primitive(NAT16_ENCODING_TAG)
+    }
+
+    fn nat32() -> Self {
+        Self::primitive(NAT32_ENCODING_TAG)
+    }
+
+    fn nat64() -> Self {
+        Self::primitive(NAT64_ENCODING_TAG)
+    }
+
+    fn int() -> Self {
+        Self::primitive(INT_ENCODING_TAG)
+    }
+
+    fn int8() -> Self {
+        Self::primitive(INT8_ENCODING_TAG)
+    }
+
+    fn int16() -> Self {
+        Self::primitive(INT16_ENCODING_TAG)
+    }
+
+    fn int32() -> Self {
+        Self::primitive(INT32_ENCODING_TAG)
+    }
+
+    fn int64() -> Self {
+        Self::primitive(INT64_ENCODING_TAG)
+    }
+
+    fn float() -> Self {
+        Self::primitive(FLOAT_ENCODING_TAG)
+    }
+
+    fn char() -> Self {
+        Self::primitive(CHAR_ENCODING_TAG)
+    }
+
+    fn text() -> Self {
+        Self::primitive(TEXT_ENCODING_TAG)
+    }
+
+    fn blob() -> Self {
+        Self::primitive(BLOB_ENCODING_TAG)
+    }
+
+    fn principal() -> Self {
+        Self::primitive(PRINCIPAL_ENCODING_TAG)
     }
 }
 
@@ -171,6 +259,7 @@ pub unsafe fn test() {
 
 unsafe fn test_sucessful_cases(heap: &mut TestMemory) {
     test_empty_actor(heap);
+    test_matching_primitives(heap);
     test_reordered_actor_fields(heap);
     test_removed_actor_fields(heap);
     test_mutable_fields(heap);
@@ -187,10 +276,87 @@ unsafe fn test_empty_actor(heap: &mut TestMemory) {
     assert!(is_compatible(heap, old_type, new_type));
 }
 
+unsafe fn test_matching_primitives(heap: &mut TestMemory) {
+    let fields = vec![
+        Field {
+            name: String::from("NullField"),
+            field_type: TypeReference::null(),
+        },
+        Field {
+            name: String::from("BoolField"),
+            field_type: TypeReference::bool(),
+        },
+        Field {
+            name: String::from("NatField"),
+            field_type: TypeReference::nat(),
+        },
+        Field {
+            name: String::from("Nat8Field"),
+            field_type: TypeReference::nat8(),
+        },
+        Field {
+            name: String::from("Nat16Field"),
+            field_type: TypeReference::nat16(),
+        },
+        Field {
+            name: String::from("Nat32Field"),
+            field_type: TypeReference::nat32(),
+        },
+        Field {
+            name: String::from("Nat64Field"),
+            field_type: TypeReference::nat64(),
+        },
+        Field {
+            name: String::from("IntField"),
+            field_type: TypeReference::int(),
+        },
+        Field {
+            name: String::from("Int8Field"),
+            field_type: TypeReference::int8(),
+        },
+        Field {
+            name: String::from("Int16Field"),
+            field_type: TypeReference::int16(),
+        },
+        Field {
+            name: String::from("Int32Field"),
+            field_type: TypeReference::int32(),
+        },
+        Field {
+            name: String::from("Int64Field"),
+            field_type: TypeReference::int64(),
+        },
+        Field {
+            name: String::from("FloatField"),
+            field_type: TypeReference::float(),
+        },
+        Field {
+            name: String::from("CharField"),
+            field_type: TypeReference::char(),
+        },
+        Field {
+            name: String::from("TextField"),
+            field_type: TypeReference::text(),
+        },
+        Field {
+            name: String::from("BlobField"),
+            field_type: TypeReference::blob(),
+        },
+        Field {
+            name: String::from("PrincipalField"),
+            field_type: TypeReference::principal(),
+        },
+    ];
+
+    let types = Type::Object(ObjectType { fields });
+
+    assert!(is_compatible(heap, types.clone(), types));
+}
+
 unsafe fn test_reordered_actor_fields(heap: &mut TestMemory) {
     let field1 = Field {
         name: String::from("Field1"),
-        field_type: TypeReference::nat(),
+        field_type: TypeReference::int(),
     };
     let field2 = Field {
         name: String::from("Field2"),
@@ -210,15 +376,15 @@ unsafe fn test_reordered_actor_fields(heap: &mut TestMemory) {
 unsafe fn test_removed_actor_fields(heap: &mut TestMemory) {
     let field1 = Field {
         name: String::from("Field1"),
-        field_type: TypeReference::nat(),
+        field_type: TypeReference::nat8(),
     };
     let field2 = Field {
         name: String::from("Field2"),
-        field_type: TypeReference::nat(),
+        field_type: TypeReference::nat16(),
     };
     let field3 = Field {
         name: String::from("Field3"),
-        field_type: TypeReference::nat(),
+        field_type: TypeReference::nat32(),
     };
 
     let old_type = Type::Object(ObjectType {
@@ -234,15 +400,15 @@ unsafe fn test_removed_actor_fields(heap: &mut TestMemory) {
 unsafe fn test_added_actor_fields(heap: &mut TestMemory) {
     let field1 = Field {
         name: String::from("Field1"),
-        field_type: TypeReference::nat(),
+        field_type: TypeReference::bool(),
     };
     let field2 = Field {
         name: String::from("Field2"),
-        field_type: TypeReference::nat(),
+        field_type: TypeReference::char(),
     };
     let field3 = Field {
         name: String::from("Field3"),
-        field_type: TypeReference::nat(),
+        field_type: TypeReference::text(),
     };
 
     let old_type = Type::Object(ObjectType {
@@ -280,15 +446,15 @@ unsafe fn test_removed_object_fields(heap: &mut TestMemory) {
 
     let field1 = Field {
         name: String::from("Field1"),
-        field_type: TypeReference::nat(),
+        field_type: TypeReference::int8(),
     };
     let field2 = Field {
         name: String::from("Field2"),
-        field_type: TypeReference::nat(),
+        field_type: TypeReference::int16(),
     };
     let field3 = Field {
         name: String::from("Field3"),
-        field_type: TypeReference::nat(),
+        field_type: TypeReference::int32(),
     };
 
     let old_type = Type::Object(ObjectType {
@@ -353,7 +519,7 @@ unsafe fn test_option_types(heap: &mut TestMemory) {
         }],
     });
     let option_type = Type::Option(OptionType {
-        option_type: TypeReference::nat(),
+        option_type: TypeReference::blob(),
     });
     let types = vec![actor_type, option_type];
     assert!(are_compatible(heap, types.clone(), types.clone()));
@@ -391,7 +557,7 @@ unsafe fn test_recursion_mismatch(heap: &mut TestMemory) {
     });
     let non_recursive_field = Field {
         name: String::from("Field"),
-        field_type: TypeReference::nat(),
+        field_type: TypeReference::principal(),
     };
     let non_recursive_type = Type::Object(ObjectType {
         fields: vec![non_recursive_field],
@@ -411,15 +577,15 @@ unsafe fn test_added_object_fields(heap: &mut TestMemory) {
 
     let field1 = Field {
         name: String::from("Field1"),
-        field_type: TypeReference::nat(),
+        field_type: TypeReference::nat64(),
     };
     let field2 = Field {
         name: String::from("Field2"),
-        field_type: TypeReference::nat(),
+        field_type: TypeReference::float(),
     };
     let field3 = Field {
         name: String::from("Field3"),
-        field_type: TypeReference::nat(),
+        field_type: TypeReference::int64(),
     };
 
     let old_type = Type::Object(ObjectType {
@@ -459,7 +625,7 @@ unsafe fn test_immutable_mismatch(heap: &mut TestMemory) {
     let old_actor = Type::Object(ObjectType {
         fields: vec![Field {
             name: String::from("ActorField"),
-            field_type: TypeReference::nat(),
+            field_type: TypeReference::bool(),
         }],
     });
     let new_actor = Type::Object(ObjectType {
@@ -489,7 +655,7 @@ unsafe fn test_option_mismatch(heap: &mut TestMemory) {
     let new_actor = Type::Object(ObjectType {
         fields: vec![Field {
             name: String::from("OptionalField"),
-            field_type: TypeReference::nat(),
+            field_type: TypeReference::null(),
         }],
     });
     let old_types = vec![old_actor, option_type];

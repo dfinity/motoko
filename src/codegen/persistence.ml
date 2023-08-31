@@ -14,8 +14,26 @@
   <field_list> ::= length:i32 (<field>)^length
   <field> ::= label_hash:i32 type_index:i32
   
-  Predefined primitive type indices:
-  Nat -1l
+  // Predefined primitive type indices
+  Type      | Index
+  --------- | --------
+  Null      | -1l
+  Bool      | -2l
+  Nat       | -3l
+  Nat8      | -4l
+  Nat16     | -5l
+  Nat32     | -6l
+  Nat64     | -7l
+  Int       | -8l
+  Int8      | -9l
+  Int16     | -10l
+  Int32     | -11l
+  Int64     | -12l
+  Float     | -13l
+  Char      | -14l
+  Text      | -15l
+  Blob      | -16l
+  Principal | -17l
 *)
 
 open Mo_types
@@ -86,11 +104,32 @@ let encode_list encode_element list =
   let elements = List.map encode_element list in
   encode_i32 length ^ list_to_string elements
 
+let primitive_type_index primitive_type =
+  let open Type in
+  match primitive_type with
+  | Null -> -1l
+  | Bool -> -2l
+  | Nat -> -3l
+  | Nat8 -> -4l
+  | Nat16 -> -5l
+  | Nat32 -> -6l
+  | Nat64 -> -7l
+  | Int -> -8l
+  | Int8 -> -9l
+  | Int16 -> -10l
+  | Int32 -> -11l
+  | Int64 -> -12l
+  | Float -> -13l
+  | Char -> -14l
+  | Text -> -15l
+  | Blob -> -16l
+  | Principal -> -17l
+  | Error -> assert false (* non-stable type *)
+
 let type_index table typ =
   let open Type in
   match typ with
-  | Prim Nat -> -1l
-  | Prim _ -> assert false
+  | Prim primitive_type -> primitive_type_index primitive_type
   | _ -> Int32.of_int (TypeTable.index_of table typ)
 
 let encode_field table field =

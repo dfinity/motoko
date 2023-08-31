@@ -42,10 +42,25 @@
 //! ```
 //!
 //! Predefined primitive type indices
-//!
-//! Type    | Index
-//! ------- | --------
-//! Nat     | -1l
+//! Type      | Index
+//! --------- | --------
+//! Null      | -1l
+//! Bool      | -2l
+//! Nat       | -3l
+//! Nat8      | -4l
+//! Nat16     | -5l
+//! Nat32     | -6l
+//! Nat64     | -7l
+//! Int       | -8l
+//! Int8      | -9l
+//! Int16     | -10l
+//! Int32     | -11l
+//! Int64     | -12l
+//! Float     | -13l
+//! Char      | -14l
+//! Text      | -15l
+//! Blob      | -16l
+//! Principal | -17l
 
 use crate::{
     mem_utils::memzero_bytes,
