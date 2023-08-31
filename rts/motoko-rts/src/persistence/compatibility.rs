@@ -76,11 +76,10 @@ pub const ARRAY_ENCODING_TAG: i32 = 4;
 
 const ACTOR_TYPE_INDEX: i32 = 0;
 
-const OBJECT_ENCODING_HEADER: usize = 2; // object_tag field_list_length
+const TYPE_TAG_LENGTH: usize = 1;
+const FIELD_LIST_HEADER: usize = 1; // field_list_length
+const TYPE_INDEX_LENGTH: usize = 1;
 const FIELD_ENCODING_LENGTH: usize = 2; // label_hash type_index
-const MUTABLE_ENCODING_LENGTH: usize = 2; // mutable_tag type_index
-const OPTION_ENCODING_LENGTH: usize = 2; // option_tag type_index
-const ARRAY_ENCODING_LENGTH: usize = 2; // array_tag type_index
 
 struct EncodedData {
     words: *const i32,
@@ -139,66 +138,66 @@ impl TypeTable {
         Type::get_type(type_view)
     }
 
-    unsafe fn get_actor(&self) -> ObjectType {
+    unsafe fn get_actor_fields(&self) -> FieldList {
         match self.get_type(ACTOR_TYPE_INDEX) {
-            Type::Object(object_type) => object_type,
+            Type::Object(field_list) => field_list,
             _ => panic!("Invalid stable type encoding"),
         }
     }
 }
 
 enum Type {
-    Object(ObjectType),
-    Mutable(MutableType),
-    Option(OptionType),
-    Array(ArrayType),
+    Object(FieldList),
+    Mutable(TypeIndex),
+    Option(TypeIndex),
+    Array(TypeIndex),
 }
 
 impl Type {
     unsafe fn size(data: EncodedData) -> usize {
-        match Self::get_type(data) {
-            Self::Object(object_type) => object_type.size(),
-            Self::Mutable(mutable_type) => mutable_type.size(),
-            Self::Option(option_type) => option_type.size(),
-            Self::Array(array_type) => array_type.size(),
-        }
+        TYPE_TAG_LENGTH
+            + match Self::get_type(data) {
+                Self::Object(field_list) => field_list.size(),
+                Self::Mutable(type_index) => type_index.size(),
+                Self::Option(type_index) => type_index.size(),
+                Self::Array(type_index) => type_index.size(),
+            }
     }
 
     unsafe fn get_type(data: EncodedData) -> Type {
         let tag = data.read(0);
+        let data = data.sub_view(TYPE_TAG_LENGTH);
         match tag {
-            OBJECT_ENCODING_TAG => Self::Object(ObjectType::new(data)),
-            MUTABLE_ENCODING_TAG => Self::Mutable(MutableType::new(data)),
-            OPTION_ENCODING_TAG => Self::Option(OptionType::new(data)),
-            ARRAY_ENCODING_TAG => Self::Array(ArrayType::new(data)),
+            OBJECT_ENCODING_TAG => Self::Object(FieldList::new(data)),
+            MUTABLE_ENCODING_TAG => Self::Mutable(TypeIndex::new(data)),
+            OPTION_ENCODING_TAG => Self::Option(TypeIndex::new(data)),
+            ARRAY_ENCODING_TAG => Self::Array(TypeIndex::new(data)),
             _ => unimplemented!(),
         }
     }
 }
 
-struct ObjectType {
+struct FieldList {
     data: EncodedData,
 }
 
-impl ObjectType {
-    unsafe fn new(data: EncodedData) -> ObjectType {
-        assert_eq!(data.read(0), OBJECT_ENCODING_TAG);
-        ObjectType { data }
+impl FieldList {
+    unsafe fn new(data: EncodedData) -> FieldList {
+        FieldList { data }
     }
 
     unsafe fn size(&self) -> usize {
-        OBJECT_ENCODING_HEADER + self.count_fields() * FIELD_ENCODING_LENGTH
+        FIELD_LIST_HEADER + self.count_fields() * FIELD_ENCODING_LENGTH
     }
 
     unsafe fn count_fields(&self) -> usize {
-        assert_eq!(self.data.read(0), OBJECT_ENCODING_TAG);
-        let count = self.data.read(1);
+        let count = self.data.read(0);
         assert!(count >= 0);
         count as usize
     }
 
     unsafe fn get_field(&self, field_index: usize) -> Field {
-        let field_offset = OBJECT_ENCODING_HEADER + field_index * FIELD_ENCODING_LENGTH;
+        let field_offset = FIELD_LIST_HEADER + field_index * FIELD_ENCODING_LENGTH;
         let label_hash = self.data.read(field_offset);
         let type_index = self.data.read(field_offset + 1);
         Field {
@@ -223,51 +222,18 @@ struct Field {
     type_index: i32,
 }
 
-struct MutableType {
+struct TypeIndex {
     type_index: i32,
 }
 
-impl MutableType {
-    unsafe fn new(data: EncodedData) -> MutableType {
-        assert_eq!(data.read(0), MUTABLE_ENCODING_TAG);
-        let type_index = data.read(1);
-        MutableType { type_index }
+impl TypeIndex {
+    unsafe fn new(data: EncodedData) -> TypeIndex {
+        let type_index = data.read(0);
+        TypeIndex { type_index }
     }
 
     unsafe fn size(&self) -> usize {
-        MUTABLE_ENCODING_LENGTH
-    }
-}
-
-struct OptionType {
-    type_index: i32,
-}
-
-impl OptionType {
-    unsafe fn new(data: EncodedData) -> OptionType {
-        assert_eq!(data.read(0), OPTION_ENCODING_TAG);
-        let type_index = data.read(1);
-        OptionType { type_index }
-    }
-
-    unsafe fn size(&self) -> usize {
-        OPTION_ENCODING_LENGTH
-    }
-}
-
-struct ArrayType {
-    type_index: i32,
-}
-
-impl ArrayType {
-    unsafe fn new(data: EncodedData) -> ArrayType {
-        assert_eq!(data.read(0), ARRAY_ENCODING_TAG);
-        let type_index = data.read(1);
-        ArrayType { type_index }
-    }
-
-    unsafe fn size(&self) -> usize {
-        ARRAY_ENCODING_LENGTH
+        TYPE_INDEX_LENGTH
     }
 }
 
@@ -343,14 +309,14 @@ impl CompatibilityChecker {
         }
     }
 
-    unsafe fn object_compatible(
+    unsafe fn compatible_fields(
         &mut self,
-        new_object: &ObjectType,
-        old_object: &ObjectType,
+        new_field_list: &FieldList,
+        old_field_list: &FieldList,
     ) -> bool {
-        for field_index in 0..new_object.count_fields() {
-            let new_field = new_object.get_field(field_index);
-            match old_object.find_field(new_field.label_hash) {
+        for field_index in 0..new_field_list.count_fields() {
+            let new_field = new_field_list.get_field(field_index);
+            match old_field_list.find_field(new_field.label_hash) {
                 None => {
                     return false;
                 }
@@ -364,24 +330,12 @@ impl CompatibilityChecker {
         true
     }
 
-    unsafe fn mutable_compatible(
+    unsafe fn compatible_type_indices(
         &mut self,
-        new_mutable: &MutableType,
-        old_mutable: &MutableType,
+        new_type: &TypeIndex,
+        old_type: &TypeIndex,
     ) -> bool {
-        self.type_compatible(new_mutable.type_index, old_mutable.type_index)
-    }
-
-    unsafe fn option_compatible(
-        &mut self,
-        new_option: &OptionType,
-        old_option: &OptionType,
-    ) -> bool {
-        self.type_compatible(new_option.type_index, old_option.type_index)
-    }
-
-    unsafe fn array_compatible(&mut self, new_array: &ArrayType, old_array: &ArrayType) -> bool {
-        self.type_compatible(new_array.type_index, old_array.type_index)
+        self.type_compatible(new_type.type_index, old_type.type_index)
     }
 
     unsafe fn type_compatible(&mut self, new_type_index: i32, old_type_index: i32) -> bool {
@@ -395,31 +349,31 @@ impl CompatibilityChecker {
         let new_type = self.new_type_table.get_type(new_type_index);
         let old_type = self.old_type_table.get_type(old_type_index);
         match (&new_type, &old_type) {
-            (Type::Object(new_object), Type::Object(old_object)) => {
-                self.object_compatible(new_object, old_object)
+            (Type::Object(new_fields), Type::Object(old_fields)) => {
+                self.compatible_fields(new_fields, old_fields)
             }
             (Type::Object(_), _) => false,
-            (Type::Mutable(new_mutable), Type::Mutable(old_mutable)) => {
-                self.mutable_compatible(new_mutable, old_mutable)
+            (Type::Mutable(new_variable), Type::Mutable(old_variable)) => {
+                self.compatible_type_indices(new_variable, old_variable)
             }
             (Type::Mutable(_), _) => false,
             (Type::Option(new_option), Type::Option(old_option)) => {
-                self.option_compatible(new_option, old_option)
+                self.compatible_type_indices(new_option, old_option)
             }
             (Type::Option(_), _) => false,
-            (Type::Array(new_array), Type::Array(old_array)) => {
-                self.array_compatible(new_array, old_array)
+            (Type::Array(new_element), Type::Array(old_element)) => {
+                self.compatible_type_indices(new_element, old_element)
             }
             (Type::Array(_), _) => false,
         }
     }
 
     unsafe fn compatible_actor_fields(&mut self) -> bool {
-        let new_actor = self.new_type_table.get_actor();
-        let old_actor = self.old_type_table.get_actor();
-        for new_field_index in 0..new_actor.count_fields() {
-            let new_field = new_actor.get_field(new_field_index);
-            match old_actor.find_field(new_field.label_hash) {
+        let new_field_list = self.new_type_table.get_actor_fields();
+        let old_field_list = self.old_type_table.get_actor_fields();
+        for new_field_index in 0..new_field_list.count_fields() {
+            let new_field = new_field_list.get_field(new_field_index);
+            match old_field_list.find_field(new_field.label_hash) {
                 Some(old_field) => {
                     if !self.type_compatible(new_field.type_index, old_field.type_index) {
                         return false;
