@@ -74,13 +74,46 @@ module TypeTable = struct
     | _ -> List.append table [typ]
 end
 
+let rec resolve_generics typ type_arguments =
+  let open Type in
+  let typ = promote typ in
+  match typ with
+  | Var (_, index) -> 
+      List.nth type_arguments index
+  | Obj (sort, field_list) ->
+      Obj (sort, (resolve_field_list field_list type_arguments))
+  | Variant field_list ->
+      Variant (resolve_field_list field_list type_arguments)
+  | Array element_type ->
+      Array (resolve_generics element_type type_arguments)
+  | Opt optional_type ->
+      Opt (resolve_generics optional_type type_arguments)
+  | Tup type_list ->
+      Tup (resolve_type_list type_list type_arguments)
+  | Mut mutable_type ->
+      Mut (resolve_generics mutable_type type_arguments)
+  | Prim _ | Any | Non -> typ
+  | _ -> assert false
+
+and resolve_field_list field_list type_arguments =
+  let open Type in
+  let resolve_field field = 
+    let resolved_field_type = resolve_generics field.typ type_arguments in
+    { lab = field.lab; typ = resolved_field_type; depr = field.depr } in
+  List.map resolve_field field_list
+
+and resolve_type_list type_list type_arguments =
+  List.map (fun typ -> resolve_generics typ type_arguments) type_list
+
 let rec normalize_type typ =
   let open Type in
   match typ with
-  | Con (constructor, _) ->
+  | Con (constructor, type_arguments) ->
     (match Mo_types.Cons.kind constructor with
     | Abs _ -> assert false
-    | Def (_, type_definition) -> normalize_type type_definition)
+    | Def (_, type_definition) -> 
+      let resolved_definition = resolve_generics type_definition type_arguments in
+      normalize_type resolved_definition)
   | _ -> typ
 
 let rec collect_type table typ =
@@ -104,7 +137,7 @@ let rec collect_type table typ =
     | Tup type_list ->
       collect_types table type_list
     | _ ->
-      Printf.printf "UNSUPPORTED PERSISTENT TYPE %s\n" (Type.string_of_typ typ);
+      Printf.eprintf "Unsupported persistent type %s\n" (Type.string_of_typ typ);
       assert false)
 
 and collect_types table type_list =
