@@ -7,9 +7,10 @@
   // Primitive types are encoded by negative indices.
   // All numbers (type indices etc.) are encoded as little endian i32.
   <type_table> ::= length:i32 (<type>)^length
-  <type> ::= <object> | <actor> | <mutable> | <option> | <array> | <tuple> | <variant> | <none> | <any>
+  <type> ::= <object> | <actor> | <function> | <mutable> | <option> | <array> | <tuple> | <variant> | <none> | <any>
   <object> ::= 1l <field_list>
   <actor> ::= 2l <field_list>
+  <function> ::= 3l function_sort:i32 <type_list> <type_list>
   <mutable> ::= 4l type_index:i32
   <option> ::= 5l type_index:i32
   <array> ::= 6l type_index:i32
@@ -19,6 +20,7 @@
   <any> ::= 10l
   <field_list> ::= length:i32 (<field>)^length
   <field> ::= label_hash:i32 type_index:i32
+  <type_list> ::= length:i32 <type_index:i32>^length
   
   // Predefined primitive type indices
   Type      | Index
@@ -40,6 +42,14 @@
   Text      | -15l
   Blob      | -16l
   Principal | -17l
+
+
+  // Function sort
+  Sort      | Encoding
+  --------- | ---------
+  Query     | 1l
+  Write     | 2l
+  Composite | 3l
 *)
 
 open Mo_types
@@ -85,6 +95,10 @@ let rec resolve_generics typ type_arguments =
       List.nth type_arguments index
   | Obj (sort, field_list) ->
       Obj (sort, (resolve_field_list field_list type_arguments))
+  | Func (sort, control, bindings, parameter_list, return_list) ->
+      let resolved_parameters = resolve_type_list parameter_list type_arguments in
+      let resolved_returns = resolve_type_list return_list type_arguments in
+      Func (sort, control, bindings, resolved_parameters, resolved_returns)
   | Variant field_list ->
       Variant (resolve_field_list field_list type_arguments)
   | Array element_type ->
@@ -129,6 +143,8 @@ let rec collect_type table old_typ =
     | Prim _ | Non | Any -> table
     | Obj (sort, field_list) when sort = Actor || sort = Object ->
       collect_fields table field_list
+    | Func (Shared _, _, _, parameter_list, return_list) ->
+      collect_types table (List.append parameter_list return_list)
     | Mut variable_type ->
       collect_type table variable_type
     | Opt optional_type ->
@@ -193,8 +209,18 @@ let encode_field table field =
   encode_i32 field_hash ^ 
   encode_i32 (type_index table field.typ)
 
-let encode_tuple_item table typ =
+let encode_type_reference table typ =
   encode_i32 (type_index table typ)
+
+let encode_type_list table type_list =
+  encode_list (encode_type_reference table) type_list
+
+let function_sort_code sort =
+  let open Type in
+  match sort with
+  | Query -> 1l
+  | Write -> 2l
+  | Composite -> 3l
   
 let encode_complex_type table typ =
   let open Type in
@@ -206,6 +232,11 @@ let encode_complex_type table typ =
   | Obj (Actor, field_list) -> 
     encode_i32 2l ^ 
     encode_list (encode_field table) field_list
+  | Func (Shared sort, _, _, parameter_list, return_list) ->
+    encode_i32 3l ^ 
+    encode_i32 (function_sort_code sort) ^
+    encode_type_list table parameter_list ^
+    encode_type_list table return_list
   | Mut variable_type ->
     encode_i32 4l ^
     encode_i32 (type_index table variable_type)
@@ -217,7 +248,7 @@ let encode_complex_type table typ =
     encode_i32 (type_index table element_type)
   | Tup type_list ->
     encode_i32 7l ^
-    encode_list (encode_tuple_item table) type_list
+    encode_type_list table type_list
   | Variant field_list ->
     encode_i32 8l ^
     encode_list (encode_field table) field_list

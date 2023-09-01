@@ -33,9 +33,10 @@
 //!
 //! ```
 //! <type_table> ::= length:i32 (<type>)^length
-//! <type> ::= <object> | <actor> | <mutable> | <option> | <array> | <tuple> | <variant> | <none> | <any>
+//! <type> ::= <object> | <actor> | <function> | <mutable> | <option> | <array> | <tuple> | <variant> | <none> | <any>
 //! <object> ::= 1l <field_list>
 //! <actor> ::= 2l <field_list>
+//! <function> ::= 3l function_sort:i32 <type_list> <type_list>
 //! <mutable> ::= 4l type_index:i32
 //! <option> ::= 5l type_index:i32
 //! <array> ::= 6l type_index:i32
@@ -45,6 +46,7 @@
 //! <any> ::= 10l
 //! <field_list> ::= length:i32 (<field>)^length
 //! <field> ::= label_hash:i32 type_index:i32
+//! <type_list> ::= length:i32 <type_index:i32>^length
 //! ```
 //!
 //! Predefined primitive type indices
@@ -67,6 +69,13 @@
 //! Text      | -15l
 //! Blob      | -16l
 //! Principal | -17l
+//!
+//! Function sort
+//! Sort      | Encoding
+//! --------- | ---------
+//! Query     | 1l
+//! Write     | 2l
+//! Composite | 3l
 
 use crate::{
     mem_utils::memzero_bytes,
@@ -76,6 +85,7 @@ use crate::{
 
 pub const OBJECT_ENCODING_TAG: i32 = 1;
 pub const ACTOR_ENCODING_TAG: i32 = 2;
+pub const FUNCTION_ENCODING_TAG: i32 = 3;
 pub const MUTABLE_ENCODING_TAG: i32 = 4;
 pub const OPTION_ENCODING_TAG: i32 = 5;
 pub const ARRAY_ENCODING_TAG: i32 = 6;
@@ -87,6 +97,7 @@ pub const ANY_ENCODING_TAG: i32 = 10;
 const ACTOR_TYPE_INDEX: i32 = 0;
 
 const TYPE_TAG_LENGTH: usize = 1;
+const FUNCTION_SORT_LENGTH: usize = 1;
 const LENGTH_HEADER: usize = 1;
 const TYPE_INDEX_LENGTH: usize = 1;
 const FIELD_ENCODING_LENGTH: usize = 2; // label_hash type_index
@@ -159,6 +170,7 @@ impl TypeTable {
 enum Type {
     Object(FieldList),
     Actor(FieldList),
+    Function(FunctionSignature),
     Mutable(TypeIndex),
     Option(TypeIndex),
     Array(TypeIndex),
@@ -174,6 +186,7 @@ impl Type {
             + match Self::get_type(data) {
                 Self::Object(field_list) => field_list.size(),
                 Self::Actor(field_list) => field_list.size(),
+                Self::Function(signature) => signature.size(),
                 Self::Mutable(type_index) => type_index.size(),
                 Self::Option(type_index) => type_index.size(),
                 Self::Array(type_index) => type_index.size(),
@@ -189,6 +202,7 @@ impl Type {
         match tag {
             OBJECT_ENCODING_TAG => Self::Object(FieldList::new(data)),
             ACTOR_ENCODING_TAG => Self::Actor(FieldList::new(data)),
+            FUNCTION_ENCODING_TAG => Self::Function(FunctionSignature::new(data)),
             MUTABLE_ENCODING_TAG => Self::Mutable(TypeIndex::new(data)),
             OPTION_ENCODING_TAG => Self::Option(TypeIndex::new(data)),
             ARRAY_ENCODING_TAG => Self::Array(TypeIndex::new(data)),
@@ -196,7 +210,7 @@ impl Type {
             VARIANT_ENCODING_TAG => Self::Variant(FieldList::new(data)),
             NONE_ENCODING_TAG => Self::None,
             ANY_ENCODING_TAG => Self::Any,
-            _ => unimplemented!(),
+            _ => unreachable!(),
         }
     }
 }
@@ -287,6 +301,69 @@ impl TypeIndex {
     }
 }
 
+#[derive(PartialEq)]
+enum FunctionSort {
+    Query,
+    Write,
+    Composite,
+}
+
+pub const QUERY_FUNCTION_SORT: i32 = 1;
+pub const WRITE_FUNCTION_SORT: i32 = 2;
+pub const COMPOSITE_FUNCTION_SORT: i32 = 3;
+
+struct FunctionSignature {
+    data: EncodedData,
+}
+
+impl FunctionSignature {
+    unsafe fn new(data: EncodedData) -> FunctionSignature {
+        FunctionSignature { data }
+    }
+
+    unsafe fn size(&self) -> usize {
+        self.return_types_offset() + LENGTH_HEADER + self.count_return_types() * TYPE_INDEX_LENGTH
+    }
+
+    unsafe fn sort(&self) -> FunctionSort {
+        match self.data.read(0) {
+            QUERY_FUNCTION_SORT => FunctionSort::Query,
+            WRITE_FUNCTION_SORT => FunctionSort::Write,
+            COMPOSITE_FUNCTION_SORT => FunctionSort::Composite,
+            _ => unreachable!(),
+        }
+    }
+
+    unsafe fn count_parameters(&self) -> usize {
+        let count = self.data.read(FUNCTION_SORT_LENGTH);
+        assert!(count >= 0);
+        count as usize
+    }
+
+    unsafe fn get_parameter(&self, index: usize) -> TypeIndex {
+        let offset = FUNCTION_SORT_LENGTH + LENGTH_HEADER + index * TYPE_INDEX_LENGTH;
+        let type_index = self.data.read(offset);
+        TypeIndex { type_index }
+    }
+
+    unsafe fn return_types_offset(&self) -> usize {
+        FUNCTION_SORT_LENGTH + LENGTH_HEADER + self.count_parameters() * TYPE_INDEX_LENGTH
+    }
+
+    unsafe fn count_return_types(&self) -> usize {
+        let offset = self.return_types_offset();
+        let count = self.data.read(offset);
+        assert!(count >= 0);
+        count as usize
+    }
+
+    unsafe fn get_return_type(&self, index: usize) -> TypeIndex {
+        let offset = self.return_types_offset() + LENGTH_HEADER + index * TYPE_INDEX_LENGTH;
+        let type_index = self.data.read(offset);
+        TypeIndex { type_index }
+    }
+}
+
 /// Cache for remembering previous type compatibility checks.
 /// Necessary to avoid infinite loops on type recursion.
 /// Helpful to optimize repeated checks.
@@ -359,7 +436,7 @@ impl CompatibilityChecker {
         }
     }
 
-    unsafe fn compatible_fields(
+    unsafe fn compatible_object_fields(
         &mut self,
         new_field_list: &FieldList,
         old_field_list: &FieldList,
@@ -371,6 +448,27 @@ impl CompatibilityChecker {
                     return false;
                 }
                 Some(old_field) => {
+                    if !self.type_compatible(new_field.type_index, old_field.type_index) {
+                        return false;
+                    }
+                }
+            }
+        }
+        true
+    }
+
+    unsafe fn compatible_variant_fields(
+        &mut self,
+        new_field_list: &FieldList,
+        old_field_list: &FieldList,
+    ) -> bool {
+        for field_index in 0..old_field_list.count_fields() {
+            let old_field = old_field_list.get_field(field_index);
+            match new_field_list.find_field(old_field.label_hash) {
+                None => {
+                    return false;
+                }
+                Some(new_field) => {
                     if !self.type_compatible(new_field.type_index, old_field.type_index) {
                         return false;
                     }
@@ -404,6 +502,56 @@ impl CompatibilityChecker {
         true
     }
 
+    unsafe fn compatible_functions(
+        &mut self,
+        new_signature: &FunctionSignature,
+        old_signature: &FunctionSignature,
+    ) -> bool {
+        new_signature.sort() == old_signature.sort()
+            && self.compatible_parameters(new_signature, old_signature)
+            && self.compatible_return_types(new_signature, old_signature)
+    }
+
+    unsafe fn compatible_parameters(
+        &mut self,
+        new_signature: &FunctionSignature,
+        old_signature: &FunctionSignature,
+    ) -> bool {
+        let new_count = new_signature.count_parameters();
+        let old_count = old_signature.count_parameters();
+        if new_count != old_count {
+            return false;
+        }
+        for index in 0..new_count {
+            let _new_parameter = new_signature.get_parameter(index);
+            let _old_parameter = old_signature.get_parameter(index);
+            // Contravariance
+            unimplemented!()
+        }
+        true
+    }
+
+    unsafe fn compatible_return_types(
+        &mut self,
+        new_signature: &FunctionSignature,
+        old_signature: &FunctionSignature,
+    ) -> bool {
+        let new_count = new_signature.count_return_types();
+        let old_count = old_signature.count_return_types();
+        if new_count != old_count {
+            return false;
+        }
+        for index in 0..new_count {
+            let new_return_type = new_signature.get_return_type(index);
+            let old_return_type = old_signature.get_return_type(index);
+            // Covariance
+            if !self.type_compatible(new_return_type.type_index, old_return_type.type_index) {
+                return false;
+            }
+        }
+        true
+    }
+
     unsafe fn compatible_primitives(&mut self, new_type_index: i32, old_type_index: i32) -> bool {
         debug_assert!(new_type_index < 0 || old_type_index < 0);
         if new_type_index == old_type_index {
@@ -430,14 +578,17 @@ impl CompatibilityChecker {
         match (&new_type, &old_type) {
             (Type::Any, _) => true,
             (Type::Object(new_fields), Type::Object(old_fields)) => {
-                // Reversed check than for variants: Removing new object fields is allowed.
-                self.compatible_fields(new_fields, old_fields)
+                self.compatible_object_fields(new_fields, old_fields)
             }
             (Type::Object(_), _) => false,
             (Type::Actor(new_fields), Type::Actor(old_fields)) => {
-                self.compatible_fields(new_fields, old_fields)
+                self.compatible_object_fields(new_fields, old_fields)
             }
             (Type::Actor(_), _) => false,
+            (Type::Function(new_signature), Type::Function(old_signature)) => {
+                self.compatible_functions(new_signature, old_signature)
+            }
+            (Type::Function(_), _) => false,
             (Type::Mutable(new_variable), Type::Mutable(old_variable)) => {
                 self.compatible_type_indices(new_variable, old_variable)
             }
@@ -455,8 +606,7 @@ impl CompatibilityChecker {
             }
             (Type::Tuple(_), _) => false,
             (Type::Variant(new_fields), Type::Variant(old_fields)) => {
-                // Reversed check than for objects: Adding new variants fields is allowed.
-                self.compatible_fields(old_fields, new_fields)
+                self.compatible_variant_fields(new_fields, old_fields)
             }
             (Type::Variant(_), _) => false,
             (Type::None, Type::None) => true,
