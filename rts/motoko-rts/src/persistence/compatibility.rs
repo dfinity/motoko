@@ -34,7 +34,7 @@
 //! ```
 //! <type_table> ::= length:i32 (<type>)^length
 //! <type> ::= <object> | <mutable> | <option> | <array>
-//! <type> ::= <object> | <mutable> | <option> | <array> | <tuple> | <variant> | <none> | <any>
+//! <type> ::= <object> | <mutable> | <option> | <array> | <tuple> | <variant> | <none> | <any> | <actor>
 //! <object> ::= 1l <field_list>
 //! <mutable> ::= 2l type_index:i32
 //! <option> ::= 3l type_index:i32
@@ -43,6 +43,7 @@
 //! <variant> ::= 6l <field_list>
 //! <none> ::= 7l
 //! <any> ::= 8l
+//! <actor> ::= 9l <field_list>
 //! <field_list> ::= length:i32 (<field>)^length
 //! <field> ::= label_hash:i32 type_index:i32
 //! ```
@@ -82,6 +83,7 @@ pub const TUPLE_ENCODING_TAG: i32 = 5;
 pub const VARIANT_ENCODING_TAG: i32 = 6;
 pub const NONE_ENCODING_TAG: i32 = 7;
 pub const ANY_ENCODING_TAG: i32 = 8;
+pub const ACTOR_ENCODING_TAG: i32 = 9;
 
 const ACTOR_TYPE_INDEX: i32 = 0;
 
@@ -164,6 +166,7 @@ enum Type {
     Variant(FieldList),
     None,
     Any,
+    Actor(FieldList),
 }
 
 impl Type {
@@ -177,6 +180,7 @@ impl Type {
                 Self::Tuple(tuple_list) => tuple_list.size(),
                 Self::Variant(field_list) => field_list.size(),
                 Self::None | Self::Any => 0,
+                Self::Actor(field_list) => field_list.size(),
             }
     }
 
@@ -192,6 +196,7 @@ impl Type {
             VARIANT_ENCODING_TAG => Self::Variant(FieldList::new(data)),
             NONE_ENCODING_TAG => Self::None,
             ANY_ENCODING_TAG => Self::Any,
+            ACTOR_ENCODING_TAG => Self::Actor(FieldList::new(data)),
             _ => unimplemented!(),
         }
     }
@@ -453,6 +458,10 @@ impl CompatibilityChecker {
             (Type::Variant(_), _) => false,
             (Type::None, Type::None) => true,
             (Type::None, _) => false,
+            (Type::Actor(new_fields), Type::Actor(old_fields)) => {
+                self.compatible_fields(new_fields, old_fields)
+            }
+            (Type::Actor(_), _) => false,
         }
     }
 

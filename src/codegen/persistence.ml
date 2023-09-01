@@ -7,7 +7,7 @@
   // Primitive types are encoded by negative indices.
   // All numbers (type indices etc.) are encoded as little endian i32.
   <type_table> ::= length:i32 (<type>)^length
-  <type> ::= <object> | <mutable> | <option> | <array> | <tuple> | <variant> | <none> | <any>
+  <type> ::= <object> | <mutable> | <option> | <array> | <tuple> | <variant> | <none> | <any> | <actor>
   <object> ::= 1l <field_list>
   <mutable> ::= 2l type_index:i32
   <option> ::= 3l type_index:i32
@@ -16,6 +16,7 @@
   <variant> ::= 6l <field_list>
   <none> ::= 7l
   <any> ::= 8l
+  <actor> ::= 9l <field_list>
   <field_list> ::= length:i32 (<field>)^length
   <field> ::= label_hash:i32 type_index:i32
   
@@ -126,7 +127,7 @@ let rec collect_type table old_typ =
     let open Type in
     match typ with
     | Prim _ | Non | Any -> table
-    | Obj (Object, field_list) ->
+    | Obj (sort, field_list) when sort = Actor || sort = Object ->
       collect_fields table field_list
     | Mut variable_type ->
       collect_type table variable_type
@@ -221,6 +222,9 @@ let encode_complex_type table typ =
     encode_i32 7l
   | Any ->
     encode_i32 8l
+  | Obj (Actor, field_list) -> 
+    encode_i32 9l ^ 
+    encode_list (encode_field table) field_list
   | _ -> assert false
 
 let encode_type_table table =
