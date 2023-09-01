@@ -33,17 +33,16 @@
 //!
 //! ```
 //! <type_table> ::= length:i32 (<type>)^length
-//! <type> ::= <object> | <mutable> | <option> | <array>
-//! <type> ::= <object> | <mutable> | <option> | <array> | <tuple> | <variant> | <none> | <any> | <actor>
+//! <type> ::= <object> | <actor> | <mutable> | <option> | <array> | <tuple> | <variant> | <none> | <any>
 //! <object> ::= 1l <field_list>
-//! <mutable> ::= 2l type_index:i32
-//! <option> ::= 3l type_index:i32
-//! <array> ::= 4l type_index:i32
-//! <tuple> ::= 5l length:i32 (type_index:i32)^length
-//! <variant> ::= 6l <field_list>
-//! <none> ::= 7l
-//! <any> ::= 8l
-//! <actor> ::= 9l <field_list>
+//! <actor> ::= 2l <field_list>
+//! <mutable> ::= 4l type_index:i32
+//! <option> ::= 5l type_index:i32
+//! <array> ::= 6l type_index:i32
+//! <tuple> ::= 7l length:i32 (type_index:i32)^length
+//! <variant> ::= 8l <field_list>
+//! <none> ::= 9l
+//! <any> ::= 10l
 //! <field_list> ::= length:i32 (<field>)^length
 //! <field> ::= label_hash:i32 type_index:i32
 //! ```
@@ -76,14 +75,14 @@ use crate::{
 };
 
 pub const OBJECT_ENCODING_TAG: i32 = 1;
-pub const MUTABLE_ENCODING_TAG: i32 = 2;
-pub const OPTION_ENCODING_TAG: i32 = 3;
-pub const ARRAY_ENCODING_TAG: i32 = 4;
-pub const TUPLE_ENCODING_TAG: i32 = 5;
-pub const VARIANT_ENCODING_TAG: i32 = 6;
-pub const NONE_ENCODING_TAG: i32 = 7;
-pub const ANY_ENCODING_TAG: i32 = 8;
-pub const ACTOR_ENCODING_TAG: i32 = 9;
+pub const ACTOR_ENCODING_TAG: i32 = 2;
+pub const MUTABLE_ENCODING_TAG: i32 = 4;
+pub const OPTION_ENCODING_TAG: i32 = 5;
+pub const ARRAY_ENCODING_TAG: i32 = 6;
+pub const TUPLE_ENCODING_TAG: i32 = 7;
+pub const VARIANT_ENCODING_TAG: i32 = 8;
+pub const NONE_ENCODING_TAG: i32 = 9;
+pub const ANY_ENCODING_TAG: i32 = 10;
 
 const ACTOR_TYPE_INDEX: i32 = 0;
 
@@ -159,6 +158,7 @@ impl TypeTable {
 
 enum Type {
     Object(FieldList),
+    Actor(FieldList),
     Mutable(TypeIndex),
     Option(TypeIndex),
     Array(TypeIndex),
@@ -166,7 +166,6 @@ enum Type {
     Variant(FieldList),
     None,
     Any,
-    Actor(FieldList),
 }
 
 impl Type {
@@ -174,13 +173,13 @@ impl Type {
         TYPE_TAG_LENGTH
             + match Self::get_type(data) {
                 Self::Object(field_list) => field_list.size(),
+                Self::Actor(field_list) => field_list.size(),
                 Self::Mutable(type_index) => type_index.size(),
                 Self::Option(type_index) => type_index.size(),
                 Self::Array(type_index) => type_index.size(),
                 Self::Tuple(tuple_list) => tuple_list.size(),
                 Self::Variant(field_list) => field_list.size(),
                 Self::None | Self::Any => 0,
-                Self::Actor(field_list) => field_list.size(),
             }
     }
 
@@ -189,6 +188,7 @@ impl Type {
         let data = data.sub_view(TYPE_TAG_LENGTH);
         match tag {
             OBJECT_ENCODING_TAG => Self::Object(FieldList::new(data)),
+            ACTOR_ENCODING_TAG => Self::Actor(FieldList::new(data)),
             MUTABLE_ENCODING_TAG => Self::Mutable(TypeIndex::new(data)),
             OPTION_ENCODING_TAG => Self::Option(TypeIndex::new(data)),
             ARRAY_ENCODING_TAG => Self::Array(TypeIndex::new(data)),
@@ -196,7 +196,6 @@ impl Type {
             VARIANT_ENCODING_TAG => Self::Variant(FieldList::new(data)),
             NONE_ENCODING_TAG => Self::None,
             ANY_ENCODING_TAG => Self::Any,
-            ACTOR_ENCODING_TAG => Self::Actor(FieldList::new(data)),
             _ => unimplemented!(),
         }
     }
@@ -435,6 +434,10 @@ impl CompatibilityChecker {
                 self.compatible_fields(new_fields, old_fields)
             }
             (Type::Object(_), _) => false,
+            (Type::Actor(new_fields), Type::Actor(old_fields)) => {
+                self.compatible_fields(new_fields, old_fields)
+            }
+            (Type::Actor(_), _) => false,
             (Type::Mutable(new_variable), Type::Mutable(old_variable)) => {
                 self.compatible_type_indices(new_variable, old_variable)
             }
@@ -458,10 +461,6 @@ impl CompatibilityChecker {
             (Type::Variant(_), _) => false,
             (Type::None, Type::None) => true,
             (Type::None, _) => false,
-            (Type::Actor(new_fields), Type::Actor(old_fields)) => {
-                self.compatible_fields(new_fields, old_fields)
-            }
-            (Type::Actor(_), _) => false,
         }
     }
 

@@ -49,6 +49,7 @@ impl BinaryData {
 #[derive(Clone)]
 enum Type {
     Object(FieldList),
+    Actor(FieldList),
     Mutable(TypeReference),
     Option(TypeReference),
     Array(TypeReference),
@@ -56,7 +57,6 @@ enum Type {
     Variant(FieldList),
     None,
     Any,
-    Actor(FieldList),
 }
 
 impl Type {

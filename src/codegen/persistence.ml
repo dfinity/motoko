@@ -7,16 +7,16 @@
   // Primitive types are encoded by negative indices.
   // All numbers (type indices etc.) are encoded as little endian i32.
   <type_table> ::= length:i32 (<type>)^length
-  <type> ::= <object> | <mutable> | <option> | <array> | <tuple> | <variant> | <none> | <any> | <actor>
+  <type> ::= <object> | <actor> | <mutable> | <option> | <array> | <tuple> | <variant> | <none> | <any>
   <object> ::= 1l <field_list>
-  <mutable> ::= 2l type_index:i32
-  <option> ::= 3l type_index:i32
-  <array> ::= 4l type_index:i32
-  <tuple> ::= 5l length:i32 (type_index:i32)^length
-  <variant> ::= 6l <field_list>
-  <none> ::= 7l
-  <any> ::= 8l
-  <actor> ::= 9l <field_list>
+  <actor> ::= 2l <field_list>
+  <mutable> ::= 4l type_index:i32
+  <option> ::= 5l type_index:i32
+  <array> ::= 6l type_index:i32
+  <tuple> ::= 7l length:i32 (type_index:i32)^length
+  <variant> ::= 8l <field_list>
+  <none> ::= 9l
+  <any> ::= 10l
   <field_list> ::= length:i32 (<field>)^length
   <field> ::= label_hash:i32 type_index:i32
   
@@ -203,28 +203,28 @@ let encode_complex_type table typ =
   | Obj (Object, field_list) -> 
     encode_i32 1l ^ 
     encode_list (encode_field table) field_list
+  | Obj (Actor, field_list) -> 
+    encode_i32 2l ^ 
+    encode_list (encode_field table) field_list
   | Mut variable_type ->
-    encode_i32 2l ^
+    encode_i32 4l ^
     encode_i32 (type_index table variable_type)
   | Opt optional_type ->
-    encode_i32 3l ^
+    encode_i32 5l ^
     encode_i32 (type_index table optional_type)
   | Array element_type ->
-    encode_i32 4l ^
+    encode_i32 6l ^
     encode_i32 (type_index table element_type)
   | Tup type_list ->
-    encode_i32 5l ^
+    encode_i32 7l ^
     encode_list (encode_tuple_item table) type_list
   | Variant field_list ->
-    encode_i32 6l ^
+    encode_i32 8l ^
     encode_list (encode_field table) field_list
   | Non ->
-    encode_i32 7l
+    encode_i32 9l
   | Any ->
-    encode_i32 8l
-  | Obj (Actor, field_list) -> 
-    encode_i32 9l ^ 
-    encode_list (encode_field table) field_list
+    encode_i32 10l
   | _ -> assert false
 
 let encode_type_table table =
