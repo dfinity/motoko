@@ -34,12 +34,13 @@
 //! ```
 //! <type_table> ::= length:i32 (<type>)^length
 //! <type> ::= <object> | <mutable> | <option> | <array>
-//! <type> ::= <object> | <mutable> | <option> | <array> | <tuple>
+//! <type> ::= <object> | <mutable> | <option> | <array> | <tuple> | <variant>
 //! <object> ::= 1l <field_list>
 //! <mutable> ::= 2l type_index:i32
 //! <option> ::= 3l type_index:i32
 //! <array> ::= 4l type_index:i32
 //! <tuple> ::= 5l length:i32 (type_index:i32)^length
+//! <variant> ::= 6l <field_list>
 //! <field_list> ::= length:i32 (<field>)^length
 //! <field> ::= label_hash:i32 type_index:i32
 //! ```
@@ -76,6 +77,7 @@ pub const MUTABLE_ENCODING_TAG: i32 = 2;
 pub const OPTION_ENCODING_TAG: i32 = 3;
 pub const ARRAY_ENCODING_TAG: i32 = 4;
 pub const TUPLE_ENCODING_TAG: i32 = 5;
+pub const VARIANT_ENCODING_TAG: i32 = 6;
 
 const ACTOR_TYPE_INDEX: i32 = 0;
 
@@ -155,6 +157,7 @@ enum Type {
     Option(TypeIndex),
     Array(TypeIndex),
     Tuple(TypeList),
+    Variant(FieldList),
 }
 
 impl Type {
@@ -166,6 +169,7 @@ impl Type {
                 Self::Option(type_index) => type_index.size(),
                 Self::Array(type_index) => type_index.size(),
                 Self::Tuple(tuple_list) => tuple_list.size(),
+                Self::Variant(field_list) => field_list.size(),
             }
     }
 
@@ -178,6 +182,7 @@ impl Type {
             OPTION_ENCODING_TAG => Self::Option(TypeIndex::new(data)),
             ARRAY_ENCODING_TAG => Self::Array(TypeIndex::new(data)),
             TUPLE_ENCODING_TAG => Self::Tuple(TypeList::new(data)),
+            VARIANT_ENCODING_TAG => Self::Variant(FieldList::new(data)),
             _ => unimplemented!(),
         }
     }
@@ -398,6 +403,7 @@ impl CompatibilityChecker {
         let old_type = self.old_type_table.get_type(old_type_index);
         match (&new_type, &old_type) {
             (Type::Object(new_fields), Type::Object(old_fields)) => {
+                // Reversed check than for variants: Removing new object fields is allowed.
                 self.compatible_fields(new_fields, old_fields)
             }
             (Type::Object(_), _) => false,
@@ -417,6 +423,11 @@ impl CompatibilityChecker {
                 self.compatible_type_list(new_type_list, old_type_list)
             }
             (Type::Tuple(_), _) => false,
+            (Type::Variant(new_fields), Type::Variant(old_fields)) => {
+                // Reversed check than for objects: Adding new variants fields is allowed.
+                self.compatible_fields(old_fields, new_fields)
+            }
+            (Type::Variant(_), _) => false,
         }
     }
 

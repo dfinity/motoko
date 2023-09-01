@@ -7,12 +7,13 @@
   // Primitive types are encoded by negative indices.
   // All numbers (type indices etc.) are encoded as little endian i32.
   <type_table> ::= length:i32 (<type>)^length
-  <type> ::= <object> | <mutable> | <option> | <array> | <tuple>
+  <type> ::= <object> | <mutable> | <option> | <array> | <tuple> | <variant>
   <object> ::= 1l <field_list>
   <mutable> ::= 2l type_index:i32
   <option> ::= 3l type_index:i32
   <array> ::= 4l type_index:i32
   <tuple> ::= 5l length:i32 (type_index:i32)^length
+  <variant> ::= 6l <field_list>
   <field_list> ::= length:i32 (<field>)^length
   <field> ::= label_hash:i32 type_index:i32
   
@@ -128,8 +129,7 @@ let rec collect_type table typ =
     match typ with
     | Prim _ -> table
     | Obj (Object, field_list) ->
-      let field_types = List.map (fun field -> field.typ) field_list in
-      collect_types table field_types
+      collect_fields table field_list
     | Mut variable_type ->
       collect_type table variable_type
     | Opt optional_type ->
@@ -138,9 +138,16 @@ let rec collect_type table typ =
       collect_type table element_type
     | Tup type_list ->
       collect_types table type_list
+    | Variant field_list ->
+      collect_fields table field_list
     | _ ->
       Printf.eprintf "Unsupported persistent type %s\n" (Type.string_of_typ typ);
       assert false)
+
+and collect_fields table field_list =
+  let open Type in
+  let field_types = List.map (fun field -> field.typ) field_list in
+  collect_types table field_types
 
 and collect_types table type_list =
   match type_list with
@@ -209,6 +216,9 @@ let encode_complex_type table typ =
   | Tup type_list ->
     encode_i32 5l ^
     encode_list (encode_tuple_item table) type_list
+  | Variant field_list ->
+    encode_i32 6l ^
+    encode_list (encode_field table) field_list
   | _ -> assert false
 
 let encode_type_table table =
