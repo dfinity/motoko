@@ -49,6 +49,9 @@ const LAST_RESERVED_REGION_ID: u64 = 15;
 // Mirrored field from stable memory, for handling upgrade logic.
 pub(crate) static mut REGION_TOTAL_ALLOCATED_BLOCKS: u32 = 0;
 
+// Base offset for blocks
+pub(crate) static mut BLOCK_BASE: u64 = 0;
+
 // Scalar sentinel value recognized in the GC as "no root", i.e. (!`is_ptr()`).
 // Same design like `continuation_table::TABLE`.
 pub(crate) const NO_REGION: Value = Value::from_scalar(0);
@@ -179,9 +182,8 @@ impl RegionObject {
         let block_id = av.get_ith_block_id(block_rank as u32);
 
         // address of the byte to load from stable memory:
-        let offset = meta_data::offset::BLOCK_ZERO
-            + block_id.0 as u64 * meta_data::size::BLOCK_IN_BYTES
-            + intra_block_index;
+        let offset =
+            BLOCK_BASE + block_id.0 as u64 * meta_data::size::BLOCK_IN_BYTES + intra_block_index;
         (
             offset,
             block_id,
@@ -259,7 +261,11 @@ mod meta_data {
 
         pub const VERSION: u64 = MAGIC + bytes_of::<u64>();
 
-        pub const TOTAL_ALLOCATED_BLOCKS: u64 = VERSION + bytes_of::<u32>();
+        pub const BLOCK_SIZE: u64 = VERSION + bytes_of::<u32>();
+
+        pub const BLOCK_BASE: u64 = BLOCK_SIZE + bytes_of::<u16>();
+
+        pub const TOTAL_ALLOCATED_BLOCKS: u64 = BLOCK_BASE + bytes_of::<u64>();
 
         pub const TOTAL_ALLOCATED_REGIONS: u64 = TOTAL_ALLOCATED_BLOCKS + bytes_of::<u32>();
 
@@ -267,8 +273,9 @@ mod meta_data {
 
         pub const FREE: u64 = BLOCK_REGION_TABLE + super::size::BLOCK_REGION_TABLE;
 
-        /* One block for meta data, plus future use TBD. */
-        pub const BLOCK_ZERO: u64 = super::size::BLOCK_IN_BYTES;
+        pub const BASE_LOW: u64 = 16 * super::size::PAGE_IN_BYTES;
+
+        pub const BASE_HIGH: u64 = super::size::BLOCK_IN_BYTES;
     }
 
     pub mod total_allocated_blocks {
@@ -345,11 +352,17 @@ mod meta_data {
     }
 }
 
-fn write_magic() {
-    use crate::stable_mem::{size, write, write_u32};
+unsafe fn write_magic() {
+    use crate::stable_mem::{size, write, write_u16, write_u32, write_u64};
     assert!(size() > 0);
+    assert!(BLOCK_BASE >= meta_data::offset::FREE);
     write(meta_data::offset::MAGIC, meta_data::version::MAGIC);
     write_u32(meta_data::offset::VERSION, meta_data::version::VERSION);
+    write_u16(
+        meta_data::offset::BLOCK_SIZE,
+        meta_data::size::PAGES_IN_BLOCK as u16,
+    );
+    write_u64(meta_data::offset::BLOCK_BASE, BLOCK_BASE);
 }
 
 #[ic_mem_fn]
@@ -560,6 +573,8 @@ pub(crate) unsafe fn region_migration_from_no_stable_memory<M: Memory>(mem: &mut
         write((i as u64) * (PAGE_IN_BYTES as u64), &zero_page);
     }
 
+    BLOCK_BASE = meta_data::offset::BASE_LOW;
+
     // Write magic header
     write_magic();
 
@@ -656,6 +671,7 @@ pub(crate) unsafe fn region_migration_from_some_stable_memory<M: Memory>(mem: &m
 
     write(0, header_bytes); // Zero out first block, for region manager meta data.
 
+    BLOCK_BASE = meta_data::offset::BASE_HIGH;
     // Write magic header
     write_magic();
 
@@ -701,7 +717,7 @@ pub(crate) unsafe fn region_migration_from_some_stable_memory<M: Memory>(mem: &m
 // Case: Version 2 into version 2 ("Trivial migration" case).
 //
 pub(crate) unsafe fn region_migration_from_regions_plus<M: Memory>(mem: &mut M) {
-    use crate::stable_mem::{read, read_u32, size};
+    use crate::stable_mem::{read, read_u16, read_u32, read_u64, size};
 
     // Check if the magic in the memory corresponds to this object.
     assert!(size() > 1);
@@ -715,6 +731,18 @@ pub(crate) unsafe fn region_migration_from_regions_plus<M: Memory>(mem: &mut M) 
         region_trap_with("migration failure (unexpected higher version)")
     };
 
+    let block_size = read_u16(meta_data::offset::BLOCK_SIZE);
+    if block_size as u32 != meta_data::size::PAGES_IN_BLOCK {
+        region_trap_with("migration failure (unexpected block size)")
+    };
+
+    let block_base = read_u64(meta_data::offset::BLOCK_BASE);
+    if block_base < meta_data::offset::FREE {
+        region_trap_with("migration failure (base too low)")
+    };
+
+    BLOCK_BASE = block_base;
+
     REGION_0 = region_recover(mem, &RegionId(0));
 
     // Ensure that regions 1 through LAST_RESERVED_REGION_ID are already reserved for
@@ -727,21 +755,31 @@ pub(crate) unsafe fn region_migration_from_regions_plus<M: Memory>(mem: &mut M) 
 //
 #[ic_mem_fn]
 pub(crate) unsafe fn region_init<M: Memory>(mem: &mut M, use_stable_regions: u32) {
-    debug_assert!(meta_data::offset::FREE < meta_data::offset::BLOCK_ZERO);
     match crate::stable_mem::get_version() {
         VERSION_NO_STABLE_MEMORY => {
             assert!(crate::stable_mem::size() == 0);
             if use_stable_regions != 0 {
                 region_migration_from_no_stable_memory(mem);
+                debug_assert!(meta_data::offset::FREE < BLOCK_BASE);
+                debug_assert!(BLOCK_BASE == meta_data::offset::BASE_LOW);
             };
         }
         VERSION_SOME_STABLE_MEMORY => {
             assert!(crate::stable_mem::size() > 0);
             if use_stable_regions != 0 {
                 region_migration_from_some_stable_memory(mem);
+                debug_assert!(meta_data::offset::FREE < BLOCK_BASE);
+                debug_assert!(BLOCK_BASE == meta_data::offset::BASE_HIGH);
             };
         }
-        _ => region_migration_from_regions_plus(mem), //check format & recover region0
+        _ => {
+            region_migration_from_regions_plus(mem); //check format & recover region0
+            debug_assert!(meta_data::offset::FREE < BLOCK_BASE);
+            debug_assert!(
+                BLOCK_BASE == meta_data::offset::BASE_LOW
+                    || BLOCK_BASE == meta_data::offset::BASE_HIGH
+            );
+        }
     }
 }
 
