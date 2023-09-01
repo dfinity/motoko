@@ -77,6 +77,8 @@
 //! Write     | 2l
 //! Composite | 3l
 
+use core::mem::swap;
+
 use crate::{
     mem_utils::memzero_bytes,
     memory::{alloc_blob, Memory},
@@ -417,38 +419,46 @@ impl TypeCheckCache {
 }
 
 struct CompatibilityChecker {
-    cache: TypeCheckCache,
-    new_type_table: TypeTable,
-    old_type_table: TypeTable,
+    covariance_cache: TypeCheckCache,
+    contravariance_cache: TypeCheckCache,
+    target_type_table: TypeTable,
+    source_type_table: TypeTable,
 }
 
 impl CompatibilityChecker {
     unsafe fn new<M: Memory>(
         mem: &mut M,
-        new_type_table: TypeTable,
-        old_type_table: TypeTable,
+        target_type_table: TypeTable,
+        source_type_table: TypeTable,
     ) -> CompatibilityChecker {
-        let cache = TypeCheckCache::new(mem, &new_type_table, &old_type_table);
+        let covariance_cache = TypeCheckCache::new(mem, &target_type_table, &source_type_table);
+        let contravariance_cache = TypeCheckCache::new(mem, &source_type_table, &target_type_table);
         CompatibilityChecker {
-            cache,
-            new_type_table,
-            old_type_table,
+            covariance_cache,
+            contravariance_cache,
+            target_type_table,
+            source_type_table,
         }
+    }
+
+    fn flip_variance(&mut self) {
+        swap(&mut self.covariance_cache, &mut self.contravariance_cache);
+        swap(&mut self.target_type_table, &mut self.source_type_table);
     }
 
     unsafe fn compatible_object_fields(
         &mut self,
-        new_field_list: &FieldList,
-        old_field_list: &FieldList,
+        target_field_list: &FieldList,
+        source_field_list: &FieldList,
     ) -> bool {
-        for field_index in 0..new_field_list.count_fields() {
-            let new_field = new_field_list.get_field(field_index);
-            match old_field_list.find_field(new_field.label_hash) {
+        for field_index in 0..target_field_list.count_fields() {
+            let target_field = target_field_list.get_field(field_index);
+            match source_field_list.find_field(target_field.label_hash) {
                 None => {
                     return false;
                 }
-                Some(old_field) => {
-                    if !self.type_compatible(new_field.type_index, old_field.type_index) {
+                Some(source_field) => {
+                    if !self.type_compatible(target_field.type_index, source_field.type_index) {
                         return false;
                     }
                 }
@@ -459,17 +469,17 @@ impl CompatibilityChecker {
 
     unsafe fn compatible_variant_fields(
         &mut self,
-        new_field_list: &FieldList,
-        old_field_list: &FieldList,
+        target_field_list: &FieldList,
+        source_field_list: &FieldList,
     ) -> bool {
-        for field_index in 0..old_field_list.count_fields() {
-            let old_field = old_field_list.get_field(field_index);
-            match new_field_list.find_field(old_field.label_hash) {
+        for field_index in 0..source_field_list.count_fields() {
+            let source_field = source_field_list.get_field(field_index);
+            match target_field_list.find_field(source_field.label_hash) {
                 None => {
                     return false;
                 }
-                Some(new_field) => {
-                    if !self.type_compatible(new_field.type_index, old_field.type_index) {
+                Some(target_field) => {
+                    if !self.type_compatible(target_field.type_index, source_field.type_index) {
                         return false;
                     }
                 }
@@ -480,21 +490,25 @@ impl CompatibilityChecker {
 
     unsafe fn compatible_type_indices(
         &mut self,
-        new_type: &TypeIndex,
-        old_type: &TypeIndex,
+        target_type: &TypeIndex,
+        source_type: &TypeIndex,
     ) -> bool {
-        self.type_compatible(new_type.type_index, old_type.type_index)
+        self.type_compatible(target_type.type_index, source_type.type_index)
     }
 
-    unsafe fn compatible_type_list(&mut self, new_tuple: &TypeList, old_tuple: &TypeList) -> bool {
-        let new_count = new_tuple.count_items();
-        let old_count = old_tuple.count_items();
-        if new_count != old_count {
+    unsafe fn compatible_type_list(
+        &mut self,
+        target_tuple: &TypeList,
+        source_tuple: &TypeList,
+    ) -> bool {
+        let target_count = target_tuple.count_items();
+        let source_count = source_tuple.count_items();
+        if target_count != source_count {
             return false;
         }
-        for item_index in 0..new_count {
-            let new_item = new_tuple.get_item(item_index);
-            let old_item = old_tuple.get_item(item_index);
+        for item_index in 0..target_count {
+            let new_item = target_tuple.get_item(item_index);
+            let old_item = source_tuple.get_item(item_index);
             if !self.compatible_type_indices(&new_item, &old_item) {
                 return false;
             }
@@ -504,78 +518,99 @@ impl CompatibilityChecker {
 
     unsafe fn compatible_functions(
         &mut self,
-        new_signature: &FunctionSignature,
-        old_signature: &FunctionSignature,
+        target_signature: &FunctionSignature,
+        source_signature: &FunctionSignature,
     ) -> bool {
-        new_signature.sort() == old_signature.sort()
-            && self.compatible_parameters(new_signature, old_signature)
-            && self.compatible_return_types(new_signature, old_signature)
+        target_signature.sort() == source_signature.sort()
+            && self.compatible_parameters(target_signature, source_signature)
+            && self.compatible_return_types(target_signature, source_signature)
     }
 
     unsafe fn compatible_parameters(
         &mut self,
-        new_signature: &FunctionSignature,
-        old_signature: &FunctionSignature,
+        target_signature: &FunctionSignature,
+        source_signature: &FunctionSignature,
     ) -> bool {
-        let new_count = new_signature.count_parameters();
-        let old_count = old_signature.count_parameters();
-        if new_count != old_count {
+        let target_count = target_signature.count_parameters();
+        let source_count = source_signature.count_parameters();
+        if target_count != source_count {
             return false;
         }
-        for index in 0..new_count {
-            let _new_parameter = new_signature.get_parameter(index);
-            let _old_parameter = old_signature.get_parameter(index);
+        for index in 0..target_count {
+            let target_parameter = target_signature.get_parameter(index);
+            let source_parameter = source_signature.get_parameter(index);
             // Contravariance
-            unimplemented!()
-        }
-        true
-    }
-
-    unsafe fn compatible_return_types(
-        &mut self,
-        new_signature: &FunctionSignature,
-        old_signature: &FunctionSignature,
-    ) -> bool {
-        let new_count = new_signature.count_return_types();
-        let old_count = old_signature.count_return_types();
-        if new_count != old_count {
-            return false;
-        }
-        for index in 0..new_count {
-            let new_return_type = new_signature.get_return_type(index);
-            let old_return_type = old_signature.get_return_type(index);
-            // Covariance
-            if !self.type_compatible(new_return_type.type_index, old_return_type.type_index) {
+            if !self.reverse_compatible(source_parameter.type_index, target_parameter.type_index) {
                 return false;
             }
         }
         true
     }
 
-    unsafe fn compatible_primitives(&mut self, new_type_index: i32, old_type_index: i32) -> bool {
-        debug_assert!(new_type_index < 0 || old_type_index < 0);
-        if new_type_index == old_type_index {
+    unsafe fn reverse_compatible(
+        &mut self,
+        source_type_index: i32,
+        target_type_index: i32,
+    ) -> bool {
+        self.flip_variance();
+        let result = self.type_compatible(target_type_index, source_type_index);
+        self.flip_variance();
+        result
+    }
+
+    unsafe fn compatible_return_types(
+        &mut self,
+        target_signature: &FunctionSignature,
+        source_signature: &FunctionSignature,
+    ) -> bool {
+        let target_count = target_signature.count_return_types();
+        let source_count = source_signature.count_return_types();
+        if target_count != source_count {
+            return false;
+        }
+        for index in 0..target_count {
+            let target_return_type = target_signature.get_return_type(index);
+            let source_return_type = source_signature.get_return_type(index);
+            // Covariance
+            if !self.type_compatible(target_return_type.type_index, source_return_type.type_index) {
+                return false;
+            }
+        }
+        true
+    }
+
+    unsafe fn compatible_primitives(
+        &mut self,
+        target_type_index: i32,
+        source_type_index: i32,
+    ) -> bool {
+        debug_assert!(target_type_index < 0 || source_type_index < 0);
+        if target_type_index == source_type_index {
             return true;
         }
-        if new_type_index >= 0 {
-            if let Type::Any = self.new_type_table.get_type(new_type_index) {
+        if target_type_index >= 0 {
+            if let Type::Any = self.target_type_table.get_type(target_type_index) {
                 return true;
             }
         }
         false
     }
 
-    unsafe fn type_compatible(&mut self, new_type_index: i32, old_type_index: i32) -> bool {
-        if new_type_index < 0 || old_type_index < 0 {
-            return self.compatible_primitives(new_type_index, old_type_index);
+    unsafe fn type_compatible(&mut self, target_type_index: i32, source_type_index: i32) -> bool {
+        if target_type_index < 0 || source_type_index < 0 {
+            return self.compatible_primitives(target_type_index, source_type_index);
         }
-        if self.cache.visited(new_type_index, old_type_index) {
+        if self
+            .covariance_cache
+            .visited(target_type_index, source_type_index)
+        {
             return true;
         }
-        self.cache.visit(new_type_index, old_type_index);
-        let new_type = self.new_type_table.get_type(new_type_index);
-        let old_type = self.old_type_table.get_type(old_type_index);
-        match (&new_type, &old_type) {
+        self.covariance_cache
+            .visit(target_type_index, source_type_index);
+        let target_type = self.target_type_table.get_type(target_type_index);
+        let source_type = self.source_type_table.get_type(source_type_index);
+        match (&target_type, &source_type) {
             (Type::Any, _) => true,
             (Type::Object(new_fields), Type::Object(old_fields)) => {
                 self.compatible_object_fields(new_fields, old_fields)
@@ -614,14 +649,14 @@ impl CompatibilityChecker {
         }
     }
 
-    unsafe fn compatible_actor_fields(&mut self) -> bool {
-        let new_field_list = self.new_type_table.get_actor_fields();
-        let old_field_list = self.old_type_table.get_actor_fields();
-        for new_field_index in 0..new_field_list.count_fields() {
-            let new_field = new_field_list.get_field(new_field_index);
-            match old_field_list.find_field(new_field.label_hash) {
-                Some(old_field) => {
-                    if !self.type_compatible(new_field.type_index, old_field.type_index) {
+    unsafe fn compatible_main_actors(&mut self) -> bool {
+        let target_field_list = self.target_type_table.get_actor_fields();
+        let source_field_list = self.source_type_table.get_actor_fields();
+        for target_field_index in 0..target_field_list.count_fields() {
+            let target_field = target_field_list.get_field(target_field_index);
+            match source_field_list.find_field(target_field.label_hash) {
+                Some(source_field) => {
+                    if !self.type_compatible(target_field.type_index, source_field.type_index) {
                         return false;
                     }
                 }
@@ -638,5 +673,5 @@ pub unsafe fn memory_compatible<M: Memory>(mem: &mut M, old_type: Value, new_typ
     let new_type_table = TypeTable::new(new_type);
     let old_type_table = TypeTable::new(old_type);
     let mut checker = CompatibilityChecker::new(mem, new_type_table, old_type_table);
-    checker.compatible_actor_fields()
+    checker.compatible_main_actors()
 }
