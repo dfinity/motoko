@@ -34,13 +34,15 @@
 //! ```
 //! <type_table> ::= length:i32 (<type>)^length
 //! <type> ::= <object> | <mutable> | <option> | <array>
-//! <type> ::= <object> | <mutable> | <option> | <array> | <tuple> | <variant>
+//! <type> ::= <object> | <mutable> | <option> | <array> | <tuple> | <variant> | <none> | <any>
 //! <object> ::= 1l <field_list>
 //! <mutable> ::= 2l type_index:i32
 //! <option> ::= 3l type_index:i32
 //! <array> ::= 4l type_index:i32
 //! <tuple> ::= 5l length:i32 (type_index:i32)^length
 //! <variant> ::= 6l <field_list>
+//! <none> ::= 7l
+//! <any> ::= 8l
 //! <field_list> ::= length:i32 (<field>)^length
 //! <field> ::= label_hash:i32 type_index:i32
 //! ```
@@ -78,6 +80,8 @@ pub const OPTION_ENCODING_TAG: i32 = 3;
 pub const ARRAY_ENCODING_TAG: i32 = 4;
 pub const TUPLE_ENCODING_TAG: i32 = 5;
 pub const VARIANT_ENCODING_TAG: i32 = 6;
+pub const NONE_ENCODING_TAG: i32 = 7;
+pub const ANY_ENCODING_TAG: i32 = 8;
 
 const ACTOR_TYPE_INDEX: i32 = 0;
 
@@ -158,6 +162,8 @@ enum Type {
     Array(TypeIndex),
     Tuple(TypeList),
     Variant(FieldList),
+    None,
+    Any,
 }
 
 impl Type {
@@ -170,6 +176,7 @@ impl Type {
                 Self::Array(type_index) => type_index.size(),
                 Self::Tuple(tuple_list) => tuple_list.size(),
                 Self::Variant(field_list) => field_list.size(),
+                Self::None | Self::Any => 0,
             }
     }
 
@@ -183,6 +190,8 @@ impl Type {
             ARRAY_ENCODING_TAG => Self::Array(TypeIndex::new(data)),
             TUPLE_ENCODING_TAG => Self::Tuple(TypeList::new(data)),
             VARIANT_ENCODING_TAG => Self::Variant(FieldList::new(data)),
+            NONE_ENCODING_TAG => Self::None,
+            ANY_ENCODING_TAG => Self::Any,
             _ => unimplemented!(),
         }
     }
@@ -391,9 +400,22 @@ impl CompatibilityChecker {
         true
     }
 
+    unsafe fn compatible_primitives(&mut self, new_type_index: i32, old_type_index: i32) -> bool {
+        debug_assert!(new_type_index < 0 || old_type_index < 0);
+        if new_type_index == old_type_index {
+            return true;
+        }
+        if new_type_index >= 0 {
+            if let Type::Any = self.new_type_table.get_type(new_type_index) {
+                return true;
+            }
+        }
+        false
+    }
+
     unsafe fn type_compatible(&mut self, new_type_index: i32, old_type_index: i32) -> bool {
         if new_type_index < 0 || old_type_index < 0 {
-            return new_type_index == old_type_index;
+            return self.compatible_primitives(new_type_index, old_type_index);
         }
         if self.cache.visited(new_type_index, old_type_index) {
             return true;
@@ -402,6 +424,7 @@ impl CompatibilityChecker {
         let new_type = self.new_type_table.get_type(new_type_index);
         let old_type = self.old_type_table.get_type(old_type_index);
         match (&new_type, &old_type) {
+            (Type::Any, _) => true,
             (Type::Object(new_fields), Type::Object(old_fields)) => {
                 // Reversed check than for variants: Removing new object fields is allowed.
                 self.compatible_fields(new_fields, old_fields)
@@ -428,6 +451,8 @@ impl CompatibilityChecker {
                 self.compatible_fields(old_fields, new_fields)
             }
             (Type::Variant(_), _) => false,
+            (Type::None, Type::None) => true,
+            (Type::None, _) => false,
         }
     }
 

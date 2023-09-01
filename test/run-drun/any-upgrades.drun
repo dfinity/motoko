@@ -1,0 +1,6 @@
+# SKIP ic-ref-run
+install $ID any-upgrades/version0.mo ""
+upgrade $ID any-upgrades/version0.mo ""
+upgrade $ID any-upgrades/version1.mo ""
+upgrade $ID any-upgrades/version1.mo ""
+upgrade $ID any-upgrades/version2.mo ""

@@ -1,7 +1,8 @@
 use motoko_rts::memory::{alloc_blob, Memory};
 use motoko_rts::persistence::compatibility::{
-    memory_compatible, ARRAY_ENCODING_TAG, MUTABLE_ENCODING_TAG, OBJECT_ENCODING_TAG,
-    OPTION_ENCODING_TAG, TUPLE_ENCODING_TAG, VARIANT_ENCODING_TAG,
+    memory_compatible, ANY_ENCODING_TAG, ARRAY_ENCODING_TAG, MUTABLE_ENCODING_TAG,
+    NONE_ENCODING_TAG, OBJECT_ENCODING_TAG, OPTION_ENCODING_TAG, TUPLE_ENCODING_TAG,
+    VARIANT_ENCODING_TAG,
 };
 use motoko_rts::types::{Bytes, Value};
 use std::hash::Hasher;
@@ -53,6 +54,8 @@ enum Type {
     Array(TypeReference),
     Tuple(TypeList),
     Variant(FieldList),
+    None,
+    Any,
 }
 
 impl Type {
@@ -81,6 +84,12 @@ impl Type {
             Self::Variant(field_list) => {
                 output.write_i32(VARIANT_ENCODING_TAG);
                 field_list.serialize(output);
+            }
+            Self::None => {
+                output.write_i32(NONE_ENCODING_TAG);
+            }
+            Self::Any => {
+                output.write_i32(ANY_ENCODING_TAG);
             }
         }
     }
@@ -334,6 +343,9 @@ unsafe fn test_sucessful_cases(heap: &mut TestMemory) {
     test_recursive_tuple_types(heap);
     test_reordered_variant_fields(heap);
     test_added_variant_fields(heap);
+    test_any_to_any(heap);
+    test_some_to_any(heap);
+    test_none_to_none(heap);
 }
 
 unsafe fn test_empty_actor(heap: &mut TestMemory) {
@@ -754,6 +766,49 @@ unsafe fn test_added_variant_fields(heap: &mut TestMemory) {
     assert!(are_compatible(heap, old_types, new_types));
 }
 
+unsafe fn test_any_to_any(heap: &mut TestMemory) {
+    let actor_type = Type::Object(FieldList {
+        fields: vec![Field {
+            name: String::from("Field"),
+            field_type: TypeReference { index: 1 },
+        }],
+    });
+    let any_type = Type::Any;
+    let types = vec![actor_type, any_type];
+    assert!(are_compatible(heap, types.clone(), types.clone()));
+}
+
+unsafe fn test_some_to_any(heap: &mut TestMemory) {
+    let old_actor = Type::Object(FieldList {
+        fields: vec![Field {
+            name: String::from("Field"),
+            field_type: TypeReference::text(),
+        }],
+    });
+    let new_actor = Type::Object(FieldList {
+        fields: vec![Field {
+            name: String::from("Field"),
+            field_type: TypeReference { index: 1 },
+        }],
+    });
+    let any_type = Type::Any;
+    let old_types = vec![old_actor];
+    let new_types = vec![new_actor, any_type];
+    assert!(are_compatible(heap, old_types, new_types));
+}
+
+unsafe fn test_none_to_none(heap: &mut TestMemory) {
+    let actor_type = Type::Object(FieldList {
+        fields: vec![Field {
+            name: String::from("Field"),
+            field_type: TypeReference { index: 1 },
+        }],
+    });
+    let none_type = Type::None;
+    let types = vec![actor_type, none_type];
+    assert!(are_compatible(heap, types.clone(), types.clone()));
+}
+
 unsafe fn test_failing_cases(heap: &mut TestMemory) {
     test_added_object_fields(heap);
     test_mutable_mismatch(heap);
@@ -764,6 +819,8 @@ unsafe fn test_failing_cases(heap: &mut TestMemory) {
     test_array_mutability_mismatch(heap);
     test_reordered_tuple_types(heap);
     test_removed_variant_fields(heap);
+    test_any_to_some(heap);
+    test_any_to_none(heap);
 }
 
 unsafe fn test_recursion_mismatch(heap: &mut TestMemory) {
@@ -984,5 +1041,44 @@ unsafe fn test_removed_variant_fields(heap: &mut TestMemory) {
 
     let old_types = vec![actor_type.clone(), old_variant];
     let new_types = vec![actor_type.clone(), new_variant];
+    assert!(!are_compatible(heap, old_types, new_types));
+}
+
+unsafe fn test_any_to_some(heap: &mut TestMemory) {
+    let old_actor = Type::Object(FieldList {
+        fields: vec![Field {
+            name: String::from("Field"),
+            field_type: TypeReference { index: 1 },
+        }],
+    });
+    let any_type = Type::Any;
+    let new_actor = Type::Object(FieldList {
+        fields: vec![Field {
+            name: String::from("Field"),
+            field_type: TypeReference::text(),
+        }],
+    });
+    let old_types = vec![old_actor, any_type];
+    let new_types = vec![new_actor];
+    assert!(!are_compatible(heap, old_types, new_types));
+}
+
+unsafe fn test_any_to_none(heap: &mut TestMemory) {
+    let old_actor = Type::Object(FieldList {
+        fields: vec![Field {
+            name: String::from("Field"),
+            field_type: TypeReference { index: 1 },
+        }],
+    });
+    let any_type = Type::Any;
+    let new_actor = Type::Object(FieldList {
+        fields: vec![Field {
+            name: String::from("Field"),
+            field_type: TypeReference { index: 1 },
+        }],
+    });
+    let none_type = Type::None;
+    let old_types = vec![old_actor, any_type];
+    let new_types = vec![new_actor, none_type];
     assert!(!are_compatible(heap, old_types, new_types));
 }
