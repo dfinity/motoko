@@ -92,7 +92,7 @@ let rec resolve_generics typ type_arguments =
       Tup (resolve_type_list type_list type_arguments)
   | Mut mutable_type ->
       Mut (resolve_generics mutable_type type_arguments)
-  | Con (constructor, inner_arguments) ->
+  | Con _ ->
       promote typ
   | Prim _ | Any | Non -> typ
   | _ ->
@@ -108,19 +108,15 @@ and resolve_field_list field_list type_arguments =
 and resolve_type_list type_list type_arguments =
   List.map (fun typ -> resolve_generics typ type_arguments) type_list
 
-let rec normalize_type typ =
+let promote_type typ =
   let open Type in
   match typ with
   | Con (constructor, type_arguments) ->
-    (match Mo_types.Cons.kind constructor with
-    | Abs _ -> assert false
-    | Def (_, type_definition) -> 
-      let resolved_definition = resolve_generics type_definition type_arguments in
-      normalize_type resolved_definition)
+    resolve_generics (promote typ) type_arguments
   | _ -> typ
 
-let rec collect_type table typ =
-  let typ = normalize_type typ in
+let rec collect_type table old_typ =
+  let typ = promote_type old_typ in
   if TypeTable.contains_type table typ then
     table
   else
@@ -183,7 +179,7 @@ let primitive_type_index primitive_type =
 
 let type_index table typ =
   let open Type in
-  let typ = normalize_type typ in
+  let typ = promote_type typ in
   match typ with
   | Prim primitive_type -> primitive_type_index primitive_type
   | _ -> Int32.of_int (TypeTable.index_of table typ)
