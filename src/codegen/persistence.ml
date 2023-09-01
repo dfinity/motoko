@@ -76,7 +76,6 @@ end
 
 let rec resolve_generics typ type_arguments =
   let open Type in
-  let typ = promote typ in
   match typ with
   | Var (_, index) -> 
       List.nth type_arguments index
@@ -92,8 +91,11 @@ let rec resolve_generics typ type_arguments =
       Tup (resolve_type_list type_list type_arguments)
   | Mut mutable_type ->
       Mut (resolve_generics mutable_type type_arguments)
+  | Con (constructor, inner_arguments) ->
+      promote typ
   | Prim _ | Any | Non -> typ
-  | _ -> assert false
+  | _ ->
+    assert false
 
 and resolve_field_list field_list type_arguments =
   let open Type in
