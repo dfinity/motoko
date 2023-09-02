@@ -245,14 +245,14 @@ mod meta_data {
         pub const BLOCK_IN_BYTES: u64 = PAGE_IN_BYTES * (PAGES_IN_BLOCK as u64);
 
         // Static memory footprint, ignoring any dynamically-allocated pages.
-        pub unsafe fn STATIC_MEM_IN_PAGES(block_base: u64) -> u64 {
+        pub unsafe fn static_mem_in_pages(block_base: u64) -> u64 {
             debug_assert!(block_base % PAGE_IN_BYTES as u64 == 0);
             debug_assert!(block_base != 0);
             block_base / PAGE_IN_BYTES as u64 /* meta data plus slack for future use */
         }
 
         pub unsafe fn total_required_pages(block_base: u64, total_allocated_blocks: u64) -> u64 {
-            STATIC_MEM_IN_PAGES(block_base) + (total_allocated_blocks * (PAGES_IN_BLOCK as u64))
+            static_mem_in_pages(block_base) + (total_allocated_blocks * (PAGES_IN_BLOCK as u64))
         }
     }
 
