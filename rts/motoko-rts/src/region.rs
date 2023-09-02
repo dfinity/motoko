@@ -245,10 +245,14 @@ mod meta_data {
         pub const BLOCK_IN_BYTES: u64 = PAGE_IN_BYTES * (PAGES_IN_BLOCK as u64);
 
         // Static memory footprint, ignoring any dynamically-allocated pages.
-        pub const STATIC_MEM_IN_PAGES: u64 = PAGES_IN_BLOCK as u64; /* One block for meta data, plus future use TBD. */
+        pub unsafe fn STATIC_MEM_IN_PAGES(block_base: u64) -> u64 {
+            debug_assert!(block_base % PAGE_IN_BYTES as u64 == 0);
+            debug_assert!(block_base != 0);
+            block_base / PAGE_IN_BYTES as u64 /* meta data plus slack for future use */
+        }
 
-        pub unsafe fn total_required_pages(total_allocated_blocks: u64) -> u64 {
-            STATIC_MEM_IN_PAGES + (total_allocated_blocks * (PAGES_IN_BLOCK as u64))
+        pub unsafe fn total_required_pages(block_base: u64, total_allocated_blocks: u64) -> u64 {
+            STATIC_MEM_IN_PAGES(block_base) + (total_allocated_blocks * (PAGES_IN_BLOCK as u64))
         }
     }
 
@@ -261,9 +265,9 @@ mod meta_data {
 
         pub const VERSION: u64 = MAGIC + bytes_of::<u64>();
 
-        pub const BLOCK_SIZE: u64 = VERSION + bytes_of::<u32>();
+        pub const BLOCK_PAGES: u64 = VERSION + bytes_of::<u32>();
 
-        pub const BLOCK_BASE: u64 = BLOCK_SIZE + bytes_of::<u16>();
+        pub const BLOCK_BASE: u64 = BLOCK_PAGES + bytes_of::<u16>();
 
         pub const TOTAL_ALLOCATED_BLOCKS: u64 = BLOCK_BASE + bytes_of::<u64>();
 
@@ -359,7 +363,7 @@ unsafe fn write_magic() {
     write(meta_data::offset::MAGIC, meta_data::version::MAGIC);
     write_u32(meta_data::offset::VERSION, meta_data::version::VERSION);
     write_u16(
-        meta_data::offset::BLOCK_SIZE,
+        meta_data::offset::BLOCK_PAGES,
         meta_data::size::PAGES_IN_BLOCK as u16,
     );
     write_u64(meta_data::offset::BLOCK_BASE, BLOCK_BASE);
@@ -731,8 +735,8 @@ pub(crate) unsafe fn region_migration_from_regions_plus<M: Memory>(mem: &mut M) 
         region_trap_with("migration failure (unexpected higher version)")
     };
 
-    let block_size = read_u16(meta_data::offset::BLOCK_SIZE);
-    if block_size as u32 != meta_data::size::PAGES_IN_BLOCK {
+    let block_pages = read_u16(meta_data::offset::BLOCK_PAGES);
+    if block_pages as u32 != meta_data::size::PAGES_IN_BLOCK {
         region_trap_with("migration failure (unexpected block size)")
     };
 
@@ -818,7 +822,7 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
     // while respecting the global maximum limit on pages.
     {
         let have = crate::stable_mem::size();
-        let need = total_required_pages(new_total_blocks);
+        let need = total_required_pages(BLOCK_BASE, new_total_blocks);
         if have < need {
             let diff = need - have;
             if crate::stable_mem::grow(diff) == u64::MAX {
