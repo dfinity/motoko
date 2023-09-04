@@ -7023,8 +7023,8 @@ module OldStabilization = struct
     | _ -> assert false
 end
 
-(* New stable memory layout.
-   Invalidates old versions operating on the new persistent layout.
+(* New stable memory layout with new version.
+   Prevents forward compatibility of old compiled programs that rely on deserialization.
   If size == 0: empty
   If logical size N > 0:
     [0..N]          <stable memory>
@@ -7040,44 +7040,57 @@ module NewStableMemory = struct
     IC.system_call env "stable64_size" ^^
     compile_shl64_const (Int64.of_int page_size_bits)
 
-  let backup env =
-    let (set_total_size, get_total_size) = new_local64 env "total_size" in
+  let store_at_end env offset typ get_value =
     physical_size env ^^
-    set_total_size ^^
-    get_total_size ^^
+    compile_sub64_const offset ^^
+    get_value ^^
+    match typ with
+    | I32Type -> StableMem.write_word32 env
+    | I64Type -> StableMem.write_word64 env
+    | _ -> assert false
+
+  let read_from_end env offset typ =
+    physical_size env ^^
+    compile_sub64_const offset ^^
+    match typ with
+    | I32Type -> StableMem.read_word32 env
+    | I64Type -> StableMem.read_word64 env
+    | _ -> assert false
+
+  let clear_at_end env offset typ =
+    store_at_end env offset typ 
+    (match typ with
+    | I32Type -> compile_unboxed_const 0l
+    | I64Type -> compile_const_64 0L
+    | _ -> assert false
+    )
+
+  let logical_size_offset = 12L
+  let version_offset = 4L
+
+  let grow_size env amount =
+    StableMem.get_mem_size env ^^
+    compile_shl64_const (Int64.of_int page_size_bits) ^^
+    compile_const_64 amount ^^
+    StableMem.ensure env
+
+  let backup env =
+    physical_size env ^^
     G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
     G.if0
       G.nop
       begin
-        (* grow logical memory by 12 bytes: 
-           logical size (8 bytes) + new version (4 bytes) *)
-        StableMem.get_mem_size env ^^
-        compile_shl64_const (Int64.of_int page_size_bits) ^^
-        compile_const_64 12L ^^
-        StableMem.ensure env ^^
+        grow_size env logical_size_offset ^^
 
-        (* get the potentially extended physical size *)
-        physical_size env ^^
-        set_total_size ^^
+        (* backup logical size *)
+        store_at_end env logical_size_offset I64Type (StableMem.get_mem_size env) ^^
 
-        (* store logical memory size *)
-        get_total_size ^^
-        compile_sub64_const 12L ^^
-        StableMem.get_mem_size env ^^
-        StableMem.write_word64 env ^^
-
-        (* save version *)
-        get_total_size ^^ 
-        compile_sub64_const 4L ^^
-        compile_unboxed_const new_stable_memory_version ^^
-        StableMem.write_word32 env
+        (* store the version *)
+        store_at_end env version_offset I32Type (compile_unboxed_const new_stable_memory_version)
       end
 
   let restore env =
-    let (set_total_size, get_total_size) = new_local64 env "total_size" in
     physical_size env ^^
-    set_total_size ^^
-    get_total_size ^^
     G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
     G.if0
       begin
@@ -7085,30 +7098,19 @@ module NewStableMemory = struct
       end
       begin
         (* check the version *)
-        get_total_size ^^
-        compile_sub64_const 4L ^^
-        StableMem.read_word32 env ^^
+        read_from_end env version_offset I32Type ^^
         compile_eq_const new_stable_memory_version ^^
         E.else_trap_with env (Printf.sprintf
           "unsupported stable memory version (expected %s)"
            (Int32.to_string new_stable_memory_version)) ^^
         
         (* restore logical size *)
-        get_total_size ^^
-        compile_sub64_const 12L ^^
-        StableMem.read_word64 env ^^
+        read_from_end env logical_size_offset I64Type ^^
         StableMem.set_mem_size env ^^
 
         (* clear size and version *)
-        get_total_size ^^
-        compile_sub64_const 12L ^^
-        compile_const_64 0L ^^
-        StableMem.write_word64 env ^^
-
-        get_total_size ^^
-        compile_sub64_const 4L ^^
-        compile_unboxed_const 0l ^^
-        StableMem.write_word32 env 
+        clear_at_end env logical_size_offset I64Type ^^
+        clear_at_end env version_offset I32Type
       end
 end
 
