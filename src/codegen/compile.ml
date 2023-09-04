@@ -6124,7 +6124,7 @@ module MakeSerialization (Strm : Stream) = struct
         end begin
           (* Decoded before. Check type hash *)
           ReadBuf.read_word32 env get_data_buf ^^ Blob.lit env (typ_hash t) ^^
-          G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+          Blob.compare env (Some Operator.EqOp) ^^
           E.else_trap_with env ("Stable memory error: Aliased at wrong type, expected: " ^ typ_hash t)
         end ^^
 
