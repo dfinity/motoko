@@ -357,9 +357,9 @@ and call_system_func_opt name es obj_typ =
           let msg = fresh_var "msg" msg_typ in
           let record_typ =
             T.Obj (T.Object, List.sort T.compare_field
-             [{T.lab = "caller"; T.typ = typ_of_var caller; T.depr = None};
-               {T.lab = "arg"; T.typ = typ_of_var arg; T.depr = None};
-               {T.lab = "msg"; T.typ = typ_of_var msg; T.depr = None}])
+             [{T.lab = "caller"; T.typ = typ_of_var caller; T.src = T.empty_src};
+               {T.lab = "arg"; T.typ = typ_of_var arg; T.src = T.empty_src};
+               {T.lab = "msg"; T.typ = typ_of_var msg; T.src = T.empty_src}])
           in
           let record = fresh_var "record" record_typ in
           let msg_variant =
@@ -403,10 +403,12 @@ and call_system_func_opt name es obj_typ =
           callE (varE (var id.it note)) [] (tupE []))
     | _ -> None) es
 and build_candid ts obj_typ =
+  let open Idllib in
   let (args, prog) = Mo_idl.Mo_to_idl.of_service_type ts obj_typ in
+  let module WithComments = Arrange_idl.Make(struct let trivia = Some prog.note.Syntax.trivia end) in
   I.{
-   args = Idllib.Arrange_idl.string_of_args args;
-   service = Idllib.Arrange_idl.string_of_prog prog;
+   args = WithComments.string_of_args args;
+   service = WithComments.string_of_prog prog;
   }
 
 and export_interface txt =
@@ -434,7 +436,7 @@ and export_footprint self_id expr =
   let scope_con2 = Cons.fresh "T2" (Abs ([], Any)) in
   let bind1  = typ_arg scope_con1 Scope scope_bound in
   let bind2 = typ_arg scope_con2 Scope scope_bound in
-  let ret_typ = T.Obj(Object,[{lab = "size"; typ = T.nat64; depr = None}]) in
+  let ret_typ = T.Obj(Object,[{lab = "size"; typ = T.nat64; src = empty_src}]) in
   let caller = fresh_var "caller" caller in
   ([ letD (var v typ) (
        funcE v (Shared Query) Promises [bind1] [] [ret_typ] (
@@ -465,9 +467,9 @@ and build_actor at ts self_id es obj_typ =
   let idss = List.map fst pairs in
   let ids = List.concat idss in
   let sig_ = List.sort T.compare_field
-    (List.map (fun (i,t) -> T.{lab = i; typ = t; depr = None}) ids)
+    (List.map (fun (i,t) -> T.{lab = i; typ = t; src = empty_src}) ids)
   in
-  let fields = List.map (fun (i,t) -> T.{lab = i; typ = T.Opt (T.as_immut t); depr = None}) ids in
+  let fields = List.map (fun (i,t) -> T.{lab = i; typ = T.Opt (T.as_immut t); src = T.empty_src}) ids in
   let mk_ds = List.map snd pairs in
   let ty = T.Obj (T.Memory, List.sort T.compare_field fields) in
   let state = fresh_var "state" (T.Mut (T.Opt ty)) in
