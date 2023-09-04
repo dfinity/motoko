@@ -1,8 +1,9 @@
 use motoko_rts::memory::{alloc_blob, Memory};
 use motoko_rts::persistence::compatibility::{
     memory_compatible, ACTOR_ENCODING_TAG, ANY_ENCODING_TAG, ARRAY_ENCODING_TAG,
-    MUTABLE_ENCODING_TAG, NONE_ENCODING_TAG, OBJECT_ENCODING_TAG, OPTION_ENCODING_TAG,
-    TUPLE_ENCODING_TAG, VARIANT_ENCODING_TAG,
+    COMPOSITE_FUNCTION_SORT, FUNCTION_ENCODING_TAG, MUTABLE_ENCODING_TAG, NONE_ENCODING_TAG,
+    OBJECT_ENCODING_TAG, OPTION_ENCODING_TAG, QUERY_FUNCTION_SORT, TUPLE_ENCODING_TAG,
+    VARIANT_ENCODING_TAG, WRITE_FUNCTION_SORT,
 };
 use motoko_rts::types::{Bytes, Value};
 use std::hash::Hasher;
@@ -50,6 +51,7 @@ impl BinaryData {
 enum Type {
     Object(FieldList),
     Actor(FieldList),
+    Function(FunctionSignature),
     Mutable(TypeReference),
     Option(TypeReference),
     Array(TypeReference),
@@ -65,6 +67,10 @@ impl Type {
             Self::Object(field_list) => {
                 output.write_i32(OBJECT_ENCODING_TAG);
                 field_list.serialize(output);
+            }
+            Self::Function(function_signature) => {
+                output.write_i32(FUNCTION_ENCODING_TAG);
+                function_signature.serialize(output);
             }
             Self::Mutable(type_reference) => {
                 output.write_i32(MUTABLE_ENCODING_TAG);
@@ -97,6 +103,38 @@ impl Type {
                 field_list.serialize(output);
             }
         }
+    }
+}
+
+#[derive(Clone)]
+enum FunctionSort {
+    Query,
+    Write,
+    Composite,
+}
+
+impl FunctionSort {
+    fn serialize(&self, output: &mut BinaryData) {
+        match self {
+            Self::Query => output.write_i32(QUERY_FUNCTION_SORT),
+            Self::Write => output.write_i32(WRITE_FUNCTION_SORT),
+            Self::Composite => output.write_i32(COMPOSITE_FUNCTION_SORT),
+        }
+    }
+}
+
+#[derive(Clone)]
+struct FunctionSignature {
+    sort: FunctionSort,
+    parameter_types: TypeList,
+    return_types: TypeList,
+}
+
+impl FunctionSignature {
+    fn serialize(&self, output: &mut BinaryData) {
+        self.sort.serialize(output);
+        self.parameter_types.serialize(output);
+        self.return_types.serialize(output);
     }
 }
 
@@ -352,6 +390,11 @@ unsafe fn test_sucessful_cases(heap: &mut TestMemory) {
     test_any_to_any(heap);
     test_some_to_any(heap);
     test_none_to_none(heap);
+    test_identical_functions(heap);
+    test_no_return_functions(heap);
+    test_no_parameter_functions(heap);
+    test_covariant_function_results(heap);
+    test_contravariant_parameters(heap);
 }
 
 unsafe fn test_empty_actor(heap: &mut TestMemory) {
@@ -848,6 +891,159 @@ unsafe fn test_none_to_none(heap: &mut TestMemory) {
     assert!(are_compatible(heap, types.clone(), types.clone()));
 }
 
+unsafe fn test_identical_functions(heap: &mut TestMemory) {
+    let main_actor = Type::Object(FieldList {
+        fields: vec![Field {
+            name: String::from("FunctionField"),
+            field_type: TypeReference { index: 1 },
+        }],
+    });
+    let parameter_types = TypeList {
+        items: vec![TypeReference::nat(), TypeReference::bool()],
+    };
+    let return_types = TypeList {
+        items: vec![TypeReference::int(), TypeReference::text()],
+    };
+    let sort = FunctionSort::Query;
+    let function = Type::Function(FunctionSignature {
+        sort,
+        parameter_types,
+        return_types,
+    });
+    let types = vec![main_actor, function];
+    assert!(are_compatible(heap, types.clone(), types.clone()));
+}
+
+unsafe fn test_no_return_functions(heap: &mut TestMemory) {
+    let main_actor = Type::Object(FieldList {
+        fields: vec![Field {
+            name: String::from("FunctionField"),
+            field_type: TypeReference { index: 1 },
+        }],
+    });
+    let parameter_types = TypeList {
+        items: vec![TypeReference::nat(), TypeReference::bool()],
+    };
+    let return_types = TypeList { items: vec![] };
+    let sort = FunctionSort::Composite;
+    let function = Type::Function(FunctionSignature {
+        sort,
+        parameter_types,
+        return_types,
+    });
+    let types = vec![main_actor, function];
+    assert!(are_compatible(heap, types.clone(), types.clone()));
+}
+
+unsafe fn test_no_parameter_functions(heap: &mut TestMemory) {
+    let main_actor = Type::Object(FieldList {
+        fields: vec![Field {
+            name: String::from("FunctionField"),
+            field_type: TypeReference { index: 1 },
+        }],
+    });
+    let parameter_types = TypeList { items: vec![] };
+    let return_types = TypeList {
+        items: vec![TypeReference::float()],
+    };
+    let sort = FunctionSort::Write;
+    let function = Type::Function(FunctionSignature {
+        sort,
+        parameter_types,
+        return_types,
+    });
+    let types = vec![main_actor, function];
+    assert!(are_compatible(heap, types.clone(), types.clone()));
+}
+
+unsafe fn test_covariant_function_results(heap: &mut TestMemory) {
+    let main_actor = Type::Object(FieldList {
+        fields: vec![Field {
+            name: String::from("FunctionField"),
+            field_type: TypeReference { index: 1 },
+        }],
+    });
+    let parameter_types = TypeList {
+        items: vec![TypeReference::nat(), TypeReference::bool()],
+    };
+    let return_types = TypeList {
+        items: vec![TypeReference { index: 2 }],
+    };
+    let sort = FunctionSort::Composite;
+    let function = Type::Function(FunctionSignature {
+        sort,
+        parameter_types,
+        return_types,
+    });
+
+    let field1 = Field {
+        name: String::from("Field1"),
+        field_type: TypeReference::int8(),
+    };
+    let field2 = Field {
+        name: String::from("Field2"),
+        field_type: TypeReference::int16(),
+    };
+    let field3 = Field {
+        name: String::from("Field3"),
+        field_type: TypeReference::int32(),
+    };
+
+    let old_object = Type::Actor(FieldList {
+        fields: vec![field1.clone(), field2.clone(), field3.clone()],
+    });
+    let new_object = Type::Actor(FieldList {
+        fields: vec![field2.clone()],
+    });
+
+    let old_types = vec![main_actor.clone(), function.clone(), old_object];
+    let new_types = vec![main_actor.clone(), function.clone(), new_object];
+    assert!(are_compatible(heap, old_types, new_types));
+}
+
+unsafe fn test_contravariant_parameters(heap: &mut TestMemory) {
+    let main_actor = Type::Object(FieldList {
+        fields: vec![Field {
+            name: String::from("FunctionField"),
+            field_type: TypeReference { index: 1 },
+        }],
+    });
+    let parameter_types = TypeList {
+        items: vec![TypeReference { index: 2 }],
+    };
+    let return_types = TypeList { items: vec![] };
+    let sort = FunctionSort::Composite;
+    let function = Type::Function(FunctionSignature {
+        sort,
+        parameter_types,
+        return_types,
+    });
+
+    let field1 = Field {
+        name: String::from("Field1"),
+        field_type: TypeReference::int8(),
+    };
+    let field2 = Field {
+        name: String::from("Field2"),
+        field_type: TypeReference::int16(),
+    };
+    let field3 = Field {
+        name: String::from("Field3"),
+        field_type: TypeReference::int32(),
+    };
+
+    let old_object = Type::Actor(FieldList {
+        fields: vec![field2.clone()],
+    });
+    let new_object = Type::Actor(FieldList {
+        fields: vec![field1.clone(), field2.clone(), field3.clone()],
+    });
+
+    let old_types = vec![main_actor.clone(), function.clone(), old_object];
+    let new_types = vec![main_actor.clone(), function.clone(), new_object];
+    assert!(are_compatible(heap, old_types, new_types));
+}
+
 unsafe fn test_failing_cases(heap: &mut TestMemory) {
     test_added_object_fields(heap);
     test_added_actor_fields(heap);
@@ -863,6 +1059,13 @@ unsafe fn test_failing_cases(heap: &mut TestMemory) {
     test_removed_variant_fields(heap);
     test_any_to_some(heap);
     test_any_to_none(heap);
+    test_mismatching_function_sort(heap);
+    test_mismatching_parameters(heap);
+    test_mismatching_parameter_count(heap);
+    test_mismatching_return_types(heap);
+    test_mismatching_return_count(heap);
+    test_invalid_result_variance(heap);
+    test_invalid_parameter_variance(heap);
 }
 
 unsafe fn test_recursion_mismatch(heap: &mut TestMemory) {
@@ -1180,5 +1383,237 @@ unsafe fn test_any_to_none(heap: &mut TestMemory) {
     let none_type = Type::None;
     let old_types = vec![old_actor, any_type];
     let new_types = vec![new_actor, none_type];
+    assert!(!are_compatible(heap, old_types, new_types));
+}
+
+unsafe fn test_mismatching_function_sort(heap: &mut TestMemory) {
+    let main_actor = Type::Object(FieldList {
+        fields: vec![Field {
+            name: String::from("FunctionField"),
+            field_type: TypeReference { index: 1 },
+        }],
+    });
+    let parameter_types = TypeList {
+        items: vec![TypeReference::nat()],
+    };
+    let return_types = TypeList {
+        items: vec![TypeReference::int()],
+    };
+    let old_function = Type::Function(FunctionSignature {
+        sort: FunctionSort::Query,
+        parameter_types: parameter_types.clone(),
+        return_types: return_types.clone(),
+    });
+    let new_function = Type::Function(FunctionSignature {
+        sort: FunctionSort::Write,
+        parameter_types: parameter_types.clone(),
+        return_types: return_types.clone(),
+    });
+    let old_types = vec![main_actor.clone(), old_function];
+    let new_types = vec![main_actor.clone(), new_function];
+    assert!(!are_compatible(heap, old_types, new_types));
+}
+
+unsafe fn test_mismatching_parameters(heap: &mut TestMemory) {
+    let main_actor = Type::Object(FieldList {
+        fields: vec![Field {
+            name: String::from("FunctionField"),
+            field_type: TypeReference { index: 1 },
+        }],
+    });
+    let old_parameter_types = TypeList {
+        items: vec![TypeReference::nat()],
+    };
+    let new_parameter_types = TypeList {
+        items: vec![TypeReference::text()],
+    };
+    let return_types = TypeList {
+        items: vec![TypeReference::int()],
+    };
+    let sort = FunctionSort::Query;
+    let old_function = Type::Function(FunctionSignature {
+        sort: sort.clone(),
+        parameter_types: old_parameter_types,
+        return_types: return_types.clone(),
+    });
+    let new_function = Type::Function(FunctionSignature {
+        sort: sort.clone(),
+        parameter_types: new_parameter_types,
+        return_types: return_types.clone(),
+    });
+    let old_types = vec![main_actor.clone(), old_function];
+    let new_types = vec![main_actor.clone(), new_function];
+    assert!(!are_compatible(heap, old_types, new_types));
+}
+
+unsafe fn test_mismatching_parameter_count(heap: &mut TestMemory) {
+    let main_actor = Type::Object(FieldList {
+        fields: vec![Field {
+            name: String::from("FunctionField"),
+            field_type: TypeReference { index: 1 },
+        }],
+    });
+    let old_parameter_types = TypeList {
+        items: vec![TypeReference::nat()],
+    };
+    let new_parameter_types = TypeList { items: vec![] };
+    let return_types = TypeList {
+        items: vec![TypeReference::int()],
+    };
+    let sort = FunctionSort::Query;
+    let old_function = Type::Function(FunctionSignature {
+        sort: sort.clone(),
+        parameter_types: old_parameter_types,
+        return_types: return_types.clone(),
+    });
+    let new_function = Type::Function(FunctionSignature {
+        sort: sort.clone(),
+        parameter_types: new_parameter_types,
+        return_types: return_types.clone(),
+    });
+    let old_types = vec![main_actor.clone(), old_function];
+    let new_types = vec![main_actor.clone(), new_function];
+    assert!(!are_compatible(heap, old_types, new_types));
+}
+
+unsafe fn test_mismatching_return_types(heap: &mut TestMemory) {
+    let main_actor = Type::Object(FieldList {
+        fields: vec![Field {
+            name: String::from("FunctionField"),
+            field_type: TypeReference { index: 1 },
+        }],
+    });
+    let parameter_types = TypeList {
+        items: vec![TypeReference::nat()],
+    };
+    let old_return_types = TypeList {
+        items: vec![TypeReference::int()],
+    };
+    let new_return_types = TypeList {
+        items: vec![TypeReference::text()],
+    };
+    let sort = FunctionSort::Query;
+    let old_function = Type::Function(FunctionSignature {
+        sort: sort.clone(),
+        parameter_types: parameter_types.clone(),
+        return_types: old_return_types,
+    });
+    let new_function = Type::Function(FunctionSignature {
+        sort: sort.clone(),
+        parameter_types: parameter_types.clone(),
+        return_types: new_return_types,
+    });
+    let old_types = vec![main_actor.clone(), old_function];
+    let new_types = vec![main_actor.clone(), new_function];
+    assert!(!are_compatible(heap, old_types, new_types));
+}
+
+unsafe fn test_mismatching_return_count(heap: &mut TestMemory) {
+    let main_actor = Type::Object(FieldList {
+        fields: vec![Field {
+            name: String::from("FunctionField"),
+            field_type: TypeReference { index: 1 },
+        }],
+    });
+    let parameter_types = TypeList {
+        items: vec![TypeReference::nat()],
+    };
+    let old_return_types = TypeList {
+        items: vec![TypeReference::int()],
+    };
+    let new_return_types = TypeList { items: vec![] };
+    let sort = FunctionSort::Query;
+    let old_function = Type::Function(FunctionSignature {
+        sort: sort.clone(),
+        parameter_types: parameter_types.clone(),
+        return_types: old_return_types,
+    });
+    let new_function = Type::Function(FunctionSignature {
+        sort: sort.clone(),
+        parameter_types: parameter_types.clone(),
+        return_types: new_return_types,
+    });
+    let old_types = vec![main_actor.clone(), old_function];
+    let new_types = vec![main_actor.clone(), new_function];
+    assert!(!are_compatible(heap, old_types, new_types));
+}
+
+unsafe fn test_invalid_result_variance(heap: &mut TestMemory) {
+    let main_actor = Type::Object(FieldList {
+        fields: vec![Field {
+            name: String::from("FunctionField"),
+            field_type: TypeReference { index: 1 },
+        }],
+    });
+    let parameter_types = TypeList {
+        items: vec![TypeReference::nat(), TypeReference::bool()],
+    };
+    let return_types = TypeList {
+        items: vec![TypeReference { index: 2 }],
+    };
+    let sort = FunctionSort::Composite;
+    let function = Type::Function(FunctionSignature {
+        sort,
+        parameter_types,
+        return_types,
+    });
+
+    let field1 = Field {
+        name: String::from("Field1"),
+        field_type: TypeReference::int8(),
+    };
+    let field2 = Field {
+        name: String::from("Field2"),
+        field_type: TypeReference::int16(),
+    };
+
+    let old_object = Type::Actor(FieldList {
+        fields: vec![field1.clone()],
+    });
+    let new_object = Type::Actor(FieldList {
+        fields: vec![field1.clone(), field2.clone()],
+    });
+
+    let old_types = vec![main_actor.clone(), function.clone(), old_object];
+    let new_types = vec![main_actor.clone(), function.clone(), new_object];
+    assert!(!are_compatible(heap, old_types, new_types));
+}
+
+unsafe fn test_invalid_parameter_variance(heap: &mut TestMemory) {
+    let main_actor = Type::Object(FieldList {
+        fields: vec![Field {
+            name: String::from("FunctionField"),
+            field_type: TypeReference { index: 1 },
+        }],
+    });
+    let parameter_types = TypeList {
+        items: vec![TypeReference { index: 2 }],
+    };
+    let return_types = TypeList { items: vec![] };
+    let sort = FunctionSort::Composite;
+    let function = Type::Function(FunctionSignature {
+        sort,
+        parameter_types,
+        return_types,
+    });
+
+    let field1 = Field {
+        name: String::from("Field1"),
+        field_type: TypeReference::int8(),
+    };
+    let field2 = Field {
+        name: String::from("Field2"),
+        field_type: TypeReference::int16(),
+    };
+
+    let old_object = Type::Actor(FieldList {
+        fields: vec![field1.clone(), field2.clone()],
+    });
+    let new_object = Type::Actor(FieldList {
+        fields: vec![field2.clone()],
+    });
+
+    let old_types = vec![main_actor.clone(), function.clone(), old_object];
+    let new_types = vec![main_actor.clone(), function.clone(), new_object];
     assert!(!are_compatible(heap, old_types, new_types));
 }
