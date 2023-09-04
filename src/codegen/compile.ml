@@ -6777,57 +6777,6 @@ end (* MakeSerialization *)
 
 module Serialization = MakeSerialization(BumpStream)
 
-module Stabilization = struct
-  let restore_stable_memory env =
-    (* TODO: Check version and if needed, migrate from old serialized stable format. *)
-    IC.system_call env "stable64_size" ^^
-    StableMem.set_mem_size env
-
-  let load_stable_actor env = E.call_import env "rts" "load_stable_actor"
-    
-  let save_stable_actor env = E.call_import env "rts" "save_stable_actor"
-
-  let register_stable_type env actor_type =
-    let type_descriptor = Persistence.encode_stable_type actor_type in
-    Blob.lit env type_descriptor ^^
-    E.call_import env "rts" "register_stable_type"
-
-  let create_actor env actor_type get_field_value =
-    let (_, field_declarations) = Type.as_obj actor_type in
-    let field_initializers = List.map
-      (fun field -> (field.Type.lab, fun () -> (get_field_value field.Type.lab)))
-      field_declarations
-    in
-    Object.lit_raw env field_initializers
-
-  let empty_actor env actor_type =
-    create_actor env actor_type (fun _ ->  Opt.null_lit env)
-
-  let recover_actor env actor_type =
-    let recover_field field = 
-      load_stable_actor env ^^
-      Object.contains_field env field ^^
-      (G.if1 I32Type
-        (load_stable_actor env ^^ Object.load_idx_raw env field)
-        (Opt.null_lit env)
-      ) in
-    create_actor env actor_type recover_field
-
-  let stabilize env actor_type =
-    save_stable_actor env
-
-  let destabilize env actor_type =
-    register_stable_type env actor_type ^^
-    load_stable_actor env ^^
-    G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
-    (G.if1 I32Type
-      (empty_actor env actor_type)
-      (recover_actor env actor_type)
-    ) ^^
-    restore_stable_memory env
-end
-
-(*
 (* OldStabilization as migration code: 
   Deserializing a last time from explicit stable memory into the stable heap:
    * stable variables; and
@@ -6836,7 +6785,6 @@ end
    * ../../design/Stable.md
    * ../../design/StableMemory.md
 *)
-
 module OldStabilization = struct
   (* start from 1 to avoid accidental reads of 0 *)
   let stable_memory_version = Int32.of_int 1
@@ -6900,7 +6848,7 @@ module OldStabilization = struct
         compile_add_const Heap.word_size ^^
         set_ptr))
 
-  let _destabilize env ty =
+  let old_destabilize env ty =
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
       let (set_pages, get_pages) = new_local64 env "pages" in
@@ -7028,7 +6976,53 @@ module OldStabilization = struct
         end
     | _ -> assert false
 end
-*)
+
+module Stabilization = struct
+  let restore_stable_memory env =
+    (* TODO: Check version and if needed, migrate from old serialized stable format. *)
+    IC.system_call env "stable64_size" ^^
+    StableMem.set_mem_size env
+
+  let load_stable_actor env = E.call_import env "rts" "load_stable_actor"
+    
+  let save_stable_actor env = E.call_import env "rts" "save_stable_actor"
+
+  let register_stable_type env actor_type =
+    let type_descriptor = Persistence.encode_stable_type actor_type in
+    Blob.lit env type_descriptor ^^
+    E.call_import env "rts" "register_stable_type"
+
+  let create_actor env actor_type get_field_value =
+    let (_, field_declarations) = Type.as_obj actor_type in
+    let field_initializers = List.map
+      (fun field -> (field.Type.lab, fun () -> (get_field_value field.Type.lab)))
+      field_declarations
+    in
+    Object.lit_raw env field_initializers
+
+  let recover_actor env actor_type =
+    let recover_field field = 
+      load_stable_actor env ^^
+      Object.contains_field env field ^^
+      (G.if1 I32Type
+        (load_stable_actor env ^^ Object.load_idx_raw env field)
+        (Opt.null_lit env)
+      ) in
+    create_actor env actor_type recover_field
+
+  let stabilize env actor_type =
+    save_stable_actor env
+
+  let destabilize env actor_type =
+    register_stable_type env actor_type ^^
+    load_stable_actor env ^^
+    G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
+    (G.if1 I32Type
+      (OldStabilization.old_destabilize env actor_type)
+      (recover_actor env actor_type)
+    ) ^^
+    restore_stable_memory env
+end
 
 module GCRoots = struct
   let create_root_array env = Func.share_code0 env "create_root_array" [I32Type] (fun env ->
