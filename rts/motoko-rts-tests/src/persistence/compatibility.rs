@@ -361,7 +361,11 @@ unsafe fn test_primitive_types(heap: &mut TestMemory) {
     ];
     for first in &all_types {
         for second in &all_types {
-            assert_eq!(is_compatible(first, second), first == second);
+            assert_eq!(
+                is_compatible(first, second),
+                first == second
+                    || first == &TypeReference::nat() && second == &TypeReference::int()
+            );
         }
     }
 }

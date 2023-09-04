@@ -104,6 +104,9 @@ const LENGTH_HEADER: usize = 1;
 const TYPE_INDEX_LENGTH: usize = 1;
 const FIELD_ENCODING_LENGTH: usize = 2; // label_hash type_index
 
+const NAT_TYPE_INDEX: i32 = -3;
+const INT_TYPE_INDEX: i32 = -8;
+
 struct EncodedData {
     words: *const i32,
     size: usize,
@@ -586,6 +589,9 @@ impl CompatibilityChecker {
     ) -> bool {
         debug_assert!(target_type_index < 0 || source_type_index < 0);
         if target_type_index == source_type_index {
+            return true;
+        }
+        if target_type_index == INT_TYPE_INDEX && source_type_index == NAT_TYPE_INDEX {
             return true;
         }
         if target_type_index >= 0 {
