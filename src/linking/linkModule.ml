@@ -767,9 +767,10 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
   let lib_heap_start = align dylink.memory_alignment old_heap_start in
   let new_heap_start = align 4l (Int32.add lib_heap_start dylink.memory_size) in
 
-  (* Data segments must fit below 4MB according to the persistent heap layout. *)
-  (if (Int32.to_int new_heap_start) > 4 * 1024 * 1024 then
-    (raise (TooLargeDataSegments "The Wasm data segment size exceeds the supported maxmimum of 2MB."))
+  (* Data segments must fit below 6MB according to the persistent heap layout. 
+     The first 2MB are reserved for the Rust call stacks such that data segments are limited to 4MB. *)
+  (if (Int32.to_int new_heap_start) > 6 * 1024 * 1024 then
+    (raise (TooLargeDataSegments "The Wasm data segment size exceeds the supported maxmimum of 4MB."))
   else
     ()
   );

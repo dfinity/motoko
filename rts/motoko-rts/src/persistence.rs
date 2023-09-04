@@ -1,6 +1,6 @@
 //! Orthogonal persistence support
 //!
-//! Persistent metadata table, located at 4MB, in the static partition space.
+//! Persistent metadata table, located at 6MB, in the static partition space.
 
 pub mod compatibility;
 
@@ -49,7 +49,7 @@ struct PersistentMetadata {
 }
 
 /// Location of the persistent metadata. Prereseved and fixed forever.
-const METATDATA_ADDRESS: usize = 4 * 1024 * 1024;
+const METATDATA_ADDRESS: usize = 6 * 1024 * 1024;
 /// The reserved maximum size of the metadata, contains a reserve for future extension of the metadata.
 const METADATA_RESERVE: usize = 128 * 1024;
 
