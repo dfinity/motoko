@@ -632,6 +632,7 @@ let compile_eq_const = function
 let compile_op64_const op i =
     compile_const_64 i ^^
     G.i (Binary (Wasm.Values.I64 op))
+let compile_add64_const = compile_op64_const I64Op.Add
 let compile_sub64_const = compile_op64_const I64Op.Sub
 let compile_mul64_const = compile_op64_const I64Op.Mul
 let _compile_divU64_const = compile_op64_const I64Op.DivU
@@ -712,6 +713,12 @@ let load_unskewed_ptr : G.t =
 let store_unskewed_ptr : G.t =
   G.i (Store {ty = I32Type; align = 2; offset = 0l; sz = None})
 
+let load_unskewed_ptr64 : G.t =
+  G.i (Load {ty = I64Type; align = 2; offset = 0l; sz = None})
+
+let store_unskewed_ptr64 : G.t =
+  G.i (Store {ty = I64Type; align = 2; offset = 0l; sz = None})
+  
 let load_ptr : G.t =
   G.i (Load {ty = I32Type; align = 2; offset = ptr_unskew; sz = None})
 
@@ -4791,6 +4798,18 @@ module StableMem = struct
             IC.system_call env "stable64_write"))
     | _ -> assert false
 
+  let write_word32 env =
+    write env false "word32" I32Type 4l store_unskewed_ptr
+
+  let write_word64 env =
+    write env false "word64" I64Type 8l store_unskewed_ptr64
+
+  let read_word32 env =
+    read env false "word32" I32Type 4l load_unskewed_ptr
+  
+  let read_word64 env =
+    read env false "word64" I64Type 8l load_unskewed_ptr64
+  
   (* ensure_pages : ensure at least num pages allocated,
      growing (real) stable memory if needed *)
   let ensure_pages env =
@@ -4817,6 +4836,35 @@ module StableMem = struct
             (get_pages_needed ^^
              IC.system_call env "stable64_grow")
             get_size)
+    | _ -> assert false
+
+      (* ensure stable memory includes [offset..offset+size), assumes size > 0 *)
+  let ensure env =
+    match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+      Func.share_code2 env "__stablemem_ensure"
+        (("offset", I64Type), ("size", I64Type)) []
+        (fun env get_offset get_size ->
+          let (set_sum, get_sum) = new_local64 env "sum" in
+          get_offset ^^
+          get_size ^^
+          G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
+          set_sum ^^
+          (* check for overflow *)
+          get_sum ^^
+          get_offset ^^
+          G.i (Compare (Wasm.Values.I64 I64Op.LtU)) ^^
+          E.then_trap_with env "Range overflow" ^^
+          (* ensure page *)
+          get_sum ^^
+          compile_const_64 (Int64.of_int page_size_bits) ^^
+          G.i (Binary (Wasm.Values.I64 I64Op.ShrU)) ^^
+          compile_add64_const 1L ^^
+          ensure_pages env ^^
+          (* Check result *)
+          compile_const_64 0L ^^
+          G.i (Compare (Wasm.Values.I64 I64Op.LtS)) ^^
+          E.then_trap_with env "Out of stable memory.")
     | _ -> assert false
 
   (* API *)
@@ -6786,12 +6834,10 @@ module Serialization = MakeSerialization(BumpStream)
    * ../../design/StableMemory.md
 *)
 module OldStabilization = struct
-  (* start from 1 to avoid accidental reads of 0 *)
-  let stable_memory_version = Int32.of_int 1
+  let old_stable_memory_version = Int32.of_int 1
 
   let extend64 code = code ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
-  let compile_add64_const = compile_op64_const I64Op.Add
-
+  
   let _read_word32 env =
     StableMem.read env false "word32" I32Type 4l load_unskewed_ptr
   let write_word32 env =
@@ -6898,11 +6944,11 @@ module OldStabilization = struct
 
               (* check version *)
               get_version ^^
-              compile_unboxed_const stable_memory_version ^^
+              compile_unboxed_const old_stable_memory_version ^^
               G.i (Compare (Wasm.Values.I32 I32Op.GtU)) ^^
               E.then_trap_with env (Printf.sprintf
                 "higher stable memory version (expected %s)"
-                (Int32.to_string stable_memory_version)) ^^
+                (Int32.to_string old_stable_memory_version)) ^^
 
               (* restore StableMem bytes [0..4) *)
               compile_const_64 0L ^^
@@ -6977,12 +7023,96 @@ module OldStabilization = struct
     | _ -> assert false
 end
 
-module Stabilization = struct
-  let restore_stable_memory env =
-    (* TODO: Check version and if needed, migrate from old serialized stable format. *)
-    IC.system_call env "stable64_size" ^^
-    StableMem.set_mem_size env
+(* New stable memory layout.
+   Invalidates old versions operating on the new persistent layout.
+  If size == 0: empty
+  If logical size N > 0:
+    [0..N]          <stable memory>
+            <zero padding>
+    [end-12..end-4] <size N>
+    [end-4..end]    <new version>
+  ending at page boundary
+*)
+module NewStableMemory = struct
+  let new_stable_memory_version = 3l
 
+  let physical_size env =
+    IC.system_call env "stable64_size" ^^
+    compile_shl64_const (Int64.of_int page_size_bits)
+
+  let backup env =
+    let (set_total_size, get_total_size) = new_local64 env "total_size" in
+    physical_size env ^^
+    set_total_size ^^
+    get_total_size ^^
+    G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
+    G.if0
+      G.nop
+      begin
+        (* grow logical memory by 12 bytes: 
+           logical size (8 bytes) + new version (4 bytes) *)
+        StableMem.get_mem_size env ^^
+        compile_shl64_const (Int64.of_int page_size_bits) ^^
+        compile_const_64 12L ^^
+        StableMem.ensure env ^^
+
+        (* get the potentially extended physical size *)
+        physical_size env ^^
+        set_total_size ^^
+
+        (* store logical memory size *)
+        get_total_size ^^
+        compile_sub64_const 12L ^^
+        StableMem.get_mem_size env ^^
+        StableMem.write_word64 env ^^
+
+        (* save version *)
+        get_total_size ^^ 
+        compile_sub64_const 4L ^^
+        compile_unboxed_const new_stable_memory_version ^^
+        StableMem.write_word32 env
+      end
+
+  let restore env =
+    let (set_total_size, get_total_size) = new_local64 env "total_size" in
+    physical_size env ^^
+    set_total_size ^^
+    get_total_size ^^
+    G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
+    G.if0
+      begin
+        compile_const_64 0L ^^ StableMem.set_mem_size env
+      end
+      begin
+        (* check the version *)
+        get_total_size ^^
+        compile_sub64_const 4L ^^
+        StableMem.read_word32 env ^^
+        compile_eq_const new_stable_memory_version ^^
+        E.else_trap_with env (Printf.sprintf
+          "unsupported stable memory version (expected %s)"
+           (Int32.to_string new_stable_memory_version)) ^^
+        
+        (* restore logical size *)
+        get_total_size ^^
+        compile_sub64_const 12L ^^
+        StableMem.read_word64 env ^^
+        StableMem.set_mem_size env ^^
+
+        (* clear size and version *)
+        get_total_size ^^
+        compile_sub64_const 12L ^^
+        compile_const_64 0L ^^
+        StableMem.write_word64 env ^^
+
+        get_total_size ^^
+        compile_sub64_const 4L ^^
+        compile_unboxed_const 0l ^^
+        StableMem.write_word32 env 
+      end
+end
+
+module Persistence = struct
   let load_stable_actor env = E.call_import env "rts" "load_stable_actor"
     
   let save_stable_actor env = E.call_import env "rts" "save_stable_actor"
@@ -7010,18 +7140,22 @@ module Stabilization = struct
       ) in
     create_actor env actor_type recover_field
 
-  let stabilize env actor_type =
-    save_stable_actor env
+  let save env actor_type =
+    save_stable_actor env ^^
+    NewStableMemory.backup env
 
-  let destabilize env actor_type =
+  let load env actor_type =
     register_stable_type env actor_type ^^
     load_stable_actor env ^^
     G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
-    (G.if1 I32Type
-      (OldStabilization.old_destabilize env actor_type)
-      (recover_actor env actor_type)
-    ) ^^
-    restore_stable_memory env
+    G.if1 I32Type
+      begin
+        OldStabilization.old_destabilize env actor_type
+      end
+      begin
+        recover_actor env actor_type ^^
+        NewStableMemory.restore env
+      end
 end
 
 module GCRoots = struct
@@ -9771,19 +9905,12 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla, IC.method_name env
 
   | ICStableRead ty, [] ->
-    (*
-      * On initial install:
-        1. return record of nulls
-      * On upgrade:
-        1. deserialize stable store to v : ty,
-        2. return v
-    *)
     SR.Vanilla,
-    Stabilization.destabilize env ty
+    Persistence.load env ty
   | ICStableWrite ty, [e] ->
     SR.unit,
     compile_exp_vanilla env ae e ^^
-    Stabilization.stabilize env ty
+    Persistence.save env ty
 
   (* Cycles *)
   | SystemCyclesBalancePrim, [] ->
