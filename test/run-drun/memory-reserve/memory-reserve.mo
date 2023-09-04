@@ -29,7 +29,13 @@ actor {
         Prim.debugPrint("Query call " # debug_show (Prim.rts_memory_size()));
         assert (Prim.rts_memory_size() > 3840 * 1024 * 1024);
     };
-}
+
+    public composite query func allocateInCompositeQuery() : async () {
+        ignore Prim.Array_init<Nat>(50 * 1024 * 1024, 4);
+        Prim.debugPrint("Composite query call " # debug_show (Prim.rts_memory_size()));
+        assert (Prim.rts_memory_size() > 3840 * 1024 * 1024);
+    };
+};
 
 //SKIP run
 //SKIP run-ir
