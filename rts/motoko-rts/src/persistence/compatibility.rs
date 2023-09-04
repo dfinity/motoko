@@ -432,7 +432,7 @@ impl CompatibilityChecker {
         source_type_table: TypeTable,
     ) -> CompatibilityChecker {
         let covariance_cache = TypeCheckCache::new(mem, &target_type_table, &source_type_table);
-        let contravariance_cache = TypeCheckCache::new(mem, &source_type_table, &target_type_table);
+        let contravariance_cache = TypeCheckCache::new(mem, &target_type_table, &source_type_table);
         CompatibilityChecker {
             covariance_cache,
             contravariance_cache,
