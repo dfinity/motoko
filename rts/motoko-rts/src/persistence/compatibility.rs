@@ -556,7 +556,7 @@ impl CompatibilityChecker {
         target_type_index: i32,
     ) -> bool {
         self.flip_variance();
-        let result = self.type_compatible(target_type_index, source_type_index);
+        let result = self.type_compatible(source_type_index, target_type_index);
         self.flip_variance();
         result
     }

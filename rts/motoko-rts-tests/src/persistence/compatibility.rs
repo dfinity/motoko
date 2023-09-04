@@ -399,6 +399,7 @@ unsafe fn test_sucessful_cases(heap: &mut TestMemory) {
     test_no_parameter_functions(heap);
     test_covariant_function_results(heap);
     test_contravariant_parameters(heap);
+    test_different_type_counts(heap);
 }
 
 unsafe fn test_empty_actor(heap: &mut TestMemory) {
@@ -1045,6 +1046,60 @@ unsafe fn test_contravariant_parameters(heap: &mut TestMemory) {
 
     let old_types = vec![main_actor.clone(), function.clone(), old_object];
     let new_types = vec![main_actor.clone(), function.clone(), new_object];
+    assert!(are_compatible(heap, old_types, new_types));
+}
+
+unsafe fn test_different_type_counts(heap: &mut TestMemory) {
+    let main_actor = Type::Object(FieldList {
+        fields: vec![Field {
+            name: String::from("FunctionField"),
+            field_type: TypeReference { index: 1 },
+        }],
+    });
+    let sort = FunctionSort::Composite;
+    let old_function = Type::Function(FunctionSignature {
+        sort: sort.clone(),
+        parameter_types: TypeList {
+            items: vec![TypeReference { index: 2 }],
+        },
+        return_types: TypeList { items: vec![] },
+    });
+    let new_function = Type::Function(FunctionSignature {
+        sort: sort.clone(),
+        parameter_types: TypeList {
+            items: vec![TypeReference { index: 4 }],
+        },
+        return_types: TypeList { items: vec![] },
+    });
+    let field1 = Field {
+        name: String::from("Field1"),
+        field_type: TypeReference::int8(),
+    };
+    let field2 = Field {
+        name: String::from("Field2"),
+        field_type: TypeReference::int16(),
+    };
+    let field3 = Field {
+        name: String::from("Field3"),
+        field_type: TypeReference::int32(),
+    };
+
+    let old_object = Type::Actor(FieldList {
+        fields: vec![field2.clone()],
+    });
+    let new_object = Type::Actor(FieldList {
+        fields: vec![field1.clone(), field2.clone(), field3.clone()],
+    });
+    let unused_type = Type::None;
+
+    let old_types = vec![main_actor.clone(), old_function, old_object];
+    let new_types = vec![
+        main_actor.clone(),
+        new_function,
+        unused_type.clone(),
+        unused_type.clone(),
+        new_object,
+    ];
     assert!(are_compatible(heap, old_types, new_types));
 }
 
