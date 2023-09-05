@@ -26,7 +26,7 @@ DTESTS=no
 IDL=no
 PERF=no
 VIPER=no
-WASMTIME_OPTIONS="--disable-cache"
+WASMTIME_OPTIONS="--disable-cache --enable-cranelift-nan-canonicalization"
 WRAP_drun=$(realpath $(dirname $0)/drun-wrapper.sh)
 WRAP_ic_ref_run=$(realpath $(dirname $0)/ic-ref-run-wrapper.sh)
 SKIP_RUNNING=${SKIP_RUNNING:-no}
@@ -350,7 +350,7 @@ do
         then
           run comp $moc_with_flags --hide-warnings --map -c $mangled -o $out/$base.wasm
           if [ $HAVE_ic_wasm = yes ]; then
-            run opt ic-wasm -o $out/$base.opt.wasm $out/$base.wasm shrink --optimize O3 --keep-name-section
+            run opt ic-wasm -o $out/$base.opt.wasm $out/$base.wasm optimize O3 --keep-name-section
           fi
         else
           run comp $moc_with_flags -g -wasi-system-api --hide-warnings --map -c $mangled -o $out/$base.wasm
