@@ -602,6 +602,11 @@ impl CompatibilityChecker {
         false
     }
 
+    unsafe fn identical_types(&mut self, target_type_index: i32, source_type_index: i32) -> bool {
+        self.type_compatible(target_type_index, source_type_index)
+            && self.reverse_compatible(source_type_index, target_type_index)
+    }
+
     unsafe fn type_compatible(&mut self, target_type_index: i32, source_type_index: i32) -> bool {
         if target_type_index < 0 || source_type_index < 0 {
             return self.compatible_primitives(target_type_index, source_type_index);
@@ -631,7 +636,7 @@ impl CompatibilityChecker {
             }
             (Type::Function(_), _) => false,
             (Type::Mutable(new_variable), Type::Mutable(old_variable)) => {
-                self.compatible_type_indices(new_variable, old_variable)
+                self.identical_types(new_variable.type_index, old_variable.type_index)
             }
             (Type::Mutable(_), _) => false,
             (Type::Option(new_option), Type::Option(old_option)) => {

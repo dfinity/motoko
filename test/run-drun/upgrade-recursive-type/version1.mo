@@ -1,5 +1,6 @@
 import Prim "mo:prim";
 
+// Incompatible change (mutable invariance).
 actor {
     type Node = {
         var value : Nat;

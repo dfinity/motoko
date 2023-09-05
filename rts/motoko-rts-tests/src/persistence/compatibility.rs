@@ -1109,6 +1109,7 @@ unsafe fn test_failing_cases(heap: &mut TestMemory) {
     test_actor_to_object(heap);
     test_object_to_actor(heap);
     test_mutable_mismatch(heap);
+    test_mutable_invariance(heap);
     test_immutable_mismatch(heap);
     test_recursion_mismatch(heap);
     test_option_mismatch(heap);
@@ -1268,6 +1269,33 @@ unsafe fn test_mutable_mismatch(heap: &mut TestMemory) {
     });
     let old_types = vec![old_actor, mutable_type];
     let new_types = vec![new_actor];
+    assert!(!are_compatible(heap, old_types, new_types));
+}
+
+unsafe fn test_mutable_invariance(heap: &mut TestMemory) {
+    let main_actor = Type::Object(FieldList {
+        fields: vec![Field {
+            name: String::from("ActorField"),
+            field_type: TypeReference { index: 1 },
+        }],
+    });
+    let mutable_type = Type::Mutable(TypeReference { index: 2 });
+    let field1 = Field {
+        name: String::from("Field1"),
+        field_type: TypeReference::nat(),
+    };
+    let field2 = Field {
+        name: String::from("Field2"),
+        field_type: TypeReference::text(),
+    };
+    let old_object = Type::Object(FieldList {
+        fields: vec![field1.clone(), field2],
+    });
+    let new_object = Type::Object(FieldList {
+        fields: vec![field1.clone()],
+    });
+    let old_types = vec![main_actor.clone(), mutable_type.clone(), old_object];
+    let new_types = vec![main_actor.clone(), mutable_type.clone(), new_object];
     assert!(!are_compatible(heap, old_types, new_types));
 }
 
