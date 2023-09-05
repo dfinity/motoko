@@ -18,23 +18,6 @@ actor {
         array3 := Prim.Array_init<Nat>(150 * 1024 * 1024, 3); // around 3.75GB
         Prim.debugPrint("Prepared2 " # debug_show (Prim.rts_memory_size()));
     };
-
-    public func allocateInUpdate() : async () {
-        Prim.debugPrint("Update call " # debug_show (Prim.rts_memory_size()));
-        ignore Prim.Array_init<Nat>(50 * 1024 * 1024, 4);
-    };
-
-    public query func allocateInQuery() : async () {
-        ignore Prim.Array_init<Nat>(50 * 1024 * 1024, 4);
-        Prim.debugPrint("Query call " # debug_show (Prim.rts_memory_size()));
-        assert (Prim.rts_memory_size() > 3840 * 1024 * 1024);
-    };
-
-    public composite query func allocateInCompositeQuery() : async () {
-        ignore Prim.Array_init<Nat>(50 * 1024 * 1024, 4);
-        Prim.debugPrint("Composite query call " # debug_show (Prim.rts_memory_size()));
-        assert (Prim.rts_memory_size() > 3840 * 1024 * 1024);
-    };
 };
 
 //SKIP run
