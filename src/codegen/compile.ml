@@ -6897,8 +6897,81 @@ module MakeSerialization (Strm : Stream) = struct
                set_size get_data_buf (compile_unboxed_const 0x1000l (*FIXME: make configurable*)) ^^
                (* Go! *)
                Bool.lit extended ^^ get_data_buf ^^ get_typtbl_ptr ^^ get_typtbl_size_ptr ^^ get_maintyps_ptr ^^
-                 E.call_import env "rts" "parse_idl_header"
-                 ^^ E.trap_with env "parse_idl_header DONE"
+                 E.call_import env "rts" "parse_idl_header" ^^
+                 
+
+
+
+
+
+
+
+
+      (* Allocate memo table, if necessary *)
+      with_rel_buf_opt env extended (get_typtbl_size_ptr ^^ load_unskewed_ptr) (fun get_rel_buf_opt ->
+
+      (* set up a dedicated read buffer for the list of main types *)
+      alloc env (fun get_main_typs_buf ->
+        set_ptr get_main_typs_buf (get_maintyps_ptr ^^ load_unskewed_ptr) ^^
+        set_end get_main_typs_buf (get_end get_data_buf) ^^
+        read_leb128 env get_main_typs_buf ^^ set_arg_count ^^
+
+        G.concat_map (fun t ->
+          let can_recover, default_or_trap = Type.(
+            match normalize t with
+            | Opt _ | Any ->
+              (Bool.lit true, fun msg -> Opt.null_lit env)
+            | _ ->
+              (get_can_recover, fun msg ->
+                get_can_recover ^^
+                G.if1 I32Type
+                   (compile_unboxed_const (coercion_error_value env))
+                   (E.trap_with env msg)))
+          in
+          get_arg_count ^^
+          compile_eq_const 0l ^^
+          G.if1 I32Type
+           (default_or_trap ("IDL error: too few arguments " ^ ts_name))
+           begin
+              begin
+                (* set up invariant register arguments *)
+                get_rel_buf_opt ^^ Registers.set_rel_buf_opt env ^^
+                get_data_buf ^^ Registers.set_data_buf env ^^
+                get_ref_buf ^^ Registers.set_ref_buf env ^^
+                get_typtbl_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl env ^^
+                get_maintyps_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl_end env ^^
+                get_typtbl_size_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl_size env
+              end ^^
+              (* set up variable frame arguments *)
+              Stack.with_frame env "frame_ptr" 3l (fun () ->
+                (* idltyp *)
+                read_sleb128 env get_main_typs_buf ^^
+                Stack.set_local env StackArgs.idltyp ^^
+                (* depth *)
+                compile_unboxed_const 0l ^^
+                Stack.set_local env StackArgs.depth ^^
+                (* recovery mode *)
+                can_recover ^^
+                Stack.set_local env StackArgs.can_recover ^^
+                deserialize_go readers env t
+             )
+             ^^ set_val ^^
+             get_arg_count ^^ compile_sub_const 1l ^^ set_arg_count ^^
+             get_val ^^ compile_eq_const (coercion_error_value env) ^^
+             G.if1 I32Type
+               (default_or_trap "IDL error: coercion failure encountered")
+               get_val
+            end
+        ) ts
+
+
+^^ E.trap_with env " deserialize    DONE"
+
+        ))
+
+
+
+
            end
          else
            G.nop ^^
@@ -6932,7 +7005,7 @@ module MakeSerialization (Strm : Stream) = struct
           compile_eq_const 0l ^^
           G.if1 I32Type
            (default_or_trap ("IDL error: too few arguments " ^ ts_name))
-           (begin
+           begin
               begin
                 (* set up invariant register arguments *)
                 get_rel_buf_opt ^^ Registers.set_rel_buf_opt env ^^
@@ -6958,10 +7031,10 @@ module MakeSerialization (Strm : Stream) = struct
              ^^ set_val ^^
              get_arg_count ^^ compile_sub_const 1l ^^ set_arg_count ^^
              get_val ^^ compile_eq_const (coercion_error_value env) ^^
-             (G.if1 I32Type
+             G.if1 I32Type
                (default_or_trap "IDL error: coercion failure encountered")
-               get_val)
-            end)
+               get_val
+            end
         ) ts ^^
 
         (* Skip any extra arguments *)
