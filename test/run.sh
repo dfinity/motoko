@@ -351,7 +351,7 @@ do
         then
           run comp $moc_with_flags --hide-warnings --map -c $mangled -o $out/$base.wasm
           if [ $HAVE_ic_wasm = yes ]; then
-            run opt ic-wasm -o $out/$base.opt.wasm $out/$base.wasm shrink --optimize O3 --keep-name-section
+            run opt ic-wasm -o $out/$base.opt.wasm $out/$base.wasm optimize O3 --keep-name-section
           fi
         else
           run comp $moc_with_flags -g -wasi-system-api --hide-warnings --map -c $mangled -o $out/$base.wasm
