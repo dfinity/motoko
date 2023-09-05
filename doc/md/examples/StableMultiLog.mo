@@ -9,18 +9,11 @@ actor StableLog {
   public type Index = Nat64;
 
   // Internal representation uses two regions, working together.
-  stable var self : Rep = {
+  stable var state = {
     bytes = Region.new();
-    var bytes_count = 0;
+    var bytes_count : Nat64 = 0;
     elems = Region.new ();
-    var elems_count = 0;
-  };
-
-  type Rep = {
-    bytes : Region;
-    var bytes_count : Nat64; // more fine-grained than "pages"
-    elems : Region;
-    var elems_count : Nat64; // more fine-grained than "pages"
+    var elems_count : Nat64 = 0;
   };
 
   // Grow a region to hold a certain number of total bytes.
@@ -42,32 +35,32 @@ actor StableLog {
 
   // Count of elements (Blobs) that have been logged.
   public func size() : async Nat64 {
-      self.elems_count
+      state.elems_count
   };
 
   // Constant-time random access to previously-logged Blob.
   public func get(index : Index) : async Blob {
-    assert index < self.elems_count;
-    let pos = Region.loadNat64(self.elems, index * elem_size);
-    let size = Region.loadNat64(self.elems, index * elem_size + 8);
+    assert index < state.elems_count;
+    let pos = Region.loadNat64(state.elems, index * elem_size);
+    let size = Region.loadNat64(state.elems, index * elem_size + 8);
     let elem = { pos ; size };
-    Region.loadBlob(self.bytes, elem.pos, Nat64.toNat(elem.size))
+    Region.loadBlob(state.bytes, elem.pos, Nat64.toNat(elem.size))
   };
 
   // Add Blob to the log, and return the index of it.
   public func add(blob : Blob) : async Index {
-    let elem_i = self.elems_count;
-    self.elems_count += 1;
+    let elem_i = state.elems_count;
+    state.elems_count += 1;
 
-    let elem_pos = self.bytes_count;
-    self.bytes_count += Nat64.fromNat(blob.size());
+    let elem_pos = state.bytes_count;
+    state.bytes_count += Nat64.fromNat(blob.size());
 
-    regionEnsureSizeBytes(self.bytes, self.bytes_count);
-    Region.storeBlob(self.bytes, elem_pos, blob);
+    regionEnsureSizeBytes(state.bytes, state.bytes_count);
+    Region.storeBlob(state.bytes, elem_pos, blob);
 
-    regionEnsureSizeBytes(self.elems, self.elems_count * elem_size);
-    Region.storeNat64(self.elems, elem_i * elem_size + 0, elem_pos);
-    Region.storeNat64(self.elems, elem_i * elem_size + 8, Nat64.fromNat(blob.size()));
+    regionEnsureSizeBytes(state.elems, state.elems_count * elem_size);
+    Region.storeNat64(state.elems, elem_i * elem_size + 0, elem_pos);
+    Region.storeNat64(state.elems, elem_i * elem_size + 8, Nat64.fromNat(blob.size()));
     elem_i
   }
 

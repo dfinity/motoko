@@ -33,6 +33,13 @@ More general `loadBlob` and `storeBlob` operations are also available for readin
 ``` motoko no-repl
 module {
 
+  // A stateful handle to an isolated region of IC stable memory.
+  //  `Region` is a stable type and regions can be stored in stable variables.
+  type Region = Prim.Types.Region;
+
+  // Allocate a new, isolated `Region` of size 0.
+  new : () -> Region;
+
   // Current size of the region `r` in pages.
   // Each page is 64KiB (65536 bytes).
   // Initially `0`.
@@ -64,10 +71,6 @@ module {
   // Traps on out-of-bounds access.
   storeBlob : (r : Region, offset : Nat64, value : Blob) -> ()
 
-  // Returns a query that, when called, returns the number of bytes of
-  // (real) IC stable memory that would be occupied by persisting its
-  // current stable variables before an upgrade.
-  stableVarQuery : () -> (shared query () -> async {size : Nat64})
 }
 ```
 
@@ -75,7 +78,7 @@ module {
 
 To demonstrate the `Region` library, we present a simple implementation of a logging actor that records text messages in a scalable, persistent log.
 
-The example illustrates the simultaneous use of stable variables and stable memory. It uses a single stable variable to keep track of the two regions and their size in bytes, but stores the contents of the log directly in stable memory.
+The example illustrates the simultaneous use of stable variables and stable memory. It uses a single stable variable, `state`, to keep track of the two regions and their size in bytes, but stores the contents of the log directly in stable memory.
 
 ``` motoko no-repl file=./examples/StableMultiLog.mo
 ```
@@ -84,4 +87,4 @@ The shared `add(blob)` function allocates enough stable memory to store the give
 
 The shared `get(index)` query reads anywhere from the log without traversing any unrelated memory.
 
-Because `StableLog` allocates and maintains its (potentially large) log data directly in stable memory and uses just a small and fixed amount of storage for actual stable variables (here `self`), upgrading `StableLog` to a new implementation (perhaps to provide more functionality) should not consume too many cycles, regardless of the current size of the log.
+Because `StableLog` allocates and maintains its (potentially large) log data directly in stable memory and uses just a small and fixed amount of storage for actual stable variables (here `state`), upgrading `StableLog` to a new implementation (perhaps to provide more functionality) should not consume too many cycles, regardless of the current size of the log.
