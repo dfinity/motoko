@@ -144,7 +144,7 @@ let argspec = [
   "--stable-regions",
   Arg.Unit (fun () ->
     Flags.use_stable_regions := true),
-      " Use stable regions for stable memory (8MB minimum footprint)";
+      " force eager initialization of stable regions metadata (for testing purposes); consumes between 386KiB or 8MiB of additional physical stable memory, depending on current use of ExperimentalStableMemory library";
 
   "--generational-gc",
   Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.Generational),
@@ -153,7 +153,7 @@ let argspec = [
   "--incremental-gc",
   Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.Incremental),
   " use incremental GC";
-    
+
   "--compacting-gc",
   Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.MarkCompact),
   " use compacting GC";
