@@ -1,4 +1,8 @@
-# Stable Memory API
+# Old Stable Memory API
+
+This describes the legacy stable memory mechanism intended to be replaced by 
+true orthogonal persistence where the main memory is retained across upgrades.
+See `OrthogonalPersistence.md`.
 
 The current implementation of stable variables is based on
 serialization and deserialization of all stable data on upgrade. This
