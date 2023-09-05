@@ -142,6 +142,16 @@ pub unsafe fn save_stable_actor<M: Memory>(mem: &mut M, actor: Value) {
     write_with_barrier(mem, location, actor);
 }
 
+/// Free the stable actor sub-record after a completed upgrade.
+/// Allow garbage collection for unused stable variables that are no longer declared
+/// in the new program version.
+#[ic_mem_fn]
+pub unsafe fn free_stable_actor<M: Memory>(mem: &mut M) {
+    let metadata: *mut PersistentMetadata = PersistentMetadata::get();
+    let location = &mut (*metadata).stable_actor as *mut Value;
+    write_with_barrier(mem, location, DEFAULT_VALUE);
+}
+
 #[cfg(feature = "ic")]
 /// GC root pointer required for GC marking and updating.
 pub(crate) unsafe fn stable_actor_location() -> *mut Value {

@@ -20,13 +20,13 @@ ingress Completed: Reply: 0x4449444c0000
 debug.print: secondField=4
 ingress Completed: Reply: 0x4449444c0000
 debug.print: Memory-incompatible program upgrade
-debug.print: panic occurred in file 'src/persistence.rs' at line 193
+debug.print: panic occurred in file 'src/persistence.rs' at line 203
 ingress Err: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: RTS error: RTS panicked
 ingress Completed: Reply: 0x4449444c0000
 debug.print: secondField=5
 ingress Completed: Reply: 0x4449444c0000
 debug.print: Memory-incompatible program upgrade
-debug.print: panic occurred in file 'src/persistence.rs' at line 193
+debug.print: panic occurred in file 'src/persistence.rs' at line 203
 ingress Err: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: RTS error: RTS panicked
 ingress Completed: Reply: 0x4449444c0000
 debug.print: secondField=6

@@ -872,6 +872,7 @@ module RTS = struct
     E.add_func_import env "rts" "register_stable_type" [I32Type] [];
     E.add_func_import env "rts" "load_stable_actor" [] [I32Type];
     E.add_func_import env "rts" "save_stable_actor" [I32Type] [];
+    E.add_func_import env "rts" "free_stable_actor" [] [];
     E.add_func_import env "rts" "contains_field" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "set_static_root" [I32Type] [];
     E.add_func_import env "rts" "get_static_root" [] [I32Type];
@@ -7119,6 +7120,8 @@ module Persistence = struct
     
   let save_stable_actor env = E.call_import env "rts" "save_stable_actor"
 
+  let free_stable_actor env = E.call_import env "rts" "free_stable_actor"
+
   let register_stable_type env actor_type =
     let type_descriptor = Persistence.encode_stable_type actor_type in
     Blob.lit env type_descriptor ^^
@@ -7140,7 +7143,9 @@ module Persistence = struct
         (load_stable_actor env ^^ Object.load_idx_raw env field)
         (Opt.null_lit env)
       ) in
-    create_actor env actor_type recover_field
+    create_actor env actor_type recover_field ^^
+    free_stable_actor env
+
 
   let save env actor_type =
     save_stable_actor env ^^
