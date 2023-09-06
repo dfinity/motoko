@@ -2148,7 +2148,7 @@ module BoxedWord64 = struct
       (compile_box env get_n)
 
   let unbox env =
-    let (set_n, get_n) = new_local64 env "n" in
+    let (set_n, get_n) = new_local env "n" in
     set_n ^^
     get_n ^^
     BitTagged.if_tagged_scalar env [I64Type]
