@@ -119,7 +119,7 @@ and resolve_field_list field_list type_arguments =
   let open Type in
   let resolve_field field = 
     let resolved_field_type = resolve_generics field.typ type_arguments in
-    { lab = field.lab; typ = resolved_field_type; depr = field.depr } in
+    { lab = field.lab; typ = resolved_field_type; src = field.src } in
   List.map resolve_field field_list
 
 and resolve_type_list type_list type_arguments =
@@ -273,7 +273,7 @@ let encode_stable_type (stable_type: Type.typ) : string =
   let open Type in 
   match stable_type with
   | Obj (Memory, field_list) -> 
-      let unwrap_field field = {lab = field.lab; typ = unwrap_optional field.typ; depr = field.depr} in
+      let unwrap_field field = {lab = field.lab; typ = unwrap_optional field.typ; src = field.src} in
       let stable_fields = List.map unwrap_field field_list in
       let stable_actor = Obj (Object, stable_fields) in
       let table = collect_type TypeTable.empty stable_actor in

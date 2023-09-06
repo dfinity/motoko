@@ -467,7 +467,7 @@ rec {
   in fix_names ({
       run        = test_subdir "run"        [ moc ] ;
       run-dbg    = snty_subdir "run"        [ moc ] ;
-      ic-ref-run = test_subdir "run-drun"   [ moc ic-ref-run ];
+      # ic-ref-run = test_subdir "run-drun"   [ moc ic-ref-run ];
       drun       = test_subdir "run-drun"   [ moc nixpkgs.drun ];
       drun-dbg   = snty_subdir "run-drun"   [ moc nixpkgs.drun ];
       fail       = test_subdir "fail"       [ moc ];
@@ -546,7 +546,7 @@ rec {
     nixpkgs.rustPlatform.buildRustPackage {
       name = "ic-wasm";
       src = nixpkgs.sources.ic-wasm;
-      cargoSha256 = "sha256-iGCju0JG+jkysmDAeTfjNCYaSfg7N3Qqq8HpPlRHMgU=";
+      cargoSha256 = "sha256-qw1MwjlhGftN9k2sOjlAYo9rDRvHnf0qYQFPHMu2v74=";
       doCheck = false;
     };
 
@@ -731,7 +731,7 @@ rec {
       base-doc
       docs
       report-site
-      ic-ref-run
+      # ic-ref-run
       shell
       check-formatting
       check-rts-formatting

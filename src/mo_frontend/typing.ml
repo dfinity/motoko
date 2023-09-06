@@ -22,7 +22,8 @@ type ret_env = T.typ option
 type val_env  = (T.typ * avl) T.Env.t
 
 (* separate maps for values and types; entries only for _public_ elements *)
-type visibility_env = (region * string option) T.Env.t * (region * string option) T.Env.t
+type visibility_src = {depr : string option; id_region : Source.region; field_region : Source.region}
+type visibility_env = visibility_src T.Env.t * visibility_src T.Env.t
 
 let available env = T.Env.map (fun ty -> (ty, Available)) env
 
@@ -233,9 +234,9 @@ let system_funcs tfs =
      (let msg_typ = T.decode_msg_typ tfs in
       let record_typ =
         T.Obj (T.Object, List.sort T.compare_field
-          [{T.lab = "caller"; T.typ = T.principal; T.depr = None};
-           {T.lab = "arg"; T.typ = T.blob; T.depr = None};
-           {T.lab = "msg"; T.typ = msg_typ; T.depr = None}])
+          [{T.lab = "caller"; T.typ = T.principal; T.src = T.empty_src};
+           {T.lab = "arg"; T.typ = T.blob; T.src = T.empty_src};
+           {T.lab = "msg"; T.typ = msg_typ; T.src = T.empty_src}])
       in
         T.Func (T.Local, T.Returns, [],  [record_typ], [T.bool])))
   ]
@@ -604,16 +605,16 @@ and check_typ_field env s typ_field : T.field = match typ_field.it with
         error env typ.at "M0042" "actor field %s must have shared function type, but has type\n  %s"
           id.it (T.string_of_typ_expand t)
     end;
-    T.{lab = id.it; typ = t; depr = None}
+    T.{lab = id.it; typ = t; src = empty_src}
   | TypF (id, typ_binds, typ) ->
     let k = check_typ_def env typ_field.at (id, typ_binds, typ) in
     let c = Cons.fresh id.it k in
-    T.{lab = id.it; typ = Typ c; depr = None}
+    T.{lab = id.it; typ = Typ c; src = empty_src}
 
 and check_typ_tag env typ_tag =
   let {tag; typ} = typ_tag.it in
   let t = check_typ env typ in
-  T.{lab = tag.it; typ = t; depr = None}
+  T.{lab = tag.it; typ = t; src = empty_src}
 
 and check_typ_binds_acyclic env typ_binds cs ts  =
   let n = List.length cs in
@@ -933,28 +934,28 @@ let check_lit env t lit at =
 let array_obj t =
   let open T in
   let immut t =
-    [ {lab = "get";  typ = Func (Local, Returns, [], [Prim Nat], [t]); depr = None};
-      {lab = "size";  typ = Func (Local, Returns, [], [], [Prim Nat]); depr = None};
-      {lab = "keys"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Nat)]); depr = None};
-      {lab = "vals"; typ = Func (Local, Returns, [], [], [iter_obj t]); depr = None};
+    [ {lab = "get";  typ = Func (Local, Returns, [], [Prim Nat], [t]); src = empty_src};
+      {lab = "size";  typ = Func (Local, Returns, [], [], [Prim Nat]); src = empty_src};
+      {lab = "keys"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Nat)]); src = empty_src};
+      {lab = "vals"; typ = Func (Local, Returns, [], [], [iter_obj t]); src = empty_src};
     ] in
   let mut t = immut t @
-    [ {lab = "put"; typ = Func (Local, Returns, [], [Prim Nat; t], []); depr = None} ] in
+    [ {lab = "put"; typ = Func (Local, Returns, [], [Prim Nat; t], []); src = empty_src} ] in
   Object,
   List.sort compare_field (match t with Mut t' -> mut t' | t -> immut t)
 
 let blob_obj () =
   let open T in
   Object,
-  [ {lab = "vals"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Nat8)]); depr = None};
-    {lab = "size";  typ = Func (Local, Returns, [], [], [Prim Nat]); depr = None};
+  [ {lab = "vals"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Nat8)]); src = empty_src};
+    {lab = "size";  typ = Func (Local, Returns, [], [], [Prim Nat]); src = empty_src};
   ]
 
 let text_obj () =
   let open T in
   Object,
-  [ {lab = "chars"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Char)]); depr = None};
-    {lab = "size";  typ = Func (Local, Returns, [], [], [Prim Nat]); depr = None};
+  [ {lab = "chars"; typ = Func (Local, Returns, [], [], [iter_obj (Prim Char)]); src = empty_src};
+    {lab = "size";  typ = Func (Local, Returns, [], [], [Prim Nat]); src = empty_src};
   ]
 
 
@@ -1110,7 +1111,7 @@ and infer_exp'' env exp : T.typ =
     end
   | TagE (id, exp1) ->
     let t1 = infer_exp env exp1 in
-    T.Variant [T.{lab = id.it; typ = t1; depr = None}]
+    T.Variant [T.{lab = id.it; typ = t1; src = empty_src}]
   | ProjE (exp1, n) ->
     let t1 = infer_exp_promote env exp1 in
     (try
@@ -1536,7 +1537,7 @@ and infer_exp_field env rf =
   let { mut; id; exp } = rf.it in
   let t = infer_exp env exp in
   let t1 = if mut.it = Syntax.Var then T.Mut t else t in
-  T.{ lab = id.it; typ = t1; depr = None }
+  T.{ lab = id.it; typ = t1; src = empty_src }
 
 and check_exp_strong env t exp =
   check_exp {env with weak = false} t exp
@@ -1900,7 +1901,7 @@ and infer_pat' env pat : T.typ * Scope.val_env =
     T.Opt t1, ve
   | TagP (id, pat1) ->
     let t1, ve = infer_pat env pat1 in
-    T.Variant [T.{lab = id.it; typ = t1; depr = None}], ve
+    T.Variant [T.{lab = id.it; typ = t1; src = empty_src}], ve
   | AltP (pat1, pat2) ->
     error env pat.at "M0184"
         "cannot infer the type of this or-pattern, please add a type annotation";
@@ -1936,7 +1937,7 @@ and infer_pat_fields at env pfs ts ve : (T.obj_sort * T.field list) * Scope.val_
   | pf::pfs' ->
     let typ, ve1 = infer_pat env pf.it.pat in
     let ve' = disjoint_union env at "M0017" "duplicate binding for %s in pattern" ve ve1 in
-    infer_pat_fields at env pfs' (T.{ lab = pf.it.id.it; typ; depr = None }::ts) ve'
+    infer_pat_fields at env pfs' (T.{ lab = pf.it.id.it; typ; src = empty_src }::ts) ve'
 
 and check_shared_pat env shared_pat : T.func_sort * Scope.val_env =
   match shared_pat.it with
@@ -2115,14 +2116,14 @@ and check_pat_fields env t tfs pfs ve at : Scope.val_env =
       display_typ_expand t
   | T.{lab; typ = Typ _; _}::tfs', _ ->  (* TODO: remove the namespace hack *)
     check_pat_fields env t tfs' pfs ve at
-  | T.{lab; typ; depr}::tfs', pf::pfs' ->
+  | T.{lab; typ; src}::tfs', pf::pfs' ->
     match compare pf.it.id.it lab with
     | -1 -> check_pat_fields env t [] pfs ve at
     | +1 -> check_pat_fields env t tfs' pfs ve at
     | _ ->
       if T.is_mut typ then
         error env pf.at "M0120" "cannot pattern match mutable field %s" lab;
-      Option.iter (warn env pf.at "M0154" "type field %s is deprecated:\n%s" lab) depr;
+      Option.iter (warn env pf.at "M0154" "type field %s is deprecated:\n%s" lab) src.T.depr;
       let ve1 = check_pat env typ pf.it.pat in
       let ve' =
         disjoint_union env at "M0017" "duplicate binding for %s in pattern" ve ve1 in
@@ -2141,38 +2142,38 @@ and pub_fields dec_fields : visibility_env =
 
 and pub_field dec_field xs : visibility_env =
   match dec_field.it with
-  | {vis = { it = Public depr; _}; dec; _} -> pub_dec depr dec xs
+  | {vis = { it = Public depr; _}; dec; _} -> pub_dec T.{depr = depr; region = dec_field.at} dec xs
   | _ -> xs
 
-and pub_dec depr dec xs : visibility_env =
+and pub_dec src dec xs : visibility_env =
   match dec.it with
   | ExpD _ -> xs
-  | LetD (pat, _, _) -> pub_pat depr pat xs
-  | VarD (id, _) -> pub_val_id depr id xs
+  | LetD (pat, _, _) -> pub_pat src pat xs
+  | VarD (id, _) -> pub_val_id src id xs
   | ClassD (_, id, _, _, _, _, _, _) ->
-    pub_val_id depr {id with note = ()} (pub_typ_id depr id xs)
-  | TypD (id, _, _) -> pub_typ_id depr id xs
+    pub_val_id src {id with note = ()} (pub_typ_id src id xs)
+  | TypD (id, _, _) -> pub_typ_id src id xs
 
-and pub_pat depr pat xs : visibility_env =
+and pub_pat src pat xs : visibility_env =
   match pat.it with
   | WildP | LitP _ | SignP _ -> xs
-  | VarP id -> pub_val_id depr id xs
-  | TupP pats -> List.fold_right (pub_pat depr) pats xs
-  | ObjP pfs -> List.fold_right (pub_pat_field depr) pfs xs
+  | VarP id -> pub_val_id src id xs
+  | TupP pats -> List.fold_right (pub_pat src) pats xs
+  | ObjP pfs -> List.fold_right (pub_pat_field src) pfs xs
   | AltP (pat1, _)
   | OptP pat1
   | TagP (_, pat1)
   | AnnotP (pat1, _)
-  | ParP pat1 -> pub_pat depr pat1 xs
+  | ParP pat1 -> pub_pat src pat1 xs
 
-and pub_pat_field depr pf xs =
-  pub_pat depr pf.it.pat xs
+and pub_pat_field src pf xs =
+  pub_pat src pf.it.pat xs
 
-and pub_typ_id depr id (xs, ys) : visibility_env =
-  (T.Env.add id.it (id.at, depr) xs, ys)
+and pub_typ_id src id (xs, ys) : visibility_env =
+  (T.Env.add id.it T.{depr = src.depr; id_region = id.at; field_region = src.region} xs, ys)
 
-and pub_val_id depr id (xs, ys) : visibility_env =
-  (xs, T.Env.add id.it (id.at, depr) ys)
+and pub_val_id src id (xs, ys) : visibility_env =
+  (xs, T.Env.add id.it T.{depr = src.depr; id_region = id.at; field_region = src.region} ys)
 
 
 (* Object/Scope transformations *)
@@ -2185,8 +2186,7 @@ and object_of_scope env sort dec_fields scope at =
     T.Env.fold
       (fun id c tfs ->
         match T.Env.find_opt id pub_typ with
-        | Some (_r, Some depr) -> T.{lab = id; typ = T.Typ c; depr = Some depr}::tfs
-        | Some (_r, None) -> T.{lab = id; typ = T.Typ c; depr = None}::tfs
+        | Some src -> T.{lab = id; typ = T.Typ c; src = {depr = src.depr; region = src.field_region}}::tfs
         | _ -> tfs
       ) scope.Scope.typ_env  []
   in
@@ -2194,8 +2194,7 @@ and object_of_scope env sort dec_fields scope at =
     T.Env.fold
       (fun id t tfs ->
         match T.Env.find_opt id pub_val with
-        | Some (_r, Some depr) -> T.{lab = id; typ = t; depr = Some depr}::tfs
-        | Some (_r, None) -> T.{lab = id; typ = t; depr = None}::tfs
+        | Some src -> T.{lab = id; typ = t; src = {depr = src.depr; region = src.field_region}}::tfs
         | _ -> tfs
       ) scope.Scope.val_env tfs
   in
@@ -2240,7 +2239,7 @@ and infer_obj env s dec_fields at : T.typ =
       List.iter (fun T.{lab; typ; _} ->
         if not (T.is_typ typ) && not (T.is_shared_func typ) then
           let _, pub_val = pub_fields dec_fields in
-          error env (fst (T.Env.find lab pub_val)) "M0124"
+          error env ((T.Env.find lab pub_val).id_region) "M0124"
             "public actor field %s has non-shared function type%a"
             lab
             display_typ_expand typ

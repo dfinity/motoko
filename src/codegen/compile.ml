@@ -9311,7 +9311,106 @@ and compile_prim_invocation (env : E.t) ae p es at =
       SR.UnboxedFloat64,
       compile_exp_as env ae SR.UnboxedWord64 e ^^
       G.i (Convert (Wasm.Values.F64 F64Op.ConvertSI64))
-
+    | Nat8, Nat16 ->
+      SR.Vanilla,
+      compile_exp_vanilla env ae e ^^
+      compile_shrU_const 8l
+    | Nat16, Nat32 ->
+      SR.Vanilla,
+      compile_exp_vanilla env ae e ^^
+      compile_shrU_const 15l (* resulting Nat32 will always be unboxed *)
+    | Nat32, Nat64 ->
+      SR.UnboxedWord64,
+      compile_exp_as env ae SR.UnboxedWord32 e ^^
+      G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
+    | Nat16, (Nat8 as pty) ->
+      SR.Vanilla,
+      let num_bits = (TaggedSmallWord.bits_of_type pty) in
+      let set_val, get_val = new_local env "convertee" in
+      compile_exp_vanilla env ae e ^^
+      set_val ^^
+      get_val ^^
+      compile_shrU_const (Int32.of_int (32 - num_bits)) ^^
+      E.then_trap_with env "losing precision" ^^
+      get_val ^^
+      compile_shl_const (Int32.of_int num_bits)
+    | Nat32, (Nat16 as pty) ->
+      SR.Vanilla,
+      let num_bits = Int32.of_int (TaggedSmallWord.bits_of_type pty) in
+      let set_val, get_val = new_local env "convertee" in
+      compile_exp_as env ae SR.UnboxedWord32 e ^^
+      set_val ^^
+      get_val ^^
+      compile_shrU_const num_bits ^^
+      E.then_trap_with env "losing precision" ^^
+      get_val ^^
+      compile_shl_const num_bits
+    | Nat64, (Nat32 as pty) ->
+      SR.UnboxedWord32,
+      let num_bits = Int64.of_int (TaggedSmallWord.bits_of_type pty) in
+      let set_val, get_val = new_local64 env "convertee" in
+      compile_exp_as env ae SR.UnboxedWord64 e ^^
+      set_val ^^
+      get_val ^^
+      compile_shrU64_const num_bits ^^
+      G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
+      E.then_trap_with env "losing precision" ^^
+      get_val ^^
+      G.i (Convert (Wasm.Values.I32 I32Op.WrapI64))
+    | Int8, Int16 ->
+      SR.Vanilla,
+      compile_exp_vanilla env ae e ^^
+      compile_shrS_const 8l
+    | Int16, Int32 ->
+      SR.Vanilla,
+      compile_exp_vanilla env ae e ^^
+      compile_shrS_const 15l (* resulting Int32 will always be unboxed *)
+    | Int32, Int64 ->
+      SR.UnboxedWord64,
+      compile_exp_as env ae SR.UnboxedWord32 e ^^
+      G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32))
+    | Int16, (Int8 as pty) ->
+      SR.Vanilla,
+      let num_bits = (TaggedSmallWord.bits_of_type pty) in
+      let set_val, get_val = new_local env "convertee" in
+      compile_exp_vanilla env ae e ^^
+      set_val ^^
+      get_val ^^
+      compile_shl_const (Int32.of_int num_bits) ^^
+      compile_shrS_const (Int32.of_int num_bits) ^^
+      get_val ^^
+      compile_eq env Type.(Prim Nat16) ^^
+      E.else_trap_with env "losing precision" ^^
+      get_val ^^
+      compile_shl_const (Int32.of_int num_bits)
+    | Int32, (Int16 as pty) ->
+      SR.Vanilla,
+      let num_bits = (TaggedSmallWord.bits_of_type pty) in
+      let set_val, get_val = new_local env "convertee" in
+      compile_exp_as env ae SR.UnboxedWord32 e ^^
+      set_val ^^
+      get_val ^^
+      compile_shl_const (Int32.of_int num_bits) ^^
+      compile_shrS_const (Int32.of_int num_bits) ^^
+      get_val ^^
+      compile_eq env Type.(Prim Nat32) ^^
+      E.else_trap_with env "losing precision" ^^
+      get_val ^^
+      compile_shl_const (Int32.of_int num_bits)
+    | Int64, (Int32 as pty) ->
+      SR.UnboxedWord32,
+      let num_bits = (TaggedSmallWord.bits_of_type pty) in
+      let set_val, get_val = new_local64 env "convertee" in
+      compile_exp_as env ae SR.UnboxedWord64 e ^^
+      set_val ^^
+      get_val ^^
+      compile_shl64_const (Int64.of_int num_bits) ^^
+      compile_shrS64_const (Int64.of_int num_bits) ^^
+      get_val ^^
+      compile_eq env Type.(Prim Nat64) ^^
+      E.else_trap_with env "losing precision" ^^
+      get_val ^^
+      G.i (Convert (Wasm.Values.I32 I32Op.WrapI64))
     | _ -> SR.Unreachable, todo_trap env "compile_prim_invocation" (Arrange_ir.prim p)
     end
 
