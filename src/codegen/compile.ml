@@ -3579,14 +3579,11 @@ module Object = struct
   let idx_hash env low_bound indirect =
     if indirect
     then
-      let name = Printf.sprintf "obj_idx_ind<%d>" low_bound in
-      Func.share_code2 env name (("x", I32Type), ("hash", I32Type)) [I32Type] (fun env get_x get_hash ->
-      get_x ^^ get_hash ^^
       idx_hash_raw env low_bound ^^
       load_ptr ^^ Tagged.load_forwarding_pointer env ^^
       compile_add_const (Int32.mul (MutBox.field env) Heap.word_size)
-    )
-    else idx_hash_raw env low_bound
+    else
+      idx_hash_raw env low_bound
 
   let field_type env obj_type s =
     let _, fields = Type.as_obj_sub [s] obj_type in
@@ -3959,33 +3956,35 @@ module Arr = struct
   (* Dynamic array access. Returns the address (not the value) of the field.
      Does no bounds checking *)
   let unsafe_idx env =
-    Func.share_code2 env "Array.unsafe_idx" (("array", I32Type), ("idx", I32Type)) [I32Type] (fun env get_array get_idx ->
-      get_idx ^^
-      compile_add_const (header_size env) ^^
-      compile_mul_const element_size ^^
-      get_array ^^
-      Tagged.load_forwarding_pointer env ^^
-      G.i (Binary (Wasm.Values.I32 I32Op.Add))
-    )
+    let set_array, get_array = new_local env "array" in
+    let set_idx, get_idx = new_local env "idx" in
+    set_idx ^^ set_array ^^
+    get_idx ^^
+    compile_add_const (header_size env) ^^
+    compile_mul_const element_size ^^
+    get_array ^^
+    Tagged.load_forwarding_pointer env ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.Add))
 
   (* Dynamic array access. Returns the address (not the value) of the field.
      Does bounds checking *)
   let idx env =
-    Func.share_code2 env "Array.idx" (("array", I32Type), ("idx", I32Type)) [I32Type] (fun env get_array get_idx ->
-      (* No need to check the lower bound, we interpret idx as unsigned *)
-      (* Check the upper bound *)
-      get_idx ^^
-      get_array ^^ len env ^^
-      G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
-      E.else_trap_with env "Array index out of bounds" ^^
+    let set_array, get_array = new_local env "array" in
+    let set_idx, get_idx = new_local env "idx" in
+    set_idx ^^ set_array ^^
+    (* No need to check the lower bound, we interpret idx as unsigned *)
+    (* Check the upper bound *)
+    get_idx ^^
+    get_array ^^ len env ^^
+    G.i (Compare (Wasm.Values.I32 I32Op.LtU)) ^^
+    E.else_trap_with env "Array index out of bounds" ^^
 
-      get_idx ^^
-      compile_add_const (header_size env) ^^
-      compile_mul_const element_size ^^
-      get_array ^^
-      Tagged.load_forwarding_pointer env ^^
-      G.i (Binary (Wasm.Values.I32 I32Op.Add))
-    )
+    get_idx ^^
+    compile_add_const (header_size env) ^^
+    compile_mul_const element_size ^^
+    get_array ^^
+    Tagged.load_forwarding_pointer env ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.Add))
 
   (* As above, but taking a bigint (Nat), and reporting overflow as out of bounds *)
   let idx_bigint env =
