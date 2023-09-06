@@ -39,8 +39,8 @@ Compared with the Rust version, we store enough extra meta data to permit:
  - Regions whose page blocks are in arbitrary order, not
    necessarily in order of smallest to highest address.
 
- - 32767 Regions max (instead of 255 Regions max).
-   (Could expand this to 64k with current design, or beyond with larger Region IDs).
+ - 2^64-1 Regions max (instead of 255 Regions max).
+   Due to the limit on blocks, only 2^16-1 can have non-zero page size.
 
 We want to permit arbitrary page block orders to make a smooth
 transition to region reclamation and re-allocation in the near
@@ -48,7 +48,9 @@ future, with potential integration into the Motoko GC.  The
 extra complexity is modest, and seems "worth" the cost.
 
 We change the maximum region limit because 255 may be too small in
-some extreme cases.
+some extreme cases and incompatible with GC.
+Instead, we can freely allocate new regions, recycling blocks, but not
+Region ids. The id of a Region is invariant and will not change, even with GC.
 
 We address the question of whether the new limit of 32k regions is
 "enough" in the Q&A section (it is, for all practical purposes)
@@ -145,7 +147,7 @@ Another special operation, for disaster recovery:
 The state of the allocator is stored in a combination of:
 
  - stable memory fields and tables and
- - stable heap memory, in the form of objects of type `Region`.
+ - stable heap memory, in the form of objects of opaque type `Region`.
 
 The stable memory state is sufficient to reconstitute the stable heap objects
 (`rebuild` operation, described in a subsection below).
@@ -155,18 +157,16 @@ stable memory state can fully describe the region objects that will be rebuilt w
 
 ### stable memory fields
 
- - total allocated blocks, `Nat16`, max value is `32768`.
- - total allocated regions, `Nat16`, max value is `32767` (one region is reserved for "no region").
- - The `block-region` table (fixed size, about 131kb).
- - The `region` table (fixed size, about 262kb).
+ - total allocated blocks, `u16`, max value is `32768`.
+ - total allocated regions, `u64`, max value is 2^64-1 (one region is reserved for "no region" in block-region table).
+ - The `block` table (fixed size, about 6 pages).
 
 ### representation of values of type `Region`
 
  - A singleton, heap-allocated object with mutable fields.
  - While being heap-allocated, the object is also `stable` (can be stored in a `stable var`, etc).
- - `RegionObject { id: u16, padding: u16, page_count: u32; vec_pages: Value }`
- - Field `id` gives the Region's numerical id as an index into the `region` table.
- - Padding is needed for alignment of larger fields.
+ - `RegionObject { id_lower: u32, id_upper: u32; mut page_count: u32; mut vec_pages: Value }`
+ - Fields id_lower (lower 32-bits)  and id_upper (upper 32-bits) gives the Region's numerical 64-bit (id = (id_upper << 32 | id_lower)).
  - Field `page_count` gives the number of pages allocated to the Region.
  - Field `vec_pages` points at a heap-allocated `Blob` value, and it works with `page_count`
    to represent a growable vector that we call the region's **"access
@@ -174,8 +174,8 @@ stable memory state can fully describe the region objects that will be rebuilt w
    used to support O(1) access operations):
    - the access vector has `vec_capacity` slots.
    - each slot is a `u16`.
-   - the first `size_in_pages + 127 / 128` slots contain a valid page block ID for the region.
-   - during an upgrade, the access vectors get serialized and deserialized as data `Blobs` (as if no pointers are inside each).
+   - the first `page_count + 127 / 128` slots contain a valid page block ID for the region.
+   - during an upgrade, the access vectors get serialized and deserialized as data `Blobs`.
 
 
 ### region-blocks relation
@@ -184,14 +184,15 @@ The `region-blocks` relation is not materialized into a table in stable memory (
 
 Instead, this relation is represented in two ways at the same time:
  1. by the set of heap-allocated region objects, and their access vectors.  The access vectors provide O(1) store and load support.
- 2. by the `block-region` table and the `region` table, which together are sufficient to recreate all of the heap-allocated region objects.
+ 2. by the `block-region` table, which together are sufficient to recreate all of the heap-allocated region objects.
 
 In ordinary operation, the second feature is not required.  In the event of an upgrade failure, however, it could be vital (See `rebuild`).
 
 ### block-region table
 
  - purpose:
-   - relate a block ID ("page block ID") to its region (if any) and its position in that region (see `rebuild`).
+   - relate a block ID ("page block ID") to its region (if any), its position (or rank) in that region (see `rebuild`) and its current size in (used) pages (<=128).
+     All but the last block owned by a region should have all pages 128 allocated.
 
    - NB: The organization of this table is not useful for efficient
      access calculations of load or store (they require a linear
@@ -200,24 +201,9 @@ In ordinary operation, the second feature is not required.  In the event of an u
      in that table, if need be (see `rebuild`).
 
  - 32768 entries (statically sized).
- - 4 bytes per entry.
- - entry type = `BlockRegion { region : Nat16, position : Nat16 }`
+ - 8 (id) +2 (rank) + 1 (used) = 11 bytes per entry.
+ - entry type = `BlockRegion { region : u64, position : u16, size: u8 }`
  - the location of each entry gives its corresponding block ID.
-
-### region table
-
- - purpose:
-   - relate a region ID to its size in pages.
-
-   - NB: This table exists as a "stable backup" of the per-region fields
-     that exist in the set of region objects, except for the access vectors' elements (see `block-region` table for their data).
-
- - 32768 entries (statically sized).
- - 8 bytes per entry.
- - entry type = `RegionBlocks { size_in_pages: Nat64; }`
- - the location of each entry in the table gives its corresponding region ID.
- - the `size_in_pages` field measures the size of the region in terms of _pages_, not blocks.
- - to do: track bit per region of whether in-use or reclaimed-and-available, somehow.
 
 
 ### Overview of `rebuild`
@@ -226,13 +212,14 @@ When upgrades work as expected, stable `Regions` are serialized and deserialized
 
 For disaster recovery, we can **also** rebuild all of the region objects from data in stable memory.
 
-We use the `block-region` and `region` tables in stable memory to rebuild the regions' objects:
+We use the `block-region` tables in stable memory to rebuild the regions' objects:
 
- - The `region` table gives a size for each region, saying how large each vector for each region needs to be.
- - The `block-region` table gives a relative position and region ID for each block ID.
+ - The `block-region` table gives a relative position and region ID for each block ID together with utilized page count.
 
-Once each regions' vectors have been allocated, the block-region table says how to fill them, one entry at a time.
+Once each regions' vectors have been sized (by a linear scan of block-region, summing block sizes) and allocated, the block-region table says how to fill them, one entry at a time.
 Unlike the Rust design, vector entries can be populated out-of-order.
+
+Currently, we need only recover region 0 (when upgrading).
 
 
 ### Special (reserved) regions
@@ -245,25 +232,15 @@ Unlike the Rust design, vector entries can be populated out-of-order.
 
 - Regions are represented (see special subsection) with heap objects that are `stable`, but mutable.
 - They have special GC headers to recognize their special structure.
-- The Region table keeps track of which available IDs are in use as Region heap values are GC'd.
+- The block-region table (or a more transient bitmap)  keeps track of which blocks are in use as Region heap values are GC'd.
 
-#### Region allocation, re-allocation
+Blocks can be marked during normal GC, with unmarked blocks returned to a transient free-list. In this design, blocks are recycled during
+the lifetime of a single canister version.
 
-A region with a particular ID is first initially allocated by a global, bumped counter reaching it.
-
-When that happens, the region table is marked (TO DO) indicating that region is in use.
-
-The region heap object with that ID witnesses its lifetime, and is reclaimed by GC when it becomes unreachable.
-
-When the bump counter reaches its maximum value, the allocation algorithm changes to scanning the regions,
-looking for the first available one (with minimum ID).
-
-#### Region reclamation
-
-A heap object with a certain region ID lives until GC reclaims it, where the region table is re-marked (TO DO) to indicate that the region is free again.
-
-Before reusing that region, each of its block are added to the special "free blocks" region.
-
+Alternatively, Blocks can be marked only during deserialization after an upgrade, for bespoke, Region-only, GC during upgrades, with unmarked blocks
+returned to a free list.
+In this design, blocks are only recycled during upgrade from one version to the next, meaning long-lived canisters that create garbage regions will leak
+space.
 
 ### Migration from earlier designs into region system
 
@@ -277,32 +254,31 @@ Including this design, there are three possible verions (`0`, `1`, or `2`):
  2. This Region system, where direct access still works through region zero.
 
 
-#### Compiler flag
-
-Initially, all of version 2 (the region system) is guarded by a compiler flag:
-
-```
-  --stable-regions
-```
-
-A section below describes the opt in mechanism, after some more relevant background.
-
 #### Key points
-
-- Migration from earlier versions requires an explicit opt-in with the compiler flag.
-- (Our intention is to make this flag set automatically in the future, but not initially.)
 
 - Version 0:
   - will never be forced to "migrate" to other versions (assuming no stable memory API use).
   - will never incur the space overhead of the region system.
 
-- Migration to version 2 from version 0 occurs when the compiler flag is set, and either:
- - An initial region is allocated via `Region.new`.
- - Experimental Stable Memory function `grow` is invoked for the first time.
+- Migration from 0 to version 1 occurs when:
+  - Experimental Stable Memory function `grow` is invoked for the first time.
+  This will not incur the space overhead of the region system.
 
-- Migration to version 2 from version 1 occurs on upgrade, when the compiler flag is set.
+- Migration from version 0 or version 1 to version 2 occurs when:
+  - An initial region is allocated via `Region.new`.
+  This will incur the space overhead of the region system.
+  The space overhead is 16 pages (1MB) when migration from version 0, and 128 pages (8MiB) when migrating from version 1.
 
-We summarize the conditions for "opt in" again below.
+#### Compiler flag
+
+Compiler flag
+
+```
+  --stable-regions
+```
+
+Affects upgrades only and forces migration directly into version 2 from version 0 or 1.
+It is provided for testing purposes and *not* required for use of regions.
 
 #### Format version details
 
@@ -315,36 +291,25 @@ Including this design, there are three possible verions (`0`, `1`, or `2`).  See
 
 In the first cases (`0`) and (`1`), we wish to *selectively* migrate into the region system (`2`), with its own internal versioning.
 
-#### Trade offs
-
-The main factor involved in making the per-canister choice of stable memory format involves the mandatory block-sized reservation for current and future meta data (8MB).
-
-For canisters that do not store an order of magnitude more than 8MB, it may make sense to
-eschew regions in favor of stable vars for stable data, thereby saving that 8MB of otherwise-wasted space.
-
-Canisters can do this by not using any stable memory API (only stable vars), or by using the experimental API and not enabling the compiler flag for regions.
 
 #### Opt-in mechanism
 
-The opt-in mechanism for using version 2 consists of doing both:
+The opt-in mechanism for using version 2 consists of using:
 
- - Enabling the compiler flag.
- - Using either `Region.new` or `StableMemory.grow` on a fresh canister,
-   or "upgrading" from a canister using version 1.
+ - dynamically calling `Region.new()` form a canister currently in version 0 or 1;
+ - staticly specifying compiler flag `--stable-regions`. This is mostly useful for testing.
 
 Critically,
 
-1. There is no provision for "downgrading" back to earlier, pre-region systems.
-
-2. Since they opt into the system, it does not make sense to place calls to `R.new()` in library code without adequate documentation.  It may make sense to _never_ place them there, depending on the policy for controlling and managing regions.
-
-Until checks about unexpected placements of `R.new()` can be implemented, without enabling this flag, the region `R.new` primitive will not be compiled by the compiler.  Hence, the absence of the flag acts as a master "off switch".
+1. The use of physical stable memory is pay-as-you-go: canisters that do not use regions do not pay for that priviledge.
+2. There is no provision for "downgrading" back to earlier, pre-region systems.
 
 ##### Version 0 migration.
 
 To migrate from version 0 to version 2, there is nothing additional to do for existing data.
 
-The region system detects this case by measuring the zero-sized stable memory during its initialization.
+The region system detects this case by measuring the zero-sized stable memory during its initialization and
+starts allocating blocks from address 16*2^16 (1MiB overhead), leaving 10 pages unused for future use.
 
 ##### Version 1 migration.
 
@@ -359,3 +324,10 @@ To accomodate the meta data of the region system, we move the first block of reg
 Then, we reformat the first block of stable memory as the region meta data block.
 
 The rest of the blocks become part of region 0, with its first block stored at the end of physical memory.
+
+The region system starts allocating blocks from address 128*2^16 (8MiB overhead), leaving 122 pages unused for future use.
+
+Since we do not move the remaining blocks of region 0, the first block of memory (excluding meta-data) is unused space.
+
+This design ensures that an existing canister using very large amounts of experimental stable memory can be migrated with only constant-cost movement
+of the first block (128 pages) of memory.
