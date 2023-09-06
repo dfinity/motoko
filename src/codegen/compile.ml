@@ -1484,13 +1484,13 @@ module BitTagged = struct
 
   (* dynamic *)
   let if_can_tag_i64 env retty is1 is2 =
-    Func.share_code1 env "can_tag_i64" ("x", I64Type) [I32Type] (fun env get_x ->
-      (* checks that all but the low 30 bits are either all 0 or all 1 *)
-      get_x ^^ compile_shl64_const 1L ^^
-      get_x ^^ G.i (Binary (Wasm.Values.I64 I32Op.Xor)) ^^
-      compile_shrU64_const 31L ^^
-      G.i (Test (Wasm.Values.I64 I64Op.Eqz))
-    ) ^^
+    let (set_x, get_x) = new_local64 env "x" in
+    set_x ^^
+    (* checks that all but the low 30 bits are either all 0 or all 1 *)
+    get_x ^^ compile_shl64_const 1L ^^
+    get_x ^^ G.i (Binary (Wasm.Values.I64 I32Op.Xor)) ^^
+    compile_shrU64_const 31L ^^
+    G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
     E.if_ env retty is1 is2
 
   let if_can_tag_u64 env retty is1 is2 =
@@ -1509,12 +1509,13 @@ module BitTagged = struct
   (* 32 bit numbers, dynamic, w.r.t `Int` *)
 
   let if_can_tag_i32 env retty is1 is2 =
-    Func.share_code1 env "cannot_tag_i32" ("x", I32Type) [I32Type] (fun env get_x ->
-      (* checks that all but the low 30 bits are both either 0 or 1 *)
-      get_x ^^ compile_shrU_const 30l ^^
-      G.i (Unary (Wasm.Values.I32 I32Op.Popcnt)) ^^
-      G.i (Unary (Wasm.Values.I32 I32Op.Ctz))
-    ) ^^
+    let (set_x, get_x) = new_local env "x" in
+    set_x ^^
+    (* checks that all but the low 30 bits are both either 0 or 1 *)
+    get_x ^^ compile_shrU_const 30l ^^
+    G.i (Unary (Wasm.Values.I32 I32Op.Popcnt)) ^^
+    G.i (Unary (Wasm.Values.I32 I32Op.Ctz))
+    ^^
     E.if_ env retty is1 is2
 
   let if_can_tag_u32 env retty is1 is2 =
@@ -1621,7 +1622,6 @@ module Tagged = struct
   (* Note: post-allocation barrier must be applied after initialization *)
   let alloc env size tag =
     assert (size > 1l);
-    let name = Printf.sprintf "alloc_size<%d>_tag<%d>" (Int32.to_int size) (Int32.to_int (int_of_tag tag)) in
     (* Computes a (conservative) mask for the bumped HP, so that the existence of non-zero bits under it
        guarantees that a page boundary crossing didn't happen (i.e. no ripple-carry). *)
     let overflow_mask increment =
@@ -1632,33 +1632,31 @@ module Tagged = struct
       let ext = if Numerics.Nat16.(to_int (popcnt (of_int n))) = 1 then increment else 0l in
       Int32.(logor ext (logand page_mask (shift_left minus_one (16 - Numerics.Nat16.(to_int (clz (of_int n))))))) in
 
-    Func.share_code0 env name [I32Type] (fun env ->
-      let set_object, get_object = new_local env "new_object" in
-      let size_in_bytes = Int32.(mul size Heap.word_size) in
-      let half_page_size = Int32.div page_size 2l in
-      (if !Flags.gc_strategy <> Flags.Incremental && size_in_bytes < half_page_size then
-         GC.get_heap_pointer env ^^
-         GC.get_heap_pointer env ^^
-         compile_add_const size_in_bytes ^^
-         GC.set_heap_pointer env ^^
-         GC.get_heap_pointer env ^^
-         compile_bitand_const (overflow_mask size_in_bytes) ^^
-         G.if0
-           G.nop (* no page crossing *)
-           (Heap.ensure_allocated env) (* ensure that HP's page is allocated *)
-       else
-         Heap.alloc env size) ^^
-      set_object ^^ get_object ^^
-      compile_unboxed_const (int_of_tag tag) ^^
-      Heap.store_field tag_field ^^
-      (if !Flags.gc_strategy = Flags.Incremental then
-        get_object ^^ (* object pointer *)
-        get_object ^^ (* forwarding pointer *)
-        Heap.store_field (forwarding_pointer_field env)
+    let set_object, get_object = new_local env "new_object" in
+    let size_in_bytes = Int32.(mul size Heap.word_size) in
+    let half_page_size = Int32.div page_size 2l in
+    (if !Flags.gc_strategy <> Flags.Incremental && size_in_bytes < half_page_size then
+        GC.get_heap_pointer env ^^
+        GC.get_heap_pointer env ^^
+        compile_add_const size_in_bytes ^^
+        GC.set_heap_pointer env ^^
+        GC.get_heap_pointer env ^^
+        compile_bitand_const (overflow_mask size_in_bytes) ^^
+        G.if0
+          G.nop (* no page crossing *)
+          (Heap.ensure_allocated env) (* ensure that HP's page is allocated *)
       else
-        G.nop) ^^
-      get_object
-    )
+        Heap.alloc env size) ^^
+    set_object ^^ get_object ^^
+    compile_unboxed_const (int_of_tag tag) ^^
+    Heap.store_field tag_field ^^
+    (if !Flags.gc_strategy = Flags.Incremental then
+      get_object ^^ (* object pointer *)
+      get_object ^^ (* forwarding pointer *)
+      Heap.store_field (forwarding_pointer_field env)
+    else
+      G.nop) ^^
+    get_object
 
   let load_forwarding_pointer env =
     (if !Flags.gc_strategy = Flags.Incremental then
@@ -2142,18 +2140,20 @@ module BoxedWord64 = struct
     get_i ^^
     Tagged.allocation_barrier env
 
-  let box env = Func.share_code1 env "box_i64" ("n", I64Type) [I32Type] (fun env get_n ->
-      get_n ^^ BitTagged.if_can_tag_i64 env [I32Type]
-        (get_n ^^ BitTagged.tag)
-        (compile_box env get_n)
-    )
+  let box env =
+    let (set_n, get_n) = new_local64 env "n" in
+    set_n ^^
+    get_n ^^ BitTagged.if_can_tag_i64 env [I32Type]
+      (get_n ^^ BitTagged.tag)
+      (compile_box env get_n)
 
-  let unbox env = Func.share_code1 env "unbox_i64" ("n", I32Type) [I64Type] (fun env get_n ->
-      get_n ^^
-      BitTagged.if_tagged_scalar env [I64Type]
-        ( get_n ^^ BitTagged.untag env)
-        ( get_n ^^ Tagged.load_forwarding_pointer env ^^ Tagged.load_field64 env (payload_field env))
-    )
+  let unbox env =
+    let (set_n, get_n) = new_local64 env "n" in
+    set_n ^^
+    get_n ^^
+    BitTagged.if_tagged_scalar env [I64Type]
+      ( get_n ^^ BitTagged.untag env)
+      ( get_n ^^ Tagged.load_forwarding_pointer env ^^ Tagged.load_field64 env (payload_field env))
 end (* BoxedWord64 *)
 
 module Word64 = struct
@@ -2263,21 +2263,23 @@ module BoxedSmallWord = struct
     get_i ^^
     Tagged.allocation_barrier env
 
-  let box env = Func.share_code1 env "box_i32" ("n", I32Type) [I32Type] (fun env get_n ->
-      get_n ^^ compile_shrU_const 30l ^^
-      G.i (Unary (Wasm.Values.I32 I32Op.Popcnt)) ^^
-      G.i (Unary (Wasm.Values.I32 I32Op.Ctz)) ^^
-      G.if1 I32Type
-        (get_n ^^ BitTagged.tag_i32)
-        (compile_box env get_n)
-    )
+  let box env =
+    let (set_n, get_n) = new_local env "n" in
+    set_n ^^
+    get_n ^^ compile_shrU_const 30l ^^
+    G.i (Unary (Wasm.Values.I32 I32Op.Popcnt)) ^^
+    G.i (Unary (Wasm.Values.I32 I32Op.Ctz)) ^^
+    G.if1 I32Type
+      (get_n ^^ BitTagged.tag_i32)
+      (compile_box env get_n)
 
-  let unbox env = Func.share_code1 env "unbox_i32" ("n", I32Type) [I32Type] (fun env get_n ->
-      get_n ^^
-      BitTagged.if_tagged_scalar env [I32Type]
-        (get_n ^^ BitTagged.untag_i32)
-        (get_n ^^ Tagged.load_forwarding_pointer env ^^ Tagged.load_field env (payload_field env))
-    )
+  let unbox env =
+    let (set_n, get_n) = new_local env "n" in
+    set_n ^^
+    get_n ^^
+    BitTagged.if_tagged_scalar env [I32Type]
+      (get_n ^^ BitTagged.untag_i32)
+      (get_n ^^ Tagged.load_forwarding_pointer env ^^ Tagged.load_field env (payload_field env))
 
   let _lit env n = compile_unboxed_const n ^^ box env
 
