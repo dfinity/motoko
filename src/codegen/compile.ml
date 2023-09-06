@@ -1953,25 +1953,25 @@ module Opt = struct
     G.i (Compare (Wasm.Values.I32 I32Op.Ne))
 
   let inject env e =
+    let (set_x, get_x) = new_local env "x" in
     e ^^
-    Func.share_code1 env "opt_inject" ("x", I32Type) [I32Type] (fun env get_x ->
-      get_x ^^ BitTagged.if_tagged_scalar env [I32Type]
-        ( get_x ) (* scalar, no wrapping *)
-        ( get_x ^^ BitTagged.is_true_literal env ^^ (* exclude true literal since `branch_default` follows the forwarding pointer *)
-          E.if_ env [I32Type]
-            ( get_x ) (* true literal, no wrapping *)
-            ( get_x ^^ Tagged.branch_default env [I32Type]
-              ( get_x ) (* default tag, no wrapping *)
-              [ Tagged.Null,
-                (* NB: even ?null does not require allocation: We use a static
-                  singleton for that: *)
-                compile_unboxed_const (vanilla_lit env (null_vanilla_lit env))
-              ; Tagged.Some,
-                Tagged.obj env Tagged.Some [get_x]
-              ]
-            )
-        )
-    )
+    set_x ^^
+    get_x ^^ BitTagged.if_tagged_scalar env [I32Type]
+      ( get_x ) (* scalar, no wrapping *)
+      ( get_x ^^ BitTagged.is_true_literal env ^^ (* exclude true literal since `branch_default` follows the forwarding pointer *)
+        E.if_ env [I32Type]
+          ( get_x ) (* true literal, no wrapping *)
+          ( get_x ^^ Tagged.branch_default env [I32Type]
+            ( get_x ) (* default tag, no wrapping *)
+            [ Tagged.Null,
+              (* NB: even ?null does not require allocation: We use a static
+                singleton for that: *)
+              compile_unboxed_const (vanilla_lit env (null_vanilla_lit env))
+            ; Tagged.Some,
+              Tagged.obj env Tagged.Some [get_x]
+            ]
+          )
+      )
 
   (* This function is used where conceptually, Opt.inject should be used, but
   we know for sure that it wouldn’t do anything anyways, except dereferencing the forwarding pointer *)
@@ -1983,22 +1983,22 @@ module Opt = struct
     Tagged.load_field env (some_payload_field env)
 
   let project env =
-    Func.share_code1 env "opt_project" ("x", I32Type) [I32Type] (fun env get_x ->
-      get_x ^^ BitTagged.if_tagged_scalar env [I32Type]
-        ( get_x ) (* scalar, no wrapping *)
-        ( get_x ^^ BitTagged.is_true_literal env ^^ (* exclude true literal since `branch_default` follows the forwarding pointer *)
-          E.if_ env [I32Type]
-            ( get_x ) (* true literal, no wrapping *)
-            ( get_x ^^ Tagged.branch_default env [I32Type]
-              ( get_x ) (* default tag, no wrapping *)
-              [ Tagged.Some,
-                get_x ^^ load_some_payload_field env
-              ; Tagged.Null,
-                E.trap_with env "Internal error: opt_project: null!"
-              ]
-            )
-        )
-    )
+    let (set_x, get_x) = new_local env "x" in
+    set_x ^^
+    get_x ^^ BitTagged.if_tagged_scalar env [I32Type]
+      ( get_x ) (* scalar, no wrapping *)
+      ( get_x ^^ BitTagged.is_true_literal env ^^ (* exclude true literal since `branch_default` follows the forwarding pointer *)
+        E.if_ env [I32Type]
+          ( get_x ) (* true literal, no wrapping *)
+          ( get_x ^^ Tagged.branch_default env [I32Type]
+            ( get_x ) (* default tag, no wrapping *)
+            [ Tagged.Some,
+              get_x ^^ load_some_payload_field env
+            ; Tagged.Null,
+              E.trap_with env "Internal error: opt_project: null!"
+            ]
+          )
+      )
 
 end (* Opt *)
 
