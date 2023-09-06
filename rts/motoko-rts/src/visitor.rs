@@ -92,6 +92,14 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
             }
         }
 
+        TAG_REGION => {
+            let region = obj as *mut Region;
+            let field_addr = &mut (*region).vec_pages;
+            if pointer_to_dynamic_heap(field_addr, heap_base) {
+                visit_ptr_field(ctx, field_addr);
+            }
+        }
+
         TAG_CONCAT => {
             let concat = obj as *mut Concat;
             let field1_addr = &mut (*concat).text1;

@@ -611,6 +611,7 @@ The category of a type determines the operators (unary, binary, relational and i
 | [`Blob`](./base/Blob.md)           | O        | binary blobs with iterators                                            |
 | [`Principal`](./base/Principal.md) | O        | principals                                                             |
 | [`Error`](./base/Error.md)         |          | (opaque) error values                                                  |
+| [`Region`](./base/Region.md)       |          | (opaque) stable memory region objects                                  |
 
 Although many of these types have linguistic support for literals and operators, each primitive type also has an eponymous base library providing related functions and values (see [Motoko Base Library](./base-intro.md)). For example, the [`Text`](./base/Text.md) library provides common functions on `Text` values.
 
@@ -745,6 +746,15 @@ Such call failures are reported by throwing an `Error` with code `#call_error { 
 Like other errors, call errors can be caught and handled using `try ... catch ...` expressions, if desired.
 
 :::
+
+### Type `Region`
+
+The type `Region` represents opague stable memory regions.
+Region objects are dynamically allocated and independently growable.
+They represent isolated partitions of IC stable memory.
+The region type is stable (but not shared) and its objects, which are stateful, may be stored in stable variables and data structures.
+Objects of type `Region` are created and updated using the functions provided by base library `Region`.
+See [Stable Regions](stable-regions.md) and library [Region](./base/Region.md) for more information.
 
 ### Constructed types
 
@@ -1056,6 +1066,8 @@ This definition implies that every shared type is a stable type. The converse do
 The types of actor fields declared with the `stable` qualifier must have stable type.
 
 The (current) value of such a field is preserved upon *upgrade*, whereas the values of other fields are reinitialized after an upgrade.
+
+Note: the primitive `Region` type is stable.
 
 ## Static and dynamic semantics
 

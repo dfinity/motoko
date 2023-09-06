@@ -47,3 +47,4 @@ let ocaml_js = ref false
 let rts_stack_pages_default = 32 (* 2MB *)
 let rts_stack_pages : int ref = ref rts_stack_pages_default
 let trap_on_call_error = ref false
+let use_stable_regions = ref false
