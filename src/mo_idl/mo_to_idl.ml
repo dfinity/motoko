@@ -74,6 +74,7 @@ module MakeState() = struct
     | Text -> I.PrimT I.Text
     | Blob -> I.BlobT
     | Principal -> I.PrincipalT
+    | Region
     | Error -> assert false
 
   let rec typ t =

@@ -1,0 +1,7 @@
+ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
+debug.print: grow three big regions (including region0).
+debug.print: grow three big regions: done.
+debug.print: storing a big blob in each region.
+debug.print: loading the big blob back from each region.
+debug.print: success. done.
+ingress Completed: Reply: 0x4449444c0000

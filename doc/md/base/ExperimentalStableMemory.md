@@ -5,6 +5,11 @@ Byte-level access to (virtual) _stable memory_.
 and may be replaced by safer alternatives in later versions of Motoko.
 Use at your own risk and discretion.
 
+**DEPRECATION**: Use of `ExperimentalStableMemory` library may be deprecated in future.
+Going forward, users should consider using library `Region.mo` to allocate *isolated* regions of memory instead.
+Using dedicated regions for different user applications ensures that writing
+to one region will not affect the state of another, unrelated region.
+
 This is a lightweight abstraction over IC _stable memory_ and supports persisting
 raw binary data across Motoko upgrades.
 Use of this module is fully compatible with Motoko's use of
@@ -30,7 +35,7 @@ NB: The IC's actual stable memory size (`ic0.stable_size`) may exceed the
 page size reported by Motoko function `size()`.
 This (and the cap on growth) are to accommodate Motoko's stable variables.
 Applications that plan to use Motoko stable variables sparingly or not at all can
-increase `--max-stable-pages` as desired, approaching the IC maximum (initially 8GiB, then 32Gib, currently 48Gib).
+increase `--max-stable-pages` as desired, approaching the IC maximum (initially 8GiB, then 32Gib, currently 64Gib).
 All applications should reserve at least one page for stable variable data, even when no stable variables are used.
 
 Usage:

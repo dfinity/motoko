@@ -30,6 +30,7 @@ type prim =
   | Blob (* IR use: Packed representation, vec u8 IDL type *)
   | Error
   | Principal
+  | Region
 
 type t = typ
 
@@ -95,6 +96,7 @@ val blob : typ
 val error : typ
 val char : typ
 val principal : typ
+val region : typ
 
 val sum : (lab * typ) list -> typ
 val obj : obj_sort -> (lab * typ) list -> typ

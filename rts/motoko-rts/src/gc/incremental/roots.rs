@@ -5,6 +5,7 @@ use crate::{types::Value, visitor::pointer_to_dynamic_heap};
 pub struct Roots {
     pub static_roots: Value,
     pub continuation_table_location: *mut Value,
+    pub region0_ptr_location: *mut Value,
     // If new roots are added in future, extend `visit_roots()`.
 }
 
@@ -14,6 +15,7 @@ pub unsafe fn root_set() -> Roots {
     Roots {
         static_roots: ic::get_static_roots(),
         continuation_table_location: crate::continuation_table::continuation_table_loc(),
+        region0_ptr_location: crate::region::region0_get_ptr_loc(),
     }
 }
 
@@ -30,6 +32,7 @@ pub unsafe fn visit_roots<C, V: Fn(&mut C, *mut Value)>(
         context,
         &visit_field,
     );
+    visit_region0_ptr(roots.region0_ptr_location, heap_base, context, &visit_field);
 }
 
 unsafe fn visit_static_roots<C, V: Fn(&mut C, *mut Value)>(
@@ -57,5 +60,16 @@ unsafe fn visit_continuation_table<C, V: Fn(&mut C, *mut Value)>(
 ) {
     if pointer_to_dynamic_heap(continuation_table_location, heap_base) {
         visit_field(context, continuation_table_location);
+    }
+}
+
+unsafe fn visit_region0_ptr<C, V: Fn(&mut C, *mut Value)>(
+    region0_ptr_location: *mut Value,
+    heap_base: usize,
+    context: &mut C,
+    visit_field: &V,
+) {
+    if pointer_to_dynamic_heap(region0_ptr_location, heap_base) {
+        visit_field(context, region0_ptr_location);
     }
 }

@@ -1,7 +1,9 @@
 import P "mo:⛔";
 import StableMemory "stable-mem/StableMemory";
-actor {
 
+import Region "stable-region/Region";
+
+actor {
   stable var n : Nat64 = 0;
   assert (n == StableMemory.size());
 
@@ -22,13 +24,11 @@ actor {
   system func preupgrade() {
     P.debugPrint("upgrading..." # debug_show n);
     let m = StableMemory.grow(1);
-
     assert (n == m);
 
     n += 1;
 
     P.debugPrint(debug_show {old = m; new = n; size = StableMemory.size()});
-
     assert (n == StableMemory.size());
 
     // check new page is clear
@@ -89,4 +89,3 @@ actor {
 //CALL upgrade ""
 //CALL ingress testBounds "DIDL\x00\x00"
 //CALL upgrade ""
-

@@ -39,6 +39,7 @@ let prim = function
   | Blob -> Atom "Blob"
   | Error -> Atom "Error"
   | Principal -> Atom "Principal"
+  | Region -> Atom "Region"
 
 let con c = Atom (Type.string_of_con c)
 
