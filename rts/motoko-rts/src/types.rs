@@ -161,7 +161,7 @@ pub const TRUE_VALUE: u32 = 0x1;
 
 /// A value in a heap slot
 #[repr(transparent)]
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct Value(u32);
 
 /// A view of `Value` for analyzing the slot contents.
@@ -339,6 +339,20 @@ impl Value {
         self.check_forwarding_pointer();
         self.forward().get_ptr() as *mut Object
     }
+    
+    /// Get the pointer as `Region` using forwarding.
+    pub unsafe fn as_region(self) -> *mut Region {
+        debug_assert!(self.tag() == TAG_REGION);
+        self.check_forwarding_pointer();
+        self.forward().get_ptr() as *mut Region
+    }
+
+    /// Get the pointer as `Region` using forwarding, without checking the tag.
+    /// NB: One cannot check the tag during stabilization.
+    pub unsafe fn as_untagged_region(self) -> *mut Region {
+        self.check_forwarding_pointer();
+        self.forward().get_ptr() as *mut Region
+    }
 
     /// Get the pointer as `Concat` using forwarding. In debug mode panics if the value is not a pointer or the
     /// pointed object is not a `Concat`.
@@ -436,9 +450,10 @@ pub const TAG_FWD_PTR: Tag = 19; // Only used by the copying GC - not to be conf
 pub const TAG_BITS32: Tag = 21;
 pub const TAG_BIGINT: Tag = 23;
 pub const TAG_CONCAT: Tag = 25;
-pub const TAG_NULL: Tag = 27;
-pub const TAG_ONE_WORD_FILLER: Tag = 29;
-pub const TAG_FREE_SPACE: Tag = 31;
+pub const TAG_REGION: Tag = 27;
+pub const TAG_NULL: Tag = 29;
+pub const TAG_ONE_WORD_FILLER: Tag = 31;
+pub const TAG_FREE_SPACE: Tag = 33;
 
 // Special value to visit only a range of array fields.
 // This and all values above it are reserved and mean
@@ -446,7 +461,7 @@ pub const TAG_FREE_SPACE: Tag = 31;
 // purposes of `visit_pointer_fields`.
 // Invariant: the value of this (pseudo-)tag must be
 //            higher than all other tags defined above
-pub const TAG_ARRAY_SLICE_MIN: Tag = 32;
+pub const TAG_ARRAY_SLICE_MIN: Tag = 34;
 
 // Common parts of any object. Other object pointers can be coerced into a pointer to this.
 #[repr(C)] // See the note at the beginning of this module
@@ -531,6 +546,27 @@ impl Array {
     }
 }
 
+#[rustfmt::skip]
+#[repr(C)] // See the note at the beginning of this module
+pub struct Region {
+    pub header: Obj,
+    // 64-bit id split into lower and upper halves for alignment reasons
+    pub id_lower: u32,
+    pub id_upper: u32,
+    pub page_count: u32,
+    pub vec_pages: Value, // Blob of u16's (each a page block ID).
+}
+
+impl Region {
+    pub unsafe fn write_id64(self: *mut Self, value: u64) {
+        write64(&mut (*self).id_lower, &mut (*self).id_upper, value);
+    }
+
+    pub unsafe fn read_id64(self: *mut Self) -> u64 {
+        read64((*self).id_lower, (*self).id_upper)
+    }
+}
+
 #[repr(C)] // See the note at the beginning of this module
 pub struct Object {
     pub header: Obj,
@@ -607,6 +643,22 @@ impl Blob {
 
     pub unsafe fn set(self: *mut Self, idx: u32, byte: u8) {
         *self.payload_addr().add(idx as usize) = byte;
+    }
+
+    pub unsafe fn payload_addr_u16(self: *mut Self) -> *mut u16 {
+        self.add(1) as *mut u16 // skip blob header
+    }
+
+    pub unsafe fn payload_const_u16(self: *const Self) -> *const u16 {
+        self.add(1) as *mut u16 // skip blob header
+    }
+
+    pub unsafe fn get_u16(self: *const Self, idx: u32) -> u16 {
+        *self.payload_const_u16().add(idx as usize)
+    }
+
+    pub unsafe fn set_u16(self: *mut Self, idx: u32, value: u16) {
+        *self.payload_addr_u16().add(idx as usize) = value;
     }
 
     /// Shrink blob to the given size. Slop after the new size is filled with filler objects.
@@ -904,6 +956,8 @@ pub(crate) unsafe fn block_size(address: usize) -> Words<u32> {
             let free_space = address as *mut FreeSpace;
             free_space.size()
         }
+
+        TAG_REGION => size_of::<Region>(),
 
         _ => {
             rts_trap_with("object_size: invalid object tag");

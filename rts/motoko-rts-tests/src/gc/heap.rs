@@ -39,6 +39,7 @@ impl MotokoHeap {
         map: &[(ObjectIdx, Vec<ObjectIdx>)],
         roots: &[ObjectIdx],
         continuation_table: &[ObjectIdx],
+        region0_ptr_loc: &[ObjectIdx],
     ) -> MotokoHeap {
         MotokoHeap {
             inner: Rc::new(RefCell::new(MotokoHeapInner::new(
@@ -90,6 +91,11 @@ impl MotokoHeap {
         self.inner.borrow().continuation_table_variable_address()
     }
 
+    /// Get the address of the continuation table pointer
+    pub fn region0_ptr_location(&self) -> usize {
+        self.inner.borrow().region0_ptr_address()
+    }
+
     /// Get the heap as an array. Use `offset` values returned by the methods above to read.
     pub fn heap(&self) -> Ref<Box<[u8]>> {
         Ref::map(self.inner.borrow(), |heap| &heap.heap)
@@ -130,8 +136,11 @@ struct MotokoHeapInner {
 
     /// Offset of the continuation table pointer.
     ///
-    /// Reminder: This location is in static memory and points to an array in the dynamic heap.
-    continuation_table_variable_offset: usize,
+    /// Reminder: this location is in static heap and will have pointer to an array in dynamic
+    /// heap.
+    continuation_table_ptr_offset: usize,
+
+    region0_ptr_location_offset: usize,
 }
 
 impl MotokoHeapInner {
@@ -168,6 +177,10 @@ impl MotokoHeapInner {
         self.offset_to_address(self.continuation_table_variable_offset)
     }
 
+    fn region0_ptr_address(&self) -> usize {
+        self.offset_to_address(self.region0_ptr_location_offset)
+    }
+
     fn new(
         map: &[(ObjectIdx, Vec<ObjectIdx>)],
         roots: &[ObjectIdx],
@@ -183,8 +196,8 @@ impl MotokoHeapInner {
             );
         }
 
-        // Two pointers, one to the static root array, and the other to the continuation table.
-        let root_pointers_size_bytes = 2 * WORD_SIZE;
+        // Three pointers: Static root array, continuation table, and region 0.
+        let root_pointers_size_bytes = 3 * WORD_SIZE;
 
         // Each object will have array header plus one word for id per object + one word for each reference.
         // The static root is an array (header + length) with one element, one MutBox for each static variable.
@@ -228,11 +241,13 @@ impl MotokoHeapInner {
         );
 
         // Root pointers in static memory space.
-        let static_root_array_variable_offset = root_pointers_size_bytes - 2 * WORD_SIZE;
-        let continuation_table_variable_offset = root_pointers_size_bytes - WORD_SIZE;
+        let static_root_array_variable_offset = root_pointers_size_bytes - 3 * WORD_SIZE;
+        let continuation_table_variable_offset = root_pointers_size_bytes - 2 * WORD_SIZE;
+        let region0_ptr_location_offset = static_heap_size_bytes - WORD_SIZE;
         create_static_memory(
             static_root_array_variable_offset,
             continuation_table_variable_offset,
+            region0_ptr_location_offset,
             static_root_array_address,
             continuation_table_address,
             &mut heap[realign..root_pointers_size_bytes + realign],
@@ -245,6 +260,7 @@ impl MotokoHeapInner {
             heap_ptr_offset: total_heap_size_bytes + realign,
             static_root_array_variable_offset: static_root_array_variable_offset + realign,
             continuation_table_variable_offset: continuation_table_variable_offset + realign,
+            region0_ptr_location_offset: region0_ptr_location_offset + realign,
         }
     }
 

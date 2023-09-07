@@ -16,8 +16,9 @@ pub unsafe fn test() {
     let object_map: [(ObjectIdx, Vec<ObjectIdx>); 10] = from_fn(|id| (id as u32, vec![]));
     let root_ids = [2, 4, 6, 8];
     let continuation_ids = [3, 5, 7];
+    let region0_ptr = [0];
 
-    let heap = MotokoHeap::new(&object_map, &root_ids, &continuation_ids);
+    let heap = MotokoHeap::new(&object_map, &root_ids, &continuation_ids, &region0_ptr);
     check_visit_static_roots(&heap, &root_ids);
     check_visit_continuation_table(&heap, &continuation_ids);
 }
@@ -62,12 +63,13 @@ unsafe fn check_visit_continuation_table(heap: &MotokoHeap, continuation_ids: &[
 unsafe fn get_roots(heap: &MotokoHeap) -> Roots {
     let static_root = heap.static_root_array_variable_address() as *mut Value;
     let continuation_table_location = heap.continuation_table_variable_address() as *mut Value;
+    let region0_ptr_location = heap.region0_ptr_location() as *mut Value;
     let unused_root = &mut Value::from_scalar(0) as *mut Value;
     assert_ne!(continuation_table_location, null_mut());
     [
         static_root,
         continuation_table_location,
-        unused_root,
+        region0_ptr_location,
         unused_root,
         unused_root,
     ]

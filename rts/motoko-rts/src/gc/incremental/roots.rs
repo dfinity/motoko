@@ -9,13 +9,14 @@ use crate::{types::Value, visitor::is_pointer_field};
 static mut STATIC_ROOT: Value = Value::from_scalar(0);
 
 /// GC root set.
-pub type Roots = [*mut Value; 5];
+pub type Roots = [*mut Value; 6];
 
 #[cfg(feature = "ic")]
 pub unsafe fn root_set() -> Roots {
     use crate::{
         continuation_table::continuation_table_loc,
         persistence::{null_singleton_location, stable_actor_location, stable_type_location},
+        region::region0_get_ptr_loc,
     };
     [
         static_root_location(),
@@ -23,6 +24,7 @@ pub unsafe fn root_set() -> Roots {
         stable_actor_location(),
         stable_type_location(),
         null_singleton_location(),
+        region0_get_ptr_loc()
     ]
 }
 
@@ -56,4 +58,15 @@ pub unsafe fn set_static_root<M: crate::memory::Memory>(mem: &mut M, value: Valu
 pub unsafe extern "C" fn get_static_root() -> Value {
     assert!(STATIC_ROOT.is_ptr());
     STATIC_ROOT
+}
+
+unsafe fn visit_region0_ptr<C, V: Fn(&mut C, *mut Value)>(
+    region0_ptr_location: *mut Value,
+    heap_base: usize,
+    context: &mut C,
+    visit_field: &V,
+) {
+    if pointer_to_dynamic_heap(region0_ptr_location, heap_base) {
+        visit_field(context, region0_ptr_location);
+    }
 }

@@ -196,8 +196,7 @@ then
   else
     if [ $ACCEPT = yes ]
     then
-      echo "ERROR: Could not run ic-ref-run, cannot update expected test output"
-      exit 1
+      echo "WARNING: Could not run ic-ref-run, cannot update expected test output"
     else
       echo "WARNING: Could not run ic-ref-run, will skip running some tests"
       HAVE_ic_ref_run=no
@@ -455,9 +454,9 @@ do
           echo "$base.drun references $mo_file which is not in directory $base"
           exit 1
         fi
-
+        moc_extra_flags="$(eval echo $(grep '//MOC-FLAG' $mo_file | cut -c11- | paste -sd' '))"
         flags_var_name="FLAGS_${runner//-/_}"
-        run $mo_base.$runner.comp moc $EXTRA_MOC_ARGS ${!flags_var_name} --hide-warnings -c $mo_file -o $out/$base/$mo_base.$runner.wasm
+        run $mo_base.$runner.comp moc $EXTRA_MOC_ARGS ${!flags_var_name} $moc_extra_flags --hide-warnings -c $mo_file -o $out/$base/$mo_base.$runner.wasm
       done
 
       # mangle drun script

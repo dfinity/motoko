@@ -33,6 +33,9 @@ mod mem_utils;
 pub mod memory;
 pub mod persistence;
 pub mod principal_id;
+pub mod region;
+//#[cfg(feature = "ic")]
+mod stable_mem;
 mod static_checks;
 pub mod stream;
 pub mod text;

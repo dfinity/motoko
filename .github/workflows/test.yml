@@ -107,7 +107,10 @@ jobs:
     if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'build_artifacts')
     needs: tests
     concurrency: ci-${{ github.ref }}
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ ubuntu-latest, macos-latest ]
+    runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v4
     - uses: cachix/install-nix-action@v23
@@ -123,7 +126,6 @@ jobs:
     - name: upload artifacts
       uses: actions/upload-artifact@v3
       with:
-        name: moc
+        name: moc-${{ matrix.os }}
         path: ${{ env.UPLOAD_PATH }}
         retention-days: 5
-
