@@ -95,7 +95,7 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
         TAG_REGION => {
             let region = obj as *mut Region;
             let field_addr = &mut (*region).vec_pages;
-            if pointer_to_dynamic_heap(field_addr, heap_base) {
+            if is_pointer_field(field_addr) {
                 visit_ptr_field(ctx, field_addr);
             }
         }

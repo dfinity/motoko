@@ -463,6 +463,7 @@ fn read_object_id(object_address: u32, heap: &[u8]) -> ObjectIdx {
 fn run(heap: &mut MotokoHeap) -> bool {
     let static_root = heap.static_root_array_variable_address() as *mut Value;
     let continuation_table_location = heap.continuation_table_variable_address() as *mut Value;
+    let region0_pointer_location = heap.region0_pointer_variable_address() as *mut Value;
     let unused_root = &mut Value::from_scalar(0) as *mut Value;
 
     unsafe {
@@ -472,7 +473,8 @@ fn run(heap: &mut MotokoHeap) -> bool {
             let roots = [
                 static_root,
                 continuation_table_location,
-                &mut region_0,,
+                region0_pointer_location,
+                unused_root,
                 unused_root,
                 unused_root,
             ];

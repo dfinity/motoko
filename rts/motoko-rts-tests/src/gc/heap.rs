@@ -39,7 +39,7 @@ impl MotokoHeap {
         map: &[(ObjectIdx, Vec<ObjectIdx>)],
         roots: &[ObjectIdx],
         continuation_table: &[ObjectIdx],
-        region0_ptr_loc: &[ObjectIdx],
+        _region0_ptr_loc: &[ObjectIdx],
     ) -> MotokoHeap {
         MotokoHeap {
             inner: Rc::new(RefCell::new(MotokoHeapInner::new(
@@ -92,7 +92,7 @@ impl MotokoHeap {
     }
 
     /// Get the address of the continuation table pointer
-    pub fn region0_ptr_location(&self) -> usize {
+    pub fn region0_pointer_variable_address(&self) -> usize {
         self.inner.borrow().region0_ptr_address()
     }
 
@@ -138,9 +138,13 @@ struct MotokoHeapInner {
     ///
     /// Reminder: this location is in static heap and will have pointer to an array in dynamic
     /// heap.
-    continuation_table_ptr_offset: usize,
+    continuation_table_variable_offset: usize,
 
-    region0_ptr_location_offset: usize,
+    /// Offset of the region 0 pointer.
+    ///
+    /// Reminder: this location is in static heap and will have pointer to an array in dynamic
+    /// heap.
+    region0_pointer_variable_offset: usize,
 }
 
 impl MotokoHeapInner {
@@ -178,7 +182,7 @@ impl MotokoHeapInner {
     }
 
     fn region0_ptr_address(&self) -> usize {
-        self.offset_to_address(self.region0_ptr_location_offset)
+        self.offset_to_address(self.region0_pointer_variable_offset)
     }
 
     fn new(
@@ -243,11 +247,11 @@ impl MotokoHeapInner {
         // Root pointers in static memory space.
         let static_root_array_variable_offset = root_pointers_size_bytes - 3 * WORD_SIZE;
         let continuation_table_variable_offset = root_pointers_size_bytes - 2 * WORD_SIZE;
-        let region0_ptr_location_offset = static_heap_size_bytes - WORD_SIZE;
+        let region0_pointer_variable_offset = root_pointers_size_bytes - WORD_SIZE;
         create_static_memory(
             static_root_array_variable_offset,
             continuation_table_variable_offset,
-            region0_ptr_location_offset,
+            region0_pointer_variable_offset,
             static_root_array_address,
             continuation_table_address,
             &mut heap[realign..root_pointers_size_bytes + realign],
@@ -260,7 +264,7 @@ impl MotokoHeapInner {
             heap_ptr_offset: total_heap_size_bytes + realign,
             static_root_array_variable_offset: static_root_array_variable_offset + realign,
             continuation_table_variable_offset: continuation_table_variable_offset + realign,
-            region0_ptr_location_offset: region0_ptr_location_offset + realign,
+            region0_pointer_variable_offset: region0_pointer_variable_offset + realign,
         }
     }
 
@@ -449,21 +453,26 @@ fn create_dynamic_heap(
 fn create_static_memory(
     static_root_array_variable_offset: usize,
     continuation_table_variable_offset: usize,
+    region0_pointer_variable_offset: usize,
     static_root_array_address: u32,
     continuation_table_address: u32,
     heap: &mut [u8],
 ) {
-    // Write static array pointer as the second last word in static memory
+    // Write static array pointer as the third last word in static memory
     write_word(
         heap,
         static_root_array_variable_offset,
         make_pointer(static_root_array_address),
     );
 
-    // Write continuation table pointer as the last word in static memory
+    // Write continuation table pointer as the second last word in static memory
     write_word(
         heap,
         continuation_table_variable_offset,
         make_pointer(continuation_table_address),
     );
+
+    let no_region_0 = make_scalar(0);
+    // Write region 0 pointer as the last word in static memory
+    write_word(heap, region0_pointer_variable_offset, no_region_0);
 }

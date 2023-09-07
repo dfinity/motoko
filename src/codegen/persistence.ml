@@ -42,6 +42,7 @@
   Text      | -15l
   Blob      | -16l
   Principal | -17l
+  Region    | -18l
 
 
   // Function sort
@@ -194,6 +195,7 @@ let primitive_type_index primitive_type =
   | Text -> -15l
   | Blob -> -16l
   | Principal -> -17l
+  | Region -> -18l
   | Error -> assert false (* non-stable type *)
 
 let type_index table typ =

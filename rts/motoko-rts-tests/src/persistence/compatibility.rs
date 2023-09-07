@@ -160,7 +160,8 @@ const FLOAT_ENCODING_TAG: i32 = -13;
 const CHAR_ENCODING_TAG: i32 = -14;
 const TEXT_ENCODING_TAG: i32 = -15;
 const BLOB_ENCODING_TAG: i32 = -16;
-const PRINCIPAL_ENCODING_TAG: i32 = -16;
+const PRINCIPAL_ENCODING_TAG: i32 = -17;
+const REGION_ENCODING_TAG: i32 = -18;
 
 impl TypeReference {
     fn primitive(index: i32) -> Self {
@@ -234,6 +235,10 @@ impl TypeReference {
 
     fn principal() -> Self {
         Self::primitive(PRINCIPAL_ENCODING_TAG)
+    }
+
+    fn region() -> Self {
+        Self::primitive(REGION_ENCODING_TAG)
     }
 }
 
@@ -358,6 +363,7 @@ unsafe fn test_primitive_types(heap: &mut TestMemory) {
         TypeReference::text(),
         TypeReference::blob(),
         TypeReference::principal(),
+        TypeReference::region(),
     ];
     for first in &all_types {
         for second in &all_types {

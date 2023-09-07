@@ -339,7 +339,7 @@ impl Value {
         self.check_forwarding_pointer();
         self.forward().get_ptr() as *mut Object
     }
-    
+
     /// Get the pointer as `Region` using forwarding.
     pub unsafe fn as_region(self) -> *mut Region {
         debug_assert!(self.tag() == TAG_REGION);

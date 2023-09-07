@@ -69,6 +69,7 @@
 //! Text      | -15l
 //! Blob      | -16l
 //! Principal | -17l
+//! Region    | -18l
 //!
 //! Function sort
 //! Sort      | Encoding

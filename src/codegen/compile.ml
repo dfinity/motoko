@@ -4817,15 +4817,17 @@ module StableMem = struct
 
   (* Versioning (c.f. Region.rs) *)
   (* NB: these constants must agree with VERSION_NO_STABLE_MEMORY etc. in Region.rs *)
-  let version_no_stable_memory = Int32.of_int 0 (* never manifest in serialized form *)
-  let version_some_stable_memory = Int32.of_int 1
-  let version_regions = Int32.of_int 2
-  let version_max = version_regions
+  let legacy_version_no_stable_memory = Int32.of_int 0 (* never manifest in serialized form *)
+  let legacy_version_some_stable_memory = Int32.of_int 1
+  let legacy_version_regions = Int32.of_int 2
+  let version_stable_heap_no_regions = Int32.of_int 3
+  let version_stable_heap_regions = Int32.of_int 4
+  let version_max = version_stable_heap_regions
 
   let register_globals env =
     (* size (in pages) *)
     E.add_global64 env "__stablemem_size" Mutable 0L;
-    E.add_global32 env "__stablemem_version" Mutable version_no_stable_memory
+    E.add_global32 env "__stablemem_version" Mutable version_stable_heap_no_regions
 
   let get_mem_size env =
     G.i (GlobalGet (nr (E.get_global env "__stablemem_size")))
@@ -4838,6 +4840,10 @@ module StableMem = struct
 
   let set_version env =
     G.i (GlobalSet (nr (E.get_global env "__stablemem_version")))
+
+  let region_init env =
+    compile_unboxed_const (if !Flags.use_stable_regions then 1l else 0l) ^^
+    E.call_import env "rts" "region_init"
 
   (* stable memory bounds check *)
   let guard env =
@@ -5118,10 +5124,9 @@ end (* StableMem *)
 (* Core, legacy interface to IC stable memory, used to implement prims `stableMemoryXXX` of
    library `ExperimentalStableMemory.mo`.
    Each operation dispatches on the state of `StableMem.get_version()`.
-   * StableMem.version_no_stable_memory/StableMem.version_some_stable_memory:
-     * use StableMem directly
-     * switch to version_some_stable_memory on non-trivial grow.
-   * StableMem.version_regions: use Region.mo
+   * StableMem.version_stable_heap_no_regions
+     * use StableMem directly.
+   * StableMem.version_stable_heap_regions: use Region.mo
 *)
 module StableMemoryInterface = struct
 
@@ -5130,7 +5135,7 @@ module StableMemoryInterface = struct
 
   let if_regions env args tys is1 is2 =
     StableMem.get_version env ^^
-    compile_unboxed_const StableMem.version_regions ^^
+    compile_unboxed_const StableMem.version_stable_heap_regions ^^
     G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
     E.if_ env tys
       (get_region0 env ^^ args ^^ is1 env)
@@ -5154,27 +5159,8 @@ module StableMemoryInterface = struct
           [I64Type]
           Region.grow
           (fun env ->
-            (* do StableMem.grow, but detect and record change in version as well *)
-            let (set_res, get_res) = new_local64 env "size" in
             (* logical grow *)
-            StableMem.grow env ^^
-            set_res ^^
-            (* if version = version_no_stable_memory and new mem_size > 0
-               then version := version_some_stable_memory *)
-            StableMem.get_version env ^^
-            compile_eq_const StableMem.version_no_stable_memory ^^
-            StableMem.get_mem_size env ^^
-            compile_const_64 0L ^^
-            G.i (Compare (Wasm.Values.I64 I32Op.GtU)) ^^
-            G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
-            (G.if0
-               begin
-                 compile_unboxed_const StableMem.version_some_stable_memory ^^
-                 StableMem.set_version env
-               end
-               G.nop) ^^
-            (* return res *)
-            get_res))
+            StableMem.grow env))
 
   let load_blob env =
     Func.share_code2 env "__stablememory_load_blob"
@@ -7280,8 +7266,6 @@ module Serialization = MakeSerialization(BumpStream)
    * ../../design/StableMemory.md
 *)
 module OldStabilization = struct
-  let old_stable_memory_version = Int32.of_int 1
-
   let extend64 code = code ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
   
   let _read_word32 env =
@@ -7340,7 +7324,7 @@ module OldStabilization = struct
         compile_add_const Heap.word_size ^^
         set_ptr))
 
-  let old_destabilize env ty =
+  let old_destabilize env ty save_version =
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
       let (set_pages, get_pages) = new_local64 env "pages" in
@@ -7361,7 +7345,7 @@ module OldStabilization = struct
           StableMem.get_mem_size env ^^
           G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
           E.else_trap_with env "StableMem.mem_size non-zero" ^^
-          compile_unboxed_const 0l ^^
+          compile_unboxed_const StableMem.version_stable_heap_no_regions ^^
           StableMem.set_version env ^^
           Object.lit_raw env fs'
         end
@@ -7494,8 +7478,6 @@ end
   ending at page boundary
 *)
 module NewStableMemory = struct
-  let new_stable_memory_version = 3l
-
   let physical_size env =
     IC.system_call env "stable64_size" ^^
     compile_shl64_const (Int64.of_int page_size_bits)
@@ -7528,6 +7510,24 @@ module NewStableMemory = struct
   let logical_size_offset = 12L
   let version_offset = 4L
 
+  let upgrade_version env =
+    StableMem.set_version env ^^
+    StableMem.get_version env ^^
+    compile_eq_const StableMem.legacy_version_no_stable_memory ^^
+    StableMem.get_version env ^^
+    compile_eq_const StableMem.legacy_version_some_stable_memory ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
+    (G.if0
+      (compile_unboxed_const StableMem.version_stable_heap_no_regions ^^
+      StableMem.set_version env)
+      G.nop) ^^
+    StableMem.get_version env ^^
+    compile_eq_const StableMem.legacy_version_regions ^^
+    (G.if0
+      (compile_unboxed_const StableMem.version_stable_heap_regions ^^
+      StableMem.set_version env)
+      G.nop)
+      
   let grow_size env amount =
     StableMem.get_mem_size env ^^
     compile_shl64_const (Int64.of_int page_size_bits) ^^
@@ -7546,7 +7546,7 @@ module NewStableMemory = struct
         store_at_end env logical_size_offset I64Type (StableMem.get_mem_size env) ^^
 
         (* store the version *)
-        store_at_end env version_offset I32Type (compile_unboxed_const new_stable_memory_version)
+        store_at_end env version_offset I32Type (StableMem.get_version env)
       end
 
   let restore env =
@@ -7559,10 +7559,16 @@ module NewStableMemory = struct
       begin
         (* check the version *)
         read_from_end env version_offset I32Type ^^
-        compile_eq_const new_stable_memory_version ^^
+        StableMem.set_version env ^^
+        StableMem.get_version env ^^
+        compile_eq_const StableMem.version_stable_heap_no_regions ^^
+        StableMem.get_version env ^^
+        compile_eq_const StableMem.version_stable_heap_regions ^^
+        G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
         E.else_trap_with env (Printf.sprintf
-          "unsupported stable memory version (expected %s)"
-           (Int32.to_string new_stable_memory_version)) ^^
+          "unsupported stable memory version (expected %s or %s)"
+           (Int32.to_string StableMem.version_stable_heap_no_regions)
+           (Int32.to_string StableMem.version_stable_heap_regions)) ^^
         
         (* restore logical size *)
         read_from_end env logical_size_offset I64Type ^^
@@ -7605,7 +7611,6 @@ module Persistence = struct
     create_actor env actor_type recover_field ^^
     free_stable_actor env
 
-
   let save env actor_type =
     save_stable_actor env ^^
     NewStableMemory.backup env
@@ -7614,14 +7619,15 @@ module Persistence = struct
     register_stable_type env actor_type ^^
     load_stable_actor env ^^
     G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
-    G.if1 I32Type
+    (G.if1 I32Type
       begin
-        OldStabilization.old_destabilize env actor_type
+        OldStabilization.old_destabilize env actor_type (NewStableMemory.upgrade_version env)
       end
       begin
         recover_actor env actor_type ^^
         NewStableMemory.restore env
-      end
+      end) ^^
+    StableMem.region_init env
 end
 
 module GCRoots = struct
@@ -10590,8 +10596,6 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | ICStableRead ty, [] ->
     SR.Vanilla,
     Persistence.load env ty
-    compile_unboxed_const (if !Flags.use_stable_regions then 1l else 0l) ^^
-    E.call_import env "rts" "region_init"
   | ICStableWrite ty, [e] ->
     SR.unit,
     compile_exp_vanilla env ae e ^^
