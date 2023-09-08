@@ -6897,14 +6897,17 @@ module MakeSerialization (Strm : Stream) = struct
                set_size get_data_buf (compile_unboxed_const 0x1000l (*FIXME: make configurable*)) ^^
                (* Go! *)
                Bool.lit extended ^^ get_data_buf ^^ get_typtbl_ptr ^^ get_typtbl_size_ptr ^^ get_maintyps_ptr ^^
-                 E.call_import env "rts" "parse_idl_header" ^^
+               E.call_import env "rts" "parse_idl_header" ^^
                  
+               (* get the bytes read *)
+               get_ptr get_data_buf ^^ get_datablob_start ^^ G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
+               (* offset the stable mem pointer *)
+               get_data_start ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+               let set_header_end, get_header_end = new_local env "past" in
+               set_header_end ^^
 
-
-
-
-
-
+               (* remember *)
+               set_ptr get_data_buf get_header_end ^^
 
 
       (* Allocate memo table, if necessary *)
@@ -6914,6 +6917,11 @@ module MakeSerialization (Strm : Stream) = struct
       alloc env (fun get_main_typs_buf ->
         set_ptr get_main_typs_buf (get_maintyps_ptr ^^ load_unskewed_ptr) ^^
         set_end get_main_typs_buf (get_end get_data_buf) ^^
+
+
+
+E.trap_with env "BEFORE read_leb128" ^^
+
         read_leb128 env get_main_typs_buf ^^ set_arg_count ^^
 
         G.concat_map (fun t ->
