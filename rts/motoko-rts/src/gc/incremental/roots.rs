@@ -9,20 +9,21 @@ use crate::{types::Value, visitor::is_pointer_field};
 static mut STATIC_ROOT: Value = Value::from_scalar(0);
 
 /// GC root set.
-pub type Roots = [*mut Value; 6];
+pub type Roots = [*mut Value; 7];
 
 #[cfg(feature = "ic")]
 pub unsafe fn root_set() -> Roots {
     use crate::{
         continuation_table::continuation_table_loc,
-        persistence::{null_singleton_location, stable_actor_location, stable_type_location},
+        persistence::{null_singleton_location, stable_actor_location, stable_type_descriptor},
         region::region0_get_ptr_loc,
     };
     [
         static_root_location(),
         continuation_table_loc(),
         stable_actor_location(),
-        stable_type_location(),
+        stable_type_descriptor().candid_data_location(),
+        stable_type_descriptor().type_offsets_location(),
         null_singleton_location(),
         region0_get_ptr_loc(),
     ]

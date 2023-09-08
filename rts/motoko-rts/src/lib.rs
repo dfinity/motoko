@@ -31,6 +31,7 @@ mod idl;
 pub mod leb128;
 mod mem_utils;
 pub mod memory;
+#[cfg(feature = "ic")]
 pub mod persistence;
 pub mod principal_id;
 #[cfg(feature = "ic")]

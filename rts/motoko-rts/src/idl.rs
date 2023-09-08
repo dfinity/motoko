@@ -539,8 +539,16 @@ unsafe fn is_opt_reserved(typtbl: *mut *mut u8, end: *mut u8, t: i32) -> bool {
     return t == IDL_CON_opt;
 }
 
+#[derive(Clone, Copy)]
+pub enum CompatibilityMode {
+    // Conventional Candid deserialization compatibility.
+    Candid,
+    // Memory compatibility for orthogonal persistence.
+    Persistence,
+}
+
 // TODO: consider storing fixed args typtbl1...end2 in `rel` to use less stack.
-unsafe fn sub(
+pub(crate) unsafe fn sub(
     rel: &BitRel,
     p: bool,
     typtbl1: *mut *mut u8,
@@ -549,6 +557,7 @@ unsafe fn sub(
     end2: *mut u8,
     t1: i32,
     t2: i32,
+    mode: CompatibilityMode,
 ) -> bool {
     if t1 >= 0 && t2 >= 0 {
         let t1 = t1 as u32;
@@ -604,15 +613,48 @@ unsafe fn sub(
     // exit either via 'return true' or 'break 'return_false' to memoize the negative result
     'return_false: loop {
         match (u1, u2) {
-            (_, IDL_CON_alias) | (IDL_CON_alias, _) => idl_trap_with("sub: unexpected alias"),
-            (_, IDL_PRIM_reserved)
-            | (IDL_PRIM_empty, _)
-            | (IDL_PRIM_nat, IDL_PRIM_int)
-            | (_, IDL_CON_opt) => return true, // apparently, this is admissable
+            (IDL_CON_alias, IDL_CON_alias) => match mode {
+                CompatibilityMode::Candid => idl_trap_with("sub: unexpected alias"),
+                CompatibilityMode::Persistence => {
+                    let t11 = sleb128_decode(&mut tb1);
+                    let t21 = sleb128_decode(&mut tb2);
+                    // invariance
+                    if sub(rel, p, typtbl1, typtbl2, end1, end2, t11, t21, mode)
+                        && sub(rel, !p, typtbl2, typtbl1, end2, end1, t21, t11, mode)
+                    {
+                        return true;
+                    } else {
+                        break 'return_false;
+                    }
+                }
+            },
+            (_, IDL_PRIM_reserved) | (IDL_PRIM_empty, _) | (IDL_PRIM_nat, IDL_PRIM_int) => {
+                return true
+            }
+            (_, IDL_CON_alias) | (IDL_CON_alias, _) => match mode {
+                CompatibilityMode::Candid => idl_trap_with("sub: unexpected alias"),
+                CompatibilityMode::Persistence => return false,
+            },
+            (IDL_CON_opt, IDL_CON_opt) => match mode {
+                CompatibilityMode::Candid => return true,
+                CompatibilityMode::Persistence => {
+                    let t11 = sleb128_decode(&mut tb1);
+                    let t21 = sleb128_decode(&mut tb2);
+                    if sub(rel, p, typtbl1, typtbl2, end1, end2, t11, t21, mode) {
+                        return true;
+                    } else {
+                        break 'return_false;
+                    }
+                }
+            },
+            (_, IDL_CON_opt) => match mode {
+                CompatibilityMode::Candid => return true,
+                CompatibilityMode::Persistence => return false,
+            },
             (IDL_CON_vec, IDL_CON_vec) => {
                 let t11 = sleb128_decode(&mut tb1);
                 let t21 = sleb128_decode(&mut tb2);
-                if sub(rel, p, typtbl1, typtbl2, end1, end2, t11, t21) {
+                if sub(rel, p, typtbl1, typtbl2, end1, end2, t11, t21, mode) {
                     return true;
                 } else {
                     break 'return_false;
@@ -632,7 +674,7 @@ unsafe fn sub(
                         let t21 = sleb128_decode(&mut tb2);
                         in2 -= 1;
                         // NB: invert p and args!
-                        if !sub(rel, !p, typtbl2, typtbl1, end2, end1, t21, t11) {
+                        if !sub(rel, !p, typtbl2, typtbl1, end2, end1, t21, t11, mode) {
                             break 'return_false;
                         }
                     }
@@ -653,7 +695,7 @@ unsafe fn sub(
                     } else {
                         let t11 = sleb128_decode(&mut tb1);
                         out1 -= 1;
-                        if !sub(rel, p, typtbl1, typtbl2, end1, end2, t11, t21) {
+                        if !sub(rel, p, typtbl1, typtbl2, end1, end2, t11, t21, mode) {
                             break 'return_false;
                         }
                     }
@@ -728,7 +770,7 @@ unsafe fn sub(
                         advance = false; // reconsider this field in next round
                         continue;
                     };
-                    if !sub(rel, p, typtbl1, typtbl2, end1, end2, t11, t21) {
+                    if !sub(rel, p, typtbl1, typtbl2, end1, end2, t11, t21, mode) {
                         break 'return_false;
                     }
                     advance = true;
@@ -757,7 +799,7 @@ unsafe fn sub(
                     if tag1 != tag2 {
                         break 'return_false;
                     };
-                    if !sub(rel, p, typtbl1, typtbl2, end1, end2, t11, t21) {
+                    if !sub(rel, p, typtbl1, typtbl2, end1, end2, t11, t21, mode) {
                         break 'return_false;
                     }
                 }
@@ -791,7 +833,7 @@ unsafe fn sub(
                     if cmp != 0 {
                         break 'return_false;
                     };
-                    if !sub(rel, p, typtbl1, typtbl2, end1, end2, t11, t21) {
+                    if !sub(rel, p, typtbl1, typtbl2, end1, end2, t11, t21, mode) {
                         break 'return_false;
                     }
                 }
@@ -859,5 +901,6 @@ unsafe extern "C" fn idl_sub(
         typtbl_end2,
         t1,
         t2,
+        CompatibilityMode::Candid,
     );
 }
