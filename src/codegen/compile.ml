@@ -878,7 +878,7 @@ module RTS = struct
     E.add_func_import env "rts" "write_with_barrier" [I32Type; I32Type] [];
     E.add_func_import env "rts" "allocation_barrier" [I32Type] [I32Type];
     E.add_func_import env "rts" "running_gc" [] [I32Type];
-    E.add_func_import env "rts" "register_stable_type" [I32Type] [];
+    E.add_func_import env "rts" "register_stable_type" [I32Type; I32Type; I32Type] [];
     E.add_func_import env "rts" "load_stable_actor" [] [I32Type];
     E.add_func_import env "rts" "save_stable_actor" [I32Type] [];
     E.add_func_import env "rts" "free_stable_actor" [] [];
@@ -7588,8 +7588,12 @@ module Persistence = struct
   let free_stable_actor env = E.call_import env "rts" "free_stable_actor"
 
   let register_stable_type env actor_type =
-    let type_descriptor = Persistence.encode_stable_type actor_type in
-    Blob.lit env type_descriptor ^^
+    let (candid_type_desc, type_offsets, type_indices) = Serialization.type_desc env [actor_type] in
+    let serialized_offsets = StaticBytes.(as_bytes [i32s (List.map Int32.of_int type_offsets)]) in
+    assert ((List.length type_indices) = 1);
+    Blob.lit env candid_type_desc ^^
+    Blob.lit env serialized_offsets ^^
+    compile_unboxed_const (List.nth type_indices 0) ^^
     E.call_import env "rts" "register_stable_type"
 
   let create_actor env actor_type get_field_value =

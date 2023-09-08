@@ -7,7 +7,6 @@ mod crc32;
 mod gc;
 mod leb128;
 mod memory;
-mod persistence;
 mod principal_id;
 mod stream;
 mod text;
@@ -22,8 +21,6 @@ fn main() {
     }
 
     unsafe {
-        persistence::test();
-
         test_read_write_64_bit();
         bigint::test();
         bitrel::test();

@@ -73,6 +73,7 @@ unsafe fn get_roots(heap: &MotokoHeap) -> Roots {
         unused_root,
         unused_root,
         unused_root,
+        unused_root,
     ]
 }
 
