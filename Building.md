@@ -81,13 +81,13 @@ We make frequent releases, at least weekly. The steps to make a release (say, ve
    that everything relevant is mentioned in the changelog section, and possibly
    clean it up a bit, curating the information for the target audience.
 
- * `git commit -am "chore: Releasing 0.10.$MOC_MINOR"`
+ * `git commit -am "chore: Releasing 0.10."$MOC_MINOR`
  * Create a PR from this commit, and label it `automerge-squash`. E.g.
    with `git push origin HEAD:$USER/0.10.$MOC_MINOR`. Mergify will
    merge it into `master` without additional approval, but it will take some
    time as the title (version number) enters into the `nix` dependency tracking.
  * `git switch master; git pull --rebase`. The release commit should be your `HEAD`
- * `git tag 0.10.$MOC_MINOR -m "Motoko 0.10.$MOC_MINOR"`
+ * `git tag 0.10.$MOC_MINOR -m "Motoko 0.10."$MOC_MINOR`
  * `git push origin 0.10.$MOC_MINOR`
 
 Pushing the tag should cause GitHub Actions to create a “Release” on the GitHub
