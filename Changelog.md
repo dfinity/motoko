@@ -1,9 +1,17 @@
 # Motoko compiler changelog
 
+## 0.10.0 (2023-09-08)
+
 * motoko (`moc`)
 
-  * Added a new stable `Region` type (#3768) of dynamically allocated, independently growable and
-    isolated regions of IC stable memory. See documentation.
+  * Added a new stable `Region` type of dynamically allocated, independently growable and
+    isolated regions of IC stable memory (#3768). See documentation.
+    BREAKING CHANGE: stable memory changes may occur that can prevent returning
+    to previous `moc` versions.
+
+* motoko-base
+
+  * Exposed conversions between adjacent fixed-width types (dfinity/motoko-base⁠#585).
 
 ## 0.9.8 (2023-08-11)
 
