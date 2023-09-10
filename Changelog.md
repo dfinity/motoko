@@ -9,6 +9,8 @@
     BREAKING CHANGE: stable memory changes may occur that can prevent returning
     to previous `moc` versions.
 
+  * Added doc comments in generated Candid files (#4178).
+
 * motoko-base
 
   * Exposed conversions between adjacent fixed-width types (dfinity/motoko-base⁠#585).
