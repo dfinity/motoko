@@ -38,6 +38,7 @@ type prim =
   | Blob (* IR use: Packed representation, vec u8 IDL type *)
   | Error
   | Principal
+  | Region
 
 type t = typ
 and typ =
@@ -91,6 +92,7 @@ let tag_prim = function
   | Blob -> 15
   | Error -> 16
   | Principal -> 17
+  | Region -> 18
 
 let tag_func_sort = function
   | Local -> 0
@@ -317,6 +319,7 @@ let blob = Prim Blob
 let error = Prim Error
 let char = Prim Char
 let principal = Prim Principal
+let region = Prim Region
 
 let fields flds =
   List.sort compare_field
@@ -371,6 +374,7 @@ let prim = function
   | "Blob" -> Blob
   | "Error" -> Error
   | "Principal" -> Principal
+  | "Region" -> Region
   | s -> raise (Invalid_argument ("Type.prim: " ^ s))
 
 let seq = function [t] -> t | ts -> Tup ts
@@ -707,7 +711,7 @@ let rec span = function
   | Con _ as t -> span (promote t)
   | Prim Null -> Some 1
   | Prim Bool -> Some 2
-  | Prim (Nat | Int | Float | Text | Blob | Error | Principal) -> None
+  | Prim (Nat | Int | Float | Text | Blob | Error | Principal | Region) -> None
   | Prim (Nat8 | Int8) -> Some 0x100
   | Prim (Nat16 | Int16) -> Some 0x10000
   | Prim (Nat32 | Int32 | Nat64 | Int64 | Char) -> None  (* for all practical purposes *)
@@ -816,6 +820,7 @@ let serializable allow_mut t =
       match t with
       | Var _ | Pre -> assert false
       | Prim Error -> false
+      | Prim Region -> allow_mut (* stable, but not shared *)
       | Any | Non | Prim _ | Typ _ -> true
       | Async _ -> false
       | Mut t -> allow_mut && go t
@@ -1421,6 +1426,7 @@ let string_of_prim = function
   | Blob -> "Blob"
   | Error -> "Error"
   | Principal -> "Principal"
+  | Region -> "Region"
 
 let string_of_obj_sort = function
   | Object -> ""
