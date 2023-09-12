@@ -613,7 +613,25 @@ pub(crate) unsafe fn sub(
     // exit either via 'return true' or 'break 'return_false' to memoize the negative result
     'return_false: loop {
         match (u1, u2) {
-            (_, IDL_CON_alias) | (IDL_CON_alias, _) => idl_trap_with("sub: unexpected alias"),
+            (IDL_CON_alias, IDL_CON_alias) => match mode {
+                CompatibilityMode::Candid => idl_trap_with("sub: unexpected alias"),
+                CompatibilityMode::Persistence => {
+                    let t11 = sleb128_decode(&mut tb1);
+                    let t21 = sleb128_decode(&mut tb2);
+                    // invariance
+                    if sub(rel, p, typtbl1, typtbl2, end1, end2, t11, t21, mode)
+                        && sub(rel, !p, typtbl2, typtbl1, end2, end1, t21, t11, mode)
+                    {
+                        return true;
+                    } else {
+                        break 'return_false;
+                    }
+                }
+            },
+            (_, IDL_CON_alias) | (IDL_CON_alias, _) => match mode {
+                CompatibilityMode::Candid => idl_trap_with("sub: unexpected alias"),
+                CompatibilityMode::Persistence => return false,
+            },
             (_, IDL_PRIM_reserved) | (IDL_PRIM_empty, _) | (IDL_PRIM_nat, IDL_PRIM_int) => {
                 return true
             }
