@@ -45,20 +45,20 @@ More specifically, it comprises:
 * A reserve for future metadata extensions.
 
 ### Compatibility Check
-NOTE: This will be simplified by using the existing IDL sub-type test in the runtime system.
-
 Upgrades are only permitted if the new program version is compatible to the old version, such that the runtime system guarantees a compatible memory structure.
-Compatible changes are equivalent to the allowed Motoko subtype relation, e.g.
-* Adding or removing actor fields
-* Removing object fields
-* Adding variant fields
-* `Nat` to `Int`
-* Shared function parameter contravariance and return type covariance
 
-The compiler generates a static type table that describes all static variable types.
-The table is registered in the persistent metadata and compared against the type table of a new program version. The upgrade is rejected on incompatible type tables.
+Compatible changes for immutable types are equivalent to the allowed Motoko subtype relation, e.g.
+* Adding or removing actor fields.
+* Removing object fields.
+* Adding variant fields.
+* `Nat` to `Int`.
+* Shared function parameter contravariance and return type covariance.
 
-This compatibility check serves as an additional safety measure on top of the DFX Candid subtype check that can be bypassed by users (when ignoring a warning). Moreoever, the memory compatibility rules may be stricter than in Candid (e.g. not allowing introducing optional types).
+The existing IDL-subtype functionality is reused with some adjustments to check memory compatibility: The compiler generates the type descriptor, a type table, that is recorded in the persistent metadata. Upon an upgrade, the new type descriptor is compared against the existing type descriptor, and the upgrade only succeeds for compatible changes.
+
+This compatibility check serves as an additional safety measure on top of the DFX Candid subtype check that can be bypassed by users (when ignoring a warning). Moreoever, the memory compatibility rules is in some aspects different to the Candid sub-type check:
+* Types cannot be made optional.
+* Mutable types (aliases) are supported with type invariance.
 
 ### Garbage Collection
 The implementation focuses on the incremental GC and abandons the other GCs because the GCs use different memory layouts. For example, the incremental GC uses a partitioned heap with objects carrying a forwarding pointer.
