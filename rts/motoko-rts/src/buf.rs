@@ -64,3 +64,39 @@ pub(crate) unsafe extern "C" fn skip_leb128(buf: *mut Buf) {
         }
     }
 }
+
+/// Check if the potentially incomplete buffer holds the requested number of bytes at its prefix.
+#[cfg(feature = "ic")]
+#[no_mangle]
+pub unsafe extern "C" fn check_prefix(buf: *mut Buf, required: usize) -> bool {
+    (*buf).end.sub_ptr((*buf).ptr) >= required
+}
+
+/// Check if the potentially incomplete buffer holds a valid (s)leb128 at its prefix.
+/// Note: This is a byte-wise loop, doing unaligned 64-bit chunks (where possible) could
+///       speed up things.
+#[cfg(feature = "ic")]
+#[no_mangle]
+pub unsafe extern "C" fn check_leb128_prefix(buf: *mut Buf) -> bool {
+    let (mut ptr, end) = ((*buf).ptr, (*buf).end);
+    while ptr != end {
+        let byte = *ptr;
+        if byte & 0b1000_0000 == 0 {
+            return true;
+        }
+        ptr = ptr.add(1);
+    }
+    false
+}
+
+/// Move remaining buffer contents to `base` and use `fill` to load more content
+/// up to `(*buf).end`.
+#[cfg(feature = "ic")]
+pub unsafe fn refill<F: FnOnce(*mut u8, u64) -> ()>(buf: *mut Buf, base: *mut u8, fill: F)
+{
+    let len = (*buf).end.sub_ptr((*buf).ptr);
+    libc::memcpy(base as *mut _, (*buf).ptr as *const _, len);
+    let bytes = (*buf).end.sub_ptr(base) - len;
+    fill(base.add(len), bytes as u64);
+    (*buf).ptr = base;
+}

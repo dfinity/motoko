@@ -5,6 +5,7 @@
     arbitrary_self_types,
     core_intrinsics,
     panic_info_message,
+    ptr_sub_ptr,
     proc_macro_hygiene
 )]
 
