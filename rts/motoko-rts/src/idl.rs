@@ -628,13 +628,13 @@ pub(crate) unsafe fn sub(
                     }
                 }
             },
+            (_, IDL_PRIM_reserved) | (IDL_PRIM_empty, _) | (IDL_PRIM_nat, IDL_PRIM_int) => {
+                return true
+            }
             (_, IDL_CON_alias) | (IDL_CON_alias, _) => match mode {
                 CompatibilityMode::Candid => idl_trap_with("sub: unexpected alias"),
                 CompatibilityMode::Persistence => return false,
             },
-            (_, IDL_PRIM_reserved) | (IDL_PRIM_empty, _) | (IDL_PRIM_nat, IDL_PRIM_int) => {
-                return true
-            }
             (IDL_CON_opt, IDL_CON_opt) => match mode {
                 CompatibilityMode::Candid => return true,
                 CompatibilityMode::Persistence => {
