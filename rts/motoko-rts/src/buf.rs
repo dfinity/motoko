@@ -92,8 +92,7 @@ pub unsafe extern "C" fn check_leb128_prefix(buf: *mut Buf) -> bool {
 /// Move remaining buffer contents to `base` and use `fill` to load more content
 /// up to `(*buf).end`.
 #[cfg(feature = "ic")]
-pub unsafe fn refill<F: FnOnce(*mut u8, u64) -> ()>(buf: *mut Buf, base: *mut u8, fill: F)
-{
+pub unsafe fn refill<F: FnOnce(*mut u8, u64) -> ()>(buf: *mut Buf, base: *mut u8, fill: F) {
     let len = (*buf).end.sub_ptr((*buf).ptr);
     libc::memcpy(base as *mut _, (*buf).ptr as *const _, len);
     let bytes = (*buf).end.sub_ptr(base) - len;
