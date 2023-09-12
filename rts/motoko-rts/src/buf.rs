@@ -3,12 +3,14 @@
 use crate::idl_trap_with;
 
 #[repr(packed)]
-pub struct Buf {
+pub struct GenBuf<A> {
     /// Pointer into the buffer
-    pub ptr: *mut u8,
+    pub ptr: A,
     /// Pointer to the end of the buffer
-    pub end: *mut u8,
+    pub end: A,
 }
+
+pub type Buf = GenBuf<*mut u8>;
 
 impl Buf {
     #[cfg(feature = "ic")]
@@ -98,4 +100,18 @@ pub unsafe fn refill<F: FnOnce(*mut u8, u64) -> ()>(buf: *mut Buf, base: *mut u8
     let bytes = (*buf).end.sub_ptr(base) - len;
     fill(base.add(len), bytes as u64);
     (*buf).ptr = base;
+}
+
+/// Set up a descriptor for an area of stable memory to slurp data from.
+type StableBuf = GenBuf<u64>;
+
+impl StableBuf {
+    #[cfg(feature = "ic")]
+    pub(crate) unsafe fn advance(self: *mut Self, n: u32) {
+        if (*self).ptr + n as u64 > (*self).end {
+            idl_trap_with("advance out of stable buffer");
+        }
+
+        (*self).ptr += n as u64;
+    }
 }
