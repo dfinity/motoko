@@ -21,14 +21,15 @@ actor {
 
     assert M.size() == reqPages;
 
-    // Load out previously-stored byte pattern, one byte at a time.
+    // Load out previously-stored byte pattern in a defined interval.
+    // The interval serves for faster test runs on the CI, to avoid `drun` batch limit. 
     // Check each byte is what we would have written, if we were repeating the same logic again.
     while (i < size) {
         let expected = b;
         let loaded = M.loadNat8(i);
         //P.debugPrint(" - " # (debug_show {i; expected; loaded}));
         assert loaded == expected;
-        i := i + 1;
+        i := i + 10;
         b := b +% 1;
     };
 
