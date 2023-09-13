@@ -27,6 +27,8 @@
 // size of the text.
 
 use crate::barriers::allocation_barrier;
+use crate::bigint::{bigint_leb128_decode, bigint_to_word32_trap};
+use crate::buf::{check_leb128_prefix, stable_refill, Buf, StableBuf};
 use crate::mem_utils::memcpy_bytes;
 use crate::memory::{alloc_blob, Memory};
 use crate::rts_trap_with;
@@ -415,6 +417,32 @@ pub unsafe fn text_singleton<M: Memory>(mem: &mut M, char: u32) -> Value {
     for i in 0..str_len {
         blob.set(i, buf[i as usize]);
     }
+
+    allocation_barrier(blob_ptr)
+}
+
+/// Allocate a blob/text from a buffered `StableBuf`.
+#[ic_mem_fn]
+pub unsafe fn blob_from_stable<M: Memory>(
+    mem: &mut M,
+    buf: *mut Buf,
+    base: *mut u8,
+    descr: *mut StableBuf,
+) -> Value {
+    if !check_leb128_prefix(buf) {
+        stable_refill(buf, base, descr);
+    }
+    let val = bigint_leb128_decode(buf);
+
+    let blob_len = bigint_to_word32_trap(val);
+
+    let blob_ptr = alloc_text_blob(mem, Bytes(blob_len));
+
+    let blob = blob_ptr.as_blob_mut();
+
+    /*for i in 0..str_len {
+        blob.set(i, buf[i as usize]);
+    }*/
 
     allocation_barrier(blob_ptr)
 }

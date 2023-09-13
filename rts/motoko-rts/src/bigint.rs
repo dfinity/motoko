@@ -197,7 +197,7 @@ unsafe extern "C" fn bigint_to_word32_wrap(p: Value) -> u32 {
 }
 
 #[no_mangle]
-unsafe extern "C" fn bigint_to_word32_trap(p: Value) -> u32 {
+pub(crate) unsafe extern "C" fn bigint_to_word32_trap(p: Value) -> u32 {
     let mp_int = p.as_bigint().mp_int_ptr();
 
     if mp_isneg(mp_int) || mp_count_bits(mp_int) > 32 {
