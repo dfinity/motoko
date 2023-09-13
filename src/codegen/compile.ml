@@ -4473,7 +4473,14 @@ module IC = struct
   let performance_counter env = 
     prepare_ic_system_call_1 env ^^
     ic_system_call "performance_counter" env ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
-  let is_controller env = ic_system_call "is_controller" env ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
+  let is_controller env = 
+    let (set_len, get_len) = new_local env "len" in
+    let (set_blob, get_blob) = new_local env "blob" in
+    set_len ^^ set_blob ^^
+    (* TODO 64-bit support: Redesign this to copy the blob in reserved lower 32-bit area before narrowing the pointer *)
+    narrow_to_32 env get_blob ^^
+    narrow_to_32 env get_len ^^
+    ic_system_call "is_controller" env ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
   let canister_version env = ic_system_call "canister_version" env
 
   let print_ptr_len env = G.i (Call (nr (E.built_in env "print_ptr")))
@@ -10005,7 +10012,6 @@ and compile_prim_invocation (env : E.t) ae p es at =
     set_principal ^^ get_principal ^^
     Blob.payload_ptr_unskewed env ^^
     get_principal ^^
-    Blob.len env ^^
     IC.is_controller env
 
   | OtherPrim "canister_version", [] ->
