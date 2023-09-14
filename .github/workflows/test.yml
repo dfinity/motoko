@@ -32,11 +32,11 @@ jobs:
 
     - run: nix-env -iA nix-build-uncached -f nix/
 
-    - name: "pre-build `drun`"
-      if: startsWith(github.head_ref, 'update/ic-')
-      run: |
-        nix-build --max-jobs 1 -A drun
-        nix-store --gc --print-roots | grep /motoko/
+    # - name: "pre-build `drun`"
+    #   if: startsWith(github.head_ref, 'update/ic-')
+    #   run: |
+    #     nix-build --max-jobs 1 -A drun
+    #     nix-store --gc --print-roots | grep /motoko/
 
     - name: "nix-build"
       run: nix-build-uncached --max-jobs 4 -A all-systems-go -build-flags -L
