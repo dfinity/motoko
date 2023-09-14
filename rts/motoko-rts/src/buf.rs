@@ -129,7 +129,7 @@ impl StableBuf {
     #[cfg(feature = "ic")]
     pub(crate) unsafe fn transfer(self: *mut Self, to: *mut u8, n: u32) {
         stable64_read_moc(to, (*self).ptr, n as u64);
-        (*self).advance(n)
+        self.advance(n)
     }
 }
 
