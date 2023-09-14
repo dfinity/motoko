@@ -825,6 +825,7 @@ module Func = struct
      in particular creating the environment, and finally adding it to the environment.
   *)
 
+
   let of_body env params retty mk_body =
     let env1 = E.mk_fun_env env (Int32.of_int (List.length params)) (List.length retty) in
     List.iteri (fun i (n,_t) -> E.add_local_name env1 (Int32.of_int i) n) params;
@@ -840,70 +841,91 @@ module Func = struct
   let define_built_in env name params retty mk_body =
     E.define_built_in env name (lazy (of_body env params retty mk_body))
 
+  type inline = Never | Always | InLoop
+
   (* (Almost) transparently lift code into a function and call this function. *)
   (* Also add a hack to support multiple return values *)
-  let share_code env name params retty mk_body =
-    define_built_in env name params retty mk_body;
-    G.i (Call (nr (E.built_in env name))) ^^
-    FakeMultiVal.load env retty
-
+  let share_code ?(inline = Always) env name params retty mk_body =
+    match inline with
+    | Never ->
+       let getters =
+         List.mapi
+           (fun i (n, t) -> (G.i (LocalGet (nr (Int32.of_int i)))))
+           params
+       in
+       define_built_in env name params retty (fun env -> mk_body env getters);
+       G.i (Call (nr (E.built_in env name))) ^^
+       FakeMultiVal.load env retty
+    | Always | InLoop ->
+       let locals =
+         List.map
+           (fun (n, t) -> new_local_ env t n)
+           params
+       in
+       let set_locals = List.fold_right (fun (set, get, _) is-> is ^^ set) locals G.nop in
+       let getters = List.map (fun (set, get, _) -> get) locals in
+       set_locals ^^
+       mk_body env getters ^^ FakeMultiVal.store env retty ^^
+       FakeMultiVal.load env retty
 
   (* Shorthands for various arities *)
-  let share_code0 env name retty mk_body =
-    share_code env name [] retty (fun env -> mk_body env)
-  let share_code1 env name p1 retty mk_body =
-    share_code env name [p1] retty (fun env -> mk_body env
-        (G.i (LocalGet (nr 0l)))
+  let [@warning "-8"] share_code0 ?(inline=Never) env name retty mk_body =
+    share_code ~inline:inline env name [] retty (fun env [] -> mk_body env)
+  let [@warning "-8"] share_code1 env name p1 retty mk_body =
+    share_code env name [p1] retty (fun env [g1] -> mk_body env
+        g1
     )
-  let share_code2 env name (p1,p2) retty mk_body =
-    share_code env name [p1; p2] retty (fun env -> mk_body env
-        (G.i (LocalGet (nr 0l)))
-        (G.i (LocalGet (nr 1l)))
+  let [@warning "-8"] share_code2 env name (p1,p2) retty mk_body =
+    share_code env name [p1; p2] retty (fun env [g1; g2] -> mk_body env
+      g1
+      g2
     )
-  let share_code3 env name (p1, p2, p3) retty mk_body =
-    share_code env name [p1; p2; p3] retty (fun env -> mk_body env
-        (G.i (LocalGet (nr 0l)))
-        (G.i (LocalGet (nr 1l)))
-        (G.i (LocalGet (nr 2l)))
+  let [@warning "-8"] share_code3 env name (p1, p2, p3) retty mk_body =
+    share_code env name [p1; p2; p3] retty (fun env [g1; g2; g3] -> mk_body env
+      g1
+      g2
+      g3
     )
-  let _share_code4 env name (p1, p2, p3, p4) retty mk_body =
-    share_code env name [p1; p2; p3; p4] retty (fun env -> mk_body env
-        (G.i (LocalGet (nr 0l)))
-        (G.i (LocalGet (nr 1l)))
-        (G.i (LocalGet (nr 2l)))
-        (G.i (LocalGet (nr 3l)))
+  let [@warning "-8"] _share_code4 env name (p1, p2, p3, p4) retty mk_body =
+    share_code env name [p1; p2; p3; p4] retty (fun env [g1; g2; g3; g4]-> mk_body env
+      g1
+      g2
+      g3
+      g4
     )
-  let share_code6 env name (p1, p2, p3, p4, p5, p6) retty mk_body =
-    share_code env name [p1; p2; p3; p4; p5; p6] retty (fun env -> mk_body env
-        (G.i (LocalGet (nr 0l)))
-        (G.i (LocalGet (nr 1l)))
-        (G.i (LocalGet (nr 2l)))
-        (G.i (LocalGet (nr 3l)))
-        (G.i (LocalGet (nr 4l)))
-        (G.i (LocalGet (nr 5l)))
+  let [@warning "-8"] share_code6 env name (p1, p2, p3, p4, p5, p6) retty mk_body =
+    share_code env name [p1; p2; p3; p4; p5; p6] retty (fun env [g1; g2; g3; g4; g5; g6] -> mk_body env
+      g1
+      g2
+      g3
+      g4
+      g5
+      g6
     )
-  let _share_code7 env name (p1, p2, p3, p4, p5, p6, p7) retty mk_body =
-    share_code env name [p1; p2; p3; p4; p5; p6; p7] retty (fun env -> mk_body env
-        (G.i (LocalGet (nr 0l)))
-        (G.i (LocalGet (nr 1l)))
-        (G.i (LocalGet (nr 2l)))
-        (G.i (LocalGet (nr 3l)))
-        (G.i (LocalGet (nr 4l)))
-        (G.i (LocalGet (nr 5l)))
-        (G.i (LocalGet (nr 6l)))
+  let [@warning "-8"] _share_code7 env name (p1, p2, p3, p4, p5, p6, p7) retty mk_body =
+    share_code env name [p1; p2; p3; p4; p5; p6; p7] retty (fun env [g1; g2; g3; g4; g5; g6; g7] -> mk_body env
+      g1
+      g2
+      g3
+      g4
+      g5
+      g6
+      g7
     )
-  let _share_code9 env name (p1, p2, p3, p4, p5, p6, p7, p8, p9) retty mk_body =
-    share_code env name [p1; p2; p3; p4; p5; p6; p7; p8; p9] retty (fun env -> mk_body env
-        (G.i (LocalGet (nr 0l)))
-        (G.i (LocalGet (nr 1l)))
-        (G.i (LocalGet (nr 2l)))
-        (G.i (LocalGet (nr 3l)))
-        (G.i (LocalGet (nr 4l)))
-        (G.i (LocalGet (nr 5l)))
-        (G.i (LocalGet (nr 6l)))
-        (G.i (LocalGet (nr 7l)))
-        (G.i (LocalGet (nr 8l)))
+
+  let [@warning "-8"] _share_code9 env name (p1, p2, p3, p4, p5, p6, p7, p8, p9) retty mk_body =
+    share_code env name [p1; p2; p3; p4; p5; p6; p7; p8; p9] retty (fun env [g1; g2; g3; g4; g5; g6; g7; g8; g9] -> mk_body env
+      g1
+      g2
+      g3
+      g4
+      g5
+      g6
+      g7
+      g8
+      g9
     )
+
 
 end (* Func *)
 
@@ -4283,8 +4305,8 @@ module Tuple = struct
     else
       let name = Printf.sprintf "to_%i_tuple" n in
       let args = Lib.List.table n (fun i -> Printf.sprintf "arg%i" i, I32Type) in
-      Func.share_code env name args [I32Type] (fun env ->
-        Arr.lit env (Lib.List.table n (fun i -> G.i (LocalGet (nr (Int32.of_int i)))))
+      Func.share_code env name args [I32Type] (fun env getters ->
+        Arr.lit env (Lib.List.table n (fun i -> List.nth getters i))
       )
 
   (* Takes an argument tuple and puts the elements on the stack: *)
@@ -10282,9 +10304,9 @@ and compile_prim_invocation (env : E.t) ae p es at =
       let n = List.length ts in
       let name = Printf.sprintf "to_opt_%i_tuple" n in
       let args = Lib.List.table n (fun i -> (Printf.sprintf "arg%i" i, I32Type)) in
-      Func.share_code env name args [I32Type] (fun env ->
+      Func.share_code env name args [I32Type] (fun env getters ->
         let locals =
-          Lib.List.table n (fun i -> G.i (LocalGet (nr (Int32.of_int i)))) in
+          Lib.List.table n (fun i -> List.nth getters i) in
         let rec go ls =
           match ls with
           | get_val::ls' ->
