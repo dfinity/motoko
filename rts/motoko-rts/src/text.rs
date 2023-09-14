@@ -441,15 +441,10 @@ pub unsafe fn blob_from_stable<M: Memory>(
     let blob = blob_ptr.as_blob_mut();
 
     let fast_bytes = min(blob_len, (*buf).end.sub_ptr((*buf).ptr));
-    (*buf).transfer(blob.as_mut_payload(), fast_bytes);
+    buf.transfer(blob.as_mut_payload(), fast_bytes);
     if blob_len > fast_bytes {
         let slow_bytes = blob_len - fast_bytes;
-        stable64_read_moc(
-            blob.as_mut_payload().add(fast_bytes),
-            (*descr).ptr,
-            slow_bytes as u64,
-        );
-        descr.advance(slow_bytes)
+        descr.transfer(blob.as_mut_payload().add(fast_bytes), slow_bytes);
     }
 
     allocation_barrier(blob_ptr)
