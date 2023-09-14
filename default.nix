@@ -198,7 +198,7 @@ rec {
         name = "motoko-rts-deps";
         src = subpath ./rts;
         sourceRoot = "rts/motoko-rts-tests";
-        sha256 = "sha256-YEw2AFi15JVKP7owsPDoBT3qSegOO90FRn2qoUBAICw=";
+        sha256 = "sha256-jN5nx5UNBHlYKnC0kk90h6mWPUNrqPS7Wln2TixbGgA=";
         copyLockfile = true;
       };
 
@@ -500,9 +500,8 @@ rec {
   in fix_names ({
       run        = test_subdir "run"        [ moc ] ;
       run-dbg    = snty_subdir "run"        [ moc ] ;
-      run-incremental-gc = snty_incremental_gc_subdir "run" [ moc ] ;
       # TODO: drun and ic-ref do not yet support Wasm64
-      # ic-ref-run = test_subdir "run-drun"   [ moc ic-ref-run ];      
+      # ic-ref-run = test_subdir "run-drun"   [ moc ic-ref-run ];
       # drun       = test_subdir "run-drun"   [ moc nixpkgs.drun ];
       # drun-dbg   = snty_subdir "run-drun"   [ moc nixpkgs.drun ];
       # drun-compacting-gc = snty_compacting_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
@@ -588,7 +587,7 @@ rec {
     nixpkgs.rustPlatform.buildRustPackage {
       name = "ic-wasm";
       src = nixpkgs.sources.ic-wasm;
-      cargoSha256 = "sha256-iGCju0JG+jkysmDAeTfjNCYaSfg7N3Qqq8HpPlRHMgU=";
+      cargoSha256 = "sha256-qw1MwjlhGftN9k2sOjlAYo9rDRvHnf0qYQFPHMu2v74=";
       doCheck = false;
     };
 
@@ -775,7 +774,7 @@ rec {
       # docs
       # TODO: No profiling graphs currently reported since the benchmark would require 64-bit drun
       # report-site
-      ic-ref-run
+      # ic-ref-run
       shell
       check-formatting
       check-rts-formatting

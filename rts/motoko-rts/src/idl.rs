@@ -44,6 +44,7 @@ const IDL_CON_func: i32 = -22;
 const IDL_CON_service: i32 = -23;
 
 const IDL_REF_principal: i32 = -24;
+const IDL_EXT_region: i32 = -128;
 
 const IDL_CON_alias: i32 = 1;
 
@@ -66,7 +67,7 @@ pub unsafe fn leb128_decode_ptr(buf: *mut Buf) -> (u32, *mut u8) {
 }
 
 unsafe fn is_primitive_type(ty: i32) -> bool {
-    ty < 0 && (ty >= IDL_PRIM_lowest || ty == IDL_REF_principal)
+    ty < 0 && (ty >= IDL_PRIM_lowest || ty == IDL_REF_principal || ty == IDL_EXT_region)
 }
 
 // TBR; based on Text.text_compare
@@ -368,6 +369,10 @@ unsafe extern "C" fn skip_any(buf: *mut Buf, typtbl: *mut *mut u8, t: i32, depth
                 if read_byte_tag(buf) != 0 {
                     skip_blob(buf);
                 }
+            }
+            IDL_EXT_region => {
+                buf.advance(12); // id (u64) & page_count (u32)
+                skip_blob(buf); // vec_pages
             }
             _ => {
                 idl_trap_with("skip_any: unknown prim");

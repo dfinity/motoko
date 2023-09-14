@@ -37,6 +37,7 @@ impl MotokoHeap {
         map: &[(ObjectIdx, Vec<ObjectIdx>)],
         roots: &[ObjectIdx],
         continuation_table: &[ObjectIdx],
+        region0_ptr_loc: &[ObjectIdx],
         gc: GC,
     ) -> MotokoHeap {
         MotokoHeap {
@@ -104,6 +105,11 @@ impl MotokoHeap {
         self.inner.borrow().continuation_table_ptr_address()
     }
 
+    /// Get the address of the continuation table pointer
+    pub fn region0_ptr_location(&self) -> usize {
+        self.inner.borrow().region0_ptr_address()
+    }
+
     /// Get the heap as an array. Use `offset` values returned by the methods above to read.
     pub fn heap(&self) -> Ref<Box<[u8]>> {
         Ref::map(self.inner.borrow(), |heap| &heap.heap)
@@ -145,6 +151,8 @@ struct MotokoHeapInner {
     /// Reminder: this location is in static heap and will have pointer to an array in dynamic
     /// heap.
     continuation_table_ptr_offset: usize,
+
+    region0_ptr_location_offset: usize,
 }
 
 impl MotokoHeapInner {
@@ -193,6 +201,10 @@ impl MotokoHeapInner {
         self.offset_to_address(self.continuation_table_ptr_offset)
     }
 
+    fn region0_ptr_address(&self) -> usize {
+        self.offset_to_address(self.region0_ptr_location_offset)
+    }
+
     fn new(
         map: &[(ObjectIdx, Vec<ObjectIdx>)],
         roots: &[ObjectIdx],
@@ -215,7 +227,7 @@ impl MotokoHeapInner {
         let static_heap_size_bytes = (size_of::<Array>().as_usize()
             + roots.len()
             + (roots.len() * size_of::<MutBox>().as_usize())
-            + 1)
+            + 2)
             * WORD_SIZE;
 
         let dynamic_heap_size_without_continuation_table_bytes = {
@@ -257,7 +269,10 @@ impl MotokoHeapInner {
         );
 
         // Closure table pointer is the last word in static heap
-        let continuation_table_ptr_offset = static_heap_size_bytes - WORD_SIZE;
+        let continuation_table_ptr_offset = static_heap_size_bytes - WORD_SIZE * 2;
+
+        let region0_ptr_location_offset = static_heap_size_bytes - WORD_SIZE;
+
         create_static_heap(
             roots,
             &object_addrs,
@@ -273,6 +288,7 @@ impl MotokoHeapInner {
             heap_ptr_offset: total_heap_size_bytes + realign,
             static_root_array_offset: realign,
             continuation_table_ptr_offset: continuation_table_ptr_offset + realign,
+            region0_ptr_location_offset: region0_ptr_location_offset + realign,
         }
     }
 

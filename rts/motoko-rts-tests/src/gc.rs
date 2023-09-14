@@ -76,6 +76,7 @@ fn test_heaps() -> Vec<TestHeap> {
             ],
             roots: vec![0, 2, 3],
             continuation_table: vec![0],
+            region0_ptr_loc: vec![0],
         },
         // Tests pointing to the same object in multiple fields of an object. Also has unreachable
         // objects.
@@ -83,12 +84,14 @@ fn test_heaps() -> Vec<TestHeap> {
             heap: vec![(0, vec![]), (1, vec![]), (2, vec![])],
             roots: vec![1],
             continuation_table: vec![0, 0],
+            region0_ptr_loc: vec![0],
         },
         // Root points backwards in heap. Caught a bug in mark-compact collector.
         TestHeap {
             heap: vec![(0, vec![]), (1, vec![2]), (2, vec![1])],
             roots: vec![2],
             continuation_table: vec![],
+            region0_ptr_loc: vec![0],
         },
     ]
 }
@@ -106,6 +109,7 @@ struct TestHeap {
     heap: Vec<(ObjectIdx, Vec<ObjectIdx>)>,
     roots: Vec<ObjectIdx>,
     continuation_table: Vec<ObjectIdx>,
+    region0_ptr_loc: Vec<ObjectIdx>,
 }
 
 /// Test all GC implementations with the given heap
@@ -116,6 +120,7 @@ fn test_gcs(heap_descr: &TestHeap) {
             &heap_descr.heap,
             &heap_descr.roots,
             &heap_descr.continuation_table,
+            &heap_descr.region0_ptr_loc,
         );
     }
 
@@ -127,8 +132,9 @@ fn test_gc(
     refs: &[(ObjectIdx, Vec<ObjectIdx>)],
     roots: &[ObjectIdx],
     continuation_table: &[ObjectIdx],
+    region0_ptr_loc: &[ObjectIdx],
 ) {
-    let mut heap = MotokoHeap::new(refs, roots, continuation_table, gc);
+    let mut heap = MotokoHeap::new(refs, roots, continuation_table, region0_ptr_loc, gc);
 
     initialize_gc(&mut heap);
 
@@ -444,6 +450,7 @@ impl GC {
     fn run(&self, heap: &mut MotokoHeap, _round: usize) -> bool {
         let heap_base = heap.heap_base_address();
         let static_roots = Value::from_ptr(heap.static_root_array_address());
+        let mut region_0 = Value::from_scalar(0);
         let continuation_table_ptr_address = heap.continuation_table_ptr_address() as *mut Value;
 
         let heap_1 = heap.clone();
@@ -461,6 +468,7 @@ impl GC {
                         move |hp| heap_2.set_heap_ptr_address(hp),
                         static_roots,
                         continuation_table_ptr_address,
+                        &mut region_0,
                         // note_live_size
                         |_live_size| {},
                         // note_reclaimed
@@ -481,6 +489,7 @@ impl GC {
                         move |hp| heap_2.set_heap_ptr_address(hp),
                         static_roots,
                         continuation_table_ptr_address,
+                        &mut region_0,
                         // note_live_size
                         |_live_size| {},
                         // note_reclaimed
@@ -513,6 +522,7 @@ impl GC {
                     let roots = motoko_rts::gc::generational::Roots {
                         static_roots,
                         continuation_table_ptr_loc: continuation_table_ptr_address,
+                        region0_ptr_loc: &mut region_0,
                     };
                     let gc_heap = motoko_rts::gc::generational::Heap {
                         mem: heap,
@@ -534,6 +544,7 @@ impl GC {
     fn run(&self, heap: &mut MotokoHeap, _round: usize) -> bool {
         let static_roots = Value::from_ptr(heap.static_root_array_address());
         let continuation_table_ptr_address = heap.continuation_table_ptr_address() as *mut Value;
+        let region0_ptr_location = heap.region0_ptr_location() as *mut Value;
 
         match self {
             GC::Incremental => unsafe {
@@ -543,6 +554,7 @@ impl GC {
                     let roots = motoko_rts::gc::incremental::roots::Roots {
                         static_roots,
                         continuation_table_location: continuation_table_ptr_address,
+                        region0_ptr_location,
                     };
                     IncrementalGC::instance(heap, incremental_gc_state())
                         .empty_call_stack_increment(roots);

@@ -11,13 +11,13 @@ jobs:
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         # fetch full history so that git merge-base works
         fetch-depth: 0
         # fetch PR commit, not predicted merge commit
         ref: ${{ github.event.pull_request.head.sha }}
-    - uses: cachix/install-nix-action@v22
+    - uses: cachix/install-nix-action@v23
 
     # We are using the ic-hs-test cachix cache that is also used by
     # dfinity/ic-hs. This is partly laziness (on need to set up a separate
@@ -73,7 +73,7 @@ jobs:
   #   # motoko#2864.
   #   - name: Create or update performance comment
   #     if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
-  #     uses: peter-evans/create-or-update-comment@v2
+  #     uses: peter-evans/create-or-update-comment@v3
   #     with:
   #       comment-id: ${{ steps.fc.outputs.comment-id }}
   #       issue-number: ${{ github.event.pull_request.number }}
@@ -88,8 +88,8 @@ jobs:
   #   concurrency: ci-${{ github.ref }}
   #   runs-on: ubuntu-latest
   #   steps:
-  #   - uses: actions/checkout@v3
-  #   - uses: cachix/install-nix-action@v22
+  #   - uses: actions/checkout@v4
+  #   - uses: cachix/install-nix-action@v23
   #   - uses: cachix/cachix-action@v12
   #     with:
   #       name: ic-hs-test
@@ -108,10 +108,13 @@ jobs:
     if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'build_artifacts')
     needs: tests
     concurrency: ci-${{ github.ref }}
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ ubuntu-latest, macos-latest ]
+    runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v3
-    - uses: cachix/install-nix-action@v22
+    - uses: actions/checkout@v4
+    - uses: cachix/install-nix-action@v23
     - uses: cachix/cachix-action@v12
       with:
         name: ic-hs-test
@@ -124,7 +127,6 @@ jobs:
     - name: upload artifacts
       uses: actions/upload-artifact@v3
       with:
-        name: moc
+        name: moc-${{ matrix.os }}
         path: ${{ env.UPLOAD_PATH }}
         retention-days: 5
-

@@ -8,7 +8,7 @@ unsafe extern "C" fn get_reclaimed() -> Bytes<usize> {
 
 #[no_mangle]
 pub unsafe extern "C" fn get_total_allocations() -> Bytes<usize> {
-    get_heap_size() + get_reclaimed()
+    crate::gc::incremental::get_partitioned_heap().total_allocated_size()
 }
 
 #[no_mangle]

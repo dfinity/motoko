@@ -49,6 +49,7 @@ You can use the following options with the `moc` command.
 | `--print-deps`                            | Prints the dependencies for a given source file.                                                                                                      |
 | `-r`                                      | Interprets programs.                                                                                                                                  |
 | `--release`                               | Ignores debug expressions in the source.                                                                                                              |
+| `--stable-regions`                        | Force eager initialization of stable regions metadata (for testing purposes); consumes between 386KiB or 8MiB of additional physical stable memory, depending on current use of ExperimentalStableMemory. |
 | `--stable-types`                          | Compile binary and emit signature of stable types to `.most` file.                                                                                    |
 | `--stable-compatible <pre> <post>`        | Test upgrade compatibility between stable-type signatures `<pre>` and `<post>`.                                                                       |
 | `--rts-stack-pages <n>`                   | Set maximum number of pages available for runtime system stack (default 32).
