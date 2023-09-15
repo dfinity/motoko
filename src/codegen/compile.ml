@@ -8783,7 +8783,7 @@ module FuncDec = struct
        way, the callback, when it comes back, will (safely) trap, even if the
        module has completely changed in between. This way, one-way calls do not
        get in the way of safe instantaneous upgrades *)
-    compile_unboxed_const (-1L)
+    compile_unboxed_const 0xFFFF_FFFFL (* 32-bit -1l *)
 
   let cleanup_callback env =
     let name = "@cleanup_callback" in
