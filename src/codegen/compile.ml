@@ -4989,6 +4989,7 @@ module Cycles = struct
          BigNum.from_word64 env ^^
          (* shift left 64 bits *)
          compile_unboxed_const 64L ^^
+         TaggedSmallWord.msb_adjust Type.Nat32 ^^
          BigNum.compile_lsh env ^^
          BigNum.compile_add env
        end)
@@ -5006,6 +5007,7 @@ module Cycles = struct
     get_val ^^
     (* shift right 64 bits *)
     compile_unboxed_const 64L ^^
+    TaggedSmallWord.msb_adjust Type.Nat32 ^^
     BigNum.compile_rsh env ^^
     BigNum.truncate_to_word64 env ^^
 
