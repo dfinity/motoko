@@ -98,9 +98,9 @@ impl Stream {
     #[cfg(feature = "ic")]
     fn send_to_stable(self: *mut Self, ptr: *const u8, n: Bytes<usize>) {
         unsafe {
-            let next_ptr64 = self.read_ptr64() + n.as_usize();
-            ic0_stable64_write(self.read_ptr64(), ptr as usize, n.as_usize());
-            self.write_ptr64(next_ptr64);
+            let next_ptr64 = (*self).ptr + n.as_usize();
+            ic0_stable64_write((*self).ptr, ptr as usize, n.as_usize());
+            (*self).ptr = next_ptr64;
         }
     }
 

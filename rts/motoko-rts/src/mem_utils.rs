@@ -14,6 +14,6 @@ pub(crate) unsafe fn memzero(to: usize, n: Words<usize>) {
     memset(to as *mut _, 0, n.to_bytes().as_usize());
 }
 
-pub(crate) unsafe fn memzero_bytes(to: usize, n: Bytes<u32>) {
-    libc::memset(to as *mut _, 0, n.as_usize());
+pub(crate) unsafe fn memzero_bytes(to: usize, n: Bytes<usize>) {
+    memset(to as *mut _, 0, n.as_usize());
 }

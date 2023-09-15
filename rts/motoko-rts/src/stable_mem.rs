@@ -3,17 +3,17 @@ extern "C" {
     pub fn ic0_stable64_write(offset: u64, src: u64, size: u64);
     pub fn ic0_stable64_read(dst: u64, offset: u64, size: u64);
     // (virtual) stable_mem operations implemented by moc
-    pub fn moc_stable_mem_get_version() -> u32;
-    pub fn moc_stable_mem_set_version(version: u32);
+    pub fn moc_stable_mem_get_version() -> usize;
+    pub fn moc_stable_mem_set_version(version: usize);
     pub fn moc_stable_mem_size() -> u64;
     pub fn moc_stable_mem_grow(additional_pages: u64) -> u64;
 }
 
-pub fn get_version() -> u32 {
+pub fn get_version() -> usize {
     unsafe { moc_stable_mem_get_version() }
 }
 
-pub fn set_version(version: u32) {
+pub fn set_version(version: usize) {
     unsafe { moc_stable_mem_set_version(version) }
 }
 

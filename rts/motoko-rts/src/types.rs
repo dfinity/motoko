@@ -157,7 +157,7 @@ pub const TRUE_VALUE: usize = 0x1;
 
 /// A value in a heap slot
 #[repr(transparent)]
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct Value(usize);
 
 /// A view of `Value` for analyzing the slot contents.
@@ -571,21 +571,9 @@ impl Array {
 #[repr(C)] // See the note at the beginning of this module
 pub struct Region {
     pub header: Obj,
-    // 64-bit id split into lower and upper halves for alignment reasons
-    pub id_lower: u32,
-    pub id_upper: u32,
-    pub page_count: u32,
+    pub id: usize,
+    pub page_count: usize,
     pub vec_pages: Value, // Blob of u16's (each a page block ID).
-}
-
-impl Region {
-    pub unsafe fn write_id64(self: *mut Self, value: u64) {
-        write64(&mut (*self).id_lower, &mut (*self).id_upper, value);
-    }
-
-    pub unsafe fn read_id64(self: *mut Self) -> u64 {
-        read64((*self).id_lower, (*self).id_upper)
-    }
 }
 
 #[repr(C)] // See the note at the beginning of this module
@@ -670,12 +658,12 @@ impl Blob {
         self.add(1) as *mut u16 // skip blob header
     }
 
-    pub unsafe fn get_u16(self: *const Self, idx: u32) -> u16 {
-        *self.payload_const_u16().add(idx as usize)
+    pub unsafe fn get_u16(self: *const Self, idx: usize) -> u16 {
+        *self.payload_const_u16().add(idx)
     }
 
-    pub unsafe fn set_u16(self: *mut Self, idx: u32, value: u16) {
-        *self.payload_addr_u16().add(idx as usize) = value;
+    pub unsafe fn set_u16(self: *mut Self, idx: usize, value: u16) {
+        *self.payload_addr_u16().add(idx) = value;
     }
 
     /// Shrink blob to the given size. Slop after the new size is filled with filler objects.

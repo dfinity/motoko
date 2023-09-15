@@ -5,9 +5,9 @@ use crate::types::{size_of, Blob, Bytes, Region, Value, TAG_REGION};
 
 // Versions
 // Should agree with constants StableMem.version_no_stable_memory etc. in compile.ml
-const VERSION_NO_STABLE_MEMORY: u32 = 0; // never manifest in serialized form
-const VERSION_SOME_STABLE_MEMORY: u32 = 1;
-const VERSION_REGIONS: u32 = 2;
+const VERSION_NO_STABLE_MEMORY: usize = 0; // never manifest in serialized form
+const VERSION_SOME_STABLE_MEMORY: usize = 1;
+const VERSION_REGIONS: usize = 2;
 
 const _: () = assert!(meta_data::size::PAGES_IN_BLOCK <= u8::MAX as u32);
 const _: () = assert!(meta_data::max::BLOCKS <= u16::MAX);
@@ -122,13 +122,13 @@ impl AccessVector {
     }
 
     pub unsafe fn set_ith_block_id(&self, i: u32, block_id: &BlockId) {
-        debug_assert!(i * 2 + 1 < self.0.len().as_u32());
-        self.0.set_u16(i, block_id.0)
+        debug_assert!((i as usize) * 2 + 1 < self.0.len().as_usize());
+        self.0.set_u16(i as usize, block_id.0)
     }
 
     pub unsafe fn get_ith_block_id(&self, i: u32) -> BlockId {
-        debug_assert!(i * 2 + 1 < self.0.len().as_u32());
-        BlockId(self.0.get_u16(i))
+        debug_assert!((i as usize) * 2 + 1 < self.0.len().as_usize());
+        BlockId(self.0.get_u16(i as usize))
     }
 }
 
@@ -138,7 +138,7 @@ impl RegionObject {
     }
 
     pub unsafe fn id(&self) -> RegionId {
-        RegionId(self.0.read_id64())
+        RegionId((*self.0).id as u64)
     }
 
     pub unsafe fn trap_with(&self, msg: &str) -> ! {
@@ -382,20 +382,20 @@ unsafe fn alloc_region<M: Memory>(
     (*region).header.tag = TAG_REGION;
     (*region).header.init_forward(r_ptr);
     debug_assert!(id <= meta_data::max::REGIONS);
-    region.write_id64(id);
+    (*region).id = id as usize;
     debug_assert!(
         page_count
-            <= (vec_pages.as_blob().len().as_u32() / meta_data::bytes_of::<u16>() as u32)
+            <= (vec_pages.as_blob().len().as_usize() as u32 / meta_data::bytes_of::<u16>() as u32)
                 * meta_data::size::PAGES_IN_BLOCK
     );
-    (*region).page_count = page_count;
+    (*region).page_count = page_count as usize;
     init_with_barrier(mem, &mut (*region).vec_pages, vec_pages);
 
     allocation_barrier(r_ptr);
     r_ptr
 }
 
-#[ic_mem_fn]
+#[ic_mem_fn(ic_only)]
 unsafe fn init_region<M: Memory>(
     mem: &mut M,
     r: Value,
@@ -405,26 +405,26 @@ unsafe fn init_region<M: Memory>(
 ) {
     let r = r.as_region();
     debug_assert!(id <= meta_data::max::REGIONS);
-    r.write_id64(id);
+    (*r).id = id as usize;
     debug_assert!(
         page_count
-            <= (vec_pages.as_blob().len().as_u32() / meta_data::bytes_of::<u16>() as u32)
+            <= (vec_pages.as_blob().len().as_usize() as u32 / meta_data::bytes_of::<u16>() as u32)
                 * meta_data::size::PAGES_IN_BLOCK
     );
-    (*r).page_count = page_count;
+    (*r).page_count = page_count as usize;
     write_with_barrier(mem, &mut (*r).vec_pages, vec_pages);
 }
 
 #[ic_mem_fn]
 pub unsafe fn region_id<M: Memory>(_mem: &mut M, r: Value) -> u64 {
     let r = r.as_untagged_region();
-    r.read_id64()
+    (*r).id as u64
 }
 
 #[ic_mem_fn]
 pub unsafe fn region_page_count<M: Memory>(_mem: &mut M, r: Value) -> u32 {
     let r = r.as_untagged_region();
-    (*r).page_count
+    (*r).page_count as u32
 }
 
 #[ic_mem_fn]
@@ -524,7 +524,10 @@ pub unsafe fn region_recover<M: Memory>(mem: &mut M, rid: &RegionId) -> Value {
     debug_assert!(page_count < (u32::MAX - (PAGES_IN_BLOCK - 1)));
 
     let block_count = (page_count + PAGES_IN_BLOCK - 1) / PAGES_IN_BLOCK;
-    let vec_pages = alloc_blob(mem, Bytes(block_count * bytes_of::<u16>() as u32));
+    let vec_pages = alloc_blob(
+        mem,
+        Bytes(block_count as usize * bytes_of::<u16>() as usize),
+    );
 
     let av = AccessVector(vec_pages.as_blob_mut());
     let mut recovered_blocks = 0;
@@ -587,7 +590,7 @@ pub(crate) unsafe fn region_migration_from_no_stable_memory<M: Memory>(mem: &mut
     // Region 0 -- classic API for stable memory, as a dedicated region.
     REGION_0 = region_new(mem);
 
-    assert_eq!(REGION_0.as_region().read_id64(), 0);
+    assert_eq!((*REGION_0.as_region()).id, 0);
 
     // Regions 1 through LAST_RESERVED_REGION_ID, reserved for future use by future Motoko compiler-RTS features.
     region_reserve_id_span(mem, Some(RegionId(1)), RegionId(LAST_RESERVED_REGION_ID));
@@ -659,7 +662,7 @@ pub(crate) unsafe fn region_migration_from_some_stable_memory<M: Memory>(mem: &m
     // Temp for the head block, which we move to be physically last.
     // NB: no allocation_barrier is required: header_val is temporary and can be reclaimed by the next GC increment/run.
     // TODO: instead of allocating an 8MB blob, just stack-allocate a tmp page and zero page, and transfer/zero-init via the stack, using a loop.
-    let header_val = crate::memory::alloc_blob(mem, crate::types::Bytes(header_len));
+    let header_val = crate::memory::alloc_blob(mem, crate::types::Bytes(header_len as usize));
     let header_blob = header_val.as_blob_mut();
     let header_bytes =
         core::slice::from_raw_parts_mut(header_blob.payload_addr(), header_len as usize);
@@ -671,7 +674,10 @@ pub(crate) unsafe fn region_migration_from_some_stable_memory<M: Memory>(mem: &m
         header_bytes,
     );
 
-    crate::mem_utils::memzero_bytes((header_blob.payload_addr()) as usize, Bytes(header_len));
+    crate::mem_utils::memzero_bytes(
+        (header_blob.payload_addr()) as usize,
+        Bytes(header_len as usize),
+    );
 
     write(0, header_bytes); // Zero out first block, for region manager meta data.
 
@@ -720,6 +726,7 @@ pub(crate) unsafe fn region_migration_from_some_stable_memory<M: Memory>(mem: &m
 // region manager migration/initialization, with pre-existing stable data.
 // Case: Version 2 into version 2 ("Trivial migration" case).
 //
+#[cfg(feature = "ic")]
 pub(crate) unsafe fn region_migration_from_regions_plus<M: Memory>(mem: &mut M) {
     use crate::stable_mem::{read, read_u16, read_u32, read_u64, size};
 
@@ -757,8 +764,8 @@ pub(crate) unsafe fn region_migration_from_regions_plus<M: Memory>(mem: &mut M) 
 //
 // region manager migration/initialization, with pre-existing stable data.
 //
-#[ic_mem_fn]
-pub(crate) unsafe fn region_init<M: Memory>(mem: &mut M, use_stable_regions: u32) {
+#[ic_mem_fn(ic_only)]
+pub(crate) unsafe fn region_init<M: Memory>(mem: &mut M, use_stable_regions: usize) {
     match crate::stable_mem::get_version() {
         VERSION_NO_STABLE_MEMORY => {
             assert!(crate::stable_mem::size() == 0);
@@ -790,7 +797,7 @@ pub(crate) unsafe fn region_init<M: Memory>(mem: &mut M, use_stable_regions: u32
 #[ic_mem_fn]
 pub unsafe fn region_size<M: Memory>(_mem: &mut M, r: Value) -> u64 {
     let r = r.as_region();
-    (*r).page_count.into()
+    (*r).page_count as u64
 }
 
 #[ic_mem_fn]
@@ -802,7 +809,7 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
     let r = r.as_region();
     let old_page_count = (*r).page_count;
 
-    if new_pages > (max_pages_in_region - old_page_count) as u64 {
+    if new_pages > (max_pages_in_region as usize - old_page_count) as u64 {
         return u64::MAX;
     }
 
@@ -810,8 +817,9 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
 
     let new_pages_ = new_pages as u32;
 
-    let old_block_count = (old_page_count + (PAGES_IN_BLOCK - 1)) / PAGES_IN_BLOCK;
-    let new_block_count = (old_page_count + new_pages_ + (PAGES_IN_BLOCK - 1)) / PAGES_IN_BLOCK;
+    let old_block_count = (old_page_count as u32 + (PAGES_IN_BLOCK - 1)) / PAGES_IN_BLOCK;
+    let new_block_count =
+        (old_page_count as u32 + new_pages_ + (PAGES_IN_BLOCK - 1)) / PAGES_IN_BLOCK;
     let inc_block_count = new_block_count - old_block_count;
 
     // Determine the required total number of allocated blocks,
@@ -836,17 +844,17 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
 
     // Update this region's page count, in both places where we record it (heap object, region table).
     {
-        let r_id = RegionId::from_id(r.read_id64());
+        let r_id = RegionId::from_id((*r).id as u64);
 
         // Increase both:
-        (*r).page_count += new_pages_;
+        (*r).page_count += new_pages_ as usize;
         if old_block_count > 0 {
             let last_block_rank = (old_block_count - 1) as u16;
             let last_block_id =
                 AccessVector((*r).vec_pages.as_blob_mut()).get_ith_block_id(last_block_rank as u32);
-            debug_assert_eq!((*r).page_count, old_page_count + new_pages_);
+            debug_assert_eq!((*r).page_count, old_page_count + new_pages_ as usize);
             let last_page_count =
-                block_page_count(last_block_rank, new_block_count, (*r).page_count);
+                block_page_count(last_block_rank, new_block_count, (*r).page_count as u32);
             let assoc = Some((r_id, last_block_rank, last_page_count));
             meta_data::block_region_table::set(last_block_id, assoc);
         }
@@ -854,7 +862,7 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
 
     let new_vec_pages = alloc_blob(
         mem,
-        Bytes(new_block_count * meta_data::bytes_of::<u16>() as u32),
+        Bytes(new_block_count as usize * meta_data::bytes_of::<u16>() as usize),
     );
     let old_vec_byte_count = old_block_count * meta_data::bytes_of::<u16>() as u32;
 
@@ -862,7 +870,7 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
     crate::mem_utils::memcpy_bytes(
         new_vec_pages.as_blob_mut().payload_addr() as usize,
         (*r).vec_pages.as_blob().payload_const() as usize,
-        Bytes(old_vec_byte_count),
+        Bytes(old_vec_byte_count as usize),
     );
 
     let new_pages = AccessVector::from_value(&new_vec_pages);
@@ -878,8 +886,12 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
         let block_id: u16 = (old_total_blocks + rel_i as u32) as u16;
 
         // Update stable memory with new association.
-        let block_page_count = block_page_count(i as u16, new_block_count, (*r).page_count);
-        let assoc = Some((RegionId::from_id(r.read_id64()), i as u16, block_page_count));
+        let block_page_count = block_page_count(i as u16, new_block_count, (*r).page_count as u32);
+        let assoc = Some((
+            RegionId::from_id((*r).id as u64),
+            i as u16,
+            block_page_count,
+        ));
         meta_data::block_region_table::set(BlockId(block_id), assoc);
 
         new_pages.set_ith_block_id(i, &BlockId(block_id));
@@ -887,7 +899,7 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
 
     allocation_barrier(new_vec_pages);
     write_with_barrier(mem, &mut (*r).vec_pages, new_vec_pages);
-    old_page_count.into()
+    old_page_count as u64
 }
 
 pub(crate) unsafe fn region_load<M: Memory>(_mem: &mut M, r: Value, offset: u64, dst: &mut [u8]) {
@@ -1034,14 +1046,14 @@ pub unsafe fn region_load_float64<M: Memory>(mem: &mut M, r: Value, offset: u64)
     core::primitive::f64::from_le_bytes(bytes).into()
 }
 
-#[ic_mem_fn]
+#[ic_mem_fn(ic_only)]
 pub(crate) unsafe fn region_load_blob<M: Memory>(
     mem: &mut M,
     r: Value,
     offset: u64,
     len: u32,
 ) -> Value {
-    let blob_val = crate::memory::alloc_blob(mem, crate::types::Bytes(len));
+    let blob_val = crate::memory::alloc_blob(mem, crate::types::Bytes(len as usize));
     let blob = blob_val.as_blob_mut();
 
     if len < (isize::MAX as u32) {
@@ -1099,16 +1111,16 @@ pub unsafe fn region_store_float64<M: Memory>(mem: &mut M, r: Value, offset: u64
     region_store(mem, r, offset, &core::primitive::f64::to_le_bytes(val))
 }
 
-#[ic_mem_fn]
+#[ic_mem_fn(ic_only)]
 pub(crate) unsafe fn region_store_blob<M: Memory>(mem: &mut M, r: Value, offset: u64, blob: Value) {
     let blob = blob.as_blob();
     let len = blob.len().0;
     let bytes = blob.payload_const();
-    if len < (isize::MAX as u32) {
+    if len < (isize::MAX as usize) {
         let bytes: &[u8] = core::slice::from_raw_parts(bytes, len as usize);
         region_store(mem, r, offset, bytes);
     } else {
-        assert!((len / 2) < isize::MAX as u32);
+        assert!((len / 2) < isize::MAX as usize);
         let bytes_low: &[u8] = core::slice::from_raw_parts(bytes, (len / 2) as usize);
         region_store(mem, r, offset, bytes_low);
         let bytes_high: &[u8] =

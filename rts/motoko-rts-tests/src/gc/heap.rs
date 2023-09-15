@@ -37,7 +37,7 @@ impl MotokoHeap {
         map: &[(ObjectIdx, Vec<ObjectIdx>)],
         roots: &[ObjectIdx],
         continuation_table: &[ObjectIdx],
-        region0_ptr_loc: &[ObjectIdx],
+        _region0_ptr_loc: &[ObjectIdx],
         gc: GC,
     ) -> MotokoHeap {
         MotokoHeap {
@@ -106,6 +106,7 @@ impl MotokoHeap {
     }
 
     /// Get the address of the continuation table pointer
+    #[incremental_gc]
     pub fn region0_ptr_location(&self) -> usize {
         self.inner.borrow().region0_ptr_address()
     }
@@ -152,7 +153,7 @@ struct MotokoHeapInner {
     /// heap.
     continuation_table_ptr_offset: usize,
 
-    region0_ptr_location_offset: usize,
+    _region0_ptr_location_offset: usize,
 }
 
 impl MotokoHeapInner {
@@ -201,8 +202,9 @@ impl MotokoHeapInner {
         self.offset_to_address(self.continuation_table_ptr_offset)
     }
 
+    #[incremental_gc]
     fn region0_ptr_address(&self) -> usize {
-        self.offset_to_address(self.region0_ptr_location_offset)
+        self.offset_to_address(self._region0_ptr_location_offset)
     }
 
     fn new(
@@ -288,7 +290,7 @@ impl MotokoHeapInner {
             heap_ptr_offset: total_heap_size_bytes + realign,
             static_root_array_offset: realign,
             continuation_table_ptr_offset: continuation_table_ptr_offset + realign,
-            region0_ptr_location_offset: region0_ptr_location_offset + realign,
+            _region0_ptr_location_offset: region0_ptr_location_offset + realign,
         }
     }
 

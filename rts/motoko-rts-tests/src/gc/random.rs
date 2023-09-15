@@ -53,7 +53,7 @@ pub(super) fn generate(seed: u64, max_objects: usize) -> TestHeap {
         .collect();
 
     // Same as roots
-    let region0_ptr_loc: Vec<ObjectIdx> = (0..n_objects)
+    let region0_ptr_loc: Vec<ObjectIdx> = (0..n_objects as usize)
         .filter_map(|obj_idx| {
             if rand_bool(&mut rng) {
                 Some(obj_idx)
