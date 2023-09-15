@@ -10203,98 +10203,107 @@ and compile_prim_invocation (env : E.t) ae p es at =
     | Nat8, Nat16 ->
       SR.Vanilla,
       compile_exp_vanilla env ae e ^^
-      compile_shrU_const 8L
+      TaggedSmallWord.lsb_adjust Type.Nat8 ^^
+      TaggedSmallWord.msb_adjust Type.Nat16
     | Nat16, Nat32 ->
       SR.Vanilla,
       compile_exp_vanilla env ae e ^^
-      compile_shrU_const 15L
+      TaggedSmallWord.lsb_adjust Type.Nat16 ^^
+      TaggedSmallWord.msb_adjust Type.Nat32
     | Nat32, Nat64 ->
       SR.UnboxedWord64,
+      compile_exp_vanilla env ae e ^^
       TaggedSmallWord.lsb_adjust Type.Nat32
-    | Nat16, (Nat8 as pty) ->
+    | Nat16, Nat8 ->
       SR.Vanilla,
-      let num_bits = (TaggedSmallWord.bits_of_type pty) in
       let set_val, get_val = new_local env "convertee" in
       compile_exp_vanilla env ae e ^^
+      TaggedSmallWord.lsb_adjust Type.Nat16 ^^
       set_val ^^
       get_val ^^
-      compile_shrU_const (Int64.of_int (32 - num_bits)) ^^
+      compile_shrU_const 8L ^^
       E.then_trap_with env "losing precision" ^^
       get_val ^^
-      compile_shl_const (Int64.of_int num_bits)
-    | Nat32, (Nat16 as pty) ->
+      TaggedSmallWord.msb_adjust Type.Nat8
+    | Nat32, Nat16 ->
       SR.Vanilla,
-      let num_bits = Int64.of_int (TaggedSmallWord.bits_of_type pty) in
       let set_val, get_val = new_local env "convertee" in
+      compile_exp_vanilla env ae e ^^
       TaggedSmallWord.lsb_adjust Type.Nat32 ^^
       set_val ^^
       get_val ^^
-      compile_shrU_const num_bits ^^
+      compile_shrU_const 16L ^^
       E.then_trap_with env "losing precision" ^^
       get_val ^^
-      compile_shl_const num_bits
-    | Nat64, (Nat32 as pty) ->
+      TaggedSmallWord.msb_adjust Type.Nat16
+    | Nat64, Nat32 ->
       SR.Vanilla,
-      let num_bits = Int64.of_int (TaggedSmallWord.bits_of_type pty) in
       let set_val, get_val = new_local env "convertee" in
       compile_exp_as env ae SR.UnboxedWord64 e ^^
       set_val ^^
       get_val ^^
-      compile_shrU_const num_bits ^^
+      compile_shrU_const 32L ^^
       E.then_trap_with env "losing precision" ^^
-      get_val
+      get_val ^^
+      TaggedSmallWord.msb_adjust Type.Nat32
     | Int8, Int16 ->
       SR.Vanilla,
       compile_exp_vanilla env ae e ^^
-      compile_shrS_const 8L
+      TaggedSmallWord.lsb_adjust Type.Int8 ^^
+      TaggedSmallWord.msb_adjust Type.Int16
     | Int16, Int32 ->
       SR.Vanilla,
       compile_exp_vanilla env ae e ^^
-      compile_shrS_const 15L
+      TaggedSmallWord.lsb_adjust Type.Int16 ^^
+      TaggedSmallWord.msb_adjust Type.Int32
     | Int32, Int64 ->
       SR.UnboxedWord64,
-      TaggedSmallWord.lsb_adjust Type.Nat32
-    | Int16, (Int8 as pty) ->
+      compile_exp_vanilla env ae e ^^
+      TaggedSmallWord.lsb_adjust Type.Int32
+    | Int16, Int8 ->
       SR.Vanilla,
-      let num_bits = (TaggedSmallWord.bits_of_type pty) in
+      let shift = TaggedSmallWord.shift_of_type Int8 in
       let set_val, get_val = new_local env "convertee" in
       compile_exp_vanilla env ae e ^^
+      TaggedSmallWord.lsb_adjust Type.Int16 ^^
       set_val ^^
       get_val ^^
-      compile_shl_const (Int64.of_int num_bits) ^^
-      compile_shrS_const (Int64.of_int num_bits) ^^
+      compile_shl_const shift ^^
+      compile_shrS_const shift ^^
       get_val ^^
-      compile_eq env Type.(Prim Nat16) ^^
+      compile_comparison I64Op.Eq ^^
       E.else_trap_with env "losing precision" ^^
       get_val ^^
-      compile_shl_const (Int64.of_int num_bits)
-    | Int32, (Int16 as pty) ->
+      TaggedSmallWord.msb_adjust Type.Int8
+    | Int32, Int16 ->
       SR.Vanilla,
-      let num_bits = (TaggedSmallWord.bits_of_type pty) in
+      let shift = TaggedSmallWord.shift_of_type Int16 in
       let set_val, get_val = new_local env "convertee" in
-      TaggedSmallWord.lsb_adjust Type.Nat32 ^^
+      compile_exp_vanilla env ae e ^^
+      TaggedSmallWord.lsb_adjust Type.Int32 ^^
       set_val ^^
       get_val ^^
-      compile_shl_const (Int64.of_int num_bits) ^^
-      compile_shrS_const (Int64.of_int num_bits) ^^
+      compile_shl_const shift ^^
+      compile_shrS_const shift ^^
       get_val ^^
-      compile_eq env Type.(Prim Nat32) ^^
+      compile_comparison I64Op.Eq ^^
       E.else_trap_with env "losing precision" ^^
       get_val ^^
-      compile_shl_const (Int64.of_int num_bits)
-    | Int64, (Int32 as pty) ->
+      TaggedSmallWord.msb_adjust Type.Int16
+    | Int64, Int32 ->
       SR.Vanilla,
-      let num_bits = (TaggedSmallWord.bits_of_type pty) in
+      let shift = TaggedSmallWord.shift_of_type Int32 in
       let set_val, get_val = new_local env "convertee" in
       compile_exp_as env ae SR.UnboxedWord64 e ^^
       set_val ^^
       get_val ^^
-      compile_shl_const (Int64.of_int num_bits) ^^
-      compile_shrS_const (Int64.of_int num_bits) ^^
+      compile_shl_const shift ^^
+      compile_shrS_const shift ^^
       get_val ^^
-      compile_eq env Type.(Prim Nat64) ^^
+      compile_comparison I64Op.Eq ^^
       E.else_trap_with env "losing precision" ^^
-      get_val
+      get_val ^^
+      TaggedSmallWord.msb_adjust Type.Int32
     | _ -> SR.Unreachable, todo_trap env "compile_prim_invocation" (Arrange_ir.prim p)
     end
 
