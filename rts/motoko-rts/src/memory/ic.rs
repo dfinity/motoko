@@ -37,7 +37,7 @@ unsafe extern "C" fn get_max_live_size() -> Bytes<usize> {
 pub struct IcMemory;
 
 /// Page allocation. Ensures that the memory up to, but excluding, the given pointer is allocated,
-/// with the slight exception of not allocating the extra page for address 0xFFFF_0000.
+/// with the slight exception of not allocating the extra page for address 0xFFFF_FFFF_FFFF_0000.
 unsafe fn grow_memory(ptr: usize) {
     const MEMORY_LIMIT: usize = 0xFFFF_FFFF_FFFF_0000;
     debug_assert_eq!(MEMORY_LIMIT, usize::MAX - WASM_PAGE_SIZE.as_usize() + 1);
