@@ -6130,7 +6130,6 @@ module MakeSerialization (Strm : Stream) = struct
   end
 
   module type RawReaders = sig
-    val substrate_type : Wasm.Types.value_type
     val read_byte : E.t -> G.t -> G.t
     val read_word16 : E.t -> G.t -> G.t
     val read_word32 : E.t -> G.t -> G.t
@@ -6842,11 +6841,6 @@ module MakeSerialization (Strm : Stream) = struct
     )
 
 
-
-
-
-
-
   let deserialize_from (readers : (module RawReaders)) extended env ts =
     let open (val readers) in
     let ts_name = typ_seq_hash ts in
@@ -6865,8 +6859,8 @@ module MakeSerialization (Strm : Stream) = struct
       let (set_arg_count, get_arg_count) = new_local env "arg_count" in
       let (set_val, get_val) = new_local env "val" in
 
-      (*get_blob ^^ Blob.len env ^^ set_data_size ^^
-      get_blob ^^ Blob.payload_ptr_unskewed env ^^ set_data_start ^^*)
+      get_blob ^^ Blob.len env ^^ set_data_size ^^
+      get_blob ^^ Blob.payload_ptr_unskewed env ^^ set_data_start ^^
 
       (* Allocate space for the reference buffer and copy it *)
       compile_unboxed_const 0l ^^ set_refs_size (* none yet *) ^^
@@ -6883,106 +6877,6 @@ module MakeSerialization (Strm : Stream) = struct
       set_size get_data_buf get_data_size ^^
       set_ptr get_ref_buf get_refs_start ^^
       set_size get_ref_buf (get_refs_size ^^ compile_mul_const Heap.word_size) ^^
-
-
-
-
-      if extended then
-           begin
-             
-             read_blob env get_data_start (compile_unboxed_const 0x1000l (*FIXME: make configurable*)) ^^
-               let set_datablob_start, get_datablob_start = new_local env "blob" in
-               Blob.payload_ptr_unskewed env ^^ set_datablob_start ^^
-               set_ptr get_data_buf get_datablob_start ^^
-               set_size get_data_buf (compile_unboxed_const 0x1000l (*FIXME: make configurable*)) ^^
-               (* Go! *)
-               Bool.lit extended ^^ get_data_buf ^^ get_typtbl_ptr ^^ get_typtbl_size_ptr ^^ get_maintyps_ptr ^^
-               E.call_import env "rts" "parse_idl_header" ^^
-                 
-               (* get the bytes read *)
-               get_ptr get_data_buf ^^ get_datablob_start ^^ G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
-               (* offset the stable mem pointer *)
-               get_data_start ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-               let set_header_end, get_header_end = new_local env "past" in
-               set_header_end ^^
-
-               (* remember *)
-               set_ptr get_data_buf get_header_end ^^
-
-
-      (* Allocate memo table, if necessary *)
-      with_rel_buf_opt env extended (get_typtbl_size_ptr ^^ load_unskewed_ptr) (fun get_rel_buf_opt ->
-
-      (* set up a dedicated read buffer for the list of main types *)
-      alloc env (fun get_main_typs_buf ->
-        set_ptr get_main_typs_buf (get_maintyps_ptr ^^ load_unskewed_ptr) ^^
-        set_end get_main_typs_buf (get_end get_data_buf) ^^
-
-
-
-E.trap_with env "BEFORE read_leb128" ^^
-
-        read_leb128 env get_main_typs_buf ^^ set_arg_count ^^
-
-        G.concat_map (fun t ->
-          let can_recover, default_or_trap = Type.(
-            match normalize t with
-            | Opt _ | Any ->
-              (Bool.lit true, fun msg -> Opt.null_lit env)
-            | _ ->
-              (get_can_recover, fun msg ->
-                get_can_recover ^^
-                G.if1 I32Type
-                   (compile_unboxed_const (coercion_error_value env))
-                   (E.trap_with env msg)))
-          in
-          get_arg_count ^^
-          compile_eq_const 0l ^^
-          G.if1 I32Type
-           (default_or_trap ("IDL error: too few arguments " ^ ts_name))
-           begin
-              begin
-                (* set up invariant register arguments *)
-                get_rel_buf_opt ^^ Registers.set_rel_buf_opt env ^^
-                get_data_buf ^^ Registers.set_data_buf env ^^
-                get_ref_buf ^^ Registers.set_ref_buf env ^^
-                get_typtbl_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl env ^^
-                get_maintyps_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl_end env ^^
-                get_typtbl_size_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl_size env
-              end ^^
-              (* set up variable frame arguments *)
-              Stack.with_frame env "frame_ptr" 3l (fun () ->
-                (* idltyp *)
-                read_sleb128 env get_main_typs_buf ^^
-                Stack.set_local env StackArgs.idltyp ^^
-                (* depth *)
-                compile_unboxed_const 0l ^^
-                Stack.set_local env StackArgs.depth ^^
-                (* recovery mode *)
-                can_recover ^^
-                Stack.set_local env StackArgs.can_recover ^^
-                deserialize_go readers env t
-             )
-             ^^ set_val ^^
-             get_arg_count ^^ compile_sub_const 1l ^^ set_arg_count ^^
-             get_val ^^ compile_eq_const (coercion_error_value env) ^^
-             G.if1 I32Type
-               (default_or_trap "IDL error: coercion failure encountered")
-               get_val
-            end
-        ) ts
-
-
-^^ E.trap_with env " deserialize    DONE"
-
-        ))
-
-
-
-
-           end
-         else
-           G.nop ^^
 
       (* Go! *)
       Bool.lit extended ^^ get_data_buf ^^ get_typtbl_ptr ^^ get_typtbl_size_ptr ^^ get_maintyps_ptr ^^
@@ -7313,10 +7207,6 @@ module Stabilization = struct
   let extend64 code = code ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
 
   module StableReader : Serialization.RawReaders = struct
-    (* FIXME: for now we only cover the first 4 GB of stable memory, so we can stay in 32 bits *)
-    (* TODO: do we need `guard_range` calls? *)
-    let substrate_type = I32Type
-
     let get_ptr get_buf =
       get_buf ^^ G.i (Load {ty = I32Type; align = 2; offset = 0l; sz = None})
     let get_end get_buf =
