@@ -5279,6 +5279,20 @@ module RTS_Exports = struct
     E.add_export env (nr {
       name = Lib.Utf8.decode "stable64_write_moc";
       edesc = nr (FuncExport (nr stable64_write_moc_fi))
+    });
+
+    let stable64_read_moc_fi =
+      if E.mode env = Flags.WASIMode then
+        E.add_fun env "stable64_read_moc" (
+            Func.of_body env ["to", I64Type; "from", I64Type; "len", I64Type] []
+              (fun env ->
+                E.trap_with env "stable64_read_moc is not supposed to be called in WASI"
+              )
+          )
+      else E.reuse_import env "ic0" "stable64_read" in
+    E.add_export env (nr {
+      name = Lib.Utf8.decode "stable64_read_moc";
+      edesc = nr (FuncExport (nr stable64_read_moc_fi))
     })
 
 end (* RTS_Exports *)
