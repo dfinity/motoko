@@ -8715,11 +8715,12 @@ module FuncDec = struct
             IC.system_call env "msg_arg_data_copy")
            (fun env -> compile_unboxed_const 0L)))
     in
-    Func.define_built_in env reply_name ["env", I64Type] [] (fun env ->
+    Func.define_built_in env reply_name ["env", I32Type] [] (fun env ->
         message_start env (Type.Shared Type.Write) ^^
         (* Look up continuation *)
         let (set_closure, get_closure) = new_local env "closure" in
         G.i (LocalGet (nr 0l)) ^^
+        G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
         ContinuationTable.recall env ^^
         Arr.load_field env 0L ^^ (* get the reply closure *)
         set_closure ^^
@@ -8736,11 +8737,12 @@ module FuncDec = struct
       );
 
     let reject_name = "@reject_callback" in
-    Func.define_built_in env reject_name ["env", I64Type] [] (fun env ->
+    Func.define_built_in env reject_name ["env", I32Type] [] (fun env ->
         message_start env (Type.Shared Type.Write) ^^
         (* Look up continuation *)
         let (set_closure, get_closure) = new_local env "closure" in
         G.i (LocalGet (nr 0l)) ^^
+        G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
         ContinuationTable.recall env ^^
         Arr.load_field env 1L ^^ (* get the reject closure *)
         set_closure ^^
@@ -8785,8 +8787,9 @@ module FuncDec = struct
 
   let cleanup_callback env =
     let name = "@cleanup_callback" in
-    Func.define_built_in env name ["env", I64Type] [] (fun env ->
+    Func.define_built_in env name ["env", I32Type] [] (fun env ->
         G.i (LocalGet (nr 0l)) ^^
+        G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
         ContinuationTable.recall env ^^
         G.i Drop);
     compile_unboxed_const (Wasm.I64_convert.extend_i32_u (E.add_fun_ptr env (E.built_in env name)))
