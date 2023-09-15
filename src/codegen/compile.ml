@@ -6152,7 +6152,6 @@ module MakeSerialization (Strm : Stream) = struct
   end
 
   module BlobDeserializers (*val env : E.t*) : RawReaders = struct
-    let substrate_type = I32Type
     include ReadBuf
   end
 
@@ -6851,10 +6850,10 @@ module MakeSerialization (Strm : Stream) = struct
       if extended
       then "@deserialize_extended<" ^ ts_name ^ ">"
       else "@deserialize<" ^ ts_name ^ ">" in
-    Func.share_code3 env name (("substrate", substrate_type), ("substrate_len", I32Type), ("can_recover", I32Type)) (List.map (fun _ -> I32Type) ts) (fun env get_data_start get_data_size get_can_recover ->
-        (*let (set_data_size, get_data_size) = new_local env "data_size" in*)
+    Func.share_code2 env name (("blob", I32Type), ("can_recover", I32Type)) (List.map (fun _ -> I32Type) ts) (fun env get_blob get_can_recover ->
+      let (set_data_size, get_data_size) = new_local env "data_size" in
       let (set_refs_size, get_refs_size) = new_local env "refs_size" in
-      (*let (set_data_start, get_data_start) = new_local env "data_start" in*)
+      let (set_data_start, get_data_start) = new_local env "data_start" in
       let (set_refs_start, get_refs_start) = new_local env "refs_start" in
       let (set_arg_count, get_arg_count) = new_local env "arg_count" in
       let (set_val, get_val) = new_local env "val" in
@@ -6961,10 +6960,6 @@ module MakeSerialization (Strm : Stream) = struct
 
   let deserialize env ts =
     IC.arg_data env ^^
-    let set_blob, get_blob = new_local env "blob" in
-    set_blob ^^
-    get_blob ^^ Blob.payload_ptr_unskewed env ^^
-    get_blob ^^ Blob.len env ^^
     Bool.lit false ^^ (* can't recover *)
     deserialize_from (module BlobDeserializers : RawReaders) false env ts
 
@@ -9914,20 +9909,12 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | DeserializePrim ts, [e] ->
     StackRep.of_arity (List.length ts),
     compile_exp_vanilla env ae e ^^
-    let set_blob, get_blob = new_local env "blob" in
-    set_blob ^^
-    get_blob ^^ Blob.payload_ptr_unskewed env ^^
-    get_blob ^^ Blob.len env ^^
     Bool.lit false ^^ (* can't recover *)
     Serialization.(deserialize_from (module BlobDeserializers : RawReaders)) false env ts
 
   | DeserializeOptPrim ts, [e] ->
     SR.Vanilla,
     compile_exp_vanilla env ae e ^^
-    let set_blob, get_blob = new_local env "blob" in
-    set_blob ^^
-    get_blob ^^ Blob.payload_ptr_unskewed env ^^
-    get_blob ^^ Blob.len env ^^
     Bool.lit true ^^ (* can (!) recover *)
     Serialization.(deserialize_from (module BlobDeserializers : RawReaders)) false env ts ^^
     begin match ts with
