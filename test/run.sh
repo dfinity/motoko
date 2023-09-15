@@ -435,6 +435,14 @@ do
         continue
       fi
 
+      if grep -q "# *INCREMENTAL-GC-ONLY" $(basename $file)
+      then
+        if [[ $EXTRA_MOC_ARGS != *"--incremental-gc"* ]]
+        then 
+          continue
+        fi
+      fi
+
       have_var_name="HAVE_${runner//-/_}"
       if [ ${!have_var_name} != yes ]
       then
