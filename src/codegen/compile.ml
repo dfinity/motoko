@@ -1686,7 +1686,7 @@ module Tagged = struct
       (* We can extend the mask to the right if the bump increment is a power of two. *)
       let ext = if Numerics.Nat16.(to_int (popcnt (of_int n))) = 1 then increment else 0l in
       Int32.(logor ext (logand page_mask (shift_left minus_one (16 - Numerics.Nat16.(to_int (clz (of_int n))))))) in
-
+    (* always inline *)
     Func.share_code0 Func.Never env name [I32Type] (fun env ->
       let set_object, get_object = new_local env "new_object" in
       let size_in_bytes = Int32.(mul size Heap.word_size) in
