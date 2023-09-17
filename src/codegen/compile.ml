@@ -841,32 +841,40 @@ module Func = struct
   let define_built_in env name params retty mk_body =
     E.define_built_in env name (lazy (of_body env params retty mk_body))
 
-  type sharing =  Always | Never
+  type sharing =
+    Always (* i.e. never inline *)
+  | Never  (* i.e. always inline *)
 
-  (* (Almost) transparently lift code into a function and call this function. *)
+  (* (Almost) transparently lift code into a function and call this function,
+     unless sharing = Never and not (!Flags.share_code) in which case the code
+     is inlined.
+     NB: inlined code must not be recursive nor `return`.
+  *)
   (* Also add a hack to support multiple return values *)
   let share_code sharing env name params retty mk_body =
-    match sharing with
-    |  Always ->
-       let getters =
-         List.mapi
-           (fun i (n, t) -> (G.i (LocalGet (nr (Int32.of_int i)))))
-           params
-       in
-       define_built_in env name params retty (fun env -> mk_body env getters);
-       G.i (Call (nr (E.built_in env name))) ^^
-       FakeMultiVal.load env retty
-    |  Never ->
-       let locals =
-         List.map
+    if sharing = Always || !Flags.share_code
+    then
+      let getters =
+        List.mapi
+          (fun i (n, t) -> (G.i (LocalGet (nr (Int32.of_int i)))))
+          params
+      in
+      define_built_in env name params retty (fun env -> mk_body env getters);
+      G.i (Call (nr (E.built_in env name))) ^^
+      FakeMultiVal.load env retty
+    else begin
+      assert (sharing = Never);
+      let locals =
+        List.map
            (fun (n, t) -> new_local_ env t n)
            params
-       in
-       let set_locals = List.fold_right (fun (set, get, _) is-> is ^^ set) locals G.nop in
-       let getters = List.map (fun (set, get, _) -> get) locals in
-       set_locals ^^
-       mk_body env getters ^^ FakeMultiVal.store env retty ^^
-       FakeMultiVal.load env retty
+      in
+      let set_locals = List.fold_right (fun (set, get, _) is-> is ^^ set) locals G.nop in
+      let getters = List.map (fun (set, get, _) -> get) locals in
+      set_locals ^^
+      mk_body env getters ^^ FakeMultiVal.store env retty ^^
+      FakeMultiVal.load env retty
+   end
 
   (* Shorthands for various arities *)
   let [@warning "-8"] share_code0 sharing env name retty mk_body =
