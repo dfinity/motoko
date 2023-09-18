@@ -7677,7 +7677,8 @@ module BlobStream : Stream = struct
     G.i (Store {ty = I32Type; align = 0; offset = 0L; sz = None})
 
   let write_byte env get_token code =
-    get_token ^^ code ^^
+    get_token ^^ 
+    code ^^ G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
     E.call_import env "rts" "stream_write_byte"
 
   let write_blob env get_token get_x =
