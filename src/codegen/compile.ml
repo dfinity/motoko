@@ -10729,6 +10729,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     set_principal ^^ get_principal ^^
     Blob.payload_ptr_unskewed env ^^
     get_principal ^^
+    Blob.len env ^^
     IC.is_controller env
 
   | OtherPrim "canister_version", [] ->
