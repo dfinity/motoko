@@ -18,10 +18,10 @@ actor {
     assert M.grow(reqPages) == 0;
     assert M.size() == reqPages;
 
-    // write byte pattern, one byte at a time.
+    // write byte pattern, in a defined interval.
     while (i < size) {
         M.storeNat8(i, b);
-        i := i + 1;
+        i := i + 10;
         b := b +% 1;
     };
 

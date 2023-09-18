@@ -118,7 +118,7 @@ static mut OLD_GENERATION_THRESHOLD: usize = 32 * 1024 * 1024;
 static mut PASSED_CRITICAL_LIMIT: bool = false;
 
 #[cfg(feature = "ic")]
-const CRITICAL_MEMORY_LIMIT: usize = (4096 - 512) * 1024 * 1024;
+const CRITICAL_MEMORY_LIMIT: usize = (4096 - 512) * 1024 * 1024 - crate::memory::MEMORY_RESERVE;
 
 #[cfg(feature = "ic")]
 unsafe fn decide_strategy(limits: &Limits) -> Option<Strategy> {
