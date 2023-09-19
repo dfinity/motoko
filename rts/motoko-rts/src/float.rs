@@ -25,5 +25,15 @@ unsafe fn float_fmt<M: Memory>(mem: &mut M, a: f64, prec: usize, mode: usize) ->
 
     // TODO: Certain modes are not supported such as hexadecimal output (mode 3).
 
-    text_of_ptr_size(mem, buffer.as_ptr(), Bytes(BUFFER_LENGTH))
+    let length = written_length(&buffer);
+    text_of_ptr_size(mem, buffer.as_ptr(), Bytes(length))
+}
+
+fn written_length(buffer: &[u8]) -> usize {
+    for index in 0..buffer.len() {
+        if buffer[index] == 0 {
+            return index;
+        }
+    }
+    buffer.len()
 }
