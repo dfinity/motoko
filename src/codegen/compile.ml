@@ -4419,7 +4419,8 @@ module IC = struct
     get_value ^^
     G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64))
 
-  (* TODO: Refactor when IC has proper 64-bit support *)
+  (* TODO 64-bit support: Refactor when IC has proper 64-bit support. *)
+  (* TODO 64-bit support Ensure that addressed data is copied to reserved 32-bit before narrowing the pointer. *)
   let prepare_ic_system_call_1 env =
     let (set_arg1, get_arg1) = new_local env "arg1" in
     set_arg1 ^^
@@ -4565,15 +4566,14 @@ module IC = struct
 
   let performance_counter env = 
     prepare_ic_system_call_1 env ^^
-    ic_system_call "performance_counter" env ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
+    ic_system_call "performance_counter" env ^^ 
+    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
+
   let is_controller env = 
-    let (set_len, get_len) = new_local env "len" in
-    let (set_blob, get_blob) = new_local env "blob" in
-    set_len ^^ set_blob ^^
-    (* TODO 64-bit support: Redesign this to copy the blob in reserved lower 32-bit area before narrowing the pointer *)
-    narrow_to_32 env get_blob ^^
-    narrow_to_32 env get_len ^^
-    ic_system_call "is_controller" env ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
+    prepare_ic_system_call_2 env ^^
+    ic_system_call "is_controller" env ^^ 
+    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
+
   let canister_version env = ic_system_call "canister_version" env
 
   let print_ptr_len env = G.i (Call (nr (E.built_in env "print_ptr")))
@@ -4745,7 +4745,9 @@ module IC = struct
     | Flags.ICMode | Flags.RefMode ->
       Func.share_code0 env "canister_self" [I64Type] (fun env ->
         Blob.of_size_copy env
-          (fun env -> system_call env "canister_self_size" ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)))
+          (fun env -> 
+            system_call env "canister_self_size" ^^ 
+            G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)))
           (fun env -> 
             prepare_ic_system_call_3 env ^^
             system_call env "canister_self_copy")
@@ -4765,7 +4767,9 @@ module IC = struct
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
       Blob.of_size_copy env
-        (fun env -> system_call env "msg_caller_size" ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)))
+        (fun env -> 
+          system_call env "msg_caller_size" ^^ 
+          G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)))
         (fun env -> 
           prepare_ic_system_call_3 env ^^
           system_call env "msg_caller_copy")
@@ -4777,8 +4781,12 @@ module IC = struct
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
       Blob.of_size_copy env
-        (fun env -> system_call env "msg_method_name_size" ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)))
-        (fun env -> system_call env "msg_method_name_copy" ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)))
+        (fun env -> 
+          system_call env "msg_method_name_size" ^^ 
+          G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)))
+        (fun env -> 
+          prepare_ic_system_call_3 env ^^
+          system_call env "msg_method_name_copy")
         (fun env -> compile_unboxed_const 0L)
     | _ ->
       E.trap_with env (Printf.sprintf "cannot get method_name when running locally")
@@ -4787,7 +4795,9 @@ module IC = struct
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
       Blob.of_size_copy env
-        (fun env -> system_call env "msg_arg_data_size" ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)))
+        (fun env -> 
+          system_call env "msg_arg_data_size" ^^ 
+          G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)))
         (fun env -> 
           prepare_ic_system_call_3 env ^^
           system_call env "msg_arg_data_copy")
@@ -4801,7 +4811,6 @@ module IC = struct
       arg_instrs ^^
       Text.to_blob env ^^
       Blob.as_ptr_len env ^^
-      (* TODO 64-bit support: Redesign this to copy the blob in reserved lower 32-bit area before narrowing the pointer *)
       prepare_ic_system_call_2 env ^^
       system_call env "msg_reject"
     | _ ->
@@ -4945,7 +4954,6 @@ module IC = struct
     | Flags.ICMode
     | Flags.RefMode ->
       Blob.as_ptr_len env ^^
-      (* TODO 64-bit support: Redesign this to copy the blob in reserved lower 32-bit area before narrowing the pointer *)
       prepare_ic_system_call_2 env ^^
       system_call env "certified_data_set"
     | _ ->
@@ -8719,7 +8727,9 @@ module FuncDec = struct
          "@callback",
          (fun env ->
            Blob.of_size_copy env
-           (fun env -> IC.system_call env "msg_arg_data_size" ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)))
+           (fun env -> 
+            IC.system_call env "msg_arg_data_size" ^^ 
+            G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)))
            (fun env -> 
             IC.prepare_ic_system_call_3 env ^^
             IC.system_call env "msg_arg_data_copy")
