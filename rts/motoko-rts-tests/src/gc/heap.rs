@@ -160,7 +160,7 @@ struct MotokoHeapInner {
 
     /// Offset of the region0 pointer.
     ///
-    /// Reminder: this location is in static heap and will have a pointer to an region in
+    /// Reminder: this location is in static heap and will have a pointer to a region in
     /// the dynamic heap.
     region0_ptr_location_offset: usize,
 }
