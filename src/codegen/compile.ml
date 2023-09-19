@@ -4801,6 +4801,7 @@ module IC = struct
       arg_instrs ^^
       Text.to_blob env ^^
       Blob.as_ptr_len env ^^
+      (* TODO 64-bit support: Redesign this to copy the blob in reserved lower 32-bit area before narrowing the pointer *)
       prepare_ic_system_call_2 env ^^
       system_call env "msg_reject"
     | _ ->
@@ -4944,6 +4945,8 @@ module IC = struct
     | Flags.ICMode
     | Flags.RefMode ->
       Blob.as_ptr_len env ^^
+      (* TODO 64-bit support: Redesign this to copy the blob in reserved lower 32-bit area before narrowing the pointer *)
+      prepare_ic_system_call_2 env ^^
       system_call env "certified_data_set"
     | _ ->
       E.trap_with env "cannot set certified data when running locally"
@@ -4958,8 +4961,12 @@ module IC = struct
       begin
         Opt.inject_simple env (
           Blob.of_size_copy env
-            (fun env -> system_call env "data_certificate_size" ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)))
-            (fun env -> system_call env "data_certificate_copy" ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)))
+            (fun env -> 
+              system_call env "data_certificate_size" ^^ 
+              G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)))
+            (fun env -> 
+              prepare_ic_system_call_3 env ^^ 
+              system_call env "data_certificate_copy")
             (fun env -> compile_unboxed_const 0L)
         )
       end (Opt.null_lit env)
