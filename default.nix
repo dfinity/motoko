@@ -165,7 +165,7 @@ rec {
       cargoVendorTools = nixpkgs.rustPlatform.buildRustPackage rec {
         name = "cargo-vendor-tools";
         src = subpath "./rts/${name}/";
-        cargoSha256 = "sha256-E6GTFvmZMjGsVlec7aH3QaizqIET6Dz8Csh0N1jeX+M=";
+        cargoSha256 = "";
       };
 
       # Path to vendor-rust-std-deps, provided by cargo-vendor-tools
@@ -198,7 +198,7 @@ rec {
         name = "motoko-rts-deps";
         src = subpath ./rts;
         sourceRoot = "rts/motoko-rts-tests";
-        sha256 = "sha256-jN5nx5UNBHlYKnC0kk90h6mWPUNrqPS7Wln2TixbGgA=";
+        sha256 = "sha256-YEw2AFi15JVKP7owsPDoBT3qSegOO90FRn2qoUBAICw=";
         copyLockfile = true;
       };
 
@@ -500,13 +500,13 @@ rec {
   in fix_names ({
       run        = test_subdir "run"        [ moc ] ;
       run-dbg    = snty_subdir "run"        [ moc ] ;
-      # TODO: drun and ic-ref do not yet support Wasm64
+      # TODO: ic-ref does not support Wasm64
       # ic-ref-run = test_subdir "run-drun"   [ moc ic-ref-run ];
-      # drun       = test_subdir "run-drun"   [ moc nixpkgs.drun ];
-      # drun-dbg   = snty_subdir "run-drun"   [ moc nixpkgs.drun ];
-      # drun-compacting-gc = snty_compacting_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
-      # drun-generational-gc = snty_generational_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
-      # drun-incremental-gc = snty_incremental_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
+      drun       = test_subdir "run-drun"   [ moc nixpkgs.drun ];
+      drun-dbg   = snty_subdir "run-drun"   [ moc nixpkgs.drun ];
+      drun-compacting-gc = snty_compacting_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
+      drun-generational-gc = snty_generational_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
+      drun-incremental-gc = snty_incremental_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
       fail       = test_subdir "fail"       [ moc ];
       repl       = test_subdir "repl"       [ moc ];
       # TODO: Upgrade LD tests for 64-bit
@@ -515,13 +515,12 @@ rec {
       mo-idl     = test_subdir "mo-idl"     [ moc didc ];
       trap       = test_subdir "trap"       [ moc ];
       run-deser  = test_subdir "run-deser"  [ deser ];
-      # TODO: drun used in perf and bench does not yet support Wasm64
-      # perf       = perf_subdir "perf"       [ moc nixpkgs.drun ];
-      # bench      = perf_subdir "bench"      [ moc nixpkgs.drun ic-wasm ];
-      # viper      = test_subdir "viper"      [ moc nixpkgs.which nixpkgs.openjdk nixpkgs.z3 ];
+      perf       = perf_subdir "perf"       [ moc nixpkgs.drun ];
+      bench      = perf_subdir "bench"      [ moc nixpkgs.drun ic-wasm ];
+      viper      = test_subdir "viper"      [ moc nixpkgs.which nixpkgs.openjdk nixpkgs.z3 ];
       # TODO: Re-enable when 64-bit support is available for running these tests
       # inherit qc lsp unit candid profiling-graphs coverage;
-      inherit qc lsp unit;
+      inherit qc lsp unit profiling-graphs coverage;
     }) // { recurseForDerivations = true; };
 
   samples = stdenv.mkDerivation {
@@ -565,7 +564,7 @@ rec {
         doInstallCheck = true;
         test = ./test + "/test-${n}.js";
         installCheckPhase = ''
-          NODE_PATH=$out/bin node $test
+          NODE_PATH=$out/bin node --experimental-wasm-memory64 $test
         '';
       };
     in
@@ -772,7 +771,6 @@ rec {
       # base-tests
       # base-doc
       # docs
-      # TODO: No profiling graphs currently reported since the benchmark would require 64-bit drun
       # report-site
       # ic-ref-run
       shell
