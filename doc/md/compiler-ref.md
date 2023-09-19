@@ -30,6 +30,8 @@ You can use the following options with the `moc` command.
 | `--copying-gc`                            | Use copying GC (default)                                                                                                                              |
 | `--debug`                                 | Respects debug expressions in the source (the default).                                                                                               |
 | `--error-detail <n>`                      | Set level of error message detail for syntax errors, n in \[0..3\] (default 2).                                                                       |
+| `-fno-shared-code`                        | Do *not* share low-level utility code: larger code size but decreased cycle consumption (default).                                                    |
+| `-fshared-code`                           | Do share low-level utility code: smaller code size but increased cycle consumption.                                                                   |
 | `--generational-gc`                       | Use generational GC                                                                                                                                   |
 | `-help`,`--help`                          | Displays usage information.                                                                                                                           |
 | `--hide-warnings`                         | Hides compiler warnings.                                                                                                                              |

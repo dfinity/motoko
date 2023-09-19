@@ -1,5 +1,13 @@
 # Motoko compiler changelog
 
+* motoko (`moc`)
+
+  * perf: inline shareble low-level functions in generated coded, trading code size for reduced cycle count. Controlled by flags:
+      * `-fno-shared-code` (default)
+      * `-f-shared-code` (legacy)
+    (Helps mitigate the effect of the IC's new cost model, that increases
+     the cost of function calls).
+
 ## 0.10.0 (2023-09-11)
 
 * motoko (`moc`)
