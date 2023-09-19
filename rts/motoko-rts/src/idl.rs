@@ -134,7 +134,7 @@ unsafe fn parse_idl_header<M: Memory>(
     extended: bool,
     buf: *mut Buf,
     typtbl_out: *mut *mut *mut u8,
-    typtbl_size_out: *mut u32,
+    typtbl_size_out: *mut usize,
     main_types_out: *mut *mut u8,
 ) {
     if (*buf).ptr == (*buf).end {
@@ -157,7 +157,7 @@ unsafe fn parse_idl_header<M: Memory>(
     }
 
     // Let the caller know about the table size
-    *typtbl_size_out = n_types;
+    *typtbl_size_out = n_types as usize;
 
     // Allocate the type table to be passed out
     let typtbl: *mut *mut u8 = alloc(mem, Words(n_types as usize)) as *mut _;
