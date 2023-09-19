@@ -1051,16 +1051,16 @@ pub(crate) unsafe fn region_load_blob<M: Memory>(
     mem: &mut M,
     r: Value,
     offset: u64,
-    len: u32,
+    len: usize,
 ) -> Value {
     let blob_val = crate::memory::alloc_blob(mem, crate::types::Bytes(len as usize));
     let blob = blob_val.as_blob_mut();
 
-    if len < (isize::MAX as u32) {
+    if len < (isize::MAX as usize) {
         let bytes: &mut [u8] = core::slice::from_raw_parts_mut(blob.payload_addr(), len as usize);
         region_load(mem, r, offset, bytes);
     } else {
-        assert!((len / 2) < isize::MAX as u32);
+        assert!((len / 2) < isize::MAX as usize);
         let bytes_low: &mut [u8] =
             core::slice::from_raw_parts_mut(blob.payload_addr(), (len / 2) as usize);
         region_load(mem, r, offset, bytes_low);

@@ -1040,7 +1040,7 @@ module RTS = struct
     E.add_func_import env "rts" "region_vec_pages" [I64Type] [I64Type];
     E.add_func_import env "rts" "region_size" [I64Type] [I64Type];
     E.add_func_import env "rts" "region_grow" [I64Type; I64Type] [I64Type];
-    E.add_func_import env "rts" "region_load_blob" [I64Type; I64Type; I32Type] [I64Type];
+    E.add_func_import env "rts" "region_load_blob" [I64Type; I64Type; I64Type] [I64Type];
     E.add_func_import env "rts" "region_store_blob" [I64Type; I64Type; I64Type] [];
     E.add_func_import env "rts" "region_load_word8" [I64Type; I64Type] [I32Type];
     E.add_func_import env "rts" "region_store_word8" [I64Type; I64Type; I32Type] [];
@@ -5349,19 +5349,22 @@ module StableMem = struct
     read env true "word32" I32Type 4L
       (G.i (Load {ty = I32Type; align = 0; offset = 0L; sz = None }))
   let store_word32 env =
-    write env true "word32" I32Type 4L store_unskewed_ptr
+    write env true "word32" I32Type 4L
+      (G.i (Store {ty = I32Type; align = 0; offset = 0L; sz = None}))
 
   let load_word8 env =
     read env true "word8" I32Type 1L
       (G.i (Load {ty = I32Type; align = 0; offset = 0L; sz = Some Wasm_exts.Types.(Pack8, ZX)}))
   let store_word8 env =
-    write env true "word8" I32Type 1L store_unskewed_ptr
+    write env true "word8" I32Type 1L
+      (G.i (Store {ty = I32Type; align = 0; offset = 0L; sz = None}))
 
   let load_word16 env =
     read env true "word16" I32Type 2L
       (G.i (Load {ty = I32Type; align = 0; offset = 0L; sz = Some Wasm_exts.Types.(Pack16, ZX)}))
   let store_word16 env =
-    write env true "word16" I32Type 2L store_unskewed_ptr
+    write env true "word16" I32Type 2L
+      (G.i (Store {ty = I32Type; align = 0; offset = 0L; sz = None}))
 
   let load_word64 env =
     read env true "word64" I64Type 8L load_unskewed_ptr
@@ -5477,16 +5480,16 @@ module StableMemoryInterface = struct
 
   let load_blob env =
     Func.share_code2 env "__stablememory_load_blob"
-      (("offset", I64Type), ("len", I32Type)) [I32Type]
+      (("offset", I64Type), ("len", I64Type)) [I64Type]
       (fun env offset len ->
         if_regions env
           (offset ^^ len)
-          [I32Type]
+          [I64Type]
           Region.load_blob
           StableMem.load_blob)
   let store_blob env =
     Func.share_code2 env "__stablememory_store_blob"
-      (("offset", I64Type), ("blob", I32Type)) []
+      (("offset", I64Type), ("blob", I64Type)) []
       (fun env offset blob ->
         if_regions env
           (offset ^^ blob)
@@ -10704,6 +10707,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_as env ae SR.Vanilla e0 ^^
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     compile_exp_as env ae SR.Vanilla e2 ^^
+    G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
     Region.store_word32 env
 
   | OtherPrim ("regionLoadNat64" | "regionLoadInt64"), [e0; e1] ->
@@ -10845,6 +10849,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.unit,
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     compile_exp_vanilla env ae e2 ^^
+    G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
     StableMemoryInterface.store_word32 env
 
   | OtherPrim "stableMemoryLoadNat8", [e] ->
