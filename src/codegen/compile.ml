@@ -2577,6 +2577,13 @@ module ReadBuf = struct
     G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
     advance get_buf (compile_unboxed_const 4L)
 
+  let read_signed_word32 env get_buf =
+    check_space env get_buf (compile_unboxed_const 4L) ^^
+    get_ptr get_buf ^^
+    G.i (Load {ty = I32Type; align = 0; offset = 0L; sz = None}) ^^
+    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendSI32)) ^^
+    advance get_buf (compile_unboxed_const 4L)
+
   let speculative_read_word64 env get_buf =
     check_page_end env get_buf (compile_add_const 8L) ^^
     E.if1 I64Type
@@ -6460,8 +6467,8 @@ module MakeSerialization (Strm : Stream) = struct
           compile_comparison I32Op.LtS ^^
           E.else_trap_with env "Odd offset" ^^
           (* TODO: Support serialization beyond 32-bit *)
-          get_offset ^^ compile_unboxed_const 0xffff_ffffL ^^
-          compile_comparison I32Op.LeU ^^
+          get_offset ^^ compile_unboxed_const 0xffff_ffff_0000_0000L ^^
+          compile_comparison I32Op.GeS ^^
           E.else_trap_with env "64-bit offsets not yet supported during serialization" ^^
           (* Write the offset to the output buffer *)
           write_word_32 env get_data_buf get_offset
@@ -6934,7 +6941,8 @@ module MakeSerialization (Strm : Stream) = struct
         get_is_ref ^^
         E.if0 begin
           let (set_offset, get_offset) = new_local env "offset" in
-          ReadBuf.read_word32 env get_data_buf ^^ set_offset ^^
+          ReadBuf.read_signed_word32 env get_data_buf ^^ 
+          set_offset ^^
           (* A sanity check *)
           get_offset ^^ compile_unboxed_const 0L ^^
           compile_comparison I64Op.LtS ^^
@@ -6947,7 +6955,8 @@ module MakeSerialization (Strm : Stream) = struct
         (* Remember location of ptr *)
         ReadBuf.get_ptr get_data_buf ^^ set_memo ^^
         (* Did we decode this already? *)
-        ReadBuf.read_word32 env get_data_buf ^^ set_result ^^
+        ReadBuf.read_signed_word32 env get_data_buf ^^ 
+        set_result ^^
         get_result ^^ compile_eq_const 0L ^^
         E.if0 begin
           (* No, not yet decoded *)
