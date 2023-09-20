@@ -4603,8 +4603,7 @@ module IC = struct
 
   let performance_counter env = 
     prepare_ic_system_call_1 env ^^
-    ic_system_call "performance_counter" env ^^ 
-    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
+    ic_system_call "performance_counter" env
 
   let is_controller env = 
     prepare_ic_system_call_2 env ^^
