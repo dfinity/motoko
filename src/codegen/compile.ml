@@ -10684,6 +10684,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_as env ae SR.Vanilla e0 ^^
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     Region.load_word8 env ^^
+    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
     TaggedSmallWord.msb_adjust Type.Nat8
 
   | OtherPrim ("regionStoreNat8"), [e0; e1; e2] ->
@@ -10692,6 +10693,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     compile_exp_as env ae SR.Vanilla e2 ^^
     TaggedSmallWord.lsb_adjust Type.Nat8 ^^
+    G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
     Region.store_word8 env
 
   | OtherPrim ("regionLoadNat16"), [e0; e1] ->
@@ -10699,6 +10701,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_as env ae SR.Vanilla e0 ^^
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     Region.load_word16 env ^^
+    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
     TaggedSmallWord.msb_adjust Type.Nat16
 
   | OtherPrim ("regionStoreNat16"), [e0; e1; e2] ->
@@ -10707,19 +10710,40 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     compile_exp_as env ae SR.Vanilla e2 ^^
     TaggedSmallWord.lsb_adjust Type.Nat16 ^^
+    G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
     Region.store_word16 env
 
-  | OtherPrim ("regionLoadNat32" | "regionLoadInt32"), [e0; e1] ->
+  | OtherPrim ("regionLoadNat32"), [e0; e1] ->
     SR.Vanilla,
     compile_exp_as env ae SR.Vanilla e0 ^^
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
-    Region.load_word32 env
+    Region.load_word32 env ^^
+    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
+    TaggedSmallWord.msb_adjust Type.Nat32
 
-  | OtherPrim ("regionStoreNat32" | "regionStoreInt32"), [e0; e1; e2] ->
+  | OtherPrim ("regionLoadInt32"), [e0; e1] ->
+    SR.Vanilla,
+    compile_exp_as env ae SR.Vanilla e0 ^^
+    compile_exp_as env ae SR.UnboxedWord64 e1 ^^
+    Region.load_word32 env ^^
+    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendSI32)) ^^
+    TaggedSmallWord.msb_adjust Type.Int32
+
+  | OtherPrim ("regionStoreNat32"), [e0; e1; e2] ->
     SR.unit,
     compile_exp_as env ae SR.Vanilla e0 ^^
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     compile_exp_as env ae SR.Vanilla e2 ^^
+    TaggedSmallWord.lsb_adjust Type.Nat32 ^^
+    G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
+    Region.store_word32 env
+
+  | OtherPrim ("regionStoreInt32"), [e0; e1; e2] ->
+    SR.unit,
+    compile_exp_as env ae SR.Vanilla e0 ^^
+    compile_exp_as env ae SR.UnboxedWord64 e1 ^^
+    compile_exp_as env ae SR.Vanilla e2 ^^
+    TaggedSmallWord.lsb_adjust Type.Int32 ^^
     G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
     Region.store_word32 env
 
@@ -10853,29 +10877,48 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | OtherPrim ("arrayToBlob" | "arrayMutToBlob"), e ->
     const_sr SR.Vanilla (Arr.toBlob env)
 
-  | OtherPrim ("stableMemoryLoadNat32" | "stableMemoryLoadInt32"), [e] ->
+  | OtherPrim ("stableMemoryLoadNat32"), [e] ->
     SR.Vanilla,
     compile_exp_as env ae SR.UnboxedWord64 e ^^
-    StableMemoryInterface.load_word32 env
+    StableMemoryInterface.load_word32 env ^^
+    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
+    TaggedSmallWord.msb_adjust Type.Nat32
 
-  | OtherPrim ("stableMemoryStoreNat32" | "stableMemoryStoreInt32"), [e1; e2] ->
+  | OtherPrim ("stableMemoryLoadInt32"), [e] ->
+    SR.Vanilla,
+    compile_exp_as env ae SR.UnboxedWord64 e ^^
+    StableMemoryInterface.load_word32 env ^^
+    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendSI32)) ^^
+    TaggedSmallWord.msb_adjust Type.Int32
+
+  | OtherPrim ("stableMemoryStoreNat32"), [e1; e2] ->
     SR.unit,
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     compile_exp_vanilla env ae e2 ^^
+    TaggedSmallWord.lsb_adjust Type.Nat32 ^^
     G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
     StableMemoryInterface.store_word32 env
 
+  | OtherPrim ("stableMemoryStoreInt32"), [e1; e2] ->
+    SR.unit,
+    compile_exp_as env ae SR.UnboxedWord64 e1 ^^
+    compile_exp_vanilla env ae e2 ^^
+    TaggedSmallWord.lsb_adjust Type.Int32 ^^
+    G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
+    StableMemoryInterface.store_word32 env
+  
   | OtherPrim "stableMemoryLoadNat8", [e] ->
     SR.Vanilla,
     compile_exp_as env ae SR.UnboxedWord64 e ^^
     StableMemoryInterface.load_word8 env ^^
+    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
     TaggedSmallWord.msb_adjust Type.Nat8
 
   | OtherPrim "stableMemoryLoadInt8", [e] ->
     SR.Vanilla,
     compile_exp_as env ae SR.UnboxedWord64 e ^^
-    StableMemoryInterface.load_word8 env
-    ^^
+    StableMemoryInterface.load_word8 env ^^
+    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendSI32)) ^^
     TaggedSmallWord.msb_adjust Type.Int8
 
   (* Other prims, binary *)
@@ -10883,37 +10926,47 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | OtherPrim "stableMemoryStoreNat8", [e1; e2] ->
     SR.unit,
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
-    compile_exp_as env ae SR.Vanilla e2 ^^ TaggedSmallWord.lsb_adjust Type.Nat8 ^^
+    compile_exp_as env ae SR.Vanilla e2 ^^ 
+    TaggedSmallWord.lsb_adjust Type.Nat8 ^^
+    G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
     StableMemoryInterface.store_word8 env
 
   | OtherPrim "stableMemoryStoreInt8", [e1; e2] ->
     SR.unit,
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
-    compile_exp_as env ae SR.Vanilla e2 ^^ TaggedSmallWord.lsb_adjust Type.Int8 ^^
+    compile_exp_as env ae SR.Vanilla e2 ^^ 
+    TaggedSmallWord.lsb_adjust Type.Int8 ^^
+    G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
     StableMemoryInterface.store_word8 env
 
   | OtherPrim "stableMemoryLoadNat16", [e] ->
     SR.Vanilla,
     compile_exp_as env ae SR.UnboxedWord64 e ^^
     StableMemoryInterface.load_word16 env ^^
+    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
     TaggedSmallWord.msb_adjust Type.Nat16
 
   | OtherPrim "stableMemoryLoadInt16", [e] ->
     SR.Vanilla,
     compile_exp_as env ae SR.UnboxedWord64 e ^^
     StableMemoryInterface.load_word16 env ^^
+    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendSI32)) ^^
     TaggedSmallWord.msb_adjust Type.Int16
 
   | OtherPrim "stableMemoryStoreNat16", [e1; e2] ->
     SR.unit,
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
-    compile_exp_as env ae SR.Vanilla e2 ^^ TaggedSmallWord.lsb_adjust Type.Nat16 ^^
+    compile_exp_as env ae SR.Vanilla e2 ^^ 
+    TaggedSmallWord.lsb_adjust Type.Nat16 ^^
+    G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
     StableMemoryInterface.store_word16 env
 
   | OtherPrim "stableMemoryStoreInt16", [e1; e2] ->
     SR.unit,
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
-    compile_exp_as env ae SR.Vanilla e2 ^^ TaggedSmallWord.lsb_adjust Type.Int16 ^^
+    compile_exp_as env ae SR.Vanilla e2 ^^ 
+    TaggedSmallWord.lsb_adjust Type.Int16 ^^
+    G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
     StableMemoryInterface.store_word16 env
 
   | OtherPrim ("stableMemoryLoadNat64" | "stableMemoryLoadInt64"), [e] ->
