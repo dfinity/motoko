@@ -3,8 +3,7 @@
 use alloc::alloc::{GlobalAlloc, Layout};
 //use core::ptr::null_mut;
 use crate::memory::{alloc_blob, ic};
-use crate::types::{Bytes};
-
+use crate::types::Bytes;
 
 pub struct HeapAllocator;
 
@@ -13,7 +12,8 @@ unsafe impl GlobalAlloc for HeapAllocator {
         if !(layout.align() == 4 || layout.align() == 2 || layout.align() == 1) {
             panic!("unsupported allocator alignment");
         };
-        let blob = alloc_blob::<ic::IcMemory>(&mut ic::IcMemory, Bytes(layout.size() as u32)).as_blob_mut();
+        let blob = alloc_blob::<ic::IcMemory>(&mut ic::IcMemory, Bytes(layout.size() as u32))
+            .as_blob_mut();
         blob.payload_addr()
     }
 
@@ -21,7 +21,6 @@ unsafe impl GlobalAlloc for HeapAllocator {
         // leave to GC
     }
 }
-
 
 #[global_allocator]
 static ALLOCATOR: HeapAllocator = HeapAllocator;
