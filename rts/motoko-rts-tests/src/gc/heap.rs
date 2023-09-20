@@ -38,7 +38,6 @@ impl MotokoHeap {
         map: &[(ObjectIdx, Vec<ObjectIdx>)],
         roots: &[ObjectIdx],
         continuation_table: &[ObjectIdx],
-        region0_ptr_loc: &[ObjectIdx],
         gc: GC,
     ) -> MotokoHeap {
         MotokoHeap {
@@ -106,8 +105,14 @@ impl MotokoHeap {
         self.inner.borrow().continuation_table_ptr_address()
     }
 
-    /// Get the address of the continuation table pointer
-    pub fn region0_ptr_location(&self) -> usize {
+    /// Get the offset of the region0 pointer
+    pub fn region0_ptr_offset(&self) -> usize {
+        self.inner.borrow().region0_ptr_location_offset
+    }
+
+    /// Get the address of the region0 pointer
+    #[incremental_gc]
+    pub fn region0_ptr_address(&self) -> usize {
         self.inner.borrow().region0_ptr_address()
     }
 
@@ -149,10 +154,14 @@ struct MotokoHeapInner {
 
     /// Offset of the continuation table pointer.
     ///
-    /// Reminder: this location is in static heap and will have pointer to an array in dynamic
-    /// heap.
+    /// Reminder: this location is in static heap and will have a pointer to an array in
+    /// the dynamic heap.
     continuation_table_ptr_offset: usize,
 
+    /// Offset of the region0 pointer.
+    ///
+    /// Reminder: this location is in static heap and will have a pointer to a region in
+    /// the dynamic heap.
     region0_ptr_location_offset: usize,
 }
 
@@ -202,6 +211,8 @@ impl MotokoHeapInner {
         self.offset_to_address(self.continuation_table_ptr_offset)
     }
 
+    /// Get the address of the region0 pointer
+    #[incremental_gc]
     fn region0_ptr_address(&self) -> usize {
         self.offset_to_address(self.region0_ptr_location_offset)
     }
@@ -231,16 +242,20 @@ impl MotokoHeapInner {
             + 2)
             * WORD_SIZE;
 
-        let dynamic_heap_size_without_continuation_table_bytes = {
+        let dynamic_heap_size_without_roots = {
             let object_headers_words = map.len() * (size_of::<Array>().as_usize() + 1);
             let references_words = map.iter().map(|(_, refs)| refs.len()).sum::<usize>();
             (object_headers_words + references_words) * WORD_SIZE
         };
 
-        let dynamic_heap_size_bytes = dynamic_heap_size_without_continuation_table_bytes
-            + (size_of::<Array>() + Words(continuation_table.len() as u32))
-                .to_bytes()
-                .as_usize();
+        let continuation_table_size = (size_of::<Array>() + Words(continuation_table.len() as u32))
+            .to_bytes()
+            .as_usize();
+
+        let region0_size = size_of::<Region>().to_bytes().as_usize();
+
+        let dynamic_heap_size_bytes =
+            dynamic_heap_size_without_roots + continuation_table_size + region0_size;
 
         let total_heap_size_bytes = static_heap_size_bytes + dynamic_heap_size_bytes;
 
@@ -259,23 +274,26 @@ impl MotokoHeapInner {
         let realign = (32 - (heap.as_ptr() as usize + static_heap_size_bytes) % 32) % 32;
         assert_eq!(realign % 4, 0);
 
-        // Maps `ObjectIdx`s into their offsets in the heap
+        // Maps `ObjectIdx`s into their offsets in the heap.
         let object_addrs: FxHashMap<ObjectIdx, usize> = create_dynamic_heap(
             map,
             continuation_table,
             &mut heap[static_heap_size_bytes + realign..heap_size + realign],
         );
 
-        // Closure table pointer is the last word in static heap
+        // Closure table pointer is the second last word in the static heap.
         let continuation_table_ptr_offset = static_heap_size_bytes - WORD_SIZE * 2;
 
+        // Region0 pointer is the very last word in the static heap.
         let region0_ptr_location_offset = static_heap_size_bytes - WORD_SIZE;
 
         create_static_heap(
             roots,
             &object_addrs,
             continuation_table_ptr_offset,
-            static_heap_size_bytes + dynamic_heap_size_without_continuation_table_bytes,
+            static_heap_size_bytes + dynamic_heap_size_without_roots,
+            region0_ptr_location_offset,
+            static_heap_size_bytes + dynamic_heap_size_without_roots + continuation_table_size,
             &mut heap[realign..static_heap_size_bytes + realign],
         );
 
@@ -472,6 +490,8 @@ fn create_dynamic_heap(
         .to_bytes()
         .as_usize()
         + n_fields * WORD_SIZE;
+    let continuation_table_size =
+        size_of::<Array>().to_bytes().as_usize() + continuation_table.len() * WORD_SIZE;
 
     {
         let mut heap_offset = continuation_table_offset;
@@ -499,6 +519,32 @@ fn create_dynamic_heap(
         }
     }
 
+    // Add region0
+    let region0_offset = continuation_table_offset + continuation_table_size;
+    {
+        let mut heap_offset = region0_offset;
+        let region0_address = u32::try_from(heap_start + heap_offset).unwrap();
+        write_word(dynamic_heap, heap_offset, TAG_REGION);
+        heap_offset += WORD_SIZE;
+
+        if incremental {
+            write_word(dynamic_heap, heap_offset, make_pointer(region0_address));
+            heap_offset += WORD_SIZE;
+        }
+
+        // lower part of region id
+        write_word(dynamic_heap, heap_offset, 0);
+        heap_offset += WORD_SIZE;
+        // upper part of region id
+        write_word(dynamic_heap, heap_offset, 0);
+        heap_offset += WORD_SIZE;
+        // zero pages
+        write_word(dynamic_heap, heap_offset, 0);
+        heap_offset += WORD_SIZE;
+        // Simplification: Skip the vector pages blob
+        write_word(dynamic_heap, heap_offset, make_scalar(0));
+    }
+
     object_addrs
 }
 
@@ -510,6 +556,8 @@ fn create_static_heap(
     object_addrs: &FxHashMap<ObjectIdx, usize>,
     continuation_table_ptr_offset: usize,
     continuation_table_offset: usize,
+    region0_ptr_offset: usize,
+    region0_offset: usize,
     heap: &mut [u8],
 ) {
     let incremental = cfg!(feature = "incremental_gc");
@@ -568,11 +616,15 @@ fn create_static_heap(
         assert_eq!(offset, mutbox_offset);
     }
 
-    // Write continuation table pointer as the last word in static heap
+    // Write continuation table pointer as the second last word in static heap
     let continuation_table_ptr = continuation_table_offset as u32 + heap.as_ptr() as u32;
     write_word(
         heap,
         continuation_table_ptr_offset,
         make_pointer(continuation_table_ptr),
     );
+
+    // Write continuation table pointer as the second last word in static heap
+    let region0_ptr = region0_offset as u32 + heap.as_ptr() as u32;
+    write_word(heap, region0_ptr_offset, make_pointer(region0_ptr));
 }
