@@ -7,6 +7,8 @@ pub mod incremental;
 #[non_incremental_gc]
 pub mod mark_compact;
 
+pub mod remembered_set;
+
 use motoko_rts_macros::*;
 
 #[cfg(feature = "ic")]

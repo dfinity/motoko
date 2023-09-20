@@ -1,6 +1,6 @@
 //! Write barrier, used for generational GC
 
-use super::remembered_set::RememberedSet;
+use crate::gc::remembered_set::RememberedSet;
 use crate::memory::Memory;
 use crate::types::Value;
 use motoko_rts_macros::ic_mem_fn;

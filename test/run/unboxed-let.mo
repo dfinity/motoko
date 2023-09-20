@@ -1,3 +1,19 @@
+//MOC-FLAG -fshared-code
+func goNat32() {
+ let x : Nat32 = 1 +% 1;
+ var y : Nat32 = 1; y *%= 2;
+ assert (x *% y == 4);
+};
+goNat32();
+
+
+func goInt32() {
+ let x : Int32 = 1 +% 1;
+ var y : Int32 = 1; y *%= 2;
+ assert (x *% y == 4);
+};
+goInt32();
+
 func goNat64() {
  let x : Nat64 = 1 +% 1;
  var y : Nat64 = 1; y *%= 2;

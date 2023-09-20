@@ -51,10 +51,10 @@
         "homepage": null,
         "owner": "dfinity",
         "repo": "ic-wasm",
-        "rev": "733e09df12bf974a9f343d9f945b249c47961f33",
-        "sha256": "0f07bk25zg4la5q8szmcyxmrl86bvg22f1gkcy2ira5i1rm4fmnc",
+        "rev": "36d36e9460cd19d4dddb34d425b449f6ed4a31c1",
+        "sha256": "0r3y5cgdjk7j59hs162f5bqgfkm6rjvk1r742dx6kld1c4xvj6vj",
         "type": "tarball",
-        "url": "https://github.com/dfinity/ic-wasm/archive/733e09df12bf974a9f343d9f945b249c47961f33.tar.gz",
+        "url": "https://github.com/dfinity/ic-wasm/archive/36d36e9460cd19d4dddb34d425b449f6ed4a31c1.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "libtommath": {
