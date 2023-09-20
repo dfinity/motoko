@@ -77,12 +77,12 @@ unsafe fn should_start() -> bool {
         return false;
     }
 
-    const ABSOLUT_GROWTH_THRESHOLD: Bytes<u64> = Bytes(512 * 1024 * 1024);
+    const ABSOLUTE_GROWTH_THRESHOLD: Bytes<u64> = Bytes(512 * 1024 * 1024);
 
     let current_allocations = partitioned_memory::get_total_allocations();
     debug_assert!(current_allocations >= LAST_ALLOCATIONS);
     let absolute_growth = current_allocations - LAST_ALLOCATIONS;
-    if absolute_growth > ABSOLUT_GROWTH_THRESHOLD {
+    if absolute_growth > ABSOLUTE_GROWTH_THRESHOLD {
         return true;
     }
 
