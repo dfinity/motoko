@@ -4247,8 +4247,8 @@ module Tuple = struct
     else
       let name = Printf.sprintf "to_%i_tuple" n in
       let args = Lib.List.table n (fun i -> Printf.sprintf "arg%i" i, I64Type) in
-      Func.share_code Func.Never env name args [I64Type] (fun env ->
-        Arr.lit env (Lib.List.table n (fun i -> G.i (LocalGet (nr (Int32.of_int i)))))
+      Func.share_code Func.Never env name args [I64Type] (fun env getters ->
+        Arr.lit env (Lib.List.table n (fun i -> List.nth getters i))
       )
 
   (* Takes an argument tuple and puts the elements on the stack: *)
@@ -4629,7 +4629,7 @@ module IC = struct
     Blob.lit_ptr_len env s ^^ print_ptr_len env
 
   let ic_trap env =
-    Func.share_code2 env "ic_trap" (("ptr", I64Type), ("len", I64Type)) [] (fun env get_ptr get_length ->
+    Func.share_code2 Func.Always env "ic_trap" (("ptr", I64Type), ("len", I64Type)) [] (fun env get_ptr get_length ->
       (* TODO: IC needs to be ported to 64-bit *)
       narrow_to_32 env get_ptr ^^ (* consider copying buffer to 32-bit, similar to `print_ptr` *)
       narrow_to_32 env get_length ^^
@@ -10411,7 +10411,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
       let n = List.length ts in
       let name = Printf.sprintf "to_opt_%i_tuple" n in
       let args = Lib.List.table n (fun i -> (Printf.sprintf "arg%i" i, I64Type)) in
-      Func.share_code  Func.Always env name args [I64Type] (fun env ->
+      Func.share_code  Func.Always env name args [I64Type] (fun env getters ->
         let locals =
           Lib.List.table n (fun i -> List.nth getters i) in
         let rec go ls =
