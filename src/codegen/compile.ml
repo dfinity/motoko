@@ -6923,6 +6923,10 @@ module MakeSerialization (Strm : Stream) = struct
         )
       in
 
+      let store_word32 =
+        G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
+        G.i (Store {ty = I32Type; align = 0; offset = 0L; sz = None}) in
+
       let read_alias env t read_thing =
         (* see Note [mutable stable values] *)
         let (set_is_ref, get_is_ref) = new_local env "is_ref" in
@@ -6970,8 +6974,8 @@ module MakeSerialization (Strm : Stream) = struct
                We update the memo location here so that loops work
             *)
             get_thing ^^ set_result ^^
-            get_memo ^^ get_result ^^ store_unskewed_ptr ^^
-            get_memo ^^ compile_add_const 4L ^^ Blob.lit env (typ_hash t) ^^ store_unskewed_ptr
+            get_memo ^^ get_result ^^ store_word32 ^^
+            get_memo ^^ compile_add_const 4L ^^ Blob.lit env (typ_hash t) ^^ store_word32
           )
           end begin
           (* Decoded before. Check type hash *)
