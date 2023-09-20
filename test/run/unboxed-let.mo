@@ -1,3 +1,4 @@
+//MOC-FLAG -fshared-code
 func goNat32() {
  let x : Nat32 = 1 +% 1;
  var y : Nat32 = 1; y *%= 2;
