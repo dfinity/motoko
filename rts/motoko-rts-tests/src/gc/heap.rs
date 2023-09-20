@@ -213,7 +213,7 @@ impl MotokoHeapInner {
     /// Get the address of the region0 pointer
     #[incremental_gc]
     fn region0_ptr_address(&self) -> usize {
-        self.offset_to_address(self._region0_ptr_location_offset)
+        self.offset_to_address(self.region0_ptr_location_offset)
     }
 
     fn new(
@@ -306,7 +306,7 @@ impl MotokoHeapInner {
             heap_ptr_offset: total_heap_size_bytes + realign,
             static_root_array_offset: realign,
             continuation_table_ptr_offset: continuation_table_ptr_offset + realign,
-            _region0_ptr_location_offset: region0_ptr_location_offset + realign,
+            region0_ptr_location_offset: region0_ptr_location_offset + realign,
         }
     }
 
@@ -483,10 +483,8 @@ fn create_dynamic_heap(
     let n_objects = refs.len();
     // fields+1 for the scalar field (idx)
     let n_fields: usize = refs.iter().map(|(_, fields)| fields.len() + 1).sum();
-    let continuation_table_offset = (size_of::<Array>() * n_objects)
-        .to_bytes()
-        .as_usize()
-        + n_fields * WORD_SIZE;
+    let continuation_table_offset =
+        (size_of::<Array>() * n_objects).to_bytes().as_usize() + n_fields * WORD_SIZE;
     let continuation_table_size =
         size_of::<Array>().to_bytes().as_usize() + continuation_table.len() * WORD_SIZE;
 
@@ -520,7 +518,7 @@ fn create_dynamic_heap(
     let region0_offset = continuation_table_offset + continuation_table_size;
     {
         let mut heap_offset = region0_offset;
-        let region0_address = u32::try_from(heap_start + heap_offset).unwrap();
+        let region0_address = heap_start + heap_offset;
         write_word(dynamic_heap, heap_offset, TAG_REGION);
         heap_offset += WORD_SIZE;
 
