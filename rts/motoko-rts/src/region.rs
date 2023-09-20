@@ -373,7 +373,7 @@ unsafe fn write_magic() {
 unsafe fn alloc_region<M: Memory>(
     mem: &mut M,
     id: u64,
-    page_count: u32,
+    page_count: usize,
     vec_pages: Value,
 ) -> Value {
     let r_ptr = mem.alloc_words(size_of::<Region>());
@@ -385,10 +385,10 @@ unsafe fn alloc_region<M: Memory>(
     (*region).id = id as usize;
     debug_assert!(
         page_count
-            <= (vec_pages.as_blob().len().as_usize() as u32 / meta_data::bytes_of::<u16>() as u32)
-                * meta_data::size::PAGES_IN_BLOCK
+            <= (vec_pages.as_blob().len().as_usize() / meta_data::bytes_of::<u16>() as usize)
+                * meta_data::size::PAGES_IN_BLOCK as usize
     );
-    (*region).page_count = page_count as usize;
+    (*region).page_count = page_count;
     init_with_barrier(mem, &mut (*region).vec_pages, vec_pages);
 
     allocation_barrier(r_ptr);
@@ -400,7 +400,7 @@ unsafe fn init_region<M: Memory>(
     mem: &mut M,
     r: Value,
     id: u64,
-    page_count: u32,
+    page_count: usize,
     vec_pages: Value,
 ) {
     let r = r.as_region();
@@ -408,10 +408,10 @@ unsafe fn init_region<M: Memory>(
     (*r).id = id as usize;
     debug_assert!(
         page_count
-            <= (vec_pages.as_blob().len().as_usize() as u32 / meta_data::bytes_of::<u16>() as u32)
-                * meta_data::size::PAGES_IN_BLOCK
+            <= (vec_pages.as_blob().len().as_usize() / meta_data::bytes_of::<u16>() as usize)
+                * meta_data::size::PAGES_IN_BLOCK as usize
     );
-    (*r).page_count = page_count as usize;
+    (*r).page_count = page_count;
     write_with_barrier(mem, &mut (*r).vec_pages, vec_pages);
 }
 
@@ -422,9 +422,9 @@ pub unsafe fn region_id<M: Memory>(_mem: &mut M, r: Value) -> u64 {
 }
 
 #[ic_mem_fn]
-pub unsafe fn region_page_count<M: Memory>(_mem: &mut M, r: Value) -> u32 {
+pub unsafe fn region_page_count<M: Memory>(_mem: &mut M, r: Value) -> usize {
     let r = r.as_untagged_region();
-    (*r).page_count as u32
+    (*r).page_count
 }
 
 #[ic_mem_fn]
@@ -547,7 +547,7 @@ pub unsafe fn region_recover<M: Memory>(mem: &mut M, rid: &RegionId) -> Value {
     assert_eq!(recovered_blocks, block_count);
     allocation_barrier(vec_pages);
 
-    let r_ptr = alloc_region(mem, rid.0, page_count as u32, vec_pages);
+    let r_ptr = alloc_region(mem, rid.0, page_count as usize, vec_pages);
     r_ptr
 }
 

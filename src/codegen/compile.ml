@@ -1032,11 +1032,11 @@ module RTS = struct
     E.add_func_import env "rts" "text_size" [I64Type] [I64Type];
     E.add_func_import env "rts" "text_to_buf" [I64Type; I64Type] [];
     E.add_func_import env "rts" "region_init" [I64Type] [];
-    E.add_func_import env "rts" "alloc_region" [I64Type; I32Type; I64Type] [I64Type];
-    E.add_func_import env "rts" "init_region" [I64Type; I64Type; I32Type; I64Type] [];
+    E.add_func_import env "rts" "alloc_region" [I64Type; I64Type; I64Type] [I64Type];
+    E.add_func_import env "rts" "init_region" [I64Type; I64Type; I64Type; I64Type] [];
     E.add_func_import env "rts" "region_new" [] [I64Type];
     E.add_func_import env "rts" "region_id" [I64Type] [I64Type];
-    E.add_func_import env "rts" "region_page_count" [I64Type] [I32Type];
+    E.add_func_import env "rts" "region_page_count" [I64Type] [I64Type];
     E.add_func_import env "rts" "region_vec_pages" [I64Type] [I64Type];
     E.add_func_import env "rts" "region_size" [I64Type] [I64Type];
     E.add_func_import env "rts" "region_grow" [I64Type; I64Type] [I64Type];
