@@ -182,10 +182,11 @@ then
       HAVE_drun=no
     fi
   fi
-  if ic-wasm --help >& /dev/null
-  then
-    HAVE_ic_wasm=yes
-  fi
+  # TODO: Re-enable when ic_wasm supports Wasm64
+  # if ic-wasm --help >& /dev/null
+  # then
+  #   HAVE_ic_wasm=yes
+  # fi
 fi
 
 if [ $DTESTS = yes ]
