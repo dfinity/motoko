@@ -21,15 +21,15 @@
         "version": "3.2.25"
     },
     "ic": {
-        "branch": "luc/transient-heap64",
+        "branch": "pull/136/head",
         "description": "Internet Computer blockchain source: the client/replica software run by nodes",
         "homepage": "",
-        "owner": "luc-blaeser",
+        "owner": "dfinity",
         "repo": "ic",
-        "rev": "7260e512dd9941c033fd7b1ed2ccf1a689255ec7",
-        "sha256": "0qqxy8q3zis6cw8yvlbjsr7kzys1c00b8xlnhkj9nfbjx29gyxwl",
+        "rev": "d8a1986c1c146ad808ef4aeafa72ca3c2dfd3087",
+        "sha256": "09lnlzfhfnapc0snwlypgxvgkapkxkznnxi9fnbibchp8b1si8l1",
         "type": "tarball",
-        "url": "https://github.com/luc-blaeser/ic/archive/7260e512dd9941c033fd7b1ed2ccf1a689255ec7.tar.gz",
+        "url": "https://github.com/dfinity/ic/archive/d8a1986c1c146ad808ef4aeafa72ca3c2dfd3087.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ic-hs": {
