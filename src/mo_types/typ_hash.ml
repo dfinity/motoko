@@ -91,6 +91,7 @@ let prim = function
   | Blob -> "B"
   | Error -> "E"
   | Principal -> "P"
+  | Region -> "R"
 
 let rec go = function
   | Prim p -> ((Nullary, prim p), [])

@@ -1,5 +1,36 @@
 # Motoko compiler changelog
 
+* motoko (`moc`)
+
+  * perf: inline shareble low-level functions in generated coded, trading code size for reduced cycle count. Controlled by flags:
+      * `-fno-shared-code` (default)
+      * `-f-shared-code` (legacy)
+    (Helps mitigate the effect of the IC's new cost model, that increases
+     the cost of function calls).
+
+## 0.10.0 (2023-09-11)
+
+* motoko (`moc`)
+
+  * Added a new stable `Region` type of dynamically allocated, independently growable and
+    isolated regions of IC stable memory (#3768). See documentation.
+    BREAKING CHANGE: stable memory changes may occur that can prevent returning
+    to previous `moc` versions.
+
+  * Added doc comments in generated Candid files (#4178).
+
+* motoko-base
+
+  * Exposed conversions between adjacent fixed-width types (dfinity/motoko-base⁠#585).
+
+## 0.9.8 (2023-08-11)
+
+* motoko (`moc`)
+
+  * Added numerical type conversions between adjacent fixed-width types (#4139).
+
+  * Administrative: legacy-named release artefacts are no longer created (#4111).
+
 ## 0.9.7 (2023-07-18)
 
 * motoko (`moc`)
