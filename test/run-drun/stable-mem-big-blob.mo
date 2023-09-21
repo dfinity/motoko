@@ -3,9 +3,9 @@ import P "mo:⛔";
 import StableMemory "stable-mem/StableMemory";
 actor {
 
-  let 0 = StableMemory.grow(65535-128);
-  let n = 2**31+16384;
-  let o:Nat64 = 2**31+16384 - 1;
+  let 0 = StableMemory.grow(32768-128);
+  let n = 2**30+16384;
+  let o:Nat64 = 2**30+16384 - 1;
   StableMemory.storeNat8(o, 255);
   let b = StableMemory.loadBlob(0, n);
   StableMemory.storeNat8(o, 0);
