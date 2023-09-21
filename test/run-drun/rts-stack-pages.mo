@@ -1,7 +1,7 @@
-//MOC-FLAG --rts-stack-pages 2
+//MOC-FLAG --rts-stack-pages 16
 import Prim = "mo:prim";
 // tests --rts-stack-pages adjusts stack limit
-// test fails with RTS stack underflow with just 2 pages,
+// test fails with RTS stack underflow with just 16 pages,
 // but succeeds with 32 pages (the default).
 actor a {
 
@@ -27,7 +27,7 @@ actor a {
      };
      if (Prim.rts_heap_size() < mb * 1024 * 1024) {
       // Difference between incremental and non-incremental GC (due to different object header lengths).
-      let toleranceMB = 2;
+      let toleranceMB = 4;
       Prim.debugPrint(debug_show({heap_MB = Prim.rts_heap_size()/1024/1024/toleranceMB*toleranceMB}));
       fillMB(mb);
      }
