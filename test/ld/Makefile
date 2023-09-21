@@ -12,7 +12,6 @@ clean:
 WASM_CLANG?=clang-13
 WASM_LD?=wasm-ld-13
 MO_LD?=../../src/mo-ld
-EMSCRIPTEN=emcc 
 
 _out/%.lib.o: %.c | _out
 	$(WASM_CLANG) --compile -fpic --target=wasm64-emscripten --optimize=3 \
