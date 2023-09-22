@@ -423,11 +423,10 @@ pub unsafe fn text_singleton<M: Memory>(mem: &mut M, char: u32) -> Value {
 #[ic_mem_fn]
 pub unsafe fn text_lowercase<M: Memory>(mem: &mut M, text: Value) -> Value {
     let blob = blob_of_text(mem, text).as_blob_mut();
-    let string = str::from_utf8(slice::from_raw_parts(
+    let string = str::from_utf8_unchecked(slice::from_raw_parts(
         blob.payload_addr() as *const u8,
         blob.len().as_usize(),
     ))
-    .expect("from_utf8")
     .to_lowercase();
     let bytes = string.as_bytes();
     let lowercase = alloc_blob(mem, Bytes(bytes.len() as u32));
