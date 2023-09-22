@@ -52,15 +52,15 @@ use super::{
 
 /// Size of each partition.
 /// Select the size of the power of two with the smallest WASM memory size in the benchmark.
-/// -> Small partitions below 32 MB are inefficient in terms of both memory and runtime costs
+/// -> Small partitions below 64 MB are inefficient in terms of both memory and runtime costs
 ///    due to the increased frequency of large object handling.
-/// -> Large partitions above 32 MB are a waste for small programs, since the WASM memory is
+/// -> Large partitions above 64 MB are a waste for small programs, since the WASM memory is
 ///    allocated in that granularity and GC is then triggered later.
-pub const PARTITION_SIZE: usize = 32 * 1024 * 1024;
+pub const PARTITION_SIZE: usize = 64 * 1024 * 1024;
 
 // TODO: Redesign for 64-bit support by using a dynamic partition list.
-/// Currently limited to 48 GB.
-const WASM_MEMORY_BYTE_SIZE: Bytes<usize> = Bytes(48 * 1024 * 1024 * 1024);
+/// Currently limited to 64 GB.
+const WASM_MEMORY_BYTE_SIZE: Bytes<usize> = Bytes(64 * 1024 * 1024 * 1024);
 
 /// Total number of partitions in the memory.
 /// For simplicity, the last partition is left unused, to avoid a numeric overflow when
