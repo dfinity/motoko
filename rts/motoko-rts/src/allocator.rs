@@ -14,7 +14,7 @@ unsafe impl GlobalAlloc for HeapAllocator {
         // align is a power of 2
         debug_assert!(align.count_ones() == 1);
         if align <= 4 {
-            // payload_addr() is always word-aligned, so also nibble and byte aligned)
+            // payload_addr() is always word-aligned (so also nibble and byte aligned)
             let blob =
                 alloc_blob::<ic::IcMemory>(&mut ic::IcMemory, Bytes(size as u32)).as_blob_mut();
             let address = blob.payload_addr();
