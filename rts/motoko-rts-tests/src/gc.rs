@@ -122,7 +122,7 @@ fn test_gc(
         heap.heap_ptr_offset(),
         heap.static_root_array_variable_offset(),
         heap.continuation_table_variable_offset(),
-        heap.region0_ptr_offset(),
+        heap.region0_pointer_variable_offset(),
     );
 
     for _ in 0..3 {
@@ -132,7 +132,7 @@ fn test_gc(
         let heap_ptr_offset = heap.heap_ptr_offset();
         let static_array_variable_offset = heap.static_root_array_variable_offset();
         let continuation_table_variable_offset = heap.continuation_table_variable_offset();
-        let region0_ptr_offset = heap.region0_ptr_offset();
+        let region0_ptr_offset = heap.region0_pointer_variable_offset();
         check_dynamic_heap(
             check_all_reclaimed, // check for unreachable objects
             refs,

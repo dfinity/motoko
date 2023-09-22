@@ -28,14 +28,16 @@ unsafe fn check_visit_static_roots(heap: &MotokoHeap, root_ids: &[ObjectIdx]) {
     let mut visited_static_roots = vec![];
     visit_roots(roots, &mut visited_static_roots, |context, field| {
         let object = *field;
-        let array = object.as_array();
-        if array.len() == root_ids.len() as u32 {
-            for index in 0..array.len() {
-                let mutbox_value = array.get(index);
-                let mutbox = mutbox_value.as_mutbox();
-                let root_address = (*mutbox).field.get_ptr();
-                let root_id = object_id(heap, root_address);
-                context.push(root_id);
+        if object.tag() != TAG_REGION {
+            let array = object.as_array();
+            if array.len() == root_ids.len() as u32 {
+                for index in 0..array.len() {
+                    let mutbox_value = array.get(index);
+                    let mutbox = mutbox_value.as_mutbox();
+                    let root_address = (*mutbox).field.get_ptr();
+                    let root_id = object_id(heap, root_address);
+                    context.push(root_id);
+                }
             }
         }
     });
@@ -47,13 +49,15 @@ unsafe fn check_visit_continuation_table(heap: &MotokoHeap, continuation_ids: &[
     let mut visited_continuations = vec![];
     visit_roots(roots, &mut visited_continuations, |context, field| {
         let object = *field;
-        let array = object.as_array();
-        if array.len() == continuation_ids.len() as u32 {
-            assert_eq!(context.len(), 0);
-            for index in 0..array.len() {
-                let element = array.get(index);
-                let id = object_id(&heap, element.get_ptr());
-                context.push(id);
+        if object.tag() != TAG_REGION {
+            let array = object.as_array();
+            if array.len() == continuation_ids.len() as u32 {
+                assert_eq!(context.len(), 0);
+                for index in 0..array.len() {
+                    let element = array.get(index);
+                    let id = object_id(&heap, element.get_ptr());
+                    context.push(id);
+                }
             }
         }
     });
@@ -63,18 +67,13 @@ unsafe fn check_visit_continuation_table(heap: &MotokoHeap, continuation_ids: &[
 unsafe fn check_visit_region0(heap: &MotokoHeap) {
     let roots = get_roots(heap);
     let mut visited_region0 = false;
-    visit_roots(
-        roots,
-        heap.heap_base_address(),
-        &mut visited_region0,
-        |visited, field| {
-            let object = *field;
-            if object.tag() == TAG_REGION {
-                assert!(!*visited);
-                *visited = true;
-            }
-        },
-    );
+    visit_roots(roots, &mut visited_region0, |visited, field| {
+        let object = *field;
+        if object.tag() == TAG_REGION {
+            assert!(!*visited);
+            *visited = true;
+        }
+    });
     assert!(visited_region0);
 }
 

@@ -90,9 +90,14 @@ impl MotokoHeap {
         self.inner.borrow().continuation_table_variable_address()
     }
 
-    /// Get the address of the continuation table pointer
+    /// Get the offset of the variable pointing to region0.
+    pub fn region0_pointer_variable_offset(&self) -> usize {
+        self.inner.borrow().region0_pointer_variable_offset
+    }
+
+    /// Get the address of the variable pointing to region0
     pub fn region0_pointer_variable_address(&self) -> usize {
-        self.inner.borrow().region0_ptr_address()
+        self.inner.borrow().region0_pointer_address()
     }
 
     /// Get the heap as an array. Use `offset` values returned by the methods above to read.
@@ -181,8 +186,7 @@ impl MotokoHeapInner {
     }
 
     /// Get the address of the region0 pointer
-    #[incremental_gc]
-    fn region0_ptr_address(&self) -> usize {
+    fn region0_pointer_address(&self) -> usize {
         self.offset_to_address(self.region0_pointer_variable_offset)
     }
 
@@ -223,8 +227,10 @@ impl MotokoHeapInner {
 
         let region0_size = size_of::<Region>().to_bytes().as_usize();
 
-        let dynamic_heap_size_bytes =
-            dynamic_heap_size_without_roots + continuation_table_size + region0_size;
+        let dynamic_heap_size_bytes = dynamic_heap_size_without_roots
+            + static_root_set_size_bytes
+            + continuation_table_size
+            + region0_size;
 
         let total_heap_size_bytes = root_pointers_size_bytes + dynamic_heap_size_bytes;
 
@@ -239,12 +245,13 @@ impl MotokoHeapInner {
         assert_eq!(realign % 4, 0);
 
         // Maps `ObjectIdx`s into their offsets in the heap.
-        let object_addrs: FxHashMap<ObjectIdx, usize> = create_dynamic_heap(
-            map,
-            roots,
-            continuation_table,
-            &mut heap[root_pointers_size_bytes + realign..heap_size + realign],
-        );
+        let (static_root_array_address, continuation_table_address, region0_address) =
+            create_dynamic_heap(
+                map,
+                roots,
+                continuation_table,
+                &mut heap[root_pointers_size_bytes + realign..heap_size + realign],
+            );
 
         // Root pointers in static memory space.
         let static_root_array_variable_offset = root_pointers_size_bytes - 3 * WORD_SIZE;
@@ -256,6 +263,7 @@ impl MotokoHeapInner {
             region0_pointer_variable_offset,
             static_root_array_address,
             continuation_table_address,
+            region0_address,
             &mut heap[realign..root_pointers_size_bytes + realign],
         );
 
@@ -326,7 +334,7 @@ fn create_dynamic_heap(
     static_roots: &[ObjectIdx],
     continuation_table: &[ObjectIdx],
     dynamic_heap: &mut [u8],
-) -> (u32, u32) {
+) -> (u32, u32, u32) {
     let heap_start = dynamic_heap.as_ptr() as usize;
 
     // Maps objects to their addresses
@@ -386,8 +394,6 @@ fn create_dynamic_heap(
         .to_bytes()
         .as_usize()
         + n_fields * WORD_SIZE;
-    let continuation_table_size =
-        size_of::<Array>().to_bytes().as_usize() + continuation_table.len() * WORD_SIZE;
 
     let mut heap_offset = root_section_offset;
     let mut root_mutboxes = vec![];
@@ -450,7 +456,33 @@ fn create_dynamic_heap(
         }
     }
 
-    (static_root_array_address, continuation_table_address)
+    // Add region0
+    let region0_address = u32::try_from(heap_start + heap_offset).unwrap();
+    {
+        write_word(dynamic_heap, heap_offset, TAG_REGION);
+        heap_offset += WORD_SIZE;
+
+        write_word(dynamic_heap, heap_offset, make_pointer(region0_address));
+        heap_offset += WORD_SIZE;
+
+        // lower part of region id
+        write_word(dynamic_heap, heap_offset, 0);
+        heap_offset += WORD_SIZE;
+        // upper part of region id
+        write_word(dynamic_heap, heap_offset, 0);
+        heap_offset += WORD_SIZE;
+        // zero pages
+        write_word(dynamic_heap, heap_offset, 0);
+        heap_offset += WORD_SIZE;
+        // Simplification: Skip the vector pages blob
+        write_word(dynamic_heap, heap_offset, make_scalar(0));
+    }
+
+    (
+        static_root_array_address,
+        continuation_table_address,
+        region0_address,
+    )
 }
 
 /// Static memory part containing the root pointers.
@@ -460,6 +492,7 @@ fn create_static_memory(
     region0_pointer_variable_offset: usize,
     static_root_array_address: u32,
     continuation_table_address: u32,
+    region0_address: u32,
     heap: &mut [u8],
 ) {
     // Write static array pointer as the third last word in static memory
@@ -476,7 +509,10 @@ fn create_static_memory(
         make_pointer(continuation_table_address),
     );
 
-    let region0_ptr = region0_offset as u32 + heap.as_ptr() as u32;
-    // Write region 0 pointer as the last word in static memory
-    write_word(heap, region0_pointer_variable_offset, make_pointer(region0_ptr));
+    // Write region 0 pointer as the very last word in static memory
+    write_word(
+        heap,
+        region0_pointer_variable_offset,
+        make_pointer(region0_address),
+    );
 }
