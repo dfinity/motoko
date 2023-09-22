@@ -1854,7 +1854,7 @@ module Opt = struct
     E.call_import env "rts" "null_singleton" (* forwarding pointer already resolved *)
 
   let is_some env =
-    Func.share_code1 env "is_some" ("x", I32Type) [I32Type] (fun env get_x ->
+    Func.share_code1 Func.Never env "is_some" ("x", I32Type) [I32Type] (fun env get_x ->
       get_x ^^ BitTagged.if_tagged_scalar env [I32Type]
         ( Bool.lit true ) (* scalar *)
         ( get_x ^^ BitTagged.is_true_literal env ^^ (* exclude true literal since `branch_default` follows the forwarding pointer *)
@@ -3639,7 +3639,7 @@ module Object = struct
   (* Returns a pointer to the object field (without following the field indirection) *)
   let idx_hash_raw env low_bound =
     let name = Printf.sprintf "obj_idx<%d>" low_bound  in
-    Func.share_code2 env name (("x", I32Type), ("hash", I32Type)) [I32Type] (fun env get_x get_hash ->
+    Func.share_code2 Func.Always env name (("x", I32Type), ("hash", I32Type)) [I32Type] (fun env get_x get_hash ->
       let set_x = G.setter_for get_x in
       let set_h_ptr, get_h_ptr = new_local env "h_ptr" in
 
@@ -3672,7 +3672,7 @@ module Object = struct
     if indirect
     then
       let name = Printf.sprintf "obj_idx_ind<%d>" low_bound in
-      Func.share_code2 env name (("x", I32Type), ("hash", I32Type)) [I32Type] (fun env get_x get_hash ->
+      Func.share_code2 Func.Never env name (("x", I32Type), ("hash", I32Type)) [I32Type] (fun env get_x get_hash ->
       get_x ^^ get_hash ^^
       idx_hash_raw env low_bound ^^
       load_ptr ^^ Tagged.load_forwarding_pointer env ^^
@@ -7307,7 +7307,7 @@ module OldStabilization = struct
   let read_and_clear_word32 env =
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
-      Func.share_code1 env "__stablemem_read_and_clear_word32"
+      Func.share_code1 Func.Always env "__stablemem_read_and_clear_word32"
         ("offset", I64Type) [I32Type]
         (fun env get_offset ->
           Stack.with_words env "temp_ptr" 1l (fun get_temp_ptr ->
@@ -7332,7 +7332,7 @@ module OldStabilization = struct
 
   (* TODO: rewrite using MemoryFill *)
   let blob_clear env =
-    Func.share_code1 env "blob_clear" ("x", I32Type) [] (fun env get_x ->
+    Func.share_code1 Func.Always env "blob_clear" ("x", I32Type) [] (fun env get_x ->
       let (set_ptr, get_ptr) = new_local env "ptr" in
       let (set_len, get_len) = new_local env "len" in
       get_x ^^
@@ -7665,7 +7665,7 @@ module Persistence = struct
 end
 
 module GCRoots = struct
-  let create_root_array env = Func.share_code0 env "create_root_array" [I32Type] (fun env ->
+  let create_root_array env = Func.share_code0 Func.Always env "create_root_array" [I32Type] (fun env ->
     let length = Int32.to_int (E.count_static_variables env) in
     let variables = Lib.List.table length (fun _ -> MutBox.alloc env) in
     Arr.lit env variables
