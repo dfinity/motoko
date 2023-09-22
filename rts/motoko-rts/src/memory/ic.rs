@@ -2,7 +2,6 @@
 
 use super::Memory;
 use crate::constants::WASM_PAGE_SIZE;
-use crate::memory::MEMORY_RESERVE;
 use crate::rts_trap_with;
 use crate::types::{Bytes, Value, Words};
 use core::arch::wasm32;
