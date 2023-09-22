@@ -11,6 +11,7 @@ import Region0 "stable-mem/StableMemory";
 actor {
 
   stable let r0 = Region.region0(); // THIS WOULD BE DANGEROUS if permitted
+
   ignore Region.grow(r0, 1);
 
   system func preupgrade() {

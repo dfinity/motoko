@@ -391,6 +391,7 @@ func stableMemoryStoreBlob(offset : Nat64, val : Blob) : () = (prim "stableMemor
 func stableVarQuery() : shared query () -> async { size : Nat64 } = (prim "stableVarQuery" : () -> (shared query () -> async { size : Nat64 }))();
 
 // stable regions
+
 func regionNew() : Region =
   (prim "regionNew" : () -> Region) ();
 
@@ -462,6 +463,7 @@ func regionLoadBlob(r : Region, offset : Nat64, size : Nat) : Blob =
 
 func regionStoreBlob(r : Region, offset : Nat64, val :  Blob) : () =
   (prim "regionStoreBlob" : (Region, Nat64, Blob) -> ()) (r, offset, val);
+
 
 let call_raw = @call_raw;
 
