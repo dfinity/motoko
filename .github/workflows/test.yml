@@ -41,68 +41,67 @@ jobs:
     - name: "nix-build"
       run: nix-build-uncached --max-jobs 4 -A all-systems-go -build-flags -L
 
-  # TODO: No performance reports because drun used for the benchmarks does not yet support 64-bit.
-  #   - name: Calculate performance delta
-  #     if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && github.event_name == 'pull_request'
-  #     run: |
-  #       from="$(git merge-base origin/${{ github.base_ref }} HEAD)"
-  #       to="${{ github.event.pull_request.head.sha }}"
-  #       echo "Comparing changes from $from to $to"
-  #       nix-build --max-jobs 4 perf-delta.nix -o perf-delta.txt \
-  #         --argstr ref HEAD \
-  #         --argstr from "$from" \
-  #         --argstr to "$to"
+    - name: Calculate performance delta
+      if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && github.event_name == 'pull_request'
+      run: |
+        from="$(git merge-base origin/${{ github.base_ref }} HEAD)"
+        to="${{ github.event.pull_request.head.sha }}"
+        echo "Comparing changes from $from to $to"
+        nix-build --max-jobs 4 perf-delta.nix -o perf-delta.txt \
+          --argstr ref HEAD \
+          --argstr from "$from" \
+          --argstr to "$to"
 
-  #   - name: Read performance delta
-  #     if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && github.event_name == 'pull_request'
-  #     id: perf
-  #     uses: juliangruber/read-file-action@v1
-  #     with:
-  #       path: ./perf-delta.txt
+    - name: Read performance delta
+      if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && github.event_name == 'pull_request'
+      id: perf
+      uses: juliangruber/read-file-action@v1
+      with:
+        path: ./perf-delta.txt
 
-  #   - name: Find performance comment
-  #     if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && github.event_name == 'pull_request'
-  #     uses: peter-evans/find-comment@v2
-  #     id: fc
-  #     with:
-  #       issue-number: ${{ github.event.pull_request.number }}
-  #       comment-author: 'github-actions[bot]'
-  #       body-includes: '<!-- perf comment -->'
+    - name: Find performance comment
+      if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && github.event_name == 'pull_request'
+      uses: peter-evans/find-comment@v2
+      id: fc
+      with:
+        issue-number: ${{ github.event.pull_request.number }}
+        comment-author: 'github-actions[bot]'
+        body-includes: '<!-- perf comment -->'
 
-  #   # Forks can't add comments so this job does not run on forks, see
-  #   # motoko#2864.
-  #   - name: Create or update performance comment
-  #     if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
-  #     uses: peter-evans/create-or-update-comment@v3
-  #     with:
-  #       comment-id: ${{ steps.fc.outputs.comment-id }}
-  #       issue-number: ${{ github.event.pull_request.number }}
-  #       body: |
-  #         <!-- perf comment -->
-  #         ${{ steps.perf.outputs.content }}
-  #       edit-mode: replace
+    # Forks can't add comments so this job does not run on forks, see
+    # motoko#2864.
+    - name: Create or update performance comment
+      if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+      uses: peter-evans/create-or-update-comment@v3
+      with:
+        comment-id: ${{ steps.fc.outputs.comment-id }}
+        issue-number: ${{ github.event.pull_request.number }}
+        body: |
+          <!-- perf comment -->
+          ${{ steps.perf.outputs.content }}
+        edit-mode: replace
 
-  # reports:
-  #   if: github.ref == 'refs/heads/master'
-  #   needs: tests
-  #   concurrency: ci-${{ github.ref }}
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #   - uses: actions/checkout@v4
-  #   - uses: cachix/install-nix-action@v23
-  #   - uses: cachix/cachix-action@v12
-  #     with:
-  #       name: ic-hs-test
-  #   - name: Fetch report
-  #     run: nix-build -A report-site -o report-site
-  #   - name: Resolve symlinks
-  #     run: cp -rL report-site report-site-copy
-  #   - name: Push report to GitHub pages
-  #     uses: JamesIves/github-pages-deploy-action@v4
-  #     with:
-  #       branch: gh-pages
-  #       folder: report-site-copy
-  #       single-commit: true
+  reports:
+    if: github.ref == 'refs/heads/master'
+    needs: tests
+    concurrency: ci-${{ github.ref }}
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: cachix/install-nix-action@v23
+    - uses: cachix/cachix-action@v12
+      with:
+        name: ic-hs-test
+    - name: Fetch report
+      run: nix-build -A report-site -o report-site
+    - name: Resolve symlinks
+      run: cp -rL report-site report-site-copy
+    - name: Push report to GitHub pages
+      uses: JamesIves/github-pages-deploy-action@v4
+      with:
+        branch: gh-pages
+        folder: report-site-copy
+        single-commit: true
 
   artifacts:
     if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'build_artifacts')
