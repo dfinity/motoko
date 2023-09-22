@@ -348,10 +348,16 @@ impl Value {
         self.forward().get_ptr() as *mut Array
     }
 
-    /// Get the pointer as `Region` using forwarding. In debug mode panics if the value is not a pointer or the
-    /// pointed object is not an `Region`.
+    /// Get the pointer as `Region` using forwarding.
     pub unsafe fn as_region(self) -> *mut Region {
-        debug_assert_eq!(self.tag(), TAG_REGION);
+        debug_assert!(self.tag() == TAG_REGION);
+        self.check_forwarding_pointer();
+        self.forward().get_ptr() as *mut Region
+    }
+
+    /// Get the pointer as `Region` using forwarding, without checking the tag.
+    /// NB: One cannot check the tag during stabilization.
+    pub unsafe fn as_untagged_region(self) -> *mut Region {
         self.check_forwarding_pointer();
         self.forward().get_ptr() as *mut Region
     }
@@ -452,10 +458,10 @@ pub const TAG_FWD_PTR: Tag = 19; // Only used by the copying GC - not to be conf
 pub const TAG_BITS32: Tag = 21;
 pub const TAG_BIGINT: Tag = 23;
 pub const TAG_CONCAT: Tag = 25;
-pub const TAG_NULL: Tag = 27;
-pub const TAG_ONE_WORD_FILLER: Tag = 29;
-pub const TAG_FREE_SPACE: Tag = 31;
-pub const TAG_REGION: Tag = 33;
+pub const TAG_REGION: Tag = 27;
+pub const TAG_NULL: Tag = 29;
+pub const TAG_ONE_WORD_FILLER: Tag = 31;
+pub const TAG_FREE_SPACE: Tag = 33;
 
 // Special value to visit only a range of array fields.
 // This and all values above it are reserved and mean
@@ -572,17 +578,20 @@ impl Array {
 #[repr(C)] // See the note at the beginning of this module
 pub struct Region {
     pub header: Obj,
-    pub id: u16,
-    // Note: Must initialize this part as it is read by the compiler-generated code.
-    pub zero_padding: u16, 
+    // 64-bit id split into lower and upper halves for alignment reasons
+    pub id_lower: u32,
+    pub id_upper: u32,
     pub page_count: u32,
     pub vec_pages: Value, // Blob of u16's (each a page block ID).
 }
 
 impl Region {
-    // (See also: RegonObject used in region.rs)
-    pub unsafe fn payload_addr(self: *const Self) -> *mut Value {
-        self.offset(1) as *mut Value // skip region header
+    pub unsafe fn write_id64(self: *mut Self, value: u64) {
+        write64(&mut (*self).id_lower, &mut (*self).id_upper, value);
+    }
+
+    pub unsafe fn read_id64(self: *mut Self) -> u64 {
+        read64((*self).id_lower, (*self).id_upper)
     }
 }
 
@@ -658,6 +667,22 @@ impl Blob {
 
     pub unsafe fn set(self: *mut Self, idx: u32, byte: u8) {
         *self.payload_addr().add(idx as usize) = byte;
+    }
+
+    pub unsafe fn payload_addr_u16(self: *mut Self) -> *mut u16 {
+        self.add(1) as *mut u16 // skip blob header
+    }
+
+    pub unsafe fn payload_const_u16(self: *const Self) -> *const u16 {
+        self.add(1) as *mut u16 // skip blob header
+    }
+
+    pub unsafe fn get_u16(self: *const Self, idx: u32) -> u16 {
+        *self.payload_const_u16().add(idx as usize)
+    }
+
+    pub unsafe fn set_u16(self: *mut Self, idx: u32, value: u16) {
+        *self.payload_addr_u16().add(idx as usize) = value;
     }
 
     /// Shrink blob to the given size. Slop after the new size is filled with filler objects.

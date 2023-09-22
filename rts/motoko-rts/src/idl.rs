@@ -360,8 +360,8 @@ unsafe extern "C" fn skip_any(buf: *mut Buf, typtbl: *mut *mut u8, t: i32, depth
                 }
             }
             IDL_EXT_region => {
-                buf.advance(8);
-                skip_blob(buf);
+                buf.advance(12); // id (u64) & page_count (u32)
+                skip_blob(buf); // vec_pages
             }
             _ => {
                 idl_trap_with("skip_any: unknown prim");

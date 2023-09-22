@@ -3,9 +3,9 @@ import P "mo:⛔";
 import StableMemory "stable-mem/StableMemory";
 
 actor {
-  let max : Nat64 = 65536;
-  public func testGrow() : async () {
-    assert 0  == StableMemory.grow(max - 1);
+  let max : Nat64 = 65536 - 128; // -128 to account for stable_regions metadata block
+  public query func testGrow() : async () {
+    assert 0 == StableMemory.grow(max - 1);
     assert (max - 1) == StableMemory.grow(1);
     assert max == StableMemory.size();
     assert max == StableMemory.grow(0);
@@ -20,6 +20,6 @@ actor {
 // too slow on ic-ref-run:
 //SKIP comp-ref
 
-//CALL ingress testGrow "DIDL\x00\x00"
+//CALL query testGrow "DIDL\x00\x00"
 
 

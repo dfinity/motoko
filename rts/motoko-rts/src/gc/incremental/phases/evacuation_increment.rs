@@ -82,6 +82,7 @@ impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
         debug_assert!(!original.is_forwarded());
         let size = block_size(original as usize);
         let new_address = self.mem.alloc_words(size);
+        self.heap.increase_evacuated_size(size);
         let copy = new_address.get_ptr() as *mut Obj;
         memcpy_words(copy as usize, original as usize, size);
         (*copy).forward = new_address;
@@ -91,7 +92,6 @@ impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
         // Marking is necessary to ensure field updates in the copy.
         let unmarked_before = self.heap.mark_object(copy);
         debug_assert!(unmarked_before);
-
         // Determined by measurements in comparison to the mark and update phases.
         const TIME_FRACTION_PER_WORD: f64 = 2.7;
         self.time

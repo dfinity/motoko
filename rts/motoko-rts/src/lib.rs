@@ -26,18 +26,15 @@ pub mod continuation_table;
 #[cfg(feature = "ic")]
 mod float;
 pub mod gc;
-//#[cfg(feature = "ic")]
-mod ic0_stable;
 #[cfg(feature = "ic")]
 mod idl;
 pub mod leb128;
 mod mem_utils;
 pub mod memory;
 pub mod principal_id;
-//#[cfg(feature = "ic")]
 pub mod region;
 //#[cfg(feature = "ic")]
-pub mod region0;
+mod stable_mem;
 mod static_checks;
 pub mod stream;
 pub mod text;

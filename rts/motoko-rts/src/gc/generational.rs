@@ -6,7 +6,6 @@
 //! Compaction is based on the existing Motoko RTS threaded mark & compact GC.
 
 pub mod mark_stack;
-pub mod remembered_set;
 #[cfg(feature = "memory_check")]
 mod sanity_checks;
 pub mod write_barrier;
@@ -48,7 +47,7 @@ unsafe fn generational_gc<M: Memory>(mem: &mut M) {
     let old_limits = get_limits();
     let roots = Roots {
         static_roots: ic::get_static_roots(),
-        region0_ptr_loc: crate::region0::region0_get_ptr_loc(),
+        region0_ptr_loc: crate::region::region0_get_ptr_loc(),
         continuation_table_ptr_loc: crate::continuation_table::continuation_table_loc(),
     };
     let heap = Heap {
@@ -118,7 +117,7 @@ static mut OLD_GENERATION_THRESHOLD: usize = 32 * 1024 * 1024;
 static mut PASSED_CRITICAL_LIMIT: bool = false;
 
 #[cfg(feature = "ic")]
-const CRITICAL_MEMORY_LIMIT: usize = (4096 - 512) * 1024 * 1024;
+const CRITICAL_MEMORY_LIMIT: usize = (4096 - 512) * 1024 * 1024 - crate::memory::MEMORY_RESERVE;
 
 #[cfg(feature = "ic")]
 unsafe fn decide_strategy(limits: &Limits) -> Option<Strategy> {
@@ -471,10 +470,7 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
 
                 // Update forwarding pointer
                 let new_obj = new_pointer as *mut Obj;
-                debug_assert!(
-                    (new_obj.tag() >= TAG_OBJECT && new_obj.tag() <= TAG_NULL)
-                        || new_obj.tag() == TAG_REGION
-                );
+                debug_assert!(new_obj.tag() >= TAG_OBJECT && new_obj.tag() <= TAG_NULL);
             }
 
             free += object_size.to_bytes().as_usize();
@@ -520,7 +516,7 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
             (*(header as *mut Value)) = Value::from_ptr(new_location);
             header = tmp;
         }
-        debug_assert!((header >= TAG_OBJECT && header <= TAG_NULL) || header == TAG_REGION);
+        debug_assert!(header >= TAG_OBJECT && header <= TAG_NULL);
         (*object).tag = header;
     }
 

@@ -11,23 +11,26 @@ actor {
     let blockInBytes = pageInBytes * 128 : Nat64;
     let size = blockInBytes * 3 : Nat64;
     var i = 0 : Nat64;
+    var b = 0 : Nat8;
 
     // Check size for necessary number of pages.
     let reqPages = size / pageInBytes;
 
     P.debugPrint("reqPages = " # (debug_show reqPages));
     P.debugPrint("M.size() = " # (debug_show M.size()));
-    
-    // assert M.size() == reqPages; /* Not sure where "+ 1" comes from. Stable var saving, I think. */
 
-    // Load out previously-stored byte pattern, one byte at a time.
+    assert M.size() == reqPages;
+
+    // Load out previously-stored byte pattern in a defined interval.
+    // The interval serves for faster test runs on the CI, to avoid `drun` batch limit. 
     // Check each byte is what we would have written, if we were repeating the same logic again.
     while (i < size) {
-        let expected = P.natToNat8(P.nat64ToNat(i % 256)) : Nat8;
-        let loaded = M.loadNat8(i);        
+        let expected = b;
+        let loaded = M.loadNat8(i);
         //P.debugPrint(" - " # (debug_show {i; expected; loaded}));
         assert loaded == expected;
-        i := i + 1;
+        i := i + 10;
+        b := b +% 1;
     };
 
     P.debugPrint ("actor1: checked region0.");

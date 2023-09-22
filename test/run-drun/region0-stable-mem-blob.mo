@@ -79,6 +79,7 @@ actor {
         await async {
           ignore StableMemory.loadBlob(i, 8);
         };
+        P.debugPrint(debug_show{loadBlob = (i,8); size = n });
         assert false;
       }
       catch e {

@@ -4,85 +4,10 @@ import P "mo:⛔";
 import Region "stable-region/Region";
 actor {
 
-  P.debugPrint("Begin");
+  stable var n : Nat64 = 0;
 
-  let r2 = Region.new();
-  let r2_id = Region.id r2;
+  stable let r = Region.new();
 
-  P.debugPrint("Created region " # (debug_show r2_id));
-
-  // assert r2_id == 2;
-  assert (Region.size r2) == 0;
-
-  let (r3, r4) = (Region.new(), Region.new());
-
-  P.debugPrint("Created regions " # (debug_show (Region.id r3)) # " and " # (debug_show (Region.id r4)));
-
-  assert Region.grow(r2, 137 * 17) == 0;
-  assert Region.grow(r3, 137) == 0;
-  assert Region.grow(r4, 17) == 0;
-
-  P.debugPrint("Grew all regions.");
-
-  assert Region.grow(r2, 137 * 17) == 137 * 17;
-  assert Region.grow(r3, 137) == 137;
-  assert Region.grow(r4, 17) == 17;
-
-  P.debugPrint("Grew all regions, again.");
-
-  P.debugPrint("Storing data into region 2.");
-  let addr : Nat64 = 137 << 16 + 137;
-  Region.storeNat8(r2, addr, 137);
-
-  P.debugPrint("Loading data from region 2.");
-  let data = Region.loadNat8(r2, addr);
-  P.debugPrint(debug_show data);
-  assert data == 137;
-  P.debugPrint("Done.");
-
-  do {
-  P.debugPrint("Storing data into region 3.");
-  let addr : Nat64 = 137 << 16 - 1;
-  Region.storeNat8(r3, addr, 138); 
-
-  P.debugPrint("Loading data from region 3.");
-  let data = Region.loadNat8(r3, addr);
-  P.debugPrint(debug_show data);
-  assert data == 138;
-  P.debugPrint("Done.");
-  };
-
-  do {
-  P.debugPrint("Storing data into region 4.");
-  let addr : Nat64 = 16 << 16 + 137;
-  Region.storeNat8(r4, addr, 139);
-
-  P.debugPrint("Loading data from region 4.");
-  let data = Region.loadNat8(r4, addr);
-  P.debugPrint(debug_show data);
-  assert data == 139;
-  P.debugPrint("Done.");
-  };
-
-  do {
-  P.debugPrint("re-Loading data from region 2.");
-  let addr : Nat64 = 137 << 16 + 137;
-  let data = Region.loadNat8(r2, addr);
-  P.debugPrint(debug_show data);
-  assert data == 137;
-  P.debugPrint("Done.");
-  };
-
-  do {
-  P.debugPrint("re-Loading data from region 3.");
-  let addr : Nat64 = 137 << 16 - 1;
-  let data = Region.loadNat8(r3, addr);
-  P.debugPrint(debug_show data);
-  assert data == 138;
-  P.debugPrint("Done.");
-  };
-
-/*
   assert (n == Region.size(r));
 
   func valOfNat64(n : Nat64) : Blob {
@@ -109,10 +34,9 @@ actor {
     i += size;
     size += 1;
   };
-*/
+
 
   system func preupgrade() {
-/*
     P.debugPrint("upgrading..." # debug_show n);
     let m = Region.grow(r, 1);
 
@@ -134,11 +58,9 @@ actor {
       i += size;
       size += 1;
     };
-*/
   };
 
   public func testBounds() : async () {
-/*
     if (n == 0) return;
     assert (n == Region.size(r));
     P.debugPrint (debug_show {testBounds=n});
@@ -164,13 +86,10 @@ actor {
       };
       i += 1;
     };
-*/
   };
 
   system func postupgrade() {
-/*
     P.debugPrint("...upgraded" # debug_show n);
-*/
   };
 
 }
@@ -181,10 +100,10 @@ actor {
 // too slow on ic-ref-run:
 //SKIP comp-ref
 
-//xCALL upgrade ""
-//xCALL ingress testBounds "DIDL\x00\x00"
-//xCALL upgrade ""
-//xCALL ingress testBounds "DIDL\x00\x00"
-//xCALL upgrade ""
-//xCALL ingress testBounds "DIDL\x00\x00"
-//xCALL upgrade ""
+//CALL upgrade ""
+//CALL ingress testBounds "DIDL\x00\x00"
+//CALL upgrade ""
+//CALL ingress testBounds "DIDL\x00\x00"
+//CALL upgrade ""
+//CALL ingress testBounds "DIDL\x00\x00"
+//CALL upgrade ""

@@ -2,8 +2,6 @@ import Prim "mo:⛔";
 
 module {
 
-  public let region0 = Prim.stableMemoryRegion;
-
   public let new = Prim.regionNew;
   public let id = Prim.regionId;
 

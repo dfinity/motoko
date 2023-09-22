@@ -15,7 +15,7 @@ pub unsafe fn root_set() -> Roots {
     Roots {
         static_roots: ic::get_static_roots(),
         continuation_table_location: crate::continuation_table::continuation_table_loc(),
-        region0_ptr_location: crate::region0::region0_get_ptr_loc(),
+        region0_ptr_location: crate::region::region0_get_ptr_loc(),
     }
 }
 

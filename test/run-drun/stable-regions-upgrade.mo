@@ -3,11 +3,10 @@
 
 import P "mo:⛔";
 import Region "stable-region/Region";
-import Region0 "stable-mem/StableMemory";
+import StableMemory "stable-mem/StableMemory";
 
 actor {
   stable var n = 0;
-  stable var r0 = (prim "stableMemoryRegion" : () -> Region) ();
   stable var r1 = Region.new();
   stable var r2 = Region.new();
 
@@ -16,15 +15,15 @@ actor {
   P.debugPrint "grow three big regions (including region0).";
   // Interleave growing regions by a block each:
   do {
-    ignore Region.grow(r0, block_size_in_pages);
+    ignore StableMemory.grow(block_size_in_pages);
     ignore Region.grow(r1, block_size_in_pages);
     ignore Region.grow(r2, block_size_in_pages);
 
-    ignore Region.grow(r0, block_size_in_pages);
+    ignore StableMemory.grow(block_size_in_pages);
     ignore Region.grow(r1, block_size_in_pages);
     ignore Region.grow(r2, block_size_in_pages);
 
-    ignore Region.grow(r0, block_size_in_pages);
+    ignore StableMemory.grow(block_size_in_pages);
     ignore Region.grow(r1, block_size_in_pages);
     ignore Region.grow(r2, block_size_in_pages);
   };
@@ -36,7 +35,6 @@ actor {
   };
   public func sanityTest() {
     P.debugPrint("sanity check. n=" # debug_show n);
-    assert Region.id(r0) == 0;
     assert Region.id(r1) == 16;
     assert Region.id(r2) == 17;
   };

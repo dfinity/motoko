@@ -51,7 +51,7 @@ unsafe fn compacting_gc<M: Memory>(mem: &mut M) {
         |hp| linear_memory::set_hp_unskewed(hp),
         ic::get_static_roots(),
         crate::continuation_table::continuation_table_loc(),
-        crate::region0::region0_get_ptr_loc(),
+        crate::region::region0_get_ptr_loc(),
         // note_live_size
         |live_size| ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, live_size),
         // note_reclaimed
@@ -242,10 +242,7 @@ unsafe fn update_refs<SetHp: Fn(usize)>(set_hp: SetHp, heap_base: usize) {
             debug_assert!(p_size_words.as_usize() > size_of::<Obj>().as_usize());
             // Update forwarding pointer
             let new_obj = p_new as *mut Obj;
-            debug_assert!(
-                (new_obj.tag() >= TAG_OBJECT && new_obj.tag() <= TAG_NULL)
-                    || new_obj.tag() == TAG_REGION
-            );
+            debug_assert!(new_obj.tag() >= TAG_OBJECT && new_obj.tag() <= TAG_NULL);
         }
 
         free += p_size_words.to_bytes().as_usize();
@@ -297,7 +294,7 @@ unsafe fn unthread(obj: *mut Obj, new_loc: usize) {
     }
 
     // At the end of the chain is the original header for the object
-    debug_assert!((header >= TAG_OBJECT && header <= TAG_NULL) || header == TAG_REGION);
+    debug_assert!(header >= TAG_OBJECT && header <= TAG_NULL);
 
     (*obj).tag = header;
 }

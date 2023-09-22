@@ -144,7 +144,7 @@ let argspec = [
   "--stable-regions",
   Arg.Unit (fun () ->
     Flags.use_stable_regions := true),
-      " Use stable regions for stable memory (8MB minimum footprint)";
+      " force eager initialization of stable regions metadata (for testing purposes); consumes between 386KiB or 8MiB of additional physical stable memory, depending on current use of ExperimentalStableMemory library";
 
   "--generational-gc",
   Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.Generational),
@@ -153,7 +153,7 @@ let argspec = [
   "--incremental-gc",
   Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.Incremental),
   " use incremental GC";
-    
+
   "--compacting-gc",
   Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.MarkCompact),
   " use compacting GC";
@@ -180,7 +180,17 @@ let argspec = [
 
   "--trap-on-call-error",
   Arg.Unit (fun () -> Flags.trap_on_call_error := true),
-  " Trap, don't throw an `Error`, when an IC call fails due to destination queue full or freezing threshold is crossed. Emulates behaviour of moc versions < 0.8.0."
+  " Trap, don't throw an `Error`, when an IC call fails due to destination queue full or freezing threshold is crossed. Emulates behaviour of moc versions < 0.8.0.";
+
+  (* optimizations *)
+  "-fno-shared-code",
+  Arg.Unit (fun () -> Flags.share_code := false),
+  " do *not* share low-level utility code: larger code size but decreased cycle consumption (default)";
+
+  "-fshared-code",
+  Arg.Unit (fun () -> Flags.share_code := true),
+  " do share low-level utility code: smaller code size but increased cycle consumption"
+
   ]
 
   @ Args.inclusion_args

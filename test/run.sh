@@ -26,7 +26,7 @@ DTESTS=no
 IDL=no
 PERF=no
 VIPER=no
-WASMTIME_OPTIONS="--disable-cache"
+WASMTIME_OPTIONS="--disable-cache --enable-cranelift-nan-canonicalization"
 WRAP_drun=$(realpath $(dirname $0)/drun-wrapper.sh)
 WRAP_ic_ref_run=$(realpath $(dirname $0)/ic-ref-run-wrapper.sh)
 SKIP_RUNNING=${SKIP_RUNNING:-no}
@@ -196,8 +196,7 @@ then
   else
     if [ $ACCEPT = yes ]
     then
-      echo "ERROR: Could not run ic-ref-run, cannot update expected test output"
-      exit 1
+      echo "WARNING: Could not run ic-ref-run, cannot update expected test output"
     else
       echo "WARNING: Could not run ic-ref-run, will skip running some tests"
       HAVE_ic_ref_run=no
@@ -351,7 +350,7 @@ do
         then
           run comp $moc_with_flags --hide-warnings --map -c $mangled -o $out/$base.wasm
           if [ $HAVE_ic_wasm = yes ]; then
-            run opt ic-wasm -o $out/$base.opt.wasm $out/$base.wasm shrink --optimize O3 --keep-name-section
+            run opt ic-wasm -o $out/$base.opt.wasm $out/$base.wasm optimize O3 --keep-name-section
           fi
         else
           run comp $moc_with_flags -g -wasi-system-api --hide-warnings --map -c $mangled -o $out/$base.wasm
@@ -434,6 +433,14 @@ do
       if grep -q "# *SKIP $runner" $(basename $file)
       then
         continue
+      fi
+
+      if grep -q "# *INCREMENTAL-GC-ONLY" $(basename $file)
+      then
+        if [[ $EXTRA_MOC_ARGS != *"--incremental-gc"* ]]
+        then 
+          continue
+        fi
       fi
 
       have_var_name="HAVE_${runner//-/_}"

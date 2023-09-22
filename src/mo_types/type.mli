@@ -56,13 +56,15 @@ and scope = typ
 and bind_sort = Scope | Type
 and bind = {var : var; sort: bind_sort; bound : typ}
 
-and field = {lab : lab; typ : typ; depr : string option}
+and src = {depr : string option; region : Source.region}
+and field = {lab : lab; typ : typ; src : src}
 
 and con = kind Cons.t
 and kind =
   | Def of bind list * typ
   | Abs of bind list * typ
 
+val empty_src : src
 
 (* Syntactic orderings *)
 

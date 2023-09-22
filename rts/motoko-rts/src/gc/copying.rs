@@ -36,7 +36,7 @@ unsafe fn copying_gc<M: Memory>(mem: &mut M) {
         |hp| linear_memory::set_hp_unskewed(hp),
         ic::get_static_roots(),
         crate::continuation_table::continuation_table_loc(),
-        crate::region0::region0_get_ptr_loc(),
+        crate::region::region0_get_ptr_loc(),
         // note_live_size
         |live_size| ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, live_size),
         // note_reclaimed
@@ -182,10 +182,7 @@ unsafe fn evac<M: Memory>(
     // Update forwarding pointer
     let to_space_obj = obj_addr as *mut Obj;
     debug_assert!(obj_size.as_usize() > size_of::<Obj>().as_usize());
-    debug_assert!(
-        to_space_obj.tag() >= TAG_OBJECT && to_space_obj.tag() <= TAG_NULL
-            || to_space_obj.tag() == TAG_REGION
-    );
+    debug_assert!(to_space_obj.tag() >= TAG_OBJECT && to_space_obj.tag() <= TAG_NULL);
 }
 
 unsafe fn scav<M: Memory>(
