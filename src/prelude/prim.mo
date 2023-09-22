@@ -183,6 +183,8 @@ func textCompare(t1 : Text, t2 : Text) : Int8 = (prim "text_compare" : (Text, Te
 
 // Text lowercase
 func textLowercase(t : Text) : Text = (prim "text_lowercase" : (Text) -> Text) (t);
+// Text uppercase
+func textUppercase(t : Text) : Text = (prim "text_uppercase" : (Text) -> Text) (t);
 
 // Exotic bitwise operations
 func popcntNat8(w : Nat8) : Nat8 = (prim "popcnt8" : Nat8 -> Nat8) w;

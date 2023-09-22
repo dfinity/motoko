@@ -252,8 +252,11 @@ let prim trap =
     end
   | "text_len" -> fun _ v k ->
     k (Int (Nat.of_int (List.length (Lib.Utf8.decode (Value.as_text v)))))
-  | "text_lowercase" -> fun _ v k ->
-    k (Text (String.lowercase_ascii (Value.as_text v))) (* TODO -- use Unicode here. *)
+  | "text_lowercase" ->
+     fun _ v k ->
+     k (Text (String.lowercase_ascii (Value.as_text v))) (* TODO -- use Unicode here. *)
+  | "text_uppercase" -> fun _ v k ->
+     k (Text (String.uppercase_ascii (Value.as_text v))) (* TODO -- use Unicode here. *)
   | "text_compare" -> fun _ v k ->
     (match Value.as_tup v with
      | [a; b] -> k (Int8 (Int_8.of_int

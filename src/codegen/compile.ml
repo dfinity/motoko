@@ -1037,6 +1037,7 @@ module RTS = struct
     E.add_func_import env "rts" "text_size" [I32Type] [I32Type];
     E.add_func_import env "rts" "text_to_buf" [I32Type; I32Type] [];
     E.add_func_import env "rts" "text_lowercase" [I32Type] [I32Type];
+    E.add_func_import env "rts" "text_uppercase" [I32Type] [I32Type];
     E.add_func_import env "rts" "region_init" [I32Type] [];
     E.add_func_import env "rts" "alloc_region" [I64Type; I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "init_region" [I32Type; I64Type; I32Type; I32Type] [];
@@ -4019,7 +4020,9 @@ module Text = struct
     TaggedSmallWord.untag_codepoint ^^
     E.call_import env "rts" "text_singleton"
   let to_blob env = E.call_import env "rts" "blob_of_text"
+
   let lowercase env = E.call_import env "rts" "text_lowercase"
+  let uppercase env = E.call_import env "rts" "text_uppercase"
 
   let of_blob env =
     let (set_blob, get_blob) = new_local env "blob" in
@@ -4027,7 +4030,6 @@ module Text = struct
     get_blob ^^ Blob.as_ptr_len env ^^
     E.call_import env "rts" "utf8_valid" ^^
     G.if1 I32Type (Opt.inject_simple env get_blob) (Opt.null_lit env)
-
 
   let iter env =
     E.call_import env "rts" "text_iter"
@@ -10807,6 +10809,11 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla,
     compile_exp_vanilla env ae e ^^
     Text.lowercase env
+
+  | OtherPrim "text_uppercase", [e] ->
+    SR.Vanilla,
+    compile_exp_vanilla env ae e ^^
+    Text.uppercase env
 
   | OtherPrim "performanceCounter", [e] ->
     SR.UnboxedWord64,

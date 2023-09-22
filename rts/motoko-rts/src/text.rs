@@ -32,6 +32,7 @@ use crate::memory::{alloc_blob, Memory};
 use crate::rts_trap_with;
 use crate::types::{size_of, Blob, Bytes, Concat, Stream, Value, TAG_BLOB, TAG_CONCAT};
 
+use alloc::string::String;
 use core::cmp::{min, Ordering};
 use core::{slice, str};
 
@@ -422,12 +423,26 @@ pub unsafe fn text_singleton<M: Memory>(mem: &mut M, char: u32) -> Value {
 /// Convert a Text value into lower case (generally a different length).
 #[ic_mem_fn]
 pub unsafe fn text_lowercase<M: Memory>(mem: &mut M, text: Value) -> Value {
+    text_convert(mem, text, |s| s.to_lowercase())
+}
+
+/// Convert a Text value into upper case (generally a different length).
+#[ic_mem_fn]
+pub unsafe fn text_uppercase<M: Memory>(mem: &mut M, text: Value) -> Value {
+    text_convert(mem, text, |s| s.to_uppercase())
+}
+
+/// Convert a Text value via given to_string function
+unsafe fn text_convert<M: Memory, F>(mem: &mut M, text: Value, to_string: F) -> Value
+where
+    F: Fn(&str) -> String,
+{
     let blob = blob_of_text(mem, text).as_blob_mut();
-    let string = str::from_utf8_unchecked(slice::from_raw_parts(
+    let str = str::from_utf8_unchecked(slice::from_raw_parts(
         blob.payload_addr() as *const u8,
         blob.len().as_usize(),
-    ))
-    .to_lowercase();
+    ));
+    let string = to_string(&str);
     let bytes = string.as_bytes();
     let lowercase = alloc_blob(mem, Bytes(bytes.len() as u32));
     let mut i = 0;
