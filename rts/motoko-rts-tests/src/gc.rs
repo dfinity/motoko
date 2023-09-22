@@ -60,7 +60,6 @@ fn test_heaps() -> Vec<TestHeap> {
             ],
             roots: vec![0, 2, 3],
             continuation_table: vec![0],
-            region0_ptr_loc: vec![0],
         },
         // Tests pointing to the same object in multiple fields of an object. Also has unreachable
         // objects.
@@ -68,14 +67,12 @@ fn test_heaps() -> Vec<TestHeap> {
             heap: vec![(0, vec![]), (1, vec![]), (2, vec![])],
             roots: vec![1],
             continuation_table: vec![0, 0],
-            region0_ptr_loc: vec![0],
         },
         // Root points backwards in heap. Caught a bug in mark-compact collector.
         TestHeap {
             heap: vec![(0, vec![]), (1, vec![2]), (2, vec![1])],
             roots: vec![2],
             continuation_table: vec![],
-            region0_ptr_loc: vec![0],
         },
     ]
 }
@@ -93,7 +90,6 @@ struct TestHeap {
     heap: Vec<(ObjectIdx, Vec<ObjectIdx>)>,
     roots: Vec<ObjectIdx>,
     continuation_table: Vec<ObjectIdx>,
-    region0_ptr_loc: Vec<ObjectIdx>,
 }
 
 /// Test all GC implementations with the given heap
@@ -102,7 +98,6 @@ fn test_gcs(heap_descr: &TestHeap) {
         &heap_descr.heap,
         &heap_descr.roots,
         &heap_descr.continuation_table,
-        &heap_descr.region0_ptr_loc,
     );
     reset_gc();
 }
@@ -111,9 +106,8 @@ fn test_gc(
     refs: &[(ObjectIdx, Vec<ObjectIdx>)],
     roots: &[ObjectIdx],
     continuation_table: &[ObjectIdx],
-    region0_ptr_loc: &[ObjectIdx],
 ) {
-    let mut heap = MotokoHeap::new(refs, roots, continuation_table, region0_ptr_loc);
+    let mut heap = MotokoHeap::new(refs, roots, continuation_table);
 
     initialize_gc(&mut heap);
 
@@ -128,6 +122,7 @@ fn test_gc(
         heap.heap_ptr_offset(),
         heap.static_root_array_variable_offset(),
         heap.continuation_table_variable_offset(),
+        heap.region0_ptr_offset(),
     );
 
     for _ in 0..3 {
@@ -137,6 +132,7 @@ fn test_gc(
         let heap_ptr_offset = heap.heap_ptr_offset();
         let static_array_variable_offset = heap.static_root_array_variable_offset();
         let continuation_table_variable_offset = heap.continuation_table_variable_offset();
+        let region0_ptr_offset = heap.region0_ptr_offset();
         check_dynamic_heap(
             check_all_reclaimed, // check for unreachable objects
             refs,
@@ -147,6 +143,7 @@ fn test_gc(
             heap_ptr_offset,
             static_array_variable_offset,
             continuation_table_variable_offset,
+            region0_ptr_offset,
         );
     }
 }
@@ -195,6 +192,7 @@ fn check_dynamic_heap(
     heap_ptr_offset: usize,
     static_root_array_variable_offset: usize,
     continuation_table_variable_offset: usize,
+    region0_ptr_offset: usize,
 ) {
     let objects_map: FxHashMap<ObjectIdx, &[ObjectIdx]> = objects
         .iter()
@@ -214,6 +212,8 @@ fn check_dynamic_heap(
     let continuation_table_address =
         unskew_pointer(read_word(heap, continuation_table_variable_offset));
     let continuation_table_offset = continuation_table_address as usize - heap.as_ptr() as usize;
+
+    let region0_addr = unskew_pointer(read_word(heap, region0_ptr_offset));
 
     while offset < heap_ptr_offset {
         let object_offset = offset;
@@ -260,6 +260,13 @@ fn check_dynamic_heap(
                 // in-heap mark stack blobs
                 let length = read_word(heap, offset);
                 offset += WORD_SIZE + length as usize;
+            } else if tag == TAG_REGION {
+                if !is_forwarded {
+                    assert_eq!(address, region0_addr as usize);
+                }
+                offset += (size_of::<Region>() - size_of::<Obj>())
+                    .to_bytes()
+                    .as_usize();
             } else {
                 assert!(tag == TAG_ARRAY || tag >= TAG_ARRAY_SLICE_MIN);
 

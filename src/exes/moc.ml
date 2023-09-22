@@ -160,7 +160,17 @@ let argspec = [
 
   "--trap-on-call-error",
   Arg.Unit (fun () -> Flags.trap_on_call_error := true),
-  " Trap, don't throw an `Error`, when an IC call fails due to destination queue full or freezing threshold is crossed. Emulates behaviour of moc versions < 0.8.0."
+  " Trap, don't throw an `Error`, when an IC call fails due to destination queue full or freezing threshold is crossed. Emulates behaviour of moc versions < 0.8.0.";
+
+  (* optimizations *)
+  "-fno-shared-code",
+  Arg.Unit (fun () -> Flags.share_code := false),
+  " do *not* share low-level utility code: larger code size but decreased cycle consumption (default)";
+
+  "-fshared-code",
+  Arg.Unit (fun () -> Flags.share_code := true),
+  " do share low-level utility code: smaller code size but increased cycle consumption"
+
   ]
 
   @ Args.inclusion_args

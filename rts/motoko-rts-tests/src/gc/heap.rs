@@ -39,7 +39,6 @@ impl MotokoHeap {
         map: &[(ObjectIdx, Vec<ObjectIdx>)],
         roots: &[ObjectIdx],
         continuation_table: &[ObjectIdx],
-        _region0_ptr_loc: &[ObjectIdx],
     ) -> MotokoHeap {
         MotokoHeap {
             inner: Rc::new(RefCell::new(MotokoHeapInner::new(
@@ -181,6 +180,8 @@ impl MotokoHeapInner {
         self.offset_to_address(self.continuation_table_variable_offset)
     }
 
+    /// Get the address of the region0 pointer
+    #[incremental_gc]
     fn region0_ptr_address(&self) -> usize {
         self.offset_to_address(self.region0_pointer_variable_offset)
     }
@@ -210,19 +211,20 @@ impl MotokoHeapInner {
             + roots.len() * size_of::<MutBox>().as_usize())
             * WORD_SIZE;
 
-        let continuation_table_size_byes = (size_of::<Array>()
-            + Words(continuation_table.len() as u32))
-        .to_bytes()
-        .as_usize();
-
-        let dynamic_objects_size_bytes = {
+        let dynamic_heap_size_without_roots = {
             let object_headers_words = map.len() * (size_of::<Array>().as_usize() + 1);
             let references_words = map.iter().map(|(_, refs)| refs.len()).sum::<usize>();
             (object_headers_words + references_words) * WORD_SIZE
         };
 
+        let continuation_table_size = (size_of::<Array>() + Words(continuation_table.len() as u32))
+            .to_bytes()
+            .as_usize();
+
+        let region0_size = size_of::<Region>().to_bytes().as_usize();
+
         let dynamic_heap_size_bytes =
-            dynamic_objects_size_bytes + static_root_set_size_bytes + continuation_table_size_byes;
+            dynamic_heap_size_without_roots + continuation_table_size + region0_size;
 
         let total_heap_size_bytes = root_pointers_size_bytes + dynamic_heap_size_bytes;
 
@@ -236,8 +238,8 @@ impl MotokoHeapInner {
         let realign = (32 - (heap.as_ptr() as usize + root_pointers_size_bytes) % 32) % 32;
         assert_eq!(realign % 4, 0);
 
-        // Maps `ObjectIdx`s into their offsets in the heap
-        let (static_root_array_address, continuation_table_address) = create_dynamic_heap(
+        // Maps `ObjectIdx`s into their offsets in the heap.
+        let object_addrs: FxHashMap<ObjectIdx, usize> = create_dynamic_heap(
             map,
             roots,
             continuation_table,
@@ -384,6 +386,8 @@ fn create_dynamic_heap(
         .to_bytes()
         .as_usize()
         + n_fields * WORD_SIZE;
+    let continuation_table_size =
+        size_of::<Array>().to_bytes().as_usize() + continuation_table.len() * WORD_SIZE;
 
     let mut heap_offset = root_section_offset;
     let mut root_mutboxes = vec![];
@@ -472,7 +476,7 @@ fn create_static_memory(
         make_pointer(continuation_table_address),
     );
 
-    let no_region_0 = make_scalar(0);
+    let region0_ptr = region0_offset as u32 + heap.as_ptr() as u32;
     // Write region 0 pointer as the last word in static memory
-    write_word(heap, region0_pointer_variable_offset, no_region_0);
+    write_word(heap, region0_pointer_variable_offset, make_pointer(region0_ptr));
 }

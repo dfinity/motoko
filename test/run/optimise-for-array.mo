@@ -1,3 +1,4 @@
+//MOC-FLAG -fshared-code
 import Prim "mo:⛔";
 
 // Differences between incremental and non-incremental compilation (additional forwarding header field).

@@ -43,3 +43,4 @@ let experimental_field_aliasing = ref false
 let ocaml_js = ref false
 let trap_on_call_error = ref false
 let use_stable_regions = ref false
+let share_code = ref false

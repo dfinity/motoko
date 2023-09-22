@@ -3,8 +3,8 @@
 
 use core::ptr::null;
 
-use crate::gc::generational::remembered_set::RememberedSet;
 use crate::gc::incremental::partitioned_heap::PARTITION_SIZE;
+use crate::gc::remembered_set::RememberedSet;
 use crate::memory::Memory;
 use crate::types::*;
 use crate::visitor::visit_pointer_fields;

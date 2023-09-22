@@ -401,7 +401,7 @@ unsafe fn alloc_region<M: Memory>(
     r_ptr
 }
 
-#[ic_mem_fn]
+#[ic_mem_fn(ic_only)]
 unsafe fn init_region<M: Memory>(
     mem: &mut M,
     r: Value,
@@ -726,6 +726,7 @@ pub(crate) unsafe fn region_migration_from_some_stable_memory<M: Memory>(mem: &m
 // region manager migration/initialization, with pre-existing stable data.
 // Case: Version 2 into version 2 ("Trivial migration" case).
 //
+#[cfg(feature = "ic")]
 pub(crate) unsafe fn region_migration_from_regions_plus<M: Memory>(mem: &mut M) {
     use crate::stable_mem::{read, read_u16, read_u32, read_u64, size};
 
@@ -763,7 +764,7 @@ pub(crate) unsafe fn region_migration_from_regions_plus<M: Memory>(mem: &mut M) 
 //
 // region manager migration/initialization, with pre-existing stable data.
 //
-#[ic_mem_fn]
+#[ic_mem_fn(ic_only)]
 pub(crate) unsafe fn region_init<M: Memory>(mem: &mut M, use_stable_regions: u32) {
     match crate::stable_mem::get_version() {
         VERSION_STABLE_HEAP_NO_REGIONS => {
@@ -1038,7 +1039,7 @@ pub unsafe fn region_load_float64<M: Memory>(mem: &mut M, r: Value, offset: u64)
     core::primitive::f64::from_le_bytes(bytes).into()
 }
 
-#[ic_mem_fn]
+#[ic_mem_fn(ic_only)]
 pub(crate) unsafe fn region_load_blob<M: Memory>(
     mem: &mut M,
     r: Value,
@@ -1103,7 +1104,7 @@ pub unsafe fn region_store_float64<M: Memory>(mem: &mut M, r: Value, offset: u64
     region_store(mem, r, offset, &core::primitive::f64::to_le_bytes(val))
 }
 
-#[ic_mem_fn]
+#[ic_mem_fn(ic_only)]
 pub(crate) unsafe fn region_store_blob<M: Memory>(mem: &mut M, r: Value, offset: u64, blob: Value) {
     let blob = blob.as_blob();
     let len = blob.len().0;
