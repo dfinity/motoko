@@ -241,6 +241,7 @@ no-timer-set.mo:3.10-3.18: type error [M0119], object field setTimer is not cont
     tan : Float -> Float;
     textCompare : (Text, Text) -> Int8;
     textLowercase : Text -> Text;
+    textUppercase : Text -> Text;
     time : () -> Nat64;
     trap : Text -> None
   }
