@@ -13,24 +13,17 @@ unsafe impl GlobalAlloc for HeapAllocator {
         let align = layout.align();
         // align is a power of 2
         debug_assert!(align.count_ones() == 1);
-        if align <= 4 {
-            // payload_addr() is always word-aligned (so also nibble and byte aligned)
-            let blob =
-                alloc_blob::<ic::IcMemory>(&mut ic::IcMemory, Bytes(size as u32)).as_blob_mut();
-            let address = blob.payload_addr();
-            debug_assert!(address as usize % align == 0);
-            address
-        } else {
-            // for other alignments (all powers of 2), we need to round up the size and
-            // round up payload_addr to nearest aligned address
-            let size_up = size + (align - 1);
-            let blob =
-                alloc_blob::<ic::IcMemory>(&mut ic::IcMemory, Bytes(size_up as u32)).as_blob_mut();
-            let payload_addr = blob.payload_addr() as usize;
-            let address = (payload_addr + (align - 1)) & (!(align - 1));
-            debug_assert!(address % align == 0);
-            debug_assert!(address + size - 1 <= payload_addr + size_up - 1);
-            address as *mut u8
+        let word_size = crate::constants::WORD_SIZE as usize;
+        let min_align = (align + word_size - 1) / word_size * word_size;
+        let blob_size = size + min_align - word_size;
+        let blob =
+            alloc_blob::<ic::IcMemory>(&mut ic::IcMemory, Bytes(blob_size as u32)).as_blob_mut();
+        let payload_address = blob.payload_addr() as usize;
+        let aligned_address = (payload_address + min_align - 1) / min_align * min_align;
+
+        debug_assert_eq!(aligned_address % layout.align(), 0);
+        debug_assert!(aligned_address + size <= payload_address + blob_size);
+        aligned_address as *mut u8
         }
     }
 
