@@ -437,5 +437,5 @@ pub unsafe fn text_lowercase<M: Memory>(mem: &mut M, text: Value) -> Value {
         *target_ptr.offset(i) = *b;
         i += 1;
     }
-    lowercase
+    allocation_barrier(lowercase)
 }
