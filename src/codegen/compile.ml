@@ -9,7 +9,6 @@ instruction lists, as it takes care of (1) source locations and (2) labels.
 This file is split up in a number of modules, purely for namespacing and
 grouping. Every module has a high-level prose comment explaining the concept;
 this keeps documentation close to the code (a lesson learned from Simon PJ).
-
 *)
 
 open Ir_def
