@@ -9,7 +9,7 @@ pub struct TestMemory {
 }
 
 impl TestMemory {
-    pub fn new(size: Words<u32>) -> TestMemory {
+    pub fn new(size: Words<usize>) -> TestMemory {
         let bytes = size.to_bytes().as_usize();
         let heap = vec![0u8; bytes].into_boxed_slice();
         let hp = heap.as_ptr() as usize;
@@ -36,7 +36,7 @@ impl TestMemory {
 }
 
 impl Memory for TestMemory {
-    unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value {
+    unsafe fn alloc_words(&mut self, n: Words<usize>) -> Value {
         let bytes = n.to_bytes();
 
         // Update heap pointer
@@ -45,12 +45,12 @@ impl Memory for TestMemory {
         self.hp = new_hp;
 
         // Grow memory if needed
-        self.grow_memory(new_hp as u64);
+        self.grow_memory(new_hp);
 
         Value::from_ptr(old_hp)
     }
 
-    unsafe fn grow_memory(&mut self, ptr: u64) {
+    unsafe fn grow_memory(&mut self, ptr: usize) {
         let heap_end = self.heap.as_ptr() as usize + self.heap.len();
         if ptr as usize > heap_end {
             // We don't allow growing memory in tests, allocate large enough for the test

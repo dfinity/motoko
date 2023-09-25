@@ -634,5 +634,5 @@ func @cancelTimer(id : Nat) {
   }
 };
 
-func @set_global_timer(time : Nat64) = ignore (prim "global_timer_set" : Nat64 -> Nat64) time;
 
+func @set_global_timer(time : Nat64) = ignore (prim "global_timer_set" : Nat64 -> Nat64) time;

@@ -3,28 +3,33 @@ import Prim "mo:⛔";
 
 // Differences between incremental and non-incremental compilation (additional forwarding header field).
 
-// CHECK: (local $check0 i32)
+// CHECK: (local $check0 i64)
 
 // CHECK-NOT:  call $@immut_array_size
-// DON'TCHECK: i32.load offset=9
-// CHECK:      i32.load offset= 
-// CHECK:      i32.const 2
-// CHECK:      i32.shl
-// DON'TCHECK: i32.load offset=13
+// DON'TCHECK: i64.load offset=17
+// CHECK:      i64.load offset= 
+// CHECK:      i64.const 3
+// CHECK:      i64.shl
+// CHECK:      i64.lt_u
+// CHECK:      i64.add
+// DON'TCHECK: i64.load offset=25
 // CHECK:      local.tee $check0
 // CHECK-NEXT: call $print_text
-// CHECK:      i32.const 4
-// CHECK-NEXT: i32.add
+// CHECK:      i64.const 8
+// CHECK-NEXT: i64.add
 for (check0 in ["hello", "world"].vals()) { Prim.debugPrint check0 };
 
 
 // CHECK-NOT:  call $@mut_array_size
-// DON'TCHECK: i32.load offset=9
-// CHECK:      i32.load offset=
-// CHECK:      i32.const 2
-// CHECK:      i32.shl
-// DON'TCHECK: i32.load offset=13
-// CHECK:      local.tee $check1
+// DON'TCHECK: i64.load offset=17
+// CHECK:      i64.load offset=
+// CHECK:      i64.const 3
+// CHECK-NEXT: i64.shl
+// CHECK:      i64.lt_u
+// CHECK:      i64.add
+// DON'TCHECK: i64.load offset=25
+// CHECK:      i64.load offset=
+// CHECK-NEXT: local.tee $check1
 // CHECK-NEXT: call $print_text
 // CHECK:      i32.const 4
 // CHECK-NEXT: i32.add
@@ -33,11 +38,11 @@ for (check1 in [var "hello", "mutable", "world"].vals()) { Prim.debugPrint check
 let array = [var "hello", "remutable", "world"];
 array[1] := "mutable";
 // CHECK-NOT:   call $@immut_array_size
-// DON'TCHECK:  i32.load offset=9
-// CHECK:       i32.load offset=
-// CHECK:       i32.const 2
-// CHECK:       i32.shl
-// DON'T-CHECK: i32.lt_u
+// DON'TCHECK:  i64.load offset=17
+// CHECK:       i64.load offset=
+// CHECK:       i64.const 3
+// CHECK:       i64.shl
+// DON'T-CHECK: i64.lt_u
 // DON'T-CHECK: local.get $array
 // DON'T-CHECK: local.set $check2
 // `arr` being a `VarE` already (but we rebind anyway, otherwise we open a can of worms)
@@ -45,23 +50,23 @@ array[1] := "mutable";
 for (check2 in array.vals()) { Prim.debugPrint check2 };
 
 // CHECK-NOT:  call $@immut_array_size
-// DON'TCHECK: i32.load offset=9
-// CHECK:      i32.load offset=
-// CHECK:      i32.const 2
-// CHECK:      i32.shl
-// CHECK:      i32.lt_u
-// CHECK:      i32.add
-// DON'TCHECK: i32.load offset=13
-// CHECK:      local.tee $check3
-// CHECK:      i32.const 4
-// CHECK-NEXT: i32.add
+// DON'TCHECK: i64.load offset=17
+// CHECK:      i64.load offset=
+// CHECK:      i64.const 3
+// CHECK:      i64.shl
+// CHECK:      i64.lt_u
+// CHECK:      i64.add
+// DON'TCHECK: i64.load offset=25
+// CHECK:      i64.load offset=
+// CHECK-NEXT: local.tee $check3
 // interfering parentheses don't disturb us
 for (check3 in (((["hello", "immutable", "world"].vals())))) { Prim.debugPrint check3 };
 
 
-// CHECK:      i32.const 84
+// CHECK:      i64.const 84
 // CHECK:      call $B_add
 // CHECK-NEXT: call $B_eq
+// CHECK-NEXT: i32.wrap_i64
 // CHECK-NEXT: if
 // CHECK-NEXT: loop
 // CHECK-NEXT: br 0
@@ -76,6 +81,7 @@ if (c == c + 1) {
 
 // CHECK:      call $B_add
 // CHECK-NEXT: call $B_eq
+// CHECK-NEXT: i32.wrap_i64
 // CHECK-NEXT: if
 // CHECK-NEXT: loop
 // CHECK-NEXT: br 0
@@ -93,21 +99,21 @@ check6[1] := "mutable";
 // this passes the IR type check, which demonstrates that no name capture happens
 for (check6 in check6.vals()) { ignore check6 };
 
-// DON'TCHECK: i32.load offset=9
-// CHECK:      i32.load offset=
-// CHECK:      i32.const 2
-// CHECK:      i32.shl
+// DON'TCHECK: i64.load offset=17
+// CHECK:      i64.load offset=
+// CHECK:      i64.const 3
+// CHECK:      i64.shl
 // argument to vals can have an effect too, expect it
 for (check7 in [].vals(Prim.debugPrint "want to see you")) { };
 
 // CHECK:      local.set $num8
 // CHECK-NOT:  call $@immut_array_size
-// DON'TCHECK: i32.load offset=9
-// CHECK:      i32.load offset=
-// CHECK:      i32.const 1
-// CHECK:      i32.shl
-// CHECK:      i32.lt_u
-// CHECK-NOT:  i32.add
+// DON'TCHECK: i64.load offset=17
+// CHECK:      i64.load offset=
+// CHECK:      i64.const 1
+// CHECK:      i64.shl
+// CHECK:      i64.lt_u
+// CHECK-NOT:  i64.add
 // CHECK:      local.tee $check8
 // CHECK-NEXT: local.get $num8
 // CHECK-NEXT: call $B_add

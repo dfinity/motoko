@@ -72,7 +72,7 @@ unsafe fn should_start() -> bool {
     use self::partitioned_heap::PARTITION_SIZE;
     use crate::memory::ic;
 
-    const CRITICAL_HEAP_LIMIT: Bytes<u32> = Bytes(u32::MAX - 768 * 1024 * 1024);
+    const CRITICAL_HEAP_LIMIT: Bytes<usize> = Bytes(usize::MAX - 768 * 1024 * 1024);
     const CRITICAL_GROWTH_THRESHOLD: f64 = 0.01;
     const NORMAL_GROWTH_THRESHOLD: f64 = 0.65;
 
@@ -105,7 +105,7 @@ unsafe fn record_gc_stop<M: Memory>() {
     use crate::persistence::HEAP_START;
 
     let heap_size = ic::get_heap_size();
-    let static_size = Bytes(HEAP_START as u32);
+    let static_size = Bytes(HEAP_START);
     debug_assert!(heap_size >= static_size);
     let dynamic_size = heap_size - static_size;
     let state = get_incremental_gc_state();

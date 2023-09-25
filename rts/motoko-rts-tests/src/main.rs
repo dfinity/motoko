@@ -1,5 +1,8 @@
 #![feature(proc_macro_hygiene)]
 
+#[macro_use]
+mod print;
+
 mod bigint;
 mod bitrel;
 mod continuation_table;
@@ -12,16 +15,14 @@ mod stream;
 mod text;
 mod utf8;
 
-use motoko_rts::types::{read64, write64, Bytes};
-
 fn main() {
-    if std::mem::size_of::<usize>() != 4 {
-        println!("Motoko RTS only works on 32-bit architectures");
+    if std::mem::size_of::<usize>() != 8 {
+        println!("Motoko RTS only works on 64-bit architectures");
         std::process::exit(1);
     }
 
     unsafe {
-        test_read_write_64_bit();
+        println!("Tests started");
         bigint::test();
         bitrel::test();
         continuation_table::test();
@@ -32,24 +33,14 @@ fn main() {
         stream::test();
         text::test();
         utf8::test();
+        println!("Tests completed");
     }
-}
-
-fn test_read_write_64_bit() {
-    println!("Testing 64-bit read-write");
-    const TEST_VALUE: u64 = 0x1234_5678_9abc_def0;
-    let mut lower = 0u32;
-    let mut upper = 0u32;
-    write64(&mut lower, &mut upper, TEST_VALUE);
-    assert_eq!(lower, 0x9abc_def0);
-    assert_eq!(upper, 0x1234_5678);
-    assert_eq!(read64(lower, upper), TEST_VALUE);
 }
 
 // Called by the RTS to panic
 #[no_mangle]
-extern "C" fn rts_trap(ptr: *const u8, len: Bytes<u32>) -> ! {
-    let msg = unsafe { std::slice::from_raw_parts(ptr, len.as_usize()) };
+extern "C" fn rts_trap(ptr: *const u8, len: u32) -> ! {
+    let msg = unsafe { std::slice::from_raw_parts(ptr, len as usize) };
     match core::str::from_utf8(msg) {
         Err(err) => panic!(
             "rts_trap_with called with non-UTF8 string (error={:?}, string={:?})",
@@ -67,7 +58,13 @@ extern "C" fn bigint_trap() -> ! {
 
 // Called by the RTS for debug prints
 #[no_mangle]
-unsafe extern "C" fn print_ptr(ptr: usize, len: u32) {
-    let str: &[u8] = core::slice::from_raw_parts(ptr as *const u8, len as usize);
-    println!("[RTS] {}", String::from_utf8_lossy(str));
+unsafe extern "C" fn print_ptr(ptr: usize, len: usize) {
+    let str: &[u8] = core::slice::from_raw_parts(ptr as *const u8, len);
+    println!("[RTS] {}", &String::from_utf8_lossy(str));
+}
+
+// Program entry point by wasmtime
+#[no_mangle]
+pub fn _start() {
+    main();
 }

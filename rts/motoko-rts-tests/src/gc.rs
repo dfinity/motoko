@@ -77,7 +77,7 @@ fn test_heaps() -> Vec<TestHeap> {
     ]
 }
 
-fn test_random_heap(seed: u64, max_objects: u32) {
+fn test_random_heap(seed: u64, max_objects: usize) {
     let random_heap = random::generate(seed, max_objects);
     test_gcs(&random_heap);
 }
@@ -158,8 +158,7 @@ fn initialize_gc(heap: &mut MotokoHeap) {
         let allocation_size = heap.heap_ptr_address() - heap.heap_base_address();
 
         // Synchronize the partitioned heap with one big combined allocation by starting from the base pointer as the heap pointer.
-        let result =
-            get_partitioned_heap().allocate(heap, Bytes(allocation_size as u32).to_words());
+        let result = get_partitioned_heap().allocate(heap, Bytes(allocation_size).to_words());
         // Check that the heap pointer (here equals base pointer) is unchanged, i.e. no partition switch has happened.
         // This is a restriction in the unit test where `MotokoHeap` only supports contiguous bump allocation during initialization.
         assert_eq!(result.get_ptr(), heap.heap_base_address());
@@ -219,7 +218,7 @@ fn check_dynamic_heap(
         let object_offset = offset;
 
         // Address of the current object. Used for debugging.
-        let address = offset as usize + heap.as_ptr() as usize;
+        let address = offset + heap.as_ptr() as usize;
 
         if object_offset == static_root_array_offset {
             check_static_root_array(object_offset, roots, heap);
@@ -231,7 +230,7 @@ fn check_dynamic_heap(
 
         if object_offset == continuation_table_offset {
             check_continuation_table(object_offset, continuation_table, heap);
-            offset += (size_of::<Array>() + Words(continuation_table.len() as u32))
+            offset += (size_of::<Array>() + Words(continuation_table.len()))
                 .to_bytes()
                 .as_usize();
             continue;
@@ -242,7 +241,7 @@ fn check_dynamic_heap(
 
         if tag == TAG_ONE_WORD_FILLER {
         } else if tag == TAG_FREE_SPACE {
-            let words = read_word(heap, offset) as usize;
+            let words = read_word(heap, offset);
             offset += WORD_SIZE;
             offset += words * WORD_SIZE;
         } else {
@@ -250,7 +249,7 @@ fn check_dynamic_heap(
             forward = read_word(heap, offset);
             offset += WORD_SIZE;
 
-            let is_forwarded = forward != make_pointer(address as u32);
+            let is_forwarded = forward != make_pointer(address);
 
             if tag == TAG_MUTBOX {
                 // MutBoxes of static root array, will be scanned indirectly when checking the static root array.
@@ -259,10 +258,10 @@ fn check_dynamic_heap(
                 assert!(!is_forwarded);
                 // in-heap mark stack blobs
                 let length = read_word(heap, offset);
-                offset += WORD_SIZE + length as usize;
+                offset += WORD_SIZE + length;
             } else if tag == TAG_REGION {
                 if !is_forwarded {
-                    assert_eq!(address, region0_addr as usize);
+                    assert_eq!(address, region0_addr);
                 }
                 offset += (size_of::<Region>() - size_of::<Obj>())
                     .to_bytes()
@@ -271,14 +270,14 @@ fn check_dynamic_heap(
                 assert!(tag == TAG_ARRAY || tag >= TAG_ARRAY_SLICE_MIN);
 
                 if is_forwarded {
-                    let forward_offset = forward as usize - heap.as_ptr() as usize;
+                    let forward_offset = forward - heap.as_ptr() as usize;
                     let length = read_word(
                         heap,
                         forward_offset + size_of::<Obj>().to_bytes().as_usize(),
                     );
 
                     // Skip stale object version that has been relocated during incremental GC.
-                    offset += length as usize * WORD_SIZE;
+                    offset += length * WORD_SIZE;
                 } else {
                     let n_fields = read_word(heap, offset);
                     offset += WORD_SIZE;
@@ -443,10 +442,10 @@ fn check_continuation_table(mut offset: usize, continuation_table: &[ObjectIdx],
     assert_eq!(read_word(heap, offset), TAG_ARRAY);
     offset += WORD_SIZE;
 
-    assert_eq!(read_word(heap, offset), make_pointer(table_addr as u32));
+    assert_eq!(read_word(heap, offset), make_pointer(table_addr));
     offset += WORD_SIZE;
 
-    assert_eq!(read_word(heap, offset), continuation_table.len() as u32);
+    assert_eq!(read_word(heap, offset), continuation_table.len());
     offset += WORD_SIZE;
 
     for obj in continuation_table.iter() {

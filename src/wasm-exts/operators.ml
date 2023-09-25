@@ -7,15 +7,15 @@ that it got basically replicated into the customModuleDecode.ml file.
 Base revision: WebAssembly/spec@a7a1856.
 
 The changes are:
- * None for now
+ * Manual selective support for bulk-memory operations `memory_copy` and `memory_fill` (WebAssembly/spec@7fa2f20).
 
 The code is otherwise as untouched as possible, so that we can relatively
 easily apply diffs from the original code (possibly manually).
 *)
 
 open Wasm.Source
-open Wasm.Types
-open Wasm.Values
+open Types
+open Values
 open Ast
 
 
@@ -230,3 +230,7 @@ let f64_reinterpret_i64 = Convert (F64 F64Op.ReinterpretInt)
 let memory_size = MemorySize
 let memory_grow = MemoryGrow
 
+(* Manual extension for specific bulk-memory operations *)
+let memory_fill = MemoryFill
+let memory_copy = MemoryCopy
+(* End of manual extension *)

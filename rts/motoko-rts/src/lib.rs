@@ -5,7 +5,10 @@
     arbitrary_self_types,
     core_intrinsics,
     panic_info_message,
-    proc_macro_hygiene
+    proc_macro_hygiene,
+    // We do not need simd but this flag enables `core::arch:wasm64`.
+    // See https://github.com/rust-lang/rust/issues/90599
+    simd_wasm64
 )]
 
 #[macro_use]
@@ -29,6 +32,7 @@ pub mod gc;
 #[cfg(feature = "ic")]
 mod idl;
 pub mod leb128;
+mod libc_declarations;
 mod mem_utils;
 pub mod memory;
 #[cfg(feature = "ic")]
@@ -47,8 +51,6 @@ pub mod types;
 pub mod utf8;
 mod visitor;
 
-use types::Bytes;
-
 use motoko_rts_macros::*;
 
 #[ic_mem_fn(ic_only)]
@@ -57,12 +59,12 @@ unsafe fn version<M: memory::Memory>(mem: &mut M) -> types::Value {
 }
 
 #[ic_mem_fn(ic_only)]
-unsafe fn alloc_words<M: memory::Memory>(mem: &mut M, n: types::Words<u32>) -> types::Value {
+unsafe fn alloc_words<M: memory::Memory>(mem: &mut M, n: types::Words<usize>) -> types::Value {
     crate::gc::incremental::get_partitioned_heap().allocate(mem, n)
 }
 
 extern "C" {
-    fn rts_trap(msg: *const u8, len: Bytes<u32>) -> !;
+    fn rts_trap(msg: *const u8, len: u32) -> !;
 }
 
 pub(crate) unsafe fn trap_with_prefix(prefix: &str, msg: &str) -> ! {
@@ -93,7 +95,8 @@ pub(crate) unsafe fn trap_with_prefix(prefix: &str, msg: &str) -> ! {
         b_idx += 1;
     }
 
-    rts_trap(c_str.as_ptr(), Bytes(b_idx as u32));
+    assert!(b_idx <= u32::MAX as usize);
+    rts_trap(c_str.as_ptr(), b_idx as u32);
 }
 
 pub(crate) unsafe fn idl_trap_with(msg: &str) -> ! {

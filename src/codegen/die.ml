@@ -219,10 +219,10 @@ and prim_type_ref (prim : Type.prim) : die list * int =
           (dw_attrs [name; Bit_size 29; Data_bit_offset 8; Encoding dw_ATE_UTF])
       | Type.(Int | Nat) ->
         with_referencable_tags add dw_TAG_base_type
-          (dw_attrs [name; Bit_size 32; Data_bit_offset 0(*FIXME: for now*); Encoding dw_ATE_signed])
+          (dw_attrs [name; Bit_size 64; Data_bit_offset 0(*FIXME: for now*); Encoding dw_ATE_signed])
       | Type.Text -> (* FIXME: should be dynamic, like Any *)
         with_referencable_tags add dw_TAG_base_type
-          (dw_attrs [name; Bit_size 32; Data_bit_offset 0(*FIXME: for now*); Encoding dw_ATE_UTF])
+          (dw_attrs [name; Bit_size 64; Data_bit_offset 0(*FIXME: for now*); Encoding dw_ATE_UTF])
       | Type.(Int8|Int16|Int32) ->
         with_referencable_tags add dw_TAG_base_type
           (dw_attrs [name; Bit_size 32; Data_bit_offset 0(*FIXME: for now*); Encoding dw_ATE_signed])

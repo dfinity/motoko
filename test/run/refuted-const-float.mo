@@ -3,7 +3,7 @@ let 0.67 = 3.14;
 
 // CHECK: (func $init (type
 // CHECK: call $blob_of_principal
-// CHECK: i32.const 14
+// CHECK: i64.const 14
 // CHECK-NEXT: call $print_ptr
 // CHECK-NEXT: unreachable)
 

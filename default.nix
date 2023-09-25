@@ -20,6 +20,10 @@ let ic-ref-run =
       cp ${ic-hs-pkgs.ic-hs}/bin/ic-ref-run $out/bin
   ''; in
 
+let
+  nixos-unstable = import nixpkgs.sources.nixpkgs-unstable {};
+in
+
 let haskellPackages = nixpkgs.haskellPackages.override {
       overrides = import nix/haskell-packages.nix nixpkgs subpath;
     }; in
@@ -35,6 +39,7 @@ let
     wasmtime
     rust-bindgen
     python3
+    nixos-unstable.emscripten
   ] ++ pkgs.lib.optional pkgs.stdenv.isDarwin [
     libiconv
   ];
@@ -193,7 +198,7 @@ rec {
         name = "motoko-rts-deps";
         src = subpath ./rts;
         sourceRoot = "rts/motoko-rts-tests";
-        sha256 = "sha256-jN5nx5UNBHlYKnC0kk90h6mWPUNrqPS7Wln2TixbGgA=";
+        sha256 = "sha256-YEw2AFi15JVKP7owsPDoBT3qSegOO90FRn2qoUBAICw=";
         copyLockfile = true;
       };
 
@@ -241,6 +246,7 @@ rec {
           "directory" = "$(stripHash ${allDeps})"
         __END__
 
+        
         ${llvmEnv}
         export TOMMATHSRC=${nixpkgs.sources.libtommath}
         export MUSLSRC=${nixpkgs.sources.musl-wasi}/libc-top-half/musl
@@ -415,23 +421,23 @@ rec {
       '';
     };
 
-    profiling-graphs = testDerivation {
-      src = test_src "perf";
-      buildInputs =
-        (with nixpkgs; [ perl wabt wasm-profiler-instrument wasm-profiler-postproc flamegraph-bin ]) ++
-        [ moc nixpkgs.drun ];
-      checkPhase = ''
-        patchShebangs .
-        type -p moc && moc --version
-        type -p drun && drun --help
-        ./profile-report.sh
-      '';
-      installPhase = ''
-        mv _profile $out;
-        mkdir -p $out/nix-support
-        echo "report flamegraphs $out index.html" >> $out/nix-support/hydra-build-products
-      '';
-    };
+    # profiling-graphs = testDerivation {
+    #  src = test_src "perf";
+    #  buildInputs =
+    #    (with nixpkgs; [ perl wabt wasm-profiler-instrument wasm-profiler-postproc flamegraph-bin ]) ++
+    #    [ moc nixpkgs.drun ];
+    #  checkPhase = ''
+    #    patchShebangs .
+    #    type -p moc && moc --version
+    #    type -p drun && drun --help
+    #    ./profile-report.sh
+    #  '';
+    #  installPhase = ''
+    #    mv _profile $out;
+    #    mkdir -p $out/nix-support
+    #    echo "report flamegraphs $out index.html" >> $out/nix-support/hydra-build-products
+    #  '';
+    # };
 
 
     fix_names = builtins.mapAttrs (name: deriv:
@@ -480,7 +486,8 @@ rec {
       perf       = perf_subdir "perf"       [ moc nixpkgs.drun ];
       bench      = perf_subdir "bench"      [ moc nixpkgs.drun ic-wasm ];
       viper      = test_subdir "viper"      [ moc nixpkgs.which nixpkgs.openjdk nixpkgs.z3 ];
-      inherit qc lsp unit candid profiling-graphs coverage;
+      # TODO: profiling-graph is excluded because the underlying partity_wasm is deprecated and does not support 64-bit.
+      inherit qc lsp unit candid coverage;
     }) // { recurseForDerivations = true; };
 
   samples = stdenv.mkDerivation {
@@ -524,7 +531,7 @@ rec {
         doInstallCheck = true;
         test = ./test + "/test-${n}.js";
         installCheckPhase = ''
-          NODE_PATH=$out/bin node $test
+          NODE_PATH=$out/bin node --experimental-wasm-memory64 $test
         '';
       };
     in
@@ -662,15 +669,13 @@ rec {
     mkdir -p $out
     ln -s ${base-doc} $out/base-doc
     ln -s ${docs} $out/docs
-    ln -s ${tests.profiling-graphs} $out/flamegraphs
     ln -s ${tests.coverage} $out/coverage
     cd $out;
     # generate a simple index.html, listing the entry points
     ( echo docs/overview-slides.html;
       echo docs/html/motoko.html;
       echo base-doc/
-      echo coverage/
-      echo flamegraphs/ ) | \
+      echo coverage/ ) | \
       tree -H . -l --fromfile -T "Motoko build reports" > index.html
   '';
 
@@ -739,8 +744,9 @@ rec {
       check-grammar
       check-error-codes
     ] ++
-    builtins.attrValues tests ++
-    builtins.attrValues js;
+    builtins.attrValues tests
+    ++ builtins.attrValues js
+    ;
   };
 
   viperServer = nixpkgs.fetchurl {

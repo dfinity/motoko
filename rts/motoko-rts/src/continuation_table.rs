@@ -6,7 +6,7 @@
 //!
 //! It needs to support the following operations
 //!
-//!  1. Adding a continuation (any heap pointer) and getting an index (i32)
+//!  1. Adding a continuation (any heap pointer) and getting an index (usize)
 //!  2. Looking up a continuation by index, which also frees it
 //!  3. Peek into an existing continuation and hand back additional data
 //!  4. GC must be able to traverse and move continuations in the table
@@ -34,7 +34,7 @@ use crate::types::Value;
 
 use motoko_rts_macros::ic_mem_fn;
 
-const INITIAL_SIZE: u32 = 256;
+const INITIAL_SIZE: usize = 256;
 
 // The static variables are re-initialized on canister upgrades and therefore not part of the
 // persistent metadata.
@@ -44,10 +44,10 @@ const INITIAL_SIZE: u32 = 256;
 static mut TABLE: Value = Value::from_scalar(0);
 
 // Number of currently live continuations
-static mut N_CONTINUATIONS: u32 = 0;
+static mut N_CONTINUATIONS: usize = 0;
 
 // Next free slot
-static mut FREE_SLOT: u32 = 0;
+static mut FREE_SLOT: usize = 0;
 
 unsafe fn create_continuation_table<M: Memory>(mem: &mut M) {
     TABLE = alloc_array(mem, INITIAL_SIZE);
@@ -91,7 +91,7 @@ pub unsafe fn table_initialized() -> bool {
 }
 
 #[ic_mem_fn]
-pub unsafe fn remember_continuation<M: Memory>(mem: &mut M, ptr: Value) -> u32 {
+pub unsafe fn remember_continuation<M: Memory>(mem: &mut M, ptr: Value) -> usize {
     if !table_initialized() {
         create_continuation_table(mem);
     }
@@ -120,10 +120,10 @@ pub unsafe fn remember_continuation<M: Memory>(mem: &mut M, ptr: Value) -> u32 {
 
 // Position of the future in explicit self-send ContinuationTable entries
 // Invariant: keep this synchronised with compiler.ml (see future_array_index)
-const FUTURE_ARRAY_INDEX: u32 = 2;
+const FUTURE_ARRAY_INDEX: usize = 2;
 
 #[no_mangle]
-pub unsafe extern "C" fn peek_future_continuation(idx: u32) -> Value {
+pub unsafe extern "C" fn peek_future_continuation(idx: usize) -> Value {
     if !table_initialized() {
         rts_trap_with("peek_future_continuation: Continuation table not allocated");
     }
@@ -142,7 +142,7 @@ pub unsafe extern "C" fn peek_future_continuation(idx: u32) -> Value {
 }
 
 #[ic_mem_fn]
-pub unsafe fn recall_continuation<M: Memory>(mem: &mut M, idx: u32) -> Value {
+pub unsafe fn recall_continuation<M: Memory>(mem: &mut M, idx: usize) -> Value {
     if !table_initialized() {
         rts_trap_with("recall_continuation: Continuation table not allocated");
     }
@@ -169,7 +169,7 @@ pub unsafe fn recall_continuation<M: Memory>(mem: &mut M, idx: u32) -> Value {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn continuation_count() -> u32 {
+pub unsafe extern "C" fn continuation_count() -> usize {
     N_CONTINUATIONS
 }
 
@@ -180,7 +180,7 @@ pub(crate) unsafe fn continuation_table_loc() -> *mut Value {
 
 #[cfg(feature = "ic")]
 #[no_mangle]
-unsafe extern "C" fn continuation_table_size() -> u32 {
+unsafe extern "C" fn continuation_table_size() -> usize {
     if !table_initialized() {
         0
     } else {

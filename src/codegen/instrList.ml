@@ -9,7 +9,7 @@ features are
 
 open Wasm_exts.Ast
 open Wasm.Source
-open Wasm.Values
+open Wasm_exts.Values
 
 let combine_shifts const op = function
   | I32 opl, ({it = I32 l'; _} as cl), I32 opr, I32 r' when opl = opr ->
@@ -116,6 +116,9 @@ let optimize : instr list -> instr list = fun is ->
       go l' (Option.get (combine_shifts const op (opl, cl, opr, cr.it)) @ r')
     (* Null shifts can be eliminated *)
     | l', {it = Const {it = I32 0l; _}; _} :: {it = Binary (I32 I32Op.(Shl|ShrS|ShrU)); _} :: r' ->
+      go l' r'
+    (* Widen followed by narrow is pointless - but not the opposite! *)
+    | {it = Convert (I64 I64Op.(ExtendSI32 | ExtendUI32)); _} :: l', {it = Convert (I32 I32Op.WrapI64); _} :: r' -> 
       go l' r'
     (* Look further *)
     | _, i::r' -> go (i::l) r'

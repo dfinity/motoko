@@ -112,7 +112,7 @@ impl<'a> UpdateIncrement<'a> {
                 },
                 |gc, slice_start, array| {
                     let length = slice_array(array);
-                    gc.time.advance(1 + (length - slice_start) as usize);
+                    gc.time.advance(1 + length - slice_start);
                     length
                 },
             );

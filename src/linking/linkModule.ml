@@ -6,6 +6,7 @@ plus the dylink section.
 open Wasm_exts.Ast
 open Wasm.Source
 open Wasm_exts.CustomModule
+module I64_convert = Wasm.I64_convert
 
 (*
 This module is a first stab that should be functionally working, but will go
@@ -188,7 +189,7 @@ let is_global_export = function
   | _ -> None
 
 
-let get_fun_typ i m : Wasm.Types.func_type =
+let get_fun_typ i m : Wasm_exts.Types.func_type =
   let imports_n = count_imports is_fun_import m in
   let tyvar =
     if i < imports_n
@@ -202,7 +203,7 @@ let get_fun_typ i m : Wasm.Types.func_type =
     in
   (Lib.List32.nth m.types tyvar).it
 
-let get_global_typ i m : Wasm.Types.global_type =
+let get_global_typ i m : Wasm_exts.Types.global_type =
   let imports_n = count_imports is_global_import m in
   if i < imports_n
   then
@@ -398,42 +399,47 @@ let set_global global value = fun m ->
   let rec go i = function
     | [] -> assert false
     | g::gs when i = Int32.to_int global ->
-      let open Wasm.Types in
-      assert (g.it.gtype = GlobalType (I32Type, Immutable));
+      let open Wasm_exts.Types in
+      assert (g.it.gtype = GlobalType (I64Type, Immutable));
       let g = phrase (fun g' ->
-        { g' with value = [Const (Wasm.Values.I32 value @@ g.at) @@ g.at] @@ g.at }
+        { g' with value = [Const (Wasm_exts.Values.I64 (Int64.of_int (Int32.to_int value)) @@ g.at) @@ g.at] @@ g.at }
       ) g in
       g :: gs
     | g::gs -> g :: go (i+1) gs
   in
   { m with globals = go 0 m.globals }
 
-let fill_global (global : int32) (value : int32) : module_' -> module_' = fun m ->
-  let rec instr' = function
-    | Block (ty, is) -> Block (ty, instrs is)
-    | Loop (ty, is) -> Loop (ty, instrs is)
-    | If (ty, is1, is2) -> If (ty, instrs is1, instrs is2)
-    | GlobalGet v when v.it = global -> Const (Wasm.Values.I32 value @@ v.at)
+let fill_global (global : int32) (value : Wasm_exts.Values.value) : module_' -> module_' = fun m ->
+  let rec instr' to_32 = function
+    | Block (ty, is) -> Block (ty, instrs to_32 is)
+    | Loop (ty, is) -> Loop (ty, instrs to_32 is)
+    | If (ty, is1, is2) -> If (ty, instrs to_32 is1, instrs to_32 is2)
+    | GlobalGet v when v.it = global -> 
+      let encoded_value = match (to_32, value) with
+      | (true, Wasm_exts.Values.I64 number) -> (Wasm_exts.Values.I32 (Int32.of_int (Int64.to_int number)))
+      | _ -> value in
+      Const (encoded_value @@ v.at)
+    | GlobalGet v when v.it = global -> Const (value @@ v.at)
     | GlobalSet v when v.it = global -> assert false
     | i -> i
-  and instr i = phrase instr' i
-  and instrs is = List.map instr is in
+  and instr to_32 i = phrase (instr' to_32) i
+  and instrs to_32 is = List.map (instr to_32) is in
 
-  let func' f = { f with body = instrs f.body } in
+  let func' f = { f with body = instrs false f.body } in
   let func = phrase func' in
   let funcs = List.map func in
 
-  let const = phrase instrs in
+  let const to_32 = phrase (instrs to_32) in
 
-  let global' g = { g with value = const g.value } in
+  let global' g = { g with value = const false g.value } in
   let global = phrase global' in
   let globals = List.map global in
 
-  let table_segment' (s : var list segment') = { s with offset = const s.offset; } in
+  let table_segment' (s : var list segment') = { s with offset = const true s.offset; } in
   let table_segment = phrase (table_segment') in
   let table_segments = List.map table_segment in
 
-  let memory_segment' (s : string segment') = { s with offset = const s.offset; } in
+  let memory_segment' (s : string segment') = { s with offset = const false s.offset; } in
   let memory_segment = phrase (memory_segment') in
   let memory_segments = List.map memory_segment in
 
@@ -500,15 +506,15 @@ let rename_types rn m =
 let read_global gi (m : module_') : int32 =
   let n_impo = count_imports is_global_import m in
   let g = List.nth m.globals (Int32.(to_int (sub gi n_impo))) in
-  let open Wasm.Types in
-  assert (g.it.gtype = GlobalType (I32Type, Immutable));
+  let open Wasm_exts.Types in
+  assert (g.it.gtype = GlobalType (I64Type, Immutable));
   match g.it.value.it with
-  | [{ it = Const {it = Wasm.Values.I32 i;_}; _}] -> i
+  | [{ it = Const {it = Wasm_exts.Values.I64 i;_}; _}] -> Int32.of_int (Int64.to_int i)
   | _ -> assert false
 
 let read_table_size (m : module_') : int32 =
   (* Assumes there is one table *)
-  let open Wasm.Types in
+  let open Wasm_exts.Types in
   match m.tables with
   | [t] ->
     let TableType ({min;max}, _) = t.it.ttype in
@@ -518,20 +524,20 @@ let read_table_size (m : module_') : int32 =
   | _ -> raise (LinkError "Expect one table in first module")
 
 let set_memory_size new_size_bytes : module_' -> module_' = fun m ->
-  let open Wasm.Types in
-  let page_size = Int32.of_int (64*1024) in
-  let new_size_pages = Int32.(add (div new_size_bytes page_size) 1l) in
+  let open Wasm_exts.Types in
+  let page_size = Int64.of_int (64*1024) in
+  let new_size_pages = Int64.(add (div new_size_bytes page_size) 1L) in
   match m.memories with
   | [t] ->
     { m with
       memories = [ phrase (fun m ->
-        { mtype = MemoryType ({min = new_size_pages; max = None}) }
+        { mtype = MemoryType ({min = new_size_pages; max = None}, I64IndexType) }
       ) t ]
     }
   | _ -> raise (LinkError "Expect one memory in first module")
 
 let set_table_size new_size : module_' -> module_' = fun m ->
-  let open Wasm.Types in
+  let open Wasm_exts.Types in
   match m.tables with
   | [t] ->
     { m with
@@ -562,7 +568,7 @@ let fill_item_import module_name item_name new_base (m : module_') : module_' =
           go i is
     in go 0 m.imports in
 
-    m |> fill_global base_global new_base
+    m |> fill_global base_global (Wasm_exts.Values.I64 (I64_convert.extend_i32_u new_base))
       |> remove_imports is_global_import [base_global, base_global]
       |> rename_globals Int32.(fun i ->
           if i < base_global then i
@@ -573,15 +579,17 @@ let fill_item_import module_name item_name new_base (m : module_') : module_' =
 let fill_memory_base_import new_base : module_' -> module_' =
   fill_item_import "env" "__memory_base" new_base
 
-let fill_table_base_import new_base : module_' -> module_' =
+let fill_table_base64_import new_base : module_' -> module_' =
   fill_item_import "env" "__table_base" new_base
 
-
+let fill_table_base32_import new_base : module_' -> module_' =
+  fill_item_import "env" "__table_base32" new_base
+        
 (* Concatenation of modules *)
 
 let join_modules
       (em1 : extended_module) (m2 : module_') (ns2 : name_section)
-      (type_indices : (Wasm.Types.func_type, int32) Hashtbl.t) : extended_module =
+      (type_indices : (Wasm_exts.Types.func_type, int32) Hashtbl.t) : extended_module =
   let m1 = em1.module_ in
   let joined = 
     { em1 with
@@ -610,7 +618,7 @@ let join_modules
      we'll have the unit function in the type section already. *)
   match m2.start with
   | None -> joined
-  | Some fi -> prepend_to_start fi.it (Hashtbl.find type_indices (Wasm.Types.FuncType ([], []))) joined
+  | Some fi -> prepend_to_start fi.it (Hashtbl.find type_indices (Wasm_exts.Types.FuncType ([], []))) joined
 
 (* The main linking function *)
 
@@ -629,12 +637,12 @@ let check_typ is_thing get_typ string_of m1 m2 (i1, i2) =
     raise (LinkError msg)
 
 let check_fun_typ =
-  check_typ is_fun_import get_fun_typ Wasm.Types.string_of_func_type
+  check_typ is_fun_import get_fun_typ Wasm_exts.Types.string_of_func_type
 let check_global_typ =
-  check_typ is_global_import get_global_typ Wasm.Types.string_of_global_type
+  check_typ is_global_import get_global_typ Wasm_exts.Types.string_of_global_type
 
 
-let align p n =
+let align_i32 p n =
   let open Int32 in
   let p = to_int p in
   shift_left (shift_right_logical (add n (sub (shift_left 1l p) 1l)) p) p
@@ -671,10 +679,10 @@ let add_globals (globals0 : global list) (insert0 : (int32 * global') list) : gl
   go 0l globals0 insert0
 
 let mk_i32_const (i : int32) =
-  Const (Wasm.Values.I32 i @@ no_region) @@ no_region
+  Const (Wasm_exts.Values.I32 i @@ no_region) @@ no_region
 
 let mk_i32_global (i : int32) =
-  { gtype = Wasm.Types.GlobalType (Wasm.Types.I32Type, Wasm.Types.Immutable);
+  { gtype = Wasm_exts.Types.GlobalType (Wasm_exts.Types.I32Type, Wasm_exts.Types.Immutable);
     value = [mk_i32_const i] @@ no_region }
 
 (* Generate (global index, function index) pairs for GOT.func imports of a
@@ -764,8 +772,8 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
 
   (* Beginning of unused space *)
   let old_heap_start = read_global heap_global em1.module_ in
-  let lib_heap_start = align dylink.memory_alignment old_heap_start in
-  let new_heap_start = align 4l (Int32.add lib_heap_start dylink.memory_size) in
+  let lib_heap_start = align_i32 dylink.memory_alignment old_heap_start in
+  let new_heap_start = align_i32 8l (Int32.add lib_heap_start dylink.memory_size) in
 
   (* Data segments must fit below 6MB according to the persistent heap layout. 
      The first 2MB are reserved for the Rust call stacks such that data segments are limited to 4MB. *)
@@ -776,12 +784,13 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
   );
 
   let old_table_size = read_table_size em1.module_ in
-  let lib_table_start = align dylink.table_alignment old_table_size in
+  let lib_table_start = align_i32 dylink.table_alignment old_table_size in
 
   (* Fill in memory and table base pointers *)
   let dm2 = em2.module_
     |> fill_memory_base_import lib_heap_start
-    |> fill_table_base_import lib_table_start in
+    |> fill_table_base64_import lib_table_start 
+    |> fill_table_base32_import lib_table_start in
 
   let got_func_imports = collect_got_func_imports dm2 in
 
@@ -826,11 +835,11 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
   (* Rename types in both modules to eliminate duplicate types. *)
 
   (* Maps function types to their indices in the new module we're creating *)
-  let type_indices : (Wasm.Types.func_type, int32) Hashtbl.t = Hashtbl.create 100 in
+  let type_indices : (Wasm_exts.Types.func_type, int32) Hashtbl.t = Hashtbl.create 100 in
 
   (* Get index of a function type. Creates a new one if we haven't added this
      type yet. *)
-  let add_or_get_ty (ty : Wasm.Types.func_type) =
+  let add_or_get_ty (ty : Wasm_exts.Types.func_type) =
     match Hashtbl.find_opt type_indices ty with
     | None ->
       let idx = Int32.of_int (Hashtbl.length type_indices) in
@@ -841,7 +850,7 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
   in
 
   (* Rename a type in a module. First argument is the list of types in the module. *)
-  let ty_renamer (tys : Wasm.Types.func_type phrase list) (t : int32) : int32 =
+  let ty_renamer (tys : Wasm_exts.Types.func_type phrase list) (t : int32) : int32 =
     let fun_ty = List.nth tys (Int32.to_int t) in
     add_or_get_ty fun_ty.it
   in
@@ -868,7 +877,7 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
   let add_call_ctors =
     match NameMap.find_opt (Lib.Utf8.decode "__wasm_call_ctors") fun_exports2 with
     | None -> fun em -> em
-    | Some fi -> prepend_to_start (funs2 fi) (add_or_get_ty (Wasm.Types.FuncType ([], [])))
+    | Some fi -> prepend_to_start (funs2 fi) (add_or_get_ty (Wasm_exts.Types.FuncType ([], [])))
   in
 
   let new_table_size =
@@ -884,7 +893,7 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
     |> rename_funcs_extended funs1
     |> rename_globals_extended globals1
     |> map_module (set_global heap_global new_heap_start)
-    |> map_module (set_memory_size new_heap_start)
+    |> map_module (set_memory_size (I64_convert.extend_i32_u new_heap_start))
     |> map_module (set_table_size new_table_size)
     )
     ( dm2

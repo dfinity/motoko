@@ -28,7 +28,7 @@ pub unsafe extern "C" fn running_gc() -> bool {
 /// * Resolve forwarding: Used during the GC update phase to adjust old pointers to their new forwarded addresses.
 #[ic_mem_fn]
 pub unsafe fn write_with_barrier<M: Memory>(mem: &mut M, location: *mut Value, value: Value) {
-    debug_assert!(!is_skewed(location as u32));
+    debug_assert!(!is_skewed(location as usize));
     debug_assert_ne!(location, core::ptr::null_mut());
 
     let state = get_incremental_gc_state();

@@ -22,11 +22,11 @@ TOMMATHFILES = \
    mp_decr mp_add_d mp_sub_d
 
 MUSLFILES = \
-  pow pow_data sin cos tan asin acos atan atan2 exp exp_data log log_data fmod \
-  floor scalbn frexp strlen strnlen memcpy memset memchr memcmp snprintf vsnprintf vfprintf \
-  __math_oflow __math_uflow __math_xflow __math_divzero __math_invalid \
-  __rem_pio2 __rem_pio2_large __sin __cos __tan \
-  stubs
+   pow_data exp_data log_data \
+   floor scalbn frexp strlen strnlen memcpy memset memchr memcmp \
+   __math_oflow __math_uflow __math_xflow __math_divzero __math_invalid \
+   __rem_pio2 __rem_pio2_large __sin __cos __tan \
+   stubs
 
 TOMMATHSRC ?= $(CURDIR)/../../libtommath
 MUSLSRC ?= $(CURDIR)/../../wasi-libc/libc-top-half/musl
@@ -63,10 +63,11 @@ TOMMATH_FLAGS = \
 #       and will need tweaks/additions below.
 #       Similarly we define include guards (to suppress certain headers), but those should be
 #       pretty stable.
-#       TODO: run `wasm2wat mo-rts.wasm | grep -F '(import' | grep __fwritex_` expecting empty.
+#       TODO: run `wasm2wat --enable-memory64 mo-rts.wasm | grep -F '(import' | grep __fwritex_` expecting empty.
 #
 #       See also https://stackoverflow.com/questions/1597007/creating-c-macro-with-and-line-token-concatenation-with-positioning-macr
 
+# libc does not yet have a 64-bit port, using 32-bit version instead.
 MUSL_FLAGS = \
   -isystem $(MUSLSRC)/arch/wasm32 \
   -isystem $(MUSLSRC)/src/include \
@@ -90,7 +91,9 @@ MUSL_FLAGS = \
   -D__NEED_off_t \
   -D__NEED_locale_t \
   -Dsqrt=__builtin_sqrt \
-  -Dfabs=__builtin_fabs
+  -Dfabs=__builtin_fabs \
+  -mbulk-memory \
+  -DBULK_MEMORY_THRESHOLD=32
 
 #
 # clang flags
@@ -101,7 +104,7 @@ CLANG_FLAGS = \
    -fpic \
    -fvisibility=hidden \
    --std=c11 \
-   --target=wasm32-emscripten \
+   --target=wasm64 \
    -fno-builtin -ffreestanding \
    --optimize=s \
    -resource-dir=$(wildcard $(WASM_CLANG_LIB)/lib/clang/*)
@@ -123,12 +126,19 @@ _build/wasm:
 _build/i686:
 	mkdir -p $@
 
+# 
+# Common configuration
+# 
+
+RTS_EMSCRIPTEN=emcc -c --target=wasm64-unknown-emscripten -fpic
+RTS_EMSCRIPTEN_DEBUG=$(RTS_EMSCRIPTEN)
+RTS_EMSCRIPTEN_RELEASE=$(RTS_EMSCRIPTEN) -O2
+
 #
 # Let make automatically search these directorys (tommath and musl) for .c files
 #
 
 vpath %.c $(MUSLSRC)/src/math $(MUSLSRC)/src/stdio $(MUSLSRC)/src/string $(MUSLSRC)/src/ctype $(TOMMATHSRC)
-
 
 #
 # Building the libtommath files
@@ -161,9 +171,11 @@ $(TOMMATH_i686_A): $(TOMMATH_i686_O)
 MUSL_WASM_O=$(MUSLFILES:%=_build/wasm/musl_%.o)
 MUSL_WASM_A=_build/libmusl.a
 
-_build/wasm/musl_%.o: %.c | _build/wasm
-	$(WASM_CLANG) $(CLANG_FLAGS) $(MUSL_FLAGS) $< --output $@
+_build/wasm/musl_%.bc: %.c | _build/wasm
+	$(WASM_CLANG) $(CLANG_FLAGS) $(MUSL_FLAGS) -emit-llvm $< --output $@
 
+_build/wasm/musl_%.o: _build/wasm/musl_%.bc
+	$(RTS_EMSCRIPTEN_RELEASE) -o $@ $< 
 
 $(MUSL_WASM_A): $(MUSL_WASM_O)
 	llvm-ar rcs $@ $^
@@ -182,7 +194,7 @@ TOMMATH_BINDINGS_RS=_build/tommath_bindings.rs
 $(TOMMATH_BINDINGS_RS): | _build
 	bindgen $(TOMMATHSRC)/tommath.h \
 	    -o $@ \
-	    --use-core --ctypes-prefix=libc --no-layout-tests \
+	    --use-core --ctypes-prefix="crate::libc_declarations" --no-layout-tests \
 	    --allowlist-function mp_init \
 	    --allowlist-function mp_init_copy \
 	    --allowlist-function mp_set_u32 \
@@ -220,30 +232,109 @@ $(TOMMATH_BINDINGS_RS): | _build
 	# macros like `mp_get_u32` and `mp_isneg` need to be manually implemented.
 
 RTS_DEPENDENCIES=$(TOMMATH_BINDINGS_RS) $(RTS_RUST_FILES) $(RTS_CARGO_FILES) | _build/wasm
-RTS_BUILD=cd motoko-rts && cargo build --target=wasm32-unknown-emscripten -Zbuild-std=core,alloc
+COMPILER_FLAGS=--emit=llvm-ir
+RTS_BUILD=cd motoko-rts && RUSTFLAGS="${COMPILER_FLAGS}" cargo build --target=wasm64-unknown-unknown -Zbuild-std=core
 RTS_DEBUG_BUILD=$(RTS_BUILD)
 RTS_RELEASE_BUILD=$(RTS_BUILD) --release
-RTS_DEBUG_TARGET=motoko-rts/target/wasm32-unknown-emscripten/debug/libmotoko_rts.a
-RTS_RELEASE_TARGET=motoko-rts/target/wasm32-unknown-emscripten/release/libmotoko_rts.a
 
-RTS_RUST_WASM_A=_build/wasm/libmotoko_rts.a
-RTS_RUST_DEBUG_WASM_A=_build/wasm/libmotoko_rts_debug.a
+RTS_DEBUG_TARGET_FOLDER=motoko-rts/target/wasm64-unknown-unknown/debug
+RTS_RELEASE_TARGET_FOLDER=motoko-rts/target/wasm64-unknown-unknown/release
 
-$(RTS_RUST_WASM_A): $(RTS_DEPENDENCIES)
+RTS_DEBUG_TARGET=$(RTS_DEBUG_TARGET_FOLDER)/deps/motoko_rts-*.ll
+RTS_RELEASE_TARGET=$(RTS_RELEASE_TARGET_FOLDER)/deps/motoko_rts-*.ll
+
+CORE_DEBUG_TARGET=$(RTS_DEBUG_TARGET_FOLDER)/deps/core-*.ll
+CORE_RELEASE_TARGET=$(RTS_RELEASE_TARGET_FOLDER)/deps/core-*.ll
+
+COMPILER_BUILTINS_DEBUG_TARGET=$(RTS_DEBUG_TARGET_FOLDER)/deps/compiler_builtins-*.ll
+COMPILER_BUILTINS_RELEASE_TARGET=$(RTS_RELEASE_TARGET_FOLDER)/deps/compiler_builtins-*.ll
+
+BUILD_FOLDER=_build/wasm
+
+RTS_RUST_NON_INCREMENTAL_LLVM_IR=$(BUILD_FOLDER)/libmotoko_rts.ll
+RTS_RUST_NON_INCREMENTAL_DEBUG_LLVM_IR=$(BUILD_FOLDER)/libmotoko_rts_debug.ll
+
+RTS_RUST_INCREMENTAL_LLVM_IR=$(BUILD_FOLDER)/libmotoko_rts_incremental.ll
+RTS_RUST_INCREMENTAL_DEBUG_LLVM_IR=$(BUILD_FOLDER)/libmotoko_rts_incremental_debug.ll
+
+CORE_DEBUG_LLVM_IR=$(BUILD_FOLDER)/core_debug.ll
+CORE_RELEASE_LLVM_IR=$(BUILD_FOLDER)/core.ll
+
+COMPILER_BUILTINS_DEBUG_LLVM_IR=$(BUILD_FOLDER)/compiler_builtins_debug.ll
+COMPILER_BUILTINS_RELEASE_LLVM_IR=$(BUILD_FOLDER)/compiler_builtins.ll
+
+$(RTS_RUST_NON_INCREMENTAL_LLVM_IR): $(RTS_DEPENDENCIES)
+	rm -rf $(RTS_RELEASE_TARGET_FOLDER)
 	$(RTS_RELEASE_BUILD)
-	cp $(RTS_RELEASE_TARGET) $@
+	cp $(CORE_RELEASE_TARGET) -T $(CORE_RELEASE_LLVM_IR)
+	cp $(COMPILER_BUILTINS_RELEASE_TARGET) -T $(COMPILER_BUILTINS_RELEASE_LLVM_IR)
+	cp $(RTS_RELEASE_TARGET) -T $@
 
-$(RTS_RUST_DEBUG_WASM_A): $(RTS_DEPENDENCIES)
+$(RTS_RUST_NON_INCREMENTAL_DEBUG_LLVM_IR): $(RTS_DEPENDENCIES)
+	rm -rf $(RTS_DEBUG_TARGET_FOLDER) 
 	$(RTS_DEBUG_BUILD)
-	cp $(RTS_DEBUG_TARGET) $@
+	cp $(CORE_DEBUG_TARGET) -T $(CORE_DEBUG_LLVM_IR)
+	cp $(COMPILER_BUILTINS_DEBUG_TARGET) -T $(COMPILER_BUILTINS_DEBUG_LLVM_IR)
+	cp $(RTS_DEBUG_TARGET) -T $@
+
+$(RTS_RUST_INCREMENTAL_LLVM_IR): $(RTS_DEPENDENCIES)
+	rm -rf $(RTS_RELEASE_TARGET_FOLDER)
+	$(RTS_RELEASE_BUILD) --features incremental_gc
+	cp $(CORE_RELEASE_TARGET) -T $(CORE_RELEASE_LLVM_IR)
+	cp $(COMPILER_BUILTINS_RELEASE_TARGET) -T $(COMPILER_BUILTINS_RELEASE_LLVM_IR)
+	cp $(RTS_RELEASE_TARGET) -T $@
+
+$(RTS_RUST_INCREMENTAL_DEBUG_LLVM_IR): $(RTS_DEPENDENCIES)
+	rm -rf $(RTS_DEBUG_TARGET_FOLDER)
+	$(RTS_DEBUG_BUILD) --features incremental_gc
+	cp $(CORE_DEBUG_TARGET) -T $(CORE_DEBUG_LLVM_IR)
+	cp $(COMPILER_BUILTINS_DEBUG_TARGET) -T $(COMPILER_BUILTINS_DEBUG_LLVM_IR)
+	cp $(RTS_DEBUG_TARGET) -T $@
+
+
+RTS_RUST_NON_INCREMENTAL_WASM_A=$(BUILD_FOLDER)/libmotoko_rts.o
+RTS_RUST_NON_INCREMENTAL_DEBUG_WASM_A=$(BUILD_FOLDER)/libmotoko_rts_debug.o
+
+RTS_RUST_INCREMENTAL_WASM_A=$(BUILD_FOLDER)/libmotoko_rts_incremental.o
+RTS_RUST_INCREMENTAL_DEBUG_WASM_A=$(BUILD_FOLDER)/libmotoko_rts_incremental_debug.o
+
+CORE_WASM_A=$(BUILD_FOLDER)/core.o
+CORE_DEBUG_WASM_A=$(BUILD_FOLDER)/core_debug.o
+
+COMPILER_BUILTINS_WASM_A=$(BUILD_FOLDER)/compiler_builtins.o
+COMPILER_BUILTINS_DEBUG_WASM_A=$(BUILD_FOLDER)/compiler_builtins_debug.o
+
+$(RTS_RUST_NON_INCREMENTAL_WASM_A): $(RTS_RUST_NON_INCREMENTAL_LLVM_IR)
+	$(RTS_EMSCRIPTEN_RELEASE) -o $@ $+
+
+$(RTS_RUST_NON_INCREMENTAL_DEBUG_WASM_A): $(RTS_RUST_NON_INCREMENTAL_DEBUG_LLVM_IR)
+	$(RTS_EMSCRIPTEN_DEBUG) -o $@ $+
+
+$(RTS_RUST_INCREMENTAL_WASM_A): $(RTS_RUST_INCREMENTAL_LLVM_IR)
+	$(RTS_EMSCRIPTEN_RELEASE) -o $@ $+
+
+$(RTS_RUST_INCREMENTAL_DEBUG_WASM_A): $(RTS_RUST_INCREMENTAL_DEBUG_LLVM_IR)
+	$(RTS_EMSCRIPTEN_DEBUG) -o $@ $+
+
+$(CORE_WASM_A): $(CORE_RELEASE_LLVM_IR)
+	$(RTS_EMSCRIPTEN_RELEASE) -o $@ $+
+
+$(CORE_DEBUG_WASM_A): $(CORE_DEBUG_LLVM_IR)
+	$(RTS_EMSCRIPTEN_DEBUG) -o $@ $+
+
+$(COMPILER_BUILTINS_WASM_A): $(COMPILER_BUILTINS_RELEASE_LLVM_IR)
+	$(RTS_EMSCRIPTEN_RELEASE) -o $@ $+
+
+$(COMPILER_BUILTINS_DEBUG_WASM_A): $(COMPILER_BUILTINS_DEBUG_LLVM_IR)
+	$(RTS_EMSCRIPTEN_DEBUG) -o $@ $+
 
 #
 # The test suite
 #
 
 TEST_DEPENDENCIES=$(TOMMATH_WASM_A) $(TOMMATH_BINDINGS_RS)
-TEST_BUILD=cd motoko-rts-tests && cargo build --target=wasm32-wasi
-TEST_RUN=wasmtime --disable-cache motoko-rts-tests/target/wasm32-wasi/debug/motoko-rts-tests.wasm
+TEST_BUILD=cd motoko-rts-tests && cargo build --target=wasm64-unknown-unknown -Zbuild-std=core,alloc,std,panic_abort
+TEST_RUN=wasmtime --disable-cache --wasm-features=memory64 motoko-rts-tests/target/wasm64-unknown-unknown/debug/motoko-rts-tests.wasm
 
 .PHONY: test
 
@@ -257,33 +348,42 @@ test: $(TEST_DEPENDENCIES)
 
 # These symbols from musl are used by the code generator directly
 EXPORTED_SYMBOLS=\
-  __wasm_call_ctors \
-  memcpy \
-  memcmp \
-  tan \
-  asin \
-  acos \
-  atan \
-  atan2 \
-  pow \
-  sin \
-  cos \
-  exp \
-  fmod \
-  log \
+   __wasm_call_ctors \
+   memcmp \
+   tan \
+   asin \
+   acos \
+   atan \
+   atan2 \
+   pow \
+   sin \
+   cos \
+   exp \
+   fmod \
+   log \
 
 WASM_A_DEPENDENCIES=$(TOMMATH_WASM_A) $(MUSL_WASM_A)
 LINKER_OPTIONS=\
-  --import-memory --shared --no-entry --gc-sections \
+  -mwasm64 --import-memory --shared --no-entry --gc-sections \
   $(EXPORTED_SYMBOLS:%=--export=%) \
   --whole-archive
 
-mo-rts.wasm: $(RTS_RUST_WASM_A) $(WASM_A_DEPENDENCIES)
+mo-rts.wasm: $(RTS_RUST_NON_INCREMENTAL_WASM_A) $(CORE_WASM_A) $(COMPILER_BUILTINS_WASM_A) $(WASM_A_DEPENDENCIES)
 	$(WASM_LD) -o $@ \
 		$(LINKER_OPTIONS) \
 		$+
 
-mo-rts-debug.wasm: $(RTS_RUST_DEBUG_WASM_A) $(WASM_A_DEPENDENCIES)
+mo-rts-debug.wasm: $(RTS_RUST_NON_INCREMENTAL_DEBUG_WASM_A) $(CORE_DEBUG_WASM_A) $(COMPILER_BUILTINS_DEBUG_WASM_A) $(WASM_A_DEPENDENCIES)
+	$(WASM_LD) -o $@ \
+		$(LINKER_OPTIONS) \
+		$+
+
+mo-rts-incremental.wasm: $(RTS_RUST_INCREMENTAL_WASM_A) $(CORE_WASM_A) $(COMPILER_BUILTINS_WASM_A) $(WASM_A_DEPENDENCIES)
+	$(WASM_LD) -o $@ \
+		$(LINKER_OPTIONS) \
+		$+
+
+mo-rts-incremental-debug.wasm: $(RTS_RUST_INCREMENTAL_DEBUG_WASM_A) $(CORE_DEBUG_WASM_A) $(COMPILER_BUILTINS_DEBUG_WASM_A) $(WASM_A_DEPENDENCIES)
 	$(WASM_LD) -o $@ \
 		$(LINKER_OPTIONS) \
 		$+
@@ -301,4 +401,4 @@ clean:
 	  motoko-rts/target \
 	  motoko-rts-tests/target \
 	  motoko-rts-macros/target \
-	  motoko-rts/cargo-home
+	  motoko-rts/cargo-home \

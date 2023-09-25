@@ -21,8 +21,8 @@ pub unsafe extern "C" fn print_value(value: Value) {
 }
 
 pub unsafe fn dump_heap(
-    heap_base: u32,
-    hp: u32,
+    heap_base: usize,
+    hp: usize,
     static_root_location: *mut Value,
     continuation_table_location: *mut Value,
 ) {
@@ -80,7 +80,7 @@ pub(crate) unsafe fn print_static_roots(static_roots: Value) {
 
     let payload_addr = static_roots.payload_addr();
     for i in 0..len {
-        let field_addr = payload_addr.add(i as usize);
+        let field_addr = payload_addr.add(i);
         let _ = write!(&mut write_buf, "{}: {:#x} --> ", i, field_addr as usize);
         print_boxed_object(&mut write_buf, (*field_addr).get_ptr());
         print(&write_buf);
@@ -90,7 +90,7 @@ pub(crate) unsafe fn print_static_roots(static_roots: Value) {
     println!(50, "End of static roots");
 }
 
-unsafe fn print_heap(heap_start: u32, heap_end: u32) {
+unsafe fn print_heap(heap_start: usize, heap_end: usize) {
     println!(
         200,
         "Heap start={:#x}, heap end={:#x}, size={} bytes",
@@ -103,19 +103,19 @@ unsafe fn print_heap(heap_start: u32, heap_end: u32) {
     let mut write_buf = WriteBuf::new(&mut buf);
 
     let mut p = heap_start;
-    let mut i: Words<u32> = Words(0);
+    let mut i: Words<usize> = Words(0);
     while p < heap_end {
-        print_boxed_object(&mut write_buf, p as usize);
+        print_boxed_object(&mut write_buf, p);
         print(&write_buf);
         write_buf.reset();
 
-        let obj_size = block_size(p as usize);
-        p += obj_size.to_bytes().as_u32();
+        let obj_size = block_size(p);
+        p += obj_size.to_bytes().as_usize();
         i += obj_size;
     }
 }
 
-unsafe fn print_tagged_scalar(buf: &mut WriteBuf, p: u32) {
+unsafe fn print_tagged_scalar(buf: &mut WriteBuf, p: usize) {
     let _ = write!(buf, "<Scalar {:#x}>", p);
 }
 
@@ -181,7 +181,7 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
         }
         TAG_BITS64 => {
             let bits64 = obj as *const Bits64;
-            let _ = write!(buf, "<Bits64 {:#x}>", (*bits64).bits());
+            let _ = write!(buf, "<Bits64 {:#x}>", (*bits64).bits);
         }
         TAG_MUTBOX => {
             let mutbox = obj as *const MutBox;
@@ -206,15 +206,11 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
         }
         TAG_BLOB => {
             let blob = obj.as_blob();
-            let _ = write!(buf, "<Blob len={:#x}>", blob.len().as_u32());
+            let _ = write!(buf, "<Blob len={:#x}>", blob.len().as_usize());
         }
         TAG_FWD_PTR => {
             let ind = obj as *const FwdPtr;
             let _ = write!(buf, "<Forwarding to {:#x}>", (*ind).fwd.get_raw());
-        }
-        TAG_BITS32 => {
-            let bits32 = obj as *const Bits32;
-            let _ = write!(buf, "<Bits32 {:#x}>", (*bits32).bits);
         }
         TAG_BIGINT => {
             // Add more details here as needed
@@ -225,7 +221,7 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
             let _ = write!(
                 buf,
                 "<Concat n_bytes={:#x} obj1={:#x} obj2={:#x}>",
-                (*concat).n_bytes.as_u32(),
+                (*concat).n_bytes.as_usize(),
                 (*concat).text1.get_raw(),
                 (*concat).text2.get_raw()
             );
@@ -235,7 +231,7 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
         }
         TAG_FREE_SPACE => {
             let free_space = obj as *const FreeSpace;
-            let _ = write!(buf, "<Free space {} words>", (*free_space).words.as_u32());
+            let _ = write!(buf, "<Free space {} words>", (*free_space).words.as_usize());
         }
         other => {
             let _ = write!(buf, "<??? {} ???>", other);

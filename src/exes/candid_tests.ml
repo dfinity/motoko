@@ -254,7 +254,7 @@ let () =
             match run_cmd "moc -Werror -wasi-system-api tmp.mo -o tmp.wasm" with
             | ((Fail | Timeout), stdout, stderr) -> CantCompile (stdout, stderr, src)
             | (Ok, _, _) ->
-              match must_not_trap, run_cmd "timeout 10s wasmtime --disable-cache tmp.wasm" with
+              match must_not_trap, run_cmd "timeout 10s wasmtime --wasm-features=memory64 --disable-cache tmp.wasm" with
               | ShouldPass, (Ok, _, _) -> WantedPass
               | ShouldTrap, (Fail, _, _) -> WantedTrap
               | ShouldPass, (Fail, stdout, stderr) -> UnwantedTrap (stdout, stderr)
