@@ -44,7 +44,6 @@ jobs:
         large-packages: true
         docker-images: true
         swap-storage: true
-        tool-cache: false
         large-packages: true
         swap-storage: true
 
