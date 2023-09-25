@@ -51,6 +51,7 @@ module StaticBytes = struct
   (* A very simple DSL to describe static memory *)
 
   type t_ =
+    | I32 of int32
     | I64 of int64
     | Seq of t
     | Bytes of string
@@ -60,6 +61,7 @@ module StaticBytes = struct
   let i64s is = Seq (List.map (fun i -> I64 i) is)
 
   let rec add : Buffer.t -> t_ -> unit = fun buf -> function
+    | I32 i -> Buffer.add_int32_le buf i
     | I64 i -> Buffer.add_int64_le buf i
     | Seq xs -> List.iter (add buf) xs
     | Bytes b -> Buffer.add_string buf b
@@ -68,6 +70,17 @@ module StaticBytes = struct
     let buf = Buffer.create 32 in
     List.iter (add buf) xs;
     Buffer.contents buf
+
+  let as_words static_bytes =
+    let rec convert_to_words binary index = 
+      if (Bytes.length binary) = 0 then 
+        []
+      else 
+        let number = Bytes.get_int64_le binary index in
+        let next_index = Int.add index 8 in
+        [number] @ (convert_to_words binary next_index)
+    in
+    convert_to_words (Bytes.of_string (as_bytes static_bytes)) 0
 
 end (* StaticBytes *)
 
@@ -3170,20 +3183,39 @@ module BigNumLibtommath : BigNumType = struct
         then []
         else
           let (a, b) = Big_int.quomod_big_int n twoto28 in
-          [ compile_const_32 (Big_int.int32_of_big_int b) ] @ go a
+          StaticBytes.[ I32 (Big_int.int32_of_big_int b) ] @ go a
       in go n
     in
+
+    let rec pad input = 
+      let length = List.length input in
+      if (Int.rem length (Int64.to_int E.word_size)) = 0 then 
+        input 
+      else
+        pad (input @ StaticBytes.[ I32 0l ]) 
+    in
+
+    let limbs_with_padding = pad limbs in
+
     (* how many 32 bit digits *)
-    let size = Int32.of_int (List.length limbs) in
+    let size = Int32.of_int (List.length limbs) in  
 
     (* cf. mp_int in tommath.h *)
     (* libc is still using 32-bit sizes *)
-    Tagged.obj env Tagged.BigInt ([
-      compile_const_32 size; (* used *)
-      compile_const_32 size; (* size; relying on Heap.word_size == size_of(mp_digit) *)
-      compile_const_32 sign;
-      compile_const_32 0l; (* dp; this will be patched in BigInt::mp_int_ptr in the RTS when used *)
-    ] @ limbs)
+    let payload = StaticBytes.[
+      I32 size; (* used *)
+      I32 size; (* size; relying on Heap.word_size == size_of(mp_digit) *)
+      I32 sign;
+      I32 0l; (* padding because of 64-bit alignment of subsequent pointer *)
+      I64 0L; (* dp; this will be patched in BigInt::mp_int_ptr in the RTS when used *)
+    ] @ limbs_with_padding 
+    in
+
+    let instructions = 
+      let words = StaticBytes.as_words payload in
+      List.map compile_unboxed_const words in
+
+    Tagged.obj env Tagged.BigInt instructions
 
   let assert_nonneg env =
     Func.share_code1 Func.Never env "assert_nonneg" ("n", I64Type) [I64Type] (fun env get_n ->
