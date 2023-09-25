@@ -1,4 +1,5 @@
 (*
+
 This module is the backend of the Motoko compiler. It takes a program in
 the intermediate representation (ir.ml), and produces a WebAssembly module,
 with Internet Computer extensions (customModule.ml). An important helper module is
@@ -8,6 +9,7 @@ instruction lists, as it takes care of (1) source locations and (2) labels.
 This file is split up in a number of modules, purely for namespacing and
 grouping. Every module has a high-level prose comment explaining the concept;
 this keeps documentation close to the code (a lesson learned from Simon PJ).
+
 *)
 
 open Ir_def
