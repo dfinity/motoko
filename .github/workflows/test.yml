@@ -27,6 +27,27 @@ jobs:
         name: ic-hs-test
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
 
+    - name: clean unncessary files to save space
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+          docker rmi `docker images -q`
+          sudo rm -rf /usr/share/dotnet /etc/mysql /etc/php /etc/sudo apt/sources.list.d
+          sudo apt -y autoremove --purge
+          sudo apt -y autoclean
+          sudo apt clean
+          rm --recursive --force "$AGENT_TOOLSDIRECTORY"
+          df -h
+
+      # Free up disk space on Ubuntu
+    - name: Free Disk Space (Ubuntu)
+      uses: jlumbroso/free-disk-space@main
+      if: matrix.os == 'ubuntu-latest'
+      with:
+        # This might remove tools that are actually needed, if set to "true" but frees about 6 GB
+        tool-cache: false
+        large-packages: true
+        swap-storage: true
+
     # until https://github.com/cachix/cachix-action/issues/86 is fixed:
     - run: cachix watch-store ic-hs-test &
 
