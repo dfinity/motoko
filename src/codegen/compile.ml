@@ -51,19 +51,16 @@ module StaticBytes = struct
   (* A very simple DSL to describe static memory *)
 
   type t_ =
-    | I32 of int32
-    (* | I64 of int64 *)
+    | I64 of int64
     | Seq of t
     | Bytes of string
 
   and t = t_ list
 
-  let i32s is = Seq (List.map (fun i -> I32 i) is)
   let i64s is = Seq (List.map (fun i -> I64 i) is)
 
   let rec add : Buffer.t -> t_ -> unit = fun buf -> function
-    | I32 i -> Buffer.add_int32_le buf i
-    (* | I64 i -> Buffer.add_int64_le buf i *)
+    | I64 i -> Buffer.add_int64_le buf i
     | Seq xs -> List.iter (add buf) xs
     | Bytes b -> Buffer.add_string buf b
 
@@ -328,7 +325,7 @@ module E = struct
     end_of_static_memory = ref dyn_mem;
     static_memory = ref [];
     static_memory_frozen = ref false;
-    static_variables = ref 0l;
+    static_variables = ref 0L;
     typtbl_typs = ref [];
     (* Metadata *)
     args = ref None;
@@ -561,9 +558,9 @@ module E = struct
     env.static_memory_frozen := true;
     !(env.end_of_static_memory)
 
-  let add_static_variable (env : t) : int32 =
+  let add_static_variable (env : t) : int64 =
     let index = !(env.static_variables) in
-    env.static_variables := Int32.add index 1l;
+    env.static_variables := Int64.add index 1L;
     index
 
   let count_static_variables (env : t) =
@@ -923,7 +920,7 @@ module RTS = struct
     E.add_func_import env "rts" "write_with_barrier" [I64Type; I64Type] [];
     E.add_func_import env "rts" "allocation_barrier" [I64Type] [I64Type];
     E.add_func_import env "rts" "running_gc" [] [I32Type];
-    E.add_func_import env "rts" "register_stable_type" [I64Type; I64Type; I64Type] [];
+    E.add_func_import env "rts" "register_stable_type" [I64Type; I64Type; I32Type] [];
     E.add_func_import env "rts" "load_stable_actor" [] [I64Type];
     E.add_func_import env "rts" "save_stable_actor" [I64Type] [];
     E.add_func_import env "rts" "free_stable_actor" [] [];
@@ -931,7 +928,6 @@ module RTS = struct
     E.add_func_import env "rts" "set_static_root" [I64Type] [];
     E.add_func_import env "rts" "get_static_root" [] [I64Type];
     E.add_func_import env "rts" "null_singleton" [] [I64Type];
-    E.add_func_import env "rts" "memcpy" [I64Type; I64Type; I64Type] [I64Type]; (* standard libc memcpy *)
     E.add_func_import env "rts" "memcmp" [I64Type; I64Type; I64Type] [I32Type];
     E.add_func_import env "rts" "version" [] [I64Type];
     E.add_func_import env "rts" "parse_idl_header" [I32Type; I64Type; I64Type; I64Type; I64Type] [];
@@ -1148,10 +1144,6 @@ module Heap = struct
   (* Heap objects *)
 
   (* At this level of abstraction, heap objects are just flat arrays of words *)
-
-  let load_field_unskewed (i : int64) : G.t =
-    let offset = Int64.mul word_size i in
-    G.i (Load {ty = I64Type; align = 3; offset; sz = None})
 
   let load_field (i : int64) : G.t =
     let offset = Int64.(add (mul word_size i) ptr_unskew) in
@@ -1684,10 +1676,6 @@ module Tagged = struct
     (if !Flags.sanity then check_forwarding_for_store env I64Type else G.nop) ^^
     Heap.store_field index
 
-  let load_field_unskewed env index =
-    (if !Flags.sanity then check_forwarding env true else G.nop) ^^
-    Heap.load_field_unskewed index
-
   let load_field_float64 env index =
     (if !Flags.sanity then check_forwarding env false else G.nop) ^^
     Heap.load_field_float64 index
@@ -1879,7 +1867,7 @@ module Opt = struct
               get_x ^^
               Tagged.load_forwarding_pointer env ^^
               null_lit env ^^
-              G.i (Compare (Wasm.Values.I64 I64Op.Ne))
+              compile_comparison I64Op.Ne
             )
         )
     )
@@ -2013,7 +2001,7 @@ module Closure = struct
       FakeMultiVal.ty (Lib.List.make n_res I64Type))) in
     (* get the table index *)
     Tagged.load_forwarding_pointer env ^^
-    Tagged.load_field env funptr_field env ^^
+    Tagged.load_field env funptr_field ^^
     G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
     (* All done: Call! *)
     G.i (CallIndirect (nr ty)) ^^
@@ -2145,62 +2133,6 @@ module Word64 = struct
   let compile_relop env i64op = compile_comparison i64op
 
 end (* BoxedWord64 *)
-
-module BoxedSmallWord = struct
-  (* We store proper 32bit Word32 in immutable boxed 32bit heap objects.
-
-     Small values are stored unboxed, tagged, see BitTagged.
-
-     The heap layout of a BoxedSmallWord is:
-
-       ┌──────┬─────┬─────┐
-       │ obj header │ i32 │
-       └──────┴─────┴─────┘
-
-     The object header includes the object tag (Bits32) and the forwarding pointer.
-     The forwarding pointer is only reserved if compiled for the incremental GC.
-
-  *)
-
-  let payload_field = Tagged.header_size
-
-  let lit env i =
-    if BitTagged.can_tag_const (Int64.of_int (Int32.to_int i))
-    then
-      compile_unboxed_const (BitTagged.tag_const (Int64.of_int (Int32.to_int i)))
-    else
-      Tagged.obj env Tagged.Bits32 [
-        compile_unboxed_const i
-      ]
-
-  let compile_box env compile_elem : G.t =
-    let (set_i, get_i) = new_local env "boxed_i32" in
-    let size = 3l in
-    Tagged.alloc env size Tagged.Bits32 ^^
-    set_i ^^
-    get_i ^^ compile_elem ^^ Tagged.store_field env payload_field ^^
-    get_i ^^
-    Tagged.allocation_barrier env
-
-  let box env = Func.share_code1 Func.Never env "box_i32" ("n", I32Type) [I32Type] (fun env get_n ->
-      get_n ^^ compile_shrU_const 30l ^^
-      G.i (Unary (Wasm.Values.I32 I32Op.Popcnt)) ^^
-      G.i (Unary (Wasm.Values.I32 I32Op.Ctz)) ^^
-      G.if1 I32Type
-        (get_n ^^ BitTagged.tag_i32)
-        (compile_box env get_n)
-    )
-
-  let unbox env = Func.share_code1 Func.Never env "unbox_i32" ("n", I32Type) [I32Type] (fun env get_n ->
-      get_n ^^
-      BitTagged.if_tagged_scalar env [I32Type]
-        (get_n ^^ BitTagged.untag_i32)
-        (get_n ^^ Tagged.load_forwarding_pointer env ^^ Tagged.load_field env payload_field)
-    )
-
-  let _lit env n = compile_unboxed_const n ^^ box env
-
-end (* BoxedSmallWord *)
 
 module TaggedSmallWord = struct
   (* While smaller-than-64bit words are treated as i64 from the WebAssembly
@@ -3238,7 +3170,7 @@ module BigNumLibtommath : BigNumType = struct
         then []
         else
           let (a, b) = Big_int.quomod_big_int n twoto28 in
-          [ compile_unboxed_const (Big_int.int32_of_big_int b) ] @ go a
+          [ compile_const_32 (Big_int.int32_of_big_int b) ] @ go a
       in go n
     in
     (* how many 32 bit digits *)
@@ -3246,15 +3178,12 @@ module BigNumLibtommath : BigNumType = struct
 
     (* cf. mp_int in tommath.h *)
     (* libc is still using 32-bit sizes *)
-    let ptr = Tagged.shared_static_obj env Tagged.BigInt StaticBytes.[
-      I32 size; (* used *)
-      I32 size; (* size; relying on Heap.word_size == size_of(mp_digit) *)
-      I32 sign;
-      I32 0l; (* padding because of 64-bit alignment of subsequent pointer *)
-      I64 0L; (* dp; this will be patched in BigInt::mp_int_ptr in the RTS when used *)
-      i32s limbs
-    ] in
-    ptr
+    Tagged.obj env Tagged.BigInt ([
+      compile_const_32 size; (* used *)
+      compile_const_32 size; (* size; relying on Heap.word_size == size_of(mp_digit) *)
+      compile_const_32 sign;
+      compile_const_32 0l; (* dp; this will be patched in BigInt::mp_int_ptr in the RTS when used *)
+    ] @ limbs)
 
   let assert_nonneg env =
     Func.share_code1 Func.Never env "assert_nonneg" ("n", I64Type) [I64Type] (fun env get_n ->
@@ -3565,7 +3494,7 @@ module Object = struct
   let header_size = Int64.add Tagged.header_size 2L
  
   (* Number of object fields *)
-  let size_field = Int64.add Tagged.header_size 0l
+  let size_field = Int64.add Tagged.header_size 0L
   let hash_ptr_field = Int64.add Tagged.header_size 1L
  
   module FieldEnv = Env.Make(String)
@@ -3596,7 +3525,7 @@ module Object = struct
 
       (* Allocate memory *)
       let (set_ri, get_ri, ri) = new_local_ env I64Type "obj" in
-      Tagged.alloc env (Int32.add header_size sz) Tagged.Object ^^
+      Tagged.alloc env (Int64.add header_size sz) Tagged.Object ^^
       set_ri ^^
 
       (* Set size *)
@@ -3628,7 +3557,8 @@ module Object = struct
      Check whether an (actor) object contains a specific field *)
   let contains_field env field =
     compile_unboxed_const (E.hash env field) ^^
-    E.call_import env "rts" "contains_field"
+    E.call_import env "rts" "contains_field" ^^
+    Bool.from_rts_int32
  
   (* Returns a pointer to the object field (without following the field indirection) *)
   let idx_hash_raw env low_bound =
@@ -5009,7 +4939,7 @@ module StableMem = struct
     G.i (GlobalSet (nr (E.get_global env "__stablemem_version")))
 
   let region_init env =
-    compile_unboxed_const (if !Flags.use_stable_regions then 1l else 0l) ^^
+    compile_unboxed_const (if !Flags.use_stable_regions then 1L else 0L) ^^
     E.call_import env "rts" "region_init"
 
   (* stable memory bounds check *)
@@ -5099,6 +5029,9 @@ module StableMem = struct
             compile_unboxed_const bytes ^^
             IC.system_call env "stable64_write"))
     | _ -> assert false
+
+  let load_word32 = G.i (Load {ty = I32Type; align = 0; offset = 0L; sz = None})
+  let store_word32 : G.t = G.i (Store {ty = I32Type; align = 0; offset = 0L; sz = None})  
 
   let write_word32 env =
     G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
@@ -5476,20 +5409,6 @@ module RTS_Exports = struct
     name = Lib.Utf8.decode "rts_trap";
     edesc = nr (FuncExport (nr rts_trap_fi))
   });
-
-  if !Flags.gc_strategy <> Flags.Incremental then
-  begin
-    let set_hp_fi =
-      E.add_fun env "__set_hp" (
-      Func.of_body env ["new_hp", I64Type] [] (fun env ->
-        G.i (LocalGet (nr 0l)) ^^
-        GC.set_heap_pointer env
-      )
-    ) in
-    E.add_export env (nr {
-      name = Lib.Utf8.decode "setHP";
-      edesc = nr (FuncExport (nr set_hp_fi))
-    });
 
   let ic0_stable64_write_fi =
     if E.mode env = Flags.WASIMode then
@@ -7497,7 +7416,7 @@ module Serialization = MakeSerialization(BumpStream)
 module OldStabilization = struct
   let load_word32 = G.i (Load {ty = I32Type; align = 0; offset = 0L; sz = None})
   let store_word32 : G.t = G.i (Store {ty = I32Type; align = 0; offset = 0L; sz = None})
-  
+
   let write_word32 env =
     StableMem.write env false "word32" I32Type 4L store_word32
 
@@ -7547,7 +7466,7 @@ module OldStabilization = struct
       (* clear all words *)
       from_0_to_n env (fun get_i ->
         get_ptr ^^
-        compile_unboxed_const 0l ^^
+        compile_unboxed_const 0L ^^
         store_unskewed_ptr ^^
         get_ptr ^^
         compile_add_const Heap.word_size ^^
@@ -7709,11 +7628,11 @@ end
 module NewStableMemory = struct
   let physical_size env =
     IC.system_call env "stable64_size" ^^
-    compile_shl64_const (Int64.of_int page_size_bits)
+    compile_shl_const (Int64.of_int page_size_bits)
 
   let store_at_end env offset typ get_value =
     physical_size env ^^
-    compile_sub64_const offset ^^
+    compile_sub_const offset ^^
     get_value ^^
     match typ with
     | I32Type -> StableMem.write_word32 env
@@ -7722,7 +7641,7 @@ module NewStableMemory = struct
 
   let read_from_end env offset typ =
     physical_size env ^^
-    compile_sub64_const offset ^^
+    compile_sub_const offset ^^
     match typ with
     | I32Type -> StableMem.read_word32 env
     | I64Type -> StableMem.read_word64 env
@@ -7731,8 +7650,8 @@ module NewStableMemory = struct
   let clear_at_end env offset typ =
     store_at_end env offset typ 
     (match typ with
-    | I32Type -> compile_unboxed_const 0l
-    | I64Type -> compile_const_64 0L
+    | I32Type -> compile_const_32 0l
+    | I64Type -> compile_unboxed_const 0L
     | _ -> assert false
     )
 
@@ -7745,28 +7664,28 @@ module NewStableMemory = struct
     compile_eq_const StableMem.legacy_version_no_stable_memory ^^
     StableMem.get_version env ^^
     compile_eq_const StableMem.legacy_version_some_stable_memory ^^
-    G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
-    (G.if0
+    G.i (Binary (Wasm_exts.Values.I64 I64Op.Or)) ^^
+    (E.if0
       (compile_unboxed_const StableMem.version_stable_heap_no_regions ^^
       StableMem.set_version env)
       G.nop) ^^
     StableMem.get_version env ^^
     compile_eq_const StableMem.legacy_version_regions ^^
-    (G.if0
+    (E.if0
       (compile_unboxed_const StableMem.version_stable_heap_regions ^^
       StableMem.set_version env)
       G.nop)
       
   let grow_size env amount =
     StableMem.get_mem_size env ^^
-    compile_shl64_const (Int64.of_int page_size_bits) ^^
-    compile_const_64 amount ^^
+    compile_shl_const (Int64.of_int page_size_bits) ^^
+    compile_unboxed_const amount ^^
     StableMem.ensure env
 
   let backup env =
     physical_size env ^^
-    G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
-    G.if0
+    compile_test I64Op.Eqz ^^
+    E.if0
       G.nop
       begin
         grow_size env logical_size_offset ^^
@@ -7780,10 +7699,10 @@ module NewStableMemory = struct
 
   let restore env =
     physical_size env ^^
-    G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
-    G.if0
+    compile_test I64Op.Eqz ^^
+    E.if0
       begin
-        compile_const_64 0L ^^ StableMem.set_mem_size env
+        compile_unboxed_const 0L ^^ StableMem.set_mem_size env
       end
       begin
         (* check the version *)
@@ -7793,11 +7712,11 @@ module NewStableMemory = struct
         compile_eq_const StableMem.version_stable_heap_no_regions ^^
         StableMem.get_version env ^^
         compile_eq_const StableMem.version_stable_heap_regions ^^
-        G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
+        G.i (Binary (Wasm_exts.Values.I64 I64Op.Or)) ^^
         E.else_trap_with env (Printf.sprintf
           "unsupported stable memory version (expected %s or %s)"
-           (Int32.to_string StableMem.version_stable_heap_no_regions)
-           (Int32.to_string StableMem.version_stable_heap_regions)) ^^
+           (Int64.to_string StableMem.version_stable_heap_no_regions)
+           (Int64.to_string StableMem.version_stable_heap_regions)) ^^
         
         (* restore logical size *)
         read_from_end env logical_size_offset I64Type ^^
@@ -7818,11 +7737,11 @@ module Persistence = struct
 
   let register_stable_type env actor_type =
     let (candid_type_desc, type_offsets, type_indices) = Serialization.type_desc env [actor_type] in
-    let serialized_offsets = StaticBytes.(as_bytes [i32s (List.map Int32.of_int type_offsets)]) in
+    let serialized_offsets = StaticBytes.(as_bytes [i64s (List.map Int64.of_int type_offsets)]) in
     assert ((List.length type_indices) = 1);
     Blob.lit env candid_type_desc ^^
     Blob.lit env serialized_offsets ^^
-    compile_unboxed_const (List.nth type_indices 0) ^^
+    compile_const_32 (List.nth type_indices 0) ^^
     E.call_import env "rts" "register_stable_type"
 
   let create_actor env actor_type get_field_value =
@@ -7837,7 +7756,7 @@ module Persistence = struct
     let recover_field field = 
       load_stable_actor env ^^
       Object.contains_field env field ^^
-      (G.if1 I32Type
+      (E.if1 I64Type
         (load_stable_actor env ^^ Object.load_idx_raw env field)
         (Opt.null_lit env)
       ) in
@@ -7851,8 +7770,8 @@ module Persistence = struct
   let load env actor_type =
     register_stable_type env actor_type ^^
     load_stable_actor env ^^
-    G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
-    (G.if1 I32Type
+    compile_test I64Op.Eqz ^^
+    (E.if1 I64Type
       begin
         OldStabilization.old_destabilize env actor_type (NewStableMemory.upgrade_version env)
       end

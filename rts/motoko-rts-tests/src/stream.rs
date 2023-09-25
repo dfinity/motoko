@@ -33,7 +33,7 @@ pub unsafe fn test() {
     println!("  Testing stream decay");
     let blob = stream.as_stream().split();
     assert_eq!(blob.as_blob().len(), Bytes(STREAM_SMALL_SIZE));
-    const REMAINDER: usize = 20;
+    const REMAINDER: usize = 16;
     assert_eq!(stream.as_blob().len(), Bytes(REMAINDER));
 
     println!("  Testing stream filling (blocks)");

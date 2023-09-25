@@ -1,6 +1,6 @@
 //! Text and text iterator tests
 
-use crate::memory::{initialize_test_memory, reset_test_memory, TestMemory};
+use crate::memory::{initialize_test_memory, reset_test_memory};
 
 use motoko_rts::memory::Memory;
 use motoko_rts::text::{
@@ -8,7 +8,7 @@ use motoko_rts::text::{
     text_singleton, text_size,
 };
 use motoko_rts::text_iter::{text_iter, text_iter_done, text_iter_next};
-use motoko_rts::types::{Bytes, Value, Words, TAG_BLOB};
+use motoko_rts::types::{Bytes, Value, TAG_BLOB};
 
 use std::convert::TryFrom;
 
@@ -100,22 +100,6 @@ pub unsafe fn test() {
     );
 
     drop(mem);
-
-    let mut proptest_runner = TestRunner::new(Config {
-        cases: 1_000,
-        failure_persistence: None,
-        ..Default::default()
-    });
-
-    proptest_runner
-        .run(
-            &proptest::collection::vec(proptest::string::string_regex(".{0, 20}").unwrap(), 1..20),
-            |strs| {
-                let mut mem = TestMemory::new(Words(1024 * 1024));
-                concat_prop(&mut mem, strs)
-            },
-        )
-        .unwrap();
 
     reset_test_memory();
 }

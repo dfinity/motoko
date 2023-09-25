@@ -4,7 +4,7 @@ use super::Memory;
 use crate::constants::WASM_PAGE_SIZE;
 use crate::rts_trap_with;
 use crate::types::{Bytes, Value, Words};
-use core::arch::wasm32;
+use core::arch::wasm64;
 
 /// Provides a `Memory` implementation, to be used in functions compiled for IC or WASI. The
 /// `Memory` implementation allocates in Wasm heap with Wasm `memory.grow` instruction.
@@ -39,21 +39,21 @@ impl Memory for IcMemory {
 }
 
 #[no_mangle]
-unsafe extern "C" fn get_reclaimed() -> Bytes<u64> {
+unsafe extern "C" fn get_reclaimed() -> Bytes<usize> {
     crate::gc::incremental::get_partitioned_heap().reclaimed_size()
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn get_total_allocations() -> Bytes<u64> {
-    Bytes(u64::from(get_heap_size().as_u32())) + get_reclaimed()
+pub unsafe extern "C" fn get_total_allocations() -> Bytes<usize> {
+    get_heap_size() + get_reclaimed()
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn get_heap_size() -> Bytes<u32> {
+pub unsafe extern "C" fn get_heap_size() -> Bytes<usize> {
     crate::gc::incremental::get_partitioned_heap().occupied_size()
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn get_max_live_size() -> Bytes<u32> {
+pub unsafe extern "C" fn get_max_live_size() -> Bytes<usize> {
     crate::gc::incremental::get_max_live_size()
 }

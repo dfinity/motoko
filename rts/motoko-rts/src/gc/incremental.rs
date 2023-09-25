@@ -115,9 +115,9 @@ unsafe fn record_gc_stop<M: Memory>() {
 // Persistent GC statistics used for scheduling and diagnostics.
 struct Statistics {
     // Total number of allocation at the start of the last GC run.
-    last_allocations: Bytes<u64>,
+    last_allocations: Bytes<usize>,
     // Maximum heap size the end of a GC run.
-    max_live: Bytes<u32>,
+    max_live: Bytes<usize>,
 }
 
 /// GC phases per run. Each of the following phases is performed in potentially multiple increments.
@@ -409,7 +409,7 @@ pub unsafe fn get_incremental_gc_state() -> &'static mut State {
 }
 
 #[cfg(feature = "ic")]
-pub unsafe fn get_max_live_size() -> Bytes<u32> {
+pub unsafe fn get_max_live_size() -> Bytes<usize> {
     get_incremental_gc_state().statistics.max_live
 }
 

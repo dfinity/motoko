@@ -54,9 +54,8 @@ struct PersistentMetadata {
 /// Location of the persistent metadata. Prereseved and fixed forever.
 const METATDATA_ADDRESS: usize = 6 * 1024 * 1024;
 /// The reserved maximum size of the metadata, contains a reserve for future extension of the metadata.
-const METADATA_RESERVE: usize = 128 * 1024;
+const METADATA_RESERVE: usize = 256 * 1024;
 
-// TODO: Include partition table in reserved space.
 pub const HEAP_START: usize = METATDATA_ADDRESS + METADATA_RESERVE;
 
 const _: () = assert!(core::mem::size_of::<PersistentMetadata>() <= METADATA_RESERVE);
@@ -108,7 +107,7 @@ impl PersistentMetadata {
 /// reuse the persistent memory on a canister upgrade.
 #[cfg(feature = "ic")]
 pub unsafe fn initialize_memory<M: Memory>(mem: &mut M) {
-    mem.grow_memory(HEAP_START as u64);
+    mem.grow_memory(HEAP_START);
     let metadata = PersistentMetadata::get();
     if metadata.is_initialized() {
         metadata.check_version();
@@ -166,16 +165,16 @@ pub(crate) unsafe fn stable_actor_location() -> *mut Value {
 /// Used for upgrading to an actor with additional stable fields.
 #[no_mangle]
 #[cfg(feature = "ic")]
-pub unsafe extern "C" fn contains_field(actor: Value, field_hash: u32) -> bool {
+pub unsafe extern "C" fn contains_field(actor: Value, field_hash: usize) -> bool {
     use crate::constants::WORD_SIZE;
 
     let object = actor.as_object();
     let hash_blob = (*object).hash_blob.as_blob();
-    assert_eq!(hash_blob.len().as_u32() % WORD_SIZE, 0);
-    let number_of_fields = hash_blob.len().as_u32() / WORD_SIZE;
-    let mut current_address = hash_blob.payload_const() as u32;
+    assert_eq!(hash_blob.len().as_usize() % WORD_SIZE, 0);
+    let number_of_fields = hash_blob.len().as_usize() / WORD_SIZE;
+    let mut current_address = hash_blob.payload_const() as usize;
     for _ in 0..number_of_fields {
-        let hash_address = current_address as *mut u32;
+        let hash_address = current_address as *mut usize;
         if *hash_address == field_hash {
             return true;
         }

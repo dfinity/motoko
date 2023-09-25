@@ -222,7 +222,7 @@ fn check_dynamic_heap(
 
         if object_offset == static_root_array_offset {
             check_static_root_array(object_offset, roots, heap);
-            offset += (size_of::<Array>() + Words(roots.len() as u32))
+            offset += (size_of::<Array>() + Words(roots.len()))
                 .to_bytes()
                 .as_usize();
             continue;
@@ -408,10 +408,10 @@ fn check_static_root_array(mut offset: usize, roots: &[ObjectIdx], heap: &[u8]) 
     assert_eq!(read_word(heap, offset), TAG_ARRAY);
     offset += WORD_SIZE;
 
-    assert_eq!(read_word(heap, offset), make_pointer(array_address as u32));
+    assert_eq!(read_word(heap, offset), make_pointer(array_address));
     offset += WORD_SIZE;
 
-    assert_eq!(read_word(heap, offset), roots.len() as u32);
+    assert_eq!(read_word(heap, offset), roots.len());
     offset += WORD_SIZE;
 
     for obj in roots.iter() {
@@ -424,8 +424,8 @@ fn check_static_root_array(mut offset: usize, roots: &[ObjectIdx], heap: &[u8]) 
     }
 }
 
-fn read_mutbox_field(mutbox_address: u32, heap: &[u8]) -> u32 {
-    let mut mutbox_offset = mutbox_address as usize - heap.as_ptr() as usize;
+fn read_mutbox_field(mutbox_address: usize, heap: &[u8]) -> usize {
+    let mut mutbox_offset = mutbox_address - heap.as_ptr() as usize;
 
     let mutbox_tag = read_word(heap, mutbox_offset);
     assert_eq!(mutbox_tag, TAG_MUTBOX);
@@ -457,12 +457,12 @@ fn check_continuation_table(mut offset: usize, continuation_table: &[ObjectIdx],
     }
 }
 
-fn read_object_id(object_address: u32, heap: &[u8]) -> ObjectIdx {
-    let tag = read_word(heap, object_address as usize - heap.as_ptr() as usize);
+fn read_object_id(object_address: usize, heap: &[u8]) -> ObjectIdx {
+    let tag = read_word(heap, object_address - heap.as_ptr() as usize);
     assert!(tag == TAG_ARRAY || tag >= TAG_ARRAY_SLICE_MIN);
 
     // Skip object header for idx
-    let idx_address = object_address as usize + size_of::<Array>().to_bytes().as_usize();
+    let idx_address = object_address + size_of::<Array>().to_bytes().as_usize();
     get_scalar_value(read_word(heap, idx_address - heap.as_ptr() as usize))
 }
 

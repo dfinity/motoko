@@ -63,7 +63,7 @@ impl Memory for TestMemory {
 }
 
 pub unsafe fn initialize_test_memory() -> TestMemory {
-    let mut memory = TestMemory::new(Bytes(PARTITION_SIZE as u32).to_words());
+    let mut memory = TestMemory::new(Bytes(PARTITION_SIZE).to_words());
     let state = IncrementalGC::initial_gc_state(&mut memory, 0);
     set_incremental_gc_state(Some(state));
     memory
