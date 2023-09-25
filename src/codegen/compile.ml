@@ -1,5 +1,4 @@
 (*
-
 This module is the backend of the Motoko compiler. It takes a program in
 the intermediate representation (ir.ml), and produces a WebAssembly module,
 with Internet Computer extensions (customModule.ml). An important helper module is
