@@ -21,15 +21,15 @@
         "version": "3.2.25"
     },
     "ic": {
-        "branch": "pull/135/head",
+        "branch": "pull/139/head",
         "description": "Internet Computer blockchain source: the client/replica software run by nodes",
         "homepage": "",
         "owner": "dfinity",
         "repo": "ic",
-        "rev": "18de74c14491c06499f59404fa5434a18bb9ca50",
-        "sha256": "1zlq1d4zb594nb3hld50cp7kmzfzwmhka01xsbazxagszs61p2sk",
+        "rev": "b7e54ddee3ce96aa9c8d509c91a8f0725d522432",
+        "sha256": "06wl5v8fpixjgw07fc931mq0aykfrvfd0xh3yh35jm9ar5yr87rl",
         "type": "tarball",
-        "url": "https://github.com/dfinity/ic/archive/18de74c14491c06499f59404fa5434a18bb9ca50.tar.gz",
+        "url": "https://github.com/dfinity/ic/archive/b7e54ddee3ce96aa9c8d509c91a8f0725d522432.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ic-hs": {
