@@ -6164,6 +6164,7 @@ module MakeSerialization (Strm : Stream) = struct
 
     val get_base : E.t -> G.t -> G.t
     val set_base : G.t -> G.t -> G.t
+    val get_descr : E.t -> G.t -> G.t
 
     val advance : G.t -> G.t -> G.t
     val alloc : E.t -> (G.t -> G.t) -> G.t
@@ -6177,6 +6178,7 @@ module MakeSerialization (Strm : Stream) = struct
     include ReadBuf
     let get_base env _get_buf = E.trap_with env "get_base"
     let set_base _get_buf _new_val = G.nop
+    let get_descr env _get_buf = E.trap_with env "get_descr"
   end
 
   let rec deserialize_go (readers : (module RawReaders)) env t =
@@ -7238,10 +7240,12 @@ module Stabilization = struct
       set_end get_buf
         (get_ptr get_buf ^^ get_size ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)))
 
-    let get_base env get_buf =
+    let get_base _env get_buf =
       get_buf ^^ G.i (Load {ty = I32Type; align = 2; offset = Int32.(mul 2l Heap.word_size); sz = None})
     let set_base get_buf new_val =
       get_buf ^^ new_val ^^ G.i (Store {ty = I32Type; align = 2; offset = Int32.(mul 2l Heap.word_size); sz = None})
+    let get_descr _env get_buf =
+      get_buf ^^ compile_add_const Int32.(mul 3l Heap.word_size)
 
     let advance get_buf get_delta =
       set_ptr get_buf (get_ptr get_buf ^^ get_delta ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)))
@@ -7291,13 +7295,13 @@ module Stabilization = struct
       IC.system_call env "stable64_read" ^^
       get_blob
     
-    let read_leb128 env get_buf = get_buf ^^ get_base env get_buf ^^ compile_unboxed_zero(*FIXME: descr*) ^^ E.call_import env "rts" "bigint_leb128_decode_from_stable" ^^ E.trap_with env "read_Xleb128"
+    let read_leb128 env get_buf = get_buf ^^ get_base env get_buf ^^ get_descr env get_buf ^^ E.call_import env "rts" "bigint_leb128_decode_from_stable" ^^ E.trap_with env "read_Xleb128"
     let read_sleb128 env get_buf = E.trap_with env "read_sleb128"
 
 
     let is_empty get_buf = G.i Unreachable
 
-    let alloc = ReadBuf.alloc_words 3l
+    let alloc = ReadBuf.alloc_words 7l (* 3 for extended buffer, 4 for StableBuf *)
   end
 
   (* The below stream implementation is geared towards the
