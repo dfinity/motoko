@@ -973,6 +973,12 @@ module RTS = struct
     E.add_func_import env "rts" "bigint_sleb128_stream_encode" [I32Type; I32Type] [];
     E.add_func_import env "rts" "bigint_sleb128_decode" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_sleb128_decode_word64" [I64Type; I64Type; I32Type] [I32Type];
+
+    E.add_func_import env "rts" "bigint_leb128_decode_from_stable" [I32Type; I32Type; I32Type] [I32Type];
+
+
+
+
     E.add_func_import env "rts" "leb128_encode" [I32Type; I32Type] [];
     E.add_func_import env "rts" "sleb128_encode" [I32Type; I32Type] [];
     E.add_func_import env "rts" "utf8_valid" [I32Type; I32Type] [I32Type];
@@ -7276,7 +7282,7 @@ module Stabilization = struct
       IC.system_call env "stable64_read" ^^
       get_blob
     
-    let read_leb128 env get_buf = E.trap_with env "read_leb128"
+    let read_leb128 env get_buf = get_buf ^^ compile_unboxed_zero(*FIXME: base*) ^^ compile_unboxed_zero(*FIXME: descr*) ^^ E.call_import env "rts" "bigint_leb128_decode_from_stable" ^^ E.trap_with env "read_Xleb128"
     let read_sleb128 env get_buf = E.trap_with env "read_sleb128"
 
 
