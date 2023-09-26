@@ -31,8 +31,6 @@ for (check0 in ["hello", "world"].vals()) { Prim.debugPrint check0 };
 // CHECK:      i64.load offset=
 // CHECK-NEXT: local.tee $check1
 // CHECK-NEXT: call $print_text
-// CHECK:      i32.const 4
-// CHECK-NEXT: i32.add
 for (check1 in [var "hello", "mutable", "world"].vals()) { Prim.debugPrint check1 };
 
 let array = [var "hello", "remutable", "world"];
@@ -57,8 +55,7 @@ for (check2 in array.vals()) { Prim.debugPrint check2 };
 // CHECK:      i64.lt_u
 // CHECK:      i64.add
 // DON'TCHECK: i64.load offset=25
-// CHECK:      i64.load offset=
-// CHECK-NEXT: local.tee $check3
+// CHECK:      local.tee $check3
 // interfering parentheses don't disturb us
 for (check3 in (((["hello", "immutable", "world"].vals())))) { Prim.debugPrint check3 };
 

@@ -5,7 +5,7 @@ func higher_order(foo: () -> ()) = foo();
 func bar() = ();
 higher_order(bar);
 let after = Prim.rts_heap_size();
-assert(+after-before == 16);
+assert(+after-before == 32);
 Prim.debugPrint("Ignore Diff: heap size increase " # debug_show (+after-before));
 
 //SKIP run
