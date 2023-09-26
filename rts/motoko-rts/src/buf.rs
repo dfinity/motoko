@@ -100,7 +100,7 @@ pub unsafe extern "C" fn check_leb128_prefix(buf: *mut Buf) -> bool {
 /// up to `(*buf).end`.
 /// FIXME: FnOnce should return the number of bytes that it was reading, so the end pointer can be adjusted.
 #[cfg(feature = "ic")]
-pub unsafe fn refill<F: FnOnce(*mut u8, u32) -> ()>(buf: *mut Buf, base: *mut u8, fill: F) {
+pub(crate) unsafe fn refill<F: FnOnce(*mut u8, u32) -> ()>(buf: *mut Buf, base: *mut u8, fill: F) {
     let len = (*buf).end.sub_ptr((*buf).ptr);
     libc::memcpy(base as *mut _, (*buf).ptr as *const _, len);
     let bytes = (*buf).end.sub_ptr(base) - len;
@@ -135,7 +135,7 @@ impl StableBuf {
 
 /// Refill buffer by obtaining bytes from stable memory.
 #[cfg(feature = "ic")]
-pub unsafe fn stable_refill(buf: *mut Buf, base: *mut u8, descr: *mut StableBuf) {
+pub(crate) unsafe fn stable_refill(buf: *mut Buf, base: *mut u8, descr: *mut StableBuf) {
     refill(buf, base, |to: *mut u8, bytes: u32| {
         descr.transfer(to, bytes)
     })

@@ -2549,7 +2549,8 @@ module ReadBuf = struct
     set_end get_buf
       (get_ptr get_buf ^^ get_size ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)))
 
-  let alloc env f = Stack.with_words env "buf" 2l f
+  let alloc_words n env f = Stack.with_words env "buf" n f
+  let alloc env f = alloc_words 2l env f
 
   let advance get_buf get_delta =
     set_ptr get_buf (get_ptr get_buf ^^ get_delta ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)))
@@ -6161,7 +6162,8 @@ module MakeSerialization (Strm : Stream) = struct
     val get_ptr : G.t -> G.t
     val set_ptr : G.t -> G.t -> G.t
 
-
+    val get_base : E.t -> G.t -> G.t
+    val set_base : G.t -> G.t -> G.t
 
     val advance : G.t -> G.t -> G.t
     val alloc : E.t -> (G.t -> G.t) -> G.t
@@ -6173,6 +6175,8 @@ module MakeSerialization (Strm : Stream) = struct
 
   module BlobDeserializers (*val env : E.t*) : RawReaders = struct
     include ReadBuf
+    let get_base env _get_buf = E.trap_with env "get_base"
+    let set_base _get_buf _new_val = G.nop
   end
 
   let rec deserialize_go (readers : (module RawReaders)) env t =
@@ -7234,6 +7238,11 @@ module Stabilization = struct
       set_end get_buf
         (get_ptr get_buf ^^ get_size ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)))
 
+    let get_base env get_buf =
+      get_buf ^^ G.i (Load {ty = I32Type; align = 2; offset = Int32.(mul 2l Heap.word_size); sz = None})
+    let set_base get_buf new_val =
+      get_buf ^^ new_val ^^ G.i (Store {ty = I32Type; align = 2; offset = Int32.(mul 2l Heap.word_size); sz = None})
+
     let advance get_buf get_delta =
       set_ptr get_buf (get_ptr get_buf ^^ get_delta ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)))
 
@@ -7282,16 +7291,13 @@ module Stabilization = struct
       IC.system_call env "stable64_read" ^^
       get_blob
     
-    let read_leb128 env get_buf = get_buf ^^ compile_unboxed_zero(*FIXME: base*) ^^ compile_unboxed_zero(*FIXME: descr*) ^^ E.call_import env "rts" "bigint_leb128_decode_from_stable" ^^ E.trap_with env "read_Xleb128"
+    let read_leb128 env get_buf = get_buf ^^ get_base env get_buf ^^ compile_unboxed_zero(*FIXME: descr*) ^^ E.call_import env "rts" "bigint_leb128_decode_from_stable" ^^ E.trap_with env "read_Xleb128"
     let read_sleb128 env get_buf = E.trap_with env "read_sleb128"
 
 
     let is_empty get_buf = G.i Unreachable
 
-    let alloc = ReadBuf.alloc
-    
-
-          (*let read_blob = load_blob*)
+    let alloc = ReadBuf.alloc_words 3l
   end
 
   (* The below stream implementation is geared towards the
