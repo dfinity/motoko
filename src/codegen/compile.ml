@@ -5067,15 +5067,13 @@ module StableMem = struct
   let store_word32 : G.t = G.i (Store {ty = I32Type; align = 0; offset = 0L; sz = None})  
 
   let write_word32 env =
-    G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
     write env false "word32" I32Type 4L store_word32
 
   let write_word64 env =
     write env false "word64" I64Type 8L store_unskewed_ptr
 
   let read_word32 env =
-    read env false "word32" I32Type 4L load_word32 ^^
-    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
+    read env false "word32" I32Type 4L load_word32
   
   let read_word64 env =
     read env false "word64" I64Type 8L load_unskewed_ptr
@@ -7575,6 +7573,7 @@ module OldStabilization = struct
               get_M ^^
               compile_add_const (Int64.sub page_size 8L) ^^
               read_and_clear_word32 env ^^
+              G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
               write_word32 env ^^
 
               (* restore mem_size *)
@@ -7727,7 +7726,7 @@ module NewStableMemory = struct
         store_at_end env logical_size_offset I64Type (StableMem.get_mem_size env) ^^
 
         (* store the version *)
-        store_at_end env version_offset I32Type (StableMem.get_version env)
+        store_at_end env version_offset I32Type (StableMem.get_version env ^^ G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)))
       end
 
   let restore env =
@@ -7740,6 +7739,7 @@ module NewStableMemory = struct
       begin
         (* check the version *)
         read_from_end env version_offset I32Type ^^
+        G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
         StableMem.set_version env ^^
         StableMem.get_version env ^^
         compile_eq_const StableMem.version_stable_heap_no_regions ^^
