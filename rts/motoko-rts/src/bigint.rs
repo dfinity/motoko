@@ -32,7 +32,7 @@ This scheme makes the following assumptions:
 */
 
 use crate::barriers::allocation_barrier;
-use crate::buf::{read_byte, Buf};
+use crate::buf::{check_leb128_prefix, read_byte, stable_refill, Buf, StableBuf};
 use crate::mem_utils::memcpy_bytes;
 use crate::memory::Memory;
 use crate::tommath_bindings::*;
@@ -647,4 +647,32 @@ pub unsafe extern "C" fn bigint_sleb128_decode_word64(
     }
 
     bigint_of_int64(signed)
+}
+
+/// Allocate an unsigned bignum from a buffered `StableBuf`.
+#[no_mangle]
+pub unsafe fn bigint_leb128_decode_from_stable(
+    buf: *mut Buf,
+    base: *mut u8,
+    descr: *mut StableBuf,
+) -> Value {
+    if !check_leb128_prefix(buf) {
+        stable_refill(buf, base, descr);
+    }
+
+    bigint_leb128_decode(buf)
+}
+
+/// Allocate a signed bignum from a buffered `StableBuf`.
+#[no_mangle]
+pub unsafe fn bigint_sleb128_decode_from_stable(
+    buf: *mut Buf,
+    base: *mut u8,
+    descr: *mut StableBuf,
+) -> Value {
+    if !check_leb128_prefix(buf) {
+        stable_refill(buf, base, descr);
+    }
+
+    bigint_sleb128_decode(buf)
 }
