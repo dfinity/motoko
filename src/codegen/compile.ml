@@ -73,7 +73,8 @@ module StaticBytes = struct
 
   let as_words static_bytes =
     let rec convert_to_words binary index = 
-      if (Bytes.length binary) = 0 then 
+      assert (index <= (Bytes.length binary));
+      if (Bytes.length binary) = index then 
         []
       else 
         let number = Bytes.get_int64_le binary index in
