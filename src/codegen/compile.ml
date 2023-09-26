@@ -5063,7 +5063,7 @@ module StableMem = struct
             IC.system_call env "stable64_write"))
     | _ -> assert false
 
-  let load_word32 = G.i (Load {ty = I32Type; align = 0; offset = 0L; sz = None})
+  let load_word32 : G.t = G.i (Load {ty = I32Type; align = 0; offset = 0L; sz = None})
   let store_word32 : G.t = G.i (Store {ty = I32Type; align = 0; offset = 0L; sz = None})  
 
   let write_word32 env =
@@ -7445,12 +7445,6 @@ module Serialization = MakeSerialization(BumpStream)
    * ../../design/StableMemory.md
 *)
 module OldStabilization = struct
-  let load_word32 = G.i (Load {ty = I32Type; align = 0; offset = 0L; sz = None})
-  let store_word32 : G.t = G.i (Store {ty = I32Type; align = 0; offset = 0L; sz = None})
-
-  let write_word32 env =
-    StableMem.write env false "word32" I32Type 4L store_word32
-
   (* read and clear word32 from stable mem offset on stack *)
   let read_and_clear_word32 env =
     match E.mode env with
@@ -7465,10 +7459,10 @@ module OldStabilization = struct
             get_offset ^^
             compile_unboxed_const 4L ^^
             IC.system_call env "stable64_read" ^^
-            get_temp_ptr ^^ load_word32 ^^
+            get_temp_ptr ^^ StableMem.load_word32 env ^^
             set_word ^^
             (* write 0 *)
-            get_temp_ptr ^^ compile_const_32 0l ^^ store_word32 ^^
+            get_temp_ptr ^^ compile_const_32 0l ^^ StableMem.store_word32 env ^^
             get_offset ^^
             get_temp_ptr ^^
             compile_unboxed_const 4L ^^
@@ -7574,7 +7568,7 @@ module OldStabilization = struct
               compile_add_const (Int64.sub page_size 8L) ^^
               read_and_clear_word32 env ^^
               G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
-              write_word32 env ^^
+              StableMem.write_word32 env ^^
 
               (* restore mem_size *)
               get_M ^^
