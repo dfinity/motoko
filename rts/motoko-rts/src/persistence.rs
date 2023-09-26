@@ -52,7 +52,7 @@ struct PersistentMetadata {
 }
 
 /// Location of the persistent metadata. Prereseved and fixed forever.
-const METATDATA_ADDRESS: usize = 6 * 1024 * 1024;
+const METATDATA_ADDRESS: usize = 8 * 1024 * 1024;
 /// The reserved maximum size of the metadata, contains a reserve for future extension of the metadata.
 const METADATA_RESERVE: usize = 256 * 1024;
 
