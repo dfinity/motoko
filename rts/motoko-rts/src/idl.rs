@@ -550,12 +550,321 @@ unsafe fn is_opt_reserved(typtbl: *mut *mut u8, end: *mut u8, t: i32) -> bool {
     return t == IDL_CON_opt;
 }
 
-#[derive(Clone, Copy)]
-pub enum CompatibilityMode {
-    // Conventional Candid deserialization compatibility.
-    Candid,
-    // Memory compatibility for orthogonal persistence.
-    Persistence,
+#[derive(PartialEq, Clone, Copy, Debug)]
+pub(crate) enum TypeVariance {
+    Covariance,
+    Contravariance,
+    Invariance,
+}
+
+impl TypeVariance {
+    fn invert(self) -> TypeVariance {
+        match self {
+            TypeVariance::Covariance => TypeVariance::Contravariance,
+            TypeVariance::Contravariance => TypeVariance::Covariance,
+            TypeVariance::Invariance => TypeVariance::Invariance,
+        }
+    }
+}
+
+unsafe fn recurring_memory_check(
+    cache: &BitRel,
+    variance: TypeVariance,
+    t1: usize,
+    t2: usize,
+) -> bool {
+    match variance {
+        TypeVariance::Covariance => cache.visited(true, t1, t2),
+        TypeVariance::Contravariance => cache.visited(false, t1, t2),
+        TypeVariance::Invariance => cache.visited(true, t1, t2) && cache.visited(false, t2, t1),
+    }
+}
+
+unsafe fn remember_memory_check(cache: &BitRel, variance: TypeVariance, t1: usize, t2: usize) {
+    match variance {
+        TypeVariance::Covariance => cache.visit(true, t1, t2),
+        TypeVariance::Contravariance => cache.visit(false, t1, t2),
+        TypeVariance::Invariance => {
+            cache.visit(true, t1, t2);
+            cache.visit(false, t2, t2);
+        }
+    }
+}
+
+/// Memory compatibility check for orthogonal persistence.
+/// Checks whether the new type (`typetbl2`) is compatible to the old type (`typetbl1`).
+/// The implementation is similar to the Candid sub-type test `sub()` below, however,
+/// with some relevant differences w.r.t. the permitted type relations:
+/// * Support of variable (MutBox) with type invariance.
+/// * Types cannot be made optional (no insertion of Option).
+/// * Same arity for function parameters and function return types.
+/// * Records cannot introduce additional optional fields.
+pub(crate) unsafe fn memory_compatible(
+    rel: &BitRel,
+    variance: TypeVariance,
+    typtbl1: *mut *mut u8,
+    typtbl2: *mut *mut u8,
+    end1: *mut u8,
+    end2: *mut u8,
+    t1: i32,
+    t2: i32,
+    main_actor: bool,
+) -> bool {
+    if t1 >= 0 && t2 >= 0 {
+        let t1 = t1 as usize;
+        let t2 = t2 as usize;
+        if recurring_memory_check(rel, variance, t1, t2) {
+            return true;
+        };
+        remember_memory_check(rel, variance, t1, t2);
+    };
+
+    /* primitives reflexive */
+    if is_primitive_type(t1) && is_primitive_type(t2) && t1 == t2 {
+        return true;
+    }
+
+    // unfold t1, if necessary
+    let mut tb1 = Buf {
+        ptr: if t1 < 0 {
+            end1
+        } else {
+            *typtbl1.add(t1 as usize)
+        },
+        end: end1,
+    };
+
+    let u1 = if t1 >= 0 {
+        sleb128_decode_32(&mut tb1)
+    } else {
+        t1
+    };
+
+    // unfold t2, if necessary
+    let mut tb2 = Buf {
+        ptr: if t2 < 0 {
+            end2
+        } else {
+            *typtbl2.add(t2 as usize)
+        },
+        end: end2,
+    };
+
+    let u2 = if t2 >= 0 {
+        sleb128_decode_32(&mut tb2)
+    } else {
+        t2
+    };
+
+    match (u1, u2) {
+        (IDL_CON_alias, IDL_CON_alias) => {
+            let t11 = sleb128_decode_32(&mut tb1);
+            let t21 = sleb128_decode_32(&mut tb2);
+            // invariance
+            memory_compatible(
+                rel,
+                TypeVariance::Invariance,
+                typtbl1,
+                typtbl2,
+                end1,
+                end2,
+                t11,
+                t21,
+                false,
+            )
+        }
+        (IDL_PRIM_reserved, IDL_PRIM_reserved) | (IDL_PRIM_empty, IDL_PRIM_empty) => true,
+        (_, IDL_PRIM_reserved) | (IDL_PRIM_empty, _) | (IDL_PRIM_nat, IDL_PRIM_int) => {
+            variance != TypeVariance::Invariance
+        }
+        (_, IDL_CON_alias) | (IDL_CON_alias, _) => false,
+        (IDL_CON_opt, IDL_CON_opt) => {
+            let t11 = sleb128_decode_32(&mut tb1);
+            let t21 = sleb128_decode_32(&mut tb2);
+            memory_compatible(rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false)
+        }
+        (_, IDL_CON_opt) => false,
+        (IDL_CON_vec, IDL_CON_vec) => {
+            let t11 = sleb128_decode_32(&mut tb1);
+            let t21 = sleb128_decode_32(&mut tb2);
+            memory_compatible(rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false)
+        }
+        (IDL_CON_func, IDL_CON_func) => {
+            // contra in domain
+            let in1 = leb128_decode_32(&mut tb1);
+            let in2 = leb128_decode_32(&mut tb2);
+            if in1 != in2 {
+                return false;
+            }
+            for _ in 0..in1 {
+                let t11 = sleb128_decode_32(&mut tb1);
+                let t21 = sleb128_decode_32(&mut tb2);
+                // NB: invert p and args!
+                if !memory_compatible(
+                    rel,
+                    variance.invert(),
+                    typtbl2,
+                    typtbl1,
+                    end2,
+                    end1,
+                    t21,
+                    t11,
+                    false,
+                ) {
+                    return false;
+                }
+            }
+            // co in range
+            let out1 = leb128_decode_32(&mut tb1);
+            let out2 = leb128_decode_32(&mut tb2);
+            if out1 != out2 {
+                return false;
+            }
+            for _ in 0..out2 {
+                let t21 = sleb128_decode_32(&mut tb2);
+                let t11 = sleb128_decode_32(&mut tb1);
+                if !memory_compatible(rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false)
+                {
+                    return false;
+                }
+            }
+            // check annotations (that we care about)
+            // TODO: more generally, we would check equality of 256-bit bit-vectors,
+            // but validity ensures each entry is 1, 2 or 3 (for now)
+            // c.f. https://github.com/dfinity/candid/issues/318
+            let mut a11 = false;
+            let mut a12 = false;
+            let mut a13 = false;
+            for _ in 0..leb128_decode_32(&mut tb1) {
+                match read_byte(&mut tb1) {
+                    1 => a11 = true,
+                    2 => a12 = true,
+                    3 => a13 = true,
+                    _ => {}
+                }
+            }
+            let mut a21 = false;
+            let mut a22 = false;
+            let mut a23 = false;
+            for _ in 0..leb128_decode_32(&mut tb2) {
+                match read_byte(&mut tb2) {
+                    1 => a21 = true,
+                    2 => a22 = true,
+                    3 => a23 = true,
+                    _ => {}
+                }
+            }
+            a11 == a21 && a12 == a22 && a13 == a23
+        }
+        (IDL_CON_record, IDL_CON_record) => {
+            let mut n1 = leb128_decode_32(&mut tb1);
+            let n2 = leb128_decode_32(&mut tb2);
+            let mut tag1 = 0;
+            let mut t11 = 0;
+            let mut advance = true;
+            for _ in 0..n2 {
+                let tag2 = leb128_decode_32(&mut tb2);
+                let t21 = sleb128_decode_32(&mut tb2);
+                if n1 == 0 {
+                    // Optional additional fields are only supported in the main actor type.
+                    if !main_actor || !is_opt_reserved(typtbl2, end2, t21) {
+                        return false;
+                    }
+                    continue;
+                };
+                if advance {
+                    loop {
+                        tag1 = leb128_decode_32(&mut tb1);
+                        t11 = sleb128_decode_32(&mut tb1);
+                        n1 -= 1;
+                        if !(tag1 < tag2 && n1 > 0) {
+                            break;
+                        }
+                    }
+                };
+                if tag1 > tag2 {
+                    // Optional additional fields are only supported in the main actor type.
+                    if !main_actor || !is_opt_reserved(typtbl2, end2, t21) {
+                        return false;
+                    }
+                    advance = false; // reconsider this field in next round
+                    continue;
+                };
+                if !memory_compatible(rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false)
+                {
+                    return false;
+                }
+                advance = true;
+            }
+            variance != TypeVariance::Invariance || n1 == 0
+        }
+        (IDL_CON_variant, IDL_CON_variant) => {
+            let n1 = leb128_decode_32(&mut tb1);
+            let mut n2 = leb128_decode_32(&mut tb2);
+            for _ in 0..n1 {
+                if n2 == 0 {
+                    return false;
+                };
+                let tag1 = leb128_decode_32(&mut tb1);
+                let t11 = sleb128_decode_32(&mut tb1);
+                let mut tag2: u32;
+                let mut t21: i32;
+                loop {
+                    tag2 = leb128_decode_32(&mut tb2);
+                    t21 = sleb128_decode_32(&mut tb2);
+                    n2 -= 1;
+                    if !(tag2 < tag1 && n2 > 0) {
+                        break;
+                    }
+                }
+                if tag1 != tag2 {
+                    return false;
+                }
+                if !memory_compatible(rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false)
+                {
+                    return false;
+                }
+            }
+            variance != TypeVariance::Invariance || n2 == 0
+        }
+        (IDL_CON_service, IDL_CON_service) => {
+            let mut n1 = leb128_decode_32(&mut tb1);
+            let n2 = leb128_decode_32(&mut tb2);
+            for _ in 0..n2 {
+                if n1 == 0 {
+                    return false;
+                };
+                let (len2, p2) = leb128_decode_ptr(&mut tb2);
+                Buf::advance(&mut tb2, len2 as usize);
+                let t21 = sleb128_decode_32(&mut tb2);
+                let mut len1: u32;
+                let mut p1: *mut u8;
+                let mut t11: i32;
+                let mut cmp: i32;
+                loop {
+                    (len1, p1) = leb128_decode_ptr(&mut tb1);
+                    Buf::advance(&mut tb1, len1 as usize);
+                    t11 = sleb128_decode_32(&mut tb1);
+                    n1 -= 1;
+                    cmp = utf8_cmp(len1 as usize, p1, len2 as usize, p2);
+                    if cmp < 0 && n1 > 0 {
+                        continue;
+                    };
+                    break;
+                }
+                if cmp != 0 {
+                    return false;
+                };
+                if !memory_compatible(rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false)
+                {
+                    return false;
+                }
+            }
+            variance != TypeVariance::Invariance || n1 == 0
+        }
+        // default
+        (_, _) => false,
+    }
 }
 
 // TODO: consider storing fixed args typtbl1...end2 in `rel` to use less stack.
@@ -568,7 +877,6 @@ pub(crate) unsafe fn sub(
     end2: *mut u8,
     t1: i32,
     t2: i32,
-    mode: CompatibilityMode,
 ) -> bool {
     if t1 >= 0 && t2 >= 0 {
         let t1 = t1 as usize;
@@ -624,48 +932,15 @@ pub(crate) unsafe fn sub(
     // exit either via 'return true' or 'break 'return_false' to memoize the negative result
     'return_false: loop {
         match (u1, u2) {
-            (IDL_CON_alias, IDL_CON_alias) => match mode {
-                CompatibilityMode::Candid => idl_trap_with("sub: unexpected alias"),
-                CompatibilityMode::Persistence => {
-                    let t11 = sleb128_decode_32(&mut tb1);
-                    let t21 = sleb128_decode_32(&mut tb2);
-                    // invariance
-                    if sub(rel, p, typtbl1, typtbl2, end1, end2, t11, t21, mode)
-                        && sub(rel, !p, typtbl2, typtbl1, end2, end1, t21, t11, mode)
-                    {
-                        return true;
-                    } else {
-                        break 'return_false;
-                    }
-                }
-            },
-            (_, IDL_PRIM_reserved) | (IDL_PRIM_empty, _) | (IDL_PRIM_nat, IDL_PRIM_int) => {
-                return true
-            }
-            (_, IDL_CON_alias) | (IDL_CON_alias, _) => match mode {
-                CompatibilityMode::Candid => idl_trap_with("sub: unexpected alias"),
-                CompatibilityMode::Persistence => return false,
-            },
-            (IDL_CON_opt, IDL_CON_opt) => match mode {
-                CompatibilityMode::Candid => return true,
-                CompatibilityMode::Persistence => {
-                    let t11 = sleb128_decode_32(&mut tb1);
-                    let t21 = sleb128_decode_32(&mut tb2);
-                    if sub(rel, p, typtbl1, typtbl2, end1, end2, t11, t21, mode) {
-                        return true;
-                    } else {
-                        break 'return_false;
-                    }
-                }
-            },
-            (_, IDL_CON_opt) => match mode {
-                CompatibilityMode::Candid => return true,
-                CompatibilityMode::Persistence => return false,
-            },
+            (_, IDL_CON_alias) | (IDL_CON_alias, _) => idl_trap_with("sub: unexpected alias"),
+            (_, IDL_PRIM_reserved)
+            | (IDL_PRIM_empty, _)
+            | (IDL_PRIM_nat, IDL_PRIM_int)
+            | (_, IDL_CON_opt) => return true, // apparently, this is admissable
             (IDL_CON_vec, IDL_CON_vec) => {
                 let t11 = sleb128_decode_32(&mut tb1);
                 let t21 = sleb128_decode_32(&mut tb2);
-                if sub(rel, p, typtbl1, typtbl2, end1, end2, t11, t21, mode) {
+                if sub(rel, p, typtbl1, typtbl2, end1, end2, t11, t21) {
                     return true;
                 } else {
                     break 'return_false;
@@ -685,7 +960,7 @@ pub(crate) unsafe fn sub(
                         let t21 = sleb128_decode_32(&mut tb2);
                         in2 -= 1;
                         // NB: invert p and args!
-                        if !sub(rel, !p, typtbl2, typtbl1, end2, end1, t21, t11, mode) {
+                        if !sub(rel, !p, typtbl2, typtbl1, end2, end1, t21, t11) {
                             break 'return_false;
                         }
                     }
@@ -706,7 +981,7 @@ pub(crate) unsafe fn sub(
                     } else {
                         let t11 = sleb128_decode_32(&mut tb1);
                         out1 -= 1;
-                        if !sub(rel, p, typtbl1, typtbl2, end1, end2, t11, t21, mode) {
+                        if !sub(rel, p, typtbl1, typtbl2, end1, end2, t11, t21) {
                             break 'return_false;
                         }
                     }
@@ -781,7 +1056,7 @@ pub(crate) unsafe fn sub(
                         advance = false; // reconsider this field in next round
                         continue;
                     };
-                    if !sub(rel, p, typtbl1, typtbl2, end1, end2, t11, t21, mode) {
+                    if !sub(rel, p, typtbl1, typtbl2, end1, end2, t11, t21) {
                         break 'return_false;
                     }
                     advance = true;
@@ -810,7 +1085,7 @@ pub(crate) unsafe fn sub(
                     if tag1 != tag2 {
                         break 'return_false;
                     };
-                    if !sub(rel, p, typtbl1, typtbl2, end1, end2, t11, t21, mode) {
+                    if !sub(rel, p, typtbl1, typtbl2, end1, end2, t11, t21) {
                         break 'return_false;
                     }
                 }
@@ -844,7 +1119,7 @@ pub(crate) unsafe fn sub(
                     if cmp != 0 {
                         break 'return_false;
                     };
-                    if !sub(rel, p, typtbl1, typtbl2, end1, end2, t11, t21, mode) {
+                    if !sub(rel, p, typtbl1, typtbl2, end1, end2, t11, t21) {
                         break 'return_false;
                     }
                 }
@@ -916,6 +1191,5 @@ unsafe extern "C" fn idl_sub(
         typtbl_end2,
         t1,
         t2,
-        CompatibilityMode::Candid,
     );
 }

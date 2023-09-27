@@ -6,6 +6,7 @@ use crate::{
     barriers::write_with_barrier,
     bitrel::BitRel,
     constants::WORD_SIZE,
+    idl::TypeVariance,
     memory::{alloc_blob, Memory},
     types::{Value, Words},
 };
@@ -145,15 +146,15 @@ pub unsafe fn memory_compatible<M: Memory>(
     let new_type_table = new_type.build_type_table(mem);
     let new_table_end = new_type.type_table_end();
 
-    crate::idl::sub(
+    crate::idl::memory_compatible(
         &cache,
-        true,
+        TypeVariance::Covariance,
         old_type_table,
         new_type_table,
         old_table_end,
         new_table_end,
         old_type.main_actor_index,
         new_type.main_actor_index,
-        crate::idl::CompatibilityMode::Persistence,
+        true,
     )
 }
