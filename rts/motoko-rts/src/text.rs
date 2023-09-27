@@ -445,7 +445,7 @@ where
     ));
     let string = to_string(&str);
     let bytes = string.as_bytes();
-    let lowercase = alloc_blob(mem, Bytes(bytes.len() as u32));
+    let lowercase = alloc_blob(mem, Bytes(bytes.len()));
     let mut i = 0;
     let target_ptr = lowercase.as_blob_mut().payload_addr();
     for b in bytes {
