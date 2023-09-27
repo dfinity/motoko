@@ -5696,7 +5696,12 @@ module MakeSerialization (Strm : Stream) = struct
   *)
 
   module TM = Map.Make (Type.Ord)
-  let to_idl_prim = let open Type in function
+
+  type mode =
+    | Candid
+    | Persistence
+
+  let to_idl_prim mode = let open Type in function
     | Prim Null | Tup [] -> Some 1l
     | Prim Bool -> Some 2l
     | Prim Nat -> Some 3l
@@ -5716,6 +5721,11 @@ module MakeSerialization (Strm : Stream) = struct
     | Non -> Some 17l
     | Prim Principal -> Some 24l
     | Prim Region -> Some 128l
+    (* only used for memory compatibility checks *)
+    | Prim Blob -> 
+      (match mode with
+      | Candid -> None
+      | Persistence -> Some 129l)
     | _ -> None
 
   (* some constants, also see rts/idl.c *)
@@ -5728,7 +5738,7 @@ module MakeSerialization (Strm : Stream) = struct
   let idl_alias     = 1l (* see Note [mutable stable values] *)
 
   (* TODO: use record *)
-  let type_desc env ts :
+  let type_desc env mode ts :
      string * int list * int32 list  (* type_desc, (relative offsets), indices of ts *)
     =
     let open Type in
@@ -5740,7 +5750,7 @@ module MakeSerialization (Strm : Stream) = struct
       let idx = ref TM.empty in
       let rec go t =
         let t = Type.normalize t in
-        if to_idl_prim t <> None then () else
+        if to_idl_prim mode t <> None then () else
         if TM.mem t !idx then () else begin
           idx := TM.add t (Lib.List32.length !typs) !idx;
           typs := !typs @ [ t ];
@@ -5799,20 +5809,21 @@ module MakeSerialization (Strm : Stream) = struct
 
     let add_idx t =
       let t = Type.normalize t in
-      match to_idl_prim t with
+      match to_idl_prim mode t with
       | Some i -> add_sleb128 (Int32.neg i)
       | None -> add_sleb128 (TM.find (normalize t) idx) in
 
     let idx t =
       let t = Type.normalize t in
-      match to_idl_prim t with
+      match to_idl_prim mode t with
       | Some i -> Int32.neg i
       | None -> TM.find (normalize t) idx in
 
     let rec add_typ t =
       match t with
       | Non -> assert false
-      | Prim Blob ->
+      | Prim Blob -> 
+        assert (mode = Candid);
         add_typ Type.(Array (Prim Nat8))
       | Prim Region ->
         add_sleb128 idl_alias; add_idx t
@@ -5890,7 +5901,7 @@ module MakeSerialization (Strm : Stream) = struct
 
   (* See Note [Candid subtype checks] *)
   let set_delayed_globals (env : E.t) (set_typtbl, set_typtbl_end, set_typtbl_size, set_typtbl_idltyps) =
-    let typdesc, offsets, idltyps = type_desc env (E.get_typtbl_typs env) in
+    let typdesc, offsets, idltyps = type_desc env Candid (E.get_typtbl_typs env) in
     let static_typedesc = E.add_static_unskewed env [StaticBytes.Bytes typdesc] in
     let static_typtbl =
       let bytes = StaticBytes.i32s
@@ -6405,7 +6416,7 @@ module MakeSerialization (Strm : Stream) = struct
       (* returns true if we are looking at primitive type with this id *)
       let check_prim_typ t =
         get_idltyp ^^
-        compile_eq_const (Int32.neg (Option.get (to_idl_prim t)))
+        compile_eq_const (Int32.neg (Option.get (to_idl_prim Candid t)))
       in
 
       let with_prim_typ t f =
@@ -6554,7 +6565,7 @@ module MakeSerialization (Strm : Stream) = struct
         begin
           (* sanity check *)
           get_arg_typ ^^
-          compile_eq_const (Int32.neg (Option.get (to_idl_prim (Prim Region)))) ^^
+          compile_eq_const (Int32.neg (Option.get (to_idl_prim Candid (Prim Region)))) ^^
           E.else_trap_with env "IDL error: unexpecting primitive alias type" ^^
           get_arg_typ
         end
@@ -6815,7 +6826,7 @@ module MakeSerialization (Strm : Stream) = struct
           let (set_region, get_region) = new_local env "region" in
           (* sanity check *)
           get_region_typ ^^
-          compile_eq_const (Int32.neg (Option.get (to_idl_prim (Prim Region)))) ^^
+          compile_eq_const (Int32.neg (Option.get (to_idl_prim Candid (Prim Region)))) ^^
           E.else_trap_with env "deserialize_go (Region): unexpected idl_typ" ^^
           (* pre-allocate a region object, with dummy fields *)
           compile_const_64 0L ^^ (* id *)
@@ -6996,7 +7007,7 @@ module MakeSerialization (Strm : Stream) = struct
       let (set_data_size, get_data_size) = new_local env "data_size" in
       let (set_refs_size, get_refs_size) = new_local env "refs_size" in
 
-      let (tydesc, _offsets, _idltyps) = type_desc env ts in
+      let (tydesc, _offsets, _idltyps) = type_desc env Candid ts in
       let tydesc_len = Int32.of_int (String.length tydesc) in
 
       (* Get object sizes *)
@@ -7642,7 +7653,7 @@ module Persistence = struct
   let free_stable_actor env = E.call_import env "rts" "free_stable_actor"
 
   let register_stable_type env actor_type =
-    let (candid_type_desc, type_offsets, type_indices) = Serialization.type_desc env [actor_type] in
+    let (candid_type_desc, type_offsets, type_indices) = Serialization.(type_desc env Persistence [actor_type]) in
     let serialized_offsets = StaticBytes.(as_bytes [i32s (List.map Int32.of_int type_offsets)]) in
     assert ((List.length type_indices) = 1);
     Blob.lit env candid_type_desc ^^
@@ -10011,7 +10022,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
   | ICStableSize t, [e] ->
     SR.UnboxedWord64,
-    let (tydesc, _, _) = Serialization.type_desc env [t] in
+    let (tydesc, _, _) = Serialization.(type_desc env Candid [t]) in
     let tydesc_len = Int32.of_int (String.length tydesc) in
     compile_exp_vanilla env ae e ^^
     Serialization.buffer_size env t ^^
