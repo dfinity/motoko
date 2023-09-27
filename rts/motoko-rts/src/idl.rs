@@ -587,7 +587,7 @@ unsafe fn remember_memory_check(cache: &BitRel, variance: TypeVariance, t1: usiz
         TypeVariance::Contravariance => cache.visit(false, t1, t2),
         TypeVariance::Invariance => {
             cache.visit(true, t1, t2);
-            cache.visit(false, t2, t2);
+            cache.visit(false, t2, t1);
         }
     }
 }
