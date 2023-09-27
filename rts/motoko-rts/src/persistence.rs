@@ -176,8 +176,10 @@ pub unsafe extern "C" fn contains_field(actor: Value, field_hash: u32) -> bool {
     let mut current_address = hash_blob.payload_const() as u32;
     for _ in 0..number_of_fields {
         let hash_address = current_address as *mut u32;
-        if *hash_address == field_hash {
-            return true;
+        let hash_value = *hash_address;
+        // The hash sequence is sorted: Stop when the hash matches or cannot exist.
+        if hash_value >= field_hash {
+            return hash_value == field_hash;
         }
         current_address += WORD_SIZE;
     }
