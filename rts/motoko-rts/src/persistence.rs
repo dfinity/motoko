@@ -20,7 +20,7 @@ use self::compatibility::TypeDescriptor;
 #[cfg(feature = "ic")]
 const FINGERPRINT: [char; 32] = [
     'M', 'O', 'T', 'O', 'K', 'O', ' ', 'O', 'R', 'T', 'H', 'O', 'G', 'O', 'N', 'A', 'L', ' ', 'P',
-    'E', 'R', 'S', 'I', 'S', 'T', 'E', 'N', 'C', 'E', ' ', '3', '2',
+    'E', 'R', 'S', 'I', 'S', 'T', 'E', 'N', 'C', 'E', ' ', '6', '4',
 ];
 #[cfg(feature = "ic")]
 const VERSION: usize = 1;
