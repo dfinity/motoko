@@ -1,5 +1,5 @@
 //! Persistent type compatibility check.
-//! Determines whether the a new actor type is compatible with the existing persistent state.
+//! Determines whether a new actor type is compatible with the existing persistent state.
 //! Engages the existing IDL subtype check functionality.
 
 use crate::{
@@ -13,7 +13,7 @@ use crate::{
 const DEFAULT_VALUE: Value = Value::from_scalar(0);
 
 pub struct TypeDescriptor {
-    // Blob with candid-encoded type defintions.
+    // Blob with candid-encoded type definitions.
     candid_data: Value,
     // Blob with a list of `u32` offsets referring to the `candid_data`.
     type_offsets: Value,
