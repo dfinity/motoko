@@ -4159,7 +4159,7 @@ module Lifecycle = struct
     | InPreUpgrade -> [Idle]
     | PostPreUpgrade -> [InPreUpgrade]
     | InPostUpgrade -> [InInit]
-    | InComposite -> [Idle; InComposite]
+    | InComposite -> [Idle]
 
   let get env =
     compile_unboxed_const (ptr ()) ^^
@@ -4185,10 +4185,6 @@ module Lifecycle = struct
         ) ^^
       set env new_state
     )
-
-  let is_in env state =
-    get env ^^
-    compile_eq_const (int_of_state state)
 
 end (* Lifecycle *)
 
@@ -8295,25 +8291,9 @@ module FuncDec = struct
       | Type.Shared Type.Query ->
         Lifecycle.trans env Lifecycle.PostQuery
       | Type.Shared Type.Composite ->
-        (* Stay in composite query state such that callbacks of 
-        composite queries can also use the memory reserve. 
-        The state is isolated since memory changes of queries 
-        are rolled back by the IC runtime system. *)
-        Lifecycle.trans env Lifecycle.InComposite
+        Lifecycle.trans env Lifecycle.Idle
       | _ -> assert false
 
-  let callback_start env =
-    Lifecycle.is_in env Lifecycle.InComposite ^^
-    G.if0
-      (G.nop)
-      (message_start env (Type.Shared Type.Write))
-
-  let callback_cleanup env =
-    Lifecycle.is_in env Lifecycle.InComposite ^^
-    G.if0
-      (G.nop)
-      (message_cleanup env (Type.Shared Type.Write))
-  
   let compile_const_message outer_env outer_ae sort control args mk_body ret_tys at : E.func_with_names =
     let ae0 = VarEnv.mk_fun_ae outer_ae in
     Func.of_body outer_env [] [] (fun env -> G.with_region at (
@@ -8474,7 +8454,7 @@ module FuncDec = struct
            (fun env -> compile_unboxed_const 0L)))
     in
     Func.define_built_in env reply_name ["env", I32Type] [] (fun env ->
-        callback_start env ^^
+        message_start env (Type.Shared Type.Write) ^^
         (* Look up continuation *)
         let (set_closure, get_closure) = new_local env "closure" in
         G.i (LocalGet (nr 0l)) ^^
@@ -8491,12 +8471,12 @@ module FuncDec = struct
         get_closure ^^
         Closure.call_closure env arity 0 ^^
 
-        callback_cleanup env
+        message_cleanup env (Type.Shared Type.Write)
       );
 
     let reject_name = "@reject_callback" in
     Func.define_built_in env reject_name ["env", I32Type] [] (fun env ->
-        callback_start env ^^
+        message_start env (Type.Shared Type.Write) ^^
         (* Look up continuation *)
         let (set_closure, get_closure) = new_local env "closure" in
         G.i (LocalGet (nr 0l)) ^^
@@ -8514,7 +8494,7 @@ module FuncDec = struct
         get_closure ^^
         Closure.call_closure env 1 0 ^^
 
-        callback_cleanup env
+        message_cleanup env (Type.Shared Type.Write)
       );
 
     (* result is a function that accepts a list of closure getters, from which
