@@ -28,7 +28,7 @@ const VERSION: usize = 1;
 /// The GC ignores this value since it is a scalar representation.
 const DEFAULT_VALUE: Value = Value::from_scalar(0);
 
-/// The persistent metadata stored at the defined location `METADTA_ADDRESS` in memory.
+/// The persistent metadata stored at the defined location `METADATA_ADDRESS` in memory.
 /// Use a long-term representation by relying on C layout.
 /// The `Value` references belong to the GC root set and require forwarding pointer resolution.
 #[repr(C)]
@@ -52,17 +52,17 @@ struct PersistentMetadata {
 }
 
 /// Location of the persistent metadata. Prereseved and fixed forever.
-const METATDATA_ADDRESS: usize = 8 * 1024 * 1024;
+const METADATA_ADDRESS: usize = 8 * 1024 * 1024;
 /// The reserved maximum size of the metadata, contains a reserve for future extension of the metadata.
 const METADATA_RESERVE: usize = 256 * 1024;
 
-pub const HEAP_START: usize = METATDATA_ADDRESS + METADATA_RESERVE;
+pub const HEAP_START: usize = METADATA_ADDRESS + METADATA_RESERVE;
 
 const _: () = assert!(core::mem::size_of::<PersistentMetadata>() <= METADATA_RESERVE);
 
 impl PersistentMetadata {
     fn get() -> *mut Self {
-        METATDATA_ADDRESS as *mut Self
+        METADATA_ADDRESS as *mut Self
     }
 
     #[cfg(feature = "ic")]
@@ -103,7 +103,7 @@ impl PersistentMetadata {
     }
 }
 
-/// Initialize fresh peristent memory after the canister installation or
+/// Initialize fresh persistent memory after the canister installation or
 /// reuse the persistent memory on a canister upgrade.
 #[cfg(feature = "ic")]
 pub unsafe fn initialize_memory<M: Memory>(mem: &mut M) {

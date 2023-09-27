@@ -2,9 +2,14 @@
 
 use super::Memory;
 use crate::constants::WASM_PAGE_SIZE;
+use crate::memory::MEMORY_RESERVE;
 use crate::rts_trap_with;
 use crate::types::{Bytes, Value, Words};
 use core::arch::wasm64;
+
+extern "C" {
+    fn keep_memory_reserve() -> bool;
+}
 
 /// Provides a `Memory` implementation, to be used in functions compiled for IC or WASI. The
 /// `Memory` implementation allocates in Wasm heap with Wasm `memory.grow` instruction.

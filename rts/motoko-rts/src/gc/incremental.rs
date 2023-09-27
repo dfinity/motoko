@@ -70,7 +70,7 @@ unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
 #[cfg(feature = "ic")]
 unsafe fn should_start() -> bool {
     use self::partitioned_heap::PARTITION_SIZE;
-    use crate::memory::ic;
+    use crate::memory::{ic, MEMORY_RESERVE};
 
     const CRITICAL_HEAP_LIMIT: Bytes<usize> = Bytes(usize::MAX - 768 * 1024 * 1024);
     const CRITICAL_GROWTH_THRESHOLD: f64 = 0.01;
