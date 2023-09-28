@@ -45,12 +45,15 @@ const IDL_REF_principal: i32 = -24;
 
 // Extended Candid only
 const IDL_EXT_region: i32 = -128;
-const IDL_EXT_blob: i32 = -129;
 
 // Extended Candid only
 const IDL_CON_alias: i32 = 1;
 
 const IDL_PRIM_lowest: i32 = -17;
+
+// Only used for memory compatiblity checks for orthogonal persistence.
+const IDL_EXT_blob: i32 = -129;
+const IDL_EXT_tuple: i32 = -130;
 
 pub unsafe fn leb128_decode_ptr(buf: *mut Buf) -> (u32, *mut u8) {
     (leb128_decode(buf), (*buf).ptr)
@@ -207,6 +210,8 @@ unsafe fn parse_idl_header<M: Memory>(
             let t = sleb128_decode(buf);
             check_typearg(mode, t, n_types);
         } else if ty == IDL_CON_record {
+            parse_fields(mode, buf, n_types);
+        } else if ty == IDL_EXT_tuple {
             parse_fields(mode, buf, n_types);
         } else if ty == IDL_CON_variant {
             parse_fields(mode, buf, n_types);
@@ -616,6 +621,8 @@ unsafe fn remember_memory_check(cache: &BitRel, variance: TypeVariance, t1: u32,
 /// * Types cannot be made optional (no insertion of Option).
 /// * Same arity for function parameters and function return types.
 /// * Records cannot introduce additional optional fields.
+/// * Same arity for tuple types.
+/// * Records and tuples are distinct.
 pub(crate) unsafe fn memory_compatible(
     rel: &BitRel,
     variance: TypeVariance,
@@ -778,6 +785,27 @@ pub(crate) unsafe fn memory_compatible(
                 }
             }
             a11 == a21 && a12 == a22 && a13 == a23
+        }
+        (IDL_EXT_tuple, IDL_EXT_tuple) => {
+            let n1 = leb128_decode(&mut tb1);
+            let n2 = leb128_decode(&mut tb2);
+            if n1 != n2 {
+                return false;
+            }
+            for _ in 0..n1 {
+                let tag1 = leb128_decode(&mut tb1);
+                let t11 = sleb128_decode(&mut tb1);
+                let tag2 = leb128_decode(&mut tb2);
+                let t21 = sleb128_decode(&mut tb2);
+                if tag1 != tag2 {
+                    return false;
+                }
+                if !memory_compatible(rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false)
+                {
+                    return false;
+                }
+            }
+            true
         }
         (IDL_CON_record, IDL_CON_record) => {
             let mut n1 = leb128_decode(&mut tb1);
