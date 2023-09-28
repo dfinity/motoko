@@ -1,0 +1,42 @@
+[package]
+name = "motoko-rts-ext"
+version = "0.1.0"
+authors = ["dfinity <sdk@dfinity.org>"]
+edition = "2018"
+
+# For rlib use native/Cargo.toml
+[lib]
+crate-type = ["staticlib"]
+
+[features]
+# This file is used to build the RTS to be linked with moc-generated code, so
+# we enable the "ic" feature. `native/Cargo.toml` doesn't have this feature and
+# is used in RTS tests.
+default = ["ic"]
+
+# To enable extensive memory sanity checks in the incremental GC, use the
+# following default configuration instead:
+# default = ["ic", "memory_check"]
+
+# This feature is used to enable stuff needed for the RTS linked with
+# moc-generated code, but not when testing the RTS
+ic = []
+
+# This feature enables extensive memory sanity checks in the incremental GC.
+memory_check = []
+
+# Incremental GC, using the extended object header containing the forwarding pointer. 
+incremental_gc = []
+
+[dependencies]
+# libc = { version = "0.2.139", default_features = false }
+# motoko-rts = { path = "../motoko-rts" }
+# motoko-rts-macros = { path = "../motoko-rts-macros" }
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"
+codegen-units = 1 # makes debugging easier
+opt-level = "s" # optimize for size

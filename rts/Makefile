@@ -249,6 +249,38 @@ $(RTS_RUST_INCREMENTAL_DEBUG_WASM_A): $(RTS_DEPENDENCIES)
 	cp $(RTS_DEBUG_TARGET) $@
 
 #
+# RTS extension (temp, experimental test)
+#
+
+EXT_BUILD=cd motoko-rts-ext && cargo build --target=wasm32-unknown-emscripten -Zbuild-std=core,alloc
+
+EXT_DEBUG_WASM_A=_build/wasm/libmotoko_ext_debug.a
+
+# Combined RTS and EXT into one .a file:
+RTS_EXT_DEBUG_WASM_A=_build/wasm/libmotoko_rts_ext_debug.a
+
+EXT_DEBUG_TARGET=motoko-rts-ext/target/wasm32-unknown-emscripten/debug/libmotoko_rts_ext.a
+
+EXT_TEMP_DIR=rts_ext_temp
+
+$(RTS_EXT_DEBUG_WASM_A): $(EXT_DEBUG_WASM_A) $(RTS_RUST_INCREMENTAL_DEBUG_WASM_A)
+	mkdir -p $(EXT_TEMP_DIR)
+	cp $(RTS_RUST_INCREMENTAL_DEBUG_WASM_A) $(EXT_TEMP_DIR)/rts.a && \
+	cp $(EXT_DEBUG_WASM_A) $(EXT_TEMP_DIR)/ext.a && \
+	pushd $(EXT_TEMP_DIR) && \
+	llvm-ar -x rts.a  && \
+	llvm-ar -x ext.a && \
+	llvm-ar -crs rts_ext.a *.o && \
+	popd && \
+	cp $(EXT_TEMP_DIR)/rts_ext.a $@ &&\
+	rm -r $(EXT_TEMP_DIR)
+
+$(EXT_DEBUG_WASM_A): $(RTS_DEPENDENCIES)
+	$(EXT_BUILD)
+	cp $(EXT_DEBUG_TARGET) $@
+
+
+#
 # The test suite
 #
 
