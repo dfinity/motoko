@@ -5841,6 +5841,9 @@ module MakeSerialization (Strm : Stream) = struct
   let idl_func      = -22l
   let idl_service   = -23l
   let idl_alias     = 1l (* see Note [mutable stable values] *)
+  
+  (* only used for memory compatibility checks *)
+  let idl_tuple     = -130l
 
   (* TODO: use record *)
   let type_desc env mode ts :
@@ -5934,7 +5937,9 @@ module MakeSerialization (Strm : Stream) = struct
         add_sleb128 idl_alias; add_idx t
       | Prim _ -> assert false
       | Tup ts ->
-        add_sleb128 idl_record;
+        add_sleb128 (match mode with
+        | Candid -> idl_record
+        | Persistence -> idl_tuple);
         add_leb128 (List.length ts);
         List.iteri (fun i t ->
           add_leb128 i;
