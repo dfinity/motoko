@@ -1,5 +1,5 @@
 "\44\49\44\4C\00\01\7F"
-IDL error: advance out of buffer
+IDL error: invalid type argument
 Error: failed to run main module `_out/issue-4229.wasm`
 
 Caused by:
@@ -8,8 +8,8 @@ Caused by:
          0: rts_trap
          1: motoko_rts::trap_with_prefix::h757ee6d860f5c7ff
          2: motoko_rts::idl_trap_with::h539f381c213e508f
-         3: skip_any
-         4: @deserialize_go<z>
+         3: motoko_rts::idl::check_typearg::h65d9467531274e89
+         4: parse_idl_header
          5: @deserialize<z>
          6: init
          7: _start
