@@ -1,8 +1,8 @@
-issue-4229.mo:2.5-2.28: warning [M0145], this pattern of type
+issue-4229.mo:3.5-3.28: warning [M0145], this pattern of type
   Blob
 does not cover value
   _
-issue-4229.mo:5.5-5.9: warning [M0145], this pattern of type
+issue-4229.mo:6.5-6.10: warning [M0145], this pattern of type
   ?Null
 does not cover value
-  ?(_)
+  null

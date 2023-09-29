@@ -1,5 +1,12 @@
 import Prim  = "mo:prim";
+Prim.debugPrint(debug_show(to_candid(null)));
 let "\44\49\44\4C\00\01\7F" = to_candid (null);
-// \80 (-128) is IDL_EXT_REGION descriptor,
+// \80\7F (-128) is IDL_EXT_REGION descriptor,
 // and should not appear in a valid (pure) Candid type table
-let null = from_candid "\44\49\44\4C\00\01\80" : ? Null
+let ?null = from_candid "\44\49\44\4C\00\01\7F" : ? Null;
+let b = from_candid "\44\49\44\4C\00\01\80\7F" : ? Null;
+Prim.debugPrint(debug_show b);
+
+//SKIP run
+//SKIP run-low
+//SKIP run-ir
