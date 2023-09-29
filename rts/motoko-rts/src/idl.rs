@@ -69,11 +69,12 @@ pub unsafe fn leb128_decode_ptr(buf: *mut Buf) -> (u32, *mut u8) {
 }
 
 unsafe fn is_primitive_type(ty: i32) -> bool {
-    ty < 0
-        && (ty >= IDL_PRIM_lowest
-            || ty == IDL_REF_principal
-            || ty == IDL_EXT_region
-            || ty == IDL_EXT_blob)
+    ty < 0 && (ty >= IDL_PRIM_lowest || ty == IDL_REF_principal || ty == IDL_EXT_region)
+}
+
+// Only used for memory-compatibility checks for orthogonal persistence.
+unsafe fn is_extended_primitive_type(ty: i32) -> bool {
+    is_primitive_type(ty) || ty < 0 && ty == IDL_EXT_blob
 }
 
 // TBR; based on Text.text_compare
@@ -630,7 +631,7 @@ pub(crate) unsafe fn memory_compatible(
     };
 
     /* primitives reflexive */
-    if is_primitive_type(t1) && is_primitive_type(t2) && t1 == t2 {
+    if is_extended_primitive_type(t1) && is_extended_primitive_type(t2) && t1 == t2 {
         return true;
     }
 
