@@ -42,10 +42,10 @@ const IDL_CON_service: i32 = -23;
 
 const IDL_REF_principal: i32 = -24;
 
-// extended Candid only
+// Extended Candid only
 const IDL_EXT_region: i32 = -128;
 
-// extended Candid only
+// Extended Candid only
 const IDL_CON_alias: i32 = 1;
 
 const IDL_PRIM_lowest: i32 = -17;
