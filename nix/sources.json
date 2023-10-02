@@ -21,16 +21,16 @@
         "version": "3.2.25"
     },
     "ic": {
-        "branch": "master",
+        "branch": "pull/124/head",
         "builtin": false,
         "description": "Internet Computer blockchain source: the client/replica software run by nodes",
         "homepage": "",
         "owner": "dfinity",
         "repo": "ic",
-        "rev": "2aa53020f13c68b1f1ef41ef2b8cb54db845683a",
-        "sha256": "0fnmnfy01b7min3faspwa46kxk0fz0d53gqy6048088ygfsyzr1a",
+        "rev": "aa293129bce86f46cc34bb25ed50f0edb924a501",
+        "sha256": "1z5azm0b2kb76mrigqb6i81hb2mh8psp4ffragvsyqa242rl0yrc",
         "type": "tarball",
-        "url": "https://github.com/dfinity/ic/archive/2aa53020f13c68b1f1ef41ef2b8cb54db845683a.tar.gz",
+        "url": "https://github.com/dfinity/ic/archive/aa293129bce86f46cc34bb25ed50f0edb924a501.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ic-hs": {
@@ -40,10 +40,10 @@
         "homepage": "",
         "owner": "dfinity",
         "repo": "ic-hs",
-        "rev": "603523393bfe97dcf934434fac8915ddc25c780a",
-        "sha256": "17v14d5ryhkw8zhlc1bhk63kv197nsl63ccfv8ibq5q6xnw4i75j",
+        "rev": "a5f89cf508b0c80b633e3f0c152e3406fb750189",
+        "sha256": "0sjj272ch14309h3n3cxq6g7jkdhhqmdjrjdg67w1xxk4k1s1sfn",
         "type": "tarball",
-        "url": "https://github.com/dfinity/ic-hs/archive/603523393bfe97dcf934434fac8915ddc25c780a.tar.gz",
+        "url": "https://github.com/dfinity/ic-hs/archive/a5f89cf508b0c80b633e3f0c152e3406fb750189.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ic-wasm": {
@@ -52,10 +52,10 @@
         "homepage": null,
         "owner": "dfinity",
         "repo": "ic-wasm",
-        "rev": "42d911dd249ffb01c04ca429ae09006c2b047a3a",
-        "sha256": "11pf3b7650dpbkyg36b18yd91i3v5h8iksxsgz3y3lb45pyivx1j",
+        "rev": "d8d3b438973784b3935e3e18a7ea8690859b3e24",
+        "sha256": "1sw7sqwyp63m0frjz744jd5nsli8np6gsc19z7l66h6f32pyhy2r",
         "type": "tarball",
-        "url": "https://github.com/dfinity/ic-wasm/archive/42d911dd249ffb01c04ca429ae09006c2b047a3a.tar.gz",
+        "url": "https://github.com/dfinity/ic-wasm/archive/d8d3b438973784b3935e3e18a7ea8690859b3e24.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "libtommath": {
@@ -76,10 +76,10 @@
         "homepage": null,
         "owner": "dfinity",
         "repo": "motoko-base",
-        "rev": "9037e2c2d9947084c93278f4be6bac4517f2ab8f",
-        "sha256": "093sfzxchbr6j8ly4nym9qyk1ljsv5pf0jlslbz0rr701y6ynwy9",
+        "rev": "59207c011711d56e0f8cab122411373456bb6697",
+        "sha256": "1caj2dychmqrzpnsfj8w64swa2lg289f9rnczs1bzrkis9xj2kly",
         "type": "tarball",
-        "url": "https://github.com/dfinity/motoko-base/archive/9037e2c2d9947084c93278f4be6bac4517f2ab8f.tar.gz",
+        "url": "https://github.com/dfinity/motoko-base/archive/59207c011711d56e0f8cab122411373456bb6697.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "motoko-matchers": {
@@ -102,10 +102,10 @@
         "homepage": "https://wasi.dev",
         "owner": "WebAssembly",
         "repo": "wasi-libc",
-        "rev": "bd950eb128bff337153de217b11270f948d04bb4",
-        "sha256": "1w1aahki27wb17k8hsh7zv6g114y1n5j2db5kc2l2sqviy2w58dj",
+        "rev": "ec4566beae84e54952637f0bf61bee4b4cacc087",
+        "sha256": "0f739yhi5phs2g0p0bl2nx87qmcc4amq2c2nykdycr1lglvqq5yy",
         "type": "tarball",
-        "url": "https://github.com/WebAssembly/wasi-libc/archive/bd950eb128bff337153de217b11270f948d04bb4.tar.gz",
+        "url": "https://github.com/WebAssembly/wasi-libc/archive/ec4566beae84e54952637f0bf61bee4b4cacc087.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs": {
@@ -128,10 +128,10 @@
         "homepage": null,
         "owner": "mozilla",
         "repo": "nixpkgs-mozilla",
-        "rev": "c72bae8641d4486b3bd7b556d577df519f640f9a",
-        "sha256": "0yjls0866pd02dxkak558k24b19ljjcizy4r7dpjnsmafn25kx0a",
+        "rev": "1ca9ee7192f973fd67b0988bdd77b8c11ae245a6",
+        "sha256": "0f6x1lxi6ks5404ggnlmnj6d91834qya2hb4fbkfcxiids2wq17d",
         "type": "tarball",
-        "url": "https://github.com/mozilla/nixpkgs-mozilla/archive/c72bae8641d4486b3bd7b556d577df519f640f9a.tar.gz",
+        "url": "https://github.com/mozilla/nixpkgs-mozilla/archive/1ca9ee7192f973fd67b0988bdd77b8c11ae245a6.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ocaml-vlq": {

@@ -1,3 +1,4 @@
+//MOC-FLAG -fshared-code
 import Prim "mo:⛔";
 
 // FHECK: func $init

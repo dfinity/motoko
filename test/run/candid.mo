@@ -19,6 +19,11 @@ assert (?(1,true,?'a') == (from_candid(to_candid(1,true,'a')) : ?(Nat,Bool,?Char
 assert (null == (from_candid(to_candid(-1,true,'a')) : ?(Nat,Bool,?Char))); // subtype failure
 assert (?(-1,true,?'a') == (from_candid(to_candid(-1,true,'a')) : ?(Int,Bool,?Char)));
 
+// tuples as a single top-level argument
+// Note: this is somewhat tricky and relies on two facts:
+//       - asking for a non-tuple type extracts the first argument
+//       - there are no tuples in Candid, only records that have keys _0_, _1_, etc.
+assert (?{_0_ = 1; _1_ = true} == (from_candid(to_candid((1,true))) : ?{_0_ : Nat; _1_ : Bool}));
 
 // defaulting
 assert (?(1,true,null) == (from_candid(to_candid(1,true,'a')) : ?(Nat,Bool,?Text)));

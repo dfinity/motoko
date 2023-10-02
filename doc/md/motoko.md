@@ -1,4 +1,4 @@
-# Motoko Programming Language
+# Motoko programming language
 
 :::tip
 

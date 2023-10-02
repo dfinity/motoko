@@ -32,6 +32,7 @@ let check_modes ms =
   | [] -> (M.Write, M.Promises)
   | [{it=Oneway; _}] -> (M.Write, M.Returns)
   | [{it=Query; _}] -> (M.Query, M.Promises)
+  | [{it=Composite; _}] -> (M.Composite, M.Promises)
   | _ -> assert false
 
 let check_label lab : M.lab =
@@ -87,13 +88,13 @@ let rec check_typ' env occs t =
   | PreT -> assert false
 and check_typs' env occs ts = List.map (check_typ' env occs) ts
 and check_field env occs f =
-  M.{lab = check_label f.it.label; typ = check_typ' env occs f.it.typ; depr = None}
+  M.{lab = check_label f.it.label; typ = check_typ' env occs f.it.typ; src = empty_src}
 and check_variant_field env occs f =
   match f.it.typ.it with
-  | PrimT Null -> M.{lab = check_label f.it.label; typ = M.Tup []; depr = None}
+  | PrimT Null -> M.{lab = check_label f.it.label; typ = M.Tup []; src = empty_src}
   | _ -> check_field env occs f
 and check_meth env occs (m: typ_meth) =
-  M.{lab = Idllib.Escape.escape_method m.it.var.at m.it.var.it; typ = check_typ' env occs m.it.meth; depr = None}
+  M.{lab = Idllib.Escape.escape_method m.it.var.at m.it.var.it; typ = check_typ' env occs m.it.meth; src = empty_src}
 
 let check_prog (env: typ I.Env.t) actor : M.typ =
   let occs = ref M.Env.empty in
@@ -122,7 +123,7 @@ let check_prog (env: typ I.Env.t) actor : M.typ =
        | M.Con (c, _) ->
           (* TODO: consider adding deprecation as types can disappear even
              across compatible .dids *)
-          M.{lab = id; typ = M.Typ c; depr = None}::fs
+          M.{lab = id; typ = M.Typ c; src = empty_src}::fs
        | _ -> assert false) !occs fs in
   M.Obj (M.Actor, List.sort M.compare_field fs1)
 
