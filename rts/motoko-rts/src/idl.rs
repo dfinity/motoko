@@ -78,6 +78,7 @@ unsafe fn utf8_cmp(len1: u32, p1: *mut u8, len2: u32, p2: *mut u8) -> i32 {
     }
 }
 
+#[no_mangle]
 unsafe fn check_typearg(extended: bool, ty: i32, n_types: u32) {
     // Arguments to type constructors can be primitive types or type indices
     if !(is_primitive_type(extended, ty) || (ty >= 0 && (ty as u32) < n_types)) {
@@ -85,6 +86,7 @@ unsafe fn check_typearg(extended: bool, ty: i32, n_types: u32) {
     }
 }
 
+#[no_mangle]
 unsafe fn parse_fields(extended: bool, buf: *mut Buf, n_types: u32) {
     let mut next_valid = 0;
     for n in (1..=leb128_decode(buf)).rev() {
