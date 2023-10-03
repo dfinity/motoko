@@ -200,6 +200,12 @@ let wrap_output f =
     val result = result
   end
 
+let print_deps file =
+  let _ = Pipeline.print_deps file in
+  let stdout_result = Buffer.contents stdout_buffer in
+  Buffer.clear stdout_buffer;
+  Js.bytestring stdout_result
+
 let add_package package dir =
   let libs = Flags.package_urls in
   libs := Flags.M.add (Js.to_string package) (Js.to_string dir) !libs
