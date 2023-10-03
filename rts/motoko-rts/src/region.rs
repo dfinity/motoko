@@ -948,6 +948,19 @@ pub(crate) unsafe fn region_load<M: Memory>(_mem: &mut M, r: Value, offset: u64,
     }
 }
 
+pub unsafe fn region_write_heap_shapshot<M: Memory>(mem: &mut M, r: Value) {
+    use crate::constants::WASM_PAGE_SIZE;
+    use core::arch::wasm32;
+
+    let heap_size: usize = wasm32::memory_size(0) * (WASM_PAGE_SIZE.as_u32() as usize);
+    if wasm32::memory_size(0) as u64 > region_size(mem, r) {
+        let new_pages = wasm32::memory_size(0) as u64 - region_size(mem, r);
+        region_grow(mem, r, new_pages);
+    };
+    let heap_src = core::slice::from_raw_parts(core::ptr::null(), heap_size);
+    region_store(mem, r, 0, heap_src)
+}
+
 pub(crate) unsafe fn region_store<M: Memory>(_mem: &mut M, r: Value, offset: u64, src: &[u8]) {
     use crate::stable_mem::write;
     use meta_data::size::BLOCK_IN_BYTES;
