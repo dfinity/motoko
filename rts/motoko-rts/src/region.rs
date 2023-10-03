@@ -957,8 +957,21 @@ pub unsafe fn region_write_heap_shapshot<M: Memory>(mem: &mut M, r: Value) {
         let new_pages = wasm32::memory_size(0) as u64 - region_size(mem, r);
         region_grow(mem, r, new_pages);
     };
-    let heap_src = core::slice::from_raw_parts(core::ptr::null(), heap_size);
-    region_store(mem, r, 0, heap_src)
+    if heap_size < isize::MAX as usize {
+        let heap_src = core::slice::from_raw_parts(core::ptr::null(), heap_size);
+        region_store(mem, r, 0, heap_src)
+    } else {
+        let len = heap_size;
+        assert!((len / 2) < isize::MAX as usize);
+        let bytes_low: &[u8] =
+            core::slice::from_raw_parts(core::ptr::null(), (heap_size / 2) as usize);
+        region_store(mem, r, 0, bytes_low);
+        let bytes_high: &[u8] = core::slice::from_raw_parts(
+            core::ptr::null::<u8>().add((len / 2) as usize),
+            (len - len / 2) as usize,
+        );
+        region_store(mem, r, (len / 2) as u64, bytes_high);
+    }
 }
 
 pub(crate) unsafe fn region_store<M: Memory>(_mem: &mut M, r: Value, offset: u64, src: &[u8]) {
