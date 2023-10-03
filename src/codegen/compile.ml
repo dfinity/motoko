@@ -10319,13 +10319,12 @@ and compile_prim_invocation (env : E.t) ae p es at =
       SR.Vanilla,
       compile_exp_vanilla env ae e ^^
       TaggedSmallWord.lsb_adjust Type.Nat8 ^^
-      compile_shrU_const 8l ^^
       TaggedSmallWord.msb_adjust Type.Nat16
     | Nat16, Nat32 ->
       SR.Vanilla,
       compile_exp_vanilla env ae e ^^
       TaggedSmallWord.lsb_adjust Type.Nat16 ^^
-      compile_shrU_const 15l (* resulting Nat32 will always be unboxed *)
+      BitTagged.tag_i32 (* resulting Nat32 will always be unboxed *)
     | Nat32, Nat64 ->
       SR.UnboxedWord64,
       compile_exp_as env ae SR.UnboxedWord32 e ^^
