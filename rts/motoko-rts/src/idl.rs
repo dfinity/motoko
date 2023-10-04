@@ -62,7 +62,7 @@ unsafe fn is_primitive_type(extended: bool, ty: i32) -> bool {
 
 // Only used for memory-compatibility checks for orthogonal persistence.
 unsafe fn is_extended_primitive_type(ty: i32) -> bool {
-    is_primitive_type(ty) || ty < 0 && ty == IDL_EXT_blob
+    is_primitive_type(true, ty) || ty < 0 && ty == IDL_EXT_blob
 }
 
 // TBR; based on Text.text_compare
