@@ -1,2 +1,2 @@
-main-memory-snapshot.mo:2.1-14.2: type error [M0086], async expressions are not supported
+main-memory-snapshot.mo:2.1-15.2: type error [M0086], async expressions are not supported
   (This is a limitation of the current version and flag -wasi-system-api.)
