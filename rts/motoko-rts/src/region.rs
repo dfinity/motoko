@@ -948,7 +948,8 @@ pub(crate) unsafe fn region_load<M: Memory>(_mem: &mut M, r: Value, offset: u64,
     }
 }
 
-pub unsafe fn main_memory_shapshot<M: Memory>(mem: &mut M, r: Value) {
+#[ic_mem_fn(ic_only)]
+pub unsafe fn main_memory_snapshot<M: Memory>(mem: &mut M, r: Value) {
     use crate::constants::WASM_PAGE_SIZE;
     use core::arch::wasm32;
 

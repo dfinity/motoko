@@ -469,6 +469,9 @@ func regionLoadBlob(r : Region, offset : Nat64, size : Nat) : Blob =
 func regionStoreBlob(r : Region, offset : Nat64, val :  Blob) : () =
   (prim "regionStoreBlob" : (Region, Nat64, Blob) -> ()) (r, offset, val);
 
+func regionMainMemorySnapshot(r : Region) : () =
+  (prim "regionMainMemorySnapshot" : Region -> ()) r;
+
 
 let call_raw = @call_raw;
 

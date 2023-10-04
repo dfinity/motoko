@@ -1060,6 +1060,7 @@ module RTS = struct
     E.add_func_import env "rts" "region_load_float64" [I32Type; I64Type] [F64Type];
     E.add_func_import env "rts" "region_store_float64" [I32Type; I64Type; F64Type] [];
     E.add_func_import env "rts" "region0_get" [] [I32Type];
+    E.add_func_import env "rts" "main_memory_snapshot" [I32Type] [];
     E.add_func_import env "rts" "blob_of_principal" [I32Type] [I32Type];
     E.add_func_import env "rts" "principal_of_blob" [I32Type] [I32Type];
     E.add_func_import env "rts" "compute_crc32" [I32Type] [I32Type];
@@ -3961,6 +3962,9 @@ module Region = struct
 
   let size env =
     E.call_import env "rts" "region_size"
+
+  let main_memory_snapshot env =
+    E.call_import env "rts" "main_memory_snapshot"
 
   let grow env =
     E.call_import env "rts" "region_grow"
@@ -10718,6 +10722,11 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     compile_exp_as env ae SR.UnboxedFloat64 e2 ^^
     Region.store_float64 env
+
+  | OtherPrim "regionMainMemorySnapshot", [e0] ->
+     SR.unit,
+     compile_exp_as env ae SR.Vanilla e0 ^^
+     Region.main_memory_snapshot env
 
   (* Other prims, unary *)
 
