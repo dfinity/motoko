@@ -41,9 +41,12 @@ const IDL_CON_func: i32 = -22;
 const IDL_CON_service: i32 = -23;
 
 const IDL_REF_principal: i32 = -24;
+
+// Extended Candid only
 const IDL_EXT_region: i32 = -128;
 const IDL_EXT_blob: i32 = -129;
 
+// Extended Candid only
 const IDL_CON_alias: i32 = 1;
 
 const IDL_PRIM_lowest: i32 = -17;
@@ -52,8 +55,9 @@ pub unsafe fn leb128_decode_ptr(buf: *mut Buf) -> (u32, *mut u8) {
     (leb128_decode(buf), (*buf).ptr)
 }
 
-unsafe fn is_primitive_type(ty: i32) -> bool {
-    ty < 0 && (ty >= IDL_PRIM_lowest || ty == IDL_REF_principal || ty == IDL_EXT_region)
+unsafe fn is_primitive_type(extended: bool, ty: i32) -> bool {
+    ty < 0
+        && (ty >= IDL_PRIM_lowest || ty == IDL_REF_principal || (extended && ty == IDL_EXT_region))
 }
 
 // Only used for memory-compatibility checks for orthogonal persistence.
@@ -80,14 +84,14 @@ unsafe fn utf8_cmp(len1: u32, p1: *mut u8, len2: u32, p2: *mut u8) -> i32 {
     }
 }
 
-unsafe fn check_typearg(ty: i32, n_types: u32) {
+unsafe fn check_typearg(extended: bool, ty: i32, n_types: u32) {
     // Arguments to type constructors can be primitive types or type indices
-    if !(is_primitive_type(ty) || (ty >= 0 && (ty as u32) < n_types)) {
+    if !(is_primitive_type(extended, ty) || (ty >= 0 && (ty as u32) < n_types)) {
         idl_trap_with("invalid type argument");
     }
 }
 
-unsafe fn parse_fields(buf: *mut Buf, n_types: u32) {
+unsafe fn parse_fields(extended: bool, buf: *mut Buf, n_types: u32) {
     let mut next_valid = 0;
     for n in (1..=leb128_decode(buf)).rev() {
         let tag = leb128_decode(buf);
@@ -96,7 +100,7 @@ unsafe fn parse_fields(buf: *mut Buf, n_types: u32) {
         }
         next_valid = tag + 1;
         let t = sleb128_decode(buf);
-        check_typearg(t, n_types);
+        check_typearg(extended, t, n_types);
     }
 }
 
@@ -167,32 +171,32 @@ unsafe fn parse_idl_header<M: Memory>(
             // internal
             // See Note [mutable stable values] in codegen/compile.ml
             let t = sleb128_decode(buf);
-            check_typearg(t, n_types);
+            check_typearg(extended, t, n_types);
         } else if ty >= 0 {
             idl_trap_with("illegal type table"); // illegal
-        } else if is_primitive_type(ty) {
+        } else if is_primitive_type(extended, ty) {
             // illegal
             idl_trap_with("primitive type in type table");
         } else if ty == IDL_CON_opt {
             let t = sleb128_decode(buf);
-            check_typearg(t, n_types);
+            check_typearg(extended, t, n_types);
         } else if ty == IDL_CON_vec {
             let t = sleb128_decode(buf);
-            check_typearg(t, n_types);
+            check_typearg(extended, t, n_types);
         } else if ty == IDL_CON_record {
-            parse_fields(buf, n_types);
+            parse_fields(extended, buf, n_types);
         } else if ty == IDL_CON_variant {
-            parse_fields(buf, n_types);
+            parse_fields(extended, buf, n_types);
         } else if ty == IDL_CON_func {
             // Arg types
             for _ in 0..leb128_decode(buf) {
                 let t = sleb128_decode(buf);
-                check_typearg(t, n_types);
+                check_typearg(extended, t, n_types);
             }
             // Ret types
             for _ in 0..leb128_decode(buf) {
                 let t = sleb128_decode(buf);
-                check_typearg(t, n_types);
+                check_typearg(extended, t, n_types);
             }
             // Annotations
             for _ in 0..leb128_decode(buf) {
@@ -231,7 +235,7 @@ unsafe fn parse_idl_header<M: Memory>(
 
                 // Type
                 let t = sleb128_decode(buf);
-                check_typearg(t, n_types);
+                check_typearg(extended, t, n_types);
             }
         } else {
             // Future type
@@ -278,7 +282,7 @@ unsafe fn parse_idl_header<M: Memory>(
     *main_types_out = (*buf).ptr;
     for _ in 0..leb128_decode(buf) {
         let t = sleb128_decode(buf);
-        check_typearg(t, n_types);
+        check_typearg(extended, t, n_types);
     }
 
     *typtbl_out = typtbl;
@@ -528,7 +532,7 @@ unsafe extern "C" fn skip_fields(tb: *mut Buf, buf: *mut Buf, typtbl: *mut *mut 
 }
 
 unsafe fn is_opt_reserved(typtbl: *mut *mut u8, end: *mut u8, t: i32) -> bool {
-    if is_primitive_type(t) {
+    if is_primitive_type(false, t) {
         return t == IDL_PRIM_reserved;
     }
 
@@ -882,7 +886,7 @@ pub(crate) unsafe fn sub(
     };
 
     /* primitives reflexive */
-    if is_primitive_type(t1) && is_primitive_type(t2) && t1 == t2 {
+    if is_primitive_type(false, t1) && is_primitive_type(false, t2) && t1 == t2 {
         return true;
     }
 
