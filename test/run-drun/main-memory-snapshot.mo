@@ -3,15 +3,20 @@ actor {
   stable var byte_pattern : Text = "Hello world";
   stable var snapshotRegion1 = Prim.regionNew();
   stable var snapshotRegion2 = Prim.regionNew();
-  public func hello() : async Text {
+  public func go() : async Text {
     Prim.regionMainMemorySnapshot(snapshotRegion1);
+    Prim.debugPrint("hello world!");
     let p = byte_pattern;
-    Prim.debugPrint("Hello World 1!");
-    Prim.debugPrint("Hello World 2!");
-    byte_pattern := "goodbye";
     Prim.regionMainMemorySnapshot(snapshotRegion2);
+    byte_pattern := "goodbye";
+    Prim.debugPrint("goodbye!");
     p
   }
 }
 
-//CALL hello 0x4449444C0000 []
+//SKIP run
+//SKIP run-low
+//SKIP run-ir
+//SKIP comp-ref
+//CALL ingress go 0x4449444C0000
+
