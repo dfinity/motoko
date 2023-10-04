@@ -74,7 +74,6 @@ extern "C" {
     fn rts_trap(msg: *const u8, len: Bytes<u32>) -> !;
 }
 
-#[no_mangle]
 pub(crate) unsafe fn trap_with_prefix(prefix: &str, msg: &str) -> ! {
     // Rust currently doesn't support stack-allocated dynamically-sized arrays or alloca, so we
     // have a max bound to the message size here.
@@ -106,12 +105,10 @@ pub(crate) unsafe fn trap_with_prefix(prefix: &str, msg: &str) -> ! {
     rts_trap(c_str.as_ptr(), Bytes(b_idx as u32));
 }
 
-#[no_mangle]
 pub(crate) unsafe fn idl_trap_with(msg: &str) -> ! {
     trap_with_prefix("IDL error: ", msg);
 }
 
-#[no_mangle]
 pub(crate) unsafe fn rts_trap_with(msg: &str) -> ! {
     trap_with_prefix("RTS error: ", msg)
 }
