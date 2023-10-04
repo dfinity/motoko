@@ -948,23 +948,25 @@ pub(crate) unsafe fn region_load<M: Memory>(_mem: &mut M, r: Value, offset: u64,
     }
 }
 
-pub unsafe fn region_write_heap_shapshot<M: Memory>(mem: &mut M, r: Value) {
+pub unsafe fn main_memory_shapshot<M: Memory>(mem: &mut M, r: Value) {
     use crate::constants::WASM_PAGE_SIZE;
     use core::arch::wasm32;
 
-    let heap_size: usize = wasm32::memory_size(0) * (WASM_PAGE_SIZE.as_u32() as usize);
+    let memory_size: usize = wasm32::memory_size(0) * (WASM_PAGE_SIZE.as_u32() as usize);
     if wasm32::memory_size(0) as u64 > region_size(mem, r) {
         let new_pages = wasm32::memory_size(0) as u64 - region_size(mem, r);
         region_grow(mem, r, new_pages);
     };
-    if heap_size < isize::MAX as usize {
-        let heap_src = core::slice::from_raw_parts(core::ptr::null(), heap_size);
+
+    // Two cases, as Rust slices are limited to isize::MAX.
+    if memory_size < isize::MAX as usize {
+        let heap_src = core::slice::from_raw_parts(core::ptr::null(), memory_size);
         region_store(mem, r, 0, heap_src)
     } else {
-        let len = heap_size;
+        let len = memory_size;
         assert!((len / 2) < isize::MAX as usize);
         let bytes_low: &[u8] =
-            core::slice::from_raw_parts(core::ptr::null(), (heap_size / 2) as usize);
+            core::slice::from_raw_parts(core::ptr::null(), (memory_size / 2) as usize);
         region_store(mem, r, 0, bytes_low);
         let bytes_high: &[u8] = core::slice::from_raw_parts(
             core::ptr::null::<u8>().add((len / 2) as usize),
@@ -1071,6 +1073,7 @@ pub(crate) unsafe fn region_load_blob<M: Memory>(
     let blob_val = crate::memory::alloc_blob(mem, crate::types::Bytes(len));
     let blob = blob_val.as_blob_mut();
 
+    // Two cases, as Rust slices are limited to isize::MAX.
     if len < (isize::MAX as u32) {
         let bytes: &mut [u8] = core::slice::from_raw_parts_mut(blob.payload_addr(), len as usize);
         region_load(mem, r, offset, bytes);
@@ -1131,6 +1134,8 @@ pub(crate) unsafe fn region_store_blob<M: Memory>(mem: &mut M, r: Value, offset:
     let blob = blob.as_blob();
     let len = blob.len().0;
     let bytes = blob.payload_const();
+
+    // Two cases, as Rust slices are limited to isize::MAX.
     if len < (isize::MAX as u32) {
         let bytes: &[u8] = core::slice::from_raw_parts(bytes, len as usize);
         region_store(mem, r, offset, bytes);
