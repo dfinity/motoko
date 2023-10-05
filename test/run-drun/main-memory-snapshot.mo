@@ -7,16 +7,17 @@ actor {
   stable var pages : PageList = null;
   stable var snapshots : Snapshots = null;
      
-  public func grow(numPages : Nat) {
+  public func grow(numPages : Nat) : async () {
       let pageSize = 1 << 16 : Nat32;
       let bytes = Prim.Array_init<Nat8>(numPages * (Prim.nat32ToNat(pageSize)), 0 : Nat8);
       pages := ?{ head = Prim.arrayMutToBlob(bytes); tail = pages };
   };
 
-  public func createSnapshot() {
+  public func createSnapshot() : async Nat64 {
       let r = Prim.regionNew();
       snapshots := ?{ region = r ; tail = snapshots };
       Prim.regionMainMemorySnapshot(r);
+      Prim.regionSize(r)
   }
 }
 
