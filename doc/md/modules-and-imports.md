@@ -81,11 +81,13 @@ To use either package manager, edit your project's `dfx.json` file to specify a 
 
 For Vessel, use `vessel sources`. 
 
-Then, download a package with the `mops` or `vessel` CLI tools, such as:
+Then, to download a package with the `mops` CLI tool, use a command such as:
 
 ```
 mops add vector
 ```
+
+For Vessel, edit the `vessel.dhall` file to include what packages your project will import. 
 
 Then, import the packages as you would import other packages in the Motoko source file:
 
