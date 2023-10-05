@@ -1,0 +1,1 @@
+main-memory-snapshot-2.mo:17.34-17.37: type error [M0035], shared function must have syntactic return type '()' or 'async <typ>'
