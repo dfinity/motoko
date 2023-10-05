@@ -1,16 +1,23 @@
 import Prim "mo:⛔";
 actor {
-  stable var byte_pattern : Text = "Hello world";
-  stable var snapshotRegion1 = Prim.regionNew();
-  stable var snapshotRegion2 = Prim.regionNew();
-  public func go() : async Text {
-    Prim.regionMainMemorySnapshot(snapshotRegion1);
-    Prim.debugPrint("hello world!");
-    let p = byte_pattern;
-    Prim.regionMainMemorySnapshot(snapshotRegion2);
-    byte_pattern := "goodbye";
-    Prim.debugPrint("goodbye!");
-    p
+
+  type PageList = ?{ head : Blob; tail : PageList };
+  type Snapshots = ?{ region : Region; tail : Snapshots };
+ 
+  stable var pages : PageList = null;
+  stable var snapshots : Snapshots = null;
+     
+  public func grow(numPages : Nat) {
+      let pageSize = 1 << 16 : Nat32;
+      let bytes = Prim.Array_init<Nat8>(numPages * (Prim.nat32ToNat(pageSize)), 0 : Nat8);
+      pages := ?{ head = Prim.arrayMutToBlob(bytes); tail = pages };
+  };
+
+  // returns snapshot size, in pages.
+  public func createSnapshot() {
+      let r = Prim.regionNew();
+      snapshots := ?{ region = r ; tail = snapshots };
+      Prim.regionMainMemorySnapshot(r);
   }
 }
 
@@ -18,5 +25,8 @@ actor {
 //SKIP run-low
 //SKIP run-ir
 //SKIP comp-ref
-//CALL ingress go 0x4449444C0000
+
+//CALL ingress grow "DIDL\x00\x01\x7d\x01"
+//CALL ingress grow "DIDL\x00\x01\x7d\x80\x0a"
+//CALL ingress createSnapshot "DIDL\x00\x00"
 
