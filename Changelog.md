@@ -2,9 +2,13 @@
 
 * motoko (`moc`)
 
-  * perf: inline shareble low-level functions in generated coded, trading code size for reduced cycle count. Controlled by flags:
+  * Implement Prim.textLowercase and Prim.textUppercase (via Rust) (#4216).
+
+  * perf: inline sharable low-level functions in generated coded,
+    trading code size for reduced cycle count (#4212).
+    Controlled by flags:
       * `-fno-shared-code` (default)
-      * `-f-shared-code` (legacy)
+      * `-fshared-code` (legacy)
     (Helps mitigate the effect of the IC's new cost model, that increases
      the cost of function calls).
 
