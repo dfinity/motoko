@@ -14,7 +14,7 @@ actor {
   };
 
   // returns snapshot size, in pages.
-  public func createSnapshot() : Nat {
+  public func createSnapshot() : async Nat64 {
       let r = Prim.regionNew();
       snapshots := ?{ region = r ; tail = snapshots };
       Prim.regionMainMemorySnapshot(r);
