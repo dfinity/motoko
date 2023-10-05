@@ -13,10 +13,12 @@ actor {
       pages := ?{ head = Prim.arrayMutToBlob(bytes); tail = pages };
   };
 
-  public func createSnapshot() {
+  // returns snapshot size, in pages.
+  public func createSnapshot() : Nat {
       let r = Prim.regionNew();
       snapshots := ?{ region = r ; tail = snapshots };
       Prim.regionMainMemorySnapshot(r);
+      Prim.regionSize(r)
   }
 }
 
