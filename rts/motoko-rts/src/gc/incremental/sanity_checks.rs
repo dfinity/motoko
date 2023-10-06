@@ -1,13 +1,14 @@
 //! Incremental GC sanity checker
 #![allow(dead_code)]
 
-use core::ptr::null;
+mod remembered_set;
 
 use crate::gc::incremental::partitioned_heap::PARTITION_SIZE;
-use crate::gc::remembered_set::RememberedSet;
 use crate::memory::Memory;
 use crate::types::*;
 use crate::visitor::visit_pointer_fields;
+
+use self::remembered_set::RememberedSet;
 
 use super::mark_stack::{MarkStack, STACK_EMPTY};
 use super::partitioned_heap::PartitionedHeap;
@@ -64,7 +65,7 @@ impl<'a, M: Memory> MemoryChecker<'a, M> {
     }
 
     unsafe fn check_roots(&mut self) {
-        visit_roots(self.roots, self.heap.base_address(), self, |gc, field| {
+        visit_roots(self.roots, self, |gc, field| {
             gc.check_object(*field);
         });
     }
@@ -99,7 +100,6 @@ impl<'a, M: Memory> MemoryChecker<'a, M> {
             self,
             object,
             object.tag(),
-            0,
             |gc, field_address| {
                 let value = *field_address;
                 if value.is_ptr() {
