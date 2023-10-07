@@ -957,6 +957,9 @@ pub unsafe fn main_memory_snapshot<M: Memory>(mem: &mut M, r: Value) {
     if wasm32::memory_size(0) as u64 > region_size(mem, r) {
         let new_pages = wasm32::memory_size(0) as u64 - region_size(mem, r);
         region_grow(mem, r, new_pages);
+        if region_size(mem, r) < wasm32::memory_size(0) as u64 {
+            region_trap_with("Failed to grow region for main memory snapshot.")
+        }
     };
 
     // Two cases, as Rust slices are limited to isize::MAX.
@@ -965,15 +968,15 @@ pub unsafe fn main_memory_snapshot<M: Memory>(mem: &mut M, r: Value) {
         region_store(mem, r, 0, heap_src)
     } else {
         let len = memory_size;
-        assert!((len / 2) < isize::MAX as usize);
-        let bytes_low: &[u8] =
-            core::slice::from_raw_parts(core::ptr::null(), (memory_size / 2) as usize);
+        let half = len / 2;
+        assert!(half < isize::MAX as usize);
+        let bytes_low: &[u8] = core::slice::from_raw_parts(core::ptr::null(), half as usize);
         region_store(mem, r, 0, bytes_low);
         let bytes_high: &[u8] = core::slice::from_raw_parts(
-            core::ptr::null::<u8>().add((len / 2) as usize),
-            (len - len / 2) as usize,
+            core::ptr::null::<u8>().add(half as usize),
+            (len - half) as usize,
         );
-        region_store(mem, r, (len / 2) as u64, bytes_high);
+        region_store(mem, r, half as u64, bytes_high);
     }
 }
 
