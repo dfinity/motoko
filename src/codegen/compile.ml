@@ -6682,7 +6682,7 @@ module MakeSerialization (Strm : Stream) = struct
           )
       in
 
-      let read_byte_tagged _dbg = function
+      let read_byte_tagged = function
         | [code0; code1] ->
           ReadBuf.read_byte env get_data_buf ^^
           let (set_b, get_b) = new_local env "b" in
@@ -6740,7 +6740,7 @@ module MakeSerialization (Strm : Stream) = struct
       in
 
       let read_actor_data () =
-        read_byte_tagged "actor_data"
+        read_byte_tagged
           [ E.trap_with env "IDL error: unexpected actor reference"
           ; read_principal ()
           ]
@@ -6975,7 +6975,7 @@ module MakeSerialization (Strm : Stream) = struct
       | Prim Bool ->
         with_prim_typ t
         begin
-          read_byte_tagged "bool"
+          read_byte_tagged
             [ Bool.lit false
             ; Bool.lit true
             ]
@@ -6991,7 +6991,7 @@ module MakeSerialization (Strm : Stream) = struct
       | Prim Principal ->
         with_prim_typ t
         begin
-          read_byte_tagged "principal"
+          read_byte_tagged
             [ E.trap_with env "IDL error: unexpected principal reference"
             ; read_principal ()
             ]
@@ -7125,7 +7125,7 @@ module MakeSerialization (Strm : Stream) = struct
             begin
               let (set_arg_typ, get_arg_typ) = new_local env "arg_typ" in
               with_composite_typ idl_opt (ReadBuf.read_sleb128 env) ^^ set_arg_typ ^^
-              read_byte_tagged "opt"
+              read_byte_tagged
                 [ Opt.null_lit env
                 ; let (set_val, get_val) = new_local env "val" in
                   get_arg_typ ^^ go_can_recover env t ^^ set_val ^^
@@ -7176,7 +7176,7 @@ module MakeSerialization (Strm : Stream) = struct
             get_typ_buf ^^ E.call_import env "rts" "skip_leb128" ^^
             get_typ_buf ^^ E.call_import env "rts" "skip_leb128"
           ) ^^
-            (* HERE *)
+
           (* Now read the tag *)
           let (set_tag, get_tag) = new_local env "tag" in
           ReadBuf.read_leb128 env get_typ_buf ^^ set_tag ^^
@@ -7194,8 +7194,7 @@ module MakeSerialization (Strm : Stream) = struct
                 continue
             )
             ( sort_by_hash vs )
-            ( skip get_arg_typ ^^ (* HERE *)
-              coercion_failed "IDL error: unexpected variant tag" )
+            ( coercion_failed "IDL error: unexpected variant tag" )
         )
       | Func _ ->
         (* See Note [Candid subtype checks] *)
@@ -7212,7 +7211,7 @@ module MakeSerialization (Strm : Stream) = struct
           (Bool.lit true) ^^ (* if we don't have a subtype memo table, assume the types are ok *)
         G.if1 I32Type
           (with_composite_typ idl_func (fun _get_typ_buf ->
-            read_byte_tagged "func"
+            read_byte_tagged
               [ E.trap_with env "IDL error: unexpected function reference"
               ; read_actor_data () ^^
                 read_text () ^^
