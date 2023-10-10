@@ -2,6 +2,8 @@
 
 * motoko (`moc`)
 
+  * bugfix: Candid decoding of an optional, unknown variant with a payload now succeeds instead of crashing (#4238).
+
   * Implement Prim.textLowercase and Prim.textUppercase (via Rust) (#4216).
 
   * perf: inline sharable low-level functions in generated coded,
