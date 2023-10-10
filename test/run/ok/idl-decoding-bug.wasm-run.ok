@@ -1,0 +1,15 @@
+IDL error: byte read out of buffer
+Error: failed to run main module `_out/idl-decoding-bug.wasm`
+
+Caused by:
+    0: failed to invoke command default
+    1: error while executing at wasm backtrace:
+         0: rts_trap
+         1: motoko_rts::trap_with_prefix::h757ee6d860f5c7ff
+         2: motoko_rts::idl_trap_with::h539f381c213e508f
+         3: leb128_decode
+         4: @deserialize_go<vr(a:?v(a:u))>
+         5: @deserialize<vr(a:?v(a:u))N>
+         6: init
+         7: _start
+    2: wasm trap: unreachable
