@@ -6693,7 +6693,7 @@ module MakeSerialization (Strm : Stream) = struct
           begin code0
           end begin
             get_b ^^ compile_eq_const 1l ^^
-            E.else_trap_with env ("IDL error: byte tag not 0 or 1") ^^ 
+            E.else_trap_with env ("IDL error: byte tag not 0 or 1") ^^
             code1
           end
         | _ -> assert false; (* can be generalized later as needed *)
@@ -7062,6 +7062,8 @@ module MakeSerialization (Strm : Stream) = struct
           let (set_x, get_x) = new_local env "x" in
           let (set_val, get_val) = new_local env "val" in
           let (set_arg_typ, get_arg_typ) = new_local env "arg_typ" in
+          (* TODO: if possible refactor to match new Array t code,
+             (though probably unnecessary for extended candid due to lack of fancy opt subtyping) *)
           with_composite_arg_typ get_array_typ idl_vec (ReadBuf.read_sleb128 env) ^^ set_arg_typ ^^
           ReadBuf.read_leb128 env get_data_buf ^^ set_len ^^
           get_len ^^ Arr.alloc env ^^ set_x ^^
@@ -7102,7 +7104,9 @@ module MakeSerialization (Strm : Stream) = struct
         let (set_x, get_x) = new_local env "x" in
         let (set_val, get_val) = new_local env "val" in
         let (set_arg_typ, get_arg_typ) = new_local env "arg_typ" in
-        with_composite_typ idl_vec (ReadBuf.read_sleb128 env) ^^ set_arg_typ ^^
+        with_composite_typ idl_vec (fun get_typ_buf ->
+        ReadBuf.read_sleb128 env get_typ_buf ^^
+        set_arg_typ ^^
         ReadBuf.read_leb128 env get_data_buf ^^ set_len ^^
         get_len ^^ Arr.alloc env ^^ set_x ^^
         get_len ^^ from_0_to_n env (fun get_i ->
@@ -7112,7 +7116,7 @@ module MakeSerialization (Strm : Stream) = struct
           get_val ^^ store_ptr
         ) ^^
         get_x ^^
-        Tagged.allocation_barrier env
+        Tagged.allocation_barrier env)
       | Opt t ->
         check_prim_typ (Prim Null) ^^
         G.if1 I32Type (Opt.null_lit env)
