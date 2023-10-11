@@ -1,4 +1,0 @@
-idl-extra-variant-bug.mo:7.13-7.26: type error [M0096], expression of type
-  [(Null, Bool)]
-cannot produce expected type
-  ?[(?{#a}, Bool)]
