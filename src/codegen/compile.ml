@@ -7062,24 +7062,25 @@ module MakeSerialization (Strm : Stream) = struct
           let (set_x, get_x) = new_local env "x" in
           let (set_val, get_val) = new_local env "val" in
           let (set_arg_typ, get_arg_typ) = new_local env "arg_typ" in
-          (* TODO: if possible refactor to match new Array t code,
-             (though probably unnecessary for extended candid due to lack of fancy opt subtyping) *)
-          with_composite_arg_typ get_array_typ idl_vec (ReadBuf.read_sleb128 env) ^^ set_arg_typ ^^
-          ReadBuf.read_leb128 env get_data_buf ^^ set_len ^^
-          get_len ^^ Arr.alloc env ^^ set_x ^^
-          on_alloc get_x ^^
-          get_len ^^ from_0_to_n env (fun get_i ->
-            get_x ^^ get_i ^^ Arr.unsafe_idx env ^^
-            get_arg_typ ^^ go env t ^^ set_val ^^
-            remember_failure get_val ^^
-            get_val ^^ store_ptr
-          ) ^^
-          get_x ^^
-          Tagged.allocation_barrier env ^^
+          with_composite_arg_typ get_array_typ idl_vec (fun get_typ_buf ->
+            ReadBuf.read_sleb128 env get_typ_buf ^^
+            set_arg_typ ^^
+            ReadBuf.read_leb128 env get_data_buf ^^ set_len ^^
+            get_len ^^ Arr.alloc env ^^ set_x ^^
+            on_alloc get_x ^^
+            get_len ^^ from_0_to_n env (fun get_i ->
+              get_x ^^ get_i ^^ Arr.unsafe_idx env ^^
+              get_arg_typ ^^ go env t ^^ set_val ^^
+              remember_failure get_val ^^
+              get_val ^^ store_ptr
+            ) ^^
+            get_x ^^
+            Tagged.allocation_barrier env)
+          ^^
           G.i Drop
         )
       | Prim Region ->
-         read_alias env (Prim Region) (fun get_region_typ on_alloc ->
+        read_alias env (Prim Region) (fun get_region_typ on_alloc ->
           let (set_region, get_region) = new_local env "region" in
           (* sanity check *)
           get_region_typ ^^
@@ -7105,11 +7106,11 @@ module MakeSerialization (Strm : Stream) = struct
         let (set_val, get_val) = new_local env "val" in
         let (set_arg_typ, get_arg_typ) = new_local env "arg_typ" in
         with_composite_typ idl_vec (fun get_typ_buf ->
-        ReadBuf.read_sleb128 env get_typ_buf ^^
-        set_arg_typ ^^
-        ReadBuf.read_leb128 env get_data_buf ^^ set_len ^^
-        get_len ^^ Arr.alloc env ^^ set_x ^^
-        get_len ^^ from_0_to_n env (fun get_i ->
+          ReadBuf.read_sleb128 env get_typ_buf ^^
+          set_arg_typ ^^
+          ReadBuf.read_leb128 env get_data_buf ^^ set_len ^^
+          get_len ^^ Arr.alloc env ^^ set_x ^^
+          get_len ^^ from_0_to_n env (fun get_i ->
           get_x ^^ get_i ^^ Arr.unsafe_idx env ^^
           get_arg_typ ^^ go env t ^^ set_val ^^
           remember_failure get_val ^^
