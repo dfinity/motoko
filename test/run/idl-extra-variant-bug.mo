@@ -4,7 +4,7 @@ let b : Blob = to_candid ([(?(#b "abc"), true)]);
 
 let o = (from_candid b) : ?[(?{#a},Bool)];
 
-assert(o == [null,true]);
+assert(o == [(null,true)]);
 
 //SKIP run
 //SKIP run-ir
