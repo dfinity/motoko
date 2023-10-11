@@ -7105,11 +7105,11 @@ module MakeSerialization (Strm : Stream) = struct
         let (set_val, get_val) = new_local env "val" in
         let (set_arg_typ, get_arg_typ) = new_local env "arg_typ" in
         with_composite_typ idl_vec (fun get_typ_buf ->
-        ReadBuf.read_sleb128 env get_typ_buf ^^
-        set_arg_typ ^^
-        ReadBuf.read_leb128 env get_data_buf ^^ set_len ^^
-        get_len ^^ Arr.alloc env ^^ set_x ^^
-        get_len ^^ from_0_to_n env (fun get_i ->
+          ReadBuf.read_sleb128 env get_typ_buf ^^
+          set_arg_typ ^^
+          ReadBuf.read_leb128 env get_data_buf ^^ set_len ^^
+          get_len ^^ Arr.alloc env ^^ set_x ^^
+          get_len ^^ from_0_to_n env (fun get_i ->
           get_x ^^ get_i ^^ Arr.unsafe_idx env ^^
           get_arg_typ ^^ go env t ^^ set_val ^^
           remember_failure get_val ^^
