@@ -6,18 +6,17 @@ let b : Blob = to_candid (
     {a=?#c},
     {a=?#a}] : ?[{a:?{#a;#b:{};#c}}]);
 
-let o1 = (from_candid b) : ?[{a:?{#a}}];
+let o1 = (from_candid b) : ?[{a:?{#a}}]; //note missing ?, forcing decoding at incorrect array type
 assert o1 == null;
 
-let o2 = (from_candid b) : ??[{a:?{#a}}];
+let o2 = (from_candid b) : ??[{a:?{#a}}]; //intended example, with embedded defaulting
 assert o2 ==
   ??[{a=?#a},
      {a=null},
      {a=null},
      {a=?#a},
      {a=null},
-     {a=?#a}]
-
+     {a=?#a}];
 
 //SKIP run
 //SKIP run-ir
