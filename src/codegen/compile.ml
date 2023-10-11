@@ -7248,7 +7248,7 @@ module MakeSerialization (Strm : Stream) = struct
           Tagged.obj env Tagged.ObjInd [ compile_unboxed_const 0l ] ^^ set_result ^^
           on_alloc get_result ^^
           get_result ^^
-            get_arg_typ ^^ go env t ^^
+          get_arg_typ ^^ go env t ^^
           MutBox.store_field env
         )
       | Non ->
