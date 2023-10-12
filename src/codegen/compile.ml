@@ -7194,7 +7194,8 @@ module MakeSerialization (Strm : Stream) = struct
                 continue
             )
             ( sort_by_hash vs )
-            ( coercion_failed "IDL error: unexpected variant tag" )
+            ( skip get_arg_typ ^^
+              coercion_failed "IDL error: unexpected variant tag" )
         )
       | Func _ ->
         (* See Note [Candid subtype checks] *)
