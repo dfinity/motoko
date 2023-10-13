@@ -7063,7 +7063,8 @@ module MakeSerialization (Strm : Stream) = struct
           let (set_val, get_val) = new_local env "val" in
           let (set_arg_typ, get_arg_typ) = new_local env "arg_typ" in
           (* TODO: if possible refactor to match new Array t code,
-             (perhaps unnecessary for extended candid due to lack of fancy opt subtyping) *)
+             (perhaps too risky and unnecessary for extended candid due to lack of fancy opt subtyping, see #4243)
+          *)
           with_composite_arg_typ get_array_typ idl_vec (ReadBuf.read_sleb128 env) ^^ set_arg_typ ^^
           ReadBuf.read_leb128 env get_data_buf ^^ set_len ^^
           get_len ^^ Arr.alloc env ^^ set_x ^^
