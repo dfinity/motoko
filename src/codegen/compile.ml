@@ -6693,7 +6693,7 @@ module MakeSerialization (Strm : Stream) = struct
           begin code0
           end begin
             get_b ^^ compile_eq_const 1l ^^
-            E.else_trap_with env ("IDL error: byte tag not 0 or 1") ^^
+            E.else_trap_with env "IDL error: byte tag not 0 or 1" ^^
             code1
           end
         | _ -> assert false; (* can be generalized later as needed *)
