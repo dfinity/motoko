@@ -7062,6 +7062,9 @@ module MakeSerialization (Strm : Stream) = struct
           let (set_x, get_x) = new_local env "x" in
           let (set_val, get_val) = new_local env "val" in
           let (set_arg_typ, get_arg_typ) = new_local env "arg_typ" in
+          (* TODO: if possible refactor to match new Array t code,
+             (perhaps too risky and unnecessary for extended candid due to lack of fancy opt subtyping, see #4243)
+          *)
           with_composite_arg_typ get_array_typ idl_vec (ReadBuf.read_sleb128 env) ^^ set_arg_typ ^^
           ReadBuf.read_leb128 env get_data_buf ^^ set_len ^^
           get_len ^^ Arr.alloc env ^^ set_x ^^
@@ -7102,17 +7105,19 @@ module MakeSerialization (Strm : Stream) = struct
         let (set_x, get_x) = new_local env "x" in
         let (set_val, get_val) = new_local env "val" in
         let (set_arg_typ, get_arg_typ) = new_local env "arg_typ" in
-        with_composite_typ idl_vec (ReadBuf.read_sleb128 env) ^^ set_arg_typ ^^
-        ReadBuf.read_leb128 env get_data_buf ^^ set_len ^^
-        get_len ^^ Arr.alloc env ^^ set_x ^^
-        get_len ^^ from_0_to_n env (fun get_i ->
+        with_composite_typ idl_vec (fun get_typ_buf ->
+          ReadBuf.read_sleb128 env get_typ_buf ^^
+          set_arg_typ ^^
+          ReadBuf.read_leb128 env get_data_buf ^^ set_len ^^
+          get_len ^^ Arr.alloc env ^^ set_x ^^
+          get_len ^^ from_0_to_n env (fun get_i ->
           get_x ^^ get_i ^^ Arr.unsafe_idx env ^^
           get_arg_typ ^^ go env t ^^ set_val ^^
           remember_failure get_val ^^
           get_val ^^ store_ptr
         ) ^^
         get_x ^^
-        Tagged.allocation_barrier env
+        Tagged.allocation_barrier env)
       | Opt t ->
         check_prim_typ (Prim Null) ^^
         G.if1 I32Type (Opt.null_lit env)
@@ -7244,7 +7249,7 @@ module MakeSerialization (Strm : Stream) = struct
           Tagged.obj env Tagged.ObjInd [ compile_unboxed_const 0l ] ^^ set_result ^^
           on_alloc get_result ^^
           get_result ^^
-            get_arg_typ ^^ go env t ^^
+          get_arg_typ ^^ go env t ^^
           MutBox.store_field env
         )
       | Non ->
