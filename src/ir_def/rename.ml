@@ -93,7 +93,7 @@ and args rho as_ =
      (a'::as_', rho'')
 
 and pat rho p =
-  let p',rho = pat' rho p.it in
+  let p', rho = pat' rho p.it in
   {p with it = p'}, rho
 
 and pat' rho = function
