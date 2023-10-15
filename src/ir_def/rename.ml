@@ -24,8 +24,8 @@ let rec ids_bind rho is =
   match is with
   | [] -> rho
   | i::is' ->
-     let (i', rho') = id_bind rho i in
-     ids_bind rho' is'
+    let (i', rho') = id_bind rho i in
+    ids_bind rho' is'
 
 let arg_bind rho a =
   let i' = fresh_id a.it in
@@ -126,7 +126,7 @@ and pat' rho = function
 
 and pats rho ps  =
   match ps with
-  | [] -> ([],rho)
+  | [] -> ([], rho)
   | p::ps ->
     let (p', rho') = pat rho p in
     let (ps', rho'') = pats rho' ps in
