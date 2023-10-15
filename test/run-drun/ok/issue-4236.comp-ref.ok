@@ -1,2 +1,0 @@
-Ill-typed intermediate code after Desugaring (use -v to see dumped IR):
-issue-4236.mo:18.52-18.57: IR type error [M0000], unbound variable accnt
