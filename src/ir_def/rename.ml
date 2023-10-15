@@ -11,6 +11,11 @@ let id rho i =
   try Renaming.find i rho
   with Not_found -> i
 
+let id_rename rho i =
+  (try Renaming.find i rho
+   with Not_found -> i),
+  rho
+
 let id_bind rho i =
   let i' = fresh_id i in
   (i', Renaming.add i i' rho)
@@ -80,43 +85,55 @@ and args rho as_ =
      let (as_', rho'') = args rho' as_ in
      (a'::as_', rho'')
 
-and pat rho p =
-    let p',rho = pat' rho p.it in
+and pat id_action rho p =
+    let p',rho = pat' id_action rho p.it in
     {p with it = p'}, rho
 
-and pat' rho = function
+and id_binds rho is =
+  match is with
+  | [] -> rho
+  | i::is' ->
+     let (i', rho') = id_bind rho i in
+     id_binds rho' is'
+
+and pat' id_action rho = function
   | WildP as p    -> (p, rho)
   | VarP i        ->
-    let i, rho' = id_bind rho i in
+    let i, rho' = id_action rho i in
      (VarP i, rho')
-  | TupP ps       -> let (ps, rho') = pats rho ps in
+  | TupP ps       -> let (ps, rho') = pats id_action rho ps in
                      (TupP ps, rho')
   | ObjP pfs      ->
-    let (pats, rho') = pats rho (pats_of_obj_pat pfs) in
+    let (pats, rho') = pats id_action rho (pats_of_obj_pat pfs) in
     (ObjP (replace_obj_pat pfs pats), rho')
   | LitP _ as p   -> (p, rho)
-  | OptP p        -> let (p', rho') = pat rho p in
+  | OptP p        -> let (p', rho') = pat id_action rho p in
                      (OptP p', rho')
-  | TagP (i, p)   -> let (p', rho') = pat rho p in
+  | TagP (i, p)   -> let (p', rho') = pat id_action rho p in
                      (TagP (i, p'), rho')
-  | AltP (p1, p2) -> assert(Freevars.(M.is_empty (pat p1)));
-                     assert(Freevars.(M.is_empty (pat p2)));
-                     let (p1', _) = pat rho p1 in
-                     let (p2' ,_) = pat rho p2 in
-                     (AltP (p1', p2'), rho)
+  | AltP (p1, p2) ->
+     let is1 = Freevars.M.keys (Freevars.pat p1) in
+     assert begin
+       let is2 = Freevars.M.keys (Freevars.pat p1) in
+       List.compare (String.compare) is1 is2 = 0
+     end;
+     let rho12 = id_binds rho is1 in
+     let (p1', _) = pat id_rename rho12 p1 in
+     let (p2' ,_) = pat id_rename rho12 p2 in
+     (AltP (p1', p2'), rho)
 
-and pats rho ps  =
+and pats id_action rho ps  =
   match ps with
   | [] -> ([],rho)
   | p::ps ->
-     let (p', rho') = pat rho p in
-     let (ps', rho'') = pats rho' ps in
+     let (p', rho') = pat id_action rho p in
+     let (ps', rho'') = pats id_action rho' ps in
      (p'::ps', rho'')
 
 and case rho (c : case) =
   {c with it = case' rho c.it}
 and case' rho { pat = p; exp = e} =
-  let (p', rho') = pat rho p in
+  let (p', rho') = pat id_bind rho p in
   let e' = exp rho' e in
   {pat=p'; exp=e'}
 
@@ -128,7 +145,7 @@ and dec rho d =
 
 and dec' rho = function
   | LetD (p, e) ->
-     let p', rho = pat rho p in
+     let p', rho = pat id_bind rho p in
      (fun rho' -> LetD (p',exp rho' e)),
      rho
   | VarD (i, t, e) ->
