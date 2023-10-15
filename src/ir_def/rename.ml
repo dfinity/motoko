@@ -117,10 +117,10 @@ and pat' id_action rho = function
        let is2 = Freevars.M.keys (Freevars.pat p1) in
        List.compare (String.compare) is1 is2 = 0
      end;
-     let rho12 = id_binds rho is1 in
-     let (p1', _) = pat id_rename rho12 p1 in
-     let (p2' ,_) = pat id_rename rho12 p2 in
-     (AltP (p1', p2'), rho)
+     let rho' = id_binds rho is1 in
+     let (p1', _) = pat id_rename rho' p1 in
+     let (p2' ,_) = pat id_rename rho' p2 in
+     (AltP (p1', p2'), rho')
 
 and pats id_action rho ps  =
   match ps with
