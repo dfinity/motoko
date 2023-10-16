@@ -136,10 +136,10 @@ and pat_subst' rho = function
     VarP (id rho i)
   | TupP ps ->
     TupP (pats_subst rho ps)
-  | ObjP pfs      ->
+  | ObjP pfs ->
     let pats = pats_subst rho (pats_of_obj_pat pfs) in
     ObjP (replace_obj_pat pfs pats)
-  | LitP _ as p   -> p
+  | LitP _ as p -> p
   | OptP p ->
     OptP (pat_subst rho p)
   | TagP (i, p) ->
