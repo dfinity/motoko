@@ -11,11 +11,6 @@ let id rho i =
   try Renaming.find i rho
   with Not_found -> i
 
-let id_rename rho i =
-  (try Renaming.find i rho
-   with Not_found -> i),
-  rho
-
 let id_bind rho i =
   let i' = fresh_id i in
   (i', Renaming.add i i' rho)
