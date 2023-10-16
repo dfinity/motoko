@@ -16,7 +16,14 @@
       * `-fno-shared-code` (default)
       * `-fshared-code` (legacy)
     (Helps mitigate the effect of the IC's new cost model, that increases
-     the cost of function calls).
+	the cost of function calls).
+
+* motoko-base
+
+  * Added `Principal.toLedgerAccount` (#582).
+
+  * Added `Text.toLowercase` and `Text.toUppercase` (#590).
+
 
 ## 0.10.0 (2023-09-11)
 
@@ -32,6 +39,8 @@
 * motoko-base
 
   * Exposed conversions between adjacent fixed-width types (dfinity/motoko-base⁠#585).
+
+  * Added library `Region.mo` offering isolated regions of IC stable memory (#580).
 
 ## 0.9.8 (2023-08-11)
 
