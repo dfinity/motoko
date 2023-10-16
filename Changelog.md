@@ -1,5 +1,7 @@
 # Motoko compiler changelog
 
+## 0.10.1 (2023-10-16)
+
 * motoko (`moc`)
 
   * bugfix: fix assertion failure renaming `or`-patterns (#4236, #4224).
@@ -23,7 +25,6 @@
   * Added `Principal.toLedgerAccount` (#582).
 
   * Added `Text.toLowercase` and `Text.toUppercase` (#590).
-
 
 ## 0.10.0 (2023-09-11)
 
