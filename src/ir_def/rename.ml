@@ -15,8 +15,7 @@ let id_bind rho i =
   let i' = fresh_id i in
   (i', Renaming.add i i' rho)
 
-let rec ids_bind rho is =
-  match is with
+let rec ids_bind rho = function
   | [] -> rho
   | i::is' ->
     let (i', rho') = id_bind rho i in
@@ -114,7 +113,7 @@ and pat' rho = function
     let is1 = Freevars.M.keys (Freevars.pat p1) in
     assert begin
       let is2 = Freevars.M.keys (Freevars.pat p1) in
-      List.compare (String.compare) is1 is2 = 0
+      List.compare String.compare is1 is2 = 0
     end;
     let rho' = ids_bind rho is1 in
     (AltP (pat_subst rho' p1, pat_subst rho' p2), rho')
@@ -135,7 +134,7 @@ and pat_subst' rho = function
   | WildP as p -> p
   | VarP i ->
     VarP (id rho i)
-  | TupP ps       ->
+  | TupP ps ->
     TupP (pats_subst rho ps)
   | ObjP pfs      ->
     let pats = pats_subst rho (pats_of_obj_pat pfs) in
@@ -148,7 +147,7 @@ and pat_subst' rho = function
   | AltP (p1, p2) ->
     AltP (pat_subst rho p1, pat_subst rho p2)
 
-and pats_subst rho ps  =
+and pats_subst rho ps =
   List.map (pat_subst rho) ps
 
 and case rho (c : case) =

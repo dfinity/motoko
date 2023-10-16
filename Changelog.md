@@ -2,9 +2,9 @@
 
 * motoko (`moc`)
 
-  * bugfix: fix assertion failure renaming or-patterns (#4236, #4224).
+  * bugfix: fix assertion failure renaming `or`-patterns (#4236, #4224).
 
-  * bugfix: unsuccessful Candid decoding of an optional array now default to null instead of crashing (#4240).
+  * bugfix: unsuccessful Candid decoding of an optional array now defaults to null instead of crashing (#4240).
 
   * bugfix: Candid decoding of an optional, unknown variant with a payload now succeeds instead of crashing (#4238).
 
