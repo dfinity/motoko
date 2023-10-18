@@ -112,6 +112,8 @@ and instr' =
   | MemoryGrow                        (* grow linear memory *)
   | StableSize                        (* size of stable memory *)
   | StableGrow                        (* grow stable memory *)
+  | StableRead                        (* read from stable memory *)
+  | StableWrite                       (* write to stable memory *)
   | Const of literal                  (* constant *)
   | Test of testop                    (* numeric test *)
   | Compare of relop                  (* numeric comparison *)

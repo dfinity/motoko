@@ -5100,17 +5100,53 @@ module StableMem = struct
           G.i StableSize ^^
           G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)))
 
+   let conv32 env get64 set32 =
+    get64 ^^
+    compile_shrU64_const 32L ^^
+    G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
+    E.then_trap_with env "stable64 overflow" ^^
+    get64  ^^
+    G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
+    set32
+
   let stable64_read env =
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
        IC.system_call env "stable64_read"
-    | _ -> assert false
+    | _ ->
+       Func.share_code3 Func.Always env "stable64_read"
+         (("dst", I64Type), ("offset", I64Type), ("size", I64Type)) []
+         (fun env get_dst get_offset get_size ->
+          let set_dst32, get_dst32 = new_local env "dst32" in
+          let set_offset32, get_offset32 = new_local env "offset32" in
+          let set_size32, get_size32= new_local env "offset32" in
+          conv32 env get_dst set_dst32 ^^
+          conv32 env get_offset set_offset32 ^^
+          conv32 env get_size set_size32 ^^
+          get_dst32 ^^
+          get_offset32 ^^
+          get_size32 ^^
+          G.i StableRead)
 
   let stable64_write env =
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
        IC.system_call env "stable64_write"
-    | _ -> assert false
+    | _ ->
+       Func.share_code3 Func.Always env "stable64_write"
+         (("offset", I64Type), ("src", I64Type), ("size", I64Type)) []
+         (fun env get_offset get_src get_size ->
+          let set_offset32, get_offset32 = new_local env "offset32" in
+          let set_src32, get_src32 = new_local env "src32" in
+          let set_size32, get_size32= new_local env "offset32" in
+          conv32 env get_offset set_offset32 ^^
+          conv32 env get_src set_src32 ^^
+          conv32 env get_size set_size32 ^^
+          get_offset32 ^^
+          get_src32 ^^
+          get_size32 ^^
+          G.i StableWrite)
+
 
   (* Versioning (c.f. Region.rs) *)
   (* NB: these constants must agree with VERSION_NO_STABLE_MEMORY etc. in Region.rs *)

@@ -473,6 +473,9 @@ let encode (em : extended_module) =
 
       | StableSize -> op 0x3f; u8 0x01
       | StableGrow -> op 0x40; u8 0x01
+      | StableRead -> op 0xfc; vu32 0x0al; u8 0x00; u8 0x01
+      | StableWrite -> op 0xfc; vu32 0x0al; u8 0x01; u8 0x00
+
 
       | Const {it = I32 c; _} -> op 0x41; vs32 c
       | Const {it = I64 c; _} -> op 0x42; vs64 c
