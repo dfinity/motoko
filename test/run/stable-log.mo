@@ -1,5 +1,5 @@
 import Prim "mo:⛔";
-import StableMemory "../stable-mem/StableMemory";
+import StableMemory "stable-mem/StableMemory";
 
 func ensure(offset : Nat64) {
   let pages = (offset + 65536) >> 16;
