@@ -5064,13 +5064,41 @@ module StableMem = struct
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
        IC.system_call env "stable64_grow"
-    | _ -> assert false
+    | _ ->
+       Func.share_code1 Func.Always env "stable64_grow" ("new_pages", I64Type) [I64Type]
+         (fun env get_pages ->
+          let set_old_pages, get_old_pages = new_local env "old_pages" in
+          get_pages ^^
+          compile_shrU64_const 32L ^^
+          G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
+          E.then_trap_with env "stable64_grow overflow" ^^
+          get_pages ^^
+          G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
+          G.i StableGrow ^^
+          set_old_pages ^^
+          get_old_pages ^^
+          compile_unboxed_const (-1l) ^^
+          G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+          G.if1 I64Type
+            begin
+             compile_const_64 (-1L)
+            end
+            begin
+              get_old_pages ^^
+                G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
+            end
+         )
+
 
   let stable64_size env =
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
        IC.system_call env "stable64_size"
-    | _ -> assert false
+    | _ ->
+       Func.share_code0 Func.Always env "stable64_size" [I64Type]
+         (fun env ->
+          G.i StableSize ^^
+          G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)))
 
   let stable64_read env =
     match E.mode env with
