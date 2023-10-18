@@ -5068,7 +5068,10 @@ module StableMem = struct
     get64  ^^
     G.i (Convert (Wasm.Values.I32 I32Op.WrapI64))
 
-  (* Raw API *)
+  (* Raw stable memory API,
+     using ic0.stable64_xxx or
+     emulating via (for now) 32-bit memory 1
+  *)
   let stable64_grow env =
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
@@ -5089,10 +5092,8 @@ module StableMem = struct
             end
             begin
               get_old_pages ^^
-                G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
-            end
-         )
-
+              G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
+            end)
 
   let stable64_size env =
     match E.mode env with
