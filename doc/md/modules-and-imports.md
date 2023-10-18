@@ -63,6 +63,39 @@ You can define dependencies for a project using the Vessel package manager or in
 
 In this example, the `Render` module is in the default location for source code in the `redraw` package and the `Mono5x5` module is in a `redraw` package subdirectory called `glyph`.
 
+## Importing packages from a package manager
+
+To download and install third-party packages, a package manager such as [Mops](https://mops.one) or [Vessel](https://github.com/dfinity/vessel) can be used. 
+
+To use either package manager, edit your project's `dfx.json` file to specify a `packtool`, such as:
+
+```json
+{
+  "defaults": {
+    "build": {
+      "packtool": "mops sources"
+    }
+  }
+}
+```
+
+For Vessel, use `vessel sources`. 
+
+Then, to download a package with the `mops` CLI tool, use a command such as:
+
+```
+mops add vector
+```
+
+For Vessel, edit the `vessel.dhall` file to include what packages your project will import. 
+
+Then, import the packages as you would import other packages in the Motoko source file:
+
+```motoko
+import Vec "mo:vector";
+import Vec "mo:vector/Class";
+```
+
 ## Importing actor classes
 
 While module imports are typically used to import libraries of local functions and values, they can also be used to import actor classes. When an imported file consists of a named actor class, the client of the imported field sees a module containing the actor class.
