@@ -5059,6 +5059,31 @@ end (* Cycles *)
 *)
 module StableMem = struct
 
+  (* Raw API *)
+  let stable64_grow env =
+    match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+       IC.system_call env "stable64_grow"
+    | _ -> assert false
+
+  let stable64_size env =
+    match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+       IC.system_call env "stable64_size"
+    | _ -> assert false
+
+  let stable64_read env =
+    match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+       IC.system_call env "stable64_read"
+    | _ -> assert false
+
+  let stable64_write env =
+    match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+       IC.system_call env "stable64_write"
+    | _ -> assert false
+
   (* Versioning (c.f. Region.rs) *)
   (* NB: these constants must agree with VERSION_NO_STABLE_MEMORY etc. in Region.rs *)
   let version_no_stable_memory = Int32.of_int 0 (* never manifest in serialized form *)
@@ -5151,7 +5176,7 @@ module StableMem = struct
             get_temp_ptr ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
             get_offset ^^
             compile_const_64 (Int64.of_int32 bytes) ^^
-            IC.system_call env "stable64_read" ^^
+            stable64_read env ^^
             get_temp_ptr ^^ load))
     | _ -> assert false
 
@@ -5168,7 +5193,7 @@ module StableMem = struct
             get_offset ^^
             get_temp_ptr ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
             compile_const_64 (Int64.of_int32 bytes) ^^
-            IC.system_call env "stable64_write"))
+            stable64_write env))
     | _ -> assert false
 
   let _read_word32 env =
@@ -5190,7 +5215,7 @@ module StableMem = struct
             get_temp_ptr ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
             get_offset ^^
             compile_const_64 4L ^^
-            IC.system_call env "stable64_read" ^^
+            stable64_read env ^^
             get_temp_ptr ^^ load_unskewed_ptr ^^
             set_word ^^
             (* write 0 *)
@@ -5198,7 +5223,7 @@ module StableMem = struct
             get_offset ^^
             get_temp_ptr ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
             compile_const_64 4L ^^
-            IC.system_call env "stable64_write" ^^
+            stable64_write env ^^
             (* return word *)
             get_word
         ))
@@ -5215,7 +5240,7 @@ module StableMem = struct
           let (set_size, get_size) = new_local64 env "size" in
           let (set_pages_needed, get_pages_needed) = new_local64 env "pages_needed" in
 
-          IC.system_call env "stable64_size" ^^
+          stable64_size env ^^
           set_size ^^
 
           get_pages ^^
@@ -5228,7 +5253,7 @@ module StableMem = struct
           G.i (Compare (Wasm.Values.I64 I64Op.GtS)) ^^
           G.if1 I64Type
             (get_pages_needed ^^
-             IC.system_call env "stable64_grow")
+             stable64_grow env)
             get_size)
     | _ -> assert false
 
@@ -5355,7 +5380,7 @@ module StableMem = struct
           get_blob ^^ Blob.payload_ptr_unskewed env ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
           get_offset ^^
           get_len ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-          IC.system_call env "stable64_read" ^^
+          stable64_read env ^^
           get_blob)
     | _ -> assert false
 
@@ -5373,7 +5398,7 @@ module StableMem = struct
           get_offset ^^
           get_blob ^^ Blob.payload_ptr_unskewed env ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
           get_len ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-          IC.system_call env "stable64_write")
+          stable64_write env)
     | _ -> assert false
 
 end (* StableMem *)
@@ -7781,7 +7806,7 @@ module Stabilization = struct
             compile_const_64 4L ^^
             extend64 get_dst ^^
             extend64 get_len ^^
-            IC.system_call env "stable64_write"
+            StableMem.stable64_write env
           end
       end
       begin
@@ -7812,13 +7837,13 @@ module Stabilization = struct
             compile_add64_const 4L ^^
             extend64 get_dst ^^
             extend64 get_len ^^
-            IC.system_call env "stable64_write"
+            StableMem.stable64_write env
           end ^^
 
         (* let M = pagesize * ic0.stable64_size() - 1 *)
         (* M is beginning of last page *)
         let (set_M, get_M) = new_local64 env "M" in
-        IC.system_call env "stable64_size" ^^
+        StableMem.stable64_size env ^^
         compile_sub64_const 1L ^^
         compile_shl64_const (Int64.of_int page_size_bits) ^^
         set_M ^^
@@ -7863,7 +7888,7 @@ module Stabilization = struct
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
       let (set_pages, get_pages) = new_local64 env "pages" in
-      IC.system_call env "stable64_size" ^^
+      StableMem.stable64_size env ^^
       set_pages ^^
 
       get_pages ^^
@@ -7903,7 +7928,7 @@ module Stabilization = struct
               let (set_version, get_version) = new_local env "version" in
               let (set_N, get_N) = new_local64 env "N" in
 
-              IC.system_call env "stable64_size" ^^
+              StableMem.stable64_size env ^^
               compile_sub64_const 1L ^^
               compile_shl64_const (Int64.of_int page_size_bits) ^^
               set_M ^^
@@ -7977,7 +8002,7 @@ module Stabilization = struct
           extend64 (get_blob ^^ Blob.payload_ptr_unskewed env) ^^
           get_offset ^^
           extend64 get_len ^^
-          IC.system_call env "stable64_read" ^^
+          StableMem.stable64_read env ^^
 
           let (set_val, get_val) = new_local env "val" in
           (* deserialize blob to val *)
@@ -7994,7 +8019,7 @@ module Stabilization = struct
           get_offset ^^
           extend64 (get_blob ^^ Blob.payload_ptr_unskewed env) ^^
           extend64 (get_blob ^^ Blob.len env) ^^
-          IC.system_call env "stable64_write" ^^
+          StableMem.stable64_write env ^^
 
           (* return val *)
           get_val
@@ -10611,7 +10636,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
   | OtherPrim "rts_stable_memory_size", [] ->
     SR.Vanilla,
-    IC.ic_system_call "stable64_size" env ^^ BigNum.from_word64 env
+    StableMem.stable64_size env ^^ BigNum.from_word64 env
 
   | OtherPrim "rts_logical_stable_memory_size", [] ->
     SR.Vanilla,

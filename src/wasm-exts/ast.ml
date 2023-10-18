@@ -110,6 +110,8 @@ and instr' =
   | Store of storeop                  (* write memory at address *)
   | MemorySize                        (* size of linear memory *)
   | MemoryGrow                        (* grow linear memory *)
+  | StableSize                        (* size of stable memory *)
+  | StableGrow                        (* grow stable memory *)
   | Const of literal                  (* constant *)
   | Test of testop                    (* numeric test *)
   | Compare of relop                  (* numeric comparison *)
