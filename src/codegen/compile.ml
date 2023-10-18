@@ -5665,28 +5665,44 @@ module RTS_Exports = struct
     end;
 
     let ic0_stable64_write_fi =
-      if E.mode env = Flags.WASIMode then
+      match E.mode env with
+      | Flags.ICMode | Flags.RefMode ->
+        E.reuse_import env "ic0" "stable64_write"
+      | Flags.WASIMode | Flags.WasmMode ->
         E.add_fun env "ic0_stable64_write" (
-            Func.of_body env ["to", I64Type; "from", I64Type; "len", I64Type] []
-              (fun env ->
-                E.trap_with env "ic0_stable64_write is not supposed to be called in WASI"
-              )
+          Func.of_body env ["offset", I64Type; "src", I64Type; "size", I64Type] []
+            (fun env ->
+              let get_offset = G.i (LocalGet (nr 0l)) in
+              let get_src = G.i (LocalGet (nr 1l)) in
+              let get_size = G.i (LocalGet (nr 2l)) in
+              get_offset ^^
+              get_src ^^
+              get_size ^^
+              StableMem.stable64_write env)
           )
-      else E.reuse_import env "ic0" "stable64_write" in
+    in
     E.add_export env (nr {
       name = Lib.Utf8.decode "ic0_stable64_write";
       edesc = nr (FuncExport (nr ic0_stable64_write_fi))
     });
 
     let ic0_stable64_read_fi =
-      if E.mode env = Flags.WASIMode then
+      match E.mode env with
+      | Flags.ICMode | Flags.RefMode ->
+        E.reuse_import env "ic0" "stable64_read"
+      | Flags.WASIMode | Flags.WasmMode ->
         E.add_fun env "ic0_stable64_read" (
-            Func.of_body env ["dst", I64Type; "offset", I64Type; "len", I64Type] []
-              (fun env ->
-                E.trap_with env "ic0_stable64_read is not supposed to be called in WASI"
-              )
+          Func.of_body env ["dst", I64Type; "offset", I64Type; "size", I64Type] []
+            (fun env ->
+              let get_dst = G.i (LocalGet (nr 0l)) in
+              let get_offset = G.i (LocalGet (nr 1l)) in
+              let get_size = G.i (LocalGet (nr 2l)) in
+              get_dst ^^
+              get_offset ^^
+              get_size ^^
+              StableMem.stable64_read env)
           )
-      else E.reuse_import env "ic0" "stable64_read" in
+    in
     E.add_export env (nr {
       name = Lib.Utf8.decode "ic0_stable64_read";
       edesc = nr (FuncExport (nr ic0_stable64_read_fi))
@@ -5696,13 +5712,9 @@ module RTS_Exports = struct
       E.add_fun env "moc_stable_mem_grow" (
         Func.of_body env ["newPages", I64Type] [I64Type]
           (fun env ->
-            match E.mode env with
-            | Flags.ICMode | Flags.RefMode ->
-              G.i (LocalGet (nr 0l)) ^^
-              StableMem.grow env
-            | _ ->
-              E.trap_with env "moc_stable_mem_grow is not supposed to be called in WASI" (* improve me *)
-        ))
+            G.i (LocalGet (nr 0l)) ^^
+              StableMem.grow env)
+        )
     in
     E.add_export env (nr {
       name = Lib.Utf8.decode "moc_stable_mem_grow";
@@ -5713,12 +5725,7 @@ module RTS_Exports = struct
       E.add_fun env "moc_stable_mem_size" (
         Func.of_body env [] [I64Type]
           (fun env ->
-            match E.mode env with
-            | Flags.ICMode | Flags.RefMode ->
-               StableMem.get_mem_size env
-            | _ ->
-               E.trap_with env "moc_stable_mem_size is not supposed to be called in WASI" (* improve me *)
-          )
+            StableMem.get_mem_size env)
         )
     in
     E.add_export env (nr {
@@ -5730,12 +5737,7 @@ module RTS_Exports = struct
       E.add_fun env "moc_stable_mem_get_version" (
         Func.of_body env [] [I32Type]
           (fun env ->
-            match E.mode env with
-            | Flags.ICMode | Flags.RefMode ->
-               StableMem.get_version env
-            | _ ->
-               E.trap_with env "moc_stable_mem_get_version is not supposed to be called in WASI" (* improve me *)
-          )
+             StableMem.get_version env)
         )
     in
     E.add_export env (nr {
@@ -5747,12 +5749,8 @@ module RTS_Exports = struct
       E.add_fun env "moc_stable_mem_set_version" (
         Func.of_body env ["version", I32Type] []
           (fun env ->
-            match E.mode env with
-            | Flags.ICMode | Flags.RefMode ->
-               G.i (LocalGet (nr 0l)) ^^
-               StableMem.set_version env
-            | _ ->
-               E.trap_with env "moc_stable_mem_set_version is not supposed to be called in WASI" (* improve me *)
+             G.i (LocalGet (nr 0l)) ^^
+             StableMem.set_version env
           )
         )
     in
