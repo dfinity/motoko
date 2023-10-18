@@ -112,7 +112,7 @@ branch to the `next-moc` branch.
 Make a PR off of that branch and merge it using a _normal merge_ (not
 squash merge) once CI passes. It will eventually be imported into this
 repo by a scheduled `niv-updater-action`.
-HERE
+
 Finally tag the base release (so the documentation interpreter can do the right thing):
 * `git switch master && git pull`
 * `git tag moc-0.10.$MOC_MINOR`
