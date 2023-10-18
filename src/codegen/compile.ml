@@ -10996,8 +10996,8 @@ enabled mutual recursion.
 and compile_lit_pat env l =
   match l with
   | NullLit ->
-    compile_lit_as env SR.Vanilla l ^^
-    G.i (Compare (Wasm.Values.I32 I32Op.Eq))
+    Opt.is_some env ^^
+    Bool.neg
   | BoolLit true ->
     G.nop
   | BoolLit false ->
