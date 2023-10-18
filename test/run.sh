@@ -26,7 +26,7 @@ DTESTS=no
 IDL=no
 PERF=no
 VIPER=no
-WASMTIME_OPTIONS="--disable-cache --enable-cranelift-nan-canonicalization"
+WASMTIME_OPTIONS="--disable-cache --enable-cranelift-nan-canonicalization --wasm-features all"
 WRAP_drun=$(realpath $(dirname $0)/drun-wrapper.sh)
 WRAP_ic_ref_run=$(realpath $(dirname $0)/ic-ref-run-wrapper.sh)
 SKIP_RUNNING=${SKIP_RUNNING:-no}
@@ -358,8 +358,8 @@ do
 
         if [ "$SKIP_VALIDATE" != yes ]
         then
-          run_if wasm valid wasm-validate $out/$base.wasm
-          run_if ref.wasm valid-ref wasm-validate $out/$base.ref.wasm
+          run_if wasm valid wasm-validate --enable-multi-memory $out/$base.wasm
+          run_if ref.wasm valid-ref wasm-validate --enable-multi-memory $out/$base.ref.wasm
         fi
 
         if [ -e $out/$base.wasm ]

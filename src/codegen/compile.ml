@@ -4630,7 +4630,7 @@ module IC = struct
         | _  -> "mem"
       );
       edesc = nr (MemoryExport (nr 0l))
-    });
+      });
     E.add_export env (nr {
       name = Lib.Utf8.decode "table";
       edesc = nr (TableExport (nr 0l))
@@ -11972,7 +11972,15 @@ and conclude_module env set_serialization_globals start_fi_o =
 
   let other_imports = E.get_other_imports env in
 
-  let memories = [nr {mtype = MemoryType {min = E.mem_size env; max = None}} ] in
+  let memories =
+    match E.mode env with
+    | Flags.ICMode
+    | Flags.RefMode ->
+       [nr {mtype = MemoryType {min = E.mem_size env; max = None}} ]
+    | Flags.WASIMode | Flags.WasmMode ->
+       [nr {mtype = MemoryType {min = E.mem_size env; max = None}};
+        nr {mtype = MemoryType {min = Int32.zero; max = None}} ] (* faux stable memory *)
+  in
 
   let funcs = E.get_funcs env in
 
