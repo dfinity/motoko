@@ -11074,8 +11074,8 @@ enabled mutual recursion.
 and compile_lit_pat env l =
   match l with
   | NullLit ->
-    compile_lit_as env SR.Vanilla l ^^
-    compile_comparison I64Op.Eq
+    Opt.is_some env ^^
+    Bool.neg
   | BoolLit true ->
     G.nop
   | BoolLit false ->
