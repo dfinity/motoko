@@ -5110,21 +5110,16 @@ module StableMem = struct
 
   (* stable memory bounds check *)
   let guard env =
-    match E.mode env with
-    | Flags.ICMode | Flags.RefMode ->
        get_mem_size env ^^
        compile_const_64 (Int64.of_int page_size_bits) ^^
        G.i (Binary (Wasm.Values.I64 I64Op.Shl)) ^^
        G.i (Compare (Wasm.Values.I64 I64Op.GeU)) ^^
        E.then_trap_with env "StableMemory offset out of bounds"
-    | _ -> assert false
 
   (* check both offset and [offset,.., offset + size) within bounds *)
   (* c.f. region.rs check_relative_range *)
   (* TODO: specialize on size *)
   let guard_range env =
-    match E.mode env with
-    | Flags.ICMode | Flags.RefMode ->
       Func.share_code2 Func.Always env "__stablemem_guard_range"
         (("offset", I64Type), ("size", I32Type)) []
         (fun env get_offset get_size ->
@@ -5151,7 +5146,6 @@ module StableMem = struct
             G.i (Compare (Wasm.Values.I64 I64Op.GtU)) ^^
             E.then_trap_with env "StableMemory range out of bounds"
           end)
-    | _ -> assert false
 
   let add_guard env guarded get_offset bytes =
     if guarded then
@@ -5165,8 +5159,6 @@ module StableMem = struct
 
   (* TODO: crusso in read/write could avoid stack allocation by reserving and re-using scratch memory instead *)
   let read env guarded name typ bytes load =
-    match E.mode env with
-    | Flags.ICMode | Flags.RefMode ->
       Func.share_code1 Func.Never env (Printf.sprintf "__stablemem_%sread_%s" (if guarded then "guarded_" else "") name)
         ("offset", I64Type) [typ]
         (fun env get_offset ->
@@ -5178,11 +5170,8 @@ module StableMem = struct
             compile_const_64 (Int64.of_int32 bytes) ^^
             stable64_read env ^^
             get_temp_ptr ^^ load))
-    | _ -> assert false
 
   let write env guarded name typ bytes store =
-    match E.mode env with
-    | Flags.ICMode | Flags.RefMode ->
       Func.share_code2 Func.Never env (Printf.sprintf "__stablemem_%swrite_%s" (if guarded then "guarded_" else "") name)
         (("offset", I64Type), ("value", typ)) []
         (fun env get_offset get_value ->
@@ -5194,7 +5183,6 @@ module StableMem = struct
             get_temp_ptr ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
             compile_const_64 (Int64.of_int32 bytes) ^^
             stable64_write env))
-    | _ -> assert false
 
   let _read_word32 env =
     read env false "word32" I32Type 4l load_unskewed_ptr
@@ -5204,8 +5192,6 @@ module StableMem = struct
 
   (* read and clear word32 from stable mem offset on stack *)
   let read_and_clear_word32 env =
-    match E.mode env with
-    | Flags.ICMode | Flags.RefMode ->
       Func.share_code1 Func.Always env "__stablemem_read_and_clear_word32"
         ("offset", I64Type) [I32Type]
         (fun env get_offset ->
@@ -5227,13 +5213,10 @@ module StableMem = struct
             (* return word *)
             get_word
         ))
-    | _ -> assert false
 
   (* ensure_pages : ensure at least num pages allocated,
      growing (real) stable memory if needed *)
   let ensure_pages env =
-    match E.mode env with
-    | Flags.ICMode | Flags.RefMode ->
       Func.share_code1 Func.Always env "__stablemem_ensure_pages"
         ("pages", I64Type) [I64Type]
         (fun env get_pages ->
@@ -5255,12 +5238,9 @@ module StableMem = struct
             (get_pages_needed ^^
              stable64_grow env)
             get_size)
-    | _ -> assert false
 
   (* ensure stable memory includes [offset..offset+size), assumes size > 0 *)
   let ensure env =
-    match E.mode env with
-    | Flags.ICMode | Flags.RefMode ->
       Func.share_code2 Func.Always env "__stablemem_ensure"
         (("offset", I64Type), ("size", I64Type)) []
         (fun env get_offset get_size ->
@@ -5284,12 +5264,9 @@ module StableMem = struct
           compile_const_64 0L ^^
           G.i (Compare (Wasm.Values.I64 I64Op.LtS)) ^^
           E.then_trap_with env "Out of stable memory.")
-    | _ -> assert false
 
   (* low-level grow, respecting --max-stable-pages *)
   let grow env =
-    match E.mode env with
-    | Flags.ICMode | Flags.RefMode ->
       Func.share_code1 Func.Always env "__stablemem_grow"
         ("pages", I64Type) [I64Type] (fun env get_pages ->
           let (set_size, get_size) = new_local64 env "size" in
@@ -5333,7 +5310,6 @@ module StableMem = struct
                  (* return old logical size *)
                  get_size)
             end)
-   | _ -> assert false
 
   let load_word32 env =
     read env true "word32" I32Type 4l load_unskewed_ptr
@@ -5367,8 +5343,6 @@ module StableMem = struct
       (G.i (Store {ty = F64Type; align = 0; offset = 0l; sz = None}))
 
   let load_blob env =
-    match E.mode env with
-    | Flags.ICMode | Flags.RefMode ->
       Func.share_code2 Func.Always env "__stablemem_load_blob"
         (("offset", I64Type), ("len", I32Type)) [I32Type]
         (fun env get_offset get_len ->
@@ -5382,11 +5356,8 @@ module StableMem = struct
           get_len ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
           stable64_read env ^^
           get_blob)
-    | _ -> assert false
 
   let store_blob env =
-    match E.mode env with
-    | Flags.ICMode | Flags.RefMode ->
       Func.share_code2 Func.Always env "__stablemem_store_blob"
         (("offset", I64Type), ("blob", I32Type)) []
         (fun env get_offset get_blob ->
@@ -5399,7 +5370,6 @@ module StableMem = struct
           get_blob ^^ Blob.payload_ptr_unskewed env ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
           get_len ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
           stable64_write env)
-    | _ -> assert false
 
 end (* StableMem *)
 
