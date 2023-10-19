@@ -4630,7 +4630,7 @@ module IC = struct
         | _  -> "mem"
       );
       edesc = nr (MemoryExport (nr 0l))
-      });
+    });
     E.add_export env (nr {
       name = Lib.Utf8.decode "table";
       edesc = nr (TableExport (nr 0l))
