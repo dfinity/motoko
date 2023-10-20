@@ -4439,17 +4439,26 @@ module Cycles = struct
 
   let from_word128_ptr env = Func.share_code1 env "from_word128_ptr" ("ptr", I32Type) [I32Type]
     (fun env get_ptr ->
-      get_ptr ^^
-      (G.i (Load {ty = I64Type; align = 0; offset = 0l; sz = None })) ^^
-      BigNum.from_word64 env ^^
-      get_ptr ^^
-      compile_add_const 8l ^^
-      (G.i (Load {ty = I64Type; align = 0; offset = 0l; sz = None })) ^^
-      BigNum.from_word64 env ^^
-      (* shift left 64 bits *)
-      compile_unboxed_const 64l ^^
-      BigNum.compile_lsh env ^^
-      BigNum.compile_add env)
+     let set_lower, get_lower = new_local env "lower" in
+     get_ptr ^^
+     G.i (Load {ty = I64Type; align = 0; offset = 0l; sz = None }) ^^
+     BigNum.from_word64 env ^^
+     set_lower ^^
+     get_ptr ^^
+     G.i (Load {ty = I64Type; align = 0; offset = 8l; sz = None }) ^^
+     G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
+     G.if1 I32Type
+       get_lower
+       begin
+         get_lower ^^
+         get_ptr ^^
+         G.i (Load {ty = I64Type; align = 0; offset = 8l; sz = None }) ^^
+         BigNum.from_word64 env ^^
+         (* shift left 64 bits *)
+         compile_unboxed_const 64l ^^
+         BigNum.compile_lsh env ^^
+         BigNum.compile_add env
+       end)
 
   (* takes a bignum from the stack, traps if ≥2^128, and leaves two 64bit words on the stack *)
   (* only used twice, so ok to not use share_code1; that would require I64Type support in FakeMultiVal *)
@@ -9519,7 +9528,7 @@ and compile_prim_invocation (env : E.t) ae p es at : SR.t * G.t =
     IC.performance_counter env
 
   | OtherPrim "trap", [e] ->
-    SR.unit,
+    SR.Unreachable,
     compile_exp_vanilla env ae e ^^
     IC.trap_text env
 

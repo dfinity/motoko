@@ -494,8 +494,6 @@ rec {
       run        = test_subdir "run"        [ moc ] ;
       run-dbg    = snty_subdir "run"        [ moc ] ;
       ic-ref-run = test_subdir "run-drun"   [ moc ic-ref-run ];
-      ic-ref-run-compacting-gc = compacting_gc_subdir "run-drun" [ moc ic-ref-run ] ;
-      ic-ref-run-generational-gc = generational_gc_subdir "run-drun" [ moc ic-ref-run ] ;
       drun       = test_subdir "run-drun"   [ moc nixpkgs.drun ];
       drun-dbg   = snty_subdir "run-drun"   [ moc nixpkgs.drun ];
       drun-compacting-gc = snty_compacting_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
