@@ -26,10 +26,10 @@
         "homepage": "",
         "owner": "dfinity",
         "repo": "ic",
-        "rev": "289c696cf3ab1ead4125ea2b205eec169763b093",
-        "sha256": "1iribcfj94sxf9v5vkknbyq4zcir3l3ilz1wp72vf9xw8qhy4ycb",
+        "rev": "930934221d30c365e291874eec3fd93d6b06683a",
+        "sha256": "0582dr0206i35wxdx41k1laglwlxxjdr5s6xxg390xwvb217471a",
         "type": "tarball",
-        "url": "https://github.com/dfinity/ic/archive/289c696cf3ab1ead4125ea2b205eec169763b093.tar.gz",
+        "url": "https://github.com/dfinity/ic/archive/930934221d30c365e291874eec3fd93d6b06683a.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ic-hs": {
