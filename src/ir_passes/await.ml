@@ -126,23 +126,28 @@ and t_exp' context exp =
     DeclareE (id, typ, t_exp context exp1)
   | DefineE (id, mut ,exp1) ->
     DefineE (id, mut, t_exp context exp1)
-  | FuncE (x, (T.Local as s1), c, typbinds, pat, typs,
-      ({ it = AsyncE _; _} as body)) ->
-    FuncE (x, s1, c, typbinds, pat, typs,
-      t_async context body)
-  | FuncE (x, (T.Shared _ as s1), c, typbinds, pat, typs,
+  | FuncE (x, T.Local, c, typbinds, pat, typs,
+      ({ it = AsyncE _; _} as async)) ->
+    FuncE (x, T.Local, c, typbinds, pat, typs,
+      t_async context async)
+  | FuncE (x, T.Local, c, typbinds, pat, typs,
+      ({it = BlockE (ds, ({ it = AsyncE _; _} as async)); _} as wrapper)) ->
+    (* GH issue #3910 *)
+    FuncE (x, T.Local, c, typbinds, pat, typs,
+      { wrapper with it = BlockE (ds, t_async context async) })
+  | FuncE (x, (T.Shared _ as s), c, typbinds, pat, typs,
       ({ it = AsyncE _;_ } as body)) ->
-    FuncE (x, s1, c, typbinds, pat, typs,
+    FuncE (x, s, c, typbinds, pat, typs,
       t_async context body)
-  | FuncE (x, (T.Shared _ as s1), c, typbinds, pat, typs,
+  | FuncE (x, (T.Shared _ as s), c, typbinds, pat, typs,
       { it = BlockE ([
          { it = LetD (
             { it = WildP; _} as wild_pat,
             ({ it = AsyncE _; _} as body)); _ }],
-                     ({ it = PrimE (TupPrim, []); _ } as unitE));
+         ({ it = PrimE (TupPrim, []); _ } as unitE));
         _
       }) ->
-    FuncE (x, s1, c, typbinds, pat, typs,
+    FuncE (x, s, c, typbinds, pat, typs,
       blockE [letP wild_pat (t_async context body)] unitE)
   | FuncE (x, s, c, typbinds, pat, typs, exp1) ->
     assert (not (T.is_local_async_func (typ exp)));

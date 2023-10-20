@@ -47,6 +47,20 @@ actor MyCanister {
 }
 ```
 
+## Function `toLedgerAccount`
+``` motoko no-repl
+func toLedgerAccount(principal : Principal, subAccount : ?Blob) : Blob
+```
+
+Compute the Ledger account identifier of a principal. Optionally specify a sub-account.
+
+Example:
+```motoko include=import
+let principal = Principal.fromText("un4fu-tqaaa-aaaab-qadjq-cai");
+let subAccount : Blob = "\4A\8D\3F\2B\6E\01\C8\7D\9E\03\B4\56\7C\F8\9A\01\D2\34\56\78\9A\BC\DE\F0\12\34\56\78\9A\BC\DE\F0";
+let account = Principal.toLedgerAccount(principal, ?subAccount); // => \8C\5C\20\C6\15\3F\7F\51\E2\0D\0F\0F\B5\08\51\5B\47\65\63\A9\62\B4\A9\91\5F\4F\02\70\8A\ED\4F\82
+```
+
 ## Function `toBlob`
 ``` motoko no-repl
 func toBlob(p : Principal) : Blob
@@ -111,6 +125,19 @@ Example:
 ```motoko include=import
 let principal = Principal.fromText("un4fu-tqaaa-aaaab-qadjq-cai");
 Principal.isAnonymous(principal) // => false
+```
+
+## Function `isController`
+``` motoko no-repl
+func isController(p : Principal) : Bool
+```
+
+Checks if the given principal can control this canister.
+
+Example:
+```motoko include=import
+let principal = Principal.fromText("un4fu-tqaaa-aaaab-qadjq-cai");
+Principal.isController(principal) // => false
 ```
 
 ## Function `hash`

@@ -67,7 +67,7 @@ let parse_file filename : parse_result =
 
 let check_prog senv prog
   : (Typing.scope * Syntax.typ option) Diag.result =
-  phase "Checking" prog.Source.note;
+  phase "Checking" prog.Source.note.Syntax.filename;
   let r = Typing.check_prog senv prog in
   (match r with
    | Ok ((scope, _), _) ->

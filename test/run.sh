@@ -26,16 +26,13 @@ DTESTS=no
 IDL=no
 PERF=no
 VIPER=no
-WASMTIME_OPTIONS="--disable-cache"
+WASMTIME_OPTIONS="--disable-cache --enable-cranelift-nan-canonicalization"
 WRAP_drun=$(realpath $(dirname $0)/drun-wrapper.sh)
 WRAP_ic_ref_run=$(realpath $(dirname $0)/ic-ref-run-wrapper.sh)
 SKIP_RUNNING=${SKIP_RUNNING:-no}
 SKIP_VALIDATE=${SKIP_VALIDATE:-no}
 ONLY_TYPECHECK=no
 ECHO=echo
-
-# Always do GC in tests, unless it's disabled in `EXTRA_MOC_ARGS`
-EXTRA_MOC_ARGS="--force-gc $EXTRA_MOC_ARGS"
 
 while getopts "adpstirv" o; do
     case "${o}" in
@@ -93,8 +90,9 @@ function normalize () {
         -e 's/Motoko (source .*)/Motoko (source XXX)/ig' \
         -e 's/Motoko [^ ]* (source .*)/Motoko (source XXX)/ig' \
         -e 's/Motoko compiler [^ ]* (source .*)/Motoko compiler (source XXX)/ig' |
-    # Normalize canister id prefixes in debug prints
-    sed 's/\[Canister [0-9a-z\-]*\]/debug.print:/g' |
+    # Normalize canister id prefixes and timestamps in debug prints
+    sed -e 's/\[Canister [0-9a-z\-]*\]/debug.print:/g' \
+        -e 's/^20.*UTC: debug.print:/debug.print:/g' |
     # Normalize instruction locations on traps, added by ic-ref ad6ea9e
     sed -e 's/region:0x[0-9a-fA-F]\+-0x[0-9a-fA-F]\+/region:0xXXX-0xXXX/g' |
     # Delete everything after Oom
@@ -164,6 +162,7 @@ fi
 
 HAVE_drun=no
 HAVE_ic_ref_run=no
+HAVE_ic_wasm=no
 
 FLAGS_drun=
 FLAGS_ic_ref_run=-ref-system-api
@@ -183,6 +182,10 @@ then
       HAVE_drun=no
     fi
   fi
+  if ic-wasm --help >& /dev/null
+  then
+    HAVE_ic_wasm=yes
+  fi
 fi
 
 if [ $DTESTS = yes ]
@@ -193,8 +196,7 @@ then
   else
     if [ $ACCEPT = yes ]
     then
-      echo "ERROR: Could not run ic-ref-run, cannot update expected test output"
-      exit 1
+      echo "WARNING: Could not run ic-ref-run, cannot update expected test output"
     else
       echo "WARNING: Could not run ic-ref-run, will skip running some tests"
       HAVE_ic_ref_run=no
@@ -252,7 +254,13 @@ do
     # extra flags (allow shell variables there)
     moc_extra_flags="$(eval echo $(grep '//MOC-FLAG' $base.mo | cut -c11- | paste -sd' '))"
     moc_extra_env="$(eval echo $(grep '//MOC-ENV' $base.mo | cut -c10- | paste -sd' '))"
-    moc_with_flags="env $moc_extra_env moc $moc_extra_flags $EXTRA_MOC_ARGS"
+    if ! grep -q "//MOC-NO-FORCE-GC" $base.mo
+    then
+      TEST_MOC_ARGS="--force-gc $EXTRA_MOC_ARGS"
+    else
+      TEST_MOC_ARGS=$EXTRA_MOC_ARGS
+    fi
+    moc_with_flags="env $moc_extra_env moc $moc_extra_flags $TEST_MOC_ARGS"
 
     # Typecheck
     run tc $moc_with_flags --check $base.mo
@@ -341,6 +349,9 @@ do
         elif [ $PERF = yes ]
         then
           run comp $moc_with_flags --hide-warnings --map -c $mangled -o $out/$base.wasm
+          if [ $HAVE_ic_wasm = yes ]; then
+            run opt ic-wasm -o $out/$base.opt.wasm $out/$base.wasm optimize O3 --keep-name-section
+          fi
         else
           run comp $moc_with_flags -g -wasi-system-api --hide-warnings --map -c $mangled -o $out/$base.wasm
         fi
@@ -385,6 +396,7 @@ do
               then
                 LANG=C perl -ne "print \"gas/$base;\$1\n\" if /^scheduler_(?:cycles|instructions)_consumed_per_round_sum (\\d+)\$/" $out/$base.metrics >> $PERF_OUT;
               fi
+              run_if opt.wasm drun-run-opt $WRAP_drun $out/$base.opt.wasm $mangled
             fi
           else
             run_if wasm wasm-run wasmtime $WASMTIME_OPTIONS $out/$base.wasm
@@ -423,6 +435,14 @@ do
         continue
       fi
 
+      if grep -q "# *INCREMENTAL-GC-ONLY" $(basename $file)
+      then
+        if [[ $EXTRA_MOC_ARGS != *"--incremental-gc"* ]]
+        then 
+          continue
+        fi
+      fi
+
       have_var_name="HAVE_${runner//-/_}"
       if [ ${!have_var_name} != yes ]
       then
@@ -442,9 +462,9 @@ do
           echo "$base.drun references $mo_file which is not in directory $base"
           exit 1
         fi
-
+        moc_extra_flags="$(eval echo $(grep '//MOC-FLAG' $mo_file | cut -c11- | paste -sd' '))"
         flags_var_name="FLAGS_${runner//-/_}"
-        run $mo_base.$runner.comp moc ${!flags_var_name} --hide-warnings -c $mo_file -o $out/$base/$mo_base.$runner.wasm
+        run $mo_base.$runner.comp moc $EXTRA_MOC_ARGS ${!flags_var_name} $moc_extra_flags --hide-warnings -c $mo_file -o $out/$base/$mo_base.$runner.wasm
       done
 
       # mangle drun script
@@ -556,7 +576,7 @@ done
 if [ ${#failures[@]} -gt 0  ]
 then
   echo "Some tests failed:"
-  echo "${failures[@]}"
+  tr ' ' '\n' <<< "${failures[@]}" | uniq | xargs echo
   exit 1
 else
   $ECHO "All tests passed."

@@ -1,6 +1,6 @@
 # Compiler reference
 
-The Motoko compiler (`moc`) is the primary tool for compiling Motoko programs into executable WebAssembly (Wasm) modules. The compiler runs in the background when you build projects using the DFINITY Canister SDK. If you invoke the compiler directly on the command-line, you can press CTRL-C to exit.
+The Motoko compiler (`moc`) is the primary tool for compiling Motoko programs into executable WebAssembly (Wasm) modules. The compiler runs in the background when you build projects using the [IC SDK](https://internetcomputer.org/docs/current/developer-docs/setup/install). If you invoke the compiler directly on the command-line, you can press CTRL-C to exit.
 
 This section provides compiler command-line reference information.
 
@@ -30,10 +30,13 @@ You can use the following options with the `moc` command.
 | `--copying-gc`                            | Use copying GC (default)                                                                                                                              |
 | `--debug`                                 | Respects debug expressions in the source (the default).                                                                                               |
 | `--error-detail <n>`                      | Set level of error message detail for syntax errors, n in \[0..3\] (default 2).                                                                       |
+| `-fno-shared-code`                        | Do *not* share low-level utility code: larger code size but decreased cycle consumption (default).                                                    |
+| `-fshared-code`                           | Do share low-level utility code: smaller code size but increased cycle consumption.                                                                   |
 | `--generational-gc`                       | Use generational GC                                                                                                                                   |
 | `-help`,`--help`                          | Displays usage information.                                                                                                                           |
 | `--hide-warnings`                         | Hides compiler warnings.                                                                                                                              |
 | `-Werror`                                 | Treat warnings as errors.                                                                                                                             |
+| `--incremental-gc`                        | Use incremental GC (only for beta-testing)                                                                                                            |
 | `--idl`                                   | Compile binary and emit Candid IDL specification to `.did` file.                                                                                      |
 | `-i`                                      | Runs the compiler in an interactive read–eval–print loop (REPL) shell so you can evaluate program execution (implies -r).                             |
 | `--map`                                   | Outputs a JavaScript source map.                                                                                                                      |
@@ -48,6 +51,7 @@ You can use the following options with the `moc` command.
 | `--print-deps`                            | Prints the dependencies for a given source file.                                                                                                      |
 | `-r`                                      | Interprets programs.                                                                                                                                  |
 | `--release`                               | Ignores debug expressions in the source.                                                                                                              |
+| `--stable-regions`                        | Force eager initialization of stable regions metadata (for testing purposes); consumes between 386KiB or 8MiB of additional physical stable memory, depending on current use of ExperimentalStableMemory. |
 | `--stable-types`                          | Compile binary and emit signature of stable types to `.most` file.                                                                                    |
 | `--stable-compatible <pre> <post>`        | Test upgrade compatibility between stable-type signatures `<pre>` and `<post>`.                                                                       |
 | `--rts-stack-pages <n>`                   | Set maximum number of pages available for runtime system stack (default 32).

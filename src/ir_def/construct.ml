@@ -95,8 +95,8 @@ let primE prim es =
     | ICStableSize _ -> T.nat64
     | IdxPrim
     | DerefArrayOffset -> T.(as_immut (as_array_sub (List.hd es).note.Note.typ))
-    | NextArrayOffset _ -> T.nat
     | ValidArrayOffset -> T.bool
+    | NextArrayOffset _
     | GetPastArrayOffset _ -> T.nat
     | IcUrlOfBlob -> T.text
     | ActorOfIdBlob t -> t
@@ -111,9 +111,10 @@ let primE prim es =
     | OtherPrim "trap" -> T.Non
     | OtherPrim "call_perform_status" -> T.(Prim Nat32)
     | OtherPrim "call_perform_message" -> T.text
-    | OtherPrim "array_len" -> T.nat
-    | OtherPrim "blob_size" -> T.nat
+    | OtherPrim "array_len"
+    | OtherPrim "blob_size"
     | OtherPrim "text_len" -> T.nat
+    | OtherPrim "is_controller" -> T.bool
     | _ -> assert false (* implement more as needed *)
   in
   let effs = List.map eff es in
@@ -219,7 +220,7 @@ let optE e =
 
 let tagE i e =
  { it = PrimE (TagPrim i, [e]);
-   note = Note.{ def with typ = T.Variant [{T.lab = i; typ = typ e; depr = None}]; eff = eff e };
+   note = Note.{ def with typ = T.Variant [{T.lab = i; typ = typ e; src = T.empty_src}]; eff = eff e };
    at = no_region;
  }
 

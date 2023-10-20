@@ -1,0 +1,8 @@
+issue-3910.mo:17.10-17.35: warning [M0145], this pattern of type
+  {trap : Bool}
+does not cover value
+  {trap = true}
+issue-3910.mo:34.10-34.35: warning [M0145], this pattern of type
+  {trap : Bool}
+does not cover value
+  {trap = true}

@@ -1,3 +1,4 @@
+
 # Language quick reference
 
 <!--
@@ -53,21 +54,21 @@ In the definition of some lexemes, the quick reference uses the symbol `␣` to 
 
 Single line comments are all characters following `//` until the end of the same line.
 
-``` motoko
+``` motoko no-repl
 // single line comment
 x = 1
 ```
 
 Single or multi-line comments are any sequence of characters delimited by `/*` and `*/`:
 
-``` motoko
+``` motoko no-repl
 /* multi-line comments
    look like this, as in C and friends */
 ```
 
 Comments delimited by `/*` and `*/` may be nested, provided the nesting is well-bracketed.
 
-``` motoko
+``` motoko no-repl
 /// I'm a documentation comment
 /// for a function
 ```
@@ -83,10 +84,12 @@ All comments are treated as whitespace.
 The following keywords are reserved and may not be used as identifiers:
 
 ``` bnf
-actor and assert async async* await await* break case catch class continue debug
-debug_show do else flexible false for from_candid func if ignore import
-in module not null object or label let loop private public query return
-shared stable switch system throw to_candid true try type var while with
+
+actor and assert async async* await await* break case catch class
+composite continue debug debug_show do else flexible false for
+from_candid func if ignore import in module not null object or label
+let loop private public query return shared stable switch system throw
+to_candid true try type var while with
 ```
 
 ### Identifiers
@@ -170,6 +173,7 @@ character ::=
   | '\\'escape
   | '\\'hexdigit hexdigit
   | "\\u{" hexnum '}'
+  | '\n'        // literal newline
 
 char := '\'' character '\''
 ```
@@ -181,6 +185,8 @@ A text literal is `"`-delimited sequence of characters:
 ``` bnf
 text ::= '"' character* '"'
 ```
+
+Note that a text literal may span multiple lines.
 
 ### Literals
 
@@ -215,7 +221,6 @@ Some types have several categories. For example, type `Int` is both arithmetic (
 | `-`      | A        | numeric negation |
 | `+`      | A        | numeric identity |
 | `^`      | B        | bitwise negation |
-| `!`      |          | null break       |
 
 ### Relational operators
 
@@ -302,6 +307,7 @@ The following table defines the relative precedence and associativity of operato
 | (higher)   | none          | `else`, `while`                                                                                                               |
 | (higher)   | right         | `:=`, `+=`, `-=`, `*=`, `/=`, `%=`, `**=`, `#=`, `&=`, `\|=`, `^=`, `<<=`, `>>=`, `<<>=`, `<>>=`, `+%=`, `-%=`, `*%=`, `**%=` |
 | (higher)   | left          | `:`                                                                                                                           |
+| (higher)   | left          | `|>`                                                                                                                           |
 | (higher)   | left          | `or`                                                                                                                          |
 | (higher)   | left          | `and`                                                                                                                         |
 | (higher)   | none          | `==`, `!=`, `<`, `>`, `<=`, `>`, `>=`                                                                                         |
@@ -407,8 +413,11 @@ The syntax of a *declaration* is as follows:
 The syntax of a shared function qualifier with call-context pattern is as follows:
 
 ``` bnf
+<query> ::=
+ composite? query
+
 <shared-pat> ::=
-  shared query? <pat>?
+  shared <query>? <pat>?
 ```
 
 For `<shared-pat>`, an absent `<pat>?` is shorthand for the wildcard pattern `_`.
@@ -464,6 +473,8 @@ The syntax of an *expression* is as follows:
   <unop> <exp>                                   unary operator
   <exp> <binop> <exp>                            binary operator
   <exp> <relop> <exp>                            binary relational operator
+  _                                              placeholder expression
+  <exp> |> <exp>                                 pipe operator
   ( <exp>,* )                                    tuple
   <exp> . <nat>                                  tuple projection
   ? <exp>                                        option injection
@@ -566,7 +577,7 @@ Type expressions are used to specify the types of arguments, constraints (a.k.a 
 <sort> ::= (actor | module | object)
 
 <shared> ::=                                 shared function type qualifier
-  shared query?
+  shared <query>?
 
 <path> ::=                                   paths
   <id>                                         type identifier
@@ -600,6 +611,7 @@ The category of a type determines the operators (unary, binary, relational and i
 | [`Blob`](./base/Blob.md)           | O        | binary blobs with iterators                                            |
 | [`Principal`](./base/Principal.md) | O        | principals                                                             |
 | [`Error`](./base/Error.md)         |          | (opaque) error values                                                  |
+| [`Region`](./base/Region.md)       |          | (opaque) stable memory region objects                                  |
 
 Although many of these types have linguistic support for literals and operators, each primitive type also has an eponymous base library providing related functions and values (see [Motoko Base Library](./base-intro.md)). For example, the [`Text`](./base/Text.md) library provides common functions on `Text` values.
 
@@ -735,6 +747,15 @@ Like other errors, call errors can be caught and handled using `try ... catch ..
 
 :::
 
+### Type `Region`
+
+The type `Region` represents opague stable memory regions.
+Region objects are dynamically allocated and independently growable.
+They represent isolated partitions of IC stable memory.
+The region type is stable (but not shared) and its objects, which are stateful, may be stored in stable variables and data structures.
+Objects of type `Region` are created and updated using the functions provided by base library `Region`.
+See [Stable Regions](stable-regions.md) and library [Region](./base/Region.md) for more information.
+
 ### Constructed types
 
 `<path> <typ-args>?` is the application of a type identifier or path, either built-in (i.e. `Int`) or user defined, to zero or more type **arguments**. The type arguments must satisfy the bounds, if any, expected by the type constructor’s type parameters (see [Well-formed types](#well-formed-types)).
@@ -785,7 +806,7 @@ If `<typ1>` or `<typ2>` (or both) is a tuple type, then the length of that tuple
 
 The optional `<shared>` qualifier specifies whether the function value is shared, which further constrains the form of `<typ-params>`, `<typ1>` and `<typ2>` (see [Sharability](#sharability) below).
 
-(Note that a `<shared>` function may itself be `shared` or `shared query`, determining the persistence of its state changes.)
+(Note that a `<shared>` function may itself be `shared` or `shared query` or `shared composite query`, determining the persistence of its state changes.)
 
 ### Async types
 
@@ -918,9 +939,12 @@ Given a vector of type arguments instantiating a vector of type parameters, each
 
 A type `T` is well-formed only if (recursively) its constituent types are well-formed, and:
 
--   if `T` is `async U` then `U` is shared, and
+-   if `T` is `async U` or `async* U` then `U` is shared, and
 
--   if `T` is `shared query? U -> V`, `U` is shared and `V == ()` or `V == async W` with `W` shared, and
+-   if `T` is `shared <query>? U -> V`:
+    - `U` is shared and,
+    - `V == ()` and `<query>?` is absent, or
+    - `V == async W` with `W` shared, and
 
 -   if `T` is `C<T0, …​, Tn>` where:
 
@@ -1042,6 +1066,8 @@ This definition implies that every shared type is a stable type. The converse do
 The types of actor fields declared with the `stable` qualifier must have stable type.
 
 The (current) value of such a field is preserved upon *upgrade*, whereas the values of other fields are reinitialized after an upgrade.
+
+Note: the primitive `Region` type is stable.
 
 ## Static and dynamic semantics
 
@@ -1194,7 +1220,7 @@ In detail, if `<url>` is of the form:
 
 The case sensitivity of file references depends on the host operating system so it is recommended not to distinguish resources by filename casing alone.
 
-(Remark: when building multi-canister projects with the DFINITY Canister SDK, Motoko programs can typically import canisters by alias (e.g. `import C "canister:counter"`), without specifying low-level canister ids (e.g. `import C "ic:lg264-qjkae"`). The SDK tooling takes care of supplying the appropriate command-line arguments to the Motoko compiler.)
+(Remark: when building multi-canister projects with the [IC SDK](https://internetcomputer.org/docs/current/developer-docs/setup/install), Motoko programs can typically import canisters by alias (e.g. `import C "canister:counter"`), without specifying low-level canister ids (e.g. `import C "ic:lg264-qjkae"`). The SDK tooling takes care of supplying the appropriate command-line arguments to the Motoko compiler.)
 
 (Remark: sensible choices for `<pat>` are identifiers, such as `Array`, or object patterns like `{ cons; nil = empty }`, which allow selective importing of individual fields, under original or other names.)
 
@@ -1256,7 +1282,7 @@ During an upgrade, a trap occurring in the implicit call to `preupgrade()` or `p
 
 ##### `inspect`
 
-Given a record of message attributes, this function produces a `Bool` that indicates whether to accept or decline the message by returning `true` or `false`. The function is invoked (by the system) on each ingress message (excluding non-replicated queries). Similar to a query, any side-effects of an invocation are transient and discarded. A call that traps due to some fault has the same result as returning `false` (message denial).
+Given a record of message attributes, this function produces a `Bool` that indicates whether to accept or decline the message by returning `true` or `false`. The function is invoked (by the system) on each ingress message issue as an Internet Computer *update call* (i.e. excluding non-replicated query calls). Similar to a query, any side-effects of an invocation are transient and discarded. A call that traps due to some fault has the same result as returning `false` (message denial).
 
 The argument type of `inspect` depends on the interface of the enclosing actor. In particular, the formal argument of `inspect` is a record of fields of the following types:
 
@@ -1264,7 +1290,8 @@ The argument type of `inspect` depends on the interface of the enclosing actor. 
 
 -   `arg : Blob`: the raw, binary content of the message argument;
 
--   `msg : <variant>`: a variant of *decoding* functions, where `<variant> == {…​; #<id>: () → T; …​}` contains one variant per shared function, `<id>`, of the actor. The variant’s tag identifies the function to be called; The variant’s argument is a function that, when applied, returns the (decoded) argument of the call as a value of type `T`.
+-   `msg : <variant>`: a variant of *decoding* functions, where `<variant> == {…​; #<id>: () → T; …​}` contains one variant per `shared` or `shared query` function, `<id>`, of the actor.
+    The variant’s tag identifies the function to be called; The variant’s argument is a function that, when applied, returns the (decoded) argument of the call as a value of type `T`.
 
 Using a variant, tagged with `#<id>`, allows the return type, `T`, of the decoding function to vary with the argument type (also `T`) of the shared function `<id>`.
 
@@ -1273,6 +1300,12 @@ The variant’s argument is a function so that one can avoid the expense of mess
 :::danger
 
 An actor that fails to declare system field `inspect` will simply accept all ingress messages.
+
+:::
+
+:::note
+
+Any `shared composite query` function in the interface is *not* included in `<variant>` since, unlike a `shared query`, it can only be invoked as a non-replicated query call, never as an update call.
 
 :::
 
@@ -1370,7 +1403,7 @@ The or pattern `<pat1> or <pat2>` is a disjunctive pattern.
 
 The result of matching `<pat1> or <pat2>` against a value is the result of matching `<pat1>`, if it succeeds, or the result of matching `<pat2>`, if the first match fails.
 
-(Note, statically, neither `<pat1>` nor `<pat2>` may contain identifier (`<id>`) patterns so a successful match always binds zero identifiers.)
+(Note, an `or`-pattern may contain identifier (`<id>`) patterns with the restriction that both alternatives must bind the same set of identifiers. Each identifier's type is the least upper bound of its type in `<pat1>` and `<pat2>`.
 
 ### Expression declaration
 
@@ -1561,7 +1594,7 @@ Note that requirement 1. imposes further constraints on the field types of `T`. 
 
 -   all public fields must be non-`var` (immutable) `shared` functions (the public interface of an actor can only provide asynchronous messaging via shared functions);
 
-Because actor construction is asynchronous, an actor declaration can only occur in an asynchronous context (i.e. in the body of a (non-`query`) `shared` function, `async` expression or `async*` expression).
+Because actor construction is asynchronous, an actor declaration can only occur in an asynchronous context (i.e. in the body of a (non-`<query>`) `shared` function, `async` expression or `async*` expression).
 
 Evaluation of `<sort>? <id>? =? { <dec-field>;* }` proceeds by binding `<id>` (if present), to the eventual value `v`, and evaluating the declarations in `<dec>;*`. If the evaluation of `<dec>;*` traps, so does the object declaration. Otherwise, `<dec>;*` produces a set of bindings for identifiers in `Id`. let `v0`, …​, `vn` be the values or locations bound to identifiers `<id0>`, …​, `<idn>`. The result of the object declaration is the object `v == sort { <id0> = v1, …​, <idn> = vn}`.
 
@@ -1680,7 +1713,7 @@ where:
 
 -   `async?` is present, if only if, `<sort>` == `actor`.
 
-Note `<shared-pat>?` must not be of the form `shared query <pat>?`: a constructor, unlike a function, cannot be a query.
+Note `<shared-pat>?` must not be of the form `shared <query> <pat>?`: a constructor, unlike a function, cannot be a `query` or `composite query`.
 
 An absent `<shared-pat>?` defaults to `shared` when `sort` = `actor`.
 
@@ -1753,6 +1786,63 @@ Otherwise, `exp2` is evaluated to a result `r2`. If `r2` is `trap`, the expressi
 Otherwise, `r1` and `r2` are values `v1` and `v2` and the expression returns the Boolean result of `v1 <relop> v2`.
 
 For equality and inequality, the meaning of `v1 <relop> v2` depends on the compile-time, static choice of `T` (not the run-time types of `v1` and `v2`, which, due to subtyping, may be more precise).
+
+### Pipe operators and placeholder expressions
+
+The pipe expression `<exp1> |> <exp2>` binds the value of `<exp1>` to the special placeholder expression `_`, that can be referenced in `<exp2>` (and recursively in `<exp1>`).
+Referencing the placeholder expression outside of a pipe operation is a compile-time error.
+
+The pipe expression `<exp1> |> <exp2>` is just syntactic sugar for a `let` binding to a
+placeholder identifier, `p`:
+
+``` bnf
+do { let p = <exp1>; <exp2> }
+```
+
+The placeholder expression `_` is just syntactic sugar for the expression referencing the placeholder identifier:
+
+``` bnf
+p
+```
+
+The placeholder identifier, `p`, is a fixed, reserved identifier that cannot be bound by any other expression or pattern other than a pipe operation,
+and can only be referenced using the placeholder expression `_`.
+
+`|>` has lowest precedence amongst all operators except `:` and associates to the left.
+
+Judicious use of the pipe operator allows one to express a more complicated nested expression by piping arguments of that expression into their nested positions within that expression.
+
+For example:
+
+``` motoko no-repl
+Iter.range(0, 10) |>
+  Iter.toList _ |>
+    List.filter<Nat>(_, func n { n % 3 == 0 }) |>
+      { multiples = _ };
+```
+
+may, according to taste, be a more readable rendition of:
+
+``` motoko no-repl
+{ multiples =
+   List.filter<Nat>(
+     Iter.toList(Iter.range(0, 10)),
+     func n { n % 3 == 0 }) };
+```
+
+Above, each occurence of `_` refers to the value of the left-hand-size of the nearest enclosing
+pipe operation, after associating nested pipes to the left.
+
+Note that the evaluation order of the two examples is different, but consistently left-to-right.
+
+:::note
+
+Although syntactically identical, the placeholder expression is
+semantically distinct from, and should not be confused with, the wildcard pattern `_`.
+Occurrences of the forms can be distinguished by their syntactic role as pattern or
+expression.
+
+:::
 
 ### Tuples
 
@@ -1972,7 +2062,7 @@ The call expression `<exp1> <T0,…​,Tn>? <exp2>` evaluates `exp1` to a result
 
 Otherwise, `exp2` is evaluated to a result `r2`. If `r2` is `trap`, the expression results in `trap`.
 
-Otherwise, `r1` is a function value, `<shared-pat>? func <X0 <: V0, …​, n <: Vn> <pat1> { <exp> }` (for some implicit environment), and `r2` is a value `v2`. If `<shared-pat>` is present and of the form `shared query? <pat>` then evaluation continues by matching the record value `{caller = p}` against `<pat>`, where `p` is the `Principal` invoking the function (typically a user or canister). Matching continues by matching `v1` against `<pat1>`. If pattern matching succeeds with some bindings, then evaluation returns the result of `<exp>` in the environment of the function value (not shown) extended with those bindings. Otherwise, some pattern match has failed and the call results in `trap`.
+Otherwise, `r1` is a function value, `<shared-pat>? func <X0 <: V0, …​, n <: Vn> <pat1> { <exp> }` (for some implicit environment), and `r2` is a value `v2`. If `<shared-pat>` is present and of the form `shared <query>? <pat>` then evaluation continues by matching the record value `{caller = p}` against `<pat>`, where `p` is the `Principal` invoking the function (typically a user or canister). Matching continues by matching `v1` against `<pat1>`. If pattern matching succeeds with some bindings, then evaluation returns the result of `<exp>` in the environment of the function value (not shown) extended with those bindings. Otherwise, some pattern match has failed and the call results in `trap`.
 
 :::note
 
@@ -1994,7 +2084,7 @@ Now, a caller can handle these errors using enclosing `try ... catch ...` expres
 
 The function expression `<shared-pat>? func < X0 <: T0, …​, Xn <: Tn > <pat1> (: U2)? =? <block-or-exp>` has type `<shared>? < X0 <: T0, ..., Xn <: Tn > U1-> U2` if, under the assumption that `X0 <: T0, …​, Xn <: Tn`:
 
--   `<shared-pat>?` is of the form `shared query? <pat>` if and only if `<shared>?` is `shared query?` (the `query` modifiers must agree);
+-   `<shared-pat>?` is of the form `shared <query>? <pat>` if and only if `<shared>?` is `shared <query>?` (the `<query>` modifiers must agree, i.e. are either both absent, both `query`, or both `composite query`);
 
 -   all the types in `T0, …​, Tn` and `U2` are well-formed and well-constrained;
 
@@ -2008,11 +2098,16 @@ The function expression `<shared-pat>? func < X0 <: T0, …​, Xn <: Tn > <pat1
 
 `<shared-pat>? func <typ-params>? <pat1> (: <typ>)? =? <block-or-exp>` evaluates to a function value (a.k.a. closure), denoted `<shared-pat>? func <typ-params>? <pat1> = <exp>`, that stores the code of the function together with the bindings from the current evaluation environment (not shown) needed to evaluate calls to the function value.
 
-Note that a `<shared-pat>` function may itself be `shared <pat>` or `shared query <pat>`:
+Note that a `<shared-pat>` function may itself be `shared <pat>` or `shared query <pat>` or  `shared composite query <pat>`.
 
 -   A `shared <pat>` function may be invoked from a remote caller. Unless causing a trap, the effects on the callee persist beyond completion of the call.
 
 -   A `shared query <pat>` function may be also be invoked from a remote caller, but the effects on the callee are transient and discarded once the call has completed with a result (whether a value or error).
+
+-   A `shared composite query <pat>` function may only be invoked as an ingress message, not from a remote caller.
+    Like a query, the effects on the callee are transient and discarded once the call has completed with a result (whether a value or error).
+    In addition, intermediate state changes made by the call are not observable by any of its own `query`  or `composite query` callees.
+
 
 In either case, `<pat>` provides access to a context value identifying the *caller* of the shared (query) function.
 
@@ -2021,6 +2116,17 @@ In either case, `<pat>` provides access to a context value identifying the *call
 The context type is a record to allow extension with further fields in future releases.
 
 :::
+
+Shared functions have different capabilities dependent on their qualification as `shared`, `shared query` or `shared composite query`.
+
+A `shared` function may call any `shared` or `shared query` function, but no `shared composite query` function.
+A `shared query` function may not call any `shared`, `shared query` or `shared composite query` function.
+A `shared composite query` function may call any `shared query` or `shared composite query` function, but no `shared` function.
+
+All varieties of shared functions may call unshared functions.
+
+Composite queries, though composable, can only be called externally (from a frontend) and cannot be initiated from an actor.
+
 
 ### Blocks
 

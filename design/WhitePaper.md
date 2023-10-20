@@ -415,7 +415,7 @@ Challenge: One issue with the above is that `T1` does not generally determine al
 
 #### Bindings in `or`-Patterns
 
-Currently, when using `or`-patterns, it is not possible to bind a variable in the alternatives. In other languages, this is usually allowed, and is useful.
+When using `or`-patterns, it is possible to bind a variable in the alternatives. This is useful to avoid `case` repetitions:
 ```
 func free(x : Text, e : exp) : Nat {
   switch e {

@@ -1,8 +1,8 @@
-# Motoko Programming Language
+# Motoko programming language
 
 :::tip
 
-The Motoko programming language continues to evolve with each release of the DFINITY Canister SDK and with ongoing updates to the Motoko compiler. Check back regularly to try new features and see what’s changed.
+The Motoko programming language continues to evolve with each release of the [IC SDK](https://internetcomputer.org/docs/current/developer-docs/setup/install) and with ongoing updates to the Motoko compiler. Check back regularly to try new features and see what’s changed.
 
 :::
 
@@ -88,6 +88,6 @@ For scenarios that can’t be solved using stable variables alone, Motoko provid
 
 Motoko provides many other developer productivity features, including subtyping, arbitrary precision arithmetic and garbage collection.
 
-Motoko is not, and is not intended to be, the only language for implementing canister smart contracts. If it doesn’t suit your needs, there is a canister development kit (CDK) for the Rust programming language. Our goal is to enable any language (with a compiler that targets WebAssembly) to be able to produce canister smart contracts that run on the Internet Computer and interoperate with other, perhaps foreign, canister smart contracts through language neutral Candid interfaces.
+Motoko is not, and is not intended to be, the only language for implementing canister smart contracts. If it doesn’t suit your needs, there is a canister development kit [(CDK) for the Rust programming language](https://github.com/dfinity/cdk-rs). Our goal is to enable any language (with a compiler that targets WebAssembly) to be able to produce canister smart contracts that run on the Internet Computer and interoperate with other, perhaps foreign, canister smart contracts through language neutral Candid interfaces.
 
 Its tailored design means Motoko should be the easiest and safest language for coding on the Internet Computer, at least for the forseeable future.

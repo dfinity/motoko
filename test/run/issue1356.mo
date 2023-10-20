@@ -37,13 +37,13 @@ func matchInt(n : Int) : Bool =
 func match8(n : Nat8) : Bool = switch n { case 42 true; case _ false };
 // CHECK-LABEL: (func $match8
 // CHECK:        i32.const 704643072
-// CHECK-NEXT:   i32.eq
+// CHECK-NEXT:   i32.ne
 // N.B.: 704643072 == 0x2a000000 == 42 << 24
 
 func match16(n : Nat16) : Bool = switch n { case 42 true; case _ false };
 // CHECK-LABEL: (func $match16
 // CHECK:        i32.const 2752512
-// CHECK-NEXT:   i32.eq
+// CHECK-NEXT:   i32.ne
 // N.B.: 2752512 == 0x002a0000 == 42 << 16
 
 // NB: reverse order, so that things appear in order

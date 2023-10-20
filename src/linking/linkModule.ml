@@ -541,7 +541,8 @@ let set_table_size new_size : module_' -> module_' = fun m ->
     }
   | _ -> raise (LinkError "Expect one table in first module")
 
-let fill_memory_base_import new_base : module_' -> module_' = fun m ->
+
+let fill_item_import module_name item_name new_base (m : module_') : module_' =
   (* We need to find the right import,
      replace all uses of get_global of that import with the constant,
      and finally rename all globals
@@ -551,8 +552,8 @@ let fill_memory_base_import new_base : module_' -> module_' = fun m ->
       | [] -> assert false
       | imp::is -> match imp.it.idesc.it with
         | GlobalImport _ty
-          when imp.it.module_name = Lib.Utf8.decode "env" &&
-               imp.it.item_name = Lib.Utf8.decode "__memory_base" ->
+          when imp.it.module_name = Lib.Utf8.decode module_name &&
+               imp.it.item_name = Lib.Utf8.decode item_name ->
           Int32.of_int i
         | GlobalImport _ ->
           go (i + 1) is
@@ -561,39 +562,18 @@ let fill_memory_base_import new_base : module_' -> module_' = fun m ->
     in go 0 m.imports in
 
     m |> fill_global base_global new_base
-      |> remove_imports is_global_import [(base_global, base_global)]
+      |> remove_imports is_global_import [base_global, base_global]
       |> rename_globals Int32.(fun i ->
           if i < base_global then i
           else if i = base_global then assert false
-          else sub i 1l
+          else sub i one
         )
 
-let fill_table_base_import new_base : module_' -> module_' = fun m ->
-  (* We need to find the right import,
-     replace all uses of get_global of that import with the constant,
-     and finally rename all globals
-  *)
-  let base_global =
-    let rec go i = function
-      | [] -> assert false
-      | imp::is -> match imp.it.idesc.it with
-        | GlobalImport _ty
-          when imp.it.module_name = Lib.Utf8.decode "env" &&
-               imp.it.item_name = Lib.Utf8.decode "__table_base" ->
-          Int32.of_int i
-        | GlobalImport _ ->
-          go (i + 1) is
-        | _ ->
-          go i is
-    in go 0 m.imports in
+let fill_memory_base_import new_base : module_' -> module_' =
+  fill_item_import "env" "__memory_base" new_base
 
-    m |> fill_global base_global new_base
-      |> remove_imports is_global_import [(base_global, base_global)]
-      |> rename_globals Int32.(fun i ->
-          if i < base_global then i
-          else if i = base_global then assert false
-          else sub i 1l
-        )
+let fill_table_base_import new_base : module_' -> module_' =
+  fill_item_import "env" "__table_base" new_base
 
 
 (* Concatenation of modules *)

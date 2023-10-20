@@ -351,15 +351,15 @@ and call_system_func_opt name es obj_typ =
            (unitE ())
         | "inspect" ->
           let _, tfs = T.as_obj obj_typ in
-          let caller = fresh_var "caller" T.principal in
+          let caller = fresh_var "caller" T.caller in
           let arg = fresh_var "arg" T.blob in
           let msg_typ = T.decode_msg_typ tfs in
           let msg = fresh_var "msg" msg_typ in
           let record_typ =
             T.Obj (T.Object, List.sort T.compare_field
-             [{T.lab = "caller"; T.typ = typ_of_var caller; T.depr = None};
-               {T.lab = "arg"; T.typ = typ_of_var arg; T.depr = None};
-               {T.lab = "msg"; T.typ = typ_of_var msg; T.depr = None}])
+             [{T.lab = "caller"; T.typ = typ_of_var caller; T.src = T.empty_src};
+               {T.lab = "arg"; T.typ = typ_of_var arg; T.src = T.empty_src};
+               {T.lab = "msg"; T.typ = typ_of_var msg; T.src = T.empty_src}])
           in
           let record = fresh_var "record" record_typ in
           let msg_variant =
@@ -403,10 +403,12 @@ and call_system_func_opt name es obj_typ =
           callE (varE (var id.it note)) [] (tupE []))
     | _ -> None) es
 and build_candid ts obj_typ =
+  let open Idllib in
   let (args, prog) = Mo_idl.Mo_to_idl.of_service_type ts obj_typ in
+  let module WithComments = Arrange_idl.Make(struct let trivia = Some prog.note.Syntax.trivia end) in
   I.{
-   args = Idllib.Arrange_idl.string_of_args args;
-   service = Idllib.Arrange_idl.string_of_prog prog;
+   args = WithComments.string_of_args args;
+   service = WithComments.string_of_prog prog;
   }
 
 and export_interface txt =
@@ -434,13 +436,17 @@ and export_footprint self_id expr =
   let scope_con2 = Cons.fresh "T2" (Abs ([], Any)) in
   let bind1  = typ_arg scope_con1 Scope scope_bound in
   let bind2 = typ_arg scope_con2 Scope scope_bound in
-  let ret_typ = T.Obj(Object,[{lab = "size"; typ = T.nat64; depr = None}]) in
+  let ret_typ = T.Obj(Object,[{lab = "size"; typ = T.nat64; src = empty_src}]) in
+  let caller = fresh_var "caller" caller in
   ([ letD (var v typ) (
        funcE v (Shared Query) Promises [bind1] [] [ret_typ] (
            (asyncE T.Fut bind2
-              (blockE [expD (assertE (primE (I.RelPrim (caller, Operator.EqOp))
-                                        [primE I.ICCallerPrim []; selfRefE caller]));
-                       letD size (primE (I.ICStableSize expr.note.Note.typ) [expr])
+              (blockE [
+                   letD caller (primE I.ICCallerPrim []);
+                   expD (assertE (orE (primE (I.RelPrim (principal, Operator.EqOp))
+                                         [varE caller; selfRefE principal])
+                                    (primE (I.OtherPrim "is_controller") [varE caller])));
+                   letD size (primE (I.ICStableSize expr.note.Note.typ) [expr])
                  ]
                  (newObjE T.Object
                    [{ it = Ir.{name = "size"; var = id_of_var size};
@@ -461,9 +467,9 @@ and build_actor at ts self_id es obj_typ =
   let idss = List.map fst pairs in
   let ids = List.concat idss in
   let sig_ = List.sort T.compare_field
-    (List.map (fun (i,t) -> T.{lab = i; typ = t; depr = None}) ids)
+    (List.map (fun (i,t) -> T.{lab = i; typ = t; src = empty_src}) ids)
   in
-  let fields = List.map (fun (i,t) -> T.{lab = i; typ = T.Opt (T.as_immut t); depr = None}) ids in
+  let fields = List.map (fun (i,t) -> T.{lab = i; typ = T.Opt (T.as_immut t); src = T.empty_src}) ids in
   let mk_ds = List.map snd pairs in
   let ty = T.Obj (T.Memory, List.sort T.compare_field fields) in
   let state = fresh_var "state" (T.Mut (T.Opt ty)) in
@@ -919,8 +925,9 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
         blockE [letP pat {exp with it = Ir.AsyncE (T.Fut, tb,wrap_po e',t)} ] unit
       | _, Ir.ActorE _ -> wrap_po e
       | _ -> assert false
-    else wrap_po e in
-
+    else
+      wrap_po e
+  in
   args, wrap_under_async, control, res_tys
 
 type import_declaration = Ir.dec list

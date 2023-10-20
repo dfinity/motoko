@@ -65,10 +65,21 @@ let num_conv_trap_prim trap t1 t2 =
   | T.Int, T.(Int8|Int16|Int32|Int64)
   | T.(Nat8|Nat16|Nat32|Nat64), T.Nat
   | T.(Int8|Int16|Int32|Int64), T.Int
+  | T.Nat8, T.Nat16
+  | T.Nat16, T.Nat32
+  | T.Nat32, T.Nat64
+  | T.Nat64, T.Nat32
+  | T.Nat32, T.Nat16
+  | T.Nat16, T.Nat8
+  | T.Int8, T.Int16
+  | T.Int16, T.Int32
+  | T.Int32, T.Int64
+  | T.Int64, T.Int32
+  | T.Int32, T.Int16
+  | T.Int16, T.Int8
   | T.Nat32, T.Char
   -> fun v -> (try of_big_int_trap t2 (as_big_int t1 v)
                with Invalid_argument msg -> trap.trap msg)
-
   | T.Float, T.Int64 -> fun v -> Int64 (Int_64.of_big_int (bigint_of_double (as_float v)))
   | T.Int64, T.Float -> fun v -> Float (Wasm.F64_convert.convert_i64_s (Big_int.int64_of_big_int (Int_64.to_big_int (as_int64 v))))
 
@@ -92,7 +103,7 @@ let prim trap =
   let float_formatter prec : int -> float -> string =
     let open Printf in
     function
-    | 0 -> sprintf "%.*f" prec 
+    | 0 -> sprintf "%.*f" prec
     | 1 -> sprintf "%.*e" prec
     | 2 -> sprintf "%.*g" prec
     | 3 -> sprintf "%.*h" prec
@@ -241,10 +252,21 @@ let prim trap =
     end
   | "text_len" -> fun _ v k ->
     k (Int (Nat.of_int (List.length (Lib.Utf8.decode (Value.as_text v)))))
+  | "text_lowercase" ->
+     fun _ v k ->
+     k (Text (String.lowercase_ascii (Value.as_text v))) (* TODO -- use Unicode here. *)
+  | "text_uppercase" -> fun _ v k ->
+     k (Text (String.uppercase_ascii (Value.as_text v))) (* TODO -- use Unicode here. *)
   | "text_compare" -> fun _ v k ->
     (match Value.as_tup v with
      | [a; b] -> k (Int8 (Int_8.of_int
                             (let a, b = Value.as_text a, Value.as_text b in
+                             if a = b then 0 else if a < b then -1 else 1)))
+     | _ -> assert false)
+  | "blob_compare" -> fun _ v k ->
+    (match Value.as_tup v with
+     | [a; b] -> k (Int8 (Int_8.of_int
+                            (let a, b = Value.as_blob a, Value.as_blob b in
                              if a = b then 0 else if a < b then -1 else 1)))
      | _ -> assert false)
   | "text_iter" -> fun _ v k ->
@@ -352,5 +374,11 @@ let prim trap =
 
   | "encodeUtf8" ->
       fun _ v k -> k (Blob (as_text v))
+
+  | "is_controller" ->
+      fun _ v k -> k (Bool false)
+
+  | "canister_version" ->
+      fun _ v k -> as_unit v; k (Nat64 (Numerics.Nat64.of_int 42))
 
   | s -> trap.trap ("Value.prim: " ^ s)

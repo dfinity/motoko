@@ -3,10 +3,7 @@ ingress Completed: Reply: 0x4449444c0000
 debug.print: YEP!
 debug.print: DIM!
 debug.print: ROOK!
-debug.print: DIM!
-debug.print: DIM!
 debug.print: BATT!
 debug.print: BATT!
-debug.print: BATT!
-debug.print: {count = 8}
+debug.print: {count = 5}
 ingress Completed: Reply: 0x4449444c0000

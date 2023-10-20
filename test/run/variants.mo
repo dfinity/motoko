@@ -55,3 +55,7 @@ assert (debug_show (#foo (#bar)) == "#foo(#bar)");
 
 assert ([#Monday, #Tuesday, #Wednesday, #Thursday, #Friday, #Saturday, #Sunday].size() == 7);
 
+// check compilation of pattern matching on constant variants
+let (#const a) = #const 42;
+
+assert a == 42;

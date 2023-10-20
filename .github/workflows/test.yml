@@ -11,13 +11,13 @@ jobs:
       fail-fast: false
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         # fetch full history so that git merge-base works
         fetch-depth: 0
         # fetch PR commit, not predicted merge commit
         ref: ${{ github.event.pull_request.head.sha }}
-    - uses: cachix/install-nix-action@v20
+    - uses: cachix/install-nix-action@v23
 
     # We are using the ic-hs-test cachix cache that is also used by
     # dfinity/ic-hs. This is partly laziness (on need to set up a separate
@@ -27,10 +27,34 @@ jobs:
         name: ic-hs-test
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
 
+      # Free up disk space on Ubuntu
+    - name: Free Disk Space (Ubuntu)
+      uses: insightsengineering/disk-space-reclaimer@v1
+      if: startsWith(matrix.os, 'ubuntu-')
+      with:
+        # this might remove tools that are actually needed,
+        # if set to "true" but frees about 6 GB
+        tool-cache: false
+
+        # all of these default to true, but feel free to set to
+        # "false" if necessary for your workflow
+        android: true
+        dotnet: true
+        haskell: true
+        large-packages: true
+        docker-images: true
+        swap-storage: false
+
     # until https://github.com/cachix/cachix-action/issues/86 is fixed:
     - run: cachix watch-store ic-hs-test &
 
     - run: nix-env -iA nix-build-uncached -f nix/
+
+    - name: "pre-build `drun`"
+      if: startsWith(github.head_ref, 'update/ic-')
+      run: |
+        nix-build --max-jobs 1 -A drun
+        nix-store --gc --print-roots | grep /motoko/
 
     - name: "nix-build"
       run: nix-build-uncached --max-jobs 4 -A all-systems-go -build-flags -L
@@ -66,7 +90,7 @@ jobs:
     # motoko#2864.
     - name: Create or update performance comment
       if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
-      uses: peter-evans/create-or-update-comment@v2
+      uses: peter-evans/create-or-update-comment@v3
       with:
         comment-id: ${{ steps.fc.outputs.comment-id }}
         issue-number: ${{ github.event.pull_request.number }}
@@ -81,8 +105,8 @@ jobs:
     concurrency: ci-${{ github.ref }}
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
-    - uses: cachix/install-nix-action@v20
+    - uses: actions/checkout@v4
+    - uses: cachix/install-nix-action@v23
     - uses: cachix/cachix-action@v12
       with:
         name: ic-hs-test
@@ -96,3 +120,28 @@ jobs:
         branch: gh-pages
         folder: report-site-copy
         single-commit: true
+
+  artifacts:
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && contains(github.event.pull_request.labels.*.name, 'build_artifacts')
+    strategy:
+      matrix:
+        os: [ ubuntu-latest, macos-latest ]
+    runs-on: ${{ matrix.os }}
+    steps:
+    - uses: actions/checkout@v4
+    - uses: cachix/install-nix-action@v23
+    - uses: cachix/cachix-action@v12
+      with:
+        name: ic-hs-test
+    - name: nix-build
+      run: |
+        nix-build --arg officialRelease true -A moc
+    # upload-artifact doesn't work for symlink dir
+    # https://github.com/actions/upload-artifact/issues/92
+    - run: echo "UPLOAD_PATH=$(readlink -f result)" >> $GITHUB_ENV
+    - name: upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: moc-${{ matrix.os }}
+        path: ${{ env.UPLOAD_PATH }}
+        retention-days: 5

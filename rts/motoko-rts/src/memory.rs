@@ -7,6 +7,11 @@ use crate::types::*;
 
 use motoko_rts_macros::ic_mem_fn;
 
+// Memory reserve in bytes ensured during update and initialization calls.
+// For use by queries and upgrade calls.
+#[cfg(feature = "ic")]
+pub(crate) const MEMORY_RESERVE: usize = 256 * 1024 * 1024;
+
 /// A trait for heap allocation. RTS functions allocate in heap via this trait.
 ///
 /// To be able to link the RTS with moc-generated code, we implement wrappers around allocating
@@ -26,21 +31,30 @@ use motoko_rts_macros::ic_mem_fn;
 ///
 /// This function does not take any `Memory` arguments can be used by the generated code.
 pub trait Memory {
+    // General allocator working for all GC variants.
     unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value;
+
+    // Grow the allocated memory size to at least the address of `ptr`.
+    unsafe fn grow_memory(&mut self, ptr: u64);
 }
 
-/// Helper for allocating blobs
+/// Allocate a new blob.
+/// Note: After initialization, the post allocation barrier needs to be applied to all mutator objects.
+/// For RTS-internal blobs that can be collected by the next GC run, the post allocation barrier can be omitted.
 #[ic_mem_fn]
 pub unsafe fn alloc_blob<M: Memory>(mem: &mut M, size: Bytes<u32>) -> Value {
     let ptr = mem.alloc_words(size_of::<Blob>() + size.to_words());
     // NB. Cannot use `as_blob` here as we didn't write the header yet
     let blob = ptr.get_ptr() as *mut Blob;
     (*blob).header.tag = TAG_BLOB;
+    (*blob).header.init_forward(ptr);
     (*blob).len = size;
+
     ptr
 }
 
-/// Helper for allocating arrays
+/// Allocate a new array.
+/// Note: After initialization, the post allocation barrier needs to be applied to all mutator objects.
 #[ic_mem_fn]
 pub unsafe fn alloc_array<M: Memory>(mem: &mut M, len: u32) -> Value {
     // Array payload should not be larger than half of the memory
@@ -52,6 +66,7 @@ pub unsafe fn alloc_array<M: Memory>(mem: &mut M, len: u32) -> Value {
 
     let ptr: *mut Array = skewed_ptr.get_ptr() as *mut Array;
     (*ptr).header.tag = TAG_ARRAY;
+    (*ptr).header.init_forward(skewed_ptr);
     (*ptr).len = len;
 
     skewed_ptr

@@ -233,8 +233,10 @@ and objblock s dec_fields =
 %token<bool> BOOL
 %token<string> ID
 %token<string> TEXT
+%token PIPE
 %token PRIM
 %token UNDERSCORE
+%token COMPOSITE
 
 %nonassoc IMPLIES (* see assertions.mly *)
 
@@ -242,6 +244,7 @@ and objblock s dec_fields =
 %nonassoc ELSE WHILE
 
 %left COLON
+%left PIPE
 %left OR
 %left AND
 %nonassoc EQOP NEQOP LEOP LTOP GTOP GEOP
@@ -356,19 +359,19 @@ seplist1(X, SEP) :
   | (* empty *) { Type.Object @@ no_region }
   | s=obj_sort { s }
 
-%inline mode_opt :
-  | (* empty *) { Type.Write }
+%inline query:
   | QUERY { Type.Query }
+  | COMPOSITE QUERY { Type.Composite }
 
 %inline func_sort_opt :
   | (* empty *) { Type.Local @@ no_region }
-  | SHARED m=mode_opt { Type.Shared m @@ at $sloc }
-  | QUERY { Type.Shared Type.Query @@ at $sloc }
+  | SHARED qo=query? { Type.Shared (Lib.Option.get qo Type.Write) @@ at $sloc }
+  | q=query { Type.Shared q @@ at $sloc }
 
 %inline shared_pat_opt :
   | (* empty *) { Type.Local @@ no_region }
-  | SHARED m=mode_opt op=pat_opt { Type.Shared (m, op (at $sloc)) @@ at $sloc  }
-  | QUERY op=pat_opt { Type.Shared (Type.Query, op (at $sloc)) @@ at $sloc }
+  | SHARED qo=query? op=pat_opt { Type.Shared (Lib.Option.get qo Type.Write, op (at $sloc)) @@ at $sloc }
+  | q=query op=pat_opt { Type.Shared (q, op (at $sloc)) @@ at $sloc }
 
 
 (* Paths *)
@@ -578,6 +581,8 @@ exp_nullary(B) :
     { VarE(x) @? at $sloc }
   | PRIM s=TEXT
     { PrimE(s) @? at $sloc }
+  | UNDERSCORE
+    { VarE ("_" @@ at $sloc) @? at $sloc }
 
 exp_post(B) :
   | e=exp_nullary(B)
@@ -610,9 +615,9 @@ exp_un(B) :
     { OptE(e) @? at $sloc }
   | op=unop e=exp_un(ob)
     { match op, e.it with
-      | (PosOp | NegOp), LitE {contents = PreLit (s, Type.Nat)} ->
+      | (PosOp | NegOp), LitE {contents = PreLit (s, (Type.(Nat | Float) as typ))} ->
         let signed = match op with NegOp -> "-" ^ s | _ -> "+" ^ s in
-        LitE(ref (PreLit (signed, Type.Int))) @? at $sloc
+        LitE(ref (PreLit (signed, Type.(if typ = Nat then Int else typ)))) @? at $sloc
       | _ -> UnE(ref Type.Pre, op, e) @? at $sloc
     }
   | op=unassign e=exp_un(ob)
@@ -641,6 +646,13 @@ exp_un(B) :
     { OrE(e1, e2) @? at $sloc }
   | e=exp_bin(B) COLON t=typ_nobin
     { AnnotE(e, t) @? at $sloc }
+  | e1=exp_bin(B) PIPE e2=exp_bin(ob)
+    { let x = "_" @@ e1.at in
+      BlockE [
+        LetD (VarP x @! x.at, e1, None) @? e1.at;
+        ExpD e2 @? e2.at
+      ] @? at $sloc }
+
 
 %public exp_nondec(B) :
   | e=exp_bin(B)
@@ -655,7 +667,7 @@ exp_un(B) :
     { RetE(e) @? at $sloc }
   | ASYNC e=exp_nest
     { AsyncE(Type.Fut, scope_bind (anon_id "async" (at $sloc)) (at $sloc), e) @? at $sloc }
-  | ASYNCSTAR e=block
+  | ASYNCSTAR e=exp_nest
     { AsyncE(Type.Cmp, scope_bind (anon_id "async*" (at $sloc)) (at $sloc), e) @? at $sloc }
   | AWAIT e=exp_nest
     { AwaitE(Type.Fut, e) @? at $sloc }
@@ -796,9 +808,9 @@ pat_un :
     { OptP(p) @! at $sloc }
   | op=unop l=lit
     { match op, l with
-      | (PosOp | NegOp), PreLit (s, Type.Nat) ->
+      | (PosOp | NegOp), PreLit (s, (Type.(Nat | Float) as typ)) ->
         let signed = match op with NegOp -> "-" ^ s | _ -> "+" ^ s in
-        LitP(ref (PreLit (signed, Type.Int))) @! at $sloc
+        LitP(ref (PreLit (signed, Type.(if typ = Nat then Int else typ)))) @! at $sloc
       | _ -> SignP(op, ref l) @! at $sloc
     }
 

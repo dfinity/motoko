@@ -18,7 +18,7 @@ declare -A envs # list of expected environment variables with paths to products
 # Define build products here
 real[moc]=src/moc
 hint[moc]="make -C $rel_root/src moc"
-envs[moc]="MOC_RTS MOC_DEBUG_RTS"
+envs[moc]="MOC_NON_INCREMENTAL_RELEASE_RTS MOC_NON_INCREMENTAL_DEBUG_RTS MOC_INCREMENTAL_RELEASE_RTS MOC_INCREMENTAL_DEBUG_RTS"
 real[mo-ld]=src/mo-ld
 hint[mo-ld]="make -C $rel_root/src mo-ld"
 real[mo-doc]=src/mo-doc
@@ -30,11 +30,16 @@ hint[deser]="make -C $rel_root/src deser"
 real[candid-tests]=src/candid-tests
 hint[candid-tests]="make -C $rel_root/src candid-tests"
 
-real[MOC_RTS]=rts/mo-rts.wasm
-hint[MOC_RTS]="make -C $rel_root/rts"
+rts_hint="make -C $rel_root/rts"
 
-real[MOC_DEBUG_RTS]=rts/mo-rts-debug.wasm
-hint[MOC_DEBUG_RTS]="make -C $rel_root/rts"
+real[MOC_NON_INCREMENTAL_RELEASE_RTS]=rts/mo-rts.wasm
+real[MOC_NON_INCREMENTAL_DEBUG_RTS]=rts/mo-rts-debug.wasm
+real[MOC_INCREMENTAL_RELEASE_RTS]=rts/mo-rts-incremental.wasm
+real[MOC_INCREMENTAL_DEBUG_RTS]=rts/mo-rts-incremental-debug.wasm
+
+for var in ${envs[moc]}; do
+  hint[$var]=$rts_hint
+done
 
 # This is the command we want to run
 exe=$(basename "$0")

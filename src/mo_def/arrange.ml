@@ -183,11 +183,13 @@ module Make (Cfg : Config) = struct
     | Type.Local -> Atom "Local"
     | Type.Shared (Type.Write, p) -> "Shared" $$ [pat p]
     | Type.Shared (Type.Query, p) -> "Query" $$ [pat p]
+    | Type.Shared (Type.Composite, p) -> "Composite" $$ [pat p]
 
   and func_sort s = match s.it with
     | Type.Local -> Atom "Local"
     | Type.Shared Type.Write -> Atom "Shared"
     | Type.Shared Type.Query -> Atom "Query"
+    | Type.Shared Type.Composite -> Atom "Composite"
 
   and mut m = match m.it with
     | Const -> Atom "Const"

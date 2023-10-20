@@ -99,6 +99,14 @@ let optimize : instr list -> instr list = fun is ->
     (* `If` blocks after negation can swap legs *)
     | { it = Test (I32 I32Op.Eqz); _} :: l', ({it = If (res,then_,else_); _} as i) :: r' ->
       go l' ({i with it = If (res,else_,then_)} :: r')
+    (* `If` blocks with empty legs just drop *)
+    | l', ({it = If (_,[],[]); _} as i) :: r' ->
+       go l' ({i with it = Drop} :: r')
+    (* `If` blocks with empty then after comparison can invert the comparison and swap legs *)
+    | { it = Compare (I32 I32Op.Eq); _} as comp :: l', ({it = If (res,[],else_); _} as i) :: r' ->
+      go ({comp with it = Compare (I32 I32Op.Ne)} :: l') ({i with it = If (res,else_,[])} :: r')
+    | { it = (Compare (I32 I32Op.Ne) | Binary (I32 I32Op.Xor)); _} as comp :: l', ({it = If (res,[],else_); _} as i) :: r' ->
+      go ({comp with it = Compare (I32 I32Op.Eq)} :: l') ({i with it = If (res,else_,[])} :: r')
     (* Empty block is redundant *)
     | l', ({ it = Block (_, []); _ }) :: r' -> go l' r'
     (* Constant shifts can be combined *)

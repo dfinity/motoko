@@ -11,7 +11,7 @@ on:
     types: niv-updater-nudge
   schedule:
     # * is a special character in YAML so you have to quote this string
-    # Run every monday
+    # Run every Monday
     - cron:  '0 0 * * 1'
 jobs:
   niv-updater:
@@ -23,7 +23,7 @@ jobs:
         uses: knl/niv-updater-action@v12
         with:
           # might be too noisy
-          whitelist: 'ic-ref,musl-wasi'
+          whitelist: 'ic-ref,musl-wasi,ic-wasm'
           labels: |
             automerge-squash
           keep_updating: true

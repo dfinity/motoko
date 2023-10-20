@@ -5,6 +5,12 @@ use crate::types::*;
 
 use motoko_rts_macros::ic_mem_fn;
 
+#[no_mangle]
+#[cfg(feature = "ic")]
+pub unsafe extern "C" fn initialize_copying_gc() {
+    crate::memory::ic::linear_memory::initialize();
+}
+
 #[ic_mem_fn(ic_only)]
 unsafe fn schedule_copying_gc<M: Memory>(mem: &mut M) {
     // Half of the heap.
@@ -19,39 +25,41 @@ unsafe fn schedule_copying_gc<M: Memory>(mem: &mut M) {
 
 #[ic_mem_fn(ic_only)]
 unsafe fn copying_gc<M: Memory>(mem: &mut M) {
-    use crate::memory::ic;
+    use crate::memory::ic::{self, linear_memory};
 
     copying_gc_internal(
         mem,
-        ic::get_heap_base(),
+        ic::get_aligned_heap_base(),
         // get_hp
-        || ic::HP as usize,
+        || linear_memory::get_hp_unskewed(),
         // set_hp
-        |hp| ic::HP = hp,
+        |hp| linear_memory::set_hp_unskewed(hp),
         ic::get_static_roots(),
         crate::continuation_table::continuation_table_loc(),
+        crate::region::region0_get_ptr_loc(),
         // note_live_size
         |live_size| ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, live_size),
         // note_reclaimed
-        |reclaimed| ic::RECLAIMED += Bytes(u64::from(reclaimed.as_u32())),
+        |reclaimed| linear_memory::RECLAIMED += Bytes(u64::from(reclaimed.as_u32())),
     );
 
-    ic::LAST_HP = ic::HP;
+    linear_memory::LAST_HP = linear_memory::get_hp_unskewed();
 }
 
 pub unsafe fn copying_gc_internal<
     M: Memory,
     GetHp: Fn() -> usize,
-    SetHp: FnMut(u32),
+    SetHp: FnMut(usize),
     NoteLiveSize: Fn(Bytes<u32>),
     NoteReclaimed: Fn(Bytes<u32>),
 >(
     mem: &mut M,
-    heap_base: u32,
+    heap_base: usize,
     get_hp: GetHp,
     mut set_hp: SetHp,
     static_roots: Value,
     continuation_table_ptr_loc: *mut Value,
+    region0_ptr_loc: *mut Value,
     note_live_size: NoteLiveSize,
     note_reclaimed: NoteReclaimed,
 ) {
@@ -73,11 +81,21 @@ pub unsafe fn copying_gc_internal<
         );
     }
 
+    if (*region0_ptr_loc).is_ptr() {
+        // Region0 is not always a pointer during GC?
+        evac(
+            mem,
+            begin_from_space,
+            begin_to_space,
+            region0_ptr_loc as usize,
+        );
+    }
+
     // Scavenge to-space
     let mut p = begin_to_space;
     while p < get_hp() {
-        let size = object_size(p);
-        scav(mem, begin_from_space, begin_to_space, p);
+        let size = block_size(p);
+        scav(mem, begin_from_space, begin_to_space, Value::from_ptr(p));
         p += size.to_bytes().as_usize();
     }
 
@@ -99,7 +117,7 @@ pub unsafe fn copying_gc_internal<
 
     // Reset the heap pointer
     let new_hp = begin_from_space + (end_to_space - begin_to_space);
-    set_hp(new_hp as u32);
+    set_hp(new_hp);
 }
 
 /// Evacuate (copy) an object in from-space to to-space.
@@ -129,19 +147,20 @@ unsafe fn evac<M: Memory>(
     // Field holds a skewed pointer to the object to evacuate
     let ptr_loc = ptr_loc as *mut Value;
 
-    let obj = (*ptr_loc).as_obj();
-
     // Check object alignment to avoid undefined behavior. See also static_checks module.
-    debug_assert_eq!(obj as u32 % WORD_SIZE, 0);
+    debug_assert_eq!((*ptr_loc).get_ptr() as u32 % WORD_SIZE, 0);
 
     // Update the field if the object is already evacuated
-    if obj.tag() == TAG_FWD_PTR {
-        let fwd = (*(obj as *const FwdPtr)).fwd;
+    if (*ptr_loc).tag() == TAG_FWD_PTR {
+        let block = (*ptr_loc).get_ptr() as *const FwdPtr;
+        let fwd = (*block).fwd;
         *ptr_loc = fwd;
         return;
     }
 
-    let obj_size = object_size(obj as usize);
+    let obj = (*ptr_loc).get_ptr() as *mut Obj;
+
+    let obj_size = block_size(obj as usize);
 
     // Allocate space in to-space for the object
     let obj_addr = mem.alloc_words(obj_size).get_ptr();
@@ -154,15 +173,29 @@ unsafe fn evac<M: Memory>(
 
     // Set forwarding pointer
     let fwd = obj as *mut FwdPtr;
-    (*fwd).header.tag = TAG_FWD_PTR;
+    (*fwd).tag = TAG_FWD_PTR;
     (*fwd).fwd = Value::from_ptr(obj_loc);
 
     // Update evacuated field
     *ptr_loc = Value::from_ptr(obj_loc);
+
+    // Update forwarding pointer
+    let to_space_obj = obj_addr as *mut Obj;
+    debug_assert!(obj_size.as_usize() > size_of::<Obj>().as_usize());
+    debug_assert!(to_space_obj.tag() >= TAG_OBJECT && to_space_obj.tag() <= TAG_NULL);
 }
 
-unsafe fn scav<M: Memory>(mem: &mut M, begin_from_space: usize, begin_to_space: usize, obj: usize) {
-    let obj = obj as *mut Obj;
+unsafe fn scav<M: Memory>(
+    mem: &mut M,
+    begin_from_space: usize,
+    begin_to_space: usize,
+    block: Value,
+) {
+    if !block.is_obj() {
+        // Skip `OneWordFiller` and `FreeSpace` that have no regular object header.
+        return;
+    }
+    let obj = block.get_ptr() as *mut Obj;
 
     crate::visitor::visit_pointer_fields(
         mem,
@@ -188,6 +221,6 @@ unsafe fn evac_static_roots<M: Memory>(
     // only evacuate fields of objects in the array.
     for i in 0..roots.len() {
         let obj = roots.get(i);
-        scav(mem, begin_from_space, begin_to_space, obj.get_ptr());
+        scav(mem, begin_from_space, begin_to_space, obj);
     }
 }

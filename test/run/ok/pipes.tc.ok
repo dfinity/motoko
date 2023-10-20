@@ -1,0 +1,8 @@
+pipes.mo:76.5-76.8: warning [M0145], this pattern of type
+  Nat32
+does not cover value
+  0 or 1 or _
+pipes.mo:78.5-78.8: warning [M0145], this pattern of type
+  Nat32
+does not cover value
+  0 or 1 or _

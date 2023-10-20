@@ -33,7 +33,7 @@ let set_unions = List.fold_left S.union S.empty
 (* A set of free variables *)
 type f = usage_info M.t
 
-(* The analsys result of a recursive group, before tying the knot *)
+(* The analysis result of a recursive group, before tying the knot *)
 type group = (Source.region * S.t * S.t * S.t) list
 
 (* Operations: Union and removal *)

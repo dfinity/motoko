@@ -147,18 +147,14 @@ and pat env p =
   env
 
 and pat' env = function
-  | WildP         ->  env
-  | VarP i        ->
-    let env1 = bind env i None in
-    env1
-  | TupP ps       -> pats env ps
-  | ObjP pfs      -> pats env (pats_of_obj_pat pfs)
-  | LitP l        -> env
+  | WildP
+  | LitP _         -> env
+  | VarP i         -> bind env i None
+  | TupP ps        -> pats env ps
+  | ObjP pfs       -> pats env (pats_of_obj_pat pfs)
   | OptP p
-  | TagP (_, p)   -> pat env p
-  | AltP (p1, p2) -> assert(Freevars.(M.is_empty (pat p1)));
-                     assert(Freevars.(M.is_empty (pat p2)));
-                     env
+  | TagP (_, p)    -> pat env p
+  | AltP (p1, _p2) -> pat env p1 (* both bind the same vars, ensured in check_pat *)
 
 and pats env ps  =
   match ps with

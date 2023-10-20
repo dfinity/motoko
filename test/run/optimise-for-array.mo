@@ -1,27 +1,34 @@
+//MOC-FLAG -fshared-code
 import Prim "mo:⛔";
+
+// Differences between incremental and non-incremental compilation (additional forwarding header field).
 
 // CHECK: (local $check0 i32)
 
 // CHECK-NOT:  call $@immut_array_size
-// CHECK:      i32.load offset=5
-// CHECK-NEXT: i32.const 2
-// CHECK-NEXT: i32.shl
+// DON'TCHECK: i32.load offset=(5 or 9) 
+// CHECK:      i32.load offset= 
+// CHECK:      i32.const 2
+// CHECK:      i32.shl
 // CHECK:      i32.lt_u
 // CHECK:      i32.add
-// CHECK-NEXT: i32.load offset=9
-// CHECK-NEXT: local.tee $check0
+// DON'TCHECK: i32.load offset=(9 or 13)
+// CHECK:      local.tee $check0
 // CHECK-NEXT: call $print_text
 // CHECK:      i32.const 4
 // CHECK-NEXT: i32.add
 for (check0 in ["hello", "world"].vals()) { Prim.debugPrint check0 };
 
+
 // CHECK-NOT:  call $@mut_array_size
-// CHECK:      i32.load offset=5
-// CHECK-NEXT: i32.const 2
+// DON'TCHECK: i32.load offset=(5 or 9)
+// CHECK:      i32.load offset=
+// CHECK:      i32.const 2
 // CHECK-NEXT: i32.shl
 // CHECK:      i32.lt_u
 // CHECK:      i32.add
-// CHECK-NEXT: i32.load offset=9
+// DON'TCHECK: i32.load offset=(9 or 13)
+// CHECK:      i32.load offset=
 // CHECK-NEXT: local.tee $check1
 // CHECK-NEXT: call $print_text
 for (check1 in [var "hello", "mutable", "world"].vals()) { Prim.debugPrint check1 };
@@ -29,9 +36,10 @@ for (check1 in [var "hello", "mutable", "world"].vals()) { Prim.debugPrint check
 let array = [var "hello", "remutable", "world"];
 array[1] := "mutable";
 // CHECK-NOT:   call $@immut_array_size
-// CHECK:       i32.load offset=5
-// CHECK-NEXT:  i32.const 2
-// CHECK-NEXT:  i32.shl
+// DON'TCHECK:  i32.load offset=(5 or 9)
+// CHECK:       i32.load offset=
+// CHECK:       i32.const 2
+// CHECK:       i32.shl
 // DON'T-CHECK: i32.lt_u
 // DON'T-CHECK: local.get $array
 // DON'T-CHECK: local.set $check2
@@ -40,12 +48,14 @@ array[1] := "mutable";
 for (check2 in array.vals()) { Prim.debugPrint check2 };
 
 // CHECK-NOT:  call $@immut_array_size
-// CHECK:      i32.load offset=5
-// CHECK-NEXT: i32.const 2
-// CHECK-NEXT: i32.shl
+// DON'TCHECK: i32.load offset=(5 or 9)
+// CHECK:      i32.load offset=
+// CHECK:      i32.const 2
+// CHECK:      i32.shl
 // CHECK:      i32.lt_u
 // CHECK:      i32.add
-// CHECK-NEXT: i32.load offset=9
+// DON'TCHECK: i32.load offset=(9 or 13)
+// CHECK:      i32.load offset=
 // CHECK-NEXT: local.tee $check3
 // interfering parentheses don't disturb us
 for (check3 in (((["hello", "immutable", "world"].vals())))) { Prim.debugPrint check3 };
@@ -85,17 +95,19 @@ check6[1] := "mutable";
 // this passes the IR type check, which demonstrates that no name capture happens
 for (check6 in check6.vals()) { ignore check6 };
 
-// CHECK:      i32.load offset=5
-// CHECK-NEXT: i32.const 2
-// CHECK-NEXT: i32.shl
+// DON'TCHECK: i32.load offset=(5 or 9)
+// CHECK:      i32.load offset=
+// CHECK:      i32.const 2
+// CHECK:      i32.shl
 // argument to vals can have an effect too, expect it
 for (check7 in [].vals(Prim.debugPrint "want to see you")) { };
 
 // CHECK:      local.set $num8
 // CHECK-NOT:  call $@immut_array_size
-// CHECK:      i32.load offset=5
-// CHECK-NEXT: i32.const 1
-// CHECK-NEXT: i32.shl
+// DON'TCHECK: i32.load offset=(5 or 9)
+// CHECK:      i32.load offset=
+// CHECK:      i32.const 1
+// CHECK:      i32.shl
 // CHECK:      i32.lt_u
 // CHECK-NOT:  i32.add
 // CHECK:      local.tee $check8

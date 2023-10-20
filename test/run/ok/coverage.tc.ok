@@ -26,11 +26,6 @@ coverage.mo:15.10-15.13: warning [M0145], this pattern of type
   Nat
 does not cover value
   0 or 1 or _
-coverage.mo:16.16-16.17: warning [M0146], this pattern is never matched
-coverage.mo:16.10-16.18: warning [M0145], this pattern of type
-  Nat
-does not cover value
-  0 or 1 or _
 coverage.mo:18.16-18.17: warning [M0146], this pattern is never matched
 coverage.mo:19.17-19.18: warning [M0146], this pattern is never matched
 coverage.mo:23.3-23.25: warning [M0145], this switch of type
