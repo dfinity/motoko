@@ -398,7 +398,8 @@ let @ic00 = actor "aaaaa-aa" :
       canister_id : Principal;
       wasm_module : @ManagementCanister.wasm_module;
       arg : Blob;
-      sender_canister_version : ?Nat64
+      sender_canister_version : ?Nat64;
+      keep_main_memory: ?Bool;
     } -> async ()
  };
 
@@ -438,7 +439,8 @@ func @install_actor_helper(
     canister_id;
     wasm_module;
     arg;
-    sender_canister_version = ?(prim "canister_version" : () -> Nat64)()
+    sender_canister_version = ?(prim "canister_version" : () -> Nat64)();
+    keep_main_memory = ?true;
   };
   return canister_id;
 };
@@ -459,7 +461,8 @@ func @create_actor_helper(wasm_module : Blob, arg : Blob) : async Principal = as
     canister_id;
     wasm_module;
     arg;
-    sender_canister_version = ?(prim "canister_version" : () -> Nat64)()
+    sender_canister_version = ?(prim "canister_version" : () -> Nat64)();
+    keep_main_memory = ?true;
   };
   return canister_id;
 };
