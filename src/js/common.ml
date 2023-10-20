@@ -201,7 +201,7 @@ let wrap_output f =
   end
 
 let print_deps file =
-  let _ = Pipeline.print_deps file in
+  let _ = Pipeline.print_deps (Js.to_string file) in
   let stdout_result = Buffer.contents stdout_buffer in
   Buffer.clear stdout_buffer;
   Js.bytestring stdout_result
