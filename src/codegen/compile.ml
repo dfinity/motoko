@@ -324,6 +324,9 @@ module E = struct
     (* Mutable *)
     locals : value_type list ref; (* Types of locals *)
     local_names : (int32 * string) list ref; (* Names of locals *)
+
+    (* StableMemory *)
+    requires_stable_memory : bool ref;
   }
 
 
@@ -360,6 +363,7 @@ module E = struct
     return_arity = 0;
     locals = ref [];
     local_names = ref [];
+    requires_stable_memory = ref false;
   }
 
   (* This wraps Mo_types.Hash.hash to also record which labels we have seen,
@@ -5073,6 +5077,7 @@ module StableMem = struct
      emulating via (for now) 32-bit memory 1
   *)
   let stable64_grow env =
+    env.E.requires_stable_memory := true;
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
        IC.system_call env "stable64_grow"
@@ -5096,6 +5101,7 @@ module StableMem = struct
             end)
 
   let stable64_size env =
+    env.E.requires_stable_memory := true;
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
        IC.system_call env "stable64_size"
@@ -5106,6 +5112,7 @@ module StableMem = struct
           G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)))
 
   let stable64_read env =
+    env.E.requires_stable_memory := true;
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
        IC.system_call env "stable64_read"
@@ -5119,6 +5126,7 @@ module StableMem = struct
           G.i StableRead)
 
   let stable64_write env =
+    env.E.requires_stable_memory := true;
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
        IC.system_call env "stable64_write"
@@ -5664,6 +5672,14 @@ module RTS_Exports = struct
       })
     end;
 
+
+    (* Stable Memory related exports *)
+
+    let when_stable_memory_required_else_trap env code =
+      if !(env.E.requires_stable_memory) then
+        code() else
+        E.trap_with env "unreachable" in
+
     let ic0_stable64_write_fi =
       match E.mode env with
       | Flags.ICMode | Flags.RefMode ->
@@ -5672,13 +5688,14 @@ module RTS_Exports = struct
         E.add_fun env "ic0_stable64_write" (
           Func.of_body env ["offset", I64Type; "src", I64Type; "size", I64Type] []
             (fun env ->
-              let get_offset = G.i (LocalGet (nr 0l)) in
-              let get_src = G.i (LocalGet (nr 1l)) in
-              let get_size = G.i (LocalGet (nr 2l)) in
-              get_offset ^^
-              get_src ^^
-              get_size ^^
-              StableMem.stable64_write env)
+              when_stable_memory_required_else_trap env (fun () ->
+               let get_offset = G.i (LocalGet (nr 0l)) in
+               let get_src = G.i (LocalGet (nr 1l)) in
+               let get_size = G.i (LocalGet (nr 2l)) in
+               get_offset ^^
+               get_src ^^
+               get_size ^^
+               StableMem.stable64_write env))
           )
     in
     E.add_export env (nr {
@@ -5694,13 +5711,14 @@ module RTS_Exports = struct
         E.add_fun env "ic0_stable64_read" (
           Func.of_body env ["dst", I64Type; "offset", I64Type; "size", I64Type] []
             (fun env ->
+              when_stable_memory_required_else_trap env (fun () ->
               let get_dst = G.i (LocalGet (nr 0l)) in
               let get_offset = G.i (LocalGet (nr 1l)) in
               let get_size = G.i (LocalGet (nr 2l)) in
               get_dst ^^
               get_offset ^^
               get_size ^^
-              StableMem.stable64_read env)
+              StableMem.stable64_read env))
           )
     in
     E.add_export env (nr {
@@ -5712,8 +5730,9 @@ module RTS_Exports = struct
       E.add_fun env "moc_stable_mem_grow" (
         Func.of_body env ["newPages", I64Type] [I64Type]
           (fun env ->
+            when_stable_memory_required_else_trap env (fun () ->
             G.i (LocalGet (nr 0l)) ^^
-              StableMem.grow env)
+            StableMem.grow env))
         )
     in
     E.add_export env (nr {
@@ -5725,7 +5744,8 @@ module RTS_Exports = struct
       E.add_fun env "moc_stable_mem_size" (
         Func.of_body env [] [I64Type]
           (fun env ->
-            StableMem.get_mem_size env)
+             when_stable_memory_required_else_trap env (fun () ->
+             StableMem.get_mem_size env))
         )
     in
     E.add_export env (nr {
@@ -11975,6 +11995,8 @@ and metadata name value =
 
 and conclude_module env set_serialization_globals start_fi_o =
 
+  RTS_Exports.system_exports env;
+
   FuncDec.export_async_method env;
 
   (* See Note [Candid subtype checks] *)
@@ -12019,8 +12041,11 @@ and conclude_module env set_serialization_globals start_fi_o =
     | Flags.RefMode ->
        [nr {mtype = MemoryType {min = E.mem_size env; max = None}} ]
     | Flags.WASIMode | Flags.WasmMode ->
-       [nr {mtype = MemoryType {min = E.mem_size env; max = None}};
-        nr {mtype = MemoryType {min = Int32.zero; max = None}} ] (* faux stable memory *)
+       nr {mtype = MemoryType {min = E.mem_size env; max = None}} ::
+       if !(env.E.requires_stable_memory) then
+         (* faux stable memory *)
+         [ nr {mtype = MemoryType {min = Int32.zero; max = None}} ]
+       else []
   in
 
   let funcs = E.get_funcs env in
@@ -12090,7 +12115,7 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
 
   IC.system_imports env;
   RTS.system_imports env;
-  RTS_Exports.system_exports env;
+  (*  RTS_Exports.system_exports env; *)
 
   compile_init_func env prog;
   let start_fi_o = match E.mode env with
