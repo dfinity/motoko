@@ -60,7 +60,7 @@ assert.equal(typeof empty_wasm_plain.diagnostics, "object");
 assert.equal(empty_wasm_plain.diagnostics.length, 0);
 
 // Check that the WebAssembly binary can be loaded
-//WebAssembly.compile(empty_wasm_plain.code.wasm); // FIXME - needs multi-memory, buld-memory features enabled
+WebAssembly.compile(empty_wasm_plain.code.wasm);
 
 // Now again for the ic module
 assert.equal(typeof empty_wasm_ic, "object");
@@ -75,7 +75,7 @@ assert.deepEqual(
 assert.equal(typeof empty_wasm_ic.diagnostics, "object");
 assert.equal(empty_wasm_ic.diagnostics.length, 0);
 
-//WebAssembly.compile(empty_wasm_ic.code.wasm); // FIXME - needs multi-memory, buld-memory features enabled
+WebAssembly.compile(empty_wasm_ic.code.wasm);
 
 // The plain and the ic module should not be the same
 assert.notEqual(empty_wasm_plain.code.wasm, empty_wasm_ic.code.wasm);
