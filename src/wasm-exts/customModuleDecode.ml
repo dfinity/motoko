@@ -846,13 +846,19 @@ let motoko_stable_types_name = icp_name "motoko:stable-types"
 
 let is_icp icp_name n = icp_name n <> None
 
+let is_wasm_features n = (n = Utf8.decode "wasm_features")
+let wasm_features_section s =
+  custom_section is_wasm_features
+    (fun sec_end s -> let t = utf8 sec_end s in String.split_on_char ',' t) [] s
+
 let is_unknown n = not (
   is_dylink n ||
   is_name n ||
   is_motoko n ||
   is_icp candid_service_name n ||
   is_icp candid_args_name n ||
-  is_icp motoko_stable_types_name n)
+  is_icp motoko_stable_types_name n ||
+  is_wasm_features n)
 
 let skip_custom sec_end s =
   skip (sec_end - pos s) s;
@@ -901,6 +907,8 @@ let module_ s =
   iterate skip_custom_section s;
   let motoko = motoko_sections s in
   iterate skip_custom_section s;
+  let wasm_features = wasm_features_section s in
+  iterate skip_custom_section s;
   require (pos s = len s) s (len s) "junk after last section";
   require (List.length func_types = List.length func_bodies)
     s (len s) "function and code section have inconsistent lengths";
@@ -915,7 +923,7 @@ let module_ s =
     motoko;
     candid;
     source_mapping_url = None;
-    wasm_features = []; (* TODO: recover from custom section *)
+    wasm_features = wasm_features;
   }
 
 
