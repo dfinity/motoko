@@ -915,6 +915,7 @@ let module_ s =
     motoko;
     candid;
     source_mapping_url = None;
+    wasm_features = []; (* TODO: recover from custom section *)
   }
 
 

@@ -261,6 +261,7 @@ module E = struct
   module NameEnv = Env.Make(String)
   module StringEnv = Env.Make(String)
   module LabSet = Set.Make(String)
+  module FeatureSet = Set.Make(String)
 
   module FunEnv = Env.Make(Int32)
   type local_names = (int32 * string) list (* For the debug section: Names of locals *)
@@ -325,6 +326,8 @@ module E = struct
     locals : value_type list ref; (* Types of locals *)
     local_names : (int32 * string) list ref; (* Names of locals *)
 
+    features : FeatureSet.t ref; (* Wasm features using wasmtime naming *)
+
     (* StableMemory *)
     requires_stable_memory : bool ref;
   }
@@ -363,6 +366,7 @@ module E = struct
     return_arity = 0;
     locals = ref [];
     local_names = ref [];
+    features = ref FeatureSet.empty;
     requires_stable_memory = ref false;
   }
 
@@ -638,6 +642,32 @@ module E = struct
   let get_typtbl_typs (env : t) : Type.typ list =
     !(env.typtbl_typs)
 
+  let add_feature (env : t) f =
+    env.features := FeatureSet.add f (!(env.features))
+
+  let get_features (env : t) = FeatureSet.elements (!(env.features))
+
+  let require_stable_memory (env : t)  =
+    if not !(env.requires_stable_memory)
+    then
+      (env.requires_stable_memory := true;
+       match mode env with
+       | Flags.ICMode | Flags.RefMode ->
+          ()
+       | Flags.WASIMode | Flags.WasmMode ->
+          add_feature env "bulk-memory";
+          add_feature env "multi-memory")
+
+  let requires_stable_memory (env : t) =
+    !(env.requires_stable_memory)
+
+  let get_memories (env : t) =
+    nr {mtype = MemoryType {min = mem_size env; max = None}}
+    ::
+    match mode env with
+    | Flags.WASIMode | Flags.WasmMode when !(env.requires_stable_memory) ->
+      [ nr {mtype = MemoryType {min = Int32.zero; max = None}} ]
+    | _ -> []
 end
 
 
@@ -5077,7 +5107,7 @@ module StableMem = struct
      emulating via (for now) 32-bit memory 1
   *)
   let stable64_grow env =
-    env.E.requires_stable_memory := true;
+    E.require_stable_memory env;
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
        IC.system_call env "stable64_grow"
@@ -5101,7 +5131,7 @@ module StableMem = struct
             end)
 
   let stable64_size env =
-    env.E.requires_stable_memory := true;
+    E.require_stable_memory env;
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
        IC.system_call env "stable64_size"
@@ -5112,7 +5142,7 @@ module StableMem = struct
           G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)))
 
   let stable64_read env =
-    env.E.requires_stable_memory := true;
+    E.require_stable_memory env;
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
        IC.system_call env "stable64_read"
@@ -5126,7 +5156,7 @@ module StableMem = struct
           G.i StableRead)
 
   let stable64_write env =
-    env.E.requires_stable_memory := true;
+    E.require_stable_memory env;
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
        IC.system_call env "stable64_write"
@@ -5676,7 +5706,7 @@ module RTS_Exports = struct
     (* Stable Memory related exports *)
 
     let when_stable_memory_required_else_trap env code =
-      if !(env.E.requires_stable_memory) then
+      if E.requires_stable_memory env then
         code() else
         E.trap_with env "unreachable" in
 
@@ -12035,18 +12065,7 @@ and conclude_module env set_serialization_globals start_fi_o =
 
   let other_imports = E.get_other_imports env in
 
-  let memories =
-    match E.mode env with
-    | Flags.ICMode
-    | Flags.RefMode ->
-       [nr {mtype = MemoryType {min = E.mem_size env; max = None}} ]
-    | Flags.WASIMode | Flags.WasmMode ->
-       nr {mtype = MemoryType {min = E.mem_size env; max = None}} ::
-       if !(env.E.requires_stable_memory) then
-         (* faux stable memory *)
-         [ nr {mtype = MemoryType {min = Int32.zero; max = None}} ]
-       else []
-  in
+  let memories = E.get_memories env in
 
   let funcs = E.get_funcs env in
 
@@ -12095,6 +12114,7 @@ and conclude_module env set_serialization_globals start_fi_o =
         service = !(env.E.service);
       };
       source_mapping_url = None;
+      wasm_features = E.get_features env;
     } in
 
   match E.get_rts env with

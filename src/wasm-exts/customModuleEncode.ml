@@ -859,6 +859,10 @@ let encode (em : extended_module) =
       icp_custom_section "candid:service" utf8 candid.service;
       icp_custom_section "candid:args" utf8 candid.args
 
+    let wasm_features_section wasm_features =
+      let text = String.concat "," wasm_features in
+      custom_section "wasm_features" utf8 text (text <> "")
+
     let uleb128 n = vu64 (Int64.of_int n)
     let sleb128 n = vs64 (Int64.of_int n)
     let close_section () = u8 0x00
@@ -1227,6 +1231,7 @@ let encode (em : extended_module) =
       name_section em.name;
       candid_sections em.candid;
       motoko_sections em.motoko;
+      wasm_features_section em.wasm_features;
       source_mapping_url_section em.source_mapping_url;
       if !Mo_config.Flags.debug_info then
         begin
