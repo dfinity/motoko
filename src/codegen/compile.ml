@@ -5638,6 +5638,9 @@ module StableMemoryInterface = struct
 end
 
 module RTS_Exports = struct
+  (* Must be called late, after main codegen, to ensure correct generation of
+     of functioning or unused-but-trapping stable memory exports (as required)
+   *)
   let system_exports env =
     let bigint_trap_fi = E.add_fun env "bigint_trap" (
       Func.of_body env [] [] (fun env ->
@@ -12135,7 +12138,6 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
 
   IC.system_imports env;
   RTS.system_imports env;
-  (*  RTS_Exports.system_exports env; *)
 
   compile_init_func env prog;
   let start_fi_o = match E.mode env with
