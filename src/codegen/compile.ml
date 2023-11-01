@@ -328,7 +328,7 @@ module E = struct
 
     features : FeatureSet.t ref; (* Wasm features using wasmtime naming *)
 
-    (* StableMemory *)
+    (* requires stable memory, and emulation on wasm targets *)
     requires_stable_memory : bool ref;
   }
 
