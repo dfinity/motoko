@@ -2376,6 +2376,7 @@ module TaggedSmallWord = struct
   let bits_of_type = function
     | Type.(Int8|Nat8) -> 8
     | Type.(Int16|Nat16) -> 16
+    | Type.Char -> 21
     | _ -> 32
 
   (* tag small words, todo set bit 1 *)
@@ -2384,6 +2385,7 @@ module TaggedSmallWord = struct
     | Type.Nat8 -> Int32.shift_left 2l 2
     | Type.Int16 -> Int32.shift_left 3l 2
     | Type.Nat16 -> Int32.shift_left 4l 2
+    | Type.Char -> Int32.shift_left 5l 2
     | _ -> 0l
 
   let shift_of_type ty = Int32.of_int (32 - bits_of_type ty)
@@ -2426,6 +2428,9 @@ module TaggedSmallWord = struct
     | Type.(Int8|Int16) as ty ->
        sanity_check_tag env ty ^^
        compile_shrS_const (shift_of_type ty)
+    | Type.Char as ty ->
+       sanity_check_tag env ty ^^
+       compile_shrU_const (shift_of_type ty)
     | _ -> assert false
 
   (* Makes sure that the word payload (e.g. operation result) is in the MSB bits of the word. *)
@@ -2470,8 +2475,8 @@ module TaggedSmallWord = struct
        msb_adjust ty
 
   (* Code points occupy 21 bits, so can always be tagged scalars *)
-  let untag_codepoint = compile_shrU_const 8l
-  let tag_codepoint = compile_shl_const 8l
+  let untag_codepoint env = lsb_adjust env Type.Char
+  let tag_codepoint = msb_adjust Type.Char
 
   (* Checks (n < 0xD800 || 0xE000 ≤ n ≤ 0x10FFFF),
      ensuring the codepoint range and the absence of surrogates. *)
@@ -4061,7 +4066,7 @@ module Text = struct
       BigNum.from_word32 env
     )
   let prim_showChar env =
-    TaggedSmallWord.untag_codepoint ^^
+    TaggedSmallWord.untag_codepoint env ^^
     E.call_import env "rts" "text_singleton"
   let to_blob env = E.call_import env "rts" "blob_of_text"
 
@@ -6470,7 +6475,7 @@ module MakeSerialization (Strm : Stream) = struct
       | Prim (Int32|Nat32) ->
         write_word_32 env get_data_buf (get_x ^^ BoxedSmallWord.unbox env)
       | Prim Char ->
-        write_word_32 env get_data_buf (get_x ^^ TaggedSmallWord.untag_codepoint)
+        write_word_32 env get_data_buf (get_x ^^ TaggedSmallWord.untag_codepoint env)
       | Prim ((Int16|Nat16) as ty) ->
         reserve env get_data_buf 2l ^^
         get_x ^^ TaggedSmallWord.lsb_adjust env ty ^^
@@ -9251,7 +9256,8 @@ let const_lit_of_lit : Ir.lit -> Const.lit = function
   | Nat32Lit n    -> Const.Word32 (Big_int.int32_of_big_int (nat32_to_int32 (Numerics.Nat32.to_big_int n)))
   | Int64Lit n    -> Const.Word64 (Big_int.int64_of_big_int (Numerics.Int_64.to_big_int n))
   | Nat64Lit n    -> Const.Word64 (Big_int.int64_of_big_int (nat64_to_int64 (Numerics.Nat64.to_big_int n)))
-  | CharLit c     -> Const.Vanilla Int32.(shift_left (of_int c) 8)
+  | CharLit c     -> Const.Vanilla (TaggedSmallWord.vanilla_lit Type.Char c)
+
   | NullLit       -> Const.Null
   | TextLit t
   | BlobLit t     -> Const.Blob t
@@ -10236,7 +10242,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     | Char, Nat32 ->
       SR.UnboxedWord32,
       compile_exp_vanilla env ae e ^^
-      TaggedSmallWord.untag_codepoint
+      TaggedSmallWord.untag_codepoint env
 
     | _ -> SR.Unreachable, todo_trap env "compile_prim_invocation" (Arrange_ir.prim p)
     end
@@ -11474,7 +11480,7 @@ and compile_exp_as_test env ae e =
 and compile_char_to_char_rts env ae exp rts_fn =
   SR.Vanilla,
   compile_exp_vanilla env ae exp ^^
-  TaggedSmallWord.untag_codepoint ^^
+  TaggedSmallWord.untag_codepoint env ^^
   E.call_import env "rts" rts_fn ^^
   TaggedSmallWord.tag_codepoint
 
@@ -11484,7 +11490,7 @@ and compile_char_to_char_rts env ae exp rts_fn =
 and compile_char_to_bool_rts (env : E.t) (ae : VarEnv.t) exp rts_fn =
   SR.bool,
   compile_exp_vanilla env ae exp ^^
-  TaggedSmallWord.untag_codepoint ^^
+  TaggedSmallWord.untag_codepoint env ^^
   (* The RTS function returns Motoko True/False values (which are represented as
      1 and 0, respectively) so we don't need any marshalling *)
   E.call_import env "rts" rts_fn
