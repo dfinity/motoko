@@ -2553,7 +2553,10 @@ module TaggedSmallWord = struct
         compile_unboxed_const 0l ^^
         G.i (Compare (Wasm.Values.I32 I32Op.GeS)) ^^
         E.else_trap_with env "negative power" ^^
-        get_n ^^ get_exp ^^ compile_nat_power env ty ^^
+        get_n ^^
+        lsb_adjust env ty ^^
+        msb_adjust (toNat ty) ^^
+        get_exp ^^ compile_nat_power env (toNat ty) ^^
         lsb_adjust env (toNat ty) ^^
         msb_adjust ty
       )
@@ -9681,8 +9684,10 @@ let compile_binop env t op : SR.t * SR.t * G.t =
         get_b ^^ TaggedSmallWord.lsb_adjust env ty ^^
         G.i (Binary (Wasm.Values.I32 I32Op.RemS)) ^^
         TaggedSmallWord.msb_adjust ty)
-  | Type.(Prim (Nat8|Nat16|Nat32 as ty)),     WPowOp -> TaggedSmallWord.compile_nat_power env ty
-  | Type.(Prim (Int8|Int16|Int32 as ty)),     WPowOp -> TaggedSmallWord.compile_int_power env ty
+  | Type.(Prim (Nat8|Nat16|Nat32 as ty)),     WPowOp ->
+     TaggedSmallWord.compile_nat_power env ty
+  | Type.(Prim (Int8|Int16|Int32 as ty)),     WPowOp ->
+     TaggedSmallWord.compile_int_power env ty
   | Type.(Prim ((Nat8|Nat16) as ty)),         PowOp ->
     Func.share_code2 Func.Always env (prim_fun_name ty "pow")
       (("n", I32Type), ("exp", I32Type)) [I32Type]
@@ -10896,13 +10901,15 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | OtherPrim "popcntInt8", [e] ->
     SR.Vanilla,
     compile_exp_vanilla env ae e ^^
-    TaggedSmallWord.lsb_adjust env Type.Nat8 ^^ (*?*)
+    TaggedSmallWord.sanity_check_tag env Type.Int8 ^^
+    compile_shrU_const (TaggedSmallWord.shift_of_type Type.Int8) ^^
     G.i (Unary (Wasm.Values.I32 I32Op.Popcnt)) ^^
     TaggedSmallWord.msb_adjust Type.Int8
   | OtherPrim "popcntInt16", [e] ->
     SR.Vanilla,
     compile_exp_vanilla env ae e ^^
-    TaggedSmallWord.lsb_adjust env Type.Nat16 ^^ (*?*)
+    TaggedSmallWord.sanity_check_tag env Type.Int16 ^^
+    compile_shrU_const (TaggedSmallWord.shift_of_type Type.Int16) ^^
     G.i (Unary (Wasm.Values.I32 I32Op.Popcnt)) ^^
     TaggedSmallWord.msb_adjust Type.Int16
   | OtherPrim "popcnt32", [e] ->
