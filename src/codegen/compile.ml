@@ -2410,7 +2410,7 @@ module TaggedSmallWord = struct
 
   let sanity_check_tag env ty =
     let name = "sanity_check_"^Type.string_of_prim ty in
-    if true || !(Flags.sanity) then
+    if !(Flags.sanity) then
       Func.share_code1 Func.Always env name ("v", I32Type) [I32Type] (fun env get_n ->
         get_n ^^
         compile_bitand_const (tag_of_type ty) ^^
