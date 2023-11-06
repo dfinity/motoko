@@ -179,7 +179,7 @@ fn inject_imports(for_ic : bool, module: Module) -> Module {
     module
 }
 
-/// Takes a Wasm binary and inserts the instructoing metering and profiling code.
+/// Takes a Wasm binary and inserts the instruction metering and profiling code.
 /// Returns  the instrumented binary.
 pub fn instrument(
     wasm: &Vec<u8>,

@@ -22,9 +22,9 @@
 
 * motoko-base
 
-  * Added `Principal.toLedgerAccount` (#582).
+  * Added `Principal.toLedgerAccount` (dfinity/motoko-base⁠#582).
 
-  * Added `Text.toLowercase` and `Text.toUppercase` (#590).
+  * Added `Text.toLowercase` and `Text.toUppercase` (dfinity/motoko-base⁠#590).
 
 ## 0.10.0 (2023-09-11)
 
@@ -41,7 +41,7 @@
 
   * Exposed conversions between adjacent fixed-width types (dfinity/motoko-base⁠#585).
 
-  * Added library `Region.mo` offering isolated regions of IC stable memory (#580).
+  * Added library `Region.mo` offering isolated regions of IC stable memory (dfinity/motoko-base⁠#580).
 
 ## 0.9.8 (2023-08-11)
 
