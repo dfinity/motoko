@@ -1,4 +1,4 @@
-blob too large for Principal
+blob too long for principal
 Error: failed to run main module `_out/bad-principal-from-blob.wasm`
 
 Caused by:

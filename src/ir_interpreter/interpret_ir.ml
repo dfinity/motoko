@@ -412,7 +412,10 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | CastPrim _, [v1] ->
         k v1
       | ActorOfIdBlob t, [v1] ->
-        k v1
+        if String.length (V.as_blob v1) > 29 then
+          trap exp.at "blob too long for actor principal"
+        else
+          k v1
       | DecodeUtf8, [v1] ->
         let s = V.as_blob v1 in
         begin match Lib.Utf8.decode s with
