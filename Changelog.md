@@ -2,12 +2,12 @@
 
 * motoko (`moc`)
 
-  * BREAKING CHANGE (Minor): values of type `Principal` are now dynamically
-    constrained to contain at most 29 bytes, matching the IC's notion of principal (#4268).
+  * BREAKING CHANGE (Minor): values of type `Principal` are now constrained to contain
+    at most 29 bytes, matching the IC's notion of principal (#4268).
 
     In particular:
 
-    * An actor `import` will trap if the binary representation of the (aliased) textually encoded
+    * An actor `import` will be statically rejected if the binary representation of the (aliased) textually encoded
     principal contains strictly more than 29 bytes.
 
     * `Principal.fromBlob(b)` will trap if `b` contains strictly more than 29 bytes.
