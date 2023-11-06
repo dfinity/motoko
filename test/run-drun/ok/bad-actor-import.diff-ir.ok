@@ -1,5 +1,0 @@
---- bad-actor-import.run
-+++ bad-actor-import.run-ir
-@@ -1 +1 @@
--bad-actor-import.mo:2.1-2.80: execution error, actor import
-+(unknown location): execution error, blob too long for actor principal
