@@ -3,7 +3,6 @@ import Prim "mo:⛔";
 module {
 
   public let size = Prim.stableMemorySize;
-  //public let region = Prim.stableMemoryRegion;
   public let grow = Prim.stableMemoryGrow;
 
   public let loadNat32 = Prim.stableMemoryLoadNat32;
