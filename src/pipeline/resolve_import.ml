@@ -170,7 +170,7 @@ let resolve_import_string msgs base actor_idl_path aliases packages imported (f,
     | Some actor_base ->
       let full_path = in_base actor_base (Url.idl_basename_of_blob bytes) in
       add_idl_import msgs imported ri_ref at full_path bytes
-    in
+  in
   match Url.parse f with
   | Ok (Url.Relative path) ->
     (* TODO support importing local .did file *)
@@ -180,7 +180,11 @@ let resolve_import_string msgs base actor_idl_path aliases packages imported (f,
     | Some pkg_path -> add_lib_import msgs imported ri_ref at (in_base pkg_path path)
     | None -> err_package_not_defined msgs at pkg
     end
-  | Ok (Url.Ic bytes) -> resolve_ic bytes
+  | Ok (Url.Ic bytes) ->
+     if String.length bytes > 29 then
+       err_unrecognized_url msgs at f "Principal too long"
+     else
+     resolve_ic bytes
   | Ok (Url.IcAlias alias) ->
     begin match M.find_opt alias aliases with
     | Some bytes -> resolve_ic bytes
@@ -202,7 +206,10 @@ let resolve_package_url (msgs:Diag.msg_store) (pname:string) (f:url) : filepath 
 (* Resolve the argument to --actor-alias. Check eagerly for well-formedness *)
 let resolve_alias_principal (msgs:Diag.msg_store) (alias:string) (f:string) : blob =
   match Url.decode_principal f with
-  | Ok bytes -> bytes
+  | Ok bytes ->
+     if String.length bytes > 29 then
+       (err_unrecognized_alias msgs alias f "Principal too long"; "")
+     else bytes
   | Error msg -> err_unrecognized_alias msgs alias f msg; ""
 
 
