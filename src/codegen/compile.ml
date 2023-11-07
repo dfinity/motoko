@@ -5094,12 +5094,12 @@ end (* Cycles *)
 module StableMem = struct
 
 
-  let conv32 env get64 =
-    get64 ^^
+  let conv_u32 env get_u64 =
+    get_u64 ^^
     compile_shrU64_const 32L ^^
     G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
     E.then_trap_with env "stable64 overflow" ^^
-    get64  ^^
+    get_u64  ^^
     G.i (Convert (Wasm.Values.I32 I32Op.WrapI64))
 
   (* Raw stable memory API,
@@ -5115,7 +5115,7 @@ module StableMem = struct
        Func.share_code1 Func.Always env "stable64_grow" ("pages", I64Type) [I64Type]
          (fun env get_pages ->
           let set_old_pages, get_old_pages = new_local env "old_pages" in
-          conv32 env get_pages ^^
+          conv_u32 env get_pages ^^
           G.i StableGrow ^^
           set_old_pages ^^
           get_old_pages ^^
@@ -5150,9 +5150,9 @@ module StableMem = struct
        Func.share_code3 Func.Always env "stable64_read"
          (("dst", I64Type), ("offset", I64Type), ("size", I64Type)) []
          (fun env get_dst get_offset get_size ->
-          conv32 env get_dst ^^
-          conv32 env get_offset ^^
-          conv32 env get_size ^^
+          conv_u32 env get_dst ^^
+          conv_u32 env get_offset ^^
+          conv_u32 env get_size ^^
           G.i StableRead)
 
   let stable64_write env =
@@ -5164,9 +5164,9 @@ module StableMem = struct
        Func.share_code3 Func.Always env "stable64_write"
          (("offset", I64Type), ("src", I64Type), ("size", I64Type)) []
          (fun env get_offset get_src get_size ->
-          conv32 env get_offset ^^
-          conv32 env get_src ^^
-          conv32 env get_size ^^
+          conv_u32 env get_offset ^^
+          conv_u32 env get_src ^^
+          conv_u32 env get_size ^^
           G.i StableWrite)
 
 
@@ -11079,7 +11079,16 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
   (* Actor ids are blobs in the RTS *)
   | ActorOfIdBlob _, [e] ->
-    compile_exp env ae e
+    SR.Vanilla,
+    let (set_blob, get_blob) = new_local env "blob" in
+    compile_exp_vanilla env ae e ^^
+    set_blob ^^
+    get_blob ^^
+    Blob.len env ^^
+    compile_unboxed_const 29l ^^
+    G.i (Compare (Wasm.Values.I32 I32Op.LeU)) ^^
+    E.else_trap_with env "blob too long for actor principal" ^^
+    get_blob
 
   | SelfRef _, [] ->
     SR.Vanilla, IC.get_self_reference env

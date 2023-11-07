@@ -1,5 +1,21 @@
 # Motoko compiler changelog
 
+* motoko (`moc`)
+
+  * BREAKING CHANGE (Minor): values of type `Principal` are now constrained to contain
+    at most 29 bytes, matching the IC's notion of principal (#4268).
+
+    In particular:
+
+    * An actor `import` will be statically rejected if the binary representation of the (aliased) textually encoded
+    principal contains strictly more than 29 bytes.
+
+    * `Principal.fromBlob(b)` will trap if `b` contains strictly more than 29 bytes.
+
+    *  The actor literal, `actor <exp>`, will trap if the binary representation of
+    of the textually encoded principal `<exp>` contains strictly more than 29 bytes.
+
+
 ## 0.10.1 (2023-10-16)
 
 * motoko (`moc`)
@@ -22,9 +38,9 @@
 
 * motoko-base
 
-  * Added `Principal.toLedgerAccount` (#582).
+  * Added `Principal.toLedgerAccount` (dfinity/motoko-base⁠#582).
 
-  * Added `Text.toLowercase` and `Text.toUppercase` (#590).
+  * Added `Text.toLowercase` and `Text.toUppercase` (dfinity/motoko-base⁠#590).
 
 ## 0.10.0 (2023-09-11)
 
@@ -41,7 +57,7 @@
 
   * Exposed conversions between adjacent fixed-width types (dfinity/motoko-base⁠#585).
 
-  * Added library `Region.mo` offering isolated regions of IC stable memory (#580).
+  * Added library `Region.mo` offering isolated regions of IC stable memory (dfinity/motoko-base⁠#580).
 
 ## 0.9.8 (2023-08-11)
 
