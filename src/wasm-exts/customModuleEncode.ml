@@ -471,11 +471,6 @@ let encode (em : extended_module) =
       | MemorySize -> op 0x3f; u8 0x00
       | MemoryGrow -> op 0x40; u8 0x00
 
-      | StableSize -> op 0x3f; u8 0x01
-      | StableGrow -> op 0x40; u8 0x01
-      | StableRead -> op 0xfc; vu32 0x0al; u8 0x00; u8 0x01
-      | StableWrite -> op 0xfc; vu32 0x0al; u8 0x01; u8 0x00
-
       | Const {it = I32 c; _} -> op 0x41; vs32 c
       | Const {it = I64 c; _} -> op 0x42; vs64 c
       | Const {it = F32 c; _} -> op 0x43; f32 c
@@ -641,6 +636,15 @@ let encode (em : extended_module) =
       | Convert (F64 F64Op.PromoteF32) -> op 0xbb
       | Convert (F64 F64Op.DemoteF64) -> assert false
       | Convert (F64 F64Op.ReinterpretInt) -> op 0xbf
+
+      (* Custom encodings for emulating stable-memory, special cases
+         of MemorySize, MemoryGrow and MemoryCopy
+         requiring wasm features bulk-memory and multi-memory
+      *)
+      | StableSize -> op 0x3f; u8 0x01
+      | StableGrow -> op 0x40; u8 0x01
+      | StableRead -> op 0xfc; vu32 0x0al; u8 0x00; u8 0x01
+      | StableWrite -> op 0xfc; vu32 0x0al; u8 0x01; u8 0x00
 
     let const c =
       list (instr ignore) c.it; end_ ()
