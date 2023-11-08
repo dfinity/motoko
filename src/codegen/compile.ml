@@ -10705,7 +10705,16 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
   (* Actor ids are blobs in the RTS *)
   | ActorOfIdBlob _, [e] ->
-    compile_exp env ae e
+    SR.Vanilla,
+    let (set_blob, get_blob) = new_local env "blob" in
+    compile_exp_vanilla env ae e ^^
+    set_blob ^^
+    get_blob ^^
+    Blob.len env ^^
+    compile_unboxed_const 29l ^^
+    G.i (Compare (Wasm.Values.I32 I32Op.LeU)) ^^
+    E.else_trap_with env "blob too long for actor principal" ^^
+    get_blob
 
   | SelfRef _, [] ->
     SR.Vanilla, IC.get_self_reference env
