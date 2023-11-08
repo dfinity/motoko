@@ -308,7 +308,12 @@ func time() : Nat64 = (prim "time" : () -> Nat64)();
 // Principal
 
 func blobOfPrincipal(id : Principal) : Blob = (prim "cast" : Principal -> Blob) id;
-func principalOfBlob(act : Blob) : Principal = (prim "cast" : Blob -> Principal) act;
+func principalOfBlob(act : Blob) : Principal {
+  if (act.size() > 29) {
+    trap("blob too long for principal");
+  };
+  (prim "cast" : Blob -> Principal) act;
+};
 
 func principalOfActor(act : actor {}) : Principal = (prim "cast" : (actor {}) -> Principal) act;
 func isController(p : Principal) : Bool = (prim "is_controller" : Principal -> Bool) p;
