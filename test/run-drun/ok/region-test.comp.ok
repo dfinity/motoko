@@ -1,0 +1,6 @@
+compile_prim_invocation: regionLoadFloat
+compile_prim_invocation: regionStoreFloat
+compile_prim_invocation: regionLoadInt16
+compile_prim_invocation: regionStoreInt16
+compile_prim_invocation: regionLoadInt8
+compile_prim_invocation: regionStoreInt8

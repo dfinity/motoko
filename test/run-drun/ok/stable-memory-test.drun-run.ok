@@ -1,0 +1,12 @@
+ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
+debug.print: Nat8
+debug.print: Nat16
+debug.print: Nat32
+debug.print: Nat64
+debug.print: Int8
+debug.print: Nat16
+debug.print: Int32
+debug.print: Int64
+debug.print: Float
+debug.print: Blob
+ingress Completed: Reply: 0x4449444c0000
