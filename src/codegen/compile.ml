@@ -10757,12 +10757,27 @@ and compile_prim_invocation (env : E.t) ae p es at =
     Region.load_word8 env ^^
     TaggedSmallWord.msb_adjust Type.Nat8
 
+  | OtherPrim ("regionLoadInt8"), [e0; e1] ->
+    SR.Vanilla,
+    compile_exp_as env ae SR.Vanilla e0 ^^
+    compile_exp_as env ae SR.UnboxedWord64 e1 ^^
+    Region.load_word8 env ^^
+    TaggedSmallWord.msb_adjust Type.Int8
+
   | OtherPrim ("regionStoreNat8"), [e0; e1; e2] ->
     SR.unit,
     compile_exp_as env ae SR.Vanilla e0 ^^
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     compile_exp_as env ae SR.Vanilla e2 ^^
     TaggedSmallWord.lsb_adjust Type.Nat8 ^^
+    Region.store_word8 env
+
+  | OtherPrim ("regionStoreInt8"), [e0; e1; e2] ->
+    SR.unit,
+    compile_exp_as env ae SR.Vanilla e0 ^^
+    compile_exp_as env ae SR.UnboxedWord64 e1 ^^
+    compile_exp_as env ae SR.Vanilla e2 ^^
+    TaggedSmallWord.lsb_adjust Type.Int8 ^^
     Region.store_word8 env
 
   | OtherPrim ("regionLoadNat16"), [e0; e1] ->
@@ -10772,12 +10787,27 @@ and compile_prim_invocation (env : E.t) ae p es at =
     Region.load_word16 env ^^
     TaggedSmallWord.msb_adjust Type.Nat16
 
+  | OtherPrim ("regionLoadInt16"), [e0; e1] ->
+    SR.Vanilla,
+    compile_exp_as env ae SR.Vanilla e0 ^^
+    compile_exp_as env ae SR.UnboxedWord64 e1 ^^
+    Region.load_word16 env ^^
+    TaggedSmallWord.msb_adjust Type.Int16
+
   | OtherPrim ("regionStoreNat16"), [e0; e1; e2] ->
     SR.unit,
     compile_exp_as env ae SR.Vanilla e0 ^^
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     compile_exp_as env ae SR.Vanilla e2 ^^
     TaggedSmallWord.lsb_adjust Type.Nat16 ^^
+    Region.store_word16 env
+
+  | OtherPrim ("regionStoreInt16"), [e0; e1; e2] ->
+    SR.unit,
+    compile_exp_as env ae SR.Vanilla e0 ^^
+    compile_exp_as env ae SR.UnboxedWord64 e1 ^^
+    compile_exp_as env ae SR.Vanilla e2 ^^
+    TaggedSmallWord.lsb_adjust Type.Int16 ^^
     Region.store_word16 env
 
   | OtherPrim ("regionLoadNat32" | "regionLoadInt32"), [e0; e1] ->
@@ -10806,13 +10836,13 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_as env ae SR.UnboxedWord64 e2 ^^
     Region.store_word64 env
 
-  | OtherPrim ("regionLoadFloat64"), [e0; e1] ->
+  | OtherPrim ("regionLoadFloat"), [e0; e1] ->
     SR.UnboxedFloat64,
     compile_exp_as env ae SR.Vanilla e0 ^^
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     Region.load_float64 env
 
-  | OtherPrim ("regionStoreFloat64"), [e0; e1; e2] ->
+  | OtherPrim ("regionStoreFloat"), [e0; e1; e2] ->
     SR.unit,
     compile_exp_as env ae SR.Vanilla e0 ^^
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
