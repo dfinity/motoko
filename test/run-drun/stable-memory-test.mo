@@ -109,7 +109,7 @@ do {
 };
 
 do {
-   Prim.debugPrint("Nat16");
+   Prim.debugPrint("Int16");
    type T = Int16;
    let size : Nat64 = 2;
    let mod : Nat64 = 65536;
