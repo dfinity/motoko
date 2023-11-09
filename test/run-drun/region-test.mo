@@ -3,7 +3,7 @@ import Region "stable-region/Region";
 
 let r = Region.new();
 let 0 = Region.size(r);
-let 0 = Region.grow(r, 64);
+let 0 = Region.grow(r, 4);
 
 do {
    Prim.debugPrint("Nat8");

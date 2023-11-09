@@ -2,7 +2,7 @@ import Prim "mo:⛔";
 import StableMemory "stable-mem/StableMemory";
 
 let 0 = StableMemory.size();
-let 0 = StableMemory.grow(64);
+let 0 = StableMemory.grow(4);
 
 do {
    Prim.debugPrint("Nat8");
