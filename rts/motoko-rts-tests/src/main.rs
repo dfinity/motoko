@@ -8,6 +8,7 @@ mod gc;
 mod leb128;
 mod memory;
 mod principal_id;
+mod stabilization;
 mod stream;
 mod text;
 mod utf8;
@@ -21,6 +22,7 @@ fn main() {
     }
 
     unsafe {
+        stabilization::test();
         test_read_write_64_bit();
         bigint::test();
         bitrel::test();
