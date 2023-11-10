@@ -1,4 +1,4 @@
-mod buffered_access;
+mod reader_writer;
 mod stable_memory;
 
 use crate::gc::{random::generate, heap::MotokoHeap, utils::{GC_IMPLS, GC}};
@@ -6,7 +6,7 @@ use motoko_rts::{stabilization::Serialization, types::Value};
 
 pub unsafe fn test() {
     println!("Testing stabilization ...");
-    buffered_access::test();
+    reader_writer::test();
 
     test_serialization()
 }

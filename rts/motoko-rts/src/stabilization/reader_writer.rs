@@ -1,12 +1,5 @@
-//! Buffered streamed reader/writer to stable memory. Optimized for the
-//! to-space in Cheney's algorithm, employed in the graph-copying-based
-//! stabilization.
-//!
-//! The buffer supports streamed reading and writing, each at an independent
-//! position, while buffering the pages that are read and/or written.
-//!
-//! Streamed reading is used for the `scan`-pointer in Cheney's algorithm.
-//! Stream writing is used for the `free`-pointer in Cheney's algorithm.
+//! Buffered read/write access on stable memory.
+//! Supporting Cheney's to-space in stable memory.
 
 use core::{cmp::min, mem::size_of};
 
@@ -90,27 +83,61 @@ impl StableMemoryPage {
     }
 }
 
-// At most two pages are needed to cache the current streamed read and write location.
+// At most two pages are needed to cache the current streamed `scan`` and `free` position.
 const CACHE_SIZE: usize = 2;
 
-pub struct StableMemoryReaderWriter {
-    read_address: u64,
-    write_address: u64,
+/// Buffered streamed reader/writer on stable memory.
+/// Optimized for Cheney's algorithm.
+///
+/// The buffer supports two location-independent streams:
+/// * Streamed reading and updating, used for scanning and patching pointers.
+/// * Streamed writing, used for allocating new objects.
+pub struct StableMemorySpace {
+    /// Used fore reading and updating.
+    scan_address: u64,
+    /// Used for writing.
+    free_address: u64,
     // TODO: Use a way to not allocate a 128K empty data segment.
     cache: [StableMemoryPage; CACHE_SIZE],
     closed: bool,
 }
 
+pub trait ScanStream {
+    // Determines whether the stream has reached the end.
+    fn scan_completed(&self) -> bool;
+    // Read a value from the stream.
+    fn read<T: Default>(&mut self) -> T;
+    // Read raw data from the stream.
+    fn raw_read(&mut self, data_address: usize, length: usize);
+    // Skip data in the stream.
+    fn skip(&mut self, length: usize);
+    // Overwrite the value right before the stream position.
+    fn update<T>(&mut self, value: &T);
+    // Overwrite raw data right before the stream position.
+    fn raw_update(&mut self, data_address: usize, length: usize);
+}
+
+pub trait WriteStream {
+    // Append a value at the stream end.
+    fn write<T>(&mut self, value: &T);
+    // Append raw data at the stream end.
+    fn raw_write(&mut self, data_address: usize, length: usize);
+}
+
 enum AccessMode {
+    /// Read at `scan`-position.
     Read,
+    /// Update at `scan`-position.
+    Update,
+    /// Write at `free`-position.
     Write,
 }
 
-impl StableMemoryReaderWriter {
-    pub fn open(start_address: u64) -> StableMemoryReaderWriter {
-        StableMemoryReaderWriter {
-            read_address: start_address,
-            write_address: start_address,
+impl StableMemorySpace {
+    pub fn open(start_address: u64) -> StableMemorySpace {
+        StableMemorySpace {
+            scan_address: start_address,
+            free_address: start_address,
             cache: [StableMemoryPage::new(), StableMemoryPage::new()],
             closed: false,
         }
@@ -123,20 +150,15 @@ impl StableMemoryReaderWriter {
             }
         }
         self.closed = true;
-        debug_assert!(self.read_address <= self.write_address);
+        debug_assert!(self.scan_address <= self.free_address);
     }
 
     pub fn written_length(&self) -> u64 {
-        self.write_address
-    }
-
-    pub fn reading_finished(&self) -> bool {
-        debug_assert!(self.read_address <= self.write_address);
-        self.read_address == self.write_address
+        self.free_address
     }
 
     fn can_evict(&self, page_index: u64) -> bool {
-        page_index != self.read_address / PAGE_SIZE && page_index != self.write_address / PAGE_SIZE
+        page_index != self.scan_address / PAGE_SIZE && page_index != self.free_address / PAGE_SIZE
     }
 
     fn lookup(&mut self, page_index: u64) -> &mut StableMemoryPage {
@@ -166,8 +188,8 @@ impl StableMemoryReaderWriter {
         assert!(!self.closed);
         let mut main_memory_address = main_memory_address;
         let mut stable_memory_address = match mode {
-            AccessMode::Read => self.read_address,
-            AccessMode::Write => self.write_address,
+            AccessMode::Read | AccessMode::Update => self.scan_address,
+            AccessMode::Write => self.free_address,
         };
         let access_end = stable_memory_address + length as u64;
         while stable_memory_address < access_end {
@@ -180,53 +202,76 @@ impl StableMemoryReaderWriter {
             let cache_address = page.cached_data() as usize + page_offset as usize;
             let (destination, source) = match mode {
                 AccessMode::Read => (main_memory_address, cache_address),
-                AccessMode::Write => (cache_address, main_memory_address),
+                AccessMode::Update | AccessMode::Write => (cache_address, main_memory_address),
             };
             unsafe {
                 memcpy_bytes(destination, source, Bytes(chunk_size as u32));
             }
             match mode {
                 AccessMode::Read => {}
-                AccessMode::Write => page.modified = true,
+                AccessMode::Update | AccessMode::Write => page.modified = true,
             }
             stable_memory_address += chunk_size;
             match mode {
-                AccessMode::Read => self.read_address = stable_memory_address,
-                AccessMode::Write => self.write_address = stable_memory_address,
+                AccessMode::Read | AccessMode::Update => self.scan_address = stable_memory_address,
+                AccessMode::Write => self.free_address = stable_memory_address,
             }
             main_memory_address += chunk_size as usize;
         }
     }
+}
 
-    pub fn read<T>(&mut self, value: &mut T) {
+impl ScanStream for StableMemorySpace {
+    fn scan_completed(&self) -> bool {
+        debug_assert!(self.scan_address <= self.free_address);
+        self.scan_address == self.free_address
+    }
+
+    fn read<T: Default>(&mut self) -> T {
         let length = size_of::<T>();
-        let value_address = value as *mut T as usize;
+        let mut value = T::default();
+        let value_address = &mut value as *mut T as usize;
         self.raw_read(value_address, length);
+        value
     }
 
-    pub fn raw_read(&mut self, value_address: usize, length: usize) {
-        assert!(self.read_address + length as u64 <= self.write_address);
-        self.chunked_access(AccessMode::Read, value_address, length);
+    fn raw_read(&mut self, data_address: usize, length: usize) {
+        assert!(self.scan_address + length as u64 <= self.free_address);
+        self.chunked_access(AccessMode::Read, data_address, length);
     }
 
-    pub fn write<T>(&mut self, value: &T) {
+    fn skip(&mut self, length: usize) {
+        assert!(!self.closed);
+        assert!(self.scan_address + length as u64 <= self.free_address);
+        self.scan_address += length as u64;
+    }
+
+    fn update<T>(&mut self, value: &T) {
+        let length = size_of::<T>();
+        let value_address = value as *const T as usize;
+        self.raw_update(value_address, length);
+    }
+
+    fn raw_update(&mut self, data_address: usize, length: usize) {
+        assert!(length as u64 <= self.scan_address);
+        self.scan_address -= length as u64;
+        self.chunked_access(AccessMode::Update, data_address, length);
+    }
+}
+
+impl WriteStream for StableMemorySpace {
+    fn write<T>(&mut self, value: &T) {
         let length = size_of::<T>();
         let value_address = value as *const T as usize;
         self.raw_write(value_address, length);
     }
 
-    pub fn raw_write(&mut self, value_address: usize, length: usize) {
-        self.chunked_access(AccessMode::Write, value_address, length);
-    }
-
-    pub fn skip(&mut self, length: usize) {
-        assert!(!self.closed);
-        assert!(self.read_address + length as u64 <= self.write_address);
-        self.read_address += length as u64;
+    fn raw_write(&mut self, data_address: usize, length: usize) {
+        self.chunked_access(AccessMode::Write, data_address, length);
     }
 }
 
-impl Drop for StableMemoryReaderWriter {
+impl Drop for StableMemorySpace {
     fn drop(&mut self) {
         assert!(self.closed);
     }

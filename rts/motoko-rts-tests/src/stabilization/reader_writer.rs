@@ -1,13 +1,17 @@
 use std::{array::from_fn, mem::size_of};
 
-use motoko_rts::stabilization::buffered_access::StableMemoryReaderWriter;
+use motoko_rts::stabilization::reader_writer::{ScanStream, StableMemorySpace, WriteStream};
 use oorandom::Rand32;
 
+use crate::stabilization::stable_memory::ic0_stable64_read;
+
 pub unsafe fn test() {
-    println!("  Testing buffered access ...");
+    println!("  Testing reader writer ...");
     test_empy_reader_writer();
     test_single_read_write();
+    test_single_update();
     test_multiple_read_write();
+    test_multiple_updates();
     test_skip_all();
     test_interleaved_read_write();
     test_interleaved_skip();
@@ -18,39 +22,59 @@ pub unsafe fn test() {
 
 fn test_empy_reader_writer() {
     println!("    Testing empty reader writer ...");
-    let mut reader_writer = StableMemoryReaderWriter::open(0);
-    assert!(reader_writer.reading_finished());
+    let mut reader_writer = StableMemorySpace::open(0);
+    assert!(reader_writer.scan_completed());
     reader_writer.close();
     assert_eq!(reader_writer.written_length(), 0);
 }
 
 fn test_single_read_write() {
     println!("    Testing single read write ...");
-    let mut reader_writer = StableMemoryReaderWriter::open(0);
+    let mut reader_writer = StableMemorySpace::open(0);
     const NUMBER: u64 = 1234567890;
     reader_writer.write(&NUMBER);
-    let mut result = 0u64;
-    reader_writer.read(&mut result);
+    let result = reader_writer.read::<u64>();
     assert_eq!(result, NUMBER);
-    assert!(reader_writer.reading_finished());
+    assert!(reader_writer.scan_completed());
     reader_writer.close();
     assert_eq!(reader_writer.written_length(), size_of::<u64>() as u64);
 }
 
+fn test_single_update() {
+    println!("    Testing single update ...");
+    let mut reader_writer = StableMemorySpace::open(0);
+    const NUMBER: u64 = 1234567890;
+    reader_writer.write(&NUMBER);
+    let result = reader_writer.read::<u64>();
+    assert_eq!(result, NUMBER);
+    assert!(reader_writer.scan_completed());
+    const NEW_NUMBER: u64 = 321321321;
+    reader_writer.update(&NEW_NUMBER);
+    assert!(reader_writer.scan_completed());
+    let mut test_value = 0u64;
+    reader_writer.close();
+    assert_eq!(reader_writer.written_length(), size_of::<u64>() as u64);
+    ic0_stable64_read(
+        &mut test_value as *mut u64 as u64,
+        0,
+        size_of::<u64>() as u64,
+    );
+    assert_eq!(test_value, NEW_NUMBER);
+}
+
 fn test_multiple_read_write() {
     println!("    Testing multiple read write ...");
-    let mut reader_writer = StableMemoryReaderWriter::open(0);
+    let mut reader_writer = StableMemorySpace::open(0);
     const AMOUNT: usize = 100_000;
     for number in 0..AMOUNT {
         reader_writer.write(&number);
     }
     for number in 0..AMOUNT {
-        assert!(!reader_writer.reading_finished());
-        let mut output = 0usize;
-        reader_writer.read(&mut output);
+        assert!(!reader_writer.scan_completed());
+        let output = reader_writer.read::<usize>();
         assert_eq!(output, number);
     }
-    assert!(reader_writer.reading_finished());
+    assert!(reader_writer.scan_completed());
     reader_writer.close();
     assert_eq!(
         reader_writer.written_length(),
@@ -58,33 +82,56 @@ fn test_multiple_read_write() {
     );
 }
 
+fn test_multiple_updates() {
+    println!("    Testing multiple read write ...");
+    let mut reader_writer = StableMemorySpace::open(0);
+    const AMOUNT: usize = 100_000;
+    const TOTAL_LENGTH: u64 = (AMOUNT * size_of::<usize>()) as u64;
+    for number in 0..AMOUNT {
+        reader_writer.write(&number);
+    }
+    for number in 0..AMOUNT {
+        assert!(!reader_writer.scan_completed());
+        let output = reader_writer.read::<usize>();
+        assert_eq!(output, number);
+        reader_writer.update(&(number * 2));
+    }
+    assert!(reader_writer.scan_completed());
+    reader_writer.close();
+    assert_eq!(reader_writer.written_length(), TOTAL_LENGTH);
+    let mut test_data = [0usize; AMOUNT];
+    ic0_stable64_read(&mut test_data[0] as *mut usize as u64, 0, TOTAL_LENGTH);
+    for index in 0..AMOUNT {
+        assert_eq!(test_data[index], index * 2)
+    }
+}
+
 fn test_skip_all() {
     println!("    Testing skip all ...");
-    let mut reader_writer = StableMemoryReaderWriter::open(0);
+    let mut reader_writer = StableMemorySpace::open(0);
     const AMOUNT: usize = 100_000;
     let total_size = AMOUNT * size_of::<usize>();
     for number in 0..AMOUNT {
         reader_writer.write(&number);
     }
-    assert!(!reader_writer.reading_finished());
+    assert!(!reader_writer.scan_completed());
     reader_writer.skip(total_size);
-    assert!(reader_writer.reading_finished());
+    assert!(reader_writer.scan_completed());
     reader_writer.close();
     assert_eq!(reader_writer.written_length(), total_size as u64);
 }
 
 fn test_interleaved_read_write() {
     println!("    Testing interleaved read write ...");
-    let mut reader_writer = StableMemoryReaderWriter::open(0);
+    let mut reader_writer = StableMemorySpace::open(0);
     const AMOUNT: usize = 100_000;
     for counter in 0..AMOUNT {
         let input = (counter, counter * 2, counter * 3);
         reader_writer.write(&input);
-        assert!(!reader_writer.reading_finished());
-        let mut output = (0usize, 0usize, 0usize);
-        reader_writer.read(&mut output);
+        assert!(!reader_writer.scan_completed());
+        let output = reader_writer.read::<(usize, usize, usize)>();
         assert_eq!(output, input);
-        assert!(reader_writer.reading_finished());
+        assert!(reader_writer.scan_completed());
     }
     reader_writer.close();
     assert_eq!(
@@ -95,19 +142,18 @@ fn test_interleaved_read_write() {
 
 fn test_interleaved_skip() {
     println!("    Testing interleaved read skip ...");
-    let mut reader_writer = StableMemoryReaderWriter::open(0);
+    let mut reader_writer = StableMemorySpace::open(0);
     let value_size = size_of::<(usize, usize, usize)>();
     const AMOUNT: usize = 100_000;
     for counter in 0..AMOUNT {
         reader_writer.write(&(counter, counter * 2, counter * 3));
-        assert!(!reader_writer.reading_finished());
+        assert!(!reader_writer.scan_completed());
     }
     for counter in 0..AMOUNT {
         if counter % 2 == 0 {
             reader_writer.skip(value_size)
         } else {
-            let mut output = (0usize, 0usize, 0usize);
-            reader_writer.read(&mut output);
+            let output = reader_writer.read::<(usize, usize, usize)>();
             assert_eq!(output, (counter, counter * 2, counter * 3));
         }
     }
@@ -119,13 +165,13 @@ fn test_bulk_read_write() {
     println!("    Testing bulk read write ...");
     const LENGTH: usize = 99_999;
     let input: [u8; LENGTH] = from_fn(|index| index as u8);
-    let mut reader_writer = StableMemoryReaderWriter::open(0);
+    let mut reader_writer = StableMemorySpace::open(0);
     reader_writer.write(&input);
-    assert!(!reader_writer.reading_finished());
+    assert!(!reader_writer.scan_completed());
     let mut output = [0u8; LENGTH];
-    reader_writer.read(&mut output);
+    reader_writer.raw_read(&mut output as *mut u8 as usize, LENGTH);
     assert_eq!(input, output);
-    assert!(reader_writer.reading_finished());
+    assert!(reader_writer.scan_completed());
     reader_writer.close();
     assert_eq!(reader_writer.written_length(), LENGTH as u64);
 }
@@ -133,24 +179,24 @@ fn test_bulk_read_write() {
 fn test_raw_read_write() {
     println!("    Testing raw read write ...");
     const LENGTH: usize = 99;
-    let mut reader_writer = StableMemoryReaderWriter::open(0);
+    let mut reader_writer = StableMemorySpace::open(0);
     const AMOUNT: usize = 100;
     for counter in 0..AMOUNT {
         let input: [u8; LENGTH] = from_fn(|index| (counter + index) as u8);
         reader_writer.raw_write(&input[0] as *const u8 as usize, LENGTH);
-        assert!(!reader_writer.reading_finished());
+        assert!(!reader_writer.scan_completed());
     }
     for counter in 0..AMOUNT {
         let mut output = [0u8; LENGTH];
         reader_writer.raw_read(&mut output[0] as *mut u8 as usize, LENGTH);
         assert_eq!(from_fn(|index| (counter + index) as u8), output);
     }
-    assert!(reader_writer.reading_finished());
+    assert!(reader_writer.scan_completed());
     reader_writer.close();
     assert_eq!(reader_writer.written_length(), (AMOUNT * LENGTH) as u64);
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Default)]
 struct RandomRecord {
     field_0: i8,
     field_1: i16,
@@ -216,7 +262,7 @@ impl RandomValue {
         }
     }
 
-    fn write(&self, reader_writer: &mut StableMemoryReaderWriter) {
+    fn write(&self, reader_writer: &mut StableMemorySpace) {
         match self {
             RandomValue::SingleByte(value) => reader_writer.write(value),
             RandomValue::SimpleNumber(value) => reader_writer.write(value),
@@ -247,15 +293,31 @@ impl RandomValue {
         }
     }
 
-    fn read(&mut self, reader_writer: &mut StableMemoryReaderWriter) {
+    fn read(&mut self, reader_writer: &mut StableMemorySpace) {
         match self {
-            RandomValue::SingleByte(value) => reader_writer.read(value),
-            RandomValue::SimpleNumber(value) => reader_writer.read(value),
-            RandomValue::LargeNumber(value) => reader_writer.read(value),
-            RandomValue::TupleValue(value) => reader_writer.read(value),
-            RandomValue::RecordValue(value) => reader_writer.read(value),
-            RandomValue::ArrayValue(value) => reader_writer.read(value),
-            RandomValue::BulkValue(value) => reader_writer.read(value),
+            RandomValue::SingleByte(value) => *value = reader_writer.read(),
+            RandomValue::SimpleNumber(value) => *value = reader_writer.read(),
+            RandomValue::LargeNumber(value) => *value = reader_writer.read(),
+            RandomValue::TupleValue(value) => *value = reader_writer.read(),
+            RandomValue::RecordValue(value) => *value = reader_writer.read(),
+            RandomValue::ArrayValue(value) => {
+                reader_writer.raw_read(value as *mut i32 as usize, size_of::<RandomArray>())
+            }
+            RandomValue::BulkValue(value) => {
+                reader_writer.raw_read(value as *mut u8 as usize, size_of::<RandomBulkData>())
+            }
+        }
+    }
+
+    fn update(&self, reader_writer: &mut StableMemorySpace) {
+        match self {
+            RandomValue::SingleByte(value) => reader_writer.update(value),
+            RandomValue::SimpleNumber(value) => reader_writer.update(value),
+            RandomValue::LargeNumber(value) => reader_writer.update(value),
+            RandomValue::TupleValue(value) => reader_writer.update(value),
+            RandomValue::RecordValue(value) => reader_writer.update(value),
+            RandomValue::ArrayValue(value) => reader_writer.update(value),
+            RandomValue::BulkValue(value) => reader_writer.update(value),
         }
     }
 }
@@ -265,7 +327,7 @@ fn test_randomized_read_write() {
     const RANDOM_SEED: u64 = 4711;
     let mut random = Rand32::new(RANDOM_SEED);
     let mut series = vec![];
-    let mut reader_writer = StableMemoryReaderWriter::open(0);
+    let mut reader_writer = StableMemorySpace::open(0);
     let mut total_size = 0;
     const AMOUNT: usize = 1000;
     for _ in 0..AMOUNT {
@@ -273,21 +335,34 @@ fn test_randomized_read_write() {
         input.write(&mut reader_writer);
         total_size += input.size();
         series.push(input);
-        assert!(!reader_writer.reading_finished());
+        assert!(!reader_writer.scan_completed());
         if random.rand_u32() % 2 == 0 {
             let expected = series.remove(0);
             let mut output = expected.empty_clone();
             output.read(&mut reader_writer);
             assert_eq!(output, expected);
+            let empty = output.empty_clone();
+            empty.update(&mut reader_writer);
         }
     }
-    while !reader_writer.reading_finished() {
+    while !reader_writer.scan_completed() {
         let expected = series.remove(0);
         let mut output = expected.empty_clone();
         output.read(&mut reader_writer);
         assert_eq!(output, expected);
+        let empty = output.empty_clone();
+        empty.update(&mut reader_writer);
     }
-    assert!(reader_writer.reading_finished());
+    assert!(reader_writer.scan_completed());
     reader_writer.close();
     assert_eq!(reader_writer.written_length(), total_size as u64);
+    check_zeroed_stable_memory(total_size);
+}
+
+fn check_zeroed_stable_memory(size: usize) {
+    for index in 0..size {
+        let mut data = 0u8;
+        ic0_stable64_read(&mut data as *mut u8 as u64, index as u64, 1);
+        assert_eq!(data, 0);
+    }
 }
