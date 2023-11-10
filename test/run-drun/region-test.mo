@@ -3,7 +3,9 @@ import Region "stable-region/Region";
 
 let r = Region.new();
 let 0 = Region.size(r);
-let 0 = Region.grow(r, 4);
+let 16 = Region.id(r);
+let 0 = Region.grow(r, 64);
+assert (64 == Region.size(r));
 
 do {
    Prim.debugPrint("Nat8");
@@ -201,7 +203,7 @@ do {
    var i : Nat64 = 1;
    while(i < max) {
      let b = conv(i);
-     store(r, i, b);
+     store(r, 0, b);
      assert (b == load(r, 0, Prim.nat64ToNat(i)));
      i := i * 2;
    };
