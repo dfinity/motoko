@@ -16,10 +16,12 @@
 //!  
 //! See `GraphCopyStabilization.md` for the stable layout specification and the employed algorithm.
 
+use core::fmt::Debug;
+
 use crate::{
     constants::WORD_SIZE,
     stable_mem::ic0_stable64_read,
-    types::{FwdPtr, Tag, Value, TAG_ARRAY, TAG_FWD_PTR, TAG_MUTBOX},
+    types::{is_skewed, skew, unskew, FwdPtr, Tag, Value, TAG_ARRAY, TAG_FWD_PTR, TAG_MUTBOX},
 };
 
 use self::reader_writer::{ScanStream, StableMemorySpace, WriteStream};
@@ -35,25 +37,30 @@ struct StableMemoryAddress(usize);
 /// and the to-space flips when switching between serialization and deserialization.
 /// `S`: Source address type (from-space, main memory).
 /// `T`: Target address type (to-space, stable memory).
+/// `P`: Pointer encoding type (e.g. `u32` or `u64`).
 /// During serialization:
 /// * Main memory = main memory layout, S = Value.
 /// * Stable memory = stable memory layout, T = StableMemoryAddress.
 /// During derialization:
 /// * Main memory = stable memory layout, S = StableMemoryAddress.
 /// * Stable memory = main memory layout, T = Value.
-trait GraphCopy<S: Copy, T: Copy> {
+trait GraphCopy<S: Copy, T: Copy, P: Copy + Default> {
+    fn to_space(&mut self) -> &mut StableMemorySpace;
+
     /// Run the entire graph copy algorithm: Copy the object graph reachable from the `root` pointer.
+    /// Return the final to-space size.
     fn run(&mut self, root: S) -> u64 {
         self.evacuate(root);
-        while !self.completed() {
-            self.scan();
+        while !self.to_space().scan_completed() {
+            self.scan(|context| context.patch_field());
         }
-        self.complete()
+        self.to_space().close();
+        self.to_space().written_length()
     }
 
     /// Lazy evacuation of a single object.
     /// Triggered for each pointer that is patched in the `scan()` function.
-    /// Determines whether the object has already been copied before, and if not, 
+    /// Determines whether the object has already been copied before, and if not,
     /// copies it to the target space.
     /// Returns the new target address of the object.
     fn evacuate(&mut self, object: S) -> T {
@@ -67,10 +74,6 @@ trait GraphCopy<S: Copy, T: Copy> {
         }
     }
 
-    /// Determines whether the copying is finished, i.e.
-    /// the `scan` pointer has reached the `free` pointer.
-    fn completed(&self) -> bool;
-
     /// Check if the object has been forwarded.
     /// Returns `None` if not forwarded, or otherwise, the new target address.
     fn get_forward_address(&self, object: S) -> Option<T>;
@@ -83,13 +86,26 @@ trait GraphCopy<S: Copy, T: Copy> {
     /// Note: The pointer values in the field are retained as source addresses.
     fn copy(&mut self, object: S) -> T;
 
-    /// Read an object at the `scan` position in the to-space, visit all its pointers in
-    /// its fields, and update these pointers to the corresponding target address by
-    /// calling `evacuate()`.
-    fn scan(&mut self);
+    /// Read an object at the `scan` position in the to-space, process all its potential
+    /// pointer fields by invoking `visit_field` for each of them.
+    fn scan<F: Fn(&mut Self)>(&mut self, visit_field: F);
 
-    /// Complete the copying and return the final to-space size.
-    fn complete(&mut self) -> u64;
+    fn patch_field(&mut self) {
+        let old_field = self.to_space().read();
+        if self.is_pointer(old_field) {
+            let object = self.decode_pointer(old_field);
+            let target = self.evacuate(object);
+            let new_field = self.encode_pointer(target);
+            self.to_space().update(&new_field);
+        }
+    }
+
+    /// Determine whether field value denotes a pointer.
+    fn is_pointer(&self, field_value: P) -> bool;
+    /// Decode a source pointer from field value.
+    fn decode_pointer(&self, field_value: P) -> S;
+    /// Encode a target address as a field value.
+    fn encode_pointer(&self, target: T) -> P;
 }
 
 pub struct Serialization {
@@ -101,21 +117,11 @@ impl Serialization {
         let to_space = StableMemorySpace::open(stable_start);
         Serialization { to_space }.run(root)
     }
-
-    fn update_pointer(&mut self) {
-        let raw_value = self.to_space.read::<u32>();
-        let value = Value::from_raw(raw_value);
-        if value.is_ptr() {
-            let target_address = self.evacuate(value);
-            let new_value = target_address.0 as u32;
-            self.to_space.update(&new_value);
-        }
-    }
 }
 
-impl GraphCopy<Value, StableMemoryAddress> for Serialization {
-    fn completed(&self) -> bool {
-        self.to_space.scan_completed()
+impl GraphCopy<Value, StableMemoryAddress, u32> for Serialization {
+    fn to_space(&mut self) -> &mut StableMemorySpace {
+        &mut self.to_space
     }
 
     // TODO: Redesign `FwdPtr` to better fit the graph copying, e.g. use raw pointer than `Value` field.
@@ -150,9 +156,11 @@ impl GraphCopy<Value, StableMemoryAddress> for Serialization {
                 TAG_ARRAY => {
                     let array = object.as_array();
                     self.to_space.write(&TAG_ARRAY);
-                    let array_length = (*array).len * WORD_SIZE;
+                    let array_length = (*array).len;
+                    self.to_space.write(&array_length);
+                    let payload_length = (array_length * WORD_SIZE) as usize;
                     self.to_space
-                        .raw_write(array.add(2) as usize, array_length as usize);
+                        .raw_write(array.payload_addr() as usize, payload_length);
                 }
                 TAG_MUTBOX => {
                     let mutbox = object.as_mutbox();
@@ -165,26 +173,34 @@ impl GraphCopy<Value, StableMemoryAddress> for Serialization {
         }
     }
 
-    fn scan(&mut self) {
+    fn scan<F: Fn(&mut Self)>(&mut self, visit_pointer: F) {
         let tag = self.to_space.read::<Tag>();
         match tag {
             TAG_ARRAY => {
                 let array_length = self.to_space.read::<u32>();
                 // TOOD: Optimize in chunked visiting
                 for _ in 0..array_length {
-                    self.update_pointer();
+                    visit_pointer(self);
                 }
             }
             TAG_MUTBOX => {
-                self.update_pointer();
+                visit_pointer(self);
             }
             other_tag => unimplemented!("tag {other_tag}"),
         }
     }
 
-    fn complete(&mut self) -> u64 {
-        self.to_space.close();
-        self.to_space.written_length()
+    fn is_pointer(&self, field_value: u32) -> bool {
+        is_skewed(field_value)
+    }
+
+    fn decode_pointer(&self, field_value: u32) -> Value {
+        Value::from_raw(field_value)
+    }
+
+    fn encode_pointer(&self, target: StableMemoryAddress) -> u32 {
+        // Again skew the target pointer, such that deserialization can also identify it as pointer.
+        skew(target.0) as u32
     }
 }
 
@@ -213,9 +229,9 @@ impl Deserialization {
     }
 }
 
-impl GraphCopy<StableMemoryAddress, Value> for Deserialization {
-    fn completed(&self) -> bool {
-        self.to_space.scan_completed()
+impl GraphCopy<StableMemoryAddress, Value, u32> for Deserialization {
+    fn to_space(&mut self) -> &mut StableMemorySpace {
+        &mut self.to_space
     }
 
     fn get_forward_address(&self, object: StableMemoryAddress) -> Option<Value> {
@@ -245,13 +261,20 @@ impl GraphCopy<StableMemoryAddress, Value> for Deserialization {
         todo!()
     }
 
-    fn scan(&mut self) {
+    fn scan<F: Fn(&mut Self)>(&mut self, _visit_field: F) {
         todo!()
     }
 
-    fn complete(&mut self) -> u64 {
-        self.to_space.close();
-        self.to_space.written_length()
+    fn is_pointer(&self, field_value: u32) -> bool {
+        is_skewed(field_value)
+    }
+
+    fn decode_pointer(&self, field_value: u32) -> StableMemoryAddress {
+        StableMemoryAddress(unskew(field_value as usize))
+    }
+
+    fn encode_pointer(&self, target: Value) -> u32 {
+        target.get_raw()
     }
 }
 

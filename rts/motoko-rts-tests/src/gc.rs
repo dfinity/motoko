@@ -117,18 +117,12 @@ impl TestHeap {
 /// Test all GC implementations with the given heap
 fn test_gcs(test_heap: &TestHeap) {
     for gc in &GC_IMPLS {
-        test_gc(
-            *gc,
-            test_heap,
-        );
+        test_gc(*gc, test_heap);
     }
     reset_gc();
 }
 
-fn test_gc(
-    gc: GC,
-    test_heap: &TestHeap,
-) {
+fn test_gc(gc: GC, test_heap: &TestHeap) {
     let mut heap = test_heap.build(gc);
     let refs = &test_heap.heap;
     let roots = &test_heap.roots;

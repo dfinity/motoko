@@ -1,7 +1,7 @@
 use core::arch::wasm32;
 
 use super::{get_aligned_heap_base, IcMemory, Memory};
-use crate::{types::*, constants::WORD_SIZE};
+use crate::{constants::WORD_SIZE, types::*};
 
 /// Amount of garbage collected so far.
 pub(crate) static mut RECLAIMED: Bytes<u64> = Bytes(0);
@@ -71,6 +71,6 @@ impl Memory for IcMemory {
 
 pub(super) unsafe fn resize_heap(new_size: usize) {
     assert_eq!(new_size % WORD_SIZE as usize, 0);
-    let new_hp = get_aligned_heap_base() + new_size; 
+    let new_hp = get_aligned_heap_base() + new_size;
     set_hp_unskewed(new_hp);
 }

@@ -1,7 +1,11 @@
 mod reader_writer;
 mod stable_memory;
 
-use crate::gc::{random::generate, heap::MotokoHeap, utils::{GC_IMPLS, GC}};
+use crate::gc::{
+    heap::MotokoHeap,
+    random::generate,
+    utils::{GC, GC_IMPLS},
+};
 use motoko_rts::{stabilization::Serialization, types::Value};
 
 pub unsafe fn test() {
