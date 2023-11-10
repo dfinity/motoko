@@ -204,7 +204,9 @@ do {
      assert (b == load(0, Prim.nat64ToNat(i)));
      i := i * 2;
    };
-}
+};
+
+Prim.trap("Done (rolling back changes with trap)");
 
 //SKIP run-low
 //SKIP run
