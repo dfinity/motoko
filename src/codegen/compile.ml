@@ -5134,6 +5134,7 @@ module StableMem = struct
      emulating via (for now) 32-bit memory 1
   *)
   let stable64_grow env =
+    E.require_stable_memory env;
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
        IC.system_call env "stable64_grow"
@@ -5157,6 +5158,7 @@ module StableMem = struct
             end)
 
   let stable64_size env =
+    E.require_stable_memory env;
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
        IC.system_call env "stable64_size"
@@ -5167,6 +5169,7 @@ module StableMem = struct
           G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)))
 
   let stable64_read env =
+    E.require_stable_memory env;
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
        IC.system_call env "stable64_read"
@@ -5180,6 +5183,7 @@ module StableMem = struct
           G.i StableRead)
 
   let stable64_write env =
+    E.require_stable_memory env;
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
        IC.system_call env "stable64_write"
