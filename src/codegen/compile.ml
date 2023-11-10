@@ -3982,6 +3982,7 @@ module Region = struct
   (* field accessors *)
   (* NB: all these opns must resolve forwarding pointers here or in RTS *)
   let id env =
+    E.require_stable_memory env;
     E.call_import env "rts" "region_id"
 
   let page_count env =
@@ -3991,31 +3992,58 @@ module Region = struct
     E.call_import env "rts" "region_vec_pages"
 
   let new_ env =
+    E.require_stable_memory env;
     E.call_import env "rts" "region_new"
 
   let size env =
+    E.require_stable_memory env;
     E.call_import env "rts" "region_size"
 
   let grow env =
+    E.require_stable_memory env;
     E.call_import env "rts" "region_grow"
 
-  let load_blob env = E.call_import env "rts" "region_load_blob"
-  let store_blob env = E.call_import env "rts" "region_store_blob"
+  let load_blob env =
+    E.require_stable_memory env;
+    E.call_import env "rts" "region_load_blob"
+  let store_blob env =
+    E.require_stable_memory env;
+    E.call_import env "rts" "region_store_blob"
 
-  let load_word8 env = E.call_import env "rts" "region_load_word8"
-  let store_word8 env = E.call_import env "rts" "region_store_word8"
+  let load_word8 env =
+    E.require_stable_memory env;
+    E.call_import env "rts" "region_load_word8"
+  let store_word8 env =
+    E.require_stable_memory env;
+    E.call_import env "rts" "region_store_word8"
 
-  let load_word16 env = E.call_import env "rts" "region_load_word16"
-  let store_word16 env = E.call_import env "rts" "region_store_word16"
+  let load_word16 env =
+    E.require_stable_memory env;
+    E.call_import env "rts" "region_load_word16"
+  let store_word16 env =
+    E.require_stable_memory env;
+    E.call_import env "rts" "region_store_word16"
 
-  let load_word32 env = E.call_import env "rts" "region_load_word32"
-  let store_word32 env = E.call_import env "rts" "region_store_word32"
+  let load_word32 env =
+    E.require_stable_memory env;
+    E.call_import env "rts" "region_load_word32"
+  let store_word32 env =
+    E.require_stable_memory env;
+    E.call_import env "rts" "region_store_word32"
 
-  let load_word64 env = E.call_import env "rts" "region_load_word64"
-  let store_word64 env = E.call_import env "rts" "region_store_word64"
+  let load_word64 env =
+    E.require_stable_memory env;
+    E.call_import env "rts" "region_load_word64"
+  let store_word64 env =
+    E.require_stable_memory env;
+    E.call_import env "rts" "region_store_word64"
 
-  let load_float64 env = E.call_import env "rts" "region_load_float64"
-  let store_float64 env = E.call_import env "rts" "region_store_float64"
+  let load_float64 env =
+    E.require_stable_memory env;
+    E.call_import env "rts" "region_load_float64"
+  let store_float64 env =
+    E.require_stable_memory env;
+    E.call_import env "rts" "region_store_float64"
 
 end
 
