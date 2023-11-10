@@ -19,10 +19,10 @@
 use crate::{
     constants::WORD_SIZE,
     stable_mem::ic0_stable64_read,
-    types::{FwdPtr, Tag, Value, TAG_ARRAY, TAG_FWD_PTR},
+    types::{FwdPtr, Tag, Value, TAG_ARRAY, TAG_FWD_PTR, TAG_MUTBOX},
 };
 
-use self::reader_writer::{StableMemorySpace, ScanStream, WriteStream};
+use self::reader_writer::{ScanStream, StableMemorySpace, WriteStream};
 
 pub mod reader_writer;
 
@@ -46,14 +46,15 @@ trait GraphCopy<S: Copy, T: Copy> {
     fn run(&mut self, root: S) -> u64 {
         self.evacuate(root);
         while !self.completed() {
-            self.scan(|context, object| context.evacuate(object));
+            self.scan();
         }
         self.complete()
     }
 
     /// Lazy evacuation of a single object.
-    /// Determines whether the object has already been copied
-    /// before, and if not, copies it to the target space.
+    /// Triggered for each pointer that is patched in the `scan()` function.
+    /// Determines whether the object has already been copied before, and if not, 
+    /// copies it to the target space.
     /// Returns the new target address of the object.
     fn evacuate(&mut self, object: S) -> T {
         match self.get_forward_address(object) {
@@ -82,10 +83,10 @@ trait GraphCopy<S: Copy, T: Copy> {
     /// Note: The pointer values in the field are retained as source addresses.
     fn copy(&mut self, object: S) -> T;
 
-    /// Read an object at the `scan`` line in the to-space, visit all its pointers in
+    /// Read an object at the `scan` position in the to-space, visit all its pointers in
     /// its fields, and update these pointers to the corresponding target address by
-    /// calling the `translate_pointer` map function.
-    fn scan<F: Fn(&mut Self, S) -> T>(&mut self, translate_pointer: F);
+    /// calling `evacuate()`.
+    fn scan(&mut self);
 
     /// Complete the copying and return the final to-space size.
     fn complete(&mut self) -> u64;
@@ -101,15 +102,12 @@ impl Serialization {
         Serialization { to_space }.run(root)
     }
 
-    fn patch_pointer<F: Fn(&mut Self, Value) -> StableMemoryAddress>(
-        &mut self,
-        translate_pointer: &F,
-    ) {
+    fn update_pointer(&mut self) {
         let raw_value = self.to_space.read::<u32>();
-        let value = Value::from_ptr(raw_value as usize);
+        let value = Value::from_raw(raw_value);
         if value.is_ptr() {
-            let stable_address = translate_pointer(self, value);
-            let new_value = stable_address.0 as u32;
+            let target_address = self.evacuate(value);
+            let new_value = target_address.0 as u32;
             self.to_space.update(&new_value);
         }
     }
@@ -156,21 +154,29 @@ impl GraphCopy<Value, StableMemoryAddress> for Serialization {
                     self.to_space
                         .raw_write(array.add(2) as usize, array_length as usize);
                 }
+                TAG_MUTBOX => {
+                    let mutbox = object.as_mutbox();
+                    self.to_space.write(&TAG_MUTBOX);
+                    self.to_space.write(&(*mutbox).field);
+                }
                 other_tag => unimplemented!("tag {other_tag}"),
             }
             StableMemoryAddress(address as usize)
         }
     }
 
-    fn scan<F: Fn(&mut Self, Value) -> StableMemoryAddress>(&mut self, translate_pointer: F) {
+    fn scan(&mut self) {
         let tag = self.to_space.read::<Tag>();
         match tag {
             TAG_ARRAY => {
                 let array_length = self.to_space.read::<u32>();
                 // TOOD: Optimize in chunked visiting
                 for _ in 0..array_length {
-                    self.patch_pointer(&translate_pointer);
+                    self.update_pointer();
                 }
+            }
+            TAG_MUTBOX => {
+                self.update_pointer();
             }
             other_tag => unimplemented!("tag {other_tag}"),
         }
@@ -239,7 +245,7 @@ impl GraphCopy<StableMemoryAddress, Value> for Deserialization {
         todo!()
     }
 
-    fn scan<F: Fn(&mut Self, StableMemoryAddress) -> Value>(&mut self, _translate_pointer: F) {
+    fn scan(&mut self) {
         todo!()
     }
 
