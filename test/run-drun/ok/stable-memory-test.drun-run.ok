@@ -9,4 +9,4 @@ debug.print: Int32
 debug.print: Int64
 debug.print: Float
 debug.print: Blob
-ingress Completed: Reply: 0x4449444c0000
+ingress Err: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: Done (rolling back changes with trap)

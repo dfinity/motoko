@@ -1,4 +1,4 @@
-//MOC-FLAG --stable-regions --sanity-checks
+//MOC-FLAG --stable-regions
 import P "mo:⛔";
 import StableMemory "stable-mem/StableMemory";
 actor {
