@@ -3982,7 +3982,6 @@ module Region = struct
   (* field accessors *)
   (* NB: all these opns must resolve forwarding pointers here or in RTS *)
   let id env =
-    E.require_stable_memory env;
     E.call_import env "rts" "region_id"
 
   let page_count env =
@@ -5135,7 +5134,6 @@ module StableMem = struct
      emulating via (for now) 32-bit memory 1
   *)
   let stable64_grow env =
-    E.require_stable_memory env;
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
        IC.system_call env "stable64_grow"
@@ -5159,7 +5157,6 @@ module StableMem = struct
             end)
 
   let stable64_size env =
-    E.require_stable_memory env;
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
        IC.system_call env "stable64_size"
@@ -5170,7 +5167,6 @@ module StableMem = struct
           G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)))
 
   let stable64_read env =
-    E.require_stable_memory env;
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
        IC.system_call env "stable64_read"
@@ -5184,7 +5180,6 @@ module StableMem = struct
           G.i StableRead)
 
   let stable64_write env =
-    E.require_stable_memory env;
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
        IC.system_call env "stable64_write"
@@ -5512,6 +5507,7 @@ module StableMemoryInterface = struct
 
   (* Prims *)
   let size env =
+    E.require_stable_memory env;
     Func.share_code0 Func.Always env "__stablememory_size" [I64Type]
       (fun env ->
         if_regions env
@@ -5521,6 +5517,7 @@ module StableMemoryInterface = struct
           StableMem.get_mem_size)
 
   let grow env =
+    E.require_stable_memory env;
     Func.share_code1 Func.Always env "__stablememory_grow" ("pages", I64Type) [I64Type]
       (fun env get_pages ->
         if_regions env
@@ -5551,6 +5548,7 @@ module StableMemoryInterface = struct
             get_res))
 
   let load_blob env =
+    E.require_stable_memory env;
     Func.share_code2 Func.Never env "__stablememory_load_blob"
       (("offset", I64Type), ("len", I32Type)) [I32Type]
       (fun env offset len ->
@@ -5560,6 +5558,7 @@ module StableMemoryInterface = struct
           Region.load_blob
           StableMem.load_blob)
   let store_blob env =
+    E.require_stable_memory env;
     Func.share_code2 Func.Never env "__stablememory_store_blob"
       (("offset", I64Type), ("blob", I32Type)) []
       (fun env offset blob ->
@@ -5570,6 +5569,7 @@ module StableMemoryInterface = struct
           StableMem.store_blob)
 
   let load_word8 env =
+    E.require_stable_memory env;
     Func.share_code1 Func.Never env "__stablememory_load_word8"
       ("offset", I64Type) [I32Type]
       (fun env offset ->
@@ -5579,6 +5579,7 @@ module StableMemoryInterface = struct
           Region.load_word8
           StableMem.load_word8)
   let store_word8 env =
+    E.require_stable_memory env;
     Func.share_code2 Func.Never env "__stablememory_store_word8"
       (("offset", I64Type), ("value", I32Type)) []
       (fun env offset value ->
@@ -5589,6 +5590,7 @@ module StableMemoryInterface = struct
           StableMem.store_word8)
 
   let load_word16 env =
+    E.require_stable_memory env;
     Func.share_code1 Func.Never env "__stablememory_load_word16"
       ("offset", I64Type) [I32Type]
       (fun env offset->
@@ -5598,6 +5600,7 @@ module StableMemoryInterface = struct
           Region.load_word16
           StableMem.load_word16)
   let store_word16 env =
+    E.require_stable_memory env;
     Func.share_code2 Func.Never env "__stablememory_store_word16"
       (("offset", I64Type), ("value", I32Type)) []
       (fun env offset value ->
@@ -5608,6 +5611,7 @@ module StableMemoryInterface = struct
           StableMem.store_word16)
 
   let load_word32 env =
+    E.require_stable_memory env;
     Func.share_code1 Func.Never env "__stablememory_load_word32"
       ("offset", I64Type) [I32Type]
       (fun env offset ->
@@ -5617,6 +5621,7 @@ module StableMemoryInterface = struct
           Region.load_word32
           StableMem.load_word32)
   let store_word32 env =
+    E.require_stable_memory env;
     Func.share_code2 Func.Never env "__stablememory_store_word32"
       (("offset", I64Type), ("value", I32Type)) []
       (fun env offset value ->
@@ -5627,6 +5632,7 @@ module StableMemoryInterface = struct
           StableMem.store_word32)
 
   let load_word64 env =
+    E.require_stable_memory env;
     Func.share_code1 Func.Never env "__stablememory_load_word64" ("offset", I64Type) [I64Type]
       (fun env offset ->
         if_regions env
@@ -5635,6 +5641,7 @@ module StableMemoryInterface = struct
           Region.load_word64
           StableMem.load_word64)
   let store_word64 env =
+    E.require_stable_memory env;
     Func.share_code2 Func.Never env "__stablememory_store_word64"
       (("offset", I64Type), ("value", I64Type)) []
       (fun env offset value ->
@@ -5645,6 +5652,7 @@ module StableMemoryInterface = struct
           StableMem.store_word64)
 
   let load_float64 env =
+    E.require_stable_memory env;
     Func.share_code1 Func.Never env "__stablememory_load_float64"
       ("offset", I64Type) [F64Type]
       (fun env offset ->
