@@ -23,6 +23,7 @@
     *  The actor literal, `actor <exp>`, will trap if the binary representation of
     of the textually encoded principal `<exp>` contains strictly more than 29 bytes.
 
+  * bugfix: fully implement `Region.loadXXX/storeXXX` for `Int8`, `Int16` and `Float`.
 
 ## 0.10.1 (2023-10-16)
 
