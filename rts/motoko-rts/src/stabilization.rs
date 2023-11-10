@@ -18,10 +18,10 @@
 
 use crate::{
     stable_mem::ic0_stable64_read,
-    types::{FwdPtr, Tag, Value, TAG_FWD_PTR},
+    types::{FwdPtr, Tag, Value, TAG_FWD_PTR, TAG_ARRAY}, constants::WORD_SIZE,
 };
 
-use self::buffered_access::StableMemoryReaderWriter;
+use self::buffered_access::StableMemorySpace;
 
 pub mod buffered_access;
 
@@ -90,13 +90,13 @@ trait GraphCopy<S: Copy, T: Copy> {
     fn complete(&mut self) -> u64;
 }
 
-struct Serialization {
-    to_space: StableMemoryReaderWriter,
+pub struct Serialization {
+    to_space: StableMemorySpace,
 }
 
 impl Serialization {
-    fn run(root: Value, stable_start: u64) -> u64 {
-        let to_space = StableMemoryReaderWriter::open(stable_start);
+    pub fn run(root: Value, stable_start: u64) -> u64 {
+        let to_space = StableMemorySpace::open(stable_start);
         Serialization { to_space }.run(root)
     }
 }
@@ -131,28 +131,61 @@ impl GraphCopy<Value, StableMemoryAddress> for Serialization {
         }
     }
 
-    fn copy(&mut self, _object: Value) -> StableMemoryAddress {
-        todo!()
+    fn copy(&mut self, object: Value) -> StableMemoryAddress {
+        unsafe {
+            let address = self.to_space.written_length();
+            match object.tag() {
+                TAG_ARRAY => {
+                    let array = object.as_array();
+                    self.to_space.append(&TAG_ARRAY);
+                    let array_length = (*array).len * WORD_SIZE;
+                    self.to_space.raw_append(array.add(2) as usize, array_length as usize);
+                },
+                other_tag => unimplemented!("tag {other_tag}")
+            }
+            StableMemoryAddress(address as usize)
+        }
     }
 
-    fn scan<F: Fn(&mut Self, Value) -> StableMemoryAddress>(&mut self, _update_pointer: F) {
-        todo!()
+    fn scan<F: Fn(&mut Self, Value) -> StableMemoryAddress>(&mut self, update_pointer: F) {
+        unsafe {
+            let mut tag: Tag = 0u32;
+            self.to_space.read(&mut tag);
+            match tag {
+                TAG_ARRAY => {
+                    let mut array_length = 0u32;
+                    self.to_space.read(&mut array_length);
+                    // TOOD: Optimize in chunked visiting
+                    for _ in 0..array_length {
+                        let mut element = 0u32;
+                        self.to_space.read(&mut element);
+                        let value = Value::from_raw(element);
+                        if value.is_ptr() {
+                            element = update_pointer(self, value).0 as u32;
+                            todo!() // patch
+                        }
+                    }
+                },
+                other_tag => unimplemented!("tag {other_tag}")
+            }
+        }
     }
 
     fn complete(&mut self) -> u64 {
-        self.to_space.close()
+        self.to_space.close();
+        self.to_space.written_length()
     }
 }
 
 struct Deserialization {
-    to_space: StableMemoryReaderWriter,
+    to_space: StableMemorySpace,
     heap_base: usize,
 }
 
 impl Deserialization {
     fn run(stable_start: u64, stable_size: u64, heap_base: usize) -> u64 {
         Self::stable_memory_bulk_copy(stable_start, stable_size, heap_base);
-        let to_space = StableMemoryReaderWriter::open(stable_start);
+        let to_space = StableMemorySpace::open(stable_start);
         let new_size = Deserialization {
             to_space,
             heap_base,
@@ -206,7 +239,8 @@ impl GraphCopy<StableMemoryAddress, Value> for Deserialization {
     }
 
     fn complete(&mut self) -> u64 {
-        self.to_space.close()
+        self.to_space.close();
+        self.to_space.written_length()
     }
 }
 

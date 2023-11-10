@@ -9,11 +9,11 @@
 mod compacting;
 #[non_incremental_gc]
 mod generational;
-mod heap;
+pub mod heap;
 #[incremental_gc]
 mod incremental;
-mod random;
-mod utils;
+pub mod random;
+pub mod utils;
 
 use motoko_rts_macros::*;
 
@@ -102,33 +102,37 @@ fn test_random_heap(seed: u64, max_objects: u32) {
 // the same order they appear in these vectors. Each object in `heap` should have a unique index,
 // which is checked when creating the heap.
 #[derive(Debug)]
-struct TestHeap {
+pub struct TestHeap {
     heap: Vec<(ObjectIdx, Vec<ObjectIdx>)>,
     roots: Vec<ObjectIdx>,
     continuation_table: Vec<ObjectIdx>,
 }
 
+impl TestHeap {
+    pub fn build(&self, gc: GC) -> MotokoHeap {
+        MotokoHeap::new(&self.heap, &self.roots, &self.continuation_table, gc)
+    }
+}
+
 /// Test all GC implementations with the given heap
-fn test_gcs(heap_descr: &TestHeap) {
+fn test_gcs(test_heap: &TestHeap) {
     for gc in &GC_IMPLS {
         test_gc(
             *gc,
-            &heap_descr.heap,
-            &heap_descr.roots,
-            &heap_descr.continuation_table,
+            test_heap,
         );
     }
-
     reset_gc();
 }
 
 fn test_gc(
     gc: GC,
-    refs: &[(ObjectIdx, Vec<ObjectIdx>)],
-    roots: &[ObjectIdx],
-    continuation_table: &[ObjectIdx],
+    test_heap: &TestHeap,
 ) {
-    let mut heap = MotokoHeap::new(refs, roots, continuation_table, gc);
+    let mut heap = test_heap.build(gc);
+    let refs = &test_heap.heap;
+    let roots = &test_heap.roots;
+    let continuation_table = &test_heap.continuation_table;
 
     initialize_gc(&mut heap);
 

@@ -116,7 +116,7 @@ impl StableMemoryReaderWriter {
         }
     }
 
-    pub fn close(&mut self) -> u64 {
+    pub fn close(&mut self) {
         for page in &mut self.cache {
             if !page.is_free() {
                 page.swap_out();
@@ -124,6 +124,9 @@ impl StableMemoryReaderWriter {
         }
         self.closed = true;
         debug_assert!(self.read_address <= self.write_address);
+    }
+
+    pub fn written_length(&self) -> u64 {
         self.write_address
     }
 
@@ -159,8 +162,9 @@ impl StableMemoryReaderWriter {
         unreachable!()
     }
 
-    fn chunked_access(&mut self, mode: AccessMode, main_memory_address: &mut usize, length: usize) {
+    fn chunked_access(&mut self, mode: AccessMode, main_memory_address: usize, length: usize) {
         assert!(!self.closed);
+        let mut main_memory_address = main_memory_address;
         let mut stable_memory_address = match mode {
             AccessMode::Read => self.read_address,
             AccessMode::Write => self.write_address,
@@ -175,8 +179,8 @@ impl StableMemoryReaderWriter {
             let page = self.lookup(page_index);
             let cache_address = page.cached_data() as usize + page_offset as usize;
             let (destination, source) = match mode {
-                AccessMode::Read => (*main_memory_address, cache_address),
-                AccessMode::Write => (cache_address, *main_memory_address),
+                AccessMode::Read => (main_memory_address, cache_address),
+                AccessMode::Write => (cache_address, main_memory_address),
             };
             unsafe {
                 memcpy_bytes(destination, source, Bytes(chunk_size as u32));
@@ -190,21 +194,29 @@ impl StableMemoryReaderWriter {
                 AccessMode::Read => self.read_address = stable_memory_address,
                 AccessMode::Write => self.write_address = stable_memory_address,
             }
-            *main_memory_address += chunk_size as usize;
+            main_memory_address += chunk_size as usize;
         }
     }
 
     pub fn read<T>(&mut self, value: &mut T) {
         let length = size_of::<T>();
+        let value_address = value as *mut T as usize;
+        self.raw_read(value_address, length);
+    }
+
+    pub fn raw_read(&mut self, value_address: usize, length: usize) {
         assert!(self.read_address + length as u64 <= self.write_address);
-        let mut value_address = value as *mut T as usize;
-        self.chunked_access(AccessMode::Read, &mut value_address, length);
+        self.chunked_access(AccessMode::Read, value_address, length);
     }
 
     pub fn write<T>(&mut self, value: &T) {
         let length = size_of::<T>();
-        let mut value_address = value as *const T as usize;
-        self.chunked_access(AccessMode::Write, &mut value_address, length);
+        let value_address = value as *const T as usize;
+        self.raw_write(value_address, length);
+    }
+
+    pub fn raw_write(&mut self, value_address: usize, length: usize) {
+        self.chunked_access(AccessMode::Write, value_address, length);
     }
 
     pub fn skip(&mut self, length: usize) {

@@ -12,14 +12,16 @@ pub unsafe fn test() {
     test_interleaved_read_write();
     test_interleaved_skip();
     test_bulk_read_write();
+    test_raw_read_write();
     test_randomized_read_write();
 }
 
 fn test_empy_reader_writer() {
     println!("    Testing empty reader writer ...");
     let mut reader_writer = StableMemoryReaderWriter::open(0);
-    let size = reader_writer.close();
-    assert_eq!(size, 0);
+    assert!(reader_writer.reading_finished());
+    reader_writer.close();
+    assert_eq!(reader_writer.written_length(), 0);
 }
 
 fn test_single_read_write() {
@@ -31,8 +33,8 @@ fn test_single_read_write() {
     reader_writer.read(&mut result);
     assert_eq!(result, NUMBER);
     assert!(reader_writer.reading_finished());
-    let size = reader_writer.close();
-    assert_eq!(size, size_of::<u64>() as u64);
+    reader_writer.close();
+    assert_eq!(reader_writer.written_length(), size_of::<u64>() as u64);
 }
 
 fn test_multiple_read_write() {
@@ -49,8 +51,11 @@ fn test_multiple_read_write() {
         assert_eq!(output, number);
     }
     assert!(reader_writer.reading_finished());
-    let size = reader_writer.close();
-    assert_eq!(size, (AMOUNT * size_of::<usize>()) as u64);
+    reader_writer.close();
+    assert_eq!(
+        reader_writer.written_length(),
+        (AMOUNT * size_of::<usize>()) as u64
+    );
 }
 
 fn test_skip_all() {
@@ -64,8 +69,8 @@ fn test_skip_all() {
     assert!(!reader_writer.reading_finished());
     reader_writer.skip(total_size);
     assert!(reader_writer.reading_finished());
-    let size = reader_writer.close();
-    assert_eq!(size, total_size as u64);
+    reader_writer.close();
+    assert_eq!(reader_writer.written_length(), total_size as u64);
 }
 
 fn test_interleaved_read_write() {
@@ -81,8 +86,11 @@ fn test_interleaved_read_write() {
         assert_eq!(output, input);
         assert!(reader_writer.reading_finished());
     }
-    let size = reader_writer.close();
-    assert_eq!(size, (AMOUNT * size_of::<(usize, usize, usize)>()) as u64);
+    reader_writer.close();
+    assert_eq!(
+        reader_writer.written_length(),
+        (AMOUNT * size_of::<(usize, usize, usize)>()) as u64
+    );
 }
 
 fn test_interleaved_skip() {
@@ -103,14 +111,14 @@ fn test_interleaved_skip() {
             assert_eq!(output, (counter, counter * 2, counter * 3));
         }
     }
-    let size = reader_writer.close();
-    assert_eq!(size, (AMOUNT * value_size) as u64);
+    reader_writer.close();
+    assert_eq!(reader_writer.written_length(), (AMOUNT * value_size) as u64);
 }
 
 fn test_bulk_read_write() {
     println!("    Testing bulk read write ...");
     const LENGTH: usize = 99_999;
-    let input: [u8; LENGTH] = from_fn(|index| (index % 256) as u8);
+    let input: [u8; LENGTH] = from_fn(|index| index as u8);
     let mut reader_writer = StableMemoryReaderWriter::open(0);
     reader_writer.write(&input);
     assert!(!reader_writer.reading_finished());
@@ -118,8 +126,28 @@ fn test_bulk_read_write() {
     reader_writer.read(&mut output);
     assert_eq!(input, output);
     assert!(reader_writer.reading_finished());
-    let size = reader_writer.close();
-    assert_eq!(size, LENGTH as u64);
+    reader_writer.close();
+    assert_eq!(reader_writer.written_length(), LENGTH as u64);
+}
+
+fn test_raw_read_write() {
+    println!("    Testing raw read write ...");
+    const LENGTH: usize = 99;
+    let mut reader_writer = StableMemoryReaderWriter::open(0);
+    const AMOUNT: usize = 100;
+    for counter in 0..AMOUNT {
+        let input: [u8; LENGTH] = from_fn(|index| (counter + index) as u8);
+        reader_writer.raw_write(&input[0] as *const u8 as usize, LENGTH);
+        assert!(!reader_writer.reading_finished());
+    }
+    for counter in 0..AMOUNT {
+        let mut output = [0u8; LENGTH];
+        reader_writer.raw_read(&mut output[0] as *mut u8 as usize, LENGTH);
+        assert_eq!(from_fn(|index| (counter + index) as u8), output);
+    }
+    assert!(reader_writer.reading_finished());
+    reader_writer.close();
+    assert_eq!(reader_writer.written_length(), (AMOUNT * LENGTH) as u64);
 }
 
 #[derive(Debug, PartialEq)]
@@ -260,6 +288,6 @@ fn test_randomized_read_write() {
         assert_eq!(output, expected);
     }
     assert!(reader_writer.reading_finished());
-    let size = reader_writer.close();
-    assert_eq!(size, total_size as u64);
+    reader_writer.close();
+    assert_eq!(reader_writer.written_length(), total_size as u64);
 }
