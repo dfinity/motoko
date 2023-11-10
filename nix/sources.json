@@ -71,15 +71,15 @@
         "version": "v1.2.0"
     },
     "motoko-base": {
-        "branch": "claudio/wasm-emulate-stable-mem",
+        "branch": "next-moc",
         "description": "The Motoko base library",
         "homepage": null,
         "owner": "dfinity",
         "repo": "motoko-base",
-        "rev": "f22b59b0b8bebae802d67077ce2d66c6fbc848ad",
-        "sha256": "13bsiiz6n695rz14b11v420jvn236l1vf53hlr9lfxdi2bw06skx",
+        "rev": "2e14c17241ab5a49cecfb97ffdae6e7cff7ae9b7",
+        "sha256": "1xjqk490bzv66m18cj7p7hrvf9ry13wzsaif6sqmgzha4k1kbxls",
         "type": "tarball",
-        "url": "https://github.com/dfinity/motoko-base/archive/f22b59b0b8bebae802d67077ce2d66c6fbc848ad.tar.gz",
+        "url": "https://github.com/dfinity/motoko-base/archive/2e14c17241ab5a49cecfb97ffdae6e7cff7ae9b7.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "motoko-matchers": {
