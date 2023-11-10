@@ -8,13 +8,13 @@
 //! Streamed reading is used for the `scan`-pointer in Cheney's algorithm.
 //! Stream writing is used for the `free`-pointer in Cheney's algorithm.
 
-use core::cmp::min;
+use core::{cmp::min, mem::size_of};
 
 use crate::{
     mem_utils::memcpy_bytes,
     rts_trap_with,
     stable_mem::{self, ic0_stable64_read, ic0_stable64_write},
-    types::{size_of, Bytes},
+    types::Bytes,
 };
 
 pub const PAGE_SIZE: u64 = 64 * 1024;
@@ -78,9 +78,11 @@ impl StableMemoryPage {
 
     fn grow_if_needed(page_index: u64) {
         let total_pages = stable_mem::size();
-        if page_index > total_pages {
-            let result = stable_mem::grow(total_pages - page_index);
-            if result == u64::MAX {
+        if page_index >= total_pages {
+            let additional_pages = total_pages - page_index + 1;
+            assert_ne!(additional_pages, u64::MAX);
+            let result = stable_mem::grow(additional_pages);
+            if result != additional_pages {
                 unsafe {
                     rts_trap_with("Insufficient stable memory");
                 }
@@ -136,19 +138,19 @@ impl StableMemoryReaderWriter {
     }
 
     fn lookup(&mut self, page_index: u64) -> &mut StableMemoryPage {
-        for cache_index in 0..self.cache.len() {
-            if self.cache[cache_index].page_index == page_index {
-                return &mut self.cache[cache_index];
+        assert!(!self.can_evict(page_index));
+        for position in 0..self.cache.len() {
+            let cached_page_index = self.cache[position].page_index;
+            if cached_page_index == page_index {
+                return &mut self.cache[position];
             }
-            if self.can_evict(self.cache[cache_index].page_index) {
-                let page = &mut self.cache[cache_index];
+            if self.can_evict(cached_page_index) {
+                let page = &mut self.cache[position];
                 if !page.is_free() {
                     page.swap_out();
                 }
             }
         }
-
-
         for page in &mut self.cache {
             if page.is_free() {
                 page.swap_in(page_index);
@@ -181,7 +183,7 @@ impl StableMemoryReaderWriter {
                 memcpy_bytes(destination, source, Bytes(chunk_size as u32));
             }
             match mode {
-                AccessMode::Read => {},
+                AccessMode::Read => {}
                 AccessMode::Write => page.modified = true,
             }
             stable_memory_address += chunk_size;
@@ -194,14 +196,14 @@ impl StableMemoryReaderWriter {
     }
 
     pub fn read<T>(&mut self, value: &mut T) {
-        let length = size_of::<T>().to_bytes().as_usize();
+        let length = size_of::<T>();
         assert!(self.read_address + length as u64 <= self.write_address);
         let mut value_address = value as *mut T as usize;
         self.chunked_access(AccessMode::Read, &mut value_address, length);
     }
 
     pub fn write<T>(&mut self, value: &T) {
-        let length = size_of::<T>().to_bytes().as_usize();
+        let length = size_of::<T>();
         let mut value_address = value as *const T as usize;
         self.chunked_access(AccessMode::Write, &mut value_address, length);
     }
