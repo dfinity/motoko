@@ -3,6 +3,7 @@ import StableMemory "stable-mem/StableMemory";
 
 let 0 = StableMemory.size();
 let 0 = StableMemory.grow(64);
+assert (64 == StableMemory.size());
 
 do {
    Prim.debugPrint("Nat8");
@@ -109,7 +110,7 @@ do {
 };
 
 do {
-   Prim.debugPrint("Nat16");
+   Prim.debugPrint("Int16");
    type T = Int16;
    let size : Nat64 = 2;
    let mod : Nat64 = 65536;
@@ -200,11 +201,11 @@ do {
    var i : Nat64 = 1;
    while(i < max) {
      let b = conv(i);
-     store(i, b);
+     store(0, b);
      assert (b == load(0, Prim.nat64ToNat(i)));
      i := i * 2;
    };
-}
+};
 
 //SKIP run-low
 //SKIP run
