@@ -1,3 +1,5 @@
+pub const PAGE_SIZE: u64 = 64 * 1024;
+
 extern "C" {
     // physical ic0_stable64 operations re-exported by moc
     pub fn ic0_stable64_write(offset: u64, src: u64, size: u64);

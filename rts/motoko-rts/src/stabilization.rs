@@ -21,7 +21,7 @@ use crate::{
     types::{FwdPtr, Tag, Value, TAG_FWD_PTR},
 };
 
-use self::buffered_access::{StableMemoryReaderWriter, PAGE_SIZE};
+use self::buffered_access::StableMemoryReaderWriter;
 
 pub mod buffered_access;
 
@@ -240,7 +240,7 @@ fn is_upgrade_compatible(_old_type_table: Value, _new_type_table: Value) -> bool
 #[no_mangle]
 #[cfg(feature = "ic")]
 pub unsafe fn stabilize(stable_actor: Value, old_type_table: Value) {
-    use crate::stable_mem;
+    use crate::stable_mem::{self, PAGE_SIZE};
 
     let stable_start = stable_mem::size() * PAGE_SIZE;
     let stable_size = Serialization::run(stable_actor, stable_start);

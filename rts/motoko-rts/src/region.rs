@@ -9,6 +9,7 @@ const VERSION_NO_STABLE_MEMORY: u32 = 0; // never manifest in serialized form
 const VERSION_SOME_STABLE_MEMORY: u32 = 1;
 const VERSION_REGIONS: u32 = 2;
 
+const _: () = assert!(meta_data::size::PAGE_IN_BYTES == crate::stable_mem::PAGE_SIZE);
 const _: () = assert!(meta_data::size::PAGES_IN_BLOCK <= u8::MAX as u32);
 const _: () = assert!(meta_data::max::BLOCKS <= u16::MAX);
 const _: () = assert!(meta_data::max::REGIONS <= u64::MAX - 1);

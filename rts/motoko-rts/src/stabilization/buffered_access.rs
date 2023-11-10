@@ -13,11 +13,10 @@ use core::{cmp::min, mem::size_of};
 use crate::{
     mem_utils::memcpy_bytes,
     rts_trap_with,
-    stable_mem::{self, ic0_stable64_read, ic0_stable64_write},
+    stable_mem::{self, ic0_stable64_read, ic0_stable64_write, PAGE_SIZE},
     types::Bytes,
 };
 
-pub const PAGE_SIZE: u64 = 64 * 1024;
 const FREE_PAGE_INDEX: u64 = u64::MAX;
 
 struct StableMemoryPage {
