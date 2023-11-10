@@ -2,7 +2,8 @@ import Prim "mo:⛔";
 import StableMemory "stable-mem/StableMemory";
 
 let 0 = StableMemory.size();
-let 0 = StableMemory.grow(4);
+let 0 = StableMemory.grow(64);
+assert (64 == StableMemory.size());
 
 do {
    Prim.debugPrint("Nat8");
@@ -200,7 +201,7 @@ do {
    var i : Nat64 = 1;
    while(i < max) {
      let b = conv(i);
-     store(i, b);
+     store(0, b);
      assert (b == load(0, Prim.nat64ToNat(i)));
      i := i * 2;
    };
