@@ -10750,34 +10750,34 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_as env ae SR.Vanilla e2 ^^
     Region.store_blob env
 
-  | OtherPrim ("regionLoadNat8"), [e0; e1] ->
+  | OtherPrim (("regionLoadNat8" | "regionLoadInt8" as p)), [e0; e1] ->
     SR.Vanilla,
     compile_exp_as env ae SR.Vanilla e0 ^^
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     Region.load_word8 env ^^
-    TaggedSmallWord.msb_adjust Type.Nat8
+    TaggedSmallWord.msb_adjust Type.(if p = "regionLoadNat8" then Nat8 else Int8)
 
-  | OtherPrim ("regionStoreNat8"), [e0; e1; e2] ->
+  | OtherPrim (("regionStoreNat8" | "regionStoreInt8") as p), [e0; e1; e2] ->
     SR.unit,
     compile_exp_as env ae SR.Vanilla e0 ^^
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     compile_exp_as env ae SR.Vanilla e2 ^^
-    TaggedSmallWord.lsb_adjust Type.Nat8 ^^
+    TaggedSmallWord.lsb_adjust Type.(if p = "regionStoreNat8" then Nat8 else Int8) ^^
     Region.store_word8 env
 
-  | OtherPrim ("regionLoadNat16"), [e0; e1] ->
+  | OtherPrim (("regionLoadNat16" | "regionLoadInt16") as p), [e0; e1] ->
     SR.Vanilla,
     compile_exp_as env ae SR.Vanilla e0 ^^
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     Region.load_word16 env ^^
-    TaggedSmallWord.msb_adjust Type.Nat16
+    TaggedSmallWord.msb_adjust Type.(if p = "regionLoadNat16" then Nat16 else Int16)
 
-  | OtherPrim ("regionStoreNat16"), [e0; e1; e2] ->
+  | OtherPrim (("regionStoreNat16" | "regionStoreInt16") as p), [e0; e1; e2] ->
     SR.unit,
     compile_exp_as env ae SR.Vanilla e0 ^^
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     compile_exp_as env ae SR.Vanilla e2 ^^
-    TaggedSmallWord.lsb_adjust Type.Nat16 ^^
+    TaggedSmallWord.lsb_adjust Type.(if p = "regionStoreNat16" then Nat16 else Int16) ^^
     Region.store_word16 env
 
   | OtherPrim ("regionLoadNat32" | "regionLoadInt32"), [e0; e1] ->
@@ -10806,13 +10806,13 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_as env ae SR.UnboxedWord64 e2 ^^
     Region.store_word64 env
 
-  | OtherPrim ("regionLoadFloat64"), [e0; e1] ->
+  | OtherPrim ("regionLoadFloat"), [e0; e1] ->
     SR.UnboxedFloat64,
     compile_exp_as env ae SR.Vanilla e0 ^^
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     Region.load_float64 env
 
-  | OtherPrim ("regionStoreFloat64"), [e0; e1; e2] ->
+  | OtherPrim ("regionStoreFloat"), [e0; e1; e2] ->
     SR.unit,
     compile_exp_as env ae SR.Vanilla e0 ^^
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
@@ -10941,55 +10941,32 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_as env ae SR.UnboxedWord32 e2 ^^
     StableMemoryInterface.store_word32 env
 
-  | OtherPrim "stableMemoryLoadNat8", [e] ->
+  | OtherPrim (("stableMemoryLoadNat8" | "stableMemoryLoadInt8") as p), [e] ->
     SR.Vanilla,
     compile_exp_as env ae SR.UnboxedWord64 e ^^
     StableMemoryInterface.load_word8 env ^^
-    TaggedSmallWord.msb_adjust Type.Nat8
-
-  | OtherPrim "stableMemoryLoadInt8", [e] ->
-    SR.Vanilla,
-    compile_exp_as env ae SR.UnboxedWord64 e ^^
-    StableMemoryInterface.load_word8 env
-    ^^
-    TaggedSmallWord.msb_adjust Type.Int8
+    TaggedSmallWord.msb_adjust Type.(if p = "stableMemoryLoadNat8" then Nat8 else Int8)
 
   (* Other prims, binary *)
 
-  | OtherPrim "stableMemoryStoreNat8", [e1; e2] ->
+  | OtherPrim (("stableMemoryStoreNat8" | "stableMemoryStoreInt8") as p), [e1; e2] ->
     SR.unit,
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
-    compile_exp_as env ae SR.Vanilla e2 ^^ TaggedSmallWord.lsb_adjust Type.Nat8 ^^
+    compile_exp_as env ae SR.Vanilla e2 ^^
+    TaggedSmallWord.lsb_adjust Type.(if p = "stableMemoryStoreNat8" then Nat8 else Int8) ^^
     StableMemoryInterface.store_word8 env
 
-  | OtherPrim "stableMemoryStoreInt8", [e1; e2] ->
-    SR.unit,
-    compile_exp_as env ae SR.UnboxedWord64 e1 ^^
-    compile_exp_as env ae SR.Vanilla e2 ^^ TaggedSmallWord.lsb_adjust Type.Int8 ^^
-    StableMemoryInterface.store_word8 env
-
-  | OtherPrim "stableMemoryLoadNat16", [e] ->
+  | OtherPrim (("stableMemoryLoadNat16" | "stableMemoryLoadInt16") as p), [e] ->
     SR.Vanilla,
     compile_exp_as env ae SR.UnboxedWord64 e ^^
     StableMemoryInterface.load_word16 env ^^
-    TaggedSmallWord.msb_adjust Type.Nat16
+    TaggedSmallWord.msb_adjust Type.(if p = "stableMemoryLoadNat16" then Nat16 else Int16)
 
-  | OtherPrim "stableMemoryLoadInt16", [e] ->
-    SR.Vanilla,
-    compile_exp_as env ae SR.UnboxedWord64 e ^^
-    StableMemoryInterface.load_word16 env ^^
-    TaggedSmallWord.msb_adjust Type.Int16
-
-  | OtherPrim "stableMemoryStoreNat16", [e1; e2] ->
+  | OtherPrim (("stableMemoryStoreNat16" | "stableMemoryStoreInt16") as p), [e1; e2] ->
     SR.unit,
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
-    compile_exp_as env ae SR.Vanilla e2 ^^ TaggedSmallWord.lsb_adjust Type.Nat16 ^^
-    StableMemoryInterface.store_word16 env
-
-  | OtherPrim "stableMemoryStoreInt16", [e1; e2] ->
-    SR.unit,
-    compile_exp_as env ae SR.UnboxedWord64 e1 ^^
-    compile_exp_as env ae SR.Vanilla e2 ^^ TaggedSmallWord.lsb_adjust Type.Int16 ^^
+    compile_exp_as env ae SR.Vanilla e2 ^^
+    TaggedSmallWord.lsb_adjust Type.(if p = "stableMemoryStoreNat16" then Nat16 else Int16) ^^
     StableMemoryInterface.store_word16 env
 
   | OtherPrim ("stableMemoryLoadNat64" | "stableMemoryLoadInt64"), [e] ->
