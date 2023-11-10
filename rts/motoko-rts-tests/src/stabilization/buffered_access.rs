@@ -56,7 +56,9 @@ pub unsafe fn test() {
     test_empy_reader_writer();
     test_single_read_write();
     test_multiple_read_write();
+    test_skip_all();
     test_interleaved_read_write();
+    test_interleaved_skip();
     test_bulk_read_write();
     test_randomized_read_write();
 }
@@ -99,6 +101,21 @@ fn test_multiple_read_write() {
     assert_eq!(size, (AMOUNT * size_of::<usize>()) as u64);
 }
 
+fn test_skip_all() {
+    println!("    Testing skip all ...");
+    let mut reader_writer = StableMemoryReaderWriter::open(0);
+    const AMOUNT: usize = 100_000;
+    let total_size = AMOUNT * size_of::<usize>();
+    for number in 0..AMOUNT {
+        reader_writer.write(&number);
+    }
+    assert!(!reader_writer.reading_finished());
+    reader_writer.skip(total_size);
+    assert!(reader_writer.reading_finished());
+    let size = reader_writer.close();
+    assert_eq!(size, total_size as u64);
+}
+
 fn test_interleaved_read_write() {
     println!("    Testing interleaved read write ...");
     let mut reader_writer = StableMemoryReaderWriter::open(0);
@@ -114,6 +131,28 @@ fn test_interleaved_read_write() {
     }
     let size = reader_writer.close();
     assert_eq!(size, (AMOUNT * size_of::<(usize, usize, usize)>()) as u64);
+}
+
+fn test_interleaved_skip() {
+    println!("    Testing interleaved read skip ...");
+    let mut reader_writer = StableMemoryReaderWriter::open(0);
+    let value_size = size_of::<(usize, usize, usize)>();
+    const AMOUNT: usize = 100_000;
+    for counter in 0..AMOUNT {
+        reader_writer.write(&(counter, counter * 2, counter * 3));
+        assert!(!reader_writer.reading_finished());
+    }
+    for counter in 0..AMOUNT {
+        if counter % 2 == 0 {
+            reader_writer.skip(value_size)
+        } else {
+            let mut output = (0usize, 0usize, 0usize);
+            reader_writer.read(&mut output);
+            assert_eq!(output, (counter, counter * 2, counter * 3));
+        }
+    }
+    let size = reader_writer.close();
+    assert_eq!(size, (AMOUNT * value_size) as u64);
 }
 
 fn test_bulk_read_write() {

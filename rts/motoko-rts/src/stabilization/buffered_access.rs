@@ -207,6 +207,12 @@ impl StableMemoryReaderWriter {
         let mut value_address = value as *const T as usize;
         self.chunked_access(AccessMode::Write, &mut value_address, length);
     }
+
+    pub fn skip(&mut self, length: usize) {
+        assert!(!self.closed);
+        assert!(self.read_address + length as u64 <= self.write_address);
+        self.read_address += length as u64;
+    }
 }
 
 impl Drop for StableMemoryReaderWriter {
