@@ -717,6 +717,11 @@ let compile_files mode do_link files : compile_result =
     | Some (_, ss) -> validate_stab_sig ss
     | _ -> Diag.return ()
   in
+  let* () =
+    if Wasm_exts.CustomModule.(ext_module.wasm_features) <> []
+    then Diag.warn Source.no_region "M0191" "compile" (Printf.sprintf "code requires Wasm features %s to execute" (String.concat "," Wasm_exts.CustomModule.(ext_module.wasm_features)))
+    else Diag.return ()
+  in
   Diag.return (idl, ext_module)
 
 
