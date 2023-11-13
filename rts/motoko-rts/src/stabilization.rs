@@ -204,22 +204,32 @@ impl GraphCopy<Value, StableMemoryAddress, u32> for Serialization {
     }
 }
 
-struct Deserialization {
+pub struct Deserialization {
     to_space: StableMemorySpace,
     heap_base: usize,
 }
 
+#[derive(Copy, Clone, Debug)]
+pub struct DestabilizationResult {
+    pub new_heap_size: u64,
+    pub stable_root: Value,
+}
+
 impl Deserialization {
-    fn run(stable_start: u64, stable_size: u64, heap_base: usize) -> u64 {
+    pub fn run(stable_start: u64, stable_size: u64, heap_base: usize) -> DestabilizationResult {
         Self::stable_memory_bulk_copy(stable_start, stable_size, heap_base);
         let to_space = StableMemorySpace::open(stable_start);
-        let new_size = Deserialization {
+        let new_heap_size = Deserialization {
             to_space,
             heap_base,
         }
         .run(StableMemoryAddress(0));
-        Self::stable_memory_bulk_copy(stable_start, new_size, heap_base);
-        new_size
+        Self::stable_memory_bulk_copy(stable_start, new_heap_size, heap_base);
+        let stable_root = Value::from_ptr(heap_base);
+        DestabilizationResult {
+            new_heap_size,
+            stable_root,
+        }
     }
 
     fn stable_memory_bulk_copy(stable_start: u64, stable_size: u64, heap_base: usize) {
@@ -354,10 +364,10 @@ pub unsafe fn destabilize(new_type_table: Value) -> Value {
         rts_trap_with("Incompatible program versions: Upgrade not possible")
     }
     let heap_base = get_aligned_heap_base();
-    let heap_size = Deserialization::run(metadata.data_start, metadata.data_size, heap_base);
-    assert!(heap_size <= usize::MAX as u64);
+    let result = Deserialization::run(metadata.data_start, metadata.data_size, heap_base);
+    assert!(result.new_heap_size <= usize::MAX as u64);
     unsafe {
-        resize_heap(heap_size as usize);
+        resize_heap(result.new_heap_size as usize);
     }
-    Value::from_ptr(heap_base)
+    result.stable_root
 }

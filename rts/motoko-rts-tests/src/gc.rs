@@ -103,9 +103,9 @@ fn test_random_heap(seed: u64, max_objects: u32) {
 // which is checked when creating the heap.
 #[derive(Debug)]
 pub struct TestHeap {
-    heap: Vec<(ObjectIdx, Vec<ObjectIdx>)>,
-    roots: Vec<ObjectIdx>,
-    continuation_table: Vec<ObjectIdx>,
+    pub heap: Vec<(ObjectIdx, Vec<ObjectIdx>)>,
+    pub roots: Vec<ObjectIdx>,
+    pub continuation_table: Vec<ObjectIdx>,
 }
 
 impl TestHeap {
@@ -206,7 +206,7 @@ fn reset_gc() {
 ///   indices Y and Z in the `objects` map, it should point to objects with indices Y and Z on the
 ///   heap.
 ///
-fn check_dynamic_heap(
+pub fn check_dynamic_heap(
     post_gc: bool,
     objects: &[(ObjectIdx, Vec<ObjectIdx>)],
     roots: &[ObjectIdx],
