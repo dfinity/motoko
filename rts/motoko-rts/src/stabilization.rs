@@ -32,6 +32,9 @@ use crate::{
 
 use self::reader_writer::{ScanStream, StableMemorySpace, WriteStream};
 
+#[cfg(feature = "ic")]
+mod compatibility;
+
 pub mod reader_writer;
 
 /// Address in stable memory.
@@ -349,21 +352,20 @@ impl<'a, M: Memory> GraphCopy<StableMemoryAddress, Value, u32> for Deserializati
     }
 }
 
+#[cfg(feature = "ic")]
 struct StabilizationMetadata {
-    type_table: Value,
+    type_descriptor: compatibility::TypeDescriptor,
     data_start: u64,
     data_size: u64,
 }
 
+#[cfg(feature = "ic")]
 fn load_metadata() -> StabilizationMetadata {
     todo!()
 }
 
+#[cfg(feature = "ic")]
 fn store_metadata(_metadata: StabilizationMetadata) {
-    todo!()
-}
-
-fn is_upgrade_compatible(_old_type_table: Value, _new_type_table: Value) -> bool {
     todo!()
 }
 
@@ -371,20 +373,25 @@ fn is_upgrade_compatible(_old_type_table: Value, _new_type_table: Value) -> bool
 /// All objects inside main memory that are transitively reachable from stable variables are
 /// serialized into stable memory by using a graph copy algorithm.
 /// `stable_actor`: Root object for stabilization containing all stable variables of the actor.
-/// `old_type_table`: Type table of the current program version that is to be upgraded.
+/// The remaining parameters encode the type table of the current program version:
+/// `old_candid_data`: A blob encoding the Candid type as a table.
+/// `old_type_offsets`: A blob encoding the type offsets in the Candid type table.
+///   Type index 0 represents the stable actor object to be serialized.
 /// Implementation:
 /// * Algorithm: Cheney's algorithm using main memory as from-space and stable memory as to-space.
 /// * Encoding: The from-space uses the main memory heap layout, while the to-space is encoded in
 ///   the stable object graph layout (see `GraphCopyStabilization.md`).
 #[no_mangle]
 #[cfg(feature = "ic")]
-pub unsafe fn stabilize(stable_actor: Value, old_type_table: Value) {
+pub unsafe fn stabilize(stable_actor: Value, old_candid_data: Value, old_type_offsets: Value) {
     use crate::stable_mem::{self, PAGE_SIZE};
+    use compatibility::TypeDescriptor;
 
     let stable_start = stable_mem::size() * PAGE_SIZE;
     let stable_size = Serialization::run(stable_actor, stable_start);
+    let type_descriptor = TypeDescriptor::new(old_candid_data, old_type_offsets, 0);
     let metadata = StabilizationMetadata {
-        type_table: old_type_table,
+        type_descriptor,
         data_start: stable_start,
         data_size: stable_size,
     };
@@ -395,7 +402,10 @@ pub unsafe fn stabilize(stable_actor: Value, old_type_table: Value) {
 /// Deserialize the object graph stored in stable memory back into main memory by using a graph
 /// copy algorithm. Checks whether the new program version is compatible to the stored state by
 /// comparing the type tables of both the old and the new program version.
-/// `new_type_table`: Type table of the new program version to which that data is to be upgraded.
+/// The parameters encode the type table of the new program version to which that data is to be upgraded.
+/// `new_candid_data`: A blob encoding the Candid type as a table.
+/// `new_type_offsets`: A blob encoding the type offsets in the Candid type table.
+///   Type index 0 represents the stable actor object to be serialized.
 /// Returns the root object containing all restored stable variables of the actor.
 /// /// Traps if the stable state is incompatible with the new program version and the upgrade is not
 /// possible.
@@ -412,19 +422,25 @@ pub unsafe fn stabilize(stable_actor: Value, old_type_table: Value) {
 /// * Encoding: The from-space uses the main memory heap layout, while the to-space is encoded in the
 ///   stable object graph layout (see `GraphCopyStabilization.md`).
 #[ic_mem_fn(ic_only)]
-pub unsafe fn destabilize<M: Memory>(mem: &mut M, new_type_table: Value) -> Value {
+pub unsafe fn destabilize<M: Memory>(
+    mem: &mut M,
+    new_candid_data: Value,
+    new_type_offsets: Value,
+) -> Value {
     use crate::{
         memory::ic::{clear_heap, get_aligned_heap_base},
         rts_trap_with,
     };
+    use compatibility::{memory_compatible, TypeDescriptor};
 
+    let mut new_type_descriptor = TypeDescriptor::new(new_candid_data, new_type_offsets, 0);
     let metadata = load_metadata();
-    let old_type_table = metadata.type_table;
-    if !is_upgrade_compatible(old_type_table, new_type_table) {
-        rts_trap_with("Incompatible program versions: Upgrade not possible")
+    let mut old_type_descriptor = metadata.type_descriptor;
+    if !memory_compatible(mem, &mut old_type_descriptor, &mut new_type_descriptor) {
+        rts_trap_with("Memory-incompatible program upgrade");
     }
     unsafe {
-        clear_heap();
+        clear_heap(mem);
     }
     let heap_base = get_aligned_heap_base();
     Deserialization::run(mem, metadata.data_start, metadata.data_size, heap_base)

@@ -27,3 +27,8 @@ impl Memory for IcMemory {
         super::grow_memory(ptr);
     }
 }
+
+pub(super) unsafe fn clear_heap<M: Memory>(mem: &mut M) {
+    let heap_base = crate::gc::incremental::get_partitioned_heap().base_address();
+    crate::gc::incremental::IncrementalGC::initialize(mem, heap_base);
+}

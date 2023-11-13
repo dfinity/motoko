@@ -64,11 +64,11 @@ unsafe fn grow_memory(ptr: u64) {
 }
 
 #[incremental_gc]
-pub unsafe fn clear_heap() {
-    todo!()
+pub unsafe fn clear_heap<M: Memory>(mem: &mut M) {
+    partitioned_memory::clear_heap(mem);
 }
 
 #[non_incremental_gc]
-pub unsafe fn clear_heap() {
+pub unsafe fn clear_heap<M: Memory>(_mem: &mut M) {
     linear_memory::clear_heap();
 }
