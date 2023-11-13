@@ -6,7 +6,7 @@ pub mod linear_memory;
 pub mod partitioned_memory;
 
 use super::Memory;
-use crate::constants::{WASM_PAGE_SIZE, WORD_SIZE};
+use crate::constants::WASM_PAGE_SIZE;
 use crate::memory::MEMORY_RESERVE;
 use crate::rts_trap_with;
 use crate::types::{Bytes, Value};
@@ -64,13 +64,11 @@ unsafe fn grow_memory(ptr: u64) {
 }
 
 #[incremental_gc]
-pub unsafe fn resize_heap(new_size: usize) {
-    assert_eq!(new_size % WORD_SIZE as usize, 0);
+pub unsafe fn clear_heap() {
     todo!()
 }
 
 #[non_incremental_gc]
-pub unsafe fn resize_heap(new_size: usize) {
-    assert_eq!(new_size % WORD_SIZE as usize, 0);
-    linear_memory::resize_heap(new_size);
+pub unsafe fn clear_heap() {
+    linear_memory::clear_heap();
 }

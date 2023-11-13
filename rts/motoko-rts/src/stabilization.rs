@@ -14,14 +14,20 @@
 //!
 //! Versioned stable storage format to permit future evolutions of the format.
 //!  
-//! See `GraphCopyStabilization.md` for the stable layout specification and the employed algorithm.
+//! See `GraphCopyStabilization.md` for the stable format specification and the employed algorithm.
 
 use core::fmt::Debug;
 
+use motoko_rts_macros::ic_mem_fn;
+
 use crate::{
     constants::WORD_SIZE,
+    memory::Memory,
     stable_mem::ic0_stable64_read,
-    types::{is_skewed, skew, unskew, FwdPtr, Tag, Value, TAG_ARRAY, TAG_FWD_PTR, TAG_MUTBOX},
+    types::{
+        is_skewed, size_of, skew, unskew, Array, FwdPtr, MutBox, Obj, Tag, Value, Words, TAG_ARRAY,
+        TAG_FWD_PTR, TAG_MUTBOX,
+    },
 };
 
 use self::reader_writer::{ScanStream, StableMemorySpace, WriteStream};
@@ -44,7 +50,7 @@ struct StableMemoryAddress(usize);
 /// During derialization:
 /// * Main memory = stable memory layout, S = StableMemoryAddress.
 /// * Stable memory = main memory layout, T = Value.
-trait GraphCopy<S: Copy, T: Copy, P: Copy + Default> {
+trait GraphCopy<S: Copy, T: Copy, P: Copy + Default + Debug> {
     fn to_space(&mut self) -> &mut StableMemorySpace;
 
     /// Run the entire graph copy algorithm: Copy the object graph reachable from the `root` pointer.
@@ -52,7 +58,7 @@ trait GraphCopy<S: Copy, T: Copy, P: Copy + Default> {
     fn run(&mut self, root: S) -> u64 {
         self.evacuate(root);
         while !self.to_space().scan_completed() {
-            self.scan(|context| context.patch_field());
+            self.scan();
         }
         self.to_space().close();
         self.to_space().written_length()
@@ -87,9 +93,28 @@ trait GraphCopy<S: Copy, T: Copy, P: Copy + Default> {
     fn copy(&mut self, object: S) -> T;
 
     /// Read an object at the `scan` position in the to-space, process all its potential
-    /// pointer fields by invoking `visit_field` for each of them.
-    fn scan<F: Fn(&mut Self)>(&mut self, visit_field: F);
+    /// pointer fields by invoking `patch_field` for each of them.
+    /// Note: The default implementation assumes identical payload format between main memory
+    /// and the serialized stable memory.
+    fn scan(&mut self) {
+        let tag = self.scan_header();
+        match tag {
+            TAG_ARRAY => {
+                let array_length = self.to_space().read::<u32>();
+                // TOOD: Optimize in chunked visiting
+                for _ in 0..array_length {
+                    self.patch_field();
+                }
+            }
+            TAG_MUTBOX => {
+                self.patch_field();
+            }
+            other_tag => unimplemented!("tag {other_tag}"),
+        }
+    }
 
+    /// If the field encodes a pointer at the scan position, replace it by its
+    /// corresponding target address.
     fn patch_field(&mut self) {
         let old_field = self.to_space().read();
         if self.is_pointer(old_field) {
@@ -100,6 +125,8 @@ trait GraphCopy<S: Copy, T: Copy, P: Copy + Default> {
         }
     }
 
+    /// Read the header in to-space and return the object tag.
+    fn scan_header(&mut self) -> Tag;
     /// Determine whether field value denotes a pointer.
     fn is_pointer(&self, field_value: P) -> bool;
     /// Decode a source pointer from field value.
@@ -113,6 +140,11 @@ pub struct Serialization {
 }
 
 impl Serialization {
+    /// Notes:
+    /// - Invalidates the heap by replacing reachable stable object by forwarding objects:
+    /// The heap is finally no longer usable by mutator or GC.
+    /// - `copy` and partially also `scan` depends on the heap layout. Adjust these functions
+    /// whenever the heap layout is changed.
     pub fn run(root: Value, stable_start: u64) -> u64 {
         let to_space = StableMemorySpace::open(stable_start);
         Serialization { to_space }.run(root)
@@ -173,21 +205,8 @@ impl GraphCopy<Value, StableMemoryAddress, u32> for Serialization {
         }
     }
 
-    fn scan<F: Fn(&mut Self)>(&mut self, visit_pointer: F) {
-        let tag = self.to_space.read::<Tag>();
-        match tag {
-            TAG_ARRAY => {
-                let array_length = self.to_space.read::<u32>();
-                // TOOD: Optimize in chunked visiting
-                for _ in 0..array_length {
-                    visit_pointer(self);
-                }
-            }
-            TAG_MUTBOX => {
-                visit_pointer(self);
-            }
-            other_tag => unimplemented!("tag {other_tag}"),
-        }
+    fn scan_header(&mut self) -> Tag {
+        self.to_space.read::<Tag>()
     }
 
     fn is_pointer(&self, field_value: u32) -> bool {
@@ -204,32 +223,32 @@ impl GraphCopy<Value, StableMemoryAddress, u32> for Serialization {
     }
 }
 
-pub struct Deserialization {
+pub struct Deserialization<'a, M: Memory> {
+    mem: &'a mut M,
     to_space: StableMemorySpace,
     heap_base: usize,
 }
 
-#[derive(Copy, Clone, Debug)]
-pub struct DestabilizationResult {
-    pub new_heap_size: u64,
-    pub stable_root: Value,
-}
-
-impl Deserialization {
-    pub fn run(stable_start: u64, stable_size: u64, heap_base: usize) -> DestabilizationResult {
+impl<'a, M: Memory> Deserialization<'a, M> {
+    /// Notes:
+    /// - CAUTION: Linearly overwrites the heap by stable memory. Does not work if the partitione heap
+    /// metadata would be inlined in the partitions.
+    /// - Assumes an empty heap before running. Empty means that the dynamic heap size is zero.
+    /// - Invokes the heap allocator to compute the future object addresses in the heap.
+    /// However, the allocator must not yet write to the heap.
+    /// - `copy` and `scan` depend on the heap layout. Adjust these functions whenever the heap layout
+    /// is changed.
+    pub fn run(mem: &'a mut M, stable_start: u64, stable_size: u64, heap_base: usize) -> Value {
         Self::stable_memory_bulk_copy(stable_start, stable_size, heap_base);
         let to_space = StableMemorySpace::open(stable_start);
         let new_heap_size = Deserialization {
+            mem,
             to_space,
             heap_base,
         }
         .run(StableMemoryAddress(0));
         Self::stable_memory_bulk_copy(stable_start, new_heap_size, heap_base);
-        let stable_root = Value::from_ptr(heap_base);
-        DestabilizationResult {
-            new_heap_size,
-            stable_root,
-        }
+        Value::from_ptr(heap_base)
     }
 
     fn stable_memory_bulk_copy(stable_start: u64, stable_size: u64, heap_base: usize) {
@@ -237,15 +256,28 @@ impl Deserialization {
             ic0_stable64_read(heap_base as u64, stable_start, stable_size);
         }
     }
+
+    fn source_address(&self, stable_address: StableMemoryAddress) -> usize {
+        self.heap_base + stable_address.0
+    }
+
+    fn copy_header(&mut self, size: Words<u32>, tag: Tag) -> Value {
+        let target = unsafe { self.mem.alloc_words(size) };
+        let mut header = Obj::default();
+        header.tag = tag;
+        header.init_forward(target);
+        self.to_space.write(&header);
+        target
+    }
 }
 
-impl GraphCopy<StableMemoryAddress, Value, u32> for Deserialization {
+impl<'a, M: Memory> GraphCopy<StableMemoryAddress, Value, u32> for Deserialization<'a, M> {
     fn to_space(&mut self) -> &mut StableMemorySpace {
         &mut self.to_space
     }
 
-    fn get_forward_address(&self, object: StableMemoryAddress) -> Option<Value> {
-        let source = object.0 + self.heap_base;
+    fn get_forward_address(&self, stable_address: StableMemoryAddress) -> Option<Value> {
+        let source = self.source_address(stable_address);
         unsafe {
             let tag = *(source as *mut Tag);
             match tag {
@@ -258,8 +290,8 @@ impl GraphCopy<StableMemoryAddress, Value, u32> for Deserialization {
         }
     }
 
-    fn set_forward_address(&mut self, object: StableMemoryAddress, target: Value) {
-        let source = object.0 + self.heap_base;
+    fn set_forward_address(&mut self, stable_address: StableMemoryAddress, target: Value) {
+        let source = self.source_address(stable_address);
         let fwd = source as *mut FwdPtr;
         unsafe {
             (*fwd).tag = TAG_FWD_PTR;
@@ -267,12 +299,39 @@ impl GraphCopy<StableMemoryAddress, Value, u32> for Deserialization {
         }
     }
 
-    fn copy(&mut self, _object: StableMemoryAddress) -> Value {
-        todo!()
+    /// Writing into to-space (stable memory) but compute the heap target addresses by
+    /// simulating the allocations in the from-space (main memory heap).
+    fn copy(&mut self, stable_address: StableMemoryAddress) -> Value {
+        let mut source = self.source_address(stable_address) as u32;
+        unsafe {
+            let tag = *(source as *const Tag);
+            source += WORD_SIZE;
+            match tag {
+                TAG_ARRAY => {
+                    let array_length = *(source as *mut u32);
+                    source += WORD_SIZE;
+                    let target_size = size_of::<Array>() + Words(array_length);
+                    let target = self.copy_header(target_size, tag);
+                    self.to_space.write(&array_length);
+                    let payload_length = (array_length * WORD_SIZE) as usize;
+                    self.to_space.raw_write(source as usize, payload_length);
+                    target
+                }
+                TAG_MUTBOX => {
+                    let target_size = size_of::<MutBox>();
+                    let target = self.copy_header(target_size, tag);
+                    let mutbox_field = *(source as *mut u32);
+                    self.to_space.write(&mutbox_field);
+                    target
+                }
+                other_tag => unimplemented!("tag {other_tag}"),
+            }
+        }
     }
 
-    fn scan<F: Fn(&mut Self)>(&mut self, _visit_field: F) {
-        todo!()
+    fn scan_header(&mut self) -> Tag {
+        let header = self.to_space.read::<Obj>();
+        header.tag
     }
 
     fn is_pointer(&self, field_value: u32) -> bool {
@@ -350,11 +409,10 @@ pub unsafe fn stabilize(stable_actor: Value, old_type_table: Value) {
 ///   while the to-space is to be encoded in main memory layout (although located in stable memory).
 /// * Encoding: The from-space uses the main memory heap layout, while the to-space is encoded in the
 ///   stable object graph layout (see `GraphCopyStabilization.md`).
-#[no_mangle]
-#[cfg(feature = "ic")]
-pub unsafe fn destabilize(new_type_table: Value) -> Value {
+#[ic_mem_fn(ic_only)]
+pub unsafe fn destabilize<M: Memory>(mem: &mut M, new_type_table: Value) -> Value {
     use crate::{
-        memory::ic::{get_aligned_heap_base, resize_heap},
+        memory::ic::{clear_heap, get_aligned_heap_base},
         rts_trap_with,
     };
 
@@ -363,11 +421,9 @@ pub unsafe fn destabilize(new_type_table: Value) -> Value {
     if !is_upgrade_compatible(old_type_table, new_type_table) {
         rts_trap_with("Incompatible program versions: Upgrade not possible")
     }
-    let heap_base = get_aligned_heap_base();
-    let result = Deserialization::run(metadata.data_start, metadata.data_size, heap_base);
-    assert!(result.new_heap_size <= usize::MAX as u64);
     unsafe {
-        resize_heap(result.new_heap_size as usize);
+        clear_heap();
     }
-    result.stable_root
+    let heap_base = get_aligned_heap_base();
+    Deserialization::run(mem, metadata.data_start, metadata.data_size, heap_base)
 }

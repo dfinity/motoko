@@ -132,7 +132,7 @@ fn test_gc(gc: GC, test_heap: &TestHeap) {
 
     // Check `create_dynamic_heap` sanity
     check_dynamic_heap(
-        false, // before gc
+        CheckMode::Reachability,
         refs,
         roots,
         continuation_table,
@@ -151,7 +151,11 @@ fn test_gc(gc: GC, test_heap: &TestHeap) {
         let continuation_table_ptr_offset = heap.continuation_table_ptr_offset();
         let region0_ptr_offset = heap.region0_ptr_offset();
         check_dynamic_heap(
-            check_all_reclaimed, // check for unreachable objects
+            if check_all_reclaimed {
+                CheckMode::AllReclaimed
+            } else {
+                CheckMode::Reachability
+            },
             refs,
             roots,
             continuation_table,
@@ -197,6 +201,17 @@ fn reset_gc() {
     }
 }
 
+#[derive(Debug, PartialEq)]
+pub enum CheckMode {
+    /// Check reachability of all necessary objects.
+    Reachability,
+    /// Check the reachability of all necessary objects and
+    /// that all garbage objects have been reclaimed.
+    AllReclaimed,
+    /// Check valid dynamic heap after stabilization.
+    Stabilzation,
+}
+
 /// Check the dynamic heap:
 ///
 /// - All (and in post-gc mode, only) reachable objects should be in the heap. Reachable objects
@@ -207,7 +222,7 @@ fn reset_gc() {
 ///   heap.
 ///
 pub fn check_dynamic_heap(
-    post_gc: bool,
+    mode: CheckMode,
     objects: &[(ObjectIdx, Vec<ObjectIdx>)],
     roots: &[ObjectIdx],
     continuation_table: &[ObjectIdx],
@@ -281,6 +296,8 @@ pub fn check_dynamic_heap(
                 offset += (size_of::<Region>() - size_of::<Obj>())
                     .to_bytes()
                     .as_usize();
+            } else if mode == CheckMode::Stabilzation && tag == TAG_MUTBOX {
+                offset += WORD_SIZE;
             } else {
                 if incremental {
                     assert!(tag == TAG_ARRAY || tag >= TAG_ARRAY_SLICE_MIN);
@@ -324,6 +341,7 @@ pub fn check_dynamic_heap(
 
                     for field_idx in 1..n_fields {
                         let field = read_word(heap, offset);
+
                         offset += WORD_SIZE;
                         // Get index of the object pointed by the field
                         let pointee_address = field.wrapping_add(1); // unskew
@@ -367,14 +385,12 @@ pub fn check_dynamic_heap(
     if !missing_objects.is_empty() {
         write!(
             &mut error_message,
-            "Reachable objects missing in the {} heap: {:?}",
-            if post_gc { "post-gc" } else { "pre-gc" },
-            missing_objects,
+            "{mode:?}: Reachable objects missing in the heap: {missing_objects:?}",
         )
         .unwrap();
     }
 
-    if post_gc {
+    if mode == CheckMode::AllReclaimed {
         // Unreachable objects that we've seen in the heap
         let extra_objects: Vec<ObjectIdx> = seen_objects
             .difference(&reachable_objects)

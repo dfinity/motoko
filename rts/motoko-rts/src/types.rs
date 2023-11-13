@@ -163,7 +163,7 @@ pub const TRUE_VALUE: u32 = 0x1;
 
 /// A value in a heap slot
 #[repr(transparent)]
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
 pub struct Value(u32);
 
 /// A view of `Value` for analyzing the slot contents.
@@ -473,6 +473,7 @@ pub const TAG_ARRAY_SLICE_MIN: Tag = 34;
 
 // Common parts of any object. Other object pointers can be coerced into a pointer to this.
 #[repr(C)] // See the note at the beginning of this module
+#[derive(Default)]
 pub struct Obj {
     pub tag: Tag,
     // Cannot use `#[incremental_gc]` as Rust only allows non-macro attributes for fields.
