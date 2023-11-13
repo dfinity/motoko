@@ -9,6 +9,7 @@ use crate::gc::{
     CheckMode, TestHeap,
 };
 use motoko_rts::{
+    memory::alloc_array,
     stabilization::{Deserialization, Serialization},
     types::{Array, Value, TAG_ARRAY, TAG_FWD_PTR},
 };
@@ -22,13 +23,16 @@ pub unsafe fn test() {
 
 #[non_incremental_gc]
 fn clear_heap(heap: &mut MotokoHeap) {
-    let new_hp = heap.heap_base_address();
-    heap.set_heap_ptr_address(new_hp);
+    heap.set_heap_ptr_address(heap.heap_base_address());
 }
 
 #[incremental_gc]
 fn clear_heap(heap: &mut MotokoHeap) {
-    todo!();
+    use motoko_rts::gc::incremental::IncrementalGC;
+
+    unsafe {
+        IncrementalGC::initialize(heap, heap.heap_base_address());
+    }
 }
 
 struct RandomHeap {
@@ -48,14 +52,10 @@ impl RandomHeap {
         self.reset_descriptor();
     }
 
-    fn clear_continuation_table(&self) {
+    fn clear_continuation_table(&mut self) {
         let table_pointer = self.memory.continuation_table_ptr_address() as *mut Value;
         unsafe {
-            let table = *table_pointer;
-            let array = table.as_array();
-            for index in 0..(*array).len {
-                array.set_scalar(index, Value::from_scalar(0));
-            }
+            *table_pointer = alloc_array(&mut self.memory, 0);
         }
     }
 
@@ -128,7 +128,7 @@ impl RandomHeap {
 
 fn random_heap(gc: GC) -> RandomHeap {
     const RANDOM_SEED: u64 = 4711;
-    const MAX_OBJECTS: u32 = 100;
+    const MAX_OBJECTS: u32 = 1000;
     let descriptor = generate(RANDOM_SEED, MAX_OBJECTS);
     let memory = descriptor.build(gc);
     RandomHeap { descriptor, memory }

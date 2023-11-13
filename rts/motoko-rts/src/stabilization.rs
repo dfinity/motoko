@@ -159,8 +159,10 @@ impl GraphCopy<Value, StableMemoryAddress, u32> for Serialization {
     // TODO: Redesign `FwdPtr` to better fit the graph copying, e.g. use raw pointer than `Value` field.
     fn get_forward_address(&self, object: Value) -> Option<StableMemoryAddress> {
         unsafe {
-            let object = object.forward();
-            match object.tag() {
+            // Do not call `tag()` as it dereferences the incremental GC's forwarding pointer,
+            // which does not exist for the forwarding objects (`FwdPtr`) used for Cheney's algorithm.
+            let tag = *(object.get_ptr() as *const Tag);
+            match tag {
                 TAG_FWD_PTR => {
                     let new_address = (*(object.get_ptr() as *mut FwdPtr)).fwd.get_raw();
                     Some(StableMemoryAddress(new_address as usize))
