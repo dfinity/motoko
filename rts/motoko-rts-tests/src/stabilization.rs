@@ -14,11 +14,12 @@ use motoko_rts::{
     types::{Array, Value, TAG_ARRAY, TAG_FWD_PTR},
 };
 use motoko_rts_macros::{incremental_gc, non_incremental_gc};
+use oorandom::Rand32;
 
 pub unsafe fn test() {
     println!("Testing stabilization ...");
     reader_writer::test();
-    test_serialization_deserialization()
+    test_stabilization()
 }
 
 #[non_incremental_gc]
@@ -126,19 +127,25 @@ impl RandomHeap {
     }
 }
 
-fn random_heap(gc: GC) -> RandomHeap {
-    const RANDOM_SEED: u64 = 4711;
-    const MAX_OBJECTS: u32 = 1000;
-    let descriptor = generate(RANDOM_SEED, MAX_OBJECTS);
+fn random_heap(random: &mut Rand32, max_objects: u32, gc: GC) -> RandomHeap {
+    let descriptor = generate(random.rand_u32() as u64, max_objects);
     let memory = descriptor.build(gc);
     RandomHeap { descriptor, memory }
 }
 
-fn test_serialization_deserialization() {
+fn test_stabilization() {
     println!("  Testing serialization and deserialization ...");
+    const RANDOM_SEED: u64 = 4711;
+    let mut random = Rand32::new(RANDOM_SEED);
+    test_serialization_deserialization(&mut random, 100, 0);
+    test_serialization_deserialization(&mut random, 1000, 200);
+    test_serialization_deserialization(&mut random, 10_000, 5000);
+}
+
+fn test_serialization_deserialization(random: &mut Rand32, max_objects: u32, stable_start: u64) {
+    println!("    Test case {max_objects}");
     let gc = GC_IMPLS[0];
-    let mut heap = random_heap(gc);
-    let stable_start = 0;
+    let mut heap = random_heap(random, max_objects, gc);
     let heap_base = heap.heap_base_address();
     let stable_size = Serialization::run(heap.old_stable_root(), stable_start);
     heap.clear();

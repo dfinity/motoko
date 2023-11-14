@@ -327,7 +327,8 @@ fn test_randomized_read_write() {
     const RANDOM_SEED: u64 = 4711;
     let mut random = Rand32::new(RANDOM_SEED);
     let mut series = vec![];
-    let mut reader_writer = StableMemorySpace::open(0);
+    let stable_start = random.rand_range(0..1000) as u64;
+    let mut reader_writer = StableMemorySpace::open(stable_start);
     let mut total_size = 0;
     const AMOUNT: usize = 1000;
     for _ in 0..AMOUNT {
@@ -356,13 +357,13 @@ fn test_randomized_read_write() {
     assert!(reader_writer.scan_completed());
     reader_writer.close();
     assert_eq!(reader_writer.written_length(), total_size as u64);
-    check_zeroed_stable_memory(total_size);
+    check_zeroed_stable_memory(stable_start, total_size);
 }
 
-fn check_zeroed_stable_memory(size: usize) {
+fn check_zeroed_stable_memory(stable_start: u64, size: usize) {
     for index in 0..size {
         let mut data = 0u8;
-        ic0_stable64_read(&mut data as *mut u8 as u64, index as u64, 1);
+        ic0_stable64_read(&mut data as *mut u8 as u64, stable_start + index as u64, 1);
         assert_eq!(data, 0);
     }
 }
