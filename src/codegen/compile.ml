@@ -2417,11 +2417,12 @@ module TaggedSmallWord = struct
     | Type.(Int8|Nat8) -> 8
     | Type.(Int16|Nat16) -> 16
     | Type.Char -> 21
+(* DONT do this
     | Type.(Int32|Nat32) -> 24
-    | Type.(Int64|Nat64) -> 24
+    | Type.(Int64|Nat64) -> 24 *)
     | _ -> 32
 
-  (* tag small words, todo set bit 1 *)
+  (* tag small words, todo set bit 1? *)
   let tag_of_type = function
     | Type.Int8 -> Int32.shift_left 1l 2
     | Type.Nat8 -> Int32.shift_left 2l 2
@@ -3223,6 +3224,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     try_unbox I32Type (fun _ -> match n with
         | 32 | 64 -> G.i Drop ^^ Bool.lit true
         | n when (n = 8 || n = 16 || n = BitTagged.ubits) ->
+          (* Please review carefully! *)
           compile_bitand_const Int32.(logor 1l (shift_left minus_one (n + (32-BitTagged.ubits)))) ^^
           G.i (Test (Wasm.Values.I32 I32Op.Eqz))
         | _ -> assert false
@@ -3235,9 +3237,11 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     try_unbox I32Type (fun _ -> match n with
         | 32 | 64 -> G.i Drop ^^ Bool.lit true
         | n when (n = 8 || n = 16 || n = BitTagged.ubits) ->
+           (* Please review carefully! Not sure this is correct! *)
            set_a ^^
            get_a ^^ get_a ^^ compile_shrS_const 1l ^^
            G.i (Binary (Wasm.Values.I32 I32Op.Xor)) ^^
+           compile_shrU_const (Int32.sub 32l BitTagged.ubitsl) ^^
            compile_bitand_const
              Int32.(shift_left minus_one n) ^^
            G.i (Test (Wasm.Values.I32 I32Op.Eqz))
@@ -3258,7 +3262,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
         G.if1 I32Type
           begin
             get_a ^^
-            (* -2^sbits is small enough for compact representation, but 2^30 isn't *)
+            (* -2^sbits is small enough for compact representation, but 2^sbits isn't *)
             compile_eq_const sminl_shifted ^^ (* i.e. -2^sbits shifted *)
             G.if1 I32Type
               (compile_unboxed_const sminl ^^ Num.from_word32 env)
@@ -10452,7 +10456,8 @@ and compile_prim_invocation (env : E.t) ae p es at =
       SR.Vanilla,
       compile_exp_vanilla env ae e ^^
       compile_bitand_const (TaggedSmallWord.mask_of_type Int16) ^^
-      compile_shrS_const 15l (* resulting Int32 will always be unboxed *)
+      compile_shrS_const (Int32.sub BitTagged.ubitsl 16l) (* resulting Int32 will always be unboxed *)
+      (*TODO: tag*)
     | Int32, Int64 ->
       SR.UnboxedWord64,
       compile_exp_as env ae SR.UnboxedWord32 e ^^
