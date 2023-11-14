@@ -55,7 +55,7 @@ struct StableMemoryAddress(usize);
 /// During derialization:
 /// * Main memory = stable memory layout, S = StableMemoryAddress.
 /// * Stable memory = main memory layout, T = Value.
-trait GraphCopy<S: Copy, T: Copy, P: Copy + Default + Debug> {
+trait GraphCopy<S: Copy, T: Copy, P: Copy + Default> {
     fn to_space(&mut self) -> &mut StableMemorySpace;
 
     /// Run the entire graph copy algorithm: Copy the object graph reachable from the `root` pointer.
@@ -474,6 +474,7 @@ pub unsafe fn destabilize<M: Memory>(
     use crate::{
         memory::ic::{clear_heap, get_aligned_heap_base},
         rts_trap_with,
+        stable_mem::moc_stable_mem_set_size,
     };
     use compatibility::{memory_compatible, TypeDescriptor};
     use metadata::StabilizationMetadata;
@@ -488,10 +489,12 @@ pub unsafe fn destabilize<M: Memory>(
         clear_heap(mem);
     }
     let heap_base = get_aligned_heap_base();
-    Deserialization::run(
+    let stable_root = Deserialization::run(
         mem,
         metadata.serialized_data_start,
         metadata.serialized_data_length,
         heap_base,
-    )
+    );
+    moc_stable_mem_set_size(metadata.stable_memory_pages);
+    stable_root
 }

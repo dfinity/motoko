@@ -27,18 +27,13 @@ use crate::{
     barriers::allocation_barrier,
     memory::{alloc_blob, Memory},
     stable_mem::{
-        grow, ic0_stable64_read, ic0_stable64_write, read_u32, size, write_u32, write_u8, PAGE_SIZE,
+        grow, ic0_stable64_read, ic0_stable64_size, ic0_stable64_write, read_u32, size, write_u32,
+        write_u8, PAGE_SIZE,
     },
     types::{size_of, Bytes, Value},
 };
 
 use super::compatibility::TypeDescriptor;
-
-extern "C" {
-    // Physical stable memory size, in contrast to the
-    // logical stable memory size `stable_mem::size()`.
-    pub fn ic0_stable64_size() -> u64;
-}
 
 const STABLE_GRAPH_COPY_VERSION: u32 = 3;
 

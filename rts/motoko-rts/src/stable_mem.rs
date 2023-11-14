@@ -4,10 +4,14 @@ extern "C" {
     // physical ic0_stable64 operations re-exported by moc
     pub fn ic0_stable64_write(offset: u64, src: u64, size: u64);
     pub fn ic0_stable64_read(dst: u64, offset: u64, size: u64);
+    #[cfg(feature = "ic")]
+    pub fn ic0_stable64_size() -> u64;
     // (virtual) stable_mem operations implemented by moc
     pub fn moc_stable_mem_get_version() -> u32;
     pub fn moc_stable_mem_set_version(version: u32);
-    pub fn moc_stable_mem_size() -> u64;
+    pub fn moc_stable_mem_get_size() -> u64;
+    #[cfg(feature = "ic")]
+    pub fn moc_stable_mem_set_size(pages: u64);
     pub fn moc_stable_mem_grow(additional_pages: u64) -> u64;
 }
 
@@ -21,7 +25,7 @@ pub fn set_version(version: u32) {
 
 pub fn size() -> u64 {
     // SAFETY: This is safe because of the ic0 api guarantees.
-    unsafe { moc_stable_mem_size() }
+    unsafe { moc_stable_mem_get_size() }
 }
 
 pub fn grow(pages: u64) -> u64 {

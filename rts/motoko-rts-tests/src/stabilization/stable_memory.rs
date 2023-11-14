@@ -45,7 +45,7 @@ pub fn ic0_stable64_read(destination: u64, offset: u64, size: u64) {
 }
 
 #[no_mangle]
-pub fn moc_stable_mem_size() -> u64 {
+pub fn moc_stable_mem_get_size() -> u64 {
     STABLE_MEMORY.with(|memory| memory.borrow().len()) as u64 / PAGE_SIZE
 }
 
