@@ -12,11 +12,11 @@ use crate::{
 
 pub struct TypeDescriptor {
     // Blob with candid-encoded type definitions.
-    candid_data: Value,
+    pub(super) candid_data: Value,
     // Blob with a list of `u32` offsets referring to the `candid_data`.
-    type_offsets: Value,
+    pub(super) type_offsets: Value,
     // Type index of the main actor to the compared for memory compatibility.
-    main_actor_index: i32,
+    pub(super) main_actor_index: i32,
 }
 
 impl TypeDescriptor {
