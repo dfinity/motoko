@@ -637,6 +637,15 @@ let encode (em : extended_module) =
       | Convert (F64 F64Op.DemoteF64) -> assert false
       | Convert (F64 F64Op.ReinterpretInt) -> op 0xbf
 
+      (* Custom encodings for emulating stable-memory, special cases
+         of MemorySize, MemoryGrow and MemoryCopy
+         requiring wasm features bulk-memory and multi-memory
+      *)
+      | StableSize -> op 0x3f; u8 0x01
+      | StableGrow -> op 0x40; u8 0x01
+      | StableRead -> op 0xfc; vu32 0x0al; u8 0x00; u8 0x01
+      | StableWrite -> op 0xfc; vu32 0x0al; u8 0x01; u8 0x00
+
     let const c =
       list (instr ignore) c.it; end_ ()
 
@@ -853,6 +862,10 @@ let encode (em : extended_module) =
     let candid_sections candid =
       icp_custom_section "candid:service" utf8 candid.service;
       icp_custom_section "candid:args" utf8 candid.args
+
+    let wasm_features_section wasm_features =
+      let text = String.concat "," wasm_features in
+      custom_section "wasm_features" utf8 text (text <> "")
 
     let uleb128 n = vu64 (Int64.of_int n)
     let sleb128 n = vs64 (Int64.of_int n)
@@ -1222,6 +1235,7 @@ let encode (em : extended_module) =
       name_section em.name;
       candid_sections em.candid;
       motoko_sections em.motoko;
+      wasm_features_section em.wasm_features;
       source_mapping_url_section em.source_mapping_url;
       if !Mo_config.Flags.debug_info then
         begin
