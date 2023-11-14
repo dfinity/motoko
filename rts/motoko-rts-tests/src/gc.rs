@@ -283,6 +283,7 @@ pub fn check_dynamic_heap(
             }
 
             let is_forwarded = forward != make_pointer(address as u32);
+            assert!(!is_forwarded || mode != CheckMode::Stabilzation);
 
             if incremental && tag == TAG_BLOB {
                 assert!(!is_forwarded);

@@ -93,7 +93,7 @@ const CACHE_SIZE: usize = 2;
 /// * Streamed reading and updating, used for scanning and patching pointers.
 /// * Streamed writing, used for allocating new objects.
 pub struct StableMemorySpace {
-    /// The pointers used in the serialized stable memory layout are 
+    /// The pointers used in the serialized stable memory layout are
     /// relative to this start address of the to-space.
     base_address: u64,
     /// Used fore reading and updating.
@@ -157,7 +157,7 @@ impl StableMemorySpace {
         debug_assert!(self.scan_address <= self.free_address);
     }
 
-    /// Size of this memory space. Also serves to determine the addresses of a subsequently 
+    /// Size of this memory space. Also serves to determine the addresses of a subsequently
     /// written object in the serialized stable memory format.
     pub fn written_length(&self) -> u64 {
         debug_assert!(self.base_address <= self.free_address);

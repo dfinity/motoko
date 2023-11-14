@@ -8,6 +8,12 @@ thread_local! {
     static STABLE_MEMORY: RefCell<Vec<u8>> = RefCell::new(vec![]);
 }
 
+pub fn clear_stable_memory() {
+    STABLE_MEMORY.with(|memory| {
+        memory.borrow_mut().clear();
+    })
+}
+
 #[no_mangle]
 pub fn ic0_stable64_write(offset: u64, source: u64, size: u64) {
     STABLE_MEMORY.with(|memory| {

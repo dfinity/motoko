@@ -22,7 +22,6 @@ fn main() {
     }
 
     unsafe {
-        stabilization::test();
         test_read_write_64_bit();
         bigint::test();
         bitrel::test();
@@ -31,6 +30,7 @@ fn main() {
         gc::test();
         leb128::test();
         principal_id::test();
+        stabilization::test();
         stream::test();
         text::test();
         utf8::test();

@@ -25,8 +25,8 @@ use crate::{
     memory::Memory,
     stable_mem::ic0_stable64_read,
     types::{
-        is_skewed, size_of, skew, unskew, Array, FwdPtr, MutBox, Obj, Tag, Value, Words, TAG_ARRAY,
-        TAG_FWD_PTR, TAG_MUTBOX,
+        is_skewed, size_of, skew, unskew, Array, Bytes, FreeSpace, FwdPtr, MutBox, Obj, Tag, Value,
+        Words, TAG_ARRAY, TAG_FREE_SPACE, TAG_FWD_PTR, TAG_MUTBOX, TAG_ONE_WORD_FILLER,
     },
 };
 
@@ -92,13 +92,20 @@ trait GraphCopy<S: Copy, T: Copy, P: Copy + Default + Debug> {
 
     /// Allocate the object in the to-space by bumbing the `free` pointer.
     /// Copy its content to that target location using the encoding of the target layout.
-    /// Note: The pointer values in the field are retained as source addresses.
+    /// Notes:
+    /// * The pointer values in the field are retained as source addresses.
+    /// * The source and target layout must use the same size for addresses, e.g. 32-bit.
+    /// * The allocator must be contiguously growing. Free space must be inserted when the
+    ///   allocator uses internal fragmentation, e.g. for the partitioned heap.
     fn copy(&mut self, object: S) -> T;
 
     /// Read an object at the `scan` position in the to-space, process all its potential
     /// pointer fields by invoking `patch_field` for each of them.
-    /// Note: The default implementation assumes identical payload format between main memory
+    /// Note:
+    /// * The default implementation assumes identical payload format between main memory
     /// and the serialized stable memory.
+    /// * The deserialized memory image for the partitioned heap may contain free space at
+    /// a partition end.
     fn scan(&mut self) {
         let tag = self.scan_header();
         match tag {
@@ -111,6 +118,11 @@ trait GraphCopy<S: Copy, T: Copy, P: Copy + Default + Debug> {
             }
             TAG_MUTBOX => {
                 self.patch_field();
+            }
+            TAG_ONE_WORD_FILLER => {}
+            TAG_FREE_SPACE => {
+                let free_words = Words(self.to_space().read::<u32>());
+                self.to_space().skip(free_words.to_bytes().as_usize());
             }
             other_tag => unimplemented!("tag {other_tag}"),
         }
@@ -232,6 +244,7 @@ pub struct Deserialization<'a, M: Memory> {
     mem: &'a mut M,
     to_space: StableMemorySpace,
     heap_base: usize,
+    last_allocation: usize,
 }
 
 impl<'a, M: Memory> Deserialization<'a, M> {
@@ -250,6 +263,7 @@ impl<'a, M: Memory> Deserialization<'a, M> {
             mem,
             to_space,
             heap_base,
+            last_allocation: heap_base,
         }
         .run(StableMemoryAddress(0));
         Self::stable_memory_bulk_copy(stable_start, new_heap_size, heap_base);
@@ -266,13 +280,46 @@ impl<'a, M: Memory> Deserialization<'a, M> {
         self.heap_base + stable_address.0
     }
 
-    fn copy_header(&mut self, size: Words<u32>, tag: Tag) -> Value {
+    fn allocate(&mut self, size: Words<u32>, tag: Tag) -> Value {
         let target = unsafe { self.mem.alloc_words(size) };
+        // Cheney's algorithm relies on contiguous allocation in the to-space.
+        // Deal with internal fragmentation in the partitioned heap in the presence of the
+        // incremental GC.
+        if self.last_allocation != target.get_ptr() {
+            self.insert_free_space(target);
+        }
+        debug_assert_eq!(self.last_allocation, target.get_ptr());
+        self.last_allocation += size.to_bytes().as_usize();
         let mut header = Obj::default();
         header.tag = tag;
         header.init_forward(target);
         self.to_space.write(&header);
         target
+    }
+
+    fn insert_free_space(&mut self, target: Value) {
+        let new_allocation = target.get_ptr();
+        // Heap allocations must be monotonously growing, such that their image
+        // can be streamed to the to-space.
+        // NOTE: Ensure that the allocator on an empty partitioned heap follows this rule.
+        assert!(self.last_allocation <= new_allocation);
+        let difference = Bytes((new_allocation - self.last_allocation) as u32).to_words();
+        debug_assert!(difference > Words(0));
+        if difference == Words(1) {
+            self.to_space.write(&TAG_ONE_WORD_FILLER);
+        } else {
+            debug_assert!(difference >= size_of::<FreeSpace>());
+            let free_space = FreeSpace {
+                tag: TAG_FREE_SPACE,
+                words: difference - size_of::<FreeSpace>(),
+            };
+            self.to_space.write(&free_space);
+            // TODO: Optimize bulk zero write.
+            for _ in 0..free_space.words.as_usize() {
+                self.to_space.write(&0u32);
+            }
+        }
+        self.last_allocation += difference.to_bytes().as_usize();
     }
 }
 
@@ -316,7 +363,7 @@ impl<'a, M: Memory> GraphCopy<StableMemoryAddress, Value, u32> for Deserializati
                     let array_length = *(source as *mut u32);
                     source += WORD_SIZE;
                     let target_size = size_of::<Array>() + Words(array_length);
-                    let target = self.copy_header(target_size, tag);
+                    let target = self.allocate(target_size, tag);
                     self.to_space.write(&array_length);
                     let payload_length = (array_length * WORD_SIZE) as usize;
                     self.to_space.raw_write(source as usize, payload_length);
@@ -324,7 +371,7 @@ impl<'a, M: Memory> GraphCopy<StableMemoryAddress, Value, u32> for Deserializati
                 }
                 TAG_MUTBOX => {
                     let target_size = size_of::<MutBox>();
-                    let target = self.copy_header(target_size, tag);
+                    let target = self.allocate(target_size, tag);
                     let mutbox_field = *(source as *mut u32);
                     self.to_space.write(&mutbox_field);
                     target
@@ -335,8 +382,15 @@ impl<'a, M: Memory> GraphCopy<StableMemoryAddress, Value, u32> for Deserializati
     }
 
     fn scan_header(&mut self) -> Tag {
-        let header = self.to_space.read::<Obj>();
-        header.tag
+        let tag = self.to_space.read::<Tag>();
+        assert_ne!(tag, TAG_FWD_PTR);
+        if tag != TAG_FREE_SPACE && tag != TAG_ONE_WORD_FILLER {
+            // Skip the forwarding pointer in the case of the incremental GC.
+            debug_assert!(size_of::<Obj>() >= size_of::<Tag>());
+            let difference = size_of::<Obj>() - size_of::<Tag>();
+            self.to_space.skip(difference.to_bytes().as_usize());
+        }
+        tag
     }
 
     fn is_pointer(&self, field_value: u32) -> bool {

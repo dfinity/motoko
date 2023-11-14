@@ -1,12 +1,15 @@
 mod reader_writer;
 mod stable_memory;
 
-use crate::gc::{
-    check_dynamic_heap,
-    heap::MotokoHeap,
-    random::generate,
-    utils::{GC, GC_IMPLS},
-    CheckMode, TestHeap,
+use crate::{
+    gc::{
+        check_dynamic_heap,
+        heap::MotokoHeap,
+        random::generate,
+        utils::{GC, GC_IMPLS},
+        CheckMode, TestHeap,
+    },
+    stabilization::stable_memory::clear_stable_memory,
 };
 use motoko_rts::{
     memory::alloc_array,
@@ -19,7 +22,8 @@ use oorandom::Rand32;
 pub unsafe fn test() {
     println!("Testing stabilization ...");
     reader_writer::test();
-    test_stabilization()
+    test_stabilization();
+    reset_memory();
 }
 
 #[non_incremental_gc]
@@ -33,6 +37,26 @@ fn clear_heap(heap: &mut MotokoHeap) {
 
     unsafe {
         IncrementalGC::initialize(heap, heap.heap_base_address());
+    }
+}
+
+fn reset_memory() {
+    clear_stable_memory();
+    reset_main_memory();
+}
+
+#[non_incremental_gc]
+fn reset_main_memory() {}
+
+#[incremental_gc]
+fn reset_main_memory() {
+    use crate::memory::TestMemory;
+    use motoko_rts::gc::incremental::{partitioned_heap::PARTITION_SIZE, IncrementalGC};
+    use motoko_rts::types::Words;
+
+    let mut memory = TestMemory::new(Words(PARTITION_SIZE as u32));
+    unsafe {
+        IncrementalGC::initialize(&mut memory, 0);
     }
 }
 
@@ -139,11 +163,13 @@ fn test_stabilization() {
     let mut random = Rand32::new(RANDOM_SEED);
     test_serialization_deserialization(&mut random, 100, 0);
     test_serialization_deserialization(&mut random, 1000, 200);
-    test_serialization_deserialization(&mut random, 10_000, 5000);
+    test_serialization_deserialization(&mut random, 10_000, 5_000);
+    test_serialization_deserialization(&mut random, 20_000, 7_000);
 }
 
 fn test_serialization_deserialization(random: &mut Rand32, max_objects: u32, stable_start: u64) {
-    println!("    Test case {max_objects}");
+    println!("    Testing with {max_objects} objects");
+    clear_stable_memory();
     let gc = GC_IMPLS[0];
     let mut heap = random_heap(random, max_objects, gc);
     let heap_base = heap.heap_base_address();
