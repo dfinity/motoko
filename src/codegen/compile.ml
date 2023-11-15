@@ -7687,7 +7687,7 @@ module OldStabilization = struct
           G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
           E.else_trap_with env "StableMem.mem_size non-zero" ^^
           compile_unboxed_const 0l ^^
-          StableMem.set_version env ^^
+          save_version ^^
           Object.lit_raw env fs'
         end
         begin
