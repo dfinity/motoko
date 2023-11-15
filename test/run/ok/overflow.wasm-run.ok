@@ -1,9 +1,12 @@
+bigint function error
 Error: failed to run main module `_out/overflow.wasm`
 
 Caused by:
     0: failed to invoke command default
     1: error while executing at wasm backtrace:
-         0: B+div
-         1: init
-         2: _start
-    2: wasm trap: integer divide by zero
+         0: bigint_trap
+         1: bigint_div
+         2: B+div
+         3: init
+         4: _start
+    2: wasm trap: unreachable
