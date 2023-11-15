@@ -531,7 +531,7 @@ let set_memory_size new_size_bytes : module_' -> module_' = fun m ->
   | [t;t1] ->
     { m with
       memories = [(phrase (fun m ->
-        { mtype = MemoryType ({min = new_size_pages; max = None}) }
+        { mtype = MemoryType ({min = new_size_pages; max = None}, I64IndexType) }
         ) t); t1]
     }
   | [t] ->

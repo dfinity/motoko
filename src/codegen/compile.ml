@@ -10431,69 +10431,58 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
   | OtherPrim (("regionLoadNat8" | "regionLoadInt8" as p)), [e0; e1] ->
     SR.Vanilla,
+    let unsigned = p = "regionLoadNat8" in
     compile_exp_as env ae SR.Vanilla e0 ^^
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     Region.load_word8 env ^^
-    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
-    TaggedSmallWord.msb_adjust Type.Nat8
+    G.i (Convert (Wasm_exts.Values.I64 I64Op.(if unsigned then ExtendUI32 else ExtendSI32))) ^^
+    TaggedSmallWord.msb_adjust Type.(if unsigned then Nat8 else Int8)
 
   | OtherPrim (("regionStoreNat8" | "regionStoreInt8") as p), [e0; e1; e2] ->
     SR.unit,
+    let unsigned = p = "regionStoreNat8" in
     compile_exp_as env ae SR.Vanilla e0 ^^
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     compile_exp_as env ae SR.Vanilla e2 ^^
-    TaggedSmallWord.lsb_adjust Type.(if p = "regionStoreNat8" then Nat8 else Int8) ^^
+    TaggedSmallWord.lsb_adjust Type.(if unsigned then Nat8 else Int8) ^^
     G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
     Region.store_word8 env
 
   | OtherPrim (("regionLoadNat16" | "regionLoadInt16") as p), [e0; e1] ->
     SR.Vanilla,
+    let unsigned = p = "regionLoadNat16" in
     compile_exp_as env ae SR.Vanilla e0 ^^
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     Region.load_word16 env ^^
-    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
-    TaggedSmallWord.msb_adjust Type.(if p = "regionLoadNat16" then Nat16 else Int16)
+    G.i (Convert (Wasm_exts.Values.I64 I64Op.(if unsigned then ExtendUI32 else ExtendSI32))) ^^
+    TaggedSmallWord.msb_adjust Type.(if unsigned then Nat16 else Int16)
 
   | OtherPrim (("regionStoreNat16" | "regionStoreInt16") as p), [e0; e1; e2] ->
     SR.unit,
+    let unsigned = p = "regionStoreNat16" in
     compile_exp_as env ae SR.Vanilla e0 ^^
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     compile_exp_as env ae SR.Vanilla e2 ^^
-    TaggedSmallWord.lsb_adjust Type.(if p = "regionStoreNat16" then Nat16 else Int16) ^^
+    TaggedSmallWord.lsb_adjust Type.(if unsigned then Nat16 else Int16) ^^
     G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
     Region.store_word16 env
 
-  | OtherPrim ("regionLoadNat32"), [e0; e1] ->
+  | OtherPrim (("regionLoadNat32" | "regionLoadInt32") as p), [e0; e1] ->
     SR.Vanilla,
+    let unsigned = p = "regionLoadNat32" in
     compile_exp_as env ae SR.Vanilla e0 ^^
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     Region.load_word32 env ^^
-    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
-    TaggedSmallWord.msb_adjust Type.Nat32
+    G.i (Convert (Wasm_exts.Values.I64 I64Op.(if unsigned then ExtendUI32 else ExtendSI32))) ^^
+    TaggedSmallWord.msb_adjust Type.(if unsigned then Nat32 else Int32)
 
-  | OtherPrim ("regionLoadInt32"), [e0; e1] ->
-    SR.Vanilla,
-    compile_exp_as env ae SR.Vanilla e0 ^^
-    compile_exp_as env ae SR.UnboxedWord64 e1 ^^
-    Region.load_word32 env ^^
-    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendSI32)) ^^
-    TaggedSmallWord.msb_adjust Type.Int32
-
-  | OtherPrim ("regionStoreNat32"), [e0; e1; e2] ->
+  | OtherPrim (("regionStoreNat32" | "regionStoreInt32") as p), [e0; e1; e2] ->
     SR.unit,
+    let unsigned = p = "regionStoreNat32" in
     compile_exp_as env ae SR.Vanilla e0 ^^
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     compile_exp_as env ae SR.Vanilla e2 ^^
-    TaggedSmallWord.lsb_adjust Type.Nat32 ^^
-    G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
-    Region.store_word32 env
-
-  | OtherPrim ("regionStoreInt32"), [e0; e1; e2] ->
-    SR.unit,
-    compile_exp_as env ae SR.Vanilla e0 ^^
-    compile_exp_as env ae SR.UnboxedWord64 e1 ^^
-    compile_exp_as env ae SR.Vanilla e2 ^^
-    TaggedSmallWord.lsb_adjust Type.Int32 ^^
+    TaggedSmallWord.lsb_adjust Type.(if unsigned then Nat32 else Int32) ^^
     G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
     Region.store_word32 env
 
