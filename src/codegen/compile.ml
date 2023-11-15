@@ -10395,11 +10395,29 @@ and compile_prim_invocation (env : E.t) ae p es at =
     | Float, Int ->
       SR.Vanilla,
       compile_exp_as env ae SR.UnboxedFloat64 e ^^
-      E.call_import env "rts" "bigint_of_float64"
+      E.call_import env "rts" "bigint_of_float64" ^^
+      let set_b, get_b = new_local env "b" in
+      (* adjust 31 to ubit scalar, done here to avoid touching bigint.rs *)
+      set_b ^^
+      get_b ^^
+      BitTagged.if_tagged_scalar env [I32Type]
+        (get_b ^^
+         compile_shrS_const 1l ^^
+         BigNum.from_signed_word32 env)
+        (get_b)
 
     | Int, Float ->
       SR.UnboxedFloat64,
       compile_exp_vanilla env ae e ^^
+      let set_b, get_b = new_local env "b" in
+      (* adjust ubit to 31 bit scalar, done here to avoid touching bigint.rs *)
+      set_b ^^
+      get_b ^^
+      BitTagged.if_tagged_scalar env [I32Type]
+        (get_b ^^
+         compile_shrS_const (Int32.sub 32l BitTagged.ubitsl) ^^
+         compile_shl_const 1l)
+        (get_b) ^^
       E.call_import env "rts" "bigint_to_float64"
 
     | Float, Int64 ->
