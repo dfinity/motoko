@@ -10214,7 +10214,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     let advance_by =
       match spacing with
       | ElementSize -> Arr.element_size
-      | One -> 2l (* 1 : Nat *) in
+      | One -> Int32.shift_left 1l (32 - BitTagged.ubits) (* 1 : Nat *) in
     SR.Vanilla,
     compile_exp_vanilla env ae e ^^ (* previous byte offset to array *)
     compile_add_const advance_by
