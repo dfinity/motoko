@@ -1099,6 +1099,9 @@ module RTS = struct
     E.add_func_import env "rts" "stream_shutdown" [I32Type] [];
     E.add_func_import env "rts" "stream_reserve" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "stream_stable_dest" [I32Type; I64Type; I64Type] [];
+    E.add_func_import env "rts" "stabilize" [I32Type; I32Type; I32Type] [];
+    E.add_func_import env "rts" "destabilize" [I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "use_new_destabilization" [] [I32Type];
     if !Flags.gc_strategy = Flags.Incremental then
       incremental_gc_imports env
     else
@@ -5060,16 +5063,18 @@ end (* Cycles *)
 module StableMem = struct
 
   (* Versioning (c.f. Region.rs) *)
-  (* NB: these constants must agree with VERSION_NO_STABLE_MEMORY etc. in Region.rs *)
-  let version_no_stable_memory = Int32.of_int 0 (* never manifest in serialized form *)
-  let version_some_stable_memory = Int32.of_int 1
-  let version_regions = Int32.of_int 2
-  let version_max = version_regions
+  (* NB: these constants must agree with the constants in Region.rs *)
+  let legacy_version_no_stable_memory = Int32.of_int 0 (* never manifest in serialized form *)
+  let legacy_version_some_stable_memory = Int32.of_int 1
+  let legacy_version_regions = Int32.of_int 2
+  let version_graph_copy_no_regions = Int32.of_int 3
+  let version_graph_copy_regions = Int32.of_int 4
+  let version_max = version_graph_copy_regions
 
   let register_globals env =
     (* size (in pages) *)
     E.add_global64 env "__stablemem_size" Mutable 0L;
-    E.add_global32 env "__stablemem_version" Mutable version_no_stable_memory
+    E.add_global32 env "__stablemem_version" Mutable version_graph_copy_no_regions
 
   let get_mem_size env =
     G.i (GlobalGet (nr (E.get_global env "__stablemem_size")))
@@ -5082,6 +5087,24 @@ module StableMem = struct
 
   let set_version env =
     G.i (GlobalSet (nr (E.get_global env "__stablemem_version")))
+
+  let upgrade_version env =
+    set_version env ^^
+    get_version env ^^
+    compile_eq_const legacy_version_no_stable_memory ^^
+    get_version env ^^
+    compile_eq_const legacy_version_some_stable_memory ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
+    (G.if0
+      (compile_unboxed_const version_graph_copy_no_regions ^^
+      set_version env)
+      G.nop) ^^
+    get_version env ^^
+    compile_eq_const legacy_version_regions ^^
+    (G.if0
+      (compile_unboxed_const version_graph_copy_regions ^^
+      set_version env)
+      G.nop)
 
   (* stable memory bounds check *)
   let guard env =
@@ -5375,18 +5398,15 @@ module StableMem = struct
           get_len ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
           IC.system_call env "stable64_write")
     | _ -> assert false
-
 end (* StableMem *)
-
 
 (* StableMemoryInterface *)
 (* Core, legacy interface to IC stable memory, used to implement prims `stableMemoryXXX` of
    library `ExperimentalStableMemory.mo`.
    Each operation dispatches on the state of `StableMem.get_version()`.
-   * StableMem.version_no_stable_memory/StableMem.version_some_stable_memory:
+   * StableMem.version_graph_copy_no_regions:
      * use StableMem directly
-     * switch to version_some_stable_memory on non-trivial grow.
-   * StableMem.version_regions: use Region.mo
+   * StableMem.version_graph_copy_regions: use Region.mo
 *)
 module StableMemoryInterface = struct
 
@@ -5395,7 +5415,7 @@ module StableMemoryInterface = struct
 
   let if_regions env args tys is1 is2 =
     StableMem.get_version env ^^
-    compile_unboxed_const StableMem.version_regions ^^
+    compile_unboxed_const StableMem.version_graph_copy_regions ^^
     G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
     E.if_ env tys
       (get_region0 env ^^ args ^^ is1 env)
@@ -5419,27 +5439,8 @@ module StableMemoryInterface = struct
           [I64Type]
           Region.grow
           (fun env ->
-            (* do StableMem.grow, but detect and record change in version as well *)
-            let (set_res, get_res) = new_local64 env "size" in
             (* logical grow *)
-            StableMem.grow env ^^
-            set_res ^^
-            (* if version = version_no_stable_memory and new mem_size > 0
-               then version := version_some_stable_memory *)
-            StableMem.get_version env ^^
-            compile_eq_const StableMem.version_no_stable_memory ^^
-            StableMem.get_mem_size env ^^
-            compile_const_64 0L ^^
-            G.i (Compare (Wasm.Values.I64 I32Op.GtU)) ^^
-            G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
-            (G.if0
-               begin
-                 compile_unboxed_const StableMem.version_some_stable_memory ^^
-                 StableMem.set_version env
-               end
-               G.nop) ^^
-            (* return res *)
-            get_res))
+            StableMem.grow env))
 
   let load_blob env =
     Func.share_code2 Func.Never env "__stablememory_load_blob"
@@ -5994,7 +5995,12 @@ module MakeSerialization (Strm : Stream) = struct
   *)
 
   module TM = Map.Make (Type.Ord)
-  let to_idl_prim = let open Type in function
+
+  type mode =
+    | Candid
+    | Persistence
+
+  let to_idl_prim mode = let open Type in function
     | Prim Null | Tup [] -> Some 1l
     | Prim Bool -> Some 2l
     | Prim Nat -> Some 3l
@@ -6014,6 +6020,11 @@ module MakeSerialization (Strm : Stream) = struct
     | Non -> Some 17l
     | Prim Principal -> Some 24l
     | Prim Region -> Some 128l
+    (* only used for memory compatibility checks *)
+    | Prim Blob -> 
+      (match mode with
+      | Candid -> None
+      | Persistence -> Some 129l)
     | _ -> None
 
   (* some constants, also see rts/idl.c *)
@@ -6026,7 +6037,7 @@ module MakeSerialization (Strm : Stream) = struct
   let idl_alias     = 1l (* see Note [mutable stable values] *)
 
   (* TODO: use record *)
-  let type_desc env ts :
+  let type_desc env mode ts :
      string * int list * int32 list  (* type_desc, (relative offsets), indices of ts *)
     =
     let open Type in
@@ -6038,7 +6049,7 @@ module MakeSerialization (Strm : Stream) = struct
       let idx = ref TM.empty in
       let rec go t =
         let t = Type.normalize t in
-        if to_idl_prim t <> None then () else
+        if to_idl_prim mode t <> None then () else
         if TM.mem t !idx then () else begin
           idx := TM.add t (Lib.List32.length !typs) !idx;
           typs := !typs @ [ t ];
@@ -6097,13 +6108,13 @@ module MakeSerialization (Strm : Stream) = struct
 
     let add_idx t =
       let t = Type.normalize t in
-      match to_idl_prim t with
+      match to_idl_prim mode t with
       | Some i -> add_sleb128 (Int32.neg i)
       | None -> add_sleb128 (TM.find (normalize t) idx) in
 
     let idx t =
       let t = Type.normalize t in
-      match to_idl_prim t with
+      match to_idl_prim mode t with
       | Some i -> Int32.neg i
       | None -> TM.find (normalize t) idx in
 
@@ -6111,6 +6122,7 @@ module MakeSerialization (Strm : Stream) = struct
       match t with
       | Non -> assert false
       | Prim Blob ->
+        assert (mode = Candid);
         add_typ Type.(Array (Prim Nat8))
       | Prim Region ->
         add_sleb128 idl_alias; add_idx t
@@ -6188,7 +6200,7 @@ module MakeSerialization (Strm : Stream) = struct
 
   (* See Note [Candid subtype checks] *)
   let set_delayed_globals (env : E.t) (set_typtbl, set_typtbl_end, set_typtbl_size, set_typtbl_idltyps) =
-    let typdesc, offsets, idltyps = type_desc env (E.get_typtbl_typs env) in
+    let typdesc, offsets, idltyps = type_desc env Candid (E.get_typtbl_typs env) in
     let static_typedesc = E.add_static_unskewed env [StaticBytes.Bytes typdesc] in
     let static_typtbl =
       let bytes = StaticBytes.i32s
@@ -6703,7 +6715,7 @@ module MakeSerialization (Strm : Stream) = struct
       (* returns true if we are looking at primitive type with this id *)
       let check_prim_typ t =
         get_idltyp ^^
-        compile_eq_const (Int32.neg (Option.get (to_idl_prim t)))
+        compile_eq_const (Int32.neg (Option.get (to_idl_prim Candid t)))
       in
 
       let with_prim_typ t f =
@@ -6852,7 +6864,7 @@ module MakeSerialization (Strm : Stream) = struct
         begin
           (* sanity check *)
           get_arg_typ ^^
-          compile_eq_const (Int32.neg (Option.get (to_idl_prim (Prim Region)))) ^^
+          compile_eq_const (Int32.neg (Option.get (to_idl_prim Candid (Prim Region)))) ^^
           E.else_trap_with env "IDL error: unexpecting primitive alias type" ^^
           get_arg_typ
         end
@@ -7116,7 +7128,7 @@ module MakeSerialization (Strm : Stream) = struct
           let (set_region, get_region) = new_local env "region" in
           (* sanity check *)
           get_region_typ ^^
-          compile_eq_const (Int32.neg (Option.get (to_idl_prim (Prim Region)))) ^^
+          compile_eq_const (Int32.neg (Option.get (to_idl_prim Candid (Prim Region)))) ^^
           E.else_trap_with env "deserialize_go (Region): unexpected idl_typ" ^^
           (* pre-allocate a region object, with dummy fields *)
           compile_const_64 0L ^^ (* id *)
@@ -7300,7 +7312,7 @@ module MakeSerialization (Strm : Stream) = struct
       let (set_data_size, get_data_size) = new_local env "data_size" in
       let (set_refs_size, get_refs_size) = new_local env "refs_size" in
 
-      let (tydesc, _offsets, _idltyps) = type_desc env ts in
+      let (tydesc, _offsets, _idltyps) = type_desc env Candid ts in
       let tydesc_len = Int32.of_int (String.length tydesc) in
 
       (* Get object sizes *)
@@ -7615,6 +7627,7 @@ end (* MakeSerialization *)
 
 module Serialization = MakeSerialization(BumpStream)
 
+(*
 module BlobStream : Stream = struct
   let create env get_data_size set_token get_token header =
     let header_size = Int32.of_int (String.length header) in
@@ -7687,7 +7700,7 @@ module BlobStream : Stream = struct
     BigNum.compile_store_to_stream_signed env
 
 end
-
+*)
 
 (* Stabilization (serialization to/from stable memory) of both:
    * stable variables; and
@@ -7697,10 +7710,11 @@ end
    * ../../design/StableMemory.md
 *)
 
-module Stabilization = struct
+module OldStabilization = struct
 
   let extend64 code = code ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
 
+  (*
   (* The below stream implementation is geared towards the
      tail section of stable memory, where the serialised
      stable variables go. As such a few intimate details of
@@ -7890,8 +7904,9 @@ module Stabilization = struct
         StableMem.write_word32 env
 
       end
+  *)
 
-  let destabilize env ty save_version =
+  let old_destabilize env ty save_version =
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
       let (set_pages, get_pages) = new_local64 env "pages" in
@@ -8032,6 +8047,36 @@ module Stabilization = struct
           get_val
         end
     | _ -> assert false
+end
+
+module GraphCopyStabilization = struct
+  let create_type_descriptor env actor_type =
+    let (candid_type_desc, type_offsets, type_indices) = Serialization.(type_desc env Persistence [actor_type]) in
+    let serialized_offsets = StaticBytes.(as_bytes [i32s (List.map Int32.of_int type_offsets)]) in
+    assert ((List.length type_indices) = 1);
+    assert ((List.nth type_indices 0) = 0l);
+    Blob.lit env candid_type_desc ^^
+    Blob.lit env serialized_offsets
+
+  let stabilize env actor_type =
+    (if !Flags.gc_strategy = Flags.Incremental then
+      E.call_import env "rts" "stop_gc_on_upgrade"
+    else
+      G.nop) ^^
+    (* TODO: Upgrade to stable memory version 3 if needed *)
+    create_type_descriptor env actor_type ^^
+    E.call_import env "rts" "stabilize"
+  
+  let destabilize env actor_type =
+    E.call_import env "rts" "use_new_destabilization" ^^
+    G.if1 I32Type
+      begin
+        create_type_descriptor env actor_type ^^
+        E.call_import env "rts" "destabilize"
+      end
+      begin
+        OldStabilization.old_destabilize env actor_type (StableMem.upgrade_version env)
+      end
 end
 
 module GCRoots = struct
@@ -10413,7 +10458,8 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
   | ICStableSize t, [e] ->
     SR.UnboxedWord64,
-    let (tydesc, _, _) = Serialization.type_desc env [t] in
+    (* TODO: Adjust to new graph-copy-based stabilization *)
+    let (tydesc, _, _) = Serialization.(type_desc env Candid [t]) in
     let tydesc_len = Int32.of_int (String.length tydesc) in
     compile_exp_vanilla env ae e ^^
     Serialization.buffer_size env t ^^
@@ -11098,14 +11144,14 @@ and compile_prim_invocation (env : E.t) ae p es at =
         3. return v
     *)
     SR.Vanilla,
-    Stabilization.destabilize env ty (StableMem.set_version env) ^^
+    GraphCopyStabilization.destabilize env ty ^^
     compile_unboxed_const (if !Flags.use_stable_regions then 1l else 0l) ^^
     E.call_import env "rts" "region_init"
 
   | ICStableWrite ty, [e] ->
     SR.unit,
     compile_exp_vanilla env ae e ^^
-    Stabilization.stabilize env ty
+    GraphCopyStabilization.stabilize env ty
 
   (* Cycles *)
   | SystemCyclesBalancePrim, [] ->

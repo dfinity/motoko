@@ -3,6 +3,7 @@
 //! -- Stable memory
 //! Raw stable memory or region data, size S in pages
 //! -- Stable variables
+//! if size S == 0: 0u32 (to distinguish from old Candid stabilization)
 //! Serialized data address N:
 //!   Serialized object graph, length L
 //!   (possible zero padding)
@@ -15,37 +16,43 @@
 //!     Data
 //!   (possible zero padding)
 //! -- Last physical page (metadata):
-//!   Version 3 (u32)
-//!   (zero padding u32)
-//!   Stable memory size in pages S (u64)
+//!   (zero padding to align at page end)
 //!   Serialized data address N (u64)
 //!   Serialized data length L (u64)
 //!   Type descriptor address M (u64)
+//!   Stable memory size in pages S (u64)
+//!   (zero padding u32)
+//!   Version 3 or 4 (u32)
 //! -- page end
+
+use core::cmp::max;
 
 use crate::{
     barriers::allocation_barrier,
     memory::{alloc_blob, Memory},
+    region::{VERSION_GRAPH_COPY_NO_REGIONS, VERSION_GRAPH_COPY_REGIONS},
     stable_mem::{
-        grow, ic0_stable64_read, ic0_stable64_size, ic0_stable64_write, read_u32, size, write_u32,
-        write_u8, PAGE_SIZE,
+        get_version, grow, ic0_stable64_read, ic0_stable64_size, ic0_stable64_write, read_u32,
+        set_version, size, write_u32, write_u8, PAGE_SIZE,
     },
     types::{size_of, Bytes, Value},
 };
 
 use super::compatibility::TypeDescriptor;
 
-const STABLE_GRAPH_COPY_VERSION: u32 = 3;
+// If logical stable memory has size 0, the new graph-copy-based stabilization can only
+// be distinguished from the old stabilization by keeping the first word 0.
+pub const MINIMUM_SERIALIZATION_START: u64 = 4;
 
 #[repr(C)]
 #[derive(Default)]
 struct LastPageRecord {
-    version: u32,
-    _padding: u32,
-    stable_memory_pages: u64,
     serialized_data_address: u64,
     serialized_data_length: u64,
     type_descriptor_address: u64,
+    stable_memory_pages: u64,
+    _padding: u32,
+    version: u32,
 }
 
 pub struct StabilizationMetadata {
@@ -139,49 +146,75 @@ impl StabilizationMetadata {
         }
     }
 
-    fn write_last_physical_page<T>(offset: &mut u64, value: &T) {
-        Self::align_page_start(offset);
-        let last_physical_page = unsafe { ic0_stable64_size() };
-        *offset = last_physical_page * PAGE_SIZE;
-        let size = size_of::<T>().to_bytes().as_usize() as u64;
-        Self::ensure_space(*offset, size);
-        unsafe {
-            ic0_stable64_write(*offset, value as *const T as u64, size);
-        }
-        *offset += size;
+    fn metadata_location() -> u64 {
+        let physical_pages = unsafe { ic0_stable64_size() };
+        assert!(physical_pages > 0);
+        let last_page_start = (physical_pages - 1) * PAGE_SIZE;
+        let size = size_of::<LastPageRecord>().to_bytes().as_usize() as u64;
+        assert!(size < PAGE_SIZE);
+        last_page_start + (PAGE_SIZE - size)
     }
 
-    fn read_last_physical_page<T: Default>() -> T {
-        let last_physical_page = unsafe { ic0_stable64_size() };
-        let offset = last_physical_page * PAGE_SIZE;
-        let size = size_of::<T>().to_bytes().as_usize() as u64;
-        let mut value = T::default();
+    fn write_metadata(value: &LastPageRecord) {
+        let offset = Self::metadata_location();
+        let size = size_of::<LastPageRecord>().to_bytes().as_usize() as u64;
+        Self::ensure_space(offset, size);
         unsafe {
-            ic0_stable64_read(&mut value as *mut T as u64, offset, size);
+            ic0_stable64_write(offset, value as *const LastPageRecord as u64, size);
+        }
+    }
+
+    fn read_metadata() -> LastPageRecord {
+        let offset = Self::metadata_location();
+        let size = size_of::<LastPageRecord>().to_bytes().as_usize() as u64;
+        let mut value = LastPageRecord::default();
+        unsafe {
+            ic0_stable64_read(&mut value as *mut LastPageRecord as u64, offset, size);
         }
         value
     }
 
+    fn clear_metadata() {
+        Self::write_metadata(&LastPageRecord::default());
+    }
+
+    fn ensure_legacy_compatibility(&self) {
+        // Distinguish from old Candid stabilization with version 0 (i.e. no Experimental stable memory or regions)
+        // where the first page starts with a non-zero word (the Candid encoding prefix).
+        assert!(self.serialized_data_start >= MINIMUM_SERIALIZATION_START);
+        if self.serialized_data_start == MINIMUM_SERIALIZATION_START {
+            write_u32(0, 0);
+        }
+        assert_eq!(read_u32(0), 0);
+    }
+
     pub fn store(&self) {
+        self.ensure_legacy_compatibility();
         assert!(self.stable_memory_pages * PAGE_SIZE <= self.serialized_data_start);
         let mut offset = self.serialized_data_start + self.serialized_data_length;
         Self::align_page_start(&mut offset);
         let type_descriptor_address = offset;
         Self::save_type_descriptor(&mut offset, &self.type_descriptor);
+        Self::align_page_start(&mut offset);
         let metadata = LastPageRecord {
-            version: STABLE_GRAPH_COPY_VERSION,
-            _padding: 0,
-            stable_memory_pages: self.stable_memory_pages,
             serialized_data_address: self.serialized_data_start,
             serialized_data_length: self.serialized_data_length,
             type_descriptor_address,
+            stable_memory_pages: self.stable_memory_pages,
+            _padding: 0,
+            version: get_version(),
         };
-        Self::write_last_physical_page(&mut offset, &metadata);
+        Self::write_metadata(&metadata);
     }
 
     pub fn load<M: Memory>(mem: &mut M) -> StabilizationMetadata {
-        let metadata = Self::read_last_physical_page::<LastPageRecord>();
-        assert_eq!(metadata.version, STABLE_GRAPH_COPY_VERSION);
+        let metadata = Self::read_metadata();
+        Self::clear_metadata();
+        assert!(
+            metadata.version == VERSION_GRAPH_COPY_NO_REGIONS
+                || metadata.version == VERSION_GRAPH_COPY_REGIONS
+        );
+        set_version(metadata.version);
         assert!(metadata.stable_memory_pages * PAGE_SIZE <= metadata.serialized_data_address);
         let mut offset = metadata.type_descriptor_address;
         let type_descriptor = Self::load_type_descriptor(mem, &mut offset);
@@ -191,5 +224,22 @@ impl StabilizationMetadata {
             serialized_data_length: metadata.serialized_data_length,
             type_descriptor,
         }
+    }
+
+    pub fn matching_version() -> bool {
+        let physical_pages = unsafe { ic0_stable64_size() };
+        if physical_pages == 0 {
+            // no stable memory -> Legacy version 0
+            return false;
+        }
+        if read_u32(0) != 0 {
+            // Old stabilization with no experimental stable memory and no regions.
+            // Writes the Candid marker at address 0 -> Legacy version 0
+            return false;
+        }
+        let address = physical_pages * PAGE_SIZE - size_of::<u32>().to_bytes().as_usize() as u64;
+        let version = read_u32(address);
+        assert!(version <= max(VERSION_GRAPH_COPY_NO_REGIONS, VERSION_GRAPH_COPY_REGIONS));
+        version == VERSION_GRAPH_COPY_NO_REGIONS || version == VERSION_GRAPH_COPY_REGIONS
     }
 }

@@ -16,8 +16,6 @@
 //!  
 //! See `GraphCopyStabilization.md` for the stable format specification and the employed algorithm.
 
-use core::fmt::Debug;
-
 use motoko_rts_macros::ic_mem_fn;
 
 use crate::{
@@ -40,7 +38,7 @@ mod metadata;
 pub mod reader_writer;
 
 /// Address in stable memory.
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 struct StableMemoryAddress(usize);
 
 /// Generic graph copy from main memory (from-space) to stable memory (to-space).
@@ -424,13 +422,14 @@ impl<'a, M: Memory> GraphCopy<StableMemoryAddress, Value, u32> for Deserializati
 #[cfg(feature = "ic")]
 pub unsafe fn stabilize(stable_actor: Value, old_candid_data: Value, old_type_offsets: Value) {
     use crate::{
-        stabilization::metadata::StabilizationMetadata,
+        stabilization::metadata::{StabilizationMetadata, MINIMUM_SERIALIZATION_START},
         stable_mem::{self, PAGE_SIZE},
     };
     use compatibility::TypeDescriptor;
+    use core::cmp::min;
 
     let stable_memory_pages = stable_mem::size();
-    let serialized_data_start = stable_memory_pages * PAGE_SIZE;
+    let serialized_data_start = min(stable_memory_pages * PAGE_SIZE, MINIMUM_SERIALIZATION_START);
     let serialized_data_length = Serialization::run(stable_actor, serialized_data_start);
     let type_descriptor = TypeDescriptor::new(old_candid_data, old_type_offsets, 0);
     let metadata = StabilizationMetadata {
@@ -497,4 +496,10 @@ pub unsafe fn destabilize<M: Memory>(
     );
     moc_stable_mem_set_size(metadata.stable_memory_pages);
     stable_root
+}
+
+#[no_mangle]
+#[cfg(feature = "ic")]
+pub unsafe fn use_new_destabilization() -> bool {
+    metadata::StabilizationMetadata::matching_version()
 }
