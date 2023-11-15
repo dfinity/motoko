@@ -9,7 +9,6 @@ mod leb128;
 mod memory;
 mod principal_id;
 mod stabilization;
-mod stream;
 mod text;
 mod utf8;
 
@@ -31,7 +30,6 @@ fn main() {
         leb128::test();
         principal_id::test();
         stabilization::test();
-        stream::test();
         text::test();
         utf8::test();
     }

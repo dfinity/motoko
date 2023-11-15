@@ -41,7 +41,6 @@ pub mod region;
 pub mod stabilization;
 mod stable_mem;
 mod static_checks;
-pub mod stream;
 pub mod text;
 pub mod text_iter;
 mod tommath_bindings;

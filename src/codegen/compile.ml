@@ -1004,12 +1004,10 @@ module RTS = struct
     E.add_func_import env "rts" "bigint_abs" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_leb128_size" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_leb128_encode" [I32Type; I32Type] [];
-    E.add_func_import env "rts" "bigint_leb128_stream_encode" [I32Type; I32Type] [];
     E.add_func_import env "rts" "bigint_leb128_decode" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_leb128_decode_word64" [I64Type; I64Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_sleb128_size" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_sleb128_encode" [I32Type; I32Type] [];
-    E.add_func_import env "rts" "bigint_sleb128_stream_encode" [I32Type; I32Type] [];
     E.add_func_import env "rts" "bigint_sleb128_decode" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_sleb128_decode_word64" [I64Type; I64Type; I32Type] [I32Type];
     E.add_func_import env "rts" "leb128_encode" [I32Type; I32Type] [];
@@ -1091,14 +1089,6 @@ module RTS = struct
     E.add_func_import env "rts" "get_heap_size" [] [I32Type];
     E.add_func_import env "rts" "alloc_blob" [I32Type] [I32Type];
     E.add_func_import env "rts" "alloc_array" [I32Type] [I32Type];
-    E.add_func_import env "rts" "alloc_stream" [I32Type] [I32Type];
-    E.add_func_import env "rts" "stream_write" [I32Type; I32Type; I32Type] [];
-    E.add_func_import env "rts" "stream_write_byte" [I32Type; I32Type] [];
-    E.add_func_import env "rts" "stream_write_text" [I32Type; I32Type] [];
-    E.add_func_import env "rts" "stream_split" [I32Type] [I32Type];
-    E.add_func_import env "rts" "stream_shutdown" [I32Type] [];
-    E.add_func_import env "rts" "stream_reserve" [I32Type; I32Type] [I32Type];
-    E.add_func_import env "rts" "stream_stable_dest" [I32Type; I64Type; I64Type] [];
     E.add_func_import env "rts" "stabilize" [I32Type; I32Type; I32Type] [];
     E.add_func_import env "rts" "destabilize" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "use_new_destabilization" [] [I32Type];
@@ -1205,10 +1195,6 @@ module Heap = struct
 
   (* At this level of abstraction, heap objects are just flat arrays of words *)
 
-  let load_field_unskewed (i : int32) : G.t =
-    let offset = Int32.mul word_size i in
-    G.i (Load {ty = I32Type; align = 2; offset; sz = None})
-
   let load_field (i : int32) : G.t =
     let offset = Int32.(add (mul word_size i) ptr_unskew) in
     G.i (Load {ty = I32Type; align = 2; offset; sz = None})
@@ -1219,11 +1205,6 @@ module Heap = struct
 
   (* Although we occasionally want to treat two consecutive
      32 bit fields as one 64 bit number *)
-
-  (* Requires little-endian encoding, see also `Stream` in `types.rs` *)
-  let load_field64_unskewed (i : int32) : G.t =
-    let offset = Int32.mul word_size i in
-    G.i (Load {ty = I64Type; align = 2; offset; sz = None})
 
   let load_field64 (i : int32) : G.t =
     let offset = Int32.(add (mul word_size i) ptr_unskew) in
@@ -1615,7 +1596,6 @@ module Tagged = struct
      Attention: This mapping is duplicated in these places
        * here
        * motoko-rts/src/types.rs
-       * motoko-rts/src/stream.rs
        * motoko-rts/src/text.rs
        * motoko-rts/src/memory.rs
        * motoko-rts/src/bigint.rs
@@ -1779,14 +1759,6 @@ module Tagged = struct
   let store_field env index =
     (if !Flags.sanity then check_forwarding_for_store env I32Type else G.nop) ^^
     Heap.store_field index
-
-  let load_field_unskewed env index =
-    (if !Flags.sanity then check_forwarding env true else G.nop) ^^
-    Heap.load_field_unskewed index
-
-  let load_field64_unskewed env index =
-    (if !Flags.sanity then check_forwarding env true else G.nop) ^^
-    Heap.load_field64_unskewed index
 
   let load_field64 env index =
     (if !Flags.sanity then check_forwarding env false else G.nop) ^^
@@ -2730,13 +2702,6 @@ sig
    *)
   val compile_store_to_data_buf_signed : E.t -> G.t
   val compile_store_to_data_buf_unsigned : E.t -> G.t
-  (* given on stack
-     - numeric object (vanilla, TOS)
-     - (unskewed) stream
-    store the binary representation of the numeric object into the stream
-   *)
-  val compile_store_to_stream_signed : E.t -> G.t
-  val compile_store_to_stream_unsigned : E.t -> G.t
   (* given a ReadBuf on stack, consume bytes from it,
      deserializing to a numeric object
      and leave it on the stack (vanilla).
@@ -3236,48 +3201,6 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
         get_buf ^^ get_x ^^ Num.compile_store_to_data_buf_signed env)
       env
 
-  let compile_store_to_stream_unsigned env =
-    let set_x, get_x = new_local env "x" in
-    let set_stream, get_stream = new_local env "stream" in
-    set_x ^^ set_stream ^^
-    get_x ^^
-    try_unbox I32Type
-      (fun env ->
-        BitTagged.untag_i32 ^^ set_x ^^
-        (* get size & reserve & encode *)
-        let dest =
-          get_stream ^^
-          I32Leb.compile_leb128_size get_x ^^
-          E.call_import env "rts" "stream_reserve" in
-        I32Leb.compile_store_to_data_buf_unsigned env get_x dest)
-      (fun env ->
-        G.i Drop ^^
-        get_stream ^^ get_x ^^ Num.compile_store_to_stream_unsigned env ^^
-        compile_unboxed_zero)
-      env ^^
-      G.i Drop
-
-  let compile_store_to_stream_signed env =
-    let set_x, get_x = new_local env "x" in
-    let set_stream, get_stream = new_local env "stream" in
-    set_x ^^ set_stream ^^
-    get_x ^^
-    try_unbox I32Type
-      (fun env ->
-        BitTagged.untag_i32 ^^ set_x ^^
-        (* get size & reserve & encode *)
-        let dest =
-          get_stream ^^
-          I32Leb.compile_sleb128_size get_x ^^
-          E.call_import env "rts" "stream_reserve" in
-        I32Leb.compile_store_to_data_buf_signed env get_x dest)
-      (fun env ->
-        G.i Drop ^^
-        get_stream ^^ get_x ^^ Num.compile_store_to_stream_signed env ^^
-        compile_unboxed_zero)
-      env ^^
-      G.i Drop
-
   let compile_data_size_unsigned env =
     try_unbox I32Type
       (fun _ ->
@@ -3392,18 +3315,12 @@ module BigNumLibtommath : BigNumType = struct
     get_n ^^ get_buf ^^ E.call_import env "rts" "bigint_leb128_encode" ^^
     get_n ^^ E.call_import env "rts" "bigint_leb128_size"
 
-  let compile_store_to_stream_unsigned env =
-    E.call_import env "rts" "bigint_leb128_stream_encode"
-
   let compile_store_to_data_buf_signed env =
     let (set_buf, get_buf) = new_local env "buf" in
     let (set_n, get_n) = new_local env "n" in
     set_n ^^ set_buf ^^
     get_n ^^ get_buf ^^ E.call_import env "rts" "bigint_sleb128_encode" ^^
     get_n ^^ E.call_import env "rts" "bigint_sleb128_size"
-
-  let compile_store_to_stream_signed env =
-    E.call_import env "rts" "bigint_sleb128_stream_encode"
 
   let compile_load_from_data_buf env get_data_buf = function
     | false -> get_data_buf ^^ E.call_import env "rts" "bigint_leb128_decode"
@@ -5253,35 +5170,6 @@ module StableMem = struct
             (get_pages_needed ^^
              IC.system_call env "stable64_grow")
             get_size)
-    | _ -> assert false
-
-  (* ensure stable memory includes [offset..offset+size), assumes size > 0 *)
-  let ensure env =
-    match E.mode env with
-    | Flags.ICMode | Flags.RefMode ->
-      Func.share_code2 Func.Always env "__stablemem_ensure"
-        (("offset", I64Type), ("size", I64Type)) []
-        (fun env get_offset get_size ->
-          let (set_sum, get_sum) = new_local64 env "sum" in
-          get_offset ^^
-          get_size ^^
-          G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
-          set_sum ^^
-          (* check for overflow *)
-          get_sum ^^
-          get_offset ^^
-          G.i (Compare (Wasm.Values.I64 I64Op.LtU)) ^^
-          E.then_trap_with env "Range overflow" ^^
-          (* ensure page *)
-          get_sum ^^
-          compile_const_64 (Int64.of_int page_size_bits) ^^
-          G.i (Binary (Wasm.Values.I64 I64Op.ShrU)) ^^
-          compile_add64_const 1L ^^
-          ensure_pages env ^^
-          (* Check result *)
-          compile_const_64 0L ^^
-          G.i (Compare (Wasm.Values.I64 I64Op.LtS)) ^^
-          E.then_trap_with env "Out of stable memory.")
     | _ -> assert false
 
   (* low-level grow, respecting --max-stable-pages *)
@@ -7627,81 +7515,6 @@ end (* MakeSerialization *)
 
 module Serialization = MakeSerialization(BumpStream)
 
-(*
-module BlobStream : Stream = struct
-  let create env get_data_size set_token get_token header =
-    let header_size = Int32.of_int (String.length header) in
-    get_data_size ^^ compile_add_const header_size ^^
-    E.call_import env "rts" "alloc_stream" ^^ set_token ^^ (* allocation barrier called in alloc_stream *)
-    get_token ^^
-    Blob.lit env header ^^
-    E.call_import env "rts" "stream_write_text"
-
-  let check_filled env get_token get_data_size =
-    G.i Drop
-
-  let terminate env get_token _get_data_size _header_size =
-    get_token ^^ E.call_import env "rts" "stream_split" ^^
-    let set_blob, get_blob = new_local env "blob" in
-    set_blob ^^
-    get_blob ^^ Blob.payload_ptr_unskewed env ^^
-    get_blob ^^ Blob.len env
-
-  let finalize_buffer code = code
-
-  let name_for fn_name ts = "@Bl_" ^ fn_name ^ "<" ^ Typ_hash.typ_seq_hash ts ^ ">"
-
-  let absolute_offset env get_token =
-    let offset = 8l in (* see invariant in `stream.rs` *)
-    let filled_field = Int32.add (Blob.len_field env) offset in
-    get_token ^^ Tagged.load_field_unskewed env filled_field
-
-  let checkpoint _env _get_token = G.i Drop
-
-  let reserve env get_token bytes =
-    get_token ^^ compile_unboxed_const bytes ^^ E.call_import env "rts" "stream_reserve"
-
-  let write_word_leb env get_token code =
-    let set_word, get_word = new_local env "word" in
-    code ^^ set_word ^^
-    I32Leb.compile_store_to_data_buf_unsigned env get_word
-      (get_token ^^ I32Leb.compile_leb128_size get_word ^^ E.call_import env "rts" "stream_reserve") ^^
-    G.i Drop
-
-  let write_word_32 env get_token code =
-    reserve env get_token Heap.word_size ^^
-    code ^^
-    G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = None})
-
-  let write_byte env get_token code =
-    get_token ^^ code ^^
-    E.call_import env "rts" "stream_write_byte"
-
-  let write_blob env get_token get_x =
-    let set_len, get_len = new_local env "len" in
-    get_x ^^ Blob.len env ^^ set_len ^^
-    write_word_leb env get_token get_len ^^
-    get_token ^^
-    get_x ^^ Blob.payload_ptr_unskewed env ^^
-    get_len ^^
-    E.call_import env "rts" "stream_write"
-
-  let write_text env get_token get_x =
-    write_word_leb env get_token (get_x ^^ Text.size env) ^^
-    get_token ^^ get_x ^^
-    E.call_import env "rts" "stream_write_text"
-
-  let write_bignum_leb env get_token get_x =
-    get_token ^^ get_x ^^
-    BigNum.compile_store_to_stream_unsigned env
-
-  let write_bignum_sleb env get_token get_x =
-    get_token ^^ get_x ^^
-    BigNum.compile_store_to_stream_signed env
-
-end
-*)
-
 (* Stabilization (serialization to/from stable memory) of both:
    * stable variables; and
    * virtual stable memory.
@@ -7713,198 +7526,6 @@ end
 module OldStabilization = struct
 
   let extend64 code = code ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
-
-  (*
-  (* The below stream implementation is geared towards the
-     tail section of stable memory, where the serialised
-     stable variables go. As such a few intimate details of
-     the stable memory layout are burnt in, such as the
-     variable `N` from the design document. *)
-  module StableMemoryStream : Stream = struct
-    include BlobStream
-
-    let name_for fn_name ts = "@Sm_" ^ fn_name ^ "<" ^ Typ_hash.typ_seq_hash ts ^ ">"
-
-    let create env get_data_size set_token get_token header =
-      create env (compile_unboxed_const 0x8000l) set_token get_token header ^^
-        (* TODO: push header directly? *)
-
-      let (set_len, get_len) = new_local env "len" in
-      get_data_size ^^
-      compile_add_const (Int32.of_int (String.length header)) ^^
-      set_len ^^
-
-      let (set_dst, get_dst) = new_local64 env "dst" in
-      StableMem.get_mem_size env ^^
-      compile_shl64_const (Int64.of_int page_size_bits) ^^
-      compile_add64_const 4L ^^ (* `N` is now on the stack *)
-      set_dst ^^
-
-      get_dst ^^
-      extend64 get_len ^^
-      StableMem.ensure env ^^
-
-      get_token ^^
-      get_dst ^^
-      get_dst ^^ extend64 get_len ^^
-      G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
-      E.call_import env "rts" "stream_stable_dest"
-
-    let ptr64_field env =
-      let offset = 1l in (* see invariant in `stream.rs` *)
-      Int32.add (Blob.len_field env) offset (* see invariant in `stream.rs`, padding for 64-bit after Stream header *)
-
-    let terminate env get_token get_data_size header_size =
-      get_token ^^
-      E.call_import env "rts" "stream_shutdown" ^^
-      compile_unboxed_zero ^^ (* no need to write *)
-      get_token ^^
-      Tagged.load_field64_unskewed env (ptr64_field env) ^^
-      StableMem.get_mem_size env ^^
-      compile_shl64_const (Int64.of_int page_size_bits) ^^
-      G.i (Binary (Wasm.Values.I64 I64Op.Sub)) ^^
-      compile_sub64_const 4L ^^  (* `N` is now subtracted *)
-      G.i (Convert (Wasm.Values.I32 I32Op.WrapI64))
-
-    let finalize_buffer _ = G.nop (* everything is outputted already *)
-
-    (* Returns a 32-bit unsigned int that is the number of bytes that would
-       have been written to stable memory if flushed. The difference
-       of two such numbers will always be an exact byte distance. *)
-    let absolute_offset env get_token =
-      let start64_field = Int32.add (ptr64_field env) 2l in (* see invariant in `stream.rs` *)
-      absolute_offset env get_token ^^
-      get_token ^^
-      Tagged.load_field64_unskewed env (ptr64_field env) ^^
-      get_token ^^
-      Tagged.load_field64_unskewed env start64_field ^^
-      G.i (Binary (Wasm.Values.I64 I64Op.Sub)) ^^
-      G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
-      G.i (Binary (Wasm.Values.I32 I32Op.Add))
-  end
-
-  module Externalization = MakeSerialization(StableMemoryStream)
-
-  let stabilize env t =
-    let (set_dst, get_dst) = new_local env "dst" in
-    let (set_len, get_len) = new_local env "len" in
-
-    (if !Flags.gc_strategy = Flags.Incremental then
-      E.call_import env "rts" "stop_gc_on_upgrade"
-    else
-      G.nop) ^^
-
-
-    Externalization.serialize env [t] ^^
-    set_len ^^
-    set_dst ^^
-
-    StableMem.get_mem_size env ^^
-    G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
-    G.if0
-      begin
-        (* assert StableMem.get_version() == StableMem.version_no_stable_memory *)
-        StableMem.get_version env ^^
-        compile_eq_const StableMem.version_no_stable_memory ^^
-        E.else_trap_with env "StableMem.get_version() != version_no_stable_memory" ^^
-
-        (* Case-true: Stable variables only --
-           no use of either regions or experimental API. *)
-        (* ensure [0,..,3,...len+4) *)
-        compile_const_64 0L ^^
-        extend64 get_len ^^
-        compile_add64_const 4L ^^  (* reserve one word for size *)
-        StableMem.ensure env ^^
-
-        (* write len to initial word of stable memory*)
-        compile_const_64 0L ^^
-        get_len ^^
-        StableMem.write_word32 env ^^
-
-        (* copy data to following stable memory *)
-        Externalization.Strm.finalize_buffer
-          begin
-            compile_const_64 4L ^^
-            extend64 get_dst ^^
-            extend64 get_len ^^
-            IC.system_call env "stable64_write"
-          end
-      end
-      begin
-        (* Case-false: Either regions or experimental API. *)
-        let (set_N, get_N) = new_local64 env "N" in
-
-        (* let N = !size * page_size *)
-        StableMem.get_mem_size env ^^
-        compile_shl64_const (Int64.of_int page_size_bits) ^^
-        set_N ^^
-
-        (* grow mem to page including address
-           N + 4 + len + 4 + 4 + 4 = N + len + 16
-        *)
-        get_N ^^
-        extend64 get_len ^^
-        compile_add64_const 16L ^^
-        StableMem.ensure env ^^
-
-        get_N ^^
-        get_len ^^
-        StableMem.write_word32 env ^^
-
-        (* copy data to following stable memory *)
-        Externalization.Strm.finalize_buffer
-          begin
-            get_N ^^
-            compile_add64_const 4L ^^
-            extend64 get_dst ^^
-            extend64 get_len ^^
-            IC.system_call env "stable64_write"
-          end ^^
-
-        (* let M = pagesize * ic0.stable64_size() - 1 *)
-        (* M is beginning of last page *)
-        let (set_M, get_M) = new_local64 env "M" in
-        IC.system_call env "stable64_size" ^^
-        compile_sub64_const 1L ^^
-        compile_shl64_const (Int64.of_int page_size_bits) ^^
-        set_M ^^
-
-        (* store mem_size at M + (pagesize - 12) *)
-        get_M ^^
-        compile_add64_const (Int64.sub page_size64 12L) ^^
-        StableMem.get_mem_size env ^^
-        G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
-        (* TODO: write word64 *)
-        StableMem.write_word32 env ^^
-
-        (* save first word at M + (pagesize - 8);
-           mark first word as 0 *)
-        get_M ^^
-        compile_add64_const (Int64.sub page_size64 8L) ^^
-        compile_const_64 0L ^^
-        StableMem.read_and_clear_word32 env ^^
-        StableMem.write_word32 env ^^
-
-        (* save version at M + (pagesize - 4) *)
-        get_M ^^
-        compile_add64_const (Int64.sub page_size64 4L) ^^
-
-        (* assert StableMem.get_version() > StableMem.version_no_stable_memory *)
-        StableMem.get_version env ^^
-        compile_rel_const I32Op.GtU StableMem.version_no_stable_memory ^^
-        E.else_trap_with env "StableMem.get_version() == version_no_stable_memory" ^^
-
-        (* assert StableMem.get_version() <= StableMem.version_max *)
-        StableMem.get_version env ^^
-        compile_rel_const I32Op.LeU StableMem.version_max ^^
-        E.else_trap_with env "StableMem.get_version() > version_max" ^^
-
-        (* record the version *)
-        StableMem.get_version env ^^
-        StableMem.write_word32 env
-
-      end
-  *)
 
   let old_destabilize env ty save_version =
     match E.mode env with
