@@ -73,4 +73,5 @@ type extended_module = {
   motoko : motoko_sections;
   (* source map section *)
   source_mapping_url : string option;
+  wasm_features : string list;
 }
