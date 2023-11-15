@@ -3297,9 +3297,23 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
         Num.compile_load_from_data_buf env get_data_buf signed
       end
       begin
+        let set_b, get_b = new_local env "b" in
         get_a ^^
         get_eom ^^ G.i (Unary (Wasm.Values.I64 I64Op.Ctz)) ^^
-        compile_load_from_word64 env get_data_buf signed
+        compile_load_from_word64 env get_data_buf signed ^^
+        (* adjust 31 to ubit scalar, done here to avoid touching bigint.rs *)
+        set_b ^^
+        get_b ^^
+        BitTagged.if_tagged_scalar env [I32Type]
+          (if signed then
+            get_b ^^
+            compile_shrS_const 1l ^^
+            Num.from_signed_word32 env
+           else
+            get_b ^^
+            compile_shrU_const 1l ^^
+            Num.from_word32 env)
+          (get_b)
       end
 
   let compile_store_to_data_buf_unsigned env =
