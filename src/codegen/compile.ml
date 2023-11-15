@@ -10614,7 +10614,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla,
     compile_exp_vanilla env ae e ^^
     Arr.len env ^^
-    BigNum.from_word30 env
+    BigNum.from_word32 env
 
   | OtherPrim "text_len", [e] ->
     SR.Vanilla, compile_exp_vanilla env ae e ^^ Text.len_nat env
