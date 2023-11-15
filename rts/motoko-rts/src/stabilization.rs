@@ -23,8 +23,9 @@ use crate::{
     memory::Memory,
     stable_mem::ic0_stable64_read,
     types::{
-        is_skewed, size_of, skew, unskew, Array, Bytes, FreeSpace, FwdPtr, MutBox, Obj, Tag, Value,
-        Words, TAG_ARRAY, TAG_FREE_SPACE, TAG_FWD_PTR, TAG_MUTBOX, TAG_ONE_WORD_FILLER,
+        block_size, is_skewed, size_of, skew, unskew, Array, Bytes, FreeSpace, FwdPtr, MutBox, Obj,
+        Tag, Value, Words, TAG_ARRAY, TAG_FREE_SPACE, TAG_FWD_PTR, TAG_MUTBOX, TAG_OBJECT,
+        TAG_ONE_WORD_FILLER,
     },
 };
 
@@ -109,6 +110,13 @@ trait GraphCopy<S: Copy, T: Copy, P: Copy + Default> {
     fn scan(&mut self) {
         let tag = self.scan_header();
         match tag {
+            TAG_OBJECT => {
+                let object_size = self.to_space().read::<u32>();
+                self.patch_field(); // `hash_blob`, blob with field hashes
+                for _ in 0..object_size {
+                    self.patch_field();
+                }
+            }
             TAG_ARRAY => {
                 let array_length = self.to_space().read::<u32>();
                 // TOOD: Optimize in chunked visiting
@@ -200,24 +208,16 @@ impl GraphCopy<Value, StableMemoryAddress, u32> for Serialization {
 
     fn copy(&mut self, object: Value) -> StableMemoryAddress {
         unsafe {
+            assert!(object.is_obj());
             let address = self.to_space.written_length();
-            match object.tag() {
-                TAG_ARRAY => {
-                    let array = object.as_array();
-                    self.to_space.write(&TAG_ARRAY);
-                    let array_length = (*array).len;
-                    self.to_space.write(&array_length);
-                    let payload_length = (array_length * WORD_SIZE) as usize;
-                    self.to_space
-                        .raw_write(array.payload_addr() as usize, payload_length);
-                }
-                TAG_MUTBOX => {
-                    let mutbox = object.as_mutbox();
-                    self.to_space.write(&TAG_MUTBOX);
-                    self.to_space.write(&(*mutbox).field);
-                }
-                other_tag => unimplemented!("tag {other_tag}"),
-            }
+            self.to_space.write(&object.tag());
+            // Skip forwarding pointer if the incremental GC is used.
+            let header_size = size_of::<Obj>();
+            let total_size = block_size(object.get_ptr());
+            debug_assert!(header_size <= total_size);
+            let payload_size = (total_size - header_size).to_bytes().as_usize();
+            let payload_start = object.get_ptr() + header_size.to_bytes().as_usize();
+            self.to_space.raw_write(payload_start, payload_size);
             StableMemoryAddress(address as usize)
         }
     }
@@ -278,6 +278,22 @@ impl<'a, M: Memory> Deserialization<'a, M> {
 
     fn source_address(&self, stable_address: StableMemoryAddress) -> usize {
         self.heap_base + stable_address.0
+    }
+
+    const TARGET_HEADER_SIZE: usize = WORD_SIZE as usize;
+
+    fn target_size(&self, stable_address: StableMemoryAddress) -> Words<u32> {
+        let source = self.source_address(stable_address) as usize;
+        let tag = unsafe { *(source as *const Tag) };
+        match tag {
+            TAG_ARRAY => {
+                let length_field = source + Self::TARGET_HEADER_SIZE;
+                let array_length = unsafe { *(length_field as *mut u32) };
+                size_of::<Array>() + Words(array_length)
+            }
+            TAG_MUTBOX => size_of::<MutBox>(),
+            other_tag => unimplemented!("tag {other_tag}"),
+        }
     }
 
     fn allocate(&mut self, size: Words<u32>, tag: Tag) -> Value {
@@ -354,31 +370,15 @@ impl<'a, M: Memory> GraphCopy<StableMemoryAddress, Value, u32> for Deserializati
     /// Writing into to-space (stable memory) but compute the heap target addresses by
     /// simulating the allocations in the from-space (main memory heap).
     fn copy(&mut self, stable_address: StableMemoryAddress) -> Value {
-        let mut source = self.source_address(stable_address) as u32;
-        unsafe {
-            let tag = *(source as *const Tag);
-            source += WORD_SIZE;
-            match tag {
-                TAG_ARRAY => {
-                    let array_length = *(source as *mut u32);
-                    source += WORD_SIZE;
-                    let target_size = size_of::<Array>() + Words(array_length);
-                    let target = self.allocate(target_size, tag);
-                    self.to_space.write(&array_length);
-                    let payload_length = (array_length * WORD_SIZE) as usize;
-                    self.to_space.raw_write(source as usize, payload_length);
-                    target
-                }
-                TAG_MUTBOX => {
-                    let target_size = size_of::<MutBox>();
-                    let target = self.allocate(target_size, tag);
-                    let mutbox_field = *(source as *mut u32);
-                    self.to_space.write(&mutbox_field);
-                    target
-                }
-                other_tag => unimplemented!("tag {other_tag}"),
-            }
-        }
+        let source = self.source_address(stable_address) as usize;
+        let tag = unsafe { *(source as *const Tag) };
+        let target_size = self.target_size(stable_address);
+        let target = self.allocate(target_size, tag);
+        debug_assert!(target_size >= size_of::<Obj>());
+        let payload_start = source + Self::TARGET_HEADER_SIZE;
+        let payload_size = (target_size - size_of::<Obj>()).to_bytes().as_usize();
+        self.to_space.raw_write(payload_start, payload_size);
+        target
     }
 
     fn scan_header(&mut self) -> Tag {

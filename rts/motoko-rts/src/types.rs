@@ -348,6 +348,14 @@ impl Value {
         self.forward().get_ptr() as *mut Array
     }
 
+    /// Get the pointer as `Object` using forwarding. In debug mode panics if the value is not a pointer or the
+    /// pointed object is not an `Object`.
+    pub unsafe fn as_object(self) -> *mut Object {
+        debug_assert!(self.tag() == TAG_OBJECT);
+        self.check_forwarding_pointer();
+        self.forward().get_ptr() as *mut Object
+    }
+
     /// Get the pointer as `Region` using forwarding.
     pub unsafe fn as_region(self) -> *mut Region {
         debug_assert!(self.tag() == TAG_REGION);
