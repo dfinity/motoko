@@ -991,12 +991,10 @@ module RTS = struct
     E.add_func_import env "rts" "bigint_abs" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_leb128_size" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_leb128_encode" [I32Type; I32Type] [];
-    E.add_func_import env "rts" "bigint_leb128_stream_encode" [I32Type; I32Type] [];
     E.add_func_import env "rts" "bigint_leb128_decode" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_leb128_decode_word64" [I64Type; I64Type; I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_sleb128_size" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_sleb128_encode" [I32Type; I32Type] [];
-    E.add_func_import env "rts" "bigint_sleb128_stream_encode" [I32Type; I32Type] [];
     E.add_func_import env "rts" "bigint_sleb128_decode" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_sleb128_decode_word64" [I64Type; I64Type; I32Type] [I32Type];
     E.add_func_import env "rts" "leb128_encode" [I32Type; I32Type] [];
@@ -1078,14 +1076,6 @@ module RTS = struct
     E.add_func_import env "rts" "get_heap_size" [] [I32Type];
     E.add_func_import env "rts" "alloc_blob" [I32Type] [I32Type];
     E.add_func_import env "rts" "alloc_array" [I32Type] [I32Type];
-    E.add_func_import env "rts" "alloc_stream" [I32Type] [I32Type];
-    E.add_func_import env "rts" "stream_write" [I32Type; I32Type; I32Type] [];
-    E.add_func_import env "rts" "stream_write_byte" [I32Type; I32Type] [];
-    E.add_func_import env "rts" "stream_write_text" [I32Type; I32Type] [];
-    E.add_func_import env "rts" "stream_split" [I32Type] [I32Type];
-    E.add_func_import env "rts" "stream_shutdown" [I32Type] [];
-    E.add_func_import env "rts" "stream_reserve" [I32Type; I32Type] [I32Type];
-    E.add_func_import env "rts" "stream_stable_dest" [I32Type; I64Type; I64Type] [];
     ()
 
 end (* RTS *)
@@ -1180,7 +1170,7 @@ module Heap = struct
   (* Although we occasionally want to treat two consecutive
      32 bit fields as one 64 bit number *)
 
-  (* Requires little-endian encoding, see also `Stream` in `types.rs` *)
+  (* Requires little-endian encoding *)
   let load_field64 (i : int32) : G.t =
     let offset = Int32.(add (mul word_size i) ptr_unskew) in
     G.i (Load {ty = I64Type; align = 2; offset; sz = None})
@@ -1573,7 +1563,6 @@ module Tagged = struct
      Attention: This mapping is duplicated in these places
        * here
        * motoko-rts/src/types.rs
-       * motoko-rts/src/stream.rs
        * motoko-rts/src/text.rs
        * motoko-rts/src/memory.rs
        * motoko-rts/src/bigint.rs
@@ -2591,13 +2580,6 @@ sig
    *)
   val compile_store_to_data_buf_signed : E.t -> G.t
   val compile_store_to_data_buf_unsigned : E.t -> G.t
-  (* given on stack
-     - numeric object (vanilla, TOS)
-     - (unskewed) stream
-    store the binary representation of the numeric object into the stream
-   *)
-  val compile_store_to_stream_signed : E.t -> G.t
-  val compile_store_to_stream_unsigned : E.t -> G.t
   (* given a ReadBuf on stack, consume bytes from it,
      deserializing to a numeric object
      and leave it on the stack (vanilla).
@@ -3097,48 +3079,6 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
         get_buf ^^ get_x ^^ Num.compile_store_to_data_buf_signed env)
       env
 
-  let compile_store_to_stream_unsigned env =
-    let set_x, get_x = new_local env "x" in
-    let set_stream, get_stream = new_local env "stream" in
-    set_x ^^ set_stream ^^
-    get_x ^^
-    try_unbox I32Type
-      (fun env ->
-        BitTagged.untag_i32 ^^ set_x ^^
-        (* get size & reserve & encode *)
-        let dest =
-          get_stream ^^
-          I32Leb.compile_leb128_size get_x ^^
-          E.call_import env "rts" "stream_reserve" in
-        I32Leb.compile_store_to_data_buf_unsigned env get_x dest)
-      (fun env ->
-        G.i Drop ^^
-        get_stream ^^ get_x ^^ Num.compile_store_to_stream_unsigned env ^^
-        compile_unboxed_zero)
-      env ^^
-      G.i Drop
-
-  let compile_store_to_stream_signed env =
-    let set_x, get_x = new_local env "x" in
-    let set_stream, get_stream = new_local env "stream" in
-    set_x ^^ set_stream ^^
-    get_x ^^
-    try_unbox I32Type
-      (fun env ->
-        BitTagged.untag_i32 ^^ set_x ^^
-        (* get size & reserve & encode *)
-        let dest =
-          get_stream ^^
-          I32Leb.compile_sleb128_size get_x ^^
-          E.call_import env "rts" "stream_reserve" in
-        I32Leb.compile_store_to_data_buf_signed env get_x dest)
-      (fun env ->
-        G.i Drop ^^
-        get_stream ^^ get_x ^^ Num.compile_store_to_stream_signed env ^^
-        compile_unboxed_zero)
-      env ^^
-      G.i Drop
-
   let compile_data_size_unsigned env =
     try_unbox I32Type
       (fun _ ->
@@ -3253,18 +3193,12 @@ module BigNumLibtommath : BigNumType = struct
     get_n ^^ get_buf ^^ E.call_import env "rts" "bigint_leb128_encode" ^^
     get_n ^^ E.call_import env "rts" "bigint_leb128_size"
 
-  let compile_store_to_stream_unsigned env =
-    E.call_import env "rts" "bigint_leb128_stream_encode"
-
   let compile_store_to_data_buf_signed env =
     let (set_buf, get_buf) = new_local env "buf" in
     let (set_n, get_n) = new_local env "n" in
     set_n ^^ set_buf ^^
     get_n ^^ get_buf ^^ E.call_import env "rts" "bigint_sleb128_encode" ^^
     get_n ^^ E.call_import env "rts" "bigint_sleb128_size"
-
-  let compile_store_to_stream_signed env =
-    E.call_import env "rts" "bigint_sleb128_stream_encode"
 
   let compile_load_from_data_buf env get_data_buf = function
     | false -> get_data_buf ^^ E.call_import env "rts" "bigint_leb128_decode"
