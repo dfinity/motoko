@@ -143,7 +143,7 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
                 buf,
                 "<Object size={:#x} hash_ptr={:#x} field=[",
                 (*object).size,
-                (*object).hash_ptr
+                (*object).hash_blob.get_raw()
             );
             for i in 0..object.size() {
                 let val = object.get(i);

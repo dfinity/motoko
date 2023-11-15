@@ -34,6 +34,10 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
     match tag {
         TAG_OBJECT => {
             let obj = obj as *mut Object;
+            let hash_blob_address = obj.hash_blob_addr();
+            if pointer_to_dynamic_heap(hash_blob_address, heap_base) {
+                visit_ptr_field(ctx, hash_blob_address);
+            }
             let obj_payload = obj.payload_addr();
             for i in 0..obj.size() {
                 let field_addr = obj_payload.add(i as usize);

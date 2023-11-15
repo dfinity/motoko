@@ -3460,204 +3460,6 @@ module Prim = struct
     TaggedSmallWord.shift_leftWordNtoI32 b
 end (* Prim *)
 
-module Object = struct
- (* An object with a mutable field1 and immutable field 2 has the following
-    heap layout:
-
-    ┌──────┬─────┬──────────┬──────────┬─────────┬─────────────┬───┐
-    │ obj header │ n_fields │ hash_ptr │ ind_ptr │ field2_data │ … │
-    └──────┴─────┴──────────┴┬─────────┴┬────────┴─────────────┴───┘
-         ┌───────────────────┘          │
-         │   ┌──────────────────────────┘
-         │   ↓
-         │  ╶─┬────────┬─────────────┐
-         │    │ ObjInd │ field1_data │
-         ↓    └────────┴─────────────┘
-        ╶─┬─────────────┬─────────────┬───┐
-          │ field1_hash │ field2_hash │ … │
-          └─────────────┴─────────────┴───┘
-
-    The object header includes the object tag (Object) and the forwarding pointer.
-    The forwarding pointer is only reserved if compiled for the incremental GC.
-
-    The field hash array lives in static memory (so no size header needed).
-    The hash_ptr is skewed.
-
-    The field2_data for immutable fields is a vanilla word.
-
-    The field1_data for mutable fields are pointers to either an ObjInd, or a
-    MutBox (they have the same layout). This indirection is a consequence of
-    how we compile object literals with `await` instructions, as these mutable
-    fields need to be able to alias local mutable variables.
-
-    We could alternatively switch to an allocate-first approach in the
-    await-translation of objects, and get rid of this indirection -- if it were
-    not for the implementing of sharing of mutable stable values.
-  *)
-
-  let header_size env = Int32.add (Tagged.header_size env) 2l
-
-  (* Number of object fields *)
-  let size_field env = Int32.add (Tagged.header_size env) 0l
-  let hash_ptr_field env = Int32.add (Tagged.header_size env) 1l
-
-  module FieldEnv = Env.Make(String)
-
-  (* This is for static objects *)
-  let vanilla_lit env (fs : (string * int32) list) : int32 =
-    let (hashes, ptrs) = fs
-      |> List.map (fun (n, ptr) -> (Mo_types.Hash.hash n,ptr))
-      |> List.sort compare
-      |> List.split
-    in
-
-    let hash_ptr = E.add_static env StaticBytes.[ i32s hashes ] in
-
-    Tagged.shared_static_obj env Tagged.Object StaticBytes.[
-      I32 (Int32.of_int (List.length fs));
-      I32 hash_ptr;
-      i32s ptrs;
-    ]
-
-  (* This is for non-recursive objects, i.e. ObjNewE *)
-  (* The instructions in the field already create the indirection if needed *)
-  let lit_raw env (fs : (string * (unit -> G.t)) list ) =
-    let name_pos_map =
-      fs |>
-      (* We could store only public fields in the object, but
-         then we need to allocate separate boxes for the non-public ones:
-         List.filter (fun (_, vis, f) -> vis.it = Public) |>
-      *)
-      List.map (fun (n,_) -> (E.hash env n, n)) |>
-      List.sort compare |>
-      List.mapi (fun i (_h,n) -> (n,Int32.of_int i)) |>
-      List.fold_left (fun m (n,i) -> FieldEnv.add n i m) FieldEnv.empty in
-
-    let sz = Int32.of_int (FieldEnv.cardinal name_pos_map) in
-
-    (* Create hash array *)
-    let hashes = fs |>
-      List.map (fun (n,_) -> E.hash env n) |>
-      List.sort compare in
-    let hash_ptr = E.add_static env StaticBytes.[ i32s hashes ] in
-
-    (* Allocate memory *)
-    let (set_ri, get_ri, ri) = new_local_ env I32Type "obj" in
-    Tagged.alloc env (Int32.add (header_size env) sz) Tagged.Object ^^
-    set_ri ^^
-
-    (* Set size *)
-    get_ri ^^
-    compile_unboxed_const sz ^^
-    Tagged.store_field env (size_field env) ^^
-
-    (* Set hash_ptr *)
-    get_ri ^^
-    compile_unboxed_const hash_ptr ^^
-    Tagged.store_field env (hash_ptr_field env) ^^
-
-    (* Write all the fields *)
-    let init_field (name, mk_is) : G.t =
-      (* Write the pointer to the indirection *)
-      get_ri ^^
-      mk_is () ^^
-      let i = FieldEnv.find name name_pos_map in
-      let offset = Int32.add (header_size env) i in
-      Tagged.store_field env offset
-    in
-    G.concat_map init_field fs ^^
-
-    (* Return the pointer to the object *)
-    get_ri ^^
-    Tagged.allocation_barrier env
-
-  (* Returns a pointer to the object field (without following the field indirection) *)
-  let idx_hash_raw env low_bound =
-    let name = Printf.sprintf "obj_idx<%d>" low_bound  in
-    Func.share_code2 Func.Always env name (("x", I32Type), ("hash", I32Type)) [I32Type] (fun env get_x get_hash ->
-      let set_x = G.setter_for get_x in
-      let set_h_ptr, get_h_ptr = new_local env "h_ptr" in
-
-      get_x ^^ Tagged.load_forwarding_pointer env ^^ set_x ^^
-
-      get_x ^^ Tagged.load_field env (hash_ptr_field env) ^^
-
-      (* Linearly scan through the fields (binary search can come later) *)
-      (* unskew h_ptr and advance both to low bound *)
-      compile_add_const Int32.(add ptr_unskew (mul Heap.word_size (of_int low_bound))) ^^
-      set_h_ptr ^^
-      get_x ^^
-      compile_add_const Int32.(mul Heap.word_size (add (header_size env) (of_int low_bound))) ^^
-      set_x ^^
-      G.loop0 (
-          get_h_ptr ^^ load_unskewed_ptr ^^
-          get_hash ^^ G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
-          G.if0
-            (get_x ^^ G.i Return)
-            (get_h_ptr ^^ compile_add_const Heap.word_size ^^ set_h_ptr ^^
-             get_x ^^ compile_add_const Heap.word_size ^^ set_x ^^
-             G.i (Br (nr 1l)))
-        ) ^^
-      G.i Unreachable
-    )
-
-  (* Returns a pointer to the object field (possibly following the indirection) *)
-  let idx_hash env low_bound indirect =
-    if indirect
-    then
-      let name = Printf.sprintf "obj_idx_ind<%d>" low_bound in
-      Func.share_code2 Func.Never env name (("x", I32Type), ("hash", I32Type)) [I32Type] (fun env get_x get_hash ->
-      get_x ^^ get_hash ^^
-      idx_hash_raw env low_bound ^^
-      load_ptr ^^ Tagged.load_forwarding_pointer env ^^
-      compile_add_const (Int32.mul (MutBox.field env) Heap.word_size)
-    )
-    else idx_hash_raw env low_bound
-
-  let field_type env obj_type s =
-    let _, fields = Type.as_obj_sub [s] obj_type in
-    Type.lookup_val_field s fields
-
-  (* Determines whether the field is mutable (and thus needs an indirection) *)
-  let is_mut_field env obj_type s =
-    let _, fields = Type.as_obj_sub [s] obj_type in
-    Type.is_mut (Type.lookup_val_field s fields)
-
-  (* Computes a lower bound for the positional index of a field in an object *)
-  let field_lower_bound env obj_type s =
-    let open Type in
-    let _, fields = as_obj_sub [s] obj_type in
-    List.iter (function {typ = Typ _; _} -> assert false | _ -> ()) fields;
-    let sorted_by_hash =
-      List.sort
-        (fun (h1, _) (h2, _) -> Lib.Uint32.compare h1 h2)
-        (List.map (fun f -> Lib.Uint32.of_int32 (E.hash env f.lab), f) fields) in
-    match Lib.List.index_of s (List.map (fun (_, {lab; _}) -> lab) sorted_by_hash) with
-    | Some i -> i
-    | _ -> assert false
-
-  (* Returns a pointer to the object field (without following the indirection) *)
-  let idx_raw env f =
-    compile_unboxed_const (E.hash env f) ^^
-    idx_hash_raw env 0
-
-  (* Returns a pointer to the object field (possibly following the indirection) *)
-  let idx env obj_type f =
-    compile_unboxed_const (E.hash env f) ^^
-    idx_hash env (field_lower_bound env obj_type f) (is_mut_field env obj_type f)
-
-  (* load the value (or the mutbox) *)
-  let load_idx_raw env f =
-    idx_raw env f ^^
-    load_ptr
-
-  (* load the actual value (dereferencing the mutbox) *)
-  let load_idx env obj_type f =
-    idx env obj_type f ^^
-    load_ptr
-
-end (* Object *)
-
 module Blob = struct
   (* The layout of a blob object is
 
@@ -3877,6 +3679,216 @@ module Blob = struct
         set_ptr))
 
 end (* Blob *)
+
+
+module Object = struct
+  (* An object with a mutable field1 and immutable field 2 has the following
+     heap layout:
+ 
+     ┌──────┬─────┬──────────┬──────────┬─────────┬─────────────┬───┐
+     │ obj header │ n_fields │ hash_ptr │ ind_ptr │ field2_data │ … │
+     └──────┴─────┴──────────┴┬─────────┴┬────────┴─────────────┴───┘
+          ┌───────────────────┘          │
+          │   ┌──────────────────────────┘
+          │   ↓
+          │  ╶─┬────────┬─────────────┐
+          │    │ ObjInd │ field1_data │
+          ↓    └────────┴─────────────┘
+          ┌─────────────┬─────────────┬─────────────┬───┐
+          │ blob header │ field1_hash │ field2_hash │ … │
+          └─────────────┴─────────────┴─────────────┴───┘ 
+ 
+     The object header includes the object tag (Object) and the forwarding pointer.
+     The forwarding pointer is only reserved if compiled for the incremental GC.
+ 
+     The field hashes reside in a blob inside the dynamic heap.
+     The hash blob needs to be tracked by the GC, but not the content of the hash blob.
+     This is because the hash values are plain numbers that would look like skewed pointers.
+     The hash_ptr is skewed.
+     The hash blobs are shared across objects of the same type that have been created in 
+     the same program version. On allocation, the object refers to the hash blob that resides
+     in the static heap. On graph-copy-based deserialization of an upgrade, the hash blob
+     of upgraded objects resides in the dynamic heap.
+ 
+     The field2_data for immutable fields is a vanilla word.
+ 
+     The field1_data for mutable fields are pointers to either an ObjInd, or a
+     MutBox (they have the same layout). This indirection is a consequence of
+     how we compile object literals with `await` instructions, as these mutable
+     fields need to be able to alias local mutable variables.
+ 
+     We could alternatively switch to an allocate-first approach in the
+     await-translation of objects, and get rid of this indirection -- if it were
+     not for the implementing of sharing of mutable stable values.
+   *)
+ 
+   let header_size env = Int32.add (Tagged.header_size env) 2l
+ 
+   (* Number of object fields *)
+   let size_field env = Int32.add (Tagged.header_size env) 0l
+   let hash_ptr_field env = Int32.add (Tagged.header_size env) 1l
+ 
+   module FieldEnv = Env.Make(String)
+ 
+   (* This is for static objects *)
+   let vanilla_lit env (fs : (string * int32) list) : int32 =
+     let (hashes, ptrs) = fs
+       |> List.map (fun (n, ptr) -> (Mo_types.Hash.hash n,ptr))
+       |> List.sort compare
+       |> List.split
+     in
+ 
+     let hash_blob =
+       let hash_payload = StaticBytes.[ i32s hashes ] in
+       Blob.vanilla_lit env (StaticBytes.as_bytes hash_payload) in
+ 
+     Tagged.shared_static_obj env Tagged.Object StaticBytes.[
+       I32 (Int32.of_int (List.length fs));
+       I32 hash_blob;
+       i32s ptrs;
+     ]
+ 
+   (* This is for non-recursive objects, i.e. ObjNewE *)
+   (* The instructions in the field already create the indirection if needed *)
+   let lit_raw env (fs : (string * (unit -> G.t)) list ) =
+     let name_pos_map =
+       fs |>
+       (* We could store only public fields in the object, but
+          then we need to allocate separate boxes for the non-public ones:
+          List.filter (fun (_, vis, f) -> vis.it = Public) |>
+       *)
+       List.map (fun (n,_) -> (E.hash env n, n)) |>
+       List.sort compare |>
+       List.mapi (fun i (_h,n) -> (n,Int32.of_int i)) |>
+       List.fold_left (fun m (n,i) -> FieldEnv.add n i m) FieldEnv.empty in
+ 
+     let sz = Int32.of_int (FieldEnv.cardinal name_pos_map) in
+ 
+     (* Create hash blob *)
+     let hashes = fs |>
+       List.map (fun (n,_) -> E.hash env n) |>
+       List.sort compare in
+     let hash_blob =
+       let hash_payload = StaticBytes.[ i32s hashes ] in
+       Blob.vanilla_lit env (StaticBytes.as_bytes hash_payload) in
+ 
+     (* Allocate memory *)
+     let (set_ri, get_ri, ri) = new_local_ env I32Type "obj" in
+     Tagged.alloc env (Int32.add (header_size env) sz) Tagged.Object ^^
+     set_ri ^^
+ 
+     (* Set size *)
+     get_ri ^^
+     compile_unboxed_const sz ^^
+     Tagged.store_field env (size_field env) ^^
+ 
+     (* Set hash_ptr *)
+     get_ri ^^
+     compile_unboxed_const hash_blob ^^
+     Tagged.store_field env (hash_ptr_field env) ^^
+ 
+     (* Write all the fields *)
+     let init_field (name, mk_is) : G.t =
+       (* Write the pointer to the indirection *)
+       get_ri ^^
+       mk_is () ^^
+       let i = FieldEnv.find name name_pos_map in
+       let offset = Int32.add (header_size env) i in
+       Tagged.store_field env offset
+     in
+     G.concat_map init_field fs ^^
+ 
+     (* Return the pointer to the object *)
+     get_ri ^^
+     Tagged.allocation_barrier env
+ 
+   (* Returns a pointer to the object field (without following the field indirection) *)
+   let idx_hash_raw env low_bound =
+     let name = Printf.sprintf "obj_idx<%d>" low_bound  in
+     Func.share_code2 Func.Always env name (("x", I32Type), ("hash", I32Type)) [I32Type] (fun env get_x get_hash ->
+       let set_x = G.setter_for get_x in
+       let set_h_ptr, get_h_ptr = new_local env "h_ptr" in
+ 
+       get_x ^^ Tagged.load_forwarding_pointer env ^^ set_x ^^
+ 
+       get_x ^^ Tagged.load_field env (hash_ptr_field env) ^^
+       Blob.payload_ptr_unskewed env ^^
+ 
+       (* Linearly scan through the fields (binary search can come later) *)
+       (* unskew h_ptr and advance both to low bound *)
+       compile_add_const Int32.(mul Heap.word_size (of_int low_bound)) ^^
+       set_h_ptr ^^
+       get_x ^^
+       compile_add_const Int32.(mul Heap.word_size (add (header_size env) (of_int low_bound))) ^^
+       set_x ^^
+       G.loop0 (
+           get_h_ptr ^^ load_unskewed_ptr ^^
+           get_hash ^^ G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+           G.if0
+             (get_x ^^ G.i Return)
+             (get_h_ptr ^^ compile_add_const Heap.word_size ^^ set_h_ptr ^^
+              get_x ^^ compile_add_const Heap.word_size ^^ set_x ^^
+              G.i (Br (nr 1l)))
+         ) ^^
+       G.i Unreachable
+     )
+ 
+   (* Returns a pointer to the object field (possibly following the indirection) *)
+   let idx_hash env low_bound indirect =
+     if indirect
+     then
+       let name = Printf.sprintf "obj_idx_ind<%d>" low_bound in
+       Func.share_code2 Func.Never env name (("x", I32Type), ("hash", I32Type)) [I32Type] (fun env get_x get_hash ->
+       get_x ^^ get_hash ^^
+       idx_hash_raw env low_bound ^^
+       load_ptr ^^ Tagged.load_forwarding_pointer env ^^
+       compile_add_const (Int32.mul (MutBox.field env) Heap.word_size)
+     )
+     else idx_hash_raw env low_bound
+ 
+   let field_type env obj_type s =
+     let _, fields = Type.as_obj_sub [s] obj_type in
+     Type.lookup_val_field s fields
+ 
+   (* Determines whether the field is mutable (and thus needs an indirection) *)
+   let is_mut_field env obj_type s =
+     let _, fields = Type.as_obj_sub [s] obj_type in
+     Type.is_mut (Type.lookup_val_field s fields)
+ 
+   (* Computes a lower bound for the positional index of a field in an object *)
+   let field_lower_bound env obj_type s =
+     let open Type in
+     let _, fields = as_obj_sub [s] obj_type in
+     List.iter (function {typ = Typ _; _} -> assert false | _ -> ()) fields;
+     let sorted_by_hash =
+       List.sort
+         (fun (h1, _) (h2, _) -> Lib.Uint32.compare h1 h2)
+         (List.map (fun f -> Lib.Uint32.of_int32 (E.hash env f.lab), f) fields) in
+     match Lib.List.index_of s (List.map (fun (_, {lab; _}) -> lab) sorted_by_hash) with
+     | Some i -> i
+     | _ -> assert false
+ 
+   (* Returns a pointer to the object field (without following the indirection) *)
+   let idx_raw env f =
+     compile_unboxed_const (E.hash env f) ^^
+     idx_hash_raw env 0
+ 
+   (* Returns a pointer to the object field (possibly following the indirection) *)
+   let idx env obj_type f =
+     compile_unboxed_const (E.hash env f) ^^
+     idx_hash env (field_lower_bound env obj_type f) (is_mut_field env obj_type f)
+ 
+   (* load the value (or the mutbox) *)
+   let load_idx_raw env f =
+     idx_raw env f ^^
+     load_ptr
+ 
+   (* load the actual value (dereferencing the mutbox) *)
+   let load_idx env obj_type f =
+     idx env obj_type f ^^
+     load_ptr
+ 
+end (* Object *) 
 
 module Region = struct
   (*

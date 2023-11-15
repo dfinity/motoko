@@ -590,11 +590,15 @@ impl Region {
 #[repr(C)] // See the note at the beginning of this module
 pub struct Object {
     pub header: Obj,
-    pub size: u32,     // Number of elements
-    pub hash_ptr: u32, // Pointer to static information about object field labels. Not important for GC (does not contain pointers).
+    pub size: u32,        // Number of elements
+    pub hash_blob: Value, // Pointer to a blob containing the hashes of the object field labels.
 }
 
 impl Object {
+    pub unsafe fn hash_blob_addr(self: *mut Self) -> *mut Value {
+        &mut (*self).hash_blob
+    }
+
     pub unsafe fn payload_addr(self: *mut Self) -> *mut Value {
         self.add(1) as *mut Value // skip object header
     }
