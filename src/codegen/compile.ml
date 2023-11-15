@@ -3123,8 +3123,8 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
           get_n ^^
           get_amount ^^
           G.i (Binary (Wasm.Values.I32 I32Op.ShrU)) ^^
-          compile_bitand_const 0xFFFFFFFEl ^^
-          get_amount ^^ compile_rel_const I32Op.LeU 31l ^^
+          compile_bitand_const Int32.(shift_left minus_one (32 - BitTagged.ubits)) ^^
+          get_amount ^^ compile_rel_const I32Op.LeU BitTagged.ubitsl ^^
           G.i (Binary (Wasm.Values.I32 I32Op.Mul)) (* branch-free `if` *)
         end
         begin
