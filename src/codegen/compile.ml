@@ -7491,7 +7491,7 @@ module OldStabilization = struct
             get_temp_ptr ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
             get_offset ^^
             compile_const_64 4L ^^
-            stable64_read env ^^
+            StableMem.stable64_read env ^^
             get_temp_ptr ^^ load_unskewed_ptr ^^
             set_word ^^
             (* write 0 *)
@@ -7499,7 +7499,7 @@ module OldStabilization = struct
             get_offset ^^
             get_temp_ptr ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
             compile_const_64 4L ^^
-            stable64_write env ^^
+            StableMem.stable64_write env ^^
             (* return word *)
             get_word
         ))
