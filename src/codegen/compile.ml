@@ -7533,7 +7533,7 @@ module OldStabilization = struct
           compile_test I64Op.Eqz ^^
           E.else_trap_with env "StableMem.mem_size non-zero" ^^
           compile_unboxed_const StableMem.version_stable_heap_no_regions ^^
-          StableMem.set_version env ^^
+          save_version ^^
           Object.lit_raw env fs'
         end
         begin
