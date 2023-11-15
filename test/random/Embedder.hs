@@ -36,7 +36,7 @@ addCompilerArgs (WasmTime _) = ("-wasi-system-api" :)
 addCompilerArgs Drun = id
 
 addEmbedderArgs Reference = id
-addEmbedderArgs (WasmTime _) = ("--wasm-features=memory64" :) . ("--disable-cache" :)
+addEmbedderArgs (WasmTime _) = ("--disable-cache" :) . ("--enable-cranelift-nan-canonicalization" :) . ("--wasm-features" :) . ("memory64,multi-memory,bulk-memory" :)
 addEmbedderArgs Drun = ("--extra-batches" :) . ("10" :)
 
 embedderInvocation :: Embedder -> [Text] -> [Text]

@@ -528,11 +528,17 @@ let set_memory_size new_size_bytes : module_' -> module_' = fun m ->
   let page_size = Int64.of_int (64*1024) in
   let new_size_pages = Int64.(add (div new_size_bytes page_size) 1L) in
   match m.memories with
+  | [t;t1] ->
+    { m with
+      memories = [(phrase (fun m ->
+        { mtype = MemoryType ({min = new_size_pages; max = None}) }
+        ) t); t1]
+    }
   | [t] ->
     { m with
-      memories = [ phrase (fun m ->
+      memories = [phrase (fun m ->
         { mtype = MemoryType ({min = new_size_pages; max = None}, I64IndexType) }
-      ) t ]
+      ) t]
     }
   | _ -> raise (LinkError "Expect one memory in first module")
 

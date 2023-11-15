@@ -259,6 +259,7 @@ module E = struct
   module NameEnv = Env.Make(String)
   module StringEnv = Env.Make(String)
   module LabSet = Set.Make(String)
+  module FeatureSet = Set.Make(String)
 
   module FunEnv = Env.Make(Int32)
   type local_names = (int32 * string) list (* For the debug section: Names of locals *)
@@ -316,6 +317,11 @@ module E = struct
     (* Mutable *)
     locals : value_type list ref; (* Types of locals *)
     local_names : (int32 * string) list ref; (* Names of locals *)
+
+    features : FeatureSet.t ref; (* Wasm features using wasmtime naming *)
+
+    (* requires stable memory (and emulation on wasm targets) *)
+    requires_stable_memory : bool ref;
   }
 
 
@@ -351,6 +357,8 @@ module E = struct
     return_arity = 0;
     locals = ref [];
     local_names = ref [];
+    features = ref FeatureSet.empty;
+    requires_stable_memory = ref false;
   }
 
   (* This wraps Mo_types.Hash.hash to also record which labels we have seen,
@@ -600,6 +608,32 @@ module E = struct
   let get_typtbl_typs (env : t) : Type.typ list =
     !(env.typtbl_typs)
 
+  let add_feature (env : t) f =
+    env.features := FeatureSet.add f (!(env.features))
+
+  let get_features (env : t) = FeatureSet.elements (!(env.features))
+
+  let require_stable_memory (env : t)  =
+    if not !(env.requires_stable_memory)
+    then
+      (env.requires_stable_memory := true;
+       match mode env with
+       | Flags.ICMode | Flags.RefMode ->
+          ()
+       | Flags.WASIMode | Flags.WasmMode ->
+          add_feature env "bulk-memory";
+          add_feature env "multi-memory")
+
+  let requires_stable_memory (env : t) =
+    !(env.requires_stable_memory)
+
+  let get_memories (env : t) =
+    nr {mtype = MemoryType ({min = mem_size env; max = None}, I64IndexType)}
+    ::
+    match mode env with
+    | Flags.WASIMode | Flags.WasmMode when !(env.requires_stable_memory) ->
+      [ nr {mtype = MemoryType ({min = Int64.zero; max = None}, I64IndexType)} ]
+    | _ -> []
 end
 
 
@@ -3716,31 +3750,58 @@ module Region = struct
     E.call_import env "rts" "region_vec_pages"
 
   let new_ env =
+    E.require_stable_memory env;
     E.call_import env "rts" "region_new"
 
   let size env =
+    E.require_stable_memory env;
     E.call_import env "rts" "region_size"
 
   let grow env =
+    E.require_stable_memory env;
     E.call_import env "rts" "region_grow"
 
-  let load_blob env = E.call_import env "rts" "region_load_blob"
-  let store_blob env = E.call_import env "rts" "region_store_blob"
+  let load_blob env =
+    E.require_stable_memory env;
+    E.call_import env "rts" "region_load_blob"
+  let store_blob env =
+    E.require_stable_memory env;
+    E.call_import env "rts" "region_store_blob"
 
-  let load_word8 env = E.call_import env "rts" "region_load_word8"
-  let store_word8 env = E.call_import env "rts" "region_store_word8"
+  let load_word8 env =
+    E.require_stable_memory env;
+    E.call_import env "rts" "region_load_word8"
+  let store_word8 env =
+    E.require_stable_memory env;
+    E.call_import env "rts" "region_store_word8"
 
-  let load_word16 env = E.call_import env "rts" "region_load_word16"
-  let store_word16 env = E.call_import env "rts" "region_store_word16"
+  let load_word16 env =
+    E.require_stable_memory env;
+    E.call_import env "rts" "region_load_word16"
+  let store_word16 env =
+    E.require_stable_memory env;
+    E.call_import env "rts" "region_store_word16"
 
-  let load_word32 env = E.call_import env "rts" "region_load_word32"
-  let store_word32 env = E.call_import env "rts" "region_store_word32"
+  let load_word32 env =
+    E.require_stable_memory env;
+    E.call_import env "rts" "region_load_word32"
+  let store_word32 env =
+    E.require_stable_memory env;
+    E.call_import env "rts" "region_store_word32"
 
-  let load_word64 env = E.call_import env "rts" "region_load_word64"
-  let store_word64 env = E.call_import env "rts" "region_store_word64"
+  let load_word64 env =
+    E.require_stable_memory env;
+    E.call_import env "rts" "region_load_word64"
+  let store_word64 env =
+    E.require_stable_memory env;
+    E.call_import env "rts" "region_store_word64"
 
-  let load_float64 env = E.call_import env "rts" "region_load_float64"
-  let store_float64 env = E.call_import env "rts" "region_store_float64"
+  let load_float64 env =
+    E.require_stable_memory env;
+    E.call_import env "rts" "region_load_float64"
+  let store_float64 env =
+    E.require_stable_memory env;
+    E.call_import env "rts" "region_store_float64"
 
 end
 
@@ -4888,6 +4949,73 @@ end (* Cycles *)
 *)
 module StableMem = struct
 
+
+  (* Raw stable memory API,
+     using ic0.stable64_xxx or
+     emulating via (for now) 64-bit memory 1
+  *)
+  let stable64_grow env =
+    E.require_stable_memory env;
+    match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+       IC.system_call env "stable64_grow"
+    | _ ->
+       Func.share_code1 Func.Always env "stable64_grow" ("pages", I64Type) [I64Type]
+         (fun env get_pages ->
+          let set_old_pages, get_old_pages = new_local env "old_pages" in
+          get_pages ^^
+          G.i StableGrow ^^
+          set_old_pages ^^
+          get_old_pages ^^
+          compile_unboxed_const (-1L) ^^
+          compile_comparison I64Op.Eq ^^
+          E.if1 I64Type
+            begin
+             compile_unboxed_const (-1L)
+            end
+            begin
+              get_old_pages
+            end)
+
+  let stable64_size env =
+    E.require_stable_memory env;
+    match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+       IC.system_call env "stable64_size"
+    | _ ->
+       Func.share_code0 Func.Always env "stable64_size" [I64Type]
+         (fun env ->
+          G.i StableSize)
+
+  let stable64_read env =
+    E.require_stable_memory env;
+    match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+       IC.system_call env "stable64_read"
+    | _ ->
+       Func.share_code3 Func.Always env "stable64_read"
+         (("dst", I64Type), ("offset", I64Type), ("size", I64Type)) []
+         (fun env get_dst get_offset get_size ->
+          get_dst ^^
+          get_offset ^^
+          get_size ^^
+          G.i StableRead)
+
+  let stable64_write env =
+    E.require_stable_memory env;
+    match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+       IC.system_call env "stable64_write"
+    | _ ->
+       Func.share_code3 Func.Always env "stable64_write"
+         (("offset", I64Type), ("src", I64Type), ("size", I64Type)) []
+         (fun env get_offset get_src get_size ->
+          get_offset ^^
+          get_src ^^
+          get_size ^^
+          G.i StableWrite)
+
+
   (* Versioning (c.f. Region.rs) *)
   (* NB: these constants must agree with VERSION_NO_STABLE_MEMORY etc. in Region.rs *)
   let legacy_version_no_stable_memory = Int64.of_int 0 (* never manifest in serialized form *)
@@ -4920,21 +5048,16 @@ module StableMem = struct
 
   (* stable memory bounds check *)
   let guard env =
-    match E.mode env with
-    | Flags.ICMode | Flags.RefMode ->
        get_mem_size env ^^
        compile_unboxed_const (Int64.of_int page_size_bits) ^^
        G.i (Binary (Wasm_exts.Values.I64 I64Op.Shl)) ^^
        compile_comparison I64Op.GeU ^^
        E.then_trap_with env "StableMemory offset out of bounds"
-    | _ -> assert false
 
   (* check both offset and [offset,.., offset + size) within bounds *)
   (* c.f. region.rs check_relative_range *)
   (* TODO: specialize on size *)
   let guard_range env =
-    match E.mode env with
-    | Flags.ICMode | Flags.RefMode ->
       Func.share_code2 Func.Always env "__stablemem_guard_range"
         (("offset", I64Type), ("size", I64Type)) []
         (fun env get_offset get_size ->
@@ -4961,7 +5084,6 @@ module StableMem = struct
             compile_comparison I64Op.GtU ^^
             E.then_trap_with env "StableMemory range out of bounds"
           end)
-    | _ -> assert false
 
   let add_guard env guarded get_offset bytes =
     if guarded then
@@ -4975,8 +5097,6 @@ module StableMem = struct
 
   (* TODO: crusso in read/write could avoid stack allocation by reserving and re-using scratch memory instead *)
   let read env guarded name typ bytes load =
-    match E.mode env with
-    | Flags.ICMode | Flags.RefMode ->
       Func.share_code1 Func.Never env (Printf.sprintf "__stablemem_%sread_%s" (if guarded then "guarded_" else "") name)
         ("offset", I64Type) [typ]
         (fun env get_offset ->
@@ -4986,13 +5106,10 @@ module StableMem = struct
             get_temp_ptr ^^
             get_offset ^^
             compile_unboxed_const bytes ^^
-            IC.system_call env "stable64_read" ^^
+            stable64_read env ^^
             get_temp_ptr ^^ load))
-    | _ -> assert false
 
   let write env guarded name typ bytes store =
-    match E.mode env with
-    | Flags.ICMode | Flags.RefMode ->
       Func.share_code2 Func.Never env (Printf.sprintf "__stablemem_%swrite_%s" (if guarded then "guarded_" else "") name)
         (("offset", I64Type), ("value", typ)) []
         (fun env get_offset get_value ->
@@ -5003,8 +5120,7 @@ module StableMem = struct
             get_offset ^^
             get_temp_ptr ^^
             compile_unboxed_const bytes ^^
-            IC.system_call env "stable64_write"))
-    | _ -> assert false
+            stable64_write env))
 
   let load_word32 = G.i (Load {ty = I32Type; align = 0; offset = 0L; sz = None})
   let store_word32 : G.t = G.i (Store {ty = I32Type; align = 0; offset = 0L; sz = None})  
@@ -5024,15 +5140,13 @@ module StableMem = struct
   (* ensure_pages : ensure at least num pages allocated,
      growing (real) stable memory if needed *)
   let ensure_pages env =
-    match E.mode env with
-    | Flags.ICMode | Flags.RefMode ->
       Func.share_code1 Func.Always env "__stablemem_ensure_pages"
         ("pages", I64Type) [I64Type]
         (fun env get_pages ->
           let (set_size, get_size) = new_local env "size" in
           let (set_pages_needed, get_pages_needed) = new_local env "pages_needed" in
 
-          IC.system_call env "stable64_size" ^^
+          stable64_size env ^^
           set_size ^^
 
           get_pages ^^
@@ -5045,14 +5159,11 @@ module StableMem = struct
           compile_comparison I64Op.GtS ^^
           E.if1 I64Type
             (get_pages_needed ^^
-             IC.system_call env "stable64_grow")
+             stable64_grow env)
             get_size)
-    | _ -> assert false
 
       (* ensure stable memory includes [offset..offset+size), assumes size > 0 *)
   let ensure env =
-    match E.mode env with
-    | Flags.ICMode | Flags.RefMode ->
       Func.share_code2 Func.Always env "__stablemem_ensure"
         (("offset", I64Type), ("size", I64Type)) []
         (fun env get_offset get_size ->
@@ -5076,12 +5187,9 @@ module StableMem = struct
           compile_unboxed_const 0L ^^
           compile_comparison I64Op.LtS ^^
           E.then_trap_with env "Out of stable memory.")
-    | _ -> assert false
 
   (* low-level grow, respecting --max-stable-pages *)
   let grow env =
-    match E.mode env with
-    | Flags.ICMode | Flags.RefMode ->
       Func.share_code1 Func.Always env "__stablemem_grow"
         ("pages", I64Type) [I64Type] (fun env get_pages ->
           let (set_size, get_size) = new_local env "size" in
@@ -5125,7 +5233,6 @@ module StableMem = struct
                  (* return old logical size *)
                  get_size)
             end)
-   | _ -> assert false
 
   let load_word32 env =
     read env true "word32" I32Type 4L
@@ -5161,8 +5268,6 @@ module StableMem = struct
       (G.i (Store {ty = F64Type; align = 0; offset = 0L; sz = None}))
 
   let load_blob env =
-    match E.mode env with
-    | Flags.ICMode | Flags.RefMode ->
       Func.share_code2 Func.Always env "__stablemem_load_blob"
         (("offset", I64Type), ("len", I64Type)) [I64Type]
         (fun env get_offset get_len ->
@@ -5174,13 +5279,10 @@ module StableMem = struct
           get_blob ^^ Blob.payload_ptr_unskewed env ^^
           get_offset ^^
           get_len ^^
-          IC.system_call env "stable64_read" ^^
+          stable64_read env ^^
           get_blob)
-    | _ -> assert false
 
   let store_blob env =
-    match E.mode env with
-    | Flags.ICMode | Flags.RefMode ->
       Func.share_code2 Func.Always env "__stablemem_store_blob"
         (("offset", I64Type), ("blob", I64Type)) []
         (fun env get_offset get_blob ->
@@ -5192,8 +5294,7 @@ module StableMem = struct
           get_offset ^^
           get_blob ^^ Blob.payload_ptr_unskewed env ^^
           get_len ^^
-          IC.system_call env "stable64_write")
-    | _ -> assert false
+          stable64_write env)
 
 end (* StableMem *)
 
@@ -5221,6 +5322,7 @@ module StableMemoryInterface = struct
 
   (* Prims *)
   let size env =
+    E.require_stable_memory env;
     Func.share_code0 Func.Always env "__stablememory_size" [I64Type]
       (fun env ->
         if_regions env
@@ -5230,6 +5332,7 @@ module StableMemoryInterface = struct
           StableMem.get_mem_size)
 
   let grow env =
+    E.require_stable_memory env;
     Func.share_code1 Func.Always env "__stablememory_grow" ("pages", I64Type) [I64Type]
       (fun env get_pages ->
         if_regions env
@@ -5241,6 +5344,7 @@ module StableMemoryInterface = struct
             StableMem.grow env))
 
   let load_blob env =
+    E.require_stable_memory env;
     Func.share_code2 Func.Never env "__stablememory_load_blob"
       (("offset", I64Type), ("len", I64Type)) [I64Type]
       (fun env offset len ->
@@ -5250,6 +5354,7 @@ module StableMemoryInterface = struct
           Region.load_blob
           StableMem.load_blob)
   let store_blob env =
+    E.require_stable_memory env;
     Func.share_code2 Func.Never env "__stablememory_store_blob"
       (("offset", I64Type), ("blob", I64Type)) []
       (fun env offset blob ->
@@ -5260,6 +5365,7 @@ module StableMemoryInterface = struct
           StableMem.store_blob)
 
   let load_word8 env =
+    E.require_stable_memory env;
     Func.share_code1 Func.Never env "__stablememory_load_word8"
       ("offset", I64Type) [I32Type]
       (fun env offset ->
@@ -5269,6 +5375,7 @@ module StableMemoryInterface = struct
           Region.load_word8
           StableMem.load_word8)
   let store_word8 env =
+    E.require_stable_memory env;
     Func.share_code2 Func.Never env "__stablememory_store_word8"
       (("offset", I64Type), ("value", I32Type)) []
       (fun env offset value ->
@@ -5279,6 +5386,7 @@ module StableMemoryInterface = struct
           StableMem.store_word8)
 
   let load_word16 env =
+    E.require_stable_memory env;
     Func.share_code1 Func.Never env "__stablememory_load_word16"
       ("offset", I64Type) [I32Type]
       (fun env offset->
@@ -5288,6 +5396,7 @@ module StableMemoryInterface = struct
           Region.load_word16
           StableMem.load_word16)
   let store_word16 env =
+    E.require_stable_memory env;
     Func.share_code2 Func.Never env "__stablememory_store_word16"
       (("offset", I64Type), ("value", I32Type)) []
       (fun env offset value ->
@@ -5298,6 +5407,7 @@ module StableMemoryInterface = struct
           StableMem.store_word16)
 
   let load_word32 env =
+    E.require_stable_memory env;
     Func.share_code1 Func.Never env "__stablememory_load_word32"
       ("offset", I64Type) [I32Type]
       (fun env offset ->
@@ -5307,6 +5417,7 @@ module StableMemoryInterface = struct
           Region.load_word32
           StableMem.load_word32)
   let store_word32 env =
+    E.require_stable_memory env;
     Func.share_code2 Func.Never env "__stablememory_store_word32"
       (("offset", I64Type), ("value", I32Type)) []
       (fun env offset value ->
@@ -5317,6 +5428,7 @@ module StableMemoryInterface = struct
           StableMem.store_word32)
 
   let load_word64 env =
+    E.require_stable_memory env;
     Func.share_code1 Func.Never env "__stablememory_load_word64" ("offset", I64Type) [I64Type]
       (fun env offset ->
         if_regions env
@@ -5325,6 +5437,7 @@ module StableMemoryInterface = struct
           Region.load_word64
           StableMem.load_word64)
   let store_word64 env =
+    E.require_stable_memory env;
     Func.share_code2 Func.Never env "__stablememory_store_word64"
       (("offset", I64Type), ("value", I64Type)) []
       (fun env offset value ->
@@ -5335,6 +5448,7 @@ module StableMemoryInterface = struct
           StableMem.store_word64)
 
   let load_float64 env =
+    E.require_stable_memory env;
     Func.share_code1 Func.Never env "__stablememory_load_float64"
       ("offset", I64Type) [F64Type]
       (fun env offset ->
@@ -5356,6 +5470,9 @@ module StableMemoryInterface = struct
 end
 
 module RTS_Exports = struct
+  (* Must be called late, after main codegen, to ensure correct generation of
+     of functioning or unused-but-trapping stable memory exports (as required)
+   *)
   let system_exports env =
     let bigint_trap_fi = E.add_fun env "bigint_trap" (
       Func.of_body env [] [] (fun env ->
@@ -5384,116 +5501,110 @@ module RTS_Exports = struct
     edesc = nr (FuncExport (nr rts_trap_fi))
   });
 
-  let ic0_stable64_write_fi =
-    if E.mode env = Flags.WASIMode then
-      E.add_fun env "ic0_stable64_write" (
-          Func.of_body env ["to", I64Type; "from", I64Type; "len", I64Type] []
-            (fun env ->
-              E.trap_with env "ic0_stable64_write is not supposed to be called in WASI"
-            )
-        )
-    else E.reuse_import env "ic0" "stable64_write" in
-  E.add_export env (nr {
-    name = Lib.Utf8.decode "ic0_stable64_write";
-    edesc = nr (FuncExport (nr ic0_stable64_write_fi))
-  });
+    let when_stable_memory_required_else_trap env code =
+      if E.requires_stable_memory env then
+        code() else
+        E.trap_with env "unreachable" in
 
-  let ic0_stable64_read_fi =
-    if E.mode env = Flags.WASIMode then
-      E.add_fun env "ic0_stable64_read" (
-          Func.of_body env ["dst", I64Type; "offset", I64Type; "len", I64Type] []
+    let ic0_stable64_write_fi =
+      match E.mode env with
+      | Flags.ICMode | Flags.RefMode ->
+        E.reuse_import env "ic0" "stable64_write"
+      | Flags.WASIMode | Flags.WasmMode ->
+        E.add_fun env "ic0_stable64_write" (
+          Func.of_body env ["offset", I64Type; "src", I64Type; "size", I64Type] []
             (fun env ->
-              E.trap_with env "ic0_stable64_read is not supposed to be called in WASI"
-            )
-        )
-    else E.reuse_import env "ic0" "stable64_read" in
-  E.add_export env (nr {
-    name = Lib.Utf8.decode "ic0_stable64_read";
-    edesc = nr (FuncExport (nr ic0_stable64_read_fi))
-  });
+              when_stable_memory_required_else_trap env (fun () ->
+               let get_offset = G.i (LocalGet (nr 0l)) in
+               let get_src = G.i (LocalGet (nr 1l)) in
+               let get_size = G.i (LocalGet (nr 2l)) in
+               get_offset ^^
+               get_src ^^
+               get_size ^^
+               StableMem.stable64_write env))
+          )
+    in
+    E.add_export env (nr {
+      name = Lib.Utf8.decode "ic0_stable64_write";
+      edesc = nr (FuncExport (nr ic0_stable64_write_fi))
+    });
 
-  let moc_stable_mem_grow_fi =
-    E.add_fun env "moc_stable_mem_grow" (
-      Func.of_body env ["newPages", I64Type] [I64Type]
-        (fun env ->
-          match E.mode env with
-          | Flags.ICMode | Flags.RefMode ->
+    let ic0_stable64_read_fi =
+      match E.mode env with
+      | Flags.ICMode | Flags.RefMode ->
+        E.reuse_import env "ic0" "stable64_read"
+      | Flags.WASIMode | Flags.WasmMode ->
+        E.add_fun env "ic0_stable64_read" (
+          Func.of_body env ["dst", I64Type; "offset", I64Type; "size", I64Type] []
+            (fun env ->
+              when_stable_memory_required_else_trap env (fun () ->
+              let get_dst = G.i (LocalGet (nr 0l)) in
+              let get_offset = G.i (LocalGet (nr 1l)) in
+              let get_size = G.i (LocalGet (nr 2l)) in
+              get_dst ^^
+              get_offset ^^
+              get_size ^^
+              StableMem.stable64_read env))
+          )
+    in
+    E.add_export env (nr {
+      name = Lib.Utf8.decode "ic0_stable64_read";
+      edesc = nr (FuncExport (nr ic0_stable64_read_fi))
+    });
+
+    let moc_stable_mem_grow_fi =
+      E.add_fun env "moc_stable_mem_grow" (
+        Func.of_body env ["newPages", I64Type] [I64Type]
+          (fun env ->
+            when_stable_memory_required_else_trap env (fun () ->
             G.i (LocalGet (nr 0l)) ^^
-            StableMem.grow env
-          | _ ->
-            E.trap_with env "moc_stable_mem_grow is not supposed to be called in WASI" (* improve me *)
-      ))
-  in
-  E.add_export env (nr {
-    name = Lib.Utf8.decode "moc_stable_mem_grow";
-    edesc = nr (FuncExport (nr moc_stable_mem_grow_fi))
-  });
+            StableMem.grow env))
+        )
+    in
+    E.add_export env (nr {
+      name = Lib.Utf8.decode "moc_stable_mem_grow";
+      edesc = nr (FuncExport (nr moc_stable_mem_grow_fi))
+    });
 
-  let moc_stable_mem_size_fi =
-    E.add_fun env "moc_stable_mem_size" (
-      Func.of_body env [] [I64Type]
-        (fun env ->
-          match E.mode env with
-          | Flags.ICMode | Flags.RefMode ->
-              StableMem.get_mem_size env
-          | _ ->
-              E.trap_with env "moc_stable_mem_size is not supposed to be called in WASI" (* improve me *)
+    let moc_stable_mem_size_fi =
+      E.add_fun env "moc_stable_mem_size" (
+        Func.of_body env [] [I64Type]
+          (fun env ->
+             when_stable_memory_required_else_trap env (fun () ->
+             StableMem.get_mem_size env))
         )
-      )
-  in
-  E.add_export env (nr {
-    name = Lib.Utf8.decode "moc_stable_mem_size";
-    edesc = nr (FuncExport (nr moc_stable_mem_size_fi))
-  });
+    in
+    E.add_export env (nr {
+      name = Lib.Utf8.decode "moc_stable_mem_size";
+      edesc = nr (FuncExport (nr moc_stable_mem_size_fi))
+    });
 
-  let moc_stable_mem_get_version_fi =
-    E.add_fun env "moc_stable_mem_get_version" (
-      Func.of_body env [] [I64Type]
-        (fun env ->
-          match E.mode env with
-          | Flags.ICMode | Flags.RefMode ->
-              StableMem.get_version env
-          | _ ->
-              E.trap_with env "moc_stable_mem_get_version is not supposed to be called in WASI" (* improve me *)
+    let moc_stable_mem_get_version_fi =
+      E.add_fun env "moc_stable_mem_get_version" (
+        Func.of_body env [] [I64Type]
+          (fun env ->
+             StableMem.get_version env)
         )
-      )
-  in
-  E.add_export env (nr {
-    name = Lib.Utf8.decode "moc_stable_mem_get_version";
-    edesc = nr (FuncExport (nr moc_stable_mem_get_version_fi))
-  });
+    in
+    E.add_export env (nr {
+      name = Lib.Utf8.decode "moc_stable_mem_get_version";
+      edesc = nr (FuncExport (nr moc_stable_mem_get_version_fi))
+    });
 
-  let moc_stable_mem_set_version_fi =
-    E.add_fun env "moc_stable_mem_set_version" (
-      Func.of_body env ["version", I64Type] []
-        (fun env ->
-          match E.mode env with
-          | Flags.ICMode | Flags.RefMode ->
-              G.i (LocalGet (nr 0l)) ^^
-              StableMem.set_version env
-          | _ ->
-              E.trap_with env "moc_stable_mem_set_version is not supposed to be called in WASI" (* improve me *)
+    let moc_stable_mem_set_version_fi =
+      E.add_fun env "moc_stable_mem_set_version" (
+        Func.of_body env ["version", I64Type] []
+          (fun env ->
+             G.i (LocalGet (nr 0l)) ^^
+             StableMem.set_version env
+          )
         )
-      )
-  in
-  E.add_export env (nr {
-    name = Lib.Utf8.decode "moc_stable_mem_set_version";
-    edesc = nr (FuncExport (nr moc_stable_mem_set_version_fi))
-  });
-  
-  let stable64_write_moc_fi =
-    if E.mode env = Flags.WASIMode then
-      E.add_fun env "stable64_write_moc" (
-          Func.of_body env ["to", I64Type; "from", I64Type; "len", I64Type] []
-            (fun env ->
-              E.trap_with env "stable64_write_moc is not supposed to be called in WASI"
-            )
-        )
-    else E.reuse_import env "ic0" "stable64_write" in
-  E.add_export env (nr {
-    name = Lib.Utf8.decode "stable64_write_moc";
-    edesc = nr (FuncExport (nr stable64_write_moc_fi))
-  })
+    in
+    E.add_export env (nr {
+      name = Lib.Utf8.decode "moc_stable_mem_set_version";
+      edesc = nr (FuncExport (nr moc_stable_mem_set_version_fi))
+    })
+
 end (* RTS_Exports *)
 
 
@@ -7427,7 +7538,7 @@ module OldStabilization = struct
             get_temp_ptr ^^
             get_offset ^^
             compile_unboxed_const 4L ^^
-            IC.system_call env "stable64_read" ^^
+            StableMem.stable64_read env ^^
             get_temp_ptr ^^ load_word32 ^^
             set_word ^^
             (* write 0 *)
@@ -7435,7 +7546,7 @@ module OldStabilization = struct
             get_offset ^^
             get_temp_ptr ^^
             compile_unboxed_const 4L ^^
-            IC.system_call env "stable64_write" ^^
+            StableMem.stable64_write env ^^
             (* return word *)
             get_word ^^
             G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
@@ -7470,7 +7581,7 @@ module OldStabilization = struct
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
       let (set_pages, get_pages) = new_local env "pages" in
-      IC.system_call env "stable64_size" ^^
+      StableMem.stable64_size env ^^
       set_pages ^^
 
       get_pages ^^
@@ -7510,7 +7621,7 @@ module OldStabilization = struct
               let (set_version, get_version) = new_local env "version" in
               let (set_N, get_N) = new_local env "N" in
 
-              IC.system_call env "stable64_size" ^^
+              StableMem.stable64_size env ^^
               compile_sub_const 1L ^^
               compile_shl_const (Int64.of_int page_size_bits) ^^
               set_M ^^
@@ -7585,7 +7696,7 @@ module OldStabilization = struct
           get_blob ^^ Blob.payload_ptr_unskewed env ^^
           get_offset ^^
           get_len ^^
-          IC.system_call env "stable64_read" ^^
+          StableMem.stable64_read env ^^
 
           let (set_val, get_val) = new_local env "val" in
           (* deserialize blob to val *)
@@ -7602,7 +7713,7 @@ module OldStabilization = struct
           get_offset ^^
           get_blob ^^ Blob.payload_ptr_unskewed env ^^
           get_blob ^^ Blob.len env ^^
-          IC.system_call env "stable64_write" ^^
+          StableMem.stable64_write env ^^
 
           (* return val *)
           get_val
@@ -10273,7 +10384,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
   | OtherPrim "rts_stable_memory_size", [] ->
     SR.Vanilla,
-    IC.ic_system_call "stable64_size" env ^^ BigNum.from_word64 env
+    StableMem.stable64_size env ^^ BigNum.from_word64 env
 
   | OtherPrim "rts_logical_stable_memory_size", [] ->
     SR.Vanilla,
@@ -10318,7 +10429,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_as env ae SR.Vanilla e2 ^^
     Region.store_blob env
 
-  | OtherPrim ("regionLoadNat8"), [e0; e1] ->
+  | OtherPrim (("regionLoadNat8" | "regionLoadInt8" as p)), [e0; e1] ->
     SR.Vanilla,
     compile_exp_as env ae SR.Vanilla e0 ^^
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
@@ -10326,29 +10437,29 @@ and compile_prim_invocation (env : E.t) ae p es at =
     G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
     TaggedSmallWord.msb_adjust Type.Nat8
 
-  | OtherPrim ("regionStoreNat8"), [e0; e1; e2] ->
+  | OtherPrim (("regionStoreNat8" | "regionStoreInt8") as p), [e0; e1; e2] ->
     SR.unit,
     compile_exp_as env ae SR.Vanilla e0 ^^
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     compile_exp_as env ae SR.Vanilla e2 ^^
-    TaggedSmallWord.lsb_adjust Type.Nat8 ^^
+    TaggedSmallWord.lsb_adjust Type.(if p = "regionStoreNat8" then Nat8 else Int8) ^^
     G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
     Region.store_word8 env
 
-  | OtherPrim ("regionLoadNat16"), [e0; e1] ->
+  | OtherPrim (("regionLoadNat16" | "regionLoadInt16") as p), [e0; e1] ->
     SR.Vanilla,
     compile_exp_as env ae SR.Vanilla e0 ^^
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     Region.load_word16 env ^^
     G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
-    TaggedSmallWord.msb_adjust Type.Nat16
+    TaggedSmallWord.msb_adjust Type.(if p = "regionLoadNat16" then Nat16 else Int16)
 
-  | OtherPrim ("regionStoreNat16"), [e0; e1; e2] ->
+  | OtherPrim (("regionStoreNat16" | "regionStoreInt16") as p), [e0; e1; e2] ->
     SR.unit,
     compile_exp_as env ae SR.Vanilla e0 ^^
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     compile_exp_as env ae SR.Vanilla e2 ^^
-    TaggedSmallWord.lsb_adjust Type.Nat16 ^^
+    TaggedSmallWord.lsb_adjust Type.(if p = "regionStoreNat16" then Nat16 else Int16) ^^
     G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
     Region.store_word16 env
 
@@ -10399,13 +10510,13 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_as env ae SR.UnboxedWord64 e2 ^^
     Region.store_word64 env
 
-  | OtherPrim ("regionLoadFloat64"), [e0; e1] ->
+  | OtherPrim ("regionLoadFloat"), [e0; e1] ->
     SR.UnboxedFloat64,
     compile_exp_as env ae SR.Vanilla e0 ^^
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     Region.load_float64 env
 
-  | OtherPrim ("regionStoreFloat64"), [e0; e1; e2] ->
+  | OtherPrim ("regionStoreFloat"), [e0; e1; e2] ->
     SR.unit,
     compile_exp_as env ae SR.Vanilla e0 ^^
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
@@ -10525,98 +10636,59 @@ and compile_prim_invocation (env : E.t) ae p es at =
     const_sr SR.Vanilla (Arr.ofBlob env)
   | OtherPrim ("arrayToBlob" | "arrayMutToBlob"), e ->
     const_sr SR.Vanilla (Arr.toBlob env)
-
-  | OtherPrim ("stableMemoryLoadNat32"), [e] ->
-    SR.Vanilla,
-    compile_exp_as env ae SR.UnboxedWord64 e ^^
-    StableMemoryInterface.load_word32 env ^^
-    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
-    TaggedSmallWord.msb_adjust Type.Nat32
-
-  | OtherPrim ("stableMemoryLoadInt32"), [e] ->
-    SR.Vanilla,
-    compile_exp_as env ae SR.UnboxedWord64 e ^^
-    StableMemoryInterface.load_word32 env ^^
-    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendSI32)) ^^
-    TaggedSmallWord.msb_adjust Type.Int32
-
-  | OtherPrim ("stableMemoryStoreNat32"), [e1; e2] ->
-    SR.unit,
-    compile_exp_as env ae SR.UnboxedWord64 e1 ^^
-    compile_exp_vanilla env ae e2 ^^
-    TaggedSmallWord.lsb_adjust Type.Nat32 ^^
-    G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
-    StableMemoryInterface.store_word32 env
-
-  | OtherPrim ("stableMemoryStoreInt32"), [e1; e2] ->
-    SR.unit,
-    compile_exp_as env ae SR.UnboxedWord64 e1 ^^
-    compile_exp_vanilla env ae e2 ^^
-    TaggedSmallWord.lsb_adjust Type.Int32 ^^
-    G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
-    StableMemoryInterface.store_word32 env
   
-  | OtherPrim "stableMemoryLoadNat8", [e] ->
+  | OtherPrim (("stableMemoryLoadNat8" | "stableMemoryLoadInt8") as p), [e] ->
     SR.Vanilla,
+    let unsigned = p = "stableMemoryLoadNat8" in
     compile_exp_as env ae SR.UnboxedWord64 e ^^
     StableMemoryInterface.load_word8 env ^^
-    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
-    TaggedSmallWord.msb_adjust Type.Nat8
-
-  | OtherPrim "stableMemoryLoadInt8", [e] ->
-    SR.Vanilla,
-    compile_exp_as env ae SR.UnboxedWord64 e ^^
-    StableMemoryInterface.load_word8 env ^^
-    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendSI32)) ^^
-    TaggedSmallWord.msb_adjust Type.Int8
+    G.i (Convert (Wasm_exts.Values.I64 I64Op.(if unsigned then ExtendUI32 else ExtendSI32))) ^^
+    TaggedSmallWord.msb_adjust Type.(if unsigned then Nat8 else Int8)
 
   (* Other prims, binary *)
 
-  | OtherPrim "stableMemoryStoreNat8", [e1; e2] ->
+  | OtherPrim (("stableMemoryStoreNat8" | "stableMemoryStoreInt8") as p), [e1; e2] ->
     SR.unit,
+    let unsigned = p = "stableMemoryStoreNat8" in
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
-    compile_exp_as env ae SR.Vanilla e2 ^^ 
-    TaggedSmallWord.lsb_adjust Type.Nat8 ^^
+    compile_exp_as env ae SR.Vanilla e2 ^^
+    TaggedSmallWord.lsb_adjust Type.(if unsigned then Nat8 else Int8) ^^
     G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
     StableMemoryInterface.store_word8 env
 
-  | OtherPrim "stableMemoryStoreInt8", [e1; e2] ->
-    SR.unit,
-    compile_exp_as env ae SR.UnboxedWord64 e1 ^^
-    compile_exp_as env ae SR.Vanilla e2 ^^ 
-    TaggedSmallWord.lsb_adjust Type.Int8 ^^
-    G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
-    StableMemoryInterface.store_word8 env
-
-  | OtherPrim "stableMemoryLoadNat16", [e] ->
+  | OtherPrim (("stableMemoryLoadNat16" | "stableMemoryLoadInt16") as p), [e] ->
     SR.Vanilla,
+    let unsigned = p = "stableMemoryLoadNat16" in
     compile_exp_as env ae SR.UnboxedWord64 e ^^
     StableMemoryInterface.load_word16 env ^^
-    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
-    TaggedSmallWord.msb_adjust Type.Nat16
+    G.i (Convert (Wasm_exts.Values.I64 I64Op.(if unsigned then ExtendUI32 else ExtendSI32))) ^^
+    TaggedSmallWord.msb_adjust Type.(if unsigned then Nat16 else Int16)
 
-  | OtherPrim "stableMemoryLoadInt16", [e] ->
-    SR.Vanilla,
-    compile_exp_as env ae SR.UnboxedWord64 e ^^
-    StableMemoryInterface.load_word16 env ^^
-    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendSI32)) ^^
-    TaggedSmallWord.msb_adjust Type.Int16
-
-  | OtherPrim "stableMemoryStoreNat16", [e1; e2] ->
+  | OtherPrim (("stableMemoryStoreNat16" | "stableMemoryStoreInt16") as p), [e1; e2] ->
     SR.unit,
+    let unsigned = p = "stableMemoryStoreNat16" in
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
-    compile_exp_as env ae SR.Vanilla e2 ^^ 
-    TaggedSmallWord.lsb_adjust Type.Nat16 ^^
+    compile_exp_as env ae SR.Vanilla e2 ^^
+    TaggedSmallWord.lsb_adjust Type.(if unsigned then Nat16 else Int16) ^^
     G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
     StableMemoryInterface.store_word16 env
 
-  | OtherPrim "stableMemoryStoreInt16", [e1; e2] ->
+  | OtherPrim (("stableMemoryLoadNat32" | "stableMemoryLoadInt32") as p), [e] ->
+    SR.Vanilla,
+    let unsigned = p = "stableMemoryLoadNat32" in
+    compile_exp_as env ae SR.UnboxedWord64 e ^^
+    StableMemoryInterface.load_word32 env ^^
+    G.i (Convert (Wasm_exts.Values.I64 I64Op.(if unsigned then ExtendUI32 else ExtendSI32))) ^^
+    TaggedSmallWord.msb_adjust Type.(if unsigned then Nat32 else Int32)
+
+  | OtherPrim (("stableMemoryStoreNat32" | "stableMemoryStoreInt32") as p), [e1; e2] ->
     SR.unit,
+    let unsigned = p = "stableMemoryStoreNat32" in
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
-    compile_exp_as env ae SR.Vanilla e2 ^^ 
-    TaggedSmallWord.lsb_adjust Type.Int16 ^^
+    compile_exp_vanilla env ae e2 ^^
+    TaggedSmallWord.lsb_adjust Type.(if unsigned then Nat32 else Int32) ^^
     G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
-    StableMemoryInterface.store_word16 env
+    StableMemoryInterface.store_word32 env
 
   | OtherPrim ("stableMemoryLoadNat64" | "stableMemoryLoadInt64"), [e] ->
     SR.UnboxedWord64,
@@ -11656,6 +11728,8 @@ and metadata name value =
 
 and conclude_module env set_serialization_globals start_fi_o =
 
+  RTS_Exports.system_exports env;
+
   FuncDec.export_async_method env;
 
   (* See Note [Candid subtype checks] *)
@@ -11692,7 +11766,7 @@ and conclude_module env set_serialization_globals start_fi_o =
 
   let other_imports = E.get_other_imports env in
 
-  let memories = [nr {mtype = MemoryType ({min = E.mem_size env; max = None}, I64IndexType)} ] in
+  let memories = E.get_memories env in
 
   let funcs = E.get_funcs env in
 
@@ -11741,6 +11815,7 @@ and conclude_module env set_serialization_globals start_fi_o =
         service = !(env.E.service);
       };
       source_mapping_url = None;
+      wasm_features = E.get_features env;
     } in
 
   match E.get_rts env with
@@ -11761,7 +11836,6 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
 
   IC.system_imports env;
   RTS.system_imports env;
-  RTS_Exports.system_exports env;
 
   compile_init_func env prog;
   let start_fi_o = match E.mode env with

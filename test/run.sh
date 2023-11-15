@@ -26,7 +26,7 @@ DTESTS=no
 IDL=no
 PERF=no
 VIPER=no
-WASMTIME_OPTIONS="--disable-cache --enable-cranelift-nan-canonicalization --wasm-features=memory64"
+WASMTIME_OPTIONS="--disable-cache --enable-cranelift-nan-canonicalization --wasm-features=memory64,multi-memory,bulk-memory"
 WRAP_drun=$(realpath $(dirname $0)/drun-wrapper.sh)
 WRAP_ic_ref_run=$(realpath $(dirname $0)/ic-ref-run-wrapper.sh)
 SKIP_RUNNING=${SKIP_RUNNING:-no}
@@ -359,8 +359,8 @@ do
 
         if [ "$SKIP_VALIDATE" != yes ]
         then
-          run_if wasm valid wasm-validate --enable-memory64 $out/$base.wasm
-          run_if ref.wasm valid-ref wasm-validate --enable-memory64 $out/$base.ref.wasm
+          run_if wasm valid wasm-validate --enable-memory64 --enable-multi-memory $out/$base.wasm
+          run_if ref.wasm valid-ref wasm-validate --enable-memory64 --enable-multi-memory $out/$base.ref.wasm
         fi
 
         if [ -e $out/$base.wasm ]
@@ -371,7 +371,7 @@ do
             if grep -F -q CHECK $mangled
             then
               $ECHO -n " [FileCheck]"
-              wasm2wat --enable-memory64 --no-check $out/$base.wasm > $out/$base.wat
+              wasm2wat --enable-memory64 --enable-multi-memory --no-check $out/$base.wasm > $out/$base.wat
               cat $out/$base.wat | FileCheck $mangled > $out/$base.filecheck 2>&1
               diff_files="$diff_files $base.filecheck"
             fi
