@@ -1,6 +1,18 @@
 # Motoko compiler changelog
 
+## 0.10.2 (2023-11-12)
+
 * motoko (`moc`)
+
+  * bugfix: separate tag from underscore in coverage warnings (#4274).
+
+  * Code compiled for targets WASI (`-wasi-system-api`) and pure Wasm (`-no-system-api`) can now
+    use up to 4GB of (efficiently emulated) stable memory, enabling more offline testing of, for example,
+    stable data structures built using libraries `Regions.mo` and `ExperimentalStableMemory.mo`.
+    Note that any Wasm engine (such as `wasmtime`), used to execute such binaries, must support and enable
+    Wasm features `multi-memory` and `bulk-memory` (as well as the standard NaN canonicalization) (#4256).
+
+  * bugfix: fully implement `Region.loadXXX/storeXXX` for `Int8`, `Int16` and `Float` (#4270).
 
   * BREAKING CHANGE (Minor): values of type `Principal` are now constrained to contain
     at most 29 bytes, matching the IC's notion of principal (#4268).
@@ -8,13 +20,16 @@
     In particular:
 
     * An actor `import` will be statically rejected if the binary representation of the (aliased) textually encoded
-    principal contains strictly more than 29 bytes.
+      principal contains strictly more than 29 bytes.
 
     * `Principal.fromBlob(b)` will trap if `b` contains strictly more than 29 bytes.
 
-    *  The actor literal, `actor <exp>`, will trap if the binary representation of
-    of the textually encoded principal `<exp>` contains strictly more than 29 bytes.
+    * The actor literal, `actor <exp>`, will trap if the binary representation of
+      of the textually encoded principal `<exp>` contains strictly more than 29 bytes.
 
+* motoko-base
+
+  * bugfix: fix `Array.tabulateVar` to avoid repeated side-effects (dfinity/motoko-base⁠#596)
 
 ## 0.10.1 (2023-10-16)
 
