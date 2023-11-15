@@ -37,7 +37,7 @@ use crate::libc_declarations::c_void;
 use crate::mem_utils::memcpy_bytes;
 use crate::memory::Memory;
 use crate::tommath_bindings::*;
-use crate::types::{size_of, BigInt, Bytes, Stream, Value, TAG_BIGINT};
+use crate::types::{size_of, BigInt, Bytes, Value, TAG_BIGINT};
 
 use motoko_rts_macros::ic_mem_fn;
 
@@ -482,14 +482,6 @@ pub unsafe extern "C" fn bigint_leb128_encode(n: Value, buf: *mut u8) {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn bigint_leb128_stream_encode(stream: *mut Stream, n: Value) {
-    debug_assert!(!stream.is_forwarded());
-    let mut tmp: mp_int = core::mem::zeroed(); // or core::mem::uninitialized?
-    check(mp_init_copy(&mut tmp, n.as_bigint().mp_int_ptr()));
-    stream.write_leb128(&mut tmp, false)
-}
-
-#[no_mangle]
 unsafe extern "C" fn bigint_2complement_bits(n: Value) -> usize {
     let mp_int = n.as_bigint().mp_int_ptr();
     if mp_isneg(mp_int) {
@@ -522,25 +514,6 @@ pub unsafe extern "C" fn bigint_sleb128_encode(n: Value, buf: *mut u8) {
         bigint_leb128_encode_go(&mut tmp, buf, false)
     } else {
         bigint_leb128_encode_go(&mut tmp, buf, true)
-    }
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn bigint_sleb128_stream_encode(stream: *mut Stream, n: Value) {
-    debug_assert!(!stream.is_forwarded());
-    let mut tmp: mp_int = core::mem::zeroed(); // or core::mem::uninitialized?
-    check(mp_init_copy(&mut tmp, n.as_bigint().mp_int_ptr()));
-
-    if mp_isneg(&tmp) {
-        // Turn negative numbers into the two's complement of the right size
-        let mut big: mp_int = core::mem::zeroed();
-        check(mp_init(&mut big));
-        let bytes = bigint_sleb128_size(n);
-        check(mp_2expt(&mut big, 7 * bytes as i32));
-        check(mp_add(&mut tmp, &big, &mut tmp));
-        stream.write_leb128(&mut tmp, false)
-    } else {
-        stream.write_leb128(&mut tmp, true)
     }
 }
 

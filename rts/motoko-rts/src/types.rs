@@ -371,15 +371,6 @@ impl Value {
         self.forward().get_ptr() as *mut Blob
     }
 
-    /// Get the pointer as `Stream` using forwarding, which is a glorified `Blob`.
-    /// In debug mode panics if the value is not a pointer or the
-    /// pointed object is not a `Blob`.
-    pub unsafe fn as_stream(self) -> *mut Stream {
-        debug_assert_eq!(self.tag(), TAG_BLOB);
-        self.check_forwarding_pointer();
-        self.forward().get_ptr() as *mut Stream
-    }
-
     /// Get the pointer as `BigInt` using forwarding. In debug mode panics if the value is not a pointer or the
     /// pointed object is not a `BigInt`.
     pub unsafe fn as_bigint(self) -> *mut BigInt {
@@ -664,29 +655,6 @@ impl Blob {
         }
 
         (*self).len = new_len;
-    }
-}
-
-#[repr(C)] // See the note at the beginning of this module
-pub struct Stream {
-    pub header: Blob,
-
-    pub ptr: usize,
-    pub start: usize,
-    pub limit: usize,
-
-    pub outputter: fn(*mut Self, *const u8, Bytes<usize>) -> (),
-    pub filled: Bytes<usize>, // cache data follows ..
-}
-
-impl Stream {
-    pub unsafe fn is_forwarded(self: *const Self) -> bool {
-        (self as *const Obj).is_forwarded()
-    }
-
-    pub unsafe fn as_blob_mut(self: *mut Self) -> *mut Blob {
-        debug_assert!(!self.is_forwarded());
-        self as *mut Blob
     }
 }
 
