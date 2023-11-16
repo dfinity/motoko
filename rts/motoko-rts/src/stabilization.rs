@@ -26,7 +26,7 @@ use crate::{
     types::{
         block_size, is_skewed, size_of, skew, unskew, Array, Blob, Bytes, FreeSpace, FwdPtr,
         MutBox, Obj, Object, Tag, Value, Words, TAG_ARRAY, TAG_BLOB, TAG_FREE_SPACE, TAG_FWD_PTR,
-        TAG_MUTBOX, TAG_OBJECT, TAG_ONE_WORD_FILLER,
+        TAG_MUTBOX, TAG_OBJECT, TAG_ONE_WORD_FILLER, TRUE_VALUE,
     },
 };
 
@@ -38,6 +38,19 @@ mod compatibility;
 mod metadata;
 
 pub mod reader_writer;
+
+extern "C" {
+    pub fn moc_null_singleton() -> Value;
+}
+
+/// Special sentinel value that does not exist for static or dynamic objects.
+/// Skewed 3. Since 1 is already reserved to encode the boolean `true`.
+/// Note: The stable addresses start at 0 (skewed u32::MAX) as they are relatived to the to-space.
+const STABLE_NULL_POINTER: Value = Value::from_ptr(0xffff_fffe);
+
+const _: () = assert!(STABLE_NULL_POINTER.get_raw() != TRUE_VALUE);
+const _: () = assert!(STABLE_NULL_POINTER.is_ptr());
+const _: () = assert!(STABLE_NULL_POINTER.get_ptr() != 0);
 
 /// Address in stable memory.
 #[derive(Clone, Copy, PartialEq)]
@@ -147,7 +160,10 @@ trait GraphCopy<S: Copy, T: Copy, P: Copy + Default> {
     /// corresponding target address.
     fn patch_field(&mut self) {
         let old_field = self.to_space().read();
-        if self.is_pointer(old_field) {
+        if self.is_null(old_field) {
+            let null_value = self.encode_null();
+            self.to_space().update(&null_value);
+        } else if self.is_pointer(old_field) {
             let object = self.decode_pointer(old_field);
             let target = self.evacuate(object);
             let new_field = self.encode_pointer(target);
@@ -163,6 +179,11 @@ trait GraphCopy<S: Copy, T: Copy, P: Copy + Default> {
     fn decode_pointer(&self, field_value: P) -> S;
     /// Encode a target address as a field value.
     fn encode_pointer(&self, target: T) -> P;
+    /// Determine whether the field value refers to the null singleton.
+    fn is_null(&self, field_value: P) -> bool;
+    /// Encode the null reference specifically to destabilize it to the
+    /// future singleton static object.
+    fn encode_null(&self) -> P;
 }
 
 pub struct Serialization {
@@ -244,6 +265,14 @@ impl GraphCopy<Value, StableMemoryAddress, u32> for Serialization {
     fn encode_pointer(&self, target: StableMemoryAddress) -> u32 {
         // Again skew the target pointer, such that deserialization can also identify it as pointer.
         skew(target.0) as u32
+    }
+
+    fn is_null(&self, field_value: u32) -> bool {
+        is_skewed(field_value) && Value::from_raw(field_value) == unsafe { moc_null_singleton() }
+    }
+
+    fn encode_null(&self) -> u32 {
+        STABLE_NULL_POINTER.get_raw()
     }
 }
 
@@ -422,6 +451,14 @@ impl<'a, M: Memory> GraphCopy<StableMemoryAddress, Value, u32> for Deserializati
 
     fn encode_pointer(&self, target: Value) -> u32 {
         target.get_raw()
+    }
+
+    fn is_null(&self, field_value: u32) -> bool {
+        field_value == STABLE_NULL_POINTER.get_raw()
+    }
+
+    fn encode_null(&self) -> u32 {
+        unsafe { moc_null_singleton().get_raw() }
     }
 }
 

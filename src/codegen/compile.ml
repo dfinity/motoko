@@ -5650,6 +5650,17 @@ module RTS_Exports = struct
       })
     end;
 
+    let moc_null_singleton_fi =
+      E.add_fun env "moc_null_singleton" (
+        Func.of_body env [] [I32Type] (fun env ->
+          Opt.null_lit env
+        )
+    ) in
+    E.add_export env (nr {
+      name = Lib.Utf8.decode "moc_null_singleton";
+      edesc = nr (FuncExport (nr moc_null_singleton_fi))
+    });
+
 
     (* Stable Memory related exports *)
 
