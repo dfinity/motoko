@@ -173,7 +173,7 @@ impl StabilizationMetadata {
 
     fn ensure_legacy_compatibility(&self) {
         // Distinguish from old Candid stabilization with version 0 (i.e. no Experimental stable memory or regions)
-        // where the first page starts with a non-zero word (the Candid encoding prefix).
+        // where the first page starts with a non-zero word.
         assert!(self.serialized_data_start >= MINIMUM_SERIALIZATION_START);
         if self.serialized_data_start == MINIMUM_SERIALIZATION_START {
             write_u32(0, 0);
@@ -222,12 +222,12 @@ impl StabilizationMetadata {
     pub fn matching_version() -> bool {
         let physical_pages = unsafe { ic0_stable64_size() };
         if physical_pages == 0 {
-            // no stable memory -> Legacy version 0
+            // No stable memory -> Legacy version 0.
             return false;
         }
         if read_u32(0) != 0 {
             // Old stabilization with no experimental stable memory and no regions.
-            // Writes the Candid marker at address 0 -> Legacy version 0
+            // It stores non-zero marker at address 0 -> Legacy version 0.
             return false;
         }
         let address = physical_pages * PAGE_SIZE - size_of::<u32>().to_bytes().as_usize() as u64;
