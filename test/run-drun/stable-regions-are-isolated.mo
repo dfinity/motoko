@@ -1,11 +1,13 @@
 //MOC-FLAG --stable-regions
-//MOC-FLAG --sanity-checks
+// NB: this test runs 5x slower with 24 bit compact Nats, since since only 23 bit Nat are unboxed
+// so half of the array tabulate entries below require bigint arithmetic (and boxing).
 
 import P "mo:⛔";
 import Region "stable-region/Region";
 import Region0 "stable-mem/StableMemory";
 
 actor {
+  let pre = P.performanceCounter(0);
   var r0 = Region.new();
   var r1 = Region.new();
   var r2 = Region.new();
@@ -33,8 +35,9 @@ actor {
 
   func blobOfNat64(n : Nat64) : Blob {
     let size = P.nat64ToNat(n);
-    let a = P.Array_tabulate<Nat8>(size, func i { P.natToNat8(i % 256) });
-    P.arrayToBlob(a);
+    let a = P.Array_tabulate<Nat8>(size, func i {P.natToNat8(i % 256) }); //<- expensive when i boxed
+    let b = P.arrayToBlob(a);
+    b
   };
 
   // A blob that is the size of two region blocks.
@@ -54,6 +57,9 @@ actor {
   assert(Region.loadBlob(r2, 137, P.nat64ToNat(big_len)) == big_blob);
 
   P.debugPrint "success. done.";
+  let post = P.performanceCounter(0);
+  P.debugPrint (debug_show {instructions=post - pre});
+  P.trap "rolling back to avoid state commit";
 }
 
 //SKIP run

@@ -1484,6 +1484,10 @@ module BitTagged = struct
   let ubits, ubitsl, ubitsL = 24, 24l, 24L (* was 31,.. *)
   let sbits, sbitsl, sbitsL = 23, 23l, 23L (* was 30 *)
 (*
+  let ubits, ubitsl, ubitsL = 26, 26l, 26L (* was 31,.. *)
+  let sbits, sbitsl, sbitsL = 25, 25l, 25L (* was 30 *)
+ *)
+(*
   let ubits, ubitsl, ubitsL = 31, 31l, 31L (* was 31,.. *)
   let sbits, sbitsl, sbitsL = 30, 30l, 30L (* was 30 *)
  *) 
@@ -2454,12 +2458,13 @@ module TaggedSmallWord = struct
   let sanity_check_tag env ty =
     let name = "sanity_check_"^Type.string_of_prim ty in
     if !(Flags.sanity) then
+      (assert false;
       Func.share_code1 Func.Always env name ("v", I32Type) [I32Type] (fun env get_n ->
         get_n ^^
         compile_bitand_const (tag_of_type ty) ^^
         compile_eq_const (tag_of_type ty) ^^
         E.else_trap_with env "sanity_check_tag" ^^
-        get_n)
+        get_n))
     else G.nop
 
   (* Makes sure that the word payload (e.g. shift/rotate amount) is in the LSB bits of the word. *)
