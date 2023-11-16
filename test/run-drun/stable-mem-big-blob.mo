@@ -1,4 +1,4 @@
-//MOC-FLAG --sanity-checks
+// test large blob writes (done in halves)
 import P "mo:⛔";
 import StableMemory "stable-mem/StableMemory";
 actor {
