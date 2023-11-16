@@ -2,9 +2,9 @@ ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a000000000000000001
 debug.print: {l1 = 0; s1 = 0}
 debug.print: {l2 = 16; s2 = 16}
 ingress Completed: Reply: 0x4449444c0000
-debug.print: {l1 = 16; s1 = 18}
+debug.print: {l1 = 16; s1 = 19}
 ingress Err: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: pattern failed
-debug.print: {l1 = 16; s1 = 18}
+debug.print: {l1 = 16; s1 = 19}
 ingress Err: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: pattern failed
-debug.print: {l1 = 16; s1 = 18}
+debug.print: {l1 = 16; s1 = 19}
 ingress Err: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: pattern failed
