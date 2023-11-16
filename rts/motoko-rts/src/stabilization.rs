@@ -24,10 +24,11 @@ use crate::{
     rts_trap_with,
     stable_mem::{self, ic0_stable64_read, PAGE_SIZE},
     types::{
-        block_size, is_skewed, size_of, skew, unskew, Array, Bits32, Bits64, Blob, Bytes,
-        FreeSpace, FwdPtr, MutBox, Obj, Object, Region, Tag, Value, Variant, Words, TAG_ARRAY,
-        TAG_BITS32, TAG_BITS64, TAG_BLOB, TAG_FREE_SPACE, TAG_FWD_PTR, TAG_MUTBOX, TAG_OBJECT,
-        TAG_ONE_WORD_FILLER, TAG_REGION, TAG_VARIANT, TRUE_VALUE,
+        block_size, is_skewed, size_of, skew, unskew, Array, Bits32, Bits64, Blob, Bytes, Concat,
+        FreeSpace, FwdPtr, MutBox, Obj, ObjInd, Object, Region, Tag, Value, Variant, Words,
+        TAG_ARRAY, TAG_BITS32, TAG_BITS64, TAG_BLOB, TAG_CONCAT, TAG_FREE_SPACE, TAG_FWD_PTR,
+        TAG_MUTBOX, TAG_OBJECT, TAG_OBJ_IND, TAG_ONE_WORD_FILLER, TAG_REGION, TAG_VARIANT,
+        TRUE_VALUE,
     },
 };
 
@@ -120,7 +121,7 @@ trait GraphCopy<S: Copy, T: Copy, P: Copy + Default> {
     /// Note:
     /// * The default implementation assumes identical object body layout between main memory
     /// and the serialized stable memory. Only the header layout differs insofar tha the main
-    /// memory may include a forwarding pointer when the incremental GC is used.
+    /// memory may include a forwarding pointer when the incremental GC is used. Cf. `types.rs`.
     /// * The deserialized memory image for the partitioned heap may contain free space at
     /// a partition end.
     fn scan(&mut self) {
@@ -130,13 +131,13 @@ trait GraphCopy<S: Copy, T: Copy, P: Copy + Default> {
                 let object_size = self.to_space().read::<u32>();
                 self.patch_field(); // `hash_blob`, blob with field hashes
                 for _ in 0..object_size {
-                    self.patch_field();
+                    self.patch_field(); // object field
                 }
             }
             TAG_ARRAY => {
                 let array_length = self.to_space().read::<u32>();
                 for _ in 0..array_length {
-                    self.patch_field();
+                    self.patch_field(); // array element
                 }
             }
             TAG_BLOB => {
@@ -144,18 +145,26 @@ trait GraphCopy<S: Copy, T: Copy, P: Copy + Default> {
                 self.to_space()
                     .skip(blob_length.to_words().to_bytes().as_usize());
             }
+            TAG_OBJ_IND => {
+                self.patch_field(); // `field`
+            }
+            TAG_CONCAT => {
+                self.to_space().skip(WORD_SIZE as usize); // `n_bytes`
+                self.patch_field(); // `text1`
+                self.patch_field(); // `text2`
+            }
             TAG_MUTBOX => {
-                self.patch_field();
+                self.patch_field(); // `field`
             }
             TAG_BITS64 => self.skip_simple_object::<Bits64>(),
             TAG_BITS32 => self.skip_simple_object::<Bits32>(),
             TAG_REGION => {
-                self.to_space().skip(3 * WORD_SIZE as usize);
-                self.patch_field();
+                self.to_space().skip(3 * WORD_SIZE as usize); // Skip `id_lower`, `id_upper`, and `page_count`.
+                self.patch_field(); // `vec_pages` points to a blob.
             }
             TAG_VARIANT => {
-                self.to_space().skip(WORD_SIZE as usize);
-                self.patch_field();
+                self.to_space().skip(WORD_SIZE as usize); // variant `tag`
+                self.patch_field(); // `field`
             }
             TAG_ONE_WORD_FILLER => {}
             TAG_FREE_SPACE => {
@@ -355,6 +364,8 @@ impl<'a, M: Memory> Deserialization<'a, M> {
                 let blob_length = unsafe { *(length_field as *mut u32) };
                 size_of::<Blob>() + Bytes(blob_length).to_words()
             }
+            TAG_OBJ_IND => size_of::<ObjInd>(),
+            TAG_CONCAT => size_of::<Concat>(),
             TAG_MUTBOX => size_of::<MutBox>(),
             TAG_BITS64 => size_of::<Bits64>(),
             TAG_BITS32 => size_of::<Bits32>(),
