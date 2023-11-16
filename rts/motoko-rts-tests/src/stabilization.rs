@@ -26,9 +26,11 @@ pub unsafe fn test() {
     reset_memory();
 }
 
+const DUMMY_NULL_SINGLETON: Value = Value::from_ptr(usize::MAX - 1);
+
 #[no_mangle]
 pub fn moc_null_singleton() -> Value {
-    unimplemented!()
+    DUMMY_NULL_SINGLETON
 }
 
 #[non_incremental_gc]
