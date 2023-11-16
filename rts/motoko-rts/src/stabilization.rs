@@ -24,9 +24,10 @@ use crate::{
     rts_trap_with,
     stable_mem::{self, ic0_stable64_read, PAGE_SIZE},
     types::{
-        block_size, is_skewed, size_of, skew, unskew, Array, Blob, Bytes, FreeSpace, FwdPtr,
-        MutBox, Obj, Object, Region, Tag, Value, Words, TAG_ARRAY, TAG_BLOB, TAG_FREE_SPACE,
-        TAG_FWD_PTR, TAG_MUTBOX, TAG_OBJECT, TAG_ONE_WORD_FILLER, TAG_REGION, TRUE_VALUE,
+        block_size, is_skewed, size_of, skew, unskew, Array, Bits32, Bits64, Blob, Bytes,
+        FreeSpace, FwdPtr, MutBox, Obj, Object, Region, Tag, Value, Words, TAG_ARRAY, TAG_BITS32,
+        TAG_BITS64, TAG_BLOB, TAG_FREE_SPACE, TAG_FWD_PTR, TAG_MUTBOX, TAG_OBJECT,
+        TAG_ONE_WORD_FILLER, TAG_REGION, TRUE_VALUE,
     },
 };
 
@@ -150,6 +151,8 @@ trait GraphCopy<S: Copy, T: Copy, P: Copy + Default> {
                 self.to_space().skip(3 * WORD_SIZE as usize);
                 self.patch_field();
             }
+            TAG_BITS64 => self.skip_simple_object::<Bits64>(),
+            TAG_BITS32 => self.skip_simple_object::<Bits32>(),
             TAG_ONE_WORD_FILLER => {}
             TAG_FREE_SPACE => {
                 let free_words = Words(self.to_space().read::<u32>());
@@ -157,6 +160,12 @@ trait GraphCopy<S: Copy, T: Copy, P: Copy + Default> {
             }
             other_tag => unimplemented!("tag {other_tag}"),
         }
+    }
+
+    /// Skip statically sized object that contains no pointers.
+    fn skip_simple_object<O>(&mut self) {
+        let payload_length = size_of::<O>() - size_of::<Obj>();
+        self.to_space().skip(payload_length.to_bytes().as_usize());
     }
 
     /// If the field encodes a pointer at the scan position, replace it by its
@@ -343,6 +352,8 @@ impl<'a, M: Memory> Deserialization<'a, M> {
                 let blob_length = unsafe { *(length_field as *mut u32) };
                 size_of::<Blob>() + Bytes(blob_length).to_words()
             }
+            TAG_BITS64 => size_of::<Bits64>(),
+            TAG_BITS32 => size_of::<Bits32>(),
             TAG_REGION => size_of::<Region>(),
             other_tag => unimplemented!("tag {other_tag}"),
         }
