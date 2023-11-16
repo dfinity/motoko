@@ -265,14 +265,14 @@ impl<'a, M: Memory> Deserialization<'a, M> {
     pub fn run(mem: &'a mut M, stable_start: u64, stable_size: u64, heap_base: usize) -> Value {
         Self::stable_memory_bulk_copy(stable_start, stable_size, heap_base);
         let to_space = StableMemorySpace::open(stable_start);
-        let new_heap_size = Deserialization {
+        let new_stable_size = Deserialization {
             mem,
             to_space,
             heap_base,
             last_allocation: heap_base,
         }
         .run(StableMemoryAddress(0));
-        Self::stable_memory_bulk_copy(stable_start, new_heap_size, heap_base);
+        Self::stable_memory_bulk_copy(stable_start, new_stable_size, heap_base);
         Value::from_ptr(heap_base)
     }
 
