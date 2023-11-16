@@ -26,7 +26,7 @@ use crate::{
     types::{
         block_size, is_skewed, size_of, skew, unskew, Array, Bytes, FreeSpace, FwdPtr, MutBox, Obj,
         Tag, Value, Words, TAG_ARRAY, TAG_FREE_SPACE, TAG_FWD_PTR, TAG_MUTBOX, TAG_OBJECT,
-        TAG_ONE_WORD_FILLER,
+        TAG_ONE_WORD_FILLER, TAG_BLOB, Object, Blob,
     },
 };
 
@@ -104,8 +104,9 @@ trait GraphCopy<S: Copy, T: Copy, P: Copy + Default> {
     /// Read an object at the `scan` position in the to-space, process all its potential
     /// pointer fields by invoking `patch_field` for each of them.
     /// Note:
-    /// * The default implementation assumes identical payload format between main memory
-    /// and the serialized stable memory.
+    /// * The default implementation assumes identical object body layout between main memory
+    /// and the serialized stable memory. Only the header layout differs insofar tha the main
+    /// memory may include a forwarding pointer when the incremental GC is used.
     /// * The deserialized memory image for the partitioned heap may contain free space at
     /// a partition end.
     fn scan(&mut self) {
@@ -127,6 +128,10 @@ trait GraphCopy<S: Copy, T: Copy, P: Copy + Default> {
             }
             TAG_MUTBOX => {
                 self.patch_field();
+            }
+            TAG_BLOB => {
+                let blob_length = Bytes(self.to_space().read::<u32>());
+                self.to_space().skip(blob_length.to_words().to_bytes().as_usize());
             }
             TAG_ONE_WORD_FILLER => {}
             TAG_FREE_SPACE => {
@@ -283,16 +288,28 @@ impl<'a, M: Memory> Deserialization<'a, M> {
 
     const TARGET_HEADER_SIZE: usize = WORD_SIZE as usize;
 
+    // Note: The stable format uses the identical object body layout like in `types.rs`.
+    // Only the headers differ insofar that the stable format omits the forwarding pointer.
     fn target_size(&self, stable_address: StableMemoryAddress) -> Words<u32> {
         let source = self.source_address(stable_address) as usize;
         let tag = unsafe { *(source as *const Tag) };
         match tag {
+            TAG_OBJECT => {
+                let size_field = source + Self::TARGET_HEADER_SIZE;
+                let object_size = unsafe { *(size_field as *mut u32) };
+                size_of::<Object>() + Words(object_size)
+            }
             TAG_ARRAY => {
                 let length_field = source + Self::TARGET_HEADER_SIZE;
                 let array_length = unsafe { *(length_field as *mut u32) };
                 size_of::<Array>() + Words(array_length)
             }
             TAG_MUTBOX => size_of::<MutBox>(),
+            TAG_BLOB => {
+                let length_field = source + Self::TARGET_HEADER_SIZE;
+                let blob_length = unsafe { *(length_field as *mut u32) };
+                size_of::<Blob>() + Bytes(blob_length).to_words()
+            }
             other_tag => unimplemented!("tag {other_tag}"),
         }
     }
@@ -440,10 +457,10 @@ fn grant_stable_space(byte_size: u64) {
 pub unsafe fn stabilize(stable_actor: Value, old_candid_data: Value, old_type_offsets: Value) {
     use crate::stabilization::metadata::{StabilizationMetadata, MINIMUM_SERIALIZATION_START};
     use compatibility::TypeDescriptor;
-    use core::cmp::min;
+    use core::cmp::max;
 
     let stable_memory_pages = stable_mem::size();
-    let serialized_data_start = min(stable_memory_pages * PAGE_SIZE, MINIMUM_SERIALIZATION_START);
+    let serialized_data_start = max(stable_memory_pages * PAGE_SIZE, MINIMUM_SERIALIZATION_START);
     let serialized_data_length = Serialization::run(stable_actor, serialized_data_start);
     let type_descriptor = TypeDescriptor::new(old_candid_data, old_type_offsets, 0);
     let metadata = StabilizationMetadata {
