@@ -26,6 +26,11 @@ pub unsafe fn test() {
     reset_memory();
 }
 
+#[no_mangle]
+pub fn moc_null_singleton() -> Value {
+    unimplemented!()
+}
+
 #[non_incremental_gc]
 fn clear_heap(heap: &mut MotokoHeap) {
     heap.set_heap_ptr_address(heap.heap_base_address());
