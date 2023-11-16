@@ -33,12 +33,12 @@ use crate::{
     region::{VERSION_GRAPH_COPY_NO_REGIONS, VERSION_GRAPH_COPY_REGIONS},
     stable_mem::{
         get_version, ic0_stable64_read, ic0_stable64_size, ic0_stable64_write, read_u32,
-        set_version, write_u32, write_u8, PAGE_SIZE,
+        set_version, write_u32, PAGE_SIZE,
     },
     types::{size_of, Bytes, Value},
 };
 
-use super::{compatibility::TypeDescriptor, grant_stable_space};
+use super::{compatibility::TypeDescriptor, grant_stable_space, clear_stable_memory};
 
 #[repr(C)]
 #[derive(Default)]
@@ -86,16 +86,9 @@ impl StabilizationMetadata {
     fn align_page_start(offset: &mut u64) {
         if *offset % PAGE_SIZE != 0 {
             let remainder = PAGE_SIZE - *offset % PAGE_SIZE;
-            Self::fill_zero(offset, remainder);
+            clear_stable_memory(*offset, remainder);
+            *offset += remainder;
         }
-    }
-
-    fn fill_zero(offset: &mut u64, length: u64) {
-        // TODO: Optimize bulk zero write
-        for _ in 0..length {
-            write_u8(*offset, 0u8);
-        }
-        *offset += length;
     }
 
     fn save_type_descriptor(offset: &mut u64, descriptor: &TypeDescriptor) {
@@ -106,6 +99,7 @@ impl StabilizationMetadata {
 
     fn read_length(offset: &mut u64) -> u32 {
         let length = read_u32(*offset);
+        clear_stable_memory(*offset, size_of::<u32>().to_bytes().as_usize() as u64);
         *offset += size_of::<u32>().to_bytes().as_usize() as u64;
         length
     }
@@ -119,6 +113,7 @@ impl StabilizationMetadata {
                 *offset,
                 length as u64,
             );
+            clear_stable_memory(*offset, length as u64);
             allocation_barrier(value);
             *offset += length as u64;
             value

@@ -18,11 +18,13 @@
 
 use motoko_rts_macros::ic_mem_fn;
 
+use core::cmp::{max, min};
+
 use crate::{
     constants::WORD_SIZE,
     memory::Memory,
     rts_trap_with,
-    stable_mem::{self, ic0_stable64_read, PAGE_SIZE},
+    stable_mem::{self, ic0_stable64_read, PAGE_SIZE, ic0_stable64_write},
     tommath_bindings::{mp_digit, mp_int},
     types::{
         block_size, is_ptr, size_of, skew, unskew, Array, BigInt, Bits32, Bits64, Blob, Bytes,
@@ -341,6 +343,7 @@ impl<'a, M: Memory> Deserialization<'a, M> {
         }
         .run(StableMemoryAddress(0));
         Self::stable_memory_bulk_copy(mem, stable_start, new_stable_size, heap_start);
+        clear_stable_memory(stable_start, max(stable_size, new_stable_size));
         Value::from_ptr(heap_start)
     }
 
@@ -515,6 +518,20 @@ impl<'a, M: Memory> GraphCopy<StableMemoryAddress, Value, u32> for Deserializati
 
     fn encode_null(&self) -> u32 {
         unsafe { moc_null_singleton().get_raw() }
+    }
+}
+
+fn clear_stable_memory(start: u64, length: u64) {
+    const CHUNK_SIZE: usize = 1024;
+    let empty_chunk = [0u8; CHUNK_SIZE];
+    let mut position = start;
+    let end = start + length;
+    while position < end {
+        let size = min(end - position, CHUNK_SIZE as u64);
+        unsafe {
+            ic0_stable64_write(position, &empty_chunk as *const u8 as u64, size);
+        }
+        position += size;
     }
 }
 
