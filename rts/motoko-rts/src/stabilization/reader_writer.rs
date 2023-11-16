@@ -5,10 +5,11 @@ use core::{cmp::min, mem::size_of};
 
 use crate::{
     mem_utils::memcpy_bytes,
-    rts_trap_with,
-    stable_mem::{self, ic0_stable64_read, ic0_stable64_write, PAGE_SIZE},
+    stable_mem::{ic0_stable64_read, ic0_stable64_write, PAGE_SIZE},
     types::Bytes,
 };
+
+use super::grant_stable_space;
 
 const FREE_PAGE_INDEX: u64 = u64::MAX;
 
@@ -69,17 +70,7 @@ impl StableMemoryPage {
     }
 
     fn grow_if_needed(page_index: u64) {
-        let total_pages = stable_mem::size();
-        if page_index >= total_pages {
-            let additional_pages = total_pages - page_index + 1;
-            assert_ne!(additional_pages, u64::MAX);
-            let result = stable_mem::grow(additional_pages);
-            if result != additional_pages {
-                unsafe {
-                    rts_trap_with("Insufficient stable memory");
-                }
-            }
-        }
+        grant_stable_space((page_index + 1) * PAGE_SIZE);
     }
 }
 

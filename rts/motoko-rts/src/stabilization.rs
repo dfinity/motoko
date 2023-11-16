@@ -21,7 +21,8 @@ use motoko_rts_macros::ic_mem_fn;
 use crate::{
     constants::WORD_SIZE,
     memory::Memory,
-    stable_mem::ic0_stable64_read,
+    rts_trap_with,
+    stable_mem::{self, ic0_stable64_read, PAGE_SIZE},
     types::{
         block_size, is_skewed, size_of, skew, unskew, Array, Bytes, FreeSpace, FwdPtr, MutBox, Obj,
         Tag, Value, Words, TAG_ARRAY, TAG_FREE_SPACE, TAG_FWD_PTR, TAG_MUTBOX, TAG_OBJECT,
@@ -406,6 +407,22 @@ impl<'a, M: Memory> GraphCopy<StableMemoryAddress, Value, u32> for Deserializati
     }
 }
 
+fn grant_stable_space(byte_size: u64) {
+    assert!(byte_size < u64::MAX - PAGE_SIZE - 1);
+    let required_pages = (byte_size + PAGE_SIZE - 1) / PAGE_SIZE;
+    let available_pages = stable_mem::size();
+    if required_pages > available_pages {
+        let additional_pages = required_pages - available_pages;
+        assert_ne!(additional_pages, u64::MAX);
+        let result = stable_mem::grow(additional_pages);
+        if result == u64::MAX {
+            unsafe {
+                rts_trap_with("Insufficient stable memory");
+            }
+        }
+    }
+}
+
 /// Pre-upgrade operation for graph-copy-based program upgrades:
 /// All objects inside main memory that are transitively reachable from stable variables are
 /// serialized into stable memory by using a graph copy algorithm.
@@ -421,10 +438,7 @@ impl<'a, M: Memory> GraphCopy<StableMemoryAddress, Value, u32> for Deserializati
 #[no_mangle]
 #[cfg(feature = "ic")]
 pub unsafe fn stabilize(stable_actor: Value, old_candid_data: Value, old_type_offsets: Value) {
-    use crate::{
-        stabilization::metadata::{StabilizationMetadata, MINIMUM_SERIALIZATION_START},
-        stable_mem::{self, PAGE_SIZE},
-    };
+    use crate::stabilization::metadata::{StabilizationMetadata, MINIMUM_SERIALIZATION_START};
     use compatibility::TypeDescriptor;
     use core::cmp::min;
 

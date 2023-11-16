@@ -32,13 +32,13 @@ use crate::{
     memory::{alloc_blob, Memory},
     region::{VERSION_GRAPH_COPY_NO_REGIONS, VERSION_GRAPH_COPY_REGIONS},
     stable_mem::{
-        get_version, grow, ic0_stable64_read, ic0_stable64_size, ic0_stable64_write, read_u32,
-        set_version, size, write_u32, write_u8, PAGE_SIZE,
+        get_version, ic0_stable64_read, ic0_stable64_size, ic0_stable64_write, read_u32,
+        set_version, write_u32, write_u8, PAGE_SIZE,
     },
     types::{size_of, Bytes, Value},
 };
 
-use super::compatibility::TypeDescriptor;
+use super::{compatibility::TypeDescriptor, grant_stable_space};
 
 // If logical stable memory has size 0, the new graph-copy-based stabilization can only
 // be distinguished from the old stabilization by keeping the first word 0.
@@ -64,14 +64,7 @@ pub struct StabilizationMetadata {
 
 impl StabilizationMetadata {
     fn ensure_space(offset: u64, length: u64) {
-        let required_pages = (offset + length + PAGE_SIZE - 1) / PAGE_SIZE;
-        let available_pages = size();
-        if required_pages > available_pages {
-            let additional_pages = available_pages - required_pages;
-            assert_ne!(additional_pages, u64::MAX);
-            let result = grow(additional_pages);
-            assert_eq!(result, additional_pages);
-        }
+        grant_stable_space(offset + length);
     }
 
     fn write_length(offset: &mut u64, length: u32) {
