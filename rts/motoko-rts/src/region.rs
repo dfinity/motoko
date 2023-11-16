@@ -766,11 +766,13 @@ pub(crate) unsafe fn region_init<M: Memory>(mem: &mut M, use_stable_regions: u32
             if use_stable_regions != 0 {
                 if crate::stable_mem::size() == 0 {
                     region_migration_from_no_stable_memory(mem);
+                    debug_assert!(meta_data::offset::FREE < BLOCK_BASE);
+                    debug_assert!(BLOCK_BASE == meta_data::offset::BASE_LOW);
                 } else {
                     region_migration_from_some_stable_memory(mem);
+                    debug_assert!(meta_data::offset::FREE < BLOCK_BASE);
+                    debug_assert!(BLOCK_BASE == meta_data::offset::BASE_HIGH);
                 }
-                debug_assert!(meta_data::offset::FREE < BLOCK_BASE);
-                debug_assert!(BLOCK_BASE == meta_data::offset::BASE_HIGH);
             }
         }
         VERSION_GRAPH_COPY_REGIONS => {
