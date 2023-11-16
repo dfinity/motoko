@@ -24,7 +24,7 @@ use crate::{
     rts_trap_with,
     stable_mem::{self, ic0_stable64_read, PAGE_SIZE},
     types::{
-        block_size, is_skewed, size_of, skew, unskew, Array, Bits32, Bits64, Blob, Bytes, Concat,
+        block_size, is_ptr, size_of, skew, unskew, Array, Bits32, Bits64, Blob, Bytes, Concat,
         FreeSpace, FwdPtr, MutBox, Obj, ObjInd, Object, Region, Tag, Value, Variant, Words,
         TAG_ARRAY, TAG_BITS32, TAG_BITS64, TAG_BLOB, TAG_CONCAT, TAG_FREE_SPACE, TAG_FWD_PTR,
         TAG_MUTBOX, TAG_OBJECT, TAG_OBJ_IND, TAG_ONE_WORD_FILLER, TAG_REGION, TAG_VARIANT,
@@ -280,7 +280,7 @@ impl GraphCopy<Value, StableMemoryAddress, u32> for Serialization {
     }
 
     fn is_pointer(&self, field_value: u32) -> bool {
-        is_skewed(field_value)
+        is_ptr(field_value)
     }
 
     fn decode_pointer(&self, field_value: u32) -> Value {
@@ -293,7 +293,7 @@ impl GraphCopy<Value, StableMemoryAddress, u32> for Serialization {
     }
 
     fn is_null(&self, field_value: u32) -> bool {
-        is_skewed(field_value) && Value::from_raw(field_value) == unsafe { moc_null_singleton() }
+        is_ptr(field_value) && Value::from_raw(field_value) == unsafe { moc_null_singleton() }
     }
 
     fn encode_null(&self) -> u32 {
@@ -473,7 +473,7 @@ impl<'a, M: Memory> GraphCopy<StableMemoryAddress, Value, u32> for Deserializati
     }
 
     fn is_pointer(&self, field_value: u32) -> bool {
-        is_skewed(field_value)
+        is_ptr(field_value)
     }
 
     fn decode_pointer(&self, field_value: u32) -> StableMemoryAddress {
