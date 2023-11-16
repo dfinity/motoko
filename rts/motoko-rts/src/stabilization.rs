@@ -318,7 +318,7 @@ impl<'a, M: Memory> Deserialization<'a, M> {
     /// - `copy` and `scan` depend on the heap layout. Adjust these functions whenever the heap layout
     /// is changed.
     pub fn run(mem: &'a mut M, stable_start: u64, stable_size: u64, heap_start: usize) -> Value {
-        Self::stable_memory_bulk_copy(stable_start, stable_size, heap_start);
+        Self::stable_memory_bulk_copy(mem, stable_start, stable_size, heap_start);
         let to_space = StableMemorySpace::open(stable_start);
         let new_stable_size = Deserialization {
             mem,
@@ -327,12 +327,18 @@ impl<'a, M: Memory> Deserialization<'a, M> {
             last_allocation: heap_start,
         }
         .run(StableMemoryAddress(0));
-        Self::stable_memory_bulk_copy(stable_start, new_stable_size, heap_start);
+        Self::stable_memory_bulk_copy(mem, stable_start, new_stable_size, heap_start);
         Value::from_ptr(heap_start)
     }
 
-    fn stable_memory_bulk_copy(stable_start: u64, stable_size: u64, heap_start: usize) {
+    fn stable_memory_bulk_copy(
+        mem: &mut M,
+        stable_start: u64,
+        stable_size: u64,
+        heap_start: usize,
+    ) {
         unsafe {
+            mem.grow_memory(heap_start as u64 + stable_size);
             ic0_stable64_read(heap_start as u64, stable_start, stable_size);
         }
     }
