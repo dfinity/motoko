@@ -24,9 +24,9 @@ use crate::{
     rts_trap_with,
     stable_mem::{self, ic0_stable64_read, PAGE_SIZE},
     types::{
-        block_size, is_skewed, size_of, skew, unskew, Array, Bytes, FreeSpace, FwdPtr, MutBox, Obj,
-        Tag, Value, Words, TAG_ARRAY, TAG_FREE_SPACE, TAG_FWD_PTR, TAG_MUTBOX, TAG_OBJECT,
-        TAG_ONE_WORD_FILLER, TAG_BLOB, Object, Blob,
+        block_size, is_skewed, size_of, skew, unskew, Array, Blob, Bytes, FreeSpace, FwdPtr,
+        MutBox, Obj, Object, Tag, Value, Words, TAG_ARRAY, TAG_BLOB, TAG_FREE_SPACE, TAG_FWD_PTR,
+        TAG_MUTBOX, TAG_OBJECT, TAG_ONE_WORD_FILLER,
     },
 };
 
@@ -131,7 +131,8 @@ trait GraphCopy<S: Copy, T: Copy, P: Copy + Default> {
             }
             TAG_BLOB => {
                 let blob_length = Bytes(self.to_space().read::<u32>());
-                self.to_space().skip(blob_length.to_words().to_bytes().as_usize());
+                self.to_space()
+                    .skip(blob_length.to_words().to_bytes().as_usize());
             }
             TAG_ONE_WORD_FILLER => {}
             TAG_FREE_SPACE => {
@@ -249,7 +250,7 @@ impl GraphCopy<Value, StableMemoryAddress, u32> for Serialization {
 pub struct Deserialization<'a, M: Memory> {
     mem: &'a mut M,
     to_space: StableMemorySpace,
-    heap_base: usize,
+    heap_start: usize,
     last_allocation: usize,
 }
 
@@ -262,28 +263,28 @@ impl<'a, M: Memory> Deserialization<'a, M> {
     /// However, the allocator must not yet write to the heap.
     /// - `copy` and `scan` depend on the heap layout. Adjust these functions whenever the heap layout
     /// is changed.
-    pub fn run(mem: &'a mut M, stable_start: u64, stable_size: u64, heap_base: usize) -> Value {
-        Self::stable_memory_bulk_copy(stable_start, stable_size, heap_base);
+    pub fn run(mem: &'a mut M, stable_start: u64, stable_size: u64, heap_start: usize) -> Value {
+        Self::stable_memory_bulk_copy(stable_start, stable_size, heap_start);
         let to_space = StableMemorySpace::open(stable_start);
         let new_stable_size = Deserialization {
             mem,
             to_space,
-            heap_base,
-            last_allocation: heap_base,
+            heap_start,
+            last_allocation: heap_start,
         }
         .run(StableMemoryAddress(0));
-        Self::stable_memory_bulk_copy(stable_start, new_stable_size, heap_base);
-        Value::from_ptr(heap_base)
+        Self::stable_memory_bulk_copy(stable_start, new_stable_size, heap_start);
+        Value::from_ptr(heap_start)
     }
 
-    fn stable_memory_bulk_copy(stable_start: u64, stable_size: u64, heap_base: usize) {
+    fn stable_memory_bulk_copy(stable_start: u64, stable_size: u64, heap_start: usize) {
         unsafe {
-            ic0_stable64_read(heap_base as u64, stable_start, stable_size);
+            ic0_stable64_read(heap_start as u64, stable_start, stable_size);
         }
     }
 
     fn source_address(&self, stable_address: StableMemoryAddress) -> usize {
-        self.heap_base + stable_address.0
+        self.heap_start + stable_address.0
     }
 
     const TARGET_HEADER_SIZE: usize = WORD_SIZE as usize;
@@ -501,11 +502,7 @@ pub unsafe fn destabilize<M: Memory>(
     new_candid_data: Value,
     new_type_offsets: Value,
 ) -> Value {
-    use crate::{
-        memory::ic::{clear_heap, get_aligned_heap_base},
-        rts_trap_with,
-        stable_mem::moc_stable_mem_set_size,
-    };
+    use crate::{memory::ic::dynamic_heap_end, rts_trap_with, stable_mem::moc_stable_mem_set_size};
     use compatibility::{memory_compatible, TypeDescriptor};
     use metadata::StabilizationMetadata;
 
@@ -515,15 +512,17 @@ pub unsafe fn destabilize<M: Memory>(
     if !memory_compatible(mem, &mut old_type_descriptor, &mut new_type_descriptor) {
         rts_trap_with("Memory-incompatible program upgrade");
     }
-    unsafe {
-        clear_heap(mem);
-    }
-    let heap_base = get_aligned_heap_base();
+    // There may already exist some objects before destabilization.
+    // We preserve them by continuing the heap at that location.
+    // Note: This only works if the preceding allocations are all contiguous,
+    // i.e. no occupied partition resides above this position and
+    // no free partition resides below this position.
+    let heap_deserialzation_start = dynamic_heap_end();
     let stable_root = Deserialization::run(
         mem,
         metadata.serialized_data_start,
         metadata.serialized_data_length,
-        heap_base,
+        heap_deserialzation_start,
     );
     moc_stable_mem_set_size(metadata.stable_memory_pages);
     stable_root

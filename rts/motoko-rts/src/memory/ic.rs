@@ -63,12 +63,14 @@ unsafe fn grow_memory(ptr: u64) {
     }
 }
 
-#[incremental_gc]
-pub unsafe fn clear_heap<M: Memory>(mem: &mut M) {
-    partitioned_memory::clear_heap(mem);
+/// The current end of the dynamic heap space.
+/// The destabilization allocates objects beyond this address.
+#[non_incremental_gc]
+pub(crate) unsafe fn dynamic_heap_end() -> usize {
+    linear_memory::get_hp_unskewed()
 }
 
-#[non_incremental_gc]
-pub unsafe fn clear_heap<M: Memory>(_mem: &mut M) {
-    linear_memory::clear_heap();
+#[incremental_gc]
+pub(crate) unsafe fn dynamic_heap_end() -> usize {
+    partitioned_memory::dynamic_heap_end()
 }

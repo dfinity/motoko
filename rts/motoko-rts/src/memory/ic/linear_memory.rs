@@ -68,8 +68,3 @@ impl Memory for IcMemory {
         super::grow_memory(ptr);
     }
 }
-
-pub(super) unsafe fn clear_heap() {
-    let new_hp = get_aligned_heap_base();
-    set_hp_unskewed(new_hp);
-}

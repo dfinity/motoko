@@ -28,7 +28,6 @@ impl Memory for IcMemory {
     }
 }
 
-pub(super) unsafe fn clear_heap<M: Memory>(mem: &mut M) {
-    let heap_base = crate::gc::incremental::get_partitioned_heap().base_address();
-    crate::gc::incremental::IncrementalGC::initialize(mem, heap_base);
+pub(super) unsafe fn dynamic_heap_end() -> usize {
+    crate::gc::incremental::get_partitioned_heap().contiguous_heap_end()
 }

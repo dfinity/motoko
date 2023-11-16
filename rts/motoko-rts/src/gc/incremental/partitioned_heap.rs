@@ -646,6 +646,18 @@ impl PartitionedHeap {
         Bytes(heap_size_without_evacuations as u64) + self.reclaimed_size()
     }
 
+    /// Only used during destabilization while the heap has only grown linearly,
+    /// i.e. no free partition exists below this location and no occupied partitions exists above this location.
+    pub fn contiguous_heap_end(&self) -> usize {
+        let allocation_partition = self.allocation_partition();
+        let end = allocation_partition.dynamic_space_end();
+        let allocation_partition_index = allocation_partition.index;
+        debug_assert!(!self.partitions.iter().any(|partition| partition.free
+            && partition.index < allocation_partition_index
+            || !partition.free && partition.index > allocation_partition_index));
+        end
+    }
+
     pub unsafe fn allocate<M: Memory>(&mut self, mem: &mut M, words: Words<u32>) -> Value {
         let size = words.to_bytes().as_usize();
         if size <= PARTITION_SIZE {
