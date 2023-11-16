@@ -1123,6 +1123,7 @@ module RTS = struct
     E.add_func_import env "rts" "get_heap_size" [] [I32Type];
     E.add_func_import env "rts" "alloc_blob" [I32Type] [I32Type];
     E.add_func_import env "rts" "alloc_array" [I32Type] [I32Type];
+    E.add_func_import env "rts" "contains_field" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "stabilize" [I32Type; I32Type; I32Type] [];
     E.add_func_import env "rts" "destabilize" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "use_new_destabilization" [] [I32Type];
@@ -3802,6 +3803,12 @@ module Object = struct
      get_ri ^^
      Tagged.allocation_barrier env
  
+   (* Reflection used by new graph-copy-based stabilization:
+      Check whether an (actor) object contains a specific field *)
+   let contains_field env field =
+     compile_unboxed_const (E.hash env field) ^^
+     E.call_import env "rts" "contains_field"
+
    (* Returns a pointer to the object field (without following the field indirection) *)
    let idx_hash_raw env low_bound =
      let name = Printf.sprintf "obj_idx<%d>" low_bound  in
@@ -7840,12 +7847,29 @@ module GraphCopyStabilization = struct
     Blob.lit env candid_type_desc ^^
     Blob.lit env serialized_offsets
 
+  (* Support additional fields in an upgraded actor. *)
+  let create_new_actor env actor_type =
+    let set_old_actor, get_old_actor = new_local env "old_actor" in
+    let get_field_value field = 
+      get_old_actor ^^
+      Object.contains_field env field ^^
+      (G.if1 I32Type
+        (get_old_actor ^^ Object.load_idx_raw env field)
+        (Opt.null_lit env)
+      ) in
+    let (_, field_declarations) = Type.as_obj actor_type in
+    let field_initializers = List.map
+      (fun field -> (field.Type.lab, fun () -> (get_field_value field.Type.lab)))
+      field_declarations
+    in
+    set_old_actor ^^
+    Object.lit_raw env field_initializers
+
   let stabilize env actor_type =
     (if !Flags.gc_strategy = Flags.Incremental then
       E.call_import env "rts" "stop_gc_on_upgrade"
     else
       G.nop) ^^
-    (* TODO: Upgrade to stable memory version 3 if needed *)
     create_type_descriptor env actor_type ^^
     E.call_import env "rts" "stabilize"
   
@@ -7854,7 +7878,8 @@ module GraphCopyStabilization = struct
     G.if1 I32Type
       begin
         create_type_descriptor env actor_type ^^
-        E.call_import env "rts" "destabilize"
+        E.call_import env "rts" "destabilize" ^^
+        create_new_actor env actor_type
       end
       begin
         OldStabilization.old_destabilize env actor_type (StableMem.upgrade_version env)

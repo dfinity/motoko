@@ -119,3 +119,24 @@ pub unsafe fn memory_compatible<M: Memory>(
         true,
     )
 }
+
+/// Determine whether an object contains a specific field.
+/// Used for upgrading to an actor with additional stable fields.
+#[no_mangle]
+pub unsafe extern "C" fn contains_field(actor: Value, field_hash: u32) -> bool {
+    let object = actor.as_object();
+    let hash_blob = (*object).hash_blob.as_blob();
+    assert_eq!(hash_blob.len().as_u32() % WORD_SIZE, 0);
+    let number_of_fields = hash_blob.len().as_u32() / WORD_SIZE;
+    let mut current_address = hash_blob.payload_const() as u32;
+    for _ in 0..number_of_fields {
+        let hash_address = current_address as *mut u32;
+        let hash_value = *hash_address;
+        // The hash sequence is sorted: Stop when the hash matches or cannot exist.
+        if hash_value >= field_hash {
+            return hash_value == field_hash;
+        }
+        current_address += WORD_SIZE;
+    }
+    false
+}
