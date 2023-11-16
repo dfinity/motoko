@@ -38,7 +38,7 @@ use crate::{
     types::{size_of, Bytes, Value},
 };
 
-use super::{compatibility::TypeDescriptor, grant_stable_space, clear_stable_memory};
+use super::{clear_stable_memory, compatibility::TypeDescriptor, grant_stable_space};
 
 #[repr(C)]
 #[derive(Default)]

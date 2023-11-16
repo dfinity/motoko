@@ -24,7 +24,7 @@ use crate::{
     constants::WORD_SIZE,
     memory::Memory,
     rts_trap_with,
-    stable_mem::{self, ic0_stable64_read, PAGE_SIZE, ic0_stable64_write},
+    stable_mem::{self, ic0_stable64_read, ic0_stable64_write, PAGE_SIZE},
     tommath_bindings::{mp_digit, mp_int},
     types::{
         block_size, is_ptr, size_of, skew, unskew, Array, BigInt, Bits32, Bits64, Blob, Bytes,
