@@ -745,7 +745,11 @@ pub struct BigInt {
 
 impl BigInt {
     pub unsafe fn len(self: *mut Self) -> Bytes<u32> {
-        Bytes(((*self).mp_int.alloc as usize * core::mem::size_of::<mp_digit>()) as u32)
+        Self::data_length(&(*self).mp_int)
+    }
+
+    pub unsafe fn data_length(mp_int: *const mp_int) -> Bytes<u32> {
+        Bytes(((*mp_int).alloc as usize * core::mem::size_of::<mp_digit>()) as u32)
     }
 
     pub unsafe fn payload_addr(self: *mut Self) -> *mut mp_digit {

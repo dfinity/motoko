@@ -23,12 +23,13 @@ use crate::{
     memory::Memory,
     rts_trap_with,
     stable_mem::{self, ic0_stable64_read, PAGE_SIZE},
+    tommath_bindings::{mp_digit, mp_int},
     types::{
-        block_size, is_ptr, size_of, skew, unskew, Array, Bits32, Bits64, Blob, Bytes, Concat,
-        FreeSpace, FwdPtr, MutBox, Obj, ObjInd, Object, Region, Tag, Value, Variant, Words,
-        TAG_ARRAY, TAG_BITS32, TAG_BITS64, TAG_BLOB, TAG_CONCAT, TAG_FREE_SPACE, TAG_FWD_PTR,
-        TAG_MUTBOX, TAG_OBJECT, TAG_OBJ_IND, TAG_ONE_WORD_FILLER, TAG_REGION, TAG_VARIANT,
-        TRUE_VALUE,
+        block_size, is_ptr, size_of, skew, unskew, Array, BigInt, Bits32, Bits64, Blob, Bytes,
+        Concat, FreeSpace, FwdPtr, MutBox, Obj, ObjInd, Object, Region, Tag, Value, Variant, Words,
+        TAG_ARRAY, TAG_BIGINT, TAG_BITS32, TAG_BITS64, TAG_BLOB, TAG_CONCAT, TAG_FREE_SPACE,
+        TAG_FWD_PTR, TAG_MUTBOX, TAG_OBJECT, TAG_OBJ_IND, TAG_ONE_WORD_FILLER, TAG_REGION,
+        TAG_VARIANT, TRUE_VALUE,
     },
 };
 
@@ -144,6 +145,18 @@ trait GraphCopy<S: Copy, T: Copy, P: Copy + Default> {
                 let blob_length = Bytes(self.to_space().read::<u32>());
                 self.to_space()
                     .skip(blob_length.to_words().to_bytes().as_usize());
+            }
+            TAG_BIGINT => {
+                let mp_int = &mut mp_int {
+                    used: 0,
+                    alloc: 0,
+                    sign: 0,
+                    dp: 0 as *mut mp_digit,
+                } as *mut mp_int;
+                self.to_space()
+                    .raw_read(mp_int as usize, size_of::<mp_int>().to_bytes().as_usize());
+                let data_length = unsafe { BigInt::data_length(mp_int) };
+                self.to_space().skip(data_length.as_usize());
             }
             TAG_OBJ_IND => {
                 self.patch_field(); // `field`
@@ -369,6 +382,12 @@ impl<'a, M: Memory> Deserialization<'a, M> {
                 let length_field = source + Self::TARGET_HEADER_SIZE;
                 let blob_length = unsafe { *(length_field as *mut u32) };
                 size_of::<Blob>() + Bytes(blob_length).to_words()
+            }
+            TAG_BIGINT => {
+                let mp_int_field = source + Self::TARGET_HEADER_SIZE;
+                let mp_int = mp_int_field as *const mp_int;
+                let data_length = unsafe { BigInt::data_length(mp_int) };
+                size_of::<BigInt>() + data_length.to_words()
             }
             TAG_OBJ_IND => size_of::<ObjInd>(),
             TAG_CONCAT => size_of::<Concat>(),
