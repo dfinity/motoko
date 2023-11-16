@@ -1,9 +1,9 @@
 //! Graph-copy-bazed serialization format:
 //!
+//! (Very first word is zeroed and backed up in last page)
 //! -- Stable memory
 //! Raw stable memory or region data, size S in pages
 //! -- Stable variables
-//! if size S == 0: 0u32 (to distinguish from old Candid stabilization)
 //! Serialized data address N:
 //!   Serialized object graph, length L
 //!   (possible zero padding)
@@ -21,7 +21,7 @@
 //!   Serialized data length L (u64)
 //!   Type descriptor address M (u64)
 //!   Stable memory size in pages S (u64)
-//!   (zero padding u32)
+//!   First word of page 0
 //!   Version 3 or 4 (u32)
 //! -- page end
 
@@ -40,10 +40,6 @@ use crate::{
 
 use super::{compatibility::TypeDescriptor, grant_stable_space};
 
-// If logical stable memory has size 0, the new graph-copy-based stabilization can only
-// be distinguished from the old stabilization by keeping the first word 0.
-pub const MINIMUM_SERIALIZATION_START: u64 = 4;
-
 #[repr(C)]
 #[derive(Default)]
 struct LastPageRecord {
@@ -51,7 +47,7 @@ struct LastPageRecord {
     serialized_data_length: u64,
     type_descriptor_address: u64,
     stable_memory_pages: u64,
-    _padding: u32,
+    first_word_backup: u32,
     version: u32,
 }
 
@@ -171,30 +167,24 @@ impl StabilizationMetadata {
         Self::write_metadata(&LastPageRecord::default());
     }
 
-    fn ensure_legacy_compatibility(&self) {
-        // Distinguish from old Candid stabilization with version 0 (i.e. no Experimental stable memory or regions)
-        // where the first page starts with a non-zero word.
-        assert!(self.serialized_data_start >= MINIMUM_SERIALIZATION_START);
-        if self.serialized_data_start == MINIMUM_SERIALIZATION_START {
-            write_u32(0, 0);
-        }
-        assert_eq!(read_u32(0), 0);
-    }
-
     pub fn store(&self) {
-        self.ensure_legacy_compatibility();
         assert!(self.stable_memory_pages * PAGE_SIZE <= self.serialized_data_start);
         let mut offset = self.serialized_data_start + self.serialized_data_length;
         Self::align_page_start(&mut offset);
         let type_descriptor_address = offset;
         Self::save_type_descriptor(&mut offset, &self.type_descriptor);
         Self::align_page_start(&mut offset);
+        let first_word_backup = read_u32(0);
+        // Clear very first word that is backed up in the last page.
+        // This ensures compatibility with old legacy version 0 using no
+        // experimental stable memory and no regions.
+        write_u32(0, 0);
         let metadata = LastPageRecord {
             serialized_data_address: self.serialized_data_start,
             serialized_data_length: self.serialized_data_length,
             type_descriptor_address,
             stable_memory_pages: self.stable_memory_pages,
-            _padding: 0,
+            first_word_backup,
             version: get_version(),
         };
         Self::write_metadata(&metadata);
@@ -208,6 +198,7 @@ impl StabilizationMetadata {
                 || metadata.version == VERSION_GRAPH_COPY_REGIONS
         );
         set_version(metadata.version);
+        write_u32(0, metadata.first_word_backup);
         assert!(metadata.stable_memory_pages * PAGE_SIZE <= metadata.serialized_data_address);
         let mut offset = metadata.type_descriptor_address;
         let type_descriptor = Self::load_type_descriptor(mem, &mut offset);

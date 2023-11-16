@@ -25,8 +25,8 @@ use crate::{
     stable_mem::{self, ic0_stable64_read, PAGE_SIZE},
     types::{
         block_size, is_skewed, size_of, skew, unskew, Array, Blob, Bytes, FreeSpace, FwdPtr,
-        MutBox, Obj, Object, Tag, Value, Words, TAG_ARRAY, TAG_BLOB, TAG_FREE_SPACE, TAG_FWD_PTR,
-        TAG_MUTBOX, TAG_OBJECT, TAG_ONE_WORD_FILLER, TRUE_VALUE, TAG_REGION, Region,
+        MutBox, Obj, Object, Region, Tag, Value, Words, TAG_ARRAY, TAG_BLOB, TAG_FREE_SPACE,
+        TAG_FWD_PTR, TAG_MUTBOX, TAG_OBJECT, TAG_ONE_WORD_FILLER, TAG_REGION, TRUE_VALUE,
     },
 };
 
@@ -497,12 +497,11 @@ fn grant_stable_space(byte_size: u64) {
 #[no_mangle]
 #[cfg(feature = "ic")]
 pub unsafe fn stabilize(stable_actor: Value, old_candid_data: Value, old_type_offsets: Value) {
-    use crate::stabilization::metadata::{StabilizationMetadata, MINIMUM_SERIALIZATION_START};
+    use crate::stabilization::metadata::StabilizationMetadata;
     use compatibility::TypeDescriptor;
-    use core::cmp::max;
 
     let stable_memory_pages = stable_mem::size();
-    let serialized_data_start = max(stable_memory_pages * PAGE_SIZE, MINIMUM_SERIALIZATION_START);
+    let serialized_data_start = stable_memory_pages * PAGE_SIZE;
     let serialized_data_length = Serialization::run(stable_actor, serialized_data_start);
     let type_descriptor = TypeDescriptor::new(old_candid_data, old_type_offsets, 0);
     let metadata = StabilizationMetadata {
