@@ -29,6 +29,41 @@ let page_size = Int32.of_int (64*1024)
 let page_size64 = Int64.of_int32 page_size
 let page_size_bits = 16
 
+
+(* tentative tagging scheme *)
+(*
+module TaggingScheme = struct
+ type bit = I | O
+ type tag =
+   TBool
+ | TRef
+ | TNum
+ | TNat64 | TInt64
+ | TNat32 | TInt32
+ | TChar
+ | TNat8 | TInt8
+ | TNat16 | TInt16
+ | TUnused
+
+ let decode u32 =
+   match u32 with
+   | ((O,O,O,O,O,O,O,O), (O,O,O,O,O,O,O,O), (O,O,O,O,O,O,O,O), (O,O,O,O,O,O,O,O)) -> TBool (* false *)
+   | ((O,O,O,O,O,O,O,O), (O,O,O,O,O,O,O,O), (O,O,O,O,O,O,O,O), (O,O,O,O,O,O,O,I)) -> TBool (* true *)
+   | ((_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,_,I,I)) -> TRef  (* 30 bit *)
+   | ((_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,O,I,O)) -> TNum   (* 29 bit *)
+   | ((_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,O,I,O,O)) -> TNat64 (* 28 bit *)
+   | ((_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,O,I,I,O)) -> TInt64
+   | ((_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,O,I,I,O,O)) -> TNat32 (* 27 bit *)
+   | ((_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,O,I,I,I,O)) -> TInt32
+   | ((_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,O,I,I,I,O,O)) -> TNat16
+   | ((_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,O,I,I,I,I,O)) -> TInt16
+   | ((_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,O,I,I,I,I,O,O)) -> TChar
+   | ((_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,O,I,I,I,I,I,O)) -> TUnused
+   | ((_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (O,I,I,I,I,I,O,O)) -> TNat8
+   | ((_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (O,I,I,I,I,I,I,O)) -> TInt8
+   | _                                                                            -> TUnused
+end
+*)
 (*
 Pointers are skewed (translated) -1 relative to the actual offset.
 See documentation of module BitTagged for more detail.
