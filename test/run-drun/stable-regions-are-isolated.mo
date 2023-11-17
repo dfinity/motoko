@@ -7,7 +7,7 @@ import Region "stable-region/Region";
 import Region0 "stable-mem/StableMemory";
 
 actor {
-  let pre = P.performanceCounter(0);
+
   var r0 = Region.new();
   var r1 = Region.new();
   var r2 = Region.new();
@@ -58,8 +58,7 @@ actor {
   assert(Region.loadBlob(r2, 137, P.nat64ToNat(big_len)) == big_blob);
 
   P.debugPrint "success. done.";
-  let post = P.performanceCounter(0);
-  P.debugPrint (debug_show {instructions=post - pre});
+
   P.trap "rolling back to avoid state commit";
 }
 

@@ -4,5 +4,4 @@ debug.print: grow three big regions: done.
 debug.print: storing a big blob in each region.
 debug.print: loading the big blob back from each region.
 debug.print: success. done.
-debug.print: {instructions = 5_796_766_907}
 ingress Err: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: rolling back to avoid state commit
