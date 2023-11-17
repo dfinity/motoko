@@ -35,7 +35,8 @@ actor {
 
   func blobOfNat64(n : Nat64) : Blob {
     let size = P.nat64ToNat(n);
-    let a = P.Array_tabulate<Nat8>(size, func i {P.natToNat8(i % 256) }); //<- expensive when i boxed
+    var v : Nat8 = 0;
+    let a = P.Array_tabulate<Nat8>(size, func _ { v +%= 1; v }); //<- expensive when i boxed
     let b = P.arrayToBlob(a);
     b
   };
