@@ -3276,15 +3276,27 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     try_unbox I32Type (fun _ -> match n with
         | 32 | 64 -> G.i Drop ^^ Bool.lit true
         | n when (n = 8 || n = 16 || n = BitTagged.ubits) ->
-           (* Please review carefully! Not sure this is correct! *)
+          (* Please review carefully! *)
            set_a ^^
            get_a ^^ get_a ^^ compile_shrS_const 1l ^^
            G.i (Binary (Wasm.Values.I32 I32Op.Xor)) ^^
-           compile_shrU_const (Int32.sub 32l BitTagged.ubitsl) ^^
            compile_bitand_const
-             Int32.(shift_left minus_one n) ^^
+             Int32.(shift_left minus_one ((n-1) + (32-BitTagged.ubits))) ^^
            G.i (Test (Wasm.Values.I32 I32Op.Eqz))
+(* alternatively:          
+           let lower_bound = Int32.(neg (shift_left 1l (n-1))) in
+           let upper_bound = Int32.shift_left 1l (n-1) in
+           compile_shrS_const (Int32.sub 32l BitTagged.ubitsl) ^^
+           set_a ^^
+           compile_unboxed_const lower_bound ^^
+           get_a ^^
+           G.i (Compare (Wasm.Values.I32 I32Op.LeS)) ^^
+           get_a ^^ compile_unboxed_const upper_bound ^^
+           G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^
+           G.i (Binary (Wasm.Values.I32 I32Op.And))
+ *)
         | _ -> assert false
+
       )
       (fun env -> Num.fits_signed_bits env n)
       env
