@@ -105,7 +105,7 @@ impl From<Bytes<u32>> for Words<u32> {
 
 /// The unit "bytes": `Bytes(123u32)` means 123 bytes.
 #[repr(transparent)]
-#[derive(Debug, PartialEq, Eq, Clone, Copy, PartialOrd, Ord)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, PartialOrd, Ord, Default)]
 pub struct Bytes<A>(pub A);
 
 impl Bytes<u32> {
@@ -176,11 +176,11 @@ pub enum PtrOrScalar {
 }
 
 impl PtrOrScalar {
-    pub const fn is_ptr(&self) -> bool {
+    pub fn is_ptr(&self) -> bool {
         matches!(self, PtrOrScalar::Ptr(_))
     }
 
-    pub const fn is_scalar(&self) -> bool {
+    pub fn is_scalar(&self) -> bool {
         matches!(self, PtrOrScalar::Scalar(_))
     }
 }
@@ -220,7 +220,7 @@ impl Value {
     /// rustc/LLVM generates slightly more inefficient code (compared to using functions like
     /// `Value::get_raw` and `unskew`) in our cost model where every Wasm instruction costs 1
     /// cycle.
-    pub const fn get(&self) -> PtrOrScalar {
+    pub fn get(&self) -> PtrOrScalar {
         if is_ptr(self.0) {
             PtrOrScalar::Ptr(unskew(self.0 as usize))
         } else {
@@ -230,37 +230,37 @@ impl Value {
 
     /// Get the raw value
     #[inline]
-    pub const fn get_raw(&self) -> u32 {
+    pub fn get_raw(&self) -> u32 {
         self.0
     }
 
     /// Is the value a scalar?
-    pub const fn is_scalar(&self) -> bool {
+    pub fn is_scalar(&self) -> bool {
         self.get().is_scalar()
     }
 
     /// Is the value a pointer?
-    pub const fn is_ptr(&self) -> bool {
+    pub fn is_ptr(&self) -> bool {
         self.get().is_ptr()
     }
 
     /// Assumes that the value is a scalar and returns the scalar value. In debug mode panics if
     /// the value is not a scalar.
-    pub const fn get_scalar(&self) -> u32 {
+    pub fn get_scalar(&self) -> u32 {
         debug_assert!(self.get().is_scalar());
         self.0 >> 1
     }
 
     /// Assumes that the value is a signed scalar and returns the scalar value. In debug mode
     /// panics if the value is not a scalar.
-    pub const fn get_signed_scalar(&self) -> i32 {
+    pub fn get_signed_scalar(&self) -> i32 {
         debug_assert!(self.get().is_scalar());
         self.0 as i32 >> 1
     }
 
     /// Assumes that the value is a pointer and returns the pointer value. In debug mode panics if
     /// the value is not a pointer.
-    pub const fn get_ptr(self) -> usize {
+    pub fn get_ptr(self) -> usize {
         debug_assert!(self.get().is_ptr());
         unskew(self.0 as usize)
     }
@@ -401,6 +401,14 @@ impl Value {
         self.forward().get_ptr() as *mut BigInt
     }
 
+    /// Get the pointer as `Bits64` using forwarding. In debug mode panics if the value is not a pointer or the
+    /// pointed object is not a `Bits64`.
+    pub unsafe fn as_bits64(self) -> *mut Bits64 {
+        debug_assert_eq!(self.tag(), TAG_BITS64);
+        self.check_forwarding_pointer();
+        self.forward().get_ptr() as *mut Bits64
+    }
+
     pub fn as_tiny(self) -> i32 {
         debug_assert!(self.is_scalar());
         self.0 as i32 >> 1
@@ -418,7 +426,7 @@ impl Value {
 
 #[inline]
 /// Returns whether a raw value is representing a pointer. Useful when using `Value::get_raw`.
-pub const fn is_ptr(value: u32) -> bool {
+pub fn is_ptr(value: u32) -> bool {
     is_skewed(value) && value != TRUE_VALUE
 }
 
@@ -482,6 +490,16 @@ pub struct Obj {
 }
 
 impl Obj {
+    #[non_incremental_gc]
+    pub fn new(tag: Tag, _forward: Value) -> Obj {
+        Obj { tag }
+    }
+
+    #[incremental_gc]
+    pub fn new(tag: Tag, forward: Value) -> Obj {
+        Obj { tag, forward }
+    }
+
     #[incremental_gc]
     pub fn init_forward(&mut self, value: Value) {
         self.forward = value;
@@ -518,6 +536,7 @@ impl Obj {
 
 #[rustfmt::skip]
 #[repr(C)] // See the note at the beginning of this module
+#[derive(Default)]
 pub struct Array {
     pub header: Obj,
     pub len: u32, // number of elements
@@ -528,6 +547,15 @@ pub struct Array {
 }
 
 impl Array {
+    // Note: Only initializes the static `Array` header.
+    // `forward` denotes the forwarding pointer of the new object.
+    pub fn new(forward: Value, len: u32) -> Array {
+        Array {
+            header: Obj::new(TAG_ARRAY, forward),
+            len,
+        }
+    }
+
     pub unsafe fn payload_addr(self: *const Self) -> *mut Value {
         self.offset(1) as *mut Value // skip array header
     }
@@ -596,6 +624,7 @@ impl Region {
 }
 
 #[repr(C)] // See the note at the beginning of this module
+#[derive(Default)]
 pub struct Object {
     pub header: Obj,
     pub size: u32,        // Number of elements
@@ -603,6 +632,16 @@ pub struct Object {
 }
 
 impl Object {
+    // Note: Only initializes the static `Array` header.
+    // `forward` denotes the forwarding pointer of the new object.
+    pub fn new(forward: Value, size: u32, hash_blob: Value) -> Object {
+        Object {
+            header: Obj::new(TAG_OBJECT, forward),
+            size,
+            hash_blob,
+        }
+    }
+
     pub unsafe fn hash_blob_addr(self: *mut Self) -> *mut Value {
         &mut (*self).hash_blob
     }
@@ -615,7 +654,6 @@ impl Object {
         (*self).size
     }
 
-    #[cfg(debug_assertions)]
     pub(crate) unsafe fn get(self: *mut Self, idx: u32) -> Value {
         *self.payload_addr().add(idx as usize)
     }
@@ -646,6 +684,7 @@ impl Closure {
 }
 
 #[repr(C)] // See the note at the beginning of this module
+#[derive(Default)]
 pub struct Blob {
     pub header: Obj,
     pub len: Bytes<u32>,
@@ -653,6 +692,15 @@ pub struct Blob {
 }
 
 impl Blob {
+    // Note: Only initializes the static `Blob` header.
+    // `forward` denotes the forwarding pointer of the new object.
+    pub fn new(forward: Value, len: Bytes<u32>) -> Blob {
+        Blob {
+            header: Obj::new(TAG_BLOB, forward),
+            len,
+        }
+    }
+
     pub unsafe fn payload_addr(self: *mut Self) -> *mut u8 {
         self.add(1) as *mut u8 // skip blob header
     }
@@ -787,9 +835,20 @@ impl BigInt {
 }
 
 #[repr(C)] // See the note at the beginning of this module
+#[derive(Default)]
 pub struct MutBox {
     pub header: Obj,
     pub field: Value,
+}
+
+impl MutBox {
+    // `forward` denotes the forwarding pointer of the new object.
+    pub fn new(forward: Value, field: Value) -> MutBox {
+        MutBox {
+            header: Obj::new(TAG_MUTBOX, forward),
+            field,
+        }
+    }
 }
 
 #[repr(C)] // See the note at the beginning of this module
@@ -829,6 +888,7 @@ pub struct Null {
 }
 
 #[repr(C)] // See the note at the beginning of this module
+#[derive(Default)]
 pub struct Bits64 {
     pub header: Obj,
     // We have two 32-bit fields instead of one 64-bit to avoid aligning the fields on 64-bit
@@ -838,6 +898,15 @@ pub struct Bits64 {
 }
 
 impl Bits64 {
+    // `forward` denotes the forwarding pointer of the new object.
+    pub fn new(forward: Value, value: u64) -> Bits64 {
+        Bits64 {
+            header: Obj::new(TAG_BITS64, forward),
+            bits_lo: (value & u32::MAX as u64) as u32,
+            bits_hi: (value >> u32::BITS) as u32,
+        }
+    }
+
     pub fn bits(&self) -> u64 {
         (u64::from(self.bits_hi) << 32) | u64::from(self.bits_lo)
     }
