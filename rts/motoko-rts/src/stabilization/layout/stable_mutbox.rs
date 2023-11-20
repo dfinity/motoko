@@ -43,7 +43,7 @@ impl Serializer<MutBox> for StableMutBox {
 
     unsafe fn serialize_static_part(main_object: *mut MutBox) -> Self {
         StableMutBox {
-            field: StableValue::serialize(main_object.read_unaligned().field),
+            field: StableValue::serialize((*main_object).field),
         }
     }
 

@@ -363,6 +363,13 @@ impl Value {
         self.forward().get_ptr() as *mut Region
     }
 
+    /// Get the pointer as `Variant` using forwarding.
+    pub unsafe fn as_variant(self) -> *mut Variant {
+        debug_assert!(self.tag() == TAG_VARIANT);
+        self.check_forwarding_pointer();
+        self.forward().get_ptr() as *mut Variant
+    }
+
     /// Get the pointer as `Region` using forwarding, without checking the tag.
     /// NB: One cannot check the tag during stabilization.
     pub unsafe fn as_untagged_region(self) -> *mut Region {
@@ -630,7 +637,7 @@ impl Region {
             id_lower: lower32(id),
             id_upper: upper32(id),
             page_count,
-            vec_pages
+            vec_pages,
         }
     }
 
@@ -886,10 +893,22 @@ pub struct Some {
 }
 
 #[repr(C)] // See the note at the beginning of this module
+#[derive(Default)]
 pub struct Variant {
     pub header: Obj,
     pub tag: u32,
     pub field: Value,
+}
+
+impl Variant {
+    // `forward` denotes the forwarding pointer of the new object.
+    pub fn new(forward: Value, variant_tag: u32, field: Value) -> Variant {
+        Variant {
+            header: Obj::new(TAG_VARIANT, forward),
+            tag: variant_tag,
+            field,
+        }
+    }
 }
 
 #[repr(C)] // See the note at the beginning of this module
