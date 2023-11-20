@@ -6,7 +6,7 @@ use crate::{
         check_dynamic_heap,
         heap::MotokoHeap,
         random::generate,
-        utils::{GC, GC_IMPLS},
+        utils::{GC, GC_IMPLS, WORD_SIZE},
         CheckMode, TestHeap,
     },
     stabilization::stable_memory::clear_stable_memory,
@@ -160,7 +160,12 @@ impl RandomHeap {
 
 fn random_heap(random: &mut Rand32, max_objects: u32, gc: GC) -> RandomHeap {
     let descriptor = generate(random.rand_u32() as u64, max_objects);
-    let memory = descriptor.build(gc);
+    let pointers: usize = descriptor
+        .heap
+        .iter()
+        .map(|(_, references)| references.len() + 1)
+        .sum();
+    let memory = descriptor.build(gc, pointers * WORD_SIZE as usize);
     RandomHeap { descriptor, memory }
 }
 

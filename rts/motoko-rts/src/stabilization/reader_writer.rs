@@ -103,6 +103,8 @@ pub trait ScanStream {
     fn read<T: Default>(&mut self) -> T;
     // Read raw data from the stream.
     fn raw_read(&mut self, data_address: usize, length: usize);
+    // Go back in the stream.
+    fn rewind(&mut self, length: usize);
     // Skip data in the stream.
     fn skip(&mut self, length: usize);
     // Overwrite the value right before the stream position.
@@ -236,6 +238,12 @@ impl ScanStream for StableMemorySpace {
     fn raw_read(&mut self, data_address: usize, length: usize) {
         assert!(self.scan_address + length as u64 <= self.free_address);
         self.chunked_access(AccessMode::Read, data_address, length);
+    }
+
+    fn rewind(&mut self, length: usize) {
+        assert!(!self.closed);
+        assert!(length as u64 <= self.scan_address);
+        self.scan_address -= length as u64;
     }
 
     fn skip(&mut self, length: usize) {
