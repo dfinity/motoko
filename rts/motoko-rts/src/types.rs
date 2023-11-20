@@ -612,6 +612,7 @@ impl Array {
 
 #[rustfmt::skip]
 #[repr(C)] // See the note at the beginning of this module
+#[derive(Default)]
 pub struct Region {
     pub header: Obj,
     // 64-bit id split into lower and upper halves for alignment reasons
@@ -622,6 +623,17 @@ pub struct Region {
 }
 
 impl Region {
+    // `forward` denotes the forwarding pointer of the new object.
+    pub fn new(forward: Value, id: u64, page_count: u32, vec_pages: Value) -> Region {
+        Region {
+            header: Obj::new(TAG_REGION, forward),
+            id_lower: lower32(id),
+            id_upper: upper32(id),
+            page_count,
+            vec_pages
+        }
+    }
+
     pub unsafe fn write_id64(self: *mut Self, value: u64) {
         write64(&mut (*self).id_lower, &mut (*self).id_upper, value);
     }
@@ -775,8 +787,16 @@ pub fn read64(lower: u32, upper: u32) -> u64 {
 }
 
 pub fn write64(lower: &mut u32, upper: &mut u32, value: u64) {
-    *upper = (value >> u32::BITS) as u32;
-    *lower = (value & u32::MAX as u64) as u32;
+    *upper = upper32(value);
+    *lower = lower32(value);
+}
+
+pub fn upper32(value: u64) -> u32 {
+    (value >> u32::BITS) as u32
+}
+
+pub fn lower32(value: u64) -> u32 {
+    (value & u32::MAX as u64) as u32
 }
 
 /// Only used by the copying GC - not to be confused with the forwarding pointer in the general object header
@@ -910,8 +930,8 @@ impl Bits64 {
     pub fn new(forward: Value, bits: u64) -> Bits64 {
         Bits64 {
             header: Obj::new(TAG_BITS64, forward),
-            bits_lo: (bits & u32::MAX as u64) as u32,
-            bits_hi: (bits >> u32::BITS) as u32,
+            bits_lo: lower32(bits),
+            bits_hi: upper32(bits),
         }
     }
 

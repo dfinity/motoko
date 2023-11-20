@@ -22,13 +22,14 @@
 //! data types must be handled extra care to ensure backwards compatibility.
 
 use crate::types::{
-    block_size, Array, Bits32, Bits64, Blob, MutBox, Object, Tag, Value, Words, TAG_ARRAY,
-    TAG_BITS32, TAG_BITS64, TAG_BLOB, TAG_MUTBOX, TAG_OBJECT, TRUE_VALUE,
+    block_size, Array, Bits32, Bits64, Blob, MutBox, Object, Region, Tag, Value, Words, TAG_ARRAY,
+    TAG_BITS32, TAG_BITS64, TAG_BLOB, TAG_MUTBOX, TAG_OBJECT, TAG_REGION, TRUE_VALUE,
 };
 
 use self::{
     stable_array::StableArray, stable_bits32::StableBits32, stable_bits64::StableBits64,
     stable_blob::StableBlob, stable_mutbox::StableMutBox, stable_object::StableObject,
+    stable_region::StableRegion,
 };
 
 use super::{
@@ -42,6 +43,7 @@ mod stable_bits64;
 mod stable_blob;
 mod stable_mutbox;
 mod stable_object;
+mod stable_region;
 
 type StableTag = u32;
 
@@ -51,6 +53,7 @@ const STABLE_TAG_OBJECT: StableTag = 3;
 const STABLE_TAG_BLOB: StableTag = 4;
 const STABLE_TAG_BITS32: StableTag = 5; // Note: Can be removed in 64-bit heap support.
 const STABLE_TAG_BITS64: StableTag = 6;
+const STABLE_TAG_REGION: StableTag = 7;
 
 /// Special sentinel value that does not exist for static or dynamic objects.
 /// Skewed -3. Since 1 is already reserved to encode the boolean `true`.
@@ -228,6 +231,7 @@ pub fn scan_serialized<C: StableMemoryAccess, F: Fn(&mut C, StableValue) -> Stab
         STABLE_TAG_BLOB => StableBlob::scan_serialized(context, translate),
         STABLE_TAG_BITS32 => StableBits32::scan_serialized(context, translate),
         STABLE_TAG_BITS64 => StableBits64::scan_serialized(context, translate),
+        STABLE_TAG_REGION => StableRegion::scan_serialized(context, translate),
         other_tag => unimplemented!("other tag {other_tag}"),
     }
 }
@@ -240,6 +244,7 @@ pub unsafe fn serialize(memory: &mut StableMemorySpace, object: Value) {
         TAG_BLOB => StableBlob::serialize(memory, object.as_blob_mut()),
         TAG_BITS32 => StableBits32::serialize(memory, object.as_bits32()),
         TAG_BITS64 => StableBits64::serialize(memory, object.as_bits64()),
+        TAG_REGION => StableRegion::serialize(memory, object.as_region()),
         other_tag => unimplemented!("other tag {other_tag}"),
     }
 }
@@ -256,6 +261,7 @@ pub fn scan_deserialized<C: StableMemoryAccess, F: Fn(&mut C, Value) -> Value>(
         TAG_BLOB => StableBlob::scan_deserialized(context, translate),
         TAG_BITS32 => StableBits32::scan_deserialized(context, translate),
         TAG_BITS64 => StableBits64::scan_deserialized(context, translate),
+        TAG_REGION => StableRegion::scan_deserialized(context, translate),
         other_tag => unimplemented!("other tag {other_tag}"),
     }
 }
@@ -268,6 +274,7 @@ pub unsafe fn deserialized_size(stable_object: *mut StableHeader) -> Words<u32> 
         STABLE_TAG_BLOB => deserialized_size_for::<Blob, StableBlob>(stable_object),
         STABLE_TAG_BITS32 => deserialized_size_for::<Bits32, StableBits32>(stable_object),
         STABLE_TAG_BITS64 => deserialized_size_for::<Bits64, StableBits64>(stable_object),
+        STABLE_TAG_REGION => deserialized_size_for::<Region, StableRegion>(stable_object),
         other_tag => unimplemented!("other tag {other_tag}"),
     }
 }
@@ -318,6 +325,11 @@ pub unsafe fn deserialize(
         STABLE_TAG_BITS64 => StableBits64::deserialize(
             memory,
             stable_object.as_object::<StableBits64>(),
+            target_address,
+        ),
+        STABLE_TAG_REGION => StableRegion::deserialize(
+            memory,
+            stable_object.as_object::<StableRegion>(),
             target_address,
         ),
         other_tag => unimplemented!("other tag {other_tag}"),
