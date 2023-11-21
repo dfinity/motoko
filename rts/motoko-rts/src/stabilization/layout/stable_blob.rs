@@ -1,9 +1,12 @@
 use crate::{
     stabilization::reader_writer::{ScanStream, StableMemorySpace, WriteStream},
-    types::{size_of, Blob, Bytes, Value},
+    types::{Blob, Bytes, Value},
 };
 
-use super::{checked_to_u32, checked_to_usize, Serializer, StableValue, StaticScanner};
+use super::{
+    checked_to_u32, checked_to_usize, round_to_u64, write_padding_u64, Serializer, StableValue,
+    StaticScanner,
+};
 
 // Note: The unaligned reads are needed because heap allocations are aligned to 32-bit,
 // while the stable layout uses 64-bit values.
@@ -14,7 +17,7 @@ pub struct StableBlob {
     byte_length: u64,
     // Dynamically sized body with `byte_length` bytes. No pointers to be scanned.
     // Zero padding to align to next `u64`.
-    // Note: The rounding of object sizes to at least 2 bytes is necessary for the skewed representation.
+    // Note: The rounding of object sizes to at least 2 bytes is necessary for the skewed pointer representation.
 }
 
 impl StableBlob {
@@ -24,11 +27,6 @@ impl StableBlob {
 
     unsafe fn payload_length(self: *const Self) -> u64 {
         self.read_unaligned().byte_length
-    }
-
-    fn rounded_length(value: u64) -> u64 {
-        let alignment = size_of::<u64>().to_bytes().as_usize() as u64;
-        (value + alignment - 1) / alignment * alignment
     }
 }
 
@@ -44,12 +42,8 @@ impl Serializer<Blob> for StableBlob {
 
     unsafe fn serialize_dynamic_part(memory: &mut StableMemorySpace, main_object: *mut Blob) {
         let byte_length = main_object.len().as_usize();
-        let rounded_length = StableBlob::rounded_length(byte_length as u64);
         memory.raw_write(main_object.payload_addr() as usize, byte_length);
-        let padding = rounded_length - byte_length as u64;
-        for _ in 0..padding {
-            memory.write(&0u8);
-        }
+        write_padding_u64(memory, byte_length);
     }
 
     fn scan_serialized_dynamic<
@@ -60,7 +54,7 @@ impl Serializer<Blob> for StableBlob {
         stable_object: &Self,
         _translate: &F,
     ) {
-        let rounded_length = StableBlob::rounded_length(stable_object.byte_length);
+        let rounded_length = round_to_u64(stable_object.byte_length);
         context.to_space().skip(checked_to_usize(rounded_length));
     }
 

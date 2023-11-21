@@ -889,6 +889,7 @@ impl Variant {
 }
 
 #[repr(C)] // See the note at the beginning of this module
+#[derive(Default)]
 pub struct Concat {
     pub header: Obj,
     pub n_bytes: Bytes<u32>,
@@ -897,6 +898,16 @@ pub struct Concat {
 }
 
 impl Concat {
+    // `forward` denotes the forwarding pointer of the new object.
+    pub fn new(forward: Value, n_bytes: Bytes<u32>, text1: Value, text2: Value) -> Concat {
+        Concat {
+            header: Obj::new(TAG_CONCAT, forward),
+            n_bytes,
+            text1,
+            text2,
+        }
+    }
+
     pub unsafe fn text1(self: *const Self) -> Value {
         (*self).text1
     }

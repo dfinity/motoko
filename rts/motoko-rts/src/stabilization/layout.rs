@@ -22,14 +22,15 @@
 //! data types must be handled extra care to ensure backwards compatibility.
 
 use crate::types::{
-    block_size, Tag, Value, Words, TAG_ARRAY, TAG_BITS32, TAG_BITS64, TAG_BLOB, TAG_MUTBOX,
-    TAG_OBJECT, TAG_REGION, TAG_VARIANT, TRUE_VALUE,
+    block_size, size_of, Tag, Value, Words, TAG_ARRAY, TAG_BIGINT, TAG_BITS32, TAG_BITS64,
+    TAG_BLOB, TAG_CONCAT, TAG_MUTBOX, TAG_OBJECT, TAG_REGION, TAG_VARIANT, TRUE_VALUE,
 };
 
 use self::{
-    stable_array::StableArray, stable_bits32::StableBits32, stable_bits64::StableBits64,
-    stable_blob::StableBlob, stable_mutbox::StableMutBox, stable_object::StableObject,
-    stable_region::StableRegion, stable_variant::StableVariant,
+    stable_array::StableArray, stable_bigint::StableBigInt, stable_bits32::StableBits32,
+    stable_bits64::StableBits64, stable_blob::StableBlob, stable_concat::StableConcat,
+    stable_mutbox::StableMutBox, stable_object::StableObject, stable_region::StableRegion,
+    stable_variant::StableVariant,
 };
 
 use super::{
@@ -38,14 +39,17 @@ use super::{
 };
 
 mod stable_array;
+mod stable_bigint;
 mod stable_bits32;
 mod stable_bits64;
 mod stable_blob;
+mod stable_concat;
 mod stable_mutbox;
 mod stable_object;
 mod stable_region;
 mod stable_variant;
 
+/// Object tag in stable format. Encoded as a `i32` value.
 #[repr(C)]
 #[derive(Clone, Copy, Default)]
 enum StableTag {
@@ -59,7 +63,11 @@ enum StableTag {
     Bits64 = 6,
     Region = 7,
     Variant = 9,
+    Concat = 10,
+    BigInt = 11,
 }
+
+const _: () = assert!(core::mem::size_of::<StableTag>() == core::mem::size_of::<i32>());
 
 impl StableTag {
     fn deserialize(tag: Tag) -> StableTag {
@@ -72,6 +80,8 @@ impl StableTag {
             TAG_BITS64 => StableTag::Bits64,
             TAG_REGION => StableTag::Region,
             TAG_VARIANT => StableTag::Variant,
+            TAG_CONCAT => StableTag::Concat,
+            TAG_BIGINT => StableTag::BigInt,
             _ => unimplemented!("tag {tag}"),
         }
     }
@@ -85,7 +95,6 @@ pub const STABLE_NULL_POINTER_32: Value = Value::from_raw(STABLE_NULL_POINTER.0 
 
 const _: () = assert!(STABLE_NULL_POINTER.0 != TRUE_VALUE as u64);
 const _: () = assert!(STABLE_NULL_POINTER.0 & 0b1 != 0);
-const _: () = assert!(core::mem::size_of::<StableTag>() == core::mem::size_of::<i32>());
 
 #[repr(C)]
 #[derive(Default, Clone, Copy, PartialEq)]
@@ -253,6 +262,19 @@ pub fn checked_to_usize(input: u64) -> usize {
     input as usize
 }
 
+pub fn round_to_u64(length: u64) -> u64 {
+    let alignment = size_of::<u64>().to_bytes().as_usize() as u64;
+    (length + alignment - 1) / alignment * alignment
+}
+
+fn write_padding_u64(memory: &mut StableMemorySpace, byte_length: usize) {
+    let rounded_length = round_to_u64(byte_length as u64);
+    let padding = rounded_length - byte_length as u64;
+    for _ in 0..padding {
+        memory.write(&0u8);
+    }
+}
+
 pub fn scan_serialized<C: StableMemoryAccess, F: Fn(&mut C, StableValue) -> StableValue>(
     context: &mut C,
     translate: &F,
@@ -267,20 +289,24 @@ pub fn scan_serialized<C: StableMemoryAccess, F: Fn(&mut C, StableValue) -> Stab
         StableTag::Bits64 => StableBits64::scan_serialized(context, translate),
         StableTag::Region => StableRegion::scan_serialized(context, translate),
         StableTag::Variant => StableVariant::scan_serialized(context, translate),
+        StableTag::Concat => StableConcat::scan_serialized(context, translate),
+        StableTag::BigInt => StableBigInt::scan_serialized(context, translate),
         StableTag::None => unimplemented!(),
     }
 }
 
-pub unsafe fn serialize(memory: &mut StableMemorySpace, object: Value) {
-    match StableTag::deserialize(object.tag()) {
-        StableTag::Array => StableArray::serialize(memory, object),
-        StableTag::MutBox => StableMutBox::serialize(memory, object),
-        StableTag::Object => StableObject::serialize(memory, object),
-        StableTag::Blob => StableBlob::serialize(memory, object),
-        StableTag::Bits32 => StableBits32::serialize(memory, object),
-        StableTag::Bits64 => StableBits64::serialize(memory, object),
-        StableTag::Region => StableRegion::serialize(memory, object),
-        StableTag::Variant => StableVariant::serialize(memory, object),
+pub unsafe fn serialize(memory: &mut StableMemorySpace, main_object: Value) {
+    match StableTag::deserialize(main_object.tag()) {
+        StableTag::Array => StableArray::serialize(memory, main_object),
+        StableTag::MutBox => StableMutBox::serialize(memory, main_object),
+        StableTag::Object => StableObject::serialize(memory, main_object),
+        StableTag::Blob => StableBlob::serialize(memory, main_object),
+        StableTag::Bits32 => StableBits32::serialize(memory, main_object),
+        StableTag::Bits64 => StableBits64::serialize(memory, main_object),
+        StableTag::Region => StableRegion::serialize(memory, main_object),
+        StableTag::Variant => StableVariant::serialize(memory, main_object),
+        StableTag::Concat => StableConcat::serialize(memory, main_object),
+        StableTag::BigInt => StableBigInt::serialize(memory, main_object),
         StableTag::None => unimplemented!(),
     }
 }
@@ -299,6 +325,8 @@ pub fn scan_deserialized<C: StableMemoryAccess, F: Fn(&mut C, Value) -> Value>(
         StableTag::Bits64 => StableBits64::scan_deserialized(context, translate),
         StableTag::Region => StableRegion::scan_deserialized(context, translate),
         StableTag::Variant => StableVariant::scan_deserialized(context, translate),
+        StableTag::Concat => StableConcat::scan_deserialized(context, translate),
+        StableTag::BigInt => StableBigInt::scan_deserialized(context, translate),
         StableTag::None => unimplemented!(),
     }
 }
@@ -313,6 +341,8 @@ pub unsafe fn deserialized_size(stable_object: *mut StableHeader) -> Words<u32> 
         StableTag::Bits64 => StableBits64::deserialized_size(stable_object),
         StableTag::Region => StableRegion::deserialized_size(stable_object),
         StableTag::Variant => StableVariant::deserialized_size(stable_object),
+        StableTag::Concat => StableConcat::deserialized_size(stable_object),
+        StableTag::BigInt => StableBigInt::deserialized_size(stable_object),
         StableTag::None => unimplemented!(),
     }
 }
@@ -331,6 +361,8 @@ pub unsafe fn deserialize(
         StableTag::Bits64 => StableBits64::deserialize(memory, stable_object, target_address),
         StableTag::Region => StableRegion::deserialize(memory, stable_object, target_address),
         StableTag::Variant => StableVariant::deserialize(memory, stable_object, target_address),
+        StableTag::Concat => StableConcat::deserialize(memory, stable_object, target_address),
+        StableTag::BigInt => StableBigInt::deserialize(memory, stable_object, target_address),
         StableTag::None => unimplemented!(),
     }
 }
