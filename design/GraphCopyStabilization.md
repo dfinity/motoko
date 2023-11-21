@@ -54,7 +54,7 @@ Currently, for ease of implementation, the object layout in stable memory is lar
 ## Allocator Rules
 The destabilzation uses bulk-copying to main memory which is quite invasive. For correctness, the following invariants need to be met:
 * The main memory allocator used during deserialization must not write to the heap (only compute the target addresses).
-* The allocator must yield monotonously growing addresses during deserialization. Free space gaps are allowed to complete partitions.
+* The allocator must yield monotonically growing addresses during deserialization. Free space gaps are allowed to complete partitions.
 
 ## Related PRs
 
