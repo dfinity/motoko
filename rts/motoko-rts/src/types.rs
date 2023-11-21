@@ -163,7 +163,7 @@ pub const TRUE_VALUE: u32 = 0x1;
 
 /// A value in a heap slot
 #[repr(transparent)]
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct Value(u32);
 
 /// A view of `Value` for analyzing the slot contents.
@@ -176,11 +176,11 @@ pub enum PtrOrScalar {
 }
 
 impl PtrOrScalar {
-    pub const fn is_ptr(&self) -> bool {
+    pub fn is_ptr(&self) -> bool {
         matches!(self, PtrOrScalar::Ptr(_))
     }
 
-    pub const fn is_scalar(&self) -> bool {
+    pub fn is_scalar(&self) -> bool {
         matches!(self, PtrOrScalar::Scalar(_))
     }
 }
@@ -220,7 +220,7 @@ impl Value {
     /// rustc/LLVM generates slightly more inefficient code (compared to using functions like
     /// `Value::get_raw` and `unskew`) in our cost model where every Wasm instruction costs 1
     /// cycle.
-    pub const fn get(&self) -> PtrOrScalar {
+    pub fn get(&self) -> PtrOrScalar {
         if is_ptr(self.0) {
             PtrOrScalar::Ptr(unskew(self.0 as usize))
         } else {
@@ -230,37 +230,37 @@ impl Value {
 
     /// Get the raw value
     #[inline]
-    pub const fn get_raw(&self) -> u32 {
+    pub fn get_raw(&self) -> u32 {
         self.0
     }
 
     /// Is the value a scalar?
-    pub const fn is_scalar(&self) -> bool {
+    pub fn is_scalar(&self) -> bool {
         self.get().is_scalar()
     }
 
     /// Is the value a pointer?
-    pub const fn is_ptr(&self) -> bool {
+    pub fn is_ptr(&self) -> bool {
         self.get().is_ptr()
     }
 
     /// Assumes that the value is a scalar and returns the scalar value. In debug mode panics if
     /// the value is not a scalar.
-    pub const fn get_scalar(&self) -> u32 {
+    pub fn get_scalar(&self) -> u32 {
         debug_assert!(self.get().is_scalar());
         self.0 >> 1
     }
 
     /// Assumes that the value is a signed scalar and returns the scalar value. In debug mode
     /// panics if the value is not a scalar.
-    pub const fn get_signed_scalar(&self) -> i32 {
+    pub fn get_signed_scalar(&self) -> i32 {
         debug_assert!(self.get().is_scalar());
         self.0 as i32 >> 1
     }
 
     /// Assumes that the value is a pointer and returns the pointer value. In debug mode panics if
     /// the value is not a pointer.
-    pub const fn get_ptr(self) -> usize {
+    pub fn get_ptr(self) -> usize {
         debug_assert!(self.get().is_ptr());
         unskew(self.0 as usize)
     }
@@ -418,7 +418,7 @@ impl Value {
 
 #[inline]
 /// Returns whether a raw value is representing a pointer. Useful when using `Value::get_raw`.
-pub const fn is_ptr(value: u32) -> bool {
+pub fn is_ptr(value: u32) -> bool {
     is_skewed(value) && value != TRUE_VALUE
 }
 
@@ -472,7 +472,6 @@ pub const TAG_ARRAY_SLICE_MIN: Tag = 34;
 
 // Common parts of any object. Other object pointers can be coerced into a pointer to this.
 #[repr(C)] // See the note at the beginning of this module
-#[derive(Default)]
 pub struct Obj {
     pub tag: Tag,
     // Cannot use `#[incremental_gc]` as Rust only allows non-macro attributes for fields.
@@ -482,6 +481,16 @@ pub struct Obj {
 }
 
 impl Obj {
+    #[non_incremental_gc]
+    pub fn new(tag: Tag, _forward: Value) -> Obj {
+        Obj { tag }
+    }
+
+    #[incremental_gc]
+    pub fn new(tag: Tag, forward: Value) -> Obj {
+        Obj { tag, forward }
+    }
+
     #[incremental_gc]
     pub fn init_forward(&mut self, value: Value) {
         self.forward = value;
@@ -615,7 +624,6 @@ impl Object {
         (*self).size
     }
 
-    #[cfg(debug_assertions)]
     pub(crate) unsafe fn get(self: *mut Self, idx: u32) -> Value {
         *self.payload_addr().add(idx as usize)
     }
@@ -719,8 +727,16 @@ pub fn read64(lower: u32, upper: u32) -> u64 {
 }
 
 pub fn write64(lower: &mut u32, upper: &mut u32, value: u64) {
-    *upper = (value >> u32::BITS) as u32;
-    *lower = (value & u32::MAX as u64) as u32;
+    *upper = upper32(value);
+    *lower = lower32(value);
+}
+
+pub fn upper32(value: u64) -> u32 {
+    (value >> u32::BITS) as u32
+}
+
+pub fn lower32(value: u64) -> u32 {
+    (value & u32::MAX as u64) as u32
 }
 
 /// Only used by the copying GC - not to be confused with the forwarding pointer in the general object header
@@ -833,8 +849,8 @@ pub struct Bits64 {
     pub header: Obj,
     // We have two 32-bit fields instead of one 64-bit to avoid aligning the fields on 64-bit
     // boundary.
-    bits_lo: u32,
-    bits_hi: u32,
+    pub bits_lo: u32,
+    pub bits_hi: u32,
 }
 
 impl Bits64 {

@@ -21,45 +21,36 @@ use motoko_rts_macros::ic_mem_fn;
 use core::cmp::{max, min};
 
 use crate::{
-    constants::WORD_SIZE,
     memory::Memory,
     rts_trap_with,
+    stabilization::layout::{
+        checked_to_usize, deserialize, deserialized_size, scan_deserialized, serialize,
+        StableHeader,
+    },
     stable_mem::{self, ic0_stable64_read, ic0_stable64_write, PAGE_SIZE},
-    tommath_bindings::{mp_digit, mp_int},
     types::{
-        block_size, is_ptr, size_of, skew, unskew, Array, BigInt, Bits32, Bits64, Blob, Bytes,
-        Concat, FreeSpace, FwdPtr, MutBox, Obj, ObjInd, Object, Region, Tag, Value, Variant, Words,
-        TAG_ARRAY, TAG_BIGINT, TAG_BITS32, TAG_BITS64, TAG_BLOB, TAG_CONCAT, TAG_FREE_SPACE,
-        TAG_FWD_PTR, TAG_MUTBOX, TAG_OBJECT, TAG_OBJ_IND, TAG_ONE_WORD_FILLER, TAG_REGION,
-        TAG_VARIANT, TRUE_VALUE,
+        size_of, Bytes, FreeSpace, FwdPtr, Obj, Tag, Value, Words, TAG_FREE_SPACE, TAG_FWD_PTR,
+        TAG_ONE_WORD_FILLER,
     },
 };
 
-use self::reader_writer::{ScanStream, StableMemorySpace, WriteStream};
+use self::{
+    layout::{scan_serialized, StableValue, STABLE_NULL_POINTER},
+    reader_writer::{ScanStream, StableMemorySpace, WriteStream},
+};
 
 #[cfg(feature = "ic")]
 mod compatibility;
 #[cfg(feature = "ic")]
 mod metadata;
 
+mod layout;
+
 pub mod reader_writer;
 
 extern "C" {
     pub fn moc_null_singleton() -> Value;
 }
-
-/// Special sentinel value that does not exist for static or dynamic objects.
-/// Skewed 3. Since 1 is already reserved to encode the boolean `true`.
-/// Note: The stable addresses start at 0 (skewed u32::MAX) as they are relatived to the to-space.
-const STABLE_NULL_POINTER: Value = Value::from_ptr(0xffff_fffe);
-
-const _: () = assert!(STABLE_NULL_POINTER.get_raw() != TRUE_VALUE);
-const _: () = assert!(STABLE_NULL_POINTER.is_ptr());
-const _: () = assert!(STABLE_NULL_POINTER.get_ptr() != 0);
-
-/// Address in stable memory.
-#[derive(Clone, Copy, PartialEq)]
-struct StableMemoryAddress(usize);
 
 /// Generic graph copy from main memory (from-space) to stable memory (to-space).
 /// The direction of copying is fixed but the memory layout used in the from-space
@@ -73,9 +64,10 @@ struct StableMemoryAddress(usize);
 /// During derialization:
 /// * Main memory = stable memory layout, S = StableMemoryAddress.
 /// * Stable memory = main memory layout, T = Value.
-trait GraphCopy<S: Copy, T: Copy, P: Copy + Default> {
-    fn to_space(&mut self) -> &mut StableMemorySpace;
-
+trait GraphCopy<S: Copy, T: Copy, P: Copy + Default>
+where
+    Self: StableMemoryAccess,
+{
     /// Run the entire graph copy algorithm: Copy the object graph reachable from the `root` pointer.
     /// Return the final to-space size.
     fn run(&mut self, root: S) -> u64 {
@@ -119,111 +111,10 @@ trait GraphCopy<S: Copy, T: Copy, P: Copy + Default> {
     ///   allocator uses internal fragmentation, e.g. for the partitioned heap.
     fn copy(&mut self, object: S) -> T;
 
-    /// Read an object at the `scan` position in the to-space, process all its potential
-    /// pointer fields by invoking `patch_field` for each of them.
-    /// Note:
-    /// * The default implementation assumes identical object body layout between main memory
-    /// and the serialized stable memory. Only the header layout differs insofar that the main
-    /// memory may include a forwarding pointer when the incremental GC is used. Cf. `types.rs`.
-    /// * The deserialized memory image for the partitioned heap may contain free space at
-    /// a partition end.
-    fn scan(&mut self) {
-        let tag = self.scan_header();
-        match tag {
-            TAG_OBJECT => {
-                let object_size = self.to_space().read::<u32>();
-                self.patch_field(); // `hash_blob`, blob with field hashes
-                for _ in 0..object_size {
-                    self.patch_field(); // object field
-                }
-            }
-            TAG_ARRAY => {
-                let array_length = self.to_space().read::<u32>();
-                for _ in 0..array_length {
-                    self.patch_field(); // array element
-                }
-            }
-            TAG_BLOB => {
-                let blob_length = Bytes(self.to_space().read::<u32>());
-                self.to_space()
-                    .skip(blob_length.to_words().to_bytes().as_usize());
-            }
-            TAG_BIGINT => {
-                let mp_int = &mut mp_int {
-                    used: 0,
-                    alloc: 0,
-                    sign: 0,
-                    dp: 0 as *mut mp_digit,
-                } as *mut mp_int;
-                self.to_space()
-                    .raw_read(mp_int as usize, size_of::<mp_int>().to_bytes().as_usize());
-                let data_length = unsafe { BigInt::data_length(mp_int) };
-                self.to_space().skip(data_length.as_usize());
-            }
-            TAG_OBJ_IND => {
-                self.patch_field(); // `field`
-            }
-            TAG_CONCAT => {
-                self.to_space().skip(WORD_SIZE as usize); // `n_bytes`
-                self.patch_field(); // `text1`
-                self.patch_field(); // `text2`
-            }
-            TAG_MUTBOX => {
-                self.patch_field(); // `field`
-            }
-            TAG_BITS64 => self.skip_simple_object::<Bits64>(),
-            TAG_BITS32 => self.skip_simple_object::<Bits32>(),
-            TAG_REGION => {
-                self.to_space().skip(3 * WORD_SIZE as usize); // Skip `id_lower`, `id_upper`, and `page_count`.
-                self.patch_field(); // `vec_pages` points to a blob.
-            }
-            TAG_VARIANT => {
-                self.to_space().skip(WORD_SIZE as usize); // variant `tag`
-                self.patch_field(); // `field`
-            }
-            TAG_ONE_WORD_FILLER => {}
-            TAG_FREE_SPACE => {
-                let free_words = Words(self.to_space().read::<u32>());
-                self.to_space().skip(free_words.to_bytes().as_usize());
-            }
-            other_tag => unimplemented!("tag {other_tag}"),
-        }
-    }
-
-    /// Skip statically sized object that contains no pointers.
-    fn skip_simple_object<O>(&mut self) {
-        let payload_length = size_of::<O>() - size_of::<Obj>();
-        self.to_space().skip(payload_length.to_bytes().as_usize());
-    }
-
-    /// If the field encodes a pointer at the scan position, replace it by its
-    /// corresponding target address.
-    fn patch_field(&mut self) {
-        let old_field = self.to_space().read();
-        if self.is_null(old_field) {
-            let null_value = self.encode_null();
-            self.to_space().update(&null_value);
-        } else if self.is_pointer(old_field) {
-            let object = self.decode_pointer(old_field);
-            let target = self.evacuate(object);
-            let new_field = self.encode_pointer(target);
-            self.to_space().update(&new_field);
-        }
-    }
-
-    /// Read the header in to-space and return the object tag.
-    fn scan_header(&mut self) -> Tag;
-    /// Determine whether field value denotes a pointer.
-    fn is_pointer(&self, field_value: P) -> bool;
-    /// Decode a source pointer from field value.
-    fn decode_pointer(&self, field_value: P) -> S;
-    /// Encode a target address as a field value.
-    fn encode_pointer(&self, target: T) -> P;
-    /// Determine whether the field value refers to the null singleton.
-    fn is_null(&self, field_value: P) -> bool;
-    /// Encode the null reference specifically to destabilize it to the
-    /// future singleton static object.
-    fn encode_null(&self) -> P;
+    /// Read an object at the `scan` position in the to-space, and patch all the pointer fields
+    /// by translating the source pointer to the corresponding new target pointer by calling
+    /// `evacuate()`.
+    fn scan(&mut self);
 }
 
 pub struct Serialization {
@@ -240,79 +131,75 @@ impl Serialization {
         let to_space = StableMemorySpace::open(stable_start);
         Serialization { to_space }.run(root)
     }
-}
 
-impl GraphCopy<Value, StableMemoryAddress, u32> for Serialization {
-    fn to_space(&mut self) -> &mut StableMemorySpace {
-        &mut self.to_space
+    fn is_null(field_value: Value) -> bool {
+        field_value.is_ptr() && field_value == unsafe { moc_null_singleton() }
     }
 
+    fn encode_null() -> StableValue {
+        STABLE_NULL_POINTER
+    }
+}
+
+pub trait StableMemoryAccess {
+    fn to_space(&mut self) -> &mut StableMemorySpace;
+}
+
+impl GraphCopy<Value, StableValue, u32> for Serialization {
     // TODO: Redesign `FwdPtr` to better fit the graph copying, e.g. use raw pointer than `Value` field.
-    fn get_forward_address(&self, object: Value) -> Option<StableMemoryAddress> {
+    fn get_forward_address(&self, object: Value) -> Option<StableValue> {
         unsafe {
-            // Do not call `tag()` as it dereferences the incremental GC's forwarding pointer,
-            // which does not exist for the forwarding objects (`FwdPtr`) used for Cheney's algorithm.
+            // Do not call `tag()` as it dereferences the Brooks forwarding pointer of the incremental GC,
+            // which does not exist for the forwarding objects (`FwdPtr`) used by the Cheney's algorithm.
             let tag = *(object.get_ptr() as *const Tag);
             match tag {
                 TAG_FWD_PTR => {
-                    let new_address = (*(object.get_ptr() as *mut FwdPtr)).fwd.get_raw();
-                    Some(StableMemoryAddress(new_address as usize))
+                    let new_location = (*(object.get_ptr() as *mut FwdPtr)).fwd;
+                    Some(StableValue::serialize(new_location))
                 }
                 _ => None,
             }
         }
     }
 
-    fn set_forward_address(&mut self, object: Value, target: StableMemoryAddress) {
+    fn set_forward_address(&mut self, object: Value, target: StableValue) {
         unsafe {
             let object = object.forward();
             debug_assert_ne!(object.tag(), TAG_FWD_PTR);
             debug_assert!(object.is_obj());
             let fwd = object.get_ptr() as *mut FwdPtr;
             (*fwd).tag = TAG_FWD_PTR;
-            (*fwd).fwd = Value::from_raw(target.0 as u32);
+            (*fwd).fwd = target.deserialize();
         }
     }
 
-    fn copy(&mut self, object: Value) -> StableMemoryAddress {
+    fn copy(&mut self, object: Value) -> StableValue {
         unsafe {
+            let object = object.forward();
             assert!(object.is_obj());
             let address = self.to_space.written_length();
-            self.to_space.write(&object.tag());
-            // Skip forwarding pointer if the incremental GC is used.
-            let header_size = size_of::<Obj>();
-            let total_size = block_size(object.get_ptr());
-            debug_assert!(header_size <= total_size);
-            let payload_size = (total_size - header_size).to_bytes().as_usize();
-            let payload_start = object.get_ptr() + header_size.to_bytes().as_usize();
-            self.to_space.raw_write(payload_start, payload_size);
-            StableMemoryAddress(address as usize)
+            serialize(&mut self.to_space, object);
+            StableValue::from_address(address)
         }
     }
 
-    fn scan_header(&mut self) -> Tag {
-        self.to_space.read::<Tag>()
+    fn scan(&mut self) {
+        scan_serialized(self, &|context, original| {
+            let old_value = original.deserialize();
+            if Self::is_null(old_value) {
+                Self::encode_null()
+            } else if old_value.is_ptr() {
+                context.evacuate(old_value)
+            } else {
+                original
+            }
+        });
     }
+}
 
-    fn is_pointer(&self, field_value: u32) -> bool {
-        is_ptr(field_value)
-    }
-
-    fn decode_pointer(&self, field_value: u32) -> Value {
-        Value::from_raw(field_value)
-    }
-
-    fn encode_pointer(&self, target: StableMemoryAddress) -> u32 {
-        // Again skew the target pointer, such that deserialization can also identify it as pointer.
-        skew(target.0) as u32
-    }
-
-    fn is_null(&self, field_value: u32) -> bool {
-        is_ptr(field_value) && Value::from_raw(field_value) == unsafe { moc_null_singleton() }
-    }
-
-    fn encode_null(&self) -> u32 {
-        STABLE_NULL_POINTER.get_raw()
+impl StableMemoryAccess for Serialization {
+    fn to_space(&mut self) -> &mut StableMemorySpace {
+        &mut self.to_space
     }
 }
 
@@ -325,13 +212,10 @@ pub struct Deserialization<'a, M: Memory> {
 
 impl<'a, M: Memory> Deserialization<'a, M> {
     /// Notes:
-    /// - CAUTION: Linearly overwrites the heap by stable memory. Does not work if the partitione heap
-    /// metadata would be inlined in the partitions.
-    /// - Assumes an empty heap before running. Empty means that the dynamic heap size is zero.
+    /// - CAUTION: Linearly writes the stable memory at the heap end. Does not work if the partitioned
+    /// heap inlines metadata inside the partitions.
     /// - Invokes the heap allocator to compute the future object addresses in the heap.
     /// However, the allocator must not yet write to the heap.
-    /// - `copy` and `scan` depend on the heap layout. Adjust these functions whenever the heap layout
-    /// is changed.
     pub fn run(mem: &'a mut M, stable_start: u64, stable_size: u64, heap_start: usize) -> Value {
         Self::stable_memory_bulk_copy(mem, stable_start, stable_size, heap_start);
         let to_space = StableMemorySpace::open(stable_start);
@@ -341,7 +225,7 @@ impl<'a, M: Memory> Deserialization<'a, M> {
             heap_start,
             last_allocation: heap_start,
         }
-        .run(StableMemoryAddress(0));
+        .run(StableValue::serialize(Value::from_ptr(0)));
         Self::stable_memory_bulk_copy(mem, stable_start, new_stable_size, heap_start);
         clear_stable_memory(stable_start, max(stable_size, new_stable_size));
         Value::from_ptr(heap_start)
@@ -359,51 +243,11 @@ impl<'a, M: Memory> Deserialization<'a, M> {
         }
     }
 
-    fn source_address(&self, stable_address: StableMemoryAddress) -> usize {
-        self.heap_start + stable_address.0
+    fn source_address(&self, stable_object: StableValue) -> usize {
+        self.heap_start + checked_to_usize(stable_object.to_address())
     }
 
-    const TARGET_HEADER_SIZE: usize = WORD_SIZE as usize;
-
-    // Note: The stable format uses the identical object body layout like in `types.rs`.
-    // Only the headers differ insofar that the stable format omits the forwarding pointer.
-    fn target_size(&self, stable_address: StableMemoryAddress) -> Words<u32> {
-        let source = self.source_address(stable_address) as usize;
-        let tag = unsafe { *(source as *const Tag) };
-        match tag {
-            TAG_OBJECT => {
-                let size_field = source + Self::TARGET_HEADER_SIZE;
-                let object_size = unsafe { *(size_field as *mut u32) };
-                size_of::<Object>() + Words(object_size)
-            }
-            TAG_ARRAY => {
-                let length_field = source + Self::TARGET_HEADER_SIZE;
-                let array_length = unsafe { *(length_field as *mut u32) };
-                size_of::<Array>() + Words(array_length)
-            }
-            TAG_BLOB => {
-                let length_field = source + Self::TARGET_HEADER_SIZE;
-                let blob_length = unsafe { *(length_field as *mut u32) };
-                size_of::<Blob>() + Bytes(blob_length).to_words()
-            }
-            TAG_BIGINT => {
-                let mp_int_field = source + Self::TARGET_HEADER_SIZE;
-                let mp_int = mp_int_field as *const mp_int;
-                let data_length = unsafe { BigInt::data_length(mp_int) };
-                size_of::<BigInt>() + data_length.to_words()
-            }
-            TAG_OBJ_IND => size_of::<ObjInd>(),
-            TAG_CONCAT => size_of::<Concat>(),
-            TAG_MUTBOX => size_of::<MutBox>(),
-            TAG_BITS64 => size_of::<Bits64>(),
-            TAG_BITS32 => size_of::<Bits32>(),
-            TAG_REGION => size_of::<Region>(),
-            TAG_VARIANT => size_of::<Variant>(),
-            other_tag => unimplemented!("tag {other_tag}"),
-        }
-    }
-
-    fn allocate(&mut self, size: Words<u32>, tag: Tag) -> Value {
+    fn allocate(&mut self, size: Words<u32>) -> Value {
         let target = unsafe { self.mem.alloc_words(size) };
         // Cheney's algorithm relies on contiguous allocation in the to-space.
         // Deal with internal fragmentation in the partitioned heap in the presence of the
@@ -413,10 +257,6 @@ impl<'a, M: Memory> Deserialization<'a, M> {
         }
         debug_assert_eq!(self.last_allocation, target.get_ptr());
         self.last_allocation += size.to_bytes().as_usize();
-        let mut header = Obj::default();
-        header.tag = tag;
-        header.init_forward(target);
-        self.to_space.write(&header);
         target
     }
 
@@ -444,15 +284,19 @@ impl<'a, M: Memory> Deserialization<'a, M> {
         }
         self.last_allocation += difference.to_bytes().as_usize();
     }
-}
 
-impl<'a, M: Memory> GraphCopy<StableMemoryAddress, Value, u32> for Deserialization<'a, M> {
-    fn to_space(&mut self) -> &mut StableMemorySpace {
-        &mut self.to_space
+    fn is_null(value: StableValue) -> bool {
+        value == STABLE_NULL_POINTER
     }
 
-    fn get_forward_address(&self, stable_address: StableMemoryAddress) -> Option<Value> {
-        let source = self.source_address(stable_address);
+    fn encode_null() -> Value {
+        unsafe { moc_null_singleton() }
+    }
+}
+
+impl<'a, M: Memory> GraphCopy<StableValue, Value, u32> for Deserialization<'a, M> {
+    fn get_forward_address(&self, stable_object: StableValue) -> Option<Value> {
+        let source = self.source_address(stable_object);
         unsafe {
             let tag = *(source as *mut Tag);
             match tag {
@@ -465,8 +309,8 @@ impl<'a, M: Memory> GraphCopy<StableMemoryAddress, Value, u32> for Deserializati
         }
     }
 
-    fn set_forward_address(&mut self, stable_address: StableMemoryAddress, target: Value) {
-        let source = self.source_address(stable_address);
+    fn set_forward_address(&mut self, stable_object: StableValue, target: Value) {
+        let source = self.source_address(stable_object);
         let fwd = source as *mut FwdPtr;
         unsafe {
             (*fwd).tag = TAG_FWD_PTR;
@@ -474,50 +318,52 @@ impl<'a, M: Memory> GraphCopy<StableMemoryAddress, Value, u32> for Deserializati
         }
     }
 
-    /// Writing into to-space (stable memory) but compute the heap target addresses by
+    /// Writing into to-space (stable memory) but computing the heap target addresses by
     /// simulating the allocations in the from-space (main memory heap).
-    fn copy(&mut self, stable_address: StableMemoryAddress) -> Value {
-        let source = self.source_address(stable_address) as usize;
-        let tag = unsafe { *(source as *const Tag) };
-        let target_size = self.target_size(stable_address);
-        let target = self.allocate(target_size, tag);
-        debug_assert!(target_size >= size_of::<Obj>());
-        let payload_start = source + Self::TARGET_HEADER_SIZE;
-        let payload_size = (target_size - size_of::<Obj>()).to_bytes().as_usize();
-        self.to_space.raw_write(payload_start, payload_size);
-        target
+    /// Note: The allocator must not yet write to the heap space.
+    fn copy(&mut self, stable_object: StableValue) -> Value {
+        unsafe {
+            let stable_object = self.source_address(stable_object) as *mut StableHeader;
+            let target_size = deserialized_size(stable_object);
+            debug_assert!(target_size >= size_of::<Obj>());
+            let main_memory_address = self.allocate(target_size);
+            deserialize(&mut self.to_space, stable_object, main_memory_address);
+            main_memory_address
+        }
     }
 
-    fn scan_header(&mut self) -> Tag {
+    /// Note:
+    /// * The deserialized memory image for the partitioned heap may contain free space at
+    /// a partition end.
+    fn scan(&mut self) {
         let tag = self.to_space.read::<Tag>();
         assert_ne!(tag, TAG_FWD_PTR);
-        if tag != TAG_FREE_SPACE && tag != TAG_ONE_WORD_FILLER {
-            // Skip the forwarding pointer in the case of the incremental GC.
-            debug_assert!(size_of::<Obj>() >= size_of::<Tag>());
-            let difference = size_of::<Obj>() - size_of::<Tag>();
-            self.to_space.skip(difference.to_bytes().as_usize());
+        match tag {
+            TAG_ONE_WORD_FILLER => {}
+            TAG_FREE_SPACE => {
+                let free_words = Words(self.to_space().read::<u32>());
+                self.to_space().skip(free_words.to_bytes().as_usize());
+            }
+            _ => {
+                self.to_space.rewind(size_of::<Tag>().to_bytes().as_usize());
+                scan_deserialized(self, tag, &|context, original| {
+                    let old_value = StableValue::serialize(original);
+                    if Self::is_null(old_value) {
+                        Self::encode_null()
+                    } else if original.is_ptr() {
+                        context.evacuate(old_value)
+                    } else {
+                        original
+                    }
+                });
+            }
         }
-        tag
     }
+}
 
-    fn is_pointer(&self, field_value: u32) -> bool {
-        is_ptr(field_value)
-    }
-
-    fn decode_pointer(&self, field_value: u32) -> StableMemoryAddress {
-        StableMemoryAddress(unskew(field_value as usize))
-    }
-
-    fn encode_pointer(&self, target: Value) -> u32 {
-        target.get_raw()
-    }
-
-    fn is_null(&self, field_value: u32) -> bool {
-        field_value == STABLE_NULL_POINTER.get_raw()
-    }
-
-    fn encode_null(&self) -> u32 {
-        unsafe { moc_null_singleton().get_raw() }
+impl<'a, M: Memory> StableMemoryAccess for Deserialization<'a, M> {
+    fn to_space(&mut self) -> &mut StableMemorySpace {
+        &mut self.to_space
     }
 }
 

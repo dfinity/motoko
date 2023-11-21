@@ -109,8 +109,14 @@ pub struct TestHeap {
 }
 
 impl TestHeap {
-    pub fn build(&self, gc: GC) -> MotokoHeap {
-        MotokoHeap::new(&self.heap, &self.roots, &self.continuation_table, gc)
+    pub fn build(&self, gc: GC, free_space: usize) -> MotokoHeap {
+        MotokoHeap::new(
+            &self.heap,
+            &self.roots,
+            &self.continuation_table,
+            gc,
+            free_space,
+        )
     }
 }
 
@@ -123,7 +129,7 @@ fn test_gcs(test_heap: &TestHeap) {
 }
 
 fn test_gc(gc: GC, test_heap: &TestHeap) {
-    let mut heap = test_heap.build(gc);
+    let mut heap = test_heap.build(gc, 0);
     let refs = &test_heap.heap;
     let roots = &test_heap.roots;
     let continuation_table = &test_heap.continuation_table;
