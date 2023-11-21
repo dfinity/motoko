@@ -5,7 +5,8 @@ reference implementation.
 Base revision: WebAssembly/spec@a7a1856.
 
 The changes are:
- * None for now
+ * Pseudo-instruction Meta for debug information
+ * StableMemory, StableGrow, StableRead, StableWrite instructions.
 
 The code is otherwise as untouched as possible, so that we can relatively
 easily apply diffs from the original code (possibly manually).
@@ -116,7 +117,18 @@ and instr' =
   | Unary of unop                     (* unary numeric operator *)
   | Binary of binop                   (* binary numeric operator *)
   | Convert of cvtop                  (* conversion *)
+
+  (* Custom addition for debugging *)
   | Meta of Dwarf5.Meta.die           (* debugging metadata *)
+
+  (* Custom additions for emulating stable-memory, special cases
+     of MemorySize, MemoryGrow and MemoryCopy
+     requiring wasm features bulk-memory and multi-memory
+  *)
+  | StableSize                        (* size of stable memory *)
+  | StableGrow                        (* grow stable memory *)
+  | StableRead                        (* read from stable memory *)
+  | StableWrite                       (* write to stable memory *)
 
 (* Globals & Functions *)
 
