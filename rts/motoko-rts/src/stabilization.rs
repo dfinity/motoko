@@ -123,7 +123,7 @@ trait GraphCopy<S: Copy, T: Copy, P: Copy + Default> {
     /// pointer fields by invoking `patch_field` for each of them.
     /// Note:
     /// * The default implementation assumes identical object body layout between main memory
-    /// and the serialized stable memory. Only the header layout differs insofar tha the main
+    /// and the serialized stable memory. Only the header layout differs insofar that the main
     /// memory may include a forwarding pointer when the incremental GC is used. Cf. `types.rs`.
     /// * The deserialized memory image for the partitioned heap may contain free space at
     /// a partition end.
