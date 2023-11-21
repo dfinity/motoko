@@ -19,7 +19,7 @@ Graph copy of sub-graph of stable objects from main memory to stable memory and 
 * Avoid deep call stack recursion (stack overflow).
 
 ## Memory Compatibility Check
-Apply a memory compatibility check analogous to the enhanced orthogonal persistence, since the graph copy layout is not identical to the Candid subtype relation.
+Apply a memory compatibility check analogous to the enhanced orthogonal persistence, since the upgrade compatibility of the graph copy is not identical to the Candid subtype relation.
 
 ## Algorithm
 Applying Cheney’s algorithm [1, 2] combined with multiple copying between stable and main memory (credits to Claudio for this idea):
@@ -37,19 +37,21 @@ Applying Cheney’s algorithm [1, 2] combined with multiple copying between stab
   - The Cheney’s forwarding pointers denote the simulated addresses in main memory, as if the objects would be allocated on top of the existing heap.
 * Copy the entire stable memory image back in main memory at the heap and extend the heap.
 
+## Stable Format
+For a long-term perspective, the object layout of the serialized data in the stable memory is fixed and independent of the main memory layout.
+* Pointers support 64-bit representations, even if only 32-bit pointers are used in current main memory address space.
+* The Brooks forwarding pointer is omitted (used by the incremental GC).
+* The pointers encode skewed stable memory offsets to the corresponding target objects.
+* References to the null objects are encoded by a sentinel value.
+
+The stable format is defined in `stabilization/layout.rs` and its sub-modules.
+
 ## Specific Aspects
 * A streamed reader/writer abstraction is provided that caches stable memory access and thus minimizes stable memory API calls.
-* Currently, the object payload uses the same encoding for main memory and stable memory. On a longer term, the main memory layout may however evolve and would be mapped to the current stable format.
 * The null object is handled specifically to guarantee the singleton property. For this purpose, null references are encoded as sentinel values that are decoded back to the static singleton of the new program version.
 * Field hashes in objects are serialized in a blob. On deserialization, the hash blob is allocated in the dynamic heap. Same-typed objects that have been created by the same program version share the same hash blob.
 * For backwards compatibility, old Candid destabilzation is still supported when upgrading from a program that used older compiler version.
 * Incremental GC: Serialization needs to consider Brooks forwarding pointers (not to be confused with the Cheney's forwarding information), while deserialization can deal with partitioned heap that can have internal fragmentation (free space at partition ends).
-
-## Stable Format
-Currently, for ease of implementation, the object layout in stable memory is largely identical to the main memory with the following differences:
-* The Brooks forwarding pointer is omitted (used by the incremental GC).
-* The pointers encode skewed stable memory offsets to the corresponding target objects.
-* References to the null objects are encoded by a sentinel value.
 
 ## Allocator Rules
 The destabilzation uses bulk-copying to main memory which is quite invasive. For correctness, the following invariants need to be met:
@@ -64,4 +66,5 @@ The destabilzation uses bulk-copying to main memory which is quite invasive. For
 ## References
 
 [1] C. J. Cheney. A Non-Recursive List Compacting Algorithm. Communications of the ACM, 13(11):677-8, November 1970.
+
 [2] R. Jones and R. Lins. Garbage Collection: Algorithms for Automatic Dynamic Memory Management. Wiley 2003. Algorithm 6.1: Cheney's algorithm, page 123.
