@@ -1,6 +1,6 @@
 use crate::{
     stabilization::StableMemoryAccess,
-    types::{MutBox, Value},
+    types::{MutBox, Obj, Value, TAG_MUTBOX},
 };
 
 use super::{Serializer, StableValue, StaticScanner};
@@ -9,7 +9,6 @@ use super::{Serializer, StableValue, StaticScanner};
 // while the stable layout uses 64-bit values.
 
 #[repr(C)]
-#[derive(Default)]
 pub struct StableMutBox {
     field: StableValue,
 }
@@ -45,6 +44,9 @@ impl Serializer<MutBox> for StableMutBox {
 
     unsafe fn deserialize_static_part(stable_object: *mut Self, target_address: Value) -> MutBox {
         let field = stable_object.read_unaligned().field.deserialize();
-        MutBox::new(target_address, field)
+        MutBox {
+            header: Obj::new(TAG_MUTBOX, target_address),
+            field,
+        }
     }
 }

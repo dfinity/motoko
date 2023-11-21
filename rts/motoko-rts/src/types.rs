@@ -105,7 +105,7 @@ impl From<Bytes<u32>> for Words<u32> {
 
 /// The unit "bytes": `Bytes(123u32)` means 123 bytes.
 #[repr(transparent)]
-#[derive(Debug, PartialEq, Eq, Clone, Copy, PartialOrd, Ord, Default)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, PartialOrd, Ord)]
 pub struct Bytes<A>(pub A);
 
 impl Bytes<u32> {
@@ -163,7 +163,7 @@ pub const TRUE_VALUE: u32 = 0x1;
 
 /// A value in a heap slot
 #[repr(transparent)]
-#[derive(Clone, Copy, PartialEq, Eq, Debug, Default)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct Value(u32);
 
 /// A view of `Value` for analyzing the slot contents.
@@ -472,7 +472,6 @@ pub const TAG_ARRAY_SLICE_MIN: Tag = 34;
 
 // Common parts of any object. Other object pointers can be coerced into a pointer to this.
 #[repr(C)] // See the note at the beginning of this module
-#[derive(Default)]
 pub struct Obj {
     pub tag: Tag,
     // Cannot use `#[incremental_gc]` as Rust only allows non-macro attributes for fields.
@@ -528,7 +527,6 @@ impl Obj {
 
 #[rustfmt::skip]
 #[repr(C)] // See the note at the beginning of this module
-#[derive(Default)]
 pub struct Array {
     pub header: Obj,
     pub len: u32, // number of elements
@@ -539,15 +537,6 @@ pub struct Array {
 }
 
 impl Array {
-    // Note: Only initializes the static `Array` header.
-    // `forward` denotes the forwarding pointer of the new object.
-    pub fn new(forward: Value, len: u32) -> Array {
-        Array {
-            header: Obj::new(TAG_ARRAY, forward),
-            len,
-        }
-    }
-
     pub unsafe fn payload_addr(self: *const Self) -> *mut Value {
         self.offset(1) as *mut Value // skip array header
     }
@@ -596,7 +585,6 @@ impl Array {
 
 #[rustfmt::skip]
 #[repr(C)] // See the note at the beginning of this module
-#[derive(Default)]
 pub struct Region {
     pub header: Obj,
     // 64-bit id split into lower and upper halves for alignment reasons
@@ -607,17 +595,6 @@ pub struct Region {
 }
 
 impl Region {
-    // `forward` denotes the forwarding pointer of the new object.
-    pub fn new(forward: Value, id: u64, page_count: u32, vec_pages: Value) -> Region {
-        Region {
-            header: Obj::new(TAG_REGION, forward),
-            id_lower: lower32(id),
-            id_upper: upper32(id),
-            page_count,
-            vec_pages,
-        }
-    }
-
     pub unsafe fn write_id64(self: *mut Self, value: u64) {
         write64(&mut (*self).id_lower, &mut (*self).id_upper, value);
     }
@@ -628,7 +605,6 @@ impl Region {
 }
 
 #[repr(C)] // See the note at the beginning of this module
-#[derive(Default)]
 pub struct Object {
     pub header: Obj,
     pub size: u32,        // Number of elements
@@ -636,16 +612,6 @@ pub struct Object {
 }
 
 impl Object {
-    // Note: Only initializes the static `Array` header.
-    // `forward` denotes the forwarding pointer of the new object.
-    pub fn new(forward: Value, size: u32, hash_blob: Value) -> Object {
-        Object {
-            header: Obj::new(TAG_OBJECT, forward),
-            size,
-            hash_blob,
-        }
-    }
-
     pub unsafe fn hash_blob_addr(self: *mut Self) -> *mut Value {
         &mut (*self).hash_blob
     }
@@ -664,7 +630,6 @@ impl Object {
 }
 
 #[repr(C)] // See the note at the beginning of this module
-#[derive(Default)]
 pub struct ObjInd {
     pub header: Obj,
     pub field: Value,
@@ -689,7 +654,6 @@ impl Closure {
 }
 
 #[repr(C)] // See the note at the beginning of this module
-#[derive(Default)]
 pub struct Blob {
     pub header: Obj,
     pub len: Bytes<u32>,
@@ -697,15 +661,6 @@ pub struct Blob {
 }
 
 impl Blob {
-    // Note: Only initializes the static `Blob` header.
-    // `forward` denotes the forwarding pointer of the new object.
-    pub fn new(forward: Value, len: Bytes<u32>) -> Blob {
-        Blob {
-            header: Obj::new(TAG_BLOB, forward),
-            len,
-        }
-    }
-
     pub unsafe fn payload_addr(self: *mut Self) -> *mut u8 {
         self.add(1) as *mut u8 // skip blob header
     }
@@ -848,20 +803,9 @@ impl BigInt {
 }
 
 #[repr(C)] // See the note at the beginning of this module
-#[derive(Default)]
 pub struct MutBox {
     pub header: Obj,
     pub field: Value,
-}
-
-impl MutBox {
-    // `forward` denotes the forwarding pointer of the new object.
-    pub fn new(forward: Value, field: Value) -> MutBox {
-        MutBox {
-            header: Obj::new(TAG_MUTBOX, forward),
-            field,
-        }
-    }
 }
 
 #[repr(C)] // See the note at the beginning of this module
@@ -871,26 +815,13 @@ pub struct Some {
 }
 
 #[repr(C)] // See the note at the beginning of this module
-#[derive(Default)]
 pub struct Variant {
     pub header: Obj,
     pub tag: u32,
     pub field: Value,
 }
 
-impl Variant {
-    // `forward` denotes the forwarding pointer of the new object.
-    pub fn new(forward: Value, variant_tag: u32, field: Value) -> Variant {
-        Variant {
-            header: Obj::new(TAG_VARIANT, forward),
-            tag: variant_tag,
-            field,
-        }
-    }
-}
-
 #[repr(C)] // See the note at the beginning of this module
-#[derive(Default)]
 pub struct Concat {
     pub header: Obj,
     pub n_bytes: Bytes<u32>,
@@ -899,16 +830,6 @@ pub struct Concat {
 }
 
 impl Concat {
-    // `forward` denotes the forwarding pointer of the new object.
-    pub fn new(forward: Value, n_bytes: Bytes<u32>, text1: Value, text2: Value) -> Concat {
-        Concat {
-            header: Obj::new(TAG_CONCAT, forward),
-            n_bytes,
-            text1,
-            text2,
-        }
-    }
-
     pub unsafe fn text1(self: *const Self) -> Value {
         (*self).text1
     }
@@ -924,45 +845,24 @@ pub struct Null {
 }
 
 #[repr(C)] // See the note at the beginning of this module
-#[derive(Default)]
 pub struct Bits64 {
     pub header: Obj,
     // We have two 32-bit fields instead of one 64-bit to avoid aligning the fields on 64-bit
     // boundary.
-    bits_lo: u32,
-    bits_hi: u32,
+    pub bits_lo: u32,
+    pub bits_hi: u32,
 }
 
 impl Bits64 {
-    // `forward` denotes the forwarding pointer of the new object.
-    pub fn new(forward: Value, bits: u64) -> Bits64 {
-        Bits64 {
-            header: Obj::new(TAG_BITS64, forward),
-            bits_lo: lower32(bits),
-            bits_hi: upper32(bits),
-        }
-    }
-
     pub fn bits(&self) -> u64 {
         (u64::from(self.bits_hi) << 32) | u64::from(self.bits_lo)
     }
 }
 
 #[repr(C)] // See the note at the beginning of this module
-#[derive(Default)]
 pub struct Bits32 {
     pub header: Obj,
     pub bits: u32,
-}
-
-impl Bits32 {
-    // `forward` denotes the forwarding pointer of the new object.
-    pub fn new(forward: Value, bits: u32) -> Bits32 {
-        Bits32 {
-            header: Obj::new(TAG_BITS32, forward),
-            bits,
-        }
-    }
 }
 
 /// Marks one word empty space in heap

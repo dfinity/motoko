@@ -1,12 +1,11 @@
 // Note: The unaligned reads are needed because heap allocations are aligned to 32-bit,
 // while the stable layout uses 64-bit values.
 
-use crate::types::{Bits64, Value};
+use crate::types::{lower32, upper32, Bits64, Obj, Value, TAG_BITS64};
 
 use super::{Serializer, StableValue, StaticScanner};
 
 #[repr(C)]
-#[derive(Default)]
 pub struct StableBits64 {
     bits: u64,
 }
@@ -23,6 +22,10 @@ impl Serializer<Bits64> for StableBits64 {
 
     unsafe fn deserialize_static_part(stable_object: *mut Self, target_address: Value) -> Bits64 {
         let bits = stable_object.read_unaligned().bits;
-        Bits64::new(target_address, bits)
+        Bits64 {
+            header: Obj::new(TAG_BITS64, target_address),
+            bits_lo: lower32(bits),
+            bits_hi: upper32(bits),
+        }
     }
 }

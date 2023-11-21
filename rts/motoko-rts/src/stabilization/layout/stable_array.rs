@@ -4,7 +4,7 @@ use crate::{
         reader_writer::{ScanStream, StableMemorySpace, WriteStream},
         StableMemoryAccess,
     },
-    types::{Array, Value},
+    types::{Array, Obj, Value, TAG_ARRAY},
 };
 
 use super::{checked_to_u32, Serializer, StableValue, StaticScanner};
@@ -13,7 +13,6 @@ use super::{checked_to_u32, Serializer, StableValue, StaticScanner};
 // while the stable layout uses 64-bit values.
 
 #[repr(C)]
-#[derive(Default)]
 pub struct StableArray {
     array_length: u64,
     // Dynamically sized body with `array_length` elements, each of `StableValue`.
@@ -68,8 +67,11 @@ impl Serializer<Array> for StableArray {
     }
 
     unsafe fn deserialize_static_part(stable_array: *mut Self, target_address: Value) -> Array {
-        let length = checked_to_u32(stable_array.array_length());
-        Array::new(target_address, length)
+        let len = checked_to_u32(stable_array.array_length());
+        Array {
+            header: Obj::new(TAG_ARRAY, target_address),
+            len,
+        }
     }
 
     unsafe fn deserialize_dynamic_part(memory: &mut StableMemorySpace, stable_array: *mut Self) {

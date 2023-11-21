@@ -3,13 +3,12 @@
 
 use crate::{
     stabilization::StableMemoryAccess,
-    types::{Bytes, Concat, Value},
+    types::{Bytes, Concat, Obj, Value, TAG_CONCAT},
 };
 
 use super::{checked_to_u32, Serializer, StableValue, StaticScanner};
 
 #[repr(C)]
-#[derive(Default)]
 pub struct StableConcat {
     number_of_bytes: u64,
     text1: StableValue,
@@ -50,11 +49,16 @@ impl Serializer<Concat> for StableConcat {
     }
 
     unsafe fn deserialize_static_part(stable_object: *mut Self, target_address: Value) -> Concat {
-        let number_of_bytes = Bytes(checked_to_u32(
+        let n_bytes = Bytes(checked_to_u32(
             stable_object.read_unaligned().number_of_bytes,
         ));
         let text1 = stable_object.read_unaligned().text1.deserialize();
         let text2 = stable_object.read_unaligned().text2.deserialize();
-        Concat::new(target_address, number_of_bytes, text1, text2)
+        Concat {
+            header: Obj::new(TAG_CONCAT, target_address),
+            n_bytes,
+            text1,
+            text2,
+        }
     }
 }

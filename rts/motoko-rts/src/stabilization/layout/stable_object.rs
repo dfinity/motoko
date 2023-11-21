@@ -1,6 +1,6 @@
 use crate::{
     stabilization::reader_writer::{ScanStream, StableMemorySpace, WriteStream},
-    types::{Object, Value},
+    types::{Obj, Object, Value, TAG_OBJECT},
 };
 
 use super::{Serializer, StableValue, StaticScanner};
@@ -9,7 +9,6 @@ use super::{Serializer, StableValue, StaticScanner};
 // while the stable layout uses 64-bit values.
 
 #[repr(C)]
-#[derive(Default)]
 pub struct StableObject {
     size: u32, // Number of fields.
     hash_blob: StableValue, // Pointer to a blob containing the `u32` hashes of the field labels.
@@ -93,7 +92,11 @@ impl Serializer<Object> for StableObject {
     unsafe fn deserialize_static_part(stable_object: *mut Self, target_address: Value) -> Object {
         let size = stable_object.read_unaligned().size;
         let hash_blob = stable_object.read_unaligned().hash_blob.deserialize();
-        Object::new(target_address, size, hash_blob)
+        Object {
+            header: Obj::new(TAG_OBJECT, target_address),
+            size,
+            hash_blob,
+        }
     }
 
     unsafe fn deserialize_dynamic_part(memory: &mut StableMemorySpace, stable_object: *mut Self) {

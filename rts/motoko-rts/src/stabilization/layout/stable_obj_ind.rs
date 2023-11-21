@@ -9,7 +9,6 @@ use crate::{
 use super::{Serializer, StableValue, StaticScanner};
 
 #[repr(C)]
-#[derive(Default)]
 pub struct StableObjInd {
     field: StableValue,
 }

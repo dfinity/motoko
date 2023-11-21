@@ -52,10 +52,9 @@ mod stable_variant;
 
 /// Object tag in stable format. Encoded as a `i32` value.
 #[repr(C)]
-#[derive(Clone, Copy, Default)]
+#[derive(Clone, Copy)]
 enum StableTag {
-    #[default]
-    None = 0,
+    _None = 0,
     Array = 1,
     MutBox = 2,
     Object = 3,
@@ -63,10 +62,10 @@ enum StableTag {
     Bits32 = 5, // Note: Can be removed in 64-bit heap support.
     Bits64 = 6,
     Region = 7,
-    Variant = 9,
-    Concat = 10,
-    BigInt = 11,
-    ObjInd = 12,
+    Variant = 8,
+    Concat = 9,
+    BigInt = 10,
+    ObjInd = 11,
 }
 
 const _: () = assert!(core::mem::size_of::<StableTag>() == core::mem::size_of::<i32>());
@@ -100,7 +99,7 @@ const _: () = assert!(STABLE_NULL_POINTER.0 != TRUE_VALUE as u64);
 const _: () = assert!(STABLE_NULL_POINTER.0 & 0b1 != 0);
 
 #[repr(C)]
-#[derive(Default, Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 pub struct StableValue(u64);
 
 impl StableValue {
@@ -174,9 +173,9 @@ trait StaticScanner<T> {
     }
 }
 
-trait Serializer<T: Default + StaticScanner<Value>>
+trait Serializer<T: StaticScanner<Value>>
 where
-    Self: Sized + StaticScanner<StableValue> + Default,
+    Self: Sized + StaticScanner<StableValue>,
 {
     unsafe fn serialize_static_part(main_object: *mut T) -> Self;
     unsafe fn serialize_dynamic_part(_memory: &mut StableMemorySpace, _main_object: *mut T) {}
@@ -295,7 +294,7 @@ pub fn scan_serialized<C: StableMemoryAccess, F: Fn(&mut C, StableValue) -> Stab
         StableTag::Concat => StableConcat::scan_serialized(context, translate),
         StableTag::BigInt => StableBigInt::scan_serialized(context, translate),
         StableTag::ObjInd => StableObjInd::scan_serialized(context, translate),
-        StableTag::None => unimplemented!(),
+        StableTag::_None => unimplemented!(),
     }
 }
 
@@ -312,7 +311,7 @@ pub unsafe fn serialize(memory: &mut StableMemorySpace, main_object: Value) {
         StableTag::Concat => StableConcat::serialize(memory, main_object),
         StableTag::BigInt => StableBigInt::serialize(memory, main_object),
         StableTag::ObjInd => StableObjInd::serialize(memory, main_object),
-        StableTag::None => unimplemented!(),
+        StableTag::_None => unimplemented!(),
     }
 }
 
@@ -333,7 +332,7 @@ pub fn scan_deserialized<C: StableMemoryAccess, F: Fn(&mut C, Value) -> Value>(
         StableTag::Concat => StableConcat::scan_deserialized(context, translate),
         StableTag::BigInt => StableBigInt::scan_deserialized(context, translate),
         StableTag::ObjInd => StableObjInd::scan_deserialized(context, translate),
-        StableTag::None => unimplemented!(),
+        StableTag::_None => unimplemented!(),
     }
 }
 
@@ -350,7 +349,7 @@ pub unsafe fn deserialized_size(stable_object: *mut StableHeader) -> Words<u32> 
         StableTag::Concat => StableConcat::deserialized_size(stable_object),
         StableTag::BigInt => StableBigInt::deserialized_size(stable_object),
         StableTag::ObjInd => StableObjInd::deserialized_size(stable_object),
-        StableTag::None => unimplemented!(),
+        StableTag::_None => unimplemented!(),
     }
 }
 
@@ -371,6 +370,6 @@ pub unsafe fn deserialize(
         StableTag::Concat => StableConcat::deserialize(memory, stable_object, target_address),
         StableTag::BigInt => StableBigInt::deserialize(memory, stable_object, target_address),
         StableTag::ObjInd => StableObjInd::deserialize(memory, stable_object, target_address),
-        StableTag::None => unimplemented!(),
+        StableTag::_None => unimplemented!(),
     }
 }

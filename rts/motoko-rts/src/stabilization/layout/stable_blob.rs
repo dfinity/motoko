@@ -1,6 +1,6 @@
 use crate::{
     stabilization::reader_writer::{ScanStream, StableMemorySpace, WriteStream},
-    types::{Blob, Bytes, Value},
+    types::{Blob, Bytes, Obj, Value, TAG_BLOB},
 };
 
 use super::{
@@ -59,8 +59,11 @@ impl Serializer<Blob> for StableBlob {
     }
 
     unsafe fn deserialize_static_part(stable_object: *mut Self, target_address: Value) -> Blob {
-        let length = Bytes(checked_to_u32(stable_object.read_unaligned().byte_length));
-        Blob::new(target_address, length)
+        let len = Bytes(checked_to_u32(stable_object.read_unaligned().byte_length));
+        Blob {
+            header: Obj::new(TAG_BLOB, target_address),
+            len,
+        }
     }
 
     unsafe fn deserialize_dynamic_part(memory: &mut StableMemorySpace, stable_object: *mut Self) {

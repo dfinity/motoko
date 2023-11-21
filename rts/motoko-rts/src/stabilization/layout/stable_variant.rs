@@ -1,4 +1,4 @@
-use crate::types::{Value, Variant};
+use crate::types::{Obj, Value, Variant, TAG_VARIANT};
 
 use super::{Serializer, StableValue, StaticScanner};
 
@@ -6,7 +6,6 @@ use super::{Serializer, StableValue, StaticScanner};
 // while the stable layout uses 64-bit values.
 
 #[repr(C)]
-#[derive(Default)]
 pub struct StableVariant {
     tag: u32,
     field: StableValue,
@@ -49,7 +48,12 @@ impl Serializer<Variant> for StableVariant {
     }
 
     unsafe fn deserialize_static_part(stable_object: *mut Self, target_address: Value) -> Variant {
+        let tag = stable_object.read_unaligned().tag;
         let field = stable_object.read_unaligned().field.deserialize();
-        Variant::new(target_address, stable_object.read_unaligned().tag, field)
+        Variant {
+            header: Obj::new(TAG_VARIANT, target_address),
+            tag,
+            field,
+        }
     }
 }

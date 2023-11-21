@@ -1,7 +1,10 @@
 //! Buffered read/write access on stable memory.
 //! Supporting Cheney's to-space in stable memory.
 
-use core::{cmp::min, mem::size_of};
+use core::{
+    cmp::min,
+    mem::{size_of, zeroed},
+};
 
 use crate::{
     mem_utils::memcpy_bytes,
@@ -100,7 +103,7 @@ pub trait ScanStream {
     // Determines whether the stream has reached the end.
     fn scan_completed(&self) -> bool;
     // Read a value from the stream.
-    fn read<T: Default>(&mut self) -> T;
+    fn read<T>(&mut self) -> T;
     // Read raw data from the stream.
     fn raw_read(&mut self, data_address: usize, length: usize);
     // Go back in the stream.
@@ -227,9 +230,9 @@ impl ScanStream for StableMemorySpace {
         self.scan_address == self.free_address
     }
 
-    fn read<T: Default>(&mut self) -> T {
+    fn read<T>(&mut self) -> T {
         let length = size_of::<T>();
-        let mut value = T::default();
+        let mut value = unsafe { zeroed::<T>() };
         let value_address = &mut value as *mut T as usize;
         self.raw_read(value_address, length);
         value

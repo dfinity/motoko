@@ -1,5 +1,3 @@
-use core::mem::zeroed;
-
 use crate::stabilization::layout::{checked_to_usize, write_padding_u64};
 use crate::stabilization::reader_writer::{ScanStream, StableMemorySpace, WriteStream};
 use crate::stabilization::StableMemoryAccess;
@@ -39,23 +37,6 @@ impl StableBigInt {
 
 impl StaticScanner<StableValue> for StableBigInt {}
 impl StaticScanner<Value> for BigInt {}
-
-impl Default for StableBigInt {
-    fn default() -> Self {
-        StableBigInt {
-            mp_int: unsafe { zeroed() },
-        }
-    }
-}
-
-impl Default for BigInt {
-    fn default() -> Self {
-        Self {
-            header: Default::default(),
-            mp_int: unsafe { zeroed() },
-        }
-    }
-}
 
 impl Serializer<BigInt> for StableBigInt {
     unsafe fn serialize_static_part(main_object: *mut BigInt) -> Self {

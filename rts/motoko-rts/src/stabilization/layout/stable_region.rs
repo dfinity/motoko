@@ -1,6 +1,6 @@
 use crate::{
     stabilization::StableMemoryAccess,
-    types::{Region, Value},
+    types::{lower32, upper32, Obj, Region, Value, TAG_REGION},
 };
 
 use super::{Serializer, StableValue, StaticScanner};
@@ -9,7 +9,6 @@ use super::{Serializer, StableValue, StaticScanner};
 // while the stable layout uses 64-bit values.
 
 #[repr(C)]
-#[derive(Default)]
 pub struct StableRegion {
     id: u64,
     page_count: u32,
@@ -48,12 +47,15 @@ impl Serializer<Region> for StableRegion {
     }
 
     unsafe fn deserialize_static_part(stable_object: *mut Self, target_address: Value) -> Region {
+        let id = stable_object.read_unaligned().id;
+        let page_count = stable_object.read_unaligned().page_count;
         let vec_pages = stable_object.read_unaligned().vec_pages.deserialize();
-        Region::new(
-            target_address,
-            stable_object.read_unaligned().id,
-            stable_object.read_unaligned().page_count,
+        Region {
+            header: Obj::new(TAG_REGION, target_address),
+            id_lower: lower32(id),
+            id_upper: upper32(id),
+            page_count,
             vec_pages,
-        )
+        }
     }
 }
