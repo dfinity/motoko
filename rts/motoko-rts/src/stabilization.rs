@@ -262,7 +262,7 @@ impl<'a, M: Memory> Deserialization<'a, M> {
 
     fn insert_free_space(&mut self, target: Value) {
         let new_allocation = target.get_ptr();
-        // Heap allocations must be monotonously growing, such that their image
+        // Heap allocations must be monotonically increasing, such that their image
         // can be streamed to the to-space.
         // NOTE: Ensure that the allocator on an empty partitioned heap follows this rule.
         assert!(self.last_allocation <= new_allocation);
