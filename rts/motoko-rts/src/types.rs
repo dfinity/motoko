@@ -363,13 +363,6 @@ impl Value {
         self.forward().get_ptr() as *mut Region
     }
 
-    /// Get the pointer as `Variant` using forwarding.
-    pub unsafe fn as_variant(self) -> *mut Variant {
-        debug_assert!(self.tag() == TAG_VARIANT);
-        self.check_forwarding_pointer();
-        self.forward().get_ptr() as *mut Variant
-    }
-
     /// Get the pointer as `Region` using forwarding, without checking the tag.
     /// NB: One cannot check the tag during stabilization.
     pub unsafe fn as_untagged_region(self) -> *mut Region {
@@ -406,22 +399,6 @@ impl Value {
         debug_assert_eq!(self.tag(), TAG_BIGINT);
         self.check_forwarding_pointer();
         self.forward().get_ptr() as *mut BigInt
-    }
-
-    /// Get the pointer as `Bits32` using forwarding. In debug mode panics if the value is not a pointer or the
-    /// pointed object is not a `Bits32`.
-    pub unsafe fn as_bits32(self) -> *mut Bits32 {
-        debug_assert_eq!(self.tag(), TAG_BITS32);
-        self.check_forwarding_pointer();
-        self.forward().get_ptr() as *mut Bits32
-    }
-
-    /// Get the pointer as `Bits64` using forwarding. In debug mode panics if the value is not a pointer or the
-    /// pointed object is not a `Bits64`.
-    pub unsafe fn as_bits64(self) -> *mut Bits64 {
-        debug_assert_eq!(self.tag(), TAG_BITS64);
-        self.check_forwarding_pointer();
-        self.forward().get_ptr() as *mut Bits64
     }
 
     pub fn as_tiny(self) -> i32 {

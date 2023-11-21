@@ -3,9 +3,7 @@ use crate::{
     types::{size_of, Blob, Bytes, Value},
 };
 
-use super::{
-    checked_to_u32, checked_to_usize, Serializer, StableValue, StaticScanner, STABLE_TAG_BLOB,
-};
+use super::{checked_to_u32, checked_to_usize, Serializer, StableValue, StaticScanner};
 
 // Note: The unaligned reads are needed because heap allocations are aligned to 32-bit,
 // while the stable layout uses 64-bit values.
@@ -38,10 +36,6 @@ impl StaticScanner<StableValue> for StableBlob {}
 impl StaticScanner<Value> for Blob {}
 
 impl Serializer<Blob> for StableBlob {
-    fn stable_tag() -> super::StableTag {
-        STABLE_TAG_BLOB
-    }
-
     unsafe fn serialize_static_part(main_object: *mut Blob) -> Self {
         StableBlob {
             byte_length: main_object.len().as_usize() as u64,

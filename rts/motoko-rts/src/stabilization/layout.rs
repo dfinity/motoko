@@ -22,9 +22,8 @@
 //! data types must be handled extra care to ensure backwards compatibility.
 
 use crate::types::{
-    block_size, Array, Bits32, Bits64, Blob, MutBox, Object, Region, Tag, Value, Variant, Words,
-    TAG_ARRAY, TAG_BITS32, TAG_BITS64, TAG_BLOB, TAG_MUTBOX, TAG_OBJECT, TAG_REGION, TAG_VARIANT,
-    TRUE_VALUE,
+    block_size, Tag, Value, Words, TAG_ARRAY, TAG_BITS32, TAG_BITS64, TAG_BLOB, TAG_MUTBOX,
+    TAG_OBJECT, TAG_REGION, TAG_VARIANT, TRUE_VALUE,
 };
 
 use self::{
@@ -47,16 +46,36 @@ mod stable_object;
 mod stable_region;
 mod stable_variant;
 
-type StableTag = u32;
+#[repr(C)]
+#[derive(Clone, Copy, Default)]
+enum StableTag {
+    #[default]
+    None = 0,
+    Array = 1,
+    MutBox = 2,
+    Object = 3,
+    Blob = 4,
+    Bits32 = 5, // Note: Can be removed in 64-bit heap support.
+    Bits64 = 6,
+    Region = 7,
+    Variant = 9,
+}
 
-const STABLE_TAG_ARRAY: StableTag = 1;
-const STABLE_TAG_MUTBOX: StableTag = 2;
-const STABLE_TAG_OBJECT: StableTag = 3;
-const STABLE_TAG_BLOB: StableTag = 4;
-const STABLE_TAG_BITS32: StableTag = 5; // Note: Can be removed in 64-bit heap support.
-const STABLE_TAG_BITS64: StableTag = 6;
-const STABLE_TAG_REGION: StableTag = 7;
-const STABLE_TAG_VARIANT: StableTag = 8;
+impl StableTag {
+    fn deserialize(tag: Tag) -> StableTag {
+        match tag {
+            TAG_ARRAY => StableTag::Array,
+            TAG_MUTBOX => StableTag::MutBox,
+            TAG_OBJECT => StableTag::Object,
+            TAG_BLOB => StableTag::Blob,
+            TAG_BITS32 => StableTag::Bits32,
+            TAG_BITS64 => StableTag::Bits64,
+            TAG_REGION => StableTag::Region,
+            TAG_VARIANT => StableTag::Variant,
+            _ => unimplemented!("tag {tag}"),
+        }
+    }
+}
 
 /// Special sentinel value that does not exist for static or dynamic objects.
 /// Skewed -3. Since 1 is already reserved to encode the boolean `true`.
@@ -66,6 +85,7 @@ pub const STABLE_NULL_POINTER_32: Value = Value::from_raw(STABLE_NULL_POINTER.0 
 
 const _: () = assert!(STABLE_NULL_POINTER.0 != TRUE_VALUE as u64);
 const _: () = assert!(STABLE_NULL_POINTER.0 & 0b1 != 0);
+const _: () = assert!(core::mem::size_of::<StableTag>() == core::mem::size_of::<i32>());
 
 #[repr(C)]
 #[derive(Default, Clone, Copy, PartialEq)]
@@ -116,12 +136,12 @@ impl StableValue {
 /// Common stable object header in the front of the specific stable object layout,
 /// e.g. `StableArray`, `StableObject`, etc.
 pub struct StableHeader {
-    tag: StableTag,
+    stable_tag: StableTag,
 }
 
 impl StableHeader {
     unsafe fn tag(self: *const StableHeader) -> StableTag {
-        (*self).tag
+        (*self).stable_tag
     }
 
     unsafe fn as_object<T>(self: *mut StableHeader) -> *mut T {
@@ -146,13 +166,13 @@ trait Serializer<T: Default + StaticScanner<Value>>
 where
     Self: Sized + StaticScanner<StableValue> + Default,
 {
-    fn stable_tag() -> StableTag;
-
     unsafe fn serialize_static_part(main_object: *mut T) -> Self;
     unsafe fn serialize_dynamic_part(_memory: &mut StableMemorySpace, _main_object: *mut T) {}
 
-    unsafe fn serialize(memory: &mut StableMemorySpace, main_object: *mut T) {
-        memory.write(&Self::stable_tag());
+    unsafe fn serialize(memory: &mut StableMemorySpace, main_object: Value) {
+        let stable_tag = StableTag::deserialize(main_object.tag());
+        let main_object = main_object.as_obj() as *mut T;
+        memory.write(&stable_tag);
         unsafe {
             memory.write(&Self::serialize_static_part(main_object));
             Self::serialize_dynamic_part(memory, main_object);
@@ -177,15 +197,26 @@ where
     ) {
     }
 
+    unsafe fn deserialized_size(stable_object: *mut StableHeader) -> Words<u32> {
+        // This is a workaround for reusing the existing `block_size()` function to determine object size in main memory:
+        // The main memory object is decoded without its dynamic payload, by using a dummy value for the unused Brooks
+        // forwarding pointer in this temporarily decoded object.
+        let unused_pointer = Value::from_ptr(0);
+        let static_part =
+            &mut Self::deserialize_static_part(stable_object.as_object::<Self>(), unused_pointer);
+        block_size(static_part as *mut T as usize)
+    }
+
     unsafe fn deserialize_static_part(stable_object: *mut Self, target_address: Value) -> T;
     unsafe fn deserialize_dynamic_part(_memory: &mut StableMemorySpace, _stable_object: *mut Self) {
     }
 
     unsafe fn deserialize(
         memory: &mut StableMemorySpace,
-        stable_object: *mut Self,
+        stable_object: *mut StableHeader,
         target_address: Value,
     ) {
+        let stable_object = stable_object.as_object::<Self>();
         memory.write(&Self::deserialize_static_part(
             stable_object,
             target_address,
@@ -228,29 +259,29 @@ pub fn scan_serialized<C: StableMemoryAccess, F: Fn(&mut C, StableValue) -> Stab
 ) {
     let tag = context.to_space().read::<StableTag>();
     match tag {
-        STABLE_TAG_ARRAY => StableArray::scan_serialized(context, translate),
-        STABLE_TAG_MUTBOX => StableMutBox::scan_serialized(context, translate),
-        STABLE_TAG_OBJECT => StableObject::scan_serialized(context, translate),
-        STABLE_TAG_BLOB => StableBlob::scan_serialized(context, translate),
-        STABLE_TAG_BITS32 => StableBits32::scan_serialized(context, translate),
-        STABLE_TAG_BITS64 => StableBits64::scan_serialized(context, translate),
-        STABLE_TAG_REGION => StableRegion::scan_serialized(context, translate),
-        STABLE_TAG_VARIANT => StableVariant::scan_serialized(context, translate),
-        other_tag => unimplemented!("other tag {other_tag}"),
+        StableTag::Array => StableArray::scan_serialized(context, translate),
+        StableTag::MutBox => StableMutBox::scan_serialized(context, translate),
+        StableTag::Object => StableObject::scan_serialized(context, translate),
+        StableTag::Blob => StableBlob::scan_serialized(context, translate),
+        StableTag::Bits32 => StableBits32::scan_serialized(context, translate),
+        StableTag::Bits64 => StableBits64::scan_serialized(context, translate),
+        StableTag::Region => StableRegion::scan_serialized(context, translate),
+        StableTag::Variant => StableVariant::scan_serialized(context, translate),
+        StableTag::None => unimplemented!(),
     }
 }
 
 pub unsafe fn serialize(memory: &mut StableMemorySpace, object: Value) {
-    match object.tag() {
-        TAG_ARRAY => StableArray::serialize(memory, object.as_array()),
-        TAG_MUTBOX => StableMutBox::serialize(memory, object.as_mutbox()),
-        TAG_OBJECT => StableObject::serialize(memory, object.as_object()),
-        TAG_BLOB => StableBlob::serialize(memory, object.as_blob_mut()),
-        TAG_BITS32 => StableBits32::serialize(memory, object.as_bits32()),
-        TAG_BITS64 => StableBits64::serialize(memory, object.as_bits64()),
-        TAG_REGION => StableRegion::serialize(memory, object.as_region()),
-        TAG_VARIANT => StableVariant::serialize(memory, object.as_variant()),
-        other_tag => unimplemented!("other tag {other_tag}"),
+    match StableTag::deserialize(object.tag()) {
+        StableTag::Array => StableArray::serialize(memory, object),
+        StableTag::MutBox => StableMutBox::serialize(memory, object),
+        StableTag::Object => StableObject::serialize(memory, object),
+        StableTag::Blob => StableBlob::serialize(memory, object),
+        StableTag::Bits32 => StableBits32::serialize(memory, object),
+        StableTag::Bits64 => StableBits64::serialize(memory, object),
+        StableTag::Region => StableRegion::serialize(memory, object),
+        StableTag::Variant => StableVariant::serialize(memory, object),
+        StableTag::None => unimplemented!(),
     }
 }
 
@@ -259,43 +290,31 @@ pub fn scan_deserialized<C: StableMemoryAccess, F: Fn(&mut C, Value) -> Value>(
     tag: Tag,
     translate: &F,
 ) {
-    match tag {
-        TAG_ARRAY => StableArray::scan_deserialized(context, translate),
-        TAG_MUTBOX => StableMutBox::scan_deserialized(context, translate),
-        TAG_OBJECT => StableObject::scan_deserialized(context, translate),
-        TAG_BLOB => StableBlob::scan_deserialized(context, translate),
-        TAG_BITS32 => StableBits32::scan_deserialized(context, translate),
-        TAG_BITS64 => StableBits64::scan_deserialized(context, translate),
-        TAG_REGION => StableRegion::scan_deserialized(context, translate),
-        TAG_VARIANT => StableVariant::scan_deserialized(context, translate),
-        other_tag => unimplemented!("other tag {other_tag}"),
+    match StableTag::deserialize(tag) {
+        StableTag::Array => StableArray::scan_deserialized(context, translate),
+        StableTag::MutBox => StableMutBox::scan_deserialized(context, translate),
+        StableTag::Object => StableObject::scan_deserialized(context, translate),
+        StableTag::Blob => StableBlob::scan_deserialized(context, translate),
+        StableTag::Bits32 => StableBits32::scan_deserialized(context, translate),
+        StableTag::Bits64 => StableBits64::scan_deserialized(context, translate),
+        StableTag::Region => StableRegion::scan_deserialized(context, translate),
+        StableTag::Variant => StableVariant::scan_deserialized(context, translate),
+        StableTag::None => unimplemented!(),
     }
 }
 
 pub unsafe fn deserialized_size(stable_object: *mut StableHeader) -> Words<u32> {
     match stable_object.tag() {
-        STABLE_TAG_ARRAY => deserialized_size_for::<Array, StableArray>(stable_object),
-        STABLE_TAG_MUTBOX => deserialized_size_for::<MutBox, StableMutBox>(stable_object),
-        STABLE_TAG_OBJECT => deserialized_size_for::<Object, StableObject>(stable_object),
-        STABLE_TAG_BLOB => deserialized_size_for::<Blob, StableBlob>(stable_object),
-        STABLE_TAG_BITS32 => deserialized_size_for::<Bits32, StableBits32>(stable_object),
-        STABLE_TAG_BITS64 => deserialized_size_for::<Bits64, StableBits64>(stable_object),
-        STABLE_TAG_REGION => deserialized_size_for::<Region, StableRegion>(stable_object),
-        STABLE_TAG_VARIANT => deserialized_size_for::<Variant, StableVariant>(stable_object),
-        other_tag => unimplemented!("other tag {other_tag}"),
+        StableTag::Array => StableArray::deserialized_size(stable_object),
+        StableTag::MutBox => StableMutBox::deserialized_size(stable_object),
+        StableTag::Object => StableObject::deserialized_size(stable_object),
+        StableTag::Blob => StableBlob::deserialized_size(stable_object),
+        StableTag::Bits32 => StableBits32::deserialized_size(stable_object),
+        StableTag::Bits64 => StableBits64::deserialized_size(stable_object),
+        StableTag::Region => StableRegion::deserialized_size(stable_object),
+        StableTag::Variant => StableVariant::deserialized_size(stable_object),
+        StableTag::None => unimplemented!(),
     }
-}
-
-unsafe fn deserialized_size_for<T: Default + StaticScanner<Value>, E: Serializer<T>>(
-    stable_object: *mut StableHeader,
-) -> Words<u32> {
-    // This is a workaround for reusing the existing `block_size()` function to determine object size in main memory:
-    // The main memory object is decoded without its dynamic payload, by using a dummy value for the unused Brooks
-    // forwarding pointer in this temporarily decoded object.
-    let unused_pointer = Value::from_ptr(0);
-    let static_part =
-        &mut E::deserialize_static_part(stable_object.as_object::<E>(), unused_pointer);
-    block_size(static_part as *mut T as usize)
 }
 
 pub unsafe fn deserialize(
@@ -304,46 +323,14 @@ pub unsafe fn deserialize(
     target_address: Value,
 ) {
     match stable_object.tag() {
-        STABLE_TAG_ARRAY => StableArray::deserialize(
-            memory,
-            stable_object.as_object::<StableArray>(),
-            target_address,
-        ),
-        STABLE_TAG_MUTBOX => StableMutBox::deserialize(
-            memory,
-            stable_object.as_object::<StableMutBox>(),
-            target_address,
-        ),
-        STABLE_TAG_OBJECT => StableObject::deserialize(
-            memory,
-            stable_object.as_object::<StableObject>(),
-            target_address,
-        ),
-        STABLE_TAG_BLOB => StableBlob::deserialize(
-            memory,
-            stable_object.as_object::<StableBlob>(),
-            target_address,
-        ),
-        STABLE_TAG_BITS32 => StableBits32::deserialize(
-            memory,
-            stable_object.as_object::<StableBits32>(),
-            target_address,
-        ),
-        STABLE_TAG_BITS64 => StableBits64::deserialize(
-            memory,
-            stable_object.as_object::<StableBits64>(),
-            target_address,
-        ),
-        STABLE_TAG_REGION => StableRegion::deserialize(
-            memory,
-            stable_object.as_object::<StableRegion>(),
-            target_address,
-        ),
-        STABLE_TAG_VARIANT => StableVariant::deserialize(
-            memory,
-            stable_object.as_object::<StableVariant>(),
-            target_address,
-        ),
-        other_tag => unimplemented!("other tag {other_tag}"),
+        StableTag::Array => StableArray::deserialize(memory, stable_object, target_address),
+        StableTag::MutBox => StableMutBox::deserialize(memory, stable_object, target_address),
+        StableTag::Object => StableObject::deserialize(memory, stable_object, target_address),
+        StableTag::Blob => StableBlob::deserialize(memory, stable_object, target_address),
+        StableTag::Bits32 => StableBits32::deserialize(memory, stable_object, target_address),
+        StableTag::Bits64 => StableBits64::deserialize(memory, stable_object, target_address),
+        StableTag::Region => StableRegion::deserialize(memory, stable_object, target_address),
+        StableTag::Variant => StableVariant::deserialize(memory, stable_object, target_address),
+        StableTag::None => unimplemented!(),
     }
 }

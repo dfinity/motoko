@@ -7,7 +7,7 @@ use crate::{
     types::{Array, Value},
 };
 
-use super::{checked_to_u32, Serializer, StableTag, StableValue, StaticScanner, STABLE_TAG_ARRAY};
+use super::{checked_to_u32, Serializer, StableValue, StaticScanner};
 
 // Note: The unaligned reads are needed because heap allocations are aligned to 32-bit,
 // while the stable layout uses 64-bit values.
@@ -41,10 +41,6 @@ impl StaticScanner<StableValue> for StableArray {}
 impl StaticScanner<Value> for Array {}
 
 impl Serializer<Array> for StableArray {
-    fn stable_tag() -> StableTag {
-        STABLE_TAG_ARRAY
-    }
-
     unsafe fn serialize_static_part(array: *mut Array) -> Self {
         StableArray {
             array_length: array.len() as u64,

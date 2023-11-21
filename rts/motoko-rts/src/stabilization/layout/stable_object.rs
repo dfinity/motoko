@@ -3,7 +3,7 @@ use crate::{
     types::{Object, Value},
 };
 
-use super::{Serializer, StableValue, StaticScanner, STABLE_TAG_OBJECT};
+use super::{Serializer, StableValue, StaticScanner};
 
 // Note: The unaligned reads are needed because heap allocations are aligned to 32-bit,
 // while the stable layout uses 64-bit values.
@@ -60,10 +60,6 @@ impl StaticScanner<Value> for Object {
 }
 
 impl Serializer<Object> for StableObject {
-    fn stable_tag() -> super::StableTag {
-        STABLE_TAG_OBJECT
-    }
-
     unsafe fn serialize_static_part(main_object: *mut Object) -> Self {
         StableObject {
             size: (*main_object).size,
