@@ -664,6 +664,7 @@ impl Object {
 }
 
 #[repr(C)] // See the note at the beginning of this module
+#[derive(Default)]
 pub struct ObjInd {
     pub header: Obj,
     pub field: Value,
