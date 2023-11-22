@@ -19,7 +19,7 @@
 //! Not all heap memory object types are stabilized because some
 //! of them are not stable types. New object types can be added
 //! with backwards compatibility but encoding changes to existing stable
-//! data types must be handled extra care to ensure backwards compatibility.
+//! data types must be handled with extra care to ensure backwards compatibility.
 
 use crate::types::{
     block_size, size_of, Tag, Value, Words, TAG_ARRAY, TAG_BIGINT, TAG_BITS32, TAG_BITS64,
