@@ -50,6 +50,7 @@ The stable format is defined in `stabilization/layout.rs` and its sub-modules.
 * A streamed reader/writer abstraction is provided that caches stable memory access and thus minimizes stable memory API calls.
 * The null object is handled specifically to guarantee the singleton property. For this purpose, null references are encoded as sentinel values that are decoded back to the static singleton of the new program version.
 * Field hashes in objects are serialized in a blob. On deserialization, the hash blob is allocated in the dynamic heap. Same-typed objects that have been created by the same program version share the same hash blob.
+* Stable records can dynamically contain non-stable fields due to structural sub-typing. A dummy value can be serialized for such fields as a new program version can no longer access this field through the stable types.
 * For backwards compatibility, old Candid destabilzation is still supported when upgrading from a program that used older compiler version.
 * Incremental GC: Serialization needs to consider Brooks forwarding pointers (not to be confused with the Cheney's forwarding information), while deserialization can deal with partitioned heap that can have internal fragmentation (free space at partition ends).
 
@@ -57,6 +58,10 @@ The stable format is defined in `stabilization/layout.rs` and its sub-modules.
 The destabilzation uses bulk-copying to main memory which is quite invasive. For correctness, the following invariants need to be met:
 * The main memory allocator used during deserialization must not write to the heap (only compute the target addresses).
 * The allocator must yield monotonically increasing addresses during deserialization. Free space gaps are allowed to complete partitions.
+
+## Open Aspects
+* Unused fields in stable records that are no longer declared in a new program versions should be removed. This could be done during garbage collection, when objects are moved/evacuated.
+* Make `BigInt` stable format independent of Tom's math library, e.g. by using LEB128/SLEB128 encoding. This requires some redesign of `bigint.rs` to be able to stream to stable memory and compute main memory allocation sizes without main memory writes.
 
 ## Related PRs
 
