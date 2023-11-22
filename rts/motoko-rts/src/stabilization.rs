@@ -102,7 +102,7 @@ where
     /// Mark the object as forwarded and record its new target address.
     fn set_forward_address(&mut self, object: S, target: T);
 
-    /// Allocate the object in the to-space by bumbing the `free` pointer.
+    /// Allocate the object in the to-space by bumping the `free` pointer.
     /// Copy its content to that target location using the encoding of the target layout.
     /// Notes:
     /// * The pointer values in the field are retained as source addresses.
