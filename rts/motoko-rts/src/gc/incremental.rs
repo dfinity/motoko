@@ -70,36 +70,29 @@ static mut LAST_ALLOCATIONS: Bytes<u64> = Bytes(0u64);
 #[cfg(feature = "ic")]
 unsafe fn should_start() -> bool {
     use self::partitioned_heap::PARTITION_SIZE;
-    use crate::memory::{ic::partitioned_memory, GENERAL_MEMORY_RESERVE};
+    use crate::constants::GB;
+    use crate::memory::ic::partitioned_memory;
+
+    const CRITICAL_HEAP_LIMIT: Bytes<u32> = Bytes(2 * GB as u32);
+    const CRITICAL_GROWTH_THRESHOLD: f64 = 0.01;
+    const MEDIUM_HEAP_LIMIT: Bytes<u32> = Bytes(GB as u32);
+    const MEDIUM_GROWTH_THRESHOLD: f64 = 0.35;
+    const LOW_GROWTH_THRESHOLD: f64 = 0.65;
 
     let heap_size = partitioned_memory::get_heap_size();
-    if heap_size.as_usize() < PARTITION_SIZE {
-        return false;
-    }
-
-    const ABSOLUTE_GROWTH_THRESHOLD: Bytes<u64> = Bytes(512 * 1024 * 1024);
+    let growth_threshold = if heap_size > CRITICAL_HEAP_LIMIT {
+        CRITICAL_GROWTH_THRESHOLD
+    } else if heap_size > MEDIUM_HEAP_LIMIT {
+        MEDIUM_GROWTH_THRESHOLD
+    } else {
+        LOW_GROWTH_THRESHOLD
+    };
 
     let current_allocations = partitioned_memory::get_total_allocations();
     debug_assert!(current_allocations >= LAST_ALLOCATIONS);
     let absolute_growth = current_allocations - LAST_ALLOCATIONS;
-    if absolute_growth > ABSOLUTE_GROWTH_THRESHOLD {
-        return true;
-    }
-
-    const CRITICAL_HEAP_LIMIT: Bytes<u32> = Bytes(
-        u32::MAX - 768 * 1024 * 1024 - GENERAL_MEMORY_RESERVE as u32 - GC_MEMORY_RESERVE as u32,
-    );
-    const CRITICAL_RELATIVE_GROWTH_THRESHOLD: f64 = 0.01;
-    const NORMAL_RELATIVE_GROWTH_THRESHOLD: f64 = 0.65;
-
-    let relative_growth_threshold = if heap_size > CRITICAL_HEAP_LIMIT {
-        CRITICAL_RELATIVE_GROWTH_THRESHOLD
-    } else {
-        NORMAL_RELATIVE_GROWTH_THRESHOLD
-    };
-
     let relative_growth = absolute_growth.0 as f64 / heap_size.as_usize() as f64;
-    relative_growth > relative_growth_threshold
+    relative_growth > growth_threshold && heap_size.as_usize() >= PARTITION_SIZE
 }
 
 #[cfg(feature = "ic")]
@@ -425,11 +418,14 @@ pub unsafe fn get_partitioned_heap() -> &'static mut PartitionedHeap {
     &mut STATE.get_mut().partitioned_heap
 }
 
+#[cfg(feature = "ic")]
+use crate::constants::MB;
+
 /// Additional memory reserve in bytes for the GC.
 /// * To allow mark bitmap allocation, i.e. max. 128 MB in 4 GB address space.
 /// * 512 MB of free space for evacuations/compactions.
 #[cfg(feature = "ic")]
-const GC_MEMORY_RESERVE: usize = (128 + 512) * 1024 * 1024;
+const GC_MEMORY_RESERVE: usize = (128 + 512) * MB;
 
 #[cfg(feature = "ic")]
 pub unsafe fn memory_reserve() -> usize {

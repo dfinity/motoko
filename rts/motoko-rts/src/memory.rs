@@ -5,12 +5,15 @@ use crate::constants::WASM_HEAP_SIZE;
 use crate::rts_trap_with;
 use crate::types::*;
 
+#[cfg(feature = "ic")]
+use crate::constants::MB;
+
 use motoko_rts_macros::ic_mem_fn;
 
 // Memory reserve in bytes ensured during update and initialization calls.
 // For use by queries and upgrade calls.
 #[cfg(feature = "ic")]
-pub(crate) const GENERAL_MEMORY_RESERVE: usize = 256 * 1024 * 1024;
+pub(crate) const GENERAL_MEMORY_RESERVE: usize = 256 * MB;
 
 /// A trait for heap allocation. RTS functions allocate in heap via this trait.
 ///
