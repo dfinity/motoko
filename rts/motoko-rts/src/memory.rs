@@ -10,7 +10,7 @@ use motoko_rts_macros::ic_mem_fn;
 // Memory reserve in bytes ensured during update and initialization calls.
 // For use by queries and upgrade calls.
 #[cfg(feature = "ic")]
-pub(crate) const MEMORY_RESERVE: usize = 256 * 1024 * 1024;
+pub(crate) const GENERAL_MEMORY_RESERVE: usize = 256 * 1024 * 1024;
 
 /// A trait for heap allocation. RTS functions allocate in heap via this trait.
 ///
