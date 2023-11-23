@@ -14,7 +14,7 @@ use crate::{
 use motoko_rts::{
     memory::alloc_array,
     stabilization::{Deserialization, Serialization},
-    types::{Array, Value, TAG_ARRAY, TAG_FWD_PTR},
+    types::{Array, Null, Obj, Value, TAG_ARRAY, TAG_FWD_PTR, TAG_NULL},
 };
 use motoko_rts_macros::{incremental_gc, non_incremental_gc};
 use oorandom::Rand32;
@@ -22,15 +22,28 @@ use oorandom::Rand32;
 pub unsafe fn test() {
     println!("Testing stabilization ...");
     reader_writer::test();
+    initialize_null_singleton();
     test_stabilization();
     reset_memory();
 }
 
-const DUMMY_NULL_SINGLETON: Value = Value::from_ptr(usize::MAX - 1);
+static mut DUMMY_NULL_SINGLETON: Null = Null {
+    header: Obj {
+        tag: TAG_NULL,
+        #[cfg(feature = "incremental_gc")]
+        forward: Value::from_scalar(0), // Temporary value, will be replaced.
+    },
+};
+
+unsafe fn initialize_null_singleton() {
+    let null_singleton = Value::from_ptr(&mut DUMMY_NULL_SINGLETON as *mut Null as usize);
+    DUMMY_NULL_SINGLETON.header.tag = TAG_NULL;
+    DUMMY_NULL_SINGLETON.header.init_forward(null_singleton);
+}
 
 #[no_mangle]
 pub fn moc_null_singleton() -> Value {
-    DUMMY_NULL_SINGLETON
+    unsafe { Value::from_ptr(&mut DUMMY_NULL_SINGLETON as *mut Null as usize) }
 }
 
 #[non_incremental_gc]
