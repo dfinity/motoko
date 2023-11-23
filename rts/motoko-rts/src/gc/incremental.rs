@@ -129,8 +129,8 @@ unsafe fn record_gc_stop<M: Memory>() {
 /// The limit on the GC increment has a fix base with a linear increase depending on the number of
 /// allocations that were performed during a running GC. The allocation-proportional term adapts
 /// to the allocation rate and helps the GC to reduce reclamation latency.
-const INCREMENT_BASE_LIMIT: usize = 3_500_000; // Increment limit without concurrent allocations.
-const INCREMENT_ALLOCATION_FACTOR: usize = 10; // Additional time factor per concurrent allocation.
+const INCREMENT_BASE_LIMIT: usize = 10_000_000; // Increment limit without concurrent allocations.
+const INCREMENT_ALLOCATION_FACTOR: usize = 35; // Additional time factor per concurrent allocation.
 
 // Performance note: Storing the phase-specific state in the enum would be nicer but it is much slower.
 #[derive(PartialEq)]
