@@ -150,7 +150,7 @@ impl Serialization {
         if tag == TAG_FWD_PTR {
             object
         } else {
-            assert!(tag != TAG_ONE_WORD_FILLER && tag != TAG_FREE_SPACE);
+            debug_assert!(tag != TAG_ONE_WORD_FILLER && tag != TAG_FREE_SPACE);
             object.forward()
         }
     }
@@ -184,7 +184,7 @@ impl GraphCopy<Value, StableValue, u32> for Serialization {
     fn set_forward_address(&mut self, object: Value, target: StableValue) {
         unsafe {
             let object = Self::resolve_gc_forwarding(object);
-            assert!(object.is_obj());
+            debug_assert!(object.is_obj());
             let fwd = object.get_ptr() as *mut FwdPtr;
             (*fwd).tag = TAG_FWD_PTR;
             (*fwd).fwd = target.deserialize();
@@ -194,7 +194,7 @@ impl GraphCopy<Value, StableValue, u32> for Serialization {
     fn copy(&mut self, object: Value) -> StableValue {
         unsafe {
             let object = Self::resolve_gc_forwarding(object);
-            assert!(object.is_obj());
+            debug_assert!(object.is_obj());
             let address = self.to_space.written_length();
             serialize(&mut self.to_space, object);
             StableValue::from_address(address)
@@ -355,7 +355,7 @@ impl<'a, M: Memory> GraphCopy<StableValue, Value, u32> for Deserialization<'a, M
     /// a partition end.
     fn scan(&mut self) {
         let tag = self.to_space.read::<Tag>();
-        assert_ne!(tag, TAG_FWD_PTR);
+        debug_assert_ne!(tag, TAG_FWD_PTR);
         match tag {
             TAG_ONE_WORD_FILLER => {}
             TAG_FREE_SPACE => {

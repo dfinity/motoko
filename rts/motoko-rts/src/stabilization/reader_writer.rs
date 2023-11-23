@@ -44,7 +44,7 @@ impl StableMemoryPage {
     }
 
     fn swap_out(&mut self) {
-        assert!(!self.is_free());
+        debug_assert!(!self.is_free());
         if self.modified {
             unsafe {
                 ic0_stable64_write(
@@ -59,10 +59,10 @@ impl StableMemoryPage {
     }
 
     fn swap_in(&mut self, page_index: u64) {
-        assert!(self.is_free());
+        debug_assert!(self.is_free());
         Self::grow_if_needed(page_index);
         self.page_index = page_index;
-        assert!(!self.modified);
+        debug_assert!(!self.modified);
         unsafe {
             ic0_stable64_read(
                 self.cached_data() as u64,
@@ -165,7 +165,7 @@ impl StableMemorySpace {
     }
 
     fn lookup(&mut self, page_index: u64) -> &mut StableMemoryPage {
-        assert!(!self.can_evict(page_index));
+        debug_assert!(!self.can_evict(page_index));
         for position in 0..self.cache.len() {
             let cached_page_index = self.cache[position].page_index;
             if cached_page_index == page_index {
@@ -188,7 +188,7 @@ impl StableMemorySpace {
     }
 
     fn chunked_access(&mut self, mode: AccessMode, main_memory_address: usize, length: usize) {
-        assert!(!self.closed);
+        debug_assert!(!self.closed);
         let mut main_memory_address = main_memory_address;
         let mut stable_memory_address = match mode {
             AccessMode::Read | AccessMode::Update => self.scan_address,
@@ -239,19 +239,19 @@ impl ScanStream for StableMemorySpace {
     }
 
     fn raw_read(&mut self, data_address: usize, length: usize) {
-        assert!(self.scan_address + length as u64 <= self.free_address);
+        debug_assert!(self.scan_address + length as u64 <= self.free_address);
         self.chunked_access(AccessMode::Read, data_address, length);
     }
 
     fn rewind(&mut self, length: usize) {
-        assert!(!self.closed);
-        assert!(length as u64 <= self.scan_address);
+        debug_assert!(!self.closed);
+        debug_assert!(length as u64 <= self.scan_address);
         self.scan_address -= length as u64;
     }
 
     fn skip(&mut self, length: usize) {
-        assert!(!self.closed);
-        assert!(self.scan_address + length as u64 <= self.free_address);
+        debug_assert!(!self.closed);
+        debug_assert!(self.scan_address + length as u64 <= self.free_address);
         self.scan_address += length as u64;
     }
 
@@ -262,7 +262,7 @@ impl ScanStream for StableMemorySpace {
     }
 
     fn raw_update(&mut self, data_address: usize, length: usize) {
-        assert!(length as u64 <= self.scan_address);
+        debug_assert!(length as u64 <= self.scan_address);
         self.scan_address -= length as u64;
         self.chunked_access(AccessMode::Update, data_address, length);
     }
@@ -282,6 +282,6 @@ impl WriteStream for StableMemorySpace {
 
 impl Drop for StableMemorySpace {
     fn drop(&mut self) {
-        assert!(self.closed);
+        debug_assert!(self.closed);
     }
 }
