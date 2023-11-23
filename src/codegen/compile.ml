@@ -4717,11 +4717,7 @@ module IC = struct
     let fi = E.add_fun env "canister_heartbeat"
       (Func.of_body env [] [] (fun env ->
         G.i (Call (nr (E.built_in env "heartbeat_exp"))) ^^
-        (* TODO(3622)
-           Until DTS is implemented for heartbeats, don't collect garbage here,
-           just record mutator_instructions and leave GC scheduling to the
-           already scheduled async message running `system` function `heartbeat` *)
-        GC.record_mutator_instructions env (* future: GC.collect_garbage env *)))
+        GC.collect_garbage env))
     in
     E.add_export env (nr {
       name = Lib.Utf8.decode "canister_heartbeat";
@@ -4734,11 +4730,7 @@ module IC = struct
     let fi = E.add_fun env "canister_global_timer"
       (Func.of_body env [] [] (fun env ->
         G.i (Call (nr (E.built_in env "timer_exp"))) ^^
-        (* TODO(3622)
-           Until DTS is implemented for timers, don't collect garbage here,
-           just record mutator_instructions and leave GC scheduling to the
-           already scheduled async message running `system` function `timer` *)
-        GC.record_mutator_instructions env (* future: GC.collect_garbage env *)))
+        GC.collect_garbage env))
     in
     E.add_export env (nr {
       name = Lib.Utf8.decode "canister_global_timer";
