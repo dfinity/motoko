@@ -22,9 +22,9 @@
 //! data types must be handled with extra care to ensure backwards compatibility.
 
 use crate::types::{
-    block_size, size_of, Tag, Value, Words, TAG_ARRAY, TAG_BIGINT, TAG_BITS32, TAG_BITS64,
-    TAG_BLOB, TAG_CONCAT, TAG_MUTBOX, TAG_OBJECT, TAG_OBJ_IND, TAG_REGION, TAG_SOME, TAG_VARIANT,
-    TRUE_VALUE,
+    block_size, size_of, Tag, Value, Words, TAG_ARRAY, TAG_ARRAY_SLICE_MIN, TAG_BIGINT, TAG_BITS32,
+    TAG_BITS64, TAG_BLOB, TAG_CONCAT, TAG_MUTBOX, TAG_OBJECT, TAG_OBJ_IND, TAG_REGION, TAG_SOME,
+    TAG_VARIANT, TRUE_VALUE,
 };
 
 use self::{
@@ -76,7 +76,9 @@ const _: () = assert!(core::mem::size_of::<StableTag>() == core::mem::size_of::<
 impl StableTag {
     fn deserialize(tag: Tag) -> StableTag {
         match tag {
-            TAG_ARRAY => StableTag::Array,
+            // During the marking phase of the incremental GC, the mutator can see
+            // array slice information in the object tag.
+            TAG_ARRAY | TAG_ARRAY_SLICE_MIN.. => StableTag::Array,
             TAG_MUTBOX => StableTag::MutBox,
             TAG_OBJECT => StableTag::Object,
             TAG_BLOB => StableTag::Blob,

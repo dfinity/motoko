@@ -133,11 +133,32 @@ impl Serialization {
     }
 
     fn is_null(field_value: Value) -> bool {
+        unsafe {
+            debug_assert!(!moc_null_singleton().is_forwarded());
+        }
         field_value.is_ptr() && field_value == unsafe { moc_null_singleton() }
     }
 
     fn encode_null() -> StableValue {
         STABLE_NULL_POINTER
+    }
+
+    /// Resolve the Brooks forwarding pointer of the incremental GC by considering potential
+    /// forwarding objects (`FwdPtr`) used in Cheney's algorithm for stabilization.
+    unsafe fn resolve_gc_forwarding(object: Value) -> Value {
+        let tag = Self::read_object_tag(object);
+        if tag == TAG_FWD_PTR {
+            object
+        } else {
+            assert!(tag != TAG_ONE_WORD_FILLER && tag != TAG_FREE_SPACE);
+            object.forward()
+        }
+    }
+    /// Read the object tag by considering potential forwarding objects (`FwdPtr`).
+    unsafe fn read_object_tag(object: Value) -> Tag {
+        // Do not call `tag()` as it dereferences the Brooks forwarding pointer of the incremental GC,
+        // which does not exist for the forwarding objects (`FwdPtr`) used by the Cheney's algorithm.
+        *(object.get_ptr() as *const Tag)
     }
 }
 
@@ -146,12 +167,10 @@ pub trait StableMemoryAccess {
 }
 
 impl GraphCopy<Value, StableValue, u32> for Serialization {
-    // TODO: Redesign `FwdPtr` to better fit the graph copying, e.g. use raw pointer than `Value` field.
     fn get_forward_address(&self, object: Value) -> Option<StableValue> {
         unsafe {
-            // Do not call `tag()` as it dereferences the Brooks forwarding pointer of the incremental GC,
-            // which does not exist for the forwarding objects (`FwdPtr`) used by the Cheney's algorithm.
-            let tag = *(object.get_ptr() as *const Tag);
+            let object = Self::resolve_gc_forwarding(object);
+            let tag = Self::read_object_tag(object);
             match tag {
                 TAG_FWD_PTR => {
                     let new_location = (*(object.get_ptr() as *mut FwdPtr)).fwd;
@@ -164,9 +183,8 @@ impl GraphCopy<Value, StableValue, u32> for Serialization {
 
     fn set_forward_address(&mut self, object: Value, target: StableValue) {
         unsafe {
-            let object = object.forward();
-            debug_assert_ne!(object.tag(), TAG_FWD_PTR);
-            debug_assert!(object.is_obj());
+            let object = Self::resolve_gc_forwarding(object);
+            assert!(object.is_obj());
             let fwd = object.get_ptr() as *mut FwdPtr;
             (*fwd).tag = TAG_FWD_PTR;
             (*fwd).fwd = target.deserialize();
@@ -175,7 +193,7 @@ impl GraphCopy<Value, StableValue, u32> for Serialization {
 
     fn copy(&mut self, object: Value) -> StableValue {
         unsafe {
-            let object = object.forward();
+            let object = Self::resolve_gc_forwarding(object);
             assert!(object.is_obj());
             let address = self.to_space.written_length();
             serialize(&mut self.to_space, object);
