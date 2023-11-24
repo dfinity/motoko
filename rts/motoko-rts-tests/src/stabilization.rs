@@ -1,3 +1,4 @@
+mod buffer_hash_map;
 mod buffered_stable_memory;
 mod reader_writer;
 mod stable_memory;
@@ -22,6 +23,7 @@ use oorandom::Rand32;
 
 pub unsafe fn test() {
     println!("Testing stabilization ...");
+    buffer_hash_map::test();
     buffered_stable_memory::test();
     reader_writer::test();
     initialize_null_singleton();

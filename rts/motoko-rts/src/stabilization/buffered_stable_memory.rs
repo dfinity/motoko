@@ -90,7 +90,7 @@ impl StableMemoryPage {
 }
 
 /// 4 MB cache capacity, 64 pages of 64 KB.
-const MAXIMUM_CACHED_PAGES: usize = 64;
+pub const MAXIMUM_CACHED_PAGES: usize = 64;
 
 /// Buffered random access to stable memory.
 /// Only to be used when no GC increment runs in between.
@@ -115,7 +115,7 @@ impl BufferedStableMemory {
         number_of_pages: usize,
         base_address: u64,
     ) -> BufferedStableMemory {
-        assert!(number_of_pages > 0 && number_of_pages < MAXIMUM_CACHED_PAGES);
+        assert!(number_of_pages > 0 && number_of_pages <= MAXIMUM_CACHED_PAGES);
         let cache_capacity = number_of_pages * PAGE_SIZE as usize;
         let cache_start = unsafe {
             let blob = alloc_blob(mem, Bytes(cache_capacity as u32));
@@ -245,6 +245,19 @@ impl BufferedStableMemory {
             main_memory_address,
             length,
         );
+    }
+
+    pub fn clear(&mut self, stable_memory_offset: u64, length: u64) {
+        const CHUNK_SIZE: usize = 1024;
+        let empty_chunk = [0u8; CHUNK_SIZE];
+        let chunk_address = &empty_chunk as *const u8 as usize;
+        let mut position = stable_memory_offset;
+        let end = stable_memory_offset + length;
+        while position < end {
+            let size = min(end - position, CHUNK_SIZE as u64);
+            self.raw_write(position, chunk_address, size as usize);
+            position += size as u64;
+        }
     }
 }
 

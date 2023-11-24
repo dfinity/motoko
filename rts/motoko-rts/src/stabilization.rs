@@ -16,6 +16,7 @@
 //!  
 //! See `GraphCopyStabilization.md` for the stable format specification and the employed algorithm.
 
+pub mod buffered_hash_map;
 pub mod buffered_stable_memory;
 
 use motoko_rts_macros::ic_mem_fn;

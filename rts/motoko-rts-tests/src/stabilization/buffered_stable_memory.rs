@@ -2,7 +2,7 @@ use std::{array::from_fn, mem::size_of};
 
 use motoko_rts::{
     constants::WORD_SIZE,
-    stabilization::buffered_stable_memory::BufferedStableMemory,
+    stabilization::buffered_stable_memory::{BufferedStableMemory, MAXIMUM_CACHED_PAGES},
     types::{Blob, Words},
 };
 use oorandom::Rand32;
@@ -275,7 +275,7 @@ fn test_randomized_read_write() {
     const RANDOM_SEED: u64 = 4711;
     let mut random = Rand32::new(RANDOM_SEED);
     let mut series = vec![];
-    let cached_pages = random.rand_range(1..64) as usize;
+    let cached_pages = random.rand_range(1..MAXIMUM_CACHED_PAGES as u32) as usize;
     let stable_start = random.rand_range(0..1000) as u64;
     let mut memory = TestMemory::new(BUFFER_SIZE);
     let mut buffer = BufferedStableMemory::open(&mut memory, cached_pages, stable_start);
