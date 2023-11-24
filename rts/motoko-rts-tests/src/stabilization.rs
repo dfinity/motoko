@@ -1,3 +1,4 @@
+mod buffered_stable_memory;
 mod reader_writer;
 mod stable_memory;
 
@@ -21,6 +22,7 @@ use oorandom::Rand32;
 
 pub unsafe fn test() {
     println!("Testing stabilization ...");
+    buffered_stable_memory::test();
     reader_writer::test();
     initialize_null_singleton();
     test_stabilization();
