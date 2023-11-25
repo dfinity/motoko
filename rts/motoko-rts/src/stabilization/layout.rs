@@ -121,6 +121,10 @@ impl StableValue {
         pointer.wrapping_add(1)
     }
 
+    pub const fn from_raw(value: u64) -> Self {
+        StableValue(value)
+    }
+
     pub fn from_address(address: u64) -> Self {
         StableValue(Self::skew(address))
     }

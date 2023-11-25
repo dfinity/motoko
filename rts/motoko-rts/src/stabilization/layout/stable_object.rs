@@ -1,6 +1,6 @@
 use crate::{
     stabilization::reader_writer::{ScanStream, StableMemorySpace, WriteStream},
-    types::{Obj, Object, Tag, Value, TAG_CLOSURE, TAG_OBJECT},
+    types::{Obj, Object, Value, TAG_OBJECT},
 };
 
 use super::{Serializer, StableValue, StaticScanner};
@@ -58,16 +58,6 @@ impl StaticScanner<Value> for Object {
     }
 }
 
-const NON_STABLE_OBJECT_TAGS: [Tag; 1] = [TAG_CLOSURE];
-
-fn has_non_stable_type(old_field: Value) -> bool {
-    unsafe { old_field.is_ptr() && NON_STABLE_OBJECT_TAGS.contains(&old_field.tag()) }
-}
-
-// Dummy value used for non-stable fields are potentially contained in stable records because of structural sub-typing.
-// Must be a non-skewed value such that the GC also ignores this value.
-const DUMMY_VALUE: StableValue = StableValue(0);
-
 impl Serializer<Object> for StableObject {
     unsafe fn serialize_static_part(main_object: *mut Object) -> Self {
         StableObject {
@@ -94,16 +84,9 @@ impl Serializer<Object> for StableObject {
     ) {
         for _ in 0..stable_object.size {
             let old_value = context.to_space().read::<StableValue>();
-            // Due to structural subtyping, a stable record (object) can dynamically contain fields that
-            // have a non-stable type. The value is not accessible in the new program version.
-            // Therefore, the content of these fields can serialized with a dummy value that is also ignored by the GC.
             // On a longer term, the GC could remove unnecessary fields (during evacuation) that have been
             // declared in old program versions but which name does no longer exist in a new program version.
-            let new_value = if has_non_stable_type(old_value.deserialize()) {
-                DUMMY_VALUE
-            } else {
-                translate(context, old_value)
-            };
+            let new_value = translate(context, old_value);
             context.to_space().update(&new_value);
         }
     }
