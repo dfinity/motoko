@@ -32,8 +32,8 @@ use crate::{
     },
     stable_mem::{self, ic0_stable64_read, ic0_stable64_write, PAGE_SIZE},
     types::{
-        size_of, Bytes, FreeSpace, FwdPtr, Obj, Tag, Value, Words, TAG_FREE_SPACE, TAG_FWD_PTR,
-        TAG_ONE_WORD_FILLER,
+        size_of, Bytes, FreeSpace, FwdPtr, Obj, Tag, Value, Words, TAG_CLOSURE, TAG_FREE_SPACE,
+        TAG_FWD_PTR, TAG_ONE_WORD_FILLER,
     },
 };
 
@@ -120,6 +120,13 @@ where
     fn scan(&mut self);
 }
 
+const NON_STABLE_OBJECT_TAGS: [Tag; 1] = [TAG_CLOSURE];
+
+// Dummy value used for non-stable objects that are potentially reachable from
+// stable variable because of structural subtyping or `Any`-subtyping.
+// Must be a non-skewed value such that the GC also ignores this value.
+const DUMMY_VALUE: StableValue = StableValue::from_raw(0);
+
 pub struct Serialization {
     to_space: StableMemorySpace,
 }
@@ -162,6 +169,10 @@ impl Serialization {
         // Do not call `tag()` as it dereferences the Brooks forwarding pointer of the incremental GC,
         // which does not exist for the forwarding objects (`FwdPtr`) used by the Cheney's algorithm.
         *(object.get_ptr() as *const Tag)
+    }
+
+    fn has_non_stable_type(old_field: Value) -> bool {
+        unsafe { old_field.is_ptr() && NON_STABLE_OBJECT_TAGS.contains(&old_field.tag()) }
     }
 }
 
@@ -210,7 +221,14 @@ impl GraphCopy<Value, StableValue, u32> for Serialization {
             if Self::is_null(old_value) {
                 Self::encode_null()
             } else if old_value.is_ptr() {
-                context.evacuate(old_value)
+                // Due to structural subtyping or `Any`-subtyping, a non-stable object (such as a closure) may be
+                // be dynamically reachable from a stable varibale. The value is not accessible in the new program version.
+                // Therefore, the content of these fields can serialized with a dummy value that is also ignored by the GC.
+                if Self::has_non_stable_type(old_value) {
+                    DUMMY_VALUE
+                } else {
+                    context.evacuate(old_value)
+                }
             } else {
                 original
             }

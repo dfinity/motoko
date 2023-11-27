@@ -55,7 +55,7 @@ The stable format is defined in `stabilization/layout.rs` and its sub-modules.
 * Incremental GC: Serialization needs to consider Brooks forwarding pointers (not to be confused with the Cheney's forwarding information), while deserialization can deal with partitioned heap that can have internal fragmentation (free space at partition ends).
 
 ## Allocator Rules
-The destabilzation uses bulk-copying to main memory which is quite invasive. For correctness, the following invariants need to be met:
+The destabilization uses bulk-copying to main memory which is quite invasive. For correctness, the following invariants need to be met:
 * The main memory allocator used during deserialization must not write to the heap (only compute the target addresses).
 * The allocator must yield monotonically increasing addresses during deserialization. Free space gaps are allowed to complete partitions.
 

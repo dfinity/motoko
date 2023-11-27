@@ -90,7 +90,7 @@ pub struct StableMemorySpace {
     /// The pointers used in the serialized stable memory layout are
     /// relative to this start address of the to-space.
     base_address: u64,
-    /// Used fore reading and updating.
+    /// Used for reading and updating.
     scan_address: u64,
     /// Used for writing.
     free_address: u64,

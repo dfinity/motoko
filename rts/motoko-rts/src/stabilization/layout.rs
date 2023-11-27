@@ -11,10 +11,11 @@
 //! a 32-bit version, while the downgrade from 64-bit to a 32-bit program
 //! is not supported and detected.
 //!
-//! Each object uses a `StableTag` as header an is followed by
+//! Each object uses a `StableTag` as header and is followed by
 //! the object payload as outlined in the corresponding Rust structs.
 //! Some objects, such as `StableArray`, `StableObject`, `StableBlob`,
-//! and `StableBigNum`
+//! and `StableBigNum` have a dynamic payload body in an addition to a static
+//! header.
 //!
 //! Not all heap memory object types are stabilized because some
 //! of them are not stable types. New object types can be added
@@ -119,6 +120,10 @@ impl StableValue {
 
     fn unskew(pointer: u64) -> u64 {
         pointer.wrapping_add(1)
+    }
+
+    pub const fn from_raw(value: u64) -> Self {
+        StableValue(value)
     }
 
     pub fn from_address(address: u64) -> Self {
