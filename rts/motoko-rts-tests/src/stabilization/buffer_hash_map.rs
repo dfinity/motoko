@@ -29,14 +29,14 @@ pub unsafe fn test() {
 fn test_empty_hash_map(buffer: &mut BufferedStableMemory) {
     println!("    Testing empty hash map ...");
     let mut hash_map = BufferedHashMap::<usize, u64>::new(buffer);
-    assert!(hash_map.get(0).is_none());
+    assert!(!hash_map.contains(buffer, 0));
 }
 
 fn test_single_entry(buffer: &mut BufferedStableMemory) {
     println!("    Testing single entry ...");
     let mut hash_map = BufferedHashMap::<usize, u64>::new(buffer);
-    hash_map.add(123, 456);
-    assert_eq!(hash_map.get(123).unwrap(), 456);
+    hash_map.add(buffer, 123, 456);
+    assert_eq!(hash_map.get(buffer, 123).unwrap(), 456);
 }
 
 fn test_multiple_entries(buffer: &mut BufferedStableMemory) {
@@ -44,10 +44,10 @@ fn test_multiple_entries(buffer: &mut BufferedStableMemory) {
     let mut hash_map = BufferedHashMap::<usize, u64>::new(buffer);
     const AMOUNT: usize = 10_000;
     for number in 0..AMOUNT {
-        hash_map.add(number, (number * number) as u64);
+        hash_map.add(buffer, number, (number * number) as u64);
     }
     for number in 0..AMOUNT {
-        assert_eq!(hash_map.get(number).unwrap(), (number * number) as u64);
+        assert_eq!(hash_map.get(buffer, number).unwrap(), (number * number) as u64);
     }
 }
 
@@ -61,9 +61,9 @@ fn test_randomized_entries(buffer: &mut BufferedStableMemory, amount: usize) {
         let key = random.rand_u32() as u64 * random.rand_u32() as u64;
         let value = random.rand_u32() as usize;
         numbers.push((key, value));
-        hash_map.add(key, value);
+        hash_map.add(buffer, key, value);
     }
     for (key, value) in numbers {
-        assert_eq!(hash_map.get(key).unwrap(), value);
+        assert_eq!(hash_map.get(buffer, key).unwrap(), value);
     }
 }

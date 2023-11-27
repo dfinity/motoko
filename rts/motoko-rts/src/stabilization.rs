@@ -18,6 +18,7 @@
 
 pub mod buffered_hash_map;
 pub mod buffered_stable_memory;
+pub mod traversal_stack;
 
 use motoko_rts_macros::ic_mem_fn;
 
@@ -47,7 +48,7 @@ mod compatibility;
 #[cfg(feature = "ic")]
 mod metadata;
 
-mod layout;
+pub mod layout;
 
 pub mod reader_writer;
 

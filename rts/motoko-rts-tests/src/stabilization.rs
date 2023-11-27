@@ -2,6 +2,7 @@ mod buffer_hash_map;
 mod buffered_stable_memory;
 mod reader_writer;
 mod stable_memory;
+mod traversal_stack;
 
 use crate::{
     gc::{
@@ -26,6 +27,7 @@ pub unsafe fn test() {
     buffer_hash_map::test();
     buffered_stable_memory::test();
     reader_writer::test();
+    traversal_stack::test();
     initialize_null_singleton();
     test_stabilization();
     reset_memory();

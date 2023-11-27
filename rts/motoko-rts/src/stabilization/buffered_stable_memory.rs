@@ -13,6 +13,7 @@ use core::{
 };
 
 use crate::{
+    barriers::allocation_barrier,
     mem_utils::memcpy_bytes,
     memory::{alloc_blob, Memory},
     stable_mem::{ic0_stable64_read, ic0_stable64_write, PAGE_SIZE},
@@ -113,6 +114,7 @@ impl BufferedStableMemory {
         let cache_capacity = NUMBER_OF_CACHED_PAGES * PAGE_SIZE as usize;
         let cache_start = unsafe {
             let blob = alloc_blob(mem, Bytes(cache_capacity as u32));
+            allocation_barrier(blob);
             blob.as_blob_mut().payload_addr()
         };
         let cache = from_fn(|index| {

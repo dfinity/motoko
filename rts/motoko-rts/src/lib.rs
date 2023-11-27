@@ -38,6 +38,7 @@ mod mem_utils;
 pub mod memory;
 pub mod principal_id;
 pub mod region;
+pub mod simple_stabilization;
 pub mod stabilization;
 mod stable_mem;
 mod static_checks;

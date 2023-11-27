@@ -52,8 +52,7 @@ impl<K: Hashable, V> TableElement<K, V> {
     }
 }
 
-pub struct BufferedHashMap<'a, K: Hashable, V> {
-    buffer: &'a mut BufferedStableMemory,
+pub struct BufferedHashMap<K: Hashable, V> {
     table_length: usize,
     stored_entries: usize,
     // Avoids compiler on `K` and `V` because they are not used in field declaration.
@@ -66,42 +65,42 @@ const INITIAL_TABLE_LENGTH: usize = 1024;
 const GROWTH_FACTOR: usize = 2;
 const OCCUPATION_THRESHOLD_PERCENT: usize = 65;
 
-impl<'a, K: Hashable, V> BufferedHashMap<'a, K, V> {
+impl<K: Hashable, V> BufferedHashMap<K, V> {
     /// Create a new hash map based on the buffered stable memory.
-    pub fn new(buffer: &'a mut BufferedStableMemory) -> BufferedHashMap<'a, K, V> {
+    pub fn new(buffer: &mut BufferedStableMemory) -> BufferedHashMap<K, V> {
         let mut hash_map = BufferedHashMap {
-            buffer,
             table_length: INITIAL_TABLE_LENGTH,
             stored_entries: 0,
             key_type: PhantomData,
             value_type: PhantomData,
         };
-        hash_map.initialize(0..INITIAL_TABLE_LENGTH);
+        hash_map.initialize(buffer, 0..INITIAL_TABLE_LENGTH);
         hash_map
     }
 
-    fn initialize(&mut self, range: Range<usize>) {
+    fn initialize(&mut self, buffer: &mut BufferedStableMemory, range: Range<usize>) {
         let empty = TableElement::empty();
         for index in range {
-            self.write_element(index, &empty);
+            self.write_element(buffer, index, &empty);
         }
     }
 
     /// Add a new key-value pair. The key must not yet exist.
-    pub fn add(&mut self, key: K, value: V) {
+    pub fn add(&mut self, buffer: &mut BufferedStableMemory, key: K, value: V) {
         debug_assert!(key != K::nil());
         if self.stored_entries >= self.table_length / 100 * OCCUPATION_THRESHOLD_PERCENT {
-            self.grow();
+            self.grow(buffer);
         }
         let index = self.hash(key);
-        let element = self.read_element(index);
+        let element = self.read_element(buffer, index);
         debug_assert!(element.entry.key != key); // Key must not yet exist.
         let next_collision = if element.entry.key != K::nil() {
-            self.move_collision(index)
+            self.move_collision(buffer, index)
         } else {
             NO_COLLISION
         };
         self.write_element(
+            buffer,
             index,
             &TableElement {
                 entry: HashEntry { key, value },
@@ -111,16 +110,16 @@ impl<'a, K: Hashable, V> BufferedHashMap<'a, K, V> {
         self.stored_entries += 1;
     }
 
-    fn grow(&mut self) {
+    fn grow(&mut self, buffer: &mut BufferedStableMemory) {
         let old_length = self.table_length;
         let new_length = self.table_length * GROWTH_FACTOR;
         // Backup all existing elements in additional space.
         let backup_start = self.element_offset(new_length);
         let mut backup_end = backup_start;
         for index in 0..old_length {
-            let element = self.read_element(index);
+            let element = self.read_element(buffer, index);
             if element.entry.key != K::nil() {
-                self.buffer.write(backup_end, &element.entry);
+                buffer.write(backup_end, &element.entry);
                 backup_end += size_of::<HashEntry<K, V>>() as u64;
             } else {
                 debug_assert_eq!(element.next_collision, NO_COLLISION);
@@ -132,13 +131,13 @@ impl<'a, K: Hashable, V> BufferedHashMap<'a, K, V> {
         );
         // Initialize new larger hash table.
         self.table_length = new_length;
-        self.initialize(0..new_length);
+        self.initialize(buffer, 0..new_length);
         self.stored_entries = 0;
         // Re-insert and rehash all backed up elements.
         let mut read_offset = backup_start;
         while read_offset < backup_end {
-            let entry = self.buffer.read::<HashEntry<K, V>>(read_offset);
-            self.add(entry.key, entry.value);
+            let entry = buffer.read::<HashEntry<K, V>>(read_offset);
+            self.add(buffer, entry.key, entry.value);
             read_offset += size_of::<HashEntry<K, V>>() as u64;
         }
         debug_assert_eq!(
@@ -146,27 +145,27 @@ impl<'a, K: Hashable, V> BufferedHashMap<'a, K, V> {
             backup_end - backup_start
         );
         let backup_length = backup_end - backup_start;
-        self.buffer.clear(backup_start, backup_length);
+        buffer.clear(backup_start, backup_length);
     }
 
-    fn move_collision(&mut self, index: usize) -> usize {
+    fn move_collision(&mut self, buffer: &mut BufferedStableMemory, index: usize) -> usize {
         let mut free = (index + 1) % self.table_length;
-        while free != index && self.read_key(free) != K::nil() {
+        while free != index && self.read_key(buffer, free) != K::nil() {
             free = (free + 1) % self.table_length;
         }
-        debug_assert!(self.read_key(free) == K::nil()); // Free element must exist in a non-full table.
-        let element = self.read_element(index);
-        self.write_element(free, &element);
+        debug_assert!(self.read_key(buffer, free) == K::nil()); // Free element must exist in a non-full table.
+        let element = self.read_element(buffer, index);
+        self.write_element(buffer, free, &element);
         free
     }
 
     /// Retrieve the value for a key, if the key exists. Returns `None` if the key is absent.
-    pub fn get(&mut self, key: K) -> Option<V> {
+    pub fn get(&self, buffer: &mut BufferedStableMemory, key: K) -> Option<V> {
         debug_assert!(key != K::nil());
         let index = self.hash(key);
-        let mut element = self.read_element(index);
+        let mut element = self.read_element(buffer, index);
         while element.entry.key != key && element.next_collision != NO_COLLISION {
-            element = self.read_element(element.next_collision);
+            element = self.read_element(buffer, element.next_collision);
         }
         if element.entry.key == key {
             Some(element.entry.value)
@@ -175,20 +174,29 @@ impl<'a, K: Hashable, V> BufferedHashMap<'a, K, V> {
         }
     }
 
-    fn read_key(&mut self, index: usize) -> K {
-        self.read_element(index).entry.key
+    pub fn contains(&mut self, buffer: &mut BufferedStableMemory, key: K) -> bool {
+        self.get(buffer, key).is_some()
     }
 
-    fn read_element(&mut self, index: usize) -> TableElement<K, V> {
-        debug_assert!(index < self.table_length);
-        let offset = self.element_offset(index);
-        self.buffer.read(offset)
+    fn read_key(&self, buffer: &mut BufferedStableMemory, index: usize) -> K {
+        self.read_element(buffer, index).entry.key
     }
 
-    fn write_element(&mut self, index: usize, element: &TableElement<K, V>) {
+    fn read_element(&self, buffer: &mut BufferedStableMemory, index: usize) -> TableElement<K, V> {
         debug_assert!(index < self.table_length);
         let offset = self.element_offset(index);
-        self.buffer.write(offset, element);
+        buffer.read(offset)
+    }
+
+    fn write_element(
+        &mut self,
+        buffer: &mut BufferedStableMemory,
+        index: usize,
+        element: &TableElement<K, V>,
+    ) {
+        debug_assert!(index < self.table_length);
+        let offset = self.element_offset(index);
+        buffer.write(offset, element);
     }
 
     fn element_offset(&self, index: usize) -> u64 {
@@ -202,6 +210,7 @@ impl<'a, K: Hashable, V> BufferedHashMap<'a, K, V> {
     }
 }
 
+// TODO: Remove these implementations, only used for RTS testing.
 impl Hashable for usize {
     fn nil() -> Self {
         usize::MAX
