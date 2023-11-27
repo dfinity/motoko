@@ -5,8 +5,11 @@
 //! Dynamic growing of the hash table on defined occupation threshold.
 //! Hash collisions are handled by inlined linked lists.
 //!
-//! Note: The underlying buffered stable memory must be page-wise disjoint to other
-//! buffered stable memory used for the object serialization or deserialization.
+//! Note: Use a common stable buffered memory for this hash map and stabilization/
+//! destabilization. Otherwise, there may be stable memory inconsistencies due to
+//! cache incoherences (e.g. changes not visible because they are cached in the
+//! other memory, or unwanted overwrites if same page is independently modified in
+//! different caches).
 
 use core::{
     marker::PhantomData,
@@ -15,9 +18,7 @@ use core::{
     usize,
 };
 
-use crate::memory::Memory;
-
-use super::buffered_stable_memory::{BufferedStableMemory, MAXIMUM_CACHED_PAGES};
+use super::buffered_stable_memory::BufferedStableMemory;
 
 const NO_COLLISION: usize = usize::MAX;
 
@@ -51,8 +52,8 @@ impl<K: Hashable, V> TableElement<K, V> {
     }
 }
 
-pub struct BufferedHashMap<K: Hashable, V> {
-    buffer: BufferedStableMemory,
+pub struct BufferedHashMap<'a, K: Hashable, V> {
+    buffer: &'a mut BufferedStableMemory,
     table_length: usize,
     stored_entries: usize,
     // Avoids compiler on `K` and `V` because they are not used in field declaration.
@@ -65,9 +66,9 @@ const INITIAL_TABLE_LENGTH: usize = 1024;
 const GROWTH_FACTOR: usize = 2;
 const OCCUPATION_THRESHOLD_PERCENT: usize = 65;
 
-impl<K: Hashable, V> BufferedHashMap<K, V> {
-    pub fn new<M: Memory>(mem: &mut M, stable_base_address: u64) -> BufferedHashMap<K, V> {
-        let buffer = BufferedStableMemory::open(mem, MAXIMUM_CACHED_PAGES, stable_base_address);
+impl<'a, K: Hashable, V> BufferedHashMap<'a, K, V> {
+    /// Create a new hash map based on the buffered stable memory.
+    pub fn new(buffer: &'a mut BufferedStableMemory) -> BufferedHashMap<'a, K, V> {
         let mut hash_map = BufferedHashMap {
             buffer,
             table_length: INITIAL_TABLE_LENGTH,
@@ -79,12 +80,6 @@ impl<K: Hashable, V> BufferedHashMap<K, V> {
         hash_map
     }
 
-    pub fn free(&mut self) {
-        let table_size = self.element_offset(self.table_length);
-        self.buffer.clear(0, table_size);
-        self.buffer.close();
-    }
-
     fn initialize(&mut self, range: Range<usize>) {
         let empty = TableElement::empty();
         for index in range {
@@ -92,6 +87,7 @@ impl<K: Hashable, V> BufferedHashMap<K, V> {
         }
     }
 
+    /// Add a new key-value pair. The key must not yet exist.
     pub fn add(&mut self, key: K, value: V) {
         debug_assert!(key != K::nil());
         if self.stored_entries >= self.table_length / 100 * OCCUPATION_THRESHOLD_PERCENT {
@@ -164,15 +160,19 @@ impl<K: Hashable, V> BufferedHashMap<K, V> {
         free
     }
 
-    pub fn get(&mut self, key: K) -> V {
+    /// Retrieve the value for a key, if the key exists. Returns `None` if the key is absent.
+    pub fn get(&mut self, key: K) -> Option<V> {
         debug_assert!(key != K::nil());
         let index = self.hash(key);
         let mut element = self.read_element(index);
         while element.entry.key != key && element.next_collision != NO_COLLISION {
             element = self.read_element(element.next_collision);
         }
-        assert!(element.entry.key == key); // Key must exist.
-        element.entry.value
+        if element.entry.key == key {
+            Some(element.entry.value)
+        } else {
+            None
+        }
     }
 
     fn read_key(&mut self, index: usize) -> K {

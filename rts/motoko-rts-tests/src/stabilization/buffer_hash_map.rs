@@ -2,7 +2,9 @@ use std::mem::size_of;
 
 use motoko_rts::{
     constants::WORD_SIZE,
-    stabilization::buffered_hash_map::BufferedHashMap,
+    stabilization::{
+        buffered_hash_map::BufferedHashMap, buffered_stable_memory::BufferedStableMemory,
+    },
     types::{Blob, Words},
 };
 use oorandom::Rand32;
@@ -13,51 +15,47 @@ const BUFFER_SIZE: Words<u32> = Words((4 * 1024 * 1024 + size_of::<Blob>() as u3
 
 pub unsafe fn test() {
     println!("  Testing buffered hash map ...");
-    test_empty_hash_map();
-    test_single_entry();
-    test_multiple_entries();
-    test_randomized_entries(1000);
-    test_randomized_entries(10_000);
-    test_randomized_entries(100_000);
+    let mut memory = TestMemory::new(BUFFER_SIZE);
+    let mut buffer = BufferedStableMemory::open(&mut memory, 0);
+    test_empty_hash_map(&mut buffer);
+    test_single_entry(&mut buffer);
+    test_multiple_entries(&mut buffer);
+    test_randomized_entries(&mut buffer, 1000);
+    test_randomized_entries(&mut buffer, 10_000);
+    test_randomized_entries(&mut buffer, 100_000);
+    buffer.close();
 }
 
-fn test_empty_hash_map() {
+fn test_empty_hash_map(buffer: &mut BufferedStableMemory) {
     println!("    Testing empty hash map ...");
-    let mut memory = TestMemory::new(BUFFER_SIZE);
-    let mut hash_map = BufferedHashMap::<usize, u64>::new(&mut memory, 0);
-    hash_map.free();
+    let mut hash_map = BufferedHashMap::<usize, u64>::new(buffer);
+    assert!(hash_map.get(0).is_none());
 }
 
-fn test_single_entry() {
+fn test_single_entry(buffer: &mut BufferedStableMemory) {
     println!("    Testing single entry ...");
-    let mut memory = TestMemory::new(BUFFER_SIZE);
-    let mut hash_map = BufferedHashMap::<usize, u64>::new(&mut memory, 0);
+    let mut hash_map = BufferedHashMap::<usize, u64>::new(buffer);
     hash_map.add(123, 456);
-    assert_eq!(hash_map.get(123), 456);
-    hash_map.free();
+    assert_eq!(hash_map.get(123).unwrap(), 456);
 }
 
-fn test_multiple_entries() {
+fn test_multiple_entries(buffer: &mut BufferedStableMemory) {
     println!("    Testing multiple entries ...");
-    let mut memory = TestMemory::new(BUFFER_SIZE);
-    let mut hash_map = BufferedHashMap::<usize, u64>::new(&mut memory, 0);
+    let mut hash_map = BufferedHashMap::<usize, u64>::new(buffer);
     const AMOUNT: usize = 10_000;
     for number in 0..AMOUNT {
         hash_map.add(number, (number * number) as u64);
     }
     for number in 0..AMOUNT {
-        assert_eq!(hash_map.get(number), (number * number) as u64);
+        assert_eq!(hash_map.get(number).unwrap(), (number * number) as u64);
     }
-    hash_map.free();
 }
 
-fn test_randomized_entries(amount: usize) {
+fn test_randomized_entries(buffer: &mut BufferedStableMemory, amount: usize) {
     println!("    Testing {amount} randomized entries ...");
     const RANDOM_SEED: u64 = 4711;
     let mut random = Rand32::new(RANDOM_SEED);
-    let mut memory = TestMemory::new(BUFFER_SIZE);
-    let mut hash_map =
-        BufferedHashMap::<u64, usize>::new(&mut memory, random.rand_range(0..1024) as u64);
+    let mut hash_map = BufferedHashMap::<u64, usize>::new(buffer);
     let mut numbers = vec![];
     for _ in 0..amount {
         let key = random.rand_u32() as u64 * random.rand_u32() as u64;
@@ -66,7 +64,6 @@ fn test_randomized_entries(amount: usize) {
         hash_map.add(key, value);
     }
     for (key, value) in numbers {
-        assert_eq!(hash_map.get(key), value);
+        assert_eq!(hash_map.get(key).unwrap(), value);
     }
-    hash_map.free();
 }

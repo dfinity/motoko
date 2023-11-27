@@ -90,7 +90,7 @@ impl StableMemoryPage {
 }
 
 /// 4 MB cache capacity, 64 pages of 64 KB.
-pub const MAXIMUM_CACHED_PAGES: usize = 64;
+pub const NUMBER_OF_CACHED_PAGES: usize = 64;
 
 /// Buffered random access to stable memory.
 /// Only to be used when no GC increment runs in between.
@@ -98,8 +98,7 @@ pub struct BufferedStableMemory {
     /// The offsets used for accessing the buffer are relative
     /// this start address in stable memory.
     base_address: u64,
-    number_of_pages: usize,
-    cache: [StableMemoryPage; MAXIMUM_CACHED_PAGES],
+    cache: [StableMemoryPage; NUMBER_OF_CACHED_PAGES],
     closed: bool,
 }
 
@@ -110,28 +109,18 @@ enum AccessMode {
 }
 
 impl BufferedStableMemory {
-    pub fn open<M: Memory>(
-        mem: &mut M,
-        number_of_pages: usize,
-        base_address: u64,
-    ) -> BufferedStableMemory {
-        assert!(number_of_pages > 0 && number_of_pages <= MAXIMUM_CACHED_PAGES);
-        let cache_capacity = number_of_pages * PAGE_SIZE as usize;
+    pub fn open<M: Memory>(mem: &mut M, base_address: u64) -> BufferedStableMemory {
+        let cache_capacity = NUMBER_OF_CACHED_PAGES * PAGE_SIZE as usize;
         let cache_start = unsafe {
             let blob = alloc_blob(mem, Bytes(cache_capacity as u32));
             blob.as_blob_mut().payload_addr()
         };
         let cache = from_fn(|index| {
-            let data = if index < number_of_pages {
-                unsafe { cache_start.add(index * PAGE_SIZE as usize) }
-            } else {
-                null_mut()
-            };
+            let data = unsafe { cache_start.add(index * PAGE_SIZE as usize) };
             StableMemoryPage::new(data)
         });
         BufferedStableMemory {
             base_address,
-            number_of_pages,
             cache,
             closed: false,
         }
@@ -150,7 +139,7 @@ impl BufferedStableMemory {
         let mut least_recently_used = 0;
         let mut least_hits = usize::MAX;
         // TODO: Optimize: Use a faster lookup than linear search.
-        for position in 0..self.number_of_pages {
+        for position in 0..NUMBER_OF_CACHED_PAGES {
             if self.cache[position].page_index == page_index {
                 return &mut self.cache[position];
             }

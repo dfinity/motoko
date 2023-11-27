@@ -2,7 +2,7 @@ use std::{array::from_fn, mem::size_of};
 
 use motoko_rts::{
     constants::WORD_SIZE,
-    stabilization::buffered_stable_memory::{BufferedStableMemory, MAXIMUM_CACHED_PAGES},
+    stabilization::buffered_stable_memory::BufferedStableMemory,
     types::{Blob, Words},
 };
 use oorandom::Rand32;
@@ -10,8 +10,6 @@ use oorandom::Rand32;
 use crate::{memory::TestMemory, stabilization::stable_memory::ic0_stable64_read};
 
 const BUFFER_SIZE: Words<u32> = Words((4 * 1024 * 1024 + size_of::<Blob>() as u32) / WORD_SIZE);
-
-const CACHED_PAGES: usize = 2;
 
 pub unsafe fn test() {
     println!("  Testing buffered stable memory ...");
@@ -27,14 +25,14 @@ pub unsafe fn test() {
 fn test_empy_reader_writer() {
     println!("    Testing empty buffer ...");
     let mut memory = TestMemory::new(BUFFER_SIZE);
-    let mut buffer = BufferedStableMemory::open(&mut memory, CACHED_PAGES, 0);
+    let mut buffer = BufferedStableMemory::open(&mut memory, 0);
     buffer.close();
 }
 
 fn test_single_read_write() {
     println!("    Testing single read write ...");
     let mut memory = TestMemory::new(BUFFER_SIZE);
-    let mut buffer = BufferedStableMemory::open(&mut memory, CACHED_PAGES, 0);
+    let mut buffer = BufferedStableMemory::open(&mut memory, 0);
     const NUMBER: u64 = 1234567890;
     const OFFSET: u64 = 7;
     buffer.write(OFFSET, &NUMBER);
@@ -42,7 +40,7 @@ fn test_single_read_write() {
     assert_eq!(result, NUMBER);
     buffer.close();
     memory = TestMemory::new(BUFFER_SIZE);
-    buffer = BufferedStableMemory::open(&mut memory, CACHED_PAGES, 0);
+    buffer = BufferedStableMemory::open(&mut memory, 0);
     let result = buffer.read::<u64>(OFFSET);
     assert_eq!(result, NUMBER);
     buffer.close();
@@ -51,7 +49,7 @@ fn test_single_read_write() {
 fn test_multiple_read_write() {
     println!("    Testing multiple read write ...");
     let mut memory = TestMemory::new(BUFFER_SIZE);
-    let mut buffer = BufferedStableMemory::open(&mut memory, CACHED_PAGES, 0);
+    let mut buffer = BufferedStableMemory::open(&mut memory, 0);
     const AMOUNT: usize = 100_000;
     let mut offset = 0u64;
     for number in 0..AMOUNT {
@@ -66,7 +64,7 @@ fn test_multiple_read_write() {
     }
     buffer.close();
     memory = TestMemory::new(BUFFER_SIZE);
-    buffer = BufferedStableMemory::open(&mut memory, CACHED_PAGES, 0);
+    buffer = BufferedStableMemory::open(&mut memory, 0);
     offset = 0;
     for number in 0..AMOUNT {
         let output = buffer.read::<usize>(offset);
@@ -79,7 +77,7 @@ fn test_multiple_read_write() {
 fn test_interleaved_read_write() {
     println!("    Testing interleaved read write ...");
     let mut memory = TestMemory::new(BUFFER_SIZE);
-    let mut buffer = BufferedStableMemory::open(&mut memory, CACHED_PAGES, 0);
+    let mut buffer = BufferedStableMemory::open(&mut memory, 0);
     const AMOUNT: usize = 100_000;
     let mut offset = 0u64;
     for counter in 0..AMOUNT {
@@ -91,7 +89,7 @@ fn test_interleaved_read_write() {
     }
     buffer.close();
     memory = TestMemory::new(BUFFER_SIZE);
-    buffer = BufferedStableMemory::open(&mut memory, CACHED_PAGES, 0);
+    buffer = BufferedStableMemory::open(&mut memory, 0);
     offset = 0;
     for counter in 0..AMOUNT {
         let input = (counter, counter * 2, counter * 3);
@@ -107,7 +105,7 @@ fn test_bulk_read_write() {
     const LENGTH: usize = 99_999;
     let input: [u8; LENGTH] = from_fn(|index| index as u8);
     let mut memory = TestMemory::new(BUFFER_SIZE);
-    let mut buffer = BufferedStableMemory::open(&mut memory, CACHED_PAGES, 0);
+    let mut buffer = BufferedStableMemory::open(&mut memory, 0);
     const OFFSET: u64 = 123;
     buffer.write(OFFSET, &input);
     let mut output = [0u8; LENGTH];
@@ -115,7 +113,7 @@ fn test_bulk_read_write() {
     assert_eq!(input, output);
     buffer.close();
     memory = TestMemory::new(BUFFER_SIZE);
-    buffer = BufferedStableMemory::open(&mut memory, CACHED_PAGES, 0);
+    buffer = BufferedStableMemory::open(&mut memory, 0);
     let mut output = [0u8; LENGTH];
     buffer.raw_read(OFFSET, &mut output as *mut u8 as usize, LENGTH);
     assert_eq!(input, output);
@@ -126,7 +124,7 @@ fn test_raw_read_write() {
     println!("    Testing raw read write ...");
     const LENGTH: usize = 99;
     let mut memory = TestMemory::new(BUFFER_SIZE);
-    let mut buffer = BufferedStableMemory::open(&mut memory, CACHED_PAGES, 0);
+    let mut buffer = BufferedStableMemory::open(&mut memory, 0);
     const AMOUNT: usize = 100;
     let mut offset = 0u64;
     for counter in 0..AMOUNT {
@@ -143,7 +141,7 @@ fn test_raw_read_write() {
     }
     buffer.close();
     memory = TestMemory::new(BUFFER_SIZE);
-    buffer = BufferedStableMemory::open(&mut memory, CACHED_PAGES, 0);
+    buffer = BufferedStableMemory::open(&mut memory, 0);
     offset = 0;
     for counter in 0..AMOUNT {
         let mut output = [0u8; LENGTH];
@@ -275,10 +273,9 @@ fn test_randomized_read_write() {
     const RANDOM_SEED: u64 = 4711;
     let mut random = Rand32::new(RANDOM_SEED);
     let mut series = vec![];
-    let cached_pages = random.rand_range(1..MAXIMUM_CACHED_PAGES as u32) as usize;
     let stable_start = random.rand_range(0..1000) as u64;
     let mut memory = TestMemory::new(BUFFER_SIZE);
-    let mut buffer = BufferedStableMemory::open(&mut memory, cached_pages, stable_start);
+    let mut buffer = BufferedStableMemory::open(&mut memory, stable_start);
     const AMOUNT: usize = 1000;
     let mut write_offset = 0u64;
     let mut read_offset = 0u64;
