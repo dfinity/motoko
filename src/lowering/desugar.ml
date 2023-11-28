@@ -473,7 +473,8 @@ and export_gc_trigger self_id =
                     letD caller (primE I.ICCallerPrim []);
                     expD (assertE (orE (primE (I.RelPrim (principal, Operator.EqOp))
                                           [varE caller; selfRefE principal])
-                                    (primE (I.OtherPrim "is_controller") [varE caller])))
+                                    (primE (I.OtherPrim "is_controller") [varE caller])));
+                    expD (primE (I.ICPerformGC true) [])
                   ] (unitE ())
               )
               (Con (scope_con1, []))))
@@ -523,7 +524,7 @@ and build_actor at ts self_id es obj_typ =
     let vs = fresh_vars "v" (List.map (fun f -> f.T.typ) fields) in
     blockE
       ((match call_system_func_opt "preupgrade" es obj_typ with
-        | Some call -> [ expD (primE (I.ICPerformGC) []); expD call]
+        | Some call -> [ expD (primE (I.ICPerformGC false) []); expD call]
         | None -> []) @
          [letP (seqP (List.map varP vs)) (* dereference any mutable vars, option 'em all *)
             (seqE (List.map (fun (i,t) -> optE (varE (var i t))) ids))])

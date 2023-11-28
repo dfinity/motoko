@@ -627,10 +627,10 @@ module E = struct
     | Flags.Generational -> "generational"
     | Flags.Incremental -> "incremental"
 
-  let collect_garbage env =
+  let collect_garbage env force =
     (* GC function name = "schedule_"? ("compacting" | "copying" | "generational" | "incremental") "_gc" *)
     let name = gc_strategy_name !Flags.gc_strategy in
-    let gc_fn = if !Flags.force_gc then name else "schedule_" ^ name in
+    let gc_fn = if force || !Flags.force_gc then name else "schedule_" ^ name in
     call_import env "rts" (gc_fn ^ "_gc")
 
   (* See Note [Candid subtype checks] *)
@@ -1193,7 +1193,7 @@ module GC = struct
 
   let collect_garbage env =
     record_mutator_instructions env ^^
-    E.collect_garbage env ^^
+    E.collect_garbage env false ^^
     record_collector_instructions env
 
 end (* GC *)
@@ -10501,9 +10501,9 @@ and compile_prim_invocation (env : E.t) ae p es at =
         go locals)
     end
 
-  | ICPerformGC, [] ->
+  | ICPerformGC force, [] ->
     SR.unit,
-    GC.collect_garbage env
+    E.collect_garbage env force
 
   | ICStableSize t, [e] ->
     SR.UnboxedWord64,
