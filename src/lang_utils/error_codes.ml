@@ -194,4 +194,5 @@ let error_codes : (string * string option) list =
     "M0188", None; (* Send capability required (calling shared from query) *)
     "M0189", None; (* Different set of bindings in pattern alternatives *)
     "M0190", None; (* Types inconsistent for alternative pattern variables, losing information *)
+    "M0191", None; (* Code requires Wasm features ... to execute *)
   ]

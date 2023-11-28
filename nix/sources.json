@@ -21,16 +21,16 @@
         "version": "3.2.25"
     },
     "ic": {
-        "branch": "master",
+        "branch": "pull/124/head",
         "builtin": false,
         "description": "Internet Computer blockchain source: the client/replica software run by nodes",
         "homepage": "",
         "owner": "dfinity",
         "repo": "ic",
-        "rev": "629f7fc8e82ff52e6373a528dcd29f9066563ad4",
-        "sha256": "1jadgk4jfgvkw3i5nlxikg0wi6144d46sca165g9xgqpsr8hkm00",
+        "rev": "aa293129bce86f46cc34bb25ed50f0edb924a501",
+        "sha256": "1z5azm0b2kb76mrigqb6i81hb2mh8psp4ffragvsyqa242rl0yrc",
         "type": "tarball",
-        "url": "https://github.com/dfinity/ic/archive/629f7fc8e82ff52e6373a528dcd29f9066563ad4.tar.gz",
+        "url": "https://github.com/dfinity/ic/archive/aa293129bce86f46cc34bb25ed50f0edb924a501.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ic-hs": {
@@ -40,10 +40,10 @@
         "homepage": "",
         "owner": "dfinity",
         "repo": "ic-hs",
-        "rev": "e727fecab6bad1401a65a50773637e46b8a14e0e",
-        "sha256": "183xcavjkfsa2hgx9s67qxg7hfykykmw0wbzd4458rkiqb164wmc",
+        "rev": "a5f89cf508b0c80b633e3f0c152e3406fb750189",
+        "sha256": "0sjj272ch14309h3n3cxq6g7jkdhhqmdjrjdg67w1xxk4k1s1sfn",
         "type": "tarball",
-        "url": "https://github.com/dfinity/ic-hs/archive/e727fecab6bad1401a65a50773637e46b8a14e0e.tar.gz",
+        "url": "https://github.com/dfinity/ic-hs/archive/a5f89cf508b0c80b633e3f0c152e3406fb750189.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ic-wasm": {
@@ -52,10 +52,10 @@
         "homepage": null,
         "owner": "dfinity",
         "repo": "ic-wasm",
-        "rev": "42d911dd249ffb01c04ca429ae09006c2b047a3a",
-        "sha256": "11pf3b7650dpbkyg36b18yd91i3v5h8iksxsgz3y3lb45pyivx1j",
+        "rev": "d8d3b438973784b3935e3e18a7ea8690859b3e24",
+        "sha256": "1sw7sqwyp63m0frjz744jd5nsli8np6gsc19z7l66h6f32pyhy2r",
         "type": "tarball",
-        "url": "https://github.com/dfinity/ic-wasm/archive/42d911dd249ffb01c04ca429ae09006c2b047a3a.tar.gz",
+        "url": "https://github.com/dfinity/ic-wasm/archive/d8d3b438973784b3935e3e18a7ea8690859b3e24.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "libtommath": {
@@ -76,10 +76,10 @@
         "homepage": null,
         "owner": "dfinity",
         "repo": "motoko-base",
-        "rev": "fbf51ef4e2d7aa215fac7f54406b28d0bc376321",
-        "sha256": "1y03xlmadgqmksqqh5h1cqr5zjy39l4p4mdcdc2kff8hhjsinsms",
+        "rev": "f8f18bd90cae6677bf0caf2a2997a227d71c876c",
+        "sha256": "0fwbs47wghw8y89x1n1lc2wmf7m61g9hpfnysppjnsnj165prn21",
         "type": "tarball",
-        "url": "https://github.com/dfinity/motoko-base/archive/fbf51ef4e2d7aa215fac7f54406b28d0bc376321.tar.gz",
+        "url": "https://github.com/dfinity/motoko-base/archive/f8f18bd90cae6677bf0caf2a2997a227d71c876c.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "motoko-matchers": {
@@ -102,10 +102,10 @@
         "homepage": "https://wasi.dev",
         "owner": "WebAssembly",
         "repo": "wasi-libc",
-        "rev": "9f51a7102085ec6a6ced5778f0864c9af9f50000",
-        "sha256": "0j1ah34fmdsa1srsl49c8xly8bdg1cs7k2ji1avkv9d4dhmp2ls1",
+        "rev": "9c17f5235c7977cb2a000990eb8c605a25a80adf",
+        "sha256": "1nqvyfa28g13kgfibw0dgr0ibvhcblclhz1isvj5k3byyrlpknzb",
         "type": "tarball",
-        "url": "https://github.com/WebAssembly/wasi-libc/archive/9f51a7102085ec6a6ced5778f0864c9af9f50000.tar.gz",
+        "url": "https://github.com/WebAssembly/wasi-libc/archive/9c17f5235c7977cb2a000990eb8c605a25a80adf.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs": {
@@ -115,10 +115,10 @@
         "homepage": null,
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "f52b81a0a3be8398047a7bf95f616d59964bf167",
-        "sha256": "0x08f05w927m4yqnmn7qvksll9z7r0lsszmnngbd4fg1bafc7rd1",
+        "rev": "2f3b6b3fcd9fa0a4e6b544180c058a70890a7cc1",
+        "sha256": "0j0bv6550cv1n2qb7pbxbh4b0shz4hdkmh0fmz903jc2vjrbajm8",
         "type": "tarball",
-        "url": "https://github.com/NixOS/nixpkgs/archive/f52b81a0a3be8398047a7bf95f616d59964bf167.tar.gz",
+        "url": "https://github.com/NixOS/nixpkgs/archive/2f3b6b3fcd9fa0a4e6b544180c058a70890a7cc1.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs-mozilla": {

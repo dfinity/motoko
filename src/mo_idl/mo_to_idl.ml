@@ -2,6 +2,7 @@ open Mo_def
 open Mo_types
 
 open Source
+open Trivia
 open Type
 module E = Syntax
 module I = Idllib.Syntax
@@ -73,6 +74,7 @@ module MakeState() = struct
     | Text -> I.PrimT I.Text
     | Blob -> I.BlobT
     | Principal -> I.PrincipalT
+    | Region
     | Error -> assert false
 
   let rec typ t =
@@ -134,13 +136,13 @@ module MakeState() = struct
     | Mut _
     | Pre -> assert false
     ) @@ no_region
-  and field {lab; typ=t; _} =
+  and field {lab; typ = t; src = {region; _}} =
     let open Idllib.Escape in
     match unescape lab with
     | Nat nat ->
-       I.{label = I.Id nat @@ no_region; typ = typ t} @@ no_region
+       I.{label = I.Id nat @@ no_region; typ = typ t} @@ region
     | Id id ->
-       I.{label = I.Named id @@ no_region; typ = typ t} @@ no_region
+       I.{label = I.Named id @@ no_region; typ = typ t} @@ region
   and fields fs =
     List.map field
       (List.filter (fun f -> not (is_typ f.typ)) fs)
@@ -159,7 +161,7 @@ module MakeState() = struct
         | _ ->
            let meth =
              I.{var = Idllib.Escape.unescape_method f.lab @@ no_region;
-                meth = typ f.typ} @@ no_region in
+                meth = typ f.typ} @@ f.src.region in
            meth :: list
       ) fs []
 
@@ -175,14 +177,14 @@ module MakeState() = struct
 
   let gather_decs () =
     Env.fold (fun id t list ->
+        (* TODO: pass corresponding Motoko source region? *)
         let dec = I.TypD (id @@ no_region, t) @@ no_region in
         dec::list
       ) !env []
 
 
-  let actor progs =
+  let actor prog =
     let open E in
-    let prog = CompUnit.combine_progs progs in
     let { body = cub; _ } = (CompUnit.comp_unit_of_prog false prog).it in
     match cub.it with
     | ProgU _ | ModuleU _ -> None
@@ -200,25 +202,27 @@ module MakeState() = struct
 end
 
 let prog (progs, senv) : I.prog =
+  let prog = CompUnit.combine_progs progs in
+  let trivia = prog.note.E.trivia in
   let open MakeState() in
-  let actor = actor progs in
+  let actor = actor prog in
   if actor = None then chase_decs senv;
   let decs = gather_decs () in
-  let prog = I.{decs = decs; actor = actor} in
-  {it = prog; at = no_region; note = ""}
+  let it = I.{decs; actor} in
+  {it; at = prog.at; note = I.{filename = ""; trivia}}
 
 let of_actor_type t : I.prog =
   let open MakeState() in
   let actor = Some (typ t) in
   let decs = gather_decs () in
-  let prog = I.{decs = decs; actor = actor} in
-  {it = prog; at = no_region; note = ""}
+  let prog = I.{decs; actor} in
+  {it = prog; at = no_region; note = I.{filename = ""; trivia = empty_triv_table}}
 
 let of_service_type ts t : I.typ list * I.prog =
   let open MakeState() in
   let args = List.map typ ts  in
   let actor = Some (typ t) in
   let decs = gather_decs () in
-  let prog = I.{decs = decs; actor = actor} in
+  let prog = I.{decs; actor} in
   args,
-  {it = prog; at = no_region; note = ""}
+  {it = prog; at = no_region; note = I.{filename = ""; trivia = empty_triv_table}}

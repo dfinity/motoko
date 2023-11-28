@@ -104,7 +104,9 @@ let js_candid source =
   Mo_types.Cons.session (fun _ -> 
     js_result (Pipeline.generate_idl [Js.to_string source])
       (fun prog ->
-        let code = Idllib.Arrange_idl.string_of_prog prog in
+        let open Idllib in
+        let module WithComments = Arrange_idl.Make(struct let trivia = Some prog.note.Syntax.trivia end) in
+        let code = WithComments.string_of_prog prog in
         Js.some (Js.string code)))
 
 let js_stable_compatible pre post =
@@ -197,6 +199,12 @@ let wrap_output f =
     val stderr = Js.bytestring stderr_result
     val result = result
   end
+
+let print_deps file =
+  let _ = Pipeline.print_deps (Js.to_string file) in
+  let stdout_result = Buffer.contents stdout_buffer in
+  Buffer.clear stdout_buffer;
+  Js.bytestring stdout_result
 
 let add_package package dir =
   let libs = Flags.package_urls in

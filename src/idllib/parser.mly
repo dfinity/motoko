@@ -204,7 +204,9 @@ actor :
 
 parse_prog :
   | ds=seplist(def, SEMICOLON) actor=actor EOF
-    { fun filename -> { it = {decs=ds; actor=actor}; at = at $sloc; note = filename} }
+    {
+      let trivia = Trivia.PosHashtbl.create 0 in
+      fun filename -> {it = {decs=ds; actor=actor}; at = at $sloc; note = {filename; trivia}} }
 
 (* Values *)
 
@@ -285,6 +287,6 @@ test :
 
 parse_tests :
   | tdecs=endlist(def, SEMICOLON) tests=seplist(test, SEMICOLON) EOF
-    { fun filename -> { it = {tdecs; tests}; at = at $sloc; note = filename} }
+    { fun filename -> {it = {tdecs; tests}; at = at $sloc; note = filename} }
 
 %%

@@ -1,5 +1,87 @@
 # Motoko compiler changelog
 
+## 0.10.2 (2023-11-12)
+
+* motoko (`moc`)
+
+  * bugfix: separate tag from underscore in coverage warnings (#4274).
+
+  * Code compiled for targets WASI (`-wasi-system-api`) and pure Wasm (`-no-system-api`) can now
+    use up to 4GB of (efficiently emulated) stable memory, enabling more offline testing of, for example,
+    stable data structures built using libraries `Regions.mo` and `ExperimentalStableMemory.mo`.
+    Note that any Wasm engine (such as `wasmtime`), used to execute such binaries, must support and enable
+    Wasm features `multi-memory` and `bulk-memory` (as well as the standard NaN canonicalization) (#4256).
+
+  * bugfix: fully implement `Region.loadXXX/storeXXX` for `Int8`, `Int16` and `Float` (#4270).
+
+  * BREAKING CHANGE (Minor): values of type `Principal` are now constrained to contain
+    at most 29 bytes, matching the IC's notion of principal (#4268).
+
+    In particular:
+
+    * An actor `import` will be statically rejected if the binary representation of the (aliased) textually encoded
+      principal contains strictly more than 29 bytes.
+
+    * `Principal.fromBlob(b)` will trap if `b` contains strictly more than 29 bytes.
+
+    * The actor literal, `actor <exp>`, will trap if the binary representation of
+      of the textually encoded principal `<exp>` contains strictly more than 29 bytes.
+
+* motoko-base
+
+  * bugfix: fix `Array.tabulateVar` to avoid repeated side-effects (dfinity/motoko-base⁠#596)
+
+## 0.10.1 (2023-10-16)
+
+* motoko (`moc`)
+
+  * bugfix: fix assertion failure renaming `or`-patterns (#4236, #4224).
+
+  * bugfix: unsuccessful Candid decoding of an optional array now defaults to null instead of crashing (#4240).
+
+  * bugfix: Candid decoding of an optional, unknown variant with a payload now succeeds instead of crashing (#4238).
+
+  * Implement Prim.textLowercase and Prim.textUppercase (via Rust) (#4216).
+
+  * perf: inline sharable low-level functions in generated coded,
+    trading code size for reduced cycle count (#4212).
+    Controlled by flags:
+      * `-fno-shared-code` (default)
+      * `-fshared-code` (legacy)
+    (Helps mitigate the effect of the IC's new cost model, that increases
+	the cost of function calls).
+
+* motoko-base
+
+  * Added `Principal.toLedgerAccount` (dfinity/motoko-base⁠#582).
+
+  * Added `Text.toLowercase` and `Text.toUppercase` (dfinity/motoko-base⁠#590).
+
+## 0.10.0 (2023-09-11)
+
+* motoko (`moc`)
+
+  * Added a new stable `Region` type of dynamically allocated, independently growable and
+    isolated regions of IC stable memory (#3768). See documentation.
+    BREAKING CHANGE: stable memory changes may occur that can prevent returning
+    to previous `moc` versions.
+
+  * Added doc comments in generated Candid files (#4178).
+
+* motoko-base
+
+  * Exposed conversions between adjacent fixed-width types (dfinity/motoko-base⁠#585).
+
+  * Added library `Region.mo` offering isolated regions of IC stable memory (dfinity/motoko-base⁠#580).
+
+## 0.9.8 (2023-08-11)
+
+* motoko (`moc`)
+
+  * Added numerical type conversions between adjacent fixed-width types (#4139).
+
+  * Administrative: legacy-named release artefacts are no longer created (#4111).
+
 ## 0.9.7 (2023-07-18)
 
 * motoko (`moc`)

@@ -26,7 +26,7 @@ DTESTS=no
 IDL=no
 PERF=no
 VIPER=no
-WASMTIME_OPTIONS="--disable-cache"
+WASMTIME_OPTIONS="--disable-cache --enable-cranelift-nan-canonicalization --wasm-features multi-memory,bulk-memory"
 WRAP_drun=$(realpath $(dirname $0)/drun-wrapper.sh)
 WRAP_ic_ref_run=$(realpath $(dirname $0)/ic-ref-run-wrapper.sh)
 SKIP_RUNNING=${SKIP_RUNNING:-no}
@@ -196,8 +196,7 @@ then
   else
     if [ $ACCEPT = yes ]
     then
-      echo "ERROR: Could not run ic-ref-run, cannot update expected test output"
-      exit 1
+      echo "WARNING: Could not run ic-ref-run, cannot update expected test output"
     else
       echo "WARNING: Could not run ic-ref-run, will skip running some tests"
       HAVE_ic_ref_run=no
@@ -351,7 +350,7 @@ do
         then
           run comp $moc_with_flags --hide-warnings --map -c $mangled -o $out/$base.wasm
           if [ $HAVE_ic_wasm = yes ]; then
-            run opt ic-wasm -o $out/$base.opt.wasm $out/$base.wasm shrink --optimize O3 --keep-name-section
+            run opt ic-wasm -o $out/$base.opt.wasm $out/$base.wasm optimize O3 --keep-name-section
           fi
         else
           run comp $moc_with_flags -g -wasi-system-api --hide-warnings --map -c $mangled -o $out/$base.wasm
@@ -359,8 +358,8 @@ do
 
         if [ "$SKIP_VALIDATE" != yes ]
         then
-          run_if wasm valid wasm-validate $out/$base.wasm
-          run_if ref.wasm valid-ref wasm-validate $out/$base.ref.wasm
+          run_if wasm valid wasm-validate --enable-multi-memory $out/$base.wasm
+          run_if ref.wasm valid-ref wasm-validate --enable-multi-memory $out/$base.ref.wasm
         fi
 
         if [ -e $out/$base.wasm ]
@@ -371,7 +370,7 @@ do
             if grep -F -q CHECK $mangled
             then
               $ECHO -n " [FileCheck]"
-              wasm2wat --no-check $out/$base.wasm > $out/$base.wat
+              wasm2wat --enable-multi-memory --no-check $out/$base.wasm > $out/$base.wat
               cat $out/$base.wat | FileCheck $mangled > $out/$base.filecheck 2>&1
               diff_files="$diff_files $base.filecheck"
             fi
@@ -436,6 +435,14 @@ do
         continue
       fi
 
+      if grep -q "# *INCREMENTAL-GC-ONLY" $(basename $file)
+      then
+        if [[ $EXTRA_MOC_ARGS != *"--incremental-gc"* ]]
+        then 
+          continue
+        fi
+      fi
+
       have_var_name="HAVE_${runner//-/_}"
       if [ ${!have_var_name} != yes ]
       then
@@ -455,9 +462,9 @@ do
           echo "$base.drun references $mo_file which is not in directory $base"
           exit 1
         fi
-
+        moc_extra_flags="$(eval echo $(grep '//MOC-FLAG' $mo_file | cut -c11- | paste -sd' '))"
         flags_var_name="FLAGS_${runner//-/_}"
-        run $mo_base.$runner.comp moc $EXTRA_MOC_ARGS ${!flags_var_name} --hide-warnings -c $mo_file -o $out/$base/$mo_base.$runner.wasm
+        run $mo_base.$runner.comp moc $EXTRA_MOC_ARGS ${!flags_var_name} $moc_extra_flags --hide-warnings -c $mo_file -o $out/$base/$mo_base.$runner.wasm
       done
 
       # mangle drun script
