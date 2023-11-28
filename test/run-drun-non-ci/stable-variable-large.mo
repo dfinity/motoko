@@ -1,4 +1,6 @@
 //MOC-FLAG --incremental-gc
+// This would let us test that destablization of >2GB works,
+// if only drun could execute it properly.
 import P "mo:⛔";
 
 actor {
@@ -7,8 +9,7 @@ actor {
   stable var a : [Blob] = [];
 
   system func preupgrade() {
-    a := P.Array_tabulate(32768,func (i:Nat) : Blob {
-      P.debugPrint(debug_show {i; p=P.performanceCounter(0)});
+    a := P.Array_tabulate(32768+16384,func (i:Nat) : Blob {
       P.stableMemoryLoadBlob(0, 65535) });  // use ca. 3GB main memory
     P.debugPrint("upgrading...");
   };
