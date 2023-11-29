@@ -5,7 +5,7 @@ import Prim "mo:prim";
 actor {
     let retained = Prim.Array_init<Nat>(6 * 1024 * 1024, 0);
     // GC is triggered during initialization
-    
+
     var heapSizeWithGarbage = 0;
 
     public func createGarbage(): async() {
