@@ -1425,6 +1425,17 @@ module Stack = struct
     f get_x ^^
     dynamic_free_words env get_n
 
+  let dynamic_with_bytes env name f =
+    let (set_n, get_n) = new_local env "n" in
+    let (set_x, get_x) = new_local env name in
+    (* round up to nearest wordsize *)
+    compile_add_const (Int32.sub Heap.word_size 1l) ^^
+    compile_divU_const Heap.word_size ^^
+    set_n ^^
+    dynamic_alloc_words env get_n ^^ set_x ^^
+    f get_x ^^
+    dynamic_free_words env get_n
+
   (* Stack Frames *)
 
   (* Traditional frame pointer for accessing statically allocated locals/args (all words)
@@ -4920,53 +4931,52 @@ module IC = struct
   let async_method_name = Type.(motoko_async_helper_fld.lab)
 
   let assert_caller_self env =
-    let (set_len1, get_len1) = new_local env "len1" in
-    let (set_len2, get_len2) = new_local env "len2" in
-    let (set_str1, get_str1) = new_local env "str1" in
-    let (set_str2, get_str2) = new_local env "str2" in
-    system_call env "canister_self_size" ^^ set_len1 ^^
-    system_call env "msg_caller_size" ^^ set_len2 ^^
-    get_len1 ^^ get_len2 ^^ G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
-    E.else_trap_with env "not a self-call" ^^
+    let (set_len_self, get_len_self) = new_local env "len_self" in
+    let (set_len_caller, get_len_caller) = new_local env "len_caller" in
+    system_call env "canister_self_size" ^^ set_len_self ^^
+    system_call env "msg_caller_size" ^^ set_len_caller ^^
+    get_len_self ^^ get_len_caller ^^ G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+      E.else_trap_with env "not a self-call" ^^
+      get_len_self ^^ Stack.dynamic_with_bytes env "str_self" (fun get_str_self ->
+      get_len_caller ^^ Stack.dynamic_with_bytes env "str_caller" (fun get_str_caller ->
+      get_str_self ^^ compile_unboxed_const 0l ^^ get_len_self ^^
+      system_call env "canister_self_copy" ^^
 
-    get_len1 ^^ Blob.dyn_alloc_scratch env ^^ set_str1 ^^
-    get_str1 ^^ compile_unboxed_const 0l ^^ get_len1 ^^
-    system_call env "canister_self_copy" ^^
+      get_str_caller ^^ compile_unboxed_const 0l ^^ get_len_caller ^^
+      system_call env "msg_caller_copy" ^^
 
-    get_len2 ^^ Blob.dyn_alloc_scratch env ^^ set_str2 ^^
-    get_str2 ^^ compile_unboxed_const 0l ^^ get_len2 ^^
-    system_call env "msg_caller_copy" ^^
-
-
-    get_str1 ^^ get_str2 ^^ get_len1 ^^ Heap.memcmp env ^^
-    compile_eq_const 0l ^^
-    E.else_trap_with env "not a self-call"
+      get_str_self ^^ get_str_caller ^^ get_len_self ^^ Heap.memcmp env ^^
+      compile_eq_const 0l ^^
+      E.else_trap_with env "not a self-call"
+    ))
 
   let assert_caller_self_or_controller env =
-    let (set_len1, get_len1) = new_local env "len1" in
-    let (set_len2, get_len2) = new_local env "len2" in
-    let (set_str1, get_str1) = new_local env "str1" in
-    let (set_str2, get_str2) = new_local env "str2" in
-    system_call env "canister_self_size" ^^ set_len1 ^^
-    system_call env "msg_caller_size" ^^ set_len2 ^^
-    get_len2 ^^ Blob.dyn_alloc_scratch env ^^ set_str2 ^^
-    get_str2 ^^ compile_unboxed_const 0l ^^ get_len2 ^^
-    system_call env "msg_caller_copy" ^^
-    get_len1 ^^ get_len2 ^^ G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
-    G.if1 I32Type
-    begin
-      get_len1 ^^ Blob.dyn_alloc_scratch env ^^ set_str1 ^^
-      get_str1 ^^ compile_unboxed_const 0l ^^ get_len1 ^^
-      system_call env "canister_self_copy" ^^
-      get_str1 ^^ get_str2 ^^ get_len1 ^^ Heap.memcmp env ^^
-      compile_eq_const 0l
-    end
-    begin
-      compile_unboxed_const 0l
-    end ^^
-    get_str2 ^^ get_len2 ^^ is_controller env ^^
-    G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
-    E.else_trap_with env "not a self or controller call"
+    let (set_len_self, get_len_self) = new_local env "len_self" in
+    let (set_len_caller, get_len_caller) = new_local env "len_caller" in
+    system_call env "canister_self_size" ^^ set_len_self ^^
+    system_call env "msg_caller_size" ^^ set_len_caller ^^
+    get_len_self ^^ Stack.dynamic_with_bytes env "str_self" (fun get_str_self ->
+    get_len_caller ^^ Stack.dynamic_with_bytes env "str_caller" (fun get_str_caller ->
+      get_str_caller ^^ compile_unboxed_const 0l ^^ get_len_caller ^^
+      system_call env "msg_caller_copy" ^^
+      get_len_self ^^ get_len_caller ^^ G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+      G.if1 I32Type
+      begin
+        get_str_self ^^ compile_unboxed_const 0l ^^ get_len_self ^^
+        system_call env "canister_self_copy" ^^
+        get_str_self ^^ get_str_caller ^^ get_len_self ^^ Heap.memcmp env ^^
+        compile_eq_const 0l
+      end
+      begin
+        compile_unboxed_const 0l
+      end ^^
+      G.if0
+        G.nop
+        begin
+          get_str_caller ^^ get_len_caller ^^ is_controller env ^^
+          E.else_trap_with env "not a self-call or call from controller"
+        end
+   ))
 
   (* Cycles *)
 

@@ -25,7 +25,9 @@ actor {
         assert(Prim.rts_heap_size() < heapSizeWithGarbage);
     };
 };
-
+//SKIP run
+//SKIP run-low
+//SKIP run-ir
 //CALL ingress createGarbage "DIDL\x00\x00"
 //CALL query checkBeforeGC "DIDL\x00\x00"
 //CALL ingress __motoko_gc_trigger "DIDL\x00\x00"
