@@ -457,29 +457,6 @@ and export_footprint self_id expr =
   )],
   [{ it = I.{ name = lab; var = v }; at = no_region; note = typ }])
 
-and export_gc_trigger self_id =
-  let open T in
-  let {lab;typ;_} = motoko_gc_trigger_fld in
-  let v = "$"^lab in
-  let scope_con1 = Cons.fresh "T1" (Abs ([], scope_bound)) in
-  let scope_con2 = Cons.fresh "T2" (Abs ([], Any)) in
-  let bind1  = typ_arg scope_con1 Scope scope_bound in
-  let bind2 = typ_arg scope_con2 Scope scope_bound in
-  let caller = fresh_var "caller" caller in
-  ([ letD (var v typ) (
-        funcE v (Shared Write) Promises [bind1] [] [] (
-            (asyncE T.Fut bind2
-              (blockE [
-                    letD caller (primE I.ICCallerPrim []);
-                    expD (assertE (orE (primE (I.RelPrim (principal, Operator.EqOp))
-                                          [varE caller; selfRefE principal])
-                                    (primE (I.OtherPrim "is_controller") [varE caller])));
-                    expD (primE (I.ICPerformGC true) [])
-                  ] (unitE ())
-              )
-              (Con (scope_con1, []))))
-  )],
-  [{ it = I.{ name = lab; var = v }; at = no_region; note = typ }])
 
 and build_actor at ts self_id es obj_typ =
   let candid = build_candid ts obj_typ in
@@ -537,8 +514,7 @@ and build_actor at ts self_id es obj_typ =
                ) fields vs)
             ty)) in
   let footprint_d, footprint_f = export_footprint self_id (with_stable_vars (fun e -> e)) in
-  let gc_trigger_d, gc_trigger_f = export_gc_trigger self_id in
-  I.(ActorE (interface_d @ footprint_d @ gc_trigger_d @ ds', interface_f @ footprint_f @ gc_trigger_f @ fs,
+  I.(ActorE (interface_d @ footprint_d @ ds', interface_f @ footprint_f @ fs,
      { meta;
        preupgrade = with_stable_vars (fun e -> primE (I.ICStableWrite ty) [e]);
        postupgrade =

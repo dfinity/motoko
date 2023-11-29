@@ -4938,6 +4938,30 @@ module IC = struct
     compile_eq_const 0l ^^
     E.else_trap_with env "not a self-call"
 
+  let assert_caller_self_or_controller env =
+    let (set_len1, get_len1) = new_local env "len1" in
+    let (set_len2, get_len2) = new_local env "len2" in
+    let (set_str1, get_str1) = new_local env "str1" in
+    let (set_str2, get_str2) = new_local env "str2" in
+    system_call env "canister_self_size" ^^ set_len1 ^^
+    system_call env "msg_caller_size" ^^ set_len2 ^^
+    get_len1 ^^ get_len2 ^^ G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+    E.else_trap_with env "not a self-call" ^^
+
+    get_len1 ^^ Blob.dyn_alloc_scratch env ^^ set_str1 ^^
+    get_str1 ^^ compile_unboxed_const 0l ^^ get_len1 ^^
+    system_call env "canister_self_copy" ^^
+
+    get_len2 ^^ Blob.dyn_alloc_scratch env ^^ set_str2 ^^
+    get_str2 ^^ compile_unboxed_const 0l ^^ get_len2 ^^
+    system_call env "msg_caller_copy" ^^
+
+    get_str1 ^^ get_str2 ^^ get_len1 ^^ Heap.memcmp env ^^
+    compile_eq_const 0l ^^
+    get_str1 ^^ get_len1 ^^ is_controller env ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
+    E.else_trap_with env "not a self or controller call"
+
   (* Cycles *)
 
   let cycle_balance env =
@@ -9054,6 +9078,35 @@ module FuncDec = struct
     | _ -> ()
     end
 
+  let export_gc_trigger_method env =
+    let name = Type.(motoko_gc_trigger_fld.lab) in
+    begin match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+      Func.define_built_in env name [] [] (fun env ->
+        message_start env (Type.Shared Type.Write) ^^
+        (* Deserialize unit *)
+        Serialization.deserialize env [] ^^
+        IC.get_self_reference env ^^
+        (* Check that we are called from this or a controller *)
+        IC.assert_caller_self_or_controller env ^^
+        Serialization.serialize env [] ^^
+        IC.reply_with_data env ^^
+        (* message_cleanup env (Type.Shared Type.Write), but
+           forces collection *)
+        GC.record_mutator_instructions env ^^
+        E.collect_garbage env true ^^
+        GC.record_collector_instructions env ^^
+        Lifecycle.trans env Lifecycle.Idle
+      );
+
+      let fi = E.built_in env name in
+      E.add_export env (nr {
+        name = Lib.Utf8.decode ("canister_update " ^ name);
+        edesc = nr (FuncExport (nr fi))
+      })
+    | _ -> ()
+    end
+
 end (* FuncDec *)
 
 
@@ -12049,6 +12102,7 @@ and conclude_module env set_serialization_globals start_fi_o =
   RTS_Exports.system_exports env;
 
   FuncDec.export_async_method env;
+  FuncDec.export_gc_trigger_method env;
 
   (* See Note [Candid subtype checks] *)
   Serialization.set_delayed_globals env set_serialization_globals;
