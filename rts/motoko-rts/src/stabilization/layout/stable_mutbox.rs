@@ -37,8 +37,8 @@ impl Serializer<MutBox> for StableMutBox {
         stable_memory: &StableMemoryAccess,
         stable_object: StableValue,
     ) -> Value {
-        let address = stable_object.payload_address();
-        let stable_mutbox = stable_memory.read::<StableMutBox>(address);
+        let stable_address = stable_object.payload_address();
+        let stable_mutbox = stable_memory.read::<StableMutBox>(stable_address);
         let target_object = main_memory.alloc_words(size_of::<MutBox>());
         let target_mutbox = target_object.get_ptr() as *mut MutBox;
         (*target_mutbox).header.tag = TAG_MUTBOX;

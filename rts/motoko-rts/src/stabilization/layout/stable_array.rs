@@ -53,13 +53,13 @@ impl Serializer<Array> for StableArray {
         stable_memory: &StableMemoryAccess,
         stable_object: StableValue,
     ) -> Value {
-        let address = stable_object.payload_address();
-        let stable_array = stable_memory.read::<StableArray>(address);
+        let stable_address = stable_object.payload_address();
+        let stable_array = stable_memory.read::<StableArray>(stable_address);
         let array_length = checked_to_u32(stable_array.array_length);
         let target_object = alloc_array(main_memory, array_length);
         let target_array = target_object.as_array();
         for index in 0..array_length {
-            let element_address = address
+            let element_address = stable_address
                 + size_of::<StableArray>().to_bytes().as_usize() as u64
                 + (index * size_of::<StableValue>().to_bytes().as_u32()) as u64;
             let element = stable_memory.read::<StableValue>(element_address);

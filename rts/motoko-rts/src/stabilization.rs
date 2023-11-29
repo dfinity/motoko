@@ -26,8 +26,7 @@ use crate::{
     stabilization::layout::{deserialize, serialize},
     stable_mem::{self, ic0_stable64_write, PAGE_SIZE},
     types::{
-        block_size, FwdPtr, Tag, Value, TAG_CLOSURE, TAG_FREE_SPACE, TAG_FWD_PTR,
-        TAG_ONE_WORD_FILLER,
+        block_size, FwdPtr, Tag, Value, TAG_CLOSURE, TAG_FWD_PTR,
     },
     visitor::visit_pointer_fields,
 };
@@ -169,10 +168,6 @@ impl Serialization {
     fn has_non_stable_type(old_field: Value) -> bool {
         unsafe { old_field.is_ptr() && NON_STABLE_OBJECT_TAGS.contains(&old_field.tag()) }
     }
-
-    fn written_length(&self) -> u64 {
-        self.to_space.written_length()
-    }
 }
 
 impl GraphCopy<Value, StableValue, u32> for Serialization {
@@ -283,6 +278,7 @@ impl<'a, M: Memory> Deserialization<'a, M> {
     // Incremental GC adds free space blocks at unused partition ends.
     #[incremental_gc]
     fn skip_free_space(address: usize) -> usize {
+        use crate::types::{TAG_ONE_WORD_FILLER, TAG_FREE_SPACE};
         unsafe {
             let tag = *(address as *const Tag);
             match tag {
