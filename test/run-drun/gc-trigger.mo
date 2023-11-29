@@ -30,4 +30,5 @@ actor {
 //CALL query checkBeforeGC "DIDL\x00\x00"
 //CALL ingress __motoko_gc_trigger "DIDL\x00\x00"
 //CALL ingress __motoko_gc_trigger "DIDL\x00\x00"
+//CALL ingress __motoko_gc_trigger "DIDL\x00\x00"
 //CALL query checkAfterGC "DIDL\x00\x00"
