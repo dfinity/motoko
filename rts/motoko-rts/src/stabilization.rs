@@ -18,25 +18,20 @@
 
 use motoko_rts_macros::ic_mem_fn;
 
-use core::cmp::{max, min};
+use core::cmp::min;
 
 use crate::{
     memory::Memory,
     rts_trap_with,
-    stabilization::layout::{
-        checked_to_usize, deserialize, deserialized_size, scan_deserialized, serialize,
-        StableHeader,
-    },
-    stable_mem::{self, ic0_stable64_read, ic0_stable64_write, PAGE_SIZE},
-    types::{
-        size_of, Bytes, FreeSpace, FwdPtr, Obj, Tag, Value, Words, TAG_CLOSURE, TAG_FREE_SPACE,
-        TAG_FWD_PTR, TAG_ONE_WORD_FILLER,
-    },
+    stabilization::layout::{deserialize, serialize},
+    stable_mem::{self, ic0_stable64_write, PAGE_SIZE},
+    types::{FwdPtr, Tag, Value, TAG_CLOSURE, TAG_FWD_PTR}, visitor::visit_pointer_fields,
 };
 
 use self::{
-    layout::{scan_serialized, StableValue, STABLE_NULL_POINTER},
-    reader_writer::{ScanStream, StableMemorySpace, WriteStream},
+    layout::{scan_serialized, StableValue, STABLE_NULL_POINTER, StableToSpace},
+    stable_memory_access::StableMemoryAccess,
+    stable_memory_stream::{ScanStream, StableMemoryStream},
 };
 
 #[cfg(feature = "ic")]
@@ -46,7 +41,8 @@ mod metadata;
 
 mod layout;
 
-pub mod reader_writer;
+pub mod stable_memory_access;
+pub mod stable_memory_stream;
 
 extern "C" {
     pub fn moc_null_singleton() -> Value;
@@ -64,20 +60,16 @@ extern "C" {
 /// During derialization:
 /// * Main memory = stable memory layout, S = StableMemoryAddress.
 /// * Stable memory = main memory layout, T = Value.
-trait GraphCopy<S: Copy, T: Copy, P: Copy + Default>
-where
-    Self: StableMemoryAccess,
-{
+trait GraphCopy<S: Copy, T: Copy, P: Copy + Default> {
     /// Run the entire graph copy algorithm: Copy the object graph reachable from the `root` pointer.
-    /// Return the final to-space size.
-    fn run(&mut self, root: S) -> u64 {
+    fn run(&mut self, root: S) {
         self.evacuate(root);
-        while !self.to_space().scan_completed() {
+        while !self.scan_completed() {
             self.scan();
         }
-        self.to_space().close();
-        self.to_space().written_length()
     }
+
+    fn scan_completed(&self) -> bool;
 
     /// Lazy evacuation of a single object.
     /// Triggered for each pointer that is patched in the `scan()` function.
@@ -125,7 +117,7 @@ const NON_STABLE_OBJECT_TAGS: [Tag; 1] = [TAG_CLOSURE];
 const DUMMY_VALUE: StableValue = StableValue::from_raw(0);
 
 pub struct Serialization {
-    to_space: StableMemorySpace,
+    to_space: StableMemoryStream,
 }
 
 impl Serialization {
@@ -135,8 +127,11 @@ impl Serialization {
     /// - `copy` and partially also `scan` depends on the heap layout. Adjust these functions
     /// whenever the heap layout is changed.
     pub fn run(root: Value, stable_start: u64) -> u64 {
-        let to_space = StableMemorySpace::open(stable_start);
-        Serialization { to_space }.run(root)
+        let to_space = StableMemoryStream::open(stable_start);
+        let mut serialization = Serialization { to_space };
+        serialization.run(root);
+        serialization.to_space.close();
+        serialization.to_space.written_length()
     }
 
     fn is_null(field_value: Value) -> bool {
@@ -157,7 +152,6 @@ impl Serialization {
         if tag == TAG_FWD_PTR {
             object
         } else {
-            debug_assert!(tag != TAG_ONE_WORD_FILLER && tag != TAG_FREE_SPACE);
             object.forward()
         }
     }
@@ -171,10 +165,10 @@ impl Serialization {
     fn has_non_stable_type(old_field: Value) -> bool {
         unsafe { old_field.is_ptr() && NON_STABLE_OBJECT_TAGS.contains(&old_field.tag()) }
     }
-}
 
-pub trait StableMemoryAccess {
-    fn to_space(&mut self) -> &mut StableMemorySpace;
+    fn written_length(&self) -> u64 {
+        self.to_space.written_length()
+    }
 }
 
 impl GraphCopy<Value, StableValue, u32> for Serialization {
@@ -231,19 +225,22 @@ impl GraphCopy<Value, StableValue, u32> for Serialization {
             }
         });
     }
+
+    fn scan_completed(&self) -> bool {
+        self.to_space.scan_completed()
+    }
 }
 
-impl StableMemoryAccess for Serialization {
-    fn to_space(&mut self) -> &mut StableMemorySpace {
+impl StableToSpace for Serialization {
+    fn to_space(&mut self) -> &mut StableMemoryStream {
         &mut self.to_space
     }
 }
 
 pub struct Deserialization<'a, M: Memory> {
     mem: &'a mut M,
-    to_space: StableMemorySpace,
-    heap_start: usize,
-    last_allocation: usize,
+    from_space: StableMemoryAccess,
+    scan_address: Option<usize>,
 }
 
 impl<'a, M: Memory> Deserialization<'a, M> {
@@ -253,72 +250,15 @@ impl<'a, M: Memory> Deserialization<'a, M> {
     /// - Invokes the heap allocator to compute the future object addresses in the heap.
     /// However, the allocator must not yet write to the heap.
     pub fn run(mem: &'a mut M, stable_start: u64, stable_size: u64, heap_start: usize) -> Value {
-        Self::stable_memory_bulk_copy(mem, stable_start, stable_size, heap_start);
-        let to_space = StableMemorySpace::open(stable_start);
-        let new_stable_size = Deserialization {
+        let from_space = StableMemoryAccess::open(stable_start, stable_size);
+        Deserialization {
             mem,
-            to_space,
-            heap_start,
-            last_allocation: heap_start,
+            from_space,
+            scan_address: Some(heap_start),
         }
         .run(StableValue::serialize(Value::from_ptr(0)));
-        Self::stable_memory_bulk_copy(mem, stable_start, new_stable_size, heap_start);
-        clear_stable_memory(stable_start, max(stable_size, new_stable_size));
+        clear_stable_memory(stable_start, stable_size);
         Value::from_ptr(heap_start)
-    }
-
-    fn stable_memory_bulk_copy(
-        mem: &mut M,
-        stable_start: u64,
-        stable_size: u64,
-        heap_start: usize,
-    ) {
-        unsafe {
-            mem.grow_memory(heap_start as u64 + stable_size);
-            ic0_stable64_read(heap_start as u64, stable_start, stable_size);
-        }
-    }
-
-    fn source_address(&self, stable_object: StableValue) -> usize {
-        self.heap_start + checked_to_usize(stable_object.to_address())
-    }
-
-    fn allocate(&mut self, size: Words<u32>) -> Value {
-        let target = unsafe { self.mem.alloc_words(size) };
-        // Cheney's algorithm relies on contiguous allocation in the to-space.
-        // Deal with internal fragmentation in the partitioned heap in the presence of the
-        // incremental GC.
-        if self.last_allocation != target.get_ptr() {
-            self.insert_free_space(target);
-        }
-        debug_assert_eq!(self.last_allocation, target.get_ptr());
-        self.last_allocation += size.to_bytes().as_usize();
-        target
-    }
-
-    fn insert_free_space(&mut self, target: Value) {
-        let new_allocation = target.get_ptr();
-        // Heap allocations must be monotonically increasing, such that their image
-        // can be streamed to the to-space.
-        // NOTE: Ensure that the allocator on an empty partitioned heap follows this rule.
-        assert!(self.last_allocation <= new_allocation);
-        let difference = Bytes((new_allocation - self.last_allocation) as u32).to_words();
-        debug_assert!(difference > Words(0));
-        if difference == Words(1) {
-            self.to_space.write(&TAG_ONE_WORD_FILLER);
-        } else {
-            debug_assert!(difference >= size_of::<FreeSpace>());
-            let free_space = FreeSpace {
-                tag: TAG_FREE_SPACE,
-                words: difference - size_of::<FreeSpace>(),
-            };
-            self.to_space.write(&free_space);
-            // TODO: Optimize bulk zero write.
-            for _ in 0..free_space.words.as_usize() {
-                self.to_space.write(&0u32);
-            }
-        }
-        self.last_allocation += difference.to_bytes().as_usize();
     }
 
     fn is_null(value: StableValue) -> bool {
@@ -328,78 +268,79 @@ impl<'a, M: Memory> Deserialization<'a, M> {
     fn encode_null() -> Value {
         unsafe { moc_null_singleton() }
     }
+
+    fn next_object(address: usize) -> Option<usize> {
+        todo!()
+    }
+
+
+    unsafe fn scan_deserialized<C, F: Fn(&mut C, Value) -> Value>(
+        context: &mut C,
+        target_object: Value,
+        translate: &F,
+    ) {
+        assert!(target_object.is_obj());
+        visit_pointer_fields(
+            context,
+            target_object.as_obj(),
+            target_object.tag(),
+            0,
+            |context, field_address| {
+                *field_address = translate(context, *field_address);
+            },
+            |_, _, array| array.len(),
+        );
+    }
 }
 
 impl<'a, M: Memory> GraphCopy<StableValue, Value, u32> for Deserialization<'a, M> {
     fn get_forward_address(&self, stable_object: StableValue) -> Option<Value> {
-        let source = self.source_address(stable_object);
-        unsafe {
-            let tag = *(source as *mut Tag);
-            match tag {
-                TAG_FWD_PTR => {
-                    let target = (*(source as *mut FwdPtr)).fwd;
-                    Some(target)
-                }
-                _ => None,
+        let address = stable_object.to_address();
+        let tag = self.from_space.read::<Tag>(address);
+        match tag {
+            TAG_FWD_PTR => {
+                let forward_object = self.from_space.read::<FwdPtr>(address);
+                Some(forward_object.fwd)
             }
+            _ => None,
         }
     }
 
     fn set_forward_address(&mut self, stable_object: StableValue, target: Value) {
-        let source = self.source_address(stable_object);
-        let fwd = source as *mut FwdPtr;
-        unsafe {
-            (*fwd).tag = TAG_FWD_PTR;
-            (*fwd).fwd = target;
-        }
+        let address = stable_object.to_address();
+        let forward_object = FwdPtr {
+            tag: TAG_FWD_PTR,
+            fwd: target,
+        };
+        self.from_space.write(address, &forward_object);
     }
 
-    /// Writing into to-space (stable memory) but computing the heap target addresses by
-    /// simulating the allocations in the from-space (main memory heap).
-    /// Note: The allocator must not yet write to the heap space.
     fn copy(&mut self, stable_object: StableValue) -> Value {
-        unsafe {
-            let stable_object = self.source_address(stable_object) as *mut StableHeader;
-            let target_size = deserialized_size(stable_object);
-            debug_assert!(target_size >= size_of::<Obj>());
-            let main_memory_address = self.allocate(target_size);
-            deserialize(&mut self.to_space, stable_object, main_memory_address);
-            main_memory_address
-        }
+        unsafe { deserialize(self.mem, &mut self.from_space, stable_object) }
     }
 
     /// Note:
-    /// * The deserialized memory image for the partitioned heap may contain free space at
-    /// a partition end.
+    /// * The deserialized memory may contain free space at a partition end.
     fn scan(&mut self) {
-        let tag = self.to_space.read::<Tag>();
-        debug_assert_ne!(tag, TAG_FWD_PTR);
-        match tag {
-            TAG_ONE_WORD_FILLER => {}
-            TAG_FREE_SPACE => {
-                let free_words = Words(self.to_space().read::<u32>());
-                self.to_space().skip(free_words.to_bytes().as_usize());
-            }
-            _ => {
-                self.to_space.rewind(size_of::<Tag>().to_bytes().as_usize());
-                scan_deserialized(self, tag, &|context, original| {
-                    let old_value = StableValue::serialize(original);
-                    if Self::is_null(old_value) {
-                        Self::encode_null()
-                    } else if original.is_ptr() {
-                        context.evacuate(old_value)
-                    } else {
-                        original
-                    }
-                });
-            }
+        let address = self.scan_address.unwrap();
+        let target_object = Value::from_ptr(address);
+        unsafe {
+            Self::scan_deserialized(self, target_object, &|context, original| {
+                let old_value = StableValue::serialize(original);
+                if Self::is_null(old_value) {
+                    Self::encode_null()
+                } else if original.is_ptr() {
+                    context.evacuate(old_value)
+                } else {
+                    original
+                }
+            });
         }
+        self.scan_address = Self::next_object(address);
     }
-}
 
-impl<'a, M: Memory> StableMemoryAccess for Deserialization<'a, M> {
-    fn to_space(&mut self) -> &mut StableMemorySpace {
-        &mut self.to_space
+    fn scan_completed(&self) -> bool {
+        self.scan_address.is_none()
     }
 }
 

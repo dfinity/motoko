@@ -9,12 +9,13 @@ use crate::stable_mem::{ic0_stable64_read, ic0_stable64_write};
 use super::grant_stable_space;
 
 /// Streamed reader/writer on stable memory.
+/// Used for the to-space during stabilization.
 /// Experiment: No buffering.
 ///
 /// The memory supports two location-independent streams:
 /// * Streamed reading and updating, used for scanning and patching pointers.
 /// * Streamed writing, used for allocating new objects.
-pub struct StableMemorySpace {
+pub struct StableMemoryStream {
     /// The pointers used in the serialized stable memory layout are
     /// relative to this start address of the to-space.
     base_address: u64,
@@ -22,7 +23,6 @@ pub struct StableMemorySpace {
     scan_address: u64,
     /// Used for writing.
     free_address: u64,
-    closed: bool,
 }
 
 pub trait ScanStream {
@@ -49,18 +49,16 @@ pub trait WriteStream {
     fn raw_write(&mut self, data_address: usize, length: usize);
 }
 
-impl StableMemorySpace {
-    pub fn open(start_address: u64) -> StableMemorySpace {
-        StableMemorySpace {
+impl StableMemoryStream {
+    pub fn open(start_address: u64) -> StableMemoryStream {
+        StableMemoryStream {
             base_address: start_address,
             scan_address: start_address,
             free_address: start_address,
-            closed: false,
         }
     }
 
     pub fn close(&mut self) {
-        self.closed = true;
         debug_assert!(self.scan_address <= self.free_address);
     }
 
@@ -72,7 +70,7 @@ impl StableMemorySpace {
     }
 }
 
-impl ScanStream for StableMemorySpace {
+impl ScanStream for StableMemoryStream {
     fn scan_completed(&self) -> bool {
         debug_assert!(self.scan_address <= self.free_address);
         self.scan_address == self.free_address
@@ -91,16 +89,15 @@ impl ScanStream for StableMemorySpace {
         unsafe {
             ic0_stable64_read(data_address as u64, self.scan_address, length as u64);
         }
+        self.scan_address += length as u64;
     }
 
     fn rewind(&mut self, length: usize) {
-        debug_assert!(!self.closed);
         debug_assert!(length as u64 <= self.scan_address);
         self.scan_address -= length as u64;
     }
 
     fn skip(&mut self, length: usize) {
-        debug_assert!(!self.closed);
         debug_assert!(self.scan_address + length as u64 <= self.free_address);
         self.scan_address += length as u64;
     }
@@ -113,14 +110,13 @@ impl ScanStream for StableMemorySpace {
 
     fn raw_update(&mut self, data_address: usize, length: usize) {
         debug_assert!(length as u64 <= self.scan_address);
-        self.scan_address -= length as u64;
         unsafe {
-            ic0_stable64_write(self.scan_address, data_address as u64, length as u64);
+            ic0_stable64_write(self.scan_address - length as u64, data_address as u64, length as u64);
         }
     }
 }
 
-impl WriteStream for StableMemorySpace {
+impl WriteStream for StableMemoryStream {
     fn write<T>(&mut self, value: &T) {
         let length = size_of::<T>();
         let value_address = value as *const T as usize;
@@ -132,11 +128,6 @@ impl WriteStream for StableMemorySpace {
             grant_stable_space(self.free_address + length as u64);
             ic0_stable64_write(self.free_address, data_address as u64, length as u64);
         }
-    }
-}
-
-impl Drop for StableMemorySpace {
-    fn drop(&mut self) {
-        debug_assert!(self.closed);
+        self.free_address += length as u64;
     }
 }

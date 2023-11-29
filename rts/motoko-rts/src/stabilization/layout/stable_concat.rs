@@ -3,10 +3,10 @@
 
 use crate::{
     stabilization::StableMemoryAccess,
-    types::{Bytes, Concat, Obj, Value, TAG_CONCAT},
+    types::{Concat, Value},
 };
 
-use super::{checked_to_u32, Serializer, StableValue, StaticScanner};
+use super::{Serializer, StableValue, StaticScanner};
 
 #[repr(C)]
 pub struct StableConcat {
@@ -16,19 +16,7 @@ pub struct StableConcat {
 }
 
 impl StaticScanner<StableValue> for StableConcat {
-    fn update_pointers<C: StableMemoryAccess, F: Fn(&mut C, StableValue) -> StableValue>(
-        &mut self,
-        context: &mut C,
-        translate: &F,
-    ) -> bool {
-        self.text1 = translate(context, self.text1);
-        self.text2 = translate(context, self.text2);
-        true
-    }
-}
-
-impl StaticScanner<Value> for Concat {
-    fn update_pointers<C: StableMemoryAccess, F: Fn(&mut C, Value) -> Value>(
+    fn update_pointers<C, F: Fn(&mut C, StableValue) -> StableValue>(
         &mut self,
         context: &mut C,
         translate: &F,
@@ -48,17 +36,25 @@ impl Serializer<Concat> for StableConcat {
         }
     }
 
-    unsafe fn deserialize_static_part(stable_object: *mut Self, target_address: Value) -> Concat {
-        let n_bytes = Bytes(checked_to_u32(
-            stable_object.read_unaligned().number_of_bytes,
-        ));
-        let text1 = stable_object.read_unaligned().text1.deserialize();
-        let text2 = stable_object.read_unaligned().text2.deserialize();
-        Concat {
-            header: Obj::new(TAG_CONCAT, target_address),
-            n_bytes,
-            text1,
-            text2,
-        }
+    unsafe fn deserialize<M: crate::memory::Memory>(
+        main_memory: &mut M,
+        stable_memory: &StableMemoryAccess,
+        stable_object: StableValue,
+    ) -> Value {
+        todo!()
     }
+
+    // unsafe fn deserialize_static_part(stable_object: *mut Self, target_address: Value) -> Concat {
+    //     let n_bytes = Bytes(checked_to_u32(
+    //         stable_object.read_unaligned().number_of_bytes,
+    //     ));
+    //     let text1 = stable_object.read_unaligned().text1.deserialize();
+    //     let text2 = stable_object.read_unaligned().text2.deserialize();
+    //     Concat {
+    //         header: Obj::new(TAG_CONCAT, target_address),
+    //         n_bytes,
+    //         text1,
+    //         text2,
+    //     }
+    // }
 }

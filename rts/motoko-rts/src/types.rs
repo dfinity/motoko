@@ -568,6 +568,11 @@ impl Array {
     /// No need for a write barrier.
     pub unsafe fn set_scalar(self: *mut Self, idx: u32, value: Value) {
         debug_assert!(value.is_scalar());
+        self.set_raw(idx, value);
+    }
+
+    /// Note: Only used by deserialization. No write barrier is applied.
+    pub unsafe fn set_raw(self: *mut Self, idx: u32, value: Value) {
         let slot_addr = self.element_address(idx);
         *(slot_addr as *mut Value) = value;
     }

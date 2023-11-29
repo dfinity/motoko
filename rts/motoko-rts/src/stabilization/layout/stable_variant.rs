@@ -1,4 +1,4 @@
-use crate::types::{Obj, Value, Variant, TAG_VARIANT};
+use crate::types::{Value, Variant};
 
 use super::{Serializer, StableValue, StaticScanner};
 
@@ -13,22 +13,8 @@ pub struct StableVariant {
 
 impl StaticScanner<StableValue> for StableVariant {
     fn update_pointers<
-        C: crate::stabilization::StableMemoryAccess,
+        C,
         F: Fn(&mut C, StableValue) -> StableValue,
-    >(
-        &mut self,
-        context: &mut C,
-        translate: &F,
-    ) -> bool {
-        self.field = translate(context, self.field);
-        true
-    }
-}
-
-impl StaticScanner<Value> for Variant {
-    fn update_pointers<
-        C: crate::stabilization::StableMemoryAccess,
-        F: Fn(&mut C, Value) -> Value,
     >(
         &mut self,
         context: &mut C,
@@ -47,13 +33,21 @@ impl Serializer<Variant> for StableVariant {
         }
     }
 
-    unsafe fn deserialize_static_part(stable_object: *mut Self, target_address: Value) -> Variant {
-        let tag = stable_object.read_unaligned().tag;
-        let field = stable_object.read_unaligned().field.deserialize();
-        Variant {
-            header: Obj::new(TAG_VARIANT, target_address),
-            tag,
-            field,
-        }
+    unsafe fn deserialize<M: crate::memory::Memory>(
+        main_memory: &mut M,
+        stable_memory: &crate::stabilization::stable_memory_access::StableMemoryAccess,
+        stable_object: StableValue,
+    ) -> Value {
+        todo!()
     }
+
+    // unsafe fn deserialize_static_part(stable_object: *mut Self, target_address: Value) -> Variant {
+    //     let tag = stable_object.read_unaligned().tag;
+    //     let field = stable_object.read_unaligned().field.deserialize();
+    //     Variant {
+    //         header: Obj::new(TAG_VARIANT, target_address),
+    //         tag,
+    //         field,
+    //     }
+    // }
 }

@@ -1,9 +1,9 @@
 use crate::{
-    stabilization::reader_writer::{ScanStream, StableMemorySpace, WriteStream},
-    types::{Obj, Object, Value, TAG_OBJECT},
+    stabilization::stable_memory_stream::{ScanStream, StableMemoryStream, WriteStream},
+    types::{Object, Value},
 };
 
-use super::{Serializer, StableValue, StaticScanner};
+use super::{Serializer, StableValue, StaticScanner, StableToSpace};
 
 // Note: The unaligned reads are needed because heap allocations are aligned to 32-bit,
 // while the stable layout uses 64-bit values.
@@ -32,22 +32,8 @@ impl StableObject {
 
 impl StaticScanner<StableValue> for StableObject {
     fn update_pointers<
-        C: crate::stabilization::StableMemoryAccess,
+        C,
         F: Fn(&mut C, StableValue) -> StableValue,
-    >(
-        &mut self,
-        context: &mut C,
-        translate: &F,
-    ) -> bool {
-        self.hash_blob = translate(context, self.hash_blob);
-        true
-    }
-}
-
-impl StaticScanner<Value> for Object {
-    fn update_pointers<
-        C: crate::stabilization::StableMemoryAccess,
-        F: Fn(&mut C, Value) -> Value,
     >(
         &mut self,
         context: &mut C,
@@ -66,7 +52,7 @@ impl Serializer<Object> for StableObject {
         }
     }
 
-    unsafe fn serialize_dynamic_part(memory: &mut StableMemorySpace, main_object: *mut Object) {
+    unsafe fn serialize_dynamic_part(memory: &mut StableMemoryStream, main_object: *mut Object) {
         for index in 0..main_object.size() {
             let main_field = main_object.get(index);
             let stable_field = StableValue::serialize(main_field);
@@ -75,7 +61,7 @@ impl Serializer<Object> for StableObject {
     }
 
     fn scan_serialized_dynamic<
-        C: crate::stabilization::StableMemoryAccess,
+        C: StableToSpace,
         F: Fn(&mut C, StableValue) -> StableValue,
     >(
         context: &mut C,
@@ -91,36 +77,44 @@ impl Serializer<Object> for StableObject {
         }
     }
 
-    unsafe fn deserialize_static_part(stable_object: *mut Self, target_address: Value) -> Object {
-        let size = stable_object.read_unaligned().size;
-        let hash_blob = stable_object.read_unaligned().hash_blob.deserialize();
-        Object {
-            header: Obj::new(TAG_OBJECT, target_address),
-            size,
-            hash_blob,
-        }
+    unsafe fn deserialize<M: crate::memory::Memory>(
+        main_memory: &mut M,
+        stable_memory: &crate::stabilization::stable_memory_access::StableMemoryAccess,
+        stable_object: StableValue,
+    ) -> Value {
+        todo!()
     }
 
-    unsafe fn deserialize_dynamic_part(memory: &mut StableMemorySpace, stable_object: *mut Self) {
-        for index in 0..stable_object.size() {
-            let stable_field = stable_object.get(index);
-            let main_field = stable_field.deserialize();
-            memory.write(&main_field);
-        }
-    }
+    // unsafe fn deserialize_static_part(stable_object: *mut Self, target_address: Value) -> Object {
+    //     let size = stable_object.read_unaligned().size;
+    //     let hash_blob = stable_object.read_unaligned().hash_blob.deserialize();
+    //     Object {
+    //         header: Obj::new(TAG_OBJECT, target_address),
+    //         size,
+    //         hash_blob,
+    //     }
+    // }
 
-    fn scan_deserialized_dynamic<
-        C: crate::stabilization::StableMemoryAccess,
-        F: Fn(&mut C, Value) -> Value,
-    >(
-        context: &mut C,
-        main_object: &Object,
-        translate: &F,
-    ) {
-        for _ in 0..main_object.size {
-            let old_value = context.to_space().read::<Value>();
-            let new_value = translate(context, old_value);
-            context.to_space().update(&new_value);
-        }
-    }
+    // unsafe fn deserialize_dynamic_part(memory: &mut StableMemoryStream, stable_object: *mut Self) {
+    //     for index in 0..stable_object.size() {
+    //         let stable_field = stable_object.get(index);
+    //         let main_field = stable_field.deserialize();
+    //         memory.write(&main_field);
+    //     }
+    // }
+
+    // fn scan_deserialized_dynamic<
+    //     C: crate::stabilization::StableMemoryAccess,
+    //     F: Fn(&mut C, Value) -> Value,
+    // >(
+    //     context: &mut C,
+    //     main_object: &Object,
+    //     translate: &F,
+    // ) {
+    //     for _ in 0..main_object.size {
+    //         let old_value = context.to_space().read::<Value>();
+    //         let new_value = translate(context, old_value);
+    //         context.to_space().update(&new_value);
+    //     }
+    // }
 }
