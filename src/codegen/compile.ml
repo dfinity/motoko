@@ -9104,12 +9104,15 @@ module FuncDec = struct
            allocations used in `assert_caller_self_or_controller` and
            the message reply serialization *)
         Lifecycle.trans env Lifecycle.InGCTrigger ^^
-        (* Check that we are called from this or a controller *)
+        (* Check that we are called from this or a controller, w/o allocation *)
         IC.assert_caller_self_or_controller env ^^
-        (* Deserialize nullary args *)
-        Serialization.deserialize env [] ^^
-        Tuple.compile_unit ^^
-        Serialization.serialize env [] ^^
+        (* To avoid allocation, don't deserialize args nor serialize reply *)
+        (* Serialization.deserialize env [] ^^
+           Tuple.compile_unit ^^
+           Serialization.serialize env [] ^^
+        *)
+        (* send a pre-allocated reply *)
+        Blob.lit_ptr_len env "DIDL\x00\x00" ^^
         IC.reply_with_data env ^^
         (* message_cleanup env (Type.Shared Type.Write), but
            forces collection *)
