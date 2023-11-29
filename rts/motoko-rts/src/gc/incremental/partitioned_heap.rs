@@ -177,7 +177,6 @@ impl Partition {
         &mut self.bitmap
     }
 
-    #[cfg(feature = "memory_check")]
     unsafe fn clear_free_remainder(&self) {
         use crate::constants::WORD_SIZE;
         debug_assert!(self.dynamic_space_end() <= self.end_address());
@@ -214,8 +213,6 @@ impl Partition {
         self.evacuate = false;
         self.large_content = false;
         self.temporary = false;
-
-        #[cfg(feature = "memory_check")]
         self.clear_free_remainder();
     }
 
@@ -698,7 +695,6 @@ impl PartitionedHeap {
     // Significant performance gain by not inlining.
     #[inline(never)]
     unsafe fn allocate_in_new_partition<M: Memory>(&mut self, mem: &mut M, size: usize) -> Value {
-        #[cfg(feature = "memory_check")]
         self.allocation_partition().clear_free_remainder();
 
         self.precomputed_heap_size += self.allocation_partition().dynamic_size;
