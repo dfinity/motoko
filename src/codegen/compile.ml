@@ -4419,6 +4419,7 @@ module Lifecycle = struct
     | PostPreUpgrade (* an invalid state *)
     | InPostUpgrade
     | InComposite
+    | InGCTrigger (* grants the general memory reserve for GC trigger *)
 
   let string_of_state state = match state with
     | PreInit -> "PreInit"
@@ -4431,6 +4432,7 @@ module Lifecycle = struct
     | PostPreUpgrade -> "PostPreUpgrade"
     | InPostUpgrade -> "InPostUpgrade"
     | InComposite -> "InComposite"
+    | InGCTrigger -> "InGCTrigger"
 
   let int_of_state = function
     | PreInit -> 0l (* Automatically null *)
@@ -4447,6 +4449,7 @@ module Lifecycle = struct
     | PostPreUpgrade -> 9l
     | InPostUpgrade -> 10l
     | InComposite -> 11l
+    | InGCTrigger -> 12l
 
   let ptr () = Stack.end_ ()
   let end_ () = Int32.add (Stack.end_ ()) Heap.word_size
@@ -4459,7 +4462,7 @@ module Lifecycle = struct
     | Started -> [InStart]
     *)
     | InInit -> [PreInit]
-    | Idle -> [InInit; InUpdate; InPostUpgrade; InComposite]
+    | Idle -> [InInit; InUpdate; InPostUpgrade; InComposite; InGCTrigger]
     | InUpdate -> [Idle]
     | InQuery -> [Idle]
     | PostQuery -> [InQuery]
@@ -4467,6 +4470,7 @@ module Lifecycle = struct
     | PostPreUpgrade -> [InPreUpgrade]
     | InPostUpgrade -> [InInit]
     | InComposite -> [Idle; InComposite]
+    | InGCTrigger -> [Idle]
 
   let get env =
     compile_unboxed_const (ptr ()) ^^
@@ -5723,7 +5727,8 @@ module RTS_Exports = struct
     });
 
     (* Keep a memory reserve when in update or init state. 
-       This reserve can be used by queries, composite queries, and upgrades. *)
+       This reserve can be used by queries, composite queries, and upgrades, 
+       as well as by the GC trigger function. *)
     let keep_memory_reserve_fi = E.add_fun env "keep_memory_reserve" (
       Func.of_body env [] [I32Type] (fun env ->
         Lifecycle.get env ^^
@@ -9085,7 +9090,10 @@ module FuncDec = struct
     begin match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
       Func.define_built_in env name [] [] (fun env ->
-        message_start env (Type.Shared Type.Write) ^^
+        (* grant the general memory reserve for the small dynamic blob 
+           allocations used in `assert_caller_self_or_controller` and
+           the message reply serialization *)
+        Lifecycle.trans env Lifecycle.InGCTrigger ^^
         (* Check that we are called from this or a controller *)
         IC.assert_caller_self_or_controller env ^^
         (* Deserialize nullary args *)
