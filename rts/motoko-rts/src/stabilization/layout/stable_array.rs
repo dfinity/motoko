@@ -5,7 +5,7 @@ use crate::{
         stable_memory_stream::{ScanStream, StableMemoryStream, WriteStream},
         StableMemoryAccess,
     },
-    types::{Array, Value, size_of},
+    types::{size_of, Array, Value},
 };
 
 use super::{checked_to_u32, Serializer, StableToSpace, StableValue, StaticScanner};
@@ -59,8 +59,9 @@ impl Serializer<Array> for StableArray {
         let target_object = alloc_array(main_memory, array_length);
         let target_array = target_object.as_array();
         for index in 0..array_length {
-            let element_address =
-                address + size_of::<StableArray>().to_bytes().as_usize() as u64 + (index * size_of::<StableValue>().to_bytes().as_u32()) as u64;
+            let element_address = address
+                + size_of::<StableArray>().to_bytes().as_usize() as u64
+                + (index * size_of::<StableValue>().to_bytes().as_u32()) as u64;
             let element = stable_memory.read::<StableValue>(element_address);
             target_array.set_raw(index, element.deserialize());
         }

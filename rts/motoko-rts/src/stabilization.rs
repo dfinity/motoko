@@ -16,7 +16,7 @@
 //!  
 //! See `GraphCopyStabilization.md` for the stable format specification and the employed algorithm.
 
-use motoko_rts_macros::{ic_mem_fn, non_incremental_gc, incremental_gc};
+use motoko_rts_macros::{ic_mem_fn, incremental_gc, non_incremental_gc};
 
 use core::cmp::min;
 
@@ -25,11 +25,15 @@ use crate::{
     rts_trap_with,
     stabilization::layout::{deserialize, serialize},
     stable_mem::{self, ic0_stable64_write, PAGE_SIZE},
-    types::{FwdPtr, Tag, Value, TAG_CLOSURE, TAG_FWD_PTR, block_size, TAG_ONE_WORD_FILLER, TAG_FREE_SPACE}, visitor::visit_pointer_fields,
+    types::{
+        block_size, FwdPtr, Tag, Value, TAG_CLOSURE, TAG_FREE_SPACE, TAG_FWD_PTR,
+        TAG_ONE_WORD_FILLER,
+    },
+    visitor::visit_pointer_fields,
 };
 
 use self::{
-    layout::{scan_serialized, StableValue, STABLE_NULL_POINTER, StableToSpace},
+    layout::{scan_serialized, StableToSpace, StableValue, STABLE_NULL_POINTER},
     stable_memory_access::StableMemoryAccess,
     stable_memory_stream::{ScanStream, StableMemoryStream},
 };
@@ -282,13 +286,15 @@ impl<'a, M: Memory> Deserialization<'a, M> {
         unsafe {
             let tag = *(address as *const Tag);
             match tag {
-                TAG_ONE_WORD_FILLER | TAG_FREE_SPACE => address + block_size(address).to_bytes().as_usize(),
-                _ => address
+                TAG_ONE_WORD_FILLER | TAG_FREE_SPACE => {
+                    address + block_size(address).to_bytes().as_usize()
+                }
+                _ => address,
             }
         }
     }
 
-    // Ensure monotonically increasing allocation to allow main memory heap scanning 
+    // Ensure monotonically increasing allocation to allow main memory heap scanning
     // during deserialization.
     // Non-incremental GC: Contiguously increasing.
     // Incremental GC: Possible free space at partition end (internal fragmentation).
@@ -344,7 +350,7 @@ impl<'a, M: Memory> GraphCopy<StableValue, Value, u32> for Deserialization<'a, M
     }
 
     fn copy(&mut self, stable_object: StableValue) -> Value {
-        unsafe { 
+        unsafe {
             let target = deserialize(self.mem, &mut self.from_space, stable_object);
             self.check_allocation(target);
             self.heap_end = target.get_ptr() + block_size(target.get_ptr()).to_bytes().as_usize();

@@ -1,6 +1,8 @@
 use std::{array::from_fn, mem::size_of};
 
-use motoko_rts::stabilization::stable_memory_stream::{ScanStream, StableMemoryStream, WriteStream};
+use motoko_rts::stabilization::stable_memory_stream::{
+    ScanStream, StableMemoryStream, WriteStream,
+};
 use oorandom::Rand32;
 
 use crate::stabilization::stable_memory::ic0_stable64_read;

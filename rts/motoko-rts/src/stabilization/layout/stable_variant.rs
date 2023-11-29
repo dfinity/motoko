@@ -12,10 +12,7 @@ pub struct StableVariant {
 }
 
 impl StaticScanner<StableValue> for StableVariant {
-    fn update_pointers<
-        C,
-        F: Fn(&mut C, StableValue) -> StableValue,
-    >(
+    fn update_pointers<C, F: Fn(&mut C, StableValue) -> StableValue>(
         &mut self,
         context: &mut C,
         translate: &F,

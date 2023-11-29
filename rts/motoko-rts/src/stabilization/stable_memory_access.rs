@@ -11,14 +11,14 @@ use crate::stable_mem::{ic0_stable64_read, ic0_stable64_write};
 /// Experiment: No buffering.
 pub struct StableMemoryAccess {
     base_address: u64,
-    length: u64
+    length: u64,
 }
 
 impl StableMemoryAccess {
     pub fn open(base_address: u64, length: u64) -> StableMemoryAccess {
         StableMemoryAccess {
             base_address,
-            length
+            length,
         }
     }
 
@@ -33,7 +33,11 @@ impl StableMemoryAccess {
     pub fn raw_read(&self, source_offset: u64, target_address: usize, length: usize) {
         debug_assert!(source_offset + length as u64 <= self.length);
         unsafe {
-            ic0_stable64_read(target_address as u64, self.base_address + source_offset, length as u64);
+            ic0_stable64_read(
+                target_address as u64,
+                self.base_address + source_offset,
+                length as u64,
+            );
         }
     }
 
@@ -46,7 +50,11 @@ impl StableMemoryAccess {
     pub fn raw_write(&mut self, target_offset: u64, source_address: usize, length: usize) {
         debug_assert!(target_offset + length as u64 <= self.length);
         unsafe {
-            ic0_stable64_write(self.base_address + target_offset, source_address as u64, length as u64);
+            ic0_stable64_write(
+                self.base_address + target_offset,
+                source_address as u64,
+                length as u64,
+            );
         }
     }
 }

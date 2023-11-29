@@ -1,6 +1,7 @@
 use crate::{
+    barriers::allocation_barrier,
     stabilization::StableMemoryAccess,
-    types::{MutBox, Value, size_of, TAG_MUTBOX}, barriers::allocation_barrier,
+    types::{size_of, MutBox, Value, TAG_MUTBOX},
 };
 
 use super::{Serializer, StableValue, StaticScanner};

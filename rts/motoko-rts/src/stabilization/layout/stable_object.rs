@@ -3,7 +3,7 @@ use crate::{
     types::{Object, Value},
 };
 
-use super::{Serializer, StableValue, StaticScanner, StableToSpace};
+use super::{Serializer, StableToSpace, StableValue, StaticScanner};
 
 // Note: The unaligned reads are needed because heap allocations are aligned to 32-bit,
 // while the stable layout uses 64-bit values.
@@ -31,10 +31,7 @@ impl StableObject {
 }
 
 impl StaticScanner<StableValue> for StableObject {
-    fn update_pointers<
-        C,
-        F: Fn(&mut C, StableValue) -> StableValue,
-    >(
+    fn update_pointers<C, F: Fn(&mut C, StableValue) -> StableValue>(
         &mut self,
         context: &mut C,
         translate: &F,
@@ -60,10 +57,7 @@ impl Serializer<Object> for StableObject {
         }
     }
 
-    fn scan_serialized_dynamic<
-        C: StableToSpace,
-        F: Fn(&mut C, StableValue) -> StableValue,
-    >(
+    fn scan_serialized_dynamic<C: StableToSpace, F: Fn(&mut C, StableValue) -> StableValue>(
         context: &mut C,
         stable_object: &Self,
         translate: &F,

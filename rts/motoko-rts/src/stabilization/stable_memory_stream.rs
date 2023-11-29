@@ -111,7 +111,11 @@ impl ScanStream for StableMemoryStream {
     fn raw_update(&mut self, data_address: usize, length: usize) {
         debug_assert!(length as u64 <= self.scan_address);
         unsafe {
-            ic0_stable64_write(self.scan_address - length as u64, data_address as u64, length as u64);
+            ic0_stable64_write(
+                self.scan_address - length as u64,
+                data_address as u64,
+                length as u64,
+            );
         }
     }
 }

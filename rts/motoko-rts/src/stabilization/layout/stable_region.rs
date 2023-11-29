@@ -26,7 +26,6 @@ impl StaticScanner<StableValue> for StableRegion {
     }
 }
 
-
 impl Serializer<Region> for StableRegion {
     unsafe fn serialize_static_part(main_object: *mut Region) -> Self {
         StableRegion {

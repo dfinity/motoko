@@ -4,7 +4,7 @@ use crate::stabilization::StableMemoryAccess;
 use crate::tommath_bindings::{mp_digit, mp_int};
 use crate::types::{BigInt, Value};
 
-use super::{round_to_u64, Serializer, StableValue, StaticScanner, StableToSpace};
+use super::{round_to_u64, Serializer, StableToSpace, StableValue, StaticScanner};
 
 // TODO: Use a format that is independent of Tom's math library, e.g. by using LEB128/SLEB128 encoding.
 // Redesign `bigint.rs` to
