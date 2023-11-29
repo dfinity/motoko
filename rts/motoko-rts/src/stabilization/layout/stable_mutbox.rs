@@ -1,6 +1,6 @@
 use crate::{
     stabilization::StableMemoryAccess,
-    types::{MutBox, Value, size_of}, barriers::allocation_barrier,
+    types::{MutBox, Value, size_of, TAG_MUTBOX}, barriers::allocation_barrier,
 };
 
 use super::{Serializer, StableValue, StaticScanner};
@@ -39,7 +39,8 @@ impl Serializer<MutBox> for StableMutBox {
         let address = stable_object.payload_address();
         let stable_mutbox = stable_memory.read::<StableMutBox>(address);
         let target_object = main_memory.alloc_words(size_of::<MutBox>());
-        let target_mutbox = target_object.as_mutbox();
+        let target_mutbox = target_object.get_ptr() as *mut MutBox;
+        (*target_mutbox).header.tag = TAG_MUTBOX;
         (*target_mutbox).header.init_forward(target_object);
         (*target_mutbox).field = stable_mutbox.field.deserialize();
         allocation_barrier(target_object)

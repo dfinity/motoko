@@ -16,7 +16,7 @@
 //!  
 //! See `GraphCopyStabilization.md` for the stable format specification and the employed algorithm.
 
-use motoko_rts_macros::ic_mem_fn;
+use motoko_rts_macros::{ic_mem_fn, non_incremental_gc, incremental_gc};
 
 use core::cmp::min;
 
@@ -25,7 +25,7 @@ use crate::{
     rts_trap_with,
     stabilization::layout::{deserialize, serialize},
     stable_mem::{self, ic0_stable64_write, PAGE_SIZE},
-    types::{FwdPtr, Tag, Value, TAG_CLOSURE, TAG_FWD_PTR}, visitor::visit_pointer_fields,
+    types::{FwdPtr, Tag, Value, TAG_CLOSURE, TAG_FWD_PTR, block_size}, visitor::visit_pointer_fields,
 };
 
 use self::{
@@ -240,7 +240,8 @@ impl StableToSpace for Serialization {
 pub struct Deserialization<'a, M: Memory> {
     mem: &'a mut M,
     from_space: StableMemoryAccess,
-    scan_address: Option<usize>,
+    scan_address: usize,
+    heap_end: usize,
 }
 
 impl<'a, M: Memory> Deserialization<'a, M> {
@@ -254,7 +255,8 @@ impl<'a, M: Memory> Deserialization<'a, M> {
         Deserialization {
             mem,
             from_space,
-            scan_address: Some(heap_start),
+            scan_address: heap_start,
+            heap_end: heap_start,
         }
         .run(StableValue::serialize(Value::from_ptr(0)));
         clear_stable_memory(stable_start, stable_size);
@@ -269,10 +271,32 @@ impl<'a, M: Memory> Deserialization<'a, M> {
         unsafe { moc_null_singleton() }
     }
 
-    fn next_object(address: usize) -> Option<usize> {
-        todo!()
+    #[non_incremental_gc]
+    fn skip_free_space(address: usize) -> usize {
+        address
     }
 
+    #[incremental_gc]
+    fn skip_free_space(address: usize) -> usize {
+        unsafe {
+            let partitioned_heap = crate::gc::incremental::get_partitioned_heap();
+            partitioned_heap.skip_free_space(address)
+        }
+    }
+
+    // Ensure monotonically increasing allocation to allow main memory heap scanning 
+    // during deserialization.
+    // Non-incremental GC: Contiguously increasing.
+    // Incremental GC: Possible free space at partition end (internal fragmentation).
+    #[non_incremental_gc]
+    fn check_allocation(&self, target: Value) {
+        assert_eq!(target.get_ptr(), self.heap_end);
+    }
+
+    #[incremental_gc]
+    fn check_allocation(&self, target: Value) {
+        assert!(target.get_ptr() >= self.heap_end);
+    }
 
     unsafe fn scan_deserialized<C, F: Fn(&mut C, Value) -> Value>(
         context: &mut C,
@@ -316,14 +340,20 @@ impl<'a, M: Memory> GraphCopy<StableValue, Value, u32> for Deserialization<'a, M
     }
 
     fn copy(&mut self, stable_object: StableValue) -> Value {
-        unsafe { deserialize(self.mem, &mut self.from_space, stable_object) }
+        unsafe { 
+            let target = deserialize(self.mem, &mut self.from_space, stable_object);
+            self.check_allocation(target);
+            self.heap_end = target.get_ptr() + block_size(target.get_ptr()).to_bytes().as_usize();
+            target
+        }
     }
 
     /// Note:
     /// * The deserialized memory may contain free space at a partition end.
     fn scan(&mut self) {
-        let address = self.scan_address.unwrap();
-        let target_object = Value::from_ptr(address);
+        self.scan_address = Self::skip_free_space(self.scan_address);
+        debug_assert!(self.scan_address < self.heap_end);
+        let target_object = Value::from_ptr(self.scan_address);
         unsafe {
             Self::scan_deserialized(self, target_object, &|context, original| {
                 let old_value = StableValue::serialize(original);
@@ -335,12 +365,14 @@ impl<'a, M: Memory> GraphCopy<StableValue, Value, u32> for Deserialization<'a, M
                     original
                 }
             });
+            self.scan_address += block_size(self.scan_address).to_bytes().as_usize();
+            debug_assert!(self.scan_address <= self.heap_end);
         }
-        self.scan_address = Self::next_object(address);
     }
 
     fn scan_completed(&self) -> bool {
-        self.scan_address.is_none()
+        debug_assert!(self.scan_address <= self.heap_end);
+        self.scan_address == self.heap_end
     }
 }
 
