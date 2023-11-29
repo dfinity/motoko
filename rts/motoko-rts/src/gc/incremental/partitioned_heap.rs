@@ -655,20 +655,6 @@ impl PartitionedHeap {
         end
     }
 
-    pub unsafe fn skip_free_space(&self, address: usize) -> usize {
-        let partition_index = address / PARTITION_SIZE;
-        let partition = self.get_partition(partition_index);
-        assert!(!partition.free && !partition.temporary);
-        assert!(address <= partition.dynamic_space_end());
-        if address == partition.dynamic_space_end() {
-            let next_partition = self.get_partition(partition_index + 1);
-            assert!(!partition.free && !partition.temporary);
-            next_partition.start_address()
-        } else {
-            address
-        }
-    }
-
     pub unsafe fn allocate<M: Memory>(&mut self, mem: &mut M, words: Words<u32>) -> Value {
         let size = words.to_bytes().as_usize();
         if size <= PARTITION_SIZE {

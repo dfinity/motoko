@@ -25,7 +25,7 @@ use crate::{
     rts_trap_with,
     stabilization::layout::{deserialize, serialize},
     stable_mem::{self, ic0_stable64_write, PAGE_SIZE},
-    types::{FwdPtr, Tag, Value, TAG_CLOSURE, TAG_FWD_PTR, block_size}, visitor::visit_pointer_fields,
+    types::{FwdPtr, Tag, Value, TAG_CLOSURE, TAG_FWD_PTR, block_size, TAG_ONE_WORD_FILLER, TAG_FREE_SPACE}, visitor::visit_pointer_fields,
 };
 
 use self::{
@@ -276,11 +276,15 @@ impl<'a, M: Memory> Deserialization<'a, M> {
         address
     }
 
+    // Incremental GC adds free space blocks at unused partition ends.
     #[incremental_gc]
     fn skip_free_space(address: usize) -> usize {
         unsafe {
-            let partitioned_heap = crate::gc::incremental::get_partitioned_heap();
-            partitioned_heap.skip_free_space(address)
+            let tag = *(address as *const Tag);
+            match tag {
+                TAG_ONE_WORD_FILLER | TAG_FREE_SPACE => address + block_size(address).to_bytes().as_usize(),
+                _ => address
+            }
         }
     }
 
