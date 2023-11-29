@@ -126,7 +126,7 @@ unsafe fn record_gc_stop<M: Memory>() {
 /// Finally, all the evacuated and temporary partitions are freed.
 /// The temporary partitions store mark bitmaps.
 
-/// The limit on the GC increment has a fix base with a linear increase depending on the number of
+/// The limit on the GC increment has a fixed base with a linear increase depending on the number of
 /// allocations that were performed during a running GC. The allocation-proportional term adapts
 /// to the allocation rate and helps the GC to reduce reclamation latency.
 const INCREMENT_BASE_LIMIT: usize = 5_000_000; // Increment limit without concurrent allocations.
