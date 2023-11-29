@@ -10556,9 +10556,9 @@ and compile_prim_invocation (env : E.t) ae p es at =
         go locals)
     end
 
-  | ICPerformGC force, [] ->
+  | ICPerformGC, [] ->
     SR.unit,
-    E.collect_garbage env force
+    GC.collect_garbage env
 
   | ICStableSize t, [e] ->
     SR.UnboxedWord64,

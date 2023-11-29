@@ -90,7 +90,7 @@ let primE prim es =
     | ICCallerPrim -> T.caller
     | ICStableRead t -> t
     | ICMethodNamePrim -> T.text
-    | ICPerformGC _
+    | ICPerformGC
     | ICStableWrite _ -> T.unit
     | ICStableSize _ -> T.nat64
     | IdxPrim
