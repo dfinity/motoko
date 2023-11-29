@@ -1,4 +1,4 @@
-use crate::types::{Bits32, Value};
+use crate::{types::{Bits32, Value, size_of, TAG_BITS32}, barriers::allocation_barrier};
 
 use super::{Serializer, StableValue, StaticScanner};
 
@@ -21,14 +21,13 @@ impl Serializer<Bits32> for StableBits32 {
         stable_memory: &crate::stabilization::stable_memory_access::StableMemoryAccess,
         stable_object: StableValue,
     ) -> Value {
-        todo!()
+        let stable_address = stable_object.payload_address();
+        let stable_bits32 = stable_memory.read::<StableBits32>(stable_address);
+        let target_object = main_memory.alloc_words(size_of::<Bits32>());
+        let target_bits32 = target_object.get_ptr() as *mut Bits32;
+        (*target_bits32).header.tag = TAG_BITS32;
+        (*target_bits32).header.init_forward(target_object);
+        (*target_bits32).bits = stable_bits32.bits;
+        allocation_barrier(target_object)
     }
-
-    // unsafe fn deserialize_static_part(stable_object: *mut Self, target_address: Value) -> Bits32 {
-    //     let bits = stable_object.read_unaligned().bits;
-    //     Bits32 {
-    //         header: Obj::new(TAG_BITS32, target_address),
-    //         bits,
-    //     }
-    // }
 }

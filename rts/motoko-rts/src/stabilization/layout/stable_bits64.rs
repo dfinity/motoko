@@ -1,7 +1,7 @@
 // Note: The unaligned reads are needed because heap allocations are aligned to 32-bit,
 // while the stable layout uses 64-bit values.
 
-use crate::types::{Bits64, Value};
+use crate::{types::{Bits64, Value, size_of, TAG_BITS64, lower32, upper32}, barriers::allocation_barrier};
 
 use super::{Serializer, StableValue, StaticScanner};
 
@@ -24,15 +24,14 @@ impl Serializer<Bits64> for StableBits64 {
         stable_memory: &crate::stabilization::stable_memory_access::StableMemoryAccess,
         stable_object: StableValue,
     ) -> Value {
-        todo!()
+        let stable_address = stable_object.payload_address();
+        let stable_bits64 = stable_memory.read::<StableBits64>(stable_address);
+        let target_object = main_memory.alloc_words(size_of::<Bits64>());
+        let target_bits64 = target_object.get_ptr() as *mut Bits64;
+        (*target_bits64).header.tag = TAG_BITS64;
+        (*target_bits64).header.init_forward(target_object);
+        (*target_bits64).bits_lo = lower32(stable_bits64.bits);
+        (*target_bits64).bits_hi = upper32(stable_bits64.bits);
+        allocation_barrier(target_object)
     }
-
-    // unsafe fn deserialize_static_part(stable_object: *mut Self, target_address: Value) -> Bits64 {
-    //     let bits = stable_object.read_unaligned().bits;
-    //     Bits64 {
-    //         header: Obj::new(TAG_BITS64, target_address),
-    //         bits_lo: lower32(bits),
-    //         bits_hi: upper32(bits),
-    //     }
-    // }
 }
