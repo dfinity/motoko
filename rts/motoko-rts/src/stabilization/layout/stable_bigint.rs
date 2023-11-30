@@ -1,17 +1,13 @@
+use crate::memory::Memory;
 use crate::stabilization::layout::{checked_to_usize, write_padding_u64};
 use crate::stabilization::stable_memory_stream::{ScanStream, StableMemoryStream, WriteStream};
 use crate::stabilization::StableMemoryAccess;
-use crate::tommath_bindings::{mp_digit, mp_int};
-use crate::types::{BigInt, Value};
+use crate::tommath_bindings::mp_int;
+use crate::types::{size_of, BigInt, Bytes, Value, TAG_BIGINT};
 
-use super::{round_to_u64, Serializer, StableToSpace, StableValue, StaticScanner};
+use super::{checked_to_u32, round_to_u64, Serializer, StableToSpace, StableValue, StaticScanner};
 
 // TODO: Use a format that is independent of Tom's math library, e.g. by using LEB128/SLEB128 encoding.
-// Redesign `bigint.rs` to
-// * Stream to stable memory without needing a temporary buffer.
-// * Compute the required size of `mp_int` without writing to heap.
-//  (This is required by the deserialization algorithm that streams the main memory layout to stable memory
-//  and uses allocators to only compute the target addresses.)
 
 #[repr(C)]
 pub struct StableBigInt {
@@ -43,42 +39,38 @@ impl Serializer<BigInt> for StableBigInt {
     }
 
     fn scan_serialized_dynamic<C: StableToSpace, F: Fn(&mut C, StableValue) -> StableValue>(
+        &self,
         context: &mut C,
-        stable_object: &Self,
         _translate: &F,
     ) {
-        let rounded_length = round_to_u64(stable_object.length());
+        let rounded_length = round_to_u64(self.length());
         context.to_space().skip(checked_to_usize(rounded_length));
     }
 
-    unsafe fn deserialize<M: crate::memory::Memory>(
-        main_memory: &mut M,
-        stable_memory: &StableMemoryAccess,
-        stable_object: StableValue,
-    ) -> Value {
-        todo!()
+    unsafe fn allocate_deserialized<M: Memory>(&self, main_memory: &mut M) -> Value {
+        let payload_length = Bytes(checked_to_u32(self.length()));
+        let total_size = size_of::<BigInt>() + payload_length.to_words();
+        main_memory.alloc_words(total_size)
     }
 
-    // unsafe fn deserialize_static_part(stable_object: *mut Self, target_address: Value) -> BigInt {
-    //     BigInt {
-    //         header: Obj::new(TAG_BIGINT, target_address),
-    //         mp_int: stable_object.read_unaligned().mp_int,
-    //     }
-    // }
+    unsafe fn deserialize_static_part(&self, target_bigint: *mut BigInt) {
+        (*target_bigint).header.tag = TAG_BIGINT;
+        (*target_bigint)
+            .header
+            .init_forward(Value::from_ptr(target_bigint as usize));
+        (*target_bigint).mp_int = self.mp_int;
+    }
 
-    // unsafe fn deserialize_dynamic_part(memory: &mut StableMemoryStream, stable_object: *mut Self) {
-    //     let byte_length = checked_to_u32(stable_object.payload_length());
-    //     let rounded_length = Bytes(byte_length).to_words().to_bytes().as_usize();
-    //     memory.raw_write(stable_object.payload_address() as usize, rounded_length)
-    // }
-
-    // fn scan_deserialized_dynamic<C: StableMemoryAccess, F: Fn(&mut C, Value) -> Value>(
-    //     context: &mut C,
-    //     main_object: &BigInt,
-    //     _translate: &F,
-    // ) {
-    //     let byte_length = unsafe { BigInt::data_length(&main_object.mp_int as *const mp_int) };
-    //     let rounded_length = byte_length.to_words().to_bytes().as_usize();
-    //     context.to_space().skip(rounded_length);
-    // }
+    unsafe fn deserialize_dynamic_part(
+        &self,
+        stable_memory: &StableMemoryAccess,
+        stable_object: StableValue,
+        target_bigint: *mut BigInt,
+    ) {
+        let stable_address = stable_object.payload_address();
+        let source_payload = stable_address + size_of::<BigInt>().to_bytes().as_usize() as u64;
+        let target_payload = target_bigint.payload_addr() as usize;
+        let payload_length = Bytes(checked_to_u32(self.length()));
+        stable_memory.raw_read(source_payload, target_payload, payload_length.as_usize());
+    }
 }

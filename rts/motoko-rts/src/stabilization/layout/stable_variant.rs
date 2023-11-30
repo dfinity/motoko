@@ -1,9 +1,6 @@
-use crate::types::{Value, Variant};
+use crate::types::{Value, Variant, TAG_VARIANT};
 
 use super::{Serializer, StableValue, StaticScanner};
-
-// Note: The unaligned reads are needed because heap allocations are aligned to 32-bit,
-// while the stable layout uses 64-bit values.
 
 #[repr(C)]
 pub struct StableVariant {
@@ -30,21 +27,12 @@ impl Serializer<Variant> for StableVariant {
         }
     }
 
-    unsafe fn deserialize<M: crate::memory::Memory>(
-        main_memory: &mut M,
-        stable_memory: &crate::stabilization::stable_memory_access::StableMemoryAccess,
-        stable_object: StableValue,
-    ) -> Value {
-        todo!()
+    unsafe fn deserialize_static_part(&self, target_variant: *mut Variant) {
+        (*target_variant).header.tag = TAG_VARIANT;
+        (*target_variant)
+            .header
+            .init_forward(Value::from_ptr(target_variant as usize));
+        (*target_variant).tag = self.tag;
+        (*target_variant).field = self.field.deserialize();
     }
-
-    // unsafe fn deserialize_static_part(stable_object: *mut Self, target_address: Value) -> Variant {
-    //     let tag = stable_object.read_unaligned().tag;
-    //     let field = stable_object.read_unaligned().field.deserialize();
-    //     Variant {
-    //         header: Obj::new(TAG_VARIANT, target_address),
-    //         tag,
-    //         field,
-    //     }
-    // }
 }

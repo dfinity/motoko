@@ -23,6 +23,7 @@
 //! data types must be handled with extra care to ensure backwards compatibility.
 
 use crate::{
+    barriers::allocation_barrier,
     memory::Memory,
     types::{
         size_of, Tag, Value, TAG_ARRAY, TAG_ARRAY_SLICE_MIN, TAG_BIGINT, TAG_BITS32, TAG_BITS64,
@@ -208,13 +209,27 @@ where
         if static_part.update_pointers(context, translate) {
             context.to_space().update(&static_part);
         }
-        Self::scan_serialized_dynamic(context, &static_part, translate);
+        static_part.scan_serialized_dynamic(context, translate);
     }
 
     fn scan_serialized_dynamic<C: StableToSpace, F: Fn(&mut C, StableValue) -> StableValue>(
+        &self,
         _context: &mut C,
-        _stable_object: &Self,
         _translate: &F,
+    ) {
+    }
+
+    unsafe fn allocate_deserialized<M: Memory>(&self, main_memory: &mut M) -> Value {
+        main_memory.alloc_words(size_of::<T>())
+    }
+
+    unsafe fn deserialize_static_part(&self, target_object: *mut T);
+
+    unsafe fn deserialize_dynamic_part(
+        &self,
+        _stable_memory: &StableMemoryAccess,
+        _stable_object: StableValue,
+        _target_object: *mut T,
     ) {
     }
 
@@ -222,7 +237,15 @@ where
         main_memory: &mut M,
         stable_memory: &StableMemoryAccess,
         stable_object: StableValue,
-    ) -> Value;
+    ) -> Value {
+        let stable_address = stable_object.payload_address();
+        let stable_static_part = stable_memory.read::<Self>(stable_address);
+        let target = stable_static_part.allocate_deserialized(main_memory);
+        let target_object = target.get_ptr() as *mut T;
+        stable_static_part.deserialize_static_part(target_object);
+        stable_static_part.deserialize_dynamic_part(stable_memory, stable_object, target_object);
+        allocation_barrier(target)
+    }
 }
 
 pub fn checked_to_u32(input: u64) -> u32 {

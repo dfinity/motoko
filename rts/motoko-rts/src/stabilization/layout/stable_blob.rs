@@ -1,16 +1,17 @@
 use crate::{
+    memory::{alloc_blob, Memory},
     stabilization::stable_memory_access::StableMemoryAccess,
-    stabilization::{stable_memory_stream::{ScanStream, StableMemoryStream, WriteStream}, layout::checked_to_u32},
-    types::{Blob, Value, Bytes, size_of}, memory::alloc_blob, barriers::allocation_barrier,
+    stabilization::{
+        layout::checked_to_u32,
+        stable_memory_stream::{ScanStream, StableMemoryStream, WriteStream},
+    },
+    types::{size_of, Blob, Bytes, Value, TAG_BLOB},
 };
 
 use super::{
     checked_to_usize, round_to_u64, write_padding_u64, Serializer, StableToSpace, StableValue,
     StaticScanner,
 };
-
-// Note: The unaligned reads are needed because heap allocations are aligned to 32-bit,
-// while the stable layout uses 64-bit values.
 
 #[repr(C)]
 #[derive(Default)]
@@ -37,27 +38,37 @@ impl Serializer<Blob> for StableBlob {
     }
 
     fn scan_serialized_dynamic<C: StableToSpace, F: Fn(&mut C, StableValue) -> StableValue>(
+        &self,
         context: &mut C,
-        stable_object: &Self,
         _translate: &F,
     ) {
-        let rounded_length = round_to_u64(stable_object.byte_length);
+        let rounded_length = round_to_u64(self.byte_length);
         context.to_space().skip(checked_to_usize(rounded_length));
     }
 
-    unsafe fn deserialize<M: crate::memory::Memory>(
-        main_memory: &mut M,
+    unsafe fn allocate_deserialized<M: Memory>(&self, main_memory: &mut M) -> Value {
+        let blob_length = checked_to_u32(self.byte_length);
+        alloc_blob(main_memory, Bytes(blob_length))
+    }
+
+    unsafe fn deserialize_static_part(&self, target_blob: *mut Blob) {
+        debug_assert_eq!((*target_blob).header.tag, TAG_BLOB);
+        debug_assert_eq!(
+            (*target_blob).len.as_u32(),
+            checked_to_u32(self.byte_length)
+        );
+    }
+
+    unsafe fn deserialize_dynamic_part(
+        &self,
         stable_memory: &StableMemoryAccess,
         stable_object: StableValue,
-    ) -> Value {
+        target_blob: *mut Blob,
+    ) {
         let stable_address = stable_object.payload_address();
-        let stable_blob = stable_memory.read::<StableBlob>(stable_address);
-        let blob_length = checked_to_u32(stable_blob.byte_length);
-        let target_object = alloc_blob(main_memory, Bytes(blob_length));
-        let target_blob = target_object.as_blob_mut();
         let source_payload = stable_address + size_of::<StableBlob>().to_bytes().as_usize() as u64;
         let target_payload = target_blob.payload_addr() as usize;
+        let blob_length = checked_to_u32(self.byte_length);
         stable_memory.raw_read(source_payload, target_payload, blob_length as usize);
-        allocation_barrier(target_object)
     }
 }

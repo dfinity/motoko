@@ -1,17 +1,13 @@
 use crate::{
-    barriers::allocation_barrier,
     memory::{alloc_array, Memory},
     stabilization::{
         stable_memory_stream::{ScanStream, StableMemoryStream, WriteStream},
         StableMemoryAccess,
     },
-    types::{size_of, Array, Value},
+    types::{size_of, Array, Value, TAG_ARRAY},
 };
 
 use super::{checked_to_u32, Serializer, StableToSpace, StableValue, StaticScanner};
-
-// Note: The unaligned reads are needed because heap allocations are aligned to 32-bit,
-// while the stable layout uses 64-bit values.
 
 #[repr(C)]
 pub struct StableArray {
@@ -37,34 +33,40 @@ impl Serializer<Array> for StableArray {
     }
 
     fn scan_serialized_dynamic<C: StableToSpace, F: Fn(&mut C, StableValue) -> StableValue>(
+        &self,
         context: &mut C,
-        stable_array: &Self,
         translate: &F,
     ) {
-        for _ in 0..stable_array.array_length {
+        for _ in 0..self.array_length {
             let old_value = context.to_space().read::<StableValue>();
             let new_value = translate(context, old_value);
             context.to_space().update(&new_value);
         }
     }
 
-    unsafe fn deserialize<M: Memory>(
-        main_memory: &mut M,
+    unsafe fn allocate_deserialized<M: Memory>(&self, main_memory: &mut M) -> Value {
+        let array_length = checked_to_u32(self.array_length);
+        alloc_array(main_memory, array_length)
+    }
+
+    unsafe fn deserialize_static_part(&self, target_array: *mut Array) {
+        debug_assert_eq!((*target_array).header.tag, TAG_ARRAY);
+        debug_assert_eq!((*target_array).len, checked_to_u32(self.array_length));
+    }
+
+    unsafe fn deserialize_dynamic_part(
+        &self,
         stable_memory: &StableMemoryAccess,
         stable_object: StableValue,
-    ) -> Value {
+        target_array: *mut Array,
+    ) {
         let stable_address = stable_object.payload_address();
-        let stable_array = stable_memory.read::<StableArray>(stable_address);
-        let array_length = checked_to_u32(stable_array.array_length);
-        let target_object = alloc_array(main_memory, array_length);
-        let target_array = target_object.as_array();
-        for index in 0..array_length {
+        for index in 0..(*target_array).len {
             let element_address = stable_address
                 + size_of::<StableArray>().to_bytes().as_usize() as u64
                 + (index * size_of::<StableValue>().to_bytes().as_u32()) as u64;
             let element = stable_memory.read::<StableValue>(element_address);
             target_array.set_raw(index, element.deserialize());
         }
-        allocation_barrier(target_object)
     }
 }

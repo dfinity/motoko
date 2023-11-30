@@ -1,10 +1,4 @@
-// Note: The unaligned reads are needed because heap allocations are aligned to 32-bit,
-// while the stable layout uses 64-bit values.
-
-use crate::{
-    stabilization::StableMemoryAccess,
-    types::{Some, Value},
-};
+use crate::types::{Some, Value, TAG_SOME};
 
 use super::{Serializer, StableValue, StaticScanner};
 
@@ -31,19 +25,11 @@ impl Serializer<Some> for StableSome {
         }
     }
 
-    unsafe fn deserialize<M: crate::memory::Memory>(
-        main_memory: &mut M,
-        stable_memory: &StableMemoryAccess,
-        stable_object: StableValue,
-    ) -> Value {
-        todo!()
+    unsafe fn deserialize_static_part(&self, target_some: *mut Some) {
+        (*target_some).header.tag = TAG_SOME;
+        (*target_some)
+            .header
+            .init_forward(Value::from_ptr(target_some as usize));
+        (*target_some).field = self.field.deserialize();
     }
-
-    // unsafe fn deserialize_static_part(stable_object: *mut Self, target_address: Value) -> Some {
-    //     let field = stable_object.read_unaligned().field.deserialize();
-    //     Some {
-    //         header: Obj::new(TAG_SOME, target_address),
-    //         field,
-    //     }
-    // }
 }
