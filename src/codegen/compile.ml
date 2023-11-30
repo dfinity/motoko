@@ -4920,6 +4920,7 @@ module IC = struct
     E.trap_with env (Printf.sprintf "assertion failed at %s" (string_of_region at))
 
   let async_method_name = Type.(motoko_async_helper_fld.lab)
+  let gc_trigger_method_name = Type.(motoko_gc_trigger_fld.lab)
 
   let is_self_call env =
     let (set_len_self, get_len_self) = new_local env "len_self" in
@@ -9077,23 +9078,26 @@ module FuncDec = struct
     end
 
   let export_gc_trigger_method env =
-    let name = Type.(motoko_gc_trigger_fld.lab) in
+    let name = IC.gc_trigger_method_name in
     begin match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
       Func.define_built_in env name [] [] (fun env ->
         message_start env (Type.Shared Type.Write) ^^
         (* Check that we are called from this or a controller, w/o allocation *)
         IC.assert_caller_self_or_controller env ^^
-        (* To avoid allocation, don't deserialize args nor serialize reply *)
-        (* Serialization.deserialize env [] ^^
-           Tuple.compile_unit ^^
-           Serialization.serialize env [] ^^
+        (* To avoid more failing allocation, don't deserialize args nor serialize reply,
+           i.e. don't even try to do this:
+        Serialization.deserialize env [] ^^
+        Tuple.compile_unit ^^
+        Serialization.serialize env [] ^^
         *)
-        (* send a statically allocated nullary reply *)
+        (* Instead, just ignore the argument and
+           send a *statically* allocated, nullary reply *)
         Blob.lit_ptr_len env "DIDL\x00\x00" ^^
         IC.reply_with_data env ^^
-        (* message_cleanup env (Type.Shared Type.Write), but
-           forces collection *)
+        (* Finally, act like
+        message_cleanup env (Type.Shared Type.Write)
+           but *force* collection *)
         GC.record_mutator_instructions env ^^
         E.collect_garbage env true ^^
         GC.record_collector_instructions env ^^
