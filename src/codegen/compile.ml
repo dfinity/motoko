@@ -9111,7 +9111,7 @@ module FuncDec = struct
            Tuple.compile_unit ^^
            Serialization.serialize env [] ^^
         *)
-        (* send a pre-allocated reply *)
+        (* send a statically allocated nullary reply *)
         Blob.lit_ptr_len env "DIDL\x00\x00" ^^
         IC.reply_with_data env ^^
         (* message_cleanup env (Type.Shared Type.Write), but
