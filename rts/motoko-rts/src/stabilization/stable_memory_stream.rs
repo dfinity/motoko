@@ -1,5 +1,4 @@
-//! Read/write access on stable memory.
-//! Experiment: No buffering.
+//! Streamed read/write access to stable memory.
 //! Supporting Cheney's to-space in stable memory.
 
 use core::mem::{size_of, zeroed};
@@ -10,7 +9,6 @@ use super::grant_stable_space;
 
 /// Streamed reader/writer on stable memory.
 /// Used for the to-space during stabilization.
-/// Experiment: No buffering.
 ///
 /// The memory supports two location-independent streams:
 /// * Streamed reading and updating, used for scanning and patching pointers.

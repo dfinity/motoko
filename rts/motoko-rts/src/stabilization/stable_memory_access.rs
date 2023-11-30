@@ -1,5 +1,4 @@
 //! Random read/write access to stable memory.
-//! Experiment: No buffering.
 //! Supporting Cheney's from-space in stable memory.
 
 use core::mem::{size_of, zeroed};
@@ -8,7 +7,6 @@ use crate::stable_mem::{ic0_stable64_read, ic0_stable64_write};
 
 /// Random access to stable memory.
 /// Used for the from-space during destabilization.
-/// Experiment: No buffering.
 pub struct StableMemoryAccess {
     base_address: u64,
     length: u64,

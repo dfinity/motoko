@@ -450,20 +450,12 @@ pub unsafe fn stabilize(stable_actor: Value, old_candid_data: Value, old_type_of
 /// `new_type_offsets`: A blob encoding the type offsets in the Candid type table.
 ///   Type index 0 represents the stable actor object to be serialized.
 /// Returns the root object containing all restored stable variables of the actor.
-/// /// Traps if the stable state is incompatible with the new program version and the upgrade is not
+/// Traps if the stable state is incompatible with the new program version and the upgrade is not
 /// possible.
 /// Implementation:
-/// * Algorithm:
-///     1. Copy the serialized image from stable memory into main memory.
-///     2. Cheney's algorithm using main memory (encoded in stable layout) as from-space and
-///        stable memory (encoded in main memory layout) as to-space.
-///     3. Copy the deserialized image from stable memory back into main memory.
-///   (This multi-step approach serves for avoiding random accesses to stable memory and thus
-///    minimizing the expensive API calls on stable memory.)
-/// * Encoding: The from-space uses the stable memory layout (although located in main memory),
-///   while the to-space is to be encoded in main memory layout (although located in stable memory).
-/// * Encoding: The from-space uses the main memory heap layout, while the to-space is encoded in the
-///   stable object graph layout (see `GraphCopyStabilization.md`).
+/// * Algorithm: Cheney's algorithm using stable memory as from-space and main memory as to-space.
+/// * Encoding: The from-space uses the stable memory layout, while the to-space is to be encoded in 
+///   main memory layout (see `GraphCopyStabilization.md`).
 #[ic_mem_fn(ic_only)]
 pub unsafe fn destabilize<M: Memory>(
     mem: &mut M,
