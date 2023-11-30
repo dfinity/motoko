@@ -68,7 +68,8 @@ impl Serializer<BigInt> for StableBigInt {
         target_bigint: *mut BigInt,
     ) {
         let stable_address = stable_object.payload_address();
-        let source_payload = stable_address + size_of::<BigInt>().to_bytes().as_usize() as u64;
+        let source_payload =
+            stable_address + size_of::<StableBigInt>().to_bytes().as_usize() as u64;
         let target_payload = target_bigint.payload_addr() as usize;
         let payload_length = Bytes(checked_to_u32(self.length()));
         stable_memory.raw_read(source_payload, target_payload, payload_length.as_usize());
