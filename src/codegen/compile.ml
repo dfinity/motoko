@@ -4921,7 +4921,6 @@ module IC = struct
 
   let async_method_name = Type.(motoko_async_helper_fld.lab)
 
-  let assert_caller_self env =
   let is_self_call env =
     let (set_len_self, get_len_self) = new_local env "len_self" in
     let (set_len_caller, get_len_caller) = new_local env "len_caller" in
@@ -4954,7 +4953,7 @@ module IC = struct
       get_str_caller ^^ compile_unboxed_const 0l ^^ get_len_caller ^^
       system_call env "msg_caller_copy" ^^
       get_str_caller ^^ get_len_caller ^^ is_controller env)
- 
+
   let assert_caller_self_or_controller env =
     is_self_call env ^^
     is_controller_call env ^^
