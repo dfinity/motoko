@@ -1426,15 +1426,10 @@ module Stack = struct
     dynamic_free_words env get_n
 
   let dynamic_with_bytes env name f =
-    let (set_n, get_n) = new_local env "n" in
-    let (set_x, get_x) = new_local env name in
     (* round up to nearest wordsize *)
     compile_add_const (Int32.sub Heap.word_size 1l) ^^
     compile_divU_const Heap.word_size ^^
-    set_n ^^
-    dynamic_alloc_words env get_n ^^ set_x ^^
-    f get_x ^^
-    dynamic_free_words env get_n
+    dynamic_with_words env name f
 
   (* Stack Frames *)
 
