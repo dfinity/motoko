@@ -23,7 +23,7 @@ use core::cmp::min;
 use crate::{
     memory::Memory,
     rts_trap_with,
-    stabilization::layout::{deserialize, serialize, PointerEncoding},
+    stabilization::layout::{deserialize, serialize},
     stable_mem::{self, ic0_stable64_write, PAGE_SIZE},
     types::{block_size, FwdPtr, Tag, Value, TAG_CLOSURE, TAG_FWD_PTR},
     visitor::visit_pointer_fields,
@@ -176,10 +176,7 @@ impl GraphCopy<Value, StableValue, u32> for Serialization {
             match tag {
                 TAG_FWD_PTR => {
                     let new_location = (*(object.get_ptr() as *mut FwdPtr)).fwd;
-                    Some(StableValue::encode(
-                        new_location,
-                        PointerEncoding::StableMemory,
-                    ))
+                    Some(StableValue::serialize(new_location))
                 }
                 _ => None,
             }
@@ -192,7 +189,7 @@ impl GraphCopy<Value, StableValue, u32> for Serialization {
             debug_assert!(object.is_obj());
             let fwd = object.get_ptr() as *mut FwdPtr;
             (*fwd).tag = TAG_FWD_PTR;
-            (*fwd).fwd = target.decode(PointerEncoding::StableMemory);
+            (*fwd).fwd = target.deserialize();
         }
     }
 
@@ -202,13 +199,13 @@ impl GraphCopy<Value, StableValue, u32> for Serialization {
             debug_assert!(object.is_obj());
             let address = self.to_space.written_length();
             serialize(&mut self.to_space, object);
-            StableValue::from_address(address, PointerEncoding::StableMemory)
+            StableValue::from_stable_address(address)
         }
     }
 
     fn scan(&mut self) {
         scan_serialized(self, &|context, original| {
-            let old_value = original.decode(PointerEncoding::MainMemory);
+            let old_value = original.deserialize();
             if Self::is_null(old_value) {
                 Self::encode_null()
             } else if old_value.is_ptr() {
@@ -258,10 +255,7 @@ impl<'a, M: Memory> Deserialization<'a, M> {
             scan_address: heap_start,
             heap_end: heap_start,
         }
-        .run(StableValue::encode(
-            Value::from_ptr(0),
-            PointerEncoding::StableMemory,
-        ));
+        .run(StableValue::serialize(Value::from_ptr(0)));
         clear_stable_memory(stable_start, stable_size);
         Value::from_ptr(heap_start)
     }
@@ -329,7 +323,7 @@ impl<'a, M: Memory> Deserialization<'a, M> {
 
 impl<'a, M: Memory> GraphCopy<StableValue, Value, u32> for Deserialization<'a, M> {
     fn get_forward_address(&self, stable_object: StableValue) -> Option<Value> {
-        let address = stable_object.to_address(PointerEncoding::StableMemory);
+        let address = stable_object.to_stable_address();
         let tag = self.from_space.read::<Tag>(address);
         match tag {
             TAG_FWD_PTR => {
@@ -341,7 +335,7 @@ impl<'a, M: Memory> GraphCopy<StableValue, Value, u32> for Deserialization<'a, M
     }
 
     fn set_forward_address(&mut self, stable_object: StableValue, target: Value) {
-        let address = stable_object.to_address(PointerEncoding::StableMemory);
+        let address = stable_object.to_stable_address();
         let forward_object = FwdPtr {
             tag: TAG_FWD_PTR,
             fwd: target,
@@ -366,7 +360,7 @@ impl<'a, M: Memory> GraphCopy<StableValue, Value, u32> for Deserialization<'a, M
         let target_object = Value::from_ptr(self.scan_address);
         unsafe {
             Self::scan_deserialized(self, target_object, &|context, original| {
-                let old_value = StableValue::encode(original, PointerEncoding::StableMemory);
+                let old_value = StableValue::serialize(original);
                 if Self::is_null(old_value) {
                     Self::encode_null()
                 } else if original.is_ptr() {
