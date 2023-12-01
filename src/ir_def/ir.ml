@@ -164,7 +164,7 @@ and prim =
   | CPSAwait of Type.async_sort * Type.typ
                                       (* typ is the current continuation type of cps translation *)
   | CPSAsync of Type.async_sort * Type.typ
-  | ICPerformGC of bool               (* `true` in the boolean argument specifies force GC mode, overriding !Flags.force_gc *)
+  | ICPerformGC
   | ICReplyPrim of Type.typ list
   | ICRejectPrim
   | ICCallerPrim
@@ -306,7 +306,7 @@ let map_prim t_typ t_id p =
   | CPSAsync (s, t) -> CPSAsync (s, t_typ t)
   | ICReplyPrim ts -> ICReplyPrim (List.map t_typ ts)
   | ICArgDataPrim
-  | ICPerformGC _
+  | ICPerformGC
   | ICRejectPrim
   | ICCallerPrim
   | ICCallPrim

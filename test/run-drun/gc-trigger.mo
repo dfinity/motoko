@@ -5,7 +5,7 @@ import Prim "mo:prim";
 actor {
     let retained = Prim.Array_init<Nat>(6 * 1024 * 1024, 0);
     // GC is triggered during initialization
-    
+
     var heapSizeWithGarbage = 0;
 
     public func createGarbage(): async() {
@@ -25,9 +25,12 @@ actor {
         assert(Prim.rts_heap_size() < heapSizeWithGarbage);
     };
 };
-
+//SKIP run
+//SKIP run-low
+//SKIP run-ir
 //CALL ingress createGarbage "DIDL\x00\x00"
 //CALL query checkBeforeGC "DIDL\x00\x00"
+//CALL ingress __motoko_gc_trigger "DIDL\x00\x00"
 //CALL ingress __motoko_gc_trigger "DIDL\x00\x00"
 //CALL ingress __motoko_gc_trigger "DIDL\x00\x00"
 //CALL query checkAfterGC "DIDL\x00\x00"

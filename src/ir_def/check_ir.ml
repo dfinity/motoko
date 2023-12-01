@@ -679,7 +679,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
       T.unit <: t
     | GetCertificate, [] ->
       T.Opt T.blob <: t
-    | ICPerformGC _, [] ->
+    | ICPerformGC, [] ->
       T.unit <: t
     | ICStableSize t1, [e1] ->
       typ e1 <: t1;
