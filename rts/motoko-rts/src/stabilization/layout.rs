@@ -125,6 +125,11 @@ const POINTER_SCALE_FACTOR: u64 = 2;
 
 const _: () = assert!(WORD_SIZE >= 4);
 
+pub enum PointerEncoding {
+    MainMemory,
+    StableMemory,
+}
+
 impl StableValue {
     fn is_ptr(&self) -> bool {
         self.0 & 0b1 == 1 && self.0 != TRUE_VALUE as u64
@@ -143,35 +148,52 @@ impl StableValue {
         StableValue(value)
     }
 
-    pub fn from_address(address: u64) -> Self {
+    pub fn from_address(address: u64, encoding: PointerEncoding) -> Self {
         debug_assert_eq!(address % WORD_SIZE as u64, 0);
-        debug_assert!(address / POINTER_SCALE_FACTOR < u32::MAX as u64);
-        StableValue(Self::skew(address / POINTER_SCALE_FACTOR))
+        let scaled = match encoding {
+            PointerEncoding::MainMemory => address,
+            PointerEncoding::StableMemory => address / POINTER_SCALE_FACTOR,
+        };
+        debug_assert!(scaled <= u32::MAX as u64);
+        StableValue(Self::skew(scaled))
     }
 
-    pub fn to_address(&self) -> u64 {
-        Self::unskew(self.0) * POINTER_SCALE_FACTOR
+    pub fn to_address(&self, encoding: PointerEncoding) -> u64 {
+        let scaled = Self::unskew(self.0);
+        match encoding {
+            PointerEncoding::MainMemory => scaled,
+            PointerEncoding::StableMemory => scaled * POINTER_SCALE_FACTOR,
+        }
     }
 
     pub fn payload_address(&self) -> u64 {
-        self.to_address() + size_of::<StableTag>().to_bytes().as_usize() as u64
+        self.to_address(PointerEncoding::StableMemory)
+            + size_of::<StableTag>().to_bytes().as_usize() as u64
     }
 
     pub fn serialize(value: Value) -> Self {
+        Self::encode(value, PointerEncoding::MainMemory)
+    }
+
+    pub fn encode(value: Value, encoding: PointerEncoding) -> Self {
         if value == STABLE_NULL_POINTER_32 {
             STABLE_NULL_POINTER
         } else if value.is_ptr() {
-            StableValue::from_address(value.get_ptr() as u64)
+            StableValue::from_address(value.get_ptr() as u64, encoding)
         } else {
             StableValue(value.get_raw() as u64)
         }
     }
 
     pub fn deserialize(&self) -> Value {
+        self.decode(PointerEncoding::StableMemory)
+    }
+
+    pub fn decode(&self, encoding: PointerEncoding) -> Value {
         if *self == STABLE_NULL_POINTER {
             STABLE_NULL_POINTER_32
         } else if self.is_ptr() {
-            Value::from_ptr(checked_to_usize(self.to_address()))
+            Value::from_ptr(checked_to_usize(self.to_address(encoding)))
         } else {
             Value::from_raw(checked_to_u32(self.0))
         }
@@ -331,7 +353,8 @@ pub unsafe fn deserialize<M: Memory>(
     stable_memory: &mut StableMemoryAccess,
     stable_object: StableValue,
 ) -> Value {
-    let tag = stable_memory.read::<StableTag>(stable_object.to_address());
+    let tag =
+        stable_memory.read::<StableTag>(stable_object.to_address(PointerEncoding::StableMemory));
     match tag {
         StableTag::Array => StableArray::deserialize(main_memory, stable_memory, stable_object),
         StableTag::MutBox => StableMutBox::deserialize(main_memory, stable_memory, stable_object),
