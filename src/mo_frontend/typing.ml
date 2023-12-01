@@ -60,7 +60,7 @@ let env_of_scope msgs scope =
     objs = T.Env.empty;
     labs = T.Env.empty;
     rets = None;
-    async = C.initial_cap();
+    async = Async_cap.NullCap;
     in_actor = false;
     in_prog = true;
     context = [];
@@ -2740,7 +2740,20 @@ let infer_prog scope prog : (T.typ * Scope.t) Diag.result =
     (fun msgs ->
       recover_opt
         (fun prog ->
-          let env = env_of_scope msgs scope in
+         let async_cap =
+            match (CompUnit.comp_unit_of_prog false prog).it.body.it with
+            | ActorClassU _
+            | ActorU _ -> C.initial_cap()
+            | ModuleU _ -> assert false
+            | ProgU _ ->
+               if !Flags.compiled then
+                 (* treat as body of actor! *)
+                 C.NullCap
+               else
+                 C.initial_cap()
+          in
+          let env0 = env_of_scope msgs scope in
+          let env = { env0 with async = async_cap } in
           let res = infer_block env prog.it prog.at in
           res
         ) prog
