@@ -1,6 +1,1 @@
-OOPS! You've triggered a compiler bug.
-Please report this at https://github.com/dfinity/motoko/issues/new with the following details:
-
-Motoko (source XXX)
-
-Fatal error: exception File "codegen/compile.ml", line 8601, characters 11-17: Assertion failed
+issue-4297.mo:1.1-1.15: type error [M0038], misplaced await
