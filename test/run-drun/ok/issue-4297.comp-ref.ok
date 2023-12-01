@@ -1,0 +1,6 @@
+OOPS! You've triggered a compiler bug.
+Please report this at https://github.com/dfinity/motoko/issues/new with the following details:
+
+Motoko (source XXX)
+
+Fatal error: exception File "codegen/compile.ml", line 8601, characters 11-17: Assertion failed
