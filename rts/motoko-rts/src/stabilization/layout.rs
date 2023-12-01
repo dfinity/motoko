@@ -2,7 +2,7 @@
 //!
 //! The stable object graph resides a linear stable memory space.
 //!
-//! Pointers are serialized as skewed offsets in that space.
+//! Pointers are serialized as skewed offsets divided by 2 in that space.
 //! Scalar and pointer values are serialized as 64-bit `StableValue`
 //! for a long-term perspective, even if main memory operates on 32-bit.
 //! A 32-bit program stores `StableValue` that fit into 32-bit, and
@@ -24,6 +24,7 @@
 
 use crate::{
     barriers::allocation_barrier,
+    constants::WORD_SIZE,
     memory::Memory,
     types::{
         size_of, Tag, Value, TAG_ARRAY, TAG_ARRAY_SLICE_MIN, TAG_BIGINT, TAG_BITS32, TAG_BITS64,
@@ -101,21 +102,32 @@ impl StableTag {
 }
 
 /// Special sentinel value that does not exist for static or dynamic objects.
-/// Skewed -3. Since 1 is already reserved to encode the boolean `true`.
+/// Skewed -5. Since 1 is already reserved to encode the boolean `true`.
 /// Note: The stable addresses start at 0 (skewed u32::MAX) as they are relatived to the to-space.
-pub const STABLE_NULL_POINTER: StableValue = StableValue(0xffff_ffff_ffff_fffd);
+pub const STABLE_NULL_POINTER: StableValue = StableValue(0xffff_ffff_ffff_fffb);
 pub const STABLE_NULL_POINTER_32: Value = Value::from_raw(STABLE_NULL_POINTER.0 as u32);
 
 const _: () = assert!(STABLE_NULL_POINTER.0 != TRUE_VALUE as u64);
 const _: () = assert!(STABLE_NULL_POINTER.0 & 0b1 != 0);
+const _: () = assert!((STABLE_NULL_POINTER.0 + 1) % WORD_SIZE as u64 == 0);
 
 #[repr(C)]
 #[derive(Clone, Copy, PartialEq)]
 pub struct StableValue(u64);
 
+/// Due to the 64-bit pointer encoding in the stable format, the serialized space can require the double
+/// size than the main memory. Therefore, the stable pointers (offsets in stable memory) can also exceed
+/// the 32-bit address space. This would be a problem on deserialization, where the stable pointers are first
+/// copied to the main memory object with 32-bit pointer slots and then later patched during the deserialization
+/// scan. Therefore, the stable pointer address is first divided by two and then skewed. This requires
+/// WORD_SIZE >= 4, such that the dividied addresses are still even numbers that can be skewed.
+const POINTER_SCALE_FACTOR: u64 = 2;
+
+const _: () = assert!(WORD_SIZE >= 4);
+
 impl StableValue {
     fn is_ptr(&self) -> bool {
-        self.0 & 0b1 == 1
+        self.0 & 0b1 == 1 && self.0 != TRUE_VALUE as u64
     }
 
     fn skew(address: u64) -> u64 {
@@ -123,6 +135,7 @@ impl StableValue {
     }
 
     fn unskew(pointer: u64) -> u64 {
+        debug_assert!(Self::from_raw(pointer).is_ptr());
         pointer.wrapping_add(1)
     }
 
@@ -131,11 +144,13 @@ impl StableValue {
     }
 
     pub fn from_address(address: u64) -> Self {
-        StableValue(Self::skew(address))
+        debug_assert_eq!(address % WORD_SIZE as u64, 0);
+        debug_assert!(address / POINTER_SCALE_FACTOR < u32::MAX as u64);
+        StableValue(Self::skew(address / POINTER_SCALE_FACTOR))
     }
 
     pub fn to_address(&self) -> u64 {
-        Self::unskew(self.0)
+        Self::unskew(self.0) * POINTER_SCALE_FACTOR
     }
 
     pub fn payload_address(&self) -> u64 {

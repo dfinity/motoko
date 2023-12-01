@@ -454,7 +454,7 @@ pub unsafe fn stabilize(stable_actor: Value, old_candid_data: Value, old_type_of
 /// possible.
 /// Implementation:
 /// * Algorithm: Cheney's algorithm using stable memory as from-space and main memory as to-space.
-/// * Encoding: The from-space uses the stable memory layout, while the to-space is to be encoded in 
+/// * Encoding: The from-space uses the stable memory layout, while the to-space is to be encoded in
 ///   main memory layout (see `GraphCopyStabilization.md`).
 #[ic_mem_fn(ic_only)]
 pub unsafe fn destabilize<M: Memory>(
