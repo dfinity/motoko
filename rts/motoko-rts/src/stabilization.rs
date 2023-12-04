@@ -307,7 +307,7 @@ impl<'a, M: Memory> Deserialization<'a, M> {
         target_object: Value,
         translate: &F,
     ) {
-        assert!(target_object.is_obj());
+        debug_assert!(target_object.is_obj());
         visit_pointer_fields(
             context,
             target_object.as_obj(),
@@ -395,12 +395,12 @@ fn clear_stable_memory(start: u64, length: u64) {
 }
 
 fn grant_stable_space(byte_size: u64) {
-    assert!(byte_size < u64::MAX - PAGE_SIZE - 1);
+    debug_assert!(byte_size < u64::MAX - PAGE_SIZE - 1);
     let required_pages = (byte_size + PAGE_SIZE - 1) / PAGE_SIZE;
     let available_pages = stable_mem::size();
     if required_pages > available_pages {
         let additional_pages = required_pages - available_pages;
-        assert_ne!(additional_pages, u64::MAX);
+        debug_assert_ne!(additional_pages, u64::MAX);
         let result = stable_mem::grow(additional_pages);
         if result == u64::MAX {
             unsafe {
