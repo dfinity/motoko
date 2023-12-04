@@ -1,7 +1,8 @@
 use crate::{
     memory::{alloc_array, Memory},
     stabilization::{
-        stable_memory_stream::{ScanStream, StableMemoryStream, WriteStream},
+        stable_memory_access::read_series,
+        stable_memory_stream::{update_series, write_series, StableMemoryStream},
         StableMemoryAccess,
     },
     types::{size_of, Array, Value, TAG_ARRAY},
@@ -25,11 +26,9 @@ impl Serializer<Array> for StableArray {
     }
 
     unsafe fn serialize_dynamic_part(memory: &mut StableMemoryStream, main_array: *mut Array) {
-        for index in 0..main_array.len() {
-            let main_element = main_array.get(index);
-            let stable_element = StableValue::serialize(main_element);
-            memory.write(&stable_element);
-        }
+        write_series(memory, main_array.len() as u64, &|index| {
+            StableValue::serialize(main_array.get(index as u32))
+        });
     }
 
     fn scan_serialized_dynamic<C: StableToSpace, F: Fn(&mut C, StableValue) -> StableValue>(
@@ -37,11 +36,7 @@ impl Serializer<Array> for StableArray {
         context: &mut C,
         translate: &F,
     ) {
-        for _ in 0..self.array_length {
-            let old_value = context.to_space().read::<StableValue>();
-            let new_value = translate(context, old_value);
-            context.to_space().update(&new_value);
-        }
+        update_series(context, self.array_length, translate);
     }
 
     unsafe fn allocate_deserialized<M: Memory>(&self, main_memory: &mut M) -> Value {
@@ -61,12 +56,14 @@ impl Serializer<Array> for StableArray {
         target_array: *mut Array,
     ) {
         let stable_address = stable_object.payload_address();
-        for index in 0..(*target_array).len {
-            let element_address = stable_address
-                + size_of::<StableArray>().to_bytes().as_usize() as u64
-                + (index * size_of::<StableValue>().to_bytes().as_u32()) as u64;
-            let element = stable_memory.read::<StableValue>(element_address);
-            target_array.set_raw(index, element.deserialize());
-        }
+        let source_address = stable_address + size_of::<StableArray>().to_bytes().as_usize() as u64;
+        read_series(
+            stable_memory,
+            source_address,
+            (*target_array).len as u64,
+            &|index, element: StableValue| {
+                target_array.set_raw(index as u32, element.deserialize());
+            },
+        );
     }
 }

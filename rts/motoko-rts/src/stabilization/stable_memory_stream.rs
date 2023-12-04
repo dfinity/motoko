@@ -5,7 +5,7 @@ use core::mem::{size_of, MaybeUninit};
 
 use crate::stable_mem::{ic0_stable64_read, ic0_stable64_write};
 
-use super::grant_stable_space;
+use super::{grant_stable_space, layout::StableToSpace, BUFFER_SIZE};
 
 /// Streamed reader/writer on stable memory.
 /// Used for the to-space during stabilization.
@@ -131,5 +131,48 @@ impl WriteStream for StableMemoryStream {
             ic0_stable64_write(self.free_address, data_address as u64, length as u64);
         }
         self.free_address += length as u64;
+    }
+}
+
+/// Optimization: Buffered scanner of a sequence of elements.
+/// Used for scanning array elements and object fields.
+pub fn update_series<T: Copy, C: StableToSpace, F: Fn(&mut C, T) -> T>(
+    context: &mut C,
+    count: u64,
+    translate: &F,
+) {
+    let mut buffer = unsafe { [MaybeUninit::<T>::uninit().assume_init(); BUFFER_SIZE] };
+    let mut offset = 0;
+    while offset < count {
+        let chunk_size = core::cmp::min(BUFFER_SIZE as u64, count - offset) as usize;
+        context
+            .to_space()
+            .raw_read(&mut buffer as *mut T as usize, chunk_size * size_of::<T>());
+        for index in 0..chunk_size {
+            buffer[index] = translate(context, buffer[index]);
+        }
+        context
+            .to_space()
+            .raw_update(&mut buffer as *mut T as usize, chunk_size * size_of::<T>());
+        offset += chunk_size as u64;
+    }
+}
+
+/// Optimization: Buffered writer of a sequence of elements.
+/// Used for writing array elements and object fields.
+pub fn write_series<T: Copy, F: Fn(u64) -> T>(
+    stream: &mut StableMemoryStream,
+    count: u64,
+    get_item: &F,
+) {
+    let mut buffer = unsafe { [MaybeUninit::<T>::uninit().assume_init(); BUFFER_SIZE] };
+    let mut offset = 0;
+    while offset < count {
+        let chunk_size = core::cmp::min(BUFFER_SIZE as u64, count - offset) as usize;
+        for index in 0..chunk_size {
+            buffer[index] = get_item(offset + index as u64);
+        }
+        stream.raw_write(&mut buffer as *mut T as usize, chunk_size * size_of::<T>());
+        offset += chunk_size as u64;
     }
 }

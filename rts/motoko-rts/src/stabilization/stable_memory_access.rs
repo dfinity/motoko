@@ -5,6 +5,8 @@ use core::mem::{size_of, MaybeUninit};
 
 use crate::stable_mem::{ic0_stable64_read, ic0_stable64_write};
 
+use super::BUFFER_SIZE;
+
 /// Random access to stable memory.
 /// Used for the from-space during destabilization.
 pub struct StableMemoryAccess {
@@ -54,5 +56,30 @@ impl StableMemoryAccess {
                 length as u64,
             );
         }
+    }
+}
+
+/// Optimization: Buffered writer of a sequence of elements.
+/// Used for writing array elements and object fields.
+pub fn read_series<T: Copy, F: Fn(u64, T)>(
+    stable_memory: &StableMemoryAccess,
+    source_offset: u64,
+    count: u64,
+    set_item: &F,
+) {
+    let mut buffer = unsafe { [MaybeUninit::<T>::uninit().assume_init(); BUFFER_SIZE] };
+    let mut offset = 0;
+    while offset < count {
+        let chunk_size = core::cmp::min(BUFFER_SIZE as u64, count - offset) as usize;
+        let read_address = source_offset + offset * size_of::<T>() as u64;
+        stable_memory.raw_read(
+            read_address,
+            &mut buffer as *mut T as usize,
+            chunk_size * size_of::<T>(),
+        );
+        for index in 0..chunk_size {
+            set_item(offset + index as u64, buffer[index]);
+        }
+        offset += chunk_size as u64;
     }
 }

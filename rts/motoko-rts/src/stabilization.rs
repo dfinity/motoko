@@ -45,6 +45,9 @@ mod layout;
 pub mod stable_memory_access;
 pub mod stable_memory_stream;
 
+/// Number of buffered elements in chunked read/writes.
+const BUFFER_SIZE: usize = 16;
+
 extern "C" {
     pub fn moc_null_singleton() -> Value;
 }
