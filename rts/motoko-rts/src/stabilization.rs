@@ -110,8 +110,6 @@ trait GraphCopy<S: Copy, T: Copy, P: Copy + Default> {
     fn scan(&mut self);
 }
 
-const NON_STABLE_OBJECT_TAGS: [Tag; 1] = [TAG_CLOSURE];
-
 // Dummy value used for non-stable objects that are potentially reachable from
 // stable variable because of structural subtyping or `Any`-subtyping.
 // Must be a non-skewed value such that the GC also ignores this value.
@@ -164,7 +162,7 @@ impl Serialization {
     }
 
     fn has_non_stable_type(old_field: Value) -> bool {
-        unsafe { old_field.is_ptr() && NON_STABLE_OBJECT_TAGS.contains(&old_field.tag()) }
+        unsafe { old_field.tag() == TAG_CLOSURE }
     }
 }
 
