@@ -1,7 +1,7 @@
 //! Random read/write access to stable memory.
 //! Supporting Cheney's from-space in stable memory.
 
-use core::mem::{size_of, zeroed};
+use core::mem::{size_of, MaybeUninit};
 
 use crate::stable_mem::{ic0_stable64_read, ic0_stable64_write};
 
@@ -22,7 +22,7 @@ impl StableMemoryAccess {
 
     pub fn read<T>(&self, source_offset: u64) -> T {
         let length = size_of::<T>();
-        let mut value = unsafe { zeroed::<T>() };
+        let mut value = unsafe { MaybeUninit::<T>::uninit().assume_init() };
         let value_address = &mut value as *mut T as usize;
         self.raw_read(source_offset, value_address, length);
         value
