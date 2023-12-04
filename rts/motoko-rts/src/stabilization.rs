@@ -137,7 +137,7 @@ impl Serialization {
         unsafe {
             debug_assert!(!moc_null_singleton().is_forwarded());
         }
-        field_value.is_ptr() && field_value == unsafe { moc_null_singleton() }
+        field_value == unsafe { moc_null_singleton() }
     }
 
     fn encode_null() -> StableValue {
@@ -204,13 +204,13 @@ impl GraphCopy<Value, StableValue, u32> for Serialization {
     fn scan(&mut self) {
         scan_serialized(self, &|context, original| {
             let old_value = original.deserialize();
-            if Self::is_null(old_value) {
-                Self::encode_null()
-            } else if old_value.is_ptr() {
-                // Due to structural subtyping or `Any`-subtyping, a non-stable object (such as a closure) may be
-                // be dynamically reachable from a stable varibale. The value is not accessible in the new program version.
-                // Therefore, the content of these fields can serialized with a dummy value that is also ignored by the GC.
-                if Self::has_non_stable_type(old_value) {
+            if old_value.is_ptr() {
+                if Self::is_null(old_value) {
+                    Self::encode_null()
+                } else if Self::has_non_stable_type(old_value) {
+                    // Due to structural subtyping or `Any`-subtyping, a non-stable object (such as a closure) may be
+                    // be dynamically reachable from a stable varibale. The value is not accessible in the new program version.
+                    // Therefore, the content of these fields can serialized with a dummy value that is also ignored by the GC.
                     DUMMY_VALUE
                 } else {
                     context.evacuate(old_value)
