@@ -1,6 +1,6 @@
 {-# language OverloadedStrings, DuplicateRecordFields,
   ExplicitForAll, ScopedTypeVariables, BlockArguments,
-  LambdaCase, TypeOperators #-}
+  LambdaCase, TypeOperators, ViewPatterns #-}
 
 module Main where
 
@@ -36,9 +36,7 @@ completionTestCase
 completionTestCase doc pos pred = do
   actual <- getCompletions doc pos
   -- let unCompletionDoc (CompletionItem {_documentation = t}) = unMarkup t
-  let unCompletionDoc (Just (LSP.InL t)) = t
-      unCompletionDoc (Just (LSP.InR t)) = unMarkup t
-      unCompletionDoc Nothing = ""
+  let unCompletionDoc (Just -> t) = unMarkup t
   liftIO (pred (map (\c -> (c^.label, c^.detail, fmap unCompletionDoc (c^.documentation))) actual))
 
 hoverTestCase
@@ -48,11 +46,11 @@ hoverTestCase
   -> Session ()
 hoverTestCase doc pos expected = do
   actual <- getHover doc pos
-  case fmap (^.contents) actual of
+  case (^.contents) <*> actual of
     Nothing
       | expected == Nothing ->
         pure ()
-    Just Hover { _contents = LSP.InL MarkupContent { _value = content } }
+    Just (LSP.InL MarkupContent { _value = content })
       | Just expected' <- expected ->
         if Text.isInfixOf expected' content
           then pure ()
