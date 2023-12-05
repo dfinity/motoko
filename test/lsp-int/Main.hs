@@ -35,7 +35,10 @@ completionTestCase
   -> Session ()
 completionTestCase doc pos pred = do
   actual <- getCompletions doc pos
-  let unCompletionDoc (CompletionItem {_documentation = t}) = unMarkup t
+  -- let unCompletionDoc (CompletionItem {_documentation = t}) = unMarkup t
+  let unCompletionDoc (Just (LSP.InL t)) = t
+      unCompletionDoc (Just (LSP.InR t)) = unMarkup t
+      unCompletionDoc Nothing = ""
   liftIO (pred (map (\c -> (c^.label, c^.detail, fmap unCompletionDoc (c^.documentation))) actual))
 
 hoverTestCase
@@ -49,7 +52,7 @@ hoverTestCase doc pos expected = do
     Nothing
       | expected == Nothing ->
         pure ()
-    Just (Hover (MarkupContent { _value = content}))
+    Just Hover { _contents = LSP.InL MarkupContent { _value = content } }
       | Just expected' <- expected ->
         if Text.isInfixOf expected' content
           then pure ()
@@ -96,10 +99,13 @@ withDoc path action = do
 plainMarkup :: Text -> Maybe Hover
 plainMarkup t =
   Just
-    (Hover MarkupContent
-      { _kind = MarkupKind_PlainText
-      , _value = t
-      })
+    (Hover {
+      _contents = LSP.InL MarkupContent
+       { _kind = MarkupKind_PlainText
+       , _value = t
+       },
+      _range = Nothing
+    })
 
 unMarkup :: Maybe (Text LSP.|? MarkupContent) -> Text
 unMarkup Nothing = ""
@@ -274,7 +280,7 @@ main = do
           -- ==> 1 | ort List
           let edit = TextEdit (Range (Position 0 1) (Position 0 3)) ""
           _ <- applyEdit doc edit
-          sendNotification STextDocumentDidSave (DidSaveTextDocumentParams doc Nothing)
+          sendNotification SMethod_TextDocumentDidSave (DidSaveTextDocumentParams doc Nothing)
           (diagnostic:_) <- waitForDiagnostics
           liftIO (diagnostic^.message `shouldBe` "unexpected token 'import'")
 
@@ -295,7 +301,7 @@ main = do
           let edit = TextEdit (Range (Position 0 1) (Position 0 3)) ""
           _ <- applyEdit doc edit
           withDoc "app.mo" \appDoc -> do
-            sendNotification STextDocumentDidSave (DidSaveTextDocumentParams appDoc Nothing)
+            sendNotification SMethod_TextDocumentDidSave (DidSaveTextDocumentParams appDoc Nothing)
             diagnostic:_ <- waitForActualDiagnostics
             liftIO (diagnostic^.message `shouldBe` "unexpected token 'import'")
 
@@ -305,7 +311,7 @@ main = do
           -- for completions
           let edit = TextEdit (Range (Position 4 0) (Position 4 0)) "\nimport MyDep \"mo:mydep/broken\""
           _ <- applyEdit doc edit
-          sendNotification STextDocumentDidSave (DidSaveTextDocumentParams doc Nothing)
+          sendNotification SMethod_TextDocumentDidSave (DidSaveTextDocumentParams doc Nothing)
           [diag] <- waitForActualDiagnostics
           liftIO (diag^.message `shouldBe` "operator is not defined for operand types\n  Text\nand\n  Nat")
 
@@ -314,7 +320,7 @@ main = do
           -- Imports the non-broken dependency module
           let edit = TextEdit (Range (Position 4 0) (Position 4 0)) "\nimport MyDep \"mo:mydep/lib\""
           _ <- applyEdit doc edit
-          sendNotification STextDocumentDidSave (DidSaveTextDocumentParams doc Nothing)
+          sendNotification SMethod_TextDocumentDidSave (DidSaveTextDocumentParams doc Nothing)
           let edit2 = TextEdit (Range (Position 5 0) (Position 5 0)) "\nMyDep."
           _ <- applyEdit doc edit2
           completionTestCase
@@ -327,7 +333,7 @@ main = do
         withDoc "app.mo" \doc -> do
           let edit = TextEdit (Range (Position 4 0) (Position 4 0)) "\nimport Doc \"doc_comments\""
           _ <- applyEdit doc edit
-          sendNotification STextDocumentDidSave (DidSaveTextDocumentParams doc Nothing)
+          sendNotification SMethod_TextDocumentDidSave (DidSaveTextDocumentParams doc Nothing)
           let edit2 = TextEdit (Range (Position 5 0) (Position 5 0)) "\nDoc."
           _ <- applyEdit doc edit2
           completionTestCase
