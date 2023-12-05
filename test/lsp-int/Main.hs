@@ -1,6 +1,6 @@
 {-# language OverloadedStrings, DuplicateRecordFields,
   ExplicitForAll, ScopedTypeVariables, BlockArguments,
-  LambdaCase #-}
+  LambdaCase, TypeOperators #-}
 
 module Main where
 
@@ -15,9 +15,10 @@ import           Data.Maybe (mapMaybe)
 import           Data.Text (Text)
 import qualified Data.Text as Text
 import           Language.LSP.Test hiding (message)
-import           Language.LSP.Types (TextDocumentIdentifier(..), Position(..), HoverContents(..), MarkupContent(..), MarkupKind(..), TextEdit(..), Range(..), DidSaveTextDocumentParams(..), SMethod(..), Diagnostic(..), Location(..), Uri(..), filePathToUri, CompletionDoc(..))
-import qualified Language.LSP.Types as LSP
-import           Language.LSP.Types.Lens (contents, label, detail, documentation, message, additionalTextEdits, newText)
+import           Language.LSP.Protocol.Types (TextDocumentIdentifier(..), Position(..), Hover(..), MarkupContent(..), MarkupKind(..), TextEdit(..), Range(..), DidSaveTextDocumentParams(..), Diagnostic(..), Location(..), Uri(..), filePathToUri, CompletionItem(..))
+import           Language.LSP.Protocol.Message (SMethod(..))
+import qualified Language.LSP.Protocol.Types as LSP
+import           Language.LSP.Protocol.Lens (contents, label, detail, documentation, message, additionalTextEdits, newText)
 import           System.Directory (setCurrentDirectory, makeAbsolute, removeFile)
 import           System.Environment (getArgs)
 import           System.Exit (exitFailure)
@@ -34,7 +35,7 @@ completionTestCase
   -> Session ()
 completionTestCase doc pos pred = do
   actual <- getCompletions doc pos
-  let unCompletionDoc (CompletionDocMarkup t) = unMarkup t
+  let unCompletionDoc (CompletionItem {_documentation = t}) = unMarkup t
   liftIO (pred (map (\c -> (c^.label, c^.detail, fmap unCompletionDoc (c^.documentation))) actual))
 
 hoverTestCase
@@ -48,7 +49,7 @@ hoverTestCase doc pos expected = do
     Nothing
       | expected == Nothing ->
         pure ()
-    Just (HoverContents (MarkupContent { _value = content}))
+    Just (Hover (MarkupContent { _value = content}))
       | Just expected' <- expected ->
         if Text.isInfixOf expected' content
           then pure ()
@@ -92,16 +93,18 @@ withDoc path action = do
   closeDoc doc
   pure res
 
-plainMarkup :: Text -> Maybe HoverContents
+plainMarkup :: Text -> Maybe Hover
 plainMarkup t =
   Just
-    (HoverContents MarkupContent
-      { _kind = MkPlainText
+    (Hover MarkupContent
+      { _kind = MarkupKind_PlainText
       , _value = t
       })
 
-unMarkup :: MarkupContent -> Text
-unMarkup (MarkupContent { _kind = MkMarkdown, _value = t}) = t
+unMarkup :: Maybe (Text LSP.|? MarkupContent) -> Text
+unMarkup Nothing = ""
+unMarkup (Just (LSP.InL t)) = t
+unMarkup (Just (LSP.InR (MarkupContent { _kind = MarkupKind_Markdown, _value = t}))) = t
 
 expectationFailure :: String -> Expectation
 expectationFailure = Test.HUnit.assertFailure
@@ -252,7 +255,7 @@ main = do
           liftIO do
             shouldBe (actual^.label) "print_hello"
             shouldBe (actual^.detail) (Just "() -> Text (import from \"mo:mydep/lib\")")
-            let Just (LSP.List [importEdit]) = actual^.additionalTextEdits
+            let Just [importEdit] = actual^.additionalTextEdits
             shouldContain (Text.lines (importEdit^.newText)) ["import MyDep \"mo:mydep/lib\";"]
 
         log "Completing on not-yet-imported actors"
@@ -263,7 +266,7 @@ main = do
           liftIO do
             shouldBe (actual^.label) "add_counter"
             shouldBe (actual^.detail) (Just "shared Nat -> () (import from \"canister:counter\")")
-            let Just (LSP.List [importEdit]) = actual^.additionalTextEdits
+            let Just [importEdit] = actual^.additionalTextEdits
             shouldContain (Text.lines (importEdit^.newText)) ["import Counter \"canister:counter\";"]
 
         withDoc "ListClient.mo" \doc -> do
