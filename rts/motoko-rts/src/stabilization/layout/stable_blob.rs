@@ -31,10 +31,14 @@ impl Serializer<Blob> for StableBlob {
         }
     }
 
-    unsafe fn serialize_dynamic_part(memory: &mut StableMemoryStream, main_object: *mut Blob) {
+    unsafe fn serialize_dynamic_part<M: Memory>(
+        _main_memory: &mut M,
+        stable_memory: &mut StableMemoryStream,
+        main_object: *mut Blob,
+    ) {
         let byte_length = main_object.len().as_usize();
-        memory.raw_write(main_object.payload_addr() as usize, byte_length);
-        write_padding_u64(memory, byte_length);
+        stable_memory.raw_write(main_object.payload_addr() as usize, byte_length);
+        write_padding_u64(stable_memory, byte_length);
     }
 
     fn scan_serialized_dynamic<C: StableToSpace, F: Fn(&mut C, StableValue) -> StableValue>(
@@ -59,8 +63,9 @@ impl Serializer<Blob> for StableBlob {
         );
     }
 
-    unsafe fn deserialize_dynamic_part(
+    unsafe fn deserialize_dynamic_part<M: Memory>(
         &self,
+        _main_memory: &mut M,
         stable_memory: &StableMemoryAccess,
         stable_object: StableValue,
         target_blob: *mut Blob,

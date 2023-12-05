@@ -54,8 +54,7 @@ The destabilization requires scanning the heap which is more involved for the pa
 
 ## Open Aspects
 * Unused fields in stable records that are no longer declared in a new program versions should be removed. This could be done during garbage collection, when objects are moved/evacuated.
-* Measure scalability and performance.
-* Make `BigInt` stable format independent of Tom's math library, e.g. by using LEB128/SLEB128 encoding.
+* The binary serialization and deserialization of `BigInt` entails dynamic allocations (cf. `mp_to_sbin` and `mp_from_sbin` of Tom's math library).
 
 ## Related PRs
 

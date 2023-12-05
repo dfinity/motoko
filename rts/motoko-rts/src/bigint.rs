@@ -156,14 +156,14 @@ pub(crate) unsafe fn mp_iszero(p: *const mp_int) -> bool {
 }
 
 // Allocates an mp_int on the stack
-unsafe fn tmp_bigint() -> mp_int {
+pub(crate) unsafe fn tmp_bigint() -> mp_int {
     let mut i: mp_int = core::mem::zeroed();
     check(mp_init(&mut i));
     i
 }
 
 // Persists an mp_int from the stack on the heap
-unsafe fn persist_bigint(i: mp_int) -> Value {
+pub(crate) unsafe fn persist_bigint(i: mp_int) -> Value {
     if i.dp == core::ptr::null_mut() {
         panic!("persist_bigint: dp == NULL?");
     }

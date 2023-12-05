@@ -35,11 +35,15 @@ impl Serializer<Object> for StableObject {
         }
     }
 
-    unsafe fn serialize_dynamic_part(memory: &mut StableMemoryStream, main_object: *mut Object) {
+    unsafe fn serialize_dynamic_part<M: Memory>(
+        _main_memory: &mut M,
+        stable_memory: &mut StableMemoryStream,
+        main_object: *mut Object,
+    ) {
         for index in 0..main_object.size() {
             let main_field = main_object.get(index);
             let stable_field = StableValue::serialize(main_field);
-            memory.write(&stable_field);
+            stable_memory.write(&stable_field);
         }
     }
 
@@ -71,8 +75,9 @@ impl Serializer<Object> for StableObject {
         (*target_object).hash_blob = self.hash_blob.deserialize();
     }
 
-    unsafe fn deserialize_dynamic_part(
+    unsafe fn deserialize_dynamic_part<M: Memory>(
         &self,
+        _main_memory: &mut M,
         stable_memory: &StableMemoryAccess,
         stable_object: StableValue,
         target_object: *mut Object,

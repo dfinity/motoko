@@ -24,11 +24,15 @@ impl Serializer<Array> for StableArray {
         }
     }
 
-    unsafe fn serialize_dynamic_part(memory: &mut StableMemoryStream, main_array: *mut Array) {
+    unsafe fn serialize_dynamic_part<M: Memory>(
+        _main_memory: &mut M,
+        stable_memory: &mut StableMemoryStream,
+        main_array: *mut Array,
+    ) {
         for index in 0..main_array.len() {
             let main_element = main_array.get(index);
             let stable_element = StableValue::serialize(main_element);
-            memory.write(&stable_element);
+            stable_memory.write(&stable_element);
         }
     }
 
@@ -54,8 +58,9 @@ impl Serializer<Array> for StableArray {
         debug_assert_eq!((*target_array).len, checked_to_u32(self.array_length));
     }
 
-    unsafe fn deserialize_dynamic_part(
+    unsafe fn deserialize_dynamic_part<M: Memory>(
         &self,
+        _main_memory: &mut M,
         stable_memory: &StableMemoryAccess,
         stable_object: StableValue,
         target_array: *mut Array,

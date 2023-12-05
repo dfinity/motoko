@@ -19,7 +19,9 @@ TOMMATHFILES = \
    mp_init_size mp_exch mp_clear mp_copy mp_count_bits mp_mul_2d mp_rshd mp_mul_d mp_div_2d mp_mod_2d \
    s_mp_balance_mul s_mp_toom_mul s_mp_toom_sqr s_mp_karatsuba_sqr s_mp_sqr_fast s_mp_sqr s_mp_karatsuba_mul \
    s_mp_mul_digs_fast s_mp_mul_digs mp_init_multi mp_clear_multi mp_mul_2 mp_div_2 mp_div_3 mp_lshd mp_incr \
-   mp_decr mp_add_d mp_sub_d
+   mp_decr mp_add_d mp_sub_d \
+   mp_ubin_size mp_to_ubin mp_from_ubin \
+   mp_sbin_size mp_to_sbin mp_from_sbin 
 
 MUSLFILES = \
   pow pow_data sin cos tan asin acos atan atan2 exp exp_data log log_data fmod \
@@ -206,6 +208,12 @@ $(TOMMATH_BINDINGS_RS): | _build
 	    --allowlist-function mp_expt_u32 \
 	    --allowlist-function mp_2expt \
 	    --allowlist-function mp_incr \
+	    --allowlist-function mp_ubin_size \
+	    --allowlist-function mp_to_ubin \
+	    --allowlist-function mp_from_ubin \
+	    --allowlist-function mp_sbin_size \
+	    --allowlist-function mp_to_sbin \
+	    --allowlist-function mp_from_sbin \
 	    --blocklist-type __int32_t \
 	    --blocklist-type __int64_t \
 	    --blocklist-type __uint32_t \
