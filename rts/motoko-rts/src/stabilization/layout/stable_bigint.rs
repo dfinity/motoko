@@ -9,6 +9,11 @@ use crate::types::{size_of, BigInt, Bytes, Value};
 
 use super::{round_to_u64, Serializer, StableToSpace, StableValue, StaticScanner};
 
+// A temporary buffer `blob` and `bigint` are created during the serialization and deserialization.
+// The deserialization scan will skip these temporary objects because these types of objects do not
+// contain any pointers.
+// Note: For large numbers this may cause memory shortness during stabilization or destabilization.
+
 #[repr(C)]
 pub struct StableBigInt {
     binary_length: u32, // Number of payload bytes.

@@ -289,14 +289,12 @@ impl<'a, M: Memory + 'a> Deserialization<'a, M> {
 
     // Ensure monotonically increasing allocation to allow main memory heap scanning
     // during deserialization.
-    // Non-incremental GC: Contiguously increasing.
-    // Incremental GC: Possible free space at partition end (internal fragmentation).
-    #[non_incremental_gc]
-    fn check_allocation(&self, target: Value) {
-        assert_eq!(target.get_ptr(), self.heap_end);
-    }
-
-    #[incremental_gc]
+    // The target is not necessarily always exactly located at the former heap end:
+    // * The `bigint` deserialization may create extra temportary `blob` or `bigint` objects.
+    // * Incremental GC: Free space may be inserted at the partition end (internal fragmentation).
+    // These intermediate allocations will be skipped during the scanning phase:
+    // * The temporary `bigint` or `blob` do not contain any pointers that would be scanned.
+    // * Incremental GC: `skip_free_space` ignores the free space in the partitioned heap.
     fn check_allocation(&self, target: Value) {
         assert!(target.get_ptr() >= self.heap_end);
     }
