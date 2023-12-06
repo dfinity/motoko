@@ -4577,7 +4577,7 @@ module IC = struct
     | Flags.RefMode  ->
       import_ic0 env
     | Flags.WASIMode ->
-      E.add_func_import env "wasi_unstable" "fd_write" [I32Type; I32Type; I32Type; I32Type] [I32Type];
+      E.add_func_import env "wasi_snapshot_preview1" "fd_write" [I32Type; I32Type; I32Type; I32Type] [I32Type];
     | Flags.WasmMode -> ()
 
   let system_call env funcname = E.call_import env "ic0" funcname
@@ -4625,14 +4625,14 @@ module IC = struct
             get_iovec_ptr ^^
             compile_unboxed_const 1l (* one string segment (2 doesn't work) *) ^^
             get_iovec_ptr ^^ compile_add_const 20l ^^ (* out for bytes written, we ignore that *)
-            E.call_import env "wasi_unstable" "fd_write" ^^
+            E.call_import env "wasi_snapshot_preview1" "fd_write" ^^
             G.i Drop ^^
 
             compile_unboxed_const 1l (* stdout *) ^^
             get_iovec_ptr ^^ compile_add_const 8l ^^
             compile_unboxed_const 1l (* one string segment *) ^^
             get_iovec_ptr ^^ compile_add_const 20l ^^ (* out for bytes written, we ignore that *)
-            E.call_import env "wasi_unstable" "fd_write" ^^
+            E.call_import env "wasi_snapshot_preview1" "fd_write" ^^
             G.i Drop)
           end);
 
