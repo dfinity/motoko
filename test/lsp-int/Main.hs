@@ -76,7 +76,9 @@ definitionsTestCase
 definitionsTestCase project doc pos expected = do
   LSP.InL response <- getDefinitions doc pos
   let expected' = map (first (filePathToUri . (project </>))) expected
-  let actual = map (\(Location uri range) -> (uri, range)) response
+  let locations (LSP.Definition (LSP.InL loc)) = [loc]
+      locations (LSP.Definition (LSP.InR locs)) = locs
+  let actual = map (\(Location uri range) -> (uri, range)) (locations response)
   liftIO (shouldMatchList actual expected')
 
 -- | Discards all empty diagnostic reports (as those are merely used
