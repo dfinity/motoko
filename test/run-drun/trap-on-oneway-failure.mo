@@ -1,4 +1,3 @@
-//MOC-NO-FORCE-GC
 //MOC-FLAG --trap-on-call-error
 // legacy: test oneway sends never trap (even on ic0.perform_call error)
 import Prim "mo:⛔";

@@ -1,4 +1,3 @@
-//MOC-NO-FORCE-GC
 import Prim "mo:⛔";
 import Cycles = "cycles/cycles";
 import Lib "distributor/node";

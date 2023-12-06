@@ -1,5 +1,3 @@
-//MOC-NO-FORCE-GC
-
 import Prim "mo:⛔";
 actor {
   var count = 0;
