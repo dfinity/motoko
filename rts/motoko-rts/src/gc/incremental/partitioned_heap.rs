@@ -195,12 +195,20 @@ impl Partition {
             debug_assert!(remaining_space >= header_size);
             let free_space = block as *mut FreeSpace;
             (*free_space).words = Bytes((remaining_space - header_size) as u32).to_words();
-            // Clear the remainder of the free space.
-            let clear_start = free_space as usize + header_size;
-            let clear_length = Bytes((remaining_space - header_size) as u32);
-            crate::mem_utils::memzero(clear_start, clear_length.to_words());
             debug_assert_eq!(free_space.size().to_bytes().as_usize(), remaining_space);
+
+            #[cfg(feature = "memory_check")]
+            Self::zero_free_space(free_space);
         }
+    }
+
+    #[cfg(feature = "memory_check")]
+    unsafe fn zero_free_space(free_space: *mut FreeSpace) {
+        // Clear the remainder of the free space.
+        let header_size = size_of::<FreeSpace>().to_bytes().as_usize();
+        let clear_start = free_space as usize + header_size;
+        let clear_length = (*free_space).words;
+        crate::mem_utils::memzero(clear_start, clear_length);
     }
 
     pub unsafe fn free(&mut self) {
@@ -721,8 +729,6 @@ impl PartitionedHeap {
             debug_assert_eq!(partition.marked_size, 0);
             if index == last_index {
                 partition.dynamic_size = size - (number_of_partitions - 1) * PARTITION_SIZE;
-
-                #[cfg(feature = "memory_check")]
                 partition.clear_free_remainder();
             } else {
                 partition.dynamic_size = PARTITION_SIZE;
