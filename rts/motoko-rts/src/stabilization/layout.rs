@@ -2,7 +2,7 @@
 //!
 //! The stable object graph resides a linear stable memory space.
 //!
-//! Pointers are serialized as skewed offsets in that space.
+//! Pointers are serialized as skewed offsets divided by 2 in that space.
 //! Scalar and pointer values are serialized as 64-bit `StableValue`
 //! for a long-term perspective, even if main memory operates on 32-bit.
 //! A 32-bit program stores `StableValue` that fit into 32-bit, and
@@ -22,10 +22,15 @@
 //! with backwards compatibility but encoding changes to existing stable
 //! data types must be handled with extra care to ensure backwards compatibility.
 
-use crate::types::{
-    block_size, size_of, Tag, Value, Words, TAG_ARRAY, TAG_ARRAY_SLICE_MIN, TAG_BIGINT, TAG_BITS32,
-    TAG_BITS64, TAG_BLOB, TAG_CONCAT, TAG_MUTBOX, TAG_OBJECT, TAG_OBJ_IND, TAG_REGION, TAG_SOME,
-    TAG_VARIANT, TRUE_VALUE,
+use crate::{
+    barriers::allocation_barrier,
+    constants::WORD_SIZE,
+    memory::Memory,
+    types::{
+        size_of, Tag, Value, TAG_ARRAY, TAG_ARRAY_SLICE_MIN, TAG_BIGINT, TAG_BITS32, TAG_BITS64,
+        TAG_BLOB, TAG_CONCAT, TAG_MUTBOX, TAG_OBJECT, TAG_OBJ_IND, TAG_REGION, TAG_SOME,
+        TAG_VARIANT, TRUE_VALUE,
+    },
 };
 
 use self::{
@@ -36,7 +41,7 @@ use self::{
 };
 
 use super::{
-    reader_writer::{ScanStream, StableMemorySpace, WriteStream},
+    stable_memory_stream::{ScanStream, StableMemoryStream, WriteStream},
     StableMemoryAccess,
 };
 
@@ -97,21 +102,32 @@ impl StableTag {
 }
 
 /// Special sentinel value that does not exist for static or dynamic objects.
-/// Skewed -3. Since 1 is already reserved to encode the boolean `true`.
+/// Skewed -5. Since 1 is already reserved to encode the boolean `true`.
 /// Note: The stable addresses start at 0 (skewed u32::MAX) as they are relatived to the to-space.
-pub const STABLE_NULL_POINTER: StableValue = StableValue(0xffff_ffff_ffff_fffd);
+pub const STABLE_NULL_POINTER: StableValue = StableValue(0xffff_ffff_ffff_fffb);
 pub const STABLE_NULL_POINTER_32: Value = Value::from_raw(STABLE_NULL_POINTER.0 as u32);
 
 const _: () = assert!(STABLE_NULL_POINTER.0 != TRUE_VALUE as u64);
 const _: () = assert!(STABLE_NULL_POINTER.0 & 0b1 != 0);
+const _: () = assert!((STABLE_NULL_POINTER.0 + 1) % WORD_SIZE as u64 == 0);
 
 #[repr(C)]
 #[derive(Clone, Copy, PartialEq)]
 pub struct StableValue(u64);
 
+/// Due to the 64-bit pointer encoding in the stable format, the serialized space can require the double
+/// size than the main memory. Therefore, the stable pointers (offsets in stable memory) can also exceed
+/// the 32-bit address space. This would be a problem on deserialization, where the stable pointers are first
+/// copied to the main memory object with 32-bit pointer slots and then later patched during the deserialization
+/// scan. Therefore, the stable pointer address is first divided by two and then skewed. This requires
+/// WORD_SIZE >= 4, such that the dividied addresses are still even numbers that can be skewed.
+const POINTER_SCALE_FACTOR: u64 = 2;
+
+const _: () = assert!(WORD_SIZE >= 4);
+
 impl StableValue {
     fn is_ptr(&self) -> bool {
-        self.0 & 0b1 == 1
+        self.0 & 0b1 == 1 && self.0 != TRUE_VALUE as u64
     }
 
     fn skew(address: u64) -> u64 {
@@ -119,6 +135,7 @@ impl StableValue {
     }
 
     fn unskew(pointer: u64) -> u64 {
+        debug_assert!(Self::from_raw(pointer).is_ptr());
         pointer.wrapping_add(1)
     }
 
@@ -126,19 +143,26 @@ impl StableValue {
         StableValue(value)
     }
 
-    pub fn from_address(address: u64) -> Self {
-        StableValue(Self::skew(address))
+    pub fn from_stable_address(address: u64) -> Self {
+        debug_assert_eq!(address % WORD_SIZE as u64, 0);
+        debug_assert!(address / POINTER_SCALE_FACTOR <= u32::MAX as u64);
+        StableValue(Self::skew(address / POINTER_SCALE_FACTOR))
     }
 
-    pub fn to_address(&self) -> u64 {
-        Self::unskew(self.0)
+    pub fn to_stable_address(&self) -> u64 {
+        Self::unskew(self.0) * POINTER_SCALE_FACTOR
+    }
+
+    pub fn payload_address(&self) -> u64 {
+        self.to_stable_address() + size_of::<StableTag>().to_bytes().as_usize() as u64
     }
 
     pub fn serialize(value: Value) -> Self {
         if value == STABLE_NULL_POINTER_32 {
             STABLE_NULL_POINTER
-        } else if value.is_ptr() {
-            StableValue::from_address(value.get_ptr() as u64)
+        } else if value.get_raw() == u32::MAX {
+            // Skewed stable address 0 in 32-bit value
+            StableValue(u64::MAX)
         } else {
             StableValue(value.get_raw() as u64)
         }
@@ -147,27 +171,12 @@ impl StableValue {
     pub fn deserialize(&self) -> Value {
         if *self == STABLE_NULL_POINTER {
             STABLE_NULL_POINTER_32
-        } else if self.is_ptr() {
-            Value::from_ptr(checked_to_usize(self.to_address()))
+        } else if self.0 == u64::MAX as u64 {
+            // Skewed stable address 0 in 64-bit value
+            Value::from_raw(u32::MAX)
         } else {
             Value::from_raw(checked_to_u32(self.0))
         }
-    }
-}
-
-/// Common stable object header in the front of the specific stable object layout,
-/// e.g. `StableArray`, `StableObject`, etc.
-pub struct StableHeader {
-    stable_tag: StableTag,
-}
-
-impl StableHeader {
-    unsafe fn tag(self: *const StableHeader) -> StableTag {
-        (*self).stable_tag
-    }
-
-    unsafe fn as_object<T>(self: *mut StableHeader) -> *mut T {
-        self.offset(1) as *mut T
     }
 }
 
@@ -175,7 +184,7 @@ impl StableHeader {
 trait StaticScanner<T> {
     // Updates potential pointers in the static part of the object.
     // Returns true if values have been updated.
-    fn update_pointers<C: StableMemoryAccess, F: Fn(&mut C, T) -> T>(
+    fn update_pointers<C, F: Fn(&mut C, T) -> T>(
         &mut self,
         _context: &mut C,
         _translate: &F,
@@ -184,24 +193,37 @@ trait StaticScanner<T> {
     }
 }
 
-trait Serializer<T: StaticScanner<Value>>
+pub trait StableToSpace {
+    fn to_space(&mut self) -> &mut StableMemoryStream;
+}
+
+trait Serializer<T>
 where
     Self: Sized + StaticScanner<StableValue>,
 {
     unsafe fn serialize_static_part(main_object: *mut T) -> Self;
-    unsafe fn serialize_dynamic_part(_memory: &mut StableMemorySpace, _main_object: *mut T) {}
+    unsafe fn serialize_dynamic_part<M: Memory>(
+        _main_memory: &mut M,
+        _stable_memory: &mut StableMemoryStream,
+        _main_object: *mut T,
+    ) {
+    }
 
-    unsafe fn serialize(memory: &mut StableMemorySpace, main_object: Value) {
+    unsafe fn serialize<M: Memory>(
+        main_memory: &mut M,
+        stable_memory: &mut StableMemoryStream,
+        main_object: Value,
+    ) {
         let stable_tag = StableTag::deserialize(main_object.tag());
         let main_object = main_object.as_obj() as *mut T;
-        memory.write(&stable_tag);
+        stable_memory.write(&stable_tag);
         unsafe {
-            memory.write(&Self::serialize_static_part(main_object));
-            Self::serialize_dynamic_part(memory, main_object);
+            stable_memory.write(&Self::serialize_static_part(main_object));
+            Self::serialize_dynamic_part(main_memory, stable_memory, main_object);
         }
     }
 
-    fn scan_serialized<C: StableMemoryAccess, F: Fn(&mut C, StableValue) -> StableValue>(
+    fn scan_serialized<C: StableToSpace, F: Fn(&mut C, StableValue) -> StableValue>(
         context: &mut C,
         translate: &F,
     ) {
@@ -209,59 +231,48 @@ where
         if static_part.update_pointers(context, translate) {
             context.to_space().update(&static_part);
         }
-        Self::scan_serialized_dynamic(context, &static_part, translate);
+        static_part.scan_serialized_dynamic(context, translate);
     }
 
-    fn scan_serialized_dynamic<C: StableMemoryAccess, F: Fn(&mut C, StableValue) -> StableValue>(
+    fn scan_serialized_dynamic<C: StableToSpace, F: Fn(&mut C, StableValue) -> StableValue>(
+        &self,
         _context: &mut C,
-        _stable_object: &Self,
         _translate: &F,
     ) {
     }
 
-    unsafe fn deserialized_size(stable_object: *mut StableHeader) -> Words<u32> {
-        // This is a workaround for reusing the existing `block_size()` function to determine object size in main memory:
-        // The main memory object is decoded without its dynamic payload, by using a dummy value for the unused Brooks
-        // forwarding pointer in this temporarily decoded object.
-        let unused_pointer = Value::from_ptr(0);
-        let static_part =
-            &mut Self::deserialize_static_part(stable_object.as_object::<Self>(), unused_pointer);
-        block_size(static_part as *mut T as usize)
+    unsafe fn allocate_deserialized<M: Memory>(&self, main_memory: &mut M) -> Value {
+        main_memory.alloc_words(size_of::<T>())
     }
 
-    unsafe fn deserialize_static_part(stable_object: *mut Self, target_address: Value) -> T;
-    unsafe fn deserialize_dynamic_part(_memory: &mut StableMemorySpace, _stable_object: *mut Self) {
-    }
+    unsafe fn deserialize_static_part(&self, target_object: *mut T);
 
-    unsafe fn deserialize(
-        memory: &mut StableMemorySpace,
-        stable_object: *mut StableHeader,
-        target_address: Value,
+    unsafe fn deserialize_dynamic_part<M: Memory>(
+        &self,
+        _main_memory: &mut M,
+        _stable_memory: &StableMemoryAccess,
+        _stable_object: StableValue,
+        _target_object: *mut T,
     ) {
-        let stable_object = stable_object.as_object::<Self>();
-        memory.write(&Self::deserialize_static_part(
+    }
+
+    unsafe fn deserialize<M: Memory>(
+        main_memory: &mut M,
+        stable_memory: &StableMemoryAccess,
+        stable_object: StableValue,
+    ) -> Value {
+        let stable_address = stable_object.payload_address();
+        let stable_static_part = stable_memory.read::<Self>(stable_address);
+        let target = stable_static_part.allocate_deserialized(main_memory);
+        let target_object = target.get_ptr() as *mut T;
+        stable_static_part.deserialize_static_part(target_object);
+        stable_static_part.deserialize_dynamic_part(
+            main_memory,
+            stable_memory,
             stable_object,
-            target_address,
-        ));
-        Self::deserialize_dynamic_part(memory, stable_object);
-    }
-
-    fn scan_deserialized<C: StableMemoryAccess, F: Fn(&mut C, Value) -> Value>(
-        context: &mut C,
-        translate: &F,
-    ) {
-        let mut static_part = context.to_space().read::<T>();
-        if static_part.update_pointers(context, translate) {
-            context.to_space().update(&static_part);
-        }
-        Self::scan_deserialized_dynamic(context, &static_part, translate);
-    }
-
-    fn scan_deserialized_dynamic<C: StableMemoryAccess, F: Fn(&mut C, Value) -> Value>(
-        _context: &mut C,
-        _main_object: &T,
-        _translate: &F,
-    ) {
+            target_object,
+        );
+        allocation_barrier(target)
     }
 }
 
@@ -280,15 +291,15 @@ pub fn round_to_u64(length: u64) -> u64 {
     (length + alignment - 1) / alignment * alignment
 }
 
-fn write_padding_u64(memory: &mut StableMemorySpace, byte_length: usize) {
+fn write_padding_u64(stable_memory: &mut StableMemoryStream, byte_length: usize) {
     let rounded_length = round_to_u64(byte_length as u64);
     let padding = rounded_length - byte_length as u64;
     for _ in 0..padding {
-        memory.write(&0u8);
+        stable_memory.write(&0u8);
     }
 }
 
-pub fn scan_serialized<C: StableMemoryAccess, F: Fn(&mut C, StableValue) -> StableValue>(
+pub fn scan_serialized<C: StableToSpace, F: Fn(&mut C, StableValue) -> StableValue>(
     context: &mut C,
     translate: &F,
 ) {
@@ -310,82 +321,47 @@ pub fn scan_serialized<C: StableMemoryAccess, F: Fn(&mut C, StableValue) -> Stab
     }
 }
 
-pub unsafe fn serialize(memory: &mut StableMemorySpace, main_object: Value) {
+pub unsafe fn serialize<M: Memory>(
+    main_memory: &mut M,
+    stable_memory: &mut StableMemoryStream,
+    main_object: Value,
+) {
     match StableTag::deserialize(main_object.tag()) {
-        StableTag::Array => StableArray::serialize(memory, main_object),
-        StableTag::MutBox => StableMutBox::serialize(memory, main_object),
-        StableTag::Object => StableObject::serialize(memory, main_object),
-        StableTag::Blob => StableBlob::serialize(memory, main_object),
-        StableTag::Bits32 => StableBits32::serialize(memory, main_object),
-        StableTag::Bits64 => StableBits64::serialize(memory, main_object),
-        StableTag::Region => StableRegion::serialize(memory, main_object),
-        StableTag::Variant => StableVariant::serialize(memory, main_object),
-        StableTag::Concat => StableConcat::serialize(memory, main_object),
-        StableTag::BigInt => StableBigInt::serialize(memory, main_object),
-        StableTag::ObjInd => StableObjInd::serialize(memory, main_object),
-        StableTag::Some => StableSome::serialize(memory, main_object),
+        StableTag::Array => StableArray::serialize(main_memory, stable_memory, main_object),
+        StableTag::MutBox => StableMutBox::serialize(main_memory, stable_memory, main_object),
+        StableTag::Object => StableObject::serialize(main_memory, stable_memory, main_object),
+        StableTag::Blob => StableBlob::serialize(main_memory, stable_memory, main_object),
+        StableTag::Bits32 => StableBits32::serialize(main_memory, stable_memory, main_object),
+        StableTag::Bits64 => StableBits64::serialize(main_memory, stable_memory, main_object),
+        StableTag::Region => StableRegion::serialize(main_memory, stable_memory, main_object),
+        StableTag::Variant => StableVariant::serialize(main_memory, stable_memory, main_object),
+        StableTag::Concat => StableConcat::serialize(main_memory, stable_memory, main_object),
+        StableTag::BigInt => StableBigInt::serialize(main_memory, stable_memory, main_object),
+        StableTag::ObjInd => StableObjInd::serialize(main_memory, stable_memory, main_object),
+        StableTag::Some => StableSome::serialize(main_memory, stable_memory, main_object),
         StableTag::_None => unimplemented!(),
     }
 }
 
-pub fn scan_deserialized<C: StableMemoryAccess, F: Fn(&mut C, Value) -> Value>(
-    context: &mut C,
-    tag: Tag,
-    translate: &F,
-) {
-    match StableTag::deserialize(tag) {
-        StableTag::Array => StableArray::scan_deserialized(context, translate),
-        StableTag::MutBox => StableMutBox::scan_deserialized(context, translate),
-        StableTag::Object => StableObject::scan_deserialized(context, translate),
-        StableTag::Blob => StableBlob::scan_deserialized(context, translate),
-        StableTag::Bits32 => StableBits32::scan_deserialized(context, translate),
-        StableTag::Bits64 => StableBits64::scan_deserialized(context, translate),
-        StableTag::Region => StableRegion::scan_deserialized(context, translate),
-        StableTag::Variant => StableVariant::scan_deserialized(context, translate),
-        StableTag::Concat => StableConcat::scan_deserialized(context, translate),
-        StableTag::BigInt => StableBigInt::scan_deserialized(context, translate),
-        StableTag::ObjInd => StableObjInd::scan_deserialized(context, translate),
-        StableTag::Some => StableSome::scan_deserialized(context, translate),
-        StableTag::_None => unimplemented!(),
-    }
-}
-
-pub unsafe fn deserialized_size(stable_object: *mut StableHeader) -> Words<u32> {
-    match stable_object.tag() {
-        StableTag::Array => StableArray::deserialized_size(stable_object),
-        StableTag::MutBox => StableMutBox::deserialized_size(stable_object),
-        StableTag::Object => StableObject::deserialized_size(stable_object),
-        StableTag::Blob => StableBlob::deserialized_size(stable_object),
-        StableTag::Bits32 => StableBits32::deserialized_size(stable_object),
-        StableTag::Bits64 => StableBits64::deserialized_size(stable_object),
-        StableTag::Region => StableRegion::deserialized_size(stable_object),
-        StableTag::Variant => StableVariant::deserialized_size(stable_object),
-        StableTag::Concat => StableConcat::deserialized_size(stable_object),
-        StableTag::BigInt => StableBigInt::deserialized_size(stable_object),
-        StableTag::ObjInd => StableObjInd::deserialized_size(stable_object),
-        StableTag::Some => StableSome::deserialized_size(stable_object),
-        StableTag::_None => unimplemented!(),
-    }
-}
-
-pub unsafe fn deserialize(
-    memory: &mut StableMemorySpace,
-    stable_object: *mut StableHeader,
-    target_address: Value,
-) {
-    match stable_object.tag() {
-        StableTag::Array => StableArray::deserialize(memory, stable_object, target_address),
-        StableTag::MutBox => StableMutBox::deserialize(memory, stable_object, target_address),
-        StableTag::Object => StableObject::deserialize(memory, stable_object, target_address),
-        StableTag::Blob => StableBlob::deserialize(memory, stable_object, target_address),
-        StableTag::Bits32 => StableBits32::deserialize(memory, stable_object, target_address),
-        StableTag::Bits64 => StableBits64::deserialize(memory, stable_object, target_address),
-        StableTag::Region => StableRegion::deserialize(memory, stable_object, target_address),
-        StableTag::Variant => StableVariant::deserialize(memory, stable_object, target_address),
-        StableTag::Concat => StableConcat::deserialize(memory, stable_object, target_address),
-        StableTag::BigInt => StableBigInt::deserialize(memory, stable_object, target_address),
-        StableTag::ObjInd => StableObjInd::deserialize(memory, stable_object, target_address),
-        StableTag::Some => StableSome::deserialize(memory, stable_object, target_address),
+pub unsafe fn deserialize<M: Memory>(
+    main_memory: &mut M,
+    stable_memory: &mut StableMemoryAccess,
+    stable_object: StableValue,
+) -> Value {
+    let tag = stable_memory.read::<StableTag>(stable_object.to_stable_address());
+    match tag {
+        StableTag::Array => StableArray::deserialize(main_memory, stable_memory, stable_object),
+        StableTag::MutBox => StableMutBox::deserialize(main_memory, stable_memory, stable_object),
+        StableTag::Object => StableObject::deserialize(main_memory, stable_memory, stable_object),
+        StableTag::Blob => StableBlob::deserialize(main_memory, stable_memory, stable_object),
+        StableTag::Bits32 => StableBits32::deserialize(main_memory, stable_memory, stable_object),
+        StableTag::Bits64 => StableBits64::deserialize(main_memory, stable_memory, stable_object),
+        StableTag::Region => StableRegion::deserialize(main_memory, stable_memory, stable_object),
+        StableTag::Variant => StableVariant::deserialize(main_memory, stable_memory, stable_object),
+        StableTag::Concat => StableConcat::deserialize(main_memory, stable_memory, stable_object),
+        StableTag::BigInt => StableBigInt::deserialize(main_memory, stable_memory, stable_object),
+        StableTag::ObjInd => StableObjInd::deserialize(main_memory, stable_memory, stable_object),
+        StableTag::Some => StableSome::deserialize(main_memory, stable_memory, stable_object),
         StableTag::_None => unimplemented!(),
     }
 }

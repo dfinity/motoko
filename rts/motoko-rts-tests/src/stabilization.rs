@@ -198,7 +198,8 @@ fn test_serialization_deserialization(random: &mut Rand32, max_objects: u32, sta
     let gc = GC_IMPLS[0];
     let mut heap = random_heap(random, max_objects, gc);
     let heap_base = heap.heap_base_address();
-    let stable_size = Serialization::run(heap.old_stable_root(), stable_start);
+    let old_stable_root = heap.old_stable_root();
+    let stable_size = Serialization::run(&mut heap.memory, old_stable_root, stable_start);
     heap.clear();
     let stable_root = Deserialization::run(&mut heap.memory, stable_start, stable_size, heap_base);
     heap.set_new_root(stable_root);

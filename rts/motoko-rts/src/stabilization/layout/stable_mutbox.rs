@@ -1,12 +1,6 @@
-use crate::{
-    stabilization::StableMemoryAccess,
-    types::{MutBox, Obj, Value, TAG_MUTBOX},
-};
+use crate::types::{MutBox, Value, TAG_MUTBOX};
 
 use super::{Serializer, StableValue, StaticScanner};
-
-// Note: The unaligned reads are needed because heap allocations are aligned to 32-bit,
-// while the stable layout uses 64-bit values.
 
 #[repr(C)]
 pub struct StableMutBox {
@@ -14,18 +8,7 @@ pub struct StableMutBox {
 }
 
 impl StaticScanner<StableValue> for StableMutBox {
-    fn update_pointers<C: StableMemoryAccess, F: Fn(&mut C, StableValue) -> StableValue>(
-        &mut self,
-        context: &mut C,
-        translate: &F,
-    ) -> bool {
-        self.field = translate(context, self.field);
-        true
-    }
-}
-
-impl StaticScanner<Value> for MutBox {
-    fn update_pointers<C: StableMemoryAccess, F: Fn(&mut C, Value) -> Value>(
+    fn update_pointers<C, F: Fn(&mut C, StableValue) -> StableValue>(
         &mut self,
         context: &mut C,
         translate: &F,
@@ -42,11 +25,11 @@ impl Serializer<MutBox> for StableMutBox {
         }
     }
 
-    unsafe fn deserialize_static_part(stable_object: *mut Self, target_address: Value) -> MutBox {
-        let field = stable_object.read_unaligned().field.deserialize();
-        MutBox {
-            header: Obj::new(TAG_MUTBOX, target_address),
-            field,
-        }
+    unsafe fn deserialize_static_part(&self, target_mutbox: *mut MutBox) {
+        (*target_mutbox).header.tag = TAG_MUTBOX;
+        (*target_mutbox)
+            .header
+            .init_forward(Value::from_ptr(target_mutbox as usize));
+        (*target_mutbox).field = self.field.deserialize();
     }
 }

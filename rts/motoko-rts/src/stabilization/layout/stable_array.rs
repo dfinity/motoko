@@ -1,16 +1,13 @@
 use crate::{
+    memory::{alloc_array, Memory},
     stabilization::{
-        layout::checked_to_usize,
-        reader_writer::{ScanStream, StableMemorySpace, WriteStream},
+        stable_memory_stream::{ScanStream, StableMemoryStream, WriteStream},
         StableMemoryAccess,
     },
-    types::{Array, Obj, Value, TAG_ARRAY},
+    types::{size_of, Array, Value, TAG_ARRAY},
 };
 
-use super::{checked_to_u32, Serializer, StableValue, StaticScanner};
-
-// Note: The unaligned reads are needed because heap allocations are aligned to 32-bit,
-// while the stable layout uses 64-bit values.
+use super::{checked_to_u32, Serializer, StableToSpace, StableValue, StaticScanner};
 
 #[repr(C)]
 pub struct StableArray {
@@ -18,26 +15,7 @@ pub struct StableArray {
     // Dynamically sized body with `array_length` elements, each of `StableValue`.
 }
 
-impl StableArray {
-    unsafe fn array_length(self: *const Self) -> u64 {
-        self.read_unaligned().array_length
-    }
-
-    unsafe fn elements(self: *const Self) -> *const StableValue {
-        self.offset(1) as *const StableValue
-    }
-
-    unsafe fn get(self: *const Self, index: u64) -> StableValue {
-        debug_assert!(index < self.array_length());
-        self.elements()
-            .add(checked_to_usize(index))
-            .read_unaligned()
-    }
-}
-
 impl StaticScanner<StableValue> for StableArray {}
-
-impl StaticScanner<Value> for Array {}
 
 impl Serializer<Array> for StableArray {
     unsafe fn serialize_static_part(array: *mut Array) -> Self {
@@ -46,51 +24,54 @@ impl Serializer<Array> for StableArray {
         }
     }
 
-    unsafe fn serialize_dynamic_part(memory: &mut StableMemorySpace, main_array: *mut Array) {
+    unsafe fn serialize_dynamic_part<M: Memory>(
+        _main_memory: &mut M,
+        stable_memory: &mut StableMemoryStream,
+        main_array: *mut Array,
+    ) {
         for index in 0..main_array.len() {
             let main_element = main_array.get(index);
             let stable_element = StableValue::serialize(main_element);
-            memory.write(&stable_element);
+            stable_memory.write(&stable_element);
         }
     }
 
-    fn scan_serialized_dynamic<C: StableMemoryAccess, F: Fn(&mut C, StableValue) -> StableValue>(
+    fn scan_serialized_dynamic<C: StableToSpace, F: Fn(&mut C, StableValue) -> StableValue>(
+        &self,
         context: &mut C,
-        stable_array: &Self,
         translate: &F,
     ) {
-        for _ in 0..stable_array.array_length {
+        for _ in 0..self.array_length {
             let old_value = context.to_space().read::<StableValue>();
             let new_value = translate(context, old_value);
             context.to_space().update(&new_value);
         }
     }
 
-    unsafe fn deserialize_static_part(stable_array: *mut Self, target_address: Value) -> Array {
-        let len = checked_to_u32(stable_array.array_length());
-        Array {
-            header: Obj::new(TAG_ARRAY, target_address),
-            len,
-        }
+    unsafe fn allocate_deserialized<M: Memory>(&self, main_memory: &mut M) -> Value {
+        let array_length = checked_to_u32(self.array_length);
+        alloc_array(main_memory, array_length)
     }
 
-    unsafe fn deserialize_dynamic_part(memory: &mut StableMemorySpace, stable_array: *mut Self) {
-        for index in 0..stable_array.array_length() {
-            let stable_element = stable_array.get(index);
-            let main_element = stable_element.deserialize();
-            memory.write(&main_element);
-        }
+    unsafe fn deserialize_static_part(&self, target_array: *mut Array) {
+        debug_assert_eq!((*target_array).header.tag, TAG_ARRAY);
+        debug_assert_eq!((*target_array).len, checked_to_u32(self.array_length));
     }
 
-    fn scan_deserialized_dynamic<C: StableMemoryAccess, F: Fn(&mut C, Value) -> Value>(
-        context: &mut C,
-        main_object: &Array,
-        translate: &F,
+    unsafe fn deserialize_dynamic_part<M: Memory>(
+        &self,
+        _main_memory: &mut M,
+        stable_memory: &StableMemoryAccess,
+        stable_object: StableValue,
+        target_array: *mut Array,
     ) {
-        for _ in 0..main_object.len {
-            let old_value = context.to_space().read::<Value>();
-            let new_value = translate(context, old_value);
-            context.to_space().update(&new_value);
+        let stable_address = stable_object.payload_address();
+        for index in 0..(*target_array).len {
+            let element_address = stable_address
+                + size_of::<StableArray>().to_bytes().as_usize() as u64
+                + (index * size_of::<StableValue>().to_bytes().as_u32()) as u64;
+            let element = stable_memory.read::<StableValue>(element_address);
+            target_array.set_raw(index, element.deserialize());
         }
     }
 }

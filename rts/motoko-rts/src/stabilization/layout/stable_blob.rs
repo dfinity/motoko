@@ -1,15 +1,17 @@
 use crate::{
-    stabilization::reader_writer::{ScanStream, StableMemorySpace, WriteStream},
-    types::{Blob, Bytes, Obj, Value, TAG_BLOB},
+    memory::{alloc_blob, Memory},
+    stabilization::stable_memory_access::StableMemoryAccess,
+    stabilization::{
+        layout::checked_to_u32,
+        stable_memory_stream::{ScanStream, StableMemoryStream, WriteStream},
+    },
+    types::{size_of, Blob, Bytes, Value, TAG_BLOB},
 };
 
 use super::{
-    checked_to_u32, checked_to_usize, round_to_u64, write_padding_u64, Serializer, StableValue,
+    checked_to_usize, round_to_u64, write_padding_u64, Serializer, StableToSpace, StableValue,
     StaticScanner,
 };
-
-// Note: The unaligned reads are needed because heap allocations are aligned to 32-bit,
-// while the stable layout uses 64-bit values.
 
 #[repr(C)]
 #[derive(Default)]
@@ -20,18 +22,7 @@ pub struct StableBlob {
     // Note: The rounding of object sizes to at least 2 bytes is necessary for the skewed pointer representation.
 }
 
-impl StableBlob {
-    unsafe fn payload_address(self: *mut Self) -> *mut u8 {
-        self.add(1) as *mut u8
-    }
-
-    unsafe fn payload_length(self: *const Self) -> u64 {
-        self.read_unaligned().byte_length
-    }
-}
-
 impl StaticScanner<StableValue> for StableBlob {}
-impl StaticScanner<Value> for Blob {}
 
 impl Serializer<Blob> for StableBlob {
     unsafe fn serialize_static_part(main_object: *mut Blob) -> Self {
@@ -40,47 +31,49 @@ impl Serializer<Blob> for StableBlob {
         }
     }
 
-    unsafe fn serialize_dynamic_part(memory: &mut StableMemorySpace, main_object: *mut Blob) {
+    unsafe fn serialize_dynamic_part<M: Memory>(
+        _main_memory: &mut M,
+        stable_memory: &mut StableMemoryStream,
+        main_object: *mut Blob,
+    ) {
         let byte_length = main_object.len().as_usize();
-        memory.raw_write(main_object.payload_addr() as usize, byte_length);
-        write_padding_u64(memory, byte_length);
+        stable_memory.raw_write(main_object.payload_addr() as usize, byte_length);
+        write_padding_u64(stable_memory, byte_length);
     }
 
-    fn scan_serialized_dynamic<
-        C: crate::stabilization::StableMemoryAccess,
-        F: Fn(&mut C, StableValue) -> StableValue,
-    >(
+    fn scan_serialized_dynamic<C: StableToSpace, F: Fn(&mut C, StableValue) -> StableValue>(
+        &self,
         context: &mut C,
-        stable_object: &Self,
         _translate: &F,
     ) {
-        let rounded_length = round_to_u64(stable_object.byte_length);
+        let rounded_length = round_to_u64(self.byte_length);
         context.to_space().skip(checked_to_usize(rounded_length));
     }
 
-    unsafe fn deserialize_static_part(stable_object: *mut Self, target_address: Value) -> Blob {
-        let len = Bytes(checked_to_u32(stable_object.read_unaligned().byte_length));
-        Blob {
-            header: Obj::new(TAG_BLOB, target_address),
-            len,
-        }
+    unsafe fn allocate_deserialized<M: Memory>(&self, main_memory: &mut M) -> Value {
+        let blob_length = checked_to_u32(self.byte_length);
+        alloc_blob(main_memory, Bytes(blob_length))
     }
 
-    unsafe fn deserialize_dynamic_part(memory: &mut StableMemorySpace, stable_object: *mut Self) {
-        let byte_length = checked_to_u32(stable_object.payload_length());
-        let rounded_length = Bytes(byte_length).to_words().to_bytes().as_usize();
-        memory.raw_write(stable_object.payload_address() as usize, rounded_length)
+    unsafe fn deserialize_static_part(&self, target_blob: *mut Blob) {
+        debug_assert_eq!((*target_blob).header.tag, TAG_BLOB);
+        debug_assert_eq!(
+            (*target_blob).len.as_u32(),
+            checked_to_u32(self.byte_length)
+        );
     }
 
-    fn scan_deserialized_dynamic<
-        C: crate::stabilization::StableMemoryAccess,
-        F: Fn(&mut C, Value) -> Value,
-    >(
-        context: &mut C,
-        main_object: &Blob,
-        _translate: &F,
+    unsafe fn deserialize_dynamic_part<M: Memory>(
+        &self,
+        _main_memory: &mut M,
+        stable_memory: &StableMemoryAccess,
+        stable_object: StableValue,
+        target_blob: *mut Blob,
     ) {
-        let rounded_length = main_object.len.to_words().to_bytes().as_usize();
-        context.to_space().skip(rounded_length);
+        let stable_address = stable_object.payload_address();
+        let source_payload = stable_address + size_of::<StableBlob>().to_bytes().as_usize() as u64;
+        let target_payload = target_blob.payload_addr() as usize;
+        let blob_length = checked_to_u32(self.byte_length);
+        stable_memory.raw_read(source_payload, target_payload, blob_length as usize);
     }
 }

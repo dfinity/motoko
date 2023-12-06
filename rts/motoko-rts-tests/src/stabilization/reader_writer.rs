@@ -1,12 +1,14 @@
 use std::{array::from_fn, mem::size_of};
 
-use motoko_rts::stabilization::reader_writer::{ScanStream, StableMemorySpace, WriteStream};
+use motoko_rts::stabilization::stable_memory_stream::{
+    ScanStream, StableMemoryStream, WriteStream,
+};
 use oorandom::Rand32;
 
 use crate::stabilization::stable_memory::ic0_stable64_read;
 
 pub unsafe fn test() {
-    println!("  Testing reader writer ...");
+    println!("  Testing stable memory stream ...");
     test_empy_reader_writer();
     test_single_read_write();
     test_single_update();
@@ -21,8 +23,8 @@ pub unsafe fn test() {
 }
 
 fn test_empy_reader_writer() {
-    println!("    Testing empty reader writer ...");
-    let mut reader_writer = StableMemorySpace::open(0);
+    println!("    Testing empty stream ...");
+    let mut reader_writer = StableMemoryStream::open(0);
     assert!(reader_writer.scan_completed());
     reader_writer.close();
     assert_eq!(reader_writer.written_length(), 0);
@@ -30,7 +32,7 @@ fn test_empy_reader_writer() {
 
 fn test_single_read_write() {
     println!("    Testing single read write ...");
-    let mut reader_writer = StableMemorySpace::open(0);
+    let mut reader_writer = StableMemoryStream::open(0);
     const NUMBER: u64 = 1234567890;
     reader_writer.write(&NUMBER);
     let result = reader_writer.read::<u64>();
@@ -42,7 +44,7 @@ fn test_single_read_write() {
 
 fn test_single_update() {
     println!("    Testing single update ...");
-    let mut reader_writer = StableMemorySpace::open(0);
+    let mut reader_writer = StableMemoryStream::open(0);
     const NUMBER: u64 = 1234567890;
     reader_writer.write(&NUMBER);
     let result = reader_writer.read::<u64>();
@@ -64,7 +66,7 @@ fn test_single_update() {
 
 fn test_multiple_read_write() {
     println!("    Testing multiple read write ...");
-    let mut reader_writer = StableMemorySpace::open(0);
+    let mut reader_writer = StableMemoryStream::open(0);
     const AMOUNT: usize = 100_000;
     for number in 0..AMOUNT {
         reader_writer.write(&number);
@@ -84,7 +86,7 @@ fn test_multiple_read_write() {
 
 fn test_multiple_updates() {
     println!("    Testing multiple read write ...");
-    let mut reader_writer = StableMemorySpace::open(0);
+    let mut reader_writer = StableMemoryStream::open(0);
     const AMOUNT: usize = 100_000;
     const TOTAL_LENGTH: u64 = (AMOUNT * size_of::<usize>()) as u64;
     for number in 0..AMOUNT {
@@ -108,7 +110,7 @@ fn test_multiple_updates() {
 
 fn test_skip_all() {
     println!("    Testing skip all ...");
-    let mut reader_writer = StableMemorySpace::open(0);
+    let mut reader_writer = StableMemoryStream::open(0);
     const AMOUNT: usize = 100_000;
     let total_size = AMOUNT * size_of::<usize>();
     for number in 0..AMOUNT {
@@ -123,7 +125,7 @@ fn test_skip_all() {
 
 fn test_interleaved_read_write() {
     println!("    Testing interleaved read write ...");
-    let mut reader_writer = StableMemorySpace::open(0);
+    let mut reader_writer = StableMemoryStream::open(0);
     const AMOUNT: usize = 100_000;
     for counter in 0..AMOUNT {
         let input = (counter, counter * 2, counter * 3);
@@ -142,7 +144,7 @@ fn test_interleaved_read_write() {
 
 fn test_interleaved_skip() {
     println!("    Testing interleaved read skip ...");
-    let mut reader_writer = StableMemorySpace::open(0);
+    let mut reader_writer = StableMemoryStream::open(0);
     let value_size = size_of::<(usize, usize, usize)>();
     const AMOUNT: usize = 100_000;
     for counter in 0..AMOUNT {
@@ -165,7 +167,7 @@ fn test_bulk_read_write() {
     println!("    Testing bulk read write ...");
     const LENGTH: usize = 99_999;
     let input: [u8; LENGTH] = from_fn(|index| index as u8);
-    let mut reader_writer = StableMemorySpace::open(0);
+    let mut reader_writer = StableMemoryStream::open(0);
     reader_writer.write(&input);
     assert!(!reader_writer.scan_completed());
     let mut output = [0u8; LENGTH];
@@ -179,7 +181,7 @@ fn test_bulk_read_write() {
 fn test_raw_read_write() {
     println!("    Testing raw read write ...");
     const LENGTH: usize = 99;
-    let mut reader_writer = StableMemorySpace::open(0);
+    let mut reader_writer = StableMemoryStream::open(0);
     const AMOUNT: usize = 100;
     for counter in 0..AMOUNT {
         let input: [u8; LENGTH] = from_fn(|index| (counter + index) as u8);
@@ -206,7 +208,7 @@ struct RandomRecord {
     field_6: f64,
 }
 
-type RandomTuple = (f32, i64);
+type RandomTuple = (f64, i64);
 type RandomArray = [i32; 100];
 type RandomBulkData = [u8; 10_000];
 
@@ -233,7 +235,7 @@ impl RandomValue {
                     * random.rand_u32() as u128,
             ),
             3 => RandomValue::TupleValue((
-                random.rand_float(),
+                random.rand_float() as f64,
                 random.rand_i32() as i64 * random.rand_i32() as i64,
             )),
             4 => RandomValue::RecordValue(RandomRecord {
@@ -262,7 +264,7 @@ impl RandomValue {
         }
     }
 
-    fn write(&self, reader_writer: &mut StableMemorySpace) {
+    fn write(&self, reader_writer: &mut StableMemoryStream) {
         match self {
             RandomValue::SingleByte(value) => reader_writer.write(value),
             RandomValue::SimpleNumber(value) => reader_writer.write(value),
@@ -293,7 +295,7 @@ impl RandomValue {
         }
     }
 
-    fn read(&mut self, reader_writer: &mut StableMemorySpace) {
+    fn read(&mut self, reader_writer: &mut StableMemoryStream) {
         match self {
             RandomValue::SingleByte(value) => *value = reader_writer.read(),
             RandomValue::SimpleNumber(value) => *value = reader_writer.read(),
@@ -309,7 +311,7 @@ impl RandomValue {
         }
     }
 
-    fn update(&self, reader_writer: &mut StableMemorySpace) {
+    fn update(&self, reader_writer: &mut StableMemoryStream) {
         match self {
             RandomValue::SingleByte(value) => reader_writer.update(value),
             RandomValue::SimpleNumber(value) => reader_writer.update(value),
@@ -328,7 +330,7 @@ fn test_randomized_read_write() {
     let mut random = Rand32::new(RANDOM_SEED);
     let mut series = vec![];
     let stable_start = random.rand_range(0..1000) as u64;
-    let mut reader_writer = StableMemorySpace::open(stable_start);
+    let mut reader_writer = StableMemoryStream::open(stable_start);
     let mut total_size = 0;
     const AMOUNT: usize = 1000;
     for _ in 0..AMOUNT {

@@ -1,85 +1,101 @@
+use crate::barriers::allocation_barrier;
+use crate::bigint::{check, persist_bigint, tmp_bigint};
+use crate::memory::{alloc_blob, Memory};
 use crate::stabilization::layout::{checked_to_usize, write_padding_u64};
-use crate::stabilization::reader_writer::{ScanStream, StableMemorySpace, WriteStream};
+use crate::stabilization::stable_memory_stream::{ScanStream, StableMemoryStream, WriteStream};
 use crate::stabilization::StableMemoryAccess;
-use crate::tommath_bindings::{mp_digit, mp_int};
-use crate::types::{BigInt, Bytes, Obj, Value, TAG_BIGINT};
+use crate::tommath_bindings::{mp_from_sbin, mp_int, mp_sbin_size, mp_to_sbin};
+use crate::types::{size_of, BigInt, Bytes, Value};
 
-use super::{checked_to_u32, round_to_u64, Serializer, StableValue, StaticScanner};
+use super::{round_to_u64, Serializer, StableToSpace, StableValue, StaticScanner};
 
-// TODO: Use a format that is independent of Tom's math library, e.g. by using LEB128/SLEB128 encoding.
-// Redesign `bigint.rs` to
-// * Stream to stable memory without needing a temporary buffer.
-// * Compute the required size of `mp_int` without writing to heap.
-//  (This is required by the deserialization algorithm that streams the main memory layout to stable memory
-//  and uses allocators to only compute the target addresses.)
+// A temporary buffer `blob` and `bigint` are created during the serialization and deserialization.
+// The deserialization scan will skip these temporary objects because these types of objects do not
+// contain any pointers.
+// Note: For large numbers this may cause memory shortness during stabilization or destabilization.
 
 #[repr(C)]
 pub struct StableBigInt {
-    mp_int: mp_int,
-    // Dynamically sized payload of `BigInt::data_length` bytes.
-    // Zero padding to align to next `u64`.
+    binary_length: u32, // Number of payload bytes.
+                        // Dynamically sized payload of the big integer stored in Big-endian format.
+                        // Zero padding to align to next `u64`.
 }
 
 impl StableBigInt {
-    fn length(&self) -> u64 {
-        let mp_int = &self.mp_int as *const mp_int;
-        unsafe { BigInt::data_length(mp_int).as_u32() as u64 }
+    fn binary_length(main_object: *mut BigInt) -> usize {
+        unsafe { mp_sbin_size(main_object.mp_int_ptr()) }
     }
 
-    unsafe fn payload_address(self: *mut Self) -> *mut mp_digit {
-        self.add(1) as *mut mp_digit
-    }
-
-    unsafe fn payload_length(self: *const Self) -> u64 {
-        (*self).length()
+    fn create_buffer<M: Memory>(mem: &mut M, size: usize) -> *mut u8 {
+        unsafe {
+            let size = Bytes(size as u32);
+            let blob = alloc_blob(mem, size);
+            let buffer = blob.as_blob_mut().payload_addr();
+            // No buffer initialization by `mp_to_sbin` and `mp_from_sbin`.
+            allocation_barrier(blob);
+            buffer
+        }
     }
 }
 
 impl StaticScanner<StableValue> for StableBigInt {}
-impl StaticScanner<Value> for BigInt {}
 
 impl Serializer<BigInt> for StableBigInt {
     unsafe fn serialize_static_part(main_object: *mut BigInt) -> Self {
-        StableBigInt {
-            mp_int: (*main_object).mp_int,
-        }
+        let binary_length = Self::binary_length(main_object) as u32;
+        StableBigInt { binary_length }
     }
 
-    unsafe fn serialize_dynamic_part(memory: &mut StableMemorySpace, main_object: *mut BigInt) {
-        let byte_length = main_object.len().as_usize();
-        memory.raw_write(main_object.payload_addr() as usize, byte_length);
-        write_padding_u64(memory, byte_length);
+    unsafe fn serialize_dynamic_part<M: Memory>(
+        main_memory: &mut M,
+        stable_memory: &mut StableMemoryStream,
+        main_object: *mut BigInt,
+    ) {
+        let binary_length = Self::binary_length(main_object);
+        let buffer = Self::create_buffer(main_memory, binary_length);
+        let mut written = 0;
+        check(mp_to_sbin(
+            main_object.mp_int_ptr(),
+            buffer,
+            binary_length,
+            &mut written as *mut usize,
+        ));
+        assert_eq!(written, binary_length);
+        stable_memory.raw_write(buffer as usize, binary_length);
+        write_padding_u64(stable_memory, binary_length);
     }
 
-    fn scan_serialized_dynamic<C: StableMemoryAccess, F: Fn(&mut C, StableValue) -> StableValue>(
+    fn scan_serialized_dynamic<C: StableToSpace, F: Fn(&mut C, StableValue) -> StableValue>(
+        &self,
         context: &mut C,
-        stable_object: &Self,
         _translate: &F,
     ) {
-        let rounded_length = round_to_u64(stable_object.length());
+        let rounded_length = round_to_u64(self.binary_length as u64);
         context.to_space().skip(checked_to_usize(rounded_length));
     }
 
-    unsafe fn deserialize_static_part(stable_object: *mut Self, target_address: Value) -> BigInt {
-        BigInt {
-            header: Obj::new(TAG_BIGINT, target_address),
-            mp_int: stable_object.read_unaligned().mp_int,
-        }
+    unsafe fn deserialize<M: Memory>(
+        main_memory: &mut M,
+        stable_memory: &StableMemoryAccess,
+        stable_object: StableValue,
+    ) -> Value {
+        let stable_address = stable_object.payload_address();
+        let stable_static_part = stable_memory.read::<Self>(stable_address);
+        let binary_length = stable_static_part.binary_length as usize;
+        let buffer = Self::create_buffer(main_memory, binary_length);
+        let source_payload =
+            stable_address + size_of::<StableBigInt>().to_bytes().as_usize() as u64;
+        stable_memory.raw_read(source_payload, buffer as usize, binary_length);
+        let mut temporary = tmp_bigint();
+        check(mp_from_sbin(
+            &mut temporary as *mut mp_int,
+            buffer,
+            binary_length,
+        ));
+        persist_bigint(temporary)
     }
 
-    unsafe fn deserialize_dynamic_part(memory: &mut StableMemorySpace, stable_object: *mut Self) {
-        let byte_length = checked_to_u32(stable_object.payload_length());
-        let rounded_length = Bytes(byte_length).to_words().to_bytes().as_usize();
-        memory.raw_write(stable_object.payload_address() as usize, rounded_length)
-    }
-
-    fn scan_deserialized_dynamic<C: StableMemoryAccess, F: Fn(&mut C, Value) -> Value>(
-        context: &mut C,
-        main_object: &BigInt,
-        _translate: &F,
-    ) {
-        let byte_length = unsafe { BigInt::data_length(&main_object.mp_int as *const mp_int) };
-        let rounded_length = byte_length.to_words().to_bytes().as_usize();
-        context.to_space().skip(rounded_length);
+    unsafe fn deserialize_static_part(&self, _target_object: *mut BigInt) {
+        unreachable!()
     }
 }
