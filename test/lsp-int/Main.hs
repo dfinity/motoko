@@ -46,9 +46,7 @@ hoverTestCase
   -> Session ()
 hoverTestCase doc pos expected = do
   actual <- getHover doc pos
-  let cont = fmap (^.contents) actual
-  -- case (^.contents) <*> actual of
-  case cont of
+  case (^.contents) <$> actual of
     Nothing
       | expected == Nothing ->
         pure ()
