@@ -32,6 +32,7 @@ Applying Cheney’s algorithm [1, 2] for both serialization and deserialization:
 ### Deserialization
 * Cheney’s algorithm using stable memory as from-space and main memory as to-space: 
 * Starting with the stable root created during the serialization process.
+* A scan stack is used in the main memory to remember the deserialized objects for later scanning.
 * Objects are allocated in main memory using the default allocator.
 * Using random read/write access on the stable memory.
 
@@ -48,13 +49,12 @@ For a long-term perspective, the object layout of the serialized data in the sta
 * Stable records can dynamically contain non-stable fields due to structural sub-typing. A dummy value can be serialized for such fields as a new program version can no longer access this field through the stable types.
 * For backwards compatibility, old Candid destabilzation is still supported when upgrading from a program that used older compiler version.
 * Incremental GC: Serialization needs to consider Brooks forwarding pointers (not to be confused with the Cheney's forwarding information), while deserialization can deal with partitioned heap that can have internal fragmentation (free space at partition ends).
-
-## Allocator Rules
-The destabilization requires scanning the heap which is more involved for the partitioned heap used by the incremental GC. The allocator is required to yield monotonically increasing addresses during deserialization. Free space gaps are allowed to complete partitions.
+* The partitioned heap prevents linear scanning of the heap, especially in the presence of large objects that can be placed at a higher partition than subsequently allocated normal-sized objects. For this reason, a scan stack is allocated in main memory, remembering the deserialized objects that still need to be scanned. With this, the deserialization does not need to make any assumptions of the heap structure (e.g. monotonically increasing allocations, free space markers, empty heap on deserialization start etc.).
 
 ## Open Aspects
 * Unused fields in stable records that are no longer declared in a new program versions should be removed. This could be done during garbage collection, when objects are moved/evacuated.
 * The binary serialization and deserialization of `BigInt` entails dynamic allocations (cf. `mp_to_sbin` and `mp_from_sbin` of Tom's math library).
+* The scan stack used during destabilization involves dynamic allocations.
 
 ## Related PRs
 

@@ -148,10 +148,6 @@ impl RandomHeap {
         self.descriptor.continuation_table.clear();
     }
 
-    fn heap_base_address(&self) -> usize {
-        self.memory.heap_base_address()
-    }
-
     fn old_stable_root(&self) -> Value {
         Value::from_ptr(self.memory.static_root_array_address())
     }
@@ -197,11 +193,10 @@ fn test_serialization_deserialization(random: &mut Rand32, max_objects: u32, sta
     clear_stable_memory();
     let gc = GC_IMPLS[0];
     let mut heap = random_heap(random, max_objects, gc);
-    let heap_base = heap.heap_base_address();
     let old_stable_root = heap.old_stable_root();
     let stable_size = Serialization::run(&mut heap.memory, old_stable_root, stable_start);
     heap.clear();
-    let stable_root = Deserialization::run(&mut heap.memory, stable_start, stable_size, heap_base);
+    let stable_root = Deserialization::run(&mut heap.memory, stable_start, stable_size);
     heap.set_new_root(stable_root);
     heap.check_heap();
 }

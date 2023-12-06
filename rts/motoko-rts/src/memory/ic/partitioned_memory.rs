@@ -27,7 +27,3 @@ impl Memory for IcMemory {
         super::grow_memory(ptr);
     }
 }
-
-pub(super) unsafe fn dynamic_heap_end() -> usize {
-    crate::gc::incremental::get_partitioned_heap().contiguous_heap_end()
-}

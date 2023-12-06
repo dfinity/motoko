@@ -62,15 +62,3 @@ unsafe fn grow_memory(ptr: u64) {
         }
     }
 }
-
-/// The current end of the dynamic heap space.
-/// The destabilization allocates objects beyond this address.
-#[non_incremental_gc]
-pub(crate) unsafe fn dynamic_heap_end() -> usize {
-    linear_memory::get_hp_unskewed()
-}
-
-#[incremental_gc]
-pub(crate) unsafe fn dynamic_heap_end() -> usize {
-    partitioned_memory::dynamic_heap_end()
-}

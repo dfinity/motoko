@@ -178,27 +178,31 @@ impl Partition {
     }
 
     unsafe fn clear_free_remainder(&self) {
-        use crate::constants::WORD_SIZE;
-        debug_assert!(self.dynamic_space_end() <= self.end_address());
-        let remaining_space = self.end_address() - self.dynamic_space_end();
-        debug_assert_eq!(remaining_space % WORD_SIZE as usize, 0);
-        debug_assert!(remaining_space <= PARTITION_SIZE);
-        if remaining_space == 0 {
-            return;
-        }
-        let block = self.dynamic_space_end() as *mut Tag;
-        if remaining_space == WORD_SIZE as usize {
-            *block = TAG_ONE_WORD_FILLER;
-        } else {
-            *block = TAG_FREE_SPACE;
-            let header_size = size_of::<FreeSpace>().to_bytes().as_usize();
-            debug_assert!(remaining_space >= header_size);
-            let free_space = block as *mut FreeSpace;
-            (*free_space).words = Bytes((remaining_space - header_size) as u32).to_words();
-            debug_assert_eq!(free_space.size().to_bytes().as_usize(), remaining_space);
+        // Only used during the RTS unit tests for scanning the heap after destabilization.
+        #[cfg(debug_assertions)]
+        {
+            use crate::constants::WORD_SIZE;
+            debug_assert!(self.dynamic_space_end() <= self.end_address());
+            let remaining_space = self.end_address() - self.dynamic_space_end();
+            debug_assert_eq!(remaining_space % WORD_SIZE as usize, 0);
+            debug_assert!(remaining_space <= PARTITION_SIZE);
+            if remaining_space == 0 {
+                return;
+            }
+            let block = self.dynamic_space_end() as *mut Tag;
+            if remaining_space == WORD_SIZE as usize {
+                *block = TAG_ONE_WORD_FILLER;
+            } else {
+                *block = TAG_FREE_SPACE;
+                let header_size = size_of::<FreeSpace>().to_bytes().as_usize();
+                debug_assert!(remaining_space >= header_size);
+                let free_space = block as *mut FreeSpace;
+                (*free_space).words = Bytes((remaining_space - header_size) as u32).to_words();
+                debug_assert_eq!(free_space.size().to_bytes().as_usize(), remaining_space);
 
-            #[cfg(feature = "memory_check")]
-            Self::zero_free_space(free_space);
+                #[cfg(feature = "memory_check")]
+                Self::zero_free_space(free_space);
+            }
         }
     }
 
@@ -649,18 +653,6 @@ impl PartitionedHeap {
         debug_assert!(self.evacuated_size <= self.occupied_size().as_usize());
         let heap_size_without_evacuations = self.occupied_size().as_usize() - self.evacuated_size;
         Bytes(heap_size_without_evacuations as u64) + self.reclaimed_size()
-    }
-
-    /// Only used during destabilization while the heap has only grown linearly,
-    /// i.e. no free partition exists below this location and no occupied partitions exists above this location.
-    pub fn contiguous_heap_end(&self) -> usize {
-        let allocation_partition = self.allocation_partition();
-        let end = allocation_partition.dynamic_space_end();
-        let allocation_partition_index = allocation_partition.index;
-        debug_assert!(!self.partitions.iter().any(|partition| partition.free
-            && partition.index < allocation_partition_index
-            || !partition.free && partition.index > allocation_partition_index));
-        end
     }
 
     pub unsafe fn allocate<M: Memory>(&mut self, mem: &mut M, words: Words<u32>) -> Value {

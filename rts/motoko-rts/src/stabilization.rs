@@ -16,21 +16,25 @@
 //!  
 //! See `GraphCopyStabilization.md` for the stable format specification and the employed algorithm.
 
-use motoko_rts_macros::{ic_mem_fn, incremental_gc, non_incremental_gc};
+use motoko_rts_macros::ic_mem_fn;
 
 use core::cmp::min;
 
 use crate::{
     memory::Memory,
     rts_trap_with,
-    stabilization::layout::{deserialize, serialize},
+    stabilization::{
+        layout::{deserialize, serialize},
+        scan_stack::STACK_EMPTY,
+    },
     stable_mem::{self, ic0_stable64_write, PAGE_SIZE},
-    types::{block_size, FwdPtr, Tag, Value, TAG_CLOSURE, TAG_FWD_PTR},
+    types::{FwdPtr, Tag, Value, TAG_CLOSURE, TAG_FWD_PTR},
     visitor::visit_pointer_fields,
 };
 
 use self::{
     layout::{scan_serialized, StableToSpace, StableValue, STABLE_NULL_POINTER},
+    scan_stack::ScanStack,
     stable_memory_access::StableMemoryAccess,
     stable_memory_stream::{ScanStream, StableMemoryStream},
 };
@@ -41,6 +45,8 @@ mod compatibility;
 mod metadata;
 
 mod layout;
+
+mod scan_stack;
 
 pub mod stable_memory_access;
 pub mod stable_memory_stream;
@@ -236,8 +242,8 @@ impl<'a, M: Memory + 'a> StableToSpace for Serialization<'a, M> {
 pub struct Deserialization<'a, M: Memory + 'a> {
     mem: &'a mut M,
     from_space: StableMemoryAccess,
-    scan_address: usize,
-    heap_end: usize,
+    scan_stack: ScanStack,
+    stable_root: Option<Value>,
 }
 
 impl<'a, M: Memory + 'a> Deserialization<'a, M> {
@@ -246,17 +252,18 @@ impl<'a, M: Memory + 'a> Deserialization<'a, M> {
     /// heap inlines metadata inside the partitions.
     /// - Invokes the heap allocator to compute the future object addresses in the heap.
     /// However, the allocator must not yet write to the heap.
-    pub fn run(mem: &'a mut M, stable_start: u64, stable_size: u64, heap_start: usize) -> Value {
+    pub fn run(mem: &'a mut M, stable_start: u64, stable_size: u64) -> Value {
         let from_space = StableMemoryAccess::open(stable_start, stable_size);
-        Deserialization {
+        let scan_stack = unsafe { ScanStack::new(mem) };
+        let mut deserialization = Deserialization {
             mem,
             from_space,
-            scan_address: heap_start,
-            heap_end: heap_start,
-        }
-        .run(StableValue::serialize(Value::from_ptr(0)));
+            scan_stack,
+            stable_root: None,
+        };
+        deserialization.run(StableValue::serialize(Value::from_ptr(0)));
         clear_stable_memory(stable_start, stable_size);
-        Value::from_ptr(heap_start)
+        deserialization.stable_root.unwrap()
     }
 
     fn is_null(value: StableValue) -> bool {
@@ -265,38 +272,6 @@ impl<'a, M: Memory + 'a> Deserialization<'a, M> {
 
     fn encode_null() -> Value {
         unsafe { moc_null_singleton() }
-    }
-
-    #[non_incremental_gc]
-    fn skip_free_space(address: usize) -> usize {
-        address
-    }
-
-    // Incremental GC adds free space blocks at unused partition ends.
-    #[incremental_gc]
-    fn skip_free_space(address: usize) -> usize {
-        use crate::types::{TAG_FREE_SPACE, TAG_ONE_WORD_FILLER};
-        unsafe {
-            let tag = *(address as *const Tag);
-            match tag {
-                TAG_ONE_WORD_FILLER | TAG_FREE_SPACE => {
-                    address + block_size(address).to_bytes().as_usize()
-                }
-                _ => address,
-            }
-        }
-    }
-
-    // Ensure monotonically increasing allocation to allow main memory heap scanning
-    // during deserialization.
-    // The target is not necessarily always exactly located at the former heap end:
-    // * The `bigint` deserialization may create extra temportary `blob` or `bigint` objects.
-    // * Incremental GC: Free space may be inserted at the partition end (internal fragmentation).
-    // These intermediate allocations will be skipped during the scanning phase:
-    // * The temporary `bigint` or `blob` do not contain any pointers that would be scanned.
-    // * Incremental GC: `skip_free_space` ignores the free space in the partitioned heap.
-    fn check_allocation(&self, target: Value) {
-        assert!(target.get_ptr() >= self.heap_end);
     }
 
     unsafe fn scan_deserialized<C, F: Fn(&mut C, Value) -> Value>(
@@ -343,8 +318,10 @@ impl<'a, M: Memory + 'a> GraphCopy<StableValue, Value, u32> for Deserialization<
     fn copy(&mut self, stable_object: StableValue) -> Value {
         unsafe {
             let target = deserialize(self.mem, &mut self.from_space, stable_object);
-            self.check_allocation(target);
-            self.heap_end = target.get_ptr() + block_size(target.get_ptr()).to_bytes().as_usize();
+            if self.stable_root.is_none() {
+                self.stable_root = Some(target);
+            }
+            self.scan_stack.push(self.mem, target);
             target
         }
     }
@@ -352,9 +329,8 @@ impl<'a, M: Memory + 'a> GraphCopy<StableValue, Value, u32> for Deserialization<
     /// Note:
     /// * The deserialized memory may contain free space at a partition end.
     fn scan(&mut self) {
-        self.scan_address = Self::skip_free_space(self.scan_address);
-        debug_assert!(self.scan_address < self.heap_end);
-        let target_object = Value::from_ptr(self.scan_address);
+        let target_object = unsafe { self.scan_stack.pop() };
+        debug_assert!(target_object != STACK_EMPTY);
         unsafe {
             Self::scan_deserialized(self, target_object, &|context, original| {
                 let old_value = StableValue::serialize(original);
@@ -366,14 +342,11 @@ impl<'a, M: Memory + 'a> GraphCopy<StableValue, Value, u32> for Deserialization<
                     original
                 }
             });
-            self.scan_address += block_size(self.scan_address).to_bytes().as_usize();
-            debug_assert!(self.scan_address <= self.heap_end);
         }
     }
 
     fn scan_completed(&self) -> bool {
-        debug_assert!(self.scan_address <= self.heap_end);
-        self.scan_address == self.heap_end
+        unsafe { self.scan_stack.is_empty() }
     }
 }
 
@@ -463,7 +436,7 @@ pub unsafe fn destabilize<M: Memory>(
     new_candid_data: Value,
     new_type_offsets: Value,
 ) -> Value {
-    use crate::{memory::ic::dynamic_heap_end, rts_trap_with, stable_mem::moc_stable_mem_set_size};
+    use crate::{rts_trap_with, stable_mem::moc_stable_mem_set_size};
     use compatibility::{memory_compatible, TypeDescriptor};
     use metadata::StabilizationMetadata;
 
@@ -473,17 +446,10 @@ pub unsafe fn destabilize<M: Memory>(
     if !memory_compatible(mem, &mut old_type_descriptor, &mut new_type_descriptor) {
         rts_trap_with("Memory-incompatible program upgrade");
     }
-    // There may already exist some objects before destabilization.
-    // We preserve them by continuing the heap at that location.
-    // Note: This only works if the preceding allocations are all contiguous,
-    // i.e. no occupied partition resides above this position and
-    // no free partition resides below this position.
-    let heap_deserialzation_start = dynamic_heap_end();
     let stable_root = Deserialization::run(
         mem,
         metadata.serialized_data_start,
         metadata.serialized_data_length,
-        heap_deserialzation_start,
     );
     moc_stable_mem_set_size(metadata.stable_memory_pages);
     stable_root
