@@ -26,8 +26,7 @@ DTESTS=no
 IDL=no
 PERF=no
 VIPER=no
-WASMTIME_OPTIONSx="-C cache=n -C cranelift-nan-canonicalization -W multi-memory -W bulk-memory"
-WASMTIME_OPTIONS="-C cache=n -W multi-memory -W bulk-memory"
+WASMTIME_OPTIONS="-C cache=n -W nan-canonicalization=y -W multi-memory -W bulk-memory"
 WRAP_drun=$(realpath $(dirname $0)/drun-wrapper.sh)
 WRAP_ic_ref_run=$(realpath $(dirname $0)/ic-ref-run-wrapper.sh)
 SKIP_RUNNING=${SKIP_RUNNING:-no}
