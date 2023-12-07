@@ -12,4 +12,6 @@ type async_cap =
 
 let top_cap = Cons.fresh "$top-level" (T.Def([],T.Any))
 
+let bogus_cap = Cons.fresh "$bogus" (T.Def([],T.Any))
+
 let initial_cap () = AwaitCap top_cap

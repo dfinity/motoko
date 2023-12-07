@@ -434,10 +434,14 @@ and check_AsyncCap env s at : T.typ * (T.con -> C.async_cap) =
    | C.CompositeCap c -> T.Con(c, []), fun c' -> C.CompositeAwaitCap c'
    | C.QueryCap c -> T.Con(c, []), fun _c' -> C.ErrorCap
    | C.ErrorCap ->
-      error env at "M0037" "misplaced %s; a query cannot contain an %s" s s
-   | C.NullCap -> error env at "M0037" "misplaced %s; try enclosing in an async function" s
+      local_error env at "M0037" "misplaced %s; a query cannot contain an %s" s s;
+      T.Con(C.bogus_cap,[]), fun c -> C.NullCap
+   | C.NullCap ->
+      local_error env at "M0037" "misplaced %s; try enclosing in an async function" s;
+      T.Con(C.bogus_cap,[]), fun c -> C.NullCap
    | C.CompositeAwaitCap _ ->
-      error env at "M0037" "misplaced %s; a composite query cannot contain an %s" s s
+      local_error env at "M0037" "misplaced %s; a composite query cannot contain an %s" s s;
+      T.Con(C.bogus_cap,[]), fun c -> C.NullCap
 
 and check_AwaitCap env s at =
    match env.async with
@@ -447,9 +451,12 @@ and check_AwaitCap env s at =
    | C.QueryCap _
    | C.CompositeCap _
      ->
-     error env at "M0038" "misplaced %s; try enclosing in an async expression" s
+      local_error env at "M0038" "misplaced %s; try enclosing in an async expression" s;
+      T.Con(C.bogus_cap,[])
    | C.ErrorCap
-   | C.NullCap -> error env at "M0038" "misplaced %s" s
+   | C.NullCap ->
+      local_error env at "M0038" "misplaced %s" s;
+      T.Con(C.bogus_cap,[])
 
 and check_ErrorCap env s at =
    match env.async with
@@ -459,8 +466,9 @@ and check_ErrorCap env s at =
    | C.AsyncCap _
    | C.QueryCap _
    | C.CompositeCap _ ->
-     error env at "M0039" "misplaced %s; try enclosing in an async expression or query function" s
-   | C.NullCap -> error env at "M0039" "misplaced %s" s
+     local_error env at "M0039" "misplaced %s; try enclosing in an async expression or query function" s
+   | C.NullCap ->
+     local_error env at "M0039" "misplaced %s" s
 
 and scope_of_env env =
   match env.async with
