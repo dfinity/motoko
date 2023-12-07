@@ -41,8 +41,11 @@
 use core::{array::from_fn, ops::Range, ptr::null_mut};
 
 use crate::{
-    constants::WASM_MEMORY_BYTE_SIZE, gc::incremental::mark_bitmap::BITMAP_ITERATION_END,
-    memory::Memory, rts_trap_with, types::*,
+    constants::{MB, WASM_MEMORY_BYTE_SIZE},
+    gc::incremental::mark_bitmap::BITMAP_ITERATION_END,
+    memory::Memory,
+    rts_trap_with,
+    types::*,
 };
 
 use super::{
@@ -57,7 +60,7 @@ use super::{
 ///    due to the increased frequency of large object handling.
 /// -> Large partitions above 32 MB are a waste for small programs, since the WASM memory is
 ///    allocated in that granularity and GC is then triggered later.
-pub const PARTITION_SIZE: usize = 32 * 1024 * 1024;
+pub const PARTITION_SIZE: usize = 32 * MB;
 
 /// Total number of partitions in the memory.
 /// For simplicity, the last partition is left unused, to avoid a numeric overflow when
