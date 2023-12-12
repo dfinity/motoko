@@ -576,7 +576,7 @@ rec {
     nixpkgs.rustPlatform.buildRustPackage {
       name = "ic-wasm";
       src = nixpkgs.sources.ic-wasm;
-      cargoSha256 = "sha256-qw1MwjlhGftN9k2sOjlAYo9rDRvHnf0qYQFPHMu2v74=";
+      cargoSha256 = "sha256-a8iN/lTEVqdmogsSlT3+v3nivSG5VRhOz4/trmAsZLY=";
       doCheck = false;
     };
 
