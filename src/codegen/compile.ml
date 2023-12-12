@@ -1516,8 +1516,8 @@ end (* Bool *)
 module BitTagged = struct
 
 
-  let ubits, ubitsl, ubitsL = 24, 24l, 24L (* was 31,.. *)
-  let sbits, sbitsl, sbitsL = 23, 23l, 23L (* was 30 *)
+  let ubits, ubitsl, ubitsL = 29, 29l, 29L (* was 31,.. *)
+  let sbits, sbitsl, sbitsL = 28, 28l, 28L (* was 30 *)
 (*
   let ubits, ubitsl, ubitsL = 26, 26l, 26L (* was 31,.. *)
   let sbits, sbitsl, sbitsL = 25, 25l, 25L (* was 30 *)
