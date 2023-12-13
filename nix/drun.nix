@@ -45,6 +45,17 @@ pwd
 EOF
 
         cd -
+
+        ls .
+        mkdir -p .cargo
+        cat > .cargo/config.toml << EOF
+[target.x86_64-apple-darwin]
+rustflags = [ "-C", "linker=c++" ]
+
+[target.aarch64-apple-darwin]
+rustflags = [ "-C", "linker=c++" ]
+EOF
+        ls .
       '';
 
       nativeBuildInputs = with pkgs; [
