@@ -1580,15 +1580,24 @@ module BitTagged = struct
     compile_bitand_const 0x1l ^^
     E.if_ env retty is2 is1
 
+  let ubits_of pty =
+    Type.(match pty with
+          | Nat | Int -> 29
+          | Nat64 | Int64 -> 28
+          | Int32 | Nat32 -> 27
+          | _ -> assert false)
+  let sbits_of pty = (ubits_of pty) - 1
+
   (* 64 bit numbers *)
 
   (* static *)
-  let can_tag_const (n : int64) =
+  let can_tag_const pty (n : int64) =
+    let sbits = sbits_of pty in
     let lower_bound = Int64.(neg (shift_left 1L sbits)) in
     let upper_bound = Int64.shift_left 1L sbits in
     lower_bound <= n && n < upper_bound
 
-  let tag_const i = Int32.shift_left (Int64.to_int32 i) (32 - ubits)
+  let tag_const pty i = Int32.shift_left (Int64.to_int32 i) (32 - ubits_of pty)
 
 
   (* dynamic *)
@@ -1602,10 +1611,12 @@ module BitTagged = struct
     ) ^^
     E.if_ env retty is1 is2
 
-  let if_can_tag_i64 env retty is1 is2 =
+  let if_can_tag_i64 env pty retty is1 is2 =
+    let sbits = sbits_of pty in
     let lower_bound = Int64.(neg (shift_left 1L sbits)) in
     let upper_bound = Int64.shift_left 1L sbits in
-    Func.share_code1 Func.Never env "if_can_tag_i64" ("x", I64Type) [I32Type] (fun env get_x ->
+    Func.share_code1 Func.Never env
+      (prim_fun_name pty "if_can_tag") ("x", I64Type) [I32Type] (fun env get_x ->
       compile_const_64 lower_bound ^^
       get_x ^^
       G.i (Compare (Wasm.Values.I64 I64Op.LeS)) ^^
@@ -1615,16 +1626,19 @@ module BitTagged = struct
     ) ^^
     E.if_ env retty is1 is2
 
-  let if_can_tag_u64 env retty is1 is2 =
+  let if_can_tag_u64 env pty retty is1 is2 =
+    let sbitsL = Int64.of_int (sbits_of pty) in
     compile_shrU64_const sbitsL ^^
     G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
     E.if_ env retty is1 is2
 
-  let tag =
+  let tag env pty =
+    let ubitsl = Int32.of_int (ubits_of pty) in
     G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
     compile_shl_const (Int32.sub 32l ubitsl)
 
-  let untag env =
+  let untag env pty =
+    let ubitsl = Int32.of_int (ubits_of pty) in
     compile_shrS_const (Int32.sub 32l ubitsl) ^^
     G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32))
 
@@ -1639,13 +1653,6 @@ module BitTagged = struct
     ) ^^
       E.if_ env retty is1 is2
 
-  let ubits_of pty =
-    Type.(match pty with
-          | Nat | Int -> 29
-          | Nat64 | Int64 -> 28
-          | Int32 | Nat32 -> 27
-          | _ -> assert false)
-  let sbits_of pty = (ubits_of pty) - 1
 
 
   let if_can_tag_i32 env pty retty is1 is2 =
@@ -2288,33 +2295,39 @@ module BoxedWord64 = struct
 
   let payload_field = Tagged.header_size
 
-  let vanilla_lit env i =
-    if BitTagged.can_tag_const i
-    then BitTagged.tag_const i
+  let heap_tag env pty = Tagged.Bits64 (* TODO *)
+
+  let vanilla_lit env pty i =
+    if BitTagged.can_tag_const pty i
+    then BitTagged.tag_const pty i
     else
-      Tagged.shared_static_obj env Tagged.Bits64 StaticBytes.[
+      Tagged.shared_static_obj env (heap_tag env pty) StaticBytes.[
         I64 i
       ]
 
-  let compile_box env compile_elem : G.t =
+  let compile_box env pty compile_elem : G.t =
     let (set_i, get_i) = new_local env "boxed_i64" in
     let size = if !Flags.gc_strategy = Flags.Incremental then 4l else 3l in
-    Tagged.alloc env size Tagged.Bits64 ^^
+    Tagged.alloc env size (heap_tag env pty) ^^
     set_i ^^
     get_i ^^ compile_elem ^^ Tagged.store_field64 env (payload_field env) ^^
     get_i ^^
     Tagged.allocation_barrier env
 
-  let box env = Func.share_code1 Func.Never env "box_i64" ("n", I64Type) [I32Type] (fun env get_n ->
-      get_n ^^ BitTagged.if_can_tag_i64 env [I32Type]
-        (get_n ^^ BitTagged.tag)
-        (compile_box env get_n)
+  let box env pty =
+    Func.share_code1 Func.Never env
+      (prim_fun_name pty "box") ("n", I64Type) [I32Type] (fun env get_n ->
+      get_n ^^ BitTagged.if_can_tag_i64 env pty [I32Type]
+        (get_n ^^ BitTagged.tag env pty)
+        (compile_box env pty get_n)
     )
 
-  let unbox env = Func.share_code1 Func.Never env "unbox_i64" ("n", I32Type) [I64Type] (fun env get_n ->
+  let unbox env pty =
+    Func.share_code1 Func.Never env
+      (prim_fun_name pty "unbox") ("n", I32Type) [I64Type] (fun env get_n ->
       get_n ^^
       BitTagged.if_tagged_scalar env [I64Type]
-        ( get_n ^^ BitTagged.untag env)
+        ( get_n ^^ BitTagged.untag env pty)
         ( get_n ^^ Tagged.load_forwarding_pointer env ^^ Tagged.load_field64 env (payload_field env))
     )
 end (* BoxedWord64 *)
@@ -2407,18 +2420,17 @@ module BoxedSmallWord = struct
 
   *)
 
+  let heap_tag env pty = Tagged.Bits32 (* TODO *)
+
   let payload_field env = Tagged.header_size env
 
-  let vanilla_lit env i =
-    if BitTagged.can_tag_const (Int64.of_int (Int32.to_int i))
-    then BitTagged.tag_const (Int64.of_int (Int32.to_int i))
+  let vanilla_lit env pty i =
+    if BitTagged.can_tag_const pty (Int64.of_int (Int32.to_int i))
+    then BitTagged.tag_const pty (Int64.of_int (Int32.to_int i))
     else
-      Tagged.shared_static_obj env Tagged.Bits32 StaticBytes.[
+      Tagged.shared_static_obj env (heap_tag env pty) StaticBytes.[
         I32 i
       ]
-
-
-  let heap_tag env pty = Tagged.Bits32 (* TODO *)
 
   let compile_box env pty compile_elem : G.t =
     let (set_i, get_i) = new_local env "boxed_i32" in
@@ -2429,7 +2441,9 @@ module BoxedSmallWord = struct
     get_i ^^
     Tagged.allocation_barrier env
 
-  let _box env pty = Func.share_code1 Func.Never env "box_i32" ("n", I32Type) [I32Type] (fun env get_n ->
+  let _box env pty =
+    Func.share_code1 Func.Never env
+      (prim_fun_name pty "box") ("n", I32Type) [I32Type] (fun env get_n ->
       get_n ^^ compile_shrU_const (Int32.of_int (BitTagged.sbits_of pty)) ^^
       G.i (Unary (Wasm.Values.I32 I32Op.Popcnt)) ^^
       G.i (Unary (Wasm.Values.I32 I32Op.Ctz)) ^^
@@ -2985,7 +2999,7 @@ end
 
 module MakeCompact (Num : BigNumType) : BigNumType = struct
 
-  (* Compact BigNums are a representation of signed 31-bit bignums (of the
+  (* Compact BigNums are a representation of signed Bittage.ubit-bignums (of the
      underlying boxed representation `Num`), that fit into an i32 as per the
      BitTagged representation.
 
@@ -3017,7 +3031,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
 
   (* TODO: Does the result of the rem/mod fast path ever needs boxing? *)
 
-  (* examine the skewed pointer and determine if number fits into 24 bits *)
+  (* examine the skewed pointer and determine if number fits into ubits *)
   let fits_in_vanilla env = Num.fits_signed_bits env BitTagged.ubits
 
   (* Tagged scalar to right-0-padded signed i64 *)
@@ -3025,13 +3039,16 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
 
   (* A variant of BitTagged.can_tag that works on right-0-tagged 64 bit numbers *)
   let if_can_tag_padded env retty is1 is2 =
-    compile_shrS64_const (Int64.sub 32L BitTagged.ubitsL) ^^ BitTagged.if_can_tag_i64 env retty is1 is2 (*FIX*)
+    let ubitsL = Int64.of_int(BitTagged.ubits_of Type.Int64) in
+    compile_shrS64_const (Int64.sub 32L ubitsL) ^^ BitTagged.if_can_tag_i64 env Type.Int retty is1 is2 (*FIX*)
 
   (* right-0-padded signed i64 to tagged scalar *)
   let tag_padded = G.i (Convert (Wasm.Values.I32 I32Op.WrapI64))
 
   (* creates a boxed bignum from a right-0-padded signed i64 *)
-  let box64 env = compile_shrS64_const (Int64.sub 32L BitTagged.ubitsL) ^^ Num.from_signed_word64 env (*FIX*)
+  let box64 env =
+    let ubitsL = Int64.of_int(BitTagged.ubits_of Type.Int64) in
+    compile_shrS64_const (Int64.sub 32L ubitsL) ^^ Num.from_signed_word64 env (*FIX*)
 
   (* creates a boxed bignum from an right-0-padded signed i32 *)
   let extend_and_box64 env = extend64 ^^ box64 env
@@ -3108,8 +3125,8 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
         G.if1 I32Type
           begin
             get_a64 ^^ get_b64 ^^ Word64.compile_unsigned_pow env ^^ set_res64 ^^
-            get_res64 ^^ BitTagged.if_can_tag_i64 env [I32Type]
-              (get_res64 ^^ BitTagged.tag)
+            get_res64 ^^ BitTagged.if_can_tag_i64 env Type.Int [I32Type]
+              (get_res64 ^^ BitTagged.tag env Type.Int)
               (get_res64 ^^ Num.from_word64 env)
           end
           begin
@@ -3210,8 +3227,8 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       (get_n ^^ Num.compile_is_negative env)
 
   let vanilla_lit env = function
-    | n when Big_int.is_int_big_int n && BitTagged.can_tag_const (Big_int.int64_of_big_int n) ->
-      BitTagged.tag_const (Big_int.int64_of_big_int n)
+    | n when Big_int.is_int_big_int n && BitTagged.can_tag_const Type.Int (Big_int.int64_of_big_int n) ->
+      BitTagged.tag_const Type.Int (Big_int.int64_of_big_int n)
     | n -> Num.vanilla_lit env n
 
   let compile_neg env =
@@ -3495,8 +3512,8 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
   let from_signed_word64 env =
     let set_a, get_a = new_local64 env "a" in
     set_a ^^
-    get_a ^^ BitTagged.if_can_tag_i64 env (* Type.Int*) [I32Type]
-      (get_a ^^ BitTagged.tag) (*TODO: FIX*)
+    get_a ^^ BitTagged.if_can_tag_i64 env Type.Int [I32Type]
+      (get_a ^^ BitTagged.tag env Type.Int) (*TBR*)
       (get_a ^^ Num.from_signed_word64 env)
 
   let from_word30 env =
@@ -3512,15 +3529,15 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
   let from_word64 env =
     let set_a, get_a = new_local64 env "a" in
     set_a ^^
-    get_a ^^ BitTagged.if_can_tag_u64 env [I32Type]
-      (get_a ^^ BitTagged.tag)
+    get_a ^^ BitTagged.if_can_tag_u64 env Type.Int [I32Type]
+      (get_a ^^ BitTagged.tag env Type.Int)
       (get_a ^^ Num.from_word64 env)
 
   let truncate_to_word64 env =
     let set_a, get_a = new_local env "a" in
     set_a ^^ get_a ^^
     BitTagged.if_tagged_scalar env [I64Type]
-      (get_a ^^ BitTagged.untag env)
+      (get_a ^^ BitTagged.untag env Type.Int)
       (get_a ^^ Num.truncate_to_word64 env)
 
   let truncate_to_word32 env =
@@ -3534,7 +3551,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     let set_a, get_a = new_local env "a" in
     set_a ^^ get_a ^^
     BitTagged.if_tagged_scalar env [I64Type]
-      (get_a ^^ BitTagged.untag env)
+      (get_a ^^ BitTagged.untag env Type.Int)
       (get_a ^^ Num.to_word64 env)
 
   let to_word32 env =
@@ -6609,9 +6626,9 @@ module MakeSerialization (Strm : Stream) = struct
         reserve env get_data_buf 8l ^^
         get_x ^^ Float.unbox env ^^
         G.i (Store {ty = F64Type; align = 0; offset = 0l; sz = None})
-      | Prim (Int64|Nat64) ->
+      | Prim ((Int64|Nat64) as pty) ->
         reserve env get_data_buf 8l ^^
-        get_x ^^ BoxedWord64.unbox env ^^
+        get_x ^^ BoxedWord64.unbox env pty ^^
         G.i (Store {ty = I64Type; align = 0; offset = 0l; sz = None})
       | Prim ((Int32|Nat32) as ty) ->
         write_word_32 env get_data_buf (get_x ^^ BoxedSmallWord.unbox env ty)
@@ -7132,17 +7149,17 @@ module MakeSerialization (Strm : Stream) = struct
           ReadBuf.read_float64 env get_data_buf ^^
           Float.box env
         end
-      | Prim (Int64|Nat64) ->
+      | Prim ((Int64|Nat64) as pty)->
         with_prim_typ t
         begin
           ReadBuf.read_word64 env get_data_buf ^^
-          BoxedWord64.box env
+          BoxedWord64.box env pty
         end
-      | Prim ((Int32|Nat32) as p) ->
+      | Prim ((Int32|Nat32) as pty) ->
         with_prim_typ t
         begin
           ReadBuf.read_word32 env get_data_buf ^^
-          BoxedSmallWord.box env p
+          BoxedSmallWord.box env pty
         end
       | Prim Char ->
         with_prim_typ t
@@ -8295,8 +8312,8 @@ module StackRep = struct
     | Const.Vanilla n  -> n
     | Const.Bool n     -> Bool.vanilla_lit n
     | Const.BigInt n   -> BigNum.vanilla_lit env n
-    | Const.Word32 n   -> BoxedSmallWord.vanilla_lit env n
-    | Const.Word64 n   -> BoxedWord64.vanilla_lit env n
+    | Const.Word32 n   -> BoxedSmallWord.vanilla_lit env Type.Int32 n (* TBR *)
+    | Const.Word64 n   -> BoxedWord64.vanilla_lit env Type.Int64 n (* TBR *)
     | Const.Float64 f  -> Float.vanilla_lit env f
     | Const.Blob t     -> Blob.vanilla_lit env t
     | Const.Null       -> Opt.null_vanilla_lit env
@@ -8337,11 +8354,11 @@ module StackRep = struct
     | UnboxedTuple n, Vanilla -> Tuple.from_stack env n
     | Vanilla, UnboxedTuple n -> Tuple.to_stack env n
 
-    | UnboxedWord64, Vanilla -> BoxedWord64.box env
-    | Vanilla, UnboxedWord64 -> BoxedWord64.unbox env
+    | UnboxedWord64, Vanilla -> BoxedWord64.box env Type.Int64 (* FIX ME *)
+    | Vanilla, UnboxedWord64 -> BoxedWord64.unbox env Type.Int64 (* FIX ME *)
 
-    | UnboxedWord32, Vanilla -> BoxedSmallWord.box env Type.Nat32 (* FIX ME *)
-    | Vanilla, UnboxedWord32 -> BoxedSmallWord.unbox env Type.Nat32 (* FIX ME *)
+    | UnboxedWord32, Vanilla -> BoxedSmallWord.box env Type.Int32 (* FIX ME *)
+    | Vanilla, UnboxedWord32 -> BoxedSmallWord.unbox env Type.Int32 (* FIX ME *)
 
     | UnboxedFloat64, Vanilla -> Float.box env
     | Vanilla, UnboxedFloat64 -> Float.unbox env
@@ -10565,8 +10582,8 @@ and compile_prim_invocation (env : E.t) ae p es at =
       SR.Vanilla,
       compile_exp_vanilla env ae e ^^
       compile_bitand_const (TaggedSmallWord.mask_of_type Int16) ^^
-      compile_shrS_const (Int32.sub BitTagged.ubitsl 16l) (* resulting Int32 will always be unboxed *)
-      (*TODO: tag*)
+      compile_shrS_const (Int32.sub (Int32.of_int (BitTagged.ubits_of Int32)) 16l) (* resulting Int32 will always be unboxed *)
+      (*TODO: tag (see Nat8, Nat16 case)*)
     | Int32, Int64 ->
       SR.UnboxedWord64,
       compile_exp_as env ae SR.UnboxedWord32 e ^^
@@ -11706,7 +11723,7 @@ and compile_lit_pat env l =
     compile_lit_as env SR.UnboxedWord32 l ^^
     compile_eq env Type.(Prim Nat32)
   | Nat64Lit _ ->
-    BoxedWord64.unbox env ^^
+    BoxedWord64.unbox env Type.Nat64 ^^
     compile_lit_as env SR.UnboxedWord64 l ^^
     compile_eq env Type.(Prim Nat64)
   | Int8Lit _ ->
@@ -11720,7 +11737,7 @@ and compile_lit_pat env l =
     compile_lit_as env SR.UnboxedWord32 l ^^
     compile_eq env Type.(Prim Int32)
   | Int64Lit _ ->
-    BoxedWord64.unbox env ^^
+    BoxedWord64.unbox env Type.Int64 ^^
     compile_lit_as env SR.UnboxedWord64 l ^^
     compile_eq env Type.(Prim Int64)
   | CharLit _ ->
