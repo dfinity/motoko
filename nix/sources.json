@@ -47,15 +47,15 @@
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ic-wasm": {
-        "branch": "main",
+        "branch": "pull/54/head",
         "description": "A collection of libraries and tools for transforming Wasm canisters running on the Internet Computer",
         "homepage": null,
         "owner": "dfinity",
         "repo": "ic-wasm",
-        "rev": "61692f44cf85b93d43311492283246bb443449d3",
-        "sha256": "1b06dphnj89qmyv4gxh8gqm1bgqfpivr4di2nl9hbvqqyx4vzb65",
+        "rev": "2752797470c9213e830320d7accf6742299756b6",
+        "sha256": "0v7y63v8zjmf0ilxja184l0hksfl2hlgg9cvnqkrzccc029qi594",
         "type": "tarball",
-        "url": "https://github.com/dfinity/ic-wasm/archive/61692f44cf85b93d43311492283246bb443449d3.tar.gz",
+        "url": "https://github.com/dfinity/ic-wasm/archive/2752797470c9213e830320d7accf6742299756b6.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "libtommath": {
