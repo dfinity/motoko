@@ -167,10 +167,23 @@ let print_deps (file : string) : unit =
 
 (* Checking *)
 
-let infer_prog senv prog : (Type.typ * Scope.scope) Diag.result =
+let async_cap_of_prog prog =
+  let open Syntax in
+  let open Source in
+  match (CompUnit.comp_unit_of_prog false prog).it.body.it with
+  | ActorClassU _ -> Async_cap.NullCap
+  | ActorU _ -> Async_cap.initial_cap()
+  | ModuleU _ -> assert false
+  | ProgU _ ->
+     if !Flags.compiled then
+       Async_cap.NullCap
+     else
+       Async_cap.initial_cap()
+
+let infer_prog senv async_cap prog : (Type.typ * Scope.scope) Diag.result =
   let filename = prog.Source.note.Syntax.filename in
   phase "Checking" filename;
-  let r = Typing.infer_prog senv prog in
+  let r = Typing.infer_prog senv async_cap prog in
   if !Flags.trace && !Flags.verbose then begin
     match r with
     | Ok ((_, scope), _) ->
@@ -188,11 +201,12 @@ let infer_prog senv prog : (Type.typ * Scope.scope) Diag.result =
 let rec check_progs senv progs : Scope.scope Diag.result =
   match progs with
   | [] -> Diag.return senv
-  | p::ps ->
+  | prog::progs' ->
     let open Diag.Syntax in
-    let* _t, sscope = infer_prog senv p in
+    let async_cap = async_cap_of_prog prog in
+    let* _t, sscope = infer_prog senv async_cap prog in
     let senv' = Scope.adjoin senv sscope in
-    check_progs senv' ps
+    check_progs senv' progs'
 
 let check_lib senv lib : Scope.scope Diag.result =
   let filename = lib.Source.note.Syntax.filename in
@@ -221,7 +235,7 @@ let check_builtin what src senv0 : Syntax.prog * stat_env =
   match parse_with Lexer.mode_priv lexer parse what with
   | Error es -> builtin_error "parsing" what es
   | Ok (prog, _ws) ->
-    match infer_prog senv0 prog with
+    match infer_prog senv0 Async_cap.NullCap prog with
     | Error es -> builtin_error "checking" what es
     | Ok ((_t, sscope), _ws) ->
       let senv1 = Scope.adjoin senv0 sscope in
@@ -417,7 +431,7 @@ let load_decl parse_one senv : load_decl_result =
   let* parsed = parse_one in
   let* prog, libs = resolve_prog parsed in
   let* libs, senv' = chase_imports parse_file senv libs in
-  let* t, sscope = infer_prog senv' prog in
+  let* t, sscope = infer_prog senv' (Async_cap.(AwaitCap top_cap)) prog in
   let senv'' = Scope.adjoin senv' sscope in
   Diag.return (libs, prog, senv'', t, sscope)
 
