@@ -578,6 +578,16 @@ rec {
       src = nixpkgs.sources.ic-wasm;
       cargoSha256 = "sha256-a8iN/lTEVqdmogsSlT3+v3nivSG5VRhOz4/trmAsZLY=";
       doCheck = false;
+      patchPhase = ''
+        mkdir -p .cargo
+        cat > .cargo/config.toml << EOF
+[target.x86_64-apple-darwin]
+rustflags = [ "-C", "linker=c++" ]
+
+[target.aarch64-apple-darwin]
+rustflags = [ "-C", "linker=c++" ]
+EOF
+      '';
     };
 
   # gitMinimal is used by nix/gitSource.nix; building it here warms the nix cache
