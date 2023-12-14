@@ -627,10 +627,10 @@ module E = struct
     | Flags.Generational -> "generational"
     | Flags.Incremental -> "incremental"
 
-  let collect_garbage env =
+  let collect_garbage env force =
     (* GC function name = "schedule_"? ("compacting" | "copying" | "generational" | "incremental") "_gc" *)
     let name = gc_strategy_name !Flags.gc_strategy in
-    let gc_fn = if !Flags.force_gc then name else "schedule_" ^ name in
+    let gc_fn = if force || !Flags.force_gc then name else "schedule_" ^ name in
     call_import env "rts" (gc_fn ^ "_gc")
 
   (* See Note [Candid subtype checks] *)
@@ -1193,7 +1193,7 @@ module GC = struct
 
   let collect_garbage env =
     record_mutator_instructions env ^^
-    E.collect_garbage env ^^
+    E.collect_garbage env false ^^
     record_collector_instructions env
 
 end (* GC *)
@@ -1424,6 +1424,12 @@ module Stack = struct
     dynamic_alloc_words env get_n ^^ set_x ^^
     f get_x ^^
     dynamic_free_words env get_n
+
+  let dynamic_with_bytes env name f =
+    (* round up to nearest wordsize *)
+    compile_add_const (Int32.sub Heap.word_size 1l) ^^
+    compile_divU_const Heap.word_size ^^
+    dynamic_with_words env name f
 
   (* Stack Frames *)
 
@@ -4577,7 +4583,7 @@ module IC = struct
     | Flags.RefMode  ->
       import_ic0 env
     | Flags.WASIMode ->
-      E.add_func_import env "wasi_unstable" "fd_write" [I32Type; I32Type; I32Type; I32Type] [I32Type];
+      E.add_func_import env "wasi_snapshot_preview1" "fd_write" [I32Type; I32Type; I32Type; I32Type] [I32Type];
     | Flags.WasmMode -> ()
 
   let system_call env funcname = E.call_import env "ic0" funcname
@@ -4625,14 +4631,14 @@ module IC = struct
             get_iovec_ptr ^^
             compile_unboxed_const 1l (* one string segment (2 doesn't work) *) ^^
             get_iovec_ptr ^^ compile_add_const 20l ^^ (* out for bytes written, we ignore that *)
-            E.call_import env "wasi_unstable" "fd_write" ^^
+            E.call_import env "wasi_snapshot_preview1" "fd_write" ^^
             G.i Drop ^^
 
             compile_unboxed_const 1l (* stdout *) ^^
             get_iovec_ptr ^^ compile_add_const 8l ^^
             compile_unboxed_const 1l (* one string segment *) ^^
             get_iovec_ptr ^^ compile_add_const 20l ^^ (* out for bytes written, we ignore that *)
-            E.call_import env "wasi_unstable" "fd_write" ^^
+            E.call_import env "wasi_snapshot_preview1" "fd_write" ^^
             G.i Drop)
           end);
 
@@ -4717,11 +4723,7 @@ module IC = struct
     let fi = E.add_fun env "canister_heartbeat"
       (Func.of_body env [] [] (fun env ->
         G.i (Call (nr (E.built_in env "heartbeat_exp"))) ^^
-        (* TODO(3622)
-           Until DTS is implemented for heartbeats, don't collect garbage here,
-           just record mutator_instructions and leave GC scheduling to the
-           already scheduled async message running `system` function `heartbeat` *)
-        GC.record_mutator_instructions env (* future: GC.collect_garbage env *)))
+        GC.collect_garbage env))
     in
     E.add_export env (nr {
       name = Lib.Utf8.decode "canister_heartbeat";
@@ -4734,11 +4736,7 @@ module IC = struct
     let fi = E.add_fun env "canister_global_timer"
       (Func.of_body env [] [] (fun env ->
         G.i (Call (nr (E.built_in env "timer_exp"))) ^^
-        (* TODO(3622)
-           Until DTS is implemented for timers, don't collect garbage here,
-           just record mutator_instructions and leave GC scheduling to the
-           already scheduled async message running `system` function `timer` *)
-        GC.record_mutator_instructions env (* future: GC.collect_garbage env *)))
+        GC.collect_garbage env))
     in
     E.add_export env (nr {
       name = Lib.Utf8.decode "canister_global_timer";
@@ -4922,29 +4920,46 @@ module IC = struct
     E.trap_with env (Printf.sprintf "assertion failed at %s" (string_of_region at))
 
   let async_method_name = Type.(motoko_async_helper_fld.lab)
+  let gc_trigger_method_name = Type.(motoko_gc_trigger_fld.lab)
+
+  let is_self_call env =
+    let (set_len_self, get_len_self) = new_local env "len_self" in
+    let (set_len_caller, get_len_caller) = new_local env "len_caller" in
+    system_call env "canister_self_size" ^^ set_len_self ^^
+    system_call env "msg_caller_size" ^^ set_len_caller ^^
+    get_len_self ^^ get_len_caller ^^ G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+    G.if1 I32Type
+      begin
+        get_len_self ^^ Stack.dynamic_with_bytes env "str_self" (fun get_str_self ->
+          get_len_caller ^^ Stack.dynamic_with_bytes env "str_caller" (fun get_str_caller ->
+            get_str_caller ^^ compile_unboxed_const 0l ^^ get_len_caller ^^
+            system_call env "msg_caller_copy" ^^
+            get_str_self ^^ compile_unboxed_const 0l ^^ get_len_self ^^
+            system_call env "canister_self_copy" ^^
+            get_str_self ^^ get_str_caller ^^ get_len_self ^^ Heap.memcmp env ^^
+            compile_eq_const 0l))
+      end
+      begin
+        compile_unboxed_const 0l
+      end
 
   let assert_caller_self env =
-    let (set_len1, get_len1) = new_local env "len1" in
-    let (set_len2, get_len2) = new_local env "len2" in
-    let (set_str1, get_str1) = new_local env "str1" in
-    let (set_str2, get_str2) = new_local env "str2" in
-    system_call env "canister_self_size" ^^ set_len1 ^^
-    system_call env "msg_caller_size" ^^ set_len2 ^^
-    get_len1 ^^ get_len2 ^^ G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
-    E.else_trap_with env "not a self-call" ^^
-
-    get_len1 ^^ Blob.dyn_alloc_scratch env ^^ set_str1 ^^
-    get_str1 ^^ compile_unboxed_const 0l ^^ get_len1 ^^
-    system_call env "canister_self_copy" ^^
-
-    get_len2 ^^ Blob.dyn_alloc_scratch env ^^ set_str2 ^^
-    get_str2 ^^ compile_unboxed_const 0l ^^ get_len2 ^^
-    system_call env "msg_caller_copy" ^^
-
-
-    get_str1 ^^ get_str2 ^^ get_len1 ^^ Heap.memcmp env ^^
-    compile_eq_const 0l ^^
+    is_self_call env ^^
     E.else_trap_with env "not a self-call"
+
+  let is_controller_call env =
+    let (set_len_caller, get_len_caller) = new_local env "len_caller" in
+    system_call env "msg_caller_size" ^^ set_len_caller ^^
+    get_len_caller ^^ Stack.dynamic_with_bytes env "str_caller" (fun get_str_caller ->
+      get_str_caller ^^ compile_unboxed_const 0l ^^ get_len_caller ^^
+      system_call env "msg_caller_copy" ^^
+      get_str_caller ^^ get_len_caller ^^ is_controller env)
+
+  let assert_caller_self_or_controller env =
+    is_self_call env ^^
+    is_controller_call env ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
+    E.else_trap_with env "not a self-call or call from controller"
 
   (* Cycles *)
 
@@ -9062,6 +9077,41 @@ module FuncDec = struct
     | _ -> ()
     end
 
+  let export_gc_trigger_method env =
+    let name = IC.gc_trigger_method_name in
+    begin match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+      Func.define_built_in env name [] [] (fun env ->
+        message_start env (Type.Shared Type.Write) ^^
+        (* Check that we are called from this or a controller, w/o allocation *)
+        IC.assert_caller_self_or_controller env ^^
+        (* To avoid more failing allocation, don't deserialize args nor serialize reply,
+           i.e. don't even try to do this:
+        Serialization.deserialize env [] ^^
+        Tuple.compile_unit ^^
+        Serialization.serialize env [] ^^
+        *)
+        (* Instead, just ignore the argument and
+           send a *statically* allocated, nullary reply *)
+        Blob.lit_ptr_len env "DIDL\x00\x00" ^^
+        IC.reply_with_data env ^^
+        (* Finally, act like
+        message_cleanup env (Type.Shared Type.Write)
+           but *force* collection *)
+        GC.record_mutator_instructions env ^^
+        E.collect_garbage env true ^^
+        GC.record_collector_instructions env ^^
+        Lifecycle.trans env Lifecycle.Idle
+      );
+
+      let fi = E.built_in env name in
+      E.add_export env (nr {
+        name = Lib.Utf8.decode ("canister_update " ^ name);
+        edesc = nr (FuncExport (nr fi))
+      })
+    | _ -> ()
+    end
+
 end (* FuncDec *)
 
 
@@ -12057,6 +12107,7 @@ and conclude_module env set_serialization_globals start_fi_o =
   RTS_Exports.system_exports env;
 
   FuncDec.export_async_method env;
+  FuncDec.export_gc_trigger_method env;
 
   (* See Note [Candid subtype checks] *)
   Serialization.set_delayed_globals env set_serialization_globals;

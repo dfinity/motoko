@@ -1,6 +1,6 @@
 pkgs:
 { drun =
-    pkgs.rustPlatform_moz_stable.buildRustPackage {
+    pkgs.rustPlatform.buildRustPackage {
       name = "drun";
 
       src = pkgs.sources.ic;
@@ -28,7 +28,6 @@ pkgs:
       };
 
       patchPhase = ''
-pwd
         cd ../cargo-vendor-dir
         patch librocksdb-sys*/build.rs << EOF
 @@ -118,6 +118,10 @@
@@ -45,6 +44,15 @@ pwd
 EOF
 
         cd -
+
+        mkdir -p .cargo
+        cat > .cargo/config.toml << EOF
+[target.x86_64-apple-darwin]
+rustflags = [ "-C", "linker=c++" ]
+
+[target.aarch64-apple-darwin]
+rustflags = [ "-C", "linker=c++" ]
+EOF
       '';
 
       nativeBuildInputs = with pkgs; [
