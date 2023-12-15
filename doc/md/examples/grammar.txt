@@ -239,12 +239,9 @@
 <catch> ::= 
     'catch' <pat_nullary> <exp_nest>
 
-<annot_opt_eq> ::= 
-    (':' <typ>)? '='
-
 <exp_field> ::= 
     'var'? <id> (':' <typ>)?
-    'var'? <id> <annot_opt_eq> <exp>
+    'var'? <id> (':' <typ>)? '=' <exp>
 
 <dec_field> ::= 
     <vis> <stab> <dec>
@@ -287,15 +284,15 @@
 
 <pat_field> ::= 
     <id> (':' <typ>)?
-    <id> <annot_opt_eq> <pat>
+    <id> (':' <typ>)? '=' <pat>
 
 <dec_var> ::= 
-    'var' <id> <annot_opt_eq> <exp>
+    'var' <id> (':' <typ>)? '=' <exp>
 
 <dec_nonvar> ::= 
     'let' <pat> '=' <exp>
     'type' <id> ('<' <list(<typ_bind>, ',')> '>')? '=' <typ>
-    <obj_sort> <id>? '='? <obj_body>
+    <obj_sort> <id>? (':' <typ>)? '='? <obj_body>
     <shared_pat_opt> 'func' <id>? ('<' <list(<typ_bind>, ',')> '>')? <pat_plain> (':' <typ>)? <func_body>
     <shared_pat_opt> <obj_sort>? 'class' <id>? ('<' <list(<typ_bind>, ',')> '>')? <pat_plain> (':' <typ>)? <class_body>
 
