@@ -12,3 +12,8 @@ pub const WASM_HEAP_SIZE: Words<u32> = Words(1024 * 1024 * 1024);
 
 /// Wasm memory size (4 GiB) in bytes. Note: Represented as `u64` in order not to overflow.
 pub const WASM_MEMORY_BYTE_SIZE: Bytes<u64> = Bytes(4 * 1024 * 1024 * 1024);
+
+/// Byte constants
+pub const KB: usize = 1024;
+pub const MB: usize = 1024 * KB;
+pub const GB: usize = 1024 * MB;

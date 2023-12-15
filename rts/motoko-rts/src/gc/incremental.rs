@@ -70,18 +70,22 @@ unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
 #[cfg(feature = "ic")]
 unsafe fn should_start() -> bool {
     use self::partitioned_heap::PARTITION_SIZE;
-    use crate::memory::{ic, MEMORY_RESERVE};
+    use crate::constants::{GB, MB};
+    use crate::memory::ic;
 
-    const CRITICAL_HEAP_LIMIT: Bytes<u32> =
-        Bytes(u32::MAX - 768 * 1024 * 1024 - MEMORY_RESERVE as u32);
+    const CRITICAL_HEAP_LIMIT: Bytes<u32> = Bytes((2 * GB + 256 * MB) as u32);
     const CRITICAL_GROWTH_THRESHOLD: f64 = 0.01;
-    const NORMAL_GROWTH_THRESHOLD: f64 = 0.65;
+    const MEDIUM_HEAP_LIMIT: Bytes<u32> = Bytes(1 * GB as u32);
+    const MEDIUM_GROWTH_THRESHOLD: f64 = 0.35;
+    const LOW_GROWTH_THRESHOLD: f64 = 0.65;
 
     let heap_size = ic::get_heap_size();
     let growth_threshold = if heap_size > CRITICAL_HEAP_LIMIT {
         CRITICAL_GROWTH_THRESHOLD
+    } else if heap_size > MEDIUM_HEAP_LIMIT {
+        MEDIUM_GROWTH_THRESHOLD
     } else {
-        NORMAL_GROWTH_THRESHOLD
+        LOW_GROWTH_THRESHOLD
     };
 
     let current_allocations = ic::get_total_allocations();
@@ -135,11 +139,11 @@ struct Statistics {
 /// Finally, all the evacuated and temporary partitions are freed.
 /// The temporary partitions store mark bitmaps.
 
-/// The limit on the GC increment has a fix base with a linear increase depending on the number of
+/// The limit on the GC increment has a fixed base with a linear increase depending on the number of
 /// allocations that were performed during a running GC. The allocation-proportional term adapts
 /// to the allocation rate and helps the GC to reduce reclamation latency.
-const INCREMENT_BASE_LIMIT: usize = 3_500_000; // Increment limit without concurrent allocations.
-const INCREMENT_ALLOCATION_FACTOR: usize = 10; // Additional time factor per concurrent allocation.
+const INCREMENT_BASE_LIMIT: usize = 5_000_000; // Increment limit without concurrent allocations.
+const INCREMENT_ALLOCATION_FACTOR: usize = 50; // Additional time factor per concurrent allocation.
 
 // Performance note: Storing the phase-specific state in the enum would be nicer but it is much slower.
 #[derive(PartialEq)]
@@ -160,6 +164,7 @@ pub struct State {
     allocation_count: usize, // Number of allocations during an active GC run.
     mark_state: Option<MarkState>,
     iterator_state: Option<PartitionedHeapIterator>,
+    running_increment: bool, // GC increment is active.
     statistics: Statistics,
 }
 
@@ -186,6 +191,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
             allocation_count: 0,
             mark_state: None,
             iterator_state: None,
+            running_increment: false,
             statistics,
         }
     }
@@ -208,6 +214,8 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     /// * The mark phase can only be started on an empty call stack.
     /// * The update phase can only be completed on an empty call stack.
     pub unsafe fn empty_call_stack_increment(&mut self, roots: Roots) {
+        debug_assert!(!self.state.running_increment);
+        self.state.running_increment = true;
         if self.pausing() {
             self.start_marking(roots);
         }
@@ -229,6 +237,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         if self.updating_completed() {
             self.complete_run(roots);
         }
+        self.state.running_increment = false;
     }
 
     unsafe fn pausing(&mut self) -> bool {
@@ -432,4 +441,25 @@ pub unsafe fn get_incremental_gc_state() -> &'static mut State {
 #[cfg(not(feature = "ic"))]
 pub unsafe fn set_incremental_gc_state(state: Option<State>) {
     TEST_GC_STATE = state;
+}
+
+#[cfg(feature = "ic")]
+use crate::constants::MB;
+
+/// Additional memory reserve in bytes for the GC.
+/// * To allow mark bitmap allocation, i.e. max. 128 MB in 4 GB address space.
+/// * 512 MB of free space for evacuations/compactions.
+#[cfg(feature = "ic")]
+const GC_MEMORY_RESERVE: usize = (128 + 512) * MB;
+
+#[cfg(feature = "ic")]
+pub unsafe fn memory_reserve() -> usize {
+    use crate::memory::GENERAL_MEMORY_RESERVE;
+
+    let additional_reserve = if STATE.borrow().running_increment {
+        0
+    } else {
+        GC_MEMORY_RESERVE
+    };
+    GENERAL_MEMORY_RESERVE + additional_reserve
 }
