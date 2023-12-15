@@ -1358,7 +1358,7 @@ module Stack = struct
 
   let dynamic_with_bytes env name f =
     (* round up to nearest wordsize *)
-    compile_add_const (Int32.sub Heap.word_size 1l) ^^
+    compile_add_const (Int64.sub Heap.word_size 1L) ^^
     compile_divU_const Heap.word_size ^^
     dynamic_with_words env name f
 
@@ -4686,7 +4686,7 @@ module IC = struct
     system_call env "canister_self_size" ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^ set_len_self ^^
     system_call env "msg_caller_size" ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^ set_len_caller ^^
     get_len_self ^^ get_len_caller ^^ compile_comparison I64Op.Eq ^^
-    E.if1 I32Type
+    E.if1 I64Type
       begin
         get_len_self ^^ Stack.dynamic_with_bytes env "str_self" (fun get_str_self ->
           get_len_caller ^^ Stack.dynamic_with_bytes env "str_caller" (fun get_str_caller ->
@@ -4695,7 +4695,7 @@ module IC = struct
             get_str_self ^^ compile_unboxed_const 0L ^^ get_len_self ^^
             system_call env "canister_self_copy_64" ^^
             get_str_self ^^ get_str_caller ^^ get_len_self ^^ Heap.memcmp env ^^
-            compile_eq_const 0l))
+            compile_eq_const 0L))
       end
       begin
         compile_unboxed_const 0L
@@ -4716,7 +4716,7 @@ module IC = struct
   let assert_caller_self_or_controller env =
     is_self_call env ^^
     is_controller_call env ^^
-    G.i (Binary (Wasm.Values.I64 I64Op.Or)) ^^
+    G.i (Binary (Wasm_exts.Values.I64 I64Op.Or)) ^^
     E.else_trap_with env "not a self-call or call from controller"
 
   (* Cycles *)

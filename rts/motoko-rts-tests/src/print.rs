@@ -1,6 +1,6 @@
 //! Support for standard output in wasmtime.
 
-#[link(wasm_import_module = "wasi_unstable")]
+#[link(wasm_import_module = "wasi_snapshot_preview1")]
 extern "C" {
     fn fd_write(fd: i32, iovs: i32, iovs_len: i32, nwritten: i32) -> i32;
 }

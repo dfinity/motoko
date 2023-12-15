@@ -324,7 +324,7 @@ $(COMPILER_BUILTINS_DEBUG_WASM_A): $(COMPILER_BUILTINS_DEBUG_LLVM_IR)
 
 TEST_DEPENDENCIES=$(TOMMATH_WASM_A) $(TOMMATH_BINDINGS_RS)
 TEST_BUILD=cd motoko-rts-tests && cargo build --target=wasm64-unknown-unknown -Zbuild-std=core,alloc,std,panic_abort
-TEST_RUN=wasmtime --disable-cache --wasm-features=memory64 motoko-rts-tests/target/wasm64-unknown-unknown/debug/motoko-rts-tests.wasm
+TEST_RUN=wasmtime -C cache=n -W nan-canonicalization=y -W memory64 motoko-rts-tests/target/wasm64-unknown-unknown/debug/motoko-rts-tests.wasm
 
 .PHONY: test
 

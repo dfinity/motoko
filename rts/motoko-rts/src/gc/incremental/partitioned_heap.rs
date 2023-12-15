@@ -59,13 +59,13 @@ use super::{
 pub const PARTITION_SIZE: usize = 64 * 1024 * 1024;
 
 // TODO: Redesign for 64-bit support by using a dynamic partition list.
-/// Currently limited to 96 GB.
-pub const MAXIMUM_MEMORY_SIZE: Bytes<usize> = Bytes(96 * 1024 * 1024 * 1024);
+/// Currently limited to 64 GB.
+pub const MAXIMUM_MEMORY_SIZE: Bytes<usize> = Bytes(64 * 1024 * 1024 * 1024);
 
 /// Total number of partitions in the memory.
 /// For simplicity, the last partition is left unused, to avoid a numeric overflow when
 /// computing the end address of the last partition.
-const MAX_PARTITIONS: usize = (MAXIMUM_MEMORY_SIZE.as_usize() / PARTITION_SIZE) - 1;
+const MAX_PARTITIONS: usize = (MAXIMUM_MEMORY_SIZE.0 / PARTITION_SIZE) - 1;
 
 /// Partitions are only evacuated if the space occupation of alive objects in the partition
 /// is greater than this threshold.

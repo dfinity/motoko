@@ -69,12 +69,12 @@ unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
 
 #[cfg(feature = "ic")]
 unsafe fn should_start() -> bool {
-    use self::partitioned_heap::{PARTITION_SIZE, MAXIMUM_MEMORY_SIZE};
+    use self::partitioned_heap::{MAXIMUM_MEMORY_SIZE, PARTITION_SIZE};
     use crate::memory::ic;
 
-    const CRITICAL_HEAP_LIMIT: f64 = MAXIMUM_MEMORY_SIZE.as_usize() / 10 * 8; // 80%
+    const CRITICAL_HEAP_LIMIT: Bytes<usize> = Bytes(MAXIMUM_MEMORY_SIZE.0 / 10 * 8); // 80%
     const CRITICAL_GROWTH_THRESHOLD: f64 = 0.01;
-    const MEDIUM_HEAP_LIMIT: Bytes<usize> = MAXIMUM_MEMORY_SIZE.as_usize() / 2; // 50%
+    const MEDIUM_HEAP_LIMIT: Bytes<usize> = Bytes(MAXIMUM_MEMORY_SIZE.0 / 2); // 50%
     const MEDIUM_GROWTH_THRESHOLD: f64 = 0.35;
     const LOW_GROWTH_THRESHOLD: f64 = 0.65;
 
@@ -163,9 +163,11 @@ pub struct State {
     allocation_count: usize, // Number of allocations during an active GC run.
     mark_state: Option<MarkState>,
     iterator_state: Option<PartitionedHeapIterator>,
-    running_increment: bool, // GC increment is active.
     statistics: Statistics,
 }
+
+/// Temporary state during message execution, not part of the persistent metadata.
+static mut RUNNING_GC_INCREMENT: bool = false;
 
 /// Incremental GC.
 /// Each GC call has its new GC instance that shares the common GC state `STATE`.
@@ -190,7 +192,6 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
             allocation_count: 0,
             mark_state: None,
             iterator_state: None,
-            running_increment: false,
             statistics,
         }
     }
@@ -213,8 +214,8 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     /// * The mark phase can only be started on an empty call stack.
     /// * The update phase can only be completed on an empty call stack.
     pub unsafe fn empty_call_stack_increment(&mut self, roots: Roots) {
-        debug_assert!(!self.state.running_increment);
-        self.state.running_increment = true;
+        debug_assert!(!RUNNING_GC_INCREMENT);
+        RUNNING_GC_INCREMENT = true;
         if self.pausing() {
             self.start_marking(roots);
         }
@@ -236,7 +237,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         if self.updating_completed() {
             self.complete_run(roots);
         }
-        self.state.running_increment = false;
+        RUNNING_GC_INCREMENT = false;
     }
 
     unsafe fn pausing(&mut self) -> bool {
@@ -443,22 +444,19 @@ pub unsafe fn set_incremental_gc_state(state: Option<State>) {
 }
 
 #[cfg(feature = "ic")]
-use crate::constants::MB;
+use crate::constants::GB;
 
 /// Additional memory reserve in bytes for the GC.
 /// * To allow mark bitmap allocation, i.e. max. 128 MB in 4 GB address space.
-/// * 512 MB of free space for evacuations/compactions.
+/// * 1.875 GB of free space for evacuations/compactions.
 #[cfg(feature = "ic")]
-const GC_MEMORY_RESERVE: usize = (128 + 512) * MB;
+const GC_MEMORY_RESERVE: usize = 2 * GB;
 
 #[cfg(feature = "ic")]
 pub unsafe fn memory_reserve() -> usize {
-    use crate::memory::GENERAL_MEMORY_RESERVE;
-
-    let additional_reserve = if get_incremental_gc_state().running_increment {
+    if RUNNING_GC_INCREMENT {
         0
     } else {
         GC_MEMORY_RESERVE
-    };
-    GENERAL_MEMORY_RESERVE + additional_reserve
+    }
 }

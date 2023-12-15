@@ -6,8 +6,8 @@ use crate::gc::incremental::memory_reserve;
 use crate::gc::incremental::partitioned_heap::MAXIMUM_MEMORY_SIZE;
 use crate::rts_trap_with;
 use crate::types::{Bytes, Value, Words};
-use core::cmp::min;
 use core::arch::wasm64;
+use core::cmp::min;
 
 /// Provides a `Memory` implementation, to be used in functions compiled for IC or WASI. The
 /// `Memory` implementation allocates in Wasm heap with Wasm `memory.grow` instruction.
@@ -25,7 +25,10 @@ impl Memory for IcMemory {
     unsafe fn grow_memory(&mut self, ptr: usize) {
         const LAST_PAGE_LIMIT: usize = 0xFFFF_FFFF_FFFF_0000;
         debug_assert_eq!(LAST_PAGE_LIMIT, usize::MAX - WASM_PAGE_SIZE.as_usize() + 1);
-        let limit = min(LAST_PAGE_LIMIT, MAXIMUM_MEMORY_SIZE.as_usize() - memory_reserve());
+        let limit = min(
+            LAST_PAGE_LIMIT,
+            MAXIMUM_MEMORY_SIZE.as_usize() - memory_reserve(),
+        );
         if ptr > limit {
             rts_trap_with("Cannot grow memory")
         };

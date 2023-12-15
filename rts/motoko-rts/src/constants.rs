@@ -1,4 +1,4 @@
-use crate::types::{Bytes, Words};
+use crate::types::Bytes;
 
 /// Wasm word size. RTS only works correctly on platforms with this word size.
 pub const WORD_SIZE: usize = 8;

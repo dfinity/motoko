@@ -1,12 +1,6 @@
 #[cfg(feature = "ic")]
 pub mod ic;
-
-use crate::constants::MAXIMUM_HEAP_SIZE;
-use crate::rts_trap_with;
 use crate::types::*;
-
-#[cfg(feature = "ic")]
-use crate::constants::MB;
 
 use motoko_rts_macros::ic_mem_fn;
 
