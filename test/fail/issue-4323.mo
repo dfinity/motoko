@@ -1,11 +1,6 @@
 type Main = actor { beep : () -> async () };
 
-// let-like
+// let-like annotation
 actor Main : Main = {
 
-};
-
-// less attractive
-actor Main2 {
-
-} : Main
+}

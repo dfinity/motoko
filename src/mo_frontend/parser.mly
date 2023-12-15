@@ -854,18 +854,22 @@ dec_nonvar :
       LetD (p', e', None) @? at $sloc }
   | TYPE x=typ_id tps=typ_params_opt EQ t=typ
     { TypD(x, tps, t) @? at $sloc }
-  | s=obj_sort xf=id_opt EQ? efs=obj_body
-    { let named, x = xf "object" $sloc in
+  | s=obj_sort xf=id_opt t=annot_opt_eq? efs=obj_body
+    { let t = Option.join t in
+      let sort = Type.(match s.it with
+                       | Actor -> "actor" | Module -> "module" | Object -> "object"
+                       | _ -> assert false) in
+      let named, x = xf sort $sloc in
       let e =
         if s.it = Type.Actor then
           AwaitE
             (Type.Fut,
              AsyncE(Type.Fut, scope_bind (anon_id "async" (at $sloc)) (at $sloc),
-              (objblock s (List.map share_dec_field efs) @? (at $sloc)))
-             @? at $sloc)
-        else objblock s efs
+                    annot_exp (objblock s (List.map share_dec_field efs) @? at $sloc) t)
+             @? at $sloc) @? at $sloc
+        else annot_exp (objblock s efs @? at $sloc) t
       in
-      let_or_exp named x e (at $sloc) }
+      let_or_exp named x e.it e.at }
   | sp=shared_pat_opt FUNC xf=id_opt
       tps=typ_params_opt p=pat_plain t=annot_opt fb=func_body
     { (* This is a hack to support local func declarations that return a computed async.
