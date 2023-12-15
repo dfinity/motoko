@@ -239,9 +239,12 @@
 <catch> ::= 
     'catch' <pat_nullary> <exp_nest>
 
+<annot_eq> ::= 
+    (':' <typ>)? '='
+
 <exp_field> ::= 
     'var'? <id> (':' <typ>)?
-    'var'? <id> (':' <typ>)? '=' <exp>
+    'var'? <id> <annot_eq> <exp>
 
 <dec_field> ::= 
     <vis> <stab> <dec>
@@ -284,10 +287,10 @@
 
 <pat_field> ::= 
     <id> (':' <typ>)?
-    <id> (':' <typ>)? '=' <pat>
+    <id> <annot_eq> <pat>
 
 <dec_var> ::= 
-    'var' <id> (':' <typ>)? '=' <exp>
+    'var' <id> <annot_eq> <exp>
 
 <dec_nonvar> ::= 
     'let' <pat> '=' <exp>
