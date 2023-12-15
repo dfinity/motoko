@@ -164,9 +164,11 @@ pub struct State {
     allocation_count: usize, // Number of allocations during an active GC run.
     mark_state: Option<MarkState>,
     iterator_state: Option<PartitionedHeapIterator>,
-    running_increment: bool, // GC increment is active.
     statistics: Statistics,
 }
+
+/// Temporary state during message execution, not part of the persistent metadata.
+static mut RUNNING_GC_INCREMENT: bool = false;
 
 /// Incremental GC.
 /// Each GC call has its new GC instance that shares the common GC state `STATE`.
@@ -191,7 +193,6 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
             allocation_count: 0,
             mark_state: None,
             iterator_state: None,
-            running_increment: false,
             statistics,
         }
     }
@@ -214,8 +215,8 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     /// * The mark phase can only be started on an empty call stack.
     /// * The update phase can only be completed on an empty call stack.
     pub unsafe fn empty_call_stack_increment(&mut self, roots: Roots) {
-        debug_assert!(!self.state.running_increment);
-        self.state.running_increment = true;
+        debug_assert!(!RUNNING_GC_INCREMENT);
+        RUNNING_GC_INCREMENT = true;
         if self.pausing() {
             self.start_marking(roots);
         }
@@ -237,7 +238,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         if self.updating_completed() {
             self.complete_run(roots);
         }
-        self.state.running_increment = false;
+        RUNNING_GC_INCREMENT = false;
     }
 
     unsafe fn pausing(&mut self) -> bool {
@@ -456,7 +457,7 @@ const GC_MEMORY_RESERVE: usize = (128 + 512) * MB;
 pub unsafe fn memory_reserve() -> usize {
     use crate::memory::GENERAL_MEMORY_RESERVE;
 
-    let additional_reserve = if get_incremental_gc_state().running_increment {
+    let additional_reserve = if RUNNING_GC_INCREMENT {
         0
     } else {
         GC_MEMORY_RESERVE

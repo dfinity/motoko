@@ -243,7 +243,7 @@ $(RTS_RUST_DEBUG_WASM_A): $(RTS_DEPENDENCIES)
 
 TEST_DEPENDENCIES=$(TOMMATH_WASM_A) $(TOMMATH_BINDINGS_RS)
 TEST_BUILD=cd motoko-rts-tests && cargo build --target=wasm32-wasi
-TEST_RUN=wasmtime --disable-cache motoko-rts-tests/target/wasm32-wasi/debug/motoko-rts-tests.wasm
+TEST_RUN=wasmtime -C cache=n -W nan-canonicalization=y motoko-rts-tests/target/wasm32-wasi/debug/motoko-rts-tests.wasm
 
 .PHONY: test
 
