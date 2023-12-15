@@ -82,13 +82,11 @@ let assign_op lhs rhs_f at =
   | [] -> e
   | ds -> BlockE (ds @ [ExpD e @? e.at]) @? at
 
-let annot_exp e t_opt =
-  match t_opt with
+let annot_exp e = function
   | None -> e
   | Some t -> AnnotE(e, t) @? span t.at e.at
 
-let annot_pat p t_opt =
-  match t_opt with
+let annot_pat p = function
   | None -> p
   | Some t -> AnnotP(p, t) @! span t.at p.at
 
@@ -752,7 +750,7 @@ catch :
   | CATCH p=pat_nullary e=exp_nest
     { {pat = p; exp = e} @@ at $sloc }
 
-%inline annot_eq :
+%inline annot_opt_eq :
   | t=annot_opt EQ
     { t }
 
@@ -760,7 +758,7 @@ exp_field :
   | m=var_opt x=id t=annot_opt
     { let e = VarE(x.it @@ x.at) @? x.at in
       { mut = m; id = x; exp = annot_exp e t; } @@ at $sloc }
-  | m=var_opt x=id t=annot_eq e=exp(ob)
+  | m=var_opt x=id t=annot_opt_eq e=exp(ob)
     { { mut = m; id = x; exp = annot_exp e t; } @@ at $sloc }
 
 dec_field :
@@ -833,7 +831,7 @@ pat :
 pat_field :
   | x=id t=annot_opt
     { {id = x; pat = annot_pat (VarP x @! x.at) t} @@ at $sloc }
-  | x=id t=annot_eq p=pat
+  | x=id t=annot_opt_eq p=pat
     { {id = x; pat = annot_pat p t} @@ at $sloc }
 
 pat_opt :
@@ -847,7 +845,7 @@ pat_opt :
 (* Declarations *)
 
 dec_var :
-  | VAR x=id t=annot_eq e=exp(ob)
+  | VAR x=id t=annot_opt_eq e=exp(ob)
     { VarD(x, annot_exp e t) @? at $sloc }
 
 dec_nonvar :
