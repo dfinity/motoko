@@ -1,4 +1,3 @@
-# INCREMENTAL-GC-ONLY
 # SKIP ic-ref-run
 install $ID memory-reserve-composite/memory-reserve-composite.mo ""
 ingress $ID prepare1 "DIDL\x00\x00"

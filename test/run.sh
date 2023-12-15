@@ -254,15 +254,6 @@ do
 
   case $ext in
   "mo")
-    if grep -q "//INCREMENTAL-GC-ONLY" $base.mo
-    then
-      if [[ $EXTRA_MOC_ARGS != *"--incremental-gc"* ]]
-      then
-        $ECHO " Skipped (non-incremental GC)"
-        continue
-      fi
-    fi
-
     # extra flags (allow shell variables there)
     moc_extra_flags="$(eval echo $(grep '//MOC-FLAG' $base.mo | cut -c11- | paste -sd' '))"
     moc_extra_env="$(eval echo $(grep '//MOC-ENV' $base.mo | cut -c10- | paste -sd' '))"
@@ -445,14 +436,6 @@ do
       if grep -q "# *SKIP $runner" $(basename $file)
       then
         continue
-      fi
-
-      if grep -q "# *INCREMENTAL-GC-ONLY" $(basename $file)
-      then
-        if [[ $EXTRA_MOC_ARGS != *"--incremental-gc"* ]]
-        then 
-          continue
-        fi
       fi
 
       have_var_name="HAVE_${runner//-/_}"

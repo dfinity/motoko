@@ -1,9 +1,8 @@
 //MOC-NO-FORCE-GC
-//INCREMENTAL-GC-ONLY
 import Prim "mo:prim";
 
 actor {
-    let retained = Prim.Array_init<Nat>(6 * 1024 * 1024, 0);
+    let retained = Prim.Array_init<Nat>(5 * 1024 * 1024, 0);
     // GC is triggered during initialization
 
     var heapSizeWithGarbage = 0;
@@ -13,7 +12,6 @@ actor {
         ignore Prim.Array_init<Nat>(1024 * 1024, 0);
         heapSizeWithGarbage := Prim.rts_heap_size();
         // Growth is too little to trigger the incremental GC.
-        // Note: The generational GC would still run the GC.
     };
 
     public query func checkBeforeGC(): async() {
