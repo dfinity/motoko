@@ -70,7 +70,7 @@ unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
 #[cfg(feature = "ic")]
 unsafe fn should_start() -> bool {
     use self::partitioned_heap::PARTITION_SIZE;
-    use crate::constants::{GB, MB};
+    use crate::constants::GB;
     use crate::memory::ic;
 
     const CRITICAL_HEAP_LIMIT: Bytes<u32> = Bytes((2 * GB + 256 * MB) as u32);
@@ -456,7 +456,7 @@ const GC_MEMORY_RESERVE: usize = (128 + 512) * MB;
 pub unsafe fn memory_reserve() -> usize {
     use crate::memory::GENERAL_MEMORY_RESERVE;
 
-    let additional_reserve = if STATE.borrow().running_increment {
+    let additional_reserve = if get_incremental_gc_state().running_increment {
         0
     } else {
         GC_MEMORY_RESERVE

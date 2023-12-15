@@ -21,14 +21,13 @@ impl Memory for IcMemory {
     }
 
     /// Page allocation. Ensures that the memory up to, but excluding, the given pointer is allocated.
-    /// Ensure a memory reserve of at least one Wasm page depending on the canister state.
-    /// `memory_reserve`: A memory reserve in bytes ensured during update and initialization calls.
-    //  For use by queries and upgrade calls. The reserve may vary depending on the GC and the phase of the GC.
+    /// Ensure a memory reserve for the incremental GC and an additional reserve for upgrades and queries.
     #[inline(never)]
-    unsafe fn grow_memory(&mut self, ptr: u64, memory_reserve: usize) {
+    unsafe fn grow_memory(&mut self, ptr: u64) {
         const LAST_PAGE_LIMIT: usize = 0xFFFF_0000;
         debug_assert_eq!(LAST_PAGE_LIMIT, usize::MAX - WASM_PAGE_SIZE.as_usize() + 1);
         let limit = if keep_memory_reserve() {
+            let memory_reserve = crate::gc::incremental::memory_reserve();
             // Spare a memory reserve during update and initialization calls for use by queries and upgrades.
             usize::MAX - memory_reserve + 1
         } else {
