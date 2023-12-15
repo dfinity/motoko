@@ -112,7 +112,7 @@ fn inject_imports(for_ic : bool, module: Module) -> Module {
         );
         builder.push_import(
             builder::import()
-                .module("wasi_unstable")
+                .module("wasi_snapshot_preview1")
                 .field("fd_write")
                 .external()
                 .func(import_sig)

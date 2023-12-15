@@ -4,7 +4,9 @@ use crate::types::{Bytes, Words};
 pub const WORD_SIZE: usize = 8;
 
 /// Wasm page size (64 KiB) in bytes
-pub const WASM_PAGE_SIZE: Bytes<usize> = Bytes(64 * 1024);
+pub const WASM_PAGE_SIZE: Bytes<usize> = Bytes(64 * KB);
 
-/// Wasm heap size in words. Note that `to_bytes` on this value will overflow as it is `usize::MAX + 1`.
-pub const WASM_HEAP_SIZE: Words<usize> = Words(usize::MAX / WORD_SIZE + 1);
+/// Byte constants
+pub const KB: usize = 1024;
+pub const MB: usize = 1024 * KB;
+pub const GB: usize = 1024 * MB;

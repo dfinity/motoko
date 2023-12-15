@@ -1,9 +1,12 @@
 #[cfg(feature = "ic")]
 pub mod ic;
 
-use crate::constants::WASM_HEAP_SIZE;
+use crate::constants::MAXIMUM_HEAP_SIZE;
 use crate::rts_trap_with;
 use crate::types::*;
+
+#[cfg(feature = "ic")]
+use crate::constants::MB;
 
 use motoko_rts_macros::ic_mem_fn;
 
@@ -52,11 +55,6 @@ pub unsafe fn alloc_blob<M: Memory>(mem: &mut M, size: Bytes<usize>) -> Value {
 /// Note: After initialization, the post allocation barrier needs to be applied to all mutator objects.
 #[ic_mem_fn]
 pub unsafe fn alloc_array<M: Memory>(mem: &mut M, len: usize) -> Value {
-    // Array payload should not be larger than half of the memory
-    if len > (WASM_HEAP_SIZE / 2).0 {
-        rts_trap_with("Array allocation too large");
-    }
-
     let skewed_ptr = mem.alloc_words(size_of::<Array>() + Words(len));
 
     let ptr: *mut Array = skewed_ptr.get_ptr() as *mut Array;

@@ -2,8 +2,11 @@
 
 use super::Memory;
 use crate::constants::WASM_PAGE_SIZE;
+use crate::gc::incremental::memory_reserve;
+use crate::gc::incremental::partitioned_heap::MAXIMUM_MEMORY_SIZE;
 use crate::rts_trap_with;
 use crate::types::{Bytes, Value, Words};
+use core::cmp::min;
 use core::arch::wasm64;
 
 /// Provides a `Memory` implementation, to be used in functions compiled for IC or WASI. The
@@ -16,14 +19,14 @@ impl Memory for IcMemory {
         crate::gc::incremental::get_partitioned_heap().allocate(self, n)
     }
 
-    /// Page allocation. Ensures that the memory up to, but excluding, the given pointer is allocated,
-    /// with the slight exception of not allocating the extra page for address 0xFFFF_0000.
+    /// Page allocation. Ensures that the memory up to, but excluding, the given pointer is allocated.
+    /// Ensure a memory reserve for the incremental GC.
     #[inline(never)]
     unsafe fn grow_memory(&mut self, ptr: usize) {
-        const MEMORY_LIMIT: usize = 0xFFFF_FFFF_FFFF_0000;
-        debug_assert_eq!(MEMORY_LIMIT, usize::MAX - WASM_PAGE_SIZE.as_usize() + 1);
-        if ptr > MEMORY_LIMIT {
-            // spare the last wasm memory page
+        const LAST_PAGE_LIMIT: usize = 0xFFFF_FFFF_FFFF_0000;
+        debug_assert_eq!(LAST_PAGE_LIMIT, usize::MAX - WASM_PAGE_SIZE.as_usize() + 1);
+        let limit = min(LAST_PAGE_LIMIT, MAXIMUM_MEMORY_SIZE.as_usize() - memory_reserve());
+        if ptr > limit {
             rts_trap_with("Cannot grow memory")
         };
         let page_size = WASM_PAGE_SIZE.as_usize();
