@@ -1616,7 +1616,7 @@ module BitTagged = struct
     let lower_bound = Int64.(neg (shift_left 1L sbits)) in
     let upper_bound = Int64.shift_left 1L sbits in
     Func.share_code1 Func.Never env
-      (prim_fun_name pty "if_can_tag") ("x", I64Type) [I32Type] (fun env get_x ->
+      (prim_fun_name pty "if_can_tag_i64") ("x", I64Type) [I32Type] (fun env get_x ->
       compile_const_64 lower_bound ^^
       get_x ^^
       G.i (Compare (Wasm.Values.I64 I64Op.LeS)) ^^
@@ -1661,7 +1661,7 @@ module BitTagged = struct
     let upper_bound = Int32.shift_left 1l sbits in
     (* lower_bound <= n && n < upper_bound *)
     Func.share_code1 Func.Never env
-      (prim_fun_name pty "if_can_tag") ("x", I32Type) [I32Type] (fun env get_x ->
+      (prim_fun_name pty "if_can_tag_i32") ("x", I32Type) [I32Type] (fun env get_x ->
       compile_unboxed_const lower_bound ^^
       get_x ^^
       G.i (Compare (Wasm.Values.I32 I32Op.LeS)) ^^
