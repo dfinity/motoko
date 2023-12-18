@@ -3895,7 +3895,7 @@ module Object = struct
    let load_idx_raw env f =
      idx_raw env f ^^
      load_ptr
- 
+
    (* load the actual value (dereferencing the mutbox) *)
    let load_idx env obj_type f =
      idx env obj_type f ^^
@@ -7862,19 +7862,26 @@ module GraphCopyStabilization = struct
     Blob.lit env candid_type_desc ^^
     Blob.lit env serialized_offsets
 
+  let load_old_field env field get_old_actor =
+    if field.Type.typ = Type.(Opt Any) then
+      (* Drop the content of a destabilized variable of type Any. *)
+      Opt.inject env Tuple.compile_unit
+    else
+      (get_old_actor ^^ Object.load_idx_raw env field.Type.lab)
+
   (* Support additional fields in an upgraded actor. *)
   let create_new_actor env actor_type =
     let set_old_actor, get_old_actor = new_local env "old_actor" in
     let get_field_value field = 
       get_old_actor ^^
-      Object.contains_field env field ^^
+      Object.contains_field env field.Type.lab ^^
       (G.if1 I32Type
-        (get_old_actor ^^ Object.load_idx_raw env field)
+        (load_old_field env field get_old_actor)
         (Opt.null_lit env)
       ) in
     let (_, field_declarations) = Type.as_obj actor_type in
     let field_initializers = List.map
-      (fun field -> (field.Type.lab, fun () -> (get_field_value field.Type.lab)))
+      (fun field -> (field.Type.lab, fun () -> (get_field_value field)))
       field_declarations
     in
     set_old_actor ^^
