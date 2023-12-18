@@ -2316,7 +2316,7 @@ module BoxedWord64 = struct
 
   let box env pty =
     Func.share_code1 Func.Never env
-      (prim_fun_name pty "box") ("n", I64Type) [I32Type] (fun env get_n ->
+      (prim_fun_name pty "box64") ("n", I64Type) [I32Type] (fun env get_n ->
       get_n ^^ BitTagged.if_can_tag_i64 env pty [I32Type]
         (get_n ^^ BitTagged.tag env pty)
         (compile_box env pty get_n)
@@ -2324,7 +2324,7 @@ module BoxedWord64 = struct
 
   let unbox env pty =
     Func.share_code1 Func.Never env
-      (prim_fun_name pty "unbox") ("n", I32Type) [I64Type] (fun env get_n ->
+      (prim_fun_name pty "unbox64") ("n", I32Type) [I64Type] (fun env get_n ->
       get_n ^^
       BitTagged.if_tagged_scalar env [I64Type]
         ( get_n ^^ BitTagged.untag env pty)
@@ -3039,16 +3039,16 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
 
   (* A variant of BitTagged.can_tag that works on right-0-tagged 64 bit numbers *)
   let if_can_tag_padded env retty is1 is2 =
-    let ubitsL = Int64.of_int(BitTagged.ubits_of Type.Int64) in
-    compile_shrS64_const (Int64.sub 32L ubitsL) ^^ BitTagged.if_can_tag_i64 env Type.Int retty is1 is2 (*FIX*)
+    let ubitsL = Int64.of_int(BitTagged.ubits_of Type.Int) in
+    compile_shrS64_const (Int64.sub 32L ubitsL) ^^ BitTagged.if_can_tag_i64 env Type.Int retty is1 is2
 
   (* right-0-padded signed i64 to tagged scalar *)
   let tag_padded = G.i (Convert (Wasm.Values.I32 I32Op.WrapI64))
 
   (* creates a boxed bignum from a right-0-padded signed i64 *)
   let box64 env =
-    let ubitsL = Int64.of_int(BitTagged.ubits_of Type.Int64) in
-    compile_shrS64_const (Int64.sub 32L ubitsL) ^^ Num.from_signed_word64 env (*FIX*)
+    let ubitsL = Int64.of_int(BitTagged.ubits_of Type.Int) in
+    compile_shrS64_const (Int64.sub 32L ubitsL) ^^ Num.from_signed_word64 env
 
   (* creates a boxed bignum from an right-0-padded signed i32 *)
   let extend_and_box64 env = extend64 ^^ box64 env
