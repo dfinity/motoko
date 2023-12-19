@@ -1,6 +1,6 @@
 import Prim = "mo:⛔";
 // let-like annotation
-actor This : actor { beep : () -> async () } {
+actor class C () : actor { beep : () -> async () } = This {
 
   public func beep() : async () {};
 

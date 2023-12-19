@@ -1,0 +1,1 @@
+issue-4323-class.mo:3.1-11.2: warning [M0135], actor classes with non non-async return types are deprecated; please declare the return type as 'async ...'

@@ -1,0 +1,2 @@
+issue-4323.mo:9.43-9.47: type error [M0072], field ohoh does not exist in type
+  actor {beep : shared () -> async ()}
