@@ -7753,17 +7753,23 @@ module Persistence = struct
   let create_actor env actor_type get_field_value =
     let (_, field_declarations) = Type.as_obj actor_type in
     let field_initializers = List.map
-      (fun field -> (field.Type.lab, fun () -> (get_field_value field.Type.lab)))
+      (fun field -> (field.Type.lab, fun () -> (get_field_value field)))
       field_declarations
     in
     Object.lit_raw env field_initializers
 
   let recover_actor env actor_type =
+    let load_old_field env field =
+      if field.Type.typ = Type.(Opt Any) then
+        (* A stable variable may have been promoted to type `Any`: Therefore, drop its former content. *)
+        Opt.inject env Tuple.compile_unit
+      else
+        (load_stable_actor env ^^ Object.load_idx_raw env field.Type.lab) in
     let recover_field field = 
       load_stable_actor env ^^
-      Object.contains_field env field ^^
+      Object.contains_field env field.Type.lab ^^
       (G.if1 I32Type
-        (load_stable_actor env ^^ Object.load_idx_raw env field)
+        (load_old_field env field)
         (Opt.null_lit env)
       ) in
     create_actor env actor_type recover_field ^^
