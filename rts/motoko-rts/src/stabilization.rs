@@ -21,6 +21,7 @@ use motoko_rts_macros::ic_mem_fn;
 use core::cmp::min;
 
 use crate::{
+    constants::WASM_PAGE_SIZE,
     memory::Memory,
     rts_trap_with,
     stabilization::{
@@ -351,7 +352,7 @@ impl<'a, M: Memory + 'a> GraphCopy<StableValue, Value, u32> for Deserialization<
 }
 
 fn clear_stable_memory(start: u64, length: u64) {
-    const CHUNK_SIZE: usize = 1024;
+    const CHUNK_SIZE: usize = WASM_PAGE_SIZE.as_usize();
     let empty_chunk = [0u8; CHUNK_SIZE];
     let mut position = start;
     let end = start + length;

@@ -115,11 +115,11 @@ impl Bytes<u32> {
         Words((self.0 + WORD_SIZE - 1) / WORD_SIZE)
     }
 
-    pub fn as_u32(self) -> u32 {
+    pub const fn as_u32(self) -> u32 {
         self.0
     }
 
-    pub fn as_usize(self) -> usize {
+    pub const fn as_usize(self) -> usize {
         self.0 as usize
     }
 }
