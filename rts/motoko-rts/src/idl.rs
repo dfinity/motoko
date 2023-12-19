@@ -626,7 +626,10 @@ pub(crate) unsafe fn memory_compatible(
     t2: i32,
     main_actor: bool,
 ) -> bool {
-    if t1 >= 0 && t2 >= 0 {
+    // Do not use the cache for the main actor sub-type relation, as it does not follow the ordinary sub-type rules,
+    // i.e. new actor fields can be inserted in new program versions.
+    // The `main_actor` flag only occurs non-recursively at the top level of the memory compatibility check.
+    if !main_actor && t1 >= 0 && t2 >= 0 {
         let t1 = t1 as u32;
         let t2 = t2 as u32;
         if recurring_memory_check(rel, variance, t1, t2) {
