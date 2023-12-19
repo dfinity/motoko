@@ -3091,8 +3091,13 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
 
   let compile_add = try_unbox2 "B_add" Word64.compile_add Num.compile_add
 
-  let adjust_arg2 code env = compile_shrS64_const (Int64.sub 32L BitTagged.ubitsL) ^^ code env (* FIX*)
-  let adjust_result code env = code env ^^ compile_shl64_const (Int64.sub 32L BitTagged.ubitsL) (* FIX *)
+  let adjust_arg2 code env =
+    compile_shrS64_const (Int64.of_int (32 - BitTagged.ubits_of Type.Int)) ^^
+    code env (* TBR *)
+  let adjust_result code env =
+    code env ^^
+    compile_shl64_const (Int64.of_int (32 - BitTagged.ubits_of Type.Int))
+    (* FIX: Add tag? *)
 
   let compile_mul = try_unbox2 "B_mul" (adjust_arg2 Word64.compile_mul) Num.compile_mul
   let compile_signed_sub = try_unbox2 "B+sub" Word64.compile_signed_sub Num.compile_signed_sub
