@@ -77,7 +77,7 @@ enum CompatibilityMode {
     PureCandid,
     /// Candidish stabilization (old stabilization format).
     CandidishStabilization,
-    /// Memory compatibility of the orthogonal persistence.
+    /// Memory compatibility of orthogonal persistence.
     MemoryCompatibility,
 }
 
