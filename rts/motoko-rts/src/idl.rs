@@ -71,14 +71,28 @@ pub unsafe fn leb128_decode_ptr(buf: *mut Buf) -> (u32, *mut u8) {
     (leb128_decode_32(buf), (*buf).ptr)
 }
 
-unsafe fn is_primitive_type(extended: bool, ty: i32) -> bool {
-    ty < 0
-        && (ty >= IDL_PRIM_lowest || ty == IDL_REF_principal || (extended && ty == IDL_EXT_region))
+#[derive(Copy, Clone, PartialEq)]
+enum CompatibilityMode {
+    /// Pure Candid used for IC message payloads.
+    PureCandid,
+    /// Candidish stabilization (old stabilization format).
+    CandidishStabilization,
+    /// Memory compatibility of the orthogonal persistence.
+    MemoryCompatibility,
 }
 
-// Only used for memory-compatibility checks for orthogonal persistence.
-unsafe fn is_extended_primitive_type(ty: i32) -> bool {
-    is_primitive_type(true, ty) || ty < 0 && ty == IDL_EXT_blob
+unsafe fn is_primitive_type(mode: CompatibilityMode, ty: i32) -> bool {
+    if ty >= 0 {
+        return false;
+    }
+    if ty >= IDL_PRIM_lowest || ty == IDL_REF_principal {
+        return true;
+    }
+    match mode {
+        CompatibilityMode::PureCandid => false,
+        CompatibilityMode::CandidishStabilization => ty == IDL_EXT_region,
+        CompatibilityMode::MemoryCompatibility => ty == IDL_EXT_region || ty == IDL_EXT_blob,
+    }
 }
 
 // TBR; based on Text.text_compare
@@ -96,14 +110,14 @@ unsafe fn utf8_cmp(len1: usize, p1: *mut u8, len2: usize, p2: *mut u8) -> i32 {
     }
 }
 
-unsafe fn check_typearg(extended: bool, ty: i32, n_types: u32) {
+unsafe fn check_typearg(mode: CompatibilityMode, ty: i32, n_types: u32) {
     // Arguments to type constructors can be primitive types or type indices
-    if !(is_primitive_type(extended, ty) || (ty >= 0 && (ty as u32) < n_types)) {
+    if !(is_primitive_type(mode, ty) || (ty >= 0 && (ty as u32) < n_types)) {
         idl_trap_with("invalid type argument");
     }
 }
 
-unsafe fn parse_fields(extended: bool, buf: *mut Buf, n_types: u32) {
+unsafe fn parse_fields(mode: CompatibilityMode, buf: *mut Buf, n_types: u32) {
     let mut next_valid = 0;
     for n in (1..=leb128_decode_32(buf)).rev() {
         let tag = leb128_decode_32(buf);
@@ -112,7 +126,7 @@ unsafe fn parse_fields(extended: bool, buf: *mut Buf, n_types: u32) {
         }
         next_valid = tag + 1;
         let t = sleb128_decode_32(buf);
-        check_typearg(extended, t, n_types);
+        check_typearg(mode, t, n_types);
     }
 }
 
@@ -139,6 +153,8 @@ unsafe fn alloc<M: Memory>(mem: &mut M, size: Words<usize>) -> *mut u8 {
 ///
 /// * returns a pointer to the beginning of the list of main types
 ///   (again via pointer argument, for lack of multi-value returns in C ABI)
+///
+/// `extended` denotes Candidish stabilization format, otherwise it assumes the pure Candid format.
 #[ic_mem_fn]
 unsafe fn parse_idl_header<M: Memory>(
     mem: &mut M,
@@ -148,6 +164,12 @@ unsafe fn parse_idl_header<M: Memory>(
     typtbl_size_out: *mut usize,
     main_types_out: *mut *mut u8,
 ) {
+    let mode = if extended {
+        CompatibilityMode::CandidishStabilization
+    } else {
+        CompatibilityMode::PureCandid
+    };
+
     if (*buf).ptr == (*buf).end {
         idl_trap_with(
             "empty input. Expected Candid-encoded argument, but received a zero-length argument",
@@ -183,34 +205,34 @@ unsafe fn parse_idl_header<M: Memory>(
             // internal
             // See Note [mutable stable values] in codegen/compile.ml
             let t = sleb128_decode_32(buf);
-            check_typearg(extended, t, n_types);
+            check_typearg(mode, t, n_types);
         } else if ty >= 0 {
             idl_trap_with("illegal type table"); // illegal
-        } else if is_primitive_type(extended, ty) {
+        } else if is_primitive_type(mode, ty) {
             // illegal
             idl_trap_with("primitive type in type table");
         } else if ty == IDL_CON_opt {
             let t = sleb128_decode_32(buf);
-            check_typearg(extended, t, n_types);
+            check_typearg(mode, t, n_types);
         } else if ty == IDL_CON_vec {
             let t = sleb128_decode_32(buf);
-            check_typearg(extended, t, n_types);
+            check_typearg(mode, t, n_types);
         } else if ty == IDL_CON_record {
-            parse_fields(extended, buf, n_types);
+            parse_fields(mode, buf, n_types);
         } else if ty == IDL_EXT_tuple {
-            parse_fields(extended, buf, n_types);
+            parse_fields(mode, buf, n_types);
         } else if ty == IDL_CON_variant {
-            parse_fields(extended, buf, n_types);
+            parse_fields(mode, buf, n_types);
         } else if ty == IDL_CON_func {
             // Arg types
             for _ in 0..leb128_decode_32(buf) {
                 let t = sleb128_decode_32(buf);
-                check_typearg(extended, t, n_types);
+                check_typearg(mode, t, n_types);
             }
             // Ret types
             for _ in 0..leb128_decode_32(buf) {
                 let t = sleb128_decode_32(buf);
-                check_typearg(extended, t, n_types);
+                check_typearg(mode, t, n_types);
             }
             // Annotations
             for _ in 0..leb128_decode_32(buf) {
@@ -249,7 +271,7 @@ unsafe fn parse_idl_header<M: Memory>(
 
                 // Type
                 let t = sleb128_decode_32(buf);
-                check_typearg(extended, t, n_types);
+                check_typearg(mode, t, n_types);
             }
         } else {
             // Future type
@@ -296,7 +318,7 @@ unsafe fn parse_idl_header<M: Memory>(
     *main_types_out = (*buf).ptr;
     for _ in 0..leb128_decode_32(buf) {
         let t = sleb128_decode_32(buf);
-        check_typearg(extended, t, n_types);
+        check_typearg(mode, t, n_types);
     }
 
     *typtbl_out = typtbl;
@@ -546,7 +568,7 @@ unsafe extern "C" fn skip_fields(tb: *mut Buf, buf: *mut Buf, typtbl: *mut *mut 
 }
 
 unsafe fn is_opt_reserved(typtbl: *mut *mut u8, end: *mut u8, t: i32) -> bool {
-    if is_primitive_type(false, t) {
+    if is_primitive_type(CompatibilityMode::PureCandid, t) {
         return t == IDL_PRIM_reserved;
     }
 
@@ -625,7 +647,10 @@ pub(crate) unsafe fn memory_compatible(
     t2: i32,
     main_actor: bool,
 ) -> bool {
-    if t1 >= 0 && t2 >= 0 {
+    // Do not use the cache for the main actor sub-type relation, as it does not follow the ordinary sub-type rules,
+    // i.e. new actor fields can be inserted in new program versions.
+    // The `main_actor` flag only occurs non-recursively at the top level of the memory compatibility check.
+    if !main_actor && t1 >= 0 && t2 >= 0 {
         let t1 = t1 as usize;
         let t2 = t2 as usize;
         if recurring_memory_check(rel, variance, t1, t2) {
@@ -635,7 +660,10 @@ pub(crate) unsafe fn memory_compatible(
     };
 
     /* primitives reflexive */
-    if is_extended_primitive_type(t1) && is_extended_primitive_type(t2) && t1 == t2 {
+    if is_primitive_type(CompatibilityMode::MemoryCompatibility, t1)
+        && is_primitive_type(CompatibilityMode::MemoryCompatibility, t2)
+        && t1 == t2
+    {
         return true;
     }
 
@@ -928,7 +956,10 @@ pub(crate) unsafe fn sub(
     };
 
     /* primitives reflexive */
-    if is_primitive_type(false, t1) && is_primitive_type(false, t2) && t1 == t2 {
+    if is_primitive_type(CompatibilityMode::PureCandid, t1)
+        && is_primitive_type(CompatibilityMode::PureCandid, t2)
+        && t1 == t2
+    {
         return true;
     }
 
