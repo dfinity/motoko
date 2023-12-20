@@ -42,6 +42,7 @@ For a long-term perspective, the object layout of the serialized data in the sta
 * The Brooks forwarding pointer is omitted (used by the incremental GC).
 * The pointers encode skewed stable memory offsets to the corresponding target objects.
 * References to the null objects are encoded by a sentinel value.
+* `BigInt` are explicitly serialized in a defined portable little endian representation.
 
 ## Specific Aspects
 * The null object is handled specifically to guarantee the singleton property. For this purpose, null references are encoded as sentinel values that are decoded back to the static singleton of the new program version.
@@ -50,10 +51,10 @@ For a long-term perspective, the object layout of the serialized data in the sta
 * For backwards compatibility, old Candid destabilzation is still supported when upgrading from a program that used older compiler version.
 * Incremental GC: Serialization needs to consider Brooks forwarding pointers (not to be confused with the Cheney's forwarding information), while deserialization can deal with partitioned heap that can have internal fragmentation (free space at partition ends).
 * The partitioned heap prevents linear scanning of the heap, especially in the presence of large objects that can be placed at a higher partition than subsequently allocated normal-sized objects. For this reason, a scan stack is allocated in main memory, remembering the deserialized objects that still need to be scanned. With this, the deserialization does not need to make any assumptions of the heap structure (e.g. monotonically increasing allocations, free space markers, empty heap on deserialization start etc.).
+* If actor fields are promoted to the `Any` type in a new program version, their content is released in that variable to allow memory reclamation.
 
 ## Open Aspects
 * Unused fields in stable records that are no longer declared in a new program versions should be removed. This could be done during garbage collection, when objects are moved/evacuated.
-* The binary serialization and deserialization of `BigInt` entails dynamic allocations (cf. `mp_to_sbin` and `mp_from_sbin` of Tom's math library).
 * The scan stack used during destabilization involves dynamic allocations.
 
 ## Related PRs
