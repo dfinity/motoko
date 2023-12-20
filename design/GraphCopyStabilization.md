@@ -42,7 +42,7 @@ For a long-term perspective, the object layout of the serialized data in the sta
 * The Brooks forwarding pointer is omitted (used by the incremental GC).
 * The pointers encode skewed stable memory offsets to the corresponding target objects.
 * References to the null objects are encoded by a sentinel value.
-* `BigInt` are explicitly serialized in a defined portable little endian representation.
+* `BigInt` are explicitly serialized in a defined portable little endian representation, without that the serialization or deserialization allocates temporary objects.
 
 ## Specific Aspects
 * The null object is handled specifically to guarantee the singleton property. For this purpose, null references are encoded as sentinel values that are decoded back to the static singleton of the new program version.
