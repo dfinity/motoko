@@ -1,5 +1,13 @@
 # Motoko compiler changelog
 
+* motoko (`moc`)
+
+  * bugfix: fix broken implementations of `Region.loadNat32`, `Region.storeNat32`, `Region.loadInt32`, `Region.storeInt32` (#4335).
+    Values previously stored with the broken 32-bit operations must be loaded with care.
+    If bit 0 is clear, the original value can be obtained by an arithmetic shift right by 1 bit.
+    If bit 0 is set, the value cannot be trusted and should be ignored
+    (it encodes some transient address of a boxed value).
+
 ## 0.10.2 (2023-11-12)
 
 * motoko (`moc`)
