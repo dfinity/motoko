@@ -3692,11 +3692,11 @@ module Object = struct
   (* An object with a mutable field1 and immutable field 2 has the following
      heap layout:
  
-     ┌──────┬─────┬──────────┬──────────┬─────────┬─────────────┬───┐
-     │ obj header │ n_fields │ hash_ptr │ ind_ptr │ field2_data │ … │
-     └──────┴─────┴──────────┴┬─────────┴┬────────┴─────────────┴───┘
-          ┌───────────────────┘          │
-          │   ┌──────────────────────────┘
+     ┌──────┬─────┬──────────┬─────────┬─────────────┬───┐
+     │ obj header │ hash_ptr │ ind_ptr │ field2_data │ … │
+     └──────┴─────┴┬─────────┴┬────────┴─────────────┴───┘
+          ┌────────┘          │
+          │   ┌───────────────┘
           │   ↓
           │  ╶─┬────────┬─────────────┐
           │    │ ObjInd │ field1_data │
@@ -3706,6 +3706,7 @@ module Object = struct
           └─────────────┴─────────────┴─────────────┴───┘ 
  
      The object header includes the object tag (Object) and the forwarding pointer.
+     The size of the object (number of fields) can be derived from the hash blob via `hash_ptr`.
      The forwarding pointer is only reserved if compiled for the incremental GC.
  
      The field hashes reside in a blob inside the dynamic heap.
@@ -3729,11 +3730,10 @@ module Object = struct
      not for the implementing of sharing of mutable stable values.
    *)
  
-   let header_size env = Int32.add (Tagged.header_size env) 2l
+   let header_size env = Int32.add (Tagged.header_size env) 1l
  
    (* Number of object fields *)
-   let size_field env = Int32.add (Tagged.header_size env) 0l
-   let hash_ptr_field env = Int32.add (Tagged.header_size env) 1l
+   let hash_ptr_field env = Int32.add (Tagged.header_size env) 0l
  
    module FieldEnv = Env.Make(String)
  
@@ -3750,7 +3750,6 @@ module Object = struct
        Blob.vanilla_lit env (StaticBytes.as_bytes hash_payload) in
  
      Tagged.shared_static_obj env Tagged.Object StaticBytes.[
-       I32 (Int32.of_int (List.length fs));
        I32 hash_blob;
        i32s ptrs;
      ]
@@ -3783,11 +3782,6 @@ module Object = struct
      let (set_ri, get_ri, ri) = new_local_ env I32Type "obj" in
      Tagged.alloc env (Int32.add (header_size env) sz) Tagged.Object ^^
      set_ri ^^
- 
-     (* Set size *)
-     get_ri ^^
-     compile_unboxed_const sz ^^
-     Tagged.store_field env (size_field env) ^^
  
      (* Set hash_ptr *)
      get_ri ^^
