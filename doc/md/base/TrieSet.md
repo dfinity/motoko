@@ -70,6 +70,15 @@ Test if `s1` is a subset of `s2`.
 func mem<T>(s : Set<T>, x : T, xh : Hash, eq : (T, T) -> Bool) : Bool
 ```
 
+@deprecated: use `TrieSet.contains()`
+
+Test if a set contains a given element.
+
+## Function `contains`
+``` motoko no-repl
+func contains<T>(s : Set<T>, x : T, xh : Hash, eq : (T, T) -> Bool) : Bool
+```
+
 Test if a set contains a given element.
 
 ## Function `union`
