@@ -5184,16 +5184,21 @@ module StableMem = struct
     get_version env ^^
     compile_eq_const legacy_version_some_stable_memory ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
-    (G.if0
-      (compile_unboxed_const version_graph_copy_no_regions ^^
-      set_version env)
-      G.nop) ^^
-    get_version env ^^
-    compile_eq_const legacy_version_regions ^^
-    (G.if0
-      (compile_unboxed_const version_graph_copy_regions ^^
-      set_version env)
-      G.nop)
+    G.if0
+    begin
+      compile_unboxed_const version_graph_copy_no_regions ^^
+      set_version env
+    end
+    begin
+      get_version env ^^
+      compile_eq_const legacy_version_regions ^^
+      G.if0
+      begin
+        compile_unboxed_const version_graph_copy_regions ^^
+        set_version env
+      end
+      G.nop
+    end
 
   (* stable memory bounds check *)
   let guard env =
