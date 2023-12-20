@@ -614,3 +614,22 @@ assert s.next() == null;
 
 Runtime: O(1)
 Space: O(1)
+
+## Function `take`
+``` motoko no-repl
+func take<T>(array : [T], length : Int) : [T]
+```
+
+Returns a new subarray of given length from the beginning or end of the given array
+
+Returns the entire array if the length is greater than the size of the array
+
+```motoko include=import
+let array = [1, 2, 3, 4, 5];
+assert Array.take(array, 2) == [1, 2];
+assert Array.take(array, -2) == [4, 5];
+assert Array.take(array, 10) == [1, 2, 3, 4, 5];
+assert Array.take(array, -99) == [1, 2, 3, 4, 5];
+```
+Runtime: O(length);
+Space: O(length);
