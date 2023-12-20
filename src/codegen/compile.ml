@@ -3467,11 +3467,11 @@ module Object = struct
   (* An object with a mutable field1 and immutable field 2 has the following
      heap layout:
  
-     ┌──────┬─────┬──────────┬──────────┬─────────┬─────────────┬───┐
-     │ obj header │ n_fields │ hash_ptr │ ind_ptr │ field2_data │ … │
-     └──────┴─────┴──────────┴┬─────────┴┬────────┴─────────────┴───┘
-          ┌───────────────────┘          │
-          │   ┌──────────────────────────┘
+     ┌──────┬─────┬──────────┬─────────┬─────────────┬───┐
+     │ obj header │ hash_ptr │ ind_ptr │ field2_data │ … │
+     └──────┴─────┴┬─────────┴┬────────┴─────────────┴───┘
+          ┌────────┘          │
+          │   ┌───────────────┘
           │   ↓
           │  ╶─┬────────┬─────────────┐
           │    │ ObjInd │ field1_data │
@@ -3481,7 +3481,8 @@ module Object = struct
           └─────────────┴─────────────┴─────────────┴───┘        
  
      The object header includes the object tag (Object) and the forwarding pointer.
- 
+     The size of the object (number of fields) can be derived from the hash blob via `hash_ptr`.
+
      The field hashes reside in a blob inside the dynamic heap.
      The hash blob needs to be tracked by the GC, but not the content of the hash blob.
      This is because the hash values are plain numbers that would look like skewed pointers.ters.
@@ -3500,11 +3501,9 @@ module Object = struct
      not for the implementing of sharing of mutable stable values.
    *)
  
-  let header_size = Int64.add Tagged.header_size 2L
+  let header_size = Int64.add Tagged.header_size 1L
  
-  (* Number of object fields *)
-  let size_field = Int64.add Tagged.header_size 0L
-  let hash_ptr_field = Int64.add Tagged.header_size 1L
+  let hash_ptr_field = Int64.add Tagged.header_size 0L
  
   module FieldEnv = Env.Make(String)
  
@@ -3536,11 +3535,6 @@ module Object = struct
       let (set_ri, get_ri, ri) = new_local_ env I64Type "obj" in
       Tagged.alloc env (Int64.add header_size sz) Tagged.Object ^^
       set_ri ^^
-
-      (* Set size *)
-      get_ri ^^
-      compile_unboxed_const sz ^^
-      Tagged.store_field env size_field ^^
 
       (* Set hash_ptr *)
       get_ri ^^
