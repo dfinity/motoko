@@ -65,12 +65,12 @@ impl Serializer<Array> for StableArray {
         target_array: *mut Array,
     ) {
         let stable_address = stable_object.payload_address();
+        let mut element_address =
+            stable_address + size_of::<StableArray>().to_bytes().as_usize() as u64;
         for index in 0..(*target_array).len {
-            let element_address = stable_address
-                + size_of::<StableArray>().to_bytes().as_usize() as u64
-                + (index * size_of::<StableValue>().to_bytes().as_u32()) as u64;
             let element = stable_memory.read::<StableValue>(element_address);
             target_array.set_raw(index, element.deserialize());
+            element_address += size_of::<StableValue>().to_bytes().as_u32() as u64;
         }
     }
 }
