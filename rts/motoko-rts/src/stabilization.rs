@@ -122,20 +122,19 @@ trait GraphCopy<S: Copy, T: Copy, P: Copy + Default> {
 // Must be a non-skewed value such that the GC also ignores this value.
 const DUMMY_VALUE: StableValue = StableValue::from_raw(0);
 
-pub struct Serialization<'a, M: Memory + 'a> {
-    mem: &'a mut M,
+pub struct Serialization {
     to_space: StableMemoryStream,
 }
 
-impl<'a, M: Memory + 'a> Serialization<'a, M> {
+impl Serialization {
     /// Notes:
     /// - Invalidates the heap by replacing reachable stable object by forwarding objects:
     /// The heap is finally no longer usable by mutator or GC.
     /// - `copy` and partially also `scan` depends on the heap layout. Adjust these functions
     /// whenever the heap layout is changed.
-    pub fn run(mem: &'a mut M, root: Value, stable_start: u64) -> u64 {
+    pub fn run(root: Value, stable_start: u64) -> u64 {
         let to_space = StableMemoryStream::open(stable_start);
-        let mut serialization = Serialization { mem, to_space };
+        let mut serialization = Serialization { to_space };
         serialization.run(root);
         serialization.to_space.close();
         serialization.to_space.written_length()
@@ -174,7 +173,7 @@ impl<'a, M: Memory + 'a> Serialization<'a, M> {
     }
 }
 
-impl<'a, M: Memory + 'a> GraphCopy<Value, StableValue, u32> for Serialization<'a, M> {
+impl GraphCopy<Value, StableValue, u32> for Serialization {
     fn get_forward_address(&self, object: Value) -> Option<StableValue> {
         unsafe {
             let object = Self::resolve_gc_forwarding(object);
@@ -204,7 +203,7 @@ impl<'a, M: Memory + 'a> GraphCopy<Value, StableValue, u32> for Serialization<'a
             let object = Self::resolve_gc_forwarding(object);
             debug_assert!(object.is_obj());
             let address = self.to_space.written_length();
-            serialize(self.mem, &mut self.to_space, object);
+            serialize(&mut self.to_space, object);
             StableValue::from_stable_address(address)
         }
     }
@@ -234,7 +233,7 @@ impl<'a, M: Memory + 'a> GraphCopy<Value, StableValue, u32> for Serialization<'a
     }
 }
 
-impl<'a, M: Memory + 'a> StableToSpace for Serialization<'a, M> {
+impl StableToSpace for Serialization {
     fn to_space(&mut self) -> &mut StableMemoryStream {
         &mut self.to_space
     }
@@ -393,19 +392,15 @@ fn grant_stable_space(byte_size: u64) {
 /// * Algorithm: Cheney's algorithm using main memory as from-space and stable memory as to-space.
 /// * Encoding: The from-space uses the main memory heap layout, while the to-space is encoded in
 ///   the stable object graph layout (see `GraphCopyStabilization.md`).
-#[ic_mem_fn(ic_only)]
-pub unsafe fn stabilize<M: Memory>(
-    mem: &mut M,
-    stable_actor: Value,
-    old_candid_data: Value,
-    old_type_offsets: Value,
-) {
+#[no_mangle]
+#[cfg(feature = "ic")]
+pub unsafe fn stabilize(stable_actor: Value, old_candid_data: Value, old_type_offsets: Value) {
     use crate::stabilization::metadata::StabilizationMetadata;
     use compatibility::TypeDescriptor;
 
     let stable_memory_pages = stable_mem::size();
     let serialized_data_start = stable_memory_pages * PAGE_SIZE;
-    let serialized_data_length = Serialization::run(mem, stable_actor, serialized_data_start);
+    let serialized_data_length = Serialization::run(stable_actor, serialized_data_start);
     let type_descriptor = TypeDescriptor::new(old_candid_data, old_type_offsets, 0);
     let metadata = StabilizationMetadata {
         stable_memory_pages,

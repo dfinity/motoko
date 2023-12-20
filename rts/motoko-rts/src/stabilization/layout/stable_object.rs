@@ -35,8 +35,7 @@ impl Serializer<Object> for StableObject {
         }
     }
 
-    unsafe fn serialize_dynamic_part<M: Memory>(
-        _main_memory: &mut M,
+    unsafe fn serialize_dynamic_part(
         stable_memory: &mut StableMemoryStream,
         main_object: *mut Object,
     ) {

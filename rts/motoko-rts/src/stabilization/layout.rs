@@ -202,24 +202,19 @@ where
     Self: Sized + StaticScanner<StableValue>,
 {
     unsafe fn serialize_static_part(main_object: *mut T) -> Self;
-    unsafe fn serialize_dynamic_part<M: Memory>(
-        _main_memory: &mut M,
+    unsafe fn serialize_dynamic_part(
         _stable_memory: &mut StableMemoryStream,
         _main_object: *mut T,
     ) {
     }
 
-    unsafe fn serialize<M: Memory>(
-        main_memory: &mut M,
-        stable_memory: &mut StableMemoryStream,
-        main_object: Value,
-    ) {
+    unsafe fn serialize(stable_memory: &mut StableMemoryStream, main_object: Value) {
         let stable_tag = StableTag::deserialize(main_object.tag());
         let main_object = main_object.as_obj() as *mut T;
         stable_memory.write(&stable_tag);
         unsafe {
             stable_memory.write(&Self::serialize_static_part(main_object));
-            Self::serialize_dynamic_part(main_memory, stable_memory, main_object);
+            Self::serialize_dynamic_part(stable_memory, main_object);
         }
     }
 
@@ -321,24 +316,20 @@ pub fn scan_serialized<C: StableToSpace, F: Fn(&mut C, StableValue) -> StableVal
     }
 }
 
-pub unsafe fn serialize<M: Memory>(
-    main_memory: &mut M,
-    stable_memory: &mut StableMemoryStream,
-    main_object: Value,
-) {
+pub unsafe fn serialize(stable_memory: &mut StableMemoryStream, main_object: Value) {
     match StableTag::deserialize(main_object.tag()) {
-        StableTag::Array => StableArray::serialize(main_memory, stable_memory, main_object),
-        StableTag::MutBox => StableMutBox::serialize(main_memory, stable_memory, main_object),
-        StableTag::Object => StableObject::serialize(main_memory, stable_memory, main_object),
-        StableTag::Blob => StableBlob::serialize(main_memory, stable_memory, main_object),
-        StableTag::Bits32 => StableBits32::serialize(main_memory, stable_memory, main_object),
-        StableTag::Bits64 => StableBits64::serialize(main_memory, stable_memory, main_object),
-        StableTag::Region => StableRegion::serialize(main_memory, stable_memory, main_object),
-        StableTag::Variant => StableVariant::serialize(main_memory, stable_memory, main_object),
-        StableTag::Concat => StableConcat::serialize(main_memory, stable_memory, main_object),
-        StableTag::BigInt => StableBigInt::serialize(main_memory, stable_memory, main_object),
-        StableTag::ObjInd => StableObjInd::serialize(main_memory, stable_memory, main_object),
-        StableTag::Some => StableSome::serialize(main_memory, stable_memory, main_object),
+        StableTag::Array => StableArray::serialize(stable_memory, main_object),
+        StableTag::MutBox => StableMutBox::serialize(stable_memory, main_object),
+        StableTag::Object => StableObject::serialize(stable_memory, main_object),
+        StableTag::Blob => StableBlob::serialize(stable_memory, main_object),
+        StableTag::Bits32 => StableBits32::serialize(stable_memory, main_object),
+        StableTag::Bits64 => StableBits64::serialize(stable_memory, main_object),
+        StableTag::Region => StableRegion::serialize(stable_memory, main_object),
+        StableTag::Variant => StableVariant::serialize(stable_memory, main_object),
+        StableTag::Concat => StableConcat::serialize(stable_memory, main_object),
+        StableTag::BigInt => StableBigInt::serialize(stable_memory, main_object),
+        StableTag::ObjInd => StableObjInd::serialize(stable_memory, main_object),
+        StableTag::Some => StableSome::serialize(stable_memory, main_object),
         StableTag::_None => unimplemented!(),
     }
 }

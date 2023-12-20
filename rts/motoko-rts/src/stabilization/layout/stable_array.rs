@@ -24,8 +24,7 @@ impl Serializer<Array> for StableArray {
         }
     }
 
-    unsafe fn serialize_dynamic_part<M: Memory>(
-        _main_memory: &mut M,
+    unsafe fn serialize_dynamic_part(
         stable_memory: &mut StableMemoryStream,
         main_array: *mut Array,
     ) {

@@ -1,4 +1,5 @@
 mod reader_writer;
+mod stable_bigints;
 mod stable_memory;
 
 use crate::{
@@ -21,6 +22,7 @@ use oorandom::Rand32;
 
 pub unsafe fn test() {
     println!("Testing stabilization ...");
+    stable_bigints::test();
     reader_writer::test();
     initialize_null_singleton();
     test_stabilization();
@@ -194,7 +196,7 @@ fn test_serialization_deserialization(random: &mut Rand32, max_objects: u32, sta
     let gc = GC_IMPLS[0];
     let mut heap = random_heap(random, max_objects, gc);
     let old_stable_root = heap.old_stable_root();
-    let stable_size = Serialization::run(&mut heap.memory, old_stable_root, stable_start);
+    let stable_size = Serialization::run(old_stable_root, stable_start);
     heap.clear();
     let stable_root = Deserialization::run(&mut heap.memory, stable_start, stable_size);
     heap.set_new_root(stable_root);

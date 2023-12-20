@@ -10,6 +10,10 @@ use motoko_rts::types::{Bytes, Value, Words};
 // This global is used to pass a reference to heap to the mp functions
 static mut HEAP: *mut TestMemory = std::ptr::null_mut();
 
+pub unsafe fn set_bigint_heap(heap: *mut TestMemory) {
+    HEAP = heap;
+}
+
 #[no_mangle]
 unsafe extern "C" fn mp_calloc(n_elems: usize, elem_size: Bytes<usize>) -> *mut libc::c_void {
     bigint::mp_calloc(&mut *HEAP, n_elems, elem_size)
@@ -29,7 +33,7 @@ pub unsafe fn test() {
 
     // Not sure how much we will need in these tests but 1G should be enough
     let mut heap = TestMemory::new(Words(1024 * 1024));
-    HEAP = &mut heap;
+    set_bigint_heap(&mut heap);
 
     assert!(bigint_eq(
         bigint_pow(bigint_of_word32(70), bigint_of_word32(32)),
@@ -62,7 +66,7 @@ pub unsafe fn test() {
         test_bigint_sleb128(bigint_neg(plus_one));
     }
 
-    HEAP = std::ptr::null_mut();
+    set_bigint_heap(std::ptr::null_mut());
     drop(heap);
 }
 
