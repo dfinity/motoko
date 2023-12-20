@@ -142,7 +142,7 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
             let _ = write!(
                 buf,
                 "<Object size={:#x} hash_ptr={:#x} field=[",
-                object.size(),
+                (*object).size,
                 (*object).hash_blob.get_raw()
             );
             for i in 0..object.size() {
@@ -155,7 +155,7 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
                     let _ = write!(buf, ")");
                 }
 
-                if i != object.size() - 1 {
+                if i != (*object).size - 1 {
                     let _ = write!(buf, ",");
                 }
             }

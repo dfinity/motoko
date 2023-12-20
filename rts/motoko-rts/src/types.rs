@@ -612,6 +612,7 @@ impl Region {
 #[repr(C)] // See the note at the beginning of this module
 pub struct Object {
     pub header: Obj,
+    pub size: u32,        // Number of elements
     pub hash_blob: Value, // Pointer to a blob containing the hashes of the object field labels.
 }
 
@@ -624,11 +625,8 @@ impl Object {
         self.add(1) as *mut Value // skip object header
     }
 
-    /// Number of fields in the object.
     pub(crate) unsafe fn size(self: *mut Self) -> u32 {
-        let hash_blob_length = (*self).hash_blob.as_blob().len().as_u32();
-        debug_assert_eq!(hash_blob_length % WORD_SIZE, 0);
-        hash_blob_length / WORD_SIZE
+        (*self).size
     }
 
     pub(crate) unsafe fn get(self: *mut Self, idx: u32) -> Value {

@@ -11,7 +11,6 @@ use super::{Serializer, StableToSpace, StableValue, StaticScanner};
 
 #[repr(C)]
 pub struct StableObject {
-    // The size information is redundant to the `hash_blob` word size but storing it simplifies and optimizes deserialization.
     size: u32, // Number of fields.
     hash_blob: StableValue, // Pointer to a blob containing the `u32` hashes of the field labels.
                // Dynamically sized body with `size` fields, each of `StableValue`, ordered according to the hashes in the blob.
@@ -31,7 +30,7 @@ impl StaticScanner<StableValue> for StableObject {
 impl Serializer<Object> for StableObject {
     unsafe fn serialize_static_part(main_object: *mut Object) -> Self {
         StableObject {
-            size: main_object.size(),
+            size: (*main_object).size,
             hash_blob: StableValue::serialize((*main_object).hash_blob),
         }
     }
@@ -71,6 +70,7 @@ impl Serializer<Object> for StableObject {
         (*target_object)
             .header
             .init_forward(Value::from_ptr(target_object as usize));
+        (*target_object).size = self.size;
         (*target_object).hash_blob = self.hash_blob.deserialize();
     }
 
