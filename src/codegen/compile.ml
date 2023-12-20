@@ -10452,7 +10452,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     Region.store_word16 env
 
   | OtherPrim ("regionLoadNat32" | "regionLoadInt32"), [e0; e1] ->
-    SR.Vanilla,
+    SR.UnboxedWord32,
     compile_exp_as env ae SR.Vanilla e0 ^^
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
     Region.load_word32 env
@@ -10461,7 +10461,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.unit,
     compile_exp_as env ae SR.Vanilla e0 ^^
     compile_exp_as env ae SR.UnboxedWord64 e1 ^^
-    compile_exp_as env ae SR.Vanilla e2 ^^
+    compile_exp_as env ae SR.UnboxedWord32 e2 ^^
     Region.store_word32 env
 
   | OtherPrim ("regionLoadNat64" | "regionLoadInt64"), [e0; e1] ->
