@@ -1,12 +1,28 @@
 # Motoko compiler changelog
 
+## 0.10.3 (2023-12-20)
+
 * motoko (`moc`)
+
+  * Include doc comments to Candid interfaces generated via the `--idl` flag (#4334).
 
   * bugfix: fix broken implementations of `Region.loadNat32`, `Region.storeNat32`, `Region.loadInt32`, `Region.storeInt32` (#4335).
     Values previously stored with the broken 32-bit operations must be loaded with care.
     If bit 0 is clear, the original value can be obtained by an arithmetic shift right by 1 bit.
     If bit 0 is set, the value cannot be trusted and should be ignored
     (it encodes some transient address of a boxed value).
+
+* motoko-base
+
+  * Added `ExperimentalInternetComputer.performanceCounter` function to get the raw performance
+    counters (dfinity/motoko-base⁠#600).
+
+  * Added `Array.take` function to get some prefix of an array (dfinity/motoko-base⁠#587).
+
+  * Deprecated `TrieSet.mem` in favor of `TrieSet.has` (dfinity/motoko-base⁠#576).
+
+  * bugfix: `Array.chain(as, f)` was incorrectly trapping when `f(a)` was an empty array
+    (dfinity/motoko-base⁠#599).
 
 ## 0.10.2 (2023-11-12)
 
