@@ -210,6 +210,7 @@ no-timer-set.mo:3.10-3.18: type error [M0119], object field setTimer is not cont
     rts_reclaimed : () -> Nat;
     rts_stable_memory_size : () -> Nat;
     rts_total_allocation : () -> Nat;
+    rts_upgrade_instructions : () -> Nat;
     rts_version : () -> Text;
     setCertifiedData : Blob -> ();
     shiftLeft : (Nat, Nat32) -> Nat;
