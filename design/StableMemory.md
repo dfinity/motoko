@@ -184,13 +184,16 @@ NOTE: A program with no stable variables still writes an empty record value `v =
 (case !size == 0) // hence N = 0
   [0..3] StableVariable data len
   [4..4+len-1] StableVariable data
-  [4+len-1,..M-1] 0...0 // zero padding
+  [len+4..len+12-1] instruction costs of stabilization (optional)
+  [len+12,..M-1] 0...0 // zero padding
+
 (case !size > 0)
 [0..3]  0...0
 [4..N-1]  StableMemory bytes
 [N..N+3]  StableVariable data len
 [N+4..(N+4)+len-1] StableVariable data
-[(N+4)+len..M-13] 0...0 // zero padding
+[(N+4)+len..M-20] 0...0 // zero padding
+[M-20..M-13] instruction costs of stabilization (optional)
 [M-12..M-9] value N/64Ki = !size
 [M-8..M-5] saved StableMemory bytes
 [M-4..M-1]  version word
