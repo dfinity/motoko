@@ -84,6 +84,9 @@ func rts_mutator_instructions() : Nat {
 func rts_collector_instructions() : Nat {
   (prim "rts_collector_instructions" : () -> Nat)();
 };
+func rts_upgrade_instructions() : Nat {
+  (prim "rts_upgrade_instructions" : () -> Nat)();
+};
 
 func rts_stable_memory_size() : Nat {
   (prim "rts_stable_memory_size" : () -> Nat) ()

@@ -17,6 +17,7 @@
 //!   (possible zero padding)
 //! -- Last physical page (metadata):
 //!   (zero padding to align at page end)
+//!   Upgrade statistics (instructions) (u64)
 //!   Serialized data address N (u64)
 //!   Serialized data length L (u64)
 //!   Type descriptor address M (u64)
@@ -31,6 +32,7 @@ use crate::{
     barriers::allocation_barrier,
     memory::{alloc_blob, Memory},
     region::{VERSION_GRAPH_COPY_NO_REGIONS, VERSION_GRAPH_COPY_REGIONS},
+    stabilization::ic0_performance_counter,
     stable_mem::{
         get_version, ic0_stable64_read, ic0_stable64_size, ic0_stable64_write, read_u32,
         set_version, write_u32, PAGE_SIZE,
@@ -42,7 +44,14 @@ use super::{clear_stable_memory, compatibility::TypeDescriptor, grant_stable_spa
 
 #[repr(C)]
 #[derive(Default)]
+pub struct UpgradeStatistics {
+    pub stabilization_instructions: u64,
+}
+
+#[repr(C)]
+#[derive(Default)]
 struct LastPageRecord {
+    statistics: UpgradeStatistics,
     serialized_data_address: u64,
     serialized_data_length: u64,
     type_descriptor_address: u64,
@@ -174,7 +183,11 @@ impl StabilizationMetadata {
         // This ensures compatibility with old legacy version 0 using no
         // experimental stable memory and no regions.
         write_u32(0, 0);
-        let metadata = LastPageRecord {
+        let statistics = UpgradeStatistics {
+            stabilization_instructions: unsafe { ic0_performance_counter(0) },
+        };
+        let last_page_record = LastPageRecord {
+            statistics,
             serialized_data_address: self.serialized_data_start,
             serialized_data_length: self.serialized_data_length,
             type_descriptor_address,
@@ -182,27 +195,31 @@ impl StabilizationMetadata {
             first_word_backup,
             version: get_version(),
         };
-        Self::write_metadata(&metadata);
+        Self::write_metadata(&last_page_record);
     }
 
-    pub fn load<M: Memory>(mem: &mut M) -> StabilizationMetadata {
-        let metadata = Self::read_metadata();
+    pub fn load<M: Memory>(mem: &mut M) -> (StabilizationMetadata, UpgradeStatistics) {
+        let last_page_record = Self::read_metadata();
         Self::clear_metadata();
         assert!(
-            metadata.version == VERSION_GRAPH_COPY_NO_REGIONS
-                || metadata.version == VERSION_GRAPH_COPY_REGIONS
+            last_page_record.version == VERSION_GRAPH_COPY_NO_REGIONS
+                || last_page_record.version == VERSION_GRAPH_COPY_REGIONS
         );
-        set_version(metadata.version);
-        write_u32(0, metadata.first_word_backup);
-        assert!(metadata.stable_memory_pages * PAGE_SIZE <= metadata.serialized_data_address);
-        let mut offset = metadata.type_descriptor_address;
+        set_version(last_page_record.version);
+        write_u32(0, last_page_record.first_word_backup);
+        assert!(
+            last_page_record.stable_memory_pages * PAGE_SIZE
+                <= last_page_record.serialized_data_address
+        );
+        let mut offset = last_page_record.type_descriptor_address;
         let type_descriptor = Self::load_type_descriptor(mem, &mut offset);
-        StabilizationMetadata {
-            stable_memory_pages: metadata.stable_memory_pages,
-            serialized_data_start: metadata.serialized_data_address,
-            serialized_data_length: metadata.serialized_data_length,
+        let metadata = StabilizationMetadata {
+            stable_memory_pages: last_page_record.stable_memory_pages,
+            serialized_data_start: last_page_record.serialized_data_address,
+            serialized_data_length: last_page_record.serialized_data_length,
             type_descriptor,
-        }
+        };
+        (metadata, last_page_record.statistics)
     }
 
     pub fn matching_version() -> bool {

@@ -380,6 +380,12 @@ fn grant_stable_space(byte_size: u64) {
     }
 }
 
+#[cfg(feature = "ic")]
+extern "C" {
+    fn ic0_performance_counter(number: u32) -> u64;
+    fn set_upgrade_instructions(instructions: u64);
+}
+
 /// Pre-upgrade operation for graph-copy-based program upgrades:
 /// All objects inside main memory that are transitively reachable from stable variables are
 /// serialized into stable memory by using a graph copy algorithm.
@@ -437,7 +443,7 @@ pub unsafe fn destabilize<M: Memory>(
     use metadata::StabilizationMetadata;
 
     let mut new_type_descriptor = TypeDescriptor::new(new_candid_data, new_type_offsets, 0);
-    let metadata = StabilizationMetadata::load(mem);
+    let (metadata, statistics) = StabilizationMetadata::load(mem);
     let mut old_type_descriptor = metadata.type_descriptor;
     if !memory_compatible(mem, &mut old_type_descriptor, &mut new_type_descriptor) {
         rts_trap_with("Memory-incompatible program upgrade");
@@ -448,6 +454,7 @@ pub unsafe fn destabilize<M: Memory>(
         metadata.serialized_data_length,
     );
     moc_stable_mem_set_size(metadata.stable_memory_pages);
+    set_upgrade_instructions(statistics.stabilization_instructions + ic0_performance_counter(0));
     stable_root
 }
 

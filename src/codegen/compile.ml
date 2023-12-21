@@ -5609,6 +5609,16 @@ module StableMemoryInterface = struct
 
 end
 
+module UpgradeStatistics = struct
+  let register_globals env =
+    E.add_global64 env "__upgrade_instructions" Mutable 0L
+
+  let get_upgrade_instructions env =
+    G.i (GlobalGet (nr (E.get_global env "__upgrade_instructions")))
+  let set_upgrade_instructions env =
+    G.i (GlobalSet (nr (E.get_global env "__upgrade_instructions")))
+end
+
 module RTS_Exports = struct
   (* Must be called late, after main codegen, to ensure correct generation of
      of functioning or unused-but-trapping stable memory exports (as required)
@@ -5634,6 +5644,32 @@ module RTS_Exports = struct
     E.add_export env (nr {
       name = Lib.Utf8.decode "rts_trap";
       edesc = nr (FuncExport (nr rts_trap_fi))
+    });
+
+    let ic0_performance_counter_fi =
+      if E.mode env = Flags.WASIMode then
+        E.add_fun env "ic0_performance_counter" (
+            Func.of_body env ["number", I32Type] [I64Type]
+              (fun env ->
+                E.trap_with env "ic0_performance_counter is not supposed to be called in WASI"
+              )
+          )
+      else E.reuse_import env "ic0" "performance_counter" in
+    E.add_export env (nr {
+      name = Lib.Utf8.decode "ic0_performance_counter";
+      edesc = nr (FuncExport (nr ic0_performance_counter_fi))
+    });
+
+    let set_upgrade_instructions_fi =
+      E.add_fun env "__set_upgrade_instructions" (
+      Func.of_body env ["instructions", I64Type] [] (fun env ->
+        G.i (LocalGet (nr 0l)) ^^
+        UpgradeStatistics.set_upgrade_instructions env
+      )
+    ) in
+    E.add_export env (nr {
+      name = Lib.Utf8.decode "set_upgrade_instructions";
+      edesc = nr (FuncExport (nr set_upgrade_instructions_fi))
     });
 
     (* Keep a memory reserve when in update or init state. 
@@ -10556,6 +10592,10 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla,
     GC.get_collector_instructions env ^^ BigNum.from_word64 env
 
+  | OtherPrim "rts_upgrade_instructions", [] ->
+    SR.Vanilla,
+    UpgradeStatistics.get_upgrade_instructions env ^^ BigNum.from_word64 env
+
   | OtherPrim "rts_stable_memory_size", [] ->
     SR.Vanilla,
     StableMem.stable64_size env ^^ BigNum.from_word64 env
@@ -11972,6 +12012,7 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
   GC.register_globals env;
   StableMem.register_globals env;
   Serialization.Registers.register_globals env;
+  UpgradeStatistics.register_globals env;
 
   (* See Note [Candid subtype checks] *)
   let set_serialization_globals = Serialization.register_delayed_globals env in

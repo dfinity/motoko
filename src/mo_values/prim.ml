@@ -224,7 +224,8 @@ let prim trap =
      | "rts_callback_table_count"
      | "rts_callback_table_size"
      | "rts_mutator_instructions"
-     | "rts_collector_instructions") ->
+     | "rts_collector_instructions"
+     | "rts_upgrade_instructions") ->
         fun _ v k -> as_unit v; k (Int (Int.of_int 0))
   | "time" -> fun _ v k -> as_unit v; k (Value.Nat64 (Numerics.Nat64.of_int 42))
   | "idlHash" -> fun _ v k ->
