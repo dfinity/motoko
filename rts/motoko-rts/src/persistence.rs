@@ -49,6 +49,8 @@ struct PersistentMetadata {
     /// Singleton of the top-level null value. To be retained across upgrades.
     /// Constitutes a GC root and requires pointer forwarding.
     null_singleton: Value,
+    /// Upgrade performance statistics: Total number of instructions consumed by the last upgrade.
+    upgrade_instructions: u64,
 }
 
 /// Location of the persistent metadata. Prereseved and fixed forever.
@@ -100,6 +102,7 @@ impl PersistentMetadata {
         (*self).stable_type = TypeDescriptor::default();
         (*self).incremental_gc_state = IncrementalGC::initial_gc_state(mem, HEAP_START);
         (*self).null_singleton = DEFAULT_VALUE;
+        (*self).upgrade_instructions = 0;
     }
 }
 
@@ -245,4 +248,18 @@ pub(crate) unsafe fn null_singleton_location() -> *mut Value {
 pub(crate) unsafe fn get_incremental_gc_state() -> &'static mut State {
     let metadata = PersistentMetadata::get();
     &mut (*metadata).incremental_gc_state
+}
+
+#[no_mangle]
+#[cfg(feature = "ic")]
+pub unsafe extern "C" fn get_upgrade_instructions() -> u64 {
+    let metadata = PersistentMetadata::get();
+    (*metadata).upgrade_instructions
+}
+
+#[no_mangle]
+#[cfg(feature = "ic")]
+pub unsafe extern "C" fn set_upgrade_instructions(instructions: u64) {
+    let metadata = PersistentMetadata::get();
+    (*metadata).upgrade_instructions = instructions;
 }

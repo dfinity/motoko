@@ -976,6 +976,8 @@ module RTS = struct
     E.add_func_import env "rts" "set_static_root" [I64Type] [];
     E.add_func_import env "rts" "get_static_root" [] [I64Type];
     E.add_func_import env "rts" "null_singleton" [] [I64Type];
+    E.add_func_import env "rts" "set_upgrade_instructions" [I64Type] [];
+    E.add_func_import env "rts" "get_upgrade_instructions" [] [I64Type];
     E.add_func_import env "rts" "memcmp" [I64Type; I64Type; I64Type] [I32Type];
     E.add_func_import env "rts" "version" [] [I64Type];
     E.add_func_import env "rts" "parse_idl_header" [I32Type; I64Type; I64Type; I64Type; I64Type] [];
@@ -5413,6 +5415,23 @@ module StableMemoryInterface = struct
 
 end
 
+module UpgradeStatistics = struct
+  let get_upgrade_instructions env =
+    E.call_import env "rts" "get_upgrade_instructions"
+  let set_upgrade_instructions env =
+    E.call_import env "rts" "set_upgrade_instructions"
+
+  let add_instructions env =
+    get_upgrade_instructions env ^^
+    GC.instruction_counter env ^^
+    G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
+    set_upgrade_instructions env
+
+  let set_instructions env =
+    GC.instruction_counter env ^^
+    set_upgrade_instructions env
+end
+
 module RTS_Exports = struct
   (* Must be called late, after main codegen, to ensure correct generation of
      of functioning or unused-but-trapping stable memory exports (as required)
@@ -7822,7 +7841,8 @@ module Persistence = struct
 
   let save env actor_type =
     save_stable_actor env ^^
-    NewStableMemory.backup env
+    NewStableMemory.backup env ^^
+    UpgradeStatistics.set_instructions env
 
   let load env actor_type =
     register_stable_type env actor_type ^^
@@ -7836,7 +7856,8 @@ module Persistence = struct
         recover_actor env actor_type ^^
         NewStableMemory.restore env
       end) ^^
-    StableMem.region_init env
+    StableMem.region_init env ^^
+    UpgradeStatistics.add_instructions env
 end
 
 module GCRoots = struct
@@ -10366,6 +10387,10 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | OtherPrim "rts_collector_instructions", [] ->
     SR.Vanilla,
     GC.get_collector_instructions env ^^ BigNum.from_word64 env
+
+  | OtherPrim "rts_upgrade_instructions", [] ->
+    SR.Vanilla,
+    UpgradeStatistics.get_upgrade_instructions env ^^ BigNum.from_word64 env
 
   | OtherPrim "rts_stable_memory_size", [] ->
     SR.Vanilla,
