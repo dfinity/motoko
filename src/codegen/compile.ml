@@ -5424,7 +5424,7 @@ module UpgradeStatistics = struct
   let add_instructions env =
     get_upgrade_instructions env ^^
     GC.instruction_counter env ^^
-    G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
+    G.i (Binary (Wasm_exts.Values.I64 I64Op.Add)) ^^
     set_upgrade_instructions env
 
   let set_instructions env =
