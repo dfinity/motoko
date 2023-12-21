@@ -1,10 +1,15 @@
 import Prim "mo:prim";
 
 actor {
+  stable var lastInstructions = 0;
   stable var length = 0;
   stable var stableArray : [Nat] = [];
 
-  Prim.debugPrint("Upgrade instructions: " # debug_show (Prim.rts_upgrade_instructions()));
+  if (length > 0) {
+    assert (Prim.rts_upgrade_instructions() > lastInstructions);
+    lastInstructions := Prim.rts_upgrade_instructions();
+  };
+  Prim.debugPrint("Ignore Diff: Upgrade instructions: " # debug_show (Prim.rts_upgrade_instructions()));
 
   public func increase() : async () {
     if (length == 0) {
