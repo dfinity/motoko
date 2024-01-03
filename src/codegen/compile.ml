@@ -8361,9 +8361,11 @@ module StackRep = struct
 
     | UnboxedWord64 pty, Vanilla -> BoxedWord64.box env pty (* ! *)
     | Vanilla, UnboxedWord64 pty -> BoxedWord64.unbox env pty (* ! *)
+    | UnboxedWord64 _, UnboxedWord64 _ -> G.nop
 
     | UnboxedWord32 pty, Vanilla -> BoxedSmallWord.box env pty (* ! *)
     | Vanilla, UnboxedWord32 pty -> BoxedSmallWord.unbox env pty (* ! *)
+    | UnboxedWord32 _, UnboxedWord32 _ -> G.nop
 
     | UnboxedFloat64, Vanilla -> Float.box env
     | Vanilla, UnboxedFloat64 -> Float.unbox env
@@ -10395,7 +10397,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
     | Nat64, Int64 | Int64, Nat64
     | Nat32, Int32 | Int32, Nat32 ->
-      compile_exp env ae e
+      compile_exp env ae e (* TBR *)
     | Nat16, Int16 | Int16, Nat16
     | Nat8, Int8 | Int8, Nat8 ->
       SR.Vanilla,
