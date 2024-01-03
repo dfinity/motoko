@@ -8361,11 +8361,11 @@ module StackRep = struct
 
     | UnboxedWord64 pty, Vanilla -> BoxedWord64.box env pty (* ! *)
     | Vanilla, UnboxedWord64 pty -> BoxedWord64.unbox env pty (* ! *)
-    | UnboxedWord64 _, UnboxedWord64 _ -> G.nop
+    | UnboxedWord64 _, UnboxedWord64 _ -> G.nop (* TBR *)
 
     | UnboxedWord32 pty, Vanilla -> BoxedSmallWord.box env pty (* ! *)
     | Vanilla, UnboxedWord32 pty -> BoxedSmallWord.unbox env pty (* ! *)
-    | UnboxedWord32 _, UnboxedWord32 _ -> G.nop
+    | UnboxedWord32 _, UnboxedWord32 _ -> G.nop (* TBR *)
 
     | UnboxedFloat64, Vanilla -> Float.box env
     | Vanilla, UnboxedFloat64 -> Float.unbox env
