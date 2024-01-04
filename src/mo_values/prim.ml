@@ -147,7 +147,7 @@ let prim trap =
   | "fexp" -> fun _ v k -> k (via_float Stdlib.exp v)
   | "flog" -> fun _ v k -> k (via_float Stdlib.log v)
   (* TODO: refine exotic cases below to catch more errors *)
-  | "popcntInt8" | "popcntInt16"
+  | "popcntInt8" | "popcntInt16" | "popcntInt32" | "popcntInt64"
   | "popcnt8" | "popcnt16" | "popcnt32" | "popcnt64" ->
      fun _ v k ->
      k (match v with
@@ -160,7 +160,7 @@ let prim trap =
         | Int32 w -> Int32 (Int_32.popcnt w)
         | Int64 w -> Int64 (Int_64.popcnt w)
         | _ -> failwith "popcnt")
-  | "clzInt8" | "clzInt16"
+  | "clzInt8" | "clzInt16" | "clzInt32" | "clzInt64"
   | "clz8" | "clz16" | "clz32" | "clz64" ->
      fun _ v k ->
      k (match v with
@@ -173,7 +173,7 @@ let prim trap =
         | Int32 w -> Int32 (Int_32.clz w)
         | Int64 w -> Int64 (Int_64.clz w)
         | _ -> failwith "clz")
-  | "ctzInt8" | "ctzInt16"
+  | "ctzInt8" | "ctzInt16" | "ctzInt32" | "ctzInt64"
   | "ctz8" | "ctz16" | "ctz32" | "ctz64" ->
      fun _ v k ->
      k (match v with
@@ -186,7 +186,7 @@ let prim trap =
         | Int32 w -> Int32 (Int_32.ctz w)
         | Int64 w -> Int64 (Int_64.ctz w)
         | _ -> failwith "ctz")
-  | "btstInt8" | "btstInt16"
+  | "btstInt8" | "btstInt16" | "btstInt32" | "btstInt64"
   | "btst8" | "btst16" | "btst32" | "btst64" ->
      fun _ v k ->
      let w, a = as_pair v

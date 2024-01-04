@@ -217,15 +217,15 @@ func clzInt16(w : Int16) : Int16 = (prim "clzInt16" : Int16 -> Int16) w;
 func ctzInt16(w : Int16) : Int16 = (prim "ctzInt16" : Int16 -> Int16) w;
 func btstInt16(w : Int16, amount : Int16) : Bool = (prim "btstInt16" : (Int16, Int16) -> Int16) (w, amount) != (0 : Int16);
 
-func popcntInt32(w : Int32) : Int32 = (prim "popcnt32" : Int32 -> Int32) w;
-func clzInt32(w : Int32) : Int32 = (prim "clz32" : Int32 -> Int32) w;
-func ctzInt32(w : Int32) : Int32 = (prim "ctz32" : Int32 -> Int32) w;
+func popcntInt32(w : Int32) : Int32 = (prim "popcntInt32" : Int32 -> Int32) w;
+func clzInt32(w : Int32) : Int32 = (prim "clzInt32" : Int32 -> Int32) w;
+func ctzInt32(w : Int32) : Int32 = (prim "ctzInt32" : Int32 -> Int32) w;
 func btstInt32(w : Int32, amount : Int32) : Bool = (prim "btst32" : (Int32, Int32) -> Int32)(w, amount) != (0 : Int32);
 
-func popcntInt64(w : Int64) : Int64 = (prim "popcnt64" : Int64 -> Int64) w;
-func clzInt64(w : Int64) : Int64 = (prim "clz64" : Int64 -> Int64) w;
-func ctzInt64(w : Int64) : Int64 = (prim "ctz64" : Int64 -> Int64) w;
-func btstInt64(w : Int64, amount : Int64) : Bool = (prim "btst64" : (Int64, Int64) -> Int64)(w, amount) != (0 : Int64);
+func popcntInt64(w : Int64) : Int64 = (prim "popcntInt64" : Int64 -> Int64) w;
+func clzInt64(w : Int64) : Int64 = (prim "clzInt64" : Int64 -> Int64) w;
+func ctzInt64(w : Int64) : Int64 = (prim "ctzInt64" : Int64 -> Int64) w;
+func btstInt64(w : Int64, amount : Int64) : Bool = (prim "btstInt64" : (Int64, Int64) -> Int64)(w, amount) != (0 : Int64);
 
 // Float operations
 
