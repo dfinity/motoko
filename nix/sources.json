@@ -21,15 +21,15 @@
         "version": "3.2.25"
     },
     "ic": {
-        "branch": "pull/143/head",
+        "branch": "/luc/orthogonal-persistence-latest",
         "description": "Internet Computer blockchain source: the client/replica software run by nodes",
         "homepage": "",
-        "owner": "dfinity",
+        "owner": "luc-blaeser",
         "repo": "ic",
-        "rev": "418b964468d7706836c7b4e3b166a58526a4ac16",
-        "sha256": "1gbrmfnmn8245isj865dd48xcnpfdyi1aqgk79avi6xgzzc3nwk7",
+        "rev": "d3225d44df101150b96aa86be8e5e82255333f9f",
+        "sha256": "1kv83i33vav1h62ymmiw72c6npa19hb4mr4m6rhv7qwhv1n3x7py",
         "type": "tarball",
-        "url": "https://github.com/dfinity/ic/archive/418b964468d7706836c7b4e3b166a58526a4ac16.tar.gz",
+        "url": "https://github.com/luc-blaeser/ic/archive/d3225d44df101150b96aa86be8e5e82255333f9f.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ic-hs": {
