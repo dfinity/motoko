@@ -31,7 +31,7 @@ let page_size_bits = 16
 
 
 (* tentative tagging scheme *)
-(*
+
 module TaggingScheme = struct
  type bit = I | O
  type tag =
@@ -45,7 +45,9 @@ module TaggingScheme = struct
  | TNat16 | TInt16
  | TUnused
 
- let decode u32 =
+ let _ = (I,O)
+
+ let _decode u32 =
    match u32 with
    | ((O,O,O,O,O,O,O,O), (O,O,O,O,O,O,O,O), (O,O,O,O,O,O,O,O), (O,O,O,O,O,O,O,O)) -> TBool (* false *)
    | ((O,O,O,O,O,O,O,O), (O,O,O,O,O,O,O,O), (O,O,O,O,O,O,O,O), (O,O,O,O,O,O,O,I)) -> TBool (* true *)
@@ -62,8 +64,25 @@ module TaggingScheme = struct
    | ((_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (O,I,I,I,I,I,O,O)) -> TNat8
    | ((_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (O,I,I,I,I,I,I,O)) -> TInt8
    | _                                                                            -> TUnused
+
+ let tag_of_typ pty =
+   Type.(match pty with
+   | Bool ->  0b0000_0000l
+   | Nat
+   | Int ->   0b0000_0000l (*0b0000_0010l *)
+   | Nat64 -> 0b0000_0100l
+   | Int64 -> 0b0000_0110l
+   | Nat32 -> 0b0000_1100l
+   | Int32 -> 0b0000_1110l
+   | Nat16 -> 0b0001_1100l
+   | Int16 -> 0b0001_1110l
+   | Char  -> 0b0011_1100l
+   | Nat8  -> 0b0111_1100l
+   | Int8  -> 0b0111_1110l
+   )
+
 end
-*)
+
 (*
 Pointers are skewed (translated) -1 relative to the actual offset.
 See documentation of module BitTagged for more detail.
@@ -1597,7 +1616,11 @@ module BitTagged = struct
     let upper_bound = Int64.shift_left 1L sbits in
     lower_bound <= n && n < upper_bound
 
-  let tag_const pty i = Int32.shift_left (Int64.to_int32 i) (32 - ubits_of pty)
+  let tag_const pty i =
+    Int32.shift_left (Int64.to_int32 i) (32 - ubits_of pty)
+    (* tag *)
+    |> Int32.logor (TaggingScheme.tag_of_typ pty)
+
 
 
   (* dynamic *)
@@ -1635,8 +1658,9 @@ module BitTagged = struct
   let tag env pty =
     let ubitsl = Int32.of_int (ubits_of pty) in
     G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
-    compile_shl_const (Int32.sub 32l ubitsl)
-
+    compile_shl_const (Int32.sub 32l ubitsl) ^^
+    (* tag *)
+    compile_bitor_const (TaggingScheme.tag_of_typ pty)
   let untag env pty =
     let ubitsl = Int32.of_int (ubits_of pty) in
     compile_shrS_const (Int32.sub 32l ubitsl) ^^
@@ -1678,11 +1702,25 @@ module BitTagged = struct
 
   let tag_i32 env pty =
     let ubits = ubits_of pty in
-    compile_shl_const (Int32.sub 32l (Int32.of_int ubits))
-    (* TODO: tag! *)
+    compile_shl_const (Int32.sub 32l (Int32.of_int ubits)) ^^
+    (* tag *)
+    compile_bitor_const (TaggingScheme.tag_of_typ pty)
+
+  let sanity_check_tag env ty =
+    let name = "bittagged_sanity_check_"^Type.string_of_prim ty in
+    if true || !(Flags.sanity) then
+      (Func.share_code1 Func.Always env name ("v", I32Type) [I32Type] (fun env get_n ->
+        get_n ^^
+        compile_bitand_const (TaggingScheme.tag_of_typ ty) ^^
+        compile_eq_const (TaggingScheme.tag_of_typ ty) ^^
+        E.else_trap_with env "bittagged_sanity_check_tag" ^^
+        get_n))
+    else G.nop
+
   let untag_i32 env pty =
     let ubits = ubits_of pty in
-    (* TODO: sanity check tag *)
+    (* check tag *)
+    sanity_check_tag env pty ^^
     compile_shrS_const (Int32.sub 32l (Int32.of_int ubits))
 
 end (* BitTagged *)
@@ -2999,7 +3037,7 @@ end
 
 module MakeCompact (Num : BigNumType) : BigNumType = struct
 
-  (* Compact BigNums are a representation of signed Bittage.ubit-bignums (of the
+  (* Compact BigNums are a representation of signed BitTagged.ubit-bignums (of the
      underlying boxed representation `Num`), that fit into an i32 as per the
      BitTagged representation.
 
@@ -3351,28 +3389,31 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
 
   let compile_abs env =
     let sminl = Int32.(neg (shift_left 1l BitTagged.sbits)) in
-    let sminl_shifted = Int32.shift_left sminl (32 - BitTagged.ubits) in
     try_unbox I32Type
       begin
         fun _ ->
         let set_a, get_a = new_local env "a" in
+        BitTagged.untag_i32 env Type.Int ^^
         set_a ^^
         get_a ^^ compile_unboxed_const 0l ^^ G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^
         G.if1 I32Type
           begin
             get_a ^^
             (* -2^sbits is small enough for compact representation, but 2^sbits isn't *)
-            compile_eq_const sminl_shifted ^^ (* i.e. -2^sbits shifted *)
+            compile_eq_const sminl ^^ (* i.e. -2^sbits *)
             G.if1 I32Type
               (compile_unboxed_const sminl ^^ Num.from_word32 env)
               begin
-                (* absolute value works directly on shifted representation *)
                 compile_unboxed_const 0l ^^
                 get_a ^^
-                G.i (Binary (Wasm.Values.I32 I32Op.Sub))
+                G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
+                BitTagged.tag_i32 env Type.Int
               end
           end
-          get_a
+          begin
+            get_a ^^
+            BitTagged.tag_i32 env Type.Int
+          end
       end
       Num.compile_abs
       env
