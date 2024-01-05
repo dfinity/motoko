@@ -69,7 +69,7 @@ module TaggingScheme = struct
    Type.(match pty with
    | Bool ->  0b0000_0000l
    | Nat
-   | Int ->  (* 0b0000_0000l *) 0b0000_0010l
+   | Int ->  (* 0b0000_0000l *)  0b0000_0010l
    | Nat64 -> 0b0000_0100l
    | Int64 -> 0b0000_0110l
    | Nat32 -> 0b0000_1100l
@@ -1708,7 +1708,7 @@ module BitTagged = struct
 
   let sanity_check_tag line env ty =
     let name = Printf.sprintf "bittagged_sanity_check_%s(%i)" (Type.string_of_prim ty) line in
-    if true || !(Flags.sanity) then (* TODO: make truly conditional *)
+    if !(Flags.sanity) then (* TODO: make truly conditional *)
       (Func.share_code1 Func.Always env name ("v", I32Type) [I32Type] (fun env get_n ->
         get_n ^^
         compile_bitand_const (TaggingScheme.tag_of_typ ty) ^^
@@ -2540,7 +2540,7 @@ module TaggedSmallWord = struct
     | _ -> 32
 
   (* tag small words, todo set bit 1? *)
-  let tag_of_type = function
+  let tag_of_type = function (*TODO: use TaggingScheme tags*)
     | Type.Int8 -> Int32.shift_left 1l 2
     | Type.Nat8 -> Int32.shift_left 2l 2
     | Type.Int16 -> Int32.shift_left 3l 2
@@ -2568,7 +2568,7 @@ module TaggedSmallWord = struct
 
   let shift_leftWordNtoI32 = compile_shl_const
 
-  let sanity_check_tag env ty =
+  let sanity_check_tag env ty = (* TODO add line for debugging? *)
     let name = "sanity_check_"^Type.string_of_prim ty in
     if !(Flags.sanity) then
       (Func.share_code1 Func.Always env name ("v", I32Type) [I32Type] (fun env get_n ->
@@ -3113,7 +3113,8 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       (fun env get_a get_b ->
         let set_res, get_res = new_local env "res" in
         let set_res64, get_res64 = new_local64 env "res64" in
-        get_a ^^ get_b ^^
+        get_a ^^ BitTagged.sanity_check_tag __LINE__ env Type.Int ^^
+        get_b ^^ BitTagged.sanity_check_tag __LINE__ env Type.Int ^^
         BitTagged.if_both_tagged_scalar env [I32Type]
           begin
             get_a ^^ extend64 env ^^
@@ -3136,7 +3137,10 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
             G.if1 I32Type
               (get_res ^^ Num.truncate_to_word32 env ^^ BitTagged.tag_i32 env Type.Int)
               get_res
-          end)
+          end
+        ^^
+        BitTagged.sanity_check_tag __LINE__ env Type.Int
+      )
 
   let compile_add = try_unbox2 "B_add" Word64.compile_add Num.compile_add
 
@@ -3223,13 +3227,13 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     N.B. we currently choose the shift cutoff as 42, just because (it must be <64).
    *)
 
-  let compile_lsh env = (* TODO *)
+  let compile_lsh env =
     Func.share_code2 Func.Always env "B_lsh" (("n", I32Type), ("amount", I32Type)) [I32Type]
     (fun env get_n get_amount ->
       get_n ^^
       BitTagged.if_tagged_scalar env [I32Type]
         ( (* see Note [left shifting compact Nat] *)
-          get_n ^^
+          get_n ^^ clear_tag env ^^
           G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32)) ^^
           get_amount ^^
           G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
@@ -3245,7 +3249,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
           get_amount ^^ compile_rel_const I32Op.LeU 42l ^^
           G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
           G.if1 I32Type
-            get_res
+            (get_res ^^ compile_bitor_const (TaggingScheme.tag_of_typ Type.Int))
             (get_n ^^ compile_shrS_const (Int32.sub 32l BitTagged.ubitsl) ^^ Num.from_word30 env ^^ get_amount ^^ Num.compile_lsh env)
         )
         (get_n ^^ get_amount ^^ Num.compile_lsh env))
@@ -3256,15 +3260,18 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       get_n ^^
       BitTagged.if_tagged_scalar env [I32Type]
         begin
-          get_n ^^
+          get_n ^^ clear_tag env ^^
           get_amount ^^
           G.i (Binary (Wasm.Values.I32 I32Op.ShrU)) ^^
           compile_bitand_const Int32.(shift_left minus_one (32 - BitTagged.ubits)) ^^
           get_amount ^^ compile_rel_const I32Op.LeU BitTagged.ubitsl ^^
-          G.i (Binary (Wasm.Values.I32 I32Op.Mul)) (* branch-free `if` *)
+          G.i (Binary (Wasm.Values.I32 I32Op.Mul)) (* branch-free `if` *) ^^
+          (* tag *)
+          compile_bitor_const (TaggingScheme.tag_of_typ Type.Int)
         end
         begin
-          get_n ^^ get_amount ^^ Num.compile_rsh env ^^
+          get_n ^^
+          get_amount ^^ Num.compile_rsh env ^^
           let set_res, get_res = new_local env "res" in
           set_res ^^ get_res ^^
           fits_in_vanilla env ^^
@@ -3277,7 +3284,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     let set_n, get_n = new_local env "n" in
     set_n ^^ get_n ^^
     BitTagged.if_tagged_scalar env [I32Type]
-      (get_n ^^ compile_unboxed_const 0l ^^ G.i (Compare (Wasm.Values.I32 I32Op.LtS)))
+      (get_n ^^ clear_tag env ^^ compile_unboxed_const 0l ^^ G.i (Compare (Wasm.Values.I32 I32Op.LtS)))
       (get_n ^^ Num.compile_is_negative env)
 
   let vanilla_lit env = function
@@ -3291,13 +3298,16 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     Func.share_code1 Func.Always env "B_neg" ("n", I32Type) [I32Type] (fun env get_n ->
       get_n ^^ BitTagged.if_tagged_scalar env [I32Type]
         begin
-          get_n ^^ compile_eq_const sminl_shifted ^^ (* -2^sbits, shifted ubits *) (*FIX*)
+          get_n ^^ clear_tag env ^^ compile_eq_const sminl_shifted ^^ (* -2^sbits, shifted ubits *) (*FIX*)
           G.if1 I32Type
             (compile_unboxed_const sminl ^^ Num.from_word32 env)
             begin
               compile_unboxed_const 0l ^^
-              get_n ^^
-              G.i (Binary (Wasm.Values.I32 I32Op.Sub))
+              get_n ^^ clear_tag env ^^
+              G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
+              (* tag the result *)
+              clear_tag env ^^
+              compile_bitor_const (TaggingScheme.tag_of_typ Type.Int)
             end
         end
         (get_n ^^ Num.compile_neg env)
@@ -3332,7 +3342,9 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
           (Bool.lit true)
           (get_a ^^ get_b ^^
            BitTagged.if_both_tagged_scalar env [I32Type]
-             (Bool.lit false)
+             ( get_a ^^ BitTagged.sanity_check_tag __LINE__ env Type.Int ^^ G.i Drop ^^
+               get_b ^^ BitTagged.sanity_check_tag __LINE__ env Type.Int ^^ G.i Drop ^^
+               Bool.lit false)
              begin
                get_a ^^ BitTagged.if_tagged_scalar env [I32Type]
                  (get_a ^^ extend_and_box64 env)
@@ -3573,8 +3585,9 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       (get_a ^^ BitTagged.tag env Type.Int) (*TBR*)
       (get_a ^^ Num.from_signed_word64 env)
 
-  let from_word30 env =
-    compile_shl_const (Int32.sub 32l BitTagged.ubitsl)
+  let from_word30 env = (* TBR: don't think we've got 30 bits! *)
+    (*    compile_shl_const (Int32.sub 32l BitTagged.ubitsl) ^^ *) (* TBR *)
+    BitTagged.tag_i32 env Type.Int
 
   let from_word32 env =
     let set_a, get_a = new_local env "a" in
@@ -3767,7 +3780,7 @@ module Prim = struct
   let prim_intToWord32 = BigNum.truncate_to_word32
   let prim_intToWordNShifted env b =
     prim_intToWord32 env ^^
-    TaggedSmallWord.shift_leftWordNtoI32 b
+    TaggedSmallWord.shift_leftWordNtoI32 b (* TBR *)
 end (* Prim *)
 
 module Object = struct
@@ -10380,21 +10393,22 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | NextArrayOffset spacing, [e] ->
     let advance_by =
       match spacing with
-      | ElementSize -> Arr.element_size
-      | One -> Int32.shift_left 1l (32 - BitTagged.ubits) (* 1 : Nat *) in
+      | ElementSize -> Int32.shift_left Arr.element_size (32 - BitTagged.ubits_of Type.Int) (* 4 : Nat *)
+      | One -> Int32.shift_left 1l (32 - BitTagged.ubits_of Type.Int) (* 1 : Nat *) in
     SR.Vanilla,
     compile_exp_vanilla env ae e ^^ (* previous byte offset to array *)
     compile_add_const advance_by
   | ValidArrayOffset, [e1; e2] ->
     SR.bool,
-    compile_exp_vanilla env ae e1 ^^
-    compile_exp_vanilla env ae e2 ^^
+    compile_exp_vanilla env ae e1 ^^ BitTagged.untag_i32 env Type.Int ^^
+    compile_exp_vanilla env ae e2 ^^ BitTagged.untag_i32 env Type.Int ^^
     G.i (Compare (Wasm.Values.I32 I32Op.LtU))
   | DerefArrayOffset, [e1; e2] ->
     SR.Vanilla,
     compile_exp_vanilla env ae e1 ^^ (* skewed pointer to array *)
     Tagged.load_forwarding_pointer env ^^
     compile_exp_vanilla env ae e2 ^^ (* byte offset *)
+    BitTagged.untag_i32 env Type.Int ^^
     (* Note: the below two lines compile to `i32.add; i32.load offset=OFFSET`
        with OFFSET = 13 with forwarding pointers and OFFSET = 9 without forwarding pointers,
        thus together also unskewing the pointer and skipping administrative
@@ -10405,7 +10419,9 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | GetPastArrayOffset spacing, [e] ->
     let shift =
       match spacing with
-      | ElementSize -> compile_shl_const 2l (* effectively a multiplication by word_size *)
+      | ElementSize ->
+         compile_shl_const 2l ^^ (* effectively a multiplication by word_size *)
+         BitTagged.tag_i32 env Type.Int
       | One -> BigNum.from_word30 env in    (* make it a compact bignum *)
     SR.Vanilla,
     compile_exp_vanilla env ae e ^^ (* array *)
@@ -10640,9 +10656,9 @@ and compile_prim_invocation (env : E.t) ae p es at =
     | Int16, Int32 ->
       SR.Vanilla,
       compile_exp_vanilla env ae e ^^
-      compile_bitand_const (TaggedSmallWord.mask_of_type Int16) ^^
-      compile_shrS_const (Int32.sub (Int32.of_int (BitTagged.ubits_of Int32)) 16l) (* resulting Int32 will always be unboxed *)
-      (*TODO: tag (see Nat8, Nat16 case)*)
+      TaggedSmallWord.lsb_adjust env Type.Int16 ^^
+      (* resulting Int32 will always be unboxed *)
+      BitTagged.tag_i32 env Type.Int32
     | Int32, Int64 ->
       SR.UnboxedWord64 Int64,
       compile_exp_as env ae (SR.UnboxedWord32 Int32) e ^^
