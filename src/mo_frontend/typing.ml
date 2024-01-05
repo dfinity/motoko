@@ -1135,7 +1135,7 @@ and infer_exp'' env exp : T.typ =
         "expected tuple type, but expression produces type%a"
         display_typ_expand t1
     )
-  | ObjBlockE (obj_sort, _t, dec_fields) ->
+  | ObjBlockE (obj_sort, typ_opt, dec_fields) ->
     if obj_sort.it = T.Actor then begin
       error_in [Flags.WASIMode; Flags.WasmMode] env exp.at "M0068"
         "actors are not supported";
@@ -1150,7 +1150,19 @@ and infer_exp'' env exp : T.typ =
         { env with async = C.NullCap; in_actor = true }
       else env
     in
-    infer_obj env' obj_sort.it dec_fields exp.at
+    let t = infer_obj env' obj_sort.it dec_fields exp.at in
+    begin match typ_opt, obj_sort.it with
+      | Some { it = AsyncT (T.Fut, _, typ); at; _ }, T.Actor
+      | Some ({ at; _ } as typ), T.(Module | Object) ->
+        let t' = check_typ env' typ in
+        if not (T.sub t t') then
+          local_error env obj_sort.at "M0134"(*FIXME*)
+            "body of type%a\ndoes not match expected type%a"
+            display_typ_expand t
+            display_typ_expand t'
+      | _ -> ()
+    end;
+    t
   | ObjE (exp_bases, exp_fields) ->
     let open List in
     check_ids env "object" "field"
@@ -2351,7 +2363,7 @@ and infer_block env decs at : T.typ * Scope.scope =
   let env' = adjoin env scope in
   (* HACK: when compiling to IC, mark class constructors as unavailable *)
   let ve = match !Flags.compile_mode with
-    | (Flags.ICMode | Flags.RefMode) ->
+    | Flags.(ICMode | RefMode) ->
       List.fold_left (fun ve' dec ->
         match dec.it with
         | ClassD(_, id, _, _, _, { it = T.Actor; _}, _, _) ->
@@ -2423,7 +2435,7 @@ and infer_dec env dec : T.typ =
       match typ_opt, obj_sort.it with
       | None, _ -> ()
       | Some { it = AsyncT (T.Fut, _, typ); at; _ }, T.Actor
-      | Some ({ at; _ } as typ), (T.Module | T.Object) ->
+      | Some ({ at; _ } as typ), T.(Module | Object) ->
         if at = Source.no_region then
           warn env dec.at "M0135"
             "actor classes with non non-async return types are deprecated; please declare the return type as 'async ...'";
@@ -2434,7 +2446,7 @@ and infer_dec env dec : T.typ =
             display_typ_expand t'
             display_typ_expand t''
       | Some typ, T.Actor ->
-        local_error env dec.at "M0135" "actor class has non-async return type"
+         local_error env dec.at "M0135"(*FIXME*) "actor class has non-async return type"
       | _, T.Memory -> assert false
     end;
     T.normalize t
