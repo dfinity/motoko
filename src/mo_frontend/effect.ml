@@ -99,7 +99,7 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
     map_max_effs effect_exp exps
   | BlockE decs ->
     map_max_effs effect_dec decs
-  | ObjBlockE (sort, dfs) ->
+  | ObjBlockE (sort, _, dfs) ->
     infer_effect_dec_fields dfs
   | ObjE (bases, efs) ->
     let bases = map_max_effs effect_exp bases in

@@ -826,7 +826,7 @@ let rec is_explicit_exp e =
   | ObjE (bases, efs) ->
     List.(for_all is_explicit_exp bases
           && for_all (fun (ef : exp_field) -> is_explicit_exp ef.it.exp) efs)
-  | ObjBlockE (_, dfs) ->
+  | ObjBlockE (_, _, dfs) ->
     List.for_all (fun (df : dec_field) -> is_explicit_dec df.it.dec) dfs
   | ArrayE (_, es) -> List.exists is_explicit_exp es
   | SwitchE (e1, cs) | TryE (e1, cs) ->
@@ -1135,7 +1135,7 @@ and infer_exp'' env exp : T.typ =
         "expected tuple type, but expression produces type%a"
         display_typ_expand t1
     )
-  | ObjBlockE (obj_sort, dec_fields) ->
+  | ObjBlockE (obj_sort, _t, dec_fields) ->
     if obj_sort.it = T.Actor then begin
       error_in [Flags.WASIMode; Flags.WasmMode] env exp.at "M0068"
         "actors are not supported";
@@ -2513,8 +2513,8 @@ and gather_dec env scope dec : Scope.t =
   (* TODO: generalize beyond let <id> = <obje> *)
   | LetD (
       {it = VarP id; _},
-      ({it = ObjBlockE (obj_sort, dec_fields); at; _} |
-       {it = AwaitE (_,{ it = AsyncE (_, _, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, dec_fields); at; _}) ; _  }); _ }),
+      ({it = ObjBlockE (obj_sort, _, dec_fields); at; _} |
+       {it = AwaitE (_,{ it = AsyncE (_, _, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, _, dec_fields); at; _}) ; _  }); _ }),
        _
     ) ->
     let decs = List.map (fun df -> df.it.dec) dec_fields in
@@ -2596,8 +2596,8 @@ and infer_dec_typdecs env dec : Scope.t =
   (* TODO: generalize beyond let <id> = <obje> *)
   | LetD (
       {it = VarP id; _},
-      ( {it = ObjBlockE (obj_sort, dec_fields); at; _} |
-        {it = AwaitE (_, { it = AsyncE (_, _, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, dec_fields); at; _}) ; _  }); _ }),
+      ( {it = ObjBlockE (obj_sort, _t, dec_fields); at; _} |
+        {it = AwaitE (_, { it = AsyncE (_, _, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, _t, dec_fields); at; _}) ; _  }); _ }),
         _
     ) ->
     let decs = List.map (fun {it = {vis; dec; _}; _} -> dec) dec_fields in
@@ -2678,8 +2678,8 @@ and infer_dec_valdecs env dec : Scope.t =
   (* TODO: generalize beyond let <id> = <obje> *)
   | LetD (
       {it = VarP id; _} as pat,
-      ( {it = ObjBlockE (obj_sort, dec_fields); at; _} |
-        {it = AwaitE (_, { it = AsyncE (_, _, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, dec_fields); at; _}) ; _ }); _ }),
+      ( {it = ObjBlockE (obj_sort, _t, dec_fields); at; _} |
+        {it = AwaitE (_, { it = AsyncE (_, _, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, _t, dec_fields); at; _}) ; _ }); _ }),
         _
     ) ->
     let decs = List.map (fun df -> df.it.dec) dec_fields in
