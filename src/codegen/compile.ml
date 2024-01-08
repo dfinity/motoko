@@ -1538,6 +1538,7 @@ module BitTagged = struct
 
   let ubits, ubitsl, ubitsL = 29, 29l, 29L (* was 31,.. *)
   let sbits, sbitsl, _sbitsL = 28, 28l, 28L (* was 30 *)
+
 (*
   let ubits, ubitsl, ubitsL = 26, 26l, 26L (* was 31,.. *)
   let sbits, sbitsl, sbitsL = 25, 25l, 25L (* was 30 *)
@@ -2522,32 +2523,28 @@ module TaggedSmallWord = struct
      are _only_ used for the small ones. Check call-sites!
   *)
 
-  let toNat = function
-    | Type.Int8
-    | Type.Nat8 -> Type.Nat8
-    | Type.Int16
-    | Type.Nat16 -> Type.Nat16
-    | Type.Int32
-    | Type.Nat32 -> Type.Nat32
-    | _ -> assert false
+  let toNat = Type.(function
+    | Int8 | Nat8 -> Nat8
+    | Int16 | Nat16 -> Nat16
+    | Int32 | Nat32 -> Nat32
+    | _ -> assert false)
 
-  let bits_of_type = function
-    | Type.(Int8|Nat8) -> 8
-    | Type.(Int16|Nat16) -> 16
-    | Type.Char -> 21
-(* DONT do this
-    | Type.(Int32|Nat32) -> 24
-    | Type.(Int64|Nat64) -> 24 *)
-    | _ -> 32
+  let bits_of_type = Type.(function
+    | Int8 | Nat8 -> 8
+    | Int16 | Nat16 -> 16
+    | Char -> 21
+    (* unboxed on stack *)
+    | Nat32 | Int32 -> 32
+    | _  -> assert false)
 
-  (* tag small words, todo set bit 1? *)
-  let tag_of_type = function (*TODO: use TaggingScheme tags*)
-    | Type.Int8 -> Int32.shift_left 1l 2
-    | Type.Nat8 -> Int32.shift_left 2l 2
-    | Type.Int16 -> Int32.shift_left 3l 2
-    | Type.Nat16 -> Int32.shift_left 4l 2
-    | Type.Char -> Int32.shift_left 5l 2
-    | _ -> 0l
+  let tag_of_type pty = Type.(match pty with
+    | Int8 | Nat8
+    | Int16 | Nat16
+    | Char ->
+       TaggingScheme.tag_of_typ pty
+    (* unboxed on stack *)
+    | Int32 | Nat32 -> 0l
+    | _ -> assert false)
 
   let shift_of_type ty = Int32.of_int (32 - bits_of_type ty)
 
@@ -11079,7 +11076,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.UnboxedWord32 Type.(if p = "regionLoadNat32" then Nat32 else Int32),
     compile_exp_as env ae SR.Vanilla e0 ^^
     compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) e1 ^^
-    Region.load_word32 env (* FIX ME *)
+    Region.load_word32 env
 
   | OtherPrim (("regionStoreNat32" | "regionStoreInt32") as p), [e0; e1; e2] ->
     SR.unit,
@@ -11093,7 +11090,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     (SR.UnboxedWord64 Type.(if p = "regionLoadNat64" then Nat64 else Int64)),
     compile_exp_as env ae SR.Vanilla e0 ^^
     compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) e1 ^^
-    Region.load_word64 env (* FIX ME *)
+    Region.load_word64 env
 
   | OtherPrim (("regionStoreNat64" | "regionStoreInt64") as p), [e0; e1; e2] ->
     SR.unit,
