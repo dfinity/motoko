@@ -1155,7 +1155,7 @@ and infer_exp'' env exp : T.typ =
       | Some typ ->
         let t' = check_typ env' typ in
         if not (T.sub t t') then
-          local_error env obj_sort.at "M0192"
+          local_error env exp.at "M0192"
             "body of type%a\ndoes not match expected type%a"
             display_typ_expand t
             display_typ_expand t'
