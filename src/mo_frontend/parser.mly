@@ -750,15 +750,11 @@ catch :
   | CATCH p=pat_nullary e=exp_nest
     { {pat = p; exp = e} @@ at $sloc }
 
-%inline annot_opt_eq :
-  | t=annot_opt EQ
-    { t }
-
 exp_field :
   | m=var_opt x=id t=annot_opt
     { let e = VarE(x.it @@ x.at) @? x.at in
       { mut = m; id = x; exp = annot_exp e t; } @@ at $sloc }
-  | m=var_opt x=id t=annot_opt_eq e=exp(ob)
+  | m=var_opt x=id t=annot_opt EQ e=exp(ob)
     { { mut = m; id = x; exp = annot_exp e t; } @@ at $sloc }
 
 dec_field :
@@ -831,7 +827,7 @@ pat :
 pat_field :
   | x=id t=annot_opt
     { {id = x; pat = annot_pat (VarP x @! x.at) t} @@ at $sloc }
-  | x=id t=annot_opt_eq p=pat
+  | x=id t=annot_opt EQ p=pat
     { {id = x; pat = annot_pat p t} @@ at $sloc }
 
 pat_opt :
@@ -845,7 +841,7 @@ pat_opt :
 (* Declarations *)
 
 dec_var :
-  | VAR x=id t=annot_opt_eq e=exp(ob)
+  | VAR x=id t=annot_opt EQ e=exp(ob)
     { VarD(x, annot_exp e t) @? at $sloc }
 
 dec_nonvar :
@@ -854,9 +850,8 @@ dec_nonvar :
       LetD (p', e', None) @? at $sloc }
   | TYPE x=typ_id tps=typ_params_opt EQ t=typ
     { TypD(x, tps, t) @? at $sloc }
-  | s=obj_sort xf=id_opt t=annot_opt_eq? efs=obj_body
-    { let t = Option.join t in
-      let sort = Type.(match s.it with
+  | s=obj_sort xf=id_opt t=annot_opt EQ? efs=obj_body
+    { let sort = Type.(match s.it with
                        | Actor -> "actor" | Module -> "module" | Object -> "object"
                        | _ -> assert false) in
       let named, x = xf sort $sloc in
