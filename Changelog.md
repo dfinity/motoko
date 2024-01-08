@@ -1,5 +1,46 @@
 # Motoko compiler changelog
 
+* motoko (`moc`)
+
+  * Officializing the new **incremental garbage collector** after a successful beta testing phase.
+    The incremental GC can be enabled by the moc flag `--incremental-gc` (#3837) and is designed to scale for large program heap sizes.
+    
+    **Note**: While resolving scalability issues with regard to the instruction limit of the GC work, it is now possible to hit other scalability limits:
+    - _Out of memory_: A program can run out of memory if it fills the entire memory space with live objects.
+    - _Upgrade limits_: When using stable variables, the current mechanism of serialization and deserialization to and from stable memory can exceed the instruction limit or run out of memory.
+
+    **Recommendations**:
+    - _Test the upgrade_: Thoroughly test the upgrade mechanism for different data volumes and heap sizes and conservatively determine the amount of stable data that is supported when upgrading the program.
+    - _Monitor the heap size_: Monitor the memory and heap size (`Prim.rts_memory_size()` and `Prim.rts_heap_size()`) of the application in production.
+    - _Limit the heap size_: Implement a custom limit in the application to keep the heap size and data volume below the scalability limit that has been determined during testing, in particular for the upgrade mechanism.
+    - _Avoid large allocations per message_: Avoid large allocations of 100 MB or more per message, but rather distribute larger allocations across multiple messages. Large allocations per message extend the duration of the GC increment. Moreover, memory pressure may occur because the GC has a higher reclamation latency than a classical stop-the-world collector.
+    - _Consider a backup query function_: Depending on the application case, it can be beneficial to offer an privileged _query_ function to extract the critical canister state in several chunks. The runtime system maintains an extra memory reserve for query functions. Of course, such a function has to be implemented with a check that restricts it to authorized callers only. It is also important to test this function well. 
+    - _Last resort if memory would be full_: Assuming the memory is full with objects that have shortly become garbage before the memory space has been exhausted, the canister owner or controllers can call the system-level function `__motoko_gc_trigger()` multiple times to run extra GC increments and complete a GC run, for collecting the latest garbage in a full heap. Up to 100 calls of this function may be needed to complete a GC run in a 4GB memory space. The GC keeps an specific memory reserve to be able to perform its work even if the application has exhausted the memory. Usually, this functionality is not needed in practice but is only useful in such exceptional cases.
+
+## 0.10.3 (2023-12-20)
+
+* motoko (`moc`)
+
+  * Include doc comments to Candid interfaces generated via the `--idl` flag (#4334).
+
+  * bugfix: fix broken implementations of `Region.loadNat32`, `Region.storeNat32`, `Region.loadInt32`, `Region.storeInt32` (#4335).
+    Values previously stored with the broken 32-bit operations must be loaded with care.
+    If bit 0 is clear, the original value can be obtained by an arithmetic shift right by 1 bit.
+    If bit 0 is set, the value cannot be trusted and should be ignored
+    (it encodes some transient address of a boxed value).
+
+* motoko-base
+
+  * Added `ExperimentalInternetComputer.performanceCounter` function to get the raw performance
+    counters (dfinity/motoko-base⁠#600).
+
+  * Added `Array.take` function to get some prefix of an array (dfinity/motoko-base⁠#587).
+
+  * Deprecated `TrieSet.mem` in favor of `TrieSet.has` (dfinity/motoko-base⁠#576).
+
+  * bugfix: `Array.chain(as, f)` was incorrectly trapping when `f(a)` was an empty array
+    (dfinity/motoko-base⁠#599).
+
 ## 0.10.2 (2023-11-12)
 
 * motoko (`moc`)
