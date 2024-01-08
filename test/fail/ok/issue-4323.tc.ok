@@ -1,4 +1,4 @@
-issue-4323.mo:4.1-6.2: type error [M0096], expression of type
+issue-4323.mo:4.1-4.6: type error [M0134], body of type
   actor {}
-cannot produce expected type
-  actor {beep : shared () -> async ()}
+does not match expected type
+  Main = actor {beep : shared () -> async ()}
