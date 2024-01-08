@@ -1155,7 +1155,7 @@ and infer_exp'' env exp : T.typ =
       | Some typ ->
         let t' = check_typ env' typ in
         if not (T.sub t t') then
-          local_error env obj_sort.at "M0134"(*FIXME*)
+          local_error env obj_sort.at "M0192"
             "body of type%a\ndoes not match expected type%a"
             display_typ_expand t
             display_typ_expand t'
@@ -2445,7 +2445,7 @@ and infer_dec env dec : T.typ =
             display_typ_expand t'
             display_typ_expand t''
       | Some typ, T.Actor ->
-         local_error env dec.at "M0135"(*FIXME*) "actor class has non-async return type"
+         local_error env dec.at "M0135"(*FIXME: repeated?*) "actor class has non-async return type"
       | _, T.Memory -> assert false
     end;
     T.normalize t
