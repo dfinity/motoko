@@ -79,6 +79,7 @@ module TaggingScheme = struct
    | Char  -> 0b0011_1100l
    | Nat8  -> 0b0111_1100l
    | Int8  -> 0b0111_1110l
+   | _  -> assert false
    )
 
 end
