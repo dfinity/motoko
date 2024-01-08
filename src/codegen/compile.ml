@@ -52,33 +52,34 @@ module TaggingScheme = struct
    | ((O,O,O,O,O,O,O,O), (O,O,O,O,O,O,O,O), (O,O,O,O,O,O,O,O), (O,O,O,O,O,O,O,O)) -> TBool (* false *)
    | ((O,O,O,O,O,O,O,O), (O,O,O,O,O,O,O,O), (O,O,O,O,O,O,O,O), (O,O,O,O,O,O,O,I)) -> TBool (* true *)
    | ((_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,_,I,I)) -> TRef  (* 30 bit *)
-   | ((_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,O,I,O)) -> TNum   (* 29 bit *)
+   | ((_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,_,I,O)) -> TNum   (* 30 bit *)
    | ((_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,O,I,O,O)) -> TNat64 (* 28 bit *)
-   | ((_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,O,I,I,O)) -> TInt64
-   | ((_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,O,I,I,O,O)) -> TNat32 (* 27 bit *)
-   | ((_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,O,I,I,I,O)) -> TInt32
-   | ((_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,O,I,I,I,O,O)) -> TNat16
-   | ((_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,O,I,I,I,I,O)) -> TInt16
-   | ((_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,O,I,I,I,I,O,O)) -> TChar
-   | ((_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,O,I,I,I,I,I,O)) -> TUnused
-   | ((_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (O,I,I,I,I,I,O,O)) -> TNat8
-   | ((_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (O,I,I,I,I,I,I,O)) -> TInt8
+   | ((_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,I,I,O,O)) -> TInt64
+   | ((_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,O,I,O,O,O)) -> TNat32 (* 27 bit *)
+   | ((_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,I,I,O,O,O)) -> TInt32
+   | ((_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,O,I,O,O,O,O)) -> TNat16
+   | ((_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,I,I,O,O,O,O)) -> TInt16
+   | ((_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,O,I,O,O,O,O,O)) -> TChar
+   | ((_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,I,I,O,O,O,O,O)) -> TUnused
+   | ((_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (O,I,O,O,O,O,O,O)) -> TNat8
+   | ((_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (I,I,O,O,O,O,O,O)) -> TInt8
    | _                                                                            -> TUnused
 
  let tag_of_typ pty =
    Type.(match pty with
    | Bool ->  0b0000_0000l
    | Nat
-   | Int ->  (* 0b0000_0000l *)  0b0000_0010l
+   | Int ->   0b0000_0010l
    | Nat64 -> 0b0000_0100l
-   | Int64 -> 0b0000_0110l
-   | Nat32 -> 0b0000_1100l
-   | Int32 -> 0b0000_1110l
-   | Nat16 -> 0b0001_1100l
-   | Int16 -> 0b0001_1110l
-   | Char  -> 0b0011_1100l
-   | Nat8  -> 0b0111_1100l
-   | Int8  -> 0b0111_1110l
+   | Int64 -> 0b0000_1100l
+   | Nat32 -> 0b0000_1000l
+   | Int32 -> 0b0001_1000l
+   | Nat16 -> 0b0001_0000l
+   | Int16 -> 0b0011_0000l
+   | Char  -> 0b0010_0000l
+   (* ???  -> 0b0110_0000l*)
+   | Nat8  -> 0b0100_0000l
+   | Int8  -> 0b1100_0000l
    | _  -> assert false
    )
 
@@ -1535,18 +1536,6 @@ end (* Bool *)
 
 module BitTagged = struct
 
-
-  let ubits, ubitsl, ubitsL = 29, 29l, 29L (* was 31,.. *)
-  let sbits, sbitsl, _sbitsL = 28, 28l, 28L (* was 30 *)
-
-(*
-  let ubits, ubitsl, ubitsL = 26, 26l, 26L (* was 31,.. *)
-  let sbits, sbitsl, sbitsL = 25, 25l, 25L (* was 30 *)
- *)
-(*
-  let ubits, ubitsl, ubitsL = 31, 31l, 31L (* was 31,.. *)
-  let sbits, sbitsl, sbitsL = 30, 30l, 30L (* was 30 *)
- *) 
   (* This module takes care of pointer tagging:
 
      A pointer to an object at offset `i` on the heap is represented as
@@ -1603,7 +1592,7 @@ module BitTagged = struct
 
   let ubits_of pty =
     Type.(match pty with
-          | Nat | Int -> 29
+          | Nat | Int -> 30
           | Nat64 | Int64 -> 28
           | Int32 | Nat32 -> 27
           | _ -> assert false)
@@ -1626,6 +1615,7 @@ module BitTagged = struct
 
 
   (* dynamic *)
+  (* TBC: adapt and adopt optimization
   let _if_can_tag_i64 env retty is1 is2 =
     Func.share_code1 Func.Never env "can_tag_i64" ("x", I64Type) [I32Type] (fun env get_x ->
       (* checks that all but the low signed_data_bits bits are either all 0 or all 1 *)
@@ -1635,6 +1625,7 @@ module BitTagged = struct
       G.i (Test (Wasm.Values.I64 I64Op.Eqz))
     ) ^^
     E.if_ env retty is1 is2
+  *)
 
   let if_can_tag_i64 env pty retty is1 is2 =
     let sbits = sbits_of pty in
@@ -1670,6 +1661,7 @@ module BitTagged = struct
 
   (* 32 bit numbers, dynamic, w.r.t `Int` *)
 
+  (* TBC: adapt and adopt optimization
   let _if_can_tag_i32 env retty is1 is2 = (*FIX ME*)
     Func.share_code1 Func.Never env "cannot_tag_i32" ("x", I32Type) [I32Type] (fun env get_x ->
       (* checks that all but the low sbits are both either 0 or 1 *)
@@ -1678,8 +1670,7 @@ module BitTagged = struct
       G.i (Unary (Wasm.Values.I32 I32Op.Ctz))
     ) ^^
       E.if_ env retty is1 is2
-
-
+  *)
 
   let if_can_tag_i32 env pty retty is1 is2 =
     let sbits = sbits_of pty in
@@ -1710,7 +1701,7 @@ module BitTagged = struct
 
   let sanity_check_tag line env ty =
     let name = Printf.sprintf "bittagged_sanity_check_%s(%i)" (Type.string_of_prim ty) line in
-    if !(Flags.sanity) then (* TODO: make truly conditional *)
+    if !(Flags.sanity) then
       (Func.share_code1 Func.Always env name ("v", I32Type) [I32Type] (fun env get_n ->
         get_n ^^
         compile_bitand_const (TaggingScheme.tag_of_typ ty) ^^
@@ -3169,8 +3160,8 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
         let set_a64, get_a64 = new_local64 env "a64" in
         let set_b64, get_b64 = new_local64 env "b64" in
         (* Convert to plain Word64 *)
-        get_a ^^ extend64 env ^^ compile_shrS64_const (Int64.sub 32L BitTagged.ubitsL) ^^ set_a64 ^^ (*FIX*)
-        get_b ^^ extend64 env ^^ compile_shrS64_const (Int64.sub 32L BitTagged.ubitsL) ^^ set_b64 ^^ (*FIX*)
+        get_a ^^ extend64 env ^^ compile_shrS64_const (Int64.of_int (32 - BitTagged.ubits_of Type.Int)) ^^ set_a64 ^^
+        get_b ^^ extend64 env ^^ compile_shrS64_const (Int64.of_int (32 - BitTagged.ubits_of Type.Int)) ^^ set_b64 ^^
 
         (* estimate bitcount of result: `bits(a) * b <= 64` guarantees
            the absence of overflow in 64-bit arithmetic *)
@@ -3248,7 +3239,8 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
           G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
           G.if1 I32Type
             (get_res ^^ compile_bitor_const (TaggingScheme.tag_of_typ Type.Int))
-            (get_n ^^ compile_shrS_const (Int32.sub 32l BitTagged.ubitsl) ^^ Num.from_word30 env ^^ get_amount ^^ Num.compile_lsh env)
+            (get_n ^^ compile_shrS_const (Int32.of_int (32 - BitTagged.ubits_of Type.Int)) ^^
+             Num.from_word30 env ^^ get_amount ^^ Num.compile_lsh env)
         )
         (get_n ^^ get_amount ^^ Num.compile_lsh env))
 
@@ -3261,8 +3253,8 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
           get_n ^^ clear_tag env ^^
           get_amount ^^
           G.i (Binary (Wasm.Values.I32 I32Op.ShrU)) ^^
-          compile_bitand_const Int32.(shift_left minus_one (32 - BitTagged.ubits)) ^^
-          get_amount ^^ compile_rel_const I32Op.LeU BitTagged.ubitsl ^^
+          compile_bitand_const Int32.(shift_left minus_one (32 - BitTagged.ubits_of Type.Int)) ^^
+          get_amount ^^ compile_rel_const I32Op.LeU (Int32.of_int (BitTagged.ubits_of Type.Int))^^
           G.i (Binary (Wasm.Values.I32 I32Op.Mul)) (* branch-free `if` *) ^^
           (* tag *)
           compile_bitor_const (TaggingScheme.tag_of_typ Type.Int)
@@ -3291,8 +3283,8 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     | n -> Num.vanilla_lit env n
 
   let compile_neg env =
-    let sminl = Int32.(neg (shift_left 1l BitTagged.sbits)) in
-    let sminl_shifted = Int32.shift_left sminl (32 - BitTagged.ubits) in
+    let sminl = Int32.(neg (shift_left 1l (BitTagged.sbits_of Type.Int))) in
+    let sminl_shifted = Int32.shift_left sminl (32 - BitTagged.ubits_of Type.Int) in
     Func.share_code1 Func.Always env "B_neg" ("n", I32Type) [I32Type] (fun env get_n ->
       get_n ^^ BitTagged.if_tagged_scalar env [I32Type]
         begin
@@ -3369,9 +3361,9 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
   let fits_unsigned_bits env n =
     try_unbox I32Type (fun _ -> match n with
         | 32 | 64 -> G.i Drop ^^ Bool.lit true
-        | n when (n = 8 || n = 16 || n = BitTagged.ubits) ->
+        | n when (n = 8 || n = 16 || n = BitTagged.ubits_of Type.Int) ->
           (* Please review carefully! *)
-          compile_bitand_const Int32.(logor 1l (shift_left minus_one (n + (32-BitTagged.ubits)))) ^^
+          compile_bitand_const Int32.(logor 1l (shift_left minus_one (n + (32 - BitTagged.ubits_of Type.Int)))) ^^
           G.i (Test (Wasm.Values.I32 I32Op.Eqz))
         | _ -> assert false
       )
@@ -3382,13 +3374,13 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     let set_a, get_a = new_local env "a" in
     try_unbox I32Type (fun _ -> match n with
         | 32 | 64 -> G.i Drop ^^ Bool.lit true
-        | n when (n = 8 || n = 16 || n = BitTagged.ubits) ->
+        | n when (n = 8 || n = 16 || n = BitTagged.ubits_of Type.Int) ->
           (* Please review carefully! *)
            set_a ^^
            get_a ^^ get_a ^^ compile_shrS_const 1l ^^
            G.i (Binary (Wasm.Values.I32 I32Op.Xor)) ^^
            compile_bitand_const
-             Int32.(shift_left minus_one ((n-1) + (32-BitTagged.ubits))) ^^
+             Int32.(shift_left minus_one ((n-1) + (32 - BitTagged.ubits_of Type.Int))) ^^
            G.i (Test (Wasm.Values.I32 I32Op.Eqz))
 (* alternatively:          
            let lower_bound = Int32.(neg (shift_left 1l (n-1))) in
@@ -3409,7 +3401,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       env
 
   let compile_abs env =
-    let sminl = Int32.(neg (shift_left 1l BitTagged.sbits)) in
+    let sminl = Int32.(neg (shift_left 1l (BitTagged.sbits_of Type.Int))) in
     try_unbox I32Type
       begin
         fun _ ->
@@ -10582,7 +10574,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
       get_b ^^
       BitTagged.if_tagged_scalar env [I32Type]
         (get_b ^^
-         compile_shrS_const (Int32.sub 32l BitTagged.ubitsl) ^^
+         compile_shrS_const (Int32.of_int (32 - (BitTagged.ubits_of Type.Int))) ^^
          compile_shl_const 1l)
         (get_b) ^^
       E.call_import env "rts" "bigint_to_float64"
