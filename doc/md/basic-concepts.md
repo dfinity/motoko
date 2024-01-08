@@ -150,7 +150,7 @@ x * y + x
 
 A declaration list is not itself (immediately) an *expression*, so we cannot (immediately) declare another variable with its final value (`3`).
 
-**Block expressions.** We can form a *block expression* from this list of declarations by enclosing it with matching *curly braces*. Blocks are only allowed as sub-expressions of control flow expressions like `if`, `loop`, `case`, etc. In all other places, we use `do { …​ }` to represent block expression, to distinguish blocks from object literals. For example, `do {}` is the empty block of type `()`, while `{}` is an empty record of record type `{}`.
+**Block expressions.** We can form a *block expression* from this list of declarations by enclosing it with matching *curly braces*. Blocks are only allowed as sub-expressions of control flow expressions like `if`, `loop`, `case`, etc. In all other places, we use `do { … }` to represent block expression, to distinguish blocks from object literals. For example, `do {}` is the empty block of type `()`, while `{}` is an empty record of record type `{}`.
 
 ``` motoko
 do {

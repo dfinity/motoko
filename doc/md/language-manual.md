@@ -396,11 +396,11 @@ The syntax of a *declaration* is as follows:
   let <pat> = <exp>                                                      immutable, trap on match failure
   let <pat> = <exp> else <block-or-exp>                                  immutable, handle match failure
   var <id> (: <typ>)? = <exp>                                            mutable
-  <sort> <id>? =? <obj-body>                                             object
+  <sort> <id>? (: <typ>)? =? <obj-body>                                  object
   <shared-pat>? func <id>? <typ-params>? <pat> (: <typ>)? =? <exp>       function
   type <id> <typ-params>? = <typ>                                        type
   <shared-pat>? <sort>? class                                            class
-    <id>? <typ-params>? <pat> (: <typ>)? <class-body>
+    <id>? <typ-params>? <pat> (: <typ>)? =? <class-body>
 
 <obj-body> ::=           object body
   { <dec-field>;* }       field declarations
@@ -1572,7 +1572,7 @@ that recursively instantiates `Seq` with a larger type, `[T]`, containing `T`, i
 
 ### Object declaration
 
-Declaration `<sort> <id>? <obj-body>`, where `<obj_body>` is of the form `=? { <dec-field>;* }`, declares an object with optional identifier `<id>` and zero or more fields `<dec-field>;*`. Fields can be declared with `public` or `private` visibility; if the visibility is omitted, it defaults to `private`.
+Declaration `<sort> <id>? (: <typ>)? <obj-body>`, where `<obj_body>` is of the form `=? { <dec-field>;* }`, declares an object with optional identifier `<id>` and zero or more fields `<dec-field>;*`. Fields can be declared with `public` or `private` visibility; if the visibility is omitted, it defaults to `private`.
 
 The qualifier `<sort>` (one of `actor`, `module` or `object`) specifies the *sort* of the object’s type. The sort imposes restrictions on the types of the public object fields.
 
