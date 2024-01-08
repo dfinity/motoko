@@ -17,6 +17,8 @@
     - _Consider a backup query function_: Depending on the application case, it can be beneficial to offer an privileged _query_ function to extract the critical canister state in several chunks. The runtime system maintains an extra memory reserve for query functions. Of course, such a function has to be implemented with a check that restricts it to authorized callers only. It is also important to test this function well. 
     - _Last resort if memory would be full_: Assuming the memory is full with objects that have shortly become garbage before the memory space has been exhausted, the canister owner or controllers can call the system-level function `__motoko_gc_trigger()` multiple times to run extra GC increments and complete a GC run, for collecting the latest garbage in a full heap. Up to 100 calls of this function may be needed to complete a GC run in a 4GB memory space. The GC keeps an specific memory reserve to be able to perform its work even if the application has exhausted the memory. Usually, this functionality is not needed in practice but is only useful in such exceptional cases.
 
+  * Allow type annotations on free-standing `object`/`module`/`actor` blocks, in order to perform a conformity check with an interface type (#4324).
+
 ## 0.10.3 (2023-12-20)
 
 * motoko (`moc`)
