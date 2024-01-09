@@ -1602,7 +1602,7 @@ Evaluation of `<sort>? <id>? =? { <dec-field>;* }` proceeds by binding `<id>` (i
 
 If `<id>?` is present, the declaration binds `<id>` to `v`. Otherwise, it produces the empty set of bindings.
 
-If `(: <typ>)?` is present, the `<obj-body>` is checked against `<typ>`.
+If `(: <typ>)?` is present, then `T` must be a subtype of  `<typ>`.
 
 :::danger
 
