@@ -3,9 +3,10 @@
 
 use core::mem::{size_of, MaybeUninit};
 
-use crate::stable_mem::{ic0_stable64_read, ic0_stable64_write};
-
-use super::grant_stable_space;
+use crate::{
+    stabilization::grant_stable_space,
+    stable_mem::{ic0_stable64_read, ic0_stable64_write},
+};
 
 /// Streamed reader/writer on stable memory.
 /// Used for the to-space during stabilization.

@@ -1,9 +1,9 @@
 use crate::{
     memory::{alloc_blob, Memory},
-    stabilization::stable_memory_access::StableMemoryAccess,
     stabilization::{
+        deserialization::stable_memory_access::StableMemoryAccess,
         layout::checked_to_u32,
-        stable_memory_stream::{ScanStream, StableMemoryStream, WriteStream},
+        serialization::stable_memory_stream::{ScanStream, StableMemoryStream, WriteStream},
     },
     types::{size_of, Blob, Bytes, Value, TAG_BLOB},
 };

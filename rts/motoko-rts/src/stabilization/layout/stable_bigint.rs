@@ -1,8 +1,10 @@
 use crate::bigint::mp_calloc;
 use crate::memory::Memory;
+use crate::stabilization::deserialization::stable_memory_access::StableMemoryAccess;
 use crate::stabilization::layout::{checked_to_usize, write_padding_u64};
-use crate::stabilization::stable_memory_stream::{ScanStream, StableMemoryStream, WriteStream};
-use crate::stabilization::StableMemoryAccess;
+use crate::stabilization::serialization::stable_memory_stream::{
+    ScanStream, StableMemoryStream, WriteStream,
+};
 use crate::tommath_bindings::mp_digit;
 use crate::types::{size_of, BigInt, Bytes, Value, Words, TAG_BIGINT};
 

@@ -14,7 +14,9 @@ use crate::{
 };
 use motoko_rts::{
     memory::{alloc_array, Memory},
-    stabilization::{Deserialization, GraphCopy, Serialization},
+    stabilization::{
+        deserialization::Deserialization, graph_copy::GraphCopy, serialization::Serialization,
+    },
     types::{Array, Null, Obj, Value, TAG_ARRAY, TAG_FWD_PTR, TAG_NULL},
 };
 use motoko_rts_macros::{incremental_gc, non_incremental_gc};

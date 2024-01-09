@@ -41,8 +41,8 @@ use self::{
 };
 
 use super::{
-    stable_memory_stream::{ScanStream, StableMemoryStream, WriteStream},
-    StableMemoryAccess,
+    deserialization::stable_memory_access::StableMemoryAccess,
+    serialization::stable_memory_stream::{ScanStream, StableMemoryStream, WriteStream},
 };
 
 mod stable_array;

@@ -1,8 +1,8 @@
 use crate::{
     memory::{alloc_array, Memory},
     stabilization::{
-        stable_memory_stream::{ScanStream, StableMemoryStream, WriteStream},
-        StableMemoryAccess,
+        deserialization::stable_memory_access::StableMemoryAccess,
+        serialization::stable_memory_stream::{ScanStream, StableMemoryStream, WriteStream},
     },
     types::{size_of, Array, Value, TAG_ARRAY},
 };
