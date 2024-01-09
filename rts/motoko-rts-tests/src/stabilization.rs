@@ -13,8 +13,8 @@ use crate::{
     stabilization::stable_memory::clear_stable_memory,
 };
 use motoko_rts::{
-    memory::alloc_array,
-    stabilization::{Deserialization, Serialization},
+    memory::{alloc_array, Memory},
+    stabilization::{Deserialization, GraphCopy, Serialization},
     types::{Array, Null, Obj, Value, TAG_ARRAY, TAG_FWD_PTR, TAG_NULL},
 };
 use motoko_rts_macros::{incremental_gc, non_incremental_gc};
@@ -196,9 +196,31 @@ fn test_serialization_deserialization(random: &mut Rand32, max_objects: u32, sta
     let gc = GC_IMPLS[0];
     let mut heap = random_heap(random, max_objects, gc);
     let old_stable_root = heap.old_stable_root();
-    let stable_size = Serialization::run(old_stable_root, stable_start);
+
+    let stable_size = serialize(old_stable_root, stable_start);
+
     heap.clear();
-    let stable_root = Deserialization::run(&mut heap.memory, stable_start, stable_size);
+
+    let stable_root = deserialize(&mut heap.memory, stable_start, stable_size);
+
     heap.set_new_root(stable_root);
     heap.check_heap();
+}
+
+fn serialize(old_stable_root: Value, stable_start: u64) -> u64 {
+    let mut serialization = Serialization::start(old_stable_root, stable_start);
+    while !serialization.is_completed() {
+        serialization.copy_increment();
+    }
+    let stable_size = serialization.complete();
+    stable_size
+}
+
+fn deserialize<M: Memory>(mem: &mut M, stable_start: u64, stable_size: u64) -> Value {
+    let mut deserialization = Deserialization::start(mem, stable_start, stable_size);
+    while !deserialization.is_completed() {
+        deserialization.copy_increment();
+    }
+    let stable_root = deserialization.complete();
+    stable_root
 }

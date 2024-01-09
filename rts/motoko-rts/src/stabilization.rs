@@ -29,7 +29,7 @@ use crate::{
         scan_stack::STACK_EMPTY,
     },
     stable_mem::{self, ic0_stable64_write, PAGE_SIZE},
-    types::{FwdPtr, Tag, Value, TAG_CLOSURE, TAG_FWD_PTR},
+    types::{block_size, FwdPtr, Tag, Value, TAG_CLOSURE, TAG_FWD_PTR},
     visitor::visit_pointer_fields,
 };
 
@@ -38,6 +38,7 @@ use self::{
     scan_stack::ScanStack,
     stable_memory_access::StableMemoryAccess,
     stable_memory_stream::{ScanStream, StableMemoryStream},
+    time::BoundedTime,
 };
 
 #[cfg(feature = "ic")]
@@ -51,6 +52,7 @@ mod scan_stack;
 
 pub mod stable_memory_access;
 pub mod stable_memory_stream;
+mod time;
 
 extern "C" {
     pub fn moc_null_singleton() -> Value;
@@ -68,16 +70,38 @@ extern "C" {
 /// During derialization:
 /// * Main memory = stable memory layout, S = StableMemoryAddress.
 /// * Stable memory = main memory layout, T = Value.
-trait GraphCopy<S: Copy, T: Copy, P: Copy + Default> {
-    /// Run the entire graph copy algorithm: Copy the object graph reachable from the `root` pointer.
-    fn run(&mut self, root: S) {
+pub trait GraphCopy<S: Copy, T: Copy, P: Copy + Default> {
+    /// Start the entire graph copy algorithm: Copy the object graph reachable from the `root` pointer.
+    /// Use this as follows:
+    /// ```
+    /// copy_algorithm.start();
+    /// while !copy_algorithm.is_completed() {
+    ///     copy_algorthm.copy_increment();
+    /// }
+    /// ```
+    fn start(&mut self, root: S) {
         self.evacuate(root);
-        while !self.scan_completed() {
+    }
+
+    /// Determin whether the copy algorithm is completed,
+    /// i.e. a sufficient amount of copy increments has been invoked.
+    fn is_completed(&self) -> bool;
+
+    /// Copy reachable objects in a time-bounded work step. with a synthetic time bound.
+    /// This allows to spread the incremtnal graph copy where the work is
+    /// split in multiple increments over multiple IC messages.
+    fn copy_increment(&mut self) {
+        self.reset_time();
+        while !self.is_completed() && !self.time_over() {
             self.scan();
         }
     }
 
-    fn scan_completed(&self) -> bool;
+    /// Reset the time at the beginning of a new copy increment.
+    fn reset_time(&mut self);
+
+    /// Determine whether the time of copy increment has been exceeded.
+    fn time_over(&self) -> bool;
 
     /// Lazy evacuation of a single object.
     /// Triggered for each pointer that is patched in the `scan()` function.
@@ -122,22 +146,42 @@ trait GraphCopy<S: Copy, T: Copy, P: Copy + Default> {
 // Must be a non-skewed value such that the GC also ignores this value.
 const DUMMY_VALUE: StableValue = StableValue::from_raw(0);
 
+const COPY_TIME_LIMIT: usize = 10_000;
+
 pub struct Serialization {
     to_space: StableMemoryStream,
+    time: BoundedTime,
 }
 
+/// Graph-copy-based serialization.
+/// Notes:
+/// - Invalidates the heap by replacing reachable stable object by forwarding objects:
+/// The heap is finally no longer usable by mutator or GC.
+/// - `copy` and partially also `scan` depends on the heap layout. Adjust these functions
+/// whenever the heap layout is changed.
+/// Usage:
+/// ```
+/// let serialization = Serialization::start(root, stable_start);
+/// while !serialization.is_completed() {
+///     serialization.copy_increment();
+/// }
+/// ```
 impl Serialization {
-    /// Notes:
-    /// - Invalidates the heap by replacing reachable stable object by forwarding objects:
-    /// The heap is finally no longer usable by mutator or GC.
-    /// - `copy` and partially also `scan` depends on the heap layout. Adjust these functions
-    /// whenever the heap layout is changed.
-    pub fn run(root: Value, stable_start: u64) -> u64 {
+    /// Start the graph-copy-based heap serialization from the stable `root` object
+    /// by writing the serialized data to the stable memory at offset `stable_start`.
+    /// The start is followed by a series of copy increments before the serialization is completed.
+    pub fn start(root: Value, stable_start: u64) -> Serialization {
         let to_space = StableMemoryStream::open(stable_start);
-        let mut serialization = Serialization { to_space };
-        serialization.run(root);
-        serialization.to_space.close();
-        serialization.to_space.written_length()
+        let time = BoundedTime::new(COPY_TIME_LIMIT);
+        let mut serialization = Serialization { time, to_space };
+        serialization.start(root);
+        serialization
+    }
+
+    /// Complete the serialization. Returns the byte size of the serialized data in stable memory.
+    pub fn complete(&mut self) -> u64 {
+        self.to_space.close();
+        self.to_space.written_length()
     }
 
     fn is_null(field_value: Value) -> bool {
@@ -204,12 +248,17 @@ impl GraphCopy<Value, StableValue, u32> for Serialization {
             debug_assert!(object.is_obj());
             let address = self.to_space.written_length();
             serialize(&mut self.to_space, object);
+            debug_assert!(self.to_space.written_length() >= address);
+            let size = self.to_space.written_length() - address;
+            debug_assert!(size <= usize::MAX as u64);
+            self.time.advance(size as usize);
             StableValue::from_stable_address(address)
         }
     }
 
     fn scan(&mut self) {
         scan_serialized(self, &|context, original| {
+            context.time.tick();
             let old_value = original.deserialize();
             if old_value.is_ptr() {
                 if Self::is_null(old_value) {
@@ -228,8 +277,16 @@ impl GraphCopy<Value, StableValue, u32> for Serialization {
         });
     }
 
-    fn scan_completed(&self) -> bool {
+    fn is_completed(&self) -> bool {
         self.to_space.scan_completed()
+    }
+
+    fn time_over(&self) -> bool {
+        self.time.is_over()
+    }
+
+    fn reset_time(&mut self) {
+        self.time.reset();
     }
 }
 
@@ -243,27 +300,42 @@ pub struct Deserialization<'a, M: Memory + 'a> {
     mem: &'a mut M,
     from_space: StableMemoryAccess,
     scan_stack: ScanStack,
+    stable_start: u64,
+    stable_size: u64,
     stable_root: Option<Value>,
+    time: BoundedTime,
 }
 
+/// Graph-copy-based deserialization.
+/// Usage:
+/// ```
+/// let deserialization = Deserialization::start(mem, stable_start, stable_size);
+/// while !deserialization.is_completed() {
+///     deserialization.copy_increment();
+/// }
+/// ```
 impl<'a, M: Memory + 'a> Deserialization<'a, M> {
-    /// Notes:
-    /// - CAUTION: Linearly writes the stable memory at the heap end. Does not work if the partitioned
-    /// heap inlines metadata inside the partitions.
-    /// - Invokes the heap allocator to compute the future object addresses in the heap.
-    /// However, the allocator must not yet write to the heap.
-    pub fn run(mem: &'a mut M, stable_start: u64, stable_size: u64) -> Value {
+    /// Start the deserialization, followed by a series of copy increments.
+    pub fn start(mem: &'a mut M, stable_start: u64, stable_size: u64) -> Deserialization<'a, M> {
         let from_space = StableMemoryAccess::open(stable_start, stable_size);
         let scan_stack = unsafe { ScanStack::new(mem) };
+        let time = BoundedTime::new(COPY_TIME_LIMIT);
         let mut deserialization = Deserialization {
             mem,
             from_space,
             scan_stack,
+            stable_start,
+            stable_size,
             stable_root: None,
+            time,
         };
-        deserialization.run(StableValue::serialize(Value::from_ptr(0)));
-        clear_stable_memory(stable_start, stable_size);
-        deserialization.stable_root.unwrap()
+        deserialization.start(StableValue::serialize(Value::from_ptr(0)));
+        deserialization
+    }
+
+    pub fn complete(&mut self) -> Value {
+        clear_stable_memory(self.stable_start, self.stable_size);
+        self.stable_root.unwrap()
     }
 
     fn is_null(value: StableValue) -> bool {
@@ -322,6 +394,8 @@ impl<'a, M: Memory + 'a> GraphCopy<StableValue, Value, u32> for Deserialization<
                 self.stable_root = Some(target);
             }
             self.scan_stack.push(self.mem, target);
+            let size = block_size(target.get_ptr() as usize).to_bytes().as_usize();
+            self.time.advance(size);
             target
         }
     }
@@ -333,6 +407,7 @@ impl<'a, M: Memory + 'a> GraphCopy<StableValue, Value, u32> for Deserialization<
         debug_assert!(target_object != STACK_EMPTY);
         unsafe {
             Self::scan_deserialized(self, target_object, &|context, original| {
+                context.time.tick();
                 let old_value = StableValue::serialize(original);
                 if Self::is_null(old_value) {
                     Self::encode_null()
@@ -345,8 +420,16 @@ impl<'a, M: Memory + 'a> GraphCopy<StableValue, Value, u32> for Deserialization<
         }
     }
 
-    fn scan_completed(&self) -> bool {
+    fn is_completed(&self) -> bool {
         unsafe { self.scan_stack.is_empty() }
+    }
+
+    fn time_over(&self) -> bool {
+        self.time.is_over()
+    }
+
+    fn reset_time(&mut self) {
+        self.time.reset();
     }
 }
 
@@ -406,7 +489,13 @@ pub unsafe fn stabilize(stable_actor: Value, old_candid_data: Value, old_type_of
 
     let stable_memory_pages = stable_mem::size();
     let serialized_data_start = stable_memory_pages * PAGE_SIZE;
-    let serialized_data_length = Serialization::run(stable_actor, serialized_data_start);
+
+    let mut serialization = Serialization::start(stable_actor, serialized_data_start);
+    while !serialization.is_completed() {
+        serialization.copy_increment();
+    }
+    let serialized_data_length = serialization.complete();
+
     let type_descriptor = TypeDescriptor::new(old_candid_data, old_type_offsets, 0);
     let metadata = StabilizationMetadata {
         stable_memory_pages,
@@ -448,11 +537,17 @@ pub unsafe fn destabilize<M: Memory>(
     if !memory_compatible(mem, &mut old_type_descriptor, &mut new_type_descriptor) {
         rts_trap_with("Memory-incompatible program upgrade");
     }
-    let stable_root = Deserialization::run(
+
+    let mut deserialization = Deserialization::start(
         mem,
         metadata.serialized_data_start,
         metadata.serialized_data_length,
     );
+    while !deserialization.is_completed() {
+        deserialization.copy_increment();
+    }
+    let stable_root = deserialization.complete();
+
     moc_stable_mem_set_size(metadata.stable_memory_pages);
     set_upgrade_instructions(statistics.stabilization_instructions + ic0_performance_counter(0));
     stable_root
