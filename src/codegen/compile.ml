@@ -31,6 +31,21 @@ let page_size_bits = 16
 
 (* Tentative tagging scheme *)
 
+(* Rationale:
+   Scalar tags are variable length.
+   A tag is either
+   * 10 for Int (leaving 30 bits payload)
+   * 01(0+) for unsigned, e.g 0100 for Nat64
+   * 11(0+) for signed,   e.g.1100 for Int64
+   Types must be distinguished by tag.
+   LSB must always be 0.
+   Decoding the type of scalar is easy using `ctz` to count the trailing zeros, then
+   switching on the MSB of the tag for sign.
+   We use the longest tag that accommodates the required payload bits, to allow room
+   for any future tags requiring more payload bits.
+   01(0^30) is used for the unit tag (payload is trivial zero bit word).
+*)
+
 module TaggingScheme = struct
  type bit = I | O
  type tag =
@@ -47,6 +62,7 @@ module TaggingScheme = struct
 
  let _ = (I,O)
 
+ (* Leverage OCaml pattern match compilation to check tagging scheme is injective *)
  let _decode u32 =
    match u32 with
    | ((O,O,O,O,O,O,O,O), (O,O,O,O,O,O,O,O), (O,O,O,O,O,O,O,O), (O,O,O,O,O,O,O,O)) -> TBool (* false *)
@@ -81,6 +97,9 @@ module TaggingScheme = struct
    (*   | Unit  -> 0b01000000_00000000_00000000_00000000l *)
    | _  -> assert false
    )
+
+ let unit_tag = (* all tag, no payload (none needed) *)
+              0b01000000_00000000_00000000_00000000l
 
 end
 
@@ -4569,7 +4588,7 @@ module Tuple = struct
 
   (* We represent the boxed empty tuple as the unboxed scalar 0, i.e. simply as
      number (but really anything is fine, we never look at this) *)
-  let unit_vanilla_lit = 0l
+  let unit_vanilla_lit = TaggingScheme.unit_tag (* all tag, trivial payload *)
   let compile_unit = compile_unboxed_const unit_vanilla_lit
 
   (* Expects on the stack the pointer to the array. *)
