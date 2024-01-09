@@ -1700,7 +1700,7 @@ module BitTagged = struct
 
   let sanity_check_tag line env ty =
     let name = Printf.sprintf "bittagged_sanity_check_%s(%i)" (Type.string_of_prim ty) line in
-    if !(Flags.sanity) then
+    if true || !(Flags.sanity) then
       (Func.share_code1 Func.Always env name ("v", I32Type) [I32Type] (fun env get_n ->
         get_n ^^
         compile_bitand_const (TaggingScheme.tag_of_typ ty) ^^
@@ -2558,7 +2558,7 @@ module TaggedSmallWord = struct
 
   let sanity_check_tag env ty = (* TODO add line for debugging? *)
     let name = "sanity_check_"^Type.string_of_prim ty in
-    if !(Flags.sanity) then
+    if true || !(Flags.sanity) then
       (Func.share_code1 Func.Always env name ("v", I32Type) [I32Type] (fun env get_n ->
         get_n ^^
         compile_bitand_const (tag_of_type ty) ^^
@@ -9742,8 +9742,10 @@ let compile_smallInt_kernel' env ty name op =
     (("a", I32Type), ("b", I32Type)) [I32Type]
     (fun env get_a get_b ->
       let (set_res, get_res) = new_local env "res" in
-      get_a ^^ compile_shrS_const 16l ^^
-      get_b ^^ compile_shrS_const 16l ^^
+      get_a ^^ compile_bitand_const (TaggedSmallWord.mask_of_type ty) ^^
+        compile_shrS_const 16l ^^
+      get_b ^^ compile_bitand_const (TaggedSmallWord.mask_of_type ty) ^^
+        compile_shrS_const 16l ^^
       op ^^
       set_res ^^ get_res ^^ get_res ^^
       enforce_16_signed_bits env ^^
@@ -9759,8 +9761,10 @@ let compile_smallNat_kernel' env ty name op =
     (("a", I32Type), ("b", I32Type)) [I32Type]
     (fun env get_a get_b ->
       let (set_res, get_res) = new_local env "res" in
-      get_a ^^ compile_shrU_const 16l ^^
-      get_b ^^ compile_shrU_const 16l ^^
+      get_a ^^ compile_bitand_const (TaggedSmallWord.mask_of_type ty) ^^
+        compile_shrU_const 16l ^^
+      get_b ^^ compile_bitand_const (TaggedSmallWord.mask_of_type ty) ^^
+        compile_shrU_const 16l ^^
       op ^^
       set_res ^^ get_res ^^
       enforce_16_unsigned_bits env ^^
