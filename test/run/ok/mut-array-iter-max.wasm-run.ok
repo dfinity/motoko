@@ -1,17 +1,2 @@
 536_870_912
 536_870_912
-RTS error: Array allocation too large
-Error: failed to run main module `_out/mut-array-iter-max.wasm`
-
-Caused by:
-    0: failed to invoke command default
-    1: error while executing at wasm backtrace:
-         0: rts_trap
-         1: motoko_rts::trap_with_prefix::hb9fcc00b15d04524
-         2: motoko_rts::rts_trap_with::h22ec7878647e017a
-         3: motoko_rts::memory::alloc_array::h29955cba75599907
-         4: alloc_array
-         5: Array_init
-         6: init
-         7: _start
-    2: wasm trap: unreachable

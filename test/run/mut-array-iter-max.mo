@@ -16,7 +16,7 @@ for (k in a.keys()) {
 assert d == max_size;
 Prim.debugPrint(debug_show d);
 
-Prim.Array_init<Nat>(max_size+1,0); // should trap
+// Prim.Array_init<Nat>(max_size+1,0); // should trap, but mangled stacktrace is noisy for testing
 
 //SKIP run
 //SKIP run-ir
