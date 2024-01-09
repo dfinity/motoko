@@ -369,7 +369,7 @@ The syntax of a *library* (that can be referenced in an import) is as follows:
 
 ``` bnf
 <lib> ::=                                               library
-  <imp>;* module <id>? <obj-body>                         module
+  <imp>;* module <id>? (: <typ>)? =? <obj-body>           module
   <imp>;* <shared-pat>? actor class                       actor class
     <id> <typ-params>? <pat> (: <typ>)? <class-body>
 ```
@@ -400,14 +400,14 @@ The syntax of a *declaration* is as follows:
   <shared-pat>? func <id>? <typ-params>? <pat> (: <typ>)? =? <exp>       function
   type <id> <typ-params>? = <typ>                                        type
   <shared-pat>? <sort>? class                                            class
-    <id>? <typ-params>? <pat> (: <typ>)? =? <class-body>
+    <id>? <typ-params>? <pat> (: <typ>)? <class-body>
 
 <obj-body> ::=           object body
   { <dec-field>;* }       field declarations
 
 <class-body> ::=         class body
-  = <id>? <obj-body>     object body, optionally binding <id> to 'this' instance
-  <obj-body>             object body
+  = <id>? <obj-body>      object body, optionally binding <id> to 'this' instance
+  <obj-body>              object body
 ```
 
 The syntax of a shared function qualifier with call-context pattern is as follows:
@@ -1095,13 +1095,15 @@ Multiple imports of the same library can be safely deduplicated without loss of 
 
 #### Module libraries
 
-A library `<imp>;* module <id>? <obj-body>` is a sequence of imports `<import>;*` followed by a single module declaration.
+A library `<imp>;* module <id>? (: <typ>)? =? <obj-body>` is a sequence of imports `<import>;*` followed by a single module declaration.
 
 A library has module type `T` provided
 
--   `module <id>? <obj-body>` has (module) type `T` under the static environment induced by the imports in `<import>;*`.
+-   `module <id>? (: <typ>)? =? <obj-body>` has (module) type `T` under the static environment induced by the imports in `<import>;*`.
 
-A module library evaluates by (transitively) evaluating its imports, binding their values to the identifiers in `<imp>;*` and then evaluating `module <id>? <obj-body>`.
+A module library evaluates by (transitively) evaluating its imports, binding their values to the identifiers in `<imp>;*` and then evaluating `module <id>? =? <obj-body>`.
+
+If `(: <typ>)?` is present, the `<obj-body>` is checked against `<typ>`.
 
 #### Actor class libraries
 
@@ -1572,7 +1574,7 @@ that recursively instantiates `Seq` with a larger type, `[T]`, containing `T`, i
 
 ### Object declaration
 
-Declaration `<sort> <id>? (: <typ>)? <obj-body>`, where `<obj_body>` is of the form `=? { <dec-field>;* }`, declares an object with optional identifier `<id>` and zero or more fields `<dec-field>;*`. Fields can be declared with `public` or `private` visibility; if the visibility is omitted, it defaults to `private`.
+Declaration `<sort> <id>? (: <typ>)? =? <obj-body>`, where `<obj-body>` is of the form `{ <dec-field>;* }`, declares an object with optional identifier `<id>` and zero or more fields `<dec-field>;*`. Fields can be declared with `public` or `private` visibility; if the visibility is omitted, it defaults to `private`.
 
 The qualifier `<sort>` (one of `actor`, `module` or `object`) specifies the *sort* of the object’s type. The sort imposes restrictions on the types of the public object fields.
 
@@ -1599,6 +1601,8 @@ Because actor construction is asynchronous, an actor declaration can only occur 
 Evaluation of `<sort>? <id>? =? { <dec-field>;* }` proceeds by binding `<id>` (if present), to the eventual value `v`, and evaluating the declarations in `<dec>;*`. If the evaluation of `<dec>;*` traps, so does the object declaration. Otherwise, `<dec>;*` produces a set of bindings for identifiers in `Id`. let `v0`, …​, `vn` be the values or locations bound to identifiers `<id0>`, …​, `<idn>`. The result of the object declaration is the object `v == sort { <id0> = v1, …​, <idn> = vn}`.
 
 If `<id>?` is present, the declaration binds `<id>` to `v`. Otherwise, it produces the empty set of bindings.
+
+If `(: <typ>)?` is present, the `<obj-body>` is checked against `<typ>`.
 
 :::danger
 

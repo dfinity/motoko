@@ -3,7 +3,7 @@
 * motoko (`moc`)
 
   * Officializing the new **incremental garbage collector** after a successful beta testing phase.
-    The incremental GC can be enabled by the moc flag `--incremental-gc` (#3837) and is designed to scale for large program heap sizes.
+    The incremental GC can be enabled by the `moc` flag `--incremental-gc` (#3837) and is designed to scale for large program heap sizes.
     
     **Note**: While resolving scalability issues with regard to the instruction limit of the GC work, it is now possible to hit other scalability limits:
     - _Out of memory_: A program can run out of memory if it fills the entire memory space with live objects.
