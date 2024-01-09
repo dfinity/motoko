@@ -32,8 +32,8 @@ let page_size_bits = 16
 (* Tentative tagging scheme *)
 
 (* Rationale:
-   Scalar tags are variable length.
-   A tag is either
+   Scalar tags are variable length LSBs.
+   A tag (in binary) is either
    * 10 for Int (leaving 30 bits payload)
    * 01(0+) for unsigned, e.g 0100 for Nat64
    * 11(0+) for signed,   e.g.1100 for Int64
@@ -41,12 +41,15 @@ let page_size_bits = 16
    LSB must always be 0.
    Decoding the type of scalar is easy using `ctz` to count the trailing zeros, then
    switching on the MSB of the tag for sign.
-   We use the longest tag that accommodates the required payload bits, to allow room
-   for any future tags requiring more payload bits.
-   01(0^30) is used for the unit tag (payload is trivial zero bit word).
+   We use the *longest* tag that accommodates the required payload bits, to allow room
+   for any future tags that may require more payload bits.
+   01(0^30) is used for the unit tag (the payload is a trivial zero-length word).
 *)
 
 module TaggingScheme = struct
+
+ let debug = false
+
  type bit = I | O
  type tag =
    TBool
@@ -1719,7 +1722,7 @@ module BitTagged = struct
 
   let sanity_check_tag line env ty =
     let name = Printf.sprintf "bittagged_sanity_check_%s(%i)" (Type.string_of_prim ty) line in
-    if true || !(Flags.sanity) then
+    if TaggingScheme.debug || !(Flags.sanity) then
       (Func.share_code1 Func.Always env name ("v", I32Type) [I32Type] (fun env get_n ->
         get_n ^^
         compile_bitand_const (TaggingScheme.tag_of_typ ty) ^^
@@ -2577,7 +2580,7 @@ module TaggedSmallWord = struct
 
   let sanity_check_tag env ty = (* TODO add line for debugging? *)
     let name = "sanity_check_"^Type.string_of_prim ty in
-    if true || !(Flags.sanity) then
+    if TaggingScheme.debug || !(Flags.sanity) then
       (Func.share_code1 Func.Always env name ("v", I32Type) [I32Type] (fun env get_n ->
         get_n ^^
         compile_bitand_const (tag_of_type ty) ^^
