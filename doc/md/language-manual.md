@@ -1103,7 +1103,7 @@ A library has module type `T` provided
 
 A module library evaluates by (transitively) evaluating its imports, binding their values to the identifiers in `<imp>;*` and then evaluating `module <id>? =? <obj-body>`.
 
-If `(: <typ>)?` is present, the `<obj-body>` is checked against `<typ>`.
+If `(: <typ>)?` is present, then `T` must be a subtype of `<typ>`.
 
 #### Actor class libraries
 
