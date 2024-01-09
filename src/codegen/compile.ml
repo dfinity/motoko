@@ -29,8 +29,7 @@ let page_size = Int32.of_int (64*1024)
 let page_size64 = Int64.of_int32 page_size
 let page_size_bits = 16
 
-
-(* tentative tagging scheme *)
+(* Tentative tagging scheme *)
 
 module TaggingScheme = struct
  type bit = I | O
@@ -3240,7 +3239,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
           G.if1 I32Type
             (get_res ^^ compile_bitor_const (TaggingScheme.tag_of_typ Type.Int))
             (get_n ^^ compile_shrS_const (Int32.of_int (32 - BitTagged.ubits_of Type.Int)) ^^
-             Num.from_word30 env ^^ get_amount ^^ Num.compile_lsh env)
+             Num.from_word30 env ^^ get_amount ^^ Num.compile_lsh env) (* TBR: from_word30? *)
         )
         (get_n ^^ get_amount ^^ Num.compile_lsh env))
 
@@ -10383,7 +10382,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | NextArrayOffset spacing, [e] ->
     let advance_by =
       match spacing with
-      | ElementSize -> Int32.shift_left Arr.element_size (32 - BitTagged.ubits_of Type.Int) (* 4 : Nat *)
+      | ElementSize
       | One -> Int32.shift_left 1l (32 - BitTagged.ubits_of Type.Int) (* 1 : Nat *) in
     SR.Vanilla,
     compile_exp_vanilla env ae e ^^ (* previous byte offset to array *)
@@ -10399,6 +10398,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     Tagged.load_forwarding_pointer env ^^
     compile_exp_vanilla env ae e2 ^^ (* byte offset *)
     BitTagged.untag_i32 env Type.Int ^^
+    compile_shl_const 2l ^^ (* effectively a multiplication by word_size *)
     (* Note: the below two lines compile to `i32.add; i32.load offset=OFFSET`
        with OFFSET = 13 with forwarding pointers and OFFSET = 9 without forwarding pointers,
        thus together also unskewing the pointer and skipping administrative
@@ -10409,10 +10409,8 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | GetPastArrayOffset spacing, [e] ->
     let shift =
       match spacing with
-      | ElementSize ->
-         compile_shl_const 2l ^^ (* effectively a multiplication by word_size *)
-         BitTagged.tag_i32 env Type.Int
-      | One -> BigNum.from_word30 env in    (* make it a compact bignum *)
+      | ElementSize
+      | One -> BigNum.from_word30 env in    (* make it a compact bignum *) (* TBR: from_word30? *)
     SR.Vanilla,
     compile_exp_vanilla env ae e ^^ (* array *)
     Arr.len env ^^
