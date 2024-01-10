@@ -1125,7 +1125,8 @@ module RTS = struct
     E.add_func_import env "rts" "alloc_array" [I32Type] [I32Type];
     E.add_func_import env "rts" "contains_field" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "stabilize" [I32Type; I32Type; I32Type] [];
-    E.add_func_import env "rts" "destabilize" [I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "destabilize" [I32Type; I32Type] [];
+    E.add_func_import env "rts" "get_stable_root" [] [I32Type];
     E.add_func_import env "rts" "use_new_destabilization" [] [I32Type];
     if !Flags.gc_strategy = Flags.Incremental then
       incremental_gc_imports env
@@ -7942,6 +7943,8 @@ module GraphCopyStabilization = struct
       begin
         create_type_descriptor env actor_type ^^
         E.call_import env "rts" "destabilize" ^^
+        (* TODO: Perform incremental destabilization *)
+        E.call_import env "rts" "get_stable_root" ^^
         create_new_actor env actor_type
       end
       begin

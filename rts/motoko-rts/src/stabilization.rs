@@ -48,7 +48,7 @@ extern "C" {
 // Must be a non-skewed value such that the GC also ignores this value.
 const DUMMY_VALUE: StableValue = StableValue::from_raw(0);
 
-const COPY_TIME_LIMIT: usize = 10_000;
+const COPY_TIME_LIMIT: u64 = 1_000_000_000;
 
 fn clear_stable_memory(start: u64, length: u64) {
     const CHUNK_SIZE: usize = WASM_PAGE_SIZE.as_usize();

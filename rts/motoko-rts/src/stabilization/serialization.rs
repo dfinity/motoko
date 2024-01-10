@@ -136,8 +136,7 @@ impl GraphCopy<Value, StableValue, u32> for Serialization {
             serialize(&mut self.to_space, object);
             debug_assert!(self.to_space.written_length() >= address);
             let size = self.to_space.written_length() - address;
-            debug_assert!(size <= usize::MAX as u64);
-            self.time.advance(size as usize);
+            self.time.advance(size);
             StableValue::from_stable_address(address)
         }
     }

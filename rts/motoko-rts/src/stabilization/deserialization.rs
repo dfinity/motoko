@@ -140,7 +140,7 @@ impl GraphCopy<StableValue, Value, u32> for Deserialization {
             }
             self.scan_stack.push(mem, target);
             let size = block_size(target.get_ptr() as usize).to_bytes().as_usize();
-            self.time.advance(size);
+            self.time.advance(size as u64);
             target
         }
     }
