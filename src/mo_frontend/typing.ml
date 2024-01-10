@@ -2445,7 +2445,7 @@ and infer_dec env dec : T.typ =
             display_typ_expand t'
             display_typ_expand t''
       | Some typ, T.Actor ->
-         local_error env dec.at "M0135"(*FIXME: repeated?*) "actor class has non-async return type"
+         local_error env dec.at "M0193" "actor class has non-async return type"
       | _, T.Memory -> assert false
     end;
     T.normalize t
