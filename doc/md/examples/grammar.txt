@@ -295,6 +295,7 @@
     <obj_sort> <id>? (':' <typ>)? '='? <obj_body>
     <shared_pat_opt> 'func' <id>? ('<' <list(<typ_bind>, ',')> '>')? <pat_plain> (':' <typ>)? <func_body>
     <shared_pat_opt> <obj_sort>? 'class' <id>? ('<' <list(<typ_bind>, ',')> '>')? <pat_plain> (':' <typ>)? <class_body>
+    'actor' 'module' <id>? <pat_plain> <class_body>
 
 <dec> ::= 
     <dec_var>

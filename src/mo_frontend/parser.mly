@@ -885,6 +885,11 @@ dec_nonvar :
         else (dfs, tps, t)
       in
       ClassD(sp, xf "class" $sloc, tps', p, t', s, x, dfs') @? at $sloc }
+  | ACTOR MODULE xf=typ_id_opt p=pat_plain cb=class_body
+    { let x, dfs = cb in
+      let dfs' = List.map share_dec_field dfs
+      in
+      ClassD(Type.Local @@ no_region, xf "module" $sloc, ensure_scope_bind "" [], p, None, Type.Actor @@ no_region, x, dfs') @? at $sloc }
 
 dec :
   | d=dec_var
