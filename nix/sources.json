@@ -21,16 +21,15 @@
         "version": "3.2.25"
     },
     "ic": {
-        "branch": "pull/124/head",
-        "builtin": false,
+        "branch": "pull/153/head",
         "description": "Internet Computer blockchain source: the client/replica software run by nodes",
         "homepage": "",
         "owner": "dfinity",
         "repo": "ic",
-        "rev": "aa293129bce86f46cc34bb25ed50f0edb924a501",
-        "sha256": "1z5azm0b2kb76mrigqb6i81hb2mh8psp4ffragvsyqa242rl0yrc",
+        "rev": "64f807484924c38cdfda49970e0bb21321564fe2",
+        "sha256": "18sk96zqg79p08z0wsn5bsxsw3aps26si7n76av7inlc4sfvvm4a",
         "type": "tarball",
-        "url": "https://github.com/dfinity/ic/archive/aa293129bce86f46cc34bb25ed50f0edb924a501.tar.gz",
+        "url": "https://github.com/dfinity/ic/archive/64f807484924c38cdfda49970e0bb21321564fe2.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ic-hs": {
@@ -52,10 +51,10 @@
         "homepage": null,
         "owner": "dfinity",
         "repo": "ic-wasm",
-        "rev": "d8d3b438973784b3935e3e18a7ea8690859b3e24",
-        "sha256": "1sw7sqwyp63m0frjz744jd5nsli8np6gsc19z7l66h6f32pyhy2r",
+        "rev": "61692f44cf85b93d43311492283246bb443449d3",
+        "sha256": "1b06dphnj89qmyv4gxh8gqm1bgqfpivr4di2nl9hbvqqyx4vzb65",
         "type": "tarball",
-        "url": "https://github.com/dfinity/ic-wasm/archive/d8d3b438973784b3935e3e18a7ea8690859b3e24.tar.gz",
+        "url": "https://github.com/dfinity/ic-wasm/archive/61692f44cf85b93d43311492283246bb443449d3.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "libtommath": {
@@ -76,10 +75,10 @@
         "homepage": null,
         "owner": "dfinity",
         "repo": "motoko-base",
-        "rev": "7e917b74eef3133dfc15eb3b7977d7100d620dab",
-        "sha256": "0fw6vqv9643cq4vi00sg2g055623vv8flld2zv4vrlffim0d01gw",
+        "rev": "7f9ea59fafbd0a2f12709cdc8b6771a9dea87cbd",
+        "sha256": "1p2wrxh7gaywppc4jf1zgarnsrr4mc1jkw2rs50khcxl19vnggcc",
         "type": "tarball",
-        "url": "https://github.com/dfinity/motoko-base/archive/7e917b74eef3133dfc15eb3b7977d7100d620dab.tar.gz",
+        "url": "https://github.com/dfinity/motoko-base/archive/7f9ea59fafbd0a2f12709cdc8b6771a9dea87cbd.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "motoko-matchers": {
@@ -102,23 +101,23 @@
         "homepage": "https://wasi.dev",
         "owner": "WebAssembly",
         "repo": "wasi-libc",
-        "rev": "be1704a9568e98ae073f074f7271cae68c23d161",
-        "sha256": "193s1ir7dqsazd4wfgkz7vn2zrar3pihqkmrglwm3nxr9lqx1aw8",
+        "rev": "c5264e2bbe532994d06b039005f2af91bedcc1a6",
+        "sha256": "1skw2jqzaidr2zbzbjw32b36xvqniwf4if8cr4kbpp8vjvh7j2lr",
         "type": "tarball",
-        "url": "https://github.com/WebAssembly/wasi-libc/archive/be1704a9568e98ae073f074f7271cae68c23d161.tar.gz",
+        "url": "https://github.com/WebAssembly/wasi-libc/archive/c5264e2bbe532994d06b039005f2af91bedcc1a6.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs": {
-        "branch": "release-23.05",
+        "branch": "release-23.11",
         "builtin": true,
         "description": "Nixpkgs/NixOS branches that track the Nixpkgs/NixOS channels",
         "homepage": null,
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "2f3b6b3fcd9fa0a4e6b544180c058a70890a7cc1",
-        "sha256": "0j0bv6550cv1n2qb7pbxbh4b0shz4hdkmh0fmz903jc2vjrbajm8",
+        "rev": "6a5b92486ae7826c07fbfad302f569ceb187b0eb",
+        "sha256": "058kf03v7yh1c4ns96af6jq3ymadv71s7ajv9s05ipl9bnkjfrhm",
         "type": "tarball",
-        "url": "https://github.com/NixOS/nixpkgs/archive/2f3b6b3fcd9fa0a4e6b544180c058a70890a7cc1.tar.gz",
+        "url": "https://github.com/NixOS/nixpkgs/archive/6a5b92486ae7826c07fbfad302f569ceb187b0eb.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "nixpkgs-mozilla": {

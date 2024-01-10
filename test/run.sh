@@ -26,13 +26,15 @@ DTESTS=no
 IDL=no
 PERF=no
 VIPER=no
-WASMTIME_OPTIONS="--disable-cache --enable-cranelift-nan-canonicalization"
+WASMTIME_OPTIONS="-C cache=n -W nan-canonicalization=y -W multi-memory -W bulk-memory"
 WRAP_drun=$(realpath $(dirname $0)/drun-wrapper.sh)
 WRAP_ic_ref_run=$(realpath $(dirname $0)/ic-ref-run-wrapper.sh)
 SKIP_RUNNING=${SKIP_RUNNING:-no}
 SKIP_VALIDATE=${SKIP_VALIDATE:-no}
 ONLY_TYPECHECK=no
 ECHO=echo
+
+export WASMTIME_NEW_CLI=1
 
 while getopts "adpstirv" o; do
     case "${o}" in
@@ -122,6 +124,7 @@ function run () {
   fi
 
   $ECHO -n " [$ext]"
+  $ECHO "$@" >& $out/$base.$ext
   "$@" >& $out/$base.$ext
   local ret=$?
 
@@ -251,6 +254,15 @@ do
 
   case $ext in
   "mo")
+    if grep -q "//INCREMENTAL-GC-ONLY" $base.mo
+    then
+      if [[ $EXTRA_MOC_ARGS != *"--incremental-gc"* ]]
+      then
+        $ECHO " Skipped (non-incremental GC)"
+        continue
+      fi
+    fi
+
     # extra flags (allow shell variables there)
     moc_extra_flags="$(eval echo $(grep '//MOC-FLAG' $base.mo | cut -c11- | paste -sd' '))"
     moc_extra_env="$(eval echo $(grep '//MOC-ENV' $base.mo | cut -c10- | paste -sd' '))"
@@ -358,8 +370,8 @@ do
 
         if [ "$SKIP_VALIDATE" != yes ]
         then
-          run_if wasm valid wasm-validate $out/$base.wasm
-          run_if ref.wasm valid-ref wasm-validate $out/$base.ref.wasm
+          run_if wasm valid wasm-validate --enable-multi-memory $out/$base.wasm
+          run_if ref.wasm valid-ref wasm-validate --enable-multi-memory $out/$base.ref.wasm
         fi
 
         if [ -e $out/$base.wasm ]
@@ -370,7 +382,7 @@ do
             if grep -F -q CHECK $mangled
             then
               $ECHO -n " [FileCheck]"
-              wasm2wat --no-check $out/$base.wasm > $out/$base.wat
+              wasm2wat --enable-multi-memory --no-check $out/$base.wasm > $out/$base.wat
               cat $out/$base.wat | FileCheck $mangled > $out/$base.filecheck 2>&1
               diff_files="$diff_files $base.filecheck"
             fi
@@ -399,7 +411,7 @@ do
               run_if opt.wasm drun-run-opt $WRAP_drun $out/$base.opt.wasm $mangled
             fi
           else
-            run_if wasm wasm-run wasmtime $WASMTIME_OPTIONS $out/$base.wasm
+            run_if wasm wasm-run wasmtime run $WASMTIME_OPTIONS $out/$base.wasm
           fi
         fi
 

@@ -436,7 +436,11 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       let url_text = V.as_text v1 in
       match Ic.Url.decode_principal url_text with
       (* create placeholder functions (see #3683) *)
-      | Ok bytes -> k (V.Blob bytes)
+      | Ok bytes ->
+        if String.length bytes > 29 then
+          trap exp.at "blob too long for actor principal"
+        else
+          k (V.Blob bytes)
       | Error e -> trap exp.at "could not parse %S as an actor reference: %s"  (V.as_text v1) e
     )
   | UnE (ot, op, exp1) ->
@@ -478,7 +482,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | _ -> assert false)
   | ProjE (exp1, n) ->
     interpret_exp env exp1 (fun v1 -> k (List.nth (V.as_tup v1) n))
-  | ObjBlockE (obj_sort, dec_fields) ->
+  | ObjBlockE (obj_sort, _, dec_fields) ->
     interpret_obj env obj_sort.it dec_fields k
   | ObjE (exp_bases, exp_fields) ->
     let fields fld_env = interpret_exp_fields env exp_fields fld_env (fun env -> k (V.Obj env)) in

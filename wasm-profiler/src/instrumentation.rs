@@ -112,7 +112,7 @@ fn inject_imports(for_ic : bool, module: Module) -> Module {
         );
         builder.push_import(
             builder::import()
-                .module("wasi_unstable")
+                .module("wasi_snapshot_preview1")
                 .field("fd_write")
                 .external()
                 .func(import_sig)
@@ -179,7 +179,7 @@ fn inject_imports(for_ic : bool, module: Module) -> Module {
     module
 }
 
-/// Takes a Wasm binary and inserts the instructoing metering and profiling code.
+/// Takes a Wasm binary and inserts the instruction metering and profiling code.
 /// Returns  the instrumented binary.
 pub fn instrument(
     wasm: &Vec<u8>,

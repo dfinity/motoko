@@ -90,7 +90,7 @@ and exp' at note = function
       (breakE "!" (nullE()))
       (* case ? v : *)
       (varP v) (varE v) ty).it
-  | S.ObjBlockE (s, dfs) ->
+  | S.ObjBlockE (s, _t, dfs) ->
     obj_block at s None dfs note.Note.typ
   | S.ObjE (bs, efs) ->
     obj note.Note.typ efs bs
@@ -456,6 +456,7 @@ and export_footprint self_id expr =
               (Con (scope_con1, []))))
   )],
   [{ it = I.{ name = lab; var = v }; at = no_region; note = typ }])
+
 
 and build_actor at ts self_id es obj_typ =
   let candid = build_candid ts obj_typ in

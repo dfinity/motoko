@@ -1,7 +1,7 @@
 use core::arch::wasm32;
 
 use super::{get_aligned_heap_base, IcMemory, Memory};
-use crate::types::*;
+use crate::{memory::GENERAL_MEMORY_RESERVE, types::*};
 
 /// Amount of garbage collected so far.
 pub(crate) static mut RECLAIMED: Bytes<u64> = Bytes(0);
@@ -65,6 +65,6 @@ impl Memory for IcMemory {
 
     #[inline(never)]
     unsafe fn grow_memory(&mut self, ptr: u64) {
-        super::grow_memory(ptr);
+        super::grow_memory(ptr, GENERAL_MEMORY_RESERVE);
     }
 }

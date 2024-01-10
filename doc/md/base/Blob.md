@@ -18,7 +18,7 @@ Some built in features not listed in this module:
 * `b.size() : Nat` returns the number of bytes in the blob `b`;
 * `b.vals() : Iter.Iter<Nat8>` returns an iterator to enumerate the bytes of the blob `b`.
 
- For example:
+For example:
 ```motoko include=import
 import Debug "mo:base/Debug";
 import Nat8 "mo:base/Nat8";
