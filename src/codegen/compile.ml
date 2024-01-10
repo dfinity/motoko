@@ -1124,10 +1124,13 @@ module RTS = struct
     E.add_func_import env "rts" "alloc_blob" [I32Type] [I32Type];
     E.add_func_import env "rts" "alloc_array" [I32Type] [I32Type];
     E.add_func_import env "rts" "contains_field" [I32Type; I32Type] [I32Type];
-    E.add_func_import env "rts" "stabilize" [I32Type; I32Type; I32Type] [];
-    E.add_func_import env "rts" "destabilize" [I32Type; I32Type] [];
-    E.add_func_import env "rts" "get_stable_root" [] [I32Type];
     E.add_func_import env "rts" "use_new_destabilization" [] [I32Type];
+    E.add_func_import env "rts" "start_stabilization" [I32Type] [];
+    E.add_func_import env "rts" "stabilization_increment" [] [I32Type];
+    E.add_func_import env "rts" "complete_stabilization" [I32Type; I32Type] [];
+    E.add_func_import env "rts" "start_destabilization" [I32Type; I32Type] [];
+    E.add_func_import env "rts" "destabilization_increment" [] [I32Type];
+    E.add_func_import env "rts" "complete_destabilization" [] [I32Type];
     if !Flags.gc_strategy = Flags.Incremental then
       incremental_gc_imports env
     else
@@ -7934,17 +7937,23 @@ module GraphCopyStabilization = struct
       E.call_import env "rts" "stop_gc_on_upgrade"
     else
       G.nop) ^^
+    E.call_import env "rts" "start_stabilization" ^^
+    E.call_import env "rts" "stabilization_increment" ^^
+    (* TODO: Perform incremental stabilization *)
+    E.else_trap_with env "Stabilization not completed: Need more increments" ^^
     create_type_descriptor env actor_type ^^
-    E.call_import env "rts" "stabilize"
+    E.call_import env "rts" "complete_stabilization"
   
   let destabilize env actor_type =
     E.call_import env "rts" "use_new_destabilization" ^^
     G.if1 I32Type
       begin
         create_type_descriptor env actor_type ^^
-        E.call_import env "rts" "destabilize" ^^
+        E.call_import env "rts" "start_destabilization" ^^
+        E.call_import env "rts" "destabilization_increment" ^^
         (* TODO: Perform incremental destabilization *)
-        E.call_import env "rts" "get_stable_root" ^^
+        E.else_trap_with env "Destabilization not completed: Need more increments" ^^
+        E.call_import env "rts" "complete_destabilization" ^^
         create_new_actor env actor_type
       end
       begin
