@@ -1,5 +1,7 @@
 # Motoko compiler changelog
 
+## 0.10.4 (2024-01-10)
+
 * motoko (`moc`)
 
   * Officializing the new **incremental garbage collector** after a successful beta testing phase.
