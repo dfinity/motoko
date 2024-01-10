@@ -1,6 +1,7 @@
 pub mod stable_memory_stream;
 
 use crate::{
+    memory::Memory,
     stabilization::{layout::serialize, moc_null_singleton},
     types::{FwdPtr, Tag, Value, TAG_CLOSURE, TAG_FWD_PTR},
 };
@@ -17,6 +18,18 @@ use super::{
 pub struct Serialization {
     to_space: StableMemoryStream,
     time: BoundedTime,
+}
+
+/// Helper type to pass serialization context instead of closures.
+pub struct SerializationContext<'a, M> {
+    pub serialization: &'a mut Serialization,
+    pub mem: &'a mut M,
+}
+
+impl<'a, M> SerializationContext<'a, M> {
+    fn new(serialization: &'a mut Serialization, mem: &'a mut M) -> SerializationContext<'a, M> {
+        SerializationContext { serialization, mem }
+    }
 }
 
 /// Graph-copy-based serialization.
@@ -36,17 +49,24 @@ impl Serialization {
     /// Start the graph-copy-based heap serialization from the stable `root` object
     /// by writing the serialized data to the stable memory at offset `stable_start`.
     /// The start is followed by a series of copy increments before the serialization is completed.
-    pub fn start(root: Value, stable_start: u64) -> Serialization {
+    pub fn start<M: Memory>(mem: &mut M, root: Value, stable_start: u64) -> Serialization {
         let to_space = StableMemoryStream::open(stable_start);
         let time = BoundedTime::new(COPY_TIME_LIMIT);
         let mut serialization = Serialization { time, to_space };
-        serialization.start(root);
+        serialization.start(mem, root);
         serialization
     }
 
-    /// Complete the serialization. Returns the byte size of the serialized data in stable memory.
-    pub fn complete(&mut self) -> u64 {
+    /// Complete the serialization.
+    pub fn complete(&mut self) {
         self.to_space.close();
+    }
+
+    pub fn serialized_data_start(&self) -> u64 {
+        self.to_space.base_address()
+    }
+
+    pub fn serialized_data_length(&self) -> u64 {
         self.to_space.written_length()
     }
 
@@ -108,7 +128,7 @@ impl GraphCopy<Value, StableValue, u32> for Serialization {
         }
     }
 
-    fn copy(&mut self, object: Value) -> StableValue {
+    fn copy<M: Memory>(&mut self, _mem: &mut M, object: Value) -> StableValue {
         unsafe {
             let object = Self::resolve_gc_forwarding(object);
             debug_assert!(object.is_obj());
@@ -122,25 +142,28 @@ impl GraphCopy<Value, StableValue, u32> for Serialization {
         }
     }
 
-    fn scan(&mut self) {
-        scan_serialized(self, &|context, original| {
-            context.time.tick();
-            let old_value = original.deserialize();
-            if old_value.is_ptr() {
-                if Self::is_null(old_value) {
-                    Self::encode_null()
-                } else if Self::has_non_stable_type(old_value) {
-                    // Due to structural subtyping or `Any`-subtyping, a non-stable object (such as a closure) may be
-                    // be dynamically reachable from a stable varibale. The value is not accessible in the new program version.
-                    // Therefore, the content of these fields can serialized with a dummy value that is also ignored by the GC.
-                    DUMMY_VALUE
+    fn scan<M: Memory>(&mut self, mem: &mut M) {
+        scan_serialized(
+            &mut SerializationContext::new(self, mem),
+            &|context, original| {
+                context.serialization.time.tick();
+                let old_value = original.deserialize();
+                if old_value.is_ptr() {
+                    if Self::is_null(old_value) {
+                        Self::encode_null()
+                    } else if Self::has_non_stable_type(old_value) {
+                        // Due to structural subtyping or `Any`-subtyping, a non-stable object (such as a closure) may be
+                        // be dynamically reachable from a stable varibale. The value is not accessible in the new program version.
+                        // Therefore, the content of these fields can serialized with a dummy value that is also ignored by the GC.
+                        DUMMY_VALUE
+                    } else {
+                        context.serialization.evacuate(context.mem, old_value)
+                    }
                 } else {
-                    context.evacuate(old_value)
+                    original
                 }
-            } else {
-                original
-            }
-        });
+            },
+        );
     }
 
     fn is_completed(&self) -> bool {

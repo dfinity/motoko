@@ -42,7 +42,10 @@ use self::{
 
 use super::{
     deserialization::stable_memory_access::StableMemoryAccess,
-    serialization::stable_memory_stream::{ScanStream, StableMemoryStream, WriteStream},
+    serialization::{
+        stable_memory_stream::{ScanStream, StableMemoryStream, WriteStream},
+        SerializationContext,
+    },
 };
 
 mod stable_array;
@@ -218,20 +221,28 @@ where
         }
     }
 
-    fn scan_serialized<C: StableToSpace, F: Fn(&mut C, StableValue) -> StableValue>(
-        context: &mut C,
+    fn scan_serialized<
+        'a,
+        M,
+        F: Fn(&mut SerializationContext<'a, M>, StableValue) -> StableValue,
+    >(
+        context: &mut SerializationContext<'a, M>,
         translate: &F,
     ) {
-        let mut static_part = context.to_space().read::<Self>();
+        let mut static_part = context.serialization.to_space().read::<Self>();
         if static_part.update_pointers(context, translate) {
-            context.to_space().update(&static_part);
+            context.serialization.to_space().update(&static_part);
         }
         static_part.scan_serialized_dynamic(context, translate);
     }
 
-    fn scan_serialized_dynamic<C: StableToSpace, F: Fn(&mut C, StableValue) -> StableValue>(
+    fn scan_serialized_dynamic<
+        'a,
+        M,
+        F: Fn(&mut SerializationContext<'a, M>, StableValue) -> StableValue,
+    >(
         &self,
-        _context: &mut C,
+        _context: &mut SerializationContext<'a, M>,
         _translate: &F,
     ) {
     }
@@ -294,11 +305,15 @@ fn write_padding_u64(stable_memory: &mut StableMemoryStream, byte_length: usize)
     }
 }
 
-pub fn scan_serialized<C: StableToSpace, F: Fn(&mut C, StableValue) -> StableValue>(
-    context: &mut C,
+pub fn scan_serialized<
+    'a,
+    M,
+    F: Fn(&mut SerializationContext<'a, M>, StableValue) -> StableValue,
+>(
+    context: &mut SerializationContext<'a, M>,
     translate: &F,
 ) {
-    let tag = context.to_space().read::<StableTag>();
+    let tag = context.serialization.to_space().read::<StableTag>();
     match tag {
         StableTag::Array => StableArray::scan_serialized(context, translate),
         StableTag::MutBox => StableMutBox::scan_serialized(context, translate),

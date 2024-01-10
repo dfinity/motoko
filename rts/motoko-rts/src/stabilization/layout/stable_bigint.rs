@@ -5,6 +5,7 @@ use crate::stabilization::layout::{checked_to_usize, write_padding_u64};
 use crate::stabilization::serialization::stable_memory_stream::{
     ScanStream, StableMemoryStream, WriteStream,
 };
+use crate::stabilization::serialization::SerializationContext;
 use crate::tommath_bindings::mp_digit;
 use crate::types::{size_of, BigInt, Bytes, Value, Words, TAG_BIGINT};
 
@@ -116,13 +117,20 @@ impl Serializer<BigInt> for StableBigInt {
         write_padding_u64(stable_memory, written_bytes);
     }
 
-    fn scan_serialized_dynamic<C: StableToSpace, F: Fn(&mut C, StableValue) -> StableValue>(
+    fn scan_serialized_dynamic<
+        'a,
+        M,
+        F: Fn(&mut SerializationContext<'a, M>, StableValue) -> StableValue,
+    >(
         &self,
-        context: &mut C,
+        context: &mut SerializationContext<'a, M>,
         _translate: &F,
     ) {
         let rounded_length = round_to_u64(self.number_of_bits.to_bytes().as_usize() as u64);
-        context.to_space().skip(checked_to_usize(rounded_length));
+        context
+            .serialization
+            .to_space()
+            .skip(checked_to_usize(rounded_length));
     }
 
     unsafe fn allocate_deserialized<M: Memory>(&self, main_memory: &mut M) -> Value {

@@ -3,7 +3,10 @@ use crate::{
     stabilization::{
         deserialization::stable_memory_access::StableMemoryAccess,
         layout::checked_to_u32,
-        serialization::stable_memory_stream::{ScanStream, StableMemoryStream, WriteStream},
+        serialization::{
+            stable_memory_stream::{ScanStream, StableMemoryStream, WriteStream},
+            SerializationContext,
+        },
     },
     types::{size_of, Blob, Bytes, Value, TAG_BLOB},
 };
@@ -40,13 +43,20 @@ impl Serializer<Blob> for StableBlob {
         write_padding_u64(stable_memory, byte_length);
     }
 
-    fn scan_serialized_dynamic<C: StableToSpace, F: Fn(&mut C, StableValue) -> StableValue>(
+    fn scan_serialized_dynamic<
+        'a,
+        M,
+        F: Fn(&mut SerializationContext<'a, M>, StableValue) -> StableValue,
+    >(
         &self,
-        context: &mut C,
+        context: &mut SerializationContext<'a, M>,
         _translate: &F,
     ) {
         let rounded_length = round_to_u64(self.byte_length);
-        context.to_space().skip(checked_to_usize(rounded_length));
+        context
+            .serialization
+            .to_space()
+            .skip(checked_to_usize(rounded_length));
     }
 
     unsafe fn allocate_deserialized<M: Memory>(&self, main_memory: &mut M) -> Value {

@@ -86,9 +86,48 @@ extern "C" {
     fn set_upgrade_instructions(instructions: u64);
 }
 
+#[cfg(feature = "ic")]
+static mut SERIALIZATION: Option<serialization::Serialization> = None;
+
+/// Incremental stabilization, serializing a limit amount of heap objects reachable from stable variables into stable memory.
+/// This function can be called multiple times before the upgrade of a large heap.
+/// The incrementality serves to support the graph-copy-based serialization and deserialization of large heaps that do
+/// not fit into the upgrade message instruction limit.
+/// `stable_actor`: Root object for stabilization containing all stable variables of the actor.
+/// Returns true if the stabilization has been completed.
+/// Notes:
+/// - Once started, the heap is invalidated. Therefore, all application messages must be blocked once this has been started.
+/// - The pre-upgrade operation completes the possibly started stabilization.
+/// - Add the instruction costs of additionally called stabilization increments to the upgrade costs.
+#[ic_mem_fn(ic_only)]
+pub unsafe fn stabilization_increment<M: crate::memory::Memory>(
+    mem: &mut M,
+    stable_actor: Value,
+) -> bool {
+    use self::{graph_copy::GraphCopy, serialization::Serialization};
+
+    if SERIALIZATION.is_none() {
+        let stable_memory_pages = stable_mem::size();
+        let serialized_data_start = stable_memory_pages * PAGE_SIZE;
+        SERIALIZATION = Some(Serialization::start(
+            mem,
+            stable_actor,
+            serialized_data_start,
+        ));
+    }
+    let serialization = SERIALIZATION.as_mut().unwrap();
+    serialization.copy_increment(mem);
+    let is_completed = serialization.is_completed();
+    if is_completed {
+        serialization.complete();
+    }
+    is_completed
+}
+
 /// Pre-upgrade operation for graph-copy-based program upgrades:
-/// All objects inside main memory that are transitively reachable from stable variables are
-/// serialized into stable memory by using a graph copy algorithm.
+/// Completes the serialization process. Additional stabilization increments may preceed this stabilization call.
+/// At the end of this operation, all objects inside main memory that are transitively reachable
+/// from stable variables have been serialized into stable memory by using a graph copy algorithm.
 /// `stable_actor`: Root object for stabilization containing all stable variables of the actor.
 /// The remaining parameters encode the type table of the current program version:
 /// `old_candid_data`: A blob encoding the Candid type as a table.
@@ -98,26 +137,24 @@ extern "C" {
 /// * Algorithm: Cheney's algorithm using main memory as from-space and stable memory as to-space.
 /// * Encoding: The from-space uses the main memory heap layout, while the to-space is encoded in
 ///   the stable object graph layout (see `GraphCopyStabilization.md`).
-#[no_mangle]
-#[cfg(feature = "ic")]
-pub unsafe fn stabilize(stable_actor: Value, old_candid_data: Value, old_type_offsets: Value) {
-    use crate::stabilization::{
-        graph_copy::GraphCopy, metadata::StabilizationMetadata, serialization::Serialization,
-    };
+#[ic_mem_fn(ic_only)]
+pub unsafe fn stabilize<M: crate::memory::Memory>(
+    mem: &mut M,
+    stable_actor: Value,
+    old_candid_data: Value,
+    old_type_offsets: Value,
+) {
+    use crate::stabilization::metadata::StabilizationMetadata;
     use compatibility::TypeDescriptor;
 
-    let stable_memory_pages = stable_mem::size();
-    let serialized_data_start = stable_memory_pages * PAGE_SIZE;
+    while !stabilization_increment(mem, stable_actor) {}
 
-    let mut serialization = Serialization::start(stable_actor, serialized_data_start);
-    while !serialization.is_completed() {
-        serialization.copy_increment();
-    }
-    let serialized_data_length = serialization.complete();
+    let serialization = SERIALIZATION.as_ref().unwrap();
+    let serialized_data_start = serialization.serialized_data_start();
+    let serialized_data_length = serialization.serialized_data_length();
 
     let type_descriptor = TypeDescriptor::new(old_candid_data, old_type_offsets, 0);
     let metadata = StabilizationMetadata {
-        stable_memory_pages,
         serialized_data_start,
         serialized_data_length,
         type_descriptor,
@@ -125,15 +162,42 @@ pub unsafe fn stabilize(stable_actor: Value, old_candid_data: Value, old_type_of
     metadata.store();
 }
 
+#[cfg(feature = "ic")]
+static mut DESERIALIZATION: Option<deserialization::Deserialization> = None;
+
+/// Incremental destabilization, deserializing a limit amount of serialized data from stable memory to the heap.
+/// This function can be called multiple times after the upgrade of a large heap.
+/// The incrementality serves to support the graph-copy-based serialization and deserialization of large heaps that do
+/// not fit into the upgrade message instruction limit.
+/// Returns true if the destabilization has been completed.
+/// Notes:
+/// - The heap is only valid after completed destabilization. Therefore, all application messages must be blocked until this is completed.
+/// - The post upgrade operation only runs a few increments that may not yet complete the upgrade.
+/// The compiler needs to trigger more messages that run additional destabilzation increments, before the upgrade is completed and the
+/// application code can resume its operation.
+/// - Add the instruction costs of additionally called destabilization increments to the upgrade costs.
+#[ic_mem_fn(ic_only)]
+pub unsafe fn destabilization_increment<M: crate::memory::Memory>(mem: &mut M) -> bool {
+    use self::graph_copy::GraphCopy;
+
+    let deserialization = DESERIALIZATION.as_mut().unwrap();
+    deserialization.copy_increment(mem);
+    let is_completed = deserialization.is_completed();
+    if is_completed {
+        deserialization.complete();
+    }
+    is_completed
+}
+
 /// Post-upgrade operation for graph-copy-based program upgrades:
-/// Deserialize the object graph stored in stable memory back into main memory by using a graph
-/// copy algorithm. Checks whether the new program version is compatible to the stored state by
-/// comparing the type tables of both the old and the new program version.
+/// Starts the deserialization process. Additional destabilization increments may be followed to complete the process.
+/// At the end of this process, the object graph stored in stable memory has been deserialized back into main memory.
+/// Checks whether the new program version is compatible to the stored state by comparing the type tables of both
+/// the old and the new program version.
 /// The parameters encode the type table of the new program version to which that data is to be upgraded.
 /// `new_candid_data`: A blob encoding the Candid type as a table.
 /// `new_type_offsets`: A blob encoding the type offsets in the Candid type table.
 ///   Type index 0 represents the stable actor object to be serialized.
-/// Returns the root object containing all restored stable variables of the actor.
 /// Traps if the stable state is incompatible with the new program version and the upgrade is not
 /// possible.
 /// Implementation:
@@ -145,8 +209,8 @@ pub unsafe fn destabilize<M: crate::memory::Memory>(
     mem: &mut M,
     new_candid_data: Value,
     new_type_offsets: Value,
-) -> Value {
-    use crate::stabilization::{deserialization::Deserialization, graph_copy::GraphCopy};
+) {
+    use crate::stabilization::deserialization::Deserialization;
     use crate::{rts_trap_with, stable_mem::moc_stable_mem_set_size};
     use compatibility::{memory_compatible, TypeDescriptor};
     use metadata::StabilizationMetadata;
@@ -157,20 +221,26 @@ pub unsafe fn destabilize<M: crate::memory::Memory>(
     if !memory_compatible(mem, &mut old_type_descriptor, &mut new_type_descriptor) {
         rts_trap_with("Memory-incompatible program upgrade");
     }
+    moc_stable_mem_set_size(metadata.serialized_data_start / PAGE_SIZE);
 
-    let mut deserialization = Deserialization::start(
+    assert!(DESERIALIZATION.is_none());
+    DESERIALIZATION = Some(Deserialization::start(
         mem,
         metadata.serialized_data_start,
         metadata.serialized_data_length,
-    );
-    while !deserialization.is_completed() {
-        deserialization.copy_increment();
-    }
-    let stable_root = deserialization.complete();
-
-    moc_stable_mem_set_size(metadata.stable_memory_pages);
+    ));
+    destabilization_increment(mem);
     set_upgrade_instructions(statistics.stabilization_instructions + ic0_performance_counter(0));
-    stable_root
+}
+
+#[no_mangle]
+#[cfg(feature = "ic")]
+pub unsafe fn get_stable_root() -> Value {
+    use crate::stabilization::graph_copy::GraphCopy;
+
+    let deserialization = DESERIALIZATION.as_ref().unwrap();
+    assert!(deserialization.is_completed());
+    deserialization.get_stable_root()
 }
 
 #[no_mangle]

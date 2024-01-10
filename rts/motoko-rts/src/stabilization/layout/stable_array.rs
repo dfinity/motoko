@@ -2,7 +2,10 @@ use crate::{
     memory::{alloc_array, Memory},
     stabilization::{
         deserialization::stable_memory_access::StableMemoryAccess,
-        serialization::stable_memory_stream::{ScanStream, StableMemoryStream, WriteStream},
+        serialization::{
+            stable_memory_stream::{ScanStream, StableMemoryStream, WriteStream},
+            SerializationContext,
+        },
     },
     types::{size_of, Array, Value, TAG_ARRAY},
 };
@@ -35,15 +38,19 @@ impl Serializer<Array> for StableArray {
         }
     }
 
-    fn scan_serialized_dynamic<C: StableToSpace, F: Fn(&mut C, StableValue) -> StableValue>(
+    fn scan_serialized_dynamic<
+        'a,
+        M,
+        F: Fn(&mut SerializationContext<'a, M>, StableValue) -> StableValue,
+    >(
         &self,
-        context: &mut C,
+        context: &mut SerializationContext<'a, M>,
         translate: &F,
     ) {
         for _ in 0..self.array_length {
-            let old_value = context.to_space().read::<StableValue>();
+            let old_value = context.serialization.to_space().read::<StableValue>();
             let new_value = translate(context, old_value);
-            context.to_space().update(&new_value);
+            context.serialization.to_space().update(&new_value);
         }
     }
 

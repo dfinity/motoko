@@ -1,3 +1,5 @@
+use crate::memory::Memory;
+
 pub mod time;
 
 /// Generic graph copy from main memory (from-space) to stable memory (to-space).
@@ -21,8 +23,8 @@ pub trait GraphCopy<S: Copy, T: Copy, P: Copy + Default> {
     ///     copy_algorthm.copy_increment();
     /// }
     /// ```
-    fn start(&mut self, root: S) {
-        self.evacuate(root);
+    fn start<M: Memory>(&mut self, mem: &mut M, root: S) {
+        self.evacuate(mem, root);
     }
 
     /// Determin whether the copy algorithm is completed,
@@ -32,10 +34,10 @@ pub trait GraphCopy<S: Copy, T: Copy, P: Copy + Default> {
     /// Copy reachable objects in a time-bounded work step. with a synthetic time bound.
     /// This allows to spread the incremtnal graph copy where the work is
     /// split in multiple increments over multiple IC messages.
-    fn copy_increment(&mut self) {
+    fn copy_increment<M: Memory>(&mut self, mem: &mut M) {
         self.reset_time();
         while !self.is_completed() && !self.time_over() {
-            self.scan();
+            self.scan(mem);
         }
     }
 
@@ -50,11 +52,11 @@ pub trait GraphCopy<S: Copy, T: Copy, P: Copy + Default> {
     /// Determines whether the object has already been copied before, and if not,
     /// copies it to the target space.
     /// Returns the new target address of the object.
-    fn evacuate(&mut self, object: S) -> T {
+    fn evacuate<M: Memory>(&mut self, mem: &mut M, object: S) -> T {
         match self.get_forward_address(object) {
             Some(target) => target,
             None => {
-                let target = self.copy(object);
+                let target = self.copy(mem, object);
                 self.set_forward_address(object, target);
                 target
             }
@@ -75,10 +77,10 @@ pub trait GraphCopy<S: Copy, T: Copy, P: Copy + Default> {
     /// * The source and target layout must use the same size for addresses, e.g. 32-bit.
     /// * The allocator must be contiguously growing. Free space must be inserted when the
     ///   allocator uses internal fragmentation, e.g. for the partitioned heap.
-    fn copy(&mut self, object: S) -> T;
+    fn copy<M: Memory>(&mut self, mem: &mut M, object: S) -> T;
 
     /// Read an object at the `scan` position in the to-space, and patch all the pointer fields
     /// by translating the source pointer to the corresponding new target pointer by calling
     /// `evacuate()`.
-    fn scan(&mut self);
+    fn scan<M: Memory>(&mut self, mem: &mut M);
 }

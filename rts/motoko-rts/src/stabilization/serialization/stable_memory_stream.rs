@@ -61,6 +61,11 @@ impl StableMemoryStream {
         debug_assert!(self.scan_address <= self.free_address);
     }
 
+    /// Start address of the serialized data in stable memory.
+    pub fn base_address(&self) -> u64 {
+        self.base_address
+    }
+
     /// Size of this memory space. Also serves to determine the addresses of a subsequently
     /// written object in the serialized stable memory format.
     pub fn written_length(&self) -> u64 {
