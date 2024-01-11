@@ -167,6 +167,10 @@ impl GraphCopy<Value, StableValue, u32> for Serialization {
     fn time_over(&self) -> bool {
         self.limit.is_exceeded()
     }
+
+    fn reset_time(&mut self) {
+        self.limit.reset();
+    }
 }
 
 impl StableToSpace for Serialization {

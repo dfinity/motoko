@@ -104,6 +104,7 @@ pub unsafe fn stabilization_increment<M: Memory>(mem: &mut M) -> bool {
             state.completed = true;
         }
     }
+    println!(100, "INCREMENT FINISHED {}", state.completed);
     state.completed
 }
 

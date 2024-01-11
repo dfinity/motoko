@@ -458,24 +458,26 @@ and export_footprint self_id expr =
   [{ it = I.{ name = lab; var = v }; at = no_region; note = typ }])
 
 and export_explicit_stabilization expr =
-  (* TODO: Check that the caller is a controller *)
   (* TODO: Stop all GCs *)
   (* TODO: Block all other application calls, except upgrade *)
   let open T in
   let {lab;typ;_} = motoko_stabilize_before_upgrade_fld in
   let v = "$"^lab in
-  let is_completed = fresh_var "isCompleted" T.bool in
   let scope_con1 = Cons.fresh "T1" (Abs ([], scope_bound)) in
   let scope_con2 = Cons.fresh "T2" (Abs ([], Any)) in
   let bind1  = typ_arg scope_con1 Scope scope_bound in
   let bind2 = typ_arg scope_con2 Scope scope_bound in
+  let caller = fresh_var "caller" caller in
   ([ letD (var v typ) (
        funcE v (Shared Write) Promises [bind1] [] [] (
           (asyncE T.Fut bind2 
             (blockE [
+              letD caller (primE I.ICCallerPrim []);
+              expD (assertE (orE 
+                (primE (I.RelPrim (principal, Operator.EqOp)) [varE caller; selfRefE principal])
+                (primE (I.OtherPrim "is_controller") [varE caller])));
               expD (primE (I.StartStabilization expr.note.Note.typ) [expr]);
-              letD is_completed (primE I.StabilizationIncrement []);
-              expD (assertE (varE is_completed))
+              expD (loopWhileE (unitE ()) (notE (primE I.StabilizationIncrement [])))
             ]
             (unitE ()))
             (Con (scope_con1, []))))

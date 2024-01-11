@@ -172,4 +172,8 @@ impl GraphCopy<StableValue, Value, u32> for Deserialization {
     fn time_over(&self) -> bool {
         self.limit.is_exceeded()
     }
+
+    fn reset_time(&mut self) {
+        self.limit.reset();
+    }
 }

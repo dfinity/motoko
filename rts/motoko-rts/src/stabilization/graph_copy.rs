@@ -38,6 +38,7 @@ pub trait GraphCopy<S: Copy, T: Copy, P: Copy + Default> {
     /// This allows to spread the incremtnal graph copy where the work is
     /// split in multiple increments over multiple IC messages.
     fn copy_increment<M: Memory>(&mut self, mem: &mut M) {
+        self.reset_time();
         while !self.is_completed() && !self.time_over() {
             self.scan(mem);
         }
@@ -45,6 +46,9 @@ pub trait GraphCopy<S: Copy, T: Copy, P: Copy + Default> {
             self.complete();
         }
     }
+
+    /// Reset the time at the beginning of a new copy increment.
+    fn reset_time(&mut self);
 
     /// Determine whether the time of copy increment has been exceeded.
     fn time_over(&self) -> bool;
