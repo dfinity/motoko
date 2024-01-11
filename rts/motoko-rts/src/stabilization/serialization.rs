@@ -57,11 +57,6 @@ impl Serialization {
         serialization
     }
 
-    /// Complete the serialization.
-    pub fn complete(&mut self) {
-        self.to_space.close();
-    }
-
     pub fn serialized_data_start(&self) -> u64 {
         self.to_space.base_address()
     }
@@ -167,6 +162,10 @@ impl GraphCopy<Value, StableValue, u32> for Serialization {
 
     fn is_completed(&self) -> bool {
         self.to_space.scan_completed()
+    }
+
+    fn complete(&mut self) {
+        self.to_space.close();
     }
 
     fn time_over(&self) -> bool {

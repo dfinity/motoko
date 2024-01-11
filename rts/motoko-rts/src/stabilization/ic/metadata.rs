@@ -31,7 +31,7 @@ use crate::{
     barriers::allocation_barrier,
     memory::{alloc_blob, Memory},
     region::{VERSION_GRAPH_COPY_NO_REGIONS, VERSION_GRAPH_COPY_REGIONS},
-    stabilization::performance::Measurement,
+    stabilization::{clear_stable_memory, grant_stable_space},
     stable_mem::{
         get_version, ic0_stable64_read, ic0_stable64_size, ic0_stable64_write, read_u32,
         set_version, write_u32, PAGE_SIZE,
@@ -39,7 +39,7 @@ use crate::{
     types::{size_of, Bytes, Value},
 };
 
-use super::{clear_stable_memory, compatibility::TypeDescriptor, grant_stable_space};
+use super::{compatibility::TypeDescriptor, performance::InstructionMeter};
 
 #[repr(C)]
 #[derive(Default)]
@@ -168,8 +168,8 @@ impl StabilizationMetadata {
         Self::write_metadata(&LastPageRecord::default());
     }
 
-    pub fn store(&self, upgrade_costs: &mut u64) {
-        let measurement = Measurement::start();
+    pub fn store(&self, measurement: &mut InstructionMeter) {
+        measurement.start();
         let mut offset = self.serialized_data_start + self.serialized_data_length;
         Self::align_page_start(&mut offset);
         let type_descriptor_address = offset;
@@ -180,9 +180,9 @@ impl StabilizationMetadata {
         // This ensures compatibility with old legacy version 0 using no
         // experimental stable memory and no regions.
         write_u32(0, 0);
-        *upgrade_costs += measurement.elapsed_instructions();
+        measurement.stop();
         let statistics = UpgradeStatistics {
-            stabilization_instructions: *upgrade_costs,
+            stabilization_instructions: measurement.total_elapsed(),
         };
         let last_page_record = LastPageRecord {
             statistics,

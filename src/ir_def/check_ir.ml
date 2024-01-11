@@ -684,6 +684,13 @@ let rec check_exp env (exp:Ir.exp) : unit =
     | ICStableSize t1, [e1] ->
       typ e1 <: t1;
       T.nat64 <: t
+    | IsStabilizationStarted, [] ->
+      T.bool <: t
+    | StartStabilization t1, [e1] ->
+      typ e1 <: t1;
+      T.unit <: t
+    | StabilizationIncrement, [] ->
+      T.bool <: t
     | OtherPrim _, _ -> ()
     | p, args ->
       error env exp.at "PrimE %s does not work with %d arguments"

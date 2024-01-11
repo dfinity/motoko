@@ -1358,6 +1358,12 @@ let motoko_gc_trigger_fld =
     src = empty_src;
   }
 
+let motoko_stabilize_before_upgrade_fld =
+  { lab = "__motoko_stabilize_before_upgrade";
+    typ = Func(Shared Write, Promises, [scope_bind], [], []);
+    src = empty_src;
+  }
+
 let get_candid_interface_fld =
   { lab = "__get_candid_interface_tmp_hack";
     typ = Func(Shared Query, Promises, [scope_bind], [], [text]);

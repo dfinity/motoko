@@ -71,10 +71,6 @@ impl Deserialization {
         deserialization
     }
 
-    pub fn complete(&mut self) {
-        clear_stable_memory(self.stable_start, self.stable_size);
-    }
-
     pub fn get_stable_root(&self) -> Value {
         self.stable_root.unwrap()
     }
@@ -171,6 +167,10 @@ impl GraphCopy<StableValue, Value, u32> for Deserialization {
 
     fn is_completed(&self) -> bool {
         unsafe { self.scan_stack.is_empty() }
+    }
+
+    fn complete(&mut self) {
+        clear_stable_memory(self.stable_start, self.stable_size);
     }
 
     fn time_over(&self) -> bool {

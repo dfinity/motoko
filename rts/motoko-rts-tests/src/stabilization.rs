@@ -216,7 +216,6 @@ fn serialize(old_stable_root: Value, stable_start: u64) -> u64 {
     while !serialization.is_completed() {
         serialization.copy_increment(&mut memory);
     }
-    serialization.complete();
     serialization.serialized_data_length()
 }
 
@@ -225,6 +224,5 @@ fn deserialize<M: Memory>(mem: &mut M, stable_start: u64, stable_size: u64) -> V
     while !deserialization.is_completed() {
         deserialization.copy_increment(mem);
     }
-    deserialization.complete();
     deserialization.get_stable_root()
 }

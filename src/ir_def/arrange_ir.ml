@@ -116,6 +116,9 @@ and prim = function
   | ICMethodNamePrim  -> Atom "ICMethodNamePrim"
   | ICStableWrite t   -> "ICStableWrite" $$ [typ t]
   | ICStableRead t    -> "ICStableRead" $$ [typ t]
+  | IsStabilizationStarted -> Atom "IsStabilizationStarted"
+  | StartStabilization t -> "StartStabilization" $$ [typ t]
+  | StabilizationIncrement -> Atom "StabilizationIncrement"
 
 and mut = function
   | Const -> Atom "Const"

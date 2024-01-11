@@ -457,6 +457,30 @@ and export_footprint self_id expr =
   )],
   [{ it = I.{ name = lab; var = v }; at = no_region; note = typ }])
 
+and export_explicit_stabilization expr =
+  (* TODO: Check that the caller is a controller *)
+  (* TODO: Stop all GCs *)
+  (* TODO: Block all other application calls, except upgrade *)
+  let open T in
+  let {lab;typ;_} = motoko_stabilize_before_upgrade_fld in
+  let v = "$"^lab in
+  let is_completed = fresh_var "isCompleted" T.bool in
+  let scope_con1 = Cons.fresh "T1" (Abs ([], scope_bound)) in
+  let scope_con2 = Cons.fresh "T2" (Abs ([], Any)) in
+  let bind1  = typ_arg scope_con1 Scope scope_bound in
+  let bind2 = typ_arg scope_con2 Scope scope_bound in
+  ([ letD (var v typ) (
+       funcE v (Shared Write) Promises [bind1] [] [] (
+          (asyncE T.Fut bind2 
+            (blockE [
+              expD (primE (I.StartStabilization expr.note.Note.typ) [expr]);
+              letD is_completed (primE I.StabilizationIncrement []);
+              expD (assertE (varE is_completed))
+            ]
+            (unitE ()))
+            (Con (scope_con1, []))))
+  )],
+  [{ it = I.{ name = lab; var = v }; at = no_region; note = typ }])
 
 and build_actor at ts self_id es obj_typ =
   let candid = build_candid ts obj_typ in
@@ -514,9 +538,13 @@ and build_actor at ts self_id es obj_typ =
                ) fields vs)
             ty)) in
   let footprint_d, footprint_f = export_footprint self_id (with_stable_vars (fun e -> e)) in
-  I.(ActorE (interface_d @ footprint_d @ ds', interface_f @ footprint_f @ fs,
+  let explicit_stabilization_d, explicit_stabilization_f = export_explicit_stabilization (with_stable_vars (fun e -> e)) in
+  I.(ActorE (
+     interface_d @ footprint_d @ explicit_stabilization_d @ ds', 
+     interface_f @ footprint_f @ explicit_stabilization_f @ fs,
      { meta;
-       preupgrade = with_stable_vars (fun e -> primE (I.ICStableWrite ty) [e]);
+       (* preupgrade = with_stable_vars (fun e -> primE (I.ICStableWrite ty) [e]); *)
+       preupgrade = pre_upgrade_stabilization with_stable_vars ty;
        postupgrade =
          (match call_system_func_opt "postupgrade" es obj_typ with
           | Some call -> call
@@ -540,6 +568,14 @@ and build_actor at ts self_id es obj_typ =
      },
      obj_typ))
 
+and pre_upgrade_stabilization build_stable_actor stable_actor_type =
+  blockE [
+    expD (ifE (primE I.IsStabilizationStarted [])
+        (unitE ())
+        (build_stable_actor (fun e -> primE (I.StartStabilization stable_actor_type) [e]))
+    )
+  ]
+  (loopWhileE (unitE ()) (notE (primE I.StabilizationIncrement [])))
 
 and stabilize stab_opt d =
   let s = match stab_opt with None -> S.Flexible | Some s -> s.it  in

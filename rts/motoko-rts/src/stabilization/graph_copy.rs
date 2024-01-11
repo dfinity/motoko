@@ -31,6 +31,9 @@ pub trait GraphCopy<S: Copy, T: Copy, P: Copy + Default> {
     /// i.e. a sufficient amount of copy increments has been invoked.
     fn is_completed(&self) -> bool;
 
+    /// Complete the graph copy algorithm.
+    fn complete(&mut self);
+
     /// Copy reachable objects in a time-bounded work step. with a synthetic time bound.
     /// This allows to spread the incremtnal graph copy where the work is
     /// split in multiple increments over multiple IC messages.
@@ -38,6 +41,9 @@ pub trait GraphCopy<S: Copy, T: Copy, P: Copy + Default> {
         self.reset_time();
         while !self.is_completed() && !self.time_over() {
             self.scan(mem);
+        }
+        if self.is_completed() {
+            self.complete();
         }
     }
 

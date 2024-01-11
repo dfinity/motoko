@@ -93,6 +93,9 @@ let primE prim es =
     | ICPerformGC
     | ICStableWrite _ -> T.unit
     | ICStableSize _ -> T.nat64
+    | IsStabilizationStarted -> T.bool
+    | StartStabilization _ -> T.unit
+    | StabilizationIncrement -> T.bool
     | IdxPrim
     | DerefArrayOffset -> T.(as_immut (as_array_sub (List.hd es).note.Note.typ))
     | ValidArrayOffset -> T.bool
