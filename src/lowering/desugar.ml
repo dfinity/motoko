@@ -457,7 +457,7 @@ and export_footprint self_id expr =
   )],
   [{ it = I.{ name = lab; var = v }; at = no_region; note = typ }])
 
-and export_explicit_stabilization expr =
+and export_explicit_stabilization stable_actor =
   (* TODO: Stop all GCs *)
   (* TODO: Block all other application calls, except upgrade *)
   let open T in
@@ -476,7 +476,10 @@ and export_explicit_stabilization expr =
               expD (assertE (orE 
                 (primE (I.RelPrim (principal, Operator.EqOp)) [varE caller; selfRefE principal])
                 (primE (I.OtherPrim "is_controller") [varE caller])));
-              expD (primE (I.StartStabilization expr.note.Note.typ) [expr]);
+              expD (ifE (primE I.IsStabilizationStarted [])
+                  (unitE ())
+                  (primE (I.StartStabilization stable_actor.note.Note.typ) [stable_actor])
+              );
               expD (loopWhileE (unitE ()) (notE (primE I.StabilizationIncrement [])))
             ]
             (unitE ()))
@@ -527,7 +530,7 @@ and build_actor at ts self_id es obj_typ =
     let vs = fresh_vars "v" (List.map (fun f -> f.T.typ) fields) in
     blockE
       ((match call_system_func_opt "preupgrade" es obj_typ with
-        | Some call -> [ expD (primE (I.ICPerformGC) []); expD call]
+        | Some call -> [ expD call]
         | None -> []) @
          [letP (seqP (List.map varP vs)) (* dereference any mutable vars, option 'em all *)
             (seqE (List.map (fun (i,t) -> optE (varE (var i t))) ids))])

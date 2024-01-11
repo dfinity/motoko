@@ -44,7 +44,6 @@ unsafe fn initialize_incremental_gc<M: Memory>(mem: &mut M) {
 #[ic_mem_fn(ic_only)]
 unsafe fn schedule_incremental_gc<M: Memory>(mem: &mut M) {
     let state = STATE.borrow();
-    assert!(state.phase != Phase::Stop);
     let running = state.phase != Phase::Pause;
     if running || should_start() {
         incremental_gc(mem);
@@ -54,7 +53,12 @@ unsafe fn schedule_incremental_gc<M: Memory>(mem: &mut M) {
 #[ic_mem_fn(ic_only)]
 unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
     use self::roots::root_set;
+
     let state = STATE.get_mut();
+    if state.phase == Phase::Stop {
+        return;
+    }
+
     if state.phase == Phase::Pause {
         record_gc_start::<M>();
     }
@@ -404,8 +408,7 @@ unsafe fn count_allocation(state: &mut State) {
 
 /// Stop the GC before performing upgrade. This is only a safe-guard since
 /// the compiler must not schedule the GC during stabilization anyway.
-#[no_mangle]
-pub unsafe extern "C" fn stop_gc_on_upgrade() {
+pub unsafe fn stop_gc_on_upgrade() {
     STATE.get_mut().phase = Phase::Stop;
 }
 

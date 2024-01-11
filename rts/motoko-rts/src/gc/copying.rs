@@ -26,6 +26,9 @@ unsafe fn schedule_copying_gc<M: Memory>(mem: &mut M) {
 #[ic_mem_fn(ic_only)]
 unsafe fn copying_gc<M: Memory>(mem: &mut M) {
     use crate::memory::ic::{self, linear_memory};
+    if super::is_gc_stopped() {
+        return;
+    }
 
     copying_gc_internal(
         mem,

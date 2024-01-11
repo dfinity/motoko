@@ -978,7 +978,6 @@ module RTS = struct
     E.add_func_import env "rts" "incremental_gc" [] [];
     E.add_func_import env "rts" "write_with_barrier" [I32Type; I32Type] [];
     E.add_func_import env "rts" "allocation_barrier" [I32Type] [I32Type];
-    E.add_func_import env "rts" "stop_gc_on_upgrade" [] [];
     E.add_func_import env "rts" "running_gc" [] [I32Type];
     ()
 
@@ -7936,10 +7935,6 @@ module GraphCopyStabilization = struct
     E.call_import env "rts" "is_stabilization_started"
 
   let start_stabilization env actor_type =
-    (if !Flags.gc_strategy = Flags.Incremental then
-      E.call_import env "rts" "stop_gc_on_upgrade"
-    else
-      G.nop) ^^
     create_type_descriptor env actor_type ^^
     E.call_import env "rts" "start_stabilization"
 
