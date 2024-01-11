@@ -37,6 +37,7 @@ use self::layout::StableValue;
 
 extern "C" {
     pub fn moc_null_singleton() -> Value;
+    fn ic0_performance_counter(number: u32) -> u64;
 }
 
 // Dummy value used for non-stable objects that are potentially reachable from
@@ -44,7 +45,7 @@ extern "C" {
 // Must be a non-skewed value such that the GC also ignores this value.
 const DUMMY_VALUE: StableValue = StableValue::from_raw(0);
 
-const COPY_TIME_LIMIT: u64 = 10_000;
+const GRAPH_COPY_INSTRUCTION_LIMIT: u64 = 10_000;
 
 fn clear_stable_memory(start: u64, length: u64) {
     const CHUNK_SIZE: usize = WASM_PAGE_SIZE.as_usize();

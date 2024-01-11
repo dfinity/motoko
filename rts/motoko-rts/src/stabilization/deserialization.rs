@@ -4,7 +4,7 @@ pub mod stable_memory_access;
 use crate::{
     memory::Memory,
     stabilization::deserialization::scan_stack::STACK_EMPTY,
-    types::{block_size, FwdPtr, Tag, Value, TAG_FWD_PTR},
+    types::{FwdPtr, Tag, Value, TAG_FWD_PTR},
     visitor::visit_pointer_fields,
 };
 
@@ -12,10 +12,9 @@ use self::{scan_stack::ScanStack, stable_memory_access::StableMemoryAccess};
 
 use super::{
     clear_stable_memory,
-    graph_copy::time::BoundedTime,
-    graph_copy::GraphCopy,
+    graph_copy::{limit::InstructionLimit, GraphCopy},
     layout::{deserialize, StableValue, STABLE_NULL_POINTER},
-    moc_null_singleton, COPY_TIME_LIMIT,
+    moc_null_singleton, GRAPH_COPY_INSTRUCTION_LIMIT,
 };
 
 pub struct Deserialization {
@@ -24,7 +23,7 @@ pub struct Deserialization {
     stable_start: u64,
     stable_size: u64,
     stable_root: Option<Value>,
-    time: BoundedTime,
+    limit: InstructionLimit,
 }
 
 /// Helper type to pass serialization context instead of closures.
@@ -58,14 +57,14 @@ impl Deserialization {
     pub fn start<M: Memory>(mem: &mut M, stable_start: u64, stable_size: u64) -> Deserialization {
         let from_space = StableMemoryAccess::open(stable_start, stable_size);
         let scan_stack = unsafe { ScanStack::new(mem) };
-        let time = BoundedTime::new(COPY_TIME_LIMIT);
+        let limit = InstructionLimit::new(GRAPH_COPY_INSTRUCTION_LIMIT);
         let mut deserialization = Deserialization {
             from_space,
             scan_stack,
             stable_start,
             stable_size,
             stable_root: None,
-            time,
+            limit,
         };
         deserialization.start(mem, StableValue::serialize(Value::from_ptr(0)));
         deserialization
@@ -135,8 +134,6 @@ impl GraphCopy<StableValue, Value, u32> for Deserialization {
                 self.stable_root = Some(target);
             }
             self.scan_stack.push(mem, target);
-            let size = block_size(target.get_ptr() as usize).to_bytes().as_usize();
-            self.time.advance(size as u64);
             target
         }
     }
@@ -151,7 +148,6 @@ impl GraphCopy<StableValue, Value, u32> for Deserialization {
                 &mut DeserializationContext::new(self, mem),
                 target_object,
                 &|context, original| {
-                    context.deserialization.time.tick();
                     let old_value = StableValue::serialize(original);
                     if Self::is_null(old_value) {
                         Self::encode_null()
@@ -174,10 +170,6 @@ impl GraphCopy<StableValue, Value, u32> for Deserialization {
     }
 
     fn time_over(&self) -> bool {
-        self.time.is_over()
-    }
-
-    fn reset_time(&mut self) {
-        self.time.reset();
+        self.limit.is_exceeded()
     }
 }

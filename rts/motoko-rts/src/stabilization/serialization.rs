@@ -9,15 +9,14 @@ use crate::{
 use self::stable_memory_stream::{ScanStream, StableMemoryStream};
 
 use super::{
-    graph_copy::time::BoundedTime,
-    graph_copy::GraphCopy,
+    graph_copy::{limit::InstructionLimit, GraphCopy},
     layout::{scan_serialized, StableToSpace, StableValue, STABLE_NULL_POINTER},
-    COPY_TIME_LIMIT, DUMMY_VALUE,
+    DUMMY_VALUE, GRAPH_COPY_INSTRUCTION_LIMIT,
 };
 
 pub struct Serialization {
     to_space: StableMemoryStream,
-    time: BoundedTime,
+    limit: InstructionLimit,
 }
 
 /// Helper type to pass serialization context instead of closures.
@@ -51,8 +50,8 @@ impl Serialization {
     /// The start is followed by a series of copy increments before the serialization is completed.
     pub fn start<M: Memory>(mem: &mut M, root: Value, stable_start: u64) -> Serialization {
         let to_space = StableMemoryStream::open(stable_start);
-        let time = BoundedTime::new(COPY_TIME_LIMIT);
-        let mut serialization = Serialization { time, to_space };
+        let limit = InstructionLimit::new(GRAPH_COPY_INSTRUCTION_LIMIT);
+        let mut serialization = Serialization { limit, to_space };
         serialization.start(mem, root);
         serialization
     }
@@ -130,8 +129,6 @@ impl GraphCopy<Value, StableValue, u32> for Serialization {
             let address = self.to_space.written_length();
             serialize(&mut self.to_space, object);
             debug_assert!(self.to_space.written_length() >= address);
-            let size = self.to_space.written_length() - address;
-            self.time.advance(size);
             StableValue::from_stable_address(address)
         }
     }
@@ -140,7 +137,6 @@ impl GraphCopy<Value, StableValue, u32> for Serialization {
         scan_serialized(
             &mut SerializationContext::new(self, mem),
             &|context, original| {
-                context.serialization.time.tick();
                 let old_value = original.deserialize();
                 if old_value.is_ptr() {
                     if Self::is_null(old_value) {
@@ -169,11 +165,7 @@ impl GraphCopy<Value, StableValue, u32> for Serialization {
     }
 
     fn time_over(&self) -> bool {
-        self.time.is_over()
-    }
-
-    fn reset_time(&mut self) {
-        self.time.reset();
+        self.limit.is_exceeded()
     }
 }
 

@@ -18,7 +18,6 @@ use super::graph_copy::GraphCopy;
 use super::{deserialization::Deserialization, serialization::Serialization};
 
 extern "C" {
-    fn ic0_performance_counter(number: u32) -> u64;
     fn set_upgrade_instructions(instructions: u64);
 }
 

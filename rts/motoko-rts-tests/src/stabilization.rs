@@ -51,6 +51,11 @@ pub fn moc_null_singleton() -> Value {
     unsafe { Value::from_ptr(&mut DUMMY_NULL_SINGLETON as *mut Null as usize) }
 }
 
+#[no_mangle]
+pub fn ic0_performance_counter(_counter: u32) -> u64 {
+    0
+}
+
 #[non_incremental_gc]
 fn clear_heap(heap: &mut MotokoHeap) {
     heap.set_heap_ptr_address(heap.heap_base_address());
@@ -213,16 +218,14 @@ fn test_serialization_deserialization(random: &mut Rand32, max_objects: u32, sta
 fn serialize(old_stable_root: Value, stable_start: u64) -> u64 {
     let mut memory = TestMemory::new(Words(0));
     let mut serialization = Serialization::start(&mut memory, old_stable_root, stable_start);
-    while !serialization.is_completed() {
-        serialization.copy_increment(&mut memory);
-    }
+    serialization.copy_increment(&mut memory);
+    assert!(serialization.is_completed());
     serialization.serialized_data_length()
 }
 
 fn deserialize<M: Memory>(mem: &mut M, stable_start: u64, stable_size: u64) -> Value {
     let mut deserialization = Deserialization::start(mem, stable_start, stable_size);
-    while !deserialization.is_completed() {
-        deserialization.copy_increment(mem);
-    }
+    deserialization.copy_increment(mem);
+    assert!(deserialization.is_completed());
     deserialization.get_stable_root()
 }

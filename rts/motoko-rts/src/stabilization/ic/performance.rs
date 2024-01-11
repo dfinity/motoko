@@ -1,4 +1,4 @@
-use super::ic0_performance_counter;
+use crate::stabilization::ic0_performance_counter;
 
 pub struct InstructionMeter {
     total_elapsed: u64,
