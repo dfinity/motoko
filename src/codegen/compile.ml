@@ -178,8 +178,8 @@ module Const = struct
     | Vanilla of int32 (* small words, no static data, already in vanilla format *)
     | BigInt of Big_int.big_int
     | Bool of bool
-    | Word32 of int32
-    | Word64 of int64
+    | Word32 of Type.prim * int32
+    | Word64 of Type.prim * int64
     | Float64 of Numerics.Float.t
     | Blob of string
     | Null
@@ -187,8 +187,8 @@ module Const = struct
   let lit_eq = function
     | Vanilla i, Vanilla j -> i = j
     | BigInt i, BigInt j -> Big_int.eq_big_int i j
-    | Word32 i, Word32 j -> i = j
-    | Word64 i, Word64 j -> i = j
+    | Word32 (tyi, i), Word32 (tyj, j) -> tyi = tyj && i = j
+    | Word64 (tyi, i), Word64 (tyj, j) -> tyi = tyj && i = j
     | Float64 i, Float64 j -> i = j
     | Bool i, Bool j -> i = j
     | Blob s, Blob t -> s = t
@@ -8556,8 +8556,8 @@ module StackRep = struct
     | Const.Vanilla n  -> n
     | Const.Bool n     -> Bool.vanilla_lit n
     | Const.BigInt n   -> BigNum.vanilla_lit env n
-    | Const.Word32 n   -> BoxedSmallWord.vanilla_lit env Type.Int32 n (* TBR *)
-    | Const.Word64 n   -> BoxedWord64.vanilla_lit env Type.Int64 n (* TBR *)
+    | Const.Word32 (pty, n) -> BoxedSmallWord.vanilla_lit env pty n
+    | Const.Word64 (pty, n) -> BoxedWord64.vanilla_lit env pty n
     | Const.Float64 f  -> Float.vanilla_lit env f
     | Const.Blob t     -> Blob.vanilla_lit env t
     | Const.Null       -> Opt.null_vanilla_lit env
@@ -8611,8 +8611,10 @@ module StackRep = struct
 
     | Const (_, Const.Lit (Const.Bool b)), Vanilla -> Bool.lit b
     | Const c, Vanilla -> compile_unboxed_const (materialize_const_t env c)
-    | Const (_, Const.Lit (Const.Word32 n)), UnboxedWord32 _ -> compile_unboxed_const n
-    | Const (_, Const.Lit (Const.Word64 n)), UnboxedWord64 _ -> compile_const_64 n
+    | Const (_, Const.Lit (Const.Word32 (ty1, n))), UnboxedWord32 ty2 when ty1 = ty2  ->
+       compile_unboxed_const n
+    | Const (_, Const.Lit (Const.Word64 (ty1, n))), UnboxedWord64 ty2 when ty1 = ty2 ->
+       compile_const_64 n
     | Const (_, Const.Lit (Const.Float64 f)), UnboxedFloat64 -> Float.compile_unboxed_const f
     | Const c, UnboxedTuple 0 -> G.nop
     | Const (_, Const.Array cs), UnboxedTuple n ->
@@ -9691,10 +9693,10 @@ let const_lit_of_lit : Ir.lit -> Const.lit = function
   | Nat8Lit n     -> Const.Vanilla (TaggedSmallWord.vanilla_lit Type.Nat8 (Numerics.Nat8.to_int n))
   | Int16Lit n    -> Const.Vanilla (TaggedSmallWord.vanilla_lit Type.Int16 (Numerics.Int_16.to_int n))
   | Nat16Lit n    -> Const.Vanilla (TaggedSmallWord.vanilla_lit Type.Nat16 (Numerics.Nat16.to_int n))
-  | Int32Lit n    -> Const.Word32 (Big_int.int32_of_big_int (Numerics.Int_32.to_big_int n))
-  | Nat32Lit n    -> Const.Word32 (Big_int.int32_of_big_int (nat32_to_int32 (Numerics.Nat32.to_big_int n)))
-  | Int64Lit n    -> Const.Word64 (Big_int.int64_of_big_int (Numerics.Int_64.to_big_int n))
-  | Nat64Lit n    -> Const.Word64 (Big_int.int64_of_big_int (nat64_to_int64 (Numerics.Nat64.to_big_int n)))
+  | Int32Lit n    -> Const.Word32 (Type.Int32, (Big_int.int32_of_big_int (Numerics.Int_32.to_big_int n)))
+  | Nat32Lit n    -> Const.Word32 (Type.Nat32, (Big_int.int32_of_big_int (nat32_to_int32 (Numerics.Nat32.to_big_int n))))
+  | Int64Lit n    -> Const.Word64 (Type.Int64, (Big_int.int64_of_big_int (Numerics.Int_64.to_big_int n)))
+  | Nat64Lit n    -> Const.Word64 (Type.Nat64, (Big_int.int64_of_big_int (nat64_to_int64 (Numerics.Nat64.to_big_int n))))
   | CharLit c     -> Const.Vanilla (TaggedSmallWord.vanilla_lit Type.Char c)
 
   | NullLit       -> Const.Null
