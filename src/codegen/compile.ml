@@ -48,6 +48,11 @@ let page_size_bits = 16
 
 module TaggingScheme = struct
 
+ (*
+    Enable for development only to sanity check value tags and
+    locate unexpected tag errors to compile.ml source lines.
+    Flags.sanity_check will check tags, but not further locate them.
+ *)
  let debug = false
 
  type bit = I | O
@@ -1761,19 +1766,24 @@ module BitTagged = struct
     compile_bitor_const (TaggingScheme.tag_of_typ pty)
 
   let sanity_check_tag line env ty =
-    let name = Printf.sprintf "bittagged_sanity_check_%s(%i)" (Type.string_of_prim ty) line in
     if TaggingScheme.debug || !(Flags.sanity) then
+      let name =
+        (prim_fun_name ty "BitTagged.sanity_check_tag") ^
+          (if TaggingScheme.debug then Int.to_string line else "")
+      in
+      let tag_mask = Int32.(sub (shift_left 1l (32 - ubits_of ty)) one) in
       (Func.share_code1 Func.Always env name ("v", I32Type) [I32Type] (fun env get_n ->
-        get_n ^^
-        compile_bitand_const (TaggingScheme.tag_of_typ ty) ^^ (* FIX ME *)              compile_eq_const (TaggingScheme.tag_of_typ ty) ^^
-        E.else_trap_with env "bittagged_sanity_check_tag" ^^
-        get_n))
+         get_n ^^
+         compile_bitand_const tag_mask ^^
+         compile_eq_const (TaggingScheme.tag_of_typ ty) ^^
+         E.else_trap_with env "unexpected tag" ^^
+         get_n))
     else G.nop
 
-  let untag_i32 env pty =
+  let untag_i32 line env pty =
     let ubits = ubits_of pty in
     (* check tag *)
-    sanity_check_tag __LINE__ env pty ^^
+    sanity_check_tag line env pty ^^
     compile_shrS_const (Int32.sub 32l (Int32.of_int ubits))
 
 end (* BitTagged *)
@@ -2557,7 +2567,7 @@ module BoxedSmallWord = struct
       (prim_fun_name pty "unbox") ("n", I32Type) [I32Type] (fun env get_n ->
       get_n ^^
       BitTagged.if_tagged_scalar env [I32Type]
-        (get_n ^^ BitTagged.untag_i32 env pty)
+        (get_n ^^ BitTagged.untag_i32 __LINE__ env pty)
         (get_n ^^ Tagged.load_forwarding_pointer env ^^ Tagged.load_field env (payload_field env))
     )
 
@@ -2617,14 +2627,18 @@ module TaggedSmallWord = struct
 
   let shift_leftWordNtoI32 = compile_shl_const
 
-  let sanity_check_tag env ty = (* TODO add line for debugging? *)
-    let name = "sanity_check_"^Type.string_of_prim ty in
+  let sanity_check_tag line env ty =
     if TaggingScheme.debug || !(Flags.sanity) then
+      let name =
+        (prim_fun_name ty "TaggedSmall.sanity_check_tag") ^
+          (if TaggingScheme.debug then Int.to_string line else "")
+      in
+      let tag_mask = padding_of_type ty in
       (Func.share_code1 Func.Always env name ("v", I32Type) [I32Type] (fun env get_n ->
         get_n ^^
-        compile_bitand_const (tag_of_type ty) ^^ (* FIX ME *)
+        compile_bitand_const tag_mask ^^
         compile_eq_const (tag_of_type ty) ^^
-        E.else_trap_with env "sanity_check_tag" ^^
+        E.else_trap_with env "unexpected_tag" ^^
         get_n))
     else G.nop
 
@@ -2632,13 +2646,13 @@ module TaggedSmallWord = struct
   let lsb_adjust env = function
     | Type.(Int32|Nat32) -> G.nop
     | Type.(Nat8|Nat16) as ty ->
-       sanity_check_tag env ty ^^
+       sanity_check_tag __LINE__ env ty ^^
        compile_shrU_const (shift_of_type ty)
     | Type.(Int8|Int16) as ty ->
-       sanity_check_tag env ty ^^
+       sanity_check_tag __LINE__ env ty ^^
        compile_shrS_const (shift_of_type ty)
     | Type.Char as ty ->
-       sanity_check_tag env ty ^^
+       sanity_check_tag __LINE__ env ty ^^
        compile_shrU_const (shift_of_type ty)
     | _ -> assert false
 
@@ -3162,8 +3176,8 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       (fun env get_a get_b ->
         let set_res, get_res = new_local env "res" in
         let set_res64, get_res64 = new_local64 env "res64" in
-        get_a ^^ BitTagged.sanity_check_tag __LINE__ env Type.Int ^^
-        get_b ^^ BitTagged.sanity_check_tag __LINE__ env Type.Int ^^
+        get_a ^^
+        get_b ^^
         BitTagged.if_both_tagged_scalar env [I32Type]
           begin
             get_a ^^ extend64 env ^^
@@ -3187,8 +3201,6 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
               (get_res ^^ Num.truncate_to_word32 env ^^ BitTagged.tag_i32 env Type.Int)
               get_res
           end
-        ^^
-        BitTagged.sanity_check_tag __LINE__ env Type.Int
       )
 
   let compile_add = try_unbox2 "B_add" Word64.compile_add Num.compile_add
@@ -3392,8 +3404,9 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
           (Bool.lit true)
           (get_a ^^ get_b ^^
            BitTagged.if_both_tagged_scalar env [I32Type]
-             ( get_a ^^ BitTagged.sanity_check_tag __LINE__ env Type.Int ^^ G.i Drop ^^
-               get_b ^^ BitTagged.sanity_check_tag __LINE__ env Type.Int ^^ G.i Drop ^^
+             (
+               (* get_a ^^ BitTagged.sanity_check_tag __LINE__ env Type.Int ^^ G.i Drop ^^
+               get_b ^^ BitTagged.sanity_check_tag __LINE__ env Type.Int ^^ G.i Drop ^^ *)
                Bool.lit false)
              begin
                get_a ^^ BitTagged.if_tagged_scalar env [I32Type]
@@ -3538,7 +3551,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     get_x ^^
     try_unbox I32Type
       (fun env ->
-        BitTagged.untag_i32 env Type.Int ^^ set_x ^^
+        BitTagged.untag_i32 __LINE__ env Type.Int ^^ set_x ^^
         I32Leb.compile_store_to_data_buf_unsigned env get_x get_buf
       )
       (fun env ->
@@ -3553,7 +3566,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     get_x ^^
     try_unbox I32Type
       (fun env ->
-        BitTagged.untag_i32 env Type.Int ^^ set_x ^^
+        BitTagged.untag_i32 __LINE__ env Type.Int ^^ set_x ^^
         I32Leb.compile_store_to_data_buf_signed env get_x get_buf
       )
       (fun env ->
@@ -3568,7 +3581,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     get_x ^^
     try_unbox I32Type
       (fun env ->
-        BitTagged.untag_i32 env Type.Int ^^ set_x ^^
+        BitTagged.untag_i32 __LINE__ env Type.Int ^^ set_x ^^
         (* get size & reserve & encode *)
         let dest =
           get_stream ^^
@@ -3589,7 +3602,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     get_x ^^
     try_unbox I32Type
       (fun env ->
-        BitTagged.untag_i32 env Type.Int ^^ set_x ^^
+        BitTagged.untag_i32 __LINE__ env Type.Int ^^ set_x ^^
         (* get size & reserve & encode *)
         let dest =
           get_stream ^^
@@ -3607,7 +3620,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     try_unbox I32Type
       (fun _ ->
         let set_x, get_x = new_local env "x" in
-        BitTagged.untag_i32 env Type.Int ^^ set_x ^^
+        BitTagged.untag_i32 __LINE__ env Type.Int ^^ set_x ^^
         I32Leb.compile_leb128_size get_x
       )
       (fun env -> Num.compile_data_size_unsigned env)
@@ -3617,7 +3630,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     try_unbox I32Type
       (fun _ ->
         let set_x, get_x = new_local env "x" in
-        BitTagged.untag_i32 env Type.Int ^^ set_x ^^
+        BitTagged.untag_i32 __LINE__ env Type.Int ^^ set_x ^^
         I32Leb.compile_sleb128_size get_x
       )
       (fun env -> Num.compile_data_size_signed env)
@@ -3666,7 +3679,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     let set_a, get_a = new_local env "a" in
     set_a ^^ get_a ^^
     BitTagged.if_tagged_scalar env [I32Type]
-      (get_a ^^ BitTagged.untag_i32 env Type.Int)
+      (get_a ^^ BitTagged.untag_i32 __LINE__ env Type.Int)
       (get_a ^^ Num.truncate_to_word32 env)
 
   let to_word64 env =
@@ -3680,7 +3693,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     let set_a, get_a = new_local env "a" in
     set_a ^^ get_a ^^
     BitTagged.if_tagged_scalar env [I32Type]
-      (get_a ^^ BitTagged.untag_i32 env Type.Int) (*TBR*)
+      (get_a ^^ BitTagged.untag_i32 __LINE__ env Type.Int) (*TBR*)
       (get_a ^^ Num.to_word32 env)
 
   let to_word32_with env =
@@ -3689,7 +3702,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     set_err_msg ^^ set_a ^^
     get_a ^^
     BitTagged.if_tagged_scalar env [I32Type]
-      (get_a ^^ BitTagged.untag_i32 env Type.Int) (* TBR *)
+      (get_a ^^ BitTagged.untag_i32 __LINE__ env Type.Int) (* TBR *)
       (get_a ^^ get_err_msg ^^ Num.to_word32_with env)
 end
 
@@ -10600,15 +10613,15 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_add_const advance_by
   | ValidArrayOffset, [e1; e2] ->
     SR.bool,
-    compile_exp_vanilla env ae e1 ^^ BitTagged.untag_i32 env Type.Int ^^
-    compile_exp_vanilla env ae e2 ^^ BitTagged.untag_i32 env Type.Int ^^
+    compile_exp_vanilla env ae e1 ^^ BitTagged.untag_i32 __LINE__ env Type.Int ^^
+    compile_exp_vanilla env ae e2 ^^ BitTagged.untag_i32 __LINE__ env Type.Int ^^
     G.i (Compare (Wasm.Values.I32 I32Op.LtU))
   | DerefArrayOffset, [e1; e2] ->
     SR.Vanilla,
     compile_exp_vanilla env ae e1 ^^ (* skewed pointer to array *)
     Tagged.load_forwarding_pointer env ^^
     compile_exp_vanilla env ae e2 ^^ (* byte offset *)
-    BitTagged.untag_i32 env Type.Int ^^
+    BitTagged.untag_i32 __LINE__ env Type.Int ^^
     compile_shl_const 2l ^^ (* effectively a multiplication by word_size *)
     (* Note: the below two lines compile to `i32.add; i32.load offset=OFFSET`
        with OFFSET = 13 with forwarding pointers and OFFSET = 9 without forwarding pointers,
@@ -11361,14 +11374,14 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | OtherPrim "popcntInt8", [e] ->
     SR.Vanilla,
     compile_exp_vanilla env ae e ^^
-    TaggedSmallWord.sanity_check_tag env Type.Int8 ^^
+    TaggedSmallWord.sanity_check_tag __LINE__ env Type.Int8 ^^
     compile_shrU_const (TaggedSmallWord.shift_of_type Type.Int8) ^^
     G.i (Unary (Wasm.Values.I32 I32Op.Popcnt)) ^^
     TaggedSmallWord.msb_adjust Type.Int8
   | OtherPrim "popcntInt16", [e] ->
     SR.Vanilla,
     compile_exp_vanilla env ae e ^^
-    TaggedSmallWord.sanity_check_tag env Type.Int16 ^^
+    TaggedSmallWord.sanity_check_tag __LINE__ env Type.Int16 ^^
     compile_shrU_const (TaggedSmallWord.shift_of_type Type.Int16) ^^
     G.i (Unary (Wasm.Values.I32 I32Op.Popcnt)) ^^
     TaggedSmallWord.msb_adjust Type.Int16
