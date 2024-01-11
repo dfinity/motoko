@@ -1765,8 +1765,7 @@ module BitTagged = struct
     if TaggingScheme.debug || !(Flags.sanity) then
       (Func.share_code1 Func.Always env name ("v", I32Type) [I32Type] (fun env get_n ->
         get_n ^^
-        compile_bitand_const (TaggingScheme.tag_of_typ ty) ^^
-        compile_eq_const (TaggingScheme.tag_of_typ ty) ^^
+        compile_bitand_const (TaggingScheme.tag_of_typ ty) ^^ (* FIX ME *)              compile_eq_const (TaggingScheme.tag_of_typ ty) ^^
         E.else_trap_with env "bittagged_sanity_check_tag" ^^
         get_n))
     else G.nop
@@ -2623,7 +2622,7 @@ module TaggedSmallWord = struct
     if TaggingScheme.debug || !(Flags.sanity) then
       (Func.share_code1 Func.Always env name ("v", I32Type) [I32Type] (fun env get_n ->
         get_n ^^
-        compile_bitand_const (tag_of_type ty) ^^
+        compile_bitand_const (tag_of_type ty) ^^ (* FIX ME *)
         compile_eq_const (tag_of_type ty) ^^
         E.else_trap_with env "sanity_check_tag" ^^
         get_n))
@@ -3344,12 +3343,12 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     | n -> Num.vanilla_lit env n
 
   let compile_neg env =
-    let sminl = Int32.(neg (shift_left 1l (BitTagged.sbits_of Type.Int))) in
+    let sminl = Int32.shift_left 1l (BitTagged.sbits_of Type.Int) in
     let sminl_shifted = Int32.shift_left sminl (32 - BitTagged.ubits_of Type.Int) in
     Func.share_code1 Func.Always env "B_neg" ("n", I32Type) [I32Type] (fun env get_n ->
       get_n ^^ BitTagged.if_tagged_scalar env [I32Type]
         begin
-          get_n ^^ clear_tag env ^^ compile_eq_const sminl_shifted ^^ (* -2^sbits, shifted ubits *) (*FIX*)
+          get_n ^^ clear_tag env ^^ compile_eq_const sminl_shifted ^^ (* -2^sbits, shifted ubits *)
           G.if1 I32Type
             (compile_unboxed_const sminl ^^ Num.from_word32 env)
             begin
@@ -3462,31 +3461,33 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       env
 
   let compile_abs env =
-    let sminl = Int32.(neg (shift_left 1l (BitTagged.sbits_of Type.Int))) in
+    let sminl = Int32.shift_left 1l (BitTagged.sbits_of Type.Int) in
+    let sminl_shifted = Int32.shift_left sminl (32 - BitTagged.ubits_of Type.Int) in
     try_unbox I32Type
       begin
         fun _ ->
         let set_a, get_a = new_local env "a" in
-        BitTagged.untag_i32 env Type.Int ^^
+        clear_tag env ^^
         set_a ^^
         get_a ^^ compile_unboxed_const 0l ^^ G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^
         G.if1 I32Type
           begin
             get_a ^^
             (* -2^sbits is small enough for compact representation, but 2^sbits isn't *)
-            compile_eq_const sminl ^^ (* i.e. -2^sbits *)
+            compile_eq_const sminl_shifted ^^ (* i.e. -2^sbits shifted *)
             G.if1 I32Type
               (compile_unboxed_const sminl ^^ Num.from_word32 env)
               begin
+                (* absolute value works directly on shifted representation *)
                 compile_unboxed_const 0l ^^
                 get_a ^^
                 G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
-                BitTagged.tag_i32 env Type.Int
+                compile_bitor_const (TaggingScheme.tag_of_typ Type.Int)
               end
           end
           begin
             get_a ^^
-            BitTagged.tag_i32 env Type.Int
+            compile_bitor_const (TaggingScheme.tag_of_typ Type.Int)
           end
       end
       Num.compile_abs
