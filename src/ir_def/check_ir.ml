@@ -621,11 +621,6 @@ let rec check_exp env (exp:Ir.exp) : unit =
       check_typ env t1;
       check (store_typ t1) "Invalid type argument to ICStableRead";
       t1 <: t
-    | ICStableWrite t1, [exp1] ->
-      check_typ env t1;
-      check (store_typ t1) "Invalid type argument to ICStableWrite";
-      typ exp1 <: t1;
-      T.unit <: t
     | NumConvWrapPrim (p1, p2), [e] ->
       (* we should check if this conversion is supported *)
       typ e <: T.Prim p1;
@@ -687,6 +682,8 @@ let rec check_exp env (exp:Ir.exp) : unit =
     | IsStabilizationStarted, [] ->
       T.bool <: t
     | StartStabilization t1, [e1] ->
+      check_typ env t1;
+      check (store_typ t1) "Invalid type argument to StartStabilization";
       typ e1 <: t1;
       T.unit <: t
     | StabilizationIncrement, [] ->

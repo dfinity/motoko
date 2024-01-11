@@ -114,7 +114,6 @@ and prim = function
   | ICCallPrim        -> Atom "ICCallPrim"
   | ICCallRawPrim     -> Atom "ICCallRawPrim"
   | ICMethodNamePrim  -> Atom "ICMethodNamePrim"
-  | ICStableWrite t   -> "ICStableWrite" $$ [typ t]
   | ICStableRead t    -> "ICStableRead" $$ [typ t]
   | IsStabilizationStarted -> Atom "IsStabilizationStarted"
   | StartStabilization t -> "StartStabilization" $$ [typ t]

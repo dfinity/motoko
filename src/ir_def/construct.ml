@@ -91,7 +91,6 @@ let primE prim es =
     | ICStableRead t -> t
     | ICMethodNamePrim -> T.text
     | ICPerformGC
-    | ICStableWrite _ -> T.unit
     | ICStableSize _ -> T.nat64
     | IsStabilizationStarted -> T.bool
     | StartStabilization _ -> T.unit

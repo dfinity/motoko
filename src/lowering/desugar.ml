@@ -545,8 +545,7 @@ and build_actor at ts self_id es obj_typ =
      interface_d @ footprint_d @ explicit_stabilization_d @ ds', 
      interface_f @ footprint_f @ explicit_stabilization_f @ fs,
      { meta;
-       (* preupgrade = with_stable_vars (fun e -> primE (I.ICStableWrite ty) [e]); *)
-       preupgrade = pre_upgrade_stabilization with_stable_vars ty;
+       preupgrade = stabilize_on_upgrade (with_stable_vars (fun e -> e));
        postupgrade =
          (match call_system_func_opt "postupgrade" es obj_typ with
           | Some call -> call
@@ -570,11 +569,11 @@ and build_actor at ts self_id es obj_typ =
      },
      obj_typ))
 
-and pre_upgrade_stabilization build_stable_actor stable_actor_type =
+and stabilize_on_upgrade stable_actor =
   blockE [
     expD (ifE (primE I.IsStabilizationStarted [])
         (unitE ())
-        (build_stable_actor (fun e -> primE (I.StartStabilization stable_actor_type) [e]))
+        (primE (I.StartStabilization stable_actor.note.Note.typ) [stable_actor])
     )
   ]
   (loopWhileE (unitE ()) (notE (primE I.StabilizationIncrement [])))

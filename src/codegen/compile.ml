@@ -11058,10 +11058,6 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | StabilizationIncrement, [] ->
     SR.Vanilla,
     GraphCopyStabilization.stabilization_increment env
-  | ICStableWrite ty, [e] ->
-    SR.unit,
-    compile_exp_vanilla env ae e ^^
-    E.trap_with env "TEST: NOT IMPLEMENTED"
   
   (* Cycles *)
   | SystemCyclesBalancePrim, [] ->
