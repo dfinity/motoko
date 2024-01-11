@@ -8611,9 +8611,9 @@ module StackRep = struct
 
     | Const (_, Const.Lit (Const.Bool b)), Vanilla -> Bool.lit b
     | Const c, Vanilla -> compile_unboxed_const (materialize_const_t env c)
-    | Const (_, Const.Lit (Const.Word32 (ty1, n))), UnboxedWord32 ty2 when ty1 = ty2  ->
+    | Const (_, Const.Lit (Const.Word32 (_ty1, n))), UnboxedWord32 _ty2 ->
        compile_unboxed_const n
-    | Const (_, Const.Lit (Const.Word64 (ty1, n))), UnboxedWord64 ty2 when ty1 = ty2 ->
+    | Const (_, Const.Lit (Const.Word64 (_ty1, n))), UnboxedWord64 _ty2 ->
        compile_const_64 n
     | Const (_, Const.Lit (Const.Float64 f)), UnboxedFloat64 -> Float.compile_unboxed_const f
     | Const c, UnboxedTuple 0 -> G.nop
