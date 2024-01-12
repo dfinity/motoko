@@ -4863,7 +4863,7 @@ module IC = struct
 
   let async_method_name = Type.(motoko_async_helper_fld.lab)
   let gc_trigger_method_name = Type.(motoko_gc_trigger_fld.lab)
-
+  
   let is_self_call env =
     let (set_len_self, get_len_self) = new_local env "len_self" in
     let (set_len_caller, get_len_caller) = new_local env "len_caller" in
@@ -8919,6 +8919,46 @@ module FuncDec = struct
     | _ -> ()
     end
 
+  let async_stabilization_method_name = "__motoko_async_stabilization"
+
+  let call_async_stabilization env =
+    (* TODO: Avoid temporary blob allocation for self reference *)
+    IC.get_self_reference env ^^ Blob.as_ptr_len env ^^
+    Blob.lit_ptr_len env async_stabilization_method_name ^^
+    ignoring_callback env ^^ compile_unboxed_zero ^^
+    (* TODO: Check usability: Traps in this async callee are not displayed in drun/dfx but only debug outputs *)
+    ignoring_callback env ^^ compile_unboxed_zero ^^
+    IC.system_call env "call_new" ^^
+    IC.system_call env "call_perform" ^^
+    E.then_trap_with env "Async stabilization increment call failed"
+
+  let export_async_stabilization_method env =
+    let name = async_stabilization_method_name in
+    begin match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+      Func.define_built_in env name [] [] (fun env ->
+        message_start env (Type.Shared Type.Write) ^^
+        IC.assert_caller_self_or_controller env ^^
+        (* Skip argument deserialization to avoid allocations *)
+        GraphCopyStabilization.stabilization_increment env ^^
+        (G.if0
+          G.nop
+          (call_async_stabilization env)) ^^
+        (* Send static reply *)
+        Blob.lit_ptr_len env "DIDL\x00\x00" ^^
+        IC.reply_with_data env ^^
+        (* Skip garbage collection *)
+        Lifecycle.trans env Lifecycle.Idle
+      );
+
+      let fi = E.built_in env name in
+      E.add_export env (nr {
+        name = Lib.Utf8.decode ("canister_update " ^ name);
+        edesc = nr (FuncExport (nr fi))
+      })
+    | _ -> ()
+    end  
+
 end (* FuncDec *)
 
 
@@ -11053,7 +11093,10 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | StabilizationIncrement, [] ->
     SR.Vanilla,
     GraphCopyStabilization.stabilization_increment env
-  
+  | AsyncStabilization, [] ->
+    SR.unit,
+    FuncDec.call_async_stabilization env
+
   (* Cycles *)
   | SystemCyclesBalancePrim, [] ->
     SR.Vanilla, Cycles.balance env
@@ -11926,6 +11969,7 @@ and conclude_module env set_serialization_globals start_fi_o =
 
   FuncDec.export_async_method env;
   FuncDec.export_gc_trigger_method env;
+  FuncDec.export_async_stabilization_method env;
 
   (* See Note [Candid subtype checks] *)
   Serialization.set_delayed_globals env set_serialization_globals;

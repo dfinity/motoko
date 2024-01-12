@@ -118,6 +118,7 @@ and prim = function
   | IsStabilizationStarted -> Atom "IsStabilizationStarted"
   | StartStabilization t -> "StartStabilization" $$ [typ t]
   | StabilizationIncrement -> Atom "StabilizationIncrement"
+  | AsyncStabilization -> Atom "AsyncStabilization"
 
 and mut = function
   | Const -> Atom "Const"

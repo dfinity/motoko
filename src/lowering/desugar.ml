@@ -462,14 +462,15 @@ and export_explicit_stabilization stable_actor =
   (* TODO: Block all other application calls, except upgrade *)
   let open T in
   let {lab;typ;_} = motoko_stabilize_before_upgrade_fld in
-  let v = "$"^lab in
+  let function_name = lab in
+  let variable_name = "$"^lab in
   let scope_con1 = Cons.fresh "T1" (Abs ([], scope_bound)) in
   let scope_con2 = Cons.fresh "T2" (Abs ([], Any)) in
   let bind1  = typ_arg scope_con1 Scope scope_bound in
   let bind2 = typ_arg scope_con2 Scope scope_bound in
   let caller = fresh_var "caller" caller in
-  ([ letD (var v typ) (
-       funcE v (Shared Write) Promises [bind1] [] [] (
+  ([ letD (var variable_name typ) (
+       funcE function_name (Shared Write) Promises [bind1] [] [] (
           (asyncE T.Fut bind2 
             (blockE [
               letD caller (primE I.ICCallerPrim []);
@@ -480,12 +481,12 @@ and export_explicit_stabilization stable_actor =
                   (unitE ())
                   (primE (I.StartStabilization stable_actor.note.Note.typ) [stable_actor])
               );
-              expD (loopWhileE (unitE ()) (notE (primE I.StabilizationIncrement [])))
+              expD (primE I.AsyncStabilization [])
             ]
             (unitE ()))
             (Con (scope_con1, []))))
   )],
-  [{ it = I.{ name = lab; var = v }; at = no_region; note = typ }])
+  [{ it = I.{ name = function_name; var = variable_name }; at = no_region; note = typ }])
 
 and build_actor at ts self_id es obj_typ =
   let candid = build_candid ts obj_typ in

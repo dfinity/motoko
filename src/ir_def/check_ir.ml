@@ -688,6 +688,8 @@ let rec check_exp env (exp:Ir.exp) : unit =
       T.unit <: t
     | StabilizationIncrement, [] ->
       T.bool <: t
+    | AsyncStabilization, [] ->
+      T.unit <: t
     | OtherPrim _, _ -> ()
     | p, args ->
       error env exp.at "PrimE %s does not work with %d arguments"

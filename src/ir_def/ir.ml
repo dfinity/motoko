@@ -177,6 +177,7 @@ and prim =
   | IsStabilizationStarted
   | StartStabilization of Type.typ
   | StabilizationIncrement
+  | AsyncStabilization
 
 and spacing = One | ElementSize        (* increment units when iterating over arrays *)
 
@@ -319,3 +320,4 @@ let map_prim t_typ t_id p =
   | IsStabilizationStarted -> p
   | StartStabilization t -> StartStabilization (t_typ t)
   | StabilizationIncrement -> p
+  | AsyncStabilization -> p
