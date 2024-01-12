@@ -850,7 +850,7 @@ dec_nonvar :
       LetD (p', e', None) @? at $sloc }
   | TYPE x=typ_id tps=typ_params_opt EQ t=typ
     { TypD(x, tps, t) @? at $sloc }
-  | s=obj_sort xf=id_opt t=annot_opt EQ? efs=obj_body
+  | s=obj_sort xf=id_opt t=annot_opt EQ? efs=obj_body bases=terminated(AND, exp_post(ob))*
     { let sort = Type.(match s.it with
                        | Actor -> "actor" | Module -> "module" | Object -> "object"
                        | _ -> assert false) in
