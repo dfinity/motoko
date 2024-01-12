@@ -4367,6 +4367,7 @@ module Lifecycle = struct
     | PostPreUpgrade (* an invalid state *)
     | InPostUpgrade
     | InComposite
+    | InStabilization (* stabilization before upgrade *)
 
   let string_of_state state = match state with
     | PreInit -> "PreInit"
@@ -4379,6 +4380,7 @@ module Lifecycle = struct
     | PostPreUpgrade -> "PostPreUpgrade"
     | InPostUpgrade -> "InPostUpgrade"
     | InComposite -> "InComposite"
+    | InStabilization -> "InStabilization"
 
   let int_of_state = function
     | PreInit -> 0l (* Automatically null *)
@@ -4395,6 +4397,7 @@ module Lifecycle = struct
     | PostPreUpgrade -> 9l
     | InPostUpgrade -> 10l
     | InComposite -> 11l
+    | InStabilization -> 12l
 
   let ptr () = Stack.end_ ()
   let end_ () = Int32.add (Stack.end_ ()) Heap.word_size
@@ -4411,10 +4414,11 @@ module Lifecycle = struct
     | InUpdate -> [Idle]
     | InQuery -> [Idle]
     | PostQuery -> [InQuery]
-    | InPreUpgrade -> [Idle]
+    | InPreUpgrade -> [Idle; InStabilization]
     | PostPreUpgrade -> [InPreUpgrade]
     | InPostUpgrade -> [InInit]
     | InComposite -> [Idle; InComposite]
+    | InStabilization -> [Idle; InStabilization]
 
   let get env =
     compile_unboxed_const (ptr ()) ^^
@@ -4425,13 +4429,21 @@ module Lifecycle = struct
     compile_unboxed_const (int_of_state new_state) ^^
     store_unskewed_ptr
 
+  let active_message_blocking env =
+    get env ^^
+    compile_eq_const (int_of_state InStabilization)
+
   let trans env new_state =
     let name = "trans_state" ^ Int32.to_string (int_of_state new_state) in
     Func.share_code0 Func.Always env name [] (fun env ->
       G.block0 (
         let rec go = function
-        | [] -> E.trap_with env
-          ("internal error: unexpected state entering " ^ string_of_state new_state)
+        | [] -> 
+          active_message_blocking env ^^
+          G.if0
+            (E.trap_with env "Messages are blocked during stabilization")
+            (E.trap_with env
+              ("internal error: unexpected state entering " ^ string_of_state new_state))
         | (s::ss) ->
           get env ^^ compile_eq_const (int_of_state s) ^^
           G.if0 (G.i (Br (nr 1l))) G.nop ^^
@@ -4444,6 +4456,14 @@ module Lifecycle = struct
   let is_in env state =
     get env ^^
     compile_eq_const (int_of_state state)
+
+  (* Block all messages except pre-upgrade and explicit stabilzation calls *)
+  let block_messages_during_stabilization env =
+    get env ^^
+    compile_eq_const (int_of_state InPreUpgrade) ^^
+    G.if0 
+      G.nop
+      (set env InStabilization)
 
 end (* Lifecycle *)
 
@@ -8470,8 +8490,14 @@ module FuncDec = struct
 
   let message_cleanup env sort = match sort with
       | Type.Shared Type.Write ->
-        GC.collect_garbage env ^^
-        Lifecycle.trans env Lifecycle.Idle
+        Lifecycle.get env ^^
+        compile_eq_const (Lifecycle.int_of_state Lifecycle.InStabilization) ^^
+        G.if0
+          G.nop
+          begin
+            GC.collect_garbage env ^^
+            Lifecycle.trans env Lifecycle.Idle
+          end
       | Type.Shared Type.Query ->
         Lifecycle.trans env Lifecycle.PostQuery
       | Type.Shared Type.Composite ->
@@ -8937,7 +8963,8 @@ module FuncDec = struct
     begin match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
       Func.define_built_in env name [] [] (fun env ->
-        message_start env (Type.Shared Type.Write) ^^
+        (* All messages are blocked except this method and the upgrade *)
+        Lifecycle.trans env Lifecycle.InStabilization ^^
         IC.assert_caller_self_or_controller env ^^
         (* Skip argument deserialization to avoid allocations *)
         GraphCopyStabilization.stabilization_increment env ^^
@@ -8946,9 +8973,9 @@ module FuncDec = struct
           (call_async_stabilization env)) ^^
         (* Send static reply *)
         Blob.lit_ptr_len env "DIDL\x00\x00" ^^
-        IC.reply_with_data env ^^
+        IC.reply_with_data env
         (* Skip garbage collection *)
-        Lifecycle.trans env Lifecycle.Idle
+        (* stay in lifecycle state `InStabilization` *)
       );
 
       let fi = E.built_in env name in
@@ -11088,6 +11115,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     GraphCopyStabilization.is_stabilization_started env
   | StartStabilization ty, [e] ->
     SR.unit,
+    Lifecycle.block_messages_during_stabilization env ^^
     compile_exp_vanilla env ae e ^^
     GraphCopyStabilization.start_stabilization env ty
   | StabilizationIncrement, [] ->
