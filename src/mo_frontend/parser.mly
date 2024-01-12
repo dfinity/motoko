@@ -189,7 +189,7 @@ let share_dec_field (df : dec_field) =
       }
     else df
 
-and objblock s ty dec_fields =
+and objblock s ty (dec_bases : exp list) dec_fields =
   List.iter (fun df ->
     match df.it.vis.it, df.it.dec.it with
     | Public _, ClassD (_, id, _, _, _, _, _, _) when is_anon_id id ->
@@ -850,7 +850,7 @@ dec_nonvar :
       LetD (p', e', None) @? at $sloc }
   | TYPE x=typ_id tps=typ_params_opt EQ t=typ
     { TypD(x, tps, t) @? at $sloc }
-  | s=obj_sort xf=id_opt t=annot_opt EQ? efs=obj_body bases=terminated(AND, exp_post(ob))*
+  | s=obj_sort xf=id_opt t=annot_opt EQ? efs=obj_body bases=preceded(AND, exp_post(ob))*
     { let sort = Type.(match s.it with
                        | Actor -> "actor" | Module -> "module" | Object -> "object"
                        | _ -> assert false) in
@@ -860,9 +860,9 @@ dec_nonvar :
           AwaitE
             (Type.Fut,
              AsyncE(Type.Fut, scope_bind (anon_id "async" (at $sloc)) (at $sloc),
-                    objblock s t (List.map share_dec_field efs) @? at $sloc)
+                    objblock s t bases (List.map share_dec_field efs) @? at $sloc)
              @? at $sloc) @? at $sloc
-        else objblock s t efs @? at $sloc
+        else objblock s t bases efs @? at $sloc
       in
       let_or_exp named x e.it e.at }
   | sp=shared_pat_opt FUNC xf=id_opt
