@@ -560,7 +560,7 @@ bl : DISALLOWED { PrimE("dummy") @? at $sloc }
 exp_obj :
   | LCURLY efs=seplist(exp_field, semicolon) RCURLY
     { ObjE ([], efs) @? at $sloc }
-  | LCURLY base=exp_post(ob) AND bases=separated_nonempty_list(AND, exp_post(ob)) RCURLY
+  | LCURLY base=exp_post(ob) bases=preceded(AND, exp_post(ob))+ RCURLY
     { ObjE (base :: bases, []) @? at $sloc }
   | LCURLY bases=separated_nonempty_list(AND, exp_post(ob)) WITH efs=seplist1(exp_field, semicolon) RCURLY
     { ObjE (bases, efs) @? at $sloc }
