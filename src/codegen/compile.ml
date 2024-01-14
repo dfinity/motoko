@@ -11599,7 +11599,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | OtherPrim "btst32", [_;_] ->
      const_sr (SR.UnboxedWord32 Type.Nat32) (TaggedSmallWord.btst_kernel env Type.Nat32)
   | OtherPrim "btstInt32", [_;_] ->
-    const_sr (SR.UnboxedWord32 Type.Int32) (TaggedSmallWord.btst_kernel env Type.Nat32)
+    const_sr (SR.UnboxedWord32 Type.Int32) (TaggedSmallWord.btst_kernel env Type.Int32)
   | OtherPrim "btst64", [_;_] ->
     const_sr (SR.UnboxedWord64 Type.Nat64) (
       let (set_b, get_b) = new_local64 env "b" in
