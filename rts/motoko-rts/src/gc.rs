@@ -38,8 +38,9 @@ pub unsafe fn stop_gc_before_upgrade() {
     ENABLED = false;
 }
 
+#[no_mangle]
 #[non_incremental_gc]
-pub unsafe fn start_gc_after_upgrade() {
+pub unsafe extern "C" fn start_gc_after_upgrade() {
     ENABLED = true;
 }
 
@@ -54,7 +55,8 @@ pub unsafe fn stop_gc_before_upgrade() {
     self::incremental::stop_gc_before_upgrade();
 }
 
+#[no_mangle]
 #[incremental_gc]
-pub unsafe fn start_gc_after_upgrade() {
+pub unsafe extern "C" fn start_gc_after_upgrade() {
     self::incremental::start_gc_after_upgrade();
 }

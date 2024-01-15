@@ -11,7 +11,7 @@ use self::stable_memory_stream::{ScanStream, StableMemoryStream};
 use super::{
     graph_copy::{limit::InstructionLimit, GraphCopy},
     layout::{scan_serialized, StableToSpace, StableValue, STABLE_NULL_POINTER},
-    DUMMY_VALUE, moc_stabilization_instruction_limit, 
+    moc_stabilization_instruction_limit, DUMMY_VALUE,
 };
 
 pub struct Serialization {

@@ -5,7 +5,7 @@ mod performance;
 use motoko_rts_macros::ic_mem_fn;
 
 use crate::{
-    gc::{start_gc_after_upgrade, stop_gc_before_upgrade},
+    gc::stop_gc_before_upgrade,
     memory::Memory,
     rts_trap_with,
     stabilization::ic::{compatibility::TypeDescriptor, metadata::StabilizationMetadata},
@@ -198,7 +198,6 @@ pub unsafe fn destabilization_increment<M: Memory>(mem: &mut M) -> bool {
         if state.deserialization.is_completed() {
             record_upgrade_costs();
             state.completed = true;
-            start_gc_after_upgrade();
         }
     }
     state.completed

@@ -413,7 +413,9 @@ pub unsafe fn stop_gc_before_upgrade() {
 /// Start the GC after completed upgrade. This is only a safe-guard since
 /// the compiler must not schedule the GC during destabilization.
 pub unsafe fn start_gc_after_upgrade() {
-    STATE.get_mut().phase = Phase::Pause;
+    let state = STATE.get_mut();
+    assert!(state.phase == Phase::Stop);
+    state.phase = Phase::Pause;
 }
 
 pub unsafe fn incremental_gc_state() -> &'static mut State {

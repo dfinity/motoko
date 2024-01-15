@@ -1130,6 +1130,7 @@ module RTS = struct
     E.add_func_import env "rts" "start_destabilization" [I32Type; I32Type] [];
     E.add_func_import env "rts" "destabilization_increment" [] [I32Type];
     E.add_func_import env "rts" "get_destabilized_actor" [] [I32Type];
+    E.add_func_import env "rts" "start_gc_after_upgrade" [] [];
     if !Flags.gc_strategy = Flags.Incremental then
       incremental_gc_imports env
     else
@@ -4482,7 +4483,8 @@ module IC = struct
   let register_globals env =
     (* result of last ic0.call_perform  *)
     E.add_global32 env "__call_perform_status" Mutable 0l;
-    E.add_global32 env "__call_perform_message" Mutable 0l
+    E.add_global32 env "__call_perform_message" Mutable 0l;
+    E.add_global32 env "__run_post_upgrade" Mutable 0l
     (* NB: __call_perform_message is not a root so text contents *must* be static *)
 
   let get_call_perform_status env =
@@ -4493,6 +4495,10 @@ module IC = struct
     G.i (GlobalGet (nr (E.get_global env "__call_perform_message")))
   let set_call_perform_message env =
     G.i (GlobalSet (nr (E.get_global env "__call_perform_message")))
+  let get_run_post_upgrade env =
+    G.i (GlobalGet (nr (E.get_global env "__run_post_upgrade")))
+  let set_run_post_upgrade env =
+    G.i (GlobalSet (nr (E.get_global env "__run_post_upgrade")))
 
   let init_globals env =
     Blob.lit env "" ^^
@@ -4757,6 +4763,7 @@ module IC = struct
     )) in
 
     let post_upgrade_fi = E.add_fun env "post_upgrade" (Func.of_body env [] [] (fun env ->
+      compile_unboxed_one ^^ set_run_post_upgrade env ^^
       Lifecycle.trans env Lifecycle.InInit ^^
       G.i (Call (nr (E.built_in env "init")))
       (* The post upgrade hook is called later after the completed destabilization, 
@@ -8503,6 +8510,9 @@ module FuncDec = struct
       | Type.Shared Type.Write ->
         Lifecycle.get env ^^
         compile_eq_const (Lifecycle.int_of_state Lifecycle.InStabilization) ^^
+        Lifecycle.get env ^^
+        compile_eq_const (Lifecycle.int_of_state Lifecycle.InDestabilization) ^^
+        G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
         G.if0
           G.nop
           begin
@@ -9077,9 +9087,15 @@ module IncrementalStabilization = struct
   let complete_destabilization env = 
     G.i (Call (nr (E.built_in env IC.init_actor_after_destabilization_name))) ^^
     (* Allow other messages and allow garbage collection. *)
-    Lifecycle.trans env Lifecycle.InPostUpgrade ^^
-    G.i (Call (nr (E.built_in env "post_exp"))) ^^
+    IC.get_run_post_upgrade env ^^
+    (G.if0 
+      begin
+        Lifecycle.trans env Lifecycle.InPostUpgrade ^^
+        G.i (Call (nr (E.built_in env "post_exp"))) 
+      end
+      G.nop) ^^
     Lifecycle.trans env Lifecycle.Idle ^^
+    E.call_import env "rts" "start_gc_after_upgrade" ^^
     GC.collect_garbage env
 
   let define_async_destabilization_reply_callback env =
