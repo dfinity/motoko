@@ -9066,24 +9066,20 @@ module IncrementalStabilization = struct
     G.i (Call (nr (E.built_in env IC.init_actor_after_destabilization_name))) ^^
     (* Allow other messages and allow garbage collection. *)
     Lifecycle.trans env Lifecycle.InPostUpgrade ^^
-    IC._compile_static_print env "CALLING POST UPGRADE HOOK" ^^
     G.i (Call (nr (E.built_in env "post_exp"))) ^^
     Lifecycle.trans env Lifecycle.Idle ^^
     GC.collect_garbage env
 
   let define_async_destabilization_reply_callback env =
     Func.define_built_in env async_destabilization_reply_callback_name ["env", I32Type] [] (fun env ->
-      IC._compile_static_print env "ASYNC DESTABILIZATION REPLY CALLBACK" ^^
       get_destabilized_actor env ^^
       G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^ 
       G.if0
         begin
-          IC._compile_static_print env "TRIGGER NEXT DESTABILIZATION INCREMENT" ^^
           (* Trigger next async destabilization increment. *)
           call_async_destabilization env
         end
         begin
-          IC._compile_static_print env "ASYNC DESTABILIZATION COMPLETED" ^^
           (* Send static reply of sucessful async destabilzation sequence. *)
           Blob.lit_ptr_len env "DIDL\x00\x00" ^^
           IC.reply_with_data env
@@ -9092,7 +9088,6 @@ module IncrementalStabilization = struct
   
   let define_async_destabilization_reject_callback env =
     Func.define_built_in env async_destabilization_reject_callback_name ["env", I32Type] [] (fun env ->
-      IC._compile_static_print env "ASYNC DESTABILIZATION REPLY CALLBACK" ^^
       Blob.lit_ptr_len env "Incremental destabilization failed" ^^
       IC.system_call env "msg_reject")
 
@@ -9117,7 +9112,6 @@ module IncrementalStabilization = struct
     begin match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
       Func.define_built_in env name [] [] (fun env ->
-        IC._compile_static_print env "RUNNING @motoko_async_destabilization" ^^
         (* All messages are blocked except this method. *)
         IC.assert_caller_self_or_controller env ^^
         (* Skip argument deserialization to avoid allocations. *)
@@ -9163,7 +9157,6 @@ module IncrementalStabilization = struct
     begin match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
       Func.define_built_in env name [] [] (fun env ->
-        IC._compile_static_print env "RUNNING __motoko_destabilize_after_upgrade" ^^
         (* All messages are blocked except this method. *)
         IC.assert_caller_self_or_controller env ^^
         (* Skip argument deserialization to avoid allocations. *)
@@ -11304,14 +11297,12 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
   | ICStableRead ty, [] ->
     SR.Vanilla,
-    IC._compile_static_print env "TEST ICStableRead" ^^
     IncrementalStabilization.get_destabilized_actor env ^^
     G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
     E.then_trap_with env "Destabilization is not yet completed: Call __motoko_destabilize_after_upgrade" ^^
     IncrementalStabilization.get_destabilized_actor env ^^
     compile_unboxed_const (if !Flags.use_stable_regions then 1l else 0l) ^^
-    E.call_import env "rts" "region_init" ^^
-    IC._compile_static_print env "COMPLETE ICStableRead"
+    E.call_import env "rts" "region_init"
 
   | IsStabilizationStarted, [] ->
     SR.Vanilla,
@@ -12163,13 +12154,10 @@ and main_actor as_opt mod_env ds fs up stable_actor_type =
        IC.export_inspect env;
     end;
 
-    IC._compile_static_print env "INIT AFTER DESTABILIZATION" ^^
-    decls_codeW G.nop ^^
-    IC._compile_static_print env "COMPLETE AFTER DESTABILIZATION"
+    decls_codeW G.nop
   );
 
   Func.define_built_in mod_env "init" [] [] (fun env ->
-    IC._compile_static_print env "INIT CALLED" ^^
     (* Deserialize any arguments *)
     begin match as_opt with
       | None
@@ -12193,8 +12181,7 @@ and main_actor as_opt mod_env ds fs up stable_actor_type =
     end ^^
     IC.init_globals env ^^
 
-    IncrementalStabilization.partial_destabilization_on_upgrade env stable_actor_type ^^
-    IC._compile_static_print env "PARTIAL DESTABILIZATION COMPLETED"
+    IncrementalStabilization.partial_destabilization_on_upgrade env stable_actor_type
   )
 
 and metadata name value =

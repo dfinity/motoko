@@ -68,7 +68,6 @@ pub unsafe fn start_stabilization<M: Memory>(
     old_candid_data: Value,
     old_type_offsets: Value,
 ) {
-    println!(100, "START STABILIZATION");
     stop_gc_before_upgrade();
     assert!(STABILIZATION_STATE.is_none());
     let stable_memory_pages = stable_mem::size();
@@ -95,7 +94,6 @@ pub unsafe fn start_stabilization<M: Memory>(
 ///   the stable object graph layout (see `GraphCopyStabilization.md`).
 #[ic_mem_fn(ic_only)]
 pub unsafe fn stabilization_increment<M: Memory>(mem: &mut M) -> bool {
-    println!(100, "STABILIZATION INCREMENT");
     let state = STABILIZATION_STATE.as_mut().unwrap();
     if !state.completed {
         state.instruction_meter.start();
@@ -106,12 +104,10 @@ pub unsafe fn stabilization_increment<M: Memory>(mem: &mut M) -> bool {
             state.completed = true;
         }
     }
-    println!(100, "INCREMENT FINISHED {}", state.completed);
     state.completed
 }
 
 unsafe fn write_metadata() {
-    println!(100, "COMPLETE STABILIZATION");
     let state = STABILIZATION_STATE.as_mut().unwrap();
     assert!(state.serialization.is_completed());
     state.instruction_meter.start();
@@ -153,7 +149,6 @@ pub unsafe fn start_destabilization<M: Memory>(
     new_candid_data: Value,
     new_type_offsets: Value,
 ) {
-    println!(100, "START DESTABILIZATION");
     assert!(DESTABILIZATION_STATE.is_none());
 
     let mut instruction_meter = InstructionMeter::new();
@@ -195,7 +190,6 @@ pub unsafe fn start_destabilization<M: Memory>(
 ///   main memory layout (see `GraphCopyStabilization.md`).
 #[ic_mem_fn(ic_only)]
 pub unsafe fn destabilization_increment<M: Memory>(mem: &mut M) -> bool {
-    println!(100, "DESTABILIZATION INCREMENT");
     let state = DESTABILIZATION_STATE.as_mut().unwrap();
     if !state.completed {
         state.instruction_meter.start();
@@ -211,7 +205,6 @@ pub unsafe fn destabilization_increment<M: Memory>(mem: &mut M) -> bool {
 }
 
 unsafe fn record_upgrade_costs() {
-    println!(100, "COMPLETE DESTABILIZATION");
     let state = DESTABILIZATION_STATE.as_ref().unwrap();
     let total_instructions = state.stabilization_statistics.stabilization_instructions
         + state.instruction_meter.total_elapsed();

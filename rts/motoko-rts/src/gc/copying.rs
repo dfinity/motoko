@@ -28,8 +28,6 @@ unsafe fn copying_gc<M: Memory>(mem: &mut M) {
     use crate::memory::ic::{self, linear_memory};
     assert!(super::is_gc_enabled());
 
-    println!(100, "COPYING GC RUNS");
-    
     copying_gc_internal(
         mem,
         ic::get_aligned_heap_base(),
