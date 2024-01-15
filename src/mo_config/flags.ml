@@ -49,3 +49,5 @@ let rts_stack_pages : int ref = ref rts_stack_pages_default
 let trap_on_call_error = ref false
 let use_stable_regions = ref false
 let share_code = ref false
+let stabilization_instruction_limit_default = 200_000_000_000
+let stabilization_instruction_limit = ref stabilization_instruction_limit_default

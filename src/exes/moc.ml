@@ -182,6 +182,11 @@ let argspec = [
   Arg.Unit (fun () -> Flags.trap_on_call_error := true),
   " Trap, don't throw an `Error`, when an IC call fails due to destination queue full or freezing threshold is crossed. Emulates behaviour of moc versions < 0.8.0.";
 
+  "--stabilization-instruction-limit",
+  Arg.Set_int Flags.stabilization_instruction_limit,
+  "<n>  set instruction limit for incremental graph-copy-based stabilization and destabilization (default " ^ (Int.to_string Flags.stabilization_instruction_limit_default) ^ ")";
+
+
   (* optimizations *)
   "-fno-shared-code",
   Arg.Unit (fun () -> Flags.share_code := false),

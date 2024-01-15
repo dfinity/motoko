@@ -11,7 +11,7 @@ use self::stable_memory_stream::{ScanStream, StableMemoryStream};
 use super::{
     graph_copy::{limit::InstructionLimit, GraphCopy},
     layout::{scan_serialized, StableToSpace, StableValue, STABLE_NULL_POINTER},
-    DUMMY_VALUE, GRAPH_COPY_INSTRUCTION_LIMIT,
+    DUMMY_VALUE, moc_stabilization_instruction_limit, 
 };
 
 pub struct Serialization {
@@ -50,7 +50,7 @@ impl Serialization {
     /// The start is followed by a series of copy increments before the serialization is completed.
     pub fn start<M: Memory>(mem: &mut M, root: Value, stable_start: u64) -> Serialization {
         let to_space = StableMemoryStream::open(stable_start);
-        let limit = InstructionLimit::new(GRAPH_COPY_INSTRUCTION_LIMIT);
+        let limit = InstructionLimit::new(unsafe { moc_stabilization_instruction_limit() });
         let mut serialization = Serialization { limit, to_space };
         serialization.start(mem, root);
         serialization

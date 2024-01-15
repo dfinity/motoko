@@ -8959,6 +8959,18 @@ module FuncDec = struct
 end (* FuncDec *)
 
 module IncrementalStabilization = struct
+  let export_instruction_limit env =
+    let moc_stabilization_instruction_limit_fi = 
+      E.add_fun env "moc_stabilization_instruction_limit" (
+        Func.of_body env [] [I64Type] (fun env ->
+          compile_const_64 (Int64.of_int !Flags.stabilization_instruction_limit)
+        )
+      ) in
+    E.add_export env (nr {
+      name = Lib.Utf8.decode "moc_stabilization_instruction_limit";
+      edesc = nr (FuncExport (nr moc_stabilization_instruction_limit_fi))
+    })
+
   let register_globals env =
     E.add_global32 env "__stabilization_completed" Mutable 0l;
     E.add_global32 env "__destabilized_actor" Mutable 0l
@@ -9177,6 +9189,7 @@ module IncrementalStabilization = struct
   
 
   let define_methods env actor_type =
+    export_instruction_limit env;
     define_async_stabilization_reply_callback env;
     define_async_stabilization_reject_callback env;
     export_async_stabilization_method env;

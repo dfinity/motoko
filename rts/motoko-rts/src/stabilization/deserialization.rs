@@ -14,7 +14,7 @@ use super::{
     clear_stable_memory,
     graph_copy::{limit::InstructionLimit, GraphCopy},
     layout::{deserialize, StableValue, STABLE_NULL_POINTER},
-    moc_null_singleton, GRAPH_COPY_INSTRUCTION_LIMIT,
+    moc_null_singleton, moc_stabilization_instruction_limit,
 };
 
 pub struct Deserialization {
@@ -57,7 +57,7 @@ impl Deserialization {
     pub fn start<M: Memory>(mem: &mut M, stable_start: u64, stable_size: u64) -> Deserialization {
         let from_space = StableMemoryAccess::open(stable_start, stable_size);
         let scan_stack = unsafe { ScanStack::new(mem) };
-        let limit = InstructionLimit::new(GRAPH_COPY_INSTRUCTION_LIMIT);
+        let limit = InstructionLimit::new(unsafe { moc_stabilization_instruction_limit() });
         let mut deserialization = Deserialization {
             from_space,
             scan_stack,

@@ -37,6 +37,7 @@ use self::layout::StableValue;
 
 extern "C" {
     pub fn moc_null_singleton() -> Value;
+    pub fn moc_stabilization_instruction_limit() -> u64;
     fn ic0_performance_counter(number: u32) -> u64;
 }
 
@@ -44,8 +45,6 @@ extern "C" {
 // stable variable because of structural subtyping or `Any`-subtyping.
 // Must be a non-skewed value such that the GC also ignores this value.
 const DUMMY_VALUE: StableValue = StableValue::from_raw(0);
-
-const GRAPH_COPY_INSTRUCTION_LIMIT: u64 = 10_000;
 
 fn clear_stable_memory(start: u64, length: u64) {
     const CHUNK_SIZE: usize = WASM_PAGE_SIZE.as_usize();
