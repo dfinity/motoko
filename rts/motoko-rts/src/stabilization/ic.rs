@@ -5,7 +5,7 @@ mod performance;
 use motoko_rts_macros::ic_mem_fn;
 
 use crate::{
-    gc::stop_gc_on_upgrade,
+    gc::{start_gc_after_upgrade, stop_gc_before_upgrade},
     memory::Memory,
     rts_trap_with,
     stabilization::ic::{compatibility::TypeDescriptor, metadata::StabilizationMetadata},
@@ -69,7 +69,7 @@ pub unsafe fn start_stabilization<M: Memory>(
     old_type_offsets: Value,
 ) {
     println!(100, "START STABILIZATION");
-    stop_gc_on_upgrade();
+    stop_gc_before_upgrade();
     assert!(STABILIZATION_STATE.is_none());
     let stable_memory_pages = stable_mem::size();
     let serialized_data_start = stable_memory_pages * PAGE_SIZE;
@@ -204,6 +204,7 @@ pub unsafe fn destabilization_increment<M: Memory>(mem: &mut M) -> bool {
         if state.deserialization.is_completed() {
             record_upgrade_costs();
             state.completed = true;
+            start_gc_after_upgrade();
         }
     }
     state.completed

@@ -237,13 +237,17 @@ let full_flavor () : flavor = {
   has_poly_eq = true;
 }
 
+type actor_type = {
+  transient_actor_type: Type.typ;
+  stable_actor_type: Type.typ
+}
 
 (* Program *)
 
 type comp_unit =
   | LibU of dec list * exp
   | ProgU of dec list
-  | ActorU of arg list option * dec list * field list * system * Type.typ (* actor (class) *)
+  | ActorU of arg list option * dec list * field list * system * actor_type (* actor (class) *)
 
 type prog = comp_unit * flavor
 

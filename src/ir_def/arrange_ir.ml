@@ -171,7 +171,7 @@ and typ_bind (tb : typ_bind) =
 and comp_unit = function
   | LibU (ds, e) -> "LibU" $$ List.map dec ds @ [ exp e ]
   | ProgU ds -> "ProgU" $$ List.map dec ds
-  | ActorU (None, ds, fs, u, t) -> "ActorU"  $$ List.map dec ds @ fields fs @ [system u; typ t]
-  | ActorU (Some as_, ds, fs, u, t) -> "ActorU"  $$ List.map arg as_ @ List.map dec ds @ fields fs @ [system u; typ t]
+  | ActorU (None, ds, fs, u, t) -> "ActorU"  $$ List.map dec ds @ fields fs @ [system u; typ t.transient_actor_type; typ t.stable_actor_type]
+  | ActorU (Some as_, ds, fs, u, t) -> "ActorU"  $$ List.map arg as_ @ List.map dec ds @ fields fs @ [system u; typ t.transient_actor_type; typ t.stable_actor_type]
 
 and prog (cu, _flavor) = comp_unit cu

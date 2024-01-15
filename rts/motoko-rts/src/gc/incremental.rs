@@ -44,6 +44,7 @@ unsafe fn initialize_incremental_gc<M: Memory>(mem: &mut M) {
 #[ic_mem_fn(ic_only)]
 unsafe fn schedule_incremental_gc<M: Memory>(mem: &mut M) {
     let state = STATE.borrow();
+    assert!(state.phase != Phase::Stop);
     let running = state.phase != Phase::Pause;
     if running || should_start() {
         incremental_gc(mem);
@@ -55,10 +56,7 @@ unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
     use self::roots::root_set;
 
     let state = STATE.get_mut();
-    if state.phase == Phase::Stop {
-        return;
-    }
-
+    assert!(state.phase != Phase::Stop);
     if state.phase == Phase::Pause {
         record_gc_start::<M>();
     }
@@ -139,11 +137,11 @@ const INCREMENT_ALLOCATION_FACTOR: usize = 50; // Additional time factor per con
 // Performance note: Storing the phase-specific state in the enum would be nicer but it is much slower.
 #[derive(PartialEq)]
 enum Phase {
+    Stop,     // GC stopped during canister upgrade and explicit stabilization/destabilization.
     Pause,    // Inactive, waiting for the next GC run.
     Mark,     // Incremental marking.
     Evacuate, // Incremental evacuation compaction.
     Update,   // Incremental pointer updates.
-    Stop,     // GC stopped on canister upgrade.
 }
 
 pub struct State {
@@ -157,7 +155,7 @@ pub struct State {
 
 /// GC state retained over multiple GC increments.
 static mut STATE: RefCell<State> = RefCell::new(State {
-    phase: Phase::Pause,
+    phase: Phase::Stop,
     partitioned_heap: UNINITIALIZED_HEAP,
     allocation_count: 0,
     mark_state: None,
@@ -178,7 +176,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     /// Called on a runtime system start with incremental GC and also during RTS testing.
     pub unsafe fn initialize(mem: &'a mut M, heap_base: usize) {
         let state = STATE.get_mut();
-        state.phase = Phase::Pause;
+        state.phase = Phase::Stop;
         state.partitioned_heap = PartitionedHeap::new(mem, heap_base);
         state.allocation_count = 0;
         state.mark_state = None;
@@ -407,9 +405,15 @@ unsafe fn count_allocation(state: &mut State) {
 }
 
 /// Stop the GC before performing upgrade. This is only a safe-guard since
-/// the compiler must not schedule the GC during stabilization anyway.
-pub unsafe fn stop_gc_on_upgrade() {
+/// the compiler must not schedule the GC during stabilization.
+pub unsafe fn stop_gc_before_upgrade() {
     STATE.get_mut().phase = Phase::Stop;
+}
+
+/// Start the GC after completed upgrade. This is only a safe-guard since
+/// the compiler must not schedule the GC during destabilization.
+pub unsafe fn start_gc_after_upgrade() {
+    STATE.get_mut().phase = Phase::Pause;
 }
 
 pub unsafe fn incremental_gc_state() -> &'static mut State {

@@ -41,9 +41,7 @@ unsafe fn schedule_compacting_gc<M: Memory>(mem: &mut M) {
 #[ic_mem_fn(ic_only)]
 unsafe fn compacting_gc<M: Memory>(mem: &mut M) {
     use crate::memory::ic::{self, linear_memory};
-    if super::is_gc_stopped() {
-        return;
-    }
+    assert!(super::is_gc_enabled());
 
     compacting_gc_internal(
         mem,

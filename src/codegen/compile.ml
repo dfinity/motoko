@@ -4368,6 +4368,7 @@ module Lifecycle = struct
     | InPostUpgrade
     | InComposite
     | InStabilization (* stabilization before upgrade *)
+    | InDestabilization (* destabilization after upgrade *)
 
   let string_of_state state = match state with
     | PreInit -> "PreInit"
@@ -4381,6 +4382,7 @@ module Lifecycle = struct
     | InPostUpgrade -> "InPostUpgrade"
     | InComposite -> "InComposite"
     | InStabilization -> "InStabilization"
+    | InDestabilization -> "InDestabilization"
 
   let int_of_state = function
     | PreInit -> 0l (* Automatically null *)
@@ -4398,6 +4400,7 @@ module Lifecycle = struct
     | InPostUpgrade -> 10l
     | InComposite -> 11l
     | InStabilization -> 12l
+    | InDestabilization -> 13l
 
   let ptr () = Stack.end_ ()
   let end_ () = Int32.add (Stack.end_ ()) Heap.word_size
@@ -4410,15 +4413,16 @@ module Lifecycle = struct
     | Started -> [InStart]
     *)
     | InInit -> [PreInit]
-    | Idle -> [InInit; InUpdate; InPostUpgrade; InComposite]
+    | Idle -> [InInit; InUpdate; InPostUpgrade; InComposite; InDestabilization]
     | InUpdate -> [Idle]
     | InQuery -> [Idle]
     | PostQuery -> [InQuery]
     | InPreUpgrade -> [Idle; InStabilization]
     | PostPreUpgrade -> [InPreUpgrade]
-    | InPostUpgrade -> [InInit]
+    | InPostUpgrade -> [InInit; InDestabilization]
     | InComposite -> [Idle; InComposite]
     | InStabilization -> [Idle; InStabilization]
+    | InDestabilization -> [InInit]
 
   let get env =
     compile_unboxed_const (ptr ()) ^^
@@ -4431,7 +4435,10 @@ module Lifecycle = struct
 
   let active_message_blocking env =
     get env ^^
-    compile_eq_const (int_of_state InStabilization)
+    compile_eq_const (int_of_state InStabilization) ^^
+    get env ^^
+    compile_eq_const (int_of_state InDestabilization) ^^
+    G.i (Binary (Wasm.Values.I32 I32Op.Or))
 
   let trans env new_state =
     let name = "trans_state" ^ Int32.to_string (int_of_state new_state) in
@@ -4669,9 +4676,9 @@ module IC = struct
     assert (E.mode env = Flags.ICMode || E.mode env = Flags.RefMode);
     let empty_f = Func.of_body env [] [] (fun env ->
       Lifecycle.trans env Lifecycle.InInit ^^
-      G.i (Call (nr (E.built_in env "init"))) ^^
-      GC.collect_garbage env ^^
-      Lifecycle.trans env Lifecycle.Idle
+      G.i (Call (nr (E.built_in env "init")))
+      (* Stay in `InInit` state for asynchronous destabilization after upgrade. *)
+      (* Garbage collection is not yet activated. *)
 
     ) in
     let fi = E.add_fun env "canister_init" empty_f in
@@ -4718,11 +4725,14 @@ module IC = struct
       edesc = nr (FuncExport (nr fi))
     })
 
+  let init_actor_after_destabilization_name = "@init_actor_after_destabilization"
+
   let export_wasi_start env =
     assert (E.mode env = Flags.WASIMode);
     let fi = E.add_fun env "_start" (Func.of_body env [] [] (fun env1 ->
       Lifecycle.trans env Lifecycle.InInit ^^
       G.i (Call (nr (E.built_in env "init"))) ^^
+      G.i (Call (nr (E.built_in env init_actor_after_destabilization_name))) ^^
       Lifecycle.trans env Lifecycle.Idle
     )) in
     E.add_export env (nr {
@@ -4748,11 +4758,9 @@ module IC = struct
 
     let post_upgrade_fi = E.add_fun env "post_upgrade" (Func.of_body env [] [] (fun env ->
       Lifecycle.trans env Lifecycle.InInit ^^
-      G.i (Call (nr (E.built_in env "init"))) ^^
-      Lifecycle.trans env Lifecycle.InPostUpgrade ^^
-      G.i (Call (nr (E.built_in env "post_exp"))) ^^
-      Lifecycle.trans env Lifecycle.Idle ^^
-      GC.collect_garbage env
+      G.i (Call (nr (E.built_in env "init")))
+      (* The post upgrade hook is called later after the completed destabilization, 
+         that may require additional explicit destabilization messages after upgrade. *)
     )) in
 
     E.add_export env (nr {
@@ -7961,21 +7969,24 @@ module GraphCopyStabilization = struct
   let stabilization_increment env =
     E.call_import env "rts" "stabilization_increment"
 
-  let destabilize env actor_type =
+  let start_destabilization env actor_type complete_initialization =
     E.call_import env "rts" "use_new_destabilization" ^^
-    G.if1 I32Type
+    G.if0
       begin
         create_type_descriptor env actor_type ^^
-        E.call_import env "rts" "start_destabilization" ^^
-        E.call_import env "rts" "destabilization_increment" ^^
-        (* TODO: Perform incremental destabilization *)
-        E.else_trap_with env "Destabilization not completed: Need more increments" ^^
-        E.call_import env "rts" "get_destabilized_actor" ^^
-        create_new_actor env actor_type
+        E.call_import env "rts" "start_destabilization"
       end
       begin
-        OldStabilization.old_destabilize env actor_type (StableMem.upgrade_version env)
+        OldStabilization.old_destabilize env actor_type (StableMem.upgrade_version env) ^^
+        complete_initialization
       end
+
+  let destabilization_increment env =
+    E.call_import env "rts" "destabilization_increment"
+
+  let get_destabilized_actor env actor_type =
+    E.call_import env "rts" "get_destabilized_actor" ^^
+    create_new_actor env actor_type
 end
 
 module GCRoots = struct
@@ -8945,15 +8956,24 @@ module FuncDec = struct
     | _ -> ()
     end
 
-  let register_async_stabilization_global env =
-    E.add_global32 env "__stabilization_completed" Mutable 0l
+end (* FuncDec *)
+
+module IncrementalStabilization = struct
+  let register_globals env =
+    E.add_global32 env "__stabilization_completed" Mutable 0l;
+    E.add_global32 env "__destabilized_actor" Mutable 0l
 
   let is_stabilization_completed env =
     G.i (GlobalGet (nr (E.get_global env "__stabilization_completed")))
   let set_stabilization_completed env =
     G.i (GlobalSet (nr (E.get_global env "__stabilization_completed")))
 
-  let async_stabilization_method_name = "__motoko_async_stabilization"
+  let get_destabilized_actor env =
+    G.i (GlobalGet (nr (E.get_global env "__destabilized_actor")))
+  let set_destabilized_actor env =
+    G.i (GlobalSet (nr (E.get_global env "__destabilized_actor")))
+
+  let async_stabilization_method_name = "@motoko_async_stabilization"
 
   let async_stabilization_reply_callback_name = "@async_stabilization_reply_callback"
   let async_stabilization_reply_callback env =
@@ -9018,7 +9038,159 @@ module FuncDec = struct
         edesc = nr (FuncExport (nr fi))
       })
     | _ -> ()
-    end  
+    end
+
+  let async_destabilization_method_name = "@motoko_async_destabilization"
+
+  (* TODO: Reduce code duplication between stabilization and destabilization *)
+  let async_destabilization_reply_callback_name = "@async_destabilization_reply_callback"
+  let async_destabilization_reply_callback env =
+    E.add_fun_ptr env (E.built_in env async_destabilization_reply_callback_name)
+
+  let async_destabilization_reject_callback_name = "@async_destabilization_reject_callback"
+  let async_destabilization_reject_callback env =
+    E.add_fun_ptr env (E.built_in env async_destabilization_reject_callback_name)
+
+  let call_async_destabilization env =
+    (* TODO: Avoid temporary blob allocation for self reference *)
+    IC.get_self_reference env ^^ Blob.as_ptr_len env ^^
+    Blob.lit_ptr_len env async_destabilization_method_name ^^
+    compile_unboxed_const (async_destabilization_reply_callback env) ^^ compile_unboxed_zero ^^
+    compile_unboxed_const (async_destabilization_reject_callback env) ^^ compile_unboxed_zero ^^
+    IC.system_call env "call_new" ^^
+    IC.system_call env "call_perform" ^^
+    E.then_trap_with env "Async destabilization increment call failed"
+
+
+  let complete_destabilization env = 
+    G.i (Call (nr (E.built_in env IC.init_actor_after_destabilization_name))) ^^
+    (* Allow other messages and allow garbage collection. *)
+    Lifecycle.trans env Lifecycle.InPostUpgrade ^^
+    IC._compile_static_print env "CALLING POST UPGRADE HOOK" ^^
+    G.i (Call (nr (E.built_in env "post_exp"))) ^^
+    Lifecycle.trans env Lifecycle.Idle ^^
+    GC.collect_garbage env
+
+  let define_async_destabilization_reply_callback env =
+    Func.define_built_in env async_destabilization_reply_callback_name ["env", I32Type] [] (fun env ->
+      IC._compile_static_print env "ASYNC DESTABILIZATION REPLY CALLBACK" ^^
+      get_destabilized_actor env ^^
+      G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^ 
+      G.if0
+        begin
+          IC._compile_static_print env "TRIGGER NEXT DESTABILIZATION INCREMENT" ^^
+          (* Trigger next async destabilization increment. *)
+          call_async_destabilization env
+        end
+        begin
+          IC._compile_static_print env "ASYNC DESTABILIZATION COMPLETED" ^^
+          (* Send static reply of sucessful async destabilzation sequence. *)
+          Blob.lit_ptr_len env "DIDL\x00\x00" ^^
+          IC.reply_with_data env
+          (* Stay in lifecycle state `InDestabilization`. *)
+        end)
+  
+  let define_async_destabilization_reject_callback env =
+    Func.define_built_in env async_destabilization_reject_callback_name ["env", I32Type] [] (fun env ->
+      IC._compile_static_print env "ASYNC DESTABILIZATION REPLY CALLBACK" ^^
+      Blob.lit_ptr_len env "Incremental destabilization failed" ^^
+      IC.system_call env "msg_reject")
+
+  let destabilization_increment env actor_type =
+    get_destabilized_actor env ^^
+    G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^ 
+    (G.if0
+      begin
+        GraphCopyStabilization.destabilization_increment env ^^
+        (G.if0
+          begin
+            GraphCopyStabilization.get_destabilized_actor env actor_type ^^
+            set_destabilized_actor env ^^
+            complete_destabilization env
+          end
+          G.nop)
+      end
+      G.nop)
+
+  let export_async_destabilization_method env actor_type =
+    let name = async_destabilization_method_name in
+    begin match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+      Func.define_built_in env name [] [] (fun env ->
+        IC._compile_static_print env "RUNNING @motoko_async_destabilization" ^^
+        (* All messages are blocked except this method. *)
+        IC.assert_caller_self_or_controller env ^^
+        (* Skip argument deserialization to avoid allocations. *)
+        destabilization_increment env actor_type ^^
+        (* Send static reply. *)
+        Blob.lit_ptr_len env "DIDL\x00\x00" ^^
+        IC.reply_with_data env
+        (* Stay in lifecycle state `InDestabilization`. *)
+      );
+
+      let fi = E.built_in env name in
+      E.add_export env (nr {
+        name = Lib.Utf8.decode ("canister_update " ^ name);
+        edesc = nr (FuncExport (nr fi))
+      })
+    | _ -> ()
+    end
+
+  let partial_destabilization_on_upgrade env actor_type =
+    let complete_initialization = set_destabilized_actor env ^^ complete_destabilization env in
+    (* TODO: Make sure the post_upgrade is not called from IC *)
+    (* Garbage collection is disabled until destabilization has completed. *)
+    GraphCopyStabilization.start_destabilization env actor_type complete_initialization ^^
+    get_destabilized_actor env ^^
+    G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
+    G.if0
+      begin
+        destabilization_increment env actor_type ^^
+        get_destabilized_actor env ^^
+        (G.if0
+          G.nop
+          begin
+            (* All messages remain blocked except this method. *)
+            Lifecycle.trans env Lifecycle.InDestabilization
+            (* Since the canister initialization cannot perform async calls, the destabilization 
+               needs to be explicitly continued by calling `__motoko_destabilize_after_upgrade`. *)
+          end)
+      end
+      G.nop
+
+  let export_destabilize_after_upgrade_method env =
+    let name = "__motoko_destabilize_after_upgrade" in
+    begin match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+      Func.define_built_in env name [] [] (fun env ->
+        IC._compile_static_print env "RUNNING __motoko_destabilize_after_upgrade" ^^
+        (* All messages are blocked except this method. *)
+        IC.assert_caller_self_or_controller env ^^
+        (* Skip argument deserialization to avoid allocations. *)
+        call_async_destabilization env ^^
+        (* Send static reply. *)
+        Blob.lit_ptr_len env "DIDL\x00\x00" ^^
+        IC.reply_with_data env
+        (* Stay in lifecycle state `InDestabilization`. *)
+      );
+
+      let fi = E.built_in env name in
+      E.add_export env (nr {
+        name = Lib.Utf8.decode ("canister_update " ^ name);
+        edesc = nr (FuncExport (nr fi))
+      })
+    | _ -> ()
+    end
+  
+
+  let define_methods env actor_type =
+    define_async_stabilization_reply_callback env;
+    define_async_stabilization_reject_callback env;
+    export_async_stabilization_method env;
+    define_async_destabilization_reply_callback env;
+    define_async_destabilization_reject_callback env;
+    export_async_destabilization_method env actor_type;
+    export_destabilize_after_upgrade_method env;
 
 end (* FuncDec *)
 
@@ -11131,18 +11303,15 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla, IC.method_name env
 
   | ICStableRead ty, [] ->
-    (*
-      * On initial install:
-        1. return record of nulls
-      * On upgrade:
-        1. deserialize stable store to v : ty,
-        2. possibly run region manager initialization logic.
-        3. return v
-    *)
     SR.Vanilla,
-    GraphCopyStabilization.destabilize env ty ^^
+    IC._compile_static_print env "TEST ICStableRead" ^^
+    IncrementalStabilization.get_destabilized_actor env ^^
+    G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
+    E.then_trap_with env "Destabilization is not yet completed: Call __motoko_destabilize_after_upgrade" ^^
+    IncrementalStabilization.get_destabilized_actor env ^^
     compile_unboxed_const (if !Flags.use_stable_regions then 1l else 0l) ^^
-    E.call_import env "rts" "region_init"
+    E.call_import env "rts" "region_init" ^^
+    IC._compile_static_print env "COMPLETE ICStableRead"
 
   | IsStabilizationStarted, [] ->
     SR.Vanilla,
@@ -11157,7 +11326,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     GraphCopyStabilization.stabilization_increment env
   | AsyncStabilization, [] ->
     SR.unit,
-    FuncDec.call_async_stabilization env
+    IncrementalStabilization.call_async_stabilization env
 
   (* Cycles *)
   | SystemCyclesBalancePrim, [] ->
@@ -11902,8 +12071,9 @@ and compile_init_func mod_env ((cu, flavor) : Ir.prog) =
       let _ae, codeW = compile_decs env VarEnv.empty_ae ds Freevars.S.empty in
       codeW G.nop
     )
-  | ActorU (as_opt, ds, fs, up, _t) ->
-    main_actor as_opt mod_env ds fs up
+  | ActorU (as_opt, ds, fs, up, actor_type) ->
+    let stable_actor_type = actor_type.stable_actor_type in
+    main_actor as_opt mod_env ds fs up stable_actor_type
 
 and export_actor_field env  ae (f : Ir.field) =
   (* A public actor field is guaranteed to be compiled as a PublicMethod *)
@@ -11929,23 +12099,28 @@ and export_actor_field env  ae (f : Ir.field) =
   })
 
 (* Main actor *)
-and main_actor as_opt mod_env ds fs up =
-  Func.define_built_in mod_env "init" [] [] (fun env ->
-    let ae0 = VarEnv.empty_ae in
+and main_actor as_opt mod_env ds fs up stable_actor_type =
+  IncrementalStabilization.define_methods mod_env stable_actor_type;
+  let ae0 = VarEnv.empty_ae in
+  let captured = Freevars.captured_vars (Freevars.actor ds fs up) in
+  (* Add any params to the environment *)
+  (* Captured ones need to go into static memory, the rest into locals *)
+  let args = match as_opt with None -> [] | Some as_ -> as_ in
+  let arg_list = List.map (fun a -> (a.it, a.note)) args in
+  let arg_names = List.map (fun a -> a.it) args in
+  let arg_tys = List.map (fun a -> a.note) args in
+  let as_local n = not (Freevars.S.mem n captured) in
+  let ae1 = VarEnv.add_arguments mod_env ae0 as_local arg_list in
 
-    let captured = Freevars.captured_vars (Freevars.actor ds fs up) in
-    (* Add any params to the environment *)
-    (* Captured ones need to go into static memory, the rest into locals *)
-    let args = match as_opt with None -> [] | Some as_ -> as_ in
-    let arg_list = List.map (fun a -> (a.it, a.note)) args in
-    let arg_names = List.map (fun a -> a.it) args in
-    let arg_tys = List.map (fun a -> a.note) args in
-    let as_local n = not (Freevars.S.mem n captured) in
-    let ae1 = VarEnv.add_arguments env ae0 as_local arg_list in
+  (* Reverse the fs, to a map from variable to exported name *)
+  let v2en = E.NameEnv.from_list (List.map (fun f -> (f.it.var, f.it.name)) fs) in
 
-    (* Reverse the fs, to a map from variable to exported name *)
-    let v2en = E.NameEnv.from_list (List.map (fun f -> (f.it.var, f.it.name)) fs) in
+  (* Export metadata *)
+  mod_env.E.stable_types := metadata "motoko:stable-types" up.meta.sig_;
+  mod_env.E.service := metadata "candid:service" up.meta.candid.service;
+  mod_env.E.args := metadata "candid:args" up.meta.candid.args;
 
+  Func.define_built_in mod_env IC.init_actor_after_destabilization_name [] [] (fun env ->
     (* Compile the declarations *)
     let ae2, decls_codeW = compile_decs_public env ae1 ds v2en
       Freevars.(captured_vars (system up))
@@ -11988,11 +12163,13 @@ and main_actor as_opt mod_env ds fs up =
        IC.export_inspect env;
     end;
 
-    (* Export metadata *)
-    env.E.stable_types := metadata "motoko:stable-types" up.meta.sig_;
-    env.E.service := metadata "candid:service" up.meta.candid.service;
-    env.E.args := metadata "candid:args" up.meta.candid.args;
+    IC._compile_static_print env "INIT AFTER DESTABILIZATION" ^^
+    decls_codeW G.nop ^^
+    IC._compile_static_print env "COMPLETE AFTER DESTABILIZATION"
+  );
 
+  Func.define_built_in mod_env "init" [] [] (fun env ->
+    IC._compile_static_print env "INIT CALLED" ^^
     (* Deserialize any arguments *)
     begin match as_opt with
       | None
@@ -12015,8 +12192,9 @@ and main_actor as_opt mod_env ds fs up =
         G.nop
     end ^^
     IC.init_globals env ^^
-    (* Continue with decls *)
-    decls_codeW G.nop
+
+    IncrementalStabilization.partial_destabilization_on_upgrade env stable_actor_type ^^
+    IC._compile_static_print env "PARTIAL DESTABILIZATION COMPLETED"
   )
 
 and metadata name value =
@@ -12031,11 +12209,7 @@ and conclude_module env set_serialization_globals start_fi_o =
 
   FuncDec.export_async_method env;
   FuncDec.export_gc_trigger_method env;
-  FuncDec.register_async_stabilization_global env;
-  FuncDec.define_async_stabilization_reply_callback env;
-  FuncDec.define_async_stabilization_reject_callback env;
-  FuncDec.export_async_stabilization_method env;
-
+  
   (* See Note [Candid subtype checks] *)
   Serialization.set_delayed_globals env set_serialization_globals;
 
@@ -12137,6 +12311,7 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
   StableMem.register_globals env;
   Serialization.Registers.register_globals env;
   UpgradeStatistics.register_globals env;
+  IncrementalStabilization.register_globals env;
 
   (* See Note [Candid subtype checks] *)
   let set_serialization_globals = Serialization.register_delayed_globals env in

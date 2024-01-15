@@ -1150,7 +1150,8 @@ let check_comp_unit env = function
     let env' = adjoin env scope in
     check_decs env' ds
   | ActorU (as_opt, ds, fs,
-      { preupgrade; postupgrade; meta; heartbeat; timer; inspect }, t0) ->
+      { preupgrade; postupgrade; meta; heartbeat; timer; inspect }, actor_type) ->
+    let t0 = actor_type.transient_actor_type in
     let check p = check env no_region p in
     let (<:) t1 t2 = check_sub env no_region t1 t2 in
     let env' = match as_opt with
