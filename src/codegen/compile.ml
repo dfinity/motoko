@@ -4738,7 +4738,6 @@ module IC = struct
     let fi = E.add_fun env "_start" (Func.of_body env [] [] (fun env1 ->
       Lifecycle.trans env Lifecycle.InInit ^^
       G.i (Call (nr (E.built_in env "init"))) ^^
-      G.i (Call (nr (E.built_in env init_actor_after_destabilization_name))) ^^
       Lifecycle.trans env Lifecycle.Idle
     )) in
     E.add_export env (nr {
