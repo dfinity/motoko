@@ -5,28 +5,6 @@ import Cycles = "cycles/cycles";
 import TestActor "incremental-actor-class-stabilization/test-actor";
 
 actor a {
-  let ic00 = actor "aaaaa-aa" : actor {
-    create_canister : {
-      settings : ?{
-        controllers : ?[Principal];
-        compute_allocation : ?Nat;
-        memory_allocation : ?Nat;
-        freezing_threshold : ?Nat;
-      };
-    } -> async { canister_id : Principal };
-  };
-
-  let default_settings = { settings = null };
-  // same as default but explicit
-  let settings = {
-    settings = ?{
-      controllers = null;
-      compute_allocation = null;
-      freezing_threshold = null;
-      memory_allocation = null;
-    };
-  };
-
   type IncrementalStabilization = actor {
     __motoko_stabilize_before_upgrade : () -> async ();
     __motoko_destabilize_after_upgrade : () -> async ();
