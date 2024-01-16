@@ -8966,9 +8966,6 @@ module FuncDec = struct
     | _ -> ()
     end
 
-end (* FuncDec *)
-
-module IncrementalStabilization = struct
   let export_instruction_limit env =
     let moc_stabilization_instruction_limit_fi = 
       E.add_fun env "moc_stabilization_instruction_limit" (
@@ -8979,8 +8976,11 @@ module IncrementalStabilization = struct
     E.add_export env (nr {
       name = Lib.Utf8.decode "moc_stabilization_instruction_limit";
       edesc = nr (FuncExport (nr moc_stabilization_instruction_limit_fi))
-    })
+    })  
 
+end (* FuncDec *)
+
+module IncrementalStabilization = struct
   let register_globals env =
     E.add_global32 env "__stabilization_completed" Mutable 0l;
     E.add_global32 env "__destabilized_actor" Mutable 0l
@@ -9205,7 +9205,6 @@ module IncrementalStabilization = struct
   
 
   let define_methods env actor_type =
-    export_instruction_limit env;
     define_async_stabilization_reply_callback env;
     define_async_stabilization_reject_callback env;
     export_async_stabilization_method env;
@@ -12225,6 +12224,7 @@ and conclude_module env set_serialization_globals start_fi_o =
 
   FuncDec.export_async_method env;
   FuncDec.export_gc_trigger_method env;
+  FuncDec.export_instruction_limit env;
   
   (* See Note [Candid subtype checks] *)
   Serialization.set_delayed_globals env set_serialization_globals;
