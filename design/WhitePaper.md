@@ -413,7 +413,7 @@ The relation `<:infer` infers the rhs type substitution, as for implict type arg
 Challenge: One issue with the above is that `T1` does not generally determine all type parameters of `chain`, particularly the ones only occurring in the result type `T'`. It may be necessary to type-check `exp!` in analysis mode, though that could be inconvenient.
 
 
-#### Bindings in `or`-Patterns
+#### Bindings in `or`-Patterns ([#3807](https://github.com/dfinity/motoko/pull/3807))
 
 When using `or`-patterns, it is possible to bind a variable in the alternatives. This is useful to avoid `case` repetitions:
 ```
