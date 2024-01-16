@@ -621,7 +621,7 @@ Note: the obvious "solution", namely storing closure environments inside the ori
 
 #### Upgrades and Memory
 
-The most difficult problem to solve in the programming model of the IC by far is the question of safe and robust upgrades. Motoko currently uses the IC's _stable memory_ API to serialise the entire heap of an actor into stable memory before an upgrade, and restore it afterwards. The crucial point of this is that the serialised format is fixed and not dependent on the compiler version. Consequently, it is perfectly fine if the new version of the actor has been compiled with a different (typically newer) compiler version that potentially uses a differen memory layout internally (e.g., a new garbage collector).
+The most difficult problem to solve in the programming model of the IC by far is the question of safe and robust upgrades. Motoko currently uses the IC's _stable memory_ API to serialise the entire heap of an actor into stable memory before an upgrade, and restore it afterwards. The crucial point of this is that the serialised format is fixed and not dependent on the compiler version. Consequently, it is perfectly fine if the new version of the actor has been compiled with a different (typically newer) compiler version that potentially uses a different memory layout internally (e.g., a new garbage collector).
 
 The drawback is that this serialisation/deserialisation step is expensive. Worse, it may even run out of cycles.
 
