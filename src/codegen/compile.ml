@@ -12195,10 +12195,20 @@ and main_actor as_opt mod_env ds fs up stable_actor_type =
       | Some [] ->
         (* Liberally accept empty as well as unit argument *)
         assert (arg_tys = []);
-        G.nop
+        IncrementalStabilization.get_init_message_payload env ^^
+        Blob.len env ^^
+        compile_eq_const 0l ^^
+        G.if0
+          G.nop
+          begin
+            (* Only validate the message payload. *)
+            IncrementalStabilization.get_init_message_payload env ^^
+            Bool.lit false ^^ (* cannot recover *)
+            Serialization.deserialize_from_blob false env arg_tys
+          end
       | Some (_ :: _) ->
         IncrementalStabilization.get_init_message_payload env ^^
-        Bool.lit false ^^ (* can't recover *)
+        Bool.lit false ^^ (* cannot recover *)
         Serialization.deserialize_from_blob false env arg_tys ^^
         G.concat_map (Var.set_val_vanilla_from_stack env ae1) (List.rev arg_names)
     end ^^
