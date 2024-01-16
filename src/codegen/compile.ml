@@ -9100,9 +9100,10 @@ module IncrementalStabilization = struct
         G.i (Call (nr (E.built_in env "post_exp"))) 
       end
       G.nop) ^^
-    Lifecycle.trans env Lifecycle.Idle ^^
     E.call_import env "rts" "start_gc_after_upgrade" ^^
-    GC.collect_garbage env
+    GC.collect_garbage env ^^
+    Lifecycle.trans env Lifecycle.Idle
+    
 
   let define_async_destabilization_reply_callback env =
     Func.define_built_in env async_destabilization_reply_callback_name ["env", I32Type] [] (fun env ->
@@ -9194,10 +9195,7 @@ module IncrementalStabilization = struct
         (* All messages are blocked except this method. *)
         IC.assert_caller_self_or_controller env ^^
         (* Skip argument deserialization to avoid allocations. *)
-        call_async_destabilization env ^^
-        (* Send static reply. *)
-        Blob.lit_ptr_len env "DIDL\x00\x00" ^^
-        IC.reply_with_data env
+        call_async_destabilization env
         (* Stay in lifecycle state `InDestabilization`. *)
       );
 
