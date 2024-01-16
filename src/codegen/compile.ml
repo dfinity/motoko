@@ -4434,7 +4434,7 @@ module Lifecycle = struct
     compile_unboxed_const (int_of_state new_state) ^^
     store_unskewed_ptr
 
-  let active_message_blocking env =
+  let during_explicit_upgrade env =
     get env ^^
     compile_eq_const (int_of_state InStabilization) ^^
     get env ^^
@@ -4447,7 +4447,7 @@ module Lifecycle = struct
       G.block0 (
         let rec go = function
         | [] -> 
-          active_message_blocking env ^^
+          during_explicit_upgrade env ^^
           G.if0
             (E.trap_with env "Messages are blocked during stabilization")
             (E.trap_with env
@@ -8972,7 +8972,10 @@ module FuncDec = struct
     let moc_stabilization_instruction_limit_fi = 
       E.add_fun env "moc_stabilization_instruction_limit" (
         Func.of_body env [] [I64Type] (fun env ->
-          compile_const_64 (Int64.of_int !Flags.stabilization_instruction_limit)
+          Lifecycle.during_explicit_upgrade env ^^
+          G.if1 I64Type
+            (compile_const_64 (Int64.of_int Flags.(!stabilization_instruction_limit.update_call)))
+            (compile_const_64 (Int64.of_int Flags.(!stabilization_instruction_limit.upgrade)))
         )
       ) in
     E.add_export env (nr {
