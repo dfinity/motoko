@@ -8983,7 +8983,8 @@ end (* FuncDec *)
 module IncrementalStabilization = struct
   let register_globals env =
     E.add_global32 env "__stabilization_completed" Mutable 0l;
-    E.add_global32 env "__destabilized_actor" Mutable 0l
+    E.add_global32 env "__destabilized_actor" Mutable 0l;
+    E.add_global32 env "__init_message_payload" Mutable 0l
 
   let is_stabilization_completed env =
     G.i (GlobalGet (nr (E.get_global env "__stabilization_completed")))
@@ -8994,6 +8995,12 @@ module IncrementalStabilization = struct
     G.i (GlobalGet (nr (E.get_global env "__destabilized_actor")))
   let set_destabilized_actor env =
     G.i (GlobalSet (nr (E.get_global env "__destabilized_actor")))
+
+  (* No GC running during destabilization while this global blob reference is used. *)
+  let get_init_message_payload env =
+    G.i (GlobalGet (nr (E.get_global env "__init_message_payload")))
+  let set_init_message_payload env =
+    G.i (GlobalSet (nr (E.get_global env "__init_message_payload")))
 
   let async_stabilization_method_name = "@motoko_async_stabilization"
 
@@ -12120,19 +12127,6 @@ and export_actor_field env  ae (f : Ir.field) =
 (* Main actor *)
 and main_actor as_opt mod_env ds fs up stable_actor_type =
   IncrementalStabilization.define_methods mod_env stable_actor_type;
-  let ae0 = VarEnv.empty_ae in
-  let captured = Freevars.captured_vars (Freevars.actor ds fs up) in
-  (* Add any params to the environment *)
-  (* Captured ones need to go into static memory, the rest into locals *)
-  let args = match as_opt with None -> [] | Some as_ -> as_ in
-  let arg_list = List.map (fun a -> (a.it, a.note)) args in
-  let arg_names = List.map (fun a -> a.it) args in
-  let arg_tys = List.map (fun a -> a.note) args in
-  let as_local n = not (Freevars.S.mem n captured) in
-  let ae1 = VarEnv.add_arguments mod_env ae0 as_local arg_list in
-
-  (* Reverse the fs, to a map from variable to exported name *)
-  let v2en = E.NameEnv.from_list (List.map (fun f -> (f.it.var, f.it.name)) fs) in
 
   (* Export metadata *)
   mod_env.E.stable_types := metadata "motoko:stable-types" up.meta.sig_;
@@ -12140,6 +12134,20 @@ and main_actor as_opt mod_env ds fs up stable_actor_type =
   mod_env.E.args := metadata "candid:args" up.meta.candid.args;
 
   Func.define_built_in mod_env IC.init_actor_after_destabilization_name [] [] (fun env ->
+    let ae0 = VarEnv.empty_ae in
+    let captured = Freevars.captured_vars (Freevars.actor ds fs up) in
+    (* Add any params to the environment *)
+    (* Captured ones need to go into static memory, the rest into locals *)
+    let args = match as_opt with None -> [] | Some as_ -> as_ in
+    let arg_list = List.map (fun a -> (a.it, a.note)) args in
+    let arg_names = List.map (fun a -> a.it) args in
+    let arg_tys = List.map (fun a -> a.note) args in
+    let as_local n = not (Freevars.S.mem n captured) in
+    let ae1 = VarEnv.add_arguments env ae0 as_local arg_list in
+
+    (* Reverse the fs, to a map from variable to exported name *)
+    let v2en = E.NameEnv.from_list (List.map (fun f -> (f.it.var, f.it.name)) fs) in
+
     (* Compile the declarations *)
     let ae2, decls_codeW = compile_decs_public env ae1 ds v2en
       Freevars.(captured_vars (system up))
@@ -12182,20 +12190,17 @@ and main_actor as_opt mod_env ds fs up stable_actor_type =
        IC.export_inspect env;
     end;
 
-    decls_codeW G.nop
-  );
-
-  Func.define_built_in mod_env "init" [] [] (fun env ->
-    (* Deserialize any arguments *)
+    (* Deserialize the init arguments *)
     begin match as_opt with
       | None
       | Some [] ->
         (* Liberally accept empty as well as unit argument *)
         assert (arg_tys = []);
-        IC.system_call env "msg_arg_data_size" ^^
-        G.if0 (Serialization.deserialize env arg_tys) G.nop
+        G.nop
       | Some (_ :: _) ->
-        Serialization.deserialize env arg_tys ^^
+        IncrementalStabilization.get_init_message_payload env ^^
+        Bool.lit false ^^ (* can't recover *)
+        Serialization.deserialize_from_blob false env arg_tys ^^
         G.concat_map (Var.set_val_vanilla_from_stack env ae1) (List.rev arg_names)
     end ^^
     begin
@@ -12207,8 +12212,15 @@ and main_actor as_opt mod_env ds fs up stable_actor_type =
       else
         G.nop
     end ^^
-    IC.init_globals env ^^
 
+    decls_codeW G.nop
+  );
+
+  Func.define_built_in mod_env "init" [] [] (fun env ->
+    IC.init_globals env ^^
+    (* Save the init message payload for later deserializtion. *)
+    IC.arg_data env ^^
+    IncrementalStabilization.set_init_message_payload env ^^
     IncrementalStabilization.partial_destabilization_on_upgrade env stable_actor_type
   )
 
