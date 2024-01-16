@@ -4879,6 +4879,10 @@ module IC = struct
         system_call env "msg_reply_data_append" ^^
         system_call env "msg_reply"
    )
+  
+  let static_nullary_reply env =
+    Blob.lit_ptr_len env "DIDL\x00\x00" ^^
+    reply_with_data env
 
   (* Actor reference on the stack *)
   let actor_public_field env name =
@@ -8946,8 +8950,7 @@ module FuncDec = struct
         *)
         (* Instead, just ignore the argument and
            send a *statically* allocated, nullary reply *)
-        Blob.lit_ptr_len env "DIDL\x00\x00" ^^
-        IC.reply_with_data env ^^
+        IC.static_nullary_reply env ^^
         (* Finally, act like
         message_cleanup env (Type.Shared Type.Write)
            but *force* collection *)
@@ -9012,7 +9015,6 @@ module IncrementalStabilization = struct
     E.add_fun_ptr env (E.built_in env async_stabilization_reject_callback_name)
 
   let call_async_stabilization env =
-    (* TODO: Avoid temporary blob allocation for self reference *)
     IC.get_self_reference env ^^ Blob.as_ptr_len env ^^
     Blob.lit_ptr_len env async_stabilization_method_name ^^
     compile_unboxed_const (async_stabilization_reply_callback env) ^^ compile_unboxed_zero ^^
@@ -9026,9 +9028,8 @@ module IncrementalStabilization = struct
       is_stabilization_completed env ^^
       G.if0
         begin
-          (* Send static reply of sucessful async stabilzation sequence. *)
-          Blob.lit_ptr_len env "DIDL\x00\x00" ^^
-          IC.reply_with_data env
+          (* Sucessful completion of the async stabilzation sequence. *)
+          IC.static_nullary_reply env
           (* Skip garbage collection. *)
           (* Stay in lifecycle state `InStabilization`. *)
         end
@@ -9053,9 +9054,7 @@ module IncrementalStabilization = struct
         (* Skip argument deserialization to avoid allocations. *)
         GraphCopyStabilization.stabilization_increment env ^^
         set_stabilization_completed env ^^
-        (* Send static reply. *)
-        Blob.lit_ptr_len env "DIDL\x00\x00" ^^
-        IC.reply_with_data env
+        IC.static_nullary_reply env
         (* Skip garbage collection. *)
         (* Stay in lifecycle state `InStabilization`. *)
       );
@@ -9070,7 +9069,6 @@ module IncrementalStabilization = struct
 
   let async_destabilization_method_name = "@motoko_async_destabilization"
 
-  (* TODO: Reduce code duplication between stabilization and destabilization *)
   let async_destabilization_reply_callback_name = "@async_destabilization_reply_callback"
   let async_destabilization_reply_callback env =
     E.add_fun_ptr env (E.built_in env async_destabilization_reply_callback_name)
@@ -9080,7 +9078,6 @@ module IncrementalStabilization = struct
     E.add_fun_ptr env (E.built_in env async_destabilization_reject_callback_name)
 
   let call_async_destabilization env =
-    (* TODO: Avoid temporary blob allocation for self reference *)
     IC.get_self_reference env ^^ Blob.as_ptr_len env ^^
     Blob.lit_ptr_len env async_destabilization_method_name ^^
     compile_unboxed_const (async_destabilization_reply_callback env) ^^ compile_unboxed_zero ^^
@@ -9088,7 +9085,6 @@ module IncrementalStabilization = struct
     IC.system_call env "call_new" ^^
     IC.system_call env "call_perform" ^^
     E.then_trap_with env "Async destabilization increment call failed"
-
 
   let complete_destabilization env = 
     G.i (Call (nr (E.built_in env IC.init_actor_after_destabilization_name))) ^^
@@ -9103,7 +9099,6 @@ module IncrementalStabilization = struct
     E.call_import env "rts" "start_gc_after_upgrade" ^^
     GC.collect_garbage env ^^
     Lifecycle.trans env Lifecycle.Idle
-    
 
   let define_async_destabilization_reply_callback env =
     Func.define_built_in env async_destabilization_reply_callback_name ["env", I32Type] [] (fun env ->
@@ -9116,8 +9111,7 @@ module IncrementalStabilization = struct
         end
         begin
           (* Send static reply of sucessful async destabilzation sequence. *)
-          Blob.lit_ptr_len env "DIDL\x00\x00" ^^
-          IC.reply_with_data env
+          IC.static_nullary_reply env
           (* Stay in lifecycle state `InDestabilization`. *)
         end)
   
@@ -9152,8 +9146,7 @@ module IncrementalStabilization = struct
         (* Skip argument deserialization to avoid allocations. *)
         destabilization_increment env actor_type ^^
         (* Send static reply. *)
-        Blob.lit_ptr_len env "DIDL\x00\x00" ^^
-        IC.reply_with_data env
+        IC.static_nullary_reply env
         (* Stay in lifecycle state `InDestabilization`. *)
       );
 
@@ -9217,7 +9210,7 @@ module IncrementalStabilization = struct
     export_async_destabilization_method env actor_type;
     export_destabilize_after_upgrade_method env;
 
-end (* FuncDec *)
+end (* IncrementalStabilization *)
 
 
 module PatCode = struct
