@@ -7,7 +7,7 @@ actor {};
 // CHECK:         call $@init_actor_after_destabilization
 // CHECK:         call $post_exp
 // CHECK:         call $trans_state4
-// CHECK-NEXT:    call $start_gc_after_upgrade
+// CHECK:         call $start_gc_after_upgrade
 // CHECK-NEXT:    i32.const 0
 // CHECK-NEXT:    call 32
 // CHECK-NEXT:    global.set 5
