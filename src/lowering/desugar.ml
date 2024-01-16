@@ -444,9 +444,7 @@ and export_footprint self_id expr =
            (asyncE T.Fut bind2
               (blockE [
                    letD caller (primE I.ICCallerPrim []);
-                   expD (assertE (orE (primE (I.RelPrim (principal, Operator.EqOp))
-                                         [varE caller; selfRefE principal])
-                                    (primE (I.OtherPrim "is_controller") [varE caller])));
+                   expD (check_controller_or_owner caller);
                    letD size (primE (I.ICStableSize expr.note.Note.typ) [expr])
                  ]
                  (newObjE T.Object
@@ -457,6 +455,14 @@ and export_footprint self_id expr =
               (Con (scope_con1, []))))
   )],
   [{ it = I.{ name = lab; var = v }; at = no_region; note = typ }])
+
+and check_controller_or_owner caller_variable =
+  let open T in
+  ifE (orE 
+        (primE (I.RelPrim (principal, Operator.EqOp)) [varE caller_variable; selfRefE principal])
+        (primE (I.OtherPrim "is_controller") [varE caller_variable]))
+    (unitE())
+    (primE (Ir.OtherPrim "trap") [textE "not a self-call or call from controller"])
 
 and export_explicit_stabilization stable_actor =
   let open T in
@@ -474,9 +480,7 @@ and export_explicit_stabilization stable_actor =
             (blockE [
               (* Check authorization before starting the stabilization. *)
               letD caller (primE I.ICCallerPrim []);
-              expD (assertE (orE 
-                (primE (I.RelPrim (principal, Operator.EqOp)) [varE caller; selfRefE principal])
-                (primE (I.OtherPrim "is_controller") [varE caller])));
+              expD (check_controller_or_owner caller);
               expD (ifE (primE I.IsStabilizationStarted [])
                   (unitE ())
                   (primE (I.StartStabilization stable_actor.note.Note.typ) [stable_actor])
