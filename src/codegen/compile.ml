@@ -9048,8 +9048,8 @@ module IncrementalStabilization = struct
     | Flags.ICMode | Flags.RefMode ->
       Func.define_built_in env name [] [] (fun env ->
         (* All messages are blocked except this method and the upgrade. *)
-        Lifecycle.trans env Lifecycle.InStabilization ^^
         IC.assert_caller_self_or_controller env ^^
+        Lifecycle.trans env Lifecycle.InStabilization ^^
         (* Skip argument deserialization to avoid allocations. *)
         GraphCopyStabilization.stabilization_increment env ^^
         set_stabilization_completed env ^^
