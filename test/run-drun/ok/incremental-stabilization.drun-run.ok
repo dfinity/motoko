@@ -1,5 +1,5 @@
 ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
-debug.print: Initialize stable Nat
+debug.print: Initialize flexible Nat
 debug.print: Initialize stable Nat
 debug.print: Initialize stable Int
 debug.print: Initialize stable text
@@ -20,7 +20,7 @@ ingress Completed: Reply: 0x4449444c0000
 ingress Err: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: Messages are blocked during stabilization
 ingress Completed: Reply: 0x4449444c0000
 ingress Err: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: Messages are blocked during stabilization
-debug.print: Initialize stable Nat
+debug.print: Initialize flexible Nat
 debug.print: Initialize flexible text
 debug.print: POST-UPGRADE HOOK!
 ingress Completed: Reply: 0x4449444c0000

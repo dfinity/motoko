@@ -4,7 +4,7 @@ import Prim "mo:prim";
 
 actor {
     let flexibleNat = do {
-        Prim.debugPrint("Initialize stable Nat");
+        Prim.debugPrint("Initialize flexible Nat");
         1
     };
     stable var stableNat = do {
