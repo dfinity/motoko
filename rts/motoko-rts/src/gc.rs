@@ -32,7 +32,7 @@ static mut ENABLED: bool = true;
 
 /// Stop all GCs during stabilzation and destabilization.
 /// * During stabilzation, the heap is invalidated because of the forwarding objects of Cheney's algorithm.
-/// * During destabilization, the scan stack is use and its implementation does not support stack block movements.
+/// * During destabilization, the scan stack is in use and its implementation does not support stack block movements.
 #[non_incremental_gc]
 pub unsafe fn stop_gc_before_upgrade() {
     ENABLED = false;
