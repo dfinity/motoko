@@ -1137,11 +1137,11 @@ and infer_exp'' env exp : T.typ =
     )
   | ObjBlockE (obj_sort, typ_opt, dec_fields) ->
     if obj_sort.it = T.Actor then begin
-      error_in [Flags.WASIMode; Flags.WasmMode] env exp.at "M0068"
+      error_in Flags.[WASIMode; WasmMode] env exp.at "M0068"
         "actors are not supported";
       match context with
-      | (AsyncE _ :: AwaitE _ :: _ :: _ ) ->
-         error_in [Flags.ICMode; Flags.RefMode] env exp.at "M0069"
+      | AsyncE _ :: AwaitE _ :: _ :: _ ->
+         error_in Flags.[ICMode; RefMode] env exp.at "M0069"
            "non-toplevel actor; an actor can only be declared at the toplevel of a program"
       | _ -> ()
     end;
@@ -1293,10 +1293,10 @@ and infer_exp'' env exp : T.typ =
     )
   | FuncE (_, shared_pat, typ_binds, pat, typ_opt, _sugar, exp1) ->
     if not env.pre && not in_actor && T.is_shared_sort shared_pat.it then begin
-      error_in [Flags.WASIMode; Flags.WasmMode] env exp1.at "M0076"
+      error_in Flags.[WASIMode; WasmMode] env exp1.at "M0076"
         "shared functions are not supported";
       if not in_actor then
-        error_in [Flags.ICMode; Flags.RefMode] env exp1.at "M0077"
+        error_in Flags.[ICMode; RefMode] env exp1.at "M0077"
           "a shared function is only allowed as a public field of an actor";
     end;
     let typ = match typ_opt with
@@ -1475,7 +1475,7 @@ and infer_exp'' env exp : T.typ =
     end;
     T.Non
   | AsyncE (s, typ_bind, exp1) ->
-    error_in [Flags.WASIMode; Flags.WasmMode] env exp1.at "M0086"
+    error_in Flags.[WASIMode; WasmMode] env exp1.at "M0086"
       "async expressions are not supported";
     let t1, next_cap = check_AsyncCap env "async expression" exp.at in
     let c, tb, ce, cs = check_typ_bind env typ_bind in
@@ -1651,7 +1651,7 @@ and check_exp' env0 t exp : T.typ =
     List.iter (check_exp env (T.as_immut t')) exps;
     t
   | AsyncE (s1, tb, exp1), T.Async (s2, t1', t') ->
-    error_in [Flags.WASIMode; Flags.WasmMode] env exp1.at "M0086"
+    error_in Flags.[WASIMode; WasmMode] env exp1.at "M0086"
       "async expressions are not supported";
     let t1, next_cap = check_AsyncCap env "async expression" exp.at in
     if s1 <> s2 then begin
@@ -1707,7 +1707,7 @@ and check_exp' env0 t exp : T.typ =
   | FuncE (_, shared_pat,  [], pat, typ_opt, _sugar, exp), T.Func (s, c, [], ts1, ts2) ->
     let sort, ve = check_shared_pat env shared_pat in
     if not env.pre && not env0.in_actor && T.is_shared_sort sort then
-      error_in [Flags.ICMode; Flags.RefMode] env exp.at "M0077"
+      error_in Flags.[ICMode; RefMode] env exp.at "M0077"
         "a shared function is only allowed as a public field of an actor";
     let ve1 = check_pat_exhaustive (if T.is_shared_sort sort then local_error else warn) env (T.seq ts1) pat in
     let ve2 = T.Env.adjoin ve ve1 in
@@ -1963,7 +1963,7 @@ and check_shared_pat env shared_pat : T.func_sort * Scope.val_env =
   | T.Local -> T.Local, T.Env.empty
   | T.Shared (ss, pat) ->
     if pat.it <> WildP then
-      error_in [Flags.WASIMode; Flags.WasmMode] env pat.at "M0106" "shared function cannot take a context pattern";
+      error_in Flags.[WASIMode; WasmMode] env pat.at "M0106" "shared function cannot take a context pattern";
     T.Shared ss, check_pat_exhaustive local_error env T.ctxt pat
 
 and check_class_shared_pat env shared_pat obj_sort : Scope.val_env =
@@ -1975,7 +1975,7 @@ and check_class_shared_pat env shared_pat obj_sort : Scope.val_env =
     if sort <> T.Actor then
       error env pat.at "M0107" "non-actor class cannot take a context pattern";
     if pat.it <> WildP then
-      error_in [Flags.WASIMode; Flags.WasmMode] env pat.at "M0108" "actor class cannot take a context pattern";
+      error_in Flags.[WASIMode; WasmMode] env pat.at "M0108" "actor class cannot take a context pattern";
     if mode = T.Query then
       error env shared_pat.at "M0109" "class cannot be a query";
     check_pat_exhaustive local_error env T.ctxt pat
@@ -2270,7 +2270,7 @@ and infer_obj env s dec_fields at : T.typ =
       ) dec_fields;
       List.iter (fun df ->
         if df.it.vis.it = Syntax.Private && is_actor_method df.it.dec then
-          error_in [Flags.ICMode; Flags.RefMode] env df.it.dec.at "M0126"
+          error_in Flags.[ICMode; RefMode] env df.it.dec.at "M0126"
             "a shared function cannot be private"
       ) dec_fields;
     end;
@@ -2721,9 +2721,9 @@ and infer_dec_valdecs env dec : Scope.t =
     }
   | ClassD (_shared_pat, id, typ_binds, pat, _, obj_sort, _, _) ->
     if obj_sort.it = T.Actor then begin
-      error_in [Flags.WASIMode; Flags.WasmMode] env dec.at "M0138" "actor classes are not supported";
+      error_in Flags.[WASIMode; WasmMode] env dec.at "M0138" "actor classes are not supported";
       if not env.in_prog then
-        error_in [Flags.ICMode; Flags.RefMode] env dec.at "M0139"
+        error_in Flags.[ICMode; RefMode] env dec.at "M0139"
           "inner actor classes are not supported yet; any actor class must come last in your program";
       if not (List.length typ_binds = 1) then
         local_error env dec.at "M0140"
@@ -2784,7 +2784,7 @@ let check_actors scope progs : unit Diag.result =
           | [] -> ()
           | (d::ds') when is_actor_dec d ->
             if ds <> [] || ds' <> []  then
-              error_in [Flags.ICMode; Flags.RefMode] env d.at "M0141"
+              error_in Flags.[ICMode; RefMode] env d.at "M0141"
                 "an actor or actor class must be the only non-imported declaration in a program"
           | (d::ds') when is_import d -> go ds ds'
           | (d::ds') -> go (d::ds) ds'
