@@ -183,10 +183,10 @@ let argspec = [
   " Trap, don't throw an `Error`, when an IC call fails due to destination queue full or freezing threshold is crossed. Emulates behaviour of moc versions < 0.8.0.";
 
   "--stabilization-instruction-limit",
-  Arg.Int (fun limit -> Flags.stabilization_instruction_limit := {
+  Arg.Int (fun limit -> Flags.(stabilization_instruction_limit := {
     upgrade = limit; 
     update_call = limit;
-  }),
+  })),
   "<n>  set instruction limit for incremental graph-copy-based stabilization and destabilization (for testing)";
 
   (* optimizations *)

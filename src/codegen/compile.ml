@@ -8972,10 +8972,12 @@ module FuncDec = struct
     let moc_stabilization_instruction_limit_fi = 
       E.add_fun env "moc_stabilization_instruction_limit" (
         Func.of_body env [] [I64Type] (fun env ->
+          (* Distribute the upgrade instruction limit to the stabilization and to the destabilization by halving it. *)
+          let half_upgrade_limit = Int64.of_int (Int.div Flags.(!stabilization_instruction_limit.upgrade) 2) in
           Lifecycle.during_explicit_upgrade env ^^
           G.if1 I64Type
             (compile_const_64 (Int64.of_int Flags.(!stabilization_instruction_limit.update_call)))
-            (compile_const_64 (Int64.of_int Flags.(!stabilization_instruction_limit.upgrade)))
+            (compile_const_64 half_upgrade_limit)
         )
       ) in
     E.add_export env (nr {

@@ -55,7 +55,7 @@ let trap_on_call_error = ref false
 let use_stable_regions = ref false
 let share_code = ref false
 let stabilization_instruction_limit_default = {
-  upgrade = 80_000_000_000;
-  update_call = 5_000_000;
+  upgrade = 160_000_000_000; (* 200 billion limit with 20% reserve *)
+  update_call = 16_000_000_000; (* 20 billion limit with 20% reserve *)
 }
 let stabilization_instruction_limit = ref stabilization_instruction_limit_default
