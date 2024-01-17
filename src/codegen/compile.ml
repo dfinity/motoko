@@ -2644,7 +2644,7 @@ module TaggedSmallWord = struct
     else G.nop
 
   (* Makes sure that the word payload (e.g. shift/rotate amount) is in the LSB bits of the word. *)
-  let lsb_adjust env = function
+  let lsb_adjust = function
     | Type.(Int32|Nat32) -> G.nop
     | Type.(Nat8|Nat16) as ty ->
        compile_shrU_const (shift_of_type ty)
@@ -2685,14 +2685,14 @@ module TaggedSmallWord = struct
   (* Kernel for testing a bit position, according to the word invariant. *)
   let btst_kernel env ty =
     let (set_b, get_b) = new_local env "b"
-    in lsb_adjust env ty ^^ set_b ^^ lsb_adjust env ty ^^
+    in lsb_adjust ty ^^ set_b ^^ lsb_adjust ty ^^
        compile_unboxed_one ^^ get_b ^^ clamp_shift_amount ty ^^
        G.i (Binary (Wasm.Values.I32 I32Op.Shl)) ^^
        G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
        msb_adjust ty
 
   (* Code points occupy 21 bits, so can always be tagged scalars *)  (* TODO: rename (not tagging) *)
-  let untag_codepoint env = lsb_adjust env Type.Char
+  let untag_codepoint env = lsb_adjust Type.Char
   let tag_codepoint = msb_adjust Type.Char
 
   (* Checks (n < 0xD800 || 0xE000 ≤ n ≤ 0x10FFFF),
@@ -2718,7 +2718,7 @@ module TaggedSmallWord = struct
   (* Wrapping implementation for multiplication and exponentiation. *)
 
   let compile_word_mul env ty =
-    lsb_adjust env ty ^^
+    lsb_adjust ty ^^
     G.i (Binary (Wasm.Values.I32 I32Op.Mul))
 
   let compile_nat_power env ty =
@@ -2775,10 +2775,10 @@ module TaggedSmallWord = struct
         G.i (Compare (Wasm.Values.I32 I32Op.GeS)) ^^
         E.else_trap_with env "negative power" ^^
         get_n ^^
-        lsb_adjust env ty ^^
+        lsb_adjust ty ^^
         msb_adjust (toNat ty) ^^
         get_exp ^^ compile_nat_power env (toNat ty) ^^
-        lsb_adjust env (toNat ty) ^^
+        lsb_adjust (toNat ty) ^^
         msb_adjust ty
       )
 
@@ -2790,7 +2790,7 @@ module TaggedSmallWord = struct
         let open Wasm.Values in
         let beside_adjust = compile_rotr_const (Int32.of_int (bits_of_type ty)) in
         get_n ^^ get_n ^^ beside_adjust ^^ G.i (Binary (I32 I32Op.Or)) ^^
-        get_by ^^ lsb_adjust env ty ^^ clamp_shift_amount ty ^^ G.i (Binary (I32 I32Op.Rotl)) ^^
+        get_by ^^ lsb_adjust ty ^^ clamp_shift_amount ty ^^ G.i (Binary (I32 I32Op.Rotl)) ^^
         sanitize_word_result ty
        )
 
@@ -2800,7 +2800,7 @@ module TaggedSmallWord = struct
         let open Wasm.Values in
         let beside_adjust = compile_rotl_const (Int32.of_int (bits_of_type ty)) in
         get_n ^^ get_n ^^ beside_adjust ^^ G.i (Binary (I32 I32Op.Or)) ^^
-        get_by ^^ lsb_adjust env ty ^^ clamp_shift_amount ty ^^ G.i (Binary (I32 I32Op.Rotr)) ^^
+        get_by ^^ lsb_adjust ty ^^ clamp_shift_amount ty ^^ G.i (Binary (I32 I32Op.Rotr)) ^^
         sanitize_word_result ty
        )
 
@@ -4664,7 +4664,7 @@ module Arr = struct
         get_i ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
         get_a ^^ get_i ^^ unsafe_idx env ^^
         load_ptr ^^
-        TaggedSmallWord.lsb_adjust env Type.Nat8 ^^
+        TaggedSmallWord.lsb_adjust Type.Nat8 ^^
         G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.Pack8})
       ) ^^
 
@@ -6891,10 +6891,10 @@ module MakeSerialization (Strm : Stream) = struct
         write_word_32 env get_data_buf (get_x ^^ TaggedSmallWord.untag_codepoint env)
       | Prim ((Int16|Nat16) as ty) ->
         reserve env get_data_buf 2l ^^
-        get_x ^^ TaggedSmallWord.lsb_adjust env ty ^^
+        get_x ^^ TaggedSmallWord.lsb_adjust ty ^^
         G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.Pack16})
       | Prim ((Int8|Nat8) as ty) ->
-        write_byte env get_data_buf (get_x ^^ TaggedSmallWord.lsb_adjust env ty)
+        write_byte env get_data_buf (get_x ^^ TaggedSmallWord.lsb_adjust ty)
       | Prim Bool ->
         write_byte env get_data_buf get_x
       | Tup [] -> (* e(()) = null *)
@@ -9770,7 +9770,7 @@ let compile_unop env t op =
       compile_eq_const 0x80000000l ^^
       then_arithmetic_overflow env ^^
       compile_unboxed_zero ^^
-      get_n ^^ TaggedSmallWord.lsb_adjust env p ^^
+      get_n ^^ TaggedSmallWord.lsb_adjust p ^^
       G.i (Binary (Wasm.Values.I32 I32Op.Sub)) ^^
       TaggedSmallWord.msb_adjust p
     )
@@ -10099,7 +10099,7 @@ let compile_binop env t op : SR.t * SR.t * G.t =
         get_a ^^ compile_eq_const 0x80000000l ^^
         E.if_ env (StackRep.to_block_type env (SR.UnboxedWord32 Type.Int32))
           begin
-            get_b ^^ TaggedSmallWord.lsb_adjust env ty ^^ compile_eq_const (-1l) ^^
+            get_b ^^ TaggedSmallWord.lsb_adjust ty ^^ compile_eq_const (-1l) ^^
               E.if_ env (StackRep.to_block_type env (SR.UnboxedWord32 ty))
               (G.i Unreachable)
               get_res
@@ -10125,11 +10125,11 @@ let compile_binop env t op : SR.t * SR.t * G.t =
             G.if1 I32Type
               begin
                 unsigned_dynamics get_n ^^ compile_sub_const (Int32.of_int bits) ^^
-                get_exp ^^ TaggedSmallWord.lsb_adjust env ty ^^ G.i (Binary (Wasm.Values.I32 I32Op.Mul)) ^^
+                get_exp ^^ TaggedSmallWord.lsb_adjust ty ^^ G.i (Binary (Wasm.Values.I32 I32Op.Mul)) ^^
                 compile_unboxed_const (-30l) ^^
                 G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^ then_arithmetic_overflow env ^^
-                get_n ^^ TaggedSmallWord.lsb_adjust env ty ^^
-                get_exp ^^ TaggedSmallWord.lsb_adjust env ty ^^
+                get_n ^^ TaggedSmallWord.lsb_adjust ty ^^
+                get_exp ^^ TaggedSmallWord.lsb_adjust ty ^^
                 TaggedSmallWord.compile_nat_power env Type.Nat32 ^^ set_res ^^
                 get_res ^^ enforce_unsigned_bits env bits ^^
                 get_res ^^ TaggedSmallWord.msb_adjust ty
@@ -10151,7 +10151,7 @@ let compile_binop env t op : SR.t * SR.t * G.t =
                 get_exp ^^ compile_unboxed_const 32l ^^
                 G.i (Compare (Wasm.Values.I32 I32Op.GeU)) ^^ then_arithmetic_overflow env ^^
                 unsigned_dynamics get_n ^^ compile_sub_const 32l ^^
-                get_exp ^^ TaggedSmallWord.lsb_adjust env Type.Nat32 ^^ G.i (Binary (Wasm.Values.I32 I32Op.Mul)) ^^
+                get_exp ^^ TaggedSmallWord.lsb_adjust Type.Nat32 ^^ G.i (Binary (Wasm.Values.I32 I32Op.Mul)) ^^
                 compile_unboxed_const (-62l) ^^
                 G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^ then_arithmetic_overflow env ^^
                 get_n ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
@@ -10178,11 +10178,11 @@ let compile_binop env t op : SR.t * SR.t * G.t =
             G.if1 I32Type
               begin
                 signed_dynamics get_n ^^ compile_sub_const (Int32.of_int (bits - 1)) ^^
-                get_exp ^^ TaggedSmallWord.lsb_adjust env ty ^^ G.i (Binary (Wasm.Values.I32 I32Op.Mul)) ^^
+                get_exp ^^ TaggedSmallWord.lsb_adjust ty ^^ G.i (Binary (Wasm.Values.I32 I32Op.Mul)) ^^
                 compile_unboxed_const (-30l) ^^
                 G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^ then_arithmetic_overflow env ^^
-                get_n ^^ TaggedSmallWord.lsb_adjust env ty ^^
-                get_exp ^^ TaggedSmallWord.lsb_adjust env ty ^^
+                get_n ^^ TaggedSmallWord.lsb_adjust ty ^^
+                get_exp ^^ TaggedSmallWord.lsb_adjust ty ^^
                 TaggedSmallWord.compile_nat_power env Type.Nat32 ^^
                 set_res ^^ get_res ^^ get_res ^^ enforce_signed_bits env bits ^^
                 get_res ^^ TaggedSmallWord.msb_adjust ty
@@ -10220,7 +10220,7 @@ let compile_binop env t op : SR.t * SR.t * G.t =
                 get_exp ^^ compile_unboxed_const 32l ^^
                 G.i (Compare (Wasm.Values.I32 I32Op.GeU)) ^^ then_arithmetic_overflow env ^^
                 signed_dynamics get_n ^^ compile_sub_const 31l ^^
-                get_exp ^^ TaggedSmallWord.lsb_adjust env Type.Int32 ^^ G.i (Binary (Wasm.Values.I32 I32Op.Mul)) ^^
+                get_exp ^^ TaggedSmallWord.lsb_adjust Type.Int32 ^^ G.i (Binary (Wasm.Values.I32 I32Op.Mul)) ^^
                 compile_unboxed_const (-62l) ^^
                 G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^ then_arithmetic_overflow env ^^
                 get_n ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32)) ^^
@@ -10268,16 +10268,16 @@ let compile_binop env t op : SR.t * SR.t * G.t =
       G.i (Binary (Wasm.Values.I32 I32Op.Xor))
   | Type.(Prim (Nat64|Int64)),                ShLOp -> G.i (Binary (Wasm.Values.I64 I64Op.Shl))
   | Type.(Prim (Nat8|Nat16|Nat32|Int8|Int16|Int32 as ty)), ShLOp -> TaggedSmallWord.(
-      lsb_adjust env ty ^^ clamp_shift_amount ty ^^
+      lsb_adjust ty ^^ clamp_shift_amount ty ^^
       G.i (Binary (Wasm.Values.I32 I32Op.Shl)))
   | Type.(Prim Nat64),                        ShROp -> G.i (Binary (Wasm.Values.I64 I64Op.ShrU))
   | Type.(Prim (Nat8|Nat16|Nat32 as ty)),     ShROp -> TaggedSmallWord.(
-      lsb_adjust env ty ^^ clamp_shift_amount ty ^^
+      lsb_adjust ty ^^ clamp_shift_amount ty ^^
       G.i (Binary (Wasm.Values.I32 I32Op.ShrU)) ^^
       sanitize_word_result ty)
   | Type.(Prim Int64),                        ShROp -> G.i (Binary (Wasm.Values.I64 I64Op.ShrS))
   | Type.(Prim (Int8|Int16|Int32 as ty)),     ShROp -> TaggedSmallWord.(
-      lsb_adjust env ty ^^ clamp_shift_amount ty ^^
+      lsb_adjust ty ^^ clamp_shift_amount ty ^^
       G.i (Binary (Wasm.Values.I32 I32Op.ShrS)) ^^
       sanitize_word_result ty)
   | Type.(Prim (Nat64|Int64)),                RotLOp -> G.i (Binary (Wasm.Values.I64 I64Op.Rotl))
@@ -10765,12 +10765,12 @@ and compile_prim_invocation (env : E.t) ae p es at =
     | Nat8, Nat16 ->
       SR.UnboxedWord32 Nat16,
       compile_exp_as env ae (SR.UnboxedWord32 Nat8) e ^^
-      TaggedSmallWord.lsb_adjust env Nat8 ^^
+      TaggedSmallWord.lsb_adjust Nat8 ^^
       TaggedSmallWord.msb_adjust Nat16
     | Nat16, Nat32 ->
       SR.UnboxedWord32 Nat32,
       compile_exp_as env ae (SR.UnboxedWord32 Nat16) e ^^
-      TaggedSmallWord.lsb_adjust env Type.Nat16
+      TaggedSmallWord.lsb_adjust Type.Nat16
     | Nat32, Nat64 ->
       SR.UnboxedWord64 Nat64,
       compile_exp_as env ae (SR.UnboxedWord32 Nat32) e ^^
@@ -11214,7 +11214,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_as env ae SR.Vanilla e0 ^^
     compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) e1 ^^
     compile_exp_as env ae (SR.UnboxedWord32 ty) e2 ^^
-    TaggedSmallWord.lsb_adjust env ty ^^
+    TaggedSmallWord.lsb_adjust ty ^^
     Region.store_word8 env
 
   | OtherPrim (("regionLoadNat16" | "regionLoadInt16") as p), [e0; e1] ->
@@ -11231,7 +11231,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_as env ae SR.Vanilla e0 ^^
     compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) e1 ^^
     compile_exp_as env ae (SR.UnboxedWord32 ty) e2 ^^
-    TaggedSmallWord.lsb_adjust env ty ^^
+    TaggedSmallWord.lsb_adjust ty ^^
     Region.store_word16 env
 
   | OtherPrim (("regionLoadNat32" | "regionLoadInt32") as p), [e0; e1] ->
@@ -11482,7 +11482,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.unit,
     compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) e1 ^^
     compile_exp_as env ae (SR.UnboxedWord32 ty) e2 ^^
-    TaggedSmallWord.lsb_adjust env ty ^^
+    TaggedSmallWord.lsb_adjust ty ^^
     StableMemoryInterface.store_word8 env
 
   | OtherPrim (("stableMemoryLoadNat16" | "stableMemoryLoadInt16") as p), [e] ->
@@ -11497,7 +11497,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.unit,
     compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) e1 ^^
     compile_exp_as env ae (SR.UnboxedWord32 ty) e2 ^^
-    TaggedSmallWord.lsb_adjust env ty ^^
+    TaggedSmallWord.lsb_adjust ty ^^
     StableMemoryInterface.store_word16 env
 
   | OtherPrim (("stableMemoryLoadNat64" | "stableMemoryLoadInt64") as p), [e] ->
