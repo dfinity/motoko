@@ -338,7 +338,7 @@ type load_decl_result =
 
 let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.result =
   (*
-  This function loads and type-checkes the files given in `imports`,
+  This function loads and type-checks the files given in `imports`,
   including any further dependencies.
 
   The resulting `Syntax.libraries` list is in dependency order. To achieve this,
