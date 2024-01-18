@@ -114,11 +114,8 @@ and prim = function
   | ICCallPrim        -> Atom "ICCallPrim"
   | ICCallRawPrim     -> Atom "ICCallRawPrim"
   | ICMethodNamePrim  -> Atom "ICMethodNamePrim"
+  | ICStableWrite t   -> "ICStableWrite" $$ [typ t]
   | ICStableRead t    -> "ICStableRead" $$ [typ t]
-  | IsStabilizationStarted -> Atom "IsStabilizationStarted"
-  | StartStabilization t -> "StartStabilization" $$ [typ t]
-  | StabilizationIncrement -> Atom "StabilizationIncrement"
-  | AsyncStabilization -> Atom "AsyncStabilization"
 
 and mut = function
   | Const -> Atom "Const"
@@ -171,7 +168,7 @@ and typ_bind (tb : typ_bind) =
 and comp_unit = function
   | LibU (ds, e) -> "LibU" $$ List.map dec ds @ [ exp e ]
   | ProgU ds -> "ProgU" $$ List.map dec ds
-  | ActorU (None, ds, fs, u, t) -> "ActorU"  $$ List.map dec ds @ fields fs @ [system u; typ t.transient_actor_type; typ t.stable_actor_type]
-  | ActorU (Some as_, ds, fs, u, t) -> "ActorU"  $$ List.map arg as_ @ List.map dec ds @ fields fs @ [system u; typ t.transient_actor_type; typ t.stable_actor_type]
+  | ActorU (None, ds, fs, u, t, e) -> "ActorU"  $$ List.map dec ds @ fields fs @ [system u; typ t.transient_actor_type; typ t.stable_actor_type; exp e]
+  | ActorU (Some as_, ds, fs, u, t, e) -> "ActorU"  $$ List.map arg as_ @ List.map dec ds @ fields fs @ [system u; typ t.transient_actor_type; typ t.stable_actor_type; exp e]
 
 and prog (cu, _flavor) = comp_unit cu

@@ -4465,14 +4465,6 @@ module Lifecycle = struct
     get env ^^
     compile_eq_const (int_of_state state)
 
-  (* Block all messages except pre-upgrade and explicit stabilzation calls *)
-  let block_messages_during_stabilization env =
-    get env ^^
-    compile_eq_const (int_of_state InPreUpgrade) ^^
-    G.if0 
-      G.nop
-      (set env InStabilization)
-
 end (* Lifecycle *)
 
 
@@ -9026,7 +9018,7 @@ module IncrementalStabilization = struct
     compile_unboxed_const (async_stabilization_reject_callback env) ^^ compile_unboxed_zero ^^
     IC.system_call env "call_new" ^^
     IC.system_call env "call_perform" ^^
-    E.then_trap_with env "Async stabilization increment call failed"
+    E.then_trap_with env "Async stabilization increment call failed" 
 
   let define_async_stabilization_reply_callback env =
     Func.define_built_in env async_stabilization_reply_callback_name ["env", I32Type] [] (fun env ->
@@ -9053,8 +9045,8 @@ module IncrementalStabilization = struct
     begin match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
       Func.define_built_in env name [] [] (fun env ->
-        (* All messages are blocked except this method and the upgrade. *)
         IC.assert_caller_self_or_controller env ^^
+        (* All messages are blocked except this method and the upgrade. *)
         Lifecycle.trans env Lifecycle.InStabilization ^^
         (* Skip argument deserialization to avoid allocations. *)
         GraphCopyStabilization.stabilization_increment env ^^
@@ -9070,6 +9062,51 @@ module IncrementalStabilization = struct
         edesc = nr (FuncExport (nr fi))
       })
     | _ -> ()
+    end
+
+  let get_actor_to_stabilize_name = "@get_actor_to_stabilize"
+
+  let get_actor_to_stabilize env =
+    G.i (Call (nr (E.built_in env get_actor_to_stabilize_name)))
+
+  let start_stabilization env actor_type =
+    GraphCopyStabilization.is_stabilization_started env ^^
+    (G.if0
+      G.nop
+      begin
+        get_actor_to_stabilize env ^^
+        GraphCopyStabilization.start_stabilization env actor_type
+      end)
+
+  let export_stabilize_before_upgrade_method env actor_type =
+    let name = "__motoko_stabilize_before_upgrade" in
+    begin match E.mode env with
+    | Flags.ICMode | Flags.RefMode ->
+      Func.define_built_in env name [] [] (fun env ->
+        IC.assert_caller_self_or_controller env ^^
+        (* All messages are blocked except this method and the upgrade. *)
+        Lifecycle.trans env Lifecycle.InStabilization ^^
+        start_stabilization env actor_type ^^
+        call_async_stabilization env
+        (* Stay in lifecycle state `InStabilization`. *)
+      );
+
+      let fi = E.built_in env name in
+      E.add_export env (nr {
+        name = Lib.Utf8.decode ("canister_update " ^ name);
+        edesc = nr (FuncExport (nr fi))
+      })
+    | _ -> ()
+    end
+  
+  let complete_stabilization_on_upgrade env actor_type =
+    start_stabilization env actor_type ^^
+    G.loop0
+    begin
+      GraphCopyStabilization.stabilization_increment env ^^
+      G.if0 
+        G.nop
+        (G.i (Br (nr 1l)))
     end
 
   let async_destabilization_method_name = "@motoko_async_destabilization"
@@ -9146,13 +9183,10 @@ module IncrementalStabilization = struct
     begin match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
       Func.define_built_in env name [] [] (fun env ->
-        (* All messages are blocked except this method. *)
         IC.assert_caller_self_or_controller env ^^
-        (* Skip argument deserialization to avoid allocations. *)
+        (* Stay in lifecycle state `InDestabilization` if not yet completed. *)
         destabilization_increment env actor_type ^^
-        (* Send static reply. *)
         IC.static_nullary_reply env
-        (* Stay in lifecycle state `InDestabilization`. *)
       );
 
       let fi = E.built_in env name in
@@ -9210,6 +9244,7 @@ module IncrementalStabilization = struct
     define_async_stabilization_reply_callback env;
     define_async_stabilization_reject_callback env;
     export_async_stabilization_method env;
+    export_stabilize_before_upgrade_method env actor_type;
     define_async_destabilization_reply_callback env;
     define_async_destabilization_reject_callback env;
     export_async_destabilization_method env actor_type;
@@ -11334,20 +11369,9 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_unboxed_const (if !Flags.use_stable_regions then 1l else 0l) ^^
     E.call_import env "rts" "region_init"
 
-  | IsStabilizationStarted, [] ->
-    SR.Vanilla,
-    GraphCopyStabilization.is_stabilization_started env
-  | StartStabilization ty, [e] ->
+  | ICStableWrite ty, [] ->
     SR.unit,
-    Lifecycle.block_messages_during_stabilization env ^^
-    compile_exp_vanilla env ae e ^^
-    GraphCopyStabilization.start_stabilization env ty
-  | StabilizationIncrement, [] ->
-    SR.Vanilla,
-    GraphCopyStabilization.stabilization_increment env
-  | AsyncStabilization, [] ->
-    SR.unit,
-    IncrementalStabilization.call_async_stabilization env
+    IncrementalStabilization.complete_stabilization_on_upgrade env ty
 
   (* Cycles *)
   | SystemCyclesBalancePrim, [] ->
@@ -12092,9 +12116,9 @@ and compile_init_func mod_env ((cu, flavor) : Ir.prog) =
       let _ae, codeW = compile_decs env VarEnv.empty_ae ds Freevars.S.empty in
       codeW G.nop
     )
-  | ActorU (as_opt, ds, fs, up, actor_type) ->
+  | ActorU (as_opt, ds, fs, up, actor_type, build_stable_actor) ->
     let stable_actor_type = actor_type.stable_actor_type in
-    main_actor as_opt mod_env ds fs up stable_actor_type
+    main_actor as_opt mod_env ds fs up stable_actor_type build_stable_actor
 
 and export_actor_field env  ae (f : Ir.field) =
   (* A public actor field is guaranteed to be compiled as a PublicMethod *)
@@ -12120,7 +12144,7 @@ and export_actor_field env  ae (f : Ir.field) =
   })
 
 (* Main actor *)
-and main_actor as_opt mod_env ds fs up stable_actor_type =
+and main_actor as_opt mod_env ds fs up stable_actor_type build_stable_actor =
   IncrementalStabilization.define_methods mod_env stable_actor_type;
 
   (* Export metadata *)
@@ -12184,6 +12208,11 @@ and main_actor as_opt mod_env ds fs up stable_actor_type =
          compile_exp_as env ae2 SR.unit up.inspect);
        IC.export_inspect env;
     end;
+
+    (* Helper function to build the stable actor wrapper *)
+    Func.define_built_in mod_env IncrementalStabilization.get_actor_to_stabilize_name [] [I32Type] (fun env ->
+      compile_exp_as env ae2 SR.Vanilla build_stable_actor
+    );
 
     (* Deserialize the init arguments *)
     begin match as_opt with

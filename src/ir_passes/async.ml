@@ -511,7 +511,7 @@ let transform prog =
   and t_comp_unit = function
     | LibU _ -> raise (Invalid_argument "cannot compile library")
     | ProgU ds -> ProgU (t_decs ds)
-    | ActorU (args_opt, ds, fs, {meta; preupgrade; postupgrade; heartbeat; timer; inspect}, { transient_actor_type; stable_actor_type }) ->
+    | ActorU (args_opt, ds, fs, {meta; preupgrade; postupgrade; heartbeat; timer; inspect}, { transient_actor_type; stable_actor_type }, build_stable_actor) ->
       ActorU (Option.map t_args args_opt, t_decs ds, t_fields fs,
         { meta;
           preupgrade = t_exp preupgrade;
@@ -522,7 +522,8 @@ let transform prog =
         }, 
         { transient_actor_type = t_typ transient_actor_type;
           stable_actor_type = t_typ stable_actor_type;
-        })
+        },
+        build_stable_actor)
 
   and t_prog (cu, flavor) = (t_comp_unit cu, { flavor with has_async_typ = false } )
 in

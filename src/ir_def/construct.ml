@@ -88,14 +88,11 @@ let primE prim es =
     | ICReplyPrim _
     | ICRejectPrim -> T.Non
     | ICCallerPrim -> T.caller
+    | ICStableWrite _ -> T.unit
     | ICStableRead t -> t
     | ICMethodNamePrim -> T.text
     | ICPerformGC
     | ICStableSize _ -> T.nat64
-    | IsStabilizationStarted -> T.bool
-    | StartStabilization _ -> T.unit
-    | StabilizationIncrement -> T.bool
-    | AsyncStabilization -> T.unit
     | IdxPrim
     | DerefArrayOffset -> T.(as_immut (as_array_sub (List.hd es).note.Note.typ))
     | ValidArrayOffset -> T.bool

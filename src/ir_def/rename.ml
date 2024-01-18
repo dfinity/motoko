@@ -197,7 +197,7 @@ let comp_unit rho cu = match cu with
   | LibU (ds, e) ->
     let ds', rho' = decs rho ds
     in LibU (ds', exp rho' e)
-  | ActorU (as_opt, ds, fs, { meta; preupgrade; postupgrade; heartbeat; timer; inspect }, t) ->
+  | ActorU (as_opt, ds, fs, { meta; preupgrade; postupgrade; heartbeat; timer; inspect }, t, build_stable_actor) ->
     let as_opt', rho' = match as_opt with
       | None -> None, rho
       | Some as_ ->
@@ -212,4 +212,4 @@ let comp_unit rho cu = match cu with
         heartbeat = exp rho'' heartbeat;
         timer = exp rho'' timer;
         inspect = exp rho'' inspect;
-      }, t)
+      }, t, exp rho'' build_stable_actor)

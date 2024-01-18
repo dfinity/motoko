@@ -172,12 +172,9 @@ and prim =
   | ICCallRawPrim
   | ICMethodNamePrim
   | ICArgDataPrim
+  | ICStableWrite of Type.typ          (* serialize value of stable type to stable memory *)
   | ICStableRead of Type.typ           (* deserialize value of stable type from stable memory *)
   | ICStableSize of Type.typ
-  | IsStabilizationStarted
-  | StartStabilization of Type.typ
-  | StabilizationIncrement
-  | AsyncStabilization
 
 and spacing = One | ElementSize        (* increment units when iterating over arrays *)
 
@@ -247,7 +244,7 @@ type actor_type = {
 type comp_unit =
   | LibU of dec list * exp
   | ProgU of dec list
-  | ActorU of arg list option * dec list * field list * system * actor_type (* actor (class) *)
+  | ActorU of arg list option * dec list * field list * system * actor_type * exp (* actor (class) *)
 
 type prog = comp_unit * flavor
 
@@ -319,9 +316,6 @@ let map_prim t_typ t_id p =
   | ICCallPrim
   | ICCallRawPrim
   | ICMethodNamePrim -> p
+  | ICStableWrite t -> ICStableWrite (t_typ t)
   | ICStableRead t -> ICStableRead (t_typ t)
   | ICStableSize t -> ICStableSize (t_typ t)
-  | IsStabilizationStarted -> p
-  | StartStabilization t -> StartStabilization (t_typ t)
-  | StabilizationIncrement -> p
-  | AsyncStabilization -> p

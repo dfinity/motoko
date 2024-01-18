@@ -306,7 +306,7 @@ and obj_block at s self_id dfs obj_typ =
   | T.Object | T.Module ->
     build_obj at s.it self_id dfs obj_typ
   | T.Actor ->
-    let (_, actor_expression) = build_actor at [] self_id dfs obj_typ in
+    let (_, _, actor_expression) = build_actor at [] self_id dfs obj_typ in
     actor_expression
   | T.Memory -> assert false
 
@@ -444,7 +444,9 @@ and export_footprint self_id expr =
            (asyncE T.Fut bind2
               (blockE [
                    letD caller (primE I.ICCallerPrim []);
-                   expD (check_controller_or_owner caller);
+                   expD (assertE (orE (primE (I.RelPrim (principal, Operator.EqOp))
+                                         [varE caller; selfRefE principal])
+                                    (primE (I.OtherPrim "is_controller") [varE caller])));
                    letD size (primE (I.ICStableSize expr.note.Note.typ) [expr])
                  ]
                  (newObjE T.Object
@@ -455,42 +457,6 @@ and export_footprint self_id expr =
               (Con (scope_con1, []))))
   )],
   [{ it = I.{ name = lab; var = v }; at = no_region; note = typ }])
-
-and check_controller_or_owner caller_variable =
-  let open T in
-  ifE (orE 
-        (primE (I.RelPrim (principal, Operator.EqOp)) [varE caller_variable; selfRefE principal])
-        (primE (I.OtherPrim "is_controller") [varE caller_variable]))
-    (unitE())
-    (primE (Ir.OtherPrim "trap") [textE "not a self-call or call from controller"])
-
-and export_explicit_stabilization stable_actor =
-  let open T in
-  let {lab;typ;_} = motoko_stabilize_before_upgrade_fld in
-  let function_name = lab in
-  let variable_name = "$"^lab in
-  let scope_con1 = Cons.fresh "T1" (Abs ([], scope_bound)) in
-  let scope_con2 = Cons.fresh "T2" (Abs ([], Any)) in
-  let bind1  = typ_arg scope_con1 Scope scope_bound in
-  let bind2 = typ_arg scope_con2 Scope scope_bound in
-  let caller = fresh_var "caller" caller in
-  ([ letD (var variable_name typ) (
-       funcE function_name (Shared Write) Promises [bind1] [] [] (
-          (asyncE T.Fut bind2 
-            (blockE [
-              (* Check authorization before starting the stabilization. *)
-              letD caller (primE I.ICCallerPrim []);
-              expD (check_controller_or_owner caller);
-              expD (ifE (primE I.IsStabilizationStarted [])
-                  (unitE ())
-                  (primE (I.StartStabilization stable_actor.note.Note.typ) [stable_actor])
-              );
-              expD (primE I.AsyncStabilization [])
-            ]
-            (unitE ()))
-            (Con (scope_con1, []))))
-  )],
-  [{ it = I.{ name = function_name; var = variable_name }; at = no_region; note = typ }])
 
 and build_actor at ts self_id es obj_typ =
   let candid = build_candid ts obj_typ in
@@ -548,12 +514,11 @@ and build_actor at ts self_id es obj_typ =
                ) fields vs)
             ty)) in
   let footprint_d, footprint_f = export_footprint self_id (with_stable_vars (fun e -> e)) in
-  let explicit_stabilization_d, explicit_stabilization_f = export_explicit_stabilization (with_stable_vars (fun e -> e)) in
-  (ty, I.(ActorE (
-     interface_d @ footprint_d @ explicit_stabilization_d @ ds', 
-     interface_f @ footprint_f @ explicit_stabilization_f @ fs,
+  (ty, with_stable_vars (fun e -> e), I.(ActorE (
+     interface_d @ footprint_d @ ds', 
+     interface_f @ footprint_f @ fs,
      { meta;
-       preupgrade = stabilize_on_upgrade (with_stable_vars (fun e -> e));
+       preupgrade = (primE (I.ICStableWrite ty) []);
        postupgrade =
          (match call_system_func_opt "postupgrade" es obj_typ with
           | Some call -> call
@@ -576,15 +541,6 @@ and build_actor at ts self_id es obj_typ =
           | None -> tupE [])
      },
      obj_typ)))
-
-and stabilize_on_upgrade stable_actor =
-  blockE [
-    expD (ifE (primE I.IsStabilizationStarted [])
-        (unitE ())
-        (primE (I.StartStabilization stable_actor.note.Note.typ) [stable_actor])
-    )
-  ]
-  (loopWhileE (unitE ()) (notE (primE I.StabilizationIncrement [])))
 
 and stabilize stab_opt d =
   let s = match stab_opt with None -> S.Flexible | Some s -> s.it  in
@@ -1050,13 +1006,13 @@ let inject_decs extra_ds u =
   match u with
   | LibU (ds, exp) -> LibU (extra_ds @ ds, exp)
   | ProgU ds -> ProgU (extra_ds @ ds)
-  | ActorU (None, ds, fs, up, t) ->
-    Ir.ActorU (None, extra_ds @ ds, fs, up, t)
-  | ActorU (Some _, _, _, _, _) ->
+  | ActorU (None, ds, fs, up, t, e) ->
+    Ir.ActorU (None, extra_ds @ ds, fs, up, t, e)
+  | ActorU (Some _, _, _, _, _, _) ->
     let u'= Rename.comp_unit Rename.Renaming.empty u in
     match u' with
-    | ActorU (as_opt, ds, fs, up, t) ->
-      Ir.ActorU (as_opt, extra_ds @ ds, fs, up, t)
+    | ActorU (as_opt, ds, fs, up, t, e) ->
+      Ir.ActorU (as_opt, extra_ds @ ds, fs, up, t, e)
     | _ -> assert false
 
 let link_declarations imports (cu, flavor) =
@@ -1099,7 +1055,7 @@ let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
         T.promote rng
       | _ -> assert false
     in
-    let (stable_actor_type, actor_expression) = build_actor u.at ts (Some self_id) fields obj_typ in
+    let (stable_actor_type, build_stable_actor, actor_expression) = build_actor u.at ts (Some self_id) fields obj_typ in
     let e = wrap {
        it = actor_expression;
        at = no_region;
@@ -1108,15 +1064,15 @@ let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
     begin match e.it with
     | I.ActorE(ds, fs, u, t) -> 
         let actor_type = I.{ transient_actor_type = t; stable_actor_type } in
-        I.ActorU (Some args, ds, fs, u, actor_type)
+        I.ActorU (Some args, ds, fs, u, actor_type, build_stable_actor)
     | _ -> assert false
     end
   | S.ActorU (self_id, fields) ->
-    let (stable_actor_type, actor_expression) = build_actor u.at [] self_id fields u.note.S.note_typ in
+    let (stable_actor_type, build_stable_actor, actor_expression) = build_actor u.at [] self_id fields u.note.S.note_typ in
     begin match actor_expression with
     | I.ActorE (ds, fs, u, t) -> 
         let actor_type = I.{ transient_actor_type = t; stable_actor_type } in
-        I.ActorU (None, ds, fs, u, actor_type)
+        I.ActorU (None, ds, fs, u, actor_type, build_stable_actor)
     | _ -> assert false
     end
 
@@ -1145,9 +1101,9 @@ let import_unit (u : S.comp_unit) : import_declaration =
   | I.LibU (ds, e) ->
     let exp = blockE ds e in
     [ letD (var (id_of_full_path f) exp.note.Note.typ) exp ]
-  | I.ActorU (None, ds, fs, up, t) ->
+  | I.ActorU (None, ds, fs, up, t, e) ->
     raise (Invalid_argument "Desugar: Cannot import actor")
-  | I.ActorU (Some as_, ds, fs, up, actor_type) ->
+  | I.ActorU (Some as_, ds, fs, up, actor_type, build_stable_actor) ->
     let actor_t = I.(actor_type.transient_actor_type) in
     let id = match body.it with
       | S.ActorClassU (_, id, _, _, _, _, _) -> id.it

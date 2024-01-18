@@ -621,6 +621,10 @@ let rec check_exp env (exp:Ir.exp) : unit =
       check_typ env t1;
       check (store_typ t1) "Invalid type argument to ICStableRead";
       t1 <: t
+    | ICStableWrite t1, [] ->
+      check_typ env t1;
+      check (store_typ t1) "Invalid type argument to ICStableWrite";
+      T.unit <: t
     | NumConvWrapPrim (p1, p2), [e] ->
       (* we should check if this conversion is supported *)
       typ e <: T.Prim p1;
@@ -679,17 +683,6 @@ let rec check_exp env (exp:Ir.exp) : unit =
     | ICStableSize t1, [e1] ->
       typ e1 <: t1;
       T.nat64 <: t
-    | IsStabilizationStarted, [] ->
-      T.bool <: t
-    | StartStabilization t1, [e1] ->
-      check_typ env t1;
-      check (store_typ t1) "Invalid type argument to StartStabilization";
-      typ e1 <: t1;
-      T.unit <: t
-    | StabilizationIncrement, [] ->
-      T.bool <: t
-    | AsyncStabilization, [] ->
-      T.unit <: t
     | OtherPrim _, _ -> ()
     | p, args ->
       error env exp.at "PrimE %s does not work with %d arguments"
@@ -1150,7 +1143,7 @@ let check_comp_unit env = function
     let env' = adjoin env scope in
     check_decs env' ds
   | ActorU (as_opt, ds, fs,
-      { preupgrade; postupgrade; meta; heartbeat; timer; inspect }, actor_type) ->
+      { preupgrade; postupgrade; meta; heartbeat; timer; inspect }, actor_type, build_stable_actor) ->
     let t0 = actor_type.transient_actor_type in
     let check p = check env no_region p in
     let (<:) t1 t2 = check_sub env no_region t1 t2 in
