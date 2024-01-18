@@ -2646,8 +2646,7 @@ module TaggedSmallWord = struct
   (* Makes sure that the word payload (e.g. shift/rotate amount) is in the LSB bits of the word. *)
   let lsb_adjust = function
     | Type.(Int32|Nat32) -> G.nop
-    | Type.(Nat8|Nat16) as ty ->
-       compile_shrU_const (shift_of_type ty)
+    | Type.(Nat8|Nat16) as ty ->  compile_shrU_const (shift_of_type ty)
     | Type.(Int8|Int16) as ty ->
        compile_shrS_const (shift_of_type ty)
     | Type.Char as ty ->
@@ -2657,8 +2656,7 @@ module TaggedSmallWord = struct
   (* Makes sure that the word payload (e.g. operation result) is in the MSB bits of the word. *)
   let msb_adjust = function
     | Type.(Int32|Nat32) -> G.nop
-    | ty ->
-       shift_leftWordNtoI32 (shift_of_type ty)
+    | ty -> shift_leftWordNtoI32 (shift_of_type ty)
   (* Makes sure that the word representation invariant is restored. *)
   let sanitize_word_result = function
     | Type.(Nat32|Int32) -> G.nop
@@ -2739,7 +2737,7 @@ module TaggedSmallWord = struct
 
         (* handle exp == 0 *)
         get_exp ^^ G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
-        (G.if1 I32Type get_acc (* done *)
+        G.if1 I32Type get_acc (* done *)
         begin
           G.loop0 begin
             (* Are we done? *)
@@ -2763,7 +2761,7 @@ module TaggedSmallWord = struct
           (* Multiply a last time *)
           get_acc ^^ get_n ^^ G.i (Binary (Wasm.Values.I32 I32Op.Mul))
           (* Accumulator was shifted, so no further shift needed here *)
-        end)
+        end
       )
 
   let compile_int_power env ty =
@@ -2807,8 +2805,8 @@ module TaggedSmallWord = struct
   let tag env pty =
     match pty with
     | Type.(Nat8 | Int8 | Nat16 | Int16 | Char) ->
-       (* TODO: check low bits clear *)
-       (* add tag *)
+      (* TODO:  could sanity check low bits clear *)
+      (* add tag *)
       compile_bitor_const (tag_of_type pty)
     | _ -> assert false
 
@@ -3186,8 +3184,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       (fun env get_a get_b ->
         let set_res, get_res = new_local env "res" in
         let set_res64, get_res64 = new_local64 env "res64" in
-        get_a ^^
-        get_b ^^
+        get_a ^^ get_b ^^
         BitTagged.if_both_tagged_scalar env [I32Type]
           begin
             get_a ^^ extend64 env ^^
@@ -3221,7 +3218,6 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
   let adjust_result code env =
     code env ^^
     compile_shl64_const (Int64.of_int (32 - BitTagged.ubits_of Type.Int))
-    (* FIX: Add tag? *)
 
   let compile_mul = try_unbox2 "B_mul" (adjust_arg2 Word64.compile_mul) Num.compile_mul
   let compile_signed_sub = try_unbox2 "B+sub" Word64.compile_signed_sub Num.compile_signed_sub
@@ -3415,8 +3411,10 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
           (get_a ^^ get_b ^^
            BitTagged.if_both_tagged_scalar env [I32Type]
              (
-               (* get_a ^^ BitTagged.sanity_check_tag __LINE__ env Type.Int ^^ G.i Drop ^^
-               get_b ^^ BitTagged.sanity_check_tag __LINE__ env Type.Int ^^ G.i Drop ^^ *)
+               if !Flags.sanity_check then begin
+                 get_a ^^ BitTagged.sanity_check_tag __LINE__ env Type.Int ^^ G.i Drop ^^
+                 get_b ^^ BitTagged.sanity_check_tag __LINE__ env Type.Int ^^ G.i Drop
+              end ^^
                Bool.lit false)
              begin
                get_a ^^ BitTagged.if_tagged_scalar env [I32Type]
@@ -3855,7 +3853,7 @@ module Prim = struct
   let prim_intToWord32 = BigNum.truncate_to_word32
   let prim_intToWordNShifted env b =
     prim_intToWord32 env ^^
-    TaggedSmallWord.shift_leftWordNtoI32 b (* TBR *)
+    TaggedSmallWord.shift_leftWordNtoI32 b
 end (* Prim *)
 
 module Object = struct
@@ -10081,26 +10079,22 @@ let compile_binop env t op : SR.t * SR.t * G.t =
   | Type.(Prim Nat8),                         MulOp -> compile_smallNat_kernel' env Type.Nat8 "mul"
                                                          (compile_shrU_const 8l ^^ G.i (Binary (Wasm.Values.I32 I32Op.Mul)))
   | Type.(Prim Float),                        MulOp -> G.i (Binary (Wasm.Values.F64 F64Op.Mul))
-  | Type.(Prim Nat32),                        DivOp -> G.i (Binary (Wasm.Values.I32 I32Op.DivU))
-  | Type.(Prim (Nat8|Nat16 as ty)), DivOp -> G.i (Binary (Wasm.Values.I32 I32Op.DivU)) ^^ TaggedSmallWord.msb_adjust ty
-  | Type.(Prim Nat32),           ModOp -> G.i (Binary (Wasm.Values.I32 I32Op.RemU))
-  | Type.(Prim (Nat8|Nat16)),           ModOp ->
-        G.i (Binary (Wasm.Values.I32 I32Op.RemU))
+  | Type.(Prim (Nat8|Nat16|Nat32 as ty)), DivOp -> G.i (Binary (Wasm.Values.I32 I32Op.DivU)) ^^
+                                                   TaggedSmallWord.msb_adjust ty
+  | Type.(Prim (Nat8|Nat16|Nat32),           ModOp -> G.i (Binary (Wasm.Values.I32 I32Op.RemU))
   | Type.(Prim Int32),                        DivOp -> G.i (Binary (Wasm.Values.I32 I32Op.DivS))
   | Type.(Prim (Int8|Int16 as ty)),           DivOp ->
     Func.share_code2 Func.Always env (prim_fun_name ty "div")
       (("a", I32Type), ("b", I32Type)) [I32Type]
       (fun env get_a get_b ->
         let (set_res, get_res) = new_local env "res" in
-        get_a ^^
-        get_b ^^
-        G.i (Binary (Wasm.Values.I32 I32Op.DivS)) ^^
+        get_a ^^ get_b ^^ G.i (Binary (Wasm.Values.I32 I32Op.DivS)) ^^
         TaggedSmallWord.msb_adjust ty ^^ set_res ^^
         get_a ^^ compile_eq_const 0x80000000l ^^
         E.if_ env (StackRep.to_block_type env (SR.UnboxedWord32 Type.Int32))
           begin
             get_b ^^ TaggedSmallWord.lsb_adjust ty ^^ compile_eq_const (-1l) ^^
-              E.if_ env (StackRep.to_block_type env (SR.UnboxedWord32 ty))
+            E.if_ env (StackRep.to_block_type env (SR.UnboxedWord32 ty))
               (G.i Unreachable)
               get_res
           end
@@ -10108,10 +10102,8 @@ let compile_binop env t op : SR.t * SR.t * G.t =
   | Type.(Prim Float),                        DivOp -> G.i (Binary (Wasm.Values.F64 F64Op.Div))
   | Type.(Prim Float),                        ModOp -> E.call_import env "rts" "fmod" (* musl *)
   | Type.(Prim (Int8|Int16|Int32)),           ModOp -> G.i (Binary (Wasm.Values.I32 I32Op.RemS))
-  | Type.(Prim (Nat8|Nat16|Nat32 as ty)),     WPowOp ->
-     TaggedSmallWord.compile_nat_power env ty
-  | Type.(Prim (Int8|Int16|Int32 as ty)),     WPowOp ->
-     TaggedSmallWord.compile_int_power env ty
+  | Type.(Prim (Nat8|Nat16|Nat32 as ty)),     WPowOp -> TaggedSmallWord.compile_nat_power env ty
+  | Type.(Prim (Int8|Int16|Int32 as ty)),     WPowOp -> TaggedSmallWord.compile_int_power env ty
   | Type.(Prim ((Nat8|Nat16) as ty)),         PowOp ->
     Func.share_code2 Func.Always env (prim_fun_name ty "pow")
       (("n", I32Type), ("exp", I32Type)) [I32Type]
