@@ -306,7 +306,7 @@ and obj_block at s self_id dfs obj_typ =
   | T.Object | T.Module ->
     build_obj at s.it self_id dfs obj_typ
   | T.Actor ->
-    let (_, _, actor_expression) = build_actor at [] self_id dfs obj_typ in
+    let (_, actor_expression) = build_actor at [] self_id dfs obj_typ in
     actor_expression
   | T.Memory -> assert false
 
@@ -514,7 +514,7 @@ and build_actor at ts self_id es obj_typ =
                ) fields vs)
             ty)) in
   let footprint_d, footprint_f = export_footprint self_id (with_stable_vars (fun e -> e)) in
-  (ty, with_stable_vars (fun e -> e), I.(ActorE (
+  (ty, I.(ActorE (
      interface_d @ footprint_d @ ds', 
      interface_f @ footprint_f @ fs,
      { meta;
@@ -540,7 +540,8 @@ and build_actor at ts self_id es obj_typ =
           | Some call -> call
           | None -> tupE [])
      },
-     obj_typ)))
+     obj_typ,
+     with_stable_vars (fun e -> e))))
 
 and stabilize stab_opt d =
   let s = match stab_opt with None -> S.Flexible | Some s -> s.it  in
@@ -727,8 +728,8 @@ and dec' at n = function
     let e' = exp e in
     (* HACK: remove this once backend supports recursive actors *)
     begin match p'.it, e'.it, f with
-    | I.VarP i, I.ActorE (ds, fs, u, t), _ ->
-      I.LetD (p', {e' with it = I.ActorE (with_self i t ds, fs, u, t)})
+    | I.VarP i, I.ActorE (ds, fs, u, t, build_stable_actor), _ ->
+      I.LetD (p', {e' with it = I.ActorE (with_self i t ds, fs, u, t, build_stable_actor)})
     | _, _, None -> I.LetD (p', e')
     | _, _, Some f -> I.LetD (p', let_else_switch (pat p) (exp e) (exp f))
     end
@@ -831,8 +832,8 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
     match e.it with
     | Ir.ActorE _ ->
       (match Rename.exp' Rename.Renaming.empty e.it with
-       |  Ir.ActorE (ds', fs, up, ot) ->
-         { e with it = Ir.ActorE (ds @ ds', fs, up, ot) }
+       |  Ir.ActorE (ds', fs, up, ot, build_stable_actor) ->
+         { e with it = Ir.ActorE (ds @ ds', fs, up, ot, build_stable_actor) }
        | _ -> assert false)
     | _ -> blockE ds e
   in
@@ -1055,22 +1056,22 @@ let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
         T.promote rng
       | _ -> assert false
     in
-    let (stable_actor_type, build_stable_actor, actor_expression) = build_actor u.at ts (Some self_id) fields obj_typ in
+    let (stable_actor_type, actor_expression) = build_actor u.at ts (Some self_id) fields obj_typ in
     let e = wrap {
        it = actor_expression;
        at = no_region;
        note = Note.{ def with typ = obj_typ } }
     in
     begin match e.it with
-    | I.ActorE(ds, fs, u, t) -> 
+    | I.ActorE(ds, fs, u, t, build_stable_actor) -> 
         let actor_type = I.{ transient_actor_type = t; stable_actor_type } in
         I.ActorU (Some args, ds, fs, u, actor_type, build_stable_actor)
     | _ -> assert false
     end
   | S.ActorU (self_id, fields) ->
-    let (stable_actor_type, build_stable_actor, actor_expression) = build_actor u.at [] self_id fields u.note.S.note_typ in
+    let (stable_actor_type, actor_expression) = build_actor u.at [] self_id fields u.note.S.note_typ in
     begin match actor_expression with
-    | I.ActorE (ds, fs, u, t) -> 
+    | I.ActorE (ds, fs, u, t, build_stable_actor) -> 
         let actor_type = I.{ transient_actor_type = t; stable_actor_type } in
         I.ActorU (None, ds, fs, u, actor_type, build_stable_actor)
     | _ -> assert false
@@ -1132,7 +1133,7 @@ let import_unit (u : S.comp_unit) : import_declaration =
             (primE (Ir.RelPrim (T.install_arg_typ, Operator.EqOp))
               [ install_arg;
                 tagE "new" (recordE ["settings", nullE()]) ])
-             { it = I.ActorE (ds, fs, up, actor_t); at = u.at; note = Note.{ def with typ = actor_t } }
+             { it = I.ActorE (ds, fs, up, actor_t, build_stable_actor); at = u.at; note = Note.{ def with typ = actor_t } }
              (primE (Ir.OtherPrim "trap")
                [textE "actor class configuration not supported in interpreter"]))
           (List.hd cs))

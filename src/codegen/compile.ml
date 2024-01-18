@@ -11579,7 +11579,7 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
       get_k
       get_r
       add_cycles
-  | ActorE (ds, fs, _, _) ->
+  | ActorE (ds, fs, _, _, _) ->
     fatal "Local actors not supported by backend"
   | NewObjE (Type.(Object | Module | Memory) as _sort, fs, _) ->
     (*
@@ -12154,7 +12154,7 @@ and main_actor as_opt mod_env ds fs up stable_actor_type build_stable_actor =
 
   Func.define_built_in mod_env IC.init_actor_after_destabilization_name [] [] (fun env ->
     let ae0 = VarEnv.empty_ae in
-    let captured = Freevars.captured_vars (Freevars.actor ds fs up) in
+    let captured = Freevars.captured_vars (Freevars.actor ds fs up build_stable_actor) in
     (* Add any params to the environment *)
     (* Captured ones need to go into static memory, the rest into locals *)
     let args = match as_opt with None -> [] | Some as_ -> as_ in

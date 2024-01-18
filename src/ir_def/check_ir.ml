@@ -802,7 +802,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     typ exp_k <: T.Func (T.Local, T.Returns, [], ts, []);
     typ exp_r <: T.Func (T.Local, T.Returns, [], [T.error], []);
   | ActorE (ds, fs,
-      { preupgrade; postupgrade; meta; heartbeat; timer; inspect }, t0) ->
+      { preupgrade; postupgrade; meta; heartbeat; timer; inspect }, t0, build_stable_actor) ->
     (* TODO: check meta *)
     let env' = { env with async = None } in
     let scope1 = gather_block_decs env' ds in
@@ -813,6 +813,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     check_exp env'' heartbeat;
     check_exp env'' timer;
     check_exp env'' inspect;
+    check_exp env'' build_stable_actor;
     typ preupgrade <: T.unit;
     typ postupgrade <: T.unit;
     typ heartbeat <: T.unit;

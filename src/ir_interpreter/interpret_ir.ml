@@ -555,7 +555,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | _ -> V.Func (cc, f)
     in
     k v
-  | ActorE (ds, fs, _, _) ->
+  | ActorE (ds, fs, _, _, _) ->
     interpret_actor env ds fs k
   | NewObjE (sort, fs, _) ->
     k (interpret_fields env fs)

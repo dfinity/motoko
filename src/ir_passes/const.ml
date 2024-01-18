@@ -158,7 +158,7 @@ let rec exp lvl (env : env) e : Lbool.t =
       surely_false
     | NewObjE _ -> (* mutable objects *)
       surely_false
-    | ActorE (ds, fs, {meta; preupgrade; postupgrade; heartbeat; timer; inspect}, _typ) ->
+    | ActorE (ds, fs, {meta; preupgrade; postupgrade; heartbeat; timer; inspect}, _typ, build_stable_actor) ->
       (* this may well be “the” top-level actor, so don’t update lvl here *)
       let (env', _) = decs lvl env ds in
       exp_ lvl env' preupgrade;
@@ -166,6 +166,7 @@ let rec exp lvl (env : env) e : Lbool.t =
       exp_ lvl env' heartbeat;
       exp_ lvl env' timer;
       exp_ lvl env' inspect;
+      exp_ lvl env' build_stable_actor;
       surely_false
   in
   set_lazy_const e lb;

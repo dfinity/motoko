@@ -433,7 +433,7 @@ let transform prog =
             | Replies,_ -> assert false
           end
       end
-    | ActorE (ds, fs, {meta; preupgrade; postupgrade; heartbeat; timer; inspect}, typ) ->
+    | ActorE (ds, fs, {meta; preupgrade; postupgrade; heartbeat; timer; inspect}, typ, build_stable_actor) ->
       ActorE (t_decs ds, t_fields fs,
         {meta;
          preupgrade = t_exp preupgrade;
@@ -441,7 +441,9 @@ let transform prog =
          heartbeat = t_exp heartbeat;
          timer = t_exp timer;
          inspect = t_exp inspect
-        }, t_typ typ)
+        }, 
+        t_typ typ,
+        t_exp build_stable_actor)
     | NewObjE (sort, ids, t) ->
       NewObjE (sort, t_fields ids, t_typ t)
     | SelfCallE _ -> assert false

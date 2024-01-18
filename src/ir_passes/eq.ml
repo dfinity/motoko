@@ -250,7 +250,7 @@ and t_exp' env = function
     NewObjE (sort, ids, t)
   | SelfCallE (ts, e1, e2, e3) ->
     SelfCallE (ts, t_exp env e1, t_exp env e2, t_exp env e3)
-  | ActorE (ds, fields, {meta; preupgrade; postupgrade; heartbeat; timer; inspect}, typ) ->
+  | ActorE (ds, fields, {meta; preupgrade; postupgrade; heartbeat; timer; inspect}, typ, build_stable_actor) ->
     (* Until Actor expressions become their own units,
        we repeat what we do in `comp_unit` below *)
     let env1 = empty_env () in
@@ -260,6 +260,7 @@ and t_exp' env = function
     let heartbeat' = t_exp env1 heartbeat in
     let timer' = t_exp env1 timer in
     let inspect' = t_exp env1 inspect in
+    let build_stable_actor' = t_exp env1 build_stable_actor in
     let decls = eq_decls !(env1.params) in
     ActorE (decls @ ds', fields,
       {meta;
@@ -268,7 +269,10 @@ and t_exp' env = function
        heartbeat = heartbeat';
        timer = timer';
        inspect = inspect'
-      }, typ)
+      }, 
+      typ,
+      build_stable_actor'
+      )
 
 and t_lexp env (e : Ir.lexp) = { e with it = t_lexp' env e.it }
 and t_lexp' env = function

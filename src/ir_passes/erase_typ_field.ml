@@ -126,7 +126,7 @@ let transform prog =
       DefineE (id, mut, t_exp exp1)
     | FuncE (x, s, c, typbinds, args, ret_tys, exp) ->
       FuncE (x, s, c, t_typ_binds typbinds, t_args args, List.map t_typ ret_tys, t_exp exp)
-    | ActorE (ds, fs, {meta; preupgrade; postupgrade; heartbeat; timer; inspect}, typ) ->
+    | ActorE (ds, fs, {meta; preupgrade; postupgrade; heartbeat; timer; inspect}, typ, build_stable_actor) ->
       ActorE (t_decs ds, t_fields fs,
        {meta;
         preupgrade = t_exp preupgrade;
@@ -134,7 +134,9 @@ let transform prog =
         heartbeat = t_exp heartbeat;
         timer = t_exp timer;
         inspect = t_exp inspect;
-       }, t_typ typ)
+       }, 
+       t_typ typ,
+       t_exp build_stable_actor)
     | NewObjE (sort, ids, t) ->
       NewObjE (sort, t_fields ids, t_typ t)
     | SelfCallE _ -> assert false

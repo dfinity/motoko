@@ -33,7 +33,7 @@ and exp' rho = function
   | VarE i              -> VarE (id rho i)
   | LitE _ as e         -> e
   | PrimE (p, es)       -> PrimE (prim rho p, List.map (exp rho) es)
-  | ActorE (ds, fs, { meta; preupgrade; postupgrade; heartbeat; timer; inspect }, t) ->
+  | ActorE (ds, fs, { meta; preupgrade; postupgrade; heartbeat; timer; inspect }, t, build_stable_actor) ->
     let ds', rho' = decs rho ds in
     ActorE
       (ds',
@@ -45,7 +45,8 @@ and exp' rho = function
         timer = exp rho' timer;
         inspect = exp rho' inspect;
        },
-       t)
+       t,
+       exp rho' build_stable_actor)
   | AssignE (e1, e2)    -> AssignE (lexp rho e1, exp rho e2)
   | BlockE (ds, e1)     -> let ds', rho' = decs rho ds
                            in BlockE (ds', exp rho' e1)
