@@ -162,7 +162,7 @@ and exp' =
   | OptE of exp                                (* option injection *)
   | DoOptE of exp                              (* option monad *)
   | BangE of exp                               (* scoped option projection *)
-  | ObjBlockE of obj_sort * typ option * dec_field list  (* object block *)
+  | ObjBlockE of obj_sort * typ option * exp list * dec_field list  (* object block *)
   | ObjE of exp list * exp_field list          (* record literal/extension *)
   | TagE of id * exp                           (* variant *)
   | DotE of exp * id                           (* object projection *)
@@ -194,6 +194,7 @@ and exp' =
   | ThrowE of exp                              (* throw exception *)
   | TryE of exp * case list                    (* catch exception *)
   | IgnoreE of exp                             (* ignore *)
+  | AstE of dec                                (* actor module *)
 (*
   | FinalE of exp * exp                        (* finally *)
   | AtomE of string                            (* atom *)

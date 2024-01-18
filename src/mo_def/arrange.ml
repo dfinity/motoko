@@ -69,7 +69,7 @@ module Make (Cfg : Config) = struct
     | FromCandidE e       -> "FromCandidE" $$ [exp e]
     | TupE es             -> "TupE"      $$ exps es
     | ProjE (e, i)        -> "ProjE"     $$ [exp e; Atom (string_of_int i)]
-    | ObjBlockE (s, t, dfs) -> "ObjBlockE" $$ [obj_sort s; match t with None -> Atom "_" | Some t -> typ t] @ List.map dec_field dfs
+    | ObjBlockE (s, t, bs, dfs) -> "ObjBlockE" $$ [obj_sort s; match t with None -> Atom "_" | Some t -> typ t] @ List.map dec_field dfs
     | ObjE ([], efs)      -> "ObjE"      $$ List.map exp_field efs
     | ObjE (bases, efs)   -> "ObjE"      $$ exps bases @ [Atom "with"] @ List.map exp_field efs
     | DotE (e, x)         -> "DotE"      $$ [exp e; id x]
