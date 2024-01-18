@@ -597,7 +597,7 @@ and t_comp_unit context = function
           expD (c_block context' ds (tupE []) (meta (T.unit) (fun v1 -> tupE [])))
         ]
     end
-  | ActorU (as_opt, ds, ids, { meta = m; preupgrade; postupgrade; heartbeat; timer; inspect}, t, e) ->
+  | ActorU (as_opt, ds, ids, { meta = m; preupgrade; postupgrade; heartbeat; timer; inspect}, t, build_stable_actor) ->
     ActorU (as_opt, t_decs context ds, ids,
       { meta = m;
         preupgrade = t_exp LabelEnv.empty preupgrade;
@@ -606,7 +606,7 @@ and t_comp_unit context = function
         timer = t_ignore_throw LabelEnv.empty timer;
         inspect = t_exp LabelEnv.empty inspect;
       },
-      t, e)
+      t, t_exp LabelEnv.empty build_stable_actor)
 
 and t_ignore_throw context exp =
   match exp.it with

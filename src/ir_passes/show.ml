@@ -339,7 +339,7 @@ and t_comp_unit = function
     let ds' = t_decs env ds in
     let decls = show_decls !(env.params) in
     ProgU (decls @ ds')
-  | ActorU (as_opt, ds, fields, {meta; preupgrade; postupgrade; heartbeat; timer; inspect}, typ, exp) ->
+  | ActorU (as_opt, ds, fields, {meta; preupgrade; postupgrade; heartbeat; timer; inspect}, typ, build_stable_actor) ->
     let env = empty_env () in
     let ds' = t_decs env ds in
     let preupgrade' = t_exp env preupgrade in
@@ -347,6 +347,7 @@ and t_comp_unit = function
     let heartbeat' = t_exp env heartbeat in
     let timer' = t_exp env timer in
     let inspect' = t_exp env inspect in
+    let build_stable_actor' = t_exp env build_stable_actor in
     let decls = show_decls !(env.params) in
     ActorU (as_opt, decls @ ds', fields,
       { meta;
@@ -355,7 +356,7 @@ and t_comp_unit = function
         heartbeat = heartbeat';
         timer = timer';
         inspect = inspect';
-      }, typ, exp)
+      }, typ, build_stable_actor')
 
 (* Entry point for the program transformation *)
 

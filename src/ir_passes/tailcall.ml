@@ -256,9 +256,10 @@ and block env ds exp =
 and comp_unit env = function
   | LibU _ -> raise (Invalid_argument "cannot compile library")
   | ProgU ds -> ProgU (snd (decs env ds))
-  | ActorU (as_opt, ds, fs, u, t, e)  ->
+  | ActorU (as_opt, ds, fs, u, t, build_stable_actor)  ->
     let u = { u with preupgrade = exp env u.preupgrade; postupgrade = exp env u.postupgrade } in
-    ActorU (as_opt, snd (decs env ds), fs, u, t, e)
+    let build_stable_actor = exp env build_stable_actor in
+    ActorU (as_opt, snd (decs env ds), fs, u, t, build_stable_actor)
 
 and prog (cu, flavor) =
   let env = { tail_pos = false; info = None } in

@@ -523,7 +523,7 @@ let transform prog =
         { transient_actor_type = t_typ transient_actor_type;
           stable_actor_type = t_typ stable_actor_type;
         },
-        build_stable_actor)
+        t_exp build_stable_actor)
 
   and t_prog (cu, flavor) = (t_comp_unit cu, { flavor with has_async_typ = false } )
 in

@@ -1145,6 +1145,7 @@ let check_comp_unit env = function
   | ActorU (as_opt, ds, fs,
       { preupgrade; postupgrade; meta; heartbeat; timer; inspect }, actor_type, build_stable_actor) ->
     let t0 = actor_type.transient_actor_type in
+    let stable_actor_type = actor_type.stable_actor_type in
     let check p = check env no_region p in
     let (<:) t1 t2 = check_sub env no_region t1 t2 in
     let env' = match as_opt with
@@ -1162,11 +1163,13 @@ let check_comp_unit env = function
     check_exp env'' heartbeat;
     check_exp env'' timer;
     check_exp env'' inspect;
+    check_exp env'' build_stable_actor;
     typ preupgrade <: T.unit;
     typ postupgrade <: T.unit;
     typ heartbeat <: T.unit;
     typ timer <: T.unit;
     typ inspect <: T.unit;
+    typ build_stable_actor <: stable_actor_type;
     check (T.is_obj t0) "bad annotation (object type expected)";
     let (s0, tfs0) = T.as_obj t0 in
     let val_tfs0 = List.filter (fun tf -> not (T.is_typ tf.T.typ)) tfs0 in
