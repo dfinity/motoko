@@ -2535,12 +2535,7 @@ and gather_dec env scope dec : Scope.t =
     let scope' = gather_block_decs env decs in
     let ve' = T.Env.add id.it (object_of_scope env obj_sort.it dec_fields scope' at) scope.val_env in
     let obj_env = T.Env.add id.it scope' scope.obj_env in
-    { val_env = ve';
-      typ_env = scope.typ_env;
-      lib_env = scope.lib_env;
-      con_env = scope.con_env;
-      obj_env = obj_env
-    }
+    { scope with val_env = ve'; obj_env }
   | LetD (pat, _, _) -> Scope.adjoin_val_env scope (gather_pat env scope.Scope.val_env pat)
   | VarD (id, _) -> Scope.adjoin_val_env scope (gather_id env scope.Scope.val_env id)
   | TypD (id, binds, _) | ClassD (_, id, binds, _, _, _, _, _) ->
@@ -2569,11 +2564,10 @@ and gather_dec env scope dec : Scope.t =
         T.Env.add id.it T.Pre scope.val_env
       | _ -> scope.val_env
     in
-    { val_env;
+    { scope
+      with val_env;
       typ_env = T.Env.add id.it c scope.typ_env;
-      con_env = T.ConSet.disjoint_add c scope.con_env;
-      lib_env = scope.lib_env;
-      obj_env = scope.obj_env;
+      con_env = T.ConSet.disjoint_add c scope.con_env
     }
 
 and gather_pat env ve pat : Scope.val_env =
