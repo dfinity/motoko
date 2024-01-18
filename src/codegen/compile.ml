@@ -2771,11 +2771,7 @@ module TaggedSmallWord = struct
         G.i (Compare (Wasm.Values.I32 I32Op.GeS)) ^^
         E.else_trap_with env "negative power" ^^
         get_n ^^
-        lsb_adjust ty ^^
-        msb_adjust (toNat ty) ^^
-        get_exp ^^ compile_nat_power env (toNat ty) ^^
-        lsb_adjust (toNat ty) ^^
-        msb_adjust ty
+        get_exp ^^ compile_nat_power env (toNat ty)
       )
 
 
@@ -3408,12 +3404,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
           (Bool.lit true)
           (get_a ^^ get_b ^^
            BitTagged.if_both_tagged_scalar env [I32Type]
-             (
-               if !Flags.sanity_check then begin
-                 get_a ^^ BitTagged.sanity_check_tag __LINE__ env Type.Int ^^ G.i Drop ^^
-                 get_b ^^ BitTagged.sanity_check_tag __LINE__ env Type.Int ^^ G.i Drop
-              end ^^
-               Bool.lit false)
+             (Bool.lit false)
              begin
                get_a ^^ BitTagged.if_tagged_scalar env [I32Type]
                  (get_a ^^ extend_and_box64 env)
