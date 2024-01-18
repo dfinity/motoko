@@ -2647,10 +2647,8 @@ module TaggedSmallWord = struct
   let lsb_adjust = function
     | Type.(Int32|Nat32) -> G.nop
     | Type.(Nat8|Nat16) as ty ->  compile_shrU_const (shift_of_type ty)
-    | Type.(Int8|Int16) as ty ->
-       compile_shrS_const (shift_of_type ty)
-    | Type.Char as ty ->
-       compile_shrU_const (shift_of_type ty)
+    | Type.(Int8|Int16) as ty -> compile_shrS_const (shift_of_type ty)
+    | Type.Char as ty -> compile_shrU_const (shift_of_type ty)
     | _ -> assert false
 
   (* Makes sure that the word payload (e.g. operation result) is in the MSB bits of the word. *)
