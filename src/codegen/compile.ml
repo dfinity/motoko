@@ -2771,11 +2771,7 @@ module TaggedSmallWord = struct
         G.i (Compare (Wasm.Values.I32 I32Op.GeS)) ^^
         E.else_trap_with env "negative power" ^^
         get_n ^^
-        lsb_adjust ty ^^
-        msb_adjust (toNat ty) ^^
-        get_exp ^^ compile_nat_power env (toNat ty) ^^
-        lsb_adjust (toNat ty) ^^
-        msb_adjust ty
+        get_exp ^^ compile_nat_power env (toNat ty)
       )
 
 
