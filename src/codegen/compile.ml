@@ -2770,10 +2770,7 @@ module TaggedSmallWord = struct
         compile_unboxed_const 0l ^^
         G.i (Compare (Wasm.Values.I32 I32Op.GeS)) ^^
         E.else_trap_with env "negative power" ^^
-        get_n ^^
-        get_exp ^^ compile_nat_power env (toNat ty)
-      )
-
+        get_n ^^ get_exp ^^ compile_nat_power env (toNat ty))
 
   (* To rotate, first rotate a copy by bits_of_type into the other direction *)
   let rotl env ty =
