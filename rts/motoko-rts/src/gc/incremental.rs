@@ -416,6 +416,9 @@ pub unsafe fn start_gc_after_upgrade() {
     let state = STATE.get_mut();
     assert!(state.phase == Phase::Stop);
     state.phase = Phase::Pause;
+    // The allocation during destabilization should not count as concurrent
+    // mutator allocation. Therefore, reset the allocation count.
+    state.allocation_count = 0;
 }
 
 pub unsafe fn incremental_gc_state() -> &'static mut State {

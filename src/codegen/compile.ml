@@ -8964,12 +8964,13 @@ module FuncDec = struct
     let moc_stabilization_instruction_limit_fi = 
       E.add_fun env "moc_stabilization_instruction_limit" (
         Func.of_body env [] [I64Type] (fun env ->
-          (* Distribute the upgrade instruction limit to the stabilization and to the destabilization by halving it. *)
-          let half_upgrade_limit = Int64.of_int (Int.div Flags.(!stabilization_instruction_limit.upgrade) 2) in
+          (* To use the instruction budget well during upgrade, 
+             offer the entire upgrade instruction limit for the destabilization, 
+             since the stabilization can also be run before the upgrade. *)
           Lifecycle.during_explicit_upgrade env ^^
           G.if1 I64Type
             (compile_const_64 (Int64.of_int Flags.(!stabilization_instruction_limit.update_call)))
-            (compile_const_64 half_upgrade_limit)
+            (compile_const_64 (Int64.of_int Flags.(!stabilization_instruction_limit.upgrade)))
         )
       ) in
     E.add_export env (nr {
@@ -9130,7 +9131,6 @@ module IncrementalStabilization = struct
 
   let complete_destabilization env = 
     G.i (Call (nr (E.built_in env IC.init_actor_after_destabilization_name))) ^^
-    (* Allow other messages and allow garbage collection. *)
     IC.get_run_post_upgrade env ^^
     (G.if0 
       begin
@@ -9138,8 +9138,8 @@ module IncrementalStabilization = struct
         G.i (Call (nr (E.built_in env "post_exp"))) 
       end
       G.nop) ^^
+    (* Allow other messages and allow garbage collection. *)
     E.call_import env "rts" "start_gc_after_upgrade" ^^
-    GC.collect_garbage env ^^
     Lifecycle.trans env Lifecycle.Idle
 
   let define_async_destabilization_reply_callback env =
