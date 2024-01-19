@@ -1,4 +1,4 @@
-import Ext = "./actor-module";
+import { Ext } = "./actor-module";
 
 actor Weave {
   public func beep() {}
