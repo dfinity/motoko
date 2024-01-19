@@ -10,8 +10,9 @@ module T = Type
 module A = Effect
 module C = Async_cap
 
-
 (* Contexts  *)
+
+module Scope = Scope.Make (Syntax)
 
 (* availability, used to mark actor constructors as unavailable in compiled code
    FUTURE: mark unavailable, non-shared variables *)

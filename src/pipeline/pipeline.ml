@@ -11,6 +11,7 @@ open Mo_config
 open Printf
 
 module ResolveImport = Resolve_import
+module Scope = Scope.Make (Syntax)
 
 type stat_env = Scope.t
 type dyn_env = Interpret.scope
@@ -210,11 +211,17 @@ let rec check_progs senv progs : Scope.scope Diag.result =
 
 let check_lib senv lib : Scope.scope Diag.result =
   let filename = lib.Source.note.Syntax.filename in
-  phase "Checking" (Filename.basename filename);
+  phase "CheckingX" (Filename.basename filename);
   let open Diag.Syntax in
   let* sscope = Typing.check_lib senv lib in
-  phase "Definedness" (Filename.basename filename);
+  phase "DefinednessX" (Filename.basename filename);
   let* () = Definedness.check_lib lib in
+
+
+      print_ce senv.Scope.con_env;
+
+
+
   Diag.return sscope
 
 let lib_of_prog f prog : Syntax.lib  =

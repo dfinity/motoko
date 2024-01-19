@@ -6,6 +6,8 @@ open Trivia
 open Type
 module E = Syntax
 module I = Idllib.Syntax
+module Scope = Scope.Make (Syntax)
+
 
 (* use a functor to allocate temporary shared state *)
 module MakeState() = struct

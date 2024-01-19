@@ -4,6 +4,8 @@ open Mo_def
 open Source
 open Syntax
 
+module Scope = Scope.Make (Syntax)
+
 type value_decl = {
   name : string;
   typ : Type.typ;
