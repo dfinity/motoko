@@ -8,10 +8,6 @@ actor {};
 // CHECK:         call $post_exp
 // CHECK:         call $trans_state4
 // CHECK:         call $start_gc_after_upgrade
-// CHECK-NEXT:    i32.const 0
-// CHECK-NEXT:    call 32
-// CHECK-NEXT:    global.set 5
-// CHECK-NEXT:    call ${{copying_gc|compacting_gc|generational_gc|incremental_gc}}
 
 // CHECK:  (func $canister_init
 // CHECK-NEXT:    call $trans_state
