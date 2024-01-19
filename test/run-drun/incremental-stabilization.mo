@@ -54,7 +54,6 @@ actor {
 //CALL ingress print "DIDL\x00\x00"
 //CALL ingress __motoko_stabilize_before_upgrade "DIDL\x00\x00"
 //CALL ingress print "DIDL\x00\x00"
-//CALL __motoko_async_stabilization "DIDL\x00\x00"
 //CALL upgrade ""
 //CALL ingress print "DIDL\x00\x00"
 //CALL ingress __motoko_destabilize_after_upgrade "DIDL\x00\x00"
