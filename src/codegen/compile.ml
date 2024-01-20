@@ -1681,31 +1681,38 @@ module BitTagged = struct
 
 
   (* dynamic *)
-  (* TBC: adapt and adopt optimization
-  let _if_can_tag_i64 env retty is1 is2 =
-    Func.share_code1 Func.Never env "can_tag_i64" ("x", I64Type) [I32Type] (fun env get_x ->
+  let sanity_check_can_tag_i64 env pty get_x =
+    if TaggingScheme.debug || !Flags.sanity then
+      get_x ^^
+      Func.share_code2 Func.Always env (prim_fun_name pty "check_can_tag_i64") (("res", I32Type), ("x", I64Type)) [I32Type]
+        (fun env get_res get_x ->
+          let sbits = sbits_of pty in
+          let lower_bound = Int64.(neg (shift_left 1L sbits)) in
+          let upper_bound = Int64.shift_left 1L sbits in
+          (* lower_bound <= x < upper_bound *)
+          compile_const_64 lower_bound ^^
+          get_x ^^
+          G.i (Compare (Wasm.Values.I64 I64Op.LeS)) ^^
+          get_x ^^ compile_const_64 upper_bound ^^
+          G.i (Compare (Wasm.Values.I64 I64Op.LtS)) ^^
+          G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
+          get_res ^^
+          G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+          E.else_trap_with env "check_can_tag_i64 failure" ^^
+          get_res)
+    else
+      G.i Nop
+
+  let if_can_tag_i64 env pty retty is1 is2 =
+    Func.share_code1 Func.Never env
+      (prim_fun_name pty "if_can_tag_i64") ("x", I64Type) [I32Type] (fun env get_x ->
       (* checks that all but the low signed_data_bits bits are either all 0 or all 1 *)
       get_x ^^ compile_shl64_const 1L ^^
       get_x ^^ G.i (Binary (Wasm.Values.I64 I32Op.Xor)) ^^
-      compile_shrU64_const ubitsL ^^
-      G.i (Test (Wasm.Values.I64 I64Op.Eqz))
-    ) ^^
-    E.if_ env retty is1 is2
-  *)
-
-  let if_can_tag_i64 env pty retty is1 is2 =
-    let sbits = sbits_of pty in
-    let lower_bound = Int64.(neg (shift_left 1L sbits)) in
-    let upper_bound = Int64.shift_left 1L sbits in
-    Func.share_code1 Func.Never env
-      (prim_fun_name pty "if_can_tag_i64") ("x", I64Type) [I32Type] (fun env get_x ->
-      compile_const_64 lower_bound ^^
-      get_x ^^
-      G.i (Compare (Wasm.Values.I64 I64Op.LeS)) ^^
-      get_x ^^ compile_const_64 upper_bound ^^
-      G.i (Compare (Wasm.Values.I64 I64Op.LtS)) ^^
-      G.i (Binary (Wasm.Values.I32 I32Op.And))
-    ) ^^
+      compile_shrU64_const (Int64.of_int (ubits_of pty)) ^^
+      G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
+      sanity_check_can_tag_i64 env pty get_x
+      ) ^^
     E.if_ env retty is1 is2
 
   let if_can_tag_u64 env pty retty is1 is2 =
@@ -1720,6 +1727,7 @@ module BitTagged = struct
     compile_shl_const (Int32.sub 32l ubitsl) ^^
     (* tag *)
     compile_bitor_const (TaggingScheme.tag_of_typ pty)
+
   let untag env pty =
     let ubitsl = Int32.of_int (ubits_of pty) in
     compile_shrS_const (Int32.sub 32l ubitsl) ^^
@@ -1727,31 +1735,39 @@ module BitTagged = struct
 
   (* 32 bit numbers, dynamic, w.r.t `Int` *)
 
-  (* TBC: adapt and adopt optimization
-  let _if_can_tag_i32 env retty is1 is2 = (*FIX ME*)
-    Func.share_code1 Func.Never env "cannot_tag_i32" ("x", I32Type) [I32Type] (fun env get_x ->
-      (* checks that all but the low sbits are both either 0 or 1 *)
-      get_x ^^ compile_shrU_const sbitsl ^^
-      G.i (Unary (Wasm.Values.I32 I32Op.Popcnt)) ^^
-      G.i (Unary (Wasm.Values.I32 I32Op.Ctz))
-    ) ^^
-      E.if_ env retty is1 is2
-  *)
+  let sanity_check_can_tag_i32 env pty get_x =
+    if TaggingScheme.debug || !Flags.sanity then
+      get_x ^^
+      Func.share_code2 Func.Always env (prim_fun_name pty "check_can_tag_i32") (("res", I32Type), ("x", I32Type)) [I32Type]
+        (fun env get_res get_x ->
+          let sbits = sbits_of pty in
+          let lower_bound = Int32.(neg (shift_left 1l sbits)) in
+          let upper_bound = Int32.shift_left 1l sbits in
+          (* lower_bound <= x < upper_bound *)
+          compile_unboxed_const lower_bound ^^
+          get_x ^^
+          G.i (Compare (Wasm.Values.I32 I32Op.LeS)) ^^
+          get_x ^^ compile_unboxed_const upper_bound ^^
+          G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^
+          G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
+          get_res ^^
+          G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+          E.else_trap_with env "if_can_tag_i32 failure" ^^
+          get_res)
+    else
+      G.i Nop
 
   let if_can_tag_i32 env pty retty is1 is2 =
-    let sbits = sbits_of pty in
-    let lower_bound = Int32.(neg (shift_left 1l sbits)) in
-    let upper_bound = Int32.shift_left 1l sbits in
-    (* lower_bound <= n && n < upper_bound *)
     Func.share_code1 Func.Never env
       (prim_fun_name pty "if_can_tag_i32") ("x", I32Type) [I32Type] (fun env get_x ->
-      compile_unboxed_const lower_bound ^^
-      get_x ^^
-      G.i (Compare (Wasm.Values.I32 I32Op.LeS)) ^^
-      get_x ^^ compile_unboxed_const upper_bound ^^
-      G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^
-      G.i (Binary (Wasm.Values.I32 I32Op.And))
-    ) ^^
+        (* checks that all but the low sbits are both either 0 or 1 *)
+        get_x ^^
+        get_x ^^ compile_shrS_const (Int32.of_int ((32 - ubits_of pty) - 1)) ^^
+        G.i (Binary (Wasm.Values.I32 I32Op.Xor)) ^^
+        compile_shrU_const (Int32.of_int (sbits_of pty)) ^^
+        G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
+        sanity_check_can_tag_i32 env pty get_x)
+    ^^
     E.if_ env retty is1 is2
 
   let if_can_tag_u32 env pty retty is1 is2 =
@@ -3428,7 +3444,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
   let fits_unsigned_bits env n =
     try_unbox I32Type (fun _ -> match n with
         | 32 | 64 -> G.i Drop ^^ Bool.lit true
-        | n when (n = 8 || n = 16 || n = BitTagged.ubits_of Type.Int) ->
+        | n when (n = 8 || n = 16 || n = BitTagged.ubits_of Type.Int (* TBD?*)) ->
           (* Please review carefully! *)
           compile_bitand_const Int32.(logor 1l (shift_left minus_one (n + (32 - BitTagged.ubits_of Type.Int)))) ^^
           G.i (Test (Wasm.Values.I32 I32Op.Eqz))
@@ -3437,32 +3453,43 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       (fun env -> Num.fits_unsigned_bits env n)
       env
 
+  let sanity_check_fits_signed_bits env n get_a =
+     if TaggingScheme.debug || !Flags.sanity then
+     get_a ^^
+     Func.share_code2 Func.Always env ("check_fits_signed_bits_"^Int.to_string n) (("res", I32Type), ("a", I32Type)) [I32Type]
+      (fun env get_res get_a ->
+         let lower_bound = Int32.(neg (shift_left 1l (n-1))) in
+         let upper_bound = Int32.shift_left 1l (n-1) in
+         let set_a = G.setter_for get_a in
+         get_a ^^
+         compile_shrS_const (Int32.of_int (32 - BitTagged.ubits_of Type.Int)) ^^
+         set_a ^^
+         compile_unboxed_const lower_bound ^^
+         get_a ^^
+         G.i (Compare (Wasm.Values.I32 I32Op.LeS)) ^^
+         get_a ^^ compile_unboxed_const upper_bound ^^
+         G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^
+         G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
+         get_res ^^
+         G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+         E.else_trap_with env ("fit_signed_bits failure_"^Int.to_string n) ^^
+         get_res)
+     else G.nop
+
   let fits_signed_bits env n =
     let set_a, get_a = new_local env "a" in
     try_unbox I32Type (fun _ -> match n with
         | 32 | 64 -> G.i Drop ^^ Bool.lit true
-        | n when (n = 8 || n = 16 || n = BitTagged.ubits_of Type.Int) ->
+        | n when (n = 8 || n = 16 || n = BitTagged.ubits_of Type.Int (*TBD?*)) ->
           (* Please review carefully! *)
            set_a ^^
-           get_a ^^ get_a ^^ compile_shrS_const 1l ^^
+           get_a ^^ get_a ^^ compile_shrS_const 1l ^^ (*Review 1l*)
            G.i (Binary (Wasm.Values.I32 I32Op.Xor)) ^^
            compile_bitand_const
              Int32.(shift_left minus_one ((n-1) + (32 - BitTagged.ubits_of Type.Int))) ^^
-           G.i (Test (Wasm.Values.I32 I32Op.Eqz))
-(* alternatively:          
-           let lower_bound = Int32.(neg (shift_left 1l (n-1))) in
-           let upper_bound = Int32.shift_left 1l (n-1) in
-           compile_shrS_const (Int32.sub 32l BitTagged.ubitsl) ^^
-           set_a ^^
-           compile_unboxed_const lower_bound ^^
-           get_a ^^
-           G.i (Compare (Wasm.Values.I32 I32Op.LeS)) ^^
-           get_a ^^ compile_unboxed_const upper_bound ^^
-           G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^
-           G.i (Binary (Wasm.Values.I32 I32Op.And))
- *)
+           G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
+           sanity_check_fits_signed_bits env n get_a
         | _ -> assert false
-
       )
       (fun env -> Num.fits_signed_bits env n)
       env
