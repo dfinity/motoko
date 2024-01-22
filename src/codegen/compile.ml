@@ -9038,7 +9038,8 @@ module IncrementalStabilization = struct
   
   let define_async_stabilization_reject_callback env =
     Func.define_built_in env async_stabilization_reject_callback_name ["env", I32Type] [] (fun env ->
-      Blob.lit_ptr_len env "Incremental stabilization failed" ^^
+      IC.error_message env ^^
+      Blob.as_ptr_len env ^^
       IC.system_call env "msg_reject")
 
   let export_async_stabilization_method env =
@@ -9159,7 +9160,8 @@ module IncrementalStabilization = struct
   
   let define_async_destabilization_reject_callback env =
     Func.define_built_in env async_destabilization_reject_callback_name ["env", I32Type] [] (fun env ->
-      Blob.lit_ptr_len env "Incremental destabilization failed" ^^
+      IC.error_message env ^^
+      Blob.as_ptr_len env ^^
       IC.system_call env "msg_reject")
 
   let destabilization_increment env actor_type =
