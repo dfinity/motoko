@@ -17,6 +17,21 @@ use super::{
 pub struct Serialization {
     to_space: StableMemoryStream,
     limit: InstructionLimit,
+    array_slice: Option<ArraySlice>,
+}
+
+pub struct ArraySlice {
+    pub next_index: u64,
+    pub array_length: u64,
+}
+
+impl ArraySlice {
+    pub fn new(index: u64, length: u64) -> ArraySlice {
+        ArraySlice {
+            next_index: index,
+            array_length: length,
+        }
+    }
 }
 
 /// Helper type to pass serialization context instead of closures.
@@ -51,7 +66,11 @@ impl Serialization {
     pub fn start<M: Memory>(mem: &mut M, root: Value, stable_start: u64) -> Serialization {
         let to_space = StableMemoryStream::open(stable_start);
         let limit = InstructionLimit::new(unsafe { moc_stabilization_instruction_limit() });
-        let mut serialization = Serialization { limit, to_space };
+        let mut serialization = Serialization {
+            limit,
+            to_space,
+            array_slice: None,
+        };
         serialization.start(mem, root);
         serialization
     }
@@ -94,6 +113,18 @@ impl Serialization {
 
     fn has_non_stable_type(old_field: Value) -> bool {
         unsafe { old_field.tag() == TAG_CLOSURE }
+    }
+
+    pub fn pending_array_scanning(&self) -> bool {
+        self.array_slice.is_some()
+    }
+
+    pub fn get_array_slice(&mut self) -> ArraySlice {
+        self.array_slice.take().unwrap()
+    }
+
+    pub fn set_array_slice(&mut self, slice: ArraySlice) {
+        self.array_slice = Some(slice);
     }
 }
 

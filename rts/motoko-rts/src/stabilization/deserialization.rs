@@ -4,7 +4,7 @@ pub mod stable_memory_access;
 use crate::{
     memory::Memory,
     stabilization::deserialization::scan_stack::STACK_EMPTY,
-    types::{FwdPtr, Tag, Value, TAG_FWD_PTR},
+    types::{FwdPtr, Tag, Value, TAG_ARRAY, TAG_ARRAY_SLICE_MIN, TAG_FWD_PTR},
     visitor::visit_pointer_fields,
 };
 
@@ -27,12 +27,12 @@ pub struct Deserialization {
 }
 
 /// Helper type to pass serialization context instead of closures.
-pub struct DeserializationContext<'a, M> {
+pub struct DeserializationContext<'a, M: Memory> {
     pub deserialization: &'a mut Deserialization,
     pub mem: &'a mut M,
 }
 
-impl<'a, M> DeserializationContext<'a, M> {
+impl<'a, M: Memory> DeserializationContext<'a, M> {
     fn new(
         deserialization: &'a mut Deserialization,
         mem: &'a mut M,
@@ -84,7 +84,7 @@ impl Deserialization {
 
     unsafe fn scan_deserialized<
         'a,
-        M,
+        M: Memory,
         F: Fn(&mut DeserializationContext<'a, M>, Value) -> Value,
     >(
         context: &mut DeserializationContext<'a, M>,
@@ -100,7 +100,25 @@ impl Deserialization {
             |context, field_address| {
                 *field_address = translate(context, *field_address);
             },
-            |_, _, array| array.len(),
+            |context, slice_start, array| {
+                const SLICE_INCREMENT: u32 = 127;
+                debug_assert!(SLICE_INCREMENT >= TAG_ARRAY_SLICE_MIN);
+                if array.len() - slice_start > SLICE_INCREMENT {
+                    let new_start = slice_start + SLICE_INCREMENT;
+                    // Remember to visit the next array slice:
+                    // Update the tag and push the array back on the stack.
+                    (*array).header.tag = new_start;
+                    context
+                        .deserialization
+                        .scan_stack
+                        .push(context.mem, target_object);
+                    new_start
+                } else {
+                    // No further visits of this array. Restore the tag.
+                    (*array).header.tag = TAG_ARRAY;
+                    array.len()
+                }
+            },
         );
     }
 }

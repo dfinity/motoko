@@ -313,6 +313,10 @@ pub fn scan_serialized<
     context: &mut SerializationContext<'a, M>,
     translate: &F,
 ) {
+    if context.serialization.pending_array_scanning() {
+        StableArray::resume_scanning(context, translate);
+        return;
+    }
     let tag = context.serialization.to_space().read::<StableTag>();
     match tag {
         StableTag::Array => StableArray::scan_serialized(context, translate),
