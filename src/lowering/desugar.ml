@@ -91,6 +91,7 @@ and exp' at note = function
       (* case ? v : *)
       (varP v) (varE v) ty).it
   | S.ObjBlockE (s, _t, _bs, dfs) ->
+    assert (s.it <> Actor);
     obj_block at s None dfs note.Note.typ
   | S.ObjE (bs, efs) ->
     obj note.Note.typ efs bs
@@ -1000,18 +1001,18 @@ let import_compiled_class (lib : S.comp_unit) wasm : import_declaration =
 let import_prelude prelude : import_declaration =
   decs prelude.it
 
-let inject_decs extra_ds u =
+let inject_decs extra_ds =
   let open Ir in
-  match u with
+  function
   | LibU (ds, exp) -> LibU (extra_ds @ ds, exp)
   | ProgU ds -> ProgU (extra_ds @ ds)
   | ActorU (None, ds, fs, up, t) ->
-    Ir.ActorU (None, extra_ds @ ds, fs, up, t)
-  | ActorU (Some _, _, _, _, _) ->
-    let u'= Rename.comp_unit Rename.Renaming.empty u in
+    ActorU (None, extra_ds @ ds, fs, up, t)
+  | ActorU (Some _, _, _, _, _) as u ->
+    let u' = Rename.comp_unit Rename.Renaming.empty u in
     match u' with
     | ActorU (as_opt, ds, fs, up, t) ->
-      Ir.ActorU (as_opt, extra_ds @ ds, fs, up, t)
+      ActorU (as_opt, extra_ds @ ds, fs, up, t)
     | _ -> assert false
 
 let link_declarations imports (cu, flavor) =
