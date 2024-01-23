@@ -47,9 +47,10 @@ module Make (Cfg : Config) = struct
       | None -> it)
     | None -> it
 
-  let eff (eff : Mo_types.Type.eff) = match eff with
-  | Mo_types.Type.Triv -> Atom "Triv"
-  | Mo_types.Type.Await -> Atom "Await"
+  let eff (eff : Mo_types.Type.eff) =
+    Atom Mo_types.Type.(match eff with
+                        | Triv -> "Triv"
+                        | Await -> "Await")
 
   let annot_typ t it = if Cfg.include_types then ":" $$ [it; typ t] else it
   let annot note = annot_typ note.note_typ
@@ -201,12 +202,12 @@ module Make (Cfg : Config) = struct
     | Private -> Atom "Private"
     | System -> Atom "System"
 
-  and stab s_opt = match s_opt with
+  and stab = function
     | None -> Atom "(Flexible)"
     | Some s ->
-      (match s.it with
-      | Flexible -> Atom "Flexible"
-      | Stable -> Atom "Stable")
+      Atom (match s.it with
+            | Flexible -> "Flexible"
+            | Stable -> "Stable")
 
   and typ_field (tf : typ_field) = match tf.it with
     | ValF (id, t, m) -> id.it $$ [typ t; mut m]
