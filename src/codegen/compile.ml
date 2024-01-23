@@ -3443,7 +3443,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
   let fits_unsigned_bits env n =
     try_unbox I32Type (fun _ -> match n with
         | 32 | 64 -> G.i Drop ^^ Bool.lit true
-        | n when (n = 8 || n = 16 || n = BitTagged.ubits_of Type.Int (* TBD?*)) ->
+        | 8 | 16 ->
           (* Please review carefully! *)
           compile_bitand_const Int32.(logor 1l (shift_left minus_one (n + (32 - BitTagged.ubits_of Type.Int)))) ^^
           G.i (Test (Wasm.Values.I32 I32Op.Eqz))
@@ -3479,7 +3479,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     let set_a, get_a = new_local env "a" in
     try_unbox I32Type (fun _ -> match n with
         | 32 | 64 -> G.i Drop ^^ Bool.lit true
-        | n when (n = 8 || n = 16 || n = BitTagged.ubits_of Type.Int (*TBD?*)) ->
+        | 8 | 16 ->
           (* Please review carefully! *)
            set_a ^^
            get_a ^^ get_a ^^ compile_shrS_const 1l ^^ (*Review 1l*)
