@@ -459,7 +459,7 @@ and export_footprint self_id expr =
   [{ it = I.{ name = lab; var = v }; at = no_region; note = typ }])
 
 
-and build_actor at ts self_id es obj_typ =
+and build_actor at ts self_id es obj_typ = (*assert false;*)
   let candid = build_candid ts obj_typ in
   let fs = build_fields obj_typ in
   let es = List.filter (fun ef -> is_not_typD ef.it.S.dec) es in

@@ -1141,6 +1141,7 @@ and infer_exp'' env exp : T.typ =
       error_in Flags.[WASIMode; WasmMode] env exp.at "M0068"
         "actors are not supported";
       match context with
+      | AsyncE _ :: AwaitE _ :: ObjBlockE _ :: _ -> ()
       | AsyncE _ :: AwaitE _ :: _ :: _ ->
          error_in Flags.[ICMode; RefMode] env exp.at "M0069"
            "non-toplevel actor; an actor can only be declared at the toplevel of a program"
@@ -1151,6 +1152,7 @@ and infer_exp'' env exp : T.typ =
         { env with async = C.NullCap; in_actor = true }
       else env
     in
+    let _bases = List.map (infer_exp env') _bs in
     let t = infer_obj env' obj_sort.it dec_fields exp.at in
     begin match env.pre, typ_opt with
       | false, Some typ ->
@@ -1493,6 +1495,8 @@ and infer_exp'' env exp : T.typ =
       error_shared env t' exp1.at "M0033" "async type has non-shared content type%a"
         display_typ_expand t';
     T.Async (s, t1, t')
+  | AwaitE (T.Fut, { it = AsyncE (T.Fut, _, ({it = ObjBlockE ({ it = T.Actor; _}, _t, _bs, fields); _ } as actor)) ; _  }) ->
+     infer_exp_promote env actor
   | AwaitE (s, exp1) ->
     let t0 = check_AwaitCap env "await" exp.at in
     let t1 = infer_exp_promote env exp1 in
