@@ -1701,7 +1701,7 @@ module BitTagged = struct
           E.else_trap_with env "check_can_tag_i64 failure" ^^
           get_res)
     else
-      G.i Nop
+      G.nop
 
   let if_can_tag_i64 env pty retty is1 is2 =
     Func.share_code1 Func.Never env
@@ -1755,7 +1755,7 @@ module BitTagged = struct
           E.else_trap_with env "if_can_tag_i32 failure" ^^
           get_res)
     else
-      G.i Nop
+      G.nop
 
   let if_can_tag_i32 env pty retty is1 is2 =
     Func.share_code1 Func.Never env
