@@ -9694,7 +9694,8 @@ module AllocHow = struct
   let stackrep_of_type t =
     let open Type in
     match normalize t with
-    | Prim ((Nat32 | Int32) as pty) -> SR.UnboxedWord32 pty
+    | Prim ((Nat32 | Int32 | Nat16 | Int16 | Nat8 | Int8 | Char) as pty) ->
+       SR.UnboxedWord32 pty
     | Prim ((Nat64 | Int64) as pty) -> SR.UnboxedWord64 pty
     | Prim Float -> SR.UnboxedFloat64
     | _ -> SR.Vanilla
