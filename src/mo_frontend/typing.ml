@@ -163,10 +163,6 @@ let _warn_in modes env at code fmt =
 
 let detect_unused env inner_variables =
   T.Env.iter (fun id (_, at) ->
-    (if is_unused env id then
-      Printf.printf "Unused declaration %s\n" id
-    else
-      ());
     if is_unused env id then
       warn env at "M0000" "Unused declaration %s" id
     else
