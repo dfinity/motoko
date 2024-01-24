@@ -11346,11 +11346,11 @@ and compile_prim_invocation (env : E.t) ae p es at =
     G.i (Unary (Wasm.Values.I32 I32Op.Popcnt))
   | OtherPrim "popcnt64", [e] ->
     SR.UnboxedWord64 Type.Nat64,
-    compile_exp_as env ae (SR.UnboxedWord64 Type.Nat32) e ^^
-      G.i (Unary (Wasm.Values.I64 I64Op.Popcnt))
+    compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) e ^^
+    G.i (Unary (Wasm.Values.I64 I64Op.Popcnt))
   | OtherPrim "popcntInt64", [e] ->
     SR.UnboxedWord64 Type.Int64,
-    compile_exp_as env ae (SR.UnboxedWord64 Type.Int32) e ^^
+    compile_exp_as env ae (SR.UnboxedWord64 Type.Int64) e ^^
     G.i (Unary (Wasm.Values.I64 I64Op.Popcnt))
   | OtherPrim "clz8", [e] ->
      SR.UnboxedWord32 Type.Nat8,
