@@ -1182,7 +1182,7 @@ and infer_exp'' env exp : T.typ =
         { env with async = C.NullCap; in_actor = true }
       else env
     in
-    let t = infer_obj env' obj_sort.it dec_fields exp.at in
+    let t = infer_obj env' obj_sort.it dec_fields exp.at true in
     begin match env.pre, typ_opt with
       | false, Some typ ->
         let t' = check_typ env' typ in
@@ -2276,7 +2276,7 @@ and is_typ_dec dec : bool = match dec.it with
   | _ -> false
 
 
-and infer_obj env s dec_fields at : T.typ =
+and infer_obj env s dec_fields at check_undeclared : T.typ =
   let env =
     if s <> T.Actor then
       { env with in_actor = false }
@@ -2289,7 +2289,11 @@ and infer_obj env s dec_fields at : T.typ =
   in
   let decs = List.map (fun (df : dec_field) -> df.it.dec) dec_fields in
   let _, scope = infer_block env decs at in
+  let initial_usage = enter_scope env in
   let t = object_of_scope env s dec_fields scope at in
+  if check_undeclared then
+    leave_scope env scope.Scope.val_env initial_usage
+  else ();
   let (_, tfs) = T.as_obj t in
   if not env.pre then begin
     if s = T.Actor then begin
@@ -2468,7 +2472,9 @@ and infer_dec env dec : T.typ =
           in_actor = obj_sort.it = T.Actor;
         }
       in
-      let t' = infer_obj env''' obj_sort.it dec_fields dec.at in
+      let initial_usage = enter_scope env''' in
+      let t' = infer_obj env''' obj_sort.it dec_fields dec.at true in
+      leave_scope env ve initial_usage;
       match typ_opt, obj_sort.it with
       | None, _ -> ()
       | Some { it = AsyncT (T.Fut, _, typ); at; _ }, T.Actor
@@ -2692,7 +2698,7 @@ and infer_dec_typdecs env dec : Scope.t =
       else tbs, cs in
     let self_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) cs') in
     let env'' = add_val (adjoin_vals env' ve) self_id.it self_typ self_id.at in
-    let t = infer_obj env'' obj_sort.it dec_fields dec.at in
+    let t = infer_obj env'' obj_sort.it dec_fields dec.at false in
     let k = T.Def (T.close_binds cs' tbs', T.close cs' t) in
     check_closed env id k dec.at;
     Scope.{ empty with
