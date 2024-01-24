@@ -2,7 +2,7 @@ module T = Type
 
 (* Scopes *)
 
-type val_env = T.typ T.Env.t
+type val_env = (T.typ * Source.region) T.Env.t
 type lib_env = T.typ T.Env.t
 type typ_env = T.con T.Env.t
 type con_env = T.ConSet.t
