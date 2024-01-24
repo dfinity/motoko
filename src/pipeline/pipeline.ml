@@ -218,7 +218,11 @@ let check_lib senv lib : Scope.scope Diag.result =
   let* () = Definedness.check_lib lib in
 
 
-  (*    print_ce senv.Scope.con_env; *)
+  (*printf "FILE %s %d\n" filename (Type.Env.keys sscope.Scope.typ_env |> List.length);
+  assert (not (Type.Env.is_empty sscope.Scope.val_env));*)
+  assert (Type.Env.mem "Ext" sscope.Scope.mix_env);
+  (*ObjEnv.mix_env?
+      print_ce senv.Scope.con_env;*)
 
 
 
@@ -391,6 +395,7 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
         let* () = go_set more_imports in
         let lib = lib_of_prog f prog in
         let* sscope = check_lib !senv lib in
+  assert (Type.Env.mem "Ext" sscope.Scope.mix_env);
         libs := lib :: !libs; (* NB: Conceptually an append *)
         senv := Scope.adjoin !senv sscope;
         pending := remove ri.Source.it !pending;
@@ -431,6 +436,7 @@ let load_progs parsefn files senv : load_result =
   let libs = List.concat_map snd rs in
   let* libs, senv' = chase_imports parsefn senv libs in
   let* senv'' = check_progs senv' progs' in
+  assert (Type.Env.mem "Ext" senv''.Scope.mix_env);
   Diag.return (libs, progs', senv'')
 
 let load_decl parse_one senv : load_decl_result =

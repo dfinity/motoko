@@ -34,6 +34,12 @@ let initial_scope =
     Scope.con_env = T.ConSet.singleton C.top_cap;
   }
 
+let interesting dec = match dec.it with
+  | ClassD (_, id, _, _, _, {it = T.Actor; _}, _, _) when id.it = "Ext" -> true
+  | _ -> false
+
+let interestings = List.exists interesting
+
 
 type env =
   { vals : val_env;
@@ -41,6 +47,7 @@ type env =
     typs : Scope.typ_env;
     cons : Scope.con_env;
     objs : Scope.obj_env;
+    mixs : Scope.mix_env;
     labs : lab_env;
     rets : ret_env;
     async : C.async_cap;
@@ -59,6 +66,7 @@ let env_of_scope msgs scope =
     typs = scope.Scope.typ_env;
     cons = scope.Scope.con_env;
     objs = T.Env.empty;
+    mixs = T.Env.empty;
     labs = T.Env.empty;
     rets = None;
     async = Async_cap.NullCap;
@@ -167,6 +175,7 @@ let adjoin env scope =
     typs = T.Env.adjoin env.typs scope.Scope.typ_env;
     cons = T.ConSet.union env.cons scope.Scope.con_env;
     objs = T.Env.adjoin env.objs scope.Scope.obj_env;
+    mixs = T.Env.adjoin env.mixs scope.Scope.mix_env;
   }
 
 let adjoin_vals env ve = {env with vals = T.Env.adjoin env.vals (available ve)}
@@ -647,7 +656,7 @@ and check_typ_binds_acyclic env typ_binds cs ts  =
 
 and check_typ_bind_sorts env tbs =
   (* assert, don't error, since this should be a syntactic invariant of parsing *)
-  List.iteri (fun i tb -> assert (i = 0 || (tb.T.sort = T.Type))) tbs;
+  List.iteri (fun i tb -> assert (i = 0 || tb.T.sort = T.Type)) tbs;
 
 and check_typ_binds env typ_binds : T.con list * T.bind list * Scope.typ_env * Scope.con_env =
   let xs = List.map (fun typ_bind -> typ_bind.it.var.it) typ_binds in
@@ -2364,6 +2373,7 @@ and check_stab env sort scope dec_fields =
 
 and infer_block env decs at : T.typ * Scope.scope =
   let scope = infer_block_decs env decs at in
+          assert (not (interestings decs) || Type.Env.mem "Ext" scope.mix_env);
   let env' = adjoin env scope in
   (* HACK: when compiling to IC, mark class constructors as unavailable *)
   let ve = match !Flags.compile_mode with
@@ -2381,14 +2391,19 @@ and infer_block env decs at : T.typ * Scope.scope =
 
 and infer_block_decs env decs at : Scope.t =
   let scope = gather_block_decs env decs in
+          assert (not (interestings decs) || Type.Env.mem "Ext" scope.mix_env);
   let env' = adjoin {env with pre = true} scope in
+          assert (not (interestings decs) || Type.Env.mem "Ext" env'.mixs);
   let scope_ce = infer_block_typdecs env' decs in
   check_con_env env' at scope_ce.Scope.con_env;
   let env'' = adjoin {env' with pre = env.pre} scope_ce in
+          assert (not (interestings decs) || Type.Env.mem "Ext" env''.mixs);
   let _scope_ce = infer_block_typdecs env'' decs in
   (* TBR: assertion does not work for types with binders, due to stamping *)
   (* assert (scope_ce = _scope_ce); *)
-  infer_block_valdecs (adjoin env'' scope_ce) decs scope_ce
+  let s = { (infer_block_valdecs (adjoin env'' scope_ce) decs scope_ce) with mix_env = scope.mix_env } in
+            assert (not (interestings decs) || Type.Env.mem "Ext" s.mix_env); s
+
 
 and infer_block_exps env decs : T.typ =
   match decs with
@@ -2521,7 +2536,8 @@ and infer_val_path env exp : T.typ option =
    * other value identifiers at type T.Pre
 *)
 and gather_block_decs env decs : Scope.t =
-  List.fold_left (gather_dec env) Scope.empty decs
+  let r = List.fold_left (gather_dec env) Scope.empty decs in
+  assert (not (interestings decs) || Type.Env.mem "Ext" r.mix_env); r
 
 and gather_dec env scope dec : Scope.t =
   match dec.it with
@@ -2547,9 +2563,9 @@ and gather_dec env scope dec : Scope.t =
     let open Scope in
     if T.Env.mem id.it scope.typ_env then
       error_duplicate env "type " id;
-    let binds' = match dec.it with
-      | ClassD(_, _, _, _, _,  {it = T.Actor; _}, _, _) -> List.tl binds
-      | _ -> binds
+    let binds', mix_env = match dec.it with
+      | ClassD(_, _, _, _, _,  {it = T.Actor; _}, _, _) -> List.tl binds, T.Env.add id.it dec scope.mix_env
+      | _ -> binds, scope.mix_env
     in
     let pre_tbs = List.map (fun bind ->
       { T.var = bind.it.var.it;
@@ -2564,13 +2580,16 @@ and gather_dec env scope dec : Scope.t =
     in
     let val_env = match dec.it with
       | ClassD _ ->
+          assert (Type.Env.mem "Ext" mix_env);
         if T.Env.mem id.it scope.val_env then
           error_duplicate env "" id;
         T.Env.add id.it T.Pre scope.val_env
       | _ -> scope.val_env
-    in
+    in begin match dec.it with
+       | ClassD(_, _, _, _, _,  {it = T.Actor; _}, _, _) -> assert (Type.Env.mem "Ext" mix_env)
+       | _ -> () end;
     { scope
-      with val_env;
+      with val_env; mix_env;
       typ_env = T.Env.add id.it c scope.typ_env;
       con_env = T.ConSet.disjoint_add c scope.con_env
     }
@@ -2691,7 +2710,16 @@ and infer_dec_valdecs env dec : Scope.t =
       ( {it = ObjBlockE (obj_sort, _t, _bs, dec_fields); at; _}
       | {it = AwaitE (_, { it = AsyncE (_, _, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, _t, _bs, dec_fields); at; _}) ; _ }); _ }),
         _
-    ) ->
+      ) ->
+     let dec_fields = if _bs <> [] then begin
+                          let separate = function
+                            | { it = CallE ({ it = VarE { it = mix; _ }; _ } , { it = None; _ }, _exp2); _ } -> [mix]
+                            | _ -> [] in
+                          let mixins = List.concat_map separate _bs in
+                          assert (T.Env.mem "Ext" env.vals);
+                          dec_fields
+                       end
+                     else dec_fields in
     let decs = List.map (fun df -> df.it.dec) dec_fields in
     let obj_scope = T.Env.find id.it env.objs in
     let obj_scope' =
@@ -2792,15 +2820,19 @@ let check_actors scope progs : unit Diag.result =
         ) progs
     )
 
+
 let check_lib scope lib : Scope.t Diag.result =
   Diag.with_message_store
     (fun msgs ->
       recover_opt
         (fun lib ->
+          Printf.eprintf "check_lib FILE %s\n"  lib.Source.note.Syntax.filename;
           let env = env_of_scope msgs scope in
           let { imports; body = cub; _ } = lib.it in
           let (imp_ds, ds) = CompUnit.decs_of_lib lib in
-          let typ, _ = infer_block env (imp_ds @ ds) lib.at in
+          let typ, Scope.{ mix_env; _ } = infer_block env (imp_ds @ ds) lib.at in
+          assert (Type.Env.mem "Ext" mix_env);
+          let env = { env with mixs = mix_env } (* FIXME: adjoin? *) in
           List.iter2 (fun import imp_d -> import.note <- imp_d.note.note_typ) imports imp_ds;
           cub.note <- {note_typ = typ; note_eff = T.Triv};
           let imp_typ = match cub.it with
@@ -2813,7 +2845,7 @@ let check_lib scope lib : Scope.t Diag.result =
                 warn env r "M0142" "deprecated syntax: an imported library should be a module or named actor class"
               end;
               typ
-            | ActorClassU  (sp, id, tbs, p, _, self_id, dec_fields) ->
+            | ActorClassU  (sp, id, tbs, p, _, self_id, dec_fields) ->(*failwith "ActorClassU";*)
               if is_anon_id id then
                 error env cub.at "M0143" "bad import: imported actor class cannot be anonymous";
               let cs = List.map (fun tb -> Option.get tb.note) tbs in
@@ -2839,8 +2871,8 @@ let check_lib scope lib : Scope.t Diag.result =
             | ProgU _ ->
               (* this shouldn't really happen, as an imported program should be rewritten to a module *)
               error env cub.at "M0000" "compiler bug: expected a module or actor class but found a program, i.e. a sequence of declarations"
-          in
-          Scope.lib lib.note.filename imp_typ
+          in assert (Type.Env.mem "Ext" env.mixs);
+          { (Scope.lib lib.note.filename imp_typ) with mix_env = env.mixs }
         ) lib
     )
 
