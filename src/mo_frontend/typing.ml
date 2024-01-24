@@ -161,9 +161,15 @@ let _warn_in modes env at code fmt =
 
 (* Unused declaration detection *)
 
+let underscore_prefix id =
+  if String.length id > 0 then
+    (String.get id 0) = '_'
+  else
+    false
+
 let detect_unused env inner_variables =
   T.Env.iter (fun id (_, at) ->
-    if is_unused env id then
+    if (is_unused env id) && (not (underscore_prefix id)) then
       warn env at "M0194" "Unused declaration %s" id
     else
       ()
