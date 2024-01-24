@@ -164,7 +164,7 @@ let _warn_in modes env at code fmt =
 let detect_unused env inner_variables =
   T.Env.iter (fun id (_, at) ->
     if is_unused env id then
-      warn env at "M0000" "Unused declaration %s" id
+      warn env at "M0194" "Unused declaration %s" id
     else
       ()
   ) inner_variables
