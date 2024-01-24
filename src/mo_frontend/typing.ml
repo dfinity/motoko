@@ -163,8 +163,12 @@ let _warn_in modes env at code fmt =
 
 let detect_unused env inner_variables =
   T.Env.iter (fun id (_, at) ->
+    (if is_unused env id then
+      Printf.printf "Unused declaration %s\n" id
+    else
+      ());
     if is_unused env id then
-      warn env at "M0000" "Unused variable %s" id
+      warn env at "M0000" "Unused declaration %s" id
     else
       ()
   ) inner_variables
@@ -1323,7 +1327,7 @@ and infer_exp'' env exp : T.typ =
         "expected array type, but expression produces type%a"
         display_typ_expand t1
     )
-  | FuncE (name, shared_pat, typ_binds, pat, typ_opt, _sugar, exp1) ->
+  | FuncE (_, shared_pat, typ_binds, pat, typ_opt, _sugar, exp1) ->
     if not env.pre && not in_actor && T.is_shared_sort shared_pat.it then begin
       error_in [Flags.WASIMode; Flags.WasmMode] env exp1.at "M0076"
         "shared functions are not supported";
@@ -1352,7 +1356,9 @@ and infer_exp'' env exp : T.typ =
           rets = Some codom;
           (* async = None; *) }
       in
+      let initial_usage = enter_scope env'' in
       check_exp_strong (adjoin_vals env'' ve2) codom exp1;
+      leave_scope env ve2 initial_usage;
       if Type.is_shared_sort sort then begin
         check_shared_binds env exp.at tbs;
         if not (T.shared t1) then
