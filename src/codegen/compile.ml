@@ -1820,7 +1820,7 @@ module BitTagged = struct
       (prim_fun_name pty "if_can_tag_i32") ("x", I32Type) [I32Type] (fun env get_x ->
        let ubits = ubits_of pty in
        let lower_bound = 0l in
-       let upper_bound = Int32.(neg (shift_left 1l ubits)) in
+       let upper_bound = Int32.shift_left 1l ubits in
        (* lower_bound <= x < upper_bound *)
        compile_unboxed_const lower_bound ^^
        get_x ^^
