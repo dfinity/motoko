@@ -53,7 +53,7 @@ module TaggingScheme = struct
     locate unexpected tag errors to compile.ml source lines.
     Flags.sanity_check will check tags, but not further locate them.
  *)
- let debug = true
+ let debug = false
 
  type bit = I | O
  type tag =
@@ -1729,13 +1729,21 @@ module BitTagged = struct
       ) ^^
       E.if_ env retty is1 is2
   | Nat64 | Nat32 ->
-      (* checks that all but the low unsigned bits are all 0 *)
-      let ubitsL = Int64.of_int (ubits_of pty) in
-      compile_shrU64_const ubitsL ^^
-      G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
-      (* TODO sanity check *)
-      E.if_ env retty is1 is2
-  | _ -> assert false)
+     Func.share_code1 Func.Never env
+       (prim_fun_name pty "if_can_tag_i64") ("x", I64Type) [I32Type] (fun env get_x ->
+          let ubits = ubits_of pty in
+          let lower_bound = 0L in
+          let upper_bound = Int64.shift_left 1L ubits in
+          (* lower_bound <= x < upper_bound *)
+          compile_const_64 lower_bound ^^
+          get_x ^^
+          G.i (Compare (Wasm.Values.I64 I64Op.LeS)) ^^
+          get_x ^^ compile_const_64 upper_bound ^^
+          G.i (Compare (Wasm.Values.I64 I64Op.LtS)) ^^
+          G.i (Binary (Wasm.Values.I32 I32Op.And)))
+    ^^
+    E.if_ env retty is1 is2
+   | _ -> assert false)
 
   let if_can_tag_u64 env pty retty is1 is2 =
   Type.(match pty with
@@ -1750,7 +1758,7 @@ module BitTagged = struct
     E.if_ env retty is2 is1 (* NB: swapped branches *)
   | _ -> assert false)
 
-  let tag env pty =
+  let tag env pty = (* TBR *)
     let ubitsl = Int32.of_int (ubits_of pty) in
     G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
     compile_shl_const (Int32.sub 32l ubitsl) ^^
@@ -1807,10 +1815,21 @@ module BitTagged = struct
         sanity_check_can_tag_i32 env pty get_x)
     ^^
     E.if_ env retty is1 is2
-  | Nat64 | Nat32 ->
-    let ubits = ubits_of pty in
-    compile_shrU_const (Int32.of_int ubits) ^^
-    E.if_ env retty is2 is1 (* NB: swapped branches *)
+  | Nat64 | Nat32 -> (* TBR *)
+     Func.share_code1 Func.Never env
+      (prim_fun_name pty "if_can_tag_i32") ("x", I32Type) [I32Type] (fun env get_x ->
+       let ubits = ubits_of pty in
+       let lower_bound = 0l in
+       let upper_bound = Int32.(neg (shift_left 1l ubits)) in
+       (* lower_bound <= x < upper_bound *)
+       compile_unboxed_const lower_bound ^^
+       get_x ^^
+       G.i (Compare (Wasm.Values.I32 I32Op.LeS)) ^^
+       get_x ^^ compile_unboxed_const upper_bound ^^
+       G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^
+       G.i (Binary (Wasm.Values.I32 I32Op.And)))
+    ^^
+    E.if_ env retty is1 is2
   | _ -> assert false)
 
   let if_can_tag_u32 env pty retty is1 is2 =
@@ -10782,7 +10801,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
     | Int64, Int ->
       SR.Vanilla,
-      compile_exp_as env ae (SR.UnboxedWord64 Nat64) e ^^
+      compile_exp_as env ae (SR.UnboxedWord64 Int64) e ^^
       BigNum.from_signed_word64 env
 
     | Nat32, Char ->

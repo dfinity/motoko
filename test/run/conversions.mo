@@ -153,7 +153,6 @@ wrap_Int_Int32(0x80000001, -0x7fffffff);
 func test_Int_Int64(n1 : Int, n2 : Int64) {
   assert Prim.intToInt64 n1 == n2;
   assert Prim.intToInt64Wrap n1 == n2;
-  Prim.debugPrint(debug_show {n1;n2;n3=Prim.int64ToInt n2});
   assert n1 == Prim.int64ToInt n2;
 };
 func wrap_Int_Int64(n1 : Int, n2 : Int64) {
@@ -164,25 +163,14 @@ func wrap_Int_Int64(n1 : Int, n2 : Int64) {
   assert n1_wrapped == Prim.int64ToInt n2;
 };
 
-Prim.debugPrint("A");
 test_Int_Int64(0, 0);
-Prim.debugPrint("B");
 test_Int_Int64(1, 1);
-Prim.debugPrint("C");
-Prim.debugPrint(debug_show (-1:Int64));
-//test_Int_Int64(-1, -1);
-test_Int_Int64(-1, 1-2);
-Prim.debugPrint("D");
+test_Int_Int64(-1, -1);
 test_Int_Int64(0x7fffffffffffffff, 0x7fffffffffffffff);
-Prim.debugPrint("E");
 test_Int_Int64(-0x7fffffffffffffff, -0x7fffffffffffffff);
-Prim.debugPrint("F");
 test_Int_Int64(-0x8000000000000000, -0x8000000000000000);
-Prim.debugPrint("G");
 wrap_Int_Int64(0x8000000000000000, -0x8000000000000000);
-Prim.debugPrint("H");
 wrap_Int_Int64(0x8000000000000001, -0x7fffffffffffffff);
-Prim.debugPrint("I");
 
 // NatN <--> Nat2N
 func test_Nat8_Nat16(n1 : Nat8, n2 : Nat16) {
