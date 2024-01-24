@@ -218,7 +218,7 @@ let check_lib senv lib : Scope.scope Diag.result =
   let* () = Definedness.check_lib lib in
 
 
-      print_ce senv.Scope.con_env;
+  (*    print_ce senv.Scope.con_env; *)
 
 
 
