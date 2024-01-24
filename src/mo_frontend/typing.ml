@@ -65,8 +65,8 @@ let env_of_scope msgs scope =
     libs = scope.Scope.lib_env;
     typs = scope.Scope.typ_env;
     cons = scope.Scope.con_env;
+    mixs = scope.Scope.mix_env;
     objs = T.Env.empty;
-    mixs = T.Env.empty;
     labs = T.Env.empty;
     rets = None;
     async = Async_cap.NullCap;
@@ -1161,6 +1161,9 @@ and infer_exp'' env exp : T.typ =
         { env with async = C.NullCap; in_actor = true }
       else env
     in
+    if _bs <> [] then begin
+        assert (Type.Env.mem "Ext" env.mixs);
+        end;
     let _bases = List.map (infer_exp env') _bs in
     let t = infer_obj env' obj_sort.it dec_fields exp.at in
     begin match env.pre, typ_opt with
@@ -2373,7 +2376,6 @@ and check_stab env sort scope dec_fields =
 
 and infer_block env decs at : T.typ * Scope.scope =
   let scope = infer_block_decs env decs at in
-          assert (not (interestings decs) || Type.Env.mem "Ext" scope.mix_env);
   let env' = adjoin env scope in
   (* HACK: when compiling to IC, mark class constructors as unavailable *)
   let ve = match !Flags.compile_mode with
@@ -2391,18 +2393,14 @@ and infer_block env decs at : T.typ * Scope.scope =
 
 and infer_block_decs env decs at : Scope.t =
   let scope = gather_block_decs env decs in
-          assert (not (interestings decs) || Type.Env.mem "Ext" scope.mix_env);
   let env' = adjoin {env with pre = true} scope in
-          assert (not (interestings decs) || Type.Env.mem "Ext" env'.mixs);
   let scope_ce = infer_block_typdecs env' decs in
   check_con_env env' at scope_ce.Scope.con_env;
   let env'' = adjoin {env' with pre = env.pre} scope_ce in
-          assert (not (interestings decs) || Type.Env.mem "Ext" env''.mixs);
   let _scope_ce = infer_block_typdecs env'' decs in
   (* TBR: assertion does not work for types with binders, due to stamping *)
   (* assert (scope_ce = _scope_ce); *)
-  let s = { (infer_block_valdecs (adjoin env'' scope_ce) decs scope_ce) with mix_env = scope.mix_env } in
-            assert (not (interestings decs) || Type.Env.mem "Ext" s.mix_env); s
+  { (infer_block_valdecs (adjoin env'' scope_ce) decs scope_ce) with mix_env = scope.mix_env }
 
 
 and infer_block_exps env decs : T.typ =
@@ -2536,8 +2534,7 @@ and infer_val_path env exp : T.typ option =
    * other value identifiers at type T.Pre
 *)
 and gather_block_decs env decs : Scope.t =
-  let r = List.fold_left (gather_dec env) Scope.empty decs in
-  assert (not (interestings decs) || Type.Env.mem "Ext" r.mix_env); r
+  List.fold_left (gather_dec env) Scope.empty decs
 
 and gather_dec env scope dec : Scope.t =
   match dec.it with

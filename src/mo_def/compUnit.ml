@@ -14,6 +14,7 @@ let is_actor_def e =
 let rec as_actor_def e =
   let open Source in
   match e.it with
+  | CallE _ -> failwith "CallE"
   | AwaitE (Type.Fut, { it = AsyncE (Type.Fut, _, {it = ObjBlockE ({ it = Type.Actor; _}, _t, _bs, fields); note; at }) ; _  }) ->
     begin match fields with
     | { it = { dec = { it = LetD ({ it = VarP { it = "one" } }, _, _) as d } }; _ } as leader :: _ ->
