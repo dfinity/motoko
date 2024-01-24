@@ -53,7 +53,7 @@ module TaggingScheme = struct
     locate unexpected tag errors to compile.ml source lines.
     Flags.sanity_check will check tags, but not further locate them.
  *)
- let debug = false
+ let debug = true
 
  type bit = I | O
  type tag =
@@ -1668,17 +1668,29 @@ module BitTagged = struct
 
   (* static *)
   let can_tag_const pty (n : int64) =
-    let sbits = sbits_of pty in
-    let lower_bound = Int64.(neg (shift_left 1L sbits)) in
-    let upper_bound = Int64.shift_left 1L sbits in
-    lower_bound <= n && n < upper_bound
+    Type.(match pty with
+    |  Nat | Int | Int64 | Int32 ->
+      let sbits = sbits_of pty in
+      let lower_bound = Int64.(neg (shift_left 1L sbits)) in
+      let upper_bound = Int64.shift_left 1L sbits in
+      lower_bound <= n && n < upper_bound
+    | Nat64 | Nat32 ->
+      let ubits = ubits_of pty in
+      let upper_bound = Int64.shift_left 1L ubits in
+      0L <= n && n < upper_bound
+    | _ -> assert false)
 
   let tag_const pty i =
+  Type.(match pty with
+  |  Nat | Int | Int64 | Int32 ->
     Int32.shift_left (Int64.to_int32 i) (32 - ubits_of pty)
     (* tag *)
     |> Int32.logor (TaggingScheme.tag_of_typ pty)
-
-
+  |  Nat64 | Nat32 ->
+    Int32.shift_left (Int64.to_int32 i) (32 - ubits_of pty) (* TBR *)
+    (* tag *)
+    |> Int32.logor (TaggingScheme.tag_of_typ pty)
+  | _ -> assert false)
 
   (* dynamic *)
   let sanity_check_can_tag_i64 env pty get_x =
@@ -1704,6 +1716,8 @@ module BitTagged = struct
       G.nop
 
   let if_can_tag_i64 env pty retty is1 is2 =
+  Type.(match pty with
+  |  Nat | Int | Int64 | Int32 ->
     Func.share_code1 Func.Never env
       (prim_fun_name pty "if_can_tag_i64") ("x", I64Type) [I32Type] (fun env get_x ->
       (* checks that all but the low signed_data_bits bits are either all 0 or all 1 *)
@@ -1713,13 +1727,28 @@ module BitTagged = struct
       G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
       sanity_check_can_tag_i64 env pty get_x
       ) ^^
-    E.if_ env retty is1 is2
+      E.if_ env retty is1 is2
+  | Nat64 | Nat32 ->
+      (* checks that all but the low unsigned bits are all 0 *)
+      let ubitsL = Int64.of_int (ubits_of pty) in
+      compile_shrU64_const ubitsL ^^
+      G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
+      (* TODO sanity check *)
+      E.if_ env retty is1 is2
+  | _ -> assert false)
 
   let if_can_tag_u64 env pty retty is1 is2 =
+  Type.(match pty with
+  |  Nat | Int | Int64 | Int32 ->
     let sbitsL = Int64.of_int (sbits_of pty) in
     compile_shrU64_const sbitsL ^^
     G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
     E.if_ env retty is1 is2
+  | Nat64 | Nat32 ->
+    let ubitsL = Int64.of_int (ubits_of pty) in
+    compile_shrU64_const ubitsL ^^
+    E.if_ env retty is2 is1 (* NB: swapped branches *)
+  | _ -> assert false)
 
   let tag env pty =
     let ubitsl = Int32.of_int (ubits_of pty) in
@@ -1729,9 +1758,16 @@ module BitTagged = struct
     compile_bitor_const (TaggingScheme.tag_of_typ pty)
 
   let untag env pty =
+  Type.(match pty with
+  |  Nat | Int | Int64 | Int32 ->
     let ubitsl = Int32.of_int (ubits_of pty) in
     compile_shrS_const (Int32.sub 32l ubitsl) ^^
     G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32))
+  | Nat64 | Nat32 ->
+    let ubitsl = Int32.of_int (ubits_of pty) in
+    compile_shrU_const (Int32.sub 32l ubitsl) ^^
+    G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
+  | _ -> assert false)
 
   (* 32 bit numbers, dynamic, w.r.t `Int` *)
 
@@ -1758,6 +1794,8 @@ module BitTagged = struct
       G.nop
 
   let if_can_tag_i32 env pty retty is1 is2 =
+  Type.(match pty with
+  |  Nat | Int | Int64 | Int32 ->
     Func.share_code1 Func.Never env
       (prim_fun_name pty "if_can_tag_i32") ("x", I32Type) [I32Type] (fun env get_x ->
         (* checks that all but the low sbits are both either 0 or 1 *)
@@ -1769,11 +1807,23 @@ module BitTagged = struct
         sanity_check_can_tag_i32 env pty get_x)
     ^^
     E.if_ env retty is1 is2
+  | Nat64 | Nat32 ->
+    let ubits = ubits_of pty in
+    compile_shrU_const (Int32.of_int ubits) ^^
+    E.if_ env retty is2 is1 (* NB: swapped branches *)
+  | _ -> assert false)
 
   let if_can_tag_u32 env pty retty is1 is2 =
+  Type.(match pty with
+  |  Nat | Int | Int64 | Int32 ->
     let sbits = sbits_of pty in
     compile_shrU_const (Int32.of_int sbits) ^^
     E.if_ env retty is2 is1 (* NB: swapped branches *)
+  | Nat64 | Nat32 ->
+    let ubits = ubits_of pty in
+    compile_shrU_const (Int32.of_int ubits) ^^
+    E.if_ env retty is2 is1 (* NB: swapped branches *)
+  | _ -> assert false)
 
   let tag_i32 env pty =
     let ubits = ubits_of pty in
@@ -1797,11 +1847,18 @@ module BitTagged = struct
     else G.nop
 
   let untag_i32 line env pty =
+  Type.(match pty with
+  |  Nat | Int | Int64 | Int32 ->
     let ubits = ubits_of pty in
     (* check tag *)
     sanity_check_tag line env pty ^^
     compile_shrS_const (Int32.sub 32l (Int32.of_int ubits))
-
+  | Nat64 | Nat32 ->
+    let ubits = ubits_of pty in
+    (* check tag *)
+    sanity_check_tag line env pty ^^
+    compile_shrU_const (Int32.sub 32l (Int32.of_int ubits))
+  | _ -> assert false)
 end (* BitTagged *)
 
 module Tagged = struct
@@ -8624,7 +8681,8 @@ module StackRep = struct
 
     | UnboxedWord64 pty, Vanilla -> BoxedWord64.box env pty (* ! *)
     | Vanilla, UnboxedWord64 pty -> BoxedWord64.unbox env pty (* ! *)
-    | UnboxedWord64 _, UnboxedWord64 _ -> G.nop (* TBR *)
+    | UnboxedWord64 pty1, UnboxedWord64 pty2 when pty1 = pty2 ->
+       G.nop (* TBR *)
 
     (* TaggedSmallWord types *)
     | UnboxedWord32 (Type.(Int8 | Nat8 | Int16 | Nat16 | Char) as pty), Vanilla ->
@@ -8637,7 +8695,7 @@ module StackRep = struct
     | UnboxedWord32 pty, Vanilla -> BoxedSmallWord.box env pty (* ! *)
     | Vanilla, UnboxedWord32 pty -> BoxedSmallWord.unbox env pty (* ! *)
 
-    | UnboxedWord32 _, UnboxedWord32 _ -> G.nop (* TBR *)
+    | UnboxedWord32 pty1, UnboxedWord32 pty2 when pty1 = pty2 -> G.nop (* TBR *)
 
     | UnboxedFloat64, Vanilla -> Float.box env
     | Vanilla, UnboxedFloat64 -> Float.unbox env
@@ -8649,7 +8707,7 @@ module StackRep = struct
        TaggedSmallWord.untag env ty
     | Const (_, Const.Lit (Const.Word32 (_ty1, n))), UnboxedWord32 _ty2 ->
        compile_unboxed_const n
-    | Const (_, Const.Lit (Const.Word64 (_ty1, n))), UnboxedWord64 _ty2 ->
+    | Const (_, Const.Lit (Const.Word64 (ty1, n))), UnboxedWord64 ty2 when ty1 = ty2 ->
        compile_const_64 n
     | Const (_, Const.Lit (Const.Float64 f)), UnboxedFloat64 -> Float.compile_unboxed_const f
     | Const c, UnboxedTuple 0 -> G.nop
@@ -11346,11 +11404,11 @@ and compile_prim_invocation (env : E.t) ae p es at =
     G.i (Unary (Wasm.Values.I32 I32Op.Popcnt))
   | OtherPrim "popcnt64", [e] ->
     SR.UnboxedWord64 Type.Nat64,
-    compile_exp_as env ae (SR.UnboxedWord64 Type.Nat32) e ^^
+    compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) e ^^
       G.i (Unary (Wasm.Values.I64 I64Op.Popcnt))
   | OtherPrim "popcntInt64", [e] ->
     SR.UnboxedWord64 Type.Int64,
-    compile_exp_as env ae (SR.UnboxedWord64 Type.Int32) e ^^
+    compile_exp_as env ae (SR.UnboxedWord64 Type.Int64) e ^^
     G.i (Unary (Wasm.Values.I64 I64Op.Popcnt))
   | OtherPrim "clz8", [e] ->
      SR.UnboxedWord32 Type.Nat8,
