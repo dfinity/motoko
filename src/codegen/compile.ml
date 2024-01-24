@@ -10724,7 +10724,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
     | Int64, Int ->
       SR.Vanilla,
-      compile_exp_as env ae (SR.UnboxedWord64 Nat64) e ^^
+      compile_exp_as env ae (SR.UnboxedWord64 Int64) e ^^
       BigNum.from_signed_word64 env
 
     | Nat32, Char ->
