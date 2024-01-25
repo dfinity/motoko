@@ -2479,7 +2479,8 @@ and infer_dec env dec : T.typ =
     | _ -> false
   in
   let exported_scope = match dec.it with
-  | ExpD _ -> env.exported_scope
+  | ExpD _ 
+  | ClassD (_, _, _, _, _, { it = T.Actor; _ }, _, _) -> env.exported_scope
   | _ -> env.exported_scope && is_public_field
   in
   let env = { env with exported_scope } in
