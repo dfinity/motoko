@@ -55,7 +55,7 @@ module TaggingScheme = struct
      Flags.sanity_check will check tags, but not further locate them.
   *)
 
-  let debug = false
+  let debug = true
 
   type bit = I
            | O
@@ -8725,7 +8725,7 @@ module StackRep = struct
     | _, _ ->
       Printf.eprintf "Unknown stack_rep conversion %s -> %s\n"
         (to_string sr_in) (to_string sr_out);
-      G.nop
+      assert false
 
 end (* StackRep *)
 

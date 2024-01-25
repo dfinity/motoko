@@ -220,7 +220,7 @@ func btstInt16(w : Int16, amount : Int16) : Bool = (prim "btstInt16" : (Int16, I
 func popcntInt32(w : Int32) : Int32 = (prim "popcntInt32" : Int32 -> Int32) w;
 func clzInt32(w : Int32) : Int32 = (prim "clzInt32" : Int32 -> Int32) w;
 func ctzInt32(w : Int32) : Int32 = (prim "ctzInt32" : Int32 -> Int32) w;
-func btstInt32(w : Int32, amount : Int32) : Bool = (prim "btst32" : (Int32, Int32) -> Int32)(w, amount) != (0 : Int32);
+func btstInt32(w : Int32, amount : Int32) : Bool = (prim "btstInt32" : (Int32, Int32) -> Int32)(w, amount) != (0 : Int32);
 
 func popcntInt64(w : Int64) : Int64 = (prim "popcntInt64" : Int64 -> Int64) w;
 func clzInt64(w : Int64) : Int64 = (prim "clzInt64" : Int64 -> Int64) w;
