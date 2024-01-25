@@ -1,0 +1,2 @@
+unused-public-field.mo:2.16-2.22: warning [M0194], Unused declaration field1
+unused-public-field.mo:1.8-1.22: warning [M0194], Unused declaration UsedTestObject
