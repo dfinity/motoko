@@ -8700,8 +8700,6 @@ module StackRep = struct
 
     | UnboxedWord64 pty, Vanilla -> BoxedWord64.box env pty (* ! *)
     | Vanilla, UnboxedWord64 pty -> BoxedWord64.unbox env pty (* ! *)
-    | UnboxedWord64 pty1, UnboxedWord64 pty2 when pty1 = pty2 ->
-       G.nop (* TBR *)
 
     (* TaggedSmallWord types *)
     | UnboxedWord32 (Type.(Int8 | Nat8 | Int16 | Nat16 | Char) as pty), Vanilla ->
@@ -8713,8 +8711,6 @@ module StackRep = struct
     (* TODO: constrain pty *)
     | UnboxedWord32 pty, Vanilla -> BoxedSmallWord.box env pty (* ! *)
     | Vanilla, UnboxedWord32 pty -> BoxedSmallWord.unbox env pty (* ! *)
-
-    | UnboxedWord32 pty1, UnboxedWord32 pty2 when pty1 = pty2 -> G.nop (* TBR *)
 
     | UnboxedFloat64, Vanilla -> Float.box env
     | Vanilla, UnboxedFloat64 -> Float.unbox env
