@@ -1392,7 +1392,7 @@ and infer_exp'' env exp : T.typ =
   | CallE (exp1, inst, exp2) ->
     infer_call env exp1 inst exp2 exp.at None
   | BlockE decs ->
-    let t, _ = infer_block env decs exp.at in
+    let t, _ = infer_block env decs exp.at false in
     t
   | NotE exp1 ->
     if not env.pre then check_exp_strong env T.bool exp1;
@@ -2305,8 +2305,8 @@ and infer_obj env s dec_fields at check_undeclared : T.typ =
         async = C.NullCap; }
   in
   let decs = List.map (fun (df : dec_field) -> df.it.dec) dec_fields in
-  let _, scope = infer_block env decs at in
   let initial_usage = enter_scope env in
+  let _, scope = infer_block env decs at false in
   let t = object_of_scope env s dec_fields scope at in
   if check_undeclared then
     begin
@@ -2419,7 +2419,8 @@ and check_stab env sort scope dec_fields =
 
 (* Blocks and Declarations *)
 
-and infer_block env decs at : T.typ * Scope.scope =
+and infer_block env decs at check_unused : T.typ * Scope.scope =
+  let initial_usage = enter_scope env in
   let scope = infer_block_decs env decs at in
   let env' = adjoin env scope in
   (* HACK: when compiling to IC, mark class constructors as unavailable *)
@@ -2434,6 +2435,9 @@ and infer_block env decs at : T.typ * Scope.scope =
     | _ -> env'.vals
   in
   let t = infer_block_exps { env' with vals = ve } decs in
+  if check_unused then
+    leave_scope env scope.Scope.val_env initial_usage
+  else ();
   t, scope
 
 and infer_block_decs env decs at : Scope.t =
@@ -2827,7 +2831,7 @@ let infer_prog scope async_cap prog : (T.typ * Scope.t) Diag.result =
         (fun prog ->
           let env0 = env_of_scope msgs scope in
           let env = { env0 with async = async_cap } in
-          let res = infer_block env prog.it prog.at in
+          let res = infer_block env prog.it prog.at true in
           res
         ) prog
     )
@@ -2867,7 +2871,7 @@ let check_lib scope lib : Scope.t Diag.result =
           let env = env_of_scope msgs scope in
           let { imports; body = cub; _ } = lib.it in
           let (imp_ds, ds) = CompUnit.decs_of_lib lib in
-          let typ, _ = infer_block env (imp_ds @ ds) lib.at in
+          let typ, _ = infer_block env (imp_ds @ ds) lib.at true in
           List.iter2 (fun import imp_d -> import.note <- imp_d.note.note_typ) imports imp_ds;
           cub.note <- {note_typ = typ; note_eff = T.Triv};
           let imp_typ = match cub.it with
