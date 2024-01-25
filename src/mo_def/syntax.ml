@@ -171,7 +171,7 @@ and exp' =
   | IdxE of exp * exp                          (* array indexing *)
   | FuncE of string * sort_pat * typ_bind list * pat * typ option * sugar * exp  (* function *)
   | CallE of exp * inst * exp                  (* function call *)
-  | BlockE of dec list                         (* block (with type after avoidance)*)
+  | BlockE of dec list                         (* block (with type after avoidance) *)
   | NotE of exp                                (* negation *)
   | AndE of exp * exp                          (* conjunction *)
   | OrE of exp * exp                           (* disjunction *)
