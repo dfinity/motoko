@@ -2822,7 +2822,6 @@ let check_lib scope lib : Scope.t Diag.result =
     (fun msgs ->
       recover_opt
         (fun lib ->
-          Printf.eprintf "check_lib FILE %s\n"  lib.Source.note.Syntax.filename;
           let env = env_of_scope msgs scope in
           let { imports; body = cub; _ } = lib.it in
           let (imp_ds, ds) = CompUnit.decs_of_lib lib in
