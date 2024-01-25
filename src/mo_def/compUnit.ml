@@ -21,9 +21,9 @@ let rec as_actor_def e =
        (fields @ fs), { note with note_typ = Type.glb note.note_typ note'.note_typ }, at
     | { it = { dec = { it = LetD ({ it = VarP { it = "beep" } }, _, _) as d } }; _ } as leader :: _ ->
        begin match (List.hd _bs).it with
-       | CallE (f, _, a) ->
+       | CallE ({ it = VarE f; _}, _, a) ->
           let at = (List.hd _bs).at in
-          let dec' = LetD ({ it = VarP { it = "retries"; at; note = ()}; at; note = Type.(Prim Nat)}, a, None) in
+          let dec' = LetD ({ it = VarP { it = "retries"; at; note = ()}; at; note = a.note.note_typ }, a, None) in
           let dec = { it = dec'; at; note = a.note } in
           let dec_field = { it = { dec; vis = { it = Private; at; note = () }; stab = None }; at; note = () } in
           let fields' = dec_field :: fields in
