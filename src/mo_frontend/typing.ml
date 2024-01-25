@@ -798,8 +798,7 @@ and check_inst_bounds env sort tbs inst at =
      (break) == 0
 *)
 
-let is_explicit_lit l =
-  match l with
+let is_explicit_lit = function
   | BoolLit _ -> true
   | _ -> false
 
