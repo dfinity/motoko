@@ -29,85 +29,97 @@ let page_size = Int32.of_int (64*1024)
 let page_size64 = Int64.of_int32 page_size
 let page_size_bits = 16
 
-(* Tentative tagging scheme *)
+(* Scalar Tagging Scheme *)
 
 (* Rationale:
    Scalar tags are variable length LSBs.
    A tag (in binary) is either
    * 10 for Int (leaving 30 bits payload)
-   * 01(0+) for unsigned, e.g 0100 for Nat64
-   * 11(0+) for signed,   e.g.1100 for Int64
+   * 01(0+)0 for unsigned, e.g 0100 for Nat64
+   * 11(0+)0 for signed,   e.g.1100 for Int64
    Types must be distinguished by tag.
    LSB must always be 0.
    Decoding the type of scalar is easy using `ctz` to count the trailing zeros, then
-   switching on the MSB of the tag for sign.
+   switching on the MSB of the tag for sign (if any).
    We use the *longest* tag that accommodates the required payload bits, to allow room
-   for any future tags that may require more payload bits.
-   01(0^30) is used for the unit tag (the payload is a trivial zero-length word).
+   for any future tags that may require more payload bits,
+   e.g. 01(0^14) for Nat8, 11(0^14) for Int8
+   01(0^30) is used for the unit tag (the payload is a trivial zero-length bit string).
 *)
 
 module TaggingScheme = struct
 
- (*
-    Enable for development only to sanity check value tags and
-    locate unexpected tag errors to compile.ml source lines.
-    Flags.sanity_check will check tags, but not further locate them.
- *)
- let debug = false
+  (*
+     Enable for development only to sanity check value tags and
+     locate unexpected tag errors to compile.ml source lines.
+     Flags.sanity_check will check tags, but not further locate them.
+  *)
 
- type bit = I | O
- type tag =
-   TBool
- | TRef
- | TNum
- | TNat64 | TInt64
- | TNat32 | TInt32
- | TChar
- | TNat8 | TInt8
- | TNat16 | TInt16
- | TUnit
- | TUnused
+  let debug = false
 
- let _ = (I,O)
+  type bit = I
+           | O
+  let _ = (I,O) (* silence warning on unused constructors *)
 
- (* Leverage OCaml pattern match compilation to check tagging scheme is injective *)
- let _decode u32 =
-   match u32 with
-   | ((O,O,O,O,O,O,O,O), (O,O,O,O,O,O,O,O), (O,O,O,O,O,O,O,O), (O,O,O,O,O,O,O,O)) -> TBool (* false *)
-   | ((O,O,O,O,O,O,O,O), (O,O,O,O,O,O,O,O), (O,O,O,O,O,O,O,O), (O,O,O,O,O,O,O,I)) -> TBool (* true *)
-   | ((_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,_,I,I)) -> TRef  (* 30 bit *)
-   | ((_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,_,I,O)) -> TNum   (* 30 bit *)
-   | ((_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,O,I,O,O)) -> TNat64 (* 28 bit *)
-   | ((_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,I,I,O,O)) -> TInt64
-   | ((_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,O,I,O,O,O)) -> TNat32 (* 27 bit *)
-   | ((_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,I,I,O,O,O)) -> TInt32
-   | ((_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,O,I,O), (O,O,O,O,O,O,O,O)) -> TChar
-   | ((_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (O,I,O,O,O,O,O,O), (O,O,O,O,O,O,O,O)) -> TNat16
-   | ((_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (I,I,O,O,O,O,O,O), (O,O,O,O,O,O,O,O)) -> TInt16
-   | ((_,_,_,_,_,_,_,_), (O,I,O,O,O,O,O,O), (O,O,O,O,O,O,O,O), (O,O,O,O,O,O,O,O)) -> TNat8
-   | ((_,_,_,_,_,_,_,_), (I,I,O,O,O,O,O,O), (O,O,O,O,O,O,O,O), (O,O,O,O,O,O,O,O)) -> TInt8
-   | ((O,I,O,O,O,O,O,O), (O,O,O,O,O,O,O,O), (O,O,O,O,O,O,O,O), (O,O,O,O,O,O,O,O)) -> TUnit
-   | _                                                                            -> TUnused
+  type tag =
+    TBool
+  | TRef
+  | TNum
+  | TNat64 | TInt64
+  | TNat32 | TInt32
+  | TChar
+  | TNat8 | TInt8
+  | TNat16 | TInt16
+  | TUnit
+  | TUnused
 
- let tag_of_typ pty =
-   Type.(match pty with
-   | Nat
-   | Int ->                                    0b10l
-   | Nat64 ->                                0b0100l
-   | Int64 ->                                0b1100l
-   | Nat32 ->                               0b01000l
-   | Int32 ->                               0b11000l
-   | Char  ->                        0b010_00000000l
-   | Nat16 ->                   0b01000000_00000000l
-   | Int16 ->                   0b11000000_00000000l
-   | Nat8  ->          0b01000000_00000000_00000000l
-   | Int8  ->          0b11000000_00000000_00000000l
-   (*   | Unit  -> 0b01000000_00000000_00000000_00000000l *)
-   | _  -> assert false
-   )
+  (* Leverage OCaml pattern match compilation to check tagging scheme is injective *)
+  let _decode u32 =
+    match u32 with
+    | ((O,O,O,O,O,O,O,O), (O,O,O,O,O,O,O,O), (O,O,O,O,O,O,O,O), (O,O,O,O,O,O,O,O)) -> TBool (* false *)
+    | ((O,O,O,O,O,O,O,O), (O,O,O,O,O,O,O,O), (O,O,O,O,O,O,O,O), (O,O,O,O,O,O,O,I)) -> TBool (* true *)
+    | ((_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,_,I,I)) -> TRef  (* 30 bit *)
+    | ((_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,_,I,O)) -> TNum   (* 30 bit *)
+    | ((_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,O,I,O,O)) -> TNat64 (* 28 bit *)
+    | ((_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,I,I,O,O)) -> TInt64
+    | ((_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,O,I,O,O,O)) -> TNat32 (* 27 bit *)
+    | ((_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,I,I,O,O,O)) -> TInt32
+    | ((_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (_,_,_,_,_,O,I,O), (O,O,O,O,O,O,O,O)) -> TChar
+    | ((_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (O,I,O,O,O,O,O,O), (O,O,O,O,O,O,O,O)) -> TNat16
+    | ((_,_,_,_,_,_,_,_), (_,_,_,_,_,_,_,_), (I,I,O,O,O,O,O,O), (O,O,O,O,O,O,O,O)) -> TInt16
+    | ((_,_,_,_,_,_,_,_), (O,I,O,O,O,O,O,O), (O,O,O,O,O,O,O,O), (O,O,O,O,O,O,O,O)) -> TNat8
+    | ((_,_,_,_,_,_,_,_), (I,I,O,O,O,O,O,O), (O,O,O,O,O,O,O,O), (O,O,O,O,O,O,O,O)) -> TInt8
+    | ((O,I,O,O,O,O,O,O), (O,O,O,O,O,O,O,O), (O,O,O,O,O,O,O,O), (O,O,O,O,O,O,O,O)) -> TUnit
+    | _                                                                            -> TUnused
 
- let unit_tag = (* all tag, no payload (none needed) *)
-              0b01000000_00000000_00000000_00000000l
+  let tag_of_typ pty = Type.(
+    match pty with
+    | Nat
+    | Int ->                                    0b10l
+    | Nat64 ->                                0b0100l
+    | Int64 ->                                0b1100l
+    | Nat32 ->                               0b01000l
+    | Int32 ->                               0b11000l
+    | Char  ->                        0b010_00000000l
+    | Nat16 ->                   0b01000000_00000000l
+    | Int16 ->                   0b11000000_00000000l
+    | Nat8  ->          0b01000000_00000000_00000000l
+    | Int8  ->          0b11000000_00000000_00000000l
+    | _  -> assert false)
+
+  let unit_tag = (* all tag, no payload (none needed) *)
+               0b01000000_00000000_00000000_00000000l
+
+  (* Number of payload bits in compact representation, including any sign *)
+  let ubits_of pty = Type.(
+    match pty with
+    | Nat | Int     -> 30
+    | Nat64 | Int64 -> 28
+    | Nat32 | Int32 -> 27
+    | Char          -> 21
+    | Nat16 | Int16 -> 16
+    | Nat8  | Int8  ->  8
+    | _ -> assert false)
 
 end
 
@@ -1634,7 +1646,7 @@ module BitTagged = struct
 
      Note that {Nat,Int}{8,16} do not need to be explicitly bit-tagged:
      The bytes are stored in the _most_ significant byte(s) of the `i32`,
-     thus lowest two bits are always 0. (UPDATE ME)
+     thus lowest two bits are always 0.
      All arithmetic is implemented directly on that representation, see
      module TaggedSmallWord.
   *)
@@ -1656,19 +1668,15 @@ module BitTagged = struct
     compile_bitand_const 0x1l ^^
     E.if_ env retty is2 is1
 
-  let ubits_of pty =
-    Type.(match pty with
-          | Nat | Int -> 30
-          | Nat64 | Int64 -> 28
-          | Int32 | Nat32 -> 27
-          | _ -> assert false)
+  let ubits_of pty = TaggingScheme.ubits_of pty
+
   let sbits_of pty = (ubits_of pty) - 1
 
   (* 64 bit numbers *)
 
   (* static *)
-  let can_tag_const pty (n : int64) =
-    Type.(match pty with
+  let can_tag_const pty (n : int64) = Type.(
+    match pty with
     |  Nat | Int | Int64 | Int32 ->
       let sbits = sbits_of pty in
       let lower_bound = Int64.(neg (shift_left 1L sbits)) in
@@ -1680,17 +1688,17 @@ module BitTagged = struct
       0L <= n && n < upper_bound
     | _ -> assert false)
 
-  let tag_const pty i =
-  Type.(match pty with
-  |  Nat | Int | Int64 | Int32 ->
-    Int32.shift_left (Int64.to_int32 i) (32 - ubits_of pty)
-    (* tag *)
-    |> Int32.logor (TaggingScheme.tag_of_typ pty)
-  |  Nat64 | Nat32 ->
-    Int32.shift_left (Int64.to_int32 i) (32 - ubits_of pty) (* TBR *)
-    (* tag *)
-    |> Int32.logor (TaggingScheme.tag_of_typ pty)
-  | _ -> assert false)
+  let tag_const pty i = Type.(
+    match pty with
+    |  Nat | Int | Int64 | Int32 ->
+      Int32.shift_left (Int64.to_int32 i) (32 - ubits_of pty)
+      (* tag *)
+      |> Int32.logor (TaggingScheme.tag_of_typ pty)
+    |  Nat64 | Nat32 ->
+      Int32.shift_left (Int64.to_int32 i) (32 - ubits_of pty) (* TBR *)
+      (* tag *)
+      |> Int32.logor (TaggingScheme.tag_of_typ pty)
+    | _ -> assert false)
 
   (* dynamic *)
   let sanity_check_can_tag_i64 env pty get_x =
@@ -1722,40 +1730,40 @@ module BitTagged = struct
     else
       G.nop
 
-  let if_can_tag_i64 env pty retty is1 is2 =
-  Type.(match pty with
-  | Nat | Int | Int64 | Int32 ->
-    Func.share_code1 Func.Never env
-      (prim_fun_name pty "if_can_tag_i64") ("x", I64Type) [I32Type] (fun env get_x ->
-      (* checks that all but the low signed_data_bits bits are either all 0 or all 1 *)
-      get_x ^^ compile_shl64_const 1L ^^
-      get_x ^^ G.i (Binary (Wasm.Values.I64 I32Op.Xor)) ^^
-      compile_shrU64_const (Int64.of_int (ubits_of pty)) ^^
-      G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
-      sanity_check_can_tag_i64 env pty get_x) ^^
-    E.if_ env retty is1 is2
-  | Nat64 | Nat32 ->
-    Func.share_code1 Func.Never env
-       (prim_fun_name pty "if_can_tag_i64") ("x", I64Type) [I32Type] (fun env get_x ->
-        (* checks that all but the low ubits are 0 *)
-        get_x ^^ compile_shrU64_const (Int64.of_int (ubits_of pty)) ^^
-        G.i (Test (Wasm.Values.I64 I32Op.Eqz)) ^^
+  let if_can_tag_i64 env pty retty is1 is2 = Type.(
+    match pty with
+    | Nat | Int | Int64 | Int32 ->
+      Func.share_code1 Func.Never env
+        (prim_fun_name pty "if_can_tag_i64") ("x", I64Type) [I32Type] (fun env get_x ->
+        (* checks that all but the low signed_data_bits bits are either all 0 or all 1 *)
+        get_x ^^ compile_shl64_const 1L ^^
+        get_x ^^ G.i (Binary (Wasm.Values.I64 I32Op.Xor)) ^^
+        compile_shrU64_const (Int64.of_int (ubits_of pty)) ^^
+        G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
         sanity_check_can_tag_i64 env pty get_x) ^^
-    E.if_ env retty is1 is2
-   | _ -> assert false)
+      E.if_ env retty is1 is2
+    | Nat64 | Nat32 ->
+      Func.share_code1 Func.Never env
+         (prim_fun_name pty "if_can_tag_i64") ("x", I64Type) [I32Type] (fun env get_x ->
+          (* checks that all but the low ubits are 0 *)
+          get_x ^^ compile_shrU64_const (Int64.of_int (ubits_of pty)) ^^
+          G.i (Test (Wasm.Values.I64 I32Op.Eqz)) ^^
+          sanity_check_can_tag_i64 env pty get_x) ^^
+      E.if_ env retty is1 is2
+     | _ -> assert false)
 
-  let if_can_tag_u64 env pty retty is1 is2 =
-  Type.(match pty with
-  |  Nat | Int | Int64 | Int32 ->
-    let sbitsL = Int64.of_int (sbits_of pty) in
-    compile_shrU64_const sbitsL ^^
-    G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
-    E.if_ env retty is1 is2
-  | Nat64 | Nat32 ->
-    let ubitsL = Int64.of_int (ubits_of pty) in
-    compile_shrU64_const ubitsL ^^
-    E.if_ env retty is2 is1 (* NB: swapped branches *)
-  | _ -> assert false)
+  let if_can_tag_u64 env pty retty is1 is2 = Type.(
+    match pty with
+    |  Nat | Int | Int64 | Int32 ->
+      let sbitsL = Int64.of_int (sbits_of pty) in
+      compile_shrU64_const sbitsL ^^
+      G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
+      E.if_ env retty is1 is2
+    | Nat64 | Nat32 ->
+      let ubitsL = Int64.of_int (ubits_of pty) in
+      compile_shrU64_const ubitsL ^^
+      E.if_ env retty is2 is1 (* NB: swapped branches *)
+    | _ -> assert false)
 
   let tag env pty = (* TBR *)
     let ubitsl = Int32.of_int (ubits_of pty) in
@@ -1764,17 +1772,33 @@ module BitTagged = struct
     (* tag *)
     compile_bitor_const (TaggingScheme.tag_of_typ pty)
 
-  let untag env pty =
-  Type.(match pty with
-  |  Nat | Int | Int64 | Int32 ->
-    let ubitsl = Int32.of_int (ubits_of pty) in
-    compile_shrS_const (Int32.sub 32l ubitsl) ^^
-    G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32))
-  | Nat64 | Nat32 ->
-    let ubitsl = Int32.of_int (ubits_of pty) in
-    compile_shrU_const (Int32.sub 32l ubitsl) ^^
-    G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
-  | _ -> assert false)
+  let sanity_check_tag line env ty =
+    if TaggingScheme.debug || !(Flags.sanity) then
+      let name =
+        (prim_fun_name ty "sanity_check_tag") ^
+          (if TaggingScheme.debug then Int.to_string line else "")
+      in
+      let tag_mask = Int32.(sub (shift_left 1l (32 - TaggingScheme.ubits_of ty)) one) in
+      (Func.share_code1 Func.Always env name ("v", I32Type) [I32Type] (fun env get_n ->
+         get_n ^^
+         compile_bitand_const tag_mask ^^
+         compile_eq_const (TaggingScheme.tag_of_typ ty) ^^
+         E.else_trap_with env "unexpected tag" ^^
+         get_n))
+    else G.nop
+
+  let untag line env pty = Type.(match pty with
+    | Nat | Int | Int64 | Int32 ->
+      let ubitsl = Int32.of_int (ubits_of pty) in
+      sanity_check_tag line env pty ^^
+      compile_shrS_const (Int32.sub 32l ubitsl) ^^
+      G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32))
+    | Nat64 | Nat32 ->
+      let ubitsl = Int32.of_int (ubits_of pty) in
+      sanity_check_tag line env pty ^^
+      compile_shrU_const (Int32.sub 32l ubitsl) ^^
+      G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
+    | _ -> assert false)
 
   (* 32 bit numbers, dynamic, w.r.t `Int` *)
 
@@ -1807,42 +1831,41 @@ module BitTagged = struct
     else
       G.nop
 
-  let if_can_tag_i32 env pty retty is1 is2 =
-  Type.(match pty with
-  |  Nat | Int | Int64 | Int32 ->
-    Func.share_code1 Func.Never env
-      (prim_fun_name pty "if_can_tag_i32") ("x", I32Type) [I32Type] (fun env get_x ->
-        (* checks that all but the low sbits are both either 0 or 1 *)
-        get_x ^^
-        get_x ^^ compile_shrS_const (Int32.of_int ((32 - ubits_of pty) - 1)) ^^
-        G.i (Binary (Wasm.Values.I32 I32Op.Xor)) ^^
-        compile_shrU_const (Int32.of_int (sbits_of pty)) ^^
-        G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
-        sanity_check_can_tag_i32 env pty get_x)
-    ^^
-    E.if_ env retty is1 is2
-  | Nat64 | Nat32 ->
-     Func.share_code1 Func.Never env
-       (prim_fun_name pty "if_can_tag_i32") ("x", I32Type) [I32Type] (fun env get_x ->
-        (* checks that all but the low ubits are 0 *)
-        get_x ^^ compile_shrU_const (Int32.of_int (ubits_of pty)) ^^
-        G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
-        sanity_check_can_tag_i32 env pty get_x)
-    ^^
-    E.if_ env retty is1 is2
-  | _ -> assert false)
+  let if_can_tag_i32 env pty retty is1 is2 = Type.(match pty with
+    |  Nat | Int | Int64 | Int32 ->
+      Func.share_code1 Func.Never env
+        (prim_fun_name pty "if_can_tag_i32") ("x", I32Type) [I32Type] (fun env get_x ->
+          (* checks that all but the low sbits are both either 0 or 1 *)
+          get_x ^^
+          get_x ^^ compile_shrS_const (Int32.of_int ((32 - ubits_of pty) - 1)) ^^
+          G.i (Binary (Wasm.Values.I32 I32Op.Xor)) ^^
+          compile_shrU_const (Int32.of_int (sbits_of pty)) ^^
+          G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
+          sanity_check_can_tag_i32 env pty get_x)
+      ^^
+      E.if_ env retty is1 is2
+    | Nat64 | Nat32 ->
+       Func.share_code1 Func.Never env
+         (prim_fun_name pty "if_can_tag_i32") ("x", I32Type) [I32Type] (fun env get_x ->
+          (* checks that all but the low ubits are 0 *)
+          get_x ^^ compile_shrU_const (Int32.of_int (ubits_of pty)) ^^
+          G.i (Test (Wasm.Values.I32 I32Op.Eqz)) ^^
+          sanity_check_can_tag_i32 env pty get_x)
+      ^^
+      E.if_ env retty is1 is2
+    | _ -> assert false)
 
-  let if_can_tag_u32 env pty retty is1 is2 =
-  Type.(match pty with
-  |  Nat | Int | Int64 | Int32 ->
-    let sbits = sbits_of pty in
-    compile_shrU_const (Int32.of_int sbits) ^^
-    E.if_ env retty is2 is1 (* NB: swapped branches *)
-  | Nat64 | Nat32 ->
-    let ubits = ubits_of pty in
-    compile_shrU_const (Int32.of_int ubits) ^^
-    E.if_ env retty is2 is1 (* NB: swapped branches *)
-  | _ -> assert false)
+  let if_can_tag_u32 env pty retty is1 is2 = Type.(
+    match pty with
+    |  Nat | Int | Int64 | Int32 ->
+      let sbits = sbits_of pty in
+      compile_shrU_const (Int32.of_int sbits) ^^
+      E.if_ env retty is2 is1 (* NB: swapped branches *)
+    | Nat64 | Nat32 ->
+      let ubits = ubits_of pty in
+      compile_shrU_const (Int32.of_int ubits) ^^
+      E.if_ env retty is2 is1 (* NB: swapped branches *)
+    | _ -> assert false)
 
   let tag_i32 env pty =
     let ubits = ubits_of pty in
@@ -1850,34 +1873,19 @@ module BitTagged = struct
     (* tag *)
     compile_bitor_const (TaggingScheme.tag_of_typ pty)
 
-  let sanity_check_tag line env ty =
-    if TaggingScheme.debug || !(Flags.sanity) then
-      let name =
-        (prim_fun_name ty "BitTagged.sanity_check_tag") ^
-          (if TaggingScheme.debug then Int.to_string line else "")
-      in
-      let tag_mask = Int32.(sub (shift_left 1l (32 - ubits_of ty)) one) in
-      (Func.share_code1 Func.Always env name ("v", I32Type) [I32Type] (fun env get_n ->
-         get_n ^^
-         compile_bitand_const tag_mask ^^
-         compile_eq_const (TaggingScheme.tag_of_typ ty) ^^
-         E.else_trap_with env "unexpected tag" ^^
-         get_n))
-    else G.nop
+  let untag_i32 line env pty = Type.(match pty with
+    |  Nat | Int | Int64 | Int32 ->
+      let ubits = ubits_of pty in
+      (* check tag *)
+      sanity_check_tag line env pty ^^
+      compile_shrS_const (Int32.sub 32l (Int32.of_int ubits))
+    | Nat64 | Nat32 ->
+      let ubits = ubits_of pty in
+      (* check tag *)
+      sanity_check_tag line env pty ^^
+      compile_shrU_const (Int32.sub 32l (Int32.of_int ubits))
+    | _ -> assert false)
 
-  let untag_i32 line env pty =
-  Type.(match pty with
-  |  Nat | Int | Int64 | Int32 ->
-    let ubits = ubits_of pty in
-    (* check tag *)
-    sanity_check_tag line env pty ^^
-    compile_shrS_const (Int32.sub 32l (Int32.of_int ubits))
-  | Nat64 | Nat32 ->
-    let ubits = ubits_of pty in
-    (* check tag *)
-    sanity_check_tag line env pty ^^
-    compile_shrU_const (Int32.sub 32l (Int32.of_int ubits))
-  | _ -> assert false)
 end (* BitTagged *)
 
 module Tagged = struct
@@ -2520,7 +2528,7 @@ module BoxedWord64 = struct
       (prim_fun_name pty "unbox64") ("n", I32Type) [I64Type] (fun env get_n ->
       get_n ^^
       BitTagged.if_tagged_scalar env [I64Type]
-        ( get_n ^^ BitTagged.untag env pty)
+        ( get_n ^^ BitTagged.untag __LINE__ env pty)
         ( get_n ^^ Tagged.load_forwarding_pointer env ^^ Tagged.load_field64 env (payload_field env))
     )
 end (* BoxedWord64 *)
@@ -2673,7 +2681,7 @@ module TaggedSmallWord = struct
      perspective, there are certain differences that are type based. This module
      provides helpers to abstract over those.
 
-     Caution: Some functions here are also used for Nat32/Int32, while others
+     Caution: Some functions here are also used for unboxed Nat32/Int32, while others
      are _only_ used for the small ones. Check call-sites!
   *)
 
@@ -2695,7 +2703,7 @@ module TaggedSmallWord = struct
     | Int8 | Nat8
     | Int16 | Nat16
     | Char ->
-       TaggingScheme.tag_of_typ pty
+      TaggingScheme.tag_of_typ pty
     (* unboxed on stack *)
     | Int32 | Nat32 -> 0l
     | _ -> assert false)
@@ -2719,21 +2727,6 @@ module TaggedSmallWord = struct
     | ty -> compile_bitand_const (bitwidth_mask_of_type ty)
 
   let shift_leftWordNtoI32 = compile_shl_const
-
-  let sanity_check_tag line env ty =
-    if TaggingScheme.debug || !(Flags.sanity) then
-      let name =
-        (prim_fun_name ty "TaggedSmallWord.sanity_check_tag") ^
-          (if TaggingScheme.debug then Int.to_string line else "")
-      in
-      let tag_mask = padding_of_type ty in
-      (Func.share_code1 Func.Always env name ("v", I32Type) [I32Type] (fun env get_n ->
-        get_n ^^
-        compile_bitand_const tag_mask ^^
-        compile_eq_const (tag_of_type ty) ^^
-        E.else_trap_with env "unexpected_tag" ^^
-        get_n))
-    else G.nop
 
   (* Makes sure that the word payload (e.g. shift/rotate amount) is in the LSB bits of the word. *)
   let lsb_adjust = function
@@ -2780,12 +2773,12 @@ module TaggedSmallWord = struct
        msb_adjust ty
 
   (* Code points occupy 21 bits, so can always be tagged scalars *)  (* TODO: rename (not tagging) *)
-  let untag_codepoint env = lsb_adjust Type.Char
-  let tag_codepoint = msb_adjust Type.Char
+  let lsb_adjust_codepoint env = lsb_adjust Type.Char
+  let msb_adjust_codepoint = msb_adjust Type.Char
 
   (* Checks (n < 0xD800 || 0xE000 ≤ n ≤ 0x10FFFF),
      ensuring the codepoint range and the absence of surrogates. *)
-  let check_and_tag_codepoint env =
+  let check_and_msb_adjust_codepoint env =
     Func.share_code1 Func.Always env "Nat32->Char" ("n", I32Type) [I32Type] (fun env get_n ->
       get_n ^^ compile_unboxed_const 0xD800l ^^
       G.i (Compare (Wasm.Values.I32 I32Op.GeU)) ^^
@@ -2796,7 +2789,7 @@ module TaggedSmallWord = struct
       G.i (Compare (Wasm.Values.I32 I32Op.GtU)) ^^
       G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
       E.then_trap_with env "codepoint out of range" ^^
-      get_n ^^ tag_codepoint
+      get_n ^^ msb_adjust_codepoint
     )
 
   let vanilla_lit ty v =
@@ -2897,7 +2890,7 @@ module TaggedSmallWord = struct
     match pty with
     | Type.(Nat8 | Int8 | Nat16 | Int16 | Char) ->
        (* check tag *)
-       sanity_check_tag __LINE__ env pty ^^
+       BitTagged.sanity_check_tag __LINE__ env pty ^^
        (* clear tag *)
        compile_bitand_const (mask_of_type pty)
     | _ -> assert false
@@ -3768,7 +3761,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     let set_a, get_a = new_local env "a" in
     set_a ^^ get_a ^^
     BitTagged.if_tagged_scalar env [I64Type]
-      (get_a ^^ BitTagged.untag env Type.Int)
+      (get_a ^^ BitTagged.untag __LINE__ env Type.Int)
       (get_a ^^ Num.truncate_to_word64 env)
 
   let truncate_to_word32 env =
@@ -3782,7 +3775,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     let set_a, get_a = new_local env "a" in
     set_a ^^ get_a ^^
     BitTagged.if_tagged_scalar env [I64Type]
-      (get_a ^^ BitTagged.untag env Type.Int)
+      (get_a ^^ BitTagged.untag __LINE__ env Type.Int)
       (get_a ^^ Num.to_word64 env)
 
   let to_word32 env =
@@ -4482,7 +4475,7 @@ module Text = struct
       BigNum.from_word32 env
     )
   let prim_showChar env =
-    TaggedSmallWord.untag_codepoint env ^^
+    TaggedSmallWord.lsb_adjust_codepoint env ^^
     E.call_import env "rts" "text_singleton"
   let to_blob env = E.call_import env "rts" "blob_of_text"
 
@@ -4502,7 +4495,7 @@ module Text = struct
     E.call_import env "rts" "text_iter_done"
   let iter_next env =
     E.call_import env "rts" "text_iter_next" ^^
-    TaggedSmallWord.tag_codepoint
+    TaggedSmallWord.msb_adjust_codepoint
 
   let compare env op =
     let open Operator in
@@ -6974,7 +6967,7 @@ module MakeSerialization (Strm : Stream) = struct
       | Prim ((Int32|Nat32) as ty) ->
         write_word_32 env get_data_buf (get_x ^^ BoxedSmallWord.unbox env ty)
       | Prim Char ->
-        write_word_32 env get_data_buf (get_x ^^ TaggedSmallWord.untag_codepoint env)
+        write_word_32 env get_data_buf (get_x ^^ TaggedSmallWord.lsb_adjust_codepoint env)
       | Prim ((Int16|Nat16) as ty) ->
         reserve env get_data_buf 2l ^^
         get_x ^^ TaggedSmallWord.lsb_adjust ty ^^
@@ -7506,7 +7499,7 @@ module MakeSerialization (Strm : Stream) = struct
         with_prim_typ t
         begin
           ReadBuf.read_word32 env get_data_buf ^^
-          TaggedSmallWord.check_and_tag_codepoint env ^^
+          TaggedSmallWord.check_and_msb_adjust_codepoint env ^^
           TaggedSmallWord.tag env Char
         end
       | Prim ((Int16|Nat16) as ty) ->
@@ -10720,7 +10713,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     | Char, Nat32 ->
       SR.UnboxedWord32 Nat32,
       compile_exp_as env ae (SR.UnboxedWord32 t1) e ^^
-      TaggedSmallWord.untag_codepoint env
+      TaggedSmallWord.lsb_adjust_codepoint env
 
     | _ -> SR.Unreachable, todo_trap env "compile_prim_invocation" (Arrange_ir.prim p)
     end
@@ -10804,7 +10797,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     | Nat32, Char ->
       SR.UnboxedWord32 Type.Char, (* ! *)
       compile_exp_as env ae (SR.UnboxedWord32 Nat32) e ^^
-      TaggedSmallWord.check_and_tag_codepoint env (* TBR *)
+      TaggedSmallWord.check_and_msb_adjust_codepoint env (* TBR *)
 
     | Float, Int ->
       SR.Vanilla,
@@ -11421,7 +11414,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | OtherPrim "popcnt64", [e] ->
     SR.UnboxedWord64 Type.Nat64,
     compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) e ^^
-      G.i (Unary (Wasm.Values.I64 I64Op.Popcnt))
+    G.i (Unary (Wasm.Values.I64 I64Op.Popcnt))
   | OtherPrim "popcntInt64", [e] ->
     SR.UnboxedWord64 Type.Int64,
     compile_exp_as env ae (SR.UnboxedWord64 Type.Int64) e ^^
@@ -12025,9 +12018,9 @@ and compile_exp_as_test env ae e =
 and compile_char_to_char_rts env ae exp rts_fn =
   SR.UnboxedWord32 Type.Char,
   compile_exp_as env ae (SR.UnboxedWord32 Type.Char) exp ^^
-  TaggedSmallWord.untag_codepoint env ^^
+  TaggedSmallWord.lsb_adjust_codepoint env ^^
   E.call_import env "rts" rts_fn ^^
-  TaggedSmallWord.tag_codepoint
+  TaggedSmallWord.msb_adjust_codepoint
 
 (* Compile a prim of type Char -> Bool to a RTS call. The RTS function should
    have type int32_t -> int32_t where the return value is 0 for 'false' and 1
@@ -12035,7 +12028,7 @@ and compile_char_to_char_rts env ae exp rts_fn =
 and compile_char_to_bool_rts (env : E.t) (ae : VarEnv.t) exp rts_fn =
   SR.bool,
   compile_exp_as env ae (SR.UnboxedWord32 Type.Char) exp ^^
-  TaggedSmallWord.untag_codepoint env ^^
+  TaggedSmallWord.lsb_adjust_codepoint env ^^
   (* The RTS function returns Motoko True/False values (which are represented as
      1 and 0, respectively) so we don't need any marshalling *)
   E.call_import env "rts" rts_fn
