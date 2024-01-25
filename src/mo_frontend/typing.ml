@@ -2283,6 +2283,13 @@ and is_typ_dec dec : bool = match dec.it with
 
 
 and infer_obj env s dec_fields at check_undeclared : T.typ =
+  let mark_public_fields_as_used env field_declarations =
+    let scope = List.filter (fun field -> is_public field.it.vis) field_declarations 
+    |> List.map (fun field -> field.it.dec)
+    |> gather_block_decs env in
+    let public_identifiers = get_identifiers scope.Scope.val_env in
+    S.iter (use_declaration env) public_identifiers
+  in
   let env =
     if s <> T.Actor then
       { env with in_actor = false }
@@ -2298,7 +2305,10 @@ and infer_obj env s dec_fields at check_undeclared : T.typ =
   let initial_usage = enter_scope env in
   let t = object_of_scope env s dec_fields scope at in
   if check_undeclared then
-    leave_scope env scope.Scope.val_env initial_usage
+    begin
+      mark_public_fields_as_used env dec_fields;
+      leave_scope env scope.Scope.val_env initial_usage
+    end
   else ();
   let (_, tfs) = T.as_obj t in
   if not env.pre then begin
