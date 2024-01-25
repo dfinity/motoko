@@ -2894,7 +2894,7 @@ let check_lib scope lib : Scope.t Diag.result =
           let env = env_of_scope msgs scope in
           let { imports; body = cub; _ } = lib.it in
           let (imp_ds, ds) = CompUnit.decs_of_lib lib in
-          let typ, _ = infer_block env (imp_ds @ ds) lib.at true in
+          let typ, _ = infer_block env (imp_ds @ ds) lib.at false in
           List.iter2 (fun import imp_d -> import.note <- imp_d.note.note_typ) imports imp_ds;
           cub.note <- {note_typ = typ; note_eff = T.Triv};
           let imp_typ = match cub.it with
