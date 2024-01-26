@@ -55,7 +55,7 @@ module TaggingScheme = struct
      Flags.sanity_check will check tags, but not further locate them.
   *)
 
-  let debug = false
+  let debug = true (* should never be true in master! *)
 
   type bit = I
            | O
@@ -3061,7 +3061,7 @@ sig
   val truncate_to_word64 : E.t -> G.t
 
   (* unsigned word to SR.Vanilla *)
-  val from_word30 : E.t -> G.t
+  val from_word_compact : E.t -> G.t
   val from_word32 : E.t -> G.t
   val from_word64 : E.t -> G.t
 
@@ -3394,7 +3394,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
           G.if1 I32Type
             (get_res ^^ compile_bitor_const (TaggingScheme.tag_of_typ Type.Int))
             (get_n ^^ compile_shrS_const (Int32.of_int (32 - BitTagged.ubits_of Type.Int)) ^^
-             Num.from_word30 env ^^ get_amount ^^ Num.compile_lsh env) (* TBR: from_word30? *)
+             Num.from_word_compact env ^^ get_amount ^^ Num.compile_lsh env)
         )
         (get_n ^^ get_amount ^^ Num.compile_lsh env))
 
@@ -3736,12 +3736,21 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     let set_a, get_a = new_local64 env "a" in
     set_a ^^
     get_a ^^ BitTagged.if_can_tag_i64 env Type.Int [I32Type]
-      (get_a ^^ BitTagged.tag env Type.Int) (*TBR*)
+      (get_a ^^ BitTagged.tag env Type.Int)
       (get_a ^^ Num.from_signed_word64 env)
 
-  let from_word30 env = (* TBR: don't think we've got 30 bits! *)
-    (*    compile_shl_const (Int32.sub 32l BitTagged.ubitsl) ^^ *) (* TBR *)
-    BitTagged.tag_i32 env Type.Int
+  let from_word_compact env =
+    begin
+      if TaggingScheme.debug || !(Flags.sanity)
+     then
+      let set_a, get_a = new_local env "a" in
+      set_a ^^
+      get_a ^^ BitTagged.if_can_tag_i32 env Type.Int [I32Type]
+        get_a
+        (E.trap_with env "from_word_compact")
+      else G.nop
+    end ^^
+      BitTagged.tag_i32 env Type.Int
 
   let from_word32 env =
     let set_a, get_a = new_local env "a" in
@@ -3804,7 +3813,7 @@ module BigNumLibtommath : BigNumType = struct
   let truncate_to_word32 env = E.call_import env "rts" "bigint_to_word32_wrap"
   let truncate_to_word64 env = E.call_import env "rts" "bigint_to_word64_wrap"
 
-  let from_word30 env = E.call_import env "rts" "bigint_of_word32"
+  let from_word_compact env = E.call_import env "rts" "bigint_of_word32"
   let from_word32 env = E.call_import env "rts" "bigint_of_word32"
   let from_word64 env = E.call_import env "rts" "bigint_of_word64"
   let from_signed_word32 env = E.call_import env "rts" "bigint_of_int32"
@@ -10630,11 +10639,8 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla,
     compile_array_index env ae e1 e2 ^^
     load_ptr
-  | NextArrayOffset spacing, [e] ->
-    let advance_by =
-      match spacing with
-      | ElementSize
-      | One -> Int32.shift_left 1l (32 - BitTagged.ubits_of Type.Int) (* 1 : Nat *) in
+  | NextArrayOffset, [e] ->
+    let advance_by = Int32.shift_left 1l (32 - BitTagged.ubits_of Type.Int) (* 1 : Nat *) in
     SR.Vanilla,
     compile_exp_vanilla env ae e ^^ (* previous byte offset to array *)
     compile_add_const advance_by
@@ -10642,7 +10648,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.bool,
     compile_exp_vanilla env ae e1 ^^ BitTagged.untag_i32 __LINE__ env Type.Int ^^
     compile_exp_vanilla env ae e2 ^^ BitTagged.untag_i32 __LINE__ env Type.Int ^^
-    G.i (Compare (Wasm.Values.I32 I32Op.LtU))
+    G.i (Compare (Wasm.Values.I32 I32Op.LeU))
   | DerefArrayOffset, [e1; e2] ->
     SR.Vanilla,
     compile_exp_vanilla env ae e1 ^^ (* skewed pointer to array *)
@@ -10657,15 +10663,12 @@ and compile_prim_invocation (env : E.t) ae p es at =
     G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
     (* Not using Tagged.load_field since it is not a proper pointer to the array start *)
     Heap.load_field (Arr.header_size env) (* loads the element at the byte offset *)
-  | GetPastArrayOffset spacing, [e] ->
-    let shift =
-      match spacing with
-      | ElementSize
-      | One -> BigNum.from_word30 env in    (* make it a compact bignum *) (* TBR: from_word30? *)
+  | GetLastArrayOffset, [e] ->
     SR.Vanilla,
     compile_exp_vanilla env ae e ^^ (* array *)
     Arr.len env ^^
-    shift
+    compile_sub_const 1l ^^
+    BigNum.from_word_compact env
 
   | BreakPrim name, [e] ->
     let d = VarEnv.get_label_depth ae name in

@@ -96,8 +96,8 @@ let primE prim es =
     | IdxPrim
     | DerefArrayOffset -> T.(as_immut (as_array_sub (List.hd es).note.Note.typ))
     | ValidArrayOffset -> T.bool
-    | NextArrayOffset _
-    | GetPastArrayOffset _ -> T.nat
+    | NextArrayOffset -> T.nat
+    | GetLastArrayOffset -> T.int
     | IcUrlOfBlob -> T.text
     | ActorOfIdBlob t -> t
     | BinPrim (t, _) -> t

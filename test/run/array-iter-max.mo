@@ -4,6 +4,7 @@ let max_size = 2**29; // maximum array size
 let a = Prim.Array_tabulate<Nat>(max_size,func i = i+1);
 var c = 0;
 for (i in a.vals()) {
+ if (i != c+1)  Prim.debugPrint(debug_show{i;c; cp = c+1});
  assert i == c+1; c += 1;
 }
 ;
