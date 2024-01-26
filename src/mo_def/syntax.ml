@@ -125,6 +125,7 @@ and vis' =
   | System
 
 let is_public vis = match vis.Source.it with Public _ -> true | _ -> false
+let is_private vis = match vis.Source.it with Private -> true | _ -> false
 
 type stab = stab' Source.phrase
 and stab' = Stable | Flexible

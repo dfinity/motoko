@@ -52,8 +52,6 @@ type env =
     weak : bool;
     msgs : Diag.msg_store;
     scopes : Source.region T.ConEnv.t;
-    exported_scope : bool;
-    declaration_visibility : dec -> vis';
   }
 
 let env_of_scope msgs scope =
@@ -73,8 +71,6 @@ let env_of_scope msgs scope =
     weak = false;
     msgs;
     scopes = T.ConEnv.empty;
-    exported_scope = true;
-    declaration_visibility = fun _ -> Private;
   }
 
 let use_declaration env id =
@@ -85,14 +81,6 @@ let is_unused env id =
 
 let get_identifiers declarations =
   T.Env.fold (fun id _ set -> S.add id set) declarations S.empty
-
-(* No unused warning for exported fields, i.e. 
-   - Public fields that are accessible via chain of public declarations
-   - System functions *)
-let is_exported_field env field =
-  match (env.exported_scope, field.it.vis.it) with 
-  | (_, System) | (true, Public _) -> true
-  | _ -> false
   
 (* Error bookkeeping *)
 
@@ -2295,17 +2283,14 @@ and is_typ_dec dec : bool = match dec.it with
 
 
 and infer_obj env s dec_fields at check_undeclared : T.typ =
-  let restrict_unused_analysis env field_declarations =
-    let scope = 
-      List.filter (is_exported_field env) field_declarations 
-      |> List.map (fun field -> field.it.dec)
-      |> gather_block_decs env in
-    S.iter (use_declaration env) (get_identifiers scope.Scope.val_env)
+  let private_fields =
+    let scope = List.filter (fun field -> is_private field.it.vis) dec_fields 
+    |> List.map (fun field -> field.it.dec)
+    |> gather_block_decs env in
+    get_identifiers scope.Scope.val_env
   in
-  let declaration_visibility dec =
-    match List.find_opt (fun field -> field.it.dec == dec) dec_fields with
-    | Some field -> field.it.vis.it
-    | None -> Private 
+  let private_variables variables =
+    T.Env.filter (fun id _ -> S.mem id private_fields) variables
   in
   let env =
     if s <> T.Actor then
@@ -2317,16 +2302,12 @@ and infer_obj env s dec_fields at check_undeclared : T.typ =
         rets = None;
         async = C.NullCap; }
   in
-  let env = { env with declaration_visibility } in
   let decs = List.map (fun (df : dec_field) -> df.it.dec) dec_fields in
   let initial_usage = enter_scope env in
   let _, scope = infer_block env decs at false in
   let t = object_of_scope env s dec_fields scope at in
   if check_undeclared then
-    begin
-      restrict_unused_analysis env dec_fields;
-      leave_scope env scope.Scope.val_env initial_usage
-    end
+    leave_scope env (private_variables scope.Scope.val_env) initial_usage
   else ();
   let (_, tfs) = T.as_obj t in
   if not env.pre then begin
@@ -2474,16 +2455,6 @@ and infer_block_exps env decs : T.typ =
     infer_block_exps env decs'
 
 and infer_dec env dec : T.typ =
-  let is_public_field = match env.declaration_visibility dec with
-    | Public _ -> true
-    | _ -> false
-  in
-  let exported_scope = match dec.it with
-  | ExpD _ 
-  | ClassD (_, _, _, _, _, { it = T.Actor; _ }, _, _) -> env.exported_scope
-  | _ -> env.exported_scope && is_public_field
-  in
-  let env = { env with exported_scope } in
   let t =
   match dec.it with
   | ExpD exp
