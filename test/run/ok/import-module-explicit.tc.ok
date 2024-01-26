@@ -1,0 +1,2 @@
+import-module-explicit.mo:4.5-4.6: warning [M0194], Unused declaration s
+import-module-explicit.mo:5.5-5.6: warning [M0194], Unused declaration u

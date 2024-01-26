@@ -1,0 +1,5 @@
+issue36.mo:25.6-25.7: warning [M0194], Unused declaration f
+issue36.mo:25.9-25.10: warning [M0194], Unused declaration g
+issue36.mo:25.12-25.13: warning [M0194], Unused declaration h
+issue36.mo:29.6-29.7: warning [M0194], Unused declaration k
+issue36.mo:29.9-29.10: warning [M0194], Unused declaration l

@@ -1,0 +1,2 @@
+issue150.mo:2.8-2.9: warning [M0194], Unused declaration x
+issue150.mo:4.7-4.8: warning [M0194], Unused declaration C

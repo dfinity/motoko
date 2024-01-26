@@ -8,3 +8,5 @@ true produces
   Nat
 false produces
   Text
+issue442.mo:2.5-2.8: warning [M0194], Unused declaration bar
+issue442.mo:1.5-1.8: warning [M0194], Unused declaration foo

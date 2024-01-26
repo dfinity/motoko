@@ -12,5 +12,7 @@ deprecated.mo:21.13-21.16: warning [M0154], type field T is deprecated:
 also types
 deprecated.mo:23.11-23.12: warning [M0154], type field f is deprecated:
 deprecated function
+deprecated.mo:23.11-23.12: warning [M0194], Unused declaration f
 deprecated.mo:24.11-24.16: warning [M0154], type field f is deprecated:
 deprecated function
+deprecated.mo:24.15-24.16: warning [M0194], Unused declaration x

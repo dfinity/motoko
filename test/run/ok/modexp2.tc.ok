@@ -1,0 +1,2 @@
+modexp2.mo:5.7-5.8: warning [M0194], Unused declaration y
+modexp2.mo:2.8-2.9: warning [M0194], Unused declaration X
