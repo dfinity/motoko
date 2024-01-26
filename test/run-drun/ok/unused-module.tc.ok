@@ -1,0 +1,4 @@
+unused-module/test-module.mo:17.20-17.43: warning [M0194], Unused declaration unusedPublicObjectField
+unused-module/test-module.mo:4.10-4.29: warning [M0194], Unused declaration localModuleFunction
+unused-module/test-module.mo:16.12-16.23: warning [M0194], Unused declaration localObject
+unused-module/test-module.mo:2.9-2.30: warning [M0194], Unused declaration unusedModuleVariable1
