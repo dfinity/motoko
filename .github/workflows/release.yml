@@ -49,12 +49,12 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - uses: cachix/install-nix-action@v25
-    - uses: cachix/cachix-action@v13
+    - uses: cachix/cachix-action@v14
       if: startsWith(github.ref, 'refs/heads/')
       with:
         name: ic-hs-test
         # NB: No auth token, we don’t want to push new stuff here
-    - uses: cachix/cachix-action@v13
+    - uses: cachix/cachix-action@v14
       if: startsWith(github.ref, 'refs/tags/')
       with:
         name: ic-hs-test
@@ -75,7 +75,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - uses: cachix/install-nix-action@v25
-    - uses: cachix/cachix-action@v13
+    - uses: cachix/cachix-action@v14
       with:
         name: ic-hs-test
         # NB: No auth token, we don’t expect to push new stuff here
