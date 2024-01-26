@@ -328,6 +328,7 @@ let rec check_obj_path env path : T.obj_sort * (T.field list) =
 and check_obj_path' env path : T.typ =
   match path.it with
   | IdH id ->
+    use_declaration env id.it;
     (match T.Env.find_opt id.it env.vals with
      | Some (T.Pre, _, _) ->
        error env id.at "M0024" "cannot infer type of forward variable reference %s" id.it
@@ -337,6 +338,7 @@ and check_obj_path' env path : T.typ =
      | None -> error env id.at "M0026" "unbound variable %s" id.it
     )
   | DotH (path', id) ->
+    use_declaration env id.it;
     let s, fs = check_obj_path env path' in
     match T.lookup_val_field id.it fs with
     | T.Pre ->
