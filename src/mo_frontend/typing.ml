@@ -37,7 +37,6 @@ let initial_scope =
 
 type env =
   { vals : val_env;
-    used : S.t ref;
     libs : Scope.lib_env;
     typs : Scope.typ_env;
     cons : Scope.con_env;
@@ -52,11 +51,11 @@ type env =
     weak : bool;
     msgs : Diag.msg_store;
     scopes : Source.region T.ConEnv.t;
+    used_declarations : S.t ref;
   }
 
 let env_of_scope msgs scope =
   { vals = available scope.Scope.val_env;
-    used = ref S.empty;
     libs = scope.Scope.lib_env;
     typs = scope.Scope.typ_env;
     cons = scope.Scope.con_env;
@@ -71,13 +70,14 @@ let env_of_scope msgs scope =
     weak = false;
     msgs;
     scopes = T.ConEnv.empty;
+    used_declarations = ref S.empty;
   }
 
 let use_declaration env id =
-  env.used := S.add id !(env.used)
+  env.used_declarations := S.add id !(env.used_declarations)
 
 let is_unused_declaration env id =
-  not (S.mem id !(env.used))
+  not (S.mem id !(env.used_declarations))
 
 let get_identifiers variables =
   T.Env.fold (fun id _ set -> S.add id set) variables S.empty
@@ -176,14 +176,14 @@ let detect_unused env inner_variables =
   ) inner_variables
 
 let enter_scope env : S.t =
-  !(env.used)
+  !(env.used_declarations)
 
 let leave_scope env inner_variables initial_usage =
   detect_unused env inner_variables;
   let inner_variables = get_identifiers inner_variables in
-  let unshadowed_usage = S.diff !(env.used) inner_variables in
+  let unshadowed_usage = S.diff !(env.used_declarations) inner_variables in
   let final_usage = S.union initial_usage unshadowed_usage in
-  env.used := final_usage
+  env.used_declarations := final_usage
 
 (* Context extension *)
 
