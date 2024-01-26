@@ -14,6 +14,5 @@ module {
     };
 
     object localObject {
-        public let unusedPublicObjectField = 0;
     }
 }

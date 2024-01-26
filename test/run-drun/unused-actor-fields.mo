@@ -4,8 +4,7 @@ actor {
     class TestClass(classParameter1 : Nat, classParameter2 : Int) {
         let field1 = 1;
         var field2 = 2;
-        public let field3 = field1;
-        var field4 = field2;
+        var field3 = field2;
 
         func unusedMethod(unusedParameter1 : Any) {
             let local1 = 0;
