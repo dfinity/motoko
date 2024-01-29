@@ -368,7 +368,6 @@ and check_obj_path' env path : T.typ =
      | None -> error env id.at "M0026" "unbound variable %s" id.it
     )
   | DotH (path', id) ->
-    use_declaration env id.it;
     let s, fs = check_obj_path env path' in
     match T.lookup_val_field id.it fs with
     | T.Pre ->
@@ -386,6 +385,7 @@ let rec check_typ_path env path : T.con =
 and check_typ_path' env path : T.con =
   match path.it with
   | IdH id ->
+    use_declaration env id.it;
     (match T.Env.find_opt id.it env.typs with
     | Some c -> c
     | None -> error env id.at "M0029" "unbound type %s" id.it
