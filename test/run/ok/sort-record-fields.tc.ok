@@ -1,0 +1,8 @@
+sort-record-fields.mo:2.6-2.9: warning [M0194], Unused declaration bad
+sort-record-fields.mo:2.12-2.16: warning [M0194], Unused declaration name
+sort-record-fields.mo:2.25-2.28: warning [M0194], Unused declaration age
+sort-record-fields.mo:3.6-3.8: warning [M0194], Unused declaration ok
+sort-record-fields.mo:3.11-3.14: warning [M0194], Unused declaration age
+sort-record-fields.mo:3.22-3.26: warning [M0194], Unused declaration name
+sort-record-fields.mo:4.11-4.15: warning [M0194], Unused declaration name
+sort-record-fields.mo:4.17-4.20: warning [M0194], Unused declaration age

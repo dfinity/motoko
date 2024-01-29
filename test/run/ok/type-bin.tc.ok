@@ -1,0 +1,16 @@
+type-bin.mo:2.5-2.6: warning [M0194], Unused declaration b
+type-bin.mo:3.5-3.6: warning [M0194], Unused declaration c
+type-bin.mo:4.5-4.6: warning [M0194], Unused declaration d
+type-bin.mo:5.5-5.6: warning [M0194], Unused declaration e
+type-bin.mo:6.5-6.6: warning [M0194], Unused declaration f
+type-bin.mo:7.5-7.6: warning [M0194], Unused declaration g
+type-bin.mo:8.5-8.6: warning [M0194], Unused declaration h
+type-bin.mo:9.5-9.6: warning [M0194], Unused declaration i
+type-bin.mo:10.5-10.6: warning [M0194], Unused declaration j
+type-bin.mo:11.5-11.6: warning [M0194], Unused declaration k
+type-bin.mo:12.5-12.6: warning [M0194], Unused declaration l
+type-bin.mo:13.5-13.6: warning [M0194], Unused declaration m
+type-bin.mo:14.5-14.6: warning [M0194], Unused declaration o
+type-bin.mo:15.5-15.6: warning [M0194], Unused declaration p
+type-bin.mo:16.5-16.6: warning [M0194], Unused declaration q
+type-bin.mo:17.5-17.6: warning [M0194], Unused declaration z

@@ -1,9 +1,7 @@
-object-extend-type.mo:11.7-11.10: warning [M0194], Unused declaration AC1
 object-extend-type.mo:15.5-15.8: warning [M0194], Unused declaration ac1
 object-extend-type.mo:18.5-18.7: warning [M0194], Unused declaration ab
 object-extend-type.mo:21.5-21.7: warning [M0194], Unused declaration am
 object-extend-type.mo:22.5-22.7: warning [M0194], Unused declaration bm
 object-extend-type.mo:24.5-24.7: warning [M0194], Unused declaration aM
 object-extend-type.mo:25.5-25.7: warning [M0194], Unused declaration bM
-object-extend-type.mo:28.7-28.8: warning [M0194], Unused declaration C
 object-extend-type.mo:36.5-36.7: warning [M0194], Unused declaration r2

@@ -75,3 +75,14 @@ left operand is
   <A <: Nat>() -> ()
 right operand is
   <A <: Int>() -> ()
+type-combine.mo:252.6-252.7: warning [M0194], Unused declaration f
+type-combine.mo:426.44-426.45: warning [M0194], Unused declaration x
+type-combine.mo:427.50-427.51: warning [M0194], Unused declaration x
+type-combine.mo:428.56-428.57: warning [M0194], Unused declaration x
+type-combine.mo:429.68-429.69: warning [M0194], Unused declaration x
+type-combine.mo:430.70-430.71: warning [M0194], Unused declaration x
+type-combine.mo:452.43-452.44: warning [M0194], Unused declaration x
+type-combine.mo:453.49-453.50: warning [M0194], Unused declaration x
+type-combine.mo:454.55-454.56: warning [M0194], Unused declaration x
+type-combine.mo:455.67-455.68: warning [M0194], Unused declaration x
+type-combine.mo:456.69-456.70: warning [M0194], Unused declaration x

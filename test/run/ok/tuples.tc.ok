@@ -1,0 +1,2 @@
+tuples.mo:19.6-19.7: warning [M0194], Unused declaration f
+tuples.mo:19.22-19.23: warning [M0194], Unused declaration n
