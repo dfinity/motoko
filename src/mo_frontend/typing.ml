@@ -34,6 +34,7 @@ let initial_scope =
     Scope.con_env = T.ConSet.singleton C.top_cap;
   }
 
+type unused_warnings = (string * Source.region) List.t
 
 type env =
   { vals : val_env;
@@ -52,6 +53,7 @@ type env =
     msgs : Diag.msg_store;
     scopes : Source.region T.ConEnv.t;
     used_declarations : S.t ref;
+    unused_warnings : unused_warnings ref;
   }
 
 let env_of_scope msgs scope =
@@ -71,6 +73,7 @@ let env_of_scope msgs scope =
     msgs;
     scopes = T.ConEnv.empty;
     used_declarations = ref S.empty;
+    unused_warnings = ref [];
   }
 
 let use_declaration env id =
@@ -81,7 +84,17 @@ let is_unused_declaration env id =
 
 let get_identifiers variables =
   T.Env.fold (fun id _ set -> S.add id set) variables S.empty
-  
+
+let equal_unused_warning first second =
+  let (first_id, first_region) = first in
+  let (second_id, second_region) = second in
+  first_id == second_id && first_region = second_region
+
+let add_unused_warning env warning =
+  if List.find_opt (equal_unused_warning warning) !(env.unused_warnings) = None then
+    env.unused_warnings := warning::!(env.unused_warnings)
+  else ()
+
 (* Error bookkeeping *)
 
 exception Recover
@@ -161,6 +174,9 @@ let _warn_in modes env at code fmt =
 
 (* Unused declaration detection *)
 
+let emit_unused_warnings env =
+  List.iter (fun (id, region) -> warn env region "M0194" "Unused declaration %s" id) !(env.unused_warnings)
+
 let underscore_prefix id =
   if String.length id > 0 then
     (String.get id 0) = '_'
@@ -170,7 +186,7 @@ let underscore_prefix id =
 let detect_unused env inner_variables =
   T.Env.iter (fun id (_, at) ->
     if (is_unused_declaration env id) && (not (underscore_prefix id)) then
-      warn env at "M0194" "Unused declaration %s" id
+      add_unused_warning env (id, at)
     else
       ()
   ) inner_variables
@@ -2284,7 +2300,7 @@ and is_typ_dec dec : bool = match dec.it with
   | _ -> false
 
 
-and infer_obj env s dec_fields at check_undeclared : T.typ =
+and infer_obj env s dec_fields at check_unused : T.typ =
   let private_fields =
     let scope = List.filter (fun field -> is_private field.it.vis) dec_fields 
     |> List.map (fun field -> field.it.dec)
@@ -2308,7 +2324,7 @@ and infer_obj env s dec_fields at check_undeclared : T.typ =
   let initial_usage = enter_scope env in
   let _, scope = infer_block env decs at false in
   let t = object_of_scope env s dec_fields scope at in
-  if check_undeclared then
+  if check_unused then
     leave_scope env (private_variables scope.Scope.val_env) initial_usage
   else ();
   let (_, tfs) = T.as_obj t in
@@ -2829,6 +2845,7 @@ let infer_prog scope async_cap prog : (T.typ * Scope.t) Diag.result =
           let env0 = env_of_scope msgs scope in
           let env = { env0 with async = async_cap } in
           let res = infer_block env prog.it prog.at true in
+          emit_unused_warnings env;
           res
         ) prog
     )
@@ -2908,6 +2925,7 @@ let check_lib scope lib : Scope.t Diag.result =
               (* this shouldn't really happen, as an imported program should be rewritten to a module *)
               error env cub.at "M0000" "compiler bug: expected a module or actor class but found a program, i.e. a sequence of declarations"
           in
+          emit_unused_warnings env;
           Scope.lib lib.note.filename imp_typ
         ) lib
     )
