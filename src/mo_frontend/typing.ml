@@ -85,15 +85,27 @@ let is_unused_declaration env id =
 let get_identifiers variables =
   T.Env.fold (fun id _ set -> S.add id set) variables S.empty
 
-let equal_unused_warning first second =
-  let (first_id, first_region) = first in
-  let (second_id, second_region) = second in
-  first_id == second_id && first_region = second_region
+let equal_unused_warning first second = first = second
 
 let add_unused_warning env warning =
   if List.find_opt (equal_unused_warning warning) !(env.unused_warnings) = None then
     env.unused_warnings := warning::!(env.unused_warnings)
   else ()
+
+let compare_unused_warning first second =
+  let (first_id, {left = first_left; right = first_right}) = first in
+  let (second_id, {left = second_left; right = second_right}) = second in
+  let result = compare first_left second_left in
+  if result = 0 then
+    let result = compare first_right second_right in
+    if result = 0 then
+      compare first_id second_id
+    else 
+      result
+  else
+    result
+
+let sorted_unused_warnings list = List.sort compare_unused_warning list
 
 (* Error bookkeeping *)
 
@@ -175,7 +187,9 @@ let _warn_in modes env at code fmt =
 (* Unused declaration detection *)
 
 let emit_unused_warnings env =
-  List.iter (fun (id, region) -> warn env region "M0194" "Unused declaration %s" id) !(env.unused_warnings)
+  let emit (id, region) = warn env region "M0194" "Unused declaration %s" id in
+  let list = sorted_unused_warnings !(env.unused_warnings) in
+  List.iter emit list
 
 let underscore_prefix id =
   if String.length id > 0 then
