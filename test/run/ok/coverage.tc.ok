@@ -22,7 +22,6 @@ coverage.mo:11.7-11.9: warning [M0145], this pattern of type
 does not cover value
   ?(0 or 1 or _) or
   null
-coverage.mo:14.11-14.12: warning [M0194], Unused declaration x
 coverage.mo:15.10-15.13: warning [M0145], this pattern of type
   Nat
 does not cover value
@@ -89,14 +88,6 @@ coverage.mo:63.49-63.50: warning [M0146], this pattern is never matched
 coverage.mo:64.48-64.49: warning [M0146], this pattern is never matched
 coverage.mo:65.41-65.42: warning [M0146], this pattern is never matched
 coverage.mo:66.40-66.41: warning [M0146], this pattern is never matched
-coverage.mo:3.7-3.8: warning [M0194], Unused declaration a
-coverage.mo:9.8-9.9: warning [M0194], Unused declaration b
-coverage.mo:13.8-13.10: warning [M0194], Unused declaration f1
-coverage.mo:14.8-14.10: warning [M0194], Unused declaration f2
-coverage.mo:15.8-15.10: warning [M0194], Unused declaration f3
-coverage.mo:17.8-17.10: warning [M0194], Unused declaration f5
-coverage.mo:18.8-18.10: warning [M0194], Unused declaration f6
-coverage.mo:19.8-19.10: warning [M0194], Unused declaration f7
 coverage.mo:77.10-77.27: warning [M0146], this pattern is never matched
 coverage.mo:74.3-78.4: warning [M0145], this switch of type
   {#branch : (Tree, Tree); #leaf : Int}
@@ -195,4 +186,13 @@ coverage.mo:228.3-230.4: warning [M0145], this switch of type
 does not cover value
   #a
 coverage.mo:1.6-1.7: warning [M0194], Unused declaration f
+coverage.mo:3.7-3.8: warning [M0194], Unused declaration a
+coverage.mo:9.8-9.9: warning [M0194], Unused declaration b
+coverage.mo:13.8-13.10: warning [M0194], Unused declaration f1
+coverage.mo:14.8-14.10: warning [M0194], Unused declaration f2
+coverage.mo:14.11-14.12: warning [M0194], Unused declaration x
+coverage.mo:15.8-15.10: warning [M0194], Unused declaration f3
+coverage.mo:17.8-17.10: warning [M0194], Unused declaration f5
+coverage.mo:18.8-18.10: warning [M0194], Unused declaration f6
+coverage.mo:19.8-19.10: warning [M0194], Unused declaration f7
 coverage.mo:178.6-178.7: warning [M0194], Unused declaration h

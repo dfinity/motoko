@@ -1,2 +1,2 @@
-const-func-unused.mo:2.6-2.9: warning [M0194], Unused declaration foo
 const-func-unused.mo:1.6-1.9: warning [M0194], Unused declaration bar
+const-func-unused.mo:2.6-2.9: warning [M0194], Unused declaration foo

@@ -5,11 +5,11 @@ empty-tup-args.mo:12.59-12.61: warning [M0194], Unused declaration g2
 empty-tup-args.mo:34.40-34.42: warning [M0194], Unused declaration l1
 empty-tup-args.mo:41.16-41.17: warning [M0194], Unused declaration b
 empty-tup-args.mo:42.17-42.18: warning [M0194], Unused declaration b
+empty-tup-args.mo:43.5-43.7: warning [M0194], Unused declaration ms
 empty-tup-args.mo:45.15-45.16: warning [M0194], Unused declaration b
 empty-tup-args.mo:46.16-46.17: warning [M0194], Unused declaration b
+empty-tup-args.mo:48.5-48.7: warning [M0194], Unused declaration ns
+empty-tup-args.mo:51.5-51.7: warning [M0194], Unused declaration os
 empty-tup-args.mo:58.11-58.12: warning [M0194], Unused declaration u
 empty-tup-args.mo:74.17-74.18: warning [M0194], Unused declaration b
 empty-tup-args.mo:75.17-75.18: warning [M0194], Unused declaration b
-empty-tup-args.mo:43.5-43.7: warning [M0194], Unused declaration ms
-empty-tup-args.mo:48.5-48.7: warning [M0194], Unused declaration ns
-empty-tup-args.mo:51.5-51.7: warning [M0194], Unused declaration os

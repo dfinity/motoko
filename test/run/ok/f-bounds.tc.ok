@@ -1,3 +1,9 @@
+f-bounds.mo:3.5-3.6: warning [M0194], Unused declaration f
+f-bounds.mo:5.6-5.9: warning [M0194], Unused declaration f2a
+f-bounds.mo:7.6-7.9: warning [M0194], Unused declaration f2b
+f-bounds.mo:9.6-9.9: warning [M0194], Unused declaration f3a
+f-bounds.mo:10.6-10.9: warning [M0194], Unused declaration f3b
+f-bounds.mo:11.6-11.9: warning [M0194], Unused declaration f3c
 f-bounds.mo:46.6-46.8: warning [M0194], Unused declaration u0
 f-bounds.mo:47.6-47.8: warning [M0194], Unused declaration u1
 f-bounds.mo:48.6-48.8: warning [M0194], Unused declaration u2
@@ -19,9 +25,3 @@ f-bounds.mo:65.6-65.8: warning [M0194], Unused declaration w3
 f-bounds.mo:66.6-66.8: warning [M0194], Unused declaration w4
 f-bounds.mo:67.6-67.8: warning [M0194], Unused declaration w5
 f-bounds.mo:68.6-68.8: warning [M0194], Unused declaration w6
-f-bounds.mo:3.5-3.6: warning [M0194], Unused declaration f
-f-bounds.mo:5.6-5.9: warning [M0194], Unused declaration f2a
-f-bounds.mo:7.6-7.9: warning [M0194], Unused declaration f2b
-f-bounds.mo:9.6-9.9: warning [M0194], Unused declaration f3a
-f-bounds.mo:10.6-10.9: warning [M0194], Unused declaration f3b
-f-bounds.mo:11.6-11.9: warning [M0194], Unused declaration f3c

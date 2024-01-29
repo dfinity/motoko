@@ -1,0 +1,2 @@
+modules-bwd.mo:1.8-1.9: warning [M0194], Unused declaration X
+modules-bwd.mo:14.5-14.6: warning [M0194], Unused declaration u
