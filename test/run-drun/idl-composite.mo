@@ -18,11 +18,11 @@ actor This {
 
        // can't deserialize as update
        let o3 = from_candid blob : ? (actor { f : /* composite  query */ () -> async (); });
-       assert o2 == null;
+       assert o3 == null;
 
        // can't deserialize as oneway
        let o4 = from_candid blob : ? (actor { f : /* composite  query */ () -> (); });
-       assert o2 == null;
+       assert o4 == null;
 
     };
 

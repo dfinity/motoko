@@ -1,0 +1,5 @@
+async-obj-mut.mo:6.11-6.12: warning [M0194], Unused declaration a
+async-obj-mut.mo:8.11-8.12: warning [M0194], Unused declaration b
+async-obj-mut.mo:9.11-9.12: warning [M0194], Unused declaration c
+async-obj-mut.mo:11.11-11.12: warning [M0194], Unused declaration e
+async-obj-mut.mo:12.11-12.12: warning [M0194], Unused declaration f

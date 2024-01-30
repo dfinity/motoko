@@ -1,0 +1,2 @@
+bignum1.mo:1.7-1.8: warning [M0194], Unused declaration B
+bignum1.mo:4.8-4.9: warning [M0194], Unused declaration b

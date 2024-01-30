@@ -1,0 +1,6 @@
+control.mo:6.7-6.14: warning [M0194], Unused declaration control
+control.mo:15.19-15.20: warning [M0194], Unused declaration m
+control.mo:16.9-16.10: warning [M0194], Unused declaration n
+control.mo:17.10-17.11: warning [M0194], Unused declaration x
+control.mo:17.13-17.14: warning [M0194], Unused declaration y
+control.mo:17.16-17.17: warning [M0194], Unused declaration z

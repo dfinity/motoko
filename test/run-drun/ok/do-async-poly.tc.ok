@@ -8,3 +8,4 @@ do-async-poly.mo:22.42-22.43: type error [M0033], async has non-shared content t
   T__23
 do-async-poly.mo:26.43-26.44: type error [M0033], async has non-shared content type
   T__24
+do-async-poly.mo:13.16-13.22: warning [M0194], Unused declaration doText

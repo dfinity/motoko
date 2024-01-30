@@ -8,7 +8,7 @@
 import Prim = "mo:⛔";
 import imported1 "ic:rwlgt-iiaaa-aaaaa-aaaaa-cai";
 import imported2 "canister:self";
-actor a {
+actor {
   public func go1() : async (actor { cq : composite query () -> async () }) = async {
      imported1;
   };

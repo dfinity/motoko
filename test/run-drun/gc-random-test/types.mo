@@ -357,15 +357,15 @@ module {
             #box randomBox;
         };
 
-        public func readReferences(source : Values.RandomValue) : [Values.RandomValue] {
+        public func readReferences(_source : Values.RandomValue) : [Values.RandomValue] {
             [];
         };
 
-        public func append(target : Values.RandomValue, value : Values.RandomValue) : Bool {
+        public func append(_target : Values.RandomValue, _value : Values.RandomValue) : Bool {
             false;
         };
 
-        public func randomWrite(random : Random.Random, target : Values.RandomValue, value : Values.RandomValue) {};
+        public func randomWrite(_random : Random.Random, _target : Values.RandomValue, _value : Values.RandomValue) {};
 
         public func randomCheck(_random : Random.Random, value : Values.RandomValue) {
             let box = cast(value);
@@ -414,8 +414,6 @@ module {
                 text #= "CONCATENATE-" # Prim.charToText(Prim.nat32ToChar(Prim.natToNat32(random.next() % 0xD800)));
                 count += 1;
             };
-            let randomFloat = Prim.intToFloat(random.next() * -1 * random.next() % 2) / Prim.intToFloat(random.next());
-            let randomInt64 = Prim.intToInt64Wrap((random.next() * 2 ** 32 + random.next() * -1 * random.next() % 2));
             let randomText = {
                 var randomText = text;
                 checkText = text;
@@ -423,15 +421,15 @@ module {
             #text randomText;
         };
 
-        public func readReferences(source : Values.RandomValue) : [Values.RandomValue] {
+        public func readReferences(_source : Values.RandomValue) : [Values.RandomValue] {
             [];
         };
 
-        public func append(target : Values.RandomValue, value : Values.RandomValue) : Bool {
+        public func append(_target : Values.RandomValue, _value : Values.RandomValue) : Bool {
             false;
         };
 
-        public func randomWrite(random : Random.Random, target : Values.RandomValue, value : Values.RandomValue) {};
+        public func randomWrite(_random : Random.Random, _target : Values.RandomValue, _value : Values.RandomValue) {};
 
         public func randomCheck(_random : Random.Random, value : Values.RandomValue) {
             let text = cast(value);
@@ -495,11 +493,11 @@ module {
             };
         };
 
-        public func append(target : Values.RandomValue, value : Values.RandomValue) : Bool {
+        public func append(_target : Values.RandomValue, _value : Values.RandomValue) : Bool {
             false;
         };
 
-        public func randomWrite(random : Random.Random, target : Values.RandomValue, value : Values.RandomValue) {};
+        public func randomWrite(_random : Random.Random, _target : Values.RandomValue, _value : Values.RandomValue) {};
 
         public func randomCheck(random : Random.Random, value : Values.RandomValue) {
             let option = cast(value);

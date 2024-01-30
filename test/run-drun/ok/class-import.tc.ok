@@ -1,0 +1,2 @@
+class-import.mo:32.10-32.14: warning [M0194], Unused declaration trap
+class-import.mo:41.10-41.14: warning [M0194], Unused declaration trap

@@ -1,0 +1,2 @@
+do-async-unit.mo:10.16-10.22: warning [M0194], Unused declaration doText
+do-async-unit.mo:11.9-11.10: warning [M0194], Unused declaration t

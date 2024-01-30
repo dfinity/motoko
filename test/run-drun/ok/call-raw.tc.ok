@@ -1,0 +1,2 @@
+call-raw.mo:40.30-40.31: warning [M0194], Unused declaration n
+call-raw.mo:84.13-84.16: warning [M0194], Unused declaration res

@@ -1,0 +1,2 @@
+do-option-bug.mo:1.8-1.9: warning [M0194], Unused declaration P
+do-option-bug.mo:3.7-3.8: warning [M0194], Unused declaration a
