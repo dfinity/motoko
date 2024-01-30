@@ -1933,7 +1933,9 @@ and infer_cases env t_pat t cases : T.typ =
 and infer_case env t_pat t case =
   let {pat; exp} = case.it in
   let ve = check_pat env t_pat pat in
+  let initial_usage = enter_scope env in
   let t' = recover_with T.Non (infer_exp (adjoin_vals env ve)) exp in
+  leave_scope env ve initial_usage;
   let t'' = T.lub t t' in
   if not env.pre && inconsistent t'' [t; t'] then
     warn env case.at "M0101"
