@@ -19,3 +19,4 @@ does not cover value
   ?(_)
 switch.mo:80.6-80.7: warning [M0194], Unused declaration f
 switch.mo:90.6-90.7: warning [M0194], Unused declaration g
+switch.mo:93.10-93.11: warning [M0194], Unused declaration n
