@@ -1224,7 +1224,7 @@ and infer_exp'' env exp : T.typ =
         { env with async = C.NullCap; in_actor = true }
       else env
     in
-    let t = infer_obj env' obj_sort.it dec_fields exp.at true in
+    let t = infer_obj env' obj_sort.it dec_fields exp.at in
     begin match env.pre, typ_opt with
       | false, Some typ ->
         let t' = check_typ env' typ in
@@ -2317,8 +2317,7 @@ and is_typ_dec dec : bool = match dec.it with
   | TypD _ -> true
   | _ -> false
 
-
-and infer_obj env s dec_fields at check_unused : T.typ =
+and infer_obj env s dec_fields at : T.typ =
   let private_fields =
     let scope = List.filter (fun field -> is_private field.it.vis) dec_fields 
     |> List.map (fun field -> field.it.dec)
@@ -2342,9 +2341,7 @@ and infer_obj env s dec_fields at check_unused : T.typ =
   let initial_usage = enter_scope env in
   let _, scope = infer_block env decs at false in
   let t = object_of_scope env s dec_fields scope at in
-  if check_unused then
-    leave_scope env (private_variables scope.Scope.val_env) initial_usage
-  else ();
+  leave_scope env (private_variables scope.Scope.val_env) initial_usage;
   let (_, tfs) = T.as_obj t in
   if not env.pre then begin
     if s = T.Actor then begin
@@ -2528,7 +2525,7 @@ and infer_dec env dec : T.typ =
         }
       in
       let initial_usage = enter_scope env''' in
-      let t' = infer_obj env''' obj_sort.it dec_fields dec.at true in
+      let t' = infer_obj { env''' with check_unused = true } obj_sort.it dec_fields dec.at in
       leave_scope env ve initial_usage;
       match typ_opt, obj_sort.it with
       | None, _ -> ()
@@ -2753,7 +2750,7 @@ and infer_dec_typdecs env dec : Scope.t =
       else tbs, cs in
     let self_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) cs') in
     let env'' = add_val (adjoin_vals env' ve) self_id.it self_typ self_id.at in
-    let t = infer_obj env'' obj_sort.it dec_fields dec.at false in
+    let t = infer_obj { env'' with check_unused = false } obj_sort.it dec_fields dec.at in
     let k = T.Def (T.close_binds cs' tbs', T.close cs' t) in
     check_closed env id k dec.at;
     Scope.{ empty with
