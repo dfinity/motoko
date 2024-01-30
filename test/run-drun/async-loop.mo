@@ -1,5 +1,5 @@
 import Prim "mo:⛔";
-actor a {
+actor {
   public func go() {
     do {
       var i = 0;

@@ -52,6 +52,7 @@ type env =
     weak : bool;
     msgs : Diag.msg_store;
     scopes : Source.region T.ConEnv.t;
+    check_unused : bool;
     used_declarations : S.t ref;
     unused_warnings : unused_warnings ref;
   }
@@ -72,6 +73,7 @@ let env_of_scope msgs scope =
     weak = false;
     msgs;
     scopes = T.ConEnv.empty;
+    check_unused = true;
     used_declarations = ref S.empty;
     unused_warnings = ref [];
   }
@@ -198,12 +200,14 @@ let underscore_prefix id =
     false
 
 let detect_unused env inner_variables =
-  T.Env.iter (fun id (_, at) ->
-    if (is_unused_declaration env id) && (not (underscore_prefix id)) then
-      add_unused_warning env (id, at)
-    else
-      ()
-  ) inner_variables
+  if env.check_unused then
+    T.Env.iter (fun id (_, at) ->
+      if (is_unused_declaration env id) && (not (underscore_prefix id)) then
+        add_unused_warning env (id, at)
+      else
+        ()
+    ) inner_variables
+  else ()
 
 let enter_scope env : S.t =
   !(env.used_declarations)
@@ -2801,7 +2805,7 @@ and infer_dec_valdecs env dec : Scope.t =
     let _ve = check_pat env obj_typ pat in
     Scope.{empty with val_env = T.Env.singleton id.it (obj_typ, id.at)}
   | LetD (pat, exp, fail) ->
-    let t = infer_exp {env with pre = true} exp in
+    let t = infer_exp {env with pre = true; check_unused = false} exp in
     let ve' = match fail with
       | None -> check_pat_exhaustive (if is_import dec then local_error else warn) env t pat
       | Some _ -> check_pat env t pat
