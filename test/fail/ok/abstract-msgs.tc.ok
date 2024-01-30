@@ -14,3 +14,8 @@ abstract-msgs.mo:16.34-16.35: type error [M0031], shared function has non-shared
   A__16
 abstract-msgs.mo:17.27-17.47: type error [M0032], shared function has non-shared return type
   A__17
+abstract-msgs.mo:2.33-2.34: warning [M0194], Unused declaration x
+abstract-msgs.mo:4.11-4.14: warning [M0194], Unused declaration foo
+abstract-msgs.mo:5.25-5.26: warning [M0194], Unused declaration x
+abstract-msgs.mo:23.38-23.41: warning [M0194], Unused declaration bar
+abstract-msgs.mo:23.42-23.43: warning [M0194], Unused declaration f

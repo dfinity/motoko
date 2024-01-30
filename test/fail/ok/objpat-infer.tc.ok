@@ -20,3 +20,4 @@ objpat-infer.mo:35.15-35.23: type error [M0096], expression of type
   actor {}
 cannot produce expected type
   {}
+objpat-infer.mo:17.17-17.18: warning [M0194], Unused declaration a

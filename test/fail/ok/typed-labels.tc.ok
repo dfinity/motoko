@@ -28,3 +28,23 @@ typed-labels.mo:24.24-24.64: type error [M0096], expression of type
 cannot produce expected type
   Nat
 typed-labels.mo:25.33-25.34: type error [M0083], unbound label c
+typed-labels.mo:3.5-3.7: warning [M0194], Unused declaration a0
+typed-labels.mo:4.5-4.7: warning [M0194], Unused declaration b0
+typed-labels.mo:5.5-5.7: warning [M0194], Unused declaration c0
+typed-labels.mo:6.5-6.7: warning [M0194], Unused declaration d0
+typed-labels.mo:7.5-7.7: warning [M0194], Unused declaration e0
+typed-labels.mo:9.5-9.7: warning [M0194], Unused declaration a1
+typed-labels.mo:10.5-10.7: warning [M0194], Unused declaration b1
+typed-labels.mo:11.5-11.7: warning [M0194], Unused declaration c1
+typed-labels.mo:12.5-12.7: warning [M0194], Unused declaration d1
+typed-labels.mo:13.5-13.7: warning [M0194], Unused declaration e1
+typed-labels.mo:15.5-15.7: warning [M0194], Unused declaration a2
+typed-labels.mo:16.5-16.7: warning [M0194], Unused declaration b2
+typed-labels.mo:17.5-17.7: warning [M0194], Unused declaration c2
+typed-labels.mo:18.5-18.7: warning [M0194], Unused declaration d2
+typed-labels.mo:19.5-19.7: warning [M0194], Unused declaration e2
+typed-labels.mo:21.5-21.7: warning [M0194], Unused declaration a3
+typed-labels.mo:22.5-22.7: warning [M0194], Unused declaration b3
+typed-labels.mo:23.5-23.7: warning [M0194], Unused declaration c3
+typed-labels.mo:24.5-24.7: warning [M0194], Unused declaration d3
+typed-labels.mo:25.5-25.7: warning [M0194], Unused declaration e3

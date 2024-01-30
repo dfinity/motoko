@@ -2,3 +2,7 @@ argument-subtyping.mo:12.61-12.62: type error [M0096], expression of type
   shared Nat -> ()
 cannot produce expected type
   shared Text -> ()
+argument-subtyping.mo:2.11-2.14: warning [M0194], Unused declaration foo
+argument-subtyping.mo:5.11-5.14: warning [M0194], Unused declaration foo
+argument-subtyping.mo:8.11-8.14: warning [M0194], Unused declaration foo
+argument-subtyping.mo:9.11-9.14: warning [M0194], Unused declaration foo

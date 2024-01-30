@@ -12,3 +12,8 @@ bang-fail.mo:18.17-18.19: type error [M0096], expression of type
   ()
 cannot produce expected type
   Nat
+bang-fail.mo:1.6-1.12: warning [M0194], Unused declaration wrong1
+bang-fail.mo:5.6-5.12: warning [M0194], Unused declaration wrong2
+bang-fail.mo:9.6-9.12: warning [M0194], Unused declaration wrong3
+bang-fail.mo:13.6-13.12: warning [M0194], Unused declaration wrong4
+bang-fail.mo:17.6-17.12: warning [M0194], Unused declaration wrong5

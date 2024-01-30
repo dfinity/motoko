@@ -15,3 +15,7 @@ bad-unops.mo:6.20-6.22: type error [M0111], operator pattern cannot consume expe
 bad-unops.mo:8.20-8.22: warning [M0146], this pattern is never matched
 bad-unops.mo:10.21-10.23: type error [M0111], operator pattern cannot consume expected type
   Int
+bad-unops.mo:1.5-1.6: warning [M0194], Unused declaration a
+bad-unops.mo:2.5-2.6: warning [M0194], Unused declaration b
+bad-unops.mo:3.5-3.6: warning [M0194], Unused declaration c
+bad-unops.mo:4.5-4.6: warning [M0194], Unused declaration d

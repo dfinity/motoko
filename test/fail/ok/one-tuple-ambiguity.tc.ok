@@ -2,3 +2,5 @@ one-tuple-ambiguity.mo:16.3-16.5: type error [M0050], literal of type
   Nat
 does not have expected type
   (Nat, Bool)
+one-tuple-ambiguity.mo:13.9-13.10: warning [M0194], Unused declaration a
+one-tuple-ambiguity.mo:13.18-13.19: warning [M0194], Unused declaration b

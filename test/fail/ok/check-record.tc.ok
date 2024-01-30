@@ -14,3 +14,5 @@ check-record.mo:24.9-24.27: type error [M0096], expression of type
   {a : Nat}
 cannot produce expected type
   {b : Nat}
+check-record.mo:6.5-6.6: warning [M0194], Unused declaration r
+check-record.mo:20.7-20.8: warning [M0194], Unused declaration b

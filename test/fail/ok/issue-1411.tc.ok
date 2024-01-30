@@ -1,0 +1,2 @@
+issue-1411.mo:6.5-6.7: warning [M0194], Unused declaration x1
+issue-1411.mo:11.5-11.7: warning [M0194], Unused declaration x2

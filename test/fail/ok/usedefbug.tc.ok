@@ -1,1 +1,4 @@
+usedefbug.mo:1.7-1.10: warning [M0194], Unused declaration Bar
+usedefbug.mo:4.9-4.13: warning [M0194], Unused declaration bomb
+usedefbug.mo:7.7-7.10: warning [M0194], Unused declaration Bar
 usedefbug.mo:7.3-7.22: definedness error [M0016], cannot use g before g has been defined

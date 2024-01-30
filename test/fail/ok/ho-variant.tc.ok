@@ -1,0 +1,5 @@
+ho-variant.mo:19.5-19.6: warning [M0194], Unused declaration a
+ho-variant.mo:21.5-21.7: warning [M0194], Unused declaration x0
+ho-variant.mo:22.5-22.7: warning [M0194], Unused declaration x1
+ho-variant.mo:23.5-23.7: warning [M0194], Unused declaration x2
+ho-variant.mo:26.5-26.6: warning [M0194], Unused declaration z

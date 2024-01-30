@@ -11,3 +11,4 @@ queries.mo:26.5-26.14: type error [M0096], expression of type
   async<$bogus> ()
 cannot produce expected type
   ()
+queries.mo:3.7-3.8: warning [M0194], Unused declaration a
