@@ -2,3 +2,4 @@ stable-mem-rts-stats.mo:7.7-7.8: warning [M0145], this pattern of type
   Nat64
 does not cover value
   1 or 2 or _
+stable-mem-rts-stats.mo:8.14-8.15: warning [M0194], Unused declaration v

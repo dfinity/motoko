@@ -1,0 +1,4 @@
+type-components.mo:14.7-14.10: warning [M0194], Unused declaration eqC
+type-components.mo:15.7-15.10: warning [M0194], Unused declaration eqD
+type-components.mo:22.17-22.18: warning [M0194], Unused declaration c
+type-components.mo:24.17-24.18: warning [M0194], Unused declaration d

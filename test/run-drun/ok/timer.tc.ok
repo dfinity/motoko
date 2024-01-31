@@ -1,0 +1,4 @@
+timer.mo:18.21-18.35: warning [M0194], Unused declaration setGlobalTimer
+timer.mo:31.10-31.13: warning [M0194], Unused declaration id1
+timer.mo:32.10-32.13: warning [M0194], Unused declaration id2
+timer.mo:33.10-33.13: warning [M0194], Unused declaration id3

@@ -1,0 +1,13 @@
+unsupported.mo:2.7-2.14: warning [M0194], Unused declaration Counter
+unsupported.mo:4.26-4.44: warning [M0194], Unused declaration bad_private_shared
+unsupported.mo:6.29-6.30: warning [M0194], Unused declaration a
+unsupported.mo:8.32-8.33: warning [M0194], Unused declaration f
+unsupported.mo:30.13-30.14: warning [M0194], Unused declaration a
+unsupported.mo:36.13-36.23: warning [M0194], Unused declaration bad_shared
+unsupported.mo:50.15-50.28: warning [M0194], Unused declaration BadActorClass
+unsupported.mo:54.15-54.28: warning [M0194], Unused declaration BadActorClass
+unsupported.mo:54.30-54.31: warning [M0194], Unused declaration x
+unsupported.mo:58.6-58.23: warning [M0194], Unused declaration bad_non_top_actor
+unsupported.mo:62.7-62.23: warning [M0194], Unused declaration bad_nested_actor
+unsupported.mo:66.7-66.21: warning [M0194], Unused declaration BadSecondActor
+unsupported.mo:69.6-69.20: warning [M0194], Unused declaration implicit_async

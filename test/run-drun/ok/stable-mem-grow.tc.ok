@@ -1,0 +1,2 @@
+stable-mem-grow.mo:10.14-10.15: warning [M0194], Unused declaration c
+stable-mem-grow.mo:14.9-14.10: warning [M0194], Unused declaration m

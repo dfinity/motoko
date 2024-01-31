@@ -1,0 +1,3 @@
+self-shadow.mo:1.7-1.10: warning [M0194], Unused declaration foo
+self-shadow.mo:4.17-4.19: warning [M0194], Unused declaration go
+self-shadow.mo:5.9-5.12: warning [M0194], Unused declaration bar

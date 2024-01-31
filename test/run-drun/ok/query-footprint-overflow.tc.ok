@@ -1,0 +1,2 @@
+query-footprint-overflow.mo:3.7-3.16: warning [M0194], Unused declaration footprint
+query-footprint-overflow.mo:21.16-21.20: warning [M0194], Unused declaration expl

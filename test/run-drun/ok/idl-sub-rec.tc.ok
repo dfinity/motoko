@@ -1,0 +1,9 @@
+idl-sub-rec.mo:41.8-41.12: warning [M0194], Unused declaration sub1
+idl-sub-rec.mo:42.8-42.12: warning [M0194], Unused declaration sub2
+idl-sub-rec.mo:43.8-43.12: warning [M0194], Unused declaration sub3
+idl-sub-rec.mo:45.18-45.19: warning [M0194], Unused declaration l
+idl-sub-rec.mo:48.5-48.6: warning [M0194], Unused declaration f
+idl-sub-rec.mo:54.5-54.6: warning [M0194], Unused declaration a
+idl-sub-rec.mo:60.5-60.6: warning [M0194], Unused declaration f
+idl-sub-rec.mo:66.5-66.6: warning [M0194], Unused declaration a
+idl-sub-rec.mo:72.5-72.6: warning [M0194], Unused declaration a

@@ -1,0 +1,7 @@
+idl-sub-opt-any-record.mo:7.6-7.7: warning [M0194], Unused declaration f
+idl-sub-opt-any-record.mo:14.24-14.25: warning [M0194], Unused declaration a
+idl-sub-opt-any-record.mo:14.33-14.34: warning [M0194], Unused declaration n
+idl-sub-opt-any-record.mo:15.24-15.25: warning [M0194], Unused declaration a
+idl-sub-opt-any-record.mo:15.33-15.34: warning [M0194], Unused declaration n
+idl-sub-opt-any-record.mo:16.24-16.25: warning [M0194], Unused declaration a
+idl-sub-opt-any-record.mo:16.33-16.34: warning [M0194], Unused declaration n

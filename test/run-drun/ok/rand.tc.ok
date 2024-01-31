@@ -1,0 +1,2 @@
+rand.mo:8.9-8.11: warning [M0194], Unused declaration t1
+rand.mo:10.9-10.11: warning [M0194], Unused declaration t2

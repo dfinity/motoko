@@ -2,3 +2,4 @@ region0-rts-stats.mo:8.7-8.8: warning [M0145], this pattern of type
   Nat64
 does not cover value
   1 or 2 or _
+region0-rts-stats.mo:9.14-9.15: warning [M0194], Unused declaration v

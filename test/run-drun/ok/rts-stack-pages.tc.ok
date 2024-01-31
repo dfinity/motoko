@@ -1,0 +1,2 @@
+rts-stack-pages.mo:6.7-6.8: warning [M0194], Unused declaration a
+rts-stack-pages.mo:8.8-8.9: warning [M0194], Unused declaration x

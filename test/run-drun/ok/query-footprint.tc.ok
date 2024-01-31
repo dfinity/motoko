@@ -1,0 +1,4 @@
+query-footprint.mo:3.7-3.16: warning [M0194], Unused declaration footprint
+query-footprint.mo:4.16-4.17: warning [M0194], Unused declaration s
+query-footprint.mo:6.9-6.13: warning [M0194], Unused declaration lost
+query-footprint.mo:18.16-18.20: warning [M0194], Unused declaration expl

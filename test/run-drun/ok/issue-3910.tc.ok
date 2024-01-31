@@ -6,3 +6,7 @@ issue-3910.mo:34.10-34.35: warning [M0145], this pattern of type
   {trap : Bool}
 does not cover value
   {trap = true}
+issue-3910.mo:7.11-7.12: warning [M0194], Unused declaration r
+issue-3910.mo:12.13-12.17: warning [M0194], Unused declaration trap
+issue-3910.mo:24.11-24.12: warning [M0194], Unused declaration r
+issue-3910.mo:29.13-29.17: warning [M0194], Unused declaration trap
