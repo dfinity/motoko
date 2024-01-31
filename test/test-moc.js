@@ -20,7 +20,7 @@ Motoko.saveFile(
   `
   /** Program comment
       multi-line */
-  import Prim "mo:prim";
+  import _Prim "mo:prim";
 
   actor {
     /// Type comment
@@ -30,7 +30,7 @@ Motoko.saveFile(
     /** Function comment */
     public query func main() : async T { x };
     /// Sub-module comment
-    module M {
+    module _M {
       /// Class comment
       public class C() {};
     };
