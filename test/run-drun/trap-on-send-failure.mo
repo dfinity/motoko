@@ -2,12 +2,11 @@
 // legacy: test trap on send failure
 import Prim "mo:⛔";
 
-actor self {
+actor {
 
   func showError(e : Error) : Text = debug_show (Prim.errorCode(e), Prim.errorMessage(e));
 
   let MAX_SELF_QUEUE_CAPACITY = 500;
-  let PRED_MAX_SELF_QUEUE_CAPACITY = MAX_SELF_QUEUE_CAPACITY - 1 : Nat;
   let DOUBLE_CAPACITY = 2 * MAX_SELF_QUEUE_CAPACITY;
 
   let raw_rand = (actor "aaaaa-aa" : actor { raw_rand : () -> async Blob }).raw_rand;
@@ -69,4 +68,4 @@ actor self {
 //SKIP run-low
 //SKIP ic-ref-run
 
-//await a.go(); //OR-CALL ingress go "DIDL\x00\x00"
+//CALL ingress go "DIDL\x00\x00"

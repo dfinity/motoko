@@ -1,5 +1,4 @@
 //MOC-FLAG --stable-regions
-import P "mo:⛔";
 import StableMemory "stable-mem/StableMemory";
 
 actor {
