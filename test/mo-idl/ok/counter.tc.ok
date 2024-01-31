@@ -1,0 +1,2 @@
+counter.mo:4.13-4.17: warning [M0194], Unused declaration note
+counter.mo:4.26-4.27: warning [M0194], Unused declaration c

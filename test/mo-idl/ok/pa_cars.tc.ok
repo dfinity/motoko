@@ -1,0 +1,6 @@
+pa_cars.mo:3.13-3.16: warning [M0194], Unused declaration Car
+pa_cars.mo:3.17-3.20: warning [M0194], Unused declaration dmv
+pa_cars.mo:16.27-16.31: warning [M0194], Unused declaration user
+pa_cars.mo:16.40-16.47: warning [M0194], Unused declaration carInfo
+pa_cars.mo:16.61-16.69: warning [M0194], Unused declaration location
+pa_cars.mo:16.82-16.90: warning [M0194], Unused declaration timeSpan
