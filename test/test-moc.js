@@ -20,7 +20,7 @@ Motoko.saveFile(
   `
   /** Program comment
       multi-line */
-  import _Prim "mo:prim";
+  import Prim "mo:prim";
 
   actor {
     /// Type comment
@@ -30,7 +30,7 @@ Motoko.saveFile(
     /** Function comment */
     public query func main() : async T { x };
     /// Sub-module comment
-    module _M {
+    module M {
       /// Class comment
       public class C() {};
     };
@@ -170,4 +170,41 @@ service : {
   main: () -> (T) query;
 }
 `.trim() + '\n';
-assert.deepStrictEqual(Motoko.candid('ast.mo'), {diagnostics: [], code: candid});
+assert.deepStrictEqual(Motoko.candid('ast.mo'), {
+  diagnostics: [
+    {
+      category: 'type',
+      code: 'M0194',
+      message: 'Unused declaration Prim',
+      range: {
+        end: {
+          character: 13,
+          line: 3
+        },
+        start: {
+          character: 9,
+          line: 3
+        }
+      },
+      severity: 2,
+      source: 'ast.mo'
+    },
+    {
+      category: 'type',
+      code: 'M0194',
+      message: 'Unused declaration M',
+      range: {
+        end: {
+          character: 12,
+          line: 13
+        },
+        start: {
+          character: 11,
+          line: 13
+        }
+      },
+      severity: 2,
+      source: 'ast.mo'
+    }
+  ], code: candid
+});
