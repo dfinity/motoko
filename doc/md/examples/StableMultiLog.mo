@@ -20,7 +20,7 @@ actor StableLog {
   func regionEnsureSizeBytes(r : Region, new_byte_count : Nat64) {
     let pages = Region.size(r);
     if (new_byte_count > pages << 16) {
-      let new_pages = pages - ((new_byte_count + ((1 << 16) - 1)) / (1 << 16));
+      let new_pages = ((new_byte_count + ((1 << 16) - 1)) / (1 << 16)) - pages;
       assert Region.grow(r, new_pages) == pages
     }
   };
