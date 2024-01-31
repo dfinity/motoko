@@ -1,0 +1,5 @@
+assetstorage/Iter.mo:165.29-165.31: warning [M0194], Unused declaration ix
+assetstorage/RBTree.mo:45.10-45.13: warning [M0194], Unused declaration res
+assetstorage/RBTree.mo:50.10-50.13: warning [M0194], Unused declaration res
+assetstorage/Char.mo:8.15-8.22: warning [M0194], Unused declaration toUpper
+assetstorage/Char.mo:11.15-11.22: warning [M0194], Unused declaration toLower

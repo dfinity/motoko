@@ -1,2 +1,9 @@
+assetstorage/Iter.mo:165.29-165.31: warning [M0194], Unused declaration ix
+assetstorage/Trie.mo:206.31-206.32: warning [M0194], Unused declaration v
+assetstorage/Trie.mo:486.25-486.26: warning [M0194], Unused declaration v
+assetstorage/Trie.mo:588.9-588.15: warning [M0194], Unused declaration key_eq
+assetstorage/Trie.mo:967.7-967.12: warning [M0194], Unused declaration k3_eq
+assetstorage/Trie.mo:1568.5-1568.10: warning [M0194], Unused declaration k1_eq
 dao/dao-types.mo:67.72-67.80: warning [M0154], field hash is deprecated:
 For large `Int` values consider using a bespoke hash function that considers all of the argument's bits.
+dao.mo:13.40-13.43: warning [M0194], Unused declaration DAO
