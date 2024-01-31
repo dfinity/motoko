@@ -193,16 +193,17 @@ let emit_unused_warnings env =
   let list = sorted_unused_warnings !(env.unused_warnings) in
   List.iter emit list
 
-let underscore_prefix id =
+let ignore_warning_for_id id =
   if String.length id > 0 then
-    (String.get id 0) = '_'
+    let prefix = String.get id 0 in
+    prefix = '_' || prefix = '@'
   else
     false
 
 let detect_unused env inner_variables =
   if env.check_unused then
     T.Env.iter (fun id (_, at) ->
-      if (is_unused_declaration env id) && (not (underscore_prefix id)) then
+      if (is_unused_declaration env id) && (not (ignore_warning_for_id id)) then
         add_unused_warning env (id, at)
       else
         ()

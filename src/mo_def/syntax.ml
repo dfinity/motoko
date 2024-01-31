@@ -297,8 +297,8 @@ open Source
 
 (* Identifiers *)
 
-let anon_id sort at = "anon-" ^ sort ^ "-" ^ string_of_pos at.left
-let is_anon_id id = Lib.String.chop_prefix "anon-" id.it <> None
+let anon_id sort at = "@anon-" ^ sort ^ "-" ^ string_of_pos at.left
+let is_anon_id id = Lib.String.chop_prefix "@anon-" id.it <> None
 
 (* Types & Scopes *)
 
