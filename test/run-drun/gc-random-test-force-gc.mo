@@ -4,7 +4,7 @@ actor {
     let test = GCRandomTest.GCRandomTest();
     
     public shared func run() : async () {
-        await test.run(15);
+        await test.run(25);
     };
 };
 
