@@ -883,7 +883,7 @@ and interpret_obj env obj_sort dec_fields (k : V.value V.cont) =
   | T.Actor ->
      let self = V.fresh_id() in
      let ve_ex, ve_in = declare_dec_fields dec_fields V.Env.empty V.Env.empty in
-     let env' = adjoin_vals { env with self = self } ve_in in
+     let env' = adjoin_vals { env with self } ve_in in
      interpret_dec_fields env' dec_fields ve_ex
      (fun obj ->
         (env.actor_env := V.Env.add self obj !(env.actor_env);
