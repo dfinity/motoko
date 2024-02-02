@@ -154,7 +154,7 @@ and t_exp' context exp =
     assert (not (T.is_shared_func (typ exp)));
     let context' = LabelEnv.add Return Label LabelEnv.empty in
     FuncE (x, s, c, typbinds, pat, typs, t_exp context' exp1)
-  | ActorE (ds, ids, { meta; preupgrade; postupgrade; heartbeat; timer; inspect}, t) ->
+  | ActorE (ds, ids, { meta; preupgrade; postupgrade; heartbeat; timer; inspect}, t, build_stable_actor) ->
     ActorE (t_decs context ds, ids,
       { meta;
         preupgrade = t_exp LabelEnv.empty preupgrade;
@@ -163,7 +163,8 @@ and t_exp' context exp =
         timer = t_ignore_throw LabelEnv.empty timer;
         inspect = t_exp LabelEnv.empty inspect
       },
-      t)
+      t,
+      t_exp LabelEnv.empty build_stable_actor)
   | NewObjE (sort, ids, typ) -> exp.it
   | SelfCallE _ -> assert false
   | PrimE (p, exps) ->
@@ -597,7 +598,7 @@ and t_comp_unit context = function
           expD (c_block context' ds (tupE []) (meta (T.unit) (fun v1 -> tupE [])))
         ]
     end
-  | ActorU (as_opt, ds, ids, { meta = m; preupgrade; postupgrade; heartbeat; timer; inspect}, t) ->
+  | ActorU (as_opt, ds, ids, { meta = m; preupgrade; postupgrade; heartbeat; timer; inspect}, t, build_stable_actor) ->
     ActorU (as_opt, t_decs context ds, ids,
       { meta = m;
         preupgrade = t_exp LabelEnv.empty preupgrade;
@@ -606,7 +607,7 @@ and t_comp_unit context = function
         timer = t_ignore_throw LabelEnv.empty timer;
         inspect = t_exp LabelEnv.empty inspect;
       },
-      t)
+      t, t_exp LabelEnv.empty build_stable_actor)
 
 and t_ignore_throw context exp =
   match exp.it with

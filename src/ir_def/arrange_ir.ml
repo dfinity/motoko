@@ -30,7 +30,7 @@ let rec exp e = match e.it with
     "FuncE" $$ [Atom x; func_sort s; control c] @ List.map typ_bind tp @ args as_ @ [ typ (Type.seq ts); exp e]
   | SelfCallE (ts, exp_f, exp_k, exp_r) ->
     "SelfCallE" $$ [typ (Type.seq ts); exp exp_f; exp exp_k; exp exp_r]
-  | ActorE (ds, fs, u, t) -> "ActorE"  $$ List.map dec ds @ fields fs @ [system u; typ t]
+  | ActorE (ds, fs, u, t, e) -> "ActorE"  $$ List.map dec ds @ fields fs @ [system u; typ t; exp e]
   | NewObjE (s, fs, t)  -> "NewObjE" $$ (Arrange_type.obj_sort s :: fields fs @ [typ t])
   | TryE (e, cs)        -> "TryE" $$ [exp e] @ List.map case cs
 
@@ -168,7 +168,7 @@ and typ_bind (tb : typ_bind) =
 and comp_unit = function
   | LibU (ds, e) -> "LibU" $$ List.map dec ds @ [ exp e ]
   | ProgU ds -> "ProgU" $$ List.map dec ds
-  | ActorU (None, ds, fs, u, t) -> "ActorU"  $$ List.map dec ds @ fields fs @ [system u; typ t]
-  | ActorU (Some as_, ds, fs, u, t) -> "ActorU"  $$ List.map arg as_ @ List.map dec ds @ fields fs @ [system u; typ t]
+  | ActorU (None, ds, fs, u, t, e) -> "ActorU"  $$ List.map dec ds @ fields fs @ [system u; typ t.transient_actor_type; typ t.stable_actor_type; exp e]
+  | ActorU (Some as_, ds, fs, u, t, e) -> "ActorU"  $$ List.map arg as_ @ List.map dec ds @ fields fs @ [system u; typ t.transient_actor_type; typ t.stable_actor_type; exp e]
 
 and prog (cu, _flavor) = comp_unit cu

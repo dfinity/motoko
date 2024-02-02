@@ -306,7 +306,8 @@ and obj_block at s self_id dfs obj_typ =
   | T.Object | T.Module ->
     build_obj at s.it self_id dfs obj_typ
   | T.Actor ->
-    build_actor at [] self_id dfs obj_typ
+    let (_, actor_expression) = build_actor at [] self_id dfs obj_typ in
+    actor_expression
   | T.Memory -> assert false
 
 and build_field {T.lab; T.typ;_} =
@@ -457,7 +458,6 @@ and export_footprint self_id expr =
   )],
   [{ it = I.{ name = lab; var = v }; at = no_region; note = typ }])
 
-
 and build_actor at ts self_id es obj_typ =
   let candid = build_candid ts obj_typ in
   let fs = build_fields obj_typ in
@@ -501,7 +501,7 @@ and build_actor at ts self_id es obj_typ =
     let vs = fresh_vars "v" (List.map (fun f -> f.T.typ) fields) in
     blockE
       ((match call_system_func_opt "preupgrade" es obj_typ with
-        | Some call -> [ expD (primE (I.ICPerformGC) []); expD call]
+        | Some call -> [ expD call]
         | None -> []) @
          [letP (seqP (List.map varP vs)) (* dereference any mutable vars, option 'em all *)
             (seqE (List.map (fun (i,t) -> optE (varE (var i t))) ids))])
@@ -514,9 +514,11 @@ and build_actor at ts self_id es obj_typ =
                ) fields vs)
             ty)) in
   let footprint_d, footprint_f = export_footprint self_id (with_stable_vars (fun e -> e)) in
-  I.(ActorE (interface_d @ footprint_d @ ds', interface_f @ footprint_f @ fs,
+  (ty, I.(ActorE (
+     interface_d @ footprint_d @ ds', 
+     interface_f @ footprint_f @ fs,
      { meta;
-       preupgrade = with_stable_vars (fun e -> primE (I.ICStableWrite ty) [e]);
+       preupgrade = (primE (I.ICStableWrite ty) []);
        postupgrade =
          (match call_system_func_opt "postupgrade" es obj_typ with
           | Some call -> call
@@ -538,8 +540,8 @@ and build_actor at ts self_id es obj_typ =
           | Some call -> call
           | None -> tupE [])
      },
-     obj_typ))
-
+     obj_typ,
+     with_stable_vars (fun e -> e))))
 
 and stabilize stab_opt d =
   let s = match stab_opt with None -> S.Flexible | Some s -> s.it  in
@@ -726,8 +728,8 @@ and dec' at n = function
     let e' = exp e in
     (* HACK: remove this once backend supports recursive actors *)
     begin match p'.it, e'.it, f with
-    | I.VarP i, I.ActorE (ds, fs, u, t), _ ->
-      I.LetD (p', {e' with it = I.ActorE (with_self i t ds, fs, u, t)})
+    | I.VarP i, I.ActorE (ds, fs, u, t, build_stable_actor), _ ->
+      I.LetD (p', {e' with it = I.ActorE (with_self i t ds, fs, u, t, build_stable_actor)})
     | _, _, None -> I.LetD (p', e')
     | _, _, Some f -> I.LetD (p', let_else_switch (pat p) (exp e) (exp f))
     end
@@ -830,8 +832,8 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
     match e.it with
     | Ir.ActorE _ ->
       (match Rename.exp' Rename.Renaming.empty e.it with
-       |  Ir.ActorE (ds', fs, up, ot) ->
-         { e with it = Ir.ActorE (ds @ ds', fs, up, ot) }
+       |  Ir.ActorE (ds', fs, up, ot, build_stable_actor) ->
+         { e with it = Ir.ActorE (ds @ ds', fs, up, ot, build_stable_actor) }
        | _ -> assert false)
     | _ -> blockE ds e
   in
@@ -1005,13 +1007,13 @@ let inject_decs extra_ds u =
   match u with
   | LibU (ds, exp) -> LibU (extra_ds @ ds, exp)
   | ProgU ds -> ProgU (extra_ds @ ds)
-  | ActorU (None, ds, fs, up, t) ->
-    Ir.ActorU (None, extra_ds @ ds, fs, up, t)
-  | ActorU (Some _, _, _, _, _) ->
+  | ActorU (None, ds, fs, up, t, e) ->
+    Ir.ActorU (None, extra_ds @ ds, fs, up, t, e)
+  | ActorU (Some _, _, _, _, _, _) ->
     let u'= Rename.comp_unit Rename.Renaming.empty u in
     match u' with
-    | ActorU (as_opt, ds, fs, up, t) ->
-      Ir.ActorU (as_opt, extra_ds @ ds, fs, up, t)
+    | ActorU (as_opt, ds, fs, up, t, e) ->
+      Ir.ActorU (as_opt, extra_ds @ ds, fs, up, t, e)
     | _ -> assert false
 
 let link_declarations imports (cu, flavor) =
@@ -1054,18 +1056,24 @@ let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
         T.promote rng
       | _ -> assert false
     in
+    let (stable_actor_type, actor_expression) = build_actor u.at ts (Some self_id) fields obj_typ in
     let e = wrap {
-       it = build_actor u.at ts (Some self_id) fields obj_typ;
+       it = actor_expression;
        at = no_region;
        note = Note.{ def with typ = obj_typ } }
     in
     begin match e.it with
-    | I.ActorE(ds, fs, u, t) -> I.ActorU (Some args, ds, fs, u, t)
+    | I.ActorE(ds, fs, u, t, build_stable_actor) -> 
+        let actor_type = I.{ transient_actor_type = t; stable_actor_type } in
+        I.ActorU (Some args, ds, fs, u, actor_type, build_stable_actor)
     | _ -> assert false
     end
   | S.ActorU (self_id, fields) ->
-    begin match build_actor u.at [] self_id fields u.note.S.note_typ with
-    | I.ActorE (ds, fs, u, t) -> I.ActorU (None, ds, fs, u, t)
+    let (stable_actor_type, actor_expression) = build_actor u.at [] self_id fields u.note.S.note_typ in
+    begin match actor_expression with
+    | I.ActorE (ds, fs, u, t, build_stable_actor) -> 
+        let actor_type = I.{ transient_actor_type = t; stable_actor_type } in
+        I.ActorU (None, ds, fs, u, actor_type, build_stable_actor)
     | _ -> assert false
     end
 
@@ -1094,9 +1102,10 @@ let import_unit (u : S.comp_unit) : import_declaration =
   | I.LibU (ds, e) ->
     let exp = blockE ds e in
     [ letD (var (id_of_full_path f) exp.note.Note.typ) exp ]
-  | I.ActorU (None, ds, fs, up, t) ->
+  | I.ActorU (None, ds, fs, up, t, e) ->
     raise (Invalid_argument "Desugar: Cannot import actor")
-  | I.ActorU (Some as_, ds, fs, up, actor_t) ->
+  | I.ActorU (Some as_, ds, fs, up, actor_type, build_stable_actor) ->
+    let actor_t = I.(actor_type.transient_actor_type) in
     let id = match body.it with
       | S.ActorClassU (_, id, _, _, _, _, _) -> id.it
       | _ -> assert false
@@ -1124,7 +1133,7 @@ let import_unit (u : S.comp_unit) : import_declaration =
             (primE (Ir.RelPrim (T.install_arg_typ, Operator.EqOp))
               [ install_arg;
                 tagE "new" (recordE ["settings", nullE()]) ])
-             { it = I.ActorE (ds, fs, up, actor_t); at = u.at; note = Note.{ def with typ = actor_t } }
+             { it = I.ActorE (ds, fs, up, actor_t, build_stable_actor); at = u.at; note = Note.{ def with typ = actor_t } }
              (primE (Ir.OtherPrim "trap")
                [textE "actor class configuration not supported in interpreter"]))
           (List.hd cs))

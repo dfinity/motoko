@@ -1,8 +1,11 @@
 use crate::{
     memory::Memory,
     stabilization::{
-        stable_memory_access::StableMemoryAccess,
-        stable_memory_stream::{ScanStream, StableMemoryStream, WriteStream},
+        deserialization::stable_memory_access::StableMemoryAccess,
+        serialization::{
+            stable_memory_stream::{ScanStream, StableMemoryStream, WriteStream},
+            SerializationContext,
+        },
     },
     types::{size_of, Object, Value, Words, TAG_OBJECT},
 };
@@ -46,17 +49,21 @@ impl Serializer<Object> for StableObject {
         }
     }
 
-    fn scan_serialized_dynamic<C: StableToSpace, F: Fn(&mut C, StableValue) -> StableValue>(
+    fn scan_serialized_dynamic<
+        'a,
+        M,
+        F: Fn(&mut SerializationContext<'a, M>, StableValue) -> StableValue,
+    >(
         &self,
-        context: &mut C,
+        context: &mut SerializationContext<'a, M>,
         translate: &F,
     ) {
         for _ in 0..self.size {
-            let old_value = context.to_space().read::<StableValue>();
+            let old_value = context.serialization.to_space().read::<StableValue>();
             // On a longer term, the GC could remove unnecessary fields (during evacuation) that have been
             // declared in old program versions but which name does no longer exist in a new program version.
             let new_value = translate(context, old_value);
-            context.to_space().update(&new_value);
+            context.serialization.to_space().update(&new_value);
         }
     }
 

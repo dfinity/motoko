@@ -43,6 +43,7 @@ unsafe fn schedule_generational_gc<M: Memory>(mem: &mut M) {
 #[ic_mem_fn(ic_only)]
 unsafe fn generational_gc<M: Memory>(mem: &mut M) {
     use crate::memory::ic;
+    assert!(super::is_gc_enabled());
 
     let old_limits = get_limits();
     let roots = Roots {

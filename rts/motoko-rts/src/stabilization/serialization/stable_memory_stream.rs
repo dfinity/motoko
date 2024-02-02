@@ -3,9 +3,10 @@
 
 use core::mem::{size_of, MaybeUninit};
 
-use crate::stable_mem::{ic0_stable64_read, ic0_stable64_write};
-
-use super::grant_stable_space;
+use crate::{
+    stabilization::grant_stable_space,
+    stable_mem::{ic0_stable64_read, ic0_stable64_write},
+};
 
 /// Streamed reader/writer on stable memory.
 /// Used for the to-space during stabilization.
@@ -58,6 +59,11 @@ impl StableMemoryStream {
 
     pub fn close(&mut self) {
         debug_assert!(self.scan_address <= self.free_address);
+    }
+
+    /// Start address of the serialized data in stable memory.
+    pub fn base_address(&self) -> u64 {
+        self.base_address
     }
 
     /// Size of this memory space. Also serves to determine the addresses of a subsequently

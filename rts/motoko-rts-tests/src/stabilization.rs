@@ -10,12 +10,15 @@ use crate::{
         utils::{GC, GC_IMPLS, WORD_SIZE},
         CheckMode, TestHeap,
     },
+    memory::TestMemory,
     stabilization::stable_memory::clear_stable_memory,
 };
 use motoko_rts::{
-    memory::alloc_array,
-    stabilization::{Deserialization, Serialization},
-    types::{Array, Null, Obj, Value, TAG_ARRAY, TAG_FWD_PTR, TAG_NULL},
+    memory::{alloc_array, Memory},
+    stabilization::{
+        deserialization::Deserialization, graph_copy::GraphCopy, serialization::Serialization,
+    },
+    types::{Array, Null, Obj, Value, Words, TAG_ARRAY, TAG_FWD_PTR, TAG_NULL},
 };
 use motoko_rts_macros::{incremental_gc, non_incremental_gc};
 use oorandom::Rand32;
@@ -46,6 +49,16 @@ unsafe fn initialize_null_singleton() {
 #[no_mangle]
 pub fn moc_null_singleton() -> Value {
     unsafe { Value::from_ptr(&mut DUMMY_NULL_SINGLETON as *mut Null as usize) }
+}
+
+#[no_mangle]
+pub fn moc_stabilization_instruction_limit() -> u64 {
+    u64::MAX
+}
+
+#[no_mangle]
+pub fn ic0_performance_counter(_counter: u32) -> u64 {
+    0
 }
 
 #[non_incremental_gc]
@@ -196,9 +209,28 @@ fn test_serialization_deserialization(random: &mut Rand32, max_objects: u32, sta
     let gc = GC_IMPLS[0];
     let mut heap = random_heap(random, max_objects, gc);
     let old_stable_root = heap.old_stable_root();
-    let stable_size = Serialization::run(old_stable_root, stable_start);
+
+    let stable_size = serialize(old_stable_root, stable_start);
+
     heap.clear();
-    let stable_root = Deserialization::run(&mut heap.memory, stable_start, stable_size);
+
+    let stable_root = deserialize(&mut heap.memory, stable_start, stable_size);
+
     heap.set_new_root(stable_root);
     heap.check_heap();
+}
+
+fn serialize(old_stable_root: Value, stable_start: u64) -> u64 {
+    let mut memory = TestMemory::new(Words(0));
+    let mut serialization = Serialization::start(&mut memory, old_stable_root, stable_start);
+    serialization.copy_increment(&mut memory);
+    assert!(serialization.is_completed());
+    serialization.serialized_data_length()
+}
+
+fn deserialize<M: Memory>(mem: &mut M, stable_start: u64, stable_size: u64) -> Value {
+    let mut deserialization = Deserialization::start(mem, stable_start, stable_size);
+    deserialization.copy_increment(mem);
+    assert!(deserialization.is_completed());
+    deserialization.get_stable_root()
 }

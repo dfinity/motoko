@@ -72,7 +72,7 @@ and exp' =
   | FuncE of                                   (* function *)
       string * Type.func_sort * Type.control * typ_bind list * arg list * Type.typ list * exp
   | SelfCallE of Type.typ list * exp * exp * exp (* essentially ICCallPrim (FuncE shared…) *)
-  | ActorE of dec list * field list * system * Type.typ (* actor *)
+  | ActorE of dec list * field list * system * Type.typ * exp (* actor *)
   | NewObjE of Type.obj_sort * field list * Type.typ  (* make an object *)
   | TryE of exp * case list                    (* try/catch *)
 
@@ -234,13 +234,17 @@ let full_flavor () : flavor = {
   has_poly_eq = true;
 }
 
+type actor_type = {
+  transient_actor_type: Type.typ;
+  stable_actor_type: Type.typ
+}
 
 (* Program *)
 
 type comp_unit =
   | LibU of dec list * exp
   | ProgU of dec list
-  | ActorU of arg list option * dec list * field list * system * Type.typ (* actor (class) *)
+  | ActorU of arg list option * dec list * field list * system * actor_type * exp (* actor (class) *)
 
 type prog = comp_unit * flavor
 
@@ -315,4 +319,3 @@ let map_prim t_typ t_id p =
   | ICStableWrite t -> ICStableWrite (t_typ t)
   | ICStableRead t -> ICStableRead (t_typ t)
   | ICStableSize t -> ICStableSize (t_typ t)
-

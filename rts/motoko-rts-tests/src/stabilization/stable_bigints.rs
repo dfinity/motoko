@@ -2,13 +2,14 @@ use std::ptr::null_mut;
 
 use motoko_rts::{
     bigint::{bigint_add, bigint_eq, bigint_mul, bigint_neg, bigint_of_word32},
-    stabilization::{Deserialization, Serialization},
     types::{Value, Words},
 };
 use oorandom::Rand32;
 
 use crate::{
-    bigint::set_bigint_heap, memory::TestMemory, stabilization::stable_memory::clear_stable_memory,
+    bigint::set_bigint_heap,
+    memory::TestMemory,
+    stabilization::{deserialize, serialize, stable_memory::clear_stable_memory},
 };
 
 pub unsafe fn test() {
@@ -75,9 +76,9 @@ unsafe fn test_bigint<F: FnMut() -> Value>(mut generate_bigint: F) {
     // Clone the input bigint object, because it is destructed on serialization.
     let clone = bigint_add(input, bigint_of_word32(0));
     assert!(bigint_eq(clone, input));
-    let stable_size = Serialization::run(clone, 0);
+    let stable_size = serialize(clone, 0);
     // Note: `clone` is no longer a valid bigint because it has been replaced by a forwarding object.
-    let output = Deserialization::run(&mut memory, 0, stable_size);
+    let output = deserialize(&mut memory, 0, stable_size);
     assert!(bigint_eq(output, input));
     set_bigint_heap(null_mut());
 }

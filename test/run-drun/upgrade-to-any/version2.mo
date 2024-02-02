@@ -13,7 +13,8 @@ actor {
    stable var secondVariable : Any = largeAllocation("second variable");
 
    public func check(): async() {
-      // Extra GC increment.
+      // Extra GC increments.
+      await async {};
       await async {};
       // Check that both variables have been cleared and both arrays have been reclaimed.
       assert(Prim.rts_heap_size() < allocationSize);

@@ -6,6 +6,11 @@ type compile_mode = WasmMode | ICMode | RefMode | WASIMode
 
 type gc_strategy = MarkCompact | Copying | Generational | Incremental
 
+type instruction_limits = {
+  upgrade: int;
+  update_call: int;
+}
+
 let trace = ref false
 let verbose = ref false
 let print_warnings = ref true
@@ -49,3 +54,8 @@ let rts_stack_pages : int ref = ref rts_stack_pages_default
 let trap_on_call_error = ref false
 let use_stable_regions = ref false
 let share_code = ref false
+let stabilization_instruction_limit_default = {
+  upgrade = 180_000_000_000; (* 200 billion limit with 10% reserve *)
+  update_call = 18_000_000_000; (* 20 billion limit with 10% reserve *)
+}
+let stabilization_instruction_limit = ref stabilization_instruction_limit_default

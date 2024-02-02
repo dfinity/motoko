@@ -21,7 +21,6 @@
 //!   Serialized data address N (u64)
 //!   Serialized data length L (u64)
 //!   Type descriptor address M (u64)
-//!   Stable memory size in pages S (u64)
 //!   First word of page 0
 //!   Version 3 or 4 (u32)
 //! -- page end
@@ -32,7 +31,7 @@ use crate::{
     barriers::allocation_barrier,
     memory::{alloc_blob, Memory},
     region::{VERSION_GRAPH_COPY_NO_REGIONS, VERSION_GRAPH_COPY_REGIONS},
-    stabilization::ic0_performance_counter,
+    stabilization::{clear_stable_memory, grant_stable_space},
     stable_mem::{
         get_version, ic0_stable64_read, ic0_stable64_size, ic0_stable64_write, read_u32,
         set_version, write_u32, PAGE_SIZE,
@@ -40,7 +39,7 @@ use crate::{
     types::{size_of, Bytes, Value},
 };
 
-use super::{clear_stable_memory, compatibility::TypeDescriptor, grant_stable_space};
+use super::{compatibility::TypeDescriptor, performance::InstructionMeter};
 
 #[repr(C)]
 #[derive(Default)]
@@ -55,13 +54,11 @@ struct LastPageRecord {
     serialized_data_address: u64,
     serialized_data_length: u64,
     type_descriptor_address: u64,
-    stable_memory_pages: u64,
     first_word_backup: u32,
     version: u32,
 }
 
 pub struct StabilizationMetadata {
-    pub stable_memory_pages: u64,
     pub serialized_data_start: u64,
     pub serialized_data_length: u64,
     pub type_descriptor: TypeDescriptor,
@@ -171,8 +168,8 @@ impl StabilizationMetadata {
         Self::write_metadata(&LastPageRecord::default());
     }
 
-    pub fn store(&self) {
-        assert!(self.stable_memory_pages * PAGE_SIZE <= self.serialized_data_start);
+    pub fn store(&self, measurement: &mut InstructionMeter) {
+        measurement.start();
         let mut offset = self.serialized_data_start + self.serialized_data_length;
         Self::align_page_start(&mut offset);
         let type_descriptor_address = offset;
@@ -183,15 +180,15 @@ impl StabilizationMetadata {
         // This ensures compatibility with old legacy version 0 using no
         // experimental stable memory and no regions.
         write_u32(0, 0);
+        measurement.stop();
         let statistics = UpgradeStatistics {
-            stabilization_instructions: unsafe { ic0_performance_counter(0) },
+            stabilization_instructions: measurement.total_elapsed(),
         };
         let last_page_record = LastPageRecord {
             statistics,
             serialized_data_address: self.serialized_data_start,
             serialized_data_length: self.serialized_data_length,
             type_descriptor_address,
-            stable_memory_pages: self.stable_memory_pages,
             first_word_backup,
             version: get_version(),
         };
@@ -207,14 +204,9 @@ impl StabilizationMetadata {
         );
         set_version(last_page_record.version);
         write_u32(0, last_page_record.first_word_backup);
-        assert!(
-            last_page_record.stable_memory_pages * PAGE_SIZE
-                <= last_page_record.serialized_data_address
-        );
         let mut offset = last_page_record.type_descriptor_address;
         let type_descriptor = Self::load_type_descriptor(mem, &mut offset);
         let metadata = StabilizationMetadata {
-            stable_memory_pages: last_page_record.stable_memory_pages,
             serialized_data_start: last_page_record.serialized_data_address,
             serialized_data_length: last_page_record.serialized_data_length,
             type_descriptor,

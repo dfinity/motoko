@@ -26,3 +26,37 @@ unsafe fn should_do_gc(max_live: crate::types::Bytes<u64>) -> bool {
 
     u64::from(get_hp_unskewed() as u32) >= heap_limit
 }
+
+#[non_incremental_gc]
+static mut ENABLED: bool = true;
+
+/// Stop all GCs during stabilzation and destabilization.
+/// * During stabilzation, the heap is invalidated because of the forwarding objects of Cheney's algorithm.
+/// * During destabilization, the scan stack is in use and its implementation does not support stack block movements.
+#[non_incremental_gc]
+pub unsafe fn stop_gc_before_upgrade() {
+    ENABLED = false;
+}
+
+#[no_mangle]
+#[non_incremental_gc]
+pub unsafe extern "C" fn start_gc_after_upgrade() {
+    ENABLED = true;
+}
+
+#[non_incremental_gc]
+#[cfg(feature = "ic")]
+unsafe fn is_gc_enabled() -> bool {
+    ENABLED
+}
+
+#[incremental_gc]
+pub unsafe fn stop_gc_before_upgrade() {
+    self::incremental::stop_gc_before_upgrade();
+}
+
+#[no_mangle]
+#[incremental_gc]
+pub unsafe extern "C" fn start_gc_after_upgrade() {
+    self::incremental::start_gc_after_upgrade();
+}

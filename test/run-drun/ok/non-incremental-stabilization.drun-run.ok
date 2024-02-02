@@ -1,0 +1,25 @@
+ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
+ingress Completed: Reply: 0x4449444c0000
+debug.print: 12_345_678_901_234_567_890_123_456_789_012_345_678_901_234_567_890_123_456_789_012_345_678_901_234_567_890
+debug.print: -2_345_678_901_234_567_890_123_456_789_012_345_678_901_234_567_890_123_456_789_012_345_678_901_234_567_890
+debug.print: "Motoko graph-copy-based upgrade test"
+ingress Completed: Reply: 0x4449444c0000
+ingress Completed: Reply: 0x4449444c0000
+debug.print: PRE-UPGRADE HOOK!
+debug.print: POST-UPGRADE HOOK!
+ingress Completed: Reply: 0x4449444c0000
+ingress Completed: Reply: 0x4449444c0000
+debug.print: 12_345_678_901_234_567_890_123_456_789_012_345_678_901_234_567_890_123_456_789_012_345_678_901_234_567_890
+debug.print: -2_345_678_901_234_567_890_123_456_789_012_345_678_901_234_567_890_123_456_789_012_345_678_901_234_567_890
+debug.print: "Motoko graph-copy-based upgrade test"
+ingress Completed: Reply: 0x4449444c0000
+debug.print: PRE-UPGRADE HOOK!
+ingress Completed: Reply: 0x4449444c0000
+ingress Completed: Reply: 0x4449444c0000
+ingress Err: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: Messages are blocked during stabilization
+debug.print: POST-UPGRADE HOOK!
+ingress Completed: Reply: 0x4449444c0000
+debug.print: 12_345_678_901_234_567_890_123_456_789_012_345_678_901_234_567_890_123_456_789_012_345_678_901_234_567_890
+debug.print: -2_345_678_901_234_567_890_123_456_789_012_345_678_901_234_567_890_123_456_789_012_345_678_901_234_567_890
+debug.print: "Motoko graph-copy-based upgrade test"
+ingress Completed: Reply: 0x4449444c0000
