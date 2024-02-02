@@ -17,12 +17,12 @@ let rec as_actor_def e =
   | AwaitE (Type.Fut, { it = AsyncE (Type.Fut, _, {it = ObjBlockE ({ it = Type.Actor; _}, _t, _bs, fields); note; at }) ; _  }) ->
     begin match fields with
     | { it = { dec = { it = LetD ({ it = VarP { it = "one" } }, _, _) as d } }; _ } as leader :: _ ->
-       let fs, note', _ = as_actor_def (List.hd _bs) in
+       let fs, note', _ = as_actor_def !(List.hd _bs) in
        (fields @ fs), { note with note_typ = Type.glb note.note_typ note'.note_typ }, at
     | { it = { dec = { it = LetD ({ it = VarP { it = "beep" } }, _, _) as d } }; _ } as leader :: _ ->
-       begin match (List.hd _bs).it with
+       begin match !(List.hd _bs).it with
        | CallE ({ it = VarE f; _}, _, a) ->
-          let at = (List.hd _bs).at in
+          let at = !(List.hd _bs).at in
           let dec' = LetD ({ it = VarP { it = "retries"; at; note = ()}; at; note = a.note.note_typ }, a, None) in
           let dec = { it = dec'; at; note = a.note } in
           let dec_field = { it = { dec; vis = { it = Private; at; note = () }; stab = None }; at; note = () } in

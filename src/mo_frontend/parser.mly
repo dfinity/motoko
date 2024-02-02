@@ -195,7 +195,7 @@ and objblock s ty dec_bases dec_fields =
     | Public _, ClassD (_, id, _, _, _, _, _, _) when is_anon_id id ->
       syntax_error df.it.dec.at "M0158" "a public class cannot be anonymous, please provide a name"
     | _ -> ()) dec_fields;
-  ObjBlockE(s, ty, dec_bases, dec_fields)
+  ObjBlockE(s, ty, List.map ref dec_bases, dec_fields)
 
 %}
 

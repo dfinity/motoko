@@ -1163,7 +1163,7 @@ and infer_exp'' env exp : T.typ =
     if _bs <> [] then begin
         assert (Type.Env.mem "Ext" env.mixs);
         end;
-    let _bases = List.map (infer_exp { env' with async = C.initial_cap ()(*HACK*) }) _bs in
+    let _bases = List.map (fun er -> infer_exp { env' with async = C.initial_cap ()(*HACK*) } !er) _bs in
     let t = infer_obj env' obj_sort.it dec_fields exp.at in
     begin match env.pre, typ_opt with
       | false, Some typ ->
@@ -2708,7 +2708,7 @@ and infer_dec_valdecs env dec : Scope.t =
         _
       ) ->
      let dec_fields = if _bs <> [] then begin
-                          let separate = function
+                          let separate er = match !er with
                             | { it = CallE ({ it = VarE { it = mix; _ }; _ } , { it = None; _ }, _exp2); _ } -> [mix]
                             | _ -> [] in
                           let mixins = List.concat_map separate _bs in
