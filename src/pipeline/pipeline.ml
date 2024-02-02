@@ -436,7 +436,7 @@ let load_progs parsefn files senv : load_result =
   let libs = List.concat_map snd rs in
   let* libs, senv' = chase_imports parsefn senv libs in
   let* senv'' = check_progs senv' progs' in
-  assert (Type.Env.mem "Ext" senv''.Scope.mix_env);
+  (*assert (Type.Env.mem "Ext" senv''.Scope.mix_env);*)
   Diag.return (libs, progs', senv'')
 
 let load_decl parse_one senv : load_decl_result =

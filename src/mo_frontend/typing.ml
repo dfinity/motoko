@@ -2708,12 +2708,16 @@ and infer_dec_valdecs env dec : Scope.t =
         _
       ) ->
      let dec_fields = if _bs <> [] then begin
+                          let build mix = match T.Env.find_opt mix env.mixs with
+                            | None -> assert false
+                            | Some { it = ClassD (_shared_pat, id, typ_binds, pat, _, {it = T.Actor}, _, dec_fields) } -> dec_fields
+                            | _ -> assert false in
                           let separate er = match !er with
-                            | { it = CallE ({ it = VarE { it = mix; _ }; _ } , { it = None; _ }, _exp2); _ } -> [mix]
+                            | { it = CallE ({ it = VarE { it = mix; _ }; _ } , { it = None; _ }, _exp2); _ } -> assert (T.Env.mem mix env.mixs); build mix
                             | _ -> [] in
                           let mixins = List.concat_map separate _bs in
-                          assert (T.Env.mem "Ext" env.vals);
-                          dec_fields
+                          (*assert (T.Env.mem "Ext" env.vals);*)
+                          dec_fields @ mixins
                        end
                      else dec_fields in
     let decs = List.map (fun df -> df.it.dec) dec_fields in
