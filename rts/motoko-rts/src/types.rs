@@ -990,7 +990,7 @@ pub(crate) unsafe fn block_size(address: usize) -> Words<u32> {
         TAG_REGION => size_of::<Region>(),
 
         _ => {
-            rts_trap_with("object_size: invalid object tag");
+            rts_trap_with("block_size: invalid object tag");
         }
     }
 }
