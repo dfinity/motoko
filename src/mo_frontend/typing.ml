@@ -2691,6 +2691,63 @@ and infer_block_valdecs env decs scope : Scope.t =
     ) (env, scope) decs
   in scope'
 
+and mixin_valdecs env decs scope : Scope.t =
+  let _, scope' =
+    List.fold_left (fun (env, scope) dec ->
+      let scope' = dec_valdecs env dec in
+      adjoin env scope', Scope.adjoin scope scope'
+    ) (env, scope) decs
+  in scope'
+
+and dec_valdecs env dec : Scope.t =
+  match dec.it with
+  | ExpD _ ->
+    Scope.empty
+  | LetD (pat, exp, fail) ->
+    let ve' = check_pat' env (pat.note) pat
+    in
+    Scope.{empty with val_env = ve'}
+  | VarD (id, exp) ->
+    let t = exp.note.note_typ in
+    Scope.{empty with val_env = T.Env.singleton id.it (T.Mut t)}
+  | TypD (id, _, _) ->
+    let c = Option.get id.note in
+    Scope.{ empty with
+      typ_env = T.Env.singleton id.it c;
+      con_env = T.ConSet.singleton c;
+    }
+(*  | ClassD (_shared_pat, id, typ_binds, pat, _, obj_sort, _, _) ->
+    if obj_sort.it = T.Actor then begin
+      error_in Flags.[WASIMode; WasmMode] env dec.at "M0138" "actor classes are not supported";
+      if not env.in_prog then
+        error_in Flags.[ICMode; RefMode] env dec.at "M0139"
+          "inner actor classes are not supported yet; any actor class must come last in your program";
+      if not (List.length typ_binds = 1) then
+        local_error env dec.at "M0140"
+          "actor classes with type parameters are not supported yet";
+    end;
+    let cs, tbs, te, ce = check_typ_binds env typ_binds in
+    let env' = adjoin_typs env te ce in
+    let c = T.Env.find id.it env.typs in
+    let t1, _ = infer_pat {env' with pre = true} pat in
+    let ts1 = match pat.it with TupP _ -> T.seq_of_tup t1 | _ -> [t1] in
+    let t2 =
+      if obj_sort.it = T.Actor then
+        T.Async (T.Fut, T.Con (List.hd cs, []),
+          T.Con (c, List.map (fun c -> T.Con (c, [])) (List.tl cs)))
+      else
+        T.Con (c, List.map (fun c -> T.Con (c, [])) cs)
+    in
+    let t = T.Func (T.Local, T.Returns, T.close_binds cs tbs,
+      List.map (T.close cs) ts1,
+      [T.close cs t2])
+    in
+    Scope.{ empty with
+      val_env = T.Env.singleton id.it t;
+      typ_env = T.Env.singleton id.it c;
+      con_env = T.ConSet.singleton c;
+    }*)
+
 and is_import d =
   match d.it with
   | LetD (_, {it = ImportE _; _}, None) -> true
@@ -2707,7 +2764,7 @@ and infer_dec_valdecs env dec : Scope.t =
       | {it = AwaitE (_, { it = AsyncE (_, _, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, _t, _bs, dec_fields); at; _}) ; _ }); _ }),
         _
       ) ->
-     let dec_fields = if _bs <> [] then begin
+     let mixin_fields = if _bs <> [] then begin
                           let build mix = match T.Env.find_opt mix env.mixs with
                             | None -> assert false
                             | Some { it = ClassD (_shared_pat, id, typ_binds, pat, _, {it = T.Actor}, _, dec_fields) } -> dec_fields
@@ -2717,17 +2774,20 @@ and infer_dec_valdecs env dec : Scope.t =
                             | _ -> [] in
                           let mixins = List.concat_map separate _bs in
                           (*assert (T.Env.mem "Ext" env.vals);*)
-                          dec_fields @ mixins
+                          [] @ mixins
                        end
-                     else dec_fields in
+                     else [] in
     let decs = List.map (fun df -> df.it.dec) dec_fields in
     let obj_scope = T.Env.find id.it env.objs in
+    (* Maybe save the valenv/objscope and don't recompute? *)
+    let obj_scope = mixin_valdecs env (List.map (fun df -> df.it.dec) mixin_fields) obj_scope in
+
     let obj_scope' =
       infer_block_valdecs
         (adjoin {env with pre = true} obj_scope)
         decs obj_scope
     in
-    let obj_typ = object_of_scope env obj_sort.it dec_fields obj_scope' at in
+    let obj_typ = object_of_scope env obj_sort.it (dec_fields @ mixin_fields) obj_scope' at in
     let _ve = check_pat env obj_typ pat in
     Scope.{empty with val_env = T.Env.singleton id.it obj_typ}
   | LetD (pat, exp, fail) ->
