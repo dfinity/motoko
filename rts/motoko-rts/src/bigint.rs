@@ -129,7 +129,7 @@ extern "C" {
     pub(crate) fn bigint_trap() -> !;
 }
 
-#[inline]
+#[inline(always)]
 pub(crate) unsafe fn check(err: mp_err) {
     if err != 0 {
         bigint_trap();
@@ -261,6 +261,7 @@ unsafe extern "C" fn bigint_of_float64(j: f64) -> Value {
     // can be represented as `Int` without resorting to heap allocation, i.e.
     // in the range `-1073741824 == 0xc0000000 <= j as i32 <= 0x3fffffff == 1073741823`
     if j < 1073741824.0 && j > -1073741825.0 {
+        // TODO: return as 30-bit compact tagged Int (not 31-bit untagged scalar) and fix call-site in compile.ml
         return Value::from_signed_scalar(j as i32);
     }
     let mut i = tmp_bigint();
