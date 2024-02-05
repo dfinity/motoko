@@ -1,2 +1,2 @@
-actor-fix.mo:9.102-14.6: type error [M0038], misplaced await
-actor-fix.mo:9.102-14.6: type error [M0037], misplaced async expression; try enclosing in an async function
+actor-fix.mo:24.12-24.79: type error [M0125], public actor field needs to be a manifest function
+actor-fix.mo:25.12-25.80: type error [M0125], public actor field needs to be a manifest function
