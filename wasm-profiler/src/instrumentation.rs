@@ -6,6 +6,10 @@ use parity_wasm::elements::{
 use std::error::Error;
 use std::iter::FromIterator;
 
+use crate::instrumentation::ic_calls::{FunctionCost, InjectionKind};
+
+mod ic_calls;
+
 // Adopted from IC code with slight adjustments.
 // This implements the IC's new instruction cost function:
 // https://github.com/dfinity/ic/blob/d49f4daea38ca25fe61012214e049ecc0866292d/rs/embedders/src/wasm_utils/instrumentation.rs#L174
@@ -397,17 +401,18 @@ pub fn instrument(wasm: &Vec<u8>, for_ic: bool) -> Result<Vec<u8>, Box<dyn Error
     let cycles_counter_ix = num_globals;
     let print_profiling_fn = num_functions;
 
+    let ic_call_costs = FunctionCost::new(&module);
     // inject cycles counter decrementation
     {
         if let Some(code_section) = module.code_section_mut() {
             for func_body in code_section.bodies_mut().iter_mut() {
                 let code = func_body.code_mut();
-                inject_metering(code, cycles_counter_ix);
+                inject_metering(code, cycles_counter_ix, &ic_call_costs);
             }
         }
     }
 
-    // inject prinitng of counter
+    // inject printing of counter
     {
         let n_fun_imports = module.import_count(ImportCountType::Function);
         if let Some(code_section) = module.code_section_mut() {
@@ -611,8 +616,8 @@ impl InjectionPoint {
     }
 }
 
-fn inject_metering(code: &mut Instructions, cycles_counter_ix: u32) {
-    let points = injections_new(code.elements());
+fn inject_metering(code: &mut Instructions, cycles_counter_ix: u32, ic_call_costs: &FunctionCost) {
+    let points = injections_new(code.elements(), ic_call_costs);
     let points = points.iter().filter(|point| match point.cost_detail {
         InjectionPointCostDetail::StaticCost { scope: _, cost } => cost > 0,
         InjectionPointCostDetail::DynamicCost => true,
@@ -632,7 +637,7 @@ fn inject_metering(code: &mut Instructions, cycles_counter_ix: u32) {
                 ]);
             }
             InjectionPointCostDetail::DynamicCost => {
-                todo!("Not yet supported: Need helper function to add dynamic costs");
+                todo!("Dynamic instruction costs not yet supported.");
             }
         }
 
@@ -674,7 +679,7 @@ fn inject_profiling_prints(print_profiling_fn: u32, func_idx: u32, func_body: &m
 // with no branches) and before each bulk memory instruction. An injection point
 // contains a "hint" about the context of every basic block, specifically if
 // it's re-entrant or not.
-fn injections_new(code: &[Instruction]) -> Vec<InjectionPoint> {
+fn injections_new(code: &[Instruction], ic_call_costs: &FunctionCost) -> Vec<InjectionPoint> {
     let mut res = Vec::new();
     use Instruction::*;
     // The function itself is a re-entrant code block.
@@ -721,6 +726,20 @@ fn injections_new(code: &[Instruction]) -> Vec<InjectionPoint> {
             | Bulk(BulkInstruction::TableInit { .. }) => {
                 res.push(InjectionPoint::new_dynamic_cost(position));
             }
+            // Count additional IC call costs if applicable.
+            // Source: https://github.com/dfinity/ic-wasm/blob/61692f44cf85b93d43311492283246bb443449d3/src/instrumentation.rs#L200
+            // With slight adjustments.
+            Call(function_id) => match ic_call_costs.get_cost(*function_id) {
+                None => {}
+                Some((ic_static_cost, InjectionKind::Static)) => {
+                    curr.cost_detail.increment_cost(ic_static_cost)
+                }
+                Some((ic_static_cost, InjectionKind::Dynamic))
+                | Some((ic_static_cost, InjectionKind::Dynamic64)) => {
+                    curr.cost_detail.increment_cost(ic_static_cost);
+                    res.push(InjectionPoint::new_dynamic_cost(position));
+                }
+            },
             // Nothing special to be done for other instructions.
             _ => (),
         }
