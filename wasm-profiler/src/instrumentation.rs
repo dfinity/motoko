@@ -619,7 +619,7 @@ pub fn instrument(wasm: &Vec<u8>, for_ic: bool) -> Result<Vec<u8>, Box<dyn Error
 #[derive(Copy, Clone, Debug)]
 struct InjectionPoint {
     position: usize,
-    static_cost: u64,
+    cost: u64,
     kind: InjectionKind,
 }
 
@@ -627,7 +627,7 @@ impl InjectionPoint {
     fn new_static_cost(position: usize, cost: u64) -> Self {
         InjectionPoint {
             position,
-            static_cost: cost,
+            cost,
             kind: InjectionKind::Static,
         }
     }
@@ -635,7 +635,7 @@ impl InjectionPoint {
     fn new_dynamic_cost(position: usize, kind: InjectionKind) -> Self {
         InjectionPoint {
             position,
-            static_cost: 0,
+            cost: 0,
             kind,
         }
     }
@@ -648,7 +648,7 @@ fn inject_metering(
 ) {
     let points = injections_new(code.elements(), ic_call_costs);
     let points = points.iter().filter(|point| match point.kind {
-        InjectionKind::Static => point.static_cost > 0,
+        InjectionKind::Static => point.cost > 0,
         InjectionKind::Dynamic | InjectionKind::Dynamic64 => true,
     });
     let orig_elems = code.elements();
@@ -660,7 +660,7 @@ fn inject_metering(
             InjectionKind::Static => {
                 elems.extend_from_slice(&[
                     Instruction::GetGlobal(special_indices.cycles_counter_ix),
-                    Instruction::I64Const(point.static_cost as i64),
+                    Instruction::I64Const(point.cost as i64),
                     Instruction::I64Add,
                     Instruction::SetGlobal(special_indices.cycles_counter_ix),
                 ]);
@@ -718,7 +718,7 @@ fn injections_new(code: &[Instruction], ic_call_costs: &FunctionCost) -> Vec<Inj
     // functions should consume at least some fuel.
     let mut curr = InjectionPoint::new_static_cost(0, 1);
     for (position, i) in code.iter().enumerate() {
-        curr.static_cost += instruction_to_cost_new(i);
+        curr.cost += instruction_to_cost_new(i);
         match i {
             // Start of a re-entrant code block.
             Loop { .. } => {
@@ -764,10 +764,10 @@ fn injections_new(code: &[Instruction], ic_call_costs: &FunctionCost) -> Vec<Inj
             // With slight adjustments.
             Call(function_id) => match ic_call_costs.get_cost(*function_id) {
                 None => {}
-                Some((ic_static_cost, InjectionKind::Static)) => curr.static_cost += ic_static_cost,
+                Some((ic_static_cost, InjectionKind::Static)) => curr.cost += ic_static_cost,
                 Some((ic_static_cost, kind @ InjectionKind::Dynamic))
                 | Some((ic_static_cost, kind @ InjectionKind::Dynamic64)) => {
-                    curr.static_cost += ic_static_cost;
+                    curr.cost += ic_static_cost;
                     res.push(InjectionPoint::new_dynamic_cost(position, kind));
                 }
             },
