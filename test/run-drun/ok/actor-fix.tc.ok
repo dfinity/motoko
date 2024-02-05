@@ -1,0 +1,4 @@
+actor-fix.mo:3.5-7.6: type error [M0140], actor classes with type parameters are not supported yet
+actor-fix.mo:3.5-7.6: type error [M0140], actor classes with type parameters are not supported yet
+actor-fix.mo:3.60-3.70: type error [M0034], shared constructor has non-shared parameter type
+  T__16
