@@ -1,2 +1,2 @@
-actor-fix.mo:24.12-24.79: type error [M0125], public actor field needs to be a manifest function
-actor-fix.mo:25.12-25.80: type error [M0125], public actor field needs to be a manifest function
+actor-fix.mo:27.12-27.109: type error [M0125], public actor field needs to be a manifest function
+actor-fix.mo:28.12-28.80: type error [M0125], public actor field needs to be a manifest function

@@ -1,8 +1,11 @@
 module Fix {
 
-    public func First<T <: actor { beep : () -> async () }>(this : T) : module { chime : shared () -> async Int } = module {
+    public func First<T <: actor { beep : () -> async (); yell : shared () -> async () }>(this : T) : module { chime : shared () -> async Int } = module {
         public shared func chime() : async Int {
             await this.beep();
+            if false {
+                await this.yell();
+            };
             42
         }
     };
@@ -21,7 +24,7 @@ module Fix {
 
 actor Third : actor { beep : () -> async (); chime : () -> async Int; yell : () -> async () } = {
     public func beep() : async () {};
-    public let chime = Fix.First<actor { beep : () -> async () }>(Third).chime;
+    public let chime = Fix.First<actor { beep : () -> async (); yell : shared () -> async () }>(Third).chime;
     public let yell = Fix.Second<actor { chime : () -> async Int }>(Third).yell;
 
 };
