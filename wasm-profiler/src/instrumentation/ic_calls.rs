@@ -6,7 +6,7 @@ type FunctionId = u32;
 
 // Source: https://github.com/dfinity/ic-wasm/blob/61692f44cf85b93d43311492283246bb443449d3/src/utils.rs#L26C1-L100C2
 // With slight adjustments
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(crate) enum InjectionKind {
     Static,
     Dynamic,

@@ -385,6 +385,13 @@ fn inject_imports(for_ic: bool, module: Module) -> Module {
     module
 }
 
+struct SpecialIndices {
+    cycles_counter_ix: u32,
+    print_profiling_fn: u32,
+    dynamic_counter_fn: u32,
+    dynamic_counter64_fn: u32,
+}
+
 /// Takes a Wasm binary and inserts the instruction metering and profiling code.
 /// Returns  the instrumented binary.
 pub fn instrument(wasm: &Vec<u8>, for_ic: bool) -> Result<Vec<u8>, Box<dyn Error>> {
@@ -398,16 +405,21 @@ pub fn instrument(wasm: &Vec<u8>, for_ic: bool) -> Result<Vec<u8>, Box<dyn Error
     let num_functions = module.functions_space() as u32;
     let num_globals = module.globals_space() as u32;
 
-    let cycles_counter_ix = num_globals;
-    let print_profiling_fn = num_functions;
+    let special_indices = SpecialIndices {
+        cycles_counter_ix: num_globals,
+        print_profiling_fn: num_functions,
+        dynamic_counter_fn: num_functions + 1,
+        dynamic_counter64_fn: num_functions + 2,
+    };
 
     let ic_call_costs = FunctionCost::new(&module);
+
     // inject cycles counter decrementation
     {
         if let Some(code_section) = module.code_section_mut() {
             for func_body in code_section.bodies_mut().iter_mut() {
                 let code = func_body.code_mut();
-                inject_metering(code, cycles_counter_ix, &ic_call_costs);
+                inject_metering(code, &special_indices, &ic_call_costs);
             }
         }
     }
@@ -418,7 +430,7 @@ pub fn instrument(wasm: &Vec<u8>, for_ic: bool) -> Result<Vec<u8>, Box<dyn Error
         if let Some(code_section) = module.code_section_mut() {
             for (func_idx, func_body) in code_section.bodies_mut().iter_mut().enumerate() {
                 inject_profiling_prints(
-                    print_profiling_fn,
+                    special_indices.print_profiling_fn,
                     (n_fun_imports + func_idx) as u32,
                     func_body,
                 );
@@ -493,7 +505,7 @@ pub fn instrument(wasm: &Vec<u8>, for_ic: bool) -> Result<Vec<u8>, Box<dyn Error
     for i in 0..16 {
         instrs.extend_from_slice(&[
             Instruction::I32Const(0),
-            Instruction::GetGlobal(cycles_counter_ix),
+            Instruction::GetGlobal(special_indices.cycles_counter_ix),
             Instruction::I64Const(i * 4),
             Instruction::I64ShrU,
             Instruction::I64Const(0xf),
@@ -546,6 +558,51 @@ pub fn instrument(wasm: &Vec<u8>, for_ic: bool) -> Result<Vec<u8>, Box<dyn Error
             .build(),
     );
 
+    // push dynamic instruction counter function (32-bit increment)
+    mbuilder.push_function(
+        builder::function()
+            .with_signature(
+                builder::signature()
+                    .with_param(ValueType::I32)
+                    .with_result(ValueType::I32)
+                    .build_sig(),
+            )
+            .body()
+            .with_instructions(Instructions::new(vec![
+                Instruction::GetLocal(0),
+                Instruction::I64ExtendUI32,
+                Instruction::GetGlobal(special_indices.cycles_counter_ix),
+                Instruction::I64Add,
+                Instruction::SetGlobal(special_indices.cycles_counter_ix),
+                Instruction::GetLocal(0),
+                Instruction::End,
+            ]))
+            .build()
+            .build(),
+    );
+
+    // push dynamic instruction counter function (64-bit increment)
+    mbuilder.push_function(
+        builder::function()
+            .with_signature(
+                builder::signature()
+                    .with_param(ValueType::I64)
+                    .with_result(ValueType::I64)
+                    .build_sig(),
+            )
+            .body()
+            .with_instructions(Instructions::new(vec![
+                Instruction::GetLocal(0),
+                Instruction::GetGlobal(special_indices.cycles_counter_ix),
+                Instruction::I64Add,
+                Instruction::SetGlobal(special_indices.cycles_counter_ix),
+                Instruction::GetLocal(0),
+                Instruction::End,
+            ]))
+            .build()
+            .build(),
+    );
+
     // push the instruction counter
     let module = mbuilder
         .with_global(GlobalEntry::new(
@@ -559,88 +616,62 @@ pub fn instrument(wasm: &Vec<u8>, for_ic: bool) -> Result<Vec<u8>, Box<dyn Error
     Ok(result)
 }
 
-// Source: https://github.com/dfinity/ic/blob/d49f4daea38ca25fe61012214e049ecc0866292d/rs/embedders/src/wasm_utils/instrumentation.rs#L1112
-// with slight adjustments.
-
-// Represents a hint about the context of each static cost injection point in
-// wasm.
-#[derive(Copy, Clone, Debug, PartialEq)]
-enum Scope {
-    ReentrantBlockStart,
-    NonReentrantBlockStart,
-    BlockEnd,
-}
-
-// Describes how to calculate the instruction cost at this injection point.
-// `StaticCost` injection points contain information about the cost of the
-// following basic block. `DynamicCost` injection points assume there is an
-// i32 on 32-bit Wasm or an i64 on Wasm Memory64 on the stack which should
-// be decremented from the instruction counter.
-#[derive(Copy, Clone, Debug, PartialEq)]
-enum InjectionPointCostDetail {
-    StaticCost { scope: Scope, cost: u64 },
-    DynamicCost,
-}
-
-impl InjectionPointCostDetail {
-    /// If the cost is statically known, increment it by the given amount.
-    /// Otherwise do nothing.
-    fn increment_cost(&mut self, additional_cost: u64) {
-        match self {
-            Self::StaticCost { scope: _, cost } => *cost += additional_cost,
-            Self::DynamicCost => {}
-        }
-    }
-}
-
-// Represents a instructions metering injection point.
 #[derive(Copy, Clone, Debug)]
 struct InjectionPoint {
-    cost_detail: InjectionPointCostDetail,
     position: usize,
+    static_cost: u64,
+    kind: InjectionKind,
 }
 
 impl InjectionPoint {
-    fn new_static_cost(position: usize, scope: Scope, cost: u64) -> Self {
+    fn new_static_cost(position: usize, cost: u64) -> Self {
         InjectionPoint {
-            cost_detail: InjectionPointCostDetail::StaticCost { scope, cost },
             position,
+            static_cost: cost,
+            kind: InjectionKind::Static,
         }
     }
 
-    fn new_dynamic_cost(position: usize) -> Self {
+    fn new_dynamic_cost(position: usize, kind: InjectionKind) -> Self {
         InjectionPoint {
-            cost_detail: InjectionPointCostDetail::DynamicCost,
             position,
+            static_cost: 0,
+            kind,
         }
     }
 }
 
-fn inject_metering(code: &mut Instructions, cycles_counter_ix: u32, ic_call_costs: &FunctionCost) {
+fn inject_metering(
+    code: &mut Instructions,
+    special_indices: &SpecialIndices,
+    ic_call_costs: &FunctionCost,
+) {
     let points = injections_new(code.elements(), ic_call_costs);
-    let points = points.iter().filter(|point| match point.cost_detail {
-        InjectionPointCostDetail::StaticCost { scope: _, cost } => cost > 0,
-        InjectionPointCostDetail::DynamicCost => true,
+    let points = points.iter().filter(|point| match point.kind {
+        InjectionKind::Static => point.static_cost > 0,
+        InjectionKind::Dynamic | InjectionKind::Dynamic64 => true,
     });
     let orig_elems = code.elements();
     let mut elems: Vec<Instruction> = Vec::new();
     let mut last_injection_position = 0;
     for point in points {
         elems.extend_from_slice(&orig_elems[last_injection_position..point.position]);
-        match point.cost_detail {
-            InjectionPointCostDetail::StaticCost { cost, .. } => {
+        match point.kind {
+            InjectionKind::Static => {
                 elems.extend_from_slice(&[
-                    Instruction::GetGlobal(cycles_counter_ix),
-                    Instruction::I64Const(cost as i64),
+                    Instruction::GetGlobal(special_indices.cycles_counter_ix),
+                    Instruction::I64Const(point.static_cost as i64),
                     Instruction::I64Add,
-                    Instruction::SetGlobal(cycles_counter_ix),
+                    Instruction::SetGlobal(special_indices.cycles_counter_ix),
                 ]);
             }
-            InjectionPointCostDetail::DynamicCost => {
-                todo!("Dynamic instruction costs not yet supported.");
+            InjectionKind::Dynamic => {
+                elems.extend_from_slice(&[Instruction::Call(special_indices.dynamic_counter_fn)]);
+            }
+            InjectionKind::Dynamic64 => {
+                elems.extend_from_slice(&[Instruction::Call(special_indices.dynamic_counter64_fn)]);
             }
         }
-
         last_injection_position = point.position;
     }
     elems.extend_from_slice(&orig_elems[last_injection_position..]);
@@ -685,36 +716,35 @@ fn injections_new(code: &[Instruction], ic_call_costs: &FunctionCost) -> Vec<Inj
     // The function itself is a re-entrant code block.
     // Start with at least one fuel being consumed because even empty
     // functions should consume at least some fuel.
-    let mut curr = InjectionPoint::new_static_cost(0, Scope::ReentrantBlockStart, 1);
+    let mut curr = InjectionPoint::new_static_cost(0, 1);
     for (position, i) in code.iter().enumerate() {
-        curr.cost_detail.increment_cost(instruction_to_cost_new(i));
+        curr.static_cost += instruction_to_cost_new(i);
         match i {
             // Start of a re-entrant code block.
             Loop { .. } => {
                 res.push(curr);
-                curr = InjectionPoint::new_static_cost(position + 1, Scope::ReentrantBlockStart, 0);
+                curr = InjectionPoint::new_static_cost(position + 1, 0);
             }
             // Start of a non re-entrant code block.
             If { .. } => {
                 res.push(curr);
-                curr =
-                    InjectionPoint::new_static_cost(position + 1, Scope::NonReentrantBlockStart, 0);
+                curr = InjectionPoint::new_static_cost(position + 1, 0);
             }
             // End of a code block but still more code left.
             Else | Br { .. } | BrIf { .. } | BrTable { .. } => {
                 res.push(curr);
-                curr = InjectionPoint::new_static_cost(position + 1, Scope::BlockEnd, 0);
+                curr = InjectionPoint::new_static_cost(position + 1, 0);
             }
             End => {
                 res.push(curr);
-                curr = InjectionPoint::new_static_cost(position + 1, Scope::BlockEnd, 0);
+                curr = InjectionPoint::new_static_cost(position + 1, 0);
             }
             // ReturnCall and ReturnCallIndirect are not supported by `parity_wasm`.
             Return | Unreachable => {
                 res.push(curr);
                 // This injection point will be unreachable itself (most likely empty)
                 // but we create it to keep the algorithm uniform
-                curr = InjectionPoint::new_static_cost(position + 1, Scope::BlockEnd, 0);
+                curr = InjectionPoint::new_static_cost(position + 1, 0);
             }
             // Bulk memory instructions require injected metering __before__ the instruction
             // executes so that size arguments can be read from the stack at runtime.
@@ -724,20 +754,21 @@ fn injections_new(code: &[Instruction], ic_call_costs: &FunctionCost) -> Vec<Inj
             | Bulk(BulkInstruction::MemoryInit { .. })
             | Bulk(BulkInstruction::TableCopy { .. })
             | Bulk(BulkInstruction::TableInit { .. }) => {
-                res.push(InjectionPoint::new_dynamic_cost(position));
+                res.push(InjectionPoint::new_dynamic_cost(
+                    position,
+                    InjectionKind::Dynamic,
+                ));
             }
             // Count additional IC call costs if applicable.
             // Source: https://github.com/dfinity/ic-wasm/blob/61692f44cf85b93d43311492283246bb443449d3/src/instrumentation.rs#L200
             // With slight adjustments.
             Call(function_id) => match ic_call_costs.get_cost(*function_id) {
                 None => {}
-                Some((ic_static_cost, InjectionKind::Static)) => {
-                    curr.cost_detail.increment_cost(ic_static_cost)
-                }
-                Some((ic_static_cost, InjectionKind::Dynamic))
-                | Some((ic_static_cost, InjectionKind::Dynamic64)) => {
-                    curr.cost_detail.increment_cost(ic_static_cost);
-                    res.push(InjectionPoint::new_dynamic_cost(position));
+                Some((ic_static_cost, InjectionKind::Static)) => curr.static_cost += ic_static_cost,
+                Some((ic_static_cost, kind @ InjectionKind::Dynamic))
+                | Some((ic_static_cost, kind @ InjectionKind::Dynamic64)) => {
+                    curr.static_cost += ic_static_cost;
+                    res.push(InjectionPoint::new_dynamic_cost(position, kind));
                 }
             },
             // Nothing special to be done for other instructions.
