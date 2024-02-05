@@ -1,4 +1,2 @@
-actor-fix.mo:3.5-7.6: type error [M0140], actor classes with type parameters are not supported yet
-actor-fix.mo:3.5-7.6: type error [M0140], actor classes with type parameters are not supported yet
-actor-fix.mo:3.60-3.70: type error [M0034], shared constructor has non-shared parameter type
-  T__16
+actor-fix.mo:9.102-14.6: type error [M0038], misplaced await
+actor-fix.mo:9.102-14.6: type error [M0037], misplaced async expression; try enclosing in an async function
