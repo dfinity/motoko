@@ -1659,7 +1659,7 @@ module BitTagged = struct
 
   let if_can_tag_signed env pty retty is1 is2 = Type.(
     match pty with
-    | Nat | Int | Int64 | Int32 ->
+    | Nat | Int | Int64 ->
       Func.share_code1 Func.Never env
         (prim_fun_name pty "if_can_tag_i64") ("x", I64Type) [I64Type] (fun env get_x ->
         (* checks that all but the low signed_data_bits bits are either all 0 or all 1 *)
@@ -1669,7 +1669,7 @@ module BitTagged = struct
         compile_test I64Op.Eqz ^^
         sanity_check_can_tag_signed env pty get_x) ^^
       E.if_ env retty is1 is2
-    | Nat64 | Nat32 ->
+    | Nat64 ->
       Func.share_code1 Func.Never env
          (prim_fun_name pty "if_can_tag_i64") ("x", I64Type) [I64Type] (fun env get_x ->
           (* checks that all but the low ubits are 0 *)
@@ -1681,12 +1681,12 @@ module BitTagged = struct
 
   let if_can_tag_unsigned env pty retty is1 is2 = Type.(
     match pty with
-    |  Nat | Int | Int64 | Int32 ->
+    |  Nat | Int | Int64 ->
       let sbitsL = Int64.of_int (sbits_of pty) in
       compile_shrU_const sbitsL ^^
       compile_test I64Op.Eqz ^^
       E.if_ env retty is1 is2
-    | Nat64 | Nat32 ->
+    | Nat64 ->
       let ubitsL = Int64.of_int (ubits_of pty) in
       compile_shrU_const ubitsL ^^
       E.if_ env retty is2 is1 (* NB: swapped branches *)
@@ -1714,11 +1714,11 @@ module BitTagged = struct
     else G.nop
 
   let untag line env pty = Type.(match pty with
-    | Nat | Int | Int64 | Int32 ->
+    | Nat | Int | Int64 | Int32 | Int16 | Int8 ->
       let ubitsl = Int64.of_int (ubits_of pty) in
       sanity_check_tag line env pty ^^
       compile_shrS_const (Int64.sub 64L ubitsl)
-    | Nat64 | Nat32 ->
+    | Nat64 | Nat32 | Nat16 | Nat8 ->
       let ubitsl = Int64.of_int (ubits_of pty) in
       sanity_check_tag line env pty ^^
       compile_shrU_const (Int64.sub 64L ubitsl)
@@ -3089,7 +3089,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       get_n ^^ BitTagged.if_tagged_scalar env [I64Type]
         begin
           get_n ^^ clear_tag env ^^ compile_eq_const sminl_shifted ^^ (* -2^sbits, shifted ubits *)
-          G.if1 I64Type
+          E.if1 I64Type
             (compile_unboxed_const sminl ^^ Num.from_word64 env)
             begin
               compile_unboxed_const 0L ^^
@@ -3222,7 +3222,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
             get_a ^^
             (* -2^sbits is small enough for compact representation, but 2^sbits isn't *)
             compile_eq_const sminl_shifted ^^ (* i.e. -2^sbits shifted *)
-            G.if1 I64Type
+            E.if1 I64Type
               (compile_unboxed_const sminl ^^ Num.from_word64 env)
               begin
                 (* absolute value works directly on shifted representation *)
@@ -8243,8 +8243,15 @@ module StackRep = struct
     | UnboxedTuple n, Vanilla -> Tuple.from_stack env n
     | Vanilla, UnboxedTuple n -> Tuple.to_stack env n
 
-    | UnboxedWord64 pty, Vanilla -> BoxedWord64.box env pty (* ! *)
-    | Vanilla, UnboxedWord64 pty -> BoxedWord64.unbox env pty (* ! *)
+    | UnboxedWord64 (Type.(Int8 | Nat8 | Int16 | Nat16 | Int32 | Nat32 | Char) as pty), Vanilla ->
+      BitTagged.tag env pty
+    | Vanilla, UnboxedWord64 (Type.(Nat8 | Int8 | Nat16 | Int16 | Char) as pty) ->
+      BitTagged.untag __LINE__ env pty
+
+    | UnboxedWord64 (Type.(Int64 | Nat64 | Int | Nat) as pty), Vanilla -> 
+      BoxedWord64.box env pty (* ! *)
+    | Vanilla, UnboxedWord64 (Type.(Int64 | Nat64 | Int | Nat) as pty) -> 
+      BoxedWord64.unbox env pty (* ! *)
 
     | UnboxedFloat64, Vanilla -> Float.box env
     | Vanilla, UnboxedFloat64 -> Float.unbox env
