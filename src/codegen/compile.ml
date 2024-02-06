@@ -10648,7 +10648,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.bool,
     compile_exp_vanilla env ae e1 ^^ BitTagged.untag_i32 __LINE__ env Type.Int ^^
     compile_exp_vanilla env ae e2 ^^ BitTagged.untag_i32 __LINE__ env Type.Int ^^
-    G.i (Compare (Wasm.Values.I32 I32Op.LeU))
+    G.i (Compare (Wasm.Values.I32 I32Op.LeS))
   | DerefArrayOffset, [e1; e2] ->
     SR.Vanilla,
     compile_exp_vanilla env ae e1 ^^ (* skewed pointer to array *)

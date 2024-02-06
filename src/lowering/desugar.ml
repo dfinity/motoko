@@ -272,7 +272,7 @@ and transform_for_to_while p arr_exp proj e1 e2 =
      let last = arr.size(e1) : Int - 1 ;
      var indx = 0 ;
      label l loop {
-       if indx <= size
+       if indx <= last
        then { let p = arr[indx]; e2; indx += 1 }
        else { break l }
      } *)
