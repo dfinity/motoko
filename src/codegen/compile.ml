@@ -8250,7 +8250,7 @@ module StackRep = struct
 
     | UnboxedWord64 (Type.(Int8 | Nat8 | Int16 | Nat16 | Int32 | Nat32 | Char) as pty), Vanilla ->
       TaggedSmallWord.tag env pty
-    | Vanilla, UnboxedWord64 (Type.(Nat8 | Int8 | Nat16 | Int16 | Char) as pty) ->
+    | Vanilla, UnboxedWord64 (Type.(Nat8 | Int8 | Nat16 | Int16 | Int32 | Nat32 | Char) as pty) ->
       TaggedSmallWord.untag env pty
 
     | UnboxedFloat64, Vanilla -> Float.box env
