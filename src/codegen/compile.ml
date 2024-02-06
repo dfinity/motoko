@@ -55,7 +55,7 @@ module TaggingScheme = struct
      Flags.sanity_check will check tags, but not further locate them.
   *)
 
-  let debug = true (* should never be true in master! *)
+  let debug = false (* should never be true in master! *)
 
   type bit = I
            | O
@@ -1677,7 +1677,7 @@ module BitTagged = struct
   (* static *)
   let can_tag_const pty (n : int64) = Type.(
     match pty with
-    |  Nat | Int | Int64 | Int32 ->
+    | Nat | Int | Int64 | Int32 ->
       let sbits = sbits_of pty in
       let lower_bound = Int64.(neg (shift_left 1L sbits)) in
       let upper_bound = Int64.shift_left 1L sbits in
@@ -1832,7 +1832,7 @@ module BitTagged = struct
       G.nop
 
   let if_can_tag_i32 env pty retty is1 is2 = Type.(match pty with
-    |  Nat | Int | Int64 | Int32 ->
+    | Nat | Int | Int64 | Int32 ->
       Func.share_code1 Func.Never env
         (prim_fun_name pty "if_can_tag_i32") ("x", I32Type) [I32Type] (fun env get_x ->
           (* checks that all but the low sbits are both either 0 or 1 *)
@@ -1857,7 +1857,7 @@ module BitTagged = struct
 
   let if_can_tag_u32 env pty retty is1 is2 = Type.(
     match pty with
-    |  Nat | Int | Int64 | Int32 ->
+    | Nat | Int | Int64 | Int32 ->
       let sbits = sbits_of pty in
       compile_shrU_const (Int32.of_int sbits) ^^
       E.if_ env retty is2 is1 (* NB: swapped branches *)
@@ -1874,7 +1874,7 @@ module BitTagged = struct
     compile_bitor_const (TaggingScheme.tag_of_typ pty)
 
   let untag_i32 line env pty = Type.(match pty with
-    |  Nat | Int | Int64 | Int32 ->
+    | Nat | Int | Int64 | Int32 ->
       let ubits = ubits_of pty in
       (* check tag *)
       sanity_check_tag line env pty ^^

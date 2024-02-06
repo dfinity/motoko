@@ -283,15 +283,15 @@ and transform_for_to_while p arr_exp proj e1 e2 =
     | "vals" -> primE I.DerefArrayOffset [varE arrv; varE indx]
     | "keys" -> varE indx
     | _ -> assert false in
-  let size_exp = primE I.GetLastArrayOffset [varE arrv] in
-  let size = fresh_var "size" T.int in
+  let last_exp = primE I.GetLastArrayOffset [varE arrv] in
+  let last = fresh_var "last" T.int in
   blockE
     [ letD arrv (exp arr_exp)
     ; expD (exp e1)
-    ; letD size size_exp
+    ; letD last last_exp
     ; varD indx (natE Numerics.Nat.zero)]
     (whileE (primE I.ValidArrayOffset
-               [varE indx; varE size])
+               [varE indx; varE last])
        (blockE [ letP (pat p) indexing_exp
                ; expD (exp e2)]
           (assignE indx
