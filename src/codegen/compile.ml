@@ -60,7 +60,7 @@ module TaggingScheme = struct
            | O
   let _ = (I,O) (* silence warning on unused constructors *)
 
-  type tag =
+  type _tag =
     TBool
   | TRef
   | TNum
@@ -790,31 +790,15 @@ let compile_add32_const = compile_op32_const I32Op.Add
 let _compile_sub32_const = compile_op32_const I32Op.Sub
 let _compile_mul32_const = compile_op32_const I32Op.Mul
 let _compile_divU32_const = compile_op32_const I32Op.DivU
-let compile_shrU32_const = function
+let _compile_shrU32_const = function
   | 0l -> G.nop | n -> compile_op32_const I32Op.ShrU n
 let _compile_shrS32_const = function
   | 0l -> G.nop | n -> compile_op32_const I32Op.ShrS n
-let compile_shl32_const = function
+let _compile_shl32_const = function
   | 0l -> G.nop | n -> compile_op32_const I32Op.Shl n
 let compile_eq32_const i =
   compile_const_32 i ^^
   compile_comparison_32 I32Op.Eq
-
-(* helper, traps with message *)
-let else_losing_precision env =
-  E.else_trap_with env "losing precision"
-
-(* helper, expects i64 on stack *)
-let narrow_to_32_unsigned_bits env =
-  compile_bitand_const 0xFFFF_FFFF_0000_0000L ^^
-  compile_test I64Op.Eqz ^^
-  else_losing_precision env
-
-(* helper, expects two identical i64s on stack *)
-let narrow_to_32_signed_bits env =
-  compile_shl_const 1L ^^
-  G.i (Binary (Wasm_exts.Values.I64 I64Op.Xor)) ^^
-  narrow_to_32_unsigned_bits env
 
 (* Analogous to Lib.Uint32.compare *)
 let compare_uint64 i1 i2 =
@@ -3354,7 +3338,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
   let from_word64 env =
     let set_a, get_a = new_local env "a" in
     set_a ^^
-    get_a ^^ BitTagged.if_can_tag_signed env Type.Int [I64Type]
+    get_a ^^ BitTagged.if_can_tag_unsigned env Type.Int [I64Type]
       (get_a ^^ BitTagged.tag env Type.Int)
       (get_a ^^ Num.from_word64 env)
 
@@ -9858,8 +9842,7 @@ let compile_eq env =
   | Prim (Blob|Principal) | Obj (Actor, _) -> Blob.compare env (Some Operator.EqOp)
   | Func (Shared _, _, _, _, _) -> FuncDec.equate_msgref env
   | Prim (Nat | Int) -> BigNum.compile_eq env
-  | Prim (Int64 | Nat64) -> compile_comparison I64Op.Eq
-  | Prim (Bool | Int8 | Nat8 | Int16 | Nat16 | Int32 | Nat32 | Char) ->
+  | Prim (Bool | Int8 | Nat8 | Int16 | Nat16 | Int32 | Nat32 | Int64 | Nat64 | Char) ->
     compile_comparison I64Op.Eq
   | Non -> G.i Unreachable
   | Prim Float -> compile_comparison_f64 F64Op.Eq
@@ -10298,95 +10281,42 @@ and compile_prim_invocation (env : E.t) ae p es at =
       SR.UnboxedWord64 Nat64,
       compile_exp_as env ae (SR.UnboxedWord64 Nat32) e ^^
       TaggedSmallWord.lsb_adjust Nat32
-    | Nat16, (Nat8 as pty) ->
-      SR.UnboxedWord64 Nat8,
-      let num_bits = (TaggedSmallWord.bits_of_type pty) in
+    | (Nat16 as from_typ), (Nat8 as to_typ)
+    | (Nat32 as from_typ), (Nat16 as to_typ)
+    | (Nat64 as from_typ), (Nat32 as to_typ) ->
+      SR.UnboxedWord64 to_typ,
+      let num_bits = (TaggedSmallWord.bits_of_type to_typ) in
       let set_val, get_val = new_local env "convertee" in
-      compile_exp_as env ae (SR.UnboxedWord64 Nat16) e ^^
+      compile_exp_as env ae (SR.UnboxedWord64 from_typ) e ^^
       set_val ^^
       get_val ^^
-      compile_shrU_const 8L ^^
+      compile_shrU_const (Int64.of_int (64 - num_bits)) ^^
       E.then_trap_with env "losing precision" ^^
       get_val ^^
-      TaggedSmallWord.msb_adjust pty
-    | Nat32, (Nat16 as pty) ->
-      SR.UnboxedWord64 pty, (* ! *)
-      let num_bits = Int32.of_int (TaggedSmallWord.bits_of_type pty) in
-      let set_val, get_val = new_local env "convertee" in
-      compile_exp_as env ae (SR.UnboxedWord64 Nat32) e ^^
-      set_val ^^
-      get_val ^^
-      compile_shrU_const 16L ^^
-      E.then_trap_with env "losing precision" ^^
-      get_val ^^
-      TaggedSmallWord.msb_adjust pty
-    | Nat64, (Nat32 as pty) ->
-      SR.UnboxedWord64 pty,
-      let num_bits = Int64.of_int (TaggedSmallWord.bits_of_type pty) in
-      let set_val, get_val = new_local env "convertee" in
-      compile_exp_as env ae (SR.UnboxedWord64 Nat64) e ^^
-      set_val ^^
-      get_val ^^
-      compile_shrU_const 32L ^^
-      E.then_trap_with env "losing precision" ^^
-      get_val ^^
-      TaggedSmallWord.msb_adjust pty
-    | Int8, Int16 ->
-      SR.UnboxedWord64 Int16,
-      compile_exp_as env ae (SR.UnboxedWord64 Int8) e ^^
-      TaggedSmallWord.lsb_adjust Type.Int8 ^^
-      TaggedSmallWord.msb_adjust Type.Int16
-    | Int16, Int32 ->
-      SR.UnboxedWord64 Int32,
-      compile_exp_as env ae (SR.UnboxedWord64 Int16) e ^^
-      TaggedSmallWord.lsb_adjust Type.Int16 ^^
-      TaggedSmallWord.msb_adjust Type.Int32
-    | Int32, Int64 ->
-      SR.UnboxedWord64 Int64,
-      compile_exp_as env ae (SR.UnboxedWord64 Int32) e ^^
-      TaggedSmallWord.lsb_adjust Type.Int32
-    | Int16, (Int8 as pty) ->
+      TaggedSmallWord.msb_adjust to_typ
+    | (Int8 as from_typ), (Int16 as to_typ)
+    | (Int16 as from_typ), (Int32 as to_typ)
+    | (Int32 as from_typ), (Int64 as to_typ) ->
+      SR.UnboxedWord64 to_typ,
+      compile_exp_as env ae (SR.UnboxedWord64 from_typ) e ^^
+      TaggedSmallWord.lsb_adjust from_typ ^^
+      TaggedSmallWord.msb_adjust to_typ
+    | (Int16 as from_typ), (Int8 as to_typ)
+    | (Int32 as from_typ), (Int16 as to_typ)
+    | (Int64 as from_typ), (Int32 as to_typ) ->
       SR.UnboxedWord64 Int8,
-      let num_bits = (TaggedSmallWord.bits_of_type pty) in
+      let num_bits = (TaggedSmallWord.bits_of_type to_typ) in
       let set_val, get_val = new_local env "convertee" in
-      compile_exp_as env ae (SR.UnboxedWord64 Int16)  e ^^
+      compile_exp_as env ae (SR.UnboxedWord64 from_typ)  e ^^
       set_val ^^
       get_val ^^
       compile_shl_const (Int64.of_int num_bits) ^^
       compile_shrS_const (Int64.of_int num_bits) ^^
       get_val ^^
-      compile_eq env Type.(Prim Nat16) ^^ (* TBR *)
+      compile_eq env Type.(Prim from_typ) ^^
       E.else_trap_with env "losing precision" ^^
       get_val ^^
-      TaggedSmallWord.msb_adjust Type.Int8
-    | Int32, (Int16 as pty) ->
-      SR.UnboxedWord64 Int16, (*!*)
-      let num_bits = (TaggedSmallWord.bits_of_type pty) in
-      let set_val, get_val = new_local env "convertee" in
-      compile_exp_as env ae (SR.UnboxedWord64 Int32) e ^^
-      set_val ^^
-      get_val ^^
-      compile_shl_const (Int64.of_int num_bits) ^^
-      compile_shrS_const (Int64.of_int num_bits) ^^
-      get_val ^^
-      compile_comparison I64Op.Eq ^^
-      E.else_trap_with env "losing precision" ^^
-      get_val ^^
-      TaggedSmallWord.msb_adjust Type.Int16
-    | Int64, (Int32 as pty) ->
-      SR.UnboxedWord64 pty,
-      let num_bits = (TaggedSmallWord.bits_of_type pty) in
-      let set_val, get_val = new_local env "convertee" in
-      compile_exp_as env ae (SR.UnboxedWord64 Int64) e ^^
-      set_val ^^
-      get_val ^^
-      compile_shl_const (Int64.of_int num_bits) ^^
-      compile_shrS_const (Int64.of_int num_bits) ^^
-      get_val ^^
-      compile_comparison I64Op.Eq ^^
-      E.else_trap_with env "losing precision" ^^
-      get_val ^^
-      TaggedSmallWord.msb_adjust Type.Int32
+      TaggedSmallWord.msb_adjust to_typ
     | _ -> SR.Unreachable, todo_trap env "compile_prim_invocation" (Arrange_ir.prim p)
     end
 
@@ -10735,7 +10665,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_as env ae SR.Vanilla e0 ^^
     compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) e1 ^^
     Region.load_word8 env ^^
-    G.i (Convert (Wasm_exts.Values.I64 I64Op.(if ty = Nat8 then ExtendUI32 else ExtendSI32))) ^^
+    G.i (Convert (Wasm_exts.Values.I64 I64Op.(if ty = Type.Nat8 then ExtendUI32 else ExtendSI32))) ^^
     TaggedSmallWord.msb_adjust ty
 
   | OtherPrim (("regionStoreNat8" | "regionStoreInt8") as p), [e0; e1; e2] ->
@@ -10754,7 +10684,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_as env ae SR.Vanilla e0 ^^
     compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) e1 ^^
     Region.load_word16 env ^^
-    G.i (Convert (Wasm_exts.Values.I64 I64Op.(if ty = Nat16 then ExtendUI32 else ExtendSI32))) ^^
+    G.i (Convert (Wasm_exts.Values.I64 I64Op.(if ty = Type.Nat16 then ExtendUI32 else ExtendSI32))) ^^
     TaggedSmallWord.msb_adjust ty
 
   | OtherPrim (("regionStoreNat16" | "regionStoreInt16") as p), [e0; e1; e2] ->
@@ -10773,7 +10703,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_as env ae SR.Vanilla e0 ^^
     compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) e1 ^^
     Region.load_word32 env ^^
-    G.i (Convert (Wasm_exts.Values.I64 I64Op.(if ty = Nat32 then ExtendUI32 else ExtendSI32))) ^^
+    G.i (Convert (Wasm_exts.Values.I64 I64Op.(if ty = Type.Nat32 then ExtendUI32 else ExtendSI32))) ^^
     TaggedSmallWord.msb_adjust ty
 
   | OtherPrim (("regionStoreNat32" | "regionStoreInt32") as p), [e0; e1; e2] ->
@@ -11008,7 +10938,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.UnboxedWord64 ty,
     compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) e ^^
     StableMemoryInterface.load_word32 env ^^
-    G.i (Convert (Wasm_exts.Values.I64 I64Op.(if ty = Nat32 then ExtendUI32 else ExtendSI32))) ^^
+    G.i (Convert (Wasm_exts.Values.I64 I64Op.(if ty = Type.Nat32 then ExtendUI32 else ExtendSI32))) ^^
     TaggedSmallWord.msb_adjust ty
 
   | OtherPrim (("stableMemoryStoreNat32" | "stableMemoryStoreInt32") as p), [e1; e2] ->
@@ -11025,7 +10955,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.UnboxedWord64 ty,
     compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) e ^^
     StableMemoryInterface.load_word8 env ^^
-    G.i (Convert (Wasm_exts.Values.I64 I64Op.(if ty = Nat8 then ExtendUI32 else ExtendSI32))) ^^
+    G.i (Convert (Wasm_exts.Values.I64 I64Op.(if ty = Type.Nat8 then ExtendUI32 else ExtendSI32))) ^^
     TaggedSmallWord.msb_adjust ty
 
   (* Other prims, binary *)
@@ -11044,7 +10974,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.UnboxedWord64 ty,
     compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) e ^^
     StableMemoryInterface.load_word16 env ^^
-    G.i (Convert (Wasm_exts.Values.I64 I64Op.(if ty = Nat16 then ExtendUI32 else ExtendSI32))) ^^
+    G.i (Convert (Wasm_exts.Values.I64 I64Op.(if ty = Type.Nat16 then ExtendUI32 else ExtendSI32))) ^^
     TaggedSmallWord.msb_adjust ty
 
   | OtherPrim (("stableMemoryStoreNat16" | "stableMemoryStoreInt16") as p), [e1; e2] ->
