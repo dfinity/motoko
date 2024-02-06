@@ -32,10 +32,10 @@ pub unsafe fn test() {
     HEAP = &mut heap;
 
     assert!(bigint_eq(
-        bigint_pow(bigint_of_word32(70), bigint_of_word32(32)),
+        bigint_pow(bigint_of_word64(70), bigint_of_word64(32)),
         bigint_mul(
-            bigint_pow(bigint_of_word32(70), bigint_of_word32(31)),
-            bigint_of_word32(70)
+            bigint_pow(bigint_of_word64(70), bigint_of_word64(31)),
+            bigint_of_word64(70)
         )
     ));
 
@@ -43,10 +43,10 @@ pub unsafe fn test() {
     // (s)leb128 encoding
     //
 
-    let one = bigint_of_word32(1);
-    let two = bigint_of_word32(2);
+    let one = bigint_of_word64(1);
+    let two = bigint_of_word64(2);
     for i in 0..100 {
-        let two_pow_i = bigint_pow(two, bigint_of_word32(i));
+        let two_pow_i = bigint_pow(two, bigint_of_word64(i));
         let minus_one = bigint_sub(two_pow_i, one);
         let plus_one = bigint_add(two_pow_i, one);
 
