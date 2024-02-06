@@ -10235,6 +10235,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     | Nat32, Char ->
       SR.UnboxedWord64 Type.Char, (* ! *)
       compile_exp_as env ae (SR.UnboxedWord64 Nat32) e ^^
+      TaggedSmallWord.lsb_adjust Nat32 ^^
       TaggedSmallWord.check_and_msb_adjust_codepoint env (* TBR *)
 
     | Float, Int ->
