@@ -1660,12 +1660,12 @@ module BitTagged = struct
           (* lower_bound <= x < upper_bound *)
           compile_unboxed_const lower_bound ^^
           get_x ^^
-          G.i (Compare (Wasm_exts.Values.I64 I64Op.LeS)) ^^
+          compile_comparison I64Op.LeS ^^
           get_x ^^ compile_unboxed_const upper_bound ^^
-          G.i (Compare (Wasm_exts.Values.I64 I64Op.LtS)) ^^
-          G.i (Binary (Wasm_exts.Values.I32 I32Op.And)) ^^
+          compile_comparison I64Op.LtS ^^
+          G.i (Binary (Wasm_exts.Values.I64 I64Op.And)) ^^
           get_res ^^
-          compile_test I32Op.Eq ^^
+          compile_test I64Op.Eq ^^
           E.else_trap_with env (prim_fun_name pty "check_can_tag_i64") ^^
           get_res)
     else
@@ -2746,7 +2746,7 @@ sig
 
   (* buffers *)
   (* given a numeric object on stack (vanilla),
-     push the number (i32) of bytes necessary
+     push the number (i64) of bytes necessary
      to externalize the numeric object *)
   val compile_data_size_signed : E.t -> G.t
   val compile_data_size_unsigned : E.t -> G.t
@@ -2754,7 +2754,7 @@ sig
      - numeric object (vanilla, TOS)
      - data buffer
     store the binary representation of the numeric object into the data buffer,
-    and push the number (i32) of bytes stored onto the stack
+    and push the number (i64) of bytes stored onto the stack
    *)
   val compile_store_to_data_buf_signed : E.t -> G.t
   val compile_store_to_data_buf_unsigned : E.t -> G.t
@@ -3031,7 +3031,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
         get_n ^^ BitTagged.untag __LINE__ env Type.Int ^^ set_n ^^
         compile_bitand_const 0xFFFF_FFFF_0000_0000L ^^
         compile_eq_const 0L ^^
-        get_amount ^^ compile_rel_const I32Op.LeU 32L ^^
+        get_amount ^^ compile_rel_const I64Op.LeU 32L ^^
         G.i (Binary (Wasm_exts.Values.I64 I64Op.And)) ^^
         E.if1 I64Type
         begin
@@ -3095,7 +3095,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       get_n ^^ BitTagged.if_tagged_scalar env [I64Type]
         begin
           get_n ^^ clear_tag env ^^ compile_eq_const sminl_shifted ^^ (* -2^sbits, shifted ubits *)
-          G.if1 I32Type
+          G.if1 I64Type
             (compile_unboxed_const sminl ^^ Num.from_word64 env)
             begin
               compile_unboxed_const 0L ^^
@@ -3176,22 +3176,22 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
   let sanity_check_fits_signed_bits env n get_a =
      if TaggingScheme.debug || !Flags.sanity then
      get_a ^^
-     Func.share_code2 Func.Always env ("check_fits_signed_bits_"^Int.to_string n) (("res", I32Type), ("a", I32Type)) [I32Type]
+     Func.share_code2 Func.Always env ("check_fits_signed_bits_"^Int.to_string n) (("res", I64Type), ("a", I64Type)) [I64Type]
       (fun env get_res get_a ->
-         let lower_bound = Int32.(neg (shift_left 1l (n-1))) in
-         let upper_bound = Int32.shift_left 1l (n-1) in
+         let lower_bound = Int64.(neg (shift_left 1L (n-1))) in
+         let upper_bound = Int64.shift_left 1L (n-1) in
          let set_a = G.setter_for get_a in
          get_a ^^
-         compile_shrS_const (Int32.of_int (32 - BitTagged.ubits_of Type.Int)) ^^
+         compile_shrS_const (Int64.of_int (32 - BitTagged.ubits_of Type.Int)) ^^
          set_a ^^
          compile_unboxed_const lower_bound ^^
          get_a ^^
-         G.i (Compare (Wasm.Values.I32 I32Op.LeS)) ^^
+         compile_comparison I64Op.LeS ^^
          get_a ^^ compile_unboxed_const upper_bound ^^
-         G.i (Compare (Wasm.Values.I32 I32Op.LtS)) ^^
-         G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
+         compile_comparison I64Op.LtS ^^
+         G.i (Binary (Wasm_exts.Values.I64 I64Op.And)) ^^
          get_res ^^
-         G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+         compile_test I64Op.Eq ^^
          E.else_trap_with env ("fit_signed_bits failure_"^Int.to_string n) ^^
          get_res)
      else G.nop
@@ -6536,11 +6536,11 @@ module MakeSerialization (Strm : Stream) = struct
           set_offset ^^
           (* A sanity check *)
           get_offset ^^ compile_unboxed_const 0L ^^
-          compile_comparison I32Op.LtS ^^
+          compile_comparison I64Op.LtS ^^
           E.else_trap_with env "Odd offset" ^^
           (* TODO: Support serialization beyond 32-bit *)
           get_offset ^^ compile_unboxed_const 0xffff_ffff_0000_0000L ^^
-          compile_comparison I32Op.GeS ^^
+          compile_comparison I64Op.GeS ^^
           E.else_trap_with env "64-bit offsets not yet supported during serialization" ^^
           (* Write the offset to the output buffer *)
           write_word_32 env get_data_buf get_offset
@@ -6861,7 +6861,7 @@ module MakeSerialization (Strm : Stream) = struct
         (* at most 29 bytes, according to
            https://sdk.dfinity.org/docs/interface-spec/index.html#principal
         *)
-        get_len ^^ compile_unboxed_const 29L ^^ compile_comparison I32Op.LeU ^^
+        get_len ^^ compile_unboxed_const 29L ^^ compile_comparison I64Op.LeU ^^
         E.else_trap_with env "IDL error: principal too long" ^^
 
         get_len ^^ Blob.alloc env ^^ set_x ^^
@@ -7565,7 +7565,7 @@ module MakeSerialization (Strm : Stream) = struct
 
         (* Skip any extra arguments *)
         compile_while env
-         (get_arg_count ^^ compile_rel_const I32Op.GtU 0L)
+         (get_arg_count ^^ compile_rel_const I64Op.GtU 0L)
          begin
            get_data_buf ^^
            get_typtbl_ptr ^^ load_unskewed_ptr ^^
@@ -10048,7 +10048,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | RelPrim (Type.(Prim Bool), Operator.EqOp), [e1; {it = LitE (BoolLit false); _}] ->
     SR.bool,
     compile_exp_as_test env ae e1 ^^
-    compile_test I32Op.Eqz
+    compile_test I64Op.Eqz
   | RelPrim (t, op), [e1;e2] ->
     let sr, code = compile_relop env t op in
     SR.bool,
@@ -10256,26 +10256,26 @@ and compile_prim_invocation (env : E.t) ae p es at =
       compile_exp_as env ae SR.UnboxedFloat64 e ^^
       E.call_import env "rts" "bigint_of_float64" ^^
       let set_b, get_b = new_local env "b" in
-      (* adjust 31 to ubit scalar, done here to avoid touching bigint.rs *)
+      (* adjust 63 to ubit scalar, done here to avoid touching bigint.rs *)
       set_b ^^
       get_b ^^
-      BitTagged.if_tagged_scalar env [I32Type]
+      BitTagged.if_tagged_scalar env [I64Type]
         (get_b ^^
-         compile_shrS_const 1l ^^
-         BigNum.from_signed_word32 env)
+         compile_shrS_const 1L ^^
+         BigNum.from_signed_word64 env)
         (get_b)
 
     | Int, Float ->
       SR.UnboxedFloat64,
       compile_exp_vanilla env ae e ^^
       let set_b, get_b = new_local env "b" in
-      (* adjust ubit to 31 bit scalar, done here to avoid touching bigint.rs *)
+      (* adjust ubit to 63 bit scalar, done here to avoid touching bigint.rs *)
       set_b ^^
       get_b ^^
-      BitTagged.if_tagged_scalar env [I32Type]
+      BitTagged.if_tagged_scalar env [I64Type]
         (get_b ^^
-         compile_shrS_const (Int32.of_int (32 - (BitTagged.ubits_of Type.Int))) ^^
-         compile_shl_const 1l)
+         compile_shrS_const (Int64.of_int (64 - (BitTagged.ubits_of Type.Int))) ^^
+         compile_shl_const 1L)
         (get_b) ^^
       E.call_import env "rts" "bigint_to_float64"
 
@@ -10865,13 +10865,13 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.UnboxedWord64 Type.Int8,
     compile_exp_as env ae (SR.UnboxedWord64 Type.Int8) e ^^
     compile_shrU_const (TaggedSmallWord.shift_of_type Type.Int8) ^^
-    G.i (Unary (Wasm.Values.I32 I32Op.Popcnt)) ^^
+    G.i (Unary (Wasm_exts.Values.I64 I64Op.Popcnt)) ^^
     TaggedSmallWord.msb_adjust Type.Int8
   | OtherPrim "popcntInt16", [e] ->
     SR.UnboxedWord64 Type.Int16,
     compile_exp_as env ae (SR.UnboxedWord64 Type.Int16) e ^^
     compile_shrU_const (TaggedSmallWord.shift_of_type Type.Int16) ^^
-    G.i (Unary (Wasm.Values.I32 I32Op.Popcnt)) ^^
+    G.i (Unary (Wasm_exts.Values.I64 I64Op.Popcnt)) ^^
     TaggedSmallWord.msb_adjust Type.Int16
   | OtherPrim "popcnt32", [e] ->
      SR.UnboxedWord64 Type.Nat32,
