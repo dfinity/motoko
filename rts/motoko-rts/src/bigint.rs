@@ -136,7 +136,7 @@ extern "C" {
     pub(crate) fn bigint_trap() -> !;
 }
 
-#[inline]
+#[inline(always)]
 pub(crate) unsafe fn check(err: mp_err) {
     if err != 0 {
         bigint_trap();
@@ -182,29 +182,13 @@ unsafe fn persist_bigint(i: mp_int) -> Value {
     Value::from_ptr(r as usize)
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn bigint_of_word32(w: u32) -> Value {
-    let mut i = tmp_bigint();
-    mp_set_u32(&mut i, w);
-    persist_bigint(i)
-}
-
-#[cfg(feature = "ic")]
-#[no_mangle]
-unsafe extern "C" fn bigint_of_int32(j: i32) -> Value {
-    let mut i = tmp_bigint();
-    mp_set_i32(&mut i, j);
-    persist_bigint(i)
-}
-
 #[cfg(feature = "ic")]
 #[no_mangle]
 unsafe extern "C" fn bigint_to_word32_wrap(p: Value) -> u32 {
     mp_get_u32(p.as_bigint().mp_int_ptr())
 }
 
-#[no_mangle]
-unsafe extern "C" fn bigint_to_word32_trap(p: Value) -> u32 {
+unsafe fn bigint_to_word32_trap(p: Value) -> u32 {
     let mp_int = p.as_bigint().mp_int_ptr();
 
     if mp_isneg(mp_int) || mp_count_bits(mp_int) > 32 {
@@ -262,9 +246,8 @@ unsafe extern "C" fn bigint_to_word64_trap_with(p: Value, msg: Value) -> u64 {
     mp_get_u64(mp_int)
 }
 
-#[cfg(feature = "ic")]
 #[no_mangle]
-unsafe extern "C" fn bigint_of_word64(w: u64) -> Value {
+pub unsafe extern "C" fn bigint_of_word64(w: u64) -> Value {
     let mut i = tmp_bigint();
     mp_set_u64(&mut i, w);
     persist_bigint(i)
@@ -285,6 +268,8 @@ unsafe extern "C" fn bigint_of_float64(j: f64) -> Value {
     // can be represented as `Int` without resorting to heap allocation, i.e.
     // in the range `-1073741824 == 0xc0000000 <= j as i32 <= 0x3fffffff == 1073741823`
     if j < 1073741824.0 && j > -1073741825.0 {
+        // TODO: Return as 30-bit compact tagged Int (not 31-bit untagged scalar) and fix call-site in compile.ml
+        // TODO: This can be increased to a 62-bit compact tagged Int with Wasm Memory64 bit support.
         return Value::from_signed_scalar(j as isize);
     }
     let mut i = tmp_bigint();

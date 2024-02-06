@@ -9,7 +9,7 @@ actor {
         n-=1;
      };
      let c2 = Prim.performanceCounter(0);
-     Prim.debugPrint(debug_show(c2 - c1));
+     // Prim.debugPrint(debug_show(c2 - c1)); // too noisy for --sanity-checks
      assert (c2 >= c1);
   }
 }
