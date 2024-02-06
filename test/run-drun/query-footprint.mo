@@ -32,7 +32,6 @@ actor footprint = {
 //CALL query __motoko_stable_var_info "DIDL\x00\x00"
 //CALL ingress delegate "DIDL\x00\x00"
 //CALL ingress delegate "DIDL\x00\x00"
-//CALL query __get_candid_interface_tmp_hack "DIDL\x00\x00"
 
 //SKIP run
 //SKIP run-ir

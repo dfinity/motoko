@@ -1,5 +1,11 @@
 # Motoko compiler changelog
 
+## Unreleased
+
+* motoko (`moc`)
+
+  * Remove `__get_candid_interface_tmp_hack` endpoint. Candid interface is already stored as canister metadata, this temporary endpoint is redundant, thus removed. (#4386)
+
 ## 0.10.4 (2024-01-10)
 
 * motoko (`moc`)
