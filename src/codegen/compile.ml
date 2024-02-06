@@ -8243,15 +8243,15 @@ module StackRep = struct
     | UnboxedTuple n, Vanilla -> Tuple.from_stack env n
     | Vanilla, UnboxedTuple n -> Tuple.to_stack env n
 
-    | UnboxedWord64 (Type.(Int8 | Nat8 | Int16 | Nat16 | Int32 | Nat32 | Char) as pty), Vanilla ->
-      BitTagged.tag env pty
-    | Vanilla, UnboxedWord64 (Type.(Nat8 | Int8 | Nat16 | Int16 | Char) as pty) ->
-      BitTagged.untag __LINE__ env pty
-
     | UnboxedWord64 (Type.(Int64 | Nat64 | Int | Nat) as pty), Vanilla -> 
       BoxedWord64.box env pty (* ! *)
     | Vanilla, UnboxedWord64 (Type.(Int64 | Nat64 | Int | Nat) as pty) -> 
       BoxedWord64.unbox env pty (* ! *)
+
+    | UnboxedWord64 (Type.(Int8 | Nat8 | Int16 | Nat16 | Int32 | Nat32 | Char) as pty), Vanilla ->
+      TaggedSmallWord.tag env pty
+    | Vanilla, UnboxedWord64 (Type.(Nat8 | Int8 | Nat16 | Int16 | Char) as pty) ->
+      TaggedSmallWord.untag env pty
 
     | UnboxedFloat64, Vanilla -> Float.box env
     | Vanilla, UnboxedFloat64 -> Float.unbox env
