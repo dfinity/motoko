@@ -3023,6 +3023,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       begin
         (* see Note [left shifting compact Nat] *)
         get_n ^^ BitTagged.untag __LINE__ env Type.Int ^^ set_n ^^
+        get_n ^^
         compile_bitand_const 0xFFFF_FFFF_0000_0000L ^^
         compile_eq_const 0L ^^
         get_amount ^^ compile_rel_const I64Op.LeU 32L ^^
