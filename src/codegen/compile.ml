@@ -10162,7 +10162,8 @@ and compile_prim_invocation (env : E.t) ae p es at =
     | Char, Nat32 ->
       SR.UnboxedWord64 Nat32,
       compile_exp_as env ae (SR.UnboxedWord64 t1) e ^^
-      TaggedSmallWord.lsb_adjust_codepoint env
+      TaggedSmallWord.lsb_adjust_codepoint env ^^
+      TaggedSmallWord.msb_adjust Nat32
 
     | _ -> SR.Unreachable, todo_trap env "compile_prim_invocation" (Arrange_ir.prim p)
     end
