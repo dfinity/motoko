@@ -493,8 +493,8 @@ let rec check_exp env (exp:Ir.exp) : unit =
     | NextArrayOffset, [exp1] ->
       typ exp1 <: T.nat;
       T.nat <: t
-    | ValidArrayOffset, [exp1; exp2] ->
-      typ exp1 <: T.nat;
+    | EqArrayOffset, [exp1; exp2] ->
+      typ exp1 <: T.int;
       typ exp2 <: T.int;
       T.bool <: t
     | BreakPrim id, [exp1] ->

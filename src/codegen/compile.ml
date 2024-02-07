@@ -55,7 +55,7 @@ module TaggingScheme = struct
      Flags.sanity_check will check tags, but not further locate them.
   *)
 
-  let debug = false (* should never be true in master! *)
+  let debug = true (* should never be true in master! *)
 
   type bit = I
            | O
@@ -3061,11 +3061,11 @@ sig
   val truncate_to_word64 : E.t -> G.t
 
   (* unsigned word to SR.Vanilla *)
-  val from_word_compact : E.t -> G.t
   val from_word32 : E.t -> G.t
   val from_word64 : E.t -> G.t
 
   (* signed word to SR.Vanilla *)
+  val from_signed_word_compact : E.t -> G.t
   val from_signed_word32 : E.t -> G.t
   val from_signed_word64 : E.t -> G.t
 
@@ -3394,7 +3394,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
           G.if1 I32Type
             (get_res ^^ compile_bitor_const (TaggingScheme.tag_of_typ Type.Int))
             (get_n ^^ compile_shrS_const (Int32.of_int (32 - BitTagged.ubits_of Type.Int)) ^^
-             Num.from_word_compact env ^^ get_amount ^^ Num.compile_lsh env)
+             Num.from_signed_word_compact env ^^ get_amount ^^ Num.compile_lsh env)
         )
         (get_n ^^ get_amount ^^ Num.compile_lsh env))
 
@@ -3739,7 +3739,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       (get_a ^^ BitTagged.tag env Type.Int)
       (get_a ^^ Num.from_signed_word64 env)
 
-  let from_word_compact env =
+  let from_signed_word_compact env =
     begin
       if TaggingScheme.debug || !(Flags.sanity)
      then
@@ -3747,10 +3747,10 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       set_a ^^
       get_a ^^ BitTagged.if_can_tag_i32 env Type.Int [I32Type]
         get_a
-        (E.trap_with env "from_word_compact")
+        (E.trap_with env "from_signed_word_compact")
       else G.nop
     end ^^
-      BitTagged.tag_i32 env Type.Int
+    BitTagged.tag_i32 env Type.Int
 
   let from_word32 env =
     let set_a, get_a = new_local env "a" in
@@ -3813,7 +3813,7 @@ module BigNumLibtommath : BigNumType = struct
   let truncate_to_word32 env = E.call_import env "rts" "bigint_to_word32_wrap"
   let truncate_to_word64 env = E.call_import env "rts" "bigint_to_word64_wrap"
 
-  let from_word_compact env = E.call_import env "rts" "bigint_of_word32"
+  let from_signed_word_compact env = E.call_import env "rts" "bigint_of_int32"
   let from_word32 env = E.call_import env "rts" "bigint_of_word32"
   let from_word64 env = E.call_import env "rts" "bigint_of_word64"
   let from_signed_word32 env = E.call_import env "rts" "bigint_of_int32"
@@ -4544,6 +4544,8 @@ module Arr = struct
 
      No difference between mutable and immutable arrays.
   *)
+
+  let max_size env = Int32.shift_left 1l 29 (* inclusive *)
 
   let header_size env = Int32.add (Tagged.header_size env) 1l
   let element_size = 4l
@@ -10644,11 +10646,11 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla,
     compile_exp_vanilla env ae e ^^ (* previous byte offset to array *)
     compile_add_const advance_by
-  | ValidArrayOffset, [e1; e2] ->
+  | EqArrayOffset, [e1; e2] ->
     SR.bool,
     compile_exp_vanilla env ae e1 ^^ BitTagged.untag_i32 __LINE__ env Type.Int ^^
     compile_exp_vanilla env ae e2 ^^ BitTagged.untag_i32 __LINE__ env Type.Int ^^
-    G.i (Compare (Wasm.Values.I32 I32Op.LeS))
+    G.i (Compare (Wasm.Values.I32 I32Op.Eq))
   | DerefArrayOffset, [e1; e2] ->
     SR.Vanilla,
     compile_exp_vanilla env ae e1 ^^ (* skewed pointer to array *)
@@ -10664,11 +10666,12 @@ and compile_prim_invocation (env : E.t) ae p es at =
     (* Not using Tagged.load_field since it is not a proper pointer to the array start *)
     Heap.load_field (Arr.header_size env) (* loads the element at the byte offset *)
   | GetLastArrayOffset, [e] ->
+    assert (BitTagged.can_tag_const Type.Int (Int64.of_int32 (Int32.sub (Arr.max_size env) 1l)));
     SR.Vanilla,
     compile_exp_vanilla env ae e ^^ (* array *)
     Arr.len env ^^
     compile_sub_const 1l ^^
-    BigNum.from_word_compact env
+    BigNum.from_signed_word_compact env
 
   | BreakPrim name, [e] ->
     let d = VarEnv.get_label_depth ae name in

@@ -70,7 +70,7 @@ and prim = function
   | ArrayPrim (m, t)  -> "ArrayPrim"  $$ [mut m; typ t]
   | IdxPrim           -> Atom "IdxPrim"
   | NextArrayOffset   -> Atom "NextArrayOffset"
-  | ValidArrayOffset  -> Atom "ValidArrayOffset"
+  | EqArrayOffset     -> Atom "EqArrayOffset"
   | DerefArrayOffset  -> Atom "DerefArrayOffset"
   | GetLastArrayOffset -> Atom "GetLastArrayOffset"
   | BreakPrim i       -> "BreakPrim"  $$ [id i]

@@ -147,7 +147,7 @@ and prim =
   | SystemTimePrim
   (* Array field iteration/access *)
   | NextArrayOffset                   (* advance array offset *)
-  | ValidArrayOffset                  (* verify array offset *)
+  | EqArrayOffset                  (* verify array offset *)
   | DerefArrayOffset                  (* array offset indexing *)
   | GetLastArrayOffset                (* array offset of the last element, or -1 *)
   (* Funds *)
@@ -270,7 +270,7 @@ let map_prim t_typ t_id p =
   | ArrayPrim (m, t) -> ArrayPrim (m, t_typ t)
   | IdxPrim
   | NextArrayOffset
-  | ValidArrayOffset
+  | EqArrayOffset
   | DerefArrayOffset
   | GetLastArrayOffset -> p
   | BreakPrim id -> BreakPrim (t_id id)
