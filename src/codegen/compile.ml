@@ -55,7 +55,7 @@ module TaggingScheme = struct
      Flags.sanity_check will check tags, but not further locate them.
   *)
 
-  let debug = true (* should never be true in master! *)
+  let debug = false (* should never be true in master! *)
 
   type bit = I
            | O
