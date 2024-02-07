@@ -10301,7 +10301,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
       compile_shrU_const (Int64.of_int (64 - num_bits)) ^^
       E.then_trap_with env "losing precision" ^^
       get_val ^^
-      TaggedSmallWord.msb_adjust to_typ
+      compile_shl_const (Int64.of_int num_bits)
     | (Int8 as from_typ), (Int16 as to_typ)
     | (Int16 as from_typ), (Int32 as to_typ)
     | (Int32 as from_typ), (Int64 as to_typ) ->
@@ -10324,7 +10324,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
       compile_eq env Type.(Prim from_typ) ^^
       E.else_trap_with env "losing precision" ^^
       get_val ^^
-      TaggedSmallWord.msb_adjust to_typ
+      compile_shl_const (Int64.of_int num_bits)
     | _ -> SR.Unreachable, todo_trap env "compile_prim_invocation" (Arrange_ir.prim p)
     end
 
