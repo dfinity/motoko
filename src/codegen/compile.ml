@@ -10643,20 +10643,21 @@ and compile_prim_invocation (env : E.t) ae p es at =
     load_ptr
   (* NB: all these operations assume a valid array offset fits in a compact bignum *)
   | NextArrayOffset, [e] ->
-    let advance_by = Int32.shift_left 1l (32 - BitTagged.ubits_of Type.Int) (* 1 : Nat *) in
+    let one_untagged = Int32.shift_left 1l (32 - BitTagged.ubits_of Type.Int) in
     SR.Vanilla,
     compile_exp_vanilla env ae e ^^ (* previous byte offset to array *)
-    compile_add_const advance_by (* preserving the tag in low bits *)
+    compile_add_const one_untagged (* preserving the tag in low bits *)
   | EqArrayOffset, [e1; e2] ->
     SR.bool,
     compile_exp_vanilla env ae e1 ^^
     BitTagged.sanity_check_tag __LINE__ env Type.Int ^^
     compile_exp_vanilla env ae e2 ^^
     BitTagged.sanity_check_tag __LINE__ env Type.Int ^^
-    (* ok to equate tagged *)
+    (* equate (without untagging) *)
     G.i (Compare (Wasm.Values.I32 I32Op.Eq))
   | DerefArrayOffset, [e1; e2] ->
     SR.Vanilla,
+    (* NB: no bounds check on index *)
     compile_exp_vanilla env ae e1 ^^ (* skewed pointer to array *)
     Tagged.load_forwarding_pointer env ^^
     compile_exp_vanilla env ae e2 ^^ (* byte offset *)

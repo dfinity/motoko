@@ -270,12 +270,13 @@ and transform_for_to_while p arr_exp proj e1 e2 =
      ~~>
      let arr = arr_exp ;
      let last = arr.size(e1) : Int - 1 ;
-     var indx = 0 ;
-     if last < 0 { }
+     var indx = 0;
+     if (last == -1) { }
      else {
        label l loop {
-         let p = arr[indx]; e2; indx += 1 }
-         if indx == last
+         let p = arr[indx]; // sans bound check
+         e2;
+         if (indx == last)
          else { break l }
          then { indx += 1 }
        }
