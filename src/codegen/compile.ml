@@ -9722,7 +9722,7 @@ let compile_binop env t op : SR.t * SR.t * G.t =
                 compile_unboxed_const (Int64.of_int overflow_boundary) ^^
                 compile_comparison I64Op.LtS ^^ then_arithmetic_overflow env ^^
                 get_n ^^ get_exp ^^
-                TaggedSmallWord.compile_nat_power env Type.Nat32 ^^ set_res ^^
+                TaggedSmallWord.compile_nat_power env Type.Nat64 ^^ set_res ^^
                 get_res ^^ enforce_unsigned_bits env bits ^^
                 get_res ^^ TaggedSmallWord.msb_adjust ty
               end
@@ -9777,7 +9777,7 @@ let compile_binop env t op : SR.t * SR.t * G.t =
                 compile_unboxed_const (Int64.of_int overflow_boundary) ^^
                 compile_comparison I64Op.LtS ^^ then_arithmetic_overflow env ^^
                 get_n ^^ get_exp ^^
-                TaggedSmallWord.compile_nat_power env Type.Nat32 ^^ set_res ^^ 
+                TaggedSmallWord.compile_nat_power env Type.Nat64 ^^ set_res ^^ 
                 get_res ^^ get_res ^^ enforce_signed_bits env bits ^^
                 get_res ^^ TaggedSmallWord.msb_adjust ty
               end
