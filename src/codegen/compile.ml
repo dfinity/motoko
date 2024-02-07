@@ -10649,8 +10649,11 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_add_const advance_by (* preserving the tag in low bits *)
   | EqArrayOffset, [e1; e2] ->
     SR.bool,
-    compile_exp_vanilla env ae e1 ^^ BitTagged.untag_i32 __LINE__ env Type.Int ^^
-    compile_exp_vanilla env ae e2 ^^ BitTagged.untag_i32 __LINE__ env Type.Int ^^
+    compile_exp_vanilla env ae e1 ^^
+    BitTagged.sanity_check_tag __LINE__ env Type.Int ^^
+    compile_exp_vanilla env ae e2 ^^
+    BitTagged.sanity_check_tag __LINE__ env Type.Int ^^
+    (* ok to equate tagged *)
     G.i (Compare (Wasm.Values.I32 I32Op.Eq))
   | DerefArrayOffset, [e1; e2] ->
     SR.Vanilla,
