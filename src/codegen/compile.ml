@@ -10812,11 +10812,14 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | OtherPrim "popcnt32", [e] ->
      SR.UnboxedWord64 Type.Nat32,
      compile_exp_as env ae (SR.UnboxedWord64 Type.Nat32) e ^^
-     G.i (Unary (Wasm_exts.Values.I64 I64Op.Popcnt))
+     G.i (Unary (Wasm_exts.Values.I64 I64Op.Popcnt)) ^^
+     TaggedSmallWord.msb_adjust Type.Nat32
   | OtherPrim "popcntInt32", [e] ->
      SR.UnboxedWord64 Type.Int32,
      compile_exp_as env ae (SR.UnboxedWord64 Type.Int32) e ^^
-     G.i (Unary (Wasm_exts.Values.I64 I64Op.Popcnt))
+     compile_shrU_const (TaggedSmallWord.shift_of_type Type.Int32) ^^
+     G.i (Unary (Wasm_exts.Values.I64 I64Op.Popcnt))^^
+     TaggedSmallWord.msb_adjust Type.Int32
   | OtherPrim "popcnt64", [e] ->
      SR.UnboxedWord64 Type.Nat64,
      compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) e ^^
@@ -10844,11 +10847,11 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | OtherPrim "clz32", [e] ->
      SR.UnboxedWord64 Type.Nat32,
      compile_exp_as env ae (SR.UnboxedWord64 Type.Nat32) e ^^ 
-     G.i (Unary (Wasm_exts.Values.I64 I64Op.Clz))
+     TaggedSmallWord.clz_kernel Type.Nat32
   | OtherPrim "clzInt32", [e] ->
      SR.UnboxedWord64 Type.Int32,
      compile_exp_as env ae (SR.UnboxedWord64 Type.Int32) e ^^ 
-     G.i (Unary (Wasm_exts.Values.I64 I64Op.Clz))
+     TaggedSmallWord.clz_kernel Type.Int32
   | OtherPrim "clz64", [e] ->
      SR.UnboxedWord64 Type.Nat64,
      compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) e ^^ 
@@ -10876,11 +10879,11 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | OtherPrim "ctz32", [e] ->
     SR.UnboxedWord64 Type.Nat32,
     compile_exp_as env ae (SR.UnboxedWord64 Type.Nat32) e ^^ 
-    G.i (Unary (Wasm_exts.Values.I64 I64Op.Ctz))
+    TaggedSmallWord.ctz_kernel Type.Nat32
   | OtherPrim "ctzInt32", [e] ->
     SR.UnboxedWord64 Type.Int32,
     compile_exp_as env ae (SR.UnboxedWord64 Type.Int32) e ^^ 
-    G.i (Unary (Wasm_exts.Values.I64 I64Op.Ctz))
+    TaggedSmallWord.ctz_kernel Type.Int32
   | OtherPrim "ctz64", [e] ->
     SR.UnboxedWord64 Type.Nat64,
     compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) e ^^ 
