@@ -8,23 +8,22 @@ import Prim "mo:⛔";
 // CHECK-NOT:  call $@immut_array_size
 // DON'TCHECK: i64.load offset=17
 // CHECK:      i64.load offset= 
-// CHECK:      i64.const 3
-// CHECK:      i64.shl
+// CHECK:      i64.const 2
+// CHECK:      i64.shr_s
 // CHECK:      i64.lt_u
 // CHECK:      i64.add
 // DON'TCHECK: i64.load offset=25
 // CHECK:      local.tee $check0
 // CHECK-NEXT: call $print_text
-// CHECK:      i64.const 8
+// CHECK:      i64.const 4
 // CHECK-NEXT: i64.add
 for (check0 in ["hello", "world"].vals()) { Prim.debugPrint check0 };
 
 
 // CHECK-NOT:  call $@mut_array_size
 // DON'TCHECK: i64.load offset=17
-// CHECK:      i64.load offset=
-// CHECK:      i64.const 3
-// CHECK-NEXT: i64.shl
+// CHECK:      i64.const 2
+// CHECK:      i64.shr_s
 // CHECK:      i64.lt_u
 // CHECK:      i64.add
 // DON'TCHECK: i64.load offset=25
@@ -38,8 +37,8 @@ array[1] := "mutable";
 // CHECK-NOT:   call $@immut_array_size
 // DON'TCHECK:  i64.load offset=17
 // CHECK:       i64.load offset=
-// CHECK:       i64.const 3
-// CHECK:       i64.shl
+// CHECK:       i64.const 2
+// CHECK:       i64.shr_s
 // DON'T-CHECK: i64.lt_u
 // DON'T-CHECK: local.get $array
 // DON'T-CHECK: local.set $check2
@@ -50,8 +49,8 @@ for (check2 in array.vals()) { Prim.debugPrint check2 };
 // CHECK-NOT:  call $@immut_array_size
 // DON'TCHECK: i64.load offset=17
 // CHECK:      i64.load offset=
-// CHECK:      i64.const 3
-// CHECK:      i64.shl
+// CHECK:      i64.const 2
+// CHECK-NEXT: i64.shr_s
 // CHECK:      i64.lt_u
 // CHECK:      i64.add
 // DON'TCHECK: i64.load offset=25
@@ -60,7 +59,7 @@ for (check2 in array.vals()) { Prim.debugPrint check2 };
 for (check3 in (((["hello", "immutable", "world"].vals())))) { Prim.debugPrint check3 };
 
 
-// CHECK:      i64.const 84
+// CHECK:      i64.const 170
 // CHECK:      call $B_add
 // CHECK-NEXT: call $B_eq
 // CHECK-NEXT: i32.wrap_i64
@@ -105,10 +104,10 @@ for (check7 in [].vals(Prim.debugPrint "want to see you")) { };
 
 // CHECK:      local.set $num8
 // CHECK-NOT:  call $@immut_array_size
-// DON'TCHECK: i64.load offset=17
+// CON'TFHECK: i64.load offset=17
 // CHECK:      i64.load offset=
-// CHECK:      i64.const 1
-// CHECK:      i64.shl
+// CHECK:      i64.const 2
+// CHECK:      i64.shr_s
 // CHECK:      i64.lt_u
 // CHECK-NOT:  i64.add
 // CHECK:      local.tee $check8
