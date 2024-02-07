@@ -10312,7 +10312,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     | (Int16 as from_typ), (Int8 as to_typ)
     | (Int32 as from_typ), (Int16 as to_typ)
     | (Int64 as from_typ), (Int32 as to_typ) ->
-      SR.UnboxedWord64 Int8,
+      SR.UnboxedWord64 to_typ,
       let num_bits = (TaggedSmallWord.bits_of_type to_typ) in
       let set_val, get_val = new_local env "convertee" in
       compile_exp_as env ae (SR.UnboxedWord64 from_typ)  e ^^
