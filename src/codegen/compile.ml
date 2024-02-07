@@ -10641,11 +10641,12 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla,
     compile_array_index env ae e1 e2 ^^
     load_ptr
+  (* NB: all these operations assume a valid array offset fits in a compact bignum *)
   | NextArrayOffset, [e] ->
     let advance_by = Int32.shift_left 1l (32 - BitTagged.ubits_of Type.Int) (* 1 : Nat *) in
     SR.Vanilla,
     compile_exp_vanilla env ae e ^^ (* previous byte offset to array *)
-    compile_add_const advance_by
+    compile_add_const advance_by (* preserving the tag in low bits *)
   | EqArrayOffset, [e1; e2] ->
     SR.bool,
     compile_exp_vanilla env ae e1 ^^ BitTagged.untag_i32 __LINE__ env Type.Int ^^
