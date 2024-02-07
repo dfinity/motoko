@@ -10727,18 +10727,18 @@ and compile_prim_invocation (env : E.t) ae p es at =
     Region.store_word32 env
 
   | OtherPrim (("regionLoadNat64" | "regionLoadInt64") as p), [e0; e1] ->
-    (SR.UnboxedWord64 Type.(if p = "regionLoadNat64" then Nat64 else Int64)),
+    let ty = Type.(if p = "regionLoadNat64" then Nat64 else Int64) in
+    SR.UnboxedWord64 ty,
     compile_exp_as env ae SR.Vanilla e0 ^^
     compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) e1 ^^
     Region.load_word64 env
 
   | OtherPrim (("regionStoreNat64" | "regionStoreInt64") as p), [e0; e1; e2] ->
+    let ty = Type.(if p = "regionStoreNat64" then Nat64 else Int64) in
     SR.unit,
     compile_exp_as env ae SR.Vanilla e0 ^^
     compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) e1 ^^
-    compile_exp_as env ae
-      (SR.UnboxedWord64 Type.(if p = "regionStoreNat64" then Nat64 else Int64))
-      e2 ^^
+    compile_exp_as env ae (SR.UnboxedWord64 ty) e2 ^^
     Region.store_word64 env
 
   | OtherPrim ("regionLoadFloat"), [e0; e1] ->
@@ -10997,7 +10997,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     StableMemoryInterface.store_word16 env
 
   | OtherPrim (("stableMemoryLoadNat64" | "stableMemoryLoadInt64") as p), [e] ->
-    let ty = Type.(if p = "stableMemoryStoreNat64" then Nat64 else Int64) in
+    let ty = Type.(if p = "stableMemoryLoadNat64" then Nat64 else Int64) in
     SR.UnboxedWord64 ty,
     compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) e ^^
     StableMemoryInterface.load_word64 env
