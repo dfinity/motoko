@@ -1763,10 +1763,16 @@ module BitTagged = struct
     | Nat | Int | Int64 | Int32 ->
       Func.share_code1 Func.Never env
         (prim_fun_name pty "if_can_tag_i64") ("x", I64Type) [I32Type] (fun env get_x ->
-        (* checks that all but the low signed_data_bits bits are either all 0 or all 1 *)
+        (* checks that all but the low sbits are either all 0 or all 1 *)
+(*          
         get_x ^^ compile_shl64_const 1L ^^
         get_x ^^ G.i (Binary (Wasm.Values.I64 I32Op.Xor)) ^^
         compile_shrU64_const (Int64.of_int (ubits_of pty)) ^^
+ *)
+        get_x ^^
+        get_x ^^ compile_shrS64_const (Int64.of_int ((64 - ubits_of pty) - 1)) ^^
+        G.i (Binary (Wasm.Values.I64 I32Op.Xor)) ^^
+        compile_shrU64_const (Int64.of_int (sbits_of pty)) ^^
         G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
         sanity_check_can_tag_i64 env pty get_x) ^^
       E.if_ env retty is1 is2
