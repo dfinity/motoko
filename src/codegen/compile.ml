@@ -1631,12 +1631,13 @@ module BitTagged = struct
      Small here means:
 
      * 0 ≤ x < 2^(ubits ty) for an unsigned type ty with (ubits ty) payload bits
-     * -2^sbits ≤ x < 2^sbits, for signed type ty (sbits ty) (= (ubits ty) - 1) payload bits (excluding sign bit), or
-     with the exception that compact Nat is regared as signed to support subtyping.
+     * -2^sbits ≤ x < 2^sbits, for a signed type ty with (sbits ty) (= (ubits ty) - 1) payload bits
+       (i.e. excluding sign bit),
+     with the exception that compact Nat is regarded as signed to support subtyping.
 
-     Tagging needs to happen with
-     * shift left by (32-ubits ty) for signed or unsigned type ty.
-     * and a logical or (variable length) tag bits.
+     Tagging needs to happen with a
+     * shift left by (32-ubits ty) for a signed or unsigned type ty; then
+     * a logical or of the (variable length) tag bits for ty.
 
      Untagging needs to happen with an
      * logical right shift (for unsigned type ty in Nat{8,16,32,64}, Char).
@@ -1678,7 +1679,7 @@ module BitTagged = struct
      UnboxedWord64 {Int,Nat}64, on the other hand, is the natural (unpadded) machine representation.
 
      All arithmetic is implemented directly on the stack (not vanilla) representation of scalars.
-     Proper tags bits are removed/added when loading to vanilla or storing from vanilla representation.
+     Proper tags bits are removed/added when loading from vanilla or storing to vanilla representation.
 
   *)
   let is_true_literal env =
@@ -1764,11 +1765,6 @@ module BitTagged = struct
       Func.share_code1 Func.Never env
         (prim_fun_name pty "if_can_tag_i64") ("x", I64Type) [I32Type] (fun env get_x ->
         (* checks that all but the low sbits are either all 0 or all 1 *)
-(*          
-        get_x ^^ compile_shl64_const 1L ^^
-        get_x ^^ G.i (Binary (Wasm.Values.I64 I32Op.Xor)) ^^
-        compile_shrU64_const (Int64.of_int (ubits_of pty)) ^^
- *)
         get_x ^^
         get_x ^^ compile_shrS64_const (Int64.of_int ((64 - ubits_of pty) - 1)) ^^
         G.i (Binary (Wasm.Values.I64 I32Op.Xor)) ^^
@@ -2676,19 +2672,6 @@ module BoxedSmallWord = struct
     get_i ^^
     Tagged.allocation_barrier env
 
-  (* TODO: adapt and use *)
-  let _box env pty =
-    Func.share_code1 Func.Never env
-      (prim_fun_name pty "box") ("n", I32Type) [I32Type] (fun env get_n ->
-      get_n ^^ compile_shrU_const (Int32.of_int (BitTagged.sbits_of pty)) ^^
-      G.i (Unary (Wasm.Values.I32 I32Op.Popcnt)) ^^
-      G.i (Unary (Wasm.Values.I32 I32Op.Ctz)) ^^
-      G.if1 I32Type
-        (get_n ^^ BitTagged.tag_i32 env pty)
-        (compile_box env pty get_n)
-    )
-
-
   let box env pty =
     Func.share_code1 Func.Never env
       (prim_fun_name pty "box") ("n", I32Type) [I32Type] (fun env get_n ->
@@ -2806,7 +2789,7 @@ module TaggedSmallWord = struct
        G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
        msb_adjust ty
 
-  (* Code points occupy 21 bits, so can always be tagged scalars *)  (* TODO: rename (not tagging) *)
+  (* Code points occupy 21 bits, so can always be tagged scalars *)
   let lsb_adjust_codepoint env = lsb_adjust Type.Char
   let msb_adjust_codepoint = msb_adjust Type.Char
 
@@ -3583,9 +3566,9 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     try_unbox I32Type (fun _ -> match n with
         | 32 | 64 -> G.i Drop ^^ Bool.lit true
         | 8 | 16 ->
-          (* Please review carefully! *)
+           (* check all bits beyond signed payload are all 0 or all 1 *)
            set_a ^^
-           get_a ^^ get_a ^^ compile_shrS_const 1l ^^ (*Review 1l*)
+           get_a ^^ get_a ^^ compile_shrS_const 1l ^^
            G.i (Binary (Wasm.Values.I32 I32Op.Xor)) ^^
            compile_bitand_const
              Int32.(shift_left minus_one ((n-1) + (32 - BitTagged.ubits_of Type.Int))) ^^
@@ -3774,7 +3757,6 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       (get_a ^^ Num.from_signed_word64 env)
 
   let from_word30 env = (* TBR: don't think we've got 30 bits! *)
-    (*    compile_shl_const (Int32.sub 32l BitTagged.ubitsl) ^^ *) (* TBR *)
     BitTagged.tag_i32 env Type.Int
 
   let from_word32 env =
@@ -7517,7 +7499,7 @@ module MakeSerialization (Strm : Stream) = struct
           ReadBuf.read_float64 env get_data_buf ^^
           Float.box env
         end
-      | Prim ((Int64|Nat64) as pty)->
+      | Prim ((Int64|Nat64) as pty) ->
         with_prim_typ t
         begin
           ReadBuf.read_word64 env get_data_buf ^^
@@ -10878,7 +10860,8 @@ and compile_prim_invocation (env : E.t) ae p es at =
     | Nat16, Nat32 ->
       SR.UnboxedWord32 Nat32,
       compile_exp_as env ae (SR.UnboxedWord32 Nat16) e ^^
-      TaggedSmallWord.lsb_adjust Type.Nat16
+      TaggedSmallWord.lsb_adjust Type.Nat16 ^^
+      TaggedSmallWord.msb_adjust Nat16 (* NB: a nop for 32-bit present, but not for 64-bit future*)
     | Nat32, Nat64 ->
       SR.UnboxedWord64 Nat64,
       compile_exp_as env ae (SR.UnboxedWord32 Nat32) e ^^
@@ -10920,11 +10903,14 @@ and compile_prim_invocation (env : E.t) ae p es at =
     | Int8, Int16 ->
       SR.UnboxedWord32 Int16,
       compile_exp_as env ae (SR.UnboxedWord32 Int8) e ^^
+      (* Optimization of TaggedSmallWord.lsb_adjust Int8 ^^ TabbedSmallWord.msb_adjust Int16 *)
       compile_shrS_const 8l
+
     | Int16, Int32 ->
       SR.UnboxedWord32 Int32,
       compile_exp_as env ae (SR.UnboxedWord32 Int16) e ^^
-      compile_shrS_const 16l (* lsb_adjust? *)
+      (* Optimization of TaggedSmallWord.lsb_adjust Int16 ^^ TabbedSmallWord.msb_adjust Int32 *)
+      compile_shrS_const 16l
     | Int32, Int64 ->
       SR.UnboxedWord64 Int64,
       compile_exp_as env ae (SR.UnboxedWord32 Int32) e ^^
@@ -11428,13 +11414,11 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | OtherPrim "popcntInt8", [e] ->
     SR.UnboxedWord32 Type.Int8,
     compile_exp_as env ae (SR.UnboxedWord32 Type.Int8) e ^^
-    compile_shrU_const (TaggedSmallWord.shift_of_type Type.Int8) ^^
     G.i (Unary (Wasm.Values.I32 I32Op.Popcnt)) ^^
     TaggedSmallWord.msb_adjust Type.Int8
   | OtherPrim "popcntInt16", [e] ->
     SR.UnboxedWord32 Type.Int16,
     compile_exp_as env ae (SR.UnboxedWord32 Type.Int16) e ^^
-    compile_shrU_const (TaggedSmallWord.shift_of_type Type.Int16) ^^
     G.i (Unary (Wasm.Values.I32 I32Op.Popcnt)) ^^
     TaggedSmallWord.msb_adjust Type.Int16
   | OtherPrim "popcnt32", [e] ->
