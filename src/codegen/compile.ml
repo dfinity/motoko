@@ -10418,7 +10418,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     E.call_import env "rts" "text_compare" ^^
     TaggedSmallWord.msb_adjust Type.Int8
   | OtherPrim "blob_compare", [e1; e2] ->
-    SR.Vanilla,
+    SR.UnboxedWord64 Type.Int8,
     compile_exp_vanilla env ae e1 ^^
     compile_exp_vanilla env ae e2 ^^
     Blob.compare env None ^^
