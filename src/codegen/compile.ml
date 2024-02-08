@@ -4889,7 +4889,7 @@ module IC = struct
          "destination_invalid", 3L;
          "canister_reject", 4L;
          "canister_error", 5L]
-        (Variant.inject env "future" (get_code ^^ BoxedWord64.box env Type.Nat64)))
+        (Variant.inject env "future" (get_code ^^ BitTagged.tag env Type.Nat32)))
 
   let error_message env =
     Func.share_code0 Func.Never env "error_message" [I64Type] (fun env ->
