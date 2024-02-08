@@ -10566,9 +10566,8 @@ and compile_prim_invocation (env : E.t) ae p es at =
     IC.get_system_time env
 
   | OtherPrim "call_perform_status", [] ->
-    SR.Vanilla,
-    IC.get_call_perform_status env ^^
-    TaggedSmallWord.msb_adjust Type.Nat32
+    SR.UnboxedWord64 Type.Nat32,
+    IC.get_call_perform_status env
 
   | OtherPrim "call_perform_message", [] ->
     SR.Vanilla,
