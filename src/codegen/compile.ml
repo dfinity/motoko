@@ -7092,11 +7092,12 @@ module MakeSerialization (Strm : Stream) = struct
           ReadBuf.read_word64 env get_data_buf ^^
           BoxedWord64.box env pty
         end
-      | Prim ((Int32|Nat32) as pty) ->
+      | Prim ((Int32|Nat32) as ty) ->
         with_prim_typ t
         begin
           ReadBuf.read_word32 env get_data_buf ^^
-          TaggedSmallWord.msb_adjust pty
+          TaggedSmallWord.msb_adjust ty ^^
+          TaggedSmallWord.tag env ty
         end
       | Prim Char ->
         with_prim_typ t
