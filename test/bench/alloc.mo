@@ -16,7 +16,6 @@ actor alloc {
         };
         let (m1, n1) = counters();
         debugPrint(debug_show (m1 - m0, n1 - n0));
-        assert false; // rollback changes
     }
 }
 //SKIP run-low
