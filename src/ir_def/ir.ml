@@ -146,7 +146,7 @@ and prim =
   | SelfRef of Type.typ               (* returns the self actor ref *)
   | SystemTimePrim
   (* Array field iteration/access *)
-  | NextArrayOffset                   (* advance compact array offset,as Nat *)
+  | NextArrayOffset                   (* advance compact array offset, as Nat *)
   | EqArrayOffset                     (* equate compact array offset at type Int *)
   | DerefArrayOffset                  (* compact array offset indexing (unchecked) *)
   | GetLastArrayOffset                (* compact array offset of the last element, or -1, as Int *)
