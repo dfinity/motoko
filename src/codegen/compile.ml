@@ -116,7 +116,7 @@ module TaggingScheme = struct
     | Nat | Int     -> 30
     | Nat64 | Int64 -> 28
     | Nat32 | Int32 -> 27
-    | Char          -> 21
+    | Char          -> 21 (* suffices for 21-bit UTF8 codepoints *)
     | Nat16 | Int16 -> 16
     | Nat8  | Int8  ->  8
     | _ -> assert false)
@@ -1721,12 +1721,9 @@ module BitTagged = struct
 
   let tag_const pty i = Type.(
     match pty with
-    |  Nat | Int | Int64 | Int32 ->
-      Int32.shift_left (Int64.to_int32 i) (32 - ubits_of pty)
-      (* tag *)
-      |> Int32.logor (TaggingScheme.tag_of_typ pty)
+    |  Nat | Int | Int64 | Int32
     |  Nat64 | Nat32 ->
-      Int32.shift_left (Int64.to_int32 i) (32 - ubits_of pty) (* TBR *)
+      Int32.shift_left (Int64.to_int32 i) (32 - ubits_of pty)
       (* tag *)
       |> Int32.logor (TaggingScheme.tag_of_typ pty)
     | _ -> assert false)
