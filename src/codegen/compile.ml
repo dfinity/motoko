@@ -4545,7 +4545,8 @@ module Arr = struct
      No difference between mutable and immutable arrays.
   *)
 
-  let max_size env = Int32.shift_left 1l 29 (* inclusive *)
+  (* NB max_array_size must agree with limit 2^29 imposed by RTS constants.MAX_ARRAY_SIZE *)
+  let max_array_size env = Int32.shift_left 1l 29 (* inclusive *)
 
   let header_size env = Int32.add (Tagged.header_size env) 1l
   let element_size = 4l
@@ -10671,7 +10672,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     (* Not using Tagged.load_field since it is not a proper pointer to the array start *)
     Heap.load_field (Arr.header_size env) (* loads the element at the byte offset *)
   | GetLastArrayOffset, [e] ->
-    assert (BitTagged.can_tag_const Type.Int (Int64.of_int32 (Int32.sub (Arr.max_size env) 1l)));
+    assert (BitTagged.can_tag_const Type.Int (Int64.of_int32 (Int32.sub (Arr.max_array_size env) 1l)));
     SR.Vanilla,
     compile_exp_vanilla env ae e ^^ (* array *)
     Arr.len env ^^
