@@ -2483,7 +2483,7 @@ module TaggedSmallWord = struct
         get_n ^^ compile_shrU_const (shift_of_type ty) ^^ set_n ^^
 
         (* The accumulator starts with and stays shifted, so no other shifts needed. *)
-        compile_unboxed_const 1L ^^ set_acc ^^
+        compile_unboxed_const (const_of_type ty 1L) ^^ set_acc ^^
 
         (* handle exp == 0 *)
         get_exp ^^ compile_test I64Op.Eqz ^^
