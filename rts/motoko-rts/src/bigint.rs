@@ -191,14 +191,6 @@ pub unsafe extern "C" fn bigint_of_word32(w: u32) -> Value {
 
 #[cfg(feature = "ic")]
 #[no_mangle]
-unsafe extern "C" fn bigint_of_int32(j: i32) -> Value {
-    let mut i = tmp_bigint();
-    mp_set_i32(&mut i, j);
-    persist_bigint(i)
-}
-
-#[cfg(feature = "ic")]
-#[no_mangle]
 unsafe extern "C" fn bigint_to_word32_wrap(p: Value) -> u32 {
     mp_get_u32(p.as_bigint().mp_int_ptr())
 }

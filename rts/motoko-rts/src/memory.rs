@@ -55,7 +55,7 @@ pub unsafe fn alloc_array<M: Memory>(mem: &mut M, len: usize) -> Value {
     const MAX_ARRAY_LENGTH_FOR_ITERATOR: usize = 1 << (usize::BITS as usize - 2);
 
     if len > MAX_ARRAY_LENGTH_FOR_ITERATOR {
-        rts_trap_with("Array allocation too large");
+        rts_trap_with("Array allocation too large {len}");
     }
 
     let skewed_ptr = mem.alloc_words(size_of::<Array>() + Words(len));

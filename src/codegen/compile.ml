@@ -694,31 +694,15 @@ let compile_add32_const = compile_op32_const I32Op.Add
 let _compile_sub32_const = compile_op32_const I32Op.Sub
 let _compile_mul32_const = compile_op32_const I32Op.Mul
 let _compile_divU32_const = compile_op32_const I32Op.DivU
-let compile_shrU32_const = function
+let _compile_shrU32_const = function
   | 0l -> G.nop | n -> compile_op32_const I32Op.ShrU n
 let _compile_shrS32_const = function
   | 0l -> G.nop | n -> compile_op32_const I32Op.ShrS n
-let compile_shl32_const = function
+let _compile_shl32_const = function
   | 0l -> G.nop | n -> compile_op32_const I32Op.Shl n
 let compile_eq32_const i =
   compile_const_32 i ^^
   compile_comparison_32 I32Op.Eq
-
-(* helper, traps with message *)
-let else_losing_precision env =
-  E.else_trap_with env "losing precision"
-
-(* helper, expects i64 on stack *)
-let narrow_to_32_unsigned_bits env =
-  compile_bitand_const 0xFFFF_FFFF_0000_0000L ^^
-  compile_test I64Op.Eqz ^^
-  else_losing_precision env
-
-(* helper, expects two identical i64s on stack *)
-let narrow_to_32_signed_bits env =
-  compile_shl_const 1L ^^
-  G.i (Binary (Wasm_exts.Values.I64 I64Op.Xor)) ^^
-  narrow_to_32_unsigned_bits env
 
 (* Analogous to Lib.Uint32.compare *)
 let compare_uint64 i1 i2 =
@@ -987,11 +971,7 @@ module RTS = struct
       [I64Type; I64Type; I64Type; I64Type; I64Type; I64Type; I64Type; I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "leb128_decode" [I64Type] [I64Type];
     E.add_func_import env "rts" "sleb128_decode" [I64Type] [I64Type];
-    E.add_func_import env "rts" "bigint_of_word32" [I32Type] [I64Type];
-    E.add_func_import env "rts" "bigint_of_int32" [I32Type] [I64Type];
     E.add_func_import env "rts" "bigint_to_word32_wrap" [I64Type] [I32Type];
-    E.add_func_import env "rts" "bigint_to_word32_trap" [I64Type] [I32Type];
-    E.add_func_import env "rts" "bigint_to_word32_trap_with" [I64Type; I64Type] [I32Type];
     E.add_func_import env "rts" "bigint_of_word64" [I64Type] [I64Type];
     E.add_func_import env "rts" "bigint_of_int64" [I64Type] [I64Type];
     E.add_func_import env "rts" "bigint_of_float64" [F64Type] [I64Type];
@@ -1548,30 +1528,6 @@ module BitTagged = struct
 
   let tag = compile_shl_const 1L
   let untag = compile_shrS_const 1L
-
-  (* 32 bit numbers, dynamic, w.r.t `Int` *)
-  let if_can_tag_i32 env retty is1 is2 =
-    Func.share_code1 Func.Never env "can_tag_i32" ("x", I32Type) [I32Type] (fun env get_x ->
-      (* checks that all but the low 30 bits are either all 0 or all 1 *)
-      get_x ^^ compile_shl32_const 1l ^^
-      get_x ^^ G.i (Binary (Wasm_exts.Values.I32 I32Op.Xor)) ^^
-      compile_shrU32_const 31l ^^
-      G.i (Test (Wasm_exts.Values.I32 I32Op.Eqz))
-    ) ^^
-    E.if_ env retty is1 is2
-
-  let if_can_tag_u32 env retty is1 is2 =
-    compile_shrU32_const 30l ^^
-    compile_test I32Op.Eqz ^^
-    E.if_ env retty is1 is2
-
-  let tag_i32 =
-    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
-    compile_shl_const 1L
-
-  let untag_i32 =
-    compile_shrS_const 1L ^^
-    G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64))
 
 end (* BitTagged *)
 
@@ -2522,7 +2478,6 @@ type comparator = Lt | Le | Ge | Gt
 module type BigNumType =
 sig
   (* word from SR.Vanilla, trapping, unsigned semantics *)
-  val to_word32 : E.t -> G.t
   val to_word64 : E.t -> G.t
   val to_word64_with : E.t -> G.t (* with error message on stack (ptr/len) *)
 
@@ -2531,11 +2486,9 @@ sig
   val truncate_to_word64 : E.t -> G.t
 
   (* unsigned word to SR.Vanilla *)
-  val from_word32 : E.t -> G.t
   val from_word64 : E.t -> G.t
 
   (* signed word to SR.Vanilla *)
-  val from_signed_word32 : E.t -> G.t
   val from_signed_word64 : E.t -> G.t
 
   (* buffers *)
@@ -3046,26 +2999,12 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       (fun env -> Num.compile_data_size_signed env)
       env
 
-  let from_signed_word32 env =
-    let set_a, get_a = new_local32 env "a" in
-    set_a ^^
-    get_a ^^ BitTagged.if_can_tag_i32 env [I64Type]
-      (get_a ^^ BitTagged.tag_i32)
-      (get_a ^^ Num.from_signed_word32 env)
-
   let from_signed_word64 env =
     let set_a, get_a = new_local env "a" in
     set_a ^^
     get_a ^^ BitTagged.if_can_tag_i64 env [I64Type]
       (get_a ^^ BitTagged.tag)
       (get_a ^^ Num.from_signed_word64 env)
-
-  let from_word32 env =
-    let set_a, get_a = new_local32 env "a" in
-    set_a ^^
-    get_a ^^ BitTagged.if_can_tag_u32 env [I64Type]
-      (get_a ^^ BitTagged.tag_i32)
-      (get_a ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^ Num.from_word64 env)
 
   let from_word64 env =
     let set_a, get_a = new_local env "a" in
@@ -3095,14 +3034,6 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       (get_a ^^ BitTagged.untag)
       (get_a ^^ Num.to_word64 env)
 
-  let to_word32 env =
-    let set_a, get_a = new_local env "a" in
-    set_a ^^ get_a ^^
-    BitTagged.if_tagged_scalar env [I32Type]
-      (get_a ^^ BitTagged.untag_i32 ^^ narrow_to_32_signed_bits env ^^
-      get_a ^^ BitTagged.untag_i32)
-      (get_a ^^ Num.to_word32 env)
-
   let to_word64_with env =
     let set_a, get_a = new_local env "a" in
     let set_err_msg, get_err_msg = new_local env "err_msg" in
@@ -3115,16 +3046,13 @@ end
 
 module BigNumLibtommath : BigNumType = struct
 
-  let to_word32 env = E.call_import env "rts" "bigint_to_word32_trap" ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
   let to_word64 env = E.call_import env "rts" "bigint_to_word64_trap"
   let to_word64_with env = E.call_import env "rts" "bigint_to_word64_trap_with"
 
   let truncate_to_word32 env = E.call_import env "rts" "bigint_to_word32_wrap" ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
   let truncate_to_word64 env = E.call_import env "rts" "bigint_to_word64_wrap"
 
-  let from_word32 env = E.call_import env "rts" "bigint_of_word32"
   let from_word64 env = E.call_import env "rts" "bigint_of_word64"
-  let from_signed_word32 env = E.call_import env "rts" "bigint_of_int32"
   let from_signed_word64 env = E.call_import env "rts" "bigint_of_int64"
 
   let compile_data_size_unsigned env = E.call_import env "rts" "bigint_leb128_size"
