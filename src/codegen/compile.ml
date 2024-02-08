@@ -3177,7 +3177,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
          let upper_bound = Int64.shift_left 1L (n-1) in
          let set_a = G.setter_for get_a in
          get_a ^^
-         compile_shrS_const (Int64.of_int (32 - BitTagged.ubits_of Type.Int)) ^^
+         compile_shrS_const (Int64.of_int (64 - BitTagged.ubits_of Type.Int)) ^^
          set_a ^^
          compile_unboxed_const lower_bound ^^
          get_a ^^
