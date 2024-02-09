@@ -8720,8 +8720,13 @@ module StackRep = struct
     | UnboxedTuple n, Vanilla -> Tuple.from_stack env n
     | Vanilla, UnboxedTuple n -> Tuple.to_stack env n
 
-    | UnboxedWord64 pty, Vanilla -> BoxedWord64.box env pty (* ! *)
-    | Vanilla, UnboxedWord64 pty -> BoxedWord64.unbox env pty (* ! *)
+    (* BoxedWord64 types *)
+    | UnboxedWord64 pty, Vanilla ->
+       assert Type.(pty = Nat64 || pty = Int64);
+       BoxedWord64.box env pty
+    | Vanilla, UnboxedWord64 pty ->
+       assert Type.(pty = Nat64 || pty = Int64);
+       BoxedWord64.unbox env pty
 
     (* TaggedSmallWord types *)
     | UnboxedWord32 (Type.(Int8 | Nat8 | Int16 | Nat16 | Char) as pty), Vanilla ->
@@ -8730,9 +8735,12 @@ module StackRep = struct
        TaggedSmallWord.untag env pty
 
     (* BoxedSmallWord types *)
-    (* TODO: constrain pty *)
-    | UnboxedWord32 pty, Vanilla -> BoxedSmallWord.box env pty (* ! *)
-    | Vanilla, UnboxedWord32 pty -> BoxedSmallWord.unbox env pty (* ! *)
+    | UnboxedWord32 pty, Vanilla ->
+       assert Type.(pty = Nat32 || pty = Int32);
+       BoxedSmallWord.box env pty
+    | Vanilla, UnboxedWord32 ((Type.Nat32 | Type.Int32) as pty) ->
+       assert Type.(pty = Nat32 || pty = Int32);
+       BoxedSmallWord.unbox env pty
 
     | UnboxedFloat64, Vanilla -> Float.box env
     | Vanilla, UnboxedFloat64 -> Float.unbox env
