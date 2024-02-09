@@ -8729,7 +8729,7 @@ module StackRep = struct
     | Const (_, Const.Lit (Const.Vanilla n)), UnboxedWord32 ty ->
        compile_unboxed_const n ^^
        TaggedSmallWord.untag env ty
-    | Const (_, Const.Lit (Const.Word32 (_ty1, n))), UnboxedWord32 _ty2 ->
+    | Const (_, Const.Lit (Const.Word32 (ty1, n))), UnboxedWord32 ty2 when ty1 = ty2 ->
        compile_unboxed_const n
     | Const (_, Const.Lit (Const.Word64 (ty1, n))), UnboxedWord64 ty2 when ty1 = ty2 ->
        compile_const_64 n
