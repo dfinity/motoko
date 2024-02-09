@@ -3631,23 +3631,9 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
         Num.compile_load_from_data_buf env get_data_buf signed
       end
       begin
-        let set_b, get_b = new_local env "b" in
         get_a ^^
         get_eom ^^ G.i (Unary (Wasm.Values.I64 I64Op.Ctz)) ^^
-        compile_load_from_word64 env get_data_buf signed ^^
-        (* adjust 31 to ubit scalar, done here to avoid touching bigint.rs *)
-        set_b ^^
-        get_b ^^
-        BitTagged.if_tagged_scalar env [I32Type]
-          (if signed then
-            get_b ^^
-            compile_shrS_const 1l ^^
-            Num.from_signed_word32 env
-           else
-            get_b ^^
-            compile_shrU_const 1l ^^
-            Num.from_word32 env)
-          (get_b)
+        compile_load_from_word64 env get_data_buf signed
       end
 
   let compile_store_to_data_buf_unsigned env =
@@ -6118,6 +6104,22 @@ module RTS_Exports = struct
      of functioning or unused-but-trapping stable memory exports (as required)
    *)
   let system_exports env =
+
+    (* Value constructors *)
+
+    let int_from_i32_fi = E.add_fun env "int_from_i32" (
+      Func.of_body env ["v", I32Type] [I32Type] (fun env ->
+        let get_v = G.i (LocalGet (nr 0l)) in
+        get_v ^^ BigNum.from_signed_word32 env
+      )
+    ) in
+    E.add_export env (nr {
+      name = Lib.Utf8.decode "int_from_i32";
+      edesc = nr (FuncExport (nr int_from_i32_fi))
+    });
+
+    (* Traps *)
+
     let bigint_trap_fi = E.add_fun env "bigint_trap" (
       Func.of_body env [] [] (fun env ->
         E.trap_with env "bigint function error"
@@ -6140,7 +6142,7 @@ module RTS_Exports = struct
       edesc = nr (FuncExport (nr rts_trap_fi))
     });
 
-    (* Keep a memory reserve when in update or init state. 
+    (* Keep a memory reserve when in update or init state.
        This reserve can be used by queries, composite queries, and upgrades. *)
     let keep_memory_reserve_fi = E.add_fun env "keep_memory_reserve" (
       Func.of_body env [] [I32Type] (fun env ->
@@ -10839,30 +10841,21 @@ and compile_prim_invocation (env : E.t) ae p es at =
     | Float, Int ->
       SR.Vanilla,
       compile_exp_as env ae SR.UnboxedFloat64 e ^^
-      E.call_import env "rts" "bigint_of_float64" ^^
-      let set_b, get_b = new_local env "b" in
-      (* adjust 31 to ubit scalar, done here to avoid touching bigint.rs *)
-      set_b ^^
-      get_b ^^
-      BitTagged.if_tagged_scalar env [I32Type]
-        (get_b ^^
-         compile_shrS_const 1l ^^
-         BigNum.from_signed_word32 env)
-        (get_b)
+      E.call_import env "rts" "bigint_of_float64"
 
     | Int, Float ->
       SR.UnboxedFloat64,
       compile_exp_vanilla env ae e ^^
       let set_b, get_b = new_local env "b" in
-      (* adjust ubit to 31 bit scalar, done here to avoid touching bigint.rs *)
       set_b ^^
       get_b ^^
-      BitTagged.if_tagged_scalar env [I32Type]
+      BitTagged.if_tagged_scalar env [F64Type]
         (get_b ^^
-         compile_shrS_const (Int32.of_int (32 - (BitTagged.ubits_of Type.Int))) ^^
-         compile_shl_const 1l)
-        (get_b) ^^
-      E.call_import env "rts" "bigint_to_float64"
+         BitTagged.untag_i32 __LINE__ env Type.Int ^^
+         G.i (Convert (Wasm.Values.I64 I64Op.ExtendSI32)) ^^
+         G.i (Convert (Wasm.Values.F64 F64Op.ConvertSI64)))
+        (get_b ^^
+         E.call_import env "rts" "bigint_to_float64")
 
     | Float, Int64 ->
       SR.UnboxedWord64 Int64,

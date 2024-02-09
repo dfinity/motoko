@@ -40,6 +40,11 @@ use crate::types::{size_of, BigInt, Bytes, Stream, Value, TAG_BIGINT};
 
 use motoko_rts_macros::ic_mem_fn;
 
+// Provided by generated code
+extern "C" {
+    fn int_from_i32(value: i32) -> Value;
+}
+
 unsafe fn mp_alloc<M: Memory>(mem: &mut M, size: Bytes<u32>) -> *mut u8 {
     let ptr = mem.alloc_words(size_of::<BigInt>() + size.to_words());
     // NB. Cannot use as_bigint() here as header is not written yet
@@ -258,11 +263,11 @@ unsafe extern "C" fn bigint_of_int64(j: i64) -> Value {
 #[no_mangle]
 unsafe extern "C" fn bigint_of_float64(j: f64) -> Value {
     // handle fast path: some numbers (when rounded towards zero by `j as i32`)
-    // can be represented as `Int` without resorting to heap allocation, i.e.
+    // may be represented as `Int` without resorting to heap allocation, i.e.
     // in the range `-1073741824 == 0xc0000000 <= j as i32 <= 0x3fffffff == 1073741823`
     if j < 1073741824.0 && j > -1073741825.0 {
-        // TODO: return as 30-bit compact tagged Int (not 31-bit untagged scalar) and fix call-site in compile.ml
-        return Value::from_signed_scalar(j as i32);
+        // defer to generated code to create compact or boxed Int value
+        return int_from_i32(j as i32);
     }
     let mut i = tmp_bigint();
     check(mp_set_double(&mut i, j));
@@ -272,12 +277,9 @@ unsafe extern "C" fn bigint_of_float64(j: f64) -> Value {
 #[cfg(feature = "ic")]
 #[no_mangle]
 unsafe extern "C" fn bigint_to_float64(p: Value) -> f64 {
-    if p.is_scalar() {
-        p.get_signed_scalar() as f64
-    } else {
-        let mp_int = p.as_bigint().mp_int_ptr();
-        mp_get_double(mp_int)
-    }
+    debug_assert!(!p.is_scalar());
+    let mp_int = p.as_bigint().mp_int_ptr();
+    mp_get_double(mp_int)
 }
 
 #[no_mangle]
@@ -564,7 +566,7 @@ pub unsafe extern "C" fn bigint_leb128_decode_word64(
             if continuations == 4 {
                 break;
             }
-            return Value::from_signed_scalar(acc as i32);
+            return int_from_i32(acc as i32);
         }
         bits -= 8;
         mask <<= 7;
@@ -574,7 +576,7 @@ pub unsafe extern "C" fn bigint_leb128_decode_word64(
     let tentative = (acc as i32) << 1 >> 1; // top two bits must match
     if tentative as u64 == acc {
         // roundtrip is valid
-        return Value::from_signed_scalar(tentative);
+        return int_from_i32(tentative);
     }
 
     bigint_of_word64(acc)
@@ -633,7 +635,7 @@ pub unsafe extern "C" fn bigint_sleb128_decode_word64(
                 break;
             }
             let sext = 25 - 7 * continuations; // this many top bits will get a copy of the sign
-            return Value::from_signed_scalar((acc as i32) << sext >> sext);
+            return int_from_i32((acc as i32) << sext >> sext);
         }
         bits -= 8;
         mask <<= 7;
@@ -644,7 +646,7 @@ pub unsafe extern "C" fn bigint_sleb128_decode_word64(
     let tentative = (signed as i32) << 1 >> 1; // top two bits must match
     if tentative as i64 == signed {
         // roundtrip is valid
-        return Value::from_signed_scalar(tentative);
+        return int_from_i32(tentative);
     }
 
     bigint_of_int64(signed)
