@@ -10861,7 +10861,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
       SR.UnboxedWord32 Nat32,
       compile_exp_as env ae (SR.UnboxedWord32 Nat16) e ^^
       TaggedSmallWord.lsb_adjust Type.Nat16 ^^
-      TaggedSmallWord.msb_adjust Nat16 (* NB: a nop for 32-bit present, but not for 64-bit future*)
+      TaggedSmallWord.msb_adjust Nat32 (* NB: a nop for 32-bit present, but not for 64-bit future*)
     | Nat32, Nat64 ->
       SR.UnboxedWord64 Nat64,
       compile_exp_as env ae (SR.UnboxedWord32 Nat32) e ^^
