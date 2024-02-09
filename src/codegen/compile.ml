@@ -116,7 +116,7 @@ module TaggingScheme = struct
     | Nat | Int     -> 30
     | Nat64 | Int64 -> 28
     | Nat32 | Int32 -> 27
-    | Char          -> 21
+    | Char          -> 21 (* suffices for 21-bit UTF8 codepoints *)
     | Nat16 | Int16 -> 16
     | Nat8  | Int8  ->  8
     | _ -> assert false)
@@ -1628,11 +1628,24 @@ module BitTagged = struct
      tell it apart from a pointer by looking at the last bits: if set, it is a
      pointer.
 
-     Small here means -2^sbits ≤ x < 2^sbits, and untagging needs to happen with an
-     _arithmetic_ right shift. This is the right thing to do for signed
-     numbers, and because we want to apply a consistent logic for all types,
-     especially as there is only one wasm type, we use the same range for
-     signed numbers as well.
+     Small here means:
+
+     * 0 ≤ x < 2^(ubits ty) for an unsigned type ty with (ubits ty) payload bits
+     * -2^sbits ≤ x < 2^sbits, for a signed type ty with (sbits ty) (= (ubits ty) - 1) payload bits
+       (i.e. excluding sign bit),
+     with the exception that compact Nat is regarded as signed to support subtyping.
+
+     Tagging needs to happen with a
+     * shift left by (32-ubits ty) for a signed or unsigned type ty; then
+     * a logical or of the (variable length) tag bits for ty.
+
+     Untagging needs to happen with an
+     * logical right shift (for unsigned type ty in Nat{8,16,32,64}, Char).
+     * _arithmetic_ right shift (for signed type ty Int{8,16,32,64}, Int but also Nat).
+       This is the right thing to do for signed numbers.
+       Nat is treated as signed to allow coercion free subtyping.
+
+     The low bits 32 - (ubits ty) store the tag bits of the value.
 
      Boolean false is a non-pointer by construction.
      Boolean true (1) needs not be shifted as GC will not consider it.
@@ -1644,11 +1657,30 @@ module BitTagged = struct
        0b000: `false`
        0b001: `true`
 
-     Note that {Nat,Int}{8,16} do not need to be explicitly bit-tagged:
-     The bytes are stored in the _most_ significant byte(s) of the `i32`,
-     thus lowest two bits are always 0.
-     All arithmetic is implemented directly on that representation, see
-     module TaggedSmallWord.
+     Note that {Nat,Int}{8,16} and compact {Int,Nat}{32,64} and compact Int, Nat are explicitly tagged.
+     The bits are stored in the _most_ significant bits of the `i32`,
+     with the lower bits storing the variable length tag.
+
+     {Int,Nat}{32,64} are stored in signed and unsigned forms.
+
+     Compact {Int,Nat} are (both) stored in signed form to support coercion free subtyping of Nat < Int.
+     That means that one bit, the highest bit, of the compact Nat representation is unused and the
+     representable range for both compact Int and Nat values is -2^(sbits Int) ≤ x < 2^(sbits Int).
+
+     This describes the vanilla representation of small and compact scalars,
+     used as the uniform representation of values and when stored in heap structures.
+
+     See module TaggedSmallWord.
+
+     The stack representation of a small scalars, UnboxedWord32 {Int,Nat}{8,16},
+     on the other hand, always has all tag bits cleared, with the payload in the high bits of the word.
+
+     The stack representation of compact or unboxed scalars, UnboxedWord32 {Int,Nat}32 or
+     UnboxedWord64 {Int,Nat}64, on the other hand, is the natural (unpadded) machine representation.
+
+     All arithmetic is implemented directly on the stack (not vanilla) representation of scalars.
+     Proper tags bits are removed/added when loading from vanilla or storing to vanilla representation.
+
   *)
   let is_true_literal env =
     compile_eq_const 1l
@@ -1690,12 +1722,9 @@ module BitTagged = struct
 
   let tag_const pty i = Type.(
     match pty with
-    |  Nat | Int | Int64 | Int32 ->
-      Int32.shift_left (Int64.to_int32 i) (32 - ubits_of pty)
-      (* tag *)
-      |> Int32.logor (TaggingScheme.tag_of_typ pty)
+    |  Nat | Int | Int64 | Int32
     |  Nat64 | Nat32 ->
-      Int32.shift_left (Int64.to_int32 i) (32 - ubits_of pty) (* TBR *)
+      Int32.shift_left (Int64.to_int32 i) (32 - ubits_of pty)
       (* tag *)
       |> Int32.logor (TaggingScheme.tag_of_typ pty)
     | _ -> assert false)
@@ -1735,10 +1764,11 @@ module BitTagged = struct
     | Nat | Int | Int64 | Int32 ->
       Func.share_code1 Func.Never env
         (prim_fun_name pty "if_can_tag_i64") ("x", I64Type) [I32Type] (fun env get_x ->
-        (* checks that all but the low signed_data_bits bits are either all 0 or all 1 *)
-        get_x ^^ compile_shl64_const 1L ^^
-        get_x ^^ G.i (Binary (Wasm.Values.I64 I32Op.Xor)) ^^
-        compile_shrU64_const (Int64.of_int (ubits_of pty)) ^^
+        (* checks that all but the low sbits are either all 0 or all 1 *)
+        get_x ^^
+        get_x ^^ compile_shrS64_const (Int64.of_int ((64 - ubits_of pty) - 1)) ^^
+        G.i (Binary (Wasm.Values.I64 I32Op.Xor)) ^^
+        compile_shrU64_const (Int64.of_int (sbits_of pty)) ^^
         G.i (Test (Wasm.Values.I64 I64Op.Eqz)) ^^
         sanity_check_can_tag_i64 env pty get_x) ^^
       E.if_ env retty is1 is2
@@ -2642,19 +2672,6 @@ module BoxedSmallWord = struct
     get_i ^^
     Tagged.allocation_barrier env
 
-  (* TODO: adapt and use *)
-  let _box env pty =
-    Func.share_code1 Func.Never env
-      (prim_fun_name pty "box") ("n", I32Type) [I32Type] (fun env get_n ->
-      get_n ^^ compile_shrU_const (Int32.of_int (BitTagged.sbits_of pty)) ^^
-      G.i (Unary (Wasm.Values.I32 I32Op.Popcnt)) ^^
-      G.i (Unary (Wasm.Values.I32 I32Op.Ctz)) ^^
-      G.if1 I32Type
-        (get_n ^^ BitTagged.tag_i32 env pty)
-        (compile_box env pty get_n)
-    )
-
-
   let box env pty =
     Func.share_code1 Func.Never env
       (prim_fun_name pty "box") ("n", I32Type) [I32Type] (fun env get_n ->
@@ -2772,7 +2789,7 @@ module TaggedSmallWord = struct
        G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
        msb_adjust ty
 
-  (* Code points occupy 21 bits, so can always be tagged scalars *)  (* TODO: rename (not tagging) *)
+  (* Code points occupy 21 bits, so can always be tagged scalars *)
   let lsb_adjust_codepoint env = lsb_adjust Type.Char
   let msb_adjust_codepoint = msb_adjust Type.Char
 
@@ -3549,9 +3566,9 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     try_unbox I32Type (fun _ -> match n with
         | 32 | 64 -> G.i Drop ^^ Bool.lit true
         | 8 | 16 ->
-          (* Please review carefully! *)
+           (* check all bits beyond signed payload are all 0 or all 1 *)
            set_a ^^
-           get_a ^^ get_a ^^ compile_shrS_const 1l ^^ (*Review 1l*)
+           get_a ^^ get_a ^^ compile_shrS_const 1l ^^
            G.i (Binary (Wasm.Values.I32 I32Op.Xor)) ^^
            compile_bitand_const
              Int32.(shift_left minus_one ((n-1) + (32 - BitTagged.ubits_of Type.Int))) ^^
@@ -7495,7 +7512,7 @@ module MakeSerialization (Strm : Stream) = struct
           ReadBuf.read_float64 env get_data_buf ^^
           Float.box env
         end
-      | Prim ((Int64|Nat64) as pty)->
+      | Prim ((Int64|Nat64) as pty) ->
         with_prim_typ t
         begin
           ReadBuf.read_word64 env get_data_buf ^^
@@ -8725,7 +8742,7 @@ module StackRep = struct
     | Const (_, Const.Lit (Const.Vanilla n)), UnboxedWord32 ty ->
        compile_unboxed_const n ^^
        TaggedSmallWord.untag env ty
-    | Const (_, Const.Lit (Const.Word32 (_ty1, n))), UnboxedWord32 _ty2 ->
+    | Const (_, Const.Lit (Const.Word32 (ty1, n))), UnboxedWord32 ty2 when ty1 = ty2 ->
        compile_unboxed_const n
     | Const (_, Const.Lit (Const.Word64 (ty1, n))), UnboxedWord64 ty2 when ty1 = ty2 ->
        compile_const_64 n
@@ -10856,7 +10873,8 @@ and compile_prim_invocation (env : E.t) ae p es at =
     | Nat16, Nat32 ->
       SR.UnboxedWord32 Nat32,
       compile_exp_as env ae (SR.UnboxedWord32 Nat16) e ^^
-      TaggedSmallWord.lsb_adjust Type.Nat16
+      TaggedSmallWord.lsb_adjust Type.Nat16 ^^
+      TaggedSmallWord.msb_adjust Nat32 (* NB: a nop for 32-bit present, but not for 64-bit future*)
     | Nat32, Nat64 ->
       SR.UnboxedWord64 Nat64,
       compile_exp_as env ae (SR.UnboxedWord32 Nat32) e ^^
@@ -10898,11 +10916,14 @@ and compile_prim_invocation (env : E.t) ae p es at =
     | Int8, Int16 ->
       SR.UnboxedWord32 Int16,
       compile_exp_as env ae (SR.UnboxedWord32 Int8) e ^^
+      (* Optimization of TaggedSmallWord.lsb_adjust Int8 ^^ TabbedSmallWord.msb_adjust Int16 *)
       compile_shrS_const 8l
+
     | Int16, Int32 ->
       SR.UnboxedWord32 Int32,
       compile_exp_as env ae (SR.UnboxedWord32 Int16) e ^^
-      compile_shrS_const 16l (* lsb_adjust? *)
+      (* Optimization of TaggedSmallWord.lsb_adjust Int16 ^^ TabbedSmallWord.msb_adjust Int32 *)
+      compile_shrS_const 16l
     | Int32, Int64 ->
       SR.UnboxedWord64 Int64,
       compile_exp_as env ae (SR.UnboxedWord32 Int32) e ^^
@@ -10917,7 +10938,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
       compile_shl_const (Int32.of_int num_bits) ^^
       compile_shrS_const (Int32.of_int num_bits) ^^
       get_val ^^
-      compile_eq env Type.(Prim Nat16) ^^ (* TBR *)
+      compile_eq env Type.(Prim Int16) ^^
       E.else_trap_with env "losing precision" ^^
       get_val ^^
       compile_shl_const (Int32.of_int num_bits)
@@ -11406,13 +11427,11 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | OtherPrim "popcntInt8", [e] ->
     SR.UnboxedWord32 Type.Int8,
     compile_exp_as env ae (SR.UnboxedWord32 Type.Int8) e ^^
-    compile_shrU_const (TaggedSmallWord.shift_of_type Type.Int8) ^^
     G.i (Unary (Wasm.Values.I32 I32Op.Popcnt)) ^^
     TaggedSmallWord.msb_adjust Type.Int8
   | OtherPrim "popcntInt16", [e] ->
     SR.UnboxedWord32 Type.Int16,
     compile_exp_as env ae (SR.UnboxedWord32 Type.Int16) e ^^
-    compile_shrU_const (TaggedSmallWord.shift_of_type Type.Int16) ^^
     G.i (Unary (Wasm.Values.I32 I32Op.Popcnt)) ^^
     TaggedSmallWord.msb_adjust Type.Int16
   | OtherPrim "popcnt32", [e] ->

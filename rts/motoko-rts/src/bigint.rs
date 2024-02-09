@@ -129,7 +129,7 @@ extern "C" {
     pub(crate) fn bigint_trap() -> !;
 }
 
-#[inline(always)]
+#[inline]
 pub(crate) unsafe fn check(err: mp_err) {
     if err != 0 {
         bigint_trap();
