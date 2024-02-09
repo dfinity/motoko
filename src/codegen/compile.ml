@@ -55,7 +55,7 @@ module TaggingScheme = struct
      Flags.sanity_check will check tags, but not further locate them.
   *)
 
-  let debug = false
+  let debug = false (* should never be true in master! *)
 
   type bit = I
            | O
@@ -1709,7 +1709,7 @@ module BitTagged = struct
   (* static *)
   let can_tag_const pty (n : int64) = Type.(
     match pty with
-    |  Nat | Int | Int64 | Int32 ->
+    | Nat | Int | Int64 | Int32 ->
       let sbits = sbits_of pty in
       let lower_bound = Int64.(neg (shift_left 1L sbits)) in
       let upper_bound = Int64.shift_left 1L sbits in
@@ -1862,7 +1862,7 @@ module BitTagged = struct
       G.nop
 
   let if_can_tag_i32 env pty retty is1 is2 = Type.(match pty with
-    |  Nat | Int | Int64 | Int32 ->
+    | Nat | Int | Int64 | Int32 ->
       Func.share_code1 Func.Never env
         (prim_fun_name pty "if_can_tag_i32") ("x", I32Type) [I32Type] (fun env get_x ->
           (* checks that all but the low sbits are both either 0 or 1 *)
@@ -1887,7 +1887,7 @@ module BitTagged = struct
 
   let if_can_tag_u32 env pty retty is1 is2 = Type.(
     match pty with
-    |  Nat | Int | Int64 | Int32 ->
+    | Nat | Int | Int64 | Int32 ->
       let sbits = sbits_of pty in
       compile_shrU_const (Int32.of_int sbits) ^^
       E.if_ env retty is2 is1 (* NB: swapped branches *)
@@ -1904,7 +1904,7 @@ module BitTagged = struct
     compile_bitor_const (TaggingScheme.tag_of_typ pty)
 
   let untag_i32 line env pty = Type.(match pty with
-    |  Nat | Int | Int64 | Int32 ->
+    | Nat | Int | Int64 | Int32 ->
       let ubits = ubits_of pty in
       (* check tag *)
       sanity_check_tag line env pty ^^
@@ -3078,11 +3078,11 @@ sig
   val truncate_to_word64 : E.t -> G.t
 
   (* unsigned word to SR.Vanilla *)
-  val from_word30 : E.t -> G.t
   val from_word32 : E.t -> G.t
   val from_word64 : E.t -> G.t
 
   (* signed word to SR.Vanilla *)
+  val from_signed_word_compact : E.t -> G.t
   val from_signed_word32 : E.t -> G.t
   val from_signed_word64 : E.t -> G.t
 
@@ -3411,7 +3411,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
           G.if1 I32Type
             (get_res ^^ compile_bitor_const (TaggingScheme.tag_of_typ Type.Int))
             (get_n ^^ compile_shrS_const (Int32.of_int (32 - BitTagged.ubits_of Type.Int)) ^^
-             Num.from_word30 env ^^ get_amount ^^ Num.compile_lsh env) (* TBR: from_word30? *)
+             Num.from_signed_word_compact env ^^ get_amount ^^ Num.compile_lsh env)
         )
         (get_n ^^ get_amount ^^ Num.compile_lsh env))
 
@@ -3753,10 +3753,20 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     let set_a, get_a = new_local64 env "a" in
     set_a ^^
     get_a ^^ BitTagged.if_can_tag_i64 env Type.Int [I32Type]
-      (get_a ^^ BitTagged.tag env Type.Int) (*TBR*)
+      (get_a ^^ BitTagged.tag env Type.Int)
       (get_a ^^ Num.from_signed_word64 env)
 
-  let from_word30 env = (* TBR: don't think we've got 30 bits! *)
+  let from_signed_word_compact env =
+    begin
+      if TaggingScheme.debug || !(Flags.sanity)
+     then
+      let set_a, get_a = new_local env "a" in
+      set_a ^^
+      get_a ^^ BitTagged.if_can_tag_i32 env Type.Int [I32Type]
+        get_a
+        (E.trap_with env "from_signed_word_compact")
+      else G.nop
+    end ^^
     BitTagged.tag_i32 env Type.Int
 
   let from_word32 env =
@@ -3820,7 +3830,7 @@ module BigNumLibtommath : BigNumType = struct
   let truncate_to_word32 env = E.call_import env "rts" "bigint_to_word32_wrap"
   let truncate_to_word64 env = E.call_import env "rts" "bigint_to_word64_wrap"
 
-  let from_word30 env = E.call_import env "rts" "bigint_of_word32"
+  let from_signed_word_compact env = E.call_import env "rts" "bigint_of_int32"
   let from_word32 env = E.call_import env "rts" "bigint_of_word32"
   let from_word64 env = E.call_import env "rts" "bigint_of_word64"
   let from_signed_word32 env = E.call_import env "rts" "bigint_of_int32"
@@ -4551,6 +4561,9 @@ module Arr = struct
 
      No difference between mutable and immutable arrays.
   *)
+
+  (* NB max_array_size must agree with limit 2^29 imposed by RTS constants.MAX_ARRAY_SIZE *)
+  let max_array_size env = Int32.shift_left 1l 29 (* inclusive *)
 
   let header_size env = Int32.add (Tagged.header_size env) 1l
   let element_size = 4l
@@ -10646,21 +10659,23 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla,
     compile_array_index env ae e1 e2 ^^
     load_ptr
-  | NextArrayOffset spacing, [e] ->
-    let advance_by =
-      match spacing with
-      | ElementSize
-      | One -> Int32.shift_left 1l (32 - BitTagged.ubits_of Type.Int) (* 1 : Nat *) in
+  (* NB: all these operations assume a valid array offset fits in a compact bignum *)
+  | NextArrayOffset, [e] ->
+    let one_untagged = Int32.shift_left 1l (32 - BitTagged.ubits_of Type.Int) in
     SR.Vanilla,
     compile_exp_vanilla env ae e ^^ (* previous byte offset to array *)
-    compile_add_const advance_by
-  | ValidArrayOffset, [e1; e2] ->
+    compile_add_const one_untagged (* preserving the tag in low bits *)
+  | EqArrayOffset, [e1; e2] ->
     SR.bool,
-    compile_exp_vanilla env ae e1 ^^ BitTagged.untag_i32 __LINE__ env Type.Int ^^
-    compile_exp_vanilla env ae e2 ^^ BitTagged.untag_i32 __LINE__ env Type.Int ^^
-    G.i (Compare (Wasm.Values.I32 I32Op.LtU))
+    compile_exp_vanilla env ae e1 ^^
+    BitTagged.sanity_check_tag __LINE__ env Type.Int ^^
+    compile_exp_vanilla env ae e2 ^^
+    BitTagged.sanity_check_tag __LINE__ env Type.Int ^^
+    (* equate (without untagging) *)
+    G.i (Compare (Wasm.Values.I32 I32Op.Eq))
   | DerefArrayOffset, [e1; e2] ->
     SR.Vanilla,
+    (* NB: no bounds check on index *)
     compile_exp_vanilla env ae e1 ^^ (* skewed pointer to array *)
     Tagged.load_forwarding_pointer env ^^
     compile_exp_vanilla env ae e2 ^^ (* byte offset *)
@@ -10673,15 +10688,13 @@ and compile_prim_invocation (env : E.t) ae p es at =
     G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
     (* Not using Tagged.load_field since it is not a proper pointer to the array start *)
     Heap.load_field (Arr.header_size env) (* loads the element at the byte offset *)
-  | GetPastArrayOffset spacing, [e] ->
-    let shift =
-      match spacing with
-      | ElementSize
-      | One -> BigNum.from_word30 env in    (* make it a compact bignum *) (* TBR: from_word30? *)
+  | GetLastArrayOffset, [e] ->
+    assert (BitTagged.can_tag_const Type.Int (Int64.of_int32 (Int32.sub (Arr.max_array_size env) 1l)));
     SR.Vanilla,
     compile_exp_vanilla env ae e ^^ (* array *)
     Arr.len env ^^
-    shift
+    compile_sub_const 1l ^^
+    BigNum.from_signed_word_compact env
 
   | BreakPrim name, [e] ->
     let d = VarEnv.get_label_depth ae name in
