@@ -274,7 +274,7 @@ and transform_for_to_while p arr_exp proj e1 e2 =
      if (last == -1) { }
      else {
        label l loop {
-         let p = arr[indx]; // sans bound check
+         let p = arr[indx]; /* sans bound check */
          e2;
          if (indx == last)
          else { break l }
