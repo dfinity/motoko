@@ -1358,17 +1358,10 @@ let motoko_gc_trigger_fld =
     src = empty_src;
   }
 
-let get_candid_interface_fld =
-  { lab = "__get_candid_interface_tmp_hack";
-    typ = Func(Shared Query, Promises, [scope_bind], [], [text]);
-    src = empty_src;
-  }
-
 let well_known_actor_fields = [
     motoko_async_helper_fld;
     motoko_stable_var_info_fld;
     motoko_gc_trigger_fld;
-    get_candid_interface_fld
   ]
 
 let decode_msg_typ tfs =

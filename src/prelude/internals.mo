@@ -137,7 +137,7 @@ func @digits_dec(x : Nat) : Text =
  (prim "conv_Char_Text" : Char -> Text) (
    (prim "num_conv_Nat32_Char" : Nat32 -> Char) (
      (prim "num_wrap_Int_Nat32" : Int -> Nat32) (
-        x + 0x30
+       x + 0x30
      )
    )
  );
