@@ -10568,7 +10568,8 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
   | OtherPrim "call_perform_status", [] ->
     SR.UnboxedWord64 Type.Nat32,
-    IC.get_call_perform_status env
+    IC.get_call_perform_status env ^^
+    TaggedSmallWord.msb_adjust Type.Nat32
 
   | OtherPrim "call_perform_message", [] ->
     SR.Vanilla,
