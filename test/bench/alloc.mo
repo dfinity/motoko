@@ -1,6 +1,5 @@
 //MOC-FLAG --force-gc
 import { performanceCounter; rts_heap_size; debugPrint } = "mo:⛔";
-// this test becomes much more expensive due to smaller compact bignums.
 actor alloc {
 
     func counters() : (Int, Nat64) = (rts_heap_size(), performanceCounter(0));

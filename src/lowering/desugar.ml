@@ -269,33 +269,46 @@ and transform_for_to_while p arr_exp proj e1 e2 =
   (* for (p in (arr_exp : [_]).proj(e1)) e2 when proj in {"keys", "vals"}
      ~~>
      let arr = arr_exp ;
-     let size = arr.size(e1) ;
-     var indx = 0 ;
-     label l loop {
-       if indx < size
-       then { let p = arr[indx]; e2; indx += 1 }
-       else { break l }
-     } *)
+     let last = arr.size(e1) : Int - 1 ;
+     var indx = 0;
+     if (last == -1) { }
+     else {
+       label l loop {
+         let p = arr[indx]; /* sans bound check */
+         e2;
+         if (indx == last)
+         else { break l }
+         then { indx += 1 }
+       }
+     }
+  *)
   let arr_typ = arr_exp.note.note_typ in
   let arrv = fresh_var "arr" arr_typ in
   let indx = fresh_var "indx" T.(Mut nat) in
-  let spacing, indexing_exp = match proj.it with
-    | "vals" -> I.ElementSize, primE I.DerefArrayOffset [varE arrv; varE indx]
-    | "keys" -> I.One, varE indx
+  let indexing_exp = match proj.it with
+    | "vals" -> primE I.DerefArrayOffset [varE arrv; varE indx]
+    | "keys" -> varE indx
     | _ -> assert false in
-  let size_exp = primE I.(GetPastArrayOffset spacing) [varE arrv] in
-  let size = fresh_var "size" T.nat in
+  let last = fresh_var "last" T.int in
+  let lab = fresh_id "done" () in
   blockE
     [ letD arrv (exp arr_exp)
     ; expD (exp e1)
-    ; letD size size_exp
+    ; letD last (primE I.GetLastArrayOffset [varE arrv]) (* -1 for empty array *)
     ; varD indx (natE Numerics.Nat.zero)]
-    (whileE (primE I.ValidArrayOffset
-               [varE indx; varE size])
-       (blockE [ letP (pat p) indexing_exp
-               ; expD (exp e2)]
-          (assignE indx
-             (primE I.(NextArrayOffset spacing) [varE indx]))))
+    (ifE (primE I.EqArrayOffset [varE last; intE (Numerics.Int.of_int (-1))])
+      (* empty array, do nothing *)
+      (unitE())
+      (labelE lab T.unit (
+        loopE (
+          (blockE
+            [ letP (pat p) indexing_exp
+            ; expD (exp e2)]
+           (ifE (primE I.EqArrayOffset [varE indx; varE last])
+             (* last, exit loop *)
+             (breakE lab (tupE []))
+             (* else increment and continue *)
+             (assignE indx (primE I.NextArrayOffset [varE indx]))))))))
 
 and mut m = match m.it with
   | S.Const -> Ir.Const
@@ -411,22 +424,6 @@ and build_candid ts obj_typ =
    service = WithComments.string_of_prog prog;
   }
 
-and export_interface txt =
-  (* This is probably a temporary hack. *)
-  let open T in
-  let {lab;typ;_} = get_candid_interface_fld in
-  let v = "$"^lab  in
-  let scope_con1 = Cons.fresh "T1" (Abs ([], scope_bound)) in
-  let scope_con2 = Cons.fresh "T2" (Abs ([], Any)) in
-  let bind1  = typ_arg scope_con1 Scope scope_bound in
-  let bind2 = typ_arg scope_con2 Scope scope_bound in
-  ([ letD (var v typ) (
-    funcE v (Shared Query) Promises [bind1] [] [text] (
-      asyncE Type.Fut bind2 (textE txt) (Con (scope_con1, []))
-    )
-  )],
-  [{ it = I.{ name = lab; var = v }; at = no_region; note = typ }])
-
 and export_footprint self_id expr =
   let open T in
   let {lab;typ;_} = motoko_stable_var_info_fld in
@@ -496,7 +493,6 @@ and build_actor at ts self_id es obj_typ =
   let meta =
     I.{ candid = candid;
         sig_ = T.string_of_stab_sig sig_} in
-  let interface_d, interface_f = export_interface candid.I.service in
   let with_stable_vars wrap =
     let vs = fresh_vars "v" (List.map (fun f -> f.T.typ) fields) in
     blockE
@@ -514,7 +510,7 @@ and build_actor at ts self_id es obj_typ =
                ) fields vs)
             ty)) in
   let footprint_d, footprint_f = export_footprint self_id (with_stable_vars (fun e -> e)) in
-  I.(ActorE (interface_d @ footprint_d @ ds', interface_f @ footprint_f @ fs,
+  I.(ActorE (footprint_d @ ds', footprint_f @ fs,
      { meta;
        preupgrade = with_stable_vars (fun e -> primE (I.ICStableWrite ty) [e]);
        postupgrade =
