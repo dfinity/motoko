@@ -2632,6 +2632,11 @@ module Word64 = struct
   let _compile_eq env = G.i (Compare (Wasm.Values.I64 I64Op.Eq))
   let compile_relop env i64op = G.i (Compare (Wasm.Values.I64 i64op))
 
+  let btst_kernel env =
+    let (set_b, get_b) = new_local64 env "b" in
+    set_b ^^ compile_const_64 1L ^^ get_b ^^ G.i (Binary (Wasm.Values.I64 I64Op.Shl)) ^^
+    G.i (Binary (Wasm.Values.I64 I64Op.And))
+
 end (* BoxedWord64 *)
 
 
@@ -11677,17 +11682,10 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | OtherPrim "btstInt32", [_;_] ->
      const_sr (SR.UnboxedWord32 Type.Int32) (TaggedSmallWord.btst_kernel env Type.Int32) (* ! *)
   | OtherPrim "btst64", [_;_] ->
-    const_sr (SR.UnboxedWord64 Type.Nat64) (
-      let (set_b, get_b) = new_local64 env "b" in
-      set_b ^^ compile_const_64 1L ^^ get_b ^^ G.i (Binary (Wasm.Values.I64 I64Op.Shl)) ^^
-      G.i (Binary (Wasm.Values.I64 I64Op.And)) (* TBR *)
-    )
+    const_sr (SR.UnboxedWord64 Type.Nat64) (Word64.btst_kernel env)
   | OtherPrim "btstInt64", [_;_] ->
-    const_sr (SR.UnboxedWord64 Type.Int64) (
-      let (set_b, get_b) = new_local64 env "b" in
-      set_b ^^ compile_const_64 1L ^^ get_b ^^ G.i (Binary (Wasm.Values.I64 I64Op.Shl)) ^^
-      G.i (Binary (Wasm.Values.I64 I64Op.And)) (* TBR *)
-    )
+    const_sr (SR.UnboxedWord64 Type.Int64) (Word64.btst_kernel env)
+
   (* Coercions for abstract types *)
   | CastPrim (_,_), [e] ->
     compile_exp env ae e
