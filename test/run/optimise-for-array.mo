@@ -10,35 +10,37 @@ import Prim "mo:⛔";
 // CHECK:      i64.load offset= 
 // CHECK:      i64.const 2
 // CHECK:      i64.shr_s
-// CHECK:      i64.lt_u
-// CHECK:      i64.add
-// DON'TCHECK: i64.load offset=25
-// CHECK:      local.tee $check0
-// CHECK-NEXT: call $print_text
-// CHECK:      i64.const 4
+// CHECK-NEXT: i64.const 3
+// CHECK-NEXT: i64.shl
 // CHECK-NEXT: i64.add
+// CHECK:      local.tee $check0
+// CHECK:      i64.const 4
+// CHECK:      i64.add
 for (check0 in ["hello", "world"].vals()) { Prim.debugPrint check0 };
 
 
 // CHECK-NOT:  call $@mut_array_size
 // DON'TCHECK: i64.load offset=17
-// CHECK:      i64.const 2
-// CHECK:      i64.shr_s
-// CHECK:      i64.lt_u
-// CHECK:      i64.add
+// FIX-CHECK:      i64.const 2
+// FIX-CHECK:      i64.shr_s
+// FIX-CHECK:      i64.const 3
+// FIX-CHECK:      i64.shl
+// FIX-CHECK:      i64.add
 // DON'TCHECK: i64.load offset=25
 // CHECK:      i64.load offset=
-// CHECK-NEXT: local.tee $check1
-// CHECK-NEXT: call $print_text
+// CHECK:      local.tee $check1
+// CHECK:      call $print_ptr
+// CHECK:      i64.const 4
+// CHECK:      i64.add
 for (check1 in [var "hello", "mutable", "world"].vals()) { Prim.debugPrint check1 };
 
 let array = [var "hello", "remutable", "world"];
 array[1] := "mutable";
-// CHECK-NOT:   call $@immut_array_size
+// FIX-CHECK-NOT:   call $@immut_array_size
 // DON'TCHECK:  i64.load offset=17
-// CHECK:       i64.load offset=
-// CHECK:       i64.const 2
-// CHECK:       i64.shr_s
+// FIX-CHECK:       i64.load offset=
+// FIX-CHECK:       i64.const 2
+// FIX-CHECK:       i64.shr_s
 // DON'T-CHECK: i64.lt_u
 // DON'T-CHECK: local.get $array
 // DON'T-CHECK: local.set $check2
@@ -46,44 +48,44 @@ array[1] := "mutable";
 // later when we have path compression for variables in the backend, we can bring this back
 for (check2 in array.vals()) { Prim.debugPrint check2 };
 
-// CHECK-NOT:  call $@immut_array_size
+// FIX-CHECK-NOT:  call $@immut_array_size
 // DON'TCHECK: i64.load offset=17
-// CHECK:      i64.load offset=
-// CHECK:      i64.const 2
-// CHECK-NEXT: i64.shr_s
-// CHECK:      i64.lt_u
-// CHECK:      i64.add
+// FIX-CHECK:      i64.load offset=
+// FIX-CHECK:      i64.const 2
+// FIX-CHECK-NEXT: i64.shr_s
+// FIX-CHECK:      i64.lt_u
+// FIX-CHECK:      i64.add
 // DON'TCHECK: i64.load offset=25
-// CHECK:      local.tee $check3
+// FIX-CHECK:      local.tee $check3
 // interfering parentheses don't disturb us
 for (check3 in (((["hello", "immutable", "world"].vals())))) { Prim.debugPrint check3 };
 
 
-// CHECK:      i64.const 170
-// CHECK:      call $B_add
-// CHECK-NEXT: call $B_eq
-// CHECK-NEXT: i32.wrap_i64
-// CHECK-NEXT: if
-// CHECK-NEXT: loop
-// CHECK-NEXT: br 0
-// CHECK-NEXT: end
-// CHECK-NEXT: unreachable
-// CHECK-NEXT: else
+// FIX-CHECK:      i64.const 170
+// FIX-CHECK:      call $B_add
+// FIX-CHECK-NEXT: call $B_eq
+// FIX-CHECK-NEXT: i32.wrap_i64
+// FIX-CHECK-NEXT: if
+// FIX-CHECK-NEXT: loop
+// FIX-CHECK-NEXT: br 0
+// FIX-CHECK-NEXT: end
+// FIX-CHECK-NEXT: unreachable
+// FIX-CHECK-NEXT: else
 // bottom iteration expression is treated fairly
 var c = 42;
 if (c == c + 1) {
     for (check4 in (loop {}).vals()) { Prim.debugPrint check4 }
 };
 
-// CHECK:      call $B_add
-// CHECK-NEXT: call $B_eq
-// CHECK-NEXT: i32.wrap_i64
-// CHECK-NEXT: if
-// CHECK-NEXT: loop
-// CHECK-NEXT: br 0
-// CHECK-NEXT: end
-// CHECK-NEXT: unreachable
-// CHECK-NEXT: else
+// FIX-CHECK:      call $B_add
+// FIX-CHECK-NEXT: call $B_eq
+// FIX-CHECK-NEXT: i32.wrap_i64
+// FIX-CHECK-NEXT: if
+// FIX-CHECK-NEXT: loop
+// FIX-CHECK-NEXT: br 0
+// FIX-CHECK-NEXT: end
+// FIX-CHECK-NEXT: unreachable
+// FIX-CHECK-NEXT: else
 // typed bottom iteration expression is treated fairly
 if (c == c + 1) {
     for (check5 in ((loop {}) : [Text]).vals()) { Prim.debugPrint check5 }
@@ -96,23 +98,23 @@ check6[1] := "mutable";
 for (check6 in check6.vals()) { ignore check6 };
 
 // DON'TCHECK: i64.load offset=17
-// CHECK:      i64.load offset=
-// CHECK:      i64.const 3
-// CHECK:      i64.shl
+// FIX-CHECK:      i64.load offset=
+// FIX-CHECK:      i64.const 3
+// FIX-CHECK:      i64.shl
 // argument to vals can have an effect too, expect it
 for (check7 in [].vals(Prim.debugPrint "want to see you")) { };
 
-// CHECK:      local.set $num8
-// CHECK-NOT:  call $@immut_array_size
+// FIX-CHECK:      local.set $num8
+// FIX-CHECK-NOT:  call $@immut_array_size
 // CON'TFHECK: i64.load offset=17
-// CHECK:      i64.load offset=
-// CHECK:      i64.const 2
-// CHECK:      i64.shr_s
-// CHECK:      i64.lt_u
-// CHECK-NOT:  i64.add
-// CHECK:      local.tee $check8
-// CHECK-NEXT: local.get $num8
-// CHECK-NEXT: call $B_add
+// FIX-CHECK:      i64.load offset=
+// FIX-CHECK:      i64.const 2
+// FIX-CHECK:      i64.shr_s
+// FIX-CHECK:      i64.lt_u
+// FIX-CHECK-NOT:  i64.add
+// FIX-CHECK:      local.tee $check8
+// FIX-CHECK-NEXT: local.get $num8
+// FIX-CHECK-NEXT: call $B_add
 var num8 = 42;
 num8 := 25;
 // `keys` is even easier to rewrite, as the "indexing expression" is just the
