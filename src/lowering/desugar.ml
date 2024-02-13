@@ -412,22 +412,6 @@ and build_candid ts obj_typ =
    service = WithComments.string_of_prog prog;
   }
 
-and export_interface txt =
-  (* This is probably a temporary hack. *)
-  let open T in
-  let {lab;typ;_} = get_candid_interface_fld in
-  let v = "$"^lab  in
-  let scope_con1 = Cons.fresh "T1" (Abs ([], scope_bound)) in
-  let scope_con2 = Cons.fresh "T2" (Abs ([], Any)) in
-  let bind1  = typ_arg scope_con1 Scope scope_bound in
-  let bind2 = typ_arg scope_con2 Scope scope_bound in
-  ([ letD (var v typ) (
-    funcE v (Shared Query) Promises [bind1] [] [text] (
-      asyncE Type.Fut bind2 (textE txt) (Con (scope_con1, []))
-    )
-  )],
-  [{ it = I.{ name = lab; var = v }; at = no_region; note = typ }])
-
 and export_footprint self_id expr =
   let open T in
   let {lab;typ;_} = motoko_stable_var_info_fld in
@@ -496,7 +480,6 @@ and build_actor at ts self_id es obj_typ =
   let meta =
     I.{ candid = candid;
         sig_ = T.string_of_stab_sig sig_} in
-  let interface_d, interface_f = export_interface candid.I.service in
   let with_stable_vars wrap =
     let vs = fresh_vars "v" (List.map (fun f -> f.T.typ) fields) in
     blockE
@@ -514,9 +497,7 @@ and build_actor at ts self_id es obj_typ =
                ) fields vs)
             ty)) in
   let footprint_d, footprint_f = export_footprint self_id (with_stable_vars (fun e -> e)) in
-  (ty, I.(ActorE (
-     interface_d @ footprint_d @ ds', 
-     interface_f @ footprint_f @ fs,
+  (ty, I.(ActorE (footprint_d @ ds', footprint_f @ fs,
      { meta;
        preupgrade = (primE (I.ICStableWrite ty) []);
        postupgrade =
