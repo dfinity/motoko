@@ -57,8 +57,7 @@ module TaggingScheme = struct
 
   let debug = false (* should never be true in master! *)
 
-  type bit = I
-           | O
+  type bit = I | O
   let _ = (I,O) (* silence warning on unused constructors *)
 
   type tag =
