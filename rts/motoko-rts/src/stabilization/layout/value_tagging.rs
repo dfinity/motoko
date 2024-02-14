@@ -151,7 +151,7 @@ impl StableValueEncoding {
         StableValue::from_raw(tagged)
     }
 
-    fn decode(value: StableValue) -> Self {
+    fn decode_tag(value: StableValue) -> ValueTag {
         let tag = match value.get_raw().trailing_zeros() {
             64 => ValueTag::FALSE,
             0 => ValueTag::TRUE,
@@ -169,8 +169,17 @@ impl StableValueEncoding {
             _ => unreachable!("Invalid tag"),
         };
         debug_assert!(Self::matches(value, tag));
+        tag
+    }
+
+    fn decode(value: StableValue) -> Self {
+        let tag = Self::decode_tag(value);
         let scalar = if tag.has_payload() {
-            value.get_raw() >> (Self::tag_length(tag) as u64)
+            if tag.is_signed() {
+                (value.get_raw() as i64 >> Self::tag_length(tag) as i64) as u64
+            } else {
+                value.get_raw() >> Self::tag_length(tag) as u64
+            }
         } else {
             0
         };
@@ -240,7 +249,7 @@ impl RuntimeValueEncoding {
         Value::from_raw(tagged)
     }
 
-    fn decode(value: Value) -> Self {
+    fn decode_tag(value: Value) -> ValueTag {
         let tag = match value.get_raw().trailing_zeros() {
             32 => ValueTag::FALSE,
             0 => ValueTag::TRUE,
@@ -258,8 +267,17 @@ impl RuntimeValueEncoding {
             _ => unreachable!("Invalid tag"),
         };
         debug_assert!(Self::matches(value, tag));
+        tag
+    }
+
+    fn decode(value: Value) -> Self {
+        let tag = Self::decode_tag(value);
         let scalar = if tag.has_payload() {
-            value.get_raw() >> (Self::tag_length(tag) as u32)
+            if tag.is_signed() {
+                (value.get_raw() as i32 >> Self::tag_length(tag) as i32) as u32
+            } else {
+                value.get_raw() >> Self::tag_length(tag) as u32
+            }
         } else {
             0
         };
