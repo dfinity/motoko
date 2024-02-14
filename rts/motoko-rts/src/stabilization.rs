@@ -18,7 +18,7 @@
 
 pub mod deserialization;
 pub mod graph_copy;
-mod layout;
+pub mod layout;
 pub mod serialization;
 
 #[cfg(feature = "ic")]

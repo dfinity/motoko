@@ -1,6 +1,7 @@
 mod reader_writer;
 mod stable_bigints;
 mod stable_memory;
+mod value_tagging;
 
 use crate::{
     gc::{
@@ -27,6 +28,7 @@ pub unsafe fn test() {
     println!("Testing stabilization ...");
     stable_bigints::test();
     reader_writer::test();
+    value_tagging::test();
     initialize_null_singleton();
     test_stabilization();
     reset_memory();

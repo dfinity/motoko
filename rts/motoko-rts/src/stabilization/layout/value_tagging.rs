@@ -36,8 +36,8 @@ use super::{
     checked_to_i32, checked_to_u32, StableValue, STABLE_NULL_POINTER, STABLE_NULL_POINTER_32,
 };
 
-#[derive(Copy, Clone, Debug)]
-enum ValueTag {
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum ValueTag {
     FALSE,
     TRUE,
     BIGINT,
@@ -54,7 +54,7 @@ enum ValueTag {
 }
 
 impl ValueTag {
-    fn is_signed(&self) -> bool {
+    pub fn is_signed(&self) -> bool {
         match self {
             Self::BIGINT | Self::INT64 | Self::INT32 | Self::INT16 | Self::INT8 => true,
             Self::FALSE
@@ -85,9 +85,9 @@ impl ValueTag {
     }
 }
 
-struct StableValueEncoding {
-    tag: ValueTag,
-    scalar: u64,
+pub struct StableValueEncoding {
+    pub tag: ValueTag,
+    pub scalar: u64,
 }
 
 impl StableValueEncoding {
@@ -140,7 +140,7 @@ impl StableValueEncoding {
         value.get_raw() & Self::tag_bitmask(tag) == Self::tag_bits(tag)
     }
 
-    fn encode(&self) -> StableValue {
+    pub fn encode(&self) -> StableValue {
         let length = Self::tag_length(self.tag);
         let shifted = if length == u64::BITS as usize {
             0
@@ -172,7 +172,7 @@ impl StableValueEncoding {
         tag
     }
 
-    fn decode(value: StableValue) -> Self {
+    pub fn decode(value: StableValue) -> Self {
         let tag = Self::decode_tag(value);
         let scalar = if tag.has_payload() {
             if tag.is_signed() {
@@ -189,9 +189,9 @@ impl StableValueEncoding {
 
 /// Value tags used by the current compiler and runtime system version.
 /// See `compile.ml`.
-struct RuntimeValueEncoding {
-    tag: ValueTag,
-    scalar: u32,
+pub struct RuntimeValueEncoding {
+    pub tag: ValueTag,
+    pub scalar: u32,
 }
 
 impl RuntimeValueEncoding {
@@ -238,7 +238,7 @@ impl RuntimeValueEncoding {
         value.get_raw() & Self::tag_bitmask(tag) == Self::tag_bits(tag)
     }
 
-    fn encode(&self) -> Value {
+    pub fn encode(&self) -> Value {
         let length = Self::tag_length(self.tag);
         let shifted = if length == u32::BITS as usize {
             0
@@ -270,7 +270,7 @@ impl RuntimeValueEncoding {
         tag
     }
 
-    fn decode(value: Value) -> Self {
+    pub fn decode(value: Value) -> Self {
         let tag = Self::decode_tag(value);
         let scalar = if tag.has_payload() {
             if tag.is_signed() {

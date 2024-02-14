@@ -70,7 +70,7 @@ mod stable_object;
 mod stable_region;
 mod stable_some;
 mod stable_variant;
-mod value_tagging;
+pub mod value_tagging;
 
 /// Object tag in stable format. Encoded as a `i32` value.
 #[repr(C)]
