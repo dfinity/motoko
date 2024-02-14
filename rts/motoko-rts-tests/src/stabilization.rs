@@ -7,7 +7,7 @@ use crate::{
         check_dynamic_heap,
         heap::MotokoHeap,
         random::generate,
-        utils::{GC, GC_IMPLS, WORD_SIZE},
+        utils::{make_scalar, GC, GC_IMPLS, WORD_SIZE},
         CheckMode, TestHeap,
     },
     memory::TestMemory,
@@ -146,7 +146,7 @@ impl RandomHeap {
                     .max()
                     .unwrap()
                     + 1;
-                new_roots.set_scalar(0, Value::from_scalar(new_object_id));
+                new_roots.set_scalar(0, Value::from_raw(make_scalar(new_object_id)));
                 let mut outgoing = vec![];
                 for index in 1..length {
                     // GC `check_heap` expects skewed addresses pointing beyond heap base for all array elements
