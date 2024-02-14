@@ -60,7 +60,7 @@ let env_of_scope msgs scope =
     objs = T.Env.empty;
     labs = T.Env.empty;
     rets = None;
-    async = C.initial_cap();
+    async = Async_cap.NullCap;
     in_actor = false;
     in_prog = true;
     context = [];
@@ -434,10 +434,14 @@ and check_AsyncCap env s at : T.typ * (T.con -> C.async_cap) =
    | C.CompositeCap c -> T.Con(c, []), fun c' -> C.CompositeAwaitCap c'
    | C.QueryCap c -> T.Con(c, []), fun _c' -> C.ErrorCap
    | C.ErrorCap ->
-      error env at "M0037" "misplaced %s; a query cannot contain an %s" s s
-   | C.NullCap -> error env at "M0037" "misplaced %s; try enclosing in an async function" s
+      local_error env at "M0037" "misplaced %s; a query cannot contain an %s" s s;
+      T.Con(C.bogus_cap,[]), fun c -> C.NullCap
+   | C.NullCap ->
+      local_error env at "M0037" "misplaced %s; try enclosing in an async function" s;
+      T.Con(C.bogus_cap,[]), fun c -> C.NullCap
    | C.CompositeAwaitCap _ ->
-      error env at "M0037" "misplaced %s; a composite query cannot contain an %s" s s
+      local_error env at "M0037" "misplaced %s; a composite query cannot contain an %s" s s;
+      T.Con(C.bogus_cap,[]), fun c -> C.NullCap
 
 and check_AwaitCap env s at =
    match env.async with
@@ -447,9 +451,12 @@ and check_AwaitCap env s at =
    | C.QueryCap _
    | C.CompositeCap _
      ->
-     error env at "M0038" "misplaced %s; try enclosing in an async expression" s
+      local_error env at "M0038" "misplaced %s; try enclosing in an async expression" s;
+      T.Con(C.bogus_cap,[])
    | C.ErrorCap
-   | C.NullCap -> error env at "M0038" "misplaced %s" s
+   | C.NullCap ->
+      local_error env at "M0038" "misplaced %s" s;
+      T.Con(C.bogus_cap,[])
 
 and check_ErrorCap env s at =
    match env.async with
@@ -459,8 +466,9 @@ and check_ErrorCap env s at =
    | C.AsyncCap _
    | C.QueryCap _
    | C.CompositeCap _ ->
-     error env at "M0039" "misplaced %s; try enclosing in an async expression or query function" s
-   | C.NullCap -> error env at "M0039" "misplaced %s" s
+     local_error env at "M0039" "misplaced %s; try enclosing in an async expression or query function" s
+   | C.NullCap ->
+     local_error env at "M0039" "misplaced %s" s
 
 and scope_of_env env =
   match env.async with
@@ -818,7 +826,7 @@ let rec is_explicit_exp e =
   | ObjE (bases, efs) ->
     List.(for_all is_explicit_exp bases
           && for_all (fun (ef : exp_field) -> is_explicit_exp ef.it.exp) efs)
-  | ObjBlockE (_, dfs) ->
+  | ObjBlockE (_, _, dfs) ->
     List.for_all (fun (df : dec_field) -> is_explicit_dec df.it.dec) dfs
   | ArrayE (_, es) -> List.exists is_explicit_exp es
   | SwitchE (e1, cs) | TryE (e1, cs) ->
@@ -1127,7 +1135,7 @@ and infer_exp'' env exp : T.typ =
         "expected tuple type, but expression produces type%a"
         display_typ_expand t1
     )
-  | ObjBlockE (obj_sort, dec_fields) ->
+  | ObjBlockE (obj_sort, typ_opt, dec_fields) ->
     if obj_sort.it = T.Actor then begin
       error_in [Flags.WASIMode; Flags.WasmMode] env exp.at "M0068"
         "actors are not supported";
@@ -1142,7 +1150,18 @@ and infer_exp'' env exp : T.typ =
         { env with async = C.NullCap; in_actor = true }
       else env
     in
-    infer_obj env' obj_sort.it dec_fields exp.at
+    let t = infer_obj env' obj_sort.it dec_fields exp.at in
+    begin match env.pre, typ_opt with
+      | false, Some typ ->
+        let t' = check_typ env' typ in
+        if not (T.sub t t') then
+          local_error env exp.at "M0192"
+            "body of type%a\ndoes not match expected type%a"
+            display_typ_expand t
+            display_typ_expand t'
+      | _ -> ()
+    end;
+    t
   | ObjE (exp_bases, exp_fields) ->
     let open List in
     check_ids env "object" "field"
@@ -2343,7 +2362,7 @@ and infer_block env decs at : T.typ * Scope.scope =
   let env' = adjoin env scope in
   (* HACK: when compiling to IC, mark class constructors as unavailable *)
   let ve = match !Flags.compile_mode with
-    | (Flags.ICMode | Flags.RefMode) ->
+    | Flags.(ICMode | RefMode) ->
       List.fold_left (fun ve' dec ->
         match dec.it with
         | ClassD(_, id, _, _, _, { it = T.Actor; _}, _, _) ->
@@ -2415,7 +2434,7 @@ and infer_dec env dec : T.typ =
       match typ_opt, obj_sort.it with
       | None, _ -> ()
       | Some { it = AsyncT (T.Fut, _, typ); at; _ }, T.Actor
-      | Some ({ at; _ } as typ), (T.Module | T.Object) ->
+      | Some ({ at; _ } as typ), T.(Module | Object) ->
         if at = Source.no_region then
           warn env dec.at "M0135"
             "actor classes with non non-async return types are deprecated; please declare the return type as 'async ...'";
@@ -2426,7 +2445,7 @@ and infer_dec env dec : T.typ =
             display_typ_expand t'
             display_typ_expand t''
       | Some typ, T.Actor ->
-        local_error env dec.at "M0135" "actor class has non-async return type"
+         local_error env dec.at "M0193" "actor class has non-async return type"
       | _, T.Memory -> assert false
     end;
     T.normalize t
@@ -2505,8 +2524,8 @@ and gather_dec env scope dec : Scope.t =
   (* TODO: generalize beyond let <id> = <obje> *)
   | LetD (
       {it = VarP id; _},
-      ({it = ObjBlockE (obj_sort, dec_fields); at; _} |
-       {it = AwaitE (_,{ it = AsyncE (_, _, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, dec_fields); at; _}) ; _  }); _ }),
+      ( {it = ObjBlockE (obj_sort, _, dec_fields); at; _}
+      | {it = AwaitE (_,{ it = AsyncE (_, _, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, _, dec_fields); at; _}) ; _  }); _ }),
        _
     ) ->
     let decs = List.map (fun df -> df.it.dec) dec_fields in
@@ -2588,8 +2607,8 @@ and infer_dec_typdecs env dec : Scope.t =
   (* TODO: generalize beyond let <id> = <obje> *)
   | LetD (
       {it = VarP id; _},
-      ( {it = ObjBlockE (obj_sort, dec_fields); at; _} |
-        {it = AwaitE (_, { it = AsyncE (_, _, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, dec_fields); at; _}) ; _  }); _ }),
+      ( {it = ObjBlockE (obj_sort, _t, dec_fields); at; _}
+      | {it = AwaitE (_, { it = AsyncE (_, _, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, _t, dec_fields); at; _}) ; _  }); _ }),
         _
     ) ->
     let decs = List.map (fun {it = {vis; dec; _}; _} -> dec) dec_fields in
@@ -2670,8 +2689,8 @@ and infer_dec_valdecs env dec : Scope.t =
   (* TODO: generalize beyond let <id> = <obje> *)
   | LetD (
       {it = VarP id; _} as pat,
-      ( {it = ObjBlockE (obj_sort, dec_fields); at; _} |
-        {it = AwaitE (_, { it = AsyncE (_, _, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, dec_fields); at; _}) ; _ }); _ }),
+      ( {it = ObjBlockE (obj_sort, _t, dec_fields); at; _}
+      | {it = AwaitE (_, { it = AsyncE (_, _, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, _t, dec_fields); at; _}) ; _ }); _ }),
         _
     ) ->
     let decs = List.map (fun df -> df.it.dec) dec_fields in
@@ -2735,12 +2754,13 @@ and infer_dec_valdecs env dec : Scope.t =
 
 (* Programs *)
 
-let infer_prog scope prog : (T.typ * Scope.t) Diag.result =
+let infer_prog scope async_cap prog : (T.typ * Scope.t) Diag.result =
   Diag.with_message_store
     (fun msgs ->
       recover_opt
         (fun prog ->
-          let env = env_of_scope msgs scope in
+          let env0 = env_of_scope msgs scope in
+          let env = { env0 with async = async_cap } in
           let res = infer_block env prog.it prog.at in
           res
         ) prog

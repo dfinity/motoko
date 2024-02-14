@@ -1,1 +1,4 @@
 await-in-actor.mo:3.13-3.30: type error [M0038], misplaced await
+await-in-actor.mo:3.21-3.28: type error [M0037], misplaced async expression; try enclosing in an async function
+await-in-actor.mo:3.13-3.30: type error [M0038], misplaced await
+await-in-actor.mo:3.21-3.28: type error [M0037], misplaced async expression; try enclosing in an async function

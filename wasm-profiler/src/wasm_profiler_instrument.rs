@@ -1,7 +1,7 @@
 use clap::arg_enum;
 use std::error::Error;
 use structopt::StructOpt;
-use wasm_profiler::instrumentation::{instrument, InstructionCostTable};
+use wasm_profiler::instrumentation::instrument;
 
 arg_enum! {
     #[derive(Debug)]
@@ -46,7 +46,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let for_ic = args.ic_system_api;
 
     let contents = std::fs::read(args.input)?;
-    let binary = instrument(&contents, for_ic, &InstructionCostTable::default())?;
+    let binary = instrument(&contents, for_ic)?;
     std::fs::write(args.output, binary.as_slice())?;
     Ok(())
 }
