@@ -112,7 +112,7 @@ module TaggingScheme = struct
   (* Number of payload bits in compact representation, including any sign *)
   let ubits_of pty = Type.(
     match pty with
-    | Nat | Int     -> 30
+    | Nat   | Int   -> 30
     | Nat64 | Int64 -> 28
     | Nat32 | Int32 -> 27
     | Char          -> 21 (* suffices for 21-bit UTF8 codepoints *)
@@ -1642,7 +1642,7 @@ module BitTagged = struct
      * logical right shift (for unsigned type ty in Nat{8,16,32,64}, Char).
      * _arithmetic_ right shift (for signed type ty Int{8,16,32,64}, Int but also Nat).
        This is the right thing to do for signed numbers.
-       Nat is treated as signed to allow coercion free subtyping.
+       Nat is treated as signed to allow coercion-free subtyping.
 
      The low bits 32 - (ubits ty) store the tag bits of the value.
 
@@ -1738,7 +1738,7 @@ module BitTagged = struct
             match pty with
             |  Nat | Int | Int64 | Int32 ->
               let sbits = sbits_of pty in
-              (Int64.(neg (shift_left 1L sbits)), Int64.shift_left 1L sbits)
+              Int64.(neg (shift_left 1L sbits), shift_left 1L sbits)
             |  Nat64 | Nat32 ->
               let ubits = ubits_of pty in
               (0L, Int64.shift_left 1L ubits)
@@ -2557,8 +2557,8 @@ module BoxedWord64 = struct
       (prim_fun_name pty "unbox64") ("n", I32Type) [I64Type] (fun env get_n ->
       get_n ^^
       BitTagged.if_tagged_scalar env [I64Type]
-        ( get_n ^^ BitTagged.untag __LINE__ env pty)
-        ( get_n ^^ Tagged.load_forwarding_pointer env ^^ Tagged.load_field64 env (payload_field env))
+        (get_n ^^ BitTagged.untag __LINE__ env pty)
+        (get_n ^^ Tagged.load_forwarding_pointer env ^^ Tagged.load_field64 env (payload_field env))
     )
 end (* BoxedWord64 *)
 
@@ -3534,8 +3534,9 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     try_unbox I32Type (fun _ -> match n with
         | 32 | 64 -> G.i Drop ^^ Bool.lit true
         | 8 | 16 ->
-          (* Please review carefully! *)
-          compile_bitand_const Int32.(logor 1l (shift_left minus_one (n + (32 - BitTagged.ubits_of Type.Int)))) ^^
+          (* use shifting to test that the payload including the tag fits the desired bit width. 
+              E.g. this is now n + 2 for Type.Int. *)
+          compile_bitand_const Int32.(shift_left minus_one (n + (32 - BitTagged.ubits_of Type.Int))) ^^
           G.i (Test (Wasm.Values.I32 I32Op.Eqz))
         | _ -> assert false
       )
@@ -10879,7 +10880,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
       SR.UnboxedWord32 Nat32,
       compile_exp_as env ae (SR.UnboxedWord32 Nat16) e ^^
       TaggedSmallWord.lsb_adjust Type.Nat16 ^^
-      TaggedSmallWord.msb_adjust Nat32 (* NB: a nop for 32-bit present, but not for 64-bit future*)
+      TaggedSmallWord.msb_adjust Nat32 (* NB: a nop for 32-bit present, but not for 64-bit future *)
     | Nat32, Nat64 ->
       SR.UnboxedWord64 Nat64,
       compile_exp_as env ae (SR.UnboxedWord32 Nat32) e ^^
