@@ -92,34 +92,64 @@ module TaggingScheme = struct
     | _                                                                            -> TUnused
 
   let tag_of_typ pty = Type.(
-    match pty with
-    | Nat
-    | Int ->                                    0b10l
-    | Nat64 ->                                0b0100l
-    | Int64 ->                                0b1100l
-    | Nat32 ->                               0b01000l
-    | Int32 ->                               0b11000l
-    | Char  ->                        0b010_00000000l
-    | Nat16 ->                   0b01000000_00000000l
-    | Int16 ->                   0b11000000_00000000l
-    | Nat8  ->          0b01000000_00000000_00000000l
-    | Int8  ->          0b11000000_00000000_00000000l
-    | _  -> assert false)
+    if !Flags.rtti then
+      match pty with
+      | Nat
+      | Int ->                                    0b10l
+      | Nat64 ->                                0b0100l
+      | Int64 ->                                0b1100l
+      | Nat32 ->                               0b01000l
+      | Int32 ->                               0b11000l
+      | Char  ->                        0b010_00000000l
+      | Nat16 ->                   0b01000000_00000000l
+      | Int16 ->                   0b11000000_00000000l
+      | Nat8  ->          0b01000000_00000000_00000000l
+      | Int8  ->          0b11000000_00000000_00000000l
+      | _  -> assert false
+    else
+      (* no tag *)
+      match pty with
+      | Nat
+      | Int
+      | Nat64
+      | Int64
+      | Nat32
+      | Int32
+      | Char
+      | Nat16
+      | Int16
+      | Nat8
+      | Int8 -> 0l
+      | _  -> assert false)
 
-  let unit_tag = (* all tag, no payload (none needed) *)
-               0b01000000_00000000_00000000_00000000l
+  let unit_tag () =
+    if !Flags.rtti then
+      (* all tag, no payload (none needed) *)
+      0b01000000_00000000_00000000_00000000l
+    else
+      (* no tag *)
+      0l
 
   (* Number of payload bits in compact representation, including any sign *)
   let ubits_of pty = Type.(
-    match pty with
-    | Nat   | Int   -> 30
-    | Nat64 | Int64 -> 28
-    | Nat32 | Int32 -> 27
-    | Char          -> 21 (* suffices for 21-bit UTF8 codepoints *)
-    | Nat16 | Int16 -> 16
-    | Nat8  | Int8  ->  8
-    | _ -> assert false)
-
+    if !Flags.rtti then
+      match pty with
+      | Nat   | Int   -> 30
+      | Nat64 | Int64 -> 28
+      | Nat32 | Int32 -> 27
+      | Char          -> 21 (* suffices for 21-bit UTF8 codepoints *)
+      | Nat16 | Int16 -> 16
+      | Nat8  | Int8  ->  8
+      | _ -> assert false
+   else
+      match pty with
+      | Nat   | Int   -> 31
+      | Nat64 | Int64 -> 31
+      | Nat32 | Int32 -> 31
+      | Char          -> 21 (* suffices for 21-bit UTF8 codepoints *)
+      | Nat16 | Int16 -> 16
+      | Nat8  | Int8  ->  8
+      | _ -> assert false)
 end
 
 (*
@@ -4782,8 +4812,8 @@ module Tuple = struct
 
   (* We represent the boxed empty tuple as the unboxed scalar 0, i.e. simply as
      number (but really anything is fine, we never look at this) *)
-  let unit_vanilla_lit = TaggingScheme.unit_tag (* all tag, trivial payload *)
-  let compile_unit = compile_unboxed_const unit_vanilla_lit
+  let unit_vanilla_lit env = TaggingScheme.unit_tag ()  (* all tag, trivial payload *)
+  let compile_unit env = compile_unboxed_const (unit_vanilla_lit ())
 
   (* Expects on the stack the pointer to the array. *)
   let load_n env n =
@@ -4792,7 +4822,7 @@ module Tuple = struct
 
   (* Takes n elements of the stack and produces an argument tuple *)
   let from_stack env n =
-    if n = 0 then compile_unit
+    if n = 0 then compile_unit env
     else
       let name = Printf.sprintf "to_%i_tuple" n in
       let args = Lib.List.table n (fun i -> Printf.sprintf "arg%i" i, I32Type) in
@@ -5283,7 +5313,7 @@ module IC = struct
         get_code ^^ compile_unboxed_const const ^^
         G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
         G.if1 I32Type
-          (Variant.inject env tag Tuple.compile_unit)
+          (Variant.inject env tag (Tuple.compile_unit env))
           code)
         ["system_fatal", 1l;
          "system_transient", 2l;
@@ -8700,7 +8730,7 @@ module StackRep = struct
     | Const.Obj fs ->
       let fs' = List.map (fun (n, c) -> (n, materialize_const_t env c)) fs in
       Object.vanilla_lit env fs'
-    | Const.Unit -> Tuple.unit_vanilla_lit
+    | Const.Unit -> Tuple.unit_vanilla_lit env
     | Const.Array cs ->
       let ptrs = List.map (materialize_const_t env) cs in
       Arr.vanilla_lit env ptrs
@@ -9149,7 +9179,7 @@ module FuncDec = struct
       (* reply early for a oneway *)
       (if control = Type.Returns
        then
-         Tuple.compile_unit ^^
+         Tuple.compile_unit env ^^
          Serialization.serialize env [] ^^
          IC.reply_with_data env
        else G.nop) ^^
@@ -9540,7 +9570,7 @@ module FuncDec = struct
         (* To avoid more failing allocation, don't deserialize args nor serialize reply,
            i.e. don't even try to do this:
         Serialization.deserialize env [] ^^
-        Tuple.compile_unit ^^
+        Tuple.compile_unit env ^^
         Serialization.serialize env [] ^^
         *)
         (* Instead, just ignore the argument and
@@ -10999,7 +11029,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     begin match ts with
     | [] ->
       (* return some () *)
-      Opt.inject env Tuple.compile_unit
+      Opt.inject env (Tuple.compile_unit env)
     | [t] ->
       (* save to local, propagate error as null or return some value *)
       let (set_val, get_val) = new_local env "val" in
