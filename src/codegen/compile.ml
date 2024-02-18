@@ -1954,6 +1954,13 @@ module BitTagged = struct
       compile_shrU_const (Int32.sub 32l (Int32.of_int ubits))
     | _ -> assert false)
 
+  let clear_tag env pty =
+    if TaggingScheme.tag_of_typ pty <> 0l then
+      let shift_amount = 32 - ubits_of pty in
+      let mask = Int32.(lognot (sub (shift_left one shift_amount) one)) in
+      compile_bitand_const mask
+    else G.nop
+
 end (* BitTagged *)
 
 module Tagged = struct
@@ -2952,7 +2959,7 @@ module TaggedSmallWord = struct
        (* check tag *)
        BitTagged.sanity_check_tag __LINE__ env pty ^^
        (* clear tag *)
-       compile_bitand_const (mask_of_type pty)
+       BitTagged.clear_tag env pty
     | _ -> assert false
 
 end (* TaggedSmallWord *)
@@ -3279,9 +3286,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
   (* examine the skewed pointer and determine if number fits into ubits *)
   let fits_in_vanilla env = Num.fits_signed_bits env (BitTagged.ubits_of Type.Int)
 
-  let clear_tag env =
-    let mask = Int32.(lognot (sub (shift_left 1l (32 - BitTagged.ubits_of Type.Int)) 1l)) in
-    compile_bitand_const mask
+  let clear_tag env = BitTagged.clear_tag env Type.Int
 
   (* Tagged scalar to right-0-padded signed i64 *)
   let extend64 env =
