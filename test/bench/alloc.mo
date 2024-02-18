@@ -1,4 +1,4 @@
-//MOC-FLAG
+//MOC-FLAG --force-gc
 import { performanceCounter; rts_heap_size; debugPrint } = "mo:⛔";
 actor alloc {
 
