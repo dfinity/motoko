@@ -4,6 +4,7 @@ reference implementation.
 
 The changes are:
  * Support for additional custom sections
+ * Support for passive data segments (incl. `MemoryInit`).
 
 The code is otherwise as untouched as possible, so that we can relatively
 easily apply diffs from the original code (possibly manually).
@@ -220,6 +221,7 @@ let var s = vu32 s
 
 let op s = u8 s
 let end_ s = expect 0x0b s "END opcode expected"
+let zero s = expect 0x00 s "zero byte expected"
 
 let memop s =
   let align = vu32 s in
@@ -244,6 +246,11 @@ let math_prefix s =
   | 0x05 -> i64_trunc_sat_f32_u
   | 0x06 -> i64_trunc_sat_f64_s
   | 0x07 -> i64_trunc_sat_f64_u
+  (* Manual extension for passive data segments *)
+  | 0x08 ->
+    let x = at var s in
+    zero s; memory_init x
+  (* End of manual extension *)
   | b -> illegal s pos b
 
 let rec instr s =
@@ -521,6 +528,7 @@ let id s =
     | 9 -> `ElemSection
     | 10 -> `CodeSection
     | 11 -> `DataSection
+    | 12 -> `DataCountSection
     | _ -> error s (pos s) "malformed section id"
     ) bo
 
@@ -647,6 +655,21 @@ let code_section s =
 
 (* Element section *)
 
+(* Manual extension for passive data segments *)
+let passive s =
+  Passive
+
+let active s =
+  let index = at var s in
+  let offset = const s in
+  Active {index; offset}
+
+let active_zero s =
+  let index = Source.(0l @@ no_region) in
+  let offset = const s in
+  Active {index; offset}
+(* End of manual extension *)
+
 let segment dat s =
   let index = at var s in
   let offset = const s in
@@ -660,14 +683,37 @@ let elem_section s =
   section `ElemSection (vec (at table_segment)) [] s
 
 
+(* Manual extension for passive data segments *)
 (* Data section *)
 
-let memory_segment s =
-  segment string s
+let data s =
+  match vu32 s with
+  | 0x00l ->
+    let dmode = at active_zero s in
+    let dinit = string s in
+    {dinit; dmode}
+  | 0x01l ->
+    let dmode = at passive s in
+    let dinit = string s in
+    {dinit; dmode}
+  | 0x02l ->
+    let dmode = at active s in
+    let dinit = string s in
+    {dinit; dmode}
+  | _ -> error s (pos s - 1) "malformed data segment kind"
 
 let data_section s =
-  section `DataSection (vec (at memory_segment)) [] s
+  section `DataSection (vec (at data)) [] s
 
+
+(* DataCount section *)
+
+let data_count s =
+  Some (vu32 s)
+
+let data_count_section s =
+  section `DataCountSection data_count None s
+(* End of manual extension *)
 
 (* Custom sections *)
 
@@ -896,9 +942,11 @@ let module_ s =
   iterate skip_custom_section s;
   let elems = elem_section s in
   iterate skip_custom_section s;
+  let data_count = data_count_section s in
+  iterate skip_custom_section s;
   let func_bodies = code_section s in
   iterate skip_custom_section s;
-  let data = data_section s in
+  let datas = data_section s in
   iterate skip_custom_section s;
   let name = name_section s in
   iterate skip_custom_section s;
@@ -912,12 +960,14 @@ let module_ s =
   require (pos s = len s) s (len s) "junk after last section";
   require (List.length func_types = List.length func_bodies)
     s (len s) "function and code section have inconsistent lengths";
+  require (data_count = None || data_count = Some (Lib.List32.length datas))
+  s (len s) "data count and data section have inconsistent lengths";
   let funcs =
     List.map2 Source.(fun t f -> {f.it with ftype = t} @@ f.at)
       func_types func_bodies
   in
   { module_ =
-     {types; tables; memories; globals; funcs; imports; exports; elems; data; start};
+     {types; tables; memories; globals; funcs; imports; exports; elems; datas; start};
     dylink;
     name;
     motoko;

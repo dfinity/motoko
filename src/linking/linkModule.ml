@@ -382,16 +382,23 @@ let rename_globals rn : module_' -> module_' = fun m ->
   let table_segment = phrase (table_segment') in
   let table_segments = List.map table_segment in
 
-  let memory_segment' (s : string segment') = { s with offset = const s.offset; } in
-  let memory_segment = phrase (memory_segment') in
-  let memory_segments = List.map memory_segment in
+  let segment_mode' (dmode : segment_mode') = 
+    match dmode with 
+      | Passive -> Passive
+      | Active { index; offset } -> Active { index; offset = const offset }
+      | Declarative -> Declarative
+    in
+  let segment_mode = phrase (segment_mode') in
+  let data_segment' (s : data_segment') = { s with dmode = segment_mode s.dmode; } in
+  let data_segment = phrase (data_segment') in
+  let data_segments = List.map data_segment in
 
 
   { m with
     funcs = funcs m.funcs;
     globals = globals m.globals;
     elems = table_segments m.elems;
-    data = memory_segments m.data;
+    datas = data_segments m.datas;
   }
 
 let set_global global value = fun m ->
@@ -433,16 +440,23 @@ let fill_global (global : int32) (value : int32) : module_' -> module_' = fun m 
   let table_segment = phrase (table_segment') in
   let table_segments = List.map table_segment in
 
-  let memory_segment' (s : string segment') = { s with offset = const s.offset; } in
-  let memory_segment = phrase (memory_segment') in
-  let memory_segments = List.map memory_segment in
+  let segment_mode' (dmode : segment_mode') = 
+    match dmode with 
+      | Passive -> Passive
+      | Active { index; offset } -> Active { index; offset = const offset }
+      | Declarative -> Declarative
+    in
+  let segment_mode = phrase (segment_mode') in
+  let data_segment' (s : data_segment') = { s with dmode = segment_mode s.dmode; } in
+  let data_segment = phrase (data_segment') in
+  let data_segments = List.map data_segment in
 
 
   { m with
     funcs = funcs m.funcs;
     globals = globals m.globals;
     elems = table_segments m.elems;
-    data = memory_segments m.data;
+    datas = data_segments m.datas;
   }
 
 let rename_funcs_name_section rn (ns : name_section) =
@@ -599,7 +613,7 @@ let join_modules
         funcs = m1.funcs @ m2.funcs;
         start = m1.start;
         elems = m1.elems @ m2.elems;
-        data = m1.data @ m2.data;
+        datas = m1.datas @ m2.datas;
         imports = m1.imports @ m2.imports;
         exports = m1.exports @ m2.exports;
       };

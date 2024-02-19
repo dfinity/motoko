@@ -207,10 +207,9 @@ pub unsafe fn register_stable_type<M: Memory>(
     mem: &mut M,
     new_candid_data: Value,
     new_type_offsets: Value,
-    new_actor_index: i32,
 ) {
     assert_eq!(new_candid_data.tag(), TAG_BLOB);
-    let mut new_type = TypeDescriptor::new(new_candid_data, new_type_offsets, new_actor_index);
+    let mut new_type = TypeDescriptor::new(new_candid_data, new_type_offsets);
     let metadata = PersistentMetadata::get();
     let old_type = &mut (*metadata).stable_type;
     if !old_type.is_default() && !memory_compatible(mem, old_type, &mut new_type) {

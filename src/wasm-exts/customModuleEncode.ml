@@ -5,6 +5,7 @@ reference implementation.
 The changes are:
  * Support for writing out a source map for the Code parts
  * Support for additional custom sections
+ * Support for passive data segments (incl. `MemoryInit`).
 
 The code is otherwise as untouched as possible, so that we can relatively
 easily apply diffs from the original code (possibly manually).
@@ -471,6 +472,10 @@ let encode (em : extended_module) =
       | MemorySize -> op 0x3f; u8 0x00
       | MemoryGrow -> op 0x40; u8 0x00
 
+      (* Manual extension for passive data segments *)
+      | MemoryInit x -> op 0xfc; vu32 0x08l; var x; u8 0x00
+      (* End of manual extension *)
+
       | Const {it = I32 c; _} -> op 0x41; vs32 c
       | Const {it = I64 c; _} -> op 0x42; vs64 c
       | Const {it = F32 c; _} -> op 0x43; f32 c
@@ -804,12 +809,29 @@ let encode (em : extended_module) =
     let elem_section elems =
       section 9 (vec table_segment) elems (elems <> [])
 
+    (* Manual extension for passive data segments *)
     (* Data section *)
-    let memory_segment seg =
-      segment string seg
 
-    let data_section data =
-      section 11 (vec memory_segment) data (data <> [])
+    let data seg =
+      let {dinit; dmode} = seg.it in
+      match dmode.it with
+      | Passive ->
+        vu32 0x01l; string dinit
+      | Active {index; offset} when index.it = 0l ->
+        vu32 0x00l; const offset; string dinit
+      | Active {index; offset} ->
+        vu32 0x02l; var index; const offset; string dinit
+      | Declarative ->
+        failwith "illegal declarative data segment"
+
+    let data_section datas =
+      section 11 (vec data) datas (datas <> [])
+
+    (* Data count section *)
+
+    let data_count_section datas m =
+      section 12 len (List.length datas) (datas <> [])
+    (* End of manual extension *)
 
     (* sourceMappingURL section *)
 
@@ -1229,8 +1251,9 @@ let encode (em : extended_module) =
       export_section m.exports;
       start_section m.start;
       elem_section m.elems;
+      data_count_section m.datas m;
       code_section m.funcs;
-      data_section m.data;
+      data_section m.datas;
       (* other optional sections *)
       name_section em.name;
       candid_sections em.candid;

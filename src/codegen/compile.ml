@@ -257,6 +257,11 @@ module E = struct
   type local_names = (int32 * string) list (* For the debug section: Names of locals *)
   type func_with_names = func * local_names
   type lazy_function = (int32, func_with_names) Lib.AllocOnUse.t
+  type type_descriptor = {
+    candid_data_segment : int32;
+    type_offsets_segment : int32;
+    idl_types_segment : int32;
+  }
   type t = {
     (* Global fields *)
     (* Static *)
@@ -281,10 +286,7 @@ module E = struct
     named_imports : int32 NameEnv.t ref;
     built_in_funcs : lazy_function NameEnv.t ref;
     static_strings : int32 StringEnv.t ref;
-    end_of_static_memory : int32 ref; (* End of statically allocated memory *)
-    static_memory : (int32 * string) list ref; (* Content of static memory *)
-    static_memory_frozen : bool ref;
-      (* Sanity check: Nothing should bump end_of_static_memory once it has been read *)
+    data_segments : string list ref; (* Passive data segments *)
     static_variables : int32 ref;
       (* Number of static variables (MutBox), accessed by index via the runtime system,
          and belonging to the GC root set. *)
@@ -314,11 +316,14 @@ module E = struct
 
     (* requires stable memory (and emulation on wasm targets) *)
     requires_stable_memory : bool ref;
+
+    (* Type descriptor of current program version, created on `conclude_module`. *)
+    global_type_descriptor : type_descriptor option ref;
   }
 
 
   (* The initial global environment *)
-  let mk_global mode rts trap_with dyn_mem : t = {
+  let mk_global mode rts trap_with : t = {
     mode;
     rts;
     trap_with;
@@ -334,9 +339,7 @@ module E = struct
     named_imports = ref NameEnv.empty;
     built_in_funcs = ref NameEnv.empty;
     static_strings = ref StringEnv.empty;
-    end_of_static_memory = ref dyn_mem;
-    static_memory = ref [];
-    static_memory_frozen = ref false;
+    data_segments = ref [];
     static_variables = ref 0l;
     typtbl_typs = ref [];
     (* Metadata *)
@@ -351,6 +354,7 @@ module E = struct
     local_names = ref [];
     features = ref FeatureSet.empty;
     requires_stable_memory = ref false;
+    global_type_descriptor = ref None;
   }
 
   (* This wraps Mo_types.Hash.hash to also record which labels we have seen,
@@ -538,17 +542,10 @@ module E = struct
   let then_trap_with env msg = G.if0 (trap_with env msg) G.nop
   let else_trap_with env msg = G.if0 G.nop (trap_with env msg)
 
-  let reserve_static_memory (env : t) size : int32 =
-    if !(env.static_memory_frozen) then raise (Invalid_argument "Static memory frozen");
-    let ptr = !(env.end_of_static_memory) in
-    let aligned = Int32.logand (Int32.add size 3l) (Int32.lognot 3l) in
-    env.end_of_static_memory := Int32.add ptr aligned;
-    ptr
-
-  let add_mutable_static_bytes (env : t) data : int32 =
-    let ptr = reserve_static_memory env (Int32.of_int (String.length data)) in
-    env.static_memory := !(env.static_memory) @ [ (ptr, data) ];
-    Int32.(add ptr ptr_skew) (* Return a skewed pointer *)
+  let add_data_segment (env : t) data : int32 =
+    let index = List.length !(env.data_segments) in
+    env.data_segments := !(env.data_segments) @ [ data ];
+    Int32.of_int index
 
   let add_fun_ptr (env : t) fi : int32 =
     match FunEnv.find_opt fi !(env.func_ptrs) with
@@ -568,32 +565,35 @@ module E = struct
   let add_static (env : t) (data : StaticBytes.t) : int32 =
     let b = StaticBytes.as_bytes data in
     match StringEnv.find_opt b !(env.static_strings)  with
-    | Some ptr -> ptr
+    | Some segment_index -> segment_index
     | None ->
-      let ptr = add_mutable_static_bytes env b  in
-      env.static_strings := StringEnv.add b ptr !(env.static_strings);
-      ptr
-  
-  let add_static_unskewed (env : t) (data : StaticBytes.t) : int32 =
-    Int32.add (add_static env data) ptr_unskew
+      let segment_index = add_data_segment env b  in
+      env.static_strings := StringEnv.add b segment_index !(env.static_strings);
+      segment_index
 
-  let get_end_of_static_memory env : int32 =
-    env.static_memory_frozen := true;
-    !(env.end_of_static_memory)
+  let replace_data_segment (env : t) (segment_index : int32) (data : StaticBytes.t) : int32 =
+    let new_value = StaticBytes.as_bytes data in
+    let segment_index = Int32.to_int segment_index in
+    assert (segment_index < List.length !(env.data_segments));
+    env.data_segments := List.mapi (fun index old_value -> 
+      if index = segment_index then
+        (assert (old_value = "");
+        new_value)
+      else 
+        old_value
+      ) !(env.data_segments);
+    Int32.of_int (String.length new_value)
+
+  let get_data_segments (env : t) =
+    !(env.data_segments)
 
   let add_static_variable (env : t) : int32 =
-    let index = !(env.static_variables) in
-    env.static_variables := Int32.add index 1l;
-    index
+    let variable_index = !(env.static_variables) in
+    env.static_variables := Int32.add variable_index 1l;
+    variable_index
 
   let count_static_variables (env : t) =
     !(env.static_variables)
-
-  let get_static_memory env =
-    !(env.static_memory)
-
-  let mem_size env =
-    Int32.(add (div (get_end_of_static_memory env) page_size) 1l)
 
   let collect_garbage env force =
     let name = "incremental_gc" in
@@ -628,8 +628,8 @@ module E = struct
   let requires_stable_memory (env : t) =
     !(env.requires_stable_memory)
 
-  let get_memories (env : t) =
-    nr {mtype = MemoryType {min = mem_size env; max = None}}
+  let get_memories (env : t) initial_memory_pages =
+    nr {mtype = MemoryType {min = initial_memory_pages; max = None}}
     ::
     match mode env with
     | Flags.WASIMode | Flags.WasmMode when !(env.requires_stable_memory) ->
@@ -942,7 +942,7 @@ module RTS = struct
     E.add_func_import env "rts" "write_with_barrier" [I32Type; I32Type] [];
     E.add_func_import env "rts" "allocation_barrier" [I32Type] [I32Type];
     E.add_func_import env "rts" "running_gc" [] [I32Type];
-    E.add_func_import env "rts" "register_stable_type" [I32Type; I32Type; I32Type] [];
+    E.add_func_import env "rts" "register_stable_type" [I32Type; I32Type] [];
     E.add_func_import env "rts" "load_stable_actor" [] [I32Type];
     E.add_func_import env "rts" "save_stable_actor" [I32Type] [];
     E.add_func_import env "rts" "free_stable_actor" [] [];
@@ -959,7 +959,7 @@ module RTS = struct
     E.add_func_import env "rts" "idl_sub_buf_words" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "idl_sub_buf_init" [I32Type; I32Type; I32Type] [];
     E.add_func_import env "rts" "idl_sub"
-      [I32Type; I32Type; I32Type; I32Type; I32Type; I32Type; I32Type; I32Type; I32Type] [I32Type];
+      [I32Type; I32Type; I32Type; I32Type; I32Type; I32Type; I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "leb128_decode" [I32Type] [I32Type];
     E.add_func_import env "rts" "sleb128_decode" [I32Type] [I32Type];
     E.add_func_import env "rts" "bigint_of_word32" [I32Type] [I32Type];
@@ -3338,12 +3338,10 @@ module Blob = struct
       BigNum.from_word32 env
     )
 
-  let static_data env s =
-    compile_unboxed_const (Int32.add ptr_unskew (E.add_static env StaticBytes.[Bytes s]))
-
-  let lit_ptr_len env s =
-    static_data env s ^^
-    compile_unboxed_const (Int32.of_int (String.length s))
+  (* unskewed target address, data offset, and length on stack *)
+  let load_static_data env s =
+    let segment_index = E.add_static env StaticBytes.[Bytes s] in
+    G.i (MemoryInit (nr segment_index))
 
   let alloc env =
     E.call_import env "rts" "alloc_blob" ^^
@@ -3361,9 +3359,9 @@ module Blob = struct
     let (set_new_blob, get_new_blob) = new_local env "new_blob" in
     compile_unboxed_const blob_length ^^ alloc env ^^ set_new_blob ^^
     get_new_blob ^^ payload_ptr_unskewed env ^^ (* target address *)
-    static_data env s ^^ (* source address *)
-    compile_unboxed_const blob_length ^^ (* copy length *)
-    Heap.memcpy env ^^
+    compile_unboxed_const 0l ^^ (* data offset *)
+    compile_unboxed_const blob_length ^^ (* data length *)
+    load_static_data env s ^^
     get_new_blob
 
   let as_ptr_len env = Func.share_code1 Func.Never env "as_ptr_size" ("x", I32Type) [I32Type; I32Type] (
@@ -3372,6 +3370,20 @@ module Blob = struct
       get_x ^^ len env
     )
 
+  let lit_ptr_len env s =
+    lit env s ^^
+    as_ptr_len env
+
+  let load_data_segment env segment_index data_length =
+    let (set_blob, get_blob) = new_local env "data_segment_blob" in
+    data_length ^^
+    alloc env ^^ set_blob ^^
+    get_blob ^^ payload_ptr_unskewed env ^^ (* target address *)
+    compile_unboxed_const 0l ^^ (* data offset *)
+    data_length ^^
+    G.i (MemoryInit (nr segment_index)) ^^
+    get_blob
+  
   let of_ptr_size env = Func.share_code2 Func.Always env "blob_of_ptr_size" (("ptr", I32Type), ("size" , I32Type)) [I32Type] (
     fun env get_ptr get_size ->
       let (set_x, get_x) = new_local env "x" in
@@ -5715,26 +5727,44 @@ module MakeSerialization (Strm : Stream) = struct
   *)
 
   module Strm = Strm
+    (* Globals recording known Candid types
+      See Note [Candid subtype checks]
+    *)
+    let register_delayed_globals env =
+      (E.add_global32_delayed env "__candid_data_length" Immutable,
+      E.add_global32_delayed env "__type_offsets_length" Immutable,
+      E.add_global32_delayed env "__idl_types_length" Immutable)
 
-  (* Globals recording known Candid types
-     See Note [Candid subtype checks]
-   *)
+    let get_candid_data_length env =
+      G.i (GlobalGet (nr (E.get_global env "__candid_data_length")))
+    let get_type_offsets_length env =
+      G.i (GlobalGet (nr (E.get_global env "__type_offsets_length")))
+    let get_idl_types_length env =
+      G.i (GlobalGet (nr (E.get_global env "__idl_types_length")))
 
-  let register_delayed_globals env =
-    (E.add_global32_delayed env "__typtbl" Immutable,
-     E.add_global32_delayed env "__typtbl_end" Immutable,
-     E.add_global32_delayed env "__typtbl_size" Immutable,
-     E.add_global32_delayed env "__typtbl_idltyps" Immutable)
+    let candid_type_offset_size = 4l
 
-  let get_typtbl env =
-    G.i (GlobalGet (nr (E.get_global env "__typtbl")))
-  let get_typtbl_size env =
-    G.i (GlobalGet (nr (E.get_global env "__typtbl_size")))
-  let get_typtbl_end env =
-    G.i (GlobalGet (nr (E.get_global env "__typtbl_end")))
-  let get_typtbl_idltyps env =
-    G.i (GlobalGet (nr (E.get_global env "__typtbl_idltyps")))
+    let get_global_type_descriptor env =
+      match !(E.(env.global_type_descriptor)) with
+      | Some descriptor -> descriptor
+      | None -> assert false
 
+    let load_candid_data env =
+      let descriptor = get_global_type_descriptor env in
+      Blob.load_data_segment env E.(descriptor.candid_data_segment) (get_candid_data_length env)
+
+    let load_type_offsets env =
+      let descriptor = get_global_type_descriptor env in
+      Blob.load_data_segment env E.(descriptor.type_offsets_segment) (get_type_offsets_length env)
+
+    let count_type_offsets env =
+      get_type_offsets_length env ^^
+      compile_divU_const candid_type_offset_size
+
+    let load_idl_types env =
+      let descriptor = get_global_type_descriptor env in
+      Blob.load_data_segment env E.(descriptor.idl_types_segment) (get_idl_types_length env)
+      
   module Registers = struct
     let register_globals env =
       E.add_global32 env "@@rel_buf_opt" Mutable 0l;
@@ -5996,22 +6026,29 @@ module MakeSerialization (Strm : Stream) = struct
      List.map idx ts)
 
   (* See Note [Candid subtype checks] *)
-  let set_delayed_globals (env : E.t) (set_typtbl, set_typtbl_end, set_typtbl_size, set_typtbl_idltyps) =
-    let typdesc, offsets, idltyps = type_desc env Candid (E.get_typtbl_typs env) in
-    let static_typedesc = E.add_static_unskewed env [StaticBytes.Bytes typdesc] in
-    let static_typtbl =
-      let bytes = StaticBytes.i32s
-        (List.map (fun offset ->
-          Int32.(add static_typedesc (of_int(offset))))
-        offsets)
-      in
-      E.add_static_unskewed env [bytes]
-    in
-    let static_idltyps = E.add_static_unskewed env [StaticBytes.i32s idltyps] in
-    set_typtbl static_typtbl;
-    set_typtbl_end Int32.(add static_typedesc (of_int (String.length typdesc)));
-    set_typtbl_size (Int32.of_int (List.length offsets));
-    set_typtbl_idltyps static_idltyps
+  let reserve_global_type_descriptor (env : E.t) =
+    let candid_data_segment = E.add_data_segment env "" in
+    let type_offsets_segment = E.add_data_segment env "" in
+    let idl_types_segment = E.add_data_segment env "" in
+    E.(env.global_type_descriptor := Some {
+      candid_data_segment;
+      type_offsets_segment;
+      idl_types_segment;
+    })
+
+  let create_global_type_descriptor (env : E.t) (set_candid_data_length, set_type_offsets_length, set_idl_types_length) =
+    let descriptor = get_global_type_descriptor env in
+    let candid_data, type_offsets, idl_types = type_desc env Candid (E.get_typtbl_typs env) in
+    let candid_data_binary = [StaticBytes.Bytes candid_data] in
+    let candid_data_length = E.replace_data_segment env E.(descriptor.candid_data_segment) candid_data_binary in
+    set_candid_data_length candid_data_length;
+    let type_offsets_binary = [StaticBytes.i32s (List.map Int32.of_int type_offsets)] in
+    let type_offsets_length = E.replace_data_segment env E.(descriptor.type_offsets_segment) type_offsets_binary in
+    set_type_offsets_length type_offsets_length;
+    let idl_types_binary = [StaticBytes.i32s idl_types] in
+    let idl_types_length = E.replace_data_segment env E.(descriptor.idl_types_segment) idl_types_binary in
+    set_idl_types_length idl_types_length
+
 
   (* Returns data (in bytes) and reference buffer size (in entries) needed *)
   let rec buffer_size env t =
@@ -6360,18 +6397,19 @@ module MakeSerialization (Strm : Stream) = struct
     if extended then
       f (compile_unboxed_const 0l)
     else
-      get_typtbl_size1 ^^ get_typtbl_size env ^^
+      get_typtbl_size1 ^^ count_type_offsets env ^^
       E.call_import env "rts" "idl_sub_buf_words" ^^
       Stack.dynamic_with_words env "rel_buf" (fun get_ptr ->
-        get_ptr ^^ get_typtbl_size1 ^^ get_typtbl_size env ^^
+        get_ptr ^^ get_typtbl_size1 ^^ count_type_offsets env ^^
         E.call_import env "rts" "idl_sub_buf_init" ^^
         f get_ptr)
 
   (* See Note [Candid subtype checks] *)
   let idl_sub env t2 =
     let idx = E.add_typtbl_typ env t2 in
-    get_typtbl_idltyps env ^^
-    G.i (Load {ty = I32Type; align = 0; offset = Int32.mul idx 4l (*!*); sz = None}) ^^
+    load_idl_types env ^^
+    Blob.payload_ptr_unskewed env ^^
+    G.i (Load {ty = I32Type; align = 0; offset = Int32.mul idx candid_type_offset_size (*!*); sz = None}) ^^
     Func.share_code6 Func.Always env ("idl_sub")
       (("rel_buf", I32Type),
        ("typtbl1", I32Type),
@@ -6386,11 +6424,10 @@ module MakeSerialization (Strm : Stream) = struct
         E.else_trap_with env "null rel_buf" ^^
         get_rel_buf ^^
         get_typtbl1 ^^
-        get_typtbl env ^^
         get_typtbl_end1 ^^
-        get_typtbl_end env ^^
         get_typtbl_size1 ^^
-        get_typtbl_size env ^^
+        load_candid_data env ^^
+        load_type_offsets env ^^
         get_idltyp1 ^^
         get_idltyp2 ^^
         E.call_import env "rts" "idl_sub")
@@ -7388,12 +7425,18 @@ encountered during code generation, the other is determined
 dynamically by, e.g. message payload. The latter will vary with
 each payload to decode.
 
+The static type table and a type descriptor are stored in passive 
+data segments. Instead of absolute memory addresses, the static type 
+table in the data segment only contains relative offsets into type 
+descriptor. When loaded, these offsets are patched by static addresses 
+that point into the type descriptor.
+
 The known Motoko types are accumulated in a global list as required
 and then, in a final compilation step, encoded to global type table
-and sequence of type indices. The encoding is stored as static
-data referenced by dedicated wasm globals so that we can generate
-code that references the globals before their final definitions are
-known.
+and the type descriptor (sequence of type indices). The encoding is 
+stored in passive data segments referenced (by way of segment indices) 
+from dedicated wasm globals so that we can generate code that 
+references the globals before their final definitions are known.
 
 Deserializing a proper (not extended) Candid value stack allocates a
 mutable word buffer, of size determined by `idl_sub_buf_words`.
@@ -7757,10 +7800,9 @@ module Persistence = struct
   let register_stable_type env actor_type =
     let (candid_type_desc, type_offsets, type_indices) = Serialization.(type_desc env Persistence [actor_type]) in
     let serialized_offsets = StaticBytes.(as_bytes [i32s (List.map Int32.of_int type_offsets)]) in
-    assert ((List.length type_indices) = 1);
+    assert (type_indices = [0l]);
     Blob.lit env candid_type_desc ^^
     Blob.lit env serialized_offsets ^^
-    compile_unboxed_const (List.nth type_indices 0) ^^
     E.call_import env "rts" "register_stable_type"
 
   let create_actor env actor_type get_field_value =
@@ -11705,7 +11747,7 @@ and conclude_module env set_serialization_globals start_fi_o =
   FuncDec.export_gc_trigger_method env;
 
   (* See Note [Candid subtype checks] *)
-  Serialization.set_delayed_globals env set_serialization_globals;
+  Serialization.create_global_type_descriptor env set_serialization_globals;
 
   (* declare before building GC *)
 
@@ -11717,7 +11759,8 @@ and conclude_module env set_serialization_globals start_fi_o =
   Heap.register env;
   IC.register env;
 
-  set_heap_base (E.get_end_of_static_memory env);
+  let dynamic_heap_start = Lifecycle.end_ () in
+  set_heap_base dynamic_heap_start;
 
   (* Wrap the start function with the RTS initialization *)
   let rts_start_fi = E.add_fun env "rts_start" (Func.of_body env [] [] (fun env1 ->
@@ -11738,15 +11781,15 @@ and conclude_module env set_serialization_globals start_fi_o =
 
   let other_imports = E.get_other_imports env in
 
-  let memories = E.get_memories env in
+  let initial_memory_pages = Int32.(add (div dynamic_heap_start page_size) 1l) in
+  let memories = E.get_memories env initial_memory_pages in
 
   let funcs = E.get_funcs env in
 
-  let data = List.map (fun (offset, init) -> nr {
-    index = nr 0l;
-    offset = nr (G.to_instr_list (compile_unboxed_const offset));
-    init;
-    }) (E.get_static_memory env) in
+  let datas = List.map (fun (dinit) -> nr {
+    dinit;
+    dmode = (nr Wasm_exts.Ast.Passive);
+    }) (E.get_data_segments env) in
 
   let elems = List.map (fun (fi, fp) -> nr {
     index = nr 0l;
@@ -11766,7 +11809,7 @@ and conclude_module env set_serialization_globals start_fi_o =
       memories;
       imports = func_imports @ other_imports;
       exports = E.get_exports env;
-      data
+      datas
     } in
 
   let emodule =
@@ -11795,7 +11838,7 @@ and conclude_module env set_serialization_globals start_fi_o =
   | Some rts -> Linking.LinkModule.link emodule "rts" rts
 
 let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
-  let env = E.mk_global mode rts IC.trap_with (Lifecycle.end_ ()) in
+  let env = E.mk_global mode rts IC.trap_with in
 
   IC.register_globals env;
   Stack.register_globals env;
@@ -11805,7 +11848,8 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
 
   (* See Note [Candid subtype checks] *)
   let set_serialization_globals = Serialization.register_delayed_globals env in
-
+  Serialization.reserve_global_type_descriptor env;
+  
   IC.system_imports env;
   RTS.system_imports env;
 
