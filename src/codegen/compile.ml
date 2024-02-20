@@ -1226,8 +1226,8 @@ module Stack = struct
      grows downwards.)
   *)
 
-  (* Predefined constant stack size of 2MB, according to the persistent memory layout. *)
-  let stack_size = 2 * 1024 * 1024
+  (* Predefined constant stack size of 4MB, according to the persistent memory layout. *)
+  let stack_size = 4 * 1024 * 1024
 
   let end_ () = Int32.of_int stack_size 
 
