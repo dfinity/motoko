@@ -581,7 +581,7 @@ func @timer_helper() : async () {
 
 var @lastTimerId = 0;
 
-func @setTimer(delayNanos : Nat64, recurring : Bool, job : () -> async ()) : (id : Nat) {
+func @setTimer<T>(delayNanos : Nat64, recurring : Bool, job : () -> async ()) : (id : Nat) {
   @lastTimerId += 1;
   let id = @lastTimerId;
   let now = (prim "time" : () -> Nat64) ();
