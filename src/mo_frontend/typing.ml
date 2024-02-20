@@ -2855,13 +2855,13 @@ and infer_dec_valdecs env dec : Scope.t =
 
 (* Programs *)
 
-let infer_prog scope async_cap prog : (T.typ * Scope.t) Diag.result =
+let infer_prog scope ?(check_unused=true) async_cap prog : (T.typ * Scope.t) Diag.result =
   Diag.with_message_store
     (fun msgs ->
       recover_opt
         (fun prog ->
           let env0 = env_of_scope msgs scope in
-          let env = { env0 with async = async_cap } in
+          let env = { env0 with async = async_cap; check_unused } in
           let res = infer_block env prog.it prog.at true in
           emit_unused_warnings env;
           res

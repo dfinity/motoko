@@ -180,10 +180,10 @@ let async_cap_of_prog prog =
      else
        Async_cap.initial_cap()
 
-let infer_prog senv async_cap prog : (Type.typ * Scope.scope) Diag.result =
+let infer_prog ?(check_unused=true) senv async_cap prog : (Type.typ * Scope.scope) Diag.result =
   let filename = prog.Source.note.Syntax.filename in
   phase "Checking" filename;
-  let r = Typing.infer_prog senv async_cap prog in
+  let r = Typing.infer_prog ~check_unused:check_unused senv async_cap prog in
   if !Flags.trace && !Flags.verbose then begin
     match r with
     | Ok ((_, scope), _) ->
@@ -431,7 +431,7 @@ let load_decl parse_one senv : load_decl_result =
   let* parsed = parse_one in
   let* prog, libs = resolve_prog parsed in
   let* libs, senv' = chase_imports parse_file senv libs in
-  let* t, sscope = infer_prog senv' (Async_cap.(AwaitCap top_cap)) prog in
+  let* t, sscope = infer_prog senv' ~check_unused:false (Async_cap.(AwaitCap top_cap)) prog in
   let senv'' = Scope.adjoin senv' sscope in
   Diag.return (libs, prog, senv'', t, sscope)
 
