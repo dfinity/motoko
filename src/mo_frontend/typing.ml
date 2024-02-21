@@ -1807,7 +1807,7 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
   let ts, t_arg', t_ret' =
     match tbs, inst.it with
     | [], (None | Some [])  (* no inference required *)
-    | [{T.sort = T.Scope;_}], _  (* special case to allow t_arg driven overload resolution *)
+    | [T.{sort = Scope;_}], _  (* special case to allow t_arg driven overload resolution *)
     | _, Some _ ->
       (* explicit instantiation, check argument against instantiated domain *)
       let typs = match inst.it with None -> [] | Some typs -> typs in
