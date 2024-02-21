@@ -97,15 +97,12 @@ let add_unused_warning env warning =
 let compare_unused_warning first second =
   let (first_id, {left = first_left; right = first_right}) = first in
   let (second_id, {left = second_left; right = second_right}) = second in
-  let result = compare first_left second_left in
-  if result = 0 then
-    let result = compare first_right second_right in
-    if result = 0 then
-      compare first_id second_id
-    else 
-      result
-  else
-    result
+  match compare first_left second_left with
+  | 0 ->
+    (match compare first_right second_right with
+     | 0 -> compare first_id second_id
+     | other -> other)
+  | other -> other
 
 let sorted_unused_warnings list = List.sort compare_unused_warning list
 
