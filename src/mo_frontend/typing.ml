@@ -53,7 +53,7 @@ type env =
     msgs : Diag.msg_store;
     scopes : Source.region T.ConEnv.t;
     check_unused : bool;
-    used_declarations : S.t ref;
+    used_identifiers : S.t ref;
     unused_warnings : unused_warnings ref;
   }
 
@@ -74,18 +74,18 @@ let env_of_scope msgs scope =
     msgs;
     scopes = T.ConEnv.empty;
     check_unused = true;
-    used_declarations = ref S.empty;
+    used_identifiers = ref S.empty;
     unused_warnings = ref [];
   }
 
-let use_declaration env id =
-  env.used_declarations := S.add id !(env.used_declarations)
+let use_identifier env id =
+  env.used_identifiers := S.add id !(env.used_identifiers)
 
-let is_unused_declaration env id =
-  not (S.mem id !(env.used_declarations))
+let is_unused_identifier env id =
+  not (S.mem id !(env.used_identifiers))
 
-let get_identifiers variables =
-  T.Env.fold (fun id _ set -> S.add id set) variables S.empty
+let get_identifiers identifiers =
+  T.Env.fold (fun id _ set -> S.add id set) identifiers S.empty
 
 let equal_unused_warning first second = first = second
 
@@ -186,10 +186,10 @@ let warn_lossy_bind_type env at bind t1 t2 =
 let _warn_in modes env at code fmt =
   ignore (diag_in type_warning modes env at code fmt)
 
-(* Unused declaration detection *)
+(* Unused identifier detection *)
 
 let emit_unused_warnings env =
-  let emit (id, region) = warn env region "M0194" "Unused declaration %s" id in
+  let emit (id, region) = warn env region "M0194" "unused identifier %s (delete or rename to wildcard `_` or `_%s`)" id id in
   let list = sorted_unused_warnings !(env.unused_warnings) in
   List.iter emit list
 
@@ -200,25 +200,22 @@ let ignore_warning_for_id id =
   else
     false
 
-let detect_unused env inner_variables =
+let detect_unused env inner_identifiers =
   if env.check_unused then
     T.Env.iter (fun id (_, at) ->
-      if (is_unused_declaration env id) && (not (ignore_warning_for_id id)) then
+      if (not (ignore_warning_for_id id)) && (is_unused_identifier env id) then
         add_unused_warning env (id, at)
-      else
-        ()
-    ) inner_variables
-  else ()
+    ) inner_identifiers
 
 let enter_scope env : S.t =
-  !(env.used_declarations)
+  !(env.used_identifiers)
 
-let leave_scope env inner_variables initial_usage =
-  detect_unused env inner_variables;
-  let inner_variables = get_identifiers inner_variables in
-  let unshadowed_usage = S.diff !(env.used_declarations) inner_variables in
+let leave_scope env inner_identifiers initial_usage =
+  detect_unused env inner_identifiers;
+  let inner_identifiers = get_identifiers inner_identifiers in
+  let unshadowed_usage = S.diff !(env.used_identifiers) inner_identifiers in
   let final_usage = S.union initial_usage unshadowed_usage in
-  env.used_declarations := final_usage
+  env.used_identifiers := final_usage
 
 (* Context extension *)
 
@@ -363,7 +360,7 @@ let rec check_obj_path env path : T.obj_sort * (T.field list) =
 and check_obj_path' env path : T.typ =
   match path.it with
   | IdH id ->
-    use_declaration env id.it;
+    use_identifier env id.it;
     (match T.Env.find_opt id.it env.vals with
      | Some (T.Pre, _, _) ->
        error env id.at "M0024" "cannot infer type of forward variable reference %s" id.it
@@ -390,7 +387,7 @@ let rec check_typ_path env path : T.con =
 and check_typ_path' env path : T.con =
   match path.it with
   | IdH id ->
-    use_declaration env id.it;
+    use_identifier env id.it;
     (match T.Env.find_opt id.it env.typs with
     | Some c -> c
     | None -> error env id.at "M0029" "unbound type %s" id.it
@@ -1088,7 +1085,7 @@ and infer_exp'' env exp : T.typ =
   | PrimE _ ->
     error env exp.at "M0054" "cannot infer type of primitive"
   | VarE id ->
-    use_declaration env id.it;
+    use_identifier env id.it;
     (match T.Env.find_opt id.it env.vals with
     | Some (T.Pre, _, _) ->
       error env id.at "M0055" "cannot infer type of forward variable %s" id.it;
@@ -2322,13 +2319,13 @@ and is_typ_dec dec : bool = match dec.it with
 
 and infer_obj env s dec_fields at : T.typ =
   let private_fields =
-    let scope = List.filter (fun field -> is_private field.it.vis) dec_fields 
+    let scope = List.filter (fun field -> is_private field.it.vis) dec_fields
     |> List.map (fun field -> field.it.dec)
     |> gather_block_decs env in
     get_identifiers scope.Scope.val_env
   in
-  let private_variables variables =
-    T.Env.filter (fun id _ -> S.mem id private_fields) variables
+  let private_identifiers identifiers =
+    T.Env.filter (fun id _ -> S.mem id private_fields) identifiers
   in
   let env =
     if s <> T.Actor then
@@ -2344,7 +2341,7 @@ and infer_obj env s dec_fields at : T.typ =
   let initial_usage = enter_scope env in
   let _, scope = infer_block env decs at false in
   let t = object_of_scope env s dec_fields scope at in
-  leave_scope env (private_variables scope.Scope.val_env) initial_usage;
+  leave_scope env (private_identifiers scope.Scope.val_env) initial_usage;
   let (_, tfs) = T.as_obj t in
   if not env.pre then begin
     if s = T.Actor then begin
