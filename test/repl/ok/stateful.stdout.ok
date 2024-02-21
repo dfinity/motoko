@@ -1,3 +1,3 @@
-Motoko (source XXX)
+Motoko compiler (source 0.10.4-81-gd91218fba)
 > let x : Nat = 42
 > > > > 
