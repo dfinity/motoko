@@ -1350,7 +1350,7 @@ and infer_exp'' env exp : T.typ =
         begin
           if T.(exp1.note.note_eff <> Triv) then
             local_error env exp1.at "M0179" (*FIXME*)
-              "non-async body function cannot perform sends"
+              "non-async body function cannot perform proper sends"
         end
     end;
     let ts1 = match pat.it with TupP _ -> T.seq_of_tup t1 | _ -> [t1] in
