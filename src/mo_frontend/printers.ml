@@ -207,6 +207,7 @@ let string_of_symbol = function
   | X (N N_seplist_pat_field_semicolon_) -> "seplist(<pat_field>,<semicolon>)"
   | X (N N_seplist_typ_COMMA_) -> "seplist(<typ>,,)"
   | X (N N_seplist_typ_bind_COMMA_) -> "seplist(<typ_bind>,,)"
+  | X (N N_list_preceded_COMMA_typ_bind__) -> "(, <typ_bind>)*"
   | X (N N_seplist_typ_field_semicolon_) -> "seplist(<typ_field>,<semicolon>)"
   | X (N N_seplist_stab_field_semicolon_) -> "seplist(<stab_field>,<semicolon>)"
   | X (N N_seplist_typ_item_COMMA_) -> "seplist(<typ_item>,,)"
