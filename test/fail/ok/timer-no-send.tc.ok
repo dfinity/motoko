@@ -1,2 +1,3 @@
 timer-no-send.mo:4.12-4.62: type error [M0047], send capability required, but not available
  (need an enclosing async expression or function body)
+timer-no-send.mo:7.20-11.2: type error [M0179], non-async body function cannot perform sends
