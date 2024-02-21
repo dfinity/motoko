@@ -208,11 +208,11 @@ let rec check_progs senv progs : Scope.scope Diag.result =
     let senv' = Scope.adjoin senv sscope in
     check_progs senv' progs'
 
-let check_lib senv lib : Scope.scope Diag.result =
+let check_lib senv ?(check_unused=true) lib : Scope.scope Diag.result =
   let filename = lib.Source.note.Syntax.filename in
   phase "Checking" (Filename.basename filename);
   let open Diag.Syntax in
-  let* sscope = Typing.check_lib senv lib in
+  let* sscope = Typing.check_lib senv ~check_unused:check_unused lib in
   phase "Definedness" (Filename.basename filename);
   let* () = Definedness.check_lib lib in
   Diag.return sscope
@@ -355,7 +355,7 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
   let senv = ref senv0 in
   let libs = ref [] in
 
-  let rec go ri = match ri.Source.it with
+  let rec go check_unused ri = match ri.Source.it with
     | Syntax.PrimPath ->
       (* a bit of a hack, lib_env should key on resolved_import *)
       if Type.Env.mem "@prim" !senv.Scope.lib_env then
@@ -366,7 +366,7 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
         senv := Scope.adjoin !senv sscope;
         Diag.return ()
     | Syntax.Unresolved -> assert false
-    | Syntax.LibPath f ->
+    | Syntax.LibPath {path = f; package = pkg_opt} ->
       if Type.Env.mem f !senv.Scope.lib_env then
         Diag.return ()
       else if mem ri.Source.it !pending then
@@ -381,9 +381,9 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
         let* prog, base = parsefn ri.Source.at f in
         let* () = Static.prog prog in
         let* more_imports = ResolveImport.resolve (resolve_flags ()) prog base in
-        let* () = go_set more_imports in
+        let* () = go_set (check_unused && pkg_opt = None) more_imports in
         let lib = lib_of_prog f prog in
-        let* sscope = check_lib !senv lib in
+        let* sscope = check_lib ~check_unused:(check_unused && pkg_opt = None) !senv lib in
         libs := lib :: !libs; (* NB: Conceptually an append *)
         senv := Scope.adjoin !senv sscope;
         pending := remove ri.Source.it !pending;
@@ -412,9 +412,9 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
           let sscope = Scope.lib f actor in
           senv := Scope.adjoin !senv sscope;
           Diag.return ()
-  and go_set todo = Diag.traverse_ go todo
+  and go_set check_unused todo = Diag.traverse_ (go check_unused) todo
   in
-  Diag.map (fun () -> (List.rev !libs, !senv)) (go_set imports)
+  Diag.map (fun () -> (List.rev !libs, !senv)) (go_set true imports)
 
 let load_progs parsefn files senv : load_result =
   let open Diag.Syntax in

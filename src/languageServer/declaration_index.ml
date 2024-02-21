@@ -347,7 +347,7 @@ let index_from_scope : string -> t -> Syntax.lib list -> Scope.t -> t =
 
 let make_index_inner project_root vfs entry_points : t Diag.result =
   let package_paths =
-    List.map (fun f -> LibPath f @@ Source.no_region) (scan_packages ())
+    List.map (fun f -> LibPath {path = f; package = None (* TBC*)} @@ Source.no_region) (scan_packages ())
   in
   let package_env =
     Pipeline.chase_imports

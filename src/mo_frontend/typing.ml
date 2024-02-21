@@ -337,7 +337,7 @@ let check_import env at f ri =
   let full_path =
     match !ri with
     | Unresolved -> error env at "M0020" "unresolved import %s" f
-    | LibPath fp -> fp
+    | LibPath {path=fp; _} -> fp
     | IDLPath (fp, _) -> fp
     | PrimPath -> "@prim"
   in
@@ -2895,12 +2895,12 @@ let check_actors scope progs : unit Diag.result =
         ) progs
     )
 
-let check_lib scope lib : Scope.t Diag.result =
+let check_lib scope ?(check_unused=true) lib : Scope.t Diag.result =
   Diag.with_message_store
     (fun msgs ->
       recover_opt
         (fun lib ->
-          let env = env_of_scope msgs scope in
+          let env = { (env_of_scope msgs scope) with check_unused } in
           let { imports; body = cub; _ } = lib.it in
           let (imp_ds, ds) = CompUnit.decs_of_lib lib in
           let typ, _ = infer_block env (imp_ds @ ds) lib.at false in

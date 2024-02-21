@@ -1023,7 +1023,7 @@ let transform_import (i : S.import) : import_declaration =
   assert (t <> T.Pre);
   let rhs = match !ir with
     | S.Unresolved -> raise (Invalid_argument ("Unresolved import " ^ f))
-    | S.LibPath fp ->
+    | S.LibPath {path = fp; _} ->
       varE (var (id_of_full_path fp) t)
     | S.PrimPath ->
       varE (var (id_of_full_path "@prim") t)
