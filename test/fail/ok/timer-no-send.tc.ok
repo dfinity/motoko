@@ -1,0 +1,2 @@
+timer-no-send.mo:4.12-4.62: type error [M0047], send capability required, but not available
+ (need an enclosing async expression or function body)

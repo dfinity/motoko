@@ -22,10 +22,6 @@ actor {
      };
      debugPrint(debug_show {count});
   };
-
-  func bowm() {
-      ignore setTimer(1_000_000_000_000, false, func () : async () { debugPrint "BOWM!" });
-  }
 };
 
 //SKIP run
