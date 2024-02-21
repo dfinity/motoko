@@ -459,7 +459,7 @@ inst :
 %inline typ_params_opt :
   | (* empty *) { [] }
   | LT ts=seplist(typ_bind, COMMA) GT { ts }
-  | LT ASYNC GT { [{var = "" @@ at $sloc; sort = Type.Scope @@ no_region; bound = PrimT "Any" @! at $sloc} @= at $sloc] }
+  | LT ASYNC GT { ensure_scope_bind "" [] }
 
 typ_field :
   | TYPE c=typ_id  tps=typ_params_opt EQ t=typ
