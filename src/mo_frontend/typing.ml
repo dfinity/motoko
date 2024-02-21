@@ -1734,22 +1734,6 @@ and check_exp' env0 t exp : T.typ =
     in
     check_exp_strong (adjoin_vals env' ve2) t2 exp;
     t
-
-
-
-  | CallE (({it = VarE {it = "setTimer"}} as exp1), ({it = Some [{it = PathT ({it = IdH {it = "Int"}; _}, _); _}]; _ } as inst), exp2), _ ->
-    let t' = infer_call env exp1 inst exp2 exp.at (Some t) in
-    if not (T.sub t' t) then
-      local_error env0 exp.at "M0096"
-        "expression of type%a\ncannot produce expected type%a"
-        display_typ_expand t'
-        display_typ_expand t;
-    let t1, next_cap = check_AsyncCap env "setTimer call" exp.at in
-    t'
-
-
-
-
   | CallE (exp1, inst, exp2), _ ->
     let t' = infer_call env exp1 inst exp2 exp.at (Some t) in
     if not (T.sub t' t) then

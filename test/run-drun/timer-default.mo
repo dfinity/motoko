@@ -12,7 +12,7 @@ actor {
   public shared func go() : async () {
      var attempts = 0;
 
-     ignore setTimer<Int>(1_000_000_000, false, func () : async () { count += 1; debugPrint "YEP!" });
+     ignore setTimer(1_000_000_000, false, func () : async () { count += 1; debugPrint "YEP!" });
 
      while (count < max) {
        ignore await raw_rand(); // yield to scheduler
@@ -24,7 +24,7 @@ actor {
   };
 
   func bowm() {
-      ignore setTimer<Int>(1_000_000_000_000, false, func () : async () { debugPrint "BOWM!" });
+      ignore setTimer(1_000_000_000_000, false, func () : async () { debugPrint "BOWM!" });
   }
 };
 
