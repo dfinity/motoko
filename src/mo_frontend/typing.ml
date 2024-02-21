@@ -2855,13 +2855,16 @@ and infer_dec_valdecs env dec : Scope.t =
 
 (* Programs *)
 
-let infer_prog scope ?(check_unused=true) async_cap prog : (T.typ * Scope.t) Diag.result =
+let infer_prog scope pkg_opt async_cap prog : (T.typ * Scope.t) Diag.result =
   Diag.with_message_store
     (fun msgs ->
       recover_opt
         (fun prog ->
           let env0 = env_of_scope msgs scope in
-          let env = { env0 with async = async_cap; check_unused } in
+          let env = {
+            env0 with async = async_cap;
+            check_unused = pkg_opt = None (* suppress warning in package code *)
+          } in
           let res = infer_block env prog.it prog.at true in
           emit_unused_warnings env;
           res
@@ -2895,12 +2898,14 @@ let check_actors scope progs : unit Diag.result =
         ) progs
     )
 
-let check_lib scope ?(check_unused=true) lib : Scope.t Diag.result =
+let check_lib scope pkg_opt lib : Scope.t Diag.result =
   Diag.with_message_store
     (fun msgs ->
       recover_opt
         (fun lib ->
-          let env = { (env_of_scope msgs scope) with check_unused } in
+          let env = { (env_of_scope msgs scope) with
+                      check_unused = pkg_opt = None
+                    } in
           let { imports; body = cub; _ } = lib.it in
           let (imp_ds, ds) = CompUnit.decs_of_lib lib in
           let typ, _ = infer_block env (imp_ds @ ds) lib.at false in
