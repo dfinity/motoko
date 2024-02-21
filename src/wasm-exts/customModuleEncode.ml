@@ -879,8 +879,10 @@ let encode (em : extended_module) =
     let motoko_sections motoko =
       icp_custom_section "motoko:stable-types" utf8 motoko.stable_types;
       icp_custom_section "motoko:compiler" utf8 motoko.compiler;
-      icp_custom_section "motoko:orthogonal-persistence" utf8 motoko.orthogonal_persistence;
       custom_section "motoko" motoko_section_body motoko.labels (motoko.labels <> []) (* TODO: make an icp_section *)
+
+    let enhanced_orthogonal_persistence_section version =
+      icp_custom_section "enhanced-orthogonal-persistence" utf8 version
 
     let candid_sections candid =
       icp_custom_section "candid:service" utf8 candid.service;
@@ -1259,6 +1261,7 @@ let encode (em : extended_module) =
       name_section em.name;
       candid_sections em.candid;
       motoko_sections em.motoko;
+      enhanced_orthogonal_persistence_section em.enhanced_orthogonal_persistence;
       wasm_features_section em.wasm_features;
       source_mapping_url_section em.source_mapping_url;
       if !Mo_config.Flags.debug_info then

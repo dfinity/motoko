@@ -42,7 +42,6 @@ type motoko_sections = {
   labels : string list;
   stable_types : (bool * string) option;
   compiler : (bool * string) option;
-  orthogonal_persistence : (bool * string) option;
 }
 
 type candid_sections = {
@@ -54,13 +53,14 @@ let empty_motoko_sections = {
   labels = [];
   stable_types = None;
   compiler = None;
-  orthogonal_persistence = None;
 }
 
 let empty_candid_sections = {
   args = None;
   service = None;
 }
+
+type persistence_section = (bool * string) option
 
 type extended_module = {
   (* The non-custom sections *)
@@ -73,6 +73,8 @@ type extended_module = {
   candid : candid_sections;
   (* motoko sections *)
   motoko : motoko_sections;
+  (* enhanced orthogonal persistence section *)
+  enhanced_orthogonal_persistence : persistence_section;
   (* source map section *)
   source_mapping_url : string option;
   wasm_features : string list;

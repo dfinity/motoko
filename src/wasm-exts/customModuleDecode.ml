@@ -875,8 +875,11 @@ let utf8 sec_end s =
 let motoko_sections s =
   let stable_types = icp_custom_section "motoko:stable-types" utf8 None s in
   let compiler = icp_custom_section "motoko:compiler" utf8 None s in
-  let orthogonal_persistence = icp_custom_section "motoko:orthogonal-persistence" utf8 None s in
-  custom_section is_motoko motoko_section_content { empty_motoko_sections with stable_types; compiler; orthogonal_persistence} s
+  custom_section is_motoko motoko_section_content { empty_motoko_sections with stable_types; compiler; } s
+
+(* Enhanced orthogonal persistence section *)
+let enhanced_orthogonal_persistence_section s =
+  icp_custom_section "enhanced-orthogonal-persistence" utf8 None s
 
 (* Candid sections *)
 
@@ -956,6 +959,8 @@ let module_ s =
   iterate skip_custom_section s;
   let motoko = motoko_sections s in
   iterate skip_custom_section s;
+  let enhanced_orthogonal_persistence = enhanced_orthogonal_persistence_section s in
+  iterate skip_custom_section s;
   let wasm_features = wasm_features_section s in
   iterate skip_custom_section s;
   require (pos s = len s) s (len s) "junk after last section";
@@ -972,6 +977,7 @@ let module_ s =
     dylink;
     name;
     motoko;
+    enhanced_orthogonal_persistence;
     candid;
     source_mapping_url = None;
     wasm_features = wasm_features;
