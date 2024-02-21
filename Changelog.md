@@ -1,12 +1,23 @@
 # Motoko compiler changelog
 
+* motoko (`moc`)
+
+  * Warn on detection of unused identifiers (code `M0194`) (#4377).
+
+    - By design, warnings are not emitted for code imported from a package.
+    - A warning can be suppressed by replacing the identifier entirely by a wildcard `_`,
+      or by prefixing it with an `_`, e.g. replace `x` by `_x`.
+
+    **Limitations**: recursive and mutually recursive definitions are considered used,
+    even if never referenced outside the recursive definition.
+
 ## 0.10.4 (2024-01-10)
 
 * motoko (`moc`)
 
   * Officializing the new **incremental garbage collector** after a successful beta testing phase.
     The incremental GC can be enabled by the `moc` flag `--incremental-gc` (#3837) and is designed to scale for large program heap sizes.
-    
+
     **Note**: While resolving scalability issues with regard to the instruction limit of the GC work, it is now possible to hit other scalability limits:
     - _Out of memory_: A program can run out of memory if it fills the entire memory space with live objects.
     - _Upgrade limits_: When using stable variables, the current mechanism of serialization and deserialization to and from stable memory can exceed the instruction limit or run out of memory.
