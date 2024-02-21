@@ -18,6 +18,7 @@ open Mo_config
 open Wasm_exts.Ast
 open Wasm.Types
 open Source
+
 (* Re-shadow Source.(@@), to get Stdlib.(@@) *)
 let (@@) = Stdlib.(@@)
 
@@ -11823,7 +11824,8 @@ and conclude_module env set_serialization_globals start_fi_o =
       motoko = {
         labels = E.get_labs env;
         stable_types = !(env.E.stable_types);
-        compiler = metadata "motoko:compiler" (Lib.Option.get Source_id.release Source_id.id)
+        compiler = metadata "motoko:compiler" (Lib.Option.get Source_id.release Source_id.id);
+        orthogonal_persistence = Some (false, "version 1")
       };
       candid = {
         args = !(env.E.args);
