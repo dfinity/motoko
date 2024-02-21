@@ -175,7 +175,7 @@ assert.deepStrictEqual(Motoko.candid('ast.mo'), {
     {
       category: 'type',
       code: 'M0194',
-      message: 'Unused declaration Prim',
+      message: 'unused identifier Prim (delete or rename to wildcard `_` or `_Prim`)',
       range: {
         end: {
           character: 13,
@@ -192,7 +192,7 @@ assert.deepStrictEqual(Motoko.candid('ast.mo'), {
     {
       category: 'type',
       code: 'M0194',
-      message: 'Unused declaration M',
+      message: 'unused identifier M (delete or rename to wildcard `_` or `_M`)',
       range: {
         end: {
           character: 12,
