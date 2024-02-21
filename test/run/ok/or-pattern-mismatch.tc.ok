@@ -23,8 +23,8 @@ type in right pattern is
   Int
 or-pattern-mismatch.mo:6.5-6.21: warning [M0146], this pattern is never matched
 or-pattern-mismatch.mo:6.6-6.20: warning [M0146], this pattern is never matched
-or-pattern-mismatch.mo:2.9-2.11: warning [M0194], Unused declaration a1
-or-pattern-mismatch.mo:3.10-3.12: warning [M0194], Unused declaration a2
-or-pattern-mismatch.mo:4.10-4.12: warning [M0194], Unused declaration a3
-or-pattern-mismatch.mo:5.10-5.12: warning [M0194], Unused declaration a4
-or-pattern-mismatch.mo:6.10-6.12: warning [M0194], Unused declaration a5
+or-pattern-mismatch.mo:2.9-2.11: warning [M0194], unused identifier a1 (delete or rename to wildcard `_` or `_a1`)
+or-pattern-mismatch.mo:3.10-3.12: warning [M0194], unused identifier a2 (delete or rename to wildcard `_` or `_a2`)
+or-pattern-mismatch.mo:4.10-4.12: warning [M0194], unused identifier a3 (delete or rename to wildcard `_` or `_a3`)
+or-pattern-mismatch.mo:5.10-5.12: warning [M0194], unused identifier a4 (delete or rename to wildcard `_` or `_a4`)
+or-pattern-mismatch.mo:6.10-6.12: warning [M0194], unused identifier a5 (delete or rename to wildcard `_` or `_a5`)

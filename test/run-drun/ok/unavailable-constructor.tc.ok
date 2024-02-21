@@ -1,2 +1,2 @@
-unavailable-constructor.mo:1.6-1.7: warning [M0194], Unused declaration f
-unavailable-constructor.mo:7.17-7.21: warning [M0194], Unused declaration ctxt
+unavailable-constructor.mo:1.6-1.7: warning [M0194], unused identifier f (delete or rename to wildcard `_` or `_f`)
+unavailable-constructor.mo:7.17-7.21: warning [M0194], unused identifier ctxt (delete or rename to wildcard `_` or `_ctxt`)

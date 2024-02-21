@@ -1,1 +1,1 @@
-vec-any-bomb.mo:2.8-2.12: warning [M0194], Unused declaration Prim
+vec-any-bomb.mo:2.8-2.12: warning [M0194], unused identifier Prim (delete or rename to wildcard `_` or `_Prim`)

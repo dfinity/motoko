@@ -1,2 +1,2 @@
 prim-in-source.mo:1.22-1.26: type error [M0057], unbound variable prim
-prim-in-source.mo:1.5-1.6: warning [M0194], Unused declaration x
+prim-in-source.mo:1.5-1.6: warning [M0194], unused identifier x (delete or rename to wildcard `_` or `_x`)

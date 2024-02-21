@@ -114,11 +114,11 @@ pat-subtyping-fail.mo:162.11-162.35: type error [M0096], expression of type
   Nat -> ()
 cannot produce expected type
   Int -> ()
-pat-subtyping-fail.mo:129.8-129.9: warning [M0194], Unused declaration f
-pat-subtyping-fail.mo:129.10-129.11: warning [M0194], Unused declaration x
-pat-subtyping-fail.mo:153.16-153.17: warning [M0194], Unused declaration f
-pat-subtyping-fail.mo:153.18-153.19: warning [M0194], Unused declaration x
-pat-subtyping-fail.mo:156.16-156.17: warning [M0194], Unused declaration f
-pat-subtyping-fail.mo:156.18-156.19: warning [M0194], Unused declaration x
-pat-subtyping-fail.mo:162.16-162.17: warning [M0194], Unused declaration f
-pat-subtyping-fail.mo:162.18-162.19: warning [M0194], Unused declaration x
+pat-subtyping-fail.mo:129.8-129.9: warning [M0194], unused identifier f (delete or rename to wildcard `_` or `_f`)
+pat-subtyping-fail.mo:129.10-129.11: warning [M0194], unused identifier x (delete or rename to wildcard `_` or `_x`)
+pat-subtyping-fail.mo:153.16-153.17: warning [M0194], unused identifier f (delete or rename to wildcard `_` or `_f`)
+pat-subtyping-fail.mo:153.18-153.19: warning [M0194], unused identifier x (delete or rename to wildcard `_` or `_x`)
+pat-subtyping-fail.mo:156.16-156.17: warning [M0194], unused identifier f (delete or rename to wildcard `_` or `_f`)
+pat-subtyping-fail.mo:156.18-156.19: warning [M0194], unused identifier x (delete or rename to wildcard `_` or `_x`)
+pat-subtyping-fail.mo:162.16-162.17: warning [M0194], unused identifier f (delete or rename to wildcard `_` or `_f`)
+pat-subtyping-fail.mo:162.18-162.19: warning [M0194], unused identifier x (delete or rename to wildcard `_` or `_x`)

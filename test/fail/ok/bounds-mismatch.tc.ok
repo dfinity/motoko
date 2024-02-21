@@ -66,19 +66,19 @@ cannot produce expected type
 bounds-mismatch.mo:125.21-128.4: warning [M0074], this array has type
   [Any]
 because elements have inconsistent types
-bounds-mismatch.mo:2.10-2.11: warning [M0194], Unused declaration g
-bounds-mismatch.mo:7.10-7.11: warning [M0194], Unused declaration g
-bounds-mismatch.mo:12.10-12.11: warning [M0194], Unused declaration g
-bounds-mismatch.mo:17.10-17.11: warning [M0194], Unused declaration g
-bounds-mismatch.mo:22.10-22.11: warning [M0194], Unused declaration g
-bounds-mismatch.mo:27.10-27.11: warning [M0194], Unused declaration g
-bounds-mismatch.mo:32.10-32.11: warning [M0194], Unused declaration g
-bounds-mismatch.mo:37.10-37.11: warning [M0194], Unused declaration g
-bounds-mismatch.mo:75.6-75.7: warning [M0194], Unused declaration f
-bounds-mismatch.mo:81.6-81.7: warning [M0194], Unused declaration f
-bounds-mismatch.mo:87.6-87.7: warning [M0194], Unused declaration f
-bounds-mismatch.mo:93.6-93.7: warning [M0194], Unused declaration f
-bounds-mismatch.mo:99.6-99.7: warning [M0194], Unused declaration f
-bounds-mismatch.mo:106.6-106.7: warning [M0194], Unused declaration f
-bounds-mismatch.mo:126.41-126.42: warning [M0194], Unused declaration b
-bounds-mismatch.mo:127.41-127.42: warning [M0194], Unused declaration a
+bounds-mismatch.mo:2.10-2.11: warning [M0194], unused identifier g (delete or rename to wildcard `_` or `_g`)
+bounds-mismatch.mo:7.10-7.11: warning [M0194], unused identifier g (delete or rename to wildcard `_` or `_g`)
+bounds-mismatch.mo:12.10-12.11: warning [M0194], unused identifier g (delete or rename to wildcard `_` or `_g`)
+bounds-mismatch.mo:17.10-17.11: warning [M0194], unused identifier g (delete or rename to wildcard `_` or `_g`)
+bounds-mismatch.mo:22.10-22.11: warning [M0194], unused identifier g (delete or rename to wildcard `_` or `_g`)
+bounds-mismatch.mo:27.10-27.11: warning [M0194], unused identifier g (delete or rename to wildcard `_` or `_g`)
+bounds-mismatch.mo:32.10-32.11: warning [M0194], unused identifier g (delete or rename to wildcard `_` or `_g`)
+bounds-mismatch.mo:37.10-37.11: warning [M0194], unused identifier g (delete or rename to wildcard `_` or `_g`)
+bounds-mismatch.mo:75.6-75.7: warning [M0194], unused identifier f (delete or rename to wildcard `_` or `_f`)
+bounds-mismatch.mo:81.6-81.7: warning [M0194], unused identifier f (delete or rename to wildcard `_` or `_f`)
+bounds-mismatch.mo:87.6-87.7: warning [M0194], unused identifier f (delete or rename to wildcard `_` or `_f`)
+bounds-mismatch.mo:93.6-93.7: warning [M0194], unused identifier f (delete or rename to wildcard `_` or `_f`)
+bounds-mismatch.mo:99.6-99.7: warning [M0194], unused identifier f (delete or rename to wildcard `_` or `_f`)
+bounds-mismatch.mo:106.6-106.7: warning [M0194], unused identifier f (delete or rename to wildcard `_` or `_f`)
+bounds-mismatch.mo:126.41-126.42: warning [M0194], unused identifier b (delete or rename to wildcard `_` or `_b`)
+bounds-mismatch.mo:127.41-127.42: warning [M0194], unused identifier a (delete or rename to wildcard `_` or `_a`)

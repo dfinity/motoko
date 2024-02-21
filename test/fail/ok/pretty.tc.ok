@@ -467,8 +467,8 @@ pretty.mo:145.4-145.6: type error [M0096], expression of type
   }
 cannot produce expected type
   ()
-pretty.mo:22.6-22.7: warning [M0194], Unused declaration f
-pretty.mo:24.6-24.7: warning [M0194], Unused declaration g
-pretty.mo:26.6-26.7: warning [M0194], Unused declaration h
-pretty.mo:28.6-28.7: warning [M0194], Unused declaration i
-pretty.mo:135.21-135.22: warning [M0194], Unused declaration y
+pretty.mo:22.6-22.7: warning [M0194], unused identifier f (delete or rename to wildcard `_` or `_f`)
+pretty.mo:24.6-24.7: warning [M0194], unused identifier g (delete or rename to wildcard `_` or `_g`)
+pretty.mo:26.6-26.7: warning [M0194], unused identifier h (delete or rename to wildcard `_` or `_h`)
+pretty.mo:28.6-28.7: warning [M0194], unused identifier i (delete or rename to wildcard `_` or `_i`)
+pretty.mo:135.21-135.22: warning [M0194], unused identifier y (delete or rename to wildcard `_` or `_y`)

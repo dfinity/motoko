@@ -1,1 +1,1 @@
-issue-2464.mo:4.13-4.18: warning [M0194], Unused declaration Maker
+issue-2464.mo:4.13-4.18: warning [M0194], unused identifier Maker (delete or rename to wildcard `_` or `_Maker`)

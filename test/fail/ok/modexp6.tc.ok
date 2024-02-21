@@ -1,2 +1,2 @@
 modexp6.mo:2.7-2.11: type error [M0015], only trivial patterns allowed in static expressions
-modexp6.mo:1.8-1.9: warning [M0194], Unused declaration A
+modexp6.mo:1.8-1.9: warning [M0194], unused identifier A (delete or rename to wildcard `_` or `_A`)

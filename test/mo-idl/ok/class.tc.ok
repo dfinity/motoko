@@ -1,1 +1,1 @@
-class.mo:2.13-2.14: warning [M0194], Unused declaration A
+class.mo:2.13-2.14: warning [M0194], unused identifier A (delete or rename to wildcard `_` or `_A`)
