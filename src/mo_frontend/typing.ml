@@ -1361,7 +1361,9 @@ and infer_exp'' env exp : T.typ =
       | Don't -> { inst with it = None }
       | Shield ts
       | Propagate ts -> { inst with it = Some ts } in
-    infer_call env exp1 inst' exp2 exp.at None
+    let t' = infer_call env exp1 inst' exp2 exp.at None in
+    inst.note <- inst'.note;
+    t'
   | BlockE decs ->
     let t, _ = infer_block env decs exp.at in
     t
@@ -1751,6 +1753,7 @@ and check_exp' env0 t exp : T.typ =
       | Shield ts
       | Propagate ts -> { inst with it = Some ts } in
     let t' = infer_call env exp1 inst' exp2 exp.at (Some t) in
+    inst.note <- inst'.note;
     if not (T.sub t' t) then
       local_error env0 exp.at "M0096"
         "expression of type%a\ncannot produce expected type%a"
