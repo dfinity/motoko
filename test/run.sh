@@ -185,10 +185,11 @@ then
       HAVE_drun=no
     fi
   fi
-  if ic-wasm --help >& /dev/null
-  then
-    HAVE_ic_wasm=yes
-  fi
+  # ic-wasm does not yet support passive data segments
+  # if ic-wasm --help >& /dev/null
+  # then
+  #   HAVE_ic_wasm=yes
+  # fi
 fi
 
 if [ $DTESTS = yes ]

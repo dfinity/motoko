@@ -8,6 +8,7 @@ use motoko_rts_macros::ic_mem_fn;
 
 use crate::{
     barriers::{allocation_barrier, write_with_barrier},
+    constants::{KB, MB},
     gc::incremental::State,
     memory::Memory,
     persistence::compatibility::memory_compatible,
@@ -54,9 +55,9 @@ struct PersistentMetadata {
 }
 
 /// Location of the persistent metadata. Prereserved and fixed forever.
-const METADATA_ADDRESS: usize = 6 * 1024 * 1024;
+const METADATA_ADDRESS: usize = 4 * MB + 512 * KB;
 /// The reserved maximum size of the metadata, contains a reserve for future extension of the metadata.
-const METADATA_RESERVE: usize = 128 * 1024;
+const METADATA_RESERVE: usize = 512 * KB;
 
 // TODO: Include partition table in reserved space.
 pub const HEAP_START: usize = METADATA_ADDRESS + METADATA_RESERVE;
@@ -207,10 +208,9 @@ pub unsafe fn register_stable_type<M: Memory>(
     mem: &mut M,
     new_candid_data: Value,
     new_type_offsets: Value,
-    new_actor_index: i32,
 ) {
     assert_eq!(new_candid_data.tag(), TAG_BLOB);
-    let mut new_type = TypeDescriptor::new(new_candid_data, new_type_offsets, new_actor_index);
+    let mut new_type = TypeDescriptor::new(new_candid_data, new_type_offsets);
     let metadata = PersistentMetadata::get();
     let old_type = &mut (*metadata).stable_type;
     if !old_type.is_default() && !memory_compatible(mem, old_type, &mut new_type) {
