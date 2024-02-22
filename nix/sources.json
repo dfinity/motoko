@@ -21,15 +21,15 @@
         "version": "3.2.25"
     },
     "ic": {
-        "branch": "pull/153/head",
+        "branch": "luc/debug-alignment",
         "description": "Internet Computer blockchain source: the client/replica software run by nodes",
         "homepage": "",
-        "owner": "dfinity",
+        "owner": "luc-blaeser",
         "repo": "ic",
-        "rev": "64f807484924c38cdfda49970e0bb21321564fe2",
-        "sha256": "18sk96zqg79p08z0wsn5bsxsw3aps26si7n76av7inlc4sfvvm4a",
+        "rev": "4c00704f99cd6a1e42993a8376101178eeee5cb5",
+        "sha256": "14icqh3vl825ll85jyj0cpwwpqzcjhyjgawxgn76l2rszayqd0fd",
         "type": "tarball",
-        "url": "https://github.com/dfinity/ic/archive/64f807484924c38cdfda49970e0bb21321564fe2.tar.gz",
+        "url": "https://github.com/luc-blaeser/ic/archive/4c00704f99cd6a1e42993a8376101178eeee5cb5.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ic-hs": {
