@@ -47,6 +47,29 @@ let todo fn se x = Printf.eprintf "%s: %s" fn (Wasm.Sexpr.to_string 80 se); x
 exception CodegenError of string
 let fatal fmt = Printf.ksprintf (fun s -> raise (CodegenError s)) fmt
 
+(* DSL parser for `--rts-function` type strings *)
+let parse_rts_function_type (str : string) : (value_type list * value_type list, string) result =
+  let parse_value_type = function
+  | "i32" -> I32Type
+  | "i64" -> I64Type
+  | "f32" -> F32Type
+  | "f64" -> F64Type
+  | s -> fatal "unexpected token '%s'" s in
+  let check_unit values had_unit next =
+    match values, had_unit with
+    | [], false -> Error "expected '()'"
+    | _ :: _, true -> Error "unexpected '()'"
+    | _, _ -> next () in
+  let rec parse a b return_side had_unit = function
+  | [] -> if return_side then check_unit a had_unit (fun () -> Ok (b, a)) else Error "unexpected end of input"
+  | "->" :: ts -> if return_side then Error "duplicate '->'" else check_unit a had_unit (fun () -> parse b a true false ts)
+  | "()" :: ts -> if had_unit then Error "duplicate '()'" else parse a b return_side had_unit ts
+  | "" :: ts -> parse a b return_side had_unit ts
+  | t :: ts -> parse (parse_value_type t :: a) b return_side had_unit ts in
+  str
+  |> Str.split (Str.regexp "[ ,]+")
+  |> parse [] [] false false
+
 module StaticBytes = struct
   (* A very simple DSL to describe static memory *)
 
@@ -1134,7 +1157,10 @@ module RTS = struct
     E.add_func_import env "rts" "stream_reserve" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "stream_stable_dest" [I32Type; I64Type; I64Type] [];
     Flags.M.iter (fun name type_string ->
-      E.add_func_import env "rts" name [I32Type] [I32Type] (* TODO: parse type string *)
+      let inputs, outputs = match parse_rts_function_type type_string with
+      | Ok v -> v
+      | Error err -> fatal "invalid RTS function type string: '%s' (%s)" type_string err in
+      E.add_func_import env "rts" name inputs outputs
     ) !Flags.rts_functions;
     if !Flags.gc_strategy = Flags.Incremental then
       incremental_gc_imports env
