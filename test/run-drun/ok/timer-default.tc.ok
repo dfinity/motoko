@@ -1,0 +1,2 @@
+timer-default.mo:27.13-27.55: warning [M0195], implicitly fulfilling async demand
+timer-default.mo:28.13-28.57: warning [M0195], implicitly fulfilling async demand

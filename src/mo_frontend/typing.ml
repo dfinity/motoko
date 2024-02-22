@@ -1357,13 +1357,7 @@ and infer_exp'' env exp : T.typ =
     let ts1 = match pat.it with TupP _ -> T.seq_of_tup t1 | _ -> [t1] in
     T.Func (sort, c, T.close_binds cs tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2)
   | CallE (exp1, inst, exp2) ->
-    let inst' = match inst.it with
-      | Don't -> { inst with it = None }
-      | Shield ts
-      | Propagate ts -> { inst with it = Some ts } in
-    let t' = infer_call env exp1 inst' exp2 exp.at None in
-    inst.note <- inst'.note;
-    t'
+    infer_call env exp1 inst exp2 exp.at None
   | BlockE decs ->
     let t, _ = infer_block env decs exp.at in
     t
@@ -1748,12 +1742,7 @@ and check_exp' env0 t exp : T.typ =
     check_exp_strong (adjoin_vals env' ve2) t2 exp;
     t
   | CallE (exp1, inst, exp2), _ ->
-    let inst' = match inst.it with
-      | Don't -> { inst with it = None }
-      | Shield ts
-      | Propagate ts -> { inst with it = Some ts } in
-    let t' = infer_call env exp1 inst' exp2 exp.at (Some t) in
-    inst.note <- inst'.note;
+    let t' = infer_call env exp1 inst exp2 exp.at (Some t) in
     if not (T.sub t' t) then
       local_error env0 exp.at "M0096"
         "expression of type%a\ncannot produce expected type%a"
@@ -1793,7 +1782,7 @@ and check_exp_field env (ef : exp_field) fts =
     ignore (infer_exp env exp)
 
 and infer_call env exp1 inst exp2 at t_expect_opt =
-  let n = match inst.it with None -> 0 | Some typs -> List.length typs in
+  let n = match inst.it with Don't -> 0 | Shield typs | Propagate typs -> List.length typs in
   let t1 = infer_exp_promote env exp1 in
   let sort, tbs, t_arg, t_ret =
     try T.as_func_sub T.Local n t1
@@ -1801,24 +1790,24 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
       local_error env exp1.at "M0097"
         "expected function type, but expression produces type%a"
         display_typ_expand t1;
-      if inst.it = None then
+      if inst.it = Don't then
         info env (Source.between exp1.at exp2.at)
           "this looks like an unintended function call, perhaps a missing ';'?";
       T.as_func_sub T.Local n T.Non
   in
   let ts, t_arg', t_ret' =
     match tbs, inst.it with
-    | [], (None | Some [])  (* no inference required *)
+    | [], (Don't | Shield [] | Propagate [])  (* no inference required *)
     | [T.{sort = Scope;_}], _  (* special case to allow t_arg driven overload resolution *)
-    | _, Some _ ->
+    | _, (Shield _ | Propagate _) ->
       (* explicit instantiation, check argument against instantiated domain *)
-      let typs = match inst.it with None -> [] | Some typs -> typs in
+      let typs = match inst.it with Don't -> [] | Shield typs | Propagate typs -> typs in
       let ts = check_inst_bounds env sort tbs typs at in
       let t_arg' = T.open_ ts t_arg in
       let t_ret' = T.open_ ts t_ret in
       if not env.pre then check_exp_strong env t_arg' exp2;
       ts, t_arg', t_ret'
-    | _::_, None -> (* implicit, infer *)
+    | _::_, Don't -> (* implicit, infer *)
       let t2 = infer_exp env exp2 in
       try
         (* i.e. exists minimal ts .
@@ -1861,7 +1850,12 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
         error env exp2.at "M0100"
           "shared function call result contains abstract type%a"
           display_typ_expand t_ret';
-    end
+    end;
+    match T.is_async t_ret', inst.it, tbs with
+    (* | Propagate && tbs has no Scope -> warn FIXME *)
+    | false, (Don't | Shield _), (T.{ sort = Scope; _ } :: _) ->
+       warn env at "M0195"(*FIXME*) "implicitly fulfilling async demand"
+    | _ -> ()
   end;
   (* note t_ret' <: t checked by caller if necessary *)
   t_ret'
