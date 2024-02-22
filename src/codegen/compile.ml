@@ -1133,6 +1133,9 @@ module RTS = struct
     E.add_func_import env "rts" "stream_shutdown" [I32Type] [];
     E.add_func_import env "rts" "stream_reserve" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "stream_stable_dest" [I32Type; I64Type; I64Type] [];
+    Flags.M.iter (fun name type_string ->
+      E.add_func_import env "rts" name [I32Type] [I32Type] (* TODO: parse type string *)
+    ) !Flags.rts_functions;
     if !Flags.gc_strategy = Flags.Incremental then
       incremental_gc_imports env
     else
