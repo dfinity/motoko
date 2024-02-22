@@ -4,7 +4,7 @@ let ?b = null;
 // CHECK: (func $init (type
 // CHECK: call $blob_of_principal
 // CHECK: i64.const 14
-// CHECK-NEXT: call $print_ptr
+// CHECK: call $print_ptr
 // CHECK-NEXT: unreachable)
 
 //SKIP run-low

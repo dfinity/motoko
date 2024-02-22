@@ -2,7 +2,7 @@
 import { errorMessage; performanceCounter; rts_heap_size; rts_max_stack_size; debugPrint; } = "mo:⛔";
 
 actor stack {
-    let expectedMinimumSize = 19_000;
+    let expectedMinimumSize = 31_000;
 
     public func ser() : async () { await go(false) };
     public func deser() : async () { await go(true) };
