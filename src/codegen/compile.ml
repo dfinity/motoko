@@ -67,7 +67,7 @@ let parse_rts_function_type (str : string) : (value_type list * value_type list,
   | "" :: ts -> parse a b return_side had_unit ts
   | t :: ts -> parse (parse_value_type t :: a) b return_side had_unit ts in
   str
-  |> Str.split (Str.regexp "[ ,]+")
+  |> String.split_on_char ' '
   |> parse [] [] false false
 
 module StaticBytes = struct
