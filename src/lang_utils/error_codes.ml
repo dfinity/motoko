@@ -198,4 +198,6 @@ let error_codes : (string * string option) list =
     "M0192", None; (* Object/Actor/Module body type mismatch *)
     "M0193", None; (* Can't declare actor class to have `async*` result *)
     "M0194", None; (* Sends not allowed in functions with user-annotated `async` demand *)
+    "M0195", None; (* warn that `async` demand is getting passed behind the scenes *)
+    "M0196", None; (* warn that `async` demand is not necessary, while being passed explicitly, and could be exploited by callee *)
   ]
