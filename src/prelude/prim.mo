@@ -334,11 +334,11 @@ func cyclesRefunded() : Nat {
   @refund;
 };
 
-func cyclesAccept(amount : Nat) : Nat {
+func cyclesAccept<async>(amount : Nat) : Nat {
   (prim "cyclesAccept" : Nat -> Nat)(amount);
 };
 
-func cyclesAdd(amount : Nat) : () {
+func cyclesAdd<async>(amount : Nat) : () {
   if (amount == 0) return;
   @cycles += amount;
   // trap if @cycles would exceed 2^128

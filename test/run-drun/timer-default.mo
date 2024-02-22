@@ -26,6 +26,12 @@ actor {
   func this_should_warn<async>() {
      ignore setTimer(1, false, func () : async () { });
      ignore setTimer<>(1, false, func () : async () { });
+  };
+
+  func warn2() : async* () {
+      this_should_warn<async>();   // OK: this line is fine
+      this_should_warn();          // call should warn
+      debugPrint<async>("caveat"); // call should warn
   }
 };
 
