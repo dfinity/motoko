@@ -60,12 +60,12 @@ let parse_rts_function_type (str : string) : (value_type list * value_type list,
     | [], false -> Error "expected '()'"
     | _ :: _, true -> Error "unexpected '()'"
     | _, _ -> next () in
-  let rec parse a b had_arrow had_unit = function
-  | [] -> if had_arrow then check_unit a had_unit (fun () -> Ok (b, a)) else Error "unexpected end of input"
-  | "->" :: ts -> if had_arrow then Error "duplicate '->'" else check_unit a had_unit (fun () -> parse b a true false ts)
-  | "()" :: ts -> if had_unit then Error "duplicate '()'" else parse a b had_arrow had_unit ts
-  | "" :: ts -> parse a b had_arrow had_unit ts
-  | t :: ts -> parse (parse_value_type t :: a) b had_arrow had_unit ts in
+  let rec parse a b seen_arrow seen_unit = function
+  | [] -> if seen_arrow then check_unit a seen_unit (fun () -> Ok (b, a)) else Error "unexpected end of input"
+  | "->" :: ts -> if seen_arrow then Error "duplicate '->'" else check_unit a seen_unit (fun () -> parse b a true false ts)
+  | "()" :: ts -> if seen_unit then Error "duplicate '()'" else parse a b seen_arrow seen_unit ts
+  | "" :: ts -> parse a b seen_arrow seen_unit ts
+  | t :: ts -> parse (parse_value_type t :: a) b seen_arrow seen_unit ts in
   str
   |> String.split_on_char ' '
   |> parse [] [] false false
