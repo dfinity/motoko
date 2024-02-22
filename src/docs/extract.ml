@@ -138,7 +138,7 @@ struct
           _;
         } -> (
         match rhs with
-        | Source.{ it = Syntax.ObjBlockE (sort, _, fields); _ } ->
+        | Source.{ it = Syntax.ObjBlockE (sort, _, _bs, fields); _ } ->
             let mk_field_xref xref = mk_xref (Xref.XClass (name, xref)) in
             Some
               ( mk_xref (Xref.XType name),

@@ -101,7 +101,7 @@ let rec exp msgs e : f = match e.it with
   | FromCandidE e       -> exp msgs e
   | TupE es             -> exps msgs es
   | ProjE (e, i)        -> exp msgs e
-  | ObjBlockE (s, _, dfs) ->
+  | ObjBlockE (s, _, _, dfs) ->
     (* For actors, this may be too permissive; to be revised when we work on actors again *)
     group msgs (dec_fields msgs dfs)
   | ObjE (bases, efs)   -> exps msgs bases ++ exp_fields msgs efs

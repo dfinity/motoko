@@ -90,7 +90,8 @@ and exp' at note = function
       (breakE "!" (nullE()))
       (* case ? v : *)
       (varP v) (varE v) ty).it
-  | S.ObjBlockE (s, _t, dfs) ->
+  | S.ObjBlockE (s, _t, _bs, dfs) ->
+    assert (s.it <> Actor);
     obj_block at s None dfs note.Note.typ
   | S.ObjE (bs, efs) ->
     obj note.Note.typ efs bs
@@ -442,7 +443,7 @@ and export_footprint self_id expr =
   [{ it = I.{ name = lab; var = v }; at = no_region; note = typ }])
 
 
-and build_actor at ts self_id es obj_typ =
+and build_actor at ts self_id es obj_typ = (*assert false;*)
   let candid = build_candid ts obj_typ in
   let fs = build_fields obj_typ in
   let es = List.filter (fun ef -> is_not_typD ef.it.S.dec) es in
@@ -983,18 +984,18 @@ let import_compiled_class (lib : S.comp_unit) wasm : import_declaration =
 let import_prelude prelude : import_declaration =
   decs prelude.it
 
-let inject_decs extra_ds u =
+let inject_decs extra_ds =
   let open Ir in
-  match u with
+  function
   | LibU (ds, exp) -> LibU (extra_ds @ ds, exp)
   | ProgU ds -> ProgU (extra_ds @ ds)
   | ActorU (None, ds, fs, up, t) ->
-    Ir.ActorU (None, extra_ds @ ds, fs, up, t)
-  | ActorU (Some _, _, _, _, _) ->
-    let u'= Rename.comp_unit Rename.Renaming.empty u in
+    ActorU (None, extra_ds @ ds, fs, up, t)
+  | ActorU (Some _, _, _, _, _) as u ->
+    let u' = Rename.comp_unit Rename.Renaming.empty u in
     match u' with
     | ActorU (as_opt, ds, fs, up, t) ->
-      Ir.ActorU (as_opt, extra_ds @ ds, fs, up, t)
+      ActorU (as_opt, extra_ds @ ds, fs, up, t)
     | _ -> assert false
 
 let link_declarations imports (cu, flavor) =

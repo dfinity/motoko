@@ -218,7 +218,7 @@ let prog_imports (p : prog): (url * resolved_import ref * region) list =
   let f e = match e.it with
     | ImportE (f, fp) -> res := (f, fp, e.at) ::!res; e
     | _ -> e in
-  let _ = ignore (Traversals.over_prog f p) in
+  let _ = Traversals.over_prog f p in
   List.rev !res
 
 type actor_idl_path = filepath option

@@ -10,8 +10,9 @@ module T = Type
 module A = Effect
 module C = Async_cap
 
-
 (* Contexts  *)
+
+module Scope = Scope.Make (Syntax)
 
 (* availability, used to mark actor constructors as unavailable in compiled code
    FUTURE: mark unavailable, non-shared variables *)
@@ -33,6 +34,12 @@ let initial_scope =
     Scope.con_env = T.ConSet.singleton C.top_cap;
   }
 
+let interesting dec = match dec.it with
+  | ClassD (_, id, _, _, _, {it = T.Actor; _}, _, _) when id.it = "Ext" -> true
+  | _ -> false
+
+let interestings = List.exists interesting
+
 
 type env =
   { vals : val_env;
@@ -40,6 +47,7 @@ type env =
     typs : Scope.typ_env;
     cons : Scope.con_env;
     objs : Scope.obj_env;
+    mixs : Scope.mix_env;
     labs : lab_env;
     rets : ret_env;
     async : C.async_cap;
@@ -57,6 +65,7 @@ let env_of_scope msgs scope =
     libs = scope.Scope.lib_env;
     typs = scope.Scope.typ_env;
     cons = scope.Scope.con_env;
+    mixs = scope.Scope.mix_env;
     objs = T.Env.empty;
     labs = T.Env.empty;
     rets = None;
@@ -166,6 +175,7 @@ let adjoin env scope =
     typs = T.Env.adjoin env.typs scope.Scope.typ_env;
     cons = T.ConSet.union env.cons scope.Scope.con_env;
     objs = T.Env.adjoin env.objs scope.Scope.obj_env;
+    mixs = T.Env.adjoin env.mixs scope.Scope.mix_env;
   }
 
 let adjoin_vals env ve = {env with vals = T.Env.adjoin env.vals (available ve)}
@@ -646,7 +656,7 @@ and check_typ_binds_acyclic env typ_binds cs ts  =
 
 and check_typ_bind_sorts env tbs =
   (* assert, don't error, since this should be a syntactic invariant of parsing *)
-  List.iteri (fun i tb -> assert (i = 0 || (tb.T.sort = T.Type))) tbs;
+  List.iteri (fun i tb -> assert (i = 0 || tb.T.sort = T.Type)) tbs;
 
 and check_typ_binds env typ_binds : T.con list * T.bind list * Scope.typ_env * Scope.con_env =
   let xs = List.map (fun typ_bind -> typ_bind.it.var.it) typ_binds in
@@ -788,8 +798,7 @@ and check_inst_bounds env sort tbs inst at =
      (break) == 0
 *)
 
-let is_explicit_lit l =
-  match l with
+let is_explicit_lit = function
   | BoolLit _ -> true
   | _ -> false
 
@@ -826,7 +835,7 @@ let rec is_explicit_exp e =
   | ObjE (bases, efs) ->
     List.(for_all is_explicit_exp bases
           && for_all (fun (ef : exp_field) -> is_explicit_exp ef.it.exp) efs)
-  | ObjBlockE (_, _, dfs) ->
+  | ObjBlockE (_, _, _, dfs) ->
     List.for_all (fun (df : dec_field) -> is_explicit_dec df.it.dec) dfs
   | ArrayE (_, es) -> List.exists is_explicit_exp es
   | SwitchE (e1, cs) | TryE (e1, cs) ->
@@ -1135,13 +1144,14 @@ and infer_exp'' env exp : T.typ =
         "expected tuple type, but expression produces type%a"
         display_typ_expand t1
     )
-  | ObjBlockE (obj_sort, typ_opt, dec_fields) ->
+  | ObjBlockE (obj_sort, typ_opt, _bs, dec_fields) ->
     if obj_sort.it = T.Actor then begin
-      error_in [Flags.WASIMode; Flags.WasmMode] env exp.at "M0068"
+      error_in Flags.[WASIMode; WasmMode] env exp.at "M0068"
         "actors are not supported";
       match context with
-      | (AsyncE _ :: AwaitE _ :: _ :: _ ) ->
-         error_in [Flags.ICMode; Flags.RefMode] env exp.at "M0069"
+      | AsyncE _ :: AwaitE _ :: ObjBlockE _ :: _ -> ()
+      | AsyncE _ :: AwaitE _ :: _ :: _ ->
+         error_in Flags.[ICMode; RefMode] env exp.at "M0069"
            "non-toplevel actor; an actor can only be declared at the toplevel of a program"
       | _ -> ()
     end;
@@ -1150,6 +1160,10 @@ and infer_exp'' env exp : T.typ =
         { env with async = C.NullCap; in_actor = true }
       else env
     in
+    if _bs <> [] then begin
+        assert (Type.Env.mem "Ext" env.mixs);
+        end;
+    let _bases = List.map (fun er -> infer_exp { env' with async = C.initial_cap ()(*HACK*) } !er) _bs in
     let t = infer_obj env' obj_sort.it dec_fields exp.at in
     begin match env.pre, typ_opt with
       | false, Some typ ->
@@ -1293,10 +1307,10 @@ and infer_exp'' env exp : T.typ =
     )
   | FuncE (_, shared_pat, typ_binds, pat, typ_opt, _sugar, exp1) ->
     if not env.pre && not in_actor && T.is_shared_sort shared_pat.it then begin
-      error_in [Flags.WASIMode; Flags.WasmMode] env exp1.at "M0076"
+      error_in Flags.[WASIMode; WasmMode] env exp1.at "M0076"
         "shared functions are not supported";
       if not in_actor then
-        error_in [Flags.ICMode; Flags.RefMode] env exp1.at "M0077"
+        error_in Flags.[ICMode; RefMode] env exp1.at "M0077"
           "a shared function is only allowed as a public field of an actor";
     end;
     let typ = match typ_opt with
@@ -1475,7 +1489,7 @@ and infer_exp'' env exp : T.typ =
     end;
     T.Non
   | AsyncE (s, typ_bind, exp1) ->
-    error_in [Flags.WASIMode; Flags.WasmMode] env exp1.at "M0086"
+    error_in Flags.[WASIMode; WasmMode] env exp1.at "M0086"
       "async expressions are not supported";
     let t1, next_cap = check_AsyncCap env "async expression" exp.at in
     let c, tb, ce, cs = check_typ_bind env typ_bind in
@@ -1492,6 +1506,8 @@ and infer_exp'' env exp : T.typ =
       error_shared env t' exp1.at "M0033" "async type has non-shared content type%a"
         display_typ_expand t';
     T.Async (s, t1, t')
+  | AwaitE (T.Fut, { it = AsyncE (T.Fut, _, ({it = ObjBlockE ({ it = T.Actor; _}, _t, _bs, fields); _ } as actor)) ; _  }) ->
+     infer_exp_promote env actor
   | AwaitE (s, exp1) ->
     let t0 = check_AwaitCap env "await" exp.at in
     let t1 = infer_exp_promote env exp1 in
@@ -1651,7 +1667,7 @@ and check_exp' env0 t exp : T.typ =
     List.iter (check_exp env (T.as_immut t')) exps;
     t
   | AsyncE (s1, tb, exp1), T.Async (s2, t1', t') ->
-    error_in [Flags.WASIMode; Flags.WasmMode] env exp1.at "M0086"
+    error_in Flags.[WASIMode; WasmMode] env exp1.at "M0086"
       "async expressions are not supported";
     let t1, next_cap = check_AsyncCap env "async expression" exp.at in
     if s1 <> s2 then begin
@@ -1707,7 +1723,7 @@ and check_exp' env0 t exp : T.typ =
   | FuncE (_, shared_pat,  [], pat, typ_opt, _sugar, exp), T.Func (s, c, [], ts1, ts2) ->
     let sort, ve = check_shared_pat env shared_pat in
     if not env.pre && not env0.in_actor && T.is_shared_sort sort then
-      error_in [Flags.ICMode; Flags.RefMode] env exp.at "M0077"
+      error_in Flags.[ICMode; RefMode] env exp.at "M0077"
         "a shared function is only allowed as a public field of an actor";
     let ve1 = check_pat_exhaustive (if T.is_shared_sort sort then local_error else warn) env (T.seq ts1) pat in
     let ve2 = T.Env.adjoin ve ve1 in
@@ -1963,7 +1979,7 @@ and check_shared_pat env shared_pat : T.func_sort * Scope.val_env =
   | T.Local -> T.Local, T.Env.empty
   | T.Shared (ss, pat) ->
     if pat.it <> WildP then
-      error_in [Flags.WASIMode; Flags.WasmMode] env pat.at "M0106" "shared function cannot take a context pattern";
+      error_in Flags.[WASIMode; WasmMode] env pat.at "M0106" "shared function cannot take a context pattern";
     T.Shared ss, check_pat_exhaustive local_error env T.ctxt pat
 
 and check_class_shared_pat env shared_pat obj_sort : Scope.val_env =
@@ -1975,7 +1991,7 @@ and check_class_shared_pat env shared_pat obj_sort : Scope.val_env =
     if sort <> T.Actor then
       error env pat.at "M0107" "non-actor class cannot take a context pattern";
     if pat.it <> WildP then
-      error_in [Flags.WASIMode; Flags.WasmMode] env pat.at "M0108" "actor class cannot take a context pattern";
+      error_in Flags.[WASIMode; WasmMode] env pat.at "M0108" "actor class cannot take a context pattern";
     if mode = T.Query then
       error env shared_pat.at "M0109" "class cannot be a query";
     check_pat_exhaustive local_error env T.ctxt pat
@@ -2270,7 +2286,7 @@ and infer_obj env s dec_fields at : T.typ =
       ) dec_fields;
       List.iter (fun df ->
         if df.it.vis.it = Syntax.Private && is_actor_method df.it.dec then
-          error_in [Flags.ICMode; Flags.RefMode] env df.it.dec.at "M0126"
+          error_in Flags.[ICMode; RefMode] env df.it.dec.at "M0126"
             "a shared function cannot be private"
       ) dec_fields;
     end;
@@ -2383,7 +2399,8 @@ and infer_block_decs env decs at : Scope.t =
   let _scope_ce = infer_block_typdecs env'' decs in
   (* TBR: assertion does not work for types with binders, due to stamping *)
   (* assert (scope_ce = _scope_ce); *)
-  infer_block_valdecs (adjoin env'' scope_ce) decs scope_ce
+  { (infer_block_valdecs (adjoin env'' scope_ce) decs scope_ce) with mix_env = scope.mix_env }
+
 
 and infer_block_exps env decs : T.typ =
   match decs with
@@ -2524,8 +2541,8 @@ and gather_dec env scope dec : Scope.t =
   (* TODO: generalize beyond let <id> = <obje> *)
   | LetD (
       {it = VarP id; _},
-      ( {it = ObjBlockE (obj_sort, _, dec_fields); at; _}
-      | {it = AwaitE (_,{ it = AsyncE (_, _, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, _, dec_fields); at; _}) ; _  }); _ }),
+      ( {it = ObjBlockE (obj_sort, _, _bs, dec_fields); at; _}
+      | {it = AwaitE (_,{ it = AsyncE (_, _, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, _, _bs, dec_fields); at; _}) ; _  }); _ }),
        _
     ) ->
     let decs = List.map (fun df -> df.it.dec) dec_fields in
@@ -2535,21 +2552,16 @@ and gather_dec env scope dec : Scope.t =
     let scope' = gather_block_decs env decs in
     let ve' = T.Env.add id.it (object_of_scope env obj_sort.it dec_fields scope' at) scope.val_env in
     let obj_env = T.Env.add id.it scope' scope.obj_env in
-    { val_env = ve';
-      typ_env = scope.typ_env;
-      lib_env = scope.lib_env;
-      con_env = scope.con_env;
-      obj_env = obj_env
-    }
+    { scope with val_env = ve'; obj_env }
   | LetD (pat, _, _) -> Scope.adjoin_val_env scope (gather_pat env scope.Scope.val_env pat)
   | VarD (id, _) -> Scope.adjoin_val_env scope (gather_id env scope.Scope.val_env id)
   | TypD (id, binds, _) | ClassD (_, id, binds, _, _, _, _, _) ->
     let open Scope in
     if T.Env.mem id.it scope.typ_env then
       error_duplicate env "type " id;
-    let binds' = match dec.it with
-      | ClassD(_, _, _, _, _,  {it = T.Actor; _}, _, _) -> List.tl binds
-      | _ -> binds
+    let binds', mix_env = match dec.it with
+      | ClassD(_, _, _, _, _,  {it = T.Actor; _}, _, _) -> List.tl binds, T.Env.add id.it dec scope.mix_env
+      | _ -> binds, scope.mix_env
     in
     let pre_tbs = List.map (fun bind ->
       { T.var = bind.it.var.it;
@@ -2564,16 +2576,18 @@ and gather_dec env scope dec : Scope.t =
     in
     let val_env = match dec.it with
       | ClassD _ ->
+          assert (Type.Env.mem "Ext" mix_env);
         if T.Env.mem id.it scope.val_env then
           error_duplicate env "" id;
         T.Env.add id.it T.Pre scope.val_env
       | _ -> scope.val_env
-    in
-    { val_env;
+    in begin match dec.it with
+       | ClassD(_, _, _, _, _,  {it = T.Actor; _}, _, _) -> assert (Type.Env.mem "Ext" mix_env)
+       | _ -> () end;
+    { scope
+      with val_env; mix_env;
       typ_env = T.Env.add id.it c scope.typ_env;
-      con_env = T.ConSet.disjoint_add c scope.con_env;
-      lib_env = scope.lib_env;
-      obj_env = scope.obj_env;
+      con_env = T.ConSet.disjoint_add c scope.con_env
     }
 
 and gather_pat env ve pat : Scope.val_env =
@@ -2607,8 +2621,8 @@ and infer_dec_typdecs env dec : Scope.t =
   (* TODO: generalize beyond let <id> = <obje> *)
   | LetD (
       {it = VarP id; _},
-      ( {it = ObjBlockE (obj_sort, _t, dec_fields); at; _}
-      | {it = AwaitE (_, { it = AsyncE (_, _, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, _t, dec_fields); at; _}) ; _  }); _ }),
+      ( {it = ObjBlockE (obj_sort, _t, _bs, dec_fields); at; _}
+      | {it = AwaitE (_, { it = AsyncE (_, _, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, _t, _bs, dec_fields); at; _}) ; _  }); _ }),
         _
     ) ->
     let decs = List.map (fun {it = {vis; dec; _}; _} -> dec) dec_fields in
@@ -2677,6 +2691,63 @@ and infer_block_valdecs env decs scope : Scope.t =
     ) (env, scope) decs
   in scope'
 
+and mixin_valdecs env decs scope : Scope.t =
+  let _, scope' =
+    List.fold_left (fun (env, scope) dec ->
+      let scope' = dec_valdecs env dec in
+      adjoin env scope', Scope.adjoin scope scope'
+    ) (env, scope) decs
+  in scope'
+
+and dec_valdecs env dec : Scope.t =
+  match dec.it with
+  | ExpD _ ->
+    Scope.empty
+  | LetD (pat, exp, fail) ->
+    let ve' = check_pat' env (pat.note) pat
+    in
+    Scope.{empty with val_env = ve'}
+  | VarD (id, exp) ->
+    let t = exp.note.note_typ in
+    Scope.{empty with val_env = T.Env.singleton id.it (T.Mut t)}
+  | TypD (id, _, _) ->
+    let c = Option.get id.note in
+    Scope.{ empty with
+      typ_env = T.Env.singleton id.it c;
+      con_env = T.ConSet.singleton c;
+    }
+(*  | ClassD (_shared_pat, id, typ_binds, pat, _, obj_sort, _, _) ->
+    if obj_sort.it = T.Actor then begin
+      error_in Flags.[WASIMode; WasmMode] env dec.at "M0138" "actor classes are not supported";
+      if not env.in_prog then
+        error_in Flags.[ICMode; RefMode] env dec.at "M0139"
+          "inner actor classes are not supported yet; any actor class must come last in your program";
+      if not (List.length typ_binds = 1) then
+        local_error env dec.at "M0140"
+          "actor classes with type parameters are not supported yet";
+    end;
+    let cs, tbs, te, ce = check_typ_binds env typ_binds in
+    let env' = adjoin_typs env te ce in
+    let c = T.Env.find id.it env.typs in
+    let t1, _ = infer_pat {env' with pre = true} pat in
+    let ts1 = match pat.it with TupP _ -> T.seq_of_tup t1 | _ -> [t1] in
+    let t2 =
+      if obj_sort.it = T.Actor then
+        T.Async (T.Fut, T.Con (List.hd cs, []),
+          T.Con (c, List.map (fun c -> T.Con (c, [])) (List.tl cs)))
+      else
+        T.Con (c, List.map (fun c -> T.Con (c, [])) cs)
+    in
+    let t = T.Func (T.Local, T.Returns, T.close_binds cs tbs,
+      List.map (T.close cs) ts1,
+      [T.close cs t2])
+    in
+    Scope.{ empty with
+      val_env = T.Env.singleton id.it t;
+      typ_env = T.Env.singleton id.it c;
+      con_env = T.ConSet.singleton c;
+    }*)
+
 and is_import d =
   match d.it with
   | LetD (_, {it = ImportE _; _}, None) -> true
@@ -2689,18 +2760,34 @@ and infer_dec_valdecs env dec : Scope.t =
   (* TODO: generalize beyond let <id> = <obje> *)
   | LetD (
       {it = VarP id; _} as pat,
-      ( {it = ObjBlockE (obj_sort, _t, dec_fields); at; _}
-      | {it = AwaitE (_, { it = AsyncE (_, _, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, _t, dec_fields); at; _}) ; _ }); _ }),
+      ( {it = ObjBlockE (obj_sort, _t, _bs, dec_fields); at; _}
+      | {it = AwaitE (_, { it = AsyncE (_, _, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, _t, _bs, dec_fields); at; _}) ; _ }); _ }),
         _
-    ) ->
+      ) ->
+     let mixin_fields = if _bs <> [] then begin
+                          let build mix = match T.Env.find_opt mix env.mixs with
+                            | None -> assert false
+                            | Some { it = ClassD (_shared_pat, id, typ_binds, pat, _, {it = T.Actor}, _, dec_fields) } -> dec_fields
+                            | _ -> assert false in
+                          let separate er = match !er with
+                            | { it = CallE ({ it = VarE { it = mix; _ }; _ } , { it = None; _ }, _exp2); _ } -> assert (T.Env.mem mix env.mixs); build mix
+                            | _ -> [] in
+                          let mixins = List.concat_map separate _bs in
+                          (*assert (T.Env.mem "Ext" env.vals);*)
+                          [] @ mixins
+                       end
+                     else [] in
     let decs = List.map (fun df -> df.it.dec) dec_fields in
     let obj_scope = T.Env.find id.it env.objs in
+    (* Maybe save the valenv/objscope and don't recompute? *)
+    let obj_scope = mixin_valdecs env (List.map (fun df -> df.it.dec) mixin_fields) obj_scope in
+
     let obj_scope' =
       infer_block_valdecs
         (adjoin {env with pre = true} obj_scope)
         decs obj_scope
     in
-    let obj_typ = object_of_scope env obj_sort.it dec_fields obj_scope' at in
+    let obj_typ = object_of_scope env obj_sort.it (dec_fields @ mixin_fields) obj_scope' at in
     let _ve = check_pat env obj_typ pat in
     Scope.{empty with val_env = T.Env.singleton id.it obj_typ}
   | LetD (pat, exp, fail) ->
@@ -2721,9 +2808,9 @@ and infer_dec_valdecs env dec : Scope.t =
     }
   | ClassD (_shared_pat, id, typ_binds, pat, _, obj_sort, _, _) ->
     if obj_sort.it = T.Actor then begin
-      error_in [Flags.WASIMode; Flags.WasmMode] env dec.at "M0138" "actor classes are not supported";
+      error_in Flags.[WASIMode; WasmMode] env dec.at "M0138" "actor classes are not supported";
       if not env.in_prog then
-        error_in [Flags.ICMode; Flags.RefMode] env dec.at "M0139"
+        error_in Flags.[ICMode; RefMode] env dec.at "M0139"
           "inner actor classes are not supported yet; any actor class must come last in your program";
       if not (List.length typ_binds = 1) then
         local_error env dec.at "M0140"
@@ -2784,7 +2871,7 @@ let check_actors scope progs : unit Diag.result =
           | [] -> ()
           | (d::ds') when is_actor_dec d ->
             if ds <> [] || ds' <> []  then
-              error_in [Flags.ICMode; Flags.RefMode] env d.at "M0141"
+              error_in Flags.[ICMode; RefMode] env d.at "M0141"
                 "an actor or actor class must be the only non-imported declaration in a program"
           | (d::ds') when is_import d -> go ds ds'
           | (d::ds') -> go (d::ds) ds'
@@ -2792,6 +2879,7 @@ let check_actors scope progs : unit Diag.result =
         go [] prog
         ) progs
     )
+
 
 let check_lib scope lib : Scope.t Diag.result =
   Diag.with_message_store
@@ -2801,7 +2889,9 @@ let check_lib scope lib : Scope.t Diag.result =
           let env = env_of_scope msgs scope in
           let { imports; body = cub; _ } = lib.it in
           let (imp_ds, ds) = CompUnit.decs_of_lib lib in
-          let typ, _ = infer_block env (imp_ds @ ds) lib.at in
+          let typ, Scope.{ mix_env; _ } = infer_block env (imp_ds @ ds) lib.at in
+          assert (Type.Env.mem "Ext" mix_env);
+          let env = { env with mixs = mix_env } (* FIXME: adjoin? *) in
           List.iter2 (fun import imp_d -> import.note <- imp_d.note.note_typ) imports imp_ds;
           cub.note <- {note_typ = typ; note_eff = T.Triv};
           let imp_typ = match cub.it with
@@ -2814,7 +2904,7 @@ let check_lib scope lib : Scope.t Diag.result =
                 warn env r "M0142" "deprecated syntax: an imported library should be a module or named actor class"
               end;
               typ
-            | ActorClassU  (sp, id, tbs, p, _, self_id, dec_fields) ->
+            | ActorClassU  (sp, id, tbs, p, _, self_id, dec_fields) ->(*failwith "ActorClassU";*)
               if is_anon_id id then
                 error env cub.at "M0143" "bad import: imported actor class cannot be anonymous";
               let cs = List.map (fun tb -> Option.get tb.note) tbs in
@@ -2840,8 +2930,8 @@ let check_lib scope lib : Scope.t Diag.result =
             | ProgU _ ->
               (* this shouldn't really happen, as an imported program should be rewritten to a module *)
               error env cub.at "M0000" "compiler bug: expected a module or actor class but found a program, i.e. a sequence of declarations"
-          in
-          Scope.lib lib.note.filename imp_typ
+          in assert (Type.Env.mem "Ext" env.mixs);
+          { (Scope.lib lib.note.filename imp_typ) with mix_env = env.mixs }
         ) lib
     )
 

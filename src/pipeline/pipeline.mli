@@ -3,6 +3,7 @@ open Mo_config
 open Mo_types
 
 module ResolveImport = Resolve_import
+open Scope.Make (Syntax)
 
 type no_region_parse_fn = string -> (Syntax.prog * string) Diag.result
 type parse_fn = Source.region -> no_region_parse_fn
@@ -21,9 +22,9 @@ val stable_compatible : string -> string -> unit Diag.result
 
 val generate_idl : string list -> Idllib.Syntax.prog Diag.result
 
-val initial_stat_env : Scope.scope
-val chase_imports : parse_fn -> Scope.scope -> Resolve_import.resolved_imports ->
-  (Syntax.lib list * Scope.scope) Diag.result
+val initial_stat_env : scope
+val chase_imports : parse_fn -> scope -> Resolve_import.resolved_imports ->
+  (Syntax.lib list * scope) Diag.result
 
 val run_files           : string list -> unit option
 val run_stdin_from_file : string list -> string -> Mo_values.Value.value option
@@ -37,5 +38,5 @@ val compile_files : Flags.compile_mode -> bool -> string list -> compile_result
 
 (* For use in the IDE server *)
 type load_result =
-  (Syntax.lib list * Syntax.prog list * Scope.scope) Diag.result
-val load_progs : parse_fn -> string list -> Scope.scope -> load_result
+  (Syntax.lib list * Syntax.prog list * scope) Diag.result
+val load_progs : parse_fn -> string list -> scope -> load_result

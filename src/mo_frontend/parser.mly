@@ -108,7 +108,7 @@ let is_sugared_func_or_module dec = match dec.it with
   | LetD({it = VarP _; _} as pat, exp, None) ->
     dec.at = pat.at && pat.at = exp.at &&
     (match exp.it with
-    | ObjBlockE (sort, _, _) ->
+    | ObjBlockE (sort, _, _, _) ->
       sort.it = Type.Module
     | FuncE _ ->
       true
@@ -189,13 +189,13 @@ let share_dec_field (df : dec_field) =
       }
     else df
 
-and objblock s ty dec_fields =
+and objblock s ty dec_bases dec_fields =
   List.iter (fun df ->
     match df.it.vis.it, df.it.dec.it with
     | Public _, ClassD (_, id, _, _, _, _, _, _) when is_anon_id id ->
       syntax_error df.it.dec.at "M0158" "a public class cannot be anonymous, please provide a name"
     | _ -> ()) dec_fields;
-  ObjBlockE(s, ty, dec_fields)
+  ObjBlockE(s, ty, List.map ref dec_bases, dec_fields)
 
 %}
 
@@ -560,7 +560,7 @@ bl : DISALLOWED { PrimE("dummy") @? at $sloc }
 exp_obj :
   | LCURLY efs=seplist(exp_field, semicolon) RCURLY
     { ObjE ([], efs) @? at $sloc }
-  | LCURLY base=exp_post(ob) AND bases=separated_nonempty_list(AND, exp_post(ob)) RCURLY
+  | LCURLY base=exp_post(ob) bases=preceded(AND, exp_post(ob))+ RCURLY
     { ObjE (base :: bases, []) @? at $sloc }
   | LCURLY bases=separated_nonempty_list(AND, exp_post(ob)) WITH efs=seplist1(exp_field, semicolon) RCURLY
     { ObjE (bases, efs) @? at $sloc }
@@ -850,7 +850,7 @@ dec_nonvar :
       LetD (p', e', None) @? at $sloc }
   | TYPE x=typ_id tps=typ_params_opt EQ t=typ
     { TypD(x, tps, t) @? at $sloc }
-  | s=obj_sort xf=id_opt t=annot_opt EQ? efs=obj_body
+  | s=obj_sort xf=id_opt t=annot_opt EQ? efs=obj_body bases=preceded(AND, exp_post(ob))*
     { let sort = Type.(match s.it with
                        | Actor -> "actor" | Module -> "module" | Object -> "object"
                        | _ -> assert false) in
@@ -860,9 +860,9 @@ dec_nonvar :
           AwaitE
             (Type.Fut,
              AsyncE(Type.Fut, scope_bind (anon_id "async" (at $sloc)) (at $sloc),
-                    objblock s t (List.map share_dec_field efs) @? at $sloc)
+                    objblock s t bases (List.map share_dec_field efs) @? at $sloc)
              @? at $sloc) @? at $sloc
-        else objblock s t efs @? at $sloc
+        else objblock s t bases efs @? at $sloc
       in
       let_or_exp named x e.it e.at }
   | sp=shared_pat_opt FUNC xf=id_opt
@@ -885,6 +885,11 @@ dec_nonvar :
         else (dfs, tps, t)
       in
       ClassD(sp, xf "class" $sloc, tps', p, t', s, x, dfs') @? at $sloc }
+  | ACTOR MODULE xf=typ_id_opt p=pat_plain cb=class_body
+    { let x, dfs = cb in
+      let dfs' = List.map share_dec_field dfs
+      in
+      ClassD(Type.Local @@ no_region, xf "module" $sloc, ensure_scope_bind "" [], p, None, Type.Actor @@ no_region, x, dfs') @? at $sloc }
 
 dec :
   | d=dec_var

@@ -11,6 +11,7 @@ open Mo_config
 open Printf
 
 module ResolveImport = Resolve_import
+module Scope = Scope.Make (Syntax)
 
 type stat_env = Scope.t
 type dyn_env = Interpret.scope
@@ -210,11 +211,21 @@ let rec check_progs senv progs : Scope.scope Diag.result =
 
 let check_lib senv lib : Scope.scope Diag.result =
   let filename = lib.Source.note.Syntax.filename in
-  phase "Checking" (Filename.basename filename);
+  phase "CheckingX" (Filename.basename filename);
   let open Diag.Syntax in
   let* sscope = Typing.check_lib senv lib in
-  phase "Definedness" (Filename.basename filename);
+  phase "DefinednessX" (Filename.basename filename);
   let* () = Definedness.check_lib lib in
+
+
+  (*printf "FILE %s %d\n" filename (Type.Env.keys sscope.Scope.typ_env |> List.length);
+  assert (not (Type.Env.is_empty sscope.Scope.val_env));*)
+  assert (Type.Env.mem "Ext" sscope.Scope.mix_env);
+  (*ObjEnv.mix_env?
+      print_ce senv.Scope.con_env;*)
+
+
+
   Diag.return sscope
 
 let lib_of_prog f prog : Syntax.lib  =
@@ -338,7 +349,7 @@ type load_decl_result =
 
 let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.result =
   (*
-  This function loads and type-checkes the files given in `imports`,
+  This function loads and type-checks the files given in `imports`,
   including any further dependencies.
 
   The resulting `Syntax.libraries` list is in dependency order. To achieve this,
@@ -384,6 +395,7 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
         let* () = go_set more_imports in
         let lib = lib_of_prog f prog in
         let* sscope = check_lib !senv lib in
+  assert (Type.Env.mem "Ext" sscope.Scope.mix_env);
         libs := lib :: !libs; (* NB: Conceptually an append *)
         senv := Scope.adjoin !senv sscope;
         pending := remove ri.Source.it !pending;
@@ -424,6 +436,7 @@ let load_progs parsefn files senv : load_result =
   let libs = List.concat_map snd rs in
   let* libs, senv' = chase_imports parsefn senv libs in
   let* senv'' = check_progs senv' progs' in
+  (*assert (Type.Env.mem "Ext" senv''.Scope.mix_env);*)
   Diag.return (libs, progs', senv'')
 
 let load_decl parse_one senv : load_decl_result =

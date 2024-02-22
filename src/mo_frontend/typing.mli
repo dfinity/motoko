@@ -2,7 +2,8 @@ open Mo_def
 open Mo_types
 
 open Type
-open Scope
+
+open Scope.Make (Syntax)
 
 val initial_scope : scope
 val infer_prog : scope -> Async_cap.async_cap -> Syntax.prog -> (typ * scope) Diag.result

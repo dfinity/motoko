@@ -482,7 +482,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | _ -> assert false)
   | ProjE (exp1, n) ->
     interpret_exp env exp1 (fun v1 -> k (List.nth (V.as_tup v1) n))
-  | ObjBlockE (obj_sort, _, dec_fields) ->
+  | ObjBlockE (obj_sort, _, _bs, dec_fields) ->
     interpret_obj env obj_sort.it dec_fields k
   | ObjE (exp_bases, exp_fields) ->
     let fields fld_env = interpret_exp_fields env exp_fields fld_env (fun env -> k (V.Obj env)) in
@@ -883,7 +883,7 @@ and interpret_obj env obj_sort dec_fields (k : V.value V.cont) =
   | T.Actor ->
      let self = V.fresh_id() in
      let ve_ex, ve_in = declare_dec_fields dec_fields V.Env.empty V.Env.empty in
-     let env' = adjoin_vals { env with self = self } ve_in in
+     let env' = adjoin_vals { env with self } ve_in in
      interpret_dec_fields env' dec_fields ve_ex
      (fun obj ->
         (env.actor_env := V.Env.add self obj !(env.actor_env);
