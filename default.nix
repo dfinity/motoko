@@ -421,6 +421,7 @@ rec {
       '';
     };
 
+    # wasm-profiler is not compatible with passive data segments and memory64
     # profiling-graphs = testDerivation {
     #  src = test_src "perf";
     #  buildInputs =
@@ -437,7 +438,7 @@ rec {
     #    mkdir -p $out/nix-support
     #    echo "report flamegraphs $out index.html" >> $out/nix-support/hydra-build-products
     #  '';
-    # };
+    #};
 
 
     fix_names = builtins.mapAttrs (name: deriv:
@@ -486,7 +487,7 @@ rec {
       perf       = perf_subdir "perf"       [ moc nixpkgs.drun ];
       bench      = perf_subdir "bench"      [ moc nixpkgs.drun ic-wasm ];
       # viper      = test_subdir "viper"      [ moc nixpkgs.which nixpkgs.openjdk nixpkgs.z3 ];
-      # TODO: profiling-graph is excluded because the underlying partity_wasm is deprecated and does not support 64-bit.
+      # TODO: profiling-graph is excluded because the underlying partity_wasm is deprecated and does not support passive data segments and memory64.
       inherit qc lsp unit candid coverage;
     }) // { recurseForDerivations = true; };
 
