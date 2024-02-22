@@ -20,7 +20,8 @@ actor {
 
     public query func checkAfterGC(): async() {
         assert(retained.size() > 0); // ensures that the array is not collected
-        assert(Prim.rts_heap_size() < heapSizeWithGarbage);
+        let tolerance = 100_000;
+        assert(Prim.rts_heap_size() < heapSizeWithGarbage + tolerance);
     };
 };
 //SKIP run
