@@ -21,15 +21,15 @@
         "version": "3.2.25"
     },
     "ic": {
-        "branch": "pull/143/head",
+        "branch": "luc/passive-data-segment",
         "description": "Internet Computer blockchain source: the client/replica software run by nodes",
         "homepage": "",
-        "owner": "dfinity",
+        "owner": "luc-blaeser",
         "repo": "ic",
-        "rev": "7e5d8c4d5c50bdef548bb963d39598ea99cacc6e",
-        "sha256": "11ddqq2ca9igshvvnzlx9x6g0mm2n69fzagd0zcdipiwmfzb0mpl",
+        "rev": "538cd43c8d7112110f7afd0cd7114134da318d70",
+        "sha256": "1m5qghd6jsp0p4lmb2fk3pj6vmnjz139zlwsqyxkyzjdi7f37p4s",
         "type": "tarball",
-        "url": "https://github.com/dfinity/ic/archive/7e5d8c4d5c50bdef548bb963d39598ea99cacc6e.tar.gz",
+        "url": "https://github.com/luc-blaeser/ic/archive/538cd43c8d7112110f7afd0cd7114134da318d70.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ic-hs": {
