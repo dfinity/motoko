@@ -11131,6 +11131,9 @@ and compile_prim_invocation (env : E.t) ae p es at =
       G.i (Binary (Wasm.Values.I64 I64Op.And))
     )
 
+  | OtherPrim s, [_] when String.length s > 4 && String.sub s 0 4 = "rts:" ->
+    const_sr SR.Vanilla (E.call_import env "rts" (String.sub s 4 (String.length s - 4)))
+
   (* Coercions for abstract types *)
   | CastPrim (_,_), [e] ->
     compile_exp env ae e
