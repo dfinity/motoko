@@ -131,9 +131,9 @@ module Make (Cfg : Config) = struct
   and exps es = List.map exp es
 
   and inst inst = match inst.it with
-    | Don't -> []
-    | Shield ts -> List.map typ ts
-    | Propagate ts -> Atom "async~" :: List.map typ ts
+    | None -> []
+    | Some (false, ts) -> List.map typ ts
+    | Some (true, ts) -> Atom "async~" :: List.map typ ts
 
   and pat p = source p.at (annot_typ p.note (match p.it with
     | WildP           -> Atom "WildP"

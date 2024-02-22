@@ -1782,7 +1782,7 @@ and check_exp_field env (ef : exp_field) fts =
     ignore (infer_exp env exp)
 
 and infer_call env exp1 inst exp2 at t_expect_opt =
-  let n = match inst.it with Don't -> 0 | Shield typs | Propagate typs -> List.length typs in
+  let n = match inst.it with None -> 0 | Some (_, typs) -> List.length typs in
   let t1 = infer_exp_promote env exp1 in
   let sort, tbs, t_arg, t_ret =
     try T.as_func_sub T.Local n t1
@@ -1790,24 +1790,24 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
       local_error env exp1.at "M0097"
         "expected function type, but expression produces type%a"
         display_typ_expand t1;
-      if inst.it = Don't then
+      if inst.it = None then
         info env (Source.between exp1.at exp2.at)
           "this looks like an unintended function call, perhaps a missing ';'?";
       T.as_func_sub T.Local n T.Non
   in
   let ts, t_arg', t_ret' =
     match tbs, inst.it with
-    | [], (Don't | Shield [] | Propagate [])  (* no inference required *)
+    | [], (None | Some (_, []))  (* no inference required *)
     | [T.{sort = Scope;_}], _  (* special case to allow t_arg driven overload resolution *)
-    | _, (Shield _ | Propagate _) ->
+    | _, Some _ ->
       (* explicit instantiation, check argument against instantiated domain *)
-      let typs = match inst.it with Don't -> [] | Shield typs | Propagate typs -> typs in
+      let typs = match inst.it with None -> [] | Some (_, typs) -> typs in
       let ts = check_inst_bounds env sort tbs typs at in
       let t_arg' = T.open_ ts t_arg in
       let t_ret' = T.open_ ts t_ret in
       if not env.pre then check_exp_strong env t_arg' exp2;
       ts, t_arg', t_ret'
-    | _::_, Don't -> (* implicit, infer *)
+    | _::_, None -> (* implicit, infer *)
       let t2 = infer_exp env exp2 in
       try
         (* i.e. exists minimal ts .
@@ -1852,9 +1852,9 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
           display_typ_expand t_ret';
     end;
     match T.is_async t_ret', inst.it, tbs with
-    | false, Propagate _, ([] | T.{ sort = Type; _ } :: _) ->
+    | false, Some (true, _), ([] | T.{ sort = Type; _ } :: _) ->
        warn env inst.at "M0196"(*FIXME*) "redundantly fulfilling async demand"
-    | false, (Don't | Shield _), T.{ sort = Scope; _ } :: _ ->
+    | false, (None | Some (false, _)), T.{ sort = Scope; _ } :: _ ->
        warn env at "M0195"(*FIXME*) "implicitly fulfilling async demand"
     | _ -> ()
   end;
