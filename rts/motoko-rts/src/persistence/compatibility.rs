@@ -13,13 +13,21 @@ use crate::{
 
 const DEFAULT_VALUE: Value = Value::from_scalar(0);
 
+/// Relocatable static type descriptor used for Candid subtypes and program upgrade compatibility checks.
+/// The descriptor consists of two blobs, one for the Candid type data and one denoting a vector of types.
+/// The vector only stores relative offsets in the Candid data and does not hold any absolute addresses.
+/// A type descriptor is used for two cases:
+/// * To store the types of the previous program version in the persistent dynamic heap, with the GC
+///   potentially moving the blobs.
+/// * To load the types of the current program version from passive data segments, without that absolute
+///   addresses are known at compile-time.
+/// The static type table is only created when calling the Candid subtype or memory compatibility check.
+/// As the static table contains absolute addresses, it can only temporarily used until the next GC increment.
 pub struct TypeDescriptor {
     // Blob with candid-encoded type definitions.
     candid_data: Value,
     // Blob with a list of `usize` offsets referring to the `candid_data`.
     type_offsets: Value,
-    // Type index of the main actor to the compared for memory compatibility.
-    main_actor_index: i32,
 }
 
 impl TypeDescriptor {
@@ -27,20 +35,22 @@ impl TypeDescriptor {
         Self {
             candid_data: DEFAULT_VALUE,
             type_offsets: DEFAULT_VALUE,
-            main_actor_index: 0,
         }
     }
 
-    pub unsafe fn new(
-        candid_data: Value,
-        type_offsets: Value,
-        main_actor_index: i32,
-    ) -> TypeDescriptor {
+    pub unsafe fn new(candid_data: Value, type_offsets: Value) -> Self {
         Self {
             candid_data: candid_data.forward_if_possible(),
             type_offsets: type_offsets.forward_if_possible(),
-            main_actor_index,
         }
+    }
+
+    pub fn is_default(&self) -> bool {
+        self.candid_data == DEFAULT_VALUE && self.type_offsets == DEFAULT_VALUE
+    }
+
+    pub fn assert_initialized(&self) {
+        assert!(self.candid_data != DEFAULT_VALUE && self.type_offsets != DEFAULT_VALUE);
     }
 
     // GC root if part of the persistent stable type
@@ -53,22 +63,11 @@ impl TypeDescriptor {
         &mut self.type_offsets as *mut Value
     }
 
-    pub fn is_default(&self) -> bool {
-        self.candid_data == DEFAULT_VALUE
-            && self.type_offsets == DEFAULT_VALUE
-            && self.main_actor_index == 0
-    }
-
-    pub fn assert_initialized(&self) {
-        assert!(self.candid_data != DEFAULT_VALUE && self.type_offsets != DEFAULT_VALUE);
-    }
-
-    pub unsafe fn assign<M: Memory>(&mut self, mem: &mut M, other: &TypeDescriptor) {
+    pub unsafe fn assign<M: Memory>(&mut self, mem: &mut M, other: &Self) {
         let candid_data_location = &mut self.candid_data as *mut Value;
         write_with_barrier(mem, candid_data_location, other.candid_data);
         let type_offsets_location = &mut self.type_offsets as *mut Value;
         write_with_barrier(mem, type_offsets_location, other.type_offsets);
-        self.main_actor_index = other.main_actor_index;
     }
 
     pub unsafe fn type_count(&self) -> usize {
@@ -131,6 +130,9 @@ unsafe fn create_type_check_cache<M: Memory>(
     cache
 }
 
+// Fix main actor type index, see `compile.ml`.
+const MAIN_ACTOR_TYPE_INDEX: i32 = 0;
+
 /// Test whether the new stable type complies with the existing old stable type.
 /// This uses the existing IDL subtype test.
 pub unsafe fn memory_compatible<M: Memory>(
@@ -153,8 +155,8 @@ pub unsafe fn memory_compatible<M: Memory>(
         new_type_table,
         old_table_end,
         new_table_end,
-        old_type.main_actor_index,
-        new_type.main_actor_index,
+        MAIN_ACTOR_TYPE_INDEX,
+        MAIN_ACTOR_TYPE_INDEX,
         true,
     )
 }

@@ -185,7 +185,7 @@ then
       HAVE_drun=no
     fi
   fi
-  # TODO: Re-enable when ic_wasm supports Wasm64
+  # TODO: Re-enable when ic_wasm supports Wasm64 and passive data segments
   # if ic-wasm --help >& /dev/null
   # then
   #   HAVE_ic_wasm=yes
