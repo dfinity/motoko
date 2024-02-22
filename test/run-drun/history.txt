@@ -1,0 +1,1000 @@
+ 1064  git push --set-upstream origin claudio/small-tags-final-untagged-widened-test-ci
+ 1065  git pull
+ 1066  git checkout claudio/small-tags-final-untagged-widened
+ 1067  git pull
+ 1068  exit
+ 1069  cd test
+ 1070  cd ,,
+ 1071  cd ..
+ 1072  eixt
+ 1073  exit
+ 1074  git pull
+ 1075  git merge origin/master 
+ 1076  cd src
+ 1077  make
+ 1078  make clean
+ 1079  mkae
+ 1080  make
+ 1081  git pull
+ 1082  exit
+ 1083  git diff
+ 1084  cd rts
+ 1085  make
+ 1086  cd ..
+ 1087  cd src
+ 1088  make clean
+ 1089  make
+ 1090  cd ..
+ 1091  cd test
+ 1092  cd bench
+ 1093  make
+ 1094  make accept
+ 1095  git diff
+ 1096  more heap-32.mo 
+ 1097  git diff
+ 1098  cd ..
+ 1099  cd perf
+ 1100  make accept
+ 1101  git diff
+ 1102  git add -u
+ 1103  git commit -m "update perf numbers"
+ 1104  git push
+ 1105  emacs &
+ 1106  git diff
+ 1107  git add -u "added asserts in adjust stackrep"
+ 1108  git add -u
+ 1109  git commit -m "added asserts in adjust stackrep"
+ 1110  git push
+ 1111  git diff
+ 1112  make
+ 1113  cd ..
+ 1114  cd run
+ 1115  make
+ 1116  ls float*
+ 1117  make *float*
+ 1118  ../run.sh *float*
+ 1119  git diff
+ 1120  cd ..
+ 1121  cd rts
+ 1122  make
+ 1123  make format
+ 1124  make
+ 1125  make format
+ 1126  make
+ 1127  cd ..
+ 1128  cd test
+ 1129  cd ..
+ 1130  cd src
+ 1131  make
+ 1132  cd ..
+ 1133  cd test
+ 1134  cd run
+ 1135  make
+ 1136  make -C ../../src
+ 1137  ../run.sh *float*
+ 1138  git diff
+ 1139  ../run.sh *float*
+ 1140  wasm-objdump --help
+ 1141  wasm-objdump -d _out/float-ops.wasm > float-ops.wat
+ 1142  ../run.sh float-ops.mo 
+ 1143  ../run.sh *float*.mo
+ 1144  git diff
+ 1145  git add -u
+ 1146  git commit -m "cleanup up interface to bigint.rs to avoid use of intermediate 31-bit scalars"
+ 1147  git push
+ 1148  cd ..
+ 1149  cd run
+ 1150  make
+ 1151  ../run.sh idl.mo 
+ 1152  make
+ 1153  ../run.sh idl.mo 
+ 1154  (EXTRA_MOC_ARGS=--sanity-checks; ../run.sh idl.mo )
+ 1155  (MOC_EXTRA_ARGS=--sanity-checks; ../run.sh idl.mo )
+ 1156  (EXTRA_MOC_ARGS=--sanity-checks; ../run.sh idl.mo )
+ 1157  echo $EXTRA_MOC_ARGS
+ 1158  (EXTRA_MOC_ARGS=--sanity-check; ../run.sh idl.mo )
+ 1159  (EXTRA_MOC_ARGS=--sanity-checks ../run.sh idl.mo )
+ 1160  (EXTRA_MOC_ARGS=--sanity-check ../run.sh idl.mo )
+ 1161  (EXTRA_MOC_ARGS=--sanity-checks ../run.sh idl.mo )
+ 1162  (EXTRA_MOC_ARGS=--sanity-checks --incremental-gc ../run.sh idl.mo )
+ 1163  (EXTRA_MOC_ARGS="--sanity-checks --incremental-gc" ../run.sh idl.mo )
+ 1164  (EXTRA_MOC_ARGS="--sanity-checks --incremental-gc" ../run.sh idl.mo )
+ 1165  "
+ 1166  cd ..
+ 1167  cd perf
+ 1168  make
+ 1169  make accept
+ 1170  git diff
+ 1171  cd ..
+ 1172  bench
+ 1173  cd bench/
+ 1174  make accept
+ 1175  git diff
+ 1176  git add -u
+ 1177  git diff
+ 1178  git push
+ 1179  git commit -m "reduce heap assertion in idl.mo (previous commit fixed a nat deserialization bug)"
+ 1180  git push
+ 1181  cd ..
+ 1182  cd run
+ 1183  ../run.sh idl-ops.mo 
+ 1184  emacs idl-ops.mo &
+ 1185  ../run.sh idl-ops.mo 
+ 1186  (EXTRA_MOC_ARGS="--sanity-checks --incremental-gc" ../run.sh idl-ops.mo )
+ 1187  git diff
+ 1188  git add -u
+ 1189  git commit -m "lower heapDifference bound in idl-ops.mo"
+ 1190  git push
+ 1191  cd ..
+ 1192  cd run-drun
+ 1193  emacs stable-regions-are-isolated.mo &
+ 1194  ../run.sh -d stable-regions-are-isolated.mo 
+ 1195  ../run.sh -d -a stable-regions-are-isolated.mo 
+ 1196  git diff HEAD
+ 1197  git add -u
+ 1198  git commit -m "revert most changes to test stable-regions-are-isolated.mo"
+ 1199  git push
+ 1200  git diff
+ 1201  cd ..
+ 1202  ls
+ 1203  cd run-drun-non-ci/
+ 1204  make
+ 1205  ls *deser*
+ 1206  cd ..
+ 1207  cd run-drun
+ 1208  ls *deser*
+ 1209  ls
+ 1210  ls *many*
+ 1211  more ser-many-int.mo 
+ 1212  cd ..
+ 1213  cd run
+ 1214  emacs numeric-ops.mo 
+ 1215  ../run.sh numeric-ops.mo m
+ 1216  ../run.sh numeric-ops.mo
+ 1217  ../run.sh words.
+ 1218  ../run.sh words.mo
+ 1219  wasm2wat _out/words.wasm > words.wat
+ 1220  ../run.sh words.mo
+ 1221  git diff
+ 1222  git stach
+ 1223  git stash
+ 1224  git log
+ 1225  git branch
+ 1226  emacs &
+ 1227  git diff
+ 1228  ../run.sh words.mo 
+ 1229  git add -u
+ 1230  git commit -m "refact btst64, btstIn64"
+ 1231  git push
+ 1232  exit
+ 1233  cd clean/
+ 1234  cd motoko/
+ 1235  git pull
+ 1236  git checkout claudio/small-tags-final-untagged-widened
+ 1237  git diff
+ 1238  git reset --hard
+ 1239  git checkout claudio/small-tags-final-untagged-widened
+ 1240  nix-sell
+ 1241  nix-shel
+ 1242  nix-shell
+ 1243  cd rts
+ 1244  make
+ 1245  cd ..
+ 1246  nix-shell
+ 1247  cd test
+ 1248  cd run
+ 1249  dc ..
+ 1250  cd ..
+ 1251  cd perf
+ 1252  ls
+ 1253  shell
+ 1254  export PERF_OUT=branch
+ 1255  make
+ 1256  cd ..
+ 1257  cd bench
+ 1258  make
+ 1259  ls
+ 1260  more branch 
+ 1261  git branch
+ 1262  cd motoko
+ 1263  git diff
+ 1264  git pull
+ 1265  git branch
+ 1266  git braqnch
+ 1267  git branch
+ 1268  git pull
+ 1269  git diff origin/claudio/small-tags-final-untagged-widened-array-iter 
+ 1270  git checkout master
+ 1271  git pull
+ 1272  git checkout -b claudio/test-ci
+ 1273  emacs src/exes/
+ 1274  git add -u
+ 1275  git commit -m "trivial change to force CI"
+ 1276  git push
+ 1277  git push --set-upstream origin claudio/test-ci
+ 1278  git pull
+ 1279  git push --set-upstream origin claudio/test-ci
+ 1280  git branch
+ 1281  git fetch
+ 1282  git push
+ 1283  git push --set-upstream origin claudio/test-ci
+ 1284  git branch -m claudio/test-ci claudio/test-ci-again
+ 1285  git push
+ 1286  cd motoko
+ 1287  git branch
+ 1288  claudio/small-tags-final-untagged-widened
+ 1289  git pull
+ 1290  claudio/small-tags-final-untagged-widened
+ 1291  git checkout claudio/small-tags-final-untagged-widened
+ 1292  git pull
+ 1293  git log
+ 1294  git checkout
+ 1295  nix-shell
+ 1296  cd test
+ 1297  cd bench
+ 1298  ls -l
+ 1299  export $PERF_OUT=perf-widen-opt.txt 
+ 1300  export $PERF_OUT="perf-widen-opt.txt" 
+ 1301  export PERF_OUT="perf-widen-opt.txt" 
+ 1302  export PERF_OUT=perf-widen-opt.txt
+ 1303  make
+ 1304  cd ..
+ 1305  cd perf
+ 1306  make
+ 1307  emacs perf-widen-opt.txt 
+ 1308  cd ..
+ 1309  cd bench
+ 1310  rm perf-widen-opt.txt 
+ 1311  make
+ 1312  emacs perf-widen-opt.txt &
+ 1313  cd 
+ 1314  cd greet
+ 1315  dir
+ 1316  ls
+ 1317  cd
+ 1318  cd greet
+ 1319  ls
+ 1320  cd hello/
+ 1321  dir
+ 1322  ls -l
+ 1323  ls -a
+ 1324  ls .dfx
+ 1325  tree .
+ 1326  tree -a .
+ 1327  cd
+ 1328  cd canister-profiling/
+ 1329  git checkout master
+ 1330  git pull
+ 1331  git checkout moc-build 
+ 1332  git checkout -b moc-tagging
+ 1333  git merge origin/main 
+ 1334  emacs .github/workflows/perf.yml 
+ 1335  git diff
+ 1336  git reset --hart
+ 1337  git reset --hard
+ 1338  git branch
+ 1339  cd ..
+ 1340  exit
+ 1341  cd perf
+ 1342  cd test/perf
+ 1343  dir
+ 1344  more Makefile 
+ 1345  dir
+ 1346  mkdir sha224
+ 1347  cd sha224
+ 1348  ls $MOTOKO_BASE
+ 1349  cp $MOTOKO_BASE/*.mo .
+ 1350  ls
+ 1351  emacs Principal.mo 
+ 1352  cd ..
+ 1353  cd src
+ 1354  make
+ 1355  cd ..
+ 1356  cd test
+ 1357  cd ..
+ 1358  src
+ 1359  cd rts
+ 1360  make
+ 1361  cd perf
+ 1362  cd ..
+ 1363  cd test/perf/
+ 1364  ../run.sh sha224.mo
+ 1365  emacs sha224.mo
+ 1366  ../run.sh sha224.mo
+ 1367  ../run.sh -p sha224.mo
+ 1368  emacs sha224.mo
+ 1369  ../run.sh -p sha224.mo
+ 1370  emacs &
+ 1371  ../run.sh -p sha224.mo
+ 1372  cd sha224/
+ 1373  ls
+ 1374  cp $MOTOKO_BASE/Option.mo .
+ 1375  cp $MOTOKO_BASE/Result.mo .
+ 1376  cp $MOTOKO_BASE/Order.mo .
+ 1377  cp $MOTOKO_BASE/IterType.mo .
+ 1378  cd ..
+ 1379  ../run.sh -p sha224.mo
+ 1380  cd sha224/
+ 1381  cp \$MOTOKO_BASE/Prelude.mo .
+ 1382  cp $MOTOKO_BASE/Prelude.mo .
+ 1383  cd ..
+ 1384  ../run.sh -p sha224.mo
+ 1385  cp $MOTOKO_BASE/Debug.mo.mo sha224/.
+ 1386  cp $MOTOKO_BASE/Debug.mo sha224/.
+ 1387  ../run.sh -p sha224.mo
+ 1388  cp $MOTOKO_BASE/Int.mo sha224/.
+ 1389  cp $MOTOKO_BASE/Char.mo sha224/.
+ 1390  ../run.sh -p sha224.mo
+ 1391  cp $MOTOKO_BASE/Hash.mo sha224/.
+ 1392  ../run.sh -p sha224.mo
+ 1393  cp $MOTOKO_BASE/Iter.mo sha224/.
+ 1394  ../run.sh -p sha224.mo
+ 1395  cp $MOTOKO_BASE/Buffer.mo sha224/.
+ 1396  cp $MOTOKO_BASE/List.mo sha224/.
+ 1397  ../run.sh -p sha224.mo
+ 1398  export $PERF_OUT=perf-sha224.txt
+ 1399  export PERF_OUT=perf-sha224.txt
+ 1400  make
+ 1401  make accept
+ 1402  more perf-sha224.txt 
+ 1403  emacs sha224.mo
+ 1404  emacs perf-sha224.txt 
+ 1405  exit
+ 1406  cd test
+ 1407  make
+ 1408  cd ..
+ 1409  cd src
+ 1410  make
+ 1411  cd ..
+ 1412  cd rts
+ 1413  make
+ 1414  cd ..
+ 1415  cd test/perf
+ 1416  dir
+ 1417  echo $PERF_OUT
+ 1418  set $PERF_OUT=perf-widen-opt.txt
+ 1419  make
+ 1420  set PERF_OUT=perf-widen-opt.txt
+ 1421  make
+ 1422  make accept
+ 1423  export PERF_OUT=perf-widen-opt.txt
+ 1424  make
+ 1425  more sha224
+ 1426  more sha224.mo
+ 1427  git branch
+ 1428  git checkout claudio/sha224 
+ 1429  git diff origin/master 
+ 1430  git add sha224.mo 
+ 1431  ls sha224
+ 1432  git add sha224
+ 1433  exit
+ 1434  cd src
+ 1435  make
+ 1436  cd ..
+ 1437  cd rts
+ 1438  make
+ 1439  cd ..
+ 1440  cd test/perf
+ 1441  make accept
+ 1442  cd ok
+ 1443  git add sha224.*
+ 1444  ls
+ 1445  git status
+ 1446  git add -u
+ 1447  git commit -m "add sha224 benchmark"
+ 1448  git push
+ 1449  git push --set-upstream origin claudio/sha224
+ 1450  emacs sha224.mo
+ 1451  git diff
+ 1452  make -C ../../../src
+ 1453  cd ..
+ 1454  make
+ 1455  emacs $PERF_OUT
+ 1456  echo $PERF_OUT
+ 1457  ls *.txt
+ 1458  export PERF_OUT=perf-sha224-inline.txt
+ 1459  make
+ 1460  emacs perf-sha224.txt perf-sha224-inline.txt 
+ 1461  git diff
+ 1462  emacs &
+ 1463  make
+ 1464  diff perf-sha224.txt perf-sha224-inline.txt 
+ 1465  more perf-sha224-inline.txt 
+ 1466  git branch
+ 1467  git reset --hard
+ 1468  ls
+ 1469  diff perf-sha224 perf-sha224-inline.txt 
+ 1470  diff perf-sha224.txt perf-sha224-inline.txt 
+ 1471  more perf-sha224.txt
+ 1472  more perf-sha224-inline.txt 
+ 1473  git checkout claudio/small-tags-final-untagged-widened
+ 1474  git branch
+ 1475  exit
+ 1476  cd test
+ 1477  dir
+ 1478  cd ..
+ 1479  src
+ 1480  make
+ 1481  cd src
+ 1482  make
+ 1483  git branch
+ 1484  exit
+ 1485  cd ..
+ 1486  cd motoko-base/
+ 1487  git pull
+ 1488  git checkout ZenVoich:master
+ 1489  git fetch
+ 1490  git checkout ZenVoich:master
+ 1491  git log
+ 1492  bit branch
+ 1493  cd ..
+ 1494  mkdir zenvoich
+ 1495  cd zenvoich/
+ 1496  git clone git@github.com:ZenVoich/motoko-base.git
+ 1497  cd motoko-base/
+ 1498  make
+ 1499  dir
+ 1500  cd tes
+ 1501  make
+ 1502  dir
+ 1503  ls
+ 1504  cd test
+ 1505  dir
+ 1506  make
+ 1507  emacs &
+ 1508  git pull
+ 1509  git diff
+ 1510  cd ..
+ 1511  exit
+ 1512  cd motoko
+ 1513  git diff
+ 1514  emacs &
+ 1515  cd src
+ 1516  make
+ 1517  cd ..]
+ 1518  cd ..
+ 1519  cd rts
+ 1520  make
+ 1521  git branch
+ 1522  cd src
+ 1523  cd ..
+ 1524  cd test
+ 1525  cd bench
+ 1526  make
+ 1527  cd ..
+ 1528  cd perf
+ 1529  make
+ 1530  cd ..
+ 1531  cd run
+ 1532  make
+ 1533  ../run.sh conversions.mo 
+ 1534  cd ..
+ 1535  cd perf
+ 1536  make accept
+ 1537  cd ..
+ 1538  cd bench
+ 1539  make accept
+ 1540  git diff
+ 1541  git branch
+ 1542  git add -u
+ 1543  git commit -m "add flag to enable rtti"
+ 1544  git push
+ 1545  git push --set-upstream origin claudio/small-tags-final-untagged-widened-gated
+ 1546  cd ..
+ 1547  cd run
+ 1548  ../run.sh conversions.mo 
+ 1549  git diff
+ 1550  ../run.sh conversions.mo 
+ 1551  git diff
+ 1552  ../run.sh conversions.mo 
+ 1553  ../run.sh crap.mo
+ 1554  wasm2wat _out/crap.wasm > crap.wat
+ 1555  emacs crap.wat 
+ 1556  ../run.sh crap.mo
+ 1557  wasm2wat _out/crap.wasm > crap.wat
+ 1558  ../run.sh crap.mo
+ 1559  wasm2wat _out/crap.wasm > crap.wat
+ 1560  ../run.sh crap.mo
+ 1561  ../run.sh conversions.mo 
+ 1562  emacs conversions.mo 
+ 1563  git checkout conversions.mo
+ 1564  git diff
+ 1565  make
+ 1566  ../run.sh conversions.mo
+ 1567  make
+ 1568  git diff
+ 1569  make
+ 1570  git status idl.m
+ 1571  git status 
+ 1572  more idl.mo
+ 1573  emacs idl.mo &
+ 1574  ../run.sh idl.mo
+ 1575  (EXTRA_MOC_ARGS=--sanity-checks ../run.sh idl.mo; )
+ 1576  (XTRA_MOC_ARGS=--sanity-checks ../run.sh idl.mo; )
+ 1577  (EXTRA_MOC_ARGS=--sanity-checkss ../run.sh idl.mo; )
+ 1578  (EXTRA_MOC_ARGS=--incremental-gc ../run.sh idl.mo; )
+ 1579  ../run.sh idl.mo
+ 1580  ../run.sh idl-ops.mo
+ 1581  (EXTRA_MOC_ARGS=--sanity-checkss ../run.sh idl-ops.mo; )
+ 1582  (EXTRA_MOC_ARGS=--sanity-checks ../run.sh idl-ops.mo; )
+ 1583  (EXTRA_MOC_ARGS=--incremental-gc ../run.sh idl-ops.mo; )
+ 1584  git diff
+ 1585  git add ../../src/codegen/compile.ml
+ 1586  git commit -m "fix bugs in can_tag_i32/i64 tests and sanity checks"
+ 1587  git push
+ 1588  git diff head
+ 1589  git diff HEAD
+ 1590  git add -u
+ 1591  git commit -m "adjust test assert on heap size"
+ 1592  git push
+ 1593  cd ..
+ 1594  cd test
+ 1595  cd perf
+ 1596  make accpet
+ 1597  make accept
+ 1598  git diff
+ 1599  cd ..
+ 1600  cd bench/
+ 1601  make
+ 1602  make accept
+ 1603  git diff
+ 1604  make accept
+ 1605  git diff
+ 1606  cd canister-profiling/
+ 1607  dir
+ 1608  git branch
+ 1609  git log
+ 1610  git pull
+ 1611  git merge main
+ 1612  emacs .github/workflows/perf.yml &
+ 1613  git fetch
+ 1614  git diff
+ 1615  emacs .github/workflows/perf.yml &
+ 1616  git branch
+ 1617  git add -u
+ 1618  git commit -m "merge"
+ 1619  git merge origin/main 
+ 1620  emacs .github/workflows/perf.yml &
+ 1621  git diff HEAD
+ 1622  git add -u
+ 1623  git commit -m "merge with origin/main"
+ 1624  git push
+ 1625  git push --set-upstream origin moc-tagging
+ 1626  emacs &
+ 1627  git pull
+ 1628  git checkout -b claudio/experiment-zhenya
+ 1629  emacs &
+ 1630  git add -u
+ 1631  git commit -m "use better hash function"
+ 1632  git push
+ 1633  git push --set-upstream origin claudio/experiment-zhenya
+ 1634  git diff
+ 1635  git commit -m "avoid boxing (changes baseline)"
+ 1636  git push
+ 1637  git log
+ 1638  git add -u
+ 1639  git commit -m "restore RNG; return 28 high bits instead to avoid boxing and duplication"
+ 1640  git push
+ 1641  git diff 
+ 1642  git add -u
+ 1643  git commit -m "insert spaces"
+ 1644  git push
+ 1645  git checkout -b claudio/experiment-zhenya-better-hash
+ 1646  emacs &
+ 1647  git diff
+ 1648  git branch
+ 1649  git add -u
+ 1650  git commit -m "use better hash"
+ 1651  git push
+ 1652  git pull
+ 1653  git add -u
+ 1654  git commit -m "simplify hash to just use low 28 bits"
+ 1655  git push
+ 1656  git diff
+ 1657  git add -u
+ 1658  git commit -m "simplify hash to just use low 27 bits"
+ 1659  git push
+ 1660  git pull
+ 1661  git add -u
+ 1662  git commit -m "simplify hash to just use low 27 bits"
+ 1663  git push
+ 1664  git checkout -b claudio/experiment-zhenya-better-hash-again
+ 1665  git add -u 
+ 1666  git commit -m "trivial edit to rerun ci"
+ 1667  git push
+ 1668  git push --set-upstream origin claudio/experiment-zhenya-better-hash-again
+ 1669  cd motoko
+ 1670  git bracnh
+ 1671  git branch
+ 1672  git diff
+ 1673  git rest --hard
+ 1674  git reset --hard
+ 1675  git diff
+ 1676  git pull
+ 1677  git checkout master
+ 1678  git pull
+ 1679  git checkout master
+ 1680  nix-shell
+ 1681  git diff
+ 1682  git checkout claudio/small-tags-final-untagged-widened
+ 1683  git pull
+ 1684  emacs &
+ 1685  git branch
+ 1686  git pull
+ 1687  git checkout claudio/small-tags-final-untagged-widened-gated
+ 1688  git checkout -b claudio/small-tags-final-untagged-widened-gated
+ 1689  nix-shell
+ 1690  cd src
+ 1691  make
+ 1692  cd ..
+ 1693  cd rts
+ 1694  make
+ 1695  cd ..
+ 1696  cd src
+ 1697  mkae
+ 1698  make
+ 1699  cd ..
+ 1700  cd test
+ 1701  cd bench/
+ 1702  export PERF_OUT=no-inline.txt
+ 1703  make
+ 1704  diff no-inline.txt perf-widen-opt.txt 
+ 1705  more perf-widen-opt.txt 
+ 1706  cd ..
+ 1707  cd perf/
+ 1708  more perf-widen-opt.txt 
+ 1709  make
+ 1710  more perf-widen-opt.txt 
+ 1711  diff no-inline.txt perf-widen-opt.txt 
+ 1712  ls
+ 1713  export PERF_OUT=inline.txt
+ 1714  emacs &
+ 1715  make
+ 1716  ls
+ 1717  diff no-inline.txt perf-widen-opt.txt 
+ 1718  git merge claudio/sha224 
+ 1719  make
+ 1720  diff no-inline.txt inline.txt 
+ 1721  more no-inline.txt 
+ 1722  more inline.txt 
+ 1723  git reset --hard
+ 1724  git reset --hard claudio/small-tags-final-untagged-widened
+ 1725  git log
+ 1726  git reset --hard origin/claudio/small-tags-final-untagged-widened
+ 1727  git diff
+ 1728  make
+ 1729  diff no-inline.txt inline.txt 
+ 1730  echo $PERF_OUT
+ 1731  more inline.txt 
+ 1732  emacs inline.txt &
+ 1733  git diff
+ 1734  du -h /temp
+ 1735  du -h /tmp
+ 1736  sudo du -h /tmp
+ 1737  sudo df -h /tmp
+ 1738  cd motoko
+ 1739  nix-shell
+ 1740  git branch
+ 1741  emacs &
+ 1742  git checkout master 
+ 1743  git pull
+ 1744  cd test/bench/
+ 1745  git branch
+ 1746  git pull
+ 1747  git checkout -b claudio/sha224
+ 1748  cd ..
+ 1749  nix-shell
+ 1750  git checkout claudio/small-tags-final-untagged-widened
+ 1751  cd src
+ 1752  cd ..
+ 1753  nix-shell
+ 1754  git branch
+ 1755  git pull
+ 1756  nix-shell
+ 1757  cd perf
+ 1758  cd test
+ 1759  dir
+ 1760  cd ..
+ 1761  cd src
+ 1762  make
+ 1763  cd ..
+ 1764  cd rts
+ 1765  make
+ 1766  make clean
+ 1767  make
+ 1768  cd test
+ 1769  cd perf
+ 1770  cd ..
+ 1771  cd test/perf/
+ 1772  cd ..
+ 1773  cd bench
+ 1774  make
+ 1775  emacs &
+ 1776  emacs alloc.mo &
+ 1777  ../run.sh alloc.mo 
+ 1778  ../run.sh -p alloc.mo 
+ 1779  emacs alloc.mo &
+ 1780  (EXTRA_MOC_ARGS=--sanity-check emacs alloc.mo &)
+ 1781  (EXTRA_MOC_ARGS=--sanity-check ../run.sh alloc.mo)
+ 1782  (EXTRA_MOC_ARGS=--sanity-checks ../run.sh -p alloc.mo)
+ 1783  emacs alloc.mo 
+ 1784  ../run.sh -p alloc.mo 
+ 1785  emacs alloc.mo &
+ 1786  ../run.sh -p alloc.mo 
+ 1787  cd /run
+ 1788  ls
+ 1789  cd /run/user/1000/
+ 1790  dir
+ 1791  du ic_configZxMByt/
+ 1792  rm -r -f ic_configZxMByt
+ 1793  ls
+ 1794  cd ..
+ 1795  cd
+ 1796  cd motoko
+ 1797  cd nix/
+ 1798  cd ..
+ 1799  cd test/perf/
+ 1800  cd ..
+ 1801  cd bench/
+ 1802  ../run.sh -f alloc.mo 
+ 1803  ../run.sh -p alloc.mo 
+ 1804  emacs alloc.mo 
+ 1805  ../run.sh -p alloc.mo 
+ 1806  make accept
+ 1807  git diff
+ 1808  git add -u
+ 1809  cd ..
+ 1810  cd bench
+ 1811  make accept
+ 1812  cd ..
+ 1813  cd perf
+ 1814  make accept
+ 1815  git diff
+ 1816  git add -u
+ 1817  git commit -m "update perf numbers"
+ 1818  git push
+ 1819  git log
+ 1820  git checkout claudio/small-tags-final-untagged-widened
+ 1821  git pull
+ 1822  git cherrypick 51df94709ebf5dd0add0a41e82e66882624e9366
+ 1823  git cherry-pick 51df94709ebf5dd0add0a41e82e66882624e9366
+ 1824  git diff origin/claudio/small-tags-final-untagged-widened
+ 1825  git push
+ 1826  exit
+ 1827  cd src
+ 1828  make
+ 1829  cd ..
+ 1830  cd rts
+ 1831  make clean
+ 1832  make
+ 1833  cd test
+ 1834  cd ..
+ 1835  cd test
+ 1836  cd perf
+ 1837  make
+ 1838  cd ..
+ 1839  cd bench
+ 1840  make
+ 1841  make accept
+ 1842  git checkout claudio/small-tags-final-untagged-widened-gated 
+ 1843  exit
+ 1844  emacs &
+ 1845  cd test
+ 1846  cd .
+ 1847  cd ..
+ 1848  cd fail
+ 1849  dir
+ 1850  cd ..
+ 1851  cd rts
+ 1852  cd motoko/
+ 1853  cd ..
+ 1854  cd motoko/
+ 1855  cd rts
+ 1856  make
+ 1857  cd ..
+ 1858  cd test/fail/
+ 1859  dir
+ 1860  emacs unused.mo
+ 1861  emacs unused.mo &
+ 1862  rlwrap moc
+ 1863  moc unused.mo
+ 1864  make -C ../../src/
+ 1865  moc --help
+ 1866  moc unused.mo
+ 1867  ocaml
+ 1868  moc -r unused.mo
+ 1869  moc 
+ 1870  cd ..
+ 1871  cd test
+ 1872  cd ..
+ 1873  cd test
+ 1874  cd repl/
+ 1875  make
+ 1876  cd ..
+ 1877  cd fail
+ 1878  make
+ 1879  moc unused.mo
+ 1880  moc unused.moc
+ 1881  moc < unused.moc
+ 1882  moc < unused.mo
+ 1883  moc < unused.moc
+ 1884  moc unused.moc
+ 1885  ls
+ 1886  ls unused.mo
+ 1887  moc unused.mo
+ 1888  moc < unused.mo
+ 1889  moc -r unused.mo
+ 1890  moc
+ 1891  moc < unused.mo
+ 1892  fg
+ 1893  emacs unused.mo
+ 1894  moc 
+ 1895  rlwrap moc
+ 1896  emacs &
+ 1897  git branch
+ 1898  moc unused.mo
+ 1899  emacs unused.mo
+ 1900  emacs unused.mo &
+ 1901  moc unused.mo
+ 1902  emacs unused.mo
+ 1903  moc unused.mo
+ 1904  cd ..
+ 1905  cd motoko-base/
+ 1906  cd test
+ 1907  make clean
+ 1908  make
+ 1909  git branch
+ 1910  git pull
+ 1911  git checkout master
+ 1912  git pull
+ 1913  make clean
+ 1914  make test &> log
+ 1915  make &> log
+ 1916  emacs log &
+ 1917  grep -e "Unused log" | sort
+ 1918  grep -e "Unused" log | sort
+ 1919  sort --help
+ 1920  grep -e "Unused" log | sort -u
+ 1921  grep -e "Unused" log | sort -u > unused
+ 1922  more unused 
+ 1923  grep -e "Unused" log | sort -u > unused.txt
+ 1924  git pull
+ 1925  cd ..
+ 1926  cd clean/motoko/
+ 1927  git branch
+ 1928  git pull
+ 1929  git checkout -b claudio/detect-unused-declarations
+ 1930  cd ..
+ 1931  cd motoko/test/fail/
+ 1932  moc unused.mo
+ 1933  moc -r unused.mo
+ 1934  rlwrap moc
+ 1935  make
+ 1936  more actor-cap.mo 
+ 1937  cd ..
+ 1938  cd test
+ 1939  make
+ 1940  git reset --hard
+ 1941  make -C ../src/
+ 1942  cd ..
+ 1943  cd rts
+ 1944  make
+ 1945  cd ..
+ 1946  cd .
+ 1947  cd ..
+ 1948  cd motoko-base/
+ 1949  git pull
+ 1950  git checkout luc/unused-declaration-cleanup
+ 1951  make
+ 1952  cd test
+ 1953  make &> log
+ 1954  make clean
+ 1955  make &> log
+ 1956  log | grep -e "Unused"
+ 1957  log > grep -e "Unused"
+ 1958  log > grep -e "warning"
+ 1959  grep -e "warning" log
+ 1960  dir
+ 1961  cd
+ 1962  cd clean/motoko/
+ 1963  cd test
+ 1964  emacs &
+ 1965  rlwrap moc
+ 1966  cd motoko
+ 1967  git branch
+ 1968  git checkout master
+ 1969  git pulll
+ 1970  git pull
+ 1971  cd src
+ 1972  cd ..
+ 1973  nix-shell
+ 1974  cd rts
+ 1975  make
+ 1976  cd ..
+ 1977  cd test/run-drun
+ 1978  make
+ 1979  make accept
+ 1980  make clean
+ 1981  make accept
+ 1982  git reset --hard
+ 1983  make
+ 1984  rm -r -f /run/user/1000
+ 1985  ls /run/user/1000/
+ 1986  make
+ 1987  make accept
+ 1988  rm 
+ 1989  rm -r -f /run/user/1000/ic*
+ 1990  ../run.sh -d -a max-stack
+ 1991  ../run.sh -d -a max-stack.mo
+ 1992  more _out/max-stack.mo
+ 1993  more _out/max-stack.drun-run 
+ 1994  make
+ 1995  cd test
+ 1996  cd src
+ 1997  cd ..
+ 1998  cd src
+ 1999  make
+ 2000  cd ..
+ 2001  cd test
+ 2002  make
+ 2003  cd ..
+ 2004  cd rts
+ 2005  make
+ 2006  make clean
+ 2007  make
+ 2008  cd ../test
+ 2009  cd run-drun
+ 2010  make clean
+ 2011  history
+ 2012  ls /run/user/1000/
+ 2013  make accept
+ 2014  emacs *
+ 2015  emacs &
+ 2016  more _out/max-stack.drun-run 
+ 2017  ../run.sh -d max-stack.mo
+ 2018  export RUST_BACKTRACE=1
+ 2019  ../run.sh -d max-stack.mo
+ 2020  more _out/max-stack.drun-run 
+ 2021  rm -r -f /run/user/1000/ic*
+ 2022  ../run.sh -d max-stack.mo
+ 2023  ls /run/user/1000/ic*
+ 2024  git reset --hard
+ 2025  git diff
+ 2026  ../run.sh -d gc-random-test-no-force-gc.mo 
+ 2027  ulimit -c unlimited
+ 2028  ../run.sh -d gc-random-test-no-force-gc.mo 
+ 2029  more _out gc-random-test-no-force-gc.mo
+ 2030  more _out/gc-random-test-no-force-gc.drun-run 
+ 2031* emacs
+ 2032  ../run.sh -d gc-random-test-no-force-gc.mo 
+ 2033  more _out/gc-random-test-no-force-gc.drun-run 
+ 2034  emacs _out/gc-random-test-no-force-gc.drun-run 
+ 2035  emacs /run/user/1000/
+ 2036  ls _out
+ 2037  cd _out
+ 2038  ls
+ 2039  ../run.sh -d gc-random-test-no-force-gc.mo 
+ 2040  cd ..
+ 2041  ../run.sh -d gc-random-test-no-force-gc.mo 
+ 2042  make clean
+ 2043  ../run.sh -d gc-random-test-no-force-gc.mo 
+ 2044  more _out
+ 2045  ls _out
+ 2046  more _out/gc-random-test-no-force-gc.drun-run
+ 2047  cat /proc/sys/kernel/core_pattern
+ 2048* ../run.sh 
+ 2049  echo
+ 2050  ls
+ 2051  ls *core*
+ 2052  which drun
+ 2053  gdb /nix/store/syfkxkdx1pjd2h0krvmh9jv1z0ykyh7r-drun/bin/drun /var/lib/apport/coredump
+ 2054  gdb /nix/store/syfkxkdx1pjd2h0krvmh9jv1z0ykyh7r-drun/bin/drun /var/lib/apport/coredump/*.1016732
+ 2055  gdb /nix/store/syfkxkdx1pjd2h0krvmh9jv1z0ykyh7r-drun/bin/drun /var/lib/apport/coredump/*.1016732 bt > log
+ 2056  gdb /nix/store/syfkxkdx1pjd2h0krvmh9jv1z0ykyh7r-drun/bin/drun /var/lib/apport/coredump/*.1016732
+ 2057  ../run.sh -d gc-random-test-no-force-gc.mo 
+ 2058  more _out/gc-random-test-no-force-gc.drun-run 
+ 2059  git branch
+ 2060  git checkout -b claudio/drun-crash
+ 2061  git diff
+ 2062  history 
+ 2063  history > history.txt
