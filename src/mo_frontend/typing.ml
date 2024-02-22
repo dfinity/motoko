@@ -1346,9 +1346,10 @@ and infer_exp'' env exp : T.typ =
           error env typ.at "M0041" "shared function has non-async result type%a"
             display_typ_expand codom
       end
-      else if not (is_asyncE exp1) then (* local functions should be effecct free unless `async` result *)
+      else if not (is_asyncE exp1) then (* local functions should be effect-free unless `async` result *)
         begin
-          if T.(exp1.note.note_eff <> Triv) then
+          let caller_async = List.exists (function | { it = { sort = { it = T.Scope; _}; _ }; _ } -> true | _ -> false) typ_binds in
+          if caller_async && T.(exp1.note.note_eff <> Triv) then
             local_error env exp1.at "M0179" (*FIXME*)
               "non-async body function cannot perform proper sends"
         end
