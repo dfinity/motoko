@@ -11773,7 +11773,7 @@ and conclude_module env set_serialization_globals start_fi_o =
         stable_types = !(env.E.stable_types);
         compiler = metadata "motoko:compiler" (Lib.Option.get Source_id.release Source_id.id);
       };
-      enhanced_orthogonal_persistence = Some (false, "32-bit, layout version 1");
+      enhanced_orthogonal_persistence = Some (false, "64-bit, layout version 1");
       candid = {
         args = !(env.E.args);
         service = !(env.E.service);
