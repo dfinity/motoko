@@ -6,7 +6,7 @@ actor a {
 
   let balance : () -> Nat = Prim.cyclesBalance;
   let available : () -> Nat = Prim.cyclesAvailable;
-  let accept : Nat-> Nat = Prim.cyclesAccept;
+  let accept : Nat -> Nat = Prim.cyclesAccept;
   let add : Nat -> () = Prim.cyclesAdd;
 
   let refunded : () -> Nat = Prim.cyclesRefunded;
