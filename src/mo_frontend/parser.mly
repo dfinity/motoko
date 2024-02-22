@@ -451,9 +451,11 @@ typ_args :
 
 inst :
   | (* empty *)
-    { { it = None; at = no_region; note = [] } }
+    { { it = Don't; at = no_region; note = [] } }
   | LT ts=seplist(typ, COMMA) GT
-    { { it = Some ts; at = at $sloc; note = [] } }
+    { { it = Shield ts; at = at $sloc; note = [] } }
+  | LT ASYNC ts=preceded(COMMA, typ)* GT
+    { { it = Propagate ts; at = at $sloc; note = [] } }
 
 
 %inline typ_params_opt :

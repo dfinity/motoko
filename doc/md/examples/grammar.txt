@@ -66,6 +66,11 @@
 <typ_args> ::= 
     '<' <list(<typ>, ',')> '>'
 
+<inst> ::= 
+    <empty>
+    '<' <list(<typ>, ',')> '>'
+    '<' 'async' (',' <typ>)* '>'
+
 <typ_params_opt> ::= 
     <empty>
     '<' <list(<typ_bind>, ',')> '>'
@@ -170,7 +175,7 @@
     <exp_post> '[' <exp> ']'
     <exp_post> '.'<nat>
     <exp_post> '.' <id>
-    <exp_post> ('<' <list(<typ>, ',')> '>')? <exp_nullary>
+    <exp_post> <inst> <exp_nullary>
     <exp_post> '!'
     '(' 'system' <exp_post> '.' <id> ')'
 

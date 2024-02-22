@@ -131,8 +131,12 @@ and stab' = Stable | Flexible
 
 type op_typ = Type.typ ref (* For overloaded resolution; initially Type.Pre. *)
 
+type 'a pass =
+  | Don't
+  | Shield of 'a
+  | Propagate of 'a
 
-type inst = (typ list option, Type.typ list) Source.annotated_phrase (* For implicit scope instantiation *)
+type inst = (typ list pass, Type.typ list) Source.annotated_phrase (* For implicit scope instantiation *)
 
 type sort_pat = (Type.shared_sort * pat) Type.shared Source.phrase
 

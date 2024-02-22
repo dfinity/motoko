@@ -1357,7 +1357,11 @@ and infer_exp'' env exp : T.typ =
     let ts1 = match pat.it with TupP _ -> T.seq_of_tup t1 | _ -> [t1] in
     T.Func (sort, c, T.close_binds cs tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2)
   | CallE (exp1, inst, exp2) ->
-    infer_call env exp1 inst exp2 exp.at None
+    let inst' = match inst.it with
+      | Don't -> { inst with it = None }
+      | Shield ts
+      | Propagate ts -> { inst with it = Some ts } in
+    infer_call env exp1 inst' exp2 exp.at None
   | BlockE decs ->
     let t, _ = infer_block env decs exp.at in
     t
@@ -1742,7 +1746,11 @@ and check_exp' env0 t exp : T.typ =
     check_exp_strong (adjoin_vals env' ve2) t2 exp;
     t
   | CallE (exp1, inst, exp2), _ ->
-    let t' = infer_call env exp1 inst exp2 exp.at (Some t) in
+    let inst' = match inst.it with
+      | Don't -> { inst with it = None }
+      | Shield ts
+      | Propagate ts -> { inst with it = Some ts } in
+    let t' = infer_call env exp1 inst' exp2 exp.at (Some t) in
     if not (T.sub t' t) then
       local_error env0 exp.at "M0096"
         "expression of type%a\ncannot produce expected type%a"
