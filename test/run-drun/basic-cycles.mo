@@ -6,8 +6,7 @@ actor a {
 
   let balance : () -> Nat = Prim.cyclesBalance;
   let available : () -> Nat = Prim.cyclesAvailable;
-  let accept = func <async>(n : Nat) : Nat = Prim.cyclesAccept n;
-  //let accept : <async>Nat -> Nat = Prim.cyclesAccept;
+  let accept : <async>Nat -> Nat = Prim.cyclesAccept;
   let add : <async>Nat -> () = Prim.cyclesAdd;
 
   let refunded : () -> Nat = Prim.cyclesRefunded;
