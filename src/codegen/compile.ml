@@ -55,17 +55,17 @@ let parse_rts_function_type (str : string) : (value_type list * value_type list,
   | "f32" -> F32Type
   | "f64" -> F64Type
   | s -> fatal "unexpected token '%s'" s in
-  let check_unit values had_unit next =
-    match values, had_unit with
+  let check_unit a had_unit next =
+    match a, had_unit with
     | [], false -> Error "expected '()'"
     | _ :: _, true -> Error "unexpected '()'"
     | _, _ -> next () in
-  let rec parse a b return_side had_unit = function
-  | [] -> if return_side then check_unit a had_unit (fun () -> Ok (b, a)) else Error "unexpected end of input"
-  | "->" :: ts -> if return_side then Error "duplicate '->'" else check_unit a had_unit (fun () -> parse b a true false ts)
-  | "()" :: ts -> if had_unit then Error "duplicate '()'" else parse a b return_side had_unit ts
-  | "" :: ts -> parse a b return_side had_unit ts
-  | t :: ts -> parse (parse_value_type t :: a) b return_side had_unit ts in
+  let rec parse a b had_arrow had_unit = function
+  | [] -> if had_arrow then check_unit a had_unit (fun () -> Ok (b, a)) else Error "unexpected end of input"
+  | "->" :: ts -> if had_arrow then Error "duplicate '->'" else check_unit a had_unit (fun () -> parse b a true false ts)
+  | "()" :: ts -> if had_unit then Error "duplicate '()'" else parse a b had_arrow had_unit ts
+  | "" :: ts -> parse a b had_arrow had_unit ts
+  | t :: ts -> parse (parse_value_type t :: a) b had_arrow had_unit ts in
   str
   |> String.split_on_char ' '
   |> parse [] [] false false
