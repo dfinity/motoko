@@ -335,7 +335,7 @@ func cyclesRefunded() : Nat {
 };
 
 func cyclesAccept<async>(amount : Nat) : Nat {
-  (prim "cyclesAccept" : Nat -> Nat)(amount);
+  (prim "cyclesAccept" : <async>Nat -> Nat)(amount);
 };
 
 func cyclesAdd<async>(amount : Nat) : () {
