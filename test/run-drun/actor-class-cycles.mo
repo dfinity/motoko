@@ -19,7 +19,7 @@ actor a {
       Prim.debugPrint(debug_show({ iteration = i }));
       Prim.debugPrint(debug_show({ balance = round(Cycles.balance()) }));
       let c = await {
-        Cycles.add((i + 1) * 10_000_000_000_000);
+        Cycles.add<async>((i + 1) * 10_000_000_000_000);
 	Lib.C();
       };
       let {current = cur; initial = init} = await c.balance();

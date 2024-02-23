@@ -34,23 +34,23 @@ actor a {
 
      // detect immediate overflow of add
      try (await async {
-       add(0x1_00000000_00000000_00000000_00000000);
+       add<async>(0x1_00000000_00000000_00000000_00000000);
        assert false;
      })
      catch (e) {Prim.debugPrint(Prim.errorMessage(e))};
 
      // detect incremental overflow of add
      try (await async {
-       add(0xFFFFFFFF_FFFFFFFF_FFFFFFFFF_FFFFFFF);
+       add<async>(0xFFFFFFFF_FFFFFFFF_FFFFFFFFF_FFFFFFF);
        Prim.debugPrint("ok");
-       add(0x1);
+       add<async>(0x1);
        assert false;
      })
      catch (e) { Prim.debugPrint(Prim.errorMessage(e)) };
 
      // detect accept overflow
      try (await async {
-       let _ = accept(0x1_00000000_00000000_00000000_00000000);
+       let _ = accept<async>(0x1_00000000_00000000_00000000_00000000);
        assert false;
      })
      catch (e) { Prim.debugPrint(Prim.errorMessage(e)) };
@@ -78,7 +78,7 @@ actor a {
          Prim.debugPrint("can't top up more");
          return; // give up on test
        };
-       add(amount);
+       add<async>(amount);
        Prim.debugPrint(debug_show({added = amount}));
        try {
          await test(amount);

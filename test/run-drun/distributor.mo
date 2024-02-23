@@ -29,7 +29,7 @@ actor a {
     let i = k % n;
     let node = switch (nodes[i]) {
       case null {
-        Cycles.add(2_000_000_000_000);
+        Cycles.add<async>(2_000_000_000_000);
         let n = await Lib.Node(i); // dynamically install a new Node
         nodes[i] := ?n;
         n;

@@ -6,9 +6,9 @@ module {
 
   public let available : () -> Nat = Prim.cyclesAvailable;
 
-  public let accept : Nat -> Nat = Prim.cyclesAccept;
+  public let accept : <async>Nat -> Nat = Prim.cyclesAccept;
 
-  public let add : Nat -> () = Prim.cyclesAdd;
+  public let add : <async>Nat -> () = Prim.cyclesAdd;
 
   public let refunded : () -> Nat = Prim.cyclesRefunded;
 
