@@ -19,7 +19,6 @@ actor Tagged {
         temp := n *% n;
         n += 1;
       };
-
       i += 1;
     };
     let (m1, n1) = counters();

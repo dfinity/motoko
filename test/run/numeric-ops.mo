@@ -357,6 +357,7 @@ func testNat16(a : Nat16, b : Nat16) : [Nat16] {
   [sum1, sum2, diff1, diff2, prod1, prod2, rat1, rat2, mod1, mod2/*, pow1, pow2*/]
 };
 
+
 func nat16Compare(a : Nat16, b : Nat16) : Bool = a == b;
 
 verify<Nat16>([8, 2, 15, 1, 2/*, 243*/], testNat16(5, 3),

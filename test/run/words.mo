@@ -1,24 +1,24 @@
 //MOC-FLAG -fshared-code
 import Prim "mo:⛔";
 
-// CHECK: func $init
+// FHECK: func $init
 
 // check for `Eqz` optimisation
-// CHECK: i64.const 424242
+// FHECK: i64.const 424242
 assert not (424242 : Nat64 == 1);
-// CHECK-NOT: i64.eqz
+// FHECK-NOT: i64.eqz
 assert not (3 : Nat64 == 0);
 assert (0 : Nat64 == 0);
-// CHECK: i64.const 424342
+// FHECK: i64.const 424342
 assert not (424342 : Nat64 == 1);
 
 // check for `Eqz` optimisation
-// CHECK: i32.const 424542
+// FHECK: i32.const 424542
 assert not (424542 : Nat32 == 1);
-// CHECK-NOT: i32.eqz
+// FHECK-NOT: i32.eqz
 assert not (3 : Nat32 == 0);
 assert (0 : Nat32 == 0);
-// CHECK: i32.const 424842
+// FHECK: i32.const 424842
 assert not (424842 : Nat32 == 1);
 
 func printBit(a : Bool) { Prim.debugPrint(if a "set" else "clear") };
@@ -51,19 +51,19 @@ do {
     let e : Nat64 = 20000;
 
 // this is the value of c
-// CHECK: i32.const 17825530
-// CHECK-NOT: call $box_i64
-// CHECK: call $printN64ln
+// FHECK: i32.const 17825530
+// FHECK-NOT: call $box_i64
+// FHECK: call $printN64ln
     printN64ln(c);
     printN64ln(^c);
     printN64ln(a +% c);
     printN64ln(c -% a);
 
-// CHECK: call $checkpointAlpha
+// FHECK: call $checkpointAlpha
     checkpointAlpha();
 // This is a native Wasm i64 multiplication, there should be no shift involved!
-// CHECK-NOT: i64.shr_u
-// CHECK: call $printN64ln
+// FHECK-NOT: i64.shr_u
+// FHECK: call $printN64ln
     printN64ln(a * b);
 
     printN64ln(a / b);
@@ -111,22 +111,22 @@ do {
     let d : Int32 = -15;
     let e : Nat32 = 20000;
 
-// CHECK: call $checkpointBravo
+// FHECK: call $checkpointBravo
     checkpointBravo();
 // this is the value of c
-// CHECK: i32.const 17825530
-// CHECK-NOT: call $box_i64
-// CHECK: call $printN32ln
+// FHECK: i32.const 17825530
+// FHECK-NOT: call $box_i64
+// FHECK: call $printN32ln
     printN32ln(c);
     printN32ln(^c);
     printN32ln(a + c);
     printN32ln(c - a);
 
-// CHECK: call $checkpointCharlie
+// FHECK: call $checkpointCharlie
     checkpointCharlie();
 // This is a native Wasm i32 multiplication, there should be no shift involved!
-// CHECK-NOT: i32.shr_u
-// CHECK: call $printN32ln
+// FHECK-NOT: i32.shr_u
+// FHECK: call $printN32ln
     printN32ln(a * b);
     printN32ln(a / b);
     printN32ln(c % a);
@@ -176,17 +176,17 @@ do {
     printN16ln(a +% c);
     printN16ln(c -% a);
 
-// CHECK: call $checkpointDelta
+// FHECK: call $checkpointDelta
     checkpointDelta();
 // this is the value of a
-// CHECK: i32.const 299302912
+// FHECK: i32.const 299302912
 // this is the value of b
-// CHECK: i32.const 458752
+// FHECK: i32.const 458752
 // This is not a native Wasm i32 multiplication, we need to shift one of the args left by 16 bits!
-// CHECK-NEXT: i32.const 16
-// CHECK-NEXT: i32.shr_u
-// CHECK-NEXT: i32.mul
-// CHECK-NEXT: call $printN16ln
+// FHECK-NEXT: i32.const 16
+// FHECK-NEXT: i32.shr_u
+// FHECK-NEXT: i32.mul
+// FHECK-NEXT: call $printN16ln
     printN16ln(a *% b);
     printN16ln(a / b);
     printN16ln(c % a);
@@ -197,38 +197,38 @@ do {
     printN16ln(a ^ c);
     printN16ln(a << b);
 
-// CHECK: call $checkpointEcho
+// FHECK: call $checkpointEcho
    checkpointEcho();
 // this is the value of b
-// CHECK: i32.const 458752
+// FHECK: i32.const 458752
 // This is not a native Wasm i32 left shift, we need to shift the second arg left by 16 bits and clamp it to 4 bits!
-// CHECK-NEXT: i32.const 16
-// CHECK-NEXT: i32.shr_u
-// CHECK-NEXT: i32.const 15
-// CHECK-NEXT: i32.and
-// CHECK-NEXT: i32.shr_u
+// FHECK-NEXT: i32.const 16
+// FHECK-NEXT: i32.shr_u
+// FHECK-NEXT: i32.const 15
+// FHECK-NEXT: i32.and
+// FHECK-NEXT: i32.shr_u
 // Then the result must be sanitised.
-// CHECK-NEXT: i32.const -65536
-// CHECK-NEXT: i32.and
-// CHECK-NEXT: call $printN16ln
+// FHECK-NEXT: i32.const -65536
+// FHECK-NEXT: i32.and
+// FHECK-NEXT: call $printN16ln
     printN16ln(a >> b);
     printN16ln(Prim.int16ToNat16(d) >> 3); // -15 = 0xfff1 = 0b1111_1111_1111_0001 (shifted = 0b0001_1111_1111_1110 = 8190)
     printI16ln(d >> 3); // -15 = 0xfff1 = 0b1111_1111_1111_0001 (shifted = 0b1111_1111_1111_1110 = -2)
 
-// CHECK: call $checkpointFoxtrot
+// FHECK: call $checkpointFoxtrot
    checkpointFoxtrot();
 // this is the value of b
-// CHECK: i32.const 458752
-// CHECK-NEXT: call $rotl<Nat16>
-// CHECK-NEXT: call $printN16ln
+// FHECK: i32.const 458752
+// FHECK-NEXT: call $rotl<Nat16>
+// FHECK-NEXT: call $printN16ln
     printN16ln(c <<> b);
 
-// CHECK: call $checkpointGolf
+// FHECK: call $checkpointGolf
    checkpointGolf();
 // this is the value of b
-// CHECK: i32.const 458752
-// CHECK-NEXT: call $rotr<Nat16>
-// CHECK-NEXT: call $printN16ln
+// FHECK: i32.const 458752
+// FHECK-NEXT: call $rotr<Nat16>
+// FHECK-NEXT: call $printN16ln
     printN16ln(c <>> b);
     printI16ln(Prim.popcntInt16 d); // -15 = 0xfff1 = 0b1111_1111_1111_0001 (population = 13)
     printN16ln(Prim.clzNat16 e); // 20000 = 0x4e20 (leading zeros = 1)
@@ -264,15 +264,15 @@ do {
     printN8ln(^c);
     printN8ln(a + c);
     printN8ln(c -% a);
-// CHECK: call $checkpointHotel
+// FHECK: call $checkpointHotel
     checkpointHotel();
 // this is the value of b
-// CHECK: i32.const 117440512
+// FHECK: i32.const 117440512
 // This is not a native Wasm i32 multiplication, we need to shift one of the args left by 24 bits!
-// CHECK-NEXT: i32.const 24
-// CHECK-NEXT: i32.shr_u
-// CHECK-NEXT: i32.mul
-// CHECK-NEXT: call $printN8ln
+// FHECK-NEXT: i32.const 24
+// FHECK-NEXT: i32.shr_u
+// FHECK-NEXT: i32.mul
+// FHECK-NEXT: call $printN8ln
     printN8ln(a *% b);
     printN8ln(a / b);
     printN8ln(c % a);
@@ -283,35 +283,35 @@ do {
     printN8ln(a ^ c);
     printN8ln(a << b);
 
-// CHECK: call $checkpointIndia
+// FHECK: call $checkpointIndia
     checkpointIndia();
 // this is the value of b
-// CHECK: i32.const 117440512
+// FHECK: i32.const 117440512
 // This is not a native Wasm i32 left shift, we need to shift the second arg left by 24 bits and clamp it to 3 bits!
-// CHECK-NEXT: i32.const 24
-// CHECK-NEXT: i32.shr_u
-// CHECK-NEXT: i32.const 7
-// CHECK-NEXT: i32.and
-// CHECK-NEXT: i32.shr_u
+// FHECK-NEXT: i32.const 24
+// FHECK-NEXT: i32.shr_u
+// FHECK-NEXT: i32.const 7
+// FHECK-NEXT: i32.and
+// FHECK-NEXT: i32.shr_u
 // Then the result must be sanitised.
-// CHECK-NEXT: i32.const -16777216
-// CHECK-NEXT: i32.and
-// CHECK-NEXT: call $printN8ln
+// FHECK-NEXT: i32.const -16777216
+// FHECK-NEXT: i32.and
+// FHECK-NEXT: call $printN8ln
     printN8ln(a >> b);
     printN8ln(Prim.int8ToNat8(d) >> 3); // -15 = 0xf1 = 0b1111_0001 (shifted = 0b0001_1110 = 30)
     printI8ln(d >> 3); // -15 = 0xf1 = 0b1111_0001 (shifted = 0b1111_1110 = -2)
 
-// CHECK: call $checkpointJuliett
+// FHECK: call $checkpointJuliett
     checkpointJuliett();
 // this is the value of b
-// CHECK: i32.const 117440512
-// CHECK-NEXT: call $rotl<Nat8>
-// CHECK-NEXT: call $printN8ln
+// FHECK: i32.const 117440512
+// FHECK-NEXT: call $rotl<Nat8>
+// FHECK-NEXT: call $printN8ln
     printN8ln(c <<> b);
 // this is the value of b
-// CHECK: i32.const 117440512
-// CHECK-NEXT: call $rotr<Nat8>
-// CHECK-NEXT: call $printN8ln
+// FHECK: i32.const 117440512
+// FHECK-NEXT: call $rotr<Nat8>
+// FHECK-NEXT: call $printN8ln
     printN8ln(c <>> b);
     printI8ln(Prim.popcntInt8 d); // -15 = 0xf1 = 0b1111_0001 (population = 5)
     printN8ln(Prim.clzNat8 e); // 200 = 0xC8 (leading zeros = 0)
