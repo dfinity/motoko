@@ -50,11 +50,11 @@ let fatal fmt = Printf.ksprintf (fun s -> raise (CodegenError s)) fmt
 (* DSL parser for `--rts-function` type strings *)
 let parse_rts_function_type (str : string) : (value_type list * value_type list, string) result =
   let parse_value_type = function
-  | "i32" -> I32Type
-  | "i64" -> I64Type
-  | "f32" -> F32Type
-  | "f64" -> F64Type
-  | s -> fatal "unexpected token '%s'" s in
+  | "i32" -> Ok I32Type
+  | "i64" -> Ok I64Type
+  | "f32" -> Ok F32Type
+  | "f64" -> Ok F64Type
+  | s -> Error (Printf.sprintf "unexpected token '%s'" s) in
   let check_unit a had_unit next =
     match a, had_unit with
     | [], false -> Error "expected '()'"
@@ -65,7 +65,9 @@ let parse_rts_function_type (str : string) : (value_type list * value_type list,
   | "->" :: ts -> if seen_arrow then Error "duplicate '->'" else check_unit a seen_unit (fun () -> parse b a true false ts)
   | "()" :: ts -> if seen_unit then Error "duplicate '()'" else parse a b seen_arrow seen_unit ts
   | "" :: ts -> parse a b seen_arrow seen_unit ts
-  | t :: ts -> parse (parse_value_type t :: a) b seen_arrow seen_unit ts in
+  | t :: ts -> (match parse_value_type t with
+    | Ok t' -> parse (t' :: a) b seen_arrow seen_unit ts
+    | Error e -> Error e) in
   str
   |> String.split_on_char ' '
   |> parse [] [] false false
