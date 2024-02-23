@@ -1851,11 +1851,11 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
           "shared function call result contains abstract type%a"
           display_typ_expand t_ret';
     end;
-    match T.is_async t_ret', inst.it, tbs with
+    match T.(is_shared_sort sort || is_async t_ret'), inst.it, tbs with
     | false, Some (true, _), ([] | T.{ sort = Type; _ } :: _) ->
-       warn env inst.at "M0196"(*FIXME*) "redundantly fulfilling async demand"
+       warn env inst.at "M0196" "redundantly fulfilling async demand"
     | false, (None | Some (false, _)), T.{ sort = Scope; _ } :: _ ->
-       warn env at "M0195"(*FIXME*) "implicitly fulfilling async demand"
+       warn env at "M0195" "implicitly fulfilling async demand"
     | _ -> ()
   end;
   (* note t_ret' <: t checked by caller if necessary *)
