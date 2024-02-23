@@ -16,11 +16,11 @@ func gawd<async>() {
 func eeek<async>() : async () {
     ignore setTimer(1_000_000, false, func () : async () { });
 
-    ignore async 42
+    ignore await async 42
 };
 
 func gwerr() : async Int = async {
     ignore setTimer(1_000_000, false, func () : async () { });
 
-    42
+    await async 42
 };
