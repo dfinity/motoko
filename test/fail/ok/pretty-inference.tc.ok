@@ -250,3 +250,7 @@ because no instantiation of T__47, U__17 makes
     (T__47, U__17)
 and
   Nat  <:  ()
+pretty-inference.mo:11.17-11.18: warning [M0194], unused identifier x (delete or rename to wildcard `_` or `_x`)
+pretty-inference.mo:26.30-26.31: warning [M0194], unused identifier x (delete or rename to wildcard `_` or `_x`)
+pretty-inference.mo:40.14-40.15: warning [M0194], unused identifier x (delete or rename to wildcard `_` or `_x`)
+pretty-inference.mo:40.20-40.21: warning [M0194], unused identifier u (delete or rename to wildcard `_` or `_u`)
