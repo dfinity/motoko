@@ -355,6 +355,8 @@ module E = struct
 
     (* requires stable memory (and emulation on wasm targets) *)
     requires_stable_memory : bool ref;
+
+    custom_rts_functions : string list ref; (* custom RTS functions *)
   }
 
 
@@ -393,6 +395,7 @@ module E = struct
     local_names = ref [];
     features = ref FeatureSet.empty;
     requires_stable_memory = ref false;
+    custom_rts_functions = ref [];
   }
 
   (* This wraps Mo_types.Hash.hash to also record which labels we have seen,
@@ -1158,13 +1161,23 @@ module RTS = struct
     E.add_func_import env "rts" "stream_shutdown" [I32Type] [];
     E.add_func_import env "rts" "stream_reserve" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "stream_stable_dest" [I32Type; I64Type; I64Type] [];
-    Flags.M.iter (fun name type_string ->
+    (* Flags.M.iter (fun name type_string ->
       let inputs, outputs = match parse_rts_function_type type_string with
       | Ok v -> v
       | Error err -> fatal "invalid RTS function type string: '%s' (%s)" type_string err in
       E.add_func_import env "rts" name inputs outputs
-    ) !Flags.rts_functions;
-    if !Flags.gc_strategy = Flags.Incremental then
+    ) !Flags.rts_functions; *)
+    let custom_rts_functions = Option.bind env.E.rts (fun rts -> Wasm_exts.CustomModule.(rts.motoko.custom_rts_functions)) in
+    failwith (Printf.sprintf "%s" (match custom_rts_functions with | Some (_,m) -> m | None -> "<no custom section>"));
+    Option.iter (fun (_, meta) -> List.iter (fun name ->
+      (* TODO: determine Wasm input/return types *)
+      let type_string_temporary = "i32 -> i32" in
+      let inputs, outputs = match parse_rts_function_type type_string_temporary with
+      | Ok v -> v
+      | Error err -> fatal "invalid RTS function type string: '%s' (%s)" type_string_temporary err in
+      E.add_func_import env "rts" name inputs outputs
+    ) (String.split_on_char ',' (String.trim meta))) custom_rts_functions;
+  if !Flags.gc_strategy = Flags.Incremental then
       incremental_gc_imports env
     else
       non_incremental_gc_imports env;
@@ -12221,7 +12234,8 @@ and conclude_module env set_serialization_globals start_fi_o =
       motoko = {
         labels = E.get_labs env;
         stable_types = !(env.E.stable_types);
-        compiler = metadata "motoko:compiler" (Lib.Option.get Source_id.release Source_id.id)
+        compiler = metadata "motoko:compiler" (Lib.Option.get Source_id.release Source_id.id);
+        custom_rts_functions = Option.bind env.E.rts (fun rts -> rts.motoko.custom_rts_functions)
       };
       candid = {
         args = !(env.E.args);

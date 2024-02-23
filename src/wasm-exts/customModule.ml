@@ -42,6 +42,7 @@ type motoko_sections = {
   labels : string list;
   stable_types : (bool * string) option;
   compiler : (bool * string) option;
+  custom_rts_functions : (bool * string) option;
 }
 
 type candid_sections = {
@@ -53,6 +54,7 @@ let empty_motoko_sections = {
   labels = [];
   stable_types = None;
   compiler = None;
+  custom_rts_functions = None;
 }
 
 let empty_candid_sections = {
