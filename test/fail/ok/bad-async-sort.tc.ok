@@ -16,3 +16,7 @@ Use keyword 'async*' (not 'async') to produce the expected type.
 bad-async-sort.mo:23.14-23.23: type error [M0183], async expression cannot produce expected async type 
   async<$anon4> ().
 Use keyword 'async' (not 'async*') to produce the expected type.
+bad-async-sort.mo:10.8-10.13: warning [M0194], unused identifier anon1 (delete or rename to wildcard `_` or `_anon1`)
+bad-async-sort.mo:14.8-14.13: warning [M0194], unused identifier anon2 (delete or rename to wildcard `_` or `_anon2`)
+bad-async-sort.mo:18.8-18.13: warning [M0194], unused identifier anon3 (delete or rename to wildcard `_` or `_anon3`)
+bad-async-sort.mo:22.8-22.13: warning [M0194], unused identifier anon4 (delete or rename to wildcard `_` or `_anon4`)

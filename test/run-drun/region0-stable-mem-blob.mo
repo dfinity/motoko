@@ -19,8 +19,6 @@ actor {
     P.arrayToBlob(a);
   };
 
-  let inc : Nat64 = 8;
-
   var i : Nat64 = 0;
   var size : Nat64 = 0;
   let max = n * 65536;

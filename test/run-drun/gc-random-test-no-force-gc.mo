@@ -1,4 +1,7 @@
 //MOC-NO-FORCE-GC
+//MOC-FLAG --stable-regions
+//MOC-FLAG --max-stable-pages=1000000
+
 import GCRandomTest "gc-random-test/gc-random-test";
 
 actor {
