@@ -1,4 +1,4 @@
-import { debugPrint; error; setTimer; cancelTimer } = "mo:⛔";
+import { debugPrint; setTimer; cancelTimer } = "mo:⛔";
 
 actor {
   var counter = 0;

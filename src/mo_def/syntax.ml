@@ -12,9 +12,10 @@ let empty_typ_note = {note_typ = Type.Pre; note_eff = Type.Triv}
 
 (* Resolved imports (filled in separately after parsing) *)
 
+type lib_path = {package : string option; path : string}
 type resolved_import =
   | Unresolved
-  | LibPath of string
+  | LibPath of lib_path
   | IDLPath of (string * string) (* filepath * bytes *)
   | PrimPath (* the built-in prim module *)
 
@@ -125,6 +126,7 @@ and vis' =
   | System
 
 let is_public vis = match vis.Source.it with Public _ -> true | _ -> false
+let is_private vis = match vis.Source.it with Private -> true | _ -> false
 
 type stab = stab' Source.phrase
 and stab' = Stable | Flexible
@@ -295,8 +297,8 @@ open Source
 
 (* Identifiers *)
 
-let anon_id sort at = "anon-" ^ sort ^ "-" ^ string_of_pos at.left
-let is_anon_id id = Lib.String.chop_prefix "anon-" id.it <> None
+let anon_id sort at = "@anon-" ^ sort ^ "-" ^ string_of_pos at.left
+let is_anon_id id = Lib.String.chop_prefix "@anon-" id.it <> None
 
 (* Types & Scopes *)
 
