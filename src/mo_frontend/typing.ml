@@ -1350,7 +1350,7 @@ and infer_exp'' env exp : T.typ =
         begin
           let caller_async = List.exists (function | { it = { sort = { it = T.Scope; _}; _ }; _ } -> true | _ -> false) typ_binds in
           if caller_async && T.(exp1.note.note_eff <> Triv) then
-            local_error env exp1.at "M0194"
+            local_error env exp1.at "M0197"
               "non-async body of function with async caller demand cannot perform proper sends"
         end
     end;
