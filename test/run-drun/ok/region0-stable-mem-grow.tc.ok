@@ -1,2 +1,2 @@
-region0-stable-mem-grow.mo:11.14-11.15: warning [M0194], Unused declaration c
-region0-stable-mem-grow.mo:15.9-15.10: warning [M0194], Unused declaration m
+region0-stable-mem-grow.mo:11.14-11.15: warning [M0194], unused identifier c (delete or rename to wildcard `_` or `_c`)
+region0-stable-mem-grow.mo:15.9-15.10: warning [M0194], unused identifier m (delete or rename to wildcard `_` or `_m`)

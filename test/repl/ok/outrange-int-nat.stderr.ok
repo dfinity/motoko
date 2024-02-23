@@ -1,4 +1,3 @@
-stdin:1.8-1.12: warning [M0194], Unused declaration Prim
 prim:___: execution error, value out of bounds
 prim:___: execution error, value out of bounds
 prim:___: execution error, value out of bounds

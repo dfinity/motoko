@@ -22,4 +22,4 @@ palindrome.mo:36.17-36.21: warning [M0145], this pattern of type
   List<Char> = ?(Char, List<Char>)
 does not cover value
   ?(_)
-palindrome.mo:6.7-6.17: warning [M0194], Unused declaration Palindrome
+palindrome.mo:6.7-6.17: warning [M0194], unused identifier Palindrome (delete or rename to wildcard `_` or `_Palindrome`)

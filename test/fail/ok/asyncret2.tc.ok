@@ -2,4 +2,4 @@ asyncret2.mo:1.54-1.57: type error [M0096], expression of type
   async<$call3> Int
 cannot produce expected type
   Int
-asyncret2.mo:1.6-1.11: warning [M0194], Unused declaration call3
+asyncret2.mo:1.6-1.11: warning [M0194], unused identifier call3 (delete or rename to wildcard `_` or `_call3`)

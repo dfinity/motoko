@@ -1,4 +1,3 @@
-stdin:1.5-1.6: warning [M0194], Unused declaration x
 stdin:2.18-2.19: syntax error [M0001], unexpected token ';', expected one of token or <phrase> sequence:
   <exp_bin(ob)>
 stdin:1.9-1.10: type error [M0050], literal of type

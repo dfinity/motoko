@@ -10,14 +10,14 @@ non_static_module.mo:11.4-11.13: type error [M0014], non-static expression in li
 non_static_module.mo:20.12-20.15: type error [M0014], non-static expression in library or module
 non_static_module.mo:21.12-21.19: type error [M0014], non-static expression in library or module
 non_static_module.mo:22.4-22.13: type error [M0014], non-static expression in library or module
-non_static_module.mo:1.8-1.13: warning [M0194], Unused declaration Wrong
-non_static_module.mo:5.7-5.8: warning [M0194], Unused declaration x
-non_static_module.mo:6.7-6.8: warning [M0194], Unused declaration a
-non_static_module.mo:8.10-8.16: warning [M0194], Unused declaration WrongO
-non_static_module.mo:11.8-11.9: warning [M0194], Unused declaration x
-non_static_module.mo:14.10-14.13: warning [M0194], Unused declaration OkO
-non_static_module.mo:16.9-16.10: warning [M0194], Unused declaration a
-non_static_module.mo:19.10-19.16: warning [M0194], Unused declaration WrongM
-non_static_module.mo:22.8-22.9: warning [M0194], Unused declaration x
-non_static_module.mo:25.10-25.13: warning [M0194], Unused declaration OkM
-non_static_module.mo:27.9-27.10: warning [M0194], Unused declaration a
+non_static_module.mo:1.8-1.13: warning [M0194], unused identifier Wrong (delete or rename to wildcard `_` or `_Wrong`)
+non_static_module.mo:5.7-5.8: warning [M0194], unused identifier x (delete or rename to wildcard `_` or `_x`)
+non_static_module.mo:6.7-6.8: warning [M0194], unused identifier a (delete or rename to wildcard `_` or `_a`)
+non_static_module.mo:8.10-8.16: warning [M0194], unused identifier WrongO (delete or rename to wildcard `_` or `_WrongO`)
+non_static_module.mo:11.8-11.9: warning [M0194], unused identifier x (delete or rename to wildcard `_` or `_x`)
+non_static_module.mo:14.10-14.13: warning [M0194], unused identifier OkO (delete or rename to wildcard `_` or `_OkO`)
+non_static_module.mo:16.9-16.10: warning [M0194], unused identifier a (delete or rename to wildcard `_` or `_a`)
+non_static_module.mo:19.10-19.16: warning [M0194], unused identifier WrongM (delete or rename to wildcard `_` or `_WrongM`)
+non_static_module.mo:22.8-22.9: warning [M0194], unused identifier x (delete or rename to wildcard `_` or `_x`)
+non_static_module.mo:25.10-25.13: warning [M0194], unused identifier OkM (delete or rename to wildcard `_` or `_OkM`)
+non_static_module.mo:27.9-27.10: warning [M0194], unused identifier a (delete or rename to wildcard `_` or `_a`)

@@ -43,11 +43,11 @@ because implicit instantiation of type parameter A is under-constrained with
 where
   None  =/=  Any
 so that explicit type instantiation is required
-variance.mo:16.7-16.8: warning [M0194], Unused declaration a
-variance.mo:89.29-89.30: warning [M0194], Unused declaration f
-variance.mo:90.27-90.28: warning [M0194], Unused declaration x
-variance.mo:94.25-94.26: warning [M0194], Unused declaration f
-variance.mo:99.26-99.27: warning [M0194], Unused declaration f
-variance.mo:100.24-100.25: warning [M0194], Unused declaration x
-variance.mo:104.26-104.27: warning [M0194], Unused declaration f
-variance.mo:105.24-105.25: warning [M0194], Unused declaration x
+variance.mo:16.7-16.8: warning [M0194], unused identifier a (delete or rename to wildcard `_` or `_a`)
+variance.mo:89.29-89.30: warning [M0194], unused identifier f (delete or rename to wildcard `_` or `_f`)
+variance.mo:90.27-90.28: warning [M0194], unused identifier x (delete or rename to wildcard `_` or `_x`)
+variance.mo:94.25-94.26: warning [M0194], unused identifier f (delete or rename to wildcard `_` or `_f`)
+variance.mo:99.26-99.27: warning [M0194], unused identifier f (delete or rename to wildcard `_` or `_f`)
+variance.mo:100.24-100.25: warning [M0194], unused identifier x (delete or rename to wildcard `_` or `_x`)
+variance.mo:104.26-104.27: warning [M0194], unused identifier f (delete or rename to wildcard `_` or `_f`)
+variance.mo:105.24-105.25: warning [M0194], unused identifier x (delete or rename to wildcard `_` or `_x`)

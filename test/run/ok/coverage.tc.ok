@@ -185,14 +185,14 @@ coverage.mo:228.3-230.4: warning [M0145], this switch of type
   {#a}
 does not cover value
   #a
-coverage.mo:1.6-1.7: warning [M0194], Unused declaration f
-coverage.mo:3.7-3.8: warning [M0194], Unused declaration a
-coverage.mo:9.8-9.9: warning [M0194], Unused declaration b
-coverage.mo:13.8-13.10: warning [M0194], Unused declaration f1
-coverage.mo:14.8-14.10: warning [M0194], Unused declaration f2
-coverage.mo:14.11-14.12: warning [M0194], Unused declaration x
-coverage.mo:15.8-15.10: warning [M0194], Unused declaration f3
-coverage.mo:17.8-17.10: warning [M0194], Unused declaration f5
-coverage.mo:18.8-18.10: warning [M0194], Unused declaration f6
-coverage.mo:19.8-19.10: warning [M0194], Unused declaration f7
-coverage.mo:178.6-178.7: warning [M0194], Unused declaration h
+coverage.mo:1.6-1.7: warning [M0194], unused identifier f (delete or rename to wildcard `_` or `_f`)
+coverage.mo:3.7-3.8: warning [M0194], unused identifier a (delete or rename to wildcard `_` or `_a`)
+coverage.mo:9.8-9.9: warning [M0194], unused identifier b (delete or rename to wildcard `_` or `_b`)
+coverage.mo:13.8-13.10: warning [M0194], unused identifier f1 (delete or rename to wildcard `_` or `_f1`)
+coverage.mo:14.8-14.10: warning [M0194], unused identifier f2 (delete or rename to wildcard `_` or `_f2`)
+coverage.mo:14.11-14.12: warning [M0194], unused identifier x (delete or rename to wildcard `_` or `_x`)
+coverage.mo:15.8-15.10: warning [M0194], unused identifier f3 (delete or rename to wildcard `_` or `_f3`)
+coverage.mo:17.8-17.10: warning [M0194], unused identifier f5 (delete or rename to wildcard `_` or `_f5`)
+coverage.mo:18.8-18.10: warning [M0194], unused identifier f6 (delete or rename to wildcard `_` or `_f6`)
+coverage.mo:19.8-19.10: warning [M0194], unused identifier f7 (delete or rename to wildcard `_` or `_f7`)
+coverage.mo:178.6-178.7: warning [M0194], unused identifier h (delete or rename to wildcard `_` or `_h`)

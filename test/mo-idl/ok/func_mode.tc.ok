@@ -1,1 +1,1 @@
-func_mode.mo:1.7-1.8: warning [M0194], Unused declaration s
+func_mode.mo:1.7-1.8: warning [M0194], unused identifier s (delete or rename to wildcard `_` or `_s`)

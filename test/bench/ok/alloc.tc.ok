@@ -1,1 +1,1 @@
-alloc.mo:4.7-4.12: warning [M0194], Unused declaration alloc
+alloc.mo:4.7-4.12: warning [M0194], unused identifier alloc (delete or rename to wildcard `_` or `_alloc`)

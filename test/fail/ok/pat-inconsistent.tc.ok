@@ -12,4 +12,4 @@ pat-inconsistent.mo:58.1-60.2: warning [M0145], this switch of type
 does not cover value
   #sparrows
 pat-inconsistent.mo:64.10-64.18: warning [M0146], this pattern is never matched
-pat-inconsistent.mo:62.6-62.12: warning [M0194], Unused declaration absurd
+pat-inconsistent.mo:62.6-62.12: warning [M0194], unused identifier absurd (delete or rename to wildcard `_` or `_absurd`)
