@@ -457,10 +457,12 @@ inst :
   | LT ASYNC ts=preceded(COMMA, typ)* GT
     { { it = Some (true, ts); at = at $sloc; note = [] } }
 
-
-%inline typ_params_opt :
+%inline type_typ_params_opt :
   | (* empty *) { [] }
   | LT ts=seplist(typ_bind, COMMA) GT { ts }
+
+%inline typ_params_opt :
+  | ts=type_typ_params_opt { ts }
   | LT ASYNC ts=preceded(COMMA, typ_bind)* GT { ensure_scope_bind "" ts }
 
 typ_field :
@@ -945,7 +947,7 @@ parse_module_header :
   | start import_list EOF {}
 
 typ_dec :
-  | TYPE x=typ_id tps=typ_params_opt EQ t=typ
+  | TYPE x=typ_id tps=type_typ_params_opt EQ t=typ
     { TypD(x, tps, t) @? at $sloc }
 
 stab_field :

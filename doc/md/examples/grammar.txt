@@ -72,8 +72,7 @@
     '<' 'async' (',' <typ>)* '>'
 
 <typ_params_opt> ::= 
-    <empty>
-    '<' <list(<typ_bind>, ',')> '>'
+    ('<' <list(<typ_bind>, ',')> '>')?
     '<' 'async' (',' <typ_bind>)* '>'
 
 <typ_field> ::= 
