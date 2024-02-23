@@ -1,5 +1,5 @@
-illegal-await.mo:3.36-3.37: type error [M0087], ill-scoped await: expected async type from current scope $@anon-async-3.22, found async type from other scope $top-level
-  scope $@anon-async-3.22 is illegal-await.mo:3.22-3.40
+illegal-await.mo:3.36-3.37: type error [M0087], ill-scoped await: expected async type from current scope $anon-async-3.22, found async type from other scope $top-level
+  scope $anon-async-3.22 is illegal-await.mo:3.22-3.40
   scope $top-level is the global scope
 illegal-await.mo:3.22: info, start of scope $anon-async-3.22 mentioned in error at illegal-await.mo:3.30-3.37
 illegal-await.mo:3.39: info, end of scope $anon-async-3.22 mentioned in error at illegal-await.mo:3.30-3.37
