@@ -1138,7 +1138,7 @@ module RTS = struct
     else
       non_incremental_gc_imports env;
 
-    (* Custom language bindings *)
+    (* Custom RTS functions *)
     Option.iter (fun rts ->
       let open Wasm_exts in
       let open Wasm.Source in
