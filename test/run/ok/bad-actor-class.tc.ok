@@ -1,0 +1,1 @@
+bad-actor-class.mo:1.13-1.14: warning [M0194], unused identifier C (delete or rename to wildcard `_` or `_C`)

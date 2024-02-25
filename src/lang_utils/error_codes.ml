@@ -197,4 +197,5 @@ let error_codes : (string * string option) list =
     "M0191", None; (* Code requires Wasm features ... to execute *)
     "M0192", None; (* Object/Actor/Module body type mismatch *)
     "M0193", None; (* Can't declare actor class to have `async*` result *)
+    "M0194", Some([%blob "lang_utils/error_codes/M0194.md"]); (* Unused identifier warning *)
   ]

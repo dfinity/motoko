@@ -1,4 +1,3 @@
-import P "mo:⛔";
 import StableMemory "stable-mem/StableMemory";
 
 actor {
