@@ -1270,14 +1270,13 @@ module RTS = struct
     (* Custom RTS functions *)
     Option.iter (fun rts ->
       let open Wasm_exts in
-      let open Wasm.Source in
       let module_ = rts.Wasm_exts.CustomModule.module_ in
       List.iter (fun export ->
-        let export_name = string_of_name export.Wasm.Source.it.Ast.name in
-        if List.mem export_name !Flags.rts_functions then
+        let name = string_of_name export.Wasm.Source.it.Ast.name in
+        if List.mem name !Flags.rts_functions then
           (match export_type Wasm.Source.{it = module_; at = no_region} export with
           | ExternFuncType (FuncType (inputs, outputs)) ->
-            E.add_func_import env "rts" export_name inputs outputs
+            E.add_func_import env "rts" name inputs outputs
           | _ -> ())
       ) module_.exports) env.E.rts;
 
@@ -11748,8 +11747,15 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | OtherPrim "btstInt64", [_;_] ->
     const_sr (SR.UnboxedWord64 Type.Int64) (Word64.btst_kernel env)
 
+  (* Custom RTS functions *)
   | OtherPrim s, [_] when String.length s > 4 && String.sub s 0 4 = "rts:" ->
-    const_sr SR.Vanilla (E.call_import env "rts" (String.sub s 4 (String.length s - 4)))
+    let s' = String.sub s 4 (String.length s - 4) in
+    if List.mem s' !Flags.rts_functions then
+      const_sr SR.Vanilla (E.call_import env "rts" s')
+    else
+      (* TODO: E.trap_with env (Printf.sprintf "custom RTS function '%s' not found\n" s') *)
+      let _ = Printf.printf "custom RTS function '%s' not found\n" s' in
+      exit 1
 
   (* Coercions for abstract types *)
   | CastPrim (_,_), [e] ->
