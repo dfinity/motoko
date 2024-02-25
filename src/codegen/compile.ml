@@ -1269,11 +1269,11 @@ module RTS = struct
       let open Wasm_exts in
       let module_ = rts.Wasm_exts.CustomModule.module_ in
       List.iter (fun export ->
-        let export_name = string_of_name export.Wasm.Source.it.Ast.name in
-        if List.mem export_name !Flags.rts_functions then
+        let name = string_of_name export.Wasm.Source.it.Ast.name in
+        if List.mem name !Flags.rts_functions then
           (match export_type Wasm.Source.{it = module_; at = no_region} export with
           | ExternFuncType (FuncType (inputs, outputs)) ->
-            E.add_func_import env "rts" export_name inputs outputs
+            E.add_func_import env "rts" name inputs outputs
           | _ -> ())
       ) module_.exports) env.E.rts;
 
