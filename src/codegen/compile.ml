@@ -47,31 +47,6 @@ let todo fn se x = Printf.eprintf "%s: %s" fn (Wasm.Sexpr.to_string 80 se); x
 exception CodegenError of string
 let fatal fmt = Printf.ksprintf (fun s -> raise (CodegenError s)) fmt
 
-(* DSL parser for `--rts-function` type strings *)
-let parse_rts_function_type (str : string) : (value_type list * value_type list, string) result =
-  let parse_value_type = function
-  | "i32" -> Ok I32Type
-  | "i64" -> Ok I64Type
-  | "f32" -> Ok F32Type
-  | "f64" -> Ok F64Type
-  | s -> Error (Printf.sprintf "unexpected token '%s'" s) in
-  let check_unit a had_unit next =
-    match a, had_unit with
-    | [], false -> Error "expected '()'"
-    | _ :: _, true -> Error "unexpected '()'"
-    | _, _ -> next () in
-  let rec parse a b seen_arrow seen_unit = function
-  | [] -> if seen_arrow then check_unit a seen_unit (fun () -> Ok (b, a)) else Error "unexpected end of input"
-  | "->" :: ts -> if seen_arrow then Error "duplicate '->'" else check_unit a seen_unit (fun () -> parse b a true false ts)
-  | "()" :: ts -> if seen_unit then Error "duplicate '()'" else parse a b seen_arrow seen_unit ts
-  | "" :: ts -> parse a b seen_arrow seen_unit ts
-  | t :: ts -> (match parse_value_type t with
-    | Ok t' -> parse (t' :: a) b seen_arrow seen_unit ts
-    | Error e -> Error e) in
-  str
-  |> String.split_on_char ' '
-  |> parse [] [] false false
-
 module StaticBytes = struct
   (* A very simple DSL to describe static memory *)
 
@@ -1158,16 +1133,25 @@ module RTS = struct
     E.add_func_import env "rts" "stream_shutdown" [I32Type] [];
     E.add_func_import env "rts" "stream_reserve" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "stream_stable_dest" [I32Type; I64Type; I64Type] [];
-    Flags.M.iter (fun name type_string ->
-      let inputs, outputs = match parse_rts_function_type type_string with
-      | Ok v -> v
-      | Error err -> fatal "invalid RTS function type string: '%s' (%s)" type_string err in
-      E.add_func_import env "rts" name inputs outputs
-    ) !Flags.rts_functions;
     if !Flags.gc_strategy = Flags.Incremental then
       incremental_gc_imports env
     else
       non_incremental_gc_imports env;
+
+    (* Custom language bindings *)
+    Option.iter (fun rts ->
+      let open Wasm_exts in
+      let open Wasm.Source in
+      let module_ = rts.Wasm_exts.CustomModule.module_ in
+      List.iter (fun export ->
+        let export_name = string_of_name export.Wasm.Source.it.Ast.name in
+        if List.mem export_name !Flags.rts_functions then
+          (match export_type Wasm.Source.{it = module_; at = no_region} export with
+          | ExternFuncType (FuncType (inputs, outputs)) ->
+            E.add_func_import env "rts" export_name inputs outputs
+          | _ -> ())
+      ) module_.exports) env.E.rts;
+
     ()
 
 end (* RTS *)
