@@ -1267,7 +1267,6 @@ module RTS = struct
     (* Custom RTS functions *)
     Option.iter (fun rts ->
       let open Wasm_exts in
-      let open Wasm.Source in
       let module_ = rts.Wasm_exts.CustomModule.module_ in
       List.iter (fun export ->
         let export_name = string_of_name export.Wasm.Source.it.Ast.name in
