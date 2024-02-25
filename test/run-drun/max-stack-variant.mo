@@ -1,7 +1,7 @@
 //MOC-FLAG --compacting-gc --rts-stack-pages 32 -measure-rts-stack
-import { errorMessage; performanceCounter; rts_heap_size; rts_max_stack_size; debugPrint; } = "mo:⛔";
+import { errorMessage; debugPrint; } = "mo:⛔";
 
-actor stack {
+actor {
     let expectedMinimumSize = 31_000;
 
     public func ser() : async () { await go(false) };
@@ -43,7 +43,7 @@ actor stack {
         let b = to_candid(l);
         debugPrint("serialized");
 
-        let o : ?(List) =
+        let _o : ?(List) =
           if deserialize
             from_candid(b)
           else null;
