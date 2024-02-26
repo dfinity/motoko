@@ -1268,7 +1268,7 @@ module RTS = struct
       non_incremental_gc_imports env;
 
     (* Custom RTS functions *)
-    Option.iter (fun rts ->
+    Option.iter (fun (rts : Wasm_exts.CustomModule.extended_module) ->
       let open Wasm_exts in
       let module_ = rts.Wasm_exts.CustomModule.module_ in
       List.iter (fun export ->
@@ -11753,7 +11753,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     if List.mem s' !Flags.rts_functions then
       const_sr SR.Vanilla (E.call_import env "rts" s')
     else
-      (* TODO: E.trap_with env (Printf.sprintf "custom RTS function '%s' not found\n" s') *)
+      (* TODO: type checking error *)
       let _ = Printf.printf "custom RTS function '%s' not found\n" s' in
       exit 1
 
