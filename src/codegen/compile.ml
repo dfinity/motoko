@@ -11750,7 +11750,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     if List.mem s' !Flags.rts_functions then
       const_sr SR.Vanilla (E.call_import env "rts" s')
     else
-      (* SR.Unreachable, E.trap_with env (Printf.sprintf "custom RTS function '%s' not found\n" s') *)
+      (* TODO: type checking error *)
       let _ = Printf.printf "custom RTS function '%s' not found\n" s' in
       exit 1
 
