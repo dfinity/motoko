@@ -83,8 +83,8 @@ no-timer-canc.mo:3.10-3.21: type error [M0119], object field cancelTimer is not 
     ctzNat32 : Nat32 -> Nat32;
     ctzNat64 : Nat64 -> Nat64;
     ctzNat8 : Nat8 -> Nat8;
-    cyclesAccept : <$>Nat -> Nat;
-    cyclesAdd : <$>Nat -> ();
+    cyclesAccept : <async>Nat -> Nat;
+    cyclesAdd : <async>Nat -> ();
     cyclesAvailable : () -> Nat;
     cyclesBalance : () -> Nat;
     cyclesRefunded : () -> Nat;

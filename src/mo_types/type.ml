@@ -1667,8 +1667,10 @@ and name_of_var vs v =
   | [] -> v
   | v'::vs' -> name_of_var vs' (if fst v = fst v' then (fst v, snd v + 1) else v)
 
-and pp_bind vs ppf (v, {bound; _}) =
-  if bound = Any then
+and pp_bind vs ppf (v, {bound; sort; _}) =
+  if sort = Scope && string_of_var v = "$" then
+    pr ppf "async"
+  else if bound = Any then
     pr ppf (string_of_var v)
   else
     fprintf ppf "%s <: %a"
