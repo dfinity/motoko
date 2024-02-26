@@ -1265,7 +1265,7 @@ module RTS = struct
       non_incremental_gc_imports env;
 
     (* Custom RTS functions *)
-    Option.iter (fun rts ->
+    Option.iter (fun (rts : Wasm_exts.CustomModule.extended_module) ->
       let open Wasm_exts in
       let module_ = rts.Wasm_exts.CustomModule.module_ in
       List.iter (fun export ->
