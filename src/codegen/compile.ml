@@ -1265,17 +1265,19 @@ module RTS = struct
       non_incremental_gc_imports env;
 
     (* Custom RTS functions *)
-    Option.iter (fun (rts : Wasm_exts.CustomModule.extended_module) ->
+    begin
       let open Wasm_exts in
-      let module_ = rts.module_ in
-      List.iter (fun export ->
-        let name = string_of_name export.Wasm.Source.it.Ast.name in
-        if List.mem name !Flags.rts_functions then
-          (match export_type Wasm.Source.{it = module_; at = no_region} export with
-          | ExternFuncType (FuncType (inputs, outputs)) ->
-            E.add_func_import env "rts" name inputs outputs
-          | _ -> ())
-      ) module_.exports) env.E.rts;
+      Option.iter (fun (rts : CustomModule.extended_module) ->
+        let module_ = rts.CustomModule.module_ in
+        List.iter (fun export ->
+          let name = string_of_name export.Wasm.Source.it.Ast.name in
+          if List.mem name !Flags.rts_functions then
+            (match export_type Wasm.Source.{it = module_; at = no_region} export with
+            | ExternFuncType (FuncType (inputs, outputs)) ->
+              E.add_func_import env "rts" name inputs outputs
+            | _ -> ())
+        ) module_.exports) env.E.rts
+    end;
 
     ()
 
