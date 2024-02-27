@@ -1609,9 +1609,9 @@ and pp_typ_nobin vs ppf t =
     let vs'vs = vs' @ vs in
     fprintf ppf "@[<2>%s%a%a ->@ %a@]"
       (string_of_func_sort s)
-      (pp_binds (vs'vs) vs'') tbs'
-      (sequence (pp_typ_un (vs'vs))) ts1
-      (pp_control_cod sugar c (vs'vs)) ts2
+      (pp_binds vs'vs vs'') tbs'
+      (sequence (pp_typ_un vs'vs)) ts1
+      (pp_control_cod sugar c vs'vs) ts2
   | t ->
      pp_typ_pre vs ppf t
 
