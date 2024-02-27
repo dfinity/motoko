@@ -1,6 +1,7 @@
 timer-no-send.mo:5.12-5.62: type error [M0047], send capability required, but not available
  (need an enclosing async expression or function body)
 timer-no-send.mo:10.12-10.62: warning [M0195], implicitly fulfilling async demand
-timer-no-send.mo:9.21-13.2: type error [M0197], non-async body of function with async caller demand cannot perform proper sends
-timer-no-send.mo:17.12-17.62: warning [M0195], implicitly fulfilling async demand
-timer-no-send.mo:23.12-23.62: warning [M0195], implicitly fulfilling async demand
+timer-no-send.mo:12.15-12.22: type error [M0196], misplaced fulfilling of async demand
+timer-no-send.mo:9.21-15.2: type error [M0197], non-async body of function with async caller demand cannot perform proper sends
+timer-no-send.mo:19.12-19.62: warning [M0195], implicitly fulfilling async demand
+timer-no-send.mo:25.12-25.62: warning [M0195], implicitly fulfilling async demand

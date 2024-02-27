@@ -1924,7 +1924,7 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
     end;
     match T.(is_shared_sort sort || is_async t_ret'), inst.it, tbs with
     | false, Some (true, _), ([] | T.{ sort = Type; _ } :: _) ->
-       warn env inst.at "M0196" "redundantly fulfilling async demand"
+       local_error env inst.at "M0196" "misplaced fulfilling of async demand"
     | false, (None | Some (false, _)), T.{ sort = Scope; _ } :: _ ->
        warn env at "M0195" "implicitly fulfilling async demand"
     | _ -> ()

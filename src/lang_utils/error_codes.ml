@@ -199,6 +199,6 @@ let error_codes : (string * string option) list =
     "M0193", None; (* Can't declare actor class to have `async*` result *)
     "M0194", Some([%blob "lang_utils/error_codes/M0194.md"]); (* Unused identifier warning *)
     "M0195", None; (* warn that `async` demand is getting passed behind the scenes *)
-    "M0196", None; (* warn that `async` demand is not necessary, while being passed explicitly, and could be exploited by callee *)
+    "M0196", None; (* attempt to pass `async` demand not accepted by callee *)
     "M0197", None; (* Sends not allowed in functions with user-annotated `async` demand *)
   ]

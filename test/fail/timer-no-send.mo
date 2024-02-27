@@ -1,4 +1,4 @@
-import { setTimer } = "mo:⛔";
+import { debugPrint; setTimer } = "mo:⛔";
 
 // no send capability: must not call `setTimer`
 func _bowm() {
@@ -8,6 +8,8 @@ func _bowm() {
 // transferred send capability: may call `setTimer`
 func _gawd<async>() {
     ignore setTimer(1_000_000, false, func () : async () { });
+
+    debugPrint<async>("caveat"); // misplaced `<async>`
 
     ignore async 42 // not allowed
 };

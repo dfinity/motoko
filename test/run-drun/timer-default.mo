@@ -31,25 +31,21 @@ actor {
   func _warn1() : async () {
       this_should_warn<async>();   // OK: this line is fine
       this_should_warn();          // call should warn
-      debugPrint<async>("caveat"); // call should warn
   };
 
   func _warn2() : async* () {
       this_should_warn<async>();   // OK: this line is fine
       this_should_warn();          // call should warn
-      debugPrint<async>("caveat"); // call should warn
   };
 
   func _warn3() : async () = async {
       this_should_warn<async>();   // OK: this line is fine
       this_should_warn();          // call should warn
-      debugPrint<async>("caveat"); // call should warn
   };
 
   func _warn4() : async* () = async* {
       this_should_warn<async>();   // OK: this line is fine
       this_should_warn();          // call should warn
-      debugPrint<async>("caveat"); // call should warn
   }
 };
 
