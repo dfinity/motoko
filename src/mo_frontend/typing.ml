@@ -479,20 +479,25 @@ let scope_info env typ at =
   | None -> ()
 
 let rec infer_async_cap env sort cs tbs at =
+  let open T in
   match sort, cs, tbs with
-  | (T.Shared T.Write | T.Local) , c::_,  { T.sort = T.Scope; _ }::_ ->
-    { env with typs = T.Env.add T.default_scope_var c env.typs;
-               scopes = T.ConEnv.add c at env.scopes;
+  | Shared Write, c::_,  { T.sort = Scope; _ }::_ ->
+    { env with typs = Env.add default_scope_var c env.typs;
+               scopes = ConEnv.add c at env.scopes;
                async = C.AsyncCap c }
-  | (T.Shared T.Query) , c::_,  { T.sort = T.Scope; _ }::_ ->
-    { env with typs = T.Env.add T.default_scope_var c env.typs;
-               scopes = T.ConEnv.add c at env.scopes;
+  | Shared Query, c::_,  { sort = Scope; _ }::_ ->
+    { env with typs = Env.add default_scope_var c env.typs;
+               scopes = ConEnv.add c at env.scopes;
                async = C.QueryCap c }
-  | (T.Shared T.Composite) , c::_,  { T.sort = T.Scope; _ }::_ ->
-    { env with typs = T.Env.add T.default_scope_var c env.typs;
-               scopes = T.ConEnv.add c at env.scopes;
+  | Shared Composite, c::_,  { sort = Scope; _ }::_ ->
+    { env with typs = Env.add default_scope_var c env.typs;
+               scopes = ConEnv.add c at env.scopes;
                async = C.CompositeCap c }
-  | T.Shared _, _, _ -> assert false (* impossible given sugaring *)
+  | Shared _, _, _ -> assert false (* impossible given sugaring *)
+  | Local, c::_,  { sort = Scope; _ }::_ ->
+    { env with typs = Env.add default_scope_var c env.typs;
+               scopes = ConEnv.add c at env.scopes;
+               async = C.SyncCap c }
   | _ -> { env with async = C.NullCap }
 
 and check_AsyncCap env s at : T.typ * (T.con -> C.async_cap) =
@@ -504,7 +509,7 @@ and check_AsyncCap env s at : T.typ * (T.con -> C.async_cap) =
    | C.ErrorCap ->
       local_error env at "M0037" "misplaced %s; a query cannot contain an %s" s s;
       T.Con(C.bogus_cap,[]), fun c -> C.NullCap
-   | C.NullCap ->
+   | C.(NullCap | SyncCap _) ->
       local_error env at "M0037" "misplaced %s; try enclosing in an async function" s;
       T.Con(C.bogus_cap,[]), fun c -> C.NullCap
    | C.CompositeAwaitCap _ ->
@@ -513,16 +518,15 @@ and check_AsyncCap env s at : T.typ * (T.con -> C.async_cap) =
 
 and check_AwaitCap env s at =
    match env.async with
-   | C.AwaitCap c -> T.Con(c, [])
-   | C.CompositeAwaitCap c -> T.Con(c, [])
+   | C.(AwaitCap c
+        | CompositeAwaitCap c) -> T.Con(c, [])
    | C.AsyncCap _
    | C.QueryCap _
    | C.CompositeCap _
      ->
       local_error env at "M0038" "misplaced %s; try enclosing in an async expression" s;
       T.Con(C.bogus_cap,[])
-   | C.ErrorCap
-   | C.NullCap ->
+   | C.(ErrorCap | NullCap | SyncCap _) ->
       local_error env at "M0038" "misplaced %s" s;
       T.Con(C.bogus_cap,[])
 
@@ -535,19 +539,18 @@ and check_ErrorCap env s at =
    | C.QueryCap _
    | C.CompositeCap _ ->
      local_error env at "M0039" "misplaced %s; try enclosing in an async expression or query function" s
-   | C.NullCap ->
+   | C.(NullCap | SyncCap _) ->
      local_error env at "M0039" "misplaced %s" s
 
 and scope_of_env env =
-  match env.async with
-   | C.AsyncCap c
-   | C.QueryCap c
-   | C.CompositeCap c
-   | C.CompositeAwaitCap c
-   | C.AwaitCap c ->
-      Some (T.Con(c,[]))
-   | C.ErrorCap -> None
-   | C.NullCap -> None
+  C.(match env.async with
+     | AsyncCap c
+     | QueryCap c
+     | CompositeCap c
+     | CompositeAwaitCap c
+     | AwaitCap c
+     | SyncCap c -> Some (T.Con(c, []))
+     | ErrorCap | NullCap -> None)
 
 
 (* Types *)
@@ -798,21 +801,23 @@ and check_con_env env at ce =
 and infer_inst env sort tbs typs at =
   let ts = List.map (check_typ env) typs in
   let ats = List.map (fun typ -> typ.at) typs in
-  match tbs,typs with
+  match tbs, typs with
   | {T.bound; sort = T.Scope; _}::tbs', typs' ->
     assert (List.for_all (fun tb -> tb.T.sort = T.Type) tbs');
     (match env.async with
-     | (C.AwaitCap c | C.AsyncCap c) when sort = T.Shared T.Query || sort = T.Shared T.Write || sort = T.Local ->
-        (T.Con(c,[])::ts, at::ats)
-     | (C.AwaitCap c | C.AsyncCap c) when sort = T.Shared T.Composite ->
+     | C.SyncCap c when sort = T.Local ->
+        (T.Con(c, [])::ts, at::ats)
+     | C.(AwaitCap c | AsyncCap c) when T.(sort = Shared Query || sort = Shared Write || sort = Local) ->
+        (T.Con(c, [])::ts, at::ats)
+     | C.(AwaitCap c | AsyncCap c) when sort = T.(Shared Composite) ->
         error env at "M0186"
          "composite send capability required, but not available\n  (cannot call a `composite query` function from a non-`composite query` function)"
-     | (C.CompositeAwaitCap c | C.CompositeCap c) ->
+     | C.(CompositeAwaitCap c | CompositeCap c) ->
        begin
          match sort with
          | T.(Shared (Composite | Query)) ->
-           (T.Con(c,[])::ts, at::ats)
-         | T.((Shared Write) | Local) ->
+           (T.Con(c, [])::ts, at::ats)
+         | T.(Shared Write | Local) ->
            error env at "M0187"
              "send capability required, but not available\n  (cannot call a `shared` function from a `composite query` function; only calls to `query` and `composite query` functions are allowed)"
        end
