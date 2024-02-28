@@ -78,8 +78,8 @@ let initial_env flavor : env =
     labs = T.Env.empty;
     rets = None;
     async = Async_cap.(match initial_cap() with
-                       | (NullCap | ErrorCap) -> None
-                       | (QueryCap c | AwaitCap c | AsyncCap c | CompositeCap c | CompositeAwaitCap c) -> Some c);
+                       | NullCap | ErrorCap -> None
+                       | QueryCap c | AwaitCap c | AsyncCap c | CompositeCap c | CompositeAwaitCap c | SyncCap c -> Some c);
     seen = ref T.ConSet.empty;
     check_run;
   }
