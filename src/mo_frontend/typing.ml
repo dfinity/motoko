@@ -496,7 +496,7 @@ let rec infer_async_cap env sort cs tbs body_opt at =
   | Shared _, _, _ -> assert false (* impossible given sugaring *)
   | Local, c::_,  { sort = Scope; _ }::_ ->
     let async = match body_opt with
-      | Some exp when not (is_asyncE exp) -> C.SyncCap c
+      | Some exp when not (is_asyncE exp) -> C.SystemCap c
       | _ -> C.AsyncCap c
     in
     { env with typs = Env.add default_scope_var c env.typs;
@@ -513,7 +513,7 @@ and check_AsyncCap env s at : T.typ * (T.con -> C.async_cap) =
    | C.ErrorCap ->
       local_error env at "M0037" "misplaced %s; a query cannot contain an %s" s s;
       T.Con(C.bogus_cap,[]), fun c -> C.NullCap
-   | C.(NullCap | SyncCap _) ->
+   | C.(NullCap | SystemCap _) ->
       local_error env at "M0037" "misplaced %s; try enclosing in an async function" s;
       T.Con(C.bogus_cap,[]), fun c -> C.NullCap
    | C.CompositeAwaitCap _ ->
@@ -530,7 +530,7 @@ and check_AwaitCap env s at =
      ->
       local_error env at "M0038" "misplaced %s; try enclosing in an async expression" s;
       T.Con(C.bogus_cap,[])
-   | C.(ErrorCap | NullCap | SyncCap _) ->
+   | C.(ErrorCap | NullCap | SystemCap _) ->
       local_error env at "M0038" "misplaced %s" s;
       T.Con(C.bogus_cap,[])
 
@@ -543,7 +543,7 @@ and check_ErrorCap env s at =
    | C.QueryCap _
    | C.CompositeCap _ ->
      local_error env at "M0039" "misplaced %s; try enclosing in an async expression or query function" s
-   | C.(NullCap | SyncCap _) ->
+   | C.(NullCap | SystemCap _) ->
      local_error env at "M0039" "misplaced %s" s
 
 and scope_of_env env =
@@ -553,7 +553,7 @@ and scope_of_env env =
      | CompositeCap c
      | CompositeAwaitCap c
      | AwaitCap c
-     | SyncCap c -> Some (T.Con(c, []))
+     | SystemCap c -> Some (T.Con(c, []))
      | ErrorCap | NullCap -> None)
 
 
@@ -809,7 +809,7 @@ and infer_inst env sort tbs typs at =
   | {T.bound; sort = T.Scope; _}::tbs', typs' ->
     assert (List.for_all (fun tb -> tb.T.sort = T.Type) tbs');
     (match env.async with
-     | C.SyncCap c when sort = T.Local ->
+     | C.SystemCap c when sort = T.Local ->
         (T.Con(c, [])::ts, at::ats)
      | C.(AwaitCap c | AsyncCap c) when T.(sort = Shared Query || sort = Shared Write || sort = Local) ->
         (T.Con(c, [])::ts, at::ats)
