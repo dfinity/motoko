@@ -496,13 +496,12 @@ let rec infer_async_cap env sort cs tbs body_opt at =
   | Shared _, _, _ -> assert false (* impossible given sugaring *)
   | Local, c::_,  { sort = Scope; _ }::_ ->
     let async = match body_opt with
-      | None -> C.AsyncCap c
-      | Some exp ->
-        if is_asyncE exp then C.AsyncCap c else C.SyncCap c
+      | Some exp when not (is_asyncE exp) -> C.SyncCap c
+      | _ -> C.AsyncCap c
     in
     { env with typs = Env.add default_scope_var c env.typs;
                scopes = ConEnv.add c at env.scopes;
-               async}
+               async }
   | _ -> { env with async = C.NullCap }
 
 and check_AsyncCap env s at : T.typ * (T.con -> C.async_cap) =
@@ -1427,14 +1426,6 @@ and infer_exp'' env exp : T.typ =
           error env typ.at "M0041" "shared function has non-async result type%a"
             display_typ_expand codom
       end
-      (* TODO: REVERT THIS CODE TO MASTER *)
-      else if not (is_asyncE exp1) then (* local functions should be effect-free unless `async` result *)
-        begin
-          let caller_async = List.exists (function | { it = { sort = { it = T.Scope; _}; _ }; _ } -> true | _ -> false) typ_binds in
-          if caller_async && T.(exp1.note.note_eff <> Triv) then
-            local_error env exp1.at "M0197"
-              "non-async body of function with async caller demand cannot perform proper sends"
-        end
     end;
     let ts1 = match pat.it with TupP _ -> T.seq_of_tup t1 | _ -> [t1] in
     T.Func (sort, c, T.close_binds cs tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2)
