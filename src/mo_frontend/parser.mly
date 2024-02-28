@@ -463,7 +463,7 @@ inst :
 
 %inline typ_params_opt :
   | ts=type_typ_params_opt { ts }
-  | LT ASYNC ts=preceded(COMMA, typ_bind)* GT { ensure_scope_bind "" ts }
+  | LT SYSTEM ts=preceded(COMMA, typ_bind)* GT { ensure_scope_bind "" ts }
 
 typ_field :
   | TYPE c=typ_id  tps=typ_params_opt EQ t=typ
