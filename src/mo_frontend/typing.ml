@@ -1928,7 +1928,7 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
     | false, Some (true, _), ([] | T.{ sort = Type; _ } :: _) ->
        local_error env inst.at "M0196" "unexpected `system` capability (try deleting it)"
     | false, (None | Some (false, _)), T.{ sort = Scope; _ } :: _ ->
-       warn env at "M0195" "implicitly fulfilling system demand"
+       warn env at "M0195" (Printf.sprintf "this function call implicitly requires `system` capability and may perform undesired actions (please review the call and provide a type instantiation `<system%s>` to suppress this warning)" (if List.length tbs = 1 then "" else ", ...")
     | _ -> ()
   end;
   (* note t_ret' <: t checked by caller if necessary *)
