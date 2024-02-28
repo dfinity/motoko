@@ -454,7 +454,7 @@ inst :
     { { it = None; at = no_region; note = [] } }
   | LT ts=seplist(typ, COMMA) GT
     { { it = Some (false, ts); at = at $sloc; note = [] } }
-  | LT ASYNC ts=preceded(COMMA, typ)* GT
+  | LT SYSTEM ts=preceded(COMMA, typ)* GT
     { { it = Some (true, ts); at = at $sloc; note = [] } }
 
 %inline type_typ_params_opt :

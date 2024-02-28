@@ -15,9 +15,9 @@ actor client {
 
   print("available: " # debug_show(Cycles.available()));
 
-  print("accept(0): " # debug_show(Cycles.accept<async>(0)));
+  print("accept(0): " # debug_show(Cycles.accept<system>(0)));
 
-  Cycles.add<async>(2_000_000_000_000);
+  Cycles.add<system>(2_000_000_000_000);
   let wallet : WalletLib.Wallet = await WalletLib.Wallet();
   await wallet.show();
   print ("setting cycles");
@@ -37,7 +37,7 @@ actor client {
   print("# credit-1");
   // transfer half the amount back to the wallet
 //  print(debug_show(await wallet.balance()));
-  Cycles.add<async>(amount/4);
+  Cycles.add<system>(amount/4);
   await wallet.credit();
   print("refunded: " # debug_show(Cycles.refunded()));
 //  print(debug_show(await wallet.balance()));
@@ -46,7 +46,7 @@ actor client {
   print("# credit-2");
   // transfer half the amount back to the wallet
 //  print(debug_show(await wallet.balance()));
-  Cycles.add<async>(amount/4);
+  Cycles.add<system>(amount/4);
   await wallet.credit();
   print("refunded: " # debug_show(Cycles.refunded()));
 //  print(debug_show(await wallet.balance()));
@@ -55,7 +55,7 @@ actor client {
   print("# refund");
   // transfer half the amount back to the wallet
 //  print(debug_show(await wallet.balance()));
-  Cycles.add<async>(amount/2);
+  Cycles.add<system>(amount/2);
   await wallet.refund(amount/4);
   print("refunded: " # debug_show(Cycles.refunded()));
 //  print(debug_show(await wallet.balance()));
@@ -64,7 +64,7 @@ actor client {
   // issue a bunch of refund requests, await them in reverse and check the refunds are as expected.
   func testRefunds(n : Nat) : async () {
      if (n == 0) return;
-     Cycles.add<async>(n);
+     Cycles.add<system>(n);
      print("refund(" # debug_show(n) # ")");
      let a = wallet.refund(n);
      await testRefunds( n - 1);
@@ -77,7 +77,7 @@ actor client {
 
   // try to accept cycles that aren't available
   // this should trap
-  print(debug_show(Cycles.accept<async>(1)));
+  print(debug_show(Cycles.accept<system>(1)));
 
  };
 
@@ -86,7 +86,7 @@ actor client {
 //   print("credit: balance " # debug_show(Cycles.balance()));
    let b = Cycles.balance();
    let a = Cycles.available();
-   ignore Cycles.accept<async>(a);
+   ignore Cycles.accept<system>(a);
 //   print("credit:balance " # debug_show(Cycles.balance()));
 //     assert (Cycles.balance() == b + a);
  };

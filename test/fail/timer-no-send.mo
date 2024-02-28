@@ -6,16 +6,16 @@ func _bowm() {
 };
 
 // transferred send capability: may call `setTimer`
-func _gawd<async>() {
+func _gawd<system>() {
     ignore setTimer(1_000_000, false, func () : async () { });
 
-    debugPrint<async>("caveat"); // misplaced `<async>`
+    debugPrint<system>("caveat"); // misplaced `<system>`
 
     ignore async 42 // not allowed
 };
 
 // these are allowed to contain sends
-func _eeek<async>() : async () {
+func _eeek<system>() : async () {
     ignore setTimer(1_000_000, false, func () : async () { });
 
     ignore await async 42
