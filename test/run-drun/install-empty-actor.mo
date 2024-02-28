@@ -12,7 +12,7 @@ actor a {
 
     try {
       Prim.debugPrint("Installing actor:");
-      Cycles.add<async>(2_000_000_000_000);
+      Cycles.add<system>(2_000_000_000_000);
       let principal = await Prim.createActor(wasm_mod, empty_arg);
       let id = debug_show principal;
       Prim.debugPrint(id);

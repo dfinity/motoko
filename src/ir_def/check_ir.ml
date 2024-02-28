@@ -79,7 +79,7 @@ let initial_env flavor : env =
     rets = None;
     async = Async_cap.(match initial_cap() with
                        | NullCap | ErrorCap -> None
-                       | QueryCap c | AwaitCap c | AsyncCap c | CompositeCap c | CompositeAwaitCap c | SyncCap c -> Some c);
+                       | QueryCap c | AwaitCap c | AsyncCap c | CompositeCap c | CompositeAwaitCap c | SystemCap c -> Some c);
     seen = ref T.ConSet.empty;
     check_run;
   }

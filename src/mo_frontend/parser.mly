@@ -454,7 +454,7 @@ inst :
     { { it = None; at = no_region; note = [] } }
   | LT ts=seplist(typ, COMMA) GT
     { { it = Some (false, ts); at = at $sloc; note = [] } }
-  | LT ASYNC ts=preceded(COMMA, typ)* GT
+  | LT SYSTEM ts=preceded(COMMA, typ)* GT
     { { it = Some (true, ts); at = at $sloc; note = [] } }
 
 %inline type_typ_params_opt :
@@ -463,7 +463,7 @@ inst :
 
 %inline typ_params_opt :
   | ts=type_typ_params_opt { ts }
-  | LT ASYNC ts=preceded(COMMA, typ_bind)* GT { ensure_scope_bind "" ts }
+  | LT SYSTEM ts=preceded(COMMA, typ_bind)* GT { ensure_scope_bind "" ts }
 
 typ_field :
   | TYPE c=typ_id  tps=typ_params_opt EQ t=typ

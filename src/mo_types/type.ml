@@ -1603,7 +1603,7 @@ and pp_typ_nobin vs ppf t =
         List.tl vs', List.tl tbs
       else
         match tbs with
-        | { sort = Scope; _ } :: _ -> ("async", List.hd vs' |> snd) :: List.tl vs', tbs
+        | { sort = Scope; _ } :: _ -> ("system", List.hd vs' |> snd) :: List.tl vs', tbs
         | _ -> vs', tbs
     in
     let vs'vs = vs' @ vs in

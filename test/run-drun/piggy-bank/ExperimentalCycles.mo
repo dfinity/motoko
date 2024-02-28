@@ -17,7 +17,7 @@
 /// actor {
 ///   public func main() : async() {
 ///     Debug.print("Main balance: " # debug_show(Cycles.balance()));
-///     Cycles.add<async>(15_000_000);
+///     Cycles.add<system>(15_000_000);
 ///     await operation(); // accepts 10_000_000 cycles
 ///     Debug.print("Main refunded: " # debug_show(Cycles.refunded())); // 5_000_000
 ///     Debug.print("Main balance: " # debug_show(Cycles.balance())); // decreased by around 10_000_000
@@ -26,7 +26,7 @@
 ///   func operation() : async() {
 ///     Debug.print("Operation balance: " # debug_show(Cycles.balance()));
 ///     Debug.print("Operation available: " # debug_show(Cycles.available()));
-///     let obtained = Cycles.accept<async>(10_000_000);
+///     let obtained = Cycles.accept<system>(10_000_000);
 ///     Debug.print("Operation obtained: " # debug_show(obtained)); // => 10_000_000
 ///     Debug.print("Operation balance: " # debug_show(Cycles.balance())); // increased by 10_000_000
 ///     Debug.print("Operation available: " # debug_show(Cycles.available())); // decreased by 10_000_000
@@ -83,17 +83,17 @@ module {
   ///
   /// actor {
   ///   public func main() : async() {
-  ///     Cycles.add<async>(15_000_000);
+  ///     Cycles.add<system>(15_000_000);
   ///     await operation(); // accepts 10_000_000 cycles
   ///   };
   ///
   ///   func operation() : async() {
-  ///     let obtained = Cycles.accept<async>(10_000_000);
+  ///     let obtained = Cycles.accept<system>(10_000_000);
   ///     Debug.print("Obtained: " # debug_show(obtained)); // => 10_000_000
   ///   }
   /// }
   /// ```
-  public let accept : <async>(amount : Nat) -> (accepted : Nat) = Prim.cyclesAccept;
+  public let accept : <system>(amount : Nat) -> (accepted : Nat) = Prim.cyclesAccept;
 
   /// Indicates additional `amount` of cycles to be transferred in
   /// the next call, that is, evaluation of a shared function call or
@@ -112,16 +112,16 @@ module {
   ///
   /// actor {
   ///   func operation() : async() {
-  ///     ignore Cycles.accept<async>(10_000_000);
+  ///     ignore Cycles.accept<system>(10_000_000);
   ///   };
   ///
   ///   public func main() : async() {
-  ///     Cycles.add<async>(15_000_000);
+  ///     Cycles.add<system>(15_000_000);
   ///     await operation();
   ///   }
   /// }
   /// ```
-  public let add : <async>(amount : Nat) -> () = Prim.cyclesAdd;
+  public let add : <system>(amount : Nat) -> () = Prim.cyclesAdd;
 
   /// Reports `amount` of cycles refunded in the last `await` of the current
   /// context, or zero if no await has occurred yet.
@@ -136,11 +136,11 @@ module {
   ///
   /// actor {
   ///   func operation() : async() {
-  ///     ignore Cycles.accept<async>(10_000_000);
+  ///     ignore Cycles.accept<system>(10_000_000);
   ///   };
   ///
   ///   public func main() : async() {
-  ///     Cycles.add<async>(15_000_000);
+  ///     Cycles.add<system>(15_000_000);
   ///     await operation(); // accepts 10_000_000 cycles
   ///     Debug.print("Refunded: " # debug_show(Cycles.refunded())); // 5_000_000
   ///   }

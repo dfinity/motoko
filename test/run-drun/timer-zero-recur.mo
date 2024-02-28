@@ -13,7 +13,7 @@ actor {
      var attempts = 0;
 
      // when duration is 0 all "future" recurrent expirations happen at once
-     ignore setTimer<async>(0, true, func () : async () { count += 1; debugPrint "YEP!" });
+     ignore setTimer<system>(0, true, func () : async () { count += 1; debugPrint "YEP!" });
 
      while (count < max) {
        ignore await raw_rand(); // yield to scheduler

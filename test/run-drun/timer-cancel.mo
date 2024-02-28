@@ -22,9 +22,9 @@ actor {
   let raw_rand = (actor "aaaaa-aa" : actor { raw_rand : () -> async Blob }).raw_rand;
 
   public shared func go() : async () {
-     ignore setTimer<async>(2 * second, false,
+     ignore setTimer<system>(2 * second, false,
         func () : async () {
-           t := setTimer<async>(1 * second, true, remind);
+           t := setTimer<system>(1 * second, true, remind);
            await remind();
         });
 
