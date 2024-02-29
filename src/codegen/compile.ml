@@ -28,6 +28,9 @@ let (^^) = G.(^^) (* is this how we import a single operator from a module that 
 let page_size = Int64.of_int (64 * 1024)
 let page_size_bits = 16
 
+(* Our code depends on OCaml int having at least 32 bits *)
+let _ = assert (Sys.int_size >= 32)
+
 (* Scalar Tagging Scheme *)
 
 (* Rationale:
@@ -56,8 +59,7 @@ module TaggingScheme = struct
 
   let debug = false (* should never be true in master! *)
 
-  type bit = I
-           | O
+  type bit = I | O
   let _ = (I,O) (* silence warning on unused constructors *)
 
   type _tag =
@@ -94,6 +96,7 @@ module TaggingScheme = struct
   *)
 
   let tag_of_typ pty = Type.(
+  if !Flags.rtti then
     match pty with
     | Nat
     | Int ->                                                                        0b10L
@@ -106,21 +109,51 @@ module TaggingScheme = struct
     | Int16 ->                   0b11000000_00000000_00000000_00000000_00000000_00000000L
     | Nat8  ->          0b01000000_00000000_00000000_00000000_00000000_00000000_00000000L
     | Int8  ->          0b11000000_00000000_00000000_00000000_00000000_00000000_00000000L
+    | _  -> assert false
+  else
+    (* no tag *)
+    match pty with
+    | Nat
+    | Int
+    | Nat64
+    | Int64
+    | Nat32
+    | Int32
+    | Char
+    | Nat16
+    | Int16
+    | Nat8
+    | Int8 -> 0L
     | _  -> assert false)
 
-  let unit_tag = (* all tag, no payload (none needed) *)
-               0b01000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000L
+  let unit_tag = 
+    if !Flags.rtti then
+      (* all tag, no payload (none needed) *)
+      0b01000000_00000000_00000000_00000000_00000000_00000000_00000000_00000000L
+    else
+      (* no tag *)
+      0L
 
   (* Number of payload bits in compact representation, including any sign *)
   let ubits_of pty = Type.(
-    match pty with
-    | Nat | Int     -> 62
-    | Nat64 | Int64 -> 60
-    | Nat32 | Int32 -> 32
-    | Char          -> 21 (* suffices for 21-bit UTF8 codepoints *)
-    | Nat16 | Int16 -> 16
-    | Nat8  | Int8  ->  8
-    | _ -> assert false)
+    if !Flags.rtti then
+      match pty with
+      | Nat | Int     -> 62
+      | Nat64 | Int64 -> 60
+      | Nat32 | Int32 -> 32
+      | Char          -> 21 (* suffices for 21-bit UTF8 codepoints *)
+      | Nat16 | Int16 -> 16
+      | Nat8  | Int8  ->  8
+      | _ -> assert false
+    else
+      match pty with
+      | Nat   | Int   -> 63
+      | Nat64 | Int64 -> 63
+      | Nat32 | Int32 -> 32
+      | Char          -> 21 (* suffices for 21-bit UTF8 codepoints *)
+      | Nat16 | Int16 -> 16
+      | Nat8  | Int8  ->  8
+      | _ -> assert false)
 
 end
 
@@ -1568,7 +1601,7 @@ module BitTagged = struct
      * logical right shift (for unsigned type ty in Nat{8,16,32,64}, Char).
      * _arithmetic_ right shift (for signed type ty Int{8,16,32,64}, Int but also Nat).
        This is the right thing to do for signed numbers.
-       Nat is treated as signed to allow coercion free subtyping.
+       Nat is treated as signed to allow coercion-free subtyping.
 
      The low bits 32 - (ubits ty) store the tag bits of the value.
 
@@ -1660,29 +1693,32 @@ module BitTagged = struct
   let sanity_check_can_tag_signed env pty get_x =
     if TaggingScheme.debug || !Flags.sanity then
       get_x ^^
-      Func.share_code2 Func.Always env (prim_fun_name pty "check_can_tag_i64") (("res", I64Type), ("x", I64Type)) [I64Type]
-        (fun env get_res get_x ->
-          let lower_bound, upper_bound = Type.(
-            match pty with
-            |  Nat | Int | Int64 | Int32 ->
-              let sbits = sbits_of pty in
-              (Int64.(neg (shift_left 1L sbits)), Int64.shift_left 1L sbits)
-            |  Nat64 | Nat32 ->
-              let ubits = ubits_of pty in
-              (0L, Int64.shift_left 1L ubits)
-            | _ -> assert false)
-          in
-          (* lower_bound <= x < upper_bound *)
-          compile_unboxed_const lower_bound ^^
-          get_x ^^
-          compile_comparison I64Op.LeS ^^
-          get_x ^^ compile_unboxed_const upper_bound ^^
-          compile_comparison I64Op.LtS ^^
-          G.i (Binary (Wasm_exts.Values.I64 I64Op.And)) ^^
-          get_res ^^
-          compile_comparison I64Op.Eq ^^
-          E.else_trap_with env (prim_fun_name pty "check_can_tag_i64") ^^
-          get_res)
+      Func.share_code2 Func.Always env (prim_fun_name pty "check_can_tag_i64") (("res", I32Type), ("x", I64Type)) [I64Type]
+        (fun env get_res get_x -> Type.(
+          match pty with
+          | Nat | Int | Int64 | Int32 ->
+            let sbits = sbits_of pty in
+            let lower_bound = Int64.(neg (shift_left 1L sbits)) in
+            let upper_bound = Int64.shift_left 1L sbits in
+            (* lower_bound <= x < upper_bound *)
+            compile_unboxed_const lower_bound ^^
+            get_x ^^
+            compile_comparison I64Op.LeS ^^
+            get_x ^^ compile_unboxed_const upper_bound ^^
+            compile_comparison I64Op.LtS ^^
+            G.i (Binary (Wasm_exts.Values.I64 I64Op.And))
+         | Nat64 | Nat32 ->
+            let ubits = ubits_of pty in
+            let upper_bound = Int64.shift_left 1L ubits in
+            (* 0 <= x < upper_bound *)
+            get_x ^^ compile_unboxed_const upper_bound ^^
+            compile_comparison I64Op.LtU
+         | _ ->
+            assert false) ^^
+         get_res ^^
+         compile_comparison I64Op.Eq ^^
+         E.else_trap_with env (prim_fun_name pty "check_can_tag_i64") ^^
+         get_res)
     else
       G.nop
 
@@ -1693,7 +1729,7 @@ module BitTagged = struct
         (prim_fun_name pty "if_can_tag_i64") ("x", I64Type) [I64Type] (fun env get_x ->
         (* checks that all but the low sbits are either all 0 or all 1 *)
         get_x ^^
-        get_x ^^ compile_shrS_const (Int64.of_int ((64 - ubits_of pty) - 1)) ^^
+        get_x ^^ compile_shrS_const (Int64.of_int ((64 - ubits_of pty))) ^^
         G.i (Binary (Wasm_exts.Values.I64 I32Op.Xor)) ^^
         compile_shrU_const (Int64.of_int (sbits_of pty)) ^^
         compile_test I64Op.Eqz ^^
@@ -1753,6 +1789,13 @@ module BitTagged = struct
       sanity_check_tag line env pty ^^
       compile_shrU_const (Int64.sub 64L ubitsl)
     | _ -> assert false)
+
+  let clear_tag env pty =
+    if TaggingScheme.tag_of_typ pty <> 0L then
+      let shift_amount = 64 - ubits_of pty in
+      let mask = Int64.(lognot (sub (shift_left one shift_amount) one)) in
+      compile_bitand_const mask
+    else G.nop
 
 end (* BitTagged *)
 
@@ -2292,8 +2335,8 @@ module BoxedWord64 = struct
       (prim_fun_name pty "unbox64") ("n", I64Type) [I64Type] (fun env get_n ->
       get_n ^^
       BitTagged.if_tagged_scalar env [I64Type]
-        ( get_n ^^ BitTagged.untag __LINE__ env pty)
-        ( get_n ^^ Tagged.load_forwarding_pointer env ^^ Tagged.load_field env payload_field)
+        (get_n ^^ BitTagged.untag __LINE__ env pty)
+        (get_n ^^ Tagged.load_forwarding_pointer env ^^ Tagged.load_field env payload_field)
     )
 end (* BoxedWord64 *)
 
@@ -2365,6 +2408,11 @@ module Word64 = struct
 
   let _compile_eq env = compile_comparison I64Op.Eq
   let compile_relop env i64op = compile_comparison i64op
+
+  let btst_kernel env =
+    let (set_b, get_b) = new_local env "b" in
+    set_b ^^ compile_unboxed_const 1L ^^ get_b ^^ G.i (Binary (Wasm_exts.Values.I64 I64Op.Shl)) ^^
+    G.i (Binary (Wasm_exts.Values.I64 I64Op.And))
 
 end (* BoxedWord64 *)
 
@@ -2589,7 +2637,7 @@ module TaggedSmallWord = struct
        (* check tag *)
        BitTagged.sanity_check_tag __LINE__ env pty ^^
        (* clear tag *)
-       compile_bitand_const (mask_of_type pty)
+       BitTagged.clear_tag env pty
     | _ -> assert false
 
 end (* TaggedSmallWord *)
@@ -2916,9 +2964,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
   (* examine the skewed pointer and determine if number fits into ubits *)
   let fits_in_vanilla env = Num.fits_signed_bits env (BitTagged.ubits_of Type.Int)
 
-  let clear_tag env =
-    let mask = Int64.(lognot (sub (shift_left 1L (64 - BitTagged.ubits_of Type.Int)) 1L)) in
-    compile_bitand_const mask
+  let clear_tag env = BitTagged.clear_tag env Type.Int
 
   (* A variant of BitTagged.can_tag that works on signed i64 *)
   let if_can_tag env retty is1 is2 =
@@ -3192,7 +3238,9 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     try_unbox I64Type (fun _ -> match n with
         | 64 -> G.i Drop ^^ Bool.lit true
         | 8 | 16 | 32 ->
-          compile_bitand_const Int64.(logor 1L (shift_left minus_one (n + (64 - BitTagged.ubits_of Type.Int)))) ^^
+          (* use shifting to test that the payload including the tag fits the desired bit width. 
+              E.g. this is now n + 2 for Type.Int. *)
+          compile_bitand_const Int64.(shift_left minus_one (n + (64 - BitTagged.ubits_of Type.Int))) ^^
           compile_test I64Op.Eqz
         | _ -> assert false
       )
@@ -4347,8 +4395,8 @@ module Tuple = struct
 
   (* We represent the boxed empty tuple as the unboxed scalar 0, i.e. simply as
      number (but really anything is fine, we never look at this) *)
-  let unit_vanilla_lit = TaggingScheme.unit_tag (* all tag, trivial payload *)
-  let compile_unit = compile_unboxed_const unit_vanilla_lit
+  let unit_vanilla_lit env = TaggingScheme.unit_tag  (* all tag, trivial payload *)
+  let compile_unit env = compile_unboxed_const (unit_vanilla_lit ())
 
   (* Expects on the stack the pointer to the array. *)
   let load_n env n =
@@ -4357,7 +4405,7 @@ module Tuple = struct
 
   (* Takes n elements of the stack and produces an argument tuple *)
   let from_stack env n =
-    if n = 0 then compile_unit
+    if n = 0 then compile_unit env
     else
       let name = Printf.sprintf "to_%i_tuple" n in
       let args = Lib.List.table n (fun i -> Printf.sprintf "arg%i" i, I64Type) in
@@ -4916,7 +4964,7 @@ module IC = struct
         get_code ^^ compile_unboxed_const const ^^
         compile_comparison I64Op.Eq ^^
         E.if1 I64Type
-          (Variant.inject env tag Tuple.compile_unit)
+          (Variant.inject env tag (Tuple.compile_unit env))
           code)
         ["system_fatal", 1L;
          "system_transient", 2L;
@@ -8139,7 +8187,7 @@ module Persistence = struct
     let load_old_field env field =
       if field.Type.typ = Type.(Opt Any) then
         (* A stable variable may have been promoted to type `Any`: Therefore, drop its former content. *)
-        Opt.inject env Tuple.compile_unit
+        Opt.inject env (Tuple.compile_unit env)
       else
         (load_stable_actor env ^^ Object.load_idx_raw env field.Type.lab) in
     let recover_field field = 
@@ -8276,7 +8324,7 @@ module StackRep = struct
     | Const.Opt value -> Opt.inject env (materialize_constant env value)
     | Const.Fun (get_fi, _) -> Closure.alloc env (get_fi ())
     | Const.Message _ -> assert false
-    | Const.Unit -> Tuple.compile_unit
+    | Const.Unit -> Tuple.compile_unit env
     | Const.Tag (tag, value) -> Variant.inject env tag (materialize_constant env value)
     | Const.Array elements -> 
         let materialized_elements = List.map (materialize_constant env) elements in
@@ -8673,7 +8721,7 @@ module FuncDec = struct
       (* reply early for a oneway *)
       (if control = Type.Returns
        then
-         Tuple.compile_unit ^^
+         Tuple.compile_unit env ^^
          Serialization.serialize env [] ^^
          IC.reply_with_data env
        else G.nop) ^^
@@ -9076,7 +9124,7 @@ module FuncDec = struct
         (* To avoid more failing allocation, don't deserialize args nor serialize reply,
            i.e. don't even try to do this:
         Serialization.deserialize env [] ^^
-        Tuple.compile_unit ^^
+        Tuple.compile_unit env ^^
         Serialization.serialize env [] ^^
         *)
         (* Instead, just ignore the argument and
@@ -10393,7 +10441,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     begin match ts with
     | [] ->
       (* return some () *)
-      Opt.inject env Tuple.compile_unit
+      Opt.inject env (Tuple.compile_unit env)
     | [t] ->
       (* save to local, propagate error as null or return some value *)
       let (set_val, get_val) = new_local env "val" in
@@ -11113,17 +11161,10 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | OtherPrim "btstInt32", [_;_] ->
      const_sr (SR.UnboxedWord64 Type.Int32) (TaggedSmallWord.btst_kernel env Type.Int32) (* ! *)
   | OtherPrim "btst64", [_;_] ->
-    const_sr (SR.UnboxedWord64 Type.Nat64) (
-      let (set_b, get_b) = new_local env "b" in
-      set_b ^^ compile_unboxed_const 1L ^^ get_b ^^ G.i (Binary (Wasm_exts.Values.I64 I64Op.Shl)) ^^
-      G.i (Binary (Wasm_exts.Values.I64 I64Op.And)) (* TBR *)
-    )
+    const_sr (SR.UnboxedWord64 Type.Nat64) (Word64.btst_kernel env)
   | OtherPrim "btstInt64", [_;_] ->
-    const_sr (SR.UnboxedWord64 Type.Int64) (
-      let (set_b, get_b) = new_local env "b" in
-      set_b ^^ compile_unboxed_const 1L ^^ get_b ^^ G.i (Binary (Wasm_exts.Values.I64 I64Op.Shl)) ^^
-      G.i (Binary (Wasm_exts.Values.I64 I64Op.And)) (* TBR *)
-    )
+    const_sr (SR.UnboxedWord64 Type.Int64) (Word64.btst_kernel env)
+
   (* Coercions for abstract types *)
   | CastPrim (_,_), [e] ->
     compile_exp env ae e
@@ -12189,6 +12230,7 @@ and conclude_module env set_serialization_globals start_fi_o =
   | Some rts -> Linking.LinkModule.link emodule "rts" rts
 
 let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
+  assert !Flags.rtti; (* orthogonal persistence requires a fixed layout. *)
   let env = E.mk_global mode rts IC.trap_with (Lifecycle.end_ ()) in
 
   IC.register_globals env;

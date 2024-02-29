@@ -1,0 +1,2 @@
+inline.mo:4.9-4.11: warning [M0194], unused identifier t1 (delete or rename to wildcard `_` or `_t1`)
+inline.mo:6.9-6.11: warning [M0194], unused identifier t2 (delete or rename to wildcard `_` or `_t2`)

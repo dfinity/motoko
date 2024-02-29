@@ -1,5 +1,4 @@
 //MOC-FLAG --stable-regions --max-stable-pages 16384
-import P "mo:⛔";
 import StableMemory "stable-mem/StableMemory";
 
 actor {

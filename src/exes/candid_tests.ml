@@ -76,7 +76,7 @@ let mo_of_test tenv test : (string * expected_behaviour, string) result =
 
   try
     let defs =
-      "import Prim \"mo:⛔\";" ^
+      "import _Prim \"mo:⛔\";" ^
       String.concat "" (List.map (fun (n,candid_typ) ->
         let mo_typ = Idl_to_mo.check_typ tenv candid_typ in
         "type " ^ n ^ " = " ^ Pretty.string_of_typ mo_typ ^ ";\n"
