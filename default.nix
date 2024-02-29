@@ -415,23 +415,24 @@ rec {
       '';
     };
 
-    profiling-graphs = testDerivation {
-      src = test_src "perf";
-      buildInputs =
-        (with nixpkgs; [ perl wabt wasm-profiler-instrument wasm-profiler-postproc flamegraph-bin ]) ++
-        [ moc nixpkgs.drun ];
-      checkPhase = ''
-        patchShebangs .
-        type -p moc && moc --version
-        type -p drun && drun --help
-        ./profile-report.sh
-      '';
-      installPhase = ''
-        mv _profile $out;
-        mkdir -p $out/nix-support
-        echo "report flamegraphs $out index.html" >> $out/nix-support/hydra-build-products
-      '';
-    };
+    # wasm-profiler is not compatible with passive data segments
+    # profiling-graphs = testDerivation {
+    #  src = test_src "perf";
+    #  buildInputs =
+    #    (with nixpkgs; [ perl wabt wasm-profiler-instrument wasm-profiler-postproc flamegraph-bin ]) ++
+    #    [ moc nixpkgs.drun ];
+    #  checkPhase = ''
+    #    patchShebangs .
+    #    type -p moc && moc --version
+    #    type -p drun && drun --help
+    #    ./profile-report.sh
+    #  '';
+    #  installPhase = ''
+    #    mv _profile $out;
+    #    mkdir -p $out/nix-support
+    #    echo "report flamegraphs $out index.html" >> $out/nix-support/hydra-build-products
+    #  '';
+    #};
 
 
     fix_names = builtins.mapAttrs (name: deriv:
@@ -480,7 +481,8 @@ rec {
       perf       = perf_subdir "perf"       [ moc nixpkgs.drun ];
       bench      = perf_subdir "bench"      [ moc nixpkgs.drun ic-wasm ];
       # viper      = test_subdir "viper"      [ moc nixpkgs.which nixpkgs.openjdk nixpkgs.z3 ];
-      inherit qc lsp unit candid profiling-graphs coverage;
+      # TODO: profiling-graph is excluded because the underlying partity_wasm is deprecated and does not support passive data segments.
+      inherit qc lsp unit candid coverage;
     }) // { recurseForDerivations = true; };
 
   samples = stdenv.mkDerivation {
@@ -672,15 +674,13 @@ EOF
     mkdir -p $out
     ln -s ${base-doc} $out/base-doc
     ln -s ${docs} $out/docs
-    ln -s ${tests.profiling-graphs} $out/flamegraphs
     ln -s ${tests.coverage} $out/coverage
     cd $out;
     # generate a simple index.html, listing the entry points
     ( echo docs/overview-slides.html;
       echo docs/html/motoko.html;
       echo base-doc/
-      echo coverage/
-      echo flamegraphs/ ) | \
+      echo coverage/ ) | \
       tree -H . -l --fromfile -T "Motoko build reports" > index.html
   '';
 
