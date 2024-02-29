@@ -1693,7 +1693,7 @@ module BitTagged = struct
   let sanity_check_can_tag_signed env pty get_x =
     if TaggingScheme.debug || !Flags.sanity then
       get_x ^^
-      Func.share_code2 Func.Always env (prim_fun_name pty "check_can_tag_i64") (("res", I32Type), ("x", I64Type)) [I64Type]
+      Func.share_code2 Func.Always env (prim_fun_name pty "check_can_tag_i64") (("res", I64Type), ("x", I64Type)) [I64Type]
         (fun env get_res get_x -> Type.(
           match pty with
           | Nat | Int | Int64 | Int32 ->
