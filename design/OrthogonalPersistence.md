@@ -29,10 +29,10 @@ This PR is based on these extensions.
 
 ### Memory Layout
 In a co-design between the compiler and the runtime system, the main memory is arranged in the following structure, invariant of the compiled program version:
-* Lower 2MB: Rust call stack.
-* Space between 2MB and 8MB: Reserved space Wasm data segments.
-* Between 8MB and 8.25MB: Persistent metadata.
-* Thereafter: Dynamic heap space. Fix start address at 8.25MB.
+* Lower 4MB: Rust call stack.
+* Space between 4MB and 4.5MB: Limited reserved space Wasm data segments, only used for the Motoko runtime system.
+* Between 4.5MB and 5MB: Persistent metadata.
+* Thereafter: Dynamic heap space. Fix start address at 5MB.
 
 ### Persistent Metadata
 The persistent metadata describes all anchor information for the program to resume after an upgrade. 
@@ -84,11 +84,6 @@ On an upgrade, the main actor is recreated and existing stable variables are rec
 As a result, the GC can collect unreachable flexible objects of previous canister versions. 
 Unused stable variables of former versions can also be reclaimed by the GC.
 
-### Wasm Data Segments
-Wasm data segments are reinitialized on upgrade. This is necessary because data segments may contain text literals or transient GC roots that are bound to a specific new Wasm binary. The system reserves dedicated space for data segments, namely between 2MB and 8MB. Therefore, the data segments are limited to 6MB per canister Wasm in this design. Both the linker and the IC runtime system check that the data segments fit inside this reserved space.
-
-There exist alternative design possibilities to handle data segments, see below.
-
 ### No Static Heap
 The static heap is abandoned and former static objects need to be allocated in the dynamic heap.
 This is because these objects may also need to survive upgrades and must not be not overwritten by new data segments. The incremental GC also operates on these objects, meaning that forwarding pointer resolution is also necessary for these objects. 
@@ -96,6 +91,18 @@ This is because these objects may also need to survive upgrades and must not be 
 The runtime system avoids any global Wasm variables for state that needs to be preserved on upgrades. Instead, such global runtime state is stored in the persistent metadata.
 
 Sharing optimization (pooling) is possible for compile-time-known objects, see below.
+
+### Wasm Data Segments
+Only passive Wasm data segments are used by the compiler and runtime system. In contrast to ordinary active data segments, passive segments can be explicitly loaded to a dynamic address.
+
+This simplifies two aspects: 
+* The generated Motoko code can contain arbitrarily large data segments which can loaded to dynamic heap when needed.
+* The IC can simply retain the main memory on an upgrade without needing to patch the active data segments of the new program version to the persistent memory.
+
+However, more specific handling is required for the Rust-implemented runtime system:
+The Rust-generated active data segments of the runtime system is changed to passive and loaded to the expected static address at the program start (canister initialization and upgrade).
+The location and size of the RTS data segments is therefore limited to a defined reserve, see above. 
+This is acceptable because the RTS only uses small size for data segments (e.g. 54KB) that is independent of the compiled Motoko program.
 
 ### Null Singleton
 As an optimization, the top-level `null` singleton is allocated once in the dynamic heap and remembered in the persistent metadata across upgrades. This is necessary to implement null checks by pointer comparison (however, by first resolving pointer forwarding before the comparison). The null singleton needs to be part of the persistent root set.
@@ -107,9 +114,7 @@ When migrating from the old serialization-based stabilization to the new stable 
 The old stable memory remains equally accessible as secondary memory with the new support.
 
 ## Current Limitations
-* Limited data segments: Currently, data segments are limited to 6MB. This could be relaxed by using passive Wasm data segments and loading them at runtime to dynamically computed addresses in the heap. The IC would  need to be extended to support passive Wasm data segments.
 * Optimization potential for statically known objects: Currently, compile-time-known objects are always dynamically allocated. For an improved performance and size, they could be shared in the dynamic heap by remembering them in an additional pool table. The pool table needs to be registered as a transient GC root and recreated on canister upgrades.
-* The IC system call API is still 32-bit: We would either need to upgrade the API or copy Motoko objects to 32-bit reserved space before passing their pointers via the API. Currently, pointer arguments are only checked that they reside in the 32-bit address space.
 * The incremental GC only allows 64 GB. Transitioning to a dynamic partition table would be necessary to go beyond this limit. This is to be be implemented in a separate PR.
 * The floating point display format differs in Wasm64 for special values, e.g. `nan` becomes `NaN`. There is currently no support for hexadecimal floating point text formatting.
 * Workaround for Rust needed to build PIC (position-independent code) libraries. Explicit use of `emscripten` via LLVM IR. 

@@ -8,6 +8,7 @@ The changes are:
  * Manual selective support for bulk-memory operations `memory_copy` and `memory_fill` (WebAssembly/spec@7fa2f20).
  * Pseudo-instruction Meta for debug information
  * StableMemory, StableGrow, StableRead, StableWrite instructions.
+ * Support for passive data segments (incl. `MemoryInit`).
 
 The code is otherwise as untouched as possible, so that we can relatively
 easily apply diffs from the original code (possibly manually).
@@ -114,6 +115,9 @@ and instr' =
   | MemoryFill                        (* fill memory range with value *)
   | MemoryCopy                        (* copy memory ranges *)
   (* End of manual extension *)
+  (* Manual extension for passive data segments *)
+  | MemoryInit of var                 (* initialize memory range from segment *)
+  (* End of manual extension *)
   | Const of literal                  (* constant *)
   | Test of testop                    (* numeric test *)
   | Compare of relop                  (* numeric comparison *)
@@ -176,8 +180,21 @@ and 'data segment' =
 }
 
 type table_segment = var list segment
-type memory_segment = string segment
 
+(* Manual extension to support passive data segements *)
+type segment_mode = segment_mode' phrase
+and segment_mode' =
+  | Passive
+  | Active of {index : var; offset : const}
+  | Declarative
+
+type data_segment = data_segment' phrase
+and data_segment' =
+{
+  dinit : string;
+  dmode : segment_mode;
+}
+(* End of manual extension *)
 
 (* Modules *)
 
@@ -222,7 +239,9 @@ and module_' =
   funcs : func list;
   start : var option;
   elems : var list segment list;
-  data : string segment list;
+  (* Manual adjustment for passive data segment support *)
+  datas : data_segment list;
+  (* End of manual adjustment *)
   imports : import list;
   exports : export list;
 }
@@ -239,7 +258,7 @@ let empty_module =
   funcs = [];
   start = None;
   elems  = [];
-  data = [];
+  datas = [];
   imports = [];
   exports = [];
 }
