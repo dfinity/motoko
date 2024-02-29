@@ -21,8 +21,8 @@ pub unsafe extern "C" fn print_value(value: Value) {
 }
 
 pub unsafe fn dump_heap(
-    heap_base: u32,
-    hp: u32,
+    heap_base: usize,
+    hp: usize,
     static_root_location: *mut Value,
     continuation_table_location: *mut Value,
 ) {
@@ -90,7 +90,7 @@ pub(crate) unsafe fn print_static_roots(static_roots: Value) {
     println!(50, "End of static roots");
 }
 
-unsafe fn print_heap(heap_start: u32, heap_end: u32) {
+unsafe fn print_heap(heap_start: usize, heap_end: usize) {
     println!(
         200,
         "Heap start={:#x}, heap end={:#x}, size={} bytes",
@@ -103,14 +103,14 @@ unsafe fn print_heap(heap_start: u32, heap_end: u32) {
     let mut write_buf = WriteBuf::new(&mut buf);
 
     let mut p = heap_start;
-    let mut i: Words<u32> = Words(0);
+    let mut i: Words<usize> = Words(0);
     while p < heap_end {
         print_boxed_object(&mut write_buf, p as usize);
         print(&write_buf);
         write_buf.reset();
 
         let obj_size = block_size(p as usize);
-        p += obj_size.to_bytes().as_u32();
+        p += obj_size.to_bytes().as_usize();
         i += obj_size;
     }
 }
@@ -206,7 +206,7 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
         }
         TAG_BLOB => {
             let blob = obj.as_blob();
-            let _ = write!(buf, "<Blob len={:#x}>", blob.len().as_u32());
+            let _ = write!(buf, "<Blob len={:#x}>", blob.len().as_usize());
         }
         TAG_FWD_PTR => {
             let ind = obj as *const FwdPtr;
@@ -225,17 +225,14 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
             let _ = write!(
                 buf,
                 "<Concat n_bytes={:#x} obj1={:#x} obj2={:#x}>",
-                (*concat).n_bytes.as_u32(),
+                (*concat).n_bytes,
                 (*concat).text1.get_raw(),
                 (*concat).text2.get_raw()
             );
         }
-        TAG_ONE_WORD_FILLER => {
-            let _ = write!(buf, "<One word filler>",);
-        }
         TAG_FREE_SPACE => {
             let free_space = obj as *const FreeSpace;
-            let _ = write!(buf, "<Free space {} words>", (*free_space).words.as_u32());
+            let _ = write!(buf, "<Free space {} words>", (*free_space).size.as_usize());
         }
         other => {
             let _ = write!(buf, "<??? {} ???>", other);

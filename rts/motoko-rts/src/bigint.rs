@@ -33,6 +33,7 @@ This scheme makes the following assumptions:
 
 use crate::barriers::allocation_barrier;
 use crate::buf::{read_byte, Buf};
+use crate::libc_declarations::c_void;
 use crate::mem_utils::memcpy_bytes;
 use crate::memory::Memory;
 use crate::tommath_bindings::*;
@@ -45,7 +46,7 @@ extern "C" {
     fn int_from_i32(value: i32) -> Value;
 }
 
-unsafe fn mp_alloc<M: Memory>(mem: &mut M, size: Bytes<u32>) -> *mut u8 {
+unsafe fn mp_alloc<M: Memory>(mem: &mut M, size: Bytes<usize>) -> *mut u8 {
     let ptr = mem.alloc_words(size_of::<BigInt>() + size.to_words());
     // NB. Cannot use as_bigint() here as header is not written yet
     let blob = ptr.get_ptr() as *mut BigInt;
@@ -55,7 +56,9 @@ unsafe fn mp_alloc<M: Memory>(mem: &mut M, size: Bytes<u32>) -> *mut u8 {
     // libtommath stores the size of the object in alloc as count of mp_digits (u64)
     let size = size.as_usize();
     debug_assert_eq!((size % core::mem::size_of::<mp_digit>()), 0);
-    (*blob).mp_int.alloc = (size / core::mem::size_of::<mp_digit>()) as i32;
+    let count = size / core::mem::size_of::<mp_digit>();
+    assert!(count <= i32::MAX as usize);
+    (*blob).mp_int.alloc = count as i32;
     allocation_barrier(ptr);
     blob.payload_addr() as *mut u8
 }
@@ -65,18 +68,18 @@ pub unsafe fn mp_calloc<M: Memory>(
     mem: &mut M,
     n_elems: usize,
     elem_size: Bytes<usize>,
-) -> *mut libc::c_void {
+) -> *mut c_void {
     debug_assert_eq!(elem_size.0, core::mem::size_of::<mp_digit>());
     // Overflow check for the following multiplication
     if n_elems > 1 << 30 {
         bigint_trap();
     }
-    let size = Bytes((n_elems * elem_size.0) as u32);
-    let payload = mp_alloc(mem, size) as *mut u32;
+    let size = Bytes(n_elems * elem_size.0);
+    let payload = mp_alloc(mem, size) as *mut usize;
 
     // NB. alloc_bytes rounds up to words so we do the same here to set the whole buffer
     for i in 0..size.to_words().as_usize() {
-        *payload.add(i as usize) = 0;
+        *payload.add(i) = 0;
     }
 
     payload as *mut _
@@ -85,10 +88,10 @@ pub unsafe fn mp_calloc<M: Memory>(
 #[ic_mem_fn]
 pub unsafe fn mp_realloc<M: Memory>(
     mem: &mut M,
-    ptr: *mut libc::c_void,
-    old_size: Bytes<u32>,
-    new_size: Bytes<u32>,
-) -> *mut libc::c_void {
+    ptr: *mut c_void,
+    old_size: Bytes<usize>,
+    new_size: Bytes<usize>,
+) -> *mut c_void {
     let bigint = BigInt::from_payload(ptr as *mut mp_digit);
 
     debug_assert_eq!((*bigint).header.tag, TAG_BIGINT);
@@ -108,7 +111,7 @@ pub unsafe fn mp_realloc<M: Memory>(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn mp_free(_ptr: *mut libc::c_void, _size: u32) {}
+pub unsafe extern "C" fn mp_free(_ptr: *mut c_void, _size: usize) {}
 
 /*
 Note on libtommath error handling
@@ -219,7 +222,9 @@ unsafe extern "C" fn bigint_to_word32_trap_with(p: Value, msg: Value) -> u32 {
     let mp_int = p.as_bigint().mp_int_ptr();
 
     if mp_isneg(mp_int) || mp_count_bits(mp_int) > 32 {
-        crate::rts_trap(msg.as_blob().payload_const(), msg.as_blob().len());
+        let length = msg.as_blob().len().as_usize();
+        assert!(length <= u32::MAX as usize);
+        crate::rts_trap(msg.as_blob().payload_const(), length as u32);
     }
 
     mp_get_u32(mp_int)

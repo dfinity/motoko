@@ -26,7 +26,7 @@ use crate::{constants::WORD_SIZE, mem_utils::memzero, types::Bytes};
 
 use super::partitioned_heap::PARTITION_SIZE;
 
-const BITMAP_FRACTION: usize = (WORD_SIZE * u8::BITS) as usize;
+const BITMAP_FRACTION: usize = WORD_SIZE * u8::BITS as usize;
 
 pub const BITMAP_SIZE: usize = PARTITION_SIZE / BITMAP_FRACTION;
 
@@ -51,10 +51,7 @@ impl MarkBitmap {
     /// The `bitmap_address` must be 64-bit-aligned for fast iteration.
     pub unsafe fn assign(&mut self, bitmap_address: *mut u8) {
         debug_assert_eq!(bitmap_address as usize % size_of::<u64>(), 0);
-        memzero(
-            bitmap_address as usize,
-            Bytes(BITMAP_SIZE as u32).to_words(),
-        );
+        memzero(bitmap_address as usize, Bytes(BITMAP_SIZE).to_words());
         debug_assert_eq!(self.pointer, null_mut());
         self.pointer = bitmap_address;
     }

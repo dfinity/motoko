@@ -124,7 +124,7 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
             // These don't have pointers, skip
         }
 
-        TAG_FWD_PTR | TAG_ONE_WORD_FILLER | TAG_FREE_SPACE | _ => {
+        TAG_FWD_PTR | TAG_FREE_SPACE | _ => {
             rts_trap_with("invalid object tag in visit_pointer_fields");
         }
     }

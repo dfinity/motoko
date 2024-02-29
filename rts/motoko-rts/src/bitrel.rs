@@ -19,8 +19,8 @@ pub struct BitRel {
 }
 
 impl BitRel {
-    pub fn words(size1: u32, size2: u32) -> u32 {
-        return ((2 * size1 * size2 * BITS) + (usize::BITS - 1)) / usize::BITS;
+    pub fn words(size1: u32, size2: u32) -> usize {
+        (((2 * size1 * size2 * BITS) + (usize::BITS - 1)) / usize::BITS) as usize
     }
 
     pub unsafe fn init(&self) {
@@ -28,7 +28,7 @@ impl BitRel {
             idl_trap_with("BitRel invalid fields");
         };
 
-        let bytes = ((self.end as usize) - (self.ptr as usize)) as u32;
+        let bytes = (self.end as usize) - (self.ptr as usize);
         if bytes != BitRel::words(self.size1, self.size2) * WORD_SIZE {
             idl_trap_with("BitRel missized");
         };

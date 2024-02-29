@@ -82,7 +82,7 @@ pub unsafe extern "C" fn text_iter_done(iter: Value) -> u32 {
     let blob = array.get(ITER_BLOB_IDX).as_blob();
     let todo = array.get(ITER_TODO_IDX);
 
-    if pos >= blob.len().as_u32() && todo == NO_OBJECT {
+    if pos as usize >= blob.len().as_usize() && todo == NO_OBJECT {
         1
     } else {
         0
@@ -98,7 +98,7 @@ pub unsafe fn text_iter_next<M: Memory>(mem: &mut M, iter: Value) -> u32 {
     let pos = iter_array.get(ITER_POS_IDX).get_scalar();
 
     // If we are at the end of the current blob, find the next blob
-    if pos >= blob.len().as_u32() {
+    if pos as usize >= blob.len().as_usize() {
         let todo = iter_array.get(ITER_TODO_IDX);
 
         if todo == NO_OBJECT {

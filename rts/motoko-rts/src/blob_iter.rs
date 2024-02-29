@@ -1,7 +1,7 @@
 use crate::{
     barriers::allocation_barrier,
     memory::Memory,
-    types::{size_of, Array, Bytes, Value, Words, TAG_ARRAY},
+    types::{size_of, Array, Value, Words, TAG_ARRAY},
 };
 
 use motoko_rts_macros::ic_mem_fn;
@@ -33,9 +33,9 @@ unsafe extern "C" fn blob_iter_done(iter: Value) -> u32 {
     let iter_array = iter.as_array();
 
     let blob = iter_array.get(ITER_BLOB_IDX);
-    let pos = Bytes(iter_array.get(ITER_POS_IDX).get_scalar());
+    let pos = iter_array.get(ITER_POS_IDX).get_scalar();
 
-    (pos >= blob.as_blob().len()).into()
+    (pos as usize >= blob.as_blob().len().as_usize()).into()
 }
 
 /// Reads next byte, advances the iterator
@@ -48,5 +48,5 @@ unsafe fn blob_iter_next<M: Memory>(mem: &mut M, iter: Value) -> u32 {
 
     iter_array.set(ITER_POS_IDX, Value::from_scalar(pos + 1), mem);
 
-    blob.as_blob().get(pos).into()
+    blob.as_blob().get(pos as usize).into()
 }

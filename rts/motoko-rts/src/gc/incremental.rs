@@ -70,12 +70,12 @@ unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
 #[cfg(feature = "ic")]
 unsafe fn should_start() -> bool {
     use self::partitioned_heap::PARTITION_SIZE;
-    use crate::constants::GB;
+    use crate::constants::{GB, MAX_MEMORY_SIZE};
     use crate::memory::ic;
 
-    const CRITICAL_HEAP_LIMIT: Bytes<u32> = Bytes((2 * GB + 256 * MB) as u32);
+    const CRITICAL_HEAP_LIMIT: Bytes<usize> = Bytes(MAX_MEMORY_SIZE.as_usize() - 2 * GB);
     const CRITICAL_GROWTH_THRESHOLD: f64 = 0.01;
-    const MEDIUM_HEAP_LIMIT: Bytes<u32> = Bytes(1 * GB as u32);
+    const MEDIUM_HEAP_LIMIT: Bytes<usize> = Bytes(2 * GB);
     const MEDIUM_GROWTH_THRESHOLD: f64 = 0.35;
     const LOW_GROWTH_THRESHOLD: f64 = 0.65;
 
@@ -110,7 +110,7 @@ unsafe fn record_gc_stop<M: Memory>() {
     use crate::persistence::HEAP_START;
 
     let heap_size = ic::get_heap_size();
-    let static_size = Bytes(HEAP_START as u32);
+    let static_size = Bytes(HEAP_START);
     debug_assert!(heap_size >= static_size);
     let dynamic_size = heap_size - static_size;
     let state = get_incremental_gc_state();
@@ -120,9 +120,9 @@ unsafe fn record_gc_stop<M: Memory>() {
 // Persistent GC statistics used for scheduling and diagnostics.
 struct Statistics {
     // Total number of allocation at the start of the last GC run.
-    last_allocations: Bytes<u64>,
+    last_allocations: Bytes<usize>,
     // Maximum heap size the end of a GC run.
-    max_live: Bytes<u32>,
+    max_live: Bytes<usize>,
 }
 
 /// GC phases per run. Each of the following phases is performed in potentially multiple increments.
@@ -420,7 +420,7 @@ pub unsafe fn get_incremental_gc_state() -> &'static mut State {
 }
 
 #[cfg(feature = "ic")]
-pub unsafe fn get_max_live_size() -> Bytes<u32> {
+pub unsafe fn get_max_live_size() -> Bytes<usize> {
     get_incremental_gc_state().statistics.max_live
 }
 
@@ -454,7 +454,7 @@ use crate::constants::MB;
 const GC_MEMORY_RESERVE: usize = (128 + 512) * MB;
 
 #[cfg(feature = "ic")]
-pub unsafe fn memory_reserve() -> usize {
+pub unsafe fn memory_reserve() -> Bytes<usize> {
     use crate::memory::GENERAL_MEMORY_RESERVE;
 
     let additional_reserve = if RUNNING_GC_INCREMENT {
@@ -462,5 +462,5 @@ pub unsafe fn memory_reserve() -> usize {
     } else {
         GC_MEMORY_RESERVE
     };
-    GENERAL_MEMORY_RESERVE + additional_reserve
+    Bytes(GENERAL_MEMORY_RESERVE + additional_reserve)
 }

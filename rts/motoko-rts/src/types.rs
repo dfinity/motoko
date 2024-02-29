@@ -25,29 +25,27 @@ use crate::tommath_bindings::{mp_digit, mp_int};
 use core::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
 use core::ptr::null;
 
-use crate::constants::WORD_SIZE;
+use crate::constants::{ADDRESS_ALIGNMENT, MAX_MEMORY_SIZE, WORD_SIZE};
 use crate::rts_trap_with;
 
-pub fn size_of<T>() -> Words<u32> {
-    Bytes(::core::mem::size_of::<T>() as u32).to_words()
+pub fn size_of<T>() -> Words<usize> {
+    Bytes(::core::mem::size_of::<T>()).to_words()
 }
 
-/// The unit "words": `Words(123u32)` means 123 words.
+// TODO: Refactor by removing the generic type from `Words` and `Bytes`.
+
+/// The unit "words": `Words(123)` means 123 words.
 #[repr(transparent)]
 #[derive(PartialEq, Eq, Clone, Copy, PartialOrd, Ord)]
 pub struct Words<A>(pub A);
 
-impl Words<u32> {
-    pub fn to_bytes(self) -> Bytes<u32> {
+impl Words<usize> {
+    pub const fn to_bytes(self) -> Bytes<usize> {
         Bytes(self.0 * WORD_SIZE)
     }
 
-    pub fn as_u32(self) -> u32 {
+    pub const fn as_usize(self) -> usize {
         self.0
-    }
-
-    pub fn as_usize(self) -> usize {
-        self.0 as usize
     }
 }
 
@@ -95,8 +93,8 @@ impl<A: SubAssign> SubAssign for Words<A> {
     }
 }
 
-impl From<Bytes<u32>> for Words<u32> {
-    fn from(bytes: Bytes<u32>) -> Words<u32> {
+impl From<Bytes<usize>> for Words<usize> {
+    fn from(bytes: Bytes<usize>) -> Words<usize> {
         bytes.to_words()
     }
 }
@@ -106,19 +104,15 @@ impl From<Bytes<u32>> for Words<u32> {
 #[derive(Debug, PartialEq, Eq, Clone, Copy, PartialOrd, Ord)]
 pub struct Bytes<A>(pub A);
 
-impl Bytes<u32> {
+impl Bytes<usize> {
     // Rounds up
-    pub fn to_words(self) -> Words<u32> {
+    pub fn to_words(self) -> Words<usize> {
         // Rust issue for adding ceiling_div: https://github.com/rust-lang/rfcs/issues/2844
         Words((self.0 + WORD_SIZE - 1) / WORD_SIZE)
     }
 
-    pub fn as_u32(self) -> u32 {
+    pub const fn as_usize(self) -> usize {
         self.0
-    }
-
-    pub fn as_usize(self) -> usize {
-        self.0 as usize
     }
 }
 
@@ -150,8 +144,8 @@ impl<A: SubAssign> SubAssign for Bytes<A> {
     }
 }
 
-impl From<Words<u32>> for Bytes<u32> {
-    fn from(words: Words<u32>) -> Bytes<u32> {
+impl From<Words<usize>> for Bytes<usize> {
+    fn from(words: Words<usize>) -> Bytes<usize> {
         words.to_bytes()
     }
 }
@@ -220,7 +214,7 @@ impl Value {
     /// cycle.
     pub fn get(&self) -> PtrOrScalar {
         if is_ptr(self.0) {
-            PtrOrScalar::Ptr(unskew(self.0 as usize))
+            PtrOrScalar::Ptr(unskew(self.0))
         } else {
             PtrOrScalar::Scalar(self.0 >> 1)
         }
@@ -260,7 +254,7 @@ impl Value {
     /// the value is not a pointer.
     pub fn get_ptr(self) -> usize {
         debug_assert!(self.get().is_ptr());
-        unskew(self.0 as usize)
+        unskew(self.0)
     }
 
     /// Check that the forwarding pointer is valid.
@@ -279,7 +273,7 @@ impl Value {
     }
 
     /// Get the object tag. No forwarding. Can be applied to any block, regular objects
-    /// with a header as well as `OneWordFiller`, `FwdPtr`, and `FreeSpace`.
+    /// with a header as well as `FwdPtr` and `FreeSpace`.
     /// In debug mode panics if the value is not a pointer.
     pub unsafe fn tag(self) -> Tag {
         *(self.get_ptr() as *const Tag)
@@ -304,11 +298,11 @@ impl Value {
     }
 
     /// Determines whether the value refers to an object with a regular header that contains a forwarding pointer.
-    /// Returns `false` for pointers to special `OneWordFiller`, `FwdPtr`, and `FreeSpace` blocks that do not have
+    /// Returns `false` for pointers to special `FwdPtr` and `FreeSpace` blocks that do not have
     /// a regular object header.
     pub unsafe fn is_obj(self) -> bool {
         let tag = self.tag();
-        tag != TAG_FWD_PTR && tag != TAG_ONE_WORD_FILLER && tag != TAG_FREE_SPACE
+        tag != TAG_FWD_PTR && tag != TAG_FREE_SPACE
     }
 
     /// Get the pointer as `Obj` using forwarding. In debug mode panics if the value is not a pointer.
@@ -396,7 +390,7 @@ impl Value {
     pub fn points_to_or_beyond(&self, address: usize) -> bool {
         debug_assert!(address > TRUE_VALUE as usize);
         let raw = self.get_raw();
-        is_skewed(raw) && unskew(raw as usize) >= address
+        is_skewed(raw) && unskew(raw) >= address
     }
 }
 
@@ -411,14 +405,20 @@ pub const fn is_skewed(value: u32) -> bool {
     value & 0b1 != 0
 }
 
+/// Pointer compression and tagging
 #[inline]
-pub const fn skew(ptr: usize) -> usize {
-    ptr.wrapping_sub(1)
+pub const fn skew(ptr: usize) -> u32 {
+    let alignment = ADDRESS_ALIGNMENT.to_bytes().as_usize();
+    debug_assert!(ptr % alignment == 0);
+    debug_assert!(ptr < MAX_MEMORY_SIZE.as_usize());
+    (((ptr / alignment) << 1) as u32).wrapping_sub(1)
 }
 
+/// Pointer untagging and extension
 #[inline]
-pub const fn unskew(value: usize) -> usize {
-    value.wrapping_add(1)
+pub const fn unskew(value: u32) -> usize {
+    let alignment = ADDRESS_ALIGNMENT.to_bytes().as_usize();
+    (value.wrapping_add(1) as usize >> 1) * alignment
 }
 
 // NOTE: We don't create an enum for tags as we can never assume to do exhaustive pattern match on
@@ -443,8 +443,7 @@ pub const TAG_BIGINT: Tag = 23;
 pub const TAG_CONCAT: Tag = 25;
 pub const TAG_REGION: Tag = 27;
 pub const TAG_NULL: Tag = 29;
-pub const TAG_ONE_WORD_FILLER: Tag = 31;
-pub const TAG_FREE_SPACE: Tag = 33;
+pub const TAG_FREE_SPACE: Tag = 31;
 
 // Special value to visit only a range of array fields.
 // This and all values above it are reserved and mean
@@ -529,7 +528,7 @@ impl Array {
     #[inline]
     unsafe fn element_address(self: *const Self, idx: u32) -> usize {
         debug_assert!(self.len() > idx);
-        self.payload_addr() as usize + (idx * WORD_SIZE) as usize
+        self.payload_addr() as usize + (idx as usize * WORD_SIZE)
     }
 
     pub unsafe fn len(self: *const Self) -> u32 {
@@ -575,9 +574,11 @@ impl Object {
 
     /// Number of fields in the object.
     pub(crate) unsafe fn size(self: *mut Self) -> u32 {
-        let hash_blob_length = (*self).hash_blob.as_blob().len().as_u32();
+        let hash_blob_length = (*self).hash_blob.as_blob().len().as_usize();
         debug_assert_eq!(hash_blob_length % WORD_SIZE, 0);
-        hash_blob_length / WORD_SIZE
+        let size = hash_blob_length / WORD_SIZE as usize;
+        debug_assert!(size <= u32::MAX as usize);
+        size as u32
     }
 
     #[cfg(debug_assertions)]
@@ -613,8 +614,8 @@ impl Closure {
 #[repr(C)] // See the note at the beginning of this module
 pub struct Blob {
     pub header: Obj,
-    pub len: Bytes<u32>,
-    // data follows ..
+    pub len: Bytes<usize>, // 64-bit length!
+                           // data follows ..
 }
 
 impl Blob {
@@ -626,16 +627,16 @@ impl Blob {
         self.add(1) as *mut u8 // skip blob header
     }
 
-    pub unsafe fn len(self: *const Self) -> Bytes<u32> {
+    pub unsafe fn len(self: *const Self) -> Bytes<usize> {
         (*self).len
     }
 
-    pub unsafe fn get(self: *const Self, idx: u32) -> u8 {
-        *self.payload_const().add(idx as usize)
+    pub unsafe fn get(self: *const Self, idx: usize) -> u8 {
+        *self.payload_const().add(idx)
     }
 
-    pub unsafe fn set(self: *mut Self, idx: u32, byte: u8) {
-        *self.payload_addr().add(idx as usize) = byte;
+    pub unsafe fn set(self: *mut Self, idx: usize, byte: u8) {
+        *self.payload_addr().add(idx) = byte;
     }
 
     pub unsafe fn payload_addr_u16(self: *mut Self) -> *mut u16 {
@@ -655,27 +656,19 @@ impl Blob {
     }
 
     /// Shrink blob to the given size. Slop after the new size is filled with filler objects.
-    pub unsafe fn shrink(self: *mut Self, new_len: Bytes<u32>) {
-        let current_len_words = self.len().to_words();
-        let new_len_words = new_len.to_words();
-
-        debug_assert!(new_len_words <= current_len_words);
-
-        let slop = current_len_words - new_len_words;
-
-        if slop == Words(1) {
-            let filler = (self.payload_addr() as *mut u32).add(new_len_words.as_usize())
-                as *mut OneWordFiller;
-            (*filler).tag = TAG_ONE_WORD_FILLER;
-        } else if slop != Words(0) {
-            debug_assert!(slop >= size_of::<FreeSpace>());
-            let filler =
-                (self.payload_addr() as *mut u32).add(new_len_words.as_usize()) as *mut FreeSpace;
-            (*filler).tag = TAG_FREE_SPACE;
-            (*filler).words = slop - size_of::<FreeSpace>();
-        }
-
+    pub unsafe fn shrink(self: *mut Self, new_len: Bytes<usize>) {
+        let current_size = block_size(self as usize);
         (*self).len = new_len;
+        let new_size = block_size(self as usize);
+        assert!(new_size <= current_size);
+        let free_space = current_size - new_size;
+        debug_assert_eq!(free_space.as_usize() % ADDRESS_ALIGNMENT.as_usize(), 0);
+        let end = self as usize + current_size.to_bytes().as_usize();
+        if free_space.as_usize() > 0 {
+            let filler = end as *mut FreeSpace;
+            (*filler).tag = TAG_FREE_SPACE;
+            (*filler).size = free_space;
+        }
     }
 }
 
@@ -713,8 +706,8 @@ pub struct BigInt {
 }
 
 impl BigInt {
-    pub unsafe fn len(self: *mut Self) -> Bytes<u32> {
-        Bytes(((*self).mp_int.alloc as usize * core::mem::size_of::<mp_digit>()) as u32)
+    pub unsafe fn len(self: *mut Self) -> Bytes<usize> {
+        Bytes(((*self).mp_int.alloc as usize * core::mem::size_of::<mp_digit>()) as usize)
     }
 
     pub unsafe fn payload_addr(self: *mut Self) -> *mut mp_digit {
@@ -767,7 +760,7 @@ pub struct Variant {
 #[repr(C)] // See the note at the beginning of this module
 pub struct Concat {
     pub header: Obj,
-    pub n_bytes: Bytes<u32>,
+    pub n_bytes: u32,
     pub text1: Value,
     pub text2: Value,
 }
@@ -808,37 +801,37 @@ pub struct Bits32 {
     pub bits: u32,
 }
 
-/// Marks one word empty space in heap
-#[repr(C)] // See the note at the beginning of this module
-pub struct OneWordFiller {
-    pub tag: Tag,
-}
-
-/// Marks arbitrary sized emtpy space in heap
+/// Note: Any free gab in the heap must be a multiple of the address alignment.
 #[repr(C)] // See the note at the beginning of this module
 pub struct FreeSpace {
     pub tag: Tag,
-    pub words: Words<u32>,
+    pub _padding: u32,
+    pub size: Words<usize>,
 }
+
+// The free space block must fit in any heap gap.
+const _: () = assert!(core::mem::size_of::<FreeSpace>() <= ADDRESS_ALIGNMENT.to_bytes().as_usize());
 
 impl FreeSpace {
     /// Size of the free space (includes object header)
-    pub unsafe fn size(self: *mut Self) -> Words<u32> {
-        (*self).words + size_of::<FreeSpace>()
+    pub unsafe fn size(self: *mut Self) -> Words<usize> {
+        debug_assert_eq!((*self).size.as_usize() % ADDRESS_ALIGNMENT.as_usize(), 0);
+        (*self).size
     }
 }
 
 /// Returns the heap block size in words.
+/// Aligned to `ADRESS_ALIGNMENT`.
 /// Handles both objects with header and forwarding pointer
 /// and special blocks such as `OneWordFiller`, `FwdPtr`, and `FreeSpace`
 /// that do not have a forwarding pointer.
-pub(crate) unsafe fn block_size(address: usize) -> Words<u32> {
+pub(crate) unsafe fn block_size(address: usize) -> Words<usize> {
     let tag = *(address as *mut Tag);
-    match tag {
+    let unrounded = match tag {
         TAG_OBJECT => {
             let object = address as *mut Object;
             let size = object.size();
-            size_of::<Object>() + Words(size)
+            size_of::<Object>() + Words(size as usize)
         }
 
         TAG_OBJ_IND => size_of::<ObjInd>(),
@@ -847,7 +840,7 @@ pub(crate) unsafe fn block_size(address: usize) -> Words<u32> {
         // therefore, does not support array slicing.
         TAG_ARRAY => {
             let array = address as *mut Array;
-            let size = array.len();
+            let size = array.len() as usize;
             size_of::<Array>() + Words(size)
         }
 
@@ -857,7 +850,7 @@ pub(crate) unsafe fn block_size(address: usize) -> Words<u32> {
 
         TAG_CLOSURE => {
             let closure = address as *mut Closure;
-            let size = closure.size();
+            let size = closure.size() as usize;
             size_of::<Closure>() + Words(size)
         }
 
@@ -885,8 +878,6 @@ pub(crate) unsafe fn block_size(address: usize) -> Words<u32> {
 
         TAG_NULL => size_of::<Null>(),
 
-        TAG_ONE_WORD_FILLER => size_of::<OneWordFiller>(),
-
         TAG_FREE_SPACE => {
             let free_space = address as *mut FreeSpace;
             free_space.size()
@@ -897,5 +888,13 @@ pub(crate) unsafe fn block_size(address: usize) -> Words<u32> {
         _ => {
             rts_trap_with("object_size: invalid object tag");
         }
-    }
+    };
+    round_object_size(unrounded)
+}
+
+pub fn round_object_size(size_with_header: Words<usize>) -> Words<usize> {
+    let size = size_with_header.as_usize();
+    let alignment = ADDRESS_ALIGNMENT.as_usize();
+    let rounded = (size + alignment - 1) / alignment * alignment;
+    Words(rounded)
 }

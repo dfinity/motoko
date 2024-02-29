@@ -72,7 +72,7 @@ impl TypeDescriptor {
 
     pub unsafe fn type_count(&self) -> usize {
         let blob_size = self.type_offsets.as_blob().len();
-        assert_eq!(blob_size.as_u32() % WORD_SIZE, 0);
+        assert_eq!(blob_size.as_usize() % WORD_SIZE, 0);
         blob_size.to_words().as_usize()
     }
 
@@ -80,7 +80,7 @@ impl TypeDescriptor {
     // be used during a single IC message when no GC increment is running in between.
     pub unsafe fn build_type_table<M: Memory>(&mut self, mem: &mut M) -> *mut *mut u8 {
         let type_count = self.type_count();
-        let temporary_blob = alloc_blob(mem, Words(type_count as u32).to_bytes());
+        let temporary_blob = alloc_blob(mem, Words(type_count).to_bytes());
         let offset_table = self.type_offsets.as_blob().payload_const() as *const u32;
         let type_table = temporary_blob.as_blob_mut().payload_addr() as *mut *mut u8;
         let candid_data = self.candid_data.as_blob_mut().payload_addr();

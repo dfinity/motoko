@@ -3,6 +3,7 @@ use crate::bitrel::BitRel;
 use crate::buf::{read_byte, read_word, skip_leb128, Buf};
 use crate::idl_trap_with;
 use crate::leb128::{leb128_decode, sleb128_decode};
+use crate::libc_declarations::{c_void, memcmp};
 use crate::memory::{alloc_blob, Memory};
 use crate::persistence::compatibility::TypeDescriptor;
 use crate::types::{Value, Words};
@@ -83,11 +84,7 @@ unsafe fn is_primitive_type(mode: CompatibilityMode, ty: i32) -> bool {
 // TBR; based on Text.text_compare
 unsafe fn utf8_cmp(len1: u32, p1: *mut u8, len2: u32, p2: *mut u8) -> i32 {
     let len = min(len1, len2);
-    let cmp = libc::memcmp(
-        p1 as *mut libc::c_void,
-        p2 as *mut libc::c_void,
-        len as usize,
-    );
+    let cmp = memcmp(p1 as *mut c_void, p2 as *mut c_void, len as usize);
     if cmp != 0 {
         return cmp;
     } else if len1 > len {
@@ -121,7 +118,7 @@ unsafe fn parse_fields(mode: CompatibilityMode, buf: *mut Buf, n_types: u32) {
 
 // NB. This function assumes the allocation does not need to survive GC
 // Therefore, no post allocation barrier is applied.
-unsafe fn alloc<M: Memory>(mem: &mut M, size: Words<u32>) -> *mut u8 {
+unsafe fn alloc<M: Memory>(mem: &mut M, size: Words<usize>) -> *mut u8 {
     alloc_blob(mem, size.to_bytes())
         .as_blob_mut()
         .payload_addr()
@@ -182,7 +179,7 @@ unsafe fn parse_idl_header<M: Memory>(
     *typtbl_size_out = n_types;
 
     // Allocate the type table to be passed out
-    let typtbl: *mut *mut u8 = alloc(mem, Words(n_types)) as *mut _;
+    let typtbl: *mut *mut u8 = alloc(mem, Words(n_types as usize)) as *mut _;
 
     // Go through the table
     for i in 0..n_types {
@@ -244,9 +241,9 @@ unsafe fn parse_idl_header<M: Memory>(
                 utf8_validate(p as *const _, len);
                 // Method names must be in order
                 if last_p != core::ptr::null_mut() {
-                    let cmp = libc::memcmp(
-                        last_p as *mut libc::c_void,
-                        p as *mut libc::c_void,
+                    let cmp = memcmp(
+                        last_p as *mut c_void,
+                        p as *mut c_void,
                         min(last_len, len) as usize,
                     );
                     if cmp > 0 || (cmp == 0 && last_len >= len) {
@@ -1167,7 +1164,9 @@ pub(crate) unsafe fn sub(
 
 #[no_mangle]
 unsafe extern "C" fn idl_sub_buf_words(typtbl_size1: u32, typtbl_size2: u32) -> u32 {
-    return BitRel::words(typtbl_size1, typtbl_size2);
+    let size = BitRel::words(typtbl_size1, typtbl_size2);
+    assert!(size <= u32::MAX as usize);
+    size as u32
 }
 
 #[no_mangle]

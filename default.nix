@@ -20,6 +20,10 @@ let ic-ref-run =
       cp ${ic-hs-pkgs.ic-hs}/bin/ic-ref-run $out/bin
   ''; in
 
+let
+  nixos-unstable = import nixpkgs.sources.nixpkgs-unstable {};
+in
+
 let haskellPackages = nixpkgs.haskellPackages.override {
       overrides = import nix/haskell-packages.nix nixpkgs subpath;
     }; in
@@ -35,6 +39,7 @@ let
     wasmtime
     rust-bindgen
     python3
+    nixos-unstable.emscripten
   ] ++ pkgs.lib.optional pkgs.stdenv.isDarwin [
     libiconv
   ];
@@ -193,7 +198,7 @@ rec {
         name = "motoko-rts-deps";
         src = subpath ./rts;
         sourceRoot = "rts/motoko-rts-tests";
-        sha256 = "sha256-jN5nx5UNBHlYKnC0kk90h6mWPUNrqPS7Wln2TixbGgA=";
+        sha256 = "sha256-YEw2AFi15JVKP7owsPDoBT3qSegOO90FRn2qoUBAICw=";
         copyLockfile = true;
       };
 
@@ -415,7 +420,7 @@ rec {
       '';
     };
 
-    # wasm-profiler is not compatible with passive data segments
+    # wasm-profiler is not compatible with passive data segments and memory64
     # profiling-graphs = testDerivation {
     #  src = test_src "perf";
     #  buildInputs =
@@ -481,7 +486,7 @@ rec {
       perf       = perf_subdir "perf"       [ moc nixpkgs.drun ];
       bench      = perf_subdir "bench"      [ moc nixpkgs.drun ic-wasm ];
       # viper      = test_subdir "viper"      [ moc nixpkgs.which nixpkgs.openjdk nixpkgs.z3 ];
-      # TODO: profiling-graph is excluded because the underlying partity_wasm is deprecated and does not support passive data segments.
+      # TODO: profiling-graph is excluded because the underlying partity_wasm is deprecated and does not support passive data segments and memory64.
       inherit qc lsp unit candid coverage;
     }) // { recurseForDerivations = true; };
 
@@ -526,7 +531,7 @@ rec {
         doInstallCheck = true;
         test = ./test + "/test-${n}.js";
         installCheckPhase = ''
-          NODE_PATH=$out/bin node $test
+          NODE_PATH=$out/bin node --experimental-wasm-memory64 $test
         '';
       };
     in

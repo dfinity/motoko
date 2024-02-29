@@ -1,18 +1,19 @@
-# Orthogonal Persistence (Stable Heap)
+# Orthogonal Persistence (Compact 64-Bit)
 
-This realizes the vision of keeping the canister main memory persistent even across upgrades and thus allows scalable upgrades.
-Canister upgrades do no longer involve serialization and deserialization to and from secondary stable memory.
+This implements the vision of **enhanced orthogonal persistence** in Motoko that combines:
+* **Stable heap**: Persisting the program main memory across canister upgrades.
+* **64-bit heap**: Extending the main memory to 64-bit, passing beyong 4GB.
+* **Compact pointers**: Using compact 32-bit layout with compact pointers that can address 32GB.
+As a result, the use of secondary storage (explicit stable memory, dedicated stable data structures, DB-like storage abstractions) will no longer be necessary: Motoko developers can directly work on their normal object-oriented program structures that are automatically persisted and retained across program version changes.
 
-## Purpose
+## Advantages
+Compared to the existing orthogonal persistence in Motoko, this design offers:
 * **Instantenous upgrades**: New program versions simply resume on the existing main memory and have access to the memory-compatible data.
 * **Scalable upgrades**: The upgrade mechanism scales with larger heaps and in contrast to serialization, does not hit IC instruction limits.
 
-## Broader Vision
-In the longer term, this approach aims to enable **true orthogonal persistence** that is simple, flexible, efficient, and scalable.
-While this version implements the runtime support for 32-bit memory, this could be leveraged to 64-bit persistent main memory in future.
-As a result, the use of secondary storage (explicit stable memory, dedicated stable data structures, DB-like storage abstractions) will no longer be necessary: 
-Motoko developers could directly work on their normal object-oriented program structures that are automatically persisted and retained across program version changes.
-With 64-bit main memory, large-scaled orthogonal persistence would be enabled, supported by the incremental GC that is designed to also scale in 64-bit.
+Compared to the explicit use of stable memory, this design improves:
+* **Simplicity**: Developers do not need to deal with explicit stable memory.
+* **Performance**: No copying to and from the separate stable memory is necessary.
 
 ## Design
 The stable heap is based on the following main properties:
@@ -22,8 +23,8 @@ The stable heap is based on the following main properties:
 * Incremental garbage collection using a partitioned heap.
 
 ### IC Extension
-As a prerequisite for the stable heap support, the IC runtime support has to be extended in order not to erase the main memory on upgrades.
-This is realized in a specific IC PR (https://github.com/luc-blaeser/ic/tree/luc/stable-heap-on-release) that retains the main memory even on upgrades, similar to normal canister message execution. 
+The necessary IC extensions are implemented in a separate PR: https://github.com/dfinity/ic/pull/143
+This PR is based on these extensions.
 
 ### Memory Layout
 In a co-design between the compiler and the runtime system, the main memory is arranged in the following structure, invariant of the compiled program version:
@@ -31,6 +32,16 @@ In a co-design between the compiler and the runtime system, the main memory is a
 * Space between 4MB and 4.5MB: Limited reserved space Wasm data segments, only used for the Motoko runtime system.
 * Between 4.5MB and 5MB: Persistent metadata.
 * Thereafter: Dynamic heap space. Fix start address at 5MB.
+
+### Compact Pointers
+By aligning objects to 16 bytes, object addresses have the lowest 4 bits zero. One bit is spent for pointer skewing (tagging), such that 3 free bits can be used to extend the addressable space by factor of 2**3 = 8, resulting in 32GB. 
+
+A 64-bit pointer `x < 64GB` is hence encoded as a compact pointer `x >> 3 - 1` of 32-bit width.
+The compact pointer `y` is again decoded to a 64-bit address `(y + 1) << 3`.
+
+The alignment to 16 bytes increases internal fragmentation (potential padding inside the object). However, the internal fragmentation overhead is expected to  less than generally extending the word size to 64-bit. Without alignment, the minimum object size is 12 bytes (except for the `Null` singleton that fits into 8 bytes).
+
+TODO: Memory overhead is to be measured.
 
 ### Persistent Metadata
 The persistent metadata describes all anchor information for the program to resume after an upgrade. 
@@ -61,9 +72,9 @@ This compatibility check serves as an additional safety measure on top of the DF
 ### Garbage Collection
 The implementation focuses on the incremental GC and abandons the other GCs because the GCs use different memory layouts. For example, the incremental GC uses a partitioned heap with objects carrying a forwarding pointer.
 
-The incremental GC is chosen because it is designed to scale on large heaps and the stable heap design also aims to increase scalability. Moreover, it is suited to scale on 64-bit memory in future.
+The incremental GC is chosen because it is designed to scale on large heaps and the stable heap design also aims to increase scalability.
 
-The garbage collection state needs to be persisted and retained across upgrades. 
+The garbage collection state needs to be persisted and retained across upgrades. This is because the GC may not yet be completed at the time of an upgrade, such that object forwarding is still in use. The partition table is stored as part of the GC state. 
 This is because the GC may not yet be completed at the time of an upgrade, such that object forwarding is still in use. The partition table is stored as part of the GC state.
 
 The garbage collector uses two kinds of roots:
@@ -119,12 +130,10 @@ Once operating on the stable heap, the system prevents downgrade attempts to the
 ### Old Stable Memory
 The old stable memory remains equally accessible as secondary memory with the new support.
 
-## Possible Extensions
-The following extensions or optimization could be applied in the future:
-* 64-bit memory: Extend the main memory to 64-bit by using Wasm64, see https://github.com/dfinity/motoko/pull/4136. The memory layout would need to be extended. Moreover, it would be beneficial to introduce a dynamic partition table for the GC. Ideally, stable heap support is directly rolled out for 64-bit to avoid complicated memory layout upgrades from 32-bit to 64-bit.
-* Object pooling: Compile-time-known objects can be shared in the dynamic heap by remembering them in an additional pool table. The pool table needs to be registered as a transient GC root and is recreated on canister upgrades.
-
-## Related PRs
-
-* IC with stable main memory support: https://github.com/luc-blaeser/ic/tree/luc/stable-heap-on-release
-* Wasm64 Support for Motoko: https://github.com/dfinity/motoko/pull/4136
+## Current Limitations
+* Optimization potential for statically known objects: Currently, compile-time-known objects are always dynamically allocated. For an improved performance and size, they could be shared in the dynamic heap by remembering them in an additional pool table. The pool table needs to be registered as a transient GC root and recreated on canister upgrades.
+* The compact pointer representation only allows 32 GB. Moreover, the GC is also limited to 32 GB because it uses a static partition table.
+* The floating point display format differs in Wasm64 for special values, e.g. `nan` becomes `NaN`. There is currently no support for hexadecimal floating point text formatting.
+* Workaround for Rust needed to build PIC (position-independent code) libraries. Explicit use of `emscripten` via LLVM IR. 
+* `ic-wasm` would need to be extended to support memory64 and passive data segments. The Wasm optimizations in `test/bench` are thus currently deactivated.
+* The Wasm profiler is no longer applicable because the underlying `parity-wasm` crate seems deprecated. A re-implementation of the profiler would be needed.
