@@ -1,8 +1,8 @@
 //MOC-FLAG -measure-rts-stack
-import { errorMessage; performanceCounter; rts_heap_size; rts_max_stack_size; debugPrint; } = "mo:⛔";
+import { errorMessage; debugPrint; } = "mo:⛔";
 
-actor stack {
-    let expectedMinimumSize = 31_000;
+actor {
+    let expectedMinimumSize = 23_000;
 
     public func ser() : async () { await go(false) };
     public func deser() : async () { await go(true) };
@@ -41,7 +41,7 @@ actor stack {
         let b = to_candid(l);
         debugPrint("serialized");
 
-        let o : ?(List) =
+        let _o : ?(List) =
           if deserialize
             from_candid(b)
           else null;

@@ -24,7 +24,7 @@ The stable heap is based on the following main properties:
 * Incremental garbage collection using a partitioned heap.
 
 ### IC Extension
-The necessary IC extensions are implemented in a separate PR: https://github.com/dfinity/ic/pull/139
+The necessary IC extensions are implemented in a separate PR: https://github.com/dfinity/ic/pull/143
 This PR is based on these extensions.
 
 ### Memory Layout
@@ -118,6 +118,6 @@ The old stable memory remains equally accessible as secondary memory with the ne
 * The incremental GC only allows 64 GB. Transitioning to a dynamic partition table would be necessary to go beyond this limit. This is to be be implemented in a separate PR.
 * The floating point display format differs in Wasm64 for special values, e.g. `nan` becomes `NaN`. There is currently no support for hexadecimal floating point text formatting.
 * Workaround for Rust needed to build PIC (position-independent code) libraries. Explicit use of `emscripten` via LLVM IR. 
-* `ic-wasm` would need to be extended to Wasm64. The Wasm optimizations in `test/bench` are thus currently deactivated.
-* The Wasm profiler is no longer applicable because the underlying `parity-wasm` crate is deprecated before Wasm64 support. A re-implementation of the profiler would be needed.
+* `ic-wasm` would need to be extended to support memory64 and passive data segments. The Wasm optimizations in `test/bench` are thus currently deactivated.
+* The Wasm profiler is no longer applicable because the underlying `parity-wasm` crate seems deprecated. A re-implementation of the profiler would be needed.
 

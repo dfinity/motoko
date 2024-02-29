@@ -6,7 +6,7 @@ do {
   var c = 5;
 
   while(c > 0) {
-    let a : [var Nat8] = P.Array_init<Nat8>(1024*1024*1024/8, 0xFF);
+    ignore P.Array_init<Nat8>(1024*1024*1024/8, 0xFF);
     c -= 1;
   };
 

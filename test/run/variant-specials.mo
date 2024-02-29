@@ -24,4 +24,4 @@ specials(#one 42, #c1)
 //CHECK-NOT: i64.const 22126
 //CHECK: local.set $count
 
-//CHECK: i64.const 246
+//CHECK: i64.const 494

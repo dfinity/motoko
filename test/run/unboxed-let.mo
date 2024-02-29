@@ -47,7 +47,7 @@ func goValidFloat(x : Float) { assert (x * x == 4); }; goValidFloat(2);
 // CHECK: unreachable
 
 // CHECK: func $goValidNat64
-// CHECK: unbox_i64
+// CHECK: unbox64
 // CHECK: unreachable
 
 // CHECK: func $goFloat
@@ -56,13 +56,13 @@ func goValidFloat(x : Float) { assert (x * x == 4); }; goValidFloat(2);
 // CHECK: unreachable
 
 // CHECK: func $goInt64
-// CHECK-NOT: box_i64
-// CHECK-NOT: unbox_i64
+// CHECK-NOT: box64
+// CHECK-NOT: unbox64
 // CHECK: unreachable
 
 // CHECK: func $goNat64
-// CHECK-NOT: box_i64
-// CHECK-NOT: unbox_i64
+// CHECK-NOT: box64
+// CHECK-NOT: unbox64
 // CHECK: unreachable
 
 
