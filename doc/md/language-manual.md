@@ -2305,7 +2305,7 @@ If `<exp>` in `label <id> (: <typ>)? <exp>` is a looping construct:
 
 the body, `<exp1>`, of the loop is implicitly enclosed in `label <id_continue> (…​)` allowing early continuation of the loop by the evaluation of expression `continue <id>`.
 
-`<id_continue>` is fresh identifier that can only be referenced by `continue <id>` (through its implicit expansion to `break <id_continue>`).
+`<id_continue>` is a fresh identifier that can only be referenced by `continue <id>` (through its implicit expansion to `break <id_continue>`).
 
 ### Break
 
@@ -2317,7 +2317,7 @@ The expression `break <id> <exp>` has type `None` provided:
 
 -   `<exp>` has type `T`.
 
-The evaluation of `break <id> <exp>` evaluates exp to some result `r`. If `r` is `trap`, the result is `trap`. If `r` is a value `v`, the evaluation abandons the current computation up to dynamically enclosing declaration `label <id> …​` using the value `v` as the result of that labelled expression.
+The evaluation of `break <id> <exp>` evaluates `<exp>` to some result `r`. If `r` is `trap`, the result is `trap`. If `r` is a value `v`, the evaluation abandons the current computation up to the dynamically enclosing declaration `label <id> …​` using the value `v` as the result of that labelled expression.
 
 ### Continue
 

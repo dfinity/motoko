@@ -2,8 +2,6 @@
 import P "mo:⛔";
 import StableMemory "stable-mem/StableMemory";
 
-import Region "stable-region/Region";
-
 actor {
   stable var n : Nat64 = 0;
   assert (n == StableMemory.size());

@@ -1,9 +1,7 @@
 // This test exists to verify the fix for
 // https://dfinity.atlassian.net/browse/EXC-1318
 // drun didn't implement raw_rand properly, returning the same bytes each time.
-import Prim "mo:⛔";
-
-actor a {
+actor {
 
   let rand = (actor "aaaaa-aa" : actor { raw_rand : () -> async Blob }).raw_rand;
 

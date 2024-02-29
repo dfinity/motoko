@@ -1,3 +1,6 @@
 array.mo:89.27-89.64: warning [M0074], this array has type
   [Any]
 because elements have inconsistent types
+array.mo:2.5-2.7: warning [M0194], unused identifier aa (delete or rename to wildcard `_` or `_aa`)
+array.mo:15.5-15.7: warning [M0194], unused identifier bb (delete or rename to wildcard `_` or `_bb`)
+array.mo:89.5-89.18: warning [M0194], unused identifier heterogeneous (delete or rename to wildcard `_` or `_heterogeneous`)

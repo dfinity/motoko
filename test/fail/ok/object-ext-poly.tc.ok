@@ -2,3 +2,4 @@ object-ext-poly.mo:2.5-2.32: type error [M0096], expression of type
   {a : Int; b : Char; c : Text}
 cannot produce expected type
   A__9
+object-ext-poly.mo:1.6-1.9: warning [M0194], unused identifier mix (delete or rename to wildcard `_` or `_mix`)

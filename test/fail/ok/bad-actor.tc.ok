@@ -11,3 +11,9 @@ bad-actor.mo:8.1-8.38: type error [M0134], class body of type
 does not match expected type
   {}
 bad-actor.mo:9.1-9.31: warning [M0135], actor classes with non non-async return types are deprecated; please declare the return type as 'async ...'
+bad-actor.mo:1.13-1.14: warning [M0194], unused identifier A (delete or rename to wildcard `_` or `_A`)
+bad-actor.mo:3.13-3.15: warning [M0194], unused identifier A1 (delete or rename to wildcard `_` or `_A1`)
+bad-actor.mo:4.13-4.15: warning [M0194], unused identifier A2 (delete or rename to wildcard `_` or `_A2`)
+bad-actor.mo:6.13-6.15: warning [M0194], unused identifier A3 (delete or rename to wildcard `_` or `_A3`)
+bad-actor.mo:8.13-8.15: warning [M0194], unused identifier A4 (delete or rename to wildcard `_` or `_A4`)
+bad-actor.mo:9.13-9.15: warning [M0194], unused identifier A5 (delete or rename to wildcard `_` or `_A5`)
