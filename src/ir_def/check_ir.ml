@@ -482,20 +482,20 @@ let rec check_exp env (exp:Ir.exp) : unit =
       in
       typ exp2 <: T.nat;
       T.as_immut t2 <: t
-    | GetPastArrayOffset _, [exp1] ->
+    | GetLastArrayOffset, [exp1] ->
       let t1 = T.promote (typ exp1) in
       ignore
         (try T.as_array_sub t1 with
          | Invalid_argument _ ->
            error env exp1.at "expected array type, but expression produces type\n  %s"
              (T.string_of_typ_expand t1));
-      T.nat <: t
-    | NextArrayOffset _, [exp1] ->
+      T.int <: t
+    | NextArrayOffset, [exp1] ->
       typ exp1 <: T.nat;
       T.nat <: t
-    | ValidArrayOffset, [exp1; exp2] ->
-      typ exp1 <: T.nat;
-      typ exp2 <: T.nat;
+    | EqArrayOffset, [exp1; exp2] ->
+      typ exp1 <: T.int;
+      typ exp2 <: T.int;
       T.bool <: t
     | BreakPrim id, [exp1] ->
       begin

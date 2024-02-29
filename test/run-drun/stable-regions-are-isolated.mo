@@ -5,6 +5,7 @@ import P "mo:⛔";
 import Region "stable-region/Region";
 
 actor {
+
   var r0 = Region.new();
   var r1 = Region.new();
   var r2 = Region.new();
@@ -32,7 +33,8 @@ actor {
 
   func blobOfNat64(n : Nat64) : Blob {
     let size = P.nat64ToNat(n);
-    let a = P.Array_tabulate<Nat8>(size, func i { P.natToNat8(i % 256) });
+    var v : Nat8 = 0;
+    let a = P.Array_tabulate<Nat8>(size, func _ { v +%= 1; v }); //<- expensive when i boxed
     P.arrayToBlob(a);
   };
 
@@ -53,6 +55,7 @@ actor {
   assert(Region.loadBlob(r2, 137, P.nat64ToNat(big_len)) == big_blob);
 
   P.debugPrint "success. done.";
+
 }
 
 //SKIP run

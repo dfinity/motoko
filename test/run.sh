@@ -420,8 +420,8 @@ do
         then
            if [ -n "$PERF_OUT" ]
            then
-             wasm-strip $out/$base.wasm
-             echo "size/$base;$(stat --format=%s $out/$base.wasm)" >> $PERF_OUT
+             wasm-strip $out/$base.wasm -o $out/$base.wasm.strip
+             echo "size/$base;$(stat --format=%s $out/$base.wasm.strip)" >> $PERF_OUT
            fi
         fi
 
