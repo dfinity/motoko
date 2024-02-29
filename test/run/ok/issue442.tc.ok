@@ -8,3 +8,5 @@ true produces
   Nat
 false produces
   Text
+issue442.mo:1.5-1.8: warning [M0194], unused identifier foo (delete or rename to wildcard `_` or `_foo`)
+issue442.mo:2.5-2.8: warning [M0194], unused identifier bar (delete or rename to wildcard `_` or `_bar`)

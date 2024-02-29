@@ -8,3 +8,8 @@ objects1.mo:47.21-49.2: warning [M0145], this switch of type
   (Nat, Int, {c : Char; d : Text})
 does not cover value
   (_, 0 or 1 or _, _)
+objects1.mo:7.6-7.12: warning [M0194], unused identifier nonrec (delete or rename to wildcard `_` or `_nonrec`)
+objects1.mo:11.5-11.7: warning [M0194], unused identifier oo (delete or rename to wildcard `_` or `_oo`)
+objects1.mo:18.9-18.10: warning [M0194], unused identifier C (delete or rename to wildcard `_` or `_C`)
+objects1.mo:55.6-55.9: warning [M0194], unused identifier baz (delete or rename to wildcard `_` or `_baz`)
+objects1.mo:59.6-59.15: warning [M0194], unused identifier full_name (delete or rename to wildcard `_` or `_full_name`)

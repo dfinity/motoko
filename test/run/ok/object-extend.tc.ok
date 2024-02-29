@@ -1,0 +1,5 @@
+object-extend.mo:56.6-56.9: warning [M0194], unused identifier mix (delete or rename to wildcard `_` or `_mix`)
+object-extend.mo:59.6-59.9: warning [M0194], unused identifier mox (delete or rename to wildcard `_` or `_mox`)
+object-extend.mo:62.6-62.9: warning [M0194], unused identifier mux (delete or rename to wildcard `_` or `_mux`)
+object-extend.mo:67.5-67.10: warning [M0194], unused identifier tb_ok (delete or rename to wildcard `_` or `_tb_ok`)
+object-extend.mo:68.5-68.10: warning [M0194], unused identifier ab_ok (delete or rename to wildcard `_` or `_ab_ok`)

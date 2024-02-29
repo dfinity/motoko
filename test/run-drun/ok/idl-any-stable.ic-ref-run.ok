@@ -1,6 +1,0 @@
-=> update provisional_create_canister_with_cycles(record {settings = null; qgqjpK = null; amount = null; ddww...
-<= replied: (record {hymijyo = principal "rwlgt-iiaaa-aaaaa-aaaaa-cai"})
-=> update install_code(record {arg = blob ""; kca_xin = blob "\00asm\01\00\00\00\0...
-<= replied: ()
-=> query any(0x4449444c01017102007100000000000003424144)
-<= rejected (RC_CANISTER_ERROR): canister trapped: EvalTrapError region:0xXXX-0xXXX "canister trapped explicitly: IDL error: illegal type table"

@@ -1,7 +1,7 @@
 //MOC-NO-FORCE-GC
 import Prim "mo:⛔";
 // test throw on oneway call failure
-actor self {
+actor {
 
   func showError(e : Error) : Text = debug_show (Prim.errorCode(e), Prim.errorMessage(e));
 
@@ -70,4 +70,4 @@ actor self {
 //SKIP run-low
 //SKIP ic-ref-run
 
-//await a.go(); //OR-CALL ingress go "DIDL\x00\x00"
+//CALL ingress go "DIDL\x00\x00"

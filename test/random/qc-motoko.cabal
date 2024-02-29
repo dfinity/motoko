@@ -5,7 +5,7 @@ version:             1
 synopsis:            generate randomised tests for Motoko
 -- description:
 author:              dfinity
-maintainer:          sdk@dfinity.org
+maintainer:          team-motoko@dfinity.org
 -- copyright:
 category:            Testing
 extra-source-files:  CHANGELOG.md

@@ -1,4 +1,5 @@
 import Array "array";
+import Region "../stable-region/Region";
 
 module {
     public type RandomValue = {
@@ -9,6 +10,7 @@ module {
         #box : RandomBox;
         #text : RandomText;
         #option : RandomOption;
+        #region : RandomRegion;
     };
 
     public type RandomObject = {
@@ -37,6 +39,12 @@ module {
     public type RandomBlob = Blob;
 
     public type RandomOption = ?RandomValue;
+
+    public type RandomRegion = {
+        region : Region;
+        checkSize : Nat64;
+        checkValue : Nat8;
+    };
 
     public func isNone(value : RandomValue) : Bool {
         switch value {

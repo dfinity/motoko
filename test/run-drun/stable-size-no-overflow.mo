@@ -9,7 +9,7 @@ actor {
   assert (page.size() == 65536);
 
   stable
-  let a : [Blob] = P.Array_tabulate<Blob>(65536,func _ { page });
+  let _a : [Blob] = P.Array_tabulate<Blob>(65536,func _ { page });
 
   system func preupgrade() {
    P.debugPrint("upgrading...");

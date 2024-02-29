@@ -2,3 +2,4 @@ explicit-actor-import.mo:10.8-10.29: type error [M0114], object pattern cannot c
   actor {go : shared () -> async actor {}}
 explicit-actor-import.mo:11.8-11.29: type error [M0114], object pattern cannot consume actor type
   actor {go : shared () -> async actor {}}
+explicit-actor-import.mo:13.7-13.8: warning [M0194], unused identifier a (delete or rename to wildcard `_` or `_a`)

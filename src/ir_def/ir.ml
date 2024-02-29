@@ -146,10 +146,10 @@ and prim =
   | SelfRef of Type.typ               (* returns the self actor ref *)
   | SystemTimePrim
   (* Array field iteration/access *)
-  | NextArrayOffset of spacing        (* advance array offset *)
-  | ValidArrayOffset                  (* verify array offset *)
-  | DerefArrayOffset                  (* array offset indexing *)
-  | GetPastArrayOffset of spacing     (* array offset past the last element *)
+  | NextArrayOffset                   (* advance compact array offset, as Nat *)
+  | EqArrayOffset                     (* equate compact array offset at type Int *)
+  | DerefArrayOffset                  (* compact array offset indexing (unchecked) *)
+  | GetLastArrayOffset                (* compact array offset of the last element, or -1, as Int *)
   (* Funds *)
   | SystemCyclesAddPrim
   | SystemCyclesAcceptPrim
@@ -175,8 +175,6 @@ and prim =
   | ICStableWrite of Type.typ          (* serialize value of stable type to stable memory *)
   | ICStableRead of Type.typ           (* deserialize value of stable type from stable memory *)
   | ICStableSize of Type.typ
-
-and spacing = One | ElementSize        (* increment units when iterating over arrays *)
 
 (* Declarations *)
 
@@ -271,10 +269,10 @@ let map_prim t_typ t_id p =
   | ActorDotPrim _ -> p
   | ArrayPrim (m, t) -> ArrayPrim (m, t_typ t)
   | IdxPrim
-  | NextArrayOffset _
-  | ValidArrayOffset
+  | NextArrayOffset
+  | EqArrayOffset
   | DerefArrayOffset
-  | GetPastArrayOffset _ -> p
+  | GetLastArrayOffset -> p
   | BreakPrim id -> BreakPrim (t_id id)
   | RetPrim
   | AwaitPrim _
