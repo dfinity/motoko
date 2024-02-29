@@ -1,8 +1,6 @@
 //MOC-FLAG -fshared-code
 import Prim "mo:⛔";
 
-// Differences between incremental and non-incremental compilation (additional forwarding header field).
-
 // CHECK: (local $check0 i64)
 
 // CHECK-NOT:  call $@immut_array_size
