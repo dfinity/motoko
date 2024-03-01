@@ -6,6 +6,7 @@ use crate::mem_utils::memzero;
 use crate::types::Words;
 
 const BITS: u32 = 2;
+const WORD_BITS: u32 = WORD_SIZE as u32 * u8::BITS;
 
 #[repr(packed)]
 pub struct BitRel {
@@ -20,7 +21,7 @@ pub struct BitRel {
 
 impl BitRel {
     pub fn words(size1: u32, size2: u32) -> usize {
-        (((2 * size1 * size2 * BITS) + (usize::BITS - 1)) / usize::BITS) as usize
+        (((2 * size1 * size2 * BITS) + (WORD_BITS - 1)) / WORD_BITS) as usize
     }
 
     pub unsafe fn init(&self) {
@@ -43,8 +44,8 @@ impl BitRel {
         debug_assert!(j < size2);
         debug_assert!(bit < BITS);
         let k = ((base + i) * size2 + j) * BITS + bit;
-        let word = (k / usize::BITS) as usize;
-        let bit = (k % usize::BITS) as u32;
+        let word = (k / WORD_BITS) as usize;
+        let bit = (k % WORD_BITS) as u32;
         let ptr = self.ptr.add(word);
         if ptr > self.end {
             idl_trap_with("BitRel indices out of bounds");

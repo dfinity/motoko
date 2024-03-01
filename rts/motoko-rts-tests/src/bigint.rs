@@ -1,4 +1,5 @@
 use crate::memory::{initialize_test_memory, reset_test_memory, TestMemory};
+use std::ffi::c_void;
 
 use motoko_rts::bigint::{self, *};
 use motoko_rts::buf::Buf;
@@ -11,16 +12,16 @@ use motoko_rts::types::{Bytes, Value};
 static mut HEAP: *mut TestMemory = std::ptr::null_mut();
 
 #[no_mangle]
-unsafe extern "C" fn mp_calloc(n_elems: usize, elem_size: Bytes<usize>) -> *mut libc::c_void {
+unsafe extern "C" fn mp_calloc(n_elems: usize, elem_size: Bytes<usize>) -> *mut c_void {
     bigint::mp_calloc(&mut *HEAP, n_elems, elem_size)
 }
 
 #[no_mangle]
 unsafe extern "C" fn mp_realloc(
-    ptr: *mut libc::c_void,
-    old_size: Bytes<u32>,
-    new_size: Bytes<u32>,
-) -> *mut libc::c_void {
+    ptr: *mut c_void,
+    old_size: Bytes<usize>,
+    new_size: Bytes<usize>,
+) -> *mut c_void {
     bigint::mp_realloc(&mut *HEAP, ptr, old_size, new_size)
 }
 

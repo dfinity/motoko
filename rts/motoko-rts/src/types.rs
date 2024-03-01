@@ -540,21 +540,9 @@ impl Array {
 #[repr(C)] // See the note at the beginning of this module
 pub struct Region {
     pub header: Obj,
-    // 64-bit id split into lower and upper halves for alignment reasons
-    pub id_lower: u32,
-    pub id_upper: u32,
+    pub id: u64,
     pub page_count: u32,
     pub vec_pages: Value, // Blob of u16's (each a page block ID).
-}
-
-impl Region {
-    pub unsafe fn write_id64(self: *mut Self, value: u64) {
-        write64(&mut (*self).id_lower, &mut (*self).id_upper, value);
-    }
-
-    pub unsafe fn read_id64(self: *mut Self) -> u64 {
-        read64((*self).id_lower, (*self).id_upper)
-    }
 }
 
 #[repr(C)] // See the note at the beginning of this module
@@ -670,19 +658,6 @@ impl Blob {
             (*filler).size = free_space;
         }
     }
-}
-
-// Note: Do not declare 64-bit fields, as otherwise, the objects are expected to be 64-bit aligned.
-// This is not the case in the current heap design.
-// Moreover, fields would also get 64-bit aligned causing implicit paddding.
-
-pub fn read64(lower: u32, upper: u32) -> u64 {
-    ((upper as u64) << u32::BITS) | lower as u64
-}
-
-pub fn write64(lower: &mut u32, upper: &mut u32, value: u64) {
-    *upper = (value >> u32::BITS) as u32;
-    *lower = (value & u32::MAX as u64) as u32;
 }
 
 /// Only used by the copying GC - not to be confused with the forwarding pointer in the general object header

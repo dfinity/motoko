@@ -1,5 +1,6 @@
 use super::utils::{make_pointer, make_scalar, write_word, ObjectIdx, WORD_SIZE};
 
+use motoko_rts::constants::ADDRESS_ALIGNMENT;
 use motoko_rts::memory::Memory;
 use motoko_rts::types::*;
 
@@ -19,12 +20,12 @@ pub struct MotokoHeap {
 }
 
 impl Memory for MotokoHeap {
-    unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value {
+    unsafe fn alloc_words(&mut self, n: Words<usize>) -> Value {
         self.inner.borrow_mut().alloc_words(n)
     }
 
-    unsafe fn grow_memory(&mut self, ptr: u64) {
-        self.inner.borrow_mut().grow_memory(ptr as usize);
+    unsafe fn grow_memory(&mut self, ptr: usize) {
+        self.inner.borrow_mut().grow_memory(ptr);
     }
 }
 
@@ -110,8 +111,8 @@ impl MotokoHeap {
     pub fn dump(&self) {
         unsafe {
             motoko_rts::debug::dump_heap(
-                self.heap_base_address() as u32,
-                self.heap_ptr_address() as u32,
+                self.heap_base_address(),
+                self.heap_ptr_address(),
                 self.static_root_array_variable_address() as *mut Value,
                 self.continuation_table_variable_address() as *mut Value,
             );
@@ -221,7 +222,7 @@ impl MotokoHeapInner {
             (object_headers_words + references_words) * WORD_SIZE
         };
 
-        let continuation_table_size = (size_of::<Array>() + Words(continuation_table.len() as u32))
+        let continuation_table_size = (size_of::<Array>() + Words(continuation_table.len()))
             .to_bytes()
             .as_usize();
 
@@ -278,16 +279,17 @@ impl MotokoHeapInner {
         }
     }
 
-    unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value {
+    unsafe fn alloc_words(&mut self, size: Words<usize>) -> Value {
+        let rounded_size = round_object_size(size);
         let mut dummy_memory = DummyMemory {};
-        let result =
-            motoko_rts::gc::incremental::get_partitioned_heap().allocate(&mut dummy_memory, n);
+        let result = motoko_rts::gc::incremental::get_partitioned_heap()
+            .allocate(&mut dummy_memory, rounded_size);
         self.set_heap_ptr_address(result.get_ptr()); // realign on partition changes
 
-        self.linear_alloc_words(n)
+        self.linear_alloc_words(rounded_size)
     }
 
-    unsafe fn linear_alloc_words(&mut self, n: Words<u32>) -> Value {
+    unsafe fn linear_alloc_words(&mut self, n: Words<usize>) -> Value {
         // Update heap pointer
         let old_hp = self.heap_ptr_address();
         let new_hp = old_hp + n.to_bytes().as_usize();
@@ -295,6 +297,7 @@ impl MotokoHeapInner {
 
         // Grow memory if needed
         self.grow_memory(new_hp as usize);
+        assert_eq!(old_hp % ADDRESS_ALIGNMENT.to_bytes().as_usize(), 0);
         Value::from_ptr(old_hp)
     }
 
@@ -313,11 +316,11 @@ impl MotokoHeapInner {
 struct DummyMemory {}
 
 impl Memory for DummyMemory {
-    unsafe fn alloc_words(&mut self, _n: Words<u32>) -> Value {
+    unsafe fn alloc_words(&mut self, _n: Words<usize>) -> Value {
         unreachable!()
     }
 
-    unsafe fn grow_memory(&mut self, _ptr: u64) {}
+    unsafe fn grow_memory(&mut self, _ptr: usize) {}
 }
 
 /// Compute the size of the heap to be allocated for the GC test.
@@ -348,6 +351,8 @@ fn create_dynamic_heap(
 
             // Store object header
             let address = u32::try_from(heap_start + heap_offset).unwrap();
+            assert_eq!(address % ADDRESS_ALIGNMENT.to_bytes().as_usize(), 0);
+            assert_eq!(heap_offset % ADDRESS_ALIGNMENT.to_bytes().as_usize(), 0);
             write_word(dynamic_heap, heap_offset, TAG_ARRAY);
             heap_offset += WORD_SIZE;
 
@@ -368,6 +373,8 @@ fn create_dynamic_heap(
 
             // Leave space for the fields
             heap_offset += refs.len() * WORD_SIZE;
+
+            align_object_size(dynamic_heap, &mut heap_offset);
         }
     }
 
@@ -379,7 +386,7 @@ fn create_dynamic_heap(
         for (ref_idx, ref_) in refs.iter().enumerate() {
             let ref_addr = make_pointer(*object_addrs.get(ref_).unwrap() as u32);
             let field_offset = obj_offset
-                + (size_of::<Array>() + Words(1 + ref_idx as u32))
+                + (size_of::<Array>() + Words(1 + ref_idx))
                     .to_bytes()
                     .as_usize();
             write_word(dynamic_heap, field_offset, u32::try_from(ref_addr).unwrap());
@@ -390,16 +397,16 @@ fn create_dynamic_heap(
     let n_objects = refs.len();
     // fields+1 for the scalar field (idx)
     let n_fields: usize = refs.iter().map(|(_, fields)| fields.len() + 1).sum();
-    let root_section_offset = (size_of::<Array>() * n_objects as u32)
-        .to_bytes()
-        .as_usize()
-        + n_fields * WORD_SIZE;
+    let root_section_offset =
+        (size_of::<Array>() * n_objects).to_bytes().as_usize() + n_fields * WORD_SIZE;
 
     let mut heap_offset = root_section_offset;
     let mut root_mutboxes = vec![];
     {
         for root_id in static_roots {
-            let mutbox_address = u32::try_from(heap_start + heap_offset).unwrap();
+            let mutbox_address = u32::try_from(heap_start + heap_offset).unwap();
+            assert_eq!(mutbox_address % ADDRESS_ALIGNMENT.to_bytes().as_usize(), 0);
+            assert_eq!(heap_offset % ADDRESS_ALIGNMENT.to_bytes().as_usize(), 0);
             root_mutboxes.push(mutbox_address);
             write_word(dynamic_heap, heap_offset, TAG_MUTBOX);
             heap_offset += WORD_SIZE;
@@ -410,10 +417,13 @@ fn create_dynamic_heap(
             let root_ptr = *object_addrs.get(root_id).unwrap();
             write_word(dynamic_heap, heap_offset, make_pointer(root_ptr as u32));
             heap_offset += WORD_SIZE;
+
+            align_object_size(dynamic_heap, &mut heap_offset);
         }
     }
     let static_root_array_address = u32::try_from(heap_start + heap_offset).unwrap();
     {
+        assert_eq!(heap_offset % ADDRESS_ALIGNMENT.to_bytes().as_usize(), 0);
         write_word(dynamic_heap, heap_offset, TAG_ARRAY);
         heap_offset += WORD_SIZE;
 
@@ -432,10 +442,13 @@ fn create_dynamic_heap(
             write_word(dynamic_heap, heap_offset, make_pointer(mutbox_address));
             heap_offset += WORD_SIZE;
         }
+
+        align_object_size(dynamic_heap, &mut heap_offset);
     }
 
     let continuation_table_address = u32::try_from(heap_start + heap_offset).unwrap();
     {
+        assert_eq!(heap_offset % ADDRESS_ALIGNMENT.to_bytes().as_usize(), 0);
         write_word(dynamic_heap, heap_offset, TAG_ARRAY);
         heap_offset += WORD_SIZE;
 
@@ -454,11 +467,15 @@ fn create_dynamic_heap(
             write_word(dynamic_heap, heap_offset, make_pointer(idx_ptr as u32));
             heap_offset += WORD_SIZE;
         }
+
+        align_object_size(dynamic_heap, &mut heap_offset);
     }
 
     // Add region0
     let region0_address = u32::try_from(heap_start + heap_offset).unwrap();
     {
+        assert_eq!(heap_offset % ADDRESS_ALIGNMENT.to_bytes().as_usize(), 0);
+
         write_word(dynamic_heap, heap_offset, TAG_REGION);
         heap_offset += WORD_SIZE;
 
@@ -476,6 +493,8 @@ fn create_dynamic_heap(
         heap_offset += WORD_SIZE;
         // Simplification: Skip the vector pages blob
         write_word(dynamic_heap, heap_offset, make_scalar(0));
+
+        align_object_size(dynamic_heap, &mut heap_offset);
     }
 
     (
@@ -515,4 +534,17 @@ fn create_static_memory(
         region0_pointer_variable_offset,
         make_pointer(region0_address),
     );
+}
+
+fn align_object_size(dynamic_heap: &mut [u8], heap_offset: &mut usize) {
+    while heap_offset % ADDRESS_ALIGNMENT.to_bytes().as_usize() != 0 {
+        write_word(dynamic_heap, heap_offset, 0);
+        heap_offset += WORD_SIZE;
+    }
+}
+
+
+fn round_to_alignment(size: usize) -> usize {
+    let alignment = ADDRESS_ALIGNMENT.to_bytes().as_usize();
+    size.div_ceil(alignment) * alignment
 }

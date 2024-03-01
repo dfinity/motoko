@@ -13,7 +13,7 @@ mod utils;
 use heap::MotokoHeap;
 use utils::{get_scalar_value, make_pointer, read_word, unskew_pointer, ObjectIdx, WORD_SIZE};
 
-use motoko_rts::types::*;
+use motoko_rts::{constants::ADDRESS_ALIGNMENT, types::*};
 
 use std::fmt::Write;
 
@@ -156,10 +156,10 @@ fn initialize_gc(heap: &mut MotokoHeap) {
         let state = IncrementalGC::initial_gc_state(heap, heap.heap_base_address());
         set_incremental_gc_state(Some(state));
         let allocation_size = heap.heap_ptr_address() - heap.heap_base_address();
+        assert_eq!(allocation_size % ADDRESS_ALIGNMENT.to_bytes().as_usize(), 0);
 
         // Synchronize the partitioned heap with one big combined allocation by starting from the base pointer as the heap pointer.
-        let result =
-            get_partitioned_heap().allocate(heap, Bytes(allocation_size as u32).to_words());
+        let result = get_partitioned_heap().allocate(heap, Bytes(allocation_size).to_words());
         // Check that the heap pointer (here equals base pointer) is unchanged, i.e. no partition switch has happened.
         // This is a restriction in the unit test where `MotokoHeap` only supports contiguous bump allocation during initialization.
         assert_eq!(result.get_ptr(), heap.heap_base_address());
@@ -223,7 +223,7 @@ fn check_dynamic_heap(
 
         if object_offset == static_root_array_offset {
             check_static_root_array(object_offset, roots, heap);
-            offset += (size_of::<Array>() + Words(roots.len() as u32))
+            offset += (size_of::<Array>() + Words(roots.len()))
                 .to_bytes()
                 .as_usize();
             continue;
@@ -231,17 +231,18 @@ fn check_dynamic_heap(
 
         if object_offset == continuation_table_offset {
             check_continuation_table(object_offset, continuation_table, heap);
-            offset += (size_of::<Array>() + Words(continuation_table.len() as u32))
+            offset += (size_of::<Array>() + Words(continuation_table.len()))
                 .to_bytes()
                 .as_usize();
             continue;
         }
 
+        assert_eq!(offset % ADDRESS_ALIGNMENT.to_bytes().as_usize(), 0);
+
         let tag = read_word(heap, offset);
         offset += WORD_SIZE;
 
-        if tag == TAG_ONE_WORD_FILLER {
-        } else if tag == TAG_FREE_SPACE {
+        if tag == TAG_FREE_SPACE {
             let words = read_word(heap, offset) as usize;
             offset += WORD_SIZE;
             offset += words * WORD_SIZE;

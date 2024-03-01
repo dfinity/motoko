@@ -5,6 +5,7 @@ use std::{
 };
 
 use motoko_rts::{
+    constants::ADDRESS_ALIGNMENT,
     gc::incremental::{
         partitioned_heap::{
             Partition, PartitionedHeap, PartitionedHeapIterator, PARTITION_SIZE,
@@ -15,7 +16,7 @@ use motoko_rts::{
         IncrementalGC,
     },
     memory::{alloc_array, alloc_blob, Memory},
-    types::{Array, Blob, Bytes, Obj, Tag, Value, Words, TAG_ARRAY, TAG_BLOB},
+    types::{round_object_size, Array, Blob, Bytes, Obj, Tag, Value, Words, TAG_ARRAY, TAG_BLOB},
 };
 
 use crate::{gc::utils::WORD_SIZE, memory::TestMemory};
@@ -390,7 +391,7 @@ pub struct PartitionedTestHeap {
 
 impl PartitionedTestHeap {
     pub fn new(size: usize) -> PartitionedTestHeap {
-        let mut memory = TestMemory::new(Bytes(size as u32).to_words());
+        let mut memory = TestMemory::new(Bytes(size).to_words());
         let heap_base = memory.heap_base();
         let inner = unsafe { PartitionedHeap::new(&mut memory, heap_base) };
         PartitionedTestHeap { memory, inner }
@@ -416,7 +417,7 @@ impl PartitionedTestHeap {
     }
 
     pub fn allocate_blob(&mut self, size: usize) -> Value {
-        unsafe { alloc_blob(self, Bytes(size as u32)) }
+        unsafe { alloc_blob(self, Bytes(size)) }
     }
 }
 
@@ -431,14 +432,19 @@ unsafe fn block_size(block: *const Tag) -> usize {
 }
 
 impl Memory for PartitionedTestHeap {
-    unsafe fn alloc_words(&mut self, size: Words<u32>) -> Value {
-        let result = self.inner.allocate(&mut self.memory, size);
+    unsafe fn alloc_words(&mut self, size: Words<usize>) -> Value {
+        let rounded_size = round_object_size(size);
+        let result = self.inner.allocate(&mut self.memory, rounded_size);
         self.memory
             .set_heap_pointer(result.get_ptr() + size.to_bytes().as_usize());
+        assert_eq!(
+            result.get_ptr() % ADDRESS_ALIGNMENT.to_bytes().as_usize(),
+            0
+        );
         result
     }
 
-    unsafe fn grow_memory(&mut self, ptr: u64) {
+    unsafe fn grow_memory(&mut self, ptr: usize) {
         assert!(ptr as usize <= self.memory.heap_end());
     }
 }

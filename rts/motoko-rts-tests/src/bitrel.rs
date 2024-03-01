@@ -5,17 +5,16 @@ pub unsafe fn test() {
 
     const K: u32 = 128;
 
-    const N: usize = (2 * K * K * 2 / usize::BITS) as usize;
+    const N: usize = (2 * K * K * 2 / u32::BITS) as usize;
 
     let mut cache: [u32; N] = [0xFFFFFFF; N];
 
-    assert_eq!(usize::BITS, 32);
     for size1 in 0..K {
         for size2 in 0..K {
             let w = BitRel::words(size1, size2);
             let bitrel = BitRel {
                 ptr: &mut cache[0],
-                end: &mut cache[w as usize],
+                end: &mut cache[w],
                 size1: size1,
                 size2: size2,
             };
