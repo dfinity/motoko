@@ -821,7 +821,7 @@ let utf8 sec_end s =
   let pos = pos s in
   let bytes = get_string (sec_end - pos) s in
   try
-    let _ = Utf8.decode (string s) in
+    let _ = Utf8.decode bytes in
     bytes
   with Utf8.Utf8 ->
     error s pos "malformed UTF-8 encoding"
