@@ -1268,12 +1268,15 @@ module RTS = struct
       non_incremental_gc_imports env;
 
     (* Custom RTS functions *)
-    Option.iter (fun (rts : Wasm_exts.CustomModule.extended_module) ->
-      let open Wasm_exts in
-      let module_ = rts.Wasm_exts.CustomModule.module_ in
+    Option.iter Wasm_exts.CustomModule.(fun (rts : extended_module) ->
+      env.E.custom_rts_functions :=
+        (match rts.motoko.custom_rts_functions with
+        | Some (_, s) -> String.split_on_char '\n' (String.trim s)
+        | None -> []);
+      let module_ = rts.module_ in
       List.iter (fun export ->
-        let name = string_of_name export.Wasm.Source.it.Ast.name in
-        if List.mem name !Flags.rts_functions then
+        let name = string_of_name export.Wasm.Source.it.Wasm_exts.Ast.name in
+        if List.mem name !(env.E.custom_rts_functions) then
           (match export_type Wasm.Source.{it = module_; at = no_region} export with
           | ExternFuncType (FuncType (inputs, outputs)) ->
             E.add_func_import env "rts" name inputs outputs
@@ -11750,7 +11753,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
   (* Custom RTS functions *)
   | OtherPrim s, [_] when String.length s > 4 && String.sub s 0 4 = "rts:" ->
     let s' = String.sub s 4 (String.length s - 4) in
-    if List.mem s' !Flags.rts_functions then
+    if List.mem s' !(env.E.custom_rts_functions) then
       const_sr SR.Vanilla (E.call_import env "rts" s')
     else
       (* TODO: type checking error *)

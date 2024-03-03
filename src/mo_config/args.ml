@@ -20,7 +20,6 @@ let package_args = [
   string_map "--package" Flags.package_urls "<package-name> <package-path> specify a <package-name> <package-path> pair, separated by a space";
   "--actor-idl", Arg.String (fun fp -> Flags.actor_idl_path := Some fp), "<idl-path>   path to actor IDL (Candid) files";
   string_map "--actor-alias" Flags.actor_aliases "<alias> <principal>  actor import alias";
-  "--rts-function", Arg.String (fun s -> Flags.rts_functions := s :: !Flags.rts_functions), "<name>  comma-separated function names"
   ]
 
 let error_args = [
