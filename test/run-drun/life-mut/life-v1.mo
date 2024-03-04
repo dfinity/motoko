@@ -112,4 +112,6 @@ actor Life {
     P.debugPrint(src.toText());
   };
 
+  ignore P.setTimer<system>(0, false, func() : async () {});
+
 };
