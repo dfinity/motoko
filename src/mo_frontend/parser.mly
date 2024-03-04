@@ -179,15 +179,14 @@ let share_dec_field (df : dec_field) =
     {df with it = {df.it with
       dec = share_dec df.it.dec;
       stab = share_stab df.it.stab df.it.dec}}
-  | _ ->
-    if is_sugared_func_or_module (df.it.dec) then
-      {df with it =
-        {df.it with stab =
+  | _ when is_sugared_func_or_module (df.it.dec) ->
+    {df with it =
+       {df.it with stab =
           match df.it.stab with
           | None -> Some (Flexible @@ df.it.dec.at)
           | some -> some}
-      }
-    else df
+    }
+  | _ -> df
 
 and objblock s ty dec_fields =
   List.iter (fun df ->
