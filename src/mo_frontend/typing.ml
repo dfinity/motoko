@@ -802,14 +802,14 @@ and check_con_env env at ce =
     error env at "M0156" "block contains expansive type definitions%s" msg
   end;
 
-and infer_inst env sort tbs typs at =
+and infer_inst env sort tbs typs t_ret at =
   let ts = List.map (check_typ env) typs in
   let ats = List.map (fun typ -> typ.at) typs in
   match tbs, typs with
   | {T.bound; sort = T.Scope; _}::tbs', typs' ->
     assert (List.for_all (fun tb -> tb.T.sort = T.Type) tbs');
     (match env.async with
-     | C.SystemCap c when sort = T.Local ->
+     | C.SystemCap c when sort = T.Local && not (T.is_async t_ret) ->
         (T.Con(c, [])::ts, at::ats)
      | C.(AwaitCap c | AsyncCap c) when T.(sort = Shared Query || sort = Shared Write || sort = Local) ->
         (T.Con(c, [])::ts, at::ats)
@@ -838,8 +838,8 @@ and infer_inst env sort tbs typs at =
     assert (List.for_all (fun tb -> tb.T.sort = T.Type) tbs');
     ts, ats
 
-and check_inst_bounds env sort tbs inst at =
-  let ts, ats = infer_inst env sort tbs inst at in
+and check_inst_bounds env sort tbs inst t_ret at =
+  let ts, ats = infer_inst env sort tbs inst t_ret at in
   check_typ_bounds env tbs ts ats at;
   ts
 
@@ -1877,7 +1877,7 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
     | _, Some _ ->
       (* explicit instantiation, check argument against instantiated domain *)
       let typs = match inst.it with None -> [] | Some (_, typs) -> typs in
-      let ts = check_inst_bounds env sort tbs typs at in
+      let ts = check_inst_bounds env sort tbs typs t_ret at in
       let t_arg' = T.open_ ts t_arg in
       let t_ret' = T.open_ ts t_ret in
       if not env.pre then check_exp_strong env t_arg' exp2;
