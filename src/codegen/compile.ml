@@ -1271,7 +1271,9 @@ module RTS = struct
     Option.iter Wasm_exts.CustomModule.(fun (rts : extended_module) ->
       env.E.custom_rts_functions :=
         (match rts.motoko.custom_rts_functions with
-        | Some (_, s) -> String.split_on_char '\n' (String.trim s)
+        | Some (_, s) -> String.split_on_char ';' s
+          |> List.map String.trim
+          |> List.filter (fun s -> s <> "")
         | None -> []);
       let module_ = rts.module_ in
       List.iter (fun export ->
