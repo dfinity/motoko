@@ -19,6 +19,10 @@ use std::fmt::Write;
 
 use fxhash::{FxHashMap, FxHashSet};
 
+use crate::gc::utils::{read_word64, round_to_alignment};
+
+use self::utils::check_alignment;
+
 pub fn test() {
     println!("Testing garbage collection ...");
 
@@ -154,6 +158,7 @@ fn initialize_gc(heap: &mut MotokoHeap) {
     };
     unsafe {
         let state = IncrementalGC::initial_gc_state(heap, heap.heap_base_address());
+        assert_eq!(heap.heap_base_address() % ADDRESS_ALIGNMENT.to_bytes().as_usize(), 0);
         set_incremental_gc_state(Some(state));
         let allocation_size = heap.heap_ptr_address() - heap.heap_base_address();
         assert_eq!(allocation_size % ADDRESS_ALIGNMENT.to_bytes().as_usize(), 0);
@@ -201,6 +206,7 @@ fn check_dynamic_heap(
 
     // Current offset in the heap
     let mut offset = heap_base_offset;
+    check_alignment(offset);
 
     // Maps objects to their addresses (not offsets!). Used when debugging duplicate objects.
     let mut seen: FxHashMap<ObjectIdx, usize> = Default::default();
@@ -214,26 +220,23 @@ fn check_dynamic_heap(
     let continuation_table_offset = continuation_table_address as usize - heap.as_ptr() as usize;
 
     let region0_addr = unskew_pointer(read_word(heap, region0_ptr_offset));
-
+    
     while offset < heap_ptr_offset {
         let object_offset = offset;
+        check_alignment(object_offset);
 
         // Address of the current object. Used for debugging.
         let address = offset as usize + heap.as_ptr() as usize;
 
         if object_offset == static_root_array_offset {
             check_static_root_array(object_offset, roots, heap);
-            offset += (size_of::<Array>() + Words(roots.len()))
-                .to_bytes()
-                .as_usize();
+            offset += round_to_alignment(size_of::<Array>() + Words(roots.len()));
             continue;
         }
 
         if object_offset == continuation_table_offset {
             check_continuation_table(object_offset, continuation_table, heap);
-            offset += (size_of::<Array>() + Words(continuation_table.len()))
-                .to_bytes()
-                .as_usize();
+            offset += round_to_alignment(size_of::<Array>() + Words(continuation_table.len()));
             continue;
         }
 
@@ -243,15 +246,18 @@ fn check_dynamic_heap(
         offset += WORD_SIZE;
 
         if tag == TAG_FREE_SPACE {
-            let words = read_word(heap, offset) as usize;
-            offset += WORD_SIZE;
-            offset += words * WORD_SIZE;
+            offset += WORD_SIZE; // Skip padding
+            let words = read_word64(heap, offset) as usize;
+            check_alignment(words);
+            assert!(words > size_of::<FreeSpace>().to_bytes().as_usize());
+            // Tag and padding are included the in the free-space `words` size.
+            offset += (words - 2) * WORD_SIZE;
         } else {
             let forward;
             forward = read_word(heap, offset);
             offset += WORD_SIZE;
 
-            let is_forwarded = forward != make_pointer(address as u32);
+            let is_forwarded = forward != make_pointer(address);
 
             if tag == TAG_MUTBOX {
                 // MutBoxes of static root array, will be scanned indirectly when checking the static root array.
@@ -270,7 +276,7 @@ fn check_dynamic_heap(
                     .as_usize();
             } else {
                 assert!(tag == TAG_ARRAY || tag >= TAG_ARRAY_SLICE_MIN);
-
+                
                 if is_forwarded {
                     let forward_offset = forward as usize - heap.as_ptr() as usize;
                     let length = read_word(
@@ -308,7 +314,7 @@ fn check_dynamic_heap(
                         offset += WORD_SIZE;
 
                         // Get index of the object pointed by the field
-                        let pointee_address = field.wrapping_add(1); // unskew
+                        let pointee_address = unskew_pointer(field);
 
                         let pointee_idx = read_object_id(pointee_address, heap);
                         let expected_pointee_idx =
@@ -325,6 +331,7 @@ fn check_dynamic_heap(
                     }
                 }
             }
+            align_to_object_size(&mut offset);
         }
     }
 
@@ -380,6 +387,12 @@ fn check_dynamic_heap(
     }
 }
 
+fn align_to_object_size(offset: &mut usize) {
+    while *offset % ADDRESS_ALIGNMENT.to_bytes().as_usize() != 0 {
+        *offset += WORD_SIZE;
+    }
+}
+
 fn compute_reachable_objects(
     roots: &[ObjectIdx],
     continuation_table: &[ObjectIdx],
@@ -410,7 +423,7 @@ fn check_static_root_array(mut offset: usize, roots: &[ObjectIdx], heap: &[u8]) 
     assert_eq!(read_word(heap, offset), TAG_ARRAY);
     offset += WORD_SIZE;
 
-    assert_eq!(read_word(heap, offset), make_pointer(array_address as u32));
+    assert_eq!(read_word(heap, offset), make_pointer(array_address));
     offset += WORD_SIZE;
 
     assert_eq!(read_word(heap, offset), roots.len() as u32);
@@ -426,7 +439,7 @@ fn check_static_root_array(mut offset: usize, roots: &[ObjectIdx], heap: &[u8]) 
     }
 }
 
-fn read_mutbox_field(mutbox_address: u32, heap: &[u8]) -> u32 {
+fn read_mutbox_field(mutbox_address: usize, heap: &[u8]) -> u32 {
     let mut mutbox_offset = mutbox_address as usize - heap.as_ptr() as usize;
 
     let mutbox_tag = read_word(heap, mutbox_offset);
@@ -444,7 +457,7 @@ fn check_continuation_table(mut offset: usize, continuation_table: &[ObjectIdx],
     assert_eq!(read_word(heap, offset), TAG_ARRAY);
     offset += WORD_SIZE;
 
-    assert_eq!(read_word(heap, offset), make_pointer(table_addr as u32));
+    assert_eq!(read_word(heap, offset), make_pointer(table_addr));
     offset += WORD_SIZE;
 
     assert_eq!(read_word(heap, offset), continuation_table.len() as u32);
@@ -459,7 +472,7 @@ fn check_continuation_table(mut offset: usize, continuation_table: &[ObjectIdx],
     }
 }
 
-fn read_object_id(object_address: u32, heap: &[u8]) -> ObjectIdx {
+fn read_object_id(object_address: usize, heap: &[u8]) -> ObjectIdx {
     let tag = read_word(heap, object_address as usize - heap.as_ptr() as usize);
     assert!(tag == TAG_ARRAY || tag >= TAG_ARRAY_SLICE_MIN);
 

@@ -653,6 +653,7 @@ impl Blob {
         debug_assert_eq!(free_space.as_usize() % ADDRESS_ALIGNMENT.as_usize(), 0);
         let end = self as usize + current_size.to_bytes().as_usize();
         if free_space.as_usize() > 0 {
+            debug_assert!(free_space >= size_of::<FreeSpace>());
             let filler = end as *mut FreeSpace;
             (*filler).tag = TAG_FREE_SPACE;
             (*filler).size = free_space;

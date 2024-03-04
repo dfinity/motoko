@@ -1,4 +1,6 @@
-use super::utils::{make_pointer, make_scalar, write_word, ObjectIdx, WORD_SIZE};
+use crate::gc::utils::round_to_alignment;
+
+use super::utils::{check_alignment, make_pointer, make_scalar, write_word, ObjectIdx, WORD_SIZE};
 
 use motoko_rts::constants::ADDRESS_ALIGNMENT;
 use motoko_rts::memory::Memory;
@@ -207,26 +209,23 @@ impl MotokoHeapInner {
         }
 
         // Three pointers: Static root array, continuation table, and region 0.
-        let root_pointers_size_bytes = 3 * WORD_SIZE;
+        let root_pointers_size_bytes = round_to_alignment(Words(3));
+
+        // The static root is an array (header + length) with one element, one MutBox for each static variable.
+        let static_root_set_size_bytes =
+            round_to_alignment(size_of::<Array>() + Words(roots.len()))
+                + roots.len() * round_to_alignment(size_of::<MutBox>());
 
         // Each object will have array header plus one word for id per object + one word for each reference.
-        // The static root is an array (header + length) with one element, one MutBox for each static variable.
-        let static_root_set_size_bytes = (size_of::<Array>().as_usize()
-            + roots.len()
-            + roots.len() * size_of::<MutBox>().as_usize())
-            * WORD_SIZE;
+        let dynamic_heap_size_without_roots = map
+            .iter()
+            .map(|(_, refs)| round_to_alignment(size_of::<Array>() + Words(1 + refs.len())))
+            .sum::<usize>();
 
-        let dynamic_heap_size_without_roots = {
-            let object_headers_words = map.len() * (size_of::<Array>().as_usize() + 1);
-            let references_words = map.iter().map(|(_, refs)| refs.len()).sum::<usize>();
-            (object_headers_words + references_words) * WORD_SIZE
-        };
+        let continuation_table_size =
+            round_to_alignment(size_of::<Array>() + Words(continuation_table.len()));
 
-        let continuation_table_size = (size_of::<Array>() + Words(continuation_table.len()))
-            .to_bytes()
-            .as_usize();
-
-        let region0_size = size_of::<Region>().to_bytes().as_usize();
+        let region0_size = round_to_alignment(size_of::<Region>());
 
         let dynamic_heap_size_bytes = dynamic_heap_size_without_roots
             + static_root_set_size_bytes
@@ -297,7 +296,7 @@ impl MotokoHeapInner {
 
         // Grow memory if needed
         self.grow_memory(new_hp as usize);
-        assert_eq!(old_hp % ADDRESS_ALIGNMENT.to_bytes().as_usize(), 0);
+        check_alignment(old_hp);
         Value::from_ptr(old_hp)
     }
 
@@ -337,7 +336,7 @@ fn create_dynamic_heap(
     static_roots: &[ObjectIdx],
     continuation_table: &[ObjectIdx],
     dynamic_heap: &mut [u8],
-) -> (u32, u32, u32) {
+) -> (usize, usize, usize) {
     let heap_start = dynamic_heap.as_ptr() as usize;
 
     // Maps objects to their addresses
@@ -350,9 +349,9 @@ fn create_dynamic_heap(
             object_addrs.insert(*obj, heap_start + heap_offset);
 
             // Store object header
-            let address = u32::try_from(heap_start + heap_offset).unwrap();
-            assert_eq!(address % ADDRESS_ALIGNMENT.to_bytes().as_usize(), 0);
-            assert_eq!(heap_offset % ADDRESS_ALIGNMENT.to_bytes().as_usize(), 0);
+            let address = heap_start + heap_offset;
+            check_alignment(address);
+            check_alignment(heap_offset);
             write_word(dynamic_heap, heap_offset, TAG_ARRAY);
             heap_offset += WORD_SIZE;
 
@@ -384,29 +383,32 @@ fn create_dynamic_heap(
     for (obj, refs) in refs {
         let obj_offset = object_addrs.get(obj).unwrap() - heap_start;
         for (ref_idx, ref_) in refs.iter().enumerate() {
-            let ref_addr = make_pointer(*object_addrs.get(ref_).unwrap() as u32);
+            let ref_addr = make_pointer(*object_addrs.get(ref_).unwrap());
             let field_offset = obj_offset
                 + (size_of::<Array>() + Words(1 + ref_idx))
                     .to_bytes()
                     .as_usize();
-            write_word(dynamic_heap, field_offset, u32::try_from(ref_addr).unwrap());
+
+            write_word(dynamic_heap, field_offset, ref_addr);
         }
     }
 
+
+
     // Add the static root table
-    let n_objects = refs.len();
-    // fields+1 for the scalar field (idx)
-    let n_fields: usize = refs.iter().map(|(_, fields)| fields.len() + 1).sum();
     let root_section_offset =
-        (size_of::<Array>() * n_objects).to_bytes().as_usize() + n_fields * WORD_SIZE;
+        refs
+        .iter()
+        .map(|(_, fields)| round_to_alignment(size_of::<Array>() + Words(1 + fields.len())))
+        .sum::<usize>();
 
     let mut heap_offset = root_section_offset;
     let mut root_mutboxes = vec![];
     {
         for root_id in static_roots {
-            let mutbox_address = u32::try_from(heap_start + heap_offset).unwap();
-            assert_eq!(mutbox_address % ADDRESS_ALIGNMENT.to_bytes().as_usize(), 0);
-            assert_eq!(heap_offset % ADDRESS_ALIGNMENT.to_bytes().as_usize(), 0);
+            let mutbox_address = heap_start + heap_offset;
+            check_alignment(mutbox_address);
+            check_alignment(heap_offset);
             root_mutboxes.push(mutbox_address);
             write_word(dynamic_heap, heap_offset, TAG_MUTBOX);
             heap_offset += WORD_SIZE;
@@ -415,15 +417,15 @@ fn create_dynamic_heap(
             heap_offset += WORD_SIZE;
 
             let root_ptr = *object_addrs.get(root_id).unwrap();
-            write_word(dynamic_heap, heap_offset, make_pointer(root_ptr as u32));
+            write_word(dynamic_heap, heap_offset, make_pointer(root_ptr));
             heap_offset += WORD_SIZE;
 
             align_object_size(dynamic_heap, &mut heap_offset);
         }
     }
-    let static_root_array_address = u32::try_from(heap_start + heap_offset).unwrap();
+    let static_root_array_address = heap_start + heap_offset;
     {
-        assert_eq!(heap_offset % ADDRESS_ALIGNMENT.to_bytes().as_usize(), 0);
+        check_alignment(heap_offset);
         write_word(dynamic_heap, heap_offset, TAG_ARRAY);
         heap_offset += WORD_SIZE;
 
@@ -446,9 +448,9 @@ fn create_dynamic_heap(
         align_object_size(dynamic_heap, &mut heap_offset);
     }
 
-    let continuation_table_address = u32::try_from(heap_start + heap_offset).unwrap();
+    let continuation_table_address = heap_start + heap_offset;
     {
-        assert_eq!(heap_offset % ADDRESS_ALIGNMENT.to_bytes().as_usize(), 0);
+        check_alignment(heap_offset);
         write_word(dynamic_heap, heap_offset, TAG_ARRAY);
         heap_offset += WORD_SIZE;
 
@@ -464,7 +466,7 @@ fn create_dynamic_heap(
 
         for idx in continuation_table {
             let idx_ptr = *object_addrs.get(idx).unwrap();
-            write_word(dynamic_heap, heap_offset, make_pointer(idx_ptr as u32));
+            write_word(dynamic_heap, heap_offset, make_pointer(idx_ptr));
             heap_offset += WORD_SIZE;
         }
 
@@ -472,9 +474,9 @@ fn create_dynamic_heap(
     }
 
     // Add region0
-    let region0_address = u32::try_from(heap_start + heap_offset).unwrap();
+    let region0_address = heap_start + heap_offset;
     {
-        assert_eq!(heap_offset % ADDRESS_ALIGNMENT.to_bytes().as_usize(), 0);
+        check_alignment(heap_offset);
 
         write_word(dynamic_heap, heap_offset, TAG_REGION);
         heap_offset += WORD_SIZE;
@@ -509,9 +511,9 @@ fn create_static_memory(
     static_root_array_variable_offset: usize,
     continuation_table_variable_offset: usize,
     region0_pointer_variable_offset: usize,
-    static_root_array_address: u32,
-    continuation_table_address: u32,
-    region0_address: u32,
+    static_root_array_address: usize,
+    continuation_table_address: usize,
+    region0_address: usize,
     heap: &mut [u8],
 ) {
     // Write static array pointer as the third last word in static memory
@@ -537,14 +539,8 @@ fn create_static_memory(
 }
 
 fn align_object_size(dynamic_heap: &mut [u8], heap_offset: &mut usize) {
-    while heap_offset % ADDRESS_ALIGNMENT.to_bytes().as_usize() != 0 {
-        write_word(dynamic_heap, heap_offset, 0);
-        heap_offset += WORD_SIZE;
+    while *heap_offset % ADDRESS_ALIGNMENT.to_bytes().as_usize() != 0 {
+        write_word(dynamic_heap, *heap_offset, 0);
+        *heap_offset += WORD_SIZE;
     }
-}
-
-
-fn round_to_alignment(size: usize) -> usize {
-    let alignment = ADDRESS_ALIGNMENT.to_bytes().as_usize();
-    size.div_ceil(alignment) * alignment
 }
