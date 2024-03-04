@@ -294,17 +294,17 @@ let system_funcs tfs =
   [
     ("heartbeat", heartbeat_type);
     ("timer", timer_type);
-    ("preupgrade", T.Func (T.Local, T.Returns, [T.scope_bind], [], []));
-    ("postupgrade", T.Func (T.Local, T.Returns, [T.scope_bind], [], []));
+    T.("preupgrade", Func (Local, Returns, [scope_bind], [], []));
+    T.("postupgrade", Func (Local, Returns, [scope_bind], [], []));
     ("inspect",
      (let msg_typ = T.decode_msg_typ tfs in
       let record_typ =
-        T.Obj (T.Object, List.sort T.compare_field
-          [{T.lab = "caller"; T.typ = T.principal; T.src = T.empty_src};
-           {T.lab = "arg"; T.typ = T.blob; T.src = T.empty_src};
-           {T.lab = "msg"; T.typ = msg_typ; T.src = T.empty_src}])
+        T.(Obj (Object, List.sort compare_field
+           [{lab = "caller"; typ = principal; src = empty_src};
+            {lab = "arg"; typ = blob; src = empty_src};
+            {lab = "msg"; typ = msg_typ; src = empty_src}]))
       in
-        T.Func (T.Local, T.Returns, [],  [record_typ], [T.bool])))
+        T.(Func (Local, Returns, [],  [record_typ], [bool]))))
   ]
 
 
