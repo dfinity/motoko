@@ -1,4 +1,4 @@
-timer-no-send.mo:5.12-5.62: type error [M0047], `system` capability required, but not available
+timer-no-send.mo:5.12-5.62: type error [M0197], `system` capability required, but not available
  (need an enclosing async expression or function body or explicit `system` type parameter)
 timer-no-send.mo:5.12-5.62: warning [M0195], this function call implicitly requires `system` capability and may perform undesired actions (please review the call and provide a type instantiation `<system>` to suppress this warning)
 timer-no-send.mo:10.12-10.62: warning [M0195], this function call implicitly requires `system` capability and may perform undesired actions (please review the call and provide a type instantiation `<system>` to suppress this warning)
