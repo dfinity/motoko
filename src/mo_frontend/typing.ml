@@ -1225,7 +1225,9 @@ and infer_exp'' env exp : T.typ =
     end;
     let env' =
       if obj_sort.it = T.Actor then
-        { env with async = C.NullCap; in_actor = true }
+        { env with
+          in_actor = true;
+          async = match env.async with | C.AwaitCap c -> C.SystemCap c | _ -> assert false }
       else env
     in
     let t = infer_obj env' obj_sort.it dec_fields exp.at in
@@ -2347,7 +2349,7 @@ and infer_obj env s dec_fields at : T.typ =
         in_actor = true;
         labs = T.Env.empty;
         rets = None;
-        async = C.NullCap; }
+      }
   in
   let decs = List.map (fun (df : dec_field) -> df.it.dec) dec_fields in
   let initial_usage = enter_scope env in
@@ -2532,7 +2534,7 @@ and infer_dec env dec : T.typ =
         { (add_val env'' self_id.it self_typ self_id.at) with
           labs = T.Env.empty;
           rets = None;
-          async = C.NullCap;
+          async = if obj_sort.it = T.Actor then C.SystemCap (List.hd cs) else C.NullCap;
           in_actor = obj_sort.it = T.Actor;
         }
       in
