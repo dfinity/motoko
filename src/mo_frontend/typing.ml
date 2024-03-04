@@ -294,8 +294,8 @@ let system_funcs tfs =
   [
     ("heartbeat", heartbeat_type);
     ("timer", timer_type);
-    ("preupgrade", T.Func (T.Local, T.Returns, [], [], []));
-    ("postupgrade", T.Func (T.Local, T.Returns, [], [], []));
+    ("preupgrade", T.Func (T.Local, T.Returns, [T.scope_bind], [], []));
+    ("postupgrade", T.Func (T.Local, T.Returns, [T.scope_bind], [], []));
     ("inspect",
      (let msg_typ = T.decode_msg_typ tfs in
       let record_typ =

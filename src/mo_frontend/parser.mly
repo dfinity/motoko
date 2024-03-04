@@ -136,7 +136,6 @@ let desugar_func_body sp x t_opt (is_sugar, e) =
       true, ignore_asyncE (scope_bind x.it e.at) e
     | _, _ -> (true, e)
 
-
 let share_typ t =
   match t.it with
   | FuncT ({it = Type.Local; _} as s, tbs, t1, t2) ->
@@ -173,12 +172,20 @@ let share_stab stab_opt dec =
      | _ -> None)
   | _ -> stab_opt
 
+let ensure_system_cap (df : dec_field) =
+  match df.it.dec.it with
+    | LetD ({ it = VarP { it = "preupgrade" | "postupgrade"; _}; _} as pat, ({ it = FuncE (x, sp, tbs, p, t_opt, s, e); _ } as value), other) ->
+      let it = LetD (pat, { value with it = FuncE (x, sp, ensure_scope_bind "" tbs, p, t_opt, s, e) }, other) in
+      { df with it = { df.it with dec = { df.it.dec with it } } }
+    | _ -> df
+
 let share_dec_field (df : dec_field) =
   match df.it.vis.it with
   | Public _ ->
     {df with it = {df.it with
       dec = share_dec df.it.dec;
       stab = share_stab df.it.stab df.it.dec}}
+  | System -> ensure_system_cap df
   | _ when is_sugared_func_or_module (df.it.dec) ->
     {df with it =
        {df.it with stab =
