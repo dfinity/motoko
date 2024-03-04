@@ -1227,7 +1227,7 @@ and infer_exp'' env exp : T.typ =
       if obj_sort.it = T.Actor then
         { env with
           in_actor = true;
-          async = match env.async with | C.AwaitCap c -> C.SystemCap c | _ -> assert false }
+          async = C.SystemCap C.top_cap }
       else env
     in
     let t = infer_obj env' obj_sort.it dec_fields exp.at in
@@ -2534,7 +2534,7 @@ and infer_dec env dec : T.typ =
         { (add_val env'' self_id.it self_typ self_id.at) with
           labs = T.Env.empty;
           rets = None;
-          async = if obj_sort.it = T.Actor then C.SystemCap (List.hd cs) else C.NullCap;
+          async = if obj_sort.it = T.Actor then C.SystemCap C.top_cap else C.NullCap;
           in_actor = obj_sort.it = T.Actor;
         }
       in
