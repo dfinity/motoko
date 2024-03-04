@@ -809,8 +809,16 @@ and infer_inst env sort tbs typs t_ret at =
   | {T.bound; sort = T.Scope; _}::tbs', typs' ->
     assert (List.for_all (fun tb -> tb.T.sort = T.Type) tbs');
     (match env.async with
-     | C.SystemCap c when sort = T.Local && not (T.is_async t_ret) ->
-        (T.Con(c, [])::ts, at::ats)
+     | cap when sort = T.Local && not (T.is_async t_ret) ->
+       begin
+         match cap with
+         | C.(SystemCap c | AwaitCap c | AsyncCap c) ->
+           (T.Con(c, [])::ts, at::ats)
+         | _ ->
+          local_error env at "M0047"
+            "`system` capability required, but not available\n (need an enclosing async expression or function body or explicit `system` type parameter)";
+           (T.Con(C.bogus_cap, [])::ts, at::ats)
+       end
      | C.(AwaitCap c | AsyncCap c) when T.(sort = Shared Query || sort = Shared Write || sort = Local) ->
         (T.Con(c, [])::ts, at::ats)
      | C.(AwaitCap c | AsyncCap c) when sort = T.(Shared Composite) ->
