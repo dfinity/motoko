@@ -815,7 +815,7 @@ and infer_inst env sort tbs typs t_ret at =
          | C.(SystemCap c | AwaitCap c | AsyncCap c) ->
            (T.Con(c, [])::ts, at::ats)
          | _ ->
-          local_error env at "M0047"
+          local_error env at "M0197"
             "`system` capability required, but not available\n (need an enclosing async expression or function body or explicit `system` type parameter)";
            (T.Con(C.bogus_cap, [])::ts, at::ats)
        end
