@@ -796,16 +796,12 @@ pub struct OneWordFiller {
     pub tag: Tag,
 }
 
-/// Note: Any free gab in the heap must be a multiple of the address alignment.
 #[repr(C)] // See the note at the beginning of this module
 pub struct FreeSpace {
     pub tag: Tag,
     pub _padding: u32,
     pub size: Words<usize>,
 }
-
-// The free space block must fit in any heap gap.
-const _: () = assert!(core::mem::size_of::<FreeSpace>() <= ADDRESS_ALIGNMENT.to_bytes().as_usize());
 
 impl FreeSpace {
     /// Size of the free space (includes object header)

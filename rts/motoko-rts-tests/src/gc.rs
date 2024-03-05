@@ -273,8 +273,8 @@ fn check_dynamic_heap(
             } else if tag == TAG_BLOB {
                 assert!(!is_forwarded);
                 // in-heap mark stack blobs
-                let length = read_word(heap, offset);
-                offset += WORD_SIZE + length as usize;
+                let length = read_word64(heap, offset);
+                offset += 2 * WORD_SIZE + length as usize;
             } else if tag == TAG_REGION {
                 if !is_forwarded {
                     assert_eq!(address, region0_addr as usize);
