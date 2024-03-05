@@ -15,7 +15,7 @@ jobs:
     - uses: Swatinem/rust-cache@v2
     - name: Download dependencies
       run: |
-        sudo apt install -y llvm
+        sudo apt install -y llvm musl
         git clone --branch v1.2.0 --depth 1 https://github.com/libtom/libtommath ../libtommath
     - name: Build RTS
       run: make -C rts
