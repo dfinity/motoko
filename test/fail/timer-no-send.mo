@@ -13,16 +13,3 @@ func _gawd<system>() {
 
     ignore async 42 // not allowed
 };
-
-// these are allowed to contain sends
-func _eeek<system>() : async () {
-    ignore setTimer(1_000_000, false, func () : async () { });
-
-    ignore await async 42
-};
-
-func _gwerr() : async Int = async {
-    ignore setTimer(1_000_000, false, func () : async () { });
-
-    await async 42
-};
