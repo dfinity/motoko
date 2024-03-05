@@ -26,9 +26,16 @@
     for the `system` capability. In order to call these, the full call hierarchy needs to be
     adapted to pass the `system` capability.
 
+  * Introduced the feature for precise tagging of scalar values (#4369).
+
+    Controlled by flag `--experimental-rtti` (off by default). Minor performance changes for
+    arithmetic expected. We advise to only turn on the feature for testing, as currently no
+    productive upsides exist (though future improvements will depend on it), and performance
+    of arithmetic will degrade somewhat. See the PR for the whole picture.
+
 * motoko-base
 
-  * Added `Option.equal` (thanks to ByronBecker) (dfinity/motoko-base⁠#615).
+  * Added `Option.equal` function (thanks to ByronBecker) (dfinity/motoko-base⁠#615).
 
 ## 0.10.4 (2024-01-10)
 
