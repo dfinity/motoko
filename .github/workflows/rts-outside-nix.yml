@@ -11,4 +11,5 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - uses: Swatinem/rust-cache@v2
-    - run: make -C rts
+    - name: Build RTS
+      run: make -C rts

@@ -30,12 +30,6 @@ pub unsafe extern "C" fn compute_crc32(blob: Value) -> u32 {
     !crc
 }
 
-// TEMPORARY
-#[no_mangle]
-pub unsafe extern "C" fn echo(value: u32) -> u32 {
-    value
-}
-
 static CRC_TABLE: [u32; 256] = [
     0x0, 0x77073096, 0xee0e612c, 0x990951ba, 0x76dc419, 0x706af48f, 0xe963a535, 0x9e6495a3,
     0xedb8832, 0x79dcb8a4, 0xe0d5e91e, 0x97d2d988, 0x9b64c2b, 0x7eb17cbd, 0xe7b82d07, 0x90bf1d91,
