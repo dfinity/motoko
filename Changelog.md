@@ -13,8 +13,19 @@
 
     **Limitations**: recursive and mutually recursive definitions are considered used,
     even if never referenced outside the recursive definition.
-    
+
   * Remove `__get_candid_interface_tmp_hack` endpoint. Candid interface is already stored as canister metadata, this temporary endpoint is redundant, thus removed. (#4386)
+
+  * Improved capability system, introducing a synchronous (`system`) capability (#4406).
+
+    `actor` initialisation body, `pre`/`postupgrade` hooks, `async` function bodies (and
+    blocks) possess this capability. Functions (and classes) can demand it by prepending `system`
+    to the type argument list. The capability can be forwarded in calls by mentioning `<system, …>`
+    in the instantiation parameter list.
+
+    BREAKING CHANGE (Minor): A few built-in functions have been marked with demand
+    for the `system` capability. In order to call these, the full call hierarchy needs to be
+    adapted to pass the `system` capability.
 
 ## 0.10.4 (2024-01-10)
 
