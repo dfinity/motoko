@@ -15,6 +15,6 @@ jobs:
     - uses: Swatinem/rust-cache@v2
     - name: Download dependencies
       run: |
-        git clone --branch v0.2.0 --depth 1 https://github.com/libtom/libtommath ../libtommath
+        git clone --branch v1.2.0 --depth 1 https://github.com/libtom/libtommath ../libtommath
     - name: Build RTS
       run: make -C rts
