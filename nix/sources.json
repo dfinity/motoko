@@ -70,15 +70,15 @@
         "version": "v1.2.0"
     },
     "motoko-base": {
-        "branch": "gabor/scoped-setTimer",
+        "branch": "next-moc",
         "description": "The Motoko base library",
         "homepage": null,
         "owner": "dfinity",
         "repo": "motoko-base",
-        "rev": "b4ea3e090a50aeff14ea82d8fa5feb0e56c85a84",
-        "sha256": "0wkifg9rxkswj522d9ihf4mhgc1zfyfs1msprm2x9mlfw6ysi33c",
+        "rev": "c7774995a5e271339dff11e16474ece959cc4b60",
+        "sha256": "10zfybm940bdbx1a1z614127r8bnjrxyq3qm6d3zn27l32y248k4",
         "type": "tarball",
-        "url": "https://github.com/dfinity/motoko-base/archive/b4ea3e090a50aeff14ea82d8fa5feb0e56c85a84.tar.gz",
+        "url": "https://github.com/dfinity/motoko-base/archive/c7774995a5e271339dff11e16474ece959cc4b60.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "motoko-matchers": {
