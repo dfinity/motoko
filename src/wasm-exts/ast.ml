@@ -5,6 +5,7 @@ reference implementation.
 Base revision: WebAssembly/spec@a7a1856.
 
 The changes are:
+ * Manual selective support for bulk-memory operations `memory_copy` and `memory_fill` (WebAssembly/spec@7fa2f20).
  * Pseudo-instruction Meta for debug information
  * StableMemory, StableGrow, StableRead, StableWrite instructions.
  * Support for passive data segments (incl. `MemoryInit`).
@@ -31,9 +32,7 @@ easily apply diffs from the original code (possibly manually).
  * These conventions mostly follow standard practice in language semantics.
  *)
 
-open Wasm.Types
-module Values = Wasm.Values
-module Memory = Wasm.Memory
+open Types
 open Wasm.Source
 
 
@@ -112,7 +111,13 @@ and instr' =
   | Store of storeop                  (* write memory at address *)
   | MemorySize                        (* size of linear memory *)
   | MemoryGrow                        (* grow linear memory *)
+  (* Manual extension for bulk memory operations *)
+  | MemoryFill                        (* fill memory range with value *)
+  | MemoryCopy                        (* copy memory ranges *)
+  (* End of manual extension *)
+  (* Manual extension for passive data segments *)
   | MemoryInit of var                 (* initialize memory range from segment *)
+  (* End of manual extension *)
   | Const of literal                  (* constant *)
   | Test of testop                    (* numeric test *)
   | Compare of relop                  (* numeric comparison *)
