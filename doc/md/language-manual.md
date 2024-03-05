@@ -972,7 +972,7 @@ System capability is available only in the following syntactic contexts:
 
 No other context provides `system` capabilities, including `query` and `composite query` methods.
 
-The `<system>` type parameters of shared and asynchronous functions need not be decared.
+The `<system>` type parameters of shared and asynchronous functions need not be declared.
 
 
 ### Well-formed types
