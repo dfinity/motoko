@@ -33,6 +33,7 @@ const _: () = assert!(size_of::<Bits32>() == HEADER_SIZE + 1 * WORD_SIZE);
 const _: () = assert!(size_of::<Bits64>() == HEADER_SIZE + 2 * WORD_SIZE);
 
 // Not used by the compiler backend.
+const _: () = assert!(size_of::<OneWordFiller>() == 1 * WORD_SIZE);
 const _: () = assert!(size_of::<FreeSpace>() == 4 * WORD_SIZE);
 const _: () = assert!(size_of::<FwdPtr>() == 2 * WORD_SIZE);
 
@@ -49,6 +50,7 @@ const _: () = assert!(correctly_aligned::<Concat>());
 const _: () = assert!(correctly_aligned::<Null>());
 const _: () = assert!(correctly_aligned::<Bits32>());
 const _: () = assert!(correctly_aligned::<Bits64>());
+const _: () = assert!(correctly_aligned::<OneWordFiller>());
 const _: () = assert!(correctly_aligned::<FreeSpace>());
 const _: () = assert!(correctly_aligned::<FwdPtr>());
 

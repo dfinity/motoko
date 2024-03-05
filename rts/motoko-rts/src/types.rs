@@ -273,7 +273,7 @@ impl Value {
     }
 
     /// Get the object tag. No forwarding. Can be applied to any block, regular objects
-    /// with a header as well as `FwdPtr` and `FreeSpace`.
+    /// with a header as well as `OneWordFiller`, `FwdPtr` and `FreeSpace`.
     /// In debug mode panics if the value is not a pointer.
     pub unsafe fn tag(self) -> Tag {
         *(self.get_ptr() as *const Tag)
@@ -298,11 +298,11 @@ impl Value {
     }
 
     /// Determines whether the value refers to an object with a regular header that contains a forwarding pointer.
-    /// Returns `false` for pointers to special `FwdPtr` and `FreeSpace` blocks that do not have
+    /// Returns `false` for pointers to special `OneWordFiller`, `FwdPtr` and `FreeSpace` blocks that do not have
     /// a regular object header.
     pub unsafe fn is_obj(self) -> bool {
         let tag = self.tag();
-        tag != TAG_FWD_PTR && tag != TAG_FREE_SPACE
+        tag != TAG_FWD_PTR && tag != TAG_ONE_WORD_FILLER && tag != TAG_FREE_SPACE
     }
 
     /// Get the pointer as `Obj` using forwarding. In debug mode panics if the value is not a pointer.
@@ -444,7 +444,10 @@ pub const TAG_BIGINT: Tag = 23;
 pub const TAG_CONCAT: Tag = 25;
 pub const TAG_REGION: Tag = 27;
 pub const TAG_NULL: Tag = 29;
-pub const TAG_FREE_SPACE: Tag = 31;
+// Note: Keeping `OneWordFiller` to allow tuning `ADDRESS_ALIGNMENT` to a smaller size than `FreeSpace`.
+pub const TAG_ONE_WORD_FILLER: Tag = 31;
+pub const TAG_FREE_SPACE: Tag = 33;
+
 
 // Special value to visit only a range of array fields.
 // This and all values above it are reserved and mean
@@ -650,12 +653,18 @@ impl Blob {
         let current_size = block_size(self as usize);
         (*self).len = new_len;
         let new_size = block_size(self as usize);
-        assert!(new_size <= current_size);
+        debug_assert!(new_size <= current_size);
         let free_space = current_size - new_size;
         debug_assert_eq!(free_space.as_usize() % ADDRESS_ALIGNMENT.as_usize(), 0);
-        let end = self as usize + current_size.to_bytes().as_usize();
-        if free_space.as_usize() > 0 {
-            debug_assert!(free_space >= size_of::<FreeSpace>());
+        let mut end = self as usize + current_size.to_bytes().as_usize();
+
+        if free_space < size_of::<FreeSpace>() {
+            for _ in 0..free_space.as_usize() {
+                let filler = end as *mut OneWordFiller;
+                (*filler).tag = TAG_ONE_WORD_FILLER;
+                end += WORD_SIZE;
+            }
+        } else {
             let filler = end as *mut FreeSpace;
             (*filler).tag = TAG_FREE_SPACE;
             (*filler).size = free_space;
@@ -780,6 +789,14 @@ pub struct Bits32 {
     pub bits: u32,
 }
 
+/// Marks one word empty space in heap.
+/// This is only used if the size of `FreeSpace` is larger than `ADDRESS_ALIGNMENT`.
+/// Multiple `OneWordFiller` are written in series to round to `ADDRESS_ALIGNMENT`.
+#[repr(C)] // See the note at the beginning of this module
+pub struct OneWordFiller {
+    pub tag: Tag,
+}
+
 /// Note: Any free gab in the heap must be a multiple of the address alignment.
 #[repr(C)] // See the note at the beginning of this module
 pub struct FreeSpace {
@@ -856,6 +873,9 @@ pub(crate) unsafe fn block_size(address: usize) -> Words<usize> {
         TAG_CONCAT => size_of::<Concat>(),
 
         TAG_NULL => size_of::<Null>(),
+
+        // If `OneWordFiller` size is smaller than `ADDRESS_ALIGNMENT`, multiple `OneWordFiller`s are followed to round to the object alignment.
+        TAG_ONE_WORD_FILLER => size_of::<OneWordFiller>(),
 
         TAG_FREE_SPACE => {
             let free_space = address as *mut FreeSpace;
