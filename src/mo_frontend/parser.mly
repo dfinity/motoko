@@ -472,7 +472,7 @@ inst :
   | LT SYSTEM ts=preceded(COMMA, typ_bind)* GT { ensure_scope_bind "" ts }
 
 typ_field :
-  | TYPE c=typ_id  tps=typ_params_opt EQ t=typ
+  | TYPE c=typ_id  tps=type_typ_params_opt EQ t=typ
     { TypF (c, tps, t) @@ at $sloc }
   | mut=var_opt x=id COLON t=typ
     { ValF (x, t, mut) @@ at $sloc }
