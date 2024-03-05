@@ -2857,11 +2857,9 @@ let infer_prog scope pkg_opt async_cap prog : (T.typ * Scope.t) Diag.result =
           let env0 = env_of_scope msgs scope in
           let env = {
              env0 with async = async_cap;
-            (* suppress usage warning in package code *)
-            check_unused = pkg_opt = None
           } in
           let res = infer_block env prog.it prog.at true in
-          emit_unused_warnings env;
+          if pkg_opt = None then emit_unused_warnings env;
           res
         ) prog
     )
@@ -2898,11 +2896,7 @@ let check_lib scope pkg_opt lib : Scope.t Diag.result =
     (fun msgs ->
       recover_opt
         (fun lib ->
-          let env = {
-            (env_of_scope msgs scope) with
-            (* suppress usage warning in package code *)
-            check_unused = pkg_opt = None
-          } in
+          let env = env_of_scope msgs scope in
           let { imports; body = cub; _ } = lib.it in
           let (imp_ds, ds) = CompUnit.decs_of_lib lib in
           let typ, _ = infer_block env (imp_ds @ ds) lib.at false in
@@ -2945,7 +2939,7 @@ let check_lib scope pkg_opt lib : Scope.t Diag.result =
               (* this shouldn't really happen, as an imported program should be rewritten to a module *)
               error env cub.at "M0000" "compiler bug: expected a module or actor class but found a program, i.e. a sequence of declarations"
           in
-          emit_unused_warnings env;
+          if pkg_opt = None then emit_unused_warnings env;
           Scope.lib lib.note.filename imp_typ
         ) lib
     )
