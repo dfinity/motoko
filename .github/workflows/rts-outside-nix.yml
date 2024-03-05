@@ -1,4 +1,6 @@
-name: rts-outside-nix
+# Build RTS outside of Nix environment
+
+name: RTS
 
 on:
   push:
@@ -6,10 +8,13 @@ on:
   pull_request:
 
 jobs:
-  build:
+  build-outside-nix:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
     - uses: Swatinem/rust-cache@v2
+    - name: Download dependencies
+      run: |
+        git clone --branch v0.2.0 --depth 1 https://github.com/libtom/libtommath ..
     - name: Build RTS
       run: make -C rts
