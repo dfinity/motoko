@@ -927,7 +927,7 @@ When enclosed by a non-`actor` object type, `<id> <typ-params>? <typ1> : <typ2>`
 A type constructor may be parameterised by a vector of comma-separated, optionally constrained, type parameters.
 
 A function, class constructor or function type may be parameterised by a vector of comma-separated, optionally constrained, type parameters.
-The first of these may be the special, pseudo-type parameter `system`.
+The first of these may be the special, pseudo type parameter `system`.
 
 `<id> <: <typ>` declares a type parameter with constraint `<typ>`. Any instantiation of `<id>` must subtype `<typ>` (at that same instantiation).
 
