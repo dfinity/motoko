@@ -14,7 +14,7 @@ let name = "candid-tests"
 let version = "0.1"
 let banner = "Candid test suite runner " ^ version ^ ""
 let usage = "Usage: " ^ name ^ " [ -i path/to/candid/test ]"
-let _WASMTIME_OPTIONS_ = "--disable-cache --enable-cranelift-nan-canonicalization --wasm-features multi-memory,bulk-memory"
+let _WASMTIME_OPTIONS_ = "--disable-cache --enable-cranelift-nan-canonicalization --wasm-features=memory64,multi-memory,bulk-memory"
 
 (* Argument handling *)
 
