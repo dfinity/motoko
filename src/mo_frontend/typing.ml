@@ -2526,7 +2526,7 @@ and infer_dec env dec : T.typ =
     if not env.pre then begin
       let c = T.Env.find id.it env.typs in
       let ve0 = check_class_shared_pat env shared_pat obj_sort in
-      let cs, _tbs, te, ce = check_typ_binds env typ_binds in
+      let cs, tbs, te, ce = check_typ_binds env typ_binds in
       let env' = adjoin_typs env te ce in
       let t_pat, ve =
         infer_pat_exhaustive (if obj_sort.it = T.Actor then error else warn) env' pat
@@ -2538,12 +2538,16 @@ and infer_dec env dec : T.typ =
       let env'' = adjoin_vals (adjoin_vals env' ve0) ve in
       let cs' = if obj_sort.it = T.Actor then List.tl cs else cs in
       let self_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) cs') in
+      let in_actor = obj_sort.it = T.Actor in
+      let sys_cap = match tbs with
+        | T.{sort = Scope; _} :: _ -> true
+        | _ -> false in
       let env''' =
         { (add_val env'' self_id.it self_typ self_id.at) with
           labs = T.Env.empty;
           rets = None;
-          async = if obj_sort.it = T.Actor then C.SystemCap C.top_cap else C.NullCap;
-          in_actor = obj_sort.it = T.Actor;
+          async = if sys_cap || in_actor then C.SystemCap C.top_cap else C.NullCap;
+          in_actor;
         }
       in
       let initial_usage = enter_scope env''' in
