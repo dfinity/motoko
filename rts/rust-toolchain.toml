@@ -1,0 +1,4 @@
+[toolchain]
+channel = "nightly-2023-04-21"
+components = [ "rust-src" ]
+targets = ["wasm32-unknown-emscripten"]
