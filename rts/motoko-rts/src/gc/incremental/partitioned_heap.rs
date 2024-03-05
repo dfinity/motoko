@@ -170,26 +170,28 @@ impl Partition {
 
     #[cfg(feature = "memory_check")]
     unsafe fn clear_free_remainder(&self) {
-        use crate::constants::WORD_SIZE;
         debug_assert!(self.dynamic_space_end() <= self.end_address());
         let remaining_space = self.end_address() - self.dynamic_space_end();
-        debug_assert_eq!(remaining_space % WORD_SIZE as usize, 0);
+        debug_assert_eq!(remaining_space % ADDRESS_ALIGNMENT.to_bytes().as_usize(), 0);
         debug_assert!(remaining_space <= PARTITION_SIZE);
         if remaining_space == 0 {
             return;
         }
         let block = self.dynamic_space_end() as *mut Tag;
-        if remaining_space == WORD_SIZE as usize {
-            *block = TAG_ONE_WORD_FILLER;
+        if remaining_space < size_of::<FreeSpace>().to_bytes().as_usize() {
+            for index in 0..Words(remaining_space).as_usize() {
+                *block.add(index) = TAG_ONE_WORD_FILLER;
+            }
         } else {
             *block = TAG_FREE_SPACE;
             let header_size = size_of::<FreeSpace>().to_bytes().as_usize();
             debug_assert!(remaining_space >= header_size);
             let free_space = block as *mut FreeSpace;
-            (*free_space).words = Bytes((remaining_space - header_size) as u32).to_words();
+            (*free_space)._padding = 0;
+            (*free_space).size = Bytes(remaining_space - header_size).to_words();
             // Clear the remainder of the free space.
             let clear_start = free_space as usize + header_size;
-            let clear_length = Bytes((remaining_space - header_size) as u32);
+            let clear_length = Bytes(remaining_space - header_size);
             crate::mem_utils::memzero(clear_start, clear_length.to_words());
             debug_assert_eq!(free_space.size().to_bytes().as_usize(), remaining_space);
         }

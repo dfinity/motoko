@@ -36,13 +36,13 @@
 use core::mem::size_of;
 use core::ptr::null_mut;
 
-use crate::constants::WORD_SIZE;
+use crate::constants::ADDRESS_ALIGNMENT;
 use crate::memory::{alloc_blob, Memory};
 use crate::types::{block_size, Blob, Bytes, Value};
 
 pub struct RememberedSet {
     hash_table: *mut Blob,
-    count: u32, // contained entries
+    count: usize, // contained entries
 }
 
 #[repr(C)]
@@ -59,13 +59,13 @@ struct CollisionNode {
 
 pub struct RememberedSetIterator {
     hash_table: *mut Blob,
-    hash_index: u32,
+    hash_index: usize,
     current_entry: *mut HashEntry,
 }
 
-pub const INITIAL_TABLE_LENGTH: u32 = 1024;
-const GROWTH_FACTOR: u32 = 2;
-pub const OCCUPATION_THRESHOLD_PERCENT: u32 = 65;
+pub const INITIAL_TABLE_LENGTH: usize = 1024;
+const GROWTH_FACTOR: usize = 2;
+pub const OCCUPATION_THRESHOLD_PERCENT: usize = 65;
 
 impl RememberedSet {
     pub unsafe fn new<M: Memory>(mem: &mut M) -> RememberedSet {
@@ -126,19 +126,23 @@ impl RememberedSet {
         false
     }
 
-    pub unsafe fn hash_index(&self, value: Value) -> u32 {
+    pub unsafe fn hash_index(&self, value: Value) -> usize {
+        const ALIGNMENT: usize = ADDRESS_ALIGNMENT.to_bytes().as_usize();
         // Future optimization: Use bitwise modulo, check for power of 2
-        let raw = value.get_raw();
+        let pointer = value.get_ptr();
         let length = table_length(self.hash_table);
-        debug_assert_eq!((raw / WORD_SIZE) % length, (raw / WORD_SIZE) & (length - 1));
-        (raw / WORD_SIZE) & (length - 1)
+        debug_assert_eq!(
+            (pointer / ALIGNMENT) % length,
+            (pointer / ALIGNMENT) & (length - 1)
+        );
+        (pointer / ALIGNMENT) & (length - 1)
     }
 
     pub unsafe fn iterate(&self) -> RememberedSetIterator {
         RememberedSetIterator::init(self)
     }
 
-    pub fn count(&self) -> u32 {
+    pub fn count(&self) -> usize {
         self.count
     }
 
@@ -222,9 +226,9 @@ impl RememberedSetIterator {
     }
 }
 
-unsafe fn new_table<M: Memory>(mem: &mut M, size: u32) -> *mut Blob {
+unsafe fn new_table<M: Memory>(mem: &mut M, size: usize) -> *mut Blob {
     // No post allocation barrier as this RTS-internal blob will be collected by the GC.
-    let table = alloc_blob(mem, Bytes(size * size_of::<HashEntry>() as u32)).as_blob_mut();
+    let table = alloc_blob(mem, Bytes(size as usize * size_of::<HashEntry>())).as_blob_mut();
     for index in 0..size {
         table_set(table, index, null_ptr_value());
     }
@@ -234,8 +238,7 @@ unsafe fn new_table<M: Memory>(mem: &mut M, size: u32) -> *mut Blob {
 unsafe fn new_collision_node<M: Memory>(mem: &mut M, value: Value) -> *mut CollisionNode {
     debug_assert!(!is_null_ptr_value(value));
     // No post allocation barrier as this RTS-internal blob will be collected by the GC.
-    let node =
-        alloc_blob(mem, Bytes(size_of::<HashEntry>() as u32)).as_blob_mut() as *mut CollisionNode;
+    let node = alloc_blob(mem, Bytes(size_of::<HashEntry>())).as_blob_mut() as *mut CollisionNode;
     (*node).entry = HashEntry {
         value,
         next_collision_ptr: null_mut(),
@@ -243,27 +246,26 @@ unsafe fn new_collision_node<M: Memory>(mem: &mut M, value: Value) -> *mut Colli
     node
 }
 
-unsafe fn table_get(table: *mut Blob, index: u32) -> *mut HashEntry {
+unsafe fn table_get(table: *mut Blob, index: usize) -> *mut HashEntry {
     debug_assert!(table != null_mut());
-    let entry =
-        (table.payload_addr() as u32 + index * size_of::<HashEntry>() as u32) as *mut HashEntry;
+    let entry = (table.payload_addr() as usize + index * size_of::<HashEntry>()) as *mut HashEntry;
     debug_assert!(
-        entry as u32 + size_of::<HashEntry>() as u32
-            <= table as u32 + block_size(table as usize).to_bytes().as_u32()
+        entry as usize + size_of::<HashEntry>()
+            <= table as usize + block_size(table as usize).to_bytes().as_usize()
     );
     entry
 }
 
-unsafe fn table_set(table: *mut Blob, index: u32, value: Value) {
+unsafe fn table_set(table: *mut Blob, index: usize, value: Value) {
     let entry = table_get(table, index);
     (*entry).value = value;
     (*entry).next_collision_ptr = null_mut();
 }
 
-unsafe fn table_length(table: *mut Blob) -> u32 {
+unsafe fn table_length(table: *mut Blob) -> usize {
     debug_assert!(table != null_mut());
-    debug_assert!(table.len().as_u32() % size_of::<HashEntry>() as u32 == 0);
-    table.len().as_u32() / size_of::<HashEntry>() as u32
+    debug_assert!(table.len().as_usize() % size_of::<HashEntry>() == 0);
+    table.len().as_usize() / size_of::<HashEntry>()
 }
 
 unsafe fn null_ptr_value() -> Value {

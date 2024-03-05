@@ -448,7 +448,6 @@ pub const TAG_NULL: Tag = 29;
 pub const TAG_ONE_WORD_FILLER: Tag = 31;
 pub const TAG_FREE_SPACE: Tag = 33;
 
-
 // Special value to visit only a range of array fields.
 // This and all values above it are reserved and mean
 // a slice of an array object (i.e. start index) for
