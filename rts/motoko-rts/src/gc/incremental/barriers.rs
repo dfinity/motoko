@@ -20,8 +20,8 @@ pub unsafe extern "C" fn running_gc() -> bool {
 
 /// Write a potential pointer value with a pre-update barrier and resolving pointer forwarding.
 /// Used for the incremental GC.
-/// `location` (unskewed) denotes the field or array element where the value will be written to.
-/// `value` (skewed if a pointer) denotes the value that will be written to the location.
+/// `location` (raw address) denotes the field or array element where the value will be written to.
+/// `value` (scalar or compact 64-bit pointer) denotes the value that will be written to the location.
 /// The barrier can be conservatively called even if the stored value might not be a pointer.
 /// Additional write effects:
 /// * Pre-update barrier: Used during the GC mark phase to guarantee incremental snapshot-at-the-beginning marking.
