@@ -405,20 +405,21 @@ pub const fn is_skewed(value: u32) -> bool {
     value & 0b1 != 0
 }
 
+/// Keep one bit for skewing/tagging. Shift the remaining bits for pointer compaction.
+const POINTER_SHIFT: usize = ADDRESS_ALIGNMENT.to_bytes().as_usize().trailing_zeros() as usize - 1;
+
 /// Pointer compression and tagging
 #[inline]
 pub const fn skew(ptr: usize) -> u32 {
-    let alignment = ADDRESS_ALIGNMENT.to_bytes().as_usize();
-    debug_assert!(ptr % alignment == 0);
+    debug_assert!(ptr % ADDRESS_ALIGNMENT.to_bytes().as_usize() == 0);
     debug_assert!(ptr < MAX_MEMORY_SIZE.as_usize());
-    (((ptr / alignment) << 1) as u32).wrapping_sub(1)
+    (ptr >> POINTER_SHIFT).wrapping_sub(1) as u32
 }
 
 /// Pointer untagging and extension
 #[inline]
 pub const fn unskew(value: u32) -> usize {
-    let alignment = ADDRESS_ALIGNMENT.to_bytes().as_usize();
-    (value.wrapping_add(1) as usize >> 1) * alignment
+    (value.wrapping_add(1) as usize) << POINTER_SHIFT
 }
 
 // NOTE: We don't create an enum for tags as we can never assume to do exhaustive pattern match on
