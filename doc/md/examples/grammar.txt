@@ -76,7 +76,7 @@
     '<' 'system' (',' <typ_bind>)* '>'
 
 <typ_field> ::= 
-    'type' <id> <typ_params_opt> '=' <typ>
+    'type' <id> ('<' <list(<typ_bind>, ',')> '>')? '=' <typ>
     'var'? <id> ':' <typ>
     <id> <typ_params_opt> <typ_nullary> ':' <typ>
 
@@ -300,7 +300,7 @@
 
 <dec_nonvar> ::= 
     'let' <pat> '=' <exp>
-    'type' <id> <typ_params_opt> '=' <typ>
+    'type' <id> ('<' <list(<typ_bind>, ',')> '>')? '=' <typ>
     <obj_sort> <id>? (':' <typ>)? '='? <obj_body>
     <shared_pat_opt> 'func' <id>? <typ_params_opt> <pat_plain> (':' <typ>)? <func_body>
     <shared_pat_opt> <obj_sort>? 'class' <id>? <typ_params_opt> <pat_plain> (':' <typ>)? <class_body>

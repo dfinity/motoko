@@ -859,7 +859,7 @@ dec_nonvar :
   | LET p=pat EQ e=exp(ob)
     { let p', e' = normalize_let p e in
       LetD (p', e', None) @? at $sloc }
-  | TYPE x=typ_id tps=typ_params_opt EQ t=typ
+  | TYPE x=typ_id tps=type_typ_params_opt EQ t=typ
     { TypD(x, tps, t) @? at $sloc }
   | s=obj_sort xf=id_opt t=annot_opt EQ? efs=obj_body
     { let sort = Type.(match s.it with
