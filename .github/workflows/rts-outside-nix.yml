@@ -15,7 +15,7 @@ jobs:
     - uses: Swatinem/rust-cache@v2
     - name: Download dependencies
       run: |
-        sudo apt install -y llvm
+        sudo apt install -y llvm musl
         git clone https://github.com/WebAssembly/wasi-libc ../wasi-libc && cd ../wasi-libc && git checkout c5264e2bbe532994d06b039005f2af91bedcc1a6
         git clone --branch v1.2.0 --depth 1 https://github.com/libtom/libtommath ../libtommath
     - name: Build RTS
