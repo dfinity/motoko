@@ -17,8 +17,9 @@
   * Remove `__get_candid_interface_tmp_hack` endpoint. Candid interface is already stored as canister metadata, this temporary endpoint is redundant, thus removed. (#4386)
 
   * Improved capability system, introducing a synchronous (`system`) capability (#4406).
+
     `actor` initialisation body, `pre`/`postpgrade` hooks, `async` function bodies and
-    blocks possess this cabability. Functions can demand this capability by prepending `system`
+    blocks possess this cabability. Functions (and classes) can demand it by prepending `system`
     to the type argument list. The capability can be forwarded in calls by mentioning `<system, …>`
     in the instantiation parameter list.
 
