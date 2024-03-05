@@ -546,7 +546,7 @@ Build sequence of two sub-builds
 
 ### Function `prod`
 ``` motoko no-repl
-func prod<K1, V1, K2, V2, K3, V3>(tl : Trie<K1, V1>, tr : Trie<K2, V2>, op : (K1, V1, K2, V2) -> ?(K3, V3), _k3_eq : (K3, K3) -> Bool) : Build<K3, V3>
+func prod<K1, V1, K2, V2, K3, V3>(tl : Trie<K1, V1>, tr : Trie<K2, V2>, op : (K1, V1, K2, V2) -> ?(K3, V3), k3_eq : (K3, K3) -> Bool) : Build<K3, V3>
 ```
 
 Like [`prod`](#prod), except do not actually do the put calls, just
@@ -920,7 +920,7 @@ new trie, and the prior value, if any.
 
 ## Function `mergeDisjoint2D`
 ``` motoko no-repl
-func mergeDisjoint2D<K1, K2, V>(t : Trie2D<K1, K2, V>, _k1_eq : (K1, K1) -> Bool, k2_eq : (K2, K2) -> Bool) : Trie<K2, V>
+func mergeDisjoint2D<K1, K2, V>(t : Trie2D<K1, K2, V>, k1_eq : (K1, K1) -> Bool, k2_eq : (K2, K2) -> Bool) : Trie<K2, V>
 ```
 
 Like [`mergeDisjoint`](#mergedisjoint), except instead of merging a

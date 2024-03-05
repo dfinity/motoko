@@ -124,13 +124,6 @@ func isNull(x : ?Any) : Bool
 
 Returns true if the argument is `null`, otherwise returns false.
 
-## Function `equal`
-``` motoko no-repl
-func equal<A>(x : ?A, y : ?A, eq : (A, A) -> Bool) : Bool
-```
-
-Returns true if the optional arguments are equal according to the equality function provided, otherwise returns false.
-
 ## Function `assertSome`
 ``` motoko no-repl
 func assertSome(x : ?Any)
