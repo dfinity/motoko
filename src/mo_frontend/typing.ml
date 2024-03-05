@@ -2547,7 +2547,11 @@ and infer_dec env dec : T.typ =
         { (add_val env'' self_id.it self_typ self_id.at) with
           labs = T.Env.empty;
           rets = None;
-          async = if sys_cap then C.SystemCap C.top_cap else C.NullCap;
+          async =
+            if sys_cap then
+              C.SystemCap  (if in_actor then C.top_cap else List.hd cs)
+            else
+              C.NullCap;
           in_actor;
         }
       in
