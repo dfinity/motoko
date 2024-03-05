@@ -2528,25 +2528,26 @@ and infer_dec env dec : T.typ =
       let ve0 = check_class_shared_pat env shared_pat obj_sort in
       let cs, tbs, te, ce = check_typ_binds env typ_binds in
       let env' = adjoin_typs env te ce in
+      let in_actor = obj_sort.it = T.Actor in
       let t_pat, ve =
-        infer_pat_exhaustive (if obj_sort.it = T.Actor then error else warn) env' pat
+        infer_pat_exhaustive (if in_actor then error else warn) env' pat
       in
-      if obj_sort.it = T.Actor && not (T.shared t_pat) then
+      if in_actor && not (T.shared t_pat) then
         error_shared env t_pat pat.at "M0034"
           "shared constructor has non-shared parameter type%a"
           display_typ_expand t_pat;
       let env'' = adjoin_vals (adjoin_vals env' ve0) ve in
-      let cs' = if obj_sort.it = T.Actor then List.tl cs else cs in
-      let self_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) cs') in
-      let in_actor = obj_sort.it = T.Actor in
       let sys_cap = match tbs with
         | T.{sort = Scope; _} :: _ -> true
         | _ -> false in
+      if in_actor then assert sys_cap;
+      let cs' = if sys_cap then List.tl cs else cs in
+      let self_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) cs') in
       let env''' =
         { (add_val env'' self_id.it self_typ self_id.at) with
           labs = T.Env.empty;
           rets = None;
-          async = if sys_cap || in_actor then C.SystemCap C.top_cap else C.NullCap;
+          async = if sys_cap then C.SystemCap C.top_cap else C.NullCap;
           in_actor;
         }
       in
