@@ -1,7 +1,6 @@
 # Motoko compiler changelog
 
-
-## Unreleased
+## 0.11.0 (2024-03-05)
 
 * motoko (`moc`)
 
@@ -26,6 +25,10 @@
     BREAKING CHANGE (Minor): A few built-in functions have been marked with demand
     for the `system` capability. In order to call these, the full call hierarchy needs to be
     adapted to pass the `system` capability.
+
+* motoko-base
+
+  * Added `Option.equal` (thanks to ByronBecker) (dfinity/motoko-base⁠#615).
 
 ## 0.10.4 (2024-01-10)
 
