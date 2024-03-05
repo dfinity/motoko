@@ -1,11 +1,11 @@
 import { debugPrint; setTimer } = "mo:⛔";
 
-// no send capability: must not call `setTimer`
+// no system capability: must not call `setTimer`
 func _bowm() {
     ignore setTimer(1_000_000, false, func () : async () { });
 };
 
-// transferred send capability: may call `setTimer`
+// transferred system capability: may call `setTimer`
 func _gawd<system>() {
     ignore setTimer(1_000_000, false, func () : async () { });
 
