@@ -935,6 +935,12 @@ For a function, the number of type arguments, when provided, must agree with the
 
 Given a vector of type arguments instantiating a vector of type parameters, each type argument must satisfy the instantiated bounds of the corresponding type parameter.
 
+Prepending the type argument list with the keyword `system` declares demand on a special syncronous capability. Some built-in functions require this capability and it must be passed down the call hierarchy for a call to them to be valid. Following contexts possess `system` capability:
+- `async`-returning functions and blocks
+- function bodies that demand the `system` capability
+- `actor` init block
+- `system func`tions `preupgrade` and `postupgrade`.
+
 ### Well-formed types
 
 A type `T` is well-formed only if (recursively) its constituent types are well-formed, and:
