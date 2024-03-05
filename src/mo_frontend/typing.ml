@@ -294,17 +294,17 @@ let system_funcs tfs =
   [
     ("heartbeat", heartbeat_type);
     ("timer", timer_type);
-    ("preupgrade", T.Func (T.Local, T.Returns, [], [], []));
-    ("postupgrade", T.Func (T.Local, T.Returns, [], [], []));
+    T.("preupgrade", Func (Local, Returns, [scope_bind], [], []));
+    T.("postupgrade", Func (Local, Returns, [scope_bind], [], []));
     ("inspect",
      (let msg_typ = T.decode_msg_typ tfs in
       let record_typ =
-        T.Obj (T.Object, List.sort T.compare_field
-          [{T.lab = "caller"; T.typ = T.principal; T.src = T.empty_src};
-           {T.lab = "arg"; T.typ = T.blob; T.src = T.empty_src};
-           {T.lab = "msg"; T.typ = msg_typ; T.src = T.empty_src}])
+        T.(Obj (Object, List.sort compare_field
+           [{lab = "caller"; typ = principal; src = empty_src};
+            {lab = "arg"; typ = blob; src = empty_src};
+            {lab = "msg"; typ = msg_typ; src = empty_src}]))
       in
-        T.Func (T.Local, T.Returns, [],  [record_typ], [T.bool])))
+        T.(Func (Local, Returns, [],  [record_typ], [bool]))))
   ]
 
 
@@ -478,21 +478,30 @@ let scope_info env typ at =
       (T.string_of_typ_expand typ) (string_of_region at);
   | None -> ()
 
-let rec infer_async_cap env sort cs tbs at =
+let rec infer_async_cap env sort cs tbs body_opt at =
+  let open T in
   match sort, cs, tbs with
-  | (T.Shared T.Write | T.Local) , c::_,  { T.sort = T.Scope; _ }::_ ->
-    { env with typs = T.Env.add T.default_scope_var c env.typs;
-               scopes = T.ConEnv.add c at env.scopes;
+  | Shared Write, c::_,  { T.sort = Scope; _ }::_ ->
+    { env with typs = Env.add default_scope_var c env.typs;
+               scopes = ConEnv.add c at env.scopes;
                async = C.AsyncCap c }
-  | (T.Shared T.Query) , c::_,  { T.sort = T.Scope; _ }::_ ->
-    { env with typs = T.Env.add T.default_scope_var c env.typs;
-               scopes = T.ConEnv.add c at env.scopes;
+  | Shared Query, c::_,  { sort = Scope; _ }::_ ->
+    { env with typs = Env.add default_scope_var c env.typs;
+               scopes = ConEnv.add c at env.scopes;
                async = C.QueryCap c }
-  | (T.Shared T.Composite) , c::_,  { T.sort = T.Scope; _ }::_ ->
-    { env with typs = T.Env.add T.default_scope_var c env.typs;
-               scopes = T.ConEnv.add c at env.scopes;
+  | Shared Composite, c::_,  { sort = Scope; _ }::_ ->
+    { env with typs = Env.add default_scope_var c env.typs;
+               scopes = ConEnv.add c at env.scopes;
                async = C.CompositeCap c }
-  | T.Shared _, _, _ -> assert false (* impossible given sugaring *)
+  | Shared _, _, _ -> assert false (* impossible given sugaring *)
+  | Local, c::_,  { sort = Scope; _ }::_ ->
+    let async = match body_opt with
+      | Some exp when not (is_asyncE exp) -> C.SystemCap c
+      | _ -> C.AsyncCap c
+    in
+    { env with typs = Env.add default_scope_var c env.typs;
+               scopes = ConEnv.add c at env.scopes;
+               async }
   | _ -> { env with async = C.NullCap }
 
 and check_AsyncCap env s at : T.typ * (T.con -> C.async_cap) =
@@ -504,7 +513,7 @@ and check_AsyncCap env s at : T.typ * (T.con -> C.async_cap) =
    | C.ErrorCap ->
       local_error env at "M0037" "misplaced %s; a query cannot contain an %s" s s;
       T.Con(C.bogus_cap,[]), fun c -> C.NullCap
-   | C.NullCap ->
+   | C.(NullCap | SystemCap _) ->
       local_error env at "M0037" "misplaced %s; try enclosing in an async function" s;
       T.Con(C.bogus_cap,[]), fun c -> C.NullCap
    | C.CompositeAwaitCap _ ->
@@ -513,16 +522,15 @@ and check_AsyncCap env s at : T.typ * (T.con -> C.async_cap) =
 
 and check_AwaitCap env s at =
    match env.async with
-   | C.AwaitCap c -> T.Con(c, [])
-   | C.CompositeAwaitCap c -> T.Con(c, [])
+   | C.(AwaitCap c
+        | CompositeAwaitCap c) -> T.Con(c, [])
    | C.AsyncCap _
    | C.QueryCap _
    | C.CompositeCap _
      ->
       local_error env at "M0038" "misplaced %s; try enclosing in an async expression" s;
       T.Con(C.bogus_cap,[])
-   | C.ErrorCap
-   | C.NullCap ->
+   | C.(ErrorCap | NullCap | SystemCap _) ->
       local_error env at "M0038" "misplaced %s" s;
       T.Con(C.bogus_cap,[])
 
@@ -535,19 +543,18 @@ and check_ErrorCap env s at =
    | C.QueryCap _
    | C.CompositeCap _ ->
      local_error env at "M0039" "misplaced %s; try enclosing in an async expression or query function" s
-   | C.NullCap ->
+   | C.(NullCap | SystemCap _) ->
      local_error env at "M0039" "misplaced %s" s
 
 and scope_of_env env =
-  match env.async with
-   | C.AsyncCap c
-   | C.QueryCap c
-   | C.CompositeCap c
-   | C.CompositeAwaitCap c
-   | C.AwaitCap c ->
-      Some (T.Con(c,[]))
-   | C.ErrorCap -> None
-   | C.NullCap -> None
+  C.(match env.async with
+     | AsyncCap c
+     | QueryCap c
+     | CompositeCap c
+     | CompositeAwaitCap c
+     | AwaitCap c
+     | SystemCap c -> Some (T.Con(c, []))
+     | ErrorCap | NullCap -> None)
 
 
 (* Types *)
@@ -579,7 +586,7 @@ and check_typ' env typ : T.typ =
     T.Tup (List.map (fun (_, t) -> check_typ env t) typs)
   | FuncT (sort, binds, typ1, typ2) ->
     let cs, tbs, te, ce = check_typ_binds env binds in
-    let env' = infer_async_cap (adjoin_typs env te ce) sort.it cs tbs typ.at in
+    let env' = infer_async_cap (adjoin_typs env te ce) sort.it cs tbs None typ.at in
     let typs1 = as_domT typ1 in
     let c, typs2 = as_codomT sort.it typ2 in
     let ts1 = List.map (check_typ env') typs1 in
@@ -795,24 +802,34 @@ and check_con_env env at ce =
     error env at "M0156" "block contains expansive type definitions%s" msg
   end;
 
-and infer_inst env sort tbs typs at =
+and infer_inst env sort tbs typs t_ret at =
   let ts = List.map (check_typ env) typs in
   let ats = List.map (fun typ -> typ.at) typs in
-  match tbs,typs with
+  match tbs, typs with
   | {T.bound; sort = T.Scope; _}::tbs', typs' ->
     assert (List.for_all (fun tb -> tb.T.sort = T.Type) tbs');
     (match env.async with
-     | (C.AwaitCap c | C.AsyncCap c) when sort = T.Shared T.Query || sort = T.Shared T.Write || sort = T.Local ->
-        (T.Con(c,[])::ts, at::ats)
-     | (C.AwaitCap c | C.AsyncCap c) when sort = T.Shared T.Composite ->
+     | cap when sort = T.Local && not (T.is_async t_ret) ->
+       begin
+         match cap with
+         | C.(SystemCap c | AwaitCap c | AsyncCap c) ->
+           (T.Con(c, [])::ts, at::ats)
+         | _ ->
+          local_error env at "M0197"
+            "`system` capability required, but not available\n (need an enclosing async expression or function body or explicit `system` type parameter)";
+           (T.Con(C.bogus_cap, [])::ts, at::ats)
+       end
+     | C.(AwaitCap c | AsyncCap c) when T.(sort = Shared Query || sort = Shared Write || sort = Local) ->
+        (T.Con(c, [])::ts, at::ats)
+     | C.(AwaitCap c | AsyncCap c) when sort = T.(Shared Composite) ->
         error env at "M0186"
          "composite send capability required, but not available\n  (cannot call a `composite query` function from a non-`composite query` function)"
-     | (C.CompositeAwaitCap c | C.CompositeCap c) ->
+     | C.(CompositeAwaitCap c | CompositeCap c) ->
        begin
          match sort with
          | T.(Shared (Composite | Query)) ->
-           (T.Con(c,[])::ts, at::ats)
-         | T.((Shared Write) | Local) ->
+           (T.Con(c, [])::ts, at::ats)
+         | T.(Shared Write | Local) ->
            error env at "M0187"
              "send capability required, but not available\n  (cannot call a `shared` function from a `composite query` function; only calls to `query` and `composite query` functions are allowed)"
        end
@@ -829,8 +846,8 @@ and infer_inst env sort tbs typs at =
     assert (List.for_all (fun tb -> tb.T.sort = T.Type) tbs');
     ts, ats
 
-and check_inst_bounds env sort tbs inst at =
-  let ts, ats = infer_inst env sort tbs inst at in
+and check_inst_bounds env sort tbs inst t_ret at =
+  let ts, ats = infer_inst env sort tbs inst t_ret at in
   check_typ_bounds env tbs ts ats at;
   ts
 
@@ -1216,7 +1233,9 @@ and infer_exp'' env exp : T.typ =
     end;
     let env' =
       if obj_sort.it = T.Actor then
-        { env with async = C.NullCap; in_actor = true }
+        { env with
+          in_actor = true;
+          async = C.SystemCap C.top_cap }
       else env
     in
     let t = infer_obj env' obj_sort.it dec_fields exp.at in
@@ -1376,7 +1395,7 @@ and infer_exp'' env exp : T.typ =
     let cs, tbs, te, ce = check_typ_binds env typ_binds in
     let c, ts2 = as_codomT sort typ in
     check_shared_return env typ.at sort c ts2;
-    let env' = infer_async_cap (adjoin_typs env te ce) sort cs tbs exp.at in
+    let env' = infer_async_cap (adjoin_typs env te ce) sort cs tbs (Some exp1) exp.at in
     let t1, ve1 = infer_pat_exhaustive (if T.is_shared_sort sort then local_error else warn) env' pat in
     let ve2 = T.Env.adjoin ve ve1 in
     let ts2 = List.map (check_typ env') ts2 in
@@ -1846,7 +1865,7 @@ and check_exp_field env (ef : exp_field) fts =
     ignore (infer_exp env exp)
 
 and infer_call env exp1 inst exp2 at t_expect_opt =
-  let n = match inst.it with None -> 0 | Some typs -> List.length typs in
+  let n = match inst.it with None -> 0 | Some (_, typs) -> List.length typs in
   let t1 = infer_exp_promote env exp1 in
   let sort, tbs, t_arg, t_ret =
     try T.as_func_sub T.Local n t1
@@ -1861,12 +1880,12 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
   in
   let ts, t_arg', t_ret' =
     match tbs, inst.it with
-    | [], (None | Some [])  (* no inference required *)
-    | [{T.sort = T.Scope;_}], _  (* special case to allow t_arg driven overload resolution *)
+    | [], (None | Some (_, []))  (* no inference required *)
+    | [T.{sort = Scope;_}], _  (* special case to allow t_arg driven overload resolution *)
     | _, Some _ ->
       (* explicit instantiation, check argument against instantiated domain *)
-      let typs = match inst.it with None -> [] | Some typs -> typs in
-      let ts = check_inst_bounds env sort tbs typs at in
+      let typs = match inst.it with None -> [] | Some (_, typs) -> typs in
+      let ts = check_inst_bounds env sort tbs typs t_ret at in
       let t_arg' = T.open_ ts t_arg in
       let t_ret' = T.open_ ts t_ret in
       if not env.pre then check_exp_strong env t_arg' exp2;
@@ -1914,7 +1933,13 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
         error env exp2.at "M0100"
           "shared function call result contains abstract type%a"
           display_typ_expand t_ret';
-    end
+    end;
+    match T.(is_shared_sort sort || is_async t_ret'), inst.it, tbs with
+    | false, Some (true, _), ([] | T.{ sort = Type; _ } :: _) ->
+       local_error env inst.at "M0196" "unexpected `system` capability (try deleting it)"
+    | false, (None | Some (false, _)), T.{ sort = Scope; _ } :: _ ->
+       warn env at "M0195" "this function call implicitly requires `system` capability and may perform undesired actions (please review the call and provide a type instantiation `<system%s>` to suppress this warning)" (if List.length tbs = 1 then "" else ", ...")
+    | _ -> ()
   end;
   (* note t_ret' <: t checked by caller if necessary *)
   t_ret'
@@ -2332,7 +2357,7 @@ and infer_obj env s dec_fields at : T.typ =
         in_actor = true;
         labs = T.Env.empty;
         rets = None;
-        async = C.NullCap; }
+      }
   in
   let decs = List.map (fun (df : dec_field) -> df.it.dec) dec_fields in
   let initial_usage = enter_scope env in
@@ -2501,24 +2526,33 @@ and infer_dec env dec : T.typ =
     if not env.pre then begin
       let c = T.Env.find id.it env.typs in
       let ve0 = check_class_shared_pat env shared_pat obj_sort in
-      let cs, _tbs, te, ce = check_typ_binds env typ_binds in
+      let cs, tbs, te, ce = check_typ_binds env typ_binds in
       let env' = adjoin_typs env te ce in
+      let in_actor = obj_sort.it = T.Actor in
       let t_pat, ve =
-        infer_pat_exhaustive (if obj_sort.it = T.Actor then error else warn) env' pat
+        infer_pat_exhaustive (if in_actor then error else warn) env' pat
       in
-      if obj_sort.it = T.Actor && not (T.shared t_pat) then
+      if in_actor && not (T.shared t_pat) then
         error_shared env t_pat pat.at "M0034"
           "shared constructor has non-shared parameter type%a"
           display_typ_expand t_pat;
       let env'' = adjoin_vals (adjoin_vals env' ve0) ve in
-      let cs' = if obj_sort.it = T.Actor then List.tl cs else cs in
+      let sys_cap = match tbs with
+        | T.{sort = Scope; _} :: _ -> true
+        | _ -> false in
+      if in_actor then assert sys_cap;
+      let cs' = if sys_cap then List.tl cs else cs in
       let self_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) cs') in
       let env''' =
         { (add_val env'' self_id.it self_typ self_id.at) with
           labs = T.Env.empty;
           rets = None;
-          async = C.NullCap;
-          in_actor = obj_sort.it = T.Actor;
+          async =
+            if sys_cap then
+              C.SystemCap  (if in_actor then C.top_cap else List.hd cs)
+            else
+              C.NullCap;
+          in_actor;
         }
       in
       let initial_usage = enter_scope env''' in

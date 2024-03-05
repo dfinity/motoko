@@ -20,7 +20,7 @@ actor class Cloneable(
 
   // our clone methods, indirecting through makeCloneable
   public func clone(init : Nat) : async Cloneable {
-    Cycles.add(Cycles.balance() / 2);
+    Cycles.add<system>(Cycles.balance() / 2);
     await makeCloneable(init : Nat);
   }
 }

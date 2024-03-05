@@ -20,7 +20,7 @@ shared(msg) actor class Wallet() {
   public func credit() : async () {
     let bu = Cycles.balance();
     let du = Cycles.available();
-    ignore Cycles.accept(du);
+    ignore Cycles.accept<system>(du);
     assert Cycles.balance() == bu + du;
   };
 
@@ -29,14 +29,14 @@ shared(msg) actor class Wallet() {
     credit : shared () -> async ())
     : async () {
     if (msg.caller != owner) assert false;
-    Cycles.add(amount);
+    Cycles.add<system>(amount);
     await credit();
   };
 
   public shared func refund(
     amount : Nat)
     : async () {
-    ignore Cycles.accept(Cycles.available() - amount);
+    ignore Cycles.accept<system>(Cycles.available() - amount);
     print("refunding: " #  debug_show(amount));
   };
 

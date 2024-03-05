@@ -398,7 +398,7 @@ The syntax of a *declaration* is as follows:
   var <id> (: <typ>)? = <exp>                                            mutable
   <sort> <id>? (: <typ>)? =? <obj-body>                                  object
   <shared-pat>? func <id>? <typ-params>? <pat> (: <typ>)? =? <exp>       function
-  type <id> <typ-params>? = <typ>                                        type
+  type <id> <type-typ-params>? = <typ>                                   type
   <shared-pat>? <sort>? class                                            class
     <id>? <typ-params>? <pat> (: <typ>)? <class-body>
 
@@ -556,7 +556,7 @@ Type expressions are used to specify the types of arguments, constraints (a.k.a 
 
 ``` bnf
 <typ> ::=                                     type expressions
-  <path> <typ-args>?                            constructor
+  <path> <type-typ-args>?                       constructor
   <sort>? { <typ-field>;* }                     object
   { <typ-tag>;* }                               variant
   { # }                                         empty variant
@@ -758,7 +758,7 @@ See [Stable Regions](stable-regions.md) and library [Region](./base/Region.md) f
 
 ### Constructed types
 
-`<path> <typ-args>?` is the application of a type identifier or path, either built-in (i.e. `Int`) or user defined, to zero or more type **arguments**. The type arguments must satisfy the bounds, if any, expected by the type constructor’s type parameters (see [Well-formed types](#well-formed-types)).
+`<path> <type-typ-args>?` is the application of a type identifier or path, either built-in (i.e. `Int`) or user defined, to zero or more type **arguments**. The type arguments must satisfy the bounds, if any, expected by the type constructor’s type parameters (see [Well-formed types](#well-formed-types)).
 
 Though typically a type identifier, more generally, `<path>` may be a `.`-separated sequence of actor, object or module identifiers ending in an identifier accessing a type component of a value (for example, `Acme.Collections.List`).
 
@@ -867,7 +867,7 @@ In all other positions, `( <typ> )` has the same meaning as `<typ>`.
   <id> : <typ>                                  immutable value
   var <id> : <typ>                              mutable value
   <id> <typ-params>? <typ1> : <typ2>            function value (short-hand)
-  type <id> <typ-params>? = <typ>               type component
+  type <id> <type-typ-params>? = <typ>          type component
 ```
 
 A type field specifies the name and type of a value field of an object, or the name and definition of a type component of an object. The value field names within a single object type must be distinct and have non-colliding hashes. The type component names within a single object type must also be distinct and have non-colliding hashes. Value fields and type components reside in separate name spaces and thus may have names in common.
@@ -876,7 +876,7 @@ A type field specifies the name and type of a value field of an object, or the n
 
 `var <id> : <typ>` specifies a *mutable* field, named `<id>` of type `<typ>`.
 
-`type <id> <typ-params>? = <typ>` specifies a *type* component, with field name `<id>`, abbreviating (parameterized) type `<typ>`.
+`type <id> <type-typ-params>? = <typ>` specifies a *type* component, with field name `<id>`, abbreviating (parameterized) type `<typ>`.
 
 Unlike type declarations, a type component is not, in itself, recursive (though it may abbreviate an existing recursive type).
 In particular, the name `<id>` is not bound in `<typ>` nor in any other fields of the enclosing object type. The name `<id>` only determines the label to use when accessing the definition through a record of this type (using the dot notation).
@@ -910,7 +910,24 @@ When enclosed by a non-`actor` object type, `<id> <typ-params>? <typ1> : <typ2>`
   <id>                                        unconstrained type parameter
 ```
 
-A type constructors, function value or function type may be parameterised by a vector of comma-separated, optionally constrained, type parameters.
+``` bnf
+<type-typ-params> ::=                         type parameters to type constructors
+  < typ-param,* >
+
+<typ-params> ::=                              function type parameters
+  < typ-param,* >                             type parameters
+  < system (, <typ-param>*)) >                system capability prefixed type parameters
+
+<typ-param>
+  <id> <: <typ>                               constrained type parameter
+  <id>                                        unconstrained type parameter
+
+```
+
+A type constructor may be parameterised by a vector of comma-separated, optionally constrained, type parameters.
+
+A function, class constructor or function type may be parameterised by a vector of comma-separated, optionally constrained, type parameters.
+The first of these may be the special, pseudo type parameter `system`.
 
 `<id> <: <typ>` declares a type parameter with constraint `<typ>`. Any instantiation of `<id>` must subtype `<typ>` (at that same instantiation).
 
@@ -920,11 +937,20 @@ The names of type parameters in a vector must be distinct.
 
 All type parameters declared in a vector are in scope within its bounds.
 
+The `system` pseudo-type parameter on function types indicates that a value of that type
+requires `system` capability in order to be called and may itself call functions requiring `system` capability during its execution.
+
 ### Type arguments
 
 ``` bnf
-<typ-args> ::=                                type arguments
+<type-typ-args> ::=                           type arguments to type constructors
   < <typ>,* >
+
+
+<typ-args> ::=                                type arguments to functions
+  < <typ>,* >                                   plain type arguments
+  < system (, <typ>*) >                         system capability prefixed type arguments
+
 ```
 
 Type constructors and functions may take type arguments.
@@ -934,6 +960,20 @@ The number of type arguments must agree with the number of declared type paramet
 For a function, the number of type arguments, when provided, must agree with the number of declared type parameters of the function’s type. Note that type arguments in function applications can typically be omitted and inferred by the compiler.
 
 Given a vector of type arguments instantiating a vector of type parameters, each type argument must satisfy the instantiated bounds of the corresponding type parameter.
+
+In function calls, supplying the `system` pseudo type argument grants system capability to the function that requires it.
+
+System capability is available only in the following syntactic contexts:
+
+- in the body of an actor expression or actor class;
+- in the body of a (non-`query`) `shared` function, asynchronous function, `async` expression or `async*` expression;
+- in the body of a function or class that is declared with `system` pseudo type parameter;
+- in system functions `preupgrade` and `postupgrade`.
+
+No other context provides `system` capabilities, including `query` and `composite query` methods.
+
+The `<system>` type parameters of shared and asynchronous functions need not be declared.
+
 
 ### Well-formed types
 
@@ -1265,8 +1305,8 @@ The declaration `<dec>` of a `system` field must be a manifest `func` declaratio
 | `heartbeat`   | `() -> async ()`                                              | heartbeat action    |
 | `timer`       | `(Nat64 -> ()) -> async ()`                                   | timer action        |
 | `inspect`     | `{ caller : Principal; msg : <Variant>; arg : Blob } -> Bool` | message predicate   |
-| `preupgrade`  | `() -> ()`                                                    | pre upgrade action  |
-| `postupgrade` | `() -> ()`                                                    | post upgrade action |
+| `preupgrade`  | `<system>() -> ()`                                            | pre upgrade action  |
+| `postupgrade` | `<system>() -> ()`                                            | post upgrade action |
 
 -   `heartbeat`, when declared, is called on every Internet Computer subnet **heartbeat**, scheduling an asynchronous call to the `heartbeat` function. Due to its `async` return type, a heartbeat function may send messages and await results. The result of a heartbeat call, including any trap or thrown error, is ignored. The implicit context switch means that the time the heartbeat body is executed may be later than the time the heartbeat was issued by the subnet.
 
@@ -1275,8 +1315,9 @@ The declaration `<dec>` of a `system` field must be a manifest `func` declaratio
 -   `inspect`, when declared, is called as a predicate on every Internet Computer ingress message (with the exception of HTTP query calls). The return value, a `Bool`, indicates whether to accept or decline the given message. The argument type depends on the interface of the enclosing actor (see [Inspect](#inspect)).
 
 -   `preupgrade`, when declared, is called during an upgrade, immediately *before* the (current) values of the (retired) actor’s stable variables are transferred to the replacement actor.
+     Its `<system>` type parameter is implicitly assumed and need not be declared.
 
--   `postupgrade`, when declared, is called during an upgrade, immediately *after* the (replacement) actor body has initialized its fields (inheriting values of the retired actors' stable variables), and before its first message is processed.
+-   `postupgrade`, when declared, is called during an upgrade, immediately *after* the (replacement) actor body has initialized its fields (inheriting values of the retired actors' stable variables), and before its first message is processed. Its `<system>` type parameter is implicitly assumed and need not be declared.
 
 These `preupgrade` and `postupgrade` system methods provide the opportunity to save and restore in-flight data structures (e.g. caches) that are better represented using non-stable types.
 
@@ -1481,7 +1522,7 @@ Evaluation of `var <id> (: <typ>)? = <exp>` proceeds by evaluating `<exp>` to a 
 
 ### Type declaration
 
-The declaration `type <id> <typ-params>? = <typ>` declares a new type constructor `<id>`, with optional type parameters `<typ-params>` and definition `<typ>`.
+The declaration `type <id> <type-typ-params>? = <typ>` declares a new type constructor `<id>`, with optional type parameters `<type-typ-params>` and definition `<typ>`.
 
 The declaration `type C< X0 <: T0, …​, Xn <: Tn > = U` is well-formed provided:
 
@@ -1698,7 +1739,7 @@ The *class* declaration `<shared-pat>? <sort>? class <id>? <typ-params>? <pat> (
 
 ``` bnf
 <shared-pat>? <sort>? class <id> <typ-params>? <pat> (: <typ>)? <class-body> :=
-  type <id> <typ-params> = <sort> { <typ-field>;* };
+  type <id> <type-typ-params>? = <sort> { <typ-field>;* };
   <shared-pat>? func <id> <typ-params>? <pat> : async? <id> <typ-args> =
     async? <sort> <id_this>? <obj-body>
 ```
@@ -1707,7 +1748,7 @@ where:
 
 -   `<shared-pat>?`, when present, requires `<sort>` == `actor`, and provides access to the `caller` of an `actor` constructor, and
 
--   `<typ-args>?` is the sequence of type identifiers bound by `<typ-params>?` (if any), and
+-   `<typ-args>?` and `<type-typ-params>?` is the sequence of type identifiers bound by `<typ-params>?` (if any), and
 
 -   `<typ-field>;*` is the set of public field types inferred from `<dec-field>;*`.
 

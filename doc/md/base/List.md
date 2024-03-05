@@ -162,9 +162,7 @@ sum // => 3
 
 Runtime: O(size)
 
-Space: O(size)
-
-*Runtime and space assumes that `f` runs in O(1) time and space.
+Space: O(1)
 
 ## Function `map`
 ``` motoko no-repl
@@ -221,8 +219,6 @@ Runtime: O(size)
 
 Space: O(size)
 
-*Runtime and space assumes that `f` runs in O(1) time and space.
-
 ## Function `mapFilter`
 ``` motoko no-repl
 func mapFilter<T, U>(l : List<T>, f : T -> ?U) : List<U>
@@ -248,8 +244,6 @@ List.mapFilter<Nat, Nat>(
 Runtime: O(size)
 
 Space: O(size)
-
-*Runtime and space assumes that `f` runs in O(1) time and space.
 
 ## Function `mapResult`
 ``` motoko no-repl
@@ -660,7 +654,7 @@ Runtime: O(min(size(xs), size(ys)))
 
 Space: O(min(size(xs), size(ys)))
 
-*Runtime and space assumes that `f` runs in O(1) time and space.
+*Runtime and space assumes that `zip` runs in O(1) time and space.
 
 ## Function `split`
 ``` motoko no-repl
@@ -680,6 +674,8 @@ List.split<Nat>(
 Runtime: O(n)
 
 Space: O(n)
+
+*Runtime and space assumes that `zip` runs in O(1) time and space.
 
 ## Function `chunks`
 ``` motoko no-repl
@@ -706,6 +702,8 @@ List.chunks<Nat>(
 Runtime: O(size)
 
 Space: O(size)
+
+*Runtime and space assumes that `zip` runs in O(1) time and space.
 
 ## Function `fromArray`
 ``` motoko no-repl
