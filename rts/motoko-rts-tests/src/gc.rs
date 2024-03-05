@@ -248,7 +248,12 @@ fn check_dynamic_heap(
         let tag = read_word(heap, offset);
         offset += WORD_SIZE;
 
-        if tag == TAG_FREE_SPACE {
+        if tag == TAG_ONE_WORD_FILLER {
+            while offset % ADDRESS_ALIGNMENT.to_bytes().as_usize() != 0 {
+                assert_eq!(read_word(heap, offset), TAG_ONE_WORD_FILLER);
+                offset += WORD_SIZE;
+            }
+        } else if tag == TAG_FREE_SPACE {
             offset += WORD_SIZE; // Skip padding
             let words = read_word64(heap, offset) as usize;
             check_alignment(words);
