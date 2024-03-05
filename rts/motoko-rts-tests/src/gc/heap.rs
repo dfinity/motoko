@@ -393,11 +393,8 @@ fn create_dynamic_heap(
         }
     }
 
-
-
     // Add the static root table
-    let root_section_offset =
-        refs
+    let root_section_offset = refs
         .iter()
         .map(|(_, fields)| round_to_alignment(size_of::<Array>() + Words(1 + fields.len())))
         .sum::<usize>();

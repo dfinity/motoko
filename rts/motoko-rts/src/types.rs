@@ -600,6 +600,7 @@ impl Closure {
     }
 }
 
+// Note: `text.rs` assumes that the `Concat` header is compatible to `Blob` header structure.
 #[repr(C)] // See the note at the beginning of this module
 pub struct Blob {
     pub header: Obj,
@@ -734,10 +735,11 @@ pub struct Variant {
     pub field: Value,
 }
 
+// Note: `text.rs` assumes that the `Concat` header with `n_bytes`` must match the `Blob` header structure.
 #[repr(C)] // See the note at the beginning of this module
 pub struct Concat {
     pub header: Obj,
-    pub n_bytes: u32,
+    pub n_bytes: usize, // 64-bit length to match `Blob.len`
     pub text1: Value,
     pub text2: Value,
 }

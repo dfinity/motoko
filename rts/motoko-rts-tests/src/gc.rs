@@ -158,7 +158,10 @@ fn initialize_gc(heap: &mut MotokoHeap) {
     };
     unsafe {
         let state = IncrementalGC::initial_gc_state(heap, heap.heap_base_address());
-        assert_eq!(heap.heap_base_address() % ADDRESS_ALIGNMENT.to_bytes().as_usize(), 0);
+        assert_eq!(
+            heap.heap_base_address() % ADDRESS_ALIGNMENT.to_bytes().as_usize(),
+            0
+        );
         set_incremental_gc_state(Some(state));
         let allocation_size = heap.heap_ptr_address() - heap.heap_base_address();
         assert_eq!(allocation_size % ADDRESS_ALIGNMENT.to_bytes().as_usize(), 0);
@@ -220,7 +223,7 @@ fn check_dynamic_heap(
     let continuation_table_offset = continuation_table_address as usize - heap.as_ptr() as usize;
 
     let region0_addr = unskew_pointer(read_word(heap, region0_ptr_offset));
-    
+
     while offset < heap_ptr_offset {
         let object_offset = offset;
         check_alignment(object_offset);
@@ -276,7 +279,7 @@ fn check_dynamic_heap(
                     .as_usize();
             } else {
                 assert!(tag == TAG_ARRAY || tag >= TAG_ARRAY_SLICE_MIN);
-                
+
                 if is_forwarded {
                     let forward_offset = forward as usize - heap.as_ptr() as usize;
                     let length = read_word(

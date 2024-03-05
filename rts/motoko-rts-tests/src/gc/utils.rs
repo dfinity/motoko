@@ -1,5 +1,8 @@
 use byteorder::{ReadBytesExt, WriteBytesExt, LE};
-use motoko_rts::{constants::ADDRESS_ALIGNMENT, types::{Value, Words}};
+use motoko_rts::{
+    constants::ADDRESS_ALIGNMENT,
+    types::{Value, Words},
+};
 
 /// A unique object index, used in heap descriptions.
 ///

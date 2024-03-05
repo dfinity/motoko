@@ -112,7 +112,7 @@ pub unsafe fn text_concat<M: Memory>(mem: &mut M, s1: Value, s2: Value) -> Value
     let r_concat = r.get_ptr() as *mut Concat;
     (*r_concat).header.tag = TAG_CONCAT;
     (*r_concat).header.init_forward(r);
-    (*r_concat).n_bytes = new_len.as_usize() as u32;
+    (*r_concat).n_bytes = new_len.as_usize();
     (*r_concat).text1 = s1.forward_if_possible();
     (*r_concat).text2 = s2.forward_if_possible();
     allocation_barrier(r)
