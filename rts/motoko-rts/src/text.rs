@@ -344,7 +344,7 @@ pub(crate) unsafe fn blob_compare(s1: Value, s2: Value) -> i32 {
 
 /// Length in characters
 #[no_mangle]
-pub unsafe extern "C" fn text_len(text: Value) -> u32 {
+pub unsafe extern "C" fn text_len(text: Value) -> usize {
     if text.tag() == TAG_BLOB {
         let blob = text.as_blob();
         let payload_addr = blob.payload_const();
@@ -355,7 +355,7 @@ pub unsafe extern "C" fn text_len(text: Value) -> u32 {
             len.as_usize(),
         ))
         .chars()
-        .count() as u32
+        .count()
     } else {
         let concat = text.as_concat();
         text_len(concat.text1()) + text_len(concat.text2())

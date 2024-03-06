@@ -743,7 +743,7 @@ pub struct Variant {
     pub field: Value,
 }
 
-// Note: `text.rs` assumes that the `Concat` header with `n_bytes`` must match the `Blob` header structure.
+// Note: `text.rs` assumes that the `Concat` header with `n_bytes` must match the `Blob` header structure.
 #[repr(C)] // See the note at the beginning of this module
 pub struct Concat {
     pub header: Obj,

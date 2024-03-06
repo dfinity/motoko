@@ -889,8 +889,29 @@ let from_m_to_n env m mk_body =
         set_i
       )
 
+let from_m_to_n_64 env m mk_body =
+  let (set_n, get_n) = new_local64 env "n" in
+  let (set_i, get_i) = new_local64 env "i" in
+  set_n ^^
+  compile_const_64 m ^^
+  set_i ^^
+
+  compile_while env
+    ( get_i ^^
+      get_n ^^
+      G.i (Compare (Wasm_exts.Values.I64 I64Op.LtU))
+    ) (
+      mk_body get_i ^^
+
+      get_i ^^
+      compile_add64_const 1L ^^
+      set_i
+    )
+
+
 (* Expects a number on the stack. Iterates from zero to below that number. *)
 let from_0_to_n env mk_body = from_m_to_n env 0l mk_body
+let from_0_to_n_64 env mk_body = from_m_to_n_64 env 0L mk_body
 
 (* Pointer reference and dereference  *)
 
@@ -1167,11 +1188,11 @@ module RTS = struct
     E.add_func_import env "rts" "text_iter_done" [I32Type] [I32Type];
     E.add_func_import env "rts" "text_iter" [I32Type] [I32Type];
     E.add_func_import env "rts" "text_iter_next" [I32Type] [I32Type];
-    E.add_func_import env "rts" "text_len" [I32Type] [I32Type];
-    E.add_func_import env "rts" "text_of_ptr_size" [I32Type; I64Type] [I32Type];
+    E.add_func_import env "rts" "text_len" [I32Type] [I64Type];
+    E.add_func_import env "rts" "text_of_ptr_size" [I64Type; I64Type] [I32Type];
     E.add_func_import env "rts" "text_singleton" [I32Type] [I32Type];
     E.add_func_import env "rts" "text_size" [I32Type] [I64Type];
-    E.add_func_import env "rts" "text_to_buf" [I32Type; I32Type] [];
+    E.add_func_import env "rts" "text_to_buf" [I32Type; I64Type] [];
     E.add_func_import env "rts" "text_lowercase" [I32Type] [I32Type];
     E.add_func_import env "rts" "text_uppercase" [I32Type] [I32Type];
     E.add_func_import env "rts" "region_init" [I32Type] [];
@@ -1489,7 +1510,7 @@ module Stack = struct
 
   (* TODO: why not just remember and reset the stack pointer, instead of calling free_words? Also below *)
   let with_words env name n f =
-    let (set_x, get_x) = new_local env name in
+    let (set_x, get_x) = new_local64 env name in
     alloc_words env n ^^ set_x ^^
     f get_x ^^
     free_words env n
@@ -1498,16 +1519,14 @@ module Stack = struct
   let dynamic_alloc_words env get_n =
     get_stack_ptr env ^^
     get_n ^^
-    compile_mul_const Heap.word_size ^^
-    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
+    compile_mul64_const (Int64.of_int32 Heap.word_size) ^^
     G.i (Compare (Wasm_exts.Values.I64 I64Op.LtU)) ^^
     (G.if0
       (stack_overflow env)
       G.nop) ^^
     get_stack_ptr env ^^
     get_n ^^
-    compile_mul_const Heap.word_size ^^
-    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
+    compile_mul64_const (Int64.of_int32 Heap.word_size) ^^
     G.i (Binary (Wasm_exts.Values.I64 I64Op.Sub)) ^^
     set_stack_ptr env ^^
     update_stack_min env ^^
@@ -1516,15 +1535,14 @@ module Stack = struct
   let dynamic_free_words env get_n =
     get_stack_ptr env ^^
     get_n ^^
-    compile_mul_const Heap.word_size ^^
-    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
+    compile_mul64_const (Int64.of_int32 Heap.word_size) ^^
     G.i (Binary (Wasm_exts.Values.I64 I64Op.Add)) ^^
     set_stack_ptr env
 
   (* TODO: why not just remember and reset the stack pointer, instead of calling free_words? Also above*)
   let dynamic_with_words env name f =
-    let (set_n, get_n) = new_local env "n" in
-    let (set_x, get_x) = new_local env name in
+    let (set_n, get_n) = new_local64 env "n" in
+    let (set_x, get_x) = new_local64 env name in
     set_n ^^
     dynamic_alloc_words env get_n ^^ set_x ^^
     f get_x ^^
@@ -1532,8 +1550,8 @@ module Stack = struct
 
   let dynamic_with_bytes env name f =
     (* round up to nearest wordsize *)
-    compile_add_const (Int32.sub Heap.word_size 1l) ^^
-    compile_divU_const Heap.word_size ^^
+    compile_add32_const Int64.(sub (of_int32 Heap.word_size) 1L) ^^
+    compile_divU32_const (Int64.of_int32 Heap.word_size) ^^
     dynamic_with_words env name f
 
   (* Stack Frames *)
@@ -3848,7 +3866,7 @@ module Blob = struct
 
      ┌──────┬─────┬──────┬─────┬──────────────────┐
      │ obj header │  n_bytes   │ bytes (padded) … │
-     └──────┴─────┴──────┬─────┴──────────────────┘
+     └──────┴─────┴──────┴─────┴──────────────────┘
 
     The object header includes the object tag (Blob) and the forwarding pointer.
 
@@ -3860,7 +3878,7 @@ module Blob = struct
     Unicode.
   *)
 
-  let header_size = Int32.add Tagged.header_size 1l
+  let header_size = Int32.add Tagged.header_size 2l (* 64-bit length field `n_bytes` *)
   let len_field = Int32.add Tagged.header_size 0l
 
   let len env =
@@ -3913,7 +3931,7 @@ module Blob = struct
     let (set_blob, get_blob) = new_local env "data_segment_blob" in
     data_length ^^
     alloc env ^^ set_blob ^^
-    get_blob ^^ payload_ptr_unskewed env ^^ (* target address *)
+    get_blob ^^ payload_address env ^^ (* target address *)
     compile_unboxed_const 0l ^^ (* data offset *)
     data_length ^^
     G.i (MemoryInit (nr segment_index)) ^^
@@ -3923,7 +3941,7 @@ module Blob = struct
     fun env get_ptr get_size ->
       let (set_x, get_x) = new_local env "x" in
       get_size ^^ alloc env ^^ set_x ^^
-      get_x ^^ payload_ptr_unskewed env ^^
+      get_x ^^ payload_address env ^^
       get_ptr ^^
       get_size ^^
       Heap.memcpy env ^^
@@ -3936,7 +3954,7 @@ module Blob = struct
     get_size_fun env ^^ set_len ^^
 
     get_len ^^ alloc env ^^ set_blob ^^
-    get_blob ^^ payload_ptr_unskewed env ^^
+    get_blob ^^ payload_address env ^^
     offset_fun env ^^
     get_len ^^
     copy_fun env ^^
@@ -3974,9 +3992,9 @@ module Blob = struct
         get_x ^^ Tagged.load_forwarding_pointer env ^^ set_x ^^
         get_y ^^ Tagged.load_forwarding_pointer env ^^ set_y ^^
 
-        let (set_len1, get_len1) = new_local env "len1" in
-        let (set_len2, get_len2) = new_local env "len2" in
-        let (set_len, get_len) = new_local env "len" in
+        let (set_len1, get_len1) = new_local64 env "len1" in
+        let (set_len2, get_len2) = new_local64 env "len2" in
+        let (set_len, get_len) = new_local64 env "len" in
         let (set_a, get_a) = new_local env "a" in
         let (set_b, get_b) = new_local env "b" in
 
@@ -3986,12 +4004,12 @@ module Blob = struct
         (* Find minimum length *)
         begin if op = Some EqOp then
           (* Early exit for equality *)
-          get_len1 ^^ get_len2 ^^ G.i (Compare (Wasm_exts.Values.I32 I32Op.Eq)) ^^
+          get_len1 ^^ get_len2 ^^ G.i (Compare (Wasm_exts.Values.I64 I64Op.Eq)) ^^
           G.if0 G.nop (Bool.lit false ^^ G.i Return) ^^
 
           get_len1 ^^ set_len
         else
-          get_len1 ^^ get_len2 ^^ G.i (Compare (Wasm_exts.Values.I32 I32Op.LeU)) ^^
+          get_len1 ^^ get_len2 ^^ G.i (Compare (Wasm_exts.Values.I64 I64Op.LeU)) ^^
           G.if0
             (get_len1 ^^ set_len)
             (get_len2 ^^ set_len)
@@ -4000,22 +4018,22 @@ module Blob = struct
         (* We could do word-wise comparisons if we know that the trailing bytes
            are zeroed *)
         get_len ^^
-        from_0_to_n env (fun get_i ->
+        from_0_to_n_64 env (fun get_i ->
           get_x ^^
-          payload_ptr_unskewed env ^^
+          payload_address env ^^
           get_i ^^
-          G.i (Binary (Wasm_exts.Values.I32 I32Op.Add)) ^^
-          G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.(Pack8, ZX)}) ^^
+          G.i (Binary (Wasm_exts.Values.I64 I64Op.Add)) ^^
+          G.i (Load {ty = I32Type; align = 0; offset = 0L; sz = Some Wasm.Types.(Pack8, ZX)}) ^^
           set_a ^^
 
           get_y ^^
-          payload_ptr_unskewed env ^^
+          payload_address env ^^
           get_i ^^
-          G.i (Binary (Wasm_exts.Values.I32 I32Op.Add)) ^^
-          G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.(Pack8, ZX)}) ^^
+          G.i (Binary (Wasm_exts.Values.I64 I64Op.Add)) ^^
+          G.i (Load {ty = I32Type; align = 0; offset = 0L; sz = Some Wasm.Types.(Pack8, ZX)}) ^^
           set_b ^^
 
-          get_a ^^ get_b ^^ G.i (Compare (Wasm_exts.Values.I32 I32Op.Eq)) ^^
+          get_a ^^ get_b ^^ G.i (Compare (Wasm_exts.Values.I64 I64Op.Eq)) ^^
           G.if0 G.nop (
             (* first non-equal elements *)
             begin match op with
@@ -4155,47 +4173,51 @@ module Object = struct
     compile_unboxed_const (E.hash env field) ^^
     E.call_import env "rts" "contains_field"
  
-  (* Returns a pointer to the object field (without following the field indirection) *)
+  (* Returns the raw 64-bit address pointing to the object field (without following the field indirection) *)
   let idx_hash_raw env low_bound =
     let name = Printf.sprintf "obj_idx<%d>" low_bound  in
-    Func.share_code2 Func.Always env name (("x", I32Type), ("hash", I32Type)) [I32Type] (fun env get_x get_hash ->
+    Func.share_code2 Func.Always env name (("x", I32Type), ("hash", I32Type)) [I64Type] (fun env get_x get_hash ->
       let set_x = G.setter_for get_x in
-      let set_h_ptr, get_h_ptr = new_local env "h_ptr" in
-
+      let set_hash_address, get_hash_address = new_local64 env "hash_address" in
+      let set_field_address, get_field_address = new_local64 env "field_address" in
+      
       get_x ^^ Tagged.load_forwarding_pointer env ^^ set_x ^^
 
       get_x ^^ Tagged.load_field env hash_ptr_field ^^
-      Blob.payload_ptr_unskewed env ^^
+      Blob.payload_address env ^^
 
       (* Linearly scan through the fields (binary search can come later) *)
-      (* unskew h_ptr and advance both to low bound *)
-      compile_add_const Int32.(mul Heap.word_size (of_int low_bound)) ^^
-      set_h_ptr ^^
-      get_x ^^
-      compile_add_const Int32.(mul Heap.word_size (add header_size (of_int low_bound))) ^^
-      set_x ^^
+      (* `hash_address` is a 64-bit raw address pointing to the hash entry in the blob. 
+         `field_address` is a 64-bit raw address pointing to the corresponding field in the object. *)
+      (* Pairwise iteration of both addresses, starting from the lower bound. *)
+      compile_add64_const Int64.(mul (of_int32 Heap.word_size) (of_int low_bound)) ^^
+      set_hash_address ^^
+      get_x ^^ pointer_to_address env ^^
+      compile_add64_const Int64.(mul (of_int32 Heap.word_size) (add (of_int32 header_size) (of_int low_bound))) ^^
+      set_field_address ^^
       G.loop0 (
-          get_h_ptr ^^ load_unskewed_ptr ^^
+          get_hash_address ^^ load32_from_address ^^
           get_hash ^^ G.i (Compare (Wasm_exts.Values.I32 I32Op.Eq)) ^^
           G.if0
-            (get_x ^^ G.i Return)
-            (get_h_ptr ^^ compile_add_const Heap.word_size ^^ set_h_ptr ^^
-            get_x ^^ compile_add_const Heap.word_size ^^ set_x ^^
+            (get_field_address ^^ G.i Return)
+            (get_hash_address ^^ compile_add64_const (Int64.of_int32 Heap.word_size) ^^ set_hash_address ^^
+            get_field_address ^^ compile_add64_const (Int64.of_int32 Heap.word_size) ^^ set_field_address ^^
             G.i (Br (nr 1l)))
         ) ^^
       G.i Unreachable
     )
 
-  (* Returns a pointer to the object field (possibly following the indirection) *)
+  (* Returns a raw 64-bit address to the object field (possibly following the indirection) *)
   let idx_hash env low_bound indirect =
     if indirect
     then
       let name = Printf.sprintf "obj_idx_ind<%d>" low_bound in
-      Func.share_code2 Func.Never env name (("x", I32Type), ("hash", I32Type)) [I32Type] (fun env get_x get_hash ->
+      Func.share_code2 Func.Never env name (("x", I32Type), ("hash", I32Type)) [I64Type] (fun env get_x get_hash ->
       get_x ^^ get_hash ^^
       idx_hash_raw env low_bound ^^
-      load_ptr ^^ Tagged.load_forwarding_pointer env ^^
-      compile_add_const (Int32.mul MutBox.field Heap.word_size)
+      load32_from_address ^^ Tagged.load_forwarding_pointer env ^^
+      pointer_to_address ^^
+      compile_add64_const Int64.(mul (of_int32 MutBox.field) (of_int32 Heap.word_size))
     )
     else idx_hash_raw env low_bound
 
@@ -4221,12 +4243,12 @@ module Object = struct
     | Some i -> i
     | _ -> assert false
 
-  (* Returns a pointer to the object field (without following the indirection) *)
+  (* Returns the raw 64-bit address to the object field (without following the indirection) *)
   let idx_raw env f =
     compile_unboxed_const (E.hash env f) ^^
     idx_hash_raw env 0
 
-  (* Returns a pointer to the object field (possibly following the indirection) *)
+  (* Returns the raw 64-bit address to the object field (possibly following the indirection) *)
   let idx env obj_type f =
     compile_unboxed_const (E.hash env f) ^^
     idx_hash env (field_lower_bound env obj_type f) (is_mut_field env obj_type f)
@@ -4234,12 +4256,12 @@ module Object = struct
   (* load the value (or the mutbox) *)
   let load_idx_raw env f =
     idx_raw env f ^^
-    load_ptr
+    load32_from_address
 
   (* load the actual value (dereferencing the mutbox) *)
   let load_idx env obj_type f =
     idx env obj_type f ^^
-    load_ptr
+    load32_from_address
  
 end (* Object *) 
 
@@ -4338,11 +4360,14 @@ module Text = struct
 
   (* The layout of a concatenation node is
 
-     ┌──────┬─────┬─────────┬───────┬───────┐
-     │ obj header │ n_bytes │ text1 │ text2 │
-     └──────┴─────┴─────────┴───────┴───────┘
+     ┌──────┬─────┬──────┬─────┬───────┬───────┐
+     │ obj header │  n_bytes   │ text1 │ text2 │
+     └──────┴─────┴──────┴─────┴───────┴───────┘
 
     The object header includes the object tag (TAG_CONCAT defined in rts/types.rs) and the forwarding pointer
+
+    `n_bytes` encodes the 64-bit byte length of the concatenation.
+    The `blob` header needs to match with the beginning of this layout, see `text.rs` in the RTS.
 
     This is internal to rts/text.c, with the exception of GC-related code.
   *)
@@ -4419,6 +4444,8 @@ module Arr = struct
 
      The object  header includes the object tag (Array) and the forwarding pointer.
 
+     `n_fields` represents a 32-bit length.
+
      No difference between mutable and immutable arrays.
   *)
 
@@ -4431,29 +4458,31 @@ module Arr = struct
 
   let len env =
     Tagged.load_forwarding_pointer env ^^
-    Tagged.load_field env len_field
+    Tagged.load_field env (Int64.of_int32 len_field)
 
   (* Static array access. No checking *)
   let load_field env n =
     Tagged.load_forwarding_pointer env ^^
-    Tagged.load_field env Int32.(add n header_size)
+    Tagged.load_field env Int64.(add n (of_int32 header_size))
 
-  (* Dynamic array access. Returns the address (not the value) of the field.
+  (* Dynamic array access. Returns the 64-bit address (not the value) of the field.
      Does no bounds checking *)
   let unsafe_idx env =
-    Func.share_code2 Func.Never env "Array.unsafe_idx" (("array", I32Type), ("idx", I32Type)) [I32Type] (fun env get_array get_idx ->
+    Func.share_code2 Func.Never env "Array.unsafe_idx" (("array", I32Type), ("idx", I32Type)) [I64Type] (fun env get_array get_idx ->
       get_idx ^^
-      compile_add_const header_size ^^
-      compile_mul_const element_size ^^
+      G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
+      compile_add64_const (Int64.of_int32 header_size) ^^
+      compile_mul64_const (Int64.of_int32 element_size) ^^
       get_array ^^
       Tagged.load_forwarding_pointer env ^^
-      G.i (Binary (Wasm_exts.Values.I32 I32Op.Add))
+      pointer_to_address ^^
+      G.i (Binary (Wasm_exts.Values.I64 I64Op.Add))
     )
 
-  (* Dynamic array access. Returns the address (not the value) of the field.
+  (* Dynamic array access. Returns the 64-bit address (not the value) of the field.
      Does bounds checking *)
   let idx env =
-    Func.share_code2 Func.Never env "Array.idx" (("array", I32Type), ("idx", I32Type)) [I32Type] (fun env get_array get_idx ->
+    Func.share_code2 Func.Never env "Array.idx" (("array", I32Type), ("idx", I32Type)) [I64Type] (fun env get_array get_idx ->
       (* No need to check the lower bound, we interpret idx as unsigned *)
       (* Check the upper bound *)
       get_idx ^^
@@ -4462,16 +4491,17 @@ module Arr = struct
       E.else_trap_with env "Array index out of bounds" ^^
 
       get_idx ^^
-      compile_add_const header_size ^^
-      compile_mul_const element_size ^^
+      G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
+      compile_add64_const (Int64.of_int32 header_size) ^^
+      compile_mul64_const (Int64.of_int32 element_size) ^^
       get_array ^^
       Tagged.load_forwarding_pointer env ^^
-      G.i (Binary (Wasm_exts.Values.I32 I32Op.Add))
+      G.i (Binary (Wasm_exts.Values.I64 I64Op.Add))
     )
 
   (* As above, but taking a bigint (Nat), and reporting overflow as out of bounds *)
   let idx_bigint env =
-    Func.share_code2 Func.Never env "Array.idx_bigint" (("array", I32Type), ("idx", I32Type)) [I32Type] (fun env get_array get_idx ->
+    Func.share_code2 Func.Never env "Array.idx_bigint" (("array", I32Type), ("idx", I32Type)) [I64Type] (fun env get_array get_idx ->
       get_array ^^
       get_idx ^^
       Blob.lit env "Array index out of bounds" ^^
@@ -4495,39 +4525,39 @@ module Arr = struct
     E.call_import env "rts" "alloc_array"
 
   let iterate env get_array body =
-    let (set_boundary, get_boundary) = new_local env "boundary" in
-    let (set_pointer, get_pointer) = new_local env "pointer" in
+    let (set_boundary, get_boundary) = new_local64 env "boundary" in
+    let (set_address, get_address) = new_local64 env "address" in
     let set_array = G.setter_for get_array in
 
     get_array ^^ Tagged.load_forwarding_pointer env ^^ set_array ^^
 
-    (* Initial element pointer, skewed *)
-    compile_unboxed_const header_size ^^
-    compile_mul_const element_size ^^
+    (* Initial element address, raw 64-bit *)
     get_array ^^
-    G.i (Binary (Wasm_exts.Values.I32 I32Op.Add)) ^^
-    set_pointer ^^
+    pointer_to_address env ^^
+    compile_add64_const Int64.(mul (of_int32 header_size) (of_int32 Heap.word_size))
+    set_address ^^
 
-    (* Upper pointer boundary, skewed *)
+    (* Upper address boundary, raw 64-bit *)
     get_array ^^
     Tagged.load_field env len_field ^^
-    compile_mul_const element_size ^^
-    get_pointer ^^
-    G.i (Binary (Wasm_exts.Values.I32 I32Op.Add)) ^^
+    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
+    compile_mul64_const (Int64.of_int32 element_size) ^^
+    get_address ^^
+    G.i (Binary (Wasm_exts.Values.I64 I64Op.Add)) ^^
     set_boundary ^^
 
     (* Loop through all elements *)
     compile_while env
     ( get_pointer ^^
       get_boundary ^^
-      G.i (Compare (Wasm_exts.Values.I32 I32Op.LtU))
+      G.i (Compare (Wasm_exts.Values.I64 I64Op.LtU))
     ) (
-      body get_pointer ^^
+      body get_address ^^
 
       (* Next element pointer, skewed *)
-      get_pointer ^^
-      compile_add_const element_size ^^
-      set_pointer
+      get_address ^^
+      compile_add64_const (Int64.of_int32 element_size) ^^
+      set_address
     )
 
   (* The primitive operations *)
@@ -4543,10 +4573,10 @@ module Arr = struct
     set_r ^^
 
     (* Write elements *)
-    iterate env get_r (fun get_pointer ->
-      get_pointer ^^
+    iterate env get_r (fun get_address ->
+      get_address ^^
       get_x ^^
-      store_ptr
+      store32_at_address
     ) ^^
 
     get_r ^^
@@ -4568,8 +4598,8 @@ module Arr = struct
     set_i ^^
 
     (* Write elements *)
-    iterate env get_r (fun get_pointer ->
-      get_pointer ^^
+    iterate env get_r (fun get_address ->
+      get_address ^^
       (* The closure *)
       get_f ^^
       Closure.prepare_closure_call env ^^
@@ -4580,7 +4610,7 @@ module Arr = struct
       get_f ^^
       (* Call *)
       Closure.call_closure env 1 1 ^^
-      store_ptr ^^
+      store32_at_address ^^
 
       (* Increment index *)
       get_i ^^
@@ -4592,7 +4622,7 @@ module Arr = struct
 
   let ofBlob env =
     Func.share_code1 Func.Always env "Arr.ofBlob" ("blob", I32Type) [I32Type] (fun env get_blob ->
-      let (set_len, get_len) = new_local env "len" in
+      let (set_len, get_len) = new_local64 env "len" in
       let (set_r, get_r) = new_local env "r" in
 
       get_blob ^^ Blob.len env ^^ set_len ^^
@@ -4601,12 +4631,14 @@ module Arr = struct
 
       get_len ^^ from_0_to_n env (fun get_i ->
         get_r ^^ get_i ^^ unsafe_idx env ^^
-        get_blob ^^ Blob.payload_ptr_unskewed env ^^
-        get_i ^^ G.i (Binary (Wasm_exts.Values.I32 I32Op.Add)) ^^
-        G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.(Pack8, ZX)}) ^^
+        get_blob ^^ Blob.payload_address env ^^
+        get_i ^^ 
+        G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
+        G.i (Binary (Wasm_exts.Values.I64 I64Op.Add)) ^^
+        G.i (Load {ty = I32Type; align = 0; offset = 0L; sz = Some Wasm.Types.(Pack8, ZX)}) ^^
         TaggedSmallWord.msb_adjust Type.Nat8 ^^
         TaggedSmallWord.tag env Type.Nat8 ^^
-        store_ptr
+        store32_at_address
       ) ^^
       get_r ^^
       Tagged.allocation_barrier env
@@ -4614,7 +4646,7 @@ module Arr = struct
 
   let toBlob env =
     Func.share_code1 Func.Always env "Arr.toBlob" ("array", I32Type) [I32Type] (fun env get_a ->
-      let (set_len, get_len) = new_local env "len" in
+      let (set_len, get_len) = new_local64 env "len" in
       let (set_r, get_r) = new_local env "r" in
 
       get_a ^^ len env ^^ set_len ^^
@@ -4622,12 +4654,14 @@ module Arr = struct
       get_len ^^ Blob.alloc env ^^ set_r ^^
 
       get_len ^^ from_0_to_n env (fun get_i ->
-        get_r ^^ Blob.payload_ptr_unskewed env ^^
-        get_i ^^ G.i (Binary (Wasm_exts.Values.I32 I32Op.Add)) ^^
+        get_r ^^ Blob.payload_address env ^^
+        get_i ^^ 
+        G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
+        G.i (Binary (Wasm_exts.Values.I64 I64Op.Add)) ^^
         get_a ^^ get_i ^^ unsafe_idx env ^^
-        load_ptr ^^
+        load32_from_address ^^
         TaggedSmallWord.lsb_adjust Type.Nat8 ^^
-        G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.Pack8})
+        G.i (Store {ty = I32Type; align = 0; offset = 0L; sz = Some Wasm.Types.Pack8})
       ) ^^
 
       get_r
@@ -4651,7 +4685,7 @@ module Tuple = struct
   (* Expects on the stack the pointer to the array. *)
   let load_n env n =
     Tagged.load_forwarding_pointer env ^^
-    Tagged.load_field env (Int32.add Arr.header_size n)
+    Tagged.load_field env Int64.(add (of_int32 Arr.header_size) n)
 
   (* Takes n elements of the stack and produces an argument tuple *)
   let from_stack env n =
@@ -4809,39 +4843,39 @@ module IC = struct
 
   let import_ic0 env =
       E.add_func_import env "ic0" "accept_message" [] [];
-      E.add_func_import env "ic0" "call_data_append" (i32s 2) [];
+      E.add_func_import env "ic0" "call_data_append_64" (i64s 2) [];
       E.add_func_import env "ic0" "call_cycles_add128" (i64s 2) [];
-      E.add_func_import env "ic0" "call_new" (i32s 8) [];
+      E.add_func_import env "ic0" "call_new_64" [I64Type; I64Type; I64Type; I64Type; I32Type; I32Type; I32Type; I32Type] [];
       E.add_func_import env "ic0" "call_perform" [] [I32Type];
       E.add_func_import env "ic0" "call_on_cleanup" (i32s 2) [];
-      E.add_func_import env "ic0" "canister_cycle_balance128" [I32Type] [];
-      E.add_func_import env "ic0" "canister_self_copy" (i32s 3) [];
+      E.add_func_import env "ic0" "canister_cycle_balance128_64" [I64Type] [];
+      E.add_func_import env "ic0" "canister_self_copy_64" (i64s 3) [];
       E.add_func_import env "ic0" "canister_self_size" [] [I32Type];
       E.add_func_import env "ic0" "canister_status" [] [I32Type];
       E.add_func_import env "ic0" "canister_version" [] [I64Type];
-      E.add_func_import env "ic0" "is_controller" (i32s 2) [I32Type];
-      E.add_func_import env "ic0" "debug_print" (i32s 2) [];
-      E.add_func_import env "ic0" "msg_arg_data_copy" (i32s 3) [];
+      E.add_func_import env "ic0" "is_controller_64" (i64s 2) [I32Type];
+      E.add_func_import env "ic0" "debug_print_64" (i64s 2) [];
+      E.add_func_import env "ic0" "msg_arg_data_copy_64" (i64s 3) [];
       E.add_func_import env "ic0" "msg_arg_data_size" [] [I32Type];
-      E.add_func_import env "ic0" "msg_caller_copy" (i32s 3) [];
+      E.add_func_import env "ic0" "msg_caller_copy_64" (i64s 3) [];
       E.add_func_import env "ic0" "msg_caller_size" [] [I32Type];
-      E.add_func_import env "ic0" "msg_cycles_available128" [I32Type] [];
-      E.add_func_import env "ic0" "msg_cycles_refunded128" [I32Type] [];
-      E.add_func_import env "ic0" "msg_cycles_accept128" [I64Type; I64Type; I32Type] [];
-      E.add_func_import env "ic0" "certified_data_set" (i32s 2) [];
+      E.add_func_import env "ic0" "msg_cycles_available128_64" [I64Type] [];
+      E.add_func_import env "ic0" "msg_cycles_refunded128_64" [I64Type] [];
+      E.add_func_import env "ic0" "msg_cycles_accept128_64" (i64s 3) [];
+      E.add_func_import env "ic0" "certified_data_set_64" (i64s 2) [];
       E.add_func_import env "ic0" "data_certificate_present" [] [I32Type];
       E.add_func_import env "ic0" "data_certificate_size" [] [I32Type];
-      E.add_func_import env "ic0" "data_certificate_copy" (i32s 3) [];
+      E.add_func_import env "ic0" "data_certificate_copy_64" (i64s 3) [];
       E.add_func_import env "ic0" "msg_method_name_size" [] [I32Type];
-      E.add_func_import env "ic0" "msg_method_name_copy" (i32s 3) [];
+      E.add_func_import env "ic0" "msg_method_name_copy_64" (i64s 3) [];
       E.add_func_import env "ic0" "msg_reject_code" [] [I32Type];
       E.add_func_import env "ic0" "msg_reject_msg_size" [] [I32Type];
-      E.add_func_import env "ic0" "msg_reject_msg_copy" (i32s 3) [];
-      E.add_func_import env "ic0" "msg_reject" (i32s 2) [];
-      E.add_func_import env "ic0" "msg_reply_data_append" (i32s 2) [];
+      E.add_func_import env "ic0" "msg_reject_msg_copy_64" (i64s 3) [];
+      E.add_func_import env "ic0" "msg_reject_64" (i64s 2) [];
+      E.add_func_import env "ic0" "msg_reply_data_append_64" (i64s 2) [];
       E.add_func_import env "ic0" "msg_reply" [] [];
       E.add_func_import env "ic0" "performance_counter" [I32Type] [I64Type];
-      E.add_func_import env "ic0" "trap" (i32s 2) [];
+      E.add_func_import env "ic0" "trap_64" (i64s 2) [];
       E.add_func_import env "ic0" "stable64_write" (i64s 3) [];
       E.add_func_import env "ic0" "stable64_read" (i64s 3) [];
       E.add_func_import env "ic0" "stable64_size" [] [I64Type];
@@ -4858,61 +4892,87 @@ module IC = struct
     | Flags.RefMode  ->
       import_ic0 env
     | Flags.WASIMode ->
+      (* Wasi function is still 32-bit based *)
       E.add_func_import env "wasi_snapshot_preview1" "fd_write" [I32Type; I32Type; I32Type; I32Type] [I32Type];
     | Flags.WasmMode -> ()
 
   let system_call env funcname = E.call_import env "ic0" funcname
 
   let register env =
-
-      Func.define_built_in env "print_ptr" [("ptr", I32Type); ("len", I32Type)] [] (fun env ->
+      let min env first second = 
+        first ^^
+        second ^^
+        compile_comparison I64Op.LtU ^^
+        E.if1 I64Type (first) (second) in
+          
+      Func.define_built_in env "print_ptr" [("ptr", I64Type); ("len", I64Type)] [] (fun env ->
         match E.mode env with
         | Flags.WasmMode -> G.i Nop
         | Flags.ICMode | Flags.RefMode ->
-            G.i (LocalGet (nr 0l)) ^^
-            G.i (LocalGet (nr 1l)) ^^
-            system_call env "debug_print"
+          G.i (LocalGet (nr 0l)) ^^
+          G.i (LocalGet (nr 1l)) ^^
+          system_call env "debug_print_64"
         | Flags.WASIMode -> begin
+          (* Since the wasmtime `fd_write` function still only supports 32-bit addresses in 64-bit mode, 
+             we use a static buffer for the text output that resides in the 32-bit space.
+             This buffer is reserved is limited to 512 bytes and is managed in the RTS, see `buffer_in_32_bit_range()`. *)
           let get_ptr = G.i (LocalGet (nr 0l)) in
           let get_len = G.i (LocalGet (nr 1l)) in
 
           Stack.with_words env "io_vec" 6l (fun get_iovec_ptr ->
+            let buffer_length = 512 in
+            let buffer_ptr = E.call_import env "rts" "buffer_in_32_bit_range" in
+
+            (* Truncate the text if it does not fit into the buffer **)
+            min env (compile_unboxed_const (Int64.of_int buffer_length)) get_len ^^
+            G.setter_for get_len ^^
+
+            (* Copy the text to the static buffer in 32-bit space *)
+            buffer_ptr ^^
+            get_ptr ^^
+            get_len ^^
+            Heap.memcpy env ^^
+
             (* We use the iovec functionality to append a newline *)
             get_iovec_ptr ^^
-            get_ptr ^^
-            G.i (Store {ty = I32Type; align = 2; offset = 0l; sz = None}) ^^
+            narrow_to_32 env buffer_ptr ^^ (* This is safe because the buffer resides in 32-bit space *)
+            G.i (Store {ty = I32Type; align = 2; offset = 0L; sz = None}) ^^
 
             get_iovec_ptr ^^
-            get_len ^^
-            G.i (Store {ty = I32Type; align = 2; offset = 4l; sz = None}) ^^
+            narrow_to_32 env get_len ^^
+            G.i (Store {ty = I32Type; align = 2; offset = 4L; sz = None}) ^^
 
             get_iovec_ptr ^^
-            get_iovec_ptr ^^ compile_add_const 16l ^^
-            G.i (Store {ty = I32Type; align = 2; offset = 8l; sz = None}) ^^
+            narrow_to_32 env get_iovec_ptr ^^ (* The stack pointer should always be in the 32-bit space *)
+            compile_add32_const 16l ^^
+            G.i (Store {ty = I32Type; align = 2; offset = 8L; sz = None}) ^^
 
             get_iovec_ptr ^^
             compile_unboxed_const 1l ^^
-            G.i (Store {ty = I32Type; align = 2; offset = 12l; sz = None}) ^^
+            G.i (Store {ty = I32Type; align = 2; offset = 12L; sz = None}) ^^
 
             get_iovec_ptr ^^
             compile_unboxed_const (Int32.of_int (Char.code '\n')) ^^
-            G.i (Store {ty = I32Type; align = 0; offset = 16l; sz = Some Wasm.Types.Pack8}) ^^
+            G.i (Store {ty = I32Type; align = 0; offset = 16L; sz = Some Wasm.Types.Pack8}) ^^
 
             (* Call fd_write twice to work around
                https://github.com/bytecodealliance/wasmtime/issues/629
             *)
 
             compile_unboxed_const 1l (* stdout *) ^^
-            get_iovec_ptr ^^
+            narrow_to_32 env get_iovec_ptr ^^
             compile_unboxed_const 1l (* one string segment (2 doesn't work) *) ^^
-            get_iovec_ptr ^^ compile_add_const 20l ^^ (* out for bytes written, we ignore that *)
+            narrow_to_32 env get_iovec_ptr ^^
+            compile_add_const 20l ^^ (* out for bytes written, we ignore that *)
             E.call_import env "wasi_snapshot_preview1" "fd_write" ^^
             G.i Drop ^^
 
             compile_unboxed_const 1l (* stdout *) ^^
-            get_iovec_ptr ^^ compile_add_const 8l ^^
+            narrow_to_32 env get_iovec_ptr ^^
+            compile_add_const 8l ^^
             compile_unboxed_const 1l (* one string segment *) ^^
-            get_iovec_ptr ^^ compile_add_const 20l ^^ (* out for bytes written, we ignore that *)
+            narrow_to_32 env get_iovec_ptr ^^
+            compile_add_const 20l ^^ (* out for bytes written, we ignore that *)
             E.call_import env "wasi_snapshot_preview1" "fd_write" ^^
             G.i Drop)
           end);
@@ -4940,7 +5000,7 @@ module IC = struct
     Func.share_code1 Func.Never env "print_text" ("str", I32Type) [] (fun env get_str ->
       let (set_blob, get_blob) = new_local env "blob" in
       get_str ^^ Text.to_blob env ^^ set_blob ^^
-      get_blob ^^ Blob.payload_ptr_unskewed env ^^
+      get_blob ^^ Blob.payload_address env ^^
       get_blob ^^ Blob.len env ^^
       print_ptr_len env
     )
@@ -4949,7 +5009,7 @@ module IC = struct
   let _compile_static_print env s =
     Blob.lit_ptr_len env s ^^ print_ptr_len env
 
-  let ic_trap env = system_call env "trap"
+  let ic_trap env = system_call env "trap_64"
 
   let trap_ptr_len env =
     match E.mode env with
@@ -5084,9 +5144,11 @@ module IC = struct
     | Flags.ICMode | Flags.RefMode ->
       Func.share_code0 Func.Never env "canister_self" [I32Type] (fun env ->
         Blob.of_size_copy env
-          (fun env -> system_call env "canister_self_size")
-          (fun env -> system_call env "canister_self_copy")
-          (fun env -> compile_unboxed_const 0l)
+          (fun env -> 
+            system_call env "canister_self_size" ^^
+            G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)))
+          (fun env -> system_call env "canister_self_copy_64")
+          (fun env -> compile_const_64 0L)
       )
     | _ ->
       E.trap_with env "cannot get self-actor-reference when running locally"
@@ -5102,9 +5164,11 @@ module IC = struct
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
       Blob.of_size_copy env
-        (fun env -> system_call env "msg_caller_size")
-        (fun env -> system_call env "msg_caller_copy")
-        (fun env -> compile_unboxed_const 0l)
+        (fun env -> 
+          system_call env "msg_caller_size" ^^
+          G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)))
+        (fun env -> system_call env "msg_caller_copy_64")
+        (fun env -> compile_const_64 0L)
     | _ ->
       E.trap_with env (Printf.sprintf "cannot get caller when running locally")
 
@@ -5112,9 +5176,11 @@ module IC = struct
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
       Blob.of_size_copy env
-        (fun env -> system_call env "msg_method_name_size")
-        (fun env -> system_call env "msg_method_name_copy")
-        (fun env -> compile_unboxed_const 0l)
+        (fun env -> 
+          system_call env "msg_method_name_size" ^^
+          G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)))
+        (fun env -> system_call env "msg_method_name_copy_64")
+        (fun env -> compile_const_64 0L)
     | _ ->
       E.trap_with env (Printf.sprintf "cannot get method_name when running locally")
 
@@ -5122,9 +5188,11 @@ module IC = struct
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
       Blob.of_size_copy env
-        (fun env -> system_call env "msg_arg_data_size")
-        (fun env -> system_call env "msg_arg_data_copy")
-        (fun env -> compile_unboxed_const 0l)
+        (fun env -> 
+          system_call env "msg_arg_data_size" ^^
+          G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)))
+        (fun env -> system_call env "msg_arg_data_copy_64")
+        (fun env -> compile_const_64 0L)
     | _ ->
       E.trap_with env (Printf.sprintf "cannot get arg_data when running locally")
 
@@ -5134,7 +5202,7 @@ module IC = struct
       arg_instrs ^^
       Text.to_blob env ^^
       Blob.as_ptr_len env ^^
-      system_call env "msg_reject"
+      system_call env "msg_reject_64"
     | _ ->
       E.trap_with env (Printf.sprintf "cannot reject when running locally")
 
@@ -5158,9 +5226,11 @@ module IC = struct
   let error_message env =
     Func.share_code0 Func.Never env "error_message" [I32Type] (fun env ->
       Blob.of_size_copy env
-        (fun env -> system_call env "msg_reject_msg_size")
-        (fun env -> system_call env "msg_reject_msg_copy")
-        (fun env -> compile_unboxed_const 0l)
+        (fun env -> 
+          system_call env "msg_reject_msg_size" ^^
+          G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)))
+        (fun env -> system_call env "msg_reject_msg_copy_64")
+        (fun env -> compile_const_64 0l)
     )
 
   let error_value env =
@@ -5171,11 +5241,11 @@ module IC = struct
     )
 
   let reply_with_data env =
-    Func.share_code2 Func.Never env "reply_with_data" (("start", I32Type), ("size", I32Type)) [] (
+    Func.share_code2 Func.Never env "reply_with_data" (("start", I64Type), ("size", I64Type)) [] (
       fun env get_data_start get_data_size ->
         get_data_start ^^
         get_data_size ^^
-        system_call env "msg_reply_data_append" ^^
+        system_call env "msg_reply_data_append_64" ^^
         system_call env "msg_reply"
    )
 
@@ -5198,19 +5268,19 @@ module IC = struct
   let gc_trigger_method_name = Type.(motoko_gc_trigger_fld.lab)
 
   let is_self_call env =
-    let (set_len_self, get_len_self) = new_local env "len_self" in
-    let (set_len_caller, get_len_caller) = new_local env "len_caller" in
-    system_call env "canister_self_size" ^^ set_len_self ^^
-    system_call env "msg_caller_size" ^^ set_len_caller ^^
-    get_len_self ^^ get_len_caller ^^ G.i (Compare (Wasm_exts.Values.I32 I32Op.Eq)) ^^
+    let (set_len_self, get_len_self) = new_local64 env "len_self" in
+    let (set_len_caller, get_len_caller) = new_local64 env "len_caller" in
+    system_call env "canister_self_size" ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^ set_len_self ^^
+    system_call env "msg_caller_size" ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^ set_len_caller ^^
+    get_len_self ^^ get_len_caller ^^ G.i (Compare (Wasm_exts.Values.I64 I64Op.Eq)) ^^
     G.if1 I32Type
       begin
         get_len_self ^^ Stack.dynamic_with_bytes env "str_self" (fun get_str_self ->
           get_len_caller ^^ Stack.dynamic_with_bytes env "str_caller" (fun get_str_caller ->
-            get_str_caller ^^ compile_unboxed_const 0l ^^ get_len_caller ^^
-            system_call env "msg_caller_copy" ^^
-            get_str_self ^^ compile_unboxed_const 0l ^^ get_len_self ^^
-            system_call env "canister_self_copy" ^^
+            get_str_caller ^^ compile_const_64 0L ^^ get_len_caller ^^
+            system_call env "msg_caller_copy_64" ^^
+            get_str_self ^^ compile_const_64 0L ^^ get_len_self ^^
+            system_call env "canister_self_copy_64" ^^
             get_str_self ^^ get_str_caller ^^ get_len_self ^^ Heap.memcmp env ^^
             compile_eq_const 0l))
       end
