@@ -412,8 +412,11 @@ and call_system_func_opt name es obj_typ =
                 (unitE ())
                 (primE (Ir.OtherPrim "trap")
                   [textE "canister_inspect_message explicitly refused message"]))
-        | _name ->
-          callE (varE (var id.it note)) [] (tupE []))
+        | name ->
+           let inst = match name with
+             | "preupgrade" | "postupgrade" -> [T.scope_bound]
+             | _ -> [] in
+          callE (varE (var id.it note)) inst (tupE []))
     | _ -> None) es
 and build_candid ts obj_typ =
   let open Idllib in
