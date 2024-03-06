@@ -160,7 +160,7 @@ end
 Compact 64-bit pointer representation as 32-bit values:
 Supporting 32GB addressable main memory space.
 Objects are aligned to 16 bytes, thus leaving the 4 least significant bits zero.
-The least significant bit is used for pointer tagging using the `skewed` representation.
+The least significant bit is used for pointer tagging using the skewed representation.
 
 Encoding (compaction):
   * (address >> 3) - 1
@@ -170,15 +170,15 @@ Decoding (expansion):
 
 *)
 let address_alignment = 16 (* bytes *)
-let pointer_shift = 3L (* 3 unused bits for 16-byte address alignment, 1 reserved bit for tagging *)
-let max_memory_size = 1 << (32 + pointer_shift)
+let pointer_shift = 3 (* 3 unused bits for 16-byte address alignment, 1 reserved bit for tagging *)
+let max_memory_size = Int64.shift_left 1L (Int.add 32 pointer_shift)
 
 let compact_pointer address =
-  assert ((Int64.to_int address) < max_memory_size);
-  Int32.sub Int64.(to_int32 (shift_right address pointer_shift)) 1l
+  assert (address < max_memory_size);
+  Int32.sub Int64.(to_int32 (shift_right_logical address pointer_shift)) 1l
 
 let expand_pointer pointer =
-  Int64.shift_left_logical (Int64.of_int32 (Int32.add pointer 1l)) pointer_shift
+  Int64.shift_left (Int64.of_int32 (Int32.add pointer 1l)) pointer_shift
 
 (* Generating function names for functions parametrized by prim types *)
 let prim_fun_name p stem = Printf.sprintf "%s<%s>" stem (Type.string_of_prim p)
@@ -926,17 +926,6 @@ let load64_from_address : G.t =
 
 let store64_at_address : G.t =
   G.i (Store {ty = I64Type; align = 2; offset = 0L; sz = None})
-  
-let load_ptr env : G.t =
-  pointer_to_address env ^^
-  load32_from_address
-
-let store_ptr env : G.t =
-  let (set_value, get_value) = new_local env "value" in
-  set_value ^^
-  pointer_to_address env ^^
-  get_value ^^
-  store32_at_address
 
 module FakeMultiVal = struct
   (* For some use-cases (e.g. processing the compiler output with analysis
@@ -1125,11 +1114,11 @@ module RTS = struct
     E.add_func_import env "rts" "memcpy" [I64Type; I64Type; I64Type] [I32Type]; (* standard libc memcpy *)
     E.add_func_import env "rts" "memcmp" [I64Type; I64Type; I64Type] [I32Type];
     E.add_func_import env "rts" "version" [] [I32Type];
-    E.add_func_import env "rts" "parse_idl_header" [I32Type; I32Type; I32Type; I32Type; I32Type] [];
+    E.add_func_import env "rts" "parse_idl_header" [I32Type; I64Type; I64Type; I64Type; I64Type] [];
     E.add_func_import env "rts" "idl_sub_buf_words" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "idl_sub_buf_init" [I32Type; I32Type; I32Type] [];
     E.add_func_import env "rts" "idl_sub"
-      [I32Type; I32Type; I32Type; I32Type; I32Type; I32Type; I32Type; I32Type] [I32Type];
+      [I64Type; I64Type; I64Type; I32Type; I32Type; I32Type; I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "leb128_decode" [I64Type] [I32Type];
     E.add_func_import env "rts" "sleb128_decode" [I64Type] [I32Type];
     E.add_func_import env "rts" "bigint_of_word32" [I32Type] [I32Type];
@@ -1174,7 +1163,7 @@ module RTS = struct
     E.add_func_import env "rts" "utf8_valid" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "utf8_validate" [I32Type; I32Type] [];
     E.add_func_import env "rts" "skip_leb128" [I32Type] [];
-    E.add_func_import env "rts" "skip_any" [I32Type; I32Type; I32Type; I32Type] [];
+    E.add_func_import env "rts" "skip_any" [I64Type; I64Type; I32Type; I32Type] [];
     E.add_func_import env "rts" "find_field" [I32Type; I32Type; I32Type; I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "skip_fields" [I32Type; I32Type; I32Type; I32Type] [];
     E.add_func_import env "rts" "remember_continuation" [I32Type] [I32Type];
@@ -1388,7 +1377,7 @@ module Heap = struct
     G.i (Load {ty = F64Type; align = 2; offset; sz = None})
 
   let store_field_float64 (env : E.t) (i : int32) : G.t =
-    let (set_value, get_value) = new_local_ env F64Type "value" in
+    let (set_value, get_value, _) = new_local_ env F64Type "value" in
     set_value ^^
     pointer_to_address env ^^
     get_value ^^
@@ -1396,9 +1385,9 @@ module Heap = struct
     G.i (Store {ty = F64Type; align = 2; offset; sz = None})
 
   (* Convenience functions related to memory *)
-  (* Copying bytes (works on unskewed memory addresses) *)
+  (* Copying bytes (works on raw 64-bit memory addresses) *)
   let memcpy env = E.call_import env "rts" "memcpy" ^^ G.i Drop
-  (* Comparing bytes (works on unskewed memory addresses) *)
+  (* Comparing bytes (works on raw 64-bit memory addresses) *)
   let memcmp env = E.call_import env "rts" "memcmp"
 
   let register env =
@@ -1424,7 +1413,7 @@ module Stack = struct
 
      We sometimes use the stack space if we need small amounts of scratch space.
 
-     All pointers here are unskewed.
+     All pointers here are raw 64-bit memory addresses.
 
      (We report logical stack overflow as "RTS Stack underflow" as the stack
      grows downwards.)
@@ -2087,6 +2076,7 @@ module Tagged = struct
       G.i (Compare (Wasm_exts.Values.I32 I32Op.Eq)) ^^
       E.else_trap_with env "missing object forwarding" ^^
       get_object
+    )
   
   let check_forwarding_for_store env typ =
     let (set_value, get_value, _) = new_local_ env typ "value" in
@@ -2915,20 +2905,20 @@ module ReadBuf = struct
   *)
 
   (* 64-bit addresses *)
-  let ptr_offset = 0L
+  let current_offset = 0L
   let end_offset = 8L
 
-  let get_ptr get_buf =
-    get_buf ^^ G.i (Load {ty = I64Type; align = 2; offset = ptr_offset; sz = None})
+  let get_current get_buf =
+    get_buf ^^ G.i (Load {ty = I64Type; align = 2; offset = current_offset; sz = None})
   let get_end get_buf =
     get_buf ^^ G.i (Load {ty = I64Type; align = 2; offset = end_offset; sz = None})
-  let set_ptr get_buf new_val =
-    get_buf ^^ new_val ^^ G.i (Store {ty = I64Type; align = 2; offset = ptr_offset; sz = None})
+  let set_current get_buf new_val =
+    get_buf ^^ new_val ^^ G.i (Store {ty = I64Type; align = 2; offset = current_offset; sz = None})
   let set_end get_buf new_val =
     get_buf ^^ new_val ^^ G.i (Store {ty = I64Type; align = 2; offset = end_offset; sz = None})
   let set_size get_buf get_size =
     set_end get_buf
-      (get_ptr get_buf ^^ 
+      (get_current get_buf ^^ 
        get_size ^^ 
        G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
        G.i (Binary (Wasm_exts.Values.I64 I64Op.Add)))
@@ -2936,8 +2926,8 @@ module ReadBuf = struct
   let alloc env f = Stack.with_words env "buf" (Int32.mul 2l words_per_address) f
 
   let advance get_buf get_delta =
-    set_ptr get_buf 
-      (get_ptr get_buf ^^ 
+    set_current get_buf 
+      (get_current get_buf ^^ 
        get_delta ^^
        G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
        G.i (Binary (Wasm_exts.Values.I64 I64Op.Add)))
@@ -2951,35 +2941,35 @@ module ReadBuf = struct
   let check_space env get_buf get_delta =
     get_delta ^^
     G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
-    get_end get_buf ^^ get_ptr get_buf ^^ G.i (Binary (Wasm_exts.Values.I64 I64Op.Sub)) ^^
+    get_end get_buf ^^ get_current get_buf ^^ G.i (Binary (Wasm_exts.Values.I64 I64Op.Sub)) ^^
     G.i (Compare (Wasm_exts.Values.I64 I64Op.LeU)) ^^
     E.else_trap_with env "IDL error: out of bounds read"
 
   let check_page_end env get_buf incr_delta =
-    get_ptr get_buf ^^ compile_bitand64_const 0xFFFFL ^^
+    get_current get_buf ^^ compile_bitand64_const 0xFFFFL ^^
     incr_delta ^^
     G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
     compile_shrU64_const 16L
 
   let is_empty env get_buf =
-    get_end get_buf ^^ get_ptr get_buf ^^
+    get_end get_buf ^^ get_current get_buf ^^
     G.i (Compare (Wasm_exts.Values.I64 I64Op.Eq))
 
   let read_byte env get_buf =
     check_space env get_buf (compile_unboxed_const 1l) ^^
-    get_ptr get_buf ^^
+    get_current get_buf ^^
     G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.(Pack8, ZX)}) ^^
     advance get_buf (compile_unboxed_const 1l)
 
   let read_word16 env get_buf =
     check_space env get_buf (compile_unboxed_const 2l) ^^
-    get_ptr get_buf ^^
+    get_current get_buf ^^
     G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.(Pack16, ZX)}) ^^
     advance get_buf (compile_unboxed_const 2l)
 
   let read_word32 env get_buf =
     check_space env get_buf (compile_unboxed_const 4l) ^^
-    get_ptr get_buf ^^
+    get_current get_buf ^^
     G.i (Load {ty = I32Type; align = 0; offset = 0l; sz = None}) ^^
     advance get_buf (compile_unboxed_const 4l)
 
@@ -2988,26 +2978,26 @@ module ReadBuf = struct
     G.if1 I64Type
       (compile_const_64 (-1L))
       begin
-        get_ptr get_buf ^^
+        get_current get_buf ^^
         G.i (Load {ty = I64Type; align = 0; offset = 0l; sz = None})
       end
 
   let read_word64 env get_buf =
     check_space env get_buf (compile_unboxed_const 8l) ^^
-    get_ptr get_buf ^^
+    get_current get_buf ^^
     G.i (Load {ty = I64Type; align = 0; offset = 0l; sz = None}) ^^
     advance get_buf (compile_unboxed_const 8l)
 
   let read_float64 env get_buf =
     check_space env get_buf (compile_unboxed_const 8l) ^^
-    get_ptr get_buf ^^
+    get_current get_buf ^^
     G.i (Load {ty = F64Type; align = 0; offset = 0l; sz = None}) ^^
     advance get_buf (compile_unboxed_const 8l)
 
   let read_blob env get_buf get_len =
     check_space env get_buf get_len ^^
     (* Already has destination address on the stack *)
-    get_ptr get_buf ^^
+    get_current get_buf ^^
     get_len ^^
     Heap.memcpy env ^^
     advance get_buf get_len
@@ -4100,8 +4090,8 @@ module Object = struct
 
      The field hashes reside in a blob inside the dynamic heap.
      The hash blob needs to be tracked by the GC, but not the content of the hash blob.
-     This is because the hash values are plain numbers that would look like skewed pointers.ters.
-     The hash_ptr is skewed.
+     This is because the hash values are plain numbers that could look like pointers.
+     The hash_ptr is a compact 64-bit pointer.
      TODO: Optimize by sharing the hash blob for objects of the same type.
  
      The field2_data for immutable fields is a vanilla word.
@@ -4558,7 +4548,7 @@ module Arr = struct
     ) (
       body get_address ^^
 
-      (* Next element pointer, skewed *)
+      (* Advance addresss to next element *)
       get_address ^^
       compile_add64_const element_size ^^
       set_address
@@ -4789,12 +4779,12 @@ module Lifecycle = struct
 
   let get env =
     compile_unboxed_const (ptr ()) ^^
-    load_unskewed_ptr
+    load32_from_address
 
   let set env new_state =
     compile_unboxed_const (ptr ()) ^^
     compile_unboxed_const (int_of_state new_state) ^^
-    store_unskewed_ptr
+    store32_at_address
 
   let trans env new_state =
     let name = "trans_state" ^ Int32.to_string (int_of_state new_state) in
@@ -5372,7 +5362,7 @@ module IC = struct
           Blob.of_size_copy env
             (fun env -> 
               system_call env "data_certificate_size" ^^
-              G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))))
+              G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)))
             (fun env -> system_call env "data_certificate_copy_64")
             (fun env -> compile_unboxed_const 0l)
         )
@@ -6800,7 +6790,7 @@ module MakeSerialization (Strm : Stream) = struct
         size_word env (get_x ^^ Arr.len env) ^^
         get_x ^^ Arr.len env ^^
         from_0_to_n env (fun get_i ->
-          get_x ^^ get_i ^^ Arr.unsafe_idx env ^^ load_ptr ^^
+          get_x ^^ get_i ^^ Arr.unsafe_idx env ^^ load32_from_address ^^
           size env t
         )
       | Prim Blob ->
@@ -6974,7 +6964,7 @@ module MakeSerialization (Strm : Stream) = struct
         write_word_leb env get_data_buf (get_x ^^ Arr.len env) ^^
         get_x ^^ Arr.len env ^^
         from_0_to_n env (fun get_i ->
-          get_x ^^ get_i ^^ Arr.unsafe_idx env ^^ load_ptr ^^
+          get_x ^^ get_i ^^ Arr.unsafe_idx env ^^ load32_from_address ^^
           write env t
         )
       | Prim Null -> G.nop
@@ -7021,9 +7011,9 @@ module MakeSerialization (Strm : Stream) = struct
 
   (* This value is returned by deserialize_go if deserialization fails in a way
      that should be recoverable by opt parsing.
-     It is an (invalid) sentinel pointer value (in skewed format) and can be used for pointer comparison.
+     It is an (invalid) sentinel pointer value (in tagged compact pointer format) and can be used for pointer comparison.
      It will be never placed on the heap and must not be dereferenced.
-     If unskewed, it refers to the unallocated last Wasm memory page.
+     If translated to memory address, it refers to the unallocated last Wasm memory page.
   *)
   let coercion_error_value env = 0xffff_fffdl
 
@@ -7034,8 +7024,8 @@ module MakeSerialization (Strm : Stream) = struct
     else
       get_typtbl_size1 ^^ count_type_offsets env ^^
       E.call_import env "rts" "idl_sub_buf_words" ^^
-      Stack.dynamic_with_words env "rel_buf" (fun get_ptr ->
-        get_ptr ^^ get_typtbl_size1 ^^ count_type_offsets env ^^
+      Stack.dynamic_with_words env "rel_buf" (fun get_address ->
+        get_address ^^ get_typtbl_size1 ^^ count_type_offsets env ^^
         E.call_import env "rts" "idl_sub_buf_init" ^^
         f get_ptr)
 
@@ -7046,9 +7036,9 @@ module MakeSerialization (Strm : Stream) = struct
     Blob.payload_address env ^^
     G.i (Load {ty = I32Type; align = 0; offset = (Int64.of_int32 (Int32.mul idx candid_type_offset_size)) (*!*); sz = None}) ^^
     Func.share_code6 Func.Always env ("idl_sub")
-      (("rel_buf", I32Type),
-       ("typtbl1", I32Type),
-       ("typtbl_end1", I32Type),
+      (("rel_buf", I64Type),
+       ("typtbl1", I64Type),
+       ("typtbl_end1", I64Type),
        ("typtbl_size1", I32Type),
        ("idltyp1", I32Type),
        ("idltyp2", I32Type)
@@ -7127,7 +7117,7 @@ module MakeSerialization (Strm : Stream) = struct
 
       (* Remember data buffer position, to detect progress *)
       let (set_old_pos, get_old_pos) = new_local env "old_pos" in
-      ReadBuf.get_ptr get_data_buf ^^ set_old_pos ^^
+      ReadBuf.get_current get_data_buf ^^ set_old_pos ^^
 
       let go' can_recover env t =
         (* assumes idltyp on stack *)
@@ -7135,7 +7125,7 @@ module MakeSerialization (Strm : Stream) = struct
           Stack.set_local env StackArgs.idltyp ^^
           (* set up frame arguments *)
           ( (* Reset depth counter if we made progress *)
-            ReadBuf.get_ptr get_data_buf ^^ get_old_pos ^^
+            ReadBuf.get_current get_data_buf ^^ get_old_pos ^^
             G.i (Compare (Wasm_exts.Values.I32 I32Op.Eq)) ^^
             G.if1 I32Type
               (Stack.get_prev_local env 1l ^^ compile_add_const 1l)
@@ -7243,13 +7233,13 @@ module MakeSerialization (Strm : Stream) = struct
       let read_text () =
         let (set_len, get_len) = new_local env "len" in
         ReadBuf.read_leb128 env get_data_buf ^^ set_len ^^
-        let (set_ptr, get_ptr) = new_local env "x" in
-        ReadBuf.get_ptr get_data_buf ^^ set_ptr ^^
+        let (set_current, get_current) = new_local env "current" in
+        ReadBuf.get_current get_data_buf ^^ set_current ^^
         ReadBuf.advance get_data_buf get_len ^^
         (* validate *)
-        get_ptr ^^ get_len ^^ E.call_import env "rts" "utf8_validate" ^^
+        get_current ^^ get_len ^^ E.call_import env "rts" "utf8_validate" ^^
         (* copy *)
-        get_ptr ^^ get_len ^^ Text.of_ptr_size env
+        get_current ^^ get_len ^^ Text.of_ptr_size env
       in
 
       let read_actor_data () =
@@ -7267,7 +7257,7 @@ module MakeSerialization (Strm : Stream) = struct
         begin
           ReadBuf.alloc env (fun get_typ_buf ->
             (* Update typ_buf *)
-            ReadBuf.set_ptr get_typ_buf (
+            ReadBuf.set_current get_typ_buf (
               get_typtbl ^^
               get_arg_typ ^^ compile_mul_const Heap.word_size ^^
               G.i (Binary (Wasm_exts.Values.I32 I32Op.Add)) ^^
@@ -7296,7 +7286,7 @@ module MakeSerialization (Strm : Stream) = struct
         begin
           ReadBuf.alloc env (fun get_typ_buf ->
             (* Update typ_buf *)
-            ReadBuf.set_ptr get_typ_buf (
+            ReadBuf.set_current get_typ_buf (
               get_typtbl ^^
               get_arg_typ ^^ compile_mul_const Heap.word_size ^^
               G.i (Binary (Wasm_exts.Values.I32 I32Op.Add)) ^^
@@ -7389,12 +7379,12 @@ module MakeSerialization (Strm : Stream) = struct
           G.i (Compare (Wasm_exts.Values.I32 I32Op.LtS)) ^^
           E.else_trap_with env "Odd offset" ^^
 
-          ReadBuf.get_ptr get_data_buf ^^ set_cur ^^
+          ReadBuf.get_current get_data_buf ^^ set_cur ^^
           ReadBuf.advance get_data_buf (get_offset ^^ compile_add_const (-4l))
         end G.nop ^^
 
-        (* Remember location of ptr *)
-        ReadBuf.get_ptr get_data_buf ^^ set_memo ^^
+        (* Remember current reader location. *)
+        ReadBuf.get_current get_data_buf ^^ set_memo ^^
         (* Did we decode this already? *)
         ReadBuf.read_word32 env get_data_buf ^^ set_result ^^
         get_result ^^ compile_eq_const 0l ^^
@@ -7422,7 +7412,7 @@ module MakeSerialization (Strm : Stream) = struct
 
         (* If this was a reference, reset read buffer *)
         get_is_ref ^^
-        G.if0 (ReadBuf.set_ptr get_data_buf get_cur) G.nop ^^
+        G.if0 (ReadBuf.set_current get_data_buf get_cur) G.nop ^^
 
         get_result
       in
@@ -7589,7 +7579,7 @@ module MakeSerialization (Strm : Stream) = struct
             get_x ^^ get_i ^^ Arr.unsafe_idx env ^^
             get_arg_typ ^^ go env t ^^ set_val ^^
             remember_failure get_val ^^
-            get_val ^^ store_ptr
+            get_val ^^ store32_at_address
           ) ^^
           get_x ^^
           Tagged.allocation_barrier env ^^
@@ -7630,7 +7620,7 @@ module MakeSerialization (Strm : Stream) = struct
           get_x ^^ get_i ^^ Arr.unsafe_idx env ^^
           get_arg_typ ^^ go env t ^^ set_val ^^
           remember_failure get_val ^^
-          get_val ^^ store_ptr
+          get_val ^^ store32_at_address
         ) ^^
         get_x ^^
         Tagged.allocation_barrier env)
@@ -7839,9 +7829,9 @@ module MakeSerialization (Strm : Stream) = struct
       else "@deserialize<" ^ ts_name ^ ">" in
     Func.share_code2 Func.Always env name (("blob", I32Type), ("can_recover", I32Type)) (List.map (fun _ -> I32Type) ts) (fun env get_blob get_can_recover ->
       let (set_data_size, get_data_size) = new_local64 env "data_size" in
-      let (set_refs_size, get_refs_size) = new_local env "refs_size" in
+      let (set_refs_size, get_refs_size) = new_local64 env "refs_size" in
       let (set_data_start, get_data_start) = new_local64 env "data_start" in
-      let (set_refs_start, get_refs_start) = new_local env "refs_start" in
+      let (set_refs_start, get_refs_start) = new_local64 env "refs_start" in
       let (set_arg_count, get_arg_count) = new_local env "arg_count" in
       let (set_val, get_val) = new_local env "val" in
 
@@ -7852,28 +7842,28 @@ module MakeSerialization (Strm : Stream) = struct
       compile_unboxed_const 0l ^^ set_refs_size (* none yet *) ^^
 
       (* Allocate space for out parameters of parse_idl_header *)
-      Stack.with_words env "get_typtbl_size_ptr" 1l (fun get_typtbl_size_ptr ->
-      Stack.with_words env "get_typtbl_ptr" 1l (fun get_typtbl_ptr ->
-      Stack.with_words env "get_maintyps_ptr" 1l (fun get_maintyps_ptr ->
+      Stack.with_words env "get_typtbl_size_address" 1l (fun get_typtbl_size_address ->
+      Stack.with_words env "get_typtbl_address" words_per_address (fun get_typtbl_address ->
+      Stack.with_words env "get_maintyps_address" words_per_address (fun get_maintyps_address ->
 
       (* Set up read buffers *)
       ReadBuf.alloc env (fun get_data_buf -> ReadBuf.alloc env (fun get_ref_buf ->
 
-      ReadBuf.set_ptr get_data_buf get_data_start ^^
+      ReadBuf.set_current get_data_buf get_data_start ^^
       ReadBuf.set_size get_data_buf get_data_size ^^
-      ReadBuf.set_ptr get_ref_buf get_refs_start ^^
-      ReadBuf.set_size get_ref_buf (get_refs_size ^^ compile_mul_const Heap.word_size) ^^
+      ReadBuf.set_current get_ref_buf get_refs_start ^^
+      ReadBuf.set_size get_ref_buf (get_refs_size ^^ compile_mul64_const Heap.word_size) ^^
 
       (* Go! *)
-      Bool.lit extended ^^ get_data_buf ^^ get_typtbl_ptr ^^ get_typtbl_size_ptr ^^ get_maintyps_ptr ^^
+      Bool.lit extended ^^ get_data_buf ^^ get_typtbl_address ^^ get_typtbl_size_address ^^ get_maintyps_address ^^
       E.call_import env "rts" "parse_idl_header" ^^
 
       (* Allocate memo table, if necessary *)
-      with_rel_buf_opt env extended (get_typtbl_size_ptr ^^ load_unskewed_ptr) (fun get_rel_buf_opt ->
+      with_rel_buf_opt env extended (get_typtbl_size_address ^^ load32_from_address) (fun get_rel_buf_opt ->
 
       (* set up a dedicated read buffer for the list of main types *)
       ReadBuf.alloc env (fun get_main_typs_buf ->
-        ReadBuf.set_ptr get_main_typs_buf (get_maintyps_ptr ^^ load_unskewed_ptr) ^^
+        ReadBuf.set_current get_main_typs_buf (get_maintyps_address ^^ load32_from_address) ^^
         ReadBuf.set_end get_main_typs_buf (ReadBuf.get_end get_data_buf) ^^
         ReadBuf.read_leb128 env get_main_typs_buf ^^ set_arg_count ^^
 
@@ -7930,7 +7920,7 @@ module MakeSerialization (Strm : Stream) = struct
          (get_arg_count ^^ compile_rel_const I32Op.GtU 0l)
          begin
            get_data_buf ^^
-           get_typtbl_ptr ^^ load_unskewed_ptr ^^
+           get_typtbl_address ^^ load32_from_address ^^
            ReadBuf.read_sleb128 env get_main_typs_buf ^^
            compile_unboxed_const 0l ^^
            E.call_import env "rts" "skip_any" ^^
@@ -8508,7 +8498,7 @@ module GCRoots = struct
     E.call_import env "rts" "get_static_root" ^^
     compile_unboxed_const index ^^
     Arr.idx env ^^
-    load_ptr
+    load32_from_address
 end (* GCRoots *)
 
 module StackRep = struct
@@ -8826,7 +8816,7 @@ module Var = struct
     | Some ((HeapInd i), typ) when potential_pointer typ ->
       G.i (LocalGet (nr i)) ^^
       Tagged.load_forwarding_pointer env ^^
-      compile_add_const ptr_unskew ^^
+      Heap.pointer_to_address env ^^
       compile_add_const (Int32.mul MutBox.field Heap.word_size),
       SR.Vanilla,
       Tagged.write_with_barrier env
@@ -8837,7 +8827,7 @@ module Var = struct
     | Some ((Static index), typ) when potential_pointer typ ->
       GCRoots.get_static_variable env index ^^
       Tagged.load_forwarding_pointer env ^^
-      compile_add_const ptr_unskew ^^
+      Heap.pointer_to_address env ^^
       compile_add_const (Int32.mul MutBox.field Heap.word_size),
       SR.Vanilla,
       Tagged.write_with_barrier env
@@ -9169,7 +9159,7 @@ module FuncDec = struct
            Blob.of_size_copy env
            (fun env -> 
             IC.system_call env "msg_arg_data_size" ^^
-            G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))))
+            G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)))
            (fun env -> IC.system_call env "msg_arg_data_copy_64")
            (fun env -> compile_const_64 0L)))
     in
@@ -10354,19 +10344,17 @@ let rec compile_lexp (env : E.t) ae lexp : G.t * SR.t * G.t =
   match lexp.it with
   | VarLE var -> Var.set_val env ae var
   | IdxLE (e1, e2) when potential_pointer (Arr.element_type env e1.note.Note.typ) ->
-    compile_array_index env ae e1 e2 ^^
-    compile_add_const ptr_unskew,
+    compile_array_index env ae e1 e2,
     SR.Vanilla,
     Tagged.write_with_barrier env
   | IdxLE (e1, e2) ->
     compile_array_index env ae e1 e2,
     SR.Vanilla,
-    store_ptr
+    store32_at_address
   | DotLE (e, n) when potential_pointer (Object.field_type env e.note.Note.typ n) ->
     compile_exp_vanilla env ae e ^^
     (* Only real objects have mutable fields, no need to branch on the tag *)
-    Object.idx env e.note.Note.typ n ^^
-    compile_add_const ptr_unskew,
+    Object.idx env e.note.Note.typ n,
     SR.Vanilla,
     Tagged.write_with_barrier env
   | DotLE (e, n) ->
@@ -10374,7 +10362,7 @@ let rec compile_lexp (env : E.t) ae lexp : G.t * SR.t * G.t =
     (* Only real objects have mutable fields, no need to branch on the tag *)
     Object.idx env e.note.Note.typ n,
     SR.Vanilla,
-    store_ptr
+    store32_at_address
 
 (* Common code for a[e] as lexp and as exp.
 Traps or pushes the pointer to the element on the stack
@@ -10531,7 +10519,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | IdxPrim, [e1; e2] ->
     SR.Vanilla,
     compile_array_index env ae e1 e2 ^^
-    load_ptr
+    load32_from_address
   (* NB: all these operations assume a valid array index fits in a compact bignum *)
   (* TODO: Rename the functions to `NextArrayIndex` etc. *)
   | NextArrayOffset, [e] ->
@@ -11257,7 +11245,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     let set_principal, get_principal = new_local env "principal" in
     compile_exp_vanilla env ae e ^^
     set_principal ^^ get_principal ^^
-    Blob.payload_ptr_unskewed env ^^
+    Blob.payload_address env ^^
     get_principal ^^
     Blob.len env ^^
     IC.is_controller env
