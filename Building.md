@@ -103,10 +103,11 @@ branch to the `next-moc` branch.
 * Change into `motoko-base`
 * `git switch next-moc; git pull`
 * `git switch -c $USER/update-moc-0.11.$MOC_MINOR`
-* Update the `moc_version` env variable in `.github/workflows/{ci, package-set}.yml`
+* Update the `CHANGELOG.md` file with an entry at the top
+* Update the `moc_version` env variable in `.github/workflows/{ci, package-set}.yml` and `mops.toml`
   to the new released version:
-  `perl -pi -e "s/moc_version: \"0\.11\.\\d+\"/moc_version: \"0.11.$MOC_MINOR\"/g" .github/workflows/ci.yml .github/workflows/package-set.yml`
-* `git add .github/ && git commit -m "Motoko 0.11."$MOC_MINOR`
+  `perl -pi -e "s/moc_version: \"0\.11\.\\d+\"/moc_version: \"0.11.$MOC_MINOR\"/g; s/moc = \"0\.11\.\\d+\"/moc = \"0.11.$MOC_MINOR\"/g; s/version = \"0\.11\.\\d+\"/version = \"0.11.$MOC_MINOR\"/g" .github/workflows/ci.yml .github/workflows/package-set.yml mops.toml`
+* `git add .github/ mops.toml && git commit -m "Motoko 0.11."$MOC_MINOR`
 * You can `git push` now
 
 Make a PR off of that branch and merge it using a _normal merge_ (not
