@@ -6,9 +6,9 @@
 use core::fmt;
 
 extern "C" {
-    // `print_ptr` is implemented by the code generator and has different implementations depending
+    // `print_address_length` is implemented by the code generator and has different implementations depending
     // on the target platform (WASI or IC).
-    fn print_ptr(ptr: usize, len: u32);
+    fn print_address_length(address: usize, length: usize);
 }
 
 /*
@@ -76,7 +76,7 @@ impl<'a> WriteBuf<'a> {
     }
 
     pub(crate) unsafe fn print(&self) {
-        print_ptr(self.buf.as_ptr() as usize, self.offset as u32)
+        print_address_length(self.buf.as_ptr() as usize, self.offset)
     }
 }
 
@@ -99,7 +99,3 @@ impl<'a> fmt::Write for WriteBuf<'a> {
 pub(crate) unsafe fn print(buf: &WriteBuf) {
     buf.print()
 }
-
-// pub(crate) unsafe fn print_str(str: &str) {
-//     print_ptr(str.as_ptr() as usize, str.len() as u32)
-// }

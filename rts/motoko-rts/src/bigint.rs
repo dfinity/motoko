@@ -249,6 +249,21 @@ unsafe extern "C" fn bigint_to_word64_trap(p: Value) -> u64 {
     mp_get_u64(mp_int)
 }
 
+// a : BigInt, msg : Blob
+#[cfg(feature = "ic")]
+#[no_mangle]
+unsafe extern "C" fn bigint_to_word64_trap_with(p: Value, msg: Value) -> u64 {
+    let mp_int = p.as_bigint().mp_int_ptr();
+
+    if mp_isneg(mp_int) || mp_count_bits(mp_int) > 32 {
+        let length = msg.as_blob().len().as_usize();
+        assert!(length <= u32::MAX as usize);
+        crate::rts_trap(msg.as_blob().payload_const(), length as u32);
+    }
+
+    mp_get_u64(mp_int)
+}
+
 #[cfg(feature = "ic")]
 #[no_mangle]
 unsafe extern "C" fn bigint_of_word64(w: u64) -> Value {

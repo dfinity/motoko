@@ -54,8 +54,8 @@ extern "C" fn bigint_trap() -> ! {
 
 // Called by the RTS for debug prints
 #[no_mangle]
-unsafe extern "C" fn print_ptr(ptr: usize, len: u32) {
-    let str: &[u8] = core::slice::from_raw_parts(ptr as *const u8, len as usize);
+unsafe extern "C" fn print_address_length(ptr: usize, length: usize) {
+    let str: &[u8] = core::slice::from_raw_parts(ptr as *const u8, length);
     println!("[RTS] {}", String::from_utf8_lossy(str));
 }
 

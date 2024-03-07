@@ -54,7 +54,11 @@ unsafe fn alloc_text_blob<M: Memory>(mem: &mut M, size: Bytes<usize>) -> Value {
 }
 
 #[ic_mem_fn]
-pub unsafe fn text_of_ptr_size<M: Memory>(mem: &mut M, buf: *const u8, n: Bytes<usize>) -> Value {
+pub unsafe fn text_of_address_size<M: Memory>(
+    mem: &mut M,
+    buf: *const u8,
+    n: Bytes<usize>,
+) -> Value {
     let blob = alloc_text_blob(mem, n);
     let payload_addr = blob.as_blob_mut().payload_addr();
     memcpy_bytes(payload_addr as usize, buf as usize, n);
@@ -62,7 +66,7 @@ pub unsafe fn text_of_ptr_size<M: Memory>(mem: &mut M, buf: *const u8, n: Bytes<
 }
 
 pub unsafe fn text_of_str<M: Memory>(mem: &mut M, s: &str) -> Value {
-    text_of_ptr_size(mem, s.as_ptr(), Bytes(s.len()))
+    text_of_address_size(mem, s.as_ptr(), Bytes(s.len()))
 }
 
 #[ic_mem_fn]

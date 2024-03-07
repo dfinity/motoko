@@ -1,5 +1,5 @@
 use crate::memory::Memory;
-use crate::text::text_of_ptr_size;
+use crate::text::text_of_address_size;
 use crate::types::{Bytes, Value};
 
 use motoko_rts_macros::ic_mem_fn;
@@ -25,7 +25,7 @@ unsafe fn float_fmt<M: Memory>(mem: &mut M, a: f64, prec: u32, mode: u32) -> Val
     // TODO: Certain modes are not supported such as hexadecimal output (mode 3).
 
     let length = written_length(&buffer);
-    text_of_ptr_size(mem, buffer.as_ptr(), Bytes(length))
+    text_of_address_size(mem, buffer.as_ptr(), Bytes(length))
 }
 
 fn written_length(buffer: &[u8]) -> usize {
