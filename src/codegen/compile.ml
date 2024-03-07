@@ -1480,8 +1480,15 @@ module Stack = struct
       G.i Unreachable
     )
 
+  let align_to_address_size bytes =
+    Int64.(mul (div (add bytes (sub Heap.address_size 1L)) Heap.address_size) Heap.address_size)
+
+  let allocation_size words = 
+    let bytes = Int64.mul words Heap.word_size in
+    align_to_address_size bytes
+  
   let alloc_words env n =
-    let n_bytes = Int64.mul n Heap.word_size in
+    let n_bytes = allocation_size n in
     (* avoid absurd allocations *)
     assert (Int64.(to_int n_bytes) < stack_size);
     (* alloc words *)
@@ -1502,8 +1509,9 @@ module Stack = struct
       G.nop
 
   let free_words env n =
+    let n_bytes = allocation_size n in
     get_stack_ptr env ^^
-    compile_const_64 (Int64.mul n Heap.word_size) ^^
+    compile_const_64 n_bytes ^^
     G.i (Binary (Wasm_exts.Values.I64 I64Op.Add)) ^^
     set_stack_ptr env
 
@@ -1514,18 +1522,26 @@ module Stack = struct
     f get_x ^^
     free_words env n
 
+  let dynamic_align_to_address_size =
+    compile_add64_const (Int64.sub Heap.address_size 1L) ^^
+    compile_divU64_const Heap.address_size ^^
+    compile_mul64_const Heap.address_size
+
+  let dynamic_allocation_size =
+    compile_mul64_const Heap.word_size ^^
+    dynamic_align_to_address_size
 
   let dynamic_alloc_words env get_n =
     get_stack_ptr env ^^
     get_n ^^
-    compile_mul64_const Heap.word_size ^^
+    dynamic_allocation_size ^^
     G.i (Compare (Wasm_exts.Values.I64 I64Op.LtU)) ^^
     (G.if0
       (stack_overflow env)
       G.nop) ^^
     get_stack_ptr env ^^
     get_n ^^
-    compile_mul64_const Heap.word_size ^^
+    dynamic_allocation_size ^^
     G.i (Binary (Wasm_exts.Values.I64 I64Op.Sub)) ^^
     set_stack_ptr env ^^
     update_stack_min env ^^
@@ -1534,7 +1550,7 @@ module Stack = struct
   let dynamic_free_words env get_n =
     get_stack_ptr env ^^
     get_n ^^
-    compile_mul64_const Heap.word_size ^^
+    dynamic_allocation_size ^^
     G.i (Binary (Wasm_exts.Values.I64 I64Op.Add)) ^^
     set_stack_ptr env
 
@@ -7888,7 +7904,7 @@ module MakeSerialization (Strm : Stream) = struct
       compile_const_64 0L ^^ set_refs_size (* none yet *) ^^
 
       (* Allocate space for out parameters of parse_idl_header *)
-      Stack.with_words env "get_typtbl_size_address" 1L (fun get_typtbl_size_address ->
+      Stack.with_words env "get_typtbl_size_address" Heap.words_per_address (fun get_typtbl_size_address ->
       Stack.with_words env "get_typtbl_address" Heap.words_per_address (fun get_typtbl_address ->
       Stack.with_words env "get_maintyps_address" Heap.words_per_address (fun get_maintyps_address ->
 
