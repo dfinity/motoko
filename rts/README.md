@@ -105,8 +105,7 @@ re-vendored?`, proceed as follows:
 Running RTS tests
 -----------------
 
-- Build tests using rustc WASI target: `cargo build --target=wasm32-wasi`
-- Run with wasmtime: `wasmtime target/wasm32-wasi/debug/motoko-rts-tests.wasm`
+- `make test`
 
 Debugging the RTS
 -----------------
