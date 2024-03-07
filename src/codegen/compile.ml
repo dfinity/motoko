@@ -585,6 +585,11 @@ module E = struct
     | Some gi -> gi
     | None -> add_global32 env name mut init; get_global env name
 
+  let get_global64_lazy (env : t) name mut init : int32 =
+    match NameEnv.find_opt name !(env.global_names) with
+    | Some gi -> gi
+    | None -> add_global64 env name mut init; get_global env name
+
   let export_global env name =
     add_export env (nr {
       name = Lib.Utf8.decode name;
@@ -955,22 +960,23 @@ module FakeMultiVal = struct
     then tys
     else []
 
-  let global env i =
-    E.get_global32_lazy env (Printf.sprintf "multi_val_%d" i) Mutable 0l
+  let global env i ty =
+    match ty with
+    | I32Type -> E.get_global32_lazy env (Printf.sprintf "multi_val32_%d" i) Mutable 0l
+    | I64Type -> E.get_global64_lazy env (Printf.sprintf "multi_val64_%d" i) Mutable 0L
+    | _ -> assert false
 
   let store env tys =
     if !Flags.multi_value || List.length tys <= 1 then G.nop else
     G.concat_mapi (fun i ty ->
-      assert(ty = I32Type);
-      G.i (GlobalSet (nr (global env i)))
+      G.i (GlobalSet (nr (global env i ty)))
     ) tys
 
   let load env tys =
     if !Flags.multi_value || List.length tys <= 1 then G.nop else
     let n = List.length tys - 1 in
     G.concat_mapi (fun i ty ->
-      assert(ty = I32Type);
-      G.i (GlobalGet (nr (global env (n - i))))
+      G.i (GlobalGet (nr (global env (n - i) ty)))
     ) tys
 
   (* A drop-in replacement for E.if_ *)
@@ -3921,7 +3927,7 @@ module Blob = struct
     load_static_data env s ^^
     get_new_blob
 
-  let as_address_length env = Func.share_code1 Func.Never env "as_address_length" ("x", I32Type) [I32Type; I32Type] (
+  let as_address_length env = Func.share_code1 Func.Never env "as_address_length" ("x", I32Type) [I64Type; I64Type] (
     fun env get_x ->
       get_x ^^ payload_address env ^^
       get_x ^^ len env
