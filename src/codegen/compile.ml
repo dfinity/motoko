@@ -1313,7 +1313,8 @@ module Heap = struct
 
   (* Pointer values are 32 bit (I32Type), representing compact 64-bit addresses. *)
   let word_size = 4L
-  let words_per_address = Int64.div 8L word_size
+  let address_size = 8L
+  let words_per_address = Int64.div address_size word_size
 
   let pointer_to_address env =
     compile_add_const 1l ^^
@@ -2925,9 +2926,8 @@ module ReadBuf = struct
     get_buf ^^ new_val ^^ G.i (Store {ty = I64Type; align = 2; offset = end_offset; sz = None})
   let set_size get_buf get_size =
     set_end get_buf
-      (get_current get_buf ^^ 
-       get_size ^^ 
-       G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
+      (get_current get_buf ^^
+       get_size ^^
        G.i (Binary (Wasm_exts.Values.I64 I64Op.Add)))
 
   let alloc env f = Stack.with_words env "buf" (Int64.mul 2L Heap.words_per_address) f
@@ -2936,7 +2936,6 @@ module ReadBuf = struct
     set_current get_buf 
       (get_current get_buf ^^ 
        get_delta ^^
-       G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
        G.i (Binary (Wasm_exts.Values.I64 I64Op.Add)))
 
   let read_leb128 env get_buf =
@@ -2947,7 +2946,6 @@ module ReadBuf = struct
 
   let check_space env get_buf get_delta =
     get_delta ^^
-    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
     get_end get_buf ^^ get_current get_buf ^^ G.i (Binary (Wasm_exts.Values.I64 I64Op.Sub)) ^^
     G.i (Compare (Wasm_exts.Values.I64 I64Op.LeU)) ^^
     E.else_trap_with env "IDL error: out of bounds read"
@@ -2955,33 +2953,34 @@ module ReadBuf = struct
   let check_page_end env get_buf incr_delta =
     get_current get_buf ^^ compile_bitand64_const 0xFFFFL ^^
     incr_delta ^^
-    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
-    compile_shrU64_const 16L
+    compile_shrU64_const 16L ^^
+    compile_const_64 0L ^^
+    G.i (Compare (Wasm_exts.Values.I64 I64Op.Ne))
 
   let is_empty env get_buf =
     get_end get_buf ^^ get_current get_buf ^^
     G.i (Compare (Wasm_exts.Values.I64 I64Op.Eq))
 
   let read_byte env get_buf =
-    check_space env get_buf (compile_unboxed_const 1l) ^^
+    check_space env get_buf (compile_const_64 1L) ^^
     get_current get_buf ^^
     G.i (Load {ty = I32Type; align = 0; offset = 0L; sz = Some Wasm_exts.Types.(Pack8, ZX)}) ^^
-    advance get_buf (compile_unboxed_const 1l)
+    advance get_buf (compile_const_64 1L)
 
   let read_word16 env get_buf =
-    check_space env get_buf (compile_unboxed_const 2l) ^^
+    check_space env get_buf (compile_const_64 2L) ^^
     get_current get_buf ^^
     G.i (Load {ty = I32Type; align = 0; offset = 0L; sz = Some Wasm_exts.Types.(Pack16, ZX)}) ^^
-    advance get_buf (compile_unboxed_const 2l)
+    advance get_buf (compile_const_64 2L)
 
   let read_word32 env get_buf =
-    check_space env get_buf (compile_unboxed_const 4l) ^^
+    check_space env get_buf (compile_const_64 4L) ^^
     get_current get_buf ^^
     G.i (Load {ty = I32Type; align = 0; offset = 0L; sz = None}) ^^
-    advance get_buf (compile_unboxed_const 4l)
+    advance get_buf (compile_const_64 4L)
 
   let speculative_read_word64 env get_buf =
-    check_page_end env get_buf (compile_add_const 8l) ^^
+    check_page_end env get_buf (compile_add64_const 8L) ^^
     G.if1 I64Type
       (compile_const_64 (-1L))
       begin
@@ -2990,16 +2989,16 @@ module ReadBuf = struct
       end
 
   let read_word64 env get_buf =
-    check_space env get_buf (compile_unboxed_const 8l) ^^
+    check_space env get_buf (compile_const_64 8L) ^^
     get_current get_buf ^^
     G.i (Load {ty = I64Type; align = 0; offset = 0L; sz = None}) ^^
-    advance get_buf (compile_unboxed_const 8l)
+    advance get_buf (compile_const_64 8L)
 
   let read_float64 env get_buf =
-    check_space env get_buf (compile_unboxed_const 8l) ^^
+    check_space env get_buf (compile_const_64 8L) ^^
     get_current get_buf ^^
     G.i (Load {ty = F64Type; align = 0; offset = 0L; sz = None}) ^^
-    advance get_buf (compile_unboxed_const 8l)
+    advance get_buf (compile_const_64 8L)
 
   let read_blob env get_buf get_len =
     check_space env get_buf get_len ^^
@@ -3134,13 +3133,11 @@ module I32Leb = struct
 
   let compile_store_to_data_buf_unsigned env get_x get_buf =
     get_x ^^ get_buf ^^ E.call_import env "rts" "leb128_encode" ^^
-    compile_leb128_size get_x ^^
-    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
+    compile_leb128_size get_x
 
   let compile_store_to_data_buf_signed env get_x get_buf =
     get_x ^^ get_buf ^^ E.call_import env "rts" "sleb128_encode" ^^
-    compile_sleb128_size get_x ^^
-    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
+    compile_sleb128_size get_x
 end
 
 module MakeCompact (Num : BigNumType) : BigNumType = struct
@@ -3741,16 +3738,14 @@ module BigNumLibtommath : BigNumType = struct
     let (set_n, get_n) = new_local env "n" in
     set_n ^^ set_buf ^^
     get_n ^^ get_buf ^^ E.call_import env "rts" "bigint_leb128_encode" ^^
-    get_n ^^ E.call_import env "rts" "bigint_leb128_size" ^^
-    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
+    get_n ^^ E.call_import env "rts" "bigint_leb128_size"
 
   let compile_store_to_data_buf_signed env =
     let (set_buf, get_buf) = new_local env "buf" in
     let (set_n, get_n) = new_local env "n" in
     set_n ^^ set_buf ^^
     get_n ^^ get_buf ^^ E.call_import env "rts" "bigint_sleb128_encode" ^^
-    get_n ^^ E.call_import env "rts" "bigint_sleb128_size" ^^
-    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
+    get_n ^^ E.call_import env "rts" "bigint_sleb128_size"
 
   let compile_load_from_data_buf env get_data_buf = function
     | false -> get_data_buf ^^ E.call_import env "rts" "bigint_leb128_decode"
@@ -6307,6 +6302,7 @@ module BumpStream : Stream = struct
     let set_word, get_word = new_local env "word" in
     code ^^ set_word ^^
     I32Leb.compile_store_to_data_buf_unsigned env get_word get_data_buf ^^
+    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
     advance_data_buf get_data_buf
 
   let write_word_32 env get_data_buf code =
@@ -6331,7 +6327,7 @@ module BumpStream : Stream = struct
     advance_data_buf get_data_buf
 
   let write_text env get_data_buf get_x =
-    let set_len, get_len = new_local env "len" in
+    let set_len, get_len = new_local64 env "len" in
     get_x ^^ Text.size env ^^ set_len ^^
     write_word_leb env get_data_buf get_len ^^
     get_x ^^ get_data_buf ^^ Text.to_buf env ^^
@@ -6341,12 +6337,14 @@ module BumpStream : Stream = struct
     get_data_buf ^^
     get_x ^^
     BigNum.compile_store_to_data_buf_unsigned env ^^
+    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
     advance_data_buf get_data_buf
 
   let write_bignum_sleb env get_data_buf get_x =
     get_data_buf ^^
     get_x ^^
     BigNum.compile_store_to_data_buf_signed env ^^
+    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
     advance_data_buf get_data_buf
 
 end
@@ -6705,14 +6703,14 @@ module MakeSerialization (Strm : Stream) = struct
     let open Type in
     let t = Type.normalize t in
     let name = "@buffer_size<" ^ typ_hash t ^ ">" in
-    Func.share_code1 Func.Always env name ("x", I32Type) [I32Type; I32Type]
+    Func.share_code1 Func.Always env name ("x", I32Type) [I64Type; I64Type]
     (fun env get_x ->
 
       (* Some combinators for writing values *)
       let (set_data_size, get_data_size) = new_local64 env "data_size" in
-      let (set_ref_size, get_ref_size) = new_local env "ref_size" in
+      let (set_ref_size, get_ref_size) = new_local64 env "ref_size" in
       compile_const_64 0L ^^ set_data_size ^^
-      compile_unboxed_const 0l ^^ set_ref_size ^^
+      compile_const_64 0L ^^ set_ref_size ^^
 
       let inc_data_size code =
         get_data_size ^^
@@ -6730,7 +6728,7 @@ module MakeSerialization (Strm : Stream) = struct
       let size env t =
         let (set_inc, get_inc) = new_local env "inc" in
         buffer_size env t ^^
-        get_ref_size ^^ G.i (Binary (Wasm_exts.Values.I32 I32Op.Add)) ^^ set_ref_size ^^
+        get_ref_size ^^ G.i (Binary (Wasm_exts.Values.I64 I64Op.Add)) ^^ set_ref_size ^^
         set_inc ^^ inc_data_size get_inc
       in
 
@@ -6860,14 +6858,7 @@ module MakeSerialization (Strm : Stream) = struct
         size_alias (fun () -> get_x ^^ MutBox.load_field env ^^ size env t)
       | _ -> todo "buffer_size" (Arrange_ir.typ t) G.nop
       end ^^
-      (* Check 32-bit overflow of buffer_size *)
       get_data_size ^^
-      compile_shrU64_const 32L ^^
-      G.i (Test (Wasm_exts.Values.I64 I64Op.Eqz)) ^^
-      E.else_trap_with env "buffer_size overflow" ^^
-      (* Convert to 32-bit *)
-      get_data_size ^^
-      G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
       get_ref_size
     )
 
@@ -6876,7 +6867,7 @@ module MakeSerialization (Strm : Stream) = struct
     let open Type in
     let t = Type.normalize t in
     let name = Strm.name_for "serialize_go" [t] in
-    Func.share_code3 Func.Always env name (("x", I32Type), ("data_buffer", I32Type), ("ref_buffer", I32Type)) [I32Type; I32Type]
+    Func.share_code3 Func.Always env name (("x", I32Type), ("data_buffer", I64Type), ("ref_buffer", I64Type)) [I64Type; I64Type]
     (fun env get_x get_data_buf get_ref_buf ->
       let set_ref_buf = G.setter_for get_ref_buf in
 
@@ -7049,6 +7040,7 @@ module MakeSerialization (Strm : Stream) = struct
     else
       get_typtbl_size1 ^^ count_type_offsets env ^^
       E.call_import env "rts" "idl_sub_buf_words" ^^
+      G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
       Stack.dynamic_with_words env "rel_buf" (fun get_address ->
         get_address ^^ get_typtbl_size1 ^^ count_type_offsets env ^^
         E.call_import env "rts" "idl_sub_buf_init" ^^
@@ -7141,7 +7133,7 @@ module MakeSerialization (Strm : Stream) = struct
       E.else_trap_with env ("IDL error: circular record read") ^^
 
       (* Remember data buffer position, to detect progress *)
-      let (set_old_pos, get_old_pos) = new_local env "old_pos" in
+      let (set_old_pos, get_old_pos) = new_local64 env "old_pos" in
       ReadBuf.get_current get_data_buf ^^ set_old_pos ^^
 
       let go' can_recover env t =
@@ -7151,7 +7143,7 @@ module MakeSerialization (Strm : Stream) = struct
           (* set up frame arguments *)
           ( (* Reset depth counter if we made progress *)
             ReadBuf.get_current get_data_buf ^^ get_old_pos ^^
-            G.i (Compare (Wasm_exts.Values.I32 I32Op.Eq)) ^^
+            G.i (Compare (Wasm_exts.Values.I64 I64Op.Eq)) ^^
             G.if1 I32Type
               (Stack.get_prev_local env 1l ^^ compile_add_const 1l)
               (compile_unboxed_const 0l)
@@ -7286,9 +7278,9 @@ module MakeSerialization (Strm : Stream) = struct
               get_typtbl ^^
               get_arg_typ ^^ 
               G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
-              compile_mul64_const Heap.word_size ^^
+              compile_mul64_const Heap.address_size ^^
               G.i (Binary (Wasm_exts.Values.I64 I64Op.Add)) ^^
-              load32_from_address
+              load64_from_address
             ) ^^
             ReadBuf.set_end get_typ_buf (ReadBuf.get_end get_data_buf) ^^
             (* read sleb128 *)
@@ -7317,9 +7309,9 @@ module MakeSerialization (Strm : Stream) = struct
               get_typtbl ^^
               get_arg_typ ^^ 
               G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
-              compile_mul64_const Heap.word_size ^^
+              compile_mul64_const Heap.address_size ^^
               G.i (Binary (Wasm_exts.Values.I64 I64Op.Add)) ^^
-              load32_from_address
+              load64_from_address
             ) ^^
             ReadBuf.set_end get_typ_buf (ReadBuf.get_end get_data_buf) ^^
             (* read sleb128 *)
@@ -7799,9 +7791,9 @@ module MakeSerialization (Strm : Stream) = struct
   let serialize env ts : G.t =
     let name = Strm.name_for "serialize" ts in
     (* returns data/length pointers (will be GC’ed next time!) *)
-    Func.share_code1 Func.Always env name ("x", I32Type) [I32Type; I32Type] (fun env get_x ->
-      let (set_data_size, get_data_size) = new_local env "data_size" in
-      let (set_refs_size, get_refs_size) = new_local env "refs_size" in
+    Func.share_code1 Func.Always env name ("x", I32Type) [I64Type; I64Type] (fun env get_x ->
+      let (set_data_size, get_data_size) = new_local64 env "data_size" in
+      let (set_refs_size, get_refs_size) = new_local64 env "refs_size" in
 
       let (tydesc, _offsets, _idltyps) = type_desc env Candid ts in
       let tydesc_len = Int32.of_int (String.length tydesc) in
@@ -7813,18 +7805,17 @@ module MakeSerialization (Strm : Stream) = struct
       set_data_size ^^
       (* check for overflow *)
       get_data_size ^^
-      compile_add_const tydesc_len ^^
-      compile_unboxed_const tydesc_len ^^
-      G.i (Compare (Wasm_exts.Values.I32 I32Op.LtU)) ^^
+      compile_add64_const (Int64.of_int32 tydesc_len) ^^
+      compile_const_64 (Int64.of_int32 tydesc_len) ^^
+      G.i (Compare (Wasm_exts.Values.I64 I64Op.LtU)) ^^
       E.then_trap_with env "serialization overflow" ^^
 
-      let (set_data_start, get_data_start) = new_local env "data_start" in
-      let (set_refs_start, get_refs_start) = new_local env "refs_start" in
+      let (set_data_start, get_data_start) = new_local64 env "data_start" in
+      let (set_refs_start, get_refs_start) = new_local64 env "refs_start" in
 
       (* Create a stream with suitable capacity and given header *)
       Strm.create env get_data_size set_data_start get_data_start tydesc ^^
       get_refs_size ^^
-      G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
       compile_mul64_const Heap.word_size ^^
       Blob.dyn_alloc_scratch env ^^
       set_refs_start ^^
@@ -7838,16 +7829,15 @@ module MakeSerialization (Strm : Stream) = struct
       (* Sanity check: Did we fill exactly the buffer *)
       get_refs_start ^^
       get_refs_size ^^
-      G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
       compile_mul64_const Heap.word_size ^^
-      G.i (Binary (Wasm_exts.Values.I32 I32Op.Add)) ^^
-      G.i (Compare (Wasm_exts.Values.I32 I32Op.Eq)) ^^
+      G.i (Binary (Wasm_exts.Values.I64 I64Op.Add)) ^^
+      G.i (Compare (Wasm_exts.Values.I64 I64Op.Eq)) ^^
       E.else_trap_with env "reference buffer not filled" ^^
 
       (* Verify that the stream is correctly filled *)
       Strm.check_filled env get_data_start get_data_size ^^
       get_refs_size ^^
-      compile_eq_const 0l ^^
+      compile_eq64_const 0L ^^
       E.else_trap_with env "cannot send references on IC System API" ^^
 
       (* Extract the payload if possible *)
@@ -7865,6 +7855,7 @@ module MakeSerialization (Strm : Stream) = struct
       then "@deserialize_extended<" ^ ts_name ^ ">"
       else "@deserialize<" ^ ts_name ^ ">" in
     Func.share_code2 Func.Always env name (("blob", I32Type), ("can_recover", I32Type)) (List.map (fun _ -> I32Type) ts) (fun env get_blob get_can_recover ->
+      let (set_blob_len, get_blob_len) = new_local64 env "blob_length" in
       let (set_data_size, get_data_size) = new_local64 env "data_size" in
       let (set_refs_size, get_refs_size) = new_local64 env "refs_size" in
       let (set_data_start, get_data_start) = new_local64 env "data_start" in
@@ -7872,11 +7863,14 @@ module MakeSerialization (Strm : Stream) = struct
       let (set_arg_count, get_arg_count) = new_local env "arg_count" in
       let (set_val, get_val) = new_local env "val" in
 
-      get_blob ^^ Blob.len env ^^ set_data_size ^^
+      get_blob ^^ Blob.len env ^^ set_blob_len ^^
+      get_blob_len ^^ fits_in_32 ^^ E.else_trap_with env "Blob too large for deserialization" ^^ 
+      get_blob_len ^^ set_data_size ^^
+
       get_blob ^^ Blob.payload_address env ^^ set_data_start ^^
 
       (* Allocate space for the reference buffer and copy it *)
-      compile_unboxed_const 0l ^^ set_refs_size (* none yet *) ^^
+      compile_const_64 0L ^^ set_refs_size (* none yet *) ^^
 
       (* Allocate space for out parameters of parse_idl_header *)
       Stack.with_words env "get_typtbl_size_address" 1L (fun get_typtbl_size_address ->
@@ -7900,7 +7894,7 @@ module MakeSerialization (Strm : Stream) = struct
 
       (* set up a dedicated read buffer for the list of main types *)
       ReadBuf.alloc env (fun get_main_typs_buf ->
-        ReadBuf.set_current get_main_typs_buf (get_maintyps_address ^^ load32_from_address) ^^
+        ReadBuf.set_current get_main_typs_buf (get_maintyps_address ^^ load64_from_address) ^^
         ReadBuf.set_end get_main_typs_buf (ReadBuf.get_end get_data_buf) ^^
         ReadBuf.read_leb128 env get_main_typs_buf ^^ set_arg_count ^^
 

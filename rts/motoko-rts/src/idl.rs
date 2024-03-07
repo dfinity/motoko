@@ -6,10 +6,11 @@ use crate::leb128::{leb128_decode, sleb128_decode};
 use crate::libc_declarations::{c_void, memcmp};
 use crate::memory::{alloc_blob, Memory};
 use crate::persistence::compatibility::TypeDescriptor;
-use crate::types::{Value, Words};
+use crate::types::{Bytes, Value, Words};
 use crate::utf8::utf8_validate;
 
 use core::cmp::min;
+use core::mem::size_of;
 
 use motoko_rts_macros::ic_mem_fn;
 
@@ -179,7 +180,8 @@ unsafe fn parse_idl_header<M: Memory>(
     *typtbl_size_out = n_types;
 
     // Allocate the type table to be passed out
-    let typtbl: *mut *mut u8 = alloc(mem, Words(n_types as usize)) as *mut _;
+    let table_length = n_types as usize * size_of::<usize>();
+    let typtbl: *mut *mut u8 = alloc(mem, Bytes(table_length).to_words()) as *mut _;
 
     // Go through the table
     for i in 0..n_types {

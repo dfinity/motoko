@@ -56,7 +56,6 @@ pub mod utf8;
 mod visitor;
 
 use motoko_rts_macros::*;
-use types::round_object_size;
 
 #[ic_mem_fn(ic_only)]
 unsafe fn version<M: memory::Memory>(mem: &mut M) -> types::Value {
@@ -65,7 +64,7 @@ unsafe fn version<M: memory::Memory>(mem: &mut M) -> types::Value {
 
 #[ic_mem_fn(ic_only)]
 unsafe fn alloc_words<M: memory::Memory>(mem: &mut M, size: types::Words<usize>) -> types::Value {
-    let rounded_size = round_object_size(size);
+    let rounded_size = types::round_object_size(size);
     crate::gc::incremental::get_partitioned_heap().allocate(mem, rounded_size)
 }
 
