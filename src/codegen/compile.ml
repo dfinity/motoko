@@ -4394,7 +4394,7 @@ module Text = struct
     Func.share_code1 Func.Never env "text_len" ("text", I32Type) [I32Type] (fun env get ->
       get ^^
       E.call_import env "rts" "text_len" ^^
-      BigNum.from_word32 env
+      BigNum.from_word64 env
     )
   let prim_showChar env =
     TaggedSmallWord.lsb_adjust_codepoint env ^^
