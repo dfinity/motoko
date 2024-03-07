@@ -936,10 +936,13 @@ let load64_from_address : G.t =
 let store64_at_address : G.t =
   G.i (Store {ty = I64Type; align = 2; offset = 0L; sz = None})
 
+let fits_in_32 =
+  compile_const_64 0xffff_ffffL ^^
+  G.i (Compare (Wasm_exts.Values.I64 I64Op.LeU))  
+
 let narrow_to_32 env get_value =
   get_value ^^
-  compile_const_64 0xffff_ffffL ^^
-  G.i (Compare (Wasm_exts.Values.I64 I64Op.LeU)) ^^
+  fits_in_32 ^^
   E.else_trap_with env "cannot narrow to 32 bit" ^^ (* Note: If narrow fails during print, the trap print leads to an infinite recursion and a stack overflow *)
   get_value ^^
   G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64))
@@ -4633,14 +4636,18 @@ module Arr = struct
 
   let ofBlob env =
     Func.share_code1 Func.Always env "Arr.ofBlob" ("blob", I32Type) [I32Type] (fun env get_blob ->
-      let (set_len, get_len) = new_local64 env "len" in
+      let (set_len64, get_len64) = new_local64 env "len64" in
+      let (set_len32, get_len32) = new_local env "len32" in
       let (set_r, get_r) = new_local env "r" in
 
-      get_blob ^^ Blob.len env ^^ set_len ^^
+      get_blob ^^ Blob.len env ^^ set_len64 ^^
+      
+      get_len64 ^^ fits_in_32 ^^ E.else_trap_with env "Blob is too large to be converted to an array" ^^
+      get_len64 ^^ G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^ set_len32 ^^
 
-      get_len ^^ alloc env ^^ set_r ^^
+      get_len32 ^^ alloc env ^^ set_r ^^
 
-      get_len ^^ from_0_to_n env (fun get_i ->
+      get_len32 ^^ from_0_to_n env (fun get_i ->
         get_r ^^ get_i ^^ unsafe_idx env ^^
         get_blob ^^ Blob.payload_address env ^^
         get_i ^^ 
