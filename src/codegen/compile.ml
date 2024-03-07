@@ -6334,7 +6334,8 @@ module BumpStream : Stream = struct
   let write_blob env get_data_buf get_x =
     let set_len, get_len = new_local64 env "len" in
     get_x ^^ Blob.len env ^^ set_len ^^
-    write_word_leb env get_data_buf get_len ^^
+    (* TODO: Lift LEB128 to 64-bit to get rid of the subsequent `narrow_to_32` *)
+    write_word_leb env get_data_buf (narrow_to_32 env get_len) ^^
     get_data_buf ^^
     get_x ^^ Blob.payload_address env ^^
     get_len ^^
@@ -6345,9 +6346,11 @@ module BumpStream : Stream = struct
   let write_text env get_data_buf get_x =
     let set_len, get_len = new_local64 env "len" in
     get_x ^^ Text.size env ^^ set_len ^^
-    write_word_leb env get_data_buf get_len ^^
+    (* TODO: Lift LEB128 to 64-bit to get rid of the subsequent `narrow_to_32` *)
+    write_word_leb env get_data_buf (narrow_to_32 env get_len) ^^
     get_x ^^ get_data_buf ^^ Text.to_buf env ^^
-    get_len ^^ advance_data_buf get_data_buf
+    get_len ^^ 
+    advance_data_buf get_data_buf
 
   let write_bignum_leb env get_data_buf get_x =
     get_data_buf ^^
@@ -6840,15 +6843,21 @@ module MakeSerialization (Strm : Stream) = struct
           size env t
         )
       | Prim Blob ->
-        let (set_len, get_len) = new_local env "len" in
+        let (set_len, get_len) = new_local64 env "len" in
+        let (set_size, get_size) = new_local env "size" in
         get_x ^^ Blob.len env ^^ set_len ^^
-        size_word env get_len ^^
-        inc_data_size get_len
+        (* TODO: Lift LEB128 to 64-bit to get rid of the subsequent `narrow_to_32` *)
+        narrow_to_32 env get_len ^^ set_size ^^
+        size_word env get_size ^^
+        inc_data_size get_size
       | Prim Text ->
-        let (set_len, get_len) = new_local env "len" in
+        let (set_len, get_len) = new_local64 env "len" in
+        let (set_size, get_size) = new_local env "size" in
         get_x ^^ Text.size env ^^ set_len ^^
-        size_word env get_len ^^
-        inc_data_size get_len
+        (* TODO: Lift LEB128 to 64-bit to get rid of the subsequent `narrow_to_32` *)
+        narrow_to_32 env get_len ^^ set_size ^^
+        size_word env get_size ^^
+        inc_data_size get_size
       | Opt t ->
         inc_data_size (compile_unboxed_const 1l) ^^ (* one byte tag *)
         get_x ^^ Opt.is_some env ^^
