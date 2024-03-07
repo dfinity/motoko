@@ -1,8 +1,8 @@
-// test incremental oom by allocating 5 GB, one GB at a time!
+// test incremental oom by allocating 33 GB, one GB at a time
 import P "mo:⛔";
 actor {
 
-  var c = 5;
+  var c = 33;
 
   while(c > 0) {
     let a : [var Nat8] = P.Array_init<Nat8>(1024*1024*1024/4, 0xFF);
@@ -14,7 +14,5 @@ actor {
 //SKIP run
 //SKIP run-low
 //SKIP run-ir
-// too slow on ic-ref-run:
-//SKIP comp-ref
 
 
