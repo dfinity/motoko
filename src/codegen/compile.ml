@@ -3724,8 +3724,8 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     let set_err_msg, get_err_msg = new_local env "err_msg" in
     set_err_msg ^^ set_a ^^
     get_a ^^
-    BitTagged.if_tagged_scalar env [I32Type]
-      (get_a ^^ BitTagged.untag_i32 __LINE__ env Type.Int) (* TBR *)
+    BitTagged.if_tagged_scalar env [I64Type]
+      (get_a ^^ BitTagged.untag __LINE__ env Type.Int) (* TBR *)
       (get_a ^^ get_err_msg ^^ Num.to_word64_with env)
 end
 
