@@ -1334,7 +1334,6 @@ module Heap = struct
 
   let get_memory_size =
     G.i MemorySize ^^
-    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
     compile_mul64_const page_size64
 
   let get_max_live_size env =
