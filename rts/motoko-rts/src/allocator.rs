@@ -39,3 +39,28 @@ unsafe impl GlobalAlloc for EphemeralAllocator {
 
 #[global_allocator]
 static ALLOCATOR: EphemeralAllocator = EphemeralAllocator;
+
+#[no_mangle]
+unsafe fn __rust_alloc(size: usize, align: usize) -> *mut u8 {
+    ALLOCATOR.alloc(Layout::from_size_align_unchecked(size, align))
+}
+
+#[no_mangle]
+unsafe fn __rust_dealloc(ptr: *mut u8, size: usize, align: usize) {
+    ALLOCATOR.dealloc(ptr, Layout::from_size_align_unchecked(size, align));
+}
+
+#[no_mangle]
+fn __rust_realloc(_ptr: *mut u8, _old_size: usize, _align: usize, _new_size: usize) -> *mut u8 {
+    unimplemented!();
+}
+
+#[no_mangle]
+fn __rust_alloc_zeroed(_size: usize, _align: usize) -> *mut u8 {
+    unimplemented!();
+}
+
+#[no_mangle]
+fn __rust_alloc_error_handler(_size: usize, _align: usize) -> ! {
+    panic!("Rust allocation error");
+}

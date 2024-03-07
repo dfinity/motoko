@@ -1129,7 +1129,7 @@ module RTS = struct
     E.add_func_import env "rts" "null_singleton" [] [I32Type];
     E.add_func_import env "rts" "set_upgrade_instructions" [I64Type] [];
     E.add_func_import env "rts" "get_upgrade_instructions" [] [I64Type];
-    E.add_func_import env "rts" "memcpy" [I64Type; I64Type; I64Type] [I32Type]; (* standard libc memcpy *)
+    E.add_func_import env "rts" "memcpy" [I64Type; I64Type; I64Type] [I64Type]; (* standard libc memcpy *)
     E.add_func_import env "rts" "memcmp" [I64Type; I64Type; I64Type] [I32Type];
     E.add_func_import env "rts" "version" [] [I32Type];
     E.add_func_import env "rts" "parse_idl_header" [I32Type; I64Type; I64Type; I64Type; I64Type] [];
