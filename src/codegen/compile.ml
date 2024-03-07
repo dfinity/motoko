@@ -4657,12 +4657,13 @@ module Arr = struct
 
   let toBlob env =
     Func.share_code1 Func.Always env "Arr.toBlob" ("array", I32Type) [I32Type] (fun env get_a ->
-      let (set_len, get_len) = new_local64 env "len" in
+      let (set_len, get_len) = new_local env "len" in
       let (set_r, get_r) = new_local env "r" in
 
       get_a ^^ len env ^^ set_len ^^
 
-      get_len ^^ Blob.alloc env ^^ set_r ^^
+      get_len ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^ 
+      Blob.alloc env ^^ set_r ^^
 
       get_len ^^ from_0_to_n env (fun get_i ->
         get_r ^^ Blob.payload_address env ^^
