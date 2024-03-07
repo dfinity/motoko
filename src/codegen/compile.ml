@@ -4046,7 +4046,7 @@ module Blob = struct
           G.i (Load {ty = I32Type; align = 0; offset = 0L; sz = Some Wasm_exts.Types.(Pack8, ZX)}) ^^
           set_b ^^
 
-          get_a ^^ get_b ^^ G.i (Compare (Wasm_exts.Values.I64 I64Op.Eq)) ^^
+          get_a ^^ get_b ^^ G.i (Compare (Wasm_exts.Values.I32 I32Op.Eq)) ^^
           G.if0 G.nop (
             (* first non-equal elements *)
             begin match op with
@@ -4062,13 +4062,13 @@ module Blob = struct
         ) ^^
         (* Common prefix is same *)
         match op with
-        | Some LeOp -> get_len1 ^^ get_len2 ^^ G.i (Compare (Wasm_exts.Values.I32 I32Op.LeU))
-        | Some GeOp -> get_len1 ^^ get_len2 ^^ G.i (Compare (Wasm_exts.Values.I32 I32Op.GeU))
+        | Some LeOp -> get_len1 ^^ get_len2 ^^ G.i (Compare (Wasm_exts.Values.I64 I64Op.LeU))
+        | Some GeOp -> get_len1 ^^ get_len2 ^^ G.i (Compare (Wasm_exts.Values.I64 I64Op.GeU))
         | Some EqOp -> Bool.lit true (* NB: Different length handled above *)
         | None ->
-            get_len1 ^^ get_len2 ^^ G.i (Compare (Wasm_exts.Values.I32 I32Op.LtU)) ^^
+            get_len1 ^^ get_len2 ^^ G.i (Compare (Wasm_exts.Values.I64 I64Op.LtU)) ^^
             G.if1 I32Type is_lt (
-              get_len1 ^^ get_len2 ^^ G.i (Compare (Wasm_exts.Values.I32 I32Op.GtU)) ^^
+              get_len1 ^^ get_len2 ^^ G.i (Compare (Wasm_exts.Values.I64 I64Op.GtU)) ^^
               G.if1 I32Type is_gt is_eq
             )
         | _ -> assert false
