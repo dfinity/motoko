@@ -3,8 +3,8 @@ let ?b = null;
 
 // CHECK: (func $init (type
 // CHECK: call $blob_of_principal
-// CHECK: i32.const 14
-// CHECK: call $print_ptr
+// CHECK: i64.const 14
+// CHECK: call $print_address_length
 // CHECK-NEXT: unreachable)
 
 //SKIP run-low
