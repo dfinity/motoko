@@ -1182,8 +1182,8 @@ module RTS = struct
     E.add_func_import env "rts" "bigint_sleb128_decode_word64" [I64Type; I64Type; I64Type] [I32Type];
     E.add_func_import env "rts" "leb128_encode" [I32Type; I64Type] [];
     E.add_func_import env "rts" "sleb128_encode" [I32Type; I64Type] [];
-    E.add_func_import env "rts" "utf8_valid" [I64Type; I32Type] [I32Type];
-    E.add_func_import env "rts" "utf8_validate" [I64Type; I32Type] [];
+    E.add_func_import env "rts" "utf8_valid" [I64Type; I64Type] [I32Type];
+    E.add_func_import env "rts" "utf8_validate" [I64Type; I64Type] [];
     E.add_func_import env "rts" "skip_leb128" [I64Type] [];
     E.add_func_import env "rts" "skip_any" [I64Type; I64Type; I32Type; I32Type] [];
     E.add_func_import env "rts" "find_field" [I64Type; I64Type; I64Type; I32Type; I64Type] [I32Type];
@@ -3734,14 +3734,14 @@ module BigNumLibtommath : BigNumType = struct
   let compile_data_size_signed env = E.call_import env "rts" "bigint_sleb128_size"
 
   let compile_store_to_data_buf_unsigned env =
-    let (set_buf, get_buf) = new_local env "buf" in
+    let (set_buf, get_buf) = new_local64 env "buf" in
     let (set_n, get_n) = new_local env "n" in
     set_n ^^ set_buf ^^
     get_n ^^ get_buf ^^ E.call_import env "rts" "bigint_leb128_encode" ^^
     get_n ^^ E.call_import env "rts" "bigint_leb128_size"
 
   let compile_store_to_data_buf_signed env =
-    let (set_buf, get_buf) = new_local env "buf" in
+    let (set_buf, get_buf) = new_local64 env "buf" in
     let (set_n, get_n) = new_local env "n" in
     set_n ^^ set_buf ^^
     get_n ^^ get_buf ^^ E.call_import env "rts" "bigint_sleb128_encode" ^^
@@ -6725,11 +6725,18 @@ module MakeSerialization (Strm : Stream) = struct
         inc_data_size (I32Leb.compile_leb128_size get_word)
       in
 
+      let inc_data_size_64 code =
+        get_data_size ^^
+        code ^^
+        G.i (Binary (Wasm_exts.Values.I64 I64Op.Add)) ^^
+        set_data_size
+      in
+      
       let size env t =
-        let (set_inc, get_inc) = new_local env "inc" in
+        let (set_inc, get_inc) = new_local64 env "inc" in
         buffer_size env t ^^
         get_ref_size ^^ G.i (Binary (Wasm_exts.Values.I64 I64Op.Add)) ^^ set_ref_size ^^
-        set_inc ^^ inc_data_size get_inc
+        set_inc ^^ inc_data_size_64 get_inc
       in
 
       (* the incremental GC leaves array slice information in tag,
@@ -6858,6 +6865,12 @@ module MakeSerialization (Strm : Stream) = struct
         size_alias (fun () -> get_x ^^ MutBox.load_field env ^^ size env t)
       | _ -> todo "buffer_size" (Arrange_ir.typ t) G.nop
       end ^^
+      (* Check 32-bit overflow of buffer_size *)
+      (* TODO: Support 64-bit buffer *)
+      get_data_size ^^
+      compile_shrU64_const 32L ^^
+      G.i (Test (Wasm_exts.Values.I64 I64Op.Eqz)) ^^
+      E.else_trap_with env "buffer_size overflow" ^^
       get_data_size ^^
       get_ref_size
     )
@@ -7248,9 +7261,11 @@ module MakeSerialization (Strm : Stream) = struct
       in
 
       let read_text () =
-        let (set_len, get_len) = new_local env "len" in
-        ReadBuf.read_leb128 env get_data_buf ^^ set_len ^^
-        let (set_current, get_current) = new_local env "current" in
+        let (set_len, get_len) = new_local64 env "len" in
+        ReadBuf.read_leb128 env get_data_buf ^^ 
+        G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
+        set_len ^^
+        let (set_current, get_current) = new_local64 env "current" in
         ReadBuf.get_current get_data_buf ^^ set_current ^^
         ReadBuf.advance get_data_buf get_len ^^
         (* validate *)

@@ -56,16 +56,10 @@ pub unsafe fn test() {
     println!("Testing UTF8 validation ...");
 
     for test_str in TEST_STRS_VALID.iter() {
-        assert!(utf8_valid(
-            test_str.as_ptr() as *const _,
-            test_str.len() as u32
-        ));
+        assert!(utf8_valid(test_str.as_ptr() as *const _, test_str.len()));
     }
 
     for test_str in TEST_STRS_INVALID.iter() {
-        assert!(!utf8_valid(
-            test_str.as_ptr() as *const _,
-            test_str.len() as u32
-        ));
+        assert!(!utf8_valid(test_str.as_ptr() as *const _, test_str.len()));
     }
 }

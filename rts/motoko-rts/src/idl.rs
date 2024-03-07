@@ -240,7 +240,7 @@ unsafe fn parse_idl_header<M: Memory>(
                 let (len, p) = leb128_decode_ptr(buf);
                 buf.advance(len);
                 // Method names must be valid unicode
-                utf8_validate(p as *const _, len);
+                utf8_validate(p as *const _, len as usize);
                 // Method names must be in order
                 if last_p != core::ptr::null_mut() {
                     let cmp = memcmp(
@@ -327,7 +327,7 @@ unsafe fn skip_blob(buf: *mut Buf) {
 unsafe fn skip_text(buf: *mut Buf) {
     let (len, p) = leb128_decode_ptr(buf);
     buf.advance(len); // advance first; does the bounds check
-    utf8_validate(p as *const _, len);
+    utf8_validate(p as *const _, len as usize);
 }
 
 unsafe fn skip_any_vec(buf: *mut Buf, typtbl: *mut *mut u8, t: i32, count: u32) {
