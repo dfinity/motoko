@@ -4506,6 +4506,7 @@ module Arr = struct
       compile_mul64_const element_size ^^
       get_array ^^
       Tagged.load_forwarding_pointer env ^^
+      Heap.pointer_to_address env ^^
       G.i (Binary (Wasm_exts.Values.I64 I64Op.Add))
     )
 
