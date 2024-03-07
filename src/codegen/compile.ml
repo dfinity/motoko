@@ -11582,8 +11582,8 @@ and compile_prim_invocation (env : E.t) ae p es at =
     set_blob ^^
     get_blob ^^
     Blob.len env ^^
-    compile_unboxed_const 29l ^^
-    G.i (Compare (Wasm_exts.Values.I32 I32Op.LeU)) ^^
+    compile_const_64 29L ^^
+    G.i (Compare (Wasm_exts.Values.I64 I64Op.LeU)) ^^
     E.else_trap_with env "blob too long for actor principal" ^^
     get_blob
 
