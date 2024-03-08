@@ -10923,8 +10923,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_vanilla env ae e ^^
     Serialization.buffer_size env t ^^
     G.i Drop ^^
-    compile_add_const tydesc_len ^^
-    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
+    compile_add64_const (Int64.of_int32 tydesc_len)
 
   (* Other prims, unary *)
 
