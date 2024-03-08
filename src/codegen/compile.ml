@@ -5402,7 +5402,7 @@ module IC = struct
               system_call env "data_certificate_size" ^^
               G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)))
             (fun env -> system_call env "data_certificate_copy_64")
-            (fun env -> compile_unboxed_const 0l)
+            (fun env -> compile_const_64 0L)
         )
       end (Opt.null_lit env)
     | _ ->
