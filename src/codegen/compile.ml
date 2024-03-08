@@ -1848,7 +1848,7 @@ module BitTagged = struct
          get_n ^^
          compile_bitand_const tag_mask ^^
          compile_eq_const (TaggingScheme.tag_of_typ ty) ^^
-         E.else_trap_with env (prim_fun_name ty "unexpected tag"^Int.to_string line) ^^
+         E.else_trap_with env "unexpected tag" ^^
          get_n))
     else G.nop
 
@@ -12014,7 +12014,6 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
     compile_exp_as env ae sr e ^^
     code
   | FuncE (x, sort, control, typ_binds, args, res_tys, e) ->
-    let x = x^"@"^Source.string_of_region exp.at in (* TBD *)
     let captured = Freevars.captured exp in
     let return_tys = match control with
       | Type.Returns -> res_tys
