@@ -3953,7 +3953,7 @@ module Blob = struct
 
   let load_data_segment env segment_index data_length =
     let (set_blob, get_blob) = new_local env "data_segment_blob" in
-    data_length ^^
+    data_length ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
     alloc env ^^ set_blob ^^
     get_blob ^^ payload_address env ^^ (* target address *)
     compile_unboxed_const 0l ^^ (* data offset *)
@@ -7072,7 +7072,7 @@ module MakeSerialization (Strm : Stream) = struct
       (fun env get_rel_buf get_typtbl1 get_typtbl_end1 get_typtbl_size1 get_idltyp1 get_idltyp2 ->
         get_rel_buf ^^
         compile_eq64_const 0L ^^
-        E.else_trap_with env "null rel_buf" ^^
+        E.then_trap_with env "null rel_buf" ^^
         get_rel_buf ^^
         get_typtbl1 ^^
         get_typtbl_end1 ^^
