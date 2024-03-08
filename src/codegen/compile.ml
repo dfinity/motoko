@@ -2912,6 +2912,7 @@ module ReadBuf = struct
   (*
   Combinators to safely read from a dynamic buffer.
 
+  Layout must match `buf.rs` in RTS.
   We represent a buffer by a pointer to two words in memory (usually allocated
   on the shadow stack): The first is a pointer to the current position of the buffer,
   the second one a pointer to the end (to check out-of-bounds).
@@ -2933,13 +2934,13 @@ module ReadBuf = struct
   let end_offset = 8L
 
   let get_current get_buf =
-    get_buf ^^ G.i (Load {ty = I64Type; align = 2; offset = current_offset; sz = None})
+    get_buf ^^ G.i (Load {ty = I64Type; align = 3; offset = current_offset; sz = None})
   let get_end get_buf =
-    get_buf ^^ G.i (Load {ty = I64Type; align = 2; offset = end_offset; sz = None})
+    get_buf ^^ G.i (Load {ty = I64Type; align = 3; offset = end_offset; sz = None})
   let set_current get_buf new_val =
-    get_buf ^^ new_val ^^ G.i (Store {ty = I64Type; align = 2; offset = current_offset; sz = None})
+    get_buf ^^ new_val ^^ G.i (Store {ty = I64Type; align = 3; offset = current_offset; sz = None})
   let set_end get_buf new_val =
-    get_buf ^^ new_val ^^ G.i (Store {ty = I64Type; align = 2; offset = end_offset; sz = None})
+    get_buf ^^ new_val ^^ G.i (Store {ty = I64Type; align = 3; offset = end_offset; sz = None})
   let set_size get_buf get_size =
     set_end get_buf
       (get_current get_buf ^^
