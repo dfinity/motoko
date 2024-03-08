@@ -5611,7 +5611,7 @@ module StableMem = struct
         (fun env get_offset get_size ->
           get_size ^^
           compile_const_64 Int64.one ^^
-          G.i (Compare (Wasm_exts.Values.I32 I64Op.LeU)) ^^
+          G.i (Compare (Wasm_exts.Values.I64 I64Op.LeU)) ^^
           G.if0 begin
             get_offset ^^
             guard env
