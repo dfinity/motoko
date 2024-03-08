@@ -52,52 +52,52 @@ impl IntoValue for Vec<u8> {
     }
 }
 
-pub trait FromValues: Sized {
-    type Values;
-    unsafe fn from_values(values: Self::Values, mem: &mut impl Memory) -> MotokoResult<Self>;
+pub trait FromArgs: Sized {
+    type Args;
+    unsafe fn from_args(values: Self::Args, mem: &mut impl Memory) -> MotokoResult<Self>;
 }
 
-pub trait IntoValues {
-    type Values;
-    unsafe fn into_values(self, mem: &mut impl Memory) -> MotokoResult<Self::Values>;
+pub trait IntoArgs {
+    type Args;
+    unsafe fn into_args(self, mem: &mut impl Memory) -> MotokoResult<Self::Args>;
 }
 
-impl<A: FromValue> FromValues for A {
-    type Values = Value;
-    unsafe fn from_values(value: Self::Values, mem: &mut impl Memory) -> MotokoResult<Self> {
+impl<A: FromValue> FromArgs for A {
+    type Args = Value;
+    unsafe fn from_args(value: Self::Args, mem: &mut impl Memory) -> MotokoResult<Self> {
         A::from_value(value, mem)
     }
 }
 
-impl<A: IntoValue> IntoValues for A {
-    type Values = Value;
-    unsafe fn into_values(self, mem: &mut impl Memory) -> MotokoResult<Self::Values> {
+impl<A: IntoValue> IntoArgs for A {
+    type Args = Value;
+    unsafe fn into_args(self, mem: &mut impl Memory) -> MotokoResult<Self::Args> {
         self.into_value(mem)
     }
 }
 
 // TODO: macro for tuple implementations
 
-impl<A: FromValue, B: FromValue> FromValues for (A, B) {
-    type Values = (Value, Value);
-    unsafe fn from_values((a, b): Self::Values, mem: &mut impl Memory) -> MotokoResult<Self> {
+impl<A: FromValue, B: FromValue> FromArgs for (A, B) {
+    type Args = (Value, Value);
+    unsafe fn from_args((a, b): Self::Args, mem: &mut impl Memory) -> MotokoResult<Self> {
         Ok((A::from_value(a, mem)?, B::from_value(b, mem)?))
     }
 }
 
-impl<A: IntoValue, B: IntoValue> IntoValues for (A, B) {
-    type Values = (Value, Value);
-    unsafe fn into_values(self, mem: &mut impl Memory) -> MotokoResult<Self::Values> {
+impl<A: IntoValue, B: IntoValue> IntoArgs for (A, B) {
+    type Args = (Value, Value);
+    unsafe fn into_args(self, mem: &mut impl Memory) -> MotokoResult<Self::Args> {
         Ok((self.0.into_value(mem)?, self.1.into_value(mem)?))
     }
 }
 
-unsafe fn wrap<T: FromValues, R: IntoValues>(
+unsafe fn wrap<T: FromArgs, R: IntoArgs>(
     mem: &mut impl Memory,
-    values: T::Values,
+    values: T::Args,
     function: impl FnOnce(T) -> R,
-) -> MotokoResult<R::Values> {
-    function(T::from_values(values, mem)?).into_values(mem)
+) -> MotokoResult<R::Args> {
+    function(T::from_args(values, mem)?).into_args(mem)
 }
 
 // Temporary example
