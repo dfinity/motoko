@@ -76,8 +76,10 @@ pub unsafe fn mp_calloc<M: Memory>(
         bigint_trap();
     }
     let size = Bytes(n_elems * elem_size.0);
-    let payload = mp_alloc(mem, size) as *mut usize;
 
+    debug_assert_eq!(elem_size.0, size_of::<u32>().to_bytes().as_usize());
+    let payload = mp_alloc(mem, size) as *mut u32;
+    
     // NB. alloc_bytes rounds up to words so we do the same here to set the whole buffer
     for i in 0..size.to_words().as_usize() {
         *payload.add(i) = 0;
