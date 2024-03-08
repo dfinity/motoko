@@ -7418,7 +7418,11 @@ module MakeSerialization (Strm : Stream) = struct
           E.else_trap_with env "Odd offset" ^^
 
           ReadBuf.get_current get_data_buf ^^ set_cur ^^
-          ReadBuf.advance get_data_buf (get_offset ^^ compile_add_const (-4l) ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)))
+          ReadBuf.advance get_data_buf (
+            get_offset ^^ 
+            compile_add_const (-4l) ^^ 
+            G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendSI32)) (* signed! *)
+          )
         end G.nop ^^
 
         (* Remember current reader location. *)
