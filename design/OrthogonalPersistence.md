@@ -1,9 +1,10 @@
-# Orthogonal Persistence (Compact 64-Bit)
+
+# Enhanced Orthogonal Persistence (64-Bit with Pointer Compression)
 
 This implements the vision of **enhanced orthogonal persistence** in Motoko that combines:
 * **Stable heap**: Persisting the program main memory across canister upgrades.
-* **64-bit heap**: Extending the main memory to 64-bit, passing beyong 4GB.
-* **Compact pointers**: Using compact 32-bit layout with compact pointers that can address 32GB.
+* **64-bit heap with pointer compression**: Supporting 32GB of main memory without doubling pointers sizes.
+
 As a result, the use of secondary storage (explicit stable memory, dedicated stable data structures, DB-like storage abstractions) will no longer be necessary: Motoko developers can directly work on their normal object-oriented program structures that are automatically persisted and retained across program version changes.
 
 ## Advantages
@@ -34,14 +35,12 @@ In a co-design between the compiler and the runtime system, the main memory is a
 * Thereafter: Dynamic heap space. Fix start address at 5MB.
 
 ### Compact Pointers
-By aligning objects to 16 bytes, object addresses have the lowest 4 bits zero. One bit is spent for pointer skewing (tagging), such that 3 free bits can be used to extend the addressable space by factor of 2**3 = 8, resulting in 32GB. 
+By aligning objects to 16 bytes, object addresses have the lowest 4 bits zero. One bit is spent for pointer tagging (skewing), such that 3 free bits can be used to extend the addressable space by factor of `2**3 = 8`, resulting in 32GB. 
 
-A 64-bit pointer `x < 64GB` is hence encoded as a compact pointer `x >> 3 - 1` of 32-bit width.
-The compact pointer `y` is again decoded to a 64-bit address `(y + 1) << 3`.
+A 64-bit address `a` in the range of 32GB is encoded as a compact pointer `a >> 3 - 1` of 32-bit width.
+The compact pointer `p` is again decoded to a 64-bit address `(p + 1) << 3`.
 
 The alignment to 16 bytes increases internal fragmentation (potential padding inside the object). However, the internal fragmentation overhead is expected to  less than generally extending the word size to 64-bit. Without alignment, the minimum object size is 12 bytes (except for the `Null` singleton that fits into 8 bytes).
-
-TODO: Memory overhead is to be measured.
 
 ### Persistent Metadata
 The persistent metadata describes all anchor information for the program to resume after an upgrade. 
@@ -131,7 +130,7 @@ Once operating on the stable heap, the system prevents downgrade attempts to the
 The old stable memory remains equally accessible as secondary memory with the new support.
 
 ## Current Limitations
-* Optimization potential for statically known objects: Currently, compile-time-known objects are always dynamically allocated. For an improved performance and size, they could be shared in the dynamic heap by remembering them in an additional pool table. The pool table needs to be registered as a transient GC root and recreated on canister upgrades.
+* Optimization of statically known objects: Currently, compile-time-known objects are always dynamically allocated. For an improved performance and size, they could be shared in the dynamic heap by remembering them in an additional pool table. The pool table needs to be registered as a transient GC root and recreated on canister upgrades.
 * The compact pointer representation only allows 32 GB. Moreover, the GC is also limited to 32 GB because it uses a static partition table.
 * The floating point display format differs in Wasm64 for special values, e.g. `nan` becomes `NaN`. There is currently no support for hexadecimal floating point text formatting.
 * Workaround for Rust needed to build PIC (position-independent code) libraries. Explicit use of `emscripten` via LLVM IR. 
