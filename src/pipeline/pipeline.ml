@@ -381,10 +381,10 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
         let* prog, base = parsefn ri.Source.at f in
         let* () = Static.prog prog in
         let* more_imports = ResolveImport.resolve (resolve_flags ()) prog base in
-        let pkg_opt' = if lib_pkg_opt <> None then lib_pkg_opt else pkg_opt in
-        let* () = go_set pkg_opt more_imports in
+        let cur_pkg_opt = if lib_pkg_opt <> None then lib_pkg_opt else pkg_opt in
+        let* () = go_set cur_pkg_opt more_imports in
         let lib = lib_of_prog f prog in
-        let* sscope = check_lib !senv pkg_opt' lib in
+        let* sscope = check_lib !senv cur_pkg_opt lib in
         libs := lib :: !libs; (* NB: Conceptually an append *)
         senv := Scope.adjoin !senv sscope;
         pending := remove ri.Source.it !pending;

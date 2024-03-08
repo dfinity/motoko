@@ -1,7 +1,6 @@
 # Motoko compiler changelog
 
-
-## Unreleased
+## 0.11.0 (2024-03-05)
 
 * motoko (`moc`)
 
@@ -13,8 +12,30 @@
 
     **Limitations**: recursive and mutually recursive definitions are considered used,
     even if never referenced outside the recursive definition.
-    
+
   * Remove `__get_candid_interface_tmp_hack` endpoint. Candid interface is already stored as canister metadata, this temporary endpoint is redundant, thus removed. (#4386)
+
+  * Improved capability system, introducing a synchronous (`system`) capability (#4406).
+
+    `actor` initialisation body, `pre`/`postupgrade` hooks, `async` function bodies (and
+    blocks) possess this capability. Functions (and classes) can demand it by prepending `system`
+    to the type argument list. The capability can be forwarded in calls by mentioning `<system, …>`
+    in the instantiation parameter list.
+
+    BREAKING CHANGE (Minor): A few built-in functions have been marked with demand
+    for the `system` capability. In order to call these, the full call hierarchy needs to be
+    adapted to pass the `system` capability.
+
+  * Introduced the feature for precise tagging of scalar values (#4369).
+
+    Controlled by flag `--experimental-rtti` (off by default). Minor performance changes for
+    arithmetic expected. We advise to only turn on the feature for testing, as currently no
+    productive upsides exist (though future improvements will depend on it), and performance
+    of arithmetic will degrade somewhat. See the PR for the whole picture.
+
+* motoko-base
+
+  * Added `Option.equal` function (thanks to ByronBecker) (dfinity/motoko-base⁠#615).
 
 ## 0.10.4 (2024-01-10)
 

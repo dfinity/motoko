@@ -136,7 +136,6 @@ let desugar_func_body sp x t_opt (is_sugar, e) =
       true, ignore_asyncE (scope_bind x.it e.at) e
     | _, _ -> (true, e)
 
-
 let share_typ t =
   match t.it with
   | FuncT ({it = Type.Local; _} as s, tbs, t1, t2) ->
@@ -173,21 +172,28 @@ let share_stab stab_opt dec =
      | _ -> None)
   | _ -> stab_opt
 
+let ensure_system_cap (df : dec_field) =
+  match df.it.dec.it with
+    | LetD ({ it = VarP { it = "preupgrade" | "postupgrade"; _}; _} as pat, ({ it = FuncE (x, sp, tbs, p, t_opt, s, e); _ } as value), other) ->
+      let it = LetD (pat, { value with it = FuncE (x, sp, ensure_scope_bind "" tbs, p, t_opt, s, e) }, other) in
+      { df with it = { df.it with dec = { df.it.dec with it } } }
+    | _ -> df
+
 let share_dec_field (df : dec_field) =
   match df.it.vis.it with
   | Public _ ->
     {df with it = {df.it with
       dec = share_dec df.it.dec;
       stab = share_stab df.it.stab df.it.dec}}
-  | _ ->
-    if is_sugared_func_or_module (df.it.dec) then
-      {df with it =
-        {df.it with stab =
+  | System -> ensure_system_cap df
+  | _ when is_sugared_func_or_module (df.it.dec) ->
+    {df with it =
+       {df.it with stab =
           match df.it.stab with
           | None -> Some (Flexible @@ df.it.dec.at)
           | some -> some}
-      }
-    else df
+    }
+  | _ -> df
 
 and objblock s ty dec_fields =
   List.iter (fun df ->
@@ -453,15 +459,20 @@ inst :
   | (* empty *)
     { { it = None; at = no_region; note = [] } }
   | LT ts=seplist(typ, COMMA) GT
-    { { it = Some ts; at = at $sloc; note = [] } }
+    { { it = Some (false, ts); at = at $sloc; note = [] } }
+  | LT SYSTEM ts=preceded(COMMA, typ)* GT
+    { { it = Some (true, ts); at = at $sloc; note = [] } }
 
-
-%inline typ_params_opt :
+%inline type_typ_params_opt :
   | (* empty *) { [] }
   | LT ts=seplist(typ_bind, COMMA) GT { ts }
 
+%inline typ_params_opt :
+  | ts=type_typ_params_opt { ts }
+  | LT SYSTEM ts=preceded(COMMA, typ_bind)* GT { ensure_scope_bind "" ts }
+
 typ_field :
-  | TYPE c=typ_id  tps=typ_params_opt EQ t=typ
+  | TYPE c=typ_id  tps=type_typ_params_opt EQ t=typ
     { TypF (c, tps, t) @@ at $sloc }
   | mut=var_opt x=id COLON t=typ
     { ValF (x, t, mut) @@ at $sloc }
@@ -848,7 +859,7 @@ dec_nonvar :
   | LET p=pat EQ e=exp(ob)
     { let p', e' = normalize_let p e in
       LetD (p', e', None) @? at $sloc }
-  | TYPE x=typ_id tps=typ_params_opt EQ t=typ
+  | TYPE x=typ_id tps=type_typ_params_opt EQ t=typ
     { TypD(x, tps, t) @? at $sloc }
   | s=obj_sort xf=id_opt t=annot_opt EQ? efs=obj_body
     { let sort = Type.(match s.it with
@@ -942,7 +953,7 @@ parse_module_header :
   | start import_list EOF {}
 
 typ_dec :
-  | TYPE x=typ_id tps=typ_params_opt EQ t=typ
+  | TYPE x=typ_id tps=type_typ_params_opt EQ t=typ
     { TypD(x, tps, t) @? at $sloc }
 
 stab_field :
