@@ -1215,7 +1215,7 @@ module RTS = struct
     E.add_func_import env "rts" "region_vec_pages" [I32Type] [I32Type];
     E.add_func_import env "rts" "region_size" [I32Type] [I64Type];
     E.add_func_import env "rts" "region_grow" [I32Type; I64Type] [I64Type];
-    E.add_func_import env "rts" "region_load_blob" [I32Type; I64Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "region_load_blob" [I32Type; I64Type; I64Type] [I32Type];
     E.add_func_import env "rts" "region_store_blob" [I32Type; I64Type; I32Type] [];
     E.add_func_import env "rts" "region_load_word8" [I32Type; I64Type] [I32Type];
     E.add_func_import env "rts" "region_store_word8" [I32Type; I64Type; I32Type] [];
@@ -5510,19 +5510,9 @@ end (* Cycles *)
    Used to implement stable variable serialization, (experimental) stable memory library and Region type (see region.rs)
 *)
 module StableMem = struct
-
-
-  let conv_u32 env get_u64 =
-    get_u64 ^^
-    compile_shrU64_const 32L ^^
-    G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
-    E.then_trap_with env "stable64 overflow" ^^
-    get_u64  ^^
-    G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64))
-
   (* Raw stable memory API,
      using ic0.stable64_xxx or
-     emulating via (for now) 32-bit memory 1
+     emulating via 64-bit memory 1
   *)
   let stable64_grow env =
     E.require_stable_memory env;
@@ -5532,21 +5522,8 @@ module StableMem = struct
     | _ ->
        Func.share_code1 Func.Always env "stable64_grow" ("pages", I64Type) [I64Type]
          (fun env get_pages ->
-          let set_old_pages, get_old_pages = new_local env "old_pages" in
-          conv_u32 env get_pages ^^
-          G.i StableGrow ^^
-          set_old_pages ^^
-          get_old_pages ^^
-          compile_unboxed_const (-1l) ^^
-          G.i (Compare (Wasm_exts.Values.I32 I32Op.Eq)) ^^
-          G.if1 I64Type
-            begin
-             compile_const_64 (-1L)
-            end
-            begin
-              get_old_pages ^^
-              G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
-            end)
+          get_pages ^^
+          G.i StableGrow)
 
   let stable64_size env =
     E.require_stable_memory env;
@@ -5556,8 +5533,7 @@ module StableMem = struct
     | _ ->
        Func.share_code0 Func.Always env "stable64_size" [I64Type]
          (fun env ->
-          G.i StableSize ^^
-          G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)))
+          G.i StableSize)
 
   let stable64_read env =
     E.require_stable_memory env;
@@ -5568,9 +5544,9 @@ module StableMem = struct
        Func.share_code3 Func.Always env "stable64_read"
          (("dst", I64Type), ("offset", I64Type), ("size", I64Type)) []
          (fun env get_dst get_offset get_size ->
-          conv_u32 env get_dst ^^
-          conv_u32 env get_offset ^^
-          conv_u32 env get_size ^^
+          get_dst ^^
+          get_offset ^^
+          get_size ^^
           G.i StableRead)
 
   let stable64_write env =
@@ -5582,9 +5558,9 @@ module StableMem = struct
        Func.share_code3 Func.Always env "stable64_write"
          (("offset", I64Type), ("src", I64Type), ("size", I64Type)) []
          (fun env get_offset get_src get_size ->
-          conv_u32 env get_offset ^^
-          conv_u32 env get_src ^^
-          conv_u32 env get_size ^^
+          get_offset ^^
+          get_src ^^
+          get_size ^^
           G.i StableWrite)
 
 

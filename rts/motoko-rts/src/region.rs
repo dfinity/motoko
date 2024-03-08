@@ -1047,23 +1047,20 @@ pub(crate) unsafe fn region_load_blob<M: Memory>(
     mem: &mut M,
     r: Value,
     offset: u64,
-    len: u32,
+    len: usize,
 ) -> Value {
-    let blob_val = crate::memory::alloc_blob(mem, crate::types::Bytes(len as usize));
+    let blob_val = crate::memory::alloc_blob(mem, crate::types::Bytes(len));
     let blob = blob_val.as_blob_mut();
 
-    if len < (isize::MAX as u32) {
-        let bytes: &mut [u8] = core::slice::from_raw_parts_mut(blob.payload_addr(), len as usize);
+    if len < isize::MAX as usize {
+        let bytes: &mut [u8] = core::slice::from_raw_parts_mut(blob.payload_addr(), len);
         region_load(mem, r, offset, bytes);
     } else {
-        assert!((len / 2) < isize::MAX as u32);
-        let bytes_low: &mut [u8] =
-            core::slice::from_raw_parts_mut(blob.payload_addr(), (len / 2) as usize);
+        assert!((len / 2) < isize::MAX as usize);
+        let bytes_low: &mut [u8] = core::slice::from_raw_parts_mut(blob.payload_addr(), len / 2);
         region_load(mem, r, offset, bytes_low);
-        let bytes_high: &mut [u8] = core::slice::from_raw_parts_mut(
-            blob.payload_addr().add((len / 2) as usize),
-            (len - len / 2) as usize,
-        );
+        let bytes_high: &mut [u8] =
+            core::slice::from_raw_parts_mut(blob.payload_addr().add(len / 2), len - len / 2);
         region_load(mem, r, offset + (len / 2) as u64, bytes_high);
     }
     allocation_barrier(blob_val);
@@ -1113,14 +1110,14 @@ pub(crate) unsafe fn region_store_blob<M: Memory>(mem: &mut M, r: Value, offset:
     let len = blob.len().0;
     let bytes = blob.payload_const();
     if len < (isize::MAX as usize) {
-        let bytes: &[u8] = core::slice::from_raw_parts(bytes, len as usize);
+        let bytes: &[u8] = core::slice::from_raw_parts(bytes, len);
         region_store(mem, r, offset, bytes);
     } else {
         assert!((len / 2) < isize::MAX as usize);
-        let bytes_low: &[u8] = core::slice::from_raw_parts(bytes, (len / 2) as usize);
+        let bytes_low: &[u8] = core::slice::from_raw_parts(bytes, len / 2);
         region_store(mem, r, offset, bytes_low);
         let bytes_high: &[u8] =
-            core::slice::from_raw_parts(bytes.add((len / 2) as usize), (len - len / 2) as usize);
+            core::slice::from_raw_parts(bytes.add((len / 2) as usize), len - len / 2);
         region_store(mem, r, offset + (len / 2) as u64, bytes_high);
     }
 }
