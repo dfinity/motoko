@@ -108,12 +108,18 @@ pub unsafe extern "C" fn echo(value: Value) -> Value {
 
 // Temporary example
 #[ic_mem_fn]
-unsafe fn modify_blob<M: Memory>(mem: &mut M, value: Value) -> Value {
+unsafe fn blob_modify<M: Memory>(mem: &mut M, value: Value) -> Value {
     wrap(mem, value, |mut vec: Vec<u8>| {
         vec.push('!' as u8);
         vec
     })
     .unwrap()
+}
+
+// Temporary example
+#[ic_mem_fn]
+unsafe fn blob_concat<M: Memory>(mem: &mut M, a: Value, b: Value) -> Value {
+    wrap(mem, (a, b), |(a, b): (Vec<u8>, Vec<u8>)| [a,b].concat()).unwrap()
 }
 
 // [external-codegen]
