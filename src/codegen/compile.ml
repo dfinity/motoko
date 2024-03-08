@@ -7396,8 +7396,8 @@ module MakeSerialization (Strm : Stream) = struct
         (* see Note [mutable stable values] *)
         let (set_is_ref, get_is_ref) = new_local env "is_ref" in
         let (set_result, get_result) = new_local env "result" in
-        let (set_cur, get_cur) = new_local env "cur" in
-        let (set_memo, get_memo) = new_local env "memo" in
+        let (set_cur, get_cur) = new_local64 env "cur" in
+        let (set_memo, get_memo) = new_local64 env "memo" in
 
         let (set_arg_typ, get_arg_typ) = new_local env "arg_typ" in
 
@@ -7417,7 +7417,7 @@ module MakeSerialization (Strm : Stream) = struct
           E.else_trap_with env "Odd offset" ^^
 
           ReadBuf.get_current get_data_buf ^^ set_cur ^^
-          ReadBuf.advance get_data_buf (get_offset ^^ compile_add_const (-4l))
+          ReadBuf.advance get_data_buf (get_offset ^^ compile_add_const (-4l) ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)))
         end G.nop ^^
 
         (* Remember current reader location. *)
