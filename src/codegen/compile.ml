@@ -7229,9 +7229,11 @@ module MakeSerialization (Strm : Stream) = struct
       in
 
       let read_blob () =
-        let (set_len, get_len) = new_local env "len" in
+        let (set_len, get_len) = new_local64 env "len" in
         let (set_x, get_x) = new_local env "x" in
-        ReadBuf.read_leb128 env get_data_buf ^^ set_len ^^
+        ReadBuf.read_leb128 env get_data_buf ^^ 
+        G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^ 
+        set_len ^^
 
         get_len ^^ Blob.alloc env ^^ set_x ^^
         get_x ^^ Blob.payload_address env ^^
@@ -7240,14 +7242,16 @@ module MakeSerialization (Strm : Stream) = struct
       in
 
       let read_principal () =
-        let (set_len, get_len) = new_local env "len" in
+        let (set_len, get_len) = new_local64 env "len" in
         let (set_x, get_x) = new_local env "x" in
-        ReadBuf.read_leb128 env get_data_buf ^^ set_len ^^
+        ReadBuf.read_leb128 env get_data_buf ^^ 
+        G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^ 
+        set_len ^^
 
         (* at most 29 bytes, according to
            https://sdk.dfinity.org/docs/interface-spec/index.html#principal
         *)
-        get_len ^^ compile_unboxed_const 29l ^^ G.i (Compare (Wasm_exts.Values.I32 I32Op.LeU)) ^^
+        get_len ^^ compile_const_64 29L ^^ G.i (Compare (Wasm_exts.Values.I64 I64Op.LeU)) ^^
         E.else_trap_with env "IDL error: principal too long" ^^
 
         get_len ^^ Blob.alloc env ^^ set_x ^^
@@ -7258,10 +7262,11 @@ module MakeSerialization (Strm : Stream) = struct
 
       let read_text () =
         let (set_len, get_len) = new_local64 env "len" in
+        let (set_current, get_current) = new_local64 env "current" in
         ReadBuf.read_leb128 env get_data_buf ^^ 
         G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
         set_len ^^
-        let (set_current, get_current) = new_local64 env "current" in
+
         ReadBuf.get_current get_data_buf ^^ set_current ^^
         ReadBuf.advance get_data_buf get_len ^^
         (* validate *)
