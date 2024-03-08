@@ -3973,7 +3973,7 @@ module Blob = struct
     )
 
   let of_size_copy env get_size_fun copy_fun offset_fun =
-    let (set_len, get_len) = new_local env "len" in
+    let (set_len, get_len) = new_local64 env "len" in
     let (set_blob, get_blob) = new_local env "blob" in
     get_size_fun env ^^ set_len ^^
 
@@ -5023,7 +5023,7 @@ module IC = struct
       E.trap_with env Printf.(sprintf "cannot get %s when running locally" call)
 
   let performance_counter = ic_system_call "performance_counter"
-  let is_controller = ic_system_call "is_controller"
+  let is_controller = ic_system_call "is_controller_64"
   let canister_version = ic_system_call "canister_version"
 
   let print_address_length env = G.i (Call (nr (E.built_in env "print_address_length")))
@@ -6410,7 +6410,7 @@ module MakeSerialization (Strm : Stream) = struct
       
   module Registers = struct
     let register_globals env =
-      E.add_global64 env "@@rel_buf_opt" Mutable 0L;
+      E.add_global32 env "@@rel_buf_opt" Mutable 0l;
       E.add_global64 env "@@data_buf" Mutable 0L;
       E.add_global64 env "@@ref_buf" Mutable 0L;
       E.add_global64 env "@@typtbl" Mutable 0L;
@@ -8166,7 +8166,7 @@ module OldStabilization = struct
           Stack.with_words env "temp_address" 1L (fun get_temp_address ->
             let (set_word, get_word) = new_local env "word" in
             (* read word *)
-            get_temp_address ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
+            get_temp_address ^^
             get_offset ^^
             compile_const_64 4L ^^
             StableMem.stable64_read env ^^
@@ -8199,7 +8199,7 @@ module OldStabilization = struct
       compile_divU64_const Heap.word_size ^^
 
       (* clear all words *)
-      from_0_to_n env (fun get_i ->
+      from_0_to_n_64 env (fun get_i ->
         get_ptr ^^
         compile_unboxed_const 0l ^^
         store32_at_address ^^
