@@ -6410,7 +6410,7 @@ module MakeSerialization (Strm : Stream) = struct
       
   module Registers = struct
     let register_globals env =
-      E.add_global32 env "@@rel_buf_opt" Mutable 0l;
+      E.add_global64 env "@@rel_buf_opt" Mutable 0L;
       E.add_global64 env "@@data_buf" Mutable 0L;
       E.add_global64 env "@@ref_buf" Mutable 0L;
       E.add_global64 env "@@typtbl" Mutable 0L;
@@ -7044,7 +7044,7 @@ module MakeSerialization (Strm : Stream) = struct
   (* See Note [Candid subtype checks] *)
   let with_rel_buf_opt env extended get_typtbl_size1 f =
     if extended then
-      f (compile_unboxed_const 0l)
+      f (compile_const_64 0L)
     else
       get_typtbl_size1 ^^ count_type_offsets env ^^
       E.call_import env "rts" "idl_sub_buf_words" ^^
@@ -7071,6 +7071,7 @@ module MakeSerialization (Strm : Stream) = struct
       [I32Type]
       (fun env get_rel_buf get_typtbl1 get_typtbl_end1 get_typtbl_size1 get_idltyp1 get_idltyp2 ->
         get_rel_buf ^^
+        compile_eq64_const 0L ^^
         E.else_trap_with env "null rel_buf" ^^
         get_rel_buf ^^
         get_typtbl1 ^^
@@ -7742,7 +7743,9 @@ module MakeSerialization (Strm : Stream) = struct
       | Func _ ->
         (* See Note [Candid subtype checks] *)
         get_rel_buf_opt ^^
+        compile_eq64_const 0L ^^
         G.if1 I32Type
+          (Bool.lit true) (* if we don't have a subtype memo table, assume the types are ok *)
           begin
             get_rel_buf_opt ^^
             get_typtbl ^^
@@ -7750,8 +7753,7 @@ module MakeSerialization (Strm : Stream) = struct
             get_typtbl_size ^^
             get_idltyp ^^
             idl_sub env t
-          end
-          (Bool.lit true) ^^ (* if we don't have a subtype memo table, assume the types are ok *)
+          end ^^
         G.if1 I32Type
           (with_composite_typ idl_func (fun _get_typ_buf ->
             read_byte_tagged
@@ -7765,7 +7767,9 @@ module MakeSerialization (Strm : Stream) = struct
       | Obj (Actor, _) ->
         (* See Note [Candid subtype checks] *)
         get_rel_buf_opt ^^
+        compile_eq64_const 0L ^^
         G.if1 I32Type
+          (Bool.lit true)
           begin
             get_rel_buf_opt ^^
             get_typtbl ^^
@@ -7773,8 +7777,7 @@ module MakeSerialization (Strm : Stream) = struct
             get_typtbl_size ^^
             get_idltyp ^^
             idl_sub env t
-          end
-          (Bool.lit true) ^^
+          end ^^
         G.if1 I32Type
           (with_composite_typ idl_service
              (fun _get_typ_buf -> read_actor_data ()))
