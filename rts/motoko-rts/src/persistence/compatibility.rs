@@ -8,7 +8,7 @@ use crate::{
     constants::WORD_SIZE,
     idl::TypeVariance,
     memory::{alloc_blob, Memory},
-    types::{Value, Words},
+    types::{size_of, Bytes, Value, Words},
 };
 
 const DEFAULT_VALUE: Value = Value::from_scalar(0);
@@ -80,7 +80,8 @@ impl TypeDescriptor {
     // be used during a single IC message when no GC increment is running in between.
     pub unsafe fn build_type_table<M: Memory>(&mut self, mem: &mut M) -> *mut *mut u8 {
         let type_count = self.type_count();
-        let temporary_blob = alloc_blob(mem, Words(type_count).to_bytes());
+        let table_size = Bytes(type_count * size_of::<usize>().to_bytes().as_usize());
+        let temporary_blob = alloc_blob(mem, table_size);
         let offset_table = self.type_offsets.as_blob().payload_const() as *const u32;
         let type_table = temporary_blob.as_blob_mut().payload_addr() as *mut *mut u8;
         let candid_data = self.candid_data.as_blob_mut().payload_addr();
