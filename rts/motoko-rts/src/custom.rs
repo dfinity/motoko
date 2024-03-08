@@ -52,27 +52,28 @@ impl IntoValue for Vec<u8> {
     }
 }
 
-unsafe fn blob_fn(
+unsafe fn wrap<T: FromValue, R: IntoValue>(
     mem: &mut impl Memory,
-    blob: Value,
-    function: impl FnOnce(Vec<u8>) -> Vec<u8>,
+    value: Value,
+    function: impl FnOnce(T) -> R,
 ) -> MotokoResult<Value> {
-    function(Vec::from_value(blob, mem)?).into_value(mem)
+    function(FromValue::from_value(value, mem)?).into_value(mem)
 }
 
 // Temporary example
 #[no_mangle]
-pub unsafe extern "C" fn echo(value: u32) -> u32 {
+pub unsafe extern "C" fn echo(value: Value) -> Value {
     value
 }
 
 // Temporary example
 #[ic_mem_fn]
 unsafe fn modify_blob<M: Memory>(mem: &mut M, value: Value) -> Value {
-    blob_fn(mem, value, |mut vec| {
+    wrap(mem, value, |mut vec: Vec<u8>| {
         vec.push('!' as u8);
         vec
-    }).unwrap()
+    })
+    .unwrap()
 }
 
 // [external-codegen]
