@@ -119,7 +119,7 @@ unsafe fn blob_modify<M: Memory>(mem: &mut M, value: Value) -> Value {
 // Temporary example
 #[ic_mem_fn]
 unsafe fn blob_concat<M: Memory>(mem: &mut M, a: Value, b: Value) -> Value {
-    wrap(mem, (a, b), |(a, b): (Vec<u8>, Vec<u8>)| [a,b].concat()).unwrap()
+    wrap(mem, (a, b), |(a, b): (Vec<u8>, Vec<u8>)| [a, b].concat()).unwrap()
 }
 
 // [external-codegen]
