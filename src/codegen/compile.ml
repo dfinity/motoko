@@ -936,14 +936,15 @@ let load64_from_address : G.t =
 let store64_at_address : G.t =
   G.i (Store {ty = I64Type; align = 2; offset = 0L; sz = None})
 
-let fits_in_32 =
+let fits_in_u32 =
   compile_const_64 0xffff_ffffL ^^
   G.i (Compare (Wasm_exts.Values.I64 I64Op.LeU))  
 
-let narrow_to_32 env get_value =
-  get_value ^^
-  fits_in_32 ^^
-  E.else_trap_with env "cannot narrow to 32 bit" ^^ (* Note: If narrow fails during print, the trap print leads to an infinite recursion and a stack overflow *)
+let convert_to_u32 env =
+  let (set_value, get_value) = new_local64 env "conversion_value" in
+  set_value ^^ get_value ^^
+  fits_in_u32 ^^
+  E.else_trap_with env "Overflow while converting to unsigned 32-bit" ^^
   get_value ^^
   G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64))
 
@@ -4652,7 +4653,7 @@ module Arr = struct
 
       get_blob ^^ Blob.len env ^^ set_len64 ^^
       
-      get_len64 ^^ fits_in_32 ^^ E.else_trap_with env "Blob is too large to be converted to an array" ^^
+      get_len64 ^^ fits_in_u32 ^^ E.else_trap_with env "Blob is too large to be converted to an array" ^^
       get_len64 ^^ G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^ set_len32 ^^
 
       get_len32 ^^ alloc env ^^ set_r ^^
@@ -4962,17 +4963,19 @@ module IC = struct
             get_len ^^
             Heap.memcpy env ^^
 
+            (* Note: If `convert_to_u32` would fail during print, the trap print leads to an infinite recursion and a stack overflow *)
+
             (* We use the iovec functionality to append a newline *)
             get_iovec_address ^^
-            narrow_to_32 env buffer_address ^^ (* This is safe because the buffer resides in 32-bit space *)
+            buffer_address ^^ convert_to_u32 env ^^ (* This is safe because the buffer resides in 32-bit space *)
             G.i (Store {ty = I32Type; align = 2; offset = 0L; sz = None}) ^^
 
             get_iovec_address ^^
-            narrow_to_32 env get_len ^^
+            get_len ^^ convert_to_u32 env ^^
             G.i (Store {ty = I32Type; align = 2; offset = 4L; sz = None}) ^^
 
             get_iovec_address ^^
-            narrow_to_32 env get_iovec_address ^^ (* The stack pointer should always be in the 32-bit space *)
+            get_iovec_address ^^ convert_to_u32 env ^^ (* The stack pointer should always be in the 32-bit space *)
             compile_add_const 16l ^^
             G.i (Store {ty = I32Type; align = 2; offset = 8L; sz = None}) ^^
 
@@ -4989,18 +4992,18 @@ module IC = struct
             *)
 
             compile_unboxed_const 1l (* stdout *) ^^
-            narrow_to_32 env get_iovec_address ^^
+            get_iovec_address ^^ convert_to_u32 env ^^
             compile_unboxed_const 1l (* one string segment (2 doesn't work) *) ^^
-            narrow_to_32 env get_iovec_address ^^
+            get_iovec_address ^^ convert_to_u32 env ^^
             compile_add_const 20l ^^ (* out for bytes written, we ignore that *)
             E.call_import env "wasi_snapshot_preview1" "fd_write" ^^
             G.i Drop ^^
 
             compile_unboxed_const 1l (* stdout *) ^^
-            narrow_to_32 env get_iovec_address ^^
+            get_iovec_address ^^ convert_to_u32 env ^^
             compile_add_const 8l ^^
             compile_unboxed_const 1l (* one string segment *) ^^
-            narrow_to_32 env get_iovec_address ^^
+            get_iovec_address ^^ convert_to_u32 env ^^
             compile_add_const 20l ^^ (* out for bytes written, we ignore that *)
             E.call_import env "wasi_snapshot_preview1" "fd_write" ^^
             G.i Drop)
@@ -6309,8 +6312,7 @@ module BumpStream : Stream = struct
   let write_blob env get_data_buf get_x =
     let set_len, get_len = new_local64 env "len" in
     get_x ^^ Blob.len env ^^ set_len ^^
-    (* TODO: Lift LEB128 to 64-bit to get rid of the subsequent `narrow_to_32` *)
-    write_word_leb env get_data_buf (narrow_to_32 env get_len) ^^
+    write_word_leb env get_data_buf (get_len ^^ convert_to_u32 env) ^^
     get_data_buf ^^
     get_x ^^ Blob.payload_address env ^^
     get_len ^^
@@ -6321,8 +6323,7 @@ module BumpStream : Stream = struct
   let write_text env get_data_buf get_x =
     let set_len, get_len = new_local64 env "len" in
     get_x ^^ Text.size env ^^ set_len ^^
-    (* TODO: Lift LEB128 to 64-bit to get rid of the subsequent `narrow_to_32` *)
-    write_word_leb env get_data_buf (narrow_to_32 env get_len) ^^
+    write_word_leb env get_data_buf (get_len ^^ convert_to_u32 env) ^^
     get_x ^^ get_data_buf ^^ Text.to_buf env ^^
     get_len ^^ 
     advance_data_buf get_data_buf
@@ -6818,21 +6819,15 @@ module MakeSerialization (Strm : Stream) = struct
           size env t
         )
       | Prim Blob ->
-        let (set_len, get_len) = new_local64 env "len" in
-        let (set_size, get_size) = new_local env "size" in
-        get_x ^^ Blob.len env ^^ set_len ^^
-        (* TODO: Lift LEB128 to 64-bit to get rid of the subsequent `narrow_to_32` *)
-        narrow_to_32 env get_len ^^ set_size ^^
-        size_word env get_size ^^
-        inc_data_size get_size
+        let (set_len, get_len) = new_local env "len" in
+        get_x ^^ Blob.len env ^^ convert_to_u32 env ^^ set_len ^^
+        size_word env get_len ^^
+        inc_data_size get_len
       | Prim Text ->
-        let (set_len, get_len) = new_local64 env "len" in
-        let (set_size, get_size) = new_local env "size" in
-        get_x ^^ Text.size env ^^ set_len ^^
-        (* TODO: Lift LEB128 to 64-bit to get rid of the subsequent `narrow_to_32` *)
-        narrow_to_32 env get_len ^^ set_size ^^
-        size_word env get_size ^^
-        inc_data_size get_size
+        let (set_len, get_len) = new_local env "len" in
+        get_x ^^ Text.size env ^^ convert_to_u32 env ^^ set_len ^^
+        size_word env get_len ^^
+        inc_data_size get_len
       | Opt t ->
         inc_data_size (compile_unboxed_const 1l) ^^ (* one byte tag *)
         get_x ^^ Opt.is_some env ^^
@@ -7879,7 +7874,7 @@ module MakeSerialization (Strm : Stream) = struct
       let (set_val, get_val) = new_local env "val" in
 
       get_blob ^^ Blob.len env ^^ set_blob_len ^^
-      get_blob_len ^^ fits_in_32 ^^ E.else_trap_with env "Blob too large for deserialization" ^^ 
+      get_blob_len ^^ fits_in_u32 ^^ E.else_trap_with env "Blob too large for deserialization" ^^ 
       get_blob_len ^^ set_data_size ^^
 
       get_blob ^^ Blob.payload_address env ^^ set_data_start ^^
