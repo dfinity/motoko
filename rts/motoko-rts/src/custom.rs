@@ -10,7 +10,7 @@ use crate::{
 };
 
 #[derive(Clone, Debug, Eq, PartialEq)]
-enum MotokoError {
+pub enum MotokoError {
     UnexpectedTag(Tag),
     #[allow(unused)]
     Custom(u64),
@@ -18,11 +18,11 @@ enum MotokoError {
 
 type MotokoResult<T> = Result<T, MotokoError>;
 
-trait FromValue: Sized {
+pub trait FromValue: Sized {
     unsafe fn from_value(value: Value, mem: &mut impl Memory) -> MotokoResult<Self>;
 }
 
-trait IntoValue {
+pub trait IntoValue {
     unsafe fn into_value(self, mem: &mut impl Memory) -> MotokoResult<Value>;
 }
 
@@ -52,12 +52,52 @@ impl IntoValue for Vec<u8> {
     }
 }
 
-unsafe fn wrap<T: FromValue, R: IntoValue>(
+pub trait FromValues: Sized {
+    type Values;
+    unsafe fn from_values(values: Self::Values, mem: &mut impl Memory) -> MotokoResult<Self>;
+}
+
+pub trait IntoValues {
+    type Values;
+    unsafe fn into_values(self, mem: &mut impl Memory) -> MotokoResult<Self::Values>;
+}
+
+impl<A: FromValue> FromValues for A {
+    type Values = Value;
+    unsafe fn from_values(value: Self::Values, mem: &mut impl Memory) -> MotokoResult<Self> {
+        A::from_value(value, mem)
+    }
+}
+
+impl<A: IntoValue> IntoValues for A {
+    type Values = Value;
+    unsafe fn into_values(self, mem: &mut impl Memory) -> MotokoResult<Self::Values> {
+        self.into_value(mem)
+    }
+}
+
+// TODO: macro for tuple implementations
+
+impl<A: FromValue, B: FromValue> FromValues for (A, B) {
+    type Values = (Value, Value);
+    unsafe fn from_values((a, b): Self::Values, mem: &mut impl Memory) -> MotokoResult<Self> {
+        Ok((A::from_value(a, mem)?, B::from_value(b, mem)?))
+    }
+}
+
+impl<A: IntoValue, B: IntoValue> IntoValues for (A, B) {
+    type Values = (Value, Value);
+    unsafe fn into_values(self, mem: &mut impl Memory) -> MotokoResult<Self::Values> {
+        Ok((self.0.into_value(mem)?, self.1.into_value(mem)?))
+    }
+}
+
+unsafe fn wrap<T: FromValues, R: IntoValues>(
     mem: &mut impl Memory,
-    value: Value,
+    values: T::Values,
     function: impl FnOnce(T) -> R,
-) -> MotokoResult<Value> {
-    function(FromValue::from_value(value, mem)?).into_value(mem)
+) -> MotokoResult<R::Values> {
+    function(T::from_values(values, mem)?).into_values(mem)
 }
 
 // Temporary example

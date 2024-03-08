@@ -3,6 +3,7 @@
 #![no_std]
 #![feature(
     arbitrary_self_types,
+    associated_type_defaults,
     core_intrinsics,
     panic_info_message,
     proc_macro_hygiene
