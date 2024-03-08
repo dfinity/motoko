@@ -11753,7 +11753,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     const_sr (SR.UnboxedWord64 Type.Int64) (Word64.btst_kernel env)
 
   (* Custom RTS functions *)
-  | OtherPrim s, [_] when String.length s > 4 && String.sub s 0 4 = "rts:" ->
+  | OtherPrim s, _ when String.length s > 4 && String.sub s 0 4 = "rts:" ->
     let s' = String.sub s 4 (String.length s - 4) in
     if List.mem s' !(env.E.custom_rts_functions) then
       const_sr SR.Vanilla (E.call_import env "rts" s')
