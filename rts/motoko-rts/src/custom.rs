@@ -1,7 +1,7 @@
 // Custom RTS function utilities
 
 use alloc::vec::Vec;
-use motoko_rts_macros::{ic_mem_fn, motoko};
+use motoko_rts_macros::motoko;
 
 use crate::{
     barriers::allocation_barrier,
@@ -35,6 +35,30 @@ impl FromValue for Value {
 impl IntoValue for Value {
     unsafe fn into_value(self, _mem: &mut impl Memory) -> MotokoResult<Value> {
         Ok(self)
+    }
+}
+
+impl FromValue for u32 {
+    unsafe fn from_value(value: Value, _mem: &mut impl Memory) -> MotokoResult<Self> {
+        Ok(value.get_scalar())
+    }
+}
+
+impl IntoValue for u32 {
+    unsafe fn into_value(self, _mem: &mut impl Memory) -> MotokoResult<Value> {
+        Ok(Value::from_scalar(self))
+    }
+}
+
+impl FromValue for i32 {
+    unsafe fn from_value(value: Value, _mem: &mut impl Memory) -> MotokoResult<Self> {
+        Ok(value.get_signed_scalar())
+    }
+}
+
+impl IntoValue for i32 {
+    unsafe fn into_value(self, _mem: &mut impl Memory) -> MotokoResult<Value> {
+        Ok(Value::from_signed_scalar(self))
     }
 }
 
@@ -106,27 +130,35 @@ impl<A: IntoValue, B: IntoValue> IntoArgs for (A, B) {
 
 // Temporary example
 #[motoko]
-unsafe fn echo(_mem: &mut impl Memory, value: Value) -> Value {
+unsafe fn echo(value: Value) -> Value {
     value
 }
 
 // Temporary example
 #[motoko]
-unsafe fn echo2(_mem: &mut impl Memory, a: Value, b: Value) -> (Value, Value) {
-    (a, b)
-}
-
-// Temporary example
-#[motoko]
-unsafe fn blob_modify(_mem: &mut impl Memory, mut vec: Vec<u8>) -> Vec<u8> {
+unsafe fn blob_modify(mut vec: Vec<u8>) -> Vec<u8> {
     vec.push('!' as u8);
     vec
 }
 
 // Temporary example
 #[motoko]
-unsafe fn blob_concat(_mem: &mut impl Memory, a: Vec<u8>, b: Vec<u8>) -> Vec<u8> {
+unsafe fn blob_concat(a: Vec<u8>, b: Vec<u8>) -> Vec<u8> {
     [a, b].concat()
+}
+
+// Temporary example
+#[motoko]
+unsafe fn manual_alloc(#[memory] mem: &mut impl Memory) -> Value {
+    // Low-level access to memory allocation
+    let value = alloc_blob(mem, Bytes(3 as u32));
+    let blob = value.as_blob_mut();
+    let mut dest = blob.payload_addr();
+    for i in 0..3 {
+        *dest = (i + 1) * 0x11;
+        dest = dest.add(1);
+    }
+    allocation_barrier(value)
 }
 
 // [external-codegen]

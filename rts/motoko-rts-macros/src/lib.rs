@@ -1,5 +1,5 @@
 use proc_macro::TokenStream;
-use quote::quote;
+use quote::{quote, ToTokens};
 
 /// This macro is used to generate monomorphic versions of allocating RTS functions, to allow
 /// calling such functions in generated code. Example:
@@ -168,6 +168,11 @@ pub fn is_incremental_gc(_item: TokenStream) -> TokenStream {
     "cfg!(feature = \"incremental_gc\")".parse().unwrap()
 }
 
+enum ArgSort {
+    Value,
+    Memory,
+}
+
 /// This macro wraps `#[ic_mem_fn]` with automatic type conversions for
 /// Motoko types using traits defined in the `motoko_rts::custom` module.
 #[proc_macro_attribute]
@@ -175,28 +180,34 @@ pub fn motoko(attr: TokenStream, input: TokenStream) -> TokenStream {
     let ic_mem_attr: proc_macro2::TokenStream = attr.into();
 
     // Wrapped function
-    let fun = syn::parse_macro_input!(input as syn::ItemFn);
-    let fn_sig = &fun.sig;
-    let fn_ident = &fn_sig.ident;
+    let mut fun = syn::parse_macro_input!(input as syn::ItemFn);
+    let fn_ident = &fun.sig.ident;
     let fn_name = fn_ident.to_string();
-    let fn_params: Vec<(syn::Ident, syn::Type)> = fn_sig
+    let fn_params: Vec<(ArgSort, syn::Ident, syn::Type)> = fun
+        .sig
         .inputs
-        .iter()
+        .iter_mut()
         .enumerate()
-        .filter_map(|(i, arg)| match arg {
+        .map(|(i, arg)| match arg {
             syn::FnArg::Receiver(_) => {
+                // TODO: replace panic with macro error message
                 panic!("IC functions can't have receivers (`&self`, `&mut self`, etc.)")
             }
             syn::FnArg::Typed(pat) => {
-                if i == 0 {
-                    // First argument should be `memory`, skip
-                    None
-                } else {
-                    Some((
-                        syn::Ident::new(&format!("arg{}", i), proc_macro2::Span::call_site()),
-                        (*pat.ty).clone(),
-                    ))
-                }
+                let mut sort = ArgSort::Value;
+                pat.attrs.retain(|attr| {
+                    if attr.meta.to_token_stream().to_string() == "memory" {
+                        sort = ArgSort::Memory;
+                        false
+                    } else {
+                        true
+                    }
+                });
+                (
+                    sort,
+                    syn::Ident::new(&format!("arg{}", i), proc_macro2::Span::call_site()),
+                    (*pat.ty).clone(),
+                )
             }
         })
         .collect();
@@ -204,7 +215,10 @@ pub fn motoko(attr: TokenStream, input: TokenStream) -> TokenStream {
     // Motoko parameters
     let params: Vec<proc_macro2::TokenStream> = fn_params
         .iter()
-        .map(|(ident, _ty)| quote!(#ident: crate::types::Value))
+        .filter_map(|(sort, ident, _ty)| match sort {
+            ArgSort::Value => Some(quote!(#ident: crate::types::Value)),
+            ArgSort::Memory => None,
+        })
         .collect();
 
     // Memory parameter
@@ -213,18 +227,26 @@ pub fn motoko(attr: TokenStream, input: TokenStream) -> TokenStream {
     // Motoko -> Rust conversions
     let arg_conversions: Vec<proc_macro2::TokenStream> = fn_params
         .iter()
-        .map(
-            |(ident, _)| quote!(let #ident = crate::custom::FromValue::from_value(#ident, #memory_ident).unwrap()),
-        )
+        .filter_map(|(sort, ident, _)| match sort {
+            ArgSort::Value => Some(quote!(
+                let #ident = crate::custom::FromValue::from_value(#ident, #memory_ident).unwrap()
+            )),
+            ArgSort::Memory => None,
+        })
         .collect();
 
     // Motoko args
-    let args: Vec<proc_macro2::TokenStream> =
-        fn_params.iter().map(|(ident, _)| quote!(#ident)).collect();
+    let args: Vec<proc_macro2::TokenStream> = fn_params
+        .iter()
+        .map(|(sort, ident, _)| match sort {
+            ArgSort::Value => quote!(#ident),
+            ArgSort::Memory => quote!(#memory_ident),
+        })
+        .collect();
 
     // Motoko return value
     let fn_ret = match fun.sig.output {
-        syn::ReturnType::Default => quote!("_"), // ?
+        syn::ReturnType::Default => quote!(()),
         syn::ReturnType::Type(_, ref t) => quote!(#t),
     };
     let ret = quote!(<#fn_ret as FromArgs>::Args);
@@ -250,10 +272,10 @@ pub fn motoko(attr: TokenStream, input: TokenStream) -> TokenStream {
     let output = quote!(
         #wrap_fn
 
-        #[ic_mem_fn(#ic_mem_attr)]
+        #[crate::ic_mem_fn(#ic_mem_attr)]
         unsafe fn #fn_ident<M: crate::memory::Memory>(#memory_ident: &mut M, #(#params,)*) -> #ret {
             #(#arg_conversions;)*
-            let ret = #wrap_fn_ident(#memory_ident, #(#args,)*);
+            let ret = #wrap_fn_ident(#(#args,)*);
             crate::custom::IntoArgs::into_args(ret, #memory_ident).unwrap()
         }
 
