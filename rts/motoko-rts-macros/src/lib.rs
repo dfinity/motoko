@@ -1,5 +1,6 @@
 use proc_macro::TokenStream;
 use quote::{quote, ToTokens};
+use syn::LitByteStr;
 
 /// This macro is used to generate monomorphic versions of allocating RTS functions, to allow
 /// calling such functions in generated code. Example:
@@ -245,11 +246,7 @@ pub fn motoko(attr: TokenStream, input: TokenStream) -> TokenStream {
         .collect();
 
     // Motoko return value
-    let fn_ret = match fun.sig.output {
-        syn::ReturnType::Default => quote!(()),
-        syn::ReturnType::Type(_, ref t) => quote!(#t),
-    };
-    let ret = quote!(<#fn_ret as FromArgs>::Args);
+    let ret = quote!(crate::types::Value);
 
     // Wrapper function
     let mut wrap_fn = fun.clone();
@@ -261,12 +258,9 @@ pub fn motoko(attr: TokenStream, input: TokenStream) -> TokenStream {
         &format!("CUSTOM_SECTION_{}", fn_ident.to_string().to_uppercase()),
         fn_ident.span(),
     );
-    let custom_section_bytes: Vec<syn::LitByte> = format!("{};", fn_name)
-        .into_bytes()
-        .into_iter()
-        .map(|byte| syn::LitByte::new(byte, proc_macro2::Span::call_site()))
-        .collect();
-    let custom_section_bytes_len = custom_section_bytes.len();
+    let custom_section_content = format!("{};", fn_name);
+    let custom_section_len = custom_section_content.len();
+    let custom_section_bytes = LitByteStr::new(custom_section_content.as_bytes(), fn_ident.span());
 
     // Generated tokens
     let output = quote!(
@@ -276,11 +270,11 @@ pub fn motoko(attr: TokenStream, input: TokenStream) -> TokenStream {
         unsafe fn #fn_ident<M: crate::memory::Memory>(#memory_ident: &mut M, #(#params,)*) -> #ret {
             #(#arg_conversions;)*
             let ret = #wrap_fn_ident(#(#args,)*);
-            crate::custom::IntoArgs::into_args(ret, #memory_ident).unwrap()
+            crate::custom::IntoValue::into_value(ret, #memory_ident).unwrap()
         }
 
         #[link_section = "rts:custom-functions"]
-        static #custom_section_ident: [u8; #custom_section_bytes_len] = [#(#custom_section_bytes,)*];
+        static #custom_section_ident: [u8; #custom_section_len] = *#custom_section_bytes;
     );
 
     // return syn::Error::new_spanned(quote!(), format!("Macro expansion:\n{}", output))

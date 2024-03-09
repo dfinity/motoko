@@ -75,7 +75,7 @@ type extended_module = {
   candid : candid_sections;
   (* motoko sections *)
   motoko : motoko_sections;
-  (* RTS sections *)
+  (* rts sections *)
   rts : rts_sections;
   (* source map section *)
   source_mapping_url : string option;
