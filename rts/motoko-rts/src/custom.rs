@@ -76,7 +76,7 @@ impl<A: IntoValue> IntoArgs for A {
     }
 }
 
-// TODO: macro for tuple implementations
+// TODO: macro for n-length tuples
 
 impl<A: FromValue, B: FromValue> FromArgs for (A, B) {
     type Args = (Value, Value);
