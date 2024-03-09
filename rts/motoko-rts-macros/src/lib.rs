@@ -167,3 +167,72 @@ pub fn non_incremental_gc(attr: TokenStream, input: TokenStream) -> TokenStream 
 pub fn is_incremental_gc(_item: TokenStream) -> TokenStream {
     "cfg!(feature = \"incremental_gc\")".parse().unwrap()
 }
+
+/// This macro wraps `#[ic_mem_fn]` with automatic type conversions for Motoko types
+/// using the `motoko_rts::custom::FromValue` and `motoko_rts::custom::IntoValue` traits.
+#[proc_macro_attribute]
+pub fn motoko(attr: TokenStream, input: TokenStream) -> TokenStream {
+    let ic_mem_attr: proc_macro2::TokenStream = attr.into();
+
+    let fun = syn::parse_macro_input!(input as syn::ItemFn);
+    let fun_sig = &fun.sig;
+
+    let fn_ident = &fun_sig.ident;
+    let fn_params: Vec<(syn::Ident, syn::Type)> = fun_sig
+        .inputs
+        .iter()
+        .enumerate()
+        .filter_map(|(i, arg)| match arg {
+            syn::FnArg::Receiver(_) => {
+                panic!("IC functions can't have receivers (`&self`, `&mut self`, etc.)")
+            }
+            syn::FnArg::Typed(pat) => {
+                if i == 0 {
+                    // First argument should be `memory`, skip
+                    None
+                } else {
+                    Some((
+                        syn::Ident::new(&format!("arg{}", i), proc_macro2::Span::call_site()),
+                        (*pat.ty).clone(),
+                    ))
+                }
+            }
+        })
+        .collect();
+
+    let params: Vec<proc_macro2::TokenStream> = fn_params
+        .iter()
+        .map(|(ident, ty)| quote!(#ident: #ty))
+        .collect();
+
+    let memory_ident = syn::Ident::new("memory", proc_macro2::Span::call_site());
+
+    let args: Vec<proc_macro2::TokenStream> = fn_params
+        .iter()
+        .map(
+            |(ident, _)| quote!(crate::custom::FromArgs::from_args(#ident, #memory_ident).unwrap()),
+        )
+        .collect();
+
+    let fn_ret = match fun.sig.output {
+        syn::ReturnType::Default => quote!("_"), // ?
+        syn::ReturnType::Type(_, ref t) => quote!(#t),
+    };
+    let ret = quote!(<#fn_ret as FromArgs>::Args);
+
+    let mut wrap_fn = fun.clone();
+    wrap_fn.sig.ident = syn::Ident::new(&format!("__motoko_{}", fn_ident), fn_ident.span());
+    let wrap_fn_ident = &wrap_fn.sig.ident;
+
+    quote!(
+        #wrap_fn
+        #[ic_mem_fn(#ic_mem_attr)]
+        unsafe fn #fn_ident<M: crate::memory::Memory>(#memory_ident: &mut M, #(#params,)*) -> #ret {
+            crate::custom::IntoArgs::into_args(
+                #wrap_fn_ident(#memory_ident, #(#args,)*),
+                #memory_ident
+            ).unwrap()
+        }
+    )
+    .into()
+}

@@ -1,7 +1,7 @@
 // Custom RTS function utilities
 
 use alloc::vec::Vec;
-use motoko_rts_macros::ic_mem_fn;
+use motoko_rts_macros::{ic_mem_fn, motoko};
 
 use crate::{
     barriers::allocation_barrier,
@@ -117,9 +117,9 @@ unsafe fn blob_modify<M: Memory>(mem: &mut M, value: Value) -> Value {
 }
 
 // Temporary example
-#[ic_mem_fn]
-unsafe fn blob_concat<M: Memory>(mem: &mut M, a: Value, b: Value) -> Value {
-    wrap(mem, (a, b), |(a, b): (Vec<u8>, Vec<u8>)| [a, b].concat()).unwrap()
+#[motoko]
+unsafe fn blob_concat(mem: &mut impl Memory, a: Vec<u8>, b: Vec<u8>) -> Vec<u8> {
+    [a, b].concat()
 }
 
 // [external-codegen]
