@@ -202,17 +202,20 @@ pub fn motoko(attr: TokenStream, input: TokenStream) -> TokenStream {
 
     let params: Vec<proc_macro2::TokenStream> = fn_params
         .iter()
-        .map(|(ident, ty)| quote!(#ident: #ty))
+        .map(|(ident, ty)| quote!(#ident: crate::types::Value))
         .collect();
 
     let memory_ident = syn::Ident::new("memory", proc_macro2::Span::call_site());
 
-    let args: Vec<proc_macro2::TokenStream> = fn_params
+    let arg_conversions: Vec<proc_macro2::TokenStream> = fn_params
         .iter()
         .map(
-            |(ident, _)| quote!(crate::custom::FromArgs::from_args(#ident, #memory_ident).unwrap()),
+            |(ident, _)| quote!(let #ident = crate::custom::FromValue::from_value(#ident, #memory_ident).unwrap()),
         )
         .collect();
+
+    let args: Vec<proc_macro2::TokenStream> =
+        fn_params.iter().map(|(ident, _)| quote!(#ident)).collect();
 
     let fn_ret = match fun.sig.output {
         syn::ReturnType::Default => quote!("_"), // ?
@@ -224,15 +227,19 @@ pub fn motoko(attr: TokenStream, input: TokenStream) -> TokenStream {
     wrap_fn.sig.ident = syn::Ident::new(&format!("__motoko_{}", fn_ident), fn_ident.span());
     let wrap_fn_ident = &wrap_fn.sig.ident;
 
-    quote!(
+    let output = quote!(
         #wrap_fn
         #[ic_mem_fn(#ic_mem_attr)]
         unsafe fn #fn_ident<M: crate::memory::Memory>(#memory_ident: &mut M, #(#params,)*) -> #ret {
-            crate::custom::IntoArgs::into_args(
-                #wrap_fn_ident(#memory_ident, #(#args,)*),
-                #memory_ident
-            ).unwrap()
+            #(#arg_conversions;)*
+            let ret = #wrap_fn_ident(#memory_ident, #(#args,)*);
+            crate::custom::IntoArgs::into_args(ret, #memory_ident).unwrap()
         }
-    )
-    .into()
+    );
+
+    // return syn::Error::new_spanned(quote!(), format!("Macro expansion:\n{}", output))
+    //     .to_compile_error()
+    //     .into();
+
+    output.into()
 }
