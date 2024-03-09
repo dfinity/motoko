@@ -174,11 +174,12 @@ pub fn is_incremental_gc(_item: TokenStream) -> TokenStream {
 pub fn motoko(attr: TokenStream, input: TokenStream) -> TokenStream {
     let ic_mem_attr: proc_macro2::TokenStream = attr.into();
 
+    // Wrapped function
     let fun = syn::parse_macro_input!(input as syn::ItemFn);
-    let fun_sig = &fun.sig;
-
-    let fn_ident = &fun_sig.ident;
-    let fn_params: Vec<(syn::Ident, syn::Type)> = fun_sig
+    let fn_sig = &fun.sig;
+    let fn_ident = &fn_sig.ident;
+    let fn_name = fn_ident.to_string();
+    let fn_params: Vec<(syn::Ident, syn::Type)> = fn_sig
         .inputs
         .iter()
         .enumerate()
@@ -200,13 +201,16 @@ pub fn motoko(attr: TokenStream, input: TokenStream) -> TokenStream {
         })
         .collect();
 
+    // Motoko parameters
     let params: Vec<proc_macro2::TokenStream> = fn_params
         .iter()
-        .map(|(ident, ty)| quote!(#ident: crate::types::Value))
+        .map(|(ident, _ty)| quote!(#ident: crate::types::Value))
         .collect();
 
+    // Memory parameter
     let memory_ident = syn::Ident::new("memory", proc_macro2::Span::call_site());
 
+    // Motoko -> Rust conversions
     let arg_conversions: Vec<proc_macro2::TokenStream> = fn_params
         .iter()
         .map(
@@ -214,21 +218,41 @@ pub fn motoko(attr: TokenStream, input: TokenStream) -> TokenStream {
         )
         .collect();
 
+    // Motoko args
     let args: Vec<proc_macro2::TokenStream> =
         fn_params.iter().map(|(ident, _)| quote!(#ident)).collect();
 
+    // Motoko return value
     let fn_ret = match fun.sig.output {
         syn::ReturnType::Default => quote!("_"), // ?
         syn::ReturnType::Type(_, ref t) => quote!(#t),
     };
     let ret = quote!(<#fn_ret as FromArgs>::Args);
 
+    // Wrapper function
     let mut wrap_fn = fun.clone();
     wrap_fn.sig.ident = syn::Ident::new(&format!("__motoko_{}", fn_ident), fn_ident.span());
     let wrap_fn_ident = &wrap_fn.sig.ident;
 
+    // Custom section
+    let custom_section_ident = syn::Ident::new(
+        &format!("CUSTOM_SECTION_{}", fn_ident.to_string().to_uppercase()),
+        fn_ident.span(),
+    );
+    let custom_section_bytes: Vec<syn::LitByte> = format!("{};", fn_name)
+        .into_bytes()
+        .into_iter()
+        .map(|byte| syn::LitByte::new(byte, proc_macro2::Span::call_site()))
+        .collect();
+    let custom_section_bytes_len = custom_section_bytes.len();
+
+    // Generated tokens
     let output = quote!(
+        #[link_section = "icp:private motoko:custom-rts-functions"]
+        static #custom_section_ident: [u8; #custom_section_bytes_len] = [#(#custom_section_bytes,)*];
+
         #wrap_fn
+
         #[ic_mem_fn(#ic_mem_attr)]
         unsafe fn #fn_ident<M: crate::memory::Memory>(#memory_ident: &mut M, #(#params,)*) -> #ret {
             #(#arg_conversions;)*

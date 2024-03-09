@@ -26,6 +26,18 @@ pub trait IntoValue {
     unsafe fn into_value(self, mem: &mut impl Memory) -> MotokoResult<Value>;
 }
 
+impl FromValue for Value {
+    unsafe fn from_value(value: Value, _mem: &mut impl Memory) -> MotokoResult<Self> {
+        Ok(value)
+    }
+}
+
+impl IntoValue for Value {
+    unsafe fn into_value(self, mem: &mut impl Memory) -> MotokoResult<Value> {
+        Ok(self)
+    }
+}
+
 impl FromValue for Vec<u8> {
     unsafe fn from_value(value: Value, _mem: &mut impl Memory) -> MotokoResult<Self> {
         match value.tag() {
@@ -101,24 +113,21 @@ unsafe fn wrap<T: FromArgs, R: IntoArgs>(
 }
 
 // Temporary example
-#[no_mangle]
-pub unsafe extern "C" fn echo(value: Value) -> Value {
+#[motoko]
+unsafe fn echo(_mem: &mut impl Memory, value: Value) -> Value {
     value
 }
 
 // Temporary example
-#[ic_mem_fn]
-unsafe fn blob_modify<M: Memory>(mem: &mut M, value: Value) -> Value {
-    wrap(mem, value, |mut vec: Vec<u8>| {
-        vec.push('!' as u8);
-        vec
-    })
-    .unwrap()
+#[motoko]
+unsafe fn blob_modify(_mem: &mut impl Memory, mut vec: Vec<u8>) -> Vec<u8> {
+    vec.push('!' as u8);
+    vec
 }
 
 // Temporary example
 #[motoko]
-unsafe fn blob_concat(mem: &mut impl Memory, a: Vec<u8>, b: Vec<u8>) -> Vec<u8> {
+unsafe fn blob_concat(_mem: &mut impl Memory, a: Vec<u8>, b: Vec<u8>) -> Vec<u8> {
     [a, b].concat()
 }
 
