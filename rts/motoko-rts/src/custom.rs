@@ -33,7 +33,7 @@ impl FromValue for Value {
 }
 
 impl IntoValue for Value {
-    unsafe fn into_value(self, mem: &mut impl Memory) -> MotokoResult<Value> {
+    unsafe fn into_value(self, _mem: &mut impl Memory) -> MotokoResult<Value> {
         Ok(self)
     }
 }
@@ -102,14 +102,6 @@ impl<A: IntoValue, B: IntoValue> IntoArgs for (A, B) {
     unsafe fn into_args(self, mem: &mut impl Memory) -> MotokoResult<Self::Args> {
         Ok((self.0.into_value(mem)?, self.1.into_value(mem)?))
     }
-}
-
-unsafe fn wrap<T: FromArgs, R: IntoArgs>(
-    mem: &mut impl Memory,
-    values: T::Args,
-    function: impl FnOnce(T) -> R,
-) -> MotokoResult<R::Args> {
-    function(T::from_args(values, mem)?).into_args(mem)
 }
 
 // Temporary example

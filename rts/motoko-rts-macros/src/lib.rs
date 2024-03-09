@@ -248,7 +248,7 @@ pub fn motoko(attr: TokenStream, input: TokenStream) -> TokenStream {
 
     // Generated tokens
     let output = quote!(
-        #[link_section = "icp:private motoko:custom-rts-functions"]
+        #[link_section = "rts:custom-functions"]
         static #custom_section_ident: [u8; #custom_section_bytes_len] = [#(#custom_section_bytes,)*];
 
         #wrap_fn

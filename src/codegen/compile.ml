@@ -1268,14 +1268,9 @@ module RTS = struct
       non_incremental_gc_imports env;
 
     (* Custom RTS functions *)
-    Option.iter Wasm_exts.CustomModule.(fun (rts : extended_module) ->
-      env.E.custom_rts_functions :=
-        (match rts.motoko.custom_rts_functions with
-        | Some (_, s) -> String.split_on_char ';' s
-          |> List.map String.trim
-          |> List.filter (fun s -> s <> "")
-        | None -> []);
-      let module_ = rts.module_ in
+    Option.iter Wasm_exts.CustomModule.(fun (m : extended_module) ->
+      env.E.custom_rts_functions := m.rts.custom_functions;
+      let module_ = m.module_ in
       List.iter (fun export ->
         let name = string_of_name export.Wasm.Source.it.Wasm_exts.Ast.name in
         if List.mem name !(env.E.custom_rts_functions) then
@@ -12822,11 +12817,13 @@ and conclude_module env set_serialization_globals start_fi_o =
         labels = E.get_labs env;
         stable_types = !(env.E.stable_types);
         compiler = metadata "motoko:compiler" (Lib.Option.get Source_id.release Source_id.id);
-        custom_rts_functions = Option.bind env.E.rts (fun rts -> rts.motoko.custom_rts_functions)
       };
       candid = {
         args = !(env.E.args);
         service = !(env.E.service);
+      };
+      rts = {
+        custom_functions = !(env.E.custom_rts_functions);
       };
       source_mapping_url = None;
       wasm_features = E.get_features env;

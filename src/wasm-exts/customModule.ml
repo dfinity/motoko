@@ -42,7 +42,6 @@ type motoko_sections = {
   labels : string list;
   stable_types : (bool * string) option;
   compiler : (bool * string) option;
-  custom_rts_functions : (bool * string) option;
 }
 
 type candid_sections = {
@@ -50,11 +49,14 @@ type candid_sections = {
   service : (bool * string) option;
 }
 
+type rts_sections = {
+  custom_functions : string list;
+}
+
 let empty_motoko_sections = {
   labels = [];
   stable_types = None;
   compiler = None;
-  custom_rts_functions = None;
 }
 
 let empty_candid_sections = {
@@ -73,6 +75,8 @@ type extended_module = {
   candid : candid_sections;
   (* motoko sections *)
   motoko : motoko_sections;
+  (* RTS sections *)
+  rts : rts_sections;
   (* source map section *)
   source_mapping_url : string option;
   wasm_features : string list;
