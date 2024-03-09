@@ -112,6 +112,12 @@ unsafe fn echo(_mem: &mut impl Memory, value: Value) -> Value {
 
 // Temporary example
 #[motoko]
+unsafe fn echo2(_mem: &mut impl Memory, a: Value, b: Value) -> (Value, Value) {
+    (a, b)
+}
+
+// Temporary example
+#[motoko]
 unsafe fn blob_modify(_mem: &mut impl Memory, mut vec: Vec<u8>) -> Vec<u8> {
     vec.push('!' as u8);
     vec

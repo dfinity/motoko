@@ -248,9 +248,6 @@ pub fn motoko(attr: TokenStream, input: TokenStream) -> TokenStream {
 
     // Generated tokens
     let output = quote!(
-        #[link_section = "rts:custom-functions"]
-        static #custom_section_ident: [u8; #custom_section_bytes_len] = [#(#custom_section_bytes,)*];
-
         #wrap_fn
 
         #[ic_mem_fn(#ic_mem_attr)]
@@ -259,6 +256,9 @@ pub fn motoko(attr: TokenStream, input: TokenStream) -> TokenStream {
             let ret = #wrap_fn_ident(#memory_ident, #(#args,)*);
             crate::custom::IntoArgs::into_args(ret, #memory_ident).unwrap()
         }
+
+        #[link_section = "rts:custom-functions"]
+        static #custom_section_ident: [u8; #custom_section_bytes_len] = [#(#custom_section_bytes,)*];
     );
 
     // return syn::Error::new_spanned(quote!(), format!("Macro expansion:\n{}", output))
