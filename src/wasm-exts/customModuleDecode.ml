@@ -840,11 +840,11 @@ let candid_sections s =
 
 (* RTS sections *)
 
-let is_rts_custom_functions_name n = n = Utf8.decode "rts:custom-functions"
+let is_rts_custom_functions n = n = Utf8.decode "rts:custom-functions"
 
 let rts_sections s =
   let custom_functions = custom_section
-  is_rts_custom_functions_name
+  is_rts_custom_functions
     (fun sec_end s -> utf8 sec_end s
       |> String.split_on_char ';'
       |> List.map String.trim
@@ -872,7 +872,7 @@ let is_unknown n = not (
   is_icp candid_service_name n ||
   is_icp candid_args_name n ||
   is_icp motoko_stable_types_name n ||
-  is_rts_custom_functions_name n ||
+  is_rts_custom_functions n ||
   is_wasm_features n)
 
 let skip_custom sec_end s =
