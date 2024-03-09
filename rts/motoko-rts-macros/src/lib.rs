@@ -168,8 +168,8 @@ pub fn is_incremental_gc(_item: TokenStream) -> TokenStream {
     "cfg!(feature = \"incremental_gc\")".parse().unwrap()
 }
 
-/// This macro wraps `#[ic_mem_fn]` with automatic type conversions for Motoko types
-/// using the `motoko_rts::custom::FromValue` and `motoko_rts::custom::IntoValue` traits.
+/// This macro wraps `#[ic_mem_fn]` with automatic type conversions for
+/// Motoko types using traits defined in the `motoko_rts::custom` module.
 #[proc_macro_attribute]
 pub fn motoko(attr: TokenStream, input: TokenStream) -> TokenStream {
     let ic_mem_attr: proc_macro2::TokenStream = attr.into();
