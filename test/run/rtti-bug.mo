@@ -1,7 +1,6 @@
 //MOC-FLAG --experimental-rtti --sanity-checks
 
-
-import {debugPrint;} "mo:prim";
+import { debugPrint } "mo:prim";
 
 class range(x : Nat, y : Int) {
     var i = x;
@@ -10,7 +9,7 @@ class range(x : Nat, y : Int) {
     }
   };
 
-for (_ in range(0, 11)) debugPrint(".");
+for (_ in range(0, 11)) debugPrint ".";
 
 //SKIP run
 //SKIP run-ir
