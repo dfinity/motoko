@@ -147,6 +147,12 @@ let rec adoc_of_declaration :
       doc_comment ();
       bprintf buf "\n\n";
       List.iter (adoc_of_doc buf env) class_doc.fields
+  | Object obj_doc ->
+      header obj_doc.name;
+      signature (fun _ -> bprintf buf "%s" obj_doc.name);
+      doc_comment ();
+      bprintf buf "\n\n";
+      List.iter (adoc_of_doc buf env) obj_doc.fields
   | Unknown unknown ->
       signature (fun _ -> bprintf buf "Unknown %s" unknown);
       doc_comment ()

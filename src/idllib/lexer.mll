@@ -1,6 +1,6 @@
 {
 open Parser
-module Utf8 = Wasm.Utf8
+module Utf8 = Lib.Utf8
 
 let convert_pos pos =
   { Source.file = pos.Lexing.pos_fname;
@@ -137,6 +137,7 @@ rule token = parse
   | "principal" { PRINCIPAL }
   | "oneway" { ONEWAY }
   | "query" { QUERY }
+  | "composite_query" { COMPOSITE_QUERY }
 
   | id as s { ID s }
 

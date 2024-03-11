@@ -1,3 +1,4 @@
+//MOC-FLAG -fshared-code
 func goNat32() {
  let x : Nat32 = 1 +% 1;
  var y : Nat32 = 1; y *%= 2;
@@ -42,42 +43,42 @@ func goValidFloat(x : Float) { assert (x * x == 4); }; goValidFloat(2);
 
 // We have to do the filechecks in reverse order:
 
-// CHECK: func $goValidFloat
-// CHECK: f64.load
-// CHECK: unreachable
+// FHECK: func $goValidFloat
+// FHECK: f64.load
+// FHECK: unreachable
 
-// CHECK: func $goValidNat64
-// CHECK: unbox_i64
-// CHECK: unreachable
+// FHECK: func $goValidNat64
+// FHECK: unbox_i64
+// FHECK: unreachable
 
-// CHECK: func $goValidNat32
-// CHECK: unbox_i32
-// CHECK: unreachable
+// FHECK: func $goValidNat32
+// FHECK: unbox_i32
+// FHECK: unreachable
 
-// CHECK: func $goFloat
-// CHECK-NOT: f64.load
-// CHECK-STORE: f64.load
-// CHECK: unreachable
+// FHECK: func $goFloat
+// FHECK-NOT: f64.load
+// FHECK-STORE: f64.load
+// FHECK: unreachable
 
-// CHECK: func $goInt64
-// CHECK-NOT: box_i64
-// CHECK-NOT: unbox_i64
-// CHECK: unreachable
+// FHECK: func $goInt64
+// FHECK-NOT: box_i64
+// FHECK-NOT: unbox_i64
+// FHECK: unreachable
 
-// CHECK: func $goNat64
-// CHECK-NOT: box_i64
-// CHECK-NOT: unbox_i64
-// CHECK: unreachable
+// FHECK: func $goNat64
+// FHECK-NOT: box_i64
+// FHECK-NOT: unbox_i64
+// FHECK: unreachable
 
-// CHECK: func $goInt32
-// CHECK-NOT: box_i32
-// CHECK-NOT: unbox_i32
-// CHECK: unreachable
+// FHECK: func $goInt32
+// FHECK-NOT: box_i32
+// FHECK-NOT: unbox_i32
+// FHECK: unreachable
 
-// CHECK: func $goNat32
-// CHECK-NOT: box_i32
-// CHECK-NOT: unbox_i32
-// CHECK: unreachable
+// FHECK: func $goNat32
+// FHECK-NOT: box_i32
+// FHECK-NOT: unbox_i32
+// FHECK: unreachable
 
 
 

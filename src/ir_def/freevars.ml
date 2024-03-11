@@ -84,8 +84,8 @@ let rec pat p : td = match p.it with
   | VarP i          -> M.singleton i p.note
   | TupP ps         -> pats ps
   | ObjP pfs        -> pats (pats_of_obj_pat pfs)
-  | OptP p          -> pat p
-  | TagP (i, p)     -> pat p
+  | OptP p
+  | TagP (_, p)     -> pat p
   | AltP (p1, p2)   -> pat p1 +- pat p2
 
 and pats ps : td = List.(fold_left (+-) M.empty (map pat ps))

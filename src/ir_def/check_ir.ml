@@ -78,8 +78,8 @@ let initial_env flavor : env =
     labs = T.Env.empty;
     rets = None;
     async = Async_cap.(match initial_cap() with
-                       | (NullCap | ErrorCap) -> None
-                       | (QueryCap c | AwaitCap c | AsyncCap c) -> Some c);
+                       | NullCap | ErrorCap -> None
+                       | QueryCap c | AwaitCap c | AsyncCap c | CompositeCap c | CompositeAwaitCap c | SystemCap c -> Some c);
     seen = ref T.ConSet.empty;
     check_run;
   }
@@ -271,7 +271,7 @@ and check_typ_field env s tf : unit =
      "typ field in non-typ_field flavor";
     check_con env c
   | t, Some T.Actor when not (T.is_shared_func t) ->
-    error env no_region "actor field %s must have shared function type" tf.T.lab
+    error env no_region "actor field %s must have shared function type, found %s" tf.T.lab (T.string_of_typ t)
   | t, _ -> check_typ env t
 
 and check_typ_binds_acyclic env cs ts  =
@@ -364,7 +364,15 @@ let store_typ t  =
 let rec check_exp env (exp:Ir.exp) : unit =
   (* helpers *)
   let check p = check env exp.at p in
-  let (<:) t1 t2 = check_sub env exp.at t1 t2 in
+  let (<:) t1 t2 =
+(*  try *)
+      check_sub env exp.at t1 t2
+(*  with e ->
+     (Printf.eprintf "(in here):\n%s"
+        (Wasm.Sexpr.to_string 80 (Arrange_ir.exp exp));
+      raise e)
+*)
+  in
   (* check for aliasing *)
   if exp.note.Note.check_run = env.check_run
   then
@@ -443,7 +451,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     | OptPrim, [exp1] ->
       T.Opt (typ exp1) <: t
     | TagPrim i, [exp1] ->
-      T.Variant [{T.lab = i; typ = typ exp1; depr = None}] <: t
+      T.Variant [{T.lab = i; typ = typ exp1; src = T.empty_src}] <: t
     | ActorDotPrim n, [exp1]
     | DotPrim n, [exp1] ->
       begin
@@ -474,20 +482,20 @@ let rec check_exp env (exp:Ir.exp) : unit =
       in
       typ exp2 <: T.nat;
       T.as_immut t2 <: t
-    | GetPastArrayOffset _, [exp1] ->
+    | GetLastArrayOffset, [exp1] ->
       let t1 = T.promote (typ exp1) in
       ignore
         (try T.as_array_sub t1 with
          | Invalid_argument _ ->
            error env exp1.at "expected array type, but expression produces type\n  %s"
              (T.string_of_typ_expand t1));
-      T.nat <: t
-    | NextArrayOffset _, [exp1] ->
+      T.int <: t
+    | NextArrayOffset, [exp1] ->
       typ exp1 <: T.nat;
       T.nat <: t
-    | ValidArrayOffset, [exp1; exp2] ->
-      typ exp1 <: T.nat;
-      typ exp2 <: T.nat;
+    | EqArrayOffset, [exp1; exp2] ->
+      typ exp1 <: T.int;
+      typ exp2 <: T.int;
       T.bool <: t
     | BreakPrim id, [exp1] ->
       begin
@@ -859,6 +867,10 @@ let rec check_exp env (exp:Ir.exp) : unit =
       check e1.note.Note.const "constant DotPrim on non-constant subexpression"
     | PrimE (ProjPrim _, [e1]) ->
       check e1.note.Note.const "constant ProjPrim on non-constant subexpression"
+    | PrimE (OptPrim, [e1]) ->
+      check e1.note.Note.const "constant OptPrim with non-constant subexpression"
+    | PrimE (TagPrim _, [e1]) ->
+      check e1.note.Note.const "constant TagPrim with non-constant subexpression"
     | BlockE (ds, e) ->
       List.iter (fun d -> match d.it with
         | VarD _ | RefD _ -> check false "VarD/RefD in constant BlockE"
@@ -959,7 +971,9 @@ and gather_pat env const ve0 pat : val_env =
     | ObjP pfs ->
       List.fold_left go ve (pats_of_obj_pat pfs)
     | AltP (pat1, pat2) ->
-      ve
+      let ve1, ve2 = go ve pat1, go ve pat2 in
+      let common i1 i2 = { typ = T.lub i1.typ i2.typ; loc_known = i1.loc_known && i2.loc_known; const = i1.const && i2.const } in
+      T.Env.merge (fun _ -> Lib.Option.map2 common) ve1 ve2
     | OptP pat1
     | TagP (_, pat1) ->
       go ve pat1
@@ -1003,13 +1017,13 @@ and check_pat env pat : val_env =
     check_pat_tag env t l pat1;
     ve
   | AltP (pat1, pat2) ->
-    let ve1 = check_pat env pat1 in
-    let ve2 = check_pat env pat2 in
+    let ve1, ve2 = check_pat env pat1, check_pat env pat2 in
     t <: pat1.note;
     t <: pat2.note;
-    check env pat.at (T.Env.is_empty ve1 && T.Env.is_empty ve2)
-      "variables are not allowed in pattern alternatives";
-    T.Env.empty
+    if T.Env.(keys ve1 <> keys ve2) then
+        error env pat.at "set of bindings differ for alternative pattern";
+    let common i1 i2 = { typ = T.lub i1.typ i2.typ; loc_known = i1.loc_known && i2.loc_known; const = i1.const && i2.const } in
+    T.Env.merge (fun _ -> Lib.Option.map2 common) ve1 ve2
 
 and check_pats at env pats ve : val_env =
   match pats with
@@ -1023,7 +1037,7 @@ and check_pat_fields env t = List.iter (check_pat_field env t)
 
 and check_pat_field env t (pf : pat_field) =
   let lab = pf.it.name in
-  let tf = T.{lab; typ = pf.it.pat.note; depr = None} in
+  let tf = T.{lab; typ = pf.it.pat.note; src = empty_src} in
   let s, tfs = T.as_obj_sub [lab] t in
   let (<:) = check_sub env pf.it.pat.at in
   t <: T.Obj (s, [tf]);
@@ -1058,7 +1072,7 @@ and type_exp_field env s f : T.field =
     check env f.at ((s = T.Actor) ==> T.is_shared_func t)
       "public actor field must have shared function type";
   end;
-  T.{lab = name; typ = t; depr = None}
+  T.{lab = name; typ = t; src = empty_src}
 
 (* Declarations *)
 
@@ -1101,24 +1115,21 @@ and gather_block_decs env decs =
 and gather_dec env scope dec : scope =
   match dec.it with
   | LetD (pat, exp) ->
-    let ve = gather_pat env exp.note.Note.const scope.val_env pat in
-    { val_env = ve }
+    { val_env = gather_pat env exp.note.Note.const scope.val_env pat }
   | VarD (id, t, exp) ->
     check_typ env t;
     check env dec.at
       (not (T.Env.mem id scope.val_env))
       "duplicate variable definition in block";
     let val_info = {typ = T.Mut t; const = false; loc_known = env.lvl = TopLvl} in
-    let ve = T.Env.add id val_info scope.val_env in
-    { val_env = ve }
+    { val_env = T.Env.add id val_info scope.val_env }
   | RefD (id, t, lexp) ->
     check_mut_typ env t;
     check env dec.at
       (not (T.Env.mem id scope.val_env))
       "duplicate variable definition in block";
     let val_info = {typ = t; const = false; loc_known = false} in
-    let ve = T.Env.add id val_info scope.val_env in
-    { val_env = ve }
+    { val_env = T.Env.add id val_info scope.val_env }
 
 (* Programs *)
 

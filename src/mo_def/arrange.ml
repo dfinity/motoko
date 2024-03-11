@@ -33,7 +33,7 @@ module Make (Cfg : Config) = struct
   let source at it = if Cfg.include_sources && at <> Source.no_region then "@" $$ [pos at.left; pos at.right; it] else it
 
   let typ t = Atom (Type_pretty.string_of_typ t)
-  
+
   let trivia at it =
     match Cfg.include_docs with
     | Some table ->
@@ -69,7 +69,7 @@ module Make (Cfg : Config) = struct
     | FromCandidE e       -> "FromCandidE" $$ [exp e]
     | TupE es             -> "TupE"      $$ exps es
     | ProjE (e, i)        -> "ProjE"     $$ [exp e; Atom (string_of_int i)]
-    | ObjBlockE (s, dfs)  -> "ObjBlockE" $$ [obj_sort s] @ List.map dec_field dfs
+    | ObjBlockE (s, t, dfs) -> "ObjBlockE" $$ [obj_sort s; match t with None -> Atom "_" | Some t -> typ t] @ List.map dec_field dfs
     | ObjE ([], efs)      -> "ObjE"      $$ List.map exp_field efs
     | ObjE (bases, efs)   -> "ObjE"      $$ exps bases @ [Atom "with"] @ List.map exp_field efs
     | DotE (e, x)         -> "DotE"      $$ [exp e; id x]
@@ -132,7 +132,8 @@ module Make (Cfg : Config) = struct
 
   and inst inst = match inst.it with
     | None -> []
-    | Some ts -> List.map typ ts
+    | Some (false, ts) -> List.map typ ts
+    | Some (true, ts) -> Atom "system" :: List.map typ ts
 
   and pat p = source p.at (annot_typ p.note (match p.it with
     | WildP           -> Atom "WildP"
@@ -144,7 +145,7 @@ module Make (Cfg : Config) = struct
     | SignP (uo, l)   -> "SignP"      $$ [Arrange_ops.unop uo ; lit !l]
     | OptP p          -> "OptP"       $$ [pat p]
     | TagP (i, p)     -> "TagP"       $$ [tag i; pat p]
-    | AltP (p1, p2)    -> "AltP"       $$ [pat p1; pat p2]
+    | AltP (p1, p2)   -> "AltP"       $$ [pat p1; pat p2]
     | ParP p          -> "ParP"       $$ [pat p]))
 
   and lit = function
@@ -183,11 +184,13 @@ module Make (Cfg : Config) = struct
     | Type.Local -> Atom "Local"
     | Type.Shared (Type.Write, p) -> "Shared" $$ [pat p]
     | Type.Shared (Type.Query, p) -> "Query" $$ [pat p]
+    | Type.Shared (Type.Composite, p) -> "Composite" $$ [pat p]
 
   and func_sort s = match s.it with
     | Type.Local -> Atom "Local"
     | Type.Shared Type.Write -> Atom "Shared"
     | Type.Shared Type.Query -> Atom "Query"
+    | Type.Shared Type.Composite -> Atom "Composite"
 
   and mut m = match m.it with
     | Const -> Atom "Const"
@@ -250,8 +253,9 @@ module Make (Cfg : Config) = struct
   | NamedT (id, t) -> "NamedT" $$ [Atom id.it; typ t]))
 
   and dec d = trivia d.at (source d.at (match d.it with
-    | ExpD e -> "ExpD" $$ [exp e ]
-    | LetD (p, e) -> "LetD" $$ [pat p; exp e]
+    | ExpD e -> "ExpD" $$ [exp e]
+    | LetD (p, e, Some f) -> "LetD" $$ [pat p; exp e; exp f]
+    | LetD (p, e, None) -> "LetD" $$ [pat p; exp e]
     | VarD (x, e) -> "VarD" $$ [id x; exp e]
     | TypD (x, tp, t) ->
       "TypD" $$ [id x] @ List.map typ_bind tp @ [typ t]

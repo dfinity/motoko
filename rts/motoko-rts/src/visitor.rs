@@ -92,6 +92,14 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
             }
         }
 
+        TAG_REGION => {
+            let region = obj as *mut Region;
+            let field_addr = &mut (*region).vec_pages;
+            if pointer_to_dynamic_heap(field_addr, heap_base) {
+                visit_ptr_field(ctx, field_addr);
+            }
+        }
+
         TAG_CONCAT => {
             let concat = obj as *mut Concat;
             let field1_addr = &mut (*concat).text1;
@@ -112,7 +120,7 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
             }
         }
 
-        TAG_BITS64 | TAG_BITS32 | TAG_BLOB | TAG_BIGINT | TAG_ONE_WORD_FILLER | TAG_FREE_SPACE => {
+        TAG_BITS64 | TAG_BITS32 | TAG_BLOB | TAG_BIGINT => {
             // These don't have pointers, skip
         }
 
@@ -120,7 +128,7 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
             rts_trap_with("encountered NULL object tag in visit_pointer_fields");
         }
 
-        TAG_FWD_PTR | _ => {
+        TAG_FWD_PTR | TAG_ONE_WORD_FILLER | TAG_FREE_SPACE | _ => {
             rts_trap_with("invalid object tag in visit_pointer_fields");
         }
     }

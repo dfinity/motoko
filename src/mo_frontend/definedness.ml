@@ -33,7 +33,7 @@ let set_unions = List.fold_left S.union S.empty
 (* A set of free variables *)
 type f = usage_info M.t
 
-(* The analsys result of a recursive group, before tying the knot *)
+(* The analysis result of a recursive group, before tying the knot *)
 type group = (Source.region * S.t * S.t * S.t) list
 
 (* Operations: Union and removal *)
@@ -101,7 +101,7 @@ let rec exp msgs e : f = match e.it with
   | FromCandidE e       -> exp msgs e
   | TupE es             -> exps msgs es
   | ProjE (e, i)        -> exp msgs e
-  | ObjBlockE (s, dfs)       ->
+  | ObjBlockE (s, _, dfs) ->
     (* For actors, this may be too permissive; to be revised when we work on actors again *)
     group msgs (dec_fields msgs dfs)
   | ObjE (bases, efs)   -> exps msgs bases ++ exp_fields msgs efs
@@ -172,7 +172,8 @@ and dec_fields msgs dfs =
 
 and dec msgs d = match d.it with
   | ExpD e -> (exp msgs e, S.empty)
-  | LetD (p, e) -> pat msgs p +++ exp msgs e
+  | LetD (p, e, None) -> pat msgs p +++ exp msgs e
+  | LetD (p, e, Some f) -> pat msgs p +++ exp msgs e +++ exp msgs f
   | VarD (i, e) -> (M.empty, S.singleton i.it) +++ exp msgs e
   | TypD (i, tp, t) -> (M.empty, S.empty)
   | ClassD (csp, i, tp, p, t, s, i', dfs) ->

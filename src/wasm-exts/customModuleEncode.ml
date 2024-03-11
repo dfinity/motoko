@@ -315,7 +315,7 @@ let encode (em : extended_module) =
 
     let bool b = vu1 (if b then 1 else 0)
     let string bs = len (String.length bs); put_string s bs
-    let name n = string (Wasm.Utf8.encode n)
+    let name n = string (Lib.Utf8.encode n)
     let list f xs = List.iter f xs
     let opt f xo = Option.iter f xo
     let vec_by l f xs = l (List.length xs); list f xs
@@ -637,6 +637,15 @@ let encode (em : extended_module) =
       | Convert (F64 F64Op.DemoteF64) -> assert false
       | Convert (F64 F64Op.ReinterpretInt) -> op 0xbf
 
+      (* Custom encodings for emulating stable-memory, special cases
+         of MemorySize, MemoryGrow and MemoryCopy
+         requiring wasm features bulk-memory and multi-memory
+      *)
+      | StableSize -> op 0x3f; u8 0x01
+      | StableGrow -> op 0x40; u8 0x01
+      | StableRead -> op 0xfc; vu32 0x0al; u8 0x00; u8 0x01
+      | StableWrite -> op 0xfc; vu32 0x0al; u8 0x01; u8 0x00
+
     let const c =
       list (instr ignore) c.it; end_ ()
 
@@ -842,7 +851,7 @@ let encode (em : extended_module) =
       section 0 (vec string) labels (labels <> [])
 
     let utf8 bs =
-      ignore (Wasm.Utf8.decode bs);  (* assert well-formedness *)
+      ignore (Lib.Utf8.decode bs);  (* assert well-formedness *)
       put_string s bs
 
     let motoko_sections motoko =
@@ -853,6 +862,10 @@ let encode (em : extended_module) =
     let candid_sections candid =
       icp_custom_section "candid:service" utf8 candid.service;
       icp_custom_section "candid:args" utf8 candid.args
+
+    let wasm_features_section wasm_features =
+      let text = String.concat "," wasm_features in
+      custom_section "wasm_features" utf8 text (text <> "")
 
     let uleb128 n = vu64 (Int64.of_int n)
     let sleb128 n = vs64 (Int64.of_int n)
@@ -1222,6 +1235,7 @@ let encode (em : extended_module) =
       name_section em.name;
       candid_sections em.candid;
       motoko_sections em.motoko;
+      wasm_features_section em.wasm_features;
       source_mapping_url_section em.source_mapping_url;
       if !Mo_config.Flags.debug_info then
         begin

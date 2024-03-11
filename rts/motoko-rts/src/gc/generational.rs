@@ -6,8 +6,7 @@
 //! Compaction is based on the existing Motoko RTS threaded mark & compact GC.
 
 pub mod mark_stack;
-pub mod remembered_set;
-#[cfg(debug_assertions)]
+#[cfg(feature = "memory_check")]
 mod sanity_checks;
 pub mod write_barrier;
 
@@ -28,6 +27,12 @@ use self::mark_stack::{free_mark_stack, pop_mark_stack};
 use self::write_barrier::REMEMBERED_SET;
 
 #[ic_mem_fn(ic_only)]
+unsafe fn initialize_generational_gc<M: Memory>(mem: &mut M) {
+    crate::memory::ic::linear_memory::initialize();
+    write_barrier::init_generational_write_barrier(mem);
+}
+
+#[ic_mem_fn(ic_only)]
 unsafe fn schedule_generational_gc<M: Memory>(mem: &mut M) {
     let limits = get_limits();
     if decide_strategy(&limits).is_some() {
@@ -42,6 +47,7 @@ unsafe fn generational_gc<M: Memory>(mem: &mut M) {
     let old_limits = get_limits();
     let roots = Roots {
         static_roots: ic::get_static_roots(),
+        region0_ptr_loc: crate::region::region0_get_ptr_loc(),
         continuation_table_ptr_loc: crate::continuation_table::continuation_table_loc(),
     };
     let heap = Heap {
@@ -51,13 +57,10 @@ unsafe fn generational_gc<M: Memory>(mem: &mut M) {
     };
     let strategy = decide_strategy(&heap.limits);
 
-    #[cfg(debug_assertions)]
-    let forced_gc = strategy.is_none();
-
     let strategy = strategy.unwrap_or(Strategy::Young);
     let mut gc = GenerationalGC::new(heap, strategy);
 
-    #[cfg(debug_assertions)]
+    #[cfg(feature = "memory_check")]
     sanity_checks::verify_snapshot(&gc.heap, false);
 
     gc.run();
@@ -67,39 +70,38 @@ unsafe fn generational_gc<M: Memory>(mem: &mut M) {
     update_statistics(&old_limits, new_limits);
     update_strategy(strategy, new_limits);
 
-    #[cfg(debug_assertions)]
-    if !forced_gc {
-        sanity_checks::check_memory(&gc.heap.limits, &gc.heap.roots);
-        sanity_checks::take_snapshot(&mut gc.heap);
-    }
+    #[cfg(feature = "memory_check")]
+    sanity_checks::check_memory(&gc.heap.limits, &gc.heap.roots);
+    #[cfg(feature = "memory_check")]
+    sanity_checks::take_snapshot(&mut gc.heap);
 
-    write_barrier::init_write_barrier(gc.heap.mem);
+    write_barrier::init_generational_write_barrier(gc.heap.mem);
 }
 
 #[cfg(feature = "ic")]
 unsafe fn get_limits() -> Limits {
-    assert!(ic::LAST_HP >= ic::get_aligned_heap_base());
-    use crate::memory::ic;
+    use crate::memory::ic::{self, linear_memory};
+    assert!(linear_memory::LAST_HP >= ic::get_aligned_heap_base());
     Limits {
-        base: ic::get_aligned_heap_base() as usize,
-        last_free: ic::LAST_HP as usize,
-        free: ic::HP as usize,
+        base: ic::get_aligned_heap_base(),
+        last_free: linear_memory::LAST_HP,
+        free: (linear_memory::get_hp_unskewed()),
     }
 }
 
 #[cfg(feature = "ic")]
 unsafe fn set_limits(limits: &Limits) {
-    use crate::memory::ic;
-    ic::HP = limits.free as u32;
-    ic::LAST_HP = limits.free as u32;
+    use crate::memory::ic::linear_memory;
+    linear_memory::set_hp_unskewed(limits.free);
+    linear_memory::LAST_HP = limits.free;
 }
 
 #[cfg(feature = "ic")]
 unsafe fn update_statistics(old_limits: &Limits, new_limits: &Limits) {
-    use crate::memory::ic;
+    use crate::memory::ic::{self, linear_memory};
     let live_size = Bytes(new_limits.free as u32 - new_limits.base as u32);
     ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, live_size);
-    ic::RECLAIMED += Bytes(old_limits.free as u64 - new_limits.free as u64);
+    linear_memory::RECLAIMED += Bytes(old_limits.free as u64 - new_limits.free as u64);
 }
 
 #[derive(PartialEq, Clone, Copy, Debug)]
@@ -115,7 +117,8 @@ static mut OLD_GENERATION_THRESHOLD: usize = 32 * 1024 * 1024;
 static mut PASSED_CRITICAL_LIMIT: bool = false;
 
 #[cfg(feature = "ic")]
-const CRITICAL_MEMORY_LIMIT: usize = (4096 - 512) * 1024 * 1024;
+const CRITICAL_MEMORY_LIMIT: usize =
+    (4096 - 512) * 1024 * 1024 - crate::memory::GENERAL_MEMORY_RESERVE;
 
 #[cfg(feature = "ic")]
 unsafe fn decide_strategy(limits: &Limits) -> Option<Strategy> {
@@ -158,6 +161,7 @@ pub struct Heap<'a, M: Memory> {
 pub struct Roots {
     pub static_roots: Value,
     pub continuation_table_ptr_loc: *mut Value,
+    pub region0_ptr_loc: *mut Value,
     // For possible future additional roots, please extend the functionality in:
     // * `mark_root_set`
     // * `thread_initial_phase`
@@ -221,6 +225,11 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
             self.mark_object(continuation_table);
         }
 
+        let region0 = *self.heap.roots.region0_ptr_loc;
+        if region0.is_ptr() && region0.get_ptr() >= self.generation_base() {
+            self.mark_object(region0);
+        }
+
         if self.strategy == Strategy::Young {
             self.mark_additional_young_root_set();
         }
@@ -262,7 +271,7 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
         set_bit(obj_idx);
 
         push_mark_stack(self.heap.mem, pointer as usize);
-        self.marked_space += object_size(pointer as usize).to_bytes().as_usize();
+        self.marked_space += block_size(pointer as usize).to_bytes().as_usize();
     }
 
     unsafe fn mark_all_reachable(&mut self) {
@@ -363,6 +372,11 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
             self.thread(self.heap.roots.continuation_table_ptr_loc);
         }
 
+        let region0 = *self.heap.roots.region0_ptr_loc;
+        if region0.is_ptr() && region0.get_ptr() >= self.generation_base() {
+            self.thread(self.heap.roots.region0_ptr_loc);
+        }
+
         // For the young generation GC run, the forward pointers from the old generation must be threaded too.
         if self.strategy == Strategy::Young {
             self.thread_old_generation_pointers();
@@ -450,10 +464,14 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
             self.unthread(old_pointer, new_pointer);
 
             // Move the object
-            let object_size = object_size(old_pointer as usize);
+            let object_size = block_size(old_pointer as usize);
             if new_pointer as usize != old_pointer as usize {
                 memcpy_words(new_pointer as usize, old_pointer as usize, object_size);
                 debug_assert!(object_size.as_usize() > size_of::<Obj>().as_usize());
+
+                // Update forwarding pointer
+                let new_obj = new_pointer as *mut Obj;
+                debug_assert!(new_obj.tag() >= TAG_OBJECT && new_obj.tag() <= TAG_NULL);
             }
 
             free += object_size.to_bytes().as_usize();
@@ -499,7 +517,7 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
             (*(header as *mut Value)) = Value::from_ptr(new_location);
             header = tmp;
         }
-        assert!(header >= TAG_OBJECT && header <= TAG_NULL);
+        debug_assert!(header >= TAG_OBJECT && header <= TAG_NULL);
         (*object).tag = header;
     }
 

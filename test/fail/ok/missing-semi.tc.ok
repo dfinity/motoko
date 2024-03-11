@@ -4,3 +4,4 @@ missing-semi.mo:3.5-4.1: info, this looks like an unintended function call, perh
 missing-semi.mo:9.3-9.7: type error [M0097], expected function type, but expression produces type
   ()
 missing-semi.mo:9.7-10.3: info, this looks like an unintended function call, perhaps a missing ';'?
+missing-semi.mo:7.6-7.7: warning [M0194], unused identifier f (delete or rename to wildcard `_` or `_f`)

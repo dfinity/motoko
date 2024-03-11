@@ -44,7 +44,7 @@ let rec exp m e = match e.it with
       | Const ->  List.iter (exp m) es
       | Var -> err m e.at
     end
-  | ObjBlockE (_, dfs) -> dec_fields m dfs
+  | ObjBlockE (_, _, dfs) -> dec_fields m dfs
   | ObjE (bases, efs) -> List.iter (exp m) bases; exp_fields m efs
 
   (* Variable access. Dangerous, due to loops. *)
@@ -99,7 +99,7 @@ and exp_fields m efs = List.iter (fun (ef : exp_field) ->
 and dec m d = match d.it with
   | TypD _ | ClassD _ -> ()
   | ExpD e -> exp m e
-  | LetD (p, e) -> pat m p; exp m e
+  | LetD (p, e, fail) -> pat m p; exp m e; Option.iter (exp m) fail
   | VarD _ -> err m d.at
 
 and pat m p = match p.it with

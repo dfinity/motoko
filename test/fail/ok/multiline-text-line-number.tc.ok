@@ -1,0 +1,2 @@
+multiline-text-line-number.mo:8.3-8.4: syntax error [M0001], unexpected token ';', expected one of token or <phrase> sequence:
+  <exp_bin(ob)>

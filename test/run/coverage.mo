@@ -13,7 +13,7 @@ func f() {
   func f1(_ : Nat) {};
   func f2(x : Nat) {};
   func f3(5) {};
-  func f4(5 or 5) {};
+  //func f4(5 or 5) {};
   func f5(5 or _ : Nat) {};
   func f6(_ or 6 : Nat) {};
   func f7((_ or _) : Nat) {};

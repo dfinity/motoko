@@ -1,37 +1,36 @@
-import { debugPrint; error; setTimer; cancelTimer } = "mo:⛔";
+import { debugPrint; setTimer; cancelTimer } = "mo:⛔";
 
 actor {
-
-  let seconds = 5;
   var counter = 0;
   var t : Nat = 0;
 
   private func remind() : async () {
     counter += 1;
+    if (counter == 3) {
+      cancel();
+    }
   };
 
-  public func get() : async Int {
-    // cancel exactly once
-    if (t > 0 and counter == 3) { debugPrint("CANCELLING!"); cancelTimer t; t := 0 };
-    return counter
+  func cancel() {
+    debugPrint("CANCELLING!"); 
+    cancelTimer t;
   };
 
   let second : Nat64 = 1_000_000_000;
-
-  ignore setTimer(3 * second, false,
-    func () : async () {
-      t := setTimer(2 * second, true, remind);
-      await remind();
-  });
 
   var max = 4;
   let raw_rand = (actor "aaaaa-aa" : actor { raw_rand : () -> async Blob }).raw_rand;
 
   public shared func go() : async () {
+     ignore setTimer<system>(2 * second, false,
+        func () : async () {
+           t := setTimer<system>(1 * second, true, remind);
+           await remind();
+        });
+
      var attempts = 0;
 
      while (counter < max) {
-       ignore await get();
        ignore await raw_rand(); // yield to scheduler
        if (counter == 3) attempts += 1;
        if (attempts >= 200)

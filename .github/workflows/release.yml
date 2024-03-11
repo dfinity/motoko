@@ -18,7 +18,7 @@ jobs:
   changelog:
     runs-on: 'ubuntu-latest'
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Get the version
       id: get_version
@@ -47,14 +47,14 @@ jobs:
     needs: changelog
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v3
-    - uses: cachix/install-nix-action@v18
-    - uses: cachix/cachix-action@v12
+    - uses: actions/checkout@v4
+    - uses: cachix/install-nix-action@v25
+    - uses: cachix/cachix-action@v14
       if: startsWith(github.ref, 'refs/heads/')
       with:
         name: ic-hs-test
         # NB: No auth token, we don’t want to push new stuff here
-    - uses: cachix/cachix-action@v12
+    - uses: cachix/cachix-action@v14
       if: startsWith(github.ref, 'refs/tags/')
       with:
         name: ic-hs-test
@@ -73,9 +73,9 @@ jobs:
     runs-on: 'ubuntu-latest'
     needs: [ changelog, build ]
     steps:
-    - uses: actions/checkout@v3
-    - uses: cachix/install-nix-action@v18
-    - uses: cachix/cachix-action@v12
+    - uses: actions/checkout@v4
+    - uses: cachix/install-nix-action@v25
+    - uses: cachix/cachix-action@v14
       with:
         name: ic-hs-test
         # NB: No auth token, we don’t expect to push new stuff here
@@ -83,7 +83,7 @@ jobs:
     - run: nix-build --max-jobs 1 --arg officialRelease true release-files.nix
 
     - name: Upload Release Assets
-      uses: svenstaro/upload-release-action@74f6bde645a3f5f70c0311ede61fb790fd79441a
+      uses: svenstaro/upload-release-action@v2
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         tag: ${{ github.ref }}

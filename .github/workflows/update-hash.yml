@@ -12,14 +12,14 @@ jobs:
     if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
       with:
         # This is needed to be able to push and trigger CI with that push
         token: ${{ secrets.NIV_UPDATER_TOKEN }}
-    - uses: cachix/install-nix-action@v18
+    - uses: cachix/install-nix-action@v25
       with:
-        nix_path: nixpkgs=channel:nixos-22.05
-    - uses: cachix/cachix-action@v12
+        nix_path: nixpkgs=channel:nixos-22.11
+    - uses: cachix/cachix-action@v14
       with:
         name: ic-hs-test
         authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
@@ -27,8 +27,11 @@ jobs:
       run: |
         cd nix
         nix shell -f . nix-update -c nix-update --version=skip drun
+    - name: Update ic-wasm cargo hash
+      run: |
+        nix shell -f default.nix nix-update -c nix-update --version=skip ic-wasm
     - name: Commit changes
-      uses: EndBug/add-and-commit@v9.1.1
+      uses: EndBug/add-and-commit@v9.1.4
       with:
         default_author: github_actions
         author_name: Nix hash updater

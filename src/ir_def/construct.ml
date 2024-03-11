@@ -95,9 +95,9 @@ let primE prim es =
     | ICStableSize _ -> T.nat64
     | IdxPrim
     | DerefArrayOffset -> T.(as_immut (as_array_sub (List.hd es).note.Note.typ))
-    | NextArrayOffset _ -> T.nat
-    | ValidArrayOffset -> T.bool
-    | GetPastArrayOffset _ -> T.nat
+    | EqArrayOffset -> T.bool
+    | NextArrayOffset -> T.nat
+    | GetLastArrayOffset -> T.int
     | IcUrlOfBlob -> T.text
     | ActorOfIdBlob t -> t
     | BinPrim (t, _) -> t
@@ -111,6 +111,10 @@ let primE prim es =
     | OtherPrim "trap" -> T.Non
     | OtherPrim "call_perform_status" -> T.(Prim Nat32)
     | OtherPrim "call_perform_message" -> T.text
+    | OtherPrim "array_len"
+    | OtherPrim "blob_size"
+    | OtherPrim "text_len" -> T.nat
+    | OtherPrim "is_controller" -> T.bool
     | _ -> assert false (* implement more as needed *)
   in
   let effs = List.map eff es in
@@ -200,7 +204,7 @@ let ic_call_rawE p m a k r =
 (* tuples *)
 
 let projE e n =
-  match typ e with
+  match T.promote (typ e) with
   | T.Tup ts ->
      { it = PrimE (ProjPrim n, [e]);
        note = Note.{ def with typ = List.nth ts n; eff = eff e };
@@ -216,7 +220,7 @@ let optE e =
 
 let tagE i e =
  { it = PrimE (TagPrim i, [e]);
-   note = Note.{ def with typ = T.Variant [{T.lab = i; typ = typ e; depr = None}]; eff = eff e };
+   note = Note.{ def with typ = T.Variant [{T.lab = i; typ = typ e; src = T.empty_src}]; eff = eff e };
    at = no_region;
  }
 
@@ -259,6 +263,12 @@ let natE n =
   { it = LitE (NatLit n);
     at = no_region;
     note = Note.{ def with typ = T.nat }
+  }
+
+let intE n =
+  { it = LitE (IntLit n);
+    at = no_region;
+    note = Note.{ def with typ = T.int }
   }
 
 let textE s =
@@ -535,6 +545,26 @@ let ignoreE exp =
   then exp
   else thenE exp (unitE ())
 
+and let_else_switch p e f =
+  let v = fresh_var "v" (e.note.Note.typ) in
+  (* Evaluate e once, assign it to variable v, and pattern match on v. If v
+     matches p, expression evaluates to v. Otherwise evaluate f. *)
+  blockE
+    [letD v e]
+    {
+      e with
+      it = SwitchE(
+        varE v,
+        [
+          { it = { pat = p; exp = varE v }; at = e.at; note = () };
+          { it = { pat = wildP; exp = f }; at = f.at ; note = () }
+        ]
+      );
+      note = Note.{ def with
+        typ = e.note.Note.typ;
+        eff = max_eff (eff e) (eff f)
+      }
+    }
 
 (* Mono-morphic function expression *)
 

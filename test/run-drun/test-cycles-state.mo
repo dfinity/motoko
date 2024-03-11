@@ -14,7 +14,7 @@ actor a {
   if (Cycles.balance() == 0)
     await Cycles.provisional_top_up_actor(a, 3_000_000_000_000);
 
-  Cycles.add(2_000_000_000_000);
+  Cycles.add<system>(2_000_000_000_000);
   let wallet : WalletLib.Wallet = await WalletLib.Wallet();
   await wallet.show();
   print ("setting cycles");
@@ -30,7 +30,7 @@ actor a {
 //  print(debug_show(Cycles.balance()));
 
   do { // check cycles available
-    Cycles.add(1000_000);
+    Cycles.add<system>(1000_000);
     let cs = await wallet.available();
     assert (cs == 1000_000);
     assert (Cycles.refunded() == 1000_000);
@@ -44,25 +44,25 @@ actor a {
 
   do {
     // check cycles additive to zero on send
-    Cycles.add(1000_000);
-    Cycles.add(2000_000);
+    Cycles.add<system>(1000_000);
+    Cycles.add<system>(2000_000);
     let cs = await wallet.available();
     assert (cs == 3000_000);
     assert (Cycles.refunded() == 3000_000);
   };
 
   // check cycles reset on context switch
-  Cycles.add(1000_000);
+  Cycles.add<system>(1000_000);
   await async {
     assert(Cycles.available() == 1000_000);
     // check cycles received
-    Cycles.add(5000);
+    Cycles.add<system>(5000);
     let cs = await wallet.available();
     assert (cs == 5000);
     assert (Cycles.refunded() == 5000);
 
     // add some unconsumed cycles
-    Cycles.add(200);
+    Cycles.add<system>(200);
   };
   // check refund from await async ...
   assert (Cycles.refunded() == 1000_000);
@@ -76,7 +76,7 @@ actor a {
  public func credit() : async () {
    let b = Cycles.balance();
    let a = Cycles.available();
-   let acc = Cycles.accept(a);
+   let acc = Cycles.accept<system>(a);
    // print("balance before " # debug_show(b));
    // print("available " # debug_show(a));
    // print("accepted " # debug_show(acc));

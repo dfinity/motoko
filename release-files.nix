@@ -31,8 +31,9 @@ let
   release =
     nixpkgs.runCommandNoCC "motoko-release-${releaseVersion}" {} ''
       mkdir $out
-      cp ${as_tarball "x86_64-linux" (with linux; [ mo-ide mo-doc moc ])} $out/motoko-linux64-${releaseVersion}.tar.gz
-      cp ${as_tarball "x86_64-darwin" (with darwin; [ mo-ide mo-doc moc ])} $out/motoko-macos-${releaseVersion}.tar.gz
+      cp ${as_tarball "x86_64-linux" (with linux; [ mo-ide mo-doc moc ])} $out/motoko-Linux-x86_64-${releaseVersion}.tar.gz
+      cp ${as_tarball "x86_64-darwin" (with darwin; [ mo-ide mo-doc moc ])} $out/motoko-Darwin-x86_64-${releaseVersion}.tar.gz
+
       cp ${as_js "moc" linux.js.moc} $out/moc-${releaseVersion}.js
       cp ${as_js "moc-interpreter" linux.js.moc_interpreter} $out/moc-interpreter-${releaseVersion}.js
       tar --exclude=.github -C ${nixpkgs.sources.motoko-base} -czvf $out/motoko-base-library.tar.gz .

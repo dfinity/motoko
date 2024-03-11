@@ -15,6 +15,12 @@ let id_bind rho i =
   let i' = fresh_id i in
   (i', Renaming.add i i' rho)
 
+let rec ids_bind rho = function
+  | [] -> rho
+  | i::is' ->
+    let (i', rho') = id_bind rho i in
+    ids_bind rho' is'
+
 let arg_bind rho a =
   let i' = fresh_id a.it in
   ({a with it = i'}, Renaming.add a.it i' rho)
@@ -81,37 +87,68 @@ and args rho as_ =
      (a'::as_', rho'')
 
 and pat rho p =
-    let p',rho = pat' rho p.it in
-    {p with it = p'}, rho
+  let p', rho = pat' rho p.it in
+  {p with it = p'}, rho
 
 and pat' rho = function
   | WildP as p    -> (p, rho)
-  | VarP i        ->
+  | VarP i ->
     let i, rho' = id_bind rho i in
-     (VarP i, rho')
-  | TupP ps       -> let (ps, rho') = pats rho ps in
-                     (TupP ps, rho')
-  | ObjP pfs      ->
+    (VarP i, rho')
+  | TupP ps ->
+    let (ps, rho') = pats rho ps in
+    (TupP ps, rho')
+  | ObjP pfs ->
     let (pats, rho') = pats rho (pats_of_obj_pat pfs) in
     (ObjP (replace_obj_pat pfs pats), rho')
-  | LitP _ as p   -> (p, rho)
-  | OptP p        -> let (p', rho') = pat rho p in
-                     (OptP p', rho')
-  | TagP (i, p)   -> let (p', rho') = pat rho p in
-                     (TagP (i, p'), rho')
-  | AltP (p1, p2) -> assert(Freevars.(M.is_empty (pat p1)));
-                     assert(Freevars.(M.is_empty (pat p2)));
-                     let (p1', _) = pat rho p1 in
-                     let (p2' ,_) = pat rho p2 in
-                     (AltP (p1', p2'), rho)
+  | LitP _ as p ->
+    (p, rho)
+  | OptP p ->
+    let (p', rho') = pat rho p in
+    (OptP p', rho')
+  | TagP (i, p) ->
+    let (p', rho') = pat rho p in
+    (TagP (i, p'), rho')
+  | AltP (p1, p2) ->
+    let is1 = Freevars.M.keys (Freevars.pat p1) in
+    assert begin
+      let is2 = Freevars.M.keys (Freevars.pat p1) in
+      List.compare String.compare is1 is2 = 0
+    end;
+    let rho' = ids_bind rho is1 in
+    (AltP (pat_subst rho' p1, pat_subst rho' p2), rho')
 
 and pats rho ps  =
   match ps with
-  | [] -> ([],rho)
+  | [] -> ([], rho)
   | p::ps ->
-     let (p', rho') = pat rho p in
-     let (ps', rho'') = pats rho' ps in
-     (p'::ps', rho'')
+    let (p', rho') = pat rho p in
+    let (ps', rho'') = pats rho' ps in
+    (p'::ps', rho'')
+
+and pat_subst rho p =
+    let p'  = pat_subst' rho p.it in
+    {p with it = p'}
+
+and pat_subst' rho = function
+  | WildP as p -> p
+  | VarP i ->
+    VarP (id rho i)
+  | TupP ps ->
+    TupP (pats_subst rho ps)
+  | ObjP pfs ->
+    let pats = pats_subst rho (pats_of_obj_pat pfs) in
+    ObjP (replace_obj_pat pfs pats)
+  | LitP _ as p -> p
+  | OptP p ->
+    OptP (pat_subst rho p)
+  | TagP (i, p) ->
+    TagP (i, pat_subst rho p)
+  | AltP (p1, p2) ->
+    AltP (pat_subst rho p1, pat_subst rho p2)
+
+and pats_subst rho ps =
+  List.map (pat_subst rho) ps
 
 and case rho (c : case) =
   {c with it = case' rho c.it}

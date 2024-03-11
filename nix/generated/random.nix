@@ -37,5 +37,5 @@ mkDerivation {
   ];
   description = "generate randomised tests for Motoko";
   license = "unknown";
-  hydraPlatforms = lib.platforms.none;
+  mainProgram = "qc-motoko";
 }

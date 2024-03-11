@@ -97,6 +97,7 @@ let argspec = [
       ")";
 
   "-iR", Arg.Set interpret_ir, " interpret the lowered code";
+  "-measure-rts-stack", Arg.Set Flags.measure_rts_stack, " measure the maximum rts stack usage (reported by prim \"rts_max_stack\")";
   "-no-await", Arg.Clear Flags.await_lowering, " no await-lowering (with -iR)";
   "-no-async", Arg.Clear Flags.async_lowering, " no async-lowering (with -iR)";
 
@@ -140,6 +141,11 @@ let argspec = [
     set_mode Compile ()), (* similar to --idl *)
       " compile and emit signature of stable types to `.most` file";
 
+  "--stable-regions",
+  Arg.Unit (fun () ->
+    Flags.use_stable_regions := true),
+      " force eager initialization of stable regions metadata (for testing purposes); consumes between 386KiB or 8MiB of additional physical stable memory, depending on current use of ExperimentalStableMemory library";
+
   "--generational-gc",
   Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.Generational),
   " use generational GC";
@@ -147,6 +153,10 @@ let argspec = [
   "--no-gc",
   Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.No),
   " use no GC";
+
+  "--incremental-gc",
+  Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.Incremental),
+  " use incremental GC";
 
   "--compacting-gc",
   Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.MarkCompact),
@@ -168,9 +178,27 @@ let argspec = [
   Arg.Unit (fun () -> Flags.experimental_field_aliasing := true),
   " enable experimental support for aliasing of var fields";
 
+  "--experimental-rtti",
+  Arg.Unit (fun () -> Flags.rtti := true),
+  " enable experimental support for precise runtime type information (to assess performance changes only)";
+
+  "--rts-stack-pages",
+  Arg.Set_int Flags.rts_stack_pages,
+  "<n>  set maximum number of pages available for runtime system stack (default " ^ (Int.to_string Flags.rts_stack_pages_default) ^ ")";
+
   "--trap-on-call-error",
   Arg.Unit (fun () -> Flags.trap_on_call_error := true),
-  " Trap, don't throw an `Error`, when an IC call fails due to destination queue full or freezing threshold is crossed. Emulates behaviour of moc versions < 0.8.0."
+  " Trap, don't throw an `Error`, when an IC call fails due to destination queue full or freezing threshold is crossed. Emulates behaviour of moc versions < 0.8.0.";
+
+  (* optimizations *)
+  "-fno-shared-code",
+  Arg.Unit (fun () -> Flags.share_code := false),
+  " do *not* share low-level utility code: larger code size but decreased cycle consumption (default)";
+
+  "-fshared-code",
+  Arg.Unit (fun () -> Flags.share_code := true),
+  " do share low-level utility code: smaller code size but increased cycle consumption"
+
   ]
 
   @ Args.inclusion_args
@@ -235,9 +263,11 @@ let process_files files : unit =
       end;
 
     if !idl then begin
+      let open Idllib in
       let did_file = Filename.remove_extension !out_file ^ ".did" in
       let oc = open_out did_file in
-      let idl_code = Idllib.Arrange_idl.string_of_prog idl_prog in
+      let module WithComments = Arrange_idl.Make(struct let trivia = Some idl_prog.Source.note.Syntax.trivia end) in
+      let idl_code = WithComments.string_of_prog idl_prog in
       output_string oc idl_code; close_out oc
     end;
 

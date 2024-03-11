@@ -228,7 +228,7 @@ and dec_field' ctxt d =
   (* async functions *)
   | M.(LetD ({it=VarP f;_},
              {it=FuncE(x, sp, tp, p, t_opt, sugar,
-                       {it = AsyncE (T.Fut, _, e); _} );_})) -> (* ignore async *)
+             {it = AsyncE (T.Fut, _, e); _} );_}, None)) -> (* ignore async *)
       { ctxt with ids = Env.add f.it Method ctxt.ids },
       None,
       fun ctxt' ->
@@ -244,7 +244,8 @@ and dec_field' ctxt d =
         PublicFunction f.it)
   (* private sync functions *)
   | M.(LetD ({it=VarP f;_},
-             {it=FuncE(x, sp, tp, p, t_opt, sugar, e );_})) ->
+             {it=FuncE(x, sp, tp, p, t_opt, sugar, e );_},
+             None)) ->
       { ctxt with ids = Env.add f.it Method ctxt.ids },
       None,
       fun ctxt' ->
@@ -302,7 +303,7 @@ and dec ctxt d =
     fun ctxt' ->
       ([ !!(id x, tr_typ e.note.M.note_typ) ],
        [ !!(VarAssignS (id x, exp ctxt' e)) ])
-  | M.(LetD ({it=VarP x;_}, e)) ->
+  | M.(LetD ({it=VarP x;_}, e, None)) ->
      { ctxt with ids = Env.add x.it Local ctxt.ids },
      fun ctxt' ->
        ([ !!(id x, tr_typ e.note.M.note_typ) ],
@@ -417,7 +418,7 @@ and stmt ctxt (s : M.exp) : seqn =
        [ !!(AssumeS (exp ctxt e)) ])
   | M.(CallE({it = VarE m; _}, inst, {it = TupE args; _})) ->
     !!([],
-       [ !!(MethodCallS ([], id m, 
+       [ !!(MethodCallS ([], id m,
        let self_var = self ctxt m.at in
        self_var :: List.map (fun arg -> exp ctxt arg) args))])
   | _ ->

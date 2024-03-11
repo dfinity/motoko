@@ -9,6 +9,8 @@ actor {
   };
 
   system func postupgrade() {
+    // it is expected that we get here, which shows that deserialising
+    // small `Nat`s doesn't allocate on the heap
     P.debugPrint("post");
     P.trap("deliberate trap");
   }

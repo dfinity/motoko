@@ -75,29 +75,39 @@ let new_nary_async_reply ts =
   (* The async implementation isn't n-ary *)
   let t = T.seq ts in
   let (unary_async, unary_fulfill, fail), call_new_async = new_async t in
-  let v' = fresh_var "v" t in
   (* construct the n-ary async value, coercing the continuation, if necessary *)
   let nary_async =
+    let coerce u =
+      let v = fresh_var "v" u in
+      let k = fresh_var "k" (contT u T.unit) in
+      let r = fresh_var "r" (err_contT T.unit) in
+      [k; r] -->* (
+        varE unary_async -*-
+          (tupE [
+             [v] -->* (varE k -*- varE v);
+             varE r
+          ])
+      )
+    in
     match ts with
     | [t1] ->
-      varE unary_async
+      begin
+      match T.normalize t1 with
+      | T.Tup _ ->
+        (* TODO(#3740): find a better fix than PR #3741 *)
+        (* HACK *)
+        coerce t1
+      | _ ->
+        varE unary_async
+      end
     | ts1 ->
-      let k' = fresh_var "k" (contT t T.unit) in
-      let r' = fresh_var "r" (err_contT T.unit) in
-      [k';r'] -->* (
-        varE unary_async -*- (tupE[([v'] -->* (varE k' -*- varE v')); varE r'])
-      )
+      coerce t
   in
   (* construct the n-ary reply callback that take a *sequence* of values to fulfill the async *)
   let nary_reply =
     let vs, seq_of_vs =
-      match ts with
-      | [t1] ->
-        let v = fresh_var "rep" t1 in
-        [v], varE v
-      | ts1 ->
-        let vs = fresh_vars "rep" ts1 in
-        vs, tupE (List.map varE vs)
+      let vs = fresh_vars "rep" ts in
+      vs, seqE (List.map varE vs)
     in
     vs -->* (varE unary_fulfill -*- seq_of_vs)
   in
@@ -219,8 +229,8 @@ let transform prog =
 
   and t_prim p = Ir.map_prim t_typ (fun id -> id) p
 
-  and t_field {lab; typ; depr} =
-    { lab; typ = t_typ typ; depr }
+  and t_field {lab; typ; src} =
+    { lab; typ = t_typ typ; src }
   in
 
   let rec t_exp (exp: exp) =

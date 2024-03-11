@@ -1,8 +1,12 @@
 # Int32
-32-bit signed integers with checked arithmetic.
+Provides utility functions on 32-bit signed integers.
 
-Common 32-bit integer functions.
-Most operations are available as built-in operators (e.g. `1 + 1`).
+Note that most operations are available as built-in operators (e.g. `1 + 1`).
+
+Import from the base library to use this module.
+```motoko name=import
+import Int32 "mo:base/Int32";
+```
 
 ## Type `Int32`
 ``` motoko no-repl
@@ -18,12 +22,22 @@ let minimumValue : Int32
 
 Minimum 32-bit integer value, `-2 ** 31`.
 
+Example:
+```motoko include=import
+Int32.minimumValue // => -2_147_483_648
+```
+
 ## Value `maximumValue`
 ``` motoko no-repl
 let maximumValue : Int32
 ```
 
 Maximum 32-bit integer value, `+2 ** 31 - 1`.
+
+Example:
+```motoko include=import
+Int32.maximumValue // => +2_147_483_647
+```
 
 ## Value `toInt`
 ``` motoko no-repl
@@ -33,9 +47,7 @@ let toInt : Int32 -> Int
 Converts a 32-bit signed integer to a signed integer with infinite precision.
 
 Example:
-```motoko
-import Int32 "mo:base/Int32";
-
+```motoko include=import
 Int32.toInt(123_456) // => 123_456 : Int
 ```
 
@@ -49,9 +61,7 @@ Converts a signed integer with infinite precision to a 32-bit signed integer.
 Traps on overflow/underflow.
 
 Example:
-```motoko
-import Int32 "mo:base/Int32";
-
+```motoko include=import
 Int32.fromInt(123_456) // => +123_456 : Int32
 ```
 
@@ -65,10 +75,60 @@ Converts a signed integer with infinite precision to a 32-bit signed integer.
 Wraps on overflow/underflow.
 
 Example:
-```motoko
-import Int32 "mo:base/Int32";
-
+```motoko include=import
 Int32.fromIntWrap(-123_456) // => -123_456 : Int
+```
+
+## Value `fromInt16`
+``` motoko no-repl
+let fromInt16 : Int16 -> Int32
+```
+
+Converts a 16-bit signed integer to a 32-bit signed integer.
+
+Example:
+```motoko include=import
+Int32.fromInt16(-123) // => -123 : Int32
+```
+
+## Value `toInt16`
+``` motoko no-repl
+let toInt16 : Int32 -> Int16
+```
+
+Converts a 32-bit signed integer to a 16-bit signed integer.
+
+Traps on overflow/underflow.
+
+Example:
+```motoko include=import
+Int32.toInt16(-123) // => -123 : Int16
+```
+
+## Value `fromInt64`
+``` motoko no-repl
+let fromInt64 : Int64 -> Int32
+```
+
+Converts a 64-bit signed integer to a 32-bit signed integer.
+
+Traps on overflow/underflow.
+
+Example:
+```motoko include=import
+Int32.fromInt64(-123_456) // => -123_456 : Int32
+```
+
+## Value `toInt64`
+``` motoko no-repl
+let toInt64 : Int32 -> Int64
+```
+
+Converts a 32-bit signed integer to a 64-bit signed integer.
+
+Example:
+```motoko include=import
+Int32.toInt64(-123_456) // => -123_456 : Int64
 ```
 
 ## Value `fromNat32`
@@ -81,9 +141,7 @@ Converts an unsigned 32-bit integer to a signed 32-bit integer.
 Wraps on overflow/underflow.
 
 Example:
-```motoko
-import Int32 "mo:base/Int32";
-
+```motoko include=import
 Int32.fromNat32(123_456) // => +123_456 : Int32
 ```
 
@@ -97,9 +155,7 @@ Converts a signed 32-bit integer to an unsigned 32-bit integer.
 Wraps on overflow/underflow.
 
 Example:
-```motoko
-import Int32 "mo:base/Int32";
-
+```motoko include=import
 Int32.toNat32(-1) // => 4_294_967_295 : Nat32 // underflow
 ```
 
@@ -108,13 +164,11 @@ Int32.toNat32(-1) // => 4_294_967_295 : Nat32 // underflow
 func toText(x : Int32) : Text
 ```
 
-Returns the Text representation of `x`.
-Formats the integer in decimal representation without underscore separators for thousand figures.
+Returns the Text representation of `x`. Textual representation _do not_
+contain underscores to represent commas.
 
 Example:
-```motoko
-import Int32 "mo:base/Int32";
-
+```motoko include=import
 Int32.toText(-123456) // => "-123456"
 ```
 
@@ -128,9 +182,7 @@ Returns the absolute value of `x`.
 Traps when `x == -2 ** 31` (the minimum `Int32` value).
 
 Example:
-```motoko
-import Int32 "mo:base/Int32";
-
+```motoko include=import
 Int32.abs(-123456) // => +123_456
 ```
 
@@ -142,9 +194,7 @@ func min(x : Int32, y : Int32) : Int32
 Returns the minimum of `x` and `y`.
 
 Example:
-```motoko
-import Int32 "mo:base/Int32";
-
+```motoko include=import
 Int32.min(+2, -3) // => -3
 ```
 
@@ -156,9 +206,7 @@ func max(x : Int32, y : Int32) : Int32
 Returns the maximum of `x` and `y`.
 
 Example:
-```motoko
-import Int32 "mo:base/Int32";
-
+```motoko include=import
 Int32.max(+2, -3) // => +2
 ```
 
@@ -167,13 +215,28 @@ Int32.max(+2, -3) // => +2
 func equal(x : Int32, y : Int32) : Bool
 ```
 
-Returns `x == y`.
+Equality function for Int32 types.
+This is equivalent to `x == y`.
 
 Example:
-```motoko
-import Int32 "mo:base/Int32";
+```motoko include=import
+Int32.equal(-1, -1); // => true
+```
 
-Int32.equal(123, 123) // => true
+Note: The reason why this function is defined in this library (in addition
+to the existing `==` operator) is so that you can use it as a function
+value to pass to a higher order function. It is not possible to use `==`
+as a function value at the moment.
+
+Example:
+```motoko include=import
+import Buffer "mo:base/Buffer";
+
+let buffer1 = Buffer.Buffer<Int32>(1);
+buffer1.add(-3);
+let buffer2 = Buffer.Buffer<Int32>(1);
+buffer2.add(-3);
+Buffer.equal(buffer1, buffer2, Int32.equal) // => true
 ```
 
 ## Function `notEqual`
@@ -181,83 +244,110 @@ Int32.equal(123, 123) // => true
 func notEqual(x : Int32, y : Int32) : Bool
 ```
 
-Returns `x != y`.
+Inequality function for Int32 types.
+This is equivalent to `x != y`.
 
 Example:
-```motoko
-import Int32 "mo:base/Int32";
-
-Int32.notEqual(123, 123) // => false
+```motoko include=import
+Int32.notEqual(-1, -2); // => true
 ```
+
+Note: The reason why this function is defined in this library (in addition
+to the existing `!=` operator) is so that you can use it as a function
+value to pass to a higher order function. It is not possible to use `!=`
+as a function value at the moment.
 
 ## Function `less`
 ``` motoko no-repl
 func less(x : Int32, y : Int32) : Bool
 ```
 
-Returns `x < y`.
+"Less than" function for Int32 types.
+This is equivalent to `x < y`.
 
 Example:
-```motoko
-import Int32 "mo:base/Int32";
-
-Int32.less(123, 1234) // => true
+```motoko include=import
+Int32.less(-2, 1); // => true
 ```
+
+Note: The reason why this function is defined in this library (in addition
+to the existing `<` operator) is so that you can use it as a function
+value to pass to a higher order function. It is not possible to use `<`
+as a function value at the moment.
 
 ## Function `lessOrEqual`
 ``` motoko no-repl
 func lessOrEqual(x : Int32, y : Int32) : Bool
 ```
 
-Returns `x <= y`.
+"Less than or equal" function for Int32 types.
+This is equivalent to `x <= y`.
 
 Example:
-```motoko
-import Int32 "mo:base/Int32";
-
-Int32.lessOrEqual(123, 1234) // => true
+```motoko include=import
+Int32.lessOrEqual(-2, -2); // => true
 ```
+
+Note: The reason why this function is defined in this library (in addition
+to the existing `<=` operator) is so that you can use it as a function
+value to pass to a higher order function. It is not possible to use `<=`
+as a function value at the moment.
 
 ## Function `greater`
 ``` motoko no-repl
 func greater(x : Int32, y : Int32) : Bool
 ```
 
-Returns `x > y`.
+"Greater than" function for Int32 types.
+This is equivalent to `x > y`.
 
 Example:
-```motoko
-import Int32 "mo:base/Int32";
-
-Int32.greater(1234, 123) // => true
+```motoko include=import
+Int32.greater(-2, -3); // => true
 ```
+
+Note: The reason why this function is defined in this library (in addition
+to the existing `>` operator) is so that you can use it as a function
+value to pass to a higher order function. It is not possible to use `>`
+as a function value at the moment.
 
 ## Function `greaterOrEqual`
 ``` motoko no-repl
 func greaterOrEqual(x : Int32, y : Int32) : Bool
 ```
 
-Returns `x >= y`.
+"Greater than or equal" function for Int32 types.
+This is equivalent to `x >= y`.
 
 Example:
-```motoko
-import Int32 "mo:base/Int32";
-
-Int32.greaterOrEqual(1234, 123) // => true
+```motoko include=import
+Int32.greaterOrEqual(-2, -2); // => true
 ```
+
+Note: The reason why this function is defined in this library (in addition
+to the existing `>=` operator) is so that you can use it as a function
+value to pass to a higher order function. It is not possible to use `>=`
+as a function value at the moment.
 
 ## Function `compare`
 ``` motoko no-repl
 func compare(x : Int32, y : Int32) : {#less; #equal; #greater}
 ```
 
-Returns the order of `x` and `y`.
+General-purpose comparison function for `Int32`. Returns the `Order` (
+either `#less`, `#equal`, or `#greater`) of comparing `x` with `y`.
 
 Example:
-```motoko
-import Int32 "mo:base/Int32";
+```motoko include=import
+Int32.compare(-3, 2) // => #less
+```
 
-Int32.compare(123, 1234) // => #less
+This function can be used as value for a high order function, such as a sort function.
+
+Example:
+```motoko include=import
+import Array "mo:base/Array";
+Array.sort([1, -2, -3] : [Int32], Int32.compare) // => [-3, -2, 1]
 ```
 
 ## Function `neg`
@@ -269,13 +359,15 @@ Returns the negation of `x`, `-x`.
 
 Traps on overflow, i.e. for `neg(-2 ** 31)`.
 
-
 Example:
-```motoko
-import Int32 "mo:base/Int32";
-
+```motoko include=import
 Int32.neg(123) // => -123
 ```
+
+Note: The reason why this function is defined in this library (in addition
+to the existing `-` operator) is so that you can use it as a function
+value to pass to a higher order function. It is not possible to use `-`
+as a function value at the moment.
 
 ## Function `add`
 ``` motoko no-repl
@@ -287,10 +379,19 @@ Returns the sum of `x` and `y`, `x + y`.
 Traps on overflow/underflow.
 
 Example:
-```motoko
-import Int32 "mo:base/Int32";
+```motoko include=import
+Int32.add(100, 23) // => +123
+```
 
-Int32.add(1234, 123) // => +1_357
+Note: The reason why this function is defined in this library (in addition
+to the existing `+` operator) is so that you can use it as a function
+value to pass to a higher order function. It is not possible to use `+`
+as a function value at the moment.
+
+Example:
+```motoko include=import
+import Array "mo:base/Array";
+Array.foldLeft<Int32, Int32>([1, -2, -3], 0, Int32.add) // => -4
 ```
 
 ## Function `sub`
@@ -303,10 +404,19 @@ Returns the difference of `x` and `y`, `x - y`.
 Traps on overflow/underflow.
 
 Example:
-```motoko
-import Int32 "mo:base/Int32";
-
+```motoko include=import
 Int32.sub(1234, 123) // => +1_111
+```
+
+Note: The reason why this function is defined in this library (in addition
+to the existing `-` operator) is so that you can use it as a function
+value to pass to a higher order function. It is not possible to use `-`
+as a function value at the moment.
+
+Example:
+```motoko include=import
+import Array "mo:base/Array";
+Array.foldLeft<Int32, Int32>([1, -2, -3], 0, Int32.sub) // => 6
 ```
 
 ## Function `mul`
@@ -319,10 +429,19 @@ Returns the product of `x` and `y`, `x * y`.
 Traps on overflow/underflow.
 
 Example:
-```motoko
-import Int32 "mo:base/Int32";
-
+```motoko include=import
 Int32.mul(123, 100) // => +12_300
+```
+
+Note: The reason why this function is defined in this library (in addition
+to the existing `*` operator) is so that you can use it as a function
+value to pass to a higher order function. It is not possible to use `*`
+as a function value at the moment.
+
+Example:
+```motoko include=import
+import Array "mo:base/Array";
+Array.foldLeft<Int32, Int32>([1, -2, -3], 1, Int32.mul) // => 6
 ```
 
 ## Function `div`
@@ -336,11 +455,14 @@ Rounds the quotient towards zero, which is the same as truncating the decimal pl
 Traps when `y` is zero.
 
 Example:
-```motoko
-import Int32 "mo:base/Int32";
-
+```motoko include=import
 Int32.div(123, 10) // => +12
 ```
+
+Note: The reason why this function is defined in this library (in addition
+to the existing `/` operator) is so that you can use it as a function
+value to pass to a higher order function. It is not possible to use `/`
+as a function value at the moment.
 
 ## Function `rem`
 ``` motoko no-repl
@@ -353,11 +475,14 @@ which is defined as `x - x / y * y`.
 Traps when `y` is zero.
 
 Example:
-```motoko
-import Int32 "mo:base/Int32";
-
+```motoko include=import
 Int32.rem(123, 10) // => +3
 ```
+
+Note: The reason why this function is defined in this library (in addition
+to the existing `%` operator) is so that you can use it as a function
+value to pass to a higher order function. It is not possible to use `%`
+as a function value at the moment.
 
 ## Function `pow`
 ``` motoko no-repl
@@ -369,11 +494,14 @@ Returns `x` to the power of `y`, `x ** y`.
 Traps on overflow/underflow and when `y < 0 or y >= 32`.
 
 Example:
-```motoko
-import Int32 "mo:base/Int32";
-
+```motoko include=import
 Int32.pow(2, 10) // => +1_024
 ```
+
+Note: The reason why this function is defined in this library (in addition
+to the existing `**` operator) is so that you can use it as a function
+value to pass to a higher order function. It is not possible to use `**`
+as a function value at the moment.
 
 ## Function `bitnot`
 ``` motoko no-repl
@@ -383,11 +511,14 @@ func bitnot(x : Int32) : Int32
 Returns the bitwise negation of `x`, `^x`.
 
 Example:
-```motoko
-import Int32 "mo:base/Int32";
-
+```motoko include=import
 Int32.bitnot(-256 /* 0xffff_ff00 */) // => +255 // 0xff
 ```
+
+Note: The reason why this function is defined in this library (in addition
+to the existing `^` operator) is so that you can use it as a function
+value to pass to a higher order function. It is not possible to use `^`
+as a function value at the moment.
 
 ## Function `bitand`
 ``` motoko no-repl
@@ -397,11 +528,14 @@ func bitand(x : Int32, y : Int32) : Int32
 Returns the bitwise "and" of `x` and `y`, `x & y`.
 
 Example:
-```motoko
-import Int32 "mo:base/Int32";
-
+```motoko include=import
 Int32.bitand(0xffff, 0x00f0) // => +240 // 0xf0
 ```
+
+Note: The reason why this function is defined in this library (in addition
+to the existing `&` operator) is so that you can use it as a function
+value to pass to a higher order function. It is not possible to use `&`
+as a function value at the moment.
 
 ## Function `bitor`
 ``` motoko no-repl
@@ -411,11 +545,14 @@ func bitor(x : Int32, y : Int32) : Int32
 Returns the bitwise "or" of `x` and `y`, `x | y`.
 
 Example:
-```motoko
-import Int32 "mo:base/Int32";
-
+```motoko include=import
 Int32.bitor(0xffff, 0x00f0) // => +65_535 // 0xffff
 ```
+
+Note: The reason why this function is defined in this library (in addition
+to the existing `|` operator) is so that you can use it as a function
+value to pass to a higher order function. It is not possible to use `|`
+as a function value at the moment.
 
 ## Function `bitxor`
 ``` motoko no-repl
@@ -425,11 +562,14 @@ func bitxor(x : Int32, y : Int32) : Int32
 Returns the bitwise "exclusive or" of `x` and `y`, `x ^ y`.
 
 Example:
-```motoko
-import Int32 "mo:base/Int32";
-
+```motoko include=import
 Int32.bitxor(0xffff, 0x00f0) // => +65_295 // 0xff0f
 ```
+
+Note: The reason why this function is defined in this library (in addition
+to the existing `^` operator) is so that you can use it as a function
+value to pass to a higher order function. It is not possible to use `^`
+as a function value at the moment.
 
 ## Function `bitshiftLeft`
 ``` motoko no-repl
@@ -444,11 +584,14 @@ For `y >= 32`, the semantics is the same as for `bitshiftLeft(x, y % 32)`.
 For `y < 0`,  the semantics is the same as for `bitshiftLeft(x, y + y % 32)`.
 
 Example:
-```motoko
-import Int32 "mo:base/Int32";
-
+```motoko include=import
 Int32.bitshiftLeft(1, 8) // => +256 // 0x100 equivalent to `2 ** 8`.
 ```
+
+Note: The reason why this function is defined in this library (in addition
+to the existing `<<` operator) is so that you can use it as a function
+value to pass to a higher order function. It is not possible to use `<<`
+as a function value at the moment.
 
 ## Function `bitshiftRight`
 ``` motoko no-repl
@@ -463,11 +606,14 @@ For `y >= 32`, the semantics is the same as for `bitshiftRight(x, y % 32)`.
 For `y < 0`,  the semantics is the same as for `bitshiftRight (x, y + y % 32)`.
 
 Example:
-```motoko
-import Int32 "mo:base/Int32";
-
+```motoko include=import
 Int32.bitshiftRight(1024, 8) // => +4 // equivalent to `1024 / (2 ** 8)`
 ```
+
+Note: The reason why this function is defined in this library (in addition
+to the existing `>>` operator) is so that you can use it as a function
+value to pass to a higher order function. It is not possible to use `>>`
+as a function value at the moment.
 
 ## Function `bitrotLeft`
 ``` motoko no-repl
@@ -482,11 +628,14 @@ Changes the direction of rotation for negative `y`.
 For `y >= 32`, the semantics is the same as for `bitrotLeft(x, y % 32)`.
 
 Example:
-```motoko
-import Int32 "mo:base/Int32";
-
+```motoko include=import
 Int32.bitrotLeft(0x2000_0001, 4) // => +18 // 0x12.
 ```
+
+Note: The reason why this function is defined in this library (in addition
+to the existing `<<>` operator) is so that you can use it as a function
+value to pass to a higher order function. It is not possible to use `<<>`
+as a function value at the moment.
 
 ## Function `bitrotRight`
 ``` motoko no-repl
@@ -501,11 +650,14 @@ Changes the direction of rotation for negative `y`.
 For `y >= 32`, the semantics is the same as for `bitrotRight(x, y % 32)`.
 
 Example:
-```motoko
-import Int32 "mo:base/Int32";
-
+```motoko include=import
 Int32.bitrotRight(0x0002_0001, 8) // => +16_777_728 // 0x0100_0200.
 ```
+
+Note: The reason why this function is defined in this library (in addition
+to the existing `<>>` operator) is so that you can use it as a function
+value to pass to a higher order function. It is not possible to use `<>>`
+as a function value at the moment.
 
 ## Function `bittest`
 ``` motoko no-repl
@@ -514,11 +666,10 @@ func bittest(x : Int32, p : Nat) : Bool
 
 Returns the value of bit `p` in `x`, `x & 2**p == 2**p`.
 If `p >= 32`, the semantics is the same as for `bittest(x, p % 32)`.
+This is equivalent to checking if the `p`-th bit is set in `x`, using 0 indexing.
 
 Example:
-```motoko
-import Int32 "mo:base/Int32";
-
+```motoko include=import
 Int32.bittest(128, 7) // => true
 ```
 
@@ -531,9 +682,7 @@ Returns the value of setting bit `p` in `x` to `1`.
 If `p >= 32`, the semantics is the same as for `bitset(x, p % 32)`.
 
 Example:
-```motoko
-import Int32 "mo:base/Int32";
-
+```motoko include=import
 Int32.bitset(0, 7) // => +128
 ```
 
@@ -546,9 +695,7 @@ Returns the value of clearing bit `p` in `x` to `0`.
 If `p >= 32`, the semantics is the same as for `bitclear(x, p % 32)`.
 
 Example:
-```motoko
-import Int32 "mo:base/Int32";
-
+```motoko include=import
 Int32.bitclear(-1, 7) // => -129
 ```
 
@@ -561,9 +708,7 @@ Returns the value of flipping bit `p` in `x`.
 If `p >= 32`, the semantics is the same as for `bitclear(x, p % 32)`.
 
 Example:
-```motoko
-import Int32 "mo:base/Int32";
-
+```motoko include=import
 Int32.bitflip(255, 7) // => +127
 ```
 
@@ -575,9 +720,7 @@ let bitcountNonZero : (x : Int32) -> Int32
 Returns the count of non-zero bits in `x`.
 
 Example:
-```motoko
-import Int32 "mo:base/Int32";
-
+```motoko include=import
 Int32.bitcountNonZero(0xffff) // => +16
 ```
 
@@ -589,9 +732,7 @@ let bitcountLeadingZero : (x : Int32) -> Int32
 Returns the count of leading zero bits in `x`.
 
 Example:
-```motoko
-import Int32 "mo:base/Int32";
-
+```motoko include=import
 Int32.bitcountLeadingZero(0x8000) // => +16
 ```
 
@@ -603,9 +744,7 @@ let bitcountTrailingZero : (x : Int32) -> Int32
 Returns the count of trailing zero bits in `x`.
 
 Example:
-```motoko
-import Int32 "mo:base/Int32";
-
+```motoko include=import
 Int32.bitcountTrailingZero(0x0201_0000) // => +16
 ```
 
@@ -618,13 +757,15 @@ Returns the sum of `x` and `y`, `x +% y`.
 
 Wraps on overflow/underflow.
 
-
 Example:
-```motoko
-import Int32 "mo:base/Int32";
-
+```motoko include=import
 Int32.addWrap(2 ** 30, 2 ** 30) // => -2_147_483_648 // overflow
 ```
+
+Note: The reason why this function is defined in this library (in addition
+to the existing `+%` operator) is so that you can use it as a function
+value to pass to a higher order function. It is not possible to use `+%`
+as a function value at the moment.
 
 ## Function `subWrap`
 ``` motoko no-repl
@@ -635,13 +776,15 @@ Returns the difference of `x` and `y`, `x -% y`.
 
 Wraps on overflow/underflow.
 
-
 Example:
-```motoko
-import Int32 "mo:base/Int32";
-
+```motoko include=import
 Int32.subWrap(-2 ** 31, 1) // => +2_147_483_647 // underflow
 ```
+
+Note: The reason why this function is defined in this library (in addition
+to the existing `-%` operator) is so that you can use it as a function
+value to pass to a higher order function. It is not possible to use `-%`
+as a function value at the moment.
 
 ## Function `mulWrap`
 ``` motoko no-repl
@@ -652,13 +795,15 @@ Returns the product of `x` and `y`, `x *% y`. Wraps on overflow.
 
 Wraps on overflow/underflow.
 
-
 Example:
-```motoko
-import Int32 "mo:base/Int32";
-
+```motoko include=import
 Int32.mulWrap(2 ** 16, 2 ** 16) // => 0 // overflow
 ```
+
+Note: The reason why this function is defined in this library (in addition
+to the existing `*%` operator) is so that you can use it as a function
+value to pass to a higher order function. It is not possible to use `*%`
+as a function value at the moment.
 
 ## Function `powWrap`
 ``` motoko no-repl
@@ -670,10 +815,12 @@ Returns `x` to the power of `y`, `x **% y`.
 Wraps on overflow/underflow.
 Traps if `y < 0 or y >= 32`.
 
-
 Example:
-```motoko
-import Int32 "mo:base/Int32";
-
+```motoko include=import
 Int32.powWrap(2, 31) // => -2_147_483_648 // overflow
 ```
+
+Note: The reason why this function is defined in this library (in addition
+to the existing `**%` operator) is so that you can use it as a function
+value to pass to a higher order function. It is not possible to use `**%`
+as a function value at the moment.

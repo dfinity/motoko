@@ -13,10 +13,12 @@ var @cycles : Nat = 0;
 
 // Function called by backend to add funds to call.
 // DO NOT RENAME without modifying compilation.
-func @add_cycles() {
+func @add_cycles<system>() {
   let cycles = @cycles;
   @reset_cycles();
-  (prim "cyclesAdd" : (Nat) -> ()) (cycles);
+  if (cycles != 0) {
+    (prim "cyclesAdd" : <system>Nat -> ()) (cycles);
+  }
 };
 
 // Function called by backend to zero cycles on context switch.
@@ -311,11 +313,12 @@ func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>) {
   var result : ?(@Result<T>) = null;
   var ws : @Waiter<T> = w_null;
   var rs : @Cont<Error> = r_null;
+  let getRefund = @cycles != 0;
 
   func fulfill(t : T) {
     switch result {
       case null {
-        let refund = @getSystemRefund();
+        let refund = if getRefund @getSystemRefund() else 0;
         result := ?(#ok (refund, t));
         let ws_ = ws;
         ws := w_null;
@@ -387,48 +390,78 @@ module @ManagementCanister = {
 let @ic00 = actor "aaaaa-aa" :
   actor {
     create_canister : {
-      settings : ?@ManagementCanister.canister_settings
+      settings : ?@ManagementCanister.canister_settings;
+      sender_canister_version : ?Nat64
     } -> async { canister_id : Principal };
     install_code : {
       mode : { #install; #reinstall; #upgrade };
       canister_id : Principal;
       wasm_module : @ManagementCanister.wasm_module;
       arg : Blob;
+      sender_canister_version : ?Nat64
     } -> async ()
  };
 
-func @ic00_create_canister() : shared {
-      settings : ?@ManagementCanister.canister_settings
-    } -> async { canister_id : Principal } {
-  @ic00.create_canister
-};
-
-func @ic00_install_code() : shared {
-    mode : { #install; #reinstall; #upgrade };
-    canister_id : Principal;
-    wasm_module : @ManagementCanister.wasm_module;
-    arg : Blob;
-  } -> async () {
-  @ic00.install_code
+func @install_actor_helper(
+    install_arg: {
+      #new : { settings : ?@ManagementCanister.canister_settings } ;
+      #install : Principal;
+      #reinstall : actor {} ;
+      #upgrade : actor {}
+    },
+    wasm_module : Blob,
+    arg : Blob)
+  : async* Principal = async* {
+  let (mode, canister_id) =
+    switch install_arg {
+      case (#new settings) {
+        let available = (prim "cyclesAvailable" : () -> Nat) ();
+        let accepted = (prim "cyclesAccept" : <system>Nat -> Nat) (available);
+        let sender_canister_version = ?(prim "canister_version" : () -> Nat64)();
+        @cycles += accepted;
+        let { canister_id } =
+          await @ic00.create_canister { settings with sender_canister_version };
+        (#install, canister_id)
+      };
+      case (#install principal1) {
+        (#install, principal1)
+      };
+      case (#reinstall actor1) {
+        (#reinstall, (prim "cast" : (actor {}) -> Principal) actor1)
+      };
+      case (#upgrade actor2) {
+        (#upgrade, (prim "cast" : (actor {}) -> Principal) actor2)
+      }
+    };
+  await @ic00.install_code {
+    mode;
+    canister_id;
+    wasm_module;
+    arg;
+    sender_canister_version = ?(prim "canister_version" : () -> Nat64)()
+  };
+  return canister_id;
 };
 
 // It would be desirable if create_actor_helper can be defined
 // without paying the extra self-remote-call-cost
 // TODO: This helper is now only used by Prim.createActor and could be removed, except
 // that Prim.createActor was mentioned on the forum and might be in use. (#3420)
-func @create_actor_helper(wasm_module_ : Blob, arg_ : Blob) : async Principal = async {
+func @create_actor_helper(wasm_module : Blob, arg : Blob) : async Principal = async {
   let available = (prim "cyclesAvailable" : () -> Nat) ();
-  let accepted = (prim "cyclesAccept" : Nat -> Nat) (available);
+  let accepted = (prim "cyclesAccept" : <system>Nat -> Nat) (available);
+  let sender_canister_version = ?(prim "canister_version" : () -> Nat64)();
   @cycles += accepted;
-  let { canister_id = canister_id_ } =
-    await @ic00.create_canister({settings = null});
-  await @ic00.install_code({
+  let { canister_id } =
+    await @ic00.create_canister { settings = null; sender_canister_version };
+  await @ic00.install_code {
     mode = #install;
-    canister_id = canister_id_;
-    wasm_module = wasm_module_;
-    arg = arg_;
-  });
-  return canister_id_;
+    canister_id;
+    wasm_module;
+    arg;
+    sender_canister_version = ?(prim "canister_version" : () -> Nat64)()
+  };
+  return canister_id;
 };
 
 // raw calls
@@ -495,15 +528,8 @@ func @timer_helper() : async () {
   func Array_init<T>(len : Nat,  x : T) : [var T] {
     (prim "Array.init" : <T>(Nat, T) -> [var T])<T>(len, x)
   };
+
   let now = (prim "time" : () -> Nat64)();
-  let exp = @nextExpiration @timers;
-  let prev = (prim "global_timer_set" : Nat64 -> Nat64) exp;
-
-  // debug { assert prev == 0 };
-
-  if (exp == 0) {
-    return
-  };
 
   var gathered = 0;
   let thunks = Array_init<?(() -> async ())>(10, null); // we want max 10
@@ -515,9 +541,10 @@ func @timer_helper() : async () {
       if (n.expire[0] > 0 and n.expire[0] <= now and gathered < thunks.size()) {
         thunks[gathered] := ?(n.job);
         switch (n.delay) {
-          case (?delay) if (delay != 0) {
-            // re-add the node
-            let expire = n.expire[0] + delay;
+          case (null or ?0) ();
+          case (?delay) {
+            // re-add the node, skipping past expirations
+            let expire = n.expire[0] + delay * (1 + (now - n.expire[0]) / delay);
             n.expire[0] := 0;
             // N.B. reinsert only works on pruned nodes
             func reinsert(m : ?@Node) : @Node = switch m {
@@ -530,7 +557,6 @@ func @timer_helper() : async () {
             };
             @timers := ?reinsert(@prune(@timers));
           };
-          case _ ()
         };
         n.expire[0] := 0;
         gathered += 1;
@@ -541,14 +567,21 @@ func @timer_helper() : async () {
 
   gatherExpired(@timers);
 
-  for (k in thunks.keys()) {
-    ignore switch (thunks[k]) { case (?thunk) ?thunk(); case _ null };
+  let exp = @nextExpiration @timers;
+  ignore (prim "global_timer_set" : Nat64 -> Nat64) exp;
+  if (exp == 0) @timers := null;
+
+  for (o in thunks.vals()) {
+    switch o {
+      case (?thunk) { ignore thunk() };
+      case _ { }
+    }
   }
 };
 
 var @lastTimerId = 0;
 
-func @setTimer(delayNanos : Nat64, recurring : Bool, job : () -> async ()) : (id : Nat) {
+func @setTimer<system>(delayNanos : Nat64, recurring : Bool, job : () -> async ()) : (id : Nat) {
   @lastTimerId += 1;
   let id = @lastTimerId;
   let now = (prim "time" : () -> Nat64) ();

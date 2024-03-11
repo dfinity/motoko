@@ -42,6 +42,10 @@ const IDL_CON_service: i32 = -23;
 
 const IDL_REF_principal: i32 = -24;
 
+// Extended Candid only
+const IDL_EXT_region: i32 = -128;
+
+// Extended Candid only
 const IDL_CON_alias: i32 = 1;
 
 const IDL_PRIM_lowest: i32 = -17;
@@ -50,8 +54,9 @@ pub unsafe fn leb128_decode_ptr(buf: *mut Buf) -> (u32, *mut u8) {
     (leb128_decode(buf), (*buf).ptr)
 }
 
-unsafe fn is_primitive_type(ty: i32) -> bool {
-    ty < 0 && (ty >= IDL_PRIM_lowest || ty == IDL_REF_principal)
+unsafe fn is_primitive_type(extended: bool, ty: i32) -> bool {
+    ty < 0
+        && (ty >= IDL_PRIM_lowest || ty == IDL_REF_principal || (extended && ty == IDL_EXT_region))
 }
 
 // TBR; based on Text.text_compare
@@ -73,14 +78,14 @@ unsafe fn utf8_cmp(len1: u32, p1: *mut u8, len2: u32, p2: *mut u8) -> i32 {
     }
 }
 
-unsafe fn check_typearg(ty: i32, n_types: u32) {
+unsafe fn check_typearg(extended: bool, ty: i32, n_types: u32) {
     // Arguments to type constructors can be primitive types or type indices
-    if !(is_primitive_type(ty) || (ty >= 0 && (ty as u32) < n_types)) {
+    if !(is_primitive_type(extended, ty) || (ty >= 0 && (ty as u32) < n_types)) {
         idl_trap_with("invalid type argument");
     }
 }
 
-unsafe fn parse_fields(buf: *mut Buf, n_types: u32) {
+unsafe fn parse_fields(extended: bool, buf: *mut Buf, n_types: u32) {
     let mut next_valid = 0;
     for n in (1..=leb128_decode(buf)).rev() {
         let tag = leb128_decode(buf);
@@ -89,11 +94,12 @@ unsafe fn parse_fields(buf: *mut Buf, n_types: u32) {
         }
         next_valid = tag + 1;
         let t = sleb128_decode(buf);
-        check_typearg(t, n_types);
+        check_typearg(extended, t, n_types);
     }
 }
 
 // NB. This function assumes the allocation does not need to survive GC
+// Therefore, no post allocation barrier is applied.
 unsafe fn alloc<M: Memory>(mem: &mut M, size: Words<u32>) -> *mut u8 {
     alloc_blob(mem, size.to_bytes())
         .as_blob_mut()
@@ -159,38 +165,38 @@ unsafe fn parse_idl_header<M: Memory>(
             // internal
             // See Note [mutable stable values] in codegen/compile.ml
             let t = sleb128_decode(buf);
-            check_typearg(t, n_types);
+            check_typearg(extended, t, n_types);
         } else if ty >= 0 {
             idl_trap_with("illegal type table"); // illegal
-        } else if is_primitive_type(ty) {
+        } else if is_primitive_type(extended, ty) {
             // illegal
             idl_trap_with("primitive type in type table");
         } else if ty == IDL_CON_opt {
             let t = sleb128_decode(buf);
-            check_typearg(t, n_types);
+            check_typearg(extended, t, n_types);
         } else if ty == IDL_CON_vec {
             let t = sleb128_decode(buf);
-            check_typearg(t, n_types);
+            check_typearg(extended, t, n_types);
         } else if ty == IDL_CON_record {
-            parse_fields(buf, n_types);
+            parse_fields(extended, buf, n_types);
         } else if ty == IDL_CON_variant {
-            parse_fields(buf, n_types);
+            parse_fields(extended, buf, n_types);
         } else if ty == IDL_CON_func {
             // Arg types
             for _ in 0..leb128_decode(buf) {
                 let t = sleb128_decode(buf);
-                check_typearg(t, n_types);
+                check_typearg(extended, t, n_types);
             }
             // Ret types
             for _ in 0..leb128_decode(buf) {
                 let t = sleb128_decode(buf);
-                check_typearg(t, n_types);
+                check_typearg(extended, t, n_types);
             }
             // Annotations
             for _ in 0..leb128_decode(buf) {
                 let a = read_byte(buf);
-                if !(1 <= a && a <= 2) {
-                    idl_trap_with("func annotation not within 1..2");
+                if !(1 <= a && a <= 3) {
+                    idl_trap_with("func annotation not within 1..3");
                 }
                 // TODO: shouldn't we also check
                 // * 1 (query) or 2 (oneway), but not both
@@ -223,7 +229,7 @@ unsafe fn parse_idl_header<M: Memory>(
 
                 // Type
                 let t = sleb128_decode(buf);
-                check_typearg(t, n_types);
+                check_typearg(extended, t, n_types);
             }
         } else {
             // Future type
@@ -270,7 +276,7 @@ unsafe fn parse_idl_header<M: Memory>(
     *main_types_out = (*buf).ptr;
     for _ in 0..leb128_decode(buf) {
         let t = sleb128_decode(buf);
-        check_typearg(t, n_types);
+        check_typearg(extended, t, n_types);
     }
 
     *typtbl_out = typtbl;
@@ -356,6 +362,10 @@ unsafe extern "C" fn skip_any(buf: *mut Buf, typtbl: *mut *mut u8, t: i32, depth
                 if read_byte_tag(buf) != 0 {
                     skip_blob(buf);
                 }
+            }
+            IDL_EXT_region => {
+                buf.advance(12); // id (u64) & page_count (u32)
+                skip_blob(buf); // vec_pages
             }
             _ => {
                 idl_trap_with("skip_any: unknown prim");
@@ -516,7 +526,7 @@ unsafe extern "C" fn skip_fields(tb: *mut Buf, buf: *mut Buf, typtbl: *mut *mut 
 }
 
 unsafe fn is_opt_reserved(typtbl: *mut *mut u8, end: *mut u8, t: i32) -> bool {
-    if is_primitive_type(t) {
+    if is_primitive_type(false, t) {
         return t == IDL_PRIM_reserved;
     }
 
@@ -558,7 +568,7 @@ unsafe fn sub(
     };
 
     /* primitives reflexive */
-    if is_primitive_type(t1) && is_primitive_type(t2) && t1 == t2 {
+    if is_primitive_type(false, t1) && is_primitive_type(false, t2) && t1 == t2 {
         return true;
     }
 
@@ -658,27 +668,31 @@ unsafe fn sub(
                 }
                 // check annotations (that we care about)
                 // TODO: more generally, we would check equality of 256-bit bit-vectors,
-                // but validity ensures each entry is 1 or 2 (for now)
+                // but validity ensures each entry is 1, 2 or 3 (for now)
                 // c.f. https://github.com/dfinity/candid/issues/318
                 let mut a11 = false;
                 let mut a12 = false;
+                let mut a13 = false;
                 for _ in 0..leb128_decode(&mut tb1) {
                     match read_byte(&mut tb1) {
                         1 => a11 = true,
                         2 => a12 = true,
+                        3 => a13 = true,
                         _ => {}
                     }
                 }
                 let mut a21 = false;
                 let mut a22 = false;
+                let mut a23 = false;
                 for _ in 0..leb128_decode(&mut tb2) {
                     match read_byte(&mut tb2) {
                         1 => a21 = true,
                         2 => a22 = true,
+                        3 => a23 = true,
                         _ => {}
                     }
                 }
-                if (a11 == a21) && (a12 == a22) {
+                if (a11 == a21) && (a12 == a22) && (a13 == a23) {
                     return true;
                 } else {
                     break 'return_false;

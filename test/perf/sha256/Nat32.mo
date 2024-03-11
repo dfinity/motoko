@@ -79,7 +79,7 @@ module {
   public func pow(x : Nat32, y : Nat32) : Nat32 { x ** y };
 
   /// Returns the bitwise negation of `x`, `^x`.
-  public func bitnot(x : Nat32, y : Nat32) : Nat32 { ^x };
+  public func bitnot(x : Nat32) : Nat32 { ^x };
 
   /// Returns the bitwise and of `x` and `y`, `x & y`.
   public func bitand(x : Nat32, y : Nat32) : Nat32 { x & y };

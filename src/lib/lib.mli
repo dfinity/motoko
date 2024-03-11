@@ -96,6 +96,7 @@ sig
     val (and+) : 'a option -> 'b option -> ('a * 'b) option
   end
   val get : 'a option -> 'a -> 'a
+  val map2 : ('a -> 'b -> 'c) -> 'a option -> 'b option -> 'c option
 end
 
 module Promise :
@@ -181,6 +182,15 @@ module Base32 :
 sig
   val decode : string -> (string, string) result
   val encode : string -> string
+end
+
+module Utf8 :
+sig
+  type t = int list
+  exception Utf8
+  val is_valid : string -> bool
+  val decode : string -> t (* raises Utf8 *)
+  val encode : t -> string (* raises Utf8 *)
 end
 
 module FilePath :

@@ -8,13 +8,13 @@ open Syntax
 let is_actor_def e =
   let open Source in
   match e.it with
-  | AwaitE (Type.Fut, { it = AsyncE (Type.Fut, _, {it = ObjBlockE ({ it = Type.Actor; _}, _fields); _ }) ; _  }) -> true
+  | AwaitE (Type.Fut, { it = AsyncE (Type.Fut, _, {it = ObjBlockE ({ it = Type.Actor; _}, _t, _fields); _ }) ; _  }) -> true
   | _ -> false
 
 let as_actor_def e =
   let open Source in
   match e.it with
-  | AwaitE (Type.Fut, { it = AsyncE (Type.Fut, _, {it = ObjBlockE ({ it = Type.Actor; _}, fields); note; at }) ; _  }) ->
+  | AwaitE (Type.Fut, { it = AsyncE (Type.Fut, _, {it = ObjBlockE ({ it = Type.Actor; _}, _t, fields); note; at }) ; _  }) ->
     fields, note, at
   | _ -> assert false
 
@@ -30,12 +30,12 @@ let comp_unit_of_prog as_lib (prog : prog) : comp_unit =
   let rec go imports ds : comp_unit =
     match ds with
     (* imports *)
-    | {it = LetD (p, ({it = ImportE (url, ri); _} as e)); _} :: ds' ->
+    | {it = LetD (p, ({it = ImportE (url, ri); _} as e), None); _} :: ds' ->
       let i : import = { it = (p, url, ri); note = e.note.note_typ; at = e.at } in
       go (i :: imports) ds'
 
     (* terminal expressions *)
-    | [{it = ExpD ({it = ObjBlockE ({it = Type.Module; _}, fields); _} as e); _}] when as_lib ->
+    | [{it = ExpD ({it = ObjBlockE ({it = Type.Module; _}, _t, fields); _} as e); _}] when as_lib ->
       finish imports { it = ModuleU (None, fields); note = e.note; at = e.at }
     | [{it = ExpD e; _} ] when is_actor_def e ->
       let fields, note, at = as_actor_def e in
@@ -44,9 +44,9 @@ let comp_unit_of_prog as_lib (prog : prog) : comp_unit =
       assert (List.length tbs > 0);
       finish imports { it = ActorClassU (sp, tid, tbs, p, typ_ann, self_id, fields); note = d.note; at = d.at }
     (* let-bound terminal expressions *)
-    | [{it = LetD ({it = VarP i1; _}, ({it = ObjBlockE ({it = Type.Module; _}, fields); _} as e)); _}] when as_lib ->
+    | [{it = LetD ({it = VarP i1; _}, ({it = ObjBlockE ({it = Type.Module; _}, _t, fields); _} as e), _); _}] when as_lib ->
       finish imports { it = ModuleU (Some i1, fields); note = e.note; at = e.at }
-    | [{it = LetD ({it = VarP i1; _}, e); _}] when is_actor_def e ->
+    | [{it = LetD ({it = VarP i1; _}, e, _); _}] when is_actor_def e ->
       let fields, note, at = as_actor_def e in
       finish imports { it = ActorU (Some i1, fields); note; at }
 
@@ -68,15 +68,16 @@ let obj_decs obj_sort at note id_opt fields =
   match id_opt with
   | None -> [
     { it = ExpD {
-        it = ObjBlockE ( { it = obj_sort; at; note = () }, fields);
+        it = ObjBlockE ( { it = obj_sort; at; note = () }, None, fields);
         at;
         note };
       at; note }]
   | Some id -> [
     { it = LetD (
         { it = VarP id; at; note = note.note_typ },
-        { it = ObjBlockE ({ it = obj_sort; at; note = () }, fields);
-          at; note; });
+        { it = ObjBlockE ({ it = obj_sort; at; note = () }, None, fields);
+          at; note; },
+        None);
       at; note
     };
     { it = ExpD { it = VarE id; at; note };
@@ -94,7 +95,8 @@ let decs_of_lib (cu : comp_unit) =
       pat,
       { it = ImportE (fp, ri);
         at;
-        note = { note_typ = note; note_eff = Type.Triv} });
+        note = { note_typ = note; note_eff = Type.Triv} },
+      None);
       at;
       note = { note_typ = note; note_eff = Type.Triv } }) imports
   in

@@ -32,6 +32,13 @@ Performance:
 Note:
 * Tree operations, such as retrieval, insertion, and removal create `O(log(n))` temporary objects that become garbage.
 
+Credits:
+
+The core of this implementation is derived from:
+
+* Ken Friis Larsen's [RedBlackMap.sml](https://github.com/kfl/mosml/blob/master/src/mosmllib/Redblackmap.sml), which itself is based on:
+* Stefan Kahrs, "Red-black trees with types", Journal of Functional Programming, 11(4): 425-432 (2001), [version 1 in web appendix](http://www.cs.ukc.ac.uk/people/staff/smk/redblack/rb.html).
+
 ## Type `Color`
 ``` motoko no-repl
 type Color = {#R; #B}
@@ -93,8 +100,32 @@ tree.put(2, "second");
 RBTree.size(treeSnapshot) // => 1 (Only the first insertion is part of the snapshot.)
 ```
 
-Useful for storing the tree as a stable variable, determining its size, pretty-printing, and sharing it across async function calls,
+Useful for storing the state of a tree object as a stable variable, determining its size, pretty-printing, and sharing it across async function calls,
 i.e. passing it in async arguments or async results.
+
+Runtime: `O(1)`.
+Space: `O(1)`.
+
+
+### Function `unshare`
+``` motoko no-repl
+func unshare(t : Tree<K, V>) : ()
+```
+
+Reset the current state of the tree object from a functional tree representation.
+
+Example:
+```motoko include=initialize
+import Iter "mo:base/Iter";
+
+tree.put(1, "one");
+let snapshot = tree.share(); // save the current state of the tree object in a snapshot
+tree.put(2, "two");
+tree.unshare(snapshot); // restore the tree object from the snapshot
+Iter.toArray(tree.entries()) // => [(1, "one")]
+```
+
+Useful for restoring the state of a tree object from stable data, saved, for example, in a stable variable.
 
 Runtime: `O(1)`.
 Space: `O(1)`.

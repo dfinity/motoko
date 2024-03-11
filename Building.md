@@ -20,10 +20,11 @@ dependencies manually, which can take several hours.
 ## Installation using Nix
 
 If you want just to _use_ `moc`, you can install the `moc` binary into your `nix`
-environment with
+environment by running
 ```
 $ nix-env -i -f . -A moc
 ```
+in a check-out of the `motoko` repository.
 
 ## Development using Nix
 
@@ -55,11 +56,11 @@ For more details on our CI and CI setup, see `CI.md`.
 
 ## Making releases
 
-We make frequent releases, at least weekly. The steps to make a release (say, version 0.8.1) are:
+We make frequent releases, at least weekly. The steps to make a release (say, version 0.11.2) are:
 
  * Make sure that the top section of `Changelog.md` has a title like
 
-        ## 0.8.1 (2023-01-25)
+        ## 0.11.2 (2024-02-29)
 
    with today’s date.
 
@@ -67,26 +68,29 @@ We make frequent releases, at least weekly. The steps to make a release (say, ve
    For now, in a nix-shell:
 
    ```bash
+      make -C src
       make -C doc base
       git diff
    ```
 
    If not, create and merge a separate PR to update the doc (adding any new files) and goto step 0.
 
- * Define a shell variable `export MOC_MINOR=1`
+ * Define a shell variable `export MOC_MINOR=2`
 
- * Look at `git log --first-parent 0.8.$(expr $MOC_MINOR - 1)..HEAD` and check
+ * Look at `git log --first-parent 0.11.$(expr $MOC_MINOR - 1)..HEAD` and check
    that everything relevant is mentioned in the changelog section, and possibly
    clean it up a bit, curating the information for the target audience.
 
- * `git commit -am "Releasing 0.8.$MOC_MINOR"`
- * Create a PR from this commit, and label it `automerge-squash`.  Mergify will
-   merge it into master without additional approval, within 2 or 3 minutes.
- * `git switch master; git pull`. The release commit should be your `HEAD`
- * `git tag 0.8.$MOC_MINOR -m "Motoko 0.8.$MOC_MINOR"`
- * `git push origin 0.8.$MOC_MINOR`
+ * `git commit -am "chore: Releasing 0.11."$MOC_MINOR`
+ * Create a PR from this commit, and label it `automerge-squash`. E.g.
+   with `git push origin HEAD:$USER/0.11.$MOC_MINOR`. Mergify will
+   merge it into `master` without additional approval, but it will take some
+   time as the title (version number) enters into the `nix` dependency tracking.
+ * `git switch master; git pull --rebase`. The release commit should be your `HEAD`
+ * `git tag 0.11.$MOC_MINOR -m "Motoko 0.11."$MOC_MINOR`
+ * `git push origin 0.11.$MOC_MINOR`
 
-Pushing the tag should cause GitHub Actions to create a “Release” on the github
+Pushing the tag should cause GitHub Actions to create a “Release” on the GitHub
 project. This will fail if the changelog is not in order (in this case, fix and
 force-push the tag).  It will also fail if the nix cache did not yet contain
 the build artifacts for this revision. In this case, restart the GitHub Action
@@ -98,16 +102,23 @@ branch to the `next-moc` branch.
 * Wait ca. 5min after releasing to give the CI/CD pipeline time to upload the release artifacts
 * Change into `motoko-base`
 * `git switch next-moc; git pull`
-* `git switch -c $USER/update-moc-0.8.$MOC_MINOR`
+* `git switch -c $USER/update-moc-0.11.$MOC_MINOR`
 * Update the `moc_version` env variable in `.github/workflows/{ci, package-set}.yml`
   to the new released version:
-  `perl -pi -e "s/moc_version: \"0\.8\.\\d+\"/moc_version: \"0.8.$MOC_MINOR\"/g" .github/workflows/ci.yml .github/workflows/package-set.yml`
-* `git add .github/ && git commit -m "Motoko 0.8.$MOC_MINOR"`
+  `perl -pi -e "s/moc_version: \"0\.11\.\\d+\"/moc_version: \"0.11.$MOC_MINOR\"/g" .github/workflows/ci.yml .github/workflows/package-set.yml`
+* `git add .github/ && git commit -m "Motoko 0.11."$MOC_MINOR`
 * You can `git push` now
 
 Make a PR off of that branch and merge it using a _normal merge_ (not
 squash merge) once CI passes. It will eventually be imported into this
 repo by a scheduled `niv-updater-action`.
+
+Finally tag the base release (so the documentation interpreter can do the right thing):
+* `git switch master && git pull`
+* `git tag moc-0.11.$MOC_MINOR`
+* `git push origin moc-0.11.$MOC_MINOR`
+
+If you want to update the portal documentation, typically to keep in sync with a `dfx` release, follow the instructions in https://github.com/dfinity/portal/blob/master/MAINTENANCE.md.
 
 ## Coverage report
 

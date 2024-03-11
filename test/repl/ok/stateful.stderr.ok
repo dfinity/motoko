@@ -1,4 +1,5 @@
-stdin:2.9-2.17: syntax error [M0002], unclosed text literal
+stdin:2.18-2.19: syntax error [M0001], unexpected token ';', expected one of token or <phrase> sequence:
+  <exp_bin(ob)>
 stdin:1.9-1.10: type error [M0050], literal of type
   Nat
 does not have expected type

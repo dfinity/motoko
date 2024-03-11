@@ -77,6 +77,7 @@ pub unsafe fn alloc_bitmap<M: Memory>(mem: &mut M, heap_size: Bytes<u32>, heap_p
     // 64 bits in a single read and check as many bits as possible with a single `word != 0`.
     let bitmap_bytes = Bytes(((BITMAP_SIZE + 7) / 8) * 8);
     // Allocating an actual object here as otherwise dump_heap gets confused
+    // No post allocation barrier as this RTS-internal blob will be collected by the GC.
     let blob = alloc_blob(mem, bitmap_bytes).get_ptr() as *mut Blob;
     memzero(blob.payload_addr() as usize, bitmap_bytes.to_words());
 
@@ -132,7 +133,8 @@ pub unsafe fn iter_bits() -> BitmapIter {
     let current_word = if blob_len_64bit_words == 0 {
         0
     } else {
-        *(BITMAP_PTR as *const u64)
+        let bitmap_ptr64 = BITMAP_PTR as *const u64;
+        bitmap_ptr64.read_unaligned()
     };
 
     debug_assert!(BITMAP_PTR as usize >= BITMAP_FORBIDDEN_PTR as usize);
@@ -189,7 +191,9 @@ impl BitmapIter {
                 return BITMAP_ITER_END;
             }
             self.current_word = unsafe {
-                *(BITMAP_FORBIDDEN_PTR.add(self.current_bit_idx as usize / 8) as *const u64)
+                let ptr64 =
+                    BITMAP_FORBIDDEN_PTR.add(self.current_bit_idx as usize / 8) as *const u64;
+                ptr64.read_unaligned()
             };
             self.leading_zeros = self.current_word.leading_zeros();
         }

@@ -354,12 +354,12 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | (IdxPrim | DerefArrayOffset), [v1; v2] ->
         k (try (V.as_array v1).(Numerics.Int.to_int (V.as_int v2))
            with Invalid_argument s -> trap exp.at "%s" s)
-      | NextArrayOffset _, [v1] ->
+      | NextArrayOffset , [v1] ->
         k (V.Int Numerics.Nat.(of_int ((to_int (V.as_int v1)) + 1)))
-      | ValidArrayOffset, [v1; v2] ->
-        k (V.Bool Numerics.Nat.(to_int (V.as_int v1) < to_int (V.as_int v2)))
-      | GetPastArrayOffset _, [v1] ->
-        k (V.Int Numerics.Nat.(of_int (Array.length (V.as_array v1))))
+      | EqArrayOffset, [v1; v2] ->
+        k (V.Bool Numerics.Int.(to_int (V.as_int v1) = to_int (V.as_int v2)))
+      | GetLastArrayOffset,  [v1] ->
+        k (V.Int Numerics.Int.(of_int (Array.length (V.as_array v1) - 1)))
       | BreakPrim id, [v1] -> find id env.labs v1
       | RetPrim, [v1] -> Option.get env.rets v1
       | ThrowPrim, [v1] -> Option.get env.throws v1
@@ -412,12 +412,15 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | CastPrim _, [v1] ->
         k v1
       | ActorOfIdBlob t, [v1] ->
-        k v1
+        if String.length (V.as_blob v1) > 29 then
+          trap exp.at "blob too long for actor principal"
+        else
+          k v1
       | DecodeUtf8, [v1] ->
         let s = V.as_blob v1 in
-        begin match Wasm.Utf8.decode s with
+        begin match Lib.Utf8.decode s with
           | _ -> k (V.Opt (V.Text s))
-          | exception Wasm.Utf8.Utf8 -> k V.Null
+          | exception Lib.Utf8.Utf8 -> k V.Null
         end
       | EncodeUtf8, [v1] ->
         k (V.Blob (V.as_text v1))
@@ -656,7 +659,7 @@ and declare_pat pat : val_env =
   | ObjP pfs -> declare_pats (pats_of_obj_pat pfs) V.Env.empty
   | OptP pat1
   | TagP (_, pat1) -> declare_pat pat1
-  | AltP (pat1, pat2) -> declare_pat pat1
+  | AltP (pat1, _pat2) -> declare_pat pat1 (* pat2 has the same bindings *)
 
 and declare_pats pats ve : val_env =
   match pats with
@@ -670,36 +673,12 @@ and define_id env id v =
   Lib.Promise.fulfill (find id env.vals) v
 
 and define_pat env pat v =
-  let err () = trap pat.at "value %s does not match pattern" (string_of_val env v) in
-  match pat.it with
-  | WildP -> ()
-  | LitP _ | AltP _ ->
-    if match_pat pat v = None
-    then err ()
-    else ()
-  | VarP id -> define_id env id v
-  | TupP pats -> define_pats env pats (V.as_tup v)
-  | ObjP pfs -> define_field_pats env pfs (V.as_obj v)
-  | OptP pat1 ->
-    (match v with
-    | V.Opt v1 -> define_pat env pat1 v1
-    | V.Null -> err ()
-    | _ -> assert false
-    )
-  | TagP (i, pat1) ->
-    let lab, v1 = V.as_variant v in
-    if lab = i
-    then define_pat env pat1 v1
-    else err ()
-
-and define_pats env pats vs =
-  List.iter2 (define_pat env) pats vs
-
-and define_field_pats env pfs vs =
-  let define_field (pf : pat_field) =
-    define_pat env pf.it.pat (V.Env.find pf.it.name vs) in
-  List.iter define_field pfs
-
+  match match_pat pat v with
+  | Some ve ->
+     V.Env.iter (fun id d  -> define_id env id (Lib.Promise.value d)) ve;
+     true
+  | None ->
+     false
 
 and match_lit lit v : bool =
   match lit, v with
@@ -798,8 +777,9 @@ and interpret_dec env dec k =
   match dec.it with
   | LetD (pat, exp) ->
     interpret_exp env exp (fun v ->
-      define_pat env pat v;
-      k ()
+      if define_pat env pat v
+      then k ()
+      else trap pat.at "value %s does not match pattern" (string_of_val env v)
     )
   | VarD (id, _, exp) ->
     interpret_exp env exp (fun v ->

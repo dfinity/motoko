@@ -1,104 +1,64 @@
 // This module is only enabled when compiling the RTS for IC or WASI.
 
+#[non_incremental_gc]
+pub mod linear_memory;
+#[incremental_gc]
+pub mod partitioned_memory;
+
 use super::Memory;
 use crate::constants::WASM_PAGE_SIZE;
 use crate::rts_trap_with;
-use crate::types::*;
-
+use crate::types::{Bytes, Value};
 use core::arch::wasm32;
-
-/// Maximum live data retained in a GC.
-pub(crate) static mut MAX_LIVE: Bytes<u32> = Bytes(0);
-
-/// Amount of garbage collected so far.
-pub(crate) static mut RECLAIMED: Bytes<u64> = Bytes(0);
-
-/// Counter for total allocations
-pub(crate) static mut ALLOCATED: Bytes<u64> = Bytes(0);
-
-/// Heap pointer
-pub(crate) static mut HP: u32 = 0;
-
-/// Heap pointer after last GC
-pub(crate) static mut LAST_HP: u32 = 0;
+use motoko_rts_macros::*;
 
 // Provided by generated code
 extern "C" {
-    pub(crate) fn get_heap_base() -> u32;
+    fn get_heap_base() -> usize;
     pub(crate) fn get_static_roots() -> Value;
+    fn keep_memory_reserve() -> bool;
 }
 
-pub(crate) unsafe fn get_aligned_heap_base() -> u32 {
+pub(crate) unsafe fn get_aligned_heap_base() -> usize {
     // align to 32 bytes
     ((get_heap_base() + 31) / 32) * 32
 }
 
-#[no_mangle]
-unsafe extern "C" fn init(align: bool) {
-    HP = if align {
-        get_aligned_heap_base()
-    } else {
-        get_heap_base()
-    };
-    LAST_HP = HP;
-}
+/// Maximum live data retained in a GC.
+pub(crate) static mut MAX_LIVE: Bytes<u32> = Bytes(0);
 
 #[no_mangle]
 unsafe extern "C" fn get_max_live_size() -> Bytes<u32> {
     MAX_LIVE
 }
 
-#[no_mangle]
-unsafe extern "C" fn get_reclaimed() -> Bytes<u64> {
-    RECLAIMED
-}
-
-#[no_mangle]
-unsafe extern "C" fn get_total_allocations() -> Bytes<u64> {
-    ALLOCATED
-}
-
-#[no_mangle]
-unsafe extern "C" fn get_heap_size() -> Bytes<u32> {
-    Bytes(HP - get_aligned_heap_base())
-}
-
 /// Provides a `Memory` implementation, to be used in functions compiled for IC or WASI. The
 /// `Memory` implementation allocates in Wasm heap with Wasm `memory.grow` instruction.
 pub struct IcMemory;
 
-impl Memory for IcMemory {
-    #[inline]
-    unsafe fn alloc_words(&mut self, n: Words<u32>) -> Value {
-        let bytes = n.to_bytes();
-        // Update ALLOCATED
-        let delta = u64::from(bytes.as_u32());
-        ALLOCATED += Bytes(delta);
-
-        // Update heap pointer
-        let old_hp = u64::from(HP);
-        let new_hp = old_hp + delta;
-
-        // Grow memory if needed
-        grow_memory(new_hp);
-
-        debug_assert!(new_hp <= u64::from(core::u32::MAX));
-        HP = new_hp as u32;
-
-        Value::from_ptr(old_hp as usize)
-    }
-}
-
 /// Page allocation. Ensures that the memory up to, but excluding, the given pointer is allocated.
-#[inline(never)]
-unsafe fn grow_memory(ptr: u64) {
-    debug_assert!(ptr <= 2 * u64::from(core::u32::MAX));
+/// Ensure a memory reserve of at least one Wasm page depending on the canister state.
+/// `memory_reserve`: A memory reserve in bytes ensured during update and initialization calls.
+//  For use by queries and upgrade calls. The reserve may vary depending on the GC and the phase of the GC.
+unsafe fn grow_memory(ptr: u64, memory_reserve: usize) {
+    const LAST_PAGE_LIMIT: usize = 0xFFFF_0000;
+    debug_assert_eq!(LAST_PAGE_LIMIT, usize::MAX - WASM_PAGE_SIZE.as_usize() + 1);
+    let limit = if keep_memory_reserve() {
+        // Spare a memory reserve during update and initialization calls for use by queries and upgrades.
+        usize::MAX - memory_reserve + 1
+    } else {
+        // Spare the last Wasm memory page on queries and upgrades to support the Rust call stack boundary checks.
+        LAST_PAGE_LIMIT
+    };
+    if ptr > limit as u64 {
+        rts_trap_with("Cannot grow memory")
+    };
     let page_size = u64::from(WASM_PAGE_SIZE.as_u32());
     let total_pages_needed = ((ptr + page_size - 1) / page_size) as usize;
     let current_pages = wasm32::memory_size(0);
     if total_pages_needed > current_pages {
-        #[allow(clippy::collapsible_if)] // faster by 1% if not colapsed with &&
         if wasm32::memory_grow(0, total_pages_needed - current_pages) == core::usize::MAX {
+            // replica signals that there is not enough memory
             rts_trap_with("Cannot grow memory");
         }
     }

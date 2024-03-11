@@ -60,8 +60,11 @@ val ic_call_rawE : exp -> exp -> exp -> exp -> exp -> exp
 val projE : exp -> int -> exp
 val optE : exp -> exp
 val tagE : id -> exp -> exp
+val thenE : exp -> exp -> exp
 val blockE : dec list -> exp -> exp
+val let_else_switch : pat -> exp -> exp -> exp
 val natE : Mo_values.Numerics.Nat.t -> exp
+val intE : Mo_values.Numerics.Int.t -> exp
 val nat32E : Mo_values.Numerics.Nat32.t -> exp
 val textE : string -> exp
 val blobE : string -> exp

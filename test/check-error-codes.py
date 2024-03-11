@@ -32,7 +32,6 @@ known_untested_codes = {
     "M0054", # cannot infer type of primitive expression. Could be internal
     "M0068", # mode-specific
     "M0084", # when would the return type be inferred?
-    "M0092", # async scopes
     "M0094", # hard to trigger (check_exp only applies with no type variables, but shared functions have type variables)
     "M0099", # hard to trigger (syntactic checks hit first)
     "M0100", # hard to trigger (syntactic checks hit first)
@@ -42,6 +41,7 @@ known_untested_codes = {
     "M0162", # Candid service constructor type not supported as Motoko type
     "M0164", # unknown record or variant label in textual representation
     "M0165", # odd expected type
+    "M0191", # compiler warning about wasm features (hard to trigger)
     }
 
 def populate_error_codes():

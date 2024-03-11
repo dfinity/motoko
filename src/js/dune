@@ -25,7 +25,7 @@
  (name didc_js)
  (modes js)
  (modules didc_js)
- (libraries idllib lang_utils)
+ (libraries lib idllib lang_utils)
  (preprocess (pps js_of_ocaml-ppx))
 )
 

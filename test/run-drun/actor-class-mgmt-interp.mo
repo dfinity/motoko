@@ -1,5 +1,4 @@
 import Prim "mo:⛔";
-import Cycles = "cycles/cycles";
 import Cs "actor-class-mgmt/C";
 
 // test graceful failure of actor class system calls in interpreters
@@ -20,18 +19,18 @@ actor a {
     do {
 
       let c0 = await
-         Cs.C 0;
+        Cs.C (0, null);
       assert ({args = 0; upgrades = 0} == (await c0.observe()));
 
       let c1 = await
-         (system Cs.C)(#new default_settings)(1);
+        (system Cs.C)(#new default_settings)(1, null);
       assert ({args = 1; upgrades = 0} == (await c1.observe()));
       assert (c1 != c0);
 
       try {
         await async {
           let c2 = await
-          (system Cs.C)(#new settings)(2);
+            (system Cs.C)(#new settings)(2, null);
           assert ({args = 2; upgrades = 0} == (await c2.observe()));
           assert (c2 != c1);
         }
@@ -41,7 +40,7 @@ actor a {
         await async {
           let p = Prim.principalOfBlob("");
           let c3 = await
-            (system Cs.C)(#install p)(3);
+            (system Cs.C)(#install p)(3, null);
           assert false;
         };
       } catch e { };
@@ -49,7 +48,7 @@ actor a {
       try {
         await async {
           let c4 = await
-            (system Cs.C)(#upgrade c1)(4);
+            (system Cs.C)(#upgrade c1)(4, null);
           assert false;
         }
       } catch e { };
@@ -57,7 +56,7 @@ actor a {
       try {
         await async {
           let c5 = await
-            (system Cs.C)(#reinstall c1)(5);
+            (system Cs.C)(#reinstall c1)(5, null);
           assert false;
         }
       }

@@ -40,6 +40,7 @@ s/WRAPMULOP/\'*%\'/g
 s/WRAPPOWOP/\'**%\'/g
 s/ANDASSIGN/\'\&=\'/g
 s/ACTOR/\'actor\'/g
+s/COMPOSITE/\'composite\'/g
 s/IGNORE/\'ignore\'/g
 s/IMPORT/\'import\'/g
 s/XOROP/\'^\'/g
@@ -72,6 +73,7 @@ s/RBRACKET/\']\'/g
 s/QUEST/\'?\'/g
 s/BANG/\'!\'/g
 s/QUERY/\'query\'/g
+s/PIPE/\'|>\'/g
 s/PUBLIC/\'public\'/g
 s/PRIVATE/\'private\'/g
 s/POWOP/\'**\'/g

@@ -54,7 +54,7 @@ let record_fields get_label fs =
 %token FUNC TYPE SERVICE IMPORT PRINCIPAL
 %token SEMICOLON COMMA PERIOD COLON EQ
 %token NOTCOLON EQQ NOTEQ
-%token OPT VEC RECORD VARIANT BLOB ONEWAY QUERY
+%token OPT VEC RECORD VARIANT BLOB ONEWAY QUERY COMPOSITE_QUERY
 %token<string> NAT
 %token<string> ID
 %token<string> TEXT
@@ -80,8 +80,8 @@ seplist(X, SEP) :
 
 %inline text :
  | s=TEXT
-   { try ignore (Wasm.Utf8.decode s); s
-     with Wasm.Utf8.Utf8 -> raise (ParseError (at $sloc, "Invalid UTF-8"))
+   { try ignore (Lib.Utf8.decode s); s
+     with Lib.Utf8.Utf8 -> raise (ParseError (at $sloc, "Invalid UTF-8"))
    }
 
 %inline id :
@@ -106,9 +106,9 @@ ref_typ :
 
 field_typ :
   | n=NAT COLON t=data_typ
-    { { label = Id (Uint32.of_string n) @@ at $loc(n); typ = t } @@ at $sloc } 
+    { { label = Id (Uint32.of_string n) @@ at $loc(n); typ = t } @@ at $sloc }
   | name=name COLON t=data_typ
-    { { label = Named name.it @@ at $loc(name); typ = t } @@ at $sloc } 
+    { { label = Named name.it @@ at $loc(name); typ = t } @@ at $sloc }
 
 record_typ :
   | f=field_typ { fun _ -> f }
@@ -118,7 +118,7 @@ record_typ :
 variant_typ :
   | f=field_typ { f }
   | name=name
-    { { label = Named name.it @@ at $loc(name); typ = PrimT Null @@ no_region } @@ at $sloc } 
+    { { label = Named name.it @@ at $loc(name); typ = PrimT Null @@ no_region } @@ at $sloc }
   | n=NAT
     { { label = Id (Uint32.of_string n) @@ at $loc(n); typ = PrimT Null @@ no_region } @@ at $sloc }
 
@@ -152,6 +152,7 @@ param_typ :
 func_mode :
   | ONEWAY { Oneway @@ at $sloc }
   | QUERY { Query @@ at $sloc }
+  | COMPOSITE_QUERY { Composite @@ at $sloc }
 
 func_modes_opt :
   | (* empty *) { [] }
@@ -192,17 +193,20 @@ actor_class_typ :
 
 actor :
   | (* empty *) { None }
-  | SERVICE id_opt COLON tys=actor_typ
+  | SERVICE id_opt COLON tys=actor_typ SEMICOLON?
     { Some (ServT tys @@ at $loc(tys)) }
-  | SERVICE id_opt COLON x=id
+  | SERVICE id_opt COLON x=id SEMICOLON?
     { Some (VarT x @@ x.at) }
-  | SERVICE id_opt COLON t=actor_class_typ { Some t }
+  | SERVICE id_opt COLON t=actor_class_typ SEMICOLON?
+    { Some t }
 
 (* Programs *)
 
 parse_prog :
   | ds=seplist(def, SEMICOLON) actor=actor EOF
-    { fun filename -> { it = {decs=ds; actor=actor}; at = at $sloc; note = filename} }
+    {
+      let trivia = Trivia.PosHashtbl.create 0 in
+      fun filename -> {it = {decs=ds; actor=actor}; at = at $sloc; note = {filename; trivia}} }
 
 (* Values *)
 
@@ -253,9 +257,9 @@ field_value :
   | n=NAT EQ v=value
     { fun _ -> (Id (Uint32.of_string n) @@ at $loc(n), v) @@ at $sloc }
   | name=name EQ v=value
-    { fun _ -> (Named name.it @@ at $loc(name), v) @@ at $sloc } 
+    { fun _ -> (Named name.it @@ at $loc(name), v) @@ at $sloc }
   | v=value
-    { fun n -> (Unnamed n @@ no_region, v) @@ at $sloc } 
+    { fun n -> (Unnamed n @@ no_region, v) @@ at $sloc }
 
 annval :
   | v=value { v }
@@ -283,6 +287,6 @@ test :
 
 parse_tests :
   | tdecs=endlist(def, SEMICOLON) tests=seplist(test, SEMICOLON) EOF
-    { fun filename -> { it = {tdecs; tests}; at = at $sloc; note = filename} }
+    { fun filename -> {it = {tdecs; tests}; at = at $sloc; note = filename} }
 
 %%

@@ -1,5 +1,6 @@
 use motoko_rts::memory::Memory;
 use motoko_rts::types::{Value, Words};
+use motoko_rts_macros::*;
 
 pub struct TestMemory {
     heap: Box<[u8]>,
@@ -14,15 +15,26 @@ impl TestMemory {
         TestMemory { heap, hp }
     }
 
-    unsafe fn grow_memory(&mut self, ptr: usize) {
-        let heap_end = self.heap.as_ptr() as usize + self.heap.len();
-        if ptr > heap_end {
-            // We don't allow growing memory in tests, allocate large enough for the test
-            panic!(
-                "TestMemory::grow_memory called: heap_end={:#x}, grow_memory argument={:#x}",
-                heap_end, ptr
-            );
-        }
+    #[incremental_gc]
+    pub fn heap_base(&self) -> usize {
+        self.heap.as_ptr() as usize
+    }
+
+    #[incremental_gc]
+    pub fn heap_end(&self) -> usize {
+        self.heap_base() + self.heap.len()
+    }
+
+    #[incremental_gc]
+    pub fn heap_pointer(&self) -> usize {
+        self.hp
+    }
+
+    #[incremental_gc]
+    pub fn set_heap_pointer(&mut self, heap_pointer: usize) {
+        assert!(heap_pointer >= self.heap_base());
+        assert!(heap_pointer <= self.heap_end());
+        self.hp = heap_pointer;
     }
 }
 
@@ -36,8 +48,19 @@ impl Memory for TestMemory {
         self.hp = new_hp;
 
         // Grow memory if needed
-        self.grow_memory(new_hp as usize);
+        self.grow_memory(new_hp as u64);
 
         Value::from_ptr(old_hp)
+    }
+
+    unsafe fn grow_memory(&mut self, ptr: u64) {
+        let heap_end = self.heap.as_ptr() as usize + self.heap.len();
+        if ptr as usize > heap_end {
+            // We don't allow growing memory in tests, allocate large enough for the test
+            panic!(
+                "TestMemory::grow_memory called: heap_end={:#x}, grow_memory argument={:#x}",
+                heap_end, ptr
+            );
+        }
     }
 }

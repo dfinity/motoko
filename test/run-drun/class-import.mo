@@ -12,23 +12,23 @@ actor a {
      await Cycles.provisional_top_up_actor(a, 100_000_000_000_000);
 
    // test no arg class
-   Cycles.add(2_000_000_000_000);
+   Cycles.add<system>(2_000_000_000_000);
    let empty : M0.Empty = await M0.Empty();
    await empty.test();
 
    // test single arg class
-   Cycles.add(2_000_000_000_000);
+   Cycles.add<system>(2_000_000_000_000);
    let one : M1.One = await M1.One("one");
    await one.test();
 
    // test two arg class
-   Cycles.add(2_000_000_000_000);
+   Cycles.add<system>(2_000_000_000_000);
    let two : M2.Two = await M2.Two("one","two");
    await two.test();
 
    // test non-trapping install
    try {
-     Cycles.add(2_000_000_000_000);
+     Cycles.add<system>(2_000_000_000_000);
      let trap : M3.Trap = await M3.Trap(false);
    }
    catch _ {
@@ -37,7 +37,7 @@ actor a {
 
    // test trapping install
    try {
-     Cycles.add(2_000_000_000_000);
+     Cycles.add<system>(2_000_000_000_000);
      let trap : M3.Trap = await M3.Trap(true);
      assert false;
    }
@@ -53,3 +53,11 @@ a.go() //OR-CALL ingress go "DIDL\x00\x00"
 //SKIP run
 //SKIP run-ir
 //SKIP run-low
+
+// check exactly 4 embedded wasms
+//CHECK:  canister_update __motoko_async_helper
+//CHECK:  canister_update __motoko_async_helper
+//CHECK:  canister_update __motoko_async_helper
+//CHECK:  canister_update __motoko_async_helper
+//CHECK:  canister_update __motoko_async_helper
+//CHECK-NOT:  canister_update __motoko_async_helper

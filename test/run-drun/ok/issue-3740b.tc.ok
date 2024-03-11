@@ -1,0 +1,5 @@
+issue-3740b.mo:9.9-9.17: warning [M0145], this pattern of type
+  Pair = (Nat, Bool)
+does not cover value
+  (0, false) or
+  (1 or 2 or _, _)

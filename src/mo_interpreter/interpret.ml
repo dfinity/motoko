@@ -19,8 +19,8 @@ type ret_env = V.value V.cont option
 type throw_env = V.value V.cont option
 type actor_env = V.value V.Env.t ref (* indexed by actor ids *)
 
-(* The actor heap. 
-    NB: A cut-down ManagementCanister with id "" is added later, to enjoy access to logging facilities. 
+(* The actor heap.
+    NB: A cut-down ManagementCanister with id "" is added later, to enjoy access to logging facilities.
 *)
 let state = ref V.Env.empty
 
@@ -322,7 +322,11 @@ let array_vals a at =
       V.local_func 0 1 (fun c v k' ->
         if !i = Array.length a
         then k' V.Null
-        else let v = V.Opt a.(!i) in incr i; k' v
+        else
+          let wi = match a.(!i) with
+            | V.Mut r -> !r
+            | w -> w in
+          let v = V.Opt wi in incr i; k' v
       )
     in k (V.Obj (V.Env.singleton "next" next))
   )
@@ -350,7 +354,7 @@ let text_chars t at =
   V.local_func 0 1 (fun c v k ->
     V.as_unit v;
     let i = ref 0 in
-    let s = Wasm.Utf8.decode t in
+    let s = Lib.Utf8.decode t in
     let next =
       V.local_func 0 1 (fun c v k' ->
         if !i = List.length s
@@ -363,7 +367,7 @@ let text_chars t at =
 let text_len t at =
   V.local_func 0 1 (fun c v k ->
     V.as_unit v;
-    k (V.Int (Numerics.Nat.of_int (List.length (Wasm.Utf8.decode t))))
+    k (V.Int (Numerics.Nat.of_int (List.length (Lib.Utf8.decode t))))
   )
 
 (* Expressions *)
@@ -420,8 +424,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | ImportE (f, ri) ->
     (match !ri with
     | Unresolved -> assert false
-    | LibPath fp ->
-      k (find fp env.libs)
+    | LibPath {path; _} ->
+      k (find path env.libs)
     | IDLPath _ -> trap exp.at "actor import"
     | PrimPath -> k (find "@prim" env.libs)
     )
@@ -432,7 +436,11 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       let url_text = V.as_text v1 in
       match Ic.Url.decode_principal url_text with
       (* create placeholder functions (see #3683) *)
-      | Ok bytes -> k (V.Blob bytes)
+      | Ok bytes ->
+        if String.length bytes > 29 then
+          trap exp.at "blob too long for actor principal"
+        else
+          k (V.Blob bytes)
       | Error e -> trap exp.at "could not parse %S as an actor reference: %s"  (V.as_text v1) e
     )
   | UnE (ot, op, exp1) ->
@@ -474,7 +482,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | _ -> assert false)
   | ProjE (exp1, n) ->
     interpret_exp env exp1 (fun v1 -> k (List.nth (V.as_tup v1) n))
-  | ObjBlockE (obj_sort, dec_fields) ->
+  | ObjBlockE (obj_sort, _, dec_fields) ->
     interpret_obj env obj_sort.it dec_fields k
   | ObjE (exp_bases, exp_fields) ->
     let fields fld_env = interpret_exp_fields env exp_fields fld_env (fun env -> k (V.Obj env)) in
@@ -749,7 +757,7 @@ and declare_pat pat : val_env =
   | ObjP pfs -> declare_pat_fields pfs V.Env.empty
   | OptP pat1
   | TagP (_, pat1)
-  | AltP (pat1, _)    (* both have empty binders *)
+  | AltP (pat1, _) (* pat2 has the same identifiers *)
   | AnnotP (pat1, _)
   | ParP pat1 -> declare_pat pat1
 
@@ -768,42 +776,18 @@ and declare_pat_fields pfs ve : val_env =
     declare_pat_fields pfs' (V.Env.adjoin ve ve')
 
 and define_id env id v =
-  Lib.Promise.fulfill (find id.it env.vals) v
+  define_id' env id.it v
+
+and define_id' env id v =
+  Lib.Promise.fulfill (find id env.vals) v
 
 and define_pat env pat v =
-  let err () = trap pat.at "value %s does not match pattern" (string_of_val env v) in
-  match pat.it with
-  | WildP -> ()
-  | LitP _ | SignP _ | AltP _ ->
-    if match_pat pat v = None
-    then err ()
-    else ()
-  | VarP id -> define_id env id v
-  | TupP pats -> define_pats env pats (V.as_tup v)
-  | ObjP pfs -> define_pat_fields env pfs (V.as_obj v)
-  | OptP pat1 ->
-    (match v with
-    | V.Opt v1 -> define_pat env pat1 v1
-    | V.Null -> err ()
-    | _ -> assert false
-    )
-  | TagP (i, pat1) ->
-    let lab, v1 = V.as_variant v in
-    if lab = i.it
-    then define_pat env pat1 v1
-    else err ()
-  | AnnotP (pat1, _)
-  | ParP pat1 -> define_pat env pat1 v
-
-and define_pats env pats vs =
-  List.iter2 (define_pat env) pats vs
-
-and define_pat_fields env pfs vs =
-  List.iter (define_pat_field env vs) pfs
-
-and define_pat_field env vs pf =
-  let v = V.Env.find pf.it.id.it vs in
-  define_pat env pf.it.pat v
+  match match_pat pat v with
+  | Some ve ->
+     V.Env.iter (fun id d  -> define_id' env id (Lib.Promise.value d)) ve;
+     true
+  | None ->
+     false
 
 and match_lit lit v : bool =
   match !lit, v with
@@ -939,7 +923,7 @@ and declare_dec dec : val_env =
   match dec.it with
   | ExpD _
   | TypD _ -> V.Env.empty
-  | LetD (pat, _) -> declare_pat pat
+  | LetD (pat, _, _) -> declare_pat pat
   | VarD (id, _) -> declare_id id
   | ClassD (_, id, _, _, _, _, _, _) -> declare_id {id with note = ()}
 
@@ -955,10 +939,14 @@ and interpret_dec env dec (k : V.value V.cont) =
   match dec.it with
   | ExpD exp ->
     interpret_exp env exp k
-  | LetD (pat, exp) ->
+  | LetD (pat, exp, fail) ->
     interpret_exp env exp (fun v ->
-      define_pat env pat v;
-      k v
+      if define_pat env pat v then
+        k v
+      else
+        match fail with
+        | Some fail -> interpret_exp env fail (fun _ -> assert false)
+        | None -> trap pat.at "value %s does not match pattern" (string_of_val env v)
     )
   | VarD (id, exp) ->
     interpret_exp env exp (fun v ->

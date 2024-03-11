@@ -2,6 +2,7 @@ ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a000000000000000001
 debug.print: init'ed
 ingress Completed: Reply: 0x4449444c0000
 debug.print: init'ed 0
+debug.print: initial version: 2
 ingress Completed: Reply: 0x4449444c0000
 debug.print: a
 Ok: Reply: 0x4449444c0000
@@ -10,6 +11,7 @@ debug.print: aa
 Ok: Reply: 0x4449444c0000
 ingress Completed: Reply: 0x4449444c0000
 debug.print: init'ed 1
+debug.print: current version: 5
 ingress Completed: Reply: 0x4449444c0000
 debug.print: 3
 debug.print: aaa

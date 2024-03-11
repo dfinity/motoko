@@ -2,7 +2,7 @@ SHELL:=bash -O globstar
 
 CLANG ?= clang-13
 WASM_CLANG ?= clang-13
-WASM_LD ?= wasm-ld-12
+WASM_LD ?= wasm-ld-13
 
 #
 # We manually list all the .c files of libtommath that we care about.
@@ -45,6 +45,7 @@ TOMMATH_FLAGS = \
   -DMP_FREE=mp_free \
   -DMP_MEMSET=0 \
   -DMP_FIXED_CUTOFFS \
+  -DMP_PREC=4 \
   -DMP_NO_FILE \
   -D__STDC_IEC_559__ \
 
@@ -111,7 +112,7 @@ CLANG_FLAGS = \
 
 .PHONY: all
 
-all: mo-rts.wasm mo-rts-debug.wasm
+all: mo-rts.wasm mo-rts-debug.wasm mo-rts-incremental.wasm mo-rts-incremental-debug.wasm
 
 _build:
 	mkdir -p $@
@@ -172,9 +173,6 @@ $(MUSL_WASM_A): $(MUSL_WASM_O)
 # The rust code code of the RTS
 #
 
-RTS_RUST_WASM_A=_build/wasm/libmotoko_rts.a
-RTS_RUST_DEBUG_WASM_A=_build/wasm/libmotoko_rts_debug.a
-
 # This relies on bash and globstar, see https://stackoverflow.com/questions/2483182/recursive-wildcards-in-gnu-make
 RTS_RUST_FILES=$(shell ls **/*.rs)
 RTS_CARGO_FILES=$(shell ls **/Cargo.toml)
@@ -185,33 +183,33 @@ $(TOMMATH_BINDINGS_RS): | _build
 	bindgen $(TOMMATHSRC)/tommath.h \
 	    -o $@ \
 	    --use-core --ctypes-prefix=libc --no-layout-tests \
-	    --whitelist-function mp_init \
-	    --whitelist-function mp_init_copy \
-	    --whitelist-function mp_set_u32 \
-	    --whitelist-function mp_set_i32 \
-	    --whitelist-function mp_get_i32 \
-	    --whitelist-function mp_set_u64 \
-	    --whitelist-function mp_set_i64 \
-	    --whitelist-function mp_get_i64 \
-	    --whitelist-function mp_set_double \
-	    --whitelist-function mp_get_double \
-	    --whitelist-function mp_count_bits \
-	    --whitelist-function mp_cmp \
-	    --whitelist-function mp_add \
-	    --whitelist-function mp_sub \
-	    --whitelist-function mp_mul \
-	    --whitelist-function mp_div \
-	    --whitelist-function mp_div_2d \
-	    --whitelist-function mp_neg \
-	    --whitelist-function mp_abs \
-	    --whitelist-function mp_mul_2d \
-	    --whitelist-function mp_expt_u32 \
-	    --whitelist-function mp_2expt \
-	    --whitelist-function mp_incr \
-	    --blacklist-type __int32_t \
-	    --blacklist-type __int64_t \
-	    --blacklist-type __uint32_t \
-	    --blacklist-type __uint64_t \
+	    --allowlist-function mp_init \
+	    --allowlist-function mp_init_copy \
+	    --allowlist-function mp_set_u32 \
+	    --allowlist-function mp_set_i32 \
+	    --allowlist-function mp_get_i32 \
+	    --allowlist-function mp_set_u64 \
+	    --allowlist-function mp_set_i64 \
+	    --allowlist-function mp_get_i64 \
+	    --allowlist-function mp_set_double \
+	    --allowlist-function mp_get_double \
+	    --allowlist-function mp_count_bits \
+	    --allowlist-function mp_cmp \
+	    --allowlist-function mp_add \
+	    --allowlist-function mp_sub \
+	    --allowlist-function mp_mul \
+	    --allowlist-function mp_div \
+	    --allowlist-function mp_div_2d \
+	    --allowlist-function mp_neg \
+	    --allowlist-function mp_abs \
+	    --allowlist-function mp_mul_2d \
+	    --allowlist-function mp_expt_u32 \
+	    --allowlist-function mp_2expt \
+	    --allowlist-function mp_incr \
+	    --blocklist-type __int32_t \
+	    --blocklist-type __int64_t \
+	    --blocklist-type __uint32_t \
+	    --blocklist-type __uint64_t \
             -- $(TOMMATH_FLAGS)
 
 	# Whitelist parameters used as libtommath.h has lots of definitions that we don't
@@ -221,23 +219,54 @@ $(TOMMATH_BINDINGS_RS): | _build
 	# Note that bindgen can't generate Rust macros or functions for CPP macros, so
 	# macros like `mp_get_u32` and `mp_isneg` need to be manually implemented.
 
+RTS_DEPENDENCIES=$(TOMMATH_BINDINGS_RS) $(RTS_RUST_FILES) $(RTS_CARGO_FILES) | _build/wasm
+RTS_BUILD=cd motoko-rts && cargo build --target=wasm32-unknown-emscripten -Zbuild-std=core,alloc
+RTS_DEBUG_BUILD=$(RTS_BUILD)
+RTS_RELEASE_BUILD=$(RTS_BUILD) --release
+RTS_DEBUG_TARGET=motoko-rts/target/wasm32-unknown-emscripten/debug/libmotoko_rts.a
+RTS_RELEASE_TARGET=motoko-rts/target/wasm32-unknown-emscripten/release/libmotoko_rts.a
 
-$(RTS_RUST_WASM_A): $(TOMMATH_BINDINGS_RS) $(RTS_RUST_FILES) $(RTS_CARGO_FILES) | _build/wasm
-	cd motoko-rts && cargo build --release --target=wasm32-unknown-emscripten -Zbuild-std=core,alloc
-	cp motoko-rts/target/wasm32-unknown-emscripten/release/libmotoko_rts.a $@
+RTS_RUST_NON_INCREMENTAL_WASM_A=_build/wasm/libmotoko_rts.a
+RTS_RUST_NON_INCREMENTAL_DEBUG_WASM_A=_build/wasm/libmotoko_rts_debug.a
 
-$(RTS_RUST_DEBUG_WASM_A): $(TOMMATH_BINDINGS_RS) $(RTS_RUST_FILES) $(RTS_CARGO_FILES) | _build/wasm
-	cd motoko-rts && cargo build --target=wasm32-unknown-emscripten -Zbuild-std=core,alloc
-	cp motoko-rts/target/wasm32-unknown-emscripten/debug/libmotoko_rts.a $@
+RTS_RUST_INCREMENTAL_WASM_A=_build/wasm/libmotoko_rts_incremental.a
+RTS_RUST_INCREMENTAL_DEBUG_WASM_A=_build/wasm/libmotoko_rts_incremental_debug.a
+
+$(RTS_RUST_NON_INCREMENTAL_WASM_A): $(RTS_DEPENDENCIES)
+	$(RTS_RELEASE_BUILD)
+	cp $(RTS_RELEASE_TARGET) $@
+
+$(RTS_RUST_NON_INCREMENTAL_DEBUG_WASM_A): $(RTS_DEPENDENCIES)
+	$(RTS_DEBUG_BUILD)
+	cp $(RTS_DEBUG_TARGET) $@
+
+$(RTS_RUST_INCREMENTAL_WASM_A): $(RTS_DEPENDENCIES)
+	$(RTS_RELEASE_BUILD) --features incremental_gc
+	cp $(RTS_RELEASE_TARGET) $@
+
+$(RTS_RUST_INCREMENTAL_DEBUG_WASM_A): $(RTS_DEPENDENCIES)
+	$(RTS_DEBUG_BUILD) --features incremental_gc
+	cp $(RTS_DEBUG_TARGET) $@
 
 #
 # The test suite
 #
 
+TEST_DEPENDENCIES=$(TOMMATH_WASM_A) $(TOMMATH_BINDINGS_RS)
+TEST_BUILD=cd motoko-rts-tests && cargo build --target=wasm32-wasi
+TEST_RUN=wasmtime --disable-cache motoko-rts-tests/target/wasm32-wasi/debug/motoko-rts-tests.wasm
+
 .PHONY: test
-test: $(TOMMATH_WASM_A) $(TOMMATH_BINDINGS_RS)
-	cd motoko-rts-tests && cargo build --target=wasm32-wasi
-	wasmtime --disable-cache motoko-rts-tests/target/wasm32-wasi/debug/motoko-rts-tests.wasm
+
+test: test-non-incremental test-incremental
+
+test-non-incremental: $(TEST_DEPENDENCIES)
+	$(TEST_BUILD)
+	$(TEST_RUN)
+
+test-incremental: $(TEST_DEPENDENCIES)
+	$(TEST_BUILD) --features incremental_gc
+	$(TEST_RUN)
 
 #
 # Putting it all together
@@ -260,30 +289,45 @@ EXPORTED_SYMBOLS=\
   fmod \
   log \
 
-mo-rts.wasm: $(TOMMATH_WASM_A) $(MUSL_WASM_A) $(RTS_RUST_WASM_A)
+WASM_A_DEPENDENCIES=$(TOMMATH_WASM_A) $(MUSL_WASM_A)
+LINKER_OPTIONS=\
+  --import-memory --shared --no-entry --gc-sections \
+  $(EXPORTED_SYMBOLS:%=--export=%) \
+  --whole-archive
+
+mo-rts.wasm: $(RTS_RUST_NON_INCREMENTAL_WASM_A) $(WASM_A_DEPENDENCIES)
 	$(WASM_LD) -o $@ \
-		--import-memory --shared --no-entry --gc-sections \
-                $(EXPORTED_SYMBOLS:%=--export=%) \
-		--whole-archive \
+		$(LINKER_OPTIONS) \
 		$+
 
-mo-rts-debug.wasm: $(RTS_RUST_DEBUG_WASM_A) $(TOMMATH_WASM_A) $(MUSL_WASM_A)
+mo-rts-debug.wasm: $(RTS_RUST_NON_INCREMENTAL_DEBUG_WASM_A) $(WASM_A_DEPENDENCIES)
 	$(WASM_LD) -o $@ \
-		--import-memory --shared --no-entry --gc-sections \
-                $(EXPORTED_SYMBOLS:%=--export=%) \
-		--whole-archive \
+		$(LINKER_OPTIONS) \
 		$+
 
+mo-rts-incremental.wasm: $(RTS_RUST_INCREMENTAL_WASM_A) $(WASM_A_DEPENDENCIES)
+	$(WASM_LD) -o $@ \
+		$(LINKER_OPTIONS) \
+		$+
+
+mo-rts-incremental-debug.wasm: $(RTS_RUST_INCREMENTAL_DEBUG_WASM_A) $(WASM_A_DEPENDENCIES)
+	$(WASM_LD) -o $@ \
+		$(LINKER_OPTIONS) \
+		$+
 
 format:
 	cargo fmt --verbose --manifest-path motoko-rts/Cargo.toml
 	cargo fmt --verbose --manifest-path motoko-rts-tests/Cargo.toml
+	cargo fmt --verbose --manifest-path motoko-rts-macros/Cargo.toml
 
 clean:
 	rm -rf \
 	  _build \
 	  mo-rts.wasm \
 	  mo-rts-debug.wasm \
+	  mo-rts-incremental.wasm \
+	  mo-rts-incremental-debug.wasm \
 	  motoko-rts/target \
 	  motoko-rts-tests/target \
+	  motoko-rts-macros/target \
 	  motoko-rts/cargo-home

@@ -244,7 +244,7 @@ let populate_definitions (project_root : string) (libs : Syntax.lib list)
     (path : string) (decls : ide_decl list) : ide_decl list =
   let is_let_bound dec_field =
     match dec_field.it.Syntax.dec.it with
-    | Syntax.LetD (pat, _) -> Some pat
+    | Syntax.LetD (pat, _, _) -> Some pat
     | _ -> None
   in
   let is_type_def dec_field =
@@ -313,13 +313,14 @@ let list_files_recursively dir =
   in
   loop [] [ dir ]
 
-let scan_packages : unit -> string list =
+let scan_packages : unit -> lib_path list =
  fun _ ->
-  let scan_package path =
+  let scan_package p path =
     list_files_recursively path
     |> List.filter (fun f -> Filename.extension f = ".mo")
+    |> List.map (fun f -> { package = Some p; path = f })
   in
-  Flags.M.fold (fun _ v acc -> scan_package v @ acc) !Flags.package_urls []
+  Flags.M.fold (fun p v acc -> scan_package p v @ acc) !Flags.package_urls []
 
 let scan_actors : unit -> string list =
  fun _ ->
@@ -347,7 +348,7 @@ let index_from_scope : string -> t -> Syntax.lib list -> Scope.t -> t =
 
 let make_index_inner project_root vfs entry_points : t Diag.result =
   let package_paths =
-    List.map (fun f -> LibPath f @@ Source.no_region) (scan_packages ())
+    List.map (fun lp -> LibPath lp @@ Source.no_region) (scan_packages ())
   in
   let package_env =
     Pipeline.chase_imports

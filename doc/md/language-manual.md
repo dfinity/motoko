@@ -1,3 +1,4 @@
+
 # Language quick reference
 
 <!--
@@ -53,21 +54,21 @@ In the definition of some lexemes, the quick reference uses the symbol `␣` to 
 
 Single line comments are all characters following `//` until the end of the same line.
 
-``` motoko
+``` motoko no-repl
 // single line comment
 x = 1
 ```
 
 Single or multi-line comments are any sequence of characters delimited by `/*` and `*/`:
 
-``` motoko
+``` motoko no-repl
 /* multi-line comments
    look like this, as in C and friends */
 ```
 
 Comments delimited by `/*` and `*/` may be nested, provided the nesting is well-bracketed.
 
-``` motoko
+``` motoko no-repl
 /// I'm a documentation comment
 /// for a function
 ```
@@ -83,10 +84,12 @@ All comments are treated as whitespace.
 The following keywords are reserved and may not be used as identifiers:
 
 ``` bnf
-actor and assert async async* await await* break case catch class continue debug
-debug_show do else flexible false for from_candid func if ignore import
-in module not null object or label let loop private public query return
-shared stable switch system throw to_candid true try type var while with
+
+actor and assert async async* await await* break case catch class
+composite continue debug debug_show do else flexible false for
+from_candid func if ignore import in module not null object or label
+let loop private public query return shared stable switch system throw
+to_candid true try type var while with
 ```
 
 ### Identifiers
@@ -170,6 +173,7 @@ character ::=
   | '\\'escape
   | '\\'hexdigit hexdigit
   | "\\u{" hexnum '}'
+  | '\n'        // literal newline
 
 char := '\'' character '\''
 ```
@@ -181,6 +185,8 @@ A text literal is `"`-delimited sequence of characters:
 ``` bnf
 text ::= '"' character* '"'
 ```
+
+Note that a text literal may span multiple lines.
 
 ### Literals
 
@@ -199,7 +205,7 @@ Literals are constant values. The syntactic validity of a literal depends on the
 To simplify the presentation of available operators, operators and primitive types are classified into basic categories:
 
 | Abbreviation | Category   | Supported opertions             |
-|--------------|------------|---------------------------------|
+| ------------ | ---------- | ------------------------------- |
 | A            | Arithmetic | arithmetic operations           |
 | L            | Logical    | logical/Boolean operations      |
 | B            | Bitwise    | bitwise and wrapping operations |
@@ -211,16 +217,15 @@ Some types have several categories. For example, type `Int` is both arithmetic (
 ### Unary operators
 
 | `<unop>` | Category |                  |
-|----------|----------|------------------|
+| -------- | -------- | ---------------- |
 | `-`      | A        | numeric negation |
 | `+`      | A        | numeric identity |
 | `^`      | B        | bitwise negation |
-| `!`      |          | null break       |
 
 ### Relational operators
 
 |           |          |                                                 |
-|-----------|----------|-------------------------------------------------|
+| --------- | -------- | ----------------------------------------------- |
 | `<relop>` | Category |                                                 |
 | `==`      |          | equals                                          |
 | `!=`      |          | not equals                                      |
@@ -236,7 +241,7 @@ Equality and inequality are structural and based on the observable content of th
 ### Numeric binary operators
 
 | `<binop>` | Category |                |
-|-----------|----------|----------------|
+| --------- | -------- | -------------- |
 | `+`       | A        | addition       |
 | `-`       | A        | subtraction    |
 | `*`       | A        | multiplication |
@@ -247,7 +252,7 @@ Equality and inequality are structural and based on the observable content of th
 ### Bitwise and wrapping binary operators
 
 | `<binop>` | Category |                                                |
-|-----------|----------|------------------------------------------------|
+| --------- | -------- | ---------------------------------------------- |
 | `&`       | B        | bitwise and                                    |
 | `\|`      | B        | bitwise or                                     |
 | `^`       | B        | exclusive or                                   |
@@ -263,13 +268,13 @@ Equality and inequality are structural and based on the observable content of th
 ### Text operators
 
 | `<binop>` | Category |               |
-|-----------|----------|---------------|
+| --------- | -------- | ------------- |
 | `#`       | T        | concatenation |
 
 ### Assignment operators
 
 | `:=`, `<unop>=`, `<binop>=` | Category |                                            |
-|-----------------------------|----------|--------------------------------------------|
+| --------------------------- | -------- | ------------------------------------------ |
 | `:=`                        | \*       | assignment (in place update)               |
 | `+=`                        | A        | in place add                               |
 | `-=`                        | A        | in place subtract                          |
@@ -297,11 +302,12 @@ The category of a compound assignment `<unop>=`/`<binop>=` is given by the categ
 The following table defines the relative precedence and associativity of operators and tokens, ordered from lowest to highest precedence. Tokens on the same line have equal precedence with the indicated associativity.
 
 | Precedence | Associativity | Token                                                                                                                         |
-|------------|---------------|-------------------------------------------------------------------------------------------------------------------------------|
+| ---------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------- |
 | LOWEST     | none          | `if _ _` (no `else`), `loop _` (no `while`)                                                                                   |
 | (higher)   | none          | `else`, `while`                                                                                                               |
 | (higher)   | right         | `:=`, `+=`, `-=`, `*=`, `/=`, `%=`, `**=`, `#=`, `&=`, `\|=`, `^=`, `<<=`, `>>=`, `<<>=`, `<>>=`, `+%=`, `-%=`, `*%=`, `**%=` |
 | (higher)   | left          | `:`                                                                                                                           |
+| (higher)   | left          | `|>`                                                                                                                           |
 | (higher)   | left          | `or`                                                                                                                          |
 | (higher)   | left          | `and`                                                                                                                         |
 | (higher)   | none          | `==`, `!=`, `<`, `>`, `<=`, `>`, `>=`                                                                                         |
@@ -363,7 +369,7 @@ The syntax of a *library* (that can be referenced in an import) is as follows:
 
 ``` bnf
 <lib> ::=                                               library
-  <imp>;* module <id>? <obj-body>                         module
+  <imp>;* module <id>? (: <typ>)? =? <obj-body>           module
   <imp>;* <shared-pat>? actor class                       actor class
     <id> <typ-params>? <pat> (: <typ>)? <class-body>
 ```
@@ -387,11 +393,12 @@ The syntax of a *declaration* is as follows:
 ``` bnf
 <dec> ::=                                                               declaration
   <exp>                                                                  expression
-  let <pat> = <exp>                                                      immutable
+  let <pat> = <exp>                                                      immutable, trap on match failure
+  let <pat> = <exp> else <block-or-exp>                                  immutable, handle match failure
   var <id> (: <typ>)? = <exp>                                            mutable
-  <sort> <id>? =? <obj-body>                                             object
+  <sort> <id>? (: <typ>)? =? <obj-body>                                  object
   <shared-pat>? func <id>? <typ-params>? <pat> (: <typ>)? =? <exp>       function
-  type <id> <typ-params>? = <typ>                                        type
+  type <id> <type-typ-params>? = <typ>                                   type
   <shared-pat>? <sort>? class                                            class
     <id>? <typ-params>? <pat> (: <typ>)? <class-body>
 
@@ -399,15 +406,18 @@ The syntax of a *declaration* is as follows:
   { <dec-field>;* }       field declarations
 
 <class-body> ::=         class body
-  = <id>? <obj-body>     object body, optionally binding <id> to 'this' instance
-  <obj-body>             object body
+  = <id>? <obj-body>      object body, optionally binding <id> to 'this' instance
+  <obj-body>              object body
 ```
 
 The syntax of a shared function qualifier with call-context pattern is as follows:
 
 ``` bnf
+<query> ::=
+ composite? query
+
 <shared-pat> ::=
-  shared query? <pat>?
+  shared <query>? <pat>?
 ```
 
 For `<shared-pat>`, an absent `<pat>?` is shorthand for the wildcard pattern `_`.
@@ -463,6 +473,8 @@ The syntax of an *expression* is as follows:
   <unop> <exp>                                   unary operator
   <exp> <binop> <exp>                            binary operator
   <exp> <relop> <exp>                            binary relational operator
+  _                                              placeholder expression
+  <exp> |> <exp>                                 pipe operator
   ( <exp>,* )                                    tuple
   <exp> . <nat>                                  tuple projection
   ? <exp>                                        option injection
@@ -544,7 +556,7 @@ Type expressions are used to specify the types of arguments, constraints (a.k.a 
 
 ``` bnf
 <typ> ::=                                     type expressions
-  <path> <typ-args>?                            constructor
+  <path> <type-typ-args>?                       constructor
   <sort>? { <typ-field>;* }                     object
   { <typ-tag>;* }                               variant
   { # }                                         empty variant
@@ -565,7 +577,7 @@ Type expressions are used to specify the types of arguments, constraints (a.k.a 
 <sort> ::= (actor | module | object)
 
 <shared> ::=                                 shared function type qualifier
-  shared query?
+  shared <query>?
 
 <path> ::=                                   paths
   <id>                                         type identifier
@@ -580,8 +592,8 @@ Motoko provides the following primitive type identifiers, including support for 
 
 The category of a type determines the operators (unary, binary, relational and in-place update via assignment) applicable to values of that type.
 
-| Identifier                          | Category | Description                                                            |
-|-------------------------------------|----------|------------------------------------------------------------------------|
+| Identifier                         | Category | Description                                                            |
+| ---------------------------------- | -------- | ---------------------------------------------------------------------- |
 | [`Bool`](./base/Bool.md)           | L        | Boolean values `true` and `false` and logical operators                |
 | [`Char`](./base/Char.md)           | O        | Unicode characters                                                     |
 | [`Text`](./base/Text.md)           | T, O     | Unicode strings of characters with concatenation `_ # _` and iteration |
@@ -599,6 +611,7 @@ The category of a type determines the operators (unary, binary, relational and i
 | [`Blob`](./base/Blob.md)           | O        | binary blobs with iterators                                            |
 | [`Principal`](./base/Principal.md) | O        | principals                                                             |
 | [`Error`](./base/Error.md)         |          | (opaque) error values                                                  |
+| [`Region`](./base/Region.md)       |          | (opaque) stable memory region objects                                  |
 
 Although many of these types have linguistic support for literals and operators, each primitive type also has an eponymous base library providing related functions and values (see [Motoko Base Library](./base-intro.md)). For example, the [`Text`](./base/Text.md) library provides common functions on `Text` values.
 
@@ -734,9 +747,18 @@ Like other errors, call errors can be caught and handled using `try ... catch ..
 
 :::
 
+### Type `Region`
+
+The type `Region` represents opague stable memory regions.
+Region objects are dynamically allocated and independently growable.
+They represent isolated partitions of IC stable memory.
+The region type is stable (but not shared) and its objects, which are stateful, may be stored in stable variables and data structures.
+Objects of type `Region` are created and updated using the functions provided by base library `Region`.
+See [Stable Regions](stable-regions.md) and library [Region](./base/Region.md) for more information.
+
 ### Constructed types
 
-`<path> <typ-args>?` is the application of a type identifier or path, either built-in (i.e. `Int`) or user defined, to zero or more type **arguments**. The type arguments must satisfy the bounds, if any, expected by the type constructor’s type parameters (see [Well-formed types](#well-formed-types)).
+`<path> <type-typ-args>?` is the application of a type identifier or path, either built-in (i.e. `Int`) or user defined, to zero or more type **arguments**. The type arguments must satisfy the bounds, if any, expected by the type constructor’s type parameters (see [Well-formed types](#well-formed-types)).
 
 Though typically a type identifier, more generally, `<path>` may be a `.`-separated sequence of actor, object or module identifiers ending in an identifier accessing a type component of a value (for example, `Acme.Collections.List`).
 
@@ -784,7 +806,7 @@ If `<typ1>` or `<typ2>` (or both) is a tuple type, then the length of that tuple
 
 The optional `<shared>` qualifier specifies whether the function value is shared, which further constrains the form of `<typ-params>`, `<typ1>` and `<typ2>` (see [Sharability](#sharability) below).
 
-(Note that a `<shared>` function may itself be `shared` or `shared query`, determining the persistence of its state changes.)
+(Note that a `<shared>` function may itself be `shared` or `shared query` or `shared composite query`, determining the persistence of its state changes.)
 
 ### Async types
 
@@ -845,7 +867,7 @@ In all other positions, `( <typ> )` has the same meaning as `<typ>`.
   <id> : <typ>                                  immutable value
   var <id> : <typ>                              mutable value
   <id> <typ-params>? <typ1> : <typ2>            function value (short-hand)
-  type <id> <typ-params>? = <typ>               type component
+  type <id> <type-typ-params>? = <typ>          type component
 ```
 
 A type field specifies the name and type of a value field of an object, or the name and definition of a type component of an object. The value field names within a single object type must be distinct and have non-colliding hashes. The type component names within a single object type must also be distinct and have non-colliding hashes. Value fields and type components reside in separate name spaces and thus may have names in common.
@@ -854,7 +876,7 @@ A type field specifies the name and type of a value field of an object, or the n
 
 `var <id> : <typ>` specifies a *mutable* field, named `<id>` of type `<typ>`.
 
-`type <id> <typ-params>? = <typ>` specifies a *type* component, with field name `<id>`, abbreviating (parameterized) type `<typ>`.
+`type <id> <type-typ-params>? = <typ>` specifies a *type* component, with field name `<id>`, abbreviating (parameterized) type `<typ>`.
 
 Unlike type declarations, a type component is not, in itself, recursive (though it may abbreviate an existing recursive type).
 In particular, the name `<id>` is not bound in `<typ>` nor in any other fields of the enclosing object type. The name `<id>` only determines the label to use when accessing the definition through a record of this type (using the dot notation).
@@ -888,7 +910,24 @@ When enclosed by a non-`actor` object type, `<id> <typ-params>? <typ1> : <typ2>`
   <id>                                        unconstrained type parameter
 ```
 
-A type constructors, function value or function type may be parameterised by a vector of comma-separated, optionally constrained, type parameters.
+``` bnf
+<type-typ-params> ::=                         type parameters to type constructors
+  < typ-param,* >
+
+<typ-params> ::=                              function type parameters
+  < typ-param,* >                             type parameters
+  < system (, <typ-param>*)) >                system capability prefixed type parameters
+
+<typ-param>
+  <id> <: <typ>                               constrained type parameter
+  <id>                                        unconstrained type parameter
+
+```
+
+A type constructor may be parameterised by a vector of comma-separated, optionally constrained, type parameters.
+
+A function, class constructor or function type may be parameterised by a vector of comma-separated, optionally constrained, type parameters.
+The first of these may be the special, pseudo type parameter `system`.
 
 `<id> <: <typ>` declares a type parameter with constraint `<typ>`. Any instantiation of `<id>` must subtype `<typ>` (at that same instantiation).
 
@@ -898,11 +937,20 @@ The names of type parameters in a vector must be distinct.
 
 All type parameters declared in a vector are in scope within its bounds.
 
+The `system` pseudo-type parameter on function types indicates that a value of that type
+requires `system` capability in order to be called and may itself call functions requiring `system` capability during its execution.
+
 ### Type arguments
 
 ``` bnf
-<typ-args> ::=                                type arguments
+<type-typ-args> ::=                           type arguments to type constructors
   < <typ>,* >
+
+
+<typ-args> ::=                                type arguments to functions
+  < <typ>,* >                                   plain type arguments
+  < system (, <typ>*) >                         system capability prefixed type arguments
+
 ```
 
 Type constructors and functions may take type arguments.
@@ -913,13 +961,30 @@ For a function, the number of type arguments, when provided, must agree with the
 
 Given a vector of type arguments instantiating a vector of type parameters, each type argument must satisfy the instantiated bounds of the corresponding type parameter.
 
+In function calls, supplying the `system` pseudo type argument grants system capability to the function that requires it.
+
+System capability is available only in the following syntactic contexts:
+
+- in the body of an actor expression or actor class;
+- in the body of a (non-`query`) `shared` function, asynchronous function, `async` expression or `async*` expression;
+- in the body of a function or class that is declared with `system` pseudo type parameter;
+- in system functions `preupgrade` and `postupgrade`.
+
+No other context provides `system` capabilities, including `query` and `composite query` methods.
+
+The `<system>` type parameters of shared and asynchronous functions need not be declared.
+
+
 ### Well-formed types
 
 A type `T` is well-formed only if (recursively) its constituent types are well-formed, and:
 
--   if `T` is `async U` then `U` is shared, and
+-   if `T` is `async U` or `async* U` then `U` is shared, and
 
--   if `T` is `shared query? U -> V`, `U` is shared and `V == ()` or `V == async W` with `W` shared, and
+-   if `T` is `shared <query>? U -> V`:
+    - `U` is shared and,
+    - `V == ()` and `<query>?` is absent, or
+    - `V == async W` with `W` shared, and
 
 -   if `T` is `C<T0, …​, Tn>` where:
 
@@ -955,15 +1020,16 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
 
 -   `T` is a future `async V`, `U` is a future `async W`, and `V <: W`.
 
--   `T` is an object type `sort0 { fts0 }`, `U` is an object type `sort1 { fts1 }` and
+-   `T` is an object type `<sort0> { fts0 }`, `U` is an object type `<sort1> { fts1 }` and
 
-    -   `sort0` == `sort1`, and, for all fields,
+    -   `<sort0>` == `<sort1>`, and, for all fields,
 
-    -   if field `id : V` is in `fts0` then `id : W` is in `fts1` and `V <: W`, and
+    -   if field `id : W` is in `fts1` then `id : V` is in `fts0` and `V <: W`, and
 
-    -   if mutable field `var id : V` is in `fts0` then `var id : W` is in `fts1` and `V == W`.
+    -   if mutable field `var id : W` is in `fts1` then `var id : V` is in `fts0` and `V == W`.
 
-        (That is, object type `T` is a subtype of object type `U` if they have same sort, every mutable field in `U` super-types the same field in `T` and every mutable field in `U` is mutable in `T` with an equivalent type. In particular, `T` may specify more fields than `U`.)
+        (That is, object type `T` is a subtype of object type `U` if they have same sort, every mutable field in `U` super-types the same field in `T` and every mutable field in `U` is mutable in `T` with an equivalent type. In particular, `T` may specify more fields than `U`.
+         Note that this clause defines subtyping for all sorts of object type, whether `module`, `object` or `actor`.)
 
 -   `T` is a variant type `{ fts0 }`, `U` is a variant type `{ fts1 }` and
 
@@ -1041,6 +1107,8 @@ The types of actor fields declared with the `stable` qualifier must have stable 
 
 The (current) value of such a field is preserved upon *upgrade*, whereas the values of other fields are reinitialized after an upgrade.
 
+Note: the primitive `Region` type is stable.
+
 ## Static and dynamic semantics
 
 Below, we give a detailed account of the semantics of Motoko programs.
@@ -1067,13 +1135,15 @@ Multiple imports of the same library can be safely deduplicated without loss of 
 
 #### Module libraries
 
-A library `<imp>;* module <id>? <obj-body>` is a sequence of imports `<import>;*` followed by a single module declaration.
+A library `<imp>;* module <id>? (: <typ>)? =? <obj-body>` is a sequence of imports `<import>;*` followed by a single module declaration.
 
 A library has module type `T` provided
 
--   `module <id>? <obj-body>` has (module) type `T` under the static environment induced by the imports in `<import>;*`.
+-   `module <id>? (: <typ>)? =? <obj-body>` has (module) type `T` under the static environment induced by the imports in `<import>;*`.
 
-A module library evaluates by (transitively) evaluating its imports, binding their values to the identifiers in `<imp>;*` and then evaluating `module <id>? <obj-body>`.
+A module library evaluates by (transitively) evaluating its imports, binding their values to the identifiers in `<imp>;*` and then evaluating `module <id>? =? <obj-body>`.
+
+If `(: <typ>)?` is present, then `T` must be a subtype of `<typ>`.
 
 #### Actor class libraries
 
@@ -1192,7 +1262,7 @@ In detail, if `<url>` is of the form:
 
 The case sensitivity of file references depends on the host operating system so it is recommended not to distinguish resources by filename casing alone.
 
-(Remark: when building multi-canister projects with the DFINITY Canister SDK, Motoko programs can typically import canisters by alias (e.g. `import C "canister:counter"`), without specifying low-level canister ids (e.g. `import C "ic:lg264-qjkae"`). The SDK tooling takes care of supplying the appropriate command-line arguments to the Motoko compiler.)
+(Remark: when building multi-canister projects with the [IC SDK](https://internetcomputer.org/docs/current/developer-docs/setup/install), Motoko programs can typically import canisters by alias (e.g. `import C "canister:counter"`), without specifying low-level canister ids (e.g. `import C "ic:lg264-qjkae"`). The SDK tooling takes care of supplying the appropriate command-line arguments to the Motoko compiler.)
 
 (Remark: sensible choices for `<pat>` are identifiers, such as `Array`, or object patterns like `{ cons; nil = empty }`, which allow selective importing of individual fields, under original or other names.)
 
@@ -1231,12 +1301,12 @@ This condition ensures that every stable variable is either fresh, requiring ini
 The declaration `<dec>` of a `system` field must be a manifest `func` declaration with one of the following names and types:
 
 | name          | type                                                          | description         |
-|---------------|---------------------------------------------------------------|---------------------|
+| ------------- | ------------------------------------------------------------- | ------------------- |
 | `heartbeat`   | `() -> async ()`                                              | heartbeat action    |
 | `timer`       | `(Nat64 -> ()) -> async ()`                                   | timer action        |
 | `inspect`     | `{ caller : Principal; msg : <Variant>; arg : Blob } -> Bool` | message predicate   |
-| `preupgrade`  | `() -> ()`                                                    | pre upgrade action  |
-| `postupgrade` | `() -> ()`                                                    | post upgrade action |
+| `preupgrade`  | `<system>() -> ()`                                            | pre upgrade action  |
+| `postupgrade` | `<system>() -> ()`                                            | post upgrade action |
 
 -   `heartbeat`, when declared, is called on every Internet Computer subnet **heartbeat**, scheduling an asynchronous call to the `heartbeat` function. Due to its `async` return type, a heartbeat function may send messages and await results. The result of a heartbeat call, including any trap or thrown error, is ignored. The implicit context switch means that the time the heartbeat body is executed may be later than the time the heartbeat was issued by the subnet.
 
@@ -1245,8 +1315,9 @@ The declaration `<dec>` of a `system` field must be a manifest `func` declaratio
 -   `inspect`, when declared, is called as a predicate on every Internet Computer ingress message (with the exception of HTTP query calls). The return value, a `Bool`, indicates whether to accept or decline the given message. The argument type depends on the interface of the enclosing actor (see [Inspect](#inspect)).
 
 -   `preupgrade`, when declared, is called during an upgrade, immediately *before* the (current) values of the (retired) actor’s stable variables are transferred to the replacement actor.
+     Its `<system>` type parameter is implicitly assumed and need not be declared.
 
--   `postupgrade`, when declared, is called during an upgrade, immediately *after* the (replacement) actor body has initialized its fields (inheriting values of the retired actors' stable variables), and before its first message is processed.
+-   `postupgrade`, when declared, is called during an upgrade, immediately *after* the (replacement) actor body has initialized its fields (inheriting values of the retired actors' stable variables), and before its first message is processed. Its `<system>` type parameter is implicitly assumed and need not be declared.
 
 These `preupgrade` and `postupgrade` system methods provide the opportunity to save and restore in-flight data structures (e.g. caches) that are better represented using non-stable types.
 
@@ -1254,7 +1325,7 @@ During an upgrade, a trap occurring in the implicit call to `preupgrade()` or `p
 
 ##### `inspect`
 
-Given a record of message attributes, this function produces a `Bool` that indicates whether to accept or decline the message by returning `true` or `false`. The function is invoked (by the system) on each ingress message (excluding non-replicated queries). Similar to a query, any side-effects of an invocation are transient and discarded. A call that traps due to some fault has the same result as returning `false` (message denial).
+Given a record of message attributes, this function produces a `Bool` that indicates whether to accept or decline the message by returning `true` or `false`. The function is invoked (by the system) on each ingress message issue as an Internet Computer *update call* (i.e. excluding non-replicated query calls). Similar to a query, any side-effects of an invocation are transient and discarded. A call that traps due to some fault has the same result as returning `false` (message denial).
 
 The argument type of `inspect` depends on the interface of the enclosing actor. In particular, the formal argument of `inspect` is a record of fields of the following types:
 
@@ -1262,7 +1333,8 @@ The argument type of `inspect` depends on the interface of the enclosing actor. 
 
 -   `arg : Blob`: the raw, binary content of the message argument;
 
--   `msg : <variant>`: a variant of *decoding* functions, where `<variant> == {…​; #<id>: () → T; …​}` contains one variant per shared function, `<id>`, of the actor. The variant’s tag identifies the function to be called; The variant’s argument is a function that, when applied, returns the (decoded) argument of the call as a value of type `T`.
+-   `msg : <variant>`: a variant of *decoding* functions, where `<variant> == {…​; #<id>: () → T; …​}` contains one variant per `shared` or `shared query` function, `<id>`, of the actor.
+    The variant’s tag identifies the function to be called; The variant’s argument is a function that, when applied, returns the (decoded) argument of the call as a value of type `T`.
 
 Using a variant, tagged with `#<id>`, allows the return type, `T`, of the decoding function to vary with the argument type (also `T`) of the shared function `<id>`.
 
@@ -1271,6 +1343,12 @@ The variant’s argument is a function so that one can avoid the expense of mess
 :::danger
 
 An actor that fails to declare system field `inspect` will simply accept all ingress messages.
+
+:::
+
+:::note
+
+Any `shared composite query` function in the interface is *not* included in `<variant>` since, unlike a `shared query`, it can only be invoked as a non-replicated query call, never as an update call.
 
 :::
 
@@ -1368,7 +1446,7 @@ The or pattern `<pat1> or <pat2>` is a disjunctive pattern.
 
 The result of matching `<pat1> or <pat2>` against a value is the result of matching `<pat1>`, if it succeeds, or the result of matching `<pat2>`, if the first match fails.
 
-(Note, statically, neither `<pat1>` nor `<pat2>` may contain identifier (`<id>`) patterns so a successful match always binds zero identifiers.)
+(Note, an `or`-pattern may contain identifier (`<id>`) patterns with the restriction that both alternatives must bind the same set of identifiers. Each identifier's type is the least upper bound of its type in `<pat1>` and `<pat2>`.
 
 ### Expression declaration
 
@@ -1384,15 +1462,49 @@ TBR
 
 ### Let declaration
 
-The let declaration `let <pat> = <exp>` has type `T` and declares the bindings in `<pat>` provided:
+The `let` declaration `let <pat> = <exp>` has type `T` and declares the bindings in `<pat>` provided:
 
--   `<exp>` has type `T`.
+-   `<exp>` has type `T`, and
 
 -   `<pat>` has type `T`.
 
 The declaration `let <pat> = <exp>` evaluates `<exp>` to a result `r`. If `r` is `trap`, the declaration evaluates to `trap`. If `r` is a value `v` then evaluation proceeds by matching the value `v` against `<pat>`. If matching fails, then the result is `trap`. Otherwise, the result is `v` and the binding of all identifiers in `<pat>` to their matching values in `v`.
 
 All bindings declared by a `let` (if any) are *immutable*.
+
+### Let-else declaration
+
+The `let-else` declaration `let <pat> = <exp> else <block-or-exp>` has type `T` and declares the bindings in `<pat>` provided:
+
+-   `<exp>` has type `T`,
+
+-   `<pat>` has type `T`, and
+
+-   `<block-or-exp>` has type `None`.
+
+The declaration `let <pat> = <exp> else <block-or-exp>` evaluates `<exp>` to a result `r`.
+If `r` is `trap`, the declaration evaluates to `trap`.
+If `r` is a value `v` then evaluation proceeds by matching the value `v` against `<pat>`.
+If matching succeeds, the result is `v` and the binding of all identifiers in `<pat>` to their matching values in `v`.
+If matching fails, then evaluation continues with `<block-or-exp>`, which, having type `None`,
+cannot proceed to the end of the declaration but may still alter control-flow to,
+for example `return` or `throw` to exit an enclosing function,
+break` from an enclosing expression or simply diverge.
+
+All bindings declared by a `let-else` (if any) are *immutable*.
+
+#### Handling pattern match failures
+
+In the presence of refutable patterns, the pattern in a `let` declaration may fail to match the value of its expression.
+In such cases, the `let`-declaration will evaluate to a trap.
+The compiler emits a warning for any `let`-declaration than can trap due to pattern match failure.
+
+Instead of trapping, a user may want to explicitly handle pattern match failures.
+The `let-else` declaration, `let <pat> = <exp> else <block-or-exp>`, has mostly identical static and dynamic semantics to `let`,
+but diverts the program's control flow to `<block-or-exp>` when pattern matching fails, allowing recovery from failure.
+The `else` expression, `<block-or-exp>`, must have type `None` and typically exits the declaration using imperative control flow
+constructs such as `throw`, `return`, `break` or non-returning functions such as `Debug.trap(...)` (that all produce a result of type `None`).
+Any compilation warning that is produced for a `let` can be silenced by handling the potential pattern-match failure using `let-else`.
 
 ### Var declaration
 
@@ -1410,7 +1522,7 @@ Evaluation of `var <id> (: <typ>)? = <exp>` proceeds by evaluating `<exp>` to a 
 
 ### Type declaration
 
-The declaration `type <id> <typ-params>? = <typ>` declares a new type constructor `<id>`, with optional type parameters `<typ-params>` and definition `<typ>`.
+The declaration `type <id> <type-typ-params>? = <typ>` declares a new type constructor `<id>`, with optional type parameters `<type-typ-params>` and definition `<typ>`.
 
 The declaration `type C< X0 <: T0, …​, Xn <: Tn > = U` is well-formed provided:
 
@@ -1503,7 +1615,7 @@ that recursively instantiates `Seq` with a larger type, `[T]`, containing `T`, i
 
 ### Object declaration
 
-Declaration `<sort> <id>? <obj-body>`, where `<obj_body>` is of the form `=? { <dec-field>;* }`, declares an object with optional identifier `<id>` and zero or more fields `<dec-field>;*`. Fields can be declared with `public` or `private` visibility; if the visibility is omitted, it defaults to `private`.
+Declaration `<sort> <id>? (: <typ>)? =? <obj-body>`, where `<obj-body>` is of the form `{ <dec-field>;* }`, declares an object with optional identifier `<id>` and zero or more fields `<dec-field>;*`. Fields can be declared with `public` or `private` visibility; if the visibility is omitted, it defaults to `private`.
 
 The qualifier `<sort>` (one of `actor`, `module` or `object`) specifies the *sort* of the object’s type. The sort imposes restrictions on the types of the public object fields.
 
@@ -1525,11 +1637,13 @@ Note that requirement 1. imposes further constraints on the field types of `T`. 
 
 -   all public fields must be non-`var` (immutable) `shared` functions (the public interface of an actor can only provide asynchronous messaging via shared functions);
 
-Because actor construction is asynchronous, an actor declaration can only occur in an asynchronous context (i.e. in the body of a (non-`query`) `shared` function, `async` expression or `async*` expression).
+Because actor construction is asynchronous, an actor declaration can only occur in an asynchronous context (i.e. in the body of a (non-`<query>`) `shared` function, `async` expression or `async*` expression).
 
 Evaluation of `<sort>? <id>? =? { <dec-field>;* }` proceeds by binding `<id>` (if present), to the eventual value `v`, and evaluating the declarations in `<dec>;*`. If the evaluation of `<dec>;*` traps, so does the object declaration. Otherwise, `<dec>;*` produces a set of bindings for identifiers in `Id`. let `v0`, …​, `vn` be the values or locations bound to identifiers `<id0>`, …​, `<idn>`. The result of the object declaration is the object `v == sort { <id0> = v1, …​, <idn> = vn}`.
 
 If `<id>?` is present, the declaration binds `<id>` to `v`. Otherwise, it produces the empty set of bindings.
+
+If `(: <typ>)?` is present, then `T` must be a subtype of `<typ>`.
 
 :::danger
 
@@ -1625,7 +1739,7 @@ The *class* declaration `<shared-pat>? <sort>? class <id>? <typ-params>? <pat> (
 
 ``` bnf
 <shared-pat>? <sort>? class <id> <typ-params>? <pat> (: <typ>)? <class-body> :=
-  type <id> <typ-params> = <sort> { <typ-field>;* };
+  type <id> <type-typ-params>? = <sort> { <typ-field>;* };
   <shared-pat>? func <id> <typ-params>? <pat> : async? <id> <typ-args> =
     async? <sort> <id_this>? <obj-body>
 ```
@@ -1634,7 +1748,7 @@ where:
 
 -   `<shared-pat>?`, when present, requires `<sort>` == `actor`, and provides access to the `caller` of an `actor` constructor, and
 
--   `<typ-args>?` is the sequence of type identifiers bound by `<typ-params>?` (if any), and
+-   `<typ-args>?` and `<type-typ-params>?` is the sequence of type identifiers bound by `<typ-params>?` (if any), and
 
 -   `<typ-field>;*` is the set of public field types inferred from `<dec-field>;*`.
 
@@ -1644,7 +1758,7 @@ where:
 
 -   `async?` is present, if only if, `<sort>` == `actor`.
 
-Note `<shared-pat>?` must not be of the form `shared query <pat>?`: a constructor, unlike a function, cannot be a query.
+Note `<shared-pat>?` must not be of the form `shared <query> <pat>?`: a constructor, unlike a function, cannot be a `query` or `composite query`.
 
 An absent `<shared-pat>?` defaults to `shared` when `sort` = `actor`.
 
@@ -1717,6 +1831,63 @@ Otherwise, `exp2` is evaluated to a result `r2`. If `r2` is `trap`, the expressi
 Otherwise, `r1` and `r2` are values `v1` and `v2` and the expression returns the Boolean result of `v1 <relop> v2`.
 
 For equality and inequality, the meaning of `v1 <relop> v2` depends on the compile-time, static choice of `T` (not the run-time types of `v1` and `v2`, which, due to subtyping, may be more precise).
+
+### Pipe operators and placeholder expressions
+
+The pipe expression `<exp1> |> <exp2>` binds the value of `<exp1>` to the special placeholder expression `_`, that can be referenced in `<exp2>` (and recursively in `<exp1>`).
+Referencing the placeholder expression outside of a pipe operation is a compile-time error.
+
+The pipe expression `<exp1> |> <exp2>` is just syntactic sugar for a `let` binding to a
+placeholder identifier, `p`:
+
+``` bnf
+do { let p = <exp1>; <exp2> }
+```
+
+The placeholder expression `_` is just syntactic sugar for the expression referencing the placeholder identifier:
+
+``` bnf
+p
+```
+
+The placeholder identifier, `p`, is a fixed, reserved identifier that cannot be bound by any other expression or pattern other than a pipe operation,
+and can only be referenced using the placeholder expression `_`.
+
+`|>` has lowest precedence amongst all operators except `:` and associates to the left.
+
+Judicious use of the pipe operator allows one to express a more complicated nested expression by piping arguments of that expression into their nested positions within that expression.
+
+For example:
+
+``` motoko no-repl
+Iter.range(0, 10) |>
+  Iter.toList _ |>
+    List.filter<Nat>(_, func n { n % 3 == 0 }) |>
+      { multiples = _ };
+```
+
+may, according to taste, be a more readable rendition of:
+
+``` motoko no-repl
+{ multiples =
+   List.filter<Nat>(
+     Iter.toList(Iter.range(0, 10)),
+     func n { n % 3 == 0 }) };
+```
+
+Above, each occurence of `_` refers to the value of the left-hand-size of the nearest enclosing
+pipe operation, after associating nested pipes to the left.
+
+Note that the evaluation order of the two examples is different, but consistently left-to-right.
+
+:::note
+
+Although syntactically identical, the placeholder expression is
+semantically distinct from, and should not be confused with, the wildcard pattern `_`.
+Occurrences of the forms can be distinguished by their syntactic role as pattern or
+expression.
+
+:::
 
 ### Tuples
 
@@ -1830,7 +2001,7 @@ If `var` is absent from `var? T` then the value `w` is just the value `v` of imm
 The iterator access `<exp> . <id>` has type `T` provided `<exp>` has type `U`, and `U`,`<id>` and `T` are related by a row of the following table:
 
 |            |         |                         |                                              |
-|------------|---------|-------------------------|----------------------------------------------|
+| ---------- | ------- | ----------------------- | -------------------------------------------- |
 | U          | `<id>`  | T                       | Description                                  |
 | `Text`     | `size`  | `Nat`                   | size (or length) in characters               |
 | `Text`     | `chars` | `{ next: () -> Char? }` | character iterator, first to last            |
@@ -1936,7 +2107,7 @@ The call expression `<exp1> <T0,…​,Tn>? <exp2>` evaluates `exp1` to a result
 
 Otherwise, `exp2` is evaluated to a result `r2`. If `r2` is `trap`, the expression results in `trap`.
 
-Otherwise, `r1` is a function value, `<shared-pat>? func <X0 <: V0, …​, n <: Vn> <pat1> { <exp> }` (for some implicit environment), and `r2` is a value `v2`. If `<shared-pat>` is present and of the form `shared query? <pat>` then evaluation continues by matching the record value `{caller = p}` against `<pat>`, where `p` is the `Principal` invoking the function (typically a user or canister). Matching continues by matching `v1` against `<pat1>`. If pattern matching succeeds with some bindings, then evaluation returns the result of `<exp>` in the environment of the function value (not shown) extended with those bindings. Otherwise, some pattern match has failed and the call results in `trap`.
+Otherwise, `r1` is a function value, `<shared-pat>? func <X0 <: V0, …​, n <: Vn> <pat1> { <exp> }` (for some implicit environment), and `r2` is a value `v2`. If `<shared-pat>` is present and of the form `shared <query>? <pat>` then evaluation continues by matching the record value `{caller = p}` against `<pat>`, where `p` is the `Principal` invoking the function (typically a user or canister). Matching continues by matching `v1` against `<pat1>`. If pattern matching succeeds with some bindings, then evaluation returns the result of `<exp>` in the environment of the function value (not shown) extended with those bindings. Otherwise, some pattern match has failed and the call results in `trap`.
 
 :::note
 
@@ -1958,7 +2129,7 @@ Now, a caller can handle these errors using enclosing `try ... catch ...` expres
 
 The function expression `<shared-pat>? func < X0 <: T0, …​, Xn <: Tn > <pat1> (: U2)? =? <block-or-exp>` has type `<shared>? < X0 <: T0, ..., Xn <: Tn > U1-> U2` if, under the assumption that `X0 <: T0, …​, Xn <: Tn`:
 
--   `<shared-pat>?` is of the form `shared query? <pat>` if and only if `<shared>?` is `shared query?` (the `query` modifiers must agree);
+-   `<shared-pat>?` is of the form `shared <query>? <pat>` if and only if `<shared>?` is `shared <query>?` (the `<query>` modifiers must agree, i.e. are either both absent, both `query`, or both `composite query`);
 
 -   all the types in `T0, …​, Tn` and `U2` are well-formed and well-constrained;
 
@@ -1972,11 +2143,16 @@ The function expression `<shared-pat>? func < X0 <: T0, …​, Xn <: Tn > <pat1
 
 `<shared-pat>? func <typ-params>? <pat1> (: <typ>)? =? <block-or-exp>` evaluates to a function value (a.k.a. closure), denoted `<shared-pat>? func <typ-params>? <pat1> = <exp>`, that stores the code of the function together with the bindings from the current evaluation environment (not shown) needed to evaluate calls to the function value.
 
-Note that a `<shared-pat>` function may itself be `shared <pat>` or `shared query <pat>`:
+Note that a `<shared-pat>` function may itself be `shared <pat>` or `shared query <pat>` or  `shared composite query <pat>`.
 
 -   A `shared <pat>` function may be invoked from a remote caller. Unless causing a trap, the effects on the callee persist beyond completion of the call.
 
 -   A `shared query <pat>` function may be also be invoked from a remote caller, but the effects on the callee are transient and discarded once the call has completed with a result (whether a value or error).
+
+-   A `shared composite query <pat>` function may only be invoked as an ingress message, not from a remote caller.
+    Like a query, the effects on the callee are transient and discarded once the call has completed with a result (whether a value or error).
+    In addition, intermediate state changes made by the call are not observable by any of its own `query`  or `composite query` callees.
+
 
 In either case, `<pat>` provides access to a context value identifying the *caller* of the shared (query) function.
 
@@ -1985,6 +2161,17 @@ In either case, `<pat>` provides access to a context value identifying the *call
 The context type is a record to allow extension with further fields in future releases.
 
 :::
+
+Shared functions have different capabilities dependent on their qualification as `shared`, `shared query` or `shared composite query`.
+
+A `shared` function may call any `shared` or `shared query` function, but no `shared composite query` function.
+A `shared query` function may not call any `shared`, `shared query` or `shared composite query` function.
+A `shared composite query` function may call any `shared query` or `shared composite query` function, but no `shared` function.
+
+All varieties of shared functions may call unshared functions.
+
+Composite queries, though composable, can only be called externally (from a frontend) and cannot be initiated from an actor.
+
 
 ### Blocks
 
@@ -2159,7 +2346,7 @@ If `<exp>` in `label <id> (: <typ>)? <exp>` is a looping construct:
 
 the body, `<exp1>`, of the loop is implicitly enclosed in `label <id_continue> (…​)` allowing early continuation of the loop by the evaluation of expression `continue <id>`.
 
-`<id_continue>` is fresh identifier that can only be referenced by `continue <id>` (through its implicit expansion to `break <id_continue>`).
+`<id_continue>` is a fresh identifier that can only be referenced by `continue <id>` (through its implicit expansion to `break <id_continue>`).
 
 ### Break
 
@@ -2171,7 +2358,7 @@ The expression `break <id> <exp>` has type `None` provided:
 
 -   `<exp>` has type `T`.
 
-The evaluation of `break <id> <exp>` evaluates exp to some result `r`. If `r` is `trap`, the result is `trap`. If `r` is a value `v`, the evaluation abandons the current computation up to dynamically enclosing declaration `label <id> …​` using the value `v` as the result of that labelled expression.
+The evaluation of `break <id> <exp>` evaluates `<exp>` to some result `r`. If `r` is `trap`, the result is `trap`. If `r` is a value `v`, the evaluation abandons the current computation up to the dynamically enclosing declaration `label <id> …​` using the value `v` as the result of that labelled expression.
 
 ### Continue
 

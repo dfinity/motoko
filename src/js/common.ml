@@ -21,8 +21,10 @@ let range_of_region at =
 let diagnostics_of_msg (msg : Diag.message) =
   Diag.(object%js
     val source = Js.string msg.at.left.file
-    val severity = match msg.sev with Diag.Error -> 1 | (Diag.Warning | Diag.Info)  -> 2
+    val severity = match msg.sev with Diag.Error -> 1 | (Diag.Warning | Diag.Info) -> 2
     val range = range_of_region msg.at
+    val code = Js.string msg.code
+    val category = Js.string msg.cat
     val message = Js.string msg.text
   end)
 
@@ -65,7 +67,18 @@ let js_set_run_step_limit limit =
 let js_run list source =
   Mo_types.Cons.session (fun _ -> 
     let list = Js.to_array list |> Array.to_list |> List.map Js.to_string in
-    ignore (Pipeline.run_stdin_from_file list (Js.to_string source)))
+    match Pipeline.run_stdin_from_file list (Js.to_string source) with
+    | Some v ->
+      object%js
+        (* TODO: val value = js_value v *)
+        val error = Js.null
+      end
+    | None ->
+      object%js
+        val error = Js.some (object%js
+          (* empty for compatibility with returning a message, type, location, etc. in the future *)
+        end)
+      end)
 
 let js_viper filenames =
   Mo_types.Cons.session (fun _ -> 
@@ -91,7 +104,9 @@ let js_candid source =
   Mo_types.Cons.session (fun _ -> 
     js_result (Pipeline.generate_idl [Js.to_string source])
       (fun prog ->
-        let code = Idllib.Arrange_idl.string_of_prog prog in
+        let open Idllib in
+        let module WithComments = Arrange_idl.Make(struct let trivia = Some prog.note.Syntax.trivia end) in
+        let code = WithComments.string_of_prog prog in
         Js.some (Js.string code)))
 
 let js_stable_compatible pre post =
@@ -185,6 +200,12 @@ let wrap_output f =
     val result = result
   end
 
+let print_deps file =
+  let _ = Pipeline.print_deps (Js.to_string file) in
+  let stdout_result = Buffer.contents stdout_buffer in
+  Buffer.clear stdout_buffer;
+  Js.bytestring stdout_result
+
 let add_package package dir =
   let libs = Flags.package_urls in
   libs := Flags.M.add (Js.to_string package) (Js.to_string dir) !libs
@@ -211,4 +232,5 @@ let gc_flags option =
   | "copying" -> Flags.gc_strategy := Mo_config.Flags.Copying
   | "marking" -> Flags.gc_strategy := Mo_config.Flags.MarkCompact
   | "generational" -> Flags.gc_strategy := Mo_config.Flags.Generational
+  | "incremental" -> Flags.gc_strategy := Mo_config.Flags.Incremental
   | _ -> raise (Invalid_argument "gc_flags: Unexpected flag")

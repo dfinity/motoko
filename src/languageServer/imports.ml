@@ -28,7 +28,8 @@ let match_import : Syntax.dec -> string * string =
  fun dec ->
   let open Syntax in
   match dec.it with
-  | LetD ({ it = VarP { it = name; _ }; _ }, { it = ImportE (s, _); _ }) ->
+  | LetD ({ it = VarP { it = name; _ }; _ }, { it = ImportE (s, _); _ }, None)
+    ->
       (name, s)
   | _ -> ("Can't", "deal with this import format")
 

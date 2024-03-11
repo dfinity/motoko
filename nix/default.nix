@@ -36,29 +36,39 @@ let
            sources = import sourcesnix { sourcesFile = ./sources.json; pkgs = super; };
         })
 
-        # wasmtime not broken
-        # (was marked broken on darwin in https://github.com/NixOS/nixpkgs/pull/173671)
-        (self: super: {
-           wasmtime = super.wasmtime.overrideAttrs (o: { meta = o.meta // { broken = false; };});
-        })
-
         # Selecting the ocaml version
-        # Also update ocmal-version in src/*/.ocamlformat!
+        # Also update ocaml-version in src/*/.ocamlformat!
         (self: super: { ocamlPackages = self.ocaml-ng.ocamlPackages_4_12; })
 
-        (
-          self: super: {
+        (self: super: {
             # Additional ocaml package
-            ocamlPackages = super.ocamlPackages // {
-              obelisk = import ./ocaml-obelisk.nix {
-                inherit (self) lib fetchFromGitHub ocaml dune_3;
-                inherit (self) ocamlPackages;
-                inherit (self.stdenv) mkDerivation;
+            ocamlPackages = super.ocamlPackages // rec {
+
+              # upgrade `js_of_ocaml(-compiler)` until we have figured out the bug related to 4.1.0 (which is in nixpkgs)
+              js_of_ocaml-compiler = super.ocamlPackages.js_of_ocaml-compiler.overrideAttrs rec {
+                version = "5.0.1";
+                src = self.fetchurl {
+                  url = "https://github.com/ocsigen/js_of_ocaml/releases/download/${version}/js_of_ocaml-${version}.tbz";
+                  sha256 = "sha256-eiEPHKFqdCOBlH3GfD2Nn0yU+/IHOHRLE1OJeYW2EGk=";
+                };
+              };
+
+              # inline recipe from https://github.com/NixOS/nixpkgs/blob/master/pkgs/development/tools/ocaml/js_of_ocaml/default.nix
+              js_of_ocaml = with super.ocamlPackages; buildDunePackage {
+                pname = "js_of_ocaml";
+
+                inherit (js_of_ocaml-compiler) version src;
+                duneVersion = "3";
+
+                buildInputs = [ ppxlib ];
+                propagatedBuildInputs = [ js_of_ocaml-compiler uchar ];
+
+                meta = builtins.removeAttrs js_of_ocaml-compiler.meta [ "mainProgram" ];
               };
 
               # downgrade wasm until we have support for 2.0.0
               # (https://github.com/dfinity/motoko/pull/3364)
-              wasm = super.ocamlPackages.wasm.overrideAttrs (_: rec {
+              wasm = super.ocamlPackages.wasm.overrideAttrs rec {
                 version = "1.1.1";
                 src = self.fetchFromGitHub {
                   owner = "WebAssembly";
@@ -66,7 +76,10 @@ let
                   rev = "opam-${version}";
                   sha256 = "1kp72yv4k176i94np0m09g10cviqp2pnpm7jmiq6ik7fmmbknk7c";
                 };
-              });
+              };
+
+              # No testing of atdgen, as it pulls in python stuff, tricky on musl
+              atdgen = super.ocamlPackages.atdgen.overrideAttrs { doCheck = false; };
             };
           }
         )
@@ -78,7 +91,7 @@ let
 
         # Rust nightly
         (self: super: let
-          rust-channel = self.moz_overlay.rustChannelOf { date = "2022-06-30"; channel = "nightly"; };
+          rust-channel = self.moz_overlay.rustChannelOf { date = "2023-04-21"; channel = "nightly"; };
         in rec {
           rustc-nightly = rust-channel.rust.override {
             targets = [
@@ -95,9 +108,9 @@ let
           };
         })
 
-        # Rust 1.66
+        # Rust 1.69
         (self: super: let
-          rust-channel = self.moz_overlay.rustChannelOf { date = "2022-12-15"; channel = "stable"; };
+          rust-channel = self.moz_overlay.rustChannelOf { date = "2023-04-20"; channel = "stable"; };
         in {
           rustPlatform_moz_stable = self.makeRustPlatform {
             rustc = rust-channel.rust;

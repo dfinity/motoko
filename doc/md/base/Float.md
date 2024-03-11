@@ -39,6 +39,9 @@ Advice:
 * For absolute precision, it is recommened to encode the fraction number as a pair of a Nat for the base
   and a Nat for the exponent (decimal point).
 
+NaN sign:
+* The NaN sign is only applied by `abs`, `neg`, and `copySign`. Other operations can have an arbitrary
+  sign bit for NaN results.
 
 ## Type `Float`
 ``` motoko no-repl
@@ -72,7 +75,7 @@ Determines whether the `number` is a `NaN` ("not a number" in the floating point
 Notes:
 * Equality test of `NaN` with itself or another number is always `false`.
 * There exist many internal `NaN` value representations, such as positive and negative NaN,
-  signalling and quiet nans, each with many different bit representations.
+  signalling and quiet NaNs, each with many different bit representations.
 
 Example:
 ```motoko
@@ -92,7 +95,7 @@ Special cases:
 ```
 abs(+inf) => +inf
 abs(-inf) => +inf
-abs(NaN)  => NaN
+abs(-NaN)  => +NaN
 abs(-0.0) => 0.0
 ```
 
@@ -787,8 +790,16 @@ func neg(x : Float) : Float
 Returns the negation of `x`, `-x` .
 
 Changes the sign bit for infinity.
-Issue: Inconsistent behavior for zero and `NaN`. Probably related to
-https://github.com/dfinity/motoko/issues/3646
+
+Special cases:
+```
+neg(+inf) => -inf
+neg(-inf) => +inf
+neg(+NaN) => -NaN
+neg(-NaN) => +NaN
+neg(+0.0) => -0.0
+neg(-0.0) => +0.0
+```
 
 Example:
 ```motoko

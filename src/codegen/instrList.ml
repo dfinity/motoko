@@ -88,6 +88,9 @@ let optimize : instr list -> instr list = fun is ->
       go l' ({ i with it = Compare (F64 F64Op.Ne)} :: r')
     | ({it = Test (I32 I32Op.Eqz); _} as i) :: {it = Compare (F64 F64Op.Ne); _} :: l', r' ->
       go l' ({ i with it = Compare (F64 F64Op.Eq)} :: r')
+    (* LSBit masking before `If` is `Ctz` and switched `If` legs *)
+    | ({ it = Binary (I32 I32Op.And); _} as a) :: { it = Const {it = I32 1l; _}; _} :: l', ({it = If (res,then_,else_); _} as i) :: r' ->
+      go ({a with it = Unary (I32 I32Op.Ctz)} :: l') ({i with it = If (res,else_,then_)} :: r')
     (* `If` blocks after pushed constants are simplifiable *)
     | { it = Const {it = I32 0l; _}; _} :: l', ({it = If (res,_,else_); _} as i) :: r' ->
       go l' ({i with it = Block (res, else_)} :: r')
@@ -96,6 +99,14 @@ let optimize : instr list -> instr list = fun is ->
     (* `If` blocks after negation can swap legs *)
     | { it = Test (I32 I32Op.Eqz); _} :: l', ({it = If (res,then_,else_); _} as i) :: r' ->
       go l' ({i with it = If (res,else_,then_)} :: r')
+    (* `If` blocks with empty legs just drop *)
+    | l', ({it = If (_,[],[]); _} as i) :: r' ->
+       go l' ({i with it = Drop} :: r')
+    (* `If` blocks with empty then after comparison can invert the comparison and swap legs *)
+    | { it = Compare (I32 I32Op.Eq); _} as comp :: l', ({it = If (res,[],else_); _} as i) :: r' ->
+      go ({comp with it = Compare (I32 I32Op.Ne)} :: l') ({i with it = If (res,else_,[])} :: r')
+    | { it = (Compare (I32 I32Op.Ne) | Binary (I32 I32Op.Xor)); _} as comp :: l', ({it = If (res,[],else_); _} as i) :: r' ->
+      go ({comp with it = Compare (I32 I32Op.Eq)} :: l') ({i with it = If (res,else_,[])} :: r')
     (* Empty block is redundant *)
     | l', ({ it = Block (_, []); _ }) :: r' -> go l' r'
     (* Constant shifts can be combined *)

@@ -24,7 +24,7 @@ open Lbool
     - no mutable variable are defined, and
     - pattern matching is side-effect free, i.e. irrefutable
   * Functions can be const if they do not require a closure.
-    This is the case if every free variables is
+    This is the case if every free variable is
     - const or
     - bound at the top level (`loc_known = true` below)
   * Literals can be const
@@ -124,8 +124,7 @@ let rec exp lvl (env : env) e : Lbool.t =
     | PrimE (TupPrim, es)
     | PrimE (ArrayPrim (Const, _), es) ->
       all (List.map (fun e -> exp lvl env e) es)
-    | PrimE (DotPrim _, [e1])
-    | PrimE (ProjPrim _, [e1]) ->
+    | PrimE (DotPrim _, [e1] | ProjPrim _, [e1] | OptPrim, [e1] | TagPrim _, [e1]) ->
       exp lvl env e1
     | LitE _ ->
       surely_true

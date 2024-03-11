@@ -1,79 +1,89 @@
+//MOC-FLAG -fshared-code
 import Prim "mo:⛔";
 
-// CHECK: (local $check0 i32)
+// Differences between incremental and non-incremental compilation (additional forwarding header field).
 
-// CHECK-NOT:  call $@immut_array_size
-// CHECK:      i32.load offset=5
-// CHECK-NEXT: i32.const 2
-// CHECK-NEXT: i32.shl
-// CHECK:      i32.lt_u
-// CHECK:      i32.add
-// CHECK-NEXT: i32.load offset=9
-// CHECK-NEXT: local.tee $check0
-// CHECK-NEXT: call $print_text
-// CHECK:      i32.const 4
-// CHECK-NEXT: i32.add
+// FHECK: (local $check0 i32)
+
+// FHECK-NOT:  call $@immut_array_size
+// DON'TFHECK: i32.load offset=(5 or 9) 
+// FHECK:      i32.load offset= 
+// FHECK:      i32.const 2
+// FHECK:      i32.shl
+// FHECK:      i32.lt_u
+// FHECK:      i32.add
+// DON'TFHECK: i32.load offset=(9 or 13)
+// FHECK:      local.tee $check0
+// FHECK-NEXT: call $print_text
+// FHECK:      i32.const 4
+// FHECK-NEXT: i32.add
 for (check0 in ["hello", "world"].vals()) { Prim.debugPrint check0 };
 
-// CHECK-NOT:  call $@mut_array_size
-// CHECK:      i32.load offset=5
-// CHECK-NEXT: i32.const 2
-// CHECK-NEXT: i32.shl
-// CHECK:      i32.lt_u
-// CHECK:      i32.add
-// CHECK-NEXT: i32.load offset=9
-// CHECK-NEXT: local.tee $check1
-// CHECK-NEXT: call $print_text
+
+// FHECK-NOT:  call $@mut_array_size
+// DON'TFHECK: i32.load offset=(5 or 9)
+// FHECK:      i32.load offset=
+// FHECK:      i32.const 2
+// FHECK-NEXT: i32.shl
+// FHECK:      i32.lt_u
+// FHECK:      i32.add
+// DON'TFHECK: i32.load offset=(9 or 13)
+// FHECK:      i32.load offset=
+// FHECK-NEXT: local.tee $check1
+// FHECK-NEXT: call $print_text
 for (check1 in [var "hello", "mutable", "world"].vals()) { Prim.debugPrint check1 };
 
 let array = [var "hello", "remutable", "world"];
 array[1] := "mutable";
-// CHECK-NOT:   call $@immut_array_size
-// CHECK:       i32.load offset=5
-// CHECK-NEXT:  i32.const 2
-// CHECK-NEXT:  i32.shl
-// DON'T-CHECK: i32.lt_u
-// DON'T-CHECK: local.get $array
-// DON'T-CHECK: local.set $check2
+// FHECK-NOT:   call $@immut_array_size
+// DON'TFHECK:  i32.load offset=(5 or 9)
+// FHECK:       i32.load offset=
+// FHECK:       i32.const 2
+// FHECK:       i32.shl
+// DON'T-FHECK: i32.lt_u
+// DON'T-FHECK: local.get $array
+// DON'T-FHECK: local.set $check2
 // `arr` being a `VarE` already (but we rebind anyway, otherwise we open a can of worms)
 // later when we have path compression for variables in the backend, we can bring this back
 for (check2 in array.vals()) { Prim.debugPrint check2 };
 
-// CHECK-NOT:  call $@immut_array_size
-// CHECK:      i32.load offset=5
-// CHECK-NEXT: i32.const 2
-// CHECK-NEXT: i32.shl
-// CHECK:      i32.lt_u
-// CHECK:      i32.add
-// CHECK-NEXT: i32.load offset=9
-// CHECK-NEXT: local.tee $check3
+// FHECK-NOT:  call $@immut_array_size
+// DON'TFHECK: i32.load offset=(5 or 9)
+// FHECK:      i32.load offset=
+// FHECK:      i32.const 2
+// FHECK:      i32.shl
+// FHECK:      i32.lt_u
+// FHECK:      i32.add
+// DON'TFHECK: i32.load offset=(9 or 13)
+// FHECK:      i32.load offset=
+// FHECK-NEXT: local.tee $check3
 // interfering parentheses don't disturb us
 for (check3 in (((["hello", "immutable", "world"].vals())))) { Prim.debugPrint check3 };
 
 
-// CHECK:      i32.const 84
-// CHECK:      call $B_add
-// CHECK-NEXT: call $B_eq
-// CHECK-NEXT: if
-// CHECK-NEXT: loop
-// CHECK-NEXT: br 0
-// CHECK-NEXT: end
-// CHECK-NEXT: unreachable
-// CHECK-NEXT: else
+// FHECK:      i32.const 84
+// FHECK:      call $B_add
+// FHECK-NEXT: call $B_eq
+// FHECK-NEXT: if
+// FHECK-NEXT: loop
+// FHECK-NEXT: br 0
+// FHECK-NEXT: end
+// FHECK-NEXT: unreachable
+// FHECK-NEXT: else
 // bottom iteration expression is treated fairly
 var c = 42;
 if (c == c + 1) {
     for (check4 in (loop {}).vals()) { Prim.debugPrint check4 }
 };
 
-// CHECK:      call $B_add
-// CHECK-NEXT: call $B_eq
-// CHECK-NEXT: if
-// CHECK-NEXT: loop
-// CHECK-NEXT: br 0
-// CHECK-NEXT: end
-// CHECK-NEXT: unreachable
-// CHECK-NEXT: else
+// FHECK:      call $B_add
+// FHECK-NEXT: call $B_eq
+// FHECK-NEXT: if
+// FHECK-NEXT: loop
+// FHECK-NEXT: br 0
+// FHECK-NEXT: end
+// FHECK-NEXT: unreachable
+// FHECK-NEXT: else
 // typed bottom iteration expression is treated fairly
 if (c == c + 1) {
     for (check5 in ((loop {}) : [Text]).vals()) { Prim.debugPrint check5 }
@@ -85,22 +95,24 @@ check6[1] := "mutable";
 // this passes the IR type check, which demonstrates that no name capture happens
 for (check6 in check6.vals()) { ignore check6 };
 
-// CHECK:      i32.load offset=5
-// CHECK-NEXT: i32.const 2
-// CHECK-NEXT: i32.shl
+// DON'TFHECK: i32.load offset=(5 or 9)
+// FHECK:      i32.load offset=
+// FHECK:      i32.const 2
+// FHECK:      i32.shl
 // argument to vals can have an effect too, expect it
 for (check7 in [].vals(Prim.debugPrint "want to see you")) { };
 
-// CHECK:      local.set $num8
-// CHECK-NOT:  call $@immut_array_size
-// CHECK:      i32.load offset=5
-// CHECK-NEXT: i32.const 1
-// CHECK-NEXT: i32.shl
-// CHECK:      i32.lt_u
-// CHECK-NOT:  i32.add
-// CHECK:      local.tee $check8
-// CHECK-NEXT: local.get $num8
-// CHECK-NEXT: call $B_add
+// FHECK:      local.set $num8
+// FHECK-NOT:  call $@immut_array_size
+// DON'TFHECK: i32.load offset=(5 or 9)
+// FHECK:      i32.load offset=
+// FHECK:      i32.const 1
+// FHECK:      i32.shl
+// FHECK:      i32.lt_u
+// FHECK-NOT:  i32.add
+// FHECK:      local.tee $check8
+// FHECK-NEXT: local.get $num8
+// FHECK-NEXT: call $B_add
 var num8 = 42;
 num8 := 25;
 // `keys` is even easier to rewrite, as the "indexing expression" is just the
