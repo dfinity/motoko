@@ -5,9 +5,17 @@ use motoko_rts_macros::motoko;
 
 use crate::{
     barriers::allocation_barrier,
-    memory::{alloc_blob, Memory},
-    types::{Bytes, Tag, Value, TAG_BLOB},
+    memory::{alloc_array, alloc_blob, Memory},
+    types::{Bytes, Tag, Value, TAG_ARRAY, TAG_BLOB},
 };
+
+extern "C" {
+    fn unit() -> Value;
+    fn u32_from_nat32(value: Value) -> u32;
+    fn i32_from_int32(value: Value) -> i32;
+    fn nat32_from_u32(value: u32) -> Value;
+    fn int32_from_i32(value: i32) -> Value;
+}
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum MotokoError {
@@ -44,29 +52,29 @@ impl FromValue for () {
 }
 impl IntoValue for () {
     unsafe fn into_value(self, _mem: &mut impl Memory) -> MotokoResult<Value> {
-        Ok(Value::from_raw(0))
+        Ok(unit())
     }
 }
 
 impl FromValue for u32 {
     unsafe fn from_value(value: Value, _mem: &mut impl Memory) -> MotokoResult<Self> {
-        Ok(value.get_scalar())
+        Ok(u32_from_nat32(value))
     }
 }
 impl IntoValue for u32 {
     unsafe fn into_value(self, _mem: &mut impl Memory) -> MotokoResult<Value> {
-        Ok(Value::from_scalar(self))
+        Ok(nat32_from_u32(self))
     }
 }
 
 impl FromValue for i32 {
     unsafe fn from_value(value: Value, _mem: &mut impl Memory) -> MotokoResult<Self> {
-        Ok(value.get_signed_scalar())
+        Ok(i32_from_int32(value))
     }
 }
 impl IntoValue for i32 {
     unsafe fn into_value(self, _mem: &mut impl Memory) -> MotokoResult<Value> {
-        Ok(Value::from_signed_scalar(self))
+        Ok(int32_from_i32(self))
     }
 }
 
@@ -75,7 +83,7 @@ impl FromValue for Vec<u8> {
         match value.tag() {
             TAG_BLOB => {
                 let blob = value.as_blob();
-                let len = blob.len().as_u32(); // `usize` here?
+                let len = blob.len().as_u32();
                 Ok((0..len).into_iter().map(|i| blob.get(i)).collect())
             }
             tag => Err(MotokoError::UnexpectedTag(tag)),
@@ -92,61 +100,60 @@ impl IntoValue for Vec<u8> {
             dest = dest.add(1);
         }
         Ok(allocation_barrier(value))
+        // ^^ Is this allocation barrier necessary?
     }
 }
 
-// Currently unused logic for returning multiple values
+impl FromValue for Vec<Value> {
+    unsafe fn from_value(value: Value, _mem: &mut impl Memory) -> MotokoResult<Self> {
+        match value.tag() {
+            TAG_ARRAY => {
+                let array = value.as_array();
+                let len = array.len();
+                Ok((0..len).into_iter().map(|i| array.get(i)).collect())
+            }
+            tag => Err(MotokoError::UnexpectedTag(tag)),
+        }
+    }
+}
+impl IntoValue for Vec<Value> {
+    unsafe fn into_value(self, mem: &mut impl Memory) -> MotokoResult<Value> {
+        let value = alloc_array(mem, self.len() as u32);
+        let array = value.as_array();
+        let mut dest = array.payload_addr();
+        for i in 0..self.len() {
+            *dest = self[i];
+            dest = dest.add(1);
+        }
+        Ok(allocation_barrier(value))
+    }
+}
 
-// pub trait FromArgs: Sized {
-//     type Args;
-//     unsafe fn from_args(values: Self::Args, mem: &mut impl Memory) -> MotokoResult<Self>;
-// }
-// pub trait IntoArgs {
-//     type Args;
-//     unsafe fn into_args(self, mem: &mut impl Memory) -> MotokoResult<Self::Args>;
-// }
-
-// // TODO: macro for n-length tuples
-
-// impl FromArgs for () {
-//     type Args = ();
-//     unsafe fn from_args((): Self::Args, _mem: &mut impl Memory) -> MotokoResult<Self> {
-//         Ok(())
-//     }
-// }
-// impl IntoArgs for () {
-//     type Args = ();
-//     unsafe fn into_args(self, _mem: &mut impl Memory) -> MotokoResult<Self::Args> {
-//         Ok(())
-//     }
-// }
-
-// impl<A: FromValue> FromArgs for A {
-//     type Args = Value;
-//     unsafe fn from_args(value: Self::Args, mem: &mut impl Memory) -> MotokoResult<Self> {
-//         A::from_value(value, mem)
-//     }
-// }
-// impl<A: IntoValue> IntoArgs for A {
-//     type Args = Value;
-//     unsafe fn into_args(self, mem: &mut impl Memory) -> MotokoResult<Self::Args> {
-//         self.into_value(mem)
-//     }
-// }
-
-// impl<A: FromValue, B: FromValue> FromArgs for (A, B) {
-//     type Args = (Value, Value);
-//     unsafe fn from_args((a, b): Self::Args, mem: &mut impl Memory) -> MotokoResult<Self> {
-//         Ok((A::from_value(a, mem)?, B::from_value(b, mem)?))
-//     }
-// }
-
-// impl<A: IntoValue, B: IntoValue> IntoArgs for (A, B) {
-//     type Args = (Value, Value);
-//     unsafe fn into_args(self, mem: &mut impl Memory) -> MotokoResult<Self::Args> {
-//         Ok((self.0.into_value(mem)?, self.1.into_value(mem)?))
-//     }
-// }
+impl<A: FromValue, B: FromValue> FromValue for (A, B) {
+    unsafe fn from_value(value: Value, mem: &mut impl Memory) -> MotokoResult<Self> {
+        match value.tag() {
+            TAG_ARRAY => {
+                let array = value.as_array();
+                let len = array.len();
+                Ok((
+                    A::from_value(array.get(0), mem)?,
+                    B::from_value(array.get(1), mem)?,
+                ))
+            }
+            tag => Err(MotokoError::UnexpectedTag(tag)),
+        }
+    }
+}
+impl<A: IntoValue, B: IntoValue> IntoValue for (A, B) {
+    unsafe fn into_value(self, mem: &mut impl Memory) -> MotokoResult<Value> {
+        let value = alloc_array(mem, 2);
+        let array = value.as_array();
+        let mut dest = array.payload_addr();
+        *dest = self.0.into_value(mem)?;
+        *(dest.add(1)) = self.1.into_value(mem)?;
+        Ok(allocation_barrier(value))
+    }
+}
 
 // Temporary example
 #[motoko]
@@ -169,6 +176,11 @@ unsafe fn blob_modify(mut vec: Vec<u8>) -> Vec<u8> {
 #[motoko]
 unsafe fn blob_concat(a: Vec<u8>, b: Vec<u8>) -> Vec<u8> {
     [a, b].concat()
+}
+
+#[motoko]
+unsafe fn div_rem(a: u32, b: u32) -> (u32, u32) {
+    (a / b, a % b)
 }
 
 // Temporary example
