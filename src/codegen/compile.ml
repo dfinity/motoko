@@ -6171,6 +6171,8 @@ module RTS_Exports = struct
    *)
   let system_exports env =
 
+    (* Helper functions *)
+
     let export_fun env name f =
       let fi = E.add_fun env name f in
       E.add_export env (nr {
@@ -6183,101 +6185,70 @@ module RTS_Exports = struct
 
     export_fun env "int_from_i32" (
       Func.of_body env ["v", I32Type] [I32Type] (fun env ->
-        let get_v = G.i (LocalGet (nr 0l)) in
-        get_v ^^ BigNum.from_signed_word32 env
-      )
-    );
+        G.i (LocalGet (nr 0l)) ^^
+        BigNum.from_signed_word32 env));
 
     export_fun env "int8_from_i8" (
       Func.of_body env ["v", I32Type] [I32Type] (fun env ->
-        let get_v = G.i (LocalGet (nr 0l)) in
-        begin
-          get_v ^^
-          TaggedSmallWord.msb_adjust Type.Int8 ^^
-          TaggedSmallWord.tag env Type.Nat8
-        end
-      )
-    );
+        G.i (LocalGet (nr 0l)) ^^
+        TaggedSmallWord.msb_adjust Type.Int8 ^^
+        TaggedSmallWord.tag env Type.Int8));
     export_fun env "nat8_from_u8" (
       Func.of_body env ["v", I32Type] [I32Type] (fun env ->
-        let get_v = G.i (LocalGet (nr 0l)) in
-        begin
-          get_v ^^
-          TaggedSmallWord.msb_adjust Type.Nat8 ^^
-          TaggedSmallWord.tag env Type.Nat8
-        end
-      )
-    );
-
+        G.i (LocalGet (nr 0l)) ^^
+        TaggedSmallWord.msb_adjust Type.Nat8 ^^
+        TaggedSmallWord.tag env Type.Nat8));
+    export_fun env "int16_from_i16" (
+      Func.of_body env ["v", I32Type] [I32Type] (fun env ->
+        G.i (LocalGet (nr 0l)) ^^
+        TaggedSmallWord.msb_adjust Type.Int16 ^^
+        TaggedSmallWord.tag env Type.Int16));
+    export_fun env "nat16_from_u16" (
+      Func.of_body env ["v", I32Type] [I32Type] (fun env ->
+        G.i (LocalGet (nr 0l)) ^^
+        TaggedSmallWord.msb_adjust Type.Nat16 ^^
+        TaggedSmallWord.tag env Type.Nat16));
     export_fun env "int32_from_i32" (
       Func.of_body env ["v", I32Type] [I32Type] (fun env ->
-        let get_v = G.i (LocalGet (nr 0l)) in
-        get_v ^^ BoxedSmallWord.box env Type.Int32
-      )
-    );
+        G.i (LocalGet (nr 0l)) ^^ BoxedSmallWord.box env Type.Int32));
     export_fun env "nat32_from_u32" (
       Func.of_body env ["v", I32Type] [I32Type] (fun env ->
-        let get_v = G.i (LocalGet (nr 0l)) in
-        get_v ^^ BoxedSmallWord.box env Type.Nat32
-      )
-    );
-
+        G.i (LocalGet (nr 0l)) ^^ BoxedSmallWord.box env Type.Nat32));
     export_fun env "int64_from_i64" (
       Func.of_body env ["v", I64Type] [I32Type] (fun env ->
-        let get_v = G.i (LocalGet (nr 0l)) in
-        get_v ^^ BoxedWord64.box env Type.Int64
-      )
-    );
+        G.i (LocalGet (nr 0l)) ^^ BoxedWord64.box env Type.Int64));
     export_fun env "nat64_from_u64" (
       Func.of_body env ["v", I64Type] [I32Type] (fun env ->
-        let get_v = G.i (LocalGet (nr 0l)) in
-        get_v ^^ BoxedWord64.box env Type.Nat64
-      )
-    );
+        G.i (LocalGet (nr 0l)) ^^ BoxedWord64.box env Type.Nat64));
 
     export_fun env "i8_from_int8" (
       Func.of_body env ["v", I32Type] [I32Type] (fun env ->
-        let get_v = G.i (LocalGet (nr 0l)) in
-        get_v ^^ TaggedSmallWord.lsb_adjust Type.Int8
-      )
-    );
+        G.i (LocalGet (nr 0l)) ^^ TaggedSmallWord.lsb_adjust Type.Int8));
     export_fun env "u8_from_nat8" (
       Func.of_body env ["v", I32Type] [I32Type] (fun env ->
-        let get_v = G.i (LocalGet (nr 0l)) in
-        get_v ^^ TaggedSmallWord.lsb_adjust Type.Nat8
-      )
-    );
-
+        G.i (LocalGet (nr 0l)) ^^ TaggedSmallWord.lsb_adjust Type.Nat8));
+    export_fun env "i16_from_int16" (
+      Func.of_body env ["v", I32Type] [I32Type] (fun env ->
+        G.i (LocalGet (nr 0l)) ^^ TaggedSmallWord.lsb_adjust Type.Int16));
+    export_fun env "u16_from_nat16" (
+      Func.of_body env ["v", I32Type] [I32Type] (fun env ->
+        G.i (LocalGet (nr 0l)) ^^ TaggedSmallWord.lsb_adjust Type.Nat16));
     export_fun env "i32_from_int32" (
       Func.of_body env ["v", I32Type] [I32Type] (fun env ->
-        let get_v = G.i (LocalGet (nr 0l)) in
-        get_v ^^ BoxedSmallWord.unbox env Type.Int32
-      )
-    );
+        G.i (LocalGet (nr 0l)) ^^ BoxedSmallWord.unbox env Type.Int32));
     export_fun env "u32_from_nat32" (
       Func.of_body env ["v", I32Type] [I32Type] (fun env ->
-        let get_v = G.i (LocalGet (nr 0l)) in
-        get_v ^^ BoxedSmallWord.unbox env Type.Nat32
-      )
-    );
+        G.i (LocalGet (nr 0l)) ^^ BoxedSmallWord.unbox env Type.Nat32));
     export_fun env "i64_from_int64" (
       Func.of_body env ["v", I32Type] [I64Type] (fun env ->
-        let get_v = G.i (LocalGet (nr 0l)) in
-        get_v ^^ BoxedWord64.unbox env Type.Int64
-      )
-    );
+        G.i (LocalGet (nr 0l)) ^^ BoxedWord64.unbox env Type.Int64));
     export_fun env "u64_from_nat64" (
       Func.of_body env ["v", I32Type] [I64Type] (fun env ->
-        let get_v = G.i (LocalGet (nr 0l)) in
-        get_v ^^ BoxedWord64.unbox env Type.Int64
-      )
-    );
+        G.i (LocalGet (nr 0l)) ^^ BoxedWord64.unbox env Type.Int64));
 
     export_fun env "unit" (
       Func.of_body env [] [I32Type] (fun env ->
-        Tuple.compile_unit env
-      )
-    );
+        Tuple.compile_unit env));
 
     (* Traps *)
 

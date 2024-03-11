@@ -11,10 +11,26 @@ use crate::{
 
 extern "C" {
     fn unit() -> Value;
+
+    fn u8_from_nat8(value: Value) -> u8;
+    fn u16_from_nat16(value: Value) -> u16;
     fn u32_from_nat32(value: Value) -> u32;
+    fn u64_from_nat64(value: Value) -> u64;
+
+    fn i8_from_int8(value: Value) -> i8;
+    fn i16_from_int16(value: Value) -> i16;
     fn i32_from_int32(value: Value) -> i32;
+    fn i64_from_int64(value: Value) -> i64;
+
+    fn nat8_from_u8(value: u8) -> Value;
+    fn nat16_from_u16(value: u16) -> Value;
     fn nat32_from_u32(value: u32) -> Value;
+    fn nat64_from_u64(value: u64) -> Value;
+
+    fn int8_from_i8(value: i8) -> Value;
+    fn int16_from_i16(value: i16) -> Value;
     fn int32_from_i32(value: i32) -> Value;
+    fn int64_from_i64(value: i64) -> Value;
 }
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -155,24 +171,22 @@ impl<A: IntoValue, B: IntoValue> IntoValue for (A, B) {
     }
 }
 
-// Temporary example
+// Temporary examples
+
 #[motoko]
 unsafe fn empty() {}
 
-// Temporary example
 #[motoko]
 unsafe fn identity(value: Value) -> Value {
     value
 }
 
-// Temporary example
 #[motoko]
 unsafe fn blob_modify(mut vec: Vec<u8>) -> Vec<u8> {
     vec.push('!' as u8);
     vec
 }
 
-// Temporary example
 #[motoko]
 unsafe fn blob_concat(a: Vec<u8>, b: Vec<u8>) -> Vec<u8> {
     [a, b].concat()
@@ -183,7 +197,6 @@ unsafe fn div_rem(a: u32, b: u32) -> (u32, u32) {
     (a / b, a % b)
 }
 
-// Temporary example
 #[motoko]
 unsafe fn manual_alloc(#[memory] mem: &mut impl Memory) -> Value {
     // Low-level access to memory allocation
