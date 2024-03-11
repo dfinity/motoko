@@ -42,10 +42,16 @@ pub enum MotokoError {
 
 type MotokoResult<T> = Result<T, MotokoError>;
 
+/// Wrapper for representing a `Vec<u8>` value as a `Blob` in Motoko.
+#[derive(Clone, Debug)]
+pub struct BlobVec(pub Vec<u8>);
+
+/// Trait for converting a Motoko value to a Rust value.
 pub trait FromValue: Sized {
     unsafe fn from_value(value: Value, mem: &mut impl Memory) -> MotokoResult<Self>;
 }
 
+/// Trait for converting a Rust value to a Motoko value.
 pub trait IntoValue {
     unsafe fn into_value(self, mem: &mut impl Memory) -> MotokoResult<Value>;
 }
@@ -143,25 +149,26 @@ impl IntoValue for i64 {
     }
 }
 
-impl FromValue for Vec<u8> {
+impl FromValue for BlobVec {
     unsafe fn from_value(value: Value, _mem: &mut impl Memory) -> MotokoResult<Self> {
         match value.tag() {
             TAG_BLOB => {
                 let blob = value.as_blob();
                 let len = blob.len().as_u32();
-                Ok((0..len).into_iter().map(|i| blob.get(i)).collect())
+                Ok(BlobVec((0..len).into_iter().map(|i| blob.get(i)).collect()))
             }
             tag => Err(MotokoError::UnexpectedTag(tag)),
         }
     }
 }
-impl IntoValue for Vec<u8> {
+impl IntoValue for BlobVec {
     unsafe fn into_value(self, mem: &mut impl Memory) -> MotokoResult<Value> {
-        let value = alloc_blob(mem, Bytes(self.len() as u32));
+        let vec = self.0;
+        let value = alloc_blob(mem, Bytes(vec.len() as u32));
         let blob = value.as_blob_mut();
         let mut dest = blob.payload_addr();
-        for i in 0..self.len() {
-            *dest = self[i];
+        for item in vec.into_iter() {
+            *dest = item;
             dest = dest.add(1);
         }
         Ok(allocation_barrier(value))
@@ -169,25 +176,28 @@ impl IntoValue for Vec<u8> {
     }
 }
 
-impl FromValue for Vec<Value> {
-    unsafe fn from_value(value: Value, _mem: &mut impl Memory) -> MotokoResult<Self> {
+impl<T: FromValue> FromValue for Vec<T> {
+    unsafe fn from_value(value: Value, mem: &mut impl Memory) -> MotokoResult<Self> {
         match value.tag() {
             TAG_ARRAY => {
                 let array = value.as_array();
                 let len = array.len();
-                Ok((0..len).into_iter().map(|i| array.get(i)).collect())
+                (0..len)
+                    .into_iter()
+                    .map(|i| T::from_value(array.get(i), mem))
+                    .collect()
             }
             tag => Err(MotokoError::UnexpectedTag(tag)),
         }
     }
 }
-impl IntoValue for Vec<Value> {
+impl<T: IntoValue> IntoValue for Vec<T> {
     unsafe fn into_value(self, mem: &mut impl Memory) -> MotokoResult<Value> {
         let value = alloc_array(mem, self.len() as u32);
         let array = value.as_array();
         let mut dest = array.payload_addr();
-        for i in 0..self.len() {
-            *dest = self[i];
+        for item in self.into_iter() {
+            *dest = item.into_value(mem)?;
             dest = dest.add(1);
         }
         Ok(allocation_barrier(value))
@@ -242,19 +252,14 @@ unsafe fn identity(value: Value) -> Value {
 }
 
 #[motoko]
-unsafe fn blob_modify(mut vec: Vec<u8>) -> Vec<u8> {
-    vec.push('!' as u8);
-    vec
+unsafe fn blob_modify(mut blob: BlobVec) -> BlobVec {
+    blob.0.push('!' as u8);
+    blob
 }
 
 #[motoko]
-unsafe fn blob_concat(a: Vec<u8>, b: Vec<u8>) -> Vec<u8> {
+unsafe fn array_concat(a: Vec<Value>, b: Vec<Value>) -> Vec<Value> {
     [a, b].concat()
-}
-
-#[motoko]
-unsafe fn div_rem(a: u32, b: u32) -> (u32, u32) {
-    (a / b, a % b)
 }
 
 #[motoko]
@@ -268,6 +273,11 @@ unsafe fn manual_alloc(#[memory] mem: &mut impl Memory) -> Value {
         dest = dest.add(1);
     }
     allocation_barrier(value)
+}
+
+#[motoko]
+unsafe fn div_rem(a: u32, b: u32) -> (u32, u32) {
+    (a / b, a % b)
 }
 
 // [external-codegen]
