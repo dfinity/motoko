@@ -72,6 +72,26 @@ impl IntoValue for () {
     }
 }
 
+impl FromValue for u8 {
+    unsafe fn from_value(value: Value, _mem: &mut impl Memory) -> MotokoResult<Self> {
+        Ok(u8_from_nat8(value))
+    }
+}
+impl IntoValue for u8 {
+    unsafe fn into_value(self, _mem: &mut impl Memory) -> MotokoResult<Value> {
+        Ok(nat8_from_u8(self))
+    }
+}
+impl FromValue for u16 {
+    unsafe fn from_value(value: Value, _mem: &mut impl Memory) -> MotokoResult<Self> {
+        Ok(u16_from_nat16(value))
+    }
+}
+impl IntoValue for u16 {
+    unsafe fn into_value(self, _mem: &mut impl Memory) -> MotokoResult<Value> {
+        Ok(nat16_from_u16(self))
+    }
+}
 impl FromValue for u32 {
     unsafe fn from_value(value: Value, _mem: &mut impl Memory) -> MotokoResult<Self> {
         Ok(u32_from_nat32(value))
@@ -82,7 +102,37 @@ impl IntoValue for u32 {
         Ok(nat32_from_u32(self))
     }
 }
+impl FromValue for u64 {
+    unsafe fn from_value(value: Value, _mem: &mut impl Memory) -> MotokoResult<Self> {
+        Ok(u64_from_nat64(value))
+    }
+}
+impl IntoValue for u64 {
+    unsafe fn into_value(self, _mem: &mut impl Memory) -> MotokoResult<Value> {
+        Ok(nat64_from_u64(self))
+    }
+}
 
+impl FromValue for i8 {
+    unsafe fn from_value(value: Value, _mem: &mut impl Memory) -> MotokoResult<Self> {
+        Ok(i8_from_int8(value))
+    }
+}
+impl IntoValue for i8 {
+    unsafe fn into_value(self, _mem: &mut impl Memory) -> MotokoResult<Value> {
+        Ok(int8_from_i8(self))
+    }
+}
+impl FromValue for i16 {
+    unsafe fn from_value(value: Value, _mem: &mut impl Memory) -> MotokoResult<Self> {
+        Ok(i16_from_int16(value))
+    }
+}
+impl IntoValue for i16 {
+    unsafe fn into_value(self, _mem: &mut impl Memory) -> MotokoResult<Value> {
+        Ok(int16_from_i16(self))
+    }
+}
 impl FromValue for i32 {
     unsafe fn from_value(value: Value, _mem: &mut impl Memory) -> MotokoResult<Self> {
         Ok(i32_from_int32(value))
@@ -91,6 +141,16 @@ impl FromValue for i32 {
 impl IntoValue for i32 {
     unsafe fn into_value(self, _mem: &mut impl Memory) -> MotokoResult<Value> {
         Ok(int32_from_i32(self))
+    }
+}
+impl FromValue for i64 {
+    unsafe fn from_value(value: Value, _mem: &mut impl Memory) -> MotokoResult<Self> {
+        Ok(i64_from_int64(value))
+    }
+}
+impl IntoValue for i64 {
+    unsafe fn into_value(self, _mem: &mut impl Memory) -> MotokoResult<Value> {
+        Ok(int64_from_i64(self))
     }
 }
 
@@ -150,7 +210,7 @@ impl<A: FromValue, B: FromValue> FromValue for (A, B) {
         match value.tag() {
             TAG_ARRAY => {
                 let array = value.as_array();
-                let len = array.len();
+                assert_eq!(array.len(), 2, "Unexpected tuple length");
                 Ok((
                     A::from_value(array.get(0), mem)?,
                     B::from_value(array.get(1), mem)?,
