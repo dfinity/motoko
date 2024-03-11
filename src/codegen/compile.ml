@@ -3116,7 +3116,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     compile_shrS64_const (Int64.sub 32L ubitsL) ^^ BitTagged.if_can_tag_i64 env Type.Int retty is1 is2
 
   (* right-0-padded signed i64 to tagged scalar *)
-  let tag_padded =
+  let tag_padded env =
     G.i (Convert (Wasm.Values.I32 I32Op.WrapI64)) ^^
     compile_bitor_const (TaggingScheme.tag_of_typ Type.Int)
 
@@ -3148,7 +3148,7 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
             fast env ^^ set_res64 ^^
             get_res64 ^^
             if_can_tag_padded env [I32Type]
-              (get_res64 ^^ tag_padded)
+              (get_res64 ^^ tag_padded env)
               (get_res64 ^^ box64 env)
           end
           begin
