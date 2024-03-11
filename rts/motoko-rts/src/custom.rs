@@ -61,17 +61,6 @@ impl IntoValue for Value {
     }
 }
 
-impl FromValue for () {
-    unsafe fn from_value(value: Value, _mem: &mut impl Memory) -> MotokoResult<Self> {
-        Ok(())
-    }
-}
-impl IntoValue for () {
-    unsafe fn into_value(self, _mem: &mut impl Memory) -> MotokoResult<Value> {
-        Ok(unit())
-    }
-}
-
 impl FromValue for u8 {
     unsafe fn from_value(value: Value, _mem: &mut impl Memory) -> MotokoResult<Self> {
         Ok(u8_from_nat8(value))
@@ -205,6 +194,17 @@ impl IntoValue for Vec<Value> {
     }
 }
 
+impl FromValue for () {
+    unsafe fn from_value(_value: Value, _mem: &mut impl Memory) -> MotokoResult<Self> {
+        Ok(())
+    }
+}
+impl IntoValue for () {
+    unsafe fn into_value(self, _mem: &mut impl Memory) -> MotokoResult<Value> {
+        Ok(unit())
+    }
+}
+
 impl<A: FromValue, B: FromValue> FromValue for (A, B) {
     unsafe fn from_value(value: Value, mem: &mut impl Memory) -> MotokoResult<Self> {
         match value.tag() {
@@ -224,7 +224,7 @@ impl<A: IntoValue, B: IntoValue> IntoValue for (A, B) {
     unsafe fn into_value(self, mem: &mut impl Memory) -> MotokoResult<Value> {
         let value = alloc_array(mem, 2);
         let array = value.as_array();
-        let mut dest = array.payload_addr();
+        let dest = array.payload_addr();
         *dest = self.0.into_value(mem)?;
         *(dest.add(1)) = self.1.into_value(mem)?;
         Ok(allocation_barrier(value))
