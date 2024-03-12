@@ -149,6 +149,24 @@ impl IntoValue for i64 {
     }
 }
 
+impl FromValue for bool {
+    unsafe fn from_value(value: Value, _mem: &mut impl Memory) -> MotokoResult<Self> {
+        // Do we want a function in `compile.ml` here?
+        let raw_value = value.get_raw();
+        assert!(
+            raw_value == 0 || raw_value == 1,
+            "Unexpected boolean value: {:b}",
+            raw_value
+        );
+        Ok(raw_value != 0)
+    }
+}
+impl IntoValue for bool {
+    unsafe fn into_value(self, _mem: &mut impl Memory) -> MotokoResult<Value> {
+        Ok(Value::from_raw(self as u32))
+    }
+}
+
 impl FromValue for BlobVec {
     unsafe fn from_value(value: Value, _mem: &mut impl Memory) -> MotokoResult<Self> {
         match value.tag() {
@@ -278,6 +296,11 @@ unsafe fn manual_alloc(#[memory] mem: &mut impl Memory) -> Value {
 #[motoko]
 unsafe fn div_rem(a: u32, b: u32) -> (u32, u32) {
     (a / b, a % b)
+}
+
+#[motoko]
+unsafe fn bool_swap(a: bool, b: bool) -> (bool, bool) {
+    (b, a)
 }
 
 // [external-codegen]
