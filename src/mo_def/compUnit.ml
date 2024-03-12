@@ -37,7 +37,7 @@ let comp_unit_of_prog as_lib (prog : prog) : comp_unit =
     (* terminal expressions *)
     | [{it = ExpD ({it = ObjBlockE ({it = Type.Module; _}, _t, fields); _} as e); _}] when as_lib ->
       finish imports { it = ModuleU (None, fields); note = e.note; at = e.at }
-    | [{it = ExpD e; _} ] when is_actor_def e ->
+    | [{it = ExpD e; _}] when is_actor_def e ->
       let fields, note, at = as_actor_def e in
       finish imports { it = ActorU (None, fields); note; at }
     | [{it = ClassD (sp, tid, tbs, p, typ_ann, {it = Type.Actor;_}, self_id, fields); _} as d] ->
