@@ -42,11 +42,14 @@ data and leave the inputs unchanged, while creating a new identity.
 ## Experimental aliasing and prototype objects
 
 There is an experimental feature in the mix that we should mention for the sake of completeness. When invoking the compiler with the flag
-`--experimental_field_aliasing`
+`--experimental_field_aliasing`, additionally `var` fields can be contained in the records that are joined. The identities of the mutable
+cells that hold the vales are preserved in the process, so that possible methods along them keep referencing those.
 
+This (extended) semantics allows to upgrade objects with new methods without rendering the old methods useless:
 
-.... TBW
-
+``` motoko
+TBW
+```
 
 ## Dropping fields
 
