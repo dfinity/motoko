@@ -50,7 +50,7 @@ An actor that fails to declare system field `inspect` will simply accept all ing
 
 :::danger
 
-System function `inspect` should **not** be used for definitive access control. This is because `inspect` is executed by a single replica, without full consensus, and its result could be spoofed by a malicious boundary node. Reliable access control checks can only be performed within the `shared` functions guarded by `inspect`.
+System function `inspect` should **not** be used for definitive access control. This is because `inspect` is executed by a single replica, without full consensus, and its result could be spoofed by a malicious boundary node. Also `inspect` is not invoked for inter-canister calls. Reliable access control checks can only be performed within the `shared` functions guarded by `inspect`.
 
 :::
 
