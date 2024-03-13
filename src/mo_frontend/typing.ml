@@ -2512,8 +2512,14 @@ and infer_block_exps env decs : T.typ =
 and infer_dec env dec : T.typ =
   let t =
   match dec.it with
-  | ExpD exp
-  | LetD (_, exp, None) -> infer_exp env exp
+  | ExpD exp -> infer_exp env exp
+  | LetD (pat, exp, None) -> 
+    (* For developer convenience, ignore top-level actor identifier in unused detection. *)
+    (if env.in_prog && CompUnit.is_actor_def exp then
+      match pat.it with
+      | VarP id -> use_identifier env id.it
+      | _ -> ());
+    infer_exp env exp
   | LetD (_, exp, Some fail) ->
     if not env.pre then
       check_exp env T.Non fail;
