@@ -1,7 +1,6 @@
+// repro for issue-4418
 actor {
   public shared func a() : async () {
-    let a = actor (await async { "" }) : actor {};
-    // let t = await async {};let a = actor (t) : actor {}; works
-
+    ignore actor (await async { "" }) : actor {}; // crashed compiler with effect error
   };
-}
+};
