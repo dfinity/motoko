@@ -4,4 +4,4 @@ actor {
     // let t = await async {};let a = actor (t) : actor {}; works
 
   };
-};
+}
