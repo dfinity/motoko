@@ -1,13 +1,13 @@
 import { debugPrint; setTimer } = "mo:⛔";
 
-class <system>() {
+class C<system>() {
 
     func indirect<system>() {
         ignore setTimer<system>(0, false, func () : async () { debugPrint "YEPYEP!" });
     };
-    
+
     ignore setTimer<system>(0, false, func () : async () { debugPrint "YEP!" });
-    indirect<system>()
+    indirect<system>();
 }
 
 //SKIP run

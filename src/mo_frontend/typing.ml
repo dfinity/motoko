@@ -817,7 +817,7 @@ and infer_inst env sort tbs typs t_ret at =
          | _ ->
           local_error env at "M0197"
             "`system` capability required, but not available\n (need an enclosing async expression or function body or explicit `system` type parameter)";
-           (T.Con(C.bogus_cap, [])::ts, at::ats)
+          (T.Con(C.bogus_cap, [])::ts, at::ats)
        end
      | C.(AwaitCap c | AsyncCap c) when T.(sort = Shared Query || sort = Shared Write || sort = Local) ->
         (T.Con(c, [])::ts, at::ats)
@@ -2775,12 +2775,28 @@ and infer_dec_typdecs env dec : Scope.t =
     let cs, tbs, te, ce = check_typ_binds {env with pre = true} binds in
     let env' = adjoin_typs (adjoin_vals {env with pre = true} ve0) te ce in
     let _, ve = infer_pat env' pat in
+    let in_actor = obj_sort.it = T.Actor in
+    let sys_cap = match tbs with
+        | T.{sort = Scope; _} :: _ -> true
+        | _ -> false in
     let tbs', cs' =
-      if obj_sort.it = T.Actor then
+      if sys_cap then
         List.tl tbs, List.tl cs
       else tbs, cs in
+    if in_actor then assert sys_cap;
+    let cs' = if sys_cap then List.tl cs else cs in
     let self_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) cs') in
-    let env'' = add_val (adjoin_vals env' ve) self_id.it self_typ self_id.at in
+    let env'' =
+     { (add_val (adjoin_vals env' ve) self_id.it self_typ self_id.at) with
+          labs = T.Env.empty;
+          rets = None;
+          async =
+            if sys_cap then
+              C.SystemCap  (if in_actor then C.top_cap else List.hd cs)
+            else
+              C.NullCap;
+          in_actor}
+    in
     let t = infer_obj { env'' with check_unused = false } obj_sort.it dec_fields dec.at in
     let k = T.Def (T.close_binds cs' tbs', T.close cs' t) in
     check_closed env id k dec.at;
