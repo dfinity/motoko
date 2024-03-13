@@ -1,2 +1,0 @@
-Ill-typed intermediate code after Desugaring (use -v to see dumped IR):
-issue-4418.mo:3.13-3.39: IR type error [M0000], inferred effect not a subtype of expected effect
