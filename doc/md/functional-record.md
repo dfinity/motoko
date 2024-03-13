@@ -2,14 +2,44 @@
 
 Often times the need arises to build objects/records from exististing ones by combining them (possibly with modified filed contents), or simply adding new fields. _Functional record updates_ fill in this use case.
 
-To give an example, database-like canisters frequently partition data into separate tables (e.g. to improve sharing), but 
+To give an example, database-like canisters frequently partition data into separate tables (e.g. to improve sharing), but intend to present the data in a consolidated (flattened) manner to the user. Thus the query in the Motoko source might look like this:
 
 
+``` motoko
+type Product = { id : Blob; description : Text; dose : Nat, drug : Text };
+type Producer = { ... };
+type Retrieved = { version : Nat; time : Timestamp };
+
+public query func medicineItem(id : Blob) : async (Product and Producer and Retrieved) {
+  let products : [Product and { producer : Producer }] = tables.products;
+  let product = findProductById(products, id);
+  let producer = findProducerById(tables.producers, product.producer);
+
+  { product and producer with version = tables.version; time = Time.now() }
+};
+```
+
+Here we have a sketch of a `query` that internally first obtains a product by Id and then proceeds to obtain the producer by its foreign key.
+Finally the relevant information is joined to a monolithic record, adding two dynamic fields in the process.
+
+Let's dissect the syntax for building the final record. The part following the keyword `with` is familiar from the way how we build records from individual fields alone. Before the `with` comes a non-empty list of record-typed expressions joined by the `and` keyword.
+
+Note that we have an analogous joining of record types with the (type-level) `and`, and they similarly ease the modularisation of the type
+annotations.
+
+The sequence of field definitions following `with` also serves as a way to disambiguate possible field name conflicts that can arise from
+the records being merged.
+
+In summary, the `and-with` syntax for record formation is just a compact way of spelling out each field's value in turn.
+
+## Contrasting with mutation of `var` fields
 
 Note that this is something entirely different than modifying a pre-existing record with a `var`-field in-place. Destructively
 modifying `var` fields will preserve the object's identity, i.e. holders of a reference to the object/record will be able to observe
 the change if the field's value (e.g. by comparison with a previously saved value). Functional record updates OTOH are working with immutable
 data and leave the inputs unchanged, while creating a new identity.
+
+## Experimental aliasing and prototype objects
 
 There is an experimental feature in the mix that we should mention for the sake of completeness. When invoking the compiler with the flag
 `--experimental_field_aliasing`
@@ -18,33 +48,11 @@ There is an experimental feature in the mix that we should mention for the sake 
 .... TBW
 
 
+## Dropping fields
 
-The most general pattern matching construct is `switch`, and `if-else` is a special case of it when the value that we match on is a `Bool`. Similarly, one can consider `let` with a pattern to be a special `switch` with one arm and which is trapping when that match fails. In this section we'll describe the `let-else` construct, which allows one to customise the failure mode.
+You might wonder how specific fields can be dropped. Due to the fact that records with added fields become subtypes, explicitly annotating a
+record with a supertype (that doesn't mention a specific field) will remove access to undesired fields.
 
-Consider a function written as follows:
+## Further reading
 
-``` motoko
-func binaryDigit(digit : Char) : ?Nat32 {
-  let '0' or '1' = digit else return null;
-  ?(Char.toNat32 digit - Char.toNat32 '0')
-};
-```
-
-Here the first thing the function does is to test its argument against a pattern and return early when the
-matching fails. In the opposite case the result computation can proceed.
-
-Note that writing the function in this style doesn't nest the handling of the failure case into one arm of
-a `switch` expression, which can sometimes improve readability by eliminating the so-called
-(_pyramid of doom_)[https://en.wikipedia.org/wiki/Pyramid_of_doom_(programming)].
-
-Naturally, all other features (not shown above) of the pattern-matiching `let` declaration are available in `let-else`,
-such as destructuring of values and binding of several variables, but the `else` portion is only sensible when the pattern
-matching is _refutable_ (i.e. can fail).
-
-A special condition the `else` part must satisfy is that it must change the control flow of the execution sequence,
-i.e. it must divert the execution from arriving at code that syntactically follows the `let`. In terms of the type system
-this condition is checked by the requirement that the expression constituting the `else` part must have type `None`. There
-is a great variety of expressions that fall into this category, such as jump-like expressions (`throw`, `break`, `continue`),
-function `return`, and function calls with `None`-typed result (i.e. calls to functions that never return a value).
-
-See [here](language-manual.md#handling-pattern-match-failures) for more details.
+See [here](language-manual.md#object-combination-extension) for more details.
