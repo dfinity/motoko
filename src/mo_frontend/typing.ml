@@ -2514,8 +2514,8 @@ and infer_dec env dec : T.typ =
   match dec.it with
   | ExpD exp -> infer_exp env exp
   | LetD (pat, exp, None) -> 
-    (* For developer convenience, ignore top-level actor identifier in unused detection. *)
-    (if env.in_prog && CompUnit.is_actor_def exp then
+    (* For developer convenience, ignore top-level actor and module identifiers in unused detection. *)
+    (if env.in_prog && (CompUnit.is_actor_def exp || CompUnit.is_module_def exp) then
       match pat.it with
       | VarP id -> use_identifier env id.it
       | _ -> ());
