@@ -2529,6 +2529,8 @@ and infer_dec env dec : T.typ =
       let cs, tbs, te, ce = check_typ_binds env typ_binds in
       let env' = adjoin_typs env te ce in
       let in_actor = obj_sort.it = T.Actor in
+      (* Top-level actor class identifier is implicitly public and thus considered used. *)
+      if env.in_prog && in_actor then use_identifier env id.it;
       let t_pat, ve =
         infer_pat_exhaustive (if in_actor then error else warn) env' pat
       in
