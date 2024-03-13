@@ -115,4 +115,4 @@ debug.print: 37 37
 debug.print: 38 38
 debug.print: 39 39
 ingress Completed: Reply: 0x4449444c0000
-ingress Err: IC0504: Missing upgrade option: Enhanced orthogonal persistence requires the `keep_main_memory` upgrade option.
+ingress Err: IC0504: Missing upgrade option: Enhanced orthogonal persistence requires the `wasm_memory_persistence` upgrade option.
