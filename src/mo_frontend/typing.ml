@@ -106,6 +106,10 @@ let compare_unused_warning first second =
 
 let sorted_unused_warnings list = List.sort compare_unused_warning list
 
+let pattern_field_context pf = match pf.it with
+  | { id; pat = { it = VarP pat_id; _ } } when id = pat_id -> Scope.Decomposition
+  | _ -> Scope.Declaration
+
 (* Error bookkeeping *)
 
 exception Recover
@@ -1955,7 +1959,7 @@ and infer_cases env t_pat t cases : T.typ =
 
 and infer_case env t_pat t case =
   let {pat; exp} = case.it in
-  let ve = check_pat env t_pat pat in
+  let ve = check_pat env t_pat pat Scope.Declaration in
   let initial_usage = enter_scope env in
   let t' = recover_with T.Non (infer_exp (adjoin_vals env ve)) exp in
   leave_scope env ve initial_usage;
@@ -1973,7 +1977,7 @@ and check_cases env t_pat t cases =
 
 and check_case env t_pat t case =
   let {pat; exp} = case.it in
-  let ve = check_pat env t_pat pat in
+  let ve = check_pat env t_pat pat Scope.Declaration in
   recover (check_exp (adjoin_vals env ve) t) exp
 
 and inconsistent t ts =
@@ -2039,7 +2043,7 @@ and infer_pat' env pat : T.typ * Scope.val_env =
     t, T.Env.merge (fun _ -> Lib.Option.map2 T.lub) ve1 ve2*)
   | AnnotP (pat1, typ) ->
     let t = check_typ env typ in
-    t, check_pat env t pat1
+    t, check_pat env t pat1 Scope.Declaration
   | ParP pat1 ->
     infer_pat env pat1
 
@@ -2084,26 +2088,26 @@ and check_class_shared_pat env shared_pat obj_sort : Scope.val_env =
 
 
 and check_pat_exhaustive warnOrError env t pat : Scope.val_env =
-  let ve = check_pat env t pat in
+  let ve = check_pat env t pat Scope.Declaration in
   if not env.pre then
     coverage_pat warnOrError env pat t;
   ve
 
-and check_pat env t pat : Scope.val_env =
+and check_pat env t pat context : Scope.val_env =
   assert (pat.note = T.Pre);
   if t = T.Pre then snd (infer_pat env pat) else
   let t' = T.normalize t in
-  let ve = check_pat' env t' pat in
+  let ve = check_pat' env t' pat context in
   if not env.pre then pat.note <- t';
   ve
 
-and check_pat' env t pat : Scope.val_env =
+and check_pat' env t pat context : Scope.val_env =
   assert (t <> T.Pre);
   match pat.it with
   | WildP ->
     T.Env.empty
   | VarP id ->
-    T.Env.singleton id.it (t, id.at, Scope.Decomposition)
+    T.Env.singleton id.it (t, id.at, context)
   | LitP lit ->
     if not env.pre then begin
       let t' = if T.eq t T.nat then T.int else t in  (* account for Nat <: Int *)
@@ -2147,7 +2151,7 @@ and check_pat' env t pat : Scope.val_env =
     let t1 = try T.as_opt_sub t with Invalid_argument _ ->
       error env pat.at "M0115" "option pattern cannot consume expected type%a"
         display_typ_expand t
-    in check_pat env t1 pat1
+    in check_pat env t1 pat1 Scope.Declaration
   | TagP (id, pat1) ->
     let t1 =
       try
@@ -2157,10 +2161,10 @@ and check_pat' env t pat : Scope.val_env =
       with Invalid_argument _ ->
         error env pat.at "M0116" "variant pattern cannot consume expected type%a"
           display_typ_expand t
-    in check_pat env t1 pat1
+    in check_pat env t1 pat1 Scope.Declaration
   | AltP (pat1, pat2) ->
-    let ve1 = check_pat env t pat1 in
-    let ve2 = check_pat env t pat2 in
+    let ve1 = check_pat env t pat1 Scope.Declaration in
+    let ve2 = check_pat env t pat2 Scope.Declaration in
     if T.Env.keys ve1 <> T.Env.keys ve2 then
       error env pat.at "M0189" "different set of bindings in pattern alternatives";
     T.Env.(iter (fun k (t1, _, _) -> 
@@ -2176,9 +2180,9 @@ and check_pat' env t pat : Scope.val_env =
         "pattern of type%a\ncannot consume expected type%a"
         display_typ_expand t'
         display_typ_expand t;
-    check_pat env t' pat1
+    check_pat env t' pat1 Scope.Declaration
   | ParP pat1 ->
-    check_pat env t pat1
+    check_pat env t pat1 Scope.Declaration
 
 (*
 Consider:
@@ -2221,7 +2225,7 @@ and check_pats env ts pats ve at : Scope.val_env =
     match ts, pats with
     | [], [] -> ve
     | t::ts', pat::pats' ->
-        let ve1 = check_pat env t pat in
+        let ve1 = check_pat env t pat Scope.Declaration in
         let ve' = disjoint_union env at "M0017" "duplicate binding for %s in pattern" ve ve1 in
         go ts' pats' ve'
     | _, _ ->
@@ -2248,7 +2252,8 @@ and check_pat_fields env t tfs pfs ve at : Scope.val_env =
       if T.is_mut typ then
         error env pf.at "M0120" "cannot pattern match mutable field %s" lab;
       Option.iter (warn env pf.at "M0154" "type field %s is deprecated:\n%s" lab) src.T.depr;
-      let ve1 = check_pat env typ pf.it.pat in
+      let context = pattern_field_context pf in
+      let ve1 = check_pat env typ pf.it.pat context in
       let ve' =
         disjoint_union env at "M0017" "duplicate binding for %s in pattern" ve ve1 in
       match pfs' with
@@ -2718,7 +2723,8 @@ and gather_pat env context ve pat : Scope.val_env =
   | AnnotP (pat1, _) | ParP pat1 -> gather_pat env Scope.Declaration ve pat1
 
 and gather_pat_field env ve pf : Scope.val_env =
-  gather_pat env Scope.Decomposition ve pf.it.pat
+  let context = pattern_field_context pf in
+  gather_pat env context ve pf.it.pat
 
 and gather_id env ve id context : Scope.val_env =
   if T.Env.mem id.it ve then
@@ -2833,13 +2839,13 @@ and infer_dec_valdecs env dec : Scope.t =
         decs obj_scope
     in
     let obj_typ = object_of_scope env obj_sort.it dec_fields obj_scope' at in
-    let _ve = check_pat env obj_typ pat in
+    let _ve = check_pat env obj_typ pat Scope.Declaration in
     Scope.{empty with val_env = T.Env.singleton id.it (obj_typ, id.at, Scope.Declaration)}
   | LetD (pat, exp, fail) ->
     let t = infer_exp {env with pre = true; check_unused = false} exp in
     let ve' = match fail with
       | None -> check_pat_exhaustive (if is_import dec then local_error else warn) env t pat
-      | Some _ -> check_pat env t pat
+      | Some _ -> check_pat env t pat Scope.Declaration
     in
     Scope.{empty with val_env = ve'}
   | VarD (id, exp) ->
