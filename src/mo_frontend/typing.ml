@@ -2793,7 +2793,7 @@ and infer_dec_typdecs env dec : Scope.t =
           in_actor}
     in
     let t = infer_obj { env'' with check_unused = false } obj_sort.it dec_fields dec.at in
-    let k = T.Def (T.close_binds cs class_tbs, T.close cs t) in
+    let k = T.Def (T.close_binds class_cs class_tbs, T.close class_cs t) in
     check_closed env id k dec.at;
     Scope.{ empty with
       typ_env = T.Env.singleton id.it c;
