@@ -1,5 +1,9 @@
 # Motoko compiler changelog
 
+* motoko (`moc`)
+
+  * bugfix: Fix crash compiling actor reference containing an await (#4418, #4450).
+
 ## 0.11.0 (2024-03-05)
 
 * motoko (`moc`)
