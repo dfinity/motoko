@@ -108,6 +108,7 @@ branch to the `next-moc` branch.
   to the new released version:
   `perl -pi -e "s/moc_version: \"0\.11\.\\d+\"/moc_version: \"0.11.$MOC_MINOR\"/g; s/moc = \"0\.11\.\\d+\"/moc = \"0.11.$MOC_MINOR\"/g; s/version = \"0\.11\.\\d+\"/version = \"0.11.$MOC_MINOR\"/g" .github/workflows/ci.yml .github/workflows/package-set.yml mops.toml`
 * `git add .github/ CHANGELOG.md mops.toml && git commit -m "Motoko 0.11."$MOC_MINOR`
+* Revise `CHANGELOG.md`, adding a top entry for the release
 * You can `git push` now
 
 Make a PR off of that branch and merge it using a _normal merge_ (not
