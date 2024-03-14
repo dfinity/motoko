@@ -1,4 +1,0 @@
-issue-4447.mo:10.5-10.23: type error [M0197], `system` capability required, but not available
- (need an enclosing async expression or function body or explicit `system` type parameter)
-issue-4447.mo:10.5-10.23: type error [M0197], `system` capability required, but not available
- (need an enclosing async expression or function body or explicit `system` type parameter)
