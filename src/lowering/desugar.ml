@@ -748,7 +748,6 @@ and dec' at n = function
     let rng_typ =
       match fun_typ with
       | T.Func(_, _, bds, dom, [rng]) ->
-         (*        Printf.printf "type: %s ins: %s" (Type.string_of_typ fun_typ) (String.concat ";" (List.map Type.string_of_typ inst)); *)
         assert(List.length inst = List.length bds);
         T.promote (T.open_ inst rng)
       | _ -> assert false
