@@ -2676,8 +2676,9 @@ and gather_dec env scope dec : Scope.t =
     let open Scope in
     if T.Env.mem id.it scope.typ_env then
       error_duplicate env "type " id;
-    let binds' = match dec.it with
-      | ClassD(_, _, _, _, _,  {it = T.Actor; _}, _, _) -> List.tl binds
+    let binds' = match binds with
+      | bind::binds when bind.it.sort.it = T.Scope ->
+        binds
       | _ -> binds
     in
     let pre_tbs = List.map (fun bind ->
@@ -2777,14 +2778,13 @@ and infer_dec_typdecs env dec : Scope.t =
     let _, ve = infer_pat env' pat in
     let in_actor = obj_sort.it = T.Actor in
     let sys_cap = match tbs with
-        | T.{sort = Scope; _} :: _ -> true
-        | _ -> false in
+      | T.{sort = Scope; _} :: _ -> true
+      | _ -> false in
     let tbs', cs' =
       if sys_cap then
         List.tl tbs, List.tl cs
       else tbs, cs in
     if in_actor then assert sys_cap;
-    let cs' = if sys_cap then List.tl cs else cs in
     let self_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) cs') in
     let env'' =
      { (add_val (adjoin_vals env' ve) self_id.it self_typ self_id.at) with
@@ -2798,7 +2798,9 @@ and infer_dec_typdecs env dec : Scope.t =
           in_actor}
     in
     let t = infer_obj { env'' with check_unused = false } obj_sort.it dec_fields dec.at in
-    let k = T.Def (T.close_binds cs' tbs', T.close cs' t) in
+    let k = T.Def (T.close_binds cs tbs', T.close cs t) in
+(*     let (s1,s2,s3) = (Type.strings_of_kind k)in
+    Printf.printf "def %s, %s, %s" s1 s2 s3; *)
     check_closed env id k dec.at;
     Scope.{ empty with
       typ_env = T.Env.singleton id.it c;
@@ -2879,12 +2881,19 @@ and infer_dec_valdecs env dec : Scope.t =
     let c = T.Env.find id.it env.typs in
     let t1, _ = infer_pat {env' with pre = true} pat in
     let ts1 = match pat.it with TupP _ -> T.seq_of_tup t1 | _ -> [t1] in
+    let sys_cap = match tbs with
+      | T.{sort = Scope; _} :: _ -> true
+      | _ -> false in
+    let tbs', cs' =
+      if sys_cap then
+        List.tl tbs, List.tl cs
+      else tbs, cs in
     let t2 =
       if obj_sort.it = T.Actor then
         T.Async (T.Fut, T.Con (List.hd cs, []),
-          T.Con (c, List.map (fun c -> T.Con (c, [])) (List.tl cs)))
+          T.Con (c, List.map (fun c -> T.Con (c, [])) cs'))
       else
-        T.Con (c, List.map (fun c -> T.Con (c, [])) cs)
+        T.Con (c, List.map (fun c -> T.Con (c, [])) cs')
     in
     let t = T.Func (T.Local, T.Returns, T.close_binds cs tbs,
       List.map (T.close cs) ts1,
