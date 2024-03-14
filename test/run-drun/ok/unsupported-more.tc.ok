@@ -1,2 +1,0 @@
-unsupported-more.mo:2.7-2.14: warning [M0194], unused identifier Counter (delete or rename to wildcard `_` or `_Counter`)
-unsupported-more.mo:8.7-8.21: warning [M0194], unused identifier BadSecondActor (delete or rename to wildcard `_` or `_BadSecondActor`)
