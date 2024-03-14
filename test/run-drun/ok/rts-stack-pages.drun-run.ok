@@ -11,7 +11,5 @@ debug.print: {heap_MB = 576}
 debug.print: {heap_MB = 640}
 debug.print: {heap_MB = 704}
 debug.print: serializing
-thread 'main' panicked at rs/drun/src/lib.rs:394:5:
-Ingress message did not finish executing within 10000 batches, panicking
-note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
 debug.print: serialized
+ingress Err: IC0502: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped: heap out of bounds
