@@ -33,7 +33,7 @@ let print_ce =
   )
 
 let print_stat_ve =
-  Type.Env.iter (fun x (t, _) ->
+  Type.Env.iter (fun x (t, _, _) ->
     let t' = Type.as_immut t in
     Format.printf "@[<hv 2>%s %s :@ %a@]@."
       (if t == t' then "let" else "var") x
@@ -43,7 +43,7 @@ let print_stat_ve =
 let print_dyn_ve scope =
   Value.Env.iter (fun x d ->
     let open Type in
-    let (t, _) = Env.find x scope.Scope.val_env in
+    let (t, _, _) = Env.find x scope.Scope.val_env in
     let t' = as_immut t in
     match normalize t' with
     | Obj (Module, fs) ->

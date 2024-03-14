@@ -20,13 +20,13 @@ type avl = Available | Unavailable
 
 type lab_env = T.typ T.Env.t
 type ret_env = T.typ option
-type val_env  = (T.typ * Source.region * avl) T.Env.t
+type val_env  = (T.typ * Source.region * Scope.context * avl) T.Env.t
 
 (* separate maps for values and types; entries only for _public_ elements *)
 type visibility_src = {depr : string option; id_region : Source.region; field_region : Source.region}
 type visibility_env = visibility_src T.Env.t * visibility_src T.Env.t
 
-let available env = T.Env.map (fun (ty, at) -> (ty, at, Available)) env
+let available env = T.Env.map (fun (ty, at, context) -> (ty, at, context, Available)) env
 
 let initial_scope =
   { Scope.empty with
@@ -34,7 +34,7 @@ let initial_scope =
     Scope.con_env = T.ConSet.singleton C.top_cap;
   }
 
-type unused_warnings = (string * Source.region) List.t
+type unused_warnings = (string * Source.region * Scope.context) List.t
 
 type env =
   { vals : val_env;
@@ -95,8 +95,8 @@ let add_unused_warning env warning =
   else ()
 
 let compare_unused_warning first second =
-  let (first_id, {left = first_left; right = first_right}) = first in
-  let (second_id, {left = second_left; right = second_right}) = second in
+  let (first_id, {left = first_left; right = first_right}, _) = first in
+  let (second_id, {left = second_left; right = second_right}, _) = second in
   match compare first_left second_left with
   | 0 ->
     (match compare first_right second_right with
@@ -186,7 +186,10 @@ let _warn_in modes env at code fmt =
 (* Unused identifier detection *)
 
 let emit_unused_warnings env =
-  let emit (id, region) = warn env region "M0194" "unused identifier %s (delete or rename to wildcard `_` or `_%s`)" id id in
+  let emit (id, region, context) = match context with
+    | Scope.Declaration -> warn env region "M0194" "unused identifier %s (delete or rename to wildcard `_` or `_%s`)" id id
+    | Scope.Decomposition -> warn env region "M0198" "unused field %s in object pattern (delete or rewrite as `%s = _`)" id id
+  in
   let list = sorted_unused_warnings !(env.unused_warnings) in
   List.iter emit list
 
@@ -199,9 +202,9 @@ let ignore_warning_for_id id =
 
 let detect_unused env inner_identifiers =
   if env.check_unused then
-    T.Env.iter (fun id (_, at) ->
+    T.Env.iter (fun id (_, at, context) ->
       if (not (ignore_warning_for_id id)) && (is_unused_identifier env id) then
-        add_unused_warning env (id, at)
+        add_unused_warning env (id, at, context)
     ) inner_identifiers
 
 let enter_scope env : S.t =
@@ -217,7 +220,7 @@ let leave_scope env inner_identifiers initial_usage =
 (* Context extension *)
 
 let add_lab env x t = {env with labs = T.Env.add x t env.labs}
-let add_val env x t at = {env with vals = T.Env.add x (t, at, Available) env.vals}
+let add_val env x t at context = {env with vals = T.Env.add x (t, at, context, Available) env.vals}
 
 let add_typs env xs cs =
   { env with
@@ -359,10 +362,10 @@ and check_obj_path' env path : T.typ =
   | IdH id ->
     use_identifier env id.it;
     (match T.Env.find_opt id.it env.vals with
-     | Some (T.Pre, _, _) ->
+     | Some (T.Pre, _, _, _) ->
        error env id.at "M0024" "cannot infer type of forward variable reference %s" id.it
-     | Some (t, _, Available) -> t
-     | Some (t, _, Unavailable) ->
+     | Some (t, _, _, Available) -> t
+     | Some (t, _, _, Unavailable) ->
          error env id.at "M0025" "unavailable variable %s" id.it
      | None -> error env id.at "M0026" "unbound variable %s" id.it
     )
@@ -1101,13 +1104,13 @@ and infer_exp'' env exp : T.typ =
   | VarE id ->
     use_identifier env id.it;
     (match T.Env.find_opt id.it env.vals with
-    | Some (T.Pre, _, _) ->
+    | Some (T.Pre, _, _, _) ->
       error env id.at "M0055" "cannot infer type of forward variable %s" id.it;
-    | Some (t, _, Unavailable) ->
+    | Some (t, _, _, Unavailable) ->
       if !Flags.compiled then
         error env id.at "M0056" "variable %s is in scope but not available in compiled code" id.it
       else t
-    | Some (t, _, Available) -> t
+    | Some (t, _, _, Available) -> t
     | None ->
       error env id.at "M0057" "unbound variable %s" id.it
     )
@@ -2100,7 +2103,7 @@ and check_pat' env t pat : Scope.val_env =
   | WildP ->
     T.Env.empty
   | VarP id ->
-    T.Env.singleton id.it (t, id.at)
+    T.Env.singleton id.it (t, id.at, Scope.Decomposition)
   | LitP lit ->
     if not env.pre then begin
       let t' = if T.eq t T.nat then T.int else t in  (* account for Nat <: Int *)
@@ -2160,11 +2163,11 @@ and check_pat' env t pat : Scope.val_env =
     let ve2 = check_pat env t pat2 in
     if T.Env.keys ve1 <> T.Env.keys ve2 then
       error env pat.at "M0189" "different set of bindings in pattern alternatives";
-    T.Env.(iter (fun k (t1, _) -> 
-      let (t2, _) = find k ve2 in
+    T.Env.(iter (fun k (t1, _, _) -> 
+      let (t2, _, _) = find k ve2 in
       warn_lossy_bind_type env pat.at k t1 t2)
     ) ve1;
-    let merge_entries (t1, at1) (t2, at2) = (T.lub t1 t2, at1) in
+    let merge_entries (t1, at1, context1) (t2, at2, context2) = (T.lub t1 t2, at1, context1) in
     T.Env.merge (fun _ -> Lib.Option.map2 merge_entries) ve1 ve2
   | AnnotP (pat1, typ) ->
     let t' = check_typ env typ in
@@ -2313,7 +2316,7 @@ and object_of_scope env sort dec_fields scope at =
   in
   let tfs' =
     T.Env.fold
-      (fun id (t, _) tfs ->
+      (fun id (t, _, _) tfs ->
         match T.Env.find_opt id pub_val with
         | Some src -> T.{lab = id; typ = t; src = {depr = src.depr; region = src.field_region}}::tfs
         | _ -> tfs
@@ -2405,7 +2408,7 @@ and check_system_fields env sort scope tfs dec_fields =
           (* TBR why does Stable.md require this to be a manifest function, not just any expression of appropriate type?  *)
           if vis = System then
             begin
-              let (t1, _) = T.Env.find id.it scope.Scope.val_env in
+              let (t1, _, _) = T.Env.find id.it scope.Scope.val_env in
               if not (T.sub t1 t) then
                 local_error env df.at "M0127" "system function %s is declared with type%a\ninstead of expected type%a" id.it
                    display_typ t1
@@ -2436,7 +2439,7 @@ and check_stab env sort scope dec_fields =
   let check_stable id at =
     match T.Env.find_opt id scope.Scope.val_env with
     | None -> assert false
-    | Some (t, _) ->
+    | Some (t, _, _) ->
       let t1 = T.as_immut t in
       if not (T.stable t1) then
         local_error env at "M0131"
@@ -2454,7 +2457,7 @@ and check_stab env sort scope dec_fields =
       check_stable id.it id.at;
       [id]
     | T.Actor, Some {it = Stable; _}, LetD (pat, _, _) when stable_pat pat ->
-      let ids = T.Env.keys (gather_pat env T.Env.empty pat) in
+      let ids = T.Env.keys (gather_pat env Scope.Declaration T.Env.empty pat) in
       List.iter (fun id -> check_stable id pat.at) ids;
       List.map (fun id -> {it = id; at = pat.at; note = ()}) ids;
     | T.Actor, Some {it = Flexible; _} , (VarD _ | LetD _) -> []
@@ -2479,8 +2482,8 @@ and infer_block env decs at check_unused : T.typ * Scope.scope =
       List.fold_left (fun ve' dec ->
         match dec.it with
         | ClassD(_, id, _, _, _, { it = T.Actor; _}, _, _) ->
-          T.Env.mapi (fun id' (typ, at, avl) ->
-            (typ, at, if id' = id.it then Unavailable else avl)) ve'
+          T.Env.mapi (fun id' (typ, at, context, avl) ->
+            (typ, at, context, if id' = id.it then Unavailable else avl)) ve'
         | _ -> ve') env'.vals decs
     | _ -> env'.vals
   in
@@ -2522,7 +2525,7 @@ and infer_dec env dec : T.typ =
     if not env.pre then ignore (infer_exp env exp);
     T.unit
   | ClassD (shared_pat, id, typ_binds, pat, typ_opt, obj_sort, self_id, dec_fields) ->
-    let (t, _, _) = T.Env.find id.it env.vals in
+    let (t, _, _, _) = T.Env.find id.it env.vals in
     if not env.pre then begin
       let c = T.Env.find id.it env.typs in
       let ve0 = check_class_shared_pat env shared_pat obj_sort in
@@ -2544,7 +2547,7 @@ and infer_dec env dec : T.typ =
       let cs' = if sys_cap then List.tl cs else cs in
       let self_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) cs') in
       let env''' =
-        { (add_val env'' self_id.it self_typ self_id.at) with
+        { (add_val env'' self_id.it self_typ self_id.at Scope.Declaration) with
           labs = T.Env.empty;
           rets = None;
           async =
@@ -2622,7 +2625,7 @@ and infer_val_path env exp : T.typ option =
     Some (check_import env exp.at f ri)
   | VarE id ->
     (match T.Env.find_opt id.it env.vals with (* TBR: return None for Unavailable? *)
-     | Some (t, _, _) -> Some t
+     | Some (t, _, _, _) -> Some t
      | _ -> None)
   | DotE (path, id) ->
     (match infer_val_path env path with
@@ -2662,7 +2665,7 @@ and gather_dec env scope dec : Scope.t =
     if T.Env.mem id.it scope.val_env then
       error_duplicate env "" id;
     let scope' = gather_block_decs env decs in
-    let ve' = T.Env.add id.it ((object_of_scope env obj_sort.it dec_fields scope' at), id.at) scope.val_env in
+    let ve' = T.Env.add id.it ((object_of_scope env obj_sort.it dec_fields scope' at), id.at, Scope.Declaration) scope.val_env in
     let obj_env = T.Env.add id.it scope' scope.obj_env in
     { val_env = ve';
       typ_env = scope.typ_env;
@@ -2670,8 +2673,8 @@ and gather_dec env scope dec : Scope.t =
       con_env = scope.con_env;
       obj_env = obj_env
     }
-  | LetD (pat, _, _) -> Scope.adjoin_val_env scope (gather_pat env scope.Scope.val_env pat)
-  | VarD (id, _) -> Scope.adjoin_val_env scope (gather_id env scope.Scope.val_env id)
+  | LetD (pat, _, _) -> Scope.adjoin_val_env scope (gather_pat env Scope.Declaration scope.Scope.val_env pat)
+  | VarD (id, _) -> Scope.adjoin_val_env scope (gather_id env scope.Scope.val_env id Scope.Declaration)
   | TypD (id, binds, _) | ClassD (_, id, binds, _, _, _, _, _) ->
     let open Scope in
     if T.Env.mem id.it scope.typ_env then
@@ -2695,7 +2698,7 @@ and gather_dec env scope dec : Scope.t =
       | ClassD _ ->
         if T.Env.mem id.it scope.val_env then
           error_duplicate env "" id;
-        T.Env.add id.it (T.Pre, id.at) scope.val_env
+        T.Env.add id.it (T.Pre, id.at, Scope.Declaration) scope.val_env
       | _ -> scope.val_env
     in
     { val_env;
@@ -2705,22 +2708,22 @@ and gather_dec env scope dec : Scope.t =
       obj_env = scope.obj_env;
     }
 
-and gather_pat env ve pat : Scope.val_env =
+and gather_pat env context ve pat : Scope.val_env =
   match pat.it with
   | WildP | LitP _ | SignP _ -> ve
-  | VarP id -> gather_id env ve id
-  | TupP pats -> List.fold_left (gather_pat env) ve pats
+  | VarP id -> gather_id env ve id context
+  | TupP pats -> List.fold_left (gather_pat env Scope.Declaration) ve pats
   | ObjP pfs -> List.fold_left (gather_pat_field env) ve pfs
   | TagP (_, pat1) | AltP (pat1, _) | OptP pat1
-  | AnnotP (pat1, _) | ParP pat1 -> gather_pat env ve pat1
+  | AnnotP (pat1, _) | ParP pat1 -> gather_pat env Scope.Declaration ve pat1
 
 and gather_pat_field env ve pf : Scope.val_env =
-  gather_pat env ve pf.it.pat
+  gather_pat env Scope.Decomposition ve pf.it.pat
 
-and gather_id env ve id : Scope.val_env =
+and gather_id env ve id context : Scope.val_env =
   if T.Env.mem id.it ve then
     error_duplicate env "" id;
-  T.Env.add id.it (T.Pre, id.at) ve
+  T.Env.add id.it (T.Pre, id.at, context) ve
 
 (* Pass 2 and 3: infer type definitions *)
 and infer_block_typdecs env decs : Scope.t =
@@ -2747,7 +2750,7 @@ and infer_dec_typdecs env dec : Scope.t =
     let obj_scope = Scope.adjoin scope obj_scope_typs in
     Scope.{ empty with
       con_env = obj_scope.con_env;
-      val_env = T.Env.singleton id.it ((object_of_scope env obj_sort.it dec_fields obj_scope at), id.at);
+      val_env = T.Env.singleton id.it ((object_of_scope env obj_sort.it dec_fields obj_scope at), id.at, Scope.Declaration);
       obj_env = T.Env.singleton id.it obj_scope
     }
   (* TODO: generalize beyond let <id> = <valpath> *)
@@ -2757,8 +2760,8 @@ and infer_dec_typdecs env dec : Scope.t =
      | Some t ->
        let open Scope in
        match T.promote t with
-       | T.Obj (_, _) as t' -> { Scope.empty with val_env = T.Env.singleton id.it (t', id.at) }
-       | _ -> { Scope.empty with val_env = T.Env.singleton id.it (T.Pre, id.at) }
+       | T.Obj (_, _) as t' -> { Scope.empty with val_env = T.Env.singleton id.it (t', id.at, Scope.Declaration) }
+       | _ -> { Scope.empty with val_env = T.Env.singleton id.it (T.Pre, id.at, Scope.Declaration) }
     )
   | LetD _ | ExpD _ | VarD _ ->
     Scope.empty
@@ -2780,7 +2783,7 @@ and infer_dec_typdecs env dec : Scope.t =
         List.tl tbs, List.tl cs
       else tbs, cs in
     let self_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) cs') in
-    let env'' = add_val (adjoin_vals env' ve) self_id.it self_typ self_id.at in
+    let env'' = add_val (adjoin_vals env' ve) self_id.it self_typ self_id.at Scope.Declaration in
     let t = infer_obj { env'' with check_unused = false } obj_sort.it dec_fields dec.at in
     let k = T.Def (T.close_binds cs' tbs', T.close cs' t) in
     check_closed env id k dec.at;
@@ -2831,7 +2834,7 @@ and infer_dec_valdecs env dec : Scope.t =
     in
     let obj_typ = object_of_scope env obj_sort.it dec_fields obj_scope' at in
     let _ve = check_pat env obj_typ pat in
-    Scope.{empty with val_env = T.Env.singleton id.it (obj_typ, id.at)}
+    Scope.{empty with val_env = T.Env.singleton id.it (obj_typ, id.at, Scope.Declaration)}
   | LetD (pat, exp, fail) ->
     let t = infer_exp {env with pre = true; check_unused = false} exp in
     let ve' = match fail with
@@ -2841,7 +2844,7 @@ and infer_dec_valdecs env dec : Scope.t =
     Scope.{empty with val_env = ve'}
   | VarD (id, exp) ->
     let t = infer_exp {env with pre = true} exp in
-    Scope.{empty with val_env = T.Env.singleton id.it ((T.Mut t), id.at)}
+    Scope.{empty with val_env = T.Env.singleton id.it ((T.Mut t), id.at, Scope.Declaration)}
   | TypD (id, _, _) ->
     let c = Option.get id.note in
     Scope.{ empty with
@@ -2875,7 +2878,7 @@ and infer_dec_valdecs env dec : Scope.t =
       [T.close cs t2])
     in
     Scope.{ empty with
-      val_env = T.Env.singleton id.it (t, id.at);
+      val_env = T.Env.singleton id.it (t, id.at, Scope.Declaration);
       typ_env = T.Env.singleton id.it c;
       con_env = T.ConSet.singleton c;
     }
