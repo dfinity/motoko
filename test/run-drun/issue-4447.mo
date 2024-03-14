@@ -1,6 +1,6 @@
 import { debugPrint; setTimer } = "mo:⛔";
 
-class C<system>() {
+class _C<system>() {
 
     func indirect<system>() {
         ignore setTimer<system>(0, false, func () : async () { debugPrint "YEPYEP!" });
