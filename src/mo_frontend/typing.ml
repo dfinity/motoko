@@ -558,8 +558,13 @@ and scope_of_env env =
 
 let infer_class_cap env obj_sort (tbs : T.bind list) cs =
   match tbs, cs with
-  | T.{sort = T.Scope; _} :: tbs', sys_c :: cs' ->
-    C.SystemCap (if obj_sort = T.Actor then C.top_cap else sys_c),
+  | T.{sort = T.Scope; _} :: tbs', c :: cs' ->
+    (* HACK:
+       choosing top_cap just to support compilation of actor classes
+       which currently won't have any binding for c
+    *)
+    let c = if obj_sort = T.Actor then C.top_cap else c in
+    C.SystemCap c,
     tbs',
     cs'
   | _ ->
