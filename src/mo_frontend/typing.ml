@@ -20,13 +20,13 @@ type avl = Available | Unavailable
 
 type lab_env = T.typ T.Env.t
 type ret_env = T.typ option
-type val_env  = (T.typ * Source.region * Scope.context * avl) T.Env.t
+type val_env  = (T.typ * Source.region * Scope.val_kind * avl) T.Env.t
 
 (* separate maps for values and types; entries only for _public_ elements *)
 type visibility_src = {depr : string option; id_region : Source.region; field_region : Source.region}
 type visibility_env = visibility_src T.Env.t * visibility_src T.Env.t
 
-let available env = T.Env.map (fun (ty, at, context) -> (ty, at, context, Available)) env
+let available env = T.Env.map (fun (ty, at, kind) -> (ty, at, kind, Available)) env
 
 let initial_scope =
   { Scope.empty with
@@ -34,7 +34,7 @@ let initial_scope =
     Scope.con_env = T.ConSet.singleton C.top_cap;
   }
 
-type unused_warnings = (string * Source.region * Scope.context) List.t
+type unused_warnings = (string * Source.region * Scope.val_kind) List.t
 
 type env =
   { vals : val_env;
@@ -106,8 +106,8 @@ let compare_unused_warning first second =
 
 let sorted_unused_warnings list = List.sort compare_unused_warning list
 
-let pattern_field_context pf = match pf.it with
-  | { id; pat = { it = VarP pat_id; _ } } when id = pat_id -> Scope.Decomposition
+let kind_of_field_pattern pf = match pf.it with
+  | { id; pat = { it = VarP pat_id; _ } } when id = pat_id -> Scope.FieldReference
   | _ -> Scope.Declaration
 
 (* Error bookkeeping *)
@@ -190,9 +190,9 @@ let _warn_in modes env at code fmt =
 (* Unused identifier detection *)
 
 let emit_unused_warnings env =
-  let emit (id, region, context) = match context with
+  let emit (id, region, kind) = match kind with
     | Scope.Declaration -> warn env region "M0194" "unused identifier %s (delete or rename to wildcard `_` or `_%s`)" id id
-    | Scope.Decomposition -> warn env region "M0198" "unused field %s in object pattern (delete or rewrite as `%s = _`)" id id
+    | Scope.FieldReference -> warn env region "M0198" "unused field %s in object pattern (delete or rewrite as `%s = _`)" id id
   in
   let list = sorted_unused_warnings !(env.unused_warnings) in
   List.iter emit list
@@ -206,9 +206,9 @@ let ignore_warning_for_id id =
 
 let detect_unused env inner_identifiers =
   if env.check_unused then
-    T.Env.iter (fun id (_, at, context) ->
+    T.Env.iter (fun id (_, at, kind) ->
       if (not (ignore_warning_for_id id)) && (is_unused_identifier env id) then
-        add_unused_warning env (id, at, context)
+        add_unused_warning env (id, at, kind)
     ) inner_identifiers
 
 let enter_scope env : S.t =
@@ -224,7 +224,7 @@ let leave_scope env inner_identifiers initial_usage =
 (* Context extension *)
 
 let add_lab env x t = {env with labs = T.Env.add x t env.labs}
-let add_val env x t at context = {env with vals = T.Env.add x (t, at, context, Available) env.vals}
+let add_val env x t at kind = {env with vals = T.Env.add x (t, at, kind, Available) env.vals}
 
 let add_typs env xs cs =
   { env with
@@ -2093,21 +2093,21 @@ and check_pat_exhaustive warnOrError env t pat : Scope.val_env =
     coverage_pat warnOrError env pat t;
   ve
 
-and check_pat env t pat context : Scope.val_env =
+and check_pat env t pat val_kind : Scope.val_env =
   assert (pat.note = T.Pre);
   if t = T.Pre then snd (infer_pat env pat) else
   let t' = T.normalize t in
-  let ve = check_pat' env t' pat context in
+  let ve = check_pat' env t' pat val_kind in
   if not env.pre then pat.note <- t';
   ve
 
-and check_pat' env t pat context : Scope.val_env =
+and check_pat' env t pat val_kind : Scope.val_env =
   assert (t <> T.Pre);
   match pat.it with
   | WildP ->
     T.Env.empty
   | VarP id ->
-    T.Env.singleton id.it (t, id.at, context)
+    T.Env.singleton id.it (t, id.at, val_kind)
   | LitP lit ->
     if not env.pre then begin
       let t' = if T.eq t T.nat then T.int else t in  (* account for Nat <: Int *)
@@ -2171,7 +2171,7 @@ and check_pat' env t pat context : Scope.val_env =
       let (t2, _, _) = find k ve2 in
       warn_lossy_bind_type env pat.at k t1 t2)
     ) ve1;
-    let merge_entries (t1, at1, context1) (t2, at2, context2) = (T.lub t1 t2, at1, context1) in
+    let merge_entries (t1, at1, kind1) (t2, at2, kind2) = (T.lub t1 t2, at1, kind1) in
     T.Env.merge (fun _ -> Lib.Option.map2 merge_entries) ve1 ve2
   | AnnotP (pat1, typ) ->
     let t' = check_typ env typ in
@@ -2252,8 +2252,8 @@ and check_pat_fields env t tfs pfs ve at : Scope.val_env =
       if T.is_mut typ then
         error env pf.at "M0120" "cannot pattern match mutable field %s" lab;
       Option.iter (warn env pf.at "M0154" "type field %s is deprecated:\n%s" lab) src.T.depr;
-      let context = pattern_field_context pf in
-      let ve1 = check_pat env typ pf.it.pat context in
+      let val_kind = kind_of_field_pattern pf in
+      let ve1 = check_pat env typ pf.it.pat val_kind in
       let ve' =
         disjoint_union env at "M0017" "duplicate binding for %s in pattern" ve ve1 in
       match pfs' with
@@ -2487,8 +2487,8 @@ and infer_block env decs at check_unused : T.typ * Scope.scope =
       List.fold_left (fun ve' dec ->
         match dec.it with
         | ClassD(_, id, _, _, _, { it = T.Actor; _}, _, _) ->
-          T.Env.mapi (fun id' (typ, at, context, avl) ->
-            (typ, at, context, if id' = id.it then Unavailable else avl)) ve'
+          T.Env.mapi (fun id' (typ, at, kind, avl) ->
+            (typ, at, kind, if id' = id.it then Unavailable else avl)) ve'
         | _ -> ve') env'.vals decs
     | _ -> env'.vals
   in
@@ -2713,23 +2713,23 @@ and gather_dec env scope dec : Scope.t =
       obj_env = scope.obj_env;
     }
 
-and gather_pat env context ve pat : Scope.val_env =
+and gather_pat env val_kind ve pat : Scope.val_env =
   match pat.it with
   | WildP | LitP _ | SignP _ -> ve
-  | VarP id -> gather_id env ve id context
+  | VarP id -> gather_id env ve id val_kind
   | TupP pats -> List.fold_left (gather_pat env Scope.Declaration) ve pats
   | ObjP pfs -> List.fold_left (gather_pat_field env) ve pfs
   | TagP (_, pat1) | AltP (pat1, _) | OptP pat1
   | AnnotP (pat1, _) | ParP pat1 -> gather_pat env Scope.Declaration ve pat1
 
 and gather_pat_field env ve pf : Scope.val_env =
-  let context = pattern_field_context pf in
-  gather_pat env context ve pf.it.pat
+  let val_kind = kind_of_field_pattern pf in
+  gather_pat env val_kind ve pf.it.pat
 
-and gather_id env ve id context : Scope.val_env =
+and gather_id env ve id val_kind : Scope.val_env =
   if T.Env.mem id.it ve then
     error_duplicate env "" id;
-  T.Env.add id.it (T.Pre, id.at, context) ve
+  T.Env.add id.it (T.Pre, id.at, val_kind) ve
 
 (* Pass 2 and 3: infer type definitions *)
 and infer_block_typdecs env decs : Scope.t =
