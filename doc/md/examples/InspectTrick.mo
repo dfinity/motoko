@@ -1,5 +1,3 @@
-import Principal = "mo:base/Principal";
-
 actor {
 
    var c = 0;
