@@ -221,10 +221,17 @@ let leave_scope env inner_identifiers initial_usage =
   let final_usage = S.union initial_usage unshadowed_usage in
   env.used_identifiers := final_usage
 
+(* Value environments *)
+
+let singleton id t = T.Env.singleton id.it (t, id.at, Scope.Declaration)
+let add_id val_env id t = T.Env.add id.it (t, id.at, Scope.Declaration) val_env
+
 (* Context extension *)
 
 let add_lab env x t = {env with labs = T.Env.add x t env.labs}
-let add_val env x t at kind = {env with vals = T.Env.add x (t, at, kind, Available) env.vals}
+
+let add_val env id t =
+  { env with vals = T.Env.add id.it (t, id.at, Scope.Declaration, Available) env.vals }
 
 let add_typs env xs cs =
   { env with
@@ -2570,7 +2577,7 @@ and infer_dec env dec : T.typ =
       let async_cap, _, class_cs = infer_class_cap env obj_sort.it tbs cs in
       let self_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) class_cs) in
       let env''' =
-        { (add_val env'' self_id.it self_typ self_id.at Scope.Declaration) with
+        { (add_val env'' self_id self_typ) with
           labs = T.Env.empty;
           rets = None;
           async = async_cap;
@@ -2684,7 +2691,7 @@ and gather_dec env scope dec : Scope.t =
     if T.Env.mem id.it scope.val_env then
       error_duplicate env "" id;
     let scope' = gather_block_decs env decs in
-    let ve' = T.Env.add id.it ((object_of_scope env obj_sort.it dec_fields scope' at), id.at, Scope.Declaration) scope.val_env in
+    let ve' = add_id scope.val_env id (object_of_scope env obj_sort.it dec_fields scope' at) in
     let obj_env = T.Env.add id.it scope' scope.obj_env in
     { val_env = ve';
       typ_env = scope.typ_env;
@@ -2718,7 +2725,7 @@ and gather_dec env scope dec : Scope.t =
       | ClassD _ ->
         if T.Env.mem id.it scope.val_env then
           error_duplicate env "" id;
-        T.Env.add id.it (T.Pre, id.at, Scope.Declaration) scope.val_env
+        add_id scope.val_env id T.Pre
       | _ -> scope.val_env
     in
     { val_env;
@@ -2774,7 +2781,7 @@ and infer_dec_typdecs env dec : Scope.t =
     let obj_scope = Scope.adjoin scope obj_scope_typs in
     Scope.{ empty with
       con_env = obj_scope.con_env;
-      val_env = T.Env.singleton id.it ((object_of_scope env obj_sort.it dec_fields obj_scope at), id.at, Scope.Declaration);
+      val_env = singleton id (object_of_scope env obj_sort.it dec_fields obj_scope at);
       obj_env = T.Env.singleton id.it obj_scope
     }
   (* TODO: generalize beyond let <id> = <valpath> *)
@@ -2784,8 +2791,8 @@ and infer_dec_typdecs env dec : Scope.t =
      | Some t ->
        let open Scope in
        match T.promote t with
-       | T.Obj (_, _) as t' -> { Scope.empty with val_env = T.Env.singleton id.it (t', id.at, Scope.Declaration) }
-       | _ -> { Scope.empty with val_env = T.Env.singleton id.it (T.Pre, id.at, Scope.Declaration) }
+       | T.Obj (_, _) as t' -> { Scope.empty with val_env = singleton id t' }
+       | _ -> { Scope.empty with val_env = singleton id T.Pre }
     )
   | LetD _ | ExpD _ | VarD _ ->
     Scope.empty
@@ -2806,7 +2813,7 @@ and infer_dec_typdecs env dec : Scope.t =
     let async_cap, class_tbs, class_cs = infer_class_cap env obj_sort.it tbs cs in
     let self_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) class_cs) in
     let env'' =
-     { (add_val (adjoin_vals env' ve) self_id.it self_typ self_id.at Scope.Declaration) with
+     { (add_val (adjoin_vals env' ve) self_id self_typ) with
           labs = T.Env.empty;
           rets = None;
           async = async_cap;
@@ -2862,7 +2869,7 @@ and infer_dec_valdecs env dec : Scope.t =
     in
     let obj_typ = object_of_scope env obj_sort.it dec_fields obj_scope' at in
     let _ve = check_pat env obj_typ pat in
-    Scope.{empty with val_env = T.Env.singleton id.it (obj_typ, id.at, Scope.Declaration)}
+    Scope.{empty with val_env = singleton id obj_typ}
   | LetD (pat, exp, fail) ->
     let t = infer_exp {env with pre = true; check_unused = false} exp in
     let ve' = match fail with
@@ -2872,7 +2879,7 @@ and infer_dec_valdecs env dec : Scope.t =
     Scope.{empty with val_env = ve'}
   | VarD (id, exp) ->
     let t = infer_exp {env with pre = true} exp in
-    Scope.{empty with val_env = T.Env.singleton id.it ((T.Mut t), id.at, Scope.Declaration)}
+    Scope.{empty with val_env = singleton id (T.Mut t)}
   | TypD (id, _, _) ->
     let c = Option.get id.note in
     Scope.{ empty with
@@ -2906,7 +2913,7 @@ and infer_dec_valdecs env dec : Scope.t =
       [T.close cs t2])
     in
     Scope.{ empty with
-      val_env = T.Env.singleton id.it (t, id.at, Scope.Declaration);
+      val_env = singleton id t;
       typ_env = T.Env.singleton id.it c;
       con_env = T.ConSet.singleton c;
     }
