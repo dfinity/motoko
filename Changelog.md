@@ -2,6 +2,8 @@
 
 * motoko (`moc`)
 
+  * feat: Better error message for unused, punned field bindings (#4454).
+
   * bugfix: Fix crash compiling actor reference containing an await (#4418, #4450).
 
 ## 0.11.0 (2024-03-05)
