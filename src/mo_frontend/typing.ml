@@ -2476,7 +2476,7 @@ and check_stab env sort scope dec_fields =
       check_stable id.it id.at;
       [id]
     | T.Actor, Some {it = Stable; _}, LetD (pat, _, _) when stable_pat pat ->
-      let ids = T.Env.keys (gather_pat env Scope.Declaration T.Env.empty pat) in
+      let ids = T.Env.keys (gather_pat env T.Env.empty pat) in
       List.iter (fun id -> check_stable id pat.at) ids;
       List.map (fun id -> {it = id; at = pat.at; note = ()}) ids;
     | T.Actor, Some {it = Flexible; _} , (VarD _ | LetD _) -> []
@@ -2692,7 +2692,7 @@ and gather_dec env scope dec : Scope.t =
       con_env = scope.con_env;
       obj_env = obj_env
     }
-  | LetD (pat, _, _) -> Scope.adjoin_val_env scope (gather_pat env Scope.Declaration scope.Scope.val_env pat)
+  | LetD (pat, _, _) -> Scope.adjoin_val_env scope (gather_pat env scope.Scope.val_env pat)
   | VarD (id, _) -> Scope.adjoin_val_env scope (gather_id env scope.Scope.val_env id Scope.Declaration)
   | TypD (id, binds, _) | ClassD (_, id, binds, _, _, _, _, _) ->
     let open Scope in
@@ -2728,18 +2728,21 @@ and gather_dec env scope dec : Scope.t =
       obj_env = scope.obj_env;
     }
 
-and gather_pat env val_kind ve pat : Scope.val_env =
+and gather_pat env ve pat : Scope.val_env =
+   gather_pat_aux env Scope.Declaration ve pat
+
+and gather_pat_aux env val_kind ve pat : Scope.val_env =
   match pat.it with
   | WildP | LitP _ | SignP _ -> ve
   | VarP id -> gather_id env ve id val_kind
-  | TupP pats -> List.fold_left (gather_pat env Scope.Declaration) ve pats
+  | TupP pats -> List.fold_left (gather_pat env) ve pats
   | ObjP pfs -> List.fold_left (gather_pat_field env) ve pfs
   | TagP (_, pat1) | AltP (pat1, _) | OptP pat1
-  | AnnotP (pat1, _) | ParP pat1 -> gather_pat env Scope.Declaration ve pat1
+  | AnnotP (pat1, _) | ParP pat1 -> gather_pat env ve pat1
 
 and gather_pat_field env ve pf : Scope.val_env =
   let val_kind = kind_of_field_pattern pf in
-  gather_pat env val_kind ve pf.it.pat
+  gather_pat_aux env val_kind ve pf.it.pat
 
 and gather_id env ve id val_kind : Scope.val_env =
   if T.Env.mem id.it ve then
