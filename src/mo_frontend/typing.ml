@@ -2168,7 +2168,7 @@ and check_pat_aux' env t pat val_kind : Scope.val_env =
     let t1 = try T.as_opt_sub t with Invalid_argument _ ->
       error env pat.at "M0115" "option pattern cannot consume expected type%a"
         display_typ_expand t
-    in check_pat_aux env t1 pat1 Scope.Declaration
+    in check_pat env t1 pat1
   | TagP (id, pat1) ->
     let t1 =
       try
@@ -2178,10 +2178,10 @@ and check_pat_aux' env t pat val_kind : Scope.val_env =
       with Invalid_argument _ ->
         error env pat.at "M0116" "variant pattern cannot consume expected type%a"
           display_typ_expand t
-    in check_pat_aux env t1 pat1 Scope.Declaration
+    in check_pat env t1 pat1
   | AltP (pat1, pat2) ->
-    let ve1 = check_pat_aux env t pat1 Scope.Declaration in
-    let ve2 = check_pat_aux env t pat2 Scope.Declaration in
+    let ve1 = check_pat env t pat1 in
+    let ve2 = check_pat env t pat2 in
     if T.Env.keys ve1 <> T.Env.keys ve2 then
       error env pat.at "M0189" "different set of bindings in pattern alternatives";
     T.Env.(iter (fun k (t1, _, _) ->
@@ -2197,9 +2197,9 @@ and check_pat_aux' env t pat val_kind : Scope.val_env =
         "pattern of type%a\ncannot consume expected type%a"
         display_typ_expand t'
         display_typ_expand t;
-    check_pat_aux env t' pat1 Scope.Declaration
+    check_pat env t' pat1
   | ParP pat1 ->
-    check_pat_aux env t pat1 Scope.Declaration
+    check_pat env t pat1
 
 (*
 Consider:
@@ -2240,7 +2240,7 @@ and check_pats env ts pats ve at : Scope.val_env =
     match ts, pats with
     | [], [] -> ve
     | t::ts', pat::pats' ->
-        let ve1 = check_pat_aux env t pat Scope.Declaration in
+        let ve1 = check_pat env t pat in
         let ve' = disjoint_union env at "M0017" "duplicate binding for %s in pattern" ve ve1 in
         go ts' pats' ve'
     | _, _ ->
