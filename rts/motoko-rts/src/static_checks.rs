@@ -29,7 +29,6 @@ const _: () = assert!(size_of::<MutBox>() == HEADER_SIZE + 1 * WORD_SIZE);
 const _: () = assert!(size_of::<Some>() == HEADER_SIZE + 1 * WORD_SIZE);
 const _: () = assert!(size_of::<Variant>() == HEADER_SIZE + 2 * WORD_SIZE);
 const _: () = assert!(size_of::<Concat>() == HEADER_SIZE + 3 * WORD_SIZE);
-const _: () = assert!(size_of::<Null>() == HEADER_SIZE);
 const _: () = assert!(size_of::<Bits32>() == HEADER_SIZE + 1 * WORD_SIZE);
 const _: () = assert!(size_of::<Bits64>() == HEADER_SIZE + 2 * WORD_SIZE);
 
@@ -49,7 +48,6 @@ const _: () = assert!(align_of::<MutBox>() == WORD_SIZE);
 const _: () = assert!(align_of::<Some>() == WORD_SIZE);
 const _: () = assert!(align_of::<Variant>() == WORD_SIZE);
 const _: () = assert!(align_of::<Concat>() == WORD_SIZE);
-const _: () = assert!(align_of::<Null>() == WORD_SIZE);
 const _: () = assert!(align_of::<Bits32>() == WORD_SIZE);
 const _: () = assert!(align_of::<Bits64>() == WORD_SIZE);
 const _: () = assert!(align_of::<OneWordFiller>() == WORD_SIZE);

@@ -7,13 +7,13 @@ pub mod compatibility;
 use motoko_rts_macros::ic_mem_fn;
 
 use crate::{
-    barriers::{allocation_barrier, write_with_barrier},
+    barriers::write_with_barrier,
     constants::{KB, MB},
     gc::incremental::State,
     memory::Memory,
     persistence::compatibility::memory_compatible,
     rts_trap_with,
-    types::{size_of, Null, Value, TAG_BLOB, TAG_NULL},
+    types::{Value, TAG_BLOB},
 };
 
 use self::compatibility::TypeDescriptor;
@@ -47,9 +47,6 @@ struct PersistentMetadata {
     /// The state of the incremental GC including the partitioned heap description.
     /// The GC continues work after upgrades.
     incremental_gc_state: State,
-    /// Singleton of the top-level null value. To be retained across upgrades.
-    /// Constitutes a GC root and requires pointer forwarding.
-    null_singleton: Value,
     /// Upgrade performance statistics: Total number of instructions consumed by the last upgrade.
     upgrade_instructions: u64,
 }
@@ -78,7 +75,6 @@ impl PersistentMetadata {
                 || (*self).fingerprint == ['\0'; 32]
                     && (*self).stable_actor == DEFAULT_VALUE
                     && (*self).stable_type.is_default()
-                    && (*self).null_singleton == DEFAULT_VALUE
         );
         initialized
     }
@@ -103,7 +99,6 @@ impl PersistentMetadata {
         (*self).stable_actor = DEFAULT_VALUE;
         (*self).stable_type = TypeDescriptor::default();
         (*self).incremental_gc_state = IncrementalGC::initial_gc_state(mem, HEAP_START);
-        (*self).null_singleton = DEFAULT_VALUE;
         (*self).upgrade_instructions = 0;
     }
 }
@@ -118,16 +113,7 @@ pub unsafe fn initialize_memory<M: Memory>(mem: &mut M) {
         metadata.check_version();
     } else {
         metadata.initialize(mem);
-        allocate_initial_objects(mem);
     }
-}
-
-/// Allocate initial objects only after the partitioned heap has been initialized.
-#[cfg(feature = "ic")]
-unsafe fn allocate_initial_objects<M: Memory>(mem: &mut M) {
-    let metadata = PersistentMetadata::get();
-    debug_assert!((*metadata).null_singleton == DEFAULT_VALUE);
-    (*metadata).null_singleton = allocate_null(mem);
 }
 
 /// Returns the stable sub-record of the actor of the upgraded canister version.
@@ -190,15 +176,6 @@ pub unsafe extern "C" fn contains_field(actor: Value, field_hash: u32) -> bool {
     false
 }
 
-pub unsafe fn allocate_null<M: Memory>(mem: &mut M) -> Value {
-    let value = mem.alloc_words(size_of::<Null>());
-    let null = value.get_ptr() as *mut Null;
-    (*null).header.tag = TAG_NULL;
-    (*null).header.init_forward(value);
-    allocation_barrier(value);
-    value
-}
-
 /// Register the stable actor type on canister installation and upgrade.
 /// The type is stored in the persistent metadata memory for later retrieval on canister upgrades.
 /// On an upgrade, the memory compatibility between the new and existing stable type is checked.
@@ -223,26 +200,6 @@ pub unsafe fn register_stable_type<M: Memory>(
 pub(crate) unsafe fn stable_type_descriptor() -> &'static mut TypeDescriptor {
     let metadata = PersistentMetadata::get();
     &mut (*metadata).stable_type
-}
-
-/// Get the null singleton used for top-level optional types.
-/// Serves for optimized null checks by pointer comparison.
-/// The forwarding pointer of this object is already resolved.
-/// NOTE: The forwarding pointer of the other comparison argument needs
-/// to be resolved too.
-#[no_mangle]
-#[cfg(feature = "ic")]
-pub unsafe extern "C" fn null_singleton() -> Value {
-    let metadata = PersistentMetadata::get();
-    debug_assert!((*metadata).null_singleton != DEFAULT_VALUE);
-    (*metadata).null_singleton.forward_if_possible()
-}
-
-// GC root pointer required for GC marking and updating.
-#[cfg(feature = "ic")]
-pub(crate) unsafe fn null_singleton_location() -> *mut Value {
-    let metadata = PersistentMetadata::get();
-    &mut (*metadata).null_singleton as *mut Value
 }
 
 #[cfg(feature = "ic")]

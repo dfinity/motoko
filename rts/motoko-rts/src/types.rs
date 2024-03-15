@@ -159,6 +159,11 @@ impl From<Words<u32>> for Bytes<u32> {
 // The `true` value. The only scalar value that has the lowest bit set.
 pub const TRUE_VALUE: u32 = 0x1;
 
+/// Constant sentinel pointer value for fast null tests.
+/// Points to the last unallocated Wasm page.
+/// See also `compile.ml` for other reserved sentinel values.
+pub const NULL_POINTER: Value = Value::from_raw(0xffff_fffb);
+
 /// A value in a heap slot
 #[repr(transparent)]
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -237,9 +242,9 @@ impl Value {
         self.get().is_scalar()
     }
 
-    /// Is the value a pointer?
-    pub fn is_ptr(&self) -> bool {
-        self.get().is_ptr()
+    /// Is the value a non-null pointer?
+    pub fn is_non_null_ptr(&self) -> bool {
+        self.get().is_ptr() && *self != NULL_POINTER
     }
 
     /// Assumes that the value is a scalar and returns the scalar value. In debug mode panics if
@@ -282,6 +287,7 @@ impl Value {
     /// with a header as well as `OneWordFiller`, `FwdPtr`, and `FreeSpace`.
     /// In debug mode panics if the value is not a pointer.
     pub unsafe fn tag(self) -> Tag {
+        debug_assert_ne!(self, NULL_POINTER);
         *(self.get_ptr() as *const Tag)
     }
 
@@ -295,8 +301,8 @@ impl Value {
 
     /// Resolve forwarding if the value is a pointer. Otherwise, return the same value.
     pub unsafe fn forward_if_possible(self) -> Value {
-        if self.is_ptr() && self.get_ptr() as *const Obj != null() {
-            // Ignore null pointers used in text_iter.
+        // Second condition: Ignore raw null addresses used in `text_iter`.
+        if self.is_non_null_ptr() && self.get_ptr() as *const Obj != null() {
             self.forward()
         } else {
             self
@@ -390,13 +396,13 @@ impl Value {
         self.0 as i32 >> 1
     }
 
-    // optimized version of `value.is_ptr() && value.get_ptr() >= address`
-    // value is a pointer equal or greater than the unskewed address > 1
+    // optimized version of `value.is_non_null_ptr() && value.get_ptr() >= address`
+    // value is a non-null pointer equal or greater than the unskewed address > 1
     #[inline]
     pub fn points_to_or_beyond(&self, address: usize) -> bool {
         debug_assert!(address > TRUE_VALUE as usize);
         let raw = self.get_raw();
-        is_skewed(raw) && unskew(raw as usize) >= address
+        is_skewed(raw) && unskew(raw as usize) >= address && *self != NULL_POINTER
     }
 }
 
@@ -442,9 +448,8 @@ pub const TAG_BITS32: Tag = 21;
 pub const TAG_BIGINT: Tag = 23;
 pub const TAG_CONCAT: Tag = 25;
 pub const TAG_REGION: Tag = 27;
-pub const TAG_NULL: Tag = 29;
-pub const TAG_ONE_WORD_FILLER: Tag = 31;
-pub const TAG_FREE_SPACE: Tag = 33;
+pub const TAG_ONE_WORD_FILLER: Tag = 29;
+pub const TAG_FREE_SPACE: Tag = 31;
 
 // Special value to visit only a range of array fields.
 // This and all values above it are reserved and mean
@@ -452,7 +457,11 @@ pub const TAG_FREE_SPACE: Tag = 33;
 // purposes of `visit_pointer_fields`.
 // Invariant: the value of this (pseudo-)tag must be
 //            higher than all other tags defined above
-pub const TAG_ARRAY_SLICE_MIN: Tag = 34;
+pub const TAG_ARRAY_SLICE_MIN: Tag = 32;
+
+pub fn is_object_tag(tag: Tag) -> bool {
+    tag >= TAG_OBJECT && tag <= TAG_REGION
+}
 
 // Common parts of any object. Other object pointers can be coerced into a pointer to this.
 #[repr(C)] // See the note at the beginning of this module
@@ -783,11 +792,6 @@ impl Concat {
 }
 
 #[repr(C)] // See the note at the beginning of this module
-pub struct Null {
-    pub header: Obj,
-}
-
-#[repr(C)] // See the note at the beginning of this module
 pub struct Bits64 {
     pub header: Obj,
     // We have two 32-bit fields instead of one 64-bit to avoid aligning the fields on 64-bit
@@ -882,8 +886,6 @@ pub(crate) unsafe fn block_size(address: usize) -> Words<u32> {
         }
 
         TAG_CONCAT => size_of::<Concat>(),
-
-        TAG_NULL => size_of::<Null>(),
 
         TAG_ONE_WORD_FILLER => size_of::<OneWordFiller>(),
 

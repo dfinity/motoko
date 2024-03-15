@@ -1076,7 +1076,6 @@ module RTS = struct
     E.add_func_import env "rts" "contains_field" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "set_static_root" [I32Type] [];
     E.add_func_import env "rts" "get_static_root" [] [I32Type];
-    E.add_func_import env "rts" "null_singleton" [] [I32Type];
     E.add_func_import env "rts" "set_upgrade_instructions" [I64Type] [];
     E.add_func_import env "rts" "get_upgrade_instructions" [] [I64Type];
     E.add_func_import env "rts" "memcpy" [I32Type; I32Type; I32Type] [I32Type]; (* standard libc memcpy *)
@@ -1898,11 +1897,6 @@ module Tagged = struct
      │ tag  │ fwd ptr │ ...
      └──────┴─────────┴──
 
-     The copying GC requires that all tagged objects in the dynamic heap space have at least
-     two words in order to replace them by `Indirection`. This condition is except for `Null`
-     that only lives in static heap space and is therefore not replaced by `Indirection` during
-     copying GC.
-
      Attention: This mapping is duplicated in these places
        * here
        * motoko-rts/src/types.rs
@@ -1929,7 +1923,6 @@ module Tagged = struct
     | Bits32 (* Contains a 32 bit unsigned number *)
     | BigInt
     | Concat (* String concatenation, used by rts/text.c *)
-    | Null (* For opt. Singleton in persistent heap *)
     | OneWordFiller (* Only used by the RTS *)
     | FreeSpace (* Only used by the RTS *)
     | Region
@@ -1957,14 +1950,29 @@ module Tagged = struct
     | BigInt -> 23l
     | Concat -> 25l
     | Region -> 27l
-    | Null -> 29l
-    | OneWordFiller -> 31l
-    | FreeSpace -> 33l
+    | OneWordFiller -> 29l
+    | FreeSpace -> 31l
     | ArraySliceMinimum -> 34l
     (* Next two tags won't be seen by the GC, so no need to set the lowest bit
        for `CoercionFailure` and `StableSeen` *)
     | CoercionFailure -> 0xfffffffel
     | StableSeen -> 0xffffffffl
+
+  (*
+     The null pointer is the sentinel `0xffff_fffbl` (skewed representation).
+    
+     This serves for efficient null tests by using direct pointer comparison.
+     The null pointer must not be dereferenced.
+     Null tests are possible without resolving the forwarding pointer of a non-null comparand.
+  *)
+
+  let null_sentinel_pointer = 0xffff_fffbl (* skewed, pointing to last unallocated Wasm page *)
+  let null_pointer = compile_unboxed_const null_sentinel_pointer
+
+  let not_null env =
+    (* null test works without forwarding pointer resolution of a non-null comparand *)
+    null_pointer ^^ 
+    G.i (Compare (Wasm.Values.I32 I32Op.Ne))  
 
   let header_size = 2l
   
@@ -2188,15 +2196,8 @@ end
 module Opt = struct
   (* The Option type. Optional values are represented as
 
-    1. ┌──────┐
-       │ null │
-       └──────┘
-
-       A special null value. This is a singleton object stored in the persistent memory
-       and retained across all objects. This serves for efficient null checks by using 
-       pointer comparison (and applying pointer forwarding resolution beforehand).
-
-
+    1. The null literal being the sentinel null pointer value, see above.
+       
     2. ┌──────┬─────────┐
        │ some │ payload │
        └──────┴─────────┘
@@ -2218,24 +2219,8 @@ module Opt = struct
 
   let some_payload_field = Tagged.header_size
 
-  let null_lit env =
-    E.call_import env "rts" "null_singleton" (* forwarding pointer already resolved *)
-
-  let is_some env =
-    Func.share_code1 Func.Never env "is_some" ("x", I32Type) [I32Type] (fun env get_x ->
-      get_x ^^ BitTagged.if_tagged_scalar env [I32Type]
-        ( Bool.lit true ) (* scalar *)
-        ( get_x ^^ BitTagged.is_true_literal env ^^ (* exclude true literal since `branch_default` follows the forwarding pointer *)
-          E.if_ env [I32Type]
-            ( Bool.lit true ) (* true literal *)
-            ( (* pointer to object, resolve forwarding pointer on null pointer equality check *)
-              get_x ^^
-              Tagged.load_forwarding_pointer env ^^
-              null_lit env ^^
-              G.i (Compare (Wasm.Values.I32 I32Op.Ne))
-            )
-        )
-    )
+  let null_lit env = Tagged.null_pointer
+  let is_some = Tagged.not_null
 
   let alloc_some env get_payload =
     Tagged.obj env Tagged.Some [ get_payload ]
@@ -2248,10 +2233,13 @@ module Opt = struct
         ( get_x ^^ BitTagged.is_true_literal env ^^ (* exclude true literal since `branch_default` follows the forwarding pointer *)
           E.if_ env [I32Type]
             ( get_x ) (* true literal, no wrapping *)
-            ( get_x ^^ Tagged.branch_default env [I32Type]
-              ( get_x ) (* default tag, no wrapping *)
-              [ Tagged.Null, alloc_some env get_x
-              ; Tagged.Some, alloc_some env get_x ]
+            ( get_x ^^ is_some env ^^
+              E.if_ env [I32Type]
+                ( get_x ^^ Tagged.branch_default env [I32Type]
+                  ( get_x ) (* default tag, no wrapping *)
+                  [ Tagged.Some, alloc_some env get_x ]
+                )
+                ( alloc_some env get_x ) (* ?ⁿnull for n > 0 *)
             )
         )
     )
@@ -2274,11 +2262,7 @@ module Opt = struct
             ( get_x ) (* true literal, no wrapping *)
             ( get_x ^^ Tagged.branch_default env [I32Type]
               ( get_x ) (* default tag, no wrapping *)
-              [ Tagged.Some,
-                get_x ^^ load_some_payload_field env
-              ; Tagged.Null,
-                E.trap_with env "Internal error: opt_project: null!"
-              ]
+              [ Tagged.Some, get_x ^^ load_some_payload_field env ]
             )
         )
     )

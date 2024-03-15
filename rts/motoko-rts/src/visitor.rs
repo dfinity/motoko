@@ -32,12 +32,12 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
     match tag {
         TAG_OBJECT => {
             let obj = obj as *mut Object;
-            debug_assert!(is_pointer_field(obj.hash_blob_addr()));
+            debug_assert!(is_non_null_pointer_field(obj.hash_blob_addr()));
             visit_ptr_field(ctx, obj.hash_blob_addr());
             let obj_payload = obj.payload_addr();
             for i in 0..obj.size() {
                 let field_addr = obj_payload.add(i as usize);
-                if is_pointer_field(field_addr) {
+                if is_non_null_pointer_field(field_addr) {
                     visit_ptr_field(ctx, obj_payload.add(i as usize));
                 }
             }
@@ -51,7 +51,7 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
             debug_assert!(stop <= array.len());
             for i in slice_start..stop {
                 let field_addr = array_payload.add(i as usize);
-                if is_pointer_field(field_addr) {
+                if is_non_null_pointer_field(field_addr) {
                     visit_ptr_field(ctx, field_addr);
                 }
             }
@@ -60,7 +60,7 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
         TAG_MUTBOX => {
             let mutbox = obj as *mut MutBox;
             let field_addr = &mut (*mutbox).field;
-            if is_pointer_field(field_addr) {
+            if is_non_null_pointer_field(field_addr) {
                 visit_ptr_field(ctx, field_addr);
             }
         }
@@ -70,7 +70,7 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
             let closure_payload = closure.payload_addr();
             for i in 0..closure.size() {
                 let field_addr = closure_payload.add(i as usize);
-                if is_pointer_field(field_addr) {
+                if is_non_null_pointer_field(field_addr) {
                     visit_ptr_field(ctx, field_addr);
                 }
             }
@@ -79,7 +79,7 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
         TAG_SOME => {
             let some = obj as *mut Some;
             let field_addr = &mut (*some).field;
-            if is_pointer_field(field_addr) {
+            if is_non_null_pointer_field(field_addr) {
                 visit_ptr_field(ctx, field_addr);
             }
         }
@@ -87,7 +87,7 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
         TAG_VARIANT => {
             let variant = obj as *mut Variant;
             let field_addr = &mut (*variant).field;
-            if is_pointer_field(field_addr) {
+            if is_non_null_pointer_field(field_addr) {
                 visit_ptr_field(ctx, field_addr);
             }
         }
@@ -95,7 +95,7 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
         TAG_REGION => {
             let region = obj as *mut Region;
             let field_addr = &mut (*region).vec_pages;
-            if is_pointer_field(field_addr) {
+            if is_non_null_pointer_field(field_addr) {
                 visit_ptr_field(ctx, field_addr);
             }
         }
@@ -103,11 +103,11 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
         TAG_CONCAT => {
             let concat = obj as *mut Concat;
             let field1_addr = &mut (*concat).text1;
-            if is_pointer_field(field1_addr) {
+            if is_non_null_pointer_field(field1_addr) {
                 visit_ptr_field(ctx, field1_addr);
             }
             let field2_addr = &mut (*concat).text2;
-            if is_pointer_field(field2_addr) {
+            if is_non_null_pointer_field(field2_addr) {
                 visit_ptr_field(ctx, field2_addr);
             }
         }
@@ -115,12 +115,12 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
         TAG_OBJ_IND => {
             let obj_ind = obj as *mut ObjInd;
             let field_addr = &mut (*obj_ind).field;
-            if is_pointer_field(field_addr) {
+            if is_non_null_pointer_field(field_addr) {
                 visit_ptr_field(ctx, field_addr);
             }
         }
 
-        TAG_BITS64 | TAG_BITS32 | TAG_BLOB | TAG_BIGINT | TAG_NULL => {
+        TAG_BITS64 | TAG_BITS32 | TAG_BLOB | TAG_BIGINT => {
             // These don't have pointers, skip
         }
 
@@ -131,16 +131,20 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
 }
 
 // Temporary function can be later removed.
-pub unsafe fn is_pointer_field(field_addr: *mut Value) -> bool {
+pub unsafe fn is_non_null_pointer_field(field_addr: *mut Value) -> bool {
     let field_value = *field_addr;
     check_field_value(field_value);
-    field_value.is_ptr()
+    field_value.is_non_null_ptr()
 }
 
 // Temporary check, can be later removed.
 #[cfg(feature = "ic")]
 fn check_field_value(value: Value) {
-    debug_assert!(value.is_scalar() || value.get_ptr() >= crate::persistence::HEAP_START);
+    debug_assert!(
+        value.is_scalar()
+            || value.get_ptr() >= crate::persistence::HEAP_START
+            || value == NULL_POINTER
+    );
 }
 
 #[cfg(not(feature = "ic"))]
