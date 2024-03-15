@@ -478,7 +478,7 @@ let scope_info env typ at =
       (T.string_of_typ_expand typ) (string_of_region at);
   | None -> ()
 
-let rec infer_async_cap env sort cs tbs body_opt at =
+let infer_async_cap env sort cs tbs body_opt at =
   let open T in
   match sort, cs, tbs with
   | Shared Write, c::_,  { T.sort = Scope; _ }::_ ->
@@ -504,7 +504,7 @@ let rec infer_async_cap env sort cs tbs body_opt at =
                async }
   | _ -> { env with async = C.NullCap }
 
-and check_AsyncCap env s at : T.typ * (T.con -> C.async_cap) =
+let check_AsyncCap env s at : T.typ * (T.con -> C.async_cap) =
    match env.async with
    | C.AwaitCap c
    | C.AsyncCap c -> T.Con(c, []), fun c' -> C.AwaitCap c'
@@ -520,7 +520,7 @@ and check_AsyncCap env s at : T.typ * (T.con -> C.async_cap) =
       local_error env at "M0037" "misplaced %s; a composite query cannot contain an %s" s s;
       T.Con(C.bogus_cap,[]), fun c -> C.NullCap
 
-and check_AwaitCap env s at =
+let check_AwaitCap env s at =
    match env.async with
    | C.(AwaitCap c
         | CompositeAwaitCap c) -> T.Con(c, [])
@@ -534,7 +534,7 @@ and check_AwaitCap env s at =
       local_error env at "M0038" "misplaced %s" s;
       T.Con(C.bogus_cap,[])
 
-and check_ErrorCap env s at =
+let check_ErrorCap env s at =
    match env.async with
    | C.AwaitCap c -> ()
    | C.ErrorCap -> ()
@@ -556,10 +556,23 @@ and scope_of_env env =
      | SystemCap c -> Some (T.Con(c, []))
      | ErrorCap | NullCap -> None)
 
+let infer_class_cap env obj_sort (tbs : T.bind list) cs =
+  match tbs, cs with
+  | T.{sort = T.Scope; _} :: tbs', c :: cs' ->
+    (* HACK:
+       choosing top_cap just to support compilation of actor classes
+       which currently won't have any binding for c
+    *)
+    let c = if obj_sort = T.Actor then C.top_cap else c in
+    C.SystemCap c,
+    tbs',
+    cs'
+  | _ ->
+    C.NullCap, tbs, cs
 
 (* Types *)
 
-and check_typ env (typ : typ) : T.typ =
+let rec check_typ env (typ : typ) : T.typ =
   let t = check_typ' env typ in
   typ.note <- t;
   t
@@ -815,9 +828,10 @@ and infer_inst env sort tbs typs t_ret at =
          | C.(SystemCap c | AwaitCap c | AsyncCap c) ->
            (T.Con(c, [])::ts, at::ats)
          | _ ->
-          local_error env at "M0197"
-            "`system` capability required, but not available\n (need an enclosing async expression or function body or explicit `system` type parameter)";
-           (T.Con(C.bogus_cap, [])::ts, at::ats)
+          if not env.pre then
+            local_error env at "M0197"
+              "`system` capability required, but not available\n (need an enclosing async expression or function body or explicit `system` type parameter)";
+          (T.Con(C.bogus_cap, [])::ts, at::ats)
        end
      | C.(AwaitCap c | AsyncCap c) when T.(sort = Shared Query || sort = Shared Write || sort = Local) ->
         (T.Con(c, [])::ts, at::ats)
@@ -2545,21 +2559,13 @@ and infer_dec env dec : T.typ =
           "shared constructor has non-shared parameter type%a"
           display_typ_expand t_pat;
       let env'' = adjoin_vals (adjoin_vals env' ve0) ve in
-      let sys_cap = match tbs with
-        | T.{sort = Scope; _} :: _ -> true
-        | _ -> false in
-      if in_actor then assert sys_cap;
-      let cs' = if sys_cap then List.tl cs else cs in
-      let self_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) cs') in
+      let async_cap, _, class_cs = infer_class_cap env obj_sort.it tbs cs in
+      let self_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) class_cs) in
       let env''' =
         { (add_val env'' self_id.it self_typ self_id.at) with
           labs = T.Env.empty;
           rets = None;
-          async =
-            if sys_cap then
-              C.SystemCap  (if in_actor then C.top_cap else List.hd cs)
-            else
-              C.NullCap;
+          async = async_cap;
           in_actor;
         }
       in
@@ -2684,8 +2690,9 @@ and gather_dec env scope dec : Scope.t =
     let open Scope in
     if T.Env.mem id.it scope.typ_env then
       error_duplicate env "type " id;
-    let binds' = match dec.it with
-      | ClassD(_, _, _, _, _,  {it = T.Actor; _}, _, _) -> List.tl binds
+    let binds' = match binds with
+      | bind::binds when bind.it.sort.it = T.Scope ->
+        binds
       | _ -> binds
     in
     let pre_tbs = List.map (fun bind ->
@@ -2783,14 +2790,18 @@ and infer_dec_typdecs env dec : Scope.t =
     let cs, tbs, te, ce = check_typ_binds {env with pre = true} binds in
     let env' = adjoin_typs (adjoin_vals {env with pre = true} ve0) te ce in
     let _, ve = infer_pat env' pat in
-    let tbs', cs' =
-      if obj_sort.it = T.Actor then
-        List.tl tbs, List.tl cs
-      else tbs, cs in
-    let self_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) cs') in
-    let env'' = add_val (adjoin_vals env' ve) self_id.it self_typ self_id.at in
+    let in_actor = obj_sort.it = T.Actor in
+    let async_cap, class_tbs, class_cs = infer_class_cap env obj_sort.it tbs cs in
+    let self_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) class_cs) in
+    let env'' =
+     { (add_val (adjoin_vals env' ve) self_id.it self_typ self_id.at) with
+          labs = T.Env.empty;
+          rets = None;
+          async = async_cap;
+          in_actor}
+    in
     let t = infer_obj { env'' with check_unused = false } obj_sort.it dec_fields dec.at in
-    let k = T.Def (T.close_binds cs' tbs', T.close cs' t) in
+    let k = T.Def (T.close_binds class_cs class_tbs, T.close class_cs t) in
     check_closed env id k dec.at;
     Scope.{ empty with
       typ_env = T.Env.singleton id.it c;
@@ -2871,12 +2882,12 @@ and infer_dec_valdecs env dec : Scope.t =
     let c = T.Env.find id.it env.typs in
     let t1, _ = infer_pat {env' with pre = true} pat in
     let ts1 = match pat.it with TupP _ -> T.seq_of_tup t1 | _ -> [t1] in
+    let class_tbs, _,  class_cs = infer_class_cap env obj_sort.it tbs cs in
+    let obj_typ = T.Con (c, List.map (fun c -> T.Con (c, [])) class_cs) in
     let t2 =
       if obj_sort.it = T.Actor then
-        T.Async (T.Fut, T.Con (List.hd cs, []),
-          T.Con (c, List.map (fun c -> T.Con (c, [])) (List.tl cs)))
-      else
-        T.Con (c, List.map (fun c -> T.Con (c, [])) cs)
+        T.Async (T.Fut, T.Con (List.hd cs, []), obj_typ)
+      else obj_typ
     in
     let t = T.Func (T.Local, T.Returns, T.close_binds cs tbs,
       List.map (T.close cs) ts1,
