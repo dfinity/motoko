@@ -1,16 +1,18 @@
 # Motoko compiler changelog
 
+## 0.11.1 (2024-03-15)
+
 * motoko (`moc`)
 
   * feat: Custom error message for unused, punned field bindings (#4454).
 
   * feat: Don't report top-level identifiers as unused (#4452).
 
-  * bugfix: Declaring `<system,...>` capability on a class enables system capabilities in its body (#4449).
+  * bugfix: Declaring `<system, ...>` capability on a class enables system capabilities in its body (#4449).
 
-  * bugfix: Fix crash compiling actor reference containing an await (#4418, #4450).
+  * bugfix: Fix crash compiling actor reference containing an `await` (#4418, #4450).
 
-  * bugfix: Fig crash when compiling with flag --experimental-rtti (#4434).
+  * bugfix: Fix crash when compiling with flag `--experimental-rtti` (#4434).
 
 ## 0.11.0 (2024-03-05)
 
