@@ -226,6 +226,8 @@ pub unsafe extern "C" fn set_upgrade_instructions(instructions: u64) {
 #[no_mangle]
 #[cfg(feature = "ic")]
 pub unsafe extern "C" fn buffer_in_32_bit_range() -> usize {
+    use crate::types::size_of;
+
     const BUFFER_SIZE: usize = 512;
     assert!(size_of::<PersistentMetadata>().to_bytes().as_usize() + BUFFER_SIZE < METADATA_RESERVE);
     METADATA_ADDRESS + METADATA_RESERVE - BUFFER_SIZE
