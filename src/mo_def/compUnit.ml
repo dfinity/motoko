@@ -18,6 +18,12 @@ let as_actor_def e =
     fields, note, at
   | _ -> assert false
 
+let is_module_def e =
+  let open Source in
+  match e.it with
+  | ObjBlockE ({ it = Type.Module; _}, _, _) -> true
+  | _ -> false
+
 (* Happens after parsing, before type checking *)
 let comp_unit_of_prog as_lib (prog : prog) : comp_unit =
   let open Source in
