@@ -80,7 +80,7 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
         }
         loop {
             let value = self.mark_stack.pop();
-            debug_assert!(value.is_ptr());
+            debug_assert!(value.is_non_null_ptr());
             if value == STACK_EMPTY {
                 self.complete_marking();
                 return;
@@ -97,15 +97,14 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
 
     pub unsafe fn mark_object(&mut self, value: Value) {
         self.time.tick();
+        debug_assert_ne!(value, NULL_POINTER);
         debug_assert!((value.get_ptr() >= self.heap.base_address()));
         debug_assert!(!value.is_forwarded());
         let object = value.as_obj();
         if self.heap.mark_object(object) {
             // A write barrier after a completed mark phase must see the object as already marked.
             debug_assert!(!*self.complete);
-            debug_assert!(
-                object.tag() >= crate::types::TAG_OBJECT && object.tag() <= crate::types::TAG_NULL
-            );
+            debug_assert!(is_object_tag(object.tag()));
             self.mark_stack.push(self.mem, value);
         }
     }

@@ -51,6 +51,7 @@ impl<'a> UpdateIncrement<'a> {
     pub unsafe fn update_roots(&mut self, roots: Roots) {
         visit_roots(roots, self, |gc, field| {
             let value = *field;
+            debug_assert_ne!(value, NULL_POINTER);
             if value.is_forwarded() {
                 *field = value.forward_if_possible();
             }

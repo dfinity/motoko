@@ -52,7 +52,7 @@ pub(crate) unsafe fn print_continuation_table(continuation_tbl_loc: *mut Value) 
 
     for i in 0..len {
         let elem = arr.get(i);
-        if elem.is_ptr() {
+        if elem.is_non_null_ptr() {
             let _ = write!(&mut write_buf, "{}: ", i);
             print_boxed_object(&mut write_buf, elem.get_ptr());
             print(&write_buf);

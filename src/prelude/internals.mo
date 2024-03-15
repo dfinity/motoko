@@ -387,8 +387,13 @@ module @ManagementCanister = {
   };
 };
 
+type WasmMemoryPersistence = {
+  #Keep;
+  #Drop;
+};
+
 type UpgradeOptions = { 
-  keep_main_memory: ?Bool;
+  wasm_memory_persistence: ?WasmMemoryPersistence;
 };
 
 let @ic00 = actor "aaaaa-aa" :
@@ -439,7 +444,7 @@ func @install_actor_helper(
       };
       case (#upgrade actor2) {
         let upgradeOptions = {
-          keep_main_memory = ?true;
+          wasm_memory_persistence = ?(#Keep);
         };
         ((#upgrade (?upgradeOptions)), (prim "cast" : (actor {}) -> Principal) actor2)
       }

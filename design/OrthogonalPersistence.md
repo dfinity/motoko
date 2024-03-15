@@ -40,7 +40,6 @@ More specifically, it comprises:
 * A stable heap version that allows evolving the persistent memory layout in the future.
 * The stable subset of the main actor, containing all stable variables declared in the main actor.
 * A descriptor of the stable static types to check memory compatibility on upgrades.
-* The reference to the null singleton object.
 * The runtime state of the garbage collector, including the dynamic heap metadata and memory statistics.
 * A reserve for future metadata extensions.
 
@@ -73,7 +72,6 @@ The garbage collector uses two kinds of roots:
 
 The persistent roots are registered in the persistent metadata and comprise:
 * All stable variables of the main actor, only stored during an upgrade.
-* The null singleton object.
 * The stable type table.
 
 The transient roots are referenced by the Wasm data segments and comprise:
@@ -104,8 +102,8 @@ The Rust-generated active data segments of the runtime system is changed to pass
 The location and size of the RTS data segments is therefore limited to a defined reserve, see above. 
 This is acceptable because the RTS only uses small size for data segments (e.g. 54KB) that is independent of the compiled Motoko program.
 
-### Null Singleton
-As an optimization, the top-level `null` singleton is allocated once in the dynamic heap and remembered in the persistent metadata across upgrades. This is necessary to implement null checks by pointer comparison (however, by first resolving pointer forwarding before the comparison). The null singleton needs to be part of the persistent root set.
+### Null Sentinel
+As an optimization, the top-level `null` pointer is represented as a constant sentinel value pointing to the last unallocated Wasm page. This allows fast null tests without involving forwarding pointer resolution of potential non-null comparand pointers.
 
 ### Migration Path
 When migrating from the old serialization-based stabilization to the new stable heap, the old data is deserialized one last time from stable memory and then placed in the new stable heap layout. Once operating on the stable heap, the system prevents downgrade attempts to the old serialization-based persistence. Assuming that the persistent memory layout needs to be changed in the future, a future version of the compiler/runtime system can perform such upgrade by serializing/deserializing the heap to stable memory.

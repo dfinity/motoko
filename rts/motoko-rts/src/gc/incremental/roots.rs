@@ -1,6 +1,6 @@
 use motoko_rts_macros::ic_mem_fn;
 
-use crate::{types::Value, visitor::is_pointer_field};
+use crate::{types::Value, visitor::is_non_null_pointer_field};
 
 /// Root referring to all canister variables.
 /// This root is reinitialized on each canister upgrade.
@@ -9,13 +9,13 @@ use crate::{types::Value, visitor::is_pointer_field};
 static mut STATIC_ROOT: Value = Value::from_scalar(0);
 
 /// GC root set.
-pub type Roots = [*mut Value; 7];
+pub type Roots = [*mut Value; 6];
 
 #[cfg(feature = "ic")]
 pub unsafe fn root_set() -> Roots {
     use crate::{
         continuation_table::continuation_table_loc,
-        persistence::{null_singleton_location, stable_actor_location, stable_type_descriptor},
+        persistence::{stable_actor_location, stable_type_descriptor},
         region::region0_get_ptr_loc,
     };
     [
@@ -24,7 +24,6 @@ pub unsafe fn root_set() -> Roots {
         stable_actor_location(),
         stable_type_descriptor().candid_data_location(),
         stable_type_descriptor().type_offsets_location(),
-        null_singleton_location(),
         region0_get_ptr_loc(),
     ]
 }
@@ -35,7 +34,7 @@ pub unsafe fn visit_roots<C, V: Fn(&mut C, *mut Value)>(
     visit_field: V,
 ) {
     for location in roots {
-        if is_pointer_field(location) {
+        if is_non_null_pointer_field(location) {
             visit_field(context, location);
         }
     }
@@ -57,6 +56,6 @@ pub unsafe fn set_static_root<M: crate::memory::Memory>(mem: &mut M, value: Valu
 #[no_mangle]
 #[cfg(feature = "ic")]
 pub unsafe extern "C" fn get_static_root() -> Value {
-    assert!(STATIC_ROOT.is_ptr());
+    debug_assert!(STATIC_ROOT.is_non_null_ptr());
     STATIC_ROOT
 }

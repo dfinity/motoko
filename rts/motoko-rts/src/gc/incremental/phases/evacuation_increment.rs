@@ -75,7 +75,7 @@ impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
     }
 
     unsafe fn evacuate_object(&mut self, original: *mut Obj) {
-        debug_assert!(original.tag() >= TAG_OBJECT && original.tag() <= TAG_NULL);
+        debug_assert!(is_object_tag(original.tag()));
         debug_assert!(!original.is_forwarded());
         let size = block_size(original as usize);
         let new_address = self.mem.alloc_words(size);

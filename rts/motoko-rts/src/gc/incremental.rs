@@ -327,6 +327,7 @@ unsafe fn pre_write_barrier<M: Memory>(mem: &mut M, state: &mut State, overwritt
         if overwritten_value.points_to_or_beyond(base_address) {
             let mut time = BoundedTime::new(0);
             let mut increment = MarkIncrement::instance(mem, state, &mut time);
+            debug_assert_ne!(overwritten_value, NULL_POINTER);
             increment.mark_object(overwritten_value);
         }
     }
