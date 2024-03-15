@@ -303,4 +303,18 @@ unsafe fn bool_swap(a: bool, b: bool) -> (bool, bool) {
     (b, a)
 }
 
+// #[motoko]
+// unsafe fn check_numbers(
+//     a: u8,
+//     b: i8,
+//     c: u16,
+//     d: i16,
+//     e: u32,
+//     f: i32,
+//     g: u64,
+//     h: i64,
+// ) -> (u8, i8, u16, i16, u32, i32, u64, i64) {
+//     (a, b, c, d, e, f, g, h)
+// }
+
 // [external-codegen]
