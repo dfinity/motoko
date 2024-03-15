@@ -1,6 +1,5 @@
 import Text "mo:base/Text";
 import Map "mo:base/HashMap";
-import Array "mo:base/Array";
 import Iter "mo:base/Iter";
 
 actor Registry {

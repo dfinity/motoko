@@ -6,4 +6,3 @@ assetstorage/Trie.mo:967.7-967.12: warning [M0194], unused identifier k3_eq (del
 assetstorage/Trie.mo:1568.5-1568.10: warning [M0194], unused identifier k1_eq (delete or rename to wildcard `_` or `_k1_eq`)
 dao/dao-types.mo:67.72-67.80: warning [M0154], field hash is deprecated:
 For large `Int` values consider using a bespoke hash function that considers all of the argument's bits.
-dao.mo:13.40-13.43: warning [M0194], unused identifier DAO (delete or rename to wildcard `_` or `_DAO`)

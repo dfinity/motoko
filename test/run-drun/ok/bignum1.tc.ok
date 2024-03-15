@@ -1,2 +1,1 @@
-bignum1.mo:1.7-1.8: warning [M0194], unused identifier B (delete or rename to wildcard `_` or `_B`)
 bignum1.mo:4.8-4.9: warning [M0194], unused identifier b (delete or rename to wildcard `_` or `_b`)
