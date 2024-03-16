@@ -233,30 +233,62 @@ impl IntoValue for () {
     }
 }
 
-impl<A: FromValue, B: FromValue> FromValue for (A, B) {
-    unsafe fn from_value(value: Value, mem: &mut impl Memory) -> MotokoResult<Self> {
-        match value.tag() {
-            TAG_ARRAY => {
-                let array = value.as_array();
-                assert_eq!(array.len(), 2, "Unexpected tuple length");
-                Ok((
-                    A::from_value(array.get(0), mem)?,
-                    B::from_value(array.get(1), mem)?,
-                ))
+// impl<A: FromValue, B: FromValue> FromValue for (A, B) {
+//     unsafe fn from_value(value: Value, mem: &mut impl Memory) -> MotokoResult<Self> {
+//         match value.tag() {
+//             TAG_ARRAY => {
+//                 let array = value.as_array();
+//                 assert_eq!(array.len(), 2, "Unexpected tuple length");
+//                 Ok((
+//                     A::from_value(array.get(0), mem)?,
+//                     B::from_value(array.get(1), mem)?,
+//                 ))
+//             }
+//             tag => Err(MotokoError::UnexpectedTag(tag)),
+//         }
+//     }
+// }
+// impl<A: IntoValue, B: IntoValue> IntoValue for (A, B) {
+//     unsafe fn into_value(self, mem: &mut impl Memory) -> MotokoResult<Value> {
+//         let value = alloc_array(mem, 2);
+//         let array = value.as_array();
+//         let dest = array.payload_addr();
+//         *dest = self.0.into_value(mem)?;
+//         *(dest.add(1)) = self.1.into_value(mem)?;
+//         Ok(allocation_barrier(value))
+//     }
+// }
+
+// Implement `FromValue` and `IntoValue` for tuples
+#[motoko_rts_macros::tuple_impl]
+macro_rules! tuple_impl {
+    ($len:expr; $($name:ident = $index:tt),+) => {
+        impl<$($name: FromValue),+> FromValue for ($($name),+) {
+            unsafe fn from_value(value: Value, mem: &mut impl Memory) -> MotokoResult<Self> {
+                const LENGTH: u32 = $len;
+                match value.tag() {
+                    TAG_ARRAY => {
+                        let array = value.as_array();
+                        assert_eq!(array.len(), LENGTH, "Unexpected tuple length");
+                        Ok((
+                            $($name::from_value(array.get($index), mem)?),+
+                        ))
+                    }
+                    tag => Err(MotokoError::UnexpectedTag(tag)),
+                }
             }
-            tag => Err(MotokoError::UnexpectedTag(tag)),
         }
-    }
-}
-impl<A: IntoValue, B: IntoValue> IntoValue for (A, B) {
-    unsafe fn into_value(self, mem: &mut impl Memory) -> MotokoResult<Value> {
-        let value = alloc_array(mem, 2);
-        let array = value.as_array();
-        let dest = array.payload_addr();
-        *dest = self.0.into_value(mem)?;
-        *(dest.add(1)) = self.1.into_value(mem)?;
-        Ok(allocation_barrier(value))
-    }
+        impl<$($name: IntoValue),+> IntoValue for ($($name),+) {
+            unsafe fn into_value(self, mem: &mut impl Memory) -> MotokoResult<Value> {
+                const LENGTH: u32 = $len;
+                let value = alloc_array(mem, LENGTH);
+                let array = value.as_array();
+                let dest = array.payload_addr();
+                $(*(dest.add($index)) = $name::into_value(self.$index, mem)?;)+
+                Ok(allocation_barrier(value))
+            }
+        }
+    };
 }
 
 // Temporary examples
@@ -270,14 +302,19 @@ unsafe fn identity(value: Value) -> Value {
 }
 
 #[motoko]
-unsafe fn blob_modify(mut blob: BlobVec) -> BlobVec {
-    blob.0.push('!' as u8);
-    blob
+unsafe fn div_rem(a: u32, b: u32) -> (u32, u32) {
+    (a / b, a % b)
 }
 
 #[motoko]
 unsafe fn array_concat(a: Vec<Value>, b: Vec<Value>) -> Vec<Value> {
     [a, b].concat()
+}
+
+#[motoko]
+unsafe fn blob_modify(mut blob: BlobVec) -> BlobVec {
+    blob.0.push('!' as u8);
+    blob
 }
 
 #[motoko]
@@ -294,27 +331,22 @@ unsafe fn manual_alloc(#[memory] mem: &mut impl Memory) -> Value {
 }
 
 #[motoko]
-unsafe fn div_rem(a: u32, b: u32) -> (u32, u32) {
-    (a / b, a % b)
-}
-
-#[motoko]
 unsafe fn bool_swap(a: bool, b: bool) -> (bool, bool) {
     (b, a)
 }
 
-// #[motoko]
-// unsafe fn check_numbers(
-//     a: u8,
-//     b: i8,
-//     c: u16,
-//     d: i16,
-//     e: u32,
-//     f: i32,
-//     g: u64,
-//     h: i64,
-// ) -> (u8, i8, u16, i16, u32, i32, u64, i64) {
-//     (a, b, c, d, e, f, g, h)
-// }
+#[motoko]
+unsafe fn check_numbers(
+    a: u8,
+    b: i8,
+    c: u16,
+    d: i16,
+    e: u32,
+    f: i32,
+    g: u64,
+    h: i64,
+) -> (u8, i8, u16, i16, u32, i32, u64, i64) {
+    (a, b, c, d, e, f, g, h)
+}
 
 // [external-codegen]

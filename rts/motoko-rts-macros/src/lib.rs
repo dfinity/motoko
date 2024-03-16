@@ -1,6 +1,5 @@
 use proc_macro::TokenStream;
 use quote::{quote, ToTokens};
-use syn::LitByteStr;
 
 /// This macro is used to generate monomorphic versions of allocating RTS functions, to allow
 /// calling such functions in generated code. Example:
@@ -174,6 +173,47 @@ enum ArgSort {
     Memory,
 }
 
+/// Utility macro for implementing n-length tuple traits.
+#[proc_macro_attribute]
+pub fn tuple_impl(_attr: TokenStream, input: TokenStream) -> TokenStream {
+    // Currently hard-coded. If we use this anywhere else, it could make
+    // sense to configure these in the attribute, e.g. `#[tuple_impl(2, 20)]`
+    let min_length: u32 = 2;
+    let max_length: u32 = 20;
+
+    let macro_rules = syn::parse_macro_input!(input as syn::ItemMacro);
+    let macro_ident = &macro_rules.ident;
+
+    // Generated tokens
+    let mut output = quote!(
+        #macro_rules
+    );
+    let mut parts = quote!();
+    for i in 0..max_length {
+        let length = i + 1;
+
+        let ident = syn::Ident::new(&format!("T{i}"), proc_macro2::Span::call_site());
+        let index_syn = syn::LitInt::new(&i.to_string(), proc_macro2::Span::call_site());
+        let length_syn = syn::LitInt::new(&length.to_string(), proc_macro2::Span::call_site());
+
+        let part = quote!(#ident = #index_syn);
+        parts = if i == 0 { part } else { quote!(#parts, #part) };
+
+        if length >= min_length {
+            output = quote!(
+                #output
+                #macro_ident!(#length_syn; #parts);
+            );
+        }
+    }
+
+    // return syn::Error::new_spanned(quote!(), format!("Macro expansion:\n{}", output))
+    //     .to_compile_error()
+    //     .into();
+
+    output.into()
+}
+
 /// This macro wraps `#[ic_mem_fn]` with automatic type conversions for
 /// Motoko types using traits defined in the `motoko_rts::custom` module.
 #[proc_macro_attribute]
@@ -260,7 +300,8 @@ pub fn motoko(attr: TokenStream, input: TokenStream) -> TokenStream {
     );
     let custom_section_content = format!("{};", fn_name);
     let custom_section_len = custom_section_content.len();
-    let custom_section_bytes = LitByteStr::new(custom_section_content.as_bytes(), fn_ident.span());
+    let custom_section_bytes =
+        syn::LitByteStr::new(custom_section_content.as_bytes(), fn_ident.span());
 
     // Generated tokens
     let output = quote!(
