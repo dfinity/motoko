@@ -173,9 +173,9 @@ enum ArgSort {
     Memory,
 }
 
-/// Utility macro for implementing n-length tuple traits.
+/// Utility macro to implement traits for n-length tuples.
 #[proc_macro_attribute]
-pub fn tuple_impl(_attr: TokenStream, input: TokenStream) -> TokenStream {
+pub fn tuple_macro(_attr: TokenStream, input: TokenStream) -> TokenStream {
     // Currently hard-coded. If we use this anywhere else, it could make
     // sense to configure these in the attribute, e.g. `#[tuple_impl(2, 20)]`
     let min_length: u32 = 2;
