@@ -11818,10 +11818,16 @@ and compile_prim_invocation (env : E.t) ae p es at =
     let s' = String.sub s 4 (String.length s - 4) in
     if List.mem s' !(env.E.custom_rts_functions) then
       const_sr SR.Vanilla (E.call_import env "rts" s')
-    else
+    else (
       (* TODO: type checking error *)
-      let _ = Printf.printf "custom RTS function '%s' not found\n" s' in
-      exit 1
+      Printf.printf "%s" Diag.(string_of_message {
+        sev = Error;
+        code = "M0199";
+        at;
+        cat = "RTS";
+        text = Printf.sprintf "custom function '%s' not found" s';
+      });
+      exit 1)
 
   (* Coercions for abstract types *)
   | CastPrim (_,_), [e] ->
