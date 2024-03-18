@@ -844,12 +844,12 @@ let is_rts_custom_functions n = n = Utf8.decode "rts:custom-functions"
 
 let rts_sections s =
   let custom_functions = custom_section
-  is_rts_custom_functions
+    is_rts_custom_functions
     (fun sec_end s -> utf8 sec_end s
       |> String.split_on_char ';'
       |> List.map String.trim
       |> List.filter (fun s -> s <> "")
-  ) [] s in
+    ) [] s in
   { custom_functions }
 
 (* Other custom sections *)
