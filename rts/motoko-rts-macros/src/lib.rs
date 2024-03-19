@@ -1,3 +1,5 @@
+use std::convert::TryInto;
+
 use proc_macro::TokenStream;
 use quote::{quote, ToTokens};
 
@@ -177,11 +179,11 @@ enum ArgSort {
 
 /// Utility macro to implement traits for n-length tuples.
 #[proc_macro_attribute]
-pub fn tuple_macro(_attr: TokenStream, input: TokenStream) -> TokenStream {
-    // Currently hard-coded. If we use this anywhere else, it could make
-    // sense to configure these in the attribute, e.g. `#[tuple_impl(2, 20)]`
-    let min_length: u32 = 2;
-    let max_length: u32 = 20;
+pub fn tuple_macro(attr: TokenStream, input: TokenStream) -> TokenStream {
+    let args = syn::parse_macro_input!(attr with syn::punctuated::Punctuated::<syn::LitInt, syn::Token![,]>::parse_terminated);
+    assert_eq!(args.len(), 2, "Unexpected number of args for `tuple_macro`");
+    let min_length: u32 = args[0].base10_parse().expect("`min_length`");
+    let max_length: u32 = args[1].base10_parse().expect("`max_length`");
 
     let macro_rules = syn::parse_macro_input!(input as syn::ItemMacro);
     let macro_ident = &macro_rules.ident;

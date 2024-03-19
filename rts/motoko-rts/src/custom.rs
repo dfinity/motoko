@@ -205,7 +205,7 @@ impl IntoValue for () {
 }
 
 // Implement `FromValue` and `IntoValue` for tuples
-#[tuple_macro]
+#[tuple_macro(2, 20)]
 macro_rules! tuple_impl {
     ($len:expr; $($name:ident = $index:tt),+) => {
         impl<$($name: FromValue),+> FromValue for ($($name),+) {
