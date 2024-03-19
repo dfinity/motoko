@@ -457,7 +457,7 @@ module E = struct
     (* requires stable memory (and emulation on wasm targets) *)
     requires_stable_memory : bool ref;
 
-    custom_rts_functions : string list ref; (* custom RTS functions *)
+    custom_rts_functions : string list ref; (* RTS functions defined in the custom section `rts:custom-functions` *)
   }
 
 
