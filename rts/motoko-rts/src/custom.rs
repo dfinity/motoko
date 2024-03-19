@@ -182,14 +182,7 @@ impl<T: FromValue> FromValue for Vec<T> {
 }
 impl<T: IntoValue> IntoValue for Vec<T> {
     unsafe fn into_value(self, mem: &mut impl Memory) -> Result<Value> {
-        let value = alloc_array(mem, self.len() as u32);
-        let array = value.as_array();
-        let mut dest = array.payload_addr();
-        for item in self {
-            *dest = item.into_value(mem)?;
-            dest = dest.add(1);
-        }
-        Ok(allocation_barrier(value))
+        Ok(Array::from_vec(self, mem)?.into())
     }
 }
 
@@ -228,8 +221,7 @@ macro_rules! tuple_impl {
                 const LENGTH: u32 = $len;
                 let value = alloc_array(mem, LENGTH);
                 let array = value.as_array();
-                let dest = array.payload_addr();
-                $(*(dest.add($index)) = $name::into_value(self.$index, mem)?;)+
+                $(array.initialize($index, $name::into_value(self.$index, mem)?, mem);)+
                 Ok(allocation_barrier(value))
             }
         }
@@ -327,10 +319,8 @@ impl<T> Array<T> {
     {
         let value = alloc_array(mem, vec.len() as u32);
         let array = value.as_array();
-        let mut dest = array.payload_addr();
-        for item in vec {
-            *dest = item.into_value(mem)?;
-            dest = dest.add(1);
+        for (i, item) in vec.into_iter().enumerate() {
+            array.initialize(i as u32, item.into_value(mem)?, mem);
         }
         Ok(Array::from(allocation_barrier(value)))
     }
