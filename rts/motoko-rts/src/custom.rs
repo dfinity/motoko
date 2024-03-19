@@ -248,6 +248,16 @@ impl BlobVec {
     }
 }
 
+impl From<Vec<u8>> for BlobVec {
+    fn from(value: Vec<u8>) -> Self {
+        BlobVec(value)
+    }
+}
+impl From<BlobVec> for Vec<u8> {
+    fn from(value: BlobVec) -> Self {
+        value.0
+    }
+}
 impl FromValue for BlobVec {
     unsafe fn from_value(value: Value, _mem: &mut impl Memory) -> Result<Self> {
         match value.tag() {
@@ -290,6 +300,16 @@ impl From<Value> for Blob {
 impl From<Blob> for Value {
     fn from(value: Blob) -> Self {
         value.0
+    }
+}
+impl FromValue for Blob {
+    unsafe fn from_value(value: Value, _mem: &mut impl Memory) -> Result<Self> {
+        Ok(Blob::from(value))
+    }
+}
+impl IntoValue for Blob {
+    unsafe fn into_value(self, _mem: &mut impl Memory) -> Result<Value> {
+        Ok(self.into())
     }
 }
 
@@ -345,12 +365,16 @@ impl<T> From<Array<T>> for Value {
         value.0
     }
 }
-
-// impl<T> FromIterator<T> for Result<Array<Value>> {
-//     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
-//        let vec= Vec::from_iter(iter);
-//     }
-// }
+impl<T> FromValue for Array<T> {
+    unsafe fn from_value(value: Value, _mem: &mut impl Memory) -> Result<Self> {
+        Ok(Array::from(value))
+    }
+}
+impl<T> IntoValue for Array<T> {
+    unsafe fn into_value(self, _mem: &mut impl Memory) -> Result<Value> {
+        Ok(self.into())
+    }
+}
 
 // Temporary examples
 
@@ -382,9 +406,10 @@ fn array_concat_slow(a: Vec<Value>, b: Vec<Value>) -> Vec<Value> {
 }
 
 #[motoko]
-fn blob_modify(mut blob: BlobVec) -> BlobVec {
-    blob.vec().push('!' as u8);
-    blob
+fn blob_modify(blob: BlobVec) -> BlobVec {
+    let mut vec = blob.vec();
+    vec.push('!' as u8);
+    vec.into()
 }
 
 #[motoko]
