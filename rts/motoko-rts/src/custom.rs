@@ -330,11 +330,11 @@ impl<T> Array<T> {
         let length: u32 = slice.iter().map(|array| array.len()).sum();
         let value = alloc_array(mem, length as u32);
         let array = value.as_array();
-        let mut dest = array.payload_addr();
-        for array in slice {
-            for i in 0..array.len() {
-                *dest = array.get(i);
-                dest = dest.add(1);
+        let mut index = 0;
+        for array_item in slice {
+            for i in 0..array_item.len() {
+                array.initialize(index, array_item.get(i), mem);
+                index += 1;
             }
         }
         Array::from(allocation_barrier(value))

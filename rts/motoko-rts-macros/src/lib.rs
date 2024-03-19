@@ -208,11 +208,12 @@ pub fn tuple_macro(attr: TokenStream, input: TokenStream) -> TokenStream {
             );
         }
     }
-
-    // return syn::Error::new_spanned(quote!(), format!("Macro expansion:\n{}", output))
-    //     .to_compile_error()
-    //     .into();
-
+    if DEBUG {
+        // Show resolved macro expansion
+        return syn::Error::new_spanned(quote!(), format!("`#[tuple_macro]` expansion:\n{}", output))
+            .to_compile_error()
+            .into();
+    }
     output.into()
 }
 
@@ -319,13 +320,11 @@ pub fn motoko(attr: TokenStream, input: TokenStream) -> TokenStream {
         #[link_section = "rts:custom-functions"]
         static #custom_section_ident: [u8; #custom_section_len] = *#custom_section_bytes;
     );
-
     if DEBUG {
         // Show resolved macro expansion
-        return syn::Error::new_spanned(quote!(), format!("Macro expansion:\n{}", output))
+        return syn::Error::new_spanned(quote!(), format!("`#[motoko]` expansion:\n{}", output))
             .to_compile_error()
             .into();
     }
-
     output.into()
 }
