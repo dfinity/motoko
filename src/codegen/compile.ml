@@ -2187,6 +2187,10 @@ module Tagged = struct
     let index = E.object_pool_add env allocation in
     Heap.get_static_variable env index
 
+  let share_constant env = function
+  | E.Vanilla vanilla -> compile_unboxed_const vanilla
+  | E.SharedObject allocation -> share env allocation
+
 end (* Tagged *)
 
 module MutBox = struct
@@ -3001,8 +3005,8 @@ sig
    *)
   val compile_load_from_data_buf : E.t -> G.t -> bool -> G.t
 
-  (* literals *)
-  val lit : E.t -> Big_int.big_int -> G.t
+  (* constant *)
+  val constant : E.t -> Big_int.big_int -> E.shared_value
 
   (* arithmetic *)
   val compile_abs : E.t -> G.t
@@ -3332,10 +3336,10 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       (get_n ^^ clear_tag env ^^ compile_unboxed_const 0l ^^ G.i (Compare (Wasm.Values.I32 I32Op.LtS)))
       (get_n ^^ Num.compile_is_negative env)
 
-  let lit env = function
+  let constant env = function
     | n when Big_int.is_int_big_int n && BitTagged.can_tag_const Type.Int (Big_int.int64_of_big_int n) ->
-      compile_unboxed_const (BitTagged.tag_const Type.Int (Big_int.int64_of_big_int n))
-    | n -> Num.lit env n
+      E.Vanilla (BitTagged.tag_const Type.Int (Big_int.int64_of_big_int n))
+    | n -> Num.constant env n
 
   let compile_neg env =
     let sminl = Int32.shift_left 1l (BitTagged.sbits_of Type.Int) in
@@ -3687,7 +3691,7 @@ module BigNumLibtommath : BigNumType = struct
     | false -> get_data_buf ^^ E.call_import env "rts" "bigint_leb128_decode"
     | true -> get_data_buf ^^ E.call_import env "rts" "bigint_sleb128_decode"
 
-  let lit env n =
+  let constant env n =
     (* See enum mp_sign *)
     let sign = if Big_int.sign_big_int n >= 0 then 0l else 1l in
 
@@ -3708,12 +3712,12 @@ module BigNumLibtommath : BigNumType = struct
     let size = Int32.of_int (List.length limbs) in
 
     (* cf. mp_int in tommath.h *)
-    Tagged.obj env Tagged.BigInt ([
+    E.SharedObject (fun env -> Tagged.obj env Tagged.BigInt ([
       compile_unboxed_const size; (* used *)
       compile_unboxed_const size; (* size; relying on Heap.word_size == size_of(mp_digit) *)
       compile_unboxed_const sign;
       compile_unboxed_const 0l; (* dp; this will be patched in BigInt::mp_int_ptr in the RTS when used *)
-    ] @ limbs)
+    ] @ limbs))
 
   let assert_nonneg env =
     Func.share_code1 Func.Never env "assert_nonneg" ("n", I32Type) [I32Type] (fun env get_n ->
@@ -5277,7 +5281,7 @@ module Cycles = struct
     let (set_val, get_val) = new_local env "cycles" in
     set_val ^^
     get_val ^^
-    BigNum.lit env (Big_int.power_int_positive_int 2 128) ^^
+    Tagged.share_constant env (BigNum.constant env (Big_int.power_int_positive_int 2 128)) ^^
     BigNum.compile_relop env Lt ^^
     E.else_trap_with env "cycles out of bounds" ^^
 
@@ -8460,7 +8464,7 @@ module StackRep = struct
   | Const.Lit (Const.Bool number) -> E.Vanilla (Bool.vanilla_lit number)
   | Const.Lit (Const.Blob payload) -> E.SharedObject (fun env -> Blob.lit env payload)
   | Const.Lit (Const.Null) -> E.Vanilla Opt.null_vanilla_lit
-  | Const.Lit (Const.BigInt number) -> E.SharedObject (fun env -> BigNum.lit env number)
+  | Const.Lit (Const.BigInt number) -> BigNum.constant env number
   | Const.Lit (Const.Word32 (pty, number)) -> BoxedSmallWord.constant env pty number
   | Const.Lit (Const.Word64 (pty, number)) -> BoxedWord64.constant env pty number
   | Const.Lit (Const.Float64 number) -> Float.constant env number
@@ -8484,15 +8488,13 @@ module StackRep = struct
         Object.lit_raw env compile_fields
       )
 
-  and materialize_constant_element env value = 
+  and materialize_constant_element env value =
     match materialize_constant_value env value with
     | E.Vanilla vanilla -> fun env -> compile_unboxed_const vanilla
     | E.SharedObject allocation -> allocation
 
-  let materialize_shared_constant env value = 
-    match materialize_constant_value env value with
-    | E.Vanilla vanilla -> compile_unboxed_const vanilla
-    | E.SharedObject allocation -> Tagged.share env allocation
+  let materialize_shared_constant env value =
+    Tagged.share_constant env (materialize_constant_value env value)
 
   let adjust env (sr_in : t) sr_out =
     if eq sr_in sr_out
