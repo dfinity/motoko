@@ -8,7 +8,7 @@ use motoko_rts_macros::{motoko, tuple_macro};
 use crate::{
     barriers::allocation_barrier,
     memory::{alloc_array, alloc_blob, Memory},
-    types::{Bytes, Tag, Value, TAG_ARRAY, TAG_BLOB},
+    types::{Bytes, Tag, Value, TAG_ARRAY, TAG_ARRAY_SLICE_MIN, TAG_BLOB},
 };
 
 extern "C" {
@@ -168,7 +168,7 @@ impl IntoValue for bool {
 impl<T: FromValue> FromValue for Vec<T> {
     unsafe fn from_value(value: Value, mem: &mut impl Memory) -> Result<Self> {
         match value.tag() {
-            TAG_ARRAY => {
+            TAG_ARRAY | TAG_ARRAY_SLICE_MIN => {
                 let array = value.as_array();
                 let len = array.len();
                 (0..len)
@@ -212,7 +212,7 @@ macro_rules! tuple_impl {
             unsafe fn from_value(value: Value, mem: &mut impl Memory) -> Result<Self> {
                 const LENGTH: u32 = $len;
                 match value.tag() {
-                    TAG_ARRAY => {
+                    TAG_ARRAY | TAG_ARRAY_SLICE_MIN => {
                         let array = value.as_array();
                         assert_eq!(array.len(), LENGTH, "Unexpected tuple length");
                         Ok((
