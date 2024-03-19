@@ -1,5 +1,3 @@
-use std::convert::TryInto;
-
 use proc_macro::TokenStream;
 use quote::{quote, ToTokens};
 
