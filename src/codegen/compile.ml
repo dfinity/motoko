@@ -3833,15 +3833,20 @@ module Blob = struct
     Tagged.load_forwarding_pointer env ^^
     compile_add_const (unskewed_payload_offset env)
 
-  let lit env s = 
-    let blob_length = Int32.of_int (String.length s) in
-    let (set_new_blob, get_new_blob) = new_local env "new_blob" in
-    compile_unboxed_const blob_length ^^ alloc env ^^ set_new_blob ^^
-    get_new_blob ^^ payload_ptr_unskewed env ^^ (* target address *)
-    compile_unboxed_const 0l ^^ (* data offset *)
-    compile_unboxed_const blob_length ^^ (* data length *)
-    load_static_data env s ^^
-    get_new_blob
+  let constant env payload =
+    E.SharedObject (fun env -> 
+      let blob_length = Int32.of_int (String.length payload) in
+      let (set_new_blob, get_new_blob) = new_local env "new_blob" in
+      compile_unboxed_const blob_length ^^ alloc env ^^ set_new_blob ^^
+      get_new_blob ^^ payload_ptr_unskewed env ^^ (* target address *)
+      compile_unboxed_const 0l ^^ (* data offset *)
+      compile_unboxed_const blob_length ^^ (* data length *)
+      load_static_data env payload ^^
+      get_new_blob
+    )
+
+  let lit env payload =
+    Tagged.share_constant env (constant env payload)
 
   let as_ptr_len env = Func.share_code1 Func.Never env "as_ptr_size" ("x", I32Type) [I32Type; I32Type] (
     fun env get_x ->
@@ -4066,7 +4071,11 @@ module Object = struct
         List.sort compare in
       let hash_blob env =
         let hash_payload = StaticBytes.[ i32s hashes ] in
-        Blob.lit env (StaticBytes.as_bytes hash_payload) in
+        let blob_constant = Blob.constant env (StaticBytes.as_bytes hash_payload) in
+        match blob_constant with
+        | E.SharedObject allocation -> allocation env
+        | E.Vanilla _ -> assert false
+      in
 
       (* Allocate memory *)
       let (set_ri, get_ri, ri) = new_local_ env I32Type "obj" in
@@ -8462,7 +8471,7 @@ module StackRep = struct
   let rec materialize_constant_value env = function
   | Const.Lit (Const.Vanilla value) -> E.Vanilla value
   | Const.Lit (Const.Bool number) -> E.Vanilla (Bool.vanilla_lit number)
-  | Const.Lit (Const.Blob payload) -> E.SharedObject (fun env -> Blob.lit env payload)
+  | Const.Lit (Const.Blob payload) -> Blob.constant env payload
   | Const.Lit (Const.Null) -> E.Vanilla Opt.null_vanilla_lit
   | Const.Lit (Const.BigInt number) -> BigNum.constant env number
   | Const.Lit (Const.Word32 (pty, number)) -> BoxedSmallWord.constant env pty number
