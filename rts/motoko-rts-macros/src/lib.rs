@@ -1,6 +1,8 @@
 use proc_macro::TokenStream;
 use quote::{quote, ToTokens};
 
+const DEBUG: bool = false;
+
 /// This macro is used to generate monomorphic versions of allocating RTS functions, to allow
 /// calling such functions in generated code. Example:
 ///
@@ -318,9 +320,12 @@ pub fn motoko(attr: TokenStream, input: TokenStream) -> TokenStream {
         static #custom_section_ident: [u8; #custom_section_len] = *#custom_section_bytes;
     );
 
-    // return syn::Error::new_spanned(quote!(), format!("Macro expansion:\n{}", output))
-    //     .to_compile_error()
-    //     .into();
+    if DEBUG {
+        // Show resolved macro expansion
+        return syn::Error::new_spanned(quote!(), format!("Macro expansion:\n{}", output))
+            .to_compile_error()
+            .into();
+    }
 
     output.into()
 }

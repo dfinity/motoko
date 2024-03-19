@@ -259,20 +259,13 @@ impl From<BlobVec> for Vec<u8> {
     }
 }
 impl FromValue for BlobVec {
-    unsafe fn from_value(value: Value, _mem: &mut impl Memory) -> Result<Self> {
-        match value.tag() {
-            TAG_BLOB => {
-                let blob = value.as_blob();
-                let len = blob.len().as_u32();
-                Ok(BlobVec((0..len).into_iter().map(|i| blob.get(i)).collect()))
-            }
-            tag => Err(MotokoError::UnexpectedTag(tag)),
-        }
+    unsafe fn from_value(value: Value, mem: &mut impl Memory) -> Result<Self> {
+        Ok(BlobVec(Blob::from_value(value.into(), mem)?.into_vec()?))
     }
 }
 impl IntoValue for BlobVec {
     unsafe fn into_value(self, mem: &mut impl Memory) -> Result<Value> {
-        self.vec().into_value(mem)
+        Blob::from_vec(self.vec(), mem)?.into_value(mem)
     }
 }
 
@@ -289,6 +282,17 @@ impl Blob {
             dest = dest.add(1);
         }
         Ok(Blob(allocation_barrier(value)))
+    }
+
+    pub unsafe fn into_vec(self) -> Result<Vec<u8>> {
+        match self.0.tag() {
+            TAG_BLOB => {
+                let blob = self.0.as_blob();
+                let len = blob.len().as_u32();
+                Ok((0..len).into_iter().map(|i| blob.get(i)).collect())
+            }
+            tag => Err(MotokoError::UnexpectedTag(tag)),
+        }
     }
 }
 
@@ -402,7 +406,7 @@ unsafe fn array_concat_fast(
 
 #[motoko]
 fn array_concat_slow(a: Vec<Value>, b: Vec<Value>) -> Vec<Value> {
-    [a, b].concat() // slower but more usable within the Rust ecosystem
+    [a, b].concat() // slower but immediately usable within the Rust ecosystem
 }
 
 #[motoko]
