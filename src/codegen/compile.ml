@@ -11820,13 +11820,8 @@ and compile_prim_invocation (env : E.t) ae p es at =
       const_sr SR.Vanilla (E.call_import env "rts" s')
     else (
       (* TODO: type checking error *)
-      Printf.printf "%s" Diag.(string_of_message {
-        sev = Error;
-        code = "M0199";
-        at;
-        cat = "RTS";
-        text = Printf.sprintf "custom function '%s' not found" s';
-      });
+      Printf.printf "%s" (Diag.string_of_message (
+        Diag.error_message at "M0199" "RTS" (Printf.sprintf "custom function '%s' not found" s')));
       exit 1)
 
   (* Coercions for abstract types *)
