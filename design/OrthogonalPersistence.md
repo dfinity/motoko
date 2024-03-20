@@ -88,10 +88,10 @@ This is because these objects may also need to survive upgrades and must not be 
 
 The incremental GC also operates on these objects, meaning that forwarding pointer resolution is also necessary for these objects.
 
+For memory and runtime efficiency, object pooling is implemented for compile-time-known constant objects (with side-effect-free initialization), i.e. those objects are already created on program initialization/upgrade in the dynamic heap and thereafter the reference to the corresponding prefabricated object is looked up whenever the constant value is needed at runtime.
+
 The runtime systems avoids any global Wasm variables for state that needs to be preserved on upgrades.
 Instead, such global runtime state is stored in the persistent metadata.
-
-Sharing optimization (pooling) is possible for compile-time-known objects, see below.
 
 ### Wasm Data Segments
 Only passive Wasm data segments are used by the compiler and runtime system. In contrast to ordinary active data segments, passive segments can be explicitly loaded to a dynamic address.
@@ -115,10 +115,10 @@ Once operating on the stable heap, the system prevents downgrade attempts to the
 ### Old Stable Memory
 The old stable memory remains equally accessible as secondary memory with the new support.
 
-## Possible Extensions
-The following extensions or optimization could be applied in the future:
-* 64-bit memory: Extend the main memory to 64-bit by using Wasm64, see https://github.com/dfinity/motoko/pull/4136. The memory layout would need to be extended. Moreover, it would be beneficial to introduce a dynamic partition table for the GC. Ideally, stable heap support is directly rolled out for 64-bit to avoid complicated memory layout upgrades from 32-bit to 64-bit.
-* Object pooling: Compile-time-known objects can be shared in the dynamic heap by remembering them in an additional pool table. The pool table needs to be registered as a transient GC root and is recreated on canister upgrades.
+## Current Limitations
+* Freeing old object fields: While new program versions can drop object fields, the runtime system should also delete the redundant fields of persistent objects of previous program versions. This could be realized during garbage collection when objects are copied. For this purpose, the runtime system may maintain a set of field hashes in use and consult this table during garbage collection.
+* Bounded Rust call stack size: The Rust call stack size needs to be bounded and can no longer be configured by the user.
+* The Wasm profiler (only used for the flamegraphs) is no longer applicable because the underlying `parity-wasm` crate lacks full support of passive data segments. A re-implementation of the profiler would be needed.
 
 ## Related PRs
 

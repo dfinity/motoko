@@ -389,7 +389,18 @@ module E = struct
     type_offsets_segment : int32;
     idl_types_segment : int32;
   }
-  type t = {
+  (* Object allocation code. *)
+  type object_allocation = t -> G.t
+  (* Pool of shared objects.
+     Alllocated in the dynamic heap on program initialization/upgrade.
+     Identified by the index position in this list and accessed via the runtime system.
+     Registered as GC root set and replaced on program upgrade. 
+  *)
+  and object_pool = {
+    objects: object_allocation list ref;
+    frozen: bool ref;
+  }
+  and t = {
     (* Global fields *)
     (* Static *)
     mode : Flags.compile_mode;
@@ -414,10 +425,8 @@ module E = struct
     built_in_funcs : lazy_function NameEnv.t ref;
     static_strings : int32 StringEnv.t ref;
     data_segments : string list ref; (* Passive data segments *)
-    static_variables : int32 ref;
-      (* Number of static variables (MutBox), accessed by index via the runtime system,
-         and belonging to the GC root set. *)
-
+    object_pool : object_pool;
+      
     (* Types accumulated in global typtbl (for candid subtype checks)
        See Note [Candid subtype checks]
     *)
@@ -448,6 +457,10 @@ module E = struct
     global_type_descriptor : type_descriptor option ref;
   }
 
+  (* Compile-time-known value, either a plain vanilla constant or a shared object. *)
+  type shared_value = 
+  | Vanilla of int32
+  | SharedObject of object_allocation
 
   (* The initial global environment *)
   let mk_global mode rts trap_with : t = {
@@ -467,7 +480,7 @@ module E = struct
     built_in_funcs = ref NameEnv.empty;
     static_strings = ref StringEnv.empty;
     data_segments = ref [];
-    static_variables = ref 0l;
+    object_pool = { objects = ref []; frozen = ref false };
     typtbl_typs = ref [];
     (* Metadata *)
     args = ref None;
@@ -714,13 +727,17 @@ module E = struct
   let get_data_segments (env : t) =
     !(env.data_segments)
 
-  let add_static_variable (env : t) : int32 =
-    let variable_index = !(env.static_variables) in
-    env.static_variables := Int32.add variable_index 1l;
-    variable_index
+  let object_pool_add (env : t) (allocation : t -> G.t) : int32 =
+    if !(env.object_pool.frozen) then raise (Invalid_argument "Object pool frozen");
+    let index = List.length !(env.object_pool.objects) in
+    env.object_pool.objects := !(env.object_pool.objects) @ [ allocation ];
+    Int32.of_int index
 
-  let count_static_variables (env : t) =
-    !(env.static_variables)
+  let object_pool_size (env : t) : int =
+    List.length !(env.object_pool.objects)
+
+  let iterate_object_pool (env : t) f =
+    G.concat_mapi f !(env.object_pool.objects)
 
   let collect_garbage env force =
     let name = "incremental_gc" in
@@ -1074,8 +1091,8 @@ module RTS = struct
     E.add_func_import env "rts" "save_stable_actor" [I32Type] [];
     E.add_func_import env "rts" "free_stable_actor" [] [];
     E.add_func_import env "rts" "contains_field" [I32Type; I32Type] [I32Type];
-    E.add_func_import env "rts" "set_static_root" [I32Type] [];
-    E.add_func_import env "rts" "get_static_root" [] [I32Type];
+    E.add_func_import env "rts" "set_static_variables" [I32Type] [];
+    E.add_func_import env "rts" "get_static_variable" [I32Type] [I32Type];
     E.add_func_import env "rts" "set_upgrade_instructions" [I64Type] [];
     E.add_func_import env "rts" "get_upgrade_instructions" [] [I64Type];
     E.add_func_import env "rts" "memcpy" [I32Type; I32Type; I32Type] [I32Type]; (* standard libc memcpy *)
@@ -1335,6 +1352,10 @@ module Heap = struct
 
   let get_heap_size env =
     E.call_import env "rts" "get_heap_size"
+
+  let get_static_variable env index = 
+    compile_unboxed_const index ^^
+    E.call_import env "rts" "get_static_variable"
 
 end (* Heap *)
 
@@ -1966,8 +1987,8 @@ module Tagged = struct
      Null tests are possible without resolving the forwarding pointer of a non-null comparand.
   *)
 
-  let null_sentinel_pointer = 0xffff_fffbl (* skewed, pointing to last unallocated Wasm page *)
-  let null_pointer = compile_unboxed_const null_sentinel_pointer
+  let null_vanilla_pointer = 0xffff_fffbl (* skewed, pointing to last unallocated Wasm page *)
+  let null_pointer = compile_unboxed_const null_vanilla_pointer
 
   let not_null env =
     (* null test works without forwarding pointer resolution of a non-null comparand *)
@@ -2162,6 +2183,14 @@ module Tagged = struct
     get_object ^^
     allocation_barrier env
 
+  let share env allocation =
+    let index = E.object_pool_add env allocation in
+    Heap.get_static_variable env index
+
+  let share_constant env = function
+  | E.Vanilla vanilla -> compile_unboxed_const vanilla
+  | E.SharedObject allocation -> share env allocation
+
 end (* Tagged *)
 
 module MutBox = struct
@@ -2190,6 +2219,9 @@ module MutBox = struct
     Tagged.load_forwarding_pointer env ^^
     get_mutbox_value ^^
     Tagged.store_field env field
+  
+  let add_global_mutbox env =
+    E.object_pool_add env alloc
 end
 
 
@@ -2219,7 +2251,9 @@ module Opt = struct
 
   let some_payload_field = Tagged.header_size
 
+  let null_vanilla_lit = Tagged.null_vanilla_pointer
   let null_lit env = Tagged.null_pointer
+
   let is_some = Tagged.not_null
 
   let alloc_some env get_payload =
@@ -2243,6 +2277,11 @@ module Opt = struct
             )
         )
     )
+
+  let constant env = function
+  | E.Vanilla value when value = null_vanilla_lit -> E.SharedObject (fun env -> alloc_some env (null_lit env)) (* ?ⁿnull for n > 0 *)
+  | E.Vanilla value -> E.Vanilla value (* not null and no `Opt` object *)
+  | E.SharedObject allocation -> E.SharedObject (fun env -> inject env (allocation env)) (* potentially wrap in new `Opt` *)
 
   (* This function is used where conceptually, Opt.inject should be used, but
   we know for sure that it wouldn’t do anything anyways, except dereferencing the forwarding pointer *)
@@ -2355,11 +2394,12 @@ module Closure = struct
     G.i (CallIndirect (nr ty)) ^^
     FakeMultiVal.load env (Lib.List.make n_res I32Type)
 
-  let alloc env fi =
-    Tagged.obj env Tagged.Closure [
-      compile_unboxed_const (E.add_fun_ptr env fi);
+  let constant env get_fi =
+    let fi = E.add_fun_ptr env (get_fi ()) in
+    E.SharedObject (fun env -> Tagged.obj env Tagged.Closure [
+      compile_unboxed_const fi;
       compile_unboxed_const 0l
-    ]
+    ])
 
 end (* Closure *)
 
@@ -2392,12 +2432,12 @@ module BoxedWord64 = struct
     get_i ^^
     Tagged.allocation_barrier env
 
-  let lit env pty i =
+  let constant env pty i =
     if BitTagged.can_tag_const pty i
     then 
-      compile_unboxed_const (BitTagged.tag_const pty i)
+      E.Vanilla (BitTagged.tag_const pty i)
     else
-      compile_box env pty (compile_const_64 i)
+      E.SharedObject (fun env -> compile_box env pty (compile_const_64 i))
 
   let box env pty = 
     Func.share_code1 Func.Never env 
@@ -2514,14 +2554,14 @@ module BoxedSmallWord = struct
 
   let payload_field = Tagged.header_size
 
-  let lit env pty i =
+  let constant env pty i =
     if BitTagged.can_tag_const pty (Int64.of_int (Int32.to_int i))
     then
-      compile_unboxed_const (BitTagged.tag_const pty (Int64.of_int (Int32.to_int i)))
+      E.Vanilla (BitTagged.tag_const pty (Int64.of_int (Int32.to_int i)))
     else
-      Tagged.obj env (heap_tag env pty) [
+      E.SharedObject (fun env -> (Tagged.obj env (heap_tag env pty) [
         compile_unboxed_const i
-      ]
+      ]))
 
   let compile_box env pty compile_elem : G.t =
     let (set_i, get_i) = new_local env "boxed_i32" in
@@ -2807,7 +2847,9 @@ module Float = struct
 
   let unbox env = Tagged.load_forwarding_pointer env ^^ Tagged.load_field_float64 env payload_field
 
-  let lit env f = compile_unboxed_const f ^^ box env
+  let constant env f = E.SharedObject (fun env -> 
+    compile_unboxed_const f ^^ 
+    box env)
 
 end (* Float *)
 
@@ -2963,8 +3005,8 @@ sig
    *)
   val compile_load_from_data_buf : E.t -> G.t -> bool -> G.t
 
-  (* literals *)
-  val lit : E.t -> Big_int.big_int -> G.t
+  (* constant *)
+  val constant : E.t -> Big_int.big_int -> E.shared_value
 
   (* arithmetic *)
   val compile_abs : E.t -> G.t
@@ -3294,10 +3336,10 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       (get_n ^^ clear_tag env ^^ compile_unboxed_const 0l ^^ G.i (Compare (Wasm.Values.I32 I32Op.LtS)))
       (get_n ^^ Num.compile_is_negative env)
 
-  let lit env = function
+  let constant env = function
     | n when Big_int.is_int_big_int n && BitTagged.can_tag_const Type.Int (Big_int.int64_of_big_int n) ->
-      compile_unboxed_const (BitTagged.tag_const Type.Int (Big_int.int64_of_big_int n))
-    | n -> Num.lit env n
+      E.Vanilla (BitTagged.tag_const Type.Int (Big_int.int64_of_big_int n))
+    | n -> Num.constant env n
 
   let compile_neg env =
     let sminl = Int32.shift_left 1l (BitTagged.sbits_of Type.Int) in
@@ -3649,7 +3691,7 @@ module BigNumLibtommath : BigNumType = struct
     | false -> get_data_buf ^^ E.call_import env "rts" "bigint_leb128_decode"
     | true -> get_data_buf ^^ E.call_import env "rts" "bigint_sleb128_decode"
 
-  let lit env n =
+  let constant env n =
     (* See enum mp_sign *)
     let sign = if Big_int.sign_big_int n >= 0 then 0l else 1l in
 
@@ -3670,12 +3712,12 @@ module BigNumLibtommath : BigNumType = struct
     let size = Int32.of_int (List.length limbs) in
 
     (* cf. mp_int in tommath.h *)
-    Tagged.obj env Tagged.BigInt ([
+    E.SharedObject (fun env -> Tagged.obj env Tagged.BigInt ([
       compile_unboxed_const size; (* used *)
       compile_unboxed_const size; (* size; relying on Heap.word_size == size_of(mp_digit) *)
       compile_unboxed_const sign;
       compile_unboxed_const 0l; (* dp; this will be patched in BigInt::mp_int_ptr in the RTS when used *)
-    ] @ limbs)
+    ] @ limbs))
 
   let assert_nonneg env =
     Func.share_code1 Func.Never env "assert_nonneg" ("n", I32Type) [I32Type] (fun env get_n ->
@@ -3791,15 +3833,20 @@ module Blob = struct
     Tagged.load_forwarding_pointer env ^^
     compile_add_const (unskewed_payload_offset env)
 
-  let lit env s = 
-    let blob_length = Int32.of_int (String.length s) in
-    let (set_new_blob, get_new_blob) = new_local env "new_blob" in
-    compile_unboxed_const blob_length ^^ alloc env ^^ set_new_blob ^^
-    get_new_blob ^^ payload_ptr_unskewed env ^^ (* target address *)
-    compile_unboxed_const 0l ^^ (* data offset *)
-    compile_unboxed_const blob_length ^^ (* data length *)
-    load_static_data env s ^^
-    get_new_blob
+  let constant env payload =
+    E.SharedObject (fun env -> 
+      let blob_length = Int32.of_int (String.length payload) in
+      let (set_new_blob, get_new_blob) = new_local env "new_blob" in
+      compile_unboxed_const blob_length ^^ alloc env ^^ set_new_blob ^^
+      get_new_blob ^^ payload_ptr_unskewed env ^^ (* target address *)
+      compile_unboxed_const 0l ^^ (* data offset *)
+      compile_unboxed_const blob_length ^^ (* data length *)
+      load_static_data env payload ^^
+      get_new_blob
+    )
+
+  let lit env payload =
+    Tagged.share_constant env (constant env payload)
 
   let as_ptr_len env = Func.share_code1 Func.Never env "as_ptr_size" ("x", I32Type) [I32Type; I32Type] (
     fun env get_x ->
@@ -4024,7 +4071,11 @@ module Object = struct
         List.sort compare in
       let hash_blob env =
         let hash_payload = StaticBytes.[ i32s hashes ] in
-        Blob.lit env (StaticBytes.as_bytes hash_payload) in
+        let blob_constant = Blob.constant env (StaticBytes.as_bytes hash_payload) in
+        match blob_constant with
+        | E.SharedObject allocation -> allocation env
+        | E.Vanilla _ -> assert false
+      in
 
       (* Allocate memory *)
       let (set_ri, get_ri, ri) = new_local_ env I32Type "obj" in
@@ -5239,7 +5290,7 @@ module Cycles = struct
     let (set_val, get_val) = new_local env "cycles" in
     set_val ^^
     get_val ^^
-    BigNum.lit env (Big_int.power_int_positive_int 2 128) ^^
+    Tagged.share_constant env (BigNum.constant env (Big_int.power_int_positive_int 2 128)) ^^
     BigNum.compile_relop env Lt ^^
     E.else_trap_with env "cycles out of bounds" ^^
 
@@ -8318,20 +8369,25 @@ end
 
 module GCRoots = struct
   let create_root_array env = Func.share_code0 Func.Always env "create_root_array" [I32Type] (fun env ->
-    let length = Int32.to_int (E.count_static_variables env) in
-    let variables = Lib.List.table length (fun _ -> MutBox.alloc env) in
-    Arr.lit env variables
+    E.(env.object_pool.frozen) := true;
+    let (set_array, get_array) = new_local env "root_array" in
+    let length = Int32.of_int (E.object_pool_size env) in
+    compile_unboxed_const length ^^
+    Arr.alloc env ^^
+    set_array ^^
+    E.iterate_object_pool env (fun index allocation ->
+      get_array ^^
+      compile_unboxed_const (Int32.of_int index) ^^
+      Arr.unsafe_idx env ^^
+      allocation env ^^
+      store_ptr
+    ) ^^
+    get_array
   )
 
   let register_static_variables env =
     create_root_array env ^^
-    E.call_import env "rts" "set_static_root"
-
-  let get_static_variable env index = 
-    E.call_import env "rts" "get_static_root" ^^
-    compile_unboxed_const index ^^
-    Arr.idx env ^^
-    load_ptr
+    E.call_import env "rts" "set_static_variables"
 end (* GCRoots *)
 
 module StackRep = struct
@@ -8412,26 +8468,42 @@ module StackRep = struct
     | UnboxedTuple n -> G.table n (fun _ -> G.i Drop)
     | Const _ | Unreachable -> G.nop
 
-  let rec materialize_constant env = function
-    | Const.Lit (Const.Vanilla value) -> compile_unboxed_const value
-    | Const.Lit (Const.Bool number) -> Bool.lit number
-    | Const.Lit (Const.Blob payload) -> Blob.lit env payload
-    | Const.Lit (Const.Null) -> Opt.null_lit env
-    | Const.Lit (Const.BigInt number) -> BigNum.lit env number
-    | Const.Lit (Const.Word32 (pty, number)) -> BoxedSmallWord.lit env pty number
-    | Const.Lit (Const.Word64 (pty, number)) -> BoxedWord64.lit env pty number
-    | Const.Lit (Const.Float64 number) -> Float.lit env number
-    | Const.Opt value -> Opt.inject env (materialize_constant env value)
-    | Const.Fun (get_fi, _) -> Closure.alloc env (get_fi ())
-    | Const.Message _ -> assert false
-    | Const.Unit -> Tuple.compile_unit env
-    | Const.Tag (tag, value) -> Variant.inject env tag (materialize_constant env value)
-    | Const.Array elements -> 
-        let materialized_elements = List.map (materialize_constant env) elements in
-        Arr.lit env materialized_elements
-    | Const.Obj fields -> 
-        let materialized_fields = List.map (fun (name, value) -> (name, (fun () -> materialize_constant env value))) fields in
-        Object.lit_raw env materialized_fields
+  let rec materialize_constant_value env = function
+  | Const.Lit (Const.Vanilla value) -> E.Vanilla value
+  | Const.Lit (Const.Bool number) -> E.Vanilla (Bool.vanilla_lit number)
+  | Const.Lit (Const.Blob payload) -> Blob.constant env payload
+  | Const.Lit (Const.Null) -> E.Vanilla Opt.null_vanilla_lit
+  | Const.Lit (Const.BigInt number) -> BigNum.constant env number
+  | Const.Lit (Const.Word32 (pty, number)) -> BoxedSmallWord.constant env pty number
+  | Const.Lit (Const.Word64 (pty, number)) -> BoxedWord64.constant env pty number
+  | Const.Lit (Const.Float64 number) -> Float.constant env number
+  | Const.Opt value -> Opt.constant env (materialize_constant_value env value)
+  | Const.Fun (get_fi, _) -> Closure.constant env get_fi
+  | Const.Message _ -> assert false
+  | Const.Unit -> E.Vanilla (Tuple.unit_vanilla_lit env)
+  | Const.Tag (tag, value) -> 
+      let payload = materialize_constant_element env value in
+      E.SharedObject (fun env -> Variant.inject env tag (payload env))
+  | Const.Array elements -> 
+      let materialized_elements = List.map (materialize_constant_element env) elements in
+      E.SharedObject (fun env -> 
+        let compiled_elements = List.map (fun allocation -> allocation env) materialized_elements in
+        Arr.lit env compiled_elements
+      )
+  | Const.Obj fields -> 
+      let materialized_fields = List.map (fun (name, value) -> (name, materialize_constant_element env value)) fields in
+      E.SharedObject (fun env -> 
+        let compile_fields = List.map (fun (name, allocation) -> (name, fun () -> allocation env)) materialized_fields in
+        Object.lit_raw env compile_fields
+      )
+
+  and materialize_constant_element env value =
+    match materialize_constant_value env value with
+    | E.Vanilla vanilla -> fun env -> compile_unboxed_const vanilla
+    | E.SharedObject allocation -> allocation
+
+  let materialize_shared_constant env value =
+    Tagged.share_constant env (materialize_constant_value env value)
 
   let adjust env (sr_in : t) sr_out =
     if eq sr_in sr_out
@@ -8469,7 +8541,7 @@ module StackRep = struct
     | Vanilla, UnboxedFloat64 -> Float.unbox env
 
     | Const value, Vanilla -> 
-        materialize_constant env value
+        materialize_shared_constant env value
     | Const Const.Lit (Const.Vanilla n), UnboxedWord32 ty ->
         compile_unboxed_const n ^^
         TaggedSmallWord.untag env ty
@@ -8481,7 +8553,7 @@ module StackRep = struct
     | Const c, UnboxedTuple 0 -> G.nop
     | Const Const.Array cs, UnboxedTuple n ->
       assert (n = List.length cs);
-      G.concat_map (fun c -> materialize_constant env c) cs
+      G.concat_map (fun c -> materialize_shared_constant env c) cs
     | _, _ ->
       Printf.eprintf "Unknown stack_rep conversion %s -> %s\n"
         (to_string sr_in) (to_string sr_out);
@@ -8598,7 +8670,7 @@ module VarEnv = struct
         let ae' = { ae with vars = NameEnv.add name ((Local (SR.Vanilla, i)), typ) ae.vars } in
         add_arguments env ae' as_local remainder
       else
-        let index = E.add_static_variable env in
+        let index = MutBox.add_global_mutbox env in
         let ae' = add_static_variable ae name index typ in
         add_arguments env ae' as_local remainder
 
@@ -8658,14 +8730,14 @@ module Var = struct
       SR.Vanilla,
       MutBox.store_field env
     | Some ((Static index), typ) when potential_pointer typ ->
-      GCRoots.get_static_variable env index ^^
+      Heap.get_static_variable env index ^^
       Tagged.load_forwarding_pointer env ^^
       compile_add_const ptr_unskew ^^
       compile_add_const (Int32.mul MutBox.field Heap.word_size),
       SR.Vanilla,
       Tagged.write_with_barrier env
     | Some ((Static index), typ) ->
-      GCRoots.get_static_variable env index,
+      Heap.get_static_variable env index,
       SR.Vanilla,
       MutBox.store_field env
     | Some ((Const _), _) -> fatal "set_val: %s is const" var
@@ -8698,7 +8770,7 @@ module Var = struct
       SR.Vanilla, G.i (LocalGet (nr i)) ^^ MutBox.load_field env
     | Some (Static index) ->
       SR.Vanilla, 
-      GCRoots.get_static_variable env index ^^
+      Heap.get_static_variable env index ^^
       MutBox.load_field env
     | Some (Const c) ->
       SR.Const c, G.nop
@@ -8745,7 +8817,7 @@ module Var = struct
   *)
   let get_aliased_box env ae var = match VarEnv.lookup_var ae var with
     | Some (HeapInd i) -> G.i (LocalGet (nr i))
-    | Some (Static index) -> GCRoots.get_static_variable env index
+    | Some (Static index) -> Heap.get_static_variable env index
     | _ -> assert false
 
   let capture_aliased_box env ae var = match VarEnv.lookup_var ae var with
@@ -9503,7 +9575,7 @@ module AllocHow = struct
       let alloc_code = MutBox.alloc env ^^ G.i (LocalSet (nr i)) in
       (ae1, alloc_code)
     | StoreStatic ->
-      let index = E.add_static_variable env in
+      let index = MutBox.add_global_mutbox env in
       let ae1 = VarEnv.add_static_variable ae name index typ in
       (ae1, G.nop)
 
