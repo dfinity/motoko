@@ -59,7 +59,7 @@ pub unsafe fn set_static_variables<M: crate::memory::Memory>(mem: &mut M, array:
 
 #[no_mangle]
 #[cfg(feature = "ic")]
-pub unsafe extern "C" fn get_static_variable(index: u32) -> Value {
+pub unsafe extern "C" fn get_static_variable(index: usize) -> Value {
     debug_assert!(STATIC_VARIABLES.is_non_null_ptr());
     STATIC_VARIABLES.as_array().get(index)
 }
