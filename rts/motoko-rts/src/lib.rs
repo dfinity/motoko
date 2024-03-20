@@ -49,6 +49,9 @@ pub mod types;
 pub mod utf8;
 mod visitor;
 
+#[enhanced_orthogonal_persistence]
+pub mod persistence;
+
 use types::Bytes;
 
 use motoko_rts_macros::*;

@@ -61,3 +61,6 @@ const _: () = assert!(align_of::<Bits64>() == WORD_SIZE);
 const _: () = assert!(align_of::<OneWordFiller>() == WORD_SIZE);
 const _: () = assert!(align_of::<FreeSpace>() == WORD_SIZE);
 const _: () = assert!(align_of::<FwdPtr>() == WORD_SIZE);
+
+// Check that enhanced orthogonal persistence is only used in combination with the incremental GC.
+const _: () = assert!(!uses_enhanced_orthogonal_persistence!() || is_incremental_gc!());

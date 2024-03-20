@@ -674,12 +674,23 @@ let ir_passes mode prog_ir name =
 
 (* Compilation *)
 
+let check_gc () =
+  if !Flags.enhanced_orthogonal_persistence && !Flags.gc_strategy <> Flags.Default && !Flags.gc_strategy <> Flags.Incremental then
+    builtin_error "compile" "Invalid compiler flag combination: Enhanced orthogonal persistence requires the incremental GC" []
+  else
+    ()
+
+let select_default_gc () =
+  if !Flags.enhanced_orthogonal_persistence then Flags.Incremental else Flags.Copying
+
 let load_as_rts () =
-  let rts = match (!Flags.gc_strategy, !Flags.sanity) with
-    | (Flags.Incremental, false) -> Rts.wasm_incremental_release
-    | (Flags.Incremental, true) -> Rts.wasm_incremental_debug
-    | (_, false) -> Rts.wasm_non_incremental_release
-    | (_, true) -> Rts.wasm_non_incremental_debug
+  let rts = match (!Flags.enhanced_orthogonal_persistence, !Flags.gc_strategy, !Flags.sanity) with
+    | (true, _, false) -> Rts.wasm_eop_release
+    | (true, _, true) -> Rts.wasm_eop_debug
+    | (false, Flags.Incremental, false) -> Rts.wasm_incremental_release
+    | (false, Flags.Incremental, true) -> Rts.wasm_incremental_debug
+    | (false, _, false) -> Rts.wasm_non_incremental_release
+    | (false, _, true) -> Rts.wasm_non_incremental_debug
   in
   Wasm_exts.CustomModuleDecode.decode "rts.wasm" (Lazy.force rts)
 
@@ -706,8 +717,14 @@ and compile_unit mode do_link imports u : Wasm_exts.CustomModule.extended_module
   let prog_ir = desugar_unit imports u name in
   let prog_ir = ir_passes mode prog_ir name in
   phase "Compiling" name;
+  check_gc ();
+  if !Flags.gc_strategy = Flags.Default then
+    Flags.gc_strategy := select_default_gc ();
   let rts = if do_link then Some (load_as_rts ()) else None in
-  Codegen.Compile.compile mode rts prog_ir
+  if !Flags.enhanced_orthogonal_persistence then
+    Codegen.Compile_enhanced.compile mode rts prog_ir
+  else
+    Codegen.Compile_classical.compile mode rts prog_ir
 
 and compile_unit_to_wasm mode imports (u : Syntax.comp_unit) : string =
   let wasm_mod = compile_unit mode true imports u in
