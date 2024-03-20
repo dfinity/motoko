@@ -86,9 +86,12 @@ Unused stable variables of former versions can also be reclaimed by the GC.
 The static heap is abandoned and former static objects need to be allocated in the dynamic heap.
 This is because these objects may also need to survive upgrades and must not be not overwritten by new data segments. The incremental GC also operates on these objects, meaning that forwarding pointer resolution is also necessary for these objects. 
 
-The runtime system avoids any global Wasm variables for state that needs to be preserved on upgrades. Instead, such global runtime state is stored in the persistent metadata.
+The incremental GC also operates on these objects, meaning that forwarding pointer resolution is also necessary for these objects.
 
-Sharing optimization (pooling) is possible for compile-time-known objects, see below.
+For memory and runtime efficiency, object pooling is implemented for compile-time-known constant objects (with side-effect-free initialization), i.e. those objects are already created on program initialization/upgrade in the dynamic heap and thereafter the reference to the corresponding prefabricated object is looked up whenever the constant value is needed at runtime.
+
+The runtime systems avoids any global Wasm variables for state that needs to be preserved on upgrades.
+Instead, such global runtime state is stored in the persistent metadata.
 
 ### Wasm Data Segments
 Only passive Wasm data segments are used by the compiler and runtime system. In contrast to ordinary active data segments, passive segments can be explicitly loaded to a dynamic address.
@@ -112,10 +115,8 @@ When migrating from the old serialization-based stabilization to the new stable 
 The old stable memory remains equally accessible as secondary memory with the new support.
 
 ## Current Limitations
-* Optimization potential for statically known objects: Currently, compile-time-known objects are always dynamically allocated. For an improved performance and size, they could be shared in the dynamic heap by remembering them in an additional pool table. The pool table needs to be registered as a transient GC root and recreated on canister upgrades.
 * The incremental GC only allows 64 GB. Transitioning to a dynamic partition table would be necessary to go beyond this limit. This is to be be implemented in a separate PR.
 * The floating point display format differs in Wasm64 for special values, e.g. `nan` becomes `NaN`. There is currently no support for hexadecimal floating point text formatting.
 * Workaround for Rust needed to build PIC (position-independent code) libraries. Explicit use of `emscripten` via LLVM IR. 
 * `ic-wasm` would need to be extended to support memory64 and passive data segments. The Wasm optimizations in `test/bench` are thus currently deactivated.
 * The Wasm profiler is no longer applicable because the underlying `parity-wasm` crate seems deprecated. A re-implementation of the profiler would be needed.
-
