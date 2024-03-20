@@ -8,4 +8,4 @@ unused-module/test-module.mo:4.10-4.29: warning [M0194], unused identifier local
 unused-module/test-module.mo:16.12-16.23: warning [M0194], unused identifier localObject (delete or rename to wildcard `_` or `_localObject`)
 unused-import.mo:1.8-1.17: warning [M0194], unused identifier TestActor (delete or rename to wildcard `_` or `_TestActor`)
 unused-import.mo:2.8-2.24: warning [M0194], unused identifier UnusedTestModule (delete or rename to wildcard `_` or `_UnusedTestModule`)
-unused-import.mo:3.22-3.32: warning [M0194], unused identifier Array_init (delete or rename to wildcard `_` or `_Array_init`)
+unused-import.mo:3.22-3.32: warning [M0198], unused field Array_init in object pattern (delete or rewrite as `Array_init = _`)
