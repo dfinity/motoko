@@ -174,6 +174,10 @@ let argspec = [
   Arg.Unit (fun () -> Flags.experimental_field_aliasing := true),
   " enable experimental support for aliasing of var fields";
 
+  "--experimental-rtti",
+  Arg.Unit (fun () -> Flags.rtti := true),
+  " enable experimental support for precise runtime type information (to assess performance changes only)";
+
   "--rts-stack-pages",
   Arg.Set_int Flags.rts_stack_pages,
   "<n>  set maximum number of pages available for runtime system stack (default " ^ (Int.to_string Flags.rts_stack_pages_default) ^ ")";

@@ -1,10 +1,55 @@
 # Motoko compiler changelog
 
-## Unreleased
+## 0.11.1 (2024-03-15)
 
 * motoko (`moc`)
 
+  * feat: Custom error message for unused, punned field bindings (#4454).
+
+  * feat: Don't report top-level identifiers as unused (#4452).
+
+  * bugfix: Declaring `<system, ...>` capability on a class enables system capabilities in its body (#4449).
+
+  * bugfix: Fix crash compiling actor reference containing an `await` (#4418, #4450).
+
+  * bugfix: Fix crash when compiling with flag `--experimental-rtti` (#4434).
+
+## 0.11.0 (2024-03-05)
+
+* motoko (`moc`)
+
+  * Warn on detection of unused identifiers (code `M0194`) (#4377).
+
+    - By design, warnings are not emitted for code imported from a package.
+    - A warning can be suppressed by replacing the identifier entirely by a wildcard `_`,
+      or by prefixing it with an `_`, e.g. replace `x` by `_x`.
+
+    **Limitations**: recursive and mutually recursive definitions are considered used,
+    even if never referenced outside the recursive definition.
+
   * Remove `__get_candid_interface_tmp_hack` endpoint. Candid interface is already stored as canister metadata, this temporary endpoint is redundant, thus removed. (#4386)
+
+  * Improved capability system, introducing a synchronous (`system`) capability (#4406).
+
+    `actor` initialisation body, `pre`/`postupgrade` hooks, `async` function bodies (and
+    blocks) possess this capability. Functions (and classes) can demand it by prepending `system`
+    to the type argument list. The capability can be forwarded in calls by mentioning `<system, …>`
+    in the instantiation parameter list.
+
+    BREAKING CHANGE (Minor): A few built-in functions have been marked with demand
+    for the `system` capability. In order to call these, the full call hierarchy needs to be
+    adapted to pass the `system` capability.
+
+  * Introduced the feature for precise tagging of scalar values (#4369).
+
+    Controlled by flag `--experimental-rtti` (off by default). Minor performance changes for
+    arithmetic expected. We advise to only turn on the feature for testing, as currently no
+    productive upsides exist (though future improvements will depend on it), and performance
+    of arithmetic will degrade somewhat. See the PR for the whole picture.
+
+* motoko-base
+
+  * Added `Option.equal` function (thanks to ByronBecker) (dfinity/motoko-base⁠#615).
 
 ## 0.10.4 (2024-01-10)
 
@@ -12,7 +57,7 @@
 
   * Officializing the new **incremental garbage collector** after a successful beta testing phase.
     The incremental GC can be enabled by the `moc` flag `--incremental-gc` (#3837) and is designed to scale for large program heap sizes.
-    
+
     **Note**: While resolving scalability issues with regard to the instruction limit of the GC work, it is now possible to hit other scalability limits:
     - _Out of memory_: A program can run out of memory if it fills the entire memory space with live objects.
     - _Upgrade limits_: When using stable variables, the current mechanism of serialization and deserialization to and from stable memory can exceed the instruction limit or run out of memory.

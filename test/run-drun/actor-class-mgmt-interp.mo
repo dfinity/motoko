@@ -1,5 +1,4 @@
 import Prim "mo:⛔";
-import Cycles = "cycles/cycles";
 import Cs "actor-class-mgmt/C";
 
 // test graceful failure of actor class system calls in interpreters

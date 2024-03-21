@@ -75,7 +75,7 @@ let rec value v t =
       (Pretty.string_of_typ t)
       (Idllib.Escape.escape_method Source.no_region m)
   | PrincipalV s, _ ->
-    "Prim.principalOfActor" ^ parens ("actor " ^ text_lit s ^ " : actor {}")
+    "_Prim.principalOfActor" ^ parens ("actor " ^ text_lit s ^ " : actor {}")
   | _ -> raise (UnsupportedCandidFeature
     (Diag.error_message v.at "M0165" "import" "odd expected type"))
 

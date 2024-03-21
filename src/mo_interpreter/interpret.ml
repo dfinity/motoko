@@ -424,8 +424,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | ImportE (f, ri) ->
     (match !ri with
     | Unresolved -> assert false
-    | LibPath fp ->
-      k (find fp env.libs)
+    | LibPath {path; _} ->
+      k (find path env.libs)
     | IDLPath _ -> trap exp.at "actor import"
     | PrimPath -> k (find "@prim" env.libs)
     )

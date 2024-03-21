@@ -15,7 +15,7 @@ actor {
   public shared func go() : async () {
      var attempts = 0;
    
-     periodicTimer := setTimer(1 * second, true,
+     periodicTimer := setTimer<system>(1 * second, true,
                         func () : async () { 
                           count += 1; 
                           debugPrint ("YEP!");
@@ -25,10 +25,10 @@ actor {
                             cancelTimer periodicTimer;
                           }
                         });
-     ignore setTimer(1 * second, false,
-                     func () : async () { count += 1; debugPrint "EEK!"; assert false });
-     ignore setTimer(1 * second, false,
-                     func () : async () { count += 1; debugPrint "BEAM!"; throw error("beam me up Scotty!") });
+     ignore setTimer<system>(1 * second, false,
+                            func () : async () { count += 1; debugPrint "EEK!"; assert false });
+     ignore setTimer<system>(1 * second, false,
+                            func () : async () { count += 1; debugPrint "BEAM!"; throw error("beam me up Scotty!") });
 
      while (count < max) {
        ignore await raw_rand(); // yield to scheduler

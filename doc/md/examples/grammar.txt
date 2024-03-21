@@ -52,7 +52,7 @@
 
 <typ_nobin> ::= 
     <typ_pre>
-    <func_sort_opt> ('<' <list(<typ_bind>, ',')> '>')? <typ_un> '->' <typ_nobin>
+    <func_sort_opt> <typ_params_opt> <typ_un> '->' <typ_nobin>
 
 <typ> ::= 
     <typ_nobin>
@@ -66,10 +66,19 @@
 <typ_args> ::= 
     '<' <list(<typ>, ',')> '>'
 
+<inst> ::= 
+    <empty>
+    '<' <list(<typ>, ',')> '>'
+    '<' 'system' (',' <typ>)* '>'
+
+<typ_params_opt> ::= 
+    ('<' <list(<typ_bind>, ',')> '>')?
+    '<' 'system' (',' <typ_bind>)* '>'
+
 <typ_field> ::= 
     'type' <id> ('<' <list(<typ_bind>, ',')> '>')? '=' <typ>
     'var'? <id> ':' <typ>
-    <id> ('<' <list(<typ_bind>, ',')> '>')? <typ_nullary> ':' <typ>
+    <id> <typ_params_opt> <typ_nullary> ':' <typ>
 
 <typ_tag> ::= 
     '#' <id> (':' <typ>)?
@@ -165,7 +174,7 @@
     <exp_post> '[' <exp> ']'
     <exp_post> '.'<nat>
     <exp_post> '.' <id>
-    <exp_post> ('<' <list(<typ>, ',')> '>')? <exp_nullary>
+    <exp_post> <inst> <exp_nullary>
     <exp_post> '!'
     '(' 'system' <exp_post> '.' <id> ')'
 
@@ -293,8 +302,8 @@
     'let' <pat> '=' <exp>
     'type' <id> ('<' <list(<typ_bind>, ',')> '>')? '=' <typ>
     <obj_sort> <id>? (':' <typ>)? '='? <obj_body>
-    <shared_pat_opt> 'func' <id>? ('<' <list(<typ_bind>, ',')> '>')? <pat_plain> (':' <typ>)? <func_body>
-    <shared_pat_opt> <obj_sort>? 'class' <id>? ('<' <list(<typ_bind>, ',')> '>')? <pat_plain> (':' <typ>)? <class_body>
+    <shared_pat_opt> 'func' <id>? <typ_params_opt> <pat_plain> (':' <typ>)? <func_body>
+    <shared_pat_opt> <obj_sort>? 'class' <id>? <typ_params_opt> <pat_plain> (':' <typ>)? <class_body>
 
 <dec> ::= 
     <dec_var>
