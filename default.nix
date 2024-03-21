@@ -384,6 +384,16 @@ rec {
           EXTRA_MOC_ARGS = "--sanity-checks --incremental-gc";
       };
 
+    enhanced_orthogonal_persistence_subdir = dir: deps:
+      (test_subdir dir deps).overrideAttrs {
+          EXTRA_MOC_ARGS = "--enhanced-orthogonal-persistence";
+      };
+
+    snty_enhanced_orthogonal_persistence_subdir = dir: deps:
+      (test_subdir dir deps).overrideAttrs {
+          EXTRA_MOC_ARGS = "--sanity-checks --enhanced-orthogonal-persistence";
+      };
+
     perf_subdir = dir: deps:
       (test_subdir dir deps).overrideAttrs (args: {
         checkPhase = ''
@@ -494,18 +504,27 @@ rec {
   in fix_names ({
       run        = test_subdir "run"        [ moc ] ;
       run-dbg    = snty_subdir "run"        [ moc ] ;
+      run-eop-release = enhanced_orthogonal_persistence_subdir "run" [ moc ];
+      run-eop-debug = snty_enhanced_orthogonal_persistence_subdir "run" [ moc ];
       # ic-ref-run = test_subdir "run-drun"   [ moc ic-ref-run ];
       drun       = test_subdir "run-drun"   [ moc nixpkgs.drun ];
       drun-dbg   = snty_subdir "run-drun"   [ moc nixpkgs.drun ];
       drun-compacting-gc = snty_compacting_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
       drun-generational-gc = snty_generational_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
       drun-incremental-gc = snty_incremental_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
+      drun-eop-release = enhanced_orthogonal_persistence_subdir "run-drun" [ moc nixpkgs.drun ] ;
+      drun-eop-debug = snty_enhanced_orthogonal_persistence_subdir "run-drun" [ moc nixpkgs.drun ] ;
       fail       = test_subdir "fail"       [ moc ];
+      fail-eop   = enhanced_orthogonal_persistence_subdir "fail"       [ moc ];
       repl       = test_subdir "repl"       [ moc ];
+      repl-eop   = enhanced_orthogonal_persistence_subdir "repl"       [ moc ];
       ld         = test_subdir "ld"         ([ mo-ld ] ++ ldTestDeps);
+      ld-eop     = enhanced_orthogonal_persistence_subdir "ld" ([ mo-ld ] ++ ldTestDeps);
       idl        = test_subdir "idl"        [ didc ];
       mo-idl     = test_subdir "mo-idl"     [ moc didc ];
+      mo-idl-eop = enhanced_orthogonal_persistence_subdir "mo-idl" [ moc didc ];
       trap       = test_subdir "trap"       [ moc ];
+      trap-eop   = enhanced_orthogonal_persistence_subdir "trap" [ moc ];
       run-deser  = test_subdir "run-deser"  [ deser ];
       perf       = perf_subdir "perf"       [ moc nixpkgs.drun ];
       bench      = perf_subdir "bench"      [ moc nixpkgs.drun ic-wasm ];

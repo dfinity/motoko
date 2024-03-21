@@ -262,6 +262,22 @@ do
         continue
       fi
     fi
+    if grep -q "//ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY" $base.mo
+    then
+      if [[ $EXTRA_MOC_ARGS != *"--enhanced-orthogonal-persistence"* ]]
+      then
+        $ECHO " Skipped (not applicable to enhanced orthogonal persistence)"
+        continue
+      fi
+    fi
+    if grep -q "//CLASSICAL-PERSISTENCE-ONLY" $base.mo
+    then
+      if [[ $EXTRA_MOC_ARGS == *"--enhanced-orthogonal-persistence"* ]]
+      then
+        $ECHO " Skipped (not applicable to classical persistence)"
+        continue
+      fi
+    fi
 
     # extra flags (allow shell variables there)
     moc_extra_flags="$(eval echo $(grep '//MOC-FLAG' $base.mo | cut -c11- | paste -sd' '))"
@@ -451,6 +467,20 @@ do
       then
         if [[ $EXTRA_MOC_ARGS != *"--incremental-gc"* ]]
         then 
+          continue
+        fi
+      fi
+      if grep -q "//ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY" $(basename $file)
+      then
+        if [[ $EXTRA_MOC_ARGS != *"--enhanced-orthogonal-persistence"* ]]
+        then
+          continue
+        fi
+      fi
+      if grep -q "//CLASSICAL-PERSISTENCE-ONLY" $(basename $file)
+      then
+        if [[ $EXTRA_MOC_ARGS == *"--enhanced-orthogonal-persistence"* ]]
+        then
           continue
         fi
       fi
