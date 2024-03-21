@@ -168,7 +168,6 @@ pub fn is_incremental_gc(_item: TokenStream) -> TokenStream {
     "cfg!(feature = \"incremental_gc\")".parse().unwrap()
 }
 
-
 /// Feature macro for enhanced orthogonal persistence.
 /// Equivalent to using the attribute `#[cfg(feature = "enhanced_orthogonal_persistence")]`.
 #[proc_macro_attribute]
@@ -197,5 +196,7 @@ pub fn classical_persistence(attr: TokenStream, input: TokenStream) -> TokenStre
 
 #[proc_macro]
 pub fn uses_enhanced_orthogonal_persistence(_item: TokenStream) -> TokenStream {
-    "cfg!(feature = \"enhanced_orthogonal_persistence\")".parse().unwrap()
+    "cfg!(feature = \"enhanced_orthogonal_persistence\")"
+        .parse()
+        .unwrap()
 }
