@@ -33,6 +33,7 @@ This scheme makes the following assumptions:
 
 use crate::barriers::allocation_barrier;
 use crate::buf::{read_byte, Buf};
+use crate::libc_declarations::c_void;
 use crate::mem_utils::memcpy_bytes;
 use crate::memory::Memory;
 use crate::tommath_bindings::*;
@@ -42,10 +43,11 @@ use motoko_rts_macros::ic_mem_fn;
 
 // Provided by generated code
 extern "C" {
-    fn int_from_i32(value: i32) -> Value;
+    #[cfg(feature = "ic")]
+    fn int_from_int64(value: isize) -> Value;
 }
 
-unsafe fn mp_alloc<M: Memory>(mem: &mut M, size: Bytes<u32>) -> *mut u8 {
+unsafe fn mp_alloc<M: Memory>(mem: &mut M, size: Bytes<usize>) -> *mut u8 {
     let ptr = mem.alloc_words(size_of::<BigInt>() + size.to_words());
     // NB. Cannot use as_bigint() here as header is not written yet
     let blob = ptr.get_ptr() as *mut BigInt;
@@ -55,7 +57,9 @@ unsafe fn mp_alloc<M: Memory>(mem: &mut M, size: Bytes<u32>) -> *mut u8 {
     // libtommath stores the size of the object in alloc as count of mp_digits (u64)
     let size = size.as_usize();
     debug_assert_eq!((size % core::mem::size_of::<mp_digit>()), 0);
-    (*blob).mp_int.alloc = (size / core::mem::size_of::<mp_digit>()) as i32;
+    let count = size / core::mem::size_of::<mp_digit>();
+    assert!(count <= i32::MAX as usize);
+    (*blob).mp_int.alloc = count as i32;
     allocation_barrier(ptr);
     blob.payload_addr() as *mut u8
 }
@@ -65,18 +69,18 @@ pub unsafe fn mp_calloc<M: Memory>(
     mem: &mut M,
     n_elems: usize,
     elem_size: Bytes<usize>,
-) -> *mut libc::c_void {
+) -> *mut c_void {
     debug_assert_eq!(elem_size.0, core::mem::size_of::<mp_digit>());
     // Overflow check for the following multiplication
     if n_elems > 1 << 30 {
         bigint_trap();
     }
-    let size = Bytes((n_elems * elem_size.0) as u32);
-    let payload = mp_alloc(mem, size) as *mut u32;
+    let size = Bytes(n_elems * elem_size.0);
+    let payload = mp_alloc(mem, size) as *mut usize;
 
     // NB. alloc_bytes rounds up to words so we do the same here to set the whole buffer
     for i in 0..size.to_words().as_usize() {
-        *payload.add(i as usize) = 0;
+        *payload.add(i) = 0;
     }
 
     payload as *mut _
@@ -85,10 +89,14 @@ pub unsafe fn mp_calloc<M: Memory>(
 #[ic_mem_fn]
 pub unsafe fn mp_realloc<M: Memory>(
     mem: &mut M,
-    ptr: *mut libc::c_void,
-    old_size: Bytes<u32>,
-    new_size: Bytes<u32>,
-) -> *mut libc::c_void {
+    ptr: *mut c_void,
+    old_size: Bytes<usize>,
+    new_size: Bytes<usize>,
+) -> *mut c_void {
+    // TODO: Remove these temporary downcasts during 64-bit port
+    let old_size = Bytes(old_size.as_usize());
+    let new_size = Bytes(new_size.as_usize());
+
     let bigint = BigInt::from_payload(ptr as *mut mp_digit);
 
     debug_assert_eq!((*bigint).header.tag, TAG_BIGINT);
@@ -108,7 +116,7 @@ pub unsafe fn mp_realloc<M: Memory>(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn mp_free(_ptr: *mut libc::c_void, _size: u32) {}
+pub unsafe extern "C" fn mp_free(_ptr: *mut c_void, _size: usize) {}
 
 /*
 Note on libtommath error handling
@@ -180,29 +188,13 @@ pub(crate) unsafe fn persist_bigint(i: mp_int) -> Value {
     Value::from_ptr(r as usize)
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn bigint_of_word32(w: u32) -> Value {
-    let mut i = tmp_bigint();
-    mp_set_u32(&mut i, w);
-    persist_bigint(i)
-}
-
-#[cfg(feature = "ic")]
-#[no_mangle]
-unsafe extern "C" fn bigint_of_int32(j: i32) -> Value {
-    let mut i = tmp_bigint();
-    mp_set_i32(&mut i, j);
-    persist_bigint(i)
-}
-
 #[cfg(feature = "ic")]
 #[no_mangle]
 unsafe extern "C" fn bigint_to_word32_wrap(p: Value) -> u32 {
     mp_get_u32(p.as_bigint().mp_int_ptr())
 }
 
-#[no_mangle]
-unsafe extern "C" fn bigint_to_word32_trap(p: Value) -> u32 {
+unsafe fn bigint_to_word32_trap(p: Value) -> u32 {
     let mp_int = p.as_bigint().mp_int_ptr();
 
     if mp_isneg(mp_int) || mp_count_bits(mp_int) > 32 {
@@ -212,14 +204,16 @@ unsafe extern "C" fn bigint_to_word32_trap(p: Value) -> u32 {
     mp_get_u32(mp_int)
 }
 
-// a : BigInt, msg : Blob
+// p : BigInt, msg : Blob
 #[cfg(feature = "ic")]
 #[no_mangle]
 unsafe extern "C" fn bigint_to_word32_trap_with(p: Value, msg: Value) -> u32 {
     let mp_int = p.as_bigint().mp_int_ptr();
 
     if mp_isneg(mp_int) || mp_count_bits(mp_int) > 32 {
-        crate::rts_trap(msg.as_blob().payload_const(), msg.as_blob().len());
+        let length = msg.as_blob().len().as_usize();
+        assert!(length <= u32::MAX as usize);
+        crate::rts_trap(msg.as_blob().payload_const(), length as u32);
     }
 
     mp_get_u32(mp_int)
@@ -243,9 +237,23 @@ unsafe extern "C" fn bigint_to_word64_trap(p: Value) -> u64 {
     mp_get_u64(mp_int)
 }
 
+// p : BigInt, msg : Blob
 #[cfg(feature = "ic")]
 #[no_mangle]
-unsafe extern "C" fn bigint_of_word64(w: u64) -> Value {
+unsafe extern "C" fn bigint_to_word64_trap_with(p: Value, msg: Value) -> u64 {
+    let mp_int = p.as_bigint().mp_int_ptr();
+
+    if mp_isneg(mp_int) || mp_count_bits(mp_int) > 64 {
+        let length = msg.as_blob().len().as_usize();
+        assert!(length <= u32::MAX as usize);
+        crate::rts_trap(msg.as_blob().payload_const(), length as u32);
+    }
+
+    mp_get_u64(mp_int)
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn bigint_of_word64(w: u64) -> Value {
     let mut i = tmp_bigint();
     mp_set_u64(&mut i, w);
     persist_bigint(i)
@@ -265,9 +273,10 @@ unsafe extern "C" fn bigint_of_float64(j: f64) -> Value {
     // handle fast path: some numbers (when rounded towards zero by `j as i32`)
     // may be represented as `Int` without resorting to heap allocation, i.e.
     // in the range `-1073741824 == 0xc0000000 <= j as i32 <= 0x3fffffff == 1073741823`
+    // TODO: This can be increased to a 62-bit compact tagged Int with Wasm Memory64 bit support.
     if j < 1073741824.0 && j > -1073741825.0 {
         // defer to generated code to create compact or boxed Int value
-        return int_from_i32(j as i32);
+        return int_from_int64(j as isize);
     }
     let mut i = tmp_bigint();
     check(mp_set_double(&mut i, j));
@@ -401,19 +410,19 @@ unsafe extern "C" fn bigint_isneg(a: Value) -> bool {
 
 #[cfg(feature = "ic")]
 #[no_mangle]
-unsafe extern "C" fn bigint_lsh(a: Value, b: i32) -> Value {
+unsafe extern "C" fn bigint_lsh(a: Value, b: isize) -> Value {
     let mut i = tmp_bigint();
-    check(mp_mul_2d(a.as_bigint().mp_int_ptr(), b, &mut i));
+    check(mp_mul_2d(a.as_bigint().mp_int_ptr(), b as i32, &mut i));
     persist_bigint(i)
 }
 
 #[cfg(feature = "ic")]
 #[no_mangle]
-unsafe extern "C" fn bigint_rsh(a: Value, b: i32) -> Value {
+unsafe extern "C" fn bigint_rsh(a: Value, b: isize) -> Value {
     let mut i = tmp_bigint();
     check(mp_div_2d(
         a.as_bigint().mp_int_ptr(),
-        b,
+        b as i32,
         &mut i,
         core::ptr::null_mut(),
     ));
@@ -421,16 +430,16 @@ unsafe extern "C" fn bigint_rsh(a: Value, b: i32) -> Value {
 }
 
 #[no_mangle]
-unsafe extern "C" fn bigint_count_bits(a: Value) -> i32 {
-    mp_count_bits(a.as_bigint().mp_int_ptr())
+unsafe extern "C" fn bigint_count_bits(a: Value) -> usize {
+    mp_count_bits(a.as_bigint().mp_int_ptr()) as usize
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn bigint_leb128_size(a: Value) -> u32 {
+pub unsafe extern "C" fn bigint_leb128_size(a: Value) -> usize {
     if mp_iszero(a.as_bigint().mp_int_ptr()) {
         1
     } else {
-        (bigint_count_bits(a) as u32 + 6) / 7 // divide by 7, round up
+        (bigint_count_bits(a) + 6) / 7 // divide by 7, round up
     }
 }
 
@@ -461,20 +470,20 @@ pub unsafe extern "C" fn bigint_leb128_encode(n: Value, buf: *mut u8) {
 }
 
 #[no_mangle]
-unsafe extern "C" fn bigint_2complement_bits(n: Value) -> u32 {
+unsafe extern "C" fn bigint_2complement_bits(n: Value) -> usize {
     let mp_int = n.as_bigint().mp_int_ptr();
     if mp_isneg(mp_int) {
         let mut tmp: mp_int = core::mem::zeroed(); // or core::mem::uninitialized?
         check(mp_init_copy(&mut tmp, mp_int));
         check(mp_incr(&mut tmp));
-        1 + mp_count_bits(&tmp) as u32
+        1 + mp_count_bits(&tmp) as usize
     } else {
-        1 + mp_count_bits(mp_int) as u32
+        1 + mp_count_bits(mp_int) as usize
     }
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn bigint_sleb128_size(n: Value) -> u32 {
+pub unsafe extern "C" fn bigint_sleb128_size(n: Value) -> usize {
     (bigint_2complement_bits(n) + 6) / 7 // divide by 7, round up
 }
 
@@ -517,7 +526,12 @@ pub unsafe extern "C" fn bigint_leb128_decode(buf: *mut Buf) -> Value {
     persist_bigint(i)
 }
 
-/// Decode at most 5 bytes of LEB128 data to a compact bignum `Value`.
+#[cfg(feature = "ic")]
+const BITS_PER_CHUNK: usize = 7;
+#[cfg(feature = "ic")]
+const MAX_CHUNKS_PER_WORD: usize = (usize::BITS as usize + BITS_PER_CHUNK - 1) / BITS_PER_CHUNK;
+
+/// Decode at most 10 bytes of LEB128 data to a compact bignum `Value`.
 /// The number of 7-bit chunks are located in the lower portion of `leb`
 /// as indicated by `bits`.
 ///
@@ -528,7 +542,7 @@ pub unsafe extern "C" fn bigint_leb128_decode_word64(
     mut bits: u64,
     buf: *mut Buf,
 ) -> Value {
-    let continuations = bits as u32 / 8;
+    let continuations = bits as usize / 8;
     buf.advance(continuations + 1);
 
     let mut mask: u64 = 0b111_1111; // sliding mask
@@ -536,20 +550,20 @@ pub unsafe extern "C" fn bigint_leb128_decode_word64(
     loop {
         acc |= leb & mask;
         if bits < 8 {
-            if continuations == 4 {
+            if continuations == MAX_CHUNKS_PER_WORD - 1 {
                 break;
             }
-            return int_from_i32(acc as i32);
+            return int_from_int64(acc as isize);
         }
         bits -= 8;
         mask <<= 7;
         leb >>= 1;
     }
 
-    let tentative = (acc as i32) << 1 >> 1; // top two bits must match
+    let tentative = (acc as isize) << 1 >> 1; // top two bits must match
     if tentative as u64 == acc {
         // roundtrip is valid
-        return int_from_i32(tentative);
+        return int_from_int64(tentative);
     }
 
     bigint_of_word64(acc)
@@ -585,7 +599,7 @@ pub unsafe extern "C" fn bigint_sleb128_decode(buf: *mut Buf) -> Value {
     persist_bigint(i)
 }
 
-/// Decode at most 5 bytes of SLEB128 data to a compact bignum `Value`.
+/// Decode at most 10 bytes of SLEB128 data to a compact bignum `Value`.
 /// The number of 7-bit chunks are located in the lower portion of `sleb`
 /// as indicated by `bits`.
 ///
@@ -596,7 +610,11 @@ pub unsafe extern "C" fn bigint_sleb128_decode_word64(
     mut bits: u64,
     buf: *mut Buf,
 ) -> Value {
-    let continuations = bits as u32 / 8;
+    const BITS_IN_LAST_CHUNK: usize = usize::BITS as usize % BITS_PER_CHUNK;
+    const _: () = assert!(BITS_IN_LAST_CHUNK > 0);
+    const SIGN_BITS_IN_LAST_CHUNK: u32 = usize::BITS - (BITS_IN_LAST_CHUNK + 1) as u32;
+
+    let continuations = bits as usize / 8;
     buf.advance(continuations + 1);
 
     let mut mask: u64 = 0b111_1111; // sliding mask
@@ -604,22 +622,22 @@ pub unsafe extern "C" fn bigint_sleb128_decode_word64(
     loop {
         acc |= sleb & mask;
         if bits < 8 {
-            if continuations == 4 {
+            if continuations == MAX_CHUNKS_PER_WORD - 1 {
                 break;
             }
-            let sext = 25 - 7 * continuations; // this many top bits will get a copy of the sign
-            return int_from_i32((acc as i32) << sext >> sext);
+            let sext = usize::BITS as usize - (BITS_PER_CHUNK * (continuations + 1)); // this many top bits will get a copy of the sign
+            return int_from_int64((acc as isize) << sext >> sext);
         }
         bits -= 8;
         mask <<= 7;
         sleb >>= 1;
     }
 
-    let signed = (acc as i64) << 29 >> 29; // sign extend
-    let tentative = (signed as i32) << 1 >> 1; // top two bits must match
+    let signed = (acc as i64) << SIGN_BITS_IN_LAST_CHUNK >> SIGN_BITS_IN_LAST_CHUNK; // sign extend
+    let tentative = (signed as isize) << 1 >> 1; // top two bits must match
     if tentative as i64 == signed {
         // roundtrip is valid
-        return int_from_i32(tentative);
+        return int_from_int64(tentative);
     }
 
     bigint_of_int64(signed)

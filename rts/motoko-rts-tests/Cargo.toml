@@ -4,14 +4,11 @@ version = "0.1.0"
 authors = ["dfinity <team-motoko@dfinity.org"]
 edition = "2018"
 
-[features]
-incremental_gc = ["motoko-rts/incremental_gc"]
-
 [dependencies]
 byteorder = "1.4.3"
 fxhash = "0.2.1"
-libc = { version = "0.2.139", default_features = false }
+# libc = { version = "0.2.139", default_features = false }
 motoko-rts = { path = "../motoko-rts/native" }
 oorandom = "11.1.3"
-proptest = { version = "1.0.0", default-features = false, features = ["std"] }
+proptest = { version = "1.0.0", default-features = false, features = ["alloc"] }
 motoko-rts-macros = { path = "../motoko-rts-macros" }

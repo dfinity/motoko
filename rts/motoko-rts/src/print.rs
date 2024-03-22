@@ -8,7 +8,7 @@ use core::fmt;
 extern "C" {
     // `print_ptr` is implemented by the code generator and has different implementations depending
     // on the target platform (WASI or IC).
-    fn print_ptr(ptr: usize, len: u32);
+    fn print_ptr(ptr: usize, len: usize);
 }
 
 /*
@@ -61,13 +61,13 @@ macro_rules! format {
 
 /// A buffer that implements `core::fmt::Write`. `Write` methods will write to the buffer until
 /// it's filled and then ignore the rest, without failing.
-pub(crate) struct WriteBuf<'a> {
+pub struct WriteBuf<'a> {
     buf: &'a mut [u8],
     offset: usize,
 }
 
 impl<'a> WriteBuf<'a> {
-    pub(crate) fn new(buf: &'a mut [u8]) -> Self {
+    pub fn new(buf: &'a mut [u8]) -> Self {
         Self { buf, offset: 0 }
     }
 
@@ -76,7 +76,7 @@ impl<'a> WriteBuf<'a> {
     }
 
     pub(crate) unsafe fn print(&self) {
-        print_ptr(self.buf.as_ptr() as usize, self.offset as u32)
+        print_ptr(self.buf.as_ptr() as usize, self.offset)
     }
 }
 
@@ -96,10 +96,10 @@ impl<'a> fmt::Write for WriteBuf<'a> {
     }
 }
 
-pub(crate) unsafe fn print(buf: &WriteBuf) {
+pub unsafe fn print(buf: &WriteBuf) {
     buf.print()
 }
 
-// pub(crate) unsafe fn print_str(str: &str) {
-//     print_ptr(str.as_ptr() as usize, str.len() as u32)
-// }
+pub(crate) unsafe fn print_str(str: &str) {
+    print_ptr(str.as_ptr() as usize, str.len())
+}

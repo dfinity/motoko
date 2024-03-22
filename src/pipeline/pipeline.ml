@@ -675,11 +675,9 @@ let ir_passes mode prog_ir name =
 (* Compilation *)
 
 let load_as_rts () =
-  let rts = match (!Flags.gc_strategy, !Flags.sanity) with
-    | (Flags.Incremental, false) -> Rts.wasm_incremental_release
-    | (Flags.Incremental, true) -> Rts.wasm_incremental_debug
-    | (_, false) -> Rts.wasm_non_incremental_release
-    | (_, true) -> Rts.wasm_non_incremental_debug
+  let rts = match !Flags.sanity with
+    | false -> Rts.wasm_release
+    | true -> Rts.wasm_debug
   in
   Wasm_exts.CustomModuleDecode.decode "rts.wasm" (Lazy.force rts)
 

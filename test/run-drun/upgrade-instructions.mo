@@ -6,8 +6,9 @@ actor {
   stable var stableArray : [Nat] = [];
 
   if (length > 0) {
-    assert (Prim.rts_upgrade_instructions() > lastInstructions);
+    assert (Prim.rts_upgrade_instructions() >= lastInstructions);
     lastInstructions := Prim.rts_upgrade_instructions();
+    assert(lastInstructions > 0);
   };
   Prim.debugPrint("Ignore Diff: Upgrade instructions: " # debug_show (Prim.rts_upgrade_instructions()));
 

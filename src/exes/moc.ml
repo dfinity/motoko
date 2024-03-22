@@ -146,22 +146,6 @@ let argspec = [
     Flags.use_stable_regions := true),
       " force eager initialization of stable regions metadata (for testing purposes); consumes between 386KiB or 8MiB of additional physical stable memory, depending on current use of ExperimentalStableMemory library";
 
-  "--generational-gc",
-  Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.Generational),
-  " use generational GC";
-
-  "--incremental-gc",
-  Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.Incremental),
-  " use incremental GC";
-
-  "--compacting-gc",
-  Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.MarkCompact),
-  " use compacting GC";
-
-  "--copying-gc",
-  Arg.Unit (fun () -> Flags.gc_strategy := Mo_config.Flags.Copying),
-  " use copying GC (default)";
-
   "--force-gc",
   Arg.Unit (fun () -> Flags.force_gc := true),
   " disable GC scheduling, always do GC after an update message (for testing)";
@@ -173,14 +157,6 @@ let argspec = [
   "--experimental-field-aliasing",
   Arg.Unit (fun () -> Flags.experimental_field_aliasing := true),
   " enable experimental support for aliasing of var fields";
-
-  "--experimental-rtti",
-  Arg.Unit (fun () -> Flags.rtti := true),
-  " enable experimental support for precise runtime type information (to assess performance changes only)";
-
-  "--rts-stack-pages",
-  Arg.Set_int Flags.rts_stack_pages,
-  "<n>  set maximum number of pages available for runtime system stack (default " ^ (Int.to_string Flags.rts_stack_pages_default) ^ ")";
 
   "--trap-on-call-error",
   Arg.Unit (fun () -> Flags.trap_on_call_error := true),
@@ -345,7 +321,11 @@ let () =
   process_metadata_names "public" !Flags.public_metadata_names;
   process_metadata_names "omit" !Flags.omit_metadata_names;
   try
-    process_files !args
+    match process_files !args with
+      (* TODO: Find a better place to gracefully handle the input-dependent linker error *)
+    | exception Linking.LinkModule.TooLargeDataSegments error_message ->
+      Printf.eprintf "Error: %s" error_message; ()
+    | () -> ()
   with
   | Sys_error msg ->
     (* IO error *)

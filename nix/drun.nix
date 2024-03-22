@@ -40,6 +40,8 @@ pkgs:
 +            config.flag("-faligned-allocation");
 +        }    
      }
+
+     for file in lib_sources {
 EOF
 
         cd -

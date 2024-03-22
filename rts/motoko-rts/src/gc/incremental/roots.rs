@@ -1,75 +1,65 @@
-use crate::{types::Value, visitor::pointer_to_dynamic_heap};
+use motoko_rts_macros::ic_mem_fn;
+
+use crate::{types::Value, visitor::is_non_null_pointer_field};
+
+/// An array referring to the static program variables, being
+/// - All canister variables.
+/// - Pooled shared objects.
+/// The array constitutes a GC root that is reinitialized on each canister upgrade.
+/// The scalar sentinel denotes an uninitialized root.
+#[cfg(feature = "ic")]
+static mut STATIC_VARIABLES: Value = Value::from_scalar(0);
 
 /// GC root set.
-#[derive(Clone, Copy)]
-pub struct Roots {
-    pub static_roots: Value,
-    pub continuation_table_location: *mut Value,
-    pub region0_ptr_location: *mut Value,
-    // If new roots are added in future, extend `visit_roots()`.
-}
+pub type Roots = [*mut Value; 6];
 
 #[cfg(feature = "ic")]
 pub unsafe fn root_set() -> Roots {
-    use crate::memory::ic;
-    Roots {
-        static_roots: ic::get_static_roots(),
-        continuation_table_location: crate::continuation_table::continuation_table_loc(),
-        region0_ptr_location: crate::region::region0_get_ptr_loc(),
-    }
+    use crate::{
+        continuation_table::continuation_table_loc,
+        persistence::{stable_actor_location, stable_type_descriptor},
+        region::region0_get_ptr_loc,
+    };
+    [
+        static_variables_location(),
+        continuation_table_loc(),
+        stable_actor_location(),
+        stable_type_descriptor().candid_data_location(),
+        stable_type_descriptor().type_offsets_location(),
+        region0_get_ptr_loc(),
+    ]
 }
 
 pub unsafe fn visit_roots<C, V: Fn(&mut C, *mut Value)>(
     roots: Roots,
-    heap_base: usize,
     context: &mut C,
     visit_field: V,
 ) {
-    visit_static_roots(roots.static_roots, heap_base, context, &visit_field);
-    visit_continuation_table(
-        roots.continuation_table_location,
-        heap_base,
-        context,
-        &visit_field,
-    );
-    visit_region0_ptr(roots.region0_ptr_location, heap_base, context, &visit_field);
-}
-
-unsafe fn visit_static_roots<C, V: Fn(&mut C, *mut Value)>(
-    static_roots: Value,
-    heap_base: usize,
-    context: &mut C,
-    visit_field: &V,
-) {
-    let root_array = static_roots.as_array();
-    for index in 0..root_array.len() {
-        let mutbox = root_array.get(index).as_mutbox();
-        debug_assert!((mutbox as usize) < heap_base);
-        let field = &mut (*mutbox).field;
-        if pointer_to_dynamic_heap(field, heap_base) {
-            visit_field(context, field);
+    for location in roots {
+        if is_non_null_pointer_field(location) {
+            visit_field(context, location);
         }
     }
 }
 
-unsafe fn visit_continuation_table<C, V: Fn(&mut C, *mut Value)>(
-    continuation_table_location: *mut Value,
-    heap_base: usize,
-    context: &mut C,
-    visit_field: &V,
-) {
-    if pointer_to_dynamic_heap(continuation_table_location, heap_base) {
-        visit_field(context, continuation_table_location);
-    }
+#[cfg(feature = "ic")]
+unsafe fn static_variables_location() -> *mut Value {
+    &mut STATIC_VARIABLES as *mut Value
 }
 
-unsafe fn visit_region0_ptr<C, V: Fn(&mut C, *mut Value)>(
-    region0_ptr_location: *mut Value,
-    heap_base: usize,
-    context: &mut C,
-    visit_field: &V,
-) {
-    if pointer_to_dynamic_heap(region0_ptr_location, heap_base) {
-        visit_field(context, region0_ptr_location);
-    }
+#[ic_mem_fn(ic_only)]
+pub unsafe fn set_static_variables<M: crate::memory::Memory>(mem: &mut M, array: Value) {
+    use super::barriers::write_with_barrier;
+    use crate::types::TAG_ARRAY;
+
+    assert_eq!(array.tag(), TAG_ARRAY);
+    let location = &mut STATIC_VARIABLES as *mut Value;
+    write_with_barrier(mem, location, array);
+}
+
+#[no_mangle]
+#[cfg(feature = "ic")]
+pub unsafe extern "C" fn get_static_variable(index: usize) -> Value {
+    debug_assert!(STATIC_VARIABLES.is_non_null_ptr());
+    STATIC_VARIABLES.as_array().get(index)
 }

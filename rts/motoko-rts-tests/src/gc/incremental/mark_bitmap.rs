@@ -14,7 +14,7 @@ use proptest::test_runner::{Config, TestCaseResult, TestRunner};
 
 pub unsafe fn test() {
     println!("  Testing mark bitmap ...");
-    let bitmap_size = Bytes(PARTITION_SIZE as u32).to_words();
+    let bitmap_size = Bytes(PARTITION_SIZE).to_words();
     let mut mem = TestMemory::new(bitmap_size);
     let bitmap_pointer = mem.alloc_words(bitmap_size);
 
@@ -34,32 +34,34 @@ pub unsafe fn test() {
 
     println!("  Testing bit iteration");
     proptest_runner
-        .run(&bit_index_set_strategy(), |bits| {
-            test_iterator_proptest(bitmap_pointer, bits)
+        .run(&bit_index_vector_strategy(), |bits| {
+            let mut hash_set = HashSet::new();
+            for value in bits {
+                hash_set.insert(value);
+            }
+            test_iterator_proptest(bitmap_pointer, hash_set)
         })
         .unwrap();
 
     test_last_bit(bitmap_pointer);
 }
 
-fn bit_index_vector_strategy() -> impl Strategy<Value = Vec<u16>> {
-    proptest::collection::vec(0u16..u16::MAX, 0..1_000)
+const MAX_TEST_BIT_INDEX: usize = u16::MAX as usize;
+
+fn bit_index_vector_strategy() -> impl Strategy<Value = Vec<usize>> {
+    proptest::collection::vec(0..MAX_TEST_BIT_INDEX, 0..1_000)
 }
 
-fn bit_index_set_strategy() -> impl Strategy<Value = HashSet<u16>> {
-    proptest::collection::hash_set(0u16..u16::MAX, 0..1_000)
-}
-
-fn test_mark_proptest(bitmap_pointer: Value, bits: Vec<u16>) -> TestCaseResult {
+fn test_mark_proptest(bitmap_pointer: Value, bits: Vec<usize>) -> TestCaseResult {
     test_mark(bitmap_pointer, bits);
     Ok(())
 }
 
-fn address_of_bit(bit: u16) -> usize {
-    bit as usize * WORD_SIZE as usize
+fn address_of_bit(bit: usize) -> usize {
+    bit * WORD_SIZE
 }
 
-fn test_mark(bitmap_pointer: Value, mut bits: Vec<u16>) {
+fn test_mark(bitmap_pointer: Value, mut bits: Vec<usize>) {
     unsafe {
         let mut bitmap = MarkBitmap::new();
         bitmap.assign(bitmap_pointer.get_ptr() as *mut u8);
@@ -71,7 +73,7 @@ fn test_mark(bitmap_pointer: Value, mut bits: Vec<u16>) {
             assert!(bitmap.is_marked(address_of_bit(*bit)));
         }
         bits.sort();
-        let mut last_bit: Option<u16> = None;
+        let mut last_bit: Option<usize> = None;
         for bit in bits {
             if let Some(last_bit) = last_bit {
                 for i in last_bit + 1..bit {
@@ -85,12 +87,12 @@ fn test_mark(bitmap_pointer: Value, mut bits: Vec<u16>) {
     }
 }
 
-fn test_iterator_proptest(bitmap_pointer: Value, bits: HashSet<u16>) -> TestCaseResult {
+fn test_iterator_proptest(bitmap_pointer: Value, bits: HashSet<usize>) -> TestCaseResult {
     test_iterator(bitmap_pointer, bits);
     Ok(())
 }
 
-fn test_iterator(bitmap_pointer: Value, bits: HashSet<u16>) {
+fn test_iterator(bitmap_pointer: Value, bits: HashSet<usize>) {
     unsafe {
         let mut bitmap = MarkBitmap::new();
         bitmap.assign(bitmap_pointer.get_ptr() as *mut u8);
@@ -117,7 +119,7 @@ fn test_iterator(bitmap_pointer: Value, bits: HashSet<u16>) {
 }
 
 fn test_last_bit(bitmap_pointer: Value) {
-    const LAST_OFFSET: usize = PARTITION_SIZE - WORD_SIZE as usize;
+    const LAST_OFFSET: usize = PARTITION_SIZE - WORD_SIZE;
     unsafe {
         let mut bitmap = MarkBitmap::new();
         bitmap.assign(bitmap_pointer.get_ptr() as *mut u8);

@@ -6,6 +6,7 @@ plus the dylink section.
 open Wasm_exts.Ast
 open Wasm.Source
 open Wasm_exts.CustomModule
+module I64_convert = Wasm.I64_convert
 
 (*
 This module is a first stab that should be functionally working, but will go
@@ -188,7 +189,7 @@ let is_global_export = function
   | _ -> None
 
 
-let get_fun_typ i m : Wasm.Types.func_type =
+let get_fun_typ i m : Wasm_exts.Types.func_type =
   let imports_n = count_imports is_fun_import m in
   let tyvar =
     if i < imports_n
@@ -202,7 +203,7 @@ let get_fun_typ i m : Wasm.Types.func_type =
     in
   (Lib.List32.nth m.types tyvar).it
 
-let get_global_typ i m : Wasm.Types.global_type =
+let get_global_typ i m : Wasm_exts.Types.global_type =
   let imports_n = count_imports is_global_import m in
   if i < imports_n
   then
@@ -274,6 +275,7 @@ let remove_non_ic_exports (em : extended_module) : extended_module =
 (* Generic linking logic *)
 
 exception LinkError of string
+exception TooLargeDataSegments of string
 
 type renumbering = int32 -> int32
 
@@ -381,67 +383,86 @@ let rename_globals rn : module_' -> module_' = fun m ->
   let table_segment = phrase (table_segment') in
   let table_segments = List.map table_segment in
 
-  let memory_segment' (s : string segment') = { s with offset = const s.offset; } in
-  let memory_segment = phrase (memory_segment') in
-  let memory_segments = List.map memory_segment in
+  let segment_mode' (dmode : segment_mode') = 
+    match dmode with 
+      | Passive -> Passive
+      | Active { index; offset } -> Active { index; offset = const offset }
+      | Declarative -> Declarative
+    in
+  let segment_mode = phrase (segment_mode') in
+  let data_segment' (s : data_segment') = { s with dmode = segment_mode s.dmode; } in
+  let data_segment = phrase (data_segment') in
+  let data_segments = List.map data_segment in
 
 
   { m with
     funcs = funcs m.funcs;
     globals = globals m.globals;
     elems = table_segments m.elems;
-    data = memory_segments m.data;
+    datas = data_segments m.datas;
   }
 
 let set_global global value = fun m ->
   let rec go i = function
     | [] -> assert false
     | g::gs when i = Int32.to_int global ->
-      let open Wasm.Types in
-      assert (g.it.gtype = GlobalType (I32Type, Immutable));
+      let open Wasm_exts.Types in
+      assert (g.it.gtype = GlobalType (I64Type, Immutable));
       let g = phrase (fun g' ->
-        { g' with value = [Const (Wasm.Values.I32 value @@ g.at) @@ g.at] @@ g.at }
+        { g' with value = [Const (Wasm_exts.Values.I64 (Int64.of_int (Int32.to_int value)) @@ g.at) @@ g.at] @@ g.at }
       ) g in
       g :: gs
     | g::gs -> g :: go (i+1) gs
   in
   { m with globals = go 0 m.globals }
 
-let fill_global (global : int32) (value : int32) : module_' -> module_' = fun m ->
-  let rec instr' = function
-    | Block (ty, is) -> Block (ty, instrs is)
-    | Loop (ty, is) -> Loop (ty, instrs is)
-    | If (ty, is1, is2) -> If (ty, instrs is1, instrs is2)
-    | GlobalGet v when v.it = global -> Const (Wasm.Values.I32 value @@ v.at)
+let fill_global (global : int32) (value : Wasm_exts.Values.value) : module_' -> module_' = fun m ->
+  let rec instr' to_32 = function
+    | Block (ty, is) -> Block (ty, instrs to_32 is)
+    | Loop (ty, is) -> Loop (ty, instrs to_32 is)
+    | If (ty, is1, is2) -> If (ty, instrs to_32 is1, instrs to_32 is2)
+    | GlobalGet v when v.it = global -> 
+      let encoded_value = match (to_32, value) with
+      | (true, Wasm_exts.Values.I64 number) -> (Wasm_exts.Values.I32 (Int32.of_int (Int64.to_int number)))
+      | _ -> value in
+      Const (encoded_value @@ v.at)
+    | GlobalGet v when v.it = global -> Const (value @@ v.at)
     | GlobalSet v when v.it = global -> assert false
     | i -> i
-  and instr i = phrase instr' i
-  and instrs is = List.map instr is in
+  and instr to_32 i = phrase (instr' to_32) i
+  and instrs to_32 is = List.map (instr to_32) is in
 
-  let func' f = { f with body = instrs f.body } in
+  let func' f = { f with body = instrs false f.body } in
   let func = phrase func' in
   let funcs = List.map func in
 
-  let const = phrase instrs in
+  let const to_32 = phrase (instrs to_32) in
 
-  let global' g = { g with value = const g.value } in
+  let global' g = { g with value = const false g.value } in
   let global = phrase global' in
   let globals = List.map global in
 
-  let table_segment' (s : var list segment') = { s with offset = const s.offset; } in
+  let table_segment' (s : var list segment') = { s with offset = const true s.offset; } in
   let table_segment = phrase (table_segment') in
   let table_segments = List.map table_segment in
 
-  let memory_segment' (s : string segment') = { s with offset = const s.offset; } in
-  let memory_segment = phrase (memory_segment') in
-  let memory_segments = List.map memory_segment in
+  let segment_mode' (dmode : segment_mode') = 
+    match dmode with 
+      | Passive -> Passive
+      | Active { index; offset } -> Active { index; offset = const false offset }
+      | Declarative -> Declarative
+    in
+  let segment_mode = phrase (segment_mode') in
+  let data_segment' (s : data_segment') = { s with dmode = segment_mode s.dmode; } in
+  let data_segment = phrase (data_segment') in
+  let data_segments = List.map data_segment in
 
 
   { m with
     funcs = funcs m.funcs;
     globals = globals m.globals;
     elems = table_segments m.elems;
-    data = memory_segments m.data;
+    datas = data_segments m.datas;
   }
 
 let rename_funcs_name_section rn (ns : name_section) =
@@ -499,15 +520,15 @@ let rename_types rn m =
 let read_global gi (m : module_') : int32 =
   let n_impo = count_imports is_global_import m in
   let g = List.nth m.globals (Int32.(to_int (sub gi n_impo))) in
-  let open Wasm.Types in
-  assert (g.it.gtype = GlobalType (I32Type, Immutable));
+  let open Wasm_exts.Types in
+  assert (g.it.gtype = GlobalType (I64Type, Immutable));
   match g.it.value.it with
-  | [{ it = Const {it = Wasm.Values.I32 i;_}; _}] -> i
+  | [{ it = Const {it = Wasm_exts.Values.I64 i;_}; _}] -> Int32.of_int (Int64.to_int i)
   | _ -> assert false
 
 let read_table_size (m : module_') : int32 =
   (* Assumes there is one table *)
-  let open Wasm.Types in
+  let open Wasm_exts.Types in
   match m.tables with
   | [t] ->
     let TableType ({min;max}, _) = t.it.ttype in
@@ -517,26 +538,26 @@ let read_table_size (m : module_') : int32 =
   | _ -> raise (LinkError "Expect one table in first module")
 
 let set_memory_size new_size_bytes : module_' -> module_' = fun m ->
-  let open Wasm.Types in
-  let page_size = Int32.of_int (64*1024) in
-  let new_size_pages = Int32.(add (div new_size_bytes page_size) 1l) in
+  let open Wasm_exts.Types in
+  let page_size = Int64.of_int (64*1024) in
+  let new_size_pages = Int64.(add (div new_size_bytes page_size) 1L) in
   match m.memories with
   | [t;t1] ->
     { m with
       memories = [(phrase (fun m ->
-        { mtype = MemoryType ({min = new_size_pages; max = None}) }
+        { mtype = MemoryType ({min = new_size_pages; max = None}, I64IndexType) }
         ) t); t1]
     }
   | [t] ->
     { m with
       memories = [phrase (fun m ->
-        { mtype = MemoryType ({min = new_size_pages; max = None}) }
+        { mtype = MemoryType ({min = new_size_pages; max = None}, I64IndexType) }
       ) t]
     }
   | _ -> raise (LinkError "Expect one memory in first module")
 
 let set_table_size new_size : module_' -> module_' = fun m ->
-  let open Wasm.Types in
+  let open Wasm_exts.Types in
   match m.tables with
   | [t] ->
     { m with
@@ -567,7 +588,7 @@ let fill_item_import module_name item_name new_base (m : module_') : module_' =
           go i is
     in go 0 m.imports in
 
-    m |> fill_global base_global new_base
+    m |> fill_global base_global (Wasm_exts.Values.I64 (I64_convert.extend_i32_u new_base))
       |> remove_imports is_global_import [base_global, base_global]
       |> rename_globals Int32.(fun i ->
           if i < base_global then i
@@ -578,15 +599,17 @@ let fill_item_import module_name item_name new_base (m : module_') : module_' =
 let fill_memory_base_import new_base : module_' -> module_' =
   fill_item_import "env" "__memory_base" new_base
 
-let fill_table_base_import new_base : module_' -> module_' =
+let fill_table_base64_import new_base : module_' -> module_' =
   fill_item_import "env" "__table_base" new_base
 
-
+let fill_table_base32_import new_base : module_' -> module_' =
+  fill_item_import "env" "__table_base32" new_base
+        
 (* Concatenation of modules *)
 
 let join_modules
       (em1 : extended_module) (m2 : module_') (ns2 : name_section)
-      (type_indices : (Wasm.Types.func_type, int32) Hashtbl.t) : extended_module =
+      (type_indices : (Wasm_exts.Types.func_type, int32) Hashtbl.t) : extended_module =
   let m1 = em1.module_ in
   let joined = 
     { em1 with
@@ -598,7 +621,7 @@ let join_modules
         funcs = m1.funcs @ m2.funcs;
         start = m1.start;
         elems = m1.elems @ m2.elems;
-        data = m1.data @ m2.data;
+        datas = m1.datas @ m2.datas;
         imports = m1.imports @ m2.imports;
         exports = m1.exports @ m2.exports;
       };
@@ -615,7 +638,7 @@ let join_modules
      we'll have the unit function in the type section already. *)
   match m2.start with
   | None -> joined
-  | Some fi -> prepend_to_start fi.it (Hashtbl.find type_indices (Wasm.Types.FuncType ([], []))) joined
+  | Some fi -> prepend_to_start fi.it (Hashtbl.find type_indices (Wasm_exts.Types.FuncType ([], []))) joined
 
 (* The main linking function *)
 
@@ -634,12 +657,12 @@ let check_typ is_thing get_typ string_of m1 m2 (i1, i2) =
     raise (LinkError msg)
 
 let check_fun_typ =
-  check_typ is_fun_import get_fun_typ Wasm.Types.string_of_func_type
+  check_typ is_fun_import get_fun_typ Wasm_exts.Types.string_of_func_type
 let check_global_typ =
-  check_typ is_global_import get_global_typ Wasm.Types.string_of_global_type
+  check_typ is_global_import get_global_typ Wasm_exts.Types.string_of_global_type
 
 
-let align p n =
+let align_i32 p n =
   let open Int32 in
   let p = to_int p in
   shift_left (shift_right_logical (add n (sub (shift_left 1l p) 1l)) p) p
@@ -676,10 +699,10 @@ let add_globals (globals0 : global list) (insert0 : (int32 * global') list) : gl
   go 0l globals0 insert0
 
 let mk_i32_const (i : int32) =
-  Const (Wasm.Values.I32 i @@ no_region) @@ no_region
+  Const (Wasm_exts.Values.I32 i @@ no_region) @@ no_region
 
 let mk_i32_global (i : int32) =
-  { gtype = Wasm.Types.GlobalType (Wasm.Types.I32Type, Wasm.Types.Immutable);
+  { gtype = Wasm_exts.Types.GlobalType (Wasm_exts.Types.I32Type, Wasm_exts.Types.Immutable);
     value = [mk_i32_const i] @@ no_region }
 
 (* Generate (global index, function index) pairs for GOT.func imports of a
@@ -769,16 +792,27 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
 
   (* Beginning of unused space *)
   let old_heap_start = read_global heap_global em1.module_ in
-  let lib_heap_start = align dylink.memory_alignment old_heap_start in
-  let new_heap_start = align 4l (Int32.add lib_heap_start dylink.memory_size) in
+  let lib_heap_start = align_i32 dylink.memory_alignment old_heap_start in
+  let new_heap_start = align_i32 8l (Int32.add lib_heap_start dylink.memory_size) in
+
+  (* The RTS data segments must fit below 4.5MB according to the persistent heap layout. 
+     The first 4MB are reserved for the Rust call stack such that RTS data segments are limited to 512KB. *)
+  let max_rts_stack_size = 4 * 1024 * 1024 in
+  let max_rts_data_segment_size = 512 * 1024 in
+  (if (Int32.to_int new_heap_start) > max_rts_stack_size + max_rts_data_segment_size then
+    (raise (TooLargeDataSegments (Printf.sprintf "The Wasm data segment size exceeds the supported maxmimum of %nMB." max_rts_data_segment_size)))
+  else
+    ()
+  );
 
   let old_table_size = read_table_size em1.module_ in
-  let lib_table_start = align dylink.table_alignment old_table_size in
+  let lib_table_start = align_i32 dylink.table_alignment old_table_size in
 
   (* Fill in memory and table base pointers *)
   let dm2 = em2.module_
     |> fill_memory_base_import lib_heap_start
-    |> fill_table_base_import lib_table_start in
+    |> fill_table_base64_import lib_table_start 
+    |> fill_table_base32_import lib_table_start in
 
   let got_func_imports = collect_got_func_imports dm2 in
 
@@ -823,11 +857,11 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
   (* Rename types in both modules to eliminate duplicate types. *)
 
   (* Maps function types to their indices in the new module we're creating *)
-  let type_indices : (Wasm.Types.func_type, int32) Hashtbl.t = Hashtbl.create 100 in
+  let type_indices : (Wasm_exts.Types.func_type, int32) Hashtbl.t = Hashtbl.create 100 in
 
   (* Get index of a function type. Creates a new one if we haven't added this
      type yet. *)
-  let add_or_get_ty (ty : Wasm.Types.func_type) =
+  let add_or_get_ty (ty : Wasm_exts.Types.func_type) =
     match Hashtbl.find_opt type_indices ty with
     | None ->
       let idx = Int32.of_int (Hashtbl.length type_indices) in
@@ -838,10 +872,26 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
   in
 
   (* Rename a type in a module. First argument is the list of types in the module. *)
-  let ty_renamer (tys : Wasm.Types.func_type phrase list) (t : int32) : int32 =
+  let ty_renamer (tys : Wasm_exts.Types.func_type phrase list) (t : int32) : int32 =
     let fun_ty = List.nth tys (Int32.to_int t) in
     add_or_get_ty fun_ty.it
   in
+
+  (* Check that the first module generated by the compiler backend does not use 
+     active data segments. *)
+  let is_active data_segment = match data_segment.it.dmode.it with
+  | Active _ -> true
+  | _ -> false
+  in
+  let em1_active_data_segments = List.filter is_active em1.module_.datas in
+  assert ((List.length em1_active_data_segments) = 0);
+  
+  let is_passive data_segment = match data_segment.it.dmode.it with 
+  | Passive -> true
+  | _ -> false
+  in
+  let em1_passive_data_segments = List.filter is_passive em1.module_.datas in
+  let dm2_data_segment_offset = List.length em1_passive_data_segments in
 
   (* Rename types in first module *)
   let em1_tys =
@@ -865,12 +915,69 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
   let add_call_ctors =
     match NameMap.find_opt (Lib.Utf8.decode "__wasm_call_ctors") fun_exports2 with
     | None -> fun em -> em
-    | Some fi -> prepend_to_start (funs2 fi) (add_or_get_ty (Wasm.Types.FuncType ([], [])))
+    | Some fi -> prepend_to_start (funs2 fi) (add_or_get_ty (Wasm_exts.Types.FuncType ([], [])))
   in
 
   let new_table_size =
     Int32.add (Int32.add lib_table_start dylink.table_size) (Int32.of_int (List.length got_func_imports))
   in
+
+  (* Rust generates active data segments for the runtime system code that are not supported with orthogonal persistence.
+     Therefore, make the data segments passive and load them on initialization to their reserved static space. 
+     Note: If Rust would also use passive data segments in future, the segment load indices need to be renumbered. *)
+  let make_rts_data_segments_passive : module_' -> module_' = fun m ->
+    let segment_mode' (dmode : segment_mode') = 
+      match dmode with 
+        | Active _ -> Passive
+        | _ -> raise (LinkError "Passive data segments are not yet supported in the RTS module")
+    in
+    let segment_mode = phrase (segment_mode') in
+    let data_segment' (s : data_segment') = { s with dmode = segment_mode s.dmode; } in
+    let data_segment = phrase (data_segment') in
+    let data_segments = List.map data_segment in
+    { m with datas = data_segments m.datas; }
+  in
+
+  let load_rts_data_segments numbering_offset data_segments : module_' -> module_' = fun m ->
+      let imported_functions = Int32.to_int (count_imports is_fun_import m) in
+      let start_index = Int32.to_int (match m.start with
+      | Some index -> index.it
+      | None -> raise (LinkError "The module has no start function to inject"))
+      in
+      let local_start_function = Int.sub start_index imported_functions in
+      if local_start_function < 0 then
+        raise (LinkError "The module start refers to an imported function that cannot be injected");
+      assert (local_start_function < (List.length m.funcs));
+  
+      let load_passive_segment index data_segment =
+        let segment_index = Int32.of_int (Int.add index numbering_offset) in
+        let compile_const_i32 value = Const (Wasm_exts.Values.I32 value @@ no_region) @@ no_region in
+        let data_target = match data_segment.it.dmode.it with
+          | Active { offset; _ } -> offset.it
+          | _ -> raise (LinkError "Passive data segments are not yet supported in the RTS module")
+        in
+        let data_length = Int32.of_int (String.length data_segment.it.dinit) in
+        let memory_init = MemoryInit (segment_index @@ no_region) @@ no_region in
+        data_target @
+        [ 
+          compile_const_i32 0l; (* data offset *)
+          compile_const_i32 data_length; 
+          memory_init 
+        ]
+      in
+      let load_passive_segments = List.concat (List.mapi load_passive_segment data_segments) in
+  
+      let inject_in_func' code f = { f with body = code @ f.body } in
+      let inject_in_func code = phrase (inject_in_func' code) in
+      let patch_functions functions = 
+        List.mapi (fun index func -> 
+          if index = local_start_function then 
+            inject_in_func load_passive_segments func
+          else func
+        ) functions
+      in
+      { m with funcs = patch_functions m.funcs; }
+    in
 
   let merged = join_modules
     ( em1_tys
@@ -881,10 +988,11 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
     |> rename_funcs_extended funs1
     |> rename_globals_extended globals1
     |> map_module (set_global heap_global new_heap_start)
-    |> map_module (set_memory_size new_heap_start)
+    |> map_module (set_memory_size (I64_convert.extend_i32_u new_heap_start))
     |> map_module (set_table_size new_table_size)
     )
     ( dm2
+    |> make_rts_data_segments_passive
     |> remove_imports is_fun_import fun_resolved21
     |> remove_imports is_global_import global_resolved21
     |> remove_imports is_memory_import [0l, 0l]
@@ -900,6 +1008,7 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
     type_indices
   |> add_call_ctors
   |> remove_non_ic_exports (* only sane if no additional files get linked in *)
+  |> map_module (load_rts_data_segments dm2_data_segment_offset dm2.datas)
   in
 
   (* Rename global and function indices in GOT.func stuff *)

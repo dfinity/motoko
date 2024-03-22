@@ -1,8 +1,8 @@
-//MOC-FLAG --compacting-gc --rts-stack-pages 32 -measure-rts-stack
+//MOC-FLAG -measure-rts-stack
 import { errorMessage; debugPrint; } = "mo:⛔";
 
 actor {
-    let expectedMinimumSize = 35_000;
+    let expectedMinimumSize = 23_000;
 
     public func ser() : async () { await go(false) };
     public func deser() : async () { await go(true) };

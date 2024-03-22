@@ -1,0 +1,3 @@
+# SKIP ic-ref-run
+install $ID large-destabilization/large-destabilization.mo ""
+upgrade $ID large-destabilization/large-destabilization.mo ""

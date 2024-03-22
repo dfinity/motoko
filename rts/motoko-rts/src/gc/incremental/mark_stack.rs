@@ -31,6 +31,7 @@ use core::ptr::null_mut;
 use crate::memory::{alloc_blob, Memory};
 use crate::types::{size_of, Blob, Value};
 
+#[repr(C)]
 pub struct MarkStack {
     last: *mut StackTable,
     top: usize, // index of next free entry in the last stack table
