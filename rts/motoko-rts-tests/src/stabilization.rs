@@ -1,3 +1,4 @@
+mod layout;
 mod reader_writer;
 mod stable_bigints;
 mod stable_memory;
@@ -21,6 +22,7 @@ use oorandom::Rand32;
 
 pub unsafe fn test() {
     println!("Testing stabilization ...");
+    layout::test();
     stable_bigints::test();
     reader_writer::test();
     test_stabilization();

@@ -108,8 +108,6 @@ pub fn write_u64(offset: u64, n: u64) {
 #[cfg(feature = "ic")]
 #[no_mangle]
 pub extern "C" fn read_stable_memory_version() -> u32 {
-    use crate::types::size_of;
-
     let physical_pages = unsafe { ic0_stable64_size() };
     if physical_pages == 0 {
         // No stable memory -> Legacy version 0.
@@ -120,6 +118,7 @@ pub extern "C" fn read_stable_memory_version() -> u32 {
         // It stores non-zero marker at address 0 -> Legacy version 0.
         return 0;
     }
-    let address = physical_pages * PAGE_SIZE - size_of::<u32>().to_bytes().as_usize() as u64;
+    // Note: Do not use `types::size_of()` as it rounds to 64-bit words.
+    let address = physical_pages * PAGE_SIZE - core::mem::size_of::<u32>() as u64;
     read_u32(address)
 }

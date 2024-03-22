@@ -8,7 +8,7 @@ use oorandom::Rand32;
 
 use crate::{
     bigint::set_bigint_heap,
-    memory::TestMemory,
+    memory::{initialize_test_memory, reset_test_memory, TestMemory},
     stabilization::{deserialize, serialize, stable_memory::clear_stable_memory},
 };
 
@@ -70,7 +70,7 @@ unsafe fn random_bigint(random: &mut Rand32) -> Value {
 }
 
 unsafe fn test_bigint<F: FnMut() -> Value>(mut generate_bigint: F) {
-    let mut memory = TestMemory::new(Words(4_000_000));
+    let mut memory = initialize_test_memory();
     set_bigint_heap(&mut memory);
     let input = generate_bigint();
     // Clone the input bigint object, because it is destructed on serialization.
@@ -81,4 +81,5 @@ unsafe fn test_bigint<F: FnMut() -> Value>(mut generate_bigint: F) {
     let output = deserialize(&mut memory, 0, stable_size);
     assert!(bigint_eq(output, input));
     set_bigint_heap(null_mut());
+    reset_test_memory();
 }

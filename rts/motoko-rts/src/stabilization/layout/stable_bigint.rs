@@ -30,6 +30,8 @@ pub struct StableBigInt {
 }
 
 const USED_BITS_PER_WORD: u32 = 28;
+// Note: Do not use `types::size_of()` as it rounds to 64-bit words.
+const ELEMENT_SIZE: usize = core::mem::size_of::<u32>();
 
 #[repr(C)]
 struct Bits(u64);
@@ -110,7 +112,7 @@ impl Serializer<BigInt> for StableBigInt {
                 next_pending_bits = USED_BITS_PER_WORD - consumed_bits;
             }
             stable_memory.write(&word); // little endian
-            written_bytes += size_of::<u32>().to_bytes().as_usize();
+            written_bytes += ELEMENT_SIZE;
             word = next_word;
             pending_bits = next_pending_bits;
             next_pending_bits = 0;
@@ -137,10 +139,9 @@ impl Serializer<BigInt> for StableBigInt {
     }
 
     unsafe fn allocate_deserialized<M: Memory>(&self, main_memory: &mut M) -> Value {
-        let word_size = size_of::<u32>().to_bytes();
         let words = self.deserialized_length();
         let payload =
-            mp_calloc(main_memory, words.as_usize(), Bytes(word_size.as_usize())) as *mut mp_digit;
+            mp_calloc(main_memory, words.as_usize(), Bytes(ELEMENT_SIZE)) as *mut mp_digit;
         let bigint = BigInt::from_payload(payload);
         Value::from_ptr(bigint as usize)
     }

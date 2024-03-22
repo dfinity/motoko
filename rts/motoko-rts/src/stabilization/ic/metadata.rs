@@ -103,7 +103,8 @@ impl StabilizationMetadata {
 
     fn read_length(offset: &mut u64) -> u64 {
         let length = read_u64(*offset);
-        clear_stable_memory(*offset, size_of::<u32>().to_bytes().as_usize() as u64);
+        // Note: Do not use `types::size_of()` as it rounds to 64-bit words.
+        clear_stable_memory(*offset, core::mem::size_of::<u32>() as u64);
         *offset += size_of::<u64>().to_bytes().as_usize() as u64;
         length
     }
