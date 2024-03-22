@@ -198,18 +198,21 @@ fn test_raw_read_write() {
     assert_eq!(reader_writer.written_length(), (AMOUNT * LENGTH) as u64);
 }
 
+#[repr(C)]
 #[derive(Debug, PartialEq, Default)]
 struct RandomRecord {
     field_0: i8,
+    padding_0: i8,
     field_1: i16,
     field_2: i32,
     field_4: i64,
     field_5: i128,
     field_6: f64,
+    padding_6: i64,
 }
 
 type RandomTuple = (f64, i64);
-type RandomArray = [i32; 100];
+type RandomArray = [i64; 100];
 type RandomBulkData = [u8; 10_000];
 
 #[derive(Debug, PartialEq)]
@@ -240,13 +243,15 @@ impl RandomValue {
             )),
             4 => RandomValue::RecordValue(RandomRecord {
                 field_0: random.rand_i32() as i8,
+                padding_0: 0,
                 field_1: random.rand_i32() as i16,
                 field_2: random.rand_i32(),
                 field_4: random.rand_i32() as i64,
                 field_5: random.rand_i32() as i128,
                 field_6: random.rand_float() as f64,
+                padding_6: 0,
             }),
-            5 => RandomValue::ArrayValue(from_fn(|_| random.rand_i32())),
+            5 => RandomValue::ArrayValue(from_fn(|_| random.rand_i32() as i64)),
             6 => RandomValue::BulkValue(from_fn(|_| random.rand_u32() as u8)),
             _ => unreachable!(),
         }
@@ -284,11 +289,13 @@ impl RandomValue {
             RandomValue::TupleValue(_) => RandomValue::TupleValue((0.0, 0)),
             RandomValue::RecordValue(_) => RandomValue::RecordValue(RandomRecord {
                 field_0: 0,
+                padding_0: 0,
                 field_1: 0,
                 field_2: 0,
                 field_4: 0,
                 field_5: 0,
                 field_6: 0.0,
+                padding_6: 0,
             }),
             RandomValue::ArrayValue(_) => RandomValue::ArrayValue(from_fn(|_| 0)),
             RandomValue::BulkValue(_) => RandomValue::BulkValue(from_fn(|_| 0)),
@@ -303,7 +310,7 @@ impl RandomValue {
             RandomValue::TupleValue(value) => *value = reader_writer.read(),
             RandomValue::RecordValue(value) => *value = reader_writer.read(),
             RandomValue::ArrayValue(value) => {
-                reader_writer.raw_read(value as *mut i32 as usize, size_of::<RandomArray>())
+                reader_writer.raw_read(value as *mut i64 as usize, size_of::<RandomArray>())
             }
             RandomValue::BulkValue(value) => {
                 reader_writer.raw_read(value as *mut u8 as usize, size_of::<RandomBulkData>())
