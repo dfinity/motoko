@@ -593,9 +593,13 @@ let run_stdin_from_file files file : Value.value option =
     Diag.flush_messages (load_decl (parse_file Source.no_region file) senv) in
   let denv' = interpret_libs denv libs in
   let* (v, dscope) = interpret_prog denv' prog in
-  Format.printf "@[<hv 2>%a :@ %a@]@."
+  (match t with
+  | Type.Obj (Type.Actor, _) ->
+      (* special case for actors *)
+      Format.printf "@[<hv 2>%a@]@." Type.pp_typ t
+  | _ -> Format.printf "@[<hv 2>%a :@ %a@]@."
     (Value.pp_val 10) v
-    Type.pp_typ t;
+    Type.pp_typ t);
   Some v
 
 let run_files_and_stdin files =
