@@ -595,8 +595,8 @@ let run_stdin_from_file files file : Value.value option =
   let* (v, dscope) = interpret_prog denv' prog in
   (match t with
   | Type.Obj (Type.Actor, _) ->
-      (* special case for actors *)
-      Format.printf "@[<hv 2>%a@]@." Type.pp_typ t
+    (* special case for actors *)
+    Format.printf "@[<hv 2>%a@]@." Type.pp_typ t
   | _ -> Format.printf "@[<hv 2>%a :@ %a@]@."
     (Value.pp_val 10) v
     Type.pp_typ t);
