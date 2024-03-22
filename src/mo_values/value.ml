@@ -181,58 +181,59 @@ let comma ppf () = fprintf ppf ",@ "
 let semi ppf () = fprintf ppf ";@ "
 
 let rec pp_val_nullary d ppf = function
-  | Null -> pr ppf "null"
-  | Bool b -> pr ppf (if b then "true" else "false")
-  | Int n when Int.(ge n zero) -> pr ppf (Int.to_pretty_string n)
-  | Int8 n when Int_8.(n = zero) -> pr ppf (Int_8.to_pretty_string n)
-  | Int16 n when Int_16.(n = zero) -> pr ppf (Int_16.to_pretty_string n)
-  | Int32 n when Int_32.(n = zero) -> pr ppf (Int_32.to_pretty_string n)
-  | Int64 n when Int_64.(n = zero) -> pr ppf (Int_64.to_pretty_string n)
-  | Nat8 n -> pr ppf (Nat8.to_pretty_string n)
-  | Nat16 n -> pr ppf (Nat16.to_pretty_string n)
-  | Nat32 n -> pr ppf (Nat32.to_pretty_string n)
-  | Nat64 n -> pr ppf (Nat64.to_pretty_string n)
-  | Float f -> pr ppf (Float.to_pretty_string f)
-  | Char c ->  pr ppf (string_of_string '\'' [c] '\'')
-  | Text t -> pr ppf (string_of_string '\"' (Lib.Utf8.decode t) '\"')
-  | Blob b -> pr ppf ("\"" ^ Blob.escape b ^ "\"")
-  | Tup vs ->
+  | _, Null -> pr ppf "null"
+  | _, Bool b -> pr ppf (if b then "true" else "false")
+  | _, Int n when Int.(ge n zero) -> pr ppf (Int.to_pretty_string n)
+  | _, Int8 n when Int_8.(n = zero) -> pr ppf (Int_8.to_pretty_string n)
+  | _, Int16 n when Int_16.(n = zero) -> pr ppf (Int_16.to_pretty_string n)
+  | _, Int32 n when Int_32.(n = zero) -> pr ppf (Int_32.to_pretty_string n)
+  | _, Int64 n when Int_64.(n = zero) -> pr ppf (Int_64.to_pretty_string n)
+  | _, Nat8 n -> pr ppf (Nat8.to_pretty_string n)
+  | _, Nat16 n -> pr ppf (Nat16.to_pretty_string n)
+  | _, Nat32 n -> pr ppf (Nat32.to_pretty_string n)
+  | _, Nat64 n -> pr ppf (Nat64.to_pretty_string n)
+  | _, Float f -> pr ppf (Float.to_pretty_string f)
+  | _, Char c ->  pr ppf (string_of_string '\'' [c] '\'')
+  | _, Text t -> pr ppf (string_of_string '\"' (Lib.Utf8.decode t) '\"')
+  | Obj (Actor, _), Blob b -> pr ppf (string_of_string '`' (Lib.Utf8.decode (Ic.Url.encode_principal b)) '`')
+  | _, Blob b -> pr ppf ("\"" ^ Blob.escape b ^ "\"")
+  | Tup ts, Tup vs ->
     fprintf ppf "@[<1>(%a%s)@]"
-      (pp_print_list ~pp_sep:comma (pp_val d)) vs
+      (pp_print_list ~pp_sep:comma (pp_val d ppf)) (List.combine ts vs)
       (if List.length vs = 1 then "," else "")
-  | Obj ve ->
+  | _, Obj ve ->
     if d = 0 then pr ppf "{...}" else
     fprintf ppf "@[<hv 2>{@;<0 0>%a@;<0 -2>}@]"
       (pp_print_list ~pp_sep:semi (pp_field d)) (Env.bindings ve)
-  | Array a ->
+  | Array t, Array a ->
     fprintf ppf "@[<1>[%a]@]"
-      (pp_print_list ~pp_sep:comma (pp_val d)) (Array.to_list a)
-  | Func (_, _) -> pr ppf "func"
-  | Comp _ -> pr ppf "async*"
-  | v ->
+      (pp_print_list ~pp_sep:comma (fun ppf v -> pp_val d ppf (t, v))) (Array.to_list a)
+  | _, Func (_, _) -> pr ppf "func"
+  | _, Comp _ -> pr ppf "async*"
+  | t, v ->
     (* "(" ^ string_of_val d v ^ ")" *)
-    fprintf ppf "@[<1>(%a)@]" (pp_val d) v
+    fprintf ppf "@[<1>(%a)@]" (pp_val d ppf) (t, v)
 
-and pp_field d ppf (lab, v) =
-    fprintf ppf "@[<2>%s =@ %a@]" lab (pp_val d) v
+and pp_field d ppf (lab, t, v) =
+    fprintf ppf "@[<2>%s =@ %a@]" lab (pp_val d) (t, v)
 
 and pp_val d ppf = function
-  | Int i -> pr ppf (Int.to_pretty_string i)
-  | Int8 i -> pr ppf (Int_8.(pos_sign (gt i zero) ^ to_pretty_string i))
-  | Int16 i -> pr ppf (Int_16.(pos_sign (gt i zero) ^ to_pretty_string i))
-  | Int32 i -> pr ppf (Int_32.(pos_sign (gt i zero) ^ to_pretty_string i))
-  | Int64 i -> pr ppf (Int_64.(pos_sign (gt i zero) ^ to_pretty_string i))
-  | Opt v -> fprintf ppf "@[<1>?%a@]" (pp_val_nullary d) v
-  | Variant (l, Tup []) -> fprintf ppf "#%s" l
-  | Variant (l, Tup vs) -> fprintf ppf "@[#%s@;<0 1>%a@]" l (pp_val d) (Tup vs)
-  | Variant (l, v) -> fprintf ppf "@[#%s@;<0 1>(%a)@]" l (pp_val d) v
-  | Async {result; waiters = []} ->
+  | _, Int i -> pr ppf (Int.to_pretty_string i)
+  | _, Int8 i -> pr ppf (Int_8.(pos_sign (gt i zero) ^ to_pretty_string i))
+  | _, Int16 i -> pr ppf (Int_16.(pos_sign (gt i zero) ^ to_pretty_string i))
+  | _, Int32 i -> pr ppf (Int_32.(pos_sign (gt i zero) ^ to_pretty_string i))
+  | _, Int64 i -> pr ppf (Int_64.(pos_sign (gt i zero) ^ to_pretty_string i))
+  | Opt t', Opt v' -> fprintf ppf "@[<1>?%a@]" (pp_val_nullary d) (t', v')
+  (* | _, Variant (l, Tup []) -> fprintf ppf "#%s" l
+  | _, Variant (l, Tup vs) -> fprintf ppf "@[#%s@;<0 1>%a@]" l (pp_val d) (Tup vs)
+  | _, Variant (l, v) -> fprintf ppf "@[#%s@;<0 1>(%a)@]" l (pp_val d) (t, v) *)
+  | _, Async {result; waiters = []} ->
     fprintf ppf "@[<2>async@ %a@]" (pp_res d) result
-  | Async {result; waiters} ->
+  | Async (_, _, t), Async {result; waiters} ->
     fprintf ppf "@[<2>async[%d]@ %a@]"
       (List.length waiters) (pp_res d) result
-  | Mut r -> pp_val d ppf !r
-  | v -> pp_val_nullary d ppf v
+  | _, Mut r -> pp_val d ppf (t, !r)
+  | t, v -> pp_val_nullary d ppf (t, v)
 
 and pp_res d ppf result =
   match Lib.Promise.value_opt result with
@@ -245,9 +246,9 @@ and pp_def d ppf def =
   | Some v -> pp_val d ppf v
   | None -> pr ppf "_"
 
-let string_of_val d v : string =
+and string_of_val d t v : string =
   Lib.Format.with_str_formatter (fun ppf ->
-    pp_val d ppf) v
+    pp_val d ppf (t, v))
 
 let string_of_def d def : string =
   Lib.Format.with_str_formatter (fun ppf ->

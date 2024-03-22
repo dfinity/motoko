@@ -62,7 +62,7 @@ let print_scope senv scope dve =
 
 let print_val _senv v t =
   Format.printf "@[<hv 2>%a :@ %a@]@."
-    (Value.pp_val !Flags.print_depth) v
+    (Value.pp_val !Flags.print_depth) (t, v)
     Type.pp_typ t
 
 
@@ -594,7 +594,7 @@ let run_stdin_from_file files file : Value.value option =
   let denv' = interpret_libs denv libs in
   let* (v, dscope) = interpret_prog denv' prog in
   Format.printf "@[<hv 2>%a :@ %a@]@."
-    (Value.pp_val 10) v
+    print_val senv v t
     Type.pp_typ t;
   Some v
 
