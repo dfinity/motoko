@@ -95,8 +95,8 @@ let trace fmt =
 let string_of_val env = V.string_of_val env.flags.print_depth
 let string_of_def flags = V.string_of_def flags.print_depth
 let string_of_arg env = function
-  | V.Tup _ as v -> string_of_val env v
-  | v -> "(" ^ string_of_val env v ^ ")"
+  | V.Tup _ as v -> string_of_val env None v
+  | v -> "(" ^ string_of_val env None v ^ ")"
 
 
 (* Debugging aids *)
@@ -200,7 +200,7 @@ let async env at (f: (V.value V.cont) -> (V.value V.cont) -> unit) (k : V.value 
       if env.flags.trace then trace "<- async %s" (string_of_region at);
       incr trace_depth;
       f (fun v ->
-        if env.flags.trace then trace "<= %s" (string_of_val env v);
+        if env.flags.trace then trace "<= %s" (string_of_val env None v);
         decr trace_depth;
         k' v)
         r
@@ -392,7 +392,7 @@ let check_call_conv_arg env exp v call_conv =
       "call %s: calling convention %s cannot handle non-tuple value %s"
       (Wasm.Sexpr.to_string 80 (Arrange.exp exp))
       (string_of_call_conv call_conv)
-      (string_of_val env v)
+      (string_of_val env None v)
     )
   in
   if List.length es <> call_conv.n_args then
@@ -400,7 +400,7 @@ let check_call_conv_arg env exp v call_conv =
       "call %s: calling convention %s got tuple of wrong length %s"
       (Wasm.Sexpr.to_string 80 (Arrange.exp exp))
       (string_of_call_conv call_conv)
-      (string_of_val env v)
+      (string_of_val env None v)
     )
 
 let rec interpret_exp env exp (k : V.value V.cont) =
@@ -653,7 +653,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
           | V.Opt v1 ->
             (match match_pat pat v1 with
             | None ->
-              trap pat.at "value %s does not match pattern" (string_of_val env v')
+              trap pat.at "value %s does not match pattern" (string_of_val env None v')
             | Some ve ->
               interpret_exp (adjoin_vals env ve) exp2 k_continue
             )
@@ -727,7 +727,7 @@ and interpret_exp_fields env exp_fields fld_env (k : V.value V.Env.t V.cont) =
 and interpret_cases env cases at v (k : V.value V.cont) =
   match cases with
   | [] ->
-    trap at "switch value %s does not match any case" (string_of_val env v)
+    trap at "switch value %s does not match any case" (string_of_val env None v)
   | {it = {pat; exp}; at; _}::cases' ->
     match match_pat pat v with
     | Some ve -> interpret_exp (adjoin_vals env ve) exp k
@@ -872,7 +872,7 @@ and match_shared_pat env shared_pat c =
     (match match_pat pat v with
      | None ->
        (* shouldn't occur with our irrefutable patterns, but may in future *)
-       trap pat.at "context value %s does not match context pattern" (string_of_val env v)
+       trap pat.at "context value %s does not match context pattern" (string_of_val env None v)
      | Some ve1 ->
        ve1)
 
@@ -946,7 +946,7 @@ and interpret_dec env dec (k : V.value V.cont) =
       else
         match fail with
         | Some fail -> interpret_exp env fail (fun _ -> assert false)
-        | None -> trap pat.at "value %s does not match pattern" (string_of_val env v)
+        | None -> trap pat.at "value %s does not match pattern" (string_of_val env None v)
     )
   | VarD (id, exp) ->
     interpret_exp env exp (fun v ->
@@ -993,11 +993,11 @@ and interpret_func env name shared_pat pat f c v (k : V.value V.cont) =
   let ve1 = match_shared_pat env shared_pat v1 in
   match match_pat pat v with
   | None ->
-    trap pat.at "argument value %s does not match parameter list" (string_of_val env v)
+    trap pat.at "argument value %s does not match parameter list" (string_of_val env None v)
   | Some ve2 ->
     incr trace_depth;
     let k' = fun v' ->
-      if env.flags.trace then trace "<= %s" (string_of_val env v');
+      if env.flags.trace then trace "<= %s" (string_of_val env None v');
       decr trace_depth;
       k v'
     in

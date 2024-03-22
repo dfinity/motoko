@@ -1,4 +1,5 @@
 open Numerics
+module T = Mo_types.Type
 
 (* Environments *)
 
@@ -180,7 +181,9 @@ let comma ppf () = fprintf ppf ",@ "
 
 let semi ppf () = fprintf ppf ";@ "
 
-let rec pp_val_nullary d ppf = function
+let rec pp_val_nullary d ppf (t, v : T.typ * value) =
+  let t = T.normalize t in
+  match t, v with
   | _, Null -> pr ppf "null"
   | _, Bool b -> pr ppf (if b then "true" else "false")
   | _, Int n when Int.(ge n zero) -> pr ppf (Int.to_pretty_string n)
@@ -195,24 +198,27 @@ let rec pp_val_nullary d ppf = function
   | _, Float f -> pr ppf (Float.to_pretty_string f)
   | _, Char c ->  pr ppf (string_of_string '\'' [c] '\'')
   | _, Text t -> pr ppf (string_of_string '\"' (Lib.Utf8.decode t) '\"')
-  | Obj (Actor, _), Blob b -> pr ppf (string_of_string '`' (Lib.Utf8.decode (Ic.Url.encode_principal b)) '`')
+  | T.Obj _, Blob b -> pr ppf (string_of_string '`' (Lib.Utf8.decode (Ic.Url.encode_principal b)) '`')
   | _, Blob b -> pr ppf ("\"" ^ Blob.escape b ^ "\"")
-  | Tup ts, Tup vs ->
+  | T.Tup ts, Tup vs ->
     fprintf ppf "@[<1>(%a%s)@]"
-      (pp_print_list ~pp_sep:comma (pp_val d ppf)) (List.combine ts vs)
+      (pp_print_list ~pp_sep:comma (pp_val d)) (List.combine ts vs)
       (if List.length vs = 1 then "," else "")
-  | _, Obj ve ->
+  | T.Obj (_, fs), Obj ve ->
     if d = 0 then pr ppf "{...}" else
     fprintf ppf "@[<hv 2>{@;<0 0>%a@;<0 -2>}@]"
-      (pp_print_list ~pp_sep:semi (pp_field d)) (Env.bindings ve)
-  | Array t, Array a ->
+      (pp_print_list ~pp_sep:semi (pp_field d)) (List.map (fun (lab, v) ->
+          let t = (List.find_map (fun (T.{ lab = lab'; typ; _ }) -> if lab = lab' then Some typ else None)) fs in
+          (lab, Option.value t ~default:T.Any, v))
+        (Env.bindings ve))
+  | T.Array t, Array vs ->
     fprintf ppf "@[<1>[%a]@]"
-      (pp_print_list ~pp_sep:comma (fun ppf v -> pp_val d ppf (t, v))) (Array.to_list a)
+      (pp_print_list ~pp_sep:comma (pp_val d)) (List.map (fun v -> (t, v)) (Array.to_list vs))
   | _, Func (_, _) -> pr ppf "func"
   | _, Comp _ -> pr ppf "async*"
   | t, v ->
     (* "(" ^ string_of_val d v ^ ")" *)
-    fprintf ppf "@[<1>(%a)@]" (pp_val d ppf) (t, v)
+    fprintf ppf "@[<1>(%a)@]" (pp_val d) (t, v)
 
 and pp_field d ppf (lab, t, v) =
     fprintf ppf "@[<2>%s =@ %a@]" lab (pp_val d) (t, v)
@@ -223,32 +229,33 @@ and pp_val d ppf = function
   | _, Int16 i -> pr ppf (Int_16.(pos_sign (gt i zero) ^ to_pretty_string i))
   | _, Int32 i -> pr ppf (Int_32.(pos_sign (gt i zero) ^ to_pretty_string i))
   | _, Int64 i -> pr ppf (Int_64.(pos_sign (gt i zero) ^ to_pretty_string i))
-  | Opt t', Opt v' -> fprintf ppf "@[<1>?%a@]" (pp_val_nullary d) (t', v')
-  (* | _, Variant (l, Tup []) -> fprintf ppf "#%s" l
-  | _, Variant (l, Tup vs) -> fprintf ppf "@[#%s@;<0 1>%a@]" l (pp_val d) (Tup vs)
-  | _, Variant (l, v) -> fprintf ppf "@[#%s@;<0 1>(%a)@]" l (pp_val d) (t, v) *)
-  | _, Async {result; waiters = []} ->
+  | T.Opt t, Opt v -> fprintf ppf "@[<1>?%a@]" (pp_val_nullary d) (t, v)
+  | _, Variant (l, Tup []) -> fprintf ppf "#%s" l
+  | _, Variant (l, Tup vs) -> fprintf ppf "@[#%s@;<0 1>%a@]" l (pp_val d) (T.Any (* TODO *), Tup vs)
+  | _, Variant (l, v) -> fprintf ppf "@[#%s@;<0 1>(%a)@]" l (pp_val d) (T.Any (* TODO *), v)
+  | T.Async (_, _, t), Async {result; waiters = []} ->
     fprintf ppf "@[<2>async@ %a@]" (pp_res d) result
-  | Async (_, _, t), Async {result; waiters} ->
+  | T.Async (_, _, t), Async {result; waiters} ->
     fprintf ppf "@[<2>async[%d]@ %a@]"
       (List.length waiters) (pp_res d) result
-  | _, Mut r -> pp_val d ppf (t, !r)
+  | T.Mut t, Mut r -> pp_val d ppf (t, !r)
   | t, v -> pp_val_nullary d ppf (t, v)
 
 and pp_res d ppf result =
   match Lib.Promise.value_opt result with
-  | Some (Error v)-> fprintf ppf "@[Error@ %a@]" (pp_val_nullary d) v
-  | Some (Ok v) -> pp_val_nullary d ppf v
+  | Some (Error v) -> fprintf ppf "@[Error@ %a@]" (pp_val_nullary d) (T.Any (* TODO? *), v)
+  | Some (Ok v) -> pp_val_nullary d ppf (T.Any (* TODO? *), v)
   | None -> pr ppf "_"
 
 and pp_def d ppf def =
   match Lib.Promise.value_opt def with
-  | Some v -> pp_val d ppf v
+  | Some v -> pp_val d ppf (T.Any (* TODO: include type in `Value.def`? *), v)
   | None -> pr ppf "_"
 
 and string_of_val d t v : string =
+  let t = Option.value t ~default:T.Any in
   Lib.Format.with_str_formatter (fun ppf ->
-    pp_val d ppf (t, v))
+    pp_val d ppf) (t, v)
 
 let string_of_def d def : string =
   Lib.Format.with_str_formatter (fun ppf ->

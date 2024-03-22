@@ -593,9 +593,7 @@ let run_stdin_from_file files file : Value.value option =
     Diag.flush_messages (load_decl (parse_file Source.no_region file) senv) in
   let denv' = interpret_libs denv libs in
   let* (v, dscope) = interpret_prog denv' prog in
-  Format.printf "@[<hv 2>%a :@ %a@]@."
-    print_val senv v t
-    Type.pp_typ t;
+  print_val senv v t;
   Some v
 
 let run_files_and_stdin files =
