@@ -2,13 +2,13 @@ use std::ptr::null_mut;
 
 use motoko_rts::{
     bigint::{bigint_add, bigint_eq, bigint_mul, bigint_neg, bigint_of_word64},
-    types::{Value, Words},
+    types::Value,
 };
 use oorandom::Rand32;
 
 use crate::{
     bigint::set_bigint_heap,
-    memory::{initialize_test_memory, reset_test_memory, TestMemory},
+    memory::{initialize_test_memory, reset_test_memory},
     stabilization::{deserialize, serialize, stable_memory::clear_stable_memory},
 };
 

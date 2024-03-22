@@ -16,7 +16,7 @@ use motoko_rts::{
     stabilization::{
         deserialization::Deserialization, graph_copy::GraphCopy, serialization::Serialization,
     },
-    types::{Array, Value, Words, TAG_ARRAY, TAG_FWD_PTR},
+    types::{Value, Words},
 };
 use oorandom::Rand32;
 
@@ -76,7 +76,7 @@ impl RandomHeap {
 
     fn set_new_root(&mut self, stable_root: Value) {
         self.clear_continuation_table();
-        self.reset_static_root(stable_root);
+        self.reset_root_array(stable_root);
         // Set the stable root as sole static root pointer.
         self.reset_descriptor();
     }
@@ -88,44 +88,10 @@ impl RandomHeap {
         }
     }
 
-    fn reset_static_root(&mut self, stable_root: Value) {
+    fn reset_root_array(&mut self, stable_root: Value) {
         let root_array_pointer = self.memory.static_root_array_variable_address() as *mut Value;
         unsafe {
-            let old_roots = (*root_array_pointer).get_ptr() as *mut Array;
-            // Serialization has replaced the static root array by a forwarding pointer object.
-            assert_eq!((*old_roots).header.tag, TAG_FWD_PTR);
-            (*old_roots).header.tag = TAG_ARRAY;
-            (*old_roots)
-                .header
-                .init_forward(Value::from_ptr(old_roots as usize));
-            let new_roots = stable_root.as_array();
-            let length = (*new_roots).len;
-            assert_eq!(length as usize, self.descriptor.roots.len());
-            (*old_roots).len = length;
-            for index in 0..length {
-                old_roots.initialize(index, new_roots.get(index), &mut self.memory);
-            }
-            if length > 0 {
-                // GC `check_heap()` expects the object id as scalar as the first array element.
-                // Therefore, generate a new object id and assign this to the garbage stable root object.
-                let new_object_id = self
-                    .descriptor
-                    .heap
-                    .iter()
-                    .map(|(key, _)| key)
-                    .max()
-                    .unwrap()
-                    + 1;
-                new_roots.set_scalar(0, Value::from_scalar(new_object_id));
-                let mut outgoing = vec![];
-                for index in 1..length {
-                    // GC `check_heap` expects skewed addresses pointing beyond heap base for all array elements
-                    // except the first one.
-                    new_roots.initialize(index, stable_root, &mut self.memory);
-                    outgoing.push(new_object_id);
-                }
-                self.descriptor.heap.push((new_object_id, outgoing));
-            }
+            *root_array_pointer = stable_root;
         }
     }
 
