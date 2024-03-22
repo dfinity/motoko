@@ -143,12 +143,20 @@ assert.deepStrictEqual(Motoko.check("bad.mo"), {
   code: null,
 });
 
-const astString = JSON.stringify(
-  Motoko.parseMotoko(Motoko.readFile("ast.mo"))
-);
+// Run interpreter
+assert.deepStrictEqual(Motoko.run([], "actor.mo"), {
+  stdout: "actor {main : shared query () -> async A__9<Text>}\n",
+  stderr: "",
+  result: { error: null },
+});
+
+const astString = JSON.stringify(Motoko.parseMotoko(Motoko.readFile("ast.mo")));
 
 // Check doc comments
-assert.match(astString, /"name":"\*","args":\["Program comment\\n      multi-line"/);
+assert.match(
+  astString,
+  /"name":"\*","args":\["Program comment\\n      multi-line"/
+);
 assert.match(astString, /"name":"\*","args":\["Type comment"/);
 assert.match(astString, /"name":"\*","args":\["Variable comment"/);
 assert.match(astString, /"name":"\*","args":\["Function comment"/);
@@ -161,7 +169,8 @@ assert.deepStrictEqual(Motoko.check("text.mo"), {
   diagnostics: [],
 });
 
-const candid = `
+const candid =
+  `
 type T = nat;
 /// Program comment
 ///       multi-line
@@ -169,42 +178,44 @@ service : {
   /// Function comment
   main: () -> (T) query;
 }
-`.trim() + '\n';
-assert.deepStrictEqual(Motoko.candid('ast.mo'), {
+`.trim() + "\n";
+assert.deepStrictEqual(Motoko.candid("ast.mo"), {
   diagnostics: [
     {
-      category: 'type',
-      code: 'M0194',
-      message: 'unused identifier Prim (delete or rename to wildcard `_` or `_Prim`)',
+      category: "type",
+      code: "M0194",
+      message:
+        "unused identifier Prim (delete or rename to wildcard `_` or `_Prim`)",
       range: {
         end: {
           character: 13,
-          line: 3
+          line: 3,
         },
         start: {
           character: 9,
-          line: 3
-        }
+          line: 3,
+        },
       },
       severity: 2,
-      source: 'ast.mo'
+      source: "ast.mo",
     },
     {
-      category: 'type',
-      code: 'M0194',
-      message: 'unused identifier M (delete or rename to wildcard `_` or `_M`)',
+      category: "type",
+      code: "M0194",
+      message: "unused identifier M (delete or rename to wildcard `_` or `_M`)",
       range: {
         end: {
           character: 12,
-          line: 13
+          line: 13,
         },
         start: {
           character: 11,
-          line: 13
-        }
+          line: 13,
+        },
       },
       severity: 2,
-      source: 'ast.mo'
-    }
-  ], code: candid
+      source: "ast.mo",
+    },
+  ],
+  code: candid,
 });
