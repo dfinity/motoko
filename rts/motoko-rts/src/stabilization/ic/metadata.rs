@@ -9,10 +9,10 @@
 //!   (possible zero padding)
 //! Type descriptor address M:
 //!   Candid type table
-//!     Byte length (u32)
+//!     Byte length (u64)
 //!     Data
 //!   Type offset table
-//!     Byte length (u32)
+//!     Byte length (u64)
 //!     Data
 //!   (possible zero padding)
 //! -- Last physical page (metadata):
@@ -22,24 +22,23 @@
 //!   Serialized data length L (u64)
 //!   Type descriptor address M (u64)
 //!   First word of page 0
-//!   Version 3 or 4 (u32)
+//!   Version 3 or 4 (u32) (match with `VERSION_GRAPH_COPY_NO_REGIONS` and `VERSION_GRAPH_COPY_REGIONS` in `region.rs` and `compile.ml`.
 //! -- page end
-
-use core::cmp::max;
 
 use crate::{
     barriers::allocation_barrier,
     memory::{alloc_blob, Memory},
+    persistence::compatibility::TypeDescriptor,
     region::{VERSION_GRAPH_COPY_NO_REGIONS, VERSION_GRAPH_COPY_REGIONS},
     stabilization::{clear_stable_memory, grant_stable_space},
     stable_mem::{
-        get_version, ic0_stable64_read, ic0_stable64_size, ic0_stable64_write, read_u32,
-        set_version, write_u32, PAGE_SIZE,
+        get_version, ic0_stable64_read, ic0_stable64_size, ic0_stable64_write, read_u32, read_u64,
+        set_version, write_u32, write_u64, PAGE_SIZE,
     },
     types::{size_of, Bytes, Value},
 };
 
-use super::{compatibility::TypeDescriptor, performance::InstructionMeter};
+use super::performance::InstructionMeter;
 
 #[repr(C)]
 #[derive(Default)]
@@ -69,15 +68,15 @@ impl StabilizationMetadata {
         grant_stable_space(offset + length);
     }
 
-    fn write_length(offset: &mut u64, length: u32) {
+    fn write_length(offset: &mut u64, length: u64) {
         Self::ensure_space(*offset, length as u64);
-        write_u32(*offset, length);
-        *offset += size_of::<u32>().to_bytes().as_usize() as u64;
+        write_u64(*offset, length);
+        *offset += size_of::<u64>().to_bytes().as_usize() as u64;
     }
 
     fn write_blob(offset: &mut u64, value: Value) {
         unsafe {
-            let length = value.as_blob().len().as_u32();
+            let length = value.as_blob().len().as_usize() as u64;
             Self::write_length(offset, length);
             Self::ensure_space(*offset, length as u64);
             ic0_stable64_write(
@@ -98,22 +97,21 @@ impl StabilizationMetadata {
     }
 
     fn save_type_descriptor(offset: &mut u64, descriptor: &TypeDescriptor) {
-        assert_eq!(descriptor.main_actor_index, 0);
-        Self::write_blob(offset, descriptor.candid_data);
-        Self::write_blob(offset, descriptor.type_offsets);
+        Self::write_blob(offset, descriptor.candid_data());
+        Self::write_blob(offset, descriptor.type_offsets());
     }
 
-    fn read_length(offset: &mut u64) -> u32 {
-        let length = read_u32(*offset);
+    fn read_length(offset: &mut u64) -> u64 {
+        let length = read_u64(*offset);
         clear_stable_memory(*offset, size_of::<u32>().to_bytes().as_usize() as u64);
-        *offset += size_of::<u32>().to_bytes().as_usize() as u64;
+        *offset += size_of::<u64>().to_bytes().as_usize() as u64;
         length
     }
 
     fn read_blob<M: Memory>(mem: &mut M, offset: &mut u64) -> Value {
         let length = Self::read_length(offset);
         unsafe {
-            let value = alloc_blob(mem, Bytes(length));
+            let value = alloc_blob(mem, Bytes(length as usize));
             ic0_stable64_read(
                 value.as_blob_mut().payload_addr() as u64,
                 *offset,
@@ -129,11 +127,7 @@ impl StabilizationMetadata {
     fn load_type_descriptor<M: Memory>(mem: &mut M, offset: &mut u64) -> TypeDescriptor {
         let candid_data = Self::read_blob(mem, offset);
         let type_offsets = Self::read_blob(mem, offset);
-        TypeDescriptor {
-            candid_data,
-            type_offsets,
-            main_actor_index: 0,
-        }
+        TypeDescriptor::new(candid_data, type_offsets)
     }
 
     fn metadata_location() -> u64 {
@@ -190,7 +184,7 @@ impl StabilizationMetadata {
             serialized_data_length: self.serialized_data_length,
             type_descriptor_address,
             first_word_backup,
-            version: get_version(),
+            version: get_version() as u32,
         };
         Self::write_metadata(&last_page_record);
     }
@@ -198,11 +192,9 @@ impl StabilizationMetadata {
     pub fn load<M: Memory>(mem: &mut M) -> (StabilizationMetadata, UpgradeStatistics) {
         let last_page_record = Self::read_metadata();
         Self::clear_metadata();
-        assert!(
-            last_page_record.version == VERSION_GRAPH_COPY_NO_REGIONS
-                || last_page_record.version == VERSION_GRAPH_COPY_REGIONS
-        );
-        set_version(last_page_record.version);
+        let version = last_page_record.version as usize;
+        assert!(version == VERSION_GRAPH_COPY_NO_REGIONS || version == VERSION_GRAPH_COPY_REGIONS);
+        set_version(version);
         write_u32(0, last_page_record.first_word_backup);
         let mut offset = last_page_record.type_descriptor_address;
         let type_descriptor = Self::load_type_descriptor(mem, &mut offset);
@@ -212,22 +204,5 @@ impl StabilizationMetadata {
             type_descriptor,
         };
         (metadata, last_page_record.statistics)
-    }
-
-    pub fn matching_version() -> bool {
-        let physical_pages = unsafe { ic0_stable64_size() };
-        if physical_pages == 0 {
-            // No stable memory -> Legacy version 0.
-            return false;
-        }
-        if read_u32(0) != 0 {
-            // Old stabilization with no experimental stable memory and no regions.
-            // It stores non-zero marker at address 0 -> Legacy version 0.
-            return false;
-        }
-        let address = physical_pages * PAGE_SIZE - size_of::<u32>().to_bytes().as_usize() as u64;
-        let version = read_u32(address);
-        assert!(version <= max(VERSION_GRAPH_COPY_NO_REGIONS, VERSION_GRAPH_COPY_REGIONS));
-        version == VERSION_GRAPH_COPY_NO_REGIONS || version == VERSION_GRAPH_COPY_REGIONS
     }
 }

@@ -2,19 +2,20 @@ use crate::{
     memory::Memory,
     stabilization::{
         deserialization::stable_memory_access::StableMemoryAccess,
+        layout::{stable_blob::StableBlob, StableObjectKind},
         serialization::{
             stable_memory_stream::{ScanStream, StableMemoryStream, WriteStream},
             SerializationContext,
         },
     },
-    types::{size_of, Object, Value, Words, TAG_OBJECT},
+    types::{size_of, FwdPtr, Object, Tag, Value, Words, TAG_FWD_PTR, TAG_OBJECT},
 };
 
-use super::{Serializer, StableToSpace, StableValue, StaticScanner};
+use super::{Serializer, StableTag, StableToSpace, StableValue, StaticScanner};
 
 #[repr(C)]
 pub struct StableObject {
-    size: u32, // Number of fields.
+    size: u64, // Number of fields.
     hash_blob: StableValue, // Pointer to a blob containing the `u32` hashes of the field labels.
                // Dynamically sized body with `size` fields, each of `StableValue`, ordered according to the hashes in the blob.
 }
@@ -31,9 +32,12 @@ impl StaticScanner<StableValue> for StableObject {
 }
 
 impl Serializer<Object> for StableObject {
-    unsafe fn serialize_static_part(main_object: *mut Object) -> Self {
+    unsafe fn serialize_static_part(
+        stable_memory: &mut StableMemoryStream,
+        main_object: *mut Object,
+    ) -> Self {
         StableObject {
-            size: (*main_object).size,
+            size: get_object_size(stable_memory, main_object) as u64,
             hash_blob: StableValue::serialize((*main_object).hash_blob),
         }
     }
@@ -68,7 +72,7 @@ impl Serializer<Object> for StableObject {
     }
 
     unsafe fn allocate_deserialized<M: Memory>(&self, main_memory: &mut M) -> Value {
-        let total_size = size_of::<Object>() + Words(self.size);
+        let total_size = size_of::<Object>() + Words(self.size as usize);
         main_memory.alloc_words(total_size)
     }
 
@@ -77,7 +81,6 @@ impl Serializer<Object> for StableObject {
         (*target_object)
             .header
             .init_forward(Value::from_ptr(target_object as usize));
-        (*target_object).size = self.size;
         (*target_object).hash_blob = self.hash_blob.deserialize();
     }
 
@@ -92,10 +95,40 @@ impl Serializer<Object> for StableObject {
         for index in 0..self.size {
             let field_address = stable_address
                 + size_of::<StableObject>().to_bytes().as_usize() as u64
-                + (index * size_of::<StableValue>().to_bytes().as_u32()) as u64;
+                + (index * size_of::<StableValue>().to_bytes().as_usize() as u64);
             let field = stable_memory.read::<StableValue>(field_address);
             let target_field_address = target_object.payload_addr().add(index as usize);
             *target_field_address = field.deserialize();
+        }
+    }
+}
+
+#[repr(C)]
+struct HashBlob {
+    tag: StableTag,
+    header: StableBlob,
+}
+
+/// Resolve object size during serialization.
+/// This requires a look up in the hash blob, which may however already have been
+/// serialized to stable memory.
+fn get_object_size(stable_memory: &StableMemoryStream, main_object: *mut Object) -> usize {
+    // Do not call tag as it resolves the forwarding pointer.
+    unsafe {
+        let main_hash_blob = (*main_object).hash_blob;
+        let main_tag = *(main_hash_blob.get_ptr() as *const Tag);
+        if main_tag == TAG_FWD_PTR {
+            // The Hash blob has already been moved to stable memory.
+            let target_location = (*(main_hash_blob.get_ptr() as *mut FwdPtr)).fwd;
+            let stable_offset = target_location.get_ptr() as u64;
+            let stable_hash_blob = stable_memory.read_preceding::<HashBlob>(stable_offset);
+            assert!(stable_hash_blob.tag.decode() == StableObjectKind::Blob);
+            let hash_blob_length = stable_hash_blob.header.byte_length() as usize;
+            let hash_entry_length = size_of::<u64>().to_bytes().as_usize();
+            debug_assert_eq!(hash_blob_length % hash_entry_length, 0);
+            hash_blob_length / hash_entry_length
+        } else {
+            main_object.size()
         }
     }
 }

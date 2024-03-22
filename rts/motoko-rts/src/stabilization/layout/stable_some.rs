@@ -1,4 +1,7 @@
-use crate::types::{Some, Value, TAG_SOME};
+use crate::{
+    stabilization::serialization::stable_memory_stream::StableMemoryStream,
+    types::{Some, Value, TAG_SOME},
+};
 
 use super::{Serializer, StableValue, StaticScanner};
 
@@ -19,7 +22,10 @@ impl StaticScanner<StableValue> for StableSome {
 }
 
 impl Serializer<Some> for StableSome {
-    unsafe fn serialize_static_part(main_object: *mut Some) -> Self {
+    unsafe fn serialize_static_part(
+        _stable_memory: &mut StableMemoryStream,
+        main_object: *mut Some,
+    ) -> Self {
         StableSome {
             field: StableValue::serialize((*main_object).field),
         }

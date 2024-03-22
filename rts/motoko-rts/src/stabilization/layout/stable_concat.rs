@@ -1,6 +1,9 @@
-use crate::types::{Bytes, Concat, Value, TAG_CONCAT};
+use crate::{
+    stabilization::serialization::stable_memory_stream::StableMemoryStream,
+    types::{Bytes, Concat, Value, TAG_CONCAT},
+};
 
-use super::{checked_to_u32, Serializer, StableValue, StaticScanner};
+use super::{Serializer, StableValue, StaticScanner};
 
 #[repr(C)]
 pub struct StableConcat {
@@ -22,16 +25,19 @@ impl StaticScanner<StableValue> for StableConcat {
 }
 
 impl Serializer<Concat> for StableConcat {
-    unsafe fn serialize_static_part(main_object: *mut Concat) -> Self {
+    unsafe fn serialize_static_part(
+        _stable_memory: &mut StableMemoryStream,
+        main_object: *mut Concat,
+    ) -> Self {
         StableConcat {
-            number_of_bytes: (*main_object).n_bytes.as_u32() as u64,
+            number_of_bytes: (*main_object).n_bytes.as_usize() as u64,
             text1: StableValue::serialize(main_object.text1()),
             text2: StableValue::serialize(main_object.text2()),
         }
     }
 
     unsafe fn deserialize_static_part(&self, target_concat: *mut Concat) {
-        let n_bytes = Bytes(checked_to_u32(self.number_of_bytes));
+        let n_bytes = Bytes(self.number_of_bytes as usize);
         (*target_concat).header.tag = TAG_CONCAT;
         (*target_concat)
             .header

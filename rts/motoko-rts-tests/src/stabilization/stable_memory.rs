@@ -1,6 +1,5 @@
+use motoko_rts::{mem_utils::memcpy_bytes, types::Bytes};
 use std::cell::RefCell;
-
-use libc::{c_void, memcpy};
 
 const PAGE_SIZE: u64 = 64 * 1024;
 
@@ -20,11 +19,7 @@ pub fn ic0_stable64_write(offset: u64, source: u64, size: u64) {
         assert!(offset + size <= memory.borrow().len() as u64);
         let destination = memory.borrow_mut().as_mut_ptr() as u64 + offset;
         unsafe {
-            memcpy(
-                destination as *mut c_void,
-                source as *mut c_void,
-                size as usize,
-            );
+            memcpy_bytes(destination as usize, source as usize, Bytes(size as usize));
         }
     });
 }
@@ -35,11 +30,7 @@ pub fn ic0_stable64_read(destination: u64, offset: u64, size: u64) {
         assert!(offset + size <= memory.borrow().len() as u64);
         let source = memory.borrow_mut().as_mut_ptr() as u64 + offset;
         unsafe {
-            memcpy(
-                destination as *mut c_void,
-                source as *mut c_void,
-                size as usize,
-            );
+            memcpy_bytes(destination as usize, source as usize, Bytes(size as usize));
         }
     });
 }

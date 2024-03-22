@@ -1,10 +1,13 @@
-use crate::types::{Value, Variant, TAG_VARIANT};
+use crate::{
+    stabilization::serialization::stable_memory_stream::StableMemoryStream,
+    types::{Value, Variant, TAG_VARIANT},
+};
 
 use super::{Serializer, StableValue, StaticScanner};
 
 #[repr(C)]
 pub struct StableVariant {
-    tag: u32,
+    tag: u64,
     field: StableValue,
 }
 
@@ -20,9 +23,12 @@ impl StaticScanner<StableValue> for StableVariant {
 }
 
 impl Serializer<Variant> for StableVariant {
-    unsafe fn serialize_static_part(main_object: *mut Variant) -> Self {
+    unsafe fn serialize_static_part(
+        _stable_memory: &mut StableMemoryStream,
+        main_object: *mut Variant,
+    ) -> Self {
         StableVariant {
-            tag: (*main_object).tag,
+            tag: (*main_object).tag as u64,
             field: StableValue::serialize((*main_object).field),
         }
     }
@@ -32,7 +38,7 @@ impl Serializer<Variant> for StableVariant {
         (*target_variant)
             .header
             .init_forward(Value::from_ptr(target_variant as usize));
-        (*target_variant).tag = self.tag;
+        (*target_variant).tag = self.tag as usize;
         (*target_variant).field = self.field.deserialize();
     }
 }

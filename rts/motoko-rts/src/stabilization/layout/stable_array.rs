@@ -11,7 +11,7 @@ use crate::{
     types::{size_of, Array, Value, TAG_ARRAY},
 };
 
-use super::{checked_to_u32, Serializer, StableToSpace, StableValue, StaticScanner};
+use super::{Serializer, StableToSpace, StableValue, StaticScanner};
 
 #[repr(C)]
 pub struct StableArray {
@@ -22,7 +22,10 @@ pub struct StableArray {
 impl StaticScanner<StableValue> for StableArray {}
 
 impl Serializer<Array> for StableArray {
-    unsafe fn serialize_static_part(array: *mut Array) -> Self {
+    unsafe fn serialize_static_part(
+        _stable_memory: &mut StableMemoryStream,
+        array: *mut Array,
+    ) -> Self {
         StableArray {
             array_length: array.len() as u64,
         }
@@ -58,13 +61,13 @@ impl Serializer<Array> for StableArray {
     }
 
     unsafe fn allocate_deserialized<M: Memory>(&self, main_memory: &mut M) -> Value {
-        let array_length = checked_to_u32(self.array_length);
+        let array_length = self.array_length as usize;
         alloc_array(main_memory, array_length)
     }
 
     unsafe fn deserialize_static_part(&self, target_array: *mut Array) {
         debug_assert_eq!((*target_array).header.tag, TAG_ARRAY);
-        debug_assert_eq!((*target_array).len, checked_to_u32(self.array_length));
+        debug_assert_eq!((*target_array).len as u64, self.array_length);
     }
 
     unsafe fn deserialize_dynamic_part<M: Memory>(
@@ -80,7 +83,7 @@ impl Serializer<Array> for StableArray {
         for index in 0..(*target_array).len {
             let element = stable_memory.read::<StableValue>(element_address);
             target_array.set_raw(index, element.deserialize());
-            element_address += size_of::<StableValue>().to_bytes().as_u32() as u64;
+            element_address += size_of::<StableValue>().to_bytes().as_usize() as u64;
         }
     }
 }

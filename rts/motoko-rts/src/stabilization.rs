@@ -1,18 +1,17 @@
 //! Graph-copy-based stabilzation on upgrades, serializing the entire stable object graph into
 //! stable memory by using a defined long-term stable storage format.
 //!
-//! Use cases:
-//! - Classical model of volatile main memory: Preserve the stable variables and their reachable
-//!   objects across upgrades.
-//! - New model of enhanced orthogonal persistence: Support upgrades in the presence of complex
-//!   main memory layout changes.
+//! This is to support potentially radical changes of the persistent main memory layout, e.g.
+//! introducing a new GC or rearranging persistent metadata. This also relies on precise value
+//! tagging to allow more advanced changes that require value metadata, e.g. specializing arrays for
+//! small element types or even downgrading to 32-bit heap layouts (provided that the amount of live
+//! data fits into a 32-bit memory).
 //!
-//! A memory compatibility check has to be performed before allowing upgrade: This checks whether
-//! the stored stable object graph is compatible with the new program version. For this purpose, the
-//! type tables are compared, similar to the IDL-subtype check but customized to the allowed implicit
-//! conversion with regard to the stable storage format.
+//! A memory compatibility check similar to enhanced orthogonal persistence has to be performed.
+//! For this purpose, the type table of the serialized object graph is also stored in stable memory
+//! and on upgrade, compared to the new program version.
 //!
-//! Versioned stable storage format to permit future evolutions of the format.
+//! A versioned stable storage format even permits future evolutions of the graph copy algorithm.
 //!  
 //! See `GraphCopyStabilization.md` for the stable format specification and the employed algorithm.
 
@@ -30,13 +29,11 @@ use crate::{
     constants::WASM_PAGE_SIZE,
     rts_trap_with,
     stable_mem::{self, ic0_stable64_write, PAGE_SIZE},
-    types::Value,
 };
 
 use self::layout::StableValue;
 
 extern "C" {
-    pub fn moc_null_singleton() -> Value;
     pub fn moc_stabilization_instruction_limit() -> u64;
     fn ic0_performance_counter(number: u32) -> u64;
 }

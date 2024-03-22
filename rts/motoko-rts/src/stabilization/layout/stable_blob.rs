@@ -2,7 +2,6 @@ use crate::{
     memory::{alloc_blob, Memory},
     stabilization::{
         deserialization::stable_memory_access::StableMemoryAccess,
-        layout::checked_to_u32,
         serialization::{
             stable_memory_stream::{ScanStream, StableMemoryStream, WriteStream},
             SerializationContext,
@@ -12,8 +11,7 @@ use crate::{
 };
 
 use super::{
-    checked_to_usize, round_to_u64, write_padding_u64, Serializer, StableToSpace, StableValue,
-    StaticScanner,
+    round_to_u64, write_padding_u64, Serializer, StableToSpace, StableValue, StaticScanner,
 };
 
 #[repr(C)]
@@ -25,10 +23,19 @@ pub struct StableBlob {
     // Note: The rounding of object sizes to at least 2 bytes is necessary for the skewed pointer representation.
 }
 
+impl StableBlob {
+    pub fn byte_length(&self) -> u64 {
+        self.byte_length
+    }
+}
+
 impl StaticScanner<StableValue> for StableBlob {}
 
 impl Serializer<Blob> for StableBlob {
-    unsafe fn serialize_static_part(main_object: *mut Blob) -> Self {
+    unsafe fn serialize_static_part(
+        _stable_memory: &mut StableMemoryStream,
+        main_object: *mut Blob,
+    ) -> Self {
         StableBlob {
             byte_length: main_object.len().as_usize() as u64,
         }
@@ -56,20 +63,17 @@ impl Serializer<Blob> for StableBlob {
         context
             .serialization
             .to_space()
-            .skip(checked_to_usize(rounded_length));
+            .skip(rounded_length as usize);
     }
 
     unsafe fn allocate_deserialized<M: Memory>(&self, main_memory: &mut M) -> Value {
-        let blob_length = checked_to_u32(self.byte_length);
+        let blob_length = self.byte_length as usize;
         alloc_blob(main_memory, Bytes(blob_length))
     }
 
     unsafe fn deserialize_static_part(&self, target_blob: *mut Blob) {
         debug_assert_eq!((*target_blob).header.tag, TAG_BLOB);
-        debug_assert_eq!(
-            (*target_blob).len.as_u32(),
-            checked_to_u32(self.byte_length)
-        );
+        debug_assert_eq!((*target_blob).len.as_usize(), self.byte_length as usize);
     }
 
     unsafe fn deserialize_dynamic_part<M: Memory>(
@@ -82,7 +86,7 @@ impl Serializer<Blob> for StableBlob {
         let stable_address = stable_object.payload_address();
         let source_payload = stable_address + size_of::<StableBlob>().to_bytes().as_usize() as u64;
         let target_payload = target_blob.payload_addr() as usize;
-        let blob_length = checked_to_u32(self.byte_length);
-        stable_memory.raw_read(source_payload, target_payload, blob_length as usize);
+        let blob_length = self.byte_length as usize;
+        stable_memory.raw_read(source_payload, target_payload, blob_length);
     }
 }

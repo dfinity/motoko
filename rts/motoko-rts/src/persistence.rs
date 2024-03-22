@@ -9,7 +9,7 @@ use motoko_rts_macros::ic_mem_fn;
 use crate::{
     barriers::write_with_barrier,
     constants::{KB, MB},
-    gc::incremental::State,
+    gc::incremental::{is_gc_stopped, State},
     memory::Memory,
     persistence::compatibility::memory_compatible,
     rts_trap_with,
@@ -115,6 +115,14 @@ pub unsafe fn initialize_memory<M: Memory>(mem: &mut M) {
     }
 }
 
+/// Used for graph-copy-based stabilization. Clears main memory and deserializes
+/// stable objects from stable memory.
+pub unsafe fn reset_memory<M: Memory>(mem: &mut M) {
+    mem.grow_memory(HEAP_START);
+    let metadata = PersistentMetadata::get();
+    metadata.initialize(mem);
+}
+
 /// Returns the stable sub-record of the actor of the upgraded canister version.
 /// Returns scalar 0 if no actor is stored after on a fresh memory.
 #[no_mangle]
@@ -139,6 +147,7 @@ pub unsafe fn save_stable_actor<M: Memory>(mem: &mut M, actor: Value) {
 /// in the new program version.
 #[ic_mem_fn]
 pub unsafe fn free_stable_actor<M: Memory>(mem: &mut M) {
+    assert!(!is_gc_stopped());
     let metadata: *mut PersistentMetadata = PersistentMetadata::get();
     let location = &mut (*metadata).stable_actor as *mut Value;
     write_with_barrier(mem, location, DEFAULT_VALUE);

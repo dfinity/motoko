@@ -13,8 +13,8 @@ use self::{scan_stack::ScanStack, stable_memory_access::StableMemoryAccess};
 use super::{
     clear_stable_memory,
     graph_copy::{limit::InstructionLimit, GraphCopy},
-    layout::{deserialize, StableValue, STABLE_NULL_POINTER},
-    moc_null_singleton, moc_stabilization_instruction_limit,
+    layout::{deserialize, StableValue},
+    moc_stabilization_instruction_limit,
 };
 
 pub struct Deserialization {
@@ -74,14 +74,6 @@ impl Deserialization {
         self.stable_root.unwrap()
     }
 
-    fn is_null(value: StableValue) -> bool {
-        value == STABLE_NULL_POINTER
-    }
-
-    fn encode_null() -> Value {
-        unsafe { moc_null_singleton() }
-    }
-
     unsafe fn scan_deserialized<
         'a,
         M: Memory,
@@ -96,12 +88,11 @@ impl Deserialization {
             context,
             target_object.as_obj(),
             target_object.tag(),
-            0,
             |context, field_address| {
                 *field_address = translate(context, *field_address);
             },
             |context, slice_start, array| {
-                const SLICE_INCREMENT: u32 = 127;
+                const SLICE_INCREMENT: usize = 127;
                 debug_assert!(SLICE_INCREMENT >= TAG_ARRAY_SLICE_MIN);
                 if array.len() - slice_start > SLICE_INCREMENT {
                     let new_start = slice_start + SLICE_INCREMENT;
@@ -167,9 +158,7 @@ impl GraphCopy<StableValue, Value, u32> for Deserialization {
                 target_object,
                 &|context, original| {
                     let old_value = StableValue::serialize(original);
-                    if Self::is_null(old_value) {
-                        Self::encode_null()
-                    } else if original.is_ptr() {
+                    if original.is_non_null_ptr() {
                         context.deserialization.evacuate(context.mem, old_value)
                     } else {
                         original

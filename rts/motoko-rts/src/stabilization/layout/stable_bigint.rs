@@ -1,7 +1,7 @@
 use crate::bigint::mp_calloc;
 use crate::memory::Memory;
 use crate::stabilization::deserialization::stable_memory_access::StableMemoryAccess;
-use crate::stabilization::layout::{checked_to_usize, write_padding_u64};
+use crate::stabilization::layout::write_padding_u64;
 use crate::stabilization::serialization::stable_memory_stream::{
     ScanStream, StableMemoryStream, WriteStream,
 };
@@ -9,7 +9,7 @@ use crate::stabilization::serialization::SerializationContext;
 use crate::tommath_bindings::mp_digit;
 use crate::types::{size_of, BigInt, Bytes, Value, Words, TAG_BIGINT};
 
-use super::{checked_to_u32, round_to_u64, Serializer, StableToSpace, StableValue, StaticScanner};
+use super::{round_to_u64, Serializer, StableToSpace, StableValue, StaticScanner};
 
 // Tom's math library, as configured for Motoko RTS, encodes a big numbers as an array of 32-bit
 // words, where each word stores 28 bits of the number while its highest 4 bits are zero.
@@ -35,9 +35,9 @@ const USED_BITS_PER_WORD: u32 = 28;
 struct Bits(u64);
 
 impl Bits {
-    fn to_bytes(&self) -> Bytes<u32> {
+    fn to_bytes(&self) -> Bytes<usize> {
         let bytes = ceiling_div(self.0, u8::BITS as u64);
-        Bytes(checked_to_u32(bytes))
+        Bytes(bytes as usize)
     }
 }
 
@@ -58,9 +58,9 @@ impl StableBigInt {
         Bits((used_words - 1) as u64 * USED_BITS_PER_WORD as u64 + last_bits as u64)
     }
 
-    fn deserialized_length(&self) -> Words<u32> {
+    fn deserialized_length(&self) -> Words<usize> {
         let words = ceiling_div(self.number_of_bits.0, USED_BITS_PER_WORD as u64);
-        Words(checked_to_u32(words))
+        Words(words as usize)
     }
 }
 
@@ -71,7 +71,10 @@ fn ceiling_div(dividend: u64, divisor: u64) -> u64 {
 impl StaticScanner<StableValue> for StableBigInt {}
 
 impl Serializer<BigInt> for StableBigInt {
-    unsafe fn serialize_static_part(main_object: *mut BigInt) -> Self {
+    unsafe fn serialize_static_part(
+        _stable_memory: &mut StableMemoryStream,
+        main_object: *mut BigInt,
+    ) -> Self {
         let is_negative = Self::is_negative(main_object);
         let number_of_bits = Self::serialized_length(main_object);
         StableBigInt {
@@ -130,7 +133,7 @@ impl Serializer<BigInt> for StableBigInt {
         context
             .serialization
             .to_space()
-            .skip(checked_to_usize(rounded_length));
+            .skip(rounded_length as usize);
     }
 
     unsafe fn allocate_deserialized<M: Memory>(&self, main_memory: &mut M) -> Value {
@@ -144,8 +147,8 @@ impl Serializer<BigInt> for StableBigInt {
 
     unsafe fn deserialize_static_part(&self, target_bigint: *mut BigInt) {
         debug_assert_eq!((*target_bigint).header.tag, TAG_BIGINT);
-        let deseserialized_bytes = self.deserialized_length().as_u32();
-        debug_assert_eq!((*target_bigint).mp_int.alloc as u32, deseserialized_bytes);
+        let deseserialized_bytes = self.deserialized_length().as_usize();
+        debug_assert_eq!((*target_bigint).mp_int.alloc as usize, deseserialized_bytes);
         (*target_bigint).mp_int.sign = if self.is_negative { 1 } else { 0 };
         (*target_bigint).mp_int.used = deseserialized_bytes as i32;
     }

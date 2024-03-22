@@ -1,11 +1,14 @@
-use crate::types::{lower32, upper32, Region, Value, TAG_REGION};
+use crate::{
+    stabilization::serialization::stable_memory_stream::StableMemoryStream,
+    types::{Region, Value, TAG_REGION},
+};
 
 use super::{Serializer, StableValue, StaticScanner};
 
 #[repr(C)]
 pub struct StableRegion {
     id: u64,
-    page_count: u32,
+    page_count: u64,
     vec_pages: StableValue, // Blob of `u16`, each denoting a page ID.
 }
 
@@ -21,11 +24,14 @@ impl StaticScanner<StableValue> for StableRegion {
 }
 
 impl Serializer<Region> for StableRegion {
-    unsafe fn serialize_static_part(main_object: *mut Region) -> Self {
+    unsafe fn serialize_static_part(
+        _stable_memory: &mut StableMemoryStream,
+        main_object: *mut Region,
+    ) -> Self {
         StableRegion {
-            id: main_object.read_id64(),
-            page_count: main_object.read_unaligned().page_count,
-            vec_pages: StableValue::serialize(main_object.read_unaligned().vec_pages),
+            id: (*main_object).id as u64,
+            page_count: (*main_object).page_count as u64,
+            vec_pages: StableValue::serialize((*main_object).vec_pages),
         }
     }
 
@@ -34,9 +40,8 @@ impl Serializer<Region> for StableRegion {
         (*target_region)
             .header
             .init_forward(Value::from_ptr(target_region as usize));
-        (*target_region).id_lower = lower32(self.id);
-        (*target_region).id_upper = upper32(self.id);
-        (*target_region).page_count = self.page_count;
+        (*target_region).id = self.id as usize;
+        (*target_region).page_count = self.page_count as usize;
         (*target_region).vec_pages = self.vec_pages.deserialize();
     }
 }

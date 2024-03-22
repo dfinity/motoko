@@ -4,11 +4,8 @@ mod stable_memory;
 
 use crate::{
     gc::{
-        check_dynamic_heap,
-        heap::MotokoHeap,
-        random::generate,
-        utils::{GC, GC_IMPLS, WORD_SIZE},
-        CheckMode, TestHeap,
+        check_dynamic_heap, heap::MotokoHeap, random::generate, utils::WORD_SIZE, CheckMode,
+        TestHeap,
     },
     memory::TestMemory,
     stabilization::stable_memory::clear_stable_memory,
@@ -18,37 +15,16 @@ use motoko_rts::{
     stabilization::{
         deserialization::Deserialization, graph_copy::GraphCopy, serialization::Serialization,
     },
-    types::{Array, Null, Obj, Value, Words, TAG_ARRAY, TAG_FWD_PTR, TAG_NULL},
+    types::{Array, Value, Words, TAG_ARRAY, TAG_FWD_PTR},
 };
-use motoko_rts_macros::{incremental_gc, non_incremental_gc};
 use oorandom::Rand32;
 
 pub unsafe fn test() {
     println!("Testing stabilization ...");
     stable_bigints::test();
     reader_writer::test();
-    initialize_null_singleton();
     test_stabilization();
     reset_memory();
-}
-
-static mut DUMMY_NULL_SINGLETON: Null = Null {
-    header: Obj {
-        tag: TAG_NULL,
-        #[cfg(feature = "incremental_gc")]
-        forward: Value::from_scalar(0), // Temporary value, will be replaced.
-    },
-};
-
-unsafe fn initialize_null_singleton() {
-    let null_singleton = Value::from_ptr(&mut DUMMY_NULL_SINGLETON as *mut Null as usize);
-    DUMMY_NULL_SINGLETON.header.tag = TAG_NULL;
-    DUMMY_NULL_SINGLETON.header.init_forward(null_singleton);
-}
-
-#[no_mangle]
-pub fn moc_null_singleton() -> Value {
-    unsafe { Value::from_ptr(&mut DUMMY_NULL_SINGLETON as *mut Null as usize) }
 }
 
 #[no_mangle]
@@ -61,18 +37,17 @@ pub fn ic0_performance_counter(_counter: u32) -> u64 {
     0
 }
 
-#[non_incremental_gc]
-fn clear_heap(heap: &mut MotokoHeap) {
-    heap.set_heap_ptr_address(heap.heap_base_address());
-}
-
-#[incremental_gc]
-fn clear_heap(heap: &mut MotokoHeap) {
-    use motoko_rts::gc::incremental::IncrementalGC;
+fn reset_gc<M: Memory>(memory: &mut M, heap_base_address: usize) {
+    use motoko_rts::gc::incremental::{set_incremental_gc_state, IncrementalGC};
 
     unsafe {
-        IncrementalGC::initialize(heap, heap.heap_base_address());
+        let state = IncrementalGC::initial_gc_state(memory, heap_base_address);
+        set_incremental_gc_state(Some(state));
     }
+}
+
+fn clear_heap(heap: &mut MotokoHeap) {
+    reset_gc(heap, heap.heap_base_address());
 }
 
 fn reset_memory() {
@@ -80,19 +55,11 @@ fn reset_memory() {
     reset_main_memory();
 }
 
-#[non_incremental_gc]
-fn reset_main_memory() {}
-
-#[incremental_gc]
 fn reset_main_memory() {
-    use crate::memory::TestMemory;
-    use motoko_rts::gc::incremental::{partitioned_heap::PARTITION_SIZE, IncrementalGC};
-    use motoko_rts::types::Words;
+    use motoko_rts::gc::incremental::partitioned_heap::PARTITION_SIZE;
 
-    let mut memory = TestMemory::new(Words(PARTITION_SIZE as u32));
-    unsafe {
-        IncrementalGC::initialize(&mut memory, 0);
-    }
+    let mut memory = TestMemory::new(Words(PARTITION_SIZE));
+    reset_gc(&mut memory, 0);
 }
 
 struct RandomHeap {
@@ -113,15 +80,16 @@ impl RandomHeap {
     }
 
     fn clear_continuation_table(&mut self) {
-        let table_pointer = self.memory.continuation_table_ptr_address() as *mut Value;
+        let table_pointer = self.memory.continuation_table_variable_address() as *mut Value;
         unsafe {
             *table_pointer = alloc_array(&mut self.memory, 0);
         }
     }
 
     fn reset_static_root(&mut self, stable_root: Value) {
-        let old_roots = self.memory.static_root_array_address() as *mut Array;
+        let root_array_pointer = self.memory.static_root_array_variable_address() as *mut Value;
         unsafe {
+            let old_roots = (*root_array_pointer).get_ptr() as *mut Array;
             // Serialization has replaced the static root array by a forwarding pointer object.
             assert_eq!((*old_roots).header.tag, TAG_FWD_PTR);
             (*old_roots).header.tag = TAG_ARRAY;
@@ -164,7 +132,8 @@ impl RandomHeap {
     }
 
     fn old_stable_root(&self) -> Value {
-        Value::from_ptr(self.memory.static_root_array_address())
+        let root_array_pointer = self.memory.static_root_array_variable_address() as *mut Value;
+        unsafe { *root_array_pointer }
     }
 
     fn check_heap(&self) {
@@ -176,20 +145,21 @@ impl RandomHeap {
             &self.memory.heap().as_ref(),
             self.memory.heap_base_offset(),
             self.memory.heap_ptr_offset(),
-            self.memory.continuation_table_ptr_offset(),
-            self.memory.region0_ptr_offset(),
+            self.memory.static_root_array_variable_offset(),
+            self.memory.continuation_table_variable_offset(),
+            self.memory.region0_pointer_variable_offset(),
         )
     }
 }
 
-fn random_heap(random: &mut Rand32, max_objects: u32, gc: GC) -> RandomHeap {
+fn random_heap(random: &mut Rand32, max_objects: usize) -> RandomHeap {
     let descriptor = generate(random.rand_u32() as u64, max_objects);
     let pointers: usize = descriptor
         .heap
         .iter()
         .map(|(_, references)| references.len() + 1)
         .sum();
-    let memory = descriptor.build(gc, pointers * WORD_SIZE as usize);
+    let memory = descriptor.build(pointers * WORD_SIZE as usize);
     RandomHeap { descriptor, memory }
 }
 
@@ -203,11 +173,10 @@ fn test_stabilization() {
     test_serialization_deserialization(&mut random, 20_000, 7_000);
 }
 
-fn test_serialization_deserialization(random: &mut Rand32, max_objects: u32, stable_start: u64) {
+fn test_serialization_deserialization(random: &mut Rand32, max_objects: usize, stable_start: u64) {
     println!("    Testing with {max_objects} objects");
     clear_stable_memory();
-    let gc = GC_IMPLS[0];
-    let mut heap = random_heap(random, max_objects, gc);
+    let mut heap = random_heap(random, max_objects);
     let old_stable_root = heap.old_stable_root();
 
     let stable_size = serialize(old_stable_root, stable_start);

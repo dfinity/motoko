@@ -4,7 +4,9 @@
 use core::mem::{size_of, MaybeUninit};
 
 use crate::{
-    stabilization::grant_stable_space,
+    stabilization::{
+        deserialization::stable_memory_access::StableMemoryAccess, grant_stable_space,
+    },
     stable_mem::{ic0_stable64_read, ic0_stable64_write},
 };
 
@@ -71,6 +73,12 @@ impl StableMemoryStream {
     pub fn written_length(&self) -> u64 {
         debug_assert!(self.base_address <= self.free_address);
         self.free_address - self.base_address
+    }
+
+    pub fn read_preceding<T>(&self, offset: u64) -> T {
+        let length = self.free_address - self.base_address;
+        let access = StableMemoryAccess::open(self.base_address, length);
+        access.read::<T>(offset)
     }
 }
 

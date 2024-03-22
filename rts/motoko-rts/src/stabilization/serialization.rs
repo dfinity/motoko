@@ -2,7 +2,7 @@ pub mod stable_memory_stream;
 
 use crate::{
     memory::Memory,
-    stabilization::{layout::serialize, moc_null_singleton},
+    stabilization::layout::serialize,
     types::{FwdPtr, Tag, Value, TAG_CLOSURE, TAG_FWD_PTR},
 };
 
@@ -10,7 +10,7 @@ use self::stable_memory_stream::{ScanStream, StableMemoryStream};
 
 use super::{
     graph_copy::{limit::InstructionLimit, GraphCopy},
-    layout::{scan_serialized, StableToSpace, StableValue, STABLE_NULL_POINTER},
+    layout::{scan_serialized, StableToSpace, StableValue},
     moc_stabilization_instruction_limit, DUMMY_VALUE,
 };
 
@@ -81,17 +81,6 @@ impl Serialization {
 
     pub fn serialized_data_length(&self) -> u64 {
         self.to_space.written_length()
-    }
-
-    fn is_null(field_value: Value) -> bool {
-        unsafe {
-            debug_assert!(!moc_null_singleton().is_forwarded());
-        }
-        field_value == unsafe { moc_null_singleton() }
-    }
-
-    fn encode_null() -> StableValue {
-        STABLE_NULL_POINTER
     }
 
     /// Resolve the Brooks forwarding pointer of the incremental GC by considering potential
@@ -169,10 +158,8 @@ impl GraphCopy<Value, StableValue, u32> for Serialization {
             &mut SerializationContext::new(self, mem),
             &|context, original| {
                 let old_value = original.deserialize();
-                if old_value.is_ptr() {
-                    if Self::is_null(old_value) {
-                        Self::encode_null()
-                    } else if Self::has_non_stable_type(old_value) {
+                if old_value.is_non_null_ptr() {
+                    if Self::has_non_stable_type(old_value) {
                         // Due to structural subtyping or `Any`-subtyping, a non-stable object (such as a closure) may be
                         // be dynamically reachable from a stable varibale. The value is not accessible in the new program version.
                         // Therefore, the content of these fields can serialized with a dummy value that is also ignored by the GC.

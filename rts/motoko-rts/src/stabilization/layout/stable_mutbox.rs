@@ -1,4 +1,7 @@
-use crate::types::{MutBox, Value, TAG_MUTBOX};
+use crate::{
+    stabilization::serialization::stable_memory_stream::StableMemoryStream,
+    types::{MutBox, Value, TAG_MUTBOX},
+};
 
 use super::{Serializer, StableValue, StaticScanner};
 
@@ -19,7 +22,10 @@ impl StaticScanner<StableValue> for StableMutBox {
 }
 
 impl Serializer<MutBox> for StableMutBox {
-    unsafe fn serialize_static_part(main_object: *mut MutBox) -> Self {
+    unsafe fn serialize_static_part(
+        _stable_memory: &mut StableMemoryStream,
+        main_object: *mut MutBox,
+    ) -> Self {
         StableMutBox {
             field: StableValue::serialize((*main_object).field),
         }
