@@ -182,7 +182,7 @@ let comma ppf () = fprintf ppf ",@ "
 let semi ppf () = fprintf ppf ";@ "
 
 let rec pp_val_nullary d ppf (t, v : T.typ * value) =
-  let t = T.normalize t in
+  (* let t = T.normalize t in *)
   match t, v with
   | _, Null -> pr ppf "null"
   | _, Bool b -> pr ppf (if b then "true" else "false")
