@@ -198,7 +198,8 @@ let rec pp_val_nullary d ppf (t, v : T.typ * value) =
   | _, Float f -> pr ppf (Float.to_pretty_string f)
   | _, Char c ->  pr ppf (string_of_string '\'' [c] '\'')
   | _, Text t -> pr ppf (string_of_string '\"' (Lib.Utf8.decode t) '\"')
-  | T.Obj (T.Actor, _), Blob b -> pr ppf (string_of_string '`' (Lib.Utf8.decode (Ic.Url.encode_principal b)) '`')
+  | T.Obj (T.Actor, _), Blob b ->
+    pr ppf (string_of_string '`' (Lib.Utf8.decode (Ic.Url.encode_principal b)) '`')
   | _, Blob b -> pr ppf ("\"" ^ Blob.escape b ^ "\"")
   | t, Tup vs ->
     let list = match t with
