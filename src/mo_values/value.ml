@@ -201,16 +201,18 @@ let rec pp_val_nullary d ppf (t, v : T.typ * value) =
   | T.Obj (T.Actor, _), Blob b -> pr ppf (string_of_string '`' (Lib.Utf8.decode (Ic.Url.encode_principal b)) '`')
   | _, Blob b -> pr ppf ("\"" ^ Blob.escape b ^ "\"")
   | t, Tup vs ->
-    let ts = match t with T.Tup ts -> ts | _ -> [] in
+    let list = match t with
+    | T.Tup ts -> List.combine ts vs
+    | _ -> List.map (fun v -> (T.Any, v)) vs in
     fprintf ppf "@[<1>(%a%s)@]"
-      (pp_print_list ~pp_sep:comma (pp_val d)) (List.combine ts vs)
+      (pp_print_list ~pp_sep:comma (pp_val d)) list
       (if List.length vs = 1 then "," else "")
   | t, Obj ve ->
     let fs = match t with  T.Obj (_, fs) -> fs | _ -> [] in
     if d = 0 then pr ppf "{...}" else
     fprintf ppf "@[<hv 2>{@;<0 0>%a@;<0 -2>}@]"
       (pp_print_list ~pp_sep:semi (pp_field d)) (List.map (fun (lab, v) ->
-          let t = (List.find_map (fun (T.{ lab = lab'; typ; _ }) -> if lab = lab' then Some typ else None)) fs in
+          let t = (List.find_map (fun T.{ lab = lab'; typ; _ } -> if lab = lab' then Some typ else None)) fs in
           (lab, Option.value t ~default:T.Any, v))
         (Env.bindings ve))
   | t, Array vs ->
