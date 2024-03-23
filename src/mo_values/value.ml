@@ -182,7 +182,7 @@ let comma ppf () = fprintf ppf ",@ "
 let semi ppf () = fprintf ppf ";@ "
 
 let rec pp_val_nullary d ppf (t, v : T.typ * value) =
-  (* let t = T.normalize t in *)
+  let t = T.normalize t in
   match t, v with
   | _, Null -> pr ppf "null"
   | _, Bool b -> pr ppf (if b then "true" else "false")
@@ -201,16 +201,12 @@ let rec pp_val_nullary d ppf (t, v : T.typ * value) =
   | T.Obj _, Blob b -> pr ppf (string_of_string '`' (Lib.Utf8.decode (Ic.Url.encode_principal b)) '`')
   | _, Blob b -> pr ppf ("\"" ^ Blob.escape b ^ "\"")
   | t, Tup vs ->
-    let ts = match t with
-    | T.Tup ts -> ts
-    | _ -> [] in
+    let ts = match t with T.Tup ts -> ts | _ -> [] in
     fprintf ppf "@[<1>(%a%s)@]"
       (pp_print_list ~pp_sep:comma (pp_val d)) (List.combine ts vs)
       (if List.length vs = 1 then "," else "")
   | t, Obj ve ->
-    let fs = match t with
-    | T.Obj (_, fs) -> fs
-    | _ -> [] in
+    let fs = match t with  T.Obj (_, fs) -> fs | _ -> [] in
     if d = 0 then pr ppf "{...}" else
     fprintf ppf "@[<hv 2>{@;<0 0>%a@;<0 -2>}@]"
       (pp_print_list ~pp_sep:semi (pp_field d)) (List.map (fun (lab, v) ->
@@ -218,9 +214,7 @@ let rec pp_val_nullary d ppf (t, v : T.typ * value) =
           (lab, Option.value t ~default:T.Any, v))
         (Env.bindings ve))
   | t, Array vs ->
-    let t = match t with
-    | T.Array t' -> t'
-    | _ -> T.Any in
+    let t = match t with T.Array t' -> t' | _ -> T.Any in
     fprintf ppf "@[<1>[%a]@]"
       (pp_print_list ~pp_sep:comma (pp_val d)) (List.map (fun v -> (t, v)) (Array.to_list vs))
   | _, Func (_, _) -> pr ppf "func"
