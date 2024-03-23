@@ -259,8 +259,8 @@ and pp_val d ppf = function
 
 and pp_res d ppf (t, result) =
   match Lib.Promise.value_opt result with
-  | Some (Error v) -> fprintf ppf "@[Error@ %a@]" (pp_val_nullary d) (T.Any (* TODO? *), v)
-  | Some (Ok v) -> pp_val_nullary d ppf (T.Any (* TODO? *), v)
+  | Some (Error v) -> fprintf ppf "@[Error@ %a@]" (pp_val_nullary d) (t, v)
+  | Some (Ok v) -> pp_val_nullary d ppf (t, v)
   | None -> pr ppf "_"
 
 and pp_def d ppf def =
