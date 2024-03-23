@@ -198,7 +198,7 @@ let rec pp_val_nullary d ppf (t, v : T.typ * value) =
   | _, Float f -> pr ppf (Float.to_pretty_string f)
   | _, Char c ->  pr ppf (string_of_string '\'' [c] '\'')
   | _, Text t -> pr ppf (string_of_string '\"' (Lib.Utf8.decode t) '\"')
-  | T.Obj _, Blob b -> pr ppf (string_of_string '`' (Lib.Utf8.decode (Ic.Url.encode_principal b)) '`')
+  | T.Obj (T.Actor, _), Blob b -> pr ppf (string_of_string '`' (Lib.Utf8.decode (Ic.Url.encode_principal b)) '`')
   | _, Blob b -> pr ppf ("\"" ^ Blob.escape b ^ "\"")
   | t, Tup vs ->
     let ts = match t with T.Tup ts -> ts | _ -> [] in
@@ -236,10 +236,15 @@ and pp_val d ppf = function
     let t = match t with T.Opt t' -> t' | _ -> T.Any in
     fprintf ppf "@[<1>?%a@]" (pp_val_nullary d) (t, v)
   | _, Variant (l, Tup []) -> fprintf ppf "#%s" l
-  | _, Variant (l, Tup vs) -> fprintf ppf "@[#%s@;<0 1>%a@]" l (pp_val d) (T.Any (* TODO *), Tup vs)
-  | _, Variant (l, v) -> fprintf ppf "@[#%s@;<0 1>(%a)@]" l (pp_val d) (T.Any (* TODO *), v)
+  | typ, Variant (l, v) ->
+    let fs = match typ with  T.Variant fs -> fs | _ -> [] in
+    let t = List.find_map (fun T.{ lab; typ; _ } -> if lab = l then Some typ else None) fs in
+    let t' = Option.value t ~default:T.Any in
+    (match v with
+    | Tup vs -> fprintf ppf "@[#%s@;<0 1>%a@]" l (pp_val d) (t', Tup vs)
+    | _ -> fprintf ppf "@[#%s@;<0 1>(%a)@]" l (pp_val d) (t', v))
   | t, Async {result; waiters = []} ->
-    
+    let t = match t with T.Opt t' -> t' | _ -> T.Any in
     fprintf ppf "@[<2>async@ %a@]" (pp_res d) (t, result)
   | t, Async {result; waiters} ->
     let t = match t with T.Opt t' -> t' | _ -> T.Any in
