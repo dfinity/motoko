@@ -273,6 +273,6 @@ and string_of_val d t v : string =
   Lib.Format.with_str_formatter (fun ppf ->
     pp_val d ppf) (t, v)
 
-let string_of_def d (t, def) : string =
+let string_of_def d t def : string =
   Lib.Format.with_str_formatter (fun ppf ->
     pp_def d ppf) (t, def)

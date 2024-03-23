@@ -643,7 +643,7 @@ and match_args at args v : val_env =
   | _ ->
     let vs = V.as_tup v in
     if (List.length vs <> List.length args) then
-      failwith (Printf.sprintf "%s %s" (Source.string_of_region at) (V.string_of_val 0 None v));
+      failwith (Printf.sprintf "%s %s" (Source.string_of_region at) (V.string_of_val 0 T.Any v));
     List.fold_left V.Env.adjoin V.Env.empty (List.map2 match_arg args vs)
 
 (* Patterns *)
