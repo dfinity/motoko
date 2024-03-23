@@ -114,7 +114,7 @@ val compare : value -> value -> int
 (* Pretty Printing *)
 
 val pp_val : int -> Format.formatter -> (Type.typ * value) -> unit
-val pp_def : int -> Format.formatter -> def -> unit
+val pp_def : int -> Format.formatter -> (Type.typ * def) -> unit
 
-val string_of_val : int -> Type.typ option -> value -> string
-val string_of_def : int -> def -> string
+val string_of_val : int -> Type.typ -> value -> string
+val string_of_def : int -> Type.typ -> def -> string

@@ -263,16 +263,15 @@ and pp_res d ppf (t, result) =
   | Some (Ok v) -> pp_val_nullary d ppf (t, v)
   | None -> pr ppf "_"
 
-and pp_def d ppf def =
+and pp_def d ppf (t, def) =
   match Lib.Promise.value_opt def with
-  | Some v -> pp_val d ppf (T.Any (* TODO: include type in `Value.def`? *), v)
+  | Some v -> pp_val d ppf (t, v)
   | None -> pr ppf "_"
 
 and string_of_val d t v : string =
-  let t = Option.value t ~default:T.Any in
   Lib.Format.with_str_formatter (fun ppf ->
     pp_val d ppf) (t, v)
 
-let string_of_def d def : string =
+let string_of_def d (t, def) : string =
   Lib.Format.with_str_formatter (fun ppf ->
-    pp_def d ppf) def
+    pp_def d ppf) (t, def)
