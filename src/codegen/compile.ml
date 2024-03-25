@@ -4916,6 +4916,11 @@ module IC = struct
       end
       G.nop)
 
+  let get_actor_to_persist_function_name = "@get_actor_to_persist"
+
+  let get_actor_to_persist env =
+    G.i (Call (nr (E.built_in env get_actor_to_persist_function_name)))
+
   let export_wasi_start env =
     assert (E.mode env = Flags.WASIMode);
     let fi = E.add_fun env "_start" (Func.of_body env [] [] (fun env1 ->
@@ -8388,6 +8393,7 @@ module EnhancedOrthogonalPersistence = struct
     free_stable_actor env
 
   let save env actor_type =
+    IC.get_actor_to_persist env ^^
     save_stable_actor env ^^
     NewStableMemory.backup env ^^
     UpgradeStatistics.set_instructions env
@@ -9484,11 +9490,6 @@ module IncrementalGraphStabilization = struct
     | _ -> ()
     end
 
-  let get_actor_to_stabilize_name = "@get_actor_to_stabilize"
-
-  let get_actor_to_stabilize env =
-    G.i (Call (nr (E.built_in env get_actor_to_stabilize_name)))
-
   let start_graph_stabilization env actor_type =
     GraphCopyStabilization.is_graph_stabilization_started env ^^
     (E.if0
@@ -9497,7 +9498,7 @@ module IncrementalGraphStabilization = struct
         (* Extra safety measure stopping the GC during incremental stabilization, 
            although it should not be called in lifecycle state `InStabilization`. *)
         E.call_import env "rts" "stop_gc_before_stabilization" ^^
-        get_actor_to_stabilize env ^^
+        IC.get_actor_to_persist env ^^
         GraphCopyStabilization.start_graph_stabilization env actor_type
       end)
 
@@ -9520,6 +9521,16 @@ module IncrementalGraphStabilization = struct
         edesc = nr (FuncExport (nr fi))
       })
     | _ -> ()
+    end
+
+  let complete_stabilization_on_upgrade env actor_type =
+    start_graph_stabilization env actor_type ^^
+    G.loop0
+    begin
+      GraphCopyStabilization.graph_stabilization_increment env ^^
+      E.if0 
+        G.nop
+        (G.i (Br (nr 1l)))
     end
   
   let async_destabilization_method_name = "@motoko_async_destabilization"
@@ -9736,7 +9747,10 @@ module Persistence = struct
     StableMem.region_init env
 
   let save env actor_type =
-    EnhancedOrthogonalPersistence.save env actor_type
+    GraphCopyStabilization.is_graph_stabilization_started env ^^
+    E.if0
+      (IncrementalGraphStabilization.complete_stabilization_on_upgrade env actor_type)
+      (EnhancedOrthogonalPersistence.save env actor_type)
 end (* Persistence *)
 
 module PatCode = struct
@@ -11845,9 +11859,8 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | ICStableRead ty, [] ->
     SR.Vanilla,
     Persistence.load env ty
-  | ICStableWrite ty, [e] ->
+  | ICStableWrite ty, [] ->
     SR.unit,
-    compile_exp_vanilla env ae e ^^
     Persistence.save env ty
 
   (* Cycles *)
@@ -12690,7 +12703,7 @@ and main_actor as_opt mod_env ds fs up stable_actor_type build_stable_actor =
     end;
 
     (* Helper function to build the stable actor wrapper *)
-    Func.define_built_in mod_env IncrementalGraphStabilization.get_actor_to_stabilize_name [] [I64Type] (fun env ->
+    Func.define_built_in mod_env IC.get_actor_to_persist_function_name [] [I64Type] (fun env ->
       compile_exp_as env ae2 SR.Vanilla build_stable_actor
     );
 
