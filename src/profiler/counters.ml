@@ -61,7 +61,7 @@ let dump (c:t) (ve: Value.value Value.Env.t) =
       Printf.printf "{\n" ;
       Value.Env.iter (fun fn fv ->
           Printf.printf " %s = %s;\n"
-            fn (Value.string_of_val 0 T.Any fv)
+            fn (Value.string_of_val 0 T.Non fv)
         )
         ve ;
       Printf.printf "}\n"
@@ -113,7 +113,7 @@ let dump (c:t) (ve: Value.value Value.Env.t) =
         (fun var (line, flds) ->
           match Value.Env.find_opt var ve with
             None   -> (Printf.sprintf "%s, #err" line, (var :: flds))
-          | Some v -> (Printf.sprintf "%s, %s" line (Value.string_of_val 0 T.Any v), var :: flds)
+          | Some v -> (Printf.sprintf "%s, %s" line (Value.string_of_val 0 T.Non v), var :: flds)
         ) !ProfilerFlags.profile_field_names ("", [])
     in
     Printf.fprintf file "# column: source region\n" ;

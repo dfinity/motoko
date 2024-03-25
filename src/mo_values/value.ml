@@ -204,7 +204,7 @@ let rec pp_val_nullary d ppf (t, v : T.typ * value) =
   | t, Tup vs ->
     let list = match t with
     | T.Tup ts -> List.combine ts vs
-    | _ -> List.map (fun v -> (T.Any, v)) vs in
+    | _ -> List.map (fun v -> (T.Non, v)) vs in
     fprintf ppf "@[<1>(%a%s)@]"
       (pp_print_list ~pp_sep:comma (pp_val d)) list
       (if List.length vs = 1 then "," else "")
@@ -219,10 +219,10 @@ let rec pp_val_nullary d ppf (t, v : T.typ * value) =
       | Some T.Object | None -> "")
       (pp_print_list ~pp_sep:semi (pp_field d)) (List.map (fun (lab, v) ->
           let t = T.lookup_val_field_opt lab fs in
-          (lab, Option.value t ~default:T.Any, v))
+          (lab, Option.value t ~default:T.Non, v))
         (Env.bindings ve))
   | t, Array vs ->
-    let t' = match t with T.Array t' -> t' | _ -> T.Any in
+    let t' = match t with T.Array t' -> t' | _ -> T.Non in
     fprintf ppf "@[<1>[%a%a]@]"
       pr (match t' with T.Mut t -> "var " | _ -> "")
       (pp_print_list ~pp_sep:comma (pp_val d)) (List.map (fun v -> (t', v)) (Array.to_list vs))
@@ -242,25 +242,25 @@ and pp_val d ppf = function
   | _, Int32 i -> pr ppf (Int_32.(pos_sign (gt i zero) ^ to_pretty_string i))
   | _, Int64 i -> pr ppf (Int_64.(pos_sign (gt i zero) ^ to_pretty_string i))
   | t, Opt v ->
-    let t' = match t with T.Opt t' -> t' | _ -> T.Any in
+    let t' = match t with T.Opt t' -> t' | _ -> T.Non in
     fprintf ppf "@[<1>?%a@]" (pp_val_nullary d) (t', v)
   | _, Variant (l, Tup []) -> fprintf ppf "#%s" l
   | t, Variant (l, v) ->
     let fs = match t with  T.Variant fs -> fs | _ -> [] in
-    let t' = Option.value ~default:T.Any
+    let t' = Option.value ~default:T.Non
       (T.lookup_val_field_opt l fs) in
     (match v with
     | Tup vs -> fprintf ppf "@[#%s@;<0 1>%a@]" l (pp_val d) (t', Tup vs)
     | _ -> fprintf ppf "@[#%s@;<0 1>(%a)@]" l (pp_val d) (t', v))
   | t, Async {result; waiters = []} ->
-    let t' = match t with T.Async (_, _, t') -> t' | _ -> T.Any in
+    let t' = match t with T.Async (_, _, t') -> t' | _ -> T.Non in
     fprintf ppf "@[<2>async@ %a@]" (pp_res d) (t', result)
   | t, Async {result; waiters} ->
-    let t' = match t with T.Async (_, _, t') -> t' | _ -> T.Any in
+    let t' = match t with T.Async (_, _, t') -> t' | _ -> T.Non in
     fprintf ppf "@[<2>async[%d]@ %a@]"
       (List.length waiters) (pp_res d) (t', result)
   | t, Mut r ->
-    let t' = match t with T.Mut t' -> t' | _ -> T.Any in
+    let t' = match t with T.Mut t' -> t' | _ -> T.Non in
     pp_val d ppf (t', !r)
   | t, v -> pp_val_nullary d ppf (t, v)
 
