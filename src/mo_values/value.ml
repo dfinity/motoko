@@ -242,15 +242,15 @@ and pp_val d ppf = function
   | t, Variant (l, v) ->
     let fs = match t with  T.Variant fs -> fs | _ -> [] in
     let t' = Option.value ~default:T.Any
-      (Type.find_val_field_opt l fs) in
+      (T.lookup_val_field_opt l fs) in
     (match v with
     | Tup vs -> fprintf ppf "@[#%s@;<0 1>%a@]" l (pp_val d) (t', Tup vs)
     | _ -> fprintf ppf "@[#%s@;<0 1>(%a)@]" l (pp_val d) (t', v))
   | t, Async {result; waiters = []} ->
-    let t' = match t with T.Async _, t' -> t' | _ -> T.Any in
+    let t' = match t with T.Async (_, _, t') -> t' | _ -> T.Any in
     fprintf ppf "@[<2>async@ %a@]" (pp_res d) (t', result)
   | t, Async {result; waiters} ->
-    let t' = match t with T.Async _, t' -> t' | _ -> T.Any in
+    let t' = match t with T.Async (_, _, t') -> t' | _ -> T.Any in
     fprintf ppf "@[<2>async[%d]@ %a@]"
       (List.length waiters) (pp_res d) (t', result)
   | t, Mut r ->
