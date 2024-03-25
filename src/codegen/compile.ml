@@ -5911,6 +5911,20 @@ module RTS_Exports = struct
       edesc = nr (FuncExport (nr rts_trap_fi))
     });
 
+    let ic0_performance_counter_fi =
+      if E.mode env = Flags.WASIMode then
+        E.add_fun env "ic0_performance_counter" (
+            Func.of_body env ["number", I32Type] [I64Type]
+              (fun env ->
+                E.trap_with env "ic0_performance_counter is not supposed to be called in WASI"
+              )
+          )
+      else E.reuse_import env "ic0" "performance_counter" in
+    E.add_export env (nr {
+      name = Lib.Utf8.decode "ic0_performance_counter";
+      edesc = nr (FuncExport (nr ic0_performance_counter_fi))
+    });
+
     let when_stable_memory_required_else_trap env code =
       if E.requires_stable_memory env then
         code() else
