@@ -116,6 +116,7 @@ pub unsafe fn initialize_memory<M: Memory>(mem: &mut M) {
 
 /// Used for graph-copy-based stabilization. Clears main memory and deserializes
 /// stable objects from stable memory.
+/// Note: Incremental destabilization needs to stop the GC after `reset_memory`.
 pub unsafe fn reset_memory<M: Memory>(mem: &mut M) {
     mem.grow_memory(HEAP_START);
     let metadata = PersistentMetadata::get();

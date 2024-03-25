@@ -1239,7 +1239,7 @@ module RTS = struct
     E.add_func_import env "rts" "alloc_array" [I64Type] [I64Type];
     E.add_func_import env "rts" "read_persistence_version" [] [I64Type];
     E.add_func_import env "rts" "stop_gc_before_stabilization" [] [];
-    E.add_func_import env "rts" "start_gc_after_stabilization" [] [];
+    E.add_func_import env "rts" "start_gc_after_destabilization" [] [];
     E.add_func_import env "rts" "is_graph_stabilization_started" [] [I32Type];
     E.add_func_import env "rts" "start_graph_stabilization" [I64Type; I64Type; I64Type] [];
     E.add_func_import env "rts" "graph_stabilization_increment" [] [I32Type];
@@ -9582,7 +9582,7 @@ module IncrementalGraphStabilization = struct
   let complete_graph_destabilization env = 
     IC.initialize_main_actor env ^^
     (* Allow other messages and allow garbage collection. *)
-    E.call_import env "rts" "start_gc_after_stabilization" ^^
+    E.call_import env "rts" "start_gc_after_destabilization" ^^
     Lifecycle.trans env Lifecycle.Idle
 
   let define_async_destabilization_reply_callback env =
@@ -9644,8 +9644,7 @@ module IncrementalGraphStabilization = struct
   let partial_destabilization_on_upgrade env actor_type =
     let complete_initialization = set_destabilized_actor env ^^ complete_graph_destabilization env in
     (* TODO: Verify that the post_upgrade hook cannot be directly called by the IC *)
-    (* Garbage collection is disabled until destabilization has completed. *)
-    E.call_import env "rts" "stop_gc_before_stabilization" ^^
+    (* Garbage collection is disabled in `start_graph_destabilization` until destabilization has completed. *)
     GraphCopyStabilization.start_graph_destabilization env actor_type complete_initialization ^^
     get_destabilized_actor env ^^
     compile_test I64Op.Eqz ^^

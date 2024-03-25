@@ -157,7 +157,6 @@ pub unsafe fn start_graph_destabilization<M: Memory>(
     new_type_offsets: Value,
 ) {
     assert!(DESTABILIZATION_STATE.is_none());
-    assert!(is_gc_stopped());
 
     let mut instruction_meter = InstructionMeter::new();
     instruction_meter.start();
@@ -169,6 +168,8 @@ pub unsafe fn start_graph_destabilization<M: Memory>(
     }
     moc_stable_mem_set_size(metadata.serialized_data_start / PAGE_SIZE);
     reset_memory(mem);
+    // Reset memory sets the GC state back to running. Therefore, stop the GC again.
+    stop_gc();
     let deserialization = Deserialization::start(
         mem,
         metadata.serialized_data_start,
@@ -241,6 +242,6 @@ pub unsafe extern "C" fn stop_gc_before_stabilization() {
 
 /// Start the GC after completed incremental graph-copy-based destabilization.
 #[no_mangle]
-pub unsafe extern "C" fn start_gc_after_stabilization() {
+pub unsafe extern "C" fn start_gc_after_destabilization() {
     resume_gc();
 }
