@@ -250,7 +250,7 @@ and pp_val d ppf = function
     let t' = match t with T.Async _, t' -> t' | _ -> T.Any in
     fprintf ppf "@[<2>async@ %a@]" (pp_res d) (t', result)
   | t, Async {result; waiters} ->
-    let t' = match t with T.Opt t' -> t' | _ -> T.Any in
+    let t' = match t with T.Async _, t' -> t' | _ -> T.Any in
     fprintf ppf "@[<2>async[%d]@ %a@]"
       (List.length waiters) (pp_res d) (t', result)
   | t, Mut r ->
