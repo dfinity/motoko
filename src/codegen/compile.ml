@@ -9385,6 +9385,8 @@ module FuncDec = struct
     begin match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
       Func.define_built_in env name [] [] (fun env ->
+        (* THe GC trigger is also blocked during incremental (de)stabilization. 
+           This is checked in `Lifecycle.trans` being called by `message_start` *)
         message_start env (Type.Shared Type.Write) ^^
         (* Check that we are called from this or a controller, w/o allocation *)
         IC.assert_caller_self_or_controller env ^^
