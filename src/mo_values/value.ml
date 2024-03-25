@@ -242,7 +242,7 @@ and pp_val d ppf = function
   | t, Variant (l, v) ->
     let fs = match t with  T.Variant fs -> fs | _ -> [] in
     let t' = Option.value ~default:T.Any
-      (List.find_map (fun T.{ lab; typ; _ } -> if lab = l then Some typ else None) fs) in
+      (Type.find_val_field_opt l fs) in
     (match v with
     | Tup vs -> fprintf ppf "@[#%s@;<0 1>%a@]" l (pp_val d) (t', Tup vs)
     | _ -> fprintf ppf "@[#%s@;<0 1>(%a)@]" l (pp_val d) (t', v))
