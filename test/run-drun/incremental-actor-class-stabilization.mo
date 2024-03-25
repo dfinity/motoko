@@ -19,7 +19,7 @@ actor a {
       await Cycles.provisional_top_up_actor(a, 100_000_000_000_000);
     };
 
-    Cycles.add(2_000_000_000_000);
+    Cycles.add<system>(2_000_000_000_000);
     let testActor = await TestActor.TestActor(1234567890123456789012345678901234567890, "Test actor", Prim.Array_tabulate<Nat>(10_000, func(index) { index }));
     let testStabilization = useIncrementalStabilization(testActor);
     await testActor.print();
