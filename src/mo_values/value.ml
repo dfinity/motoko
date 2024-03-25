@@ -213,12 +213,13 @@ let rec pp_val_nullary d ppf (t, v : T.typ * value) =
     if d = 0 then pr ppf "{...}" else
     fprintf ppf "@[<hv 2>{@;<0 0>%a@;<0 -2>}@]"
       (pp_print_list ~pp_sep:semi (pp_field d)) (List.map (fun (lab, v) ->
-          let t = (List.find_map (fun T.{ lab = lab'; typ; _ } -> if lab = lab' then Some typ else None)) fs in
+          let t = T.lookup_val_field_opt lab fs in
           (lab, Option.value t ~default:T.Any, v))
         (Env.bindings ve))
   | t, Array vs ->
     let t' = match t with T.Array t' -> t' | _ -> T.Any in
-    fprintf ppf "@[<1>[%a]@]"
+    fprintf ppf "@[<1>[%a%a]@]"
+      pp_print_string (match t' with T.Mut t -> "var " | _ -> "")
       (pp_print_list ~pp_sep:comma (pp_val d)) (List.map (fun v -> (t', v)) (Array.to_list vs))
   | _, Func (_, _) -> pr ppf "func"
   | _, Comp _ -> pr ppf "async*"
