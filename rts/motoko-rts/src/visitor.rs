@@ -130,22 +130,7 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
     }
 }
 
-// Temporary function can be later removed.
-pub unsafe fn is_non_null_pointer_field(field_addr: *mut Value) -> bool {
+unsafe fn is_non_null_pointer_field(field_addr: *mut Value) -> bool {
     let field_value = *field_addr;
-    check_field_value(field_value);
     field_value.is_non_null_ptr()
 }
-
-// Temporary check, can be later removed.
-#[cfg(feature = "ic")]
-fn check_field_value(value: Value) {
-    debug_assert!(
-        value.is_scalar()
-            || value.get_ptr() >= crate::persistence::HEAP_START
-            || value == NULL_POINTER
-    );
-}
-
-#[cfg(not(feature = "ic"))]
-fn check_field_value(_value: Value) {}
