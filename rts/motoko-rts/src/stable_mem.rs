@@ -107,11 +107,13 @@ pub fn write_u64(offset: u64, n: u64) {
 
 #[cfg(feature = "ic")]
 #[no_mangle]
-pub extern "C" fn read_stable_memory_version() -> u32 {
+pub extern "C" fn read_persistence_version() -> usize {
+    use crate::region::VERSION_STABLE_HEAP_NO_REGIONS;
+
     let physical_pages = unsafe { ic0_stable64_size() };
     if physical_pages == 0 {
-        // No stable memory -> Legacy version 0.
-        return 0;
+        // No stable memory -> Use the new default: Enhanced orthogonal persistence.
+        return VERSION_STABLE_HEAP_NO_REGIONS;
     }
     if read_u32(0) != 0 {
         // Old stabilization with no experimental stable memory and no regions.
@@ -120,5 +122,6 @@ pub extern "C" fn read_stable_memory_version() -> u32 {
     }
     // Note: Do not use `types::size_of()` as it rounds to 64-bit words.
     let address = physical_pages * PAGE_SIZE - core::mem::size_of::<u32>() as u64;
-    read_u32(address)
+    let version = read_u32(address);
+    version as usize
 }

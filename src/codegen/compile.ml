@@ -1237,7 +1237,7 @@ module RTS = struct
     E.add_func_import env "rts" "get_heap_size" [] [I64Type];
     E.add_func_import env "rts" "alloc_blob" [I64Type] [I64Type];
     E.add_func_import env "rts" "alloc_array" [I64Type] [I64Type];
-    E.add_func_import env "rts" "read_stable_memory_version" [] [I32Type];
+    E.add_func_import env "rts" "read_persistence_version" [] [I64Type];
     E.add_func_import env "rts" "stop_gc_before_stabilization" [] [];
     E.add_func_import env "rts" "start_gc_after_stabilization" [] [];
     E.add_func_import env "rts" "is_graph_stabilization_started" [] [I32Type];
@@ -9719,8 +9719,7 @@ module Persistence = struct
     G.i (Binary (Wasm_exts.Values.I64 I64Op.Or))
 
   let initialize env actor_type =
-    E.call_import env "rts" "read_stable_memory_version" ^^
-    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
+    E.call_import env "rts" "read_persistence_version" ^^
     set_persistence_version env ^^
     use_graph_destabilization env ^^
     E.if0
