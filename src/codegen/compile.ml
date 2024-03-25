@@ -8408,6 +8408,9 @@ module EnhancedOrthogonalPersistence = struct
     ) ^^
     NewStableMemory.restore env ^^
     UpgradeStatistics.add_instructions env
+
+  let initialize env actor_type =
+    register_stable_type env actor_type
 end (* EnhancedOrthogonalPersistence *)
 
 (* As fallback when doing persistent memory layout changes. *)
@@ -9737,11 +9740,15 @@ module Persistence = struct
       begin
         use_graph_destabilization env ^^
         E.if1 I64Type
-          (IncrementalGraphStabilization.load env)
+          begin
+            IncrementalGraphStabilization.load env ^^
+            EnhancedOrthogonalPersistence.initialize env actor_type 
+          end
           begin
             use_candid_destabilization env ^^
             E.else_trap_with env "Unsupported persistence version. Use newer Motoko compiler version." ^^
-            OldStabilization.load env actor_type (NewStableMemory.upgrade_version env)
+            OldStabilization.load env actor_type (NewStableMemory.upgrade_version env) ^^
+            EnhancedOrthogonalPersistence.initialize env actor_type
           end
       end) ^^
     StableMem.region_init env
