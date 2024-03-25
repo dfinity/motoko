@@ -3,7 +3,7 @@ Motoko compiler (source XXX)
 >   let a_small : [var Text] = ["hello", "hello", "hello", "hello", "hello"]
 > let a_large :
   [var Text] =
-  ["hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello",
+  [var "hello", "hello", "hello", "hello", "hello", "hello", "hello",
    "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello",
    "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello",
    "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello",
@@ -15,7 +15,7 @@ Motoko compiler (source XXX)
    "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello",
    "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello",
    "hello", "hello", "hello", "hello", "hello", "hello", "hello", "hello",
-   "hello", "hello", "hello", "hello"]
+   "hello", "hello", "hello", "hello", "hello"]
 >   let a_small : [Nat] = [0, 1, 2, 3, 4]
 > let a_large :
   [Nat] =
