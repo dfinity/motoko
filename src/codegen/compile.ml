@@ -8225,11 +8225,14 @@ end
    This also helps to detect graph-copy-based destabilization that has priority over enhanced orthogonal persistence.
   If size == 0: empty
   If logical size N > 0:
-    [0..N]          <stable memory>
+    [0..4]          0 (first word is backed up at `end-8`)
+    [4..N]          <stable memory>
             <zero padding>
-    [end-12..end-4] <size N>
+    [end-16..end-8] <size N>
+    [end-8..end-4]  <first word>
     [end-4..end]    <new version>
   ending at page boundary
+  Note: The first word must be empty to distinguish this version from the Candid legacy version 0 (which has first word != 0).
 *)
 module NewStableMemory = struct
   let physical_size env =
@@ -8261,7 +8264,8 @@ module NewStableMemory = struct
     | _ -> assert false
     )
 
-  let logical_size_offset = 12L
+  let logical_size_offset = 16L
+  let first_word_backup_offset = 8L
   let version_offset = 4L
 
   let upgrade_version env =
@@ -8289,21 +8293,30 @@ module NewStableMemory = struct
     StableMem.ensure env
 
   let backup env =
+    let (set_first_word, get_first_word) = new_local32 env "first_word" in
     physical_size env ^^
     compile_test I64Op.Eqz ^^
     E.if0
       G.nop
       begin
+        (* read and clear first word *)
+        compile_unboxed_const 0L ^^ StableMem.read_word32 env ^^ set_first_word ^^
+        compile_unboxed_const 0L ^^ compile_const_32 0l ^^ StableMem.write_word32 env ^^
+
         grow_size env logical_size_offset ^^
 
         (* backup logical size *)
         store_at_end env logical_size_offset I64Type (StableMem.get_mem_size env) ^^
+
+        (* backup first word *)
+        store_at_end env first_word_backup_offset I32Type get_first_word ^^
 
         (* store the version *)
         store_at_end env version_offset I32Type (StableMem.get_version env ^^ G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)))
       end
 
   let restore env =
+    let (set_first_word, get_first_word) = new_local32 env "first_word" in
     physical_size env ^^
     compile_test I64Op.Eqz ^^
     E.if0
@@ -8324,6 +8337,10 @@ module NewStableMemory = struct
           "unsupported stable memory version (expected %s or %s)"
            (Int64.to_string StableMem.version_stable_heap_no_regions)
            (Int64.to_string StableMem.version_stable_heap_regions)) ^^
+
+        (* read first word *)
+        read_from_end env first_word_backup_offset I32Type ^^
+        set_first_word ^^
         
         (* restore logical size *)
         read_from_end env logical_size_offset I64Type ^^
@@ -8331,7 +8348,11 @@ module NewStableMemory = struct
 
         (* clear size and version *)
         clear_at_end env logical_size_offset I64Type ^^
-        clear_at_end env version_offset I32Type
+        clear_at_end env first_word_backup_offset I32Type ^^
+        clear_at_end env version_offset I32Type ^^
+
+        (* restore first word *)
+        compile_unboxed_const 0L ^^ get_first_word ^^ StableMem.write_word32 env
       end
 end
 
