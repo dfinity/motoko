@@ -20,15 +20,16 @@ actor a {
       await Cycles.provisional_top_up_actor(a, 100_000_000_000_000);
     };
 
-    Cycles.add(2_000_000_000_000);
+    Cycles.add<system>(2_000_000_000_000);
     let upgradeTarget = await UpgradeTarget.UpgradeTarget();
     let testStabilization = useIncrementalStabilization(upgradeTarget);
 
-    Cycles.add(2_000_000_000_000);
+    Cycles.add<system>(2_000_000_000_000);
     let accessTester = await AccessTester.AccessTester(testStabilization);
     await accessTester.test();
 
     Prim.debugPrint("Test upgrade");
+    await testStabilization.__motoko_stabilize_before_upgrade();
     ignore await (system UpgradeTarget.UpgradeTarget)(#upgrade upgradeTarget)();
 
     await accessTester.test();
