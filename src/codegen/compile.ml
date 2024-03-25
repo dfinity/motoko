@@ -9436,6 +9436,7 @@ module IncrementalGraphStabilization = struct
     compile_const_32 (async_stabilization_reject_callback env) ^^ compile_const_32 0l ^^
     IC.system_call env "call_new_64" ^^
     IC.system_call env "call_perform" ^^
+    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
     E.then_trap_with env "Async stabilization increment call failed" 
 
   let define_async_stabilization_reply_callback env =
@@ -9495,7 +9496,7 @@ module IncrementalGraphStabilization = struct
       begin
         (* Extra safety measure stopping the GC during incremental stabilization, 
            although it should not be called in lifecycle state `InStabilization`. *)
-        E.call_import env "rts" "stop_gc_before_upgrade" ^^
+        E.call_import env "rts" "stop_gc_before_stabilization" ^^
         get_actor_to_stabilize env ^^
         GraphCopyStabilization.start_graph_stabilization env actor_type
       end)
@@ -9538,12 +9539,13 @@ module IncrementalGraphStabilization = struct
     compile_const_32 (async_destabilization_reject_callback env) ^^ compile_const_32 0l ^^
     IC.system_call env "call_new_64" ^^
     IC.system_call env "call_perform" ^^
+    G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
     E.then_trap_with env "Async destabilization increment call failed"
 
   let complete_graph_destabilization env = 
     IC.initialize_main_actor env ^^
     (* Allow other messages and allow garbage collection. *)
-    E.call_import env "rts" "start_gc_after_upgrade" ^^
+    E.call_import env "rts" "start_gc_after_stabilization" ^^
     Lifecycle.trans env Lifecycle.Idle
 
   let define_async_destabilization_reply_callback env =
@@ -9606,7 +9608,7 @@ module IncrementalGraphStabilization = struct
     let complete_initialization = set_destabilized_actor env ^^ complete_graph_destabilization env in
     (* TODO: Verify that the post_upgrade hook cannot be directly called by the IC *)
     (* Garbage collection is disabled until destabilization has completed. *)
-    E.call_import env "rts" "stop_gc_before_upgrade" ^^
+    E.call_import env "rts" "stop_gc_before_stabilization" ^^
     GraphCopyStabilization.start_graph_destabilization env actor_type complete_initialization ^^
     get_destabilized_actor env ^^
     compile_test I64Op.Eqz ^^
@@ -9703,7 +9705,7 @@ module Persistence = struct
     G.i (Binary (Wasm_exts.Values.I64 I64Op.Or))
 
   let initialize env actor_type =
-    E.call_import env "rts" "read_persistence_version" ^^
+    E.call_import env "rts" "read_stable_memory_version" ^^
     G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
     set_persistence_version env ^^
     use_graph_destabilization env ^^
@@ -9719,11 +9721,11 @@ module Persistence = struct
 
   let load env actor_type =
     use_enhancecd_orthogonal_persistence env ^^
-    (E.if0
+    (E.if1 I64Type
       (EnhancedOrthogonalPersistence.load env actor_type)
       begin
         use_graph_destabilization env ^^
-        E.if0
+        E.if1 I64Type
           (IncrementalGraphStabilization.load env)
           begin
             use_candid_destabilization env ^^
@@ -12688,7 +12690,7 @@ and main_actor as_opt mod_env ds fs up stable_actor_type build_stable_actor =
     end;
 
     (* Helper function to build the stable actor wrapper *)
-    Func.define_built_in mod_env IncrementalGraphStabilization.get_actor_to_stabilize_name [] [I32Type] (fun env ->
+    Func.define_built_in mod_env IncrementalGraphStabilization.get_actor_to_stabilize_name [] [I64Type] (fun env ->
       compile_exp_as env ae2 SR.Vanilla build_stable_actor
     );
 
