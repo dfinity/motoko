@@ -9,7 +9,7 @@ use motoko_rts_macros::ic_mem_fn;
 use crate::{
     barriers::write_with_barrier,
     constants::{KB, MB},
-    gc::incremental::{is_gc_stopped, State},
+    gc::incremental::State,
     memory::Memory,
     persistence::compatibility::memory_compatible,
     rts_trap_with,
@@ -147,7 +147,6 @@ pub unsafe fn save_stable_actor<M: Memory>(mem: &mut M, actor: Value) {
 /// in the new program version.
 #[ic_mem_fn]
 pub unsafe fn free_stable_actor<M: Memory>(mem: &mut M) {
-    assert!(!is_gc_stopped());
     let metadata: *mut PersistentMetadata = PersistentMetadata::get();
     let location = &mut (*metadata).stable_actor as *mut Value;
     write_with_barrier(mem, location, DEFAULT_VALUE);
@@ -184,7 +183,7 @@ pub unsafe extern "C" fn contains_field(actor: Value, field_hash: usize) -> bool
     false
 }
 
-/// Register the stable actor type on canister installation and upgrade.
+/// Register the stable actor type on canister initialization and upgrade.
 /// The type is stored in the persistent metadata memory for later retrieval on canister upgrades.
 /// On an upgrade, the memory compatibility between the new and existing stable type is checked.
 /// The `new_type` value points to a blob encoding the new stable actor type.

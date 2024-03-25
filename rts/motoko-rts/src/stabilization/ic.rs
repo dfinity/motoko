@@ -228,7 +228,6 @@ unsafe fn record_upgrade_costs() {
 pub unsafe extern "C" fn get_graph_destabilized_actor() -> Value {
     let state = DESTABILIZATION_STATE.as_ref().unwrap();
     assert!(state.completed);
-    assert!(!is_gc_stopped());
     state.deserialization.get_stable_root()
 }
 

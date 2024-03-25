@@ -130,7 +130,7 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
     }
 }
 
-unsafe fn is_non_null_pointer_field(field_addr: *mut Value) -> bool {
+pub unsafe fn is_non_null_pointer_field(field_addr: *mut Value) -> bool {
     let field_value = *field_addr;
     field_value.is_non_null_ptr()
 }
