@@ -209,9 +209,14 @@ let rec pp_val_nullary d ppf (t, v : T.typ * value) =
       (pp_print_list ~pp_sep:comma (pp_val d)) list
       (if List.length vs = 1 then "," else "")
   | t, Obj ve ->
-    let fs = match t with  T.Obj (_, fs) -> fs | _ -> [] in
+    let sort, fs = match t with  T.Obj (sort, fs) -> Some sort, fs | _ -> None, [] in
     if d = 0 then pr ppf "{...}" else
-    fprintf ppf "@[<hv 2>{@;<0 0>%a@;<0 -2>}@]"
+    fprintf ppf "@[<hv 2>%a{@;<0 0>%a@;<0 -2>}@]"
+      pr (match sort with
+      | Some T.Actor -> "actor "
+      | Some T.Module -> "module "
+      | Some T.Memory -> "memory "
+      | Some T.Object | None -> "")
       (pp_print_list ~pp_sep:semi (pp_field d)) (List.map (fun (lab, v) ->
           let t = T.lookup_val_field_opt lab fs in
           (lab, Option.value t ~default:T.Any, v))
@@ -219,7 +224,7 @@ let rec pp_val_nullary d ppf (t, v : T.typ * value) =
   | t, Array vs ->
     let t' = match t with T.Array t' -> t' | _ -> T.Any in
     fprintf ppf "@[<1>[%a%a]@]"
-      pp_print_string (match t' with T.Mut t -> "var " | _ -> "")
+      pr (match t' with T.Mut t -> "var " | _ -> "")
       (pp_print_list ~pp_sep:comma (pp_val d)) (List.map (fun v -> (t', v)) (Array.to_list vs))
   | _, Func (_, _) -> pr ppf "func"
   | _, Comp _ -> pr ppf "async*"
