@@ -202,7 +202,9 @@ pub unsafe fn start_graph_destabilization<M: Memory>(
 ///   main memory layout (see `GraphCopyStabilization.md`).
 #[ic_mem_fn(ic_only)]
 pub unsafe fn graph_destabilization_increment<M: Memory>(mem: &mut M) -> bool {
-    let state = DESTABILIZATION_STATE.as_mut().unwrap();
+    let state = DESTABILIZATION_STATE
+        .as_mut()
+        .unwrap_or_else(|| rts_trap_with("No destabilization needed"));
     if !state.completed {
         assert!(is_gc_stopped());
         state.instruction_meter.start();
