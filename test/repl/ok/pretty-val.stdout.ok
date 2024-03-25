@@ -1,6 +1,6 @@
 Motoko compiler (source XXX)
 > let Prim : module {...}
->   let a_small : [var Text] = ["hello", "hello", "hello", "hello", "hello"]
+>   let a_small : [var Text] = [var "hello", "hello", "hello", "hello", "hello"]
 > let a_large :
   [var Text] =
   [var "hello", "hello", "hello", "hello", "hello", "hello", "hello",
