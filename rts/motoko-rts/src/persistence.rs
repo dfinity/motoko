@@ -92,7 +92,6 @@ impl PersistentMetadata {
     #[cfg(feature = "ic")]
     unsafe fn initialize<M: Memory>(self: *mut Self, mem: &mut M) {
         use crate::gc::incremental::IncrementalGC;
-        debug_assert!(!self.is_initialized());
         (*self).fingerprint = FINGERPRINT;
         (*self).version = VERSION;
         (*self).stable_actor = DEFAULT_VALUE;

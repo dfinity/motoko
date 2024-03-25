@@ -29,7 +29,10 @@ use crate::{
     barriers::allocation_barrier,
     memory::{alloc_blob, Memory},
     persistence::compatibility::TypeDescriptor,
-    region::{VERSION_GRAPH_COPY_NO_REGIONS, VERSION_GRAPH_COPY_REGIONS},
+    region::{
+        VERSION_GRAPH_COPY_NO_REGIONS, VERSION_GRAPH_COPY_REGIONS, VERSION_STABLE_HEAP_NO_REGIONS,
+        VERSION_STABLE_HEAP_REGIONS,
+    },
     stabilization::{clear_stable_memory, grant_stable_space},
     stable_mem::{
         get_version, ic0_stable64_read, ic0_stable64_size, ic0_stable64_write, read_u32, read_u64,
@@ -185,7 +188,7 @@ impl StabilizationMetadata {
             serialized_data_length: self.serialized_data_length,
             type_descriptor_address,
             first_word_backup,
-            version: get_version() as u32,
+            version: Self::stabilization_version() as u32,
         };
         Self::write_metadata(&last_page_record);
     }
@@ -205,5 +208,13 @@ impl StabilizationMetadata {
             type_descriptor,
         };
         (metadata, last_page_record.statistics)
+    }
+
+    fn stabilization_version() -> usize {
+        match get_version() {
+            VERSION_STABLE_HEAP_NO_REGIONS => VERSION_GRAPH_COPY_NO_REGIONS,
+            VERSION_STABLE_HEAP_REGIONS => VERSION_GRAPH_COPY_REGIONS,
+            _ => unreachable!(),
+        }
     }
 }
