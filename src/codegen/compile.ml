@@ -8375,7 +8375,7 @@ module EnhancedOrthogonalPersistence = struct
     let get_field_value field = 
       get_old_actor ^^
       Object.contains_field env field.Type.lab ^^
-      (E.if1 I32Type
+      (E.if1 I64Type
         (load_old_field env field get_old_actor)
         (Opt.null_lit env)
       ) in
