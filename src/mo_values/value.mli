@@ -117,5 +117,6 @@ val compare : value -> value -> int
 val pp_val : int -> Format.formatter -> (Type.typ * value) -> unit
 val pp_def : int -> Format.formatter -> (Type.typ * def) -> unit
 
+(* NB: Pass Type.Non to print value at full dynamic, not static, type. *)
 val string_of_val : int -> Type.typ -> value -> string
 val string_of_def : int -> Type.typ -> def -> string
