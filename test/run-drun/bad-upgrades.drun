@@ -1,0 +1,6 @@
+install $ID bad-upgrades/upgrade.mo ""
+upgrade $ID bad-upgrades/upgrade0.mo ""
+upgrade $ID bad-upgrades/upgrade1.mo ""
+upgrade $ID bad-upgrades/upgrade2.mo ""
+
+
