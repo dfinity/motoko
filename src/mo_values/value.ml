@@ -252,9 +252,7 @@ and pp_val d ppf (t, v) =
     fprintf ppf "@[<1>?%a@]" (pp_val_nullary d) (t', v)
   | _, Variant (l, Tup []) -> fprintf ppf "#%s" l
   | t, Variant (l, v) ->
-    let fs = match t with  T.Variant fs -> fs | _ -> [] in
-    let t' = Option.value ~default:T.Non
-      (T.lookup_val_field_opt l fs) in
+    let t' = match t with T.Variant fs -> T.lookup_val_field l fs | _ -> T.Non in
     (match v with
     | Tup vs -> fprintf ppf "@[#%s@;<0 1>%a@]" l (pp_val d) (t', Tup vs)
     | _ -> fprintf ppf "@[#%s@;<0 1>(%a)@]" l (pp_val d) (t', v))
