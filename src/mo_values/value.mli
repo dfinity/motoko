@@ -113,6 +113,7 @@ val compare : value -> value -> int
 
 (* Pretty Printing *)
 
+(* NB: Pass Type.Non to print value at full dynamic, not static, type. *)
 val pp_val : int -> Format.formatter -> (Type.typ * value) -> unit
 val pp_def : int -> Format.formatter -> (Type.typ * def) -> unit
 
