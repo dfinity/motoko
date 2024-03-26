@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>md/actors-async.md</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]-->
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">md/actors-async.md</h1>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#actors-and-async-data"
+id="toc-actors-and-async-data">Actors and async data</a>
+<ul>
+<li><a href="#example-a-counter-service"
+id="toc-example-a-counter-service">Example: a Counter service</a></li>
+<li><a href="#actor-types" id="toc-actor-types">Actor types</a></li>
+<li><a href="#using-await-to-consume-async-futures"
+id="toc-using-await-to-consume-async-futures">Using <code>await</code>
+to consume async futures</a></li>
+<li><a href="#traps-and-commit-points"
+id="toc-traps-and-commit-points">Traps and Commit Points</a></li>
+<li><a href="#query-functions" id="toc-query-functions">Query
+functions</a></li>
+<li><a href="#messaging-restrictions"
+id="toc-messaging-restrictions">Messaging restrictions</a></li>
+<li><a href="#actor-classes-generalize-actors"
+id="toc-actor-classes-generalize-actors">Actor classes generalize
+actors</a></li>
+<li><a href="#composite-query-functions"
+id="toc-composite-query-functions">Composite query functions</a></li>
+</ul></li>
+</ul>
+</nav>
+<h1 id="actors-and-async-data">Actors and async data</h1>
+<p>The programming model of the Internet Computer consists of
+memory-isolated canisters communicating by asynchronous message passing
+of binary data encoding Candid values. A canister processes its messages
+one-at-a-time, preventing race conditions. A canister uses call-backs to
+register what needs to be done with the result of any inter-canister
+messages it issues.</p>
+<p>Motoko abstracts the complexity of the Internet Computer with a well
+known, higher-level abstraction: the <em>actor model</em>. Each canister
+is represented as a typed actor. The type of an actor lists the messages
+it can handle. Each message is abstracted as a typed, asynchronous
+function. A translation from actor types to Candid types imposes
+structure on the raw binary data of the underlying Internet Computer. An
+actor is similar to an object, but is different in that its state is
+completely isolated, its interactions with the world are entirely
+through asynchronous messaging, and its messages are processed
+one-at-a-time, even when issued in parallel by concurrent actors.</p>
+<p>In Motoko, sending a message to an actor is a function call, but
+instead of blocking the caller until the call has returned, the message
+is enqueued on the callee, and a <em>future</em> representing that
+pending request immediately returned to the caller. The future is a
+placeholder for the eventual result of the request, that the caller can
+later query. Between issuing the request, and deciding to wait for the
+result, the caller is free to do other work, including issuing more
+requests to the same or other actors. Once the callee has processed the
+request, the future is completed and its result made available to the
+caller. If the caller is waiting on the future, its execution can resume
+with the result, otherwise the result is simply stored in the future for
+later use.</p>
+<p>In Motoko, actors have dedicated syntax and types; messaging is
+handled by so called <em>shared</em> functions returning futures (shared
+because they are available to remote actors); a future, <code>f</code>,
+is a value of the special type <code>async T</code> for some type
+<code>T</code>; waiting on <code>f</code> to be completed is expressed
+using <code>await f</code> to obtain a value of type <code>T</code>. To
+avoid introducing shared state through messaging, for example, by
+sending an object or mutable array, the data that can be transmitted
+through shared functions is restricted to immutable, <em>shared</em>
+types.</p>
+<p>To start, we consider the simplest stateful service: a
+<code>Counter</code> actor, the distributed version of our previous,
+local <code>counter</code> object.</p>
+<h2 id="example-a-counter-service">Example: a Counter service</h2>
+<p>Consider the following actor declaration:</p>
+<pre class="motoko"><code></code></pre>
+<!--
+actor Counter {
+
+  var count = 0;
+
+  public shared func inc() : async () { count += 1 };
+
+  public shared func read() : async Nat { count };
+
+  public shared func bump() : async Nat {
+    count += 1;
+    count;
+  };
+};
+-->
+
+<p>The <code>Counter</code> actor declares one field and three public,
+<em>shared</em> functions:</p>
+<ul>
+<li><p>the field <code>count</code> is mutable, initialized to zero and
+implicitly <code>private</code>.</p></li>
+<li><p>function <code>inc()</code> asynchronously increments the counter
+and returns a future of type <code>async ()</code> for
+synchronization.</p></li>
+<li><p>function <code>read()</code> asynchronously reads the counter
+value and returns a future of type <code>async Nat</code> containing its
+value.</p></li>
+<li><p>function <code>bump()</code> asynchronously increments and reads
+the counter.</p></li>
+</ul>
+<p>Shared functions, unlike local functions, are accessible to remote
+callers and have additional restrictions: their arguments and return
+value must be <em>shared</em> types - a subset of types that includes
+immutable data, actor references, and shared function references, but
+excludes references to local functions and mutable data. Because all
+interaction with actors is asynchronous, an actor’s functions must
+return futures, that is, types of the form <code>async T</code>, for
+some type <code>T</code>.</p>
+<p>The only way to read or modify the state (<code>count</code>) of the
+<code>Counter</code> actor is through its shared functions.</p>
+<p>A value of type <code>async T</code> is a future. The producer of the
+future completes the future when it returns a result, either a value or
+error.</p>
+<p>Unlike objects and modules, actors can only expose functions, and
+these functions must be <code>shared</code>. For this reason, Motoko
+allows you to omit the <code>shared</code> modifier on public actor
+functions, allowing the more concise, but equivalent, actor
+declaration:</p>
+<pre class="motoko"><code></code></pre>
+<p>For now, the only place shared functions can be declared is in the
+body of an actor or actor class. Despite this restriction, shared
+functions are still first-class values in Motoko and can be passed as
+arguments or results, and stored in data structures.</p>
+<p>The type of a shared function is specified using a shared function
+type. For example, the value <code>inc</code> has type
+<code>shared () → async Nat</code> and could be supplied as a standalone
+callback to some other service (see <a
+href="sharing.md">publish-subscribe</a> for an example).</p>
+<h2 id="actor-types">Actor types</h2>
+<p>Just as objects have object types, actors have <em>actor types</em>.
+The <code>Counter</code> actor has the following type:</p>
+<pre class="motoko"><code>actor {
+  inc  : shared () -&gt; async ();
+  read : shared () -&gt; async Nat;
+  bump : shared () -&gt; async Nat;
+}</code></pre>
+<p>Again, because the <code>shared</code> modifier is required on every
+member of an actor, Motoko both elides them on display, and allows you
+to omit them when authoring an actor type.</p>
+<p>Thus the previous type can be expressed more succinctly as:</p>
+<pre class="motoko"><code>actor {
+  inc  : () -&gt; async ();
+  read : () -&gt; async Nat;
+  bump : () -&gt; async Nat;
+}</code></pre>
+<p>Like object types, actor types support subtyping: an actor type is a
+subtype of a more general one that offers fewer functions with more
+general types.</p>
+<h2 id="using-await-to-consume-async-futures">Using <code>await</code>
+to consume async futures</h2>
+<p>The caller of a shared function typically receives a future, a value
+of type <code>async T</code> for some T.</p>
+<p>The only thing the caller, a consumer, can do with this future is
+wait for it to be completed by the producer, throw it away, or store it
+for later use.</p>
+<p>To access the result of an <code>async</code> value, the receiver of
+the future use an <code>await</code> expression.</p>
+<p>For example, to use the result of <code>Counter.read()</code> above,
+we can first bind the future to an identifier <code>a</code>, and then
+<code>await a</code> to retrieve the underlying <code>Nat</code>,
+<code>n</code>:</p>
+<pre class="motoko"><code>let a : async Nat = Counter.read();
+let n : Nat = await a;</code></pre>
+<p>The first line immediately receives <em>a future of the counter
+value</em>, but does not wait for it, and thus cannot (yet) use it as a
+natural number.</p>
+<p>The second line <code>await</code>s this future and extracts the
+result, a natural number. This line may suspend execution until the
+future has been completed.</p>
+<p>Typically, one rolls the two steps into one and one just awaits an
+asynchronous call directly:</p>
+<pre class="motoko"><code>let n : Nat = await Counter.read();</code></pre>
+<p>Unlike a local function call, which blocks the caller until the
+callee has returned a result, a shared function call immediately returns
+a future, <code>f</code>, without blocking. Instead of blocking, a later
+call to <code>await f</code> suspends the current computation until
+<code>f</code> is complete. Once the future is completed (by the
+producer), execution of <code>await p</code> resumes with its result. If
+the result is a value, <code>await f</code> returns that value.
+Otherwise the result is some error, and <code>await f</code> propagates
+the error to the consumer of <code>await f</code>.</p>
+<p>Awaiting a future a second time will just produce the same result,
+including re-throwing any error stored in the future. Suspension occurs
+even if the future is already complete; this ensures state changes and
+message sends prior to <em>every</em> <code>await</code> are
+committed.</p>
+<p>:::danger</p>
+<p>A function that does not <code>await</code> in its body is guaranteed
+to execute atomically - in particular, the environment cannot change the
+state of the actor while the function is executing. If a function
+performs an <code>await</code>, however, atomicity is no longer
+guaranteed. Between suspension and resumption around the
+<code>await</code>, the state of the enclosing actor may change due to
+concurrent processing of other incoming actor messages. It is the
+programmer’s responsibility to guard against non-synchronized state
+changes. A programmer may, however, rely on any state change prior to
+the await being committed.</p>
+<p>:::</p>
+<p>For example, the implementation of <code>bump()</code> above is
+guaranteed to increment and read the value of <code>count</code>, in one
+atomic step. The alternative implementation:</p>
+<pre class="motoko"><code>  public shared func bump() : async Nat {
+    await inc();
+    await read();
+  };</code></pre>
+<p>does <em>not</em> have the same semantics and allows another client
+of the actor to interfere with its operation: each <code>await</code>
+suspends execution, allowing an interloper to change the state of the
+actor. By design, the explicit <code>await</code>s make the potential
+points of interference clear to the reader.</p>
+<h2 id="traps-and-commit-points">Traps and Commit Points</h2>
+<p>A trap is a non-recoverable runtime failure caused by, for example,
+division-by-zero, out-of-bounds array indexing, numeric overflow, cycle
+exhaustion or assertion failure.</p>
+<p>A shared function call that executes without executing an
+<code>await</code> expression never suspends and executes atomically. A
+shared function that contains no <code>await</code> expression is
+syntactically atomic.</p>
+<p>An atomic shared function whose execution traps has no visible effect
+on the state of the enclosing actor or its environment - any state
+change is reverted, and any message that it has sent is revoked. In
+fact, all state changes and message sends are tentative during
+execution: they are committed only after a successful <em>commit
+point</em> is reached.</p>
+<p>The points at which tentative state changes and message sends are
+irrevocably committed are:</p>
+<ul>
+<li><p>implicit exit from a shared function by producing a
+result,</p></li>
+<li><p>explict exit via <code>return</code> or <code>throw</code>
+expressions, and</p></li>
+<li><p>explicit <code>await</code> expressions.</p></li>
+</ul>
+<p>A trap will only revoke changes made since the last commit point. In
+particular, in a non-atomic function that does multiple awaits, a trap
+will only revoke changes attempted since the last await - all preceding
+effects will have been committed and cannot be undone.</p>
+<p>For example, consider the following (contrived) stateful
+<code>Atomicity</code> actor:</p>
+<pre class="motoko"><code></code></pre>
+<p>Calling (shared) function <code>atomic()</code> will fail with an
+error, since the last statement causes a trap. However, the trap leaves
+the mutable variable <code>s</code> with value <code>0</code>, not
+<code>1</code>, and variable <code>pinged</code> with value
+<code>false</code>, not <code>true</code>. This is because the trap
+happens <em>before</em> method <code>atomic</code> has executed an
+<code>await</code>, or exited with a result. Even though
+<code>atomic</code> calls <code>ping()</code>, <code>ping()</code> is
+tentative (queued) until the next commit point, so never delivered.</p>
+<p>Calling (shared) function <code>nonAtomic()</code> will fail with an
+error, since the last statement causes a trap. However, the trap leaves
+the variable <code>s</code> with value <code>3</code>, not
+<code>0</code>, and variable <code>pinged</code> with value
+<code>true</code>, not <code>false</code>. This is because each
+<code>await</code> commits its preceding side-effects, including message
+sends. Even though <code>f</code> is complete by the second await on
+<code>f</code>, this await also forces a commit of the state, suspends
+execution and allows for interleaved processing of other messages to
+this actor.</p>
+<h2 id="query-functions">Query functions</h2>
+<p>In Internet Computer terminology, all three <code>Counter</code>
+functions are <em>update</em> messages that can alter the state of the
+canister when called. Effecting a state change requires agreement
+amongst the distributed replicas before the Internet Computer can commit
+the change and return a result. Reaching consensus is an expensive
+process with relatively high latency.</p>
+<p>For the parts of applications that don’t require the guarantees of
+consensus, the Internet Computer supports more efficient <em>query</em>
+operations. These are able to read the state of a canister from a single
+replica, modify a snapshot during their execution and return a result,
+but cannot permanently alter the state or send further Internet Computer
+messages.</p>
+<p>Motoko supports the implementation of Internet Computer queries using
+<code>query</code> functions. The <code>query</code> keyword modifies
+the declaration of a (shared) actor function so that it executes with
+non-committing, and faster, Internet Computer query semantics.</p>
+<p>For example, we can extend the <code>Counter</code> actor with a
+fast-and-loose variant of the trustworthy <code>read</code> function,
+called <code>peek</code>:</p>
+<pre class="motoko"><code></code></pre>
+<p>The <code>peek()</code> function might be used by a
+<code>Counter</code> frontend offering a quick, but less trustworthy,
+display of the current counter value.</p>
+<p>It is a compile-time error for a query method to call an actor
+function since this would violate dynamic restrictions imposed by the
+Internet Computer. Calls to ordinary functions are permitted.</p>
+<p>Query functions can be called from non-query functions. Because those
+nested calls require consensus, the efficiency gains of nested query
+calls will be modest at best.</p>
+<p>The <code>query</code> modifier is reflected in the type of a query
+function:</p>
+<pre class="motoko"><code>  peek : shared query () -&gt; async Nat</code></pre>
+<p>As before, in <code>query</code> declarations and actor types the
+<code>shared</code> keyword can be omitted.</p>
+<h2 id="messaging-restrictions">Messaging restrictions</h2>
+<p>The Internet Computer places restrictions on when and how canisters
+are allowed to communicate. These restrictions are enforced dynamically
+on the Internet Computer but prevented statically in Motoko, ruling out
+a class of dynamic execution errors. Two examples are:</p>
+<ul>
+<li><p>canister installation can execute code, but not send
+messages.</p></li>
+<li><p>a canister query method cannot send messages.</p></li>
+</ul>
+<p>These restrictions are surfaced in Motoko as restrictions on the
+context in which certain expressions can be used.</p>
+<p>In Motoko, an expression occurs in an <em>asynchronous context</em>
+if it appears in the body of an <code>async</code> expression, which may
+be the body of a (shared or local) function or a stand-alone expression.
+The only exception are <code>query</code> functions, whose body is not
+considered to open an asynchronous context.</p>
+<p>In Motoko calling a shared function is an error unless the function
+is called in an asynchronous context. In addition, calling a shared
+function from an actor class constructor is also an error.</p>
+<p>The <code>await</code> construct is only allowed in an asynchronous
+context.</p>
+<p>The <code>async</code> construct is only allowed in an asynchronous
+context.</p>
+<p>It is only possible to <code>throw</code> or <code>try/catch</code>
+errors in an asynchronous context. This is because structured error
+handling is supported for messaging errors only and, like messaging
+itself, confined to asynchronous contexts.</p>
+<p>These rules also mean that local functions cannot, in general,
+directly call shared functions or <code>await</code> futures. This
+limitation can sometimes be awkward: we hope to extend the type system
+to be more permissive in future.</p>
+<!--
+TODO: scoped awaits (if at all)
+-->
+
+<h2 id="actor-classes-generalize-actors">Actor classes generalize
+actors</h2>
+<p>An actor <em>class</em> generalizes a single actor declaration to the
+declaration of family of actors satisfying the same interface. An actor
+class declares a type, naming the interface of its actors, and a
+function that constructs a fresh actor of that type each time it is
+supplied with an argument. An actor class thus serves as a factory for
+manufacturing actors. Because canister installation is asynchronous on
+the Internet Computer, the constructor function is asynchronous too, and
+returns its actor in a future.</p>
+<p>For example, we can generalize <code>Counter</code> given above to
+<code>Counter(init)</code> below, by introducing a constructor
+parameter, variable <code>init</code> of type <code>Nat</code>:</p>
+<p><code>Counters.mo</code>:</p>
+<pre class="motoko"><code></code></pre>
+<p>If this class is stored in file <code>Counters.mo</code>, then we can
+import the file as a module and use it to create several actors with
+different initial values:</p>
+<pre class="motoko"><code>import Counters &quot;Counters&quot;;
+
+let C1 = await Counters.Counter(1);
+let C2 = await Counters.Counter(2);
+(await C1.read(), await C2.read())</code></pre>
+<p>The last two lines above <em>instantiate</em> the actor class twice.
+The first invocation uses the initial value <code>1</code>, where the
+second uses initial value <code>2</code>. Because actor class
+instantiation is asynchronous, each call to <code>Counter(init)</code>
+returns a future that can be <code>await</code>ed for the resulting
+actor value. Both <code>C1</code> and <code>C2</code> have the same
+type, <code>Counters.Counter</code> and can be used interchangeably.</p>
+<p>:::note</p>
+<p>For now, the Motoko compiler gives an error when compiling programs
+that do not consist of a single actor or actor class. Compiled programs
+may still, however, reference imported actor classes. For more
+information, see <a
+href="modules-and-imports.md#importing-actor-classes">Importing actor
+classes</a> and <a href="actor-classes.md#actor-classes">Actor
+classes</a>.</p>
+<p>:::</p>
+<h2 id="composite-query-functions">Composite query functions</h2>
+<p>Although queries can be fast, when called from a frontend, yet
+trusted though slower, when called from an actor, they are also limited
+in what they can do. In particular, they cannot themselves issue further
+messages, including queries.</p>
+<p>To address this limitation, the Internet Computer supports another
+flavour of query function called a <em>composite query</em>. Like plain
+queries, the state changes made by a composite query are transient,
+isolated and never committed. Moreover, composite queries cannot call
+update functions, including those implicit in <code>async</code>
+expressions (which require update calls under the hood). Unlike plain
+queries, composite queries can call query functions and composite query
+functions, on the same and other actors, but only provided those actors
+reside on the same subnet.</p>
+<p>As a contrived example, consider generalising the previous
+<code>Counter</code> actor to a class of counters. Each instance of the
+class provides an additional <code>composite query</code> to sum the
+values of a given array of counters:</p>
+<pre class="motoko"><code></code></pre>
+<p>Declaring <code>sum</code> as a <code>composite query</code> enables
+it call the <code>peek</code> queries of its argument counters.</p>
+<p>While <em>update</em> message can call plain query functions, they
+cannot call <em>composite</em> query functions. This distinction, which
+is dictated by the current capabilites of the IC, explains why query
+functions and composite query functions are regarded as distinct types
+of shared functions.</p>
+<p>Note that the <code>composite query</code> modifier is reflected in
+the type of a composite query function:</p>
+<pre class="motoko"><code>  sum : shared composite query ([Counter]) -&gt; async Nat</code></pre>
+<p>Since only a composite query can call another composite query, you
+may be wondering how any composite query gets called at all? The answer
+to this chicken-and-egg problem is that composite queries are initiated
+outside the IC, typically by an application (such as a browser frontend)
+sending an ingress message invoking a composite query on a backend actor
+on the IC.</p>
+<p>:::danger</p>
+<p>The Internet Computer's semantics of composite queries, like queries,
+ensures that state changes made by a composite query are isolated from
+other inter-canister calls, including recursive queries, composite or
+not, to the same actor.</p>
+<p>In particular, like a query, a composite query call rolls back its
+state on function exit, but is also does not pass state changes to
+sub-query or sub-composite-query calls. Therefore, repeated calls (which
+includes recursive calls) have different semantics from the more
+familiar sequential calls that accumulate state changes.</p>
+<p>In sequential calls to queries made by a composite query, the
+internal state changes of preceeding queries will have no effect on
+subsequent queries, nor will the queries observe any local state changes
+made by the enclosing composite query. Local states changes made by the
+composite query are, however, preserved across the calls until finally
+being rolled-back on exit from the composite query.</p>
+<p>This semantics can lead to surprising behaviour for users accustomed
+to ordinary imperative programming.</p>
+<p>Consider this contrived example containing the composite query
+<code>test</code> that calls query <code>q</code> and composite query
+<code>cq</code>.</p>
+<pre class="motoko"><code></code></pre>
+<p>When <code>state</code> is <code>0</code>, a call to
+<code>test</code> returns</p>
+<pre><code>{s0 = 0; s1 = 0; s2 = 0; s3 = 3_000}</code></pre>
+<p>because none of the local updates to <code>state</code> are visible
+to any of the callers or callees.</p>
+<p>:::</p>
+</body>
+</html>

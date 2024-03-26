@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>md/compiler-ref.md</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+    /* CSS for syntax highlighting */
+    pre > code.sourceCode { white-space: pre; position: relative; }
+    pre > code.sourceCode > span { line-height: 1.25; }
+    pre > code.sourceCode > span:empty { height: 1.2em; }
+    .sourceCode { overflow: visible; }
+    code.sourceCode > span { color: inherit; text-decoration: inherit; }
+    div.sourceCode { margin: 1em 0; }
+    pre.sourceCode { margin: 0; }
+    @media screen {
+    div.sourceCode { overflow: auto; }
+    }
+    @media print {
+    pre > code.sourceCode { white-space: pre-wrap; }
+    pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+    }
+    pre.numberSource code
+      { counter-reset: source-line 0; }
+    pre.numberSource code > span
+      { position: relative; left: -4em; counter-increment: source-line; }
+    pre.numberSource code > span > a:first-child::before
+      { content: counter(source-line);
+        position: relative; left: -1em; text-align: right; vertical-align: baseline;
+        border: none; display: inline-block;
+        -webkit-touch-callout: none; -webkit-user-select: none;
+        -khtml-user-select: none; -moz-user-select: none;
+        -ms-user-select: none; user-select: none;
+        padding: 0 4px; width: 4em;
+        color: #aaaaaa;
+      }
+    pre.numberSource { margin-left: 3em; border-left: 1px solid #aaaaaa;  padding-left: 4px; }
+    div.sourceCode
+      {   }
+    @media screen {
+    pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+    }
+    code span.al { color: #ff0000; font-weight: bold; } /* Alert */
+    code span.an { color: #60a0b0; font-weight: bold; font-style: italic; } /* Annotation */
+    code span.at { color: #7d9029; } /* Attribute */
+    code span.bn { color: #40a070; } /* BaseN */
+    code span.bu { color: #008000; } /* BuiltIn */
+    code span.cf { color: #007020; font-weight: bold; } /* ControlFlow */
+    code span.ch { color: #4070a0; } /* Char */
+    code span.cn { color: #880000; } /* Constant */
+    code span.co { color: #60a0b0; font-style: italic; } /* Comment */
+    code span.cv { color: #60a0b0; font-weight: bold; font-style: italic; } /* CommentVar */
+    code span.do { color: #ba2121; font-style: italic; } /* Documentation */
+    code span.dt { color: #902000; } /* DataType */
+    code span.dv { color: #40a070; } /* DecVal */
+    code span.er { color: #ff0000; font-weight: bold; } /* Error */
+    code span.ex { } /* Extension */
+    code span.fl { color: #40a070; } /* Float */
+    code span.fu { color: #06287e; } /* Function */
+    code span.im { color: #008000; font-weight: bold; } /* Import */
+    code span.in { color: #60a0b0; font-weight: bold; font-style: italic; } /* Information */
+    code span.kw { color: #007020; font-weight: bold; } /* Keyword */
+    code span.op { color: #666666; } /* Operator */
+    code span.ot { color: #007020; } /* Other */
+    code span.pp { color: #bc7a00; } /* Preprocessor */
+    code span.sc { color: #4070a0; } /* SpecialChar */
+    code span.ss { color: #bb6688; } /* SpecialString */
+    code span.st { color: #4070a0; } /* String */
+    code span.va { color: #19177c; } /* Variable */
+    code span.vs { color: #4070a0; } /* VerbatimString */
+    code span.wa { color: #60a0b0; font-weight: bold; font-style: italic; } /* Warning */
+  </style>
+  <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]-->
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">md/compiler-ref.md</h1>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#compiler-reference" id="toc-compiler-reference">Compiler
+reference</a>
+<ul>
+<li><a href="#moc" id="toc-moc">moc</a>
+<ul>
+<li><a href="#basic-usage" id="toc-basic-usage">Basic usage</a></li>
+<li><a href="#options" id="toc-options">Options</a></li>
+</ul></li>
+</ul></li>
+</ul>
+</nav>
+<h1 id="compiler-reference">Compiler reference</h1>
+<p>The Motoko compiler (<code>moc</code>) is the primary tool for
+compiling Motoko programs into executable WebAssembly (Wasm) modules.
+The compiler runs in the background when you build projects using the <a
+href="https://internetcomputer.org/docs/current/developer-docs/setup/install">IC
+SDK</a>. If you invoke the compiler directly on the command-line, you
+can press CTRL-C to exit.</p>
+<p>This section provides compiler command-line reference
+information.</p>
+<h2 id="moc">moc</h2>
+<p>Use the Motoko compiler (<code>moc</code>) to compile Motoko programs
+into executable WebAssembly (Wasm) modules.</p>
+<h3 id="basic-usage">Basic usage</h3>
+<div class="sourceCode" id="cb1"><pre
+class="sourceCode bash"><code class="sourceCode bash"><span id="cb1-1"><a href="#cb1-1" aria-hidden="true" tabindex="-1"></a><span class="ex">moc</span> <span class="pp">[</span><span class="ss">option</span><span class="pp">]</span> [file ...]</span></code></pre></div>
+<h3 id="options">Options</h3>
+<p>You can use the following options with the <code>moc</code>
+command.</p>
+<table>
+<thead>
+<tr class="header">
+<th>Option</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>--actor-idl &lt;idl-path&gt;</code></td>
+<td>Specifies a path to actor IDL (Candid) files.</td>
+</tr>
+<tr class="even">
+<td><code>--actor-alias &lt;alias&gt; &lt;principal&gt;</code></td>
+<td>Specifies an actor import alias.</td>
+</tr>
+<tr class="odd">
+<td><code>--args &lt;file&gt;</code></td>
+<td>Read additional newline separated command line arguments from
+<code>&lt;file&gt;</code>.</td>
+</tr>
+<tr class="even">
+<td><code>--args0 &lt;file&gt;</code></td>
+<td>Read additional <code>NUL</code> separated command line arguments
+from <code>&lt;file&gt;</code>.</td>
+</tr>
+<tr class="odd">
+<td><code>-c</code></td>
+<td>Compile to WebAssembly.</td>
+</tr>
+<tr class="even">
+<td><code>--check</code></td>
+<td>Performs type checking only.</td>
+</tr>
+<tr class="odd">
+<td><code>--compacting-gc</code></td>
+<td>Use compacting GC</td>
+</tr>
+<tr class="even">
+<td><code>--copying-gc</code></td>
+<td>Use copying GC (default)</td>
+</tr>
+<tr class="odd">
+<td><code>--debug</code></td>
+<td>Respects debug expressions in the source (the default).</td>
+</tr>
+<tr class="even">
+<td><code>--error-detail &lt;n&gt;</code></td>
+<td>Set level of error message detail for syntax errors, n in [0..3]
+(default 2).</td>
+</tr>
+<tr class="odd">
+<td><code>-fno-shared-code</code></td>
+<td>Do <em>not</em> share low-level utility code: larger code size but
+decreased cycle consumption (default).</td>
+</tr>
+<tr class="even">
+<td><code>-fshared-code</code></td>
+<td>Do share low-level utility code: smaller code size but increased
+cycle consumption.</td>
+</tr>
+<tr class="odd">
+<td><code>--generational-gc</code></td>
+<td>Use generational GC</td>
+</tr>
+<tr class="even">
+<td><code>-help</code>,<code>--help</code></td>
+<td>Displays usage information.</td>
+</tr>
+<tr class="odd">
+<td><code>--hide-warnings</code></td>
+<td>Hides compiler warnings.</td>
+</tr>
+<tr class="even">
+<td><code>-Werror</code></td>
+<td>Treat warnings as errors.</td>
+</tr>
+<tr class="odd">
+<td><code>--incremental-gc</code></td>
+<td>Use incremental GC</td>
+</tr>
+<tr class="even">
+<td><code>--idl</code></td>
+<td>Compile binary and emit Candid IDL specification to
+<code>.did</code> file.</td>
+</tr>
+<tr class="odd">
+<td><code>-i</code></td>
+<td>Runs the compiler in an interactive read–eval–print loop (REPL)
+shell so you can evaluate program execution (implies -r).</td>
+</tr>
+<tr class="even">
+<td><code>--map</code></td>
+<td>Outputs a JavaScript source map.</td>
+</tr>
+<tr class="odd">
+<td><code>--max-stable-pages &lt;n&gt;</code></td>
+<td>Set maximum number of pages available for library
+<code>ExperimentStableMemory.mo</code> (default 65536).</td>
+</tr>
+<tr class="even">
+<td><code>-no-system-api</code></td>
+<td>Disables system API imports.</td>
+</tr>
+<tr class="odd">
+<td><code>-no-timer</code></td>
+<td>Disables timer API imports and hides timer primitives.</td>
+</tr>
+<tr class="even">
+<td><code>-o &lt;file&gt;</code></td>
+<td>Specifies the output file.</td>
+</tr>
+<tr class="odd">
+<td><code>-p &lt;n&gt;</code></td>
+<td>Sets the print depth.</td>
+</tr>
+<tr class="even">
+<td><code>--package &lt;package-name&gt; &lt;package-path&gt;</code></td>
+<td>Specifies a <code>&lt;package-name&gt;</code>
+<code>&lt;package-path&gt;</code> pair, separated by a space.</td>
+</tr>
+<tr class="odd">
+<td><code>--public-metadata &lt;name&gt;</code></td>
+<td>Emit icp custom section <code>&lt;name&gt;</code>
+(<code>candid:args</code> or <code>candid:service</code> or
+<code>motoko:stable-types</code> or <code>motoko:compiler</code>) as
+<code>public</code> (default is <code>private</code>)</td>
+</tr>
+<tr class="even">
+<td><code>--omit-metadata &lt;name&gt;</code></td>
+<td>omit icp custom section <code>&lt;name&gt;</code>
+(<code>candid:args</code> or <code>candid:service</code> or
+<code>motoko:stable-types</code> or <code>motoko:compiler</code>)</td>
+</tr>
+<tr class="odd">
+<td><code>--print-deps</code></td>
+<td>Prints the dependencies for a given source file.</td>
+</tr>
+<tr class="even">
+<td><code>-r</code></td>
+<td>Interprets programs.</td>
+</tr>
+<tr class="odd">
+<td><code>--release</code></td>
+<td>Ignores debug expressions in the source.</td>
+</tr>
+<tr class="even">
+<td><code>--stable-regions</code></td>
+<td>Force eager initialization of stable regions metadata (for testing
+purposes); consumes between 386KiB or 8MiB of additional physical stable
+memory, depending on current use of ExperimentalStableMemory.</td>
+</tr>
+<tr class="odd">
+<td><code>--stable-types</code></td>
+<td>Compile binary and emit signature of stable types to
+<code>.most</code> file.</td>
+</tr>
+<tr class="even">
+<td><code>--stable-compatible &lt;pre&gt; &lt;post&gt;</code></td>
+<td>Test upgrade compatibility between stable-type signatures
+<code>&lt;pre&gt;</code> and <code>&lt;post&gt;</code>.</td>
+</tr>
+<tr class="odd">
+<td><code>--rts-stack-pages &lt;n&gt;</code></td>
+<td>Set maximum number of pages available for runtime system stack
+(default 32).</td>
+</tr>
+<tr class="even">
+<td><code>--trap-on-call-error</code></td>
+<td>Trap, don't throw an <code>Error</code>, when an IC call fails due
+to destination queue full or freezing threshold is crossed.</td>
+</tr>
+<tr class="odd">
+<td></td>
+<td>Emulates behaviour of moc versions &lt; 0.8.0.</td>
+</tr>
+<tr class="even">
+<td><code>-t</code></td>
+<td>Activates tracing in interpreter.</td>
+</tr>
+<tr class="odd">
+<td><code>-v</code></td>
+<td>Generates verbose output.</td>
+</tr>
+<tr class="even">
+<td><code>--version</code></td>
+<td>Displays version information.</td>
+</tr>
+<tr class="odd">
+<td><code>-wasi-system-api</code></td>
+<td>Uses the WASI system API (<code>wasmtime</code>).</td>
+</tr>
+</tbody>
+</table>
+</body>
+</html>

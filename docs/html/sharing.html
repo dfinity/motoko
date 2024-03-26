@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>md/sharing.md</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]-->
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">md/sharing.md</h1>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#sharing-data-and-behavior"
+id="toc-sharing-data-and-behavior">Sharing data and behavior</a>
+<ul>
+<li><a href="#publisher-subscriber-pattern-with-actors"
+id="toc-publisher-subscriber-pattern-with-actors">Publisher-subscriber
+pattern with actors</a>
+<ul>
+<li><a href="#subscriber-actor" id="toc-subscriber-actor">Subscriber
+actor</a></li>
+<li><a href="#publisher-actor" id="toc-publisher-actor">Publisher
+actor</a></li>
+<li><a href="#subscriber-methods" id="toc-subscriber-methods">Subscriber
+methods</a></li>
+</ul></li>
+<li><a href="#sharing-functions-among-actors"
+id="toc-sharing-functions-among-actors">Sharing functions among
+actors</a>
+<ul>
+<li><a href="#the-shared-keyword" id="toc-the-shared-keyword">The
+<code>shared</code> keyword</a></li>
+</ul></li>
+</ul></li>
+</ul>
+</nav>
+<h1 id="sharing-data-and-behavior">Sharing data and behavior</h1>
+<p>Recall that in Motoko, mutable state is always private to an
+actor.</p>
+<p>However, two actors can share message data, and those messages can
+refer to actors, including themselves and one another. Additionally,
+messages can refer to individual functions, if those functions are
+<code>shared</code>.</p>
+<p>Through these mechanisms, two actors can coordinate their behavior
+through asynchronous message passing.</p>
+<h2 id="publisher-subscriber-pattern-with-actors">Publisher-subscriber
+pattern with actors</h2>
+<p>The examples in this section illustrate how actors share their
+functions by focusing on variations of the <a
+href="https://en.wikipedia.org/wiki/Publish-subscribe_pattern">publish-subscribe
+pattern</a>. In the publish-subscribe pattern, a
+<strong>publishing</strong> actor records a list of
+<strong>subscriber</strong> actors to notify when something notable
+occurs in the publisher’s state. For example, if the publisher actor
+publishes a new article, the subscriber actors are notified that a new
+article is available.</p>
+<p>The example below uses two actors in Motoko to build variations of
+the publisher-subscriber relationship.</p>
+<p>To see the complete code for a working project that uses this
+pattern, see the <a
+href="https://github.com/dfinity/examples/tree/master/motoko/pubsub">pubsub</a>
+example in the <a href="https://github.com/dfinity/examples">examples
+repository</a>.</p>
+<h3 id="subscriber-actor">Subscriber actor</h3>
+<p>The following <code>Subscriber</code> actor type provides a possible
+interface for the subscriber actor and the publisher actor to expose and
+to call, respectively:</p>
+<pre class="motoko"><code>type Subscriber = actor {
+  notify : () -&gt; ()
+};</code></pre>
+<ul>
+<li><p>The <code>Publisher</code> uses this type to define a data
+structure to store its subscribers as data.</p></li>
+<li><p>Each <code>Subscriber</code> actor exposes a <code>notify</code>
+update function as described in the <code>Subscriber</code> actor type
+signature above.</p></li>
+</ul>
+<p>Note that sub-typing enables the <code>Subscriber</code> actor to
+include additional methods that are not listed in this type
+definition.</p>
+<p>For simplicity, assume that the <code>notify</code> function accepts
+relevant notification data and returns some new status message about the
+subscriber to the publisher. For example, the subscriber might return a
+change to its subscription settings based on the notification data.</p>
+<h3 id="publisher-actor">Publisher actor</h3>
+<p>The publisher side of the code stores an array of subscribers. For
+simplicity, assume that each subscriber only subscribes itself once
+using a <code>subscribe</code> function.</p>
+<pre class="motoko"><code>import Array &quot;mo:base/Array&quot;;
+
+actor Publisher {
+    var subs: [Subscriber] = [];
+
+    public func subscribe(sub: Subscriber) {
+        subs := Array.append&lt;Subscriber&gt;(subs, [sub]);
+    };
+
+    public func publish() {
+        for (sub in subs.vals()) {
+          sub.notify();
+        };
+    };
+};</code></pre>
+<p>Later, when some unspecified external agent invokes the
+<code>publish</code> function, all of the subscribers receive the
+<code>notify</code> message, as defined in the <code>Subscriber</code>
+type given above.</p>
+<h3 id="subscriber-methods">Subscriber methods</h3>
+<p>In the simplest case, the subscriber actor has the following
+methods:</p>
+<ul>
+<li><p>Subscribe to notifications from the publisher using the
+<code>init</code> method.</p></li>
+<li><p>Receive notification as one of the subscribed actors as specified
+by the <code>notify</code> function in the <code>Subscriber</code> type
+given above).</p></li>
+<li><p>Permit queries to the accumulated state, which in this sample
+code is simply a <code>get</code> method for the number of notifications
+received and stored in the <code>count</code> variable.</p></li>
+</ul>
+<p>The following code illustrates implementing these methods:</p>
+<pre class="motoko"><code>actor Subscriber {
+  var count: Nat = 0;
+  public func init() {
+    Publisher.subscribe(Subscriber);
+  };
+  public func notify() {
+    count += 1;
+  };
+  public func get() : async Nat {
+    count
+  };
+}</code></pre>
+<p>The actor assumes, but does not enforce, that its <code>init</code>
+function is only ever called once. In the <code>init</code> function,
+the <code>Subscriber</code> actor passes a reference to itself, of type
+<code>actor { notify : () → () };</code> (locally called
+<code>Subscriber</code> above).</p>
+<p>If called more than once, the actor will subscribe itself multiple
+times, and will receive multiple (duplicate) notifications from the
+publisher. This fragility is the consequence of the basic
+publisher-subscriber design we show above. With more care, a more
+advanced publisher actor could check for duplicate subscriber actors and
+ignore them, for instance.</p>
+<h2 id="sharing-functions-among-actors">Sharing functions among
+actors</h2>
+<p>In Motoko, a <code>shared</code> actor function can be sent in a
+message to another actor, and then later called by that actor, or by
+another actor.</p>
+<p>The code shown above has been simplified for illustrative purposes.
+The full version offers additional features to the publisher-subscriber
+relationship, and uses shared functions to make this relationship more
+flexible.</p>
+<p>For instance, the notification function is <em>always</em> designated
+as <code>notify</code>. A more flexible design would only fix the type
+of <code>notify</code>, and permit the subscriber to choose any of its
+<code>shared</code> functions, specified in a <code>subscribe</code>
+message in place of (just) the actor that is subscribing.</p>
+<p>See the <a
+href="https://github.com/dfinity/examples/tree/master/motoko/pub-sub">the
+full example</a> for details.</p>
+<p>In particular, suppose that the subscriber wants to avoid being
+locked into a certain naming scheme for its interface. What really
+matters is that the publisher can call <em>some</em> function that the
+subscriber chooses.</p>
+<h3 id="the-shared-keyword">The <code>shared</code> keyword</h3>
+<p>To permit this flexibility, an actor needs to share a single
+<em>function</em> that permits remote invocation from another actor, not
+merely a reference to itself.</p>
+<p>The ability to share a function requires that it be pre-designated as
+<code>shared</code>, and the type system enforces that these functions
+follow certain rules around the types of data that these functions
+accept, return, and over which their closures close.</p>
+<p>Motoko lets you omit this keyword for <em>public</em> actor methods
+since, implicitly, <em>any public function of an actor must be
+`shared`</em>, whether marked explicitly or not.</p>
+<p>Using the <code>shared</code> function type, we can extend the
+example above to be more flexible. For example:</p>
+<pre class="motoko"><code>type SubscribeMessage = { callback: shared () -&gt; (); };</code></pre>
+<p>This type differs from the original, in that it describes <em>a
+message</em> record type with a single field called
+<code>callback</code>, and the original type first shown above describes
+<em>an actor</em> type with a single method called
+<code>notify</code>:</p>
+<pre class="motoko"><code>type Subscriber = actor { notify : () -&gt; () };</code></pre>
+<p>Notably, the <code>actor</code> keyword means that this latter type
+is not an ordinary record with fields, but rather, an actor with at
+least one method, which <em>must</em> be called <code>notify</code>.</p>
+<p>By using the <code>SubscribeMessage</code> type instead, the
+<code>Subscriber</code> actor can choose another name for their
+<code>notify</code> method:</p>
+<pre class="motoko"><code>actor Subscriber {
+  var count: Nat = 0;
+  public func init() {
+    Publisher.subscribe({callback = incr;});
+  };
+  public func incr() {
+    count += 1;
+  };
+  public query func get(): async Nat {
+    count
+  };
+};</code></pre>
+<p>Compared to the original version, the only lines that change are
+those that rename <code>notify</code> to <code>incr</code>, and form the
+new <code>subscribe</code> message payload, using the expression
+<code>{callback = incr}</code>.</p>
+<p>Likewise, we can update the publisher to have a matching
+interface:</p>
+<pre class="motoko"><code>import Array &quot;mo:base/Array&quot;;
+actor Publisher {
+  var subs: [SubscribeMessage] = [];
+  public func subscribe(sub: SubscribeMessage) {
+    subs := Array.append&lt;SubscribeMessage&gt;(subs, [sub]);
+  };
+  public func publish() {
+    for (sub in subs.vals()) {
+      sub.callback();
+    };
+  };
+};</code></pre>
+</body>
+</html>

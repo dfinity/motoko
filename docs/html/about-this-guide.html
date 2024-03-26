@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>md/about-this-guide.md</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]-->
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">md/about-this-guide.md</h1>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#motoko-programming-language-guide"
+id="toc-motoko-programming-language-guide">Motoko Programming Language
+Guide</a>
+<ul>
+<li><a href="#about-this-guide" id="toc-about-this-guide">About this
+guide</a></li>
+<li><a href="#intended-audience" id="toc-intended-audience">Intended
+audience</a></li>
+<li><a href="#using-this-guide" id="toc-using-this-guide">Using this
+guide</a></li>
+<li><a href="#documentation-conventions"
+id="toc-documentation-conventions">Documentation conventions</a></li>
+<li><a href="#engineering-values-and-goals"
+id="toc-engineering-values-and-goals">Engineering values and goals</a>
+<ul>
+<li><a href="#core-values" id="toc-core-values">Core values</a></li>
+<li><a href="#secondary-values" id="toc-secondary-values">Secondary
+values</a></li>
+<li><a href="#non-goals" id="toc-non-goals">Non-goals</a></li>
+</ul></li>
+<li><a href="#finding-more-information"
+id="toc-finding-more-information">Finding more information</a>
+<ul>
+<li><a href="#webassembly" id="toc-webassembly">WebAssembly</a></li>
+<li><a href="#modern-type-systems" id="toc-modern-type-systems">Modern
+type systems</a></li>
+</ul></li>
+<li><a href="#getting-additional-support"
+id="toc-getting-additional-support">Getting additional support</a></li>
+</ul></li>
+</ul>
+</nav>
+<h1 id="motoko-programming-language-guide">Motoko Programming Language
+Guide</h1>
+<h2 id="about-this-guide">About this guide</h2>
+<p>The <em>Motoko Programming Language Guide</em> introduces key
+features of the general-purpose Motoko programming language and provides
+examples and reference information to help you learn the nuances of the
+language and the practical implications of how to apply it.</p>
+<p>The Motoko programming language is optimized for developing programs
+that run on the Internet Computer blockchain network and to work with
+the <a
+href="https://internetcomputer.org/docs/current/developer-docs/setup/install">IC
+SDK</a>. You could, in principle, also write programs using Motoko for
+more traditional platforms and to run in other contexts, though support
+for this is currently best-effort and incomplete. This guide attempts to
+strike a balance between highlighting features that are uniquely suited
+to running on the Internet Computer and features that are
+generally-applicable or well-suited for programs running on all
+targets.</p>
+<h2 id="intended-audience">Intended audience</h2>
+<p>This guide provides reference information and examples for
+programmers who want to explore or plan to use the Motoko programming
+language. Most of the information in this guide is applicable
+independent of whether you are developing programs to run on the
+Internet Computer or working with the <a
+href="https://internetcomputer.org/docs/current/developer-docs/setup/install">IC
+SDK</a>.</p>
+<p>The guide assumes you are familiar with basic programming principles
+and terminology and have at least some experience writing programs in a
+high-level programming language such as C++ or Rust, or have practical
+experience working with a scripting language such as JavaScript or
+TypeScript. In addition, Motoko incorporates some aspects of functional
+programming, so you might find some knowledge of functional programming
+design principles helpful in learning to use Motoko.</p>
+<p>Although this guide is intended to help readers from different
+backgrounds understand the basic design principles and semantics of the
+Motoko, you should keep in mind that the language implementation and the
+documentation are also continuing to evolve.</p>
+<h2 id="using-this-guide">Using this guide</h2>
+<p>To provide a framework for learning Motoko, you might want to start
+by reviewing <a href="#engineering-values-and-goals">Engineering values
+and goals</a>. The <a href="#engineering-values-and-goals">Engineering
+values and goals</a> describe the core design considerations for the
+development and evolution of the Motoko programming language.</p>
+<p>With those considerations in mind, you can start to explore
+fundamental concepts, including the role of types and type annotations,
+in simple code examples and small programs.</p>
+<p>Once you are familiar with the basic concepts and terminology, later
+sections introduce programs that compute in more interesting ways,
+including function abstractions, user-defined type definitions,
+user-defined actors, and asynchronous communication.</p>
+<p>As you begin using Motoko to write your own programs, you can return
+to this guide for reference information and examples.</p>
+<p>Most of the code examples in this guide are interactive: you can live
+edit the example, interpret the code in the browser and see the result.
+The interpreter is provided for education purposes. While most of the
+language features are supported in the interpreter, they are not exactly
+the same as the real compiler. For example, you may get a stack overflow
+for a medium-size input, while the real compiler handles the input just
+fine. Some of the system features are not fully supported, such as
+cycles, canister imports and state-mutating query calls.</p>
+<h2 id="documentation-conventions">Documentation conventions</h2>
+<p>The following conventions are used in this guide:</p>
+<ul>
+<li><p><code>Fixed-width</code> font is used for sample code, program
+names, program output, file names, and commands that you type at the
+command line.</p></li>
+<li><p><strong>Bold</strong> text is used to emphasize commands,
+buttons, or user interface text, and to introduce new terms.</p></li>
+<li><p><em>Italics</em> are used for book titles and to emphasize
+specific words or terms.</p></li>
+<li><p>The CAUTION style is used to indicate content that is missing or
+incomplete.</p></li>
+<li><p>The WARNING style is used to indicate where content is outdated
+or potentially inaccurate.</p></li>
+<li><p>The NOTE style is used to indicate content that describes a
+feature that is not yet supported but is planned for a future
+release.</p></li>
+</ul>
+<h2 id="engineering-values-and-goals">Engineering values and goals</h2>
+<p>The engineering effort behind the design and implementation of Motoko
+is driven by a core set of values and goals. The DFINITY engineering
+organization uses these values and goals to define and prioritize the
+language features and enhancements to add and improve as part of
+<em>ongoing</em> language development.</p>
+<p>For transparency into the principles that guide the engineering
+effort, the engineering organization has identified the following sets
+of core values and secondary values for driving the direction of the
+Motoko programming language.</p>
+<h3 id="core-values">Core values</h3>
+<p>The following guiding principles represent the core values of the
+engineering organization in prioritized order:</p>
+<ol type="1">
+<li><p>Seamless integration with the Internet Computer blockchain
+network to ensure that Motoko provides full language support for the
+actor-based model, asynchronous messaging, data persistence, interface
+description language interoperability, and other features.</p></li>
+<li><p>Ergonomics to ensure that Motoko embraces familiarity,
+simplicity, clarity, explicitness, and other human factors.</p></li>
+<li><p>Formal correctness to ensure that Motoko maintains state
+isolation, a sound type system and type safety, precision, pattern
+matching, appropriate defaults, and coding best-practices.</p></li>
+</ol>
+<h3 id="secondary-values">Secondary values</h3>
+<p>The following principles represent the secondary values of the
+engineering organization that are deemed important but not primary
+driving factors:</p>
+<ol type="1">
+<li><p>Expressiveness, so that Motoko provides first-class functions,
+polymorphism, pattern matching, and more as the language
+evolves.</p></li>
+<li><p>Performance, so that Motoko provides reasonably fast operation
+initially and continues to improves as the language evolves.</p></li>
+<li><p>Readiness, so the Motoko comes with "batteries included" in the
+form of libraries and examples and out-of-the-box integration with the
+<a
+href="https://internetcomputer.org/docs/current/developer-docs/setup/install">IC
+SDK</a>.</p></li>
+</ol>
+<h3 id="non-goals">Non-goals</h3>
+<p>As a counterpoint to the core values and goals, the engineering
+organization also identified the following as "non-goals" that are
+outside of the scope of the engineering effort:</p>
+<ol type="1">
+<li><p>Having a more advanced type system, with cutting-edge
+features.</p></li>
+<li><p>Simplicity over functionality in design or implementation (the
+"Worse is Better" approach).</p></li>
+<li><p>Interoperability or support for running Motoko programs on
+blockchains other than the Internet Computer.</p></li>
+</ol>
+<h2 id="finding-more-information">Finding more information</h2>
+<p>For information about using Motoko with the IC SDK for creating and
+managing canisters, see the <a
+href="https://internetcomputer.org/developers">Developer
+Resources</a>.</p>
+<p>For background information on various topics relevant to the design,
+use, or deployment of Motoko services, or the language’s design itself,
+consider the following resources as a starting point:</p>
+<h3 id="webassembly">WebAssembly</h3>
+<ul>
+<li><p><a href="https://webassembly.org/">WebAssembly home
+page</a>.</p></li>
+<li><p><a href="https://www.youtube.com/watch?v=fvkIQfRZ-Y0">WebAssembly
+overview video (youtube)</a>.</p></li>
+</ul>
+<h3 id="modern-type-systems">Modern type systems</h3>
+<ul>
+<li><p><a href="http://www.cs.cmu.edu/~rwh/pfpl/">Practical Foundations
+for Programming Languages</a> by Robert Harper. Cambridge University
+Press, 2016.</p></li>
+<li><p><a href="https://www.cis.upenn.edu/~bcpierce/tapl/">Types and
+Programming Languages</a> by Benjamin C. Pierce. The MIT Press.</p></li>
+</ul>
+<h2 id="getting-additional-support">Getting additional support</h2>
+<p>If you are looking for more information or technical support, the
+DFINITY website provides quick access to frequently-asked questions,
+technical articles, developer updates, and other resources. From the
+website, you can search knowledge base articles, open and view support
+cases, sign up for the newsletter, read the latest blog posts, view
+how-to videos, download software updates, or exchange ideas with members
+of the community.</p>
+<p>In addition to the resources available on the website, you can
+connect with DFINITY or other developers using social media or by
+visiting the DFINITY Community Forum on Discourse and joining the
+conversation.</p>
+</body>
+</html>

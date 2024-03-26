@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>md/structural-equality.md</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]-->
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">md/structural-equality.md</h1>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#structural-equality"
+id="toc-structural-equality">Structural equality</a>
+<ul>
+<li><a href="#subtyping" id="toc-subtyping">Subtyping</a></li>
+<li><a href="#generic-types" id="toc-generic-types">Generic
+types</a></li>
+</ul></li>
+</ul>
+</nav>
+<h1 id="structural-equality">Structural equality</h1>
+<p>Equality (<code>==</code>) — and by extension inequality
+(<code>!=</code>) — is <strong>structural</strong>: two values
+<code>a</code> and <code>b</code> are equal, <code>a == b</code>,
+whenever they have equal contents, regardless of the physical
+representation, or identity, of those values in memory.</p>
+<p>For example, the strings <code>"hello world"</code> and
+<code>"hello " #  "world"</code> are equal, even though they are most
+likely represented by different objects in memory.</p>
+<p>Equality is defined only on <code>shared</code> types or on types
+that don’t contain mutable fields, mutable arrays, non-shared functions,
+or components of generic type.</p>
+<p>For example, we can compare arrays of objects.</p>
+<pre class="motoko"><code>let a = [ { x = 10 }, { x = 20 } ];
+let b = [ { x = 10 }, { x = 20 } ];
+a == b;</code></pre>
+<p>Importantly, this does <em>not</em> compare by reference, but by
+value.</p>
+<h2 id="subtyping">Subtyping</h2>
+<p>Equality respects subtyping so
+<code>{ x = 10 } == { x = 10; y = 20 }</code> returns
+<code>true</code>.</p>
+<p>To accommodate subtyping, two values of different types are equal if
+they are equal at their most specific, common supertype, meaning they
+agree on their common structure. The compiler will warn in cases where
+this might lead to subtle unwanted behaviour. For example:
+<code>{ x = 10 } == { y = 20 }</code> will return <code>true</code>
+because the two values get compared at the empty record type. That’s
+unlikely the intention, so the compiler will emit a warning here.</p>
+<pre class="motoko"><code>{ x = 10 } == { y = 20 };</code></pre>
+<h2 id="generic-types">Generic types</h2>
+<p>It is not possible to declare that a generic type variable is
+<code>shared</code>, so equality can only be used on non-generic types.
+For example, the following expression generates a warning like this:</p>
+<pre class="motoko"><code>func eq&lt;A&gt;(a : A, b : A) : Bool = a == b;</code></pre>
+<p>Comparing these two at the <code>Any</code> type means this
+comparison will return <code>true</code> no matter its arguments, so
+this doesn’t work as one might hope.</p>
+<p>If you run into this limitation in your code, you should accept a
+comparison function of type <code>(A, A) -&gt; Bool</code> as an
+argument, and use that to compare the values instead.</p>
+<p>Let’s look at a list membership test for example. This first
+implementation <em>does not</em> work:</p>
+<pre class="motoko"><code>import List &quot;mo:base/List&quot;;
+
+func contains&lt;A&gt;(element : A, list : List.List&lt;A&gt;) : Bool {
+  switch list {
+    case (?(head, tail))
+      element == head or contains(element, tail);
+    case null false;
+  }
+};
+
+assert(not contains(1, ?(0, null)));</code></pre>
+<p>This assertion will trap because the compiler compares the type
+<code>A</code> at <code>Any</code> which is always <code>true</code>. So
+as long as the list has at least one element, this version of
+<code>contains</code> will always return true.</p>
+<p>This second implementation shows how to accept the comparison
+function explicitly instead:</p>
+<pre class="motoko"><code>import List &quot;mo:base/List&quot;;
+import Nat &quot;mo:base/Nat&quot;;
+
+func contains&lt;A&gt;(eqA : (A, A) -&gt; Bool, element : A, list : List.List&lt;A&gt;) : Bool {
+  switch list {
+    case (?(head, tail))
+      eqA(element, head) or contains(eqA, element, tail);
+    case null false;
+  }
+};
+
+assert(not contains(Nat.equal, 1, ?(0, null)));</code></pre>
+</body>
+</html>

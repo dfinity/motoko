@@ -1,0 +1,1072 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>md/overview.md</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]-->
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">md/overview.md</h1>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#concise-overview-of-motoko"
+id="toc-concise-overview-of-motoko">Concise overview of Motoko</a>
+<ul>
+<li><a href="#motivation-and-goals"
+id="toc-motivation-and-goals">Motivation and Goals</a></li>
+<li><a href="#key-design-points" id="toc-key-design-points">Key Design
+Points</a></li>
+<li><a href="#semantics" id="toc-semantics">Semantics</a></li>
+<li><a href="#implementations"
+id="toc-implementations">Implementation(s)</a></li>
+</ul></li>
+<li><a href="#the-language" id="toc-the-language">The language</a>
+<ul>
+<li><a href="#expressions" id="toc-expressions">Expressions</a></li>
+<li><a href="#libraries" id="toc-libraries">Libraries</a></li>
+<li><a href="#libraries-continued"
+id="toc-libraries-continued">Libraries continued</a></li>
+<li><a href="#blocks-and-declarations"
+id="toc-blocks-and-declarations">Blocks and declarations</a></li>
+<li><a href="#control-flow" id="toc-control-flow">Control flow</a></li>
+</ul></li>
+<li><a href="#primitive-types" id="toc-primitive-types">Primitive
+types</a>
+<ul>
+<li><a href="#unbounded-integers" id="toc-unbounded-integers">Unbounded
+integers</a></li>
+<li><a href="#unbounded-naturals" id="toc-unbounded-naturals">Unbounded
+naturals</a></li>
+<li><a href="#bounded-numbers-trapping"
+id="toc-bounded-numbers-trapping">Bounded numbers (trapping)</a></li>
+<li><a href="#floating-point-numbers"
+id="toc-floating-point-numbers">Floating point numbers</a></li>
+<li><a href="#numeric-operations" id="toc-numeric-operations">Numeric
+operations</a></li>
+<li><a href="#characters-and-text"
+id="toc-characters-and-text">Characters and Text</a></li>
+<li><a href="#booleans" id="toc-booleans">Booleans</a></li>
+</ul></li>
+<li><a href="#functions" id="toc-functions">Functions</a>
+<ul>
+<li><a href="#function-types" id="toc-function-types">Function
+types</a></li>
+<li><a href="#function-declarations--use"
+id="toc-function-declarations--use">Function Declarations &amp;
+Use</a></li>
+</ul></li>
+<li><a href="#composite-types" id="toc-composite-types">Composite
+types</a>
+<ul>
+<li><a href="#tuples" id="toc-tuples">Tuples</a></li>
+<li><a href="#options" id="toc-options">Options</a></li>
+<li><a href="#option-blocks" id="toc-option-blocks">Option
+blocks</a></li>
+<li><a href="#arrays-immutable" id="toc-arrays-immutable">Arrays
+(immutable)</a></li>
+<li><a href="#arrays-mutable" id="toc-arrays-mutable">Arrays
+(mutable)</a></li>
+<li><a href="#records" id="toc-records">Records</a></li>
+<li><a href="#objects" id="toc-objects">Objects</a></li>
+<li><a href="#classes" id="toc-classes">Classes</a></li>
+<li><a href="#variants" id="toc-variants">Variants</a></li>
+<li><a href="#recursive-types" id="toc-recursive-types">Recursive
+Types</a></li>
+<li><a href="#generic-types" id="toc-generic-types">Generic
+types</a></li>
+</ul></li>
+<li><a href="#packages-and-modules"
+id="toc-packages-and-modules">Packages and modules</a>
+<ul>
+<li><a href="#modules" id="toc-modules">Modules</a></li>
+<li><a href="#module-imports" id="toc-module-imports">Module
+imports</a></li>
+</ul></li>
+<li><a href="#platform-features" id="toc-platform-features">Platform
+features</a>
+<ul>
+<li><a href="#actor-types" id="toc-actor-types">Actor types</a></li>
+<li><a href="#sharable--serializable"
+id="toc-sharable--serializable">sharable ≈ serializable</a></li>
+<li><a href="#a-complete-actor" id="toc-a-complete-actor">A complete
+actor</a></li>
+<li><a href="#asyncawait" id="toc-asyncawait">Async/await</a></li>
+<li><a href="#concurrency-hazards"
+id="toc-concurrency-hazards">Concurrency Hazards</a></li>
+<li><a href="#actor-import" id="toc-actor-import">Actor import</a></li>
+<li><a href="#a-candid-interface-file"
+id="toc-a-candid-interface-file">A Candid interface file</a></li>
+<li><a href="#principal-and-caller"
+id="toc-principal-and-caller">Principal and caller</a></li>
+<li><a href="#errors" id="toc-errors">Errors</a></li>
+<li><a href="#stable-variables" id="toc-stable-variables">Stable
+variables</a></li>
+</ul></li>
+<li><a href="#type-system" id="toc-type-system">Type system</a>
+<ul>
+<li><a href="#structural" id="toc-structural">Structural</a></li>
+<li><a href="#subtyping-variants" id="toc-subtyping-variants">Subtyping
+(Variants)</a></li>
+</ul></li>
+<li><a href="#fin" id="toc-fin">Fin</a>
+<ul>
+<li><a href="#not-covered" id="toc-not-covered">Not covered</a></li>
+</ul></li>
+</ul>
+</nav>
+<h1 id="concise-overview-of-motoko">Concise overview of Motoko</h1>
+<p>This is terse, slide-like introduction to Motoko and its
+features.</p>
+<p>(For a gentler introduction, visit the other sections on this
+site.)</p>
+<h2 id="motivation-and-goals">Motivation and Goals</h2>
+<p>A simple, useful language for the Internet Computer (IC)</p>
+<ul>
+<li><p>Familiar syntax</p></li>
+<li><p>Safe by default</p></li>
+<li><p>Incorporating <strong>actor</strong> model for canister smart
+contracts</p></li>
+<li><p>Seamless integration of Internet Computer features</p></li>
+<li><p>Making most of present and future WebAssembly</p></li>
+</ul>
+<h2 id="key-design-points">Key Design Points</h2>
+<ul>
+<li><p>Object-oriented, functional &amp; imperative</p></li>
+<li><p>Objects as records of functions</p></li>
+<li><p><code>async</code>/<code>await</code> for sequential programming
+of asynchronous messaging</p></li>
+<li><p>Structural typing with simple generics and subtyping</p></li>
+<li><p>Safe arithmetic (both unbounded and checked)</p></li>
+<li><p>Non-nullable types by default</p></li>
+<li><p>Garbage collected (no manual memory management)</p></li>
+<li><p>JavaScript-like syntax but statically typed &amp; sane</p></li>
+</ul>
+<p>Inspirations: Java, JavaScript, C#, Swift, Pony, ML, Haskell</p>
+<h2 id="semantics">Semantics</h2>
+<ul>
+<li><p>call-by-value (like Java, C, JS, ML; unlike Haskell)</p></li>
+<li><p>declarations are locally mutually recursive</p></li>
+<li><p>parametric, bounded polymorphism</p></li>
+<li><p>subtyping as zero-cost subsumption, not coercion</p></li>
+<li><p>no dynamic casts</p></li>
+<li><p>no inheritance</p></li>
+</ul>
+<h2 id="implementations">Implementation(s)</h2>
+<ul>
+<li><p>implemented in OCaml (leverages <code>wasm</code>
+libary)</p></li>
+<li><p>simple reference interpreter</p></li>
+<li><p>less simple compiler to WebAssembly</p>
+<ul>
+<li><p>multipass with typed IR in each pass.</p></li>
+<li><p>uniform representation, unboxed arithmetic</p></li>
+<li><p>copying GC, compacting GC, or generational GC (select which with
+compiler flag)</p></li>
+<li><p>GC invoked after messages (for now)</p></li>
+</ul></li>
+<li><p>polymorphism by erasure</p></li>
+</ul>
+<h1 id="the-language">The language</h1>
+<h2 id="expressions">Expressions</h2>
+<ul>
+<li><p>Identifiers:<br />
+<code>x</code>, <code>foo_bar</code>, <code>test123</code>,
+<code>List</code>, <code>Map</code></p></li>
+<li><p>Parentheses <code>( … )</code> for grouping</p></li>
+<li><p>Braces <code>{ … }</code> for scoping (and records)</p></li>
+<li><p><code>;</code> for sequencing</p></li>
+<li><p>Type annotations (to help type inference):<br />
+<code>(42 : Int)</code><br />
+(zero cost)</p></li>
+</ul>
+<h2 id="libraries">Libraries</h2>
+<pre class="motoko"><code>import Debug &quot;mo:base/Debug&quot;;
+import Int &quot;mo:base/Int&quot;;</code></pre>
+<p>(<code>import MyLib "src/MyLib"</code> imports a library from the
+local file system.)</p>
+<p>Specific bindings can be imported from the module using object
+patterns</p>
+<pre class="motoko"><code>import { push; nil } = &quot;mo:base/List&quot;;</code></pre>
+<h2 id="libraries-continued">Libraries continued</h2>
+<pre class="motoko"><code>import Debug &quot;mo:base/Debug&quot;;
+import Int &quot;mo:base/Int&quot;;
+import Trie &quot;mo:base/Trie&quot;;
+
+type Users = Trie.Trie&lt;Text, Nat&gt;; // reference types
+
+Debug.print(Int.toText(7)); // reference functions/values</code></pre>
+<h2 id="blocks-and-declarations">Blocks and declarations</h2>
+<pre class="motoko"><code>type Delta = Nat;
+func print() {
+  Debug.print(Int.toText(counter));
+};
+let d : Delta = 42;
+var counter = 1;
+counter := counter + d;
+print();</code></pre>
+<ul>
+<li><p>Semicolon after each declaration!</p></li>
+<li><p>Mutually recursive</p></li>
+<li><p>Mutable variables marked explicitly</p></li>
+</ul>
+<h2 id="control-flow">Control flow</h2>
+<p>The usual suspects…​</p>
+<ul>
+<li><p><code>do { … }</code></p></li>
+<li><p><code>if b …</code></p></li>
+<li><p><code>if b … else …</code></p></li>
+<li><p><code>switch e { case pat1 e1; …; case _ en }</code></p></li>
+<li><p><code>while b …</code></p></li>
+<li><p><code>loop …</code></p></li>
+<li><p><code>loop …  while b</code></p></li>
+<li><p><code>for (pat in e) …</code></p></li>
+<li><p><code>return</code>, <code>return e</code></p></li>
+<li><p><code>label l e</code>, <code>break l e</code></p></li>
+<li><p><code>do ? { … e! … }</code></p></li>
+<li><p><code>async e</code>, <code>await e</code>
+<em>(restricted)</em></p></li>
+<li><p><code>throw</code>, <code>try … catch x { … }</code>
+<em>(restricted)</em></p></li>
+</ul>
+<h1 id="primitive-types">Primitive types</h1>
+<h2 id="unbounded-integers">Unbounded integers</h2>
+<p><code>Int</code></p>
+<p><code>{ …​, -2, 1, 0, 1, 2, …​ }</code></p>
+<p>Inferred by default for negative literals.</p>
+<p>Literals: <code>13</code>, <code>0xf4</code>, <code>-20</code>,
+<code>+1</code>, <code>1_000_000</code></p>
+<h2 id="unbounded-naturals">Unbounded naturals</h2>
+<p><code>Nat</code></p>
+<p><code>{ 0, 1, 2, …​ }</code></p>
+<p>Non-negative, trap on underflow.</p>
+<p>Inferred by default for non-negative literals</p>
+<p>Literals: <code>13</code>, <code>0xf4</code>,
+<code>1_000_000</code></p>
+<p><code>Nat &lt;: Int</code></p>
+<p><code>Nat</code> is a <em>subtype</em> of <code>Int</code></p>
+<p>(you can supply a <code>Nat</code> wherever an <code>Int</code> is
+expected)</p>
+<h2 id="bounded-numbers-trapping">Bounded numbers (trapping)</h2>
+<p><code>Nat8</code>, <code>Nat16</code>, <code>Nat32</code>,
+<code>Nat64</code>, <code>Int8</code>, <code>Int16</code>,
+<code>Int32</code>, <code>Int64</code></p>
+<p>Trap on over- and underflow; wrap-around and bit-manipulating
+operations available separately</p>
+<p>Needs type annotations (somewhere)</p>
+<p>Literals: <code>13</code>, <code>0xf4</code>, <code>-20</code>,
+<code>1_000_000</code></p>
+<h2 id="floating-point-numbers">Floating point numbers</h2>
+<p><code>Float</code></p>
+<p>IEEE 754 double precision (64 bit) semantics, normalized NaN</p>
+<p>Inferred for fractional literals</p>
+<p>Literals: 0, -10, <code>2.71</code>, <code>-0.3e+15</code>,
+<code>3.141_592_653_589_793_12</code></p>
+<h2 id="numeric-operations">Numeric operations</h2>
+<p>No surprises here</p>
+<p><code>- x</code><br />
+<code>a + b</code><br />
+<code>a % b</code><br />
+<code>a &amp; b</code><br />
+<code>a &lt;&lt; b</code><br />
+…</p>
+<p><code>a +% b, a -% b, …</code> for wrapping, modular arithmetic
+(where appropriate)</p>
+<h2 id="characters-and-text">Characters and Text</h2>
+<p><code>Char</code>, <code>Text</code></p>
+<p>Unicode! Character = Unicode scalar value; no random access on
+text</p>
+<ul>
+<li><p><code>'x'</code>, <code>'\u{6a}'</code>,
+<code>'☃'</code>,</p></li>
+<li><p><code>"boo"</code>, <code>"foo \u{62}ar ☃"</code></p></li>
+<li><p><code>"Concat" # "enation"</code></p></li>
+</ul>
+<h2 id="booleans">Booleans</h2>
+<p><code>Bool</code></p>
+<p>Literals: <code>true</code>, <code>false</code></p>
+<p><code>a or b</code><br />
+<code>a and b</code><br />
+<code>not b</code><br />
+<code>if (b) e1 else e2</code></p>
+<h1 id="functions">Functions</h1>
+<h2 id="function-types">Function types</h2>
+<ul>
+<li><p>Simple functions:</p>
+<pre class="motoko"><code>Int.toText : Int -&gt; Text</code></pre></li>
+<li><p>multiple arguments and return values</p>
+<pre class="motoko"><code>divRem : (Int, Int) -&gt; (Int, Int)</code></pre></li>
+<li><p>can be generic/polymorphic</p>
+<pre class="motoko"><code>Option.unwrapOr : &lt;T&gt;(?T, default : T) -&gt; T</code></pre></li>
+<li><p>first-class (can be passed around, stored)</p>
+<pre class="motoko"><code>map : &lt;A, B&gt;(f : A -&gt; B, xs : [A]) -&gt; [B]
+let funcs : [&lt;T&gt;(T) -&gt; T] = …</code></pre></li>
+</ul>
+<h2 id="function-declarations--use">Function Declarations &amp; Use</h2>
+<pre class="motoko"><code>func add(x : Int, y : Int) : Int = x + y;
+
+func applyNTimes&lt;T&gt;(n : Int, x : T, f : T -&gt; ()) {
+  if (n &lt;= 0) return;
+  f(x);
+  applyNTimes(n-1, x, f);
+};
+
+applyNTimes&lt;Text&gt;(3, &quot;Hello!&quot;, func(x) { Debug.print(x) } );</code></pre>
+<ul>
+<li><p><code>func() { … }</code> short for
+<code>func() : () = { … }</code></p></li>
+<li><p>Parametric functions</p></li>
+<li><p>Type instantiations may sometimes be omitted</p></li>
+<li><p>Anonymous functions (a.k.a. lambdas)</p></li>
+</ul>
+<h1 id="composite-types">Composite types</h1>
+<h2 id="tuples">Tuples</h2>
+<p><code>(Bool, Float, Text)</code></p>
+<p>immutable, heterogeneous, fixed size</p>
+<pre class="motoko"><code>let tuple = (true or false, 0.6 * 2.0, &quot;foo&quot; # &quot;bar&quot;);</code></pre>
+<pre class="motoko"><code>tuple.1;</code></pre>
+<pre class="motoko"><code>let (_,_,t) = tuple;
+t</code></pre>
+<h2 id="options">Options</h2>
+<p><code>?Text</code></p>
+<p>is either a value of that type, e.g. <code>?"hello"</code>, or
+<code>null</code>.</p>
+<pre class="motoko"><code>func display(x : ?Text) : Text {
+  switch x {
+    case (null) { &quot;No value&quot; };
+    case (?y) { &quot;Value: &quot; # y };
+  };
+};</code></pre>
+<pre class="motoko"><code>(display(null), display(?&quot;Test&quot;))</code></pre>
+<h2 id="option-blocks">Option blocks</h2>
+<p>Switching on every option value can be inconvenient …​</p>
+<p>The <em>option block</em>, <code>do ? { … }</code>, allow you to
+safely access option values with a postfix <em>null break</em>
+<code>!</code> expression.</p>
+<p>Within <code>do ? { … }</code>, which returns an option, the
+expression <code>e!</code> immediately exits the block with
+<code>null</code> when the value of option <code>e</code> is
+<code>null</code> or continues with the option’s contents.</p>
+<pre class="motoko"><code>func add(x : ?Nat, y: ?Nat) : ?Nat {
+  do ? { x! + y! };
+};
+
+(add(null, null), add (?1,null), add (?1,?2), add (null,?2));</code></pre>
+<h2 id="arrays-immutable">Arrays (immutable)</h2>
+<p><code>[Text]</code></p>
+<pre class="motoko"><code>let days = [ &quot;Mon&quot;, &quot;Tue&quot;, &quot;Wed&quot;, &quot;Thu&quot;, &quot;Fri&quot;, &quot;Sat&quot;, &quot;Sun&quot; ];
+
+assert(days.size() == 7);
+
+assert(days[1] == &quot;Tue&quot;);
+
+// days[7] will trap (fixed size)
+
+for (d in days.vals()) { Debug.print(d) };</code></pre>
+<h2 id="arrays-mutable">Arrays (mutable)</h2>
+<p><code>[var Nat]</code></p>
+<pre class="motoko"><code>let counters = [var 1, 2, 3];
+
+assert(counters.size() == 3);
+
+counters[1] := counters[1] + 1;
+
+// counters[3] will trap (fixed size)
+
+counters;</code></pre>
+<h2 id="records">Records</h2>
+<p><code>{first : Text; last : Text; salary : var Nat}</code></p>
+<pre class="motoko"><code>let employee = {first = &quot;John&quot;; last = &quot;Doe&quot;; var salary = 81_932};
+
+Debug.print(
+  employee.first # &quot; &quot; # employee.last # &quot; earns &quot; #
+    Int.toText(employee.salary) # &quot; pounds.&quot;
+);
+
+employee.salary += 79_496;
+
+employee;</code></pre>
+<h2 id="objects">Objects</h2>
+<p><code>{first : Text; last : Text; get : () → Nat; add : Nat → ()}</code></p>
+<pre class="motoko"><code>object self {
+  public let first = &quot;John&quot;;
+  public let last = &quot;Doe&quot;;
+  var salary : Nat = 81_932; // private by default
+  public func get() : Nat = salary;
+  public func add(bump : Nat) { salary += bump };
+}</code></pre>
+<h2 id="classes">Classes</h2>
+<pre class="motoko"><code>class Employee(fst : Text, lst : Text) {
+  public let first = fst;
+  public let last = lst;
+  var salary : Nat = 0;
+  public func get() : Nat = salary;
+  public func add(bump : Nat) { salary += bump };
+}</code></pre>
+<p>Classes are factories for constructing objects.<br />
+A class introduces a type and a function (for constructing
+instances).</p>
+<p>Just sugar for:</p>
+<pre class="motoko"><code>type Employee = {first : Text; last : Text; get : () -&gt; Nat; add : Nat -&gt; ()};
+
+func Employee(fst : Text, lst : Text) : Employee = object { … }</code></pre>
+<h2 id="variants">Variants</h2>
+<p><code>{#sun; #mon; #tue; #wed; #thu; #fri; #sat}</code></p>
+<pre class="motoko"><code>type Day = {#sun; #mon; #tue; #wed; #thu; #fri; #sat};
+
+func toText(d : Day) : Text {
+  switch d {
+     case (#sun) &quot;Sunday&quot;;
+     case (#mon) &quot;Monday&quot;;
+     case (#tue) &quot;Tuesday&quot;;
+     case (#wed) &quot;Wednesday&quot;;
+     case (#thu) &quot;Thursday&quot;;
+     case (#fri) &quot;Friday&quot;;
+     case (#sat) &quot;Saturday&quot;;
+   };
+};
+
+func sort(d : Day) : { #weekDay; #weekEnd } {
+  switch d {
+    case (#sun or #sat) #weekEnd;  // or pattern
+    case _ #weekDay;  // wildcard pattern
+  };
+};</code></pre>
+<h2 id="recursive-types">Recursive Types</h2>
+<pre class="motoko"><code>type List = {
+  #item : {head : Text; tail : List}; // variant with payload!
+  #empty                     // ^^^^ recursion!
+};
+
+func reverse(l : List) : List {
+  func rev(l : List, r : List) : List {
+    switch l {
+      case (#empty) { r };
+      case (#item { head; tail }) { // nested patterns
+        rev(tail, #item {head; tail = r})
+      }
+    }
+  };
+  rev(l, #empty);
+};
+
+let l = reverse(#item {head = &quot;A&quot;; tail = #item {head = &quot;B&quot;; tail = #empty}});</code></pre>
+<h2 id="generic-types">Generic types</h2>
+<pre class="motoko"><code>type List&lt;T&gt; = {
+  #item : {head : T; tail : List&lt;T&gt;};
+  #empty
+};
+
+func reverse&lt;T&gt;(l : List&lt;T&gt;) : List&lt;T&gt; {
+  func rev(l : List&lt;T&gt;, r : List&lt;T&gt;) : List&lt;T&gt; {
+    switch l {
+      case (#empty) { r };
+      case (#item { head; tail }) { // a nested pattern
+        rev(tail, #item {head; tail = r})
+      }
+    }
+  };
+  rev(l, #empty);
+};
+
+let s : List&lt;Text&gt; =
+  reverse(#item {head = &quot;A&quot;; tail = #item {head = &quot;B&quot;; tail = #empty}});
+
+let ns : List&lt;Nat&gt; =
+  reverse(#item {head = 0; tail = #item {head = 1; tail = #empty}})</code></pre>
+<h1 id="packages-and-modules">Packages and modules</h1>
+<h2 id="modules">Modules</h2>
+<pre class="motoko"><code>// the type of base/Int.mo
+module {
+  type Int = Prim.Types.Int;
+  toText : Int -&gt; Text;
+  abs : Int -&gt; Nat;
+  // ...
+}</code></pre>
+<p>modules contain named types and values (like objects),<br />
+but are restricted to <em>static</em> content (pure, no state, …)</p>
+<h2 id="module-imports">Module imports</h2>
+<pre class="motoko"><code>import Debug &quot;mo:base/Debug&quot;;  // import from package
+import Int &quot;mo:base/Int&quot;;
+import MyLib &quot;lib/MyLib&quot;;  // import from local file MyLib.mo</code></pre>
+<p><code>base</code> package provides basic features as separate
+modules.</p>
+<p>More libraries popping up!</p>
+<p><code>MyLib.mo</code> <em>must</em> contain a module or actor class,
+eg:</p>
+<pre class="motoko"><code>module {
+  public type List&lt;T&gt; = …;
+
+  public func reverse&lt;T&gt;(l : List&lt;T&gt;) : List&lt;T&gt; { … };
+}</code></pre>
+<h1 id="platform-features">Platform features</h1>
+<h2 id="actor-types">Actor types</h2>
+<p>Like object types, but marked as <code>actor</code>:</p>
+<pre class="motoko"><code>type Broadcast = actor {
+  register : Receiver -&gt; ();
+  send : Text -&gt; async Nat;
+};
+
+type Receiver = actor {
+  recv : query Text -&gt; async Nat
+};</code></pre>
+<p><em>sharable</em> arguments and <em>no</em> or <em>async</em> result
+type.</p>
+<ul>
+<li><p><code>register</code> is a <em>oneway</em> IC method
+(unawaitable).</p></li>
+<li><p><code>send</code> is an IC <em>update</em> method</p></li>
+<li><p><code>recv</code> is IC <em>query</em> method</p></li>
+</ul>
+<p>IC canister with Candid interface ≈ Motoko actor</p>
+<h2 id="sharable--serializable">sharable ≈ serializable</h2>
+<p><strong>Sharable:</strong></p>
+<ul>
+<li><p>all primitive types</p></li>
+<li><p>records, tuples, arrays, variants, options<br />
+with immutable sharable components</p></li>
+<li><p><code>actor</code> types</p></li>
+<li><p><code>shared</code> function type</p></li>
+</ul>
+<p><strong>Not sharable:</strong></p>
+<ul>
+<li><p>mutable things</p></li>
+<li><p>local functions</p></li>
+<li><p>objects (with methods)</p></li>
+</ul>
+<h2 id="a-complete-actor">A complete actor</h2>
+<pre class="motoko"><code>import Array &quot;mo:base/Array&quot;;
+
+actor Broadcast {
+  type Receiver = actor {recv : query Text -&gt; async Nat};
+
+  var r : [Receiver] = [];
+
+  public func register(a : Receiver) {
+    r := Array.append(r, [a]);
+  };
+
+  public func send(t : Text) : async Nat {
+    var sum = 0;
+    for (a in r.vals()) {
+      sum += await a.recv(t);
+    };
+    return sum;
+  };
+}</code></pre>
+<p>a typical actor/canister main file</p>
+<h2 id="asyncawait">Async/await</h2>
+<p><code>async T</code></p>
+<p>asychronous future or promise</p>
+<p>introduced by <code>async { … }</code><br />
+(implicit in async function declaration)</p>
+<p><code>await e</code><br />
+suspends computation pending <code>e</code>’s result:<br />
+if the result is a value, continues with that value,<br />
+if the result is an <code>Error</code>, <code>throw</code>s the
+error.</p>
+<pre class="motoko"><code>  public func send(t : Text) : async Nat {
+    var sum = 0;
+    for (a in r.vals()) {
+      sum += await a.recv(t); // may return Nat or `throw` error
+    };
+    return sum;
+  };</code></pre>
+<p>(Errors can be handled using <code>try … catch …</code>)</p>
+<h2 id="concurrency-hazards">Concurrency Hazards</h2>
+<p>Functions that <code>await</code> are <em>not</em> atomic.<br />
+Suspension introduces <em>concurrency hazards</em>.</p>
+<p>A bad implementation of <code>send</code>:</p>
+<pre class="motoko"><code>  var sum = 0; // shared state!
+  public func send(t : Text) : async Nat {
+    sum := 0;
+    for (a in r.vals()) {
+      sum += await a.recv(t);
+    };
+    return sum;
+  };</code></pre>
+<p>(Concurrent <code>send</code>s will share and clobber
+<code>sum</code>.)</p>
+<p>Beware of race conditions!</p>
+<h2 id="actor-import">Actor import</h2>
+<pre class="motoko"><code>import Broadcast &quot;canister:Broadcast&quot;;
+/* or
+import Broadcast &quot;ic:r7inp-6aaaa-aaaaa-aaabq-cai&quot;;
+*/
+actor Self {
+
+  var count = 0;
+
+  public func go() {
+    Broadcast.register(Self);
+  };
+
+  public query func recv(msg : Text) : async Nat {
+    return count;
+  }
+}</code></pre>
+<p>(assumes there is a Candid file describing the interface of the
+import)</p>
+<h2 id="a-candid-interface-file">A Candid interface file</h2>
+<p><code>Broadcast</code>'s Candid file (produced by
+<code>moc --idl Broadcast.mo</code> compiler).</p>
+<p>Broadcast.did:</p>
+<pre class="candid"><code>type Receiver =
+ service {
+   recv: (text) -&gt; (nat) query;
+ };
+service : {
+  register: (Receiver) -&gt; () oneway;
+  send: (text) -&gt; (nat);
+}</code></pre>
+<p>A language independent interface definition.</p>
+<p>Could just as easily describe a Rust implementation of
+<code>Broadcast</code>.</p>
+<h2 id="principal-and-caller">Principal and caller</h2>
+<pre class="motoko"><code>import Principal &quot;mo:base/Principal&quot;;
+
+actor Self {
+
+  public shared(context) func hello() : async Text {
+    let myself : Principal = Principal.fromActor(Self);
+    if (context.caller == myself) {
+      &quot;Talking to yourself is the first sign of madness&quot;;
+    } else {
+      &quot;Hello, nice to see you&quot;;
+    };
+  };
+
+}</code></pre>
+<h2 id="errors">Errors</h2>
+<pre class="motoko"><code>import Principal &quot;mo:base/Principal&quot;;
+import Error &quot;mo:base/Error&quot;;
+
+actor Self {
+
+  public shared(context) func hello() : async Text {
+    let myself : Principal = Principal.fromActor(Self);
+    if (context.caller == myself) {
+      throw Error.reject(&quot;Talking to yourself is the first sign of madness&quot;);
+    } else {
+      &quot;Hello, nice to see you&quot;;
+    };
+  };
+
+};
+
+async {
+  let t = try Self.hello() catch (e) { Error.message(e); }
+};</code></pre>
+<p>Similar to exceptions in other languages,<br />
+but <em>only</em> available in async contexts, e.g. shared functions;
+async blocks</p>
+<h2 id="stable-variables">Stable variables</h2>
+<p>If we upgrade the <code>Broadcast</code> actor, all current
+registrations are lost.<br />
+To preserve them, declare the state variable <code>r</code> as
+<code>stable</code>.</p>
+<pre class="motoko"><code>import Array &quot;mo:base/Array&quot;;
+
+actor Broadcast {
+
+  type Receiver = actor {recv : query Text -&gt; async Nat};
+
+  stable var r : [Receiver] = []; // declare r `stable`
+
+  public func register(a : Receiver) { … }
+  public func send(t : Text) : async Nat { … }
+
+  // optional pre-upgrade action
+  system func preupgrade() { Debug.print(&quot;saving receivers&quot;); }
+
+  // optional post-upgrade action
+  system func postupgrade() {  Debug.print(&quot;restoring receivers&quot;); }
+}</code></pre>
+<p>stable variables must have <em>stable</em> types (see manual)<br />
+<code>system</code> hooks can’t send messages</p>
+<h1 id="type-system">Type system</h1>
+<h2 id="structural">Structural</h2>
+<pre class="motoko"><code>/*
+type List = {
+  #item : {head : Text; tail : List};
+  #empty
+};
+
+func reverse(l : List) : List { //... };
+*/
+type Stack = {
+   #empty;
+   #item : {tail : Stack; head : Text};
+};
+
+let stack : Stack = #empty;
+
+let revStack = reverse(stack); // works though reverse defined on List (not Stack)</code></pre>
+<p>Type definitions<br />
+do not create types,<br />
+but name existing types</p>
+<p>Despite their different names, <code>Stack</code> and
+<code>List</code> are equivalent types.</p>
+<h2 id="subtyping-variants">Subtyping (Variants)</h2>
+<p><code>WeekDay &lt;: Day</code></p>
+<pre class="motoko"><code>type WeekDay = {#mon; #tue; #wed; #thu; #fri};
+
+type Day = {#sun; #mon; #tue; #wed; #thu; #fri; #sat};
+
+func toText(d : Day) : Text {
+  switch d
+   { case (#sun) &quot;Sunday&quot;;
+     case (#mon) &quot;Monday&quot;;
+     //...
+   };
+};
+
+let mon : WeekDay = #mon;
+let t = toText(mon); // also works, since WeekDay &lt;: Day</code></pre>
+<p><code>t1 &lt;: t2</code>: <code>t1</code> can be used wherever
+<code>t2</code> is expected</p>
+<p><code>Employee &lt;: Person</code></p>
+<pre class="motoko"><code>type Employee = {first : Text; last : Text; var salary : Nat};
+type Person = {first : Text; last : Text};
+
+func toText(p : Person) : Text {
+  p.last # &quot;,&quot; # p.first;
+};
+
+let employee : Employee =
+  { first = &quot;John&quot;; last = &quot;Doe&quot;; var salary = 161_401};
+
+let t = toText(employee); // also works, since Employee &lt;: Person</code></pre>
+<h1 id="fin">Fin</h1>
+<h2 id="not-covered">Not covered</h2>
+<ul>
+<li><p>Polymorphic functions with type bounds</p></li>
+<li><p>User defined iterator objects, supporting <code>for</code>
+loops.</p></li>
+<li><p>Actor classes</p></li>
+<li><p><code>debug_show</code> for conversion of almost any value to
+text.</p></li>
+<li><p><code>debug e</code> expressions for debug-only
+compilation</p></li>
+<li><p><code>do ? { … e! …  }</code> blocks for handling/propagating
+option values.</p></li>
+<li><p><code>assert e</code> expressions for conditional traps</p></li>
+<li><p>tools:</p>
+<ul>
+<li><p><code>mo_doc</code> (generates doc from doc comments),</p></li>
+<li><p><code>vessel</code> (package manager)</p></li>
+<li><p><code>mo_ide</code> (LSP language server for VSCode, emacs
+etc)</p></li>
+</ul></li>
+</ul>
+<!--
+== Old slides
+
+=== Classes
+
+Classes as functions returning objects:
+
+....
+ class Counter(init : Int) {
+    private var state : Int = init;
+    public func inc() { state += 1; };
+    public func get() : Int { state; };
+  }
+....
+
+Class instantiation as function call (no `new`):
+
+....
+let c = Counter(666);
+c.inc();
+let 667 = c.get();
+....
+
+=== Generic Classes
+
+....
+class Dict< K, V > (cmp : (K,K)-> Int ) {
+  add(k: K, v: V) { ... };
+  find(k: K) : ? V { ... };
+};
+....
+
+....
+let d = Dict<Int,Text> (func (i:Int, j:Int) : Int = i - j);
+d.add(1,"Alice");
+let ? name = d.find(1);
+....
+
+=== Language prelude
+
+* connects internal primitives with surface syntax (types, operations)
+* conversions like `intToNat32`
+* side-effecting operations `debugPrintInt` (tie into execution
+environment)
+* utilities like `hashInt`, `clzNat32`
+
+== Sample App
+
+=== Implementing _Chat_
+
+* type example
+* one server actor
+* multiple clients, each an instance of (actor) class Client.
+
+=== Chat Server
+
+....
+actor Server {
+  private var clients : List<Client> = null;
+
+  private shared broadcast(message : Text) {
+    var next = clients;
+    loop {
+      switch next {
+        case null { return; }
+        case (?l) { l.head.send(message); next := l.tail; };
+      };
+    };
+  };
+....
+
+....
+  public func subscribe(client : Client) : async Post {
+    let cs = {head = client; var tail = clients};
+    clients := ?cs;
+    return broadcast;
+  };
+};
+....
+
+=== Example: The client class
+
+....
+type Server = actor {subscribe : Client -> async Post};
+
+actor class Client() = this {
+  private var name : Text = "";
+  public func start(n : Text , s : Server) {
+    name := n;
+    let _ = async {
+       let post = await s.subscribe(this);
+       post("hello from " # name);
+       post("goodbye from " # name);
+    }
+  };
+....
+
+....
+  public func send(msg : Text) {
+    debugPrint(name # " received " # msg # "\n");
+  };
+};
+....
+
+=== Example: test
+
+test
+
+....
+let bob = Client();
+let alice = Client();
+let charlie = Client();
+
+bob.start("Bob", Server);
+alice.start("Alice", Server);
+charlie.start("Charlie", Server);
+....
+
+output
+
+....
+[nix-shell:~/motoko/guide]$ ../src/moc -r chat.mo
+charlie received hello from bob
+alice received hello from bob
+bob received hello from bob
+charlie received goodbye from bob
+alice received goodbye from bob
+bob received goodbye from bob
+charlie received hello from alice
+alice received hello from alice
+bob received hello from alice
+charlie received goodbye from alice
+alice received goodbye from alice
+bob received goodbye from alice
+charlie received hello from charlie
+alice received hello from charlie
+bob received hello from charlie
+charlie received goodbye from charlie
+alice received goodbye from charlie
+bob received goodbye from charlie
+....
+-->
+</body>
+</html>

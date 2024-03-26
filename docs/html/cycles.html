@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>md/cycles.md</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]-->
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">md/cycles.md</h1>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#managing-cycles" id="toc-managing-cycles">Managing
+cycles</a>
+<ul>
+<li><a href="#the-experimentalcycles-library"
+id="toc-the-experimentalcycles-library">The
+<code>ExperimentalCycles</code> Library</a>
+<ul>
+<li><a href="#example" id="toc-example">Example</a></li>
+</ul></li>
+</ul></li>
+</ul>
+</nav>
+<h1 id="managing-cycles">Managing cycles</h1>
+<p>Usage of the Internet Computer is measured, and paid for, in
+<em>cycles</em>. The Internet Computer maintains a balance of cycles per
+canister smart contract. In addition, cycles can be transferred between
+canisters.</p>
+<p>In Motoko programs targeting the Internet Computer, each actor
+represents an Internet Computer canister, and has an associated balance
+of cycles. The ownership of cycles can be transferred between actors.
+Cycles are selectively sent and received through messages, that is,
+shared function calls. A caller can choose to transfer cycles with a
+call, and a callee can choose to accept cycles that are made available
+by the caller. Unless explicitly instructed, no cycles are transferred
+by callers or accepted by callees.</p>
+<p>Callees can accept all, some or none of the available cycles up to
+limit determined by their actor’s current balance. Any remaining cycles
+are refunded to the caller. If a call traps, all its accompanying cycles
+are automatically refunded to the caller, without loss.</p>
+<p>In future, we may see Motoko adopt dedicated syntax and types to
+support safer programming with cycles. For now, we provide a temporary
+way to manage cycles through a low-level imperative API provided by the
+<a href="./base/ExperimentalCycles.md">ExperimentalCycles</a> library in
+package <code>base</code>.</p>
+<p>:::note</p>
+<p>This library is subject to change and likely to be replaced by more
+high-level support for cycles in later versions of Motoko.</p>
+<p>:::</p>
+<h2 id="the-experimentalcycles-library">The
+<code>ExperimentalCycles</code> Library</h2>
+<p>The <code>ExperimentalCycles</code> library provides imperative
+operations for observing an actor’s current balance of cycles,
+transferring cycles and observing refunds.</p>
+<p>The library provides the following operations:</p>
+<pre class="motoko"><code>func balance() : (amount : Nat)
+
+func available() : (amount : Nat)
+
+func accept(amount : Nat) : (accepted : Nat)
+
+func add(amount : Nat) : ()
+
+func refunded() : (amount : Nat)</code></pre>
+<p>Function <code>balance()</code> returns the actor’s current balance
+of cycles as <code>amount</code>. Function <code>balance()</code> is
+stateful and may return different values after calls to
+<code>accept(n)</code>, calling a function after <code>add</code>ing
+cycles, or resuming from await (reflecting a refund).</p>
+<p>:::danger</p>
+<p>Since cycles measure computational resources spent, the value of
+<code>balance()</code> generally decreases from one shared function call
+to the next.</p>
+<p>:::</p>
+<p>Function <code>available()</code>, returns the currently available
+<code>amount</code> of cycles. This is the amount received from the
+current caller, minus the cumulative amount <code>accept</code>ed so far
+by this call. On exit from the current shared function or
+<code>async</code> expression via <code>return</code> or
+<code>throw</code> any remaining available amount is automatically
+refunded to the caller.</p>
+<p>Function <code>accept</code> transfers <code>amount</code> from
+<code>available()</code> to <code>balance()</code>. It returns the
+amount actually transferred, which may be less than requested, for
+example, if less is available, or if canister balance limits are
+reached.</p>
+<p>Function <code>add(amount)</code> indicates the additional amount of
+cycles to be transferred in the next remote call, i.e. evaluation of a
+shared function call or <code>async</code> expression. Upon the call,
+but not before, the total amount of units <code>add</code>ed since the
+last call is deducted from <code>balance()</code>. If this total exceeds
+<code>balance()</code>, the caller traps, aborting the call.</p>
+<p>:::note</p>
+<p>the implicit register of added amounts, incremented on each
+<code>add</code>, is reset to zero on entry to a shared function, and
+after each shared function call or on resume from an await.</p>
+<p>:::</p>
+<p>Function <code>refunded()</code> reports the <code>amount</code> of
+cycles refunded in the last <code>await</code> of the current context,
+or zero if no await has occurred yet. Calling <code>refunded()</code> is
+solely informational and does not affect <code>balance()</code>.
+Instead, refunds are automatically added to the current balance, whether
+or not <code>refunded</code> is used to observe them.</p>
+<h3 id="example">Example</h3>
+<p>To illustrate, we will now use the <code>ExperimentalCycles</code>
+library to implement a toy <em>piggy bank</em> for saving cycles.</p>
+<p>Our piggy bank has an implicit owner, a <code>benefit</code> callback
+and a fixed <code>capacity</code>, all supplied at time of construction.
+The callback is used to transfer <em>withdrawn</em> amounts.</p>
+<pre class="motoko"><code></code></pre>
+<p>The owner of the bank is identified with the (implicit) caller of
+constructor <code>PiggyBank()</code>, using the shared pattern,
+<code>shared(msg)</code>. Field <code>msg.caller</code> is a
+<code>Principal</code> and is stored in private variable
+<code>owner</code> (for future reference). See <a
+href="caller-id.md">Principals and caller identification</a> for more
+explanation of this syntax.</p>
+<p>The piggy bank is initially empty, with zero current
+<code>savings</code>.</p>
+<p>Only calls from <code>owner</code> may:</p>
+<ul>
+<li><p>query the current <code>savings</code> of the piggy bank
+(function <code>getSavings()</code>), or</p></li>
+<li><p>withdraw amounts from the savings (function
+<code>withdraw(amount)</code>).</p></li>
+</ul>
+<p>The restriction on the caller is enforced by the statements
+<code>assert (msg.caller == owner)</code>, whose failure causes the
+enclosing function to trap, without revealing the balance or moving any
+cycles.</p>
+<p>Any caller may <code>deposit</code> an amount of cycles, provided the
+savings will not exceed <code>capacity</code>, breaking the piggy bank.
+Because the deposit function only accepts a portion of the available
+amount, a caller whose deposit exceeds the limit will receive an
+implicit refund of any unaccepted cycles. Refunds are automatic and
+ensured by the Internet Computer infrastructure.</p>
+<p>Since transfer of cycles is one-directional (from caller to callee),
+retrieving cycles requires the use of an explicit callback (the
+<code>benefit</code> function, taken by the constructor as an argument).
+Here, <code>benefit</code> is called by the <code>withdraw</code>
+function, but only after authenticating the caller as
+<code>owner</code>. Invoking <code>benefit</code> in
+<code>withdraw</code> inverts the caller/caller relationship, allowing
+cycles to flow "upstream".</p>
+<p>Note that the owner of the <code>PiggyBank</code> could, in fact,
+supply a callback that rewards a beneficiary distinct from
+<code>owner</code>.</p>
+<p>Here’s how an owner, <code>Alice</code>, might use an instance of
+<code>PiggyBank</code>:</p>
+<pre class="motoko"><code></code></pre>
+<p>Let’s dissect <code>Alice</code>'s code.</p>
+<p><code>Alice</code> imports the <code>PiggyBank</code> actor class as
+a library, so she can create a new <code>PiggyBank</code> actor on
+demand.</p>
+<p>Most of the action occurs in <code>Alice</code>'s <code>test()</code>
+function:</p>
+<p>Alice dedicates <code>10_000_000_000_000</code> of her own cycles for
+running the piggy bank, by calling
+<code>Cycles.add(10_000_000_000_000)</code> just before creating a new
+instance, <code>porky</code>, of the <code>PiggyBank</code>, passing
+callback <code>Alice.credit</code> and capacity
+(<code>1_000_000_000</code>). Passing <code>Alice.credit</code>
+nominates <code>Alice</code> as the beneficiary of withdrawals. The
+<code>10_000_000_000_000</code> cycles, minus a small installation fee,
+are credited to <code>porky</code>'s balance without any further action
+by <code>porky</code> initialization code. You can think of this as an
+electric piggy bank, that consumes its own resources as its used. Since
+constructing a <code>PiggyBank</code> is asynchronous,
+<code>Alice</code> needs to <code>await</code> the result.</p>
+<p>After creating <code>porky</code>, she first verifies that the
+<code>porky.getSavings()</code> is zero using an
+<code>assert</code>.</p>
+<p><code>Alice</code> dedicates <code>1_000_000</code> of her cycles
+(<code>Cycles.add(1_000_000)</code>) to transfer to <code>porky</code>
+with the next call to <code>porky.deposit()</code>. The cycles are only
+consumed from Alice’s balance if the call to
+<code>porky.deposit()</code> succeeds (which it should).</p>
+<p><code>Alice</code> now withdraws half the amount,
+<code>500_000</code>, and verifies that <code>porky</code>'s savings
+have halved. <code>Alice</code> eventually receives the cycles via a
+callback to <code>Alice.credit()</code>, initiated in
+<code>porky.withdraw()</code>. Note the received cycles are precisely
+the cycles <code>add</code>ed in <code>porky.withdraw()</code>, before
+it invokes its <code>benefit</code> callback, that is,
+<code>Alice.credit</code>.</p>
+<p><code>Alice</code> withdraws another <code>500_000</code> cycles to
+wipe out her savings.</p>
+<p><code>Alice</code> vainly tries to deposit <code>2_000_000_000</code>
+cycles into <code>porky</code> but this exceeds <code>porky</code>'s
+capacity by half, so <code>porky</code> accepts
+<code>1_000_000_000</code> and refunds the remaining
+<code>1_000_000_000</code> to <code>Alice</code>. <code>Alice</code>
+verifies the refund amount (<code>Cycles.refunded()</code>), which has
+(already) been automatically restored to her balance. She also verifies
+<code>porky</code>'s adjusted savings.</p>
+<p><code>Alice</code>'s <code>credit()</code> function simply accepts
+all available cycles by calling <code>Cycles.accept(available)</code>,
+checking the actually <code>accepted</code> amount with an assert.</p>
+<p>:::note</p>
+<p>For this example, Alice is using her (readily available) cycles, that
+she already owns.</p>
+<p>:::</p>
+<p>:::danger</p>
+<p>Because <code>porky</code> consumes cycles in its operation, it is
+possible for <code>porky</code> to spend some or even all of Alice’s
+cycle savings before she has a chance to retrieve them.</p>
+<p>:::</p>
+</body>
+</html>

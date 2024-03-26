@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>md/compatibility.md</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]-->
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">md/compatibility.md</h1>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#verifying-upgrade-compatibility"
+id="toc-verifying-upgrade-compatibility">Verifying upgrade
+compatibility</a>
+<ul>
+<li><a href="#an-unstable-counter" id="toc-an-unstable-counter">An
+unstable counter</a></li>
+<li><a href="#a-stable-counter" id="toc-a-stable-counter">A stable
+counter</a></li>
+<li><a href="#evolving-the-candid-interface"
+id="toc-evolving-the-candid-interface">Evolving the Candid
+interface:</a></li>
+<li><a href="#changing-the-stable-interface"
+id="toc-changing-the-stable-interface">Changing the stable
+interface</a></li>
+<li><a href="#what-gives" id="toc-what-gives">What gives?</a></li>
+<li><a href="#stable-type-signatures"
+id="toc-stable-type-signatures">Stable type signatures</a></li>
+<li><a href="#dual-interface-evolution"
+id="toc-dual-interface-evolution">Dual interface evolution</a></li>
+<li><a href="#tooling" id="toc-tooling">Tooling</a></li>
+<li><a href="#examples-in-the-wild"
+id="toc-examples-in-the-wild">Examples in the wild</a></li>
+<li><a href="#metadata-sections" id="toc-metadata-sections">Metadata
+Sections</a></li>
+<li><a href="#why-are-we-seeing-data-loss-only-now"
+id="toc-why-are-we-seeing-data-loss-only-now">Why are we seeing
+data-loss only now?</a></li>
+<li><a href="#the-right-solution" id="toc-the-right-solution">The right
+solution</a></li>
+</ul></li>
+</ul>
+</nav>
+<h1 id="verifying-upgrade-compatibility">Verifying upgrade
+compatibility</h1>
+<p>Goal: we need to verify that an upgrade can proceed without:</p>
+<ul>
+<li><p>breaking clients (due to a Candid interface change)</p></li>
+<li><p>discarding Motoko stable state (due to a change in stable
+declarations)</p></li>
+</ul>
+<p>With Motoko, we promised to check these properties statically (before
+attempting the upgrade).</p>
+<p>Let’s deliver on that promise.</p>
+<h2 id="an-unstable-counter">An unstable counter</h2>
+<p>The following is a simple example of how to declare a stateful
+counter.</p>
+<pre class="motoko"><code></code></pre>
+<p>Unfortunately, when we upgrade this counter (say with itself), its
+state is lost.</p>
+<table>
+<tbody>
+<tr class="odd">
+<td>version</td>
+<td>state</td>
+<td>success</td>
+<td>call</td>
+</tr>
+<tr class="even">
+<td>v0</td>
+<td>0</td>
+<td>✓</td>
+<td>inc()</td>
+</tr>
+<tr class="odd">
+<td>v0</td>
+<td>1</td>
+<td>✓</td>
+<td>inc()</td>
+</tr>
+<tr class="even">
+<td>v0</td>
+<td>2</td>
+<td>✓</td>
+<td>upgrade(v0)</td>
+</tr>
+<tr class="odd">
+<td>v0</td>
+<td><em>0</em></td>
+<td><em>✗</em></td>
+<td>inc()</td>
+</tr>
+<tr class="even">
+<td>v0</td>
+<td>1</td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h2 id="a-stable-counter">A stable counter</h2>
+<p>In Motoko, we can declare variables to be stable (across
+upgrades).</p>
+<pre class="motoko"><code></code></pre>
+<p>Because it’s <code>stable</code>, this counter’s <code>state</code>
+is <em>retained</em> across upgrades.</p>
+<p>(If not marked <code>stable</code>, <code>state</code> would restart
+from <code>0</code> on upgrade).</p>
+<table>
+<tbody>
+<tr class="odd">
+<td>version</td>
+<td>state</td>
+<td>success</td>
+<td>call</td>
+</tr>
+<tr class="even">
+<td>v1</td>
+<td>0</td>
+<td>✓</td>
+<td>inc()</td>
+</tr>
+<tr class="odd">
+<td>v1</td>
+<td>1</td>
+<td>✓</td>
+<td>inc()</td>
+</tr>
+<tr class="even">
+<td>v1</td>
+<td>2</td>
+<td>✓</td>
+<td>upgrade(v1)</td>
+</tr>
+<tr class="odd">
+<td>v1</td>
+<td>2</td>
+<td><em>✓</em></td>
+<td>inc()</td>
+</tr>
+<tr class="even">
+<td>v1</td>
+<td>3</td>
+<td></td>
+<td></td>
+</tr>
+</tbody>
+</table>
+<h2 id="evolving-the-candid-interface">Evolving the Candid
+interface:</h2>
+<p>Let’s extend the API - old clients still satisfied, new ones get
+extra features (the <code>read</code> query).</p>
+<pre class="motoko"><code></code></pre>
+<table>
+<tbody>
+<tr class="odd">
+<td>version</td>
+<td>state</td>
+<td>success</td>
+<td>call</td>
+</tr>
+<tr class="even">
+<td>v1</td>
+<td>3</td>
+<td>✓</td>
+<td>inc()</td>
+</tr>
+<tr class="odd">
+<td>v1</td>
+<td>4</td>
+<td>✓</td>
+<td>upgrade(v2)</td>
+</tr>
+<tr class="even">
+<td>v2</td>
+<td>4</td>
+<td><em>✓</em></td>
+<td>inc()</td>
+</tr>
+<tr class="odd">
+<td>v2</td>
+<td>5</td>
+<td>✓</td>
+<td>read()</td>
+</tr>
+</tbody>
+</table>
+<h2 id="changing-the-stable-interface">Changing the stable
+interface</h2>
+<p>Observation: the counter is always positive - let’s refactor
+<code>Int</code> to <code>Nat</code>!</p>
+<pre class="motoko"><code></code></pre>
+<table>
+<tbody>
+<tr class="odd">
+<td>version</td>
+<td>state</td>
+<td>success</td>
+<td>call</td>
+</tr>
+<tr class="even">
+<td>v2</td>
+<td>5</td>
+<td>✓</td>
+<td>inc()</td>
+</tr>
+<tr class="odd">
+<td>v2</td>
+<td>6</td>
+<td>✓</td>
+<td>upgrade(v3)</td>
+</tr>
+<tr class="even">
+<td>v3</td>
+<td><em>0</em></td>
+<td><em>✗</em></td>
+<td>inc()</td>
+</tr>
+<tr class="odd">
+<td>v3</td>
+<td>1</td>
+<td>✓</td>
+<td>read()</td>
+</tr>
+</tbody>
+</table>
+<p>BOOM: code upgraded, but counter is back to <code>0</code>.</p>
+<p><em>The unthinkable has happened</em>: state was lost in an
+upgrade.</p>
+<h2 id="what-gives">What gives?</h2>
+<p>The Candid interface evolved safely …​ but the stable types did
+not.</p>
+<p>An upgrade must be able to:</p>
+<ul>
+<li><p>consume any stable variable value from its predecessor,
+or</p></li>
+<li><p>run the initializer for a new stable variable.</p></li>
+</ul>
+<p>Since <code>Int &lt;/: Nat</code>, the upgrade logic discards the
+saved <code>Int</code> (what if it was <code>-1</code>?) and re-runs the
+initializer instead.</p>
+<p>What’s worse, the upgrade silently "succeeded", resetting the counter
+to <code>0</code>.</p>
+<h2 id="stable-type-signatures">Stable type signatures</h2>
+<p>A stable type signature looks like the "insides" of a Motoko actor
+type.</p>
+<p>For example, <code>v2</code>'s stable types:</p>
+<pre class="motoko"><code></code></pre>
+<p>An upgrade from <code>v2</code> to <code>v3</code>'s stable
+types:</p>
+<pre class="motoko"><code></code></pre>
+<p>requires consuming an <code>Int</code> as a <code>Nat</code>: a
+<em><strong>type error</strong></em>.</p>
+<h2 id="dual-interface-evolution">Dual interface evolution</h2>
+<p>An upgrade is safe provided:</p>
+<ul>
+<li><p>the candid interface evolves to a subtype; and</p></li>
+<li><p>the stable interface evolves to a compatible one (variable to
+supertype or new)</p></li>
+</ul>
+<p>Given version <code>v0</code> with candid interface
+<code>v0.did</code> and stable type interface <code>v0.most</code>:</p>
+<pre class="candid"><code></code></pre>
+<pre class="motoko"><code></code></pre>
+<p>And version <code>v1</code> with candid interface <code>v1.did</code>
+and stable type interface <code>v1.most</code>,</p>
+<pre class="candid"><code></code></pre>
+<pre class="motoko"><code></code></pre>
+<p>And version <code>v2</code> with candid interface <code>v2.did</code>
+and stable type interface <code>v2.most</code>,</p>
+<pre class="candid"><code></code></pre>
+<pre class="motoko"><code></code></pre>
+<p>And, finally, version <code>v3</code> with candid interface
+<code>v3.did</code> and stable type interface <code>v3.most</code>:</p>
+<pre class="candid"><code></code></pre>
+<pre class="motoko"><code></code></pre>
+<p>The following table summarizes the (in)compatibilities between
+them:</p>
+<table>
+<tbody>
+<tr class="odd">
+<td>version</td>
+<td>candid interface</td>
+<td>stable type interface</td>
+</tr>
+<tr class="even">
+<td><code>v0</code></td>
+<td><code>v0.did</code></td>
+<td><code>v0.most</code></td>
+</tr>
+<tr class="odd">
+<td></td>
+<td>:&gt; ✓</td>
+<td>&lt;&lt;: ✓</td>
+</tr>
+<tr class="even">
+<td><code>v1</code></td>
+<td><code>v1.did</code></td>
+<td><code>v1.most</code></td>
+</tr>
+<tr class="odd">
+<td></td>
+<td>:&gt; ✓</td>
+<td>&lt;&lt;: ✓</td>
+</tr>
+<tr class="even">
+<td><code>v2</code></td>
+<td><code>v2.did</code></td>
+<td><code>v2.most</code></td>
+</tr>
+<tr class="odd">
+<td></td>
+<td>:&gt; ✓</td>
+<td>&lt;&lt;: <em>✗</em></td>
+</tr>
+<tr class="even">
+<td><code>v3</code></td>
+<td><code>v3.did</code></td>
+<td><code>v3.most</code></td>
+</tr>
+</tbody>
+</table>
+<h2 id="tooling">Tooling</h2>
+<p>Motoko compiler (<code>moc</code>) now supports:</p>
+<ul>
+<li><p><code>moc --stable-types …​</code> emits stable types to a
+<code>.most</code> file</p></li>
+<li><p><code>moc --stable-compatible &lt;pre&gt; &lt;post&gt;</code>
+checks two <code>.most</code> files for upgrade compatibility</p></li>
+</ul>
+<p>To upgrade from <code>cur.wasm</code> to <code>nxt.wasm</code> we
+need check both Candid interface and stable variables are
+"compatible"</p>
+<pre><code>didc check nxt.did cur.did  // nxt &lt;: cur
+moc --stable-compatible cur.most nxt.most  // cur &lt;&lt;: nxt</code></pre>
+<p>E.g. the upgrade from <code>v2</code> to <code>v3</code> fails this
+check:</p>
+<pre><code>&gt; moc --stable-compatible v2.most v3.most
+(unknown location): Compatibility error [M0170], stable variable state of previous type
+  var Int
+cannot be consumed at new type
+  var Nat</code></pre>
+<h2 id="examples-in-the-wild">Examples in the wild</h2>
+<p>A common, real-world example of an incompatible upgrade can be found
+on the forum: <a
+href="https://forum.dfinity.org/t/questions-about-data-structures-and-migrations/822/12?u=claudio">https://forum.dfinity.org/t/questions-about-data-structures-and-migrations/822/12?u=claudio</a></p>
+<p>In that example, a user was attempting to add a field to the record
+payload of an array, by upgrading from stable type interface:</p>
+<pre class="motoko"><code>type Card = {
+  title : Text
+};
+actor {
+  stable var map: [(Nat32, Card)]
+}</code></pre>
+<p>to <em>incompatible</em> stable type interface:</p>
+<pre class="motoko"><code>type Card = {
+  title : Text;
+  description : Text
+};
+actor {
+  stable var map : [(Nat32, Card)]
+}</code></pre>
+<p>Adding a new record field (to magic from nothing) does not work.</p>
+<h2 id="metadata-sections">Metadata Sections</h2>
+<p>Motoko embeds <code>.did</code> and <code>.most</code> files as wasm
+<em>custom sections</em>, for use by other tools, e.g. dfx.</p>
+<p>In future, <code>dfx canister upgrade</code> will, by default:</p>
+<ol type="1">
+<li><p>query the IC for a canister’s dual interfaces,</p></li>
+<li><p>check compatibility of the installed and new binary,</p></li>
+<li><p>abort the upgrade when unsafe.</p></li>
+</ol>
+<h2 id="why-are-we-seeing-data-loss-only-now">Why are we seeing
+data-loss only now?</h2>
+<p>A side-effect of a revision to Candid (used for stabilizing
+variables):</p>
+<ul>
+<li><p>Previously, upgrades from <code>v2.wasm</code> to
+<code>v3.wasm</code> would fail and roll-back (no data loss).</p></li>
+<li><p>Candid revision meant upgrade would now "succeed", but
+<em>with</em> data loss.</p></li>
+</ul>
+<p>("fail safe" vs "silent failure")</p>
+<h2 id="the-right-solution">The right solution</h2>
+<p>What if we really do want to change <code>state</code> to
+<code>Nat</code>.</p>
+<p>Solution: introduce a new stable variable, <code>newState</code>,
+initialized from the old one:</p>
+<pre class="motoko"><code></code></pre>
+<pre class="motoko"><code></code></pre>
+<p>(Or use a variant from the start…​)</p>
+</body>
+</html>

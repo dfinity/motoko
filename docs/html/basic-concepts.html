@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>md/basic-concepts.md</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]-->
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">md/basic-concepts.md</h1>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#basic-concepts-and-terms"
+id="toc-basic-concepts-and-terms">Basic concepts and terms</a>
+<ul>
+<li><a href="#motoko-program-syntax"
+id="toc-motoko-program-syntax">Motoko program syntax</a></li>
+<li><a href="#declarations-and-expressions"
+id="toc-declarations-and-expressions">Declarations and expressions</a>
+<ul>
+<li><a href="#declarations-versus-expressions"
+id="toc-declarations-versus-expressions">Declarations versus
+expressions</a></li>
+<li><a href="#ignoring-non-unit-typed-expressions-in-declaration-lists"
+id="toc-ignoring-non-unit-typed-expressions-in-declaration-lists">Ignoring
+non-unit-typed expressions in declaration lists</a></li>
+<li><a href="#declarations-and-variable-substitution"
+id="toc-declarations-and-variable-substitution">Declarations and
+variable substitution</a></li>
+<li><a href="#from-declarations-to-block-expressions"
+id="toc-from-declarations-to-block-expressions">From declarations to
+block expressions</a></li>
+<li><a href="#declarations-follow-lexical-scoping"
+id="toc-declarations-follow-lexical-scoping">Declarations follow
+<strong>lexical scoping</strong></a></li>
+</ul></li>
+<li><a href="#values-and-evaluation"
+id="toc-values-and-evaluation">Values and evaluation</a>
+<ul>
+<li><a href="#primitive-values" id="toc-primitive-values">Primitive
+values</a></li>
+<li><a href="#non-primitive-values"
+id="toc-non-primitive-values">Non-primitive values</a></li>
+<li><a href="#the-unit-type-" id="toc-the-unit-type-">The <em>unit</em>
+type <code>()</code></a></li>
+<li><a href="#natural-numbers" id="toc-natural-numbers">Natural
+numbers</a></li>
+</ul></li>
+<li><a href="#type-soundness" id="toc-type-soundness">Type
+soundness</a></li>
+<li><a href="#type-annotations-and-variables"
+id="toc-type-annotations-and-variables">Type annotations and
+variables</a></li>
+<li><a href="#type-errors-and-messages"
+id="toc-type-errors-and-messages">Type errors and messages</a>
+<ul>
+<li><a href="#the-motoko-base-library"
+id="toc-the-motoko-base-library">The Motoko base library</a></li>
+<li><a href="#printing-values" id="toc-printing-values">Printing
+values</a></li>
+<li><a href="#accommodating-incomplete-code"
+id="toc-accommodating-incomplete-code">Accommodating incomplete
+code</a></li>
+<li><a href="#use-short-term-holes" id="toc-use-short-term-holes">Use
+short-term holes</a></li>
+<li><a href="#document-longer-term-holes"
+id="toc-document-longer-term-holes">Document longer-term holes</a></li>
+<li><a href="#document-unreachable-code-paths"
+id="toc-document-unreachable-code-paths">Document
+<code>unreachable</code> code paths</a></li>
+<li><a href="#traps-due-to-faults" id="toc-traps-due-to-faults">Traps
+due to faults</a></li>
+<li><a href="#explicit-traps" id="toc-explicit-traps">Explicit
+traps</a></li>
+<li><a href="#assertions" id="toc-assertions">Assertions</a></li>
+</ul></li>
+</ul></li>
+</ul>
+</nav>
+<h1 id="basic-concepts-and-terms">Basic concepts and terms</h1>
+<p>Motoko is designed for distributed programming with actors.</p>
+<p>When programming on the Internet Computer in Motoko, each
+<strong>actor</strong> represents an <strong>Internet Computer canister
+smart contract</strong> with a Candid interface, whether written in
+Motoko, Rust, Wasm or some other language that compiles to Wasm. Within
+Motoko, we use the term <strong>actor</strong> to refer to any canister,
+authored in any language that deploys to the Internet Computer. The role
+of Motoko is to make these actors easy to author, and easy to use
+programmatically, once deployed.</p>
+<p>Before you begin writing distributed applications using actors, you
+should be familiar with a few of the basic building blocks of any
+programming language and with Motoko in particular. To get you started,
+this section introduces the following key concepts and terms that are
+used throughout the remainder of the documentation and that are
+essential to learning to program in Motoko:</p>
+<ul>
+<li><p>program</p></li>
+<li><p>declaration</p></li>
+<li><p>expression</p></li>
+<li><p>value</p></li>
+<li><p>variable</p></li>
+<li><p>type</p></li>
+</ul>
+<p>If you have experience programming in other languages or are familiar
+with modern programming language theory, you are probably already
+comfortable with these terms and how they are used. There’s nothing
+unique in how these terms are used in Motoko. If you are new to
+programming, however, this guide introduces each of these terms
+gradually and by using simplified example programs that eschew any use
+of actors or distributed programming. After you have the basic
+terminology as a foundation to build on, you can explore more advanced
+aspects of the language. More advanced features are illustrated with
+correspondingly more complex examples.</p>
+<p>The following topics are covered in the section:</p>
+<ul>
+<li><p><a href="#motoko-program-syntax">Motoko program
+syntax</a></p></li>
+<li><p><a href="#printing-values">Printing values</a></p></li>
+<li><p><a href="#the-motoko-base-library">Using the base
+library</a></p></li>
+<li><p><a href="#declarations-versus-expressions">Declarations versus
+expressions</a></p></li>
+<li><p><a href="#declarations-follow-lexical-scoping">Lexical scoping of
+variables</a></p></li>
+<li><p><a href="#values-and-evaluation">Values and
+evaluation</a></p></li>
+<li><p><a href="#type-annotations-and-variables">Type annotations and
+variables</a></p></li>
+<li><p><a href="#type-soundness">Type soundness and type-safe
+evaluation</a></p></li>
+</ul>
+<h2 id="motoko-program-syntax">Motoko program syntax</h2>
+<p>Each Motoko <em>program</em> is a free mix of declarations and
+expressions, whose syntactic classes are distinct, but related (see the
+<a href="language-manual.md">language quick reference</a> for precise
+program syntax).</p>
+<p>For programs that we deploy on the Internet Computer, a valid program
+consists of an <em>actor expression</em>, introduced with specific
+syntax (keyword <code>actor</code>) that we discuss in <a
+href="actors-async.md">Actors and async data</a>.</p>
+<p>In preparing for that discussion, this section and Section <a
+href="mutable-state.md">Mutable state</a> begin by discussing programs
+that are not meant to be Internet Computer services. Rather, these tiny
+programs illustrate snippets of Motoko for writing those services, and
+each can (usually) be run on its own as a (non-service) Motoko program,
+possibly with some printed terminal output.</p>
+<p>The examples in this section illustrate basic principles using simple
+expressions, such as arithmetic. For an overview of the full expression
+syntax of Motoko, see the <a href="language-manual.md">Language quick
+reference</a>.</p>
+<p>As a starting point, the following code snippet consists of two
+declarations — for the variables <code>x</code> and <code>y</code> —
+followed by an expression to form a single program:</p>
+<pre class="motoko"><code>let x = 1;
+let y = x + 1;
+x * y + x;</code></pre>
+<p>We will use variations of this small program in our discussion
+below.</p>
+<p>First, this program’s type is <code>Nat</code> (natural number), and
+when run, it evaluates to the (natural number) value of
+<code>3</code>.</p>
+<p>Introducing a block with enclosing braces (<code>do {</code> and
+<code>}</code>) and another variable (<code>z</code>), we can amend our
+original program as follows:</p>
+<pre class="motoko"><code>let z = do {
+  let x = 1;
+  let y = x + 1;
+  x * y + x
+};</code></pre>
+<h2 id="declarations-and-expressions">Declarations and expressions</h2>
+<p>Declarations introduce immutable variables, mutable state, actors,
+objects, classes and other types. Expressions describe computations that
+involve these notions.</p>
+<p>For now, we use example programs that declare immutable variables,
+and compute simple arithmetic.</p>
+<h3 id="declarations-versus-expressions">Declarations versus
+expressions</h3>
+<p><a href="#motoko-program-syntax">Recall</a> that each Motoko
+<em>program</em> is a free mix of declarations and expressions, whose
+syntactic classes are distinct, but related. In this section, we use
+examples to illustrate their distinctions and accommodate their
+intermixing.</p>
+<p>Recall our example program, first introduced above:</p>
+<pre class="motoko"><code>let x = 1;
+let y = x + 1;
+x * y + x;</code></pre>
+<p>In reality, this program is a <em>declaration list</em> that consists
+of <em>three</em> declarations:</p>
+<ol type="1">
+<li><p>immutable variable <code>x</code>, via declaration
+<code>let x = 1;</code>,</p></li>
+<li><p>immutable variable <code>y</code>, via declaration
+<code>let y = x + 1;</code>,</p></li>
+<li><p>and an <em>unnamed, implicit variable</em> holding the final
+expression’s value, <code>x * y + x</code>.</p></li>
+</ol>
+<p>This expression <code>x * y + x</code> illustrates a more general
+principle: Each expression can be thought of as a declaration where
+necessary since the language implicitly declares an unnamed variable
+with that expression’s result value.</p>
+<p>When the expression appears as the final declaration, this expression
+may have any type. Here, the expression <code>x * y + x</code> has type
+<code>Nat</code>.</p>
+<p>Expressions that do not appear at the end, but rather <em>within</em>
+the list of declarations must have unit type <code>()</code>.</p>
+<h3
+id="ignoring-non-unit-typed-expressions-in-declaration-lists">Ignoring
+non-unit-typed expressions in declaration lists</h3>
+<p>We can always overcome this unit-type restriction by explicitly using
+<code>ignore</code> to ignore any unused result values. For example:</p>
+<pre class="motoko"><code>let x = 1;
+ignore(x + 42);
+let y = x + 1;
+ignore(y * 42);
+x * y + x;</code></pre>
+<h3 id="declarations-and-variable-substitution">Declarations and
+variable substitution</h3>
+<p>Declarations can be mutually recursive, but in cases where they are
+not, they permit substitution semantics. (that is, replacing equals for
+equals, as familiar from high-school algebraic simplification).</p>
+<p>Recall our original example:</p>
+<pre class="motoko"><code>let x = 1;
+let y = x + 1;
+x * y + x;</code></pre>
+<p>We can manually rewrite the program above by <em>substituting</em>
+the variables' declared values for each of their respective
+occurrences.</p>
+<p>In so doing, we produce the following expression, which is also a
+program:</p>
+<pre class="motoko"><code>1 * (1 + 1) + 1</code></pre>
+<p>This is also a valid program — of the same type and with the same
+behavior (result value <code>3</code>) — as the original program.</p>
+<p>We can also form a single expression using a block.</p>
+<h3 id="from-declarations-to-block-expressions">From declarations to
+block expressions</h3>
+<p>Many of the programs above each consist of a list of declarations, as
+with this example, just above:</p>
+<pre class="motoko"><code>let x = 1;
+let y = x + 1;
+x * y + x</code></pre>
+<p>A declaration list is not itself (immediately) an
+<em>expression</em>, so we cannot (immediately) declare another variable
+with its final value (<code>3</code>).</p>
+<p><strong>Block expressions.</strong> We can form a <em>block
+expression</em> from this list of declarations by enclosing it with
+matching <em>curly braces</em>. Blocks are only allowed as
+sub-expressions of control flow expressions like <code>if</code>,
+<code>loop</code>, <code>case</code>, etc. In all other places, we use
+<code>do { … }</code> to represent block expression, to distinguish
+blocks from object literals. For example, <code>do {}</code> is the
+empty block of type <code>()</code>, while <code>{}</code> is an empty
+record of record type <code>{}</code>.</p>
+<pre class="motoko"><code>do {
+  let x = 1;
+  let y = x + 1;
+  x * y + x
+}</code></pre>
+<p>This is also program, but one where the declared variables
+<code>x</code> and <code>y</code> are privately scoped to the block we
+introduced.</p>
+<p>This block form preserves the autonomy of the declaration list and
+its <em>choice of variable names</em>.</p>
+<p>A block expression produces a value and, when enclosed in
+parentheses, can occur within some larger, compound expression. For
+example:</p>
+<pre class="motoko"><code>100 +
+  (do {
+     let x = 1;
+     let y = x + 1;
+     x * y + x
+   })</code></pre>
+<h3 id="declarations-follow-lexical-scoping">Declarations follow
+<strong>lexical scoping</strong></h3>
+<p>Above, we saw that nesting blocks preserves the autonomy of each
+separate declaration list and its <em>choice of variable names</em>.
+Language theorists call this idea <em>lexical scoping</em>. It means
+that variables' scopes may nest, but they may not interfere as they
+nest.</p>
+<p>For instance, the following (larger, enclosing) program evaluates to
+<code>42</code>, <em>not</em> <code>2</code>, since the final
+occurrences of <code>x</code> and <code>y</code>, on the final line,
+refer to the <em>very first</em> definitions, <em>not</em> the later
+ones within the enclosed block:</p>
+<pre class="motoko"><code>let x = 40; let y = 2;
+ignore do {
+  let x = 1;
+  let y = x + 1;
+  x * y + x
+};
+x + y</code></pre>
+<p>Other languages that lack lexical scoping may give a different
+meaning to this program. However, modern languages universally favor
+lexical scoping, the meaning given here.</p>
+<p>Aside from mathematical clarity, the chief practical benefit of
+lexical scoping is <em>security</em>, and its use in building
+compositionally-secure systems. Specifically, Motoko gives very strong
+composition properties. For example, nesting your program within a
+program you do not trust cannot arbitrarily redefine your variables with
+different meanings.</p>
+<h2 id="values-and-evaluation">Values and evaluation</h2>
+<!--
+TODO: retitle and improve
+-->
+
+<p>Once a Motoko expression receives the program’s (single) thread of
+control, it evaluates eagerly until it reduces to a <em>result
+value</em>.</p>
+<p>In so doing, it will generally pass control to sub-expressions, and
+to sub-routines before it gives up control from the <em>ambient control
+stack</em>.</p>
+<p>If this expression never reaches a value form, the expression
+evaluates indefinitely. Later we introduce recursive functions and
+imperative control flow, which each permit non-termination. For now, we
+only consider terminating programs that result in values.</p>
+<p>In the material above, we focused on expressions that produced
+natural numbers. As a broader language overview, however, we briefly
+summarize the other value forms below:</p>
+<h3 id="primitive-values">Primitive values</h3>
+<p>Motoko permits the following primitive value forms:</p>
+<ul>
+<li><p>Boolean values (<code>true</code> and
+<code>false</code>).</p></li>
+<li><p>Integers (…​,<code>-2</code>, <code>-1</code>, <code>0</code>,
+<code>1</code>, <code>2</code>, …​) - bounded and <em>unbounded</em>
+variants.</p></li>
+<li><p>Natural numbers (<code>0</code>, <code>1</code>, <code>2</code>,
+…​) - bounded and <em>unbounded</em> variants.</p></li>
+<li><p>Text values - strings of unicode characters.</p></li>
+</ul>
+<p>By default, <strong>integers</strong> and <strong>natural
+numbers</strong> are <em>unbounded</em> and do not overflow. Instead,
+they use representations that grow to accommodate any finite number.</p>
+<p>For practical reasons, Motoko also includes <em>bounded</em> types
+for integers and natural numbers, distinct from the default versions.
+Each bounded variant has a fixed bit-width (one of <code>8</code>,
+<code>16</code>, <code>32</code>, <code>64</code>) that determines the
+range of representable values and each carries the potential for
+<em>overflow</em>. Exceeding a bound is a run-time fault that causes the
+program to <a href="#traps-due-to-faults">trap</a>.</p>
+<p>There are no unchecked, uncaught overflows in Motoko, except in
+well-defined situations, for explicitly <em>wrapping</em> operations
+(indicated by a conventional <code>%</code> character in the operator).
+The language provides primitive built-ins to convert between these
+various number representations.</p>
+<p>The <a href="language-manual.md">language quick reference</a>
+contains a complete list of <a
+href="language-manual.md#primitive-types">primitive types</a>.</p>
+<h3 id="non-primitive-values">Non-primitive values</h3>
+<!--
+TODO: records and modules, improve
+-->
+
+<p>Building on the primitive values and types above, the language
+permits user-defined types, and each of the following non-primitive
+value forms and associated types:</p>
+<ul>
+<li><p><a href="language-manual.md#tuples">Tuples</a>, including the
+unit value (the "empty tuple");</p></li>
+<li><p><a href="language-manual.md#arrays">Arrays</a>, with both
+<em>immutable</em> and <em>mutable</em> variants;</p></li>
+<li><p><a href="language-manual.md#objects">Objects</a>, with named,
+unordered fields and methods;</p></li>
+<li><p><a href="language-manual.md#variant-types">Variants</a>, with
+named constructors and optional payload values;</p></li>
+<li><p><a href="language-manual.md#functions">Function values</a>,
+including <a href="sharing.md">shareable functions</a>;</p></li>
+<li><p><a href="language-manual.md#async">Async values</a>, also known
+as <em>promises</em> or <em>futures</em>;</p></li>
+<li><p><a href="language-manual.md#error-type">Error values</a> carry
+the payload of exceptions and system failures.</p></li>
+</ul>
+<p>We discuss the use of these forms in the next sections.</p>
+<p>For precise language definitions of primitive and non-primitive
+values, see the <a href="language-manual.md">language quick
+reference</a>.</p>
+<h3 id="the-unit-type-">The <em>unit</em> type <code>()</code></h3>
+<p>Motoko has no type named <code>void</code>. In many cases where
+readers may think of return types being “void” from using languages like
+Java or C++, we encourage them to think instead of the <em>unit
+type</em>, written <code>()</code>.</p>
+<p>In practical terms, like <code>void</code>, the unit value usually
+carries zero representation cost.</p>
+<p>Unlike the <code>void</code> type, there <em>is</em> a unit value,
+but like the <code>void</code> return value, the unit value carries no
+values internally, and as such, it always carries zero
+<em>information</em>.</p>
+<p>Another mathematical way to think of the unit value is as a tuple
+with no elements - the nullary (“zero-ary”) tuple. There is only one
+value with these properties, so it is mathematically unique, and thus
+need not be represented at runtime.</p>
+<h3 id="natural-numbers">Natural numbers</h3>
+<p>The members of this type consist of the usual values -
+<code>0</code>, <code>1</code>, <code>2</code>, …​ - but, as in
+mathematics, the members of <code>Nat</code> are not bound to a special
+maximum size. Rather, the runtime representation of these values
+accommodates arbitrary-sized numbers, making their "overflow" (nearly)
+impossible. (<em>nearly</em> because it is the same event as running out
+of program memory, which can always happen for some programs in extreme
+situations).</p>
+<p>Motoko permits the usual arithmetic operations one would expect. As
+an illustrative example, consider the following program:</p>
+<pre class="motoko"><code>let x = 42 + (1 * 37) / 12: Nat</code></pre>
+<p>This program evaluates to the value <code>45</code>, also of type
+<code>Nat</code>.</p>
+<h2 id="type-soundness">Type soundness</h2>
+<p>Each Motoko expression that type-checks we call <em>well-typed</em>.
+The <em>type</em> of a Motoko expression serves as a promise from the
+language to the developer about the future behavior of the program, if
+executed.</p>
+<p>First, each well-typed program will evaluate without undefined
+behavior. That is, the phrase <strong>“well-typed programs don’t go
+wrong”</strong> applies here. For those unfamiliar with the deeper
+implications of that phrase, it means that there is a precise space of
+meaningful (unambiguous) programs, and the type system enforces that we
+stay within it, and that all well-typed programs have a precise
+(unambiguous) meaning.</p>
+<p>Furthermore, the types make a precise prediction over the program’s
+result. If it yields control, the program will generate a <em>result
+value</em> that agrees with that of the original program.</p>
+<p>In either case, the static and dynamic views of the program are
+linked by and agree with the static type system. This agreement is the
+central principle of a static type system, and is delivered by Motoko as
+a core aspect of its design.</p>
+<p>The same type system also enforces that asynchronous interactions
+agree between static and dynamic views of the program, and that the
+resulting messages generated "under the hood" never mismatch at runtime.
+This agreement is similar in spirit to the caller/callee argument type
+and return type agreements that one ordinarily expects in a typed
+language.</p>
+<h2 id="type-annotations-and-variables">Type annotations and
+variables</h2>
+<p>Variables relate (static) names and (static) types with (dynamic)
+values that are present only at runtime.</p>
+<p>In this sense, Motoko types provide a form of <em>trusted,
+compiler-verified documentation</em> in the program source code.</p>
+<p>Consider this very short program:</p>
+<pre class="motoko"><code>let x : Nat = 1</code></pre>
+<p>In this example, the compiler infers that the expression
+<code>1</code> has type <code>Nat</code>, and that <code>x</code> has
+the same type.</p>
+<p>In this case, we can omit this annotation without changing the
+meaning of the program:</p>
+<pre class="motoko"><code>let x = 1</code></pre>
+<p>Except for some esoteric situations involving operator overloading,
+type annotations do not (typically) affect the meaning of the program as
+it runs.</p>
+<p>If they are omitted and the compiler accepts the program, as is the
+case above, the program has the same meaning (same <em>behavior</em>) as
+it did originally.</p>
+<p>However, sometimes type annotations are required by the compiler to
+infer other assumptions, and to check the program as a whole.</p>
+<p>When they are added and the compiler still accepts the program, we
+know that the added annotations are <em>consistent</em> with the
+existing ones.</p>
+<p>For instance, we can add additional (not required) annotations, and
+the compiler checks that all annotations and other inferred facts agree
+as a whole:</p>
+<pre class="motoko"><code>let x : Nat = 1 : Nat</code></pre>
+<p>If we were to try to do something <em>inconsistent</em> with our
+annotation type, however, the type checker will signal an error.</p>
+<p>Consider this program, which is not well-typed:</p>
+<pre class="motoko"><code>let x : Text = 1 + 1</code></pre>
+<p>The type annotation <code>Text</code> does not agree with the rest of
+the program, since the type of <code>1 + 1</code> is <code>Nat</code>
+and not <code>Text</code>, and these types are unrelated by subtyping.
+Consequently, this program is not well-typed, and the compiler will
+signal an error (with a message and location) and will not compile or
+execute it.</p>
+<h2 id="type-errors-and-messages">Type errors and messages</h2>
+<p>Mathematically, the type system of Motoko is <em>declarative</em>,
+meaning that it exists independently of any implementation, as a concept
+entirely in formal logic. Likewise, the other key aspects of the
+language definition (for example, its execution semantics) exist outside
+of an implementation.</p>
+<p>However, to design this logical definition, to experiment with it,
+and to practice making mistakes, we want to interact with this type
+system, and to make lots of harmless mistakes along the way.</p>
+<p>The error messages of the <em>type checker</em> attempt to help the
+developer when they misunderstand or otherwise misapply the logic of the
+type system, which is explained indirectly in this book.</p>
+<p>These error messages will evolve over time, and for this reason, we
+will not include particular error messages in this text. Instead, we
+will attempt to explain each code example in its surrounding prose.</p>
+<h3 id="the-motoko-base-library">The Motoko base library</h3>
+<!--
+TODO: replace library by package
+-->
+
+<p>For various practical language engineering reasons, the design of
+Motoko strives to minimize builtin types and operations.</p>
+<p>Instead, whenever possible, the Motoko base library provides the
+types and operations that make the language feel complete.
+<em><strong>However</strong>, this base library is still under
+development, and is still incomplete</em>.</p>
+<p>The <a href="./base-intro.md">Motoko Base Library</a> lists a
+<em>selection</em> of modules from the Motoko base library, focusing on
+core features used in the examples that are unlikely to change
+radically. However, all of these base library APIs will certainly change
+over time (to varying degrees), and in particular, they will grow in
+size and number.</p>
+<p>To import from the base library, use the <code>import</code> keyword.
+Give a local module name to introduce, in this example <code>D</code>
+for “<strong>D</strong>ebug”, and a URL where the <code>import</code>
+declaration may locate the imported module:</p>
+<pre class="motoko"><code></code></pre>
+<p>In this case, we import Motoko code (not some other module form) with
+the <code>mo:</code> prefix. We specify the <code>base/</code> path,
+followed by the module’s file name <code>Debug.mo</code> minus its
+extension.</p>
+<h3 id="printing-values">Printing values</h3>
+<p>Above, we print the text string using the function <code>print</code>
+in library <code>Debug.mo</code>:</p>
+<pre class="motoko"><code>print: Text -&gt; ()</code></pre>
+<p>The function <code>print</code> accepts a text string (of type
+<code>Text</code>) as input, and produces the <em>unit value</em> (of
+<em>unit type</em>, or <code>()</code>) as its output.</p>
+<p>Because unit values carry no information, all values of type unit are
+identical, so the <code>print</code> function doesn’t actually produce
+an interesting result. Instead of a result, it has a <em>side
+effect</em>. The function <code>print</code> has the effect of emitting
+the text string in a human-readable form to the output terminal.
+Functions that have side effects, such as emitting output, or modifying
+state, are often called <em>impure</em>. Functions that just return
+values, without further side-effects, are called <em>pure</em>. We
+discuss the return value (the unit value) <a href="#the-unit-type">in
+detail below</a>, and relate it to the <code>void</code> type for
+readers more familiar with that concept.</p>
+<p>Finally, we can transform most Motoko values into human-readable text
+strings for debugging purposes, <em>without</em> having to write those
+transformations by hand.</p>
+<p>The <code>debug_show</code> primitive permits converting a large
+class of values into values of type <code>Text</code>.</p>
+<p>For instance, we can convert a triple (of type
+<code>(Text, Nat, Text)</code>) into debugging text without writing a
+custom conversion function ourselves:</p>
+<pre class="motoko"><code>import D &quot;mo:base/Debug&quot;;
+D.print(debug_show((&quot;hello&quot;, 42, &quot;world&quot;)))</code></pre>
+<p>Using these text transformations, we can print most Motoko data as we
+experiment with our programs.</p>
+<h3 id="accommodating-incomplete-code">Accommodating incomplete
+code</h3>
+<p>Sometimes, in the midst of writing a program, we want to run an
+incomplete version, or a version where one or more execution paths are
+either missing or simply invalid.</p>
+<p>To accommodate these situations, we use the <code>xxx</code>,
+<code>nyi</code> and <code>unreachable</code> functions from the base
+<code>Prelude</code> library, explained below. Each is a simple wrapper
+around a more general trap mechanism <a href="#explicit-traps">general
+trap mechanism</a>, explained further below.</p>
+<h3 id="use-short-term-holes">Use short-term holes</h3>
+<p>Short-term holes are never committed to a source repository, and only
+ever exist in a single development session, for a developer that is
+still writing the program.</p>
+<p>Assuming that earlier, one has imported the prelude as follows:</p>
+<pre class="motoko"><code>import P &quot;mo:base/Prelude&quot;;</code></pre>
+<p>The developer can fill <em>any missing expression</em> with the
+following one:</p>
+<pre class="motoko"><code>P.xxx()</code></pre>
+<p>The result will <em>always</em> type check at compile time, and
+<em>will always</em> trap at run time, if and when this expression ever
+executes.</p>
+<h3 id="document-longer-term-holes">Document longer-term holes</h3>
+<p>By convention, longer-term holes can be considered "not yet
+implemented" (<code>nyi</code>) features, and marked as such with a
+similar function from the Prelude module:</p>
+<pre class="motoko"><code>P.nyi()</code></pre>
+<h3 id="document-unreachable-code-paths">Document
+<code>unreachable</code> code paths</h3>
+<p>In contrast to the situations above, sometimes code will
+<em>never</em> be filled, since it will <em>never</em> be evaluated,
+assuming the coherence of the internal logic of the programs'
+invariants.</p>
+<p>To document a code path as logically impossible, or
+<em>unreachable</em>, use the base library function
+<code>unreachable</code>:</p>
+<pre class="motoko"><code>P.unreachable()</code></pre>
+<p>As in the situations above, this function type-checks in all
+contexts, and when evaluated, traps in all contexts.</p>
+<!--
+TODO: add more general intro to traps, including section on prelude functions, reference that instead
+-->
+
+<h3 id="traps-due-to-faults">Traps due to faults</h3>
+<p>Some errors, such as division by zero, out-of-bounds array indexing,
+and pattern match failure are (by design) not prevented by the type
+system, but instead cause dynamic faults called <em>traps</em>.</p>
+<pre class="motoko"><code>1/0; // traps due to division by 0</code></pre>
+<pre class="motoko"><code>let a = [&quot;hello&quot;, &quot;world&quot;];
+a[2]; // traps due to out-of-bounds indexing</code></pre>
+<pre class="motoko"><code>let true = false; // pattern match failure</code></pre>
+<p>We say that code <em>traps</em> when its exection causes a
+<em>trap</em>.</p>
+<p>Because the meaning of execution is ill-defined after a faulting
+trap, execution of the code ends by aborting at the trap.</p>
+<p>:::note</p>
+<p>Traps that occur within actor messages are more subtle: they don’t
+abort the entire actor, but prevent that particular message from
+proceeding, rolling back any yet uncommitted state changes. Other
+messages on the actor will continue execution.</p>
+<p>:::</p>
+<h3 id="explicit-traps">Explicit traps</h3>
+<p>Occasionally it can be useful to force an unconditional trap, with a
+user-defined message.</p>
+<p>The <code>Debug</code> library provides the function
+<code>trap(t)</code> for this purpose, which can be used in any
+context.</p>
+<pre class="motoko"><code>import Debug &quot;mo:base/Debug&quot;;
+
+Debug.trap(&quot;oops!&quot;);</code></pre>
+<pre class="motoko"><code>import Debug &quot;mo:base/Debug&quot;;
+
+let swear : Text = Debug.trap(&quot;oh my!&quot;);</code></pre>
+<p>(The <code>Prelude</code> functions <code>nyi()</code>,
+<code>unreachable()</code> and <code>xxx()</code> discussed above are
+simple wrappers around <code>Debug.trap</code>.)</p>
+<h3 id="assertions">Assertions</h3>
+<p>Assertions allow you to conditionally trap when some Boolean test
+fails to hold, but continue execution otherwise. For example,</p>
+<pre class="motoko"><code>let n = 65535;
+assert n % 2 == 0; // traps when n not even</code></pre>
+<pre class="motoko"><code>assert false; // unconditionally traps</code></pre>
+<pre class="motoko"><code>import Debug &quot;mo:base/Debug&quot;;
+
+assert 1 &gt; 0; // never traps
+Debug.print &quot;bingo!&quot;;</code></pre>
+<p>Because an assertion may succeed, and thus proceed with execution, it
+may only be used in context where a value of type <code>()</code> is
+expected.</p>
+</body>
+</html>

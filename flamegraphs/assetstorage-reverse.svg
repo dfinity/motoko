@@ -1,0 +1,3413 @@
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" width="1200" height="246" onload="init(evt)" viewBox="0 0 1200 246" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<!-- Flame graph stack visualization. See https://github.com/brendangregg/FlameGraph for latest version, and http://www.brendangregg.com/flamegraphs.html for examples. -->
+<!-- NOTES:  -->
+<defs>
+	<linearGradient id="background" y1="0" y2="1" x1="0" x2="0" >
+		<stop stop-color="#eeeeee" offset="5%" />
+		<stop stop-color="#eeeeb0" offset="95%" />
+	</linearGradient>
+</defs>
+<style type="text/css">
+	text { font-family:Verdana; font-size:12px; fill:rgb(0,0,0); }
+	#search { opacity:0.1; cursor:pointer; }
+	#search:hover, #search.show { opacity:1; }
+	#subtitle { text-anchor:middle; font-color:rgb(160,160,160); }
+	#title { text-anchor:middle; font-size:17px}
+	#unzoom { cursor:pointer; }
+	#frames > *:hover { stroke:black; stroke-width:0.5; cursor:pointer; }
+	.hide { display:none; }
+	.parent { opacity:0.5; }
+</style>
+<script type="text/ecmascript">
+<![CDATA[
+	"use strict";
+	var details, searchbtn, unzoombtn, matchedtxt, svg, searching;
+	function init(evt) {
+		details = document.getElementById("details").firstChild;
+		searchbtn = document.getElementById("search");
+		unzoombtn = document.getElementById("unzoom");
+		matchedtxt = document.getElementById("matched");
+		svg = document.getElementsByTagName("svg")[0];
+		searching = 0;
+	}
+
+	window.addEventListener("click", function(e) {
+		var target = find_group(e.target);
+		if (target) {
+			if (target.nodeName == "a") {
+				if (e.ctrlKey === false) return;
+				e.preventDefault();
+			}
+			if (target.classList.contains("parent")) unzoom();
+			zoom(target);
+		}
+		else if (e.target.id == "unzoom") unzoom();
+		else if (e.target.id == "search") search_prompt();
+	}, false)
+
+	// mouse-over for info
+	// show
+	window.addEventListener("mouseover", function(e) {
+		var target = find_group(e.target);
+		if (target) details.nodeValue = "Function: " + g_to_text(target);
+	}, false)
+
+	// clear
+	window.addEventListener("mouseout", function(e) {
+		var target = find_group(e.target);
+		if (target) details.nodeValue = ' ';
+	}, false)
+
+	// ctrl-F for search
+	window.addEventListener("keydown",function (e) {
+		if (e.keyCode === 114 || (e.ctrlKey && e.keyCode === 70)) {
+			e.preventDefault();
+			search_prompt();
+		}
+	}, false)
+
+	// functions
+	function find_child(node, selector) {
+		var children = node.querySelectorAll(selector);
+		if (children.length) return children[0];
+		return;
+	}
+	function find_group(node) {
+		var parent = node.parentElement;
+		if (!parent) return;
+		if (parent.id == "frames") return node;
+		return find_group(parent);
+	}
+	function orig_save(e, attr, val) {
+		if (e.attributes["_orig_" + attr] != undefined) return;
+		if (e.attributes[attr] == undefined) return;
+		if (val == undefined) val = e.attributes[attr].value;
+		e.setAttribute("_orig_" + attr, val);
+	}
+	function orig_load(e, attr) {
+		if (e.attributes["_orig_"+attr] == undefined) return;
+		e.attributes[attr].value = e.attributes["_orig_" + attr].value;
+		e.removeAttribute("_orig_"+attr);
+	}
+	function g_to_text(e) {
+		var text = find_child(e, "title").firstChild.nodeValue;
+		return (text)
+	}
+	function g_to_func(e) {
+		var func = g_to_text(e);
+		// if there's any manipulation we want to do to the function
+		// name before it's searched, do it here before returning.
+		return (func);
+	}
+	function update_text(e) {
+		var r = find_child(e, "rect");
+		var t = find_child(e, "text");
+		var w = parseFloat(r.attributes.width.value) -3;
+		var txt = find_child(e, "title").textContent.replace(/\([^(]*\)$/,"");
+		t.attributes.x.value = parseFloat(r.attributes.x.value) + 3;
+
+		// Smaller than this size won't fit anything
+		if (w < 2 * 12 * 0.59) {
+			t.textContent = "";
+			return;
+		}
+
+		t.textContent = txt;
+		// Fit in full text width
+		if (/^ *$/.test(txt) || t.getSubStringLength(0, txt.length) < w)
+			return;
+
+		for (var x = txt.length - 2; x > 0; x--) {
+			if (t.getSubStringLength(0, x + 2) <= w) {
+				t.textContent = txt.substring(0, x) + "..";
+				return;
+			}
+		}
+		t.textContent = "";
+	}
+
+	// zoom
+	function zoom_reset(e) {
+		if (e.attributes != undefined) {
+			orig_load(e, "x");
+			orig_load(e, "width");
+		}
+		if (e.childNodes == undefined) return;
+		for (var i = 0, c = e.childNodes; i < c.length; i++) {
+			zoom_reset(c[i]);
+		}
+	}
+	function zoom_child(e, x, ratio) {
+		if (e.attributes != undefined) {
+			if (e.attributes.x != undefined) {
+				orig_save(e, "x");
+				e.attributes.x.value = (parseFloat(e.attributes.x.value) - x - 10) * ratio + 10;
+				if (e.tagName == "text")
+					e.attributes.x.value = find_child(e.parentNode, "rect[x]").attributes.x.value + 3;
+			}
+			if (e.attributes.width != undefined) {
+				orig_save(e, "width");
+				e.attributes.width.value = parseFloat(e.attributes.width.value) * ratio;
+			}
+		}
+
+		if (e.childNodes == undefined) return;
+		for (var i = 0, c = e.childNodes; i < c.length; i++) {
+			zoom_child(c[i], x - 10, ratio);
+		}
+	}
+	function zoom_parent(e) {
+		if (e.attributes) {
+			if (e.attributes.x != undefined) {
+				orig_save(e, "x");
+				e.attributes.x.value = 10;
+			}
+			if (e.attributes.width != undefined) {
+				orig_save(e, "width");
+				e.attributes.width.value = parseInt(svg.width.baseVal.value) - (10 * 2);
+			}
+		}
+		if (e.childNodes == undefined) return;
+		for (var i = 0, c = e.childNodes; i < c.length; i++) {
+			zoom_parent(c[i]);
+		}
+	}
+	function zoom(node) {
+		var attr = find_child(node, "rect").attributes;
+		var width = parseFloat(attr.width.value);
+		var xmin = parseFloat(attr.x.value);
+		var xmax = parseFloat(xmin + width);
+		var ymin = parseFloat(attr.y.value);
+		var ratio = (svg.width.baseVal.value - 2 * 10) / width;
+
+		// XXX: Workaround for JavaScript float issues (fix me)
+		var fudge = 0.0001;
+
+		unzoombtn.classList.remove("hide");
+
+		var el = document.getElementById("frames").children;
+		for (var i = 0; i < el.length; i++) {
+			var e = el[i];
+			var a = find_child(e, "rect").attributes;
+			var ex = parseFloat(a.x.value);
+			var ew = parseFloat(a.width.value);
+			var upstack;
+			// Is it an ancestor
+			if (0 == 0) {
+				upstack = parseFloat(a.y.value) > ymin;
+			} else {
+				upstack = parseFloat(a.y.value) < ymin;
+			}
+			if (upstack) {
+				// Direct ancestor
+				if (ex <= xmin && (ex+ew+fudge) >= xmax) {
+					e.classList.add("parent");
+					zoom_parent(e);
+					update_text(e);
+				}
+				// not in current path
+				else
+					e.classList.add("hide");
+			}
+			// Children maybe
+			else {
+				// no common path
+				if (ex < xmin || ex + fudge >= xmax) {
+					e.classList.add("hide");
+				}
+				else {
+					zoom_child(e, xmin, ratio);
+					update_text(e);
+				}
+			}
+		}
+	}
+	function unzoom() {
+		unzoombtn.classList.add("hide");
+		var el = document.getElementById("frames").children;
+		for(var i = 0; i < el.length; i++) {
+			el[i].classList.remove("parent");
+			el[i].classList.remove("hide");
+			zoom_reset(el[i]);
+			update_text(el[i]);
+		}
+	}
+
+	// search
+	function reset_search() {
+		var el = document.querySelectorAll("#frames rect");
+		for (var i = 0; i < el.length; i++) {
+			orig_load(el[i], "fill")
+		}
+	}
+	function search_prompt() {
+		if (!searching) {
+			var term = prompt("Enter a search term (regexp " +
+			    "allowed, eg: ^ext4_)", "");
+			if (term != null) {
+				search(term)
+			}
+		} else {
+			reset_search();
+			searching = 0;
+			searchbtn.classList.remove("show");
+			searchbtn.firstChild.nodeValue = "Search"
+			matchedtxt.classList.add("hide");
+			matchedtxt.firstChild.nodeValue = ""
+		}
+	}
+	function search(term) {
+		var re = new RegExp(term);
+		var el = document.getElementById("frames").children;
+		var matches = new Object();
+		var maxwidth = 0;
+		for (var i = 0; i < el.length; i++) {
+			var e = el[i];
+			var func = g_to_func(e);
+			var rect = find_child(e, "rect");
+			if (func == null || rect == null)
+				continue;
+
+			// Save max width. Only works as we have a root frame
+			var w = parseFloat(rect.attributes.width.value);
+			if (w > maxwidth)
+				maxwidth = w;
+
+			if (func.match(re)) {
+				// highlight
+				var x = parseFloat(rect.attributes.x.value);
+				orig_save(rect, "fill");
+				rect.attributes.fill.value = "rgb(230,0,230)";
+
+				// remember matches
+				if (matches[x] == undefined) {
+					matches[x] = w;
+				} else {
+					if (w > matches[x]) {
+						// overwrite with parent
+						matches[x] = w;
+					}
+				}
+				searching = 1;
+			}
+		}
+		if (!searching)
+			return;
+
+		searchbtn.classList.add("show");
+		searchbtn.firstChild.nodeValue = "Reset Search";
+
+		// calculate percent matched, excluding vertical overlap
+		var count = 0;
+		var lastx = -1;
+		var lastw = 0;
+		var keys = Array();
+		for (k in matches) {
+			if (matches.hasOwnProperty(k))
+				keys.push(k);
+		}
+		// sort the matched frames by their x location
+		// ascending, then width descending
+		keys.sort(function(a, b){
+			return a - b;
+		});
+		// Step through frames saving only the biggest bottom-up frames
+		// thanks to the sort order. This relies on the tree property
+		// where children are always smaller than their parents.
+		var fudge = 0.0001;	// JavaScript floating point
+		for (var k in keys) {
+			var x = parseFloat(keys[k]);
+			var w = matches[keys[k]];
+			if (x >= lastx + lastw - fudge) {
+				count += w;
+				lastx = x;
+				lastw = w;
+			}
+		}
+		// display matched percent
+		matchedtxt.classList.remove("hide");
+		var pct = 100 * count / maxwidth;
+		if (pct != 100) pct = pct.toFixed(1)
+		matchedtxt.firstChild.nodeValue = "Matched: " + pct + "%";
+	}
+]]>
+</script>
+<rect x="0.0" y="0" width="1200.0" height="246.0" fill="url(#background)"  />
+<text id="title" x="600.00" y="24" >assetstorage.mo (reverse)</text>
+<text id="details" x="10.00" y="229" > </text>
+<text id="unzoom" x="10.00" y="24" class="hide">Reset Zoom</text>
+<text id="search" x="1090.00" y="24" >Search</text>
+<text id="matched" x="1090.00" y="229" > </text>
+<g id="frames">
+<g >
+<title>blob_of_principal (599 samples, 1.33%)</title><rect x="994.2" y="165" width="15.7" height="15.0" fill="rgb(228,110,25)" rx="2" ry="2" />
+<text  x="997.22" y="175.5" ></text>
+</g>
+<g >
+<title>parse_idl_header (16 samples, 0.04%)</title><rect x="272.1" y="149" width="0.4" height="15.0" fill="rgb(243,149,41)" rx="2" ry="2" />
+<text  x="275.09" y="159.5" ></text>
+</g>
+<g >
+<title>@anon-func-31.67 (16 samples, 0.04%)</title><rect x="157.3" y="181" width="0.4" height="15.0" fill="rgb(228,146,25)" rx="2" ry="2" />
+<text  x="160.32" y="191.5" ></text>
+</g>
+<g >
+<title>__set_hp (144 samples, 0.32%)</title><rect x="268.7" y="181" width="3.8" height="15.0" fill="rgb(238,132,36)" rx="2" ry="2" />
+<text  x="271.74" y="191.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;t&gt; (61 samples, 0.14%)</title><rect x="197.9" y="165" width="1.6" height="15.0" fill="rgb(244,176,43)" rx="2" ry="2" />
+<text  x="200.95" y="175.5" ></text>
+</g>
+<g >
+<title>motoko_rts::principal_id::principal_of_blob::h6560fd4a9cbb47b9 (6 samples, 0.01%)</title><rect x="268.1" y="149" width="0.2" height="15.0" fill="rgb(226,127,24)" rx="2" ry="2" />
+<text  x="271.11" y="159.5" ></text>
+</g>
+<g >
+<title>@serialize&lt;vt&gt; (188 samples, 0.42%)</title><rect x="207.1" y="181" width="4.9" height="15.0" fill="rgb(237,156,36)" rx="2" ry="2" />
+<text  x="210.12" y="191.5" ></text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::mark_stack::push_mark_stack::h1f99226b92d7e984 (783 samples, 1.74%)</title><rect x="908.4" y="181" width="20.5" height="15.0" fill="rgb(244,127,43)" rx="2" ry="2" />
+<text  x="911.38" y="191.5" ></text>
+</g>
+<g >
+<title>compacting_gc (12 samples, 0.03%)</title><rect x="267.8" y="133" width="0.3" height="15.0" fill="rgb(227,149,24)" rx="2" ry="2" />
+<text  x="270.80" y="143.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;t&gt; (15 samples, 0.03%)</title><rect x="468.8" y="165" width="0.4" height="15.0" fill="rgb(244,156,43)" rx="2" ry="2" />
+<text  x="471.77" y="175.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;tB&gt; (13 samples, 0.03%)</title><rect x="1010.3" y="133" width="0.3" height="15.0" fill="rgb(245,176,45)" rx="2" ry="2" />
+<text  x="1013.26" y="143.5" ></text>
+</g>
+<g >
+<title>store (138 samples, 0.31%)</title><rect x="1116.6" y="149" width="3.6" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="1119.61" y="159.5" ></text>
+</g>
+<g >
+<title>$lambda (4,141 samples, 9.20%)</title><rect x="10.0" y="165" width="108.5" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="13.00" y="175.5" >$lambda</text>
+</g>
+<g >
+<title>$lambda (5 samples, 0.01%)</title><rect x="1178.6" y="101" width="0.2" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="1181.63" y="111.5" ></text>
+</g>
+<g >
+<title>store (124 samples, 0.28%)</title><rect x="967.8" y="133" width="3.3" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="970.85" y="143.5" ></text>
+</g>
+<g >
+<title>toArray (34 samples, 0.08%)</title><rect x="155.8" y="133" width="0.9" height="15.0" fill="rgb(239,160,37)" rx="2" ry="2" />
+<text  x="158.78" y="143.5" ></text>
+</g>
+<g >
+<title>text_size (10 samples, 0.02%)</title><rect x="1178.5" y="181" width="0.3" height="15.0" fill="rgb(245,171,44)" rx="2" ry="2" />
+<text  x="1181.49" y="191.5" ></text>
+</g>
+<g >
+<title>$lambda (15 samples, 0.03%)</title><rect x="468.4" y="117" width="0.4" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="471.38" y="127.5" ></text>
+</g>
+<g >
+<title>$lambda (5 samples, 0.01%)</title><rect x="1178.6" y="117" width="0.2" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="1181.63" y="127.5" ></text>
+</g>
+<g >
+<title>link_start (31 samples, 0.07%)</title><rect x="298.2" y="149" width="0.8" height="15.0" fill="rgb(239,129,37)" rx="2" ry="2" />
+<text  x="301.22" y="159.5" ></text>
+</g>
+<g >
+<title>blob_of_principal (386 samples, 0.86%)</title><rect x="984.1" y="149" width="10.1" height="15.0" fill="rgb(228,110,25)" rx="2" ry="2" />
+<text  x="987.10" y="159.5" ></text>
+</g>
+<g >
+<title>retrieve (12 samples, 0.03%)</title><rect x="1188.3" y="165" width="0.3" height="15.0" fill="rgb(240,162,39)" rx="2" ry="2" />
+<text  x="1191.32" y="175.5" ></text>
+</g>
+<g >
+<title>blob_of_principal (801 samples, 1.78%)</title><rect x="305.9" y="181" width="21.0" height="15.0" fill="rgb(228,110,25)" rx="2" ry="2" />
+<text  x="308.93" y="191.5" ></text>
+</g>
+<g >
+<title>text_of_ptr_size (6 samples, 0.01%)</title><rect x="268.3" y="133" width="0.1" height="15.0" fill="rgb(245,171,44)" rx="2" ry="2" />
+<text  x="271.27" y="143.5" ></text>
+</g>
+<g >
+<title>@serialize&lt;&gt; (8 samples, 0.02%)</title><rect x="269.6" y="133" width="0.2" height="15.0" fill="rgb(242,156,41)" rx="2" ry="2" />
+<text  x="272.58" y="143.5" ></text>
+</g>
+<g >
+<title>retrieve (52 samples, 0.12%)</title><rect x="454.7" y="133" width="1.4" height="15.0" fill="rgb(240,162,39)" rx="2" ry="2" />
+<text  x="457.75" y="143.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;t&gt; (5 samples, 0.01%)</title><rect x="1178.6" y="165" width="0.2" height="15.0" fill="rgb(244,156,43)" rx="2" ry="2" />
+<text  x="1181.63" y="175.5" ></text>
+</g>
+<g >
+<title>retrieve (85 samples, 0.19%)</title><rect x="121.3" y="165" width="2.2" height="15.0" fill="rgb(240,162,39)" rx="2" ry="2" />
+<text  x="124.26" y="175.5" ></text>
+</g>
+<g >
+<title>$lambda (53 samples, 0.12%)</title><rect x="227.3" y="165" width="1.4" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="230.30" y="175.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_array::hfb4dad1bf9425cf5 (9 samples, 0.02%)</title><rect x="266.1" y="165" width="0.3" height="15.0" fill="rgb(244,127,43)" rx="2" ry="2" />
+<text  x="269.14" y="175.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;B&gt; (15 samples, 0.03%)</title><rect x="468.4" y="165" width="0.4" height="15.0" fill="rgb(251,156,51)" rx="2" ry="2" />
+<text  x="471.38" y="175.5" ></text>
+</g>
+<g >
+<title>init (6 samples, 0.01%)</title><rect x="268.1" y="117" width="0.2" height="15.0" fill="rgb(236,161,34)" rx="2" ry="2" />
+<text  x="271.11" y="127.5" ></text>
+</g>
+<g >
+<title>@deserialize_go&lt;t&gt; (122 samples, 0.27%)</title><rect x="197.9" y="181" width="3.2" height="15.0" fill="rgb(244,176,43)" rx="2" ry="2" />
+<text  x="200.95" y="191.5" ></text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::compacting_gc::h416bfa181cd1565b (6 samples, 0.01%)</title><rect x="351.0" y="165" width="0.2" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="354.04" y="175.5" ></text>
+</g>
+<g >
+<title>store (1,030 samples, 2.29%)</title><rect x="91.5" y="149" width="27.0" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="94.54" y="159.5" >s..</text>
+</g>
+<g >
+<title>list (436 samples, 0.97%)</title><rect x="164.3" y="165" width="11.4" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="167.27" y="175.5" ></text>
+</g>
+<g >
+<title>canister_init (17 samples, 0.04%)</title><rect x="339.5" y="117" width="0.5" height="15.0" fill="rgb(236,106,34)" rx="2" ry="2" />
+<text  x="342.50" y="127.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;t&gt; (19 samples, 0.04%)</title><rect x="1177.5" y="149" width="0.5" height="15.0" fill="rgb(244,176,43)" rx="2" ry="2" />
+<text  x="1180.50" y="159.5" ></text>
+</g>
+<g >
+<title>getRec (84 samples, 0.19%)</title><rect x="1175.3" y="149" width="2.2" height="15.0" fill="rgb(230,170,27)" rx="2" ry="2" />
+<text  x="1178.30" y="159.5" ></text>
+</g>
+<g >
+<title>$lambda (7 samples, 0.02%)</title><rect x="214.7" y="149" width="0.2" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="217.75" y="159.5" ></text>
+</g>
+<g >
+<title>list (14 samples, 0.03%)</title><rect x="226.3" y="85" width="0.4" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="229.31" y="95.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;t&gt; (60 samples, 0.13%)</title><rect x="587.2" y="133" width="1.6" height="15.0" fill="rgb(244,176,43)" rx="2" ry="2" />
+<text  x="590.24" y="143.5" ></text>
+</g>
+<g >
+<title>leb128_decode (780 samples, 1.73%)</title><rect x="447.9" y="181" width="20.5" height="15.0" fill="rgb(250,149,49)" rx="2" ry="2" />
+<text  x="450.93" y="191.5" ></text>
+</g>
+<g >
+<title>add (124 samples, 0.28%)</title><rect x="299.2" y="181" width="3.2" height="15.0" fill="rgb(253,156,53)" rx="2" ry="2" />
+<text  x="302.19" y="191.5" ></text>
+</g>
+<g >
+<title>$lambda (14 samples, 0.03%)</title><rect x="303.4" y="133" width="0.3" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="306.36" y="143.5" ></text>
+</g>
+<g >
+<title>store (135 samples, 0.30%)</title><rect x="427.1" y="117" width="3.5" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="430.07" y="127.5" ></text>
+</g>
+<g >
+<title>compacting_gc (1,553 samples, 3.45%)</title><rect x="867.7" y="149" width="40.7" height="15.0" fill="rgb(227,149,24)" rx="2" ry="2" />
+<text  x="870.68" y="159.5" >com..</text>
+</g>
+<g >
+<title>store (380 samples, 0.84%)</title><rect x="577.3" y="133" width="9.9" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="580.28" y="143.5" ></text>
+</g>
+<g >
+<title>@serialize&lt;vt&gt; (16 samples, 0.04%)</title><rect x="270.0" y="133" width="0.4" height="15.0" fill="rgb(237,156,36)" rx="2" ry="2" />
+<text  x="273.00" y="143.5" ></text>
+</g>
+<g >
+<title>link_start (4 samples, 0.01%)</title><rect x="268.7" y="117" width="0.1" height="15.0" fill="rgb(239,129,37)" rx="2" ry="2" />
+<text  x="271.74" y="127.5" ></text>
+</g>
+<g >
+<title>list (36 samples, 0.08%)</title><rect x="1069.0" y="149" width="1.0" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="1072.02" y="159.5" ></text>
+</g>
+<g >
+<title>init (6 samples, 0.01%)</title><rect x="267.2" y="133" width="0.1" height="15.0" fill="rgb(236,161,34)" rx="2" ry="2" />
+<text  x="270.17" y="143.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;vt&gt; (116 samples, 0.26%)</title><rect x="214.9" y="181" width="3.1" height="15.0" fill="rgb(237,156,36)" rx="2" ry="2" />
+<text  x="217.93" y="191.5" ></text>
+</g>
+<g >
+<title>$lambda (8 samples, 0.02%)</title><rect x="269.8" y="117" width="0.2" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="272.79" y="127.5" ></text>
+</g>
+<g >
+<title>canister_init (111 samples, 0.25%)</title><rect x="593.7" y="133" width="2.9" height="15.0" fill="rgb(236,106,34)" rx="2" ry="2" />
+<text  x="596.68" y="143.5" ></text>
+</g>
+<g >
+<title>compare (204 samples, 0.45%)</title><rect x="534.7" y="133" width="5.4" height="15.0" fill="rgb(248,149,47)" rx="2" ry="2" />
+<text  x="537.74" y="143.5" ></text>
+</g>
+<g >
+<title>toArray (34 samples, 0.08%)</title><rect x="155.8" y="149" width="0.9" height="15.0" fill="rgb(239,160,37)" rx="2" ry="2" />
+<text  x="158.78" y="159.5" ></text>
+</g>
+<g >
+<title>list (124 samples, 0.28%)</title><rect x="954.8" y="149" width="3.3" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="957.85" y="159.5" ></text>
+</g>
+<g >
+<title>$lambda (8 samples, 0.02%)</title><rect x="269.8" y="101" width="0.2" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="272.79" y="111.5" ></text>
+</g>
+<g >
+<title>list (65 samples, 0.14%)</title><rect x="591.4" y="69" width="1.7" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="594.35" y="79.5" ></text>
+</g>
+<g >
+<title>@serialize&lt;&gt; (72 samples, 0.16%)</title><rect x="541.7" y="165" width="1.8" height="15.0" fill="rgb(242,156,41)" rx="2" ry="2" />
+<text  x="544.66" y="175.5" ></text>
+</g>
+<g >
+<title>$lambda (18 samples, 0.04%)</title><rect x="1068.5" y="165" width="0.5" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="1071.55" y="175.5" ></text>
+</g>
+<g >
+<title>retrieve (313 samples, 0.70%)</title><rect x="175.7" y="165" width="8.2" height="15.0" fill="rgb(240,162,39)" rx="2" ry="2" />
+<text  x="178.70" y="175.5" ></text>
+</g>
+<g >
+<title>__wasm_apply_data_relocs (981 samples, 2.18%)</title><rect x="272.5" y="181" width="25.7" height="15.0" fill="rgb(244,119,43)" rx="2" ry="2" />
+<text  x="275.51" y="191.5" >_..</text>
+</g>
+<g >
+<title>@deserialize_go&lt;t&gt; (8 samples, 0.02%)</title><rect x="271.9" y="117" width="0.2" height="15.0" fill="rgb(244,176,43)" rx="2" ry="2" />
+<text  x="274.88" y="127.5" ></text>
+</g>
+<g >
+<title>$lambda (84 samples, 0.19%)</title><rect x="1175.3" y="117" width="2.2" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="1178.30" y="127.5" ></text>
+</g>
+<g >
+<title>toArray (197 samples, 0.44%)</title><rect x="1028.4" y="149" width="5.2" height="15.0" fill="rgb(239,160,37)" rx="2" ry="2" />
+<text  x="1031.42" y="159.5" ></text>
+</g>
+<g >
+<title>store (5 samples, 0.01%)</title><rect x="201.5" y="165" width="0.2" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="204.54" y="175.5" ></text>
+</g>
+<g >
+<title>store (6 samples, 0.01%)</title><rect x="593.5" y="133" width="0.2" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="596.53" y="143.5" ></text>
+</g>
+<g >
+<title>list (54 samples, 0.12%)</title><rect x="1064.8" y="117" width="1.4" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="1067.77" y="127.5" ></text>
+</g>
+<g >
+<title>parse_idl_header (48 samples, 0.11%)</title><rect x="928.9" y="165" width="1.3" height="15.0" fill="rgb(243,149,41)" rx="2" ry="2" />
+<text  x="931.90" y="175.5" ></text>
+</g>
+<g >
+<title>canister_init (6 samples, 0.01%)</title><rect x="267.2" y="117" width="0.1" height="15.0" fill="rgb(236,106,34)" rx="2" ry="2" />
+<text  x="270.17" y="127.5" ></text>
+</g>
+<g >
+<title>store (26 samples, 0.06%)</title><rect x="1189.3" y="133" width="0.7" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="1192.32" y="143.5" ></text>
+</g>
+<g >
+<title>$lambda (14 samples, 0.03%)</title><rect x="303.4" y="149" width="0.3" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="306.36" y="159.5" ></text>
+</g>
+<g >
+<title>init (801 samples, 1.78%)</title><rect x="305.9" y="165" width="21.0" height="15.0" fill="rgb(236,161,34)" rx="2" ry="2" />
+<text  x="308.93" y="175.5" ></text>
+</g>
+<g >
+<title>list (248 samples, 0.55%)</title><rect x="945.1" y="101" width="6.5" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="948.10" y="111.5" ></text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::compacting_gc::h416bfa181cd1565b (1,368 samples, 3.04%)</title><rect x="551.4" y="165" width="35.8" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="554.38" y="175.5" >mot..</text>
+</g>
+<g >
+<title>@serialize_go&lt;vt&gt; (52 samples, 0.12%)</title><rect x="213.4" y="165" width="1.3" height="15.0" fill="rgb(237,156,36)" rx="2" ry="2" />
+<text  x="216.39" y="175.5" ></text>
+</g>
+<g >
+<title>blob_of_principal (6 samples, 0.01%)</title><rect x="268.1" y="133" width="0.2" height="15.0" fill="rgb(228,110,25)" rx="2" ry="2" />
+<text  x="271.11" y="143.5" ></text>
+</g>
+<g >
+<title>init (34 samples, 0.08%)</title><rect x="1084.6" y="165" width="0.9" height="15.0" fill="rgb(236,161,34)" rx="2" ry="2" />
+<text  x="1087.64" y="175.5" ></text>
+</g>
+<g >
+<title>store (124 samples, 0.28%)</title><rect x="938.6" y="101" width="3.2" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="941.60" y="111.5" ></text>
+</g>
+<g >
+<title>canister_init (48 samples, 0.11%)</title><rect x="550.1" y="133" width="1.3" height="15.0" fill="rgb(236,106,34)" rx="2" ry="2" />
+<text  x="553.12" y="143.5" ></text>
+</g>
+<g >
+<title>store (10 samples, 0.02%)</title><rect x="354.2" y="149" width="0.2" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="357.18" y="159.5" ></text>
+</g>
+<g >
+<title>store (20 samples, 0.04%)</title><rect x="352.9" y="149" width="0.5" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="355.87" y="159.5" ></text>
+</g>
+<g >
+<title>motoko_rts::principal_id::principal_of_blob::h6560fd4a9cbb47b9 (386 samples, 0.86%)</title><rect x="984.1" y="165" width="10.1" height="15.0" fill="rgb(226,127,24)" rx="2" ry="2" />
+<text  x="987.10" y="175.5" ></text>
+</g>
+<g >
+<title>$lambda (8 samples, 0.02%)</title><rect x="269.6" y="101" width="0.2" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="272.58" y="111.5" ></text>
+</g>
+<g >
+<title>$lambda (7 samples, 0.02%)</title><rect x="214.7" y="133" width="0.2" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="217.75" y="143.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;B&gt; (65 samples, 0.14%)</title><rect x="548.4" y="165" width="1.7" height="15.0" fill="rgb(251,156,51)" rx="2" ry="2" />
+<text  x="551.42" y="175.5" ></text>
+</g>
+<g >
+<title>Array_tabulate (6 samples, 0.01%)</title><rect x="266.2" y="133" width="0.2" height="15.0" fill="rgb(245,150,45)" rx="2" ry="2" />
+<text  x="269.22" y="143.5" ></text>
+</g>
+<g >
+<title>toArray (14 samples, 0.03%)</title><rect x="226.3" y="117" width="0.4" height="15.0" fill="rgb(239,160,37)" rx="2" ry="2" />
+<text  x="229.31" y="127.5" ></text>
+</g>
+<g >
+<title>$lambda (8 samples, 0.02%)</title><rect x="269.6" y="117" width="0.2" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="272.58" y="127.5" ></text>
+</g>
+<g >
+<title>trans_state3 (10 samples, 0.02%)</title><rect x="1185.4" y="181" width="0.2" height="15.0" fill="rgb(245,158,44)" rx="2" ry="2" />
+<text  x="1188.39" y="191.5" ></text>
+</g>
+<g >
+<title>iterate (27 samples, 0.06%)</title><rect x="225.6" y="165" width="0.7" height="15.0" fill="rgb(245,143,45)" rx="2" ry="2" />
+<text  x="228.60" y="175.5" ></text>
+</g>
+<g >
+<title>$lambda (12 samples, 0.03%)</title><rect x="266.9" y="117" width="0.3" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="269.85" y="127.5" ></text>
+</g>
+<g >
+<title>blob_of_principal (124 samples, 0.28%)</title><rect x="971.1" y="149" width="3.2" height="15.0" fill="rgb(228,110,25)" rx="2" ry="2" />
+<text  x="974.10" y="159.5" ></text>
+</g>
+<g >
+<title>@anon-func-165.17 (25 samples, 0.06%)</title><rect x="156.7" y="181" width="0.6" height="15.0" fill="rgb(233,146,31)" rx="2" ry="2" />
+<text  x="159.67" y="191.5" ></text>
+</g>
+<g >
+<title>$lambda (16 samples, 0.04%)</title><rect x="157.3" y="117" width="0.4" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="160.32" y="127.5" ></text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::bitmap::BitmapIter::next::hf82f793b43efcee0 (1,316 samples, 2.92%)</title><rect x="599.7" y="181" width="34.5" height="15.0" fill="rgb(235,127,33)" rx="2" ry="2" />
+<text  x="602.66" y="191.5" >mo..</text>
+</g>
+<g >
+<title>memcpy (2,021 samples, 4.49%)</title><rect x="540.1" y="181" width="53.0" height="15.0" fill="rgb(248,144,48)" rx="2" ry="2" />
+<text  x="543.09" y="191.5" >memcpy</text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::compacting_gc::h416bfa181cd1565b (1,553 samples, 3.45%)</title><rect x="867.7" y="165" width="40.7" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="870.68" y="175.5" >mot..</text>
+</g>
+<g >
+<title>$lambda (12 samples, 0.03%)</title><rect x="266.9" y="101" width="0.3" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="269.85" y="111.5" ></text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::mark_object::hb81f6542e95ca663 (1,553 samples, 3.45%)</title><rect x="867.7" y="181" width="40.7" height="15.0" fill="rgb(238,127,36)" rx="2" ry="2" />
+<text  x="870.68" y="191.5" >mot..</text>
+</g>
+<g >
+<title>init (8 samples, 0.02%)</title><rect x="271.0" y="133" width="0.3" height="15.0" fill="rgb(236,161,34)" rx="2" ry="2" />
+<text  x="274.05" y="143.5" ></text>
+</g>
+<g >
+<title>$lambda (134 samples, 0.30%)</title><rect x="1179.6" y="165" width="3.5" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="1182.57" y="175.5" ></text>
+</g>
+<g >
+<title>store (459 samples, 1.02%)</title><rect x="916.9" y="117" width="12.0" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="919.87" y="127.5" ></text>
+</g>
+<g >
+<title>retrieve (94 samples, 0.21%)</title><rect x="204.7" y="133" width="2.4" height="15.0" fill="rgb(240,162,39)" rx="2" ry="2" />
+<text  x="207.66" y="143.5" ></text>
+</g>
+<g >
+<title>retrieve (140 samples, 0.31%)</title><rect x="340.0" y="117" width="3.6" height="15.0" fill="rgb(240,162,39)" rx="2" ry="2" />
+<text  x="342.95" y="127.5" ></text>
+</g>
+<g >
+<title>link_start (23 samples, 0.05%)</title><rect x="426.5" y="149" width="0.6" height="15.0" fill="rgb(239,129,37)" rx="2" ry="2" />
+<text  x="429.47" y="159.5" ></text>
+</g>
+<g >
+<title>list (2,130 samples, 4.73%)</title><rect x="470.5" y="181" width="55.9" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="473.53" y="191.5" >list</text>
+</g>
+<g >
+<title>$lambda (6 samples, 0.01%)</title><rect x="266.2" y="85" width="0.2" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="269.22" y="95.5" ></text>
+</g>
+<g >
+<title>text_to_buf (31 samples, 0.07%)</title><rect x="1178.8" y="181" width="0.8" height="15.0" fill="rgb(242,171,41)" rx="2" ry="2" />
+<text  x="1181.76" y="191.5" ></text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::compacting_gc::h416bfa181cd1565b (8 samples, 0.02%)</title><rect x="268.8" y="165" width="0.3" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="271.84" y="175.5" ></text>
+</g>
+<g >
+<title>list (26 samples, 0.06%)</title><rect x="347.7" y="149" width="0.7" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="350.71" y="159.5" ></text>
+</g>
+<g >
+<title>alloc_blob (64 samples, 0.14%)</title><rect x="269.4" y="149" width="1.6" height="15.0" fill="rgb(239,128,38)" rx="2" ry="2" />
+<text  x="272.37" y="159.5" ></text>
+</g>
+<g >
+<title>@serialize&lt;&gt; (94 samples, 0.21%)</title><rect x="202.2" y="181" width="2.5" height="15.0" fill="rgb(242,156,41)" rx="2" ry="2" />
+<text  x="205.19" y="191.5" ></text>
+</g>
+<g >
+<title>compacting_gc (783 samples, 1.74%)</title><rect x="908.4" y="133" width="20.5" height="15.0" fill="rgb(227,149,24)" rx="2" ry="2" />
+<text  x="911.38" y="143.5" ></text>
+</g>
+<g >
+<title>$lambda (65 samples, 0.14%)</title><rect x="548.4" y="117" width="1.7" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="551.42" y="127.5" ></text>
+</g>
+<g >
+<title>toArray (18 samples, 0.04%)</title><rect x="1063.8" y="133" width="0.5" height="15.0" fill="rgb(239,160,37)" rx="2" ry="2" />
+<text  x="1066.83" y="143.5" ></text>
+</g>
+<g >
+<title>list (2,073 samples, 4.60%)</title><rect x="10.0" y="149" width="54.3" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="13.00" y="159.5" >list</text>
+</g>
+<g >
+<title>list (40 samples, 0.09%)</title><rect x="351.3" y="149" width="1.0" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="354.30" y="159.5" ></text>
+</g>
+<g >
+<title>Array_tabulate (132 samples, 0.29%)</title><rect x="931.9" y="149" width="3.4" height="15.0" fill="rgb(245,150,45)" rx="2" ry="2" />
+<text  x="934.89" y="159.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;t&gt; (20 samples, 0.04%)</title><rect x="352.3" y="165" width="0.6" height="15.0" fill="rgb(244,176,43)" rx="2" ry="2" />
+<text  x="355.35" y="175.5" ></text>
+</g>
+<g >
+<title>get (204 samples, 0.45%)</title><rect x="534.7" y="101" width="5.4" height="15.0" fill="rgb(237,170,35)" rx="2" ry="2" />
+<text  x="537.74" y="111.5" ></text>
+</g>
+<g >
+<title>retrieve (62 samples, 0.14%)</title><rect x="958.1" y="149" width="1.6" height="15.0" fill="rgb(240,162,39)" rx="2" ry="2" />
+<text  x="961.10" y="159.5" ></text>
+</g>
+<g >
+<title>$lambda (62 samples, 0.14%)</title><rect x="935.3" y="149" width="1.7" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="938.35" y="159.5" ></text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::compacting_gc::h416bfa181cd1565b (12 samples, 0.03%)</title><rect x="267.8" y="149" width="0.3" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="270.80" y="159.5" ></text>
+</g>
+<g >
+<title>retrieve (64 samples, 0.14%)</title><rect x="1015.8" y="69" width="1.6" height="15.0" fill="rgb(240,162,39)" rx="2" ry="2" />
+<text  x="1018.76" y="79.5" ></text>
+</g>
+<g >
+<title>@serialize&lt;vt&gt; (116 samples, 0.26%)</title><rect x="214.9" y="165" width="3.1" height="15.0" fill="rgb(237,156,36)" rx="2" ry="2" />
+<text  x="217.93" y="175.5" ></text>
+</g>
+<g >
+<title>entries (332 samples, 0.74%)</title><rect x="434.7" y="165" width="8.7" height="15.0" fill="rgb(237,196,36)" rx="2" ry="2" />
+<text  x="437.67" y="175.5" ></text>
+</g>
+<g >
+<title>list (24 samples, 0.05%)</title><rect x="1186.8" y="165" width="0.6" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="1189.75" y="175.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;&gt; (208 samples, 0.46%)</title><rect x="457.5" y="149" width="5.4" height="15.0" fill="rgb(242,176,41)" rx="2" ry="2" />
+<text  x="460.47" y="159.5" ></text>
+</g>
+<g >
+<title>$lambda (72 samples, 0.16%)</title><rect x="541.7" y="149" width="1.8" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="544.66" y="159.5" ></text>
+</g>
+<g >
+<title>compacting_gc (24 samples, 0.05%)</title><rect x="265.5" y="149" width="0.6" height="15.0" fill="rgb(227,149,24)" rx="2" ry="2" />
+<text  x="268.52" y="159.5" ></text>
+</g>
+<g >
+<title>$lambda (14 samples, 0.03%)</title><rect x="226.3" y="101" width="0.4" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="229.31" y="111.5" ></text>
+</g>
+<g >
+<title>toArray (1,068 samples, 2.37%)</title><rect x="228.7" y="165" width="28.0" height="15.0" fill="rgb(239,160,37)" rx="2" ry="2" />
+<text  x="231.69" y="175.5" >t..</text>
+</g>
+<g >
+<title>@buffer_size&lt;B&gt; (47 samples, 0.10%)</title><rect x="157.7" y="181" width="1.3" height="15.0" fill="rgb(251,118,51)" rx="2" ry="2" />
+<text  x="160.74" y="191.5" ></text>
+</g>
+<g >
+<title>toArray (124 samples, 0.28%)</title><rect x="299.2" y="133" width="3.2" height="15.0" fill="rgb(239,160,37)" rx="2" ry="2" />
+<text  x="302.19" y="143.5" ></text>
+</g>
+<g >
+<title>list (54 samples, 0.12%)</title><rect x="1066.2" y="101" width="1.4" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="1069.19" y="111.5" ></text>
+</g>
+<g >
+<title>B_add (54 samples, 0.12%)</title><rect x="224.9" y="181" width="1.4" height="15.0" fill="rgb(253,143,53)" rx="2" ry="2" />
+<text  x="227.89" y="191.5" ></text>
+</g>
+<g >
+<title>$lambda (197 samples, 0.44%)</title><rect x="1028.4" y="133" width="5.2" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="1031.42" y="143.5" ></text>
+</g>
+<g >
+<title>add (12 samples, 0.03%)</title><rect x="226.7" y="165" width="0.3" height="15.0" fill="rgb(253,156,53)" rx="2" ry="2" />
+<text  x="229.67" y="175.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;&gt; (8 samples, 0.02%)</title><rect x="272.1" y="133" width="0.2" height="15.0" fill="rgb(242,176,41)" rx="2" ry="2" />
+<text  x="275.09" y="143.5" ></text>
+</g>
+<g >
+<title>motoko_rts::principal_id::principal_of_blob::h6560fd4a9cbb47b9 (8 samples, 0.02%)</title><rect x="271.7" y="149" width="0.2" height="15.0" fill="rgb(226,127,24)" rx="2" ry="2" />
+<text  x="274.67" y="159.5" ></text>
+</g>
+<g >
+<title>getRec (81 samples, 0.18%)</title><rect x="348.8" y="181" width="2.2" height="15.0" fill="rgb(230,170,27)" rx="2" ry="2" />
+<text  x="351.84" y="191.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;tB&gt; (4 samples, 0.01%)</title><rect x="269.5" y="117" width="0.1" height="15.0" fill="rgb(245,176,45)" rx="2" ry="2" />
+<text  x="272.47" y="127.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (90 samples, 0.20%)</title><rect x="266.4" y="165" width="2.3" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="269.38" y="175.5" ></text>
+</g>
+<g >
+<title>iterate (25 samples, 0.06%)</title><rect x="156.7" y="165" width="0.6" height="15.0" fill="rgb(245,143,45)" rx="2" ry="2" />
+<text  x="159.67" y="175.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;vt&gt; (51 samples, 0.11%)</title><rect x="159.0" y="165" width="1.3" height="15.0" fill="rgb(237,118,36)" rx="2" ry="2" />
+<text  x="161.97" y="175.5" ></text>
+</g>
+<g >
+<title>init (599 samples, 1.33%)</title><rect x="994.2" y="149" width="15.7" height="15.0" fill="rgb(236,161,34)" rx="2" ry="2" />
+<text  x="997.22" y="159.5" ></text>
+</g>
+<g >
+<title>$lambda (94 samples, 0.21%)</title><rect x="202.2" y="165" width="2.5" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="205.19" y="175.5" ></text>
+</g>
+<g >
+<title>B_ge (12 samples, 0.03%)</title><rect x="226.7" y="181" width="0.3" height="15.0" fill="rgb(241,124,39)" rx="2" ry="2" />
+<text  x="229.67" y="191.5" ></text>
+</g>
+<g >
+<title>store (138 samples, 0.31%)</title><rect x="1120.2" y="133" width="3.6" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="1123.23" y="143.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;tB&gt; (52 samples, 0.12%)</title><rect x="456.1" y="149" width="1.4" height="15.0" fill="rgb(245,176,45)" rx="2" ry="2" />
+<text  x="459.11" y="159.5" ></text>
+</g>
+<g >
+<title>memset (246 samples, 0.55%)</title><rect x="593.1" y="181" width="6.4" height="15.0" fill="rgb(237,144,35)" rx="2" ry="2" />
+<text  x="596.05" y="191.5" ></text>
+</g>
+<g >
+<title>@deserialize_go&lt;t&gt; (104 samples, 0.23%)</title><rect x="454.7" y="165" width="2.8" height="15.0" fill="rgb(244,176,43)" rx="2" ry="2" />
+<text  x="457.75" y="175.5" ></text>
+</g>
+<g >
+<title>list (34 samples, 0.08%)</title><rect x="155.8" y="101" width="0.9" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="158.78" y="111.5" ></text>
+</g>
+<g >
+<title>list (332 samples, 0.74%)</title><rect x="434.7" y="133" width="8.7" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="437.67" y="143.5" ></text>
+</g>
+<g >
+<title>@serialize&lt;vt&gt; (15 samples, 0.03%)</title><rect x="468.8" y="133" width="0.4" height="15.0" fill="rgb(237,156,36)" rx="2" ry="2" />
+<text  x="471.77" y="143.5" ></text>
+</g>
+<g >
+<title>@serialize&lt;vt&gt; (248 samples, 0.55%)</title><rect x="945.1" y="149" width="6.5" height="15.0" fill="rgb(237,156,36)" rx="2" ry="2" />
+<text  x="948.10" y="159.5" ></text>
+</g>
+<g >
+<title>$lambda (248 samples, 0.55%)</title><rect x="945.1" y="133" width="6.5" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="948.10" y="143.5" ></text>
+</g>
+<g >
+<title>list (5 samples, 0.01%)</title><rect x="1178.6" y="85" width="0.2" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="1181.63" y="95.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;t&gt; (51 samples, 0.11%)</title><rect x="159.0" y="181" width="1.3" height="15.0" fill="rgb(244,118,43)" rx="2" ry="2" />
+<text  x="161.97" y="191.5" ></text>
+</g>
+<g >
+<title>put (28 samples, 0.06%)</title><rect x="1083.9" y="181" width="0.7" height="15.0" fill="rgb(234,152,31)" rx="2" ry="2" />
+<text  x="1086.90" y="191.5" ></text>
+</g>
+<g >
+<title>$lambda (72 samples, 0.16%)</title><rect x="541.7" y="133" width="1.8" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="544.66" y="143.5" ></text>
+</g>
+<g >
+<title>list (104 samples, 0.23%)</title><rect x="447.9" y="149" width="2.8" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="450.93" y="159.5" ></text>
+</g>
+<g >
+<title>init (2,748 samples, 6.10%)</title><rect x="354.4" y="181" width="72.1" height="15.0" fill="rgb(236,161,34)" rx="2" ry="2" />
+<text  x="357.44" y="191.5" >init</text>
+</g>
+<g >
+<title>list (8 samples, 0.02%)</title><rect x="269.2" y="69" width="0.2" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="272.16" y="79.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;tB&gt; (10 samples, 0.02%)</title><rect x="354.2" y="165" width="0.2" height="15.0" fill="rgb(245,176,45)" rx="2" ry="2" />
+<text  x="357.18" y="175.5" ></text>
+</g>
+<g >
+<title>retrieve (10 samples, 0.02%)</title><rect x="353.9" y="149" width="0.3" height="15.0" fill="rgb(240,162,39)" rx="2" ry="2" />
+<text  x="356.92" y="159.5" ></text>
+</g>
+<g >
+<title>retrieve (15 samples, 0.03%)</title><rect x="468.4" y="101" width="0.4" height="15.0" fill="rgb(240,162,39)" rx="2" ry="2" />
+<text  x="471.38" y="111.5" ></text>
+</g>
+<g >
+<title>obj_idx&lt;0&gt; (180 samples, 0.40%)</title><rect x="1062.9" y="181" width="4.7" height="15.0" fill="rgb(247,139,46)" rx="2" ry="2" />
+<text  x="1065.88" y="191.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;u&gt; (7 samples, 0.02%)</title><rect x="214.7" y="181" width="0.2" height="15.0" fill="rgb(243,156,42)" rx="2" ry="2" />
+<text  x="217.75" y="191.5" ></text>
+</g>
+<g >
+<title>toArray (54 samples, 0.12%)</title><rect x="1066.2" y="133" width="1.4" height="15.0" fill="rgb(239,160,37)" rx="2" ry="2" />
+<text  x="1069.19" y="143.5" ></text>
+</g>
+<g >
+<title>canister_init (18 samples, 0.04%)</title><rect x="1064.3" y="149" width="0.5" height="15.0" fill="rgb(236,106,34)" rx="2" ry="2" />
+<text  x="1067.30" y="159.5" ></text>
+</g>
+<g >
+<title>list (1,118 samples, 2.48%)</title><rect x="1033.6" y="101" width="29.3" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="1036.58" y="111.5" >list</text>
+</g>
+<g >
+<title>list (16 samples, 0.04%)</title><rect x="157.3" y="101" width="0.4" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="160.32" y="111.5" ></text>
+</g>
+<g >
+<title>init (17 samples, 0.04%)</title><rect x="339.5" y="133" width="0.5" height="15.0" fill="rgb(236,161,34)" rx="2" ry="2" />
+<text  x="342.50" y="143.5" ></text>
+</g>
+<g >
+<title>list (188 samples, 0.42%)</title><rect x="207.1" y="133" width="4.9" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="210.12" y="143.5" ></text>
+</g>
+<g >
+<title>store (52 samples, 0.12%)</title><rect x="453.4" y="133" width="1.3" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="456.38" y="143.5" ></text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::compacting_gc::h416bfa181cd1565b (248 samples, 0.55%)</title><rect x="964.6" y="165" width="6.5" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="967.60" y="175.5" ></text>
+</g>
+<g >
+<title>iterate (174 samples, 0.39%)</title><rect x="443.4" y="181" width="4.5" height="15.0" fill="rgb(245,143,45)" rx="2" ry="2" />
+<text  x="446.37" y="191.5" ></text>
+</g>
+<g >
+<title>canister_init (124 samples, 0.28%)</title><rect x="961.3" y="133" width="3.3" height="15.0" fill="rgb(236,106,34)" rx="2" ry="2" />
+<text  x="964.35" y="143.5" ></text>
+</g>
+<g >
+<title>retrieve (28 samples, 0.06%)</title><rect x="338.8" y="117" width="0.7" height="15.0" fill="rgb(240,162,39)" rx="2" ry="2" />
+<text  x="341.77" y="127.5" ></text>
+</g>
+<g >
+<title>$lambda (65 samples, 0.14%)</title><rect x="591.4" y="101" width="1.7" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="594.35" y="111.5" ></text>
+</g>
+<g >
+<title>canister_init (34 samples, 0.08%)</title><rect x="1084.6" y="149" width="0.9" height="15.0" fill="rgb(236,106,34)" rx="2" ry="2" />
+<text  x="1087.64" y="159.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;&gt; (20 samples, 0.04%)</title><rect x="353.4" y="165" width="0.5" height="15.0" fill="rgb(242,176,41)" rx="2" ry="2" />
+<text  x="356.40" y="175.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;vt&gt; (15 samples, 0.03%)</title><rect x="468.8" y="149" width="0.4" height="15.0" fill="rgb(237,156,36)" rx="2" ry="2" />
+<text  x="471.77" y="159.5" ></text>
+</g>
+<g >
+<title>@deserialize_go&lt;t&gt; (52 samples, 0.12%)</title><rect x="1188.6" y="165" width="1.4" height="15.0" fill="rgb(244,176,43)" rx="2" ry="2" />
+<text  x="1191.64" y="175.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;tB&gt; (4 samples, 0.01%)</title><rect x="272.0" y="101" width="0.1" height="15.0" fill="rgb(245,176,45)" rx="2" ry="2" />
+<text  x="274.99" y="111.5" ></text>
+</g>
+<g >
+<title>$lambda (54 samples, 0.12%)</title><rect x="1064.8" y="133" width="1.4" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="1067.77" y="143.5" ></text>
+</g>
+<g >
+<title>retrieve (69 samples, 0.15%)</title><rect x="1114.8" y="149" width="1.8" height="15.0" fill="rgb(240,162,39)" rx="2" ry="2" />
+<text  x="1117.81" y="159.5" ></text>
+</g>
+<g >
+<title>retrieve (26 samples, 0.06%)</title><rect x="1188.6" y="133" width="0.7" height="15.0" fill="rgb(240,162,39)" rx="2" ry="2" />
+<text  x="1191.64" y="143.5" ></text>
+</g>
+<g >
+<title>list (27 samples, 0.06%)</title><rect x="224.9" y="85" width="0.7" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="227.89" y="95.5" ></text>
+</g>
+<g >
+<title>blob_of_principal (11 samples, 0.02%)</title><rect x="1010.6" y="165" width="0.3" height="15.0" fill="rgb(228,110,25)" rx="2" ry="2" />
+<text  x="1013.60" y="175.5" ></text>
+</g>
+<g >
+<title>link_start (23 samples, 0.05%)</title><rect x="426.5" y="133" width="0.6" height="15.0" fill="rgb(239,129,37)" rx="2" ry="2" />
+<text  x="429.47" y="143.5" ></text>
+</g>
+<g >
+<title>$lambda (18 samples, 0.04%)</title><rect x="1063.8" y="117" width="0.5" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="1066.83" y="127.5" ></text>
+</g>
+<g >
+<title>add (27 samples, 0.06%)</title><rect x="224.9" y="165" width="0.7" height="15.0" fill="rgb(253,156,53)" rx="2" ry="2" />
+<text  x="227.89" y="175.5" ></text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::compacting_gc::h416bfa181cd1565b (8,910 samples, 19.79%)</title><rect x="634.2" y="181" width="233.5" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="637.15" y="191.5" >motoko_rts::gc::mark_compact::..</text>
+</g>
+<g >
+<title>compute_crc32 (17 samples, 0.04%)</title><rect x="339.5" y="181" width="0.5" height="15.0" fill="rgb(245,149,44)" rx="2" ry="2" />
+<text  x="342.50" y="191.5" ></text>
+</g>
+<g >
+<title>$lambda (6 samples, 0.01%)</title><rect x="266.5" y="117" width="0.2" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="269.54" y="127.5" ></text>
+</g>
+<g >
+<title>text_of_ptr_size (26 samples, 0.06%)</title><rect x="1009.9" y="165" width="0.7" height="15.0" fill="rgb(245,171,44)" rx="2" ry="2" />
+<text  x="1012.92" y="175.5" ></text>
+</g>
+<g >
+<title>list (5 samples, 0.01%)</title><rect x="1178.5" y="85" width="0.1" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="1181.49" y="95.5" ></text>
+</g>
+<g >
+<title>@serialize&lt;B&gt; (47 samples, 0.10%)</title><rect x="157.7" y="165" width="1.3" height="15.0" fill="rgb(251,156,51)" rx="2" ry="2" />
+<text  x="160.74" y="175.5" ></text>
+</g>
+<g >
+<title>store (345 samples, 0.77%)</title><rect x="1125.7" y="133" width="9.0" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="1128.66" y="143.5" ></text>
+</g>
+<g >
+<title>$lambda (51 samples, 0.11%)</title><rect x="212.0" y="133" width="1.4" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="215.05" y="143.5" ></text>
+</g>
+<g >
+<title>iterate (149 samples, 0.33%)</title><rect x="218.0" y="133" width="3.9" height="15.0" fill="rgb(245,143,45)" rx="2" ry="2" />
+<text  x="220.97" y="143.5" ></text>
+</g>
+<g >
+<title>canister_init (6 samples, 0.01%)</title><rect x="267.6" y="117" width="0.2" height="15.0" fill="rgb(236,106,34)" rx="2" ry="2" />
+<text  x="270.64" y="127.5" ></text>
+</g>
+<g >
+<title>$lambda (124 samples, 0.28%)</title><rect x="299.2" y="117" width="3.2" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="302.19" y="127.5" ></text>
+</g>
+<g >
+<title>Array_tabulate (115 samples, 0.26%)</title><rect x="221.9" y="181" width="3.0" height="15.0" fill="rgb(245,150,45)" rx="2" ry="2" />
+<text  x="224.88" y="191.5" ></text>
+</g>
+<g >
+<title>canister_init (558 samples, 1.24%)</title><rect x="599.7" y="133" width="14.6" height="15.0" fill="rgb(236,106,34)" rx="2" ry="2" />
+<text  x="602.66" y="143.5" ></text>
+</g>
+<g >
+<title>iter (332 samples, 0.74%)</title><rect x="434.7" y="181" width="8.7" height="15.0" fill="rgb(240,143,38)" rx="2" ry="2" />
+<text  x="437.67" y="191.5" ></text>
+</g>
+<g >
+<title>canister_init (194 samples, 0.43%)</title><rect x="529.7" y="133" width="5.0" height="15.0" fill="rgb(236,106,34)" rx="2" ry="2" />
+<text  x="532.65" y="143.5" ></text>
+</g>
+<g >
+<title>next (54 samples, 0.12%)</title><rect x="1066.2" y="165" width="1.4" height="15.0" fill="rgb(230,219,27)" rx="2" ry="2" />
+<text  x="1069.19" y="175.5" ></text>
+</g>
+<g >
+<title>Array_tabulate (8 samples, 0.02%)</title><rect x="269.2" y="133" width="0.2" height="15.0" fill="rgb(245,150,45)" rx="2" ry="2" />
+<text  x="272.16" y="143.5" ></text>
+</g>
+<g >
+<title>text_of_ptr_size (124 samples, 0.28%)</title><rect x="974.3" y="149" width="3.3" height="15.0" fill="rgb(245,171,44)" rx="2" ry="2" />
+<text  x="977.35" y="159.5" ></text>
+</g>
+<g >
+<title>$lambda (6 samples, 0.01%)</title><rect x="266.5" y="101" width="0.2" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="269.54" y="111.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;tB&gt; (156 samples, 0.35%)</title><rect x="343.6" y="133" width="4.1" height="15.0" fill="rgb(245,176,45)" rx="2" ry="2" />
+<text  x="346.62" y="143.5" ></text>
+</g>
+<g >
+<title>$lambda (1,068 samples, 2.37%)</title><rect x="228.7" y="149" width="28.0" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="231.69" y="159.5" >$..</text>
+</g>
+<g >
+<title>motoko_rts::text::blob_of_text::h3830d2568303b855 (11 samples, 0.02%)</title><rect x="1010.6" y="181" width="0.3" height="15.0" fill="rgb(234,127,32)" rx="2" ry="2" />
+<text  x="1013.60" y="191.5" ></text>
+</g>
+<g >
+<title>canister_init (337 samples, 0.75%)</title><rect x="256.7" y="149" width="8.8" height="15.0" fill="rgb(236,106,34)" rx="2" ry="2" />
+<text  x="259.68" y="159.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;t&gt; (65 samples, 0.14%)</title><rect x="591.4" y="149" width="1.7" height="15.0" fill="rgb(244,156,43)" rx="2" ry="2" />
+<text  x="594.35" y="159.5" ></text>
+</g>
+<g >
+<title>__wasm_apply_global_relocs (31 samples, 0.07%)</title><rect x="298.2" y="181" width="0.8" height="15.0" fill="rgb(244,119,43)" rx="2" ry="2" />
+<text  x="301.22" y="191.5" ></text>
+</g>
+<g >
+<title>next (16 samples, 0.04%)</title><rect x="157.3" y="165" width="0.4" height="15.0" fill="rgb(230,219,27)" rx="2" ry="2" />
+<text  x="160.32" y="175.5" ></text>
+</g>
+<g >
+<title>store (62 samples, 0.14%)</title><rect x="937.0" y="117" width="1.6" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="939.97" y="127.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;vt&gt; (5 samples, 0.01%)</title><rect x="1178.6" y="149" width="0.2" height="15.0" fill="rgb(237,156,36)" rx="2" ry="2" />
+<text  x="1181.63" y="159.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;u&gt; (18 samples, 0.04%)</title><rect x="160.3" y="181" width="0.5" height="15.0" fill="rgb(243,118,42)" rx="2" ry="2" />
+<text  x="163.31" y="191.5" ></text>
+</g>
+<g >
+<title>$lambda (15 samples, 0.03%)</title><rect x="468.8" y="101" width="0.4" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="471.77" y="111.5" ></text>
+</g>
+<g >
+<title>canister_init (8 samples, 0.02%)</title><rect x="271.3" y="117" width="0.2" height="15.0" fill="rgb(236,106,34)" rx="2" ry="2" />
+<text  x="274.26" y="127.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;vt&gt; (133 samples, 0.30%)</title><rect x="160.8" y="181" width="3.5" height="15.0" fill="rgb(237,118,36)" rx="2" ry="2" />
+<text  x="163.78" y="191.5" ></text>
+</g>
+<g >
+<title>B_gt (12 samples, 0.03%)</title><rect x="227.0" y="181" width="0.3" height="15.0" fill="rgb(232,124,30)" rx="2" ry="2" />
+<text  x="229.99" y="191.5" ></text>
+</g>
+<g >
+<title>toArray (16 samples, 0.04%)</title><rect x="157.3" y="133" width="0.4" height="15.0" fill="rgb(239,160,37)" rx="2" ry="2" />
+<text  x="160.32" y="143.5" ></text>
+</g>
+<g >
+<title>$lambda (15 samples, 0.03%)</title><rect x="468.8" y="117" width="0.4" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="471.77" y="127.5" ></text>
+</g>
+<g >
+<title>@serialize&lt;vt&gt; (28 samples, 0.06%)</title><rect x="304.1" y="165" width="0.7" height="15.0" fill="rgb(237,156,36)" rx="2" ry="2" />
+<text  x="307.10" y="175.5" ></text>
+</g>
+<g >
+<title>next (1,118 samples, 2.48%)</title><rect x="1033.6" y="165" width="29.3" height="15.0" fill="rgb(230,219,27)" rx="2" ry="2" />
+<text  x="1036.58" y="175.5" >next</text>
+</g>
+<g >
+<title>list (18 samples, 0.04%)</title><rect x="1063.8" y="101" width="0.5" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="1066.83" y="111.5" ></text>
+</g>
+<g >
+<title>$lambda (26 samples, 0.06%)</title><rect x="347.7" y="165" width="0.7" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="350.71" y="175.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;tB&gt; (52 samples, 0.12%)</title><rect x="452.0" y="165" width="1.4" height="15.0" fill="rgb(245,176,45)" rx="2" ry="2" />
+<text  x="455.02" y="175.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;tB&gt; (4 samples, 0.01%)</title><rect x="272.4" y="133" width="0.1" height="15.0" fill="rgb(245,176,45)" rx="2" ry="2" />
+<text  x="275.41" y="143.5" ></text>
+</g>
+<g >
+<title>$lambda (28 samples, 0.06%)</title><rect x="338.8" y="133" width="0.7" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="341.77" y="143.5" ></text>
+</g>
+<g >
+<title>store (14 samples, 0.03%)</title><rect x="303.4" y="117" width="0.3" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="306.36" y="127.5" ></text>
+</g>
+<g >
+<title>@deserialize_go&lt;t&gt; (296 samples, 0.66%)</title><rect x="340.0" y="149" width="7.7" height="15.0" fill="rgb(244,176,43)" rx="2" ry="2" />
+<text  x="342.95" y="159.5" ></text>
+</g>
+<g >
+<title>@serialize&lt;vt&gt; (31 samples, 0.07%)</title><rect x="1178.8" y="133" width="0.8" height="15.0" fill="rgb(237,156,36)" rx="2" ry="2" />
+<text  x="1181.76" y="143.5" ></text>
+</g>
+<g >
+<title>Array_tabulate (14 samples, 0.03%)</title><rect x="302.6" y="165" width="0.4" height="15.0" fill="rgb(245,150,45)" rx="2" ry="2" />
+<text  x="305.63" y="175.5" ></text>
+</g>
+<g >
+<title>__wasm_call_ctors (981 samples, 2.18%)</title><rect x="272.5" y="165" width="25.7" height="15.0" fill="rgb(239,119,38)" rx="2" ry="2" />
+<text  x="275.51" y="175.5" >_..</text>
+</g>
+<g >
+<title>store (62 samples, 0.14%)</title><rect x="976.0" y="101" width="1.6" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="978.97" y="111.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;tB&gt; (6 samples, 0.01%)</title><rect x="593.5" y="149" width="0.2" height="15.0" fill="rgb(245,176,45)" rx="2" ry="2" />
+<text  x="596.53" y="159.5" ></text>
+</g>
+<g >
+<title>rts_start (9 samples, 0.02%)</title><rect x="1114.6" y="181" width="0.2" height="15.0" fill="rgb(239,145,37)" rx="2" ry="2" />
+<text  x="1117.57" y="191.5" ></text>
+</g>
+<g >
+<title>$lambda (51 samples, 0.11%)</title><rect x="212.0" y="149" width="1.4" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="215.05" y="159.5" ></text>
+</g>
+<g >
+<title>retrieve (13 samples, 0.03%)</title><rect x="1009.9" y="117" width="0.4" height="15.0" fill="rgb(240,162,39)" rx="2" ry="2" />
+<text  x="1012.92" y="127.5" ></text>
+</g>
+<g >
+<title>link_start (31 samples, 0.07%)</title><rect x="298.2" y="165" width="0.8" height="15.0" fill="rgb(239,129,37)" rx="2" ry="2" />
+<text  x="301.22" y="175.5" ></text>
+</g>
+<g >
+<title>@deserialize_go&lt;B&gt; (7 samples, 0.02%)</title><rect x="303.2" y="165" width="0.2" height="15.0" fill="rgb(251,176,51)" rx="2" ry="2" />
+<text  x="306.18" y="175.5" ></text>
+</g>
+<g >
+<title>@deserialize_go&lt;B&gt; (52 samples, 0.12%)</title><rect x="453.4" y="165" width="1.3" height="15.0" fill="rgb(251,176,51)" rx="2" ry="2" />
+<text  x="456.38" y="175.5" ></text>
+</g>
+<g >
+<title>store (4 samples, 0.01%)</title><rect x="272.4" y="117" width="0.1" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="275.41" y="127.5" ></text>
+</g>
+<g >
+<title>initialize_compacting_gc (23 samples, 0.05%)</title><rect x="426.5" y="181" width="0.6" height="15.0" fill="rgb(227,161,24)" rx="2" ry="2" />
+<text  x="429.47" y="191.5" ></text>
+</g>
+<g >
+<title>retrieve (61 samples, 0.14%)</title><rect x="197.9" y="149" width="1.6" height="15.0" fill="rgb(240,162,39)" rx="2" ry="2" />
+<text  x="200.95" y="159.5" ></text>
+</g>
+<g >
+<title>$lambda (186 samples, 0.41%)</title><rect x="1010.9" y="101" width="4.9" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="1013.88" y="111.5" ></text>
+</g>
+<g >
+<title>init (48 samples, 0.11%)</title><rect x="550.1" y="149" width="1.3" height="15.0" fill="rgb(236,161,34)" rx="2" ry="2" />
+<text  x="553.12" y="159.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_array::hfb4dad1bf9425cf5 (12 samples, 0.03%)</title><rect x="269.1" y="165" width="0.3" height="15.0" fill="rgb(244,127,43)" rx="2" ry="2" />
+<text  x="272.05" y="175.5" ></text>
+</g>
+<g >
+<title>$lambda (54 samples, 0.12%)</title><rect x="1066.2" y="117" width="1.4" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="1069.19" y="127.5" ></text>
+</g>
+<g >
+<title>motoko_rts::principal_id::principal_of_blob::h6560fd4a9cbb47b9 (599 samples, 1.33%)</title><rect x="994.2" y="181" width="15.7" height="15.0" fill="rgb(226,127,24)" rx="2" ry="2" />
+<text  x="997.22" y="191.5" ></text>
+</g>
+<g >
+<title>motoko_rts::text::text_get_range::h11e3b738bd44e775 (64 samples, 0.14%)</title><rect x="1015.8" y="181" width="1.6" height="15.0" fill="rgb(244,127,43)" rx="2" ry="2" />
+<text  x="1018.76" y="191.5" ></text>
+</g>
+<g >
+<title>store (6 samples, 0.01%)</title><rect x="268.0" y="117" width="0.1" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="270.95" y="127.5" ></text>
+</g>
+<g >
+<title>list (132 samples, 0.29%)</title><rect x="931.9" y="85" width="3.4" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="934.89" y="95.5" ></text>
+</g>
+<g >
+<title>get (84 samples, 0.19%)</title><rect x="1175.3" y="133" width="2.2" height="15.0" fill="rgb(237,170,35)" rx="2" ry="2" />
+<text  x="1178.30" y="143.5" ></text>
+</g>
+<g >
+<title>store (6 samples, 0.01%)</title><rect x="338.6" y="165" width="0.2" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="341.61" y="175.5" ></text>
+</g>
+<g >
+<title>list (8 samples, 0.02%)</title><rect x="272.1" y="117" width="0.2" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="275.09" y="127.5" ></text>
+</g>
+<g >
+<title>list (10 samples, 0.02%)</title><rect x="201.1" y="165" width="0.3" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="204.15" y="175.5" ></text>
+</g>
+<g >
+<title>motoko_rts::text::text_compare_range::h44562c24c3fce02f (186 samples, 0.41%)</title><rect x="1010.9" y="181" width="4.9" height="15.0" fill="rgb(244,127,43)" rx="2" ry="2" />
+<text  x="1013.88" y="191.5" ></text>
+</g>
+<g >
+<title>canister_init (6 samples, 0.01%)</title><rect x="338.5" y="165" width="0.1" height="15.0" fill="rgb(236,106,34)" rx="2" ry="2" />
+<text  x="341.46" y="175.5" ></text>
+</g>
+<g >
+<title>retrieve (62 samples, 0.14%)</title><rect x="980.8" y="133" width="1.7" height="15.0" fill="rgb(240,162,39)" rx="2" ry="2" />
+<text  x="983.85" y="143.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;t&gt; (4 samples, 0.01%)</title><rect x="271.9" y="101" width="0.1" height="15.0" fill="rgb(244,176,43)" rx="2" ry="2" />
+<text  x="274.88" y="111.5" ></text>
+</g>
+<g >
+<title>$lambda (27 samples, 0.06%)</title><rect x="224.9" y="101" width="0.7" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="227.89" y="111.5" ></text>
+</g>
+<g >
+<title>iterate (4 samples, 0.01%)</title><rect x="269.1" y="85" width="0.1" height="15.0" fill="rgb(245,143,45)" rx="2" ry="2" />
+<text  x="272.05" y="95.5" ></text>
+</g>
+<g >
+<title>list (115 samples, 0.26%)</title><rect x="221.9" y="117" width="3.0" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="224.88" y="127.5" ></text>
+</g>
+<g >
+<title>retrieve (18 samples, 0.04%)</title><rect x="1062.9" y="149" width="0.5" height="15.0" fill="rgb(240,162,39)" rx="2" ry="2" />
+<text  x="1065.88" y="159.5" ></text>
+</g>
+<g >
+<title>compacting_gc (6 samples, 0.01%)</title><rect x="351.0" y="149" width="0.2" height="15.0" fill="rgb(227,149,24)" rx="2" ry="2" />
+<text  x="354.04" y="159.5" ></text>
+</g>
+<g >
+<title>retrieve (4 samples, 0.01%)</title><rect x="271.9" y="85" width="0.1" height="15.0" fill="rgb(240,162,39)" rx="2" ry="2" />
+<text  x="274.88" y="95.5" ></text>
+</g>
+<g >
+<title>motoko_rts::text::alloc_text_blob::h38617f18505d9ec7 (26 samples, 0.06%)</title><rect x="1009.9" y="181" width="0.7" height="15.0" fill="rgb(242,127,41)" rx="2" ry="2" />
+<text  x="1012.92" y="191.5" ></text>
+</g>
+<g >
+<title>list (4 samples, 0.01%)</title><rect x="269.1" y="37" width="0.1" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="272.05" y="47.5" ></text>
+</g>
+<g >
+<title>canister_init (8 samples, 0.02%)</title><rect x="270.4" y="117" width="0.2" height="15.0" fill="rgb(236,106,34)" rx="2" ry="2" />
+<text  x="273.42" y="127.5" ></text>
+</g>
+<g >
+<title>$lambda (15 samples, 0.03%)</title><rect x="468.4" y="133" width="0.4" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="471.38" y="143.5" ></text>
+</g>
+<g >
+<title>store (413 samples, 0.92%)</title><rect x="183.9" y="165" width="10.8" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="186.90" y="175.5" ></text>
+</g>
+<g >
+<title>list (208 samples, 0.46%)</title><rect x="457.5" y="133" width="5.4" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="460.47" y="143.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;t&gt; (31 samples, 0.07%)</title><rect x="1178.8" y="165" width="0.8" height="15.0" fill="rgb(244,156,43)" rx="2" ry="2" />
+<text  x="1181.76" y="175.5" ></text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::compacting_gc::h416bfa181cd1565b (24 samples, 0.05%)</title><rect x="265.5" y="165" width="0.6" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="268.52" y="175.5" ></text>
+</g>
+<g >
+<title>list (66 samples, 0.15%)</title><rect x="930.2" y="53" width="1.7" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="933.16" y="63.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;tB&gt; (62 samples, 0.14%)</title><rect x="982.5" y="149" width="1.6" height="15.0" fill="rgb(245,176,45)" rx="2" ry="2" />
+<text  x="985.47" y="159.5" ></text>
+</g>
+<g >
+<title>$lambda (31 samples, 0.07%)</title><rect x="1178.8" y="117" width="0.8" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="1181.76" y="127.5" ></text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::compacting_gc::h416bfa181cd1565b (1,316 samples, 2.92%)</title><rect x="599.7" y="165" width="34.5" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="602.66" y="175.5" >mo..</text>
+</g>
+<g >
+<title>$lambda (31 samples, 0.07%)</title><rect x="1178.8" y="101" width="0.8" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="1181.76" y="111.5" ></text>
+</g>
+<g >
+<title>get_static_roots (4 samples, 0.01%)</title><rect x="351.2" y="181" width="0.1" height="15.0" fill="rgb(237,170,35)" rx="2" ry="2" />
+<text  x="354.19" y="191.5" ></text>
+</g>
+<g >
+<title>@deserialize_go&lt;B&gt; (123 samples, 0.27%)</title><rect x="194.7" y="181" width="3.2" height="15.0" fill="rgb(251,176,51)" rx="2" ry="2" />
+<text  x="197.72" y="191.5" ></text>
+</g>
+<g >
+<title>@reset_refund (20 samples, 0.04%)</title><rect x="201.7" y="181" width="0.5" height="15.0" fill="rgb(248,161,48)" rx="2" ry="2" />
+<text  x="204.67" y="191.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;vt&gt; (31 samples, 0.07%)</title><rect x="1178.8" y="149" width="0.8" height="15.0" fill="rgb(237,156,36)" rx="2" ry="2" />
+<text  x="1181.76" y="159.5" ></text>
+</g>
+<g >
+<title>list (27 samples, 0.06%)</title><rect x="225.6" y="117" width="0.7" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="228.60" y="127.5" ></text>
+</g>
+<g >
+<title>trans_state5 (12 samples, 0.03%)</title><rect x="1186.4" y="181" width="0.4" height="15.0" fill="rgb(241,158,40)" rx="2" ry="2" />
+<text  x="1189.44" y="191.5" ></text>
+</g>
+<g >
+<title>retrieve (6 samples, 0.01%)</title><rect x="266.7" y="85" width="0.2" height="15.0" fill="rgb(240,162,39)" rx="2" ry="2" />
+<text  x="269.69" y="95.5" ></text>
+</g>
+<g >
+<title>$lambda (248 samples, 0.55%)</title><rect x="945.1" y="117" width="6.5" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="948.10" y="127.5" ></text>
+</g>
+<g >
+<title>retrieve (19 samples, 0.04%)</title><rect x="1177.5" y="133" width="0.5" height="15.0" fill="rgb(240,162,39)" rx="2" ry="2" />
+<text  x="1180.50" y="143.5" ></text>
+</g>
+<g >
+<title>@anon-func-165.17 (18 samples, 0.04%)</title><rect x="1063.8" y="165" width="0.5" height="15.0" fill="rgb(233,146,31)" rx="2" ry="2" />
+<text  x="1066.83" y="175.5" ></text>
+</g>
+<g >
+<title>@serialize&lt;B&gt; (6 samples, 0.01%)</title><rect x="266.7" y="133" width="0.2" height="15.0" fill="rgb(251,156,51)" rx="2" ry="2" />
+<text  x="269.69" y="143.5" ></text>
+</g>
+<g >
+<title>$lambda (94 samples, 0.21%)</title><rect x="202.2" y="149" width="2.5" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="205.19" y="159.5" ></text>
+</g>
+<g >
+<title>@deserialize_go&lt;t&gt; (26 samples, 0.06%)</title><rect x="1009.9" y="149" width="0.7" height="15.0" fill="rgb(244,176,43)" rx="2" ry="2" />
+<text  x="1012.92" y="159.5" ></text>
+</g>
+<g >
+<title>$lambda (18 samples, 0.04%)</title><rect x="160.3" y="149" width="0.5" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="163.31" y="159.5" ></text>
+</g>
+<g >
+<title>canister_init (2,748 samples, 6.10%)</title><rect x="354.4" y="165" width="72.1" height="15.0" fill="rgb(236,106,34)" rx="2" ry="2" />
+<text  x="357.44" y="175.5" >canister..</text>
+</g>
+<g >
+<title>@deserialize&lt;t&gt; (52 samples, 0.12%)</title><rect x="454.7" y="149" width="1.4" height="15.0" fill="rgb(244,176,43)" rx="2" ry="2" />
+<text  x="457.75" y="159.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;&gt; (124 samples, 0.28%)</title><rect x="977.6" y="149" width="3.2" height="15.0" fill="rgb(242,176,41)" rx="2" ry="2" />
+<text  x="980.60" y="159.5" ></text>
+</g>
+<g >
+<title>list (12 samples, 0.03%)</title><rect x="226.7" y="85" width="0.3" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="229.67" y="95.5" ></text>
+</g>
+<g >
+<title>retrieve (1,038 samples, 2.31%)</title><rect x="64.3" y="149" width="27.2" height="15.0" fill="rgb(240,162,39)" rx="2" ry="2" />
+<text  x="67.33" y="159.5" >r..</text>
+</g>
+<g >
+<title>toArray (54 samples, 0.12%)</title><rect x="1064.8" y="149" width="1.4" height="15.0" fill="rgb(239,160,37)" rx="2" ry="2" />
+<text  x="1067.77" y="159.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;t&gt; (10 samples, 0.02%)</title><rect x="353.9" y="165" width="0.3" height="15.0" fill="rgb(244,176,43)" rx="2" ry="2" />
+<text  x="356.92" y="175.5" ></text>
+</g>
+<g >
+<title>compacting_gc (8 samples, 0.02%)</title><rect x="268.8" y="149" width="0.3" height="15.0" fill="rgb(227,149,24)" rx="2" ry="2" />
+<text  x="271.84" y="159.5" ></text>
+</g>
+<g >
+<title>obj_idx&lt;1&gt; (18 samples, 0.04%)</title><rect x="1068.5" y="181" width="0.5" height="15.0" fill="rgb(246,139,45)" rx="2" ry="2" />
+<text  x="1071.55" y="191.5" ></text>
+</g>
+<g >
+<title>compacting_gc (1,368 samples, 3.04%)</title><rect x="551.4" y="149" width="35.8" height="15.0" fill="rgb(227,149,24)" rx="2" ry="2" />
+<text  x="554.38" y="159.5" >com..</text>
+</g>
+<g >
+<title>list (186 samples, 0.41%)</title><rect x="1070.0" y="149" width="4.8" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="1072.96" y="159.5" ></text>
+</g>
+<g >
+<title>region_init (34 samples, 0.08%)</title><rect x="1084.6" y="181" width="0.9" height="15.0" fill="rgb(236,165,34)" rx="2" ry="2" />
+<text  x="1087.64" y="191.5" ></text>
+</g>
+<g >
+<title>toArray (27 samples, 0.06%)</title><rect x="224.9" y="117" width="0.7" height="15.0" fill="rgb(239,160,37)" rx="2" ry="2" />
+<text  x="227.89" y="127.5" ></text>
+</g>
+<g >
+<title>store (7 samples, 0.02%)</title><rect x="214.7" y="117" width="0.2" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="217.75" y="127.5" ></text>
+</g>
+<g >
+<title>store (62 samples, 0.14%)</title><rect x="935.3" y="133" width="1.7" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="938.35" y="143.5" ></text>
+</g>
+<g >
+<title>alloc_blob (992 samples, 2.20%)</title><rect x="935.3" y="165" width="26.0" height="15.0" fill="rgb(239,128,38)" rx="2" ry="2" />
+<text  x="938.35" y="175.5" >a..</text>
+</g>
+<g >
+<title>$lambda (133 samples, 0.30%)</title><rect x="160.8" y="133" width="3.5" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="163.78" y="143.5" ></text>
+</g>
+<g >
+<title>@anon-func-165.17 (14 samples, 0.03%)</title><rect x="226.3" y="149" width="0.4" height="15.0" fill="rgb(233,146,31)" rx="2" ry="2" />
+<text  x="229.31" y="159.5" ></text>
+</g>
+<g >
+<title>blob_of_principal (194 samples, 0.43%)</title><rect x="529.7" y="165" width="5.0" height="15.0" fill="rgb(228,110,25)" rx="2" ry="2" />
+<text  x="532.65" y="175.5" ></text>
+</g>
+<g >
+<title>$lambda (28 samples, 0.06%)</title><rect x="304.1" y="133" width="0.7" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="307.10" y="143.5" ></text>
+</g>
+<g >
+<title>store (36 samples, 0.08%)</title><rect x="929.2" y="133" width="1.0" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="932.22" y="143.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_array::hfb4dad1bf9425cf5 (198 samples, 0.44%)</title><rect x="930.2" y="181" width="5.1" height="15.0" fill="rgb(244,127,43)" rx="2" ry="2" />
+<text  x="933.16" y="191.5" ></text>
+</g>
+<g >
+<title>parse_idl_header (414 samples, 0.92%)</title><rect x="1123.8" y="165" width="10.9" height="15.0" fill="rgb(243,149,41)" rx="2" ry="2" />
+<text  x="1126.85" y="175.5" ></text>
+</g>
+<g >
+<title>iterate (1,118 samples, 2.48%)</title><rect x="1033.6" y="149" width="29.3" height="15.0" fill="rgb(245,143,45)" rx="2" ry="2" />
+<text  x="1036.58" y="159.5" >it..</text>
+</g>
+<g >
+<title>$lambda (7 samples, 0.02%)</title><rect x="302.4" y="85" width="0.2" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="305.44" y="95.5" ></text>
+</g>
+<g >
+<title>@deserialize_go&lt;B&gt; (138 samples, 0.31%)</title><rect x="1120.2" y="165" width="3.6" height="15.0" fill="rgb(251,176,51)" rx="2" ry="2" />
+<text  x="1123.23" y="175.5" ></text>
+</g>
+<g >
+<title>compacting_gc (222 samples, 0.49%)</title><rect x="593.7" y="149" width="5.8" height="15.0" fill="rgb(227,149,24)" rx="2" ry="2" />
+<text  x="596.68" y="159.5" ></text>
+</g>
+<g >
+<title>store (879 samples, 1.95%)</title><rect x="885.3" y="133" width="23.1" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="888.34" y="143.5" >s..</text>
+</g>
+<g >
+<title>$lambda (34 samples, 0.08%)</title><rect x="155.8" y="117" width="0.9" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="158.78" y="127.5" ></text>
+</g>
+<g >
+<title>$lambda (65 samples, 0.14%)</title><rect x="548.4" y="133" width="1.7" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="551.42" y="143.5" ></text>
+</g>
+<g >
+<title>$lambda (36 samples, 0.08%)</title><rect x="1069.0" y="165" width="1.0" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="1072.02" y="175.5" ></text>
+</g>
+<g >
+<title>retrieve (20 samples, 0.04%)</title><rect x="352.3" y="149" width="0.6" height="15.0" fill="rgb(240,162,39)" rx="2" ry="2" />
+<text  x="355.35" y="159.5" ></text>
+</g>
+<g >
+<title>canister_init (10 samples, 0.02%)</title><rect x="1185.4" y="165" width="0.2" height="15.0" fill="rgb(236,106,34)" rx="2" ry="2" />
+<text  x="1188.39" y="175.5" ></text>
+</g>
+<g >
+<title>motoko_rts::text::alloc_text_blob::h38617f18505d9ec7 (6 samples, 0.01%)</title><rect x="268.3" y="149" width="0.1" height="15.0" fill="rgb(242,127,41)" rx="2" ry="2" />
+<text  x="271.27" y="159.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;t&gt; (5 samples, 0.01%)</title><rect x="1178.5" y="165" width="0.1" height="15.0" fill="rgb(244,118,43)" rx="2" ry="2" />
+<text  x="1181.49" y="175.5" ></text>
+</g>
+<g >
+<title>text_compare (84 samples, 0.19%)</title><rect x="1175.3" y="181" width="2.2" height="15.0" fill="rgb(248,171,47)" rx="2" ry="2" />
+<text  x="1178.30" y="191.5" ></text>
+</g>
+<g >
+<title>@anon-func-165.17 (66 samples, 0.15%)</title><rect x="930.2" y="117" width="1.7" height="15.0" fill="rgb(233,146,31)" rx="2" ry="2" />
+<text  x="933.16" y="127.5" ></text>
+</g>
+<g >
+<title>store (6 samples, 0.01%)</title><rect x="266.5" y="85" width="0.2" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="269.54" y="95.5" ></text>
+</g>
+<g >
+<title>motoko_rts::principal_id::enc_stash::hade07e1e4d51be16 (386 samples, 0.86%)</title><rect x="984.1" y="181" width="10.1" height="15.0" fill="rgb(239,127,37)" rx="2" ry="2" />
+<text  x="987.10" y="191.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;tB&gt; (62 samples, 0.14%)</title><rect x="976.0" y="117" width="1.6" height="15.0" fill="rgb(245,176,45)" rx="2" ry="2" />
+<text  x="978.97" y="127.5" ></text>
+</g>
+<g >
+<title>get (17 samples, 0.04%)</title><rect x="348.4" y="181" width="0.4" height="15.0" fill="rgb(237,170,35)" rx="2" ry="2" />
+<text  x="351.39" y="191.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;t&gt; (6 samples, 0.01%)</title><rect x="593.4" y="149" width="0.1" height="15.0" fill="rgb(244,176,43)" rx="2" ry="2" />
+<text  x="596.37" y="159.5" ></text>
+</g>
+<g >
+<title>store (12 samples, 0.03%)</title><rect x="265.8" y="133" width="0.3" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="268.83" y="143.5" ></text>
+</g>
+<g >
+<title>list (31 samples, 0.07%)</title><rect x="1178.8" y="85" width="0.8" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="1181.76" y="95.5" ></text>
+</g>
+<g >
+<title>store (72 samples, 0.16%)</title><rect x="541.7" y="117" width="1.8" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="544.66" y="127.5" ></text>
+</g>
+<g >
+<title>iterate (12 samples, 0.03%)</title><rect x="227.0" y="133" width="0.3" height="15.0" fill="rgb(245,143,45)" rx="2" ry="2" />
+<text  x="229.99" y="143.5" ></text>
+</g>
+<g >
+<title>init (6 samples, 0.01%)</title><rect x="267.6" y="133" width="0.2" height="15.0" fill="rgb(236,161,34)" rx="2" ry="2" />
+<text  x="270.64" y="143.5" ></text>
+</g>
+<g >
+<title>blob_of_principal (124 samples, 0.28%)</title><rect x="961.3" y="165" width="3.3" height="15.0" fill="rgb(228,110,25)" rx="2" ry="2" />
+<text  x="964.35" y="175.5" ></text>
+</g>
+<g >
+<title>@anon-func-116.7 (34 samples, 0.08%)</title><rect x="155.8" y="181" width="0.9" height="15.0" fill="rgb(239,146,38)" rx="2" ry="2" />
+<text  x="158.78" y="191.5" ></text>
+</g>
+<g >
+<title>$lambda (204 samples, 0.45%)</title><rect x="534.7" y="85" width="5.4" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="537.74" y="95.5" ></text>
+</g>
+<g >
+<title>$lambda (18 samples, 0.04%)</title><rect x="160.3" y="133" width="0.5" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="163.31" y="143.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;&gt; (104 samples, 0.23%)</title><rect x="447.9" y="165" width="2.8" height="15.0" fill="rgb(242,176,41)" rx="2" ry="2" />
+<text  x="450.93" y="175.5" ></text>
+</g>
+<g >
+<title>list (24 samples, 0.05%)</title><rect x="1187.7" y="165" width="0.6" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="1190.69" y="175.5" ></text>
+</g>
+<g >
+<title>$lambda (28 samples, 0.06%)</title><rect x="304.1" y="149" width="0.7" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="307.10" y="159.5" ></text>
+</g>
+<g >
+<title>Array_init (149 samples, 0.33%)</title><rect x="218.0" y="181" width="3.9" height="15.0" fill="rgb(236,150,34)" rx="2" ry="2" />
+<text  x="220.97" y="191.5" ></text>
+</g>
+<g >
+<title>iterate (7 samples, 0.02%)</title><rect x="302.4" y="117" width="0.2" height="15.0" fill="rgb(245,143,45)" rx="2" ry="2" />
+<text  x="305.44" y="127.5" ></text>
+</g>
+<g >
+<title>toArray (8 samples, 0.02%)</title><rect x="269.2" y="101" width="0.2" height="15.0" fill="rgb(239,160,37)" rx="2" ry="2" />
+<text  x="272.16" y="111.5" ></text>
+</g>
+<g >
+<title>alloc_array (12 samples, 0.03%)</title><rect x="269.1" y="149" width="0.3" height="15.0" fill="rgb(239,128,37)" rx="2" ry="2" />
+<text  x="272.05" y="159.5" ></text>
+</g>
+<g >
+<title>iterate (12 samples, 0.03%)</title><rect x="226.7" y="133" width="0.3" height="15.0" fill="rgb(245,143,45)" rx="2" ry="2" />
+<text  x="229.67" y="143.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;t&gt; (104 samples, 0.23%)</title><rect x="462.9" y="149" width="2.8" height="15.0" fill="rgb(244,176,43)" rx="2" ry="2" />
+<text  x="465.92" y="159.5" ></text>
+</g>
+<g >
+<title>text_compare (64 samples, 0.14%)</title><rect x="1015.8" y="149" width="1.6" height="15.0" fill="rgb(248,171,47)" rx="2" ry="2" />
+<text  x="1018.76" y="159.5" ></text>
+</g>
+<g >
+<title>toArray (8 samples, 0.02%)</title><rect x="269.2" y="117" width="0.2" height="15.0" fill="rgb(239,160,37)" rx="2" ry="2" />
+<text  x="272.16" y="127.5" ></text>
+</g>
+<g >
+<title>@anon-func-165.17 (12 samples, 0.03%)</title><rect x="227.0" y="149" width="0.3" height="15.0" fill="rgb(233,146,31)" rx="2" ry="2" />
+<text  x="229.99" y="159.5" ></text>
+</g>
+<g >
+<title>list (88 samples, 0.20%)</title><rect x="1183.1" y="133" width="2.3" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="1186.08" y="143.5" ></text>
+</g>
+<g >
+<title>retrieve (62 samples, 0.14%)</title><rect x="974.3" y="101" width="1.7" height="15.0" fill="rgb(240,162,39)" rx="2" ry="2" />
+<text  x="977.35" y="111.5" ></text>
+</g>
+<g >
+<title>list (12 samples, 0.03%)</title><rect x="266.9" y="85" width="0.3" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="269.85" y="95.5" ></text>
+</g>
+<g >
+<title>retrieve (104 samples, 0.23%)</title><rect x="462.9" y="133" width="2.8" height="15.0" fill="rgb(240,162,39)" rx="2" ry="2" />
+<text  x="465.92" y="143.5" ></text>
+</g>
+<g >
+<title>canister_init (11 samples, 0.02%)</title><rect x="1010.6" y="133" width="0.3" height="15.0" fill="rgb(236,106,34)" rx="2" ry="2" />
+<text  x="1013.60" y="143.5" ></text>
+</g>
+<g >
+<title>canister_init (4 samples, 0.01%)</title><rect x="268.8" y="133" width="0.1" height="15.0" fill="rgb(236,106,34)" rx="2" ry="2" />
+<text  x="271.84" y="143.5" ></text>
+</g>
+<g >
+<title>list (28 samples, 0.06%)</title><rect x="304.1" y="117" width="0.7" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="307.10" y="127.5" ></text>
+</g>
+<g >
+<title>init (8 samples, 0.02%)</title><rect x="271.7" y="117" width="0.2" height="15.0" fill="rgb(236,161,34)" rx="2" ry="2" />
+<text  x="274.67" y="127.5" ></text>
+</g>
+<g >
+<title>$lambda (133 samples, 0.30%)</title><rect x="160.8" y="149" width="3.5" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="163.78" y="159.5" ></text>
+</g>
+<g >
+<title>parse_idl_header (416 samples, 0.92%)</title><rect x="457.5" y="165" width="10.9" height="15.0" fill="rgb(243,149,41)" rx="2" ry="2" />
+<text  x="460.47" y="175.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;&gt; (186 samples, 0.41%)</title><rect x="1070.0" y="165" width="4.8" height="15.0" fill="rgb(242,176,41)" rx="2" ry="2" />
+<text  x="1072.96" y="175.5" ></text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::compacting_gc::h416bfa181cd1565b (419 samples, 0.93%)</title><rect x="1017.4" y="165" width="11.0" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="1020.44" y="175.5" ></text>
+</g>
+<g >
+<title>motoko_rts::text::text_compare_range::h44562c24c3fce02f (204 samples, 0.45%)</title><rect x="534.7" y="165" width="5.4" height="15.0" fill="rgb(244,127,43)" rx="2" ry="2" />
+<text  x="537.74" y="175.5" ></text>
+</g>
+<g >
+<title>$lambda (5,562 samples, 12.35%)</title><rect x="10.0" y="181" width="145.8" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="13.00" y="191.5" >$lambda</text>
+</g>
+<g >
+<title>$lambda (47 samples, 0.10%)</title><rect x="157.7" y="133" width="1.3" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="160.74" y="143.5" ></text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::compacting_gc::h416bfa181cd1565b (783 samples, 1.74%)</title><rect x="908.4" y="149" width="20.5" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="911.38" y="159.5" ></text>
+</g>
+<g >
+<title>toArray (1,118 samples, 2.48%)</title><rect x="1033.6" y="133" width="29.3" height="15.0" fill="rgb(239,160,37)" rx="2" ry="2" />
+<text  x="1036.58" y="143.5" >to..</text>
+</g>
+<g >
+<title>$lambda (36 samples, 0.08%)</title><rect x="1067.6" y="149" width="0.9" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="1070.60" y="159.5" ></text>
+</g>
+<g >
+<title>@deserialize_go&lt;B&gt; (4 samples, 0.01%)</title><rect x="269.5" y="133" width="0.1" height="15.0" fill="rgb(251,176,51)" rx="2" ry="2" />
+<text  x="272.47" y="143.5" ></text>
+</g>
+<g >
+<title>list (124 samples, 0.28%)</title><rect x="299.2" y="101" width="3.2" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="302.19" y="111.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;tB&gt; (104 samples, 0.23%)</title><rect x="465.7" y="149" width="2.7" height="15.0" fill="rgb(245,176,45)" rx="2" ry="2" />
+<text  x="468.65" y="159.5" ></text>
+</g>
+<g >
+<title>@deserialize_go&lt;B&gt; (62 samples, 0.14%)</title><rect x="937.0" y="149" width="1.6" height="15.0" fill="rgb(251,176,51)" rx="2" ry="2" />
+<text  x="939.97" y="159.5" ></text>
+</g>
+<g >
+<title>list (174 samples, 0.39%)</title><rect x="443.4" y="133" width="4.5" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="446.37" y="143.5" ></text>
+</g>
+<g >
+<title>store (94 samples, 0.21%)</title><rect x="202.2" y="133" width="2.5" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="205.19" y="143.5" ></text>
+</g>
+<g >
+<title>retrieve (14 samples, 0.03%)</title><rect x="303.7" y="117" width="0.4" height="15.0" fill="rgb(240,162,39)" rx="2" ry="2" />
+<text  x="306.73" y="127.5" ></text>
+</g>
+<g >
+<title>toArray (7 samples, 0.02%)</title><rect x="302.4" y="101" width="0.2" height="15.0" fill="rgb(239,160,37)" rx="2" ry="2" />
+<text  x="305.44" y="111.5" ></text>
+</g>
+<g >
+<title>store (8 samples, 0.02%)</title><rect x="269.6" y="85" width="0.2" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="272.58" y="95.5" ></text>
+</g>
+<g >
+<title>$lambda (124 samples, 0.28%)</title><rect x="545.2" y="133" width="3.2" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="548.17" y="143.5" ></text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::compacting_gc::h416bfa181cd1565b (4 samples, 0.01%)</title><rect x="351.2" y="165" width="0.1" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="354.19" y="175.5" ></text>
+</g>
+<g >
+<title>$lambda (115 samples, 0.26%)</title><rect x="221.9" y="133" width="3.0" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="224.88" y="143.5" ></text>
+</g>
+<g >
+<title>@anon-func-165.17 (12 samples, 0.03%)</title><rect x="226.7" y="149" width="0.3" height="15.0" fill="rgb(233,146,31)" rx="2" ry="2" />
+<text  x="229.67" y="159.5" ></text>
+</g>
+<g >
+<title>motoko_rts::idl::check_typearg::h7a69986705540d34 (48 samples, 0.11%)</title><rect x="928.9" y="181" width="1.3" height="15.0" fill="rgb(241,127,39)" rx="2" ry="2" />
+<text  x="931.90" y="191.5" ></text>
+</g>
+<g >
+<title>retrieve (69 samples, 0.15%)</title><rect x="1123.8" y="133" width="1.9" height="15.0" fill="rgb(240,162,39)" rx="2" ry="2" />
+<text  x="1126.85" y="143.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;t&gt; (62 samples, 0.14%)</title><rect x="980.8" y="149" width="1.7" height="15.0" fill="rgb(244,176,43)" rx="2" ry="2" />
+<text  x="983.85" y="159.5" ></text>
+</g>
+<g >
+<title>store (4 samples, 0.01%)</title><rect x="272.0" y="85" width="0.1" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="274.99" y="95.5" ></text>
+</g>
+<g >
+<title>__get_hp (123 samples, 0.27%)</title><rect x="265.5" y="181" width="3.2" height="15.0" fill="rgb(238,132,36)" rx="2" ry="2" />
+<text  x="268.52" y="191.5" ></text>
+</g>
+<g >
+<title>retrieve (47 samples, 0.10%)</title><rect x="157.7" y="117" width="1.3" height="15.0" fill="rgb(240,162,39)" rx="2" ry="2" />
+<text  x="160.74" y="127.5" ></text>
+</g>
+<g >
+<title>idl_sub_buf_words (40 samples, 0.09%)</title><rect x="353.4" y="181" width="1.0" height="15.0" fill="rgb(241,184,39)" rx="2" ry="2" />
+<text  x="356.40" y="191.5" ></text>
+</g>
+<g >
+<title>store (13 samples, 0.03%)</title><rect x="1010.3" y="117" width="0.3" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="1013.26" y="127.5" ></text>
+</g>
+<g >
+<title>list (36 samples, 0.08%)</title><rect x="1067.6" y="133" width="0.9" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="1070.60" y="143.5" ></text>
+</g>
+<g >
+<title>list (15 samples, 0.03%)</title><rect x="468.8" y="85" width="0.4" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="471.77" y="95.5" ></text>
+</g>
+<g >
+<title>store (18 samples, 0.04%)</title><rect x="1186.0" y="165" width="0.4" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="1188.96" y="175.5" ></text>
+</g>
+<g >
+<title>@serialize&lt;&gt; (14 samples, 0.03%)</title><rect x="303.4" y="165" width="0.3" height="15.0" fill="rgb(242,156,41)" rx="2" ry="2" />
+<text  x="306.36" y="175.5" ></text>
+</g>
+<g >
+<title>$lambda (132 samples, 0.29%)</title><rect x="931.9" y="101" width="3.4" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="934.89" y="111.5" ></text>
+</g>
+<g >
+<title>@serialize&lt;B&gt; (14 samples, 0.03%)</title><rect x="303.7" y="165" width="0.4" height="15.0" fill="rgb(251,156,51)" rx="2" ry="2" />
+<text  x="306.73" y="175.5" ></text>
+</g>
+<g >
+<title>$lambda (94 samples, 0.21%)</title><rect x="204.7" y="165" width="2.4" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="207.66" y="175.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;tB&gt; (61 samples, 0.14%)</title><rect x="199.5" y="165" width="1.6" height="15.0" fill="rgb(245,176,45)" rx="2" ry="2" />
+<text  x="202.55" y="175.5" ></text>
+</g>
+<g >
+<title>$lambda (188 samples, 0.42%)</title><rect x="207.1" y="149" width="4.9" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="210.12" y="159.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;tB&gt; (60 samples, 0.13%)</title><rect x="540.1" y="149" width="1.6" height="15.0" fill="rgb(245,176,45)" rx="2" ry="2" />
+<text  x="543.09" y="159.5" ></text>
+</g>
+<g >
+<title>trans_state4 (30 samples, 0.07%)</title><rect x="1185.6" y="181" width="0.8" height="15.0" fill="rgb(243,158,42)" rx="2" ry="2" />
+<text  x="1188.65" y="191.5" ></text>
+</g>
+<g >
+<title>toArray (66 samples, 0.15%)</title><rect x="930.2" y="85" width="1.7" height="15.0" fill="rgb(239,160,37)" rx="2" ry="2" />
+<text  x="933.16" y="95.5" ></text>
+</g>
+<g >
+<title>canister_init (124 samples, 0.28%)</title><rect x="964.6" y="133" width="3.2" height="15.0" fill="rgb(236,106,34)" rx="2" ry="2" />
+<text  x="967.60" y="143.5" ></text>
+</g>
+<g >
+<title>canister_init (801 samples, 1.78%)</title><rect x="305.9" y="149" width="21.0" height="15.0" fill="rgb(236,106,34)" rx="2" ry="2" />
+<text  x="308.93" y="159.5" ></text>
+</g>
+<g >
+<title>add (149 samples, 0.33%)</title><rect x="218.0" y="165" width="3.9" height="15.0" fill="rgb(253,156,53)" rx="2" ry="2" />
+<text  x="220.97" y="175.5" ></text>
+</g>
+<g >
+<title>compacting_gc (16 samples, 0.04%)</title><rect x="271.3" y="133" width="0.4" height="15.0" fill="rgb(227,149,24)" rx="2" ry="2" />
+<text  x="274.26" y="143.5" ></text>
+</g>
+<g >
+<title>compare (64 samples, 0.14%)</title><rect x="1015.8" y="133" width="1.6" height="15.0" fill="rgb(248,149,47)" rx="2" ry="2" />
+<text  x="1018.76" y="143.5" ></text>
+</g>
+<g >
+<title>compacting_gc (419 samples, 0.93%)</title><rect x="1017.4" y="149" width="11.0" height="15.0" fill="rgb(227,149,24)" rx="2" ry="2" />
+<text  x="1020.44" y="159.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;tB&gt; (97 samples, 0.22%)</title><rect x="588.8" y="133" width="2.6" height="15.0" fill="rgb(245,176,45)" rx="2" ry="2" />
+<text  x="591.81" y="143.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (120 samples, 0.27%)</title><rect x="269.4" y="165" width="3.1" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="272.37" y="175.5" ></text>
+</g>
+<g >
+<title>toArray (27 samples, 0.06%)</title><rect x="225.6" y="149" width="0.7" height="15.0" fill="rgb(239,160,37)" rx="2" ry="2" />
+<text  x="228.60" y="159.5" ></text>
+</g>
+<g >
+<title>getRec (64 samples, 0.14%)</title><rect x="1015.8" y="117" width="1.6" height="15.0" fill="rgb(230,170,27)" rx="2" ry="2" />
+<text  x="1018.76" y="127.5" ></text>
+</g>
+<g >
+<title>canister_init (8 samples, 0.02%)</title><rect x="271.0" y="117" width="0.3" height="15.0" fill="rgb(236,106,34)" rx="2" ry="2" />
+<text  x="274.05" y="127.5" ></text>
+</g>
+<g >
+<title>store (156 samples, 0.35%)</title><rect x="343.6" y="117" width="4.1" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="346.62" y="127.5" ></text>
+</g>
+<g >
+<title>blob_of_principal (6 samples, 0.01%)</title><rect x="267.6" y="149" width="0.2" height="15.0" fill="rgb(228,110,25)" rx="2" ry="2" />
+<text  x="270.64" y="159.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;tB&gt; (20 samples, 0.04%)</title><rect x="352.9" y="165" width="0.5" height="15.0" fill="rgb(245,176,45)" rx="2" ry="2" />
+<text  x="355.87" y="175.5" ></text>
+</g>
+<g >
+<title>list (14 samples, 0.03%)</title><rect x="305.2" y="165" width="0.4" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="308.20" y="175.5" ></text>
+</g>
+<g >
+<title>$lambda (36 samples, 0.08%)</title><rect x="1062.9" y="165" width="0.9" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="1065.88" y="175.5" ></text>
+</g>
+<g >
+<title>list (10 samples, 0.02%)</title><rect x="201.7" y="165" width="0.2" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="204.67" y="175.5" ></text>
+</g>
+<g >
+<title>$lambda (88 samples, 0.20%)</title><rect x="1183.1" y="149" width="2.3" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="1186.08" y="159.5" ></text>
+</g>
+<g >
+<title>init (386 samples, 0.86%)</title><rect x="984.1" y="133" width="10.1" height="15.0" fill="rgb(236,161,34)" rx="2" ry="2" />
+<text  x="987.10" y="143.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;tB&gt; (345 samples, 0.77%)</title><rect x="1125.7" y="149" width="9.0" height="15.0" fill="rgb(245,176,45)" rx="2" ry="2" />
+<text  x="1128.66" y="159.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;tB&gt; (52 samples, 0.12%)</title><rect x="453.4" y="149" width="1.3" height="15.0" fill="rgb(245,176,45)" rx="2" ry="2" />
+<text  x="456.38" y="159.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;vt&gt; (5 samples, 0.01%)</title><rect x="1178.5" y="149" width="0.1" height="15.0" fill="rgb(237,118,36)" rx="2" ry="2" />
+<text  x="1181.49" y="159.5" ></text>
+</g>
+<g >
+<title>get (186 samples, 0.41%)</title><rect x="1010.9" y="117" width="4.9" height="15.0" fill="rgb(237,170,35)" rx="2" ry="2" />
+<text  x="1013.88" y="127.5" ></text>
+</g>
+<g >
+<title>store (18 samples, 0.04%)</title><rect x="1063.4" y="149" width="0.4" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="1066.36" y="159.5" ></text>
+</g>
+<g >
+<title>blob_of_principal (8 samples, 0.02%)</title><rect x="271.0" y="149" width="0.3" height="15.0" fill="rgb(228,110,25)" rx="2" ry="2" />
+<text  x="274.05" y="159.5" ></text>
+</g>
+<g >
+<title>$lambda (47 samples, 0.10%)</title><rect x="157.7" y="149" width="1.3" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="160.74" y="159.5" ></text>
+</g>
+<g >
+<title>core::str::converts::from_utf8::hcecad2a92968d2cb (296 samples, 0.66%)</title><rect x="340.0" y="181" width="7.7" height="15.0" fill="rgb(239,133,38)" rx="2" ry="2" />
+<text  x="342.95" y="191.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;tB&gt; (123 samples, 0.27%)</title><rect x="194.7" y="165" width="3.2" height="15.0" fill="rgb(245,176,45)" rx="2" ry="2" />
+<text  x="197.72" y="175.5" ></text>
+</g>
+<g >
+<title>@serialize&lt;vt&gt; (5 samples, 0.01%)</title><rect x="1178.6" y="133" width="0.2" height="15.0" fill="rgb(237,156,36)" rx="2" ry="2" />
+<text  x="1181.63" y="143.5" ></text>
+</g>
+<g >
+<title>text_compare (186 samples, 0.41%)</title><rect x="1010.9" y="165" width="4.9" height="15.0" fill="rgb(248,171,47)" rx="2" ry="2" />
+<text  x="1013.88" y="175.5" ></text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::mark_object::hb81f6542e95ca663 (783 samples, 1.74%)</title><rect x="908.4" y="165" width="20.5" height="15.0" fill="rgb(238,127,36)" rx="2" ry="2" />
+<text  x="911.38" y="175.5" ></text>
+</g>
+<g >
+<title>@serialize&lt;B&gt; (62 samples, 0.14%)</title><rect x="543.5" y="165" width="1.7" height="15.0" fill="rgb(251,156,51)" rx="2" ry="2" />
+<text  x="546.54" y="175.5" ></text>
+</g>
+<g >
+<title>$lambda (8 samples, 0.02%)</title><rect x="269.2" y="85" width="0.2" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="272.16" y="95.5" ></text>
+</g>
+<g >
+<title>text_to_buf (65 samples, 0.14%)</title><rect x="591.4" y="165" width="1.7" height="15.0" fill="rgb(242,171,41)" rx="2" ry="2" />
+<text  x="594.35" y="175.5" ></text>
+</g>
+<g >
+<title>list (6 samples, 0.01%)</title><rect x="268.4" y="117" width="0.2" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="271.42" y="127.5" ></text>
+</g>
+<g >
+<title>store (62 samples, 0.14%)</title><rect x="959.7" y="149" width="1.6" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="962.72" y="159.5" ></text>
+</g>
+<g >
+<title>@deserialize_go&lt;t&gt; (6 samples, 0.01%)</title><rect x="268.3" y="117" width="0.1" height="15.0" fill="rgb(244,176,43)" rx="2" ry="2" />
+<text  x="271.27" y="127.5" ></text>
+</g>
+<g >
+<title>$lambda (124 samples, 0.28%)</title><rect x="545.2" y="149" width="3.2" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="548.17" y="159.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;t&gt; (313 samples, 0.70%)</title><rect x="175.7" y="181" width="8.2" height="15.0" fill="rgb(244,176,43)" rx="2" ry="2" />
+<text  x="178.70" y="191.5" ></text>
+</g>
+<g >
+<title>$lambda (332 samples, 0.74%)</title><rect x="434.7" y="149" width="8.7" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="437.67" y="159.5" ></text>
+</g>
+<g >
+<title>put (155 samples, 0.34%)</title><rect x="430.6" y="165" width="4.1" height="15.0" fill="rgb(234,152,31)" rx="2" ry="2" />
+<text  x="433.61" y="175.5" ></text>
+</g>
+<g >
+<title>toArray (25 samples, 0.06%)</title><rect x="156.7" y="149" width="0.6" height="15.0" fill="rgb(239,160,37)" rx="2" ry="2" />
+<text  x="159.67" y="159.5" ></text>
+</g>
+<g >
+<title>$lambda (14 samples, 0.03%)</title><rect x="302.6" y="117" width="0.4" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="305.63" y="127.5" ></text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::compacting_gc::h416bfa181cd1565b (16 samples, 0.04%)</title><rect x="271.3" y="149" width="0.4" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="274.26" y="159.5" ></text>
+</g>
+<g >
+<title>$lambda (4 samples, 0.01%)</title><rect x="269.4" y="133" width="0.1" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="272.37" y="143.5" ></text>
+</g>
+<g >
+<title>@deserialize_go&lt;t&gt; (38 samples, 0.08%)</title><rect x="1177.5" y="165" width="1.0" height="15.0" fill="rgb(244,176,43)" rx="2" ry="2" />
+<text  x="1180.50" y="175.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;t&gt; (140 samples, 0.31%)</title><rect x="340.0" y="133" width="3.6" height="15.0" fill="rgb(244,176,43)" rx="2" ry="2" />
+<text  x="342.95" y="143.5" ></text>
+</g>
+<g >
+<title>compare (28 samples, 0.06%)</title><rect x="338.8" y="181" width="0.7" height="15.0" fill="rgb(248,149,47)" rx="2" ry="2" />
+<text  x="341.77" y="191.5" ></text>
+</g>
+<g >
+<title>get (81 samples, 0.18%)</title><rect x="348.8" y="165" width="2.2" height="15.0" fill="rgb(237,170,35)" rx="2" ry="2" />
+<text  x="351.84" y="175.5" ></text>
+</g>
+<g >
+<title>init (124 samples, 0.28%)</title><rect x="961.3" y="149" width="3.3" height="15.0" fill="rgb(236,161,34)" rx="2" ry="2" />
+<text  x="964.35" y="159.5" ></text>
+</g>
+<g >
+<title>$lambda (65 samples, 0.14%)</title><rect x="591.4" y="85" width="1.7" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="594.35" y="95.5" ></text>
+</g>
+<g >
+<title>add (4 samples, 0.01%)</title><rect x="269.1" y="117" width="0.1" height="15.0" fill="rgb(253,156,53)" rx="2" ry="2" />
+<text  x="272.05" y="127.5" ></text>
+</g>
+<g >
+<title>$lambda (155 samples, 0.34%)</title><rect x="430.6" y="149" width="4.1" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="433.61" y="159.5" ></text>
+</g>
+<g >
+<title>retrieve (12 samples, 0.03%)</title><rect x="1187.4" y="165" width="0.3" height="15.0" fill="rgb(240,162,39)" rx="2" ry="2" />
+<text  x="1190.38" y="175.5" ></text>
+</g>
+<g >
+<title>toArray (222 samples, 0.49%)</title><rect x="1179.6" y="181" width="5.8" height="15.0" fill="rgb(239,160,37)" rx="2" ry="2" />
+<text  x="1182.57" y="191.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;tB&gt; (62 samples, 0.14%)</title><rect x="937.0" y="133" width="1.6" height="15.0" fill="rgb(245,176,45)" rx="2" ry="2" />
+<text  x="939.97" y="143.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;&gt; (40 samples, 0.09%)</title><rect x="351.3" y="165" width="1.0" height="15.0" fill="rgb(242,176,41)" rx="2" ry="2" />
+<text  x="354.30" y="175.5" ></text>
+</g>
+<g >
+<title>rts_start (23 samples, 0.05%)</title><rect x="426.5" y="165" width="0.6" height="15.0" fill="rgb(239,145,37)" rx="2" ry="2" />
+<text  x="429.47" y="175.5" ></text>
+</g>
+<g >
+<title>store (1,232 samples, 2.74%)</title><rect x="123.5" y="165" width="32.3" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="126.49" y="175.5" >st..</text>
+</g>
+<g >
+<title>@deserialize&lt;tB&gt; (234 samples, 0.52%)</title><rect x="1077.8" y="165" width="6.1" height="15.0" fill="rgb(245,176,45)" rx="2" ry="2" />
+<text  x="1080.77" y="175.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;tB&gt; (138 samples, 0.31%)</title><rect x="1120.2" y="149" width="3.6" height="15.0" fill="rgb(245,176,45)" rx="2" ry="2" />
+<text  x="1123.23" y="159.5" ></text>
+</g>
+<g >
+<title>@serialize&lt;&gt; (124 samples, 0.28%)</title><rect x="938.6" y="149" width="3.2" height="15.0" fill="rgb(242,156,41)" rx="2" ry="2" />
+<text  x="941.60" y="159.5" ></text>
+</g>
+<g >
+<title>retrieve (51 samples, 0.11%)</title><rect x="212.0" y="117" width="1.4" height="15.0" fill="rgb(240,162,39)" rx="2" ry="2" />
+<text  x="215.05" y="127.5" ></text>
+</g>
+<g >
+<title>@deserialize_go&lt;t&gt; (124 samples, 0.28%)</title><rect x="974.3" y="133" width="3.3" height="15.0" fill="rgb(244,176,43)" rx="2" ry="2" />
+<text  x="977.35" y="143.5" ></text>
+</g>
+<g >
+<title>store (52 samples, 0.12%)</title><rect x="452.0" y="149" width="1.4" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="455.02" y="159.5" ></text>
+</g>
+<g >
+<title>canister_init (8 samples, 0.02%)</title><rect x="271.7" y="101" width="0.2" height="15.0" fill="rgb(236,106,34)" rx="2" ry="2" />
+<text  x="274.67" y="111.5" ></text>
+</g>
+<g >
+<title>canister_init (599 samples, 1.33%)</title><rect x="994.2" y="133" width="15.7" height="15.0" fill="rgb(236,106,34)" rx="2" ry="2" />
+<text  x="997.22" y="143.5" ></text>
+</g>
+<g >
+<title>utf8_validate (296 samples, 0.66%)</title><rect x="340.0" y="165" width="7.7" height="15.0" fill="rgb(245,124,45)" rx="2" ry="2" />
+<text  x="342.95" y="175.5" ></text>
+</g>
+<g >
+<title>retrieve (12 samples, 0.03%)</title><rect x="928.9" y="133" width="0.3" height="15.0" fill="rgb(240,162,39)" rx="2" ry="2" />
+<text  x="931.90" y="143.5" ></text>
+</g>
+<g >
+<title>parse_idl_header (248 samples, 0.55%)</title><rect x="977.6" y="165" width="6.5" height="15.0" fill="rgb(243,149,41)" rx="2" ry="2" />
+<text  x="980.60" y="175.5" ></text>
+</g>
+<g >
+<title>add (7 samples, 0.02%)</title><rect x="302.4" y="149" width="0.2" height="15.0" fill="rgb(253,156,53)" rx="2" ry="2" />
+<text  x="305.44" y="159.5" ></text>
+</g>
+<g >
+<title>@serialize&lt;B&gt; (94 samples, 0.21%)</title><rect x="204.7" y="181" width="2.4" height="15.0" fill="rgb(251,156,51)" rx="2" ry="2" />
+<text  x="207.66" y="191.5" ></text>
+</g>
+<g >
+<title>list (126 samples, 0.28%)</title><rect x="526.4" y="149" width="3.3" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="529.35" y="159.5" ></text>
+</g>
+<g >
+<title>Array_init (66 samples, 0.15%)</title><rect x="930.2" y="149" width="1.7" height="15.0" fill="rgb(236,150,34)" rx="2" ry="2" />
+<text  x="933.16" y="159.5" ></text>
+</g>
+<g >
+<title>$lambda (135 samples, 0.30%)</title><rect x="427.1" y="133" width="3.5" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="430.07" y="143.5" ></text>
+</g>
+<g >
+<title>toArray (115 samples, 0.26%)</title><rect x="221.9" y="149" width="3.0" height="15.0" fill="rgb(239,160,37)" rx="2" ry="2" />
+<text  x="224.88" y="159.5" ></text>
+</g>
+<g >
+<title>list (51 samples, 0.11%)</title><rect x="159.0" y="101" width="1.3" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="161.97" y="111.5" ></text>
+</g>
+<g >
+<title>blob_of_principal (17 samples, 0.04%)</title><rect x="339.5" y="149" width="0.5" height="15.0" fill="rgb(228,110,25)" rx="2" ry="2" />
+<text  x="342.50" y="159.5" ></text>
+</g>
+<g >
+<title>list (12 samples, 0.03%)</title><rect x="227.0" y="85" width="0.3" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="229.99" y="95.5" ></text>
+</g>
+<g >
+<title>init (124 samples, 0.28%)</title><rect x="951.6" y="149" width="3.2" height="15.0" fill="rgb(236,161,34)" rx="2" ry="2" />
+<text  x="954.60" y="159.5" ></text>
+</g>
+<g >
+<title>list (124 samples, 0.28%)</title><rect x="545.2" y="117" width="3.2" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="548.17" y="127.5" ></text>
+</g>
+<g >
+<title>$lambda (30 samples, 0.07%)</title><rect x="469.2" y="133" width="0.7" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="472.16" y="143.5" ></text>
+</g>
+<g >
+<title>initialize_compacting_gc (4 samples, 0.01%)</title><rect x="268.7" y="165" width="0.1" height="15.0" fill="rgb(227,161,24)" rx="2" ry="2" />
+<text  x="271.74" y="175.5" ></text>
+</g>
+<g >
+<title>@deserialize_go&lt;t&gt; (157 samples, 0.35%)</title><rect x="587.2" y="149" width="4.2" height="15.0" fill="rgb(244,176,43)" rx="2" ry="2" />
+<text  x="590.24" y="159.5" ></text>
+</g>
+<g >
+<title>getRec (204 samples, 0.45%)</title><rect x="534.7" y="117" width="5.4" height="15.0" fill="rgb(230,170,27)" rx="2" ry="2" />
+<text  x="537.74" y="127.5" ></text>
+</g>
+<g >
+<title>$lambda (51 samples, 0.11%)</title><rect x="159.0" y="117" width="1.3" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="161.97" y="127.5" ></text>
+</g>
+<g >
+<title>canister_init (6 samples, 0.01%)</title><rect x="268.1" y="101" width="0.2" height="15.0" fill="rgb(236,106,34)" rx="2" ry="2" />
+<text  x="271.11" y="111.5" ></text>
+</g>
+<g >
+<title>compacting_gc (1,316 samples, 2.92%)</title><rect x="599.7" y="149" width="34.5" height="15.0" fill="rgb(227,149,24)" rx="2" ry="2" />
+<text  x="602.66" y="159.5" >co..</text>
+</g>
+<g >
+<title>link_start (9 samples, 0.02%)</title><rect x="1114.6" y="149" width="0.2" height="15.0" fill="rgb(239,129,37)" rx="2" ry="2" />
+<text  x="1117.57" y="159.5" ></text>
+</g>
+<g >
+<title>store (18 samples, 0.04%)</title><rect x="1068.5" y="149" width="0.5" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="1071.55" y="159.5" ></text>
+</g>
+<g >
+<title>__wasm_call_ctors (6 samples, 0.01%)</title><rect x="299.0" y="181" width="0.2" height="15.0" fill="rgb(239,119,38)" rx="2" ry="2" />
+<text  x="302.04" y="191.5" ></text>
+</g>
+<g >
+<title>motoko_rts::principal_id::principal_of_blob::h6560fd4a9cbb47b9 (124 samples, 0.28%)</title><rect x="971.1" y="165" width="3.2" height="15.0" fill="rgb(226,127,24)" rx="2" ry="2" />
+<text  x="974.10" y="175.5" ></text>
+</g>
+<g >
+<title>$lambda (124 samples, 0.28%)</title><rect x="941.8" y="117" width="3.3" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="944.85" y="127.5" ></text>
+</g>
+<g >
+<title>iterate (16 samples, 0.04%)</title><rect x="157.3" y="149" width="0.4" height="15.0" fill="rgb(245,143,45)" rx="2" ry="2" />
+<text  x="160.32" y="159.5" ></text>
+</g>
+<g >
+<title>store (7 samples, 0.02%)</title><rect x="303.2" y="133" width="0.2" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="306.18" y="143.5" ></text>
+</g>
+<g >
+<title>$lambda (116 samples, 0.26%)</title><rect x="214.9" y="149" width="3.1" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="217.93" y="159.5" ></text>
+</g>
+<g >
+<title>@serialize&lt;B&gt; (8 samples, 0.02%)</title><rect x="269.8" y="133" width="0.2" height="15.0" fill="rgb(251,156,51)" rx="2" ry="2" />
+<text  x="272.79" y="143.5" ></text>
+</g>
+<g >
+<title>list (8 samples, 0.02%)</title><rect x="270.6" y="133" width="0.2" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="273.63" y="143.5" ></text>
+</g>
+<g >
+<title>$lambda (27 samples, 0.06%)</title><rect x="225.6" y="133" width="0.7" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="228.60" y="143.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;B&gt; (51 samples, 0.11%)</title><rect x="212.0" y="181" width="1.4" height="15.0" fill="rgb(251,156,51)" rx="2" ry="2" />
+<text  x="215.05" y="191.5" ></text>
+</g>
+<g >
+<title>text_of_ptr_size (8 samples, 0.02%)</title><rect x="271.9" y="133" width="0.2" height="15.0" fill="rgb(245,171,44)" rx="2" ry="2" />
+<text  x="274.88" y="143.5" ></text>
+</g>
+<g >
+<title>RBTree (337 samples, 0.75%)</title><rect x="256.7" y="181" width="8.8" height="15.0" fill="rgb(246,213,46)" rx="2" ry="2" />
+<text  x="259.68" y="191.5" ></text>
+</g>
+<g >
+<title>$lambda (52 samples, 0.12%)</title><rect x="213.4" y="117" width="1.3" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="216.39" y="127.5" ></text>
+</g>
+<g >
+<title>list (133 samples, 0.30%)</title><rect x="160.8" y="117" width="3.5" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="163.78" y="127.5" ></text>
+</g>
+<g >
+<title>list (116 samples, 0.26%)</title><rect x="214.9" y="117" width="3.1" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="217.93" y="127.5" ></text>
+</g>
+<g >
+<title>$lambda (62 samples, 0.14%)</title><rect x="543.5" y="149" width="1.7" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="546.54" y="159.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;tB&gt; (138 samples, 0.31%)</title><rect x="1116.6" y="165" width="3.6" height="15.0" fill="rgb(245,176,45)" rx="2" ry="2" />
+<text  x="1119.61" y="175.5" ></text>
+</g>
+<g >
+<title>store (60 samples, 0.13%)</title><rect x="540.1" y="133" width="1.6" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="543.09" y="143.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;t&gt; (26 samples, 0.06%)</title><rect x="1188.6" y="149" width="0.7" height="15.0" fill="rgb(244,176,43)" rx="2" ry="2" />
+<text  x="1191.64" y="159.5" ></text>
+</g>
+<g >
+<title>store (234 samples, 0.52%)</title><rect x="1077.8" y="149" width="6.1" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="1080.77" y="159.5" ></text>
+</g>
+<g >
+<title>alloc_blob (48 samples, 0.11%)</title><rect x="266.4" y="149" width="1.2" height="15.0" fill="rgb(239,128,38)" rx="2" ry="2" />
+<text  x="269.38" y="159.5" ></text>
+</g>
+<g >
+<title>list (7 samples, 0.02%)</title><rect x="302.4" y="69" width="0.2" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="305.44" y="79.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (1,860 samples, 4.13%)</title><rect x="935.3" y="181" width="48.8" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="938.35" y="191.5" >moto..</text>
+</g>
+<g >
+<title>getRec (28 samples, 0.06%)</title><rect x="338.8" y="165" width="0.7" height="15.0" fill="rgb(230,170,27)" rx="2" ry="2" />
+<text  x="341.77" y="175.5" ></text>
+</g>
+<g >
+<title>iterate (66 samples, 0.15%)</title><rect x="930.2" y="101" width="1.7" height="15.0" fill="rgb(245,143,45)" rx="2" ry="2" />
+<text  x="933.16" y="111.5" ></text>
+</g>
+<g >
+<title>canister_init (6 samples, 0.01%)</title><rect x="267.8" y="117" width="0.2" height="15.0" fill="rgb(236,106,34)" rx="2" ry="2" />
+<text  x="270.80" y="127.5" ></text>
+</g>
+<g >
+<title>retrieve (4 samples, 0.01%)</title><rect x="272.3" y="117" width="0.1" height="15.0" fill="rgb(240,162,39)" rx="2" ry="2" />
+<text  x="275.30" y="127.5" ></text>
+</g>
+<g >
+<title>@serialize&lt;vt&gt; (124 samples, 0.28%)</title><rect x="545.2" y="165" width="3.2" height="15.0" fill="rgb(237,156,36)" rx="2" ry="2" />
+<text  x="548.17" y="175.5" ></text>
+</g>
+<g >
+<title>retrieve (65 samples, 0.14%)</title><rect x="548.4" y="101" width="1.7" height="15.0" fill="rgb(240,162,39)" rx="2" ry="2" />
+<text  x="551.42" y="111.5" ></text>
+</g>
+<g >
+<title>utf8_validate (52 samples, 0.12%)</title><rect x="1188.6" y="181" width="1.4" height="15.0" fill="rgb(245,124,45)" rx="2" ry="2" />
+<text  x="1191.64" y="191.5" ></text>
+</g>
+<g >
+<title>@serialize&lt;&gt; (6 samples, 0.01%)</title><rect x="266.5" y="133" width="0.2" height="15.0" fill="rgb(242,156,41)" rx="2" ry="2" />
+<text  x="269.54" y="143.5" ></text>
+</g>
+<g >
+<title>store (97 samples, 0.22%)</title><rect x="588.8" y="117" width="2.6" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="591.81" y="127.5" ></text>
+</g>
+<g >
+<title>add (66 samples, 0.15%)</title><rect x="930.2" y="133" width="1.7" height="15.0" fill="rgb(253,156,53)" rx="2" ry="2" />
+<text  x="933.16" y="143.5" ></text>
+</g>
+<g >
+<title>@serialize&lt;vt&gt; (133 samples, 0.30%)</title><rect x="160.8" y="165" width="3.5" height="15.0" fill="rgb(237,156,36)" rx="2" ry="2" />
+<text  x="163.78" y="175.5" ></text>
+</g>
+<g >
+<title>canister_init (124 samples, 0.28%)</title><rect x="971.1" y="117" width="3.2" height="15.0" fill="rgb(236,106,34)" rx="2" ry="2" />
+<text  x="974.10" y="127.5" ></text>
+</g>
+<g >
+<title>toArray (174 samples, 0.39%)</title><rect x="443.4" y="165" width="4.5" height="15.0" fill="rgb(239,160,37)" rx="2" ry="2" />
+<text  x="446.37" y="175.5" ></text>
+</g>
+<g >
+<title>retrieve (8 samples, 0.02%)</title><rect x="269.8" y="85" width="0.2" height="15.0" fill="rgb(240,162,39)" rx="2" ry="2" />
+<text  x="272.79" y="95.5" ></text>
+</g>
+<g >
+<title>list (104 samples, 0.23%)</title><rect x="118.5" y="165" width="2.8" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="121.53" y="175.5" ></text>
+</g>
+<g >
+<title>compacting_gc (248 samples, 0.55%)</title><rect x="964.6" y="149" width="6.5" height="15.0" fill="rgb(227,149,24)" rx="2" ry="2" />
+<text  x="967.60" y="159.5" ></text>
+</g>
+<g >
+<title>store (4 samples, 0.01%)</title><rect x="269.4" y="117" width="0.1" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="272.37" y="127.5" ></text>
+</g>
+<g >
+<title>insertRoot (155 samples, 0.34%)</title><rect x="430.6" y="181" width="4.1" height="15.0" fill="rgb(241,167,39)" rx="2" ry="2" />
+<text  x="433.61" y="191.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;t&gt; (13 samples, 0.03%)</title><rect x="1009.9" y="133" width="0.4" height="15.0" fill="rgb(244,176,43)" rx="2" ry="2" />
+<text  x="1012.92" y="143.5" ></text>
+</g>
+<g >
+<title>parse_idl_header (532 samples, 1.18%)</title><rect x="1070.0" y="181" width="13.9" height="15.0" fill="rgb(243,149,41)" rx="2" ry="2" />
+<text  x="1072.96" y="191.5" ></text>
+</g>
+<g >
+<title>@serialize&lt;vt&gt; (51 samples, 0.11%)</title><rect x="159.0" y="149" width="1.3" height="15.0" fill="rgb(237,156,36)" rx="2" ry="2" />
+<text  x="161.97" y="159.5" ></text>
+</g>
+<g >
+<title>store (12 samples, 0.03%)</title><rect x="1186.4" y="165" width="0.4" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="1189.44" y="175.5" ></text>
+</g>
+<g >
+<title>init (194 samples, 0.43%)</title><rect x="529.7" y="149" width="5.0" height="15.0" fill="rgb(236,161,34)" rx="2" ry="2" />
+<text  x="532.65" y="159.5" ></text>
+</g>
+<g >
+<title>retrieve (4 samples, 0.01%)</title><rect x="270.8" y="133" width="0.1" height="15.0" fill="rgb(240,162,39)" rx="2" ry="2" />
+<text  x="273.84" y="143.5" ></text>
+</g>
+<g >
+<title>list (30 samples, 0.07%)</title><rect x="469.2" y="101" width="0.7" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="472.16" y="111.5" ></text>
+</g>
+<g >
+<title>@anon-func-165.17 (4 samples, 0.01%)</title><rect x="269.1" y="101" width="0.1" height="15.0" fill="rgb(233,146,31)" rx="2" ry="2" />
+<text  x="272.05" y="111.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;t&gt; (12 samples, 0.03%)</title><rect x="928.9" y="149" width="0.3" height="15.0" fill="rgb(244,176,43)" rx="2" ry="2" />
+<text  x="931.90" y="159.5" ></text>
+</g>
+<g >
+<title>@anon-func-165.17 (124 samples, 0.28%)</title><rect x="299.2" y="165" width="3.2" height="15.0" fill="rgb(233,146,31)" rx="2" ry="2" />
+<text  x="302.19" y="175.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;t&gt; (4 samples, 0.01%)</title><rect x="272.3" y="133" width="0.1" height="15.0" fill="rgb(244,176,43)" rx="2" ry="2" />
+<text  x="275.30" y="143.5" ></text>
+</g>
+<g >
+<title>@serialize&lt;B&gt; (15 samples, 0.03%)</title><rect x="468.4" y="149" width="0.4" height="15.0" fill="rgb(251,156,51)" rx="2" ry="2" />
+<text  x="471.38" y="159.5" ></text>
+</g>
+<g >
+<title>parse_idl_header (12 samples, 0.03%)</title><rect x="268.4" y="149" width="0.3" height="15.0" fill="rgb(243,149,41)" rx="2" ry="2" />
+<text  x="271.42" y="159.5" ></text>
+</g>
+<g >
+<title>init (11 samples, 0.02%)</title><rect x="1010.6" y="149" width="0.3" height="15.0" fill="rgb(236,161,34)" rx="2" ry="2" />
+<text  x="1013.60" y="159.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;t&gt; (52 samples, 0.12%)</title><rect x="450.7" y="165" width="1.3" height="15.0" fill="rgb(244,176,43)" rx="2" ry="2" />
+<text  x="453.66" y="175.5" ></text>
+</g>
+<g >
+<title>toArray (132 samples, 0.29%)</title><rect x="931.9" y="117" width="3.4" height="15.0" fill="rgb(239,160,37)" rx="2" ry="2" />
+<text  x="934.89" y="127.5" ></text>
+</g>
+<g >
+<title>retrieve (5 samples, 0.01%)</title><rect x="201.9" y="165" width="0.2" height="15.0" fill="rgb(240,162,39)" rx="2" ry="2" />
+<text  x="204.93" y="175.5" ></text>
+</g>
+<g >
+<title>store (28 samples, 0.06%)</title><rect x="1083.9" y="149" width="0.7" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="1086.90" y="159.5" ></text>
+</g>
+<g >
+<title>$lambda (28 samples, 0.06%)</title><rect x="1083.9" y="165" width="0.7" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="1086.90" y="175.5" ></text>
+</g>
+<g >
+<title>blob_of_principal (48 samples, 0.11%)</title><rect x="550.1" y="165" width="1.3" height="15.0" fill="rgb(228,110,25)" rx="2" ry="2" />
+<text  x="553.12" y="175.5" ></text>
+</g>
+<g >
+<title>$lambda (4 samples, 0.01%)</title><rect x="269.1" y="53" width="0.1" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="272.05" y="63.5" ></text>
+</g>
+<g >
+<title>retrieve (112 samples, 0.25%)</title><rect x="1074.8" y="149" width="3.0" height="15.0" fill="rgb(240,162,39)" rx="2" ry="2" />
+<text  x="1077.84" y="159.5" ></text>
+</g>
+<g >
+<title>retrieve (124 samples, 0.28%)</title><rect x="941.8" y="101" width="3.3" height="15.0" fill="rgb(240,162,39)" rx="2" ry="2" />
+<text  x="944.85" y="111.5" ></text>
+</g>
+<g >
+<title>@serialize&lt;&gt; (18 samples, 0.04%)</title><rect x="160.3" y="165" width="0.5" height="15.0" fill="rgb(242,156,41)" rx="2" ry="2" />
+<text  x="163.31" y="175.5" ></text>
+</g>
+<g >
+<title>store (123 samples, 0.27%)</title><rect x="194.7" y="149" width="3.2" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="197.72" y="159.5" ></text>
+</g>
+<g >
+<title>rts_start (4 samples, 0.01%)</title><rect x="268.7" y="149" width="0.1" height="15.0" fill="rgb(239,145,37)" rx="2" ry="2" />
+<text  x="271.74" y="159.5" ></text>
+</g>
+<g >
+<title>retrieve (84 samples, 0.19%)</title><rect x="1175.3" y="101" width="2.2" height="15.0" fill="rgb(240,162,39)" rx="2" ry="2" />
+<text  x="1178.30" y="111.5" ></text>
+</g>
+<g >
+<title>store (1,549 samples, 3.44%)</title><rect x="1134.7" y="181" width="40.6" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="1137.70" y="191.5" >store</text>
+</g>
+<g >
+<title>iterate (197 samples, 0.44%)</title><rect x="1028.4" y="165" width="5.2" height="15.0" fill="rgb(245,143,45)" rx="2" ry="2" />
+<text  x="1031.42" y="175.5" ></text>
+</g>
+<g >
+<title>canister_init (172 samples, 0.38%)</title><rect x="1017.4" y="133" width="4.5" height="15.0" fill="rgb(236,106,34)" rx="2" ry="2" />
+<text  x="1020.44" y="143.5" ></text>
+</g>
+<g >
+<title>$lambda (124 samples, 0.28%)</title><rect x="938.6" y="133" width="3.2" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="941.60" y="143.5" ></text>
+</g>
+<g >
+<title>store (61 samples, 0.14%)</title><rect x="199.5" y="149" width="1.6" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="202.55" y="159.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;t&gt; (112 samples, 0.25%)</title><rect x="1074.8" y="165" width="3.0" height="15.0" fill="rgb(244,176,43)" rx="2" ry="2" />
+<text  x="1077.84" y="175.5" ></text>
+</g>
+<g >
+<title>$lambda (116 samples, 0.26%)</title><rect x="214.9" y="133" width="3.1" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="217.93" y="143.5" ></text>
+</g>
+<g >
+<title>retrieve (186 samples, 0.41%)</title><rect x="1010.9" y="85" width="4.9" height="15.0" fill="rgb(240,162,39)" rx="2" ry="2" />
+<text  x="1013.88" y="95.5" ></text>
+</g>
+<g >
+<title>store (104 samples, 0.23%)</title><rect x="465.7" y="133" width="2.7" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="468.65" y="143.5" ></text>
+</g>
+<g >
+<title>iterate (14 samples, 0.03%)</title><rect x="226.3" y="133" width="0.4" height="15.0" fill="rgb(245,143,45)" rx="2" ry="2" />
+<text  x="229.31" y="143.5" ></text>
+</g>
+<g >
+<title>$lambda (25 samples, 0.06%)</title><rect x="156.7" y="133" width="0.6" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="159.67" y="143.5" ></text>
+</g>
+<g >
+<title>list (6 samples, 0.01%)</title><rect x="267.3" y="133" width="0.2" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="270.32" y="143.5" ></text>
+</g>
+<g >
+<title>add (14 samples, 0.03%)</title><rect x="226.3" y="165" width="0.4" height="15.0" fill="rgb(253,156,53)" rx="2" ry="2" />
+<text  x="229.31" y="175.5" ></text>
+</g>
+<g >
+<title>$lambda (62 samples, 0.14%)</title><rect x="543.5" y="133" width="1.7" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="546.54" y="143.5" ></text>
+</g>
+<g >
+<title>link_start (22 samples, 0.05%)</title><rect x="469.9" y="181" width="0.6" height="15.0" fill="rgb(239,129,37)" rx="2" ry="2" />
+<text  x="472.95" y="191.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;t&gt; (52 samples, 0.12%)</title><rect x="213.4" y="181" width="1.3" height="15.0" fill="rgb(244,156,43)" rx="2" ry="2" />
+<text  x="216.39" y="191.5" ></text>
+</g>
+<g >
+<title>compacting_gc (4 samples, 0.01%)</title><rect x="351.2" y="149" width="0.1" height="15.0" fill="rgb(227,149,24)" rx="2" ry="2" />
+<text  x="354.19" y="159.5" ></text>
+</g>
+<g >
+<title>@serialize&lt;B&gt; (51 samples, 0.11%)</title><rect x="212.0" y="165" width="1.4" height="15.0" fill="rgb(251,156,51)" rx="2" ry="2" />
+<text  x="215.05" y="175.5" ></text>
+</g>
+<g >
+<title>store (5,020 samples, 11.15%)</title><rect x="736.1" y="149" width="131.6" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="739.11" y="159.5" >store</text>
+</g>
+<g >
+<title>store (8 samples, 0.02%)</title><rect x="271.5" y="117" width="0.2" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="274.47" y="127.5" ></text>
+</g>
+<g >
+<title>get (64 samples, 0.14%)</title><rect x="1015.8" y="101" width="1.6" height="15.0" fill="rgb(237,170,35)" rx="2" ry="2" />
+<text  x="1018.76" y="111.5" ></text>
+</g>
+<g >
+<title>iterate (124 samples, 0.28%)</title><rect x="299.2" y="149" width="3.2" height="15.0" fill="rgb(245,143,45)" rx="2" ry="2" />
+<text  x="302.19" y="159.5" ></text>
+</g>
+<g >
+<title>obj_idx&lt;6&gt; (36 samples, 0.08%)</title><rect x="1069.0" y="181" width="1.0" height="15.0" fill="rgb(240,139,39)" rx="2" ry="2" />
+<text  x="1072.02" y="191.5" ></text>
+</g>
+<g >
+<title>Array_init (7 samples, 0.02%)</title><rect x="302.4" y="165" width="0.2" height="15.0" fill="rgb(236,150,34)" rx="2" ry="2" />
+<text  x="305.44" y="175.5" ></text>
+</g>
+<g >
+<title>store (4 samples, 0.01%)</title><rect x="269.5" y="101" width="0.1" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="272.47" y="111.5" ></text>
+</g>
+<g >
+<title>$lambda (66 samples, 0.15%)</title><rect x="930.2" y="69" width="1.7" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="933.16" y="79.5" ></text>
+</g>
+<g >
+<title>text_compare (204 samples, 0.45%)</title><rect x="534.7" y="149" width="5.4" height="15.0" fill="rgb(248,171,47)" rx="2" ry="2" />
+<text  x="537.74" y="159.5" ></text>
+</g>
+<g >
+<title>link_start (4 samples, 0.01%)</title><rect x="268.7" y="133" width="0.1" height="15.0" fill="rgb(239,129,37)" rx="2" ry="2" />
+<text  x="271.74" y="143.5" ></text>
+</g>
+<g >
+<title>store (4 samples, 0.01%)</title><rect x="268.9" y="133" width="0.2" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="271.95" y="143.5" ></text>
+</g>
+<g >
+<title>iterate (18 samples, 0.04%)</title><rect x="1063.8" y="149" width="0.5" height="15.0" fill="rgb(245,143,45)" rx="2" ry="2" />
+<text  x="1066.83" y="159.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;t&gt; (69 samples, 0.15%)</title><rect x="1114.8" y="165" width="1.8" height="15.0" fill="rgb(244,176,43)" rx="2" ry="2" />
+<text  x="1117.81" y="175.5" ></text>
+</g>
+<g >
+<title>retrieve (204 samples, 0.45%)</title><rect x="534.7" y="69" width="5.4" height="15.0" fill="rgb(240,162,39)" rx="2" ry="2" />
+<text  x="537.74" y="79.5" ></text>
+</g>
+<g >
+<title>getRec (186 samples, 0.41%)</title><rect x="1010.9" y="133" width="4.9" height="15.0" fill="rgb(230,170,27)" rx="2" ry="2" />
+<text  x="1013.88" y="143.5" ></text>
+</g>
+<g >
+<title>$lambda (17 samples, 0.04%)</title><rect x="348.4" y="165" width="0.4" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="351.39" y="175.5" ></text>
+</g>
+<g >
+<title>put (135 samples, 0.30%)</title><rect x="427.1" y="149" width="3.5" height="15.0" fill="rgb(234,152,31)" rx="2" ry="2" />
+<text  x="430.07" y="159.5" ></text>
+</g>
+<g >
+<title>toArray (6 samples, 0.01%)</title><rect x="266.2" y="101" width="0.2" height="15.0" fill="rgb(239,160,37)" rx="2" ry="2" />
+<text  x="269.22" y="111.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;vt&gt; (65 samples, 0.14%)</title><rect x="591.4" y="133" width="1.7" height="15.0" fill="rgb(237,156,36)" rx="2" ry="2" />
+<text  x="594.35" y="143.5" ></text>
+</g>
+<g >
+<title>list (1,068 samples, 2.37%)</title><rect x="228.7" y="133" width="28.0" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="231.69" y="143.5" >l..</text>
+</g>
+<g >
+<title>toArray (6 samples, 0.01%)</title><rect x="266.2" y="117" width="0.2" height="15.0" fill="rgb(239,160,37)" rx="2" ry="2" />
+<text  x="269.22" y="127.5" ></text>
+</g>
+<g >
+<title>iterate (27 samples, 0.06%)</title><rect x="224.9" y="133" width="0.7" height="15.0" fill="rgb(245,143,45)" rx="2" ry="2" />
+<text  x="227.89" y="143.5" ></text>
+</g>
+<g >
+<title>store (155 samples, 0.34%)</title><rect x="430.6" y="133" width="4.1" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="433.61" y="143.5" ></text>
+</g>
+<g >
+<title>@deserialize_go&lt;B&gt; (60 samples, 0.13%)</title><rect x="540.1" y="165" width="1.6" height="15.0" fill="rgb(251,176,51)" rx="2" ry="2" />
+<text  x="543.09" y="175.5" ></text>
+</g>
+<g >
+<title>canister_init (324 samples, 0.72%)</title><rect x="908.4" y="117" width="8.5" height="15.0" fill="rgb(236,106,34)" rx="2" ry="2" />
+<text  x="911.38" y="127.5" ></text>
+</g>
+<g >
+<title>iterate (54 samples, 0.12%)</title><rect x="1064.8" y="165" width="1.4" height="15.0" fill="rgb(245,143,45)" rx="2" ry="2" />
+<text  x="1067.77" y="175.5" ></text>
+</g>
+<g >
+<title>store (247 samples, 0.55%)</title><rect x="1021.9" y="133" width="6.5" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="1024.95" y="143.5" ></text>
+</g>
+<g >
+<title>@serialize&lt;&gt; (7 samples, 0.02%)</title><rect x="214.7" y="165" width="0.2" height="15.0" fill="rgb(242,156,41)" rx="2" ry="2" />
+<text  x="217.75" y="175.5" ></text>
+</g>
+<g >
+<title>text_of_ptr_size (157 samples, 0.35%)</title><rect x="587.2" y="165" width="4.2" height="15.0" fill="rgb(245,171,44)" rx="2" ry="2" />
+<text  x="590.24" y="175.5" ></text>
+</g>
+<g >
+<title>$lambda (7 samples, 0.02%)</title><rect x="303.0" y="165" width="0.2" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="305.99" y="175.5" ></text>
+</g>
+<g >
+<title>alloc_array (198 samples, 0.44%)</title><rect x="930.2" y="165" width="5.1" height="15.0" fill="rgb(239,128,37)" rx="2" ry="2" />
+<text  x="933.16" y="175.5" ></text>
+</g>
+<g >
+<title>link_start (6 samples, 0.01%)</title><rect x="299.0" y="165" width="0.2" height="15.0" fill="rgb(239,129,37)" rx="2" ry="2" />
+<text  x="302.04" y="175.5" ></text>
+</g>
+<g >
+<title>list (134 samples, 0.30%)</title><rect x="1179.6" y="149" width="3.5" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="1182.57" y="159.5" ></text>
+</g>
+<g >
+<title>next (1,315 samples, 2.92%)</title><rect x="1028.4" y="181" width="34.5" height="15.0" fill="rgb(230,219,27)" rx="2" ry="2" />
+<text  x="1031.42" y="191.5" >next</text>
+</g>
+<g >
+<title>alloc_array (21 samples, 0.05%)</title><rect x="302.4" y="181" width="0.6" height="15.0" fill="rgb(239,128,37)" rx="2" ry="2" />
+<text  x="305.44" y="191.5" ></text>
+</g>
+<g >
+<title>add (12 samples, 0.03%)</title><rect x="227.0" y="165" width="0.3" height="15.0" fill="rgb(253,156,53)" rx="2" ry="2" />
+<text  x="229.99" y="175.5" ></text>
+</g>
+<g >
+<title>canister_init (12 samples, 0.03%)</title><rect x="265.5" y="133" width="0.3" height="15.0" fill="rgb(236,106,34)" rx="2" ry="2" />
+<text  x="268.52" y="143.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;vt&gt; (30 samples, 0.07%)</title><rect x="469.2" y="165" width="0.7" height="15.0" fill="rgb(237,156,36)" rx="2" ry="2" />
+<text  x="472.16" y="175.5" ></text>
+</g>
+<g >
+<title>canister_init (440 samples, 0.98%)</title><rect x="326.9" y="181" width="11.6" height="15.0" fill="rgb(236,106,34)" rx="2" ry="2" />
+<text  x="329.92" y="191.5" ></text>
+</g>
+<g >
+<title>iterate (54 samples, 0.12%)</title><rect x="1066.2" y="149" width="1.4" height="15.0" fill="rgb(245,143,45)" rx="2" ry="2" />
+<text  x="1069.19" y="159.5" ></text>
+</g>
+<g >
+<title>store (62 samples, 0.14%)</title><rect x="982.5" y="133" width="1.6" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="985.47" y="143.5" ></text>
+</g>
+<g >
+<title>leb128_encode (60 samples, 0.13%)</title><rect x="468.4" y="181" width="1.5" height="15.0" fill="rgb(250,149,49)" rx="2" ry="2" />
+<text  x="471.38" y="191.5" ></text>
+</g>
+<g >
+<title>init (18 samples, 0.04%)</title><rect x="1064.3" y="165" width="0.5" height="15.0" fill="rgb(236,161,34)" rx="2" ry="2" />
+<text  x="1067.30" y="175.5" ></text>
+</g>
+<g >
+<title>@reset_cycles (20 samples, 0.04%)</title><rect x="201.1" y="181" width="0.6" height="15.0" fill="rgb(244,161,43)" rx="2" ry="2" />
+<text  x="204.15" y="191.5" ></text>
+</g>
+<g >
+<title>idl_sub_buf_init (24 samples, 0.05%)</title><rect x="593.1" y="165" width="0.6" height="15.0" fill="rgb(236,184,34)" rx="2" ry="2" />
+<text  x="596.05" y="175.5" ></text>
+</g>
+<g >
+<title>motoko_rts::text::text_compare_range::h44562c24c3fce02f (64 samples, 0.14%)</title><rect x="1015.8" y="165" width="1.6" height="15.0" fill="rgb(244,127,43)" rx="2" ry="2" />
+<text  x="1018.76" y="175.5" ></text>
+</g>
+<g >
+<title>link_start (11 samples, 0.02%)</title><rect x="470.2" y="165" width="0.3" height="15.0" fill="rgb(239,129,37)" rx="2" ry="2" />
+<text  x="473.24" y="175.5" ></text>
+</g>
+<g >
+<title>motoko_rts::text::alloc_text_blob::h38617f18505d9ec7 (124 samples, 0.28%)</title><rect x="974.3" y="165" width="3.3" height="15.0" fill="rgb(242,127,41)" rx="2" ry="2" />
+<text  x="977.35" y="175.5" ></text>
+</g>
+<g >
+<title>retrieve (81 samples, 0.18%)</title><rect x="348.8" y="133" width="2.2" height="15.0" fill="rgb(240,162,39)" rx="2" ry="2" />
+<text  x="351.84" y="143.5" ></text>
+</g>
+<g >
+<title>canister_init (988 samples, 2.19%)</title><rect x="551.4" y="133" width="25.9" height="15.0" fill="rgb(236,106,34)" rx="2" ry="2" />
+<text  x="554.38" y="143.5" >c..</text>
+</g>
+<g >
+<title>link_start (981 samples, 2.18%)</title><rect x="272.5" y="149" width="25.7" height="15.0" fill="rgb(239,129,37)" rx="2" ry="2" />
+<text  x="275.51" y="159.5" >l..</text>
+</g>
+<g >
+<title>retrieve (6 samples, 0.01%)</title><rect x="593.4" y="133" width="0.1" height="15.0" fill="rgb(240,162,39)" rx="2" ry="2" />
+<text  x="596.37" y="143.5" ></text>
+</g>
+<g >
+<title>$lambda (174 samples, 0.39%)</title><rect x="443.4" y="149" width="4.5" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="446.37" y="159.5" ></text>
+</g>
+<g >
+<title>list (20 samples, 0.04%)</title><rect x="353.4" y="149" width="0.5" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="356.40" y="159.5" ></text>
+</g>
+<g >
+<title>Buffer (1,068 samples, 2.37%)</title><rect x="228.7" y="181" width="28.0" height="15.0" fill="rgb(241,127,40)" rx="2" ry="2" />
+<text  x="231.69" y="191.5" >B..</text>
+</g>
+<g >
+<title>$lambda (149 samples, 0.33%)</title><rect x="218.0" y="101" width="3.9" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="220.97" y="111.5" ></text>
+</g>
+<g >
+<title>toArray (12 samples, 0.03%)</title><rect x="227.0" y="117" width="0.3" height="15.0" fill="rgb(239,160,37)" rx="2" ry="2" />
+<text  x="229.99" y="127.5" ></text>
+</g>
+<g >
+<title>trans_state6 (36 samples, 0.08%)</title><rect x="1186.8" y="181" width="0.9" height="15.0" fill="rgb(240,158,38)" rx="2" ry="2" />
+<text  x="1189.75" y="191.5" ></text>
+</g>
+<g >
+<title>canister_init (124 samples, 0.28%)</title><rect x="951.6" y="133" width="3.2" height="15.0" fill="rgb(236,106,34)" rx="2" ry="2" />
+<text  x="954.60" y="143.5" ></text>
+</g>
+<g >
+<title>store (19 samples, 0.04%)</title><rect x="1178.0" y="133" width="0.5" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="1181.00" y="143.5" ></text>
+</g>
+<g >
+<title>store (4 samples, 0.01%)</title><rect x="270.9" y="133" width="0.1" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="273.94" y="143.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;t&gt; (62 samples, 0.14%)</title><rect x="974.3" y="117" width="1.7" height="15.0" fill="rgb(244,176,43)" rx="2" ry="2" />
+<text  x="977.35" y="127.5" ></text>
+</g>
+<g >
+<title>retrieve (5 samples, 0.01%)</title><rect x="201.4" y="165" width="0.1" height="15.0" fill="rgb(240,162,39)" rx="2" ry="2" />
+<text  x="204.41" y="175.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;tB&gt; (26 samples, 0.06%)</title><rect x="1189.3" y="149" width="0.7" height="15.0" fill="rgb(245,176,45)" rx="2" ry="2" />
+<text  x="1192.32" y="159.5" ></text>
+</g>
+<g >
+<title>canister_init (12 samples, 0.03%)</title><rect x="1185.6" y="165" width="0.4" height="15.0" fill="rgb(236,106,34)" rx="2" ry="2" />
+<text  x="1188.65" y="175.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;tB&gt; (19 samples, 0.04%)</title><rect x="1178.0" y="149" width="0.5" height="15.0" fill="rgb(245,176,45)" rx="2" ry="2" />
+<text  x="1181.00" y="159.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;&gt; (436 samples, 0.97%)</title><rect x="164.3" y="181" width="11.4" height="15.0" fill="rgb(242,176,41)" rx="2" ry="2" />
+<text  x="167.27" y="191.5" ></text>
+</g>
+<g >
+<title>alloc_blob (112 samples, 0.25%)</title><rect x="303.0" y="181" width="2.9" height="15.0" fill="rgb(239,128,38)" rx="2" ry="2" />
+<text  x="305.99" y="191.5" ></text>
+</g>
+<g >
+<title>retrieve (52 samples, 0.12%)</title><rect x="450.7" y="149" width="1.3" height="15.0" fill="rgb(240,162,39)" rx="2" ry="2" />
+<text  x="453.66" y="159.5" ></text>
+</g>
+<g >
+<title>toArray (12 samples, 0.03%)</title><rect x="226.7" y="117" width="0.3" height="15.0" fill="rgb(239,160,37)" rx="2" ry="2" />
+<text  x="229.67" y="127.5" ></text>
+</g>
+<g >
+<title>retrieve (62 samples, 0.14%)</title><rect x="543.5" y="117" width="1.7" height="15.0" fill="rgb(240,162,39)" rx="2" ry="2" />
+<text  x="546.54" y="127.5" ></text>
+</g>
+<g >
+<title>list (25 samples, 0.06%)</title><rect x="156.7" y="117" width="0.6" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="159.67" y="127.5" ></text>
+</g>
+<g >
+<title>idl_sub_buf_init (80 samples, 0.18%)</title><rect x="351.3" y="181" width="2.1" height="15.0" fill="rgb(236,184,34)" rx="2" ry="2" />
+<text  x="354.30" y="191.5" ></text>
+</g>
+<g >
+<title>entries (26 samples, 0.06%)</title><rect x="347.7" y="181" width="0.7" height="15.0" fill="rgb(237,196,36)" rx="2" ry="2" />
+<text  x="350.71" y="191.5" ></text>
+</g>
+<g >
+<title>$lambda (94 samples, 0.21%)</title><rect x="204.7" y="149" width="2.4" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="207.66" y="159.5" ></text>
+</g>
+<g >
+<title>list (124 samples, 0.28%)</title><rect x="977.6" y="133" width="3.2" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="980.60" y="143.5" ></text>
+</g>
+<g >
+<title>compacting_gc (12 samples, 0.03%)</title><rect x="338.5" y="181" width="0.3" height="15.0" fill="rgb(227,149,24)" rx="2" ry="2" />
+<text  x="341.46" y="191.5" ></text>
+</g>
+<g >
+<title>blob_of_principal (8 samples, 0.02%)</title><rect x="271.7" y="133" width="0.2" height="15.0" fill="rgb(228,110,25)" rx="2" ry="2" />
+<text  x="274.67" y="143.5" ></text>
+</g>
+<g >
+<title>alloc_array (9 samples, 0.02%)</title><rect x="266.1" y="149" width="0.3" height="15.0" fill="rgb(239,128,37)" rx="2" ry="2" />
+<text  x="269.14" y="159.5" ></text>
+</g>
+<g >
+<title>$lambda (188 samples, 0.42%)</title><rect x="207.1" y="165" width="4.9" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="210.12" y="175.5" ></text>
+</g>
+<g >
+<title>toArray (4 samples, 0.01%)</title><rect x="269.1" y="69" width="0.1" height="15.0" fill="rgb(239,160,37)" rx="2" ry="2" />
+<text  x="272.05" y="79.5" ></text>
+</g>
+<g >
+<title>canister_init (386 samples, 0.86%)</title><rect x="984.1" y="117" width="10.1" height="15.0" fill="rgb(236,106,34)" rx="2" ry="2" />
+<text  x="987.10" y="127.5" ></text>
+</g>
+<g >
+<title>@serialize&lt;vt&gt; (30 samples, 0.07%)</title><rect x="469.2" y="149" width="0.7" height="15.0" fill="rgb(237,156,36)" rx="2" ry="2" />
+<text  x="472.16" y="159.5" ></text>
+</g>
+<g >
+<title>list (6 samples, 0.01%)</title><rect x="266.2" y="69" width="0.2" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="269.22" y="79.5" ></text>
+</g>
+<g >
+<title>store (53 samples, 0.12%)</title><rect x="227.3" y="149" width="1.4" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="230.30" y="159.5" ></text>
+</g>
+<g >
+<title>Array_init (4 samples, 0.01%)</title><rect x="269.1" y="133" width="0.1" height="15.0" fill="rgb(236,150,34)" rx="2" ry="2" />
+<text  x="272.05" y="143.5" ></text>
+</g>
+<g >
+<title>insertRoot (135 samples, 0.30%)</title><rect x="427.1" y="165" width="3.5" height="15.0" fill="rgb(241,167,39)" rx="2" ry="2" />
+<text  x="430.07" y="175.5" ></text>
+</g>
+<g >
+<title>$lambda (14 samples, 0.03%)</title><rect x="303.7" y="133" width="0.4" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="306.73" y="143.5" ></text>
+</g>
+<g >
+<title>toArray (132 samples, 0.29%)</title><rect x="931.9" y="133" width="3.4" height="15.0" fill="rgb(239,160,37)" rx="2" ry="2" />
+<text  x="934.89" y="143.5" ></text>
+</g>
+<g >
+<title>retrieve (60 samples, 0.13%)</title><rect x="587.2" y="117" width="1.6" height="15.0" fill="rgb(240,162,39)" rx="2" ry="2" />
+<text  x="590.24" y="127.5" ></text>
+</g>
+<g >
+<title>$lambda (126 samples, 0.28%)</title><rect x="526.4" y="165" width="3.3" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="529.35" y="175.5" ></text>
+</g>
+<g >
+<title>B_eq (14 samples, 0.03%)</title><rect x="226.3" y="181" width="0.4" height="15.0" fill="rgb(239,130,38)" rx="2" ry="2" />
+<text  x="229.31" y="191.5" ></text>
+</g>
+<g >
+<title>toArray (14 samples, 0.03%)</title><rect x="302.6" y="149" width="0.4" height="15.0" fill="rgb(239,160,37)" rx="2" ry="2" />
+<text  x="305.63" y="159.5" ></text>
+</g>
+<g >
+<title>list (197 samples, 0.44%)</title><rect x="1028.4" y="117" width="5.2" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="1031.42" y="127.5" ></text>
+</g>
+<g >
+<title>$lambda (12 samples, 0.03%)</title><rect x="227.0" y="101" width="0.3" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="229.99" y="111.5" ></text>
+</g>
+<g >
+<title>insertRec (135 samples, 0.30%)</title><rect x="427.1" y="181" width="3.5" height="15.0" fill="rgb(230,167,27)" rx="2" ry="2" />
+<text  x="430.07" y="191.5" ></text>
+</g>
+<g >
+<title>toArray (149 samples, 0.33%)</title><rect x="218.0" y="117" width="3.9" height="15.0" fill="rgb(239,160,37)" rx="2" ry="2" />
+<text  x="220.97" y="127.5" ></text>
+</g>
+<g >
+<title>toArray (36 samples, 0.08%)</title><rect x="1067.6" y="165" width="0.9" height="15.0" fill="rgb(239,160,37)" rx="2" ry="2" />
+<text  x="1070.60" y="175.5" ></text>
+</g>
+<g >
+<title>$lambda (124 samples, 0.28%)</title><rect x="938.6" y="117" width="3.2" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="941.60" y="127.5" ></text>
+</g>
+<g >
+<title>motoko_rts::types::block_size::haa6e1a3c5243bd1b (419 samples, 0.93%)</title><rect x="1017.4" y="181" width="11.0" height="15.0" fill="rgb(232,127,30)" rx="2" ry="2" />
+<text  x="1020.44" y="191.5" ></text>
+</g>
+<g >
+<title>store (5 samples, 0.01%)</title><rect x="202.1" y="165" width="0.1" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="205.06" y="175.5" ></text>
+</g>
+<g >
+<title>toArray (88 samples, 0.20%)</title><rect x="1183.1" y="165" width="2.3" height="15.0" fill="rgb(239,160,37)" rx="2" ry="2" />
+<text  x="1186.08" y="175.5" ></text>
+</g>
+<g >
+<title>$lambda (1,118 samples, 2.48%)</title><rect x="1033.6" y="117" width="29.3" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="1036.58" y="127.5" >$l..</text>
+</g>
+<g >
+<title>init (337 samples, 0.75%)</title><rect x="256.7" y="165" width="8.8" height="15.0" fill="rgb(236,161,34)" rx="2" ry="2" />
+<text  x="259.68" y="175.5" ></text>
+</g>
+<g >
+<title>Blob.compare_eq (53 samples, 0.12%)</title><rect x="227.3" y="181" width="1.4" height="15.0" fill="rgb(239,126,38)" rx="2" ry="2" />
+<text  x="230.30" y="191.5" ></text>
+</g>
+<g >
+<title>@serialize&lt;B&gt; (124 samples, 0.28%)</title><rect x="941.8" y="149" width="3.3" height="15.0" fill="rgb(251,156,51)" rx="2" ry="2" />
+<text  x="944.85" y="159.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;tB&gt; (36 samples, 0.08%)</title><rect x="929.2" y="149" width="1.0" height="15.0" fill="rgb(245,176,45)" rx="2" ry="2" />
+<text  x="932.22" y="159.5" ></text>
+</g>
+<g >
+<title>$lambda (12 samples, 0.03%)</title><rect x="226.7" y="101" width="0.3" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="229.67" y="111.5" ></text>
+</g>
+<g >
+<title>$lambda (64 samples, 0.14%)</title><rect x="1015.8" y="85" width="1.6" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="1018.76" y="95.5" ></text>
+</g>
+<g >
+<title>trans_state7 (36 samples, 0.08%)</title><rect x="1187.7" y="181" width="0.9" height="15.0" fill="rgb(238,158,36)" rx="2" ry="2" />
+<text  x="1190.69" y="191.5" ></text>
+</g>
+<g >
+<title>get_heap_base (9 samples, 0.02%)</title><rect x="351.0" y="181" width="0.2" height="15.0" fill="rgb(247,170,46)" rx="2" ry="2" />
+<text  x="353.96" y="191.5" ></text>
+</g>
+<g >
+<title>retrieve (1,108 samples, 2.46%)</title><rect x="1085.5" y="181" width="29.1" height="15.0" fill="rgb(240,162,39)" rx="2" ry="2" />
+<text  x="1088.53" y="191.5" >re..</text>
+</g>
+<g >
+<title>init (8 samples, 0.02%)</title><rect x="270.4" y="133" width="0.2" height="15.0" fill="rgb(236,161,34)" rx="2" ry="2" />
+<text  x="273.42" y="143.5" ></text>
+</g>
+<g >
+<title>store (758 samples, 1.68%)</title><rect x="614.3" y="133" width="19.9" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="617.28" y="143.5" ></text>
+</g>
+<g >
+<title>@anon-func-165.17 (149 samples, 0.33%)</title><rect x="218.0" y="149" width="3.9" height="15.0" fill="rgb(233,146,31)" rx="2" ry="2" />
+<text  x="220.97" y="159.5" ></text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::compacting_gc::h416bfa181cd1565b (222 samples, 0.49%)</title><rect x="593.7" y="165" width="5.8" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="596.68" y="175.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;tB&gt; (413 samples, 0.92%)</title><rect x="183.9" y="181" width="10.8" height="15.0" fill="rgb(245,176,45)" rx="2" ry="2" />
+<text  x="186.90" y="191.5" ></text>
+</g>
+<g >
+<title>compare (84 samples, 0.19%)</title><rect x="1175.3" y="165" width="2.2" height="15.0" fill="rgb(248,149,47)" rx="2" ry="2" />
+<text  x="1178.30" y="175.5" ></text>
+</g>
+<g >
+<title>canister_init (14 samples, 0.03%)</title><rect x="304.8" y="149" width="0.4" height="15.0" fill="rgb(236,106,34)" rx="2" ry="2" />
+<text  x="307.83" y="159.5" ></text>
+</g>
+<g >
+<title>toArray (14 samples, 0.03%)</title><rect x="302.6" y="133" width="0.4" height="15.0" fill="rgb(239,160,37)" rx="2" ry="2" />
+<text  x="305.63" y="143.5" ></text>
+</g>
+<g >
+<title>$lambda (52 samples, 0.12%)</title><rect x="213.4" y="133" width="1.3" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="216.39" y="143.5" ></text>
+</g>
+<g >
+<title>compacting_gc (8,910 samples, 19.79%)</title><rect x="634.2" y="165" width="233.5" height="15.0" fill="rgb(227,149,24)" rx="2" ry="2" />
+<text  x="637.15" y="175.5" >compacting_gc</text>
+</g>
+<g >
+<title>@serialize&lt;B&gt; (65 samples, 0.14%)</title><rect x="548.4" y="149" width="1.7" height="15.0" fill="rgb(251,156,51)" rx="2" ry="2" />
+<text  x="551.42" y="159.5" ></text>
+</g>
+<g >
+<title>@serialize&lt;vt&gt; (52 samples, 0.12%)</title><rect x="213.4" y="149" width="1.3" height="15.0" fill="rgb(237,156,36)" rx="2" ry="2" />
+<text  x="216.39" y="159.5" ></text>
+</g>
+<g >
+<title>motoko_rts::text::alloc_text_blob::h38617f18505d9ec7 (8 samples, 0.02%)</title><rect x="271.9" y="149" width="0.2" height="15.0" fill="rgb(242,127,41)" rx="2" ry="2" />
+<text  x="274.88" y="159.5" ></text>
+</g>
+<g >
+<title>@anon-func-165.17 (7 samples, 0.02%)</title><rect x="302.4" y="133" width="0.2" height="15.0" fill="rgb(233,146,31)" rx="2" ry="2" />
+<text  x="305.44" y="143.5" ></text>
+</g>
+<g >
+<title>all (45,022 samples, 100%)</title><rect x="10.0" y="197" width="1180.0" height="15.0" fill="rgb(255,230,55)" rx="2" ry="2" />
+<text  x="13.00" y="207.5" ></text>
+</g>
+<g >
+<title>link_start (9 samples, 0.02%)</title><rect x="1114.6" y="165" width="0.2" height="15.0" fill="rgb(239,129,37)" rx="2" ry="2" />
+<text  x="1117.57" y="175.5" ></text>
+</g>
+<g >
+<title>@anon-func-165.17 (27 samples, 0.06%)</title><rect x="224.9" y="149" width="0.7" height="15.0" fill="rgb(233,146,31)" rx="2" ry="2" />
+<text  x="227.89" y="159.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;&gt; (6 samples, 0.01%)</title><rect x="268.4" y="133" width="0.2" height="15.0" fill="rgb(242,176,41)" rx="2" ry="2" />
+<text  x="271.42" y="143.5" ></text>
+</g>
+<g >
+<title>canister_init (3,890 samples, 8.64%)</title><rect x="634.2" y="149" width="101.9" height="15.0" fill="rgb(236,106,34)" rx="2" ry="2" />
+<text  x="637.15" y="159.5" >canister_init</text>
+</g>
+<g >
+<title>list (16 samples, 0.04%)</title><rect x="270.0" y="85" width="0.4" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="273.00" y="95.5" ></text>
+</g>
+<g >
+<title>list (149 samples, 0.33%)</title><rect x="218.0" y="85" width="3.9" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="220.97" y="95.5" ></text>
+</g>
+<g >
+<title>$lambda (5 samples, 0.01%)</title><rect x="1178.5" y="117" width="0.1" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="1181.49" y="127.5" ></text>
+</g>
+<g >
+<title>store (18 samples, 0.04%)</title><rect x="160.3" y="117" width="0.5" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="163.31" y="127.5" ></text>
+</g>
+<g >
+<title>$lambda (5 samples, 0.01%)</title><rect x="1178.5" y="101" width="0.1" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="1181.49" y="111.5" ></text>
+</g>
+<g >
+<title>obj_idx&lt;11&gt; (36 samples, 0.08%)</title><rect x="1067.6" y="181" width="0.9" height="15.0" fill="rgb(245,139,44)" rx="2" ry="2" />
+<text  x="1070.60" y="191.5" ></text>
+</g>
+<g >
+<title>$lambda (14 samples, 0.03%)</title><rect x="303.7" y="149" width="0.4" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="306.73" y="159.5" ></text>
+</g>
+<g >
+<title>store (7 samples, 0.02%)</title><rect x="305.7" y="165" width="0.2" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="308.75" y="175.5" ></text>
+</g>
+<g >
+<title>store (7 samples, 0.02%)</title><rect x="303.0" y="149" width="0.2" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="305.99" y="159.5" ></text>
+</g>
+<g >
+<title>memcmp (398 samples, 0.88%)</title><rect x="529.7" y="181" width="10.4" height="15.0" fill="rgb(238,144,36)" rx="2" ry="2" />
+<text  x="532.65" y="191.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;tB&gt; (7 samples, 0.02%)</title><rect x="303.2" y="149" width="0.2" height="15.0" fill="rgb(245,176,45)" rx="2" ry="2" />
+<text  x="306.18" y="159.5" ></text>
+</g>
+<g >
+<title>list (12 samples, 0.03%)</title><rect x="593.1" y="133" width="0.3" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="596.05" y="143.5" ></text>
+</g>
+<g >
+<title>toArray (115 samples, 0.26%)</title><rect x="221.9" y="165" width="3.0" height="15.0" fill="rgb(239,160,37)" rx="2" ry="2" />
+<text  x="224.88" y="175.5" ></text>
+</g>
+<g >
+<title>map (126 samples, 0.28%)</title><rect x="526.4" y="181" width="3.3" height="15.0" fill="rgb(240,99,39)" rx="2" ry="2" />
+<text  x="529.35" y="191.5" ></text>
+</g>
+<g >
+<title>init (14 samples, 0.03%)</title><rect x="304.8" y="165" width="0.4" height="15.0" fill="rgb(236,161,34)" rx="2" ry="2" />
+<text  x="307.83" y="175.5" ></text>
+</g>
+<g >
+<title>Array_tabulate (34 samples, 0.08%)</title><rect x="155.8" y="165" width="0.9" height="15.0" fill="rgb(245,150,45)" rx="2" ry="2" />
+<text  x="158.78" y="175.5" ></text>
+</g>
+<g >
+<title>get (28 samples, 0.06%)</title><rect x="338.8" y="149" width="0.7" height="15.0" fill="rgb(237,170,35)" rx="2" ry="2" />
+<text  x="341.77" y="159.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;&gt; (12 samples, 0.03%)</title><rect x="593.1" y="149" width="0.3" height="15.0" fill="rgb(242,176,41)" rx="2" ry="2" />
+<text  x="596.05" y="159.5" ></text>
+</g>
+<g >
+<title>retrieve (7 samples, 0.02%)</title><rect x="305.6" y="165" width="0.1" height="15.0" fill="rgb(240,162,39)" rx="2" ry="2" />
+<text  x="308.56" y="175.5" ></text>
+</g>
+<g >
+<title>compare (186 samples, 0.41%)</title><rect x="1010.9" y="149" width="4.9" height="15.0" fill="rgb(248,149,47)" rx="2" ry="2" />
+<text  x="1013.88" y="159.5" ></text>
+</g>
+<g >
+<title>canister_init (674 samples, 1.50%)</title><rect x="867.7" y="133" width="17.6" height="15.0" fill="rgb(236,106,34)" rx="2" ry="2" />
+<text  x="870.68" y="143.5" ></text>
+</g>
+<g >
+<title>@serialize&lt;vt&gt; (12 samples, 0.03%)</title><rect x="266.9" y="133" width="0.3" height="15.0" fill="rgb(237,156,36)" rx="2" ry="2" />
+<text  x="269.85" y="143.5" ></text>
+</g>
+<g >
+<title>store (111 samples, 0.25%)</title><rect x="596.6" y="133" width="2.9" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="599.59" y="143.5" ></text>
+</g>
+<g >
+<title>list (14 samples, 0.03%)</title><rect x="302.6" y="101" width="0.4" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="305.63" y="111.5" ></text>
+</g>
+<g >
+<title>$lambda (6 samples, 0.01%)</title><rect x="266.7" y="101" width="0.2" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="269.69" y="111.5" ></text>
+</g>
+<g >
+<title>@serialize&lt;vt&gt; (5 samples, 0.01%)</title><rect x="1178.5" y="133" width="0.1" height="15.0" fill="rgb(237,156,36)" rx="2" ry="2" />
+<text  x="1181.49" y="143.5" ></text>
+</g>
+<g >
+<title>$lambda (16 samples, 0.04%)</title><rect x="270.0" y="117" width="0.4" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="273.00" y="127.5" ></text>
+</g>
+<g >
+<title>list (52 samples, 0.12%)</title><rect x="213.4" y="101" width="1.3" height="15.0" fill="rgb(232,113,30)" rx="2" ry="2" />
+<text  x="216.39" y="111.5" ></text>
+</g>
+<g >
+<title>@serialize&lt;vt&gt; (65 samples, 0.14%)</title><rect x="591.4" y="117" width="1.7" height="15.0" fill="rgb(237,156,36)" rx="2" ry="2" />
+<text  x="594.35" y="127.5" ></text>
+</g>
+<g >
+<title>sleb128_decode (759 samples, 1.69%)</title><rect x="1114.8" y="181" width="19.9" height="15.0" fill="rgb(250,128,49)" rx="2" ry="2" />
+<text  x="1117.81" y="191.5" ></text>
+</g>
+<g >
+<title>init (124 samples, 0.28%)</title><rect x="971.1" y="133" width="3.2" height="15.0" fill="rgb(236,161,34)" rx="2" ry="2" />
+<text  x="974.10" y="143.5" ></text>
+</g>
+<g >
+<title>$lambda (124 samples, 0.28%)</title><rect x="941.8" y="133" width="3.3" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="944.85" y="143.5" ></text>
+</g>
+<g >
+<title>$lambda (30 samples, 0.07%)</title><rect x="469.2" y="117" width="0.7" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="472.16" y="127.5" ></text>
+</g>
+<g >
+<title>store (52 samples, 0.12%)</title><rect x="456.1" y="133" width="1.4" height="15.0" fill="rgb(246,150,45)" rx="2" ry="2" />
+<text  x="459.11" y="143.5" ></text>
+</g>
+<g >
+<title>$lambda (51 samples, 0.11%)</title><rect x="159.0" y="133" width="1.3" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="161.97" y="143.5" ></text>
+</g>
+<g >
+<title>$lambda (6 samples, 0.01%)</title><rect x="266.7" y="117" width="0.2" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="269.69" y="127.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;t&gt; (69 samples, 0.15%)</title><rect x="1123.8" y="149" width="1.9" height="15.0" fill="rgb(244,176,43)" rx="2" ry="2" />
+<text  x="1126.85" y="159.5" ></text>
+</g>
+<g >
+<title>text_of_ptr_size (38 samples, 0.08%)</title><rect x="1177.5" y="181" width="1.0" height="15.0" fill="rgb(245,171,44)" rx="2" ry="2" />
+<text  x="1180.50" y="191.5" ></text>
+</g>
+<g >
+<title>$lambda (16 samples, 0.04%)</title><rect x="270.0" y="101" width="0.4" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="273.00" y="111.5" ></text>
+</g>
+<g >
+<title>retrieve (17 samples, 0.04%)</title><rect x="348.4" y="149" width="0.4" height="15.0" fill="rgb(240,162,39)" rx="2" ry="2" />
+<text  x="351.39" y="159.5" ></text>
+</g>
+<g >
+<title>motoko_rts::principal_id::principal_of_blob::h6560fd4a9cbb47b9 (17 samples, 0.04%)</title><rect x="339.5" y="165" width="0.5" height="15.0" fill="rgb(226,127,24)" rx="2" ry="2" />
+<text  x="342.50" y="175.5" ></text>
+</g>
+<g >
+<title>$lambda (81 samples, 0.18%)</title><rect x="348.8" y="149" width="2.2" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="351.84" y="159.5" ></text>
+</g>
+</g>
+</svg>

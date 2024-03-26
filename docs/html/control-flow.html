@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>md/control-flow.md</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]-->
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">md/control-flow.md</h1>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#imperative-control-flow"
+id="toc-imperative-control-flow">Imperative control flow</a>
+<ul>
+<li><a href="#early-return-from-func"
+id="toc-early-return-from-func">Early <code>return</code> from
+<code>func</code></a></li>
+<li><a href="#loops-and-labels" id="toc-loops-and-labels">Loops and
+labels</a>
+<ul>
+<li><a href="#labeled-expressions" id="toc-labeled-expressions">Labeled
+expressions</a></li>
+</ul></li>
+<li><a href="#option-blocks-and-null-breaks"
+id="toc-option-blocks-and-null-breaks">Option blocks and null
+breaks</a></li>
+<li><a href="#repetition-with-loop"
+id="toc-repetition-with-loop">Repetition with <code>loop</code></a></li>
+<li><a href="#while-loops-with-precondition"
+id="toc-while-loops-with-precondition"><code>while</code> loops with
+precondition</a></li>
+<li><a href="#for-loops-for-iteration"
+id="toc-for-loops-for-iteration"><code>for</code> loops for
+iteration</a></li>
+<li><a href="#using-range-with-a-for-loop"
+id="toc-using-range-with-a-for-loop">Using <code>range</code> with a
+<code>for</code> loop</a></li>
+<li><a href="#using-revrange" id="toc-using-revrange">Using
+<code>revRange</code></a></li>
+<li><a href="#using-iterators-of-specific-data-structures"
+id="toc-using-iterators-of-specific-data-structures">Using iterators of
+specific data structures</a></li>
+</ul></li>
+</ul>
+</nav>
+<h1 id="imperative-control-flow">Imperative control flow</h1>
+<p>There are two key categories of control flow:</p>
+<ul>
+<li><p><em>declarative</em>, when the structure of some value guides
+control and the selection of the next expression to evaluate, like in
+<code>if</code> and <code>switch</code> expressions;</p></li>
+<li><p><em>imperative</em> where control changes abruptly according to a
+programmer’s command, abondoning regular control flow; examples are
+<code>break</code> and <code>continue</code>, but also
+<code>return</code> and <code>throw</code>.</p></li>
+</ul>
+<p>Imperative control flow often goes hand-in-hand with state changes
+and other flavors of side-effects, such as error handling and
+input/output.</p>
+<h2 id="early-return-from-func">Early <code>return</code> from
+<code>func</code></h2>
+<p>Normally, the result of a function is the value of its body.
+Sometimes, during evaluation of the body, the result is available before
+the end of evaluation. In such situations the
+<code>return &lt;exp&gt;</code> construct can be used to abandon the
+rest of the computation and immediately exit the function with a result.
+Similarly, where permitted, <code>throw</code> may be used to abandon a
+computation with an error.</p>
+<p>When a function has unit result type, the shorthand
+<code>return</code> may be used instead of the equivalent
+<code>return ()</code>.</p>
+<h2 id="loops-and-labels">Loops and labels</h2>
+<p>Motoko provides several kinds of repetition constructs,
+including:</p>
+<ul>
+<li><p><code>for</code> expressions for iterating over members of
+structured data.</p></li>
+<li><p><code>loop</code> expressions for programmatic repetition
+(optionally with termination condition).</p></li>
+<li><p><code>while</code> loops for programmatic repetition with entry
+condition.</p></li>
+</ul>
+<p>Any of these can be prefixed with a <code>label &lt;name&gt;</code>
+qualifier to give the loop a symbolic name. Named loops are useful for
+imperatively changing control flow to continue from the entry or exit of
+the named loop.</p>
+<ul>
+<li><p>re-entering the loop with <code>continue &lt;name&gt;</code>,
+or</p></li>
+<li><p>exiting the loop altogether with
+<code>break &lt;name&gt;</code>.</p></li>
+</ul>
+<p>In the following example, the <code>for</code> expression loops over
+characters of some text and abandons iteration as soon as an exclamation
+sign is encountered.</p>
+<pre class="motoko"><code>import Debug &quot;mo:base/Debug&quot;;
+label letters for (c in &quot;ran!!dom&quot;.chars()) {
+  Debug.print(debug_show(c));
+  if (c == &#39;!&#39;) { break letters };
+  // ...
+}</code></pre>
+<h3 id="labeled-expressions">Labeled expressions</h3>
+<p>There are two other facets to <code>label</code>​s that are less
+mainstream, but come in handy in certain situations:</p>
+<ul>
+<li><p><code>label</code>​s can be typed</p></li>
+<li><p><em>any</em> expression (not just loops) can be named by
+prefixing it with a label; <code>break</code> allows one to
+short-circuit the expression’s evaluation by providing an immediate
+value for its result. (This is similar to exiting a function early using
+<code>return</code>, but without the overhead of declaring and calling a
+function.)</p></li>
+</ul>
+<p>The syntax for type-annotated labels is
+<code>label &lt;name&gt; : &lt;type&gt; &lt;expr&gt;</code>, signifying
+that any expression can be exited using a
+<code>break &lt;name&gt; &lt;alt-expr&gt;</code> construct that returns
+the value of <code>&lt;alt-expr&gt;</code> as the value of
+<code>&lt;expr&gt;</code>, short-circuiting evaluation of
+<code>&lt;expr&gt;</code>.</p>
+<p>Judicious use of these constructs allows the programmer to focus on
+the primary program logic and handle exceptional case via
+<code>break</code></p>
+<pre class="motoko"><code>import Text &quot;mo:base/Text&quot;;
+import Iter &quot;mo:base/Iter&quot;;
+
+type Host = Text;
+let formInput = &quot;us@dfn&quot;;
+
+let address = label exit : ?(Text, Host) {
+  let splitted = Text.split(formInput, #char &#39;@&#39;);
+  let array = Iter.toArray&lt;Text&gt;(splitted);
+  if (array.size() != 2) { break exit(null) };
+  let account = array[0];
+  let host = array[1];
+  // if (not (parseHost(host))) { break exit(null) };
+  ?(account, host)
+}</code></pre>
+<p>Naturally, labeled common expressions don’t allow
+<code>continue</code>. In terms of typing, both
+<code>&lt;expr&gt;</code> and <code>&lt;alt-expr&gt;</code>​'s types must
+conform with the label’s declared <code>&lt;type&gt;</code>. If a label
+is only given a <code>&lt;name&gt;</code>, then its
+<code>&lt;type&gt;</code> defaults to unit (<code>()</code>). Similarly
+a <code>break</code> without an <code>&lt;alt-expr&gt;</code> is
+shorthand for the value unit (<code>()</code>).</p>
+<h2 id="option-blocks-and-null-breaks">Option blocks and null
+breaks</h2>
+<p>Like many other high-level languages, Motoko lets you opt in to
+<code>null</code> values, tracking possible occurences of
+<code>null</code> values using option types of the form <code>?T</code>.
+This is to both to encourage you to avoid using <code>null</code> values
+when possible, and to consider the possibility of <code>null</code>
+values when necessary.</p>
+<p>The latter could be cumbersome, if the only way to test a value for
+<code>null</code> were with a verbose <code>switch</code> expression,
+but Motoko simplifies the handling of option types with some dedicated
+syntax: <em>option blocks</em> and <em>null breaks</em>.</p>
+<p>The option block, <code>do ? &lt;block&gt;</code>, produces a value
+of type <code>?T</code>, when block <code>&lt;block&gt;</code> has type
+<code>T</code> and, importantly, introduces the possibility of a break
+from <code>&lt;block&gt;</code>. Within a
+<code>do ? &lt;block&gt;</code>, the null break
+<code>&lt;exp&gt; !</code>, tests whether the result of the expression,
+<code>&lt;exp&gt;</code>, of unrelated option type, <code>?U</code>, is
+<code>null</code>. If the result <code>&lt;exp&gt;</code> is
+<code>null</code>, control immediately exits the
+<code>do ? &lt;block&gt;</code> with value <code>null</code>. Otherwise,
+the result of <code>&lt;exp&gt;</code> must be an option value
+<code>?v</code>, and evaluation of <code>&lt;exp&gt; !</code> proceeds
+with its contents, <code>v</code> (of type <code>U</code>).</p>
+<p>As realistic example, we give the definition of a simple function
+<code>eval</code>uating numeric <code>Exp</code>ressions built from
+natural numbers, division and a zero test, encoded as a variant
+type:</p>
+<!--
+TODO: make interactive
+-->
+
+<pre class="motoko"><code></code></pre>
+<p>To guard against division by <code>0</code> without trapping, the
+<code>eval</code> function returns an option result, using
+<code>null</code> to indicate failure.</p>
+<p>Each recursive call is checked for <code>null</code> using
+<code>!</code>, immediately exiting the outer <code>do ? block</code>,
+and thus the function itself, with <code>null</code>, when a result is
+<code>null</code>.</p>
+<p>(As an exercise that illustrates the concision of option blocks, you
+might want to try rewriting <code>eval</code> using a labeled expression
+and explicit switches for each null break.)</p>
+<h2 id="repetition-with-loop">Repetition with <code>loop</code></h2>
+<p>The simplest way to indefinitely repeat a sequence of imperative
+expressions is by using a <code>loop</code> construct</p>
+<pre class="motoko"><code>loop { &lt;expr1&gt;; &lt;expr2&gt;; ... }</code></pre>
+<p>The loop can only be abandoned with a <code>return</code> or
+<code>break</code> construct.</p>
+<p>A re-entry condition can be affixed to allow a conditional repetition
+of the loop with <code>loop &lt;body&gt; while &lt;cond&gt;</code>.</p>
+<p>The body of such a loop is always executed at least once.</p>
+<h2 id="while-loops-with-precondition"><code>while</code> loops with
+precondition</h2>
+<p>Sometimes an entry condition is needed to guard the first execution
+of a loop. For this kind of repetition the
+<code>while &lt;cond&gt; &lt;body&gt;</code>-flavor is available</p>
+<pre class="motoko"><code>while (earned &lt; need) { earned += earn() };</code></pre>
+<p>Unlike a <code>loop</code>, the body of a <code>while</code> loop may
+never be executed.</p>
+<h2 id="for-loops-for-iteration"><code>for</code> loops for
+iteration</h2>
+<p>An iteration over elements of some homogeneous collection can be
+performed using a <code>for</code> loop. The values are drawn from an
+iterator and bound to the loop pattern in turn.</p>
+<pre class="motoko"><code>let carsInStock = [
+  (&quot;Buick&quot;, 2020, 23.000),
+  (&quot;Toyota&quot;, 2019, 17.500),
+  (&quot;Audi&quot;, 2020, 34.900)
+];
+var inventory : { var value : Float } = { var value = 0.0 };
+for ((model, year, price) in carsInStock.vals()) {
+  inventory.value += price;
+};
+inventory</code></pre>
+<h2 id="using-range-with-a-for-loop">Using <code>range</code> with a
+<code>for</code> loop</h2>
+<p>The <code>range</code> function produces an iterator (of type
+<code>Iter&lt;Nat&gt;</code>) with the given lower and upper bound,
+inclusive.</p>
+<p>The following loop example prints the numbers <code>0</code> through
+<code>10</code> over its <em>eleven</em> iterations:</p>
+<pre class="motoko"><code>import Iter &quot;mo:base/Iter&quot;;
+import Debug &quot;mo:base/Debug&quot;;
+var i = 0;
+for (j in Iter.range(0, 10)) {
+  Debug.print(debug_show(j));
+  assert(j == i);
+  i += 1;
+};
+assert(i == 11);</code></pre>
+<p>More generally, the function <code>range</code> is a
+<code>class</code> that constructs iterators over sequences of natural
+numbers. Each such iterator has type <code>Iter&lt;Nat&gt;</code>.</p>
+<p>As a constructor function, <code>range</code> has a function
+type:</p>
+<pre class="motoko"><code>(lower : Nat, upper : Int) -&gt; Iter&lt;Nat&gt;</code></pre>
+<p>Where <code>Iter&lt;Nat&gt;</code> is an iterator object type with a
+<code>next</code> method that produces optional elements, each of type
+<code>?Nat</code>:</p>
+<pre class="motoko"><code>type Iter&lt;A&gt; = {next : () -&gt; ?A};</code></pre>
+<p>For each invocation, <code>next</code> returns an optional element
+(of type <code>?Nat</code>).</p>
+<p>The value <code>null</code> indicates that the iteration sequence has
+terminated.</p>
+<p>Until reaching <code>null</code>, each non-<code>null</code> value,
+of the form <code>?</code><em>n</em> for some number <em>n</em>,
+contains the next successive element in the iteration sequence.</p>
+<h2 id="using-revrange">Using <code>revRange</code></h2>
+<p>Like <code>range</code>, the function <code>revRange</code> is a
+<code>class</code> that constructs iterators (each of type
+<code>Iter&lt;Int&gt;</code>). As a constructor function, it has a
+function type:</p>
+<pre class="motoko"><code>(upper : Int, lower : Int) -&gt; Iter&lt;Int&gt;</code></pre>
+<p>Unlike <code>range</code>, the <code>revRange</code> function
+<em>descends</em> in its iteration sequence, from an initial
+<em>upper</em> bound to a final <em>lower</em> bound.</p>
+<h2 id="using-iterators-of-specific-data-structures">Using iterators of
+specific data structures</h2>
+<p>Many built-in data structures come with pre-defined iterators. Below
+table lists them</p>
+<table>
+<thead>
+<tr class="header">
+<th>Type</th>
+<th>Name</th>
+<th>Iterator</th>
+<th>Elements</th>
+<th>Element type</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td><code>[T]</code></td>
+<td>array of <code>T</code>​s</td>
+<td><code>vals</code></td>
+<td>the array’s members</td>
+<td><code>T</code></td>
+</tr>
+<tr class="even">
+<td><code>[T]</code></td>
+<td>array of <code>T</code>​s</td>
+<td><code>keys</code></td>
+<td>the array’s valid indices</td>
+<td><code>Nat</code></td>
+</tr>
+<tr class="odd">
+<td><code>[var T]</code></td>
+<td>mutable array of <code>T</code>​s</td>
+<td><code>vals</code></td>
+<td>the array’s members</td>
+<td><code>T</code></td>
+</tr>
+<tr class="even">
+<td><code>[var T]</code></td>
+<td>mutable array of <code>T</code>​s</td>
+<td><code>keys</code></td>
+<td>the array’s valid indices</td>
+<td><code>Nat</code></td>
+</tr>
+<tr class="odd">
+<td><code>Text</code></td>
+<td>text</td>
+<td><code>chars</code></td>
+<td>the text’s characters</td>
+<td><code>Char</code></td>
+</tr>
+<tr class="even">
+<td><code>Blob</code></td>
+<td>blob</td>
+<td><code>vals</code></td>
+<td>the blob’s bytes</td>
+<td><code>Nat8</code></td>
+</tr>
+</tbody>
+</table>
+<p>Iterators for data structures</p>
+<p>User-defined data structures can define their own iterators. As long
+they conform with the <code>Iter&lt;A&gt;</code> type for some element
+type <code>A</code>, these behave like the built-in ones and can be
+consumed with ordinary <code>for</code>-loops.</p>
+</body>
+</html>

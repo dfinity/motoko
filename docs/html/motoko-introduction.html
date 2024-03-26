@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>md/motoko-introduction.md</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]-->
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">md/motoko-introduction.md</h1>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#introduction" id="toc-introduction">Introduction</a>
+<ul>
+<li><a href="#approachability"
+id="toc-approachability">Approachability</a></li>
+<li><a href="#asynchronous-messaging-and-type-sound-execution"
+id="toc-asynchronous-messaging-and-type-sound-execution">Asynchronous
+messaging and type sound execution</a></li>
+<li><a href="#each-canister-smart-contract-as-an-actor"
+id="toc-each-canister-smart-contract-as-an-actor">Each canister smart
+contract as an <em>actor</em></a>
+<ul>
+<li><a href="#asynchronous-actors"
+id="toc-asynchronous-actors">Asynchronous actors</a></li>
+<li><a href="#support-for-asynchronous-behavior"
+id="toc-support-for-asynchronous-behavior">Support for
+<em>asynchronous</em> behavior</a></li>
+<li><a href="#syntactic-forms-async-and-await"
+id="toc-syntactic-forms-async-and-await">Syntactic forms
+<code>async</code> and <code>await</code></a></li>
+<li><a href="#types-are-static" id="toc-types-are-static">Types are
+static</a></li>
+</ul></li>
+</ul></li>
+</ul>
+</nav>
+<h1 id="introduction">Introduction</h1>
+<p>Motoko is a modern, general-purpose programming language you can use
+specifically to author Internet Computer canister smart contracts.
+Although aimed squarely at the Internet Computer, its design is general
+enough to support future compilation to other targets.</p>
+<h2 id="approachability">Approachability</h2>
+<p>Motoko is a modern language designed to be approachable for
+programmers who have some basic familiarity with modern object-oriented
+and/or functional programming idioms in either JavaScript, or another
+modern programming language, such as Rust, Swift, TypeScript, C#, or
+Java.</p>
+<h2 id="asynchronous-messaging-and-type-sound-execution">Asynchronous
+messaging and type sound execution</h2>
+<p>Motoko permits modern programming idioms, including special
+programming abstractions for distributed applications (dapps). Each dapp
+consists of one or more <em>actors</em> that communicate solely by
+<em>asynchronous message passing</em>. The state of an actor is isolated
+from all other actors, supporting distribution. There is no way to share
+state between several actors. The actor-based programming abstractions
+of Motoko permit human-readable message-passing patterns, and they
+enforce that each network interaction obeys certain rules and avoids
+certain common mistakes.</p>
+<p>Specifically, Motoko programs are <em>type sound</em> since Motoko
+includes a practical, modern type system that checks each one before it
+executes. The Motoko type system statically checks that each Motoko
+program will execute safely, without dynamic type errors, on all
+possible inputs. Consequently, entire classes of common programming
+pitfalls that are common in other languages, and web programming
+languages in particular, are ruled out. This includes null reference
+errors, mis-matched argument or result types, missing field errors and
+many others.</p>
+<p>To execute, Motoko statically compiles to <a
+href="about-this-guide.md#webassembly">WebAssembly</a>, a portable
+binary format that abstracts cleanly over modern computer hardware, and
+thus permits its execution broadly on the Internet, and the Internet
+Computer.</p>
+<h2 id="each-canister-smart-contract-as-an-actor">Each canister smart
+contract as an <em>actor</em></h2>
+<p>Motoko provides an <strong>actor-based</strong> programming model to
+developers to express <em>services</em>, including those of canister
+smart contracts on the Internet Computer.</p>
+<p>An actor is similar to an object, but is special in that its state is
+completely isolated, and all its interactions with the world are by
+<em>asynchronous</em> messaging.</p>
+<p>All communication with and between actors involves passing messages
+asynchronously over the network using the Internet Computer’s messaging
+protocol. An actor’s messages are processed in sequence, so state
+modifications never admit race conditions (unless explicitly allowed by
+punctuating <code>await</code> expressions).</p>
+<p>The Internet Computer ensures that each message that is sent receives
+a response. The response is either success with some value, or an error.
+An error can be the explicit rejection of the message by the receiving
+canister, a trap due to an illegal instruction such as division by zero,
+or a system error due to distribution or resource constraints. For
+example, a system error might be the transient or permanent
+unavailability of the receiver (either because the receiving actor is
+oversubscribed or has been deleted).</p>
+<h3 id="asynchronous-actors">Asynchronous actors</h3>
+<p>Like other <em>modern</em> programming languages, Motoko permits an
+ergonomic syntax for <em>asynchronous</em> communication among
+components.</p>
+<p>In the case of Motoko, each communicating component is an actor.</p>
+<p>As an example of <em>using</em> actors, perhaps as an actor
+ourselves, consider this three-line program:</p>
+<pre class="motoko"><code>let result1 = service1.computeAnswer(params);
+let result2 = service2.computeAnswer(params);
+finalStep(await result1, await result2)</code></pre>
+<p>We can summarize the program’s behavior with three steps:</p>
+<ol type="1">
+<li><p>The program makes two requests (lines 1 and 2) to two distinct
+services, each implemented as a Motoko actor or canister smart contract
+implemented in some other language.</p></li>
+<li><p>The program waits for each result to be ready (line 3) using the
+keyword <code>await</code> on each result value.</p></li>
+<li><p>The program uses both results in the final step (line 3) by
+calling the <code>finalStep</code> function.</p></li>
+</ol>
+<p>Generally-speaking, the services <em>interleave</em> their executions
+rather than wait for one another, since doing so reduces overall
+latency. However, if we try to reduce latency this way <em>without</em>
+special language support, such interleaving will quickly sacrifice
+clarity and simplicity.</p>
+<p>Even in cases where there are <em>no</em> interleaving executions
+(for example, if there were only one call above, not two), the
+programming abstractions still permit clarity and simplicity, for the
+same reason. Namely, they signal to the compiler where to transform the
+program, freeing the programmer from contorting the program’s logic in
+order to interleave its execution with the underlying system’s
+message-passing loop.</p>
+<p>Here, the program uses <code>await</code> in line 3 to express that
+interleaving behavior in a simple fashion, with human-readable syntax
+that is provided by Motoko.</p>
+<p>In language settings that lack these abstractions, developers would
+not merely call these two functions directly, but would instead employ
+very advanced programming patterns, possibly registering
+developer-provided “callback functions” within system-provided “event
+handlers”. Each callback would handle an asynchronous event that arises
+when an answer is ready. This kind of systems-level programming is
+powerful, but very error-prone, since it decomposes a high-level data
+flow into low-level system events that communicate through shared state.
+Sometimes this style is necessary, but here it is not.</p>
+<p>Our program instead eschews that more cumbersome programming style
+for this more natural, <em>direct</em> style, where each request
+resembles an ordinary function call. This simpler, stylized programming
+form has become increasingly popular for expressing practical systems
+that interact with an <em>external environment</em>, as most modern
+software does today. However, it requires special compiler and
+type-system support, as we discuss in more detail below.</p>
+<h3 id="support-for-asynchronous-behavior">Support for
+<em>asynchronous</em> behavior</h3>
+<p>In an <em>asynchronous</em> computing setting, a program and its
+running environment are permitted to perform <em>internal
+computations</em> that occur <em>concurrently</em> with one another.</p>
+<p>Specifically, asynchronous programs are ones where the program’s
+requests of its environment do not (necessarily) require the program to
+wait for the environment. In the meantime, the program is permitted to
+make internal progress within this environment while the environment
+proceeds to complete the request. In the example, above, the program
+issues the second request before waiting for the first request to
+complete.</p>
+<p>Symmetrically, the environment’s requests of the program do not
+(necessarily) require the environment to wait for the program’s answer:
+the environment can make external progress while the answer is
+produced.</p>
+<p>We do not show an example of this “notify” pattern above, since it
+uses callbacks (and <em>higher-order</em> functions and control flow)
+and is thus more complex.</p>
+<h3 id="syntactic-forms-async-and-await">Syntactic forms
+<code>async</code> and <code>await</code></h3>
+<p>To address the need for clarity and simplicity, Motoko adopts the
+increasingly-common program constructs <code>async</code> and
+<code>await</code>, which afford the programmer a <em>structured</em>
+language for describing potentially-complex asynchronous dependency
+graphs.</p>
+<p>The <a href="language-manual.md#async">async</a> syntax introduces
+futures. A future value represents a <em>promise</em> of a result
+<em>that will be delivered, asynchronously, sometime in the future</em>
+(not shown in the first example above). You’ll learn more about futures
+when we introduce actors in <a href="actors-async.md">Actors and async
+data</a>.</p>
+<p>Here, we merely use the ones that arise from calling
+<code>service1.computeAnswer(params)</code> and
+<code>service2.computeAnswer(params)</code>.</p>
+<p>The syntax <code>await</code> synchronizes on a future, and suspends
+computation until the future is completed by its producer. We see two
+uses of <code>await</code> in the example above, to obtain the results
+from two calls to services.</p>
+<p>When the developer uses these keywords, the compiler transforms the
+program as necessary, often doing complex transformations to the
+program’s control- and data-flow that would be tedious to perform by
+hand in a purely synchronous language. Meanwhile, the type system of
+Motoko enforces certain correct usage patterns for these constructs,
+including that types flowing between consumers and producers always
+agree, and that the types of data sent among services are permitted to
+flow there, and do not (for example) contain <a
+href="mutable-state.md">private mutable state</a>.</p>
+<h3 id="types-are-static">Types are static</h3>
+<p>Like other modern programming languages, Motoko permits each variable
+to carry the value of a function, object, or a primitive datum (for
+example, a string, word, or integer). Other <a
+href="basic-concepts.md#intro-values">types of values</a> exist too,
+including records, tuples, and “tagged data” called
+<em>variants</em>.</p>
+<p>Motoko enjoys the formal property of type safety, also known as
+<em>type soundness</em>. We often summarize this idea with the phrase:
+<a href="basic-concepts.md#type-soundness">Well-typed Motoko programs
+don’t go wrong</a>, meaning that the only operations that will be
+performed on data are those permitted by its static type.</p>
+<p>For example, each variable in a Motoko program carries an associated
+<em>type</em>, and this type is known <em>statically</em>, before the
+program executes. Each use of each variable is checked by the compiler
+to prevent runtime type errors, including null reference errors, invalid
+field access and the like.</p>
+<p>In this sense, Motoko types provide a form of <em>trustworthy,
+<strong>compiler-verified</strong> documentation</em> in the program
+source code.</p>
+<p>As usual, dynamic testing can check properties that are beyond the
+reach of the Motoko type system. While modern, the Motoko type system is
+intentionally <em>not</em> “advanced” or particularly exotic. Rather,
+the type system of Motoko integrates standard concepts from modern, but
+well-understood, <a
+href="about-this-guide.md#modern-type-systems">modern type systems</a>
+to provide an approachable, expressive yet safe language for programming
+general-purpose, distributed applications.</p>
+</body>
+</html>

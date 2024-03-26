@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>md/stable-regions.md</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]-->
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">md/stable-regions.md</h1>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#stable-regions" id="toc-stable-regions">Stable Regions</a>
+<ul>
+<li><a href="#the-library" id="toc-the-library">The Library</a></li>
+<li><a href="#example" id="toc-example">Example</a></li>
+</ul></li>
+</ul>
+</nav>
+<h1 id="stable-regions">Stable Regions</h1>
+<p>The <code>Region</code> library provides low-level access to Internet
+Computer stable memory.</p>
+<!--
+TODO: extend example to illustrate stableVarQuery
+-->
+
+<p>Motoko stable variables, while convenient to use, require
+serialization and deserialization of all stable variables on upgrade
+(see <a href="upgrades.md">Stable variables and upgrade methods</a>).
+During an upgrade, the current values of stable variables are first
+saved to IC stable memory, then restored from stable memory after the
+new code is installed. Unfortunately, this mechanism does not scale to
+canisters that maintain <em>large</em> amounts of data in stable
+variables: there may not be enough cycle budget to store then restore
+all stable variables within an upgrade, resulting in failed upgrades.
+Due to the current 32-bit address space of Motoko, stable variables
+cannot store more than 4GiB of data.</p>
+<p>Additionally, some stable variables use a representation that is not
+itself <code>stable</code>, requiring a non-trivial pre-upgrade routine
+to pre-process the data into a <code>stable</code> form. These
+pre-upgrade steps are critical, and if they trap for any reason, the
+Motoko canister is forever stuck in a useless, inoperable state.</p>
+<p>To avoid these upgrade hazards, actors can elect to use a lower-level
+<code>Region</code> library for stable memory. The library allows the
+programmer to incrementally allocate pages of (64-bit) IC stable memory
+and use those pages to incrementally read and write data in a
+user-defined binary format.</p>
+<p>Several pages may be allocated at once, with each page containing
+64KiB. Allocation may fail due to resource limits imposed by the
+Internet Computer. Pages are zero-initialized.</p>
+<p>While the user allocates at the granularity of 64KiB pages, the
+implementation will allocate at the coarser granularity of a block
+(currently 128) of physical IC stable memory pages.</p>
+<p>The Motoko runtime system ensures there is no interference between
+the abstraction presented by the <code>Region</code> library and an
+actor’s stable variables, even though the two abstractions ultimately
+use the same underlying (concrete) stable memory facilities available to
+all IC canisters. This runtime support means that is safe for a Motoko
+program to exploit both stable variables and <code>Region</code>, within
+the same application.</p>
+<p>Further, distinct <code>Region</code>s use distinct pages of stable
+memory, ensuring that two distinct <code>Region</code>s can not
+interfere with each other's data representations during normal
+operation, or during an upgrade.</p>
+<h2 id="the-library">The Library</h2>
+<p>Support for stable memory is provided by the <a
+href="./base/Region.md">Region</a> library in package
+<code>base</code>.</p>
+<p>The interface to the <code>Region</code> library consists of
+functions for querying and growing the currently allocated set of stable
+memory pages, plus matching pairs of <code>load</code>,
+<code>store</code> operations for most of Motoko’s fixed-size scalar
+types.</p>
+<p>More general <code>loadBlob</code> and <code>storeBlob</code>
+operations are also available for reading/writing binary blobs and other
+types that can be encoded as <code>Blob</code>s (e.g. <code>Text</code>
+values) of arbitrary sizes, using Motoko supplied or user-provided
+encoders and decoders.</p>
+<pre class="motoko"><code>module {
+
+  // A stateful handle to an isolated region of IC stable memory.
+  //  `Region` is a stable type and regions can be stored in stable variables.
+  type Region = Prim.Types.Region;
+
+  // Allocate a new, isolated `Region` of size 0.
+  new : () -&gt; Region;
+
+  // Current size of the region `r` in pages.
+  // Each page is 64KiB (65536 bytes).
+  // Initially `0`.
+  size : (r : Region) -&gt; (pages : Nat64);
+
+  // Grow current `size` of region `r` by `pagecount` pages.
+  // Each page is 64KiB (65536 bytes).
+  // Returns previous `size` when able to grow.
+  // Returns `0xFFFF_FFFF_FFFF_FFFF` if remaining pages of physical stable memory insufficient.
+  grow : (r : Region, new_pages : Nat64) -&gt; (oldpages : Nat64);
+
+  // read (&quot;load&quot;) a byte from a region, by offset.
+  loadNat8 : (r : Region, offset : Nat64) -&gt; Nat8;
+
+  // write (&quot;store&quot;) a byte into a region, by offset.
+  storeNat8 : (r : Region, offset : Nat64, value: Nat8) -&gt; ();
+
+  // ... and similar for Nat16, Nat32, Nat64,
+  // Int8, Int16, Int32 and Int64 ...
+
+  loadFloat : (r : Region, offset : Nat64) -&gt; Float;
+  storeFloat : (r : Region, offset : Nat64, value : Float) -&gt; ();
+
+  // Load `size` bytes starting from `offset` in region `r` as a `Blob`.
+  // Traps on out-of-bounds access.
+  loadBlob : (r : Region, offset : Nat64, size : Nat) -&gt; Blob;
+
+  // Write all bytes of `blob` to region `r` beginning at `offset`.
+  // Traps on out-of-bounds access.
+  storeBlob : (r : Region, offset : Nat64, value : Blob) -&gt; ()
+
+}</code></pre>
+<h2 id="example">Example</h2>
+<p>To demonstrate the <code>Region</code> library, we present a simple
+implementation of a logging actor that records text messages in a
+scalable, persistent log.</p>
+<p>The example illustrates the simultaneous use of stable variables and
+stable memory. It uses a single stable variable, <code>state</code>, to
+keep track of the two regions and their size in bytes, but stores the
+contents of the log directly in stable memory.</p>
+<pre class="motoko"><code></code></pre>
+<p>The shared <code>add(blob)</code> function allocates enough stable
+memory to store the given blob, and writes the blob contents, its size,
+and its position into the pre-allocated regions. One region is dedicated
+to storing the blobs of varying sizes, and the other is dedicated to
+storing their (fixed-sized) meta data.</p>
+<p>The shared <code>get(index)</code> query reads anywhere from the log
+without traversing any unrelated memory.</p>
+<p>Because <code>StableLog</code> allocates and maintains its
+(potentially large) log data directly in stable memory and uses just a
+small and fixed amount of storage for actual stable variables (here
+<code>state</code>), upgrading <code>StableLog</code> to a new
+implementation (perhaps to provide more functionality) should not
+consume too many cycles, regardless of the current size of the log.</p>
+</body>
+</html>
