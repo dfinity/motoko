@@ -138,7 +138,6 @@ struct DestabilizationState {
 
 /// To be called as very first step when graph-copy-based destabilization is applied.
 /// Note: No dynamic allocations must occur prior to this operation.
-#[ic_mem_fn(ic_only)]
 pub unsafe fn clear_memory_for_graph_destabilization<M: Memory>(mem: &mut M) {
     reset_memory(mem);
     // Stop the GC until the incremental destabilization has been completed.
@@ -166,7 +165,6 @@ pub unsafe fn start_graph_destabilization<M: Memory>(
     new_type_offsets: Value,
 ) {
     assert!(DESTABILIZATION_STATE.is_none());
-    assert!(is_gc_stopped());
 
     let mut instruction_meter = InstructionMeter::new();
     instruction_meter.start();
@@ -177,6 +175,8 @@ pub unsafe fn start_graph_destabilization<M: Memory>(
         rts_trap_with("Memory-incompatible program upgrade");
     }
     moc_stable_mem_set_size(metadata.serialized_data_start / PAGE_SIZE);
+    // Stop the GC until the incremental graph destabilization has been completed.
+    stop_gc();
 
     let deserialization = Deserialization::start(
         mem,
