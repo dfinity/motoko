@@ -467,4 +467,7 @@ let c : <T, U>(T, U) -> c<T, U> = func
           }
       }
   }
+>       let a : Any = 1
+>   let r : {a : Nat} = {a = 1; hidden = true}
+>   let r : Any = {a = 1; hidden = true}
 >   
