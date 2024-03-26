@@ -1,3 +1,4 @@
+//MOC-NO-FORCE-GC
 import Prim "mo:⛔";
 // check blob and text iterator objects survive gc correctly
 actor {

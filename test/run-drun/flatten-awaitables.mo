@@ -1,3 +1,4 @@
+//MOC-NO-FORCE-GC
 import Prim "mo:⛔";
 // test flattening of awaitable, shared function arguments
 
