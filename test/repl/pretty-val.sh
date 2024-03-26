@@ -69,7 +69,6 @@ let c3 = c(c2, c2);
 let c4 = c(c3, c3);
 let c5 = c(c4, c4);
 
-
 // subtyping hides values
 let a : Any = 1;
 

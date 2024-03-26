@@ -184,6 +184,7 @@ let semi ppf () = fprintf ppf ";@ "
 let rec pp_val_nullary d ppf (t, v : T.typ * value) =
   let t = T.normalize t in
   match t, v with
+  | T.Any, _ -> pr ppf "<any>"
   | _, Null -> pr ppf "null"
   | _, Bool b -> pr ppf (if b then "true" else "false")
   | _, Int n when Int.(ge n zero) -> pr ppf (Int.to_pretty_string n)
@@ -209,31 +210,36 @@ let rec pp_val_nullary d ppf (t, v : T.typ * value) =
       (pp_print_list ~pp_sep:comma (pp_val d)) list
       (if List.length vs = 1 then "," else "")
   | t, Obj ve ->
-    let sort, fs = match t with
-      | T.Obj (s, fs) -> T.string_of_obj_sort s, fs
-      | _ -> "", [] in
     if d = 0 then pr ppf "{...}" else
+    let sort, lookup = match t with
+      | T.Obj (s, fs) ->
+        T.string_of_obj_sort s,
+        fun lab -> T.lookup_val_field_opt lab fs
+      | _ ->
+        "", fun lab -> Some T.Non
+    in
     fprintf ppf "@[<hv 2>%a{@;<0 0>%a@;<0 -2>}@]"
       pr sort
-      (pp_print_list ~pp_sep:semi (pp_field d)) (List.map (fun (lab, v) ->
-          let t = T.lookup_val_field_opt lab fs in
-          (lab, Option.value t ~default:T.Non, v))
+      (pp_print_list ~pp_sep:semi (pp_field d)) (List.filter_map (fun (lab, v) ->
+          match lookup lab with
+          | Some t -> Some (lab, t, v)
+          | None -> None)
         (Env.bindings ve))
   | t, Array vs ->
     let t' = match t with T.Array t' -> t' | _ -> T.Non in
     fprintf ppf "@[<1>[%a%a]@]"
       pr (match t' with T.Mut t -> "var " | _ -> "")
       (pp_print_list ~pp_sep:comma (pp_val d)) (List.map (fun v -> (t', v)) (Array.to_list vs))
-  | _, Func (_, _) -> pr ppf "func"
-  | _, Comp _ -> pr ppf "async*"
+  | _, Func (_, _) -> pr ppf "<func>"
+  | _, Comp _ -> pr ppf "<async*>"
   | t, v ->
-    (* "(" ^ string_of_val d v ^ ")" *)
     fprintf ppf "@[<1>(%a)@]" (pp_val d) (t, v)
 
 and pp_field d ppf (lab, t, v) =
     fprintf ppf "@[<2>%s =@ %a@]" lab (pp_val d) (t, v)
 
 and pp_val d ppf = function
+  | T.Any, _ -> pr ppf "<any>"
   | _, Int i -> pr ppf (Int.to_pretty_string i)
   | _, Int8 i -> pr ppf (Int_8.(pos_sign (gt i zero) ^ to_pretty_string i))
   | _, Int16 i -> pr ppf (Int_16.(pos_sign (gt i zero) ^ to_pretty_string i))
