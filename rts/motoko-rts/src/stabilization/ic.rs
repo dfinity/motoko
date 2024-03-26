@@ -213,9 +213,37 @@ pub unsafe fn graph_destabilization_increment<M: Memory>(mem: &mut M) -> bool {
         if state.deserialization.is_completed() {
             record_upgrade_costs();
             state.completed = true;
+            memory_sanity_check(mem);
         }
     }
     state.completed
+}
+
+unsafe fn memory_sanity_check<M: Memory>(_mem: &mut M) {
+    #[cfg(feature = "memory_check")]
+    {
+        use crate::gc::incremental::{
+            get_partitioned_heap,
+            sanity_checks::{check_memory, CheckerMode},
+        };
+
+        let state = DESTABILIZATION_STATE.as_mut().unwrap();
+        let unused_root = &mut Value::from_scalar(0) as *mut Value;
+        let roots = [
+            &mut state.deserialization.get_stable_root() as *mut Value,
+            unused_root,
+            unused_root,
+            unused_root,
+            unused_root,
+            unused_root,
+        ];
+        check_memory(
+            _mem,
+            get_partitioned_heap(),
+            roots,
+            CheckerMode::UpdateCompletion,
+        );
+    }
 }
 
 unsafe fn record_upgrade_costs() {

@@ -198,15 +198,6 @@ impl Partition {
         }
     }
 
-    #[cfg(feature = "memory_check")]
-    unsafe fn zero_free_space(free_space: *mut FreeSpace) {
-        // Clear the remainder of the free space.
-        let header_size = size_of::<FreeSpace>().to_bytes().as_usize();
-        let clear_start = free_space as usize + header_size;
-        let clear_length = (*free_space).words;
-        crate::mem_utils::memzero(clear_start, clear_length);
-    }
-
     pub unsafe fn free(&mut self) {
         debug_assert!(!self.free);
         debug_assert!(self.evacuate || self.large_content || self.temporary);
