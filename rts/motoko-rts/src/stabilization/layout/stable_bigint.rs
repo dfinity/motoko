@@ -7,13 +7,13 @@ use crate::stabilization::serialization::stable_memory_stream::{
 };
 use crate::stabilization::serialization::SerializationContext;
 use crate::tommath_bindings::mp_digit;
-use crate::types::{size_of, BigInt, Bytes, Value, Words, TAG_BIGINT};
+use crate::types::{size_of, BigInt, Bytes, Value, TAG_BIGINT};
 
 use super::{round_to_u64, Serializer, StableToSpace, StableValue, StaticScanner};
 
 // Tom's math library, as configured for Motoko RTS, encodes a big numbers as an array of 32-bit
-// words, where each word stores 28 bits of the number while its highest 4 bits are zero.
-// Similar to the little endian encoding, the word array starts with the least significant 28 bits,
+// elements, where each element stores 28 bits of the number while its highest 4 bits are zero.
+// Similar to the little endian encoding, the element array starts with the least significant 28 bits,
 // with each subsequent element covering the next higher 28 bits.
 
 // Tom's math library functions `mp_to_sbin` and `mp_from_sbin` imply temporary object allocations
@@ -29,7 +29,7 @@ pub struct StableBigInt {
                        // Zero padding to align to the next `u64`.
 }
 
-const USED_BITS_PER_WORD: u32 = 28;
+const USED_BITS_PER_ELEMENT: u32 = 28;
 // Note: Do not use `types::size_of()` as it rounds to 64-bit words.
 const ELEMENT_SIZE: usize = core::mem::size_of::<u32>();
 
@@ -49,20 +49,19 @@ impl StableBigInt {
     }
 
     fn serialized_length(main_object: *mut BigInt) -> Bits {
-        let used_words = unsafe { (*main_object).mp_int.used } as usize;
-        if used_words == 0 {
+        let used_elements = unsafe { (*main_object).mp_int.used } as usize;
+        if used_elements == 0 {
             return Bits(0);
         }
-        let last_word = unsafe { *main_object.payload_addr().add(used_words - 1) };
-        debug_assert_ne!(last_word, 0);
-        debug_assert_eq!(last_word >> USED_BITS_PER_WORD, 0);
-        let last_bits = u32::BITS - last_word.leading_zeros();
-        Bits((used_words - 1) as u64 * USED_BITS_PER_WORD as u64 + last_bits as u64)
+        let last_element = unsafe { *main_object.payload_addr().add(used_elements - 1) };
+        debug_assert_ne!(last_element, 0);
+        debug_assert_eq!(last_element >> USED_BITS_PER_ELEMENT, 0);
+        let last_bits = u32::BITS - last_element.leading_zeros();
+        Bits((used_elements - 1) as u64 * USED_BITS_PER_ELEMENT as u64 + last_bits as u64)
     }
 
-    fn deserialized_length(&self) -> Words<usize> {
-        let words = ceiling_div(self.number_of_bits.0, USED_BITS_PER_WORD as u64);
-        Words(words as usize)
+    fn deserialized_elements(&self) -> usize {
+        ceiling_div(self.number_of_bits.0, USED_BITS_PER_ELEMENT as u64) as usize
     }
 }
 
@@ -89,36 +88,36 @@ impl Serializer<BigInt> for StableBigInt {
         stable_memory: &mut StableMemoryStream,
         main_object: *mut BigInt,
     ) {
-        let total_words = (*main_object).mp_int.used as usize;
+        let total_elements = (*main_object).mp_int.used as usize;
         let total_bytes = Self::serialized_length(main_object).to_bytes().as_usize();
         let payload = main_object.payload_addr();
         let mut written_bytes = 0;
-        let mut word_index = 0;
-        let mut word = 0;
+        let mut element_index = 0;
+        let mut element = 0;
         let mut pending_bits = 0;
-        let mut next_word = 0;
+        let mut next_element = 0;
         let mut next_pending_bits = 0;
 
         while written_bytes < total_bytes {
-            while pending_bits < u32::BITS && word_index < total_words {
+            while pending_bits < u32::BITS && element_index < total_elements {
                 debug_assert_eq!(next_pending_bits, 0);
-                next_word = *payload.add(word_index);
-                word_index += 1;
-                debug_assert_eq!(next_word >> USED_BITS_PER_WORD, 0);
-                word |= next_word << pending_bits;
-                let consumed_bits = core::cmp::min(USED_BITS_PER_WORD, u32::BITS - pending_bits);
+                next_element = *payload.add(element_index);
+                element_index += 1;
+                debug_assert_eq!(next_element >> USED_BITS_PER_ELEMENT, 0);
+                element |= next_element << pending_bits;
+                let consumed_bits = core::cmp::min(USED_BITS_PER_ELEMENT, u32::BITS - pending_bits);
                 pending_bits += consumed_bits;
-                next_word >>= consumed_bits;
-                next_pending_bits = USED_BITS_PER_WORD - consumed_bits;
+                next_element >>= consumed_bits;
+                next_pending_bits = USED_BITS_PER_ELEMENT - consumed_bits;
             }
-            stable_memory.write(&word); // little endian
+            stable_memory.write(&element); // little endian
             written_bytes += ELEMENT_SIZE;
-            word = next_word;
+            element = next_element;
             pending_bits = next_pending_bits;
             next_pending_bits = 0;
         }
-        debug_assert!(pending_bits == 0 || word == 0);
-        debug_assert_eq!(word_index, total_words);
+        debug_assert!(pending_bits == 0 || element == 0);
+        debug_assert_eq!(element_index, total_elements);
         write_padding_u64(stable_memory, written_bytes);
     }
 
@@ -139,19 +138,18 @@ impl Serializer<BigInt> for StableBigInt {
     }
 
     unsafe fn allocate_deserialized<M: Memory>(&self, main_memory: &mut M) -> Value {
-        let words = self.deserialized_length();
-        let payload =
-            mp_calloc(main_memory, words.as_usize(), Bytes(ELEMENT_SIZE)) as *mut mp_digit;
+        let elements = self.deserialized_elements();
+        let payload = mp_calloc(main_memory, elements, Bytes(ELEMENT_SIZE)) as *mut mp_digit;
         let bigint = BigInt::from_payload(payload);
         Value::from_ptr(bigint as usize)
     }
 
     unsafe fn deserialize_static_part(&self, target_bigint: *mut BigInt) {
         debug_assert_eq!((*target_bigint).header.tag, TAG_BIGINT);
-        let deseserialized_bytes = self.deserialized_length().as_usize();
-        debug_assert_eq!((*target_bigint).mp_int.alloc as usize, deseserialized_bytes);
+        let elements = self.deserialized_elements();
+        debug_assert_eq!((*target_bigint).mp_int.alloc as usize, elements);
         (*target_bigint).mp_int.sign = if self.is_negative { 1 } else { 0 };
-        (*target_bigint).mp_int.used = deseserialized_bytes as i32;
+        (*target_bigint).mp_int.used = elements as i32;
     }
 
     unsafe fn deserialize_dynamic_part<M: Memory>(
@@ -166,23 +164,23 @@ impl Serializer<BigInt> for StableBigInt {
             stable_address + size_of::<StableBigInt>().to_bytes().as_usize() as u64;
         let target_payload = target_bigint.payload_addr();
         let total_bytes = self.number_of_bits.to_bytes().as_usize();
-        let total_words = self.deserialized_length().as_usize();
+        let total_elements = self.deserialized_elements();
 
         let mut read_offset = 0;
-        let mut word_index = 0;
-        let mut word = 0;
+        let mut element_index = 0;
+        let mut element = 0;
         let mut pending_bits = 0;
         let mut next_byte = 0;
         let mut next_pending_bits = 0;
 
-        while word_index < total_words {
-            while pending_bits < USED_BITS_PER_WORD && read_offset < total_bytes {
+        while element_index < total_elements {
+            while pending_bits < USED_BITS_PER_ELEMENT && read_offset < total_bytes {
                 debug_assert_eq!(next_pending_bits, 0);
                 next_byte = stable_memory.read::<u8>(source_payload + read_offset as u64);
                 read_offset += 1;
-                word |= (next_byte as u32) << pending_bits;
-                word &= (1 << USED_BITS_PER_WORD) - 1;
-                let consumed_bits = core::cmp::min(u8::BITS, USED_BITS_PER_WORD - pending_bits);
+                element |= (next_byte as u32) << pending_bits;
+                element &= (1 << USED_BITS_PER_ELEMENT) - 1;
+                let consumed_bits = core::cmp::min(u8::BITS, USED_BITS_PER_ELEMENT - pending_bits);
                 pending_bits += consumed_bits;
                 next_byte = if consumed_bits < u8::BITS {
                     next_byte >> consumed_bits
@@ -191,14 +189,14 @@ impl Serializer<BigInt> for StableBigInt {
                 };
                 next_pending_bits = u8::BITS - consumed_bits;
             }
-            *target_payload.add(word_index) = word; // little endian
-            word_index += 1;
-            word = next_byte as u32;
+            *target_payload.add(element_index) = element; // little endian
+            element_index += 1;
+            element = next_byte as u32;
             pending_bits = next_pending_bits;
             next_pending_bits = 0;
         }
 
-        debug_assert!(pending_bits == 0 || word == 0);
-        debug_assert_eq!(word_index, self.deserialized_length().as_usize());
+        debug_assert!(pending_bits == 0 || element == 0);
+        debug_assert_eq!(element_index, self.deserialized_elements());
     }
 }
