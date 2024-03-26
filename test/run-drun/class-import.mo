@@ -1,3 +1,4 @@
+//MOC-NO-FORCE-GC
 import Prim "mo:⛔";
 import Cycles = "cycles/cycles";
 import M0 "class-import/empty";
@@ -29,7 +30,7 @@ actor a {
    // test non-trapping install
    try {
      Cycles.add<system>(2_000_000_000_000);
-     let trap : M3.Trap = await M3.Trap(false);
+     let _trap : M3.Trap = await M3.Trap(false);
    }
    catch _ {
      assert false;
@@ -38,7 +39,7 @@ actor a {
    // test trapping install
    try {
      Cycles.add<system>(2_000_000_000_000);
-     let trap : M3.Trap = await M3.Trap(true);
+     let _trap : M3.Trap = await M3.Trap(true);
      assert false;
    }
    catch _ {
