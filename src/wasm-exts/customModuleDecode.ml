@@ -821,7 +821,7 @@ let utf8 sec_end s =
   let pos = pos s in
   let bytes = get_string (sec_end - pos) s in
   try
-    let _ = Utf8.decode (string s) in
+    let _ = Utf8.decode bytes in
     bytes
   with Utf8.Utf8 ->
     error s pos "malformed UTF-8 encoding"
@@ -829,7 +829,7 @@ let utf8 sec_end s =
 let motoko_sections s =
   let stable_types = icp_custom_section "motoko:stable-types" utf8 None s in
   let compiler = icp_custom_section "motoko:compiler" utf8 None s in
-  custom_section is_motoko motoko_section_content { empty_motoko_sections with stable_types; compiler} s
+  custom_section is_motoko motoko_section_content {empty_motoko_sections with stable_types; compiler} s
 
 (* Candid sections *)
 
@@ -837,6 +837,20 @@ let candid_sections s =
   let service = icp_custom_section "candid:service" utf8 None s in
   let args = icp_custom_section "candid:args" utf8 None s in
   { service; args }
+
+(* RTS sections *)
+
+let is_rts_custom_functions n = n = Utf8.decode "rts:custom-functions"
+
+let rts_sections s =
+  let custom_functions = custom_section
+    is_rts_custom_functions
+    (fun sec_end s -> utf8 sec_end s
+      |> String.split_on_char ';'
+      |> List.map String.trim
+      |> List.filter (fun s -> s <> "")
+    ) [] s in
+  { custom_functions }
 
 (* Other custom sections *)
 
@@ -858,6 +872,7 @@ let is_unknown n = not (
   is_icp candid_service_name n ||
   is_icp candid_args_name n ||
   is_icp motoko_stable_types_name n ||
+  is_rts_custom_functions n ||
   is_wasm_features n)
 
 let skip_custom sec_end s =
@@ -900,6 +915,8 @@ let module_ s =
   iterate skip_custom_section s;
   let data = data_section s in
   iterate skip_custom_section s;
+  let rts = rts_sections s in
+  iterate skip_custom_section s;
   let name = name_section s in
   iterate skip_custom_section s;
   (* TODO: allow candid/motoko sections anywhere, not just here, in this order *)
@@ -922,6 +939,7 @@ let module_ s =
     name;
     motoko;
     candid;
+    rts;
     source_mapping_url = None;
     wasm_features = wasm_features;
   }
