@@ -456,6 +456,8 @@ module E = struct
 
     (* requires stable memory (and emulation on wasm targets) *)
     requires_stable_memory : bool ref;
+
+    custom_rts_functions : string list ref; (* custom RTS functions *)
   }
 
 
@@ -494,6 +496,7 @@ module E = struct
     local_names = ref [];
     features = ref FeatureSet.empty;
     requires_stable_memory = ref false;
+    custom_rts_functions = ref [];
   }
 
   (* This wraps Mo_types.Hash.hash to also record which labels we have seen,
@@ -1263,6 +1266,25 @@ module RTS = struct
       incremental_gc_imports env
     else
       non_incremental_gc_imports env;
+
+    (* Custom RTS functions *)
+    Option.iter Wasm_exts.CustomModule.(fun (rts : extended_module) ->
+      env.E.custom_rts_functions :=
+        (match rts.motoko.custom_rts_functions with
+        | Some (_, s) -> String.split_on_char ';' s
+          |> List.map String.trim
+          |> List.filter (fun s -> s <> "")
+        | None -> []);
+      let module_ = rts.module_ in
+      List.iter (fun export ->
+        let name = string_of_name export.Wasm.Source.it.Wasm_exts.Ast.name in
+        if List.mem name !(env.E.custom_rts_functions) then
+          (match export_type Wasm.Source.{it = module_; at = no_region} export with
+          | ExternFuncType (FuncType (inputs, outputs)) ->
+            E.add_func_import env "rts" name inputs outputs
+          | _ -> ())
+      ) module_.exports) env.E.rts;
+
     ()
 
 end (* RTS *)
@@ -11730,6 +11752,16 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | OtherPrim "btstInt64", [_;_] ->
     const_sr (SR.UnboxedWord64 Type.Int64) (Word64.btst_kernel env)
 
+  (* Custom RTS functions *)
+  | OtherPrim s, _ when String.length s > 4 && String.sub s 0 4 = "rts:" ->
+    let s' = String.sub s 4 (String.length s - 4) in
+    if List.mem s' !(env.E.custom_rts_functions) then
+      const_sr SR.Vanilla (E.call_import env "rts" s')
+    else
+      (* TODO: type checking error *)
+      let _ = Printf.printf "custom RTS function '%s' not found\n" s' in
+      exit 1
+
   (* Coercions for abstract types *)
   | CastPrim (_,_), [e] ->
     compile_exp env ae e
@@ -12789,7 +12821,8 @@ and conclude_module env set_serialization_globals start_fi_o =
       motoko = {
         labels = E.get_labs env;
         stable_types = !(env.E.stable_types);
-        compiler = metadata "motoko:compiler" (Lib.Option.get Source_id.release Source_id.id)
+        compiler = metadata "motoko:compiler" (Lib.Option.get Source_id.release Source_id.id);
+        custom_rts_functions = Option.bind env.E.rts (fun rts -> rts.motoko.custom_rts_functions)
       };
       candid = {
         args = !(env.E.args);
