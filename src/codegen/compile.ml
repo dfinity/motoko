@@ -1240,6 +1240,7 @@ module RTS = struct
     E.add_func_import env "rts" "read_persistence_version" [] [I64Type];
     E.add_func_import env "rts" "stop_gc_before_stabilization" [] [];
     E.add_func_import env "rts" "start_gc_after_destabilization" [] [];
+    E.add_func_import env "rts" "clear_memory_for_graph_destabilization" [] [];
     E.add_func_import env "rts" "is_graph_stabilization_started" [] [I32Type];
     E.add_func_import env "rts" "start_graph_stabilization" [I64Type; I64Type; I64Type] [];
     E.add_func_import env "rts" "graph_stabilization_increment" [] [I32Type];
@@ -8453,6 +8454,9 @@ end (* EnhancedOrthogonalPersistence *)
 
 (* As fallback when doing persistent memory layout changes. *)
 module GraphCopyStabilization = struct
+  let clear_memory_for_graph_destabilization env =
+    E.call_import env "rts" "clear_memory_for_graph_destabilization"
+
   let is_graph_stabilization_started env =
     E.call_import env "rts" "is_graph_stabilization_started" ^^ Bool.from_rts_int32
 
@@ -9757,9 +9761,15 @@ module Persistence = struct
     compile_eq_const StableMem.version_stable_heap_regions ^^
     G.i (Binary (Wasm_exts.Values.I64 I64Op.Or))
 
-  let initialize env actor_type =
+  let prepare_memory env =
     E.call_import env "rts" "read_persistence_version" ^^
     set_persistence_version env ^^
+    use_graph_destabilization env ^^
+    E.if0
+    (GraphCopyStabilization.clear_memory_for_graph_destabilization env)
+    G.nop
+
+  let prepare_main_actor env actor_type =
     use_graph_destabilization env ^^
     E.if0
       begin
@@ -12790,11 +12800,12 @@ and main_actor as_opt mod_env ds fs up stable_actor_type build_stable_actor =
   );
 
   Func.define_built_in mod_env "init" [] [] (fun env ->
+    Persistence.prepare_memory env ^^
     IC.init_globals env ^^
     (* Save the init message payload for later deserializtion. *)
     IC.arg_data env ^^
     Persistence.set_init_message_payload env ^^
-    Persistence.initialize env stable_actor_type
+    Persistence.prepare_main_actor env stable_actor_type
   )
 
 and metadata name value =
