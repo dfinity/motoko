@@ -236,9 +236,11 @@ let rec pp_val_nullary d ppf (t, v : T.typ * value) =
     fprintf ppf "@[<1>(%a)@]" (pp_val d) (t, v)
 
 and pp_field d ppf (lab, t, v) =
-    fprintf ppf "@[<2>%s =@ %a@]" lab (pp_val d) (t, v)
+  fprintf ppf "@[<2>%s =@ %a@]" lab (pp_val d) (t, v)
 
-and pp_val d ppf = function
+and pp_val d ppf (t, v) =
+  let t = T.normalize t in
+  match t, v with
   | T.Any, _ -> pr ppf "<any>"
   | _, Int i -> pr ppf (Int.to_pretty_string i)
   | _, Int8 i -> pr ppf (Int_8.(pos_sign (gt i zero) ^ to_pretty_string i))
