@@ -93,6 +93,7 @@ let new_nary_async_reply ts =
     | [t1] ->
       begin
       match T.normalize t1 with
+      | T.Non
       | T.Tup _ ->
         (* TODO(#3740): find a better fix than PR #3741 *)
         (* HACK *)
