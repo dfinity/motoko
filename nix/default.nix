@@ -36,9 +36,12 @@ let
            sources = import sourcesnix { sourcesFile = ./sources.json; pkgs = super; };
         })
 
-        # Selecting the ocaml version
+        # Selecting the ocaml version while disabling `jsoo` for `logs`
         # Also update ocaml-version in src/*/.ocamlformat!
-        (self: super: { ocamlPackages = self.ocaml-ng.ocamlPackages_4_12; })
+        (self: _: { ocamlPackages = self.ocaml-ng.ocamlPackages_4_12.overrideScope' (_: super: {
+                      logs = super.logs.override { jsooSupport = false; };
+                    });
+                  })
 
         (self: super: {
             # Additional ocaml package
