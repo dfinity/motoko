@@ -8268,24 +8268,41 @@ module NewStableMemory = struct
   let first_word_backup_offset = 8L
   let version_offset = 4L
 
-  let upgrade_version env =
+  let upgrade_version_from_candid env =
     StableMem.set_version env ^^
     StableMem.get_version env ^^
     compile_eq_const StableMem.legacy_version_no_stable_memory ^^
     StableMem.get_version env ^^
     compile_eq_const StableMem.legacy_version_some_stable_memory ^^
     G.i (Binary (Wasm_exts.Values.I64 I64Op.Or)) ^^
-    (E.if0
-      (compile_unboxed_const StableMem.version_stable_heap_no_regions ^^
-      StableMem.set_version env)
-      G.nop) ^^
+    E.if1 I64Type
+    begin
+      compile_unboxed_const StableMem.version_stable_heap_no_regions
+    end
+    begin
+      StableMem.get_version env ^^
+      compile_eq_const StableMem.legacy_version_regions ^^
+      E.else_trap_with env "Unsupported stable memory version when upgrading from Candid stabilization" ^^
+      compile_unboxed_const StableMem.version_stable_heap_regions
+    end ^^
+    StableMem.set_version env
+    
+  
+  let upgrade_version_from_graph_stabilization env =
     StableMem.get_version env ^^
-    compile_eq_const StableMem.legacy_version_regions ^^
-    (E.if0
-      (compile_unboxed_const StableMem.version_stable_heap_regions ^^
-      StableMem.set_version env)
-      G.nop)
-      
+    compile_eq_const StableMem.version_graph_copy_no_regions ^^
+    E.if1 I64Type
+    begin
+      compile_unboxed_const StableMem.version_stable_heap_no_regions
+    end
+    begin
+      StableMem.get_version env ^^
+      compile_eq_const StableMem.version_graph_copy_regions ^^
+      E.else_trap_with env "Unsupported stable memory version when upgrading from graph-copy-based stabilization" ^^
+      compile_unboxed_const StableMem.version_stable_heap_regions
+    end ^^
+    StableMem.set_version env
+
   let grow_size env amount =
     StableMem.get_mem_size env ^^
     compile_shl_const (Int64.of_int page_size_bits) ^^
@@ -9763,12 +9780,13 @@ module Persistence = struct
         E.if1 I64Type
           begin
             IncrementalGraphStabilization.load env ^^
+            NewStableMemory.upgrade_version_from_graph_stabilization env ^^
             EnhancedOrthogonalPersistence.initialize env actor_type 
           end
           begin
             use_candid_destabilization env ^^
             E.else_trap_with env "Unsupported persistence version. Use newer Motoko compiler version." ^^
-            OldStabilization.load env actor_type (NewStableMemory.upgrade_version env) ^^
+            OldStabilization.load env actor_type (NewStableMemory.upgrade_version_from_candid env) ^^
             EnhancedOrthogonalPersistence.initialize env actor_type
           end
       end) ^^
