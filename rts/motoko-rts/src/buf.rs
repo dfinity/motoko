@@ -46,11 +46,11 @@ pub(crate) unsafe fn read_word(buf: *mut Buf) -> u32 {
 
 #[cfg(feature = "ic")]
 unsafe fn advance(buf: *mut Buf, n: u32) {
-    if (*buf).ptr.add(n as usize) > (*buf).end {
+    (*buf).ptr = (*buf).ptr.add(n as usize);
+
+    if (*buf).ptr > (*buf).end {
         idl_trap_with("advance out of buffer");
     }
-
-    (*buf).ptr = (*buf).ptr.add(n as usize);
 }
 
 /// Can also be used for sleb
