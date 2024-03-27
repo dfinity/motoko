@@ -168,33 +168,30 @@ impl Partition {
         &mut self.bitmap
     }
 
+    #[cfg(feature = "memory_check")]
     unsafe fn clear_free_remainder(&self) {
-        // Only used during the RTS unit tests for scanning the heap after destabilization.
-        #[cfg(debug_assertions)]
-        {
-            use crate::constants::WORD_SIZE;
-            debug_assert!(self.dynamic_space_end() <= self.end_address());
-            let remaining_space = self.end_address() - self.dynamic_space_end();
-            debug_assert_eq!(remaining_space % WORD_SIZE, 0);
-            debug_assert!(remaining_space <= PARTITION_SIZE);
-            if remaining_space == 0 {
-                return;
-            }
-            let block = self.dynamic_space_end() as *mut Tag;
-            if remaining_space == WORD_SIZE {
-                *block = TAG_ONE_WORD_FILLER;
-            } else {
-                *block = TAG_FREE_SPACE;
-                let header_size = size_of::<FreeSpace>().to_bytes().as_usize();
-                debug_assert!(remaining_space >= header_size);
-                let free_space = block as *mut FreeSpace;
-                (*free_space).words = Bytes(remaining_space - header_size).to_words();
-                // Clear the remainder of the free space.
-                let clear_start = free_space as usize + header_size;
-                let clear_length = Bytes(remaining_space - header_size);
-                crate::mem_utils::memzero(clear_start, clear_length.to_words());
-                debug_assert_eq!(free_space.size().to_bytes().as_usize(), remaining_space);
-            }
+        use crate::constants::WORD_SIZE;
+        debug_assert!(self.dynamic_space_end() <= self.end_address());
+        let remaining_space = self.end_address() - self.dynamic_space_end();
+        debug_assert_eq!(remaining_space % WORD_SIZE, 0);
+        debug_assert!(remaining_space <= PARTITION_SIZE);
+        if remaining_space == 0 {
+            return;
+        }
+        let block = self.dynamic_space_end() as *mut Tag;
+        if remaining_space == WORD_SIZE {
+            *block = TAG_ONE_WORD_FILLER;
+        } else {
+            *block = TAG_FREE_SPACE;
+            let header_size = size_of::<FreeSpace>().to_bytes().as_usize();
+            debug_assert!(remaining_space >= header_size);
+            let free_space = block as *mut FreeSpace;
+            (*free_space).words = Bytes(remaining_space - header_size).to_words();
+            // Clear the remainder of the free space.
+            let clear_start = free_space as usize + header_size;
+            let clear_length = Bytes(remaining_space - header_size);
+            crate::mem_utils::memzero(clear_start, clear_length.to_words());
+            debug_assert_eq!(free_space.size().to_bytes().as_usize(), remaining_space);
         }
     }
 
@@ -208,6 +205,8 @@ impl Partition {
         self.evacuate = false;
         self.large_content = false;
         self.temporary = false;
+
+        #[cfg(feature = "memory_check")]
         self.clear_free_remainder();
     }
 
@@ -654,6 +653,7 @@ impl PartitionedHeap {
     // Significant performance gain by not inlining.
     #[inline(never)]
     unsafe fn allocate_in_new_partition<M: Memory>(&mut self, mem: &mut M, size: usize) -> Value {
+        #[cfg(feature = "memory_check")]
         self.allocation_partition().clear_free_remainder();
 
         self.precomputed_heap_size += self.allocation_partition().dynamic_size;
@@ -694,6 +694,8 @@ impl PartitionedHeap {
             debug_assert_eq!(partition.marked_size, 0);
             if index == last_index {
                 partition.dynamic_size = size - (number_of_partitions - 1) * PARTITION_SIZE;
+
+                #[cfg(feature = "memory_check")]
                 partition.clear_free_remainder();
             } else {
                 partition.dynamic_size = PARTITION_SIZE;

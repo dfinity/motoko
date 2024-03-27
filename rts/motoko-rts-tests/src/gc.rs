@@ -13,7 +13,10 @@ pub mod utils;
 use heap::MotokoHeap;
 use utils::{get_scalar_value, make_pointer, read_word, unskew_pointer, ObjectIdx, WORD_SIZE};
 
-use motoko_rts::types::*;
+use motoko_rts::{
+    gc::incremental::{get_partitioned_heap, partitioned_heap::PARTITION_SIZE},
+    types::*,
+};
 
 use std::fmt::Write;
 
@@ -158,9 +161,7 @@ fn test_gc(test_heap: &TestHeap) {
 }
 
 fn initialize_gc(heap: &mut MotokoHeap) {
-    use motoko_rts::gc::incremental::{
-        get_partitioned_heap, set_incremental_gc_state, IncrementalGC,
-    };
+    use motoko_rts::gc::incremental::{set_incremental_gc_state, IncrementalGC};
     unsafe {
         let state = IncrementalGC::initial_gc_state(heap, heap.heap_base_address());
         set_incremental_gc_state(Some(state));
@@ -347,6 +348,8 @@ pub fn check_dynamic_heap(
                 }
             }
         }
+
+        skip_empty_partition_space(heap, &mut offset, heap_ptr_offset);
     }
 
     // At this point we've checked that all seen objects point to the expected objects (as
@@ -396,6 +399,19 @@ pub fn check_dynamic_heap(
 
     if !error_message.is_empty() {
         panic!("{}", error_message);
+    }
+}
+
+fn skip_empty_partition_space(heap: &[u8], offset: &mut usize, heap_ptr_offset: usize) {
+    let heap_start = heap.as_ptr() as usize;
+    while *offset < heap_ptr_offset {
+        let address = *offset + heap_start;
+        let partition_index = address / PARTITION_SIZE;
+        let partition = unsafe { get_partitioned_heap().get_partition(partition_index) };
+        if address < partition.dynamic_space_end() {
+            return;
+        }
+        *offset = (partition_index + 1) * PARTITION_SIZE - heap_start;
     }
 }
 
