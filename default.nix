@@ -259,6 +259,8 @@ rec {
         cp mo-rts-debug.wasm $out/rts
         cp mo-rts-incremental.wasm $out/rts
         cp mo-rts-incremental-debug.wasm $out/rts
+        cp mo-rts-eop.wasm $out/rts
+        cp mo-rts-eop-debug.wasm $out/rts
       '';
 
       # This needs to be self-contained. Remove mention of nix path in debug
@@ -274,6 +276,11 @@ rec {
           -t ${rtsDeps} \
           -t ${rustStdDeps} \
           $out/rts/mo-rts-incremental.wasm $out/rts/mo-rts-incremental-debug.wasm
+        remove-references-to \
+          -t ${nixpkgs.rustc-nightly} \
+          -t ${rtsDeps} \
+          -t ${rustStdDeps} \
+          $out/rts/mo-rts-eop.wasm $out/rts/mo-rts-eop-debug.wasm
       '';
 
       allowedRequisites = [];
