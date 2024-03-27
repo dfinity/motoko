@@ -80,8 +80,8 @@ let trace fmt =
     Printf.printf "%s%s\n%!" (String.make (2 * !trace_depth) ' ') s
   ) fmt
 
-let string_of_val env = V.string_of_val env.flags.print_depth
-let string_of_def flags = V.string_of_def flags.print_depth
+let string_of_val env = V.string_of_val env.flags.print_depth T.Non
+let string_of_def flags = V.string_of_def flags.print_depth T.Non
 let string_of_arg env = function
   | V.Tup _ as v -> string_of_val env v
   | v -> "(" ^ string_of_val env v ^ ")"
@@ -641,7 +641,7 @@ and match_args at args v : val_env =
   | _ ->
     let vs = V.as_tup v in
     if (List.length vs <> List.length args) then
-      failwith (Printf.sprintf "%s %s" (Source.string_of_region at) (V.string_of_val 0 v));
+      failwith (Printf.sprintf "%s %s" (Source.string_of_region at) (V.string_of_val 0 T.Non v));
     List.fold_left V.Env.adjoin V.Env.empty (List.map2 match_arg args vs)
 
 (* Patterns *)

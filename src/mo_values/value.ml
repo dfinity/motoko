@@ -1,4 +1,5 @@
 open Numerics
+module T = Mo_types.Type
 
 (* Environments *)
 
@@ -180,75 +181,113 @@ let comma ppf () = fprintf ppf ",@ "
 
 let semi ppf () = fprintf ppf ";@ "
 
-let rec pp_val_nullary d ppf = function
-  | Null -> pr ppf "null"
-  | Bool b -> pr ppf (if b then "true" else "false")
-  | Int n when Int.(ge n zero) -> pr ppf (Int.to_pretty_string n)
-  | Int8 n when Int_8.(n = zero) -> pr ppf (Int_8.to_pretty_string n)
-  | Int16 n when Int_16.(n = zero) -> pr ppf (Int_16.to_pretty_string n)
-  | Int32 n when Int_32.(n = zero) -> pr ppf (Int_32.to_pretty_string n)
-  | Int64 n when Int_64.(n = zero) -> pr ppf (Int_64.to_pretty_string n)
-  | Nat8 n -> pr ppf (Nat8.to_pretty_string n)
-  | Nat16 n -> pr ppf (Nat16.to_pretty_string n)
-  | Nat32 n -> pr ppf (Nat32.to_pretty_string n)
-  | Nat64 n -> pr ppf (Nat64.to_pretty_string n)
-  | Float f -> pr ppf (Float.to_pretty_string f)
-  | Char c ->  pr ppf (string_of_string '\'' [c] '\'')
-  | Text t -> pr ppf (string_of_string '\"' (Lib.Utf8.decode t) '\"')
-  | Blob b -> pr ppf ("\"" ^ Blob.escape b ^ "\"")
-  | Tup vs ->
-    fprintf ppf "@[<1>(%a%s)@]"
-      (pp_print_list ~pp_sep:comma (pp_val d)) vs
-      (if List.length vs = 1 then "," else "")
-  | Obj ve ->
-    if d = 0 then pr ppf "{...}" else
-    fprintf ppf "@[<hv 2>{@;<0 0>%a@;<0 -2>}@]"
-      (pp_print_list ~pp_sep:semi (pp_field d)) (Env.bindings ve)
-  | Array a ->
-    fprintf ppf "@[<1>[%a]@]"
-      (pp_print_list ~pp_sep:comma (pp_val d)) (Array.to_list a)
-  | Func (_, _) -> pr ppf "func"
-  | Comp _ -> pr ppf "async*"
-  | v ->
-    (* "(" ^ string_of_val d v ^ ")" *)
-    fprintf ppf "@[<1>(%a)@]" (pp_val d) v
+let rec pp_val_nullary d ppf (t, v : T.typ * value) =
+  match T.normalize t with
+  | T.Any -> pr ppf "<any>"
+  | t ->
+    match v with
+    | Null -> pr ppf "null"
+    | Bool b -> pr ppf (if b then "true" else "false")
+    | Int n when Int.(ge n zero) -> pr ppf (Int.to_pretty_string n)
+    | Int8 n when Int_8.(n = zero) -> pr ppf (Int_8.to_pretty_string n)
+    | Int16 n when Int_16.(n = zero) -> pr ppf (Int_16.to_pretty_string n)
+    | Int32 n when Int_32.(n = zero) -> pr ppf (Int_32.to_pretty_string n)
+    | Int64 n when Int_64.(n = zero) -> pr ppf (Int_64.to_pretty_string n)
+    | Nat8 n -> pr ppf (Nat8.to_pretty_string n)
+    | Nat16 n -> pr ppf (Nat16.to_pretty_string n)
+    | Nat32 n -> pr ppf (Nat32.to_pretty_string n)
+    | Nat64 n -> pr ppf (Nat64.to_pretty_string n)
+    | Float f -> pr ppf (Float.to_pretty_string f)
+    | Char c ->  pr ppf (string_of_string '\'' [c] '\'')
+    | Text t -> pr ppf (string_of_string '\"' (Lib.Utf8.decode t) '\"')
+    | Blob b ->
+      (match t with
+         T.Obj (T.Actor, _) ->
+         pr ppf (string_of_string '`' (Lib.Utf8.decode (Ic.Url.encode_principal b)) '`')
+       | _ -> pr ppf ("\"" ^ Blob.escape b ^ "\""))
+    | Tup vs ->
+      let list = match t with
+      | T.Tup ts -> List.combine ts vs
+      | _ -> List.map (fun v -> (T.Non, v)) vs in
+      fprintf ppf "@[<1>(%a%s)@]"
+        (pp_print_list ~pp_sep:comma (pp_val d)) list
+        (if List.length vs = 1 then "," else "")
+    | Obj ve ->
+      if d = 0 then pr ppf "{...}" else
+      let sort, lookup = match t with
+        | T.Obj (s, fs) ->
+          T.string_of_obj_sort s,
+          fun lab -> T.lookup_val_field_opt lab fs
+        | _ ->
+          "", fun lab -> Some T.Non
+      in
+      fprintf ppf "@[<hv 2>%a{@;<0 0>%a@;<0 -2>}@]"
+        pr sort
+        (pp_print_list ~pp_sep:semi (pp_field d)) (List.filter_map (fun (lab, v) ->
+            match lookup lab with
+            | Some t -> Some (lab, t, v)
+            | None -> None)
+          (Env.bindings ve))
+    | Array vs ->
+      let t' = match t with T.Array t' -> t' | _ -> T.Non in
+      fprintf ppf "@[<1>[%a%a]@]"
+        pr (match t' with T.Mut t -> "var " | _ -> "")
+        (pp_print_list ~pp_sep:comma (pp_val d)) (List.map (fun v -> (t', v)) (Array.to_list vs))
 
-and pp_field d ppf (lab, v) =
-    fprintf ppf "@[<2>%s =@ %a@]" lab (pp_val d) v
+    | Func (_, _) -> pr ppf "<func>"
+    | Comp _ -> pr ppf "<async*>"
+    | v ->
+      fprintf ppf "@[<1>(%a)@]" (pp_val d) (t, v)
 
-and pp_val d ppf = function
-  | Int i -> pr ppf (Int.to_pretty_string i)
-  | Int8 i -> pr ppf (Int_8.(pos_sign (gt i zero) ^ to_pretty_string i))
-  | Int16 i -> pr ppf (Int_16.(pos_sign (gt i zero) ^ to_pretty_string i))
-  | Int32 i -> pr ppf (Int_32.(pos_sign (gt i zero) ^ to_pretty_string i))
-  | Int64 i -> pr ppf (Int_64.(pos_sign (gt i zero) ^ to_pretty_string i))
-  | Opt v -> fprintf ppf "@[<1>?%a@]" (pp_val_nullary d) v
-  | Variant (l, Tup []) -> fprintf ppf "#%s" l
-  | Variant (l, Tup vs) -> fprintf ppf "@[#%s@;<0 1>%a@]" l (pp_val d) (Tup vs)
-  | Variant (l, v) -> fprintf ppf "@[#%s@;<0 1>(%a)@]" l (pp_val d) v
-  | Async {result; waiters = []} ->
-    fprintf ppf "@[<2>async@ %a@]" (pp_res d) result
-  | Async {result; waiters} ->
-    fprintf ppf "@[<2>async[%d]@ %a@]"
-      (List.length waiters) (pp_res d) result
-  | Mut r -> pp_val d ppf !r
-  | v -> pp_val_nullary d ppf v
+and pp_field d ppf (lab, t, v) =
+  fprintf ppf "@[<2>%s =@ %a@]" lab (pp_val d) (t, v)
 
-and pp_res d ppf result =
+and pp_val d ppf (t, v) =
+  match T.normalize t with
+  | T.Any -> pr ppf "<any>"
+  | t ->
+    match v with
+    | Int i -> pr ppf (Int.to_pretty_string i)
+    | Int8 i -> pr ppf (Int_8.(pos_sign (gt i zero) ^ to_pretty_string i))
+    | Int16 i -> pr ppf (Int_16.(pos_sign (gt i zero) ^ to_pretty_string i))
+    | Int32 i -> pr ppf (Int_32.(pos_sign (gt i zero) ^ to_pretty_string i))
+    | Int64 i -> pr ppf (Int_64.(pos_sign (gt i zero) ^ to_pretty_string i))
+    | Opt v ->
+      let t' = match t with T.Opt t' -> t' | _ -> T.Non in
+      fprintf ppf "@[<1>?%a@]" (pp_val_nullary d) (t', v)
+    | Variant (l, Tup []) -> fprintf ppf "#%s" l
+    | Variant (l, v) ->
+      let t' = match t with T.Variant fs -> T.lookup_val_field l fs | _ -> T.Non in
+      (match v with
+      | Tup vs -> fprintf ppf "@[#%s@;<0 1>%a@]" l (pp_val d) (t', Tup vs)
+      | _ -> fprintf ppf "@[#%s@;<0 1>(%a)@]" l (pp_val d) (t', v))
+    | Async {result; waiters = []} ->
+      let t' = match t with T.Async (_, _, t') -> t' | _ -> T.Non in
+      fprintf ppf "@[<2>async@ %a@]" (pp_res d) (t', result)
+    | Async {result; waiters} ->
+      let t' = match t with T.Async (_, _, t') -> t' | _ -> T.Non in
+      fprintf ppf "@[<2>async[%d]@ %a@]"
+        (List.length waiters) (pp_res d) (t', result)
+    | Mut r ->
+      let t' = match t with T.Mut t' -> t' | _ -> T.Non in
+      pp_val d ppf (t', !r)
+    | v -> pp_val_nullary d ppf (t, v)
+
+and pp_res d ppf (t, result) =
   match Lib.Promise.value_opt result with
-  | Some (Error v)-> fprintf ppf "@[Error@ %a@]" (pp_val_nullary d) v
-  | Some (Ok v) -> pp_val_nullary d ppf v
+  | Some (Error v) -> fprintf ppf "@[Error@ %a@]" (pp_val_nullary d) (t, v)
+  | Some (Ok v) -> pp_val_nullary d ppf (t, v)
   | None -> pr ppf "_"
 
-and pp_def d ppf def =
+and pp_def d ppf (t, def) =
   match Lib.Promise.value_opt def with
-  | Some v -> pp_val d ppf v
+  | Some v -> pp_val d ppf (t, v)
   | None -> pr ppf "_"
 
-let string_of_val d v : string =
+and string_of_val d t v : string =
   Lib.Format.with_str_formatter (fun ppf ->
-    pp_val d ppf) v
+    pp_val d ppf) (t, v)
 
-let string_of_def d def : string =
+let string_of_def d t def : string =
   Lib.Format.with_str_formatter (fun ppf ->
-    pp_def d ppf) def
+    pp_def d ppf) (t, def)
