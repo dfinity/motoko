@@ -49,6 +49,7 @@ let ocaml_js = ref false
 let rtti = ref true
 let trap_on_call_error = ref false
 let use_stable_regions = ref false
+let enhanced_orthogonal_persistence = ref false
 let share_code = ref false
 let stabilization_instruction_limit_default = {
   upgrade = 180_000_000_000; (* 200 billion limit with 10% reserve *)

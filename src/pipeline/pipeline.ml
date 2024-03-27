@@ -673,9 +673,11 @@ let ir_passes mode prog_ir name =
 (* Compilation *)
 
 let load_as_rts () =
-  let rts = match !Flags.sanity with
-    | false -> Rts.wasm_release
-    | true -> Rts.wasm_debug
+  let rts = match (!Flags.enhanced_orthogonal_persistence, !Flags.sanity) with
+    | (true, false) -> Rts.wasm_eop_release
+    | (true, true) -> Rts.wasm_eop_debug
+    | (false, false) -> Rts.wasm_non_incremental_release
+    | (false, true) -> Rts.wasm_non_incremental_debug
   in
   Wasm_exts.CustomModuleDecode.decode "rts.wasm" (Lazy.force rts)
 
@@ -703,7 +705,10 @@ and compile_unit mode do_link imports u : Wasm_exts.CustomModule.extended_module
   let prog_ir = ir_passes mode prog_ir name in
   phase "Compiling" name;
   let rts = if do_link then Some (load_as_rts ()) else None in
-  Codegen.Compile.compile mode rts prog_ir
+  if !Flags.enhanced_orthogonal_persistence then
+    Codegen.Compile_enhanced.compile mode rts prog_ir
+  else
+    Codegen.Compile_classical.compile mode rts prog_ir
 
 and compile_unit_to_wasm mode imports (u : Syntax.comp_unit) : string =
   let wasm_mod = compile_unit mode true imports u in

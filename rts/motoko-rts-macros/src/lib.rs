@@ -136,3 +136,36 @@ pub fn ic_mem_fn(attr: TokenStream, input: TokenStream) -> TokenStream {
     )
     .into()
 }
+
+/// Feature macro for enhanced orthogonal persistence.
+/// Equivalent to using the attribute `#[cfg(feature = "enhanced_orthogonal_persistence")]`.
+#[proc_macro_attribute]
+pub fn enhanced_orthogonal_persistence(attr: TokenStream, input: TokenStream) -> TokenStream {
+    assert!(attr.is_empty());
+    let block = syn::parse_macro_input!(input as syn::Item);
+    quote!(
+        #[cfg(feature = "enhanced_orthogonal_persistence")]
+        #block
+    )
+    .into()
+}
+
+/// Feature macro for classical persistence, based on Candid stabilization.
+/// Equivalent to using the attribute `#[cfg(not(feature = "enhanced_orthogonal_persistence"))]`.
+#[proc_macro_attribute]
+pub fn classical_persistence(attr: TokenStream, input: TokenStream) -> TokenStream {
+    assert!(attr.is_empty());
+    let block = syn::parse_macro_input!(input as syn::Item);
+    quote!(
+        #[cfg(not(feature = "enhanced_orthogonal_persistence"))]
+        #block
+    )
+    .into()
+}
+
+#[proc_macro]
+pub fn uses_enhanced_orthogonal_persistence(_item: TokenStream) -> TokenStream {
+    "cfg!(feature = \"enhanced_orthogonal_persistence\")"
+        .parse()
+        .unwrap()
+}

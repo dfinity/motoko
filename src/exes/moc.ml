@@ -169,6 +169,11 @@ let argspec = [
   })),
   "<n>  set instruction limit for incremental graph-copy-based stabilization and destabilization (for testing)";
 
+  (* persistence *)
+  "--enhanced-orthogonal-persistence",
+  Arg.Unit (fun () -> Flags.enhanced_orthogonal_persistence := true),
+  " Use enhanced orthogonal persistence (experimental): Scalable and fast upgrades using a persistent 64-bit main memory.";
+
   (* optimizations *)
   "-fno-shared-code",
   Arg.Unit (fun () -> Flags.share_code := false),

@@ -1,3 +1,7 @@
-mo-rts.wasm
-mo-rts-debug.wasm
+mo-rts-non-incremental.wasm
+mo-rts-non-incremental-debug.wasm
+mo-rts-incremental.wasm
+mo-rts-incremental-debug.wasm
+mo-rts-eop.wasm
+mo-rts-eop-debug.wasm
 _build

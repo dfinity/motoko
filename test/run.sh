@@ -264,6 +264,22 @@ do
     else
       TEST_MOC_ARGS=$EXTRA_MOC_ARGS
     fi
+        if grep -q "//ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY" $base.mo
+    then
+      if [[ $EXTRA_MOC_ARGS != *"--enhanced-orthogonal-persistence"* ]]
+      then
+        $ECHO " Skipped (not applicable to enhanced orthogonal persistence)"
+        continue
+      fi
+    fi
+    if grep -q "//CLASSICAL-PERSISTENCE-ONLY" $base.mo
+    then
+      if [[ $EXTRA_MOC_ARGS == *"--enhanced-orthogonal-persistence"* ]]
+      then
+        $ECHO " Skipped (not applicable to classical persistence)"
+        continue
+      fi
+    fi
     moc_with_flags="env $moc_extra_env moc $moc_extra_flags $TEST_MOC_ARGS"
 
     # Typecheck
@@ -437,6 +453,20 @@ do
       if grep -q "# *SKIP $runner" $(basename $file)
       then
         continue
+      fi
+      if grep -q "# ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY" $(basename $file)
+      then
+        if [[ $EXTRA_MOC_ARGS != *"--enhanced-orthogonal-persistence"* ]]
+        then
+          continue
+        fi
+      fi
+      if grep -q "# CLASSICAL-PERSISTENCE-ONLY" $(basename $file)
+      then
+        if [[ $EXTRA_MOC_ARGS == *"--enhanced-orthogonal-persistence"* ]]
+        then
+          continue
+        fi
       fi
 
       have_var_name="HAVE_${runner//-/_}"

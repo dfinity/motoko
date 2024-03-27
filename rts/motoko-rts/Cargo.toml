@@ -25,6 +25,12 @@ ic = []
 # This feature enables extensive memory sanity checks in the incremental GC.
 memory_check = []
 
+# Incremental GC, using the extended object header containing the forwarding pointer. 
+incremental_gc = []
+
+# Enhanced orthogonal persistence, retaining the main memory across upgrades.
+enhanced_orthogonal_persistence = ["incremental_gc"]
+
 [dependencies]
 # libc = { version = "0.2.139", default_features = false }
 motoko-rts-macros = { path = "../motoko-rts-macros" }
