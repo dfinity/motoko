@@ -4,7 +4,8 @@ use crate::buf::{read_byte, read_word, skip_leb128, Buf};
 use crate::idl_trap_with;
 use crate::leb128::{leb128_decode, sleb128_decode};
 use crate::memory::{alloc_blob, Memory};
-use crate::types::Words;
+use crate::persistence::compatibility::TypeDescriptor;
+use crate::types::{Value, Words};
 use crate::utf8::utf8_validate;
 
 use core::cmp::min;
@@ -50,13 +51,36 @@ const IDL_CON_alias: i32 = 1;
 
 const IDL_PRIM_lowest: i32 = -17;
 
+// Only used for memory compatiblity checks for orthogonal persistence.
+const IDL_EXT_blob: i32 = -129;
+const IDL_EXT_tuple: i32 = -130;
+
 pub unsafe fn leb128_decode_ptr(buf: *mut Buf) -> (u32, *mut u8) {
     (leb128_decode(buf), (*buf).ptr)
 }
 
-unsafe fn is_primitive_type(extended: bool, ty: i32) -> bool {
-    ty < 0
-        && (ty >= IDL_PRIM_lowest || ty == IDL_REF_principal || (extended && ty == IDL_EXT_region))
+#[derive(Copy, Clone, PartialEq)]
+enum CompatibilityMode {
+    /// Pure Candid used for IC message payloads.
+    PureCandid,
+    /// Candidish stabilization (old stabilization format).
+    CandidishStabilization,
+    /// Memory compatibility of orthogonal persistence.
+    MemoryCompatibility,
+}
+
+unsafe fn is_primitive_type(mode: CompatibilityMode, ty: i32) -> bool {
+    if ty >= 0 {
+        return false;
+    }
+    if ty >= IDL_PRIM_lowest || ty == IDL_REF_principal {
+        return true;
+    }
+    match mode {
+        CompatibilityMode::PureCandid => false,
+        CompatibilityMode::CandidishStabilization => ty == IDL_EXT_region,
+        CompatibilityMode::MemoryCompatibility => ty == IDL_EXT_region || ty == IDL_EXT_blob,
+    }
 }
 
 // TBR; based on Text.text_compare
@@ -78,14 +102,14 @@ unsafe fn utf8_cmp(len1: u32, p1: *mut u8, len2: u32, p2: *mut u8) -> i32 {
     }
 }
 
-unsafe fn check_typearg(extended: bool, ty: i32, n_types: u32) {
+unsafe fn check_typearg(mode: CompatibilityMode, ty: i32, n_types: u32) {
     // Arguments to type constructors can be primitive types or type indices
-    if !(is_primitive_type(extended, ty) || (ty >= 0 && (ty as u32) < n_types)) {
+    if !(is_primitive_type(mode, ty) || (ty >= 0 && (ty as u32) < n_types)) {
         idl_trap_with("invalid type argument");
     }
 }
 
-unsafe fn parse_fields(extended: bool, buf: *mut Buf, n_types: u32) {
+unsafe fn parse_fields(mode: CompatibilityMode, buf: *mut Buf, n_types: u32) {
     let mut next_valid = 0;
     for n in (1..=leb128_decode(buf)).rev() {
         let tag = leb128_decode(buf);
@@ -94,7 +118,7 @@ unsafe fn parse_fields(extended: bool, buf: *mut Buf, n_types: u32) {
         }
         next_valid = tag + 1;
         let t = sleb128_decode(buf);
-        check_typearg(extended, t, n_types);
+        check_typearg(mode, t, n_types);
     }
 }
 
@@ -121,6 +145,8 @@ unsafe fn alloc<M: Memory>(mem: &mut M, size: Words<u32>) -> *mut u8 {
 ///
 /// * returns a pointer to the beginning of the list of main types
 ///   (again via pointer argument, for lack of multi-value returns in C ABI)
+///
+/// `extended` denotes Candidish stabilization format, otherwise it assumes the pure Candid format.
 #[ic_mem_fn]
 unsafe fn parse_idl_header<M: Memory>(
     mem: &mut M,
@@ -130,6 +156,12 @@ unsafe fn parse_idl_header<M: Memory>(
     typtbl_size_out: *mut u32,
     main_types_out: *mut *mut u8,
 ) {
+    let mode = if extended {
+        CompatibilityMode::CandidishStabilization
+    } else {
+        CompatibilityMode::PureCandid
+    };
+
     if (*buf).ptr == (*buf).end {
         idl_trap_with(
             "empty input. Expected Candid-encoded argument, but received a zero-length argument",
@@ -165,32 +197,34 @@ unsafe fn parse_idl_header<M: Memory>(
             // internal
             // See Note [mutable stable values] in codegen/compile.ml
             let t = sleb128_decode(buf);
-            check_typearg(extended, t, n_types);
+            check_typearg(mode, t, n_types);
         } else if ty >= 0 {
             idl_trap_with("illegal type table"); // illegal
-        } else if is_primitive_type(extended, ty) {
+        } else if is_primitive_type(mode, ty) {
             // illegal
             idl_trap_with("primitive type in type table");
         } else if ty == IDL_CON_opt {
             let t = sleb128_decode(buf);
-            check_typearg(extended, t, n_types);
+            check_typearg(mode, t, n_types);
         } else if ty == IDL_CON_vec {
             let t = sleb128_decode(buf);
-            check_typearg(extended, t, n_types);
+            check_typearg(mode, t, n_types);
         } else if ty == IDL_CON_record {
-            parse_fields(extended, buf, n_types);
+            parse_fields(mode, buf, n_types);
+        } else if ty == IDL_EXT_tuple {
+            parse_fields(mode, buf, n_types);
         } else if ty == IDL_CON_variant {
-            parse_fields(extended, buf, n_types);
+            parse_fields(mode, buf, n_types);
         } else if ty == IDL_CON_func {
             // Arg types
             for _ in 0..leb128_decode(buf) {
                 let t = sleb128_decode(buf);
-                check_typearg(extended, t, n_types);
+                check_typearg(mode, t, n_types);
             }
             // Ret types
             for _ in 0..leb128_decode(buf) {
                 let t = sleb128_decode(buf);
-                check_typearg(extended, t, n_types);
+                check_typearg(mode, t, n_types);
             }
             // Annotations
             for _ in 0..leb128_decode(buf) {
@@ -229,7 +263,7 @@ unsafe fn parse_idl_header<M: Memory>(
 
                 // Type
                 let t = sleb128_decode(buf);
-                check_typearg(extended, t, n_types);
+                check_typearg(mode, t, n_types);
             }
         } else {
             // Future type
@@ -276,7 +310,7 @@ unsafe fn parse_idl_header<M: Memory>(
     *main_types_out = (*buf).ptr;
     for _ in 0..leb128_decode(buf) {
         let t = sleb128_decode(buf);
-        check_typearg(extended, t, n_types);
+        check_typearg(mode, t, n_types);
     }
 
     *typtbl_out = typtbl;
@@ -526,7 +560,7 @@ unsafe extern "C" fn skip_fields(tb: *mut Buf, buf: *mut Buf, typtbl: *mut *mut 
 }
 
 unsafe fn is_opt_reserved(typtbl: *mut *mut u8, end: *mut u8, t: i32) -> bool {
-    if is_primitive_type(false, t) {
+    if is_primitive_type(CompatibilityMode::PureCandid, t) {
         return t == IDL_PRIM_reserved;
     }
 
@@ -543,8 +577,349 @@ unsafe fn is_opt_reserved(typtbl: *mut *mut u8, end: *mut u8, t: i32) -> bool {
     return t == IDL_CON_opt;
 }
 
+#[derive(PartialEq, Clone, Copy, Debug)]
+pub(crate) enum TypeVariance {
+    Covariance,
+    Contravariance,
+    Invariance,
+}
+
+impl TypeVariance {
+    fn invert(self) -> TypeVariance {
+        match self {
+            TypeVariance::Covariance => TypeVariance::Contravariance,
+            TypeVariance::Contravariance => TypeVariance::Covariance,
+            TypeVariance::Invariance => TypeVariance::Invariance,
+        }
+    }
+}
+
+unsafe fn recurring_memory_check(cache: &BitRel, variance: TypeVariance, t1: u32, t2: u32) -> bool {
+    match variance {
+        TypeVariance::Covariance => cache.visited(true, t1, t2),
+        TypeVariance::Contravariance => cache.visited(false, t1, t2),
+        TypeVariance::Invariance => cache.visited(true, t1, t2) && cache.visited(false, t2, t1),
+    }
+}
+
+unsafe fn remember_memory_check(cache: &BitRel, variance: TypeVariance, t1: u32, t2: u32) {
+    match variance {
+        TypeVariance::Covariance => cache.visit(true, t1, t2),
+        TypeVariance::Contravariance => cache.visit(false, t1, t2),
+        TypeVariance::Invariance => {
+            cache.visit(true, t1, t2);
+            cache.visit(false, t2, t1);
+        }
+    }
+}
+
+/// Memory compatibility check for orthogonal persistence.
+/// Checks whether the new type (`typetbl2`) is compatible to the old type (`typetbl1`).
+/// The implementation is similar to the Candid sub-type test `sub()` below, however,
+/// with some relevant differences w.r.t. the permitted type relations:
+/// * Support of variable (MutBox) with type invariance.
+/// * Types cannot be made optional (no insertion of Option).
+/// * Same arity for function parameters and function return types.
+/// * Records cannot introduce additional optional fields.
+/// * Same arity for tuple types.
+/// * Records and tuples are distinct.
+pub(crate) unsafe fn memory_compatible(
+    rel: &BitRel,
+    variance: TypeVariance,
+    typtbl1: *mut *mut u8,
+    typtbl2: *mut *mut u8,
+    end1: *mut u8,
+    end2: *mut u8,
+    t1: i32,
+    t2: i32,
+    main_actor: bool,
+) -> bool {
+    // Do not use the cache for the main actor sub-type relation, as it does not follow the ordinary sub-type rules,
+    // i.e. new actor fields can be inserted in new program versions.
+    // The `main_actor` flag only occurs non-recursively at the top level of the memory compatibility check.
+    if !main_actor && t1 >= 0 && t2 >= 0 {
+        let t1 = t1 as u32;
+        let t2 = t2 as u32;
+        if recurring_memory_check(rel, variance, t1, t2) {
+            return true;
+        };
+        remember_memory_check(rel, variance, t1, t2);
+    };
+
+    /* primitives reflexive */
+    if is_primitive_type(CompatibilityMode::MemoryCompatibility, t1)
+        && is_primitive_type(CompatibilityMode::MemoryCompatibility, t2)
+        && t1 == t2
+    {
+        return true;
+    }
+
+    // unfold t1, if necessary
+    let mut tb1 = Buf {
+        ptr: if t1 < 0 {
+            end1
+        } else {
+            *typtbl1.add(t1 as usize)
+        },
+        end: end1,
+    };
+
+    let u1 = if t1 >= 0 {
+        sleb128_decode(&mut tb1)
+    } else {
+        t1
+    };
+
+    // unfold t2, if necessary
+    let mut tb2 = Buf {
+        ptr: if t2 < 0 {
+            end2
+        } else {
+            *typtbl2.add(t2 as usize)
+        },
+        end: end2,
+    };
+
+    let u2 = if t2 >= 0 {
+        sleb128_decode(&mut tb2)
+    } else {
+        t2
+    };
+
+    match (u1, u2) {
+        (IDL_CON_alias, IDL_CON_alias) => {
+            let t11 = sleb128_decode(&mut tb1);
+            let t21 = sleb128_decode(&mut tb2);
+            // invariance
+            memory_compatible(
+                rel,
+                TypeVariance::Invariance,
+                typtbl1,
+                typtbl2,
+                end1,
+                end2,
+                t11,
+                t21,
+                false,
+            )
+        }
+        (IDL_PRIM_reserved, IDL_PRIM_reserved) | (IDL_PRIM_empty, IDL_PRIM_empty) => true,
+        (_, IDL_PRIM_reserved) | (IDL_PRIM_empty, _) | (IDL_PRIM_nat, IDL_PRIM_int) => {
+            variance != TypeVariance::Invariance
+        }
+        (_, IDL_CON_alias) | (IDL_CON_alias, _) => false,
+        (IDL_CON_opt, IDL_CON_opt) => {
+            let t11 = sleb128_decode(&mut tb1);
+            let t21 = sleb128_decode(&mut tb2);
+            memory_compatible(rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false)
+        }
+        (_, IDL_CON_opt) => false,
+        (IDL_CON_vec, IDL_CON_vec) => {
+            let t11 = sleb128_decode(&mut tb1);
+            let t21 = sleb128_decode(&mut tb2);
+            memory_compatible(rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false)
+        }
+        (IDL_CON_func, IDL_CON_func) => {
+            // contra in domain
+            let in1 = leb128_decode(&mut tb1);
+            let in2 = leb128_decode(&mut tb2);
+            if in1 != in2 {
+                return false;
+            }
+            for _ in 0..in1 {
+                let t11 = sleb128_decode(&mut tb1);
+                let t21 = sleb128_decode(&mut tb2);
+                // NB: invert p and args!
+                if !memory_compatible(
+                    rel,
+                    variance.invert(),
+                    typtbl2,
+                    typtbl1,
+                    end2,
+                    end1,
+                    t21,
+                    t11,
+                    false,
+                ) {
+                    return false;
+                }
+            }
+            // co in range
+            let out1 = leb128_decode(&mut tb1);
+            let out2 = leb128_decode(&mut tb2);
+            if out1 != out2 {
+                return false;
+            }
+            for _ in 0..out2 {
+                let t21 = sleb128_decode(&mut tb2);
+                let t11 = sleb128_decode(&mut tb1);
+                if !memory_compatible(rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false)
+                {
+                    return false;
+                }
+            }
+            // check annotations (that we care about)
+            // TODO: more generally, we would check equality of 256-bit bit-vectors,
+            // but validity ensures each entry is 1, 2 or 3 (for now)
+            // c.f. https://github.com/dfinity/candid/issues/318
+            let mut a11 = false;
+            let mut a12 = false;
+            let mut a13 = false;
+            for _ in 0..leb128_decode(&mut tb1) {
+                match read_byte(&mut tb1) {
+                    1 => a11 = true,
+                    2 => a12 = true,
+                    3 => a13 = true,
+                    _ => {}
+                }
+            }
+            let mut a21 = false;
+            let mut a22 = false;
+            let mut a23 = false;
+            for _ in 0..leb128_decode(&mut tb2) {
+                match read_byte(&mut tb2) {
+                    1 => a21 = true,
+                    2 => a22 = true,
+                    3 => a23 = true,
+                    _ => {}
+                }
+            }
+            a11 == a21 && a12 == a22 && a13 == a23
+        }
+        (IDL_EXT_tuple, IDL_EXT_tuple) => {
+            let n1 = leb128_decode(&mut tb1);
+            let n2 = leb128_decode(&mut tb2);
+            if n1 != n2 {
+                return false;
+            }
+            for _ in 0..n1 {
+                let tag1 = leb128_decode(&mut tb1);
+                let t11 = sleb128_decode(&mut tb1);
+                let tag2 = leb128_decode(&mut tb2);
+                let t21 = sleb128_decode(&mut tb2);
+                if tag1 != tag2 {
+                    return false;
+                }
+                if !memory_compatible(rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false)
+                {
+                    return false;
+                }
+            }
+            true
+        }
+        (IDL_CON_record, IDL_CON_record) => {
+            let mut n1 = leb128_decode(&mut tb1);
+            let n2 = leb128_decode(&mut tb2);
+            let mut tag1 = 0;
+            let mut t11 = 0;
+            let mut advance = true;
+            for _ in 0..n2 {
+                let tag2 = leb128_decode(&mut tb2);
+                let t21 = sleb128_decode(&mut tb2);
+                if n1 == 0 {
+                    // Optional additional fields are only supported in the main actor type.
+                    if !main_actor || !is_opt_reserved(typtbl2, end2, t21) {
+                        return false;
+                    }
+                    continue;
+                };
+                if advance {
+                    loop {
+                        tag1 = leb128_decode(&mut tb1);
+                        t11 = sleb128_decode(&mut tb1);
+                        n1 -= 1;
+                        if !(tag1 < tag2 && n1 > 0) {
+                            break;
+                        }
+                    }
+                };
+                if tag1 > tag2 {
+                    // Optional additional fields are only supported in the main actor type.
+                    if !main_actor || !is_opt_reserved(typtbl2, end2, t21) {
+                        return false;
+                    }
+                    advance = false; // reconsider this field in next round
+                    continue;
+                };
+                if !memory_compatible(rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false)
+                {
+                    return false;
+                }
+                advance = true;
+            }
+            variance != TypeVariance::Invariance || n1 == 0
+        }
+        (IDL_CON_variant, IDL_CON_variant) => {
+            let n1 = leb128_decode(&mut tb1);
+            let mut n2 = leb128_decode(&mut tb2);
+            for _ in 0..n1 {
+                if n2 == 0 {
+                    return false;
+                };
+                let tag1 = leb128_decode(&mut tb1);
+                let t11 = sleb128_decode(&mut tb1);
+                let mut tag2: u32;
+                let mut t21: i32;
+                loop {
+                    tag2 = leb128_decode(&mut tb2);
+                    t21 = sleb128_decode(&mut tb2);
+                    n2 -= 1;
+                    if !(tag2 < tag1 && n2 > 0) {
+                        break;
+                    }
+                }
+                if tag1 != tag2 {
+                    return false;
+                }
+                if !memory_compatible(rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false)
+                {
+                    return false;
+                }
+            }
+            variance != TypeVariance::Invariance || n2 == 0
+        }
+        (IDL_CON_service, IDL_CON_service) => {
+            let mut n1 = leb128_decode(&mut tb1);
+            let n2 = leb128_decode(&mut tb2);
+            for _ in 0..n2 {
+                if n1 == 0 {
+                    return false;
+                };
+                let (len2, p2) = leb128_decode_ptr(&mut tb2);
+                Buf::advance(&mut tb2, len2);
+                let t21 = sleb128_decode(&mut tb2);
+                let mut len1: u32;
+                let mut p1: *mut u8;
+                let mut t11: i32;
+                let mut cmp: i32;
+                loop {
+                    (len1, p1) = leb128_decode_ptr(&mut tb1);
+                    Buf::advance(&mut tb1, len1);
+                    t11 = sleb128_decode(&mut tb1);
+                    n1 -= 1;
+                    cmp = utf8_cmp(len1, p1, len2, p2);
+                    if cmp < 0 && n1 > 0 {
+                        continue;
+                    };
+                    break;
+                }
+                if cmp != 0 {
+                    return false;
+                };
+                if !memory_compatible(rel, variance, typtbl1, typtbl2, end1, end2, t11, t21, false)
+                {
+                    return false;
+                }
+            }
+            variance != TypeVariance::Invariance || n1 == 0
+        }
+        // default
+        (_, _) => false,
+    }
+}
+
 // TODO: consider storing fixed args typtbl1...end2 in `rel` to use less stack.
-unsafe fn sub(
+pub(crate) unsafe fn sub(
     rel: &BitRel,
     p: bool,
     typtbl1: *mut *mut u8,
@@ -568,7 +943,10 @@ unsafe fn sub(
     };
 
     /* primitives reflexive */
-    if is_primitive_type(false, t1) && is_primitive_type(false, t2) && t1 == t2 {
+    if is_primitive_type(CompatibilityMode::PureCandid, t1)
+        && is_primitive_type(CompatibilityMode::PureCandid, t2)
+        && t1 == t2
+    {
         return true;
     }
 
@@ -831,19 +1209,24 @@ unsafe extern "C" fn idl_sub_buf_init(rel_buf: *mut u32, typtbl_size1: u32, typt
     rel.init();
 }
 
-#[no_mangle]
-unsafe extern "C" fn idl_sub(
+#[ic_mem_fn]
+unsafe fn idl_sub<M: Memory>(
+    mem: &mut M,
     rel_buf: *mut u32, // a buffer with at least 2 * typtbl_size1 * typtbl_size2 bits
     typtbl1: *mut *mut u8,
-    typtbl2: *mut *mut u8,
     typtbl_end1: *mut u8,
-    typtbl_end2: *mut u8,
     typtbl_size1: u32,
-    typtbl_size2: u32,
+    candid_data2: Value,
+    type_offsets2: Value,
     t1: i32,
     t2: i32,
 ) -> bool {
     debug_assert!(rel_buf != (0 as *mut u32));
+
+    let mut type_descriptor2 = TypeDescriptor::new(candid_data2, type_offsets2);
+    let typtbl2 = type_descriptor2.build_type_table(mem);
+    let typtbl_end2 = type_descriptor2.type_table_end();
+    let typtbl_size2 = type_descriptor2.type_count() as u32;
 
     let rel = BitRel {
         ptr: rel_buf,

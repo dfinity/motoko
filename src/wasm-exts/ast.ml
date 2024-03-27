@@ -7,6 +7,7 @@ Base revision: WebAssembly/spec@a7a1856.
 The changes are:
  * Pseudo-instruction Meta for debug information
  * StableMemory, StableGrow, StableRead, StableWrite instructions.
+ * Support for passive data segments (incl. `MemoryInit`).
 
 The code is otherwise as untouched as possible, so that we can relatively
 easily apply diffs from the original code (possibly manually).
@@ -111,6 +112,7 @@ and instr' =
   | Store of storeop                  (* write memory at address *)
   | MemorySize                        (* size of linear memory *)
   | MemoryGrow                        (* grow linear memory *)
+  | MemoryInit of var                 (* initialize memory range from segment *)
   | Const of literal                  (* constant *)
   | Test of testop                    (* numeric test *)
   | Compare of relop                  (* numeric comparison *)
@@ -173,8 +175,21 @@ and 'data segment' =
 }
 
 type table_segment = var list segment
-type memory_segment = string segment
 
+(* Manual extension to support passive data segements *)
+type segment_mode = segment_mode' phrase
+and segment_mode' =
+  | Passive
+  | Active of {index : var; offset : const}
+  | Declarative
+
+type data_segment = data_segment' phrase
+and data_segment' =
+{
+  dinit : string;
+  dmode : segment_mode;
+}
+(* End of manual extension *)
 
 (* Modules *)
 
@@ -219,7 +234,9 @@ and module_' =
   funcs : func list;
   start : var option;
   elems : var list segment list;
-  data : string segment list;
+  (* Manual adjustment for passive data segment support *)
+  datas : data_segment list;
+  (* End of manual adjustment *)
   imports : import list;
   exports : export list;
 }
@@ -236,7 +253,7 @@ let empty_module =
   funcs = [];
   start = None;
   elems  = [];
-  data = [];
+  datas = [];
   imports = [];
   exports = [];
 }

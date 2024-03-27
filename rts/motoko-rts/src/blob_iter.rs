@@ -1,5 +1,6 @@
 use crate::{
     barriers::allocation_barrier,
+    memory::Memory,
     types::{size_of, Array, Bytes, Value, Words, TAG_ARRAY},
 };
 
@@ -21,7 +22,7 @@ unsafe fn blob_iter<M: crate::memory::Memory>(mem: &mut M, blob: Value) -> Value
     (*iter_array).len = 2;
 
     iter_array.initialize(ITER_BLOB_IDX, blob, mem);
-    iter_array.set_scalar(ITER_POS_IDX, Value::from_scalar(0));
+    iter_array.set(ITER_POS_IDX, Value::from_scalar(0), mem);
 
     allocation_barrier(iter_ptr)
 }
@@ -38,14 +39,14 @@ unsafe extern "C" fn blob_iter_done(iter: Value) -> u32 {
 }
 
 /// Reads next byte, advances the iterator
-#[no_mangle]
-unsafe fn blob_iter_next(iter: Value) -> u32 {
+#[ic_mem_fn]
+unsafe fn blob_iter_next<M: Memory>(mem: &mut M, iter: Value) -> u32 {
     let iter_array = iter.as_array();
 
     let blob = iter_array.get(ITER_BLOB_IDX);
     let pos = iter_array.get(ITER_POS_IDX).get_scalar();
 
-    iter_array.set_scalar(ITER_POS_IDX, Value::from_scalar(pos + 1));
+    iter_array.set(ITER_POS_IDX, Value::from_scalar(pos + 1), mem);
 
     blob.as_blob().get(pos).into()
 }

@@ -23,11 +23,11 @@ pub unsafe extern "C" fn print_value(value: Value) {
 pub unsafe fn dump_heap(
     heap_base: u32,
     hp: u32,
-    static_roots: Value,
-    continuation_table_loc: *mut Value,
+    static_root_location: *mut Value,
+    continuation_table_location: *mut Value,
 ) {
-    print_continuation_table(continuation_table_loc);
-    print_static_roots(static_roots);
+    print_continuation_table(continuation_table_location);
+    print_static_roots(*static_root_location);
     print_heap(heap_base, hp);
 }
 
@@ -52,7 +52,7 @@ pub(crate) unsafe fn print_continuation_table(continuation_tbl_loc: *mut Value) 
 
     for i in 0..len {
         let elem = arr.get(i);
-        if elem.is_ptr() {
+        if elem.is_non_null_ptr() {
             let _ = write!(&mut write_buf, "{}: ", i);
             print_boxed_object(&mut write_buf, elem.get_ptr());
             print(&write_buf);
@@ -123,13 +123,13 @@ unsafe fn print_tagged_scalar(buf: &mut WriteBuf, p: u32) {
 pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
     let _ = write!(buf, "{:#x}: ", p);
 
-    let forward = (*(p as *mut Value)).forward();
+    let obj = p as *mut Obj;
+    let forward = (*obj).forward;
     if forward.get_ptr() != p {
         let _ = write!(buf, "<forwarded to {:#x}>", forward.get_ptr());
         return;
     }
 
-    let obj = p as *mut Obj;
     let tag = obj.tag();
 
     if tag == 0 {
@@ -142,8 +142,8 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
             let _ = write!(
                 buf,
                 "<Object size={:#x} hash_ptr={:#x} field=[",
-                (*object).size,
-                (*object).hash_ptr
+                object.size(),
+                (*object).hash_blob.get_raw()
             );
             for i in 0..object.size() {
                 let val = object.get(i);
@@ -155,7 +155,7 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
                     let _ = write!(buf, ")");
                 }
 
-                if i != (*object).size - 1 {
+                if i != object.size() - 1 {
                     let _ = write!(buf, ",");
                 }
             }

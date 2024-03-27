@@ -210,6 +210,7 @@ no-timer-canc.mo:3.10-3.21: type error [M0119], object field cancelTimer is not 
     rts_reclaimed : () -> Nat;
     rts_stable_memory_size : () -> Nat;
     rts_total_allocation : () -> Nat;
+    rts_upgrade_instructions : () -> Nat;
     rts_version : () -> Text;
     setCertifiedData : Blob -> ();
     shiftLeft : (Nat, Nat32) -> Nat;

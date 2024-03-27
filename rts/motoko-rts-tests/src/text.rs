@@ -1,6 +1,6 @@
 //! Text and text iterator tests
 
-use crate::memory::TestMemory;
+use crate::memory::{initialize_test_memory, reset_test_memory, TestMemory};
 
 use motoko_rts::memory::Memory;
 use motoko_rts::text::{
@@ -48,7 +48,7 @@ impl<'a, M: Memory> Iterator for TextIter<'a, M> {
 pub unsafe fn test() {
     println!("Testing text and text iterators ...");
 
-    let mut mem = TestMemory::new(Words(1024 * 1024));
+    let mut mem = initialize_test_memory();
 
     println!("  Testing decode_code_point and text_singleton for ASCII");
     for i in 0..=255u32 {
@@ -93,6 +93,8 @@ pub unsafe fn test() {
             },
         )
         .unwrap();
+
+    reset_test_memory();
 }
 
 unsafe fn concat1<M: Memory>(mem: &mut M) {

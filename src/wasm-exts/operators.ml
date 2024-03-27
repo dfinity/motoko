@@ -7,7 +7,7 @@ that it got basically replicated into the customModuleDecode.ml file.
 Base revision: WebAssembly/spec@a7a1856.
 
 The changes are:
- * None for now
+  * Support for passive data segments (incl. `MemoryInit`).
 
 The code is otherwise as untouched as possible, so that we can relatively
 easily apply diffs from the original code (possibly manually).
@@ -230,3 +230,6 @@ let f64_reinterpret_i64 = Convert (F64 F64Op.ReinterpretInt)
 let memory_size = MemorySize
 let memory_grow = MemoryGrow
 
+(* Manual extension for passive data segments *)
+let memory_init x = MemoryInit x
+(* End of manual extension *)
