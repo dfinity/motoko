@@ -683,6 +683,28 @@ let load_as_rts () =
 
 type compile_result = (Idllib.Syntax.prog * Wasm_exts.CustomModule.extended_module) Diag.result
 
+let invalid_flag message =
+  builtin_error "compile" (Printf.sprintf "Invalid compiler flag combination: %s" message) []
+
+let adjust_flags () =
+  if !Flags.enhanced_orthogonal_persistence then
+    begin
+      (match !Flags.gc_strategy with
+      | Flags.Default | Flags.Incremental -> Flags.gc_strategy := Flags.Incremental;
+      | Flags.Copying -> invalid_flag "--copying-gc is not supported with --enhanced-orthogonal-persistence"
+      | Flags.MarkCompact -> invalid_flag "--compacting-gc is not supported with --enhanced-orthogonal-persistence"
+      | Flags.Generational -> invalid_flag "--generational-gc is not supported with --enhanced-orthogonal-persistence");
+      (if !Flags.rts_stack_pages <> None then invalid_flag "--rts-stack-pages is not supported with --enhanced-orthogonal-persistence");
+      Flags.rtti := true
+    end
+  else
+    begin
+      (if !Flags.gc_strategy = Flags.Default then Flags.gc_strategy := Flags.Copying);
+      (if !Flags.rts_stack_pages = None then Flags.rts_stack_pages := Some Flags.rts_stack_pages_default);
+      (if !Flags.stabilization_instruction_limit <> Flags.stabilization_instruction_limit_default then
+        invalid_flag "--stabilization-instruction-limit is only supported with --enhanced-orthogonal-persistence")
+    end
+
 (* This transforms the flat list of libs (some of which are classes)
    into a list of imported libs and (compiled) classes *)
 let rec compile_libs mode libs : Lowering.Desugar.import_declaration =
@@ -704,6 +726,7 @@ and compile_unit mode do_link imports u : Wasm_exts.CustomModule.extended_module
   let prog_ir = desugar_unit imports u name in
   let prog_ir = ir_passes mode prog_ir name in
   phase "Compiling" name;
+  adjust_flags ();
   let rts = if do_link then Some (load_as_rts ()) else None in
   if !Flags.enhanced_orthogonal_persistence then
     Codegen.Compile_enhanced.compile mode rts prog_ir

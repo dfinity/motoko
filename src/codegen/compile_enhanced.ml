@@ -12904,7 +12904,9 @@ and conclude_module env set_serialization_globals start_fi_o =
   | Some rts -> Linking.LinkModule.link emodule "rts" rts
 
 let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
-  assert !Flags.rtti; (* orthogonal persistence requires a fixed layout. *)
+  (* Enhanced orthogonal persistence requires a fixed layout. *)
+  assert !Flags.rtti; (* Use precise tagging for graph copy. *)
+  assert (!Flags.gc_strategy = Flags.Incremental); (* Define heap layout with the incremental GC. *)
   let env = E.mk_global mode rts IC.trap_with in
 
   IC.register_globals env;
