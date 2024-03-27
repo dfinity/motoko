@@ -1,4 +1,3 @@
-//MOC-NO-FORCE-GC
 import Prim "mo:⛔";
 import Cycles = "cycles/cycles";
 import M0 "class-import/empty";

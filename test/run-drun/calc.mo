@@ -1,4 +1,3 @@
-//MOC-NO-FORCE-GC
 import P "mo:prim";
 
 actor a {

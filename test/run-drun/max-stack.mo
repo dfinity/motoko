@@ -1,5 +1,4 @@
 //MOC-FLAG -measure-rts-stack
-//MOC-NO-FORCE-GC
 import { errorMessage; debugPrint; } = "mo:⛔";
 
 actor {

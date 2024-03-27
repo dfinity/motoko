@@ -1,4 +1,3 @@
-//MOC-NO-FORCE-GC
 import Prim "mo:⛔";
 
 // test for explicit scope parameterization (disabled for now, uncomment /*<$>*/ once supported)

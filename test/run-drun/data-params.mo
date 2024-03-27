@@ -1,4 +1,3 @@
-//MOC-NO-FORCE-GC
 import Prim "mo:⛔";
 actor a {
   public func sendi(n : Int) : async () {
