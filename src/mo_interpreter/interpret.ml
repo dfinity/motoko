@@ -92,8 +92,8 @@ let trace fmt =
     Printf.printf "%s%s\n%!" (String.make (2 * !trace_depth) ' ') s
   ) fmt
 
-let string_of_val env = V.string_of_val env.flags.print_depth
-let string_of_def flags = V.string_of_def flags.print_depth
+let string_of_val env = V.string_of_val env.flags.print_depth T.Non
+let string_of_def flags = V.string_of_def flags.print_depth T.Non
 let string_of_arg env = function
   | V.Tup _ as v -> string_of_val env v
   | v -> "(" ^ string_of_val env v ^ ")"

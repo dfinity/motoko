@@ -147,6 +147,13 @@ const astString = JSON.stringify(
   Motoko.parseMotoko(Motoko.readFile("ast.mo"))
 );
 
+// Run interpreter
+assert.deepStrictEqual(Motoko.run([], "actor.mo"), {
+  stdout: "`ys6dh-5cjiq-5dc` : actor {main : shared query () -> async A__9<Text>}\n",
+  stderr: "",
+  result: { error: null },
+});
+
 // Check doc comments
 assert.match(astString, /"name":"\*","args":\["Program comment\\n      multi-line"/);
 assert.match(astString, /"name":"\*","args":\["Type comment"/);

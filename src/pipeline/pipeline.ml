@@ -53,16 +53,16 @@ let print_dyn_ve scope =
       Format.printf "@[<hv 2>%s %s :@ %a =@ %a@]@."
         (if t == t' then "let" else "var") x
         Type.pp_typ t'
-        (Value.pp_def !Flags.print_depth) d
+        (Value.pp_def !Flags.print_depth) (t', d)
   )
 
 let print_scope senv scope dve =
   print_ce scope.Scope.con_env;
   print_dyn_ve senv dve
 
-let print_val _senv v t =
+let print_val _senv t v =
   Format.printf "@[<hv 2>%a :@ %a@]@."
-    (Value.pp_val !Flags.print_depth) v
+    (Value.pp_val !Flags.print_depth) (t, v)
     Type.pp_typ t
 
 
@@ -559,7 +559,7 @@ let is_exp dec = match dec.Source.it with Syntax.ExpD _ -> true | _ -> false
 
 let output_scope (senv, _) t v sscope dscope =
   print_scope senv sscope dscope.Interpret.val_env;
-  if v <> Value.unit then print_val senv v t
+  if v <> Value.unit then print_val senv t v
 
 let run_stdin lexer (senv, denv) : env option =
   match Diag.flush_messages (load_decl (parse_lexer lexer) senv) with
@@ -593,9 +593,7 @@ let run_stdin_from_file files file : Value.value option =
     Diag.flush_messages (load_decl (parse_file Source.no_region file) senv) in
   let denv' = interpret_libs denv libs in
   let* (v, dscope) = interpret_prog denv' prog in
-  Format.printf "@[<hv 2>%a :@ %a@]@."
-    (Value.pp_val 10) v
-    Type.pp_typ t;
+  print_val senv t v;
   Some v
 
 let run_files_and_stdin files =

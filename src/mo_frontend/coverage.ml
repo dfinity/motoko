@@ -126,7 +126,7 @@ let rec expand_nottag tfs n ls : desc list =
 (* TODO: pretty print *)
 let rec string_of_desc t = function
   | Any -> "_"
-  | Val v -> V.string_of_val 100 v
+  | Val v -> V.string_of_val 100 t v
   | NotVal vs -> string_of_descs t (expand_notval (T.promote t) 0 vs)
   | Tup descs ->
     let ts = T.as_tup_sub (List.length descs) t in
