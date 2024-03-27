@@ -752,7 +752,8 @@ module E = struct
     | Flags.Copying -> "copying"
     | Flags.Generational -> "generational"
     | Flags.Incremental -> "incremental"
-
+    | Flags.Default -> assert false (* resolved in `pipeline.ml` *)
+    
   let collect_garbage env force =
     (* GC function name = "schedule_"? ("compacting" | "copying" | "generational" | "incremental") "_gc" *)
     let name = gc_strategy_name !Flags.gc_strategy in
@@ -12804,6 +12805,7 @@ and conclude_module env set_serialization_globals start_fi_o =
   | Some rts -> Linking.LinkModule.link emodule "rts" rts
 
 let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
+  assert(not (!Flags.enhanced_orthogonal_persistence));
   let env = E.mk_global mode rts IC.trap_with (Lifecycle.end_ ()) in
 
   IC.register_globals env;

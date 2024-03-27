@@ -112,7 +112,7 @@ CLANG_FLAGS = \
 
 .PHONY: all
 
-all: mo-rts.wasm mo-rts-debug.wasm mo-rts-incremental.wasm mo-rts-incremental-debug.wasm
+all: mo-rts.wasm mo-rts-debug.wasm mo-rts-incremental.wasm mo-rts-incremental-debug.wasm mo-rts-eop.wasm mo-rts-eop-debug.wasm
 
 _build:
 	mkdir -p $@
@@ -232,6 +232,10 @@ RTS_RUST_NON_INCREMENTAL_DEBUG_WASM_A=_build/wasm/libmotoko_rts_debug.a
 RTS_RUST_INCREMENTAL_WASM_A=_build/wasm/libmotoko_rts_incremental.a
 RTS_RUST_INCREMENTAL_DEBUG_WASM_A=_build/wasm/libmotoko_rts_incremental_debug.a
 
+# EOP = Enhanced Orthogonal Persistence
+RTS_RUST_EOP_WASM_A=_build/wasm/libmotoko_rts_eop.a
+RTS_RUST_EOP_DEBUG_WASM_A=_build/wasm/libmotoko_rts_eop_debug.a
+
 $(RTS_RUST_NON_INCREMENTAL_WASM_A): $(RTS_DEPENDENCIES)
 	$(RTS_RELEASE_BUILD)
 	cp $(RTS_RELEASE_TARGET) $@
@@ -248,17 +252,25 @@ $(RTS_RUST_INCREMENTAL_DEBUG_WASM_A): $(RTS_DEPENDENCIES)
 	$(RTS_DEBUG_BUILD) --features incremental_gc
 	cp $(RTS_DEBUG_TARGET) $@
 
+$(RTS_RUST_EOP_WASM_A): $(RTS_DEPENDENCIES)
+	$(RTS_RELEASE_BUILD) --features enhanced_orthogonal_persistence
+	cp $(RTS_RELEASE_TARGET) $@
+
+$(RTS_RUST_EOP_DEBUG_WASM_A): $(RTS_DEPENDENCIES)
+	$(RTS_DEBUG_BUILD) --features enhanced_orthogonal_persistence
+	cp $(RTS_DEBUG_TARGET) $@
+
 #
 # The test suite
 #
 
 TEST_DEPENDENCIES=$(TOMMATH_WASM_A) $(TOMMATH_BINDINGS_RS)
 TEST_BUILD=cd motoko-rts-tests && cargo build --target=wasm32-wasi
-TEST_RUN=wasmtime --disable-cache motoko-rts-tests/target/wasm32-wasi/debug/motoko-rts-tests.wasm
+TEST_RUN=wasmtime -C cache=n -W nan-canonicalization=y motoko-rts-tests/target/wasm32-wasi/debug/motoko-rts-tests.wasm
 
 .PHONY: test
 
-test: test-non-incremental test-incremental
+test: test-non-incremental test-incremental test-eop
 
 test-non-incremental: $(TEST_DEPENDENCIES)
 	$(TEST_BUILD)
@@ -266,6 +278,10 @@ test-non-incremental: $(TEST_DEPENDENCIES)
 
 test-incremental: $(TEST_DEPENDENCIES)
 	$(TEST_BUILD) --features incremental_gc
+	$(TEST_RUN)
+
+test-eop: $(TEST_DEPENDENCIES)
+	$(TEST_BUILD) --features enhanced_orthogonal_persistence
 	$(TEST_RUN)
 
 #
@@ -315,6 +331,16 @@ mo-rts-incremental-debug.wasm: $(RTS_RUST_INCREMENTAL_DEBUG_WASM_A) $(WASM_A_DEP
 		$(LINKER_OPTIONS) \
 		$+
 
+mo-rts-eop.wasm: $(RTS_RUST_EOP_WASM_A) $(WASM_A_DEPENDENCIES)
+	$(WASM_LD) -o $@ \
+		$(LINKER_OPTIONS) \
+		$+
+
+mo-rts-eop-debug.wasm: $(RTS_RUST_EOP_DEBUG_WASM_A) $(WASM_A_DEPENDENCIES)
+	$(WASM_LD) -o $@ \
+		$(LINKER_OPTIONS) \
+		$+
+
 format:
 	cargo fmt --verbose --manifest-path motoko-rts/Cargo.toml
 	cargo fmt --verbose --manifest-path motoko-rts-tests/Cargo.toml
@@ -327,6 +353,8 @@ clean:
 	  mo-rts-debug.wasm \
 	  mo-rts-incremental.wasm \
 	  mo-rts-incremental-debug.wasm \
+	  mo-rts-eop.wasm \
+	  mo-rts-eop-debug.wasm \
 	  motoko-rts/target \
 	  motoko-rts-tests/target \
 	  motoko-rts-macros/target \

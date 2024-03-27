@@ -42,6 +42,7 @@ use motoko_rts_macros::ic_mem_fn;
 
 // Provided by generated code
 extern "C" {
+    #[cfg(feature = "ic")]
     fn int_from_i32(value: i32) -> Value;
 }
 

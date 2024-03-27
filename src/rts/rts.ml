@@ -24,3 +24,6 @@ let wasm_non_incremental_debug : string Lazy.t = lazy (load_file "MOC_NON_INCREM
 
 let wasm_incremental_release : string Lazy.t = lazy (load_file "MOC_INCREMENTAL_RELEASE_RTS")
 let wasm_incremental_debug : string Lazy.t = lazy (load_file "MOC_INCREMENTAL_DEBUG_RTS")
+
+let wasm_eop_release : string Lazy.t = lazy (load_file "MOC_EOP_RELEASE_RTS")
+let wasm_eop_debug : string Lazy.t = lazy (load_file "MOC_EOP_DEBUG_RTS")

@@ -186,6 +186,11 @@ let argspec = [
   Arg.Unit (fun () -> Flags.trap_on_call_error := true),
   " Trap, don't throw an `Error`, when an IC call fails due to destination queue full or freezing threshold is crossed. Emulates behaviour of moc versions < 0.8.0.";
 
+  (* persistence *)
+  "--enhanced-orthogonal-persistence",
+  Arg.Unit (fun () -> Flags.enhanced_orthogonal_persistence := true),
+  " Use enhanced orthogonal persistence (experimental): Scalable and fast upgrades using a persistent 64-bit main memory.";
+
   (* optimizations *)
   "-fno-shared-code",
   Arg.Unit (fun () -> Flags.share_code := false),
