@@ -437,7 +437,7 @@ pub const TAG_CLOSURE: Tag = 11;
 pub const TAG_SOME: Tag = 13;
 pub const TAG_VARIANT: Tag = 15;
 pub const TAG_BLOB: Tag = 17;
-pub const TAG_FWD_PTR: Tag = 19; // Only used by the copying GC - not to be confused with forwarding pointer in the header used for incremental GC.
+pub const TAG_FWD_PTR: Tag = 19; // Used by graph copy stabilization and the copying GC - not to be confused with the incremental GC's forwarding pointer.
 pub const TAG_BIGINT: Tag = 21;
 pub const TAG_CONCAT: Tag = 23;
 pub const TAG_REGION: Tag = 25;
@@ -539,7 +539,7 @@ impl Array {
         self.set_raw(idx, value);
     }
 
-    /// Note: Only used by deserialization. No write barrier is applied.
+    /// Note: Only directly used by graph destabilization. No write barrier is applied.
     pub unsafe fn set_raw(self: *mut Self, idx: usize, value: Value) {
         let slot_addr = self.element_address(idx);
         *(slot_addr as *mut Value) = value;
@@ -879,7 +879,6 @@ pub(crate) unsafe fn block_size(address: usize) -> Words<usize> {
         TAG_REGION => size_of::<Region>(),
 
         _ => {
-            println!(100, "UNSUPPORTED TAG {tag}");
             rts_trap_with("object_size: invalid object tag");
         }
     }
