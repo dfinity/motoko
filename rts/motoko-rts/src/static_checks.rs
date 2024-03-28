@@ -1,5 +1,7 @@
 //! Compile-time assertions to make sure object layouts are as expected
 
+use motoko_rts_macros::{is_incremental_gc, uses_enhanced_orthogonal_persistence};
+
 use crate::types::*;
 
 use core::mem::{align_of, size_of};
@@ -53,3 +55,6 @@ const _: () = assert!(align_of::<Bits64>() == WORD_SIZE);
 const _: () = assert!(align_of::<OneWordFiller>() == WORD_SIZE);
 const _: () = assert!(align_of::<FreeSpace>() == WORD_SIZE);
 const _: () = assert!(align_of::<FwdPtr>() == WORD_SIZE);
+
+// Check that the incremental GC is used with enhanced orthogonal persistence.
+const _: () = assert!(!uses_enhanced_orthogonal_persistence!() || is_incremental_gc!());

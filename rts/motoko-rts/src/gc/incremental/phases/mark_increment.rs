@@ -1,3 +1,5 @@
+use motoko_rts_macros::{classical_persistence, enhanced_orthogonal_persistence};
+
 use crate::{
     gc::incremental::{
         array_slicing::slice_array,
@@ -66,7 +68,7 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
     }
 
     pub unsafe fn mark_roots(&mut self, roots: Roots) {
-        visit_roots(roots, self, |gc, field| {
+        visit_roots(roots, self.heap.base_address(), self, |gc, field| {
             gc.mark_object(*field);
             gc.time.tick();
         });
@@ -80,7 +82,12 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
         }
         loop {
             let value = self.mark_stack.pop();
+
+            #[enhanced_orthogonal_persistence]
             debug_assert!(value.is_non_null_ptr());
+            #[classical_persistence]
+            debug_assert!(value.is_ptr());
+
             if value == STACK_EMPTY {
                 self.complete_marking();
                 return;
@@ -97,7 +104,10 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
 
     pub unsafe fn mark_object(&mut self, value: Value) {
         self.time.tick();
+
+        #[enhanced_orthogonal_persistence]
         debug_assert_ne!(value, NULL_POINTER);
+
         debug_assert!((value.get_ptr() >= self.heap.base_address()));
         debug_assert!(!value.is_forwarded());
         let object = value.as_obj();
@@ -114,6 +124,7 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
             self,
             object,
             object.tag(),
+            self.heap.base_address(),
             |gc, field_address| {
                 let field_value = *field_address;
                 gc.mark_object(field_value);

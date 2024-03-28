@@ -2040,10 +2040,10 @@ module Tagged = struct
     | Variant -> 15l
     | Blob -> 17l
     | Indirection -> 19l
-    | Bits32 -> 21l
-    | BigInt -> 23l
-    | Concat -> 25l
-    | Region -> 27l
+    | BigInt -> 21l
+    | Concat -> 23l
+    | Region -> 25l
+    | Bits32 -> 27l
     | Null -> 29l
     | OneWordFiller -> 31l
     | FreeSpace -> 33l
