@@ -377,6 +377,21 @@ rec {
           EXTRA_MOC_ARGS = "--sanity-checks";
       };
 
+    snty_compacting_gc_subdir = dir: deps:
+      (test_subdir dir deps).overrideAttrs {
+          EXTRA_MOC_ARGS = "--sanity-checks --compacting-gc";
+      };
+
+    snty_generational_gc_subdir = dir: deps:
+      (test_subdir dir deps).overrideAttrs {
+          EXTRA_MOC_ARGS = "--sanity-checks --generational-gc";
+      };
+
+    snty_incremental_gc_subdir = dir: deps:
+      (test_subdir dir deps).overrideAttrs {
+          EXTRA_MOC_ARGS = "--sanity-checks --incremental-gc";
+      };
+
     enhanced_orthogonal_persistence_subdir = dir: deps:
       (test_subdir dir deps).overrideAttrs {
           EXTRA_MOC_ARGS = "--enhanced-orthogonal-persistence";
