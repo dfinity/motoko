@@ -539,7 +539,7 @@ impl Array {
         self.set_raw(idx, value);
     }
 
-    /// Note: Only used by deserialization. No write barrier is applied.
+    /// Note: Only directly used by graph destabilization. No write barrier is applied.
     pub unsafe fn set_raw(self: *mut Self, idx: usize, value: Value) {
         let slot_addr = self.element_address(idx);
         *(slot_addr as *mut Value) = value;
@@ -879,7 +879,6 @@ pub(crate) unsafe fn block_size(address: usize) -> Words<usize> {
         TAG_REGION => size_of::<Region>(),
 
         _ => {
-            println!(100, "UNSUPPORTED TAG {tag}");
             rts_trap_with("object_size: invalid object tag");
         }
     }
