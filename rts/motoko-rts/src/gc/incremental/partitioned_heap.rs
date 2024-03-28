@@ -40,6 +40,8 @@
 
 use core::{array::from_fn, ops::Range, ptr::null_mut};
 
+use motoko_rts_macros::{classical_persistence, enhanced_orthogonal_persistence};
+
 use crate::{
     gc::incremental::mark_bitmap::BITMAP_ITERATION_END, memory::Memory, rts_trap_with, types::*,
 };
@@ -52,20 +54,24 @@ use super::{
 
 /// Size of each partition.
 /// Select the size of the power of two with the smallest WASM memory size in the benchmark.
-/// -> Small partitions below 64 MB are inefficient in terms of both memory and runtime costs
+/// -> Small partitions are inefficient in terms of both memory and runtime costs
 ///    due to the increased frequency of large object handling.
-/// -> Large partitions above 64 MB are a waste for small programs, since the WASM memory is
+/// -> Large partitions are a waste for small programs, since the WASM memory is
 ///    allocated in that granularity and GC is then triggered later.
+#[enhanced_orthogonal_persistence]
 pub const PARTITION_SIZE: usize = 64 * 1024 * 1024;
 
-// TODO: Redesign for 64-bit support by using a dynamic partition list.
-/// Currently limited to 64 GB.
-pub const MAXIMUM_MEMORY_SIZE: Bytes<usize> = Bytes(64 * 1024 * 1024 * 1024);
+#[classical_persistence]
+pub const PARTITION_SIZE: usize = 32 * 1024 * 1024;
 
 /// Total number of partitions in the memory.
 /// For simplicity, the last partition is left unused, to avoid a numeric overflow when
 /// computing the end address of the last partition.
+#[enhanced_orthogonal_persistence]
 const MAX_PARTITIONS: usize = (MAXIMUM_MEMORY_SIZE.0 / PARTITION_SIZE) - 1;
+
+#[classical_persistence]
+const MAX_PARTITIONS: usize = ((MAXIMUM_MEMORY_SIZE.0 / PARTITION_SIZE as u64) as usize) - 1;
 
 /// Partitions are only evacuated if the space occupation of alive objects in the partition
 /// is greater than this threshold.
@@ -90,6 +96,21 @@ pub struct Partition {
     evacuate: bool,      // Specifies whether the partition is to be evacuated or being evacuated.
     update: bool,        // Specifies whether the pointers in the partition have to be updated.
 }
+
+/// Optimization: Avoiding `Option` or `Lazy`.
+#[classical_persistence]
+const UNINITIALIZED_PARTITION: Partition = Partition {
+    index: usize::MAX,
+    free: false,
+    large_content: false,
+    marked_size: 0,
+    static_size: 0,
+    dynamic_size: 0,
+    bitmap: DEFAULT_MARK_BITMAP,
+    temporary: false,
+    evacuate: false,
+    update: false,
+};
 
 impl Partition {
     pub fn get_index(&self) -> usize {
@@ -345,12 +366,28 @@ pub struct PartitionedHeap {
     allocation_index: usize, // Index of the partition currently used for allocations.
     free_partitions: usize,  // Number of free partitions.
     evacuating: bool,
-    reclaimed: usize,
+    reclaimed: u64,
     bitmap_allocation_pointer: usize, // Free pointer for allocating the next mark bitmap.
     gc_running: bool, // Create bitmaps for partitions when allocated during active GC.
     precomputed_heap_size: usize, // Occupied heap size, excluding the dynamic heap in the allocation partition.
     evacuated_size: usize, // Size of all evacuated objects during a GC run. Serves for accurate total allocation statistics.
 }
+
+
+/// Optimization: Avoiding `Option` or `LazyCell`.
+#[classical_persistence]
+pub const UNINITIALIZED_HEAP: PartitionedHeap = PartitionedHeap {
+    partitions: [UNINITIALIZED_PARTITION; MAX_PARTITIONS],
+    heap_base: 0,
+    allocation_index: 0,
+    free_partitions: 0,
+    evacuating: false,
+    reclaimed: 0,
+    bitmap_allocation_pointer: 0,
+    gc_running: false,
+    precomputed_heap_size: 0,
+    evacuated_size: 0,
+};
 
 impl PartitionedHeap {
     pub unsafe fn new<M: Memory>(mem: &mut M, heap_base: usize) -> PartitionedHeap {
@@ -542,7 +579,7 @@ impl PartitionedHeap {
             if partition.to_be_evacuated() {
                 debug_assert!(partition.index != self.allocation_index);
                 debug_assert!(partition.dynamic_size >= marked_size);
-                self.reclaimed += partition.dynamic_size - marked_size;
+                self.reclaimed += (partition.dynamic_size - marked_size) as u64;
             }
             if partition.to_be_evacuated() || partition.temporary {
                 self.precomputed_heap_size -= partition.dynamic_size;
@@ -613,7 +650,7 @@ impl PartitionedHeap {
         Bytes(self.precomputed_heap_size + self.allocation_partition().dynamic_size)
     }
 
-    pub fn reclaimed_size(&self) -> Bytes<usize> {
+    pub fn reclaimed_size(&self) -> Bytes<u64> {
         Bytes(self.reclaimed)
     }
 
@@ -621,10 +658,10 @@ impl PartitionedHeap {
         self.evacuated_size += size.to_bytes().as_usize();
     }
 
-    pub fn total_allocated_size(&self) -> Bytes<usize> {
+    pub fn total_allocated_size(&self) -> Bytes<u64> {
         debug_assert!(self.evacuated_size <= self.occupied_size().as_usize());
         let heap_size_without_evacuations = self.occupied_size().as_usize() - self.evacuated_size;
-        Bytes(heap_size_without_evacuations) + self.reclaimed_size()
+        Bytes(heap_size_without_evacuations as u64) + self.reclaimed_size()
     }
 
     pub unsafe fn allocate<M: Memory>(&mut self, mem: &mut M, words: Words<usize>) -> Value {
@@ -761,7 +798,7 @@ impl PartitionedHeap {
             let size = partition.dynamic_size;
             partition.update = false;
             partition.free();
-            self.reclaimed += size;
+            self.reclaimed += size as u64;
             self.precomputed_heap_size -= size;
         }
     }

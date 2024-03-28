@@ -1,7 +1,7 @@
 use crate::types::Bytes;
 
 /// Wasm word size. RTS only works correctly on platforms with this word size.
-pub const WORD_SIZE: usize = 8;
+pub const WORD_SIZE: usize = core::mem::size_of::<usize>();
 
 /// Wasm page size (64 KiB) in bytes
 pub const WASM_PAGE_SIZE: Bytes<usize> = Bytes(64 * KB);

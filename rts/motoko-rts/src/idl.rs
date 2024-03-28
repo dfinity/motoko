@@ -3,15 +3,20 @@ use crate::bitrel::BitRel;
 use crate::buf::{read_byte, read_word, skip_leb128, Buf};
 use crate::idl_trap_with;
 use crate::leb128::{leb128_decode, sleb128_decode};
-use crate::libc_declarations::{c_void, memcmp};
+
 use crate::memory::{alloc_blob, Memory};
-use crate::persistence::compatibility::TypeDescriptor;
 use crate::types::{Value, Words};
 use crate::utf8::utf8_validate;
 
 use core::cmp::min;
 
-use motoko_rts_macros::ic_mem_fn;
+use motoko_rts_macros::{classical_persistence, enhanced_orthogonal_persistence, ic_mem_fn};
+
+#[enhanced_orthogonal_persistence]
+use crate::libc_declarations::{c_void, memcmp};
+
+#[classical_persistence]
+use libc::{c_void, memcmp};
 
 //
 // IDL constants
@@ -1228,6 +1233,7 @@ unsafe extern "C" fn idl_sub_buf_init(
 }
 
 #[ic_mem_fn]
+#[enhanced_orthogonal_persistence]
 unsafe fn idl_sub<M: Memory>(
     mem: &mut M,
     rel_buf: *mut usize, // a buffer with at least 2 * typtbl_size1 * typtbl_size2 bits
@@ -1239,12 +1245,42 @@ unsafe fn idl_sub<M: Memory>(
     t1: i32,
     t2: i32,
 ) -> bool {
-    debug_assert!(rel_buf != (0 as *mut usize));
-
     let mut type_descriptor2 = TypeDescriptor::new(candid_data2, type_offsets2);
     let typtbl2 = type_descriptor2.build_type_table(mem);
     let typtbl_end2 = type_descriptor2.type_table_end();
     let typtbl_size2 = type_descriptor2.type_count();
+
+    idl_sub_internal(rel_buf, typtbl1, typtbl2, typtbl_end1, typtbl_end2, typtbl_size1, typtbl_size2, t1, t2)
+}
+
+#[no_mangle]
+#[classical_persistence]
+unsafe extern "C" fn idl_sub(
+    rel_buf: *mut u32, // a buffer with at least 2 * typtbl_size1 * typtbl_size2 bits
+    typtbl1: *mut *mut u8,
+    typtbl2: *mut *mut u8,
+    typtbl_end1: *mut u8,
+    typtbl_end2: *mut u8,
+    typtbl_size1: u32,
+    typtbl_size2: u32,
+    t1: i32,
+    t2: i32,
+) -> bool {
+    idl_sub_internal(rel_buf, typtbl1, typtbl2, typtbl_end1, typtbl_end2, typtbl_size1, typtbl_size2, t1, t2)
+}
+
+unsafe fn idl_sub_internal(
+    rel_buf: *mut u32, // a buffer with at least 2 * typtbl_size1 * typtbl_size2 bits
+    typtbl1: *mut *mut u8,
+    typtbl2: *mut *mut u8,
+    typtbl_end1: *mut u8,
+    typtbl_end2: *mut u8,
+    typtbl_size1: u32,
+    typtbl_size2: u32,
+    t1: i32,
+    t2: i32,
+) -> bool {
+    debug_assert!(rel_buf != (0 as *mut usize));
 
     let rel = BitRel {
         ptr: rel_buf,
@@ -1252,9 +1288,7 @@ unsafe fn idl_sub<M: Memory>(
         size1: typtbl_size1,
         size2: typtbl_size2,
     };
-
     debug_assert!(t1 < (typtbl_size1 as i32) && t2 < (typtbl_size2 as i32));
-
     return sub(
         &rel,
         true,
