@@ -13,7 +13,7 @@ use crate::gc::{
 pub unsafe fn test() {
     println!("  Testing roots...");
 
-    let object_map: [(ObjectIdx, Vec<ObjectIdx>); 10] = from_fn(|id| (id as u32, vec![]));
+    let object_map: [(ObjectIdx, Vec<ObjectIdx>); 10] = from_fn(|id| (id, vec![]));
     let root_ids = [2, 4, 6, 8];
     let continuation_ids = [3, 5, 7];
 
@@ -30,7 +30,7 @@ unsafe fn check_visit_static_roots(heap: &MotokoHeap, root_ids: &[ObjectIdx]) {
         let object = *field;
         if object.tag() != TAG_REGION {
             let array = object.as_array();
-            if array.len() == root_ids.len() as u32 {
+            if array.len() == root_ids.len() {
                 for index in 0..array.len() {
                     let mutbox_value = array.get(index);
                     let mutbox = mutbox_value.as_mutbox();
@@ -51,7 +51,7 @@ unsafe fn check_visit_continuation_table(heap: &MotokoHeap, continuation_ids: &[
         let object = *field;
         if object.tag() != TAG_REGION {
             let array = object.as_array();
-            if array.len() == continuation_ids.len() as u32 {
+            if array.len() == continuation_ids.len() {
                 assert_eq!(context.len(), 0);
                 for index in 0..array.len() {
                     let element = array.get(index);
@@ -93,10 +93,9 @@ unsafe fn get_roots(heap: &MotokoHeap) -> Roots {
     ]
 }
 
-fn object_id(heap: &MotokoHeap, address: usize) -> u32 {
+fn object_id(heap: &MotokoHeap, address: usize) -> usize {
     let offset = address - heap.heap_base_address();
     const OBJECT_SIZE: usize = size_of::<Array>() + WORD_SIZE;
-    assert_eq!(OBJECT_SIZE, 16);
     assert_eq!(offset % OBJECT_SIZE, 0);
-    (offset / OBJECT_SIZE) as u32
+    offset / OBJECT_SIZE
 }

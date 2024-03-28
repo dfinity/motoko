@@ -70,15 +70,15 @@
         "version": "v1.2.0"
     },
     "motoko-base": {
-        "branch": "next-moc",
+        "branch": "pull/589/head",
         "description": "The Motoko base library",
-        "homepage": null,
+        "homepage": "",
         "owner": "dfinity",
         "repo": "motoko-base",
-        "rev": "86a99923f69a7c46085b8b4ffbc5748725920c6f",
-        "sha256": "1a6pvavjshyxhm5859zys76n0sw83wx3bigs90vqvr5nv5aw1189",
+        "rev": "6285f0cd283305cf3116fff4836dbe97043c5830",
+        "sha256": "1x5h87bclahfmlr292j0rvrgz3nkv4i776klcdpxq4xcpyzfmg3i",
         "type": "tarball",
-        "url": "https://github.com/dfinity/motoko-base/archive/86a99923f69a7c46085b8b4ffbc5748725920c6f.tar.gz",
+        "url": "https://github.com/dfinity/motoko-base/archive/6285f0cd283305cf3116fff4836dbe97043c5830.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "motoko-matchers": {
@@ -131,6 +131,18 @@
         "sha256": "0f6x1lxi6ks5404ggnlmnj6d91834qya2hb4fbkfcxiids2wq17d",
         "type": "tarball",
         "url": "https://github.com/mozilla/nixpkgs-mozilla/archive/1ca9ee7192f973fd67b0988bdd77b8c11ae245a6.tar.gz",
+        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
+    },
+    "nixpkgs-unstable": {
+        "branch": "master",
+        "description": "Nix Packages collection & NixOS",
+        "homepage": "",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "9d2864289e65d0dc841123ae86bc7b3f77b6d12d",
+        "sha256": "0f3bcphzrjm1hs81mhpfx1hqxfnbvhhv5hv82wi1h3f735i279ja",
+        "type": "tarball",
+        "url": "https://github.com/NixOS/nixpkgs/archive/9d2864289e65d0dc841123ae86bc7b3f77b6d12d.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ocaml-vlq": {

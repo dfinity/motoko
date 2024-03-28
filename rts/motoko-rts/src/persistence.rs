@@ -21,7 +21,7 @@ use self::compatibility::TypeDescriptor;
 #[cfg(feature = "ic")]
 const FINGERPRINT: [char; 32] = [
     'M', 'O', 'T', 'O', 'K', 'O', ' ', 'O', 'R', 'T', 'H', 'O', 'G', 'O', 'N', 'A', 'L', ' ', 'P',
-    'E', 'R', 'S', 'I', 'S', 'T', 'E', 'N', 'C', 'E', ' ', '3', '2',
+    'E', 'R', 'S', 'I', 'S', 'T', 'E', 'N', 'C', 'E', ' ', '6', '4',
 ];
 #[cfg(feature = "ic")]
 const VERSION: usize = 1;
@@ -56,7 +56,6 @@ const METADATA_ADDRESS: usize = 4 * MB + 512 * KB;
 /// The reserved maximum size of the metadata, contains a reserve for future extension of the metadata.
 const METADATA_RESERVE: usize = 512 * KB;
 
-// TODO: Include partition table in reserved space.
 pub const HEAP_START: usize = METADATA_ADDRESS + METADATA_RESERVE;
 
 const _: () = assert!(core::mem::size_of::<PersistentMetadata>() <= METADATA_RESERVE);
@@ -107,7 +106,7 @@ impl PersistentMetadata {
 /// reuse the persistent memory on a canister upgrade.
 #[cfg(feature = "ic")]
 pub unsafe fn initialize_memory<M: Memory>(mem: &mut M) {
-    mem.grow_memory(HEAP_START as u64);
+    mem.grow_memory(HEAP_START);
     let metadata = PersistentMetadata::get();
     if metadata.is_initialized() {
         metadata.check_version();
@@ -156,16 +155,16 @@ pub(crate) unsafe fn stable_actor_location() -> *mut Value {
 /// Used for upgrading to an actor with additional stable fields.
 #[no_mangle]
 #[cfg(feature = "ic")]
-pub unsafe extern "C" fn contains_field(actor: Value, field_hash: u32) -> bool {
+pub unsafe extern "C" fn contains_field(actor: Value, field_hash: usize) -> bool {
     use crate::constants::WORD_SIZE;
 
     let object = actor.as_object();
     let hash_blob = (*object).hash_blob.as_blob();
-    assert_eq!(hash_blob.len().as_u32() % WORD_SIZE, 0);
-    let number_of_fields = hash_blob.len().as_u32() / WORD_SIZE;
-    let mut current_address = hash_blob.payload_const() as u32;
+    assert_eq!(hash_blob.len().as_usize() % WORD_SIZE, 0);
+    let number_of_fields = hash_blob.len().as_usize() / WORD_SIZE;
+    let mut current_address = hash_blob.payload_const() as usize;
     for _ in 0..number_of_fields {
-        let hash_address = current_address as *mut u32;
+        let hash_address = current_address as *mut usize;
         let hash_value = *hash_address;
         // The hash sequence is sorted: Stop when the hash matches or cannot exist.
         if hash_value >= field_hash {
@@ -220,4 +219,16 @@ pub unsafe extern "C" fn get_upgrade_instructions() -> u64 {
 pub unsafe extern "C" fn set_upgrade_instructions(instructions: u64) {
     let metadata = PersistentMetadata::get();
     (*metadata).upgrade_instructions = instructions;
+}
+
+/// Only used in WASI mode: Get a static temporary print buffer that resides in 32-bit address range.
+/// This buffer has a fix length of 512 bytes, and resides at the end of the metadata reserve.
+#[no_mangle]
+#[cfg(feature = "ic")]
+pub unsafe extern "C" fn buffer_in_32_bit_range() -> usize {
+    use crate::types::size_of;
+
+    const BUFFER_SIZE: usize = 512;
+    assert!(size_of::<PersistentMetadata>().to_bytes().as_usize() + BUFFER_SIZE < METADATA_RESERVE);
+    METADATA_ADDRESS + METADATA_RESERVE - BUFFER_SIZE
 }

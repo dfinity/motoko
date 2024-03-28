@@ -20,7 +20,7 @@ pub unsafe fn test() {
     test_array_slicing(&mut mem, 0);
 }
 
-unsafe fn test_array_slicing(mem: &mut TestMemory, array_length: u32) {
+unsafe fn test_array_slicing(mem: &mut TestMemory, array_length: usize) {
     let array = alloc_array(mem, array_length).as_array();
     let mut last_offset = 0;
     loop {
