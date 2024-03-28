@@ -621,10 +621,9 @@ let rec check_exp env (exp:Ir.exp) : unit =
       check_typ env t1;
       check (store_typ t1) "Invalid type argument to ICStableRead";
       t1 <: t
-    | ICStableWrite t1, [exp1] ->
+    | ICStableWrite t1, [] ->
       check_typ env t1;
       check (store_typ t1) "Invalid type argument to ICStableWrite";
-      typ exp1 <: t1;
       T.unit <: t
     | NumConvWrapPrim (p1, p2), [e] ->
       (* we should check if this conversion is supported *)
@@ -803,7 +802,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     typ exp_k <: T.Func (T.Local, T.Returns, [], ts, []);
     typ exp_r <: T.Func (T.Local, T.Returns, [], [T.error], []);
   | ActorE (ds, fs,
-      { preupgrade; postupgrade; meta; heartbeat; timer; inspect }, t0) ->
+      { preupgrade; postupgrade; meta; heartbeat; timer; inspect }, t0, build_stable_actor) ->
     (* TODO: check meta *)
     let env' = { env with async = None } in
     let scope1 = gather_block_decs env' ds in
@@ -814,6 +813,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     check_exp env'' heartbeat;
     check_exp env'' timer;
     check_exp env'' inspect;
+    check_exp env'' build_stable_actor;
     typ preupgrade <: T.unit;
     typ postupgrade <: T.unit;
     typ heartbeat <: T.unit;
@@ -1144,7 +1144,9 @@ let check_comp_unit env = function
     let env' = adjoin env scope in
     check_decs env' ds
   | ActorU (as_opt, ds, fs,
-      { preupgrade; postupgrade; meta; heartbeat; timer; inspect }, t0) ->
+      { preupgrade; postupgrade; meta; heartbeat; timer; inspect }, actor_type, build_stable_actor) ->
+    let t0 = actor_type.transient_actor_type in
+    let stable_actor_type = actor_type.stable_actor_type in
     let check p = check env no_region p in
     let (<:) t1 t2 = check_sub env no_region t1 t2 in
     let env' = match as_opt with
@@ -1162,11 +1164,13 @@ let check_comp_unit env = function
     check_exp env'' heartbeat;
     check_exp env'' timer;
     check_exp env'' inspect;
+    check_exp env'' build_stable_actor;
     typ preupgrade <: T.unit;
     typ postupgrade <: T.unit;
     typ heartbeat <: T.unit;
     typ timer <: T.unit;
     typ inspect <: T.unit;
+    typ build_stable_actor <: stable_actor_type;
     check (T.is_obj t0) "bad annotation (object type expected)";
     let (s0, tfs0) = T.as_obj t0 in
     let val_tfs0 = List.filter (fun tf -> not (T.is_typ tf.T.typ)) tfs0 in

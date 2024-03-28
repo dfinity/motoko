@@ -12,7 +12,12 @@ use crate::{
     gc::incremental::State,
     memory::Memory,
     persistence::compatibility::memory_compatible,
+    region::{
+        VERSION_GRAPH_COPY_NO_REGIONS, VERSION_GRAPH_COPY_REGIONS, VERSION_STABLE_HEAP_NO_REGIONS,
+        VERSION_STABLE_HEAP_REGIONS,
+    },
     rts_trap_with,
+    stable_mem::read_persistence_version,
     types::{Value, TAG_BLOB},
 };
 
@@ -92,7 +97,6 @@ impl PersistentMetadata {
     #[cfg(feature = "ic")]
     unsafe fn initialize<M: Memory>(self: *mut Self, mem: &mut M) {
         use crate::gc::incremental::IncrementalGC;
-        debug_assert!(!self.is_initialized());
         (*self).fingerprint = FINGERPRINT;
         (*self).version = VERSION;
         (*self).stable_actor = DEFAULT_VALUE;
@@ -102,17 +106,35 @@ impl PersistentMetadata {
     }
 }
 
-/// Initialize fresh persistent memory after the canister installation or
-/// reuse the persistent memory on a canister upgrade.
+/// Initialize fresh persistent memory after the canister installation or reuse
+/// the persistent memory on a canister upgrade if enhanced orthogonal persistence
+/// is active. For graph-copy-based destabilization, the memory is reinitialized.
 #[cfg(feature = "ic")]
 pub unsafe fn initialize_memory<M: Memory>(mem: &mut M) {
     mem.grow_memory(HEAP_START);
     let metadata = PersistentMetadata::get();
-    if metadata.is_initialized() {
+    if metadata.is_initialized() && use_enhanced_orthogonal_persistence() {
         metadata.check_version();
     } else {
         metadata.initialize(mem);
     }
+}
+
+unsafe fn use_enhanced_orthogonal_persistence() -> bool {
+    match read_persistence_version() {
+        VERSION_STABLE_HEAP_NO_REGIONS | VERSION_STABLE_HEAP_REGIONS => true,
+        VERSION_GRAPH_COPY_NO_REGIONS | VERSION_GRAPH_COPY_REGIONS => false,
+        _ => rts_trap_with("Unsupported persistence version"),
+    }
+}
+
+/// Used for graph-copy-based stabilization. Clears main memory and deserializes
+/// stable objects from stable memory.
+/// Note: Incremental destabilization needs to stop the GC after `reset_memory`.
+pub unsafe fn reset_memory<M: Memory>(mem: &mut M) {
+    mem.grow_memory(HEAP_START);
+    let metadata = PersistentMetadata::get();
+    metadata.initialize(mem);
 }
 
 /// Returns the stable sub-record of the actor of the upgraded canister version.
@@ -175,7 +197,7 @@ pub unsafe extern "C" fn contains_field(actor: Value, field_hash: usize) -> bool
     false
 }
 
-/// Register the stable actor type on canister installation and upgrade.
+/// Register the stable actor type on canister initialization and upgrade.
 /// The type is stored in the persistent metadata memory for later retrieval on canister upgrades.
 /// On an upgrade, the memory compatibility between the new and existing stable type is checked.
 /// The `new_type` value points to a blob encoding the new stable actor type.

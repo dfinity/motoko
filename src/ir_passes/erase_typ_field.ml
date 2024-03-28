@@ -126,7 +126,7 @@ let transform prog =
       DefineE (id, mut, t_exp exp1)
     | FuncE (x, s, c, typbinds, args, ret_tys, exp) ->
       FuncE (x, s, c, t_typ_binds typbinds, t_args args, List.map t_typ ret_tys, t_exp exp)
-    | ActorE (ds, fs, {meta; preupgrade; postupgrade; heartbeat; timer; inspect}, typ) ->
+    | ActorE (ds, fs, {meta; preupgrade; postupgrade; heartbeat; timer; inspect}, typ, build_stable_actor) ->
       ActorE (t_decs ds, t_fields fs,
        {meta;
         preupgrade = t_exp preupgrade;
@@ -134,7 +134,9 @@ let transform prog =
         heartbeat = t_exp heartbeat;
         timer = t_exp timer;
         inspect = t_exp inspect;
-       }, t_typ typ)
+       }, 
+       t_typ typ,
+       t_exp build_stable_actor)
     | NewObjE (sort, ids, t) ->
       NewObjE (sort, t_fields ids, t_typ t)
     | SelfCallE _ -> assert false
@@ -207,7 +209,7 @@ let transform prog =
   and t_comp_unit = function
     | LibU _ -> raise (Invalid_argument "cannot compile library")
     | ProgU ds -> ProgU (t_decs ds)
-    | ActorU (args_opt, ds, fs, {meta; preupgrade; postupgrade; heartbeat; timer; inspect}, t) ->
+    | ActorU (args_opt, ds, fs, {meta; preupgrade; postupgrade; heartbeat; timer; inspect}, { transient_actor_type; stable_actor_type }, build_stable_actor) ->
       ActorU (Option.map t_args args_opt, t_decs ds, t_fields fs,
         { meta;
           preupgrade = t_exp preupgrade;
@@ -215,7 +217,11 @@ let transform prog =
           heartbeat = t_exp heartbeat;
           timer = t_exp timer;
           inspect = t_exp inspect;
-        }, t_typ t)
+        }, 
+        { transient_actor_type = t_typ transient_actor_type;
+          stable_actor_type = t_typ stable_actor_type; 
+        },
+        t_exp build_stable_actor)
   and t_prog (cu, flavor) = (t_comp_unit cu, { flavor with has_typ_field = false } )
 in
   t_prog prog

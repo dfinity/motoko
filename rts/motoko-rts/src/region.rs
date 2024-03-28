@@ -6,9 +6,12 @@ use crate::types::{size_of, Blob, Bytes, Region, Value, TAG_REGION};
 // Versions
 // Should agree with constants in StableMem in compile.ml
 // Version 0 to 2 are legacy.
-const VERSION_STABLE_HEAP_NO_REGIONS: usize = 3;
-const VERSION_STABLE_HEAP_REGIONS: usize = 4;
+pub(crate) const VERSION_GRAPH_COPY_NO_REGIONS: usize = 3;
+pub(crate) const VERSION_GRAPH_COPY_REGIONS: usize = 4;
+pub(crate) const VERSION_STABLE_HEAP_NO_REGIONS: usize = 5;
+pub(crate) const VERSION_STABLE_HEAP_REGIONS: usize = 6;
 
+const _: () = assert!(meta_data::size::PAGE_IN_BYTES == crate::stable_mem::PAGE_SIZE);
 const _: () = assert!(meta_data::size::PAGES_IN_BLOCK <= u8::MAX as u32);
 const _: () = assert!(meta_data::max::BLOCKS <= u16::MAX);
 const _: () = assert!(meta_data::max::REGIONS <= u64::MAX - 1);
@@ -475,14 +478,14 @@ pub(crate) unsafe fn region0_get_ptr_loc() -> *mut Value {
 #[ic_mem_fn]
 pub unsafe fn region_new<M: Memory>(mem: &mut M) -> Value {
     match crate::stable_mem::get_version() {
-        VERSION_STABLE_HEAP_REGIONS => {}
-        VERSION_STABLE_HEAP_NO_REGIONS => {
+        VERSION_STABLE_HEAP_NO_REGIONS | VERSION_GRAPH_COPY_NO_REGIONS => {
             if crate::stable_mem::size() == 0 {
                 region_migration_from_no_stable_memory(mem);
             } else {
                 region_migration_from_some_stable_memory(mem);
             }
         }
+        VERSION_STABLE_HEAP_REGIONS | VERSION_GRAPH_COPY_REGIONS => {}
         _ => {
             assert!(false);
         }
@@ -561,7 +564,10 @@ pub(crate) unsafe fn region_migration_from_no_stable_memory<M: Memory>(mem: &mut
     use crate::stable_mem::{get_version, grow, size, write};
     use meta_data::size::{PAGES_IN_BLOCK, PAGE_IN_BYTES};
 
-    assert!(get_version() == VERSION_STABLE_HEAP_NO_REGIONS);
+    assert!(
+        get_version() == VERSION_STABLE_HEAP_NO_REGIONS
+            || get_version() == VERSION_GRAPH_COPY_NO_REGIONS
+    );
     assert_eq!(size(), 0);
 
     // pages required for meta_data (9/ 960KiB), much less than PAGES_IN_BLOCK (128/ 8MB) for a full block
@@ -591,7 +597,12 @@ pub(crate) unsafe fn region_migration_from_no_stable_memory<M: Memory>(mem: &mut
     // Write magic header
     write_magic();
 
-    crate::stable_mem::set_version(VERSION_STABLE_HEAP_REGIONS);
+    let new_version = match get_version() {
+        VERSION_STABLE_HEAP_NO_REGIONS => VERSION_STABLE_HEAP_REGIONS,
+        VERSION_GRAPH_COPY_NO_REGIONS => VERSION_GRAPH_COPY_REGIONS,
+        _ => unreachable!(),
+    };
+    crate::stable_mem::set_version(new_version);
 
     // Region 0 -- classic API for stable memory, as a dedicated region.
     REGION_0 = region_new(mem);
@@ -635,7 +646,7 @@ pub(crate) unsafe fn region_migration_from_some_stable_memory<M: Memory>(mem: &m
     // - copy the head block of data from temp blob into new "final block" (logically still first) for region 0.
     // - initialize the meta data for the region system in vacated initial block.
 
-    use crate::stable_mem::{grow, read, size, write};
+    use crate::stable_mem::{get_version, grow, read, size, write};
 
     let header_len = meta_data::size::BLOCK_IN_BYTES as u32;
 
@@ -718,7 +729,12 @@ pub(crate) unsafe fn region_migration_from_some_stable_memory<M: Memory>(mem: &m
         meta_data::block_region_table::set(BlockId(i), Some((RegionId(0), rank, page_count)))
     }
 
-    crate::stable_mem::set_version(VERSION_STABLE_HEAP_REGIONS);
+    let new_version = match get_version() {
+        VERSION_STABLE_HEAP_NO_REGIONS => VERSION_STABLE_HEAP_REGIONS,
+        VERSION_GRAPH_COPY_NO_REGIONS => VERSION_GRAPH_COPY_REGIONS,
+        _ => unreachable!(),
+    };
+    crate::stable_mem::set_version(new_version);
 
     /* "Recover" the region data into a heap object. */
     REGION_0 = region_recover(mem, &RegionId(0));
@@ -773,7 +789,7 @@ pub(crate) unsafe fn region_migration_from_regions_plus<M: Memory>(mem: &mut M) 
 #[ic_mem_fn(ic_only)]
 pub(crate) unsafe fn region_init<M: Memory>(mem: &mut M, use_stable_regions: usize) {
     match crate::stable_mem::get_version() {
-        VERSION_STABLE_HEAP_NO_REGIONS => {
+        VERSION_STABLE_HEAP_NO_REGIONS | VERSION_GRAPH_COPY_NO_REGIONS => {
             if use_stable_regions != 0 {
                 if crate::stable_mem::size() == 0 {
                     region_migration_from_no_stable_memory(mem);
@@ -786,7 +802,7 @@ pub(crate) unsafe fn region_init<M: Memory>(mem: &mut M, use_stable_regions: usi
                 }
             }
         }
-        VERSION_STABLE_HEAP_REGIONS => {
+        VERSION_STABLE_HEAP_REGIONS | VERSION_GRAPH_COPY_REGIONS => {
             region_migration_from_regions_plus(mem); //check format & recover region0
             debug_assert!(meta_data::offset::FREE < BLOCK_BASE);
             debug_assert!(

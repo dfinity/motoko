@@ -462,8 +462,6 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
           V.Env.empty tfs
         in
         k (V.Obj ve)
-      | ICStableWrite _, [v1] ->
-        k V.unit (* faking it *)
       | SelfRef _, [] ->
         k (V.Blob env.self)
       | SystemTimePrim, [] ->
@@ -557,7 +555,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | _ -> V.Func (cc, f)
     in
     k v
-  | ActorE (ds, fs, _, _) ->
+  | ActorE (ds, fs, _, _, _) ->
     interpret_actor env ds fs k
   | NewObjE (sort, fs, _) ->
     k (interpret_fields env fs)
@@ -854,11 +852,11 @@ and interpret_comp_unit env cu k = match cu with
     let ve = declare_decs ds V.Env.empty in
     let env' = adjoin_vals env ve in
     interpret_decs env' ds k
-  | ActorU (None, ds, fs, _, _)
-  | ActorU (Some [], ds, fs, _, _) ->
+  | ActorU (None, ds, fs, _, _, _)
+  | ActorU (Some [], ds, fs, _, _, _) ->
     (* to match semantics of installation with empty argument *)
     interpret_actor env ds fs (fun _ -> k ())
-  | ActorU (Some as_, ds, fs, up, t) ->
+  | ActorU (Some as_, ds, fs, up, t, e) ->
     (* create the closure *)
     let sort = T.Local in
     let cc = CC.({ sort; control = T.Returns; n_args = List.length as_; n_res = 1 }) in

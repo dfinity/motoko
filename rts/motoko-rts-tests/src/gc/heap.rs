@@ -38,12 +38,14 @@ impl MotokoHeap {
         map: &[(ObjectIdx, Vec<ObjectIdx>)],
         roots: &[ObjectIdx],
         continuation_table: &[ObjectIdx],
+        free_space: usize,
     ) -> MotokoHeap {
         MotokoHeap {
             inner: Rc::new(RefCell::new(MotokoHeapInner::new(
                 map,
                 roots,
                 continuation_table,
+                free_space,
             ))),
         }
     }
@@ -193,6 +195,7 @@ impl MotokoHeapInner {
         map: &[(ObjectIdx, Vec<ObjectIdx>)],
         roots: &[ObjectIdx],
         continuation_table: &[ObjectIdx],
+        free_space: usize,
     ) -> MotokoHeapInner {
         // Check test correctness: an object should appear at most once in `map`
         {
@@ -238,7 +241,7 @@ impl MotokoHeapInner {
         const HEAP_ALIGNMENT: usize = usize::BITS as usize;
         // The Worst-case unalignment is one word less than the intended heap alignment
         // (assuming that we have general word alignment). So we over-allocate `HEAP_ALIGNMENT - WORD_SIZE` bytes.
-        let mut heap = vec![0u8; heap_size + HEAP_ALIGNMENT - WORD_SIZE];
+        let mut heap = vec![0u8; heap_size + HEAP_ALIGNMENT - WORD_SIZE + free_space];
 
         // Align the dynamic heap start.
         let realign = (HEAP_ALIGNMENT

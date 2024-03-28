@@ -111,7 +111,7 @@ impl Bytes<usize> {
         Words((self.0 + WORD_SIZE - 1) / WORD_SIZE)
     }
 
-    pub fn as_usize(self) -> usize {
+    pub const fn as_usize(self) -> usize {
         self.0
     }
 }
@@ -227,7 +227,7 @@ impl Value {
 
     /// Get the raw value
     #[inline]
-    pub fn get_raw(&self) -> usize {
+    pub const fn get_raw(&self) -> usize {
         self.0
     }
 
@@ -335,7 +335,7 @@ impl Value {
 
     /// Get the pointer as `Object` using forwarding. In debug mode panics if the value is not a pointer.
     pub unsafe fn as_object(self) -> *mut Object {
-        debug_assert!(self.get().is_ptr());
+        debug_assert!(self.tag() == TAG_OBJECT);
         self.check_forwarding_pointer();
         self.forward().get_ptr() as *mut Object
     }
@@ -437,7 +437,7 @@ pub const TAG_CLOSURE: Tag = 11;
 pub const TAG_SOME: Tag = 13;
 pub const TAG_VARIANT: Tag = 15;
 pub const TAG_BLOB: Tag = 17;
-pub const TAG_FWD_PTR: Tag = 19; // Only used by the copying GC - not to be confused with forwarding pointer in the header used for incremental GC.
+pub const TAG_FWD_PTR: Tag = 19; // Used by graph copy stabilization and the copying GC - not to be confused with the incremental GC's forwarding pointer.
 pub const TAG_BIGINT: Tag = 21;
 pub const TAG_CONCAT: Tag = 23;
 pub const TAG_REGION: Tag = 25;
@@ -465,6 +465,10 @@ pub struct Obj {
 }
 
 impl Obj {
+    pub fn new(tag: Tag, forward: Value) -> Obj {
+        Obj { tag, forward }
+    }
+
     pub fn init_forward(&mut self, value: Value) {
         self.forward = value;
     }
@@ -528,6 +532,19 @@ impl Array {
         write_with_barrier(mem, slot_addr, value);
     }
 
+    /// Write a scalar value to an array element.
+    /// No need for a write barrier.
+    pub unsafe fn set_scalar(self: *mut Self, idx: usize, value: Value) {
+        debug_assert!(value.is_scalar());
+        self.set_raw(idx, value);
+    }
+
+    /// Note: Only directly used by graph destabilization. No write barrier is applied.
+    pub unsafe fn set_raw(self: *mut Self, idx: usize, value: Value) {
+        let slot_addr = self.element_address(idx);
+        *(slot_addr as *mut Value) = value;
+    }
+
     #[inline]
     unsafe fn element_address(self: *const Self, idx: usize) -> usize {
         debug_assert!(self.len() > idx);
@@ -570,7 +587,6 @@ impl Object {
         hash_blob_length / WORD_SIZE
     }
 
-    #[cfg(debug_assertions)]
     pub(crate) unsafe fn get(self: *mut Self, idx: usize) -> Value {
         *self.payload_addr().add(idx)
     }
@@ -702,7 +718,11 @@ pub struct BigInt {
 
 impl BigInt {
     pub unsafe fn len(self: *mut Self) -> Bytes<usize> {
-        Bytes((*self).mp_int.alloc as usize * core::mem::size_of::<mp_digit>())
+        Self::data_length(&(*self).mp_int)
+    }
+
+    pub unsafe fn data_length(mp_int: *const mp_int) -> Bytes<usize> {
+        Bytes((*mp_int).alloc as usize * core::mem::size_of::<mp_digit>())
     }
 
     pub unsafe fn payload_addr(self: *mut Self) -> *mut mp_digit {
