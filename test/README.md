@@ -137,7 +137,7 @@ See `README.md` in the `random/` subdirectory.
 Performance regression testing
 ------------------------------
 
-The purpose of the `perf/` directory is to have a small (<20) set of test
+The purpose of the `perf/` directory is to have a small (\<20) set of test
 programs representative of real use of Motoko.
 
 For these tests the test suite records the following numbers:
