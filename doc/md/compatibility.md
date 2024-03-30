@@ -174,21 +174,22 @@ Motoko compiler (`moc`) now supports:
 -   `moc --stable-compatible <pre> <post>` checks two `.most` files for upgrade compatibility
 
 To upgrade from `cur.wasm` to `nxt.wasm` we need check both Candid interface and stable variables are "compatible"
-
-    didc check nxt.did cur.did  // nxt <: cur
-    moc --stable-compatible cur.most nxt.most  // cur <<: nxt
-
+```
+didc check nxt.did cur.did  // nxt <: cur
+moc --stable-compatible cur.most nxt.most  // cur <<: nxt
+```
 E.g. the upgrade from `v2` to `v3` fails this check:
-
-    > moc --stable-compatible v2.most v3.most
-    (unknown location): Compatibility error [M0170], stable variable state of previous type
-      var Int
-    cannot be consumed at new type
-      var Nat
+```
+> moc --stable-compatible v2.most v3.most
+(unknown location): Compatibility error [M0170], stable variable state of previous type
+  var Int
+cannot be consumed at new type
+  var Nat
+```
 
 ## Examples in the wild
 
-A common, real-world example of an incompatible upgrade can be found on the forum: <https://forum.dfinity.org/t/questions-about-data-structures-and-migrations/822/12?u=claudio>
+A common, real-world example of an incompatible upgrade can be found on the forum: \<https://forum.dfinity.org/t/questions-about-data-structures-and-migrations/822/12?u=claudio/\>
 
 In that example, a user was attempting to add a field to the record payload of an array, by upgrading from stable type interface:
 
