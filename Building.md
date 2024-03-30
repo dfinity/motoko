@@ -125,15 +125,15 @@ If you want to update the portal documentation, typically to keep in sync with a
 ## Coverage report
 
 To build with coverage enabled, compile the binaries in `src/` with
-    ```
-    make DUNE_OPTS="--instrument-with bisect_ppx"`
-    ```
+```
+make DUNE_OPTS="--instrument-with bisect_ppx"`
+```
 and then use `bisect-ppx-report html` to produce a report.
 
 The full report can be built with
-    ```
-    nix-build -A tests.coverage
-    ```
+```
+nix-build -A tests.coverage
+```
 and the report for latest `master` can be viewed at
 \<https://dfinity.github.io/motoko/coverage/\>.
 

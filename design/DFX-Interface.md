@@ -157,12 +157,12 @@ prints to the standard output all URLs _directly_ imported by
 URL, and optionally a full path if `moc` can resolve the URL, separated by a space.
 For example,
 ```
-    mo:base/List
-    mo:other_package/Some/Module
-    ic:em77e-bvlzu-aq
-    canister:alias
-    ./local_import some/path/local_import.mo
-    ./runtime some/path/runtime.wasm
+mo:base/List
+mo:other_package/Some/Module
+ic:em77e-bvlzu-aq
+canister:alias
+./local_import some/path/local_import.mo
+./runtime some/path/runtime.wasm
 ```
 This _reads_ only `some/path/input.mo`, and writes no files.
 
@@ -176,10 +176,10 @@ Generating documentation
 
 In order to generate documentation for a given Motoko package `dfx` invokes
 ```
-    mo-doc
-        [ --source source_dir ]
-        [ --output output_dir ]
-        [ --format html|adoc ]
+mo-doc
+    [ --source source_dir ]
+    [ --output output_dir ]
+    [ --format html|adoc ]
 ```
 The default source directory is `src`, the default output is `docs`, and the default format is `html`.
 `mo-doc` will then generate documentation in the output directory mirroring the directory/file structure of the source directory.

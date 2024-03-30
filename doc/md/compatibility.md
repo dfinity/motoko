@@ -180,11 +180,11 @@ moc --stable-compatible cur.most nxt.most  // cur <<: nxt
 ```
 E.g. the upgrade from `v2` to `v3` fails this check:
 ```
-    > moc --stable-compatible v2.most v3.most
-    (unknown location): Compatibility error [M0170], stable variable state of previous type
-      var Int
-    cannot be consumed at new type
-      var Nat
+> moc --stable-compatible v2.most v3.most
+(unknown location): Compatibility error [M0170], stable variable state of previous type
+  var Int
+cannot be consumed at new type
+  var Nat
 ```
 
 ## Examples in the wild
