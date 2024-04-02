@@ -5876,15 +5876,15 @@ module RTS_Exports = struct
 
     (* Value constructors *)
 
-    let int_from_int64_fi = E.add_fun env "int_from_int64" (
+    let int_from_isize_fi = E.add_fun env "int_from_isize" (
       Func.of_body env ["v", I64Type] [I64Type] (fun env ->
         let get_v = G.i (LocalGet (nr 0l)) in
         get_v ^^ BigNum.from_signed_word64 env
       )
     ) in
     E.add_export env (nr {
-      name = Lib.Utf8.decode "int_from_int64";
-      edesc = nr (FuncExport (nr int_from_int64_fi))
+      name = Lib.Utf8.decode "int_from_isize";
+      edesc = nr (FuncExport (nr int_from_isize_fi))
     });
 
     (* Traps *)
@@ -5898,7 +5898,23 @@ module RTS_Exports = struct
       name = Lib.Utf8.decode "bigint_trap";
       edesc = nr (FuncExport (nr bigint_trap_fi))
     });
-   
+
+    (* Keep a memory reserve when in update or init state.
+       This reserve can be used by queries, composite queries, and upgrades. *)
+    let keep_memory_reserve_fi = E.add_fun env "keep_memory_reserve" (
+      Func.of_body env [] [I32Type] (fun env ->
+        Lifecycle.get env ^^
+        compile_eq_const Lifecycle.(int_of_state InUpdate) ^^
+        Lifecycle.get env ^^
+        compile_eq_const Lifecycle.(int_of_state InInit) ^^
+        G.i (Binary (Wasm_exts.Values.I64 I64Op.Or)) ^^
+        Bool.to_rts_int32
+      )
+    ) in
+    E.add_export env (nr {
+      name = Lib.Utf8.decode "keep_memory_reserve";
+      edesc = nr (FuncExport (nr keep_memory_reserve_fi))
+    });
 
     let rts_trap_fi = E.add_fun env "rts_trap" (
       (* `libc` stil uses 32-bit length parameter for `rts_trap` *)
