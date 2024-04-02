@@ -729,7 +729,7 @@ impl Object {
         (*self).size
     }
 
-    #[enhanced_orthogonal_persistence]
+    #[allow(unused)]
     pub(crate) unsafe fn get(self: *mut Self, idx: usize) -> Value {
         *self.payload_addr().add(idx)
     }
@@ -1028,6 +1028,13 @@ pub struct Bits64 {
     pub bits: u64,
 }
 
+#[enhanced_orthogonal_persistence]
+impl Bits64 {
+    pub fn bits(&self) -> u64 {
+        self.bits
+    }
+}
+
 #[repr(C)] // See the note at the beginning of this module
 #[classical_persistence]
 pub struct Bits64 {
@@ -1036,6 +1043,13 @@ pub struct Bits64 {
     // boundary.
     bits_lo: u32,
     bits_hi: u32,
+}
+
+#[classical_persistence]
+impl Bits64 {
+    pub fn bits(&self) -> u64 {
+        (u64::from(self.bits_hi) << 32) | u64::from(self.bits_lo)
+    }
 }
 
 #[repr(C)] // See the note at the beginning of this module

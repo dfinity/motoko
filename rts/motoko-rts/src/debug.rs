@@ -1,5 +1,8 @@
 #![allow(dead_code)]
 
+use motoko_rts_macros::classical_persistence;
+use motoko_rts_macros::enhanced_orthogonal_persistence;
+
 use crate::print::*;
 use crate::types::*;
 
@@ -52,7 +55,7 @@ pub(crate) unsafe fn print_continuation_table(continuation_tbl_loc: *mut Value) 
 
     for i in 0..len {
         let elem = arr.get(i);
-        if elem.is_non_null_ptr() {
+        if is_valid_pointer(elem) {
             let _ = write!(&mut write_buf, "{}: ", i);
             print_boxed_object(&mut write_buf, elem.get_ptr());
             print(&write_buf);
@@ -60,6 +63,16 @@ pub(crate) unsafe fn print_continuation_table(continuation_tbl_loc: *mut Value) 
         }
     }
     println!(50, "End of continuation table");
+}
+
+#[classical_persistence]
+fn is_valid_pointer(value: Value) -> bool {
+    value.is_ptr()
+}
+
+#[enhanced_orthogonal_persistence]
+fn is_valid_pointer(value: Value) -> bool {
+    value.is_non_null_ptr()
 }
 
 pub(crate) unsafe fn print_static_roots(static_roots: Value) {
@@ -123,13 +136,13 @@ unsafe fn print_tagged_scalar(buf: &mut WriteBuf, p: usize) {
 pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
     let _ = write!(buf, "{:#x}: ", p);
 
-    let obj = p as *mut Obj;
-    let forward = (*obj).forward;
+    let forward = (*(p as *mut Value)).forward();
     if forward.get_ptr() != p {
         let _ = write!(buf, "<forwarded to {:#x}>", forward.get_ptr());
         return;
     }
 
+    let obj = p as *mut Obj;
     let tag = obj.tag();
 
     if tag == 0 {
@@ -143,7 +156,7 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
                 buf,
                 "<Object size={:#x} hash_ptr={:#x} field=[",
                 object.size(),
-                (*object).hash_blob.get_raw()
+                get_obj_hash_pointer(object),
             );
             for i in 0..object.size() {
                 let val = object.get(i);
@@ -181,7 +194,7 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
         }
         TAG_BITS64 => {
             let bits64 = obj as *const Bits64;
-            let _ = write!(buf, "<Bits64 {:#x}>", (*bits64).bits);
+            let _ = write!(buf, "<Bits64 {:#x}>", (*bits64).bits());
         }
         TAG_MUTBOX => {
             let mutbox = obj as *const MutBox;
@@ -237,4 +250,14 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
             let _ = write!(buf, "<??? {} ???>", other);
         }
     }
+}
+
+#[classical_persistence]
+unsafe fn get_obj_hash_pointer(object: *mut Object) -> usize {
+    (*object).hash_ptr
+}
+
+#[enhanced_orthogonal_persistence]
+unsafe fn get_obj_hash_pointer(object: *mut Object) -> usize {
+    (*object).hash_blob.get_raw()
 }
