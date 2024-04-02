@@ -7,6 +7,7 @@ use crate::{
     gc::{
         check_dynamic_heap, heap::MotokoHeap, random::generate, utils::WORD_SIZE, CheckMode,
         TestHeap,
+        utils::GC,
     },
     memory::TestMemory,
     stabilization::stable_memory::clear_stable_memory,
@@ -127,7 +128,7 @@ fn random_heap(random: &mut Rand32, max_objects: usize) -> RandomHeap {
         .iter()
         .map(|(_, references)| references.len() + 1)
         .sum();
-    let memory = descriptor.build(pointers * WORD_SIZE as usize);
+    let memory = descriptor.build(GC::Incremental, pointers * WORD_SIZE as usize);
     RandomHeap { descriptor, memory }
 }
 

@@ -1,5 +1,7 @@
 #![feature(proc_macro_hygiene)]
 
+use motoko_rts_macros::{classical_persistence, enhanced_orthogonal_persistence};
+
 #[macro_use]
 mod print;
 
@@ -11,7 +13,10 @@ mod gc;
 mod leb128;
 mod memory;
 mod principal_id;
+
+#[enhanced_orthogonal_persistence]
 mod stabilization;
+
 mod text;
 mod utf8;
 
@@ -22,7 +27,6 @@ fn main() {
     }
 
     unsafe {
-        println!("Tests started");
         bigint::test();
         bitrel::test();
         continuation_table::test();
@@ -30,11 +34,35 @@ fn main() {
         gc::test();
         leb128::test();
         principal_id::test();
-        stabilization::test();
+        persistence_test();
         text::test();
         utf8::test();
-        println!("Tests completed");
     }
+}
+
+#[enhanced_orthogonal_persistence]
+fn persistence_test() {
+    unsafe {
+        stabilization::test();
+    }
+}
+
+#[classical_persistence]
+fn persistence_test() {
+    test_read_write_64_bit();
+}
+
+#[classical_persistence]
+fn test_read_write_64_bit() {
+    use motoko_rts::types::{read64, write64};
+    println!("Testing 64-bit read-write");
+    const TEST_VALUE: u64 = 0x1234_5678_9abc_def0;
+    let mut lower = 0u32;
+    let mut upper = 0u32;
+    write64(&mut lower, &mut upper, TEST_VALUE);
+    assert_eq!(lower, 0x9abc_def0);
+    assert_eq!(upper, 0x1234_5678);
+    assert_eq!(read64(lower, upper), TEST_VALUE);
 }
 
 // Called by the RTS to panic

@@ -1,6 +1,7 @@
 use std::mem::size_of;
 
 use byteorder::{ReadBytesExt, WriteBytesExt, LE};
+use motoko_rts_macros::{incremental_gc, non_incremental_gc};
 
 /// A unique object index, used in heap descriptions.
 ///
@@ -10,6 +11,32 @@ pub type ObjectIdx = usize;
 
 /// Same as RTS `WORD_SIZE`, but `usize`
 pub const WORD_SIZE: usize = motoko_rts::constants::WORD_SIZE as usize;
+
+// Max allowed size for the mark stack in mark-compact GC tests
+#[non_incremental_gc]
+pub const MAX_MARK_STACK_SIZE: usize = 100;
+
+/// Enum for the GC implementations. GC functions are generic so we can't put them into arrays or
+/// other data types, we use this type instead.
+#[non_incremental_gc]
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum GC {
+    Copying,
+    MarkCompact,
+    Generational,
+}
+
+#[incremental_gc]
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum GC {
+    Incremental,
+}
+
+#[non_incremental_gc]
+pub static GC_IMPLS: [GC; 3] = [GC::Copying, GC::MarkCompact, GC::Generational];
+
+#[incremental_gc]
+pub static GC_IMPLS: [GC; 1] = [GC::Incremental];
 
 /// Read a little-endian (Wasm) word from given offset
 pub fn read_word(heap: &[u8], offset: usize) -> usize {

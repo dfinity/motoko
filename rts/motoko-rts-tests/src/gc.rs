@@ -22,12 +22,14 @@ use std::fmt::Write;
 
 use fxhash::{FxHashMap, FxHashSet};
 
+use self::utils::{GC, GC_IMPLS};
+
 pub fn test() {
     println!("Testing garbage collection ...");
 
     println!("  Testing pre-defined heaps...");
     for test_heap in test_heaps() {
-        run_gc_test(&test_heap);
+        run_gc_tests(&test_heap);
     }
 
     println!("  Testing random heaps...");
@@ -82,7 +84,7 @@ fn test_heaps() -> Vec<TestHeap> {
 
 fn test_random_heap(seed: u64, max_objects: usize) {
     let random_heap = random::generate(seed, max_objects);
-    run_gc_test(&random_heap);
+    run_gc_tests(&random_heap);
 }
 
 // All fields are vectors to preserve ordering. Objects are allocated/ added to root arrays etc. in
@@ -96,23 +98,30 @@ pub struct TestHeap {
 }
 
 impl TestHeap {
-    pub fn build(&self, free_space: usize) -> MotokoHeap {
+    pub fn build(&self, gc: GC, free_space: usize) -> MotokoHeap {
         MotokoHeap::new(
             &self.heap,
             &self.roots,
             &self.continuation_table,
+            gc,
             free_space,
         )
     }
 }
 
-fn run_gc_test(test_heap: &TestHeap) {
-    test_gc(test_heap);
+/// Test all GC implementations with the given heap
+fn run_gc_tests(test_heap: &TestHeap) {
+    for gc in &GC_IMPLS {
+        test_gc(
+            *gc,
+            test_heap,
+        );
+    }
     reset_gc();
 }
 
-fn test_gc(test_heap: &TestHeap) {
-    let mut heap = test_heap.build(0);
+fn test_gc(gc: GC, test_heap: &TestHeap) {
+    let mut heap = test_heap.build(gc, 0);
     let refs = &test_heap.heap;
     let roots = &test_heap.roots;
     let continuation_table = &test_heap.continuation_table;

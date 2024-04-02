@@ -7,7 +7,7 @@ use motoko_rts::{
 
 use crate::gc::{
     heap::MotokoHeap,
-    utils::{ObjectIdx, WORD_SIZE},
+    utils::{ObjectIdx, GC, WORD_SIZE},
 };
 
 pub unsafe fn test() {
@@ -17,7 +17,7 @@ pub unsafe fn test() {
     let root_ids = [2, 4, 6, 8];
     let continuation_ids = [3, 5, 7];
 
-    let heap = MotokoHeap::new(&object_map, &root_ids, &continuation_ids, 0);
+    let heap = MotokoHeap::new(&object_map, &root_ids, &continuation_ids, GC::Incremental, 0);
     check_visit_static_roots(&heap, &root_ids);
     check_visit_continuation_table(&heap, &continuation_ids);
     check_visit_region0(&heap);

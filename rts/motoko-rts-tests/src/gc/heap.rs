@@ -1,14 +1,13 @@
-use super::utils::{make_pointer, make_scalar, write_word, ObjectIdx, WORD_SIZE};
+use super::utils::{make_pointer, make_scalar, write_word, ObjectIdx, GC, WORD_SIZE};
 
 use motoko_rts::memory::Memory;
 use motoko_rts::types::*;
+use motoko_rts_macros::{incremental_gc, non_incremental_gc};
 
 use std::cell::{Ref, RefCell};
 use std::rc::Rc;
 
 use fxhash::{FxHashMap, FxHashSet};
-
-use motoko_rts::gc::incremental::partitioned_heap::PARTITION_SIZE;
 
 /// Represents Motoko heaps. Reference counted (implements `Clone`) so we can clone and move values
 /// of this type to GC callbacks.
@@ -38,6 +37,7 @@ impl MotokoHeap {
         map: &[(ObjectIdx, Vec<ObjectIdx>)],
         roots: &[ObjectIdx],
         continuation_table: &[ObjectIdx],
+        gc: GC,
         free_space: usize,
     ) -> MotokoHeap {
         MotokoHeap {
@@ -45,6 +45,7 @@ impl MotokoHeap {
                 map,
                 roots,
                 continuation_table,
+                gc,
                 free_space,
             ))),
         }
@@ -195,6 +196,7 @@ impl MotokoHeapInner {
         map: &[(ObjectIdx, Vec<ObjectIdx>)],
         roots: &[ObjectIdx],
         continuation_table: &[ObjectIdx],
+        gc: GC,
         free_space: usize,
     ) -> MotokoHeapInner {
         // Check test correctness: an object should appear at most once in `map`
@@ -236,7 +238,7 @@ impl MotokoHeapInner {
 
         let total_heap_size_bytes = root_pointers_size_bytes + dynamic_heap_size_bytes;
 
-        let heap_size = heap_size_for_gc();
+        let heap_size = heap_size_for_gc(gc, total_heap_size_bytes, map.len());
 
         const HEAP_ALIGNMENT: usize = usize::BITS as usize;
         // The Worst-case unalignment is one word less than the intended heap alignment
@@ -326,8 +328,58 @@ impl Memory for DummyMemory {
 }
 
 /// Compute the size of the heap to be allocated for the GC test.
-fn heap_size_for_gc() -> usize {
-    3 * PARTITION_SIZE
+#[non_incremental_gc]
+fn heap_size_for_gc(
+    gc: GC,
+    total_heap_size_bytes: usize,
+    n_objects: usize,
+) -> usize {
+    match gc {
+        GC::Copying => 2 * total_heap_size_bytes,
+        GC::MarkCompact => {
+            let bitmap_size_bytes = {
+                let heap_bytes = Bytes(total_heap_size_bytes);
+                // `...to_words().to_bytes()` below effectively rounds up heap size to word size
+                // then gets the bytes
+                let heap_words = heap_bytes.to_words();
+                let mark_bit_bytes = heap_words.to_bytes();
+
+                // The bitmap implementation rounds up to 64-bits to be able to read as many
+                // bits as possible in one instruction and potentially skip 64 words in the
+                // heap with single 64-bit comparison
+                (((mark_bit_bytes.as_usize() + 7) / 8) * 8) + size_of::<Blob>().to_bytes().as_usize()
+            };
+            // In the worst case the entire heap will be pushed to the mark stack, but in tests
+            // we limit the size
+            let mark_stack_words = n_objects.clamp(
+                motoko_rts::gc::mark_compact::mark_stack::INIT_STACK_SIZE.as_usize(),
+                super::utils::MAX_MARK_STACK_SIZE,
+            ) + size_of::<Blob>().as_usize();
+
+            total_heap_size_bytes + bitmap_size_bytes as usize + (mark_stack_words * WORD_SIZE)
+        }
+        GC::Generational => {
+            const ROUNDS: usize = 3;
+            const REMEMBERED_SET_MAXIMUM_SIZE: usize = 1024 * 1024 * WORD_SIZE;
+            let size = heap_size_for_gc(
+                GC::MarkCompact,
+                total_heap_size_bytes,
+                n_objects,
+            );
+            size + ROUNDS * REMEMBERED_SET_MAXIMUM_SIZE
+        }
+    }
+}
+
+#[incremental_gc]
+fn heap_size_for_gc(
+    gc: GC,
+    _total_heap_size_bytes: usize,
+    _n_objects: usize,
+) -> usize {
+    match gc {
+        GC::Incremental => 3 * motoko_rts::gc::incremental::partitioned_heap::PARTITION_SIZE,
+    }
 }
 
 /// Given a heap description (as a map from objects to objects), and the dynamic part of the heap

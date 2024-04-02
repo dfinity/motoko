@@ -1,7 +1,6 @@
-use motoko_rts::gc::incremental::partitioned_heap::PARTITION_SIZE;
-use motoko_rts::gc::incremental::{set_incremental_gc_state, IncrementalGC};
 use motoko_rts::memory::Memory;
 use motoko_rts::types::{Bytes, Value, Words};
+use motoko_rts_macros::{incremental_gc, non_incremental_gc};
 
 pub struct TestMemory {
     heap: Box<[u8]>,
@@ -62,13 +61,30 @@ impl Memory for TestMemory {
     }
 }
 
+#[incremental_gc]
 pub unsafe fn initialize_test_memory() -> TestMemory {
+    use motoko_rts::gc::incremental::partitioned_heap::PARTITION_SIZE;
+    use motoko_rts::gc::incremental::{set_incremental_gc_state, IncrementalGC};
+
     let mut memory = TestMemory::new(Bytes(PARTITION_SIZE).to_words());
     let state = IncrementalGC::initial_gc_state(&mut memory, 0);
     set_incremental_gc_state(Some(state));
     memory
 }
 
+#[non_incremental_gc]
+pub unsafe fn initialize_test_memory() -> TestMemory {
+    const TEST_MEMORY_SIZE: usize = 32 * 1024 * 1024;
+    TestMemory::new(Bytes(TEST_MEMORY_SIZE).to_words())
+}
+
+#[incremental_gc]
 pub unsafe fn reset_test_memory() {
+    use motoko_rts::gc::incremental::set_incremental_gc_state;
+
     set_incremental_gc_state(None);
+}
+
+#[non_incremental_gc]
+pub unsafe fn reset_test_memory() {
 }
