@@ -1,3 +1,5 @@
+use motoko_rts_macros::enhanced_orthogonal_persistence;
+
 pub const PAGE_SIZE: u64 = 64 * 1024;
 
 extern "C" {
@@ -13,6 +15,7 @@ extern "C" {
     pub fn moc_stable_mem_set_version(version: usize);
     pub fn moc_stable_mem_get_size() -> u64; // virtual memory size
     #[cfg(feature = "ic")]
+    #[enhanced_orthogonal_persistence]
     pub fn moc_stable_mem_set_size(pages: u64); // virtual memory size
     pub fn moc_stable_mem_grow(additional_pages: u64) -> u64;
 }

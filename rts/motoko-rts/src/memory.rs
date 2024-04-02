@@ -9,6 +9,7 @@ use motoko_rts_macros::ic_mem_fn;
 #[cfg(feature = "ic")]
 use crate::constants::MB;
 
+#[enhanced_orthogonal_persistence]
 use crate::constants::GB;
 
 // TODO: Redesign for 64-bit support by using a dynamic partition list.
@@ -16,9 +17,8 @@ use crate::constants::GB;
 #[enhanced_orthogonal_persistence]
 pub const MAXIMUM_MEMORY_SIZE: Bytes<usize> = Bytes(64 * GB);
 
-// Choose `u64` in 32-bit avoid overflow.
 #[classical_persistence]
-pub const MAXIMUM_MEMORY_SIZE: Bytes<u64> = Bytes((4 * GB) as u64);
+pub const MAXIMUM_MEMORY_SIZE: Bytes<usize> = Bytes(usize::MAX);
 
 
 // Memory reserve in bytes ensured during update and initialization calls.

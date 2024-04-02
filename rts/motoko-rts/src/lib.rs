@@ -6,8 +6,8 @@
     core_intrinsics,
     panic_info_message,
     proc_macro_hygiene,
-    // We do not need simd but this flag enables `core::arch:wasm64`.
-    // See https://github.com/rust-lang/rust/issues/90599
+    // // We do not need simd but this flag enables `core::arch:wasm64`.
+    // // See https://github.com/rust-lang/rust/issues/90599
     simd_wasm64
 )]
 
@@ -50,6 +50,8 @@ pub mod region;
 pub mod stabilization;
 mod stable_mem;
 mod static_checks;
+#[classical_persistence]
+pub mod stream;
 pub mod text;
 pub mod text_iter;
 mod tommath_bindings;

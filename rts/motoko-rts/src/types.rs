@@ -652,9 +652,20 @@ impl Array {
 #[enhanced_orthogonal_persistence]
 pub struct Region {
     pub header: Obj,
-    pub id: usize,
+    pub id: u64,
     pub page_count: usize,
     pub vec_pages: Value, // Blob of u16's (each a page block ID).
+}
+
+#[enhanced_orthogonal_persistence]
+impl Region {
+    pub unsafe fn write_id64(self: *mut Self, value: u64) {
+        (*self).id = value;
+    }
+
+    pub unsafe fn read_id64(self: *mut Self) -> u64 {
+        (*self).id
+    }
 }
 
 #[rustfmt::skip]
@@ -718,6 +729,7 @@ impl Object {
         (*self).size
     }
 
+    #[enhanced_orthogonal_persistence]
     pub(crate) unsafe fn get(self: *mut Self, idx: usize) -> Value {
         *self.payload_addr().add(idx)
     }
@@ -840,7 +852,7 @@ pub struct Stream {
     pub limit_lower: u32,
     pub limit_upper: u32,
 
-    pub outputter: fn(*mut Self, *const u8, Bytes<u32>) -> (),
+    pub outputter: fn(*mut Self, *const u8, Bytes<usize>) -> (),
     pub filled: Bytes<usize>, // cache data follows ..
 }
 

@@ -147,7 +147,7 @@ impl RegionObject {
     }
 
     pub unsafe fn id(&self) -> RegionId {
-        RegionId((*self.0).id as u64)
+        RegionId(self.0.read_id64())
     }
 
     pub unsafe fn trap_with(&self, msg: &str) -> ! {
@@ -391,7 +391,7 @@ unsafe fn alloc_region<M: Memory>(
     (*region).header.tag = TAG_REGION;
     (*region).header.init_forward(r_ptr);
     debug_assert!(id <= meta_data::max::REGIONS);
-    (*region).id = id as usize;
+    region.write_id64(id);
     debug_assert!(
         page_count
             <= (vec_pages.as_blob().len().as_usize() / meta_data::bytes_of::<u16>() as usize)
@@ -414,7 +414,7 @@ unsafe fn init_region<M: Memory>(
 ) {
     let r = r.as_region();
     debug_assert!(id <= meta_data::max::REGIONS);
-    (*r).id = id as usize;
+    r.write_id64(id);
     debug_assert!(
         page_count
             <= (vec_pages.as_blob().len().as_usize() / meta_data::bytes_of::<u16>() as usize)
@@ -427,7 +427,7 @@ unsafe fn init_region<M: Memory>(
 #[ic_mem_fn]
 pub unsafe fn region_id<M: Memory>(_mem: &mut M, r: Value) -> u64 {
     let r = r.as_untagged_region();
-    (*r).id as u64
+    r.read_id64()
 }
 
 #[ic_mem_fn]
@@ -607,7 +607,7 @@ pub(crate) unsafe fn region_migration_from_no_stable_memory<M: Memory>(mem: &mut
     // Region 0 -- classic API for stable memory, as a dedicated region.
     REGION_0 = region_new(mem);
 
-    assert_eq!((*REGION_0.as_region()).id, 0);
+    assert_eq!(REGION_0.as_region().read_id64(), 0);
 
     // Regions 1 through LAST_RESERVED_REGION_ID, reserved for future use by future Motoko compiler-RTS features.
     region_reserve_id_span(mem, Some(RegionId(1)), RegionId(LAST_RESERVED_REGION_ID));
@@ -864,7 +864,7 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
 
     // Update this region's page count, in both places where we record it (heap object, region table).
     {
-        let r_id = RegionId::from_id((*r).id as u64);
+        let r_id = RegionId::from_id(r.read_id64());
 
         // Increase both:
         (*r).page_count += new_pages_ as usize;
@@ -908,7 +908,7 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
         // Update stable memory with new association.
         let block_page_count = block_page_count(i as u16, new_block_count, (*r).page_count as u32);
         let assoc = Some((
-            RegionId::from_id((*r).id as u64),
+            RegionId::from_id(r.read_id64()),
             i as u16,
             block_page_count,
         ));

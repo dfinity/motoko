@@ -5,7 +5,7 @@ use crate::{memory::GENERAL_MEMORY_RESERVE, types::*};
 pub(crate) static mut RECLAIMED: Bytes<u64> = Bytes(0);
 
 /// Maximum live data retained in a GC.
-pub(crate) static mut MAX_LIVE: Bytes<u32> = Bytes(0);
+pub(crate) static mut MAX_LIVE: Bytes<usize> = Bytes(0);
 
 // Heap pointer (skewed)
 extern "C" {
@@ -35,7 +35,7 @@ unsafe extern "C" fn get_reclaimed() -> Bytes<u64> {
 
 #[no_mangle]
 pub unsafe extern "C" fn get_total_allocations() -> Bytes<u64> {
-    Bytes(u64::from(get_heap_size().as_u32())) + get_reclaimed()
+    Bytes(get_heap_size().as_usize() as u64) + get_reclaimed()
 }
 
 #[no_mangle]
@@ -52,25 +52,29 @@ impl Memory for IcMemory {
     #[inline]
     unsafe fn alloc_words(&mut self, n: Words<usize>) -> Value {
         let bytes = n.to_bytes();
-        let delta = u64::from(bytes.as_usize());
+        let delta = bytes.as_usize() as u64;
 
         // Update heap pointer
-        let old_hp = u64::from(getHP());
+        let old_hp = getHP() as u64;
         let new_hp = old_hp + delta;
 
         // Grow memory if needed
         if new_hp > ((super::wasm_memory_size() as u64) << 16) {
-            self.grow_memory(new_hp)
+            linear_grow_memory(new_hp);
         }
 
-        debug_assert!(new_hp <= u64::from(core::usize::MAX));
-        setHP(new_hp);
+        debug_assert!(new_hp <= core::usize::MAX as u64);
+        setHP(new_hp as usize);
 
         Value::from_raw(old_hp as usize)
     }
 
     #[inline(never)]
-    unsafe fn grow_memory(&mut self, ptr: u64) {
-        super::grow_memory(ptr, GENERAL_MEMORY_RESERVE);
+    unsafe fn grow_memory(&mut self, ptr: usize) {
+        linear_grow_memory(ptr as u64);
     }
+}
+
+unsafe fn linear_grow_memory(ptr: u64) {
+    super::grow_memory(ptr as u64, GENERAL_MEMORY_RESERVE);
 }

@@ -3,11 +3,6 @@ use motoko_rts_macros::ic_mem_fn;
 use crate::types::Value;
 use crate::visitor::pointer_to_dynamic_heap;
 
-// Provided by generated code
-extern "C" {
-    pub(crate) fn get_static_roots() -> Value;
-}
-
 #[derive(Clone, Copy)]
 pub struct Roots {
     pub static_roots: Value,
@@ -20,7 +15,7 @@ pub struct Roots {
 pub unsafe fn root_set() -> Roots {
     use crate::memory::ic;
     Roots {
-        static_roots: get_static_roots(),
+        static_roots: ic::get_static_roots(),
         continuation_table_location: crate::continuation_table::continuation_table_loc(),
         region0_ptr_location: crate::region::region0_get_ptr_loc(),
     }

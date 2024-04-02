@@ -40,7 +40,7 @@ impl Serializer<Region> for StableRegion {
         (*target_region)
             .header
             .init_forward(Value::from_ptr(target_region as usize));
-        (*target_region).id = self.id as usize;
+        (*target_region).id = self.id;
         (*target_region).page_count = self.page_count as usize;
         (*target_region).vec_pages = self.vec_pages.deserialize();
     }

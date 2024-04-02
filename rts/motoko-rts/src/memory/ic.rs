@@ -18,6 +18,9 @@ extern "C" {
     #[classical_persistence]
     fn get_heap_base() -> usize;
 
+    #[classical_persistence]
+    pub(crate) fn get_static_roots() -> crate::types::Value;
+
     fn keep_memory_reserve() -> bool;
 }
 
