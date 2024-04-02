@@ -43,7 +43,7 @@ use crate::libc_declarations::c_void;
 #[classical_persistence]
 use crate::types::Stream;
 
-use motoko_rts_macros::{classical_persistence, enhanced_orthogonal_persistence, ic_mem_fn};
+use motoko_rts_macros::{classical_persistence, ic_mem_fn};
 
 // Provided by generated code
 extern "C" {

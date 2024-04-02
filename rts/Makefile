@@ -396,13 +396,17 @@ TEST_BUILD_32=cd motoko-rts-tests && cargo build --target=wasm32-wasi
 TEST_RUN_32=wasmtime --disable-cache motoko-rts-tests/target/wasm32-wasi/debug/motoko-rts-tests.wasm
 
 TEST_DEPENDENCIES_64=$(TOMMATH_WASM_64_A) $(TOMMATH_BINDINGS_64_RS)
-TEST_BUILD_64=cd motoko-rts-tests && cargo build --target=wasm64-unknown-unknown -Zbuild-std=core,alloc,std,panic_abort
+TEST_BUILD_64=cd motoko-rts-tests && cargo build --target=wasm64-unknown-unknown -Zbuild-std=core,alloc,std,panic_abort --features enhanced_orthogonal_persistence
 TEST_RUN_64=wasmtime -C cache=n -W nan-canonicalization=y -W memory64 motoko-rts-tests/target/wasm64-unknown-unknown/debug/motoko-rts-tests.wasm
 
-.PHONY: test32 test64
+.PHONY: test32-non-incremental test32-incremental test64
 
-test32: $(TEST_DEPENDENCIES_32)
+test32-non-incremental: $(TEST_DEPENDENCIES_32)
 	$(TEST_BUILD_32)
+	$(TEST_RUN_32)
+
+test32-incremental: $(TEST_DEPENDENCIES_32)
+	$(TEST_BUILD_32) --features incremental_gc
 	$(TEST_RUN_32)
 
 test64: $(TEST_DEPENDENCIES_64)

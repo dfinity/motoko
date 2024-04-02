@@ -14,11 +14,13 @@ pub type Roots = self::enhanced::Roots;
 #[classical_persistence]
 pub type Roots = self::classical::Roots;
 
+#[cfg(feature = "ic")]
 #[enhanced_orthogonal_persistence]
 pub unsafe fn root_set() -> Roots {
     self::enhanced::root_set()
 }
 
+#[cfg(feature = "ic")]
 #[classical_persistence]
 pub unsafe fn root_set() -> Roots {
     self::classical::root_set()

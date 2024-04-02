@@ -13,7 +13,7 @@
 
 use motoko_rts_macros::{classical_persistence, enhanced_orthogonal_persistence, ic_mem_fn};
 
-use crate::{memory::{MAXIMUM_MEMORY_SIZE, Memory}, types::*, visitor::visit_pointer_fields};
+use crate::{memory::Memory, types::*, visitor::visit_pointer_fields};
 
 use self::{
     partitioned_heap::{PartitionedHeap, PartitionedHeapIterator},
@@ -43,12 +43,14 @@ unsafe fn initialize_incremental_gc<M: Memory>(mem: &mut M) {
     initialize(mem);
 }
 
+#[cfg(feature = "ic")]
 #[enhanced_orthogonal_persistence]
 unsafe fn initialize<M: Memory>(mem: &mut M) {
     use crate::persistence::initialize_memory;
     initialize_memory(mem);
 }
 
+#[cfg(feature = "ic")]
 #[classical_persistence]
 unsafe fn initialize<M: Memory>(mem: &mut M) {
     use crate::memory::ic;
@@ -56,7 +58,6 @@ unsafe fn initialize<M: Memory>(mem: &mut M) {
     let state = STATE.get_mut();
     *state = IncrementalGC::<M>::initial_gc_state(mem, ic::get_aligned_heap_base());
 }
-
 
 #[ic_mem_fn(ic_only)]
 unsafe fn schedule_incremental_gc<M: Memory>(mem: &mut M) {
@@ -83,11 +84,11 @@ unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
 
 #[cfg(feature = "ic")]
 #[enhanced_orthogonal_persistence]
-const CRITICAL_HEAP_LIMIT: Bytes<usize> = Bytes(MAXIMUM_MEMORY_SIZE.0 / 10 * 8); // 80%
+const CRITICAL_HEAP_LIMIT: Bytes<usize> = Bytes(crate::memory::MAXIMUM_MEMORY_SIZE.0 / 10 * 8); // 80%
 
 #[cfg(feature = "ic")]
 #[enhanced_orthogonal_persistence]
-const MEDIUM_HEAP_LIMIT: Bytes<usize> = Bytes(MAXIMUM_MEMORY_SIZE.0 / 2); // 50%
+const MEDIUM_HEAP_LIMIT: Bytes<usize> = Bytes(crate::memory::MAXIMUM_MEMORY_SIZE.0 / 2); // 50%
 
 #[cfg(feature = "ic")]
 #[classical_persistence]

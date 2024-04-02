@@ -9,7 +9,6 @@ use motoko_rts_macros::ic_mem_fn;
 #[cfg(feature = "ic")]
 use crate::constants::MB;
 
-#[cfg(feature = "ic")]
 use crate::constants::GB;
 
 // TODO: Redesign for 64-bit support by using a dynamic partition list.
