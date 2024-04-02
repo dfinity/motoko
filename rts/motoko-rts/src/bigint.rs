@@ -578,7 +578,7 @@ pub unsafe extern "C" fn bigint_leb128_decode(buf: *mut Buf) -> Value {
 }
 
 #[cfg(feature = "ic")]
-#[enhanced_orthogonal_persistence]
+#[motoko_rts_macros::enhanced_orthogonal_persistence]
 const BITS_PER_CHUNK: usize = 7;
 
 #[cfg(feature = "ic")]

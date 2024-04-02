@@ -213,8 +213,7 @@ $(MUSL_WASM_64_A): $(MUSL_WASM_64_O)
 RTS_RUST_FILES=$(shell ls **/*.rs)
 RTS_CARGO_FILES=$(shell ls **/Cargo.toml)
 
-TOMMATH_BINDINGS_32_RS=_build/tommath_bindings_32.rs
-TOMMATH_BINDINGS_64_RS=_build/tommath_bindings_64.rs
+TOMMATH_BINDINGS_RS=_build/tommath_bindings.rs
 
 TOMMATH_BIND_OPTIONS = \
 		--use-core \
@@ -248,13 +247,7 @@ TOMMATH_BIND_OPTIONS = \
 	    --blocklist-type __uint64_t \
 		-- $(TOMMATH_FLAGS)
 
-$(TOMMATH_BINDINGS_32_RS): | _build
-	bindgen $(TOMMATHSRC)/tommath.h \
-	    -o $@ \
-	    --ctypes-prefix=libc \
-		$(TOMMATH_BIND_OPTIONS)
-
-$(TOMMATH_BINDINGS_64_RS): | _build
+$(TOMMATH_BINDINGS_RS): | _build
 	bindgen $(TOMMATHSRC)/tommath.h \
 	    -o $@ \
 	    --ctypes-prefix="crate::libc_declarations" \
@@ -269,7 +262,7 @@ $(TOMMATH_BINDINGS_64_RS): | _build
 
 # 32-bit Wasm builds
 
-RTS_DEPENDENCIES_32=$(TOMMATH_BINDINGS_32_RS) $(RTS_RUST_FILES) $(RTS_CARGO_FILES) | _build/wasm32
+RTS_DEPENDENCIES_32=$(TOMMATH_BINDINGS_RS) $(RTS_RUST_FILES) $(RTS_CARGO_FILES) | _build/wasm32
 RTS_BUILD_32=cd motoko-rts && cargo build --target=wasm32-unknown-emscripten -Zbuild-std=core,alloc
 RTS_DEBUG_BUILD_32=$(RTS_BUILD_32)
 RTS_RELEASE_BUILD_32=$(RTS_BUILD_32) --release
@@ -300,7 +293,7 @@ $(RTS_RUST_INCREMENTAL_DEBUG_WASM_32_A): $(RTS_DEPENDENCIES_32)
 
 # 64-bit Wasm builds
 
-RTS_DEPENDENCIES_64=$(TOMMATH_BINDINGS_64_RS) $(RTS_RUST_FILES) $(RTS_CARGO_FILES) | _build/wasm64
+RTS_DEPENDENCIES_64=$(TOMMATH_BINDINGS_RS) $(RTS_RUST_FILES) $(RTS_CARGO_FILES) | _build/wasm64
 COMPILER_FLAGS_64=--emit=llvm-ir
 RTS_BUILD_64=cd motoko-rts && RUSTFLAGS="${COMPILER_FLAGS_64}" cargo build --target=wasm64-unknown-unknown -Zbuild-std=core,alloc --features enhanced_orthogonal_persistence
 RTS_DEBUG_BUILD_64=$(RTS_BUILD_64)
@@ -391,11 +384,11 @@ $(COMPILER_BUILTINS_DEBUG_WASM_64_A): $(COMPILER_BUILTINS_DEBUG_LLVM_IR_64)
 # The test suite
 #
 
-TEST_DEPENDENCIES_32=$(TOMMATH_WASM_32_A) $(TOMMATH_BINDINGS_32_RS)
+TEST_DEPENDENCIES_32=$(TOMMATH_WASM_32_A) $(TOMMATH_BINDINGS_RS)
 TEST_BUILD_32=cd motoko-rts-tests && cargo build --target=wasm32-wasi
 TEST_RUN_32=wasmtime --disable-cache motoko-rts-tests/target/wasm32-wasi/debug/motoko-rts-tests.wasm
 
-TEST_DEPENDENCIES_64=$(TOMMATH_WASM_64_A) $(TOMMATH_BINDINGS_64_RS)
+TEST_DEPENDENCIES_64=$(TOMMATH_WASM_64_A) $(TOMMATH_BINDINGS_RS)
 TEST_BUILD_64=cd motoko-rts-tests && cargo build --target=wasm64-unknown-unknown -Zbuild-std=core,alloc,std,panic_abort --features enhanced_orthogonal_persistence
 TEST_RUN_64=wasmtime -C cache=n -W nan-canonicalization=y -W memory64 motoko-rts-tests/target/wasm64-unknown-unknown/debug/motoko-rts-tests.wasm
 
