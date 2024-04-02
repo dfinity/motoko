@@ -386,7 +386,7 @@ $(COMPILER_BUILTINS_DEBUG_WASM_64_A): $(COMPILER_BUILTINS_DEBUG_LLVM_IR_64)
 
 TEST_DEPENDENCIES_32=$(TOMMATH_WASM_32_A) $(TOMMATH_BINDINGS_RS)
 TEST_BUILD_32=cd motoko-rts-tests && cargo build --target=wasm32-wasi
-TEST_RUN_32=wasmtime --disable-cache motoko-rts-tests/target/wasm32-wasi/debug/motoko-rts-tests.wasm
+TEST_RUN_32=wasmtime -C cache=n -W nan-canonicalization=y motoko-rts-tests/target/wasm32-wasi/debug/motoko-rts-tests.wasm
 
 TEST_DEPENDENCIES_64=$(TOMMATH_WASM_64_A) $(TOMMATH_BINDINGS_RS)
 TEST_BUILD_64=cd motoko-rts-tests && cargo build --target=wasm64-unknown-unknown -Zbuild-std=core,alloc,std,panic_abort --features enhanced_orthogonal_persistence

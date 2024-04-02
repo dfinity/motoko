@@ -531,7 +531,6 @@ use crate::constants::GB;
 #[enhanced_orthogonal_persistence]
 const GC_MEMORY_RESERVE: usize = 2 * GB;
 
-#[cfg(feature = "ic")]
 #[classical_persistence]
 use crate::constants::MB;
 
