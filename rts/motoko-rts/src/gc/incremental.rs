@@ -84,19 +84,23 @@ unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
 
 #[cfg(feature = "ic")]
 #[enhanced_orthogonal_persistence]
-const CRITICAL_HEAP_LIMIT: Bytes<usize> = Bytes(crate::memory::MAXIMUM_MEMORY_SIZE.0 / 10 * 8); // 80%
+const CRITICAL_HEAP_LIMIT: Bytes<usize> = Bytes((crate::memory::MAXIMUM_MEMORY_SIZE.0 / 10 * 8) as usize); // 80%
 
 #[cfg(feature = "ic")]
 #[enhanced_orthogonal_persistence]
-const MEDIUM_HEAP_LIMIT: Bytes<usize> = Bytes(crate::memory::MAXIMUM_MEMORY_SIZE.0 / 2); // 50%
+const MEDIUM_HEAP_LIMIT: Bytes<usize> = Bytes((crate::memory::MAXIMUM_MEMORY_SIZE.0 / 2) as usize); // 50%
 
 #[cfg(feature = "ic")]
 #[classical_persistence]
-const CRITICAL_HEAP_LIMIT: Bytes<u32> = Bytes((2 * GB + 256 * MB) as u32);
+use crate::constants::GB;
 
 #[cfg(feature = "ic")]
 #[classical_persistence]
-const MEDIUM_HEAP_LIMIT: Bytes<u32> = Bytes(1 * GB as u32);
+const CRITICAL_HEAP_LIMIT: Bytes<usize> = Bytes(2 * GB + 256 * MB);
+
+#[cfg(feature = "ic")]
+#[classical_persistence]
+const MEDIUM_HEAP_LIMIT: Bytes<usize> = Bytes(1 * GB);
 
 #[cfg(feature = "ic")]
 unsafe fn should_start() -> bool {
@@ -199,11 +203,11 @@ pub struct State {
 #[classical_persistence]
 static mut STATE: core::cell::RefCell<State> = core::cell::RefCell::new(State {
     phase: Phase::Pause,
-    partitioned_heap: UNINITIALIZED_HEAP,
+    partitioned_heap: self::partitioned_heap::UNINITIALIZED_HEAP,
     allocation_count: 0,
     mark_state: None,
     iterator_state: None,
-    statistics: Statistics { last_allocations: 0, max_live: 0 }
+    statistics: Statistics { last_allocations: Bytes(0), max_live: Bytes(0) }
 });
 
 /// Temporary state during message execution, not part of the persistent metadata.

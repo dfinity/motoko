@@ -1,3 +1,4 @@
+#[cfg(feature = "ic")]
 use motoko_rts_macros::enhanced_orthogonal_persistence;
 
 pub const PAGE_SIZE: u64 = 64 * 1024;

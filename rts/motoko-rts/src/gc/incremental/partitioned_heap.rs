@@ -67,11 +67,7 @@ pub const PARTITION_SIZE: usize = 32 * 1024 * 1024;
 /// Total number of partitions in the memory.
 /// For simplicity, the last partition is left unused, to avoid a numeric overflow when
 /// computing the end address of the last partition.
-#[enhanced_orthogonal_persistence]
-const MAX_PARTITIONS: usize = (MAXIMUM_MEMORY_SIZE.0 / PARTITION_SIZE) - 1;
-
-#[classical_persistence]
-const MAX_PARTITIONS: usize = ((MAXIMUM_MEMORY_SIZE.0 / PARTITION_SIZE as u64) as usize) - 1;
+const MAX_PARTITIONS: usize = ((MAXIMUM_MEMORY_SIZE.0 / PARTITION_SIZE as u64) - 1) as usize;
 
 /// Partitions are only evacuated if the space occupation of alive objects in the partition
 /// is greater than this threshold.
@@ -106,7 +102,7 @@ const UNINITIALIZED_PARTITION: Partition = Partition {
     marked_size: 0,
     static_size: 0,
     dynamic_size: 0,
-    bitmap: DEFAULT_MARK_BITMAP,
+    bitmap: super::mark_bitmap::DEFAULT_MARK_BITMAP,
     temporary: false,
     evacuate: false,
     update: false,

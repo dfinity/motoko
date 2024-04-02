@@ -1,7 +1,5 @@
-use motoko_rts_macros::ic_mem_fn;
-
 use crate::types::Value;
-use crate::visitor::pointer_to_dynamic_heap;
+use crate::visitor::classical::pointer_to_dynamic_heap;
 
 #[derive(Clone, Copy)]
 pub struct Roots {

@@ -67,12 +67,12 @@ unsafe fn grow_memory(ptr: u64, memory_reserve: usize) {
     const LAST_PAGE_LIMIT: usize = usize::MAX - WASM_PAGE_SIZE.as_usize() + 1;
     let limit = if keep_memory_reserve() {
         // Spare a memory reserve during update and initialization calls for use by queries and upgrades.
-        MAXIMUM_MEMORY_SIZE.as_usize() - memory_reserve + 1
+        MAXIMUM_MEMORY_SIZE.0 - memory_reserve as u64
     } else {
         // Spare the last Wasm memory page on queries and upgrades to support the Rust call stack boundary checks.
-        LAST_PAGE_LIMIT
+        LAST_PAGE_LIMIT as u64
     };
-    if ptr > limit as u64 {
+    if ptr > limit {
         rts_trap_with("Cannot grow memory")
     };
     let page_size = WASM_PAGE_SIZE.as_usize() as u64;
