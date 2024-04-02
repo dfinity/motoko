@@ -1,7 +1,7 @@
 use motoko_rts_macros::ic_mem_fn;
 
 use crate::types::Value;
-use crate::visitor::is_non_null_pointer_field;
+use crate::visitor::enhanced::is_non_null_pointer_field;
 
 /// An array referring to the static program variables, being
 /// - All canister variables.
@@ -33,7 +33,7 @@ unsafe fn static_variables_location() -> *mut Value {
 
 #[ic_mem_fn(ic_only)]
 pub unsafe fn set_static_variables<M: crate::memory::Memory>(mem: &mut M, array: Value) {
-    use super::barriers::write_with_barrier;
+    use crate::gc::incremental::barriers::write_with_barrier;
     use crate::types::TAG_ARRAY;
 
     assert_eq!(array.tag(), TAG_ARRAY);

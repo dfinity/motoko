@@ -1,10 +1,4 @@
-use motoko_rts_macros::{classical_persistence, enhanced_orthogonal_persistence};
-
-#[enhanced_orthogonal_persistence]
 use crate::libc_declarations::c_char;
-
-#[classical_persistence]
-use libc::c_char;
 
 /// Panics if the string is not valid UTF-8
 #[no_mangle]

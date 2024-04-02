@@ -43,7 +43,7 @@ use core::{array::from_fn, ops::Range, ptr::null_mut};
 use motoko_rts_macros::{classical_persistence, enhanced_orthogonal_persistence};
 
 use crate::{
-    gc::incremental::mark_bitmap::BITMAP_ITERATION_END, memory::Memory, rts_trap_with, types::*,
+    gc::incremental::mark_bitmap::BITMAP_ITERATION_END, memory::{MAXIMUM_MEMORY_SIZE, Memory}, rts_trap_with, types::*,
 };
 
 use super::{

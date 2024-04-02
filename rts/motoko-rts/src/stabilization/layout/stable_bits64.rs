@@ -27,6 +27,6 @@ impl Serializer<Bits64> for StableBits64 {
         (*target_bits64)
             .header
             .init_forward(Value::from_ptr(target_bits64 as usize));
-        (*target_bits64).bits = self.bits as usize;
+        (*target_bits64).bits = self.bits;
     }
 }

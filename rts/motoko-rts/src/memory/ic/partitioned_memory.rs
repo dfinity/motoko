@@ -28,8 +28,8 @@ impl Memory for IcMemory {
     }
 
     #[inline(never)]
-    unsafe fn grow_memory(&mut self, ptr: u64) {
+    unsafe fn grow_memory(&mut self, ptr: usize) {
         let memory_reserve = crate::gc::incremental::memory_reserve();
-        super::grow_memory(ptr, memory_reserve);
+        super::grow_memory(ptr as u64, memory_reserve);
     }
 }

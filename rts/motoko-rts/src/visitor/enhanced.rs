@@ -22,7 +22,6 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
     ctx: &mut C,
     obj: *mut Obj,
     tag: Tag,
-    _heap_base: usize,
     visit_ptr_field: F,
     visit_field_range: G,
 ) where

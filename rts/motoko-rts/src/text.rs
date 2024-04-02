@@ -37,16 +37,12 @@ use motoko_rts_macros::classical_persistence;
 use core::cmp::{min, Ordering};
 use core::{slice, str};
 
-#[enhanced_orthogonal_persistence]
 use crate::libc_declarations::memcmp;
-
-#[classical_persistence]
-use libc::memcmp;
 
 #[classical_persistence]
 use crate::types::Stream;
 
-use motoko_rts_macros::{enhanced_orthogonal_persistence, ic_mem_fn};
+use motoko_rts_macros::ic_mem_fn;
 
 const MAX_STR_SIZE: Bytes<usize> = Bytes((1 << (usize::BITS - 2)) - 1);
 

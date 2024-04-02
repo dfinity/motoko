@@ -38,11 +38,7 @@ use crate::memory::Memory;
 use crate::tommath_bindings::*;
 use crate::types::{size_of, BigInt, Bytes, Value, TAG_BIGINT};
 
-#[enhanced_orthogonal_persistence]
 use crate::libc_declarations::c_void;
-
-#[classical_persistence]
-use libc::c_void;
 
 #[classical_persistence]
 use crate::types::Stream;

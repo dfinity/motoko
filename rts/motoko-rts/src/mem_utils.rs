@@ -1,12 +1,6 @@
-use motoko_rts_macros::{classical_persistence, enhanced_orthogonal_persistence};
-
 use crate::types::{Bytes, Words};
 
-#[enhanced_orthogonal_persistence]
 use crate::libc_declarations::{memcpy, memset};
-
-#[classical_persistence]
-use libc::{memcpy, memset};
 
 pub unsafe fn memcpy_words(to: usize, from: usize, n: Words<usize>) {
     memcpy(to as *mut _, from as *const _, n.to_bytes().as_usize());

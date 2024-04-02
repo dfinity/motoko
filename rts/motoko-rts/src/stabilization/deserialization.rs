@@ -88,6 +88,7 @@ impl Deserialization {
             context,
             target_object.as_obj(),
             target_object.tag(),
+            0,
             |context, field_address| {
                 *field_address = translate(context, *field_address);
             },

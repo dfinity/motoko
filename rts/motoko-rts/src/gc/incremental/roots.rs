@@ -4,11 +4,25 @@ pub mod enhanced;
 #[classical_persistence]
 pub mod classical;
 
-use motoko_rts_macros::{enhanced_orthogonal_persistence, classical_persistence};
-
-use motoko_rts_macros::{classical_persistence, enhanced_orthogonal_persistence, ic_mem_fn};
+use motoko_rts_macros::{classical_persistence, enhanced_orthogonal_persistence};
 
 use crate::types::Value;
+
+#[enhanced_orthogonal_persistence]
+pub type Roots = self::enhanced::Roots;
+
+#[classical_persistence]
+pub type Roots = self::classical::Roots;
+
+#[enhanced_orthogonal_persistence]
+pub unsafe fn root_set() -> Roots {
+    self::enhanced::root_set()
+}
+
+#[classical_persistence]
+pub unsafe fn root_set() -> Roots {
+    self::classical::root_set()
+}
 
 #[enhanced_orthogonal_persistence]
 pub unsafe fn visit_roots<C, V: Fn(&mut C, *mut Value)>(

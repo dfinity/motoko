@@ -37,7 +37,6 @@ pub mod gc;
 #[cfg(feature = "ic")]
 mod idl;
 pub mod leb128;
-#[enhanced_orthogonal_persistence]
 mod libc_declarations;
 pub mod mem_utils;
 pub mod memory;

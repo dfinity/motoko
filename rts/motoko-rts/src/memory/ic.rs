@@ -2,6 +2,7 @@
 
 #[non_incremental_gc]
 pub mod linear_memory;
+
 #[incremental_gc]
 pub mod partitioned_memory;
 
@@ -11,13 +12,12 @@ use super::Memory;
 use crate::constants::WASM_PAGE_SIZE;
 use crate::memory::MAXIMUM_MEMORY_SIZE;
 use crate::rts_trap_with;
-use crate::types::Value;
 
-#[classical_persistence]
 // Provided by generated code
 extern "C" {
+    #[classical_persistence]
     fn get_heap_base() -> usize;
-    pub(crate) fn get_static_roots() -> Value;
+
     fn keep_memory_reserve() -> bool;
 }
 
@@ -37,22 +37,22 @@ pub(crate) unsafe fn get_aligned_heap_base() -> usize {
 pub struct IcMemory;
 
 #[enhanced_orthogonal_persistence]
-fn wasm_memory_size() -> usize {
+pub fn wasm_memory_size() -> usize {
     core::arch::wasm64::memory_size(0)
 }
 
 #[classical_persistence]
-fn wasm_memory_size() -> usize {
+pub fn wasm_memory_size() -> usize {
     core::arch::wasm32::memory_size(0)
 }
 
 #[enhanced_orthogonal_persistence]
-fn wasm_memory_grow(pages: usize) -> usize {
+pub fn wasm_memory_grow(pages: usize) -> usize {
     core::arch::wasm64::memory_grow(0, pages)
 }
 
 #[classical_persistence]
-fn wasm_memory_grow(pages: usize) -> usize {
+pub fn wasm_memory_grow(pages: usize) -> usize {
     core::arch::wasm32::memory_grow(0, pages)
 }
 
