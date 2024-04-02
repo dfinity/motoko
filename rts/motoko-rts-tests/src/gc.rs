@@ -20,7 +20,7 @@ pub mod utils;
 
 use heap::MotokoHeap;
 use utils::{get_scalar_value, make_pointer, read_word, unskew_pointer, ObjectIdx, WORD_SIZE};
-use motoko_rts_macros::{enhanced_orthogonal_persistence, incremental_gc, non_incremental_gc};
+use motoko_rts_macros::{classical_persistence, enhanced_orthogonal_persistence, incremental_gc, non_incremental_gc};
 
 use motoko_rts::types::*;
 
@@ -50,6 +50,13 @@ pub fn test() {
     test_gc_components();
 }
 
+#[non_incremental_gc]
+fn test_gc_components() {
+    compacting::test();
+    generational::test();
+}
+
+#[incremental_gc]
 fn test_gc_components() {
     incremental::test();
 }
@@ -530,6 +537,13 @@ fn read_object_id(object_address: usize, heap: &[u8]) -> ObjectIdx {
     // Skip object header for idx
     let idx_address = object_address + size_of::<Array>().to_bytes().as_usize();
     get_scalar_value(read_word(heap, idx_address - heap.as_ptr() as usize))
+}
+
+#[classical_persistence]
+impl GC {
+    fn run(&self, heap: &mut MotokoHeap) -> bool {
+        todo!()
+    }
 }
 
 #[enhanced_orthogonal_persistence]

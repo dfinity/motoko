@@ -1,7 +1,7 @@
 use std::mem::size_of;
 
 use byteorder::{ReadBytesExt, WriteBytesExt, LE};
-use motoko_rts_macros::{incremental_gc, non_incremental_gc};
+use motoko_rts_macros::{classical_persistence, enhanced_orthogonal_persistence, incremental_gc, non_incremental_gc};
 
 /// A unique object index, used in heap descriptions.
 ///
@@ -39,12 +39,28 @@ pub static GC_IMPLS: [GC; 3] = [GC::Copying, GC::MarkCompact, GC::Generational];
 pub static GC_IMPLS: [GC; 1] = [GC::Incremental];
 
 /// Read a little-endian (Wasm) word from given offset
+#[classical_persistence]
+pub fn read_word(heap: &[u8], offset: usize) -> usize {
+    assert_eq!(size_of::<usize>(), size_of::<u32>());
+    (&heap[offset..]).read_u32::<LE>().unwrap() as usize
+}
+
+/// Write a little-endian (Wasm) word to given offset
+#[classical_persistence]
+pub fn write_word(heap: &mut [u8], offset: usize, word: usize) {
+    assert_eq!(size_of::<usize>(), size_of::<u32>());
+    (&mut heap[offset..]).write_u32::<LE>(word as u32).unwrap()
+}
+
+/// Read a little-endian (Wasm) word from given offset
+#[enhanced_orthogonal_persistence]
 pub fn read_word(heap: &[u8], offset: usize) -> usize {
     assert_eq!(size_of::<usize>(), size_of::<u64>());
     (&heap[offset..]).read_u64::<LE>().unwrap() as usize
 }
 
 /// Write a little-endian (Wasm) word to given offset
+#[enhanced_orthogonal_persistence]
 pub fn write_word(heap: &mut [u8], offset: usize, word: usize) {
     assert_eq!(size_of::<usize>(), size_of::<u64>());
     (&mut heap[offset..]).write_u64::<LE>(word as u64).unwrap()

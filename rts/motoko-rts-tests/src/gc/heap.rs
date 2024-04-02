@@ -285,6 +285,12 @@ impl MotokoHeapInner {
         }
     }
 
+    #[non_incremental_gc]
+    unsafe fn alloc_words(&mut self, n: Words<usize>) -> Value {
+        self.linear_alloc_words(n)
+    }
+
+    #[incremental_gc]
     unsafe fn alloc_words(&mut self, n: Words<usize>) -> Value {
         let mut dummy_memory = DummyMemory {};
         let result =

@@ -21,10 +21,7 @@ mod text;
 mod utf8;
 
 fn main() {
-    if std::mem::size_of::<usize>() != 8 {
-        println!("Motoko RTS only works on 64-bit architectures");
-        std::process::exit(1);
-    }
+    check_architecture();
 
     unsafe {
         bigint::test();
@@ -37,6 +34,22 @@ fn main() {
         persistence_test();
         text::test();
         utf8::test();
+    }
+}
+
+#[classical_persistence]
+fn check_architecture() {
+    if std::mem::size_of::<usize>() != 4 {
+        println!("Motoko RTS for classical persistence only works on 32-bit architectures");
+        std::process::exit(1);
+    }
+}
+
+#[enhanced_orthogonal_persistence]
+fn check_architecture() {
+    if std::mem::size_of::<usize>() != 8 {
+        println!("Motoko RTS for enhanced orthogonal persistence only works on 64-bit architectures");
+        std::process::exit(1);
     }
 }
 
@@ -92,6 +105,7 @@ unsafe extern "C" fn print_ptr(ptr: usize, len: usize) {
 }
 
 // Program entry point by wasmtime
+#[enhanced_orthogonal_persistence]
 #[no_mangle]
 pub fn _start() {
     main();
