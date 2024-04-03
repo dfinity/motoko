@@ -152,7 +152,7 @@ Upgrade safety does not guarantee that the upgrade process will succeed (it can 
 
 :::tip
 
-You can check valid Candid subtyping between two services described in `.did` files, `cur.did` and `nxt.did` (containing Candid types), using the `didc` tool with argument `check nxt.did cur.did`. The `didc` tool is available at \<https://github.com/dfinity/candid\>.
+You can check valid Candid subtyping between two services described in `.did` files, `cur.did` and `nxt.did` (containing Candid types), using the `didc` tool with argument `check nxt.did cur.did`. The `didc` tool is available at [https://github.com/dfinity/candid](https://github.com/dfinity/candid).
 
 :::
 
