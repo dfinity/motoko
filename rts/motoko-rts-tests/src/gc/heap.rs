@@ -71,6 +71,25 @@ impl MotokoHeap {
         self.inner.borrow().heap_ptr_address()
     }
 
+    /// Update the heap pointer given as an address in the current process.
+    #[non_incremental_gc]
+    pub fn set_heap_ptr_address(&self, address: usize) {
+        self.inner.borrow_mut().set_heap_ptr_address(address)
+    }
+
+    /// Get the last heap pointer, as address in the current process. The address can be used to mutate
+    /// the heap.
+    #[non_incremental_gc]
+    pub fn last_ptr_address(&self) -> usize {
+        self.inner.borrow().last_ptr_address()
+    }
+
+    /// Update the last heap pointer given as an address in the current process.
+    #[non_incremental_gc]
+    pub fn set_last_ptr_address(&self, address: usize) {
+        self.inner.borrow_mut().set_last_ptr_address(address)
+    }
+
     /// Get the beginning of dynamic heap, as an address in the current process
     pub fn heap_base_address(&self) -> usize {
         self.inner.borrow().heap_base_address()
@@ -102,6 +121,7 @@ impl MotokoHeap {
     }
 
     /// Get the address of the variable pointing to region0
+    #[incremental_gc]
     pub fn region0_pointer_variable_address(&self) -> usize {
         self.inner.borrow().region0_pointer_address()
     }
@@ -181,6 +201,18 @@ impl MotokoHeapInner {
         self.heap_ptr_offset = self.address_to_offset(address);
     }
 
+    /// Get last heap pointer (i.e. where the dynamic heap ends last GC run) in the process's address space
+    #[non_incremental_gc]
+    fn last_ptr_address(&self) -> usize {
+        self.offset_to_address(self._heap_ptr_last)
+    }
+
+    /// Set last heap pointer
+    #[non_incremental_gc]
+    fn set_last_ptr_address(&mut self, address: usize) {
+        self._heap_ptr_last = self.address_to_offset(address);
+    }
+
     /// Get the address of the variable pointing to the static root array.
     fn static_root_array_variable_address(&self) -> usize {
         self.offset_to_address(self.static_root_array_variable_offset)
@@ -192,6 +224,7 @@ impl MotokoHeapInner {
     }
 
     /// Get the address of the region0 pointer
+    #[incremental_gc]
     fn region0_pointer_address(&self) -> usize {
         self.offset_to_address(self.region0_pointer_variable_offset)
     }

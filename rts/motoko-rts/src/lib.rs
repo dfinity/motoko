@@ -48,7 +48,7 @@ pub mod principal_id;
 pub mod region;
 #[enhanced_orthogonal_persistence]
 pub mod stabilization;
-mod stable_mem;
+pub mod stable_mem;
 mod static_checks;
 #[classical_persistence]
 pub mod stream;

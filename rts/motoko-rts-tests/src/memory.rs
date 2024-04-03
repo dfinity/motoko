@@ -15,18 +15,22 @@ impl TestMemory {
         TestMemory { heap, hp }
     }
 
+    #[incremental_gc]
     pub fn heap_base(&self) -> usize {
         self.heap.as_ptr() as usize
     }
 
+    #[incremental_gc]
     pub fn heap_end(&self) -> usize {
         self.heap_base() + self.heap.len()
     }
 
+    #[incremental_gc]
     pub fn heap_pointer(&self) -> usize {
         self.hp
     }
 
+    #[incremental_gc]
     pub fn set_heap_pointer(&mut self, heap_pointer: usize) {
         assert!(heap_pointer >= self.heap_base());
         assert!(heap_pointer <= self.heap_end());
