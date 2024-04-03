@@ -11,7 +11,9 @@
 //! retained across upgrades and therefore be stored part of the
 //! persistent metadata, cf. `persistence::PersistentMetadata`.
 
-use motoko_rts_macros::{classical_persistence, enhanced_orthogonal_persistence, ic_mem_fn};
+use motoko_rts_macros::{enhanced_orthogonal_persistence, ic_mem_fn};
+#[cfg(feature = "ic")]
+use motoko_rts_macros::classical_persistence;
 
 use crate::{memory::Memory, types::*, visitor::visit_pointer_fields};
 
@@ -201,6 +203,7 @@ pub struct State {
 
 /// GC state retained over multiple GC increments.
 #[classical_persistence]
+#[cfg(feature = "ic")]
 static mut STATE: core::cell::RefCell<State> = core::cell::RefCell::new(State {
     phase: Phase::Pause,
     partitioned_heap: self::partitioned_heap::UNINITIALIZED_HEAP,
@@ -532,14 +535,15 @@ use crate::constants::GB;
 const GC_MEMORY_RESERVE: usize = 2 * GB;
 
 #[classical_persistence]
+#[cfg(feature = "ic")]
 use crate::constants::MB;
 
 /// Additional memory reserve in bytes for the GC.
 /// * To allow mark bitmap allocation, i.e. max. 128 MB in 4 GB address space.
 /// * 512 MB of free space for evacuations/compactions.
 #[classical_persistence]
+#[cfg(feature = "ic")]
 const GC_MEMORY_RESERVE: usize = (128 + 512) * MB;
-
 
 #[cfg(feature = "ic")]
 pub unsafe fn memory_reserve() -> usize {

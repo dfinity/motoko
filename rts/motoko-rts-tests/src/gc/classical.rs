@@ -106,13 +106,13 @@ impl GC {
 
     #[incremental_gc]
     pub fn run(&self, heap: &mut MotokoHeap, _round: usize) -> bool {
-        let static_roots = Value::from_ptr(heap.static_root_array_address());
-        let continuation_table_ptr_address = heap.continuation_table_ptr_address() as *mut Value;
-        let region0_ptr_address = heap.region0_ptr_address() as *mut Value;
+        let static_roots = Value::from_ptr(heap.static_root_array_variable_address());
+        let continuation_table_ptr_address = heap.continuation_table_variable_address() as *mut Value;
+        let region0_ptr_address = heap.region0_pointer_variable_address() as *mut Value;
 
         match self {
             GC::Incremental => unsafe {
-                use motoko_rts::gc::incremental::{incremental_gc_state, IncrementalGC};
+                use motoko_rts::gc::incremental::{get_incremental_gc_state, IncrementalGC};
                 const INCREMENTS_UNTIL_COMPLETION: usize = 16;
                 for _ in 0..INCREMENTS_UNTIL_COMPLETION {
                     let roots = motoko_rts::gc::incremental::roots::Roots {
@@ -120,7 +120,7 @@ impl GC {
                         continuation_table_location: continuation_table_ptr_address,
                         region0_ptr_location: region0_ptr_address,
                     };
-                    IncrementalGC::instance(heap, incremental_gc_state())
+                    IncrementalGC::instance(heap, get_incremental_gc_state())
                         .empty_call_stack_increment(roots);
                 }
                 false

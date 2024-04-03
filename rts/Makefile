@@ -392,7 +392,9 @@ TEST_DEPENDENCIES_64=$(TOMMATH_WASM_64_A) $(TOMMATH_BINDINGS_RS)
 TEST_BUILD_64=cd motoko-rts-tests && cargo build --target=wasm64-unknown-unknown -Zbuild-std=core,alloc,std,panic_abort --features enhanced_orthogonal_persistence
 TEST_RUN_64=wasmtime -C cache=n -W nan-canonicalization=y -W memory64 motoko-rts-tests/target/wasm64-unknown-unknown/debug/motoko-rts-tests.wasm
 
-.PHONY: test32-non-incremental test32-incremental test64
+.PHONY: test
+
+test: test32-non-incremental test32-incremental test64
 
 test32-non-incremental: $(TEST_DEPENDENCIES_32)
 	$(TEST_BUILD_32)

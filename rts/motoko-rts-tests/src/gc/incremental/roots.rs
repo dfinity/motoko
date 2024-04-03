@@ -1,4 +1,4 @@
-use motoko_rts_macros::{enhanced_orthogonal_persistence, classical_persistence};
+use motoko_rts_macros::{enhanced_orthogonal_persistence, classical_persistence, uses_enhanced_orthogonal_persistence};
 
 use std::{array::from_fn, mem::size_of, ptr::null_mut};
 
@@ -32,13 +32,20 @@ unsafe fn check_visit_static_roots(heap: &MotokoHeap, root_ids: &[ObjectIdx]) {
         let object = *field;
         if object.tag() != TAG_REGION {
             let array = object.as_array();
-            if array.len() == root_ids.len() {
-                for index in 0..array.len() {
-                    let mutbox_value = array.get(index);
-                    let mutbox = mutbox_value.as_mutbox();
-                    let root_address = (*mutbox).field.get_ptr();
-                    let root_id = object_id(heap, root_address);
-                    context.push(root_id);
+            if uses_enhanced_orthogonal_persistence!() {
+                if array.len() == root_ids.len() {
+                    for index in 0..array.len() {
+                        let mutbox_value = array.get(index);
+                        let mutbox = mutbox_value.as_mutbox();
+                        let root_address = (*mutbox).field.get_ptr();
+                        let root_id = object_id(heap, root_address);
+                        context.push(root_id);
+                    }
+                }
+            } else {
+                if array.len() == 1 {
+                    let id = object_id(&heap, array as usize);
+                    context.push(id);
                 }
             }
         }
