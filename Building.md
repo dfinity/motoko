@@ -135,7 +135,7 @@ The full report can be built with
     nix-build -A tests.coverage
     ```
 and the report for latest `master` can be viewed at
-\<https://dfinity.github.io/motoko/coverage/\>.
+[https://dfinity.github.io/motoko/coverage/](https://dfinity.github.io/motoko/coverage/).
 
 ## Profile the compiler
 

@@ -189,7 +189,7 @@ E.g. the upgrade from `v2` to `v3` fails this check:
 
 ## Examples in the wild
 
-A common, real-world example of an incompatible upgrade can be found on the forum: \<https://forum.dfinity.org/t/questions-about-data-structures-and-migrations/822/12?u=claudio/\>
+A common, real-world example of an incompatible upgrade can be found on the forum: [https://forum.dfinity.org/t/questions-about-data-structures-and-migrations/822/12?u=claudio/](https://forum.dfinity.org/t/questions-about-data-structures-and-migrations/822/12?u=claudio/)
 
 In that example, a user was attempting to add a field to the record payload of an array, by upgrading from stable type interface:
 
