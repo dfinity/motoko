@@ -1,3 +1,5 @@
+use motoko_rts_macros::{enhanced_orthogonal_persistence, classical_persistence};
+
 use std::{array::from_fn, mem::size_of, ptr::null_mut};
 
 use motoko_rts::{
@@ -77,6 +79,20 @@ unsafe fn check_visit_region0(heap: &MotokoHeap) {
     assert!(visited_region0);
 }
 
+#[classical_persistence]
+unsafe fn get_roots(heap: &MotokoHeap) -> Roots {
+    let static_roots = Value::from_ptr(heap.static_root_array_variable_address());
+    let continuation_table_location = heap.continuation_table_variable_address() as *mut Value;
+    let region0_ptr_location = heap.region0_pointer_variable_address() as *mut Value;
+    assert_ne!(continuation_table_location, null_mut());
+    Roots {
+        static_roots,
+        continuation_table_location,
+        region0_ptr_location,
+    }
+}
+
+#[enhanced_orthogonal_persistence]
 unsafe fn get_roots(heap: &MotokoHeap) -> Roots {
     let static_root = heap.static_root_array_variable_address() as *mut Value;
     let continuation_table_location = heap.continuation_table_variable_address() as *mut Value;
