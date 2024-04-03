@@ -154,9 +154,9 @@ fn test_gc(gc: GC, test_heap: &TestHeap) {
         heap.continuation_table_variable_offset(),
         heap.region0_pointer_variable_offset(),
     );
-
-    for _ in 0..3 {
-        let check_all_reclaimed = gc.run(&mut heap);
+    
+    for round in 0..3 {
+        let check_all_reclaimed = gc.run(&mut heap, round);
 
         let heap_base_offset = heap.heap_base_offset();
         let heap_ptr_offset = heap.heap_ptr_offset();
@@ -541,14 +541,14 @@ fn read_object_id(object_address: usize, heap: &[u8]) -> ObjectIdx {
 
 #[classical_persistence]
 impl GC {
-    fn run(&self, heap: &mut MotokoHeap) -> bool {
+    fn run(&self, heap: &mut MotokoHeap, round: usize) -> bool {
         todo!()
     }
 }
 
 #[enhanced_orthogonal_persistence]
 impl GC {
-    fn run(&self, heap: &mut MotokoHeap) -> bool {
+    fn run(&self, heap: &mut MotokoHeap, _round: usize) -> bool {
         let static_root = heap.static_root_array_variable_address() as *mut Value;
         let continuation_table_location = heap.continuation_table_variable_address() as *mut Value;
         let region0_pointer_location = heap.region0_pointer_variable_address() as *mut Value;
