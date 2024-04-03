@@ -114,7 +114,7 @@ Hydra job status page, and the there is a stable link for the latest build of
 
 **Implementation (external):**
 The latest `master` version of the file is availble at
-[https://dfinity.github.io/motoko/](https://dfinity.github.io/motoko/).
+\<https://dfinity.github.io/motoko/\>.
 The reports are calculated in PRs (so failures would be caught), but are not
 hosted anywhere.
 

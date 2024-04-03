@@ -9,7 +9,7 @@ python3 -m http.server --directory html
 ```
 
 CI pushes these docs for latest master to
-[https://hydra.dfinity.systems/job/dfinity-ci-build/motoko/docs/latest/download/1/overview-slides.html](https://hydra.dfinity.systems/job/dfinity-ci-build/motoko/docs/latest/download/1/overview-slides.html).
+\<https://hydra.dfinity.systems/job/dfinity-ci-build/motoko/docs/latest/download/1/overview-slides.html\>.
 
 The local documentation is suboptimal and compiled with pandoc, not
 docusaurus so it doesn't understand or process remark-code-import file includes,
