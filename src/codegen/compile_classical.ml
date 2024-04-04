@@ -2036,6 +2036,8 @@ module Tagged = struct
 
      (Reminder: objects and fields are word-aligned so will have the lowest two
      bits unset) *)
+  (* Reordered with combined modes of classical and enhanced orthogonal persistence,
+     see `types.rs` *)
   let int_of_tag = function
     | Object -> 1l
     | ObjInd -> 3l
@@ -2047,11 +2049,13 @@ module Tagged = struct
     | Variant -> 15l
     | Blob -> 17l
     | Indirection -> 19l
-    | Bits32 -> 21l
-    | BigInt -> 23l
-    | Concat -> 25l
-    | Region -> 27l
+    | BigInt -> 21l
+    | Concat -> 23l
+    | Region -> 25l
+    (* Only used during 32-bit classical persistence mode. *)
+    | Bits32 -> 27l
     | Null -> 29l
+    (* RTS-internal *)
     | OneWordFiller -> 31l
     | FreeSpace -> 33l
     | ArraySliceMinimum -> 34l
