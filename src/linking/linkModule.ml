@@ -92,6 +92,8 @@ and resolving.
 *)
 
 (* Linking *)
+exception LinkError of string
+exception TooLargeDataSegments of string
 
 type imports = (int32 * name) list
 
@@ -99,6 +101,18 @@ let phrase f x = { x with it = f x.it }
 
 let map_module f (em : extended_module) = { em with module_ = f em.module_ }
 let map_name_section f (em : extended_module) = { em with name = f em.name }
+
+(* Distinction between Memory64 and Memory32 *)
+
+let uses_memory64 (m: module_') : bool =
+  let open Wasm_exts.Types in
+  let MemoryType(_, index_type) = match m.memories with
+  | [ memory ] -> memory.it.mtype
+  | _ -> raise (LinkError "Expect one memory in module")
+  in
+  match index_type with
+  | I64IndexType -> true
+  | I32IndexType -> false
 
 (* Generic functions about import and export lists *)
 
@@ -274,9 +288,6 @@ let remove_non_ic_exports (em : extended_module) : extended_module =
 
 (* Generic linking logic *)
 
-exception LinkError of string
-exception TooLargeDataSegments of string
-
 type renumbering = int32 -> int32
 
 let resolve imports exports : (int32 * int32) list =
@@ -407,16 +418,22 @@ let set_global global value = fun m ->
     | [] -> assert false
     | g::gs when i = Int32.to_int global ->
       let open Wasm_exts.Types in
-      assert (g.it.gtype = GlobalType (I64Type, Immutable));
+      let global_value = if uses_memory64 m then
+        (assert (g.it.gtype = GlobalType (I64Type, Immutable));
+        Wasm_exts.Values.I64 (Int64.of_int32 value))
+      else
+        (assert (g.it.gtype = GlobalType (I32Type, Immutable));
+        Wasm_exts.Values.I32 value)
+      in
       let g = phrase (fun g' ->
-        { g' with value = [Const (Wasm_exts.Values.I64 (Int64.of_int (Int32.to_int value)) @@ g.at) @@ g.at] @@ g.at }
+        { g' with value = [Const (global_value @@ g.at) @@ g.at] @@ g.at }
       ) g in
       g :: gs
     | g::gs -> g :: go (i+1) gs
   in
   { m with globals = go 0 m.globals }
 
-let fill_global (global : int32) (value : Wasm_exts.Values.value) : module_' -> module_' = fun m ->
+let fill_global (global : int32) (value : Wasm_exts.Values.value) (uses_memory64 : bool): module_' -> module_' = fun m ->
   let rec instr' to_32 = function
     | Block (ty, is) -> Block (ty, instrs to_32 is)
     | Loop (ty, is) -> Loop (ty, instrs to_32 is)
@@ -426,7 +443,6 @@ let fill_global (global : int32) (value : Wasm_exts.Values.value) : module_' -> 
       | (true, Wasm_exts.Values.I64 number) -> (Wasm_exts.Values.I32 (Int32.of_int (Int64.to_int number)))
       | _ -> value in
       Const (encoded_value @@ v.at)
-    | GlobalGet v when v.it = global -> Const (value @@ v.at)
     | GlobalSet v when v.it = global -> assert false
     | i -> i
   and instr to_32 i = phrase (instr' to_32) i
@@ -442,7 +458,7 @@ let fill_global (global : int32) (value : Wasm_exts.Values.value) : module_' -> 
   let global = phrase global' in
   let globals = List.map global in
 
-  let table_segment' (s : var list segment') = { s with offset = const true s.offset; } in
+  let table_segment' (s : var list segment') = { s with offset = const uses_memory64 s.offset; } in
   let table_segment = phrase (table_segment') in
   let table_segments = List.map table_segment in
 
@@ -521,9 +537,13 @@ let read_global gi (m : module_') : int32 =
   let n_impo = count_imports is_global_import m in
   let g = List.nth m.globals (Int32.(to_int (sub gi n_impo))) in
   let open Wasm_exts.Types in
-  assert (g.it.gtype = GlobalType (I64Type, Immutable));
-  match g.it.value.it with
-  | [{ it = Const {it = Wasm_exts.Values.I64 i;_}; _}] -> Int32.of_int (Int64.to_int i)
+  match uses_memory64 m, g.it.value.it with
+  | true, [{ it = Const {it = Wasm_exts.Values.I64 i;_}; _}] -> 
+    assert (g.it.gtype = GlobalType (I64Type, Immutable));
+    Int32.of_int (Int64.to_int i)
+  | false, [{ it = Const {it = Wasm_exts.Values.I32 i;_}; _}] ->
+    assert (g.it.gtype = GlobalType (I32Type, Immutable));
+    i
   | _ -> assert false
 
 let read_table_size (m : module_') : int32 =
@@ -541,17 +561,18 @@ let set_memory_size new_size_bytes : module_' -> module_' = fun m ->
   let open Wasm_exts.Types in
   let page_size = Int64.of_int (64*1024) in
   let new_size_pages = Int64.(add (div new_size_bytes page_size) 1L) in
+  let index_type = if uses_memory64 m then I64IndexType else I32IndexType in
   match m.memories with
   | [t;t1] ->
     { m with
       memories = [(phrase (fun m ->
-        { mtype = MemoryType ({min = new_size_pages; max = None}, I64IndexType) }
+        { mtype = MemoryType ({min = new_size_pages; max = None}, index_type) }
         ) t); t1]
     }
   | [t] ->
     { m with
       memories = [phrase (fun m ->
-        { mtype = MemoryType ({min = new_size_pages; max = None}, I64IndexType) }
+        { mtype = MemoryType ({min = new_size_pages; max = None}, index_type) }
       ) t]
     }
   | _ -> raise (LinkError "Expect one memory in first module")
@@ -569,7 +590,7 @@ let set_table_size new_size : module_' -> module_' = fun m ->
   | _ -> raise (LinkError "Expect one table in first module")
 
 
-let fill_item_import module_name item_name new_base (m : module_') : module_' =
+let fill_item_import module_name item_name new_base uses_memory64 (m : module_') : module_' =
   (* We need to find the right import,
      replace all uses of get_global of that import with the constant,
      and finally rename all globals
@@ -588,7 +609,13 @@ let fill_item_import module_name item_name new_base (m : module_') : module_' =
           go i is
     in go 0 m.imports in
 
-    m |> fill_global base_global (Wasm_exts.Values.I64 (I64_convert.extend_i32_u new_base))
+    let new_base_value = if uses_memory64 then
+      Wasm_exts.Values.I64 (I64_convert.extend_i32_u new_base)
+    else
+      Wasm_exts.Values.I32 new_base
+    in
+
+    m |> fill_global base_global new_base_value uses_memory64
       |> remove_imports is_global_import [base_global, base_global]
       |> rename_globals Int32.(fun i ->
           if i < base_global then i
@@ -596,15 +623,16 @@ let fill_item_import module_name item_name new_base (m : module_') : module_' =
           else sub i one
         )
 
-let fill_memory_base_import new_base : module_' -> module_' =
-  fill_item_import "env" "__memory_base" new_base
+let fill_memory_base_import new_base uses_memory64 : module_' -> module_' =
+  fill_item_import "env" "__memory_base" new_base uses_memory64
 
-let fill_table_base64_import new_base : module_' -> module_' =
-  fill_item_import "env" "__table_base" new_base
-
-let fill_table_base32_import new_base : module_' -> module_' =
-  fill_item_import "env" "__table_base32" new_base
-        
+let fill_table_base_import new_base uses_memory64 : module_' -> module_' = fun m ->
+  let m = fill_item_import "env" "__table_base" new_base uses_memory64 m in
+  if uses_memory64 then
+    fill_item_import "env" "__table_base32" new_base uses_memory64 m
+  else
+    m
+   
 (* Concatenation of modules *)
 
 let join_modules
@@ -795,25 +823,29 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
   let lib_heap_start = align_i32 dylink.memory_alignment old_heap_start in
   let new_heap_start = align_i32 8l (Int32.add lib_heap_start dylink.memory_size) in
 
-  (* The RTS data segments must fit below 4.5MB according to the persistent heap layout. 
-     The first 4MB are reserved for the Rust call stack such that RTS data segments are limited to 512KB. *)
-  let max_rts_stack_size = 4 * 1024 * 1024 in
-  let max_rts_data_segment_size = 512 * 1024 in
-  (if (Int32.to_int new_heap_start) > max_rts_stack_size + max_rts_data_segment_size then
-    (raise (TooLargeDataSegments (Printf.sprintf "The Wasm data segment size exceeds the supported maxmimum of %nMB." max_rts_data_segment_size)))
-  else
-    ()
-  );
+  if uses_memory64 em1.module_ then
+  begin
+    (* The RTS data segments must fit below 4.5MB according to the persistent heap layout. 
+      The first 4MB are reserved for the Rust call stack such that RTS data segments are limited to 512KB. *)
+    let max_rts_stack_size = 4 * 1024 * 1024 in
+    let max_rts_data_segment_size = 512 * 1024 in
+    (if (Int32.to_int new_heap_start) > max_rts_stack_size + max_rts_data_segment_size then
+      (raise (TooLargeDataSegments (Printf.sprintf "The Wasm data segment size exceeds the supported maxmimum of %nMB." max_rts_data_segment_size)))
+    else
+      ()
+    )
+  end else ();
 
   let old_table_size = read_table_size em1.module_ in
   let lib_table_start = align_i32 dylink.table_alignment old_table_size in
 
+  let uses_memory64 = uses_memory64 em1.module_ in
+
   (* Fill in memory and table base pointers *)
   let dm2 = em2.module_
-    |> fill_memory_base_import lib_heap_start
-    |> fill_table_base64_import lib_table_start 
-    |> fill_table_base32_import lib_table_start in
-
+    |> fill_memory_base_import lib_heap_start uses_memory64
+    |> fill_table_base_import lib_table_start uses_memory64 in
+    
   let got_func_imports = collect_got_func_imports dm2 in
 
   (* Link functions *)
@@ -877,20 +909,23 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
     add_or_get_ty fun_ty.it
   in
 
-  (* Check that the first module generated by the compiler backend does not use 
-     active data segments. *)
   let is_active data_segment = match data_segment.it.dmode.it with
   | Active _ -> true
   | _ -> false
   in
   let em1_active_data_segments = List.filter is_active em1.module_.datas in
-  assert ((List.length em1_active_data_segments) = 0);
-  
   let is_passive data_segment = match data_segment.it.dmode.it with 
   | Passive -> true
   | _ -> false
   in
   let em1_passive_data_segments = List.filter is_passive em1.module_.datas in
+  
+  (* Check that the first module generated by the compiler backend does not use 
+     active data segments. *)
+  if uses_memory64 then
+    assert ((List.length em1_active_data_segments) = 0)
+  else ();
+  
   let dm2_data_segment_offset = List.length em1_passive_data_segments in
 
   (* Rename types in first module *)
@@ -923,7 +958,8 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
   in
 
   (* Rust generates active data segments for the runtime system code that are not supported with orthogonal persistence.
-     Therefore, make the data segments passive and load them on initialization to their reserved static space. 
+     Therefore, for enhanced orthogonal persistence, make the data segments passive and load them on initialization to 
+     their reserved static space.
      Note: If Rust would also use passive data segments in future, the segment load indices need to be renumbered. *)
   let make_rts_data_segments_passive : module_' -> module_' = fun m ->
     let segment_mode' (dmode : segment_mode') = 
@@ -992,7 +1028,7 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
     |> map_module (set_table_size new_table_size)
     )
     ( dm2
-    |> make_rts_data_segments_passive
+    |> (if uses_memory64 then make_rts_data_segments_passive else (fun m -> m))
     |> remove_imports is_fun_import fun_resolved21
     |> remove_imports is_global_import global_resolved21
     |> remove_imports is_memory_import [0l, 0l]
@@ -1008,7 +1044,7 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
     type_indices
   |> add_call_ctors
   |> remove_non_ic_exports (* only sane if no additional files get linked in *)
-  |> map_module (load_rts_data_segments dm2_data_segment_offset dm2.datas)
+  |> (if uses_memory64 then map_module (load_rts_data_segments dm2_data_segment_offset dm2.datas) else (fun m -> m))
   in
 
   (* Rename global and function indices in GOT.func stuff *)
