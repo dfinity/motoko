@@ -5001,6 +5001,11 @@ module IC = struct
   let i32s n = Lib.List.make n I32Type
   let i64s n = Lib.List.make n I64Type
 
+  let get_actor_to_persist_function_name = "@get_actor_to_persist"
+
+  let get_actor_to_persist env =
+    G.i (Call (nr (E.built_in env get_actor_to_persist_function_name)))
+
   let import_ic0 env =
       E.add_func_import env "ic0" "accept_message" [] [];
       E.add_func_import env "ic0" "call_data_append" (i32s 2) [];
@@ -11846,9 +11851,9 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_unboxed_const (if !Flags.use_stable_regions then 1l else 0l) ^^
     E.call_import env "rts" "region_init"
 
-  | ICStableWrite ty, [e] ->
+  | ICStableWrite ty, [] ->
     SR.unit,
-    compile_exp_vanilla env ae e ^^
+    IC.get_actor_to_persist env ^^
     Stabilization.stabilize env ty
 
   (* Cycles *)
@@ -12679,6 +12684,11 @@ and main_actor as_opt mod_env ds fs up build_stable_actor =
          compile_exp_as env ae2 SR.unit up.inspect);
        IC.export_inspect env;
     end;
+
+    (* Helper function to build the stable actor wrapper *)
+    Func.define_built_in mod_env IC.get_actor_to_persist_function_name [] [I32Type] (fun env ->
+      compile_exp_as env ae2 SR.Vanilla build_stable_actor
+    );
 
     (* Export metadata *)
     env.E.stable_types := metadata "motoko:stable-types" up.meta.sig_;
