@@ -1,3 +1,4 @@
+//ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
 var a = 'N';
 
 func foo() = if (a == 'Y') {} else {};
