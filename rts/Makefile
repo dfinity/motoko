@@ -182,7 +182,7 @@ $(TOMMATH_WASM_64_A): $(TOMMATH_WASM_64_O)
 # Building the musl files
 #
 
-MUSL_WASM_32_O=$(MUSLFILES:%=_build/wasm32/musl_%.o)
+MUSL_WASM_32_O=$(MUSLFILES_32:%=_build/wasm32/musl_%.o)
 MUSL_WASM_32_A=_build/libmusl_wasm32.a
 
 MUSL_WASM_64_O=$(MUSLFILES_64:%=_build/wasm64/musl_%.o)
