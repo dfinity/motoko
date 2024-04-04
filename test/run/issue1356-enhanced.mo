@@ -1,3 +1,4 @@
+//ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
 // CHECK-LABEL: (func $init
 
 func matchNat(n : Nat) : Bool =
