@@ -79,7 +79,8 @@ and stmt' =
   | FieldAssignS of fldacc * exp
   | IfS of exp * seqn * seqn
   | WhileS of exp * invariants * seqn
-  | LabelS of id * invariants
+  | LabelS of id
+  | GotoS of id
   (* TODO: these are temporary helper terms  that should not appear in the final translation 
        we should avoid introducing them in the first place if possible, so they can be removed *)
   | PreconditionS of exp
