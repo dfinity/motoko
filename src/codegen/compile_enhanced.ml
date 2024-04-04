@@ -5876,15 +5876,15 @@ module RTS_Exports = struct
 
     (* Value constructors *)
 
-    let int_from_isize_fi = E.add_fun env "int_from_isize" (
+    let int_from_i64_fi = E.add_fun env "int_from_i64" (
       Func.of_body env ["v", I64Type] [I64Type] (fun env ->
         let get_v = G.i (LocalGet (nr 0l)) in
         get_v ^^ BigNum.from_signed_word64 env
       )
     ) in
     E.add_export env (nr {
-      name = Lib.Utf8.decode "int_from_isize";
-      edesc = nr (FuncExport (nr int_from_isize_fi))
+      name = Lib.Utf8.decode "int_from_i64";
+      edesc = nr (FuncExport (nr int_from_i64_fi))
     });
 
     (* Traps *)

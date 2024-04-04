@@ -43,12 +43,25 @@ use crate::libc_declarations::c_void;
 #[classical_persistence]
 use crate::types::Stream;
 
-use motoko_rts_macros::{classical_persistence, ic_mem_fn};
+use motoko_rts_macros::{classical_persistence, enhanced_orthogonal_persistence, ic_mem_fn};
 
 // Provided by generated code
+#[cfg(feature = "ic")]
 extern "C" {
-    #[cfg(feature = "ic")]
-    fn int_from_isize(value: isize) -> Value;
+    #[enhanced_orthogonal_persistence]
+    fn int_from_i64(value: isize) -> Value;
+    #[classical_persistence]
+    fn int_from_i32(value: isize) -> Value;
+}
+
+#[enhanced_orthogonal_persistence]
+unsafe fn int_from_isize(value: isize) -> Value {
+    int_from_i64(value)
+}
+
+#[classical_persistence]
+unsafe fn int_from_isize(value: isize) -> Value {
+    int_from_i32(value)
 }
 
 unsafe fn mp_alloc<M: Memory>(mem: &mut M, size: Bytes<usize>) -> *mut u8 {
