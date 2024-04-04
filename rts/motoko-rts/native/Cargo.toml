@@ -10,9 +10,11 @@ path = "../src/lib.rs"
 
 [features]
 incremental_gc = []
+classical_persistence = ["libc"]
 enhanced_orthogonal_persistence = ["incremental_gc"]
 
 [dependencies]
+libc = { version = "0.2.112", default_features = false, optional = true }
 motoko-rts-macros = { path = "../../motoko-rts-macros" }
 
 [profile.dev]

@@ -1,7 +1,6 @@
 // Declarations adopted from https://github.com/rust-lang/libc/blob/main/src/wasi.rs.
 #![allow(non_camel_case_types)]
 
-#[cfg(feature = "ic")]
 use motoko_rts_macros::classical_persistence;
 use motoko_rts_macros::enhanced_orthogonal_persistence;
 
