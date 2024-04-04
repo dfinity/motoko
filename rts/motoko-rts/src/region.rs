@@ -5,7 +5,14 @@ use crate::types::{size_of, Blob, Bytes, Region, Value, TAG_REGION};
 
 // Versions
 // Should agree with constants in StableMem in compile.ml
-// Version 0 to 2 are legacy.
+
+// Legacy versions, used with classical persistence
+const VERSION_NO_STABLE_MEMORY: usize = 0; // never manifest in serialized form
+#[classical_persistence]
+const VERSION_SOME_STABLE_MEMORY: usize = 1;
+const VERSION_REGIONS: usize = 2;
+
+// New versions, used with enhanced orthogonal persistence
 pub(crate) const VERSION_GRAPH_COPY_NO_REGIONS: usize = 3;
 pub(crate) const VERSION_GRAPH_COPY_REGIONS: usize = 4;
 pub(crate) const VERSION_STABLE_HEAP_NO_REGIONS: usize = 5;
@@ -16,7 +23,7 @@ const _: () = assert!(meta_data::size::PAGES_IN_BLOCK <= u8::MAX as u32);
 const _: () = assert!(meta_data::max::BLOCKS <= u16::MAX);
 const _: () = assert!(meta_data::max::REGIONS <= u64::MAX - 1);
 
-use motoko_rts_macros::ic_mem_fn;
+use motoko_rts_macros::{classical_persistence, enhanced_orthogonal_persistence, ic_mem_fn, uses_enhanced_orthogonal_persistence};
 
 unsafe fn region_trap_with(msg: &str) -> ! {
     trap_with_prefix("Region error: ", msg)
@@ -475,8 +482,25 @@ pub(crate) unsafe fn region0_get_ptr_loc() -> *mut Value {
     &mut REGION_0
 }
 
-#[ic_mem_fn]
-pub unsafe fn region_new<M: Memory>(mem: &mut M) -> Value {
+#[classical_persistence]
+unsafe fn migrate_on_new_region<M: Memory>(mem: &mut M) {
+    match crate::stable_mem::get_version() {
+        VERSION_NO_STABLE_MEMORY => {
+            assert_eq!(crate::stable_mem::size(), 0);
+            region_migration_from_no_stable_memory(mem);
+        }
+        VERSION_SOME_STABLE_MEMORY => {
+            region_migration_from_some_stable_memory(mem);
+        }
+        VERSION_REGIONS => {}
+        _ => {
+            assert!(false);
+        }
+    }
+}
+
+#[enhanced_orthogonal_persistence]
+unsafe fn migrate_on_new_region<M: Memory>(mem: &mut M) {
     match crate::stable_mem::get_version() {
         VERSION_STABLE_HEAP_NO_REGIONS | VERSION_GRAPH_COPY_NO_REGIONS => {
             if crate::stable_mem::size() == 0 {
@@ -489,7 +513,12 @@ pub unsafe fn region_new<M: Memory>(mem: &mut M) -> Value {
         _ => {
             assert!(false);
         }
-    };
+    }
+}    
+
+#[ic_mem_fn]
+pub unsafe fn region_new<M: Memory>(mem: &mut M) -> Value {
+    migrate_on_new_region(mem);
 
     let next_id = meta_data::total_allocated_regions::get();
 
@@ -560,14 +589,33 @@ pub unsafe fn region_recover<M: Memory>(mem: &mut M, rid: &RegionId) -> Value {
     r_ptr
 }
 
+fn upgrade_version_to_regions() {
+    let new_version = 
+    if uses_enhanced_orthogonal_persistence!() {        
+        match crate::stable_mem::get_version() {
+            VERSION_STABLE_HEAP_NO_REGIONS => VERSION_STABLE_HEAP_REGIONS,
+            VERSION_GRAPH_COPY_NO_REGIONS => VERSION_GRAPH_COPY_REGIONS,
+            _ => unreachable!(),
+        }
+    } else {
+        VERSION_REGIONS
+    };
+    crate::stable_mem::set_version(new_version);
+}
+
 pub(crate) unsafe fn region_migration_from_no_stable_memory<M: Memory>(mem: &mut M) {
     use crate::stable_mem::{get_version, grow, size, write};
     use meta_data::size::{PAGES_IN_BLOCK, PAGE_IN_BYTES};
 
-    assert!(
-        get_version() == VERSION_STABLE_HEAP_NO_REGIONS
-            || get_version() == VERSION_GRAPH_COPY_NO_REGIONS
-    );
+    if uses_enhanced_orthogonal_persistence!() {
+        assert!(
+            get_version() == VERSION_STABLE_HEAP_NO_REGIONS
+                || get_version() == VERSION_GRAPH_COPY_NO_REGIONS
+        );
+    } else {
+        assert!(get_version() == VERSION_NO_STABLE_MEMORY);
+    }
+
     assert_eq!(size(), 0);
 
     // pages required for meta_data (9/ 960KiB), much less than PAGES_IN_BLOCK (128/ 8MB) for a full block
@@ -597,12 +645,7 @@ pub(crate) unsafe fn region_migration_from_no_stable_memory<M: Memory>(mem: &mut
     // Write magic header
     write_magic();
 
-    let new_version = match get_version() {
-        VERSION_STABLE_HEAP_NO_REGIONS => VERSION_STABLE_HEAP_REGIONS,
-        VERSION_GRAPH_COPY_NO_REGIONS => VERSION_GRAPH_COPY_REGIONS,
-        _ => unreachable!(),
-    };
-    crate::stable_mem::set_version(new_version);
+    upgrade_version_to_regions();
 
     // Region 0 -- classic API for stable memory, as a dedicated region.
     REGION_0 = region_new(mem);
@@ -646,7 +689,7 @@ pub(crate) unsafe fn region_migration_from_some_stable_memory<M: Memory>(mem: &m
     // - copy the head block of data from temp blob into new "final block" (logically still first) for region 0.
     // - initialize the meta data for the region system in vacated initial block.
 
-    use crate::stable_mem::{get_version, grow, read, size, write};
+    use crate::stable_mem::{grow, read, size, write};
 
     let header_len = meta_data::size::BLOCK_IN_BYTES as u32;
 
@@ -729,12 +772,7 @@ pub(crate) unsafe fn region_migration_from_some_stable_memory<M: Memory>(mem: &m
         meta_data::block_region_table::set(BlockId(i), Some((RegionId(0), rank, page_count)))
     }
 
-    let new_version = match get_version() {
-        VERSION_STABLE_HEAP_NO_REGIONS => VERSION_STABLE_HEAP_REGIONS,
-        VERSION_GRAPH_COPY_NO_REGIONS => VERSION_GRAPH_COPY_REGIONS,
-        _ => unreachable!(),
-    };
-    crate::stable_mem::set_version(new_version);
+    upgrade_version_to_regions();
 
     /* "Recover" the region data into a heap object. */
     REGION_0 = region_recover(mem, &RegionId(0));
@@ -786,6 +824,38 @@ pub(crate) unsafe fn region_migration_from_regions_plus<M: Memory>(mem: &mut M) 
 //
 // region manager migration/initialization, with pre-existing stable data.
 //
+#[classical_persistence]
+#[ic_mem_fn(ic_only)]
+pub(crate) unsafe fn region_init<M: Memory>(mem: &mut M, use_stable_regions: usize) {
+    match crate::stable_mem::get_version() {
+        VERSION_NO_STABLE_MEMORY => {
+            assert!(crate::stable_mem::size() == 0);
+            if use_stable_regions != 0 {
+                region_migration_from_no_stable_memory(mem);
+                debug_assert!(meta_data::offset::FREE < BLOCK_BASE);
+                debug_assert!(BLOCK_BASE == meta_data::offset::BASE_LOW);
+            };
+        }
+        VERSION_SOME_STABLE_MEMORY => {
+            assert!(crate::stable_mem::size() > 0);
+            if use_stable_regions != 0 {
+                region_migration_from_some_stable_memory(mem);
+                debug_assert!(meta_data::offset::FREE < BLOCK_BASE);
+                debug_assert!(BLOCK_BASE == meta_data::offset::BASE_HIGH);
+            };
+        }
+        _ => {
+            region_migration_from_regions_plus(mem); //check format & recover region0
+            debug_assert!(meta_data::offset::FREE < BLOCK_BASE);
+            debug_assert!(
+                BLOCK_BASE == meta_data::offset::BASE_LOW
+                    || BLOCK_BASE == meta_data::offset::BASE_HIGH
+            );
+        }
+    }
+}
+
+#[enhanced_orthogonal_persistence]
 #[ic_mem_fn(ic_only)]
 pub(crate) unsafe fn region_init<M: Memory>(mem: &mut M, use_stable_regions: usize) {
     match crate::stable_mem::get_version() {
