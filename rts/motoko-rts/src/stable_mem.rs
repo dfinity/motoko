@@ -111,6 +111,7 @@ pub fn write_u64(offset: u64, n: u64) {
 
 #[cfg(feature = "ic")]
 #[no_mangle]
+#[enhanced_orthogonal_persistence]
 pub extern "C" fn read_persistence_version() -> usize {
     use crate::region::VERSION_STABLE_HEAP_NO_REGIONS;
 

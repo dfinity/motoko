@@ -6313,8 +6313,8 @@ module RTS_Exports = struct
       edesc = nr (FuncExport (nr moc_stable_mem_grow_fi))
     });
 
-    let moc_stable_mem_size_fi =
-      E.add_fun env "moc_stable_mem_size" (
+    let moc_stable_mem_get_size_fi =
+      E.add_fun env "moc_stable_mem_get_size" (
         Func.of_body env [] [I64Type]
           (fun env ->
              when_stable_memory_required_else_trap env (fun () ->
@@ -6322,8 +6322,8 @@ module RTS_Exports = struct
         )
     in
     E.add_export env (nr {
-      name = Lib.Utf8.decode "moc_stable_mem_size";
-      edesc = nr (FuncExport (nr moc_stable_mem_size_fi))
+      name = Lib.Utf8.decode "moc_stable_mem_get_size";
+      edesc = nr (FuncExport (nr moc_stable_mem_get_size_fi))
     });
 
     let moc_stable_mem_get_version_fi =
