@@ -107,8 +107,8 @@ let map_name_section f (em : extended_module) = { em with name = f em.name }
 let uses_memory64 (m: module_') : bool =
   let open Wasm_exts.Types in
   let MemoryType(_, index_type) = match m.memories with
-  | [ memory ] -> memory.it.mtype
-  | _ -> raise (LinkError "Expect one memory in module")
+  | [] -> raise (LinkError "Expect at least one memory in module")
+  | memory::_ -> memory.it.mtype
   in
   match index_type with
   | I64IndexType -> true
