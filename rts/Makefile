@@ -213,7 +213,8 @@ $(MUSL_WASM_64_A): $(MUSL_WASM_64_O)
 RTS_RUST_FILES=$(shell ls **/*.rs)
 RTS_CARGO_FILES=$(shell ls **/Cargo.toml)
 
-TOMMATH_BINDINGS_RS=_build/tommath_bindings.rs
+TOMMATH_BINDINGS_RS_32=_build/wasm32/tommath_bindings.rs
+TOMMATH_BINDINGS_RS_64=_build/wasm64/tommath_bindings.rs
 
 TOMMATH_BIND_OPTIONS = \
 		--use-core \
@@ -247,7 +248,13 @@ TOMMATH_BIND_OPTIONS = \
 	    --blocklist-type __uint64_t \
 		-- $(TOMMATH_FLAGS)
 
-$(TOMMATH_BINDINGS_RS): | _build
+$(TOMMATH_BINDINGS_RS_32): | _build/wasm32
+	bindgen $(TOMMATHSRC)/tommath.h \
+	    -o $@ \
+	    --ctypes-prefix=libc \
+		$(TOMMATH_BIND_OPTIONS)
+
+$(TOMMATH_BINDINGS_RS_64): | _build/wasm64
 	bindgen $(TOMMATHSRC)/tommath.h \
 	    -o $@ \
 	    --ctypes-prefix="crate::libc_declarations" \
@@ -262,7 +269,7 @@ $(TOMMATH_BINDINGS_RS): | _build
 
 # 32-bit Wasm builds
 
-RTS_DEPENDENCIES_32=$(TOMMATH_BINDINGS_RS) $(RTS_RUST_FILES) $(RTS_CARGO_FILES) | _build/wasm32
+RTS_DEPENDENCIES_32=$(TOMMATH_BINDINGS_RS_32) $(RTS_RUST_FILES) $(RTS_CARGO_FILES) | _build/wasm32
 RTS_BUILD_32=cd motoko-rts && cargo build --target=wasm32-unknown-emscripten -Zbuild-std=core,alloc
 RTS_DEBUG_BUILD_32=$(RTS_BUILD_32)
 RTS_RELEASE_BUILD_32=$(RTS_BUILD_32) --release
@@ -276,24 +283,24 @@ RTS_RUST_INCREMENTAL_WASM_32_A=_build/wasm32/libmotoko_rts_incremental.a
 RTS_RUST_INCREMENTAL_DEBUG_WASM_32_A=_build/wasm32/libmotoko_rts_incremental_debug.a
 
 $(RTS_RUST_NON_INCREMENTAL_WASM_32_A): $(RTS_DEPENDENCIES_32)
-	$(RTS_RELEASE_BUILD_32)
+	$(RTS_RELEASE_BUILD_32) --features classical_persistence
 	cp $(RTS_RELEASE_TARGET_32) $@
 
 $(RTS_RUST_NON_INCREMENTAL_DEBUG_WASM_32_A): $(RTS_DEPENDENCIES_32)
-	$(RTS_DEBUG_BUILD_32)
+	$(RTS_DEBUG_BUILD_32) --features classical_persistence
 	cp $(RTS_DEBUG_TARGET_32) $@
 
 $(RTS_RUST_INCREMENTAL_WASM_32_A): $(RTS_DEPENDENCIES_32)
-	$(RTS_RELEASE_BUILD_32) --features incremental_gc
+	$(RTS_RELEASE_BUILD_32) --features classical_persistence,incremental_gc
 	cp $(RTS_RELEASE_TARGET_32) $@
 
 $(RTS_RUST_INCREMENTAL_DEBUG_WASM_32_A): $(RTS_DEPENDENCIES_32)
-	$(RTS_DEBUG_BUILD_32) --features incremental_gc
+	$(RTS_DEBUG_BUILD_32) --features classical_persistence,incremental_gc
 	cp $(RTS_DEBUG_TARGET_32) $@
 
 # 64-bit Wasm builds
 
-RTS_DEPENDENCIES_64=$(TOMMATH_BINDINGS_RS) $(RTS_RUST_FILES) $(RTS_CARGO_FILES) | _build/wasm64
+RTS_DEPENDENCIES_64=$(TOMMATH_BINDINGS_RS_64) $(RTS_RUST_FILES) $(RTS_CARGO_FILES) | _build/wasm64
 COMPILER_FLAGS_64=--emit=llvm-ir
 RTS_BUILD_64=cd motoko-rts && RUSTFLAGS="${COMPILER_FLAGS_64}" cargo build --target=wasm64-unknown-unknown -Zbuild-std=core,alloc --features enhanced_orthogonal_persistence
 RTS_DEBUG_BUILD_64=$(RTS_BUILD_64)
@@ -384,11 +391,11 @@ $(COMPILER_BUILTINS_DEBUG_WASM_64_A): $(COMPILER_BUILTINS_DEBUG_LLVM_IR_64)
 # The test suite
 #
 
-TEST_DEPENDENCIES_32=$(TOMMATH_WASM_32_A) $(TOMMATH_BINDINGS_RS)
+TEST_DEPENDENCIES_32=$(TOMMATH_WASM_32_A) $(TOMMATH_BINDINGS_RS_32)
 TEST_BUILD_32=cd motoko-rts-tests && cargo build --target=wasm32-wasi
 TEST_RUN_32=wasmtime -C cache=n -W nan-canonicalization=y motoko-rts-tests/target/wasm32-wasi/debug/motoko-rts-tests.wasm
 
-TEST_DEPENDENCIES_64=$(TOMMATH_WASM_64_A) $(TOMMATH_BINDINGS_RS)
+TEST_DEPENDENCIES_64=$(TOMMATH_WASM_64_A) $(TOMMATH_BINDINGS_RS_64)
 TEST_BUILD_64=cd motoko-rts-tests && cargo build --target=wasm64-unknown-unknown -Zbuild-std=core,alloc,std,panic_abort --features enhanced_orthogonal_persistence
 TEST_RUN_64=wasmtime -C cache=n -W nan-canonicalization=y -W memory64 motoko-rts-tests/target/wasm64-unknown-unknown/debug/motoko-rts-tests.wasm
 
@@ -397,11 +404,11 @@ TEST_RUN_64=wasmtime -C cache=n -W nan-canonicalization=y -W memory64 motoko-rts
 test: test32-non-incremental test32-incremental test64
 
 test32-non-incremental: $(TEST_DEPENDENCIES_32)
-	$(TEST_BUILD_32)
+	$(TEST_BUILD_32) --features classical_persistence
 	$(TEST_RUN_32)
 
 test32-incremental: $(TEST_DEPENDENCIES_32)
-	$(TEST_BUILD_32) --features incremental_gc
+	$(TEST_BUILD_32) --features classical_persistence,incremental_gc
 	$(TEST_RUN_32)
 
 test64: $(TEST_DEPENDENCIES_64)
@@ -416,8 +423,6 @@ test64: $(TEST_DEPENDENCIES_64)
 
 EXPORTED_SYMBOLS_COMMON=\
   __wasm_call_ctors \
-  memcpy \
-  memcmp \
   tan \
   asin \
   acos \

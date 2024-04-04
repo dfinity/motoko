@@ -1,4 +1,4 @@
-use crate::libc_declarations::{c_double, snprintf};
+use crate::libc_declarations::c_double;
 use crate::memory::Memory;
 use crate::text::text_of_ptr_size;
 use crate::types::{Bytes, Value};
@@ -25,7 +25,7 @@ unsafe fn float_fmt<M: Memory>(mem: &mut M, a: f64, prec: u32, mode: u32) -> Val
         _ => panic!("float_fmt: unrecognized mode"),
     };
 
-    let n_written = snprintf(
+    let n_written = libc::snprintf(
         buf.as_ptr() as *mut _,
         320,
         fmt.as_ptr() as *const _,
@@ -35,5 +35,5 @@ unsafe fn float_fmt<M: Memory>(mem: &mut M, a: f64, prec: u32, mode: u32) -> Val
 
     assert!(n_written > 0);
 
-    text_of_ptr_size(mem, buf.as_ptr(), Bytes(n_written))
+    text_of_ptr_size(mem, buf.as_ptr(), Bytes(n_written as usize))
 }
