@@ -602,9 +602,11 @@ const BITS_PER_CHUNK: usize = 7;
 const MAX_CHUNKS_PER_WORD: usize = (usize::BITS as usize + BITS_PER_CHUNK - 1) / BITS_PER_CHUNK;
 
 #[classical_persistence]
+#[cfg(feature = "ic")]
 const _: () = assert!(MAX_CHUNKS_PER_WORD == 5);
 
 #[enhanced_orthogonal_persistence]
+#[cfg(feature = "ic")]
 const _: () = assert!(MAX_CHUNKS_PER_WORD == 10);
 
 /// Decode bytes of LEB128 data to a compact bignum `Value`.
@@ -686,6 +688,8 @@ pub unsafe extern "C" fn bigint_sleb128_decode_word64(
     mut bits: u64,
     buf: *mut Buf,
 ) -> Value {
+    use motoko_rts_macros::uses_enhanced_orthogonal_persistence;
+
     let continuations = bits as usize / 8;
     buf.advance(continuations + 1);
 
@@ -705,12 +709,8 @@ pub unsafe extern "C" fn bigint_sleb128_decode_word64(
         sleb >>= 1;
     }
 
-    #[enhanced_orthogonal_persistence]
-    const SIGN_BITS_IN_LAST_CHUNK: u32 = 62;
-    #[classical_persistence]
-    const SIGN_BITS_IN_LAST_CHUNK: u32 = 29;
-    
-    let signed = (acc as i64) << SIGN_BITS_IN_LAST_CHUNK >> SIGN_BITS_IN_LAST_CHUNK; // sign extend
+    let sign_bits_in_last_chunk = if uses_enhanced_orthogonal_persistence!() { 62 } else { 29 };
+    let signed = (acc as i64) << sign_bits_in_last_chunk >> sign_bits_in_last_chunk; // sign extend
     let tentative = (signed as isize) << 1 >> 1; // top two bits must match
     if tentative as i64 == signed {
         // roundtrip is valid
