@@ -22,5 +22,6 @@ method claim($Self: Ref)
          { 
            ($Self).claimed := true
            ($Self).count := (($Self).count + 1) 
-         } 
+         }
+      label $Ret 
     }

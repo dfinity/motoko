@@ -234,13 +234,17 @@ and dec_field' ctxt d =
       fun ctxt' ->
         let open Either in
         let self_id = !!! (Source.no_region) "$Self" in
-        let ctxt'' = { ctxt' with self = Some self_id.it }
+        let method_args = args p in
+        let ctxt'' = { ctxt'
+          with self = Some self_id.it;
+               ids = List.fold_left (fun env (id, _) -> Env.add id.it Local env) ctxt.ids method_args }
         in (* TODO: add args (and rets?) *)
         let stmts = stmt ctxt'' e in
         let _, stmts = extract_concurrency stmts in
         let pres, stmts' = List.partition_map (function { it = PreconditionS exp; _ } -> Left exp | s -> Right s) (snd stmts.it) in
         let posts, stmts' = List.partition_map (function { it = PostconditionS exp; _ } -> Left exp | s -> Right s) stmts' in
-        (MethodI(id f, (self_id, !!! Source.no_region RefT)::args p, rets t_opt, pres, posts, Some { stmts with it = fst stmts.it, stmts' } ),
+        let stmts'' = stmts' @ [!!! Source.no_region (LabelS(!!! (Source.no_region) "$Ret"))] in
+        (MethodI(id f, (self_id, !!! Source.no_region RefT)::method_args, rets t_opt, pres, posts, Some { stmts with it = fst stmts.it, stmts'' } ),
         PublicFunction f.it)
   (* private sync functions *)
   | M.(LetD ({it=VarP f;_},
@@ -268,15 +272,15 @@ and dec_field' ctxt d =
      unsupported d.M.dec.at (Arrange.dec d.M.dec)
 
 and args p = match p.it with
-  | M.TupP ps ->
-    List.map
-      (fun p ->
-        match p.it with
-        | M.VarP x ->
-          (id x, tr_typ p.note)
+  | M.TupP ps -> List.map arg ps
+  | M.ParP p  -> [arg p]
+  | _ -> unsupported p.at (Arrange.pat p)
+and arg p = match p.it with
+  | M.AnnotP (p, t) ->
+      (match p.it with
+        | M.VarP x -> (id x, tr_typ t.note)
         | _ -> unsupported p.at (Arrange.pat p))
-      ps
-  |  _ -> unsupported p.at (Arrange.pat p)
+  | _ -> unsupported p.at (Arrange.pat p)
 
 and block ctxt at ds =
   let ctxt, mk_ss = decs ctxt ds in
@@ -421,6 +425,11 @@ and stmt ctxt (s : M.exp) : seqn =
        [ !!(MethodCallS ([], id m,
        let self_var = self ctxt m.at in
        self_var :: List.map (fun arg -> exp ctxt arg) args))])
+  | M.RetE e ->
+     !!([],
+        [ !!(VarAssignS(!!! (Source.no_region) "$Res", exp ctxt e));
+          !!(GotoS(!!! (Source.no_region) "$Ret"))
+        ])
   | _ ->
      unsupported s.at (Arrange.exp s)
 
@@ -487,6 +496,8 @@ and rets t_opt =
     (match T.normalize t.note with
      | T.Tup [] -> []
      | T.Async (T.Fut, _, _) -> []
+     | T.Prim T.Int  -> [(!!! (Source.no_region) "$Res", !!! (Source.no_region) IntT)]
+     | T.Prim T.Bool -> [(!!! (Source.no_region) "$Res", !!! (Source.no_region) BoolT)]
      | _ -> unsupported t.at (Arrange.typ t)
     )
 

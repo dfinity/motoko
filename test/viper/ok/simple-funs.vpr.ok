@@ -1,0 +1,132 @@
+define $Perm($Self) (true)
+define $Inv($Self) (true)
+method __init__($Self: Ref)
+    
+    requires $Perm($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { 
+       
+    }
+method getZero($Self: Ref)
+     returns ($Res: Int)
+    requires $Perm($Self)
+    requires $Inv($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { 
+      $Res := 0
+      goto $Ret
+      label $Ret 
+    }
+method getFalse($Self: Ref)
+     returns ($Res: Bool)
+    requires $Perm($Self)
+    requires $Inv($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { 
+      $Res := false
+      goto $Ret
+      label $Ret 
+    }
+method idInt($Self: Ref, n: Int)
+     returns ($Res: Int)
+    requires $Perm($Self)
+    requires $Inv($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { 
+      $Res := n
+      goto $Ret
+      label $Ret 
+    }
+method idBool($Self: Ref, b: Bool)
+     returns ($Res: Bool)
+    requires $Perm($Self)
+    requires $Inv($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { 
+      $Res := b
+      goto $Ret
+      label $Ret 
+    }
+method abs($Self: Ref, n: Int)
+     returns ($Res: Int)
+    requires $Perm($Self)
+    requires $Inv($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { 
+      if ((n < 0))
+         { 
+           $Res := (0 - n)
+           goto $Ret 
+         }
+      $Res := n
+      goto $Ret
+      label $Ret 
+    }
+method max($Self: Ref, n: Int, m: Int)
+     returns ($Res: Int)
+    requires $Perm($Self)
+    requires $Inv($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { 
+      if ((n >= m))
+         { 
+           $Res := n
+           goto $Ret 
+         }
+      $Res := m
+      goto $Ret
+      label $Ret 
+    }
+method eq4($Self: Ref, n: Int, m: Int, p: Int, q: Int)
+     returns ($Res: Bool)
+    requires $Perm($Self)
+    requires $Inv($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { 
+      $Res := (((n == m) && (m == p)) && (p == q))
+      goto $Ret
+      label $Ret 
+    }
+method factorial($Self: Ref, n: Int)
+     returns ($Res: Int)
+    requires $Perm($Self)
+    requires $Inv($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { var prod: Int
+      var i: Int
+      prod := 1
+      i := n
+      while ((i > 0)) {
+         { 
+           prod := (prod * i)
+           i := (i - 1) 
+         }}
+      $Res := prod
+      goto $Ret
+      label $Ret 
+    }
+method bmul($Self: Ref, b: Bool, n: Int)
+     returns ($Res: Int)
+    requires $Perm($Self)
+    requires $Inv($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { 
+      if (b)
+         { 
+           $Res := n
+           goto $Ret 
+         }
+      $Res := 0
+      goto $Ret
+      label $Ret 
+    }

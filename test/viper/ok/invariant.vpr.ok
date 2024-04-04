@@ -23,7 +23,8 @@ method claim($Self: Ref)
     ensures (($Self).count >= 0)
     ensures $Inv($Self)
     { 
-      assume (($Self).claimed ==> (($Self).count > 0)) 
+      assume (($Self).claimed ==> (($Self).count > 0))
+      label $Ret 
     }
 method loops($Self: Ref)
     
@@ -36,5 +37,6 @@ method loops($Self: Ref)
       while ((i > 0)) {
          { 
            i := (i + 1) 
-         }} 
+         }}
+      label $Ret 
     }

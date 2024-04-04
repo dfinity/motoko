@@ -32,5 +32,6 @@ method claim($Self: Ref)
          { 
            reward($Self)
            ($Self).claimed := true 
-         } 
+         }
+      label $Ret 
     }

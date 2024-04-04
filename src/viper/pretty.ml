@@ -206,7 +206,10 @@ and pp_stmt' ppf = function
       fprintf ppf "@[%a@]" (pp_print_list ~pp_sep:comma pp_exp) args
     in
     fprintf ppf ")"
-  | LabelS (_, _) -> failwith "LabelS?"
+  | LabelS lbl ->
+      fprintf ppf "@[label %s@]" lbl.it
+  | GotoS lbl ->
+      fprintf ppf "@[goto %s@]" lbl.it
 
 and pp_fldacc ppf fldacc =
   match fldacc with
