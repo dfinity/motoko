@@ -39,5 +39,6 @@ method claim($Self: Ref)
               exhale ($Perm($Self) && $Inv($Self)) 
             }
            inhale ($Perm($Self) && $Inv($Self)) 
-         } 
+         }
+      label $Ret 
     }
