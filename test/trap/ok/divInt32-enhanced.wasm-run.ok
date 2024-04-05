@@ -1,4 +1,4 @@
-Error: failed to run main module `_out/divInt32.wasm`
+Error: failed to run main module `_out/divInt32-enhanced.wasm`
 
 Caused by:
     0: failed to invoke command default
