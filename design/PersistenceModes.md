@@ -55,7 +55,7 @@ The following procedure is only temporarily needed until the enhanced orthogonal
 
 1. Merge `master` upwards of the four-level PR stack of the enhanced orthogonal persistence:
 
-    - (PR top, final merge step)
+    - https://github.com/dfinity/motoko/pull/4488 (PR top, final merge step)
     - https://github.com/dfinity/motoko/pull/4475
     - https://github.com/dfinity/motoko/pull/4225
     - https://github.com/dfinity/motoko/pull/4193 (PR bottom, start merging here)
