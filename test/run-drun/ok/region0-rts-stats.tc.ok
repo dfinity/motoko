@@ -1,5 +1,5 @@
-region0-rts-stats.mo:8.7-8.8: warning [M0145], this pattern of type
+region0-rts-stats.mo:10.7-10.8: warning [M0145], this pattern of type
   Nat64
 does not cover value
   1 or 2 or _
-region0-rts-stats.mo:9.14-9.15: warning [M0194], unused identifier v (delete or rename to wildcard `_` or `_v`)
+region0-rts-stats.mo:11.14-11.15: warning [M0194], unused identifier v (delete or rename to wildcard `_` or `_v`)
