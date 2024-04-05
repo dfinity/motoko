@@ -710,6 +710,7 @@ pub unsafe extern "C" fn bigint_sleb128_decode_word64(
     sleb128_decode_word64_result(acc)
 }
 
+#[cfg(feature = "ic")]
 #[classical_persistence]
 unsafe fn sleb128_decode_word64_result(accumulator: u64) -> Value {
     // Check if it fits into 32-bit or needs boxing to BigInt.
@@ -724,6 +725,7 @@ unsafe fn sleb128_decode_word64_result(accumulator: u64) -> Value {
     bigint_of_int64(signed)
 }
 
+#[cfg(feature = "ic")]
 #[enhanced_orthogonal_persistence]
 unsafe fn sleb128_decode_word64_result(accumulator: u64) -> Value {
     // No unused bits in 64-bit representation. The sign bit is already set at bit 63.
