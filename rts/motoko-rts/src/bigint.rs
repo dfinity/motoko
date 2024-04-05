@@ -688,8 +688,6 @@ pub unsafe extern "C" fn bigint_sleb128_decode_word64(
     mut bits: u64,
     buf: *mut Buf,
 ) -> Value {
-    use motoko_rts_macros::uses_enhanced_orthogonal_persistence;
-
     let continuations = bits as usize / 8;
     buf.advance(continuations + 1);
 
@@ -709,13 +707,25 @@ pub unsafe extern "C" fn bigint_sleb128_decode_word64(
         sleb >>= 1;
     }
 
-    let sign_bits_in_last_chunk = if uses_enhanced_orthogonal_persistence!() { 62 } else { 29 };
-    let signed = (acc as i64) << sign_bits_in_last_chunk >> sign_bits_in_last_chunk; // sign extend
+    sleb128_decode_word64_result(acc)
+}
+
+#[classical_persistence]
+unsafe fn sleb128_decode_word64_result(accumulator: u64) -> Value {
+    // Check if it fits into 32-bit or needs boxing to BigInt.
+    const UNUSED_BITS: u32 = u64::BITS - (BITS_PER_CHUNK * MAX_CHUNKS_PER_WORD) as u32;
+    const _: () = assert!(UNUSED_BITS == 29);
+    let signed = (accumulator as i64) << UNUSED_BITS >> UNUSED_BITS;
     let tentative = (signed as isize) << 1 >> 1; // top two bits must match
     if tentative as i64 == signed {
         // roundtrip is valid
         return int_from_isize(tentative);
     }
-
     bigint_of_int64(signed)
+}
+
+#[enhanced_orthogonal_persistence]
+unsafe fn sleb128_decode_word64_result(accumulator: u64) -> Value {
+    // No unused bits in 64-bit representation. The sign bit is already set at bit 63.
+    int_from_isize(accumulator as isize)
 }
