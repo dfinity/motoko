@@ -90,5 +90,4 @@ pub unsafe fn reset_test_memory() {
 }
 
 #[non_incremental_gc]
-pub unsafe fn reset_test_memory() {
-}
+pub unsafe fn reset_test_memory() {}

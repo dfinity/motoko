@@ -23,7 +23,10 @@ const _: () = assert!(meta_data::size::PAGES_IN_BLOCK <= u8::MAX as u32);
 const _: () = assert!(meta_data::max::BLOCKS <= u16::MAX);
 const _: () = assert!(meta_data::max::REGIONS <= u64::MAX - 1);
 
-use motoko_rts_macros::{classical_persistence, enhanced_orthogonal_persistence, ic_mem_fn, uses_enhanced_orthogonal_persistence};
+use motoko_rts_macros::{
+    classical_persistence, enhanced_orthogonal_persistence, ic_mem_fn,
+    uses_enhanced_orthogonal_persistence,
+};
 
 unsafe fn region_trap_with(msg: &str) -> ! {
     trap_with_prefix("Region error: ", msg)
@@ -514,7 +517,7 @@ unsafe fn migrate_on_new_region<M: Memory>(mem: &mut M) {
             assert!(false);
         }
     }
-}    
+}
 
 #[ic_mem_fn]
 pub unsafe fn region_new<M: Memory>(mem: &mut M) -> Value {
@@ -590,8 +593,7 @@ pub unsafe fn region_recover<M: Memory>(mem: &mut M, rid: &RegionId) -> Value {
 }
 
 fn upgrade_version_to_regions() {
-    let new_version = 
-    if uses_enhanced_orthogonal_persistence!() {        
+    let new_version = if uses_enhanced_orthogonal_persistence!() {
         match crate::stable_mem::get_version() {
             VERSION_STABLE_HEAP_NO_REGIONS => VERSION_STABLE_HEAP_REGIONS,
             VERSION_GRAPH_COPY_NO_REGIONS => VERSION_GRAPH_COPY_REGIONS,
@@ -977,11 +979,7 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
 
         // Update stable memory with new association.
         let block_page_count = block_page_count(i as u16, new_block_count, (*r).page_count as u32);
-        let assoc = Some((
-            RegionId::from_id(r.read_id64()),
-            i as u16,
-            block_page_count,
-        ));
+        let assoc = Some((RegionId::from_id(r.read_id64()), i as u16, block_page_count));
         meta_data::block_region_table::set(BlockId(block_id), assoc);
 
         new_pages.set_ith_block_id(i, &BlockId(block_id));

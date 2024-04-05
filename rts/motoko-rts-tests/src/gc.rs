@@ -5,12 +5,14 @@
 //
 // To convert an offset into an address, add heap array's address to the offset.
 
-use motoko_rts_macros::{classical_persistence, enhanced_orthogonal_persistence, incremental_gc, non_incremental_gc};
+use motoko_rts_macros::{
+    classical_persistence, enhanced_orthogonal_persistence, incremental_gc, non_incremental_gc,
+};
 
-#[enhanced_orthogonal_persistence]
-mod enhanced;
 #[classical_persistence]
 mod classical;
+#[enhanced_orthogonal_persistence]
+mod enhanced;
 
 #[non_incremental_gc]
 mod compacting;
@@ -23,10 +25,10 @@ pub mod heap;
 pub mod random;
 pub mod utils;
 
+use self::utils::{GC, GC_IMPLS};
+use fxhash::{FxHashMap, FxHashSet};
 use heap::MotokoHeap;
 use utils::ObjectIdx;
-use fxhash::{FxHashMap, FxHashSet};
-use self::utils::{GC, GC_IMPLS};
 
 pub fn test() {
     println!("Testing garbage collection ...");
@@ -123,10 +125,7 @@ impl TestHeap {
 /// Test all GC implementations with the given heap
 fn run_gc_tests(test_heap: &TestHeap) {
     for gc in &GC_IMPLS {
-        test_gc(
-            *gc,
-            test_heap,
-        );
+        test_gc(*gc, test_heap);
     }
     reset_gc();
 }
@@ -152,7 +151,7 @@ fn test_gc(gc: GC, test_heap: &TestHeap) {
         heap.continuation_table_variable_offset(),
         heap.region0_pointer_variable_offset(),
     );
-    
+
     for round in 0..3 {
         let check_all_reclaimed = gc.run(&mut heap, round);
 
@@ -185,7 +184,9 @@ fn initialize_gc(_heap: &mut MotokoHeap) {}
 
 #[incremental_gc]
 fn initialize_gc(heap: &mut MotokoHeap) {
-    use motoko_rts::gc::incremental::{set_incremental_gc_state, get_partitioned_heap, IncrementalGC};
+    use motoko_rts::gc::incremental::{
+        get_partitioned_heap, set_incremental_gc_state, IncrementalGC,
+    };
     use motoko_rts::types::Bytes;
     unsafe {
         let state = IncrementalGC::initial_gc_state(heap, heap.heap_base_address());
@@ -236,7 +237,17 @@ pub fn check_dynamic_heap(
     continuation_table_variable_offset: usize,
     region0_ptr_offset: usize,
 ) {
-    self::classical::check_dynamic_heap(mode, objects, roots, continuation_table, heap, heap_base_offset, heap_ptr_offset, continuation_table_variable_offset, region0_ptr_offset);
+    self::classical::check_dynamic_heap(
+        mode,
+        objects,
+        roots,
+        continuation_table,
+        heap,
+        heap_base_offset,
+        heap_ptr_offset,
+        continuation_table_variable_offset,
+        region0_ptr_offset,
+    );
 }
 
 #[enhanced_orthogonal_persistence]
@@ -252,7 +263,18 @@ pub fn check_dynamic_heap(
     continuation_table_variable_offset: usize,
     region0_ptr_offset: usize,
 ) {
-    self::enhanced::check_dynamic_heap(mode, objects, roots, continuation_table, heap, heap_base_offset, heap_ptr_offset, static_root_array_variable_offset, continuation_table_variable_offset, region0_ptr_offset);
+    self::enhanced::check_dynamic_heap(
+        mode,
+        objects,
+        roots,
+        continuation_table,
+        heap,
+        heap_base_offset,
+        heap_ptr_offset,
+        static_root_array_variable_offset,
+        continuation_table_variable_offset,
+        region0_ptr_offset,
+    );
 }
 
 fn compute_reachable_objects(

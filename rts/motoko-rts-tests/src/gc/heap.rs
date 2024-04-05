@@ -1,9 +1,11 @@
-use motoko_rts_macros::{enhanced_orthogonal_persistence, classical_persistence, incremental_gc, non_incremental_gc};
+use motoko_rts_macros::{
+    classical_persistence, enhanced_orthogonal_persistence, incremental_gc, non_incremental_gc,
+};
 
-#[enhanced_orthogonal_persistence]
-mod enhanced;
 #[classical_persistence]
 mod classical;
+#[enhanced_orthogonal_persistence]
+mod enhanced;
 
 use super::utils::{ObjectIdx, GC};
 
@@ -229,7 +231,7 @@ impl MotokoHeapInner {
         self.offset_to_address(self.region0_pointer_variable_offset)
     }
 
-    #[classical_persistence]    
+    #[classical_persistence]
     pub fn new(
         map: &[(ObjectIdx, Vec<ObjectIdx>)],
         roots: &[ObjectIdx],
@@ -240,7 +242,7 @@ impl MotokoHeapInner {
         self::classical::new_heap(map, roots, continuation_table, gc)
     }
 
-    #[enhanced_orthogonal_persistence]    
+    #[enhanced_orthogonal_persistence]
     pub fn new(
         map: &[(ObjectIdx, Vec<ObjectIdx>)],
         roots: &[ObjectIdx],
@@ -301,11 +303,7 @@ impl Memory for DummyMemory {
 
 /// Compute the size of the heap to be allocated for the GC test.
 #[non_incremental_gc]
-fn heap_size_for_gc(
-    gc: GC,
-    total_heap_size_bytes: usize,
-    n_objects: usize,
-) -> usize {
+fn heap_size_for_gc(gc: GC, total_heap_size_bytes: usize, n_objects: usize) -> usize {
     use super::utils::WORD_SIZE;
     match gc {
         GC::Copying => 2 * total_heap_size_bytes,
@@ -320,7 +318,8 @@ fn heap_size_for_gc(
                 // The bitmap implementation rounds up to 64-bits to be able to read as many
                 // bits as possible in one instruction and potentially skip 64 words in the
                 // heap with single 64-bit comparison
-                (((mark_bit_bytes.as_usize() + 7) / 8) * 8) + size_of::<Blob>().to_bytes().as_usize()
+                (((mark_bit_bytes.as_usize() + 7) / 8) * 8)
+                    + size_of::<Blob>().to_bytes().as_usize()
             };
             // In the worst case the entire heap will be pushed to the mark stack, but in tests
             // we limit the size
@@ -334,22 +333,14 @@ fn heap_size_for_gc(
         GC::Generational => {
             const ROUNDS: usize = 3;
             const REMEMBERED_SET_MAXIMUM_SIZE: usize = 1024 * 1024 * WORD_SIZE;
-            let size = heap_size_for_gc(
-                GC::MarkCompact,
-                total_heap_size_bytes,
-                n_objects,
-            );
+            let size = heap_size_for_gc(GC::MarkCompact, total_heap_size_bytes, n_objects);
             size + ROUNDS * REMEMBERED_SET_MAXIMUM_SIZE
         }
     }
 }
 
 #[incremental_gc]
-fn heap_size_for_gc(
-    gc: GC,
-    _total_heap_size_bytes: usize,
-    _n_objects: usize,
-) -> usize {
+fn heap_size_for_gc(gc: GC, _total_heap_size_bytes: usize, _n_objects: usize) -> usize {
     match gc {
         GC::Incremental => 3 * motoko_rts::gc::incremental::partitioned_heap::PARTITION_SIZE,
     }

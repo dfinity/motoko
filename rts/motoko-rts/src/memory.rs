@@ -20,7 +20,6 @@ pub const MAXIMUM_MEMORY_SIZE: Bytes<u64> = Bytes(64u64 * GB as u64);
 #[classical_persistence]
 pub const MAXIMUM_MEMORY_SIZE: Bytes<u64> = Bytes(usize::MAX as u64);
 
-
 // Memory reserve in bytes ensured during update and initialization calls.
 // For use by queries and upgrade calls.
 #[cfg(feature = "ic")]

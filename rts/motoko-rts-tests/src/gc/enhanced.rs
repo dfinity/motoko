@@ -1,10 +1,11 @@
-
 use super::heap::MotokoHeap;
-use super::utils::{get_scalar_value, make_pointer, read_word, unskew_pointer, ObjectIdx, GC, WORD_SIZE};
-use crate::gc::{CheckMode, compute_reachable_objects};
+use super::utils::{
+    get_scalar_value, make_pointer, read_word, unskew_pointer, ObjectIdx, GC, WORD_SIZE,
+};
+use crate::gc::{compute_reachable_objects, CheckMode};
+use fxhash::{FxHashMap, FxHashSet};
 use motoko_rts::types::*;
 use std::fmt::Write;
-use fxhash::{FxHashMap, FxHashSet};
 
 impl GC {
     pub fn run(&self, heap: &mut MotokoHeap, _round: usize) -> bool {

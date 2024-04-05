@@ -107,7 +107,10 @@ fn test_set_get<M: Memory>(mem: &mut M, mut bits: Vec<u16>) -> Result<(), String
 fn test_bit_iter<M: Memory>(mem: &mut M, bits: HashSet<u16>) -> TestCaseResult {
     // If the max bit is N, the heap size is at least N+1 words
     let heap_size = Words(
-        bits.iter().max().map(|max_bit| *max_bit as usize + 1).unwrap_or(0),
+        bits.iter()
+            .max()
+            .map(|max_bit| *max_bit as usize + 1)
+            .unwrap_or(0),
     )
     .to_bytes();
 

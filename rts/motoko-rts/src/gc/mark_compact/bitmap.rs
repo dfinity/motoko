@@ -69,7 +69,11 @@ unsafe fn get_bitmap_forbidden_size() -> usize {
     BITMAP_PTR as usize - BITMAP_FORBIDDEN_PTR as usize
 }
 
-pub unsafe fn alloc_bitmap<M: Memory>(mem: &mut M, heap_size: Bytes<usize>, heap_prefix_words: usize) {
+pub unsafe fn alloc_bitmap<M: Memory>(
+    mem: &mut M,
+    heap_size: Bytes<usize>,
+    heap_prefix_words: usize,
+) {
     // See Note "How the Wasm-heap maps to the bitmap" above
     debug_assert_eq!(heap_prefix_words % 8, 0);
     // We will have at most this many objects in the heap, each requiring a bit

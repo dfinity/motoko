@@ -53,5 +53,12 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
     F: Fn(&mut C, *mut Value),
     G: Fn(&mut C, usize, *mut Array) -> usize,
 {
-    self::classical::visit_pointer_fields(ctx, obj, tag, heap_base, visit_ptr_field, visit_field_range);
+    self::classical::visit_pointer_fields(
+        ctx,
+        obj,
+        tag,
+        heap_base,
+        visit_ptr_field,
+        visit_field_range,
+    );
 }

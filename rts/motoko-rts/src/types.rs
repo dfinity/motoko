@@ -19,7 +19,10 @@
 // [1]: https://github.com/rust-lang/reference/blob/master/src/types/struct.md
 // [2]: https://doc.rust-lang.org/stable/reference/type-layout.html#the-c-representation
 
-use motoko_rts_macros::{classical_persistence, enhanced_orthogonal_persistence, incremental_gc, is_incremental_gc, non_incremental_gc};
+use motoko_rts_macros::{
+    classical_persistence, enhanced_orthogonal_persistence, incremental_gc, is_incremental_gc,
+    non_incremental_gc,
+};
 
 use crate::barriers::{init_with_barrier, write_with_barrier};
 use crate::memory::Memory;
@@ -1019,7 +1022,6 @@ impl Concat {
 pub struct Null {
     pub header: Obj,
 }
-
 
 #[repr(C)] // See the note at the beginning of this module
 #[enhanced_orthogonal_persistence]

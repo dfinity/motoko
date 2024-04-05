@@ -48,11 +48,7 @@ pub(super) fn new_heap(
 
     let total_heap_size_bytes = static_heap_size_bytes + dynamic_heap_size_bytes;
 
-    let heap_size = heap_size_for_gc(
-        gc,
-        total_heap_size_bytes,
-        map.len(),
-    );
+    let heap_size = heap_size_for_gc(gc, total_heap_size_bytes, map.len());
 
     // The Worst-case unalignment w.r.t. 32-byte alignment is 28 (assuming
     // that we have general word alignment). So we over-allocate 28 bytes.
@@ -129,11 +125,7 @@ fn create_dynamic_heap(
             }
 
             // Store length: idx + refs
-            write_word(
-                dynamic_heap,
-                heap_offset,
-                refs.len() + 1,
-            );
+            write_word(dynamic_heap, heap_offset, refs.len() + 1);
             heap_offset += WORD_SIZE;
 
             // Store object value (idx)
@@ -164,10 +156,8 @@ fn create_dynamic_heap(
     let n_objects = refs.len();
     // fields+1 for the scalar field (idx)
     let n_fields: usize = refs.iter().map(|(_, fields)| fields.len() + 1).sum();
-    let continuation_table_offset = (size_of::<Array>() * n_objects)
-        .to_bytes()
-        .as_usize()
-        + n_fields * WORD_SIZE;
+    let continuation_table_offset =
+        (size_of::<Array>() * n_objects).to_bytes().as_usize() + n_fields * WORD_SIZE;
     let continuation_table_size =
         size_of::<Array>().to_bytes().as_usize() + continuation_table.len() * WORD_SIZE;
 
@@ -280,11 +270,7 @@ fn create_static_heap(
             offset += WORD_SIZE;
         }
 
-        write_word(
-            heap,
-            offset,
-            make_pointer(root_address),
-        );
+        write_word(heap, offset, make_pointer(root_address));
         offset += WORD_SIZE;
 
         write_word(heap, root_addr_offset, mutbox_ptr);

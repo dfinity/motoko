@@ -1,9 +1,9 @@
 #![allow(non_upper_case_globals)]
 
-#[enhanced_orthogonal_persistence]
-pub mod enhanced;
 #[classical_persistence]
 pub mod classical;
+#[enhanced_orthogonal_persistence]
+pub mod enhanced;
 
 use crate::bitrel::BitRel;
 use crate::buf::{read_byte, read_word, skip_leb128, Buf};

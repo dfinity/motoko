@@ -18,7 +18,6 @@ pub unsafe fn write_with_barrier<M: Memory>(mem: &mut M, location: *mut Value, v
     crate::gc::incremental::barriers::write_with_barrier(mem, location, value);
 }
 
-
 #[non_incremental_gc]
 pub unsafe fn write_with_barrier<M: Memory>(mem: &mut M, location: *mut Value, value: Value) {
     *location = value;

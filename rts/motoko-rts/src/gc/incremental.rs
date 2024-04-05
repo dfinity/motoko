@@ -11,9 +11,9 @@
 //! retained across upgrades and therefore be stored part of the
 //! persistent metadata, cf. `persistence::PersistentMetadata`.
 
-use motoko_rts_macros::{enhanced_orthogonal_persistence, ic_mem_fn};
 #[cfg(feature = "ic")]
 use motoko_rts_macros::classical_persistence;
+use motoko_rts_macros::{enhanced_orthogonal_persistence, ic_mem_fn};
 
 use crate::{memory::Memory, types::*, visitor::visit_pointer_fields};
 
@@ -86,7 +86,8 @@ unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
 
 #[cfg(feature = "ic")]
 #[enhanced_orthogonal_persistence]
-const CRITICAL_HEAP_LIMIT: Bytes<usize> = Bytes((crate::memory::MAXIMUM_MEMORY_SIZE.0 / 10 * 8) as usize); // 80%
+const CRITICAL_HEAP_LIMIT: Bytes<usize> =
+    Bytes((crate::memory::MAXIMUM_MEMORY_SIZE.0 / 10 * 8) as usize); // 80%
 
 #[cfg(feature = "ic")]
 #[enhanced_orthogonal_persistence]
@@ -141,7 +142,7 @@ unsafe fn record_gc_start<M: Memory>() {
 #[cfg(feature = "ic")]
 unsafe fn record_gc_stop<M: Memory>() {
     use crate::memory::ic::{self, partitioned_memory};
-    
+
     let heap_size = partitioned_memory::get_heap_size();
     let static_size = Bytes(ic::get_aligned_heap_base());
     debug_assert!(heap_size >= static_size);
@@ -210,7 +211,10 @@ static mut STATE: core::cell::RefCell<State> = core::cell::RefCell::new(State {
     allocation_count: 0,
     mark_state: None,
     iterator_state: None,
-    statistics: Statistics { last_allocations: Bytes(0), max_live: Bytes(0) }
+    statistics: Statistics {
+        last_allocations: Bytes(0),
+        max_live: Bytes(0),
+    },
 });
 
 /// Temporary state during message execution, not part of the persistent metadata.
@@ -374,7 +378,7 @@ unsafe fn pre_write_barrier<M: Memory>(mem: &mut M, state: &mut State, overwritt
         if overwritten_value.points_to_or_beyond(base_address) {
             let mut time = BoundedTime::new(0);
             let mut increment = MarkIncrement::instance(mem, state, &mut time);
-            
+
             #[enhanced_orthogonal_persistence]
             debug_assert_ne!(overwritten_value, NULL_POINTER);
 
@@ -476,7 +480,6 @@ pub unsafe fn get_incremental_gc_state() -> &'static mut State {
 pub unsafe fn get_incremental_gc_state() -> &'static mut State {
     STATE.get_mut()
 }
-
 
 #[cfg(feature = "ic")]
 pub unsafe fn get_max_live_size() -> Bytes<usize> {

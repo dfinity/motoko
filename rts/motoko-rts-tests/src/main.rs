@@ -48,7 +48,9 @@ fn check_architecture() {
 #[enhanced_orthogonal_persistence]
 fn check_architecture() {
     if std::mem::size_of::<usize>() != 8 {
-        println!("Motoko RTS for enhanced orthogonal persistence only works on 64-bit architectures");
+        println!(
+            "Motoko RTS for enhanced orthogonal persistence only works on 64-bit architectures"
+        );
         std::process::exit(1);
     }
 }

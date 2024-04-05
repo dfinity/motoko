@@ -1,4 +1,3 @@
-
 //! Implements threaded compaction as described in "High-Performance Garbage Collection for
 //! Memory-Constrained Environments" section 5.1.2, which is an improved version of the original
 //! threaded compaction algorithm described in The Garbage Collection Handbook section 3.3.
@@ -30,7 +29,8 @@ pub unsafe extern "C" fn initialize_compacting_gc() {
 unsafe fn schedule_compacting_gc<M: Memory>(mem: &mut M) {
     // 512 MiB slack for mark stack + allocation area for the next message
     let slack: u64 = 512 * 1024 * 1024;
-    let heap_size_bytes: u64 = crate::constants::WASM32_HEAP_SIZE.as_usize() as u64 * WORD_SIZE as u64;
+    let heap_size_bytes: u64 =
+        crate::constants::WASM32_HEAP_SIZE.as_usize() as u64 * WORD_SIZE as u64;
     // Larger than necessary to keep things simple
     let max_bitmap_size_bytes = heap_size_bytes / 32;
     // NB. `max_live` is evaluated in compile time to a constant

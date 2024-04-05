@@ -1,7 +1,9 @@
 use std::mem::size_of;
 
 use byteorder::{ReadBytesExt, WriteBytesExt, LE};
-use motoko_rts_macros::{classical_persistence, enhanced_orthogonal_persistence, incremental_gc, non_incremental_gc};
+use motoko_rts_macros::{
+    classical_persistence, enhanced_orthogonal_persistence, incremental_gc, non_incremental_gc,
+};
 
 /// A unique object index, used in heap descriptions.
 ///

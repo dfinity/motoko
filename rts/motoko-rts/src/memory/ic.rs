@@ -6,7 +6,9 @@ pub mod linear_memory;
 #[incremental_gc]
 pub mod partitioned_memory;
 
-use motoko_rts_macros::{classical_persistence, enhanced_orthogonal_persistence, non_incremental_gc, incremental_gc};
+use motoko_rts_macros::{
+    classical_persistence, enhanced_orthogonal_persistence, incremental_gc, non_incremental_gc,
+};
 
 use super::Memory;
 use crate::constants::WASM_PAGE_SIZE;

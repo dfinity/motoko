@@ -33,9 +33,9 @@ use crate::rts_trap_with;
 use crate::types::{size_of, Blob, Bytes, Concat, Value, TAG_BLOB, TAG_CONCAT};
 
 use alloc::string::String;
-use motoko_rts_macros::classical_persistence;
 use core::cmp::{min, Ordering};
 use core::{slice, str};
+use motoko_rts_macros::classical_persistence;
 
 use crate::libc_declarations::memcmp;
 

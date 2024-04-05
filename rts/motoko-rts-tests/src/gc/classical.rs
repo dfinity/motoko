@@ -1,11 +1,12 @@
-
-use motoko_rts_macros::{incremental_gc, is_incremental_gc, non_incremental_gc};
 use super::heap::MotokoHeap;
-use super::utils::{get_scalar_value, make_pointer, read_word, unskew_pointer, ObjectIdx, GC, WORD_SIZE};
-use crate::gc::{CheckMode, compute_reachable_objects};
-use motoko_rts::types::*;
-use std::fmt::Write;
+use super::utils::{
+    get_scalar_value, make_pointer, read_word, unskew_pointer, ObjectIdx, GC, WORD_SIZE,
+};
+use crate::gc::{compute_reachable_objects, CheckMode};
 use fxhash::{FxHashMap, FxHashSet};
+use motoko_rts::types::*;
+use motoko_rts_macros::{incremental_gc, is_incremental_gc, non_incremental_gc};
+use std::fmt::Write;
 
 impl GC {
     #[non_incremental_gc]
@@ -13,7 +14,8 @@ impl GC {
         let heap_base = heap.heap_base_address();
         let static_roots = Value::from_ptr(heap.static_root_array_variable_address());
         let mut region_0 = Value::from_scalar(0);
-        let continuation_table_ptr_address = heap.continuation_table_variable_address() as *mut Value;
+        let continuation_table_ptr_address =
+            heap.continuation_table_variable_address() as *mut Value;
 
         let heap_1 = heap.clone();
         let heap_2 = heap.clone();
@@ -107,7 +109,8 @@ impl GC {
     #[incremental_gc]
     pub fn run(&self, heap: &mut MotokoHeap, _round: usize) -> bool {
         let static_roots = Value::from_ptr(heap.static_root_array_variable_address());
-        let continuation_table_ptr_address = heap.continuation_table_variable_address() as *mut Value;
+        let continuation_table_ptr_address =
+            heap.continuation_table_variable_address() as *mut Value;
         let region0_ptr_address = heap.region0_pointer_variable_address() as *mut Value;
 
         match self {
@@ -263,8 +266,7 @@ pub fn check_dynamic_heap(
                         let pointee_idx_offset =
                             pointee_offset + size_of::<Array>().to_bytes().as_usize(); // skip array header (incl. length)
                         let pointee_idx = get_scalar_value(read_word(heap, pointee_idx_offset));
-                        let expected_pointee_idx =
-                            object_expected_pointees[field_idx - 1];
+                        let expected_pointee_idx = object_expected_pointees[field_idx - 1];
                         assert_eq!(
                             pointee_idx,
                             expected_pointee_idx,

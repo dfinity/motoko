@@ -50,7 +50,6 @@ pub unsafe fn leb128_decode_checked(buf: *mut Buf) -> Option<usize> {
 
         result |= ((byte & 0b0111_1111) as usize) << shift;
 
-
         let overflow = if uses_enhanced_orthogonal_persistence!() {
             // The 10th byte needs to be the last, and it must contribute at most 1 bit, otherwise we
             // have an overflow.

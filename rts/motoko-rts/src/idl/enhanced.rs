@@ -1,6 +1,6 @@
-use motoko_rts_macros::ic_mem_fn;
 use super::idl_sub_internal;
 use crate::{memory::Memory, types::Value};
+use motoko_rts_macros::ic_mem_fn;
 
 #[ic_mem_fn]
 unsafe fn idl_sub<M: Memory>(
@@ -21,5 +21,15 @@ unsafe fn idl_sub<M: Memory>(
     let typtbl_end2 = type_descriptor2.type_table_end();
     let typtbl_size2 = type_descriptor2.type_count();
 
-    idl_sub_internal(rel_buf, typtbl1, typtbl2, typtbl_end1, typtbl_end2, typtbl_size1, typtbl_size2, t1, t2)
+    idl_sub_internal(
+        rel_buf,
+        typtbl1,
+        typtbl2,
+        typtbl_end1,
+        typtbl_end2,
+        typtbl_size1,
+        typtbl_size2,
+        t1,
+        t2,
+    )
 }

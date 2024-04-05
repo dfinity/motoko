@@ -51,9 +51,9 @@ impl<'a> UpdateIncrement<'a> {
     }
 
     pub unsafe fn update_roots(&mut self, roots: Roots) {
-        visit_roots(roots, self.heap.base_address(),self, |gc, field| {
+        visit_roots(roots, self.heap.base_address(), self, |gc, field| {
             let value = *field;
-            
+
             #[enhanced_orthogonal_persistence]
             debug_assert_ne!(value, NULL_POINTER);
 

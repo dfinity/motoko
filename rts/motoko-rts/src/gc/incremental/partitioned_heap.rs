@@ -43,7 +43,10 @@ use core::{array::from_fn, ops::Range, ptr::null_mut};
 use motoko_rts_macros::{classical_persistence, enhanced_orthogonal_persistence};
 
 use crate::{
-    gc::incremental::mark_bitmap::BITMAP_ITERATION_END, memory::{MAXIMUM_MEMORY_SIZE, Memory}, rts_trap_with, types::*,
+    gc::incremental::mark_bitmap::BITMAP_ITERATION_END,
+    memory::{Memory, MAXIMUM_MEMORY_SIZE},
+    rts_trap_with,
+    types::*,
 };
 
 use super::{
@@ -368,7 +371,6 @@ pub struct PartitionedHeap {
     precomputed_heap_size: usize, // Occupied heap size, excluding the dynamic heap in the allocation partition.
     evacuated_size: usize, // Size of all evacuated objects during a GC run. Serves for accurate total allocation statistics.
 }
-
 
 /// Optimization: Avoiding `Option` or `LazyCell`.
 #[classical_persistence]

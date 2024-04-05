@@ -5,9 +5,8 @@ mod stable_memory;
 
 use crate::{
     gc::{
-        check_dynamic_heap, heap::MotokoHeap, random::generate, utils::WORD_SIZE, CheckMode,
-        TestHeap,
-        utils::GC,
+        check_dynamic_heap, heap::MotokoHeap, random::generate, utils::GC, utils::WORD_SIZE,
+        CheckMode, TestHeap,
     },
     memory::TestMemory,
     stabilization::stable_memory::clear_stable_memory,

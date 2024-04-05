@@ -32,7 +32,7 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
         TAG_OBJECT => {
             let obj = obj as *mut Object;
             debug_assert!(is_non_null_pointer_field(obj.hash_blob_addr()));
-            visit_ptr_field(ctx, obj.hash_blob_addr());        
+            visit_ptr_field(ctx, obj.hash_blob_addr());
             let obj_payload = obj.payload_addr();
             for i in 0..obj.size() {
                 let field_addr = obj_payload.add(i);

@@ -58,7 +58,6 @@ unsafe fn visit_continuation_table<C, V: Fn(&mut C, *mut Value)>(
     context: &mut C,
     visit_field: &V,
 ) {
-
     if pointer_to_dynamic_heap(continuation_table_location, heap_base) {
         visit_field(context, continuation_table_location);
     }
