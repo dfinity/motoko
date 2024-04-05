@@ -673,11 +673,18 @@ let ir_passes mode prog_ir name =
 (* Compilation *)
 
 let load_as_rts () =
-  let rts = match (!Flags.enhanced_orthogonal_persistence, !Flags.sanity) with
-    | (true, false) -> Rts.wasm_eop_release
-    | (true, true) -> Rts.wasm_eop_debug
-    | (false, false) -> Rts.wasm_non_incremental_release
-    | (false, true) -> Rts.wasm_non_incremental_debug
+  let rts = match (!Flags.enhanced_orthogonal_persistence, !Flags.sanity, !Flags.gc_strategy) with
+    | (true, false, Flags.Incremental) -> Rts.wasm_eop_release
+    | (true, true, Flags.Incremental) -> Rts.wasm_eop_debug
+    | (false, false, Flags.Copying) 
+    | (false, false, Flags.MarkCompact)
+    | (false, false, Flags.Generational) -> Rts.wasm_non_incremental_release
+    | (false, true, Flags.Copying)
+    | (false, true, Flags.MarkCompact)
+    | (false, true, Flags.Generational) -> Rts.wasm_non_incremental_debug
+    | (false, false, Flags.Incremental) -> Rts.wasm_incremental_release
+    | (false, true, Flags.Incremental) -> Rts.wasm_incremental_debug
+    | _ -> assert false
   in
   Wasm_exts.CustomModuleDecode.decode "rts.wasm" (Lazy.force rts)
 
