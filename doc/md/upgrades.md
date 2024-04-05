@@ -13,7 +13,7 @@ For applications written in Motoko, the language provides high-level support for
 Utilizing stable storage depends on you — as the application programmer — anticipating and indicating the data you want to retain after an upgrade. Depending on the application, the data you decide to persist might be some, all, or none of a given actor’s state.
 
 <!--
-To enable {proglang} to migrate the current state of variables when a canister is upgraded, you must identify those variables as containing data that must be preserved.
+To enable \{proglang\} to migrate the current state of variables when a canister is upgraded, you must identify those variables as containing data that must be preserved.
 -->
 
 ## Declaring stable variables
@@ -26,7 +26,7 @@ More precisely, every `let` and `var` variable declaration in an actor can speci
 Concretely, you use the following syntax to declare stable or flexible variables in an actor:
 
 ....
-<dec-field> ::=
+\<dec-field\> ::=
   (public|private)? (stable|flexible)? dec
 ....
 -->
@@ -152,7 +152,7 @@ Upgrade safety does not guarantee that the upgrade process will succeed (it can 
 
 :::tip
 
-You can check valid Candid subtyping between two services described in `.did` files, `cur.did` and `nxt.did` (containing Candid types), using the `didc` tool with argument `check nxt.did cur.did`. The `didc` tool is available at <https://github.com/dfinity/candid>.
+You can check valid Candid subtyping between two services described in `.did` files, `cur.did` and `nxt.did` (containing Candid types), using the `didc` tool with argument `check nxt.did cur.did`. The `didc` tool is available at [https://github.com/dfinity/candid](https://github.com/dfinity/candid).
 
 :::
 

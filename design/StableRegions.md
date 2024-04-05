@@ -166,7 +166,7 @@ stable memory state can fully describe the region objects that will be rebuilt w
  - A singleton, heap-allocated object with mutable fields.
  - While being heap-allocated, the object is also `stable` (can be stored in a `stable var`, etc).
  - `RegionObject { id_lower: u32, id_upper: u32; mut page_count: u32; mut vec_pages: Value }`
- - Fields id_lower (lower 32-bits)  and id_upper (upper 32-bits) gives the Region's numerical 64-bit (id = (id_upper << 32 | id_lower)).
+ - Fields id_lower (lower 32-bits)  and id_upper (upper 32-bits) gives the Region's numerical 64-bit (id = (id_upper \<\< 32 | id_lower)).
  - Field `page_count` gives the number of pages allocated to the Region.
  - Field `vec_pages` points at a heap-allocated `Blob` value, and it works with `page_count`
    to represent a growable vector that we call the region's **"access
@@ -191,7 +191,7 @@ In ordinary operation, the second feature is not required.  In the event of an u
 ### block-region table
 
  - purpose:
-   - relate a block ID ("page block ID") to its region (if any), its position (or rank) in that region (see `rebuild`) and its current size in (used) pages (<=128).
+   - relate a block ID ("page block ID") to its region (if any), its position (or rank) in that region (see `rebuild`) and its current size in (used) pages (`<=128`).
      All but the last block owned by a region should have all pages 128 allocated.
 
    - NB: The organization of this table is not useful for efficient
