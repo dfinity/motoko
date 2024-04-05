@@ -3,9 +3,9 @@ let null = ?42;
 
 // CHECK: (func $init (type
 // CHECK: call $blob_of_principal
-// CHECK: i64.const 14
+// CHECK: {{i32|i64}}.const 14
 // CHECK: call $print_ptr
-// CHECK-NEXT: unreachable)
+// CHECK-NEXT: unreachable
 
 //SKIP run-low
 //SKIP run-ir
