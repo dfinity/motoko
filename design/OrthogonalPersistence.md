@@ -1,4 +1,4 @@
-# Orthogonal Persistence (64-Bit, Scalable Upgrades)
+# Enhanced Orthogonal Persistence (64-Bit, Scalable Upgrades)
 
 This implements the vision of **enhanced orthogonal persistence** in Motoko that combines:
 * **Stable heap**: Persisting the program main memory across canister upgrades.
