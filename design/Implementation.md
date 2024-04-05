@@ -20,7 +20,7 @@
 
 ## Primitive types
 
-* Nat and Int compile to heap-allocated big nums; unboxed for small numbers <= 31 bit.
+* Nat and Int compile to heap-allocated big nums; unboxed for small numbers `<= 31` bit.
 
 * Nat8/16 compile to unboxed scalars; Nat32/64 are boxed.
   - May unbox locally.

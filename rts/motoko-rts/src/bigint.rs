@@ -610,10 +610,6 @@ pub unsafe extern "C" fn bigint_sleb128_decode_word64(
     mut bits: u64,
     buf: *mut Buf,
 ) -> Value {
-    const BITS_IN_LAST_CHUNK: usize = usize::BITS as usize % BITS_PER_CHUNK;
-    const _: () = assert!(BITS_IN_LAST_CHUNK > 0);
-    const SIGN_BITS_IN_LAST_CHUNK: u32 = usize::BITS - (BITS_IN_LAST_CHUNK + 1) as u32;
-
     let continuations = bits as usize / 8;
     buf.advance(continuations + 1);
 
@@ -633,12 +629,6 @@ pub unsafe extern "C" fn bigint_sleb128_decode_word64(
         sleb >>= 1;
     }
 
-    let signed = (acc as i64) << SIGN_BITS_IN_LAST_CHUNK >> SIGN_BITS_IN_LAST_CHUNK; // sign extend
-    let tentative = (signed as isize) << 1 >> 1; // top two bits must match
-    if tentative as i64 == signed {
-        // roundtrip is valid
-        return int_from_int64(tentative);
-    }
-
-    bigint_of_int64(signed)
+    // No unused bits in 64-bit representation. The sign bit is already set at bit 63.
+    int_from_int64(acc as isize)
 }
