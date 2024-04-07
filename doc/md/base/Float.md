@@ -619,12 +619,12 @@ Traps if `epsilon` is negative or `NaN`.
 
 Special cases:
 ```
-equal(+0.0, -0.0, epsilon) => true for any `epsilon >= 0.0`
-equal(-0.0, +0.0, epsilon) => true for any `epsilon >= 0.0`
-equal(+inf, +inf, epsilon) => true for any `epsilon >= 0.0`
-equal(-inf, -inf, epsilon) => true for any `epsilon >= 0.0`
-equal(x, NaN, epsilon)     => false for any x and `epsilon >= 0.0`
-equal(NaN, y, epsilon)     => false for any y and `epsilon >= 0.0`
+equalWithin(+0.0, -0.0, epsilon) => true for any `epsilon >= 0.0`
+equalWithin(-0.0, +0.0, epsilon) => true for any `epsilon >= 0.0`
+equalWithin(+inf, +inf, epsilon) => true for any `epsilon >= 0.0`
+equalWithin(-inf, -inf, epsilon) => true for any `epsilon >= 0.0`
+equalWithin(x, NaN, epsilon)     => false for any x and `epsilon >= 0.0`
+equalWithin(NaN, y, epsilon)     => false for any y and `epsilon >= 0.0`
 ```
 
 Example:
@@ -632,7 +632,7 @@ Example:
 import Float "mo:base/Float";
 
 let epsilon = 1e-6;
-Float.equal(-12.3, -1.23e1, epsilon) // => true
+Float.equalWithin(-12.3, -1.23e1, epsilon) // => true
 ```
 
 ## Function `notEqualWithin`
@@ -648,12 +648,12 @@ Traps if `epsilon` is negative or `NaN`.
 
 Special cases:
 ```
-notEqual(+0.0, -0.0, epsilon) => false for any `epsilon >= 0.0`
-notEqual(-0.0, +0.0, epsilon) => false for any `epsilon >= 0.0`
-notEqual(+inf, +inf, epsilon) => false for any `epsilon >= 0.0`
-notEqual(-inf, -inf, epsilon) => false for any `epsilon >= 0.0`
-notEqual(x, NaN, epsilon)     => true for any x and `epsilon >= 0.0`
-notEqual(NaN, y, epsilon)     => true for any y and `epsilon >= 0.0`
+notEqualWithin(+0.0, -0.0, epsilon) => false for any `epsilon >= 0.0`
+notEqualWithin(-0.0, +0.0, epsilon) => false for any `epsilon >= 0.0`
+notEqualWithin(+inf, +inf, epsilon) => false for any `epsilon >= 0.0`
+notEqualWithin(-inf, -inf, epsilon) => false for any `epsilon >= 0.0`
+notEqualWithin(x, NaN, epsilon)     => true for any x and `epsilon >= 0.0`
+notEqualWithin(NaN, y, epsilon)     => true for any y and `epsilon >= 0.0`
 ```
 
 Example:
@@ -661,7 +661,7 @@ Example:
 import Float "mo:base/Float";
 
 let epsilon = 1e-6;
-Float.notEqual(-12.3, -1.23e1, epsilon) // => false
+Float.notEqualWithin(-12.3, -1.23e1, epsilon) // => false
 ```
 
 ## Function `less`
