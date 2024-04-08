@@ -389,7 +389,7 @@ module @ManagementCanister = {
 
 type WasmMemoryPersistence = {
   #Keep;
-  #Drop;
+  #Replace;
 };
 
 type UpgradeOptions = { 
