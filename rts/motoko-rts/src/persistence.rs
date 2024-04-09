@@ -56,7 +56,6 @@ const METADATA_ADDRESS: usize = 4 * MB + 512 * KB;
 /// The reserved maximum size of the metadata, contains a reserve for future extension of the metadata.
 const METADATA_RESERVE: usize = 512 * KB;
 
-// TODO: Include partition table in reserved space.
 pub const HEAP_START: usize = METADATA_ADDRESS + METADATA_RESERVE;
 
 const _: () = assert!(core::mem::size_of::<PersistentMetadata>() <= METADATA_RESERVE);
