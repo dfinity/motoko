@@ -1,6 +1,6 @@
 # Persistence Modes
 
-This Motoko build includes two susbtantially different persistence modes in one build:
+This Motoko build includes two substantially different persistence modes in one build:
 
 * Classical Persistence (default): 
     This is the traditional Motoko compiler design based on 32-bit memory and Candid-based stabilization for upgrades.
@@ -60,5 +60,5 @@ The following procedure is only temporarily needed until the enhanced orthogonal
     - https://github.com/dfinity/motoko/pull/4225
     - https://github.com/dfinity/motoko/pull/4193 (PR bottom, start merging here)
 
-2. Merge `master` into the helper PR ... and then extract `compile-classical.ml`.
+2. Merge `master` into the helper branch `luc/merge-classical-compile-backend` and then extract `compile-classical.ml`.
 3. Paste the `compile-classical.ml` of the merged helper PR and paste it in the topmost PR of the enhanced orthogonal persistence stack.
