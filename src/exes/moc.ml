@@ -179,8 +179,8 @@ let argspec = [
   " enable experimental support for precise runtime type information (to assess performance changes only)";
 
   "--rts-stack-pages",
-  Arg.Set_int Flags.rts_stack_pages,
-  "<n>  set maximum number of pages available for runtime system stack (default " ^ (Int.to_string Flags.rts_stack_pages_default) ^ ")";
+  Arg.Int (fun pages -> Flags.rts_stack_pages := Some pages),
+  "<n>  set maximum number of pages available for runtime system stack (default " ^ (Int.to_string Flags.rts_stack_pages_default) ^ ", only available with classical persistence)";
 
   "--trap-on-call-error",
   Arg.Unit (fun () -> Flags.trap_on_call_error := true),

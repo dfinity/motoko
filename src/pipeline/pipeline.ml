@@ -705,7 +705,7 @@ and compile_unit mode do_link imports u : Wasm_exts.CustomModule.extended_module
   let prog_ir = ir_passes mode prog_ir name in
   phase "Compiling" name;
   let rts = if do_link then Some (load_as_rts ()) else None in
-  Codegen.Compile.compile mode rts prog_ir
+  Codegen.Compile_classical.compile mode rts prog_ir
 
 and compile_unit_to_wasm mode imports (u : Syntax.comp_unit) : string =
   let wasm_mod = compile_unit mode true imports u in
