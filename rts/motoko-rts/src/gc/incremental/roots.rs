@@ -8,7 +8,7 @@ use crate::{types::Value, visitor::is_non_null_pointer_field};
 /// The array constitutes a GC root that is reinitialized on each canister upgrade.
 /// The scalar sentinel denotes an uninitialized root.
 #[cfg(feature = "ic")]
-static mut STATIC_VARIABLES: Value = Value::from_scalar(0);
+static mut STATIC_VARIABLES: Value = crate::types::NULL_POINTER;
 
 /// GC root set.
 pub type Roots = [*mut Value; 6];
