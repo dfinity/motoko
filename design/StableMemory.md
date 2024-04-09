@@ -176,7 +176,7 @@ Stable memory layout (during execution):
 
 During execution, stable variables aren't maintained in stable memory - they are on the Motoko heap.
 
-Stable memory layout (between upgrades), assuming stable variable encoding `v == {fs:vs}`, a record value of record type {fs:Ts}.
+Stable memory layout (between upgrades), assuming stable variable encoding `v == {fs:vs}`, a record value of record type `{fs:Ts}`.
 
 NOTE: A program with no stable variables still writes an empty record value `v = {}`.
 

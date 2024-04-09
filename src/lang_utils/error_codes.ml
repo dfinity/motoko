@@ -201,4 +201,5 @@ let error_codes : (string * string option) list =
     "M0195", Some([%blob "lang_utils/error_codes/M0195.md"]); (* warn that `system` capability is implicitly supplied *)
     "M0196", None; (* `system` capability supplied but not required *)
     "M0197", Some([%blob "lang_utils/error_codes/M0197.md"]); (* `system` capability required *)
+    "M0198", Some([%blob "lang_utils/error_codes/M0198.md"]); (* Unused field pattern warning *)
   ]

@@ -103,10 +103,12 @@ branch to the `next-moc` branch.
 * Change into `motoko-base`
 * `git switch next-moc; git pull`
 * `git switch -c $USER/update-moc-0.11.$MOC_MINOR`
-* Update the `moc_version` env variable in `.github/workflows/{ci, package-set}.yml`
+* Update the `CHANGELOG.md` file with an entry at the top
+* Update the `moc_version` env variable in `.github/workflows/{ci, package-set}.yml` and `mops.toml`
   to the new released version:
-  `perl -pi -e "s/moc_version: \"0\.11\.\\d+\"/moc_version: \"0.11.$MOC_MINOR\"/g" .github/workflows/ci.yml .github/workflows/package-set.yml`
-* `git add .github/ && git commit -m "Motoko 0.11."$MOC_MINOR`
+  `perl -pi -e "s/moc_version: \"0\.11\.\\d+\"/moc_version: \"0.11.$MOC_MINOR\"/g; s/moc = \"0\.11\.\\d+\"/moc = \"0.11.$MOC_MINOR\"/g; s/version = \"0\.11\.\\d+\"/version = \"0.11.$MOC_MINOR\"/g" .github/workflows/ci.yml .github/workflows/package-set.yml mops.toml`
+* `git add .github/ CHANGELOG.md mops.toml && git commit -m "Motoko 0.11."$MOC_MINOR`
+* Revise `CHANGELOG.md`, adding a top entry for the release
 * You can `git push` now
 
 Make a PR off of that branch and merge it using a _normal merge_ (not
@@ -123,17 +125,17 @@ If you want to update the portal documentation, typically to keep in sync with a
 ## Coverage report
 
 To build with coverage enabled, compile the binaries in `src/` with
-
-    make DUNE_OPTS="--instrument-with bisect_ppx"`
-
+```
+make DUNE_OPTS="--instrument-with bisect_ppx"`
+```
 and then use `bisect-ppx-report html` to produce a report.
 
 The full report can be built with
-
-    nix-build -A tests.coverage
-
+```
+nix-build -A tests.coverage
+```
 and the report for latest `master` can be viewed at
-<https://dfinity.github.io/motoko/coverage/>.
+[https://dfinity.github.io/motoko/coverage/](https://dfinity.github.io/motoko/coverage/).
 
 ## Profile the compiler
 
