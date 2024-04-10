@@ -271,7 +271,7 @@ module Const = struct
   *)
 
   type v =
-    | Fun of (unit -> int32) * fun_rhs (* function pointer calculated upon first use *)
+    | Fun of int32 * (unit -> int32) * fun_rhs (* id is used for equality check, function pointer calculated upon first use *)
     | Message of int32 (* anonymous message, only temporary *)
     | Obj of (string * v) list
     | Unit
@@ -282,7 +282,7 @@ module Const = struct
 
   let eq v1 v2 = match v1, v2 with
     | Lit l1, Lit l2 -> lit_eq l1 l2
-    | Fun (f1_fp, _), Fun (f2_fp, _) -> f1_fp() = f2_fp()
+    | Fun (id1, _, _), Fun (id2, _, _) -> id1 = id2
     | _ -> v1 = v2
 
 end (* Const *)
@@ -455,6 +455,9 @@ module E = struct
 
     (* Type descriptor of current program version, created on `conclude_module`. *)
     global_type_descriptor : type_descriptor option ref;
+
+    (* Counter for deriving a unique id per constant function. *)
+    constant_functions : int32 ref;
   }
 
   (* Compile-time-known value, either a plain vanilla constant or a shared object. *)
@@ -495,6 +498,7 @@ module E = struct
     features = ref FeatureSet.empty;
     requires_stable_memory = ref false;
     global_type_descriptor = ref None;
+    constant_functions = ref 0l;
   }
 
   (* This wraps Mo_types.Hash.hash to also record which labels we have seen,
@@ -599,6 +603,11 @@ module E = struct
 
   let make_lazy_function env name : lazy_function =
     Lib.AllocOnUse.make (fun () -> reserve_fun env name)
+
+  let get_constant_function_id (env : t) : int32 =
+    let id = !(env.constant_functions) in
+    env.constant_functions := (Int32.add id 1l);
+    id
 
   let lookup_built_in (env : t) name : lazy_function =
     match NameEnv.find_opt name !(env.built_in_funcs) with
@@ -8505,7 +8514,7 @@ module StackRep = struct
   | Const.Lit (Const.Word64 (pty, number)) -> BoxedWord64.constant env pty number
   | Const.Lit (Const.Float64 number) -> Float.constant env number
   | Const.Opt value -> Opt.constant env (materialize_constant_value env value)
-  | Const.Fun (get_fi, _) -> Closure.constant env get_fi
+  | Const.Fun (_, get_fi, _) -> Closure.constant env get_fi
   | Const.Message _ -> assert false
   | Const.Unit -> E.Vanilla (Tuple.unit_vanilla_lit env)
   | Const.Tag (tag, value) -> 
@@ -8861,7 +8870,7 @@ end (* Var *)
 module Internals = struct
   let call_prelude_function env ae var =
     match VarEnv.lookup_var ae var with
-    | Some (VarEnv.Const Const.Fun (mk_fi, _)) ->
+    | Some (VarEnv.Const Const.Fun (_, mk_fi, _)) ->
        compile_unboxed_zero ^^ (* A dummy closure *)
        G.i (Call (nr (mk_fi ())))
     | _ -> assert false
@@ -8974,7 +8983,8 @@ module FuncDec = struct
     end else begin
       assert (control = Type.Returns);
       let lf = E.make_lazy_function pre_env name in
-      ( Const.Fun ((fun () -> Lib.AllocOnUse.use lf), fun_rhs), fun env ae ->
+      let fun_id = E.get_constant_function_id pre_env in
+      ( Const.Fun (fun_id, (fun () -> Lib.AllocOnUse.use lf), fun_rhs), fun env ae ->
         let restore_no_env _env ae _ = ae, unmodified in
         Lib.AllocOnUse.def lf (lazy (compile_local_function env ae restore_no_env args mk_body ret_tys at))
       )
@@ -10322,7 +10332,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
     (* we duplicate this pattern match to emulate pattern guards *)
     let call_as_prim = match fun_sr, sort with
-      | SR.Const Const.Fun (mk_fi, Const.PrimWrapper prim), _ ->
+      | SR.Const Const.Fun (_, mk_fi, Const.PrimWrapper prim), _ ->
          begin match n_args, e2.it with
          | 0, _ -> true
          | 1, _ -> true
@@ -10332,7 +10342,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
       | _ -> false in
 
     begin match fun_sr, sort with
-      | SR.Const Const.Fun (mk_fi, Const.PrimWrapper prim), _ when call_as_prim ->
+      | SR.Const Const.Fun (_, mk_fi, Const.PrimWrapper prim), _ when call_as_prim ->
          assert (sort = Type.Local);
          (* Handle argument tuples *)
          begin match n_args, e2.it with
@@ -10351,7 +10361,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
            (* ugly case; let's just call this as a function for now *)
            raise (Invalid_argument "call_as_prim was true?")
          end
-      | SR.Const Const.Fun (mk_fi, _), _ ->
+      | SR.Const Const.Fun (_, mk_fi, _), _ ->
          assert (sort = Type.Local);
          StackRep.of_arity return_arity,
 
