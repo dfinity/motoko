@@ -22,7 +22,7 @@ const DEFAULT_VALUE: Value = Value::from_scalar(0);
 /// * To load the types of the current program version from passive data segments, without that absolute
 ///   addresses are known at compile-time.
 /// The static type table is only created when calling the Candid subtype or memory compatibility check.
-/// As the static table contains absolute addresses, it can only temporarily used until the next GC increment.
+/// As the static table contains absolute addresses, it can only be used temporarily until the next GC increment.
 pub struct TypeDescriptor {
     // Blob with candid-encoded type definitions.
     candid_data: Value,
