@@ -97,7 +97,7 @@ Instead, such global runtime state is stored in the persistent metadata.
 Only passive Wasm data segments are used by the compiler and runtime system. In contrast to ordinary active data segments, passive segments can be explicitly loaded to a dynamic address.
 
 This simplifies two aspects: 
-* The generated Motoko code can contain arbitrarily large data segments which can loaded to dynamic heap when needed.
+* The generated Motoko code can contain arbitrarily large data segments which can be loaded to dynamic heap when needed.
 * The IC can simply retain the main memory on an upgrade without needing to patch the active data segments of the new program version to the persistent memory.
 
 However, more specific handling is required for the Rust-implemented runtime system:
