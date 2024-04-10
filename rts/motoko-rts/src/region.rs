@@ -73,9 +73,6 @@ pub(crate) static mut BLOCK_BASE: u64 = 0;
 pub(crate) const NO_REGION: Value = Value::from_scalar(0);
 
 // Region 0 -- classic API for stable memory, as a dedicated region.
-// NOTE: Multiple instances of region 0 objects can exist,
-// because an upgrade initializes a new instance and old regions can be recovered
-// This was already considered before stable heap design.
 pub(crate) static mut REGION_0: Value = NO_REGION;
 
 // This impl encapsulates encoding of optional region IDs within a u64.

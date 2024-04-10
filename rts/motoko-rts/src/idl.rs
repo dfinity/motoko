@@ -230,8 +230,6 @@ unsafe fn parse_idl_header<M: Memory>(
             check_typearg(mode, t, n_types);
         } else if ty == IDL_CON_record {
             parse_fields(mode, buf, n_types);
-        } else if ty == IDL_EXT_tuple {
-            parse_fields(mode, buf, n_types);
         } else if ty == IDL_CON_variant {
             parse_fields(mode, buf, n_types);
         } else if ty == IDL_CON_func {
