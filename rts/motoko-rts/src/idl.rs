@@ -62,6 +62,7 @@ const IDL_PRIM_lowest: i32 = -17;
 // Only used for memory compatiblity checks for orthogonal persistence.
 #[enhanced_orthogonal_persistence]
 const IDL_EXT_blob: i32 = -129;
+#[enhanced_orthogonal_persistence]
 const IDL_EXT_tuple: i32 = -130;
 
 unsafe fn leb128_decode_32(buf: *mut Buf) -> u32 {
