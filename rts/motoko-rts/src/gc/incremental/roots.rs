@@ -1,6 +1,6 @@
 use motoko_rts_macros::ic_mem_fn;
 
-use crate::{memory::alloc_array, types::Value, visitor::is_non_null_pointer_field};
+use crate::{types::Value, visitor::is_non_null_pointer_field};
 
 /// An array referring to the static program variables, being
 /// - All canister variables.
@@ -55,6 +55,7 @@ unsafe fn static_variables_location() -> *mut Value {
 #[ic_mem_fn(ic_only)]
 pub unsafe fn initialize_static_variables<M: crate::memory::Memory>(mem: &mut M, amount: u32) {
     use super::barriers::write_with_barrier;
+    use crate::memory::alloc_array;
     use crate::types::NULL_POINTER;
 
     let variables = alloc_array(mem, amount);
