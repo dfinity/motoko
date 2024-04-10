@@ -10,7 +10,7 @@ use crate::{memory::alloc_array, types::Value, visitor::is_non_null_pointer_fiel
 #[cfg(feature = "ic")]
 static mut STATIC_VARIABLES: Value = crate::types::NULL_POINTER;
 
-/// Sanity check for the variable initialization: The variables must be initialized 
+/// Sanity check for the variable initialization: The variables must be initialized
 /// in increasing order and may only read precedingly initialized variables.
 #[cfg(feature = "ic")]
 static mut INITIALIZED_VARIABLES: u32 = 0;
@@ -73,7 +73,6 @@ pub unsafe extern "C" fn get_static_variable(index: u32) -> Value {
     debug_assert!(index < INITIALIZED_VARIABLES);
     STATIC_VARIABLES.as_array().get(index)
 }
-
 
 #[ic_mem_fn(ic_only)]
 pub unsafe fn set_static_variable<M: crate::memory::Memory>(mem: &mut M, index: u32, value: Value) {
