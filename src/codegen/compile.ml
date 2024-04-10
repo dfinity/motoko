@@ -3723,7 +3723,7 @@ module Blob = struct
     alloc env ^^ set_blob ^^
     get_blob ^^ payload_ptr_unskewed env ^^ (* target address *)
     compile_const_32 0l ^^ (* data offset *)
-    narrow_to_32 env data_length ^^
+    data_length ^^ G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
     G.i (MemoryInit (nr segment_index)) ^^
     get_blob
   
@@ -6257,21 +6257,27 @@ module MakeSerialization (Strm : Stream) = struct
       | Some descriptor -> descriptor
       | None -> assert false
 
-    let load_candid_data env =
-      let descriptor = get_global_type_descriptor env in
-      Blob.load_data_segment env E.(descriptor.candid_data_segment) (get_candid_data_length env)
+    let get_global_candid_data env =
+      Tagged.share env (fun env -> 
+        let descriptor = get_global_type_descriptor env in
+        Blob.load_data_segment env E.(descriptor.candid_data_segment) (get_candid_data_length env)
+      )
 
-    let load_type_offsets env =
-      let descriptor = get_global_type_descriptor env in
-      Blob.load_data_segment env E.(descriptor.type_offsets_segment) (get_type_offsets_length env)
+    let get_global_type_offsets env =
+      Tagged.share env (fun env -> 
+        let descriptor = get_global_type_descriptor env in
+        Blob.load_data_segment env E.(descriptor.type_offsets_segment) (get_type_offsets_length env)
+      )
 
-    let count_type_offsets env =
+    let count_global_type_offsets env =
       get_type_offsets_length env ^^
       compile_divU_const candid_type_offset_size
 
-    let load_idl_types env =
-      let descriptor = get_global_type_descriptor env in
-      Blob.load_data_segment env E.(descriptor.idl_types_segment) (get_idl_types_length env)
+    let get_global_idl_types env =
+      Tagged.share env (fun env -> 
+        let descriptor = get_global_type_descriptor env in
+        Blob.load_data_segment env E.(descriptor.idl_types_segment) (get_idl_types_length env)
+      )
       
   module Registers = struct
     let register_globals env =
@@ -6916,17 +6922,17 @@ module MakeSerialization (Strm : Stream) = struct
     if extended then
       f (compile_unboxed_const 0L)
     else
-      get_typtbl_size1 ^^ count_type_offsets env ^^
+      get_typtbl_size1 ^^ count_global_type_offsets env ^^
       E.call_import env "rts" "idl_sub_buf_words" ^^
       Stack.dynamic_with_words env "rel_buf" (fun get_ptr ->
-        get_ptr ^^ get_typtbl_size1 ^^ count_type_offsets env ^^
+        get_ptr ^^ get_typtbl_size1 ^^ count_global_type_offsets env ^^
         E.call_import env "rts" "idl_sub_buf_init" ^^
         f get_ptr)
 
   (* See Note [Candid subtype checks] *)
   let idl_sub env t2 =
     let idx = Wasm.I64_convert.extend_i32_u (E.add_typtbl_typ env t2) in
-    load_idl_types env ^^
+    get_global_idl_types env ^^
     Blob.payload_ptr_unskewed env ^^
     G.i (Load {ty = I64Type; align = 0; offset = Int64.mul idx candid_type_offset_size (*!*); sz = None}) ^^
     Func.share_code6 Func.Always env ("idl_sub")
@@ -6945,8 +6951,8 @@ module MakeSerialization (Strm : Stream) = struct
         get_typtbl1 ^^
         get_typtbl_end1 ^^
         get_typtbl_size1 ^^
-        load_candid_data env ^^
-        load_type_offsets env ^^
+        get_global_candid_data env ^^
+        get_global_type_offsets env ^^
         get_idltyp1 ^^
         G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
         get_idltyp2 ^^
