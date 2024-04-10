@@ -3714,7 +3714,7 @@ module Blob = struct
     alloc env ^^ set_blob ^^
     get_blob ^^ payload_ptr_unskewed env ^^ (* target address *)
     compile_const_32 0l ^^ (* data offset *)
-    narrow_to_32 env data_length ^^
+    data_length ^^ G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
     G.i (MemoryInit (nr segment_index)) ^^
     get_blob
   
