@@ -6094,146 +6094,7 @@ module RTS_Exports = struct
 
 end (* RTS_Exports *)
 
-
-(* Below signature is needed by the serialiser to supply the
-   methods various formats and auxiliary routines. A stream
-   token refers to the stream itself. Depending on the stream's
-   methodology, the token can be a (bump) pointer or a handle
-   (like a `Blob`). The former needs to be updated at certain
-   points because the token will normally reside in locals that
-   nested functions won't have access to. *)
-module type Stream = sig
-  (* Bottleneck routines for streaming in different formats.
-     The `code` must be used linearly. `token` is a fragment
-     of Wasm that puts the stream token onto the stack.
-     Arguments:    env    token  code *)
-  val write_byte : E.t -> G.t -> G.t -> G.t
-  val write_word_leb : E.t -> G.t -> G.t -> G.t
-  val write_word_32 : E.t -> G.t -> G.t -> G.t
-  val write_blob : E.t -> G.t -> G.t -> G.t
-  val write_text : E.t -> G.t -> G.t -> G.t
-  val write_bignum_leb : E.t -> G.t -> G.t -> G.t
-  val write_bignum_sleb : E.t -> G.t -> G.t -> G.t
-
-  (* Creates a fresh stream with header, storing stream token.
-     Arguments:env    size   setter getter header *)
-  val create : E.t -> G.t -> G.t -> G.t -> string -> G.t
-
-  (* Checks the stream's filling, traps if unexpected
-     Arguments:      env    token  size *)
-  val check_filled : E.t -> G.t -> G.t -> G.t
-
-  (* Pushes the stream's current absolute byte offset on stack.
-     The requirement is that the difference between two uses
-     of this method must give a correct _relative_ offset.
-     Arguments:         env    token *)
-  val absolute_offset : E.t -> G.t -> G.t
-
-  (* Finishes the stream, performing consistency checks.
-     Leaves two words on stack, whose interpretation depends
-     on the Stream.
-     Arguments:   env    token  size   header_size *)
-  val terminate : E.t -> G.t -> G.t -> int32 -> G.t
-
-  (* Executes code to eliminate the residual buffer
-     that `terminate` returns (if at all) *)
-  val finalize_buffer : G.t -> G.t
-
-  (* Builds a unique name for a name seed and a type *)
-  val name_for : string -> Type.typ list -> string
-
-  (* Opportunity to flush or update the token. Stream token is on stack. *)
-  val checkpoint : E.t -> G.t -> G.t
-
-  (* Reserve a small fixed number of bytes in the stream and return an
-     address to it. The address is invalidated by a GC, and as such must
-     be written to in the next few instructions. *)
-  val reserve : E.t -> G.t -> int32 -> G.t
-end
-
-
-module BumpStream : Stream = struct
-  let create env get_data_size set_data_buf get_data_buf header =
-    let header_size = Int32.of_int (String.length header) in
-    get_data_size ^^ compile_add_const header_size ^^
-    Blob.dyn_alloc_scratch env ^^ set_data_buf ^^
-    get_data_buf ^^
-    Blob.lit env header ^^ Blob.payload_ptr_unskewed env ^^
-    compile_unboxed_const header_size ^^
-    Heap.memcpy env ^^
-    get_data_buf ^^ compile_add_const header_size ^^ set_data_buf
-
-  let check_filled env get_data_buf get_data_size =
-    get_data_buf ^^ get_data_size ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
-    G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
-    E.else_trap_with env "data buffer not filled"
-
-  let terminate env get_data_buf get_data_size header_size =
-    get_data_buf ^^ compile_sub_const header_size ^^
-    get_data_size ^^ compile_add_const header_size
-
-  let finalize_buffer code = code
-
-  let name_for fn_name ts = "@" ^ fn_name ^ "<" ^ Typ_hash.typ_seq_hash ts ^ ">"
-
-  let advance_data_buf get_data_buf =
-    get_data_buf ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ G.setter_for get_data_buf
-
-  let absolute_offset _env get_data_buf = get_data_buf
-
-  let checkpoint _env get_data_buf = G.setter_for get_data_buf
-
-  let reserve _env get_data_buf bytes =
-    get_data_buf ^^ get_data_buf ^^ compile_add_const bytes ^^ G.setter_for get_data_buf
-
-  let write_word_leb env get_data_buf code =
-    let set_word, get_word = new_local env "word" in
-    code ^^ set_word ^^
-    I32Leb.compile_store_to_data_buf_unsigned env get_word get_data_buf ^^
-    advance_data_buf get_data_buf
-
-  let write_word_32 env get_data_buf code =
-    get_data_buf ^^ code ^^
-    G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = None}) ^^
-    compile_unboxed_const Heap.word_size ^^ advance_data_buf get_data_buf
-
-  let write_byte _env get_data_buf code =
-    get_data_buf ^^ code ^^
-    G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.Pack8}) ^^
-    compile_unboxed_const 1l ^^ advance_data_buf get_data_buf
-
-  let write_blob env get_data_buf get_x =
-    let set_len, get_len = new_local env "len" in
-    get_x ^^ Blob.len env ^^ set_len ^^
-    write_word_leb env get_data_buf get_len ^^
-    get_data_buf ^^
-    get_x ^^ Blob.payload_ptr_unskewed env ^^
-    get_len ^^
-    Heap.memcpy env ^^
-    get_len ^^ advance_data_buf get_data_buf
-
-  let write_text env get_data_buf get_x =
-    let set_len, get_len = new_local env "len" in
-    get_x ^^ Text.size env ^^ set_len ^^
-    write_word_leb env get_data_buf get_len ^^
-    get_x ^^ get_data_buf ^^ Text.to_buf env ^^
-    get_len ^^ advance_data_buf get_data_buf
-
-  let write_bignum_leb env get_data_buf get_x =
-    get_data_buf ^^
-    get_x ^^
-    BigNum.compile_store_to_data_buf_unsigned env ^^
-    advance_data_buf get_data_buf
-
-  let write_bignum_sleb env get_data_buf get_x =
-    get_data_buf ^^
-    get_x ^^
-    BigNum.compile_store_to_data_buf_signed env ^^
-    advance_data_buf get_data_buf
-
-end
-
-module MakeSerialization (Strm : Stream) = struct
+module Serialization = struct
   (*
     The general serialization strategy is as follows:
     * We statically generate the IDL type description header.
@@ -6258,52 +6119,140 @@ module MakeSerialization (Strm : Stream) = struct
       by the next GC.
   *)
 
-  module Strm = Strm
+  module Strm = struct
+    (* Creates a fresh stream with header, storing stream token. *)
+    let create env get_data_size set_data_buf get_data_buf header =
+      let header_size = Int32.of_int (String.length header) in
+      get_data_size ^^ compile_add_const header_size ^^
+      Blob.dyn_alloc_scratch env ^^ set_data_buf ^^
+      get_data_buf ^^
+      Blob.lit env header ^^ Blob.payload_ptr_unskewed env ^^
+      compile_unboxed_const header_size ^^
+      Heap.memcpy env ^^
+      get_data_buf ^^ compile_add_const header_size ^^ set_data_buf
+  
+    (* Checks the stream's filling, traps if unexpected *)
+    let check_filled env get_data_buf get_data_size =
+      get_data_buf ^^ get_data_size ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^
+      G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+      E.else_trap_with env "data buffer not filled"
+  
+    (* Finishes the stream, performing consistency checks. 
+       Returns payload address and size including the header. *)
+    let terminate env get_data_buf get_data_size header_size =
+      get_data_buf ^^ compile_sub_const header_size ^^
+      get_data_size ^^ compile_add_const header_size
+  
+    (* Builds a unique name for a name seed and a type. *)
+    let name_for fn_name ts = "@" ^ fn_name ^ "<" ^ Typ_hash.typ_seq_hash ts ^ ">"
+  
+    let advance_data_buf get_data_buf =
+      get_data_buf ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)) ^^ G.setter_for get_data_buf
+  
+    (* Pushes the stream's current absolute byte offset on stack.
+       The requirement is that the difference between two uses
+       of this method must give a correct _relative_ offset. *)
+    let absolute_offset _env get_data_buf = get_data_buf
+  
+    (* Opportunity to flush or update the token. Stream token is on stack. *)
+    let checkpoint _env get_data_buf = G.setter_for get_data_buf
+  
+    (* Reserve a small fixed number of bytes in the stream and return an
+       address to it. The address is invalidated by a GC, and as such must
+       be written to in the next few instructions. *)
+    let reserve _env get_data_buf bytes =
+      get_data_buf ^^ get_data_buf ^^ compile_add_const bytes ^^ G.setter_for get_data_buf
+  
+    let write_word_leb env get_data_buf code =
+      let set_word, get_word = new_local env "word" in
+      code ^^ set_word ^^
+      I32Leb.compile_store_to_data_buf_unsigned env get_word get_data_buf ^^
+      advance_data_buf get_data_buf
+  
+    let write_word_32 env get_data_buf code =
+      get_data_buf ^^ code ^^
+      G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = None}) ^^
+      compile_unboxed_const Heap.word_size ^^ advance_data_buf get_data_buf
+  
+    let write_byte _env get_data_buf code =
+      get_data_buf ^^ code ^^
+      G.i (Store {ty = I32Type; align = 0; offset = 0l; sz = Some Wasm.Types.Pack8}) ^^
+      compile_unboxed_const 1l ^^ advance_data_buf get_data_buf
+  
+    let write_blob env get_data_buf get_x =
+      let set_len, get_len = new_local env "len" in
+      get_x ^^ Blob.len env ^^ set_len ^^
+      write_word_leb env get_data_buf get_len ^^
+      get_data_buf ^^
+      get_x ^^ Blob.payload_ptr_unskewed env ^^
+      get_len ^^
+      Heap.memcpy env ^^
+      get_len ^^ advance_data_buf get_data_buf
+  
+    let write_text env get_data_buf get_x =
+      let set_len, get_len = new_local env "len" in
+      get_x ^^ Text.size env ^^ set_len ^^
+      write_word_leb env get_data_buf get_len ^^
+      get_x ^^ get_data_buf ^^ Text.to_buf env ^^
+      get_len ^^ advance_data_buf get_data_buf
+  
+    let write_bignum_leb env get_data_buf get_x =
+      get_data_buf ^^
+      get_x ^^
+      BigNum.compile_store_to_data_buf_unsigned env ^^
+      advance_data_buf get_data_buf
+  
+    let write_bignum_sleb env get_data_buf get_x =
+      get_data_buf ^^
+      get_x ^^
+      BigNum.compile_store_to_data_buf_signed env ^^
+      advance_data_buf get_data_buf
+  end (* Strm *)
+
   (* Globals recording known Candid types
     See Note [Candid subtype checks]
   *)
+  let register_delayed_globals env =
+    (E.add_global32_delayed env "__candid_data_length" Immutable,
+    E.add_global32_delayed env "__type_offsets_length" Immutable,
+    E.add_global32_delayed env "__idl_types_length" Immutable)
 
-    let register_delayed_globals env =
-      (E.add_global32_delayed env "__candid_data_length" Immutable,
-      E.add_global32_delayed env "__type_offsets_length" Immutable,
-      E.add_global32_delayed env "__idl_types_length" Immutable)
+  let get_candid_data_length env =
+    G.i (GlobalGet (nr (E.get_global env "__candid_data_length")))
+  let get_type_offsets_length env =
+    G.i (GlobalGet (nr (E.get_global env "__type_offsets_length")))
+  let get_idl_types_length env =
+    G.i (GlobalGet (nr (E.get_global env "__idl_types_length")))
 
-    let get_candid_data_length env =
-      G.i (GlobalGet (nr (E.get_global env "__candid_data_length")))
-    let get_type_offsets_length env =
-      G.i (GlobalGet (nr (E.get_global env "__type_offsets_length")))
-    let get_idl_types_length env =
-      G.i (GlobalGet (nr (E.get_global env "__idl_types_length")))
+  let candid_type_offset_size = 4l
 
-    let candid_type_offset_size = 4l
+  let get_global_type_descriptor env =
+    match !(E.(env.global_type_descriptor)) with
+    | Some descriptor -> descriptor
+    | None -> assert false
 
-    let get_global_type_descriptor env =
-      match !(E.(env.global_type_descriptor)) with
-      | Some descriptor -> descriptor
-      | None -> assert false
+  let get_global_candid_data env =
+    Tagged.share env (fun env -> 
+      let descriptor = get_global_type_descriptor env in
+      Blob.load_data_segment env E.(descriptor.candid_data_segment) (get_candid_data_length env)
+    )
 
-    let get_global_candid_data env =
-      Tagged.share env (fun env -> 
-        let descriptor = get_global_type_descriptor env in
-        Blob.load_data_segment env E.(descriptor.candid_data_segment) (get_candid_data_length env)
-      )
+  let get_global_type_offsets env =
+    Tagged.share env (fun env -> 
+      let descriptor = get_global_type_descriptor env in
+      Blob.load_data_segment env E.(descriptor.type_offsets_segment) (get_type_offsets_length env)
+    )
 
-    let get_global_type_offsets env =
-      Tagged.share env (fun env -> 
-        let descriptor = get_global_type_descriptor env in
-        Blob.load_data_segment env E.(descriptor.type_offsets_segment) (get_type_offsets_length env)
-      )
+  let count_global_type_offsets env =
+    get_type_offsets_length env ^^
+    compile_divU_const candid_type_offset_size
 
-    let count_global_type_offsets env =
-      get_type_offsets_length env ^^
-      compile_divU_const candid_type_offset_size
-
-    let get_global_idl_types env =
-      Tagged.share env (fun env -> 
-        let descriptor = get_global_type_descriptor env in
-        Blob.load_data_segment env E.(descriptor.idl_types_segment) (get_idl_types_length env)
-      )
-      
+  let get_global_idl_types env =
+    Tagged.share env (fun env -> 
+      let descriptor = get_global_type_descriptor env in
+      Blob.load_data_segment env E.(descriptor.idl_types_segment) (get_idl_types_length env)
+    )
+  
   module Registers = struct
     let register_globals env =
       E.add_global32 env "@@rel_buf_opt" Mutable 0l;
@@ -8010,9 +7959,7 @@ from a Boolean to a three-valued argument to efficiently check equality for
 invariant type constructors in a single pass.
 *)
 
-end (* MakeSerialization *)
-
-module Serialization = MakeSerialization(BumpStream)
+end (* Serialization *)
 
 (* OldStabilization as migration code: 
   Deserializing a last time from explicit stable memory into the stable heap:
