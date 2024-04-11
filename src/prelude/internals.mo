@@ -420,7 +420,8 @@ func @install_actor_helper(
       #new : { settings : ?@ManagementCanister.canister_settings } ;
       #install : Principal;
       #reinstall : actor {} ;
-      #upgrade : actor {}
+      #upgrade : actor {} ;
+      #upgrade_with_persistence : { wasm_memory_persistence: WasmMemoryPersistence; canister: actor {} };
     },
     enhanced_orthogonal_persistence : Bool,
     wasm_module : Blob,
@@ -454,7 +455,11 @@ func @install_actor_helper(
           wasm_memory_persistence;
         };
         ((#upgrade (?upgradeOptions)), (prim "cast" : (actor {}) -> Principal) actor2)
-      }
+      };
+      case (#upgrade_with_persistence { wasm_memory_persistence; canister } ) {
+        let upgradeOptions = { wasm_memory_persistence = ?wasm_memory_persistence };
+        ((#upgrade (?upgradeOptions)), (prim "cast" : (actor {}) -> Principal) canister)
+      };
     };
   await @ic00.install_code {
     mode;

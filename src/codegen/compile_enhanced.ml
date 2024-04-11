@@ -1942,6 +1942,8 @@ module Tagged = struct
   let null_vanilla_pointer = 0xffff_ffff_ffff_fffbL (* skewed, pointing to last unallocated Wasm page *)
   let null_pointer = compile_unboxed_const null_vanilla_pointer
 
+  let is_null env = compile_eq_const null_vanilla_pointer
+
   let not_null env =
     (* null test works without forwarding pointer resolution of a non-null comparand *)
     null_pointer ^^
@@ -2202,6 +2204,7 @@ module Opt = struct
   let null_vanilla_lit = Tagged.null_vanilla_pointer
   let null_lit env = Tagged.null_pointer
 
+  let is_null = Tagged.is_null
   let is_some = Tagged.not_null
 
   let alloc_some env get_payload =
@@ -12215,8 +12218,7 @@ enabled mutual recursion.
 and compile_lit_pat env l =
   match l with
   | NullLit ->
-    Opt.is_some env ^^
-    Bool.neg
+    Opt.is_null env
   | BoolLit true ->
     G.nop
   | BoolLit false ->

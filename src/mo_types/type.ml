@@ -1387,12 +1387,25 @@ let canister_settings_typ =
       ("memory_allocation", Opt nat);
       ("freezing_threshold", Opt nat)])]
 
+let wasm_memory_persistence_typ =
+  sum [
+    ("Keep", unit);
+    ("Replace", unit);
+  ]
+
+let upgrade_with_persistence_option_typ =
+  obj Object [
+    ("wasm_memory_persistence", wasm_memory_persistence_typ);
+    ("canister", obj Actor []);
+  ]
+
 let install_arg_typ =
   sum [
     ("new", canister_settings_typ);
     ("install", principal);
     ("reinstall", obj Actor []);
-    ("upgrade", obj Actor [])
+    ("upgrade", obj Actor []);
+    ("upgrade_with_persistence", upgrade_with_persistence_option_typ );
   ]
 
 let install_typ ts actor_typ =
