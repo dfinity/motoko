@@ -2,7 +2,7 @@
 import { errorMessage; debugPrint; } = "mo:⛔";
 
 actor {
-    let expectedMinimumSize = 26_000;
+    let expectedMinimumSize = 31_000;
 
     public func ser() : async () { await go(false) };
     public func deser() : async () { await go(true) };
@@ -37,9 +37,9 @@ actor {
             done := true
           }
         };
-        
+
         assert(i > expectedMinimumSize);
-        
+
         let b = to_candid(l);
         debugPrint("serialized");
 
