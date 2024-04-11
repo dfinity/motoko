@@ -109,18 +109,6 @@ actor a {
       assert ({args = 5; upgrades = 0} == (await c5.observe()));
       assert (c5 == c4);
 
-      // no need to add cycles
-      let c6 = await
-        (system Cs.C)(#reinstall c5)(6, null);
-      assert ({args = 6; upgrades = 0} == (await c6.observe()));
-      assert (c6 == c5);
-
-      // no need to add cycles
-      let c7 = await
-        (system Cs.C)(#upgrade_with_persistence { wasm_memory_persistence = #Replace ; canister = c6 })(7, null);
-      assert ({args = 7; upgrades = 0} == (await c7.observe()));
-      assert (c7 == c6);
-
       let info = await ic00.canister_info {
           canister_id = p;
           num_requested_changes = ?4
