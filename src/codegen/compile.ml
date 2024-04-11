@@ -6259,9 +6259,10 @@ module MakeSerialization (Strm : Stream) = struct
   *)
 
   module Strm = Strm
-    (* Globals recording known Candid types
-      See Note [Candid subtype checks]
-    *)
+  (* Globals recording known Candid types
+    See Note [Candid subtype checks]
+  *)
+  
     let register_delayed_globals env =
       (E.add_global32_delayed env "__candid_data_length" Immutable,
       E.add_global32_delayed env "__type_offsets_length" Immutable,
