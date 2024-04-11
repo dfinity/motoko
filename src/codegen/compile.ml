@@ -6995,10 +6995,11 @@ module Serialization = struct
       let get_typtbl = Registers.get_typtbl env in
       let get_typtbl_end = Registers.get_typtbl_end env in
       let get_typtbl_size = Registers.get_typtbl_size env in
+(*
       let get_global_typtbl = Registers.get_global_typtbl env in
       let get_global_typtbl_end = Registers.get_global_typtbl_end env in
       let get_global_typtbl_size = Registers.get_global_typtbl_size env in
-
+*)
       (* Check recursion depth (protects against empty record etc.) *)
       (* Factor 2 because at each step, the expected type could go through one
          level of opt that is not present in the value type
