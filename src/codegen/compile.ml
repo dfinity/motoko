@@ -284,7 +284,7 @@ module Const = struct
   *)
 
   type v =
-    | Fun of (unit -> int32) * fun_rhs (* function pointer calculated upon first use *)
+    | Fun of int32 * (unit -> int32) * fun_rhs (* function pointer calculated upon first use *)
     | Message of int64 (* anonymous message, only temporary *)
     | Obj of (string * v) list
     | Unit
@@ -295,7 +295,7 @@ module Const = struct
 
   let eq v1 v2 = match v1, v2 with
     | Lit l1, Lit l2 -> lit_eq l1 l2
-    | Fun (f1_fp, _), Fun (f2_fp, _) -> f1_fp() = f2_fp()
+    | Fun (id1, _, _), Fun (id2, _, _) -> id1 = id2
     | _ -> v1 = v2
 
 end (* Const *)
@@ -466,12 +466,15 @@ module E = struct
 
     (* Type descriptor of current program version, created on `conclude_module`. *)
     global_type_descriptor : type_descriptor option ref;
+
+    (* Counter for deriving a unique id per constant function. *)
+    constant_functions : int32 ref;
   }
 
   (* Compile-time-known value, either a plain vanilla constant or a shared object. *)
   type shared_value = 
   | Vanilla of int64
-  | SharedObject of object_allocation
+  | SharedObject of int64 (* index in object pool *)
 
   (* The initial global environment *)
   let mk_global mode rts trap_with : t = {
@@ -506,6 +509,7 @@ module E = struct
     features = ref FeatureSet.empty;
     requires_stable_memory = ref false;
     global_type_descriptor = ref None;
+    constant_functions = ref 0l;
   }
 
   (* This wraps Mo_types.Hash.hash to also record which labels we have seen,
@@ -596,6 +600,11 @@ module E = struct
 
   let make_lazy_function env name : lazy_function =
     Lib.AllocOnUse.make (fun () -> reserve_fun env name)
+
+  let get_constant_function_id (env : t) : int32 =
+    let id = !(env.constant_functions) in
+    env.constant_functions := (Int32.add id 1l);
+    id
 
   let lookup_built_in (env : t) name : lazy_function =
     match NameEnv.find_opt name !(env.built_in_funcs) with
@@ -1111,8 +1120,9 @@ module RTS = struct
     E.add_func_import env "rts" "save_stable_actor" [I64Type] [];
     E.add_func_import env "rts" "free_stable_actor" [] [];
     E.add_func_import env "rts" "contains_field" [I64Type; I64Type] [I32Type];
-    E.add_func_import env "rts" "set_static_variables" [I64Type] [];
+    E.add_func_import env "rts" "initialize_static_variables" [I64Type] [];
     E.add_func_import env "rts" "get_static_variable" [I64Type] [I64Type];
+    E.add_func_import env "rts" "set_static_variable" [I64Type; I64Type] [];
     E.add_func_import env "rts" "set_upgrade_instructions" [I64Type] [];
     E.add_func_import env "rts" "get_upgrade_instructions" [] [I64Type];
     E.add_func_import env "rts" "memcmp" [I64Type; I64Type; I64Type] [I32Type];
@@ -2107,13 +2117,16 @@ module Tagged = struct
     get_object ^^
     allocation_barrier env
 
-  let share env allocation =
+  let shared_object env allocation =
     let index = E.object_pool_add env allocation in
-    Heap.get_static_variable env index
+    E.SharedObject index
 
-  let share_constant env = function
+  let materialize_shared_value env = function
   | E.Vanilla vanilla -> compile_unboxed_const vanilla
-  | E.SharedObject allocation -> share env allocation
+  | E.SharedObject index -> Heap.get_static_variable env index
+
+  let share env allocation =
+    materialize_shared_value env (shared_object env allocation)
 
 end (* Tagged *)
 
@@ -2203,9 +2216,13 @@ module Opt = struct
     )
 
   let constant env = function
-  | E.Vanilla value when value = null_vanilla_lit -> E.SharedObject (fun env -> alloc_some env (null_lit env)) (* ?ⁿnull for n > 0 *)
+  | E.Vanilla value when value = null_vanilla_lit -> Tagged.shared_object env (fun env -> alloc_some env (null_lit env)) (* ?ⁿnull for n > 0 *)
   | E.Vanilla value -> E.Vanilla value (* not null and no `Opt` object *)
-  | E.SharedObject allocation -> E.SharedObject (fun env -> inject env (allocation env)) (* potentially wrap in new `Opt` *)
+  | shared_value ->
+    Tagged.shared_object env (fun env -> 
+      let materialized_value = Tagged.materialize_shared_value env shared_value in  
+      inject env materialized_value (* potentially wrap in new `Opt` *)
+    )
 
   (* This function is used where conceptually, Opt.inject should be used, but
   we know for sure that it wouldn’t do anything anyways, except dereferencing the forwarding pointer *)
@@ -2321,7 +2338,7 @@ module Closure = struct
 
   let constant env get_fi =
     let fi = Wasm.I64_convert.extend_i32_u (E.add_fun_ptr env (get_fi ())) in
-    E.SharedObject (fun env -> Tagged.obj env Tagged.Closure [
+    Tagged.shared_object env (fun env -> Tagged.obj env Tagged.Closure [
       compile_unboxed_const fi;
       compile_unboxed_const 0L
     ])
@@ -2362,7 +2379,7 @@ module BoxedWord64 = struct
     then 
       E.Vanilla (BitTagged.tag_const pty i)
     else
-      E.SharedObject (fun env -> compile_box env pty (compile_unboxed_const i))
+      Tagged.shared_object env (fun env -> compile_box env pty (compile_unboxed_const i))
 
   let box env pty = 
     Func.share_code1 Func.Never env 
@@ -2717,7 +2734,7 @@ module Float = struct
 
   let unbox env = Tagged.load_forwarding_pointer env ^^ Tagged.load_field_float64 env payload_field
 
-  let constant env f = E.SharedObject (fun env -> 
+  let constant env f = Tagged.shared_object env (fun env -> 
     compile_unboxed_const f ^^ 
     box env)
 
@@ -3571,7 +3588,7 @@ module BigNumLibtommath : BigNumType = struct
     ] @ limbs_with_padding 
     in
 
-    E.SharedObject (fun env ->
+    Tagged.shared_object env (fun env ->
       let instructions = 
         let words = StaticBytes.as_words payload in
         List.map compile_unboxed_const words in
@@ -3693,7 +3710,7 @@ module Blob = struct
     compile_add_const (unskewed_payload_offset env)
 
   let constant env payload =
-    E.SharedObject (fun env -> 
+    Tagged.shared_object env (fun env -> 
       let blob_length = String.length payload in
       let (set_new_blob, get_new_blob) = new_local env "new_blob" in
       compile_unboxed_const (Int64.of_int blob_length) ^^ alloc env ^^ set_new_blob ^^
@@ -3705,7 +3722,7 @@ module Blob = struct
     )
 
   let lit env payload =
-    Tagged.share_constant env (constant env payload)
+    Tagged.materialize_shared_value env (constant env payload)
 
   let as_ptr_len env = Func.share_code1 Func.Never env "as_ptr_size" ("x", I64Type) [I64Type; I64Type] (
     fun env get_x ->
@@ -3907,10 +3924,10 @@ module Object = struct
   let hash_ptr_field = Int64.add Tagged.header_size 0L
  
   module FieldEnv = Env.Make(String)
- 
-  (* This is for non-recursive objects, i.e. ObjNewE *)
+
+  (* This is for non-recursive objects. *)
   (* The instructions in the field already create the indirection if needed *)
-  let lit_raw env (fs : (string * (unit -> G.t)) list ) =
+  let object_builder env (fs : (string * (E.t -> G.t)) list ) =
     let name_pos_map =
       fs |>
         (* We could store only public fields in the object, but
@@ -3928,38 +3945,49 @@ module Object = struct
       let hashes = fs |>
         List.map (fun (n,_) -> E.hash env n) |>
         List.sort compare in
-      let hash_blob env =
+      let hash_blob =
         let hash_payload = StaticBytes.[ i64s hashes ] in
-        let blob_constant = Blob.constant env (StaticBytes.as_bytes hash_payload) in
-        match blob_constant with
-        | E.SharedObject allocation -> allocation env
-        | E.Vanilla _ -> assert false
+        Blob.constant env (StaticBytes.as_bytes hash_payload)
       in
+      
+      (fun env -> 
+        (* Allocate memory *)
+        let (set_ri, get_ri, ri) = new_local_ env I64Type "obj" in
+        Tagged.alloc env (Int64.add header_size sz) Tagged.Object ^^
+        set_ri ^^
 
-      (* Allocate memory *)
-      let (set_ri, get_ri, ri) = new_local_ env I64Type "obj" in
-      Tagged.alloc env (Int64.add header_size sz) Tagged.Object ^^
-      set_ri ^^
-
-      (* Set hash_ptr *)
-      get_ri ^^
-      hash_blob env ^^
-      Tagged.store_field env hash_ptr_field ^^
-
-      (* Write all the fields *)
-      let init_field (name, mk_is) : G.t =
-        (* Write the pointer to the indirection *)
+        (* Set hash_ptr *)
         get_ri ^^
-        mk_is () ^^
-        let i = FieldEnv.find name name_pos_map in
-        let offset = Int64.add header_size i in
-        Tagged.store_field env offset
-      in
-      G.concat_map init_field fs ^^
+        Tagged.materialize_shared_value env hash_blob ^^
+        Tagged.store_field env hash_ptr_field ^^
 
-      (* Return the pointer to the object *)
-      get_ri ^^
-      Tagged.allocation_barrier env
+        (* Write all the fields *)
+        let init_field (name, generate_value) : G.t =
+          (* Write the pointer to the indirection *)
+          get_ri ^^
+          generate_value env ^^
+          let i = FieldEnv.find name name_pos_map in
+          let offset = Int64.add header_size i in
+          Tagged.store_field env offset
+        in
+        G.concat_map init_field fs ^^
+
+        (* Return the pointer to the object *)
+        get_ri ^^
+        Tagged.allocation_barrier env
+      )
+
+  let constant env (fs : (string * E.shared_value) list) =
+    let materialize_fields = List.map (fun (name, value) -> (name, fun env -> Tagged.materialize_shared_value env value)) fs in
+    let allocation = object_builder env materialize_fields in
+    Tagged.shared_object env allocation
+
+  (* This is for non-recursive objects, i.e. ObjNewE *)
+  (* The instructions in the field already create the indirection if needed *)
+  let lit_raw env (fs : (string * (unit -> G.t)) list ) =
+    let materialize_fields = List.map (fun (name, generate_value) -> (name, (fun env -> generate_value ()))) fs in
+    let allocation = object_builder env materialize_fields in
+    allocation env
 
   (* Reflection used by orthogonal persistence: 
      Check whether an (actor) object contains a specific field *)
@@ -4303,6 +4331,12 @@ module Arr = struct
     Tagged.obj env Tagged.Array
      ([ compile_unboxed_const (Wasm.I64.of_int_u (List.length element_instructions))
       ] @ element_instructions)
+
+  let constant env elements =
+    Tagged.shared_object env (fun env ->
+      let materialized_elements = List.map (fun element -> Tagged.materialize_shared_value env element) elements in
+      lit env materialized_elements
+    )
 
   (* Does not initialize the fields! *)
   (* Note: Post allocation barrier must be applied after initialization *)
@@ -5256,7 +5290,7 @@ module Cycles = struct
     let (set_val, get_val) = new_local env "cycles" in
     set_val ^^
     get_val ^^
-    Tagged.share_constant env (BigNum.constant env (Big_int.power_int_positive_int 2 128)) ^^
+    Tagged.materialize_shared_value env (BigNum.constant env (Big_int.power_int_positive_int 2 128)) ^^
     BigNum.compile_relop env Lt ^^
     E.else_trap_with env "cycles out of bounds" ^^
 
@@ -8482,26 +8516,17 @@ module GraphCopyStabilization = struct
 end
 
 module GCRoots = struct
-  let create_root_array env = Func.share_code0 Func.Always env "create_root_array" [I64Type] (fun env ->
+  let register_static_variables env = Func.share_code0 Func.Always env "initalize_root_array" [] (fun env ->
     E.(env.object_pool.frozen) := true;
-    let (set_array, get_array) = new_local env "root_array" in
     let length = Int64.of_int (E.object_pool_size env) in
     compile_unboxed_const length ^^
-    Arr.alloc env ^^
-    set_array ^^
+    E.call_import env "rts" "initialize_static_variables" ^^
     E.iterate_object_pool env (fun index allocation ->
-      get_array ^^
       compile_unboxed_const (Int64.of_int index) ^^
-      Arr.unsafe_idx env ^^
       allocation env ^^
-      store_ptr
-    ) ^^
-    get_array
+      E.call_import env "rts" "set_static_variable"
+    )
   )
-
-  let register_static_variables env =
-    create_root_array env ^^
-    E.call_import env "rts" "set_static_variables"
 end (* GCRoots *)
 
 module StackRep = struct
@@ -8578,7 +8603,7 @@ module StackRep = struct
     | UnboxedTuple n -> G.table n (fun _ -> G.i Drop)
     | Const _ | Unreachable -> G.nop
 
-  let rec materialize_constant_value env = function
+  let rec build_constant env = function
   | Const.Lit (Const.Vanilla value) -> E.Vanilla value
   | Const.Lit (Const.Bool number) -> E.Vanilla (Bool.vanilla_lit number)
   | Const.Lit (Const.Blob payload) -> Blob.constant env payload
@@ -8586,33 +8611,25 @@ module StackRep = struct
   | Const.Lit (Const.BigInt number) -> BigNum.constant env number
   | Const.Lit (Const.Word64 (pty, number)) -> BoxedWord64.constant env pty number
   | Const.Lit (Const.Float64 number) -> Float.constant env number
-  | Const.Opt value -> Opt.constant env (materialize_constant_value env value)
-  | Const.Fun (get_fi, _) -> Closure.constant env get_fi
+  | Const.Opt value -> Opt.constant env (build_constant env value)
+  | Const.Fun (_, get_fi, _) -> Closure.constant env get_fi
   | Const.Message _ -> assert false
   | Const.Unit -> E.Vanilla (Tuple.unit_vanilla_lit env)
-  | Const.Tag (tag, value) -> 
-      let payload = materialize_constant_element env value in
-      E.SharedObject (fun env -> Variant.inject env tag (payload env))
+  | Const.Tag (tag, value) ->
+      let payload = build_constant env value in
+      Tagged.shared_object env (fun env ->
+        let materialized_payload = Tagged.materialize_shared_value env payload in
+        Variant.inject env tag materialized_payload
+      )
   | Const.Array elements -> 
-      let materialized_elements = List.map (materialize_constant_element env) elements in
-      E.SharedObject (fun env -> 
-        let compiled_elements = List.map (fun allocation -> allocation env) materialized_elements in
-        Arr.lit env compiled_elements
-      )
-  | Const.Obj fields -> 
-      let materialized_fields = List.map (fun (name, value) -> (name, materialize_constant_element env value)) fields in
-      E.SharedObject (fun env -> 
-        let compile_fields = List.map (fun (name, allocation) -> (name, fun () -> allocation env)) materialized_fields in
-        Object.lit_raw env compile_fields
-      )
+      let constant_elements = List.map (build_constant env) elements in
+      Arr.constant env constant_elements
+  | Const.Obj fields ->
+      let constant_fields = List.map (fun (name, value) -> (name, build_constant env value)) fields in
+      Object.constant env constant_fields
 
-  and materialize_constant_element env value =
-    match materialize_constant_value env value with
-    | E.Vanilla vanilla -> fun env -> compile_unboxed_const vanilla
-    | E.SharedObject allocation -> allocation
-
-  let materialize_shared_constant env value =
-    Tagged.share_constant env (materialize_constant_value env value)
+  let materialize_constant env value =
+    Tagged.materialize_shared_value env (build_constant env value)
 
   let adjust env (sr_in : t) sr_out =
     if eq sr_in sr_out
@@ -8640,7 +8657,7 @@ module StackRep = struct
     | Vanilla, UnboxedFloat64 -> Float.unbox env
 
     | Const value, Vanilla -> 
-        materialize_shared_constant env value
+        materialize_constant env value
     | Const Const.Lit (Const.Vanilla n), UnboxedWord64 ty ->
         compile_unboxed_const n ^^
         TaggedSmallWord.untag env ty
@@ -8650,7 +8667,7 @@ module StackRep = struct
     | Const c, UnboxedTuple 0 -> G.nop
     | Const Const.Array cs, UnboxedTuple n ->
       assert (n = List.length cs);
-      G.concat_map (fun c -> materialize_shared_constant env c) cs
+      G.concat_map (fun c -> materialize_constant env c) cs
     | _, _ ->
       Printf.eprintf "Unknown stack_rep conversion %s -> %s\n"
         (to_string sr_in) (to_string sr_out);
@@ -8931,7 +8948,7 @@ end (* Var *)
 module Internals = struct
   let call_prelude_function env ae var =
     match VarEnv.lookup_var ae var with
-    | Some (VarEnv.Const Const.Fun (mk_fi, _)) ->
+    | Some (VarEnv.Const Const.Fun (_, mk_fi, _)) ->
        compile_unboxed_zero ^^ (* A dummy closure *)
        G.i (Call (nr (mk_fi())))
     | _ -> assert false
@@ -9037,7 +9054,8 @@ module FuncDec = struct
     end else begin
       assert (control = Type.Returns);
       let lf = E.make_lazy_function pre_env name in
-      ( Const.Fun ((fun () -> Lib.AllocOnUse.use lf), fun_rhs), fun env ae ->
+      let fun_id = E.get_constant_function_id pre_env in
+      ( Const.Fun (fun_id, (fun () -> Lib.AllocOnUse.use lf), fun_rhs), fun env ae ->
         let restore_no_env _env ae _ = ae, unmodified in
         Lib.AllocOnUse.def lf (lazy (compile_local_function env ae restore_no_env args mk_body ret_tys at))
       )
@@ -10707,7 +10725,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
     (* we duplicate this pattern match to emulate pattern guards *)
     let call_as_prim = match fun_sr, sort with
-      | SR.Const Const.Fun (mk_fi, Const.PrimWrapper prim), _ ->
+      | SR.Const Const.Fun (_, mk_fi, Const.PrimWrapper prim), _ ->
          begin match n_args, e2.it with
          | 0, _ -> true
          | 1, _ -> true
@@ -10717,7 +10735,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
       | _ -> false in
 
     begin match fun_sr, sort with
-      | SR.Const Const.Fun (mk_fi, Const.PrimWrapper prim), _ when call_as_prim ->
+      | SR.Const Const.Fun (_, mk_fi, Const.PrimWrapper prim), _ when call_as_prim ->
          assert (sort = Type.Local);
          (* Handle argument tuples *)
          begin match n_args, e2.it with
@@ -10736,7 +10754,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
            (* ugly case; let's just call this as a function for now *)
            raise (Invalid_argument "call_as_prim was true?")
          end
-      | SR.Const Const.Fun (mk_fi, _), _ ->
+      | SR.Const Const.Fun (_, mk_fi, _), _ ->
          assert (sort = Type.Local);
          StackRep.of_arity return_arity,
 
