@@ -6269,9 +6269,10 @@ module MakeSerialization (Strm : Stream) = struct
   *)
 
   module Strm = Strm
-    (* Globals recording known Candid types
-      See Note [Candid subtype checks]
-    *)
+  (* Globals recording known Candid types
+    See Note [Candid subtype checks]
+  *)
+
     let register_delayed_globals env =
       (E.add_global64_delayed env "__candid_data_length" Immutable,
       E.add_global64_delayed env "__type_offsets_length" Immutable,
@@ -8264,13 +8265,14 @@ end
    This prevents unwanted forward compatibility of old compiled programs that rely on Candid destabilization.
    This also helps to detect graph-copy-based destabilization that has priority over enhanced orthogonal persistence.
   If size == 0: empty
+  let end = physical size * page_size
   If logical size N > 0:
-    [0..4]          0 (first word is backed up at `end-8`)
-    [4..N]          <stable memory>
+    [0..4)          0 (first word is backed up at `end-8`)
+    [4..N)          <stable memory>
             <zero padding>
-    [end-16..end-8] <size N>
-    [end-8..end-4]  <first word>
-    [end-4..end]    <new version>
+    [end-16..end-8) <size N>
+    [end-8..end-4)  <first word>
+    [end-4..end)   <new version>
   ending at page boundary
   Note: The first word must be empty to distinguish this version from the Candid legacy version 0 (which has first word != 0).
 *)
@@ -8516,17 +8518,18 @@ module GraphCopyStabilization = struct
 end
 
 module GCRoots = struct
-  let register_static_variables env = Func.share_code0 Func.Always env "initalize_root_array" [] (fun env ->
+  let register_static_variables env = 
     E.(env.object_pool.frozen) := true;
-    let length = Int64.of_int (E.object_pool_size env) in
-    compile_unboxed_const length ^^
-    E.call_import env "rts" "initialize_static_variables" ^^
-    E.iterate_object_pool env (fun index allocation ->
-      compile_unboxed_const (Int64.of_int index) ^^
-      allocation env ^^
-      E.call_import env "rts" "set_static_variable"
+    Func.share_code0 Func.Always env "initalize_root_array" [] (fun env ->
+      let length = Int64.of_int (E.object_pool_size env) in
+      compile_unboxed_const length ^^
+      E.call_import env "rts" "initialize_static_variables" ^^
+      E.iterate_object_pool env (fun index allocation ->
+        compile_unboxed_const (Int64.of_int index) ^^
+        allocation env ^^
+        E.call_import env "rts" "set_static_variable"
+      )
     )
-  )
 end (* GCRoots *)
 
 module StackRep = struct
