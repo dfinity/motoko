@@ -6244,10 +6244,6 @@ module Serialization = struct
       Blob.load_data_segment env E.(descriptor.type_offsets_segment) (get_type_offsets_length env)
     )
 
-  let count_global_type_offsets env =
-    get_type_offsets_length env ^^
-    compile_divU_const candid_type_offset_size
-
   let get_global_idl_types env =
     Tagged.share env (fun env -> 
       let descriptor = get_global_type_descriptor env in
@@ -6907,14 +6903,14 @@ module Serialization = struct
   let coercion_error_value env = 0xffff_fffdl
 
   (* See Note [Candid subtype checks] *)
-  let with_rel_buf_opt env extended get_typtbl_size1 f =
+  let with_rel_buf_opt env extended get_typtbl_size1 get_typtbl_size2 f =
     if extended then
       f (compile_unboxed_const 0l)
     else
-      get_typtbl_size1 ^^ count_global_type_offsets env ^^
+      get_typtbl_size1 ^^ get_typtbl_size2 ^^
       E.call_import env "rts" "idl_sub_buf_words" ^^
       Stack.dynamic_with_words env "rel_buf" (fun get_ptr ->
-        get_ptr ^^ get_typtbl_size1 ^^ count_global_type_offsets env ^^
+        get_ptr ^^ get_typtbl_size1 ^^ get_typtbl_size2 ^^
         E.call_import env "rts" "idl_sub_buf_init" ^^
         f get_ptr)
 
@@ -7752,7 +7748,10 @@ module Serialization = struct
       end) ^^
 
       (* Allocate memo table, if necessary *)
-      with_rel_buf_opt env extended (get_typtbl_size_ptr ^^ load_unskewed_ptr) (fun get_rel_buf_opt ->
+      with_rel_buf_opt env extended
+        (get_typtbl_size_ptr ^^ load_unskewed_ptr)
+        (get_global_typtbl_size_ptr ^^ load_unskewed_ptr)
+        (fun get_rel_buf_opt ->
 
       (* set up a dedicated read buffer for the list of main types *)
       ReadBuf.alloc env (fun get_main_typs_buf ->
