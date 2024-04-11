@@ -3684,11 +3684,6 @@ module Blob = struct
       BigNum.from_word64 env
     )
 
-  (* unskewed target address, data offset, and length on stack *)
-  let load_static_data env s =
-    let segment_index = E.add_static env StaticBytes.[Bytes s] in
-    G.i (MemoryInit (nr segment_index))
-
   let alloc env =
     E.call_import env "rts" "alloc_blob" ^^
     (* uninitialized blob payload is allowed by the barrier *)
@@ -3700,16 +3695,21 @@ module Blob = struct
     Tagged.load_forwarding_pointer env ^^
     compile_add_const (unskewed_payload_offset env)
 
+  let load_data_segment env segment_index data_length =
+    let (set_blob, get_blob) = new_local env "data_segment_blob" in
+    data_length ^^
+    alloc env ^^ set_blob ^^
+    get_blob ^^ payload_ptr_unskewed env ^^ (* target address *)
+    compile_const_32 0l ^^ (* data offset *)
+    data_length ^^ G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
+    G.i (MemoryInit (nr segment_index)) ^^
+    get_blob
+
   let constant env payload =
     Tagged.shared_object env (fun env -> 
-      let blob_length = String.length payload in
-      let (set_new_blob, get_new_blob) = new_local env "new_blob" in
-      compile_unboxed_const (Int64.of_int blob_length) ^^ alloc env ^^ set_new_blob ^^
-      get_new_blob ^^ payload_ptr_unskewed env ^^ (* target address *)
-      compile_const_32 0l ^^ (* data offset *)
-      compile_const_32 (Int32.of_int blob_length) ^^ (* data length *)
-      load_static_data env payload ^^
-      get_new_blob
+      let blob_length = Int64.of_int (String.length payload) in
+      let segment_index = E.add_static env StaticBytes.[Bytes payload] in
+      load_data_segment env segment_index (compile_unboxed_const blob_length)
     )
 
   let lit env payload =
