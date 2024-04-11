@@ -1050,7 +1050,7 @@ module Func = struct
       g3
       g4
     )
-  let [@warning "-8"] share_code6 sharing env name (p1, p2, p3, p4, p5, p6) retty mk_body =
+  let [@warning "-8"] _share_code6 sharing env name (p1, p2, p3, p4, p5, p6) retty mk_body =
     share_code sharing env name [p1; p2; p3; p4; p5; p6] retty (fun env [g1; g2; g3; g4; g5; g6] -> mk_body env
       g1
       g2
@@ -6924,24 +6924,20 @@ module Serialization = struct
     get_global_idl_types env ^^
     Blob.payload_ptr_unskewed env ^^
     G.i (Load {ty = I32Type; align = 0; offset = Int32.mul idx candid_type_offset_size (*!*); sz = None}) ^^
-    Func.share_code6 Func.Always env ("idl_sub")
-      (("rel_buf", I32Type),
-       ("typtbl1", I32Type),
-       ("typtbl_end1", I32Type),
-       ("typtbl_size1", I32Type),
-       ("idltyp1", I32Type),
+    Func.share_code2 Func.Always env ("idl_sub")
+      (("idltyp1", I32Type),
        ("idltyp2", I32Type)
       )
       [I32Type]
-      (fun env get_rel_buf get_typtbl1 get_typtbl_end1 get_typtbl_size1 get_idltyp1 get_idltyp2 ->
-        get_rel_buf ^^
+      (fun env get_idltyp1 get_idltyp2 ->
+        Registers.get_rel_buf_opt env ^^
         E.else_trap_with env "null rel_buf" ^^
-        get_rel_buf ^^
-        get_typtbl1 ^^
+        Registers.get_rel_buf_opt env ^^
+        Registers.get_typtbl env ^^
         Registers.get_global_typtbl env ^^
-        get_typtbl_end1 ^^
+        Registers.get_typtbl_end env ^^
         Registers.get_global_typtbl_end env ^^
-        get_typtbl_size1 ^^
+        Registers.get_typtbl_size env ^^
         Registers.get_global_typtbl_size env ^^
         get_idltyp1 ^^
         get_idltyp2 ^^
@@ -6993,13 +6989,9 @@ module Serialization = struct
       let get_data_buf = Registers.get_data_buf env in
       let _get_ref_buf = Registers.get_ref_buf env in
       let get_typtbl = Registers.get_typtbl env in
-      let get_typtbl_end = Registers.get_typtbl_end env in
+      let _get_typtbl_end = Registers.get_typtbl_end env in
       let get_typtbl_size = Registers.get_typtbl_size env in
-(*
-      let get_global_typtbl = Registers.get_global_typtbl env in
-      let get_global_typtbl_end = Registers.get_global_typtbl_end env in
-      let get_global_typtbl_size = Registers.get_global_typtbl_size env in
-*)
+
       (* Check recursion depth (protects against empty record etc.) *)
       (* Factor 2 because at each step, the expected type could go through one
          level of opt that is not present in the value type
@@ -7607,10 +7599,6 @@ module Serialization = struct
         get_rel_buf_opt ^^
         G.if1 I32Type
           begin
-            get_rel_buf_opt ^^
-            get_typtbl ^^
-            get_typtbl_end ^^
-            get_typtbl_size ^^
             get_idltyp ^^
             idl_sub env t
           end
@@ -7630,10 +7618,6 @@ module Serialization = struct
         get_rel_buf_opt ^^
         G.if1 I32Type
           begin
-            get_rel_buf_opt ^^
-            get_typtbl ^^
-            get_typtbl_end ^^
-            get_typtbl_size ^^
             get_idltyp ^^
             idl_sub env t
           end
@@ -7757,11 +7741,15 @@ module Serialization = struct
       Bool.lit extended ^^ get_data_buf ^^ get_typtbl_ptr ^^ get_typtbl_size_ptr ^^ get_maintyps_ptr ^^
       E.call_import env "rts" "parse_idl_header" ^^
 
-      (* Allocate global type type *)
-      get_global_candid_data env ^^
-      get_global_type_offsets env ^^
-      get_global_typtbl_ptr ^^ get_global_typtbl_end_ptr ^^ get_global_typtbl_size_ptr ^^
-      E.call_import env "rts" "idl_alloc_typtbl" ^^
+      (* Allocate global type type, if necessary for subtype checks *)
+      (if extended then
+         G.nop
+       else begin
+         get_global_candid_data env ^^
+         get_global_type_offsets env ^^
+         get_global_typtbl_ptr ^^ get_global_typtbl_end_ptr ^^ get_global_typtbl_size_ptr ^^
+         E.call_import env "rts" "idl_alloc_typtbl"
+      end) ^^
 
       (* Allocate memo table, if necessary *)
       with_rel_buf_opt env extended (get_typtbl_size_ptr ^^ load_unskewed_ptr) (fun get_rel_buf_opt ->

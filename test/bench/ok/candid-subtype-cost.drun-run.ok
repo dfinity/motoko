@@ -1,4 +1,4 @@
 ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
 ingress Completed: Reply: 0x4449444c0000
-debug.print: {cycles = 2_657_458; heap_bytes = +291_100}
+debug.print: {cycles = 998_235; heap_bytes = +16_936}
 ingress Completed: Reply: 0x4449444c0000
