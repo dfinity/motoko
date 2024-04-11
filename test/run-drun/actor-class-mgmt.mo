@@ -122,7 +122,7 @@ actor a {
       assert (c5 == c4);
 
       let c6 = await
-        (system Cs.C)(#upgrade_with_persistence { wasm_memory_persistence = #Keep ; canister = c4 })(6, null);
+        (system Cs.C)(#upgrade_with_persistence { wasm_memory_persistence = #Keep ; canister = c5 })(6, null);
       assert ({args = 6; upgrades = 3} == (await c6.observe()));
       assert (c6 == c5);
 
