@@ -8227,13 +8227,14 @@ end
 (* New stable memory layout with new version.
    Prevents forward compatibility of old compiled programs that rely on deserialization.
   If size == 0: empty
+  let end = physical size * page_size
   If logical size N > 0:
-    [0..4]          0 (first word is backed up at `end-8`)
-    [4..N]          <stable memory>
+    [0..4)          0 (first word is backed up at `end-8`)
+    [4..N)          <stable memory>
             <zero padding>
-    [end-16..end-8] <size N>
-    [end-8..end-4]  <first word>
-    [end-4..end]    <new version>
+    [end-16..end-8) <size N>
+    [end-8..end-4)  <first word>
+    [end-4..end)   <new version>
   ending at page boundary
   Note: The first word must be empty to distinguish this version from the Candid legacy version 0 (which has first word != 0).
 *)
