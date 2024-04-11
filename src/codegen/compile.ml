@@ -8365,6 +8365,7 @@ module GCRoots = struct
         compile_unboxed_const (Int64.of_int index) ^^
         allocation env ^^
         E.call_import env "rts" "set_static_variable"
+      )
     )
 end (* GCRoots *)
 
