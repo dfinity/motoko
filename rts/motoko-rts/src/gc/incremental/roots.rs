@@ -13,7 +13,7 @@ static mut STATIC_VARIABLES: Value = crate::types::NULL_POINTER;
 /// Sanity check for the variable initialization: The variables must be initialized
 /// in increasing order and may only read precedingly initialized variables.
 #[cfg(feature = "ic")]
-static mut INITIALIZED_VARIABLES: u32 = 0;
+static mut INITIALIZED_VARIABLES: usize = 0;
 
 /// GC root set.
 pub type Roots = [*mut Value; 6];
@@ -53,7 +53,7 @@ unsafe fn static_variables_location() -> *mut Value {
 }
 
 #[ic_mem_fn(ic_only)]
-pub unsafe fn initialize_static_variables<M: crate::memory::Memory>(mem: &mut M, amount: u32) {
+pub unsafe fn initialize_static_variables<M: crate::memory::Memory>(mem: &mut M, amount: usize) {
     use super::barriers::write_with_barrier;
     use crate::memory::alloc_array;
     use crate::types::NULL_POINTER;
@@ -76,7 +76,11 @@ pub unsafe extern "C" fn get_static_variable(index: usize) -> Value {
 }
 
 #[ic_mem_fn(ic_only)]
-pub unsafe fn set_static_variable<M: crate::memory::Memory>(mem: &mut M, index: u32, value: Value) {
+pub unsafe fn set_static_variable<M: crate::memory::Memory>(
+    mem: &mut M,
+    index: usize,
+    value: Value,
+) {
     debug_assert!(STATIC_VARIABLES.is_non_null_ptr());
     debug_assert!(index == INITIALIZED_VARIABLES);
     STATIC_VARIABLES.as_array().set(index, value, mem);
