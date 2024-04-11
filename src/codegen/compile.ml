@@ -7724,7 +7724,7 @@ module Serialization = struct
       Stack.with_words env "get_typtbl_ptr" 1l (fun get_typtbl_ptr ->
       Stack.with_words env "get_maintyps_ptr" 1l (fun get_maintyps_ptr ->
 
-      (* Allocate space for out parameters of idl_sub_alloc_typtbl *)
+      (* Allocate space for out parameters of idl_alloc_typtbl *)
       Stack.with_words env "get_global_typtbl_ptr" 1l (fun get_global_typtbl_ptr ->
       Stack.with_words env "get_global_typtbl_end_ptr" 1l (fun get_global_typtbl_end_ptr ->
       Stack.with_words env "get_global_typtbl_size_ptr" 1l (fun get_global_typtbl_size_ptr ->
