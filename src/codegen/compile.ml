@@ -293,10 +293,21 @@ module Const = struct
     | Opt of v
     | Lit of lit
 
-  let eq v1 v2 = match v1, v2 with
-    | Lit l1, Lit l2 -> lit_eq l1 l2
+  let rec eq v1 v2 = match v1, v2 with
     | Fun (id1, _, _), Fun (id2, _, _) -> id1 = id2
-    | _ -> v1 = v2
+    | Message fi1, Message fi2 -> fi1 = fi2
+    | Obj fields1, Obj fields2 ->
+      let equal_fields (name1, field_value1) (name2, field_value2) = (name1 = name2) && (eq field_value1 field_value2) in
+      List.for_all2 equal_fields fields1 fields2
+    | Unit, Unit -> true
+    | Array elements1, Array elements2 ->
+      List.for_all2 eq elements1 elements2
+    | Tag (name1, tag_value1), Tag (name2, tag_value2) ->
+      (name1 = name2) && (eq tag_value1 tag_value2)
+    | Opt opt_value1, Opt opt_value2 -> eq opt_value1 opt_value2
+    | Lit l1, Lit l2 -> lit_eq l1 l2
+    | Fun _, _ | Message _, _ | Obj _, _ | Unit, _ 
+    | Array _, _ | Tag _, _ | Opt _, _ | Lit _, _ -> false
 
 end (* Const *)
 
