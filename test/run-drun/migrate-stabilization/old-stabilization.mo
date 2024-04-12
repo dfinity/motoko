@@ -1,4 +1,4 @@
-//MOC-FLAG --enhanced-orthogonal-persistence
+// Uses classical persistence, see `migrate-stabilization.drun`.
 import Prim "mo:prim";
 
 actor {

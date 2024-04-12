@@ -264,7 +264,7 @@ do
     else
       TEST_MOC_ARGS=$EXTRA_MOC_ARGS
     fi
-        if grep -q "//ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY" $base.mo
+    if grep -q "//ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY" $base.mo
     then
       if [[ $EXTRA_MOC_ARGS != *"--enhanced-orthogonal-persistence"* ]]
       then
