@@ -12,7 +12,7 @@ Motoko supports the implementation of queries using `query` functions. The `quer
 
 For example, consider the following `Counter` actor with a `read` function called `peek`:
 
-``` motoko file=./examples/CounterWithQuery.mo
+``` motoko file=../examples/CounterWithQuery.mo
 ```
 
 The `peek()` function might be used by a `Counter` frontend offering a quick, but less trustworthy, display of the current counter value.
@@ -47,7 +47,7 @@ Unlike plain queries, composite queries can call query functions and composite q
 
 As a contrived example, consider generalizing the previous `Counter` actor to a class of counters. Each instance of the class provides an additional `composite query` to sum the values of a given array of counters:
 
-``` motoko file=./examples/CounterWithCompositeQuery.mo
+``` motoko file=../examples/CounterWithCompositeQuery.mo
 ```
 
 Declaring `sum` as a `composite query` enables it call the `peek` queries of its argument counters.
@@ -77,7 +77,7 @@ This semantics can lead to surprising behavior for users accustomed to ordinary 
 Consider this example containing the composite query `test` that calls query `q` and composite query `cq`.
 
 
-``` motoko no-repl file=./examples/CompositeSemantics.mo
+``` motoko no-repl file=../examples/CompositeSemantics.mo
 ```
 
 When `state` is `0`, a call to `test` returns

@@ -16,6 +16,14 @@ All communication with and between actors involves passing messages asynchronous
 
 The Internet Computer ensures that each message that is sent receives a response. The response is either success with some value or an error. An error can be the explicit rejection of the message by the receiving canister, a trap due to an illegal instruction such as division by zero, or a system error due to distribution or resource constraints. For example, a system error might be the transient or permanent unavailability of the receiver (either because the receiving actor is oversubscribed or has been deleted).
 
+In Motoko, actors have dedicated syntax and types:
+
+- Messaging is handled by so called **shared** functions returning futures. Shared functions are accessible to remote callers and have additional restrictions: their arguments and return value must be shared types. Shared types are a subset of types that includes immutable data, actor references, and shared function references, but excludes references to local functions and mutable data.
+
+- Future, `f`, is a value of the special type `async T` for some type `T`.
+
+- Waiting on `f` to be completed is expressed using `await f` to obtain a value of type `T`. To avoid introducing shared state through messaging, for example, by sending an object or mutable array, the data that can be transmitted through shared functions is restricted to immutable, shared types.
+
 ## Defining an actor
 
 Consider the following actor declaration:
@@ -49,6 +57,8 @@ actor {
   bump : shared () -> async Nat;
 }
 ```
+
+Unlike objects and modules, actors can only expose functions, and these functions must be `shared`. For now, the only place shared functions can be declared is in the body of an actor or actor class. Despite this restriction, shared functions are still first-class values in Motoko and can be passed as arguments or results, and stored in data structures.
 
 The `shared` modifier is required on every member of an actor. Motoko both elides them on display and allows you to omit them when authoring an actor type.
 

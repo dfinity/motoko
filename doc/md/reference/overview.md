@@ -1,91 +1,18 @@
-# Concise overview of Motoko
-
-This is terse, slide-like introduction to Motoko and its features.
-
-(For a gentler introduction, visit the other sections on this site.)
-
-## Motivation and Goals
-
-A simple, useful language for the Internet Computer (IC)
-
--   Familiar syntax
-
--   Safe by default
-
--   Incorporating **actor** model for canister smart contracts
-
--   Seamless integration of Internet Computer features
-
--   Making most of present and future WebAssembly
-
-## Key Design Points
-
--   Object-oriented, functional & imperative
-
--   Objects as records of functions
-
--   `async`/`await` for sequential programming of asynchronous messaging
-
--   Structural typing with simple generics and subtyping
-
--   Safe arithmetic (both unbounded and checked)
-
--   Non-nullable types by default
-
--   Garbage collected (no manual memory management)
-
--   JavaScript-like syntax but statically typed & sane
-
-Inspirations: Java, JavaScript, C#, Swift, Pony, ML, Haskell
-
-## Semantics
-
--   call-by-value (like Java, C, JS, ML; unlike Haskell)
-
--   declarations are locally mutually recursive
-
--   parametric, bounded polymorphism
-
--   subtyping as zero-cost subsumption, not coercion
-
--   no dynamic casts
-
--   no inheritance
-
-## Implementation(s)
-
--   implemented in OCaml (leverages `wasm` libary)
-
--   simple reference interpreter
-
--   less simple compiler to WebAssembly
-
-    -   multipass with typed IR in each pass.
-
-    -   uniform representation, unboxed arithmetic
-
-    -   copying GC, compacting GC, or generational GC
-        (select which with compiler flag)
-
-    -   GC invoked after messages (for now)
-
--   polymorphism by erasure
-
-# The language
+# Reference overview
 
 ## Expressions
 
--   Identifiers:  
+-   Identifiers:
     `x`, `foo_bar`, `test123`, `List`, `Map`
 
--   Parentheses `( … )` for grouping
+-   Parentheses `( … )` for grouping.
 
--   Braces `{ … }` for scoping (and records)
+-   Braces `{ … }` for scoping (and records).
 
--   `;` for sequencing
+-   `;` for sequencing.
 
--   Type annotations (to help type inference):  
-    `(42 : Int)`  
+-   Type annotations (to help type inference):
+    `(42 : Int)`
     (zero cost)
 
 ## Libraries
@@ -95,15 +22,13 @@ import Debug "mo:base/Debug";
 import Int "mo:base/Int";
 ```
 
-(`import MyLib "src/MyLib"` imports a library from the local file system.)
+`import MyLib "src/MyLib"` imports a library from the local file system.
 
-Specific bindings can be imported from the module using object patterns
+Specific bindings can be imported from the module using object patterns.
 
 ``` motoko
 import { push; nil } = "mo:base/List";
 ```
-
-## Libraries continued
 
 ``` motoko
 import Debug "mo:base/Debug";
@@ -117,6 +42,12 @@ Debug.print(Int.toText(7)); // reference functions/values
 
 ## Blocks and declarations
 
+-   Semicolon after each declaration.
+
+-   Mutually recursive.
+
+-   Mutable variables marked explicitly.
+
 ``` motoko include=impDebugInt
 type Delta = Nat;
 func print() {
@@ -128,15 +59,7 @@ counter := counter + d;
 print();
 ```
 
--   Semicolon after each declaration!
-
--   Mutually recursive
-
--   Mutable variables marked explicitly
-
 ## Control flow
-
-The usual suspects…​
 
 -   `do { … }`
 
@@ -164,59 +87,51 @@ The usual suspects…​
 
 -   `throw`, `try … catch x { … }` *(restricted)*
 
-# Primitive types
+## Primitive types
 
-## Unbounded integers
+### Unbounded integers
+
+Inferred by default for negative literals.
 
 `Int`
 
 `{ …​, -2, 1, 0, 1, 2, …​ }`
 
-Inferred by default for negative literals.
-
 Literals: `13`, `0xf4`, `-20`, `+1`, `1_000_000`
 
-## Unbounded naturals
+### Unbounded naturals
+
+Non-negative, trap on underflow. Inferred by default for non-negative literals.
 
 `Nat`
 
 `{ 0, 1, 2, …​ }`
 
-Non-negative, trap on underflow.
-
-Inferred by default for non-negative literals
-
 Literals: `13`, `0xf4`, `1_000_000`
 
 `Nat <: Int`
 
-`Nat` is a *subtype* of `Int`
+`Nat` is a subtype of `Int`
 
-(you can supply a `Nat` wherever an `Int` is expected)
+You can supply a `Nat` wherever an `Int` is expected.
 
-## Bounded numbers (trapping)
+### Bounded numbers (trapping)
+
+Trap on over- and underflow; wrap-around and bit-manipulating operations available separately. Bounded numbers need type annotations somewhere.
 
 `Nat8`, `Nat16`, `Nat32`, `Nat64`, `Int8`, `Int16`, `Int32`, `Int64`
 
-Trap on over- and underflow; wrap-around and bit-manipulating operations available separately
-
-Needs type annotations (somewhere)
-
 Literals: `13`, `0xf4`, `-20`, `1_000_000`
 
-## Floating point numbers
+### Floating point numbers
+
+IEEE 754 double precision (64 bit) semantics, normalized NaN and inferred for fractional literals.
 
 `Float`
 
-IEEE 754 double precision (64 bit) semantics, normalized NaN
-
-Inferred for fractional literals
-
 Literals: 0, -10, `2.71`, `-0.3e+15`, `3.141_592_653_589_793_12`
 
-## Numeric operations
-
-No surprises here
+### Numeric operations
 
 `- x`  
 `a + b`  
@@ -225,13 +140,13 @@ No surprises here
 `a << b`  
 …
 
-`a +% b, a -% b, …` for wrapping, modular arithmetic (where appropriate)
+`a +% b, a -% b, …` for wrapping, modular arithmetic where appropriate.
 
-## Characters and Text
+### Characters and text
 
 `Char`, `Text`
 
-Unicode! Character = Unicode scalar value; no random access on text
+Unicode! Character = Unicode scalar value; no random access on text.
 
 -   `'x'`, `'\u{6a}'`, `'☃'`,
 
@@ -239,7 +154,7 @@ Unicode! Character = Unicode scalar value; no random access on text
 
 -   `"Concat" # "enation"`
 
-## Booleans
+### Booleans
 
 `Bool`
 
@@ -250,9 +165,9 @@ Literals: `true`, `false`
 `not b`  
 `if (b) e1 else e2`
 
-# Functions
+## Functions
 
-## Function types
+### Function types
 
 -   Simple functions:
 
@@ -260,26 +175,26 @@ Literals: `true`, `false`
     Int.toText : Int -> Text
     ```
 
--   multiple arguments and return values
+-   Multiple arguments and return values:
 
     ``` motoko no-repl
     divRem : (Int, Int) -> (Int, Int)
     ```
 
--   can be generic/polymorphic
+-   Can be generic/polymorphic:
 
     ``` motoko no-repl
     Option.unwrapOr : <T>(?T, default : T) -> T
     ```
 
--   first-class (can be passed around, stored)
+-   First-class that can be passed around, stored:
 
     ``` motoko no-repl
     map : <A, B>(f : A -> B, xs : [A]) -> [B]
     let funcs : [<T>(T) -> T] = …
     ```
 
-## Function Declarations & Use
+### Function declarations and use
 
 ``` motoko include=impDebugInt
 func add(x : Int, y : Int) : Int = x + y;
@@ -295,19 +210,19 @@ applyNTimes<Text>(3, "Hello!", func(x) { Debug.print(x) } );
 
 -   `func() { … }` short for `func() : () = { … }`
 
--   Parametric functions
+-   Parametric functions.
 
--   Type instantiations may sometimes be omitted
+-   Type instantiations may sometimes be omitted.
 
--   Anonymous functions (a.k.a. lambdas)
+-   Anonymous functions (lambdas).
 
-# Composite types
+## Composite types
 
-## Tuples
+### Tuples
 
 `(Bool, Float, Text)`
 
-immutable, heterogeneous, fixed size
+Immutable, heterogeneous, fixed size:
 
 ``` motoko name=tuple
 let tuple = (true or false, 0.6 * 2.0, "foo" # "bar");
@@ -322,11 +237,11 @@ let (_,_,t) = tuple;
 t
 ```
 
-## Options
+### Options
 
 `?Text`
 
-is either a value of that type, e.g. `?"hello"`, or `null`.
+Is either a value of that type, e.g. `?"hello"`, or `null`.
 
 ``` motoko name=display
 func display(x : ?Text) : Text {
@@ -341,11 +256,9 @@ func display(x : ?Text) : Text {
 (display(null), display(?"Test"))
 ```
 
-## Option blocks
+### Option blocks
 
-Switching on every option value can be inconvenient …​  
-
-The *option block*, `do ? { … }`, allow you to safely access option values with a postfix *null break* `!` expression.
+The option block, `do ? { … }`, allows you to safely access option values with a postfix null break `!` expression.
 
 Within `do ? { … }`, which returns an option, the expression `e!` immediately exits the block with `null` when the value of option `e` is `null` or continues with the option’s contents.
 
@@ -357,7 +270,7 @@ func add(x : ?Nat, y: ?Nat) : ?Nat {
 (add(null, null), add (?1,null), add (?1,?2), add (null,?2));
 ```
 
-## Arrays (immutable)
+### Arrays (immutable)
 
 `[Text]`
 
@@ -373,7 +286,7 @@ assert(days[1] == "Tue");
 for (d in days.vals()) { Debug.print(d) };
 ```
 
-## Arrays (mutable)
+### Arrays (mutable)
 
 `[var Nat]`
 
@@ -389,7 +302,7 @@ counters[1] := counters[1] + 1;
 counters;
 ```
 
-## Records
+### Records
 
 `{first : Text; last : Text; salary : var Nat}`
 
@@ -406,7 +319,7 @@ employee.salary += 79_496;
 employee;
 ```
 
-## Objects
+### Objects
 
 `{first : Text; last : Text; get : () → Nat; add : Nat → ()}`
 
@@ -420,7 +333,7 @@ object self {
 }
 ```
 
-## Classes
+### Classes
 
 ``` motoko
 class Employee(fst : Text, lst : Text) {
@@ -432,10 +345,7 @@ class Employee(fst : Text, lst : Text) {
 }
 ```
 
-Classes are factories for constructing objects.  
-A class introduces a type and a function (for constructing instances).
-
-Just sugar for:
+Classes are factories for constructing objects. A class introduces a type and a function for constructing instances.
 
 ``` motoko no-repl
 type Employee = {first : Text; last : Text; get : () -> Nat; add : Nat -> ()};
@@ -443,7 +353,7 @@ type Employee = {first : Text; last : Text; get : () -> Nat; add : Nat -> ()};
 func Employee(fst : Text, lst : Text) : Employee = object { … }
 ```
 
-## Variants
+### Variants
 
 `{#sun; #mon; #tue; #wed; #thu; #fri; #sat}`
 
@@ -470,7 +380,7 @@ func sort(d : Day) : { #weekDay; #weekEnd } {
 };
 ```
 
-## Recursive Types
+### Recursive types
 
 ``` motoko name=Lists
 type List = {
@@ -493,7 +403,7 @@ func reverse(l : List) : List {
 let l = reverse(#item {head = "A"; tail = #item {head = "B"; tail = #empty}});
 ```
 
-## Generic types
+### Generic types
 
 ``` motoko
 type List<T> = {
@@ -520,9 +430,9 @@ let ns : List<Nat> =
   reverse(#item {head = 0; tail = #item {head = 1; tail = #empty}})
 ```
 
-# Packages and modules
+## Packages and modules
 
-## Modules
+### Modules
 
 ``` motoko no-repl
 // the type of base/Int.mo
@@ -534,10 +444,9 @@ module {
 }
 ```
 
-modules contain named types and values (like objects),  
-but are restricted to *static* content (pure, no state, …)
+Modules contain named types and values like objects, but are restricted to static content (pure, no state, etc).
 
-## Module imports
+### Module imports
 
 ``` motoko no-repl
 import Debug "mo:base/Debug";  // import from package
@@ -547,9 +456,7 @@ import MyLib "lib/MyLib";  // import from local file MyLib.mo
 
 `base` package provides basic features as separate modules.
 
-More libraries popping up!
-
-`MyLib.mo` *must* contain a module or actor class, eg:
+`MyLib.mo` **must** contain a module or actor class, eg:
 
 ``` motoko no-repl
 module {
@@ -559,9 +466,9 @@ module {
 }
 ```
 
-# Platform features
+## Platform features
 
-## Actor types
+### Actor types
 
 Like object types, but marked as `actor`:
 
@@ -576,36 +483,33 @@ type Receiver = actor {
 };
 ```
 
-*sharable* arguments and *no* or *async* result type.
+Sharable arguments with no or async result types:
 
--   `register` is a *oneway* IC method (unawaitable).
+-   `register` is a one-way ICP method (unawaitable).
 
--   `send` is an IC *update* method
+-   `send` is an ICP update method.
 
--   `recv` is IC *query* method
+-   `recv` is an ICP query method.
 
-IC canister with Candid interface ≈ Motoko actor
-
-## sharable ≈ serializable
+### `sharable` and `serializable`
 
 **Sharable:**
 
--   all primitive types
+-   All primitive types.
 
--   records, tuples, arrays, variants, options  
-    with immutable sharable components
+-   Records, tuples, arrays, variants, options with immutable sharable components.
 
--   `actor` types
+-   `actor` types.
 
--   `shared` function type
+-   `shared` function type.
 
 **Not sharable:**
 
--   mutable things
+-   Mutable things.
 
--   local functions
+-   Local functions.
 
--   objects (with methods)
+-   Objects with methods.
 
 ## A complete actor
 
@@ -631,21 +535,19 @@ actor Broadcast {
 }
 ```
 
-a typical actor/canister main file
-
-## Async/await
+### Async/await
 
 `async T`
 
-asychronous future or promise
+An asynchronous future or promise is introduced by `async { … }`.
 
-introduced by `async { … }`  
-(implicit in async function declaration)
+This is implicit in async function declaration.
 
-`await e`  
-suspends computation pending `e`’s result:  
-if the result is a value, continues with that value,  
-if the result is an `Error`, `throw`s the error.
+`await e` suspends computation pending `e`’s result:
+
+- If the result is a value, continue with that value.
+
+- If the result is an `Error`, `throw`s the error.
 
 ``` motoko no-repl
   public func send(t : Text) : async Nat {
@@ -657,12 +559,11 @@ if the result is an `Error`, `throw`s the error.
   };
 ```
 
-(Errors can be handled using `try … catch …`)
+Errors can be handled using `try … catch …`
 
-## Concurrency Hazards
+### Concurrency hazards
 
-Functions that `await` are *not* atomic.  
-Suspension introduces *concurrency hazards*.
+Functions that `await` are not atomic. Suspension introduces concurrency hazards.
 
 A bad implementation of `send`:
 
@@ -677,11 +578,9 @@ A bad implementation of `send`:
   };
 ```
 
-(Concurrent `send`s will share and clobber `sum`.)
+Concurrent `send`s will share and clobber `sum`.
 
-Beware of race conditions!
-
-## Actor import
+### Actor import
 
 ``` motoko
 import Broadcast "canister:Broadcast";
@@ -702,9 +601,9 @@ actor Self {
 }
 ```
 
-(assumes there is a Candid file describing the interface of the import)
+This assumes there is a Candid file describing the interface of the import.
 
-## A Candid interface file
+### A Candid interface file
 
 `Broadcast`'s Candid file (produced by `moc --idl Broadcast.mo` compiler).
 
@@ -723,9 +622,7 @@ service : {
 
 A language independent interface definition.
 
-Could just as easily describe a Rust implementation of `Broadcast`.
-
-## Principal and caller
+### Principal and caller
 
 ``` motoko
 import Principal "mo:base/Principal";
@@ -744,7 +641,7 @@ actor Self {
 }
 ```
 
-## Errors
+### Errors
 
 ``` motoko no-repl
 import Principal "mo:base/Principal";
@@ -768,12 +665,11 @@ async {
 };
 ```
 
-Similar to exceptions in other languages,  
-but *only* available in async contexts, e.g. shared functions; async blocks
+Similar to exceptions in other languages, but only available in async contexts such as shared functions; async blocks.
 
-## Stable variables
+### Stable variables
 
-If we upgrade the `Broadcast` actor, all current registrations are lost.  
+If we upgrade the `Broadcast` actor, all current registrations are lost.
 To preserve them, declare the state variable `r` as `stable`.
 
 ``` motoko no-repl
@@ -796,12 +692,11 @@ actor Broadcast {
 }
 ```
 
-stable variables must have *stable* types (see manual)  
-`system` hooks can’t send messages
+Stable variables must have stable types. `system` hooks can’t send messages
 
-# Type system
+## Type system
 
-## Structural
+### Structural
 
 ``` motoko include=Lists
 /*
@@ -822,13 +717,11 @@ let stack : Stack = #empty;
 let revStack = reverse(stack); // works though reverse defined on List (not Stack)
 ```
 
-Type definitions  
-do not create types,  
-but name existing types
+Type definitions do not create types, but name existing types.
 
 Despite their different names, `Stack` and `List` are equivalent types.
 
-## Subtyping (Variants)
+### Subtyping (variants)
 
 `WeekDay <: Day`
 
@@ -849,7 +742,7 @@ let mon : WeekDay = #mon;
 let t = toText(mon); // also works, since WeekDay <: Day
 ```
 
-`t1 <: t2`: `t1` can be used wherever `t2` is expected
+`t1 <: t2`: `t1` can be used wherever `t2` is expected.
 
 `Employee <: Person`
 
@@ -866,32 +759,6 @@ let employee : Employee =
 
 let t = toText(employee); // also works, since Employee <: Person
 ```
-
-# Fin
-
-## Not covered
-
--   Polymorphic functions with type bounds
-
--   User defined iterator objects, supporting `for` loops.
-
--   Actor classes
-
--   `debug_show` for conversion of almost any value to text.
-
--   `debug e` expressions for debug-only compilation
-
--   `do ? { … e! …  }` blocks for handling/propagating option values.
-
--   `assert e` expressions for conditional traps
-
--   tools:
-
-    -   `mo_doc` (generates doc from doc comments),
-
-    -   `vessel` (package manager)
-
-    -   `mo_ide` (LSP language server for VSCode, emacs etc)
 
 <!--
 == Old slides
