@@ -1,10 +1,5 @@
 #![allow(non_upper_case_globals)]
 
-#[classical_persistence]
-pub mod classical;
-#[enhanced_orthogonal_persistence]
-pub mod enhanced;
-
 use crate::bitrel::BitRel;
 use crate::buf::{read_byte, read_word, skip_leb128, Buf};
 use crate::idl_trap_with;
@@ -16,9 +11,12 @@ use crate::utf8::utf8_validate;
 
 use core::cmp::min;
 
-use motoko_rts_macros::{classical_persistence, enhanced_orthogonal_persistence, ic_mem_fn};
+use motoko_rts_macros::{enhanced_orthogonal_persistence, ic_mem_fn};
 
 use crate::libc_declarations::{c_void, memcmp};
+
+#[enhanced_orthogonal_persistence]
+use crate::types::Value;
 
 //
 // IDL constants
@@ -846,7 +844,10 @@ pub(crate) unsafe fn memory_compatible(
                 let t21 = sleb128_decode_32(&mut tb2);
                 if n1 == 0 {
                     // Optional additional fields are only supported in the main actor type.
-                    if !main_actor || !is_opt_reserved(typtbl2, end2, t21) {
+                    if variance == TypeVariance::Invariance
+                        || !main_actor
+                        || !is_opt_reserved(typtbl2, end2, t21)
+                    {
                         return false;
                     }
                     continue;
@@ -856,14 +857,18 @@ pub(crate) unsafe fn memory_compatible(
                         tag1 = leb128_decode_32(&mut tb1);
                         t11 = sleb128_decode_32(&mut tb1);
                         n1 -= 1;
-                        if !(tag1 < tag2 && n1 > 0) {
+                        // Do not skip fields during invariance check.
+                        if variance == TypeVariance::Invariance || !(tag1 < tag2 && n1 > 0) {
                             break;
                         }
                     }
                 };
                 if tag1 > tag2 {
                     // Optional additional fields are only supported in the main actor type.
-                    if !main_actor || !is_opt_reserved(typtbl2, end2, t21) {
+                    if variance == TypeVariance::Invariance
+                        || !main_actor
+                        || !is_opt_reserved(typtbl2, end2, t21)
+                    {
                         return false;
                     }
                     advance = false; // reconsider this field in next round
@@ -892,7 +897,7 @@ pub(crate) unsafe fn memory_compatible(
                     tag2 = leb128_decode_32(&mut tb2);
                     t21 = sleb128_decode_32(&mut tb2);
                     n2 -= 1;
-                    if !(tag2 < tag1 && n2 > 0) {
+                    if variance == TypeVariance::Invariance || !(tag2 < tag1 && n2 > 0) {
                         break;
                     }
                 }
@@ -926,7 +931,7 @@ pub(crate) unsafe fn memory_compatible(
                     t11 = sleb128_decode_32(&mut tb1);
                     n1 -= 1;
                     cmp = utf8_cmp(len1 as usize, p1, len2 as usize, p2);
-                    if cmp < 0 && n1 > 0 {
+                    if variance != TypeVariance::Invariance && cmp < 0 && n1 > 0 {
                         continue;
                     };
                     break;
@@ -1241,7 +1246,26 @@ unsafe extern "C" fn idl_sub_buf_init(
     rel.init();
 }
 
-unsafe fn idl_sub_internal(
+#[enhanced_orthogonal_persistence]
+#[ic_mem_fn]
+unsafe fn idl_alloc_typtbl<M: Memory>(
+    mem: &mut M,
+    candid_data: Value,
+    type_offsets: Value,
+    typtbl_out: *mut *mut *mut u8,
+    typtbl_end_out: *mut *mut u8,
+    typtbl_size_out: *mut usize,
+) {
+    use crate::persistence::compatibility::TypeDescriptor;
+
+    let mut type_descriptor = TypeDescriptor::new(candid_data, type_offsets);
+    *typtbl_out = type_descriptor.build_type_table(mem);
+    *typtbl_end_out = type_descriptor.type_table_end();
+    *typtbl_size_out = type_descriptor.type_count();
+}
+
+#[no_mangle]
+unsafe extern "C" fn idl_sub(
     rel_buf: *mut usize, // a buffer with at least 2 * typtbl_size1 * typtbl_size2 bits
     typtbl1: *mut *mut u8,
     typtbl2: *mut *mut u8,

@@ -11,7 +11,7 @@ actor {
    };
 
    stable var firstVariable : Any = largeAllocation("first variable");
-   stable var secondVariable : Any = largeAllocation("second variable");
+   stable var secondVariable : [var Nat] = largeAllocation("second variable");
    
    public func check(): async() {
       // Extra GC increments.
