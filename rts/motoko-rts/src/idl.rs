@@ -816,7 +816,10 @@ pub(crate) unsafe fn memory_compatible(
                 let t21 = sleb128_decode(&mut tb2);
                 if n1 == 0 {
                     // Optional additional fields are only supported in the main actor type.
-                    if !main_actor || !is_opt_reserved(typtbl2, end2, t21) {
+                    if variance == TypeVariance::Invariance
+                        || !main_actor
+                        || !is_opt_reserved(typtbl2, end2, t21)
+                    {
                         return false;
                     }
                     continue;
@@ -826,14 +829,18 @@ pub(crate) unsafe fn memory_compatible(
                         tag1 = leb128_decode(&mut tb1);
                         t11 = sleb128_decode(&mut tb1);
                         n1 -= 1;
-                        if !(tag1 < tag2 && n1 > 0) {
+                        // Do not skip fields during invariance check.
+                        if variance == TypeVariance::Invariance || !(tag1 < tag2 && n1 > 0) {
                             break;
                         }
                     }
                 };
                 if tag1 > tag2 {
                     // Optional additional fields are only supported in the main actor type.
-                    if !main_actor || !is_opt_reserved(typtbl2, end2, t21) {
+                    if variance == TypeVariance::Invariance
+                        || !main_actor
+                        || !is_opt_reserved(typtbl2, end2, t21)
+                    {
                         return false;
                     }
                     advance = false; // reconsider this field in next round
@@ -862,7 +869,7 @@ pub(crate) unsafe fn memory_compatible(
                     tag2 = leb128_decode(&mut tb2);
                     t21 = sleb128_decode(&mut tb2);
                     n2 -= 1;
-                    if !(tag2 < tag1 && n2 > 0) {
+                    if variance == TypeVariance::Invariance || !(tag2 < tag1 && n2 > 0) {
                         break;
                     }
                 }
@@ -896,7 +903,7 @@ pub(crate) unsafe fn memory_compatible(
                     t11 = sleb128_decode(&mut tb1);
                     n1 -= 1;
                     cmp = utf8_cmp(len1, p1, len2, p2);
-                    if cmp < 0 && n1 > 0 {
+                    if variance != TypeVariance::Invariance && cmp < 0 && n1 > 0 {
                         continue;
                     };
                     break;
