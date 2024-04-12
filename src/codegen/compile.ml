@@ -1081,7 +1081,7 @@ module Func = struct
       g3
       g4
     )
-  let [@warning "-8"] share_code6 sharing env name (p1, p2, p3, p4, p5, p6) retty mk_body =
+  let [@warning "-8"] _share_code6 sharing env name (p1, p2, p3, p4, p5, p6) retty mk_body =
     share_code sharing env name [p1; p2; p3; p4; p5; p6] retty (fun env [g1; g2; g3; g4; g5; g6] -> mk_body env
       g1
       g2
@@ -1139,10 +1139,11 @@ module RTS = struct
     E.add_func_import env "rts" "memcmp" [I64Type; I64Type; I64Type] [I32Type];
     E.add_func_import env "rts" "version" [] [I64Type];
     E.add_func_import env "rts" "parse_idl_header" [I32Type; I64Type; I64Type; I64Type; I64Type] [];
+    E.add_func_import env "rts" "idl_alloc_typtbl" [I64Type; I64Type; I64Type; I64Type; I64Type] [];
     E.add_func_import env "rts" "idl_sub_buf_words" [I64Type; I64Type] [I64Type];
     E.add_func_import env "rts" "idl_sub_buf_init" [I64Type; I64Type; I64Type] [];
     E.add_func_import env "rts" "idl_sub"
-      [I64Type; I64Type; I64Type; I64Type; I64Type; I64Type; I32Type; I32Type] [I32Type];
+      [I64Type; I64Type; I64Type; I64Type; I64Type; I64Type; I64Type; I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "leb128_decode" [I64Type] [I64Type];
     E.add_func_import env "rts" "sleb128_decode" [I64Type] [I64Type];
     E.add_func_import env "rts" "bigint_to_word32_wrap" [I64Type] [I32Type];
@@ -6167,10 +6168,6 @@ module Serialization = struct
       Blob.load_data_segment env E.(descriptor.type_offsets_segment) (get_type_offsets_length env)
     )
 
-  let count_global_type_offsets env =
-    get_type_offsets_length env ^^
-    compile_divU_const candid_type_offset_size
-
   let get_global_idl_types env =
     Tagged.share env (fun env -> 
       let descriptor = get_global_type_descriptor env in
@@ -6179,12 +6176,16 @@ module Serialization = struct
       
   module Registers = struct
     let register_globals env =
-     E.add_global64 env "@@rel_buf_opt" Mutable 0L;
-     E.add_global64 env "@@data_buf" Mutable 0L;
-     E.add_global64 env "@@ref_buf" Mutable 0L;
-     E.add_global64 env "@@typtbl" Mutable 0L;
-     E.add_global64 env "@@typtbl_end" Mutable 0L;
-     E.add_global64 env "@@typtbl_size" Mutable 0L
+      E.add_global64 env "@@rel_buf_opt" Mutable 0L;
+      E.add_global64 env "@@data_buf" Mutable 0L;
+      E.add_global64 env "@@ref_buf" Mutable 0L;
+      E.add_global64 env "@@typtbl" Mutable 0L;
+      E.add_global64 env "@@typtbl_end" Mutable 0L;
+      E.add_global64 env "@@typtbl_size" Mutable 0L;
+      E.add_global64 env "@@global_typtbl" Mutable 0L;
+      E.add_global64 env "@@global_typtbl_end" Mutable 0L;
+      E.add_global64 env "@@global_typtbl_size" Mutable 0L
+
 
     let get_rel_buf_opt env =
       G.i (GlobalGet (nr (E.get_global env "@@rel_buf_opt")))
@@ -6215,6 +6216,22 @@ module Serialization = struct
       G.i (GlobalGet (nr (E.get_global env "@@typtbl_size")))
     let set_typtbl_size env =
       G.i (GlobalSet (nr (E.get_global env "@@typtbl_size")))
+
+    let get_global_typtbl env =
+      G.i (GlobalGet (nr (E.get_global env "@@global_typtbl")))
+    let set_global_typtbl env =
+      G.i (GlobalSet (nr (E.get_global env "@@global_typtbl")))
+
+    let get_global_typtbl_end env =
+      G.i (GlobalGet (nr (E.get_global env "@@global_typtbl_end")))
+    let set_global_typtbl_end env =
+      G.i (GlobalSet (nr (E.get_global env "@@global_typtbl_end")))
+
+    let get_global_typtbl_size env =
+      G.i (GlobalGet (nr (E.get_global env "@@global_typtbl_size")))
+    let set_global_typtbl_size env =
+      G.i (GlobalSet (nr (E.get_global env "@@global_typtbl_size")))
+
   end
 
   open Typ_hash
@@ -6816,14 +6833,14 @@ module Serialization = struct
   let coercion_error_value env = 0xffff_ffff_ffff_fffdL
 
   (* See Note [Candid subtype checks] *)
-  let with_rel_buf_opt env extended get_typtbl_size1 f =
+  let with_rel_buf_opt env extended get_typtbl_size1 get_typtbl_size2 f =
     if extended then
       f (compile_unboxed_const 0L)
     else
-      get_typtbl_size1 ^^ count_global_type_offsets env ^^
+      get_typtbl_size1 ^^ get_typtbl_size2 ^^
       E.call_import env "rts" "idl_sub_buf_words" ^^
       Stack.dynamic_with_words env "rel_buf" (fun get_ptr ->
-        get_ptr ^^ get_typtbl_size1 ^^ count_global_type_offsets env ^^
+        get_ptr ^^ get_typtbl_size1 ^^ get_typtbl_size2 ^^
         E.call_import env "rts" "idl_sub_buf_init" ^^
         f get_ptr)
 
@@ -6833,24 +6850,21 @@ module Serialization = struct
     get_global_idl_types env ^^
     Blob.payload_ptr_unskewed env ^^
     G.i (Load {ty = I64Type; align = 0; offset = Int64.mul idx candid_type_offset_size (*!*); sz = None}) ^^
-    Func.share_code6 Func.Always env ("idl_sub")
-      (("rel_buf", I64Type),
-       ("typtbl1", I64Type),
-       ("typtbl_end1", I64Type),
-       ("typtbl_size1", I64Type),
-       ("idltyp1", I64Type),
+    Func.share_code2 Func.Always env ("idl_sub")
+      (("idltyp1", I64Type),
        ("idltyp2", I64Type)
       )
       [I64Type]
-      (fun env get_rel_buf get_typtbl1 get_typtbl_end1 get_typtbl_size1 get_idltyp1 get_idltyp2 ->
-        get_rel_buf ^^
+      (fun env get_idltyp1 get_idltyp2 ->
+        Registers.get_rel_buf_opt env ^^
         E.else_trap_with env "null rel_buf" ^^
-        get_rel_buf ^^
-        get_typtbl1 ^^
-        get_typtbl_end1 ^^
-        get_typtbl_size1 ^^
-        get_global_candid_data env ^^
-        get_global_type_offsets env ^^
+        Registers.get_rel_buf_opt env ^^
+        Registers.get_typtbl env ^^
+        Registers.get_global_typtbl env ^^
+        Registers.get_typtbl_end env ^^
+        Registers.get_global_typtbl_end env ^^
+        Registers.get_typtbl_size env ^^
+        Registers.get_global_typtbl_size env ^^
         get_idltyp1 ^^
         G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
         get_idltyp2 ^^
@@ -6905,7 +6919,7 @@ module Serialization = struct
       let get_data_buf = Registers.get_data_buf env in
       let _get_ref_buf = Registers.get_ref_buf env in
       let get_typtbl = Registers.get_typtbl env in
-      let get_typtbl_end = Registers.get_typtbl_end env in
+      let _get_typtbl_end = Registers.get_typtbl_end env in
       let get_typtbl_size = Registers.get_typtbl_size env in
 
       (* Check recursion depth (protects against empty record etc.) *)
@@ -7524,10 +7538,6 @@ module Serialization = struct
         get_rel_buf_opt ^^
         E.if1 I64Type
           begin
-            get_rel_buf_opt ^^
-            get_typtbl ^^
-            get_typtbl_end ^^
-            get_typtbl_size ^^
             get_idltyp ^^
             idl_sub env t
           end
@@ -7547,10 +7557,6 @@ module Serialization = struct
         get_rel_buf_opt ^^
         E.if1 I64Type
           begin
-            get_rel_buf_opt ^^
-            get_typtbl ^^
-            get_typtbl_end ^^
-            get_typtbl_size ^^
             get_idltyp ^^
             idl_sub env t
           end
@@ -7657,6 +7663,11 @@ module Serialization = struct
       Stack.with_words env "get_typtbl_ptr" 1L (fun get_typtbl_ptr ->
       Stack.with_words env "get_maintyps_ptr" 1L (fun get_maintyps_ptr ->
 
+      (* Allocate space for out parameters of idl_alloc_typtbl *)
+      Stack.with_words env "get_global_typtbl_ptr" 1L (fun get_global_typtbl_ptr ->
+      Stack.with_words env "get_global_typtbl_end_ptr" 1L (fun get_global_typtbl_end_ptr ->
+      Stack.with_words env "get_global_typtbl_size_ptr" 1L (fun get_global_typtbl_size_ptr ->
+
       (* Set up read buffers *)
       ReadBuf.alloc env (fun get_data_buf -> ReadBuf.alloc env (fun get_ref_buf ->
 
@@ -7669,8 +7680,21 @@ module Serialization = struct
       Bool.lit extended ^^ Bool.to_rts_int32 ^^ get_data_buf ^^ get_typtbl_ptr ^^ get_typtbl_size_ptr ^^ get_maintyps_ptr ^^
       E.call_import env "rts" "parse_idl_header" ^^
 
+      (* Allocate global type type, if necessary for subtype checks *)
+      (if extended then
+         G.nop
+       else begin
+         get_global_candid_data env ^^
+         get_global_type_offsets env ^^
+         get_global_typtbl_ptr ^^ get_global_typtbl_end_ptr ^^ get_global_typtbl_size_ptr ^^
+         E.call_import env "rts" "idl_alloc_typtbl"
+      end) ^^
+
       (* Allocate memo table, if necessary *)
-      with_rel_buf_opt env extended (get_typtbl_size_ptr ^^ load_unskewed_ptr) (fun get_rel_buf_opt ->
+      with_rel_buf_opt env extended
+        (get_typtbl_size_ptr ^^ load_unskewed_ptr)
+        (get_global_typtbl_size_ptr ^^ load_unskewed_ptr)
+        (fun get_rel_buf_opt ->
 
       (* set up a dedicated read buffer for the list of main types *)
       ReadBuf.alloc env (fun get_main_typs_buf ->
@@ -7702,7 +7726,10 @@ module Serialization = struct
                 get_ref_buf ^^ Registers.set_ref_buf env ^^
                 get_typtbl_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl env ^^
                 get_maintyps_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl_end env ^^
-                get_typtbl_size_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl_size env
+                get_typtbl_size_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl_size env ^^
+                get_global_typtbl_ptr ^^ load_unskewed_ptr ^^ Registers.set_global_typtbl env ^^
+                get_global_typtbl_end_ptr ^^ load_unskewed_ptr ^^ Registers.set_global_typtbl_end env ^^
+                get_global_typtbl_size_ptr ^^ load_unskewed_ptr ^^ Registers.set_global_typtbl_size env
               end ^^
               (* set up variable frame arguments *)
               Stack.with_frame env "frame_ptr" 3L (fun () ->
@@ -7743,7 +7770,7 @@ module Serialization = struct
         E.else_trap_with env ("IDL error: left-over bytes " ^ ts_name) ^^
         ReadBuf.is_empty env get_ref_buf ^^
         E.else_trap_with env ("IDL error: left-over references " ^ ts_name)
-      ))))))
+      )))))))))
 
     ))
 
