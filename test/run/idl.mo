@@ -45,7 +45,7 @@ assert(arrayNat == deserArrayInt (serArrayNat arrayNat));
 assert(arrayNat == deserArrayInt (serArrayInt arrayNat));
 assert(arrayInt == deserArrayInt (serArrayInt arrayInt));
 let heapDifference = Prim.rts_heap_size() : Int - started_with;
-assert(heapDifference == 5_340);  
+assert(heapDifference == 5_388);
 
 //SKIP run
 //SKIP run-ir

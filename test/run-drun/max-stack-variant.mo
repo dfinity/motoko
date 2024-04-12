@@ -37,9 +37,9 @@ actor {
             done := true
           }
         };
-        
+
         assert(i > expectedMinimumSize);
-        
+
         let b = to_candid(l);
         debugPrint("serialized");
 

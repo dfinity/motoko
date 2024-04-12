@@ -27,7 +27,7 @@ actor {
                if deserialize
                  from_candid(b)
                else null;
-              
+
               ()
             };
           } catch e {
@@ -37,7 +37,7 @@ actor {
         };
 
         assert i > expectedMinimumSize;
-        
+
         let b = to_candid(l);
         debugPrint("serialized");
 
