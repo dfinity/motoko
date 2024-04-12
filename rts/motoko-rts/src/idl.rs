@@ -830,7 +830,10 @@ pub(crate) unsafe fn memory_compatible(
                 let t21 = sleb128_decode_32(&mut tb2);
                 if n1 == 0 {
                     // Optional additional fields are only supported in the main actor type.
-                    if !main_actor || !is_opt_reserved(typtbl2, end2, t21) {
+                    if variance == TypeVariance::Invariance
+                        || !main_actor
+                        || !is_opt_reserved(typtbl2, end2, t21)
+                    {
                         return false;
                     }
                     continue;
@@ -840,14 +843,18 @@ pub(crate) unsafe fn memory_compatible(
                         tag1 = leb128_decode_32(&mut tb1);
                         t11 = sleb128_decode_32(&mut tb1);
                         n1 -= 1;
-                        if !(tag1 < tag2 && n1 > 0) {
+                        // Do not skip fields during invariance check.
+                        if variance == TypeVariance::Invariance || !(tag1 < tag2 && n1 > 0) {
                             break;
                         }
                     }
                 };
                 if tag1 > tag2 {
                     // Optional additional fields are only supported in the main actor type.
-                    if !main_actor || !is_opt_reserved(typtbl2, end2, t21) {
+                    if variance == TypeVariance::Invariance
+                        || !main_actor
+                        || !is_opt_reserved(typtbl2, end2, t21)
+                    {
                         return false;
                     }
                     advance = false; // reconsider this field in next round
@@ -876,7 +883,7 @@ pub(crate) unsafe fn memory_compatible(
                     tag2 = leb128_decode_32(&mut tb2);
                     t21 = sleb128_decode_32(&mut tb2);
                     n2 -= 1;
-                    if !(tag2 < tag1 && n2 > 0) {
+                    if variance == TypeVariance::Invariance || !(tag2 < tag1 && n2 > 0) {
                         break;
                     }
                 }
@@ -910,7 +917,7 @@ pub(crate) unsafe fn memory_compatible(
                     t11 = sleb128_decode_32(&mut tb1);
                     n1 -= 1;
                     cmp = utf8_cmp(len1 as usize, p1, len2 as usize, p2);
-                    if cmp < 0 && n1 > 0 {
+                    if variance != TypeVariance::Invariance && cmp < 0 && n1 > 0 {
                         continue;
                     };
                     break;
@@ -1226,23 +1233,33 @@ unsafe extern "C" fn idl_sub_buf_init(
 }
 
 #[ic_mem_fn]
-unsafe fn idl_sub<M: Memory>(
+unsafe fn idl_alloc_typtbl<M: Memory>(
     mem: &mut M,
+    candid_data: Value,
+    type_offsets: Value,
+    typtbl_out: *mut *mut *mut u8,
+    typtbl_end_out: *mut *mut u8,
+    typtbl_size_out: *mut usize,
+) {
+    let mut type_descriptor = TypeDescriptor::new(candid_data, type_offsets);
+    *typtbl_out = type_descriptor.build_type_table(mem);
+    *typtbl_end_out = type_descriptor.type_table_end();
+    *typtbl_size_out = type_descriptor.type_count();
+}
+
+#[no_mangle]
+unsafe extern "C" fn idl_sub(
     rel_buf: *mut usize, // a buffer with at least 2 * typtbl_size1 * typtbl_size2 bits
     typtbl1: *mut *mut u8,
+    typtbl2: *mut *mut u8,
     typtbl_end1: *mut u8,
+    typtbl_end2: *mut u8,
     typtbl_size1: usize,
-    candid_data2: Value,
-    type_offsets2: Value,
+    typtbl_size2: usize,
     t1: i32,
     t2: i32,
 ) -> bool {
     debug_assert!(rel_buf != (0 as *mut usize));
-
-    let mut type_descriptor2 = TypeDescriptor::new(candid_data2, type_offsets2);
-    let typtbl2 = type_descriptor2.build_type_table(mem);
-    let typtbl_end2 = type_descriptor2.type_table_end();
-    let typtbl_size2 = type_descriptor2.type_count();
 
     let rel = BitRel {
         ptr: rel_buf,

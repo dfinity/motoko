@@ -1,19 +1,20 @@
 ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
 ingress Completed: Reply: 0x4449444c0000
 ingress Completed: Reply: 0x4449444c0000
-debug.print: #two({key = 1; name = "TEST TEST"})
+debug.print: original test1
+debug.print: original test2
+ingress Completed: Reply: 0x4449444c0000
+ingress Completed: Reply: 0x4449444c0000
+debug.print: original test1
+debug.print: original test2
 ingress Completed: Reply: 0x4449444c0000
 ingress Completed: Reply: 0x4449444c0000
 ingress Completed: Reply: 0x4449444c0000
-debug.print: #two({key = 1; name = "TEST TEST TEST"})
+debug.print: reduced test1
 ingress Completed: Reply: 0x4449444c0000
 ingress Completed: Reply: 0x4449444c0000
-ingress Completed: Reply: 0x4449444c0000
-debug.print: #two({key = 1; name = "TEST TEST TEST TEST"})
-ingress Completed: Reply: 0x4449444c0000
-ingress Completed: Reply: 0x4449444c0000
-ingress Completed: Reply: 0x4449444c0000
-debug.print: #two({key = 1; name = "TEST TEST TEST TEST TEST"})
+debug.print: reduced test1
 ingress Completed: Reply: 0x4449444c0000
 ingress Err: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: RTS error: Memory-incompatible program upgrade
-ingress Err: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: RTS error: Memory-incompatible program upgrade
+debug.print: reduced test1
+ingress Completed: Reply: 0x4449444c0000
