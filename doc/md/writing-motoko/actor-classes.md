@@ -12,7 +12,7 @@ The actor responsible for bucket `i` is obtained as an instance of the actor cla
 
 `Buckets.mo`:
 
-``` motoko name=Buckets file=./examples/Buckets.mo
+``` motoko name=Buckets file=../examples/Buckets.mo
 ```
 
 A bucket stores the current mapping of keys to values in a mutable `map` variable containing an imperative RedBlack tree, `map`, that is initially empty.
@@ -25,7 +25,7 @@ Both functions use the class parameters `n` and `i` to verify that the key is ap
 
 Clients of the map can then communicate with a coordinating `Map` actor, implemented as follows:
 
-``` motoko include=Buckets file=./examples/Map.mo
+``` motoko include=Buckets file=../examples/Map.mo
 ```
 
 As this example illustrates, the `Map` code imports the `Bucket` actor class as module `Buckets`.
@@ -64,7 +64,7 @@ Clients of actor class `Map` are now free to determine the maximum number of buc
 
 :::note
 
-On ICP, calls to a class constructor must be provisioned with cycles to pay for the creation of a principal. See [ExperimentalCycles](./base/ExperimentalCycles.md) for instructions on how to add cycles to a call using the imperative `ExperimentalCycles.add(cycles)` function.
+On ICP, calls to a class constructor must be provisioned with cycles to pay for the creation of a principal. See [ExperimentalCycles](../base/ExperimentalCycles.md) for instructions on how to add cycles to a call using the imperative `ExperimentalCycles.add(cycles)` function.
 
 :::
 
