@@ -1,4 +1,5 @@
 # CLASSICAL-PERSISTENCE-ONLY
+# DEFAULT-GC-ONLY
 # SKIP ic-ref-run
 install $ID migrate-stabilization/old-stabilization.mo ""
 ingress $ID populate "DIDL\x00\x00"
