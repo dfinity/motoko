@@ -1,3 +1,4 @@
+# ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
 # SKIP ic-ref-run
 install $ID stabilize-service/version0.mo ""
 ingress $ID initialize "DIDL\x00\x00"
@@ -15,4 +16,3 @@ ingress $ID test "DIDL\x00\x00"
 ingress $ID __motoko_stabilize_before_upgrade "DIDL\x00\x00"
 upgrade $ID stabilize-service/version0.mo ""
 ingress $ID test "DIDL\x00\x00"
-
