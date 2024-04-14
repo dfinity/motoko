@@ -152,9 +152,10 @@ and pp_stmt' ppf = function
       pp_exp exp1
       pp_seqn s1
       pp_seqn s2
-  | WhileS (exp, _, s) -> (* TODO: Invariant *)
-    fprintf ppf "@[<v 2>while (%a) {@ %a}@]"
+  | WhileS (exp, invs, s) ->
+    fprintf ppf "@[<v 2>while (%a)@;@[<v 0>%a@]@;%a@]"
       pp_exp exp
+      (pp_print_list pp_loop_inv) invs
       pp_seqn s
   | VarAssignS (id, exp) ->
     fprintf ppf "@[<v 2>%s := %a@]"
@@ -215,6 +216,9 @@ and pp_fldacc ppf fldacc =
   match fldacc with
   | (exp1, id) ->
     fprintf ppf "@[(%a).%s@]" pp_exp exp1 id.it
+
+and pp_loop_inv ppf inv =
+    fprintf ppf "invariant %a" pp_exp inv
 
 let prog_mapped file p =
     marks := [];
