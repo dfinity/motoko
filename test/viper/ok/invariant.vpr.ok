@@ -34,9 +34,10 @@ method loops($Self: Ref)
     ensures $Inv($Self)
     { var i: Int
       i := 0
-      while ((i > 0)) {
+      while ((i > 0))
+         
          { 
            i := (i + 1) 
-         }}
+         }
       label $Ret 
     }

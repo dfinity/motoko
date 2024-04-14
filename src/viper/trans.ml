@@ -88,6 +88,18 @@ let rec extract_invariants : item list -> (par -> invariants -> invariants) = fu
         :: extract_invariants p self es
   | _ :: p -> extract_invariants p
 
+let rec extract_loop_invariants (e : M.exp) : (M.exp list * M.exp) =
+  match e with
+  | { it = M.BlockE ds; _ } ->
+    let (invs, ds') = extract_loop_invariants' ds [] in
+    (invs, { e with it = M.BlockE ds' })
+  | _ -> ([], e)
+and extract_loop_invariants' (ds : M.dec list) (acc : M.exp list) : (M.exp list * M.dec list) =
+  match ds with
+  | M.({ it = ExpD ({ it = AssertE (Loop_invariant, inv); _ }); _ }) :: ds ->
+      extract_loop_invariants' ds (inv :: acc)
+  | _ -> (List.rev acc, ds)
+
 let rec extract_concurrency (seq : seqn) : stmt' list * seqn =
   let open List in
   let extr (concs, stmts) s : stmt' list * stmt list =
@@ -390,8 +402,10 @@ and stmt ctxt (s : M.exp) : seqn =
                               !!(MacroCall("$Inv", self ctxt at))))));
         ])
   | M.WhileE(e, s1) ->
+     let (invs, s1') = extract_loop_invariants s1 in
+     let invs' = List.map (fun inv -> exp ctxt inv) invs in
      !!([],
-        [ !!(WhileS(exp ctxt e, [], stmt ctxt s1)) ]) (* TODO: Invariant *)
+        [ !!(WhileS(exp ctxt e, invs', stmt ctxt s1')) ])
   | M.(AssignE({it = VarE x; _}, e2)) ->
      begin match Env.find x.it ctxt.ids with
      | Local ->

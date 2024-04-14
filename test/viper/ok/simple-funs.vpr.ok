@@ -105,11 +105,12 @@ method factorial($Self: Ref, n: Int)
       var i: Int
       prod := 1
       i := n
-      while ((i > 0)) {
+      while ((i > 0))
+         
          { 
            prod := (prod * i)
            i := (i - 1) 
-         }}
+         }
       $Res := prod
       goto $Ret
       label $Ret 
