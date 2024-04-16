@@ -1,5 +1,7 @@
 # Compiler reference
 
+## Overview
+
 The Motoko compiler (`moc`) is the primary tool for compiling Motoko programs into executable WebAssembly (Wasm) modules. The compiler runs in the background when you build projects using the [IC SDK](https://internetcomputer.org/docs/current/developer-docs/setup/install). If you invoke the compiler directly on the command-line, you can press CTRL-C to exit.
 
 This section provides compiler command-line reference information.
@@ -26,11 +28,11 @@ You can use the following options with the `moc` command.
 | `--args0 <file>`                          | Read additional `NUL` separated command line arguments from `<file>`.                                                                                 |
 | `-c`                                      | Compile to WebAssembly.                                                                                                                               |
 | `--check`                                 | Performs type checking only.                                                                                                                          |
-| `--compacting-gc`                         | Use compacting GC                                                                                                                                     |
-| `--copying-gc`                            | Use copying GC (default)                                                                                                                              |
+| `--compacting-gc`                         | Use compacting GC.                                                                                                                                    |
+| `--copying-gc`                            | Use copying GC (default).                                                                                                                             |
 | `--debug`                                 | Respects debug expressions in the source (the default).                                                                                               |
 | `--error-detail <n>`                      | Set level of error message detail for syntax errors, n in \[0..3\] (default 2).                                                                       |
-| `-fno-shared-code`                        | Do *not* share low-level utility code: larger code size but decreased cycle consumption (default).                                                    |
+| `-fno-shared-code`                        | Do not share low-level utility code: larger code size but decreased cycle consumption (default).                                                      |
 | `-fshared-code`                           | Do share low-level utility code: smaller code size but increased cycle consumption.                                                                   |
 | `--generational-gc`                       | Use generational GC                                                                                                                                   |
 | `-help`,`--help`                          | Displays usage information.                                                                                                                           |
@@ -46,8 +48,8 @@ You can use the following options with the `moc` command.
 | `-o <file>`                               | Specifies the output file.                                                                                                                            |
 | `-p <n>`                                  | Sets the print depth.                                                                                                                                 |
 | `--package <package-name> <package-path>` | Specifies a `<package-name>` `<package-path>` pair, separated by a space.                                                                             |
-| `--public-metadata <name>`                | Emit icp custom section `<name>` (`candid:args` or `candid:service` or `motoko:stable-types` or `motoko:compiler`) as `public` (default is `private`) |
-| `--omit-metadata <name>`                  | omit icp custom section `<name>` (`candid:args` or `candid:service` or `motoko:stable-types` or `motoko:compiler`)                                    |
+| `--public-metadata <name>`                | Emit ICP custom section `<name>` (`candid:args` or `candid:service` or `motoko:stable-types` or `motoko:compiler`) as `public` (default is `private`).|
+| `--omit-metadata <name>`                  | Omit ICP custom section `<name>` (`candid:args` or `candid:service` or `motoko:stable-types` or `motoko:compiler`).                                   |
 | `--print-deps`                            | Prints the dependencies for a given source file.                                                                                                      |
 | `-r`                                      | Interprets programs.                                                                                                                                  |
 | `--release`                               | Ignores debug expressions in the source.                                                                                                              |

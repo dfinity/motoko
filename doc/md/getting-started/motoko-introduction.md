@@ -1,5 +1,7 @@
 # Introduction
 
+## Overview
+
 Motoko is a modern, general-purpose programming language you can use specifically to author Internet Computer canister smart contracts. Although aimed primarily at ICP canister development, its design is general enough to support future compilation to other targets.
 
 Motoko is designed to be approachable for programmers who have some basic familiarity with object-oriented and/or functional programming idioms in either JavaScript, or another modern programming language, such as Rust, Swift, TypeScript, C#, or Java.
@@ -48,6 +50,10 @@ Semantics of Motoko include:
 
 -   No inheritance.
 
+## Implementation
+
+Motoko is implemented in OCaml and leverages the `wasm` library. It uses a simple reference interpreter, but has a more complex compilation into WebAssembly. Compilation uses multipass with typed IR in each pass, and uniform representation, unboxed arithmetic. Motoko offers three garbage collectors (copying, compacting, or generational), and garbage collection is invoked after messages. Motoko uses polymorphism by erasure.
+
 ### Native canister smart contract support
 
 Motoko has native support for canister smart contracts, which are expressed as a Motoko actor. An actor is an autonomous object that fully encapsulates its state and communicates with other actors only through asynchronous messages.
@@ -81,6 +87,46 @@ Once upgraded, the new interface is compatible with the previous one, meaning ex
 
 For scenarios that can’t be solved using stable variables alone, Motoko provides user-definable upgrade hooks that run immediately before and after upgrade, and allow you to migrate arbitrary state to stable variables.
 
-## Implementations
+## Getting started
 
-Motoko is implemented in OCaml and leverages the `wasm` library. It uses a simple reference interpreter, but has a more complex compilation into WebAssembly. Compilation uses multipass with typed IR in each pass, and uniform representation, unboxed arithmetic. Motoko offers three garbage collectors (copying, compacting, or generational), and garbage collection is invoked after messages. Motoko uses polymorphism by erasure.
+Get started with Motoko by [setting up your developer environment](dev-env.md) and creating a simple [Hello, world!](quickstart.md) program.
+
+## Sample apps
+
+---
+keywords: [beginner, motoko, samples, sample dapps]
+---
+
+import { MarkdownChipRow } from "/src/components/Chip/MarkdownChipRow";
+
+# Motoko sample code and applications
+
+For projects that use the Motoko programming language, see [Motoko sample projects](https://github.com/dfinity/examples/tree/master/motoko).
+
+-   [Calculator: simple functions](https://github.com/dfinity/examples/tree/master/motoko/calc)
+
+-   [Counter](https://github.com/dfinity/examples/tree/master/motoko/counter)
+
+-   [Echo](https://github.com/dfinity/examples/tree/master/motoko/echo)
+
+-   [Factorial](https://github.com/dfinity/examples/tree/master/motoko/factorial)
+
+-   [Hello, cycles](https://github.com/dfinity/examples/tree/master/motoko/hello_cycles)
+
+-   [Hello, world](https://github.com/dfinity/examples/tree/master/motoko/hello-world)
+
+-   [Game of Life: upgrades](https://github.com/dfinity/examples/tree/master/motoko/life)
+
+-   [Phone book](https://github.com/dfinity/examples/tree/master/motoko/phone-book)
+
+-   [Publish and subscribe](https://github.com/dfinity/examples/tree/master/motoko/pub-sub)
+
+-   [Quicksort](https://github.com/dfinity/examples/tree/master/motoko/quicksort)
+
+-   [Random maze using cryptographic randomness](https://github.com/dfinity/examples/tree/master/motoko/random_maze)
+
+-   [To-do checklist](https://github.com/dfinity/examples/tree/master/motoko/simple-to-do)
+
+-   [Superheroes database](https://github.com/dfinity/examples/tree/master/motoko/superheroes)
+
+-   [whoami](https://github.com/dfinity/examples/tree/master/motoko/whoami)
