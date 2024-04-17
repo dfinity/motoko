@@ -109,8 +109,6 @@ Every new page is zero-initialized, containing byte 0x00 at every offset.
 Function `grow` is capped by a soft limit on `size` controlled by compile-time flag
  `--max-stable-pages <n>` (the default is 65536, or 4GiB).
 
-There is currently no way to shrink the Region size.
-
 Example:
 ```motoko no-repl
 import Error "mo:base/Error";
