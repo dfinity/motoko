@@ -49,7 +49,7 @@ module {
   // Each page is 64KiB (65536 bytes).
   // Returns previous `size` when able to grow.
   // Returns `0xFFFF_FFFF_FFFF_FFFF` if remaining pages of physical stable memory insufficient.
-  // Please note that there is currently no way to shrink the Region size.
+  // Please note that there is no way to shrink the size of a region.
   grow : (r : Region, new_pages : Nat64) -> (oldpages : Nat64);
 
   // read ("load") a byte from a region, by offset.
