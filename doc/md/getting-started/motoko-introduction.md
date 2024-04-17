@@ -2,9 +2,27 @@
 
 ## Overview
 
-Motoko is a modern, general-purpose programming language you can use specifically to author Internet Computer canister smart contracts. Although aimed primarily at ICP canister development, its design is general enough to support future compilation to other targets.
+Motoko is a modern, general-purpose programming language you can use specifically to author ICP canister smart contracts. Although aimed primarily at ICP canister development, its design is general enough to support future compilation to other targets.
 
 Motoko is designed to be approachable for programmers who have some basic familiarity with object-oriented and/or functional programming idioms in either JavaScript, or another modern programming language, such as Rust, Swift, TypeScript, C#, or Java.
+
+# Why develop applications to run on ICP?
+
+Motoko provides:
+
+-   A high-level language for programming applications to run on ICP.
+
+-   A simple design that uses familiar syntax that is easy for programmers to learn.
+
+-   An **actor-based** programming model optimized for efficient message handling.
+
+-   An interpreter and compiler that you can use to test and compile the WebAssembly code for autonomous applications.
+
+# Why Motoko?
+
+ICP supports programs written in different languages. The only requirement is that the program must support compilation to WebAssembly code. WebAssembly is a low-level computer instruction format for virtual machines. Because WebAssembly code is designed to provide portable low-level instructions that enable applications to be deployed on many platforms such as the web, it is a natural fit for deploying applications that are intended to run on ICP. However, most of the higher-level languages that support compiling to WebAssembly are either unsafe or complex for developers who want to deliver secure applications without a long learning curve.
+
+To address the need for correctness without complexity, DFINITY has designed its own Motoko programming language. Motoko provides a simple and expressive alternative to other programming languages that is easy to learn whether you are a new or experienced programmer.
 
 ## Motivation and goals
 
