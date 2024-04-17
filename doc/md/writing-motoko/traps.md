@@ -17,6 +17,7 @@ The points at which tentative state changes and message sends are irrevocably co
 -   Explicit `await` expressions.
 
 ## Traps
+
 A trap will only revoke changes made since the last commit point. In particular, in a non-atomic function that does multiple awaits, a trap will only revoke changes attempted since the last await - all preceding effects will have been committed and cannot be undone.
 
 Consider the following stateful `Atomicity` actor:

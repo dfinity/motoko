@@ -75,7 +75,7 @@ actor {
 Like object types, actor types support subtyping: an actor type is a subtype of a more general one that offers fewer functions with more general types.
 
 
-## Asynchronous actors
+## Asynchronous behavior
 
 Like other modern programming languages, Motoko permits an ergonomic syntax for **asynchronous** communication among components.
 
