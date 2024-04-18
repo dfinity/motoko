@@ -10,8 +10,6 @@ Motoko is a modern, general-purpose programming language you can use specificall
 
 Motoko is designed to be approachable for programmers who have some basic familiarity with object-oriented and/or functional programming idioms in either JavaScript, or another modern programming language, such as Rust, Swift, TypeScript, C#, or Java.
 
-# Why develop applications to run on ICP?
-
 Motoko provides:
 
 -   A high-level language for programming applications to run on ICP.
