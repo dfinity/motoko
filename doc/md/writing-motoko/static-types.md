@@ -1,3 +1,7 @@
+---
+sidebar_position: 23
+---
+
 # Static types
 
 ## Overview

@@ -1,3 +1,7 @@
+---
+sidebar_position: 25
+---
+
 # Timers
 
 ## Overview

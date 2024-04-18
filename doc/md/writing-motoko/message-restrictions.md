@@ -1,3 +1,7 @@
+---
+sidebar_position: 14
+---
+
 # Messaging restrictions
 
 ## Overview

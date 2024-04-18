@@ -1,3 +1,7 @@
+---
+sidebar_position: 8
+---
+
 # Errors and options
 
 ## Overview

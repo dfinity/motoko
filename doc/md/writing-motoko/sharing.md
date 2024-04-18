@@ -1,3 +1,7 @@
+---
+sidebar_position: 22
+---
+
 # Sharing data and behavior
 
 ## Overview

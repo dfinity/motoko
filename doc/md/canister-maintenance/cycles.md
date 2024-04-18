@@ -1,4 +1,9 @@
-# Managing cycles
+---
+sidebar_position: 1
+---
+
+
+# Cycles
 
 ## Overview
 
