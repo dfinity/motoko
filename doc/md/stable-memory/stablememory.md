@@ -23,7 +23,7 @@ Motoko stable variables are not designed to maintain large amounts of data, as t
 
 ## The `ExperimentalStableMemory` library
 
-To avoid upgrade hazards, developers can use the [`Region`](stable-regions.md) library or the [`ExperimentalStableMemory`](../base/ExperimentalStableMemory.md) library. The `ExperimentalStableMemory` library allows the programmer to incrementally allocate pages of 64-bit ICP stable memory and use those pages to incrementally read and write data in a user-defined binary format.
+To avoid upgrade hazards, developers can use the [`Region`](stable-regions.md) library or the [`ExperimentalStableMemory`](.../base/ExperimentalStableMemory.md) library. The `ExperimentalStableMemory` library allows the programmer to incrementally allocate pages of 64-bit ICP stable memory and use those pages to incrementally read and write data in a user-defined binary format.
 
 Similar to the `Regions` library, Motoko runtime system ensures there is no interference between the abstraction presented by the `ExperimentalStableMemory` library and an actor’s stable variables, even though the two abstractions ultimately use the same underlying  stable memory facilities available to all IC canisters. This runtime support means that is safe for a Motoko program to exploit both stable variables and `ExperimentalStableMemory`, within the same application.
 
@@ -78,7 +78,7 @@ To demonstrate the `ExperimentalStableMemory` library, we present a dead simple 
 
 The example illustrates the simultaneous use of stable variables and stable memory. It uses a single stable variable to keep track of the next available offset, but stores the contents of the log directly in stable memory.
 
-``` motoko no-repl file=./examples/StableLog.mo
+``` motoko no-repl file=../examples/StableLog.mo
 ```
 
 The auxiliary function `ensure(offset)` is used to grow `ExerimentalStableMemory` as necessary to accommodate more data. It computes the 64KiB page of a given offset and ensures enough pages have been allocated to guarantee that offset is within bounds.

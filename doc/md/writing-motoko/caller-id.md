@@ -38,14 +38,14 @@ shared(msg) actor class Counter(init : Nat) {
 
 To extend this example, assume you want to restrict the `Counter` actor so it can only be modified by the installer of the `Counter`. To do this, you can record the principal that installed the actor by binding it to an `owner` variable. You can then check that the caller of each method is equal to `owner` like this:
 
-``` motoko file=./examples/Counters-caller.mo
+``` motoko file=../examples/Counters-caller.mo
 ```
 
 In this example, the `assert (owner == msg.caller)` expression causes the functions `inc()` and `bump()` to trap if the call is unauthorized, preventing any modification of the `count` variable while the `read()` function permits any caller.
 
 The argument to `shared` is just a pattern. You can rewrite the above to use pattern matching:
 
-``` motoko file=./examples/Counters-caller-pat.mo
+``` motoko file=../examples/Counters-caller-pat.mo
 ```
 
 :::note
@@ -54,4 +54,4 @@ Simple actor declarations do not let you access their installer. If you need acc
 
 :::
 
-Principals support equality, ordering, and hashing, so you can efficiently store principals in containers for functions such as maintaining an allow or deny list. More operations on principals are available in the [principal](./base/Principal.md) base library.
+Principals support equality, ordering, and hashing, so you can efficiently store principals in containers for functions such as maintaining an allow or deny list. More operations on principals are available in the [principal](../base/Principal.md) base library.

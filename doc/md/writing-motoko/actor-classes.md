@@ -69,7 +69,7 @@ Clients of actor class `Map` are now free to determine the maximum number of buc
 
 :::note
 
-On ICP, calls to a class constructor must be provisioned with cycles to pay for the creation of a principal. See [ExperimentalCycles](../base/ExperimentalCycles.md) for instructions on how to add cycles to a call using the imperative `ExperimentalCycles.add(cycles)` function.
+On ICP, calls to a class constructor must be provisioned with cycles to pay for the creation of a principal. See [ExperimentalCycles](.../base/ExperimentalCycles.md) for instructions on how to add cycles to a call using the imperative `ExperimentalCycles.add(cycles)` function.
 
 :::
 
@@ -82,5 +82,5 @@ To provide further control over actor class installation, Motoko endows each imp
 Using this syntax, it's possible to specify initial canister settings (such as an array of controllers), manually install, upgrade and reinstall canisters, exposing all of the
 lower-level facilities of the Internet Computer.
 
-See [actor class management](language-manual.md#actor-class-management) for more details.
+See [actor class management](/docs/current/motoko/reference/language-manual#actor-class-management) for more details.
 

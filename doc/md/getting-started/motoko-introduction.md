@@ -115,13 +115,6 @@ Get started with Motoko by [setting up your developer environment](dev-env.md) a
 
 ## Sample apps
 
----
-keywords: [beginner, motoko, samples, sample dapps]
----
-
-import { MarkdownChipRow } from "/src/components/Chip/MarkdownChipRow";
-
-# Motoko sample code and applications
 
 For projects that use the Motoko programming language, see [Motoko sample projects](https://github.com/dfinity/examples/tree/master/motoko).
 

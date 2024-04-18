@@ -13,7 +13,7 @@ In Motoko programs deployed on ICP, each actor represents a canister and has an 
 
 Callees can accept all, some, or none of the available cycles up to limit determined by their actor’s current balance. Any remaining cycles are refunded to the caller. If a call traps, all its accompanying cycles are automatically refunded to the caller without loss.
 
-In future, we may see Motoko adopt dedicated syntax and types to support safer programming with cycles. For now, we provide a temporary way to manage cycles through a low-level imperative API provided by the [ExperimentalCycles](./base/ExperimentalCycles.md) library in package `base`.
+In future, we may see Motoko adopt dedicated syntax and types to support safer programming with cycles. For now, we provide a temporary way to manage cycles through a low-level imperative API provided by the [ExperimentalCycles](../base/ExperimentalCycles.md) library in package `base`.
 
 :::note
 
@@ -77,7 +77,7 @@ Note that the owner of the `PiggyBank` could supply a callback that rewards a be
 
 Here’s how an owner, `Alice`, might use an instance of `PiggyBank`:
 
-``` motoko include=PiggyBank file=./examples/Alice.mo
+``` motoko include=PiggyBank file=../examples/Alice.mo
 ```
 
 `Alice` imports the `PiggyBank` actor class as a library so she can create a new `PiggyBank` actor on demand.

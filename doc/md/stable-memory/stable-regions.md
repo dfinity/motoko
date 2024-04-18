@@ -20,7 +20,7 @@ Additionally, some stable variables use a representation that is not itself `sta
 
 ## The `Region` library
 
-To avoid these upgrade hazards, actors can elect to use the [ExperimentalStableMemory](stablememory.md) or [`Region`](../base/Region.md) libraries in package `base`. The `Region` library allows the programmer to incrementally allocate pages of 64-bit stable memory and use those pages to incrementally read and write data in a user-defined binary format.
+To avoid these upgrade hazards, actors can elect to use the [ExperimentalStableMemory](stablememory.md) or [`Region`](.../base/Region.md) libraries in package `base`. The `Region` library allows the programmer to incrementally allocate pages of 64-bit stable memory and use those pages to incrementally read and write data in a user-defined binary format.
 
 Several pages may be allocated at once, with each page containing 64KiB. Allocation may fail due to resource limits imposed by ICP. Pages are zero-initialized.
 
