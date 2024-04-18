@@ -1,3 +1,7 @@
+---
+sidebar_position: 2
+---
+
 # Basic concepts and terms
 
 ## Overview

@@ -1,6 +1,7 @@
 ---
-keywords: [beginner, motoko, tutorial, quickstart]
+sidebar_position: 4
 ---
+
 
 # Motoko quickstart
 

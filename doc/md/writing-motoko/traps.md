@@ -1,4 +1,8 @@
-# Traps and commit points
+---
+sidebar_position: 26
+---
+
+# Traps
 
 ## Overview
 

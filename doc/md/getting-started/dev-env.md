@@ -1,6 +1,7 @@
 ---
-keywords: [beginner, motoko, developer environment, dev env]
+sidebar_position: 3
 ---
+
 
 # Developer environment
 

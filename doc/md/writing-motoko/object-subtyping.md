@@ -1,4 +1,8 @@
-## Object subtyping
+---
+sidebar_position: 18
+---
+
+# Object subtyping
 
 ## Overview
 

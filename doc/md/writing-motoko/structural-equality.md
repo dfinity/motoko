@@ -1,3 +1,7 @@
+---
+sidebar_position: 24
+---
+
 # Structural equality
 
 ## Overview

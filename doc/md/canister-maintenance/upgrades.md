@@ -1,3 +1,7 @@
+---
+sidebar_position: 3
+---
+
 # Stable variables and upgrade methods
 
 ## Overview
