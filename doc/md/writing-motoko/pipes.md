@@ -40,5 +40,5 @@ let x = _;
 Internally, the compiler uses the reserved identifier `_` as the name for the placeholder called `p` above, so this `let` is just referencing an undefined variable.
 
 
-See [the language manual page on pipes](language-manual.md#pipe-operators-and-placeholder-expressions) for more details.
+See [the language manual page on pipes](/docs/current/motoko/reference/language-manual#pipe-operators-and-placeholder-expressions) for more details.
 

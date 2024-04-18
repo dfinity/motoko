@@ -601,26 +601,26 @@ The category of a type determines the operators (unary, binary, relational and i
 
 | Identifier                         | Category | Description                                                            |
 | ---------------------------------- | -------- | ---------------------------------------------------------------------- |
-| [`Bool`](./base/Bool.md)           | L        | Boolean values `true` and `false` and logical operators                |
-| [`Char`](./base/Char.md)           | O        | Unicode characters                                                     |
-| [`Text`](./base/Text.md)           | T, O     | Unicode strings of characters with concatenation `_ # _` and iteration |
-| [`Float`](./base/Float.md)         | A, O     | 64-bit floating point values                                           |
-| [`Int`](./base/Int.md)             | A, O     | Signed integer values with arithmetic (unbounded)                      |
-| [`Int8`](./base/Int8.md)           | A, O     | Signed 8-bit integer values with checked arithmetic                    |
-| [`Int16`](./base/Int16.md)         | A, O     | Signed 16-bit integer values with checked arithmetic                   |
-| [`Int32`](./base/Int32.md)         | A, O     | Signed 32-bit integer values with checked arithmetic                   |
-| [`Int64`](./base/Int64.md)         | A, O     | Signed 64-bit integer values with checked arithmetic                   |
-| [`Nat`](./base/Nat.md)             | A, O     | Non-negative integer values with arithmetic (unbounded)                |
-| [`Nat8`](./base/Nat8.md)           | A, O     | Non-negative 8-bit integer values with checked arithmetic              |
-| [`Nat16`](./base/Nat16.md)         | A, O     | Non-negative 16-bit integer values with checked arithmetic             |
-| [`Nat32`](./base/Nat32.md)         | A, O     | Non-negative 32-bit integer values with checked arithmetic             |
-| [`Nat64`](./base/Nat64.md)         | A, O     | Non-negative 64-bit integer values with checked arithmetic             |
-| [`Blob`](./base/Blob.md)           | O        | Binary blobs with iterators                                            |
-| [`Principal`](./base/Principal.md) | O        | Principals                                                             |
-| [`Error`](./base/Error.md)         |          | (Opaque) error values                                                  |
-| [`Region`](./base/Region.md)       |          | (Opaque) stable memory region objects                                  |
+| [`Bool`](../base/Bool.md)           | L        | Boolean values `true` and `false` and logical operators                |
+| [`Char`](../base/Char.md)           | O        | Unicode characters                                                     |
+| [`Text`](../base/Text.md)           | T, O     | Unicode strings of characters with concatenation `_ # _` and iteration |
+| [`Float`](../base/Float.md)         | A, O     | 64-bit floating point values                                           |
+| [`Int`](../base/Int.md)             | A, O     | Signed integer values with arithmetic (unbounded)                      |
+| [`Int8`](../base/Int8.md)           | A, O     | Signed 8-bit integer values with checked arithmetic                    |
+| [`Int16`](../base/Int16.md)         | A, O     | Signed 16-bit integer values with checked arithmetic                   |
+| [`Int32`](../base/Int32.md)         | A, O     | Signed 32-bit integer values with checked arithmetic                   |
+| [`Int64`](../base/Int64.md)         | A, O     | Signed 64-bit integer values with checked arithmetic                   |
+| [`Nat`](../base/Nat.md)             | A, O     | Non-negative integer values with arithmetic (unbounded)                |
+| [`Nat8`](../base/Nat8.md)           | A, O     | Non-negative 8-bit integer values with checked arithmetic              |
+| [`Nat16`](../base/Nat16.md)         | A, O     | Non-negative 16-bit integer values with checked arithmetic             |
+| [`Nat32`](../base/Nat32.md)         | A, O     | Non-negative 32-bit integer values with checked arithmetic             |
+| [`Nat64`](../base/Nat64.md)         | A, O     | Non-negative 64-bit integer values with checked arithmetic             |
+| [`Blob`](../base/Blob.md)           | O        | Binary blobs with iterators                                            |
+| [`Principal`](../base/Principal.md) | O        | Principals                                                             |
+| [`Error`](../base/Error.md)         |          | (Opaque) error values                                                  |
+| [`Region`](../base/Region.md)       |          | (Opaque) stable memory region objects                                  |
 
-Although many of these types have linguistic support for literals and operators, each primitive type also has an eponymous base library providing related [functions and values](./base-intro.md). For example, the [`Text`](./base/Text.md) library provides common functions on `Text` values.
+Although many of these types have linguistic support for literals and operators, each primitive type also has an eponymous base library providing related [functions and values](../base-intro.md). For example, the [`Text`](../base/Text.md) library provides common functions on `Text` values.
 
 ### Type `Bool`
 
@@ -772,7 +772,7 @@ The type `Region` represents opaque stable memory regions. Region objects are dy
 
 The region type is stable but not shared and its objects, which are stateful, may be stored in stable variables and data structures.
 
-Objects of type `Region` are created and updated using the functions provided by base library `Region`. See [stable regions](../stable-regions.md) and library [Region](../base/Region.md) for more information.
+Objects of type `Region` are created and updated using the functions provided by base library `Region`. See [stable regions](../stable-regions.md) and library [Region](.../base/Region.md) for more information.
 
 ### Constructed types
 
