@@ -25,7 +25,7 @@ Learn more about [developer containers](/docs/current/developer-docs/developer-t
 
 ## Motoko playground
 
-Motoko playground is a browser-based developer environment that allows for temporary deployment and testing of canister smart contracts. Motoko playground can also be run locally, or it can be utilized through the `dfx deploy --playground` command via the CLI.
+[Motoko playground](https://play.motoko.org/) is a browser-based developer environment that allows for temporary deployment and testing of canister smart contracts. Motoko playground can also be utilized through the `dfx deploy --playground` command via the CLI.
 
 Canisters deployed to the Motoko playground use borrowed resources from a canister pool and are limited to a deployment length of 20 minutes. Therefore, the playground is not recommended for long-term development.
 
