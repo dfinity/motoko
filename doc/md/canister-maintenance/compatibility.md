@@ -74,7 +74,7 @@ An upgrade from `v2` to `v3`'s stable types requires consuming an `Int` as a `Na
 
 ## Dual interface evolution
 
-An upgrade is safe provided that the Candid interface evolves to a subtype and the stable interface evolves to a compatible one, such as a variable to supertype or a new type.
+An upgrade is safe provided that the Candid interface evolves to a subtype and the stable interface evolves to a compatible one: a stable variable must either be newly declared, or re-declared at a super type of its old type.
 
 Consider the following four versions of the counter example:
 
