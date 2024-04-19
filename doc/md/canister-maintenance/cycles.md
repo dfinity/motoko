@@ -32,7 +32,7 @@ func balance() : (amount : Nat) // Returns the actor’s current balance of cycl
 
 func available() : (amount : Nat) // Returns the currently available `amount` of cycles. This is the amount received from the current caller, minus the cumulative amount `accept`ed so far by this call. On exit from the current shared function or `async` expression via `return` or `throw` any remaining available amount is automatically refunded to the caller.
 
-func accept(amount : Nat) : (accepted : Nat) // Transfers `amount` from `available()` to `balance()`. It returns the amount actually transferred, which may be less than requested, for example, if less is available, or if canister balance limits are reached.
+func accept<system>(amount : Nat) : (accepted : Nat) // Transfers `amount` from `available()` to `balance()`. It returns the amount actually transferred, which may be less than requested, for example, if less is available, or if canister balance limits are reached. Requires `system` capability.
 
 func add(amount : Nat) : () // Indicates the additional amount of cycles to be transferred in the next remote call, i.e. evaluation of a shared function call or `async` expression. Upon the call, but not before, the total amount of units `add`ed since the last call is deducted from `balance()`. If this total exceeds `balance()`, the caller traps, aborting the call.
 
