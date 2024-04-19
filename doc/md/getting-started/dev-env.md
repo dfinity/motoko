@@ -13,7 +13,12 @@ Developer environments come in several types and formats, making developing flex
 
 ## Cloud environments
 
-Cloud developer environments, such as Gitpod or GitHub Codespaces, are browser-based developer environments that can be configured with the necessary tools to develop Motoko code.
+[Gitpod](https://www.gitpod.io/) and [GitHub Codespaces](https://github.com/features/codespaces) are browser-based development environments that can be used to build, test, and run Motoko smart contracts. 
+
+Here are some starter projects for online Motoko canister development:
+
+* [ICP Hello World Motoko](https://github.com/dfinity/icp-hello-world-motoko#readme)
+* [Vite + React + Motoko](https://github.com/rvanasa/vite-react-motoko#readme)
 
 Learn more about [Gitpod](/docs/current/developer-docs/developer-tools/ide/gitpod) and [GitHub Codespaces](/docs/current/developer-docs/developer-tools/ide/codespaces) for Motoko development.
 
