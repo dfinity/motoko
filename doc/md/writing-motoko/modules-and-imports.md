@@ -23,7 +23,7 @@ Debug.print("hello world");
 
 This example illustrates how to import Motoko code—indicated by using the `mo:` prefix to identify the module as a Motoko module. The declaration does not include the `.mo` file type extension. Then, it uses the `base/` base library path and the module name `Debug`.
 
-You can also selectively import a subset of symbols from a module by resorting to the object pattern syntax:
+You can also selectively import a subset of named values from a module by using the object pattern syntax:
 
 ``` motoko
 import { map; find; foldLeft = fold } = "mo:base/Array";
