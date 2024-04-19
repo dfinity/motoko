@@ -12,7 +12,7 @@ Orthogonal persistence allows a canister to save and restore data to dedicated *
 
 Motoko provides high-level support for preserving state that leverages stable memory. This feature, called **stable storage**, is designed to accommodate changes to both the application data and the Motoko compiler used to produce the application code.
 
-Utilizing stable storage depends the developer anticipating and indicating the data to retain after an upgrade. Depending on the application, the data you decide to persist might be some, all, or none of a given actor’s state.
+Utilizing stable storage depends on the developer anticipating and indicating the data to retain after an upgrade. Depending on the application, the data you decide to persist might be some, all, or none of a given actor’s state.
 
 ## Declaring stable variables
 
