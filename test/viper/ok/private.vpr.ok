@@ -20,5 +20,6 @@ method reward($Self: Ref)
     ensures $Perm($Self)
     { 
       ($Self).count := (($Self).count + 1)
-      assert (($Self).count == 1) 
+      assert (($Self).count == 1)
+      label $Ret 
     }

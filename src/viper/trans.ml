@@ -267,13 +267,17 @@ and dec_field' ctxt d =
       fun ctxt' ->
         let open Either in
         let self_id = !!! (Source.no_region) "$Self" in
-        let ctxt'' = { ctxt' with self = Some self_id.it }
+        let method_args = args p in
+        let ctxt'' = { ctxt'
+          with self = Some self_id.it;
+               ids = List.fold_left (fun env (id, _) -> Env.add id.it Local env) ctxt.ids method_args }
         in (* TODO: add args (and rets?) *)
         let stmts = stmt ctxt'' e in
         let _, stmts = extract_concurrency stmts in
         let pres, stmts' = List.partition_map (function { it = PreconditionS exp; _ } -> Left exp | s -> Right s) (snd stmts.it) in
         let posts, stmts' = List.partition_map (function { it = PostconditionS exp; _ } -> Left exp | s -> Right s) stmts' in
-        (MethodI(id f, (self_id, !!! Source.no_region RefT)::args p, rets t_opt, pres, posts, Some { stmts with it = fst stmts.it, stmts' } ),
+        let stmts'' = stmts' @ [!!! Source.no_region (LabelS(!!! (Source.no_region) "$Ret"))] in
+        (MethodI(id f, (self_id, !!! Source.no_region RefT)::method_args, rets t_opt, pres, posts, Some { stmts with it = fst stmts.it, stmts'' } ),
         PrivateFunction f.it)
   | M.(ExpD { it = AssertE (Invariant, e); at; _ }) ->
       ctxt,
@@ -318,12 +322,12 @@ and dec ctxt d =
     { ctxt with ids = Env.add x.it Local ctxt.ids },
     fun ctxt' ->
       ([ !!(id x, tr_typ e.note.M.note_typ) ],
-       [ !!(VarAssignS (id x, exp ctxt' e)) ])
+       [ !!(assign_stmt ctxt' (id x) e) ])
   | M.(LetD ({it=VarP x;_}, e, None)) ->
      { ctxt with ids = Env.add x.it Local ctxt.ids },
      fun ctxt' ->
        ([ !!(id x, tr_typ e.note.M.note_typ) ],
-        [ !!(VarAssignS (id x, exp ctxt' e)) ])
+        [ !!(assign_stmt ctxt' (id x) e) ])
   | M.(ExpD e) -> (* TODO: restrict to e of unit type? *)
      (ctxt,
       fun ctxt' ->
@@ -409,9 +413,8 @@ and stmt ctxt (s : M.exp) : seqn =
   | M.(AssignE({it = VarE x; _}, e2)) ->
      begin match Env.find x.it ctxt.ids with
      | Local ->
-       let loc = !!! (x.at) (x.it) in
-       !!([],
-          [ !!(VarAssignS(loc, exp ctxt e2)) ])
+        let loc = !!! (x.at) (x.it) in
+        !!([], [!!(assign_stmt ctxt loc e2)])
      | Field ->
        let fld = (self ctxt x.at, id x) in
        !!([],
@@ -434,18 +437,31 @@ and stmt ctxt (s : M.exp) : seqn =
   | M.AssertE (M.Runtime, e) ->
     !!([],
        [ !!(AssumeS (exp ctxt e)) ])
-  | M.(CallE({it = VarE m; _}, inst, {it = TupE args; _})) ->
+  | M.(CallE({it = VarE m; _}, inst, args)) ->
     !!([],
        [ !!(MethodCallS ([], id m,
        let self_var = self ctxt m.at in
-       self_var :: List.map (fun arg -> exp ctxt arg) args))])
+       self_var :: call_args ctxt args))])
   | M.RetE e ->
      !!([],
-        [ !!(VarAssignS(!!! (Source.no_region) "$Res", exp ctxt e));
+        [ !!(assign_stmt ctxt (!!! (Source.no_region) "$Res") e);
           !!(GotoS(!!! (Source.no_region) "$Ret"))
         ])
   | _ ->
      unsupported s.at (Arrange.exp s)
+
+and assign_stmt ctxt x e =
+  match e with
+  | M.({it = CallE({it = VarE m; _}, inst, args); _}) ->
+    MethodCallS ([x], id m,
+      let self_var = self ctxt m.at in
+      self_var :: call_args ctxt args)
+  | _ -> VarAssignS(x, exp ctxt e)
+
+and call_args ctxt e =
+  match e with
+  | {it = M.TupE args; _} -> List.map (fun arg -> exp ctxt arg) args
+  | arg -> [exp ctxt arg]
 
 and exp ctxt e =
   let open Mo_values.Operator in
