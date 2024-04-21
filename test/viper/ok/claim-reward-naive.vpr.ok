@@ -19,7 +19,8 @@ method reward($Self: Ref)
     ensures $Perm($Self)
     ensures (($Self).count == (old(($Self).count) + 1))
     { 
-      ($Self).count := (($Self).count + 1) 
+      ($Self).count := (($Self).count + 1)
+      label $Ret 
     }
 method claim($Self: Ref)
     

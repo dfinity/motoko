@@ -188,29 +188,18 @@ and pp_stmt' ppf = function
       max
       pp_exp exp
   | MethodCallS (rs, m, args) ->
-    let () = match rs with
-    | [] -> ()
-    | r :: rs ->
-      let () = fprintf ppf "@[%s@]" r.it in
-      List.iter (fun r ->
-        fprintf ppf ", @[%s@]" r.it
-      ) rs
-    in
     let () = if rs != [] then
-      fprintf ppf " := "
+      fprintf ppf "@[%a@] := " (pp_print_list ~pp_sep:comma pp_res_var) rs
     in
     let () = fprintf ppf "@[%s(@]" m.it in
-    let () = match args with
-    | [] -> ()
-    | arg :: args ->
-      let () = fprintf ppf "@[%a@]" pp_exp arg in
-      fprintf ppf "@[%a@]" (pp_print_list ~pp_sep:comma pp_exp) args
-    in
+    let () = fprintf ppf "@[%a@]" (pp_print_list ~pp_sep:comma pp_exp) args in
     fprintf ppf ")"
   | LabelS lbl ->
       fprintf ppf "@[label %s@]" lbl.it
   | GotoS lbl ->
       fprintf ppf "@[goto %s@]" lbl.it
+
+and pp_res_var ppf r = fprintf ppf "%s" r.it
 
 and pp_fldacc ppf fldacc =
   match fldacc with
