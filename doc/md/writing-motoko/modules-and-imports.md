@@ -6,22 +6,22 @@ sidebar_position: 16
 
 ## Overview
 
-The design of Motoko strives to minimize built-in types and operations. Instead of built-in types, Motoko provides a base library of modules to handle many kinds of common operations and make the language feel complete. This base library is still evolving with modules that support core features, and the base library APIs are subject to change over time to varying degrees. You should note, in particular, that the size and number of modules and functions included in the base library is likely to increase dramatically. Updates to the base library modules might introduce breaking changes that require you to update your programs to remain compatible. Breaking changes are communicated through the [Motoko migration guides](../migration-guides/overview.md).
+The design of Motoko strives to minimize built-in types and operations. Instead of built-in types, Motoko provides a base package of modules to handle many kinds of common operations and make the language feel complete. This base package is still evolving with modules that support core features, and the base package APIs are subject to change over time to varying degrees. You should note, in particular, that the size and number of modules and functions included in the base package is likely to increase dramatically. Updates to the base package modules might introduce breaking changes that require you to update your programs to remain compatible. Breaking changes are communicated through the [Motoko migration guides](../migration-guides/overview.md).
 
 This section provides examples of different scenarios for using the `module` and `import` keywords.
 
-## Importing from the base library
+## Importing from the base package
 
-You can find source code and documentation for Motoko base modules in the [motoko-base](../base/index) open source repository. There are instructions in the repository for generating a local copy of the current documentation for the Motoko base library.
+You can find source code and documentation for Motoko base modules in the [motoko-base](../base/index) open source repository. There are instructions in the repository for generating a local copy of the current documentation for the Motoko base package.
 
-To import from the base library, use the `import` keyword followed by a local module name and a URL where the `import` declaration can find the module. For example:
+To import from the base package, use the `import` keyword followed by a local module name and a URL where the `import` declaration can find the module. For example:
 
 ``` motoko
 import Debug "mo:base/Debug";
 Debug.print("hello world");
 ```
 
-This example illustrates how to import Motoko code—indicated by using the `mo:` prefix to identify the module as a Motoko module. The declaration does not include the `.mo` file type extension. Then, it uses the `base/` base library path and the module name `Debug`.
+This example illustrates how to import Motoko code—indicated by using the `mo:` prefix to identify the module as a Motoko module. The declaration does not include the `.mo` file type extension. Then, it uses the `base/` base package path and the module name `Debug`.
 
 You can also selectively import a subset of named values from a module by using the object pattern syntax:
 
@@ -167,7 +167,7 @@ The type of an imported canister function might differ from the type of the orig
 
 Although the most common convention is to identify imported modules by the module name as illustrated in the examples above, there’s no requirement for you to do so. For example, you might want to use different names to avoid naming conflicts or to simplify the naming scheme.
 
-The following example illustrates different names you might use when importing the `List` base library module, avoiding a clash with another `List` library from a fictional `collections` package:
+The following example illustrates different names you might use when importing the `List` base package module, avoiding a clash with another `List` library from a fictional `collections` package:
 
 ``` motoko no-repl
 import List "mo:base/List:";
