@@ -27,18 +27,15 @@ The `ExperimentalCycles` library provides imperative operations for observing an
 
 The library provides the following operations:
 
-``` motoko no-repl
-func balance() : (amount : Nat) // Returns the actor’s current balance of cycles as `amount`. Function `balance()` is stateful and may return different values after calls to `accept(n)`, calling a function after `add`ing cycles, or resuming from `await` which reflects a refund.
+- `func balance() : (amount : Nat)`: Returns the actor’s current balance of cycles as `amount`. Function `balance()` is stateful and may return different values after calls to `accept(n)`, calling a function after `add`ing cycles, or resuming from `await` which reflects a refund.
 
-func available() : (amount : Nat) // Returns the currently available `amount` of cycles. This is the amount received from the current caller, minus the cumulative amount `accept`ed so far by this call. On exit from the current shared function or `async` expression via `return` or `throw` any remaining available amount is automatically refunded to the caller.
+- `func available() : (amount : Nat)`: Returns the currently available `amount` of cycles. This is the amount received from the current caller, minus the cumulative amount `accept`ed so far by this call. On exit from the current shared function or `async` expression via `return` or `throw` any remaining available amount is automatically refunded to the caller.
 
-func accept<system>(amount : Nat) : (accepted : Nat) // Transfers `amount` from `available()` to `balance()`. It returns the amount actually transferred, which may be less than requested, for example, if less is available, or if canister balance limits are reached. Requires `system` capability.
+- `func accept<system>(amount : Nat) : (accepted : Nat)`: Transfers `amount` from `available()` to `balance()`. It returns the amount actually transferred, which may be less than requested, for example, if less is available, or if canister balance limits are reached. Requires `system` capability.
 
-func add<system>(amount : Nat) : () // Indicates the additional amount of cycles to be transferred in the next remote call, i.e. evaluation of a shared function call or `async` expression. Upon the call, but not before, the total amount of units `add`ed since the last call is deducted from `balance()`. If this total exceeds `balance()`, the caller traps, aborting the call. Requires `system` capability.
+- `func add<system>(amount : Nat) : ()`: Indicates the additional amount of cycles to be transferred in the next remote call, i.e. evaluation of a shared function call or `async` expression. Upon the call, but not before, the total amount of units `add`ed since the last call is deducted from `balance()`. If this total exceeds `balance()`, the caller traps, aborting the call. Requires `system` capability.
 
-func refunded() : (amount : Nat) // Reports the `amount` of cycles refunded in the last `await` of the current context, or zero if no await has occurred yet. Calling `refunded()` is solely informational and does not affect `balance()`. Instead, refunds are automatically added to the current balance, whether or not `refunded` is used to observe them.
-```
-
+- `func refunded() : (amount : Nat)`: Reports the `amount` of cycles refunded in the last `await` of the current context, or zero if no await has occurred yet. Calling `refunded()` is solely informational and does not affect `balance()`. Instead, refunds are automatically added to the current balance, whether or not `refunded` is used to observe them.
 
 :::danger
 
