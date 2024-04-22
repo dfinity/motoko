@@ -1,162 +1,120 @@
+---
+sidebar_position: 4
+---
+
 # Verifying upgrade compatibility
 
-Goal: we need to verify that an upgrade can proceed without:
+## Overview
 
--   breaking clients (due to a Candid interface change)
+When upgrading a canister, it is important to verify that an upgrade can proceed without:
 
--   discarding Motoko stable state (due to a change in stable declarations)
+-   Breaking clients due to a Candid interface change.
 
-With Motoko, we promised to check these properties statically (before attempting the upgrade).
+-   Discarding the Motoko stable state due to a change in stable declarations.
 
-Let’s deliver on that promise.
+Motoko checks these properties statically before attempting the upgrade.
 
-## An unstable counter
+## Upgrade example
 
-The following is a simple example of how to declare a stateful counter.
+The following is a simple example of how to declare a stateful counter:
 
-``` motoko no-repl file=./examples/count-v0.mo
+``` motoko no-repl file=../examples/count-v0.mo
 ```
 
-Unfortunately, when we upgrade this counter (say with itself), its state is lost.
+In this example, when the counter is upgraded, its state is lost.
 
-|         |       |         |             |
-|---------|-------|---------|-------------|
-| version | state | success | call        |
-| v0      | 0     | ✓       | inc()       |
-| v0      | 1     | ✓       | inc()       |
-| v0      | 2     | ✓       | upgrade(v0) |
-| v0      | *0*   | *✗*     | inc()       |
-| v0      | 1     |         |             |
+To fix this, you can declare a stable variable that is retained across upgrades:
 
-## A stable counter
 
-In Motoko, we can declare variables to be stable (across upgrades).
-
-``` motoko no-repl file=./examples/count-v1.mo
+``` motoko no-repl file=../examples/count-v1.mo
 ```
 
-Because it’s `stable`, this counter’s `state` is *retained* across upgrades.
+If a variable is not marked `stable`, `state` would restart from `0` on upgrade.
 
-(If not marked `stable`, `state` would restart from `0` on upgrade).
 
-|         |       |         |             |
-|---------|-------|---------|-------------|
-| version | state | success | call        |
-| v1      | 0     | ✓       | inc()       |
-| v1      | 1     | ✓       | inc()       |
-| v1      | 2     | ✓       | upgrade(v1) |
-| v1      | 2     | *✓*     | inc()       |
-| v1      | 3     |         |             |
+## Evolving the Candid interface
 
-## Evolving the Candid interface:
+In this example, old clients are still satisfied, while new ones get extra features such as the `read` query in this example.
 
-Let’s extend the API - old clients still satisfied, new ones get extra features (the `read` query).
-
-``` motoko no-repl file=./examples/count-v2.mo
+``` motoko no-repl file=../examples/count-v2.mo
 ```
-
-|         |       |         |             |
-|---------|-------|---------|-------------|
-| version | state | success | call        |
-| v1      | 3     | ✓       | inc()       |
-| v1      | 4     | ✓       | upgrade(v2) |
-| v2      | 4     | *✓*     | inc()       |
-| v2      | 5     | ✓       | read()      |
 
 ## Changing the stable interface
 
-Observation: the counter is always positive - let’s refactor `Int` to `Nat`!
+Let's take a look at an example where the counter is refactored from using `Int` to `Nat`.
 
-``` motoko no-repl file=./examples/count-v3.mo
+``` motoko no-repl file=../examples/count-v3.mo
 ```
 
-|         |       |         |             |
-|---------|-------|---------|-------------|
-| version | state | success | call        |
-| v2      | 5     | ✓       | inc()       |
-| v2      | 6     | ✓       | upgrade(v3) |
-| v3      | *0*   | *✗*     | inc()       |
-| v3      | 1     | ✓       | read()      |
+Now, the code has been upgraded, but the counter value is back to `0`. The state was lost in an upgrade.
 
-BOOM: code upgraded, but counter is back to `0`.
-
-*The unthinkable has happened*: state was lost in an upgrade.
-
-## What gives?
-
-The Candid interface evolved safely …​ but the stable types did not.
+This is because the Candid interface evolved safely​ but the stable types did not.
 
 An upgrade must be able to:
 
--   consume any stable variable value from its predecessor, or
+-   Consume any stable variable value from its predecessor, or
 
--   run the initializer for a new stable variable.
+-   Run the initializer for a new stable variable.
 
-Since `Int </: Nat`, the upgrade logic discards the saved `Int` (what if it was `-1`?) and re-runs the initializer instead.
-
-What’s worse, the upgrade silently "succeeded", resetting the counter to `0`.
+Since `Int </: Nat`, the upgrade logic discards the saved `Int` and re-runs the initializer instead. The upgrade silently "succeeded", resetting the counter to `0`.
 
 ## Stable type signatures
 
-A stable type signature looks like the "insides" of a Motoko actor type.
+A stable type signature looks similar to the content within a Motoko actor type.
 
 For example, `v2`'s stable types:
 
-``` motoko no-repl file=./examples/count-v2.most
+``` motoko no-repl file=../examples/count-v2.most
 ```
 
-An upgrade from `v2` to `v3`'s stable types:
+An upgrade from `v2` to `v3`'s stable types requires consuming an `Int` as a `Nat`, which is a **type error**.
 
-``` motoko no-repl file=./examples/count-v3.most
+``` motoko no-repl file=../examples/count-v3.most
 ```
-
-requires consuming an `Int` as a `Nat`: a ***type error***.
 
 ## Dual interface evolution
 
-An upgrade is safe provided:
+An upgrade is safe provided that the Candid interface evolves to a subtype and the stable interface evolves to a compatible one: a stable variable must either be newly declared, or re-declared at a super type of its old type.
 
--   the candid interface evolves to a subtype; and
+Consider the following four versions of the counter example:
 
--   the stable interface evolves to a compatible one (variable to supertype or new)
+Version `v0` with Candid interface `v0.did` and stable type interface `v0.most`:
 
-Given version `v0` with candid interface `v0.did` and stable type interface `v0.most`:
-
-``` candid file=./examples/count-v0.did
+``` candid file=../examples/count-v0.did
 ```
 
-``` motoko no-repl file=./examples/count-v0.most
+``` motoko no-repl file=../examples/count-v0.most
 ```
 
-And version `v1` with candid interface `v1.did` and stable type interface `v1.most`,
+Version `v1` with Candid interface `v1.did` and stable type interface `v1.most`,
 
-``` candid file=./examples/count-v1.did
+``` candid file=../examples/count-v1.did
 ```
 
-``` motoko no-repl file=./examples/count-v1.most
+``` motoko no-repl file=../examples/count-v1.most
 ```
 
-And version `v2` with candid interface `v2.did` and stable type interface `v2.most`,
+Version `v2` with Candid interface `v2.did` and stable type interface `v2.most`,
 
-``` candid file=./examples/count-v2.did
+``` candid file=../examples/count-v2.did
 ```
 
-``` motoko no-repl file=./examples/count-v2.most
+``` motoko no-repl file=../examples/count-v2.most
 ```
 
-And, finally, version `v3` with candid interface `v3.did` and stable type interface `v3.most`:
+Version `v3` with Candid interface `v3.did` and stable type interface `v3.most`:
 
-``` candid file=./examples/count-v3.did
+``` candid file=../examples/count-v3.did
 ```
 
-``` motoko no-repl file=./examples/count-v3.most
+``` motoko no-repl file=../examples/count-v3.most
 ```
 
 The following table summarizes the (in)compatibilities between them:
 
 |         |                  |                       |
 |---------|------------------|-----------------------|
-| version | candid interface | stable type interface |
+| Version | Candid interface | Stable type interface |
 | `v0`    | `v0.did`         | `v0.most`             |
 |         | :> ✓             | \<\<: ✓               |
 | `v1`    | `v1.did`         | `v1.most`             |
@@ -165,20 +123,23 @@ The following table summarizes the (in)compatibilities between them:
 |         | :> ✓             | \<\<: *✗*             |
 | `v3`    | `v3.did`         | `v3.most`             |
 
-## Tooling
+## Upgrade tooling
 
-Motoko compiler (`moc`) now supports:
+The Motoko compiler (`moc`) supports:
 
--   `moc --stable-types …​` emits stable types to a `.most` file
+-   `moc --stable-types …​`: Emits stable types to a `.most` file.
 
--   `moc --stable-compatible <pre> <post>` checks two `.most` files for upgrade compatibility
+-   `moc --stable-compatible <pre> <post>`: Checks two `.most` files for upgrade compatibility.
 
-To upgrade from `cur.wasm` to `nxt.wasm` we need check both Candid interface and stable variables are "compatible"
+To upgrade from `cur.wasm` to `nxt.wasm` we need check that both the Candid interface and stable variables are compatible.
+
 ```
 didc check nxt.did cur.did  // nxt <: cur
 moc --stable-compatible cur.most nxt.most  // cur <<: nxt
 ```
-E.g. the upgrade from `v2` to `v3` fails this check:
+
+Using the versions above, the upgrade from `v2` to `v3` fails this check:
+
 ```
 > moc --stable-compatible v2.most v3.most
 (unknown location): Compatibility error [M0170], stable variable state of previous type
@@ -187,67 +148,13 @@ cannot be consumed at new type
   var Nat
 ```
 
-## Examples in the wild
+Upgrades from `v2.wasm` to `v3.wasm` would fail and roll-back, avoiding data loss. If Candid is revised, an upgrade would now "succeed", but with data loss. This is the difference between a fail safe and a silent failure.
 
-A common, real-world example of an incompatible upgrade can be found on the forum: [https://forum.dfinity.org/t/questions-about-data-structures-and-migrations/822/12?u=claudio/](https://forum.dfinity.org/t/questions-about-data-structures-and-migrations/822/12?u=claudio/)
+To upgrade correctly to change `state` to `Nat`, you can introduce a new stable variable, `newState`, initialized from the old one:
 
-In that example, a user was attempting to add a field to the record payload of an array, by upgrading from stable type interface:
-
-``` motoko no-repl
-type Card = {
-  title : Text
-};
-actor {
-  stable var map: [(Nat32, Card)]
-}
+``` motoko no-repl file=../examples/count-v4.mo
 ```
 
-to *incompatible* stable type interface:
-
-``` motoko no-repl
-type Card = {
-  title : Text;
-  description : Text
-};
-actor {
-  stable var map : [(Nat32, Card)]
-}
+``` motoko no-repl file=../examples/count-v4.most
 ```
 
-Adding a new record field (to magic from nothing) does not work.
-
-## Metadata Sections
-
-Motoko embeds `.did` and `.most` files as wasm *custom sections*, for use by other tools, e.g. dfx.
-
-In future, `dfx canister upgrade` will, by default:
-
-1.  query the IC for a canister’s dual interfaces,
-
-2.  check compatibility of the installed and new binary,
-
-3.  abort the upgrade when unsafe.
-
-## Why are we seeing data-loss only now?
-
-A side-effect of a revision to Candid (used for stabilizing variables):
-
--   Previously, upgrades from `v2.wasm` to `v3.wasm` would fail and roll-back (no data loss).
-
--   Candid revision meant upgrade would now "succeed", but *with* data loss.
-
-("fail safe" vs "silent failure")
-
-## The right solution
-
-What if we really do want to change `state` to `Nat`.
-
-Solution: introduce a new stable variable, `newState`, initialized from the old one:
-
-``` motoko no-repl file=./examples/count-v4.mo
-```
-
-``` motoko no-repl file=./examples/count-v4.most
-```
-
-(Or use a variant from the start…​)
