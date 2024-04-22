@@ -158,3 +158,31 @@ To upgrade correctly to change `state` to `Nat`, you can introduce a new stable 
 ``` motoko no-repl file=../examples/count-v4.most
 ```
 
+## Incompatible upgrade example 
+
+A common, real-world example of an incompatible upgrade can be found [on the forum](https://forum.dfinity.org/t/questions-about-data-structures-and-migrations/822/12?u=claudio/).
+
+In that example, a user was attempting to add a field to the record payload of an array, by upgrading from stable type interface:
+
+``` motoko no-repl
+type Card = {
+  title : Text
+};
+actor {
+  stable var map: [(Nat32, Card)]
+}
+```
+
+to *incompatible* stable type interface:
+
+``` motoko no-repl
+type Card = {
+  title : Text;
+  description : Text
+};
+actor {
+  stable var map : [(Nat32, Card)]
+}
+```
+
+Adding a new record field (to magic from nothing) does not work.
