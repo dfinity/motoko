@@ -1,8 +1,12 @@
+---
+sidebar_position: 22
+---
+
 # Sharing data and behavior
 
-Recall that in Motoko, mutable state is always private to an actor.
+## Overview
 
-However, two actors can share message data, and those messages can refer to actors, including themselves and one another. Additionally, messages can refer to individual functions, if those functions are `shared`.
+In Motoko, mutable state is always private to an actor. However, two actors can share message data, and those messages can refer to actors, including themselves and one another. Additionally, messages can refer to individual functions, if those functions are `shared`.
 
 Through these mechanisms, two actors can coordinate their behavior through asynchronous message passing.
 
@@ -16,7 +20,7 @@ To see the complete code for a working project that uses this pattern, see the [
 
 ### Subscriber actor
 
-The following `Subscriber` actor type provides a possible interface for the subscriber actor and the publisher actor to expose and to call, respectively:
+The following `Subscriber` actor type provides a possible interface for the subscriber actor to expose and the publisher actor to call:
 
 ``` motoko name=tsub
 type Subscriber = actor {
@@ -34,7 +38,7 @@ For simplicity, assume that the `notify` function accepts relevant notification 
 
 ### Publisher actor
 
-The publisher side of the code stores an array of subscribers. For simplicity, assume that each subscriber only subscribes itself once using a `subscribe` function.
+The publisher side of the code stores an array of subscribers. For simplicity, assume that each subscriber only subscribes itself once using a `subscribe` function:
 
 ``` motoko name=pub include=tsub
 import Array "mo:base/Array";
@@ -54,7 +58,7 @@ actor Publisher {
 };
 ```
 
-Later, when some unspecified external agent invokes the `publish` function, all of the subscribers receive the `notify` message, as defined in the `Subscriber` type given above.
+Later, when some unspecified external agent invokes the `publish` function, all of the subscribers receive the `notify` message as defined in the `Subscriber` type given above.
 
 ### Subscriber methods
 
@@ -62,7 +66,7 @@ In the simplest case, the subscriber actor has the following methods:
 
 -   Subscribe to notifications from the publisher using the `init` method.
 
--   Receive notification as one of the subscribed actors as specified by the `notify` function in the `Subscriber` type given above).
+-   Receive notification as one of the subscribed actors, as specified by the `notify` function in the `Subscriber` type given above.
 
 -   Permit queries to the accumulated state, which in this sample code is simply a `get` method for the number of notifications received and stored in the `count` variable.
 
@@ -83,29 +87,29 @@ actor Subscriber {
 }
 ```
 
-The actor assumes, but does not enforce, that its `init` function is only ever called once. In the `init` function, the `Subscriber` actor passes a reference to itself, of type `actor { notify : () → () };` (locally called `Subscriber` above).
+The actor assumes, but does not enforce, that its `init` function is only ever called once. In the `init` function, the `Subscriber` actor passes a reference to itself of type `actor { notify : () → () };`.
 
-If called more than once, the actor will subscribe itself multiple times, and will receive multiple (duplicate) notifications from the publisher. This fragility is the consequence of the basic publisher-subscriber design we show above. With more care, a more advanced publisher actor could check for duplicate subscriber actors and ignore them, for instance.
+If called more than once, the actor will subscribe itself multiple times and will receive multiple duplicate notifications from the publisher. This fragility is the consequence of the basic publisher-subscriber design shown above. A more advanced publisher actor could check for duplicate subscriber actors and ignore them.
 
 ## Sharing functions among actors
 
-In Motoko, a `shared` actor function can be sent in a message to another actor, and then later called by that actor, or by another actor.
+In Motoko, a `shared` actor function can be sent in a message to another actor and then later called by that actor or by another actor.
 
 The code shown above has been simplified for illustrative purposes. The full version offers additional features to the publisher-subscriber relationship, and uses shared functions to make this relationship more flexible.
 
-For instance, the notification function is *always* designated as `notify`. A more flexible design would only fix the type of `notify`, and permit the subscriber to choose any of its `shared` functions, specified in a `subscribe` message in place of (just) the actor that is subscribing.
+For instance, the notification function is always designated as `notify`. A more flexible design would only fix the type of `notify`, and permit the subscriber to choose any of its `shared` functions.
 
 See the [the full example](https://github.com/dfinity/examples/tree/master/motoko/pub-sub) for details.
 
-In particular, suppose that the subscriber wants to avoid being locked into a certain naming scheme for its interface. What really matters is that the publisher can call *some* function that the subscriber chooses.
+In particular, suppose that the subscriber wants to avoid being locked into a certain naming scheme for its interface. What really matters is that the publisher can call some function that the subscriber chooses.
 
 ### The `shared` keyword
 
-To permit this flexibility, an actor needs to share a single *function* that permits remote invocation from another actor, not merely a reference to itself.
+To permit this flexibility, an actor needs to share a single function that permits remote invocation from another actor, not merely a reference to itself.
 
-The ability to share a function requires that it be pre-designated as `shared`, and the type system enforces that these functions follow certain rules around the types of data that these functions accept, return, and over which their closures close.
+The ability to share a function requires that it be pre-designated as `shared` and the type system enforces that these functions follow certain rules around the types of data that these functions accept, return, or over which their closures close.
 
-Motoko lets you omit this keyword for *public* actor methods since, implicitly, *any public function of an actor must be \`shared\`*, whether marked explicitly or not.
+Motoko lets you omit this keyword for public actor methods since implicitly, any public function of an actor must be `shared`, whether marked explicitly or not.
 
 Using the `shared` function type, we can extend the example above to be more flexible. For example:
 
@@ -113,13 +117,13 @@ Using the `shared` function type, we can extend the example above to be more fle
 type SubscribeMessage = { callback: shared () -> (); };
 ```
 
-This type differs from the original, in that it describes *a message* record type with a single field called `callback`, and the original type first shown above describes *an actor* type with a single method called `notify`:
+This type differs from the original in that it describes a message record type with a single field called `callback`. The original type first shown above describes an actor type with a single method called `notify`:
 
 ``` motoko name=typesub
 type Subscriber = actor { notify : () -> () };
 ```
 
-Notably, the `actor` keyword means that this latter type is not an ordinary record with fields, but rather, an actor with at least one method, which *must* be called `notify`.
+Notably, the `actor` keyword means that this latter type is not an ordinary record with fields but rather an actor with at least one method, which must be called `notify`.
 
 By using the `SubscribeMessage` type instead, the `Subscriber` actor can choose another name for their `notify` method:
 
@@ -138,7 +142,7 @@ actor Subscriber {
 };
 ```
 
-Compared to the original version, the only lines that change are those that rename `notify` to `incr`, and form the new `subscribe` message payload, using the expression `{callback = incr}`.
+Compared to the original version, the only lines that change are those that rename `notify` to `incr`, and form the new `subscribe` message payload using the expression `{callback = incr}`.
 
 Likewise, we can update the publisher to have a matching interface:
 

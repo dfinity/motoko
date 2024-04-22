@@ -1,4 +1,11 @@
-# Stable Memory
+---
+sidebar_position: 2
+---
+
+
+# Stable memory
+
+## Overview
 
 The `ExperimentalStableMemory` library provides low-level access to Internet Computer stable memory.
 
@@ -12,19 +19,20 @@ The `ExperimentalStableMemory` library is experimental, subject to change and ma
 
 :::
 
-Motoko stable variables, while convenient to use, require serialization and deserialization of all stable variables on upgrade (see [Stable variables and upgrade methods](upgrades.md)). During an upgrade, the current values of stable variables are first saved to IC stable memory, then restored from stable memory after the new code is installed. Unfortunately, this mechanism does not scale to canisters that maintain *large* amounts of data in stable variables: there may not be enough cycle budget to store then restore all stable variables within an upgrade, resulting in failed upgrades.
+Motoko stable variables are not designed to maintain large amounts of data, as there may not be enough cycle budget to store then restore all stable variables within an upgrade.
 
-To avoid this upgrade hazard, actors can elect to use a lower-level `ExperimentalStableMemory` library. The library allows the programmer to incrementally allocate pages of (64-bit) IC stable memory and use those pages to incrementally read and write data in a user-defined binary format.
+## The `ExperimentalStableMemory` library
 
-The Motoko runtime system ensures there is no interference between the abstraction presented by the `ExperimentalStableMemory` library and an actor’s stable variables, even though the two abstractions ultimately use the same underlying (concrete) stable memory facilities available to all IC canisters. This runtime support means that is safe for a Motoko program to exploit both stable variables and `ExperimentalStableMemory`, within the same application.
+To avoid upgrade hazards, developers can use the [`Region`](stable-regions.md) library or the [`ExperimentalStableMemory`](.../base/ExperimentalStableMemory.md) library. The `ExperimentalStableMemory` library allows the programmer to incrementally allocate pages of 64-bit ICP stable memory and use those pages to incrementally read and write data in a user-defined binary format.
 
-## The Library
+Similar to the `Regions` library, Motoko runtime system ensures there is no interference between the abstraction presented by the `ExperimentalStableMemory` library and an actor’s stable variables, even though the two abstractions ultimately use the same underlying  stable memory facilities available to all IC canisters. This runtime support means that is safe for a Motoko program to exploit both stable variables and `ExperimentalStableMemory`, within the same application.
 
-Support for stable memory is provided by the [ExperimentalStableMemory](./base/ExperimentalStableMemory.md) library in package `base`.
+## Using `ExperimentalStableMemory`
 
 The interface to the `ExperimentalStableMemory` library consists of functions for querying and growing the currently allocated set of stable memory pages, plus matching pairs of `load`, `store` operations for most of Motoko’s fixed-size scalar types.
 
-More general `loadBlob` and `storeBlob` operations are also available for reading/writing binary blobs and other types that can be encoded as `Blob`s (e.g. `Text` values) of arbitrary sizes, using Motoko supplied or user-provided encoders and decoders.
+More general `loadBlob` and `storeBlob` operations are also available for reading and writing binary blobs and other types that can be encoded as `Blob`s of arbitrary sizes, using Motoko supplied or user-provided encoders and decoders.
+
 
 ``` motoko no-repl
 module {
@@ -70,7 +78,7 @@ To demonstrate the `ExperimentalStableMemory` library, we present a dead simple 
 
 The example illustrates the simultaneous use of stable variables and stable memory. It uses a single stable variable to keep track of the next available offset, but stores the contents of the log directly in stable memory.
 
-``` motoko no-repl file=./examples/StableLog.mo
+``` motoko no-repl file=../examples/StableLog.mo
 ```
 
 The auxiliary function `ensure(offset)` is used to grow `ExerimentalStableMemory` as necessary to accommodate more data. It computes the 64KiB page of a given offset and ensures enough pages have been allocated to guarantee that offset is within bounds.

@@ -1,6 +1,19 @@
+---
+sidebar_position: 3
+---
+
 # Motoko style guidelines
 
+## Overview
+
 To increase readability and uniformity of Motoko source code, the style guide provides suggestions for formatting Motoko sources and other basic conventions.
+
+## Motoko grammar
+
+The specification is auto-generated with a tool:
+
+``` bnf file=../examples/grammar.txt
+```
 
 ## Layout
 
@@ -39,7 +52,7 @@ To increase readability and uniformity of Motoko source code, the style guide pr
 
     Rationale: ':' is to declarations what '=' is to definitions. Moreover, the left-hand of a type annotation may generally be an arbitrary complex expression or pattern.
 
--   Put a space after a comma or semicolon (but not before).
+-   Put a space after a comma or semicolon, but not before.
 
     ``` motoko no-repl
     let tuple = (1, 2, 3);
@@ -91,7 +104,7 @@ To increase readability and uniformity of Motoko source code, the style guide pr
     await (async (0));
     ```
 
--   Do *not* put a space between a function or variant tag and its argument tuple or around a generic type parameter list.
+-   Do not put a space between a function or variant tag and its argument tuple or around a generic type parameter list.
 
     ``` motoko no-repl
     type Pair<X> = (X, X);
@@ -103,7 +116,7 @@ To increase readability and uniformity of Motoko source code, the style guide pr
     id<Nat>(5);
     ```
 
--   Put a space between a function and its argument if it is *not* a tuple or parenthesized expression (see [Parentheses](#parentheses)) or a record used as a named parameter list (see [Picking types](#picking-types)).
+-   Put a space between a function and its argument if it is not a tuple or parenthesized expression (see [parentheses](#parentheses)) or a record used as a named parameter list (see [picking types](#picking-types)).
 
     ``` motoko no-repl
     sin 0.0;
@@ -113,7 +126,7 @@ To increase readability and uniformity of Motoko source code, the style guide pr
 
 Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
--   Do *not* put a space around access operators like `.`, `?`, `!`, or index brackets.
+-   Do not put a space around access operators like `.`, `?`, `!`, or index brackets.
 
     ``` motoko no-repl
     foo(bar).baz[5]().boo;
@@ -122,7 +135,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
 ### Line breaks
 
--   Pick a fixed right margin for lines and break definitions or expressions that are longer than that (80 still is considered a good limit by many).
+-   Pick a fixed right margin for lines and break definitions or expressions. 80 still is considered a good limit by many.
 
     ``` motoko no-repl
     let sum = a + b + 2*c + d +
@@ -140,11 +153,11 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
     1.  Avoids code being hidden to the right in a window.
 
-    2.  Avoids random line breaks in side-by-side diffs (for example, as shown by GitHub or similar code review tools).
+    2.  Avoids random line breaks in side-by-side diffs. For example, as shown by GitHub or similar code review tools.
 
     3.  Allows prettier display on paper, web sites, or other media.
 
--   Break lines *after* an operator.
+-   Break lines after an operator.
 
     ``` motoko no-repl
     a + b + c +
@@ -156,7 +169,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
 -   When breaking function definitions or calls with long argument lists, put each argument on a separate line.
 
-    Also, consider using records for long parameter lists, see [Picking types](#picking-types).
+    Also, consider using records for long parameter lists, see [picking types](#picking-types).
 
     ``` motoko no-repl
     func someFunction(
@@ -230,7 +243,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
     2.  It creates wildly inconsistent indentation levels that obfuscate the structure of the code.
 
-    3.  It can produce realignment churn when changing a line, which (even when automated by editors) inflates and obfuscates diffs.
+    3.  It can produce realignment churn when changing a line, which, even when automated by editors, inflates and obfuscates diffs.
 
     4.  It completely breaks with variable-width fonts.
 
@@ -430,7 +443,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
 ### Parentheses
 
--   Motoko supports "parenless" style, meaning that parentheses are optional in most places, such as function parameter lists, or statement operands, when they enclose an expression that either is bracketed already (for example, a tuple, object, or array) or is a simple constant or identifier.
+-   Motoko supports "parenless" style, meaning that parentheses are optional in most places, such as function parameter lists, or statement operands, when they enclose an expression that either is bracketed already. For example, a tuple, object, or array, or a simple constant or identifier.
 
     ``` motoko no-repl
     type Op = Nat -> Nat;
@@ -548,7 +561,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
 ### Conventions
 
--   The name of functions returning a value should describe that value (as a noun).
+-   The name of functions returning a value should describe that value.
 
     Avoid redundant `get` prefixes.
 
@@ -558,7 +571,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
     sum(array);
     ```
 
--   The name of functions performing side effects or complex operations should describe that operation (as a verb in imperative form).
+-   The name of functions performing side effects or complex operations should describe that operation.
 
     ``` motoko no-repl
     dict.clear();
@@ -566,7 +579,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
     let result = traverse(graph);
     ```
 
--   The name of predicate functions returning `Bool` should use an `is` or `has` prefix or a similar description of the tested property (as a verb in indicative form).
+-   The name of predicate functions returning `Bool` should use an `is` or `has` prefix or a similar description of the tested property.
 
     ``` motoko no-repl
     class Set<X>() {
@@ -595,7 +608,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
     Rationale: In Motoko, functions are first-class values, so functions and other value identifiers share the same name space.
 
-    Identifiers with a leading `_` should *not* be used for private state, since that indicates an unused name (see [Style](#style)).
+    Identifiers with a leading `_` should *not* be used for private state, since that indicates an unused name (see [style](#style)).
 
 -   Use longer, more descriptive names for global or public identifier or ones with large scope, and short names for local ones with small scope.
 
@@ -630,7 +643,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
 ## Types
 
-### Type Annotations
+### Type annotations
 
 -   Put type annotations on definitions that involve fixed-width numeric types, to disambiguate the type of overloaded arithmetic operators and constants.
 
@@ -688,7 +701,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
     var obj : Class = foo();
     ```
 
-    Rationale: Due to subtyping, inferring the type from the initialisation would not necessarily deduce the intended type. For example, `balance` would have type `Nat` without the annotation, ruling out assignments of integers.
+    Rationale: Due to subtyping, inferring the type from the initialization would not necessarily deduce the intended type. For example, `balance` would have type `Nat` without the annotation, ruling out assignments of integers.
 
 -   Put type annotations on all public fields in a class.
 
@@ -728,7 +741,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
     Limit their use to as small a scope as possible. Rule out the `null` case and use non-option types wherever possible.
 
--   Consider using records (objects with just data) instead of tuples when there are more than 2 or 3 components.
+-   Consider using records, which are objects with just data, instead of tuples when there are more than 2 or 3 components.
 
     Note that record types need not be declared but can be used in place.
 
@@ -766,7 +779,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
     Rationale: This expresses named parameters. This way, arguments can be freely reordered at the call site and callers are prevented from accidentally passing them in the wrong order.
 
--   Higher-order functions (functions that take a callback argument) should put the function parameter last.
+-   Higher-order functions, such as functions that take a callback argument, should put the function parameter last.
 
     Rationale: Makes call sites more readable, and in the absence of currying, there is no point in putting the function first, like you often would in functional languages.
 
@@ -845,7 +858,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
 ### Objects and records
 
--   Use the short-hand object syntax `{x1 = e1; …​ ; xN = eN}` when using objects as simple *records*, i.e., data structures with no private state and no methods.
+-   Use the short-hand object syntax `{x1 = e1; …​ ; xN = eN}` when using objects as simple records, i.e., data structures with no private state and no methods.
 
 -   Use `object` when creating singleton objects.
 
@@ -853,13 +866,13 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
     Rationale: Only records can be sent as message parameters or results and can be stored in stable variables. Objects with methods are also more expensive to create and represent in memory.
 
--   Use full objects only as a means for encapsulating state or behaviour.
+-   Use full objects only as a means for encapsulating state or behavior.
 
 ### Classes
 
 -   Use `class` to create multiple objects of the same shape.
 
--   Name classes after their conceptual *functionality*, not their *implementation*, except when having to distinguish multiple different implementations of the same concept (for example, `OrderedMap` vs `HashMap`).
+-   Name classes after their conceptual functionality, not their implementation, except when having to distinguish multiple different implementations of the same concept. For example, `OrderedMap` vs `HashMap`).
 
 -   Classes are both type definitions and factory functions for objects.
 
@@ -867,7 +880,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
 -   Do not overuse classes.
 
-    Use a module defining a plain type and functions on it where appropriate. Use classes only as a means for encapsulating state or behaviour.
+    Use a module defining a plain type and functions on it where appropriate. Use classes only as a means for encapsulating state or behavior.
 
     Rationale: Objects with methods have disadvantages over simple record types with separate functions (see above).
 
@@ -887,7 +900,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
 ### Modules
 
--   Use `module` to group definitions (including types) and create a name spae for them.
+-   Use `module` to group definitions, including types, and create a name spae for them.
 
 -   Where applicable, name modules after the main type or class they implement or provide functions for.
 
