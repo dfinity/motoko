@@ -33,6 +33,32 @@ You can only use the `stable` or `flexible` modifier on `let` and `var` declarat
 
 When you first compile and deploy a canister, all flexible and stable variables in the actor are initialized in sequence. When you deploy a canister using the `upgrade` mode, all stable variables that existed in the previous version of the actor are pre-initialized with their old values. After the stable variables are initialized with their previous values, the remaining flexible and newly-added stable variables are initialized in sequence.
 
+## Preupgrade and postupgrade system methods
+
+Declaring a variable to be `stable` requires its type to be stable too. Since not all types are stable, some variables cannot be declared `stable`.
+
+As a simple example, consider the following `Registry` actor:
+
+``` motoko file=../examples/Registry.mo
+```
+
+This actor assigns sequential identifiers to `Text` values, using the size of the underlying `map` object to determine the next identifier. Like other actors, it relies on orthogonal persistence to maintain the state of the hashmap between calls.
+
+This example would like to make the `Register` upgradable without the upgrade losing any existing registrations, but its state, `map`, has a proper object type that contains member functions, so the `map` variable cannot be declared `stable`.
+
+For scenarios like this that can’t be solved using stable variables alone, Motoko supports user-defined upgrade hooks that run immediately before and after an upgrade. These upgrade hooks allow you to migrate state between unrestricted flexible variables to more restricted stable variables. These hooks are declared as `system` functions with special names, `preugrade` and `postupgrade`. Both functions must have type `: () → ()`.
+
+The `preupgrade` method lets you make a final update to stable variables before the runtime commits their values to stable memory and performs an upgrade. The `postupgrade` method is run after an upgrade has initialized the replacement actor, including its stable variables, but before executing any shared function call or message on that actor.
+
+The following example introduces a new stable variable, `entries`, to save and restore the entries of the unstable hash table:
+
+``` motoko file=../examples/StableRegistry.mo
+```
+
+Note that the type of `entries`, being an array of `Text` and `Nat` pairs, is indeed a stable type.
+
+In this example, the `preupgrade` system method writes the current `map` entries to `entries` before `entries` is saved to stable memory. The `postupgrade` system method resets `entries` to the empty array after `map` has been populated from `entries`.
+
 ## Typing
 
 Because the compiler must ensure that stable variables are both compatible with and meaningful in the replacement program after an upgrade, every `stable` variable must have a stable type. A type is stable if the type obtained by ignoring any `var` modifiers within it is shared.
@@ -88,32 +114,6 @@ You can check the stable-compatibility of two `.most` files containing stable si
 The stable-compatible relation is quite conservative. In the future, it may be relaxed to accommodate a change in field mutability and/or abandoning fields from `<stab-sig1>` but with a warning.
 
 :::
-
-## Preupgrade and postupgrade system methods
-
-Declaring a variable to be `stable` requires its type to be stable too. Since not all types are stable, some variables cannot be declared `stable`.
-
-As a simple example, consider the following `Registry` actor:
-
-``` motoko file=../examples/Registry.mo
-```
-
-This actor assigns sequential identifiers to `Text` values, using the size of the underlying `map` object to determine the next identifier. Like other actors, it relies on orthogonal persistence to maintain the state of the hashmap between calls.
-
-This example would like to make the `Register` upgradable without the upgrade losing any existing registrations, but its state, `map`, has a proper object type that contains member functions, so the `map` variable cannot be declared `stable`.
-
-For scenarios like this that can’t be solved using stable variables alone, Motoko supports user-defined upgrade hooks that run immediately before and after an upgrade. These upgrade hooks allow you to migrate state between unrestricted flexible variables to more restricted stable variables. These hooks are declared as `system` functions with special names, `preugrade` and `postupgrade`. Both functions must have type `: () → ()`.
-
-The `preupgrade` method lets you make a final update to stable variables before the runtime commits their values to stable memory and performs an upgrade. The `postupgrade` method is run after an upgrade has initialized the replacement actor, including its stable variables, but before executing any shared function call or message on that actor.
-
-The following example introduces a new stable variable, `entries`, to save and restore the entries of the unstable hash table:
-
-``` motoko file=../examples/StableRegistry.mo
-```
-
-Note that the type of `entries`, being an array of `Text` and `Nat` pairs, is indeed a stable type.
-
-In this example, the `preupgrade` system method writes the current `map` entries to `entries` before `entries` is saved to stable memory. The `postupgrade` system method resets `entries` to the empty array after `map` has been populated from `entries`.
 
 ## Upgrade safety
 
