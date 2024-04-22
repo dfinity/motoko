@@ -6,9 +6,9 @@ sidebar_position: 3
 
 ## Overview
 
-One key feature of ICP is its ability to persist canister state using WebAssembly memory and globals rather than a traditional database. This means that the entire state of a canister is restored before and saved after each message, without explicit user instruction. This automatic and user-transparent preservation of state is called orthogonal persistence.
+One key feature of ICP is its ability to persist canister state using WebAssembly memory and globals rather than a traditional database. This means that the entire state of a canister is restored before and saved after each message, without explicit user instruction.
 
-Orthogonal persistence allows a canister to save and restore data to dedicated **stable memory** that, unlike ordinary canister memory, is retained across an upgrade and allows a canister to transfer data in bulk across upgrades.
+A canister saves and restores data to dedicated **stable memory** that, unlike ordinary canister memory, is retained across an upgrade and allows a canister to transfer data in bulk across upgrades.
 
 Motoko provides high-level support for preserving state that leverages stable memory. This feature, called **stable storage**, is designed to accommodate changes to both the application data and the Motoko compiler used to produce the application code.
 
