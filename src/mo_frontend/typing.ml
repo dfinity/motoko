@@ -942,7 +942,7 @@ let rec is_explicit_exp e =
   | ObjBlockE (_, _, dfs) ->
     List.for_all (fun (df : dec_field) -> is_explicit_dec df.it.dec) dfs
   | ArrayE (_, es) -> List.exists is_explicit_exp es
-  | SwitchE (e1, cs) | TryE (e1, cs) ->
+  | SwitchE (e1, cs) | TryE (e1, cs, None) ->
     is_explicit_exp e1 &&
     List.exists (fun (c : case) -> is_explicit_exp c.it.exp) cs
   | BlockE ds -> List.for_all is_explicit_dec ds
@@ -1513,7 +1513,7 @@ and infer_exp'' env exp : T.typ =
     if not env.pre then
       coverage_cases "switch" env cases t1 exp.at;
     t
-  | TryE (exp1, cases) ->
+  | TryE (exp1, cases, None) ->
     let t1 = infer_exp env exp1 in
     let t2 = infer_cases env T.catch T.Non cases in
     if not env.pre then begin
@@ -1815,7 +1815,7 @@ and check_exp' env0 t exp : T.typ =
     check_cases env t1 t cases;
     coverage_cases "switch" env cases t1 exp.at;
     t
-  | TryE (exp1, cases), _ ->
+  | TryE (exp1, cases, None), _ ->
     check_ErrorCap env "try" exp.at;
     check_exp env t exp1;
     check_cases env T.catch t cases;

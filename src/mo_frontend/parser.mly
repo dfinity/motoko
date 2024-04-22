@@ -708,7 +708,7 @@ exp_un(B) :
   | IF b=exp_nullary(ob) e1=exp_nest ELSE e2=exp_nest
     { IfE(b, e1, e2) @? at $sloc }
   | TRY e1=exp_nest c=catch
-    { TryE(e1, [c]) @? at $sloc }
+    { TryE(e1, [c], None) @? at $sloc }
 (* TODO: enable multi-branch TRY (already supported by compiler)
   | TRY e=exp_nest LCURLY cs=seplist(case, semicolon) RCURLY
     { TryE(e, cs) @? at $sloc }

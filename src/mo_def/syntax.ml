@@ -193,7 +193,7 @@ and exp' =
   | AnnotE of exp * typ                        (* type annotation *)
   | ImportE of (string * resolved_import ref)  (* import statement *)
   | ThrowE of exp                              (* throw exception *)
-  | TryE of exp * case list                    (* catch exception *)
+  | TryE of exp * case list * exp option       (* catch exception / finally *)
   | IgnoreE of exp                             (* ignore *)
 (*
   | FinalE of exp * exp                        (* finally *)
