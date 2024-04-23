@@ -1,0 +1,5 @@
+--- try-finally.run
++++ try-finally.run-low
+@@ -1,2 +1 @@
+ IN
+-OUT

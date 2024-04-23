@@ -1,0 +1,4 @@
+try-finally.mo:3.1-4.26: warning [M0145], this try handler of type
+  Error
+does not cover value
+  _
