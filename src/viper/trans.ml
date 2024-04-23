@@ -1,5 +1,6 @@
 open Source
 
+open Common
 open Syntax
 
 module T = Mo_types.Type
@@ -60,12 +61,6 @@ let (|:) (x_opt : 'a option) (xs : 'a list) : 'a list =
   match x_opt with
   | None -> xs
   | Some(x) -> x :: xs
-
-(* exception for reporting unsupported Motoko syntax *)
-exception Unsupported of Source.region * string
-
-let unsupported at sexp =
-  raise (Unsupported (at, (Wasm.Sexpr.to_string 80 sexp)))
 
 type sort = Field | Local | Method
 

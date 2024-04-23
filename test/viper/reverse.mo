@@ -10,7 +10,7 @@ actor Reverse {
     return t;
   };
 
-  private func reverseArrayNat(a : [var Nat]) : () {
+  private func reverseArray<T>(a : [var T]) : () {
     assert:return a.size() == (old a).size();
     let b = [1, 2, 4]; // space variable to test loop invariant deducing
     var length = a.size();
@@ -34,7 +34,7 @@ actor Reverse {
   
   public func reverse() : async () {
     var a = copy_xarray();
-    reverseArrayNat(a);
+    reverseArray(a);
     xarray := a;
   };
 };
