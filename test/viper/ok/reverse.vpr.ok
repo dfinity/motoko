@@ -37,35 +37,7 @@ method __init__($Self: Ref)
       exhale $array_acc_mut(($Self).xarray, $int)
       inhale $array_acc_mut(($Self).xarray, $int) 
     }
-field xarray: Array
-method copy_xarray($Self: Ref)
-     returns ($Res: Array)
-    requires $Perm($Self)
-    ensures $Perm($Self)
-    ensures $array_acc_mut($Res, $int)
-    { var t: Array
-      var i: Int
-      inhale $array_acc_mut(t, $int)
-      inhale ($size(t) == 5)
-      ($loc(t, 0)).$int := 0
-      ($loc(t, 1)).$int := 0
-      ($loc(t, 2)).$int := 0
-      ($loc(t, 3)).$int := 0
-      ($loc(t, 4)).$int := 0
-      exhale $array_acc_mut(t, $int)
-      inhale $array_acc_mut(t, $int)
-      i := 0
-      while ((i < 5))
-         invariant $array_acc_mut(t, $int)
-         invariant ($Perm($Self) && $Inv($Self))
-         { 
-           ($loc(t, i)).$int := ($loc(($Self).xarray, i)).$int 
-         }
-      $Res := t
-      goto $Ret
-      label $Ret 
-    }
-method reverseArrayNat($Self: Ref, a: Array)
+method reverseArray$Nat($Self: Ref, a: Array)
     
     requires $Perm($Self)
     requires $array_acc_mut(a, $int)
@@ -106,6 +78,34 @@ method reverseArrayNat($Self: Ref, a: Array)
       goto $Ret
       label $Ret 
     }
+field xarray: Array
+method copy_xarray($Self: Ref)
+     returns ($Res: Array)
+    requires $Perm($Self)
+    ensures $Perm($Self)
+    ensures $array_acc_mut($Res, $int)
+    { var t: Array
+      var i: Int
+      inhale $array_acc_mut(t, $int)
+      inhale ($size(t) == 5)
+      ($loc(t, 0)).$int := 0
+      ($loc(t, 1)).$int := 0
+      ($loc(t, 2)).$int := 0
+      ($loc(t, 3)).$int := 0
+      ($loc(t, 4)).$int := 0
+      exhale $array_acc_mut(t, $int)
+      inhale $array_acc_mut(t, $int)
+      i := 0
+      while ((i < 5))
+         invariant $array_acc_mut(t, $int)
+         invariant ($Perm($Self) && $Inv($Self))
+         { 
+           ($loc(t, i)).$int := ($loc(($Self).xarray, i)).$int 
+         }
+      $Res := t
+      goto $Ret
+      label $Ret 
+    }
 method reverse($Self: Ref)
     
     requires $Perm($Self)
@@ -114,7 +114,7 @@ method reverse($Self: Ref)
     ensures $Inv($Self)
     { var a: Array
       a := copy_xarray($Self)
-      reverseArrayNat($Self, a)
+      reverseArray$Nat($Self, a)
       ($Self).xarray := a
       label $Ret 
     }

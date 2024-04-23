@@ -144,6 +144,7 @@ The implementation of _Motoko-san_ consists of the following source files:
 * `src/viper/syntax.ml` — the Viper AST implementation.
 * `src/viper/pretty.ml` — the Viper pretty printer. Used for serializing Viper AST into text.
 * `src/viper/trans.ml` — the Motoko-to-Viper translation. Implements the logic of _Motoko-san_.
+* `src/viper/prep.ml` —  the Motoko-to-Motoko pass that prepares the unit for translation.
 
 
 Currently supported language features
