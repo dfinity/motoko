@@ -1,12 +1,12 @@
-try-finally.mo:3.1-26.2: type error [M0038], misplaced await
-try-finally.mo:3.1-26.2: type error [M0086], async expressions are not supported
+try-finally.mo:3.1-27.2: type error [M0038], misplaced await
+try-finally.mo:3.1-27.2: type error [M0086], async expressions are not supported
   (This is a limitation of the current version and flag -wasi-system-api.)
-try-finally.mo:33.1-33.13: type error [M0038], misplaced await
-try-finally.mo:33.7-33.13: type error [M0047], send capability required, but not available
- (need an enclosing async expression or function body)
 try-finally.mo:34.1-34.13: type error [M0038], misplaced await
 try-finally.mo:34.7-34.13: type error [M0047], send capability required, but not available
  (need an enclosing async expression or function body)
 try-finally.mo:35.1-35.13: type error [M0038], misplaced await
 try-finally.mo:35.7-35.13: type error [M0047], send capability required, but not available
+ (need an enclosing async expression or function body)
+try-finally.mo:36.1-36.13: type error [M0038], misplaced await
+try-finally.mo:36.7-36.13: type error [M0047], send capability required, but not available
  (need an enclosing async expression or function body)

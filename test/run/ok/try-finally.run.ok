@@ -1,4 +1,6 @@
 IN
 OUT
 IN2
-prim:___: execution error, uncaught throw
+CAUGHT2
+OUT2
+IN3

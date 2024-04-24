@@ -12,6 +12,7 @@ actor A {
             debugPrint "IN2";
             throw error "IN2";
         }
+        else catch _ { debugPrint "CAUGHT2" }
         case { debugPrint "OUT2" };
     };
 
