@@ -485,6 +485,8 @@ and exp ctxt e =
        !!(BoolLitE b)
     | M.IntLit i ->
        !!(IntLitE i)
+    | M.NatLit i ->
+       !!(IntLitE i)
     | _ ->
        unsupported e.at (Arrange.exp e)
     end
@@ -526,9 +528,7 @@ and rets t_opt =
     (match T.normalize t.note with
      | T.Tup [] -> []
      | T.Async (T.Fut, _, _) -> []
-     | T.Prim T.Int  -> [(!!! (Source.no_region) "$Res", !!! (Source.no_region) IntT)]
-     | T.Prim T.Bool -> [(!!! (Source.no_region) "$Res", !!! (Source.no_region) BoolT)]
-     | _ -> unsupported t.at (Arrange.typ t)
+     | typ -> [(!!! (Source.no_region) "$Res", tr_typ typ)]
     )
 
 and id id = { it = id.it; at = id.at; note = NoInfo }
@@ -540,5 +540,6 @@ and tr_typ typ =
 and tr_typ' typ =
   match T.normalize typ with
   | T.Prim T.Int -> IntT
+  | T.Prim T.Nat -> IntT    (* Viper has no native support for Nat, so translate to Int *)
   | T.Prim T.Bool -> BoolT
   | _ -> unsupported Source.no_region (Mo_types.Arrange_type.typ (T.normalize typ))
