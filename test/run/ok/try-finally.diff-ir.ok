@@ -1,5 +1,0 @@
---- try-finally.run
-+++ try-finally.run-ir
-@@ -1,2 +1 @@
- IN
--OUT

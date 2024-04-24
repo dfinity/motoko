@@ -709,6 +709,8 @@ exp_un(B) :
     { IfE(b, e1, e2) @? at $sloc }
   | TRY e1=exp_nest c=catch
     { TryE(e1, [c], None) @? at $sloc }
+  | TRY e1=exp_nest CASE e2=exp_nest (* FIXME: needs a different keyword, provisional *)
+    { TryE(e1, [], Some e2) @? at $sloc }
 (* TODO: enable multi-branch TRY (already supported by compiler)
   | TRY e=exp_nest LCURLY cs=seplist(case, semicolon) RCURLY
     { TryE(e, cs) @? at $sloc }
