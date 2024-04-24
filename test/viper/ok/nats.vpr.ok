@@ -1,0 +1,65 @@
+define $Perm($Self) ((true && acc(($Self).x,write)))
+define $Inv($Self) (true)
+method __init__($Self: Ref)
+    
+    requires $Perm($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { 
+      ($Self).x := 42 
+    }
+field x: Int
+method getZero($Self: Ref)
+     returns ($Res: Int)
+    requires $Perm($Self)
+    requires $Inv($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { 
+      $Res := 0
+      goto $Ret
+      label $Ret 
+    }
+method getX($Self: Ref)
+     returns ($Res: Int)
+    requires $Perm($Self)
+    requires $Inv($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { 
+      $Res := ($Self).x
+      goto $Ret
+      label $Ret 
+    }
+method double($Self: Ref)
+    
+    requires $Perm($Self)
+    requires $Inv($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { 
+      ($Self).x := (($Self).x * 2)
+      label $Ret 
+    }
+method natToInt($Self: Ref, n: Int)
+     returns ($Res: Int)
+    requires $Perm($Self)
+    requires $Inv($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { 
+      $Res := n
+      goto $Ret
+      label $Ret 
+    }
+method add($Self: Ref, n: Int, m: Int)
+     returns ($Res: Int)
+    requires $Perm($Self)
+    requires $Inv($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { 
+      $Res := (n + m)
+      goto $Ret
+      label $Ret 
+    }
