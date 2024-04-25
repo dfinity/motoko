@@ -38,7 +38,7 @@ Like `xxx()`, `nyi()` has type `None`, thus any other type, and will trap on exe
 
 Sometimes a developer will be required to provide code that they know will never be executed, due to the preceding program logic.
 
-To document a code path as logically impossible, or unreachable, use the base library function `unreachable`:
+To document unreachable code, the developer can use the  `unreachable` function from the prelude:
 
 ``` motoko include=prelude
 P.unreachable()
