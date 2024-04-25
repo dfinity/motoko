@@ -187,4 +187,4 @@ actor {
 }
 ```
 
-Adding a new record field (to magic from nothing) does not work.
+Adding a new record field  does not work. The reason is simple: the upgrade would need to supply values for the new field out of thin air. In this example, the upgrade would need to conjure up some value for the  `description` field of every existing `card` in `map`.
