@@ -68,7 +68,8 @@ For example, `v2`'s stable types:
 ``` motoko no-repl file=../examples/count-v2.most
 ```
 
-An upgrade from `v2` to `v3`'s stable types requires consuming an `Int` as a `Nat`, which is a **type error**.
+An upgrade from `v2` to `v3`'s stable types requires consuming an `Int` as a `Nat`, which is a **type error**. 
+For example, `-1` is an `Int`, but is not a `Nat`.
 
 ``` motoko no-repl file=../examples/count-v3.most
 ```
