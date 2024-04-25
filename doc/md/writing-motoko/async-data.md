@@ -6,17 +6,20 @@ sidebar_position: 4
 
 ## Overview
 
-Motoko adopts the program constructs `async` and `await`, which afford the programmer a structured language for describing potentially-complex asynchronous dependency graphs.
 
-The syntax `await` synchronizes on a future, and suspends computation until a **future** is completed by its producer. The future is a placeholder for the eventual result of the request that the caller can later query.
+On ICP, communication between canisters is asynchronous. Sending a message together with a callback from one canister to another schedules a request in the receiver. Completion of the request triggers the callback to the sender, allowing the sender to process the result. 
 
-In an asynchronous computing setting, a program and its running environment are permitted to perform internal computations that occur concurrently with one another.
+In Motoko, sending an ICP asynchronous message is abstracted as calling a shared function that returns an asynchronous result.
+Like several other languages, Motoko offers `async` and `await` to support convenient programming with asynchronous functions and computations.
 
-Specifically, asynchronous programs are ones where the program’s requests of its environment do not necessarily require the program to wait for the environment. In the meantime, the program is permitted to make internal progress within this environment while the environment proceeds to complete the request.
+In Motoko, executing an asynchronous expression, whether a call to a shared function, or just a local `async` expression, produces a future, an object of type `async T`, for some result type `T`. 
+Instead of blocking the caller until the call has returned, the message is enqueued on the callee and the future representing that pending request is immediately returned to the caller. The future is a placeholder for the eventual result of the request that the caller can later query.
 
-In Motoko, sending a message to an actor is a **function call**. Instead of blocking the caller until the call has returned, the message is enqueued on the callee and a future representing that pending request is immediately returned to the caller.
+The syntax `await` synchronizes on a future, and suspends computation until the future is completed by its producer. 
 
 Between issuing the request and deciding to wait for the result, the caller is free to do other work. Once the callee has processed the request, the future is completed and its result made available to the caller. If the caller is waiting on the future, its execution can resume with the result, otherwise the result is simply stored in the future for later use.
+
+The combination of `async`/`await` constructs simplifies asynchronous programming  by allowing `await`s to be embedded within ordinary sequential code, without requiring tricky management of asynchronous callbacks.
 
 ## Async functions
 
