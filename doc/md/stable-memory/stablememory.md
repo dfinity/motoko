@@ -21,12 +21,6 @@ The documentation here is provided for legacy reasons.
 TODO: extend example to illustrate stableVarQuery
 -->
 
-:::danger
-
-The `ExperimentalStableMemory` library is experimental, subject to change and may be replaced by safer alternatives in later versions of Motoko. Use at your own risk and discretion.
-
-:::
-
 The current implementation of Motoko stable variables is not able to maintain very large amounts of data.
 
 The ICP upgrade process currently requires stable variables to be copied from 32-bit main memory  to 64-bit stable memory and then back again - for copious data, this can exceed the cycle limits allowed for upgrade, causing an upgrade to fail.

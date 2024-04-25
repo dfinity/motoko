@@ -72,10 +72,6 @@ Semantics of Motoko include:
 
 -   No inheritance.
 
-## Implementation
-
-Motoko is implemented in OCaml and leverages the `wasm` library. It uses a simple reference interpreter, but has a more complex compilation into WebAssembly. Compilation uses multipass with typed IR in each pass, and uniform representation, unboxed arithmetic. Motoko offers three garbage collectors (copying, compacting, or generational), and garbage collection is invoked after messages. Motoko uses polymorphism by erasure.
-
 ### Native canister smart contract support
 
 Motoko has native support for canister smart contracts, which are expressed as a Motoko actor. An actor is an autonomous object that fully encapsulates its state and communicates with other actors only through asynchronous messages.
