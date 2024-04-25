@@ -102,7 +102,7 @@ public func apply<A, B>(fs : [A -> B], xs : [A]) : [B] {
 };
 ```
 
-For information about the functions that perform operations on arrays, see the description of the Array module in the Motoko base library or the **Motoko programming language reference**. For another example focused on the use of arrays, see the [quick sort](https://github.com/dfinity/examples/tree/master/motoko/quicksort) project in the [examples](https://github.com/dfinity/examples/) repository.
+For information about the functions that perform operations on arrays, see the description of the [Array module](../base/Array.md) in the Motoko base library or the **Motoko programming language reference**. For another example focused on the use of arrays, see the [quick sort](https://github.com/dfinity/examples/tree/master/motoko/quicksort) project in the [examples](https://github.com/dfinity/examples/) repository.
 
 Call the `location` method in the program and pass your `city` argument using the Candid interface description syntax by running the following command:
 
