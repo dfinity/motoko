@@ -741,7 +741,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
     Limit their use to as small a scope as possible. Rule out the `null` case and use non-option types wherever possible.
 
--   Consider using records, which are objects with just data, instead of tuples when there are more than 2 or 3 components.
+-   Consider using records instead of tuples when there are more than 2 or 3 components. Records are just simple objects with named fields.
 
     Note that record types need not be declared but can be used in place.
 
