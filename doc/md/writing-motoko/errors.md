@@ -123,7 +123,7 @@ Callsite:
 
 ### How not to handle errors
 
-An incorrect way of reporting errors is through the use of a sentinel value. For example, for your `markDone` function, you might decide to use the value `-1` to signal that something failed. The callsite then has to check the return value against this special value and report the error. It's easy to not check for that error condition and continue to work with that value in the code. This can lead to delayed or even missing error detection and is strongly discouraged.
+A generally poor way of reporting errors is through the use of a sentinel value. For example, for your `markDone` function, you might decide to use the value `-1` to signal that something failed. The callsite then has to check the return value against this special value and report the error. It's easy to not check for that error condition and continue to work with that value in the code. This can lead to delayed or even missing error detection and is strongly discouraged.
 
 Definition:
 
