@@ -85,7 +85,7 @@ Most of the action occurs in `Alice`'s `test()` function:
 
 - After creating `porky`, she first verifies that the `porky.getSavings()` is zero using an `assert`.
 
-- `Alice` dedicates `1_000_000` of her cycles (`Cycles.add(1_000_000)`) to transfer to `porky` with the next call to `porky.deposit()`. The cycles are only consumed from Alice’s balance if the call to `porky.deposit()` succeeds.
+- `Alice` dedicates `1_000_000` of her cycles (`Cycles.add<system>(1_000_000)`) to transfer to `porky` with the next call to `porky.deposit()`. The cycles are only consumed from Alice’s balance if the call to `porky.deposit()` succeeds.
 
 - `Alice` now withdraws half the amount, `500_000`, and verifies that `porky`'s savings have halved. `Alice` eventually receives the cycles via a callback to `Alice.credit()`, initiated in `porky.withdraw()`. Note the received cycles are precisely the cycles `add`ed in `porky.withdraw()`, before it invokes its `benefit` callback `Alice.credit`.
 
