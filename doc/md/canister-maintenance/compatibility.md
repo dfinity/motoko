@@ -60,7 +60,8 @@ Since `Int </: Nat`, the upgrade logic discards the saved `Int` and re-runs the 
 
 ## Stable type signatures
 
-A stable type signature looks similar to the content within a Motoko actor type.
+A stable type signature describes the stable content of a Motoko actor. 
+You can think of this as the interior interface of the actor, that it presents to its future upgrades.
 
 For example, `v2`'s stable types:
 
