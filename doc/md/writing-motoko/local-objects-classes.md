@@ -16,7 +16,7 @@ When the fields are immutable and have shared types, the object itself is sharea
 
 When fields contain function values, Motoko objects can represent traditional objects with methods, familiar from object-oriented programming (OOP). 
 From an OOP perspective, an object is an abstraction, defined by the behavior of its methods. Methods are typically used to modify or observe some encapsulated (i.e. hidden) state of an object.
-Motoko programs benefit from the ability to encapsulate state as objects with abstract types, as an `object` may encapsulate local state as `var`-bound variables by packaging this state with `public` methods that access and update it.
+Motoko programs benefit from the ability to encapsulate state as objects with abstract types. The [mutable state](mutable-state.md) introduces declarations of mutable state in the form of `var`-declared variables. Using such declarations privately in its body, an object can encapsulate the state, declaring public methods that access and update it.
 
 By design, objects with mutable fields or methods cannot be sent to remote actors. If that were allowed, a receiver would either have to receive a remote reference to the local object, breaking the isolation of the actor model by allowing remote updates to local state. Or, the receiver would have to receive a copy of the local object. Then, the effect of any changes to the copy would not be reflected in the original, leading to confusion.
 
