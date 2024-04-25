@@ -96,7 +96,7 @@ TODO: make interactive
 
 To guard against division by `0` without trapping, the `eval` function returns an option result, using `null` to indicate failure.
 
-Each recursive call is checked for `null` using `!`, immediately exiting the outer `do ? block` the function itself when a result is `null`.
+Each recursive call is checked for `null` using `!`, immediately exiting the outer `do ? block`, and then the function itself, when a result is `null`.
 
 ## Repetition with `loop`
 
