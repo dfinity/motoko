@@ -143,7 +143,13 @@ However, sometimes type annotations are required by the compiler to infer other 
 
 ## Type errors and messages
 
-Mathematically, the type system of Motoko is **declarative**, meaning that it exists independently of any implementation as a concept entirely in formal logic. Likewise, the other key aspects of the language definition, for example its execution semantics, exist outside of an implementation.
+Motoko is a statically typed programming language. That means that the compiler will reject any program that contains obviously non-sensical code. 
+
+For example, while adding two numbers is allowed, adding a number to a text value makes no sense to the Motoko compiler and is flagged as an error that must be fixed before the code can be run or deployed. 
+
+The rules that Motoko applies to verify the correctness of code before compiling and running it are called its type system. Motoko's type system will detect and reject static errors such as applying a function to the wrong number of arguments, or to arguments of the wrong type. 
+
+The type system is a safety feature that prevents a slew of errors that would otherwise have to be detected and reported at runtime, when they would be difficult or impossible to address.
 
 To design this logical definition, experiment with it, and practice making mistakes, you want to interact with this type system. The error messages of the **type checker** attempt to help the developer when they misunderstand or otherwise misapply the logic of the type system.
 
