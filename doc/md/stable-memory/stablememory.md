@@ -23,7 +23,10 @@ Motoko stable variables are not designed to maintain large amounts of data, as t
 
 ## The `ExperimentalStableMemory` library
 
-To avoid upgrade hazards, developers can use the [`Region`](stable-regions.md) library or the [`ExperimentalStableMemory`](.../base/ExperimentalStableMemory.md) library. The `ExperimentalStableMemory` library allows the programmer to incrementally allocate pages of 64-bit ICP stable memory and use those pages to incrementally read and write data in a user-defined binary format.
+To avoid the current limitations of stable variables, developers can use the recommended [`Region`](stable-regions.md) library or the older [`ExperimentalStableMemory`](.../base/ExperimentalStableMemory.md) library described here. The `ExperimentalStableMemory` library allows the programmer to incrementally allocate pages of 64-bit ICP stable memory and use those pages to incrementally read and write data in a user-defined binary format.
+
+The main difference between the two libraries is that `ExperimentalStableMemory` provides a single memory, a global resource, that must be shared by all clients, using, requiring coordination and trust. 
+The `Region` library instead provides multiple, isolated memories that can only be accessed by the owner(s) of a particular memory.
 
 Similar to the `Regions` library, Motoko runtime system ensures there is no interference between the abstraction presented by the `ExperimentalStableMemory` library and an actor’s stable variables, even though the two abstractions ultimately use the same underlying  stable memory facilities available to all IC canisters. This runtime support means that is safe for a Motoko program to exploit both stable variables and `ExperimentalStableMemory`, within the same application.
 
