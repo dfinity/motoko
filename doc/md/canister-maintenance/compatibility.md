@@ -76,7 +76,7 @@ For example, `-1` is an `Int`, but is not a `Nat`.
 
 ## Dual interface evolution
 
-An upgrade is safe provided that the Candid interface evolves to a subtype and the stable interface evolves to a compatible one: a stable variable must either be newly declared, or re-declared at a super type of its old type.
+An upgrade is safe provided that the Candid interface evolves to a subtype and the stable interface evolves to a compatible one: a stable variable must either be newly declared, or re-declared at a supertype of its old type.
 
 Consider the following four versions of the counter example:
 
