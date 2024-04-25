@@ -152,7 +152,7 @@ cannot be consumed at new type
 
 Upgrades from `v2.wasm` to `v3.wasm` would fail and roll-back, avoiding data loss. If Candid is revised, an upgrade would now "succeed", but with data loss. This is the difference between a fail safe and a silent failure.
 
-To upgrade correctly to change `state` to `Nat`, you can introduce a new stable variable, `newState`, initialized from the old one:
+One way to correctly change the logical state to `Nat`, is to introduce a new stable variable, `newState`, of type `Nat`, initialized from the old one (`state`):
 
 ``` motoko no-repl file=../examples/count-v4.mo
 ```
