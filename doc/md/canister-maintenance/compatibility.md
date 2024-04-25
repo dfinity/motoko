@@ -34,7 +34,7 @@ If the variable `state` were not declared `stable`, `state` would restart from `
 
 ## Evolving the Candid interface
 
-In this example, old clients are still satisfied, while new ones get extra features such as the `read` query in this example.
+In this extension of our interface, old clients remain satisfied, while new ones get extra features such as the `read` query in this example.
 
 ``` motoko no-repl file=../examples/count-v2.mo
 ```
