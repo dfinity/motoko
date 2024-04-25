@@ -93,7 +93,7 @@ Most of the action occurs in `Alice`'s `test()` function:
 
 - `Alice` tries to deposit `2_000_000_000` cycles into `porky` but this exceeds `porky`'s capacity by half, so `porky` accepts `1_000_000_000` and refunds the remaining `1_000_000_000` to `Alice`. `Alice` verifies the refund amount (`Cycles.refunded()`), which has been automatically restored to her balance. She also verifies `porky`'s adjusted savings.
 
-- `Alice`'s `credit()` function simply accepts all available cycles by calling `Cycles.accept(available)`, checking the actually `accepted` amount with an assert.
+- `Alice`'s `credit()` function simply accepts all available cycles by calling `Cycles.accept<system>(available)`, checking the actually `accepted` amount with an assert.
 
 :::note
 
