@@ -103,7 +103,7 @@ Neither implementation of a counter comes without some complexity. In this case,
 
 A common type shared among two implementations of an object or service affords the potential for the internal implementation complexity to be factored away from the rest of the application.
 
-Objects can also have [subtypes](object-subtyping.md).
+Objects types can also have [subtypes](object-subtyping.md), allowing an object with a more specific type to pass as an object of a more general type, for example, to pass as an object with fewer fields.
 
 ## Object classes
 
