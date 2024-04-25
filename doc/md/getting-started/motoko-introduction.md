@@ -83,6 +83,7 @@ Motoko has native support for canister smart contracts, which are expressed as a
 On ICP, canisters can communicate with other canisters by sending asynchronous messages.
 
 Asynchronous programming is hard, so Motoko enables you to author asynchronous code in much simpler, sequential style. Asynchronous messages are function calls that return a future, and the `await` construct allows you to suspend execution until a future has completed.
+
 ### Modern type system
 
 Motoko has been designed to be intuitive to those familiar with JavaScript and other popular languages, but offers modern features such as sound structural types, generics, variant types, and statically checked pattern matching.
