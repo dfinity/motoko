@@ -2,7 +2,7 @@
 sidebar_position: 10
 ---
 
-# Integers
+# Integers and numbers 
 
 
 ## Overview
