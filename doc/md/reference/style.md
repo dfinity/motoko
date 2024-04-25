@@ -8,13 +8,6 @@ sidebar_position: 3
 
 To increase readability and uniformity of Motoko source code, the style guide provides suggestions for formatting Motoko sources and other basic conventions.
 
-## Motoko grammar
-
-The specification is auto-generated with a tool:
-
-``` bnf file=../examples/grammar.txt
-```
-
 ## Layout
 
 ### Spacing

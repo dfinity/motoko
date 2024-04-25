@@ -26,44 +26,6 @@ Once your canister is [deployed](/docs/current/developer-docs/getting-started/de
 dfx canister call location_hello_backend location "San Francisco"
 ```
 
-Because the argument in this case includes a space between `San` and `Francisco`, you need to enclose the argument in quotes. The command displays output similar to the following:
-
-```
-("Hello, San Francisco!")
-```
-
-If the argument did not contain a space that required enclosing the text inside of quotation marks, you could allow the Candid interface description language to infer the data type like this:
-
-```
-dfx canister call location_hello_backend location Paris
-```
-
-Candid infers the data type as `Text` and returns the output from your program as text like this:
-
-```
-("Hello, Paris!")
-```
-
-Call the `location` method in the program and pass your `city` argument explicitly using the Candid interface description language syntax for Text arguments:
-
-```
-dfx canister call location_hello_backend location '("San Francisco and Paris")'
-```
-
-The command displays output similar to the following:
-
-```
-("Hello, San Francisco and Paris!")
-```
-
-Because your program only accepts a single text argument, specifying multiple strings returns only the first argument. For example, if you try this command:
-
-```
-dfx canister call location_hello_backend location '("San Francisco","Paris","Rome")'
-```
-
-Only the first argument—`("Hello, San Francisco!")`—is returned.
-
 ## Passing multiple arguments
 
 You might want to try modifying the source code to return different results. For example, you might want to modify the `location` function to return multiple city names.
@@ -111,21 +73,3 @@ dfx canister call favorite_cities location '(vec {"San Francisco";"Paris";"Rome"
 ```
 
 The command uses the Candid interface description syntax `(vec { val1; val2; val3; })` to return a vector of values. For more information about the Candid interface description language, see the [Candid](/docs/current/developer-docs/smart-contracts/candid/index) language guide.
-
-This command displays output similar to the following:
-
-```
-("Hello, from ["San Francisco", "Paris", "Rome"]!")
-```
-
-Call the `location_pretty` method in the program and pass your `city` argument using the interface description syntax by running the following command:
-
-```
-dfx canister call favorite_cities location_pretty '(vec {"San Francisco";"Paris";"Rome"})'
-```
-
-The command displays output similar to the following:
-
-```
-("Hello from San Francisco, Paris, Rome, bon voyage!")
-```

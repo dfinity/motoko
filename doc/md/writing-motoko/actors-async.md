@@ -6,7 +6,11 @@ sidebar_position: 1
 
 ## Overview
 
-Motoko provides an **actor-based** programming model to developers to express **services**, including those of canister smart contracts on ICP.
+The programming model of the Internet Computer consists of memory-isolated canisters communicating by asynchronous message passing of binary data encoding Candid values. A canister processes its messages one-at-a-time, preventing race conditions. A canister uses call-backs to register what needs to be done with the result of any inter-canister messages it issues.
+
+Motoko provides an **actor-based** programming model to developers to express **services**, including those of canister smart contracts on ICP. Each canister is represented as a typed actor. The type of an actor lists the messages it can handle. Each message is abstracted as a typed, asynchronous function. A translation from actor types to Candid types imposes structure on the raw binary data of the underlying Internet Computer. An actor is similar to an object, but is different in that its state is completely isolated, its interactions with the world are entirely through asynchronous messaging, and its messages are processed one-at-a-time, even when issued in parallel by concurrent actors.
+
+# Actors
 
 An actor is similar to an object, but is different in that:
 
@@ -32,23 +36,33 @@ In Motoko, actors have dedicated syntax and types:
 
 Consider the following actor declaration:
 
-```motoko
-actor {
-    public func greet(name : Text) : async Text {
-        return "Hello, " # name # "!";
-    };
-};
+``` motoko file=../examples/counter-actor.mo
 ```
 
-Let’s take a look at a few key elements of this program:
+The `Counter` actor declares one field and three public, shared functions:
 
-- This sample code defines an `actor` instead of a main function, which some programming languages require. For Motoko, the main function is implicit in the file itself.
+-   Fhe field `count` is mutable, initialized to zero and implicitly `private`.
 
-- Although the traditional "Hello, World!" program illustrates how you can print a string using a `print` or `println` function, that traditional program would not represent a typical use case for Motoko dapps that run on the Internet Computer.
+-   Function `inc()` asynchronously increments the counter and returns a future of type `async ()` for synchronization.
 
-- Instead of a `print` function, this sample program defines an `actor` with a public greet function that takes a `name` argument with a type of `Text`.
+-   Function `read()` asynchronously reads the counter value and returns a future of type `async Nat` containing its value.
 
-- The program uses the `async` keyword to indicate that it returns an asynchronous message consisting of a concatenated text string constructed using `"Hello, "`, the `#` operator, the `name` argument, and `"!"`.
+-   Function `bump()` asynchronously increments and reads the counter.
+
+Shared functions, unlike local functions, are accessible to remote callers and have additional restrictions. Their arguments and return value must be shared type. Shared types are a subset of types that includes immutable data, actor references, and shared function references, but excludes references to local functions and mutable data. Because all interaction with actors is asynchronous, an actor’s functions must return futures, that is, types of the form `async T`, for some type `T`.
+
+The only way to read or modify the state (`count`) of the `Counter` actor is through its shared functions.
+
+A value of type `async T` is a future. The producer of the future completes the future when it returns a result, either a value or error.
+
+Unlike objects and modules, actors can only expose functions, and these functions must be `shared`. For this reason, Motoko allows you to omit the `shared` modifier on public actor functions, allowing the more concise, but equivalent, actor declaration:
+
+``` motoko name=counter file=../examples/counter-actor-sugar.mo
+```
+
+For now, the only place shared functions can be declared is in the body of an actor or actor class. Despite this restriction, shared functions are still first-class values in Motoko and can be passed as arguments or results, and stored in data structures.
+
+The type of a shared function is specified using a shared function type. For example, the value `inc` has type `shared () → async Nat` and could be supplied as a standalone callback to some other service.
 
 ## Actor types
 

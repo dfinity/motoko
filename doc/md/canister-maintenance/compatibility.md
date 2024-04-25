@@ -112,19 +112,6 @@ Version `v3` with Candid interface `v3.did` and stable type interface `v3.most`:
 ``` motoko no-repl file=../examples/count-v3.most
 ```
 
-The following table summarizes the (in)compatibilities between them:
-
-|         |                  |                       |
-|---------|------------------|-----------------------|
-| Version | Candid interface | Stable type interface |
-| `v0`    | `v0.did`         | `v0.most`             |
-|         | :> ✓             | \<\<: ✓               |
-| `v1`    | `v1.did`         | `v1.most`             |
-|         | :> ✓             | \<\<: ✓               |
-| `v2`    | `v2.did`         | `v2.most`             |
-|         | :> ✓             | \<\<: *✗*             |
-| `v3`    | `v3.did`         | `v3.most`             |
-
 ## Upgrade tooling
 
 The Motoko compiler (`moc`) supports:
@@ -152,7 +139,7 @@ cannot be consumed at new type
 
 Because of the compatibility error, you should not attempt to upgrade from `v2.wasm` to `v3.wasm`. The result of upgrading is unpredictable. At best, the upgrade will detect the incompatibility, trap and roll back to the current version, as if the upgrade had never been attempted. At worst, the upgrade will appear to succeed, but lose some or all of the state of the previous version, re-initializing some of the stable variables you intended to preserve.
 
-One way to correctly change the logical state to `Nat`, is to introduce a new stable variable, `newState`, of type `Nat`, initialized from the old one (`state`):
+One way to correctly change the logical state to `Nat`, is to introduce a new stable variable, `newState`, of type `Nat`, initialized from the old one (`state`). Unlike the stable signature of v3.wasm, the stable signature of v4.wasm:
 
 ``` motoko no-repl file=../examples/count-v4.mo
 ```
@@ -188,3 +175,13 @@ actor {
 ```
 
 Adding a new record field  does not work. The reason is simple: the upgrade would need to supply values for the new field out of thin air. In this example, the upgrade would need to conjure up some value for the  `description` field of every existing `card` in `map`.
+
+## Metadata sections
+
+Motoko embeds `.did` and `.most` files as Wasm custom sections for use by other tools, e.g. dfx.
+
+`dfx deploy` and `dfx canister install --all --mode upgrade` commands check that the interface is compatible, and if not, show this message and ask if you want to continue:
+
+```
+let msg = format!("Candid interface compatibility check failed for canister '{}'.\nYou are making a BREAKING change. Other canisters or frontend clients relying on your canister may stop working.\n\n", canister_info.get_name()) + &err;
+```

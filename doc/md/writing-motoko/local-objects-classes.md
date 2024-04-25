@@ -23,13 +23,6 @@ By design, objects with mutable fields or methods cannot be sent to remote actor
 
 To compensate for this necessary limitation, `actor` objects are shareable, but always execute remotely. They communicate with shareable Motoko data only. Local objects interact in less restricted ways with themselves, and can pass any Motoko data to each other’s methods, including other objects. In most other ways, local objects and classes are non-shareable counterparts to actor objects and classes.
 
-
-## Object and actor classes
-
-**Object classes** : A family of related objects to perform a task with a customizable initial state. Motoko provides a syntactical construct, called a `class` definition, which simplifies building objects of the same type and implementation.
-
-**Actor classes** : An object class that exposes a [service](async-data.md) using asynchronous behavior. The corresponding Motoko construct is an [actor class](actor-classes.md), which follows a similar but distinct design.
-
 ## Example
 
 The following example illustrates a general evolution path for Motoko programs. Each object has the potential to be refactored into a service by refactoring the local object into an actor object.
@@ -103,6 +96,12 @@ Neither implementation of a counter comes without some complexity. In this case,
 The common type abstracts the differences in the implementations of the objects, shielding the rest of the application from their implementation details.
 
 Objects types can also have [subtypes](object-subtyping.md), allowing an object with a more specific type to pass as an object of a more general type, for example, to pass as an object with fewer fields.
+
+## Object and actor classes
+
+**Object classes** : A family of related objects to perform a task with a customizable initial state. Motoko provides a syntactical construct, called a `class` definition, which simplifies building objects of the same type and implementation.
+
+**Actor classes** : An object class that exposes a [service](async-data.md) using asynchronous behavior. The corresponding Motoko construct is an [actor class](actor-classes.md), which follows a similar but distinct design.
 
 ## Object classes
 
