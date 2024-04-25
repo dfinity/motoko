@@ -6,7 +6,8 @@ sidebar_position: 2
 
 ## Overview
 
-Optimizing canisters is an important development step that can assure your canister is using the most efficient workflow by optimizing the canister's cycles usage and binary size.  This guide covers how to optimize Motoko canisters.
+The Motoko compiler produces small binaries with reasonably efficient code, but is not a highly optimized compiler. 
+It is possible to further optimize Motoko binaries, both for code size and cycle usage, using additional tools such as `wasm-opt`.
 
 ## Using `wasm-opt`
 
