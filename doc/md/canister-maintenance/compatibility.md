@@ -29,7 +29,7 @@ To fix this, you can declare a stable variable that is retained across upgrades:
 ``` motoko no-repl file=../examples/count-v1.mo
 ```
 
-If a variable is not marked `stable`, `state` would restart from `0` on upgrade.
+If the variable `state` were not declared `stable`, `state` would restart from `0` on upgrade.
 
 
 ## Evolving the Candid interface
