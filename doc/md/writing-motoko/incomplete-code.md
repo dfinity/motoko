@@ -11,7 +11,6 @@ To accommodate these situations, Motoko provides the `xxx`, `nyi` and `unreachab
 
 ## Short-term holes
 
-Short-term holes are never committed to a source repository and only ever exist in a single development session for a developer that is still writing the program.
 
 Assuming that one has imported the prelude as follows:
 
