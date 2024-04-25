@@ -31,11 +31,11 @@ actor {
 Then, consider the following code for `canister2`:
 
 ```motoko
-import Prim "mo:prim";
+import Debug "mo:base/Debug";
 
 actor {
     public func getValue() : async Nat {
-        Prim.debugPrint("Hello from canister 2!");
+        Debug.print("Hello from canister 2!");
         return 10;
     };
 };
