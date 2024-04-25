@@ -36,7 +36,7 @@ P.nyi()
 Like `xxx()`, `nyi()` has type `None`, thus any other type, and will trap on execution.
 ## `unreachable` code paths
 
-In contrast to the situations above, sometimes code will never be filled. It will never be evaluated assuming the coherence of the internal logic of the programs' invariants.
+Sometimes a developer will be required to provide code that they know will never be executed, due to the preceding program logic.
 
 To document a code path as logically impossible, or unreachable, use the base library function `unreachable`:
 
