@@ -151,7 +151,6 @@ The rules that Motoko applies to verify the correctness of code before compiling
 
 The type system is a safety feature that prevents a slew of errors that would otherwise have to be detected and reported at runtime, when they would be difficult or impossible to address.
 
-To design this logical definition, experiment with it, and practice making mistakes, you want to interact with this type system. The error messages of the **type checker** attempt to help the developer when they misunderstand or otherwise misapply the logic of the type system.
 
 ## Motoko base library
 
