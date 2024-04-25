@@ -114,7 +114,7 @@ The body of such a loop is always executed at least once.
 
 ## `while` loops with precondition
 
-Sometimes an entry condition is needed to guard the first execution of a loop. For this kind of repetition the `while <cond> <body>` is available:
+Sometimes an entry condition is needed to guard each iteration of a loop. For this kind of repetition use the `while <cond> <body>` form of loop:
 
 ``` motoko no-repl
 while (earned < need) { earned += earn() };
