@@ -16,7 +16,7 @@ Motoko stable variables require serialization and deserialization on [upgrade](.
 
 Due to the current 32-bit address space of Motoko, stable variables cannot store more than 4GiB of data.
 
-Additionally, some stable variables use a representation that is not itself `stable`, requiring a non-trivial pre-upgrade routine to pre-process the data into a `stable` form.  These pre-upgrade steps are critical, and if they trap for any reason, the Motoko canister is forever stuck in a useless, inoperable state.
+Additionally, some stable variables use a representation that is not itself `stable`, requiring a non-trivial pre-upgrade routine to pre-process the data into a `stable` form.  These pre-upgrade steps are critical, and if they trap for any reason, the Motoko canister may be stuck in an evolutionary dead-end, unable to upgrade.
 
 ## The `Region` library
 
