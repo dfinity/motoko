@@ -9,7 +9,13 @@ TODO: Move examples into doc/modules/language-guide/examples
 -->
 
 ## Overview
+In Motoko, an object is just a collection of named fields, holding values. These values can either be plain data, or function values. In addition, each field can be mutable or immutable. 
 
+A simple object containing just fields of data is like a record in a database. 
+When the fields are immutable and have shared types, the object itself is shareable and can be sent and received from shared functions.
+
+When fields contain function values, Motoko objects can represent traditional objects with methods, familiar from object-oriented programming (OOP). 
+From an OOP perspective, an object is an abstraction, defined by the behavior of its methods. Methods are typically used to modify or observe some encapsulated (i.e. hidden) state of an object.
 Motoko programs benefit from the ability to encapsulate state as objects with abstract types, as an `object` may encapsulate local state as `var`-bound variables by packaging this state with `public` methods that access and update it.
 
 Motoko objects that include mutable state are not shareable as a critical security-oriented design decision. If they were shareable, that would expose two main security risks: conceptually moving a mobile object’s code among actors and executing it remotely, and sharing state with remote logic.
