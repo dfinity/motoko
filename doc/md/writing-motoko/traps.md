@@ -10,6 +10,8 @@ A trap is a non-recoverable runtime failure caused by errors such as division-by
 
 A shared function call that executes without executing an `await` expression never suspends and executes atomically. A shared function that contains no `await` expression is syntactically atomic.
 
+## Commit points
+
 An atomic shared function whose execution traps has no visible effect on the state of the enclosing actor or its environment - any state change is reverted, and any message that it has sent is revoked. In fact, all state changes and message sends are tentative during execution: they are committed only after a successful commit point is reached.
 
 The points at which tentative state changes and message sends are irrevocably committed are:
