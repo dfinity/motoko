@@ -100,7 +100,7 @@ As such, the `inc` operation may fail with an overflow for this object but never
 
 Neither implementation of a counter comes without some complexity. In this case, they share a common type.
 
-A common type shared among two implementations of an object or service affords the potential for the internal implementation complexity to be factored away from the rest of the application.
+The common type abstracts the differences in the implementations of the objects, shielding the rest of the application from their implementation details.
 
 Objects types can also have [subtypes](object-subtyping.md), allowing an object with a more specific type to pass as an object of a more general type, for example, to pass as an object with fewer fields.
 
