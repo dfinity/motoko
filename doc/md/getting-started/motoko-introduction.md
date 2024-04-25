@@ -50,6 +50,8 @@ Key design points of Motoko include:
 
 -   Safe arithmetic (both unbounded and checked).
 
+- Pattern matching with coverage checking
+
 -   Non-nullable types by default.
 
 -   Garbage collected (no manual memory management).
