@@ -24,7 +24,8 @@ The developer can fill any missing expression with the following:
 P.xxx()
 ```
 
-The result will always type check at compile time, and always trap at run time, if and when this expression executes.
+The expression `xxx()` has type `None`, which is a subtype of every other type. This means the expression can plug any short-term gap in your code. 
+`xxx()` will trap when executed.
 
 ## Long-term holes
 
