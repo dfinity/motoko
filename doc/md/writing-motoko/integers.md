@@ -7,11 +7,32 @@ sidebar_position: 10
 
 ## Overview
 
-Integers `Int` are primitive values that have bounded and unbounded variants. Integers can be negative numbers such as `-2` or `-1`, or positive numbers such as `1` and `2`.
+Motoko offers a variety types to represent integers and natural numbers, with the usual suite of arithmetic operators (`+`, `-`, `*`, '/' etc.) and comparison operators (`==`, `!=`,  `<`, `>`, `<=`, `>=`).
 
-Integers are unbounded and do not overflow. They use representations that grow to accommodate any finite number.
+The types `Int` and `Nat` are unbounded, meaning their values can grow to arbitrary size, limited only by memory. 
 
-This page will provide an example calculator program that creates a single actor with several public entry-point functions to perform basic arithmetic operations using integers. 
+The type `Nat` is a subtype of `Int`, so you can always supply a value of type `Nat` where and `Int` is expected but not vice versa.
+
+Motoko also provides bounded, or fixed-size integers and naturals, using a suffix to indicate the size of the type, in bits. 
+
+Thus `Int8`, `Int16` and `Int32` and `Int64` are 8-, 16-, 32- and 64-bit integer types, while `Nat8`, `Nat16`, `Nat32`, and `Nat64` are 8-, 16-, 32- and 64-bit natural types.
+
+An arithmetic operation on a value of a fixed-size type will trap if its result exceeds the bounds of the fixed-size type, either due to overflow or underflow.
+For example, `255 : Nat8 + 3` traps, because 258 is too large for a `Nat8`.
+
+Wrapping, non-trapping, versions of the usual arithmetic operations, performing modular arithmetic, are available by suffixing the usual operator with a `%`. For example, `255 : Nat8 +% 3` evaluates to `2`.
+
+The type of an integer or natural constant is determined by the textual context
+of the constant, defaulting to `Int` for negative constants and `Nat` for positive ones. 
+Otherwise, the type of a constant can be indicated using a type annotation, for example `0 : Nat8`.
+
+One can force a nonnegative constant to be interpreted as an `Int` using an explicit sign, for example  `+1` is the `Int` one.
+
+For convenience, in-place updates of a variable or array element can be written by using a compound assignment operator, combining an arithmetic operation with the assignment operator `:=` . E.g. `x += 1` is short-hand for `x := x + 1` and combines addition `+` with assignment.
+
+Motoko does not provide any implicit conversions between numeric types. Instead, base library functions like `Nat8.toNat`  and `Nat8.fromNat` should be used for explicit conversion.
+
+To illustrate working with numbers, here is an example calculator program that creates a single actor with several public entry-point functions to perform basic arithmetic operations using integers.
 
 ## Using integers
 
