@@ -6,7 +6,18 @@ actor A {
         try { debugPrint "IN" }
         case { debugPrint "OUT" };
     };
-
+/*  nested `try` won't work
+    public func t1() : async () {
+        try {
+            try {
+                debugPrint "IN1";
+                throw error "IN1";
+            }
+            case { debugPrint "OUT1" };
+        }
+        catch _ { debugPrint "CAUGHT1" }
+    };
+*/
     public func t2() : async () {
         try {
             debugPrint "IN2";
@@ -32,5 +43,6 @@ actor A {
 
 
 await A.t0();
+//await A.t1();
 await A.t2();
 await A.t3();

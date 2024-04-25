@@ -2,7 +2,7 @@ try-finally.mo:6.9-7.34: warning [M0145], this try handler of type
   Error
 does not cover value
   _
-try-finally.mo:20.9-24.35: warning [M0145], this try handler of type
+try-finally.mo:31.9-35.35: warning [M0145], this try handler of type
   Error
 does not cover value
   _
