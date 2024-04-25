@@ -44,4 +44,4 @@ To document unreachable code, the developer can use the  `unreachable` function 
 P.unreachable()
 ```
 
-As in the situations above, this function type-checks in all contexts, and when evaluated, traps in all contexts.
+Like `unreachable()` has type `None` and thus any other type, and will trap on (unexpected!) execution.
