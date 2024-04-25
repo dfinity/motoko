@@ -150,7 +150,7 @@ cannot be consumed at new type
   var Nat
 ```
 
-Upgrades from `v2.wasm` to `v3.wasm` would fail and roll-back, avoiding data loss. If Candid is revised, an upgrade would now "succeed", but with data loss. This is the difference between a fail safe and a silent failure.
+Because of the compatibility error, you should not attempt to upgrade from `v2.wasm` to `v3.wasm`. The result of upgrading is unpredictable. At best, the upgrade will detect the incompatibility, trap and roll back to the current version, as if the upgrade had never been attempted. At worst, the upgrade will appear to succeed, but lose some or all of the state of the previous version, re-initializing some of the stable variables you intended to preserve.
 
 One way to correctly change the logical state to `Nat`, is to introduce a new stable variable, `newState`, of type `Nat`, initialized from the old one (`state`):
 
