@@ -15,7 +15,7 @@ Before you begin writing canisters in Motoko, you should be familiar with a few 
 
 ### Primitive values
 
-Motoko permits the following primitive value forms:
+Motoko supports the following primitive types and values:
 
 -   `Bool`: Boolean values (`true` and `false`).
 
