@@ -20,7 +20,6 @@ Motoko programs benefit from the ability to encapsulate state as objects with ab
 
 By design, objects with mutable fields or methods cannot be sent to remote actors. If that were allowed, a receiver would either have to receive a remote reference to the local object, breaking the isolation of the actor model by allowing remote updates to local state. Or, the receiver would have to receive a copy of the local object. Then, the effect of any changes to the copy would not be reflected in the original, leading to confusion.
 
-However, objects may be pure records which are shareable since they are free from mutable state. The [mutable state](mutable-state.md) introduces declarations of private mutable state in the form of `var`-bound variables and mutable array allocation.
 
 To compensate for this necessary limitation, `actor` objects are shareable, but always execute remotely. They communicate with shareable Motoko data only. Local objects interact in less restricted ways with themselves, and can pass any Motoko data to each other’s methods, including other objects. In most other ways, local objects and classes are non-shareable counterparts to actor objects and classes.
 
