@@ -9,6 +9,14 @@ sidebar_position: 2
 
 The `ExperimentalStableMemory` library provides low-level access to Internet Computer stable memory.
 
+:::danger
+This library has been superseded by the similar, but safer, [`Region` library](region.md).
+
+New applications should use the `Region` library: it offers additional isolation between different libraries using stable memory.
+
+The documentation here is provided for legacy reasons.
+:::
+
 <!--
 TODO: extend example to illustrate stableVarQuery
 -->
