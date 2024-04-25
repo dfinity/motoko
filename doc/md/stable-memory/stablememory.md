@@ -19,7 +19,11 @@ The `ExperimentalStableMemory` library is experimental, subject to change and ma
 
 :::
 
-Motoko stable variables are not designed to maintain large amounts of data, as there may not be enough cycle budget to store then restore all stable variables within an upgrade.
+The current implementation of Motoko stable variables is not able to maintain very large amounts of data.
+
+The ICP upgrade process currently requires stable variables to be copied from 32-bit main memory  to 64-bit stable memory and then back again - for copious data, this can exceed the cycle limits allowed for upgrade, causing an upgrade to fail.
+
+Moreover, a 32-bit Motoko canister and its stable variables can fundamentally store at most 4GB of data, while ICP stable memory is 64-bit and currently supports up to 400GB of data.
 
 ## The `ExperimentalStableMemory` library
 
