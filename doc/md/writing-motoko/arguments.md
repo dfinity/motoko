@@ -88,7 +88,7 @@ public func location_pretty(cities : [Text]) : async Text {
 
 ```
 
-You might notice that `Text` in this code example is enclosed by square (`[ ]`) brackets. By itself, `Text` represents a collection of UTF-8 characters. The square brackets around a type indicate that it is an **array** of that type. In this context, therefore, `[Text]` indicates an array of a collection of UTF-8 characters, enabling the program to accept and return multiple text strings.
+You might notice that `Text` in this code example is enclosed by square (`[ ]`) brackets. By itself, `Text` represents a (UTF-8 encoded) sequence of Unicode characters. Placing square brackets around a type describes an **array** of that type. In this context, therefore, `[Text]` indicates an array of text values, enabling the program to accept multiple text values as an array.
 
 The code sample also uses the basic format of an `apply` operation for the array, which can be abstracted as:
 
