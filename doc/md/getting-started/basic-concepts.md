@@ -23,6 +23,8 @@ Motoko supports the following primitive types and values:
 
 -   `Nat`: Natural numbers (`0`, `1`, `2`, …​) - bounded and unbounded variants.
 
+- `Char`: Unicode text characters (`'a'`, `'B'`,  `'☃'`).
+
 -   `Text`: Text values of strings of unicode characters.
 
 By default, **integers** and **natural numbers** are **unbounded** and do not overflow. Instead, they use representations that grow to accommodate any finite number.
