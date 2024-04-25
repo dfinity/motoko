@@ -772,7 +772,7 @@ The type `Region` represents opaque stable memory regions. Region objects are dy
 
 The region type is stable but not shared and its objects, which are stateful, may be stored in stable variables and data structures.
 
-Objects of type `Region` are created and updated using the functions provided by base library `Region`. See [stable regions](../stable-regions.md) and library [Region](.../base/Region.md) for more information.
+Objects of type `Region` are created and updated using the functions provided by base library `Region`. See [stable regions](../stable-memory/stable-regions.md) and library [Region](../base/Region.md) for more information.
 
 ### Constructed types
 

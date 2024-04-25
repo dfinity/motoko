@@ -65,7 +65,7 @@ const config = {
         items: [
           {
             type: 'doc',
-            docId: 'motoko',
+            docId: 'attic/motoko',
             position: 'left',
             label: 'Doc',
           },
@@ -90,7 +90,7 @@ const config = {
             items: [
               {
                 label: 'Motoko',
-                to: '/docs/intro',
+                to: '/docs/attic/motoko',
               },
               {
                 label: 'Base',
