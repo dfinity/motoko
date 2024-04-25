@@ -53,7 +53,7 @@ For precise language definitions of primitive and non-primitive values, see the 
 
 ## Printing values
 
-The function `print` accepts a text string of type `Text` as input, and produces the unit value of unit type or `()`, as its output.
+The function `print`, from base library `Debug`, accepts a text string of type `Text` as input, and produces the unit value of unit type or `()`, as its output.
 
 Because unit values carry no information, all values of type unit are identical, so the `print` function doesn’t actually produce an interesting result. Instead of a result, the function `print` has the effect of emitting the text string in a human-readable form to the output terminal. Functions that have side effects, such as emitting output or modifying state, are often called **impure**. Functions that just return values without further side-effects, are called **pure**.
 
