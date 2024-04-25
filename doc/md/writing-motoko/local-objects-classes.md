@@ -70,7 +70,7 @@ In the declaration of `object`, the variable `count` was explicitly declared nei
 
 By default, all declarations in an object block are `private`. Consequently, the type for `count` does not appear in the type of the object. Its name and presence are both inaccessible from the outside.
 
-By not exposing this implementation detail, the object has a more general type with fewer fields, and as a result, is interchangeable with objects that implement the same counter object type differently without using such a field.
+By not exposing this implementation detail, the object has a more general type with fewer fields, and as a result, is interchangeable with objects that have the same interface but a different implementation.
 
 To illustrate the point just above, consider this variation of the `counter` declaration above, of `byteCounter`:
 
