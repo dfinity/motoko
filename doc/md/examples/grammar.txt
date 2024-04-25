@@ -218,6 +218,7 @@
     'if' <exp_nullary> <exp_nest> 'else' <exp_nest>
     'try' <exp_nest> <catch>
     'try' <exp_nest> 'case' <exp_nest>
+    'try' <exp_nest> 'else' <catch> 'case' <exp_nest>
     'throw' <exp_nest>
     'switch' <exp_nullary> '{' <list(<case>, ';')> '}'
     'while' <exp_nullary> <exp_nest>
