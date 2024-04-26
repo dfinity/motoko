@@ -107,7 +107,7 @@ In particular, suppose that the subscriber wants to avoid being locked into a ce
 
 To permit this flexibility, an actor needs to share a single function that permits remote invocation from another actor, not merely a reference to itself.
 
-The ability to share a function requires that it be pre-designated as `shared` and the type system enforces that these functions follow certain rules around the types of data that these functions accept, return, or over which their closures close.
+The ability to share a function requires that it be pre-designated as `shared` and the type system enforces that these functions follow certain rules around the types of data that these functions accept as arguments and return as result. In particular, the data that can be transmitted across shared functions must have a shared type consisting of immutable plain data, actor references or references to shared functions. Local functions, proper objects with methods and mutable arrays are excluded.
 
 Motoko lets you omit this keyword for public actor methods since implicitly, any public function of an actor must be `shared`, whether marked explicitly or not.
 
