@@ -94,6 +94,8 @@ A pattern is refutable if matching some value of the expected type against it ca
 
 A pattern that cannot fail to match every value is irrefutable. Examples of irrefutable patterns are the wildcard pattern `_`, identifier patterns `x` and tuple or record patterns built from irrefutable sub-patterns.
 
+### Singleton types
+
 Some types contain just a single value. We call these singleton types. Examples of these are the unit type, also known as an empty tuple, or tuples of singleton types. Variants with a single tag and with no or a singleton type payload are singleton types too. Pattern matching on singleton types is particularly straightforward, as it only has one possible outcome of a successful match.
 
 ### Exhaustiveness (coverage) checking
