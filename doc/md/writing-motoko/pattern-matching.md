@@ -57,7 +57,7 @@ switch ("Adrienne", #female) {
 }
 ```
 
-This program will match the first `case` clause because binding to the identifier `name` cannot fail and the shorthand variant literal `#Female` compares as equal. Then it evaluates to `"Adrienne is a girl!"`. The last clause showcases the wildcard pattern `_`. It cannot fail, but won’t bind any identifier.
+This program will match the first `case` clause because binding to the identifier `name` cannot fail and the shorthand variant literal `#female` compares as equal. Then it evaluates to `"Adrienne is a girl!"`. The last clause showcases the wildcard pattern `_`. It cannot fail, but won’t bind any identifier.
 
 ## `or` patterns
 
