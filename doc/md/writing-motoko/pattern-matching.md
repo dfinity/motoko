@@ -100,4 +100,6 @@ Some types contain just a single value. We call these singleton types. Examples 
 
 ### Exhaustiveness (coverage) checking
 
-When a pattern check alternative has the potential to fail, then it becomes important to find out whether the whole `switch` expression can fail. If this can happen, the execution of the program can trap for certain inputs, posing an operational threat. The compiler checks for the exhaustiveness of pattern matching by keeping track of the covered shape of the scrutinee. The compiler issues a warning for any non-covered scrutinees. Motoko even constructs a helpful example of a scrutinee that is not matched. A useful byproduct of the exhaustiveness check is that it identifies and warns about dead alternatives that can never be matched.
+
+At runtime, a switch expression may wind up scrutinizing a value to which none of its alternative patterns apply, generating an undesired trap.
+To detect the possibility of such runtime failures, the Motoko compiler checks for the exhaustiveness of pattern matching by keeping track of the covered shape of the scrutinee. The compiler issues a warning for any non-covered scrutinees. Motoko even constructs a helpful example of a scrutinee that is not matched. A useful by-product of the exhaustiveness check is that it identifies and warns about dead or redundant alternatives that can never be matched.
