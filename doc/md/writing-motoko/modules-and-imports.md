@@ -12,7 +12,11 @@ This section provides examples of different scenarios for using the `module` and
 
 ## Importing from the base library
 
-You can find source code and documentation for Motoko base modules in the [motoko-base](../base/index) open source repository. There are instructions in the repository for generating a local copy of the current documentation for the Motoko base library.
+View the [online documentation for the Motoko base library](../base/index).
+
+You can find source code for the Motoko base modules in the open source [repository](https://github.com/dfinity/motoko-base).
+
+There are instructions in the repository for generating a local copy of the current documentation for the Motoko base package.
 
 To import from the base library, use the `import` keyword followed by a local module name and a URL where the `import` declaration can find the module. For example:
 
