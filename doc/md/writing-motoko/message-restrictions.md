@@ -24,3 +24,5 @@ The `await` and `async` constructs are only allowed in an asynchronous context.
 It is only possible to `throw` or `try/catch` errors in an asynchronous context. This is because structured error handling is supported for messaging errors only and, like messaging itself, confined to asynchronous contexts.
 
 These rules also mean that local functions cannot directly call shared functions or `await` futures.
+
+(The same restrictions apply to `await*` and `async*` expressions.)
