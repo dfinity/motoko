@@ -69,7 +69,8 @@ Since pattern matching has a rich history and interesting mechanics, a few addit
 
 ### Terminology
 
-The usually structured expression that is being matched is frequently called the **scrutinee**. The patterns appearing behind the keyword `case` are the **alternatives**. When every possible scrutinee is matched by at least one alternative, then we say that the scrutinee is **covered**. The patterns are tried in top-down fashion and thus in case of overlapping patterns, the one higher-up is selected. An alternative is considered dead or inactive if for every value that it matches there is higher-up alternative that is also matched.
+
+The expression whose value is being matched is frequently called the **scrutinee**. The patterns appearing behind the keyword `case` are the **alternatives**. When every possible value of the scrutinee is matched by at least one alternative, then the scrutinee is **covered**. The alternatives are tried in order. In case of overlapping patterns, the earlier one is selected. An alternative is considered dead or redundant if for every value that it matches there is already some earlier alternative that also matches the value.
 
 ### Booleans
 
