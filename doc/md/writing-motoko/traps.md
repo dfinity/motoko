@@ -2,7 +2,7 @@
 sidebar_position: 26
 ---
 
-# Traps
+# Traps and commit points
 
 ## Overview
 
