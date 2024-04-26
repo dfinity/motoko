@@ -82,7 +82,7 @@ Motoko’s variant types are a form of disjoint union, sometimes also called a s
 
 ### Enumerated types
 
-Other programming languages often use a keyword `enum` to introduce enumerations. These are impoverished relatives of Motoko’s variant types, as the alternatives are not allowed to carry any payload. Correspondingly, in those languages the `switch`-like statements lack the full power of pattern matching. Motoko provides the short-hand syntax, as in `type Weekday = { #mon; #tue; …​ }`, to define basic enumerations for which no payloads are required.
+Other programming languages often use a keyword `enum` to define discrete enumerations. These are poor relations of Motoko’s more general variant types, as the alternatives of an enumeration are not allowed to carry any payload. Correspondingly, in those languages the `switch`-like statements used to analyse enum values lack the full power of pattern matching. Motoko provides the short-hand syntax, as in `type Weekday = { #mon; #tue; …​ }`, to define basic enumerations for which no payloads are required.
 
 ### Error handling
 
