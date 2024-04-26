@@ -35,7 +35,8 @@ By convention, longer-term holes can be considered "not yet implemented" (`nyi`)
 P.nyi()
 ```
 Like `xxx()`, `nyi()` has type `None`, thus any other type, and will trap on execution.
-## `unreachable` code paths
+## Unreachable code
+
 
 Sometimes a developer will be required to provide code that they know will never be executed, due to the preceding program logic.
 
