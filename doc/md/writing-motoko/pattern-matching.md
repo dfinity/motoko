@@ -63,7 +63,7 @@ This program will match the first `case` clause because binding to the identifie
 
 The last kind of pattern is the `or` pattern. As its name suggests, these are two or more patterns that are separated by the keyword `or`. Each of the sub-patterns must bind to the same set of identifiers, and is matched from left-to-right. An `or` pattern fails when its rightmost sub-pattern fails.
 
-## Additional information about about patterns
+## More on patterns
 
 Since pattern matching has a rich history and interesting mechanics, a few additional comments are justified.
 
