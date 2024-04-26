@@ -1,5 +1,5 @@
 ---
-sidebar_position: 12
+sidebar_position: 13
 ---
 
 # Objects and classes
@@ -9,12 +9,12 @@ TODO: Move examples into doc/modules/language-guide/examples
 -->
 
 ## Overview
-In Motoko, an object is just a collection of named fields, holding values. These values can either be plain data, or function values. In addition, each field can be mutable or immutable. 
+In Motoko, an object is just a collection of named fields, holding values. These values can either be plain data, or function values. In addition, each field can be mutable or immutable.
 
-A simple object containing just fields of data is like a record in a database. 
+A simple object containing just fields of data is like a record in a database.
 When the fields are immutable and have shared types, the object itself is shareable and can be sent and received from shared functions.
 
-When fields contain function values, Motoko objects can represent traditional objects with methods, familiar from object-oriented programming (OOP). 
+When fields contain function values, Motoko objects can represent traditional objects with methods, familiar from object-oriented programming (OOP).
 From an OOP perspective, an object is an abstraction, defined by the behavior of its methods. Methods are typically used to modify or observe some encapsulated (i.e. hidden) state of an object.
 Motoko programs benefit from the ability to encapsulate state as objects with abstract types. The [mutable state](mutable-state.md) introduces declarations of mutable state in the form of `var`-declared variables. Using such declarations privately in its body, an object can encapsulate the state, declaring public methods that access and update it.
 
@@ -87,7 +87,7 @@ This object has the same type as the previous one, and thus from the standpoint 
 }
 ```
 
-This version does not use the same implementation of the counter field. Rather than use an ordinary natural `Nat`, this version uses a byte-sized natural number, type `Nat8`, whose size is always eight bits.
+This version does not use the same implementation of the counter field. Rather than use an ordinary natural [`Nat`](../base/Nat.md), this version uses a byte-sized natural number, type [`Nat8`](../base/Nat8.md), whose size is always eight bits.
 
 As such, the `inc` operation may fail with an overflow for this object but never the prior one, which may instead fill the program’s memory.
 
@@ -247,7 +247,7 @@ Classes are defined by the keyword `class`, followed by:
 
 The constituents of the body marked `public` contribute to the resulting objects' type and these types compared against the optional annotation, if given.
 
-Consider the task of walking the bits of a natural `Nat` number. For this example, you could define the following:
+Consider the task of walking the bits of a natural [`Nat`](../base/Nat.md) number. For this example, you could define the following:
 
 ``` motoko
 class Bits(n : Nat) {

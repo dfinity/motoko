@@ -43,7 +43,7 @@ func fullName({ first : Text; mid : Text; last : Text }) : Text {
 };
 ```
 
-The input is an anonymous object which is destructured into its three `Text` fields, whose values are bound to the identifiers `first`, `mid` and `last`. They can be freely used in the block that forms the body of the function. Above we have resorted to name punning, a form of aliasing for object field patterns, using the name of a field to also name its contents. A more general form of field patterns allows the content to be named separately from the field, as in `…​; mid = m : Text; …​`. Here `mid` determines which field to match, and `m` names the content of that field within the scope of the pattern.
+The input is an anonymous object which is destructured into its three [`Text`](../base/Text.md) fields, whose values are bound to the identifiers `first`, `mid` and `last`. They can be freely used in the block that forms the body of the function. Above we have resorted to name punning, a form of aliasing for object field patterns, using the name of a field to also name its contents. A more general form of field patterns allows the content to be named separately from the field, as in `…​; mid = m : Text; …​`. Here `mid` determines which field to match, and `m` names the content of that field within the scope of the pattern.
 
 ## Literal patterns
 
@@ -73,7 +73,7 @@ The usually structured expression that is being matched is frequently called the
 
 ### Booleans
 
-The data type `Bool` can be regarded as two disjointed alternatives (`true` and `false`) and Motoko’s built-in `if` construct will eliminate the data and turn it into control flow. `if` expressions are a form of pattern matching that abbreviates the general `switch` expression for the special case of boolean scrutinees.
+The data type [`Bool`](../base/Bool.md) can be regarded as two disjointed alternatives (`true` and `false`) and Motoko’s built-in `if` construct will eliminate the data and turn it into control flow. `if` expressions are a form of pattern matching that abbreviates the general `switch` expression for the special case of boolean scrutinees.
 
 ### Variant patterns
 

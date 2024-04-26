@@ -572,7 +572,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
     let result = traverse(graph);
     ```
 
--   The name of predicate functions returning `Bool` should use an `is` or `has` prefix or a similar description of the tested property.
+-   The name of predicate functions returning [`Bool`](../base/Bool.md) should use an `is` or `has` prefix or a similar description of the tested property.
 
     ``` motoko no-repl
     class Set<X>() {
@@ -648,7 +648,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
     :::note
 
-    Use floating point constants to enforce type `Float` without an extra annotation. Similarly, use an explicit `+` sign to produce a positive value of type `Int` instead of `Nat`, if desired.
+    Use floating point constants to enforce type `Float` without an extra annotation. Similarly, use an explicit `+` sign to produce a positive value of type [`Int`](../base/Int.md) instead of [`Nat`](../base/Nat.md), if desired.
 
     :::
 
@@ -657,7 +657,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
     let offset = +1;   // type Int
     ```
 
--   Similarly, put inline type annotations on arithmetic expressions with types other than `Nat` or `Int`.
+-   Similarly, put inline type annotations on arithmetic expressions with types other than [`Nat`](../base/Nat.md) or [`Int`](../base/Int.md).
 
     ``` motoko no-repl
     if (x & mask == (1 : Nat32)) { ... };
@@ -694,7 +694,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
     var obj : Class = foo();
     ```
 
-    Rationale: Due to subtyping, inferring the type from the initialization would not necessarily deduce the intended type. For example, `balance` would have type `Nat` without the annotation, ruling out assignments of integers.
+    Rationale: Due to subtyping, inferring the type from the initialization would not necessarily deduce the intended type. For example, `balance` would have type [`Nat`](../base/Nat.md) without the annotation, ruling out assignments of integers.
 
 -   Put type annotations on all public fields in a class.
 
@@ -717,7 +717,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
     Array.map<Nat, Nat>(func n {n + 1}, a);
     ```
 
--   Put type annotations on definitions that involve numeric types other than `Nat` or `Int`, to resolve the overloading between arithmetic operators and constants.
+-   Put type annotations on definitions that involve numeric types other than [`Nat`](../base/Nat.md) or [`Int`](../base/Int.md), to resolve the overloading between arithmetic operators and constants.
 
     ``` motoko no-repl
     let mask : Nat32 = 0xfc03_ff00;
@@ -726,7 +726,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
 
 ### Picking types
 
--   Use `Nat` for any integral value that cannot be negative.
+-   Use [`Nat`](../base/Nat.md) for any integral value that cannot be negative.
 
 -   Use fixed-width `NatN` or `IntN` only when storing many values and space usage matters, when bit-fiddling requires the low-level interpretation of a number as a vector of bits or when matching types imposed by external requirements, such as other canisters.
 
@@ -742,7 +742,7 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
       func nodeInfo(node : Node) : {parent : Node; left : Node; right : Node} { ... }
     ```
 
--   Consider using variants instead of `Bool` to represent binary choices.
+-   Consider using variants instead of [`Bool`](../base/Bool.md) to represent binary choices.
 
     Note that variant types need not be declared but can be used in place.
 

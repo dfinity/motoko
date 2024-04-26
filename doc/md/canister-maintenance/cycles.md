@@ -21,9 +21,9 @@ This library is subject to change and likely to be replaced by more high-level s
 
 :::
 
-## The `ExperimentalCycles` Library
+## The [`ExperimentalCycles`](../base/ExperimentalCycles.md) Library
 
-The `ExperimentalCycles` library provides imperative operations for observing an actor’s current balance of cycles, transferring cycles and observing refunds.
+The [`ExperimentalCycles`](../base/ExperimentalCycles.md) library provides imperative operations for observing an actor’s current balance of cycles, transferring cycles and observing refunds.
 
 The library provides the following operations:
 
@@ -47,14 +47,14 @@ The implicit register of added amounts, incremented on each `add`, is reset to z
 
 ### Example
 
-To illustrate, we will now use the `ExperimentalCycles` library to implement a simple piggy bank program for saving cycles.
+To illustrate, we will now use the [`ExperimentalCycles`](../base/ExperimentalCycles.md) library to implement a simple piggy bank program for saving cycles.
 
 Our piggy bank has an implicit owner, a `benefit` callback and a fixed `capacity`, all supplied at time of construction. The callback is used to transfer withdrawn amounts.
 
 ``` motoko name=PiggyBank file=../examples/PiggyBank.mo
 ```
 
-The owner of the bank is identified with the implicit caller of constructor `PiggyBank()`, using the shared pattern, `shared(msg)`. Field `msg.caller` is a `Principal` and is stored in private variable `owner` for future reference. See [principals and caller identification](../writing-motoko/caller-id.md) for more explanation of this syntax.
+The owner of the bank is identified with the implicit caller of constructor `PiggyBank()`, using the shared pattern, `shared(msg)`. Field `msg.caller` is a [`Principal`](../base/Principal.md) and is stored in private variable `owner` for future reference. See [principals and caller identification](../writing-motoko/caller-id.md) for more explanation of this syntax.
 
 The piggy bank is initially empty, with zero current `savings`.
 

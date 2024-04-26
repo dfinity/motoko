@@ -75,7 +75,7 @@ Inspirations: Java, JavaScript, C#, Swift, Pony, ML, Haskell
 
 ## Expressions
 
--   Identifiers:  
+-   Identifiers:
     `x`, `foo_bar`, `test123`, `List`, `Map`
 
 -   Parentheses `( … )` for grouping
@@ -84,8 +84,8 @@ Inspirations: Java, JavaScript, C#, Swift, Pony, ML, Haskell
 
 -   `;` for sequencing
 
--   Type annotations (to help type inference):  
-    `(42 : Int)`  
+-   Type annotations (to help type inference):
+    `(42 : Int)`
     (zero cost)
 
 ## Libraries
@@ -178,7 +178,7 @@ Literals: `13`, `0xf4`, `-20`, `+1`, `1_000_000`
 
 ## Unbounded naturals
 
-`Nat`
+[`Nat`](../base/Nat.md)
 
 `{ 0, 1, 2, …​ }`
 
@@ -190,9 +190,9 @@ Literals: `13`, `0xf4`, `1_000_000`
 
 `Nat <: Int`
 
-`Nat` is a *subtype* of `Int`
+[`Nat`](../base/Nat.md) is a *subtype* of `Int`
 
-(you can supply a `Nat` wherever an `Int` is expected)
+(you can supply a [`Nat`](../base/Nat.md) wherever an `Int` is expected)
 
 ## Bounded numbers (trapping)
 
@@ -218,11 +218,11 @@ Literals: 0, -10, `2.71`, `-0.3e+15`, `3.141_592_653_589_793_12`
 
 No surprises here
 
-`- x`  
-`a + b`  
-`a % b`  
-`a & b`  
-`a << b`  
+`- x`
+`a + b`
+`a % b`
+`a & b`
+`a << b`
 …
 
 `a +% b, a -% b, …` for wrapping, modular arithmetic (where appropriate)
@@ -245,9 +245,9 @@ Unicode! Character = Unicode scalar value; no random access on text
 
 Literals: `true`, `false`
 
-`a or b`  
-`a and b`  
-`not b`  
+`a or b`
+`a and b`
+`not b`
 `if (b) e1 else e2`
 
 # Functions
@@ -343,7 +343,7 @@ func display(x : ?Text) : Text {
 
 ## Option blocks
 
-Switching on every option value can be inconvenient …​  
+Switching on every option value can be inconvenient …​
 
 The *option block*, `do ? { … }`, allow you to safely access option values with a postfix *null break* `!` expression.
 
@@ -432,7 +432,7 @@ class Employee(fst : Text, lst : Text) {
 }
 ```
 
-Classes are factories for constructing objects.  
+Classes are factories for constructing objects.
 A class introduces a type and a function (for constructing instances).
 
 Just sugar for:
@@ -534,7 +534,7 @@ module {
 }
 ```
 
-modules contain named types and values (like objects),  
+modules contain named types and values (like objects),
 but are restricted to *static* content (pure, no state, …)
 
 ## Module imports
@@ -592,7 +592,7 @@ IC canister with Candid interface ≈ Motoko actor
 
 -   all primitive types
 
--   records, tuples, arrays, variants, options  
+-   records, tuples, arrays, variants, options
     with immutable sharable components
 
 -   `actor` types
@@ -639,12 +639,12 @@ a typical actor/canister main file
 
 asychronous future or promise
 
-introduced by `async { … }`  
+introduced by `async { … }`
 (implicit in async function declaration)
 
-`await e`  
-suspends computation pending `e`’s result:  
-if the result is a value, continues with that value,  
+`await e`
+suspends computation pending `e`’s result:
+if the result is a value, continues with that value,
 if the result is an `Error`, `throw`s the error.
 
 ``` motoko no-repl
@@ -661,7 +661,7 @@ if the result is an `Error`, `throw`s the error.
 
 ## Concurrency Hazards
 
-Functions that `await` are *not* atomic.  
+Functions that `await` are *not* atomic.
 Suspension introduces *concurrency hazards*.
 
 A bad implementation of `send`:
@@ -768,12 +768,12 @@ async {
 };
 ```
 
-Similar to exceptions in other languages,  
+Similar to exceptions in other languages,
 but *only* available in async contexts, e.g. shared functions; async blocks
 
 ## Stable variables
 
-If we upgrade the `Broadcast` actor, all current registrations are lost.  
+If we upgrade the `Broadcast` actor, all current registrations are lost.
 To preserve them, declare the state variable `r` as `stable`.
 
 ``` motoko no-repl
@@ -796,7 +796,7 @@ actor Broadcast {
 }
 ```
 
-stable variables must have *stable* types (see manual)  
+stable variables must have *stable* types (see manual)
 `system` hooks can’t send messages
 
 # Type system
@@ -822,8 +822,8 @@ let stack : Stack = #empty;
 let revStack = reverse(stack); // works though reverse defined on List (not Stack)
 ```
 
-Type definitions  
-do not create types,  
+Type definitions
+do not create types,
 but name existing types
 
 Despite their different names, `Stack` and `List` are equivalent types.

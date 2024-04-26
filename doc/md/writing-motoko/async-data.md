@@ -1,5 +1,5 @@
 ---
-sidebar_position: 4
+sidebar_position: 5
 ---
 
 # Async data
@@ -7,15 +7,15 @@ sidebar_position: 4
 ## Overview
 
 
-On ICP, communication between canisters is asynchronous. Sending a message together with a callback from one canister to another schedules a request in the receiver. Completion of the request triggers the callback to the sender, allowing the sender to process the result. 
+On ICP, communication between canisters is asynchronous. Sending a message together with a callback from one canister to another schedules a request in the receiver. Completion of the request triggers the callback to the sender, allowing the sender to process the result.
 
 In Motoko, sending an ICP asynchronous message is abstracted as calling a shared function that returns an asynchronous result.
 Like several other languages, Motoko offers `async` and `await` to support convenient programming with asynchronous functions and computations.
 
-In Motoko, executing an asynchronous expression, whether a call to a shared function, or just a local `async` expression, produces a future, an object of type `async T`, for some result type `T`. 
+In Motoko, executing an asynchronous expression, whether a call to a shared function, or just a local `async` expression, produces a future, an object of type `async T`, for some result type `T`.
 Instead of blocking the caller until the call has returned, the message is enqueued on the callee and the future representing that pending request is immediately returned to the caller. The future is a placeholder for the eventual result of the request that the caller can later query.
 
-The syntax `await` synchronizes on a future, and suspends computation until the future is completed by its producer. 
+The syntax `await` synchronizes on a future, and suspends computation until the future is completed by its producer.
 
 Between issuing the request and deciding to wait for the result, the caller is free to do other work. Once the callee has processed the request, the future is completed and its result made available to the caller. If the caller is waiting on the future, its execution can resume with the result, otherwise the result is simply stored in the future for later use.
 
@@ -49,7 +49,7 @@ The only thing the caller can do with this future is wait for it to be completed
 
 To access the result of an `async` value, the receiver of the future uses an `await` expression.
 
-For example, to use the result of `Counter.read()` above, we can first bind the future to an identifier `a`, and then `await a` to retrieve the underlying `Nat`, `n`:
+For example, to use the result of `Counter.read()` above, we can first bind the future to an identifier `a`, and then `await a` to retrieve the underlying [`Nat`](../base/Nat.md), `n`:
 
 ``` motoko include=counter
 let a : async Nat = Counter.read();

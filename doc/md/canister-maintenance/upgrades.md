@@ -42,7 +42,7 @@ As a simple example, consider the following `Registry` actor:
 ``` motoko file=../examples/Registry.mo
 ```
 
-This actor assigns sequential identifiers to `Text` values, using the size of the underlying `map` object to determine the next identifier. Like other actors, it relies on orthogonal persistence to maintain the state of the hashmap between calls.
+This actor assigns sequential identifiers to [`Text`](../base/Text.md) values, using the size of the underlying `map` object to determine the next identifier. Like other actors, it relies on orthogonal persistence to maintain the state of the hashmap between calls.
 
 This example would like to make the `Register` upgradable without the upgrade losing any existing registrations, but its state, `map`, has a proper object type that contains member functions, so the `map` variable cannot be declared `stable`.
 
@@ -55,7 +55,7 @@ The following example introduces a new stable variable, `entries`, to save and r
 ``` motoko file=../examples/StableRegistry.mo
 ```
 
-Note that the type of `entries`, being an array of `Text` and `Nat` pairs, is indeed a stable type.
+Note that the type of `entries`, being an array of [`Text`](../base/Text.md) and [`Nat`](../base/Nat.md) pairs, is indeed a stable type.
 
 In this example, the `preupgrade` system method writes the current `map` entries to `entries` before `entries` is saved to stable memory. The `postupgrade` system method resets `entries` to the empty array after `map` has been populated from `entries`.
 

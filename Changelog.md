@@ -110,7 +110,7 @@
 
   * bugfix: fully implement `Region.loadXXX/storeXXX` for `Int8`, `Int16` and `Float` (#4270).
 
-  * BREAKING CHANGE (Minor): values of type `Principal` are now constrained to contain
+  * BREAKING CHANGE (Minor): values of type [`Principal`](../base/Principal.md) are now constrained to contain
     at most 29 bytes, matching the IC's notion of principal (#4268).
 
     In particular:

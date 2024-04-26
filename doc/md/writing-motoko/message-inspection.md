@@ -1,5 +1,5 @@
 ---
-sidebar_position: 13
+sidebar_position: 14
 ---
 
 # Message inspection
@@ -20,7 +20,7 @@ Message inspection mitigates some denial of service attacks that are designed to
 
 ## Message inspection in Motoko
 
-In Motoko, actors can elect to inspect and accept or decline ingress messages by declaring a particular `system` function called `inspect`. Given a record of message attributes, this function produces a `Bool` that indicates whether to accept or decline the message by returning `true` or `false`.
+In Motoko, actors can elect to inspect and accept or decline ingress messages by declaring a particular `system` function called `inspect`. Given a record of message attributes, this function produces a [`Bool`](../base/Bool.md) that indicates whether to accept or decline the message by returning `true` or `false`.
 
 The function is invoked by the system on each ingress message. Similar to a query, any side effects of an invocation are discarded and transient. A call that traps due to some fault has the same result as returning a message declination of `false`.
 

@@ -11,20 +11,19 @@ To accommodate these situations, Motoko provides the `xxx`, `nyi` and `unreachab
 
 ## Short-term holes
 
-
 Assuming that one has imported the prelude as follows:
 
 ``` motoko name=prelude
 import P "mo:base/Prelude";
 ```
 
-The developer can fill any missing expression with the following:
+You can fill any missing expression with the following:
 
 ``` motoko include=prelude
 P.xxx()
 ```
 
-The expression `xxx()` has type `None`, which is a subtype of every other type. This means the expression can plug any short-term gap in your code. 
+The expression `xxx()` has type `None`, which is a subtype of every other type. This means the expression can plug any short-term gap in your code.
 `xxx()` will trap when executed.
 
 ## Long-term holes
@@ -38,9 +37,9 @@ Like `xxx()`, `nyi()` has type `None`, thus any other type, and will trap on exe
 ## Unreachable code
 
 
-Sometimes a developer will be required to provide code that they know will never be executed, due to the preceding program logic.
+Sometimes you will be required to provide code that they know will never be executed, due to the preceding program logic.
 
-To document unreachable code, the developer can use the  `unreachable` function from the prelude:
+To document unreachable code, you can use the  `unreachable` function from the prelude:
 
 ``` motoko include=prelude
 P.unreachable()

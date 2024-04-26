@@ -1,12 +1,12 @@
 ---
-sidebar_position: 3
+sidebar_position: 4
 ---
 
 # Arguments
 
 ## Overview
 
-Arguments can be passed to an actor's function for the function to use as input. Arguments can be [primitive values](/docs/current/motoko/main/getting-started/basic-concepts#primitive-values), such as `Int`, `Nat`, `Bool`, or `Text`, or they can be non-primitive values such as tuples, arrays, or objects. To showcase a basic example of how an actor can accept an argument, this page will use an example Motoko actor that accepts multiple text arguments.
+Arguments can be passed to an actor's function for the function to use as input. Arguments can be [primitive values](/docs/current/motoko/main/getting-started/basic-concepts#primitive-values), such as [`Int`](../base/Int.md), [`Nat`](../base/Nat.md), [`Bool`](../base/Bool.md), or [`Text`](../base/Text.md), or they can be non-primitive values such as tuples, arrays, or objects. To showcase a basic example of how an actor can accept an argument, this page will use an example Motoko actor that accepts multiple text arguments.
 
 ## Single text argument
 
@@ -20,7 +20,7 @@ public func location(city : Text) : async Text {
 };
 ```
 
-Once your canister is [deployed](/docs/current/developer-docs/getting-started/deploy/local), you can call the `location` method in the program and pass your `city` argument of type `text` by running the following command:
+Once your canister is [deployed](/docs/current/developer-docs/getting-started/deploy/local), you can call the `location` method in the program and pass your `city` argument of type [`Text`](../base/Text.md) by running the following command:
 
 ```
 dfx canister call location_hello_backend location "San Francisco"
@@ -50,7 +50,7 @@ public func location_pretty(cities : [Text]) : async Text {
 
 ```
 
-You might notice that `Text` in this code example is enclosed by square (`[ ]`) brackets. By itself, `Text` represents a (UTF-8 encoded) sequence of Unicode characters. Placing square brackets around a type describes an **array** of that type. In this context, therefore, `[Text]` indicates an array of text values, enabling the program to accept multiple text values as an array.
+You might notice that [`Text`](../base/Text.md) in this code example is enclosed by square (`[ ]`) brackets. By itself, [`Text`](../base/Text.md) represents a (UTF-8 encoded) sequence of Unicode characters. Placing square brackets around a type describes an **array** of that type. In this context, therefore, `[Text]` indicates an array of text values, enabling the program to accept multiple text values as an array.
 
 The code sample also uses the basic format of an `apply` operation for the array, which can be abstracted as:
 

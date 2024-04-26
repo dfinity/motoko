@@ -22,13 +22,13 @@ var pair : (Text, Nat) = (text, num);
 var text2 : Text = text;
 ```
 
-The declaration list above declares four variables. The first two variables (`text` and `num`) are lexically-scoped, immutable variables. The final two variables (`pair` and `text2`) are lexically-scoped, mutable variables.
+The declaration list above declares four variables. The first two variables ([`Text`](../base/Text.md) and `num`) are lexically-scoped, immutable variables. The final two variables (`pair` and `text2`) are lexically-scoped, mutable variables.
 
 ## Assignment to mutable memory
 
 Mutable variables permit assignment and immutable variables do not.
 
-If you try to assign new values to either `text` or `num` above, you will get static type errors because these variables are immutable.
+If you try to assign new values to either [`Text`](../base/Text.md) or `num` above, you will get static type errors because these variables are immutable.
 
 You may freely update the value of mutable variables `pair` and `text2` using the syntax for assignment, written as `:=`, as follows:
 
@@ -130,7 +130,7 @@ let x : Nat = a[2] + a[0] ;
 
 Every array access in Motoko is safe. Accesses that are out of bounds will not access memory unsafely, but instead will cause the program to trap as with an [assertion](/docs/current/motoko/getting-started/basic-concepts.md#assertions) failure.
 
-## The `Array` module
+## The [`Array`](../base/Array.md) module
 
 The Motoko standard library provides basic operations for immutable and mutable arrays. It can be imported as follows:
 

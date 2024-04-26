@@ -34,7 +34,7 @@ Further, distinct `Region`s use distinct pages of stable memory, ensuring that t
 
 The interface to the `Region` library consists of functions for querying and growing the currently allocated set of stable memory pages, plus matching pairs of `load`, `store` operations for most of Motoko’s fixed-size scalar types.
 
-More general `loadBlob` and `storeBlob` operations are also available for reading and writing binary blobs and other types that can be encoded as `Blob`s of arbitrary sizes, using Motoko supplied or user-provided encoders and decoders.
+More general `loadBlob` and `storeBlob` operations are also available for reading and writing binary blobs and other types that can be encoded as [`Blob`](../base/Blob.md)s of arbitrary sizes, using Motoko supplied or user-provided encoders and decoders.
 
 ``` motoko no-repl
 module {
@@ -70,11 +70,11 @@ module {
   loadFloat : (r : Region, offset : Nat64) -> Float;
   storeFloat : (r : Region, offset : Nat64, value : Float) -> ();
 
-  // Load `size` bytes starting from `offset` in region `r` as a `Blob`.
+  // Load `size` bytes starting from `offset` in region `r` as a [`Blob`](../base/Blob.md).
   // Traps on out-of-bounds access.
   loadBlob : (r : Region, offset : Nat64, size : Nat) -> Blob;
 
-  // Write all bytes of `blob` to region `r` beginning at `offset`.
+  // Write all bytes of [`Blob`](../base/Blob.md) to region `r` beginning at `offset`.
   // Traps on out-of-bounds access.
   storeBlob : (r : Region, offset : Nat64, value : Blob) -> ()
 

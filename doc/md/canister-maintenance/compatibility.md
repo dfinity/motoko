@@ -41,7 +41,7 @@ In this extension of our interface, old clients remain satisfied, while new ones
 
 ## Changing the stable interface
 
-Let's take a look at an example where the counter is refactored from using `Int` to `Nat`.
+Let's take a look at an example where the counter is refactored from using [`Int`](../base/Int.md) to [`Nat`](../base/Nat.md).
 
 ``` motoko no-repl file=../examples/count-v3.mo
 ```
@@ -56,11 +56,11 @@ An upgrade must be able to:
 
 -   Run the initializer for a new stable variable.
 
-Since `Int </: Nat`, the upgrade logic discards the saved `Int` and re-runs the initializer instead. The upgrade silently "succeeded", resetting the counter to `0`.
+Since `Int </: Nat`, the upgrade logic discards the saved [`Int`](../base/Int.md) and re-runs the initializer instead. The upgrade silently "succeeded", resetting the counter to `0`.
 
 ## Stable type signatures
 
-A stable type signature describes the stable content of a Motoko actor. 
+A stable type signature describes the stable content of a Motoko actor.
 You can think of this as the interior interface of the actor, that it presents to its future upgrades.
 
 For example, `v2`'s stable types:
@@ -68,8 +68,8 @@ For example, `v2`'s stable types:
 ``` motoko no-repl file=../examples/count-v2.most
 ```
 
-An upgrade from `v2` to `v3`'s stable types requires consuming an `Int` as a `Nat`, which is a **type error**. 
-For example, `-1` is an `Int`, but is not a `Nat`.
+An upgrade from `v2` to `v3`'s stable types requires consuming an [`Int`](../base/Int.md) as a [`Nat`](../base/Nat.md), which is a **type error**.
+For example, `-1` is an [`Int`](../base/Int.md), but is not a [`Nat`](../base/Nat.md).
 
 ``` motoko no-repl file=../examples/count-v3.most
 ```
@@ -139,7 +139,7 @@ cannot be consumed at new type
 
 Because of the compatibility error, you should not attempt to upgrade from `v2.wasm` to `v3.wasm`. The result of upgrading is unpredictable. At best, the upgrade will detect the incompatibility, trap and roll back to the current version, as if the upgrade had never been attempted. At worst, the upgrade will appear to succeed, but lose some or all of the state of the previous version, re-initializing some of the stable variables you intended to preserve.
 
-One way to correctly change the logical state to `Nat`, is to introduce a new stable variable, `newState`, of type `Nat`, initialized from the old one (`state`). Unlike the stable signature of v3.wasm, the stable signature of v4.wasm:
+One way to correctly change the logical state to [`Nat`](../base/Nat.md), is to introduce a new stable variable, `newState`, of type [`Nat`](../base/Nat.md), initialized from the old one (`state`). Unlike the stable signature of v3.wasm, the stable signature of v4.wasm:
 
 ``` motoko no-repl file=../examples/count-v4.mo
 ```
@@ -147,7 +147,7 @@ One way to correctly change the logical state to `Nat`, is to introduce a new st
 ``` motoko no-repl file=../examples/count-v4.most
 ```
 
-## Incompatible upgrade example 
+## Incompatible upgrade example
 
 A common, real-world example of an incompatible upgrade can be found [on the forum](https://forum.dfinity.org/t/questions-about-data-structures-and-migrations/822/12?u=claudio/).
 

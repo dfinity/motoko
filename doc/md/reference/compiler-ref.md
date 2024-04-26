@@ -61,7 +61,7 @@ You can use the following options with the `moc` command.
 | `--stable-types`                          | Compile binary and emit signature of stable types to `.most` file.                                                                                    |
 | `--stable-compatible <pre> <post>`        | Test upgrade compatibility between stable-type signatures `<pre>` and `<post>`.                                                                       |
 | `--rts-stack-pages <n>`                   | Set maximum number of pages available for runtime system stack (default 32).
-| `--trap-on-call-error`                    | Trap, don't throw an `Error`, when an IC call fails due to destination queue full or freezing threshold is crossed.
+| `--trap-on-call-error`                    | Trap, don't throw an [`Error`](../base/Error.md), when an IC call fails due to destination queue full or freezing threshold is crossed.
 |                                           | Emulates behaviour of moc versions < 0.8.0.
 | `-t`                                      | Activates tracing in interpreter.
 | `-v`                                      | Generates verbose output.

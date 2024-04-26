@@ -1,5 +1,5 @@
 ---
-sidebar_position: 7
+sidebar_position: 8
 ---
 
 # Imperative control flow
@@ -194,11 +194,11 @@ Many built-in data structures come with pre-defined iterators. Below table lists
 | Type      | Name                  | Iterator | Elements                  | Element type |
 |-----------|-----------------------|----------|---------------------------|--------------|
 | `[T]`     | Array of `T`​s         | `vals`   | The array’s members       | `T`          |
-| `[T]`     | Array of `T`​s         | `keys`   | The array’s valid indices | `Nat`        |
+| `[T]`     | Array of `T`​s         | `keys`   | The array’s valid indices | [`Nat`](../base/Nat.md)        |
 | `[var T]` | Mutable array of `T`​s | `vals`   | The array’s members       | `T`          |
-| `[var T]` | Mutable array of `T`​s | `keys`   | The array’s valid indices | `Nat`        |
-| `Text`    | Text                  | `chars`  | The text’s characters     | `Char`       |
-| `Blob`    | Blob                  | `vals`   | The blob’s bytes          | `Nat8`       |
+| `[var T]` | Mutable array of `T`​s | `keys`   | The array’s valid indices | [`Nat`](../base/Nat.md)        |
+| [`Text`](../base/Text.md)    | Text                  | `chars`  | The text’s characters     | `Char`       |
+| [`Blob`](../base/Blob.md)    | Blob                  | `vals`   | The blob’s bytes          | [`Nat8`](../base/Nat8.md)       |
 
 
 User-defined data structures can define their own iterators. As long they conform with the `Iter<A>` type for some element type `A`, these behave like the built-in ones and can be consumed with ordinary `for`-loops.

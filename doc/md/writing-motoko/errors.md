@@ -1,5 +1,5 @@
 ---
-sidebar_position: 8
+sidebar_position: 9
 ---
 
 # Errors and options
@@ -12,11 +12,11 @@ There are three primary ways to represent and handle errors values in Motoko:
 
 -   `Result` variants with a descriptive `#err value` providing more information about the error.
 
--   `Error` values that, in an asynchronous context, can be thrown and caught similar to exceptions and contain a numeric code and message.
+-   [`Error`](../base/Error.md) values that, in an asynchronous context, can be thrown and caught similar to exceptions and contain a numeric code and message.
 
 ## Example
 
-Consider building an API for a to-do application that wants to expose a function allowing users to mark one of their tasks’s as "Done". This simple example will accept a `TodoId` object and return an `Int` that represents how many seconds the to-do has been open. This example assumes that it is running in an actor, which returns an async value:
+Consider building an API for a to-do application that wants to expose a function allowing users to mark one of their tasks’s as "Done". This simple example will accept a `TodoId` object and return an [`Int`](../base/Int.md) that represents how many seconds the to-do has been open. This example assumes that it is running in an actor, which returns an async value:
 
 ``` motoko no-repl
 func markDone(id : TodoId) : async Int
@@ -87,7 +87,7 @@ Callsite:
 
 ### Pattern matching
 
-The first and most common way of working with `Option` and `Result` is to use pattern matching. If you have a value of type `?Text`, you can use the `switch` keyword to access the potential `Text` contents:
+The first and most common way of working with `Option` and `Result` is to use pattern matching. If you have a value of type `?Text`, you can use the `switch` keyword to access the potential [`Text`](../base/Text.md) contents:
 
 ``` motoko no-repl file=../examples/error-examples.mo#L3-L10
 ```
@@ -107,9 +107,9 @@ Sometimes you’ll want to move between `Option` and `Result`. A Hashmap lookup 
 
 ## Asynchronous errors
 
-The last way of dealing with errors in Motoko is to use asynchronous `Error` handling, a restricted form of the exception handling familiar from other languages. Motoko error values can only be thrown and caught in asynchronous contexts, typically the body of a `shared` function or `async` expression. Non-`shared` functions cannot employ structured error handling. This means you can exit a shared function by `throw`ing an `Error` value and `try` some code calling a shared function on another actor. In this workflow, you can `catch` the failure as a result of type `Error`, but you can’t use these error handling constructs outside of an asynchronous context.
+The last way of dealing with errors in Motoko is to use asynchronous [`Error`](../base/Error.md) handling, a restricted form of the exception handling familiar from other languages. Motoko error values can only be thrown and caught in asynchronous contexts, typically the body of a `shared` function or `async` expression. Non-`shared` functions cannot employ structured error handling. This means you can exit a shared function by `throw`ing an [`Error`](../base/Error.md) value and `try` some code calling a shared function on another actor. In this workflow, you can `catch` the failure as a result of type [`Error`](../base/Error.md), but you can’t use these error handling constructs outside of an asynchronous context.
 
-Asynchronous `Error`s should generally only be used to signal unexpected failures that you cannot recover from and that you don’t expect many consumers of your API to handle. If a failure should be handled by your caller, you should make it explicit in your signature by returning a `Result` instead. For completeness, here is the `markDone` example with exceptions:
+Asynchronous [`Error`](../base/Error.md)s should generally only be used to signal unexpected failures that you cannot recover from and that you don’t expect many consumers of your API to handle. If a failure should be handled by your caller, you should make it explicit in your signature by returning a `Result` instead. For completeness, here is the `markDone` example with exceptions:
 
 Definition:
 
