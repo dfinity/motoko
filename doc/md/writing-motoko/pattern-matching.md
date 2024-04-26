@@ -88,7 +88,11 @@ Other programming languages often use a keyword `enum` to define discrete enumer
 
 Error handling can be considered a use-case for pattern matching. When a function returns a value that has an alternative for success and one for failure, pattern matching can be used to distinguish between the two as discussed in [error handling](errors.md).
 
-### Irrefutable matching
+### Irrefutable patterns
+
+A pattern is refutable if matching some value of the expected type against it can fail. Literal and variant patterns are generally refutable, since they require an equal value or variant tag and these could fail to match.
+
+A pattern that cannot fail to match every value is irrefutable. Examples of irrefutable patterns are the wildcard pattern `_`, identifier patterns `x` and tuple or record patterns built from irrefutable sub-patterns.
 
 Some types contain just a single value. We call these singleton types. Examples of these are the unit type, also known as an empty tuple, or tuples of singleton types. Variants with a single tag and with no or a singleton type payload are singleton types too. Pattern matching on singleton types is particularly straightforward, as it only has one possible outcome of a successful match.
 
