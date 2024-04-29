@@ -89,7 +89,7 @@ let rec extract_invariants : item list -> (par -> invariants -> invariants) = fu
   | [] -> fun _ x -> x
   | { it = InvariantI (s, e); at; _ } :: p ->
       fun self es ->
-        !!! at (MacroCall(s, !!! at (LocalVar (fst self, snd self))))
+        !!! at (MacroCall(s, [ !!! at (LocalVar (fst self, snd self)) ]))
         :: extract_invariants p self es
   | _ :: p -> extract_invariants p
 
@@ -170,8 +170,8 @@ and unit' (u : M.comp_unit) : prog =
       (^^^)
         at
         (MethodI (id, ins, outs,
-          !!! at (MacroCall("$Perm", self ctxt'' at))::pres,
-          !!! at (MacroCall("$Perm", self ctxt'' at))::posts,
+          !!! at (MacroCall("$Perm", [self ctxt'' at]))::pres,
+          !!! at (MacroCall("$Perm", [self ctxt'' at]))::posts,
           body))
         note
       | x -> x) is'' in
@@ -186,7 +186,7 @@ and unit' (u : M.comp_unit) : prog =
         at
         (MethodI(id, ins, outs,
           pres,
-          posts @ [!!! at (MacroCall("$Inv", self ctxt'' at))],
+          posts @ [!!! at (MacroCall("$Inv", [self ctxt'' at]))],
           body))
         ActorInit
       )
@@ -197,8 +197,8 @@ and unit' (u : M.comp_unit) : prog =
       } -> ((^^^)
         at
         (MethodI(id, ins, outs,
-          pres @ [!!! at (MacroCall("$Inv", self ctxt'' at))],
-          posts @ [!!! at (MacroCall("$Inv", self ctxt'' at))],
+          pres @ [!!! at (MacroCall("$Inv", [self ctxt'' at]))],
+          posts @ [!!! at (MacroCall("$Inv", [self ctxt'' at]))],
           body))
         (PublicFunction x)
       )
@@ -391,13 +391,13 @@ and stmt ctxt (s : M.exp) : seqn =
             (self ctxt Source.no_region, !!id),
             (!!(AddE(!!(FldAcc (self ctxt (s.at), !!id)),
                      intLitE Source.no_region 1)))));
-          !@(ExhaleS (!@(AndE(!@(MacroCall("$Perm", self ctxt at)),
-                              !@(MacroCall("$Inv", self ctxt at))))));
+          !@(ExhaleS (!@(AndE(!@(MacroCall("$Perm", [self ctxt at])),
+                              !@(MacroCall("$Inv", [self ctxt at]))))));
           !@(SeqnS (
               !@([],
                  [
-                   !@(InhaleS (!@(AndE(!@(MacroCall("$Perm", self ctxt at)),
-                                  !@(AndE(!@(MacroCall("$Inv", self ctxt at)),
+                   !@(InhaleS (!@(AndE(!@(MacroCall("$Perm", [self ctxt at])),
+                                  !@(AndE(!@(MacroCall("$Inv", [self ctxt at])),
                                           !@(GtCmpE(!@(FldAcc (self ctxt at, !@id)),
                                                intLitE Source.no_region 0))))))));
                    !@(FieldAssignS(
@@ -405,10 +405,10 @@ and stmt ctxt (s : M.exp) : seqn =
                           (!@(SubE(!@(FldAcc (self ctxt at, !@id)),
                                    intLitE at 1)))));
                    !!! (e.at) (SeqnS stmts);
-                   !@(ExhaleS (!@(AndE(!@(MacroCall("$Perm", self ctxt at)),
-                                       !@(MacroCall("$Inv", self ctxt at)))))) ])));
-          !!(InhaleS (!!(AndE(!!(MacroCall("$Perm", self ctxt at)),
-                              !!(MacroCall("$Inv", self ctxt at))))));
+                   !@(ExhaleS (!@(AndE(!@(MacroCall("$Perm", [self ctxt at])),
+                                       !@(MacroCall("$Inv", [self ctxt at])))))) ])));
+          !!(InhaleS (!!(AndE(!!(MacroCall("$Perm", [self ctxt at])),
+                              !!(MacroCall("$Inv", [self ctxt at]))))));
         ])
   | M.WhileE(e, s1) ->
      let (invs, s1') = extract_loop_invariants s1 in
