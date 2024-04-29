@@ -692,7 +692,7 @@ As bitwise types, these types support bitwise operations and (`&`), or (`|`) and
 
 The corresponding module in the base library provides conversion functions:
 
-- Conversion to [`Int`](../base/Int.md).
+- Conversion to [`Nat`](../base/Nat.md).
 
 - Checked and wrapping conversions from [`Int`](../base/Int.md).
 
