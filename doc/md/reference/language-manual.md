@@ -2383,7 +2383,11 @@ The expression `return <exp>` has type `None` provided:
 
 -   `<exp>` has type `T`.
 
--   `T` is the return type of the nearest enclosing function with no intervening `async` expression.
+-  and either one of:
+
+   -  `T` is the return type of the nearest enclosing function with no intervening `async` expression.
+
+   -  `async T` is the type of the nearest enclosing, perhaps implicit, `async` expression with no intervening function declaration. 
 
 -   `async T` is the type of the nearest enclosing, perhaps implicit, `async` expression with no intervening function declaration.
 
