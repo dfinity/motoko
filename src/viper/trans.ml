@@ -56,6 +56,11 @@ let rec adjoin ctxt e = function
   | f :: fs -> f ctxt (adjoin ctxt e fs)
 
 
+let (|:) (x_opt : 'a option) (xs : 'a list) : 'a list =
+  match x_opt with
+  | None -> xs
+  | Some(x) -> x :: xs
+
 (* exception for reporting unsupported Motoko syntax *)
 exception Unsupported of Source.region * string
 
@@ -134,7 +139,7 @@ and unit' (u : M.comp_unit) : prog =
   match body.it with
   | M.ActorU(id_opt, decs) ->
     let ctxt = { self = None; ids = Env.empty; ghost_items = ref []; ghost_inits = ref []; ghost_perms = ref []; ghost_conc = ref [] } in
-    let ctxt', inits, mk_is = dec_fields ctxt decs in
+    let ctxt', perms, inits, mk_is = dec_fields ctxt decs in
     let is' = List.map (fun mk_i -> mk_i ctxt') mk_is in
     (* given is', compute ghost_is *)
     let ghost_is = List.map (fun mk_i -> mk_i ctxt') !(ctxt.ghost_items) in
@@ -142,23 +147,16 @@ and unit' (u : M.comp_unit) : prog =
     let self_id = !!! (Source.no_region) "$Self" in
     let self_typ = !!! (self_id.at) RefT in
     let ctxt'' = { ctxt' with self = Some self_id.it } in
-    let perms = List.map (fun (id, _) -> fun (at : region) ->
-       (accE at (self ctxt'' at, id))) inits in
-    let ghost_perms = List.map (fun mk_p -> mk_p ctxt'') !(ctxt.ghost_perms) in
     let perm =
       fun (at : region) ->
        List.fold_left
          (fun pexp -> fun p_fn ->
-           !!! at (AndE(pexp, p_fn at)))
+           !!! at (AndE(pexp, p_fn ctxt'' at)))
          (!!! at (BoolLitE true))
-         (perms @ ghost_perms)
+         (perms @ !(ctxt.ghost_perms))
     in
     (* Add initializer *)
-    let init_list = List.map (fun (id, init) ->
-        !!! { left = id.at.left; right = init.at.right }
-          (FieldAssignS((self ctxt'' init.at, id), exp ctxt'' init)))
-        inits in
-    let init_list = init_list @ List.map (fun mk_s -> mk_s ctxt'') !(ctxt.ghost_inits) in
+    let init_list = List.map (fun mk_s -> mk_s ctxt'') (inits @ !(ctxt.ghost_inits)) in
     let init_body =
       !!! (body.at) ([], init_list)(* ATG: Is this the correct position? *)
     in
@@ -215,15 +213,16 @@ and unit' (u : M.comp_unit) : prog =
 and dec_fields (ctxt : ctxt) (ds : M.dec_field list) =
   match ds with
   | [] ->
-    (ctxt, [], [])
+    (ctxt, [], [], [])
   | d :: ds ->
-    let ctxt, init, mk_i = dec_field ctxt d in
-    let ctxt, inits, mk_is = dec_fields ctxt ds in
-    (ctxt, (match init with Some i -> i::inits | _ -> inits), mk_i::mk_is)
+    let ctxt, perm, init, mk_i = dec_field ctxt d in
+    let ctxt, perms, inits, mk_is = dec_fields ctxt ds in
+    (ctxt, perm |: perms, init |: inits, mk_i::mk_is)
 
 and dec_field ctxt d =
-  let ctxt, init, mk_i = dec_field' ctxt d.it in
+  let ctxt, perm, init, mk_i = dec_field' ctxt d.it in
    (ctxt,
+    perm,
     init,
     fun ctxt' ->
       let (i, info) = mk_i ctxt' in
@@ -233,7 +232,10 @@ and dec_field' ctxt d =
   match d.M.dec.it with
   | M.VarD (x, e) ->
       { ctxt with ids = Env.add x.it Field ctxt.ids },
-      Some (id x, e),
+      Some(fun ctxt' (at : region) -> (accE at (self ctxt' at, id x))),
+      Some(fun ctxt' ->
+        !!! { left = x.at.left; right = e.at.right }
+          (FieldAssignS((self ctxt' e.at, id x), exp ctxt' e))),
       fun ctxt' ->
         (FieldI(id x, tr_typ e.note.M.note_typ),
         NoInfo)
@@ -242,7 +244,8 @@ and dec_field' ctxt d =
              {it=FuncE(x, sp, tp, p, t_opt, sugar,
              {it = AsyncE (T.Fut, _, e); _} );_}, None)) -> (* ignore async *)
       { ctxt with ids = Env.add f.it Method ctxt.ids },
-      None,
+      None, (* no perm *)
+      None, (* no init *)
       fun ctxt' ->
         let open Either in
         let self_id = !!! (Source.no_region) "$Self" in
@@ -263,7 +266,8 @@ and dec_field' ctxt d =
              {it=FuncE(x, sp, tp, p, t_opt, sugar, e );_},
              None)) ->
       { ctxt with ids = Env.add f.it Method ctxt.ids },
-      None,
+      None, (* no perm *)
+      None, (* no init *)
       fun ctxt' ->
         let open Either in
         let self_id = !!! (Source.no_region) "$Self" in
@@ -281,7 +285,8 @@ and dec_field' ctxt d =
         PrivateFunction f.it)
   | M.(ExpD { it = AssertE (Invariant, e); at; _ }) ->
       ctxt,
-      None,
+      None, (* no perm *)
+      None, (* no init *)
       fun ctxt' ->
         (InvariantI (Printf.sprintf "invariant_%d" at.left.line, exp { ctxt' with self = Some "$Self" }  e), NoInfo)
   | _ ->
