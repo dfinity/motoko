@@ -696,7 +696,7 @@ The corresponding module in the base library provides conversion functions:
 
 - Checked and wrapping conversions from [`Nat`](../base/Nat.md).
 
-- Wrapping conversion to the bounded natural type of the same size.
+- Wrapping conversion to the bounded, signed integer type of the same size.
 
 ### Type [`Blob`](../base/Blob.md)
 
