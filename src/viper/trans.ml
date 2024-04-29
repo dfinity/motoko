@@ -75,7 +75,7 @@ type ctxt =
   { self : string option;
     ids : sort T.Env.t;
     ghost_items : (ctxt -> item) list ref;
-    ghost_inits : (ctxt -> stmt) list ref;
+    ghost_inits : (ctxt -> stmt list) list ref;
     ghost_perms : (ctxt -> Source.region -> exp) list ref;
     ghost_conc : (ctxt -> exp -> exp) list ref;
   }
@@ -156,7 +156,7 @@ and unit' (u : M.comp_unit) : prog =
          (perms @ !(ctxt.ghost_perms))
     in
     (* Add initializer *)
-    let init_list = List.map (fun mk_s -> mk_s ctxt'') (inits @ !(ctxt.ghost_inits)) in
+    let init_list = List.concat_map (fun mk_s -> mk_s ctxt'') (inits @ !(ctxt.ghost_inits)) in
     let init_body =
       !!! (body.at) ([], init_list)(* ATG: Is this the correct position? *)
     in
@@ -230,12 +230,25 @@ and dec_field ctxt d =
 
 and dec_field' ctxt d =
   match d.M.dec.it with
+  | M.VarD (x, {it=M.AnnotE ({it=M.ArrayE (mut, es); note;_}, _); at=e_at;_}) ->
+      let lhs = fun ctxt' -> !!! Source.no_region (FldAcc (self ctxt' e_at, id x)) in
+      let t = note.M.note_typ in
+      { ctxt with ids = Env.add x.it Field ctxt.ids },
+      Some (fun ctxt' at -> (* perm *)
+              !!! at (AndE (accE at (self ctxt' at, id x),
+                      !!! at (AndE (array_acc at (lhs ctxt') (T.Mut (array_elem_t t)),
+                                    array_size_inv at ctxt' (lhs ctxt')  (List.length es)))))),
+      Some (fun ctxt' -> (* init *)
+          array_alloc e_at ctxt' (lhs ctxt') (array_elem_t t) es),
+      (fun ctxt' ->
+        (FieldI(id x, tr_typ t),
+        NoInfo))
   | M.VarD (x, e) ->
       { ctxt with ids = Env.add x.it Field ctxt.ids },
       Some(fun ctxt' (at : region) -> (accE at (self ctxt' at, id x))),
       Some(fun ctxt' ->
-        !!! { left = x.at.left; right = e.at.right }
-          (FieldAssignS((self ctxt' e.at, id x), exp ctxt' e))),
+        [!!! { left = x.at.left; right = e.at.right }
+          (FieldAssignS((self ctxt' e.at, id x), exp ctxt' e))]),
       fun ctxt' ->
         (FieldI(id x, tr_typ e.note.M.note_typ),
         NoInfo)
@@ -249,7 +262,7 @@ and dec_field' ctxt d =
       fun ctxt' ->
         let open Either in
         let self_id = !!! (Source.no_region) "$Self" in
-        let method_args = args p in
+        let arg_preds, method_args = args p in
         let ctxt'' = { ctxt'
           with self = Some self_id.it;
                ids = List.fold_left (fun env (id, _) -> Env.add id.it Local env) ctxt.ids method_args }
@@ -258,6 +271,8 @@ and dec_field' ctxt d =
         let _, stmts = extract_concurrency stmts in
         let pres, stmts' = List.partition_map (function { it = PreconditionS exp; _ } -> Left exp | s -> Right s) (snd stmts.it) in
         let posts, stmts' = List.partition_map (function { it = PostconditionS exp; _ } -> Left exp | s -> Right s) stmts' in
+        let pres = arg_preds @ pres in
+        let posts = arg_preds @ posts in
         let stmts'' = stmts' @ [!!! Source.no_region (LabelS(!!! (Source.no_region) "$Ret"))] in
         (MethodI(id f, (self_id, !!! Source.no_region RefT)::method_args, rets t_opt, pres, posts, Some { stmts with it = fst stmts.it, stmts'' } ),
         PublicFunction f.it)
@@ -271,7 +286,7 @@ and dec_field' ctxt d =
       fun ctxt' ->
         let open Either in
         let self_id = !!! (Source.no_region) "$Self" in
-        let method_args = args p in
+        let arg_preds, method_args = args p in
         let ctxt'' = { ctxt'
           with self = Some self_id.it;
                ids = List.fold_left (fun env (id, _) -> Env.add id.it Local env) ctxt.ids method_args }
@@ -280,6 +295,8 @@ and dec_field' ctxt d =
         let _, stmts = extract_concurrency stmts in
         let pres, stmts' = List.partition_map (function { it = PreconditionS exp; _ } -> Left exp | s -> Right s) (snd stmts.it) in
         let posts, stmts' = List.partition_map (function { it = PostconditionS exp; _ } -> Left exp | s -> Right s) stmts' in
+        let pres = arg_preds @ pres in
+        let posts = arg_preds @ posts in
         let stmts'' = stmts' @ [!!! Source.no_region (LabelS(!!! (Source.no_region) "$Ret"))] in
         (MethodI(id f, (self_id, !!! Source.no_region RefT)::method_args, rets t_opt, pres, posts, Some { stmts with it = fst stmts.it, stmts'' } ),
         PrivateFunction f.it)
@@ -293,15 +310,23 @@ and dec_field' ctxt d =
      unsupported d.M.dec.at (Arrange.dec d.M.dec)
 
 and args p = match p.it with
-  | M.TupP ps -> List.map arg ps
-  | M.ParP p  -> [arg p]
+  | M.TupP ps -> rearrange_args (List.map arg ps)
+  | M.ParP p  -> rearrange_args [arg p]
   | _ -> unsupported p.at (Arrange.pat p)
 and arg p = match p.it with
   | M.AnnotP (p, t) ->
       (match p.it with
-        | M.VarP x -> (id x, tr_typ t.note)
+        | M.VarP x -> (arg_access_pred x t.note, (id x, tr_typ t.note))
         | _ -> unsupported p.at (Arrange.pat p))
   | _ -> unsupported p.at (Arrange.pat p)
+and arg_access_pred x t =
+  let lhs = !!! Source.no_region (LocalVar (id x, tr_typ t)) in
+  match T.normalize t with
+  | T.Array elem_t -> Some (array_acc Source.no_region lhs elem_t)
+  | _ -> None
+and rearrange_args arg_triples =
+  let arg_preds, arg_pairs = List.split arg_triples in
+  List.filter_map (fun x -> x) arg_preds, arg_pairs
 
 and block ctxt at ds =
   let ctxt, mk_ss = decs ctxt ds in
@@ -360,10 +385,10 @@ and stmt ctxt (s : M.exp) : seqn =
          !!(FieldI (!!id, !!IntT))) ::
        !(ctxt.ghost_items);
      let mk_s = fun ctxt ->
-       !!! at
+       [!!! at
          (FieldAssignS (
             (self  ctxt s.at, !!id),
-            intLitE (s.at) 0))
+            intLitE (s.at) 0))]
      in
      ctxt.ghost_inits := mk_s :: !(ctxt.ghost_inits);
      let mk_p = fun ctxt at ->
@@ -415,6 +440,16 @@ and stmt ctxt (s : M.exp) : seqn =
      let invs' = List.map (fun inv -> exp ctxt inv) invs in
      !!([],
         [ !!(WhileS(exp ctxt e, invs', stmt ctxt s1')) ])
+
+  (* TODO: remove by Motoko->Motoko transformation *)
+  | M.(AssignE({it = VarE x; _}, {it = ArrayE (mut, es); note={note_typ=typ; _}; _})) ->
+     let typ' = tr_typ typ in
+     let temp_id = fresh_id (fresh_id (id x).it) in
+     let lhs = !!(LocalVar (!!temp_id, typ')) in
+     !! ([!!(!!temp_id, typ')],
+         array_alloc s.at ctxt lhs (array_elem_t typ) es
+         @ [!!(VarAssignS (id x, !!(LocalVar (!!temp_id, typ'))))])
+
   | M.(AssignE({it = VarE x; _}, e2)) ->
      begin match Env.find x.it ctxt.ids with
      | Local ->
@@ -427,6 +462,9 @@ and stmt ctxt (s : M.exp) : seqn =
      | _ ->
         unsupported s.at (Arrange.exp s)
      end
+  | M.(AssignE({it = IdxE (e1, e2);_}, e3)) ->
+     !!([],
+        [!!(FieldAssignS (array_loc ctxt s.at e1 e2 e3.note.M.note_typ, exp ctxt e3))])
   | M.AssertE (M.Precondition, e) ->
     !!( [],
         [ !!(PreconditionS (exp ctxt e)) ])
@@ -457,10 +495,15 @@ and stmt ctxt (s : M.exp) : seqn =
 and assign_stmts ctxt at x e =
   let (!!) p = !!! at p in
   match e with
+  | M.({it=AnnotE (e, _);_}) -> assign_stmts ctxt at x e
   | M.({it = CallE({it = VarE m; _}, inst, args); _}) ->
     [ !!(MethodCallS ([x], id m,
           let self_var = self ctxt m.at in
           self_var :: call_args ctxt args)) ]
+  | M.({it=ArrayE(mut, es); note; _}) ->
+      let t = note.M.note_typ in
+      let lhs = !!(LocalVar (x, tr_typ t)) in
+      array_alloc at ctxt lhs (array_elem_t t) es
   | _ -> [ !!(VarAssignS(x, exp ctxt e)) ]
 
 and call_args ctxt e =
@@ -484,6 +527,8 @@ and exp ctxt e =
     end
   | M.AnnotE(a, b) ->
     exp ctxt a
+  | M.CallE ({it=M.DotE (e1, {it="size";_});_}, _inst, {it=M.TupE ([]);at;_})
+      -> array_size at (exp ctxt e1)
   | M.LitE r ->
     begin match !r with
     | M.BoolLit b ->
@@ -523,6 +568,8 @@ and exp ctxt e =
      !!(Implies (exp ctxt e1, exp ctxt e2))
   | M.OldE e ->
     !!(Old (exp ctxt e))
+  | M.IdxE (e1, e2) ->
+     !!(FldAcc (array_loc ctxt e.at e1 e2 e.note.M.note_typ))
   | _ ->
      unsupported e.at (Arrange.exp e)
 
@@ -547,4 +594,47 @@ and tr_typ' typ =
   | T.Prim T.Int -> IntT
   | T.Prim T.Nat -> IntT    (* Viper has no native support for Nat, so translate to Int *)
   | T.Prim T.Bool -> BoolT
-  | _ -> unsupported Source.no_region (Mo_types.Arrange_type.typ (T.normalize typ))
+  | T.Array _ -> ArrayT     (* Viper arrays are not parameterised by element type *)
+  | t -> unsupported Source.no_region (Mo_types.Arrange_type.typ t)
+
+and array_elem_t t =
+  match T.normalize t with
+  | T.Array elem_t -> elem_t
+  | t -> unsupported Source.no_region (Mo_types.Arrange_type.typ t)
+
+and array_field t =
+  match T.normalize t  with
+  | T.Mut elem_t -> array_field elem_t
+  | T.Prim T.Int  -> "$int"
+  | T.Prim T.Nat  -> "$int"  (* Viper has no native support for Nat, so translate to Int *)
+  | T.Prim T.Bool -> "$bool"
+  | _ -> unsupported Source.no_region (Mo_types.Arrange_type.typ t)
+
+and array_size at lhs =
+  !!! at (CallE ("$size", [lhs]))
+
+and array_size_inv at ctxt lhs n =
+  !!! at (EqCmpE (array_size at lhs, intLitE at n))
+
+and array_acc at lhs t =
+  let (!!) p = !!! at p in
+  let call = fun pred -> !! (CallE (pred, [lhs; !!(FldE (array_field t))])) in
+  match T.normalize t with
+  | T.Mut _ -> call "$array_acc_mut"
+  | _ -> call "$array_acc"
+
+and array_alloc at ctxt lhs t es : stmt list =
+  let (!!) p = !!! at p in
+  let ref_field = !! (array_field t) in
+  let init_array = List.mapi (fun i e ->
+    FieldAssignS ((!! (CallE ("$loc", [lhs; intLitE at i])), ref_field), exp ctxt e)) es in
+  (* InhaleS (!! (FldAcc (!! (CallE ("$loc", [var; from_int i])), ref_field)) === e)) es in *)
+  let stmts = [ InhaleS (array_acc at lhs (T.Mut t))
+              ; InhaleS (array_size_inv at ctxt lhs (List.length es))
+              ] @ init_array @ [
+                ExhaleS (array_acc at lhs (T.Mut t))
+              ; InhaleS (array_acc at lhs t)]
+  in List.map (!!) stmts
+
+and array_loc ctxt at e1 e2 t =
+  !!! at (CallE ("$loc", [exp ctxt e1; exp ctxt e2])), !!! at (array_field t)
