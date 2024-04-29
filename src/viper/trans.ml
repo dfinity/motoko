@@ -322,12 +322,12 @@ and dec ctxt d =
     { ctxt with ids = Env.add x.it Local ctxt.ids },
     fun ctxt' ->
       ([ !!(id x, tr_typ e.note.M.note_typ) ],
-       [ !!(assign_stmt ctxt' (id x) e) ])
+       assign_stmts ctxt' d.at (id x) e)
   | M.(LetD ({it=VarP x;_}, e, None)) ->
      { ctxt with ids = Env.add x.it Local ctxt.ids },
      fun ctxt' ->
        ([ !!(id x, tr_typ e.note.M.note_typ) ],
-        [ !!(assign_stmt ctxt' (id x) e) ])
+        assign_stmts ctxt' d.at (id x) e)
   | M.(ExpD e) -> (* TODO: restrict to e of unit type? *)
      (ctxt,
       fun ctxt' ->
@@ -414,7 +414,7 @@ and stmt ctxt (s : M.exp) : seqn =
      begin match Env.find x.it ctxt.ids with
      | Local ->
         let loc = !!! (x.at) (x.it) in
-        !!([], [!!(assign_stmt ctxt loc e2)])
+        !!([], assign_stmts ctxt s.at loc e2)
      | Field ->
        let fld = (self ctxt x.at, id x) in
        !!([],
@@ -444,19 +444,19 @@ and stmt ctxt (s : M.exp) : seqn =
        self_var :: call_args ctxt args))])
   | M.RetE e ->
      !!([],
-        [ !!(assign_stmt ctxt (!!! (Source.no_region) "$Res") e);
-          !!(GotoS(!!! (Source.no_region) "$Ret"))
-        ])
+        assign_stmts ctxt s.at (!!! (Source.no_region) "$Res") e
+        @ [ !!(GotoS(!!! (Source.no_region) "$Ret")) ])
   | _ ->
      unsupported s.at (Arrange.exp s)
 
-and assign_stmt ctxt x e =
+and assign_stmts ctxt at x e =
+  let (!!) p = !!! at p in
   match e with
   | M.({it = CallE({it = VarE m; _}, inst, args); _}) ->
-    MethodCallS ([x], id m,
-      let self_var = self ctxt m.at in
-      self_var :: call_args ctxt args)
-  | _ -> VarAssignS(x, exp ctxt e)
+    [ !!(MethodCallS ([x], id m,
+          let self_var = self ctxt m.at in
+          self_var :: call_args ctxt args)) ]
+  | _ -> [ !!(VarAssignS(x, exp ctxt e)) ]
 
 and call_args ctxt e =
   match e with
