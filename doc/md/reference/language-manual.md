@@ -694,7 +694,7 @@ The corresponding module in the base library provides conversion functions:
 
 - Conversion to [`Nat`](../base/Nat.md).
 
-- Checked and wrapping conversions from [`Int`](../base/Int.md).
+- Checked and wrapping conversions from [`Nat`](../base/Nat.md).
 
 - Wrapping conversion to the bounded natural type of the same size.
 
