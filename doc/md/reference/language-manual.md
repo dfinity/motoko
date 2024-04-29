@@ -620,7 +620,7 @@ The category of a type determines the operators (unary, binary, relational and i
 | [`Error`](../base/Error.md)         |          | (Opaque) error values                                                  |
 | [`Region`](../base/Region.md)       |          | (Opaque) stable memory region objects                                  |
 
-Although many of these types have linguistic support for literals and operators, each primitive type also has an eponymous base library providing related [functions and values](../base-intro.md). For example, the [[`Text`](../base/Text.md)](../base/Text.md) library provides common functions on [`Text`](../base/Text.md) values.
+Although many of these types have linguistic support for literals and operators, each primitive type also has an eponymous base library providing related [functions and values](../base-intro.md). For example, the [`Text`](../base/Text.md) library provides common functions on `Text` values.
 
 ### Type [`Bool`](../base/Bool.md)
 
