@@ -2,12 +2,12 @@ import { debugPrint; error } =  "mo:prim";
 
 actor A {
 
-    public func t0() : async () {
+    func t0() : async () {
         try { debugPrint "IN" }
         case { debugPrint "OUT" };
     };
 /*  nested `try` won't work
-    public func t1() : async () {
+    func t1() : async () {
         try {
             try {
                 debugPrint "IN1";
@@ -18,7 +18,7 @@ actor A {
         catch _ { debugPrint "CAUGHT1" }
     };
 */
-    public func t2() : async () {
+    func t2() : async () {
         try {
             debugPrint "IN2";
             throw error "IN2";
@@ -27,7 +27,7 @@ actor A {
         case { debugPrint "OUT2" };
     };
 
-    public func t3() : async () {
+    func t3() : async () {
         try {
             debugPrint "IN3";
             return;
@@ -35,14 +35,27 @@ actor A {
         case { debugPrint "OUT3" };
     };
 
+    // check that finally not running twice
+    func t4() : async () {
+        try {
+            debugPrint "IN4";
+        }
+        case { debugPrint "OUT4" };
+        return;
+    };
+
+    public func go() : async () {
+        await t0();
+        //await t1();
+        await t2();
+        await t3();
+        await t4();
+    };
 };
 
+//SKIP comp
 //SKIP run-low
 //SKIP run-ir
 //SKIP ic-ref-run
 
-
-await A.t0();
-//await A.t1();
-await A.t2();
-await A.t3();
+A.go();
