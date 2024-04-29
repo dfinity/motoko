@@ -1,5 +1,6 @@
 open Source
 open Syntax
+open Prelude
 
 open Format
 
@@ -213,7 +214,7 @@ let prog_mapped file p =
     marks := [];
     let b = Buffer.create 16 in
     let ppf = Format.formatter_of_buffer b in
-    Format.fprintf ppf "@[%a@]" pp_prog p;
+    Format.fprintf ppf "@[%s@]@.@.@[%a@]" prelude pp_prog p;
     Format.pp_print_flush ppf ();
     let in_file { left; right } =
       let left, right = { left with file }, { right with file } in

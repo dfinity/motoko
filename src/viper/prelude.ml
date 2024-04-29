@@ -1,4 +1,4 @@
-/* BEGIN PRELUDE */
+let prelude : string = {prelude|/* BEGIN PRELUDE */
 domain Array {
   function $loc(a: Array, i: Int): Ref
   function $size(a: Array): Int
@@ -14,32 +14,4 @@ field $int: Int
 field $bool: Bool
 field $ref: Ref
 field $array: Array
-/* END PRELUDE */
-
-define $Perm($Self) (((true && acc(($Self).claimed,write)) && acc(($Self).count,write)))
-define $Inv($Self) (true)
-method __init__($Self: Ref)
-    
-    requires $Perm($Self)
-    ensures $Perm($Self)
-    ensures $Inv($Self)
-    { 
-      ($Self).claimed := false
-      ($Self).count := 0 
-    }
-field claimed: Bool
-field count: Int
-method claim($Self: Ref)
-    
-    requires $Perm($Self)
-    requires $Inv($Self)
-    ensures $Perm($Self)
-    ensures $Inv($Self)
-    { 
-      if ((!($Self).claimed))
-         { 
-           ($Self).claimed := true
-           ($Self).count := (($Self).count + 1) 
-         }
-      label $Ret 
-    }
+/* END PRELUDE */|prelude}
