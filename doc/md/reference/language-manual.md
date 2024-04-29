@@ -660,7 +660,7 @@ Both [`Int`](../base/Int.md) and [`Nat`](../base/Nat.md) are arbitrary precision
 
 The subtype relation `Nat <: Int` holds, so every expression of type [`Nat`](../base/Nat.md) is also an expression of type [`Int`](../base/Int.md) but not vice versa. In particular, every value of type [`Nat`](../base/Nat.md) is also a value of type [`Int`](../base/Int.md), without change of representation.
 
-### Bounded integers [`Int8`](../base/Int8.md), [`Int16`](../base/Int16.md), [`Int32`](../base/Int32.md) and [[`Int64`](../base/Int64.md)](../base/Int64.md)
+### Bounded integers [`Int8`](../base/Int8.md), [`Int16`](../base/Int16.md), [`Int32`](../base/Int32.md) and [`Int64`](../base/Int64.md)
 
 The types [`Int8`](../base/Int8.md), [`Int16`](../base/Int16.md), [`Int32`](../base/Int32.md) and [[`Int64`](../base/Int64.md)](../base/Int64.md) represent signed integers with respectively 8, 16, 32 and 64 bit precision. All have categories A (Arithmetic), B (Bitwise) and O (Ordered).
 
