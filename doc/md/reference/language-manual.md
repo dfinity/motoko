@@ -139,7 +139,7 @@ The 'e' (or 'E') prefixes a base 10, decimal exponent; 'p' (or 'P') prefixes a b
 
 :::note
 
-The use of decimal notation, even for the base 2 exponent, is keeping with the established hexadecimal floating point literal syntax of the `C` language.
+The use of decimal notation, even for the base 2 exponent, adheres to the established hexadecimal floating point literal syntax of the `C` language.
 
 :::
 
@@ -326,7 +326,7 @@ The following table defines the relative precedence and associativity of operato
 
 ### Programs
 
-The syntax of a program `<prog>` is as follows:
+The syntax of a **program** `<prog>` is as follows:
 
 ``` bnf
 <prog> ::=             programs
@@ -335,7 +335,7 @@ The syntax of a program `<prog>` is as follows:
 
 A program is a sequence of imports `<imp>;*` followed by a sequence of declarations `<dec>;*` that ends with an optional actor or actor class declaration. The actor or actor class declaration determines the main actor, if any, of the program.
 
-Compiled programs must obey the following additional restrictions::
+Compiled programs must obey the following additional restrictions:
 
 -   A `shared` function can only appear as a public field of an actor or actor class.
 
@@ -351,7 +351,7 @@ Note that the parameters of an actor class must have [shared type](#shareability
 
 ### Imports
 
-The syntax of an import `<imp>` is as follows:
+The syntax of an **import** `<imp>` is as follows:
 
 ``` bnf
 <imp> ::=                           imports
@@ -372,7 +372,7 @@ The pattern must be irrefutable.
 
 ### Libraries
 
-The syntax of a library that can be referenced in an import is as follows:
+The syntax of a **library** that can be referenced in an import is as follows:
 
 ``` bnf
 <lib> ::=                                               Library
@@ -443,7 +443,7 @@ For `<shared-pat>`, an absent `<pat>?` is shorthand for the wildcard pattern `_`
   flexible
 ```
 
-The visibility qualifier `<vis>?` determines the accessibility of every field `<id>` declared by `<dec>`:
+The **visibility** qualifier `<vis>?` determines the accessibility of every field `<id>` declared by `<dec>`:
 
 -   An absent `<vis>?` qualifier defaults to `private` visibility.
 
@@ -453,19 +453,19 @@ The visibility qualifier `<vis>?` determines the accessibility of every field `<
 
 -   Visibility `system` extends `private` with access by the run-time system.
 
--   Visibility `system` may only appear on `func` declarations that are actor fields, and *must not* appear anywhere else.
+-   Visibility `system` may only appear on `func` declarations that are actor fields, and **must not** appear anywhere else.
 
-The stability qualifier `<stab>` determines the upgrade behavior of actor fields:
+The **stability** qualifier `<stab>` determines the **upgrade** behavior of actor fields:
 
 -   A stability qualifier should appear on `let` and `var` declarations that are actor fields. An absent stability qualifier defaults to `flexible`.
 
 -   `<stab>` qualifiers must not appear on fields of objects or modules.
 
--   The pattern in a `stable let <pat> = <exp>` declaration must be *simple* where, a pattern `pat` is simple if it (recursively) consists of
+-   The pattern in a `stable let <pat> = <exp>` declaration must be simple where, a pattern `pat` is simple if it recursively consists of any of the following:
 
-    -   A variable pattern `<id>`, or
+    -   A variable pattern `<id>`.
 
-    -   An annotated simple pattern `<pat> : <typ>`, or
+    -   An annotated simple pattern `<pat> : <typ>`.
 
     -   A parenthesized simple pattern `( <pat> )`.
 
@@ -782,7 +782,7 @@ Though typically a type identifier, more generally, `<path>` may be a `.`-separa
 
 ### Object types
 
-`<sort>? { <typ-field>;* }` specifies an object type by listing its zero or more named type fields.
+`<sort>? { <typ-field>;* }` specifies an object type by listing its zero or more named **type fields**.
 
 Within an object type, the names of fields must be distinct both by name and hash value.
 
@@ -861,13 +861,13 @@ As an empty type, `None` can be used to specify the impossible return value of a
 
 ### Intersection type
 
-The type expression `<typ1> and <typ2>` denotes the syntactic intersection between its two type operands, that is, the greatest type that is a subtype of both. If both types are incompatible, the intersection is `None`.
+The type expression `<typ1> and <typ2>` denotes the syntactic **intersection** between its two type operands, that is, the greatest type that is a subtype of both. If both types are incompatible, the intersection is `None`.
 
 The intersection is syntactic, in that it does not consider possible instantiations of type variables. The intersection of two type variables is `None`, unless they are equal, or one is declared to be a (direct or indirect) subtype of the other.
 
 ### Union type
 
-The type expression `<typ1> or <typ2>` denotes the syntactic union between its two type operands, that is, the smallest type that is a supertype of both. If both types are incompatible, the union is `Any`.
+The type expression `<typ1> or <typ2>` denotes the syntactic **union** between its two type operands, that is, the smallest type that is a supertype of both. If both types are incompatible, the union is `Any`.
 
 The union is syntactic, in that it does not consider possible instantiations of type variables. The union of two type variables is the union of their bounds, unless the variables are equal, or one is declared to be a direct or indirect subtype of the other.
 
@@ -891,11 +891,11 @@ In all other positions, `( <typ> )` has the same meaning as `<typ>`.
 
 A type field specifies the name and type of a value field of an object, or the name and definition of a type component of an object. The value field names within a single object type must be distinct and have non-colliding hashes. The type component names within a single object type must also be distinct and have non-colliding hashes. Value fields and type components reside in separate name spaces and thus may have names in common.
 
-`<id> : <typ>` : Specifies an immutable field, named `<id>` of type `<typ>`.
+`<id> : <typ>` : Specifies an **immutable** field, named `<id>` of type `<typ>`.
 
-`var <id> : <typ>` : Specifies a mutable field, named `<id>` of type `<typ>`.
+`var <id> : <typ>` : Specifies a **mutable** field, named `<id>` of type `<typ>`.
 
-`type <id> <type-typ-params>? = <typ>` : Specifies a type component, with field name `<id>`, abbreviating parameterized type `<typ>`.
+`type <id> <type-typ-params>? = <typ>` : Specifies a **type component**, with field name `<id>`, abbreviating parameterized type `<typ>`.
 
 Unlike type declarations, a type component is not, in itself, recursive though it may abbreviate an existing recursive type.
 In particular, the name `<id>` is not bound in `<typ>` nor in any other fields of the enclosing object type. The name `<id>` only determines the label to use when accessing the definition through a record of this type using the dot notation.
@@ -1075,7 +1075,7 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
 
 ### Shareability
 
-A type `T` is shared if it is:
+A type `T` is **shared** if it is:
 
 -   `Any` or `None`, or
 
@@ -1099,7 +1099,7 @@ A type `T` is shared if it is:
 
 Stability extends shareability to include mutable types. More precisely:
 
-A type `T` is stable if it is:
+A type `T` is **stable** if it is:
 
 -   `Any` or `None`, or
 
@@ -1434,7 +1434,7 @@ For integer literals only, the optional `<unop>` determines the sign of the valu
 
 The tuple pattern `( <pat>,* )` matches a n-tuple value against an n-tuple of patterns where both the tuple and pattern must have the same number of items. The set of identifiers bound by each component of the tuple pattern must be distinct.
 
-The empty tuple pattern `()` is called the unit pattern.
+The empty tuple pattern `()` is called the **unit pattern**.
 
 Pattern matching fails if one of the patterns fails to match the corresponding item of the tuple value. Pattern matching succeeds if every pattern matches the corresponding component of the tuple value. The binding returned by a successful match is the disjoint union of the bindings returned by the component matches.
 
@@ -1562,7 +1562,7 @@ In scope of the declaration `type C< X0<:T0, …​, Xn <: Tn > = U`, any well-f
 
 #### Productivity
 
-A type is productive if recursively expanding any outermost type constructor in its definition eventually produces a type other than the application of a type constructor.
+A type is **productive** if recursively expanding any outermost type constructor in its definition eventually produces a type other than the application of a type constructor.
 
 Motoko requires all type declarations to be productive.
 
@@ -1594,9 +1594,9 @@ But in contrast, the following type definitions are all non-productive, since ea
 
 #### Expansiveness
 
-A set of mutually recursive type or class declarations will be rejected if the set is expansive.
+A set of mutually recursive type or class declarations will be rejected if the set is **expansive**.
 
-Expansiveness is a syntactic criterion. To determine whether a set of singly or mutually recursive type definitions is exansive, for example:
+Expansiveness is a syntactic criterion. To determine whether a set of singly or mutually recursive type definitions is expansive, for example:
 
 ``` motoko no-repl
   type C<...,Xi,...> = T;
@@ -1606,9 +1606,9 @@ Expansiveness is a syntactic criterion. To determine whether a set of singly or 
 
 Take these definitions and construct a directed graph whose vertices are the formal type parameters identified by position, `C#i`, with the following `{0,1}`-labeled edges:
 
--   For each occurrence of parameter `C#i` as immediate, `j`-th argument to type `D<…​,C#i,…​>`, add a non-expansive, `0`-labeled edge,`C#i -0-> D#j`.
+-   For each occurrence of parameter `C#i` as immediate, `j`-th argument to type `D<…​,C#i,…​>`, add a **non-expansive**, `0`-labeled edge,`C#i -0-> D#j`.
 
--   For each occurrence of parameter `C#i` as a proper sub-expression of the `j`-th argument to type `D<…​,T[C#i],..>` add an expansive `1`-labeled edge, `C#i -1-> D#j`.
+-   For each occurrence of parameter `C#i` as a proper sub-expression of the `j`-th argument to type `D<…​,T[C#i],..>` add an **expansive** `1`-labeled edge, `C#i -1-> D#j`.
 
 The graph is expansive if, and only if, it contains a cycle with at least one expansive edge.
 
@@ -1668,7 +1668,7 @@ Actor declaration is implicitly asynchronous and the state of the enclosing acto
 
 #### Static declarations
 
-A declaration is static if it is:
+A declaration is **static** if it is:
 
 -   A `type` declaration.
 
@@ -1769,7 +1769,7 @@ where:
 
 -   `<obj-body>` is the object body of `<class-body>`.
 
--   `<id_this>?` is the optional this or `self`, parameter of `<class-body>`.
+-   `<id_this>?` is the optional **this** or **self** parameter of `<class-body>`.
 
 -   `async?` is present, if only if, `<sort>` == `actor`.
 
@@ -1910,7 +1910,7 @@ The tuple projection `<exp> . <nat>` has type `Ti` provided `<exp>` has tuple ty
 
 The projection `<exp> . <nat>` evaluates `<exp>` to a result `r`. If `r` is `trap`, then the result is `trap`. Otherwise, `r` must be a tuple `(v1,…​,vi,…​,vn)` and the result of the projection is the value `vi`.
 
-The empty tuple expression `()` is called the unit value.
+The empty tuple expression `()` is called the **unit value**.
 
 ### Option expressions
 
@@ -1942,7 +1942,7 @@ Objects can be written in literal form `{ <exp-field>;* }`, consisting of a list
 
 Such an object literal, sometimes called a record, is equivalent to the object declaration `object { <dec-field>;* }` where the declaration fields are obtained from the expression fields by prefixing each of them with `public let`, or just `public` in case of `var` fields. However, unlike declarations, the field list does not bind each `<id>` as a local name within the literal, i.e., the field names are not in scope in the field expressions.
 
-Object expressions support punning for concision. A punned field `<id>` is shorthand for `<id> = <id>`; Similarly, a typed, punned field `<id> : <typ>` is short-hand for `<id> = <id> : <typ>`. Both associate the field named `<id>` with the value of the identifier `<id>`.
+Object expressions support **punning** for concision. A punned field `<id>` is shorthand for `<id> = <id>`; Similarly, a typed, punned field `<id> : <typ>` is short-hand for `<id> = <id> : <typ>`. Both associate the field named `<id>` with the value of the identifier `<id>`.
 
 ### Object combination/extension
 
