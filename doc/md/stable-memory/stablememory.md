@@ -10,7 +10,7 @@ sidebar_position: 2
 The `ExperimentalStableMemory` library provides low-level access to Internet Computer stable memory.
 
 :::danger
-This library has been superseded by the similar, but safer, [`Region` library](region.md).
+This library has been superseded by the similar, but safer, [`Region` library](../base/Region.md).
 
 New applications should use the `Region` library: it offers additional isolation between different libraries using stable memory.
 
@@ -29,7 +29,7 @@ Moreover, a 32-bit Motoko canister and its stable variables can fundamentally st
 
 ## The `ExperimentalStableMemory` library
 
-To avoid the current limitations of stable variables, developers can use the recommended [`Region`](stable-regions.md) library or the older [`ExperimentalStableMemory`](.../base/ExperimentalStableMemory.md) library described here. The `ExperimentalStableMemory` library allows the programmer to incrementally allocate pages of 64-bit ICP stable memory and use those pages to incrementally read and write data in a user-defined binary format.
+To avoid the current limitations of stable variables, developers can use the recommended [`Region`](stable-regions.md) library or the older [`ExperimentalStableMemory`](../base/ExperimentalStableMemory.md) library described here. The `ExperimentalStableMemory` library allows the programmer to incrementally allocate pages of 64-bit ICP stable memory and use those pages to incrementally read and write data in a user-defined binary format.
 
 The main difference between the two libraries is that `ExperimentalStableMemory` provides a single memory, a global resource, that must be shared by all clients, using, requiring coordination and trust.
 The `Region` library instead provides multiple, isolated memories that can only be accessed by the owner(s) of a particular memory.

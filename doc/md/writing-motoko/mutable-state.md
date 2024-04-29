@@ -65,7 +65,7 @@ text2
 
 As with `+=`, this combined form avoids repeating the assigned variable’s name on the right hand side of the special assignment operator `#=`.
 
-The full table of [assignment operators](/docs/current/motoko/reference/language-manual#assignment-operators) lists numerical, logical, and textual operations over appropriate types number, boolean and text values, respectively.
+The full table of [assignment operators](../reference/language-manual#assignment-operators) lists numerical, logical, and textual operations over appropriate types number, boolean and text values, respectively.
 
 ## Reading from mutable memory
 
@@ -128,7 +128,7 @@ You can read from an array using the usual bracket syntax of `[` and `]` around 
 let x : Nat = a[2] + a[0] ;
 ```
 
-Every array access in Motoko is safe. Accesses that are out of bounds will not access memory unsafely, but instead will cause the program to trap as with an [assertion](/docs/current/motoko/getting-started/basic-concepts.md#assertions) failure.
+Every array access in Motoko is safe. Accesses that are out of bounds will not access memory unsafely, but instead will cause the program to trap as with an [assertion](../getting-started/basic-concepts#traps) failure.
 
 ## The [`Array`](../base/Array.md) module
 
@@ -187,7 +187,7 @@ As above, the array `a` above holds three natural numbers, but has type `[var Na
 
 ### Allocate a mutable array with dynamic size
 
-To allocate mutable arrays of non-constant size, use the `Array_init` primitive and supply an initial value:
+To allocate mutable arrays of non-constant size, use the `Array.init` base library function and supply an initial value:
 
 ``` motoko no-repl
 func init<T>(size : Nat,  x : T) : [var T]

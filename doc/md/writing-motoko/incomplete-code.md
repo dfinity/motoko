@@ -7,7 +7,7 @@ sidebar_position: 27
 
 In the midst of writing a program, you may want to run an incomplete version or a version where one or more execution paths are either missing or simply invalid.
 
-To accommodate these situations, Motoko provides the `xxx`, `nyi` and `unreachable` functions from the base `Prelude` library, explained below. Each is a simple wrapper around a more [general trap mechanism](traps.md).
+To accommodate these situations, Motoko provides the `xxx`, `nyi` and `unreachable` functions from the base `Prelude` library, explained below. Each is a simple wrapper around a more [general trap mechanism](../getting-started/basic-concepts.md#traps).
 
 ## Short-term holes
 
