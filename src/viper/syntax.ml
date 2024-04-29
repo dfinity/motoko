@@ -49,6 +49,7 @@ and exp' =
   | FldAcc of fldacc
   | PermE of perm          (* perm_amount *)
   | AccE of fldacc * exp   (* acc((rcvr: exp).field, (exp: perm_amount)) *)
+  | FldE of string               (* top-level field name, e.g. to be passed as a macro argument *)
   | CallE of string * exp list   (* macro or func call *)
 
 and perm = (perm', info) Source.annotated_phrase
@@ -94,4 +95,5 @@ and typ' =
   | IntT
   | BoolT
   | RefT
+  | ArrayT
 

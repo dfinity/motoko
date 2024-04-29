@@ -93,6 +93,7 @@ and pp_typ ppf t =
   | IntT -> pr ppf "Int"
   | BoolT -> pr ppf "Bool"
   | RefT -> pr ppf "Ref"
+  | ArrayT -> pr ppf "Array"
 
 and pp_exp ppf exp =
   match exp.it with
@@ -100,6 +101,8 @@ and pp_exp ppf exp =
      fprintf ppf "%s" id.it
   | FldAcc fldacc ->
      pp_fldacc ppf fldacc
+  | FldE s ->
+     fprintf ppf "%s" s
   | CallE (m, es) ->
      fprintf ppf "@[%s(%a)@]" m (pp_print_list pp_exp ~pp_sep:comma) es
   | NotE e ->
