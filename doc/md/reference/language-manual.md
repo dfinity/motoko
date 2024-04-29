@@ -2629,7 +2629,7 @@ The expression `ignore <exp>` has type `()` provided the expression `<exp>` has 
 
 The expression `ignore <exp>` evaluates `<exp>`, typically for some side-effect, but discards its value.
 
-`Ignore` is useful for evaluating an expression within a sequence of declarations when that expression has non-`unit` type, and the simpler `<exp>` declaration would be ill-typed. Then the semantics is equivalent to `let _ = <exp> : Any`.
+The `ignore` declaration is useful for evaluating an expression within a sequence of declarations when that expression has non-`unit` type, and the simpler `<exp>` declaration would be ill-typed. Then the semantics is equivalent to `let _ = <exp> : Any`.
 
 ### Debug
 
