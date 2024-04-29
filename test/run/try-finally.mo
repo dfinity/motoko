@@ -44,12 +44,21 @@ actor A {
         return;
     };
 
+    func t5() : async () {
+        label out try {
+            debugPrint "IN5";
+            break out;
+        }
+        case { debugPrint "OUT5" };
+    };
+
     public func go() : async () {
         await t0();
         //await t1();
         await t2();
         await t3();
         await t4();
+        await t5();
     };
 };
 
