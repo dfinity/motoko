@@ -2167,7 +2167,7 @@ Note that a `<shared-pat>` function may itself be `shared <pat>` or `shared quer
     In addition, intermediate state changes made by the call are not observable by any of its own `query`  or `composite query` callees.
 
 
-In either case, `<pat>` provides access to a context value identifying the *caller* of the shared query function.
+In either case, `<pat>` provides access to a context value identifying the *caller* of the shared function.
 
 :::note
 
