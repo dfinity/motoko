@@ -820,7 +820,8 @@ Type `<shared>? <typ-params>? <typ1> -> <typ2>` specifies the type of functions 
 
 Both `<typ1>` and `<typ2>` may reference type parameters declared in `<typ-params>`.
 
-If `<typ1>` or `<typ2>` or both is a tuple type, then the length of that tuple type determines the argument or result of the function type.
+If `<typ1>` or `<typ2>` or both is a tuple type, then the length of that tuple type determines the argument or result *arity* of the function type.
+The arity is the number of arguments or results a function returns.
 
 The optional `<shared>` qualifier specifies whether the function value is shared, which further constrains the form of `<typ-params>`, `<typ1>` and `<typ2>` (see [sharability](#shareability) below).
 
@@ -850,11 +851,11 @@ The empty tuple type `()` is called the *unit type*.
 
 ### Any type
 
-Type `Any` is the top type, i.e. the super-type of all types. All values have type `Any`.
+Type `Any` is the top type, i.e. the supertype of all types. All values have type `Any`.
 
 ### None type
 
-Type `None` is the bottom type, a subtype of all other types. No value has type `None`.
+Type `None` is the bottom type, the subtype of all other types. No value has type `None`.
 
 As an empty type, `None` can be used to specify the impossible return value of an infinite loop or unconditional trap.
 
@@ -1015,7 +1016,7 @@ A type `T` is well-formed only if recursively its constituent types are well-for
 
 Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of the following conditions is true:
 
--   `T` equals `U` reflexivity.
+-   `T` equals `U` (subtyping is *reflexive*).
 
 -   `U` equals `Any`.
 
@@ -1045,7 +1046,7 @@ Two types `T`, `U` are related by subtyping, written `T <: U`, whenever, one of 
 
     -   If mutable field `var id : W` is in `fts1` then `var id : V` is in `fts0` and `V == W`.
 
-        That is, object type `T` is a subtype of object type `U` if they have same sort, every mutable field in `U` super-types the same field in `T` and every mutable field in `U` is mutable in `T` with an equivalent type. In particular, `T` may specify more fields than `U`.
+        That is, object type `T` is a subtype of object type `U` if they have the same sort, every mutable field in `U` super-types the same field in `T` and every mutable field in `U` is mutable in `T` with an equivalent type. In particular, `T` may specify more fields than `U`.
          Note that this clause defines subtyping for all sorts of object type, whether `module`, `object` or `actor`.
 
 -   `T` is a variant type `{ fts0 }`, `U` is a variant type `{ fts1 }` and
@@ -1269,7 +1270,7 @@ A change in interface may break any existing clients of `a`. The current state o
 
 :::
 
-### Imports and urls
+### Imports and URLs
 
 An import `import <pat> =? <url>` declares a pattern `<pat>` bound to the contents of the text literal `<url>`.
 
@@ -1508,7 +1509,7 @@ If `r` is `trap`, the declaration evaluates to `trap`.
 If `r` is a value `v` then evaluation proceeds by matching the value `v` against `<pat>`.
 If matching succeeds, the result is `v` and the binding of all identifiers in `<pat>` to their matching values in `v`.
 
-If matching fails, then evaluation continues with `<block-or-exp>`, which, having type `None`, cannot proceed to the end of the declaration but may still alter control-flow to, for example `return` or `throw` to exit an enclosing function, break` from an enclosing expression or simply diverge.
+If matching fails, then evaluation continues with `<block-or-exp>`, which, having type `None`, cannot proceed to the end of the declaration but may still alter control-flow to, for example `return` or `throw` to exit an enclosing function, `break` from an enclosing expression or simply diverge.
 
 All bindings declared by a `let-else` if any are immutable.
 
@@ -1595,7 +1596,7 @@ But in contrast, the following type definitions are all non-productive, since ea
 
 A set of mutually recursive type or class declarations will be rejected if the set is expansive.
 
-Expansiveness is a syntactic criterion. To determine whether a set of singly or mutually recursive type definitions, consider the following example:
+Expansiveness is a syntactic criterion. To determine whether a set of singly or mutually recursive type definitions is exansive, for example:
 
 ``` motoko no-repl
   type C<...,Xi,...> = T;
@@ -1603,7 +1604,7 @@ Expansiveness is a syntactic criterion. To determine whether a set of singly or 
   type D<...,Yj,...> = U;
 ```
 
-This example is expansive, and constructs a directed graph whose vertices are the formal type parameters identified by position, `C#i`, with the following `{0,1}`-labeled edges:
+Take these definitions and construct a directed graph whose vertices are the formal type parameters identified by position, `C#i`, with the following `{0,1}`-labeled edges:
 
 -   For each occurrence of parameter `C#i` as immediate, `j`-th argument to type `D<…​,C#i,…​>`, add a non-expansive, `0`-labeled edge,`C#i -0-> D#j`.
 
@@ -1844,7 +1845,7 @@ Otherwise, `exp2` is evaluated to a result `r2`. If `r2` is `trap`, the expressi
 
 Otherwise, `r1` and `r2` are values `v1` and `v2` and the expression returns the Boolean result of `v1 <relop> v2`.
 
-For equality and inequality, the meaning of `v1 <relop> v2` depends on the compile-time, static choice of `T` The run-time types of `v1` and `v2`, which, due to subtyping, may be more precise.
+For equality and inequality, the meaning of `v1 <relop> v2` depends on the compile-time, static choice of `T`. This means that only the static types of `<exp1>` and `<exp2>` are considered for equality, and not the run-time types of `v1` and `v2`, which, due to subtyping, may be more precise than the static types.
 
 ### Pipe operators and placeholder expressions
 
@@ -2032,7 +2033,7 @@ The projection `<exp> . <id>` evaluates `<exp>` to a result `r`. If `r` is `trap
 
 :::note
 
-the `chars`, `vals`, `keys` and `vals` members produce stateful iterator objects than can be consumed by `for` expressions (see [ror](#for)).
+the `chars`, `vals`, `keys` and `vals` members produce stateful iterator objects than can be consumed by `for` expressions (see [for](#for)).
 
 :::
 
