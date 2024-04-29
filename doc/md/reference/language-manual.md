@@ -662,7 +662,7 @@ The subtype relation `Nat <: Int` holds, so every expression of type [`Nat`](../
 
 ### Bounded integers [`Int8`](../base/Int8.md), [`Int16`](../base/Int16.md), [`Int32`](../base/Int32.md) and [`Int64`](../base/Int64.md)
 
-The types [`Int8`](../base/Int8.md), [`Int16`](../base/Int16.md), [`Int32`](../base/Int32.md) and [[`Int64`](../base/Int64.md)](../base/Int64.md) represent signed integers with respectively 8, 16, 32 and 64 bit precision. All have categories A (Arithmetic), B (Bitwise) and O (Ordered).
+The types [`Int8`](../base/Int8.md), [`Int16`](../base/Int16.md), [`Int32`](../base/Int32.md) and [`Int64`](../base/Int64.md) represent signed integers with respectively 8, 16, 32 and 64 bit precision. All have categories A (Arithmetic), B (Bitwise) and O (Ordered).
 
 Operations that may under- or overflow the representation are checked and trap on error.
 
