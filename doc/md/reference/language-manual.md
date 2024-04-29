@@ -2621,7 +2621,7 @@ The declaration expression `<dec>` has type `T` provided the declaration `<dec>`
 
 Evaluating the expression `<dec>` proceeds by evaluating `<dec>`, returning the result of `<dec>` but discarding the bindings introduced by `<dec>`, if any.
 
-The expression `<dec>` is actually shorthand for the block expression `{ <dec> }`.
+The expression `<dec>` is actually shorthand for the block expression `do { <dec> }`.
 
 ### Ignore
 
