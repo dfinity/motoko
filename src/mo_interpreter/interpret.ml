@@ -628,8 +628,10 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     let k' v1 =
       let cleanup v2 = interpret_exp env exp2 (fun _ -> k v2) in
       interpret_catches env cases exp.at v1 cleanup in
-    let ret ret v = interpret_exp env exp2 (fun _ -> ret v) in
-    let env' = { env with throws = Some k'; rets = Option.map ret env.rets } in
+    let out ret v = interpret_exp env exp2 (fun _ -> ret v) in
+    let env' = { env with throws = Some k'
+                        ; rets = Option.map out env.rets
+                        ; labs = V.Env.map out env.labs } in
     let k'' v2 = interpret_exp env' exp2 (fun _ -> k v2) in
     interpret_exp env' exp1 k''
   | WhileE (exp1, exp2) ->
