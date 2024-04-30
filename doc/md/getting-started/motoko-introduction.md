@@ -36,41 +36,29 @@ However, its tailored design means Motoko should be the easiest and safest langu
 
 ## Key design points
 
-Motoko provides many other developer productivity features, including subtyping, arbitrary precision arithmetic and garbage collection. It has derived inspiration for its design from languages such as Java, JavaScript, C#, Swift, Pony, ML, and Haskell.
+Motoko provides many other developer productivity features. It has derived inspiration for its design from languages such as Java, JavaScript, C#, Swift, Pony, ML, and Haskell.
 
-Key design points of Motoko include:
+Motoko syntax should be familiar to JavaScript programmers, but without the quirks of JavaScript.
 
--   Object-oriented, functional & imperative.
+Motoko is a concurrent, actor-oriented language with
+convenient support for concurrency control using async/await and futures.
+Its core is a call-by-value, impure functional language with imperative and object-oriented features.
 
--   Objects as records of functions.
+Motoko is strongly typed and offers option types, records, variants, generics and subtyping.
+The type system is structural so that types with different names but equivalent definition are interchangeable;
+subtyping allows values to be used at their precise type but also at any more general supertype.
 
--   `async`/`await` for sequential programming of asynchronous messaging.
+Motoko is safety-oriented.
+Memory management is automated using a garbage collector.
+Implicit null values are avoided - nulls must be handled explicitly using option types.
+The type system cannot be circumvented using unsafe casts.
+Arithmetic either uses unbounded integers that cannot overflow,  or, when using bounded integers, employs checked arithmetic that faults on overflow.
+All coercions between unrelated types are explicit.
+Implicit promotion of a value to another type can only be achieved by subtyping, an operation with zero cost.
+Motoko's support for concise, compiler-checked pattern matching encourages good coding style and auditable code.
+Error-prone, object-oriented inheritance is not supported.
 
--   Structural typing with simple generics and subtyping.
-
--   Safe arithmetic (both unbounded and checked).
-
-- Pattern matching with coverage checking
-
--   Non-nullable types by default.
-
--   Garbage collected (no manual memory management).
-
--   JavaScript-like syntax but statically typed & sane.
-
-Semantics of Motoko include:
-
--   Call-by-value (like Java, C, JS, ML; unlike Haskell).
-
--   Declarations are locally mutually recursive.
-
--   Parametric, bounded polymorphism.
-
--   Subtyping as zero-cost subsumption, not coercion.
-
--   No dynamic casts.
-
--   No inheritance.
+Motoko canisters are compiled, not interpreted, producing small binaries with good performance.
 
 ### Native canister smart contract support
 
