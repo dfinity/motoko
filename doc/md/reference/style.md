@@ -271,7 +271,6 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
     // A very large class
     class MuffleMiff(n : Nat) {
 
-
       // Accessors
 
       public func miffMuff() : Text {
@@ -281,7 +280,6 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
       public func sniffMiff() : Nat {
         ...
       }
-
 
       // Mutators
 
@@ -293,7 +291,6 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
         ...
       }
 
-
       // Processing
 
       public func murkMuffle(param : List<Gnobble>) {
@@ -303,7 +300,6 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
       public func transformSneezler() {
         ...
       }
-
 
       // Internal State
 
@@ -371,7 +367,6 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
     type Result<A> = {#ok : A; #error : Text};
 
     func add(x : Nat, y : Nat) : Nat { return x + y };
-
 
     // End last case with ;
 
@@ -543,7 +538,6 @@ Rationale: `g[1]` in particular will be misparsed as an indexing operation.
     ``` motoko no-repl
     let (width, _color, name) = rumpler();
     ...  // _color is not used here
-
 
     func foo(x : Nat, _futureFlag : Bool) { ... };
     ```
