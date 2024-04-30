@@ -37,21 +37,21 @@ There are no unchecked, uncaught overflows in Motoko, except in well-defined sit
 
 Motoko permits user-defined types and each of the following non-primitive value forms and associated types:
 
--   [Tuples](/docs/current/motoko/reference/language-manual#tuples), including the unit value (the "empty tuple").
+-   [Tuples](../reference/language-manual#tuples), including the unit value (the "empty tuple").
 
--   [Arrays](/docs/current/motoko/reference/language-manual#arrays) with both **immutable** and **mutable** variants.
+-   [Arrays](../reference/language-manual#arrays) with both **immutable** and **mutable** variants.
 
--   [Objects](/docs/current/motoko/reference/language-manual#objects) with named, unordered fields and methods.
+-   [Objects](../reference/language-manual#objects) with named, unordered fields and methods.
 
--   [Variants](/docs/current/motoko/reference/language-manual#variant-types) with named constructors and optional payload values.
+-   [Variants](../reference/language-manual#variant-types) with named constructors and optional payload values.
 
--   [Function values](/docs/current/motoko/reference/language-manual#functions) including [shareable functions](../writing-motoko/sharing.md).
+-   [Function values](../reference/language-manual#functions) including [shareable functions](../writing-motoko/sharing.md).
 
--   [Async values](/docs/current/motoko/reference/language-manual#async), also known as **promises** or **futures**;
+-   [Async values](../reference/language-manual#async), also known as **promises** or **futures**;
 
--   [Error values](/docs/current/motoko/reference/language-manual#error-type) carry the payload of exceptions and system failures.
+-   [Error values](../reference/language-manual#error-type) carry the payload of exceptions and system failures.
 
-For precise language definitions of primitive and non-primitive values, see the [language quick reference](/docs/current/motoko/reference/language-manual).
+For precise language definitions of primitive and non-primitive values, see the [language reference](../reference/language-manual).
 
 ## Printing values
 
@@ -63,7 +63,7 @@ You can transform most Motoko values into human-readable text strings for debugg
 
 ## Motoko program syntax
 
-Each Motoko program is comprised of **declarations** and **expressions** whose syntactic classes are distinct but [related](/docs/current/motoko/reference/language-manual).
+Each Motoko program is comprised of **declarations** and **expressions** whose syntactic classes are distinct but [related](../reference/language-manual).
 
 Declarations introduce **immutable variables**, **mutable state**, **actors**, **objects**, **classes** and other types. Declarations can be mutually recursive, but in cases where they are not, they permit substitution semantics such as replacing values with an equal value.
 

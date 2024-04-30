@@ -173,7 +173,7 @@ Each mutable array in Motoko introduces private mutable actor state.
 
 Because Motoko’s type system enforces that remote actors do not share their mutable state, the Motoko type system introduces a firm distinction between mutable and immutable arrays that impacts typing, subtyping, and the language abstractions for asynchronous communication.
 
-Locally, the mutable arrays can not be used in places that expect immutable ones, since Motoko’s definition of [subtyping](/docs/current/motoko/reference/language-manual#subtyping) for arrays correctly distinguishes those cases for the purposes of type soundness. Additionally, in terms of actor communication, immutable arrays are safe to send and share, while mutable arrays can not be shared or otherwise sent in messages. Unlike immutable arrays, mutable arrays have non-shareable types.
+Locally, the mutable arrays can not be used in places that expect immutable ones, since Motoko’s definition of [subtyping](../reference/language-manual#subtyping) for arrays correctly distinguishes those cases for the purposes of type soundness. Additionally, in terms of actor communication, immutable arrays are safe to send and share, while mutable arrays can not be shared or otherwise sent in messages. Unlike immutable arrays, mutable arrays have non-shareable types.
 
 ### Allocate a mutable array of constants
 

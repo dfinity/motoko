@@ -82,5 +82,5 @@ To provide further control over actor class installation, Motoko endows each imp
 Using this syntax, it's possible to specify initial canister settings (such as an array of controllers), manually install, upgrade and reinstall canisters, exposing all of the
 lower-level facilities of the Internet Computer.
 
-See [actor class management](/docs/current/motoko/reference/language-manual#actor-class-management) for more details.
+See [actor class management](../reference/language-manual#actor-class-management) for more details.
 
