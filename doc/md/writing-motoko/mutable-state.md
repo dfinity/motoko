@@ -22,7 +22,7 @@ var pair : (Text, Nat) = (text, num);
 var text2 : Text = text;
 ```
 
-The declaration list above declares four variables. The first two variables ([`Text`](../base/Text.md) and `num`) are lexically-scoped, immutable variables. The final two variables (`pair` and `text2`) are lexically-scoped, mutable variables.
+The declaration list above declares four variables. The first two variables (`text` and `num`) are lexically-scoped, immutable variables. The final two variables (`pair` and `text2`) are lexically-scoped, mutable variables.
 
 ## Assignment to mutable memory
 
