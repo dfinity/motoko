@@ -275,7 +275,7 @@ and dec_field' ctxt d =
         let arg_preds = local_access_preds ctxt'' in
         let ret_preds, ret = rets t_opt in
         let pres = arg_preds @ pres in
-        let posts = arg_preds @ posts in
+        let posts = arg_preds @ posts @ ret_preds in
         let stmts'' = stmts' @ [!!! Source.no_region (LabelS(!!! (Source.no_region) "$Ret"))] in
         (MethodI(id f, (self_id, !!! Source.no_region RefT)::method_args', ret, pres, posts, Some { stmts with it = fst stmts.it, stmts'' } ),
         PublicFunction f.it)
@@ -302,7 +302,7 @@ and dec_field' ctxt d =
         let arg_preds = local_access_preds ctxt'' in
         let ret_preds, ret = rets t_opt in
         let pres = arg_preds @ pres in
-        let posts = arg_preds @ posts in
+        let posts = arg_preds @ posts @ ret_preds in
         let stmts'' = stmts' @ [!!! Source.no_region (LabelS(!!! (Source.no_region) "$Ret"))] in
         (MethodI(id f, (self_id, !!! Source.no_region RefT)::method_args', ret, pres, posts, Some { stmts with it = fst stmts.it, stmts'' } ),
         PrivateFunction f.it)
@@ -450,8 +450,11 @@ and stmt ctxt (s : M.exp) : seqn =
   | M.WhileE(e, s1) ->
      let (invs, s1') = extract_loop_invariants s1 in
      let invs' = List.map (fun inv -> exp ctxt inv) invs in
+     let invs'' = invs' @ local_access_preds ctxt in
+     let invs''' = invs'' @ [!!(AndE(!!(CallE("$Perm", [self ctxt s.at])),
+                                     !!(CallE("$Inv",  [self ctxt s.at]))))] in
      !!([],
-        [ !!(WhileS(exp ctxt e, invs', stmt ctxt s1')) ])
+        [ !!(WhileS(exp ctxt e, invs''', stmt ctxt s1')) ])
 
   (* TODO: remove by Motoko->Motoko transformation *)
   | M.(AssignE({it = VarE x; _}, {it = ArrayE (mut, es); note={note_typ=typ; _}; _})) ->
@@ -507,6 +510,7 @@ and stmt ctxt (s : M.exp) : seqn =
 and assign_stmts ctxt at x e =
   let (!!) p = !!! at p in
   match e with
+  | M.({it=TupE [];_}) -> []
   | M.({it=AnnotE (e, _);_}) -> assign_stmts ctxt at x e
   | M.({it = CallE({it = VarE m; _}, inst, args); _}) ->
     [ !!(MethodCallS ([x], id m,
