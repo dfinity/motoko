@@ -124,7 +124,7 @@ method factorial($Self: Ref, n: Int)
       prod := 1
       i := n
       while ((i > 0))
-         
+         invariant ($Perm($Self) && $Inv($Self))
          { 
            prod := (prod * i)
            i := (i - 1) 
