@@ -57,6 +57,7 @@ jobs:
         nix-store --gc --print-roots | grep /motoko/
 
     - name: "nix-build"
+      if: github.actor != 'dependabot[bot]' && runner.os == 'Linux' && github.event_name == 'pull_request'
       run: nix-build-uncached --max-jobs 4 -A all-systems-go -build-flags -L
 
     - name: Calculate performance delta
