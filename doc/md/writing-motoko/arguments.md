@@ -52,18 +52,6 @@ public func location_pretty(cities : [Text]) : async Text {
 
 You might notice that [`Text`](../base/Text.md) in this code example is enclosed by square (`[ ]`) brackets. By itself, [`Text`](../base/Text.md) represents a (UTF-8 encoded) sequence of Unicode characters. Placing square brackets around a type describes an **array** of that type. In this context, therefore, `[Text]` indicates an array of text values, enabling the program to accept multiple text values as an array.
 
-The code sample also uses the basic format of an `apply` operation for the array, which can be abstracted as:
-
-```motoko
-public func apply<A, B>(fs : [A -> B], xs : [A]) : [B] {
-    var ys : [B] = [];
-    for (f in fs.vals()) {
-        ys := append<B>(ys, map<A, B>(f, xs));
-    };
-    ys;
-};
-```
-
 For information about the functions that perform operations on arrays, see the description of the [Array module](../base/Array.md) in the Motoko base library or the **Motoko programming language reference**. For another example focused on the use of arrays, see the [quick sort](https://github.com/dfinity/examples/tree/master/motoko/quicksort) project in the [examples](https://github.com/dfinity/examples/) repository.
 
 Call the `location` method in the program and pass your `city` argument using the Candid interface description syntax by running the following command:
