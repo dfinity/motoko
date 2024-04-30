@@ -47,9 +47,9 @@ Motoko is strongly typed and offers option types, records, variants, generics an
 
 - Motoko is safety-oriented. 
 - Memory management is automated using a garbage collector.
-- Implicit null values are avoided - nulls must be handled explicitly using option types.
+- Implicit null values are avoided. Nulls must be handled explicitly using option types.
 - The type system cannot be circumvented using unsafe casts.
-- Arithmetic either uses unbounded integers that cannot overflow,  or, when using bounded integers, employs checked arithmetic that faults on overflow.
+- Arithmetic either uses unbounded integers that cannot overflow, or, when using bounded integers, employs checked arithmetic that faults on overflow.
 - All coercions between unrelated types are explicit.
 - Implicit promotion of a value to another type can only be achieved by subtyping, an operation with zero cost.
 - Motoko's support for concise, compiler-checked pattern matching encourages good coding style and auditable code.
