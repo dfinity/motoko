@@ -40,23 +40,20 @@ Motoko provides many other developer productivity features. It has derived inspi
 
 Motoko syntax should be familiar to JavaScript programmers, but without the quirks of JavaScript.
 
-Motoko is a concurrent, actor-oriented language with
-convenient support for concurrency control using async/await and futures.
+Motoko is a concurrent, actor-oriented language with convenient support for concurrency control using async/await and futures.
 Its core is a call-by-value, impure functional language with imperative and object-oriented features.
 
-Motoko is strongly typed and offers option types, records, variants, generics and subtyping.
-The type system is structural so that types with different names but equivalent definition are interchangeable;
-subtyping allows values to be used at their precise type but also at any more general supertype.
+Motoko is strongly typed and offers option types, records, variants, generics and subtyping. The type system is structural so that types with different names but equivalent definition are interchangeable; subtyping allows values to be used at their precise type but also at any more general supertype.
 
-Motoko is safety-oriented.
-Memory management is automated using a garbage collector.
-Implicit null values are avoided - nulls must be handled explicitly using option types.
-The type system cannot be circumvented using unsafe casts.
-Arithmetic either uses unbounded integers that cannot overflow,  or, when using bounded integers, employs checked arithmetic that faults on overflow.
-All coercions between unrelated types are explicit.
-Implicit promotion of a value to another type can only be achieved by subtyping, an operation with zero cost.
-Motoko's support for concise, compiler-checked pattern matching encourages good coding style and auditable code.
-Error-prone, object-oriented inheritance is not supported.
+- Motoko is safety-oriented. 
+- Memory management is automated using a garbage collector.
+- Implicit null values are avoided - nulls must be handled explicitly using option types.
+- The type system cannot be circumvented using unsafe casts.
+- Arithmetic either uses unbounded integers that cannot overflow,  or, when using bounded integers, employs checked arithmetic that faults on overflow.
+- All coercions between unrelated types are explicit.
+- Implicit promotion of a value to another type can only be achieved by subtyping, an operation with zero cost.
+- Motoko's support for concise, compiler-checked pattern matching encourages good coding style and auditable code.
+- Error-prone, object-oriented inheritance is not supported.
 
 Motoko canisters are compiled, not interpreted, producing small binaries with good performance.
 
