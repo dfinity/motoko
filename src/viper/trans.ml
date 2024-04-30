@@ -73,7 +73,7 @@ module Env = T.Env
 
 type ctxt =
   { self : string option;
-    ids : sort T.Env.t;
+    ids : (sort * T.t) T.Env.t;
     ghost_items : (ctxt -> item) list ref;
     ghost_inits : (ctxt -> stmt list) list ref;
     ghost_perms : (ctxt -> Source.region -> exp) list ref;
@@ -233,7 +233,7 @@ and dec_field' ctxt d =
   | M.VarD (x, {it=M.AnnotE ({it=M.ArrayE (mut, es); note;_}, _); at=e_at;_}) ->
       let lhs = fun ctxt' -> !!! Source.no_region (FldAcc (self ctxt' e_at, id x)) in
       let t = note.M.note_typ in
-      { ctxt with ids = Env.add x.it Field ctxt.ids },
+      { ctxt with ids = Env.add x.it (Field, t) ctxt.ids },
       Some (fun ctxt' at -> (* perm *)
               !!! at (AndE (accE at (self ctxt' at, id x),
                       !!! at (AndE (array_acc at (lhs ctxt') (T.Mut (array_elem_t t)),
@@ -244,7 +244,7 @@ and dec_field' ctxt d =
         (FieldI(id x, tr_typ t),
         NoInfo))
   | M.VarD (x, e) ->
-      { ctxt with ids = Env.add x.it Field ctxt.ids },
+      { ctxt with ids = Env.add x.it (Field, e.note.M.note_typ) ctxt.ids },
       Some(fun ctxt' (at : region) -> (accE at (self ctxt' at, id x))),
       Some(fun ctxt' ->
         [!!! { left = x.at.left; right = e.at.right }
@@ -253,52 +253,58 @@ and dec_field' ctxt d =
         (FieldI(id x, tr_typ e.note.M.note_typ),
         NoInfo)
   (* async functions *)
-  | M.(LetD ({it=VarP f;_},
+  | M.(LetD ({it=VarP f;note;_},
              {it=FuncE(x, sp, tp, p, t_opt, sugar,
              {it = AsyncE (T.Fut, _, e); _} );_}, None)) -> (* ignore async *)
-      { ctxt with ids = Env.add f.it Method ctxt.ids },
+      { ctxt with ids = Env.add f.it (Method, note) ctxt.ids },
       None, (* no perm *)
       None, (* no init *)
       fun ctxt' ->
         let open Either in
         let self_id = !!! (Source.no_region) "$Self" in
-        let arg_preds, method_args = args p in
+        let method_args = args p in
+        let method_args' = List.map (fun (id, t) -> id, tr_typ t) method_args in
         let ctxt'' = { ctxt'
           with self = Some self_id.it;
-               ids = List.fold_left (fun env (id, _) -> Env.add id.it Local env) ctxt.ids method_args }
+               ids = List.fold_left (fun env (id, t) -> Env.add id.it (Local, t) env) ctxt.ids method_args }
         in (* TODO: add args (and rets?) *)
         let stmts = stmt ctxt'' e in
         let _, stmts = extract_concurrency stmts in
         let pres, stmts' = List.partition_map (function { it = PreconditionS exp; _ } -> Left exp | s -> Right s) (snd stmts.it) in
         let posts, stmts' = List.partition_map (function { it = PostconditionS exp; _ } -> Left exp | s -> Right s) stmts' in
+        let arg_preds = local_access_preds ctxt'' in
+        let ret_preds, ret = rets t_opt in
         let pres = arg_preds @ pres in
         let posts = arg_preds @ posts in
         let stmts'' = stmts' @ [!!! Source.no_region (LabelS(!!! (Source.no_region) "$Ret"))] in
-        (MethodI(id f, (self_id, !!! Source.no_region RefT)::method_args, rets t_opt, pres, posts, Some { stmts with it = fst stmts.it, stmts'' } ),
+        (MethodI(id f, (self_id, !!! Source.no_region RefT)::method_args', ret, pres, posts, Some { stmts with it = fst stmts.it, stmts'' } ),
         PublicFunction f.it)
   (* private sync functions *)
-  | M.(LetD ({it=VarP f;_},
+  | M.(LetD ({it=VarP f; note;_},
              {it=FuncE(x, sp, tp, p, t_opt, sugar, e );_},
              None)) ->
-      { ctxt with ids = Env.add f.it Method ctxt.ids },
+      { ctxt with ids = Env.add f.it (Method, note) ctxt.ids },
       None, (* no perm *)
       None, (* no init *)
       fun ctxt' ->
         let open Either in
         let self_id = !!! (Source.no_region) "$Self" in
-        let arg_preds, method_args = args p in
+        let method_args = args p in
+        let method_args' = List.map (fun (id, t) -> id, tr_typ t) method_args in
         let ctxt'' = { ctxt'
           with self = Some self_id.it;
-               ids = List.fold_left (fun env (id, _) -> Env.add id.it Local env) ctxt.ids method_args }
+               ids = List.fold_left (fun env (id, t) -> Env.add id.it (Local, t) env) ctxt.ids method_args }
         in (* TODO: add args (and rets?) *)
         let stmts = stmt ctxt'' e in
         let _, stmts = extract_concurrency stmts in
         let pres, stmts' = List.partition_map (function { it = PreconditionS exp; _ } -> Left exp | s -> Right s) (snd stmts.it) in
         let posts, stmts' = List.partition_map (function { it = PostconditionS exp; _ } -> Left exp | s -> Right s) stmts' in
+        let arg_preds = local_access_preds ctxt'' in
+        let ret_preds, ret = rets t_opt in
         let pres = arg_preds @ pres in
         let posts = arg_preds @ posts in
         let stmts'' = stmts' @ [!!! Source.no_region (LabelS(!!! (Source.no_region) "$Ret"))] in
-        (MethodI(id f, (self_id, !!! Source.no_region RefT)::method_args, rets t_opt, pres, posts, Some { stmts with it = fst stmts.it, stmts'' } ),
+        (MethodI(id f, (self_id, !!! Source.no_region RefT)::method_args', ret, pres, posts, Some { stmts with it = fst stmts.it, stmts'' } ),
         PrivateFunction f.it)
   | M.(ExpD { it = AssertE (Invariant, e); at; _ }) ->
       ctxt,
@@ -310,23 +316,29 @@ and dec_field' ctxt d =
      unsupported d.M.dec.at (Arrange.dec d.M.dec)
 
 and args p = match p.it with
-  | M.TupP ps -> rearrange_args (List.map arg ps)
-  | M.ParP p  -> rearrange_args [arg p]
+  | M.TupP ps -> List.map arg ps
+  | M.ParP p  -> [arg p]
   | _ -> unsupported p.at (Arrange.pat p)
 and arg p = match p.it with
   | M.AnnotP (p, t) ->
       (match p.it with
-        | M.VarP x -> (arg_access_pred x t.note, (id x, tr_typ t.note))
+        | M.VarP x -> (id x, t.note)
         | _ -> unsupported p.at (Arrange.pat p))
   | _ -> unsupported p.at (Arrange.pat p)
-and arg_access_pred x t =
+
+and access_pred x t =
   let lhs = !!! Source.no_region (LocalVar (id x, tr_typ t)) in
   match T.normalize t with
   | T.Array elem_t -> Some (array_acc Source.no_region lhs elem_t)
   | _ -> None
-and rearrange_args arg_triples =
-  let arg_preds, arg_pairs = List.split arg_triples in
-  List.filter_map (fun x -> x) arg_preds, arg_pairs
+and local_access_preds ctxt =
+  let preds = Env.fold (fun id info preds ->
+      let id' = {it=id; at=Source.no_region; note=()} in
+      match info with
+      | (Local, t) -> access_pred id' t |: preds
+      | _ -> preds)
+    ctxt.ids []
+  in preds
 
 and block ctxt at ds =
   let ctxt, mk_ss = decs ctxt ds in
@@ -349,12 +361,12 @@ and dec ctxt d =
   match d.it with
   | M.VarD (x, e) ->
      (* TODO: translate e? *)
-    { ctxt with ids = Env.add x.it Local ctxt.ids },
+    { ctxt with ids = Env.add x.it (Local, e.note.M.note_typ) ctxt.ids },
     fun ctxt' ->
       ([ !!(id x, tr_typ e.note.M.note_typ) ],
        assign_stmts ctxt' d.at (id x) e)
   | M.(LetD ({it=VarP x;_}, e, None)) ->
-     { ctxt with ids = Env.add x.it Local ctxt.ids },
+     { ctxt with ids = Env.add x.it (Local, e.note.M.note_typ) ctxt.ids },
      fun ctxt' ->
        ([ !!(id x, tr_typ e.note.M.note_typ) ],
         assign_stmts ctxt' d.at (id x) e)
@@ -451,7 +463,7 @@ and stmt ctxt (s : M.exp) : seqn =
          @ [!!(VarAssignS (id x, !!(LocalVar (!!temp_id, typ'))))])
 
   | M.(AssignE({it = VarE x; _}, e2)) ->
-     begin match Env.find x.it ctxt.ids with
+     begin match fst (Env.find x.it ctxt.ids) with
      | Local ->
         let loc = !!! (x.at) (x.it) in
         !!([], assign_stmts ctxt s.at loc e2)
@@ -517,7 +529,7 @@ and exp ctxt e =
   match e.it with
   | M.VarE x ->
     begin
-     match Env.find x.it ctxt.ids with
+     match fst (Env.find x.it ctxt.ids) with
      | Local ->
         !!(LocalVar (id x, tr_typ e.note.M.note_typ))
      | Field ->
@@ -575,12 +587,14 @@ and exp ctxt e =
 
 and rets t_opt =
   match t_opt with
-  | None -> []
+  | None -> [], []
   | Some t ->
-    (match T.normalize t.note with
-     | T.Tup [] -> []
-     | T.Async (T.Fut, _, _) -> []
-     | typ -> [(!!! (Source.no_region) "$Res", tr_typ typ)]
+     (match T.normalize t.note with
+     | T.Tup [] -> [], []
+     | T.Async (T.Fut, _, _) -> [], []
+     | typ ->
+        let pred = access_pred {it="$Res"; at=Source.no_region; note=()} typ in
+        pred |: [], [(!!! (Source.no_region) "$Res", tr_typ  typ)]
     )
 
 and id id = { it = id.it; at = id.at; note = NoInfo }
