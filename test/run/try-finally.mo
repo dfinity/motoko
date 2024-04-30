@@ -63,8 +63,6 @@ actor A {
 };
 
 //SKIP comp
-//SKIP run-low
-//SKIP run-ir
 //SKIP ic-ref-run
 
 A.go();
