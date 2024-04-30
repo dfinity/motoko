@@ -39,6 +39,7 @@ method double($Self: Ref, n: Int)
       while ((i < n))
          invariant ((i * 2) == j)
          invariant ((j - i) == i)
+         invariant ($Perm($Self) && $Inv($Self))
          { 
            i := (i + 1)
            j := (j + 2) 
