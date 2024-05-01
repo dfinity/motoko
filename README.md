@@ -1,4 +1,3 @@
-
 # [Motoko](https://internetcomputer.org/docs/current/motoko/main/about-this-guide) &middot; [![GitHub license](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0) [![Tests](https://img.shields.io/github/actions/workflow/status/dfinity/motoko/release.yml?branch=master&logo=github)](https://github.com/dfinity/motoko/actions?query=workflow:"release") [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/dfinity/motoko/blob/master/Building.md)
 
 
@@ -7,9 +6,9 @@ A safe, simple, actor-based programming language for authoring [Internet Compute
 ## User Documentation & Samples
 
 * [Building, installing, and developing on Motoko](Building.md).
-* [Overview](doc/md/overview.md).
+* [Overview](doc/md/getting-started/motoko-introduction.md).
 * [Small samples](samples).
-* [Language manual](doc/md/language-manual.md).
+* [Language manual](doc/md/reference/language-manual.md).
 * [Concrete syntax](doc/md/examples/grammar.txt).
 * [Documentation sources](doc/md/).
 * [Base library documentation](doc/md/base/index.md).
