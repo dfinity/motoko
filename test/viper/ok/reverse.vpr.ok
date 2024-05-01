@@ -81,6 +81,7 @@ method copy_xarray($Self: Ref)
      returns ($Res: Array)
     requires $Perm($Self)
     ensures $Perm($Self)
+    ensures ($size($Res) == $size(($Self).xarray))
     ensures $array_acc($Res, $int, write)
     { var t: Array
       var i: Int

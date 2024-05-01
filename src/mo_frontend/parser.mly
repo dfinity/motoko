@@ -674,6 +674,8 @@ exp_un(B) :
     { RetE(TupE([]) @? at $sloc) @? at $sloc }
   | RETURN e=exp(ob)
     { RetE(e) @? at $sloc }
+  | VAR COLON RETURN
+    { ResVarE @? at $sloc }
   | ASYNC e=exp_nest
     { AsyncE(Type.Fut, scope_bind (anon_id "async" (at $sloc)) (at $sloc), e) @? at $sloc }
   | ASYNCSTAR e=exp_nest
