@@ -2,6 +2,7 @@ actor Reverse {
   var xarray : [var Nat] = [var 1, 2, 3, 4, 5];
 
   private func copy_xarray(): [var Nat] {
+    assert:return (var:return).size() == xarray.size();
     let t = [var 0, 0, 0, 0, 0];
     var i = 0;
     while (i < 5) {

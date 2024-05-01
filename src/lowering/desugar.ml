@@ -228,6 +228,7 @@ and exp' at note = function
   | S.LabelE (l, t, e) -> I.LabelE (l.it, t.Source.note, exp e)
   | S.BreakE (l, e) -> (breakE l.it (exp e)).it
   | S.RetE e -> (retE (exp e)).it
+  | S.ResVarE -> assert false (* var:return syntax only occurs in motoko-san assertions *)
   | S.ThrowE e -> I.PrimE (I.ThrowPrim, [exp e])
   | S.AsyncE (s, tb, e) ->
     I.AsyncE (s, typ_bind tb, exp e,

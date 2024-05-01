@@ -186,6 +186,7 @@ and exp' =
   | LabelE of id * typ * exp                   (* label *)
   | BreakE of id * exp                         (* break *)
   | RetE of exp                                (* return *)
+  | ResVarE                                    (* name of result *)
   | DebugE of exp                              (* debugging *)
   | AsyncE of async_sort * typ_bind * exp      (* future / computation *)
   | AwaitE of async_sort * exp                 (* await *)

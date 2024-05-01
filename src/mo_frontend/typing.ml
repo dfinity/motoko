@@ -922,7 +922,7 @@ let rec is_explicit_exp e =
   | TagE _
   | BreakE _ | RetE _ | ThrowE _ ->
     false
-  | VarE _
+  | VarE _ | ResVarE
   | RelE _ | NotE _ | AndE _ | OrE _ | ImpliesE _ | OldE _ | ShowE _ | ToCandidE _ | FromCandidE _
   | AssignE _ | IgnoreE _ | AssertE _ | DebugE _
   | WhileE _ | ForE _
@@ -1139,6 +1139,11 @@ and infer_exp'' env exp : T.typ =
     | None ->
       error env id.at "M0057" "unbound variable %s" id.it
     )
+  | ResVarE ->
+    (match env.rets with
+    | Some t -> t
+    | None ->
+      error env exp.at "M0085" "misplaced var:return")
   | LitE lit ->
     T.Prim (infer_lit env lit exp.at)
   | ActorUrlE exp' ->

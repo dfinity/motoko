@@ -1,2 +1,1 @@
 Parse warning: In macro $Inv, the following parameters were defined but not used: $Self  (reverse.vpr@22.1)
-  [0] Postcondition of reverse might not hold. Assertion $size($Self.xarray) == 5 might not hold. (reverse.vpr@109.13--109.25)
