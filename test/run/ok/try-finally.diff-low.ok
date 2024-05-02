@@ -1,10 +1,8 @@
 --- try-finally.run
 +++ try-finally.run-low
-@@ -2,10 +2,7 @@
- OUT
- IN2
+@@ -4,8 +4,6 @@
  CAUGHT2
--OUT2
+ OUT2
  IN3
 -OUT3
  IN4

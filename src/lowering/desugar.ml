@@ -218,7 +218,9 @@ and exp' at note = function
   | S.SwitchE (e1, cs) -> I.SwitchE (exp e1, cases cs)
   | S.TryE (e1, cs, None) -> I.TryE (exp e1, cases cs)
   | S.TryE (e1, cs, Some e2) ->
-     I.TryE (blockE [exp e1 |> expD] (exp e2), cases cs)
+    assert (T.is_unit note.Note.typ);
+    let post e1 = blockE [expD e1] (exp e2) in
+    I.TryE (blockE [exp e1 |> expD] (exp e2), cases_map post cs)
   | S.WhileE (e1, e2) -> (whileE (exp e1) (exp e2)).it
   | S.LoopE (e1, None) -> I.LoopE (exp e1)
   | S.LoopE (e1, Some e2) -> (loopWhileE (exp e1) (exp e2)).it
@@ -778,11 +780,13 @@ and dec' at n = function
     } in
     I.LetD (varPat, fn)
 
-and cases cs = List.map case cs
+and cases cs = List.map (case (fun x -> x)) cs
 
-and case c = phrase case' c
+and cases_map f cs = List.map (case f) cs
 
-and case' c = S.{ I.pat = pat c.pat; I.exp = exp c.exp }
+and case f c = phrase (case' f) c
+
+and case' f c = S.{ I.pat = pat c.pat; I.exp = f (exp c.exp) }
 
 and pats ps = List.map pat ps
 
