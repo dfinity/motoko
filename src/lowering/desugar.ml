@@ -219,6 +219,7 @@ and exp' at note = function
   | S.TryE (e1, cs, None) -> I.TryE (exp e1, cases cs)
   | S.TryE (e1, cs, Some e2) ->
     assert (T.is_unit note.Note.typ);
+    let thunk = T.(funcE ("$FIXME") Local Returns [] [] [] (exp e2)) in
     let post e1 = blockE [expD e1] (exp e2) in
     I.TryE (exp e1 |> post, cases_map post cs)
   | S.WhileE (e1, e2) -> (whileE (exp e1) (exp e2)).it
