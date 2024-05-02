@@ -220,7 +220,7 @@ and exp' at note = function
   | S.TryE (e1, cs, Some e2) ->
     assert (T.is_unit note.Note.typ);
     let post e1 = blockE [expD e1] (exp e2) in
-    I.TryE (blockE [exp e1 |> expD] (exp e2), cases_map post cs)
+    I.TryE (exp e1 |> post, cases_map post cs)
   | S.WhileE (e1, e2) -> (whileE (exp e1) (exp e2)).it
   | S.LoopE (e1, None) -> I.LoopE (exp e1)
   | S.LoopE (e1, Some e2) -> (loopWhileE (exp e1) (exp e2)).it
