@@ -52,6 +52,8 @@ actor A {
         case { debugPrint "OUT5" };
     };
 
+    // TODO: trap on happy/catch
+
     public func go() : async () {
         await t0();
         //await t1();
