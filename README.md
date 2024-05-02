@@ -6,9 +6,9 @@ A safe, simple, actor-based programming language for authoring [Internet Compute
 ## User Documentation & Samples
 
 * [Building, installing, and developing on Motoko](Building.md).
-* [Overview](doc/md/overview.md).
+* [Overview](doc/md/getting-started/motoko-introduction.md).
 * [Small samples](samples).
-* [Language manual](doc/md/language-manual.md).
+* [Language manual](doc/md/reference/language-manual.md).
 * [Concrete syntax](doc/md/examples/grammar.txt).
 * [Documentation sources](doc/md/).
 * [Base library documentation](doc/md/base/index.md).
