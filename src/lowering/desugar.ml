@@ -218,7 +218,7 @@ and exp' at note = function
   | S.SwitchE (e1, cs) -> I.SwitchE (exp e1, cases cs)
   | S.TryE (e1, cs, None) -> I.TryE (exp e1, cases cs)
   | S.TryE (e1, cs, Some e2) ->
-     I.TryE (blockE [exp e1 |> expD; exp e2 |> expD] (unitE ()), cases cs)
+     I.TryE (blockE [exp e1 |> expD] (exp e2), cases cs)
   | S.WhileE (e1, e2) -> (whileE (exp e1) (exp e2)).it
   | S.LoopE (e1, None) -> I.LoopE (exp e1)
   | S.LoopE (e1, Some e2) -> (loopWhileE (exp e1) (exp e2)).it
