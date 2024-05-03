@@ -6233,15 +6233,15 @@ module Serialization = struct
 
     (* Used as safety guard that no temporary pointers remain in the registers across GC increments. *)
     let clear_registers env =
-      compile_unboxed_const 0l ^^ set_rel_buf_opt env ^^
-      compile_unboxed_const 0l ^^ set_data_buf env ^^
-      compile_unboxed_const 0l ^^ set_ref_buf env ^^
-      compile_unboxed_const 0l ^^ set_typtbl env ^^
-      compile_unboxed_const 0l ^^ set_typtbl_end env ^^
-      compile_unboxed_const 0l ^^ set_typtbl_size env ^^ (* also reset for symmetry, even if no pointer *)
-      compile_unboxed_const 0l ^^ set_global_typtbl env ^^
-      compile_unboxed_const 0l ^^ set_global_typtbl_end env ^^
-      compile_unboxed_const 0l ^^ set_global_typtbl_size env (* also reset for symmetry, even if no pointer *)
+      compile_unboxed_const 0L ^^ set_rel_buf_opt env ^^
+      compile_unboxed_const 0L ^^ set_data_buf env ^^
+      compile_unboxed_const 0L ^^ set_ref_buf env ^^
+      compile_unboxed_const 0L ^^ set_typtbl env ^^
+      compile_unboxed_const 0L ^^ set_typtbl_end env ^^
+      compile_unboxed_const 0L ^^ set_typtbl_size env ^^ (* also reset for symmetry, even if no pointer *)
+      compile_unboxed_const 0L ^^ set_global_typtbl env ^^
+      compile_unboxed_const 0L ^^ set_global_typtbl_end env ^^
+      compile_unboxed_const 0L ^^ set_global_typtbl_size env (* also reset for symmetry, even if no pointer *)
   end
 
   open Typ_hash
