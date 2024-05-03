@@ -1780,7 +1780,7 @@ module BitTagged = struct
         (prim_fun_name pty "if_can_tag_i64") ("x", I64Type) [I64Type] (fun env get_x ->
         (* checks that all but the low sbits are either all 0 or all 1 *)
         get_x ^^
-        get_x ^^ compile_shrS_const (Int64.of_int ((64 - ubits_of pty))) ^^
+        get_x ^^ compile_shrS_const (Int64.of_int ((64 - sbits_of pty))) ^^
         G.i (Binary (Wasm_exts.Values.I64 I32Op.Xor)) ^^
         compile_shrU_const (Int64.of_int (sbits_of pty)) ^^
         compile_test I64Op.Eqz ^^
