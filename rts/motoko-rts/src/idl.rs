@@ -1236,6 +1236,10 @@ unsafe extern "C" fn idl_sub(
     t2: i32,
 ) -> bool {
     debug_assert!(rel_buf != (0 as *mut u32));
+    debug_assert!(typtbl1 != (0 as *mut *mut u8));
+    debug_assert!(typtbl2 != (0 as *mut *mut u8));
+    debug_assert!(typtbl_end1 != (0 as *mut u8));
+    debug_assert!(typtbl_end2 != (0 as *mut u8));
 
     let rel = BitRel {
         ptr: rel_buf,

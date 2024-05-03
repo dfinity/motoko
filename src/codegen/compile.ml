@@ -6276,7 +6276,6 @@ module Serialization = struct
       E.add_global32 env "@@global_typtbl_end" Mutable 0l;
       E.add_global32 env "@@global_typtbl_size" Mutable 0l
 
-
     let get_rel_buf_opt env =
       G.i (GlobalGet (nr (E.get_global env "@@rel_buf_opt")))
     let set_rel_buf_opt env =
@@ -6322,6 +6321,17 @@ module Serialization = struct
     let set_global_typtbl_size env =
       G.i (GlobalSet (nr (E.get_global env "@@global_typtbl_size")))
 
+    (* Used as safety guard that no temporary pointers remain in the registers across GC increments. *)
+    let clear_registers env =
+      compile_unboxed_const 0l ^^ set_rel_buf_opt env ^^
+      compile_unboxed_const 0l ^^ set_data_buf env ^^
+      compile_unboxed_const 0l ^^ set_ref_buf env ^^
+      compile_unboxed_const 0l ^^ set_typtbl env ^^
+      compile_unboxed_const 0l ^^ set_typtbl_end env ^^
+      compile_unboxed_const 0l ^^ set_typtbl_size env ^^ (* also reset for symmetry, even if no pointer *)
+      compile_unboxed_const 0l ^^ set_global_typtbl env ^^
+      compile_unboxed_const 0l ^^ set_global_typtbl_end env ^^
+      compile_unboxed_const 0l ^^ set_global_typtbl_size env (* also reset for symmetry, even if no pointer *)
   end
 
   open Typ_hash
@@ -7839,7 +7849,10 @@ module Serialization = struct
         ReadBuf.is_empty env get_data_buf ^^
         E.else_trap_with env ("IDL error: left-over bytes " ^ ts_name) ^^
         ReadBuf.is_empty env get_ref_buf ^^
-        E.else_trap_with env ("IDL error: left-over references " ^ ts_name)
+        E.else_trap_with env ("IDL error: left-over references " ^ ts_name) ^^
+
+        (* Safety guard: The temporary pointers in the registers must no longer be used when a GC increment runs. *)
+        Registers.clear_registers env
       )))))))))
 
     ))
