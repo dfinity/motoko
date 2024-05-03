@@ -12,7 +12,7 @@ This section provides examples of different scenarios for using the `module` and
 
 ## Importing from the base library
 
-View the [online documentation for the Motoko base library](../base/index).
+View the [online documentation for the Motoko base library](../base/index.md).
 
 You can find source code for the Motoko base modules in the open source [repository](https://github.com/dfinity/motoko-base).
 
