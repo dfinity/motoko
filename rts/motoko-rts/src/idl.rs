@@ -843,11 +843,8 @@ pub(crate) unsafe fn memory_compatible(
                 let tag2 = leb128_decode_32(&mut tb2);
                 let t21 = sleb128_decode_32(&mut tb2);
                 if n1 == 0 {
-                    // Optional additional fields are only supported in the main actor type.
-                    if variance == TypeVariance::Invariance
-                        || !main_actor
-                        || !is_opt_reserved(typtbl2, end2, t21)
-                    {
+                    // Additional fields are only supported in the main actor type.
+                    if variance == TypeVariance::Invariance || !main_actor {
                         return false;
                     }
                     continue;
@@ -864,11 +861,8 @@ pub(crate) unsafe fn memory_compatible(
                     }
                 };
                 if tag1 > tag2 {
-                    // Optional additional fields are only supported in the main actor type.
-                    if variance == TypeVariance::Invariance
-                        || !main_actor
-                        || !is_opt_reserved(typtbl2, end2, t21)
-                    {
+                    // Additional fields are only supported in the main actor type.
+                    if variance == TypeVariance::Invariance || !main_actor {
                         return false;
                     }
                     advance = false; // reconsider this field in next round
@@ -1277,6 +1271,10 @@ unsafe extern "C" fn idl_sub(
     t2: i32,
 ) -> bool {
     debug_assert!(rel_buf != (0 as *mut usize));
+    debug_assert!(typtbl1 != (0 as *mut *mut u8));
+    debug_assert!(typtbl2 != (0 as *mut *mut u8));
+    debug_assert!(typtbl_end1 != (0 as *mut u8));
+    debug_assert!(typtbl_end2 != (0 as *mut u8));
 
     let rel = BitRel {
         ptr: rel_buf,

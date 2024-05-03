@@ -55,9 +55,14 @@ Compatible changes for immutable types are equivalent to the allowed Motoko subt
 
 The existing IDL-subtype functionality is reused with some adjustments to check memory compatibility: The compiler generates the type descriptor, a type table, that is recorded in the persistent metadata. Upon an upgrade, the new type descriptor is compared against the existing type descriptor, and the upgrade only succeeds for compatible changes.
 
-This compatibility check serves as an additional safety measure on top of the DFX Candid subtype check that can be bypassed by users (when ignoring a warning). Moreoever, the memory compatibility rules is in some aspects different to the Candid sub-type check:
-* Types cannot be made optional.
-* Mutable types (aliases) are supported with type invariance.
+This compatibility check serves as an additional safety measure on top of the DFX Candid subtype check that can be bypassed by users (when ignoring a warning). Moreover, in some aspects, the memory compatibility rules differ to the Candid sub-type check:
+* Top-level actor fields (`stable` fields) can change mutability (`let` to `var` and vice-versa).
+* Support of variable (MutBox) with type invariance.
+* Types cannot be made optional (no insertion of Option).
+* Same arity for function parameters and function return types (no removed optional parameters, no additional optional results).
+* Records cannot introduce additional optional fields.
+* Same arity for tuple types (no insertion of optional items).
+* Records and tuples are distinct.
 
 ### Garbage Collection
 The implementation focuses on the incremental GC and abandons the other GCs because the GCs use different memory layouts. For example, the incremental GC uses a partitioned heap with objects carrying a forwarding pointer.
