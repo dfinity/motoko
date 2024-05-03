@@ -37,13 +37,10 @@ let
         do
           # ignore all errors
           echo -n $file
-          moc $file --omit-metadata motoko:compiler --force-gc --compacting-gc -no-check-ir -ref-system-api -o $file.wasm
-
-
-          #if timeout 10s moc $file --omit-metadata motoko:compiler --force-gc --compacting-gc -no-check-ir -ref-system-api -o $file.wasm 2>/dev/null
-          #then echo " ok"
-          #else echo " failed (ignored)"
-          #fi
+          if timeout 10s moc $file --omit-metadata motoko:compiler --force-gc --compacting-gc -no-check-ir -ref-system-api -o $file.wasm 2>/dev/null
+          then echo " ok"
+          else echo " failed (ignored)"
+          fi
         done
 
         find . -name \*.wasm -print
