@@ -110,7 +110,7 @@
 
   * bugfix: fully implement `Region.loadXXX/storeXXX` for `Int8`, `Int16` and `Float` (#4270).
 
-  * BREAKING CHANGE (Minor): values of type `Principal` are now constrained to contain
+  * BREAKING CHANGE (Minor): values of type [`Principal`](doc/md/base/Principal.md) are now constrained to contain
     at most 29 bytes, matching the IC's notion of principal (#4268).
 
     In particular:
@@ -645,7 +645,7 @@
     *  each `await*` of the same `async*` value repeats its effects.
 
     This feature is experimental and may evolve in future. Use with discretion.
-    See the [manual](doc/md/language-manual.md) for details.
+    See the [manual](doc/md/reference/language-manual.md) for details.
 
   * Suppress GC during IC `canister_heartbeat`, deferring any GC to the scheduled Motoko `heartbeat` `system` method (#3623).
     This is a temporary workaround, to be removed once DTS is supported for `canister_heartbeat` itself (#3622).
