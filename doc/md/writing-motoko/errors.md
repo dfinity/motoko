@@ -2,7 +2,7 @@
 sidebar_position: 9
 ---
 
-# Errors and options
+# Error handling
 
 ## Overview
 

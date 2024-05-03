@@ -259,7 +259,7 @@ Equality and inequality are structural and based on the observable content of th
 | `<binop>` | Category |                                                |
 | --------- | -------- | ---------------------------------------------- |
 | `&`       | B        | Bitwise and                                    |
-| `\|`      | B        | Bitwise or                                     |
+| `|`      | B        | Bitwise or                                     |
 | `^`       | B        | Exclusive or                                   |
 | `<<`      | B        | Shift left                                     |
 | `␣>>`     | B        | Shift right (must be preceded by whitespace) |
@@ -288,7 +288,7 @@ Equality and inequality are structural and based on the observable content of th
 | `%=`                        | A        | In place modulo                            |
 | `**=`                       | A        | In place exponentiation                    |
 | `&=`                        | B        | In place logical and                       |
-| `\|=`                       | B        | In place logical or                        |
+| `|=`                       | B        | In place logical or                        |
 | `^=`                        | B        | In place exclusive or                      |
 | `<<=`                       | B        | In place shift left                        |
 | `>>=`                       | B        | In place shift right                       |
@@ -310,7 +310,7 @@ The following table defines the relative precedence and associativity of operato
 | ---------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------- |
 | LOWEST     | none          | `if _ _` (no `else`), `loop _` (no `while`)                                                                                   |
 | (higher)   | none          | `else`, `while`                                                                                                               |
-| (higher)   | right         | `:=`, `+=`, `-=`, `*=`, `/=`, `%=`, `**=`, `#=`, `&=`, `\|=`, `^=`, `<<=`, `>>=`, `<<>=`, `<>>=`, `+%=`, `-%=`, `*%=`, `**%=` |
+| (higher)   | right         | `:=`, `+=`, `-=`, `*=`, `/=`, `%=`, `**=`, `#=`, `&=`, `|=`, `^=`, `<<=`, `>>=`, `<<>=`, `<>>=`, `+%=`, `-%=`, `*%=`, `**%=` |
 | (higher)   | left          | `:`                                                                                                                           |
 | (higher)   | left          | `|>`                                                                                                                           |
 | (higher)   | left          | `or`                                                                                                                          |
@@ -318,7 +318,7 @@ The following table defines the relative precedence and associativity of operato
 | (higher)   | none          | `==`, `!=`, `<`, `>`, `<=`, `>`, `>=`                                                                                         |
 | (higher)   | left          | `+`, `-`, `#`, `+%`, `-%`                                                                                                     |
 | (higher)   | left          | `*`, `/`, `%`, `*%`                                                                                                           |
-| (higher)   | left          | `\|`                                                                                                                          |
+| (higher)   | left          | `|`                                                                                                                          |
 | (higher)   | left          | `&`                                                                                                                           |
 | (higher)   | left          | `^`                                                                                                                           |
 | (higher)   | none          | `<<`, `>>`, `<<>`, `<>>`                                                                                                      |
