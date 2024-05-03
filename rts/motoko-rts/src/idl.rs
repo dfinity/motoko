@@ -815,11 +815,8 @@ pub(crate) unsafe fn memory_compatible(
                 let tag2 = leb128_decode(&mut tb2);
                 let t21 = sleb128_decode(&mut tb2);
                 if n1 == 0 {
-                    // Optional additional fields are only supported in the main actor type.
-                    if variance == TypeVariance::Invariance
-                        || !main_actor
-                        || !is_opt_reserved(typtbl2, end2, t21)
-                    {
+                    // Additional fields are only supported in the main actor type.
+                    if variance == TypeVariance::Invariance || !main_actor {
                         return false;
                     }
                     continue;
@@ -836,11 +833,8 @@ pub(crate) unsafe fn memory_compatible(
                     }
                 };
                 if tag1 > tag2 {
-                    // Optional additional fields are only supported in the main actor type.
-                    if variance == TypeVariance::Invariance
-                        || !main_actor
-                        || !is_opt_reserved(typtbl2, end2, t21)
-                    {
+                    // Additional fields are only supported in the main actor type.
+                    if variance == TypeVariance::Invariance || !main_actor {
                         return false;
                     }
                     advance = false; // reconsider this field in next round
