@@ -57,7 +57,7 @@ This object `counter` has the following object type, written as a list of field-
 }
 ```
 
-Each field type consists of an identifier, a colon `:`, and a type for the field content. Here, each field is a function, and thus has an arrow type form (`_ → _`).
+Each field type consists of an identifier, a colon `:`, and a type for the field content. Here, each field is a function, and thus has an arrow type form (`_ -> _`).
 
 In the declaration of `object`, the variable `count` was explicitly declared neither as `public` nor as `private`.
 

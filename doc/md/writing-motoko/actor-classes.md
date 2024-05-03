@@ -7,7 +7,7 @@ sidebar_position: 3
 
 ## Overview
 
-Actor classes enable you to create networks of actors programmatically. Actor classes have to be defined in a separate source file. To illustrate how to define and import actor classes, the following example implements a distributed map of keys of type [[`Nat`](../base/Nat.md)](../base/Nat.md) to values of type [`Text`](../base/Text.md). It provides simple insert and lookup functions, `put(k, v)` and `get(k)`, for working with these keys and values.
+Actor classes enable you to create networks of actors programmatically. Actor classes have to be defined in a separate source file. To illustrate how to define and import actor classes, the following example implements a distributed map of keys of type [`Nat`](../base/Nat.md) to values of type [`Text`](../base/Text.md). It provides simple insert and lookup functions, `put(k, v)` and `get(k)`, for working with these keys and values.
 
 ## Defining an actor class
 
