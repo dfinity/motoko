@@ -43,6 +43,9 @@ let
           fi
         done
 
+        echo "FIND WASM FILES"
+        find . -name \*.wasm -print
+
         if ! test -n "$(find . -name \*.wasm -print -quit)"
         then
           echo "No wasm files generated. wasm-hash-for broken?"
