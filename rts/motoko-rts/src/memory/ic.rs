@@ -25,6 +25,7 @@ impl Memory for IcMemory {
     unsafe fn grow_memory(&mut self, ptr: usize) {
         const LAST_PAGE_LIMIT: usize = 0xFFFF_FFFF_FFFF_0000;
         debug_assert_eq!(LAST_PAGE_LIMIT, usize::MAX - WASM_PAGE_SIZE.as_usize() + 1);
+        debug_assert!(memory_reserve() <= MAXIMUM_MEMORY_SIZE.as_usize());
         let limit = min(
             LAST_PAGE_LIMIT,
             MAXIMUM_MEMORY_SIZE.as_usize() - memory_reserve(),
