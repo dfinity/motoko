@@ -27,9 +27,9 @@ method __init__($Self: Ref)
     ensures $Perm($Self)
     ensures $Inv($Self)
     { 
-      ($Self).claimed := false
-      ($Self).count := 0
-      ($Self).$message_async := 0 
+      ($Self).claimed := false;
+      ($Self).count := 0;
+      ($Self).$message_async := 0; 
     }
 field claimed: Bool
 field count: Int
@@ -44,18 +44,18 @@ method claim($Self: Ref)
     { 
       if ((!($Self).claimed))
          { 
-           ($Self).$message_async := (($Self).$message_async + 1)
-           exhale ($Perm($Self) && $Inv($Self))
+           ($Self).$message_async := (($Self).$message_async + 1);
+           exhale ($Perm($Self) && $Inv($Self));
            { 
-              inhale ($Perm($Self) && ($Inv($Self) && (($Self).$message_async > 0)))
-              ($Self).$message_async := (($Self).$message_async - 1)
+              inhale ($Perm($Self) && ($Inv($Self) && (($Self).$message_async > 0)));
+              ($Self).$message_async := (($Self).$message_async - 1);
               { 
-                 ($Self).claimed := true
-                 ($Self).count := (($Self).count + 1) 
-               }
-              exhale ($Perm($Self) && $Inv($Self)) 
-            }
-           inhale ($Perm($Self) && $Inv($Self)) 
-         }
-      label $Ret 
+                 ($Self).claimed := true;
+                 ($Self).count := (($Self).count + 1); 
+               };
+              exhale ($Perm($Self) && $Inv($Self)); 
+            };
+           inhale ($Perm($Self) && $Inv($Self)); 
+         };
+      label $Ret; 
     }

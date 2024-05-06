@@ -32,9 +32,9 @@ method getZero($Self: Ref)
     ensures $Perm($Self)
     ensures $Inv($Self)
     { 
-      $Res := 0
-      goto $Ret
-      label $Ret 
+      $Res := 0;
+      goto $Ret;
+      label $Ret; 
     }
 method getFalse($Self: Ref)
      returns ($Res: Bool)
@@ -43,9 +43,9 @@ method getFalse($Self: Ref)
     ensures $Perm($Self)
     ensures $Inv($Self)
     { 
-      $Res := false
-      goto $Ret
-      label $Ret 
+      $Res := false;
+      goto $Ret;
+      label $Ret; 
     }
 method idInt($Self: Ref, n: Int)
      returns ($Res: Int)
@@ -54,9 +54,9 @@ method idInt($Self: Ref, n: Int)
     ensures $Perm($Self)
     ensures $Inv($Self)
     { 
-      $Res := n
-      goto $Ret
-      label $Ret 
+      $Res := n;
+      goto $Ret;
+      label $Ret; 
     }
 method idBool($Self: Ref, b: Bool)
      returns ($Res: Bool)
@@ -65,9 +65,9 @@ method idBool($Self: Ref, b: Bool)
     ensures $Perm($Self)
     ensures $Inv($Self)
     { 
-      $Res := b
-      goto $Ret
-      label $Ret 
+      $Res := b;
+      goto $Ret;
+      label $Ret; 
     }
 method abs($Self: Ref, n: Int)
      returns ($Res: Int)
@@ -78,12 +78,12 @@ method abs($Self: Ref, n: Int)
     { 
       if ((n < 0))
          { 
-           $Res := (0 - n)
-           goto $Ret 
-         }
-      $Res := n
-      goto $Ret
-      label $Ret 
+           $Res := (0 - n);
+           goto $Ret; 
+         };
+      $Res := n;
+      goto $Ret;
+      label $Ret; 
     }
 method max($Self: Ref, n: Int, m: Int)
      returns ($Res: Int)
@@ -94,12 +94,12 @@ method max($Self: Ref, n: Int, m: Int)
     { 
       if ((n >= m))
          { 
-           $Res := n
-           goto $Ret 
-         }
-      $Res := m
-      goto $Ret
-      label $Ret 
+           $Res := n;
+           goto $Ret; 
+         };
+      $Res := m;
+      goto $Ret;
+      label $Ret; 
     }
 method eq4($Self: Ref, n: Int, m: Int, p: Int, q: Int)
      returns ($Res: Bool)
@@ -108,9 +108,9 @@ method eq4($Self: Ref, n: Int, m: Int, p: Int, q: Int)
     ensures $Perm($Self)
     ensures $Inv($Self)
     { 
-      $Res := (((n == m) && (m == p)) && (p == q))
-      goto $Ret
-      label $Ret 
+      $Res := (((n == m) && (m == p)) && (p == q));
+      goto $Ret;
+      label $Ret; 
     }
 method factorial($Self: Ref, n: Int)
      returns ($Res: Int)
@@ -120,17 +120,17 @@ method factorial($Self: Ref, n: Int)
     ensures $Inv($Self)
     { var prod: Int
       var i: Int
-      prod := 1
-      i := n
+      prod := 1;
+      i := n;
       while ((i > 0))
          invariant ($Perm($Self) && $Inv($Self))
          { 
-           prod := (prod * i)
-           i := (i - 1) 
-         }
-      $Res := prod
-      goto $Ret
-      label $Ret 
+           prod := (prod * i);
+           i := (i - 1); 
+         };
+      $Res := prod;
+      goto $Ret;
+      label $Ret; 
     }
 method bmul($Self: Ref, b: Bool, n: Int)
      returns ($Res: Int)
@@ -141,10 +141,10 @@ method bmul($Self: Ref, b: Bool, n: Int)
     { 
       if (b)
          { 
-           $Res := n
-           goto $Ret 
-         }
-      $Res := 0
-      goto $Ret
-      label $Ret 
+           $Res := n;
+           goto $Ret; 
+         };
+      $Res := 0;
+      goto $Ret;
+      label $Ret; 
     }

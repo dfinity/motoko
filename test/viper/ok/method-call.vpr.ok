@@ -30,25 +30,25 @@ method ignoreBool($Self: Ref, _b: Bool)
     requires $Perm($Self)
     ensures $Perm($Self)
     { 
-      label $Ret 
+      label $Ret; 
     }
 method idInt($Self: Ref, n: Int)
      returns ($Res: Int)
     requires $Perm($Self)
     ensures $Perm($Self)
     { 
-      $Res := n
-      goto $Ret
-      label $Ret 
+      $Res := n;
+      goto $Ret;
+      label $Ret; 
     }
 method idBool($Self: Ref, b: Bool)
      returns ($Res: Bool)
     requires $Perm($Self)
     ensures $Perm($Self)
     { 
-      $Res := b
-      goto $Ret
-      label $Ret 
+      $Res := b;
+      goto $Ret;
+      label $Ret; 
     }
 method ifThenElse($Self: Ref, b: Bool, tru: Int, fls: Int)
      returns ($Res: Int)
@@ -58,16 +58,16 @@ method ifThenElse($Self: Ref, b: Bool, tru: Int, fls: Int)
     ensures $Inv($Self)
     { var c1: Bool
       var c2: Bool
-      ignoreBool($Self, b)
-      c1 := idBool($Self, b)
-      c2 := idBool($Self, b)
-      c2 := idBool($Self, c2)
+      ignoreBool($Self, b);
+      c1 := idBool($Self, b);
+      c2 := idBool($Self, b);
+      c2 := idBool($Self, c2);
       if ((c1 && c2))
          { 
-           $Res := idInt($Self, tru)
-           goto $Ret 
-         }
-      $Res := idInt($Self, fls)
-      goto $Ret
-      label $Ret 
+           $Res := idInt($Self, tru);
+           goto $Ret; 
+         };
+      $Res := idInt($Self, fls);
+      goto $Ret;
+      label $Ret; 
     }

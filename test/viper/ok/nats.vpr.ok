@@ -23,7 +23,7 @@ method __init__($Self: Ref)
     ensures $Perm($Self)
     ensures $Inv($Self)
     { 
-      ($Self).x := 42 
+      ($Self).x := 42; 
     }
 field x: Int
 method getZero($Self: Ref)
@@ -33,9 +33,9 @@ method getZero($Self: Ref)
     ensures $Perm($Self)
     ensures $Inv($Self)
     { 
-      $Res := 0
-      goto $Ret
-      label $Ret 
+      $Res := 0;
+      goto $Ret;
+      label $Ret; 
     }
 method getX($Self: Ref)
      returns ($Res: Int)
@@ -44,9 +44,9 @@ method getX($Self: Ref)
     ensures $Perm($Self)
     ensures $Inv($Self)
     { 
-      $Res := ($Self).x
-      goto $Ret
-      label $Ret 
+      $Res := ($Self).x;
+      goto $Ret;
+      label $Ret; 
     }
 method double($Self: Ref)
     
@@ -55,8 +55,8 @@ method double($Self: Ref)
     ensures $Perm($Self)
     ensures $Inv($Self)
     { 
-      ($Self).x := (($Self).x * 2)
-      label $Ret 
+      ($Self).x := (($Self).x * 2);
+      label $Ret; 
     }
 method natToInt($Self: Ref, n: Int)
      returns ($Res: Int)
@@ -65,9 +65,9 @@ method natToInt($Self: Ref, n: Int)
     ensures $Perm($Self)
     ensures $Inv($Self)
     { 
-      $Res := n
-      goto $Ret
-      label $Ret 
+      $Res := n;
+      goto $Ret;
+      label $Ret; 
     }
 method add($Self: Ref, n: Int, m: Int)
      returns ($Res: Int)
@@ -76,7 +76,7 @@ method add($Self: Ref, n: Int, m: Int)
     ensures $Perm($Self)
     ensures $Inv($Self)
     { 
-      $Res := (n + m)
-      goto $Ret
-      label $Ret 
+      $Res := (n + m);
+      goto $Ret;
+      label $Ret; 
     }

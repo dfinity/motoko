@@ -26,13 +26,13 @@ method __init__($Self: Ref)
     ensures $Perm($Self)
     ensures $Inv($Self)
     { 
-      inhale $array_acc(($Self).xarray, $int, write)
-      inhale ($size(($Self).xarray) == 5)
-      ($loc(($Self).xarray, 0)).$int := 1
-      ($loc(($Self).xarray, 1)).$int := 2
-      ($loc(($Self).xarray, 2)).$int := 3
-      ($loc(($Self).xarray, 3)).$int := 4
-      ($loc(($Self).xarray, 4)).$int := 5 
+      inhale $array_acc(($Self).xarray, $int, write);
+      inhale ($size(($Self).xarray) == 5);
+      ($loc(($Self).xarray, 0)).$int := 1;
+      ($loc(($Self).xarray, 1)).$int := 2;
+      ($loc(($Self).xarray, 2)).$int := 3;
+      ($loc(($Self).xarray, 3)).$int := 4;
+      ($loc(($Self).xarray, 4)).$int := 5; 
     }
 method reverseArray$Nat($Self: Ref, a: Array)
     
@@ -45,20 +45,20 @@ method reverseArray$Nat($Self: Ref, a: Array)
       var length: Int
       var i: Int
       var j: Int
-      inhale $array_acc(b, $int, write)
-      inhale ($size(b) == 3)
-      ($loc(b, 0)).$int := 1
-      ($loc(b, 1)).$int := 2
-      ($loc(b, 2)).$int := 4
-      exhale $array_acc(b, $int, wildcard)
-      inhale $array_acc(b, $int, wildcard)
-      length := $size(a)
+      inhale $array_acc(b, $int, write);
+      inhale ($size(b) == 3);
+      ($loc(b, 0)).$int := 1;
+      ($loc(b, 1)).$int := 2;
+      ($loc(b, 2)).$int := 4;
+      exhale $array_acc(b, $int, wildcard);
+      inhale $array_acc(b, $int, wildcard);
+      length := $size(a);
       if ((length == 0))
          { 
-           goto $Ret 
-         }
-      i := (length - 1)
-      j := 0
+           goto $Ret; 
+         };
+      i := (length - 1);
+      j := 0;
       while ((i > j))
          invariant ((i < length) && (i >= 0))
          invariant ((j < length) && (j >= 0))
@@ -66,14 +66,14 @@ method reverseArray$Nat($Self: Ref, a: Array)
          invariant $array_acc(a, $int, write)
          invariant ($Perm($Self) && $Inv($Self))
          { var tmp: Int
-           tmp := ($loc(a, i)).$int
-           ($loc(a, i)).$int := ($loc(a, j)).$int
-           ($loc(a, j)).$int := tmp
-           i := (i - 1)
-           j := (j + 1) 
-         }
-      goto $Ret
-      label $Ret 
+           tmp := ($loc(a, i)).$int;
+           ($loc(a, i)).$int := ($loc(a, j)).$int;
+           ($loc(a, j)).$int := tmp;
+           i := (i - 1);
+           j := (j + 1); 
+         };
+      goto $Ret;
+      label $Ret; 
     }
 field xarray: Array
 method copy_xarray($Self: Ref)
@@ -83,23 +83,23 @@ method copy_xarray($Self: Ref)
     ensures $array_acc($Res, $int, write)
     { var t: Array
       var i: Int
-      inhale $array_acc(t, $int, write)
-      inhale ($size(t) == 5)
-      ($loc(t, 0)).$int := 0
-      ($loc(t, 1)).$int := 0
-      ($loc(t, 2)).$int := 0
-      ($loc(t, 3)).$int := 0
-      ($loc(t, 4)).$int := 0
-      i := 0
+      inhale $array_acc(t, $int, write);
+      inhale ($size(t) == 5);
+      ($loc(t, 0)).$int := 0;
+      ($loc(t, 1)).$int := 0;
+      ($loc(t, 2)).$int := 0;
+      ($loc(t, 3)).$int := 0;
+      ($loc(t, 4)).$int := 0;
+      i := 0;
       while ((i < 5))
          invariant $array_acc(t, $int, write)
          invariant ($Perm($Self) && $Inv($Self))
          { 
-           ($loc(t, i)).$int := ($loc(($Self).xarray, i)).$int 
-         }
-      $Res := t
-      goto $Ret
-      label $Ret 
+           ($loc(t, i)).$int := ($loc(($Self).xarray, i)).$int; 
+         };
+      $Res := t;
+      goto $Ret;
+      label $Ret; 
     }
 method reverse($Self: Ref)
     
@@ -108,8 +108,8 @@ method reverse($Self: Ref)
     ensures $Perm($Self)
     ensures $Inv($Self)
     { var a: Array
-      a := copy_xarray($Self)
-      reverseArray$Nat($Self, a)
-      ($Self).xarray := a
-      label $Ret 
+      a := copy_xarray($Self);
+      reverseArray$Nat($Self, a);
+      ($Self).xarray := a;
+      label $Ret; 
     }

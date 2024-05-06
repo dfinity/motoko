@@ -23,7 +23,7 @@ method __init__($Self: Ref)
     ensures $Perm($Self)
     ensures $Inv($Self)
     { 
-      ($Self).count := 0 
+      ($Self).count := 0; 
     }
 field count: Int
 method increment($Self: Ref)
@@ -33,8 +33,8 @@ method increment($Self: Ref)
     ensures $Perm($Self)
     ensures $Inv($Self)
     { 
-      ($Self).count := (($Self).count + 1)
-      label $Ret 
+      ($Self).count := (($Self).count + 1);
+      label $Ret; 
     }
 method getCount($Self: Ref)
      returns ($Res: Int)
@@ -43,9 +43,9 @@ method getCount($Self: Ref)
     ensures $Perm($Self)
     ensures $Inv($Self)
     { 
-      $Res := ($Self).count
-      goto $Ret
-      label $Ret 
+      $Res := ($Self).count;
+      goto $Ret;
+      label $Ret; 
     }
 method setCount($Self: Ref, n: Int)
     
@@ -54,6 +54,6 @@ method setCount($Self: Ref, n: Int)
     ensures $Perm($Self)
     ensures $Inv($Self)
     { 
-      ($Self).count := n
-      label $Ret 
+      ($Self).count := n;
+      label $Ret; 
     }

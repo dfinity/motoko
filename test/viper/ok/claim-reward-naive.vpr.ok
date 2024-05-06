@@ -23,8 +23,8 @@ method __init__($Self: Ref)
     ensures $Perm($Self)
     ensures $Inv($Self)
     { 
-      ($Self).claimed := false
-      ($Self).count := 0 
+      ($Self).claimed := false;
+      ($Self).count := 0; 
     }
 field claimed: Bool
 field count: Int
@@ -36,8 +36,8 @@ method reward($Self: Ref)
     ensures $Perm($Self)
     ensures (($Self).count == (old(($Self).count) + 1))
     { 
-      ($Self).count := (($Self).count + 1)
-      label $Ret 
+      ($Self).count := (($Self).count + 1);
+      label $Ret; 
     }
 method claim($Self: Ref)
     
@@ -48,8 +48,8 @@ method claim($Self: Ref)
     { 
       if ((!($Self).claimed))
          { 
-           reward($Self)
-           ($Self).claimed := true 
-         }
-      label $Ret 
+           reward($Self);
+           ($Self).claimed := true; 
+         };
+      label $Ret; 
     }

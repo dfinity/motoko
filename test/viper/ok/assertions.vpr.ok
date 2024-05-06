@@ -26,9 +26,9 @@ method __init__($Self: Ref)
     ensures $Perm($Self)
     ensures $Inv($Self)
     { 
-      ($Self).u := false
-      ($Self).v := 0
-      ($Self).$message_async := 0 
+      ($Self).u := false;
+      ($Self).v := 0;
+      ($Self).$message_async := 0; 
     }
 field u: Bool
 field v: Int
@@ -42,18 +42,18 @@ method claim($Self: Ref)
     ensures (($Self).v >= 0)
     ensures $Inv($Self)
     { 
-      assert (($Self).u ==> (($Self).v > 0))
-      assume (($Self).u ==> (($Self).v > 0))
-      ($Self).$message_async := (($Self).$message_async + 1)
-      exhale ($Perm($Self) && $Inv($Self))
+      assert (($Self).u ==> (($Self).v > 0));
+      assume (($Self).u ==> (($Self).v > 0));
+      ($Self).$message_async := (($Self).$message_async + 1);
+      exhale ($Perm($Self) && $Inv($Self));
       { 
-         inhale ($Perm($Self) && ($Inv($Self) && (($Self).$message_async > 0)))
-         ($Self).$message_async := (($Self).$message_async - 1)
+         inhale ($Perm($Self) && ($Inv($Self) && (($Self).$message_async > 0)));
+         ($Self).$message_async := (($Self).$message_async - 1);
          { 
              
-          }
-         exhale ($Perm($Self) && $Inv($Self)) 
-       }
-      inhale ($Perm($Self) && $Inv($Self))
-      label $Ret 
+          };
+         exhale ($Perm($Self) && $Inv($Self)); 
+       };
+      inhale ($Perm($Self) && $Inv($Self));
+      label $Ret; 
     }
