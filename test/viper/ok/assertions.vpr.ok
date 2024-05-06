@@ -7,9 +7,8 @@ domain Array {
   axiom $all_diff { forall a: Array, i: Int :: {$loc(a, i)} $first($loc(a, i)) == a && $second($loc(a, i)) == i }
   axiom $size_nonneg { forall a: Array :: $size(a) >= 0 }
 }
-define $array_acc_mut(a, t) forall j: Int :: 0 <= j && j < $size(a) ==> acc($loc(a, j).t)
-define $array_acc(a, t) forall j: Int :: 0 <= j && j < $size(a) ==> acc($loc(a, j).t, 1/2)
-define $untouched(a, t) forall j: Int :: 0 <= j && j < $size(a) ==> $loc(a, j).t == old($loc(a, j).t)
+define $array_acc(a, t, p) forall j: Int :: 0 <= j && j < $size(a) ==> acc($loc(a, j).t, p)
+define $array_untouched(a, t) forall j: Int :: 0 <= j && j < $size(a) ==> $loc(a, j).t == old($loc(a, j).t)
 field $int: Int
 field $bool: Bool
 field $ref: Ref

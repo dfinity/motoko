@@ -8,15 +8,28 @@ actor {
     var count : Int = 42; // let is not supported
 
     public func foo(): async Int {
+        // declarations
         var vi_a : [Int] = (([1] : [Int]) : [Int]);
         var vm_a : [var Int] = [var 1, 2];
         let li_a : [Bool] = [false];
         let lm_a : [var Bool] = [var false];
+
+        assert:system vi_a[0] == 1;
+        assert:system vm_a[0] == 1;
+        assert:system li_a[0] == false;
+        assert:system lm_a[0] == false;
+
+        // assignments
         // vi_a = [1, 2]
         vi_a := [1, 2];
         // li_a := [1, 2]; // error
         vm_a := [var 42];
         // lm_a := [1, 2]; // error
+
+        assert:system vi_a[0] != 0;
+        assert:system vi_a[0] == 1;
+        assert:system vm_a[0] != 1;
+        assert:system vm_a[0] == 42;
 
         return 42;
     };

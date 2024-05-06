@@ -7,18 +7,17 @@ domain Array {
   axiom $all_diff { forall a: Array, i: Int :: {$loc(a, i)} $first($loc(a, i)) == a && $second($loc(a, i)) == i }
   axiom $size_nonneg { forall a: Array :: $size(a) >= 0 }
 }
-define $array_acc_mut(a, t) forall j: Int :: 0 <= j && j < $size(a) ==> acc($loc(a, j).t)
-define $array_acc(a, t) forall j: Int :: 0 <= j && j < $size(a) ==> acc($loc(a, j).t, 1/2)
-define $untouched(a, t) forall j: Int :: 0 <= j && j < $size(a) ==> $loc(a, j).t == old($loc(a, j).t)
+define $array_acc(a, t, p) forall j: Int :: 0 <= j && j < $size(a) ==> acc($loc(a, j).t, p)
+define $array_untouched(a, t) forall j: Int :: 0 <= j && j < $size(a) ==> $loc(a, j).t == old($loc(a, j).t)
 field $int: Int
 field $bool: Bool
 field $ref: Ref
 field $array: Array
 /* END PRELUDE */
 
-define $Perm($Self) ((true && (acc(($Self).xarray,write) && ($array_acc_mut(
+define $Perm($Self) ((true && (acc(($Self).xarray,write) && ($array_acc(
                                                              ($Self).xarray,
-                                                             $int) && (
+                                                             $int, write) && (
   $size(($Self).xarray) == 5)))))
 define $Inv($Self) (true)
 method __init__($Self: Ref)
@@ -27,34 +26,32 @@ method __init__($Self: Ref)
     ensures $Perm($Self)
     ensures $Inv($Self)
     { 
-      inhale $array_acc_mut(($Self).xarray, $int)
+      inhale $array_acc(($Self).xarray, $int, write)
       inhale ($size(($Self).xarray) == 5)
       ($loc(($Self).xarray, 0)).$int := 1
       ($loc(($Self).xarray, 1)).$int := 2
       ($loc(($Self).xarray, 2)).$int := 3
       ($loc(($Self).xarray, 3)).$int := 4
-      ($loc(($Self).xarray, 4)).$int := 5
-      exhale $array_acc_mut(($Self).xarray, $int)
-      inhale $array_acc_mut(($Self).xarray, $int) 
+      ($loc(($Self).xarray, 4)).$int := 5 
     }
 method reverseArray$Nat($Self: Ref, a: Array)
     
     requires $Perm($Self)
-    requires $array_acc_mut(a, $int)
+    requires $array_acc(a, $int, write)
     ensures $Perm($Self)
-    ensures $array_acc_mut(a, $int)
+    ensures $array_acc(a, $int, write)
     ensures ($size(a) == $size(old(a)))
     { var b: Array
       var length: Int
       var i: Int
       var j: Int
-      inhale $array_acc_mut(b, $int)
+      inhale $array_acc(b, $int, write)
       inhale ($size(b) == 3)
       ($loc(b, 0)).$int := 1
       ($loc(b, 1)).$int := 2
       ($loc(b, 2)).$int := 4
-      exhale $array_acc_mut(b, $int)
-      inhale $array_acc(b, $int)
+      exhale $array_acc(b, $int, wildcard)
+      inhale $array_acc(b, $int, wildcard)
       length := $size(a)
       if ((length == 0))
          { 
@@ -65,8 +62,8 @@ method reverseArray$Nat($Self: Ref, a: Array)
       while ((i > j))
          invariant ((i < length) && (i >= 0))
          invariant ((j < length) && (j >= 0))
-         invariant $array_acc(b, $int)
-         invariant $array_acc_mut(a, $int)
+         invariant $array_acc(b, $int, wildcard)
+         invariant $array_acc(a, $int, write)
          invariant ($Perm($Self) && $Inv($Self))
          { var tmp: Int
            tmp := ($loc(a, i)).$int
@@ -83,21 +80,19 @@ method copy_xarray($Self: Ref)
      returns ($Res: Array)
     requires $Perm($Self)
     ensures $Perm($Self)
-    ensures $array_acc_mut($Res, $int)
+    ensures $array_acc($Res, $int, write)
     { var t: Array
       var i: Int
-      inhale $array_acc_mut(t, $int)
+      inhale $array_acc(t, $int, write)
       inhale ($size(t) == 5)
       ($loc(t, 0)).$int := 0
       ($loc(t, 1)).$int := 0
       ($loc(t, 2)).$int := 0
       ($loc(t, 3)).$int := 0
       ($loc(t, 4)).$int := 0
-      exhale $array_acc_mut(t, $int)
-      inhale $array_acc_mut(t, $int)
       i := 0
       while ((i < 5))
-         invariant $array_acc_mut(t, $int)
+         invariant $array_acc(t, $int, write)
          invariant ($Perm($Self) && $Inv($Self))
          { 
            ($loc(t, i)).$int := ($loc(($Self).xarray, i)).$int 

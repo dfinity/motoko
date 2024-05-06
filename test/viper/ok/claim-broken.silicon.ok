@@ -1,1 +1,1 @@
-  [0] Exhale might fail. Assertion $Self.$message_async == 1 ==> $Self.claimed && $Self.count == 0 might not hold. (claim-broken.vpr@49.20--49.47)
+  [0] Exhale might fail. Assertion $Self.$message_async == 1 ==> $Self.claimed && $Self.count == 0 might not hold. (claim-broken.vpr@48.20--48.47)
