@@ -74,7 +74,7 @@ and exp' =
   | SelfCallE of Type.typ list * exp * exp * exp (* essentially ICCallPrim (FuncE shared…) *)
   | ActorE of dec list * field list * system * Type.typ (* actor *)
   | NewObjE of Type.obj_sort * field list * Type.typ  (* make an object *)
-  | TryE of exp * case list                    (* try/catch *)
+  | TryE of exp * case list * exp option       (* try/catch/cleanup *)
 
 and system = {
   meta : meta;

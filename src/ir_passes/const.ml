@@ -152,9 +152,14 @@ let rec exp lvl (env : env) e : Lbool.t =
       exp_ lvl env e2;
       exp_ lvl env e3;
       surely_false
-    | SwitchE (e1, cs) | TryE (e1, cs) ->
+    | SwitchE (e1, cs) | TryE (e1, cs, None) ->
       exp_ lvl env e1;
       List.iter (case_ lvl env) cs;
+      surely_false
+    | TryE (e1, cs, Some e2) ->
+      exp_ lvl env e1;
+      List.iter (case_ lvl env) cs;
+      exp_ lvl env e2;
       surely_false
     | NewObjE _ -> (* mutable objects *)
       surely_false

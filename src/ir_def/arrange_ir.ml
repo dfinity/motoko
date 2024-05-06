@@ -32,7 +32,7 @@ let rec exp e = match e.it with
     "SelfCallE" $$ [typ (Type.seq ts); exp exp_f; exp exp_k; exp exp_r]
   | ActorE (ds, fs, u, t) -> "ActorE"  $$ List.map dec ds @ fields fs @ [system u; typ t]
   | NewObjE (s, fs, t)  -> "NewObjE" $$ (Arrange_type.obj_sort s :: fields fs @ [typ t])
-  | TryE (e, cs)        -> "TryE" $$ [exp e] @ List.map case cs
+  | TryE (e, cs, _FIXME) -> "TryE" $$ [exp e] @ List.map case cs
 
 and system { meta; preupgrade; postupgrade; heartbeat; timer; inspect} = (* TODO: show meta? *)
   "System" $$ [
