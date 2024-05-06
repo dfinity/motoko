@@ -1,2 +1,2 @@
-Parse warning: In macro $Perm, the following parameters were defined but not used: $Self  (method-call.vpr@19.1)
-Parse warning: In macro $Inv, the following parameters were defined but not used: $Self  (method-call.vpr@20.1)
+Parse warning: In macro $Perm, the following parameters were defined but not used: $Self  (method-call.vpr@18.1)
+Parse warning: In macro $Inv, the following parameters were defined but not used: $Self  (method-call.vpr@19.1)

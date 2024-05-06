@@ -7,18 +7,17 @@ domain Array {
   axiom $all_diff { forall a: Array, i: Int :: {$loc(a, i)} $first($loc(a, i)) == a && $second($loc(a, i)) == i }
   axiom $size_nonneg { forall a: Array :: $size(a) >= 0 }
 }
-define $array_acc_mut(a, t) forall j: Int :: 0 <= j && j < $size(a) ==> acc($loc(a, j).t)
-define $array_acc(a, t) forall j: Int :: 0 <= j && j < $size(a) ==> acc($loc(a, j).t, 1/2)
-define $untouched(a, t) forall j: Int :: 0 <= j && j < $size(a) ==> $loc(a, j).t == old($loc(a, j).t)
+define $array_acc(a, t, p) forall j: Int :: 0 <= j && j < $size(a) ==> acc($loc(a, j).t, p)
+define $array_untouched(a, t) forall j: Int :: 0 <= j && j < $size(a) ==> $loc(a, j).t == old($loc(a, j).t)
 field $int: Int
 field $bool: Bool
 field $ref: Ref
 field $array: Array
 /* END PRELUDE */
 
-define $Perm($Self) ((((true && (acc(($Self).arr,write) && ($array_acc_mut(
+define $Perm($Self) ((((true && (acc(($Self).arr,write) && ($array_acc(
                                                             ($Self).arr,
-                                                            $int) && (
+                                                            $int, write) && (
   $size(($Self).arr) == 2)))) && acc(($Self).f,write)) && acc(($Self).count,write)))
 define $Inv($Self) (true)
 method __init__($Self: Ref)
@@ -27,12 +26,10 @@ method __init__($Self: Ref)
     ensures $Perm($Self)
     ensures $Inv($Self)
     { 
-      inhale $array_acc_mut(($Self).arr, $int)
+      inhale $array_acc(($Self).arr, $int, write)
       inhale ($size(($Self).arr) == 2)
       ($loc(($Self).arr, 0)).$int := 1
       ($loc(($Self).arr, 1)).$int := 2
-      exhale $array_acc_mut(($Self).arr, $int)
-      inhale $array_acc_mut(($Self).arr, $int)
       ($Self).f := 2
       ($Self).count := 42 
     }
@@ -51,40 +48,42 @@ method foo($Self: Ref)
       var lm_a: Array
       var vi_a_2: Array
       var vm_a_2: Array
-      inhale $array_acc_mut(vi_a, $int)
+      inhale $array_acc(vi_a, $int, write)
       inhale ($size(vi_a) == 1)
       ($loc(vi_a, 0)).$int := 1
-      exhale $array_acc_mut(vi_a, $int)
-      inhale $array_acc(vi_a, $int)
-      inhale $array_acc_mut(vm_a, $int)
+      exhale $array_acc(vi_a, $int, wildcard)
+      inhale $array_acc(vi_a, $int, wildcard)
+      inhale $array_acc(vm_a, $int, write)
       inhale ($size(vm_a) == 2)
       ($loc(vm_a, 0)).$int := 1
       ($loc(vm_a, 1)).$int := 2
-      exhale $array_acc_mut(vm_a, $int)
-      inhale $array_acc_mut(vm_a, $int)
-      inhale $array_acc_mut(li_a, $bool)
+      inhale $array_acc(li_a, $bool, write)
       inhale ($size(li_a) == 1)
       ($loc(li_a, 0)).$bool := false
-      exhale $array_acc_mut(li_a, $bool)
-      inhale $array_acc(li_a, $bool)
-      inhale $array_acc_mut(lm_a, $bool)
+      exhale $array_acc(li_a, $bool, wildcard)
+      inhale $array_acc(li_a, $bool, wildcard)
+      inhale $array_acc(lm_a, $bool, write)
       inhale ($size(lm_a) == 1)
       ($loc(lm_a, 0)).$bool := false
-      exhale $array_acc_mut(lm_a, $bool)
-      inhale $array_acc_mut(lm_a, $bool)
-      inhale $array_acc_mut(vi_a_2, $int)
+      assert (($loc(vi_a, 0)).$int == 1)
+      assert (($loc(vm_a, 0)).$int == 1)
+      assert (($loc(li_a, 0)).$bool == false)
+      assert (($loc(lm_a, 0)).$bool == false)
+      inhale $array_acc(vi_a_2, $int, write)
       inhale ($size(vi_a_2) == 2)
       ($loc(vi_a_2, 0)).$int := 1
       ($loc(vi_a_2, 1)).$int := 2
-      exhale $array_acc_mut(vi_a_2, $int)
-      inhale $array_acc(vi_a_2, $int)
+      exhale $array_acc(vi_a_2, $int, wildcard)
+      inhale $array_acc(vi_a_2, $int, wildcard)
       vi_a := vi_a_2
-      inhale $array_acc_mut(vm_a_2, $int)
+      inhale $array_acc(vm_a_2, $int, write)
       inhale ($size(vm_a_2) == 1)
       ($loc(vm_a_2, 0)).$int := 42
-      exhale $array_acc_mut(vm_a_2, $int)
-      inhale $array_acc_mut(vm_a_2, $int)
       vm_a := vm_a_2
+      assert (($loc(vi_a, 0)).$int != 0)
+      assert (($loc(vi_a, 0)).$int == 1)
+      assert (($loc(vm_a, 0)).$int != 1)
+      assert (($loc(vm_a, 0)).$int == 42)
       $Res := 42
       goto $Ret
       label $Ret 
@@ -94,15 +93,15 @@ method baz1($Self: Ref)
     requires $Perm($Self)
     requires $Inv($Self)
     ensures $Perm($Self)
-    ensures $array_acc($Res, $int)
+    ensures $array_acc($Res, $int, wildcard)
     ensures $Inv($Self)
     { var r: Array
-      inhale $array_acc_mut(r, $int)
+      inhale $array_acc(r, $int, write)
       inhale ($size(r) == 2)
       ($loc(r, 0)).$int := 1
       ($loc(r, 1)).$int := 2
-      exhale $array_acc_mut(r, $int)
-      inhale $array_acc(r, $int)
+      exhale $array_acc(r, $int, wildcard)
+      inhale $array_acc(r, $int, wildcard)
       $Res := r
       goto $Ret
       label $Ret 
@@ -111,14 +110,12 @@ method baz2($Self: Ref)
      returns ($Res: Array)
     requires $Perm($Self)
     ensures $Perm($Self)
-    ensures $array_acc_mut($Res, $int)
+    ensures $array_acc($Res, $int, write)
     { var r: Array
-      inhale $array_acc_mut(r, $int)
+      inhale $array_acc(r, $int, write)
       inhale ($size(r) == 2)
       ($loc(r, 0)).$int := 1
       ($loc(r, 1)).$int := 2
-      exhale $array_acc_mut(r, $int)
-      inhale $array_acc_mut(r, $int)
       $Res := r
       goto $Ret
       label $Ret 
@@ -130,17 +127,15 @@ method bar($Self: Ref)
     { var x: Array
       var y: Array
       var z: Int
-      inhale $array_acc_mut(x, $int)
+      inhale $array_acc(x, $int, write)
       inhale ($size(x) == 2)
       ($loc(x, 0)).$int := 42
       ($loc(x, 1)).$int := 24
-      exhale $array_acc_mut(x, $int)
-      inhale $array_acc(x, $int)
-      inhale $array_acc_mut(y, $bool)
+      exhale $array_acc(x, $int, wildcard)
+      inhale $array_acc(x, $int, wildcard)
+      inhale $array_acc(y, $bool, write)
       inhale ($size(y) == 1)
       ($loc(y, 0)).$bool := false
-      exhale $array_acc_mut(y, $bool)
-      inhale $array_acc_mut(y, $bool)
       ($loc(y, 0)).$bool := true
       z := (($loc(x, 0)).$int + ($loc(x, 1)).$int)
       $Res := ($loc(x, 1)).$int
@@ -150,19 +145,17 @@ method bar($Self: Ref)
 method bar2($Self: Ref, x: Array)
      returns ($Res: Int)
     requires $Perm($Self)
-    requires $array_acc(x, $int)
+    requires $array_acc(x, $int, wildcard)
     requires ($size(x) == 2)
     requires $Inv($Self)
     ensures $Perm($Self)
-    ensures $array_acc(x, $int)
+    ensures $array_acc(x, $int, wildcard)
     ensures $Inv($Self)
     { var y: Array
       var z: Int
-      inhale $array_acc_mut(y, $bool)
+      inhale $array_acc(y, $bool, write)
       inhale ($size(y) == 1)
       ($loc(y, 0)).$bool := false
-      exhale $array_acc_mut(y, $bool)
-      inhale $array_acc_mut(y, $bool)
       ($loc(y, 0)).$bool := true
       z := (($loc(x, 0)).$int + ($loc(x, 1)).$int)
       $Res := ($loc(x, 1)).$int

@@ -36,11 +36,11 @@ let (!!!) at it = (^^^) at it NoInfo
 let intLitE at i =
   !!! at (IntLitE (Mo_values.Numerics.Int.of_int i))
 
-let accE at fldacc =
+let accE at ?(perm=FullP) fldacc =
   !!! at
     (AccE(
          fldacc,
-         !!! at (PermE (!!! at FullP))))
+         !!! at (PermE (!!! at perm))))
 
 let conjoin es at =
   match es with
@@ -56,6 +56,15 @@ let rec adjoin ctxt e = function
   | [] -> e
   | f :: fs -> f ctxt (adjoin ctxt e fs)
 
+let locE at exp_arr exp_ix field_name =
+  !!! at (CallE ("$loc", [exp_arr; exp_ix])), !!! at field_name
+
+let sizeE at lhs =
+  !!! at (CallE ("$size", [lhs]))
+
+let arrayAccE at lhs field_name perm =
+  let (!!) p = !!! at p in
+  !! (CallE ("$array_acc", [lhs; !!(FldE field_name); !!(PermE(!! perm))]))
 
 let (|:) (x_opt : 'a option) (xs : 'a list) : 'a list =
   match x_opt with
@@ -539,7 +548,7 @@ and exp ctxt e =
   | M.AnnotE(a, b) ->
     exp ctxt a
   | M.CallE ({it=M.DotE (e1, {it="size";_});_}, _inst, {it=M.TupE ([]);at;_})
-      -> array_size at (exp ctxt e1)
+      -> sizeE at (exp ctxt e1)
   | M.LitE r ->
     begin match !r with
     | M.BoolLit b ->
@@ -623,31 +632,28 @@ and array_field t =
   | T.Prim T.Bool -> "$bool"
   | _ -> unsupported Source.no_region (Mo_types.Arrange_type.typ t)
 
-and array_size at lhs =
-  !!! at (CallE ("$size", [lhs]))
-
 and array_size_inv at ctxt lhs n =
-  !!! at (EqCmpE (array_size at lhs, intLitE at n))
+  !!! at (EqCmpE (sizeE at lhs, intLitE at n))
 
 and array_acc at lhs t =
-  let (!!) p = !!! at p in
-  let call = fun pred -> !! (CallE (pred, [lhs; !!(FldE (array_field t))])) in
   match T.normalize t with
-  | T.Mut _ -> call "$array_acc_mut"
-  | _ -> call "$array_acc"
+  | T.Mut _-> arrayAccE at lhs (array_field t) FullP
+  | _      -> arrayAccE at lhs (array_field t) WildcardP
 
 and array_alloc at ctxt lhs t es : stmt list =
   let (!!) p = !!! at p in
-  let ref_field = !! (array_field t) in
   let init_array = List.mapi (fun i e ->
-    FieldAssignS ((!! (CallE ("$loc", [lhs; intLitE at i])), ref_field), exp ctxt e)) es in
-  (* InhaleS (!! (FldAcc (!! (CallE ("$loc", [var; from_int i])), ref_field)) === e)) es in *)
+    FieldAssignS (locE at lhs (intLitE at i) (array_field t), exp ctxt e)) es in
+  (* InhaleS (!! (FldAcc (locE at lhs (intLitE at i) (array_field t))) === e)) es in *)
+  let reset_perm =
+    (match T.normalize t with
+     | T.Mut _ -> []
+     | _       -> [ExhaleS (array_acc at lhs t); InhaleS (array_acc at lhs t)])in
   let stmts = [ InhaleS (array_acc at lhs (T.Mut t))
-              ; InhaleS (array_size_inv at ctxt lhs (List.length es))
-              ] @ init_array @ [
-                ExhaleS (array_acc at lhs (T.Mut t))
-              ; InhaleS (array_acc at lhs t)]
+              ; InhaleS (array_size_inv at ctxt lhs (List.length es))]
+              @ init_array
+              @ reset_perm
   in List.map (!!) stmts
 
 and array_loc ctxt at e1 e2 t =
-  !!! at (CallE ("$loc", [exp ctxt e1; exp ctxt e2])), !!! at (array_field t)
+  locE at (exp ctxt e1) (exp ctxt e2) (array_field t)
