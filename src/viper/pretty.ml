@@ -142,7 +142,7 @@ and pp_perm ppf perm =
 
 and pp_stmt ppf stmt =
   marks := stmt.at :: !marks;
-  fprintf ppf "\017%a\019"
+  fprintf ppf "\017%a\019;"
     pp_stmt' stmt.it
 
 and pp_stmt' ppf = function

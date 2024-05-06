@@ -33,17 +33,17 @@ method double($Self: Ref, n: Int)
     ensures $Inv($Self)
     { var i: Int
       var j: Int
-      i := 0
-      j := 0
+      i := 0;
+      j := 0;
       while ((i < n))
          invariant ((i * 2) == j)
          invariant ((j - i) == i)
          invariant ($Perm($Self) && $Inv($Self))
          { 
-           i := (i + 1)
-           j := (j + 2) 
-         }
-      $Res := j
-      goto $Ret
-      label $Ret 
+           i := (i + 1);
+           j := (j + 2); 
+         };
+      $Res := j;
+      goto $Ret;
+      label $Ret; 
     }
