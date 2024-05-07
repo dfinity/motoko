@@ -52,8 +52,8 @@ let rec adjoin ctxt e = function
   | [] -> e
   | f :: fs -> f ctxt (adjoin ctxt e fs)
 
-let locE at exp_arr exp_ix field_name =
-  !!! at (CallE ("$loc", [exp_arr; exp_ix])), !!! at field_name
+let locE at arr_e ix_e field_name =
+  !!! at (CallE ("$loc", [arr_e; ix_e])), !!! at field_name
 
 let sizeE at lhs =
   !!! at (CallE ("$size", [lhs]))
@@ -61,6 +61,9 @@ let sizeE at lhs =
 let arrayAccE at lhs field_name perm =
   let (!!) p = !!! at p in
   !! (CallE ("$array_acc", [lhs; !!(FldE field_name); !!(PermE(!! perm))]))
+
+let prjE at tuple_e ix_e field_name =
+  !!! at (CallE ("$prj", [tuple_e; ix_e])), !!! at field_name
 
 let (|:) (x_opt : 'a option) (xs : 'a list) : 'a list =
   match x_opt with
@@ -349,6 +352,7 @@ and arg p = match p.it with
 and access_pred lhs t =
   match T.normalize t with
   | T.Array elem_t -> Some (array_acc Source.no_region lhs elem_t)
+  | T.Tup   ts     -> Some (tuple_acc Source.no_region lhs ts WildcardP) (* tuples are immutable *)
   | _ -> None
 
 (* Get access predicates for all local variables in current scope *)
@@ -524,18 +528,22 @@ and stmt ctxt (s : M.exp) : seqn =
    if the LHS is a field or if the RHS is an array. *)
 and assign_stmts ctxt at (lval : lvalue) (e : M.exp) : seqn' =
   let (!!) p = !!! at p in
+  let t = e.note.M.note_typ in
   match e with
   | M.({it=TupE [];_}) -> [], []
   | M.({it=AnnotE (e, _);_}) -> assign_stmts ctxt at lval e
   | M.({it = CallE({it = VarE m; _}, inst, args); _}) ->
-    fld_via_tmp_var lval e.note.M.note_typ (fun x ->
+    fld_via_tmp_var lval t (fun x ->
       let self_var = self ctxt m.at in
       [], [ !!(MethodCallS ([x], id m, self_var :: call_args ctxt args)) ])
-  | M.({it=ArrayE(mut, es); note; _}) ->
-    via_tmp_var lval e.note.M.note_typ (fun x ->
-      let t = note.M.note_typ in
+  | M.({it=ArrayE(mut, es); _}) ->
+    via_tmp_var lval t (fun x ->
       let lhs = !!(LocalVar (x, tr_typ t)) in
       [], array_alloc at ctxt lhs (array_elem_t t) es)
+  | M.({it=TupE(es); _}) ->
+    via_tmp_var lval t (fun x ->
+      let lhs = !!(LocalVar (x, tr_typ t)) in
+      [], tuple_alloc at ctxt lhs (tuple_elem_ts t) es)
   | _ ->
     [], [!!(assign_stmt lval (exp ctxt e))]
 
@@ -572,12 +580,13 @@ and call_args ctxt e =
 and exp ctxt e =
   let open Mo_values.Operator in
   let (!!) p = !!! (e.at) p in
+  let t = e.note.M.note_typ in
   match e.it with
   | M.VarE x ->
     begin
      match fst (Env.find x.it ctxt.ids) with
      | Local ->
-        !!(LocalVar (id x, tr_typ e.note.M.note_typ))
+        !!(LocalVar (id x, tr_typ t))
      | Field ->
         !!(FldAcc (self ctxt x.at, id x))
      | _ ->
@@ -628,7 +637,9 @@ and exp ctxt e =
   | M.OldE e ->
     !!(Old (exp ctxt e))
   | M.IdxE (e1, e2) ->
-     !!(FldAcc (array_loc ctxt e.at e1 e2 e.note.M.note_typ))
+     !!(FldAcc (array_loc ctxt e.at e1 e2 t))
+  | M.ProjE (e, i) ->
+     !!(FldAcc (prjE e.at (exp ctxt e) (intLitE e.at i) (typed_field t)))
   | _ ->
      unsupported e.at (Arrange.exp e)
 
@@ -657,16 +668,28 @@ and tr_typ' typ =
   | T.Prim T.Nat -> IntT    (* Viper has no native support for Nat, so translate to Int *)
   | T.Prim T.Bool -> BoolT
   | T.Array _ -> ArrayT     (* Viper arrays are not parameterised by element type *)
+  | T.Tup   _ -> TupleT     (* Viper tuples are not parameterised by element type *)
   | t -> unsupported Source.no_region (Mo_types.Arrange_type.typ t)
+
+and is_mut t =
+  match T.normalize t with
+  | T.Mut _ -> true
+  | _       -> false
 
 and array_elem_t t =
   match T.normalize t with
   | T.Array elem_t -> elem_t
-  | t -> unsupported Source.no_region (Mo_types.Arrange_type.typ t)
+  | t -> failwith "array_elem_t: expected array type"
 
-and array_field t =
+and tuple_elem_ts t =
+  match T.normalize t with
+  | T.Tup ts -> ts
+  | t -> failwith "tuple_elem_ts: expected tuple type"
+
+(* name of field of typed reference *)
+and typed_field t =
   match T.normalize t  with
-  | T.Mut elem_t -> array_field elem_t
+  | T.Mut elem_t -> typed_field elem_t
   | T.Prim T.Int  -> "$int"
   | T.Prim T.Nat  -> "$int"  (* Viper has no native support for Nat, so translate to Int *)
   | T.Prim T.Bool -> "$bool"
@@ -677,8 +700,8 @@ and array_size_inv at lhs n =
 
 and array_acc at lhs t =
   match T.normalize t with
-  | T.Mut _-> arrayAccE at lhs (array_field t) FullP
-  | _      -> arrayAccE at lhs (array_field t) WildcardP
+  | T.Mut _-> arrayAccE at lhs (typed_field t) FullP
+  | _      -> arrayAccE at lhs (typed_field t) WildcardP
 
 (* Allocate array on the LHS expression.
    Note: array_alloc assumes that the array is uninitialized. Assignment to
@@ -686,8 +709,8 @@ and array_acc at lhs t =
 and array_alloc at ctxt lhs t es : stmt list =
   let (!!) p = !!! at p in
   let init_array = List.mapi (fun i e ->
-    FieldAssignS (locE at lhs (intLitE at i) (array_field t), exp ctxt e)) es in
-  (* InhaleS (!! (FldAcc (locE at lhs (intLitE at i) (array_field t))) === e)) es in *)
+    FieldAssignS (locE at lhs (intLitE at i) (typed_field t), exp ctxt e)) es in
+  (* InhaleS (!! (FldAcc (locE at lhs (intLitE at i) (typed_field t))) === e)) es in *)
   let reset_perm =
     (match T.normalize t with
      | T.Mut _ -> []
@@ -699,4 +722,30 @@ and array_alloc at ctxt lhs t es : stmt list =
   in List.map (!!) stmts
 
 and array_loc ctxt at e1 e2 t =
-  locE at (exp ctxt e1) (exp ctxt e2) (array_field t)
+  locE at (exp ctxt e1) (exp ctxt e2) (typed_field t)
+
+and tuple_acc at lhs ts perm =
+  (* TODO tuple: think about general recursive scheme *)
+  let ps = List.mapi (fun i t -> accE at ~perm (prjE at lhs (intLitE at i) (typed_field t))) ts in
+  conjoin ps at
+
+and tuple_alloc at ctxt lhs ts es : stmt list =
+  let tsi = List.mapi (fun i t -> i, t) ts in
+  let init_tuple =
+    List.map2 (fun e (i, t) ->
+      FieldAssignS (prjE at lhs (intLitE at i) (typed_field t), exp ctxt e)
+    ) es tsi in
+  let reset_perms =
+    List.concat_map (fun (i, t) ->
+      let r = prjE at lhs (intLitE at i) (typed_field t) in
+      if is_mut t then [] else [ ExhaleS (accE at r ~perm:WildcardP)
+                               ; InhaleS (accE at r ~perm:WildcardP)]
+    ) tsi in
+  let stmts = [ InhaleS (tuple_acc at lhs ts FullP)]
+              @ init_tuple
+              @ reset_perms
+  in List.map (!!! at) stmts
+
+and tuple_prj ctxt at e1 e2 t =
+  prjE at (exp ctxt e1) (exp ctxt e2) (typed_field t)
+

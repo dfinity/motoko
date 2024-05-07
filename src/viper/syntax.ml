@@ -97,4 +97,5 @@ and typ' =
   | BoolT
   | RefT
   | ArrayT
+  | TupleT
 

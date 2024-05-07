@@ -94,6 +94,7 @@ and pp_typ ppf t =
   | BoolT -> pr ppf "Bool"
   | RefT -> pr ppf "Ref"
   | ArrayT -> pr ppf "Array"
+  | TupleT -> pr ppf "Tuple"
 
 and pp_exp ppf exp =
   match exp.it with
