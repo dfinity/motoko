@@ -1,0 +1,200 @@
+/* BEGIN PRELUDE */
+/* Array encoding */
+domain Array {
+  function $loc(a: Array, i: Int): Ref
+  function $size(a: Array): Int
+  function $loc_inv1(r: Ref): Array
+  function $loc_inv2(r: Ref): Int
+  axiom $all_diff_array { forall a: Array, i: Int :: {$loc(a, i)} $loc_inv1($loc(a, i)) == a && $loc_inv2($loc(a, i)) == i }
+  axiom $size_nonneg { forall a: Array :: $size(a) >= 0 }
+}
+define $array_acc(a, t, p) forall j: Int :: 0 <= j && j < $size(a) ==> acc($loc(a, j).t, p)
+define $array_untouched(a, t) forall j: Int :: 0 <= j && j < $size(a) ==> $loc(a, j).t == old($loc(a, j).t)
+/* Tuple encoding */
+domain Tuple {
+  function $prj(a: Tuple, i: Int): Ref
+  function $prj_inv1(r: Ref): Tuple
+  function $prj_inv2(r: Ref): Int
+  axiom $all_diff_tuple { forall a: Tuple, i: Int :: {$prj(a, i)} $prj_inv1($prj(a, i)) == a && $prj_inv2($prj(a, i)) == i }
+}
+/* Typed references */
+field $int: Int
+field $bool: Bool
+field $ref: Ref
+field $array: Array
+field $tuple: Tuple
+/* END PRELUDE */
+
+define $Perm($Self) (((true && (acc(($Self).fld1,write) && (acc(($prj(
+                                                                 ($Self).fld1,
+                                                                 0)).$int,wildcard) && 
+  acc(($prj(($Self).fld1, 1)).$bool,wildcard)))) && (acc(($Self).fld2,write) && (
+  acc(($prj(($Self).fld2, 0)).$int,wildcard) && acc(($prj(($Self).fld2, 1)).$int,wildcard)))))
+define $Inv($Self) (true)
+method __init__($Self: Ref)
+    
+    requires $Perm($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { var $t_fld1: Tuple
+      var $t_fld2_2: Tuple
+      inhale (acc(($prj($t_fld1, 0)).$int,write) && acc(($prj($t_fld1, 1)).$bool,write));
+      ($prj($t_fld1, 0)).$int := 1;
+      ($prj($t_fld1, 1)).$bool := false;
+      exhale acc(($prj($t_fld1, 0)).$int,wildcard);
+      inhale acc(($prj($t_fld1, 0)).$int,wildcard);
+      exhale acc(($prj($t_fld1, 1)).$bool,wildcard);
+      inhale acc(($prj($t_fld1, 1)).$bool,wildcard);
+      ($Self).fld1 := $t_fld1;
+      inhale (acc(($prj($t_fld2_2, 0)).$int,write) && acc(($prj($t_fld2_2,
+                                                            1)).$int,write));
+      ($prj($t_fld2_2, 0)).$int := 1;
+      ($prj($t_fld2_2, 1)).$int := 2;
+      exhale acc(($prj($t_fld2_2, 0)).$int,wildcard);
+      inhale acc(($prj($t_fld2_2, 0)).$int,wildcard);
+      exhale acc(($prj($t_fld2_2, 1)).$int,wildcard);
+      inhale acc(($prj($t_fld2_2, 1)).$int,wildcard);
+      ($Self).fld2 := $t_fld2_2; 
+    }
+field fld1: Tuple
+field fld2: Tuple
+method localTuple($Self: Ref)
+    
+    requires $Perm($Self)
+    requires $Inv($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { var t: Tuple
+      var a: Int
+      var b: Int
+      var t1: Tuple
+      var t2: Tuple
+      var $t_t2: Tuple
+      inhale (acc(($prj(t, 0)).$int,write) && acc(($prj(t, 1)).$int,write));
+      ($prj(t, 0)).$int := 1;
+      ($prj(t, 1)).$int := 2;
+      exhale acc(($prj(t, 0)).$int,wildcard);
+      inhale acc(($prj(t, 0)).$int,wildcard);
+      exhale acc(($prj(t, 1)).$int,wildcard);
+      inhale acc(($prj(t, 1)).$int,wildcard);
+      a := ($prj(t, 0)).$int;
+      b := ($prj(t, 1)).$int;
+      inhale (acc(($prj(t1, 0)).$int,write) && acc(($prj(t1, 1)).$int,write));
+      ($prj(t1, 0)).$int := a;
+      ($prj(t1, 1)).$int := b;
+      exhale acc(($prj(t1, 0)).$int,wildcard);
+      inhale acc(($prj(t1, 0)).$int,wildcard);
+      exhale acc(($prj(t1, 1)).$int,wildcard);
+      inhale acc(($prj(t1, 1)).$int,wildcard);
+      assume (t == t1);
+      inhale (acc(($prj(t2, 0)).$int,write) && acc(($prj(t2, 1)).$int,write));
+      ($prj(t2, 0)).$int := 1;
+      ($prj(t2, 1)).$int := 2;
+      exhale acc(($prj(t2, 0)).$int,wildcard);
+      inhale acc(($prj(t2, 0)).$int,wildcard);
+      exhale acc(($prj(t2, 1)).$int,wildcard);
+      inhale acc(($prj(t2, 1)).$int,wildcard);
+      inhale (acc(($prj($t_t2, 0)).$int,write) && acc(($prj($t_t2, 1)).$int,write));
+      ($prj($t_t2, 0)).$int := 3;
+      ($prj($t_t2, 1)).$int := 4;
+      exhale acc(($prj($t_t2, 0)).$int,wildcard);
+      inhale acc(($prj($t_t2, 0)).$int,wildcard);
+      exhale acc(($prj($t_t2, 1)).$int,wildcard);
+      inhale acc(($prj($t_t2, 1)).$int,wildcard);
+      t2 := $t_t2;
+      assume ((($prj(t2, 0)).$int != 1) && (($prj(t2, 1)).$int != 2));
+      assume ((($prj(t2, 0)).$int == 3) && (($prj(t2, 1)).$int == 4));
+      label $Ret; 
+    }
+method getTuple($Self: Ref)
+     returns ($Res: Tuple)
+    requires $Perm($Self)
+    ensures $Perm($Self)
+    ensures (acc(($prj($Res, 0)).$int,wildcard) && acc(($prj($Res, 1)).$bool,wildcard))
+    { 
+      inhale (acc(($prj($Res, 0)).$int,write) && acc(($prj($Res, 1)).$bool,write));
+      ($prj($Res, 0)).$int := 42;
+      ($prj($Res, 1)).$bool := false;
+      exhale acc(($prj($Res, 0)).$int,wildcard);
+      inhale acc(($prj($Res, 0)).$int,wildcard);
+      exhale acc(($prj($Res, 1)).$bool,wildcard);
+      inhale acc(($prj($Res, 1)).$bool,wildcard);
+      goto $Ret;
+      label $Ret; 
+    }
+method tupleArg($Self: Ref, a: Tuple)
+     returns ($Res: Bool)
+    requires $Perm($Self)
+    requires (acc(($prj(a, 0)).$bool,wildcard) && acc(($prj(a, 1)).$bool,wildcard))
+    ensures $Perm($Self)
+    ensures (acc(($prj(a, 0)).$bool,wildcard) && acc(($prj(a, 1)).$bool,wildcard))
+    { 
+      $Res := (($prj(a, 0)).$bool && ($prj(a, 1)).$bool);
+      goto $Ret;
+      label $Ret; 
+    }
+method tupleArg2($Self: Ref, a: Tuple, b: Int)
+     returns ($Res: Int)
+    requires $Perm($Self)
+    requires (acc(($prj(a, 0)).$int,wildcard) && acc(($prj(a, 1)).$int,wildcard))
+    ensures $Perm($Self)
+    ensures (acc(($prj(a, 0)).$int,wildcard) && acc(($prj(a, 1)).$int,wildcard))
+    { 
+      $Res := ((($prj(a, 0)).$int + ($prj(a, 1)).$int) + b);
+      goto $Ret;
+      label $Ret; 
+    }
+method passTuple($Self: Ref)
+    
+    requires $Perm($Self)
+    ensures $Perm($Self)
+    { var t: Tuple
+      var r: Bool
+      var t1: Tuple
+      var r2: Int
+      inhale (acc(($prj(t, 0)).$bool,write) && acc(($prj(t, 1)).$bool,write));
+      ($prj(t, 0)).$bool := true;
+      ($prj(t, 1)).$bool := false;
+      exhale acc(($prj(t, 0)).$bool,wildcard);
+      inhale acc(($prj(t, 0)).$bool,wildcard);
+      exhale acc(($prj(t, 1)).$bool,wildcard);
+      inhale acc(($prj(t, 1)).$bool,wildcard);
+      r := tupleArg($Self, t);
+      inhale (acc(($prj(t1, 0)).$int,write) && acc(($prj(t1, 1)).$int,write));
+      ($prj(t1, 0)).$int := 1;
+      ($prj(t1, 1)).$int := 2;
+      exhale acc(($prj(t1, 0)).$int,wildcard);
+      inhale acc(($prj(t1, 0)).$int,wildcard);
+      exhale acc(($prj(t1, 1)).$int,wildcard);
+      inhale acc(($prj(t1, 1)).$int,wildcard);
+      r2 := tupleArg2($Self, t1, 2);
+      label $Ret; 
+    }
+method callTuple($Self: Ref)
+    
+    requires $Perm($Self)
+    ensures $Perm($Self)
+    { var t: Tuple
+      t := getTuple($Self);
+      assume ((($prj(t, 0)).$int == 42) && (($prj(t, 1)).$bool == false));
+      label $Ret; 
+    }
+method changeField($Self: Ref)
+    
+    requires $Perm($Self)
+    requires $Inv($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { var x: Int
+      var $t_fld2: Tuple
+      x := ($prj(($Self).fld1, 0)).$int;
+      inhale (acc(($prj($t_fld2, 0)).$int,write) && acc(($prj($t_fld2, 1)).$int,write));
+      ($prj($t_fld2, 0)).$int := 2;
+      ($prj($t_fld2, 1)).$int := 3;
+      exhale acc(($prj($t_fld2, 0)).$int,wildcard);
+      inhale acc(($prj($t_fld2, 0)).$int,wildcard);
+      exhale acc(($prj($t_fld2, 1)).$int,wildcard);
+      inhale acc(($prj($t_fld2, 1)).$int,wildcard);
+      ($Self).fld2 := $t_fld2;
+      label $Ret; 
+    }
