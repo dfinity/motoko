@@ -222,8 +222,8 @@ and exp' at note = function
     let thunk = T.(funcE ("$FIXME") Local Returns [] [] [] (exp e2)) in
     (*let post e1 = blockE [expD e1] (exp e2) in*)
     let v = fresh_var "res" note.Note.typ in
-    let post e1 = blockE [letD v e1; expD (callE thunk [] (unitE ()))] (varE v) in
-    let th = fresh_var "thunk" thunk.note.typ in
+    let th = fresh_var "thunk" thunk.note.Note.typ in
+    let post e1 = blockE [letD v e1; expD (callE (varE th) [] (unitE ()))] (varE v) in
     (blockE [letD th thunk]
       { e1 with it = I.TryE (exp e1 |> post, cases_map post cs, Some (varE th)); note }).it
   | S.WhileE (e1, e2) -> (whileE (exp e1) (exp e2)).it
