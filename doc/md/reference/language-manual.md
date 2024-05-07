@@ -259,10 +259,10 @@ Equality and inequality are structural and based on the observable content of th
 | `<binop>` | Category |                                                |
 | --------- | -------- | ---------------------------------------------- |
 | `&`       | B        | Bitwise and                                    |
-| `|`      | B        | Bitwise or                                     |
+| <code>&#124;</code> | B        | Bitwise or                                     |
 | `^`       | B        | Exclusive or                                   |
 | `<<`      | B        | Shift left                                     |
-| `␣>>`     | B        | Shift right (must be preceded by whitespace) |
+| `␣>>`     | B        | Shift right (must be preceded by whitespace)   |
 | `<<>`     | B        | Rotate left                                    |
 | `<>>`     | B        | Rotate right                                   |
 | `+%`      | A        | Addition (wrap-on-overflow)                    |
@@ -288,7 +288,7 @@ Equality and inequality are structural and based on the observable content of th
 | `%=`                        | A        | In place modulo                            |
 | `**=`                       | A        | In place exponentiation                    |
 | `&=`                        | B        | In place logical and                       |
-| `|=`                       | B        | In place logical or                        |
+| <code>&#124;=</code>        | B        | In place logical or                        |
 | `^=`                        | B        | In place exclusive or                      |
 | `<<=`                       | B        | In place shift left                        |
 | `>>=`                       | B        | In place shift right                       |
@@ -310,15 +310,15 @@ The following table defines the relative precedence and associativity of operato
 | ---------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------- |
 | LOWEST     | none          | `if _ _` (no `else`), `loop _` (no `while`)                                                                                   |
 | (higher)   | none          | `else`, `while`                                                                                                               |
-| (higher)   | right         | `:=`, `+=`, `-=`, `*=`, `/=`, `%=`, `**=`, `#=`, `&=`, `|=`, `^=`, `<<=`, `>>=`, `<<>=`, `<>>=`, `+%=`, `-%=`, `*%=`, `**%=` |
+| (higher)   | right         | `:=`, `+=`, `-=`, `*=`, `/=`, `%=`, `**=`, `#=`, `&=`, <code>&#124;=</code>, `^=`, `<<=`, `>>=`, `<<>=`, `<>>=`, `+%=`, `-%=`, `*%=`, `**%=` |
 | (higher)   | left          | `:`                                                                                                                           |
-| (higher)   | left          | `|>`                                                                                                                           |
+| (higher)   | left          | <code>&#124;></code>                                                                                                          |
 | (higher)   | left          | `or`                                                                                                                          |
 | (higher)   | left          | `and`                                                                                                                         |
 | (higher)   | none          | `==`, `!=`, `<`, `>`, `<=`, `>`, `>=`                                                                                         |
 | (higher)   | left          | `+`, `-`, `#`, `+%`, `-%`                                                                                                     |
 | (higher)   | left          | `*`, `/`, `%`, `*%`                                                                                                           |
-| (higher)   | left          | `|`                                                                                                                          |
+| (higher)   | left          | <code>&#124;</code>                                                                                                           |
 | (higher)   | left          | `&`                                                                                                                           |
 | (higher)   | left          | `^`                                                                                                                           |
 | (higher)   | none          | `<<`, `>>`, `<<>`, `<>>`                                                                                                      |
@@ -579,7 +579,7 @@ Type expressions are used to specify the types of arguments, constraints on type
   <typ> and <typ>                               Intersection
   <typ> or <typ>                                Union
   Error                                         Errors/exceptions
-  ( <typ> )                                      Parenthesized type
+  ( <typ> )                                     Parenthesized type
 
 <sort> ::= (actor | module | object)
 
