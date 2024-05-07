@@ -6,6 +6,7 @@ actor A {
         try { debugPrint "IN" }
         case { debugPrint "OUT" };
     };
+
 /*  nested `try` won't work
     func t1() : async () {
         try {
@@ -18,6 +19,7 @@ actor A {
         catch _ { debugPrint "CAUGHT1" }
     };
 */
+
     func t2() : async () {
         try {
             debugPrint "IN2";
@@ -26,6 +28,8 @@ actor A {
         else catch _ { debugPrint "CAUGHT2" }
         case { debugPrint "OUT2" };
     };
+
+    //TODO: func t2t() : async Int { ... }
 
     func t3() : async () {
         try {
@@ -55,7 +59,7 @@ actor A {
     // TODO: trap on happy/catch
 
     public func go() : async () {
-        await t0();
+        /*ignore*/ await t0();
         //await t1();
         await t2();
         await t3();

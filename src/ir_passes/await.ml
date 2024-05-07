@@ -324,7 +324,7 @@ and c_exp' context exp k =
                at = exp.at;
                note = Note.{ exp.note with typ = typ' } }))
     end)
-  | TryE (exp1, cases) ->
+  | TryE (exp1, cases, _TODO) ->
     (* TODO: do we need to reify f? *)
     let f = match LabelEnv.find Throw context with Cont f -> f | _ -> assert false in
     letcont f (fun f ->

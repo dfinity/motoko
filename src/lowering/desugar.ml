@@ -216,14 +216,16 @@ and exp' at note = function
   | S.OldE e -> (oldE (exp e)).it
   | S.IfE (e1, e2, e3) -> I.IfE (exp e1, exp e2, exp e3)
   | S.SwitchE (e1, cs) -> I.SwitchE (exp e1, cases cs)
-  | S.TryE (e1, cs, None) -> I.TryE (exp e1, cases cs)
+  | S.TryE (e1, cs, None) -> I.TryE (exp e1, cases cs, None)
   | S.TryE (e1, cs, Some e2) ->
     assert (T.is_unit note.Note.typ);
-    (*let thunk = T.(funcE ("$FIXME") Local Returns [] [] [] (exp e2)) in*)
-    let post e1 = blockE [expD e1] (exp e2) in
-    let post e1 = blockE [letD v e1; expD (callE thunk (unitE ()))] (varE v) in
-    (*blockE [letD thunk]*)
-      I.TryE (exp e1 |> post, cases_map post cs, Some thunk)
+    let thunk = T.(funcE ("$FIXME") Local Returns [] [] [] (exp e2)) in
+    (*let post e1 = blockE [expD e1] (exp e2) in*)
+    let v = fresh_var "res" note.Note.typ in
+    let post e1 = blockE [letD v e1; expD (callE thunk [] (unitE ()))] (varE v) in
+    let th = fresh_var "thunk" thunk.note.typ in
+    (blockE [letD th thunk]
+      { e1 with it = I.TryE (exp e1 |> post, cases_map post cs, Some (varE th)); note }).it
   | S.WhileE (e1, e2) -> (whileE (exp e1) (exp e2)).it
   | S.LoopE (e1, None) -> I.LoopE (exp e1)
   | S.LoopE (e1, Some e2) -> (loopWhileE (exp e1) (exp e2)).it
