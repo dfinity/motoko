@@ -223,8 +223,8 @@ and exp' at note = function
     (*let post e1 = blockE [expD e1] (exp e2) in*)
     let v = fresh_var "res" note.Note.typ in
     let th = fresh_var "thunk" thunk.note.Note.typ in
-    let post e1 = blockE [letD v e1; expD (callE (varE th) [] (unitE ()))] (varE v) in
-    (blockE [letD th thunk]
+    let post e1 = blockE [letD v e1; expD (varE th -*- unitE ())] (varE v) in
+    (blockE [letD th thunk] (* use funcD for thunk? *)
       { e1 with it = I.TryE (exp e1 |> post, cases_map post cs, Some (varE th)); note }).it
   | S.WhileE (e1, e2) -> (whileE (exp e1) (exp e2)).it
   | S.LoopE (e1, None) -> I.LoopE (exp e1)
