@@ -218,12 +218,14 @@ and exp' at note = function
   | S.SwitchE (e1, cs) -> I.SwitchE (exp e1, cases cs)
   | S.TryE (e1, cs, None) -> I.TryE (exp e1, cases cs, None)
   | S.TryE (e1, cs, Some e2) ->
-    assert (T.is_unit note.Note.typ);
+    assert (T.is_unit note.Note.typ); (* NOPE!*)
     let thunk = T.(funcE ("$FIXME") Local Returns [] [] [] (exp e2)) in
     (*let post e1 = blockE [expD e1] (exp e2) in*)
-    let v = fresh_var "res" note.Note.typ in
+    assert T.(is_func thunk.note.Note.typ);
     let th = fresh_var "thunk" thunk.note.Note.typ in
-    let post e1 = blockE [letD v e1; expD (varE th -*- unitE ())] (varE v) in
+    let post e1 =
+      let v = fresh_var "res" note.Note.typ in
+      blockE [letD v e1; expD (varE th -*- unitE ())] (varE v) in
     (blockE [letD th thunk] (* use funcD for thunk? *)
       { e1 with it = I.TryE (exp e1 |> post, cases_map post cs, Some (varE th)); note }).it
   | S.WhileE (e1, e2) -> (whileE (exp e1) (exp e2)).it
