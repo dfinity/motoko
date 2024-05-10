@@ -2,6 +2,7 @@
 sidebar_position: 2
 ---
 
+# Compiler reference
 
 ## Overview
 
