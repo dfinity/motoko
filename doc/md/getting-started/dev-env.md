@@ -54,7 +54,33 @@ Before you start developing Motoko, verify the following:
 
 ## Motoko version
 
-Motoko version `0.11.1` is shipped with the latest version of the IC SDK (v0.20.0).
+The following table details which version of Motoko shipped with each major version of the IC SDK. 
+
+| IC SDK version  | Motoko version   |
+|-----------------|------------------|
+| 0.20.0          | 0.11.1           |
+| 0.19.0          | 0.11.1           |
+| 0.18.0          | 0.11.0           |
+| 0.17.0          | 0.10.4           |  
+| 0.16.0          | 0.10.4           |
+| 0.15.0          | 0.9.7            |
+| 0.14.0          | 0.8.7            |
+| 0.13.0          | 0.7.6            |
+| 0.12.0          | 0.7.3            |
+| 0.11.0          | 0.6.29           |
+| 0.10.0          | 0.6.26           |
+| 0.9.0           | 0.6.20           |
+| 0.8.0           | 0.6.5            |
+| 0.7.0           | 0.6.1            |
+
+
+You can find out which version of Motoko shipped with a version of the IC SDK through the following file:
+
+```
+https://github.com/dfinity/sdk/blob/<VERSION>/nix/sources.json#L144
+```
+
+Replace `<VERSION>` with the IC SDK release version, such as `0.14.2`.
 
 ### Specifying a custom version of the compiler
 
