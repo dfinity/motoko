@@ -83,9 +83,9 @@ For scenarios that can’t be solved using stable variables alone, Motoko provid
 
 Motoko allows for separating different portions of code out of the `main.mo` file into separate modules. This can be useful for breaking up large pieces of source code into smaller, more manageable pieces.
 
-One common workflow is to exclude type definitions from the `main.mo` file and instead include them in a `Types.mo` file.
+One common approach is to exclude type definitions from the `main.mo` file and instead include them in a `Types.mo` file.
 
-Another option is to declare stable variables and public methods in the `main.mo` file, and then break out all the logic and types into other files. This workflow can be beneficial for efficient unit testing.
+Another approach is to declare stable variables and public methods in the `main.mo` file, and then break out all the logic and types into other files. This workflow can be beneficial for efficient unit testing.
 
 ## Next steps
 
