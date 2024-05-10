@@ -13,7 +13,7 @@ Developer environments come in several types and formats, making developing flex
 
 ## Cloud environments
 
-[Gitpod](https://www.gitpod.io/) and [GitHub Codespaces](https://github.com/features/codespaces) are browser-based development environments that can be used to build, test, and run Motoko smart contracts. 
+[Gitpod](https://www.gitpod.io/) and [GitHub Codespaces](https://github.com/features/codespaces) are browser-based development environments that can be used to build, test, and run Motoko smart contracts.
 
 Here are some starter projects for online Motoko canister development:
 
@@ -51,3 +51,37 @@ Before you start developing Motoko, verify the following:
 - [x] You have downloaded and installed [git](https://git-scm.com/downloads).
 
 - [x] Assure that all packages and tools above are updated to the latest release versions.
+
+## Motoko version
+
+Motoko version `0.11.1` is shipped with the latest version of the IC SDK (v0.20.0).
+
+### Specifying a custom version of the compiler
+
+To specify a custom version of the Motoko compiler to be used with `dfx`, you can use the package manager `mops` or `vessel`.
+
+For `mops`, use the following command to download a different version of the Motoko compiler (`moc`):
+
+```
+mops toolchain use moc 0.10.3
+```
+
+For `vessel`, set the following environment variable:
+
+```
+DFX_MOC_PATH="$(vessel bin)/moc" dfx deploy
+```
+
+## Specifying a custom version of the base library
+
+To specify a custom version of the Motoko base library to be used with `dfx`, you can use the package manager `mops` with the following command:
+
+```
+mops add base@<VERSION> && mops install
+```
+
+For example, to use base library version `0.9.0`, use the command:
+
+```
+mops add base@0.9.0 && mops install
+```

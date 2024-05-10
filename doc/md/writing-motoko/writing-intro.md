@@ -79,6 +79,14 @@ The new interface is compatible with the previous one, allowing existing clients
 
 For scenarios that can’t be solved using stable variables alone, Motoko provides user-definable upgrade hooks that run immediately before and after an upgrade, allowing you to migrate arbitrary state to stable variables.
 
+## Source code organization
+
+Motoko allows for separating different portions of code out of the `main.mo` file into separate modules. This can be useful for breaking up large pieces of source code into smaller, more manageable pieces.
+
+One common workflow is to exclude type definitions from the `main.mo` file and instead include them in a `Types.mo` file.
+
+Another option is to declare stable variables and public methods in the `main.mo` file, and then break out all the logic and types into other files. This workflow can be beneficial for efficient unit testing.
+
 ## Next steps
 
 To start writing Motoko code, start by reading the in-depth documentation for some of the concepts described above:
