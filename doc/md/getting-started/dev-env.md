@@ -13,7 +13,7 @@ Developer environments come in several types and formats, making developing flex
 
 ## Cloud environments
 
-[Gitpod](https://www.gitpod.io/) and [GitHub Codespaces](https://github.com/features/codespaces) are browser-based development environments that can be used to build, test, and run Motoko smart contracts. 
+[Gitpod](https://www.gitpod.io/) and [GitHub Codespaces](https://github.com/features/codespaces) are browser-based development environments that can be used to build, test, and run Motoko smart contracts.
 
 Here are some starter projects for online Motoko canister development:
 
@@ -51,3 +51,63 @@ Before you start developing Motoko, verify the following:
 - [x] You have downloaded and installed [git](https://git-scm.com/downloads).
 
 - [x] Assure that all packages and tools above are updated to the latest release versions.
+
+## Motoko version
+
+The following table details which version of Motoko shipped with each major version of the IC SDK. 
+
+| IC SDK version  | Motoko version   |
+|-----------------|------------------|
+| 0.20.0          | 0.11.1           |
+| 0.19.0          | 0.11.1           |
+| 0.18.0          | 0.11.0           |
+| 0.17.0          | 0.10.4           |  
+| 0.16.0          | 0.10.4           |
+| 0.15.0          | 0.9.7            |
+| 0.14.0          | 0.8.7            |
+| 0.13.0          | 0.7.6            |
+| 0.12.0          | 0.7.3            |
+| 0.11.0          | 0.6.29           |
+| 0.10.0          | 0.6.26           |
+| 0.9.0           | 0.6.20           |
+| 0.8.0           | 0.6.5            |
+| 0.7.0           | 0.6.1            |
+
+
+You can find out which version of Motoko shipped with a version of the IC SDK through the following file:
+
+```
+https://github.com/dfinity/sdk/blob/<VERSION>/nix/sources.json#L144
+```
+
+Replace `<VERSION>` with the IC SDK release version, such as `0.14.2`.
+
+### Specifying a custom version of the compiler
+
+To specify a custom version of the Motoko compiler to be used with `dfx`, you can use the package manager `mops` or `vessel`.
+
+For `mops`, use the following command to download a different version of the Motoko compiler (`moc`):
+
+```
+mops toolchain use moc 0.10.3
+```
+
+For `vessel`, set the following environment variable:
+
+```
+DFX_MOC_PATH="$(vessel bin)/moc" dfx deploy
+```
+
+## Specifying a custom version of the base library
+
+To specify a custom version of the Motoko base library to be used with `dfx`, you can use the package manager `mops` with the following command:
+
+```
+mops add base@<VERSION> && mops install
+```
+
+For example, to use base library version `0.9.0`, use the command:
+
+```
+mops add base@0.9.0 && mops install
+```
