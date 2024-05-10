@@ -2,7 +2,7 @@
 sidebar_position: 8
 ---
 
-# Imperative control flow
+# Control flow
 
 ## Overview
 
