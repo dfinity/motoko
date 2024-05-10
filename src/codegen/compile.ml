@@ -285,7 +285,7 @@ module Const = struct
 
   type v =
     | Fun of int32 * (unit -> int32) * fun_rhs (* function pointer calculated upon first use *)
-    | Message of int64 (* anonymous message, only temporary *)
+    | Message of int32 (* anonymous message, only temporary *)
     | Obj of (string * v) list
     | Unit
     | Array of v list (* also tuples, but not nullary *)
@@ -8880,7 +8880,7 @@ module FuncDec = struct
     if Type.is_shared_sort sort
     then begin
       let (fi, fill) = E.reserve_fun pre_env name in
-      ( Const.Message (Wasm.I64_convert.extend_i32_s fi), fun env ae ->
+      ( Const.Message fi, fun env ae ->
         fill (compile_const_message env ae sort control args mk_body ret_tys at)
       )
     end else begin
@@ -11908,7 +11908,7 @@ and compile_dec env pre_ae how v2en dec : VarEnv.t * G.t * (VarEnv.t -> scope_wr
   | LetD ({it = VarP v; _}, e) when E.NameEnv.mem v v2en ->
     let (const, fill) = compile_const_exp env pre_ae e in
     let fi = match const with
-      | Const.Message fi -> Int64.to_int32 fi
+      | Const.Message fi -> fi
       | _ -> assert false in
     let pre_ae1 = VarEnv.add_local_public_method pre_ae v (fi, (E.NameEnv.find v v2en)) e.note.Note.typ in
     G.( pre_ae1, nop, (fun ae -> fill env ae; nop), unmodified)
