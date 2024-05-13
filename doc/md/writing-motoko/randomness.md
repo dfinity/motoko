@@ -99,7 +99,7 @@ actor {
 };
 ```
 
-View this example on the [Motoko Playground](https://m7sm4-2iaaa-aaaab-qabra-cai.ic0.app/?tag=2829666590) or on [GitHub](https://github.com/crusso/card-shuffle/blob/main/src/cards_backend/main.mo).
+View this example on the [Motoko Playground](https://play.motoko.org/?tag=2675232834) or on [GitHub](https://github.com/crusso/card-shuffle/blob/main/src/cards_backend/main.mo).
 
 ## Calling the management canister's `raw_rand` method
 
