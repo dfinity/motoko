@@ -393,10 +393,8 @@ and c_exp' context exp k =
       let lab n = function
         | Label -> failwith "Label"
         | Cont l ->
-           (*let k_lab = fresh_cont T.unit T.unit in*)
-           (*MetaCont (T.unit, letcont l (fun l -> failwith "reified")*)
-           Cont (precont l exp2)
-           
+          Cont (precont l exp2)
+
       in
       let context'' = LabelEnv.mapi (function | Return | Throw -> fun c -> c | Named n -> lab n) context in
       let context' = LabelEnv.add Throw (Cont (ContVar throw)) context'' in
