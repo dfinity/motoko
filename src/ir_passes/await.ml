@@ -37,20 +37,13 @@ let letcont k scope =
     blockE [funcD k' v e] (* at this point, I'm really worried about variable capture *)
             (scope k')
 
-
+(* pre-compose a continuation with a call to a `finally`-thunk *)
 let precont k thunk =
     match k with
     | ContVar k' ->
-       MetaCont (T.unit, fun v -> blockE [expD (thunk -*- unitE ())] (varE k' -*- varE v))
-
-       (*failwith "ContVar"       scope k'          letcont eta-contraction *)
-    | MetaCont (typ0, cont) -> failwith "MetaCont"
-       (*let v = fresh_var "v" typ0 in
-       let e = cont v in
-       let k' = fresh_cont typ0 (typ e) in
-       blockE [funcD k' v e] (* at this point, I'm really worried about variable capture *)
-         (scope k') in
-  MetaCont *)
+       MetaCont ((*FIXME: T.dom (typ_of_var v)*) T.unit, fun v -> blockE [expD (thunk -*- unitE ())] (varE k' -*- varE v))
+    | MetaCont (typ0, cont) ->
+      MetaCont (typ0, fun v -> blockE [expD (thunk -*- unitE ())] (cont v))
 
 (* Named labels for break, special labels for return and throw *)
 type label = Return | Throw | Named of string

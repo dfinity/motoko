@@ -52,12 +52,30 @@ actor A {
     };
 */
     func t5() : async () {
+        debugPrint "BEFORE5";
         label out try {
             debugPrint "IN5";
             await m();
             break out;
+            debugPrint "DEAD5";
         }
         case { debugPrint "OUT5" };
+        debugPrint "AFTER5"
+    };
+
+    func t6() : async () {
+        debugPrint "BEFORE6";
+        label out try {
+            debugPrint "IN6";
+            try {
+                debugPrint "InnerIN6";
+                await m();
+                break out;
+            } case { debugPrint "innerOUT6" };
+            debugPrint "DEAD6";
+        }
+        case { debugPrint "OUT6" };
+        debugPrint "AFTER6"
     };
 
     // TODO: trap on happy/catch
@@ -69,6 +87,7 @@ actor A {
         await t3();
         await t4();*/
         await t5();
+        await t6();
     };
 };
 

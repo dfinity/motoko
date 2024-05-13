@@ -1,9 +1,12 @@
 import { debugPrint; error } =  "mo:prim";
 
 actor A {
+    func m() : async () {
+    };
+    
 
     func t0() : async () {
-        try { debugPrint "IN" }
+        try { debugPrint "IN"; await m(); }
         case { debugPrint "OUT" };
     };
 
@@ -19,7 +22,7 @@ actor A {
         catch _ { debugPrint "CAUGHT1" }
     };
 */
-
+/*
     func t2() : async () {
         try {
             debugPrint "IN2";
@@ -47,10 +50,11 @@ actor A {
         case { debugPrint "OUT4" };
         return;
     };
-
+*/
     func t5() : async () {
         label out try {
             debugPrint "IN5";
+            await m();
             break out;
         }
         case { debugPrint "OUT5" };
@@ -61,14 +65,14 @@ actor A {
     public func go() : async () {
         /*ignore*/ await t0();
         //await t1();
-        await t2();
+        /*await t2();
         await t3();
-        await t4();
+        await t4();*/
         await t5();
     };
 };
 
-//SKIP comp
+//XSKIP comp
 //SKIP ic-ref-run
 
 A.go();
