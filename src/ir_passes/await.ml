@@ -37,6 +37,22 @@ let letcont k scope =
     blockE [funcD k' v e] (* at this point, I'm really worried about variable capture *)
             (scope k')
 
+
+let precont k thunk =
+  (* let thread e = *)
+    match k with
+    | ContVar k' ->
+       MetaCont (T.unit, fun _v -> blockE [expD (thunk -*- unitE ())] (varE k'  -*- unitE ()))
+
+       (*failwith "ContVar"       scope k'          letcont eta-contraction *)
+    | MetaCont (typ0, cont) -> failwith "MetaCont"
+       (*let v = fresh_var "v" typ0 in
+       let e = cont v in
+       let k' = fresh_cont typ0 (typ e) in
+       blockE [funcD k' v e] (* at this point, I'm really worried about variable capture *)
+         (scope k') in
+  MetaCont *)
+
 (* Named labels for break, special labels for return and throw *)
 type label = Return | Throw | Named of string
 
@@ -384,9 +400,14 @@ and c_exp' context exp k =
       let throw = fresh_err_cont (answerT (typ_of_var k)) in
       let lab n = function
         | Label -> failwith "Label"
-        | Cont _ -> failwith "Cont" in
+        | Cont l ->
+           (*let k_lab = fresh_cont T.unit T.unit in*)
+           (*MetaCont (T.unit, letcont l (fun l -> failwith "reified")*)
+           Cont (precont l exp2)
+           
+      in
       let context'' = LabelEnv.mapi (function | Return | Throw -> fun c -> c | Named n -> lab n) context in
-      let context' = LabelEnv.add Throw (Cont (ContVar throw)) context in
+      let context' = LabelEnv.add Throw (Cont (ContVar throw)) context'' in
       blockE
         [ let e = fresh_var "e" T.catch in
           funcD throw e {
