@@ -39,10 +39,9 @@ let letcont k scope =
 
 
 let precont k thunk =
-  (* let thread e = *)
     match k with
     | ContVar k' ->
-       MetaCont (T.unit, fun _v -> blockE [expD (thunk -*- unitE ())] (varE k'  -*- unitE ()))
+       MetaCont (T.unit, fun v -> blockE [expD (thunk -*- unitE ())] (varE k' -*- varE v))
 
        (*failwith "ContVar"       scope k'          letcont eta-contraction *)
     | MetaCont (typ0, cont) -> failwith "MetaCont"
