@@ -6,7 +6,7 @@ sidebar_position: 22
 
 ## Overview
 
-The Motoko feature `Random` can be used for generating random values within smart contracts on ICP. Randomness on ICP is an intricate process, since ICP uses deterministic computing to obtain cryptographic random values.
+The Motoko [`Random`](../base/Random.md) base library can be used for generating random values within smart contracts on ICP. Randomness on ICP is an intricate process, since ICP uses deterministic computing to obtain cryptographic random values.
 
 At the low level, ICP uses a Verifiable Random Function that is exposed by the management canister and is used by the Motoko `Random` module. In each execution round, the randomness function is evaluated with number of the current round used as input in order to produce a fresh set of random bytes.
 
