@@ -1,2 +1,2 @@
-Parse warning: In macro $Perm, the following parameters were defined but not used: $Self  (simple-funs.vpr@28.1)
-Parse warning: In macro $Inv, the following parameters were defined but not used: $Self  (simple-funs.vpr@29.1)
+Parse warning: In macro $Perm, the following parameters were defined but not used: $Self  (simple-funs.vpr@37.1)
+Parse warning: In macro $Inv, the following parameters were defined but not used: $Self  (simple-funs.vpr@38.1)
