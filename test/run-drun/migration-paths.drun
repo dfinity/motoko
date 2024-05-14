@@ -1,0 +1,37 @@
+# CLASSICAL-PERSISTENCE-ONLY
+# DEFAULT-GC-ONLY
+# SKIP ic-ref-run
+
+# Start with classical persistence
+install $ID migration-paths/old-installer.mo ""
+ingress $ID install "DIDL\x00\x00"
+ingress $ID upgrade "DIDL\x00\x00"
+ingress $ID upgrade_replace_main_memory "DIDL\x00\x00"
+# This fails:
+ingress $ID upgrade_keep_main_memory "DIDL\x00\x00"
+
+# Now, upgrade to enhanced orthogonal persistence
+upgrade $ID migration-paths/new-installer.mo ""
+# Try wrong upgrade option: RTS detects and handles this.
+ingress $ID upgrade_keep_main_memory "DIDL\x00\x00"
+# Initiate graph copy
+ingress $ID initiate_graph_copy "DIDL\x00\x00"
+# Discard EOP main memory, but retain state of graph copy
+ingress $ID upgrade_replace_main_memory "DIDL\x00\x00"
+# Initiate graph copy
+ingress $ID initiate_graph_copy "DIDL\x00\x00"
+ingress $ID upgrade_keep_main_memory "DIDL\x00\x00"
+
+# Re-start with classical persistence
+reinstall $ID migration-paths/old-installer.mo ""
+ingress $ID install "DIDL\x00\x00"
+# Upgrade to enhanced orthogonal persistence
+upgrade $ID migration-paths/new-installer.mo ""
+# Try correct upgrade option.
+ingress $ID upgrade_replace_main_memory "DIDL\x00\x00"
+# Usual upgrades with enhanced orthogonal persistence
+ingress $ID upgrade_keep_main_memory "DIDL\x00\x00"
+ingress $ID upgrade "DIDL\x00\x00"
+
+# Try to downgrade. This will fail:
+upgrade $ID migration-paths/old-installer.mo ""
