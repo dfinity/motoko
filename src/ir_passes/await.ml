@@ -399,7 +399,7 @@ and c_exp' context exp k =
         | Cont l -> Cont (precont l exp2)
         | Label -> assert false
       in
-      let context' = LabelEnv.mapi (function | Return | Throw -> fun c -> c | Named n -> lab n) context in
+      let context' = LabelEnv.mapi (function | Return -> lab "" | Throw -> fun c -> c | Named n -> lab n) context in
       let context'' = LabelEnv.add Throw (Cont (ContVar throw)) context' in
       blockE
         [ let e = fresh_var "e" T.catch in
