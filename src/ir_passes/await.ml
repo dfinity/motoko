@@ -41,7 +41,11 @@ let letcont k scope =
 let precont k thunk =
     match k with
     | ContVar k' ->
-       MetaCont ((*FIXME: T.dom (typ_of_var v)*) T.unit, fun v -> blockE [expD (thunk -*- unitE ())] (varE k' -*- varE v))
+      let dom = match typ_of_var k' with
+        | T.(Func (Local, Returns, [], [], _)) -> T.unit
+        | T.(Func (Local, Returns, [], [dom], _)) -> dom
+        | _ -> assert false in
+      MetaCont (dom, fun v -> blockE [expD (thunk -*- unitE ())] (varE k' -*- varE v))
     | MetaCont (typ0, cont) ->
       MetaCont (typ0, fun v -> blockE [expD (thunk -*- unitE ())] (cont v))
 
@@ -78,7 +82,7 @@ let rec t_async context exp =
    let k_fail = fresh_err_cont T.unit in
    let context' =
      LabelEnv.add Return (Cont (ContVar k_ret))
-       (LabelEnv.add Throw (Cont (ContVar k_fail)) LabelEnv.empty)
+       (LabelEnv.singleton Throw (Cont (ContVar k_fail)))
    in
      cps_asyncE s typ1 (typ exp1)
        (forall [tb] ([k_ret; k_fail] -->*
@@ -108,9 +112,9 @@ and t_exp' context exp =
     SwitchE (t_exp context exp1, cases')
   | LoopE exp1 ->
     LoopE (t_exp context exp1)
-  | LabelE (id, _typ, exp1) ->
+  | LabelE (id, typ, exp1) ->
     let context' = LabelEnv.add (Named id) Label context in
-    LabelE (id, _typ, t_exp context' exp1)
+    LabelE (id, typ, t_exp context' exp1)
   | PrimE (BreakPrim id, [exp1]) ->
     begin
       match LabelEnv.find_opt (Named id) context with
@@ -160,7 +164,7 @@ and t_exp' context exp =
   | FuncE (x, s, c, typbinds, pat, typs, exp1) ->
     assert (not (T.is_local_async_func (typ exp)));
     assert (not (T.is_shared_func (typ exp)));
-    let context' = LabelEnv.add Return Label LabelEnv.empty in
+    let context' = LabelEnv.singleton Return Label in
     FuncE (x, s, c, typbinds, pat, typs, t_exp context' exp1)
   | ActorE (ds, ids, { meta; preupgrade; postupgrade; heartbeat; timer; inspect}, t) ->
     ActorE (t_decs context ds, ids,
@@ -444,7 +448,7 @@ and c_exp' context exp k =
     let k_fail = fresh_err_cont T.unit in
     let context' =
       LabelEnv.add Return (Cont (ContVar k_ret))
-        (LabelEnv.add Throw (Cont (ContVar k_fail)) LabelEnv.empty)
+        (LabelEnv.singleton Throw (Cont (ContVar k_fail)))
     in
     let r = match LabelEnv.find_opt Throw context with
       | Some (Cont r) -> r
