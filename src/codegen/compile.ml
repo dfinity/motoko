@@ -5974,7 +5974,7 @@ module RTS_Exports = struct
                 StableMem.stable64_size env
               else
                 (* The RTS also checks the persistence mode on Wasi without stable memory support *)
-                compile_const_64 0L
+                compile_unboxed_const 0L
             )
           )
     in
