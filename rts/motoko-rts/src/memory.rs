@@ -1,6 +1,6 @@
 #[cfg(feature = "ic")]
 pub mod ic;
-use crate::types::*;
+use crate::{constants::MAX_ARRAY_LENGTH_FOR_ITERATOR, types::*};
 
 use motoko_rts_macros::classical_persistence;
 use motoko_rts_macros::enhanced_orthogonal_persistence;
@@ -70,10 +70,6 @@ pub unsafe fn alloc_blob<M: Memory>(mem: &mut M, size: Bytes<usize>) -> Value {
 /// Note: After initialization, the post allocation barrier needs to be applied to all mutator objects.
 #[ic_mem_fn]
 pub unsafe fn alloc_array<M: Memory>(mem: &mut M, len: usize) -> Value {
-    // The optimized array iterator requires array lengths to fit in signed compact numbers.
-    // See `compile.ml`, `GetPastArrayOffset`.
-    // Two bits reserved: Two for Int tag (0b10L) and one for the sign bit.
-    const MAX_ARRAY_LENGTH_FOR_ITERATOR: usize = 1 << (usize::BITS as usize - 3);
     assert!(len <= MAX_ARRAY_LENGTH_FOR_ITERATOR);
 
     let skewed_ptr = mem.alloc_words(size_of::<Array>() + Words(len));

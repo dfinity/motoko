@@ -115,10 +115,6 @@ pub unsafe fn mp_realloc<M: Memory>(
     old_size: Bytes<usize>,
     new_size: Bytes<usize>,
 ) -> *mut c_void {
-    // TODO: Remove these temporary downcasts during 64-bit port
-    let old_size = Bytes(old_size.as_usize());
-    let new_size = Bytes(new_size.as_usize());
-
     let bigint = BigInt::from_payload(ptr as *mut mp_digit);
 
     debug_assert_eq!((*bigint).header.tag, TAG_BIGINT);

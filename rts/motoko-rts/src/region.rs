@@ -7,10 +7,9 @@ use crate::types::{size_of, Blob, Bytes, Region, Value, TAG_REGION};
 // Should agree with constants in StableMem in compile.ml
 
 // Legacy versions, used with classical persistence
-const VERSION_NO_STABLE_MEMORY: usize = 0; // never manifest in serialized form
-#[classical_persistence]
-const VERSION_SOME_STABLE_MEMORY: usize = 1;
-const VERSION_REGIONS: usize = 2;
+pub const LEGACY_VERSION_NO_STABLE_MEMORY: usize = 0; // Never manifests in serialized form
+pub const LEGACY_VERSION_SOME_STABLE_MEMORY: usize = 1;
+pub const LEGACY_VERSION_REGIONS: usize = 2;
 
 // New versions, used with enhanced orthogonal persistence
 pub(crate) const VERSION_GRAPH_COPY_NO_REGIONS: usize = 3;

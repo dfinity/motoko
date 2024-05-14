@@ -1,4 +1,4 @@
-use motoko_rts_macros::classical_persistence;
+use motoko_rts_macros::{classical_persistence, enhanced_orthogonal_persistence};
 
 use crate::types::Bytes;
 
@@ -20,3 +20,15 @@ use crate::types::Words;
 /// Note that `to_bytes` on this value will overflow as 4 GiB in bytes is `u32::MAX + 1`.
 #[classical_persistence]
 pub const WASM32_HEAP_SIZE: Words<usize> = Words(1024 * 1024 * 1024);
+
+// The optimized array iterator requires array lengths to fit in signed compact numbers.
+// See `compile_enhanced.ml`, `GetPastArrayOffset`.
+// Two bits reserved: Two for Int tag (0b10L) and one for the sign bit.
+#[enhanced_orthogonal_persistence]
+pub const MAX_ARRAY_LENGTH_FOR_ITERATOR: usize = 1 << (usize::BITS as usize - 3);
+
+/// Maximum Motoko array size 2^29 (inclusive)
+/// NB: Must agree with Arr.max_array_size in compile_classical.ml.
+pub const MAX_ARRAY_SIZE: u32 = 1 << 29;
+#[classical_persistence]
+pub const MAX_ARRAY_LENGTH_FOR_ITERATOR: usize = 1 << (usize::BITS as usize - 3);
