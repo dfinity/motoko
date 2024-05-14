@@ -6047,14 +6047,17 @@ module RTS_Exports = struct
     });
 
     let ic0_stable64_size_fi =
-      if E.mode env = Flags.WASIMode then
+      match E.mode env with
+      | Flags.ICMode | Flags.RefMode ->
+        E.reuse_import env "ic0" "stable64_size"
+      | Flags.WASIMode | Flags.WasmMode ->
         E.add_fun env "ic0_stable64_size" (
-            Func.of_body env [] [I64Type]
-              (fun env ->
-                E.trap_with env "ic0_stable64_size is not supposed to be called in WASI"
-              )
+          Func.of_body env [] [I64Type]
+            (fun env ->
+              when_stable_memory_required_else_trap env (fun () ->
+                StableMem.stable64_size env))
           )
-      else E.reuse_import env "ic0" "stable64_size" in
+    in
     E.add_export env (nr {
       name = Lib.Utf8.decode "ic0_stable64_size";
       edesc = nr (FuncExport (nr ic0_stable64_size_fi))
