@@ -1,5 +1,4 @@
-position: 3
-label: 'Canister maintenance'
+position: 5
+label: 'Motoko tools'
 collapsible: true # make the category collapsible
 collapsed: true 
-

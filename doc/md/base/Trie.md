@@ -1,15 +1,8 @@
 # Trie
 Functional key-value hash maps.
 
-Functional maps (and sets) whose representation is "canonical", and
-independent of operation history (unlike other popular search trees).
-
-The representation we use here comes from Section 6 of ["Incremental computation via function caching", Pugh & Teitelbaum](https://dl.acm.org/citation.cfm?id=75305).
-
-## <a name="overview"></a>User's overview
-
-This module provides an applicative (functional) hash map.
-Notably, each `put` produces a **new trie _and value being replaced, if any_**.
+This module provides an applicative (functional) hash map, called a trie.
+Notably, each operation produces a new trie rather than destructively updating an existing trie.
 
 Those looking for a more familiar (imperative,
 object-oriented) hash map should consider `TrieMap` or `HashMap` instead.
@@ -22,6 +15,12 @@ The basic `Trie` operations consist of:
 
 The `put`, `get` and `remove` operations work over `Key` records,
 which group the hash of the key with its non-hash key value.
+
+LIMITATIONS: This data structure allows at most MAX_LEAF_SIZE=8 hash collisions:
+attempts to insert more than MAX_LEAF_SIZE keys (whether directly via `put` or indirectly via other operations) with the same hash value will trap.
+
+CREDITS: Based on Section 6 of ["Incremental computation via function caching", Pugh & Teitelbaum](https://dl.acm.org/citation.cfm?id=75305).
+
 
 Example:
 ```motoko
@@ -122,8 +121,8 @@ type Branch<K, V> = { size : Nat; left : Trie<K, V>; right : Trie<K, V> }
 ```
 
 Branch nodes of the trie discriminate on a bit position of the keys' hashes.
-we never store this bitpos; rather,
-we enforce a style where this position is always known from context.
+This bit position is not stored in the branch but determined from
+the context of the branch.
 
 ## Type `AssocList`
 ``` motoko no-repl

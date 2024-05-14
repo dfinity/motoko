@@ -15,7 +15,7 @@ The type [`Nat`](../base/Nat.md) is a subtype of [`Int`](../base/Int.md), so you
 
 Motoko also provides bounded, or fixed-size integers and naturals, using a suffix to indicate the size of the type, in bits.
 
-Thus [`Int8`](../base/Int8.md), [`Int16`](../base/Int16.md) and [`Int32`](../base/Int32.md) and [[`Int64`](../base/Int64.md)](../base/Int64.md) are 8-, 16-, 32- and 64-bit integer types, while [`Nat8`](../base/Nat8.md), [`Nat16`](../base/Nat16.md), [`Nat32`](../base/Nat32.md), and [`Nat64`](../base/Nat64.md) are 8-, 16-, 32- and 64-bit natural types.
+Thus [`Int8`](../base/Int8.md), [`Int16`](../base/Int16.md) and [`Int32`](../base/Int32.md) and [`Int64`](../base/Int64.md) are 8-, 16-, 32- and 64-bit integer types, while [`Nat8`](../base/Nat8.md), [`Nat16`](../base/Nat16.md), [`Nat32`](../base/Nat32.md), and [`Nat64`](../base/Nat64.md) are 8-, 16-, 32- and 64-bit natural types.
 
 An arithmetic operation on a value of a fixed-size type will trap if its result exceeds the bounds of the fixed-size type, either due to overflow or underflow.
 For example, `255 : Nat8 + 3` traps, because 258 is too large for a [`Nat8`](../base/Nat8.md).

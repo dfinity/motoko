@@ -5962,6 +5962,20 @@ module RTS_Exports = struct
       edesc = nr (FuncExport (nr ic0_stable64_read_fi))
     });
 
+    let ic0_stable64_size_fi =
+      if E.mode env = Flags.WASIMode then
+        E.add_fun env "ic0_stable64_size" (
+            Func.of_body env [] [I64Type]
+              (fun env ->
+                E.trap_with env "ic0_stable64_size is not supposed to be called in WASI"
+              )
+          )
+      else E.reuse_import env "ic0" "stable64_size" in
+    E.add_export env (nr {
+      name = Lib.Utf8.decode "ic0_stable64_size";
+      edesc = nr (FuncExport (nr ic0_stable64_size_fi))
+    });
+
     let moc_stable_mem_grow_fi =
       E.add_fun env "moc_stable_mem_grow" (
         Func.of_body env ["newPages", I64Type] [I64Type]
