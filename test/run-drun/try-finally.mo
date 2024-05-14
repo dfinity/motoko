@@ -22,7 +22,7 @@ actor A {
         catch _ { debugPrint "CAUGHT1" }
     };
 */
-/*
+
     func t2() : async () {
         try {
             debugPrint "IN2";
@@ -31,7 +31,7 @@ actor A {
         else catch _ { debugPrint "CAUGHT2" }
         case { debugPrint "OUT2" };
     };
-
+/*
     //TODO: func t2t() : async Int { ... }
 
     func t3() : async () {
@@ -70,8 +70,10 @@ actor A {
             try {
                 debugPrint "InnerIN6";
                 await m();
+                debugPrint "InnerLIVE6";
                 break out;
-            } case { debugPrint "innerOUT6" };
+                debugPrint "InnerDEAD6";
+            } case { debugPrint "InnerOUT6" };
             debugPrint "DEAD6";
         }
         case { debugPrint "OUT6" };
@@ -83,15 +85,14 @@ actor A {
     public func go() : async () {
         /*ignore*/ await t0();
         //await t1();
-        /*await t2();
-        await t3();
+        await t2();
+        /*await t3();
         await t4();*/
         await t5();
         await t6();
     };
 };
 
-//XSKIP comp
 //SKIP ic-ref-run
 
 A.go(); //OR-CALL ingress go "DIDL\x00\x00"

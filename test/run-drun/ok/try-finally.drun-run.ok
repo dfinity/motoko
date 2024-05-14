@@ -1,0 +1,19 @@
+ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
+ingress Completed: Reply: 0x4449444c0000
+debug.print: IN
+debug.print: OUT
+debug.print: IN2
+debug.print: CAUGHT2
+debug.print: OUT2
+debug.print: BEFORE5
+debug.print: IN5
+debug.print: OUT5
+debug.print: AFTER5
+debug.print: BEFORE6
+debug.print: IN6
+debug.print: InnerIN6
+debug.print: InnerLIVE6
+debug.print: InnerOUT6
+debug.print: OUT6
+debug.print: AFTER6
+ingress Completed: Reply: 0x4449444c0000
