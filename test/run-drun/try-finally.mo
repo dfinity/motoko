@@ -31,17 +31,18 @@ actor A {
         else catch _ { debugPrint "CAUGHT2" }
         case { debugPrint "OUT2" };
     };
-/*
+
     //TODO: func t2t() : async Int { ... }
 
     func t3() : async () {
         try {
             debugPrint "IN3";
+            await m();
             return;
         }
         case { debugPrint "OUT3" };
     };
-
+/*
     // check that finally not running twice
     func t4() : async () {
         try {
@@ -86,8 +87,8 @@ actor A {
         /*ignore*/ await t0();
         //await t1();
         await t2();
-        /*await t3();
-        await t4();*/
+        await t3();
+        /*await t4();*/
         await t5();
         await t6();
     };

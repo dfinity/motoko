@@ -1,7 +1,10 @@
 --- try-finally.run
 +++ try-finally.run-ir
-@@ -5,12 +5,9 @@
+@@ -4,15 +4,11 @@
+ CAUGHT2
  OUT2
+ IN3
+-OUT3
  BEFORE5
  IN5
 -OUT5
