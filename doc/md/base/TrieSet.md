@@ -4,6 +4,10 @@ Functional set
 Sets are partial maps from element type to unit type,
 i.e., the partial map represents the set with its domain.
 
+LIMITATIONS: This data structure allows at most MAX_LEAF_SIZE=8 hash collisions:
+attempts to insert more than MAX_LEAF_SIZE elements (whether directly via `put` or indirectly via other operations) with the same hash value will trap.
+This limitation is inherited from the underlying `Trie` data structure.
+
 ## Type `Hash`
 ``` motoko no-repl
 type Hash = Hash.Hash

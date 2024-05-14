@@ -1,7 +1,7 @@
 (*
 This module originated as a copy of interpreter/syntax/values.ml in the
 reference implementation.
-With adjustments from memory 64.
+No adjustments.
 *)
 
 open Types

@@ -15,6 +15,7 @@ use crate::{
     region::{
         VERSION_GRAPH_COPY_NO_REGIONS, VERSION_GRAPH_COPY_REGIONS, VERSION_STABLE_HEAP_NO_REGIONS,
         VERSION_STABLE_HEAP_REGIONS,
+        LEGACY_VERSION_NO_STABLE_MEMORY, LEGACY_VERSION_REGIONS, LEGACY_VERSION_SOME_STABLE_MEMORY,
     },
     rts_trap_with,
     stable_mem::read_persistence_version,
@@ -23,12 +24,10 @@ use crate::{
 
 use self::compatibility::TypeDescriptor;
 
-#[cfg(feature = "ic")]
 const FINGERPRINT: [char; 32] = [
     'M', 'O', 'T', 'O', 'K', 'O', ' ', 'O', 'R', 'T', 'H', 'O', 'G', 'O', 'N', 'A', 'L', ' ', 'P',
     'E', 'R', 'S', 'I', 'S', 'T', 'E', 'N', 'C', 'E', ' ', '6', '4',
 ];
-#[cfg(feature = "ic")]
 const VERSION: usize = 1;
 /// The `Value` representation in the default-initialized Wasm memory.
 /// The GC ignores this value since it is a scalar representation.
@@ -70,7 +69,6 @@ impl PersistentMetadata {
         METADATA_ADDRESS as *mut Self
     }
 
-    #[cfg(feature = "ic")]
     unsafe fn is_initialized(self: *mut Self) -> bool {
         // Wasm memory is zero-initialized according to the Wasm specification.
         let initialized = (*self).version != 0;
@@ -83,7 +81,6 @@ impl PersistentMetadata {
         initialized
     }
 
-    #[cfg(feature = "ic")]
     unsafe fn check_version(self: *const Self) {
         if (*self).version != VERSION {
             panic!(
@@ -94,7 +91,6 @@ impl PersistentMetadata {
         }
     }
 
-    #[cfg(feature = "ic")]
     unsafe fn initialize<M: Memory>(self: *mut Self, mem: &mut M) {
         use crate::gc::incremental::IncrementalGC;
         (*self).fingerprint = FINGERPRINT;
@@ -113,7 +109,7 @@ impl PersistentMetadata {
 pub unsafe fn initialize_memory<M: Memory>(mem: &mut M) {
     mem.grow_memory(HEAP_START);
     let metadata = PersistentMetadata::get();
-    if metadata.is_initialized() && use_enhanced_orthogonal_persistence() {
+    if use_enhanced_orthogonal_persistence() && metadata.is_initialized() {
         metadata.check_version();
     } else {
         metadata.initialize(mem);
@@ -123,7 +119,10 @@ pub unsafe fn initialize_memory<M: Memory>(mem: &mut M) {
 unsafe fn use_enhanced_orthogonal_persistence() -> bool {
     match read_persistence_version() {
         VERSION_STABLE_HEAP_NO_REGIONS | VERSION_STABLE_HEAP_REGIONS => true,
-        VERSION_GRAPH_COPY_NO_REGIONS | VERSION_GRAPH_COPY_REGIONS => false,
+        VERSION_GRAPH_COPY_NO_REGIONS | VERSION_GRAPH_COPY_REGIONS |
+        LEGACY_VERSION_NO_STABLE_MEMORY
+        | LEGACY_VERSION_SOME_STABLE_MEMORY
+        | LEGACY_VERSION_REGIONS => false,
         _ => rts_trap_with("Unsupported persistence version"),
     }
 }
@@ -166,7 +165,6 @@ pub unsafe fn free_stable_actor<M: Memory>(mem: &mut M) {
     write_with_barrier(mem, location, DEFAULT_VALUE);
 }
 
-#[cfg(feature = "ic")]
 /// GC root pointer required for GC marking and updating.
 pub(crate) unsafe fn stable_actor_location() -> *mut Value {
     let metadata = PersistentMetadata::get();
@@ -176,7 +174,6 @@ pub(crate) unsafe fn stable_actor_location() -> *mut Value {
 /// Determine whether an object contains a specific field.
 /// Used for upgrading to an actor with additional stable fields.
 #[no_mangle]
-#[cfg(feature = "ic")]
 pub unsafe extern "C" fn contains_field(actor: Value, field_hash: usize) -> bool {
     use crate::constants::WORD_SIZE;
 
@@ -217,27 +214,23 @@ pub unsafe fn register_stable_type<M: Memory>(
     (*metadata).stable_type.assign(mem, &new_type);
 }
 
-#[cfg(feature = "ic")]
 pub(crate) unsafe fn stable_type_descriptor() -> &'static mut TypeDescriptor {
     let metadata = PersistentMetadata::get();
     &mut (*metadata).stable_type
 }
 
-#[cfg(feature = "ic")]
 pub(crate) unsafe fn get_incremental_gc_state() -> &'static mut State {
     let metadata = PersistentMetadata::get();
     &mut (*metadata).incremental_gc_state
 }
 
 #[no_mangle]
-#[cfg(feature = "ic")]
 pub unsafe extern "C" fn get_upgrade_instructions() -> u64 {
     let metadata = PersistentMetadata::get();
     (*metadata).upgrade_instructions
 }
 
 #[no_mangle]
-#[cfg(feature = "ic")]
 pub unsafe extern "C" fn set_upgrade_instructions(instructions: u64) {
     let metadata = PersistentMetadata::get();
     (*metadata).upgrade_instructions = instructions;
@@ -246,7 +239,6 @@ pub unsafe extern "C" fn set_upgrade_instructions(instructions: u64) {
 /// Only used in WASI mode: Get a static temporary print buffer that resides in 32-bit address range.
 /// This buffer has a fix length of 512 bytes, and resides at the end of the metadata reserve.
 #[no_mangle]
-#[cfg(feature = "ic")]
 pub unsafe extern "C" fn buffer_in_32_bit_range() -> usize {
     use crate::types::size_of;
 
