@@ -6,8 +6,11 @@ use crate::types::{size_of, Blob, Bytes, Region, Value, TAG_REGION};
 // Versions
 // Should agree with constants in StableMem in compile.ml
 // Version 0 to 2 are legacy.
-const VERSION_STABLE_HEAP_NO_REGIONS: u32 = 3;
-const VERSION_STABLE_HEAP_REGIONS: u32 = 4;
+pub const LEGACY_VERSION_NO_STABLE_MEMORY: u32 = 0; // Never manifests in serialized form
+pub const LEGACY_VERSION_SOME_STABLE_MEMORY: u32 = 1;
+pub const LEGACY_VERSION_REGIONS: u32 = 2;
+pub const VERSION_STABLE_HEAP_NO_REGIONS: u32 = 3;
+pub const VERSION_STABLE_HEAP_REGIONS: u32 = 4;
 
 const _: () = assert!(meta_data::size::PAGES_IN_BLOCK <= u8::MAX as u32);
 const _: () = assert!(meta_data::max::BLOCKS <= u16::MAX);

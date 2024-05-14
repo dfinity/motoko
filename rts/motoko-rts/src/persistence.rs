@@ -12,7 +12,12 @@ use crate::{
     gc::incremental::State,
     memory::Memory,
     persistence::compatibility::memory_compatible,
+    region::{
+        LEGACY_VERSION_NO_STABLE_MEMORY, LEGACY_VERSION_REGIONS, LEGACY_VERSION_SOME_STABLE_MEMORY,
+        VERSION_STABLE_HEAP_NO_REGIONS, VERSION_STABLE_HEAP_REGIONS,
+    },
     rts_trap_with,
+    stable_mem::read_persistence_version,
     types::{Value, TAG_BLOB},
 };
 
@@ -108,10 +113,21 @@ impl PersistentMetadata {
 pub unsafe fn initialize_memory<M: Memory>(mem: &mut M) {
     mem.grow_memory(HEAP_START as u64);
     let metadata = PersistentMetadata::get();
-    if metadata.is_initialized() {
+    if use_enhanced_orthogonal_persistence() && metadata.is_initialized() {
         metadata.check_version();
     } else {
         metadata.initialize(mem);
+    }
+}
+
+#[cfg(feature = "ic")]
+unsafe fn use_enhanced_orthogonal_persistence() -> bool {
+    match read_persistence_version() {
+        VERSION_STABLE_HEAP_NO_REGIONS | VERSION_STABLE_HEAP_REGIONS => true,
+        LEGACY_VERSION_NO_STABLE_MEMORY
+        | LEGACY_VERSION_SOME_STABLE_MEMORY
+        | LEGACY_VERSION_REGIONS => false,
+        _ => rts_trap_with("Unsupported persistence version"),
     }
 }
 
