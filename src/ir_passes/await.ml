@@ -395,13 +395,11 @@ and c_exp' context exp k =
         }] in
       let throw = fresh_err_cont (answerT (typ_of_var k)) in
       let lab n = function
-        | Label -> failwith "Label"
-        | Cont l ->
-          Cont (precont l exp2)
-
+        | Cont l -> Cont (precont l exp2)
+        | Label -> assert false
       in
-      let context'' = LabelEnv.mapi (function | Return | Throw -> fun c -> c | Named n -> lab n) context in
-      let context' = LabelEnv.add Throw (Cont (ContVar throw)) context'' in
+      let context' = LabelEnv.mapi (function | Return | Throw -> fun c -> c | Named n -> lab n) context in
+      let context'' = LabelEnv.add Throw (Cont (ContVar throw)) context' in
       blockE
         [ let e = fresh_var "e" T.catch in
           funcD throw e {
@@ -410,7 +408,7 @@ and c_exp' context exp k =
             note = Note.{ def with typ = typ_cases cases'; eff = T.Await; (* shouldn't matter *) }
           }
         ]
-        (c_exp context' exp1 (ContVar k))
+        (c_exp context'' exp1 (ContVar k))
     ))
   | LoopE exp1 ->
     c_loop context k exp1
