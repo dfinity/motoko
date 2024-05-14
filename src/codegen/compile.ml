@@ -6062,8 +6062,12 @@ module RTS_Exports = struct
         E.add_fun env "ic0_stable64_size" (
           Func.of_body env [] [I64Type]
             (fun env ->
-              when_stable_memory_required_else_trap env (fun () ->
-                StableMem.stable64_size env))
+              if E.requires_stable_memory env then
+                StableMem.stable64_size env
+              else
+                (* The RTS also checks the persistence mode on Wasi without stable memory support *)
+                compile_const_64 0L
+            )
           )
     in
     E.add_export env (nr {
