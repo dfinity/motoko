@@ -484,14 +484,14 @@ pub(crate) unsafe fn region0_get_ptr_loc() -> *mut Value {
 #[classical_persistence]
 unsafe fn migrate_on_new_region<M: Memory>(mem: &mut M) {
     match crate::stable_mem::get_version() {
-        VERSION_NO_STABLE_MEMORY => {
+        LEGACY_VERSION_NO_STABLE_MEMORY => {
             assert_eq!(crate::stable_mem::size(), 0);
             region_migration_from_no_stable_memory(mem);
         }
-        VERSION_SOME_STABLE_MEMORY => {
+        LEGACY_VERSION_SOME_STABLE_MEMORY => {
             region_migration_from_some_stable_memory(mem);
         }
-        VERSION_REGIONS => {}
+        LEGACY_VERSION_REGIONS => {}
         _ => {
             assert!(false);
         }
@@ -596,7 +596,7 @@ fn upgrade_version_to_regions() {
             _ => unreachable!(),
         }
     } else {
-        VERSION_REGIONS
+        LEGACY_VERSION_REGIONS
     };
     crate::stable_mem::set_version(new_version);
 }
@@ -611,7 +611,7 @@ pub(crate) unsafe fn region_migration_from_no_stable_memory<M: Memory>(mem: &mut
                 || get_version() == VERSION_GRAPH_COPY_NO_REGIONS
         );
     } else {
-        assert!(get_version() == VERSION_NO_STABLE_MEMORY);
+        assert!(get_version() == LEGACY_VERSION_NO_STABLE_MEMORY);
     }
 
     assert_eq!(size(), 0);
@@ -826,7 +826,7 @@ pub(crate) unsafe fn region_migration_from_regions_plus<M: Memory>(mem: &mut M) 
 #[ic_mem_fn(ic_only)]
 pub(crate) unsafe fn region_init<M: Memory>(mem: &mut M, use_stable_regions: usize) {
     match crate::stable_mem::get_version() {
-        VERSION_NO_STABLE_MEMORY => {
+        LEGACY_VERSION_NO_STABLE_MEMORY => {
             assert!(crate::stable_mem::size() == 0);
             if use_stable_regions != 0 {
                 region_migration_from_no_stable_memory(mem);
@@ -834,7 +834,7 @@ pub(crate) unsafe fn region_init<M: Memory>(mem: &mut M, use_stable_regions: usi
                 debug_assert!(BLOCK_BASE == meta_data::offset::BASE_LOW);
             };
         }
-        VERSION_SOME_STABLE_MEMORY => {
+        LEGACY_VERSION_SOME_STABLE_MEMORY => {
             assert!(crate::stable_mem::size() > 0);
             if use_stable_regions != 0 {
                 region_migration_from_some_stable_memory(mem);

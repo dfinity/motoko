@@ -67,6 +67,7 @@ pub fn wasm_memory_grow(pages: usize) -> usize {
 //  For use by queries and upgrade calls. The reserve may vary depending on the GC and the phase of the GC.
 unsafe fn grow_memory(ptr: u64, memory_reserve: usize) {
     const LAST_PAGE_LIMIT: usize = usize::MAX - WASM_PAGE_SIZE.as_usize() + 1;
+    debug_assert!(memory_reserve as u64 <= MAXIMUM_MEMORY_SIZE.0);
     let limit = if keep_memory_reserve() {
         // Spare a memory reserve during update and initialization calls for use by queries and upgrades.
         MAXIMUM_MEMORY_SIZE.0 - memory_reserve as u64

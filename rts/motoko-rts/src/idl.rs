@@ -3,7 +3,6 @@
 use crate::bitrel::BitRel;
 use crate::buf::{read_byte, read_word, skip_leb128, Buf};
 use crate::idl_trap_with;
-use crate::leb128::{leb128_decode, sleb128_decode};
 
 use crate::memory::{alloc_blob, Memory};
 use crate::types::Words;
