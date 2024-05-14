@@ -423,22 +423,19 @@ and c_exp' context exp k =
     begin
       match LabelEnv.find_opt (Named id) context with
       | Some (Cont k') -> c_exp context exp1 k'
-      | Some Label -> assert false
-      | None -> assert false
+      | _ -> assert false
     end
   | PrimE (RetPrim, [exp1]) ->
     begin
       match LabelEnv.find_opt Return context with
       | Some (Cont k') -> c_exp context exp1 k'
-      | Some Label -> assert false
-      | None -> assert false
+      | _ -> assert false
     end
   | PrimE (ThrowPrim, [exp1]) ->
     begin
       match LabelEnv.find_opt Throw context with
       | Some (Cont k') -> c_exp context exp1 k'
-      | Some Label
-      | None -> assert false
+      | _ -> assert false
     end
   | AsyncE (T.Cmp, tb, exp1, typ1) ->
     assert false (* must have effect T.Triv, handled by first case *)
@@ -452,8 +449,7 @@ and c_exp' context exp k =
     in
     let r = match LabelEnv.find_opt Throw context with
       | Some (Cont r) -> r
-      | Some Label
-      | None -> assert false
+      | _ -> assert false
     in
     let cps_async =
       cps_asyncE T.Fut typ1 (typ exp1)
@@ -469,8 +465,7 @@ and c_exp' context exp k =
   | PrimE (AwaitPrim s, [exp1]) ->
     let r = match LabelEnv.find_opt Throw context with
       | Some (Cont r) -> r
-      | Some Label
-      | None -> assert false
+      | _ -> assert false
     in
     letcont r (fun r ->
     letcont k (fun k ->
@@ -491,8 +486,7 @@ and c_exp' context exp k =
   | PrimE (p, exps) when is_async_call p exps ->
     let r = match LabelEnv.find_opt Throw context with
       | Some (Cont r) -> r
-      | Some Label
-      | None -> assert false
+      | _ -> assert false
     in
     let k' = meta (typ exp)
       (fun v ->
