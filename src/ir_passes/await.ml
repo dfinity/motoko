@@ -395,11 +395,11 @@ and c_exp' context exp k =
              note = ()
         }] in
       let throw = fresh_err_cont (answerT (typ_of_var k)) in
-      let lab n = function
-        | Cont l -> Cont (precont l exp2)
+      let lab = function
+        | Cont k -> Cont (precont k exp2)
         | Label -> assert false
       in
-      let context' = LabelEnv.mapi (function | Return -> lab "" | Throw -> fun c -> c | Named n -> lab n) context in
+      let context' = LabelEnv.mapi (function | Return | Named _ -> lab | Throw -> fun c -> c) context in
       let context'' = LabelEnv.add Throw (Cont (ContVar throw)) context' in
       blockE
         [ let e = fresh_var "e" T.catch in
