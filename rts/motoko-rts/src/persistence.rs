@@ -13,9 +13,9 @@ use crate::{
     memory::Memory,
     persistence::compatibility::memory_compatible,
     region::{
+        LEGACY_VERSION_NO_STABLE_MEMORY, LEGACY_VERSION_REGIONS, LEGACY_VERSION_SOME_STABLE_MEMORY,
         VERSION_GRAPH_COPY_NO_REGIONS, VERSION_GRAPH_COPY_REGIONS, VERSION_STABLE_HEAP_NO_REGIONS,
         VERSION_STABLE_HEAP_REGIONS,
-        LEGACY_VERSION_NO_STABLE_MEMORY, LEGACY_VERSION_REGIONS, LEGACY_VERSION_SOME_STABLE_MEMORY,
     },
     rts_trap_with,
     stable_mem::read_persistence_version,
@@ -119,8 +119,9 @@ pub unsafe fn initialize_memory<M: Memory>(mem: &mut M) {
 unsafe fn use_enhanced_orthogonal_persistence() -> bool {
     match read_persistence_version() {
         VERSION_STABLE_HEAP_NO_REGIONS | VERSION_STABLE_HEAP_REGIONS => true,
-        VERSION_GRAPH_COPY_NO_REGIONS | VERSION_GRAPH_COPY_REGIONS |
-        LEGACY_VERSION_NO_STABLE_MEMORY
+        VERSION_GRAPH_COPY_NO_REGIONS
+        | VERSION_GRAPH_COPY_REGIONS
+        | LEGACY_VERSION_NO_STABLE_MEMORY
         | LEGACY_VERSION_SOME_STABLE_MEMORY
         | LEGACY_VERSION_REGIONS => false,
         _ => rts_trap_with("Unsupported persistence version"),
