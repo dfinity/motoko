@@ -41,7 +41,7 @@ Consider the following actor declaration:
 
 The `Counter` actor declares one field and three public, shared functions:
 
--   Fhe field `count` is mutable, initialized to zero and implicitly `private`.
+-   The field `count` is mutable, initialized to zero and implicitly `private`.
 
 -   Function `inc()` asynchronously increments the counter and returns a future of type `async ()` for synchronization.
 
