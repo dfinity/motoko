@@ -39,15 +39,16 @@ let letcont k scope =
 
 (* pre-compose a continuation with a call to a `finally`-thunk *)
 let precont k thunk =
-    match k with
-    | ContVar k' ->
-      let dom = match typ_of_var k' with
-        | T.(Func (Local, Returns, [], [], _)) -> T.unit
-        | T.(Func (Local, Returns, [], [dom], _)) -> dom
-        | _ -> assert false in
-      MetaCont (dom, fun v -> blockE [expD (thunk -*- unitE ())] (varE k' -*- varE v))
-    | MetaCont (typ0, cont) ->
-      MetaCont (typ0, fun v -> blockE [expD (thunk -*- unitE ())] (cont v))
+  let finally = blockE [expD (thunk -*- unitE ())] in
+  match k with
+  | ContVar k' ->
+     let typ = match typ_of_var k' with
+       | T.(Func (Local, Returns, [], [], _)) -> T.unit
+       | T.(Func (Local, Returns, [], [typ], _)) -> typ
+       | _ -> assert false in
+    MetaCont (typ, fun v -> finally (varE k' -*- varE v))
+  | MetaCont (typ, cont) ->
+    MetaCont (typ, fun v -> finally (cont v))
 
 (* Named labels for break, special labels for return and throw *)
 type label = Return | Throw | Named of string
