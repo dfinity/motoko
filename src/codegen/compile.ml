@@ -7185,6 +7185,39 @@ module Serialization = struct
         G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
         G.i (Store {ty = I32Type; align = 0; offset = 0L; sz = None}) in
 
+      (* See comment on 64-bit destabilization on Note [mutable stable values] *)
+      let pointer_compression_shift = 3L in (* log2(word_size), 3 unused lower bits with 64-bit alignment *)
+      
+      let write_compressed_pointer env =
+        let (set_pointer, get_pointer) = new_local env "pointer" in
+        compile_add_const ptr_unskew ^^
+        compile_shrU_const pointer_compression_shift ^^
+        compile_add_const ptr_skew ^^
+        set_pointer ^^ get_pointer ^^
+        compile_unboxed_const 0xffff_ffffL ^^
+        compile_comparison I64Op.LeU ^^
+        E.else_trap_with env "Pointer cannot be compressed to 32 bit" ^^  
+        get_pointer ^^
+        store_word32
+      in
+
+      let read_compressed_pointer env get_buf =
+        let (set_pointer, get_pointer) = new_local env "pointer" in
+        ReadBuf.read_word32 env get_buf ^^
+        set_pointer ^^ get_pointer ^^
+        compile_eq_const 0L ^^
+        E.if1 I64Type
+          begin
+            get_pointer
+          end
+          begin
+            get_pointer ^^
+            compile_add_const ptr_unskew ^^
+            compile_shl_const pointer_compression_shift ^^
+            compile_add_const ptr_skew
+          end
+      in
+
       let read_alias env t read_thing =
         (* see Note [mutable stable values] *)
         let (set_is_ref, get_is_ref) = new_local env "is_ref" in
@@ -7217,7 +7250,7 @@ module Serialization = struct
         (* Remember location of ptr *)
         ReadBuf.get_ptr get_data_buf ^^ set_memo ^^
         (* Did we decode this already? *)
-        ReadBuf.read_signed_word32 env get_data_buf ^^ 
+        read_compressed_pointer env get_data_buf ^^ 
         set_result ^^
         get_result ^^ compile_eq_const 0L ^^
         E.if0 begin
@@ -7232,12 +7265,12 @@ module Serialization = struct
                We update the memo location here so that loops work
             *)
             get_thing ^^ set_result ^^
-            get_memo ^^ get_result ^^ store_word32 ^^
-            get_memo ^^ compile_add_const 4L ^^ Blob.lit env (typ_hash t) ^^ store_word32
+            get_memo ^^ get_result ^^ write_compressed_pointer env ^^
+            get_memo ^^ compile_add_const 4L ^^ Blob.lit env (typ_hash t) ^^ write_compressed_pointer env
           )
           end begin
           (* Decoded before. Check type hash *)
-          ReadBuf.read_word32 env get_data_buf ^^ Blob.lit env (typ_hash t) ^^
+          read_compressed_pointer env get_data_buf ^^ Blob.lit env (typ_hash t) ^^
           Blob.compare env (Some Operator.EqOp) ^^
           E.else_trap_with env ("Stable memory error: Aliased at wrong type, expected: " ^ typ_hash t)
         end ^^
@@ -7825,10 +7858,6 @@ current buffer position.
 Note [mutable stable values]
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-NOTE: Currently not yet supporting 64-bit addresses during serialization and deserialization, e.g.
-* When the serialization offset is beyond 32 bit
-* When the deserialization target is beyond 32-bit (and sharing is used in the serialization)
-
 We currently use a Candid derivative to serialize stable values. In addition to
 storing sharable data, we can also store mutable data (records with mutable
 fields and mutable arrays), and we need to preserve aliasing.
@@ -7845,6 +7874,10 @@ The values of `alias t` are either
    for one (typically the first) occurrence of v
    The first 0x00000000 is the “memo field”, the second is the “type hash field”.
    Both are scratch spaces for the benefit of the decoder.
+   We use **pointer compression** to store 64-bit pointer that are potentially larger
+   than 4GB but small enough to fit into 32-bit with the compressed representation.
+   Pointers are expected to refer to at most 8GB as the memory representation may grow
+   up to two times by switching from 32-bit to 64-bit.
 
 or
 
@@ -7883,14 +7916,23 @@ To detect and preserve aliasing, these steps are taken:
    needed) to find the content.
 
    If the memo field is still `0x00000000`, this is the first time we read
-   this, so we deserialize to the Motoko heap, and remember the heap position
-   (vanilla pointer) by overwriting the memo field.
-   We also store the type hash of the type we are serializing at in the type
-   hash field.
+   this, so we deserialize to the Motoko heap, and remember the **compressed**
+   64-bit vanilla pointer by overwriting the memo field.
+   We also store the **compressed** pointer to a blob with the type hash of 
+   the type we are serializing at in the type hash field.
 
-   If it is not `0x00000000` then we can simply read the pointer from there,
-   after checking the type hash field to make sure we are aliasing at the same
-   type.
+   NOTE for 64-bit destabilization: The Candid destabilization format historically 
+   only reserves 32-bit space for remembering addresses of aliases. However, when 
+   upgrading from old Candid destabilization to new enhanced orthogonal persistence, 
+   the deserialized objects may occupy larger object space (worst case the double space), 
+   such that pointers may be larger than 4GB. Therefore, we use pointer compression to 
+   safely narrow 64-bit addresses into 32-bit Candid(ish) memo space. The compression 
+   relies on the property that the 3 lower bits of the unskewed pointer are zero due 
+   to the 8-bit (64-bit) object alignment.
+
+   If it is not `0x00000000` then we can simply read the **compressed** pointer 
+   from there, after checking the type hash field to make sure we are aliasing at 
+   the same type.
 
  *)
 

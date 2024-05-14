@@ -1,0 +1,5 @@
+# SKIP ic-ref-run
+install $ID migrate-candid-sharing/old-stabilization.wasm ""
+upgrade $ID migrate-candid-sharing/new-stabilization.mo ""
+upgrade $ID migrate-candid-sharing/new-stabilization.mo ""
+upgrade $ID migrate-stabilization/old-stabilization.wasm ""
