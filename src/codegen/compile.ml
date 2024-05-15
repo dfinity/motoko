@@ -9831,6 +9831,7 @@ let enforce_32_signed_bits env =
   G.i (Binary (Wasm_exts.Values.I64 I64Op.Xor)) ^^
   enforce_32_unsigned_bits env
 
+(* TODO: Combine this with `compile_smallInt_kernel`, to support `Int32`, `Int16`, and `Int8` at once. *)
 let compile_Int32_kernel env name op =
      Func.share_code2 Func.Always env (prim_fun_name Type.Int32 name)
        (("a", I64Type), ("b", I64Type)) [I64Type]
@@ -9843,6 +9844,7 @@ let compile_Int32_kernel env name op =
          enforce_32_signed_bits env ^^
          get_res ^^ compile_shl_const 32L)
 
+(* TODO: Combine this with `compile_smallInt_kernel`, to support `Nat32`, `Nat16`, and `Nat8` at once. *)
 let compile_Nat32_kernel env name op =
      Func.share_code2 Func.Always env (prim_fun_name Type.Nat32 name)
        (("a", I64Type), ("b", I64Type)) [I64Type]
@@ -9856,6 +9858,8 @@ let compile_Nat32_kernel env name op =
          get_res ^^ compile_shl_const 32L)
 
 (* Customisable kernels for 8/16bit arithmetic via 64 bits. *)
+(* TODO: Include the support for 32bit which is now also compact on 64-bit. 
+   Eventually, `compile_Int32_kernel` and `compile_Nat32_kernel` can be removed. *)
 
 (* helper, expects i64 on stack *)
 let enforce_unsigned_bits env n =
