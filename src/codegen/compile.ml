@@ -10080,7 +10080,7 @@ let compile_binop env t op : SR.t * SR.t * G.t =
                 get_exp ^^ compile_unboxed_const 64L ^^
                 compile_comparison I64Op.GeU ^^ then_arithmetic_overflow env ^^
                 signed_dynamics get_n ^^ compile_sub_const (Int64.of_int (Int.sub bits 1)) ^^
-                get_exp ^^ TaggedSmallWord.msb_adjust ty ^^ TaggedSmallWord.lsb_adjust Type.Int32 ^^
+                get_exp ^^
                 G.i (Binary (Wasm_exts.Values.I64 I64Op.Mul)) ^^
                 compile_unboxed_const (Int64.of_int overflow_boundary) ^^
                 compile_comparison I64Op.LtS ^^ then_arithmetic_overflow env ^^
