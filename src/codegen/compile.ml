@@ -10654,7 +10654,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
       let n = List.length ts in
       let name = Printf.sprintf "to_opt_%i_tuple" n in
       let args = Lib.List.table n (fun i -> (Printf.sprintf "arg%i" i, I64Type)) in
-      Func.share_code  Func.Always env name args [I64Type] (fun env getters ->
+      Func.share_code Func.Always env name args [I64Type] (fun env getters ->
         let locals =
           Lib.List.table n (fun i -> List.nth getters i) in
         let rec go ls =
