@@ -25,11 +25,12 @@ method __init__($Self: Ref)
     requires $Perm($Self)
     ensures $Perm($Self)
     ensures $Inv($Self)
-    { 
-      inhale $array_acc(($Self).arr, $int, write);
-      inhale ($size(($Self).arr) == 2);
-      ($loc(($Self).arr, 0)).$int := 1;
-      ($loc(($Self).arr, 1)).$int := 2;
+    { var $t_arr: Array
+      inhale $array_acc($t_arr, $int, write);
+      inhale ($size($t_arr) == 2);
+      ($loc($t_arr, 0)).$int := 1;
+      ($loc($t_arr, 1)).$int := 2;
+      ($Self).arr := $t_arr;
       ($Self).f := 2;
       ($Self).count := 42; 
     }
