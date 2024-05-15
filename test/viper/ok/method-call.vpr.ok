@@ -15,7 +15,7 @@ field $ref: Ref
 field $array: Array
 /* END PRELUDE */
 
-define $Perm($Self) (true)
+define $Perm($Self) ((true && acc(($Self).boolFld,write)))
 define $Inv($Self) (true)
 method __init__($Self: Ref)
     
@@ -23,7 +23,7 @@ method __init__($Self: Ref)
     ensures $Perm($Self)
     ensures $Inv($Self)
     { 
-       
+      ($Self).boolFld := false; 
     }
 method ignoreBool($Self: Ref, _b: Bool)
     
@@ -68,6 +68,21 @@ method ifThenElse($Self: Ref, b: Bool, tru: Int, fls: Int)
            goto $Ret; 
          };
       $Res := idInt($Self, fls);
+      goto $Ret;
+      label $Ret; 
+    }
+field boolFld: Bool
+method testBoolFld($Self: Ref)
+     returns ($Res: Bool)
+    requires $Perm($Self)
+    requires $Inv($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { var $t_boolFld: Bool
+      ($Self).boolFld := (!($Self).boolFld);
+      $t_boolFld := idBool($Self, ($Self).boolFld);
+      ($Self).boolFld := $t_boolFld;
+      $Res := ($Self).boolFld;
       goto $Ret;
       label $Ret; 
     }
