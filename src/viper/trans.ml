@@ -65,6 +65,17 @@ let arrayAccE at lhs field_name perm =
 let prjE at tuple_e ix_e field_name =
   !!! at (CallE ("$prj", [tuple_e; ix_e])), !!! at field_name
 
+let someE at x_e =
+  !!! at (CallE ("Some", [x_e]))
+let noneE at =
+  !!! at (CallE ("None", []))
+let isSomeE at opt_e =
+  !!! at (FldAcc (opt_e, !!! at "isSome"))
+let isNoneE at opt_e =
+  !!! at (FldAcc (opt_e, !!! at "isNone"))
+let fromSomeE at opt_e =
+  !!! at (FldAcc (opt_e, !!! at "some$0"))
+
 let (|:) (x_opt : 'a option) (xs : 'a list) : 'a list =
   match x_opt with
   | None -> xs
@@ -567,6 +578,18 @@ and switch_stmts ctxt at (scrut : M.exp) (cases : M.case list) : seqn' =
 and pat_match ctxt (scrut : M.exp) (p : M.pat) : exp list * (id * T.typ) list * seqn' =
   let (!!) a = !!! (p.at) a in
   match (strip_par_p p).it with
+  | M.LitP lit ->
+    begin match !lit with
+    | M.NullLit -> [isNoneE (p.at) (exp ctxt scrut)], [], ([], [])
+    | _         -> unsupported (p.at) (Arrange.lit !lit)
+    end
+  | M.OptP p' ->
+    let e_scrut = exp ctxt scrut in
+    let cond = isSomeE (p.at) e_scrut in
+    let x, t = unwrap_var_pat p' in
+    let ds = [!!(x, tr_typ t)] in
+    let stmts = [!!(assign_stmt (LValueUninitVar x) (fromSomeE (scrut.at) e_scrut))] in
+    [cond], [(x, t)], (ds, stmts)
   | M.(TupP ps) ->
     let e_scrut = exp ctxt scrut in
     let p_scope = unwrap_tup_vars_pat p in
@@ -682,6 +705,8 @@ and exp ctxt e =
        !!(IntLitE i)
     | M.NatLit i ->
        !!(IntLitE i)
+    | M.NullLit ->
+       noneE (e.at)
     | _ ->
        unsupported e.at (Arrange.exp e)
     end
@@ -717,6 +742,8 @@ and exp ctxt e =
      !!(FldAcc (array_loc ctxt e.at e1 e2 e_t))
   | M.ProjE (e, i) ->
      !!(FldAcc (prjE e.at (exp ctxt e) (intLitE e.at i) (typed_field e_t)))
+  | M.OptE e ->
+     someE (e.at) (exp ctxt e)
   | M.TagE (tag, e) ->
      !!(match e.it with
         | M.TupE es -> CallE (tag.it, List.map (exp ctxt) es)
@@ -750,6 +777,7 @@ and tr_typ' typ =
   | _, T.Prim T.Bool -> BoolT
   | _, T.Array _ -> ArrayT     (* Viper arrays are not parameterised by element type *)
   | _, T.Tup   _ -> TupleT     (* Viper tuples are not parameterised by element type *)
+  | _, T.Opt   t -> OptionT (tr_typ t)
   | T.Con (con, ts), _ -> ConT (!!! Source.no_region (Mo_types.Cons.name con), List.map tr_typ ts)
   | _, t -> unsupported Source.no_region (Mo_types.Arrange_type.typ t)
 
