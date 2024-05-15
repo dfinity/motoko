@@ -10037,8 +10037,7 @@ let compile_binop env t op : SR.t * SR.t * G.t =
               end
               (get_n ^^ TaggedSmallWord.msb_adjust ty) (* n@{0,1} ** (1+exp) == n *)
           end
-          (compile_unboxed_const
-             Int64.(shift_left one (to_int (TaggedSmallWord.shift_of_type ty))))) (* x ** 0 == 1 *)
+          (compile_unboxed_one ^^ TaggedSmallWord.msb_adjust ty)) (* x ** 0 == 1 *)
   | Type.(Prim ((Int8|Int16|Int32) as ty)),         PowOp ->
     Func.share_code2 Func.Always env (prim_fun_name ty "pow")
       (("n", I64Type), ("exp", I64Type)) [I64Type]
@@ -10091,8 +10090,7 @@ let compile_binop env t op : SR.t * SR.t * G.t =
                 get_res ^^ TaggedSmallWord.msb_adjust ty
               end
           end
-          (compile_unboxed_const
-             Int64.(shift_left one (to_int (TaggedSmallWord.shift_of_type ty))))) (* x ** 0 == 1 *)
+          (compile_unboxed_one ^^ TaggedSmallWord.msb_adjust ty)) (* x ** 0 == 1 *)
   | Type.(Prim Int),                          PowOp ->
     let pow = BigNum.compile_unsigned_pow env in
     let (set_n, get_n) = new_local env "n" in
