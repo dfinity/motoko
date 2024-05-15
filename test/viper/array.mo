@@ -3,9 +3,10 @@
 
 actor {
 
+    let immut_arr = [42];
     var arr : [var Int] = [var 1, 2];
     var f : Int = 2;
-    var count : Int = 42; // let is not supported
+    var count : Int = 42;
 
     public func foo(): async Int {
         // declarations
@@ -68,4 +69,9 @@ actor {
     public func len(): async Int {
       return arr.size();
     };
+
+    public func reset(): async Int {
+      arr := [var 0, 0];
+      return 0;
+    }
 }
