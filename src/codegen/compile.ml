@@ -10573,20 +10573,13 @@ and compile_prim_invocation (env : E.t) ae p es at =
       SR.UnboxedFloat64,
       compile_exp_as env ae (SR.UnboxedWord64 Int64) e ^^
       G.i (Convert (Wasm_exts.Values.F64 F64Op.ConvertSI64))
-    | Nat8, Nat16 ->
-      SR.UnboxedWord64 Nat16,
-      compile_exp_as env ae (SR.UnboxedWord64 Nat8) e ^^
-      TaggedSmallWord.lsb_adjust Nat8 ^^
-      TaggedSmallWord.msb_adjust Nat16
-    | Nat16, Nat32 ->
-      SR.UnboxedWord64 Nat32,
-      compile_exp_as env ae (SR.UnboxedWord64 Nat16) e ^^
-      TaggedSmallWord.lsb_adjust Nat16 ^^
-      TaggedSmallWord.msb_adjust Nat32
-    | Nat32, Nat64 ->
-      SR.UnboxedWord64 Nat64,
-      compile_exp_as env ae (SR.UnboxedWord64 Nat32) e ^^
-      TaggedSmallWord.lsb_adjust Nat32
+    | (Nat8 as from_typ), (Nat16 as to_typ)
+    | (Nat16 as from_typ), (Nat32 as to_typ)
+    | (Nat32 as from_typ), (Nat64 as to_typ) ->
+      SR.UnboxedWord64 to_typ,
+      compile_exp_as env ae (SR.UnboxedWord64 from_typ) e ^^
+      TaggedSmallWord.lsb_adjust from_typ ^^
+      TaggedSmallWord.msb_adjust to_typ
     | (Nat16 as from_typ), (Nat8 as to_typ)
     | (Nat32 as from_typ), (Nat16 as to_typ)
     | (Nat64 as from_typ), (Nat32 as to_typ) ->
