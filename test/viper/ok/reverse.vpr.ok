@@ -25,14 +25,15 @@ method __init__($Self: Ref)
     requires $Perm($Self)
     ensures $Perm($Self)
     ensures $Inv($Self)
-    { 
-      inhale $array_acc(($Self).xarray, $int, write);
-      inhale ($size(($Self).xarray) == 5);
-      ($loc(($Self).xarray, 0)).$int := 1;
-      ($loc(($Self).xarray, 1)).$int := 2;
-      ($loc(($Self).xarray, 2)).$int := 3;
-      ($loc(($Self).xarray, 3)).$int := 4;
-      ($loc(($Self).xarray, 4)).$int := 5; 
+    { var $t_xarray: Array
+      inhale $array_acc($t_xarray, $int, write);
+      inhale ($size($t_xarray) == 5);
+      ($loc($t_xarray, 0)).$int := 1;
+      ($loc($t_xarray, 1)).$int := 2;
+      ($loc($t_xarray, 2)).$int := 3;
+      ($loc($t_xarray, 3)).$int := 4;
+      ($loc($t_xarray, 4)).$int := 5;
+      ($Self).xarray := $t_xarray; 
     }
 method reverseArray$Nat($Self: Ref, a: Array)
     
