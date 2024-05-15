@@ -253,22 +253,6 @@ and static_invariants at lhs e =
 
 and dec_field' ctxt d =
   match d.M.dec.it with
-  | M.VarD (x, e) ->
-      let t = e.note.M.note_typ in
-      let fldacc = fun ctxt' -> (self ctxt' e.at, id x) in
-      let lhs = fun ctxt' -> !!! Source.no_region (FldAcc (fldacc ctxt')) in
-      let perms ctxt' at =
-            conjoin ([ accE at (self ctxt' at, id x) ]
-                     @ (access_pred (lhs ctxt') t |: [])
-                     @ static_invariants at (lhs ctxt') e) at in
-      { ctxt with ids = Env.add x.it (Field, t) ctxt.ids },
-      Some perms, (* perm *)
-      Some (fun ctxt' -> (* init *)
-          let at = span x.at e.at in
-          assign_stmts ctxt' at (LValueFld (fldacc ctxt')) e),
-      (fun ctxt' ->
-        (FieldI(id x, tr_typ t),
-        NoInfo))
   (* async functions *)
   | M.(LetD ({it=VarP f;note;_},
              {it=FuncE(x, sp, tp, p, t_opt, sugar,
@@ -284,7 +268,7 @@ and dec_field' ctxt d =
         let ctxt'' = { ctxt'
           with self = Some self_id.it;
                ids = List.fold_left (fun env (id, t) -> Env.add id.it (Local, t) env) ctxt.ids method_args }
-        in (* TODO: add args (and rets?) *)
+        in
         let stmts = stmt ctxt'' e in
         let _, stmts = extract_concurrency stmts in
         let pres, stmts' = List.partition_map (function { it = PreconditionS exp; _ } -> Left exp | s -> Right s) (snd stmts.it) in
@@ -311,7 +295,7 @@ and dec_field' ctxt d =
         let ctxt'' = { ctxt'
           with self = Some self_id.it;
                ids = List.fold_left (fun env (id, t) -> Env.add id.it (Local, t) env) ctxt.ids method_args }
-        in (* TODO: add args (and rets?) *)
+        in
         let stmts = stmt ctxt'' e in
         let _, stmts = extract_concurrency stmts in
         let pres, stmts' = List.partition_map (function { it = PreconditionS exp; _ } -> Left exp | s -> Right s) (snd stmts.it) in
@@ -323,6 +307,25 @@ and dec_field' ctxt d =
         let stmts'' = stmts' @ [!!! Source.no_region (LabelS(!!! (Source.no_region) "$Ret"))] in
         (MethodI(id f, (self_id, !!! Source.no_region RefT)::method_args', ret, pres, posts, Some { stmts with it = fst stmts.it, stmts'' } ),
         PrivateFunction f.it)
+  (* fields *)
+  | M.LetD ({it=M.VarP x;_}, e, None)
+  | M.VarD (x, e) ->
+      let t = e.note.M.note_typ in
+      let fldacc = fun ctxt' -> (self ctxt' e.at, id x) in
+      let lhs = fun ctxt' -> !!! Source.no_region (FldAcc (fldacc ctxt')) in
+      let perms ctxt' at =
+            conjoin ([ accE at (self ctxt' at, id x) ]
+                     @ (access_pred (lhs ctxt') t |: [])
+                     @ static_invariants at (lhs ctxt') e) at in
+      { ctxt with ids = Env.add x.it (Field, t) ctxt.ids },
+      Some perms, (* perm *)
+      Some (fun ctxt' -> (* init *)
+          let at = span x.at e.at in
+          assign_stmts ctxt' at (LValueFld (fldacc ctxt')) e),
+      (fun ctxt' ->
+        (FieldI(id x, tr_typ t),
+        NoInfo))
+  (* invariants *)
   | M.(ExpD { it = AssertE (Invariant, e); at; _ }) ->
       ctxt,
       None, (* no perm *)

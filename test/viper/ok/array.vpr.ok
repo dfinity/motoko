@@ -15,9 +15,14 @@ field $ref: Ref
 field $array: Array
 /* END PRELUDE */
 
-define $Perm($Self) ((((true && (acc(($Self).arr,write) && ($array_acc(
-                                                            ($Self).arr,
-                                                            $int, write) && (
+define $Perm($Self) (((((true && (acc(($Self).immut_arr,write) && ($array_acc(
+                                                                   ($Self).immut_arr,
+                                                                   $int,
+                                                                   wildcard) && (
+  $size(($Self).immut_arr) == 1)))) && (acc(($Self).arr,write) && ($array_acc(
+                                                                   ($Self).arr,
+                                                                   $int,
+                                                                   write) && (
   $size(($Self).arr) == 2)))) && acc(($Self).f,write)) && acc(($Self).count,write)))
 define $Inv($Self) (true)
 method __init__($Self: Ref)
@@ -25,15 +30,23 @@ method __init__($Self: Ref)
     requires $Perm($Self)
     ensures $Perm($Self)
     ensures $Inv($Self)
-    { var $t_arr: Array
-      inhale $array_acc($t_arr, $int, write);
-      inhale ($size($t_arr) == 2);
-      ($loc($t_arr, 0)).$int := 1;
-      ($loc($t_arr, 1)).$int := 2;
-      ($Self).arr := $t_arr;
+    { var $t_immut_arr: Array
+      var $t_arr_2: Array
+      inhale $array_acc($t_immut_arr, $int, write);
+      inhale ($size($t_immut_arr) == 1);
+      ($loc($t_immut_arr, 0)).$int := 42;
+      exhale $array_acc($t_immut_arr, $int, wildcard);
+      inhale $array_acc($t_immut_arr, $int, wildcard);
+      ($Self).immut_arr := $t_immut_arr;
+      inhale $array_acc($t_arr_2, $int, write);
+      inhale ($size($t_arr_2) == 2);
+      ($loc($t_arr_2, 0)).$int := 1;
+      ($loc($t_arr_2, 1)).$int := 2;
+      ($Self).arr := $t_arr_2;
       ($Self).f := 2;
       ($Self).count := 42; 
     }
+field immut_arr: Array
 field arr: Array
 field f: Int
 field count: Int
@@ -183,6 +196,22 @@ method len($Self: Ref)
     ensures $Inv($Self)
     { 
       $Res := $size(($Self).arr);
+      goto $Ret;
+      label $Ret; 
+    }
+method reset($Self: Ref)
+     returns ($Res: Int)
+    requires $Perm($Self)
+    requires $Inv($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { var $t_arr: Array
+      inhale $array_acc($t_arr, $int, write);
+      inhale ($size($t_arr) == 2);
+      ($loc($t_arr, 0)).$int := 0;
+      ($loc($t_arr, 1)).$int := 0;
+      ($Self).arr := $t_arr;
+      $Res := 0;
       goto $Ret;
       label $Ret; 
     }
