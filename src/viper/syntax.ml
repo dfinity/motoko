@@ -101,5 +101,6 @@ and typ' =
   | RefT
   | ArrayT
   | TupleT
+  | OptionT of typ
   | ConT of id * typ list
 

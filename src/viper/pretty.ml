@@ -123,6 +123,7 @@ and pp_typ ppf t =
   | RefT -> pr ppf "Ref"
   | ArrayT -> pr ppf "Array"
   | TupleT -> pr ppf "Tuple"
+  | OptionT t -> fprintf ppf "@[Option[%a]@]" pp_typ t
   | ConT(con, []) -> fprintf ppf "%s" con.it
   | ConT(con, ts) ->
       fprintf ppf "@[%s[%a]@]"
