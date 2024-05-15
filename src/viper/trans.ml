@@ -73,6 +73,18 @@ let (|:) (x_opt : 'a option) (xs : 'a list) : 'a list =
 
 type sort = Field | Local | Method
 
+(* the LHS of an assignment *)
+type lvalue =
+  | LValueVar of id         (* a variable *)
+  | LValueUninitVar of id   (* an uninitialized variable *)
+  | LValueFld of fldacc     (* field access *)
+
+let lvalue_str (lval : lvalue) : string =
+  match lval with
+  | LValueVar x -> x.it
+  | LValueUninitVar x -> x.it
+  | LValueFld fld -> (snd fld).it
+
 module Env = T.Env
 
 type ctxt =
@@ -367,13 +379,17 @@ and dec ctxt d =
      (* TODO: translate e? *)
     { ctxt with ids = Env.add x.it (Local, e.note.M.note_typ) ctxt.ids },
     fun ctxt' ->
-      ([ !!(id x, tr_typ e.note.M.note_typ) ],
-       assign_stmts ctxt' d.at (id x) e)
+      let lval = LValueUninitVar (id x) in
+      let d = !!(id x, tr_typ e.note.M.note_typ) in
+      let ds, stmts = assign_stmts ctxt' d.at lval e in
+      (d :: ds, stmts)
   | M.(LetD ({it=VarP x;_}, e, None)) ->
      { ctxt with ids = Env.add x.it (Local, e.note.M.note_typ) ctxt.ids },
      fun ctxt' ->
-       ([ !!(id x, tr_typ e.note.M.note_typ) ],
-        assign_stmts ctxt' d.at (id x) e)
+        let lval = LValueUninitVar (id x) in
+        let d = !!(id x, tr_typ e.note.M.note_typ) in
+        let ds, stmts = assign_stmts ctxt' d.at lval e in
+       (d :: ds, stmts)
   | M.(ExpD e) -> (* TODO: restrict to e of unit type? *)
      (ctxt,
       fun ctxt' ->
@@ -460,30 +476,16 @@ and stmt ctxt (s : M.exp) : seqn =
      !!([],
         [ !!(WhileS(exp ctxt e, invs''', stmt ctxt s1')) ])
 
-  (* TODO: remove by Motoko->Motoko transformation *)
-  | M.(AssignE({it = VarE x; _}, {it = ArrayE (mut, es); note={note_typ=typ; _}; _})) ->
-     let typ' = tr_typ typ in
-     let temp_id = fresh_id (fresh_id (id x).it) in
-     let lhs = !!(LocalVar (!!temp_id, typ')) in
-     !! ([!!(!!temp_id, typ')],
-         array_alloc s.at ctxt lhs (array_elem_t typ) es
-         @ [!!(VarAssignS (id x, !!(LocalVar (!!temp_id, typ'))))])
-
   | M.(AssignE({it = VarE x; _}, e2)) ->
-     begin match fst (Env.find x.it ctxt.ids) with
-     | Local ->
-        let loc = !!! (x.at) (x.it) in
-        !!([], assign_stmts ctxt s.at loc e2)
-     | Field ->
-       let fld = (self ctxt x.at, id x) in
-       !!([],
-          [ !!(FieldAssignS(fld, exp ctxt e2)) ])
-     | _ ->
-        unsupported s.at (Arrange.exp s)
-     end
+      let lval = (match fst (Env.find x.it ctxt.ids) with
+                 | Local -> LValueVar (!!! (x.at) (x.it))
+                 | Field -> LValueFld (self ctxt x.at, id x)
+                 | _ -> unsupported s.at (Arrange.exp s)
+                 ) in
+      !!(assign_stmts ctxt s.at lval e2)
   | M.(AssignE({it = IdxE (e1, e2);_}, e3)) ->
-     !!([],
-        [!!(FieldAssignS (array_loc ctxt s.at e1 e2 e3.note.M.note_typ, exp ctxt e3))])
+      let lval = LValueFld (array_loc ctxt s.at e1 e2 e3.note.M.note_typ) in
+      !!(assign_stmts ctxt s.at lval e3)
   | M.AssertE (M.Precondition, e) ->
     !!( [],
         [ !!(PreconditionS (exp ctxt e)) ])
@@ -505,26 +507,56 @@ and stmt ctxt (s : M.exp) : seqn =
        let self_var = self ctxt m.at in
        self_var :: call_args ctxt args))])
   | M.RetE e ->
-     !!([],
-        assign_stmts ctxt s.at (!!! (Source.no_region) "$Res") e
-        @ [ !!(GotoS(!!! (Source.no_region) "$Ret")) ])
+      let lval = (LValueUninitVar (!!! (Source.no_region) "$Res")) in
+      let ds, stmts = assign_stmts ctxt s.at lval e in
+      let stmt = !!(GotoS(!!! (Source.no_region) "$Ret")) in
+      !!(ds, stmts @ [stmt])
   | _ ->
      unsupported s.at (Arrange.exp s)
 
-and assign_stmts ctxt at x e =
+(* Translate assignment a:=b or initialization. May create temporary variables
+   if the LHS is a field or if the RHS is an array. *)
+and assign_stmts ctxt at (lval : lvalue) (e : M.exp) : seqn' =
   let (!!) p = !!! at p in
   match e with
-  | M.({it=TupE [];_}) -> []
-  | M.({it=AnnotE (e, _);_}) -> assign_stmts ctxt at x e
+  | M.({it=TupE [];_}) -> [], []
+  | M.({it=AnnotE (e, _);_}) -> assign_stmts ctxt at lval e
   | M.({it = CallE({it = VarE m; _}, inst, args); _}) ->
-    [ !!(MethodCallS ([x], id m,
-          let self_var = self ctxt m.at in
-          self_var :: call_args ctxt args)) ]
+    fld_via_tmp_var lval e.note.M.note_typ (fun x ->
+      let self_var = self ctxt m.at in
+      [], [ !!(MethodCallS ([x], id m, self_var :: call_args ctxt args)) ])
   | M.({it=ArrayE(mut, es); note; _}) ->
+    via_tmp_var lval e.note.M.note_typ (fun x ->
       let t = note.M.note_typ in
       let lhs = !!(LocalVar (x, tr_typ t)) in
-      array_alloc at ctxt lhs (array_elem_t t) es
-  | _ -> [ !!(VarAssignS(x, exp ctxt e)) ]
+      [], array_alloc at ctxt lhs (array_elem_t t) es)
+  | _ ->
+    [], [!!(assign_stmt lval (exp ctxt e))]
+
+and assign_stmt (lval : lvalue) (e : exp) : stmt' =
+  match lval with
+    | LValueVar x       -> VarAssignS(x, e)
+    | LValueUninitVar x -> VarAssignS(x, e)
+    | LValueFld fld     -> FieldAssignS(fld, e)
+
+and fld_via_tmp_var (lval : lvalue) (t : T.typ) (f : id -> seqn') : seqn' =
+  match lval with
+  | LValueVar x       -> f x
+  | LValueUninitVar x -> f x
+  | LValueFld _       -> via_tmp_var lval t f
+
+and via_tmp_var (lval : lvalue) (t : T.typ) (f : id -> seqn') : seqn' =
+  match lval with
+  | LValueUninitVar x -> f x  (* initialization never needs a tmp variable *)
+  | _ ->
+    let (!!) p = !!! Source.no_region p in
+    let tmp_id = !! (fresh_id ("$t_" ^ lvalue_str lval)) in
+    let tmp_typ = tr_typ t in
+    let tmp_e = !! (LocalVar (tmp_id, tmp_typ)) in
+    let d = !! (tmp_id, tmp_typ) in
+    let ds, stmts = f tmp_id in
+    let stmt = !!(assign_stmt lval tmp_e) in
+    d :: ds, stmts @ [stmt]
 
 and call_args ctxt e =
   match e with
@@ -640,6 +672,9 @@ and array_acc at lhs t =
   | T.Mut _-> arrayAccE at lhs (array_field t) FullP
   | _      -> arrayAccE at lhs (array_field t) WildcardP
 
+(* Allocate array on the LHS expression.
+   Note: array_alloc assumes that the array is uninitialized. Assignment to
+   existing arrays must be done via a temporary variable. *)
 and array_alloc at ctxt lhs t es : stmt list =
   let (!!) p = !!! at p in
   let init_array = List.mapi (fun i e ->

@@ -22,4 +22,13 @@ actor MethodCall {
     };
     return idInt(fls);    // method call in return statement
   };
+
+  var boolFld: Bool = false;
+
+  public func testBoolFld() : async Bool {
+    boolFld := not boolFld;       // field assignment
+    boolFld := idBool(boolFld);   // method call in field assignment
+    return boolFld;
+  };
+
 }

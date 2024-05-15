@@ -46,8 +46,8 @@ method foo($Self: Ref)
       var vm_a: Array
       var li_a: Array
       var lm_a: Array
-      var vi_a_2: Array
-      var vm_a_2: Array
+      var $t_vi_a: Array
+      var $t_vm_a: Array
       inhale $array_acc(vi_a, $int, write);
       inhale ($size(vi_a) == 1);
       ($loc(vi_a, 0)).$int := 1;
@@ -69,17 +69,17 @@ method foo($Self: Ref)
       assert (($loc(vm_a, 0)).$int == 1);
       assert (($loc(li_a, 0)).$bool == false);
       assert (($loc(lm_a, 0)).$bool == false);
-      inhale $array_acc(vi_a_2, $int, write);
-      inhale ($size(vi_a_2) == 2);
-      ($loc(vi_a_2, 0)).$int := 1;
-      ($loc(vi_a_2, 1)).$int := 2;
-      exhale $array_acc(vi_a_2, $int, wildcard);
-      inhale $array_acc(vi_a_2, $int, wildcard);
-      vi_a := vi_a_2;
-      inhale $array_acc(vm_a_2, $int, write);
-      inhale ($size(vm_a_2) == 1);
-      ($loc(vm_a_2, 0)).$int := 42;
-      vm_a := vm_a_2;
+      inhale $array_acc($t_vi_a, $int, write);
+      inhale ($size($t_vi_a) == 2);
+      ($loc($t_vi_a, 0)).$int := 1;
+      ($loc($t_vi_a, 1)).$int := 2;
+      exhale $array_acc($t_vi_a, $int, wildcard);
+      inhale $array_acc($t_vi_a, $int, wildcard);
+      vi_a := $t_vi_a;
+      inhale $array_acc($t_vm_a, $int, write);
+      inhale ($size($t_vm_a) == 1);
+      ($loc($t_vm_a, 0)).$int := 42;
+      vm_a := $t_vm_a;
       assert (($loc(vi_a, 0)).$int != 0);
       assert (($loc(vi_a, 0)).$int == 1);
       assert (($loc(vm_a, 0)).$int != 1);
