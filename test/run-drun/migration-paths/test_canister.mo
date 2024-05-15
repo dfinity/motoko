@@ -1,12 +1,18 @@
 import Prim "mo:prim";
 
 actor class TestCanister() {
-   stable var array : [var Nat] = Prim.Array_init<Nat>(16 * 1024 * 1024, 0xfff_ffff);
+   let length = 8 * 1024 * 1024;
+   func initialize() : [var Nat] {
+      let array = Prim.Array_init<Nat>(length, 0xfff_ffff);
+      Prim.debugPrint("array initialized");
+      array;
+   };
 
-   Prim.debugPrint("array1 initialized, length: " # debug_show (array.size()) # ", memory: " # debug_show (Prim.rts_memory_size()));
+   stable var array = initialize();
 
    stable var version = 0;
    version += 1;
 
-   Prim.debugPrint("version: " # debug_show(version));
+   assert (array.size() == length);
+   Prim.debugPrint("version: " # debug_show (version));
 };
