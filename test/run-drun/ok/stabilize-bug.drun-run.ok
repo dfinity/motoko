@@ -1,0 +1,21 @@
+ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
+debug.print: growing stable memory
+ingress Completed: Reply: 0x4449444c0000
+debug.print: 65_536
+ingress Completed: Reply: 0x4449444c0000
+debug.print: PRE-UPGRADE HOOK!
+ingress Err: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: RTS error: Insufficient stable memory
+debug.print: PRE-UPGRADE HOOK!
+debug.print: POST-UPGRADE HOOK!
+ingress Completed: Reply: 0x4449444c0000
+ingress Completed: Reject: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: RTS error: No destabilization needed
+debug.print: 65_536
+ingress Completed: Reply: 0x4449444c0000
+debug.print: PRE-UPGRADE HOOK!
+ingress Err: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: RTS error: Insufficient stable memory
+debug.print: PRE-UPGRADE HOOK!
+debug.print: POST-UPGRADE HOOK!
+ingress Completed: Reply: 0x4449444c0000
+ingress Completed: Reject: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: RTS error: No destabilization needed
+debug.print: 65_536
+ingress Completed: Reply: 0x4449444c0000
