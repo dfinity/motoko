@@ -40,10 +40,7 @@ actor a {
   // Maybe move to their own tests once we have intro forms for blobs
 
   public shared query({caller}) func c9() : async Nat32 {
-    let value = Prim.hashBlob (Prim.blobOfPrincipal caller);
-    Prim.debugPrint(debug_show(value));
-    Prim.debugPrint(debug_show(value + 1));
-    value;
+    Prim.hashBlob (Prim.blobOfPrincipal caller);
   };
 
   public shared query({caller}) func c10() : async Nat {
