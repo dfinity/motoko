@@ -11089,13 +11089,11 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | OtherPrim "popcntInt8", [e] ->
     SR.UnboxedWord64 Type.Int8,
     compile_exp_as env ae (SR.UnboxedWord64 Type.Int8) e ^^
-    compile_shrU_const (TaggedSmallWord.shift_of_type Type.Int8) ^^
     G.i (Unary (Wasm_exts.Values.I64 I64Op.Popcnt)) ^^
     TaggedSmallWord.msb_adjust Type.Int8
   | OtherPrim "popcntInt16", [e] ->
     SR.UnboxedWord64 Type.Int16,
     compile_exp_as env ae (SR.UnboxedWord64 Type.Int16) e ^^
-    compile_shrU_const (TaggedSmallWord.shift_of_type Type.Int16) ^^
     G.i (Unary (Wasm_exts.Values.I64 I64Op.Popcnt)) ^^
     TaggedSmallWord.msb_adjust Type.Int16
   | OtherPrim "popcnt32", [e] ->
@@ -11106,7 +11104,6 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | OtherPrim "popcntInt32", [e] ->
      SR.UnboxedWord64 Type.Int32,
      compile_exp_as env ae (SR.UnboxedWord64 Type.Int32) e ^^
-     compile_shrU_const (TaggedSmallWord.shift_of_type Type.Int32) ^^
      G.i (Unary (Wasm_exts.Values.I64 I64Op.Popcnt))^^
      TaggedSmallWord.msb_adjust Type.Int32
   | OtherPrim "popcnt64", [e] ->
