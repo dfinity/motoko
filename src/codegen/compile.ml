@@ -11065,7 +11065,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     IC.canister_version env
 
   | OtherPrim "crc32Hash", [e] ->
-    SR.Vanilla,
+    SR.UnboxedWord64 Type.Nat32,
     compile_exp_vanilla env ae e ^^
     E.call_import env "rts" "compute_crc32" ^^
     G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
