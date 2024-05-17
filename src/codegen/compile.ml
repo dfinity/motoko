@@ -9707,7 +9707,7 @@ module IncrementalGraphStabilization = struct
           call_async_destabilization env
         end
         begin
-          (* Send static reply of sucessful async destabilzation sequence. *)
+          (* Send static reply of sucessful async destabilization sequence. *)
           IC.static_nullary_reply env
           (* Stay in lifecycle state `InDestabilization`. *)
         end)
