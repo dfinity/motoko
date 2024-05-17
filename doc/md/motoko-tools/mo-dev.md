@@ -28,7 +28,7 @@ Standalone `mo-dev` binaries are also available as [GitHub releases](https://git
 
 ## Usage
 
-You can specify the working directory of your Motoko project, which must contain a `dfx.json` file:
+Specify the working directory of your Motoko project, which must contain a `dfx.json` file:
 
 ```sh
 mo-dev --cwd path/to/dfx_project
@@ -40,7 +40,7 @@ Then, run the dev server for a specific canister:
 mo-dev --canister foo --deploy
 ```
 
-You can deploy all canisters within a `dfx.json` file on a Motoko file change with `--deploy` flag:
+You can deploy all canisters within a `dfx.json` file with `--deploy` flag. Canisters will be deployed when a Motoko file is changed:
 
 ```sh
 mo-dev --deploy
@@ -56,7 +56,7 @@ mo-dev --deploy --argument '()'
 
 ### Testing
 
-`mo-dev` supports running unit tests (`*.test.mo`) on Motoko file change:
+`mo-dev` supports running unit tests (`*.test.mo`). Tests will be run when a Motoko file is changed:
 
 ```sh
 mo-dev --test
