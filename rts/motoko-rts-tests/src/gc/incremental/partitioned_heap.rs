@@ -13,7 +13,7 @@ use motoko_rts::{
         time::BoundedTime,
     },
     memory::{alloc_array, alloc_blob, Memory},
-    types::{Array, Blob, Bytes, Obj, Tag, Value, Words, TAG_ARRAY, TAG_BLOB},
+    types::{Array, Blob, Bytes, Obj, Tag, Value, Words, TAG_ARRAY_M, TAG_BLOB_B},
 };
 
 use crate::{gc::utils::WORD_SIZE, memory::TestMemory};
@@ -396,7 +396,7 @@ impl PartitionedTestHeap {
 
     pub fn allocate_array(&mut self, elements: &[Value]) -> Value {
         unsafe {
-            let array = alloc_array(self, elements.len() as u32);
+            let array = alloc_array(self, TAG_ARRAY_M, elements.len() as u32);
             for index in 0..elements.len() {
                 let raw_array = array.as_array();
                 raw_array.set_scalar(index as u32, elements[index]);
@@ -406,7 +406,7 @@ impl PartitionedTestHeap {
     }
 
     pub fn allocate_blob(&mut self, size: usize) -> Value {
-        unsafe { alloc_blob(self, Bytes(size as u32)) }
+        unsafe { alloc_blob(self, TAG_BLOB_B, Bytes(size as u32)) }
     }
 }
 
