@@ -73,6 +73,49 @@ In general, object types are not stable because they can contain local functions
 
 :::
 
+## Converting non-stable types into stable types
+
+For variables that do not have a stable type, there are two options for making them stable:
+
+1. Use a `stable` module for the type, such as:
+
+  - [StableBuffer](https://github.com/canscale/StableBuffer)
+  - [StableHashMap](https://github.com/canscale/StableHashMap)
+  - [StableRBTree](https://github.com/canscale/StableRBTree)
+
+2. You can convert the variable to another type that is stable, such as the following example that converts a `Buffer` to an `Array`:
+
+```motoko
+let theProjectsBuffer : Buffer.Buffer = Buffer.Buffer(theProjectsNew.size());
+
+for (x in theProjectsNew.vals()) {
+
+theProjectsBuffer.add(x);
+
+};
+
+theProjectsBuffer.add(newProject);
+
+return theProjectsBuffer.toArray();
+```
+
+Here is another example that takes a `HashMap` type and creates a stable `Array`:
+
+```motoko
+private var canisters: HashMap.HashMap<Principal, CanisterId> = HashMap.HashMap<Principal, CanisterId>(10, isPrincipalEqual, Principal.hash);
+
+private stable var upgradeCanisters : [(Principal, CanisterId)] = [];
+
+system func preupgrade() {
+        upgradeCanisters := Iter.toArray(canisters.entries());
+    };
+
+    system func postupgrade() {
+        canisters := HashMap.fromIter<Principal, CanisterId>(upgradeCanisters.vals(), 10, isPrincipalEqual, Principal.hash);
+        upgradeCanisters := [];
+    };
+```
+
 ## Stable type signatures
 
 The collection of stable variable declarations in an actor can be summarized in a stable signature.
@@ -138,6 +181,7 @@ Upgrade safety does not guarantee that the upgrade process will succeed, as it c
 You can check valid Candid subtyping between two services described in `.did` files using the [`didc` tool](https://github.com/dfinity/candid) with argument `check file1.did file2.did`.
 
 :::
+
 
 ## Metadata sections
 
