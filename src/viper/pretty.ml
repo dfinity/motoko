@@ -27,6 +27,11 @@ let rec pp_prog ppf p =
 
 and pp_item ppf i =
   match i.it with
+  | AdtI (name, params, cons) ->
+    fprintf ppf "@[<2>adt %s@;%a@;%a@]"
+      name
+      pp_adt_params params
+      pp_adt_cons cons
   | FieldI (id, typ) ->
     fprintf ppf "@[<2>field %s:@ %a@]"
       id.it
@@ -42,6 +47,29 @@ and pp_item ppf i =
       pp_block_opt bo
   | InvariantI (inv_name, e) -> (* TODO: srcloc mapping *)
     fprintf ppf "@[<2>define %s($Self) (%a)@]" inv_name pp_exp e
+
+and pp_adt_params ppf = function
+  | []     -> ()
+  | params ->
+      fprintf ppf "[%a]"
+        (pp_print_list pp_adt_param ~pp_sep:comma) params
+
+and pp_adt_param ppf param = fprintf ppf "%s" param
+
+and pp_adt_cons ppf cons =
+  fprintf ppf "@[<v 2>{ %a }@]"
+    (pp_print_list pp_adt_con) cons
+
+and pp_adt_con ppf con =
+  fprintf ppf "%s@[(%a)@]"
+    con.con_name
+    (pp_print_list ~pp_sep:comma pp_adt_con_field) (List.mapi (fun i fld -> con, i, fld) con.con_fields)
+
+and pp_adt_con_field ppf (con, i, con_field) =
+  fprintf ppf "%s$%s : %a"
+    con.con_name
+    (string_of_int i)
+    pp_typ con_field
 
 and pp_block_opt ppf = function
   | None -> ()
@@ -95,6 +123,11 @@ and pp_typ ppf t =
   | RefT -> pr ppf "Ref"
   | ArrayT -> pr ppf "Array"
   | TupleT -> pr ppf "Tuple"
+  | ConT(name, []) -> fprintf ppf "%s" name
+  | ConT(name, ts) ->
+      fprintf ppf "@[%s[%a]@]"
+        name
+        (pp_print_list ~pp_sep:comma pp_typ) ts
 
 and pp_exp ppf exp =
   match exp.it with

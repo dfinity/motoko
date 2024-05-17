@@ -256,6 +256,21 @@ and static_invariants at lhs e =
 
 and dec_field' ctxt d =
   match d.M.dec.it with
+  (* type declarations*)
+  | M.(TypD (typ_id, typ_binds, {note = T.Variant cons;_})) ->
+    ctxt, None, None, fun _ ->
+      let adt_param tb = tb.it.M.var.it in
+      let adt_con con = begin
+        { con_name = con.T.lab;
+          con_fields = match con.T.typ with
+            | T.Tup ts -> List.map tr_typ ts
+            | t -> [tr_typ t]
+        }
+      end in
+      AdtI (typ_id.it,
+            List.map adt_param typ_binds,
+            List.map adt_con cons),
+      NoInfo
   (* async functions *)
   | M.(LetD ({it=VarP f;note;_},
              {it=FuncE(x, sp, tp, p, t_opt, sugar,
@@ -633,6 +648,10 @@ and exp ctxt e =
      !!(FldAcc (array_loc ctxt e.at e1 e2 t))
   | M.ProjE (e, i) ->
      !!(FldAcc (prjE e.at (exp ctxt e) (intLitE e.at i) (typed_field t)))
+  | M.TagE (tag, e) ->
+     !!(match e.it with
+        | M.TupE es -> CallE (tag.it, List.map (exp ctxt) es)
+        | _ -> CallE (tag.it, [exp ctxt e]))
   | _ ->
      unsupported e.at (Arrange.exp e)
 
@@ -656,13 +675,14 @@ and tr_typ typ =
     at = Source.no_region;
     note = NoInfo }
 and tr_typ' typ =
-  match T.normalize typ with
-  | T.Prim T.Int -> IntT
-  | T.Prim T.Nat -> IntT    (* Viper has no native support for Nat, so translate to Int *)
-  | T.Prim T.Bool -> BoolT
-  | T.Array _ -> ArrayT     (* Viper arrays are not parameterised by element type *)
-  | T.Tup   _ -> TupleT     (* Viper tuples are not parameterised by element type *)
-  | t -> unsupported Source.no_region (Mo_types.Arrange_type.typ t)
+  match typ, T.normalize typ with
+  | _, T.Prim T.Int -> IntT
+  | _, T.Prim T.Nat -> IntT    (* Viper has no native support for Nat, so translate to Int *)
+  | _, T.Prim T.Bool -> BoolT
+  | _, T.Array _ -> ArrayT     (* Viper arrays are not parameterised by element type *)
+  | _, T.Tup   _ -> TupleT     (* Viper tuples are not parameterised by element type *)
+  | T.Con (con, ts), _ -> ConT (Mo_types.Cons.name con, List.map tr_typ ts)
+  | _, t -> unsupported Source.no_region (Mo_types.Arrange_type.typ t)
 
 and is_mut t =
   match T.normalize t with
