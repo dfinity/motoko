@@ -233,16 +233,23 @@ let full_flavor () : flavor = {
 }
 
 type actor_type = {
+  (* original actor type, including all actor fields *)
   transient_actor_type: Type.typ;
+  (* record of stable actor fields used for persistence,
+     the fields are without mutability distinctions *)
   stable_actor_type: Type.typ
 }
 
 (* Program *)
 
+(* builder of the stable actor record for persistence, after running the preupgrade method *)
+type build_stable_actor = exp
+
 type comp_unit =
   | LibU of dec list * exp
   | ProgU of dec list
-  | ActorU of arg list option * dec list * field list * system * actor_type * exp (* actor (class) *)
+  | ActorU of arg list option * dec list * field list * system * actor_type * build_stable_actor (* actor (class) *)
+     
 
 type prog = comp_unit * flavor
 
