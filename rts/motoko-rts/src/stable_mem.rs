@@ -15,11 +15,13 @@ extern "C" {
     #[cfg(feature = "ic")]
     pub fn moc_stable_mem_set_version(version: usize);
     /// Virtual memory size.
-    pub fn moc_stable_mem_get_size() -> u64;
     #[cfg(feature = "ic")]
+    pub fn moc_stable_mem_get_size() -> u64;
     /// Initialize the virtual memory size.
+    #[cfg(feature = "ic")]
     pub fn moc_stable_mem_set_size(pages: u64);
     /// Grow the virtual memory by respecting the compiler-specified virtual memory limit.
+    #[cfg(feature = "ic")]
     pub fn moc_stable_mem_grow(additional_pages: u64) -> u64;
 }
 
@@ -34,12 +36,14 @@ pub fn set_version(version: usize) {
 }
 
 /// Virtual memory size.
+#[cfg(feature = "ic")]
 pub fn size() -> u64 {
     // SAFETY: This is safe because of the ic0 api guarantees.
     unsafe { moc_stable_mem_get_size() }
 }
 
 /// Grow the virtual memory by respecting the compiler-specified stable memory limit.
+#[cfg(feature = "ic")]
 pub fn grow(pages: u64) -> u64 {
     // SAFETY: This is safe because of the ic0 api guarantees.
     unsafe { moc_stable_mem_grow(pages) }
