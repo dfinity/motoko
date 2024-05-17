@@ -57,8 +57,7 @@ main = do
   let tests :: TestTree
       tests = testGroup "Motoko tests" . concat
                $ [ [arithProps, conversionProps, utf8Props, matchingProps] | good ]
-               -- TODO: Re-enable when drun supports 64-bit
-               --  <> [ [encodingProps] | goodDrun ]
+               <> [ [encodingProps] | goodDrun ]
 
   if not (good || goodDrun)
   then putStrLn "No embedder available for testing. Done..."

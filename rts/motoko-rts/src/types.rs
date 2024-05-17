@@ -486,8 +486,8 @@ pub const fn unskew(value: usize) -> usize {
 pub type Tag = usize;
 
 // Tags need to have the lowest bit set, to allow distinguishing a header (tag) from object
-// locations in mark-compact GC. (Reminder: objects and fields are word aligned)
-
+// locations in mark-compact GC. (Reminder: objects and fields are word aligned).
+// Odd tag numbers are expected by the mark-compact GC (for pointer threading).
 pub const TAG_OBJECT: Tag = 1;
 pub const TAG_OBJ_IND: Tag = 3;
 pub const TAG_ARRAY: Tag = 5;
@@ -512,7 +512,10 @@ pub const TAG_FREE_SPACE: Tag = 29;
 // a slice of an array object (i.e. start index) for
 // purposes of `visit_pointer_fields`.
 // Invariant: the value of this (pseudo-)tag must be
-//            higher than all other tags defined above
+//            higher than all other tags defined above.
+// Note: The minimum value can be even, as it only denotes
+// a lower boundary to distinguish slice information from
+// the actual tag values.
 #[enhanced_orthogonal_persistence]
 pub const TAG_ARRAY_SLICE_MIN: Tag = 30;
 

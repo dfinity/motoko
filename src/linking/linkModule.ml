@@ -433,39 +433,49 @@ let set_global global value = fun m ->
   in
   { m with globals = go 0 m.globals }
 
-let fill_global (global : int32) (value : Wasm_exts.Values.value) (uses_memory64 : bool): module_' -> module_' = fun m ->
-  let rec instr' to_32 = function
-    | Block (ty, is) -> Block (ty, instrs to_32 is)
-    | Loop (ty, is) -> Loop (ty, instrs to_32 is)
-    | If (ty, is1, is2) -> If (ty, instrs to_32 is1, instrs to_32 is2)
-    | GlobalGet v when v.it = global -> 
-      let encoded_value = match (to_32, value) with
-      | (true, Wasm_exts.Values.I64 number) -> (Wasm_exts.Values.I32 (Int32.of_int (Int64.to_int number)))
-      | _ -> value in
-      Const (encoded_value @@ v.at)
+let fill_global (global : int32) (value : Wasm_exts.Values.value) (uses_memory64 : bool) : module_' -> module_' = fun m ->
+  let rec instr' = function
+    | Block (ty, is) -> Block (ty, instrs is)
+    | Loop (ty, is) -> Loop (ty, instrs is)
+    | If (ty, is1, is2) -> If (ty, instrs is1, instrs is2)
+    | GlobalGet v when v.it = global -> Const (value @@ v.at)
     | GlobalSet v when v.it = global -> assert false
     | i -> i
-  and instr to_32 i = phrase (instr' to_32) i
-  and instrs to_32 is = List.map (instr to_32) is in
+  and instr i = phrase instr' i
+  and instrs is = List.map instr is in
 
-  let func' f = { f with body = instrs false f.body } in
+  let func' f = { f with body = instrs f.body } in
   let func = phrase func' in
   let funcs = List.map func in
 
-  let const to_32 = phrase (instrs to_32) in
+  let const = phrase instrs in
 
-  let global' g = { g with value = const false g.value } in
+  (* For 64-bit, convert the constant expression of the table segment offset to 32-bit. *)
+  let const_instr_to_32' = function
+    | Const { it = (Wasm_exts.Values.I64 number); at } -> Const ((Wasm_exts.Values.I32 (Int64.to_int32 number)) @@ at)
+    | GlobalGet v -> GlobalGet v
+    | _ -> assert false
+  in
+  let const_instr_to_32 i = phrase const_instr_to_32' i in
+  let convert_const_to_32' = List.map const_instr_to_32 in
+  let convert_const_to_32 = phrase convert_const_to_32' in
+  let table_const offset = 
+    let expr = const offset in
+    if uses_memory64 then convert_const_to_32 expr else expr
+  in
+
+  let global' g = { g with value = const g.value } in
   let global = phrase global' in
   let globals = List.map global in
 
-  let table_segment' (s : var list segment') = { s with offset = const uses_memory64 s.offset; } in
+  let table_segment' (s : var list segment') = { s with offset = table_const s.offset; } in
   let table_segment = phrase (table_segment') in
   let table_segments = List.map table_segment in
 
   let segment_mode' (dmode : segment_mode') = 
     match dmode with 
       | Passive -> Passive
-      | Active { index; offset } -> Active { index; offset = const false offset }
+      | Active { index; offset } -> Active { index; offset = const offset }
       | Declarative -> Declarative
     in
   let segment_mode = phrase (segment_mode') in
@@ -540,7 +550,7 @@ let read_global gi (m : module_') : int32 =
   match uses_memory64 m, g.it.value.it with
   | true, [{ it = Const {it = Wasm_exts.Values.I64 i;_}; _}] -> 
     assert (g.it.gtype = GlobalType (I64Type, Immutable));
-    Int32.of_int (Int64.to_int i)
+    Int64.to_int32 i
   | false, [{ it = Const {it = Wasm_exts.Values.I32 i;_}; _}] ->
     assert (g.it.gtype = GlobalType (I32Type, Immutable));
     i
