@@ -254,7 +254,7 @@ let transform prog =
           (* unit answer type, from await in `async {}` *)
           (ensureNamed (t_exp kr) (fun vkr ->
             let schedule = fresh_var "schedule" (T.Func(T.Local, T.Returns, [], [], [])) in
-            switch_variantE ((t_exp a) -*- varE vkr)
+            switch_variantE (t_exp a -*- varE vkr)
               [ ("suspend", wildP,
                   unitE()); (* suspend *)
                 ("schedule", varP schedule, (* resume later *)
@@ -271,7 +271,7 @@ let transform prog =
     | PrimE (CPSAwait (Cmp, cont_typ), [a; kr]) ->
       begin match cont_typ with
       | Func(_, _, [], _, []) ->
-         ((t_exp a) -*- (t_exp kr)).it
+         (t_exp a -*- t_exp kr).it
       | _ -> assert false
       end
     | PrimE (CPSAsync (Fut, t), [exp1]) ->
