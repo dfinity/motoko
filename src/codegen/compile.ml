@@ -10353,6 +10353,7 @@ let enforce_32_signed_bits env =
   G.i (Binary (Wasm_exts.Values.I64 I64Op.Xor)) ^^
   enforce_32_unsigned_bits env
 
+(* TODO: Combine this with `compile_smallInt_kernel`, to support `Int32`, `Int16`, and `Int8` at once. *)
 let compile_Int32_kernel env name op =
      Func.share_code2 Func.Always env (prim_fun_name Type.Int32 name)
        (("a", I64Type), ("b", I64Type)) [I64Type]
@@ -10365,6 +10366,7 @@ let compile_Int32_kernel env name op =
          enforce_32_signed_bits env ^^
          get_res ^^ compile_shl_const 32L)
 
+(* TODO: Combine this with `compile_smallInt_kernel`, to support `Nat32`, `Nat16`, and `Nat8` at once. *)
 let compile_Nat32_kernel env name op =
      Func.share_code2 Func.Always env (prim_fun_name Type.Nat32 name)
        (("a", I64Type), ("b", I64Type)) [I64Type]
@@ -10378,6 +10380,8 @@ let compile_Nat32_kernel env name op =
          get_res ^^ compile_shl_const 32L)
 
 (* Customisable kernels for 8/16bit arithmetic via 64 bits. *)
+(* TODO: Include the support for 32bit which is now also compact on 64-bit. 
+   Eventually, `compile_Int32_kernel` and `compile_Nat32_kernel` can be removed. *)
 
 (* helper, expects i64 on stack *)
 let enforce_unsigned_bits env n =
@@ -10555,8 +10559,7 @@ let compile_binop env t op : SR.t * SR.t * G.t =
               end
               (get_n ^^ TaggedSmallWord.msb_adjust ty) (* n@{0,1} ** (1+exp) == n *)
           end
-          (compile_unboxed_const
-             Int64.(shift_left one (to_int (TaggedSmallWord.shift_of_type ty))))) (* x ** 0 == 1 *)
+          (compile_unboxed_one ^^ TaggedSmallWord.msb_adjust ty)) (* x ** 0 == 1 *)
   | Type.(Prim ((Int8|Int16|Int32) as ty)),         PowOp ->
     Func.share_code2 Func.Always env (prim_fun_name ty "pow")
       (("n", I64Type), ("exp", I64Type)) [I64Type]
@@ -10599,7 +10602,7 @@ let compile_binop env t op : SR.t * SR.t * G.t =
                 get_exp ^^ compile_unboxed_const 64L ^^
                 compile_comparison I64Op.GeU ^^ then_arithmetic_overflow env ^^
                 signed_dynamics get_n ^^ compile_sub_const (Int64.of_int (Int.sub bits 1)) ^^
-                get_exp ^^ TaggedSmallWord.msb_adjust ty ^^ TaggedSmallWord.lsb_adjust Type.Int32 ^^
+                get_exp ^^
                 G.i (Binary (Wasm_exts.Values.I64 I64Op.Mul)) ^^
                 compile_unboxed_const (Int64.of_int overflow_boundary) ^^
                 compile_comparison I64Op.LtS ^^ then_arithmetic_overflow env ^^
@@ -10609,8 +10612,7 @@ let compile_binop env t op : SR.t * SR.t * G.t =
                 get_res ^^ TaggedSmallWord.msb_adjust ty
               end
           end
-          (compile_unboxed_const
-             Int64.(shift_left one (to_int (TaggedSmallWord.shift_of_type ty))))) (* x ** 0 == 1 *)
+          (compile_unboxed_one ^^ TaggedSmallWord.msb_adjust ty)) (* x ** 0 == 1 *)
   | Type.(Prim Int),                          PowOp ->
     let pow = BigNum.compile_unsigned_pow env in
     let (set_n, get_n) = new_local env "n" in
@@ -11093,20 +11095,13 @@ and compile_prim_invocation (env : E.t) ae p es at =
       SR.UnboxedFloat64,
       compile_exp_as env ae (SR.UnboxedWord64 Int64) e ^^
       G.i (Convert (Wasm_exts.Values.F64 F64Op.ConvertSI64))
-    | Nat8, Nat16 ->
-      SR.UnboxedWord64 Nat16,
-      compile_exp_as env ae (SR.UnboxedWord64 Nat8) e ^^
-      TaggedSmallWord.lsb_adjust Nat8 ^^
-      TaggedSmallWord.msb_adjust Nat16
-    | Nat16, Nat32 ->
-      SR.UnboxedWord64 Nat32,
-      compile_exp_as env ae (SR.UnboxedWord64 Nat16) e ^^
-      TaggedSmallWord.lsb_adjust Nat16 ^^
-      TaggedSmallWord.msb_adjust Nat32
-    | Nat32, Nat64 ->
-      SR.UnboxedWord64 Nat64,
-      compile_exp_as env ae (SR.UnboxedWord64 Nat32) e ^^
-      TaggedSmallWord.lsb_adjust Nat32
+    | (Nat8 as from_typ), (Nat16 as to_typ)
+    | (Nat16 as from_typ), (Nat32 as to_typ)
+    | (Nat32 as from_typ), (Nat64 as to_typ) ->
+      SR.UnboxedWord64 to_typ,
+      compile_exp_as env ae (SR.UnboxedWord64 from_typ) e ^^
+      TaggedSmallWord.lsb_adjust from_typ ^^
+      TaggedSmallWord.msb_adjust to_typ
     | (Nat16 as from_typ), (Nat8 as to_typ)
     | (Nat32 as from_typ), (Nat16 as to_typ)
     | (Nat64 as from_typ), (Nat32 as to_typ) ->
@@ -11181,7 +11176,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
       let n = List.length ts in
       let name = Printf.sprintf "to_opt_%i_tuple" n in
       let args = Lib.List.table n (fun i -> (Printf.sprintf "arg%i" i, I64Type)) in
-      Func.share_code  Func.Always env name args [I64Type] (fun env getters ->
+      Func.share_code Func.Always env name args [I64Type] (fun env getters ->
         let locals =
           Lib.List.table n (fun i -> List.nth getters i) in
         let rec go ls =
@@ -11592,7 +11587,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     IC.canister_version env
 
   | OtherPrim "crc32Hash", [e] ->
-    SR.Vanilla,
+    SR.UnboxedWord64 Type.Nat32,
     compile_exp_vanilla env ae e ^^
     E.call_import env "rts" "compute_crc32" ^^
     G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
@@ -11616,13 +11611,11 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | OtherPrim "popcntInt8", [e] ->
     SR.UnboxedWord64 Type.Int8,
     compile_exp_as env ae (SR.UnboxedWord64 Type.Int8) e ^^
-    compile_shrU_const (TaggedSmallWord.shift_of_type Type.Int8) ^^
     G.i (Unary (Wasm_exts.Values.I64 I64Op.Popcnt)) ^^
     TaggedSmallWord.msb_adjust Type.Int8
   | OtherPrim "popcntInt16", [e] ->
     SR.UnboxedWord64 Type.Int16,
     compile_exp_as env ae (SR.UnboxedWord64 Type.Int16) e ^^
-    compile_shrU_const (TaggedSmallWord.shift_of_type Type.Int16) ^^
     G.i (Unary (Wasm_exts.Values.I64 I64Op.Popcnt)) ^^
     TaggedSmallWord.msb_adjust Type.Int16
   | OtherPrim "popcnt32", [e] ->
@@ -11633,7 +11626,6 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | OtherPrim "popcntInt32", [e] ->
      SR.UnboxedWord64 Type.Int32,
      compile_exp_as env ae (SR.UnboxedWord64 Type.Int32) e ^^
-     compile_shrU_const (TaggedSmallWord.shift_of_type Type.Int32) ^^
      G.i (Unary (Wasm_exts.Values.I64 I64Op.Popcnt))^^
      TaggedSmallWord.msb_adjust Type.Int32
   | OtherPrim "popcnt64", [e] ->
