@@ -35,7 +35,7 @@ pub trait GraphCopy<S: Copy, T: Copy, P: Copy + Default> {
     fn complete(&mut self);
 
     /// Copy reachable objects in a time-bounded work step with a synthetic time bound.
-    /// This allows to spread the incremtnal graph copy where the work is
+    /// This allows to spread the incremental graph copy where the work is
     /// split in multiple increments over multiple IC messages.
     fn copy_increment<M: Memory>(&mut self, mem: &mut M) {
         self.reset_time();
