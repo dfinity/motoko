@@ -11,7 +11,7 @@
 //! Each object uses a `StableTag` as header and is followed by
 //! the object payload as outlined in the corresponding Rust structs.
 //! Some objects, such as `StableArray`, `StableObject`, `StableBlob`,
-//! and `StableBigNum` have a dynamic payload body in an addition to a static
+//! and `StableBigNum` have a dynamic payload body in addition to a static
 //! header.
 //!
 //! Not all heap memory object types are stabilized because some
