@@ -2030,22 +2030,30 @@ module Tagged = struct
   let int_of_tag = function
     | Object -> 1l
     | ObjInd -> 3l
-    | Array _ -> 5l
-    | Bits64 _ -> 7l
-    | MutBox -> 9l
-    | Closure -> 11l
-    | Some -> 13l
-    | Variant -> 15l
-    | Blob _ -> 17l
-    | Indirection -> 19l
-    | Bits32 _ -> 21l
-    | BigInt -> 23l
-    | Concat -> 25l
-    | Region -> 27l
-    | Null -> 29l
-    | OneWordFiller -> 31l
-    | FreeSpace -> 33l
-    | ArraySliceMinimum -> 34l
+    | Array I -> 5l
+    | Array M -> 7l
+    | Array T -> 9l
+    | Bits64 U -> 11l
+    | Bits64 S -> 13l
+    | Bits64 F -> 15l
+    | MutBox -> 17l
+    | Closure -> 19l
+    | Some -> 21l
+    | Variant -> 23l
+    | Blob B -> 25l
+    | Blob T -> 27l
+    | Blob P -> 29l
+    | Indirection -> 31l
+    | Bits32 U -> 33l
+    | Bits32 S -> 35l
+    | Bits32 F -> 37l
+    | BigInt -> 39l
+    | Concat -> 41l
+    | Region -> 43l
+    | Null -> 45l
+    | OneWordFiller -> 47l
+    | FreeSpace -> 49l
+    | ArraySliceMinimum -> 50l
     (* Next two tags won't be seen by the GC, so no need to set the lowest bit
        for `CoercionFailure` and `StableSeen` *)
     | CoercionFailure -> 0xfffffffel
