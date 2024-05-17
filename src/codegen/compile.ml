@@ -9588,7 +9588,7 @@ module IncrementalGraphStabilization = struct
       is_stabilization_completed env ^^
       E.if0
         begin
-          (* Sucessful completion of the async stabilzation sequence. *)
+          (* Sucessful completion of the async stabilization sequence. *)
           IC.static_nullary_reply env
           (* Skip garbage collection. *)
           (* Stay in lifecycle state `InStabilization`. *)
