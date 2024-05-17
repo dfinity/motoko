@@ -8573,7 +8573,7 @@ module GraphCopyStabilization = struct
   let graph_stabilization_increment env =
     E.call_import env "rts" "graph_stabilization_increment" ^^ Bool.from_rts_int32
 
-  let start_graph_destabilization env actor_type complete_initialization =
+  let start_graph_destabilization env actor_type =
     EnhancedOrthogonalPersistence.create_type_descriptor env actor_type ^^
     E.call_import env "rts" "start_graph_destabilization"
 
@@ -9754,10 +9754,9 @@ module IncrementalGraphStabilization = struct
     end
 
   let partial_destabilization_on_upgrade env actor_type =
-    let complete_initialization = set_destabilized_actor env ^^ complete_graph_destabilization env in
     (* TODO: Verify that the post_upgrade hook cannot be directly called by the IC *)
     (* Garbage collection is disabled in `start_graph_destabilization` until destabilization has completed. *)
-    GraphCopyStabilization.start_graph_destabilization env actor_type complete_initialization ^^
+    GraphCopyStabilization.start_graph_destabilization env actor_type ^^
     get_destabilized_actor env ^^
     compile_test I64Op.Eqz ^^
     E.if0
