@@ -12202,7 +12202,7 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
       get_k
       get_r
       add_cycles
-  | ActorE (ds, fs, _, _, _) ->
+  | ActorE (ds, fs, _, _) ->
     fatal "Local actors not supported by backend"
   | NewObjE (Type.(Object | Module | Memory) as _sort, fs, _) ->
     (*
@@ -12741,9 +12741,8 @@ and compile_init_func mod_env ((cu, flavor) : Ir.prog) =
       let _ae, codeW = compile_decs env VarEnv.empty_ae ds Freevars.S.empty in
       codeW G.nop
     )
-  | ActorU (as_opt, ds, fs, up, actor_type, build_stable_actor) ->
-    let stable_actor_type = actor_type.stable_actor_type in
-    main_actor as_opt mod_env ds fs up stable_actor_type build_stable_actor
+  | ActorU (as_opt, ds, fs, up, t) ->
+    main_actor as_opt mod_env ds fs up
 
 and export_actor_field env  ae (f : Ir.field) =
   (* A public actor field is guaranteed to be compiled as a PublicMethod *)
@@ -12769,7 +12768,9 @@ and export_actor_field env  ae (f : Ir.field) =
   })
 
 (* Main actor *)
-and main_actor as_opt mod_env ds fs up stable_actor_type build_stable_actor =
+and main_actor as_opt mod_env ds fs up =
+  let stable_actor_type = up.stable_type in
+  let build_stable_actor = up.stable_record in
   IncrementalGraphStabilization.define_methods mod_env stable_actor_type;
 
   (* Export metadata *)
@@ -12779,7 +12780,7 @@ and main_actor as_opt mod_env ds fs up stable_actor_type build_stable_actor =
 
   Func.define_built_in mod_env IC.initialize_main_actor_function_name [] [] (fun env ->
     let ae0 = VarEnv.empty_ae in
-    let captured = Freevars.captured_vars (Freevars.actor ds fs up build_stable_actor) in
+    let captured = Freevars.captured_vars (Freevars.actor ds fs up) in
     (* Add any params to the environment *)
     (* Captured ones need to go into static memory, the rest into locals *)
     let args = match as_opt with None -> [] | Some as_ -> as_ in

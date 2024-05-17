@@ -116,19 +116,20 @@ let rec exp e : f = match e.it with
   | DeclareE (i, t, e)  -> exp e  // i
   | DefineE (i, m, e)   -> id i ++ exp e
   | FuncE (x, s, c, tp, as_, t, e) -> under_lambda (exp e /// args as_)
-  | ActorE (ds, fs, u, _, e)  -> actor ds fs u e
+  | ActorE (ds, fs, u, _)  -> actor ds fs u
   | NewObjE (_, fs, _)  -> fields fs
   | TryE (e, cs)        -> exp e ++ cases cs
   | SelfCallE (_, e1, e2, e3) -> under_lambda (exp e1) ++ exp e2 ++ exp e3
 
-and actor ds fs u build_stable_actor = close (decs ds +++ fields fs +++ system u +++ under_lambda (exp build_stable_actor))
+and actor ds fs u = close (decs ds +++ fields fs +++ system u)
 
-and system {meta; preupgrade; postupgrade; heartbeat; timer; inspect} =
+and system {meta; preupgrade; postupgrade; heartbeat; timer; inspect; stable_record; _} =
   under_lambda (exp preupgrade) ++
   under_lambda (exp postupgrade) ++
   under_lambda (exp heartbeat) ++
   under_lambda (exp timer) ++
-  under_lambda (exp inspect)
+  under_lambda (exp inspect) ++
+  under_lambda (exp stable_record)
 
 and exps es : f = unions exp es
 
