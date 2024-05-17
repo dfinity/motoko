@@ -641,7 +641,7 @@ and rets t_opt =
   match t_opt with
   | None -> [], []
   | Some t ->
-     (match T.normalize t.note with
+     (match t.note with
      | T.Tup [] -> [], []
      | T.Async (T.Fut, _, _) -> [], []
      | typ ->
