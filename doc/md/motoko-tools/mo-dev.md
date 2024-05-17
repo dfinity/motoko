@@ -6,7 +6,7 @@ sidebar_position: 3
 
 ## Overview
 
-Motoko dev server, or `mo-dev` for short, is a command line tool that features a live reloading development server for Motoko.
+Motoko dev server, or `mo-dev` for short, is a command line tool that features a development server with live reloading for Motoko.
 
 ## Installation
 
