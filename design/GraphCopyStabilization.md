@@ -66,7 +66,7 @@ dfx deploy CANISTER_ID
 3. Complete the explicit destabilization after the upgrade:
 
 ```
-dfx canister call CANISTER_ID __motoko_destabilze_after_upgrade "()"
+dfx canister call CANISTER_ID __motoko_destabilize_after_upgrade "()"
 ```
 
 * An assertion checks that the caller is the canister owner or a canister controller.
