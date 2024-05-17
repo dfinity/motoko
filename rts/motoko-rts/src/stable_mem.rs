@@ -4,16 +4,22 @@ extern "C" {
     // physical ic0_stable64 operations re-exported by moc
     pub fn ic0_stable64_write(offset: u64, src: u64, size: u64);
     pub fn ic0_stable64_read(dst: u64, offset: u64, size: u64);
-    #[cfg(feature = "ic")]
-    pub fn ic0_stable64_size() -> u64; // physical memory size
-                                       // (virtual) stable_mem operations implemented by moc
+    /// Physical memory size.
+    pub fn ic0_stable64_size() -> u64;
+    /// Grow the physiscal memory by ignoring the compiler-specified stable memory limit.
+    pub fn ic0_stable64_grow(additional_pages: u64) -> u64;
+
+    // (virtual) stable_mem operations implemented by moc
     #[cfg(feature = "ic")]
     pub fn moc_stable_mem_get_version() -> usize;
     #[cfg(feature = "ic")]
     pub fn moc_stable_mem_set_version(version: usize);
-    pub fn moc_stable_mem_get_size() -> u64; // virtual memory size
+    /// Virtual memory size.
+    pub fn moc_stable_mem_get_size() -> u64;
     #[cfg(feature = "ic")]
-    pub fn moc_stable_mem_set_size(pages: u64); // virtual memory size
+    /// Initialize the virtual memory size.
+    pub fn moc_stable_mem_set_size(pages: u64);
+    /// Grow the virtual memory by respecting the compiler-specified virtual memory limit.
     pub fn moc_stable_mem_grow(additional_pages: u64) -> u64;
 }
 
@@ -27,11 +33,13 @@ pub fn set_version(version: usize) {
     unsafe { moc_stable_mem_set_version(version) }
 }
 
+/// Virtual memory size.
 pub fn size() -> u64 {
     // SAFETY: This is safe because of the ic0 api guarantees.
     unsafe { moc_stable_mem_get_size() }
 }
 
+/// Grow the virtual memory by respecting the compiler-specified stable memory limit.
 pub fn grow(pages: u64) -> u64 {
     // SAFETY: This is safe because of the ic0 api guarantees.
     unsafe { moc_stable_mem_grow(pages) }

@@ -60,15 +60,23 @@ fn clear_stable_memory(start: u64, length: u64) {
 fn grant_stable_space(byte_size: u64) {
     debug_assert!(byte_size < u64::MAX - PAGE_SIZE - 1);
     let required_pages = (byte_size + PAGE_SIZE - 1) / PAGE_SIZE;
-    let available_pages = stable_mem::size();
+    let available_pages = stable_memory_physical_size();
     if required_pages > available_pages {
         let additional_pages = required_pages - available_pages;
         debug_assert_ne!(additional_pages, u64::MAX);
-        let result = stable_mem::grow(additional_pages);
+        let result = stable_memory_physical_grow(additional_pages);
         if result == u64::MAX {
             unsafe {
                 rts_trap_with("Insufficient stable memory");
             }
         }
     }
+}
+
+fn stable_memory_physical_size() -> u64 {
+    unsafe { stable_mem::ic0_stable64_size() }
+}
+
+fn stable_memory_physical_grow(additional_pages: u64) -> u64 {
+    unsafe { stable_mem::ic0_stable64_grow(additional_pages) }
 }

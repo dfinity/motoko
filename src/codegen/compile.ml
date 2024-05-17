@@ -6051,6 +6051,24 @@ module RTS_Exports = struct
       edesc = nr (FuncExport (nr ic0_stable64_size_fi))
     });
 
+    let ic0_stable64_grow_fi =
+      match E.mode env with
+      | Flags.ICMode | Flags.RefMode ->
+        E.reuse_import env "ic0" "stable64_grow"
+      | Flags.WASIMode | Flags.WasmMode ->
+        E.add_fun env "ic0_stable64_grow" (
+          Func.of_body env ["newPages", I64Type] [I64Type]
+            (fun env ->
+              when_stable_memory_required_else_trap env (fun () ->
+                G.i (LocalGet (nr 0l)) ^^
+                StableMem.stable64_grow env))
+          )
+    in
+    E.add_export env (nr {
+      name = Lib.Utf8.decode "ic0_stable64_grow";
+      edesc = nr (FuncExport (nr ic0_stable64_grow_fi))
+    });
+
     let moc_stable_mem_grow_fi =
       E.add_fun env "moc_stable_mem_grow" (
         Func.of_body env ["newPages", I64Type] [I64Type]
