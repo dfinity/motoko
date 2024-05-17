@@ -37,10 +37,10 @@ mo-dev --cwd path/to/dfx_project
 Then, run the dev server for a specific canister:
 
 ```sh
-mo-dev --canister foo --canister bar --deploy
+mo-dev --canister foo --deploy
 ```
 
-You can deploy all canisters on a Motoko file change with `--deploy` flag:
+You can deploy all canisters within a `dfx.json` file on a Motoko file change with `--deploy` flag:
 
 ```sh
 mo-dev --deploy
@@ -85,13 +85,11 @@ To configure the runtime of an individual unit test, include the following comme
 [View the full usage of `mo-test`](https://github.com/dfinity/motoko-dev-server/?tab=readme-ov-file#mo-test).
 
 
-
 ## Examples
 
 The [Vite + React + Motoko](https://github.com/rvanasa/vite-react-motoko#readme) project showcases how to integrate `mo-dev` into a full-stack dapp. 
 
 [![Open in Gitpod](https://gitpod.io/button/open-in-gitpod.svg)](https://gitpod.io/#https://github.com/rvanasa/vite-react-motoko)
-
 
 ## Important notes
 
