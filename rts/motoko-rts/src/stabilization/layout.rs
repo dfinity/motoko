@@ -134,7 +134,7 @@ impl StableObjectKind {
             TAG_BIGINT => StableObjectKind::BigInt,
             TAG_OBJ_IND => StableObjectKind::ObjInd,
             TAG_SOME => StableObjectKind::Some,
-            _ => unreachable!("tag {tag}"),
+            _ => unreachable!("invalid tag"),
         }
     }
 }
