@@ -9845,7 +9845,7 @@ module Persistence = struct
     compile_eq_const StableMem.version_graph_copy_regions ^^
     G.i (Binary (Wasm_exts.Values.I64 I64Op.Or))
 
-  let use_enhancecd_orthogonal_persistence env =
+  let use_enhanced_orthogonal_persistence env =
     get_persistence_version env ^^
     compile_eq_const StableMem.version_stable_heap_no_regions ^^
     get_persistence_version env ^^
@@ -9867,7 +9867,7 @@ module Persistence = struct
       end
 
   let load env actor_type =
-    use_enhancecd_orthogonal_persistence env ^^
+    use_enhanced_orthogonal_persistence env ^^
     (E.if1 I64Type
       (EnhancedOrthogonalPersistence.load env actor_type)
       begin
