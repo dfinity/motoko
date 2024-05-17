@@ -386,21 +386,14 @@ and decs ctxt ds =
 and dec ctxt d =
   let (!!) p = !!! (d.at) p in
   match d.it with
+  | M.LetD ({it=M.VarP x;_}, e, None)
   | M.VarD (x, e) ->
-     (* TODO: translate e? *)
     { ctxt with ids = Env.add x.it (Local, e.note.M.note_typ) ctxt.ids },
     fun ctxt' ->
       let lval = LValueUninitVar (id x) in
       let d = !!(id x, tr_typ e.note.M.note_typ) in
       let ds, stmts = assign_stmts ctxt' d.at lval e in
       (d :: ds, stmts)
-  | M.(LetD ({it=VarP x;_}, e, None)) ->
-     { ctxt with ids = Env.add x.it (Local, e.note.M.note_typ) ctxt.ids },
-     fun ctxt' ->
-        let lval = LValueUninitVar (id x) in
-        let d = !!(id x, tr_typ e.note.M.note_typ) in
-        let ds, stmts = assign_stmts ctxt' d.at lval e in
-       (d :: ds, stmts)
   | M.(ExpD e) -> (* TODO: restrict to e of unit type? *)
      (ctxt,
       fun ctxt' ->
