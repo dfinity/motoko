@@ -1249,8 +1249,8 @@ module RTS = struct
     E.add_func_import env "rts" "alloc_words" [I32Type] [I32Type];
     E.add_func_import env "rts" "get_total_allocations" [] [I64Type];
     E.add_func_import env "rts" "get_heap_size" [] [I32Type];
-    E.add_func_import env "rts" "alloc_blob" [I32Type] [I32Type];
-    E.add_func_import env "rts" "alloc_array" [I32Type] [I32Type];
+    E.add_func_import env "rts" "alloc_blob" [I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "alloc_array" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "alloc_stream" [I32Type] [I32Type];
     E.add_func_import env "rts" "stream_write" [I32Type; I32Type; I32Type] [];
     E.add_func_import env "rts" "stream_write_byte" [I32Type; I32Type] [];
@@ -4259,7 +4259,9 @@ module Blob = struct
     compile_unboxed_const (Int32.add ptr_unskew (E.add_static env StaticBytes.[Bytes s])) ^^
     compile_unboxed_const (Int32.of_int (String.length s))
 
-  let alloc env sort =
+  let alloc env sort len =
+    compile_unboxed_const Tagged.(int_of_tag (Blob sort)) ^^
+    len ^^
     E.call_import env "rts" "alloc_blob" ^^ (*TODO sorts!*)
     (* uninitialized blob payload is allowed by the barrier *)
     Tagged.allocation_barrier env
@@ -4279,7 +4281,7 @@ module Blob = struct
   let of_ptr_size env = Func.share_code2 Func.Always env "blob_of_ptr_size" (("ptr", I32Type), ("size" , I32Type)) [I32Type] (
     fun env get_ptr get_size ->
       let (set_x, get_x) = new_local env "x" in
-      get_size ^^ alloc env Tagged.B ^^ set_x ^^
+      alloc env Tagged.B get_size ^^ set_x ^^
       get_x ^^ payload_ptr_unskewed env ^^
       get_ptr ^^
       get_size ^^
@@ -4292,7 +4294,7 @@ module Blob = struct
     let (set_blob, get_blob) = new_local env "blob" in
     get_size_fun env ^^ set_len ^^
 
-    get_len ^^ alloc env sort ^^ set_blob ^^
+    alloc env sort get_len ^^ set_blob ^^
     get_blob ^^ payload_ptr_unskewed env ^^
     offset_fun env ^^
     get_len ^^
@@ -4409,7 +4411,10 @@ module Blob = struct
     E.call_import env "rts" "blob_iter_next" ^^
     TaggedSmallWord.msb_adjust Type.Nat8
 
-  let dyn_alloc_scratch env = alloc env Tagged.B ^^ payload_ptr_unskewed env
+  let dyn_alloc_scratch env =
+    let (set_len, get_len) = new_local env "len" in
+    set_len ^^
+    alloc env Tagged.B get_len ^^ payload_ptr_unskewed env
 
   (* TODO: rewrite using MemoryFill *)
   let clear env =
@@ -4693,7 +4698,9 @@ module Arr = struct
 
   (* Does not initialize the fields! *)
   (* Note: Post allocation barrier must be applied after initialization *)
-  let alloc env array_sort =
+  let alloc env array_sort len =
+    compile_unboxed_const Tagged.(int_of_tag (Array array_sort)) ^^
+    len ^^
     E.call_import env "rts" "alloc_array" (* TODO *)
 
   let iterate env get_array body =
@@ -4741,7 +4748,8 @@ module Arr = struct
 
     (* Allocate *)
     BigNum.to_word32 env ^^
-    alloc env Tagged.M ^^
+    set_r ^^
+    alloc env Tagged.M get_r ^^
     set_r ^^
 
     (* Write elements *)
@@ -4762,7 +4770,8 @@ module Arr = struct
 
     (* Allocate *)
     BigNum.to_word32 env ^^
-    alloc env Tagged.I ^^
+    set_r ^^
+    alloc env Tagged.I get_r ^^
     set_r ^^
 
     (* Initial index *)
@@ -4800,7 +4809,7 @@ module Arr = struct
 
       get_blob ^^ Blob.len env ^^ set_len ^^
 
-      get_len ^^ alloc env sort ^^ set_r ^^
+      alloc env sort get_len ^^ set_r ^^
 
       get_len ^^ from_0_to_n env (fun get_i ->
         get_r ^^ get_i ^^ unsafe_idx env ^^
@@ -4822,7 +4831,7 @@ module Arr = struct
 
       get_a ^^ len env ^^ set_len ^^
 
-      get_len ^^ Blob.alloc env Tagged.B ^^ set_r ^^
+      Blob.alloc env Tagged.B get_len ^^ set_r ^^
 
       get_len ^^ from_0_to_n env (fun get_i ->
         get_r ^^ Blob.payload_ptr_unskewed env ^^
@@ -5956,7 +5965,7 @@ module StableMem = struct
           get_offset ^^
           get_len ^^
           guard_range env ^^
-          get_len ^^ Blob.alloc env Tagged.B ^^ set_blob ^^
+          Blob.alloc env Tagged.B get_len ^^ set_blob ^^
           get_blob ^^ Blob.payload_ptr_unskewed env ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
           get_offset ^^
           get_len ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
@@ -7347,7 +7356,7 @@ module MakeSerialization (Strm : Stream) = struct
         let (set_x, get_x) = new_local env "x" in
         ReadBuf.read_leb128 env get_data_buf ^^ set_len ^^
 
-        get_len ^^ Blob.alloc env Tagged.B ^^ set_x ^^
+        Blob.alloc env Tagged.B get_len ^^ set_x ^^
         get_x ^^ Blob.payload_ptr_unskewed env ^^
         ReadBuf.read_blob env get_data_buf get_len ^^
         get_x
@@ -7364,7 +7373,7 @@ module MakeSerialization (Strm : Stream) = struct
         get_len ^^ compile_unboxed_const 29l ^^ G.i (Compare (Wasm.Values.I32 I32Op.LeU)) ^^
         E.else_trap_with env "IDL error: principal too long" ^^
 
-        get_len ^^ Blob.alloc env Tagged.P ^^ set_x ^^
+        Blob.alloc env Tagged.P get_len ^^ set_x ^^
         get_x ^^ Blob.payload_ptr_unskewed env ^^
         ReadBuf.read_blob env get_data_buf get_len ^^
         get_x
@@ -7713,7 +7722,7 @@ module MakeSerialization (Strm : Stream) = struct
           *)
           with_composite_arg_typ get_array_typ idl_vec (ReadBuf.read_sleb128 env) ^^ set_arg_typ ^^
           ReadBuf.read_leb128 env get_data_buf ^^ set_len ^^
-          get_len ^^ Arr.alloc env Tagged.M ^^ set_x ^^
+          Arr.alloc env Tagged.M get_len ^^ set_x ^^
           on_alloc get_x ^^
           get_len ^^ from_0_to_n env (fun get_i ->
             get_x ^^ get_i ^^ Arr.unsafe_idx env ^^
@@ -7755,7 +7764,7 @@ module MakeSerialization (Strm : Stream) = struct
           ReadBuf.read_sleb128 env get_typ_buf ^^
           set_arg_typ ^^
           ReadBuf.read_leb128 env get_data_buf ^^ set_len ^^
-          get_len ^^ Arr.alloc env Tagged.I ^^ set_x ^^
+          Arr.alloc env Tagged.I get_len ^^ set_x ^^
           get_len ^^ from_0_to_n env (fun get_i ->
           get_x ^^ get_i ^^ Arr.unsafe_idx env ^^
           get_arg_typ ^^ go env t ^^ set_val ^^
@@ -8619,7 +8628,7 @@ module Stabilization = struct
 
           let (set_blob, get_blob) = new_local env "blob" in
           (* read blob from stable memory *)
-          get_len ^^ Blob.alloc env Tagged.B ^^ set_blob ^^
+          Blob.alloc env Tagged.B get_len ^^ set_blob ^^
           extend64 (get_blob ^^ Blob.payload_ptr_unskewed env) ^^
           get_offset ^^
           extend64 get_len ^^

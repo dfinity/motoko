@@ -55,7 +55,7 @@ pub unsafe fn alloc_stream<M: Memory>(mem: &mut M, size: Bytes<u32>) -> *mut Str
     if size > MAX_STREAM_SIZE {
         rts_trap_with("alloc_stream: Cache too large");
     }
-    let ptr = alloc_blob(mem, size + INITIAL_STREAM_FILLED);
+    let ptr = alloc_blob(mem, TAG_BLOB_B, size + INITIAL_STREAM_FILLED);
     let stream = ptr.as_stream();
     stream.write_ptr64(0);
     stream.write_start64(0);

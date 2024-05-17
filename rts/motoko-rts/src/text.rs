@@ -30,7 +30,7 @@ use crate::barriers::allocation_barrier;
 use crate::mem_utils::memcpy_bytes;
 use crate::memory::{alloc_blob, Memory};
 use crate::rts_trap_with;
-use crate::types::{size_of, Blob, Bytes, Concat, Stream, Value, TAG_BLOB_T, TAG_CONCAT};
+use crate::types::{size_of, Blob, Bytes, Concat, Stream, Value, TAG_BLOB_T, TAG_BLOB_B, TAG_BLOB_P, TAG_CONCAT};
 
 use alloc::string::String;
 use core::cmp::{min, Ordering};
@@ -49,7 +49,7 @@ unsafe fn alloc_text_blob<M: Memory>(mem: &mut M, size: Bytes<u32>) -> Value {
     if size > MAX_STR_SIZE {
         rts_trap_with("alloc_text_blob: Text too large");
     }
-    alloc_blob(mem, size)
+    alloc_blob(mem, TAG_BLOB_T, size)
 }
 
 #[ic_mem_fn]
@@ -188,7 +188,7 @@ unsafe extern "C" fn stream_write_text(stream: *mut Stream, mut s: Value) {
 #[ic_mem_fn]
 pub unsafe fn blob_of_text<M: Memory>(mem: &mut M, s: Value) -> Value {
     let obj = s.as_obj();
-    if obj.tag() == TAG_BLOB_T {
+    if obj.tag() == TAG_BLOB_T ||obj.tag() == TAG_BLOB_B || obj.tag() == TAG_BLOB_P {
         s
     } else {
         let concat = obj.as_concat();
@@ -444,7 +444,7 @@ where
     ));
     let string = to_string(&str);
     let bytes = string.as_bytes();
-    let lowercase = alloc_blob(mem, Bytes(bytes.len() as u32));
+    let lowercase = alloc_blob(mem, TAG_BLOB_T, Bytes(bytes.len() as u32));
     let mut i = 0;
     let target_ptr = lowercase.as_blob_mut().payload_addr();
     for b in bytes {

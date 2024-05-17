@@ -16,7 +16,7 @@ use crate::barriers::allocation_barrier;
 use crate::memory::{alloc_array, Memory};
 use crate::rts_trap_with;
 use crate::text::decode_code_point;
-use crate::types::{Array, Value, TAG_BLOB_T, TAG_CONCAT};
+use crate::types::{Array, Value, TAG_BLOB_T, TAG_ARRAY_T, TAG_CONCAT};
 
 use motoko_rts_macros::ic_mem_fn;
 
@@ -30,7 +30,7 @@ unsafe fn find_leaf<M: Memory>(mem: &mut M, mut text: Value, todo: *mut Value) -
         let concat = text.as_concat();
 
         // Add right node to TODOs
-        let new_todo = alloc_array(mem, 2);
+        let new_todo = alloc_array(mem, TAG_ARRAY_T, 2);
         let new_todo_array = new_todo.as_array();
         // No pre-update barrier for object initialization, but do perform post-update barrier.
         new_todo_array.initialize(TODO_TEXT_IDX, (*concat).text2, mem);
@@ -53,7 +53,7 @@ const ITER_TODO_IDX: u32 = 2;
 /// Returns a new iterator for the text
 #[ic_mem_fn]
 pub unsafe fn text_iter<M: Memory>(mem: &mut M, text: Value) -> Value {
-    let iter = alloc_array(mem, 3);
+    let iter = alloc_array(mem, TAG_ARRAY_T, 3);
     let array = iter.as_array();
 
     // Initialize the TODO field first, to be able to use it use the location to `find_leaf`
