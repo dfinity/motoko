@@ -63,61 +63,44 @@ mod stable_some;
 mod stable_variant;
 
 /// Different kinds of objects used in the stable format.
-/// Note: The tags are encoded as `StableTag` to be represented as `u64`.
-/// Native Rust enums would be encoded as `i32`, leading to unwanted alignment
-/// when directly serializing them as tags to the 64-bit stable format.
-#[repr(C)]
+#[repr(u64)]
 #[derive(Clone, Copy, PartialEq)]
 pub enum StableObjectKind {
-    Array,
-    MutBox,
-    Object,
-    Blob,
-    Bits64,
-    Region,
-    Variant,
-    Concat,
-    BigInt,
-    ObjInd,
-    Some,
+    Array = 1,
+    MutBox = 2,
+    Object = 3,
+    Blob = 4,
+    Bits64 = 5,
+    Region = 6,
+    Variant = 7,
+    Concat = 8,
+    BigInt = 9,
+    ObjInd = 10,
+    Some = 11,
 }
-
-const STABLE_TAG_ARRAY: u64 = 1;
-const STABLE_TAG_MUTBOX: u64 = 2;
-const STABLE_TAG_OBJECT: u64 = 3;
-const STABLE_TAG_BLOB: u64 = 4;
-const STABLE_TAG_BITS64: u64 = 5;
-const STABLE_TAG_REGION: u64 = 6;
-const STABLE_TAG_VARIANT: u64 = 7;
-const STABLE_TAG_CONCAT: u64 = 8;
-const STABLE_TAG_BIGINT: u64 = 9;
-const STABLE_TAG_OBJIND: u64 = 10;
-const STABLE_TAG_SOME: u64 = 11;
 
 #[repr(C)]
 pub struct StableTag(u64);
 
 impl StableObjectKind {
     pub fn encode(&self) -> StableTag {
-        let value = match self {
-            StableObjectKind::Array => STABLE_TAG_ARRAY,
-            StableObjectKind::MutBox => STABLE_TAG_MUTBOX,
-            StableObjectKind::Object => STABLE_TAG_OBJECT,
-            StableObjectKind::Blob => STABLE_TAG_BLOB,
-            StableObjectKind::Bits64 => STABLE_TAG_BITS64,
-            StableObjectKind::Region => STABLE_TAG_REGION,
-            StableObjectKind::Variant => STABLE_TAG_VARIANT,
-            StableObjectKind::Concat => STABLE_TAG_CONCAT,
-            StableObjectKind::BigInt => STABLE_TAG_BIGINT,
-            StableObjectKind::ObjInd => STABLE_TAG_OBJIND,
-            StableObjectKind::Some => STABLE_TAG_SOME,
-        };
-        StableTag(value)
+        StableTag(*self as u64)
     }
 }
 
 impl StableTag {
     pub fn decode(&self) -> StableObjectKind {
+        const STABLE_TAG_ARRAY: u64 = StableObjectKind::Array as u64;
+        const STABLE_TAG_MUTBOX: u64 = StableObjectKind::MutBox as u64;
+        const STABLE_TAG_OBJECT: u64 = StableObjectKind::Object as u64;
+        const STABLE_TAG_BLOB: u64 = StableObjectKind::Blob as u64;
+        const STABLE_TAG_BITS64: u64 = StableObjectKind::Bits64 as u64;
+        const STABLE_TAG_REGION: u64 = StableObjectKind::Region as u64;
+        const STABLE_TAG_VARIANT: u64 = StableObjectKind::Variant as u64;
+        const STABLE_TAG_CONCAT: u64 = StableObjectKind::Concat as u64;
+        const STABLE_TAG_BIGINT: u64 = StableObjectKind::BigInt as u64;
+        const STABLE_TAG_OBJIND: u64 = StableObjectKind::ObjInd as u64;
+        const STABLE_TAG_SOME: u64 = StableObjectKind::Some as u64;
         match self.0 {
             STABLE_TAG_ARRAY => StableObjectKind::Array,
             STABLE_TAG_MUTBOX => StableObjectKind::MutBox,
