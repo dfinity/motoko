@@ -8117,7 +8117,7 @@ invariant type constructors in a single pass.
 end (* Serialization *)
 
 (* OldStabilization as migration code: 
-  Deserializing a last time from Candid-serailized stable objects into the stable heap:
+  Deserializing a last time from Candid-serialized stable objects into the stable heap:
    * stable variables; and
    * virtual stable memory.
    c.f.
