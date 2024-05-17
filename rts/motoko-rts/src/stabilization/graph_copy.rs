@@ -28,7 +28,7 @@ pub trait GraphCopy<S: Copy, T: Copy, P: Copy + Default> {
     }
 
     /// Determin whether the copy algorithm is completed,
-    /// i.e. a sufficient amount of copy increments has been invoked.
+    /// i.e. a sufficient amount of copy increments have been invoked.
     fn is_completed(&self) -> bool;
 
     /// Complete the graph copy algorithm.
