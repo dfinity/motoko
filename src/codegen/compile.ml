@@ -1996,18 +1996,22 @@ module Tagged = struct
      so update all!
    *)
 
+  type bits_sort = U | S | F
+  type array_sort = M | I | T
+  type blob_sort = B | T | P
+
   type [@warning "-37"] tag  =
     | Object
     | ObjInd (* The indirection used for object fields *)
-    | Array (* Also a tuple *)
-    | Bits64 (* Contains a 64 bit number *)
+    | Array of array_sort (* Also a tuple *)
+    | Bits64 of bits_sort (* Contains a 64 bit number *)
     | MutBox (* used for mutable heap-allocated variables *)
     | Closure
     | Some (* For opt *)
     | Variant
-    | Blob
+    | Blob of blob_sort
     | Indirection (* Only used by the GC *)
-    | Bits32 (* Contains a 32 bit unsigned number *)
+    | Bits32 of bits_sort (* Contains a 32 bit value *)
     | BigInt
     | Concat (* String concatenation, used by rts/text.c *)
     | Null (* For opt. Static singleton! *)
@@ -2026,15 +2030,15 @@ module Tagged = struct
   let int_of_tag = function
     | Object -> 1l
     | ObjInd -> 3l
-    | Array -> 5l
-    | Bits64 -> 7l
+    | Array _ -> 5l
+    | Bits64 _ -> 7l
     | MutBox -> 9l
     | Closure -> 11l
     | Some -> 13l
     | Variant -> 15l
-    | Blob -> 17l
+    | Blob _ -> 17l
     | Indirection -> 19l
-    | Bits32 -> 21l
+    | Bits32 _ -> 21l
     | BigInt -> 23l
     | Concat -> 25l
     | Region -> 27l
@@ -2197,7 +2201,7 @@ module Tagged = struct
     let (set_o, get_o) = new_local env "o" in
     let prep (t, code) = (t, get_o ^^ code)
     in set_o ^^ get_o ^^ branch_default env retty def (List.map prep cases)
-
+(*
   (* like branch_default_with but the tag is known statically *)
   let branch_with env retty = function
     | [] -> G.i Unreachable
@@ -2227,7 +2231,7 @@ module Tagged = struct
       | (Prim _ |  Obj _ | Opt _ | Variant _ | Func _ | Non) -> false
       | (Pre | Async _ | Mut _ | Var _ | Typ _) -> assert false
       end
-    | Blob ->
+    | Blob  ->
       begin match normalize ty with
       | (Con _ | Any) -> true
       | (Prim (Text|Blob|Principal)) -> true
@@ -2247,6 +2251,7 @@ module Tagged = struct
   let _branch_typed_with env ty retty branches =
     branch_with env retty (List.filter (fun (tag,c) -> can_have_tag ty tag) branches)
 
+ *)
   let allocation_barrier env =
     (if !Flags.gc_strategy = Flags.Incremental then
       E.call_import env "rts" "allocation_barrier"
@@ -2571,7 +2576,11 @@ module BoxedWord64 = struct
 
   let payload_field = Tagged.header_size
 
-  let heap_tag env pty = Tagged.Bits64 (* TODO *)
+  let heap_tag env pty =
+    match pty with
+    | Type.Nat64 -> Tagged.(Bits64 U)
+    | Type.Int64 -> Tagged.(Bits64 S)
+    | _ -> assert false
 
   let vanilla_lit env pty i =
     if BitTagged.can_tag_const pty i
@@ -2701,7 +2710,11 @@ module BoxedSmallWord = struct
 
   *)
 
-  let heap_tag env pty = Tagged.Bits32 (* TODO *)
+  let heap_tag env pty =
+    match pty with
+    | Type.Nat32 -> Tagged.(Bits32 U)
+    | Type.Int32 -> Tagged.(Bits32 S)
+    | _ -> assert false
 
   let payload_field env = Tagged.header_size env
 
@@ -2987,14 +3000,14 @@ module Float = struct
   let compile_unboxed_const f = G.i (Const (nr (Wasm.Values.F64 f)))
 
   let vanilla_lit env f =
-    Tagged.shared_static_obj env Tagged.Bits64 StaticBytes.[
+    Tagged.shared_static_obj env Tagged.(Bits64 F) StaticBytes.[
       I64 (Wasm.F64.to_bits f)
     ]
 
   let box env = Func.share_code1 Func.Never env "box_f64" ("f", F64Type) [I32Type] (fun env get_f ->
     let (set_i, get_i) = new_local env "boxed_f64" in
     let size = Int32.add (Tagged.header_size env)  2l in
-    Tagged.alloc env size Tagged.Bits64 ^^
+    Tagged.alloc env size Tagged.(Bits64 F) ^^
     set_i ^^
     get_i ^^ get_f ^^ Tagged.store_field_float64 env (payload_field env) ^^
     get_i ^^
@@ -4227,7 +4240,7 @@ module Blob = struct
     )
 
   let vanilla_lit env s =
-    Tagged.shared_static_obj env Tagged.Blob StaticBytes.[
+    Tagged.shared_static_obj env Tagged.(Blob B) StaticBytes.[
       I32 (Int32.of_int (String.length s));
       Bytes s;
     ]
@@ -4238,8 +4251,8 @@ module Blob = struct
     compile_unboxed_const (Int32.add ptr_unskew (E.add_static env StaticBytes.[Bytes s])) ^^
     compile_unboxed_const (Int32.of_int (String.length s))
 
-  let alloc env =
-    E.call_import env "rts" "alloc_blob" ^^
+  let alloc env sort =
+    E.call_import env "rts" "alloc_blob" ^^ (*TODO sorts!*)
     (* uninitialized blob payload is allowed by the barrier *)
     Tagged.allocation_barrier env
 
@@ -4258,7 +4271,7 @@ module Blob = struct
   let of_ptr_size env = Func.share_code2 Func.Always env "blob_of_ptr_size" (("ptr", I32Type), ("size" , I32Type)) [I32Type] (
     fun env get_ptr get_size ->
       let (set_x, get_x) = new_local env "x" in
-      get_size ^^ alloc env ^^ set_x ^^
+      get_size ^^ alloc env Tagged.B ^^ set_x ^^
       get_x ^^ payload_ptr_unskewed env ^^
       get_ptr ^^
       get_size ^^
@@ -4266,12 +4279,12 @@ module Blob = struct
       get_x
     )
 
-  let of_size_copy env get_size_fun copy_fun offset_fun =
+  let of_size_copy env sort get_size_fun copy_fun offset_fun =
     let (set_len, get_len) = new_local env "len" in
     let (set_blob, get_blob) = new_local env "blob" in
     get_size_fun env ^^ set_len ^^
 
-    get_len ^^ alloc env ^^ set_blob ^^
+    get_len ^^ alloc env sort ^^ set_blob ^^
     get_blob ^^ payload_ptr_unskewed env ^^
     offset_fun env ^^
     get_len ^^
@@ -4388,7 +4401,7 @@ module Blob = struct
     E.call_import env "rts" "blob_iter_next" ^^
     TaggedSmallWord.msb_adjust Type.Nat8
 
-  let dyn_alloc_scratch env = alloc env ^^ payload_ptr_unskewed env
+  let dyn_alloc_scratch env = alloc env Tagged.B ^^ payload_ptr_unskewed env
 
   (* TODO: rewrite using MemoryFill *)
   let clear env =
@@ -4658,22 +4671,22 @@ module Arr = struct
      | Type.Array element_type -> element_type
      | _ -> assert false
 
-  let vanilla_lit env ptrs =
-    Tagged.shared_static_obj env Tagged.Array StaticBytes.[
+  let vanilla_lit env sort ptrs =
+    Tagged.shared_static_obj env Tagged.(Array sort) StaticBytes.[
       I32 (Int32.of_int (List.length ptrs));
       i32s ptrs;
     ]
 
   (* Compile an array literal. *)
-  let lit env element_instructions =
-    Tagged.obj env Tagged.Array
+  let lit env sort element_instructions =
+    Tagged.obj env Tagged.(Array sort)
      ([ compile_unboxed_const (Wasm.I32.of_int_u (List.length element_instructions))
       ] @ element_instructions)
 
   (* Does not initialize the fields! *)
   (* Note: Post allocation barrier must be applied after initialization *)
-  let alloc env =
-    E.call_import env "rts" "alloc_array"
+  let alloc env array_sort =
+    E.call_import env "rts" "alloc_array" (* TODO *)
 
   let iterate env get_array body =
     let (set_boundary, get_boundary) = new_local env "boundary" in
@@ -4720,7 +4733,7 @@ module Arr = struct
 
     (* Allocate *)
     BigNum.to_word32 env ^^
-    alloc env ^^
+    alloc env Tagged.M ^^
     set_r ^^
 
     (* Write elements *)
@@ -4741,7 +4754,7 @@ module Arr = struct
 
     (* Allocate *)
     BigNum.to_word32 env ^^
-    alloc env ^^
+    alloc env Tagged.I ^^
     set_r ^^
 
     (* Initial index *)
@@ -4771,14 +4784,15 @@ module Arr = struct
     get_r ^^
     Tagged.allocation_barrier env
 
-  let ofBlob env =
-    Func.share_code1 Func.Always env "Arr.ofBlob" ("blob", I32Type) [I32Type] (fun env get_blob ->
+  let ofBlob env sort =
+    let name = Tagged.(match sort with I -> "Arr.ofBlob" | M -> "Arr.ofBlobMut" | _ -> assert false) in
+    Func.share_code1 Func.Always env name ("blob", I32Type) [I32Type] (fun env get_blob ->
       let (set_len, get_len) = new_local env "len" in
       let (set_r, get_r) = new_local env "r" in
 
       get_blob ^^ Blob.len env ^^ set_len ^^
 
-      get_len ^^ alloc env ^^ set_r ^^
+      get_len ^^ alloc env sort ^^ set_r ^^
 
       get_len ^^ from_0_to_n env (fun get_i ->
         get_r ^^ get_i ^^ unsafe_idx env ^^
@@ -4800,7 +4814,7 @@ module Arr = struct
 
       get_a ^^ len env ^^ set_len ^^
 
-      get_len ^^ Blob.alloc env ^^ set_r ^^
+      get_len ^^ Blob.alloc env Tagged.B ^^ set_r ^^
 
       get_len ^^ from_0_to_n env (fun get_i ->
         get_r ^^ Blob.payload_ptr_unskewed env ^^
@@ -4841,7 +4855,7 @@ module Tuple = struct
       let name = Printf.sprintf "to_%i_tuple" n in
       let args = Lib.List.table n (fun i -> Printf.sprintf "arg%i" i, I32Type) in
       Func.share_code Func.Never env name args [I32Type] (fun env getters ->
-        Arr.lit env (Lib.List.table n (fun i -> List.nth getters i))
+        Arr.lit env Tagged.T (Lib.List.table n (fun i -> List.nth getters i))
       )
 
   (* Takes an argument tuple and puts the elements on the stack: *)
@@ -5264,7 +5278,7 @@ module IC = struct
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
       Func.share_code0 Func.Never env "canister_self" [I32Type] (fun env ->
-        Blob.of_size_copy env
+        Blob.of_size_copy env Tagged.P
           (fun env -> system_call env "canister_self_size")
           (fun env -> system_call env "canister_self_copy")
           (fun env -> compile_unboxed_const 0l)
@@ -5282,7 +5296,7 @@ module IC = struct
   let caller env =
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
-      Blob.of_size_copy env
+      Blob.of_size_copy env Tagged.P
         (fun env -> system_call env "msg_caller_size")
         (fun env -> system_call env "msg_caller_copy")
         (fun env -> compile_unboxed_const 0l)
@@ -5292,7 +5306,7 @@ module IC = struct
   let method_name env =
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
-      Blob.of_size_copy env
+      Blob.of_size_copy env Tagged.T
         (fun env -> system_call env "msg_method_name_size")
         (fun env -> system_call env "msg_method_name_copy")
         (fun env -> compile_unboxed_const 0l)
@@ -5302,7 +5316,7 @@ module IC = struct
   let arg_data env =
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
-      Blob.of_size_copy env
+      Blob.of_size_copy env Tagged.B
         (fun env -> system_call env "msg_arg_data_size")
         (fun env -> system_call env "msg_arg_data_copy")
         (fun env -> compile_unboxed_const 0l)
@@ -5338,7 +5352,7 @@ module IC = struct
 
   let error_message env =
     Func.share_code0 Func.Never env "error_message" [I32Type] (fun env ->
-      Blob.of_size_copy env
+      Blob.of_size_copy env Tagged.T
         (fun env -> system_call env "msg_reject_msg_size")
         (fun env -> system_call env "msg_reject_msg_copy")
         (fun env -> compile_unboxed_const 0l)
@@ -5476,7 +5490,7 @@ module IC = struct
       G.if1 I32Type
       begin
         Opt.inject_simple env (
-          Blob.of_size_copy env
+          Blob.of_size_copy env Tagged.B
             (fun env -> system_call env "data_certificate_size")
             (fun env -> system_call env "data_certificate_copy")
             (fun env -> compile_unboxed_const 0l)
@@ -5934,7 +5948,7 @@ module StableMem = struct
           get_offset ^^
           get_len ^^
           guard_range env ^^
-          get_len ^^ Blob.alloc env ^^ set_blob ^^
+          get_len ^^ Blob.alloc env Tagged.B ^^ set_blob ^^
           get_blob ^^ Blob.payload_ptr_unskewed env ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
           get_offset ^^
           get_len ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
@@ -6842,7 +6856,7 @@ module MakeSerialization (Strm : Stream) = struct
         G.i (Compare (Wasm.Values.I32 I32Op.GeU)) ^^
         G.i (Binary (Wasm.Values.I32 I32Op.And)) ^^
         G.if1 I32Type begin
-          (compile_unboxed_const Tagged.(int_of_tag Array))
+          (compile_unboxed_const Tagged.(int_of_tag (Array M)))
         end begin
           get_temp
         end
@@ -6858,7 +6872,7 @@ module MakeSerialization (Strm : Stream) = struct
         G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
         get_tag ^^ compile_eq_const Tagged.(int_of_tag ObjInd) ^^
         G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
-        get_tag ^^ compile_eq_const Tagged.(int_of_tag Array) ^^
+        get_tag ^^ compile_eq_const Tagged.(int_of_tag (Array M)) ^^
         G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
         get_tag ^^ compile_eq_const Tagged.(int_of_tag Region) ^^
         G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
@@ -7011,7 +7025,7 @@ module MakeSerialization (Strm : Stream) = struct
           E.then_trap_with env "unvisited mutable data in serialize_go (MutBox)" ^^
           get_tag ^^ compile_eq_const Tagged.(int_of_tag ObjInd) ^^
           E.then_trap_with env "unvisited mutable data in serialize_go (ObjInd)" ^^
-          get_tag ^^ compile_eq_const Tagged.(int_of_tag Array) ^^
+          get_tag ^^ compile_eq_const Tagged.(int_of_tag (Array M)) ^^
           E.then_trap_with env "unvisited mutable data in serialize_go (Array)" ^^
           get_tag ^^ compile_eq_const Tagged.(int_of_tag Region) ^^
           E.then_trap_with env "unvisited mutable data in serialize_go (Region)" ^^
@@ -7325,7 +7339,7 @@ module MakeSerialization (Strm : Stream) = struct
         let (set_x, get_x) = new_local env "x" in
         ReadBuf.read_leb128 env get_data_buf ^^ set_len ^^
 
-        get_len ^^ Blob.alloc env ^^ set_x ^^
+        get_len ^^ Blob.alloc env Tagged.B ^^ set_x ^^
         get_x ^^ Blob.payload_ptr_unskewed env ^^
         ReadBuf.read_blob env get_data_buf get_len ^^
         get_x
@@ -7342,7 +7356,7 @@ module MakeSerialization (Strm : Stream) = struct
         get_len ^^ compile_unboxed_const 29l ^^ G.i (Compare (Wasm.Values.I32 I32Op.LeU)) ^^
         E.else_trap_with env "IDL error: principal too long" ^^
 
-        get_len ^^ Blob.alloc env ^^ set_x ^^
+        get_len ^^ Blob.alloc env Tagged.P ^^ set_x ^^
         get_x ^^ Blob.payload_ptr_unskewed env ^^
         ReadBuf.read_blob env get_data_buf get_len ^^
         get_x
@@ -7691,7 +7705,7 @@ module MakeSerialization (Strm : Stream) = struct
           *)
           with_composite_arg_typ get_array_typ idl_vec (ReadBuf.read_sleb128 env) ^^ set_arg_typ ^^
           ReadBuf.read_leb128 env get_data_buf ^^ set_len ^^
-          get_len ^^ Arr.alloc env ^^ set_x ^^
+          get_len ^^ Arr.alloc env Tagged.M ^^ set_x ^^
           on_alloc get_x ^^
           get_len ^^ from_0_to_n env (fun get_i ->
             get_x ^^ get_i ^^ Arr.unsafe_idx env ^^
@@ -7733,7 +7747,7 @@ module MakeSerialization (Strm : Stream) = struct
           ReadBuf.read_sleb128 env get_typ_buf ^^
           set_arg_typ ^^
           ReadBuf.read_leb128 env get_data_buf ^^ set_len ^^
-          get_len ^^ Arr.alloc env ^^ set_x ^^
+          get_len ^^ Arr.alloc env Tagged.I ^^ set_x ^^
           get_len ^^ from_0_to_n env (fun get_i ->
           get_x ^^ get_i ^^ Arr.unsafe_idx env ^^
           get_arg_typ ^^ go env t ^^ set_val ^^
@@ -8597,7 +8611,7 @@ module Stabilization = struct
 
           let (set_blob, get_blob) = new_local env "blob" in
           (* read blob from stable memory *)
-          get_len ^^ Blob.alloc env ^^ set_blob ^^
+          get_len ^^ Blob.alloc env Tagged.B ^^ set_blob ^^
           extend64 (get_blob ^^ Blob.payload_ptr_unskewed env) ^^
           get_offset ^^
           extend64 get_len ^^
@@ -8639,7 +8653,7 @@ module GCRoots = struct
     })
 
   let store_static_roots env =
-    Arr.vanilla_lit env (E.get_static_roots env)
+    Arr.vanilla_lit env Tagged.M (E.get_static_roots env)
 
 end (* GCRoots *)
 
@@ -8747,7 +8761,7 @@ module StackRep = struct
     | Const.Unit -> Tuple.unit_vanilla_lit env
     | Const.Array cs ->
       let ptrs = List.map (materialize_const_t env) cs in
-      Arr.vanilla_lit env ptrs
+      Arr.vanilla_lit env Tagged.T ptrs
     | Const.Tag (i, c) ->
       let ptr = materialize_const_t env c in
       Variant.vanilla_lit env i ptr
@@ -9333,7 +9347,7 @@ module FuncDec = struct
         (1,
          "@callback",
          (fun env ->
-           Blob.of_size_copy env
+           Blob.of_size_copy env Tagged.B
            (fun env -> IC.system_call env "msg_arg_data_size")
            (fun env -> IC.system_call env "msg_arg_data_copy")
            (fun env -> compile_unboxed_const 0l)))
@@ -9384,7 +9398,7 @@ module FuncDec = struct
        the first and second must be the reply and reject continuations. *)
     fun closure_getters ->
       let (set_cb_index, get_cb_index) = new_local env "cb_index" in
-      Arr.lit env closure_getters ^^
+      Arr.lit env Tagged.T closure_getters ^^
       ContinuationTable.remember env ^^
       set_cb_index ^^
 
@@ -10713,7 +10727,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
   | ArrayPrim (m, t), es ->
     SR.Vanilla,
-    Arr.lit env (List.map (compile_exp_vanilla env ae) es)
+    Arr.lit env Tagged.(if m = Ir.Var then M else I) (List.map (compile_exp_vanilla env ae) es)
   | IdxPrim, [e1; e2] ->
     SR.Vanilla,
     compile_array_index env ae e1 e2 ^^
@@ -11070,7 +11084,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
               (Opt.null_lit env)
               (go ls')
           | [] ->
-            Opt.inject env (Arr.lit env locals)
+            Opt.inject env (Arr.lit env Tagged.T locals)
         in
         go locals)
     end
@@ -11605,8 +11619,11 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_vanilla env ae e ^^
     IC.trap_text env
 
-  | OtherPrim ("blobToArray" | "blobToArrayMut"), e ->
-    const_sr SR.Vanilla (Arr.ofBlob env)
+  | OtherPrim "blobToArray", e ->
+    const_sr SR.Vanilla (Arr.ofBlob env Tagged.I)
+  | OtherPrim "blobToArrayMut", e ->
+    const_sr SR.Vanilla (Arr.ofBlob env Tagged.M)
+
   | OtherPrim ("arrayToBlob" | "arrayMutToBlob"), e ->
     const_sr SR.Vanilla (Arr.toBlob env)
 
