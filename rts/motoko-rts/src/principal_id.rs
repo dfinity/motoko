@@ -5,7 +5,7 @@ use crate::mem_utils::memcpy_bytes;
 use crate::memory::{alloc_blob, Memory};
 use crate::rts_trap_with;
 use crate::text::{blob_compare, blob_of_text};
-use crate::types::{Bytes, Value, TAG_BLOB};
+use crate::types::{Bytes, Value, TAG_BLOB_B};
 
 use motoko_rts_macros::ic_mem_fn;
 
@@ -13,7 +13,7 @@ use motoko_rts_macros::ic_mem_fn;
 
 #[no_mangle]
 pub unsafe extern "C" fn compute_crc32(blob: Value) -> u32 {
-    if blob.tag() != TAG_BLOB {
+    if blob.tag() != TAG_BLOB_B {
         panic!("compute_crc32: Blob expected");
     }
 

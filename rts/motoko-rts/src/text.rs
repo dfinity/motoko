@@ -30,7 +30,7 @@ use crate::barriers::allocation_barrier;
 use crate::mem_utils::memcpy_bytes;
 use crate::memory::{alloc_blob, Memory};
 use crate::rts_trap_with;
-use crate::types::{size_of, Blob, Bytes, Concat, Stream, Value, TAG_BLOB, TAG_CONCAT};
+use crate::types::{size_of, Blob, Bytes, Concat, Stream, Value, TAG_BLOB_T, TAG_CONCAT};
 
 use alloc::string::String;
 use core::cmp::{min, Ordering};
@@ -133,7 +133,7 @@ unsafe extern "C" fn text_to_buf(mut s: Value, mut buf: *mut u8) {
 
     loop {
         let s_ptr = s.as_obj();
-        if s_ptr.tag() == TAG_BLOB {
+        if s_ptr.tag() == TAG_BLOB_T {
             let blob = s_ptr.as_blob();
             memcpy_bytes(buf as usize, blob.payload_addr() as usize, blob.len());
 
@@ -172,7 +172,7 @@ unsafe extern "C" fn text_to_buf(mut s: Value, mut buf: *mut u8) {
 unsafe extern "C" fn stream_write_text(stream: *mut Stream, mut s: Value) {
     loop {
         let s_ptr = s.as_obj();
-        if s_ptr.tag() == TAG_BLOB {
+        if s_ptr.tag() == TAG_BLOB_T {
             let blob = s_ptr.as_blob();
             stream.cache_bytes(blob.payload_addr(), blob.len());
             break;
@@ -188,7 +188,7 @@ unsafe extern "C" fn stream_write_text(stream: *mut Stream, mut s: Value) {
 #[ic_mem_fn]
 pub unsafe fn blob_of_text<M: Memory>(mem: &mut M, s: Value) -> Value {
     let obj = s.as_obj();
-    if obj.tag() == TAG_BLOB {
+    if obj.tag() == TAG_BLOB_T {
         s
     } else {
         let concat = obj.as_concat();
@@ -254,8 +254,8 @@ unsafe fn text_compare_range(
             ),
         }
     } else {
-        debug_assert_eq!(s1_obj.tag(), TAG_BLOB);
-        debug_assert_eq!(s2_obj.tag(), TAG_BLOB);
+        debug_assert_eq!(s1_obj.tag(), TAG_BLOB_T);
+        debug_assert_eq!(s2_obj.tag(), TAG_BLOB_T);
 
         let s1_blob = s1_obj.as_blob();
         let s2_blob = s2_obj.as_blob();
@@ -305,7 +305,7 @@ unsafe fn text_get_range(
                 continue;
             }
         } else {
-            debug_assert_eq!(s_obj.tag(), TAG_BLOB);
+            debug_assert_eq!(s_obj.tag(), TAG_BLOB_T);
         }
 
         break;
@@ -360,7 +360,7 @@ pub(crate) unsafe fn blob_compare(s1: Value, s2: Value) -> i32 {
 /// Length in characters
 #[no_mangle]
 pub unsafe extern "C" fn text_len(text: Value) -> u32 {
-    if text.tag() == TAG_BLOB {
+    if text.tag() == TAG_BLOB_T {
         let blob = text.as_blob();
         let payload_addr = blob.payload_const();
         let len = blob.len();

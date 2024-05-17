@@ -16,7 +16,7 @@ use crate::barriers::allocation_barrier;
 use crate::memory::{alloc_array, Memory};
 use crate::rts_trap_with;
 use crate::text::decode_code_point;
-use crate::types::{Array, Value, TAG_BLOB, TAG_CONCAT};
+use crate::types::{Array, Value, TAG_BLOB_T, TAG_CONCAT};
 
 use motoko_rts_macros::ic_mem_fn;
 
@@ -42,7 +42,7 @@ unsafe fn find_leaf<M: Memory>(mem: &mut M, mut text: Value, todo: *mut Value) -
         text = (*concat).text1;
     }
 
-    debug_assert_eq!(text.tag(), TAG_BLOB);
+    debug_assert_eq!(text.tag(), TAG_BLOB_T);
     text
 }
 
@@ -126,7 +126,7 @@ pub unsafe fn text_iter_next<M: Memory>(mem: &mut M, iter: Value) -> u32 {
             text_iter_next(mem, iter)
         } else {
             // Otherwise remove the entry from the chain
-            debug_assert_eq!(text.tag(), TAG_BLOB);
+            debug_assert_eq!(text.tag(), TAG_BLOB_T);
 
             iter_array.set_pointer(ITER_BLOB_IDX, text, mem);
             iter_array.set_scalar(ITER_POS_IDX, Value::from_scalar(0));

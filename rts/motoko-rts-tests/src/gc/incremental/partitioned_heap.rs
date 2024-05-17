@@ -412,10 +412,10 @@ impl PartitionedTestHeap {
 
 unsafe fn block_size(block: *const Tag) -> usize {
     match *block {
-        TAG_ARRAY => {
+        TAG_ARRAY_I | TAG_ARRAY_M | TAG_ARRAY_T => {
             size_of::<Array>() + (block as *const Array).len() as usize * WORD_SIZE as usize
         }
-        TAG_BLOB => size_of::<Blob>() + (block as *const Blob).len().as_usize(),
+        TAG_BLOB_B | TAG_BLOB_T | TAG_BLOB_P => size_of::<Blob>() + (block as *const Blob).len().as_usize(),
         _ => unimplemented!(),
     }
 }

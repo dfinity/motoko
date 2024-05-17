@@ -15,7 +15,7 @@ pub unsafe fn slice_array(array: *mut Array) -> u32 {
         (*array).header.tag = new_start;
         new_start
     } else {
-        (*array).header.tag = TAG_ARRAY;
+        (*array).header.tag = TAG_ARRAY_M; // TODO: restore original tag somehow
         array.len()
     }
 }

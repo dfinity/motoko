@@ -304,7 +304,7 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
                     new_start
                 } else {
                     // No further visits of this array. Restore the tag.
-                    (*array).header.tag = TAG_ARRAY;
+                    (*array).header.tag = TAG_ARRAY_M; // TODO: restore precise tag!
                     array.len()
                 }
             },

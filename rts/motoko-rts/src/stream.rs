@@ -38,7 +38,7 @@ use crate::mem_utils::memcpy_bytes;
 use crate::memory::{alloc_blob, Memory};
 use crate::rts_trap_with;
 use crate::tommath_bindings::{mp_div_2d, mp_int};
-use crate::types::{size_of, Blob, Bytes, Stream, Value, TAG_BLOB};
+use crate::types::{size_of, Blob, Bytes, Stream, Value, TAG_BLOB_B};
 
 use motoko_rts_macros::ic_mem_fn;
 
@@ -195,7 +195,7 @@ impl Stream {
         (*self).header.len = INITIAL_STREAM_FILLED - size_of::<Blob>().to_bytes();
         (*self).filled -= INITIAL_STREAM_FILLED;
         let blob = (self.cache_addr() as *mut Blob).sub(1);
-        (*blob).header.tag = TAG_BLOB;
+        (*blob).header.tag = TAG_BLOB_B;
         let ptr = Value::from_ptr(blob as usize);
         (*blob).header.init_forward(ptr);
         debug_assert_eq!(blob.len(), (*self).filled);

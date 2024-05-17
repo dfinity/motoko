@@ -326,6 +326,17 @@ impl Value {
         tag != TAG_FWD_PTR && tag != TAG_ONE_WORD_FILLER && tag != TAG_FREE_SPACE
     }
 
+    pub unsafe fn is_blob(self) -> bool {
+       let tag = self.tag();
+       tag == TAG_BLOB_B || tag == TAG_BLOB_T || tag == TAG_BLOB_P
+    }
+
+    pub unsafe fn is_array(self) -> bool {
+       let tag = self.tag();
+       tag == TAG_ARRAY_I || tag == TAG_ARRAY_M || tag == TAG_ARRAY_T || tag >= TAG_ARRAY_SLICE_MIN
+    }
+
+
     /// Get the pointer as `Obj` using forwarding. In debug mode panics if the value is not a pointer.
     pub unsafe fn as_obj(self) -> *mut Obj {
         debug_assert!(self.get().is_ptr());
@@ -343,7 +354,7 @@ impl Value {
     /// Get the pointer as `Array` using forwarding. In debug mode panics if the value is not a pointer or the
     /// pointed object is not an `Array`.
     pub unsafe fn as_array(self) -> *mut Array {
-        debug_assert!(self.tag() == TAG_ARRAY || self.tag() >= TAG_ARRAY_SLICE_MIN);
+        debug_assert!(self.is_array());
         self.check_forwarding_pointer();
         self.forward().get_ptr() as *mut Array
     }
@@ -373,14 +384,14 @@ impl Value {
     /// Get the pointer as `Blob` using forwarding. In debug mode panics if the value is not a pointer or the
     /// pointed object is not a `Blob`.
     pub unsafe fn as_blob(self) -> *const Blob {
-        debug_assert_eq!(self.tag(), TAG_BLOB);
+        debug_assert!(self.is_blob());
         self.check_forwarding_pointer();
         self.forward().get_ptr() as *const Blob
     }
 
     /// Get the pointer as mutable `Blob` using forwarding.
     pub unsafe fn as_blob_mut(self) -> *mut Blob {
-        debug_assert_eq!(self.tag(), TAG_BLOB);
+        debug_assert!(self.is_blob());
         self.check_forwarding_pointer();
         self.forward().get_ptr() as *mut Blob
     }
@@ -389,7 +400,7 @@ impl Value {
     /// In debug mode panics if the value is not a pointer or the
     /// pointed object is not a `Blob`.
     pub unsafe fn as_stream(self) -> *mut Stream {
-        debug_assert_eq!(self.tag(), TAG_BLOB);
+        debug_assert!(self.is_blob());
         self.check_forwarding_pointer();
         self.forward().get_ptr() as *mut Stream
     }
@@ -447,21 +458,29 @@ pub type Tag = u32;
 // locations in mark-compact GC. (Reminder: objects and fields are word aligned)
 pub const TAG_OBJECT: Tag = 1;
 pub const TAG_OBJ_IND: Tag = 3;
-pub const TAG_ARRAY: Tag = 5;
-pub const TAG_BITS64: Tag = 7;
-pub const TAG_MUTBOX: Tag = 9;
-pub const TAG_CLOSURE: Tag = 11;
-pub const TAG_SOME: Tag = 13;
-pub const TAG_VARIANT: Tag = 15;
-pub const TAG_BLOB: Tag = 17;
-pub const TAG_FWD_PTR: Tag = 19; // Only used by the copying GC - not to be confused with forwarding pointer in the header used for incremental GC.
-pub const TAG_BITS32: Tag = 21;
-pub const TAG_BIGINT: Tag = 23;
-pub const TAG_CONCAT: Tag = 25;
-pub const TAG_REGION: Tag = 27;
-pub const TAG_NULL: Tag = 29;
-pub const TAG_ONE_WORD_FILLER: Tag = 31;
-pub const TAG_FREE_SPACE: Tag = 33;
+pub const TAG_ARRAY_I: Tag = 5;
+pub const TAG_ARRAY_M: Tag = 7;
+pub const TAG_ARRAY_T: Tag = 9;
+pub const TAG_BITS64_U: Tag = 11;
+pub const TAG_BITS64_S: Tag = 13;
+pub const TAG_BITS64_F: Tag = 15;
+pub const TAG_MUTBOX: Tag = 17;
+pub const TAG_CLOSURE: Tag = 19;
+pub const TAG_SOME: Tag = 21;
+pub const TAG_VARIANT: Tag = 23;
+pub const TAG_BLOB_B: Tag = 25;
+pub const TAG_BLOB_T: Tag = 27;
+pub const TAG_BLOB_P: Tag = 29;
+pub const TAG_FWD_PTR: Tag = 31; // Only used by the copying GC - not to be confused with forwarding pointer in the header used for incremental GC.
+pub const TAG_BITS32_U: Tag = 33;
+pub const TAG_BITS32_S: Tag = 35;
+pub const TAG_BITS32_F: Tag = 37;
+pub const TAG_BIGINT: Tag = 39;
+pub const TAG_CONCAT: Tag = 41;
+pub const TAG_REGION: Tag = 43;
+pub const TAG_NULL: Tag = 45;
+pub const TAG_ONE_WORD_FILLER: Tag = 47;
+pub const TAG_FREE_SPACE: Tag = 49;
 
 // Special value to visit only a range of array fields.
 // This and all values above it are reserved and mean
@@ -469,7 +488,7 @@ pub const TAG_FREE_SPACE: Tag = 33;
 // purposes of `visit_pointer_fields`.
 // Invariant: the value of this (pseudo-)tag must be
 //            higher than all other tags defined above
-pub const TAG_ARRAY_SLICE_MIN: Tag = 34;
+pub const TAG_ARRAY_SLICE_MIN: Tag = 50;
 
 // Common parts of any object. Other object pointers can be coerced into a pointer to this.
 #[repr(C)] // See the note at the beginning of this module
@@ -506,7 +525,9 @@ impl Obj {
     }
 
     pub unsafe fn as_blob(self: *mut Self) -> *mut Blob {
-        debug_assert_eq!(self.tag(), TAG_BLOB);
+        debug_assert!(
+             self.tag() == TAG_BLOB_B || self.tag() == TAG_BLOB_T || self.tag() == TAG_BLOB_P
+        );
         self as *mut Blob
     }
 
@@ -940,13 +961,13 @@ pub(crate) unsafe fn block_size(address: usize) -> Words<u32> {
 
         // `block_size` is not used during the incremental mark phase and
         // therefore, does not support array slicing.
-        TAG_ARRAY => {
+        TAG_ARRAY_I | TAG_ARRAY_M | TAG_ARRAY_T => {
             let array = address as *mut Array;
             let size = array.len();
             size_of::<Array>() + Words(size)
         }
 
-        TAG_BITS64 => size_of::<Bits64>(),
+        TAG_BITS64_U | TAG_BITS64_S | TAG_BITS64_F => size_of::<Bits64>(),
 
         TAG_MUTBOX => size_of::<MutBox>(),
 
@@ -960,7 +981,7 @@ pub(crate) unsafe fn block_size(address: usize) -> Words<u32> {
 
         TAG_VARIANT => size_of::<Variant>(),
 
-        TAG_BLOB => {
+        TAG_BLOB_B | TAG_BLOB_T | TAG_BLOB_P => {
             let blob = address as *mut Blob;
             size_of::<Blob>() + blob.len().to_words()
         }
@@ -969,7 +990,7 @@ pub(crate) unsafe fn block_size(address: usize) -> Words<u32> {
             rts_trap_with("object_size: forwarding pointer");
         }
 
-        TAG_BITS32 => size_of::<Bits32>(),
+        TAG_BITS32_U | TAG_BITS32_S | TAG_BITS32_F => size_of::<Bits32>(),
 
         TAG_BIGINT => {
             let bigint = address as *mut BigInt;
