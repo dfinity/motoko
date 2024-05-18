@@ -41,8 +41,9 @@ actor Tuple {
 
     private func callTuple(): () {
         let t = getTuple();
-        assert t.0 == 42 and t.1 == false
-        // let (a, b) = getTuple();
+        assert t.0 == 42 and t.1 == false;
+        let (a, b) = t;
+        assert a == 42 and b == false;
     };
 
     public func changeField(): async () {
