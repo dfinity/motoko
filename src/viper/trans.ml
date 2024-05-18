@@ -418,6 +418,13 @@ and dec ctxt d =
       let d = !!(id x, tr_typ e.note.M.note_typ) in
       let ds, stmts = assign_stmts ctxt' d.at lval e in
       (d :: ds, stmts)
+  | M.LetD ({it=M.TupP _;_} as p, scrut, None) ->
+    add_locals ctxt (unwrap_tup_vars_pat p),
+    fun ctxt' ->
+      let conds, _, (ds, stmts) = pat_match ctxt' scrut p in
+      let irrefutable = (conds == []) in
+      if not irrefutable then failwith "impossible: tuple patterns must be irrefutable" else
+      ds, stmts
   | M.(ExpD e) -> (* TODO: restrict to e of unit type? *)
      (ctxt,
       fun ctxt' ->
@@ -560,6 +567,16 @@ and switch_stmts ctxt at (scrut : M.exp) (cases : M.case list) : seqn' =
 and pat_match ctxt (scrut : M.exp) (p : M.pat) : exp list * (id * T.typ) list * seqn' =
   let (!!) a = !!! (p.at) a in
   match (strip_par_p p).it with
+  | M.(TupP ps) ->
+    let e_scrut = exp ctxt scrut in
+    let p_scope = unwrap_tup_vars_pat p in
+    let ds = List.map (fun (x, t) -> !!(x, tr_typ t)) p_scope in
+    let tup_prj_assign_stmt i lval t = begin
+      let rhs = !!(FldAcc (prjE (p.at) e_scrut (intLitE p.at i) (typed_field t))) in
+      !!(assign_stmt lval rhs)
+    end in
+    let stmts = List.mapi (fun i (x, t) -> tup_prj_assign_stmt i (LValueUninitVar x) t) p_scope in
+    [], p_scope, (ds, stmts)
   | M.(TagP(l, p')) ->
     let e_scrut = exp ctxt scrut in
     let cond = !!(FldAcc (e_scrut, !!("is" ^ l.it))) in
