@@ -13,7 +13,7 @@ use motoko_rts_macros::ic_mem_fn;
 
 #[no_mangle]
 pub unsafe extern "C" fn compute_crc32(blob: Value) -> u32 {
-    if blob.tag() != TAG_BLOB_B {
+    if !blob.is_blob() {
         panic!("compute_crc32: Blob expected");
     }
 

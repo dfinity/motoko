@@ -225,6 +225,7 @@ module Const = struct
     | Word32 of Type.prim * int32
     | Word64 of Type.prim * int64
     | Float64 of Numerics.Float.t
+    | Text of string
     | Blob of string
     | Null
 
@@ -235,6 +236,7 @@ module Const = struct
     | Word64 (tyi, i), Word64 (tyj, j) -> tyi = tyj && i = j
     | Float64 i, Float64 j -> i = j
     | Bool i, Bool j -> i = j
+    | Text s, Text t
     | Blob s, Blob t -> s = t
     | Null, Null -> true
     | _ -> false
@@ -274,7 +276,7 @@ module Const = struct
     | Message of int32 (* anonymous message, only temporary *)
     | Obj of (string * t) list
     | Unit
-    | Array of t list (* also tuples, but not nullary *)
+    | Array of t list (* also tuples, but not nullary *) (*TODO: add Tuple constructor *)
     | Tag of (string * t)
     | Opt of t
     | Lit of lit
@@ -4247,13 +4249,13 @@ module Blob = struct
       BigNum.from_word32 env
     )
 
-  let vanilla_lit env s =
-    Tagged.shared_static_obj env Tagged.(Blob B) StaticBytes.[
+  let vanilla_lit env sort s =
+    Tagged.shared_static_obj env Tagged.(Blob sort) StaticBytes.[
       I32 (Int32.of_int (String.length s));
       Bytes s;
     ]
 
-  let lit env s = compile_unboxed_const (vanilla_lit env s)
+  let lit env sort s = compile_unboxed_const (vanilla_lit env sort s)
 
   let lit_ptr_len env s =
     compile_unboxed_const (Int32.add ptr_unskew (E.add_static env StaticBytes.[Bytes s])) ^^
@@ -4675,7 +4677,7 @@ module Arr = struct
     Func.share_code2 Func.Never env "Array.idx_bigint" (("array", I32Type), ("idx", I32Type)) [I32Type] (fun env get_array get_idx ->
       get_array ^^
       get_idx ^^
-      Blob.lit env "Array index out of bounds" ^^
+      Blob.lit env Tagged.T "Array index out of bounds" ^^
       BigNum.to_word32_with env ^^
       idx env
   )
@@ -5013,7 +5015,7 @@ module IC = struct
     G.i (GlobalSet (nr (E.get_global env "__call_perform_message")))
 
   let init_globals env =
-    Blob.lit env "" ^^
+    Blob.lit env Tagged.T "" ^^
     set_call_perform_message env
 
   let i32s n = Lib.List.make n I32Type
@@ -5394,7 +5396,7 @@ module IC = struct
   (* Actor reference on the stack *)
   let actor_public_field env name =
     (* simply tuple canister name and function name *)
-    Blob.lit env name ^^
+    Blob.lit env Tagged.T name ^^
     Tuple.from_stack env 2
 
   let fail_assert env at =
@@ -6436,7 +6438,7 @@ module BumpStream : Stream = struct
     get_data_size ^^ compile_add_const header_size ^^
     Blob.dyn_alloc_scratch env ^^ set_data_buf ^^
     get_data_buf ^^
-    Blob.lit env header ^^ Blob.payload_ptr_unskewed env ^^
+    Blob.lit env Tagged.B header ^^ Blob.payload_ptr_unskewed env ^^
     compile_unboxed_const header_size ^^
     Heap.memcpy env ^^
     get_data_buf ^^ compile_add_const header_size ^^ set_data_buf
@@ -7550,11 +7552,11 @@ module MakeSerialization (Strm : Stream) = struct
             *)
             get_thing ^^ set_result ^^
             get_memo ^^ get_result ^^ store_unskewed_ptr ^^
-            get_memo ^^ compile_add_const 4l ^^ Blob.lit env (typ_hash t) ^^ store_unskewed_ptr
+            get_memo ^^ compile_add_const 4l ^^ Blob.lit env Tagged.T (typ_hash t) ^^ store_unskewed_ptr
           )
           end begin
           (* Decoded before. Check type hash *)
-          ReadBuf.read_word32 env get_data_buf ^^ Blob.lit env (typ_hash t) ^^
+          ReadBuf.read_word32 env get_data_buf ^^ Blob.lit env Tagged.T (typ_hash t) ^^
           G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
           E.else_trap_with env ("Stable memory error: Aliased at wrong type, expected: " ^ typ_hash t)
         end ^^
@@ -7744,7 +7746,7 @@ module MakeSerialization (Strm : Stream) = struct
           (* pre-allocate a region object, with dummy fields *)
           compile_const_64 0L ^^ (* id *)
           compile_unboxed_const 0l ^^ (* pagecount *)
-          Blob.lit env "" ^^ (* vec_pages *)
+          Blob.lit env Tagged.B "" ^^ (* vec_pages *)
           Region.alloc_region env ^^
           set_region ^^
           on_alloc get_region ^^
@@ -8244,7 +8246,7 @@ module BlobStream : Stream = struct
     get_data_size ^^ compile_add_const header_size ^^
     E.call_import env "rts" "alloc_stream" ^^ set_token ^^ (* allocation barrier called in alloc_stream *)
     get_token ^^
-    Blob.lit env header ^^
+    Blob.lit env Tagged.B header ^^
     E.call_import env "rts" "stream_write_text"
 
   let check_filled env get_token get_data_size =
@@ -8763,7 +8765,8 @@ module StackRep = struct
     | Const.Word32 (pty, n) -> BoxedSmallWord.vanilla_lit env pty n
     | Const.Word64 (pty, n) -> BoxedWord64.vanilla_lit env pty n
     | Const.Float64 f  -> Float.vanilla_lit env f
-    | Const.Blob t     -> Blob.vanilla_lit env t
+    | Const.Text t -> Blob.vanilla_lit env Tagged.T t
+    | Const.Blob t -> Blob.vanilla_lit env Tagged.B t
     | Const.Null       -> Opt.null_vanilla_lit env
 
   let rec materialize_const_t env (p, cv) : int32 =
@@ -9471,7 +9474,7 @@ module FuncDec = struct
       (* done! *)
       IC.system_call env "call_perform" ^^
       IC.set_call_perform_status env ^^
-      Blob.lit env message ^^
+      Blob.lit env Tagged.T message ^^
       IC.set_call_perform_message env ^^
       IC.get_call_perform_status env ^^
       (* save error code, cleanup on error *)
@@ -9546,11 +9549,11 @@ module FuncDec = struct
          G.i Drop ^^
          compile_unboxed_zero ^^
          IC.set_call_perform_status env ^^
-         Blob.lit env "" ^^
+         Blob.lit env Tagged.T "" ^^
          IC.set_call_perform_message env
        else
          IC.set_call_perform_status env ^^
-         Blob.lit env "could not perform oneway" ^^
+         Blob.lit env Tagged.T "could not perform oneway" ^^
          IC.set_call_perform_message env)
 
     | _ -> assert false
@@ -9922,7 +9925,7 @@ let const_lit_of_lit : Ir.lit -> Const.lit = function
   | CharLit c     -> Const.Vanilla (TaggedSmallWord.vanilla_lit Type.Char c)
 
   | NullLit       -> Const.Null
-  | TextLit t
+  | TextLit t     -> Const.Text t
   | BlobLit t     -> Const.Blob t
   | FloatLit f    -> Const.Float64 f
 
@@ -11377,7 +11380,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_as env ae SR.Vanilla e0 ^^
     compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) e1 ^^
     compile_exp_as env ae SR.Vanilla e2 ^^
-    Blob.lit env "Blob size out of bounds" ^^
+    Blob.lit env Tagged.T "Blob size out of bounds" ^^
     BigNum.to_word32_with env ^^
     Region.load_blob env
 
@@ -11717,7 +11720,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla,
     compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) e1 ^^
     compile_exp_as env ae SR.Vanilla e2 ^^
-    Blob.lit env "Blob size out of bounds" ^^
+    Blob.lit env Tagged.T "Blob size out of bounds" ^^
     BigNum.to_word32_with env ^^
     StableMemoryInterface.load_blob env
 
@@ -11739,7 +11742,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | OtherPrim "stableVarQuery", [] ->
     SR.UnboxedTuple 2,
     IC.get_self_reference env ^^
-    Blob.lit env Type.(motoko_stable_var_info_fld.lab)
+    Blob.lit env Tagged.T Type.(motoko_stable_var_info_fld.lab)
 
   (* Other prims, binary*)
   | OtherPrim "Array.init", [_;_] ->
