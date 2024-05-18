@@ -9,8 +9,12 @@ actor Variants {
     #swapped : Pair<B, A>;
   };
 
+  func idPair<A, B>(p: Pair<A, B>) : Pair<A, B> {
+    return p;
+  };
+
   public func get() : async Pair<Nat, BW> {
-    return #swapped(#ordered(#Black, 10));
+    return idPair<Nat, BW>(#swapped(#ordered(#Black, 10)));
   }
 
 };

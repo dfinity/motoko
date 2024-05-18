@@ -22,10 +22,11 @@ type dec_field_template = { dft_id : string; dft_mk : T.typ list -> dec_field }
 
 let string_of_mono_goal (g : mono_goal) : string =
   String.concat "$" (g.mg_id :: List.map (fun t ->
-    match T.normalize t with
-    | T.Prim T.Int  -> "Int"
-    | T.Prim T.Nat  -> "Nat"
-    | T.Prim T.Bool -> "Bool"
+    match t, T.normalize t with
+    | _, T.Prim T.Int  -> "Int"
+    | _, T.Prim T.Nat  -> "Nat"
+    | _, T.Prim T.Bool -> "Bool"
+    | T.Con (con, []), _ -> Mo_types.Cons.name con (* TODO: encode type arguments *)
     | _ -> unsupported Source.no_region (Mo_types.Arrange_type.typ t)) g.mg_typs)
 
 let mono_calls_visitor (stk : mono_goal Stack.t) : visitor =
