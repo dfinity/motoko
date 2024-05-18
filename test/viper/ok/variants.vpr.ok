@@ -44,6 +44,43 @@ method idPair$Nat$BW($Self: Ref, p: Pair[Int, BW])
       goto $Ret;
       label $Ret; 
     }
+method flatten$Nat$BW($Self: Ref, p: Pair[Int, BW])
+     returns ($Res: Pair[Int, BW])
+    requires $Perm($Self)
+    ensures $Perm($Self)
+    { 
+      if ((p).isordered)
+         { var a: Int
+           var b: BW
+           a := (p).ordered$0;
+           b := (p).ordered$1;
+           $Res := ordered(a, b);
+           goto $Ret; 
+         }else
+         { 
+           if ((p).isswapped)
+              { var sp: Pair[BW, Int]
+                sp := (p).swapped$0;
+                if ((sp).isordered)
+                   { var a: BW
+                     var b: Int
+                     a := (sp).ordered$0;
+                     b := (sp).ordered$1;
+                     $Res := ordered(b, a);
+                     goto $Ret; 
+                   }else
+                   { 
+                     if ((sp).isswapped)
+                        { var sp2: Pair[Int, BW]
+                          sp2 := (sp).swapped$0;
+                          $Res := flatten$Nat$BW($Self, sp2);
+                          goto $Ret; 
+                        }; 
+                   }; 
+              }; 
+         };
+      label $Ret; 
+    }
 adt BW  { Black()
           White() }
 adt Pair [A, B]
@@ -57,6 +94,17 @@ method get($Self: Ref)
     ensures $Inv($Self)
     { 
       $Res := idPair$Nat$BW($Self, swapped(ordered(Black(), 10)));
+      goto $Ret;
+      label $Ret; 
+    }
+method getf($Self: Ref)
+     returns ($Res: Pair[Int, BW])
+    requires $Perm($Self)
+    requires $Inv($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { 
+      $Res := flatten$Nat$BW($Self, swapped(ordered(Black(), 10)));
       goto $Ret;
       label $Ret; 
     }
