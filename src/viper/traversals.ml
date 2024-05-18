@@ -88,7 +88,8 @@ and over_pat_field (v : visitor) (pf : pat_field) : pat_field =
   { pf with it = { pf.it with pat = over_pat v pf.it.pat } }
 
 and over_case (v : visitor) (case : case) : case =
-  { case with it = { case.it with exp = over_exp v case.it.exp } }
+  { case with it = { pat = over_pat v case.it.pat;
+                     exp = over_exp v case.it.exp } }
 
 and over_prog (v : visitor) (prog : prog) : prog =
   { prog with it = List.map (over_dec v) prog.it }
