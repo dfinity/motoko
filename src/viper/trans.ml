@@ -588,14 +588,14 @@ and call_args ctxt e =
 and exp ctxt e =
   let open Mo_values.Operator in
   let (!!) p = !!! (e.at) p in
-  let t = e.note.M.note_typ in
+  let e_t = e.note.M.note_typ in
   match e.it with
   | M.VarE x ->
     begin
-     match fst (Env.find x.it ctxt.ids) with
-     | Local ->
+     match Env.find x.it ctxt.ids with
+     | Local, t ->
         !!(LocalVar (id x, tr_typ t))
-     | Field ->
+     | Field, _ ->
         !!(FldAcc (self ctxt x.at, id x))
      | _ ->
         unsupported e.at (Arrange.exp e)
@@ -645,9 +645,9 @@ and exp ctxt e =
   | M.OldE e ->
     !!(Old (exp ctxt e))
   | M.IdxE (e1, e2) ->
-     !!(FldAcc (array_loc ctxt e.at e1 e2 t))
+     !!(FldAcc (array_loc ctxt e.at e1 e2 e_t))
   | M.ProjE (e, i) ->
-     !!(FldAcc (prjE e.at (exp ctxt e) (intLitE e.at i) (typed_field t)))
+     !!(FldAcc (prjE e.at (exp ctxt e) (intLitE e.at i) (typed_field e_t)))
   | M.TagE (tag, e) ->
      !!(match e.it with
         | M.TupE es -> CallE (tag.it, List.map (exp ctxt) es)

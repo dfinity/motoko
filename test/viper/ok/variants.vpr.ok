@@ -35,6 +35,15 @@ method __init__($Self: Ref)
     { 
        
     }
+method idPair$Nat$BW($Self: Ref, p: Pair[Int, BW])
+     returns ($Res: Pair[Int, BW])
+    requires $Perm($Self)
+    ensures $Perm($Self)
+    { 
+      $Res := p;
+      goto $Ret;
+      label $Ret; 
+    }
 adt BW  { Black()
           White() }
 adt Pair [A, B]
@@ -47,7 +56,7 @@ method get($Self: Ref)
     ensures $Perm($Self)
     ensures $Inv($Self)
     { 
-      $Res := swapped(ordered(Black(), 10));
+      $Res := idPair$Nat$BW($Self, swapped(ordered(Black(), 10)));
       goto $Ret;
       label $Ret; 
     }
