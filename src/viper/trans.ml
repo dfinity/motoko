@@ -95,6 +95,10 @@ type ctxt =
     ghost_conc : (ctxt -> exp -> exp) list ref;
   }
 
+let add_locals ctxt (locals : (id * T.typ) list) =
+  let add (x, t) = Env.add x.it (Local, t) in
+  { ctxt with ids = List.fold_right add locals ctxt.ids }
+
 let self ctxt at =
   match ctxt.self with
   | Some id -> !!! at (LocalVar (!!! at id,!!! at RefT))
@@ -145,6 +149,11 @@ let concat_map_seqn' : ('a -> seqn') -> 'a list -> seqn' =
   fun f xs ->
     let ds, stmts = List.split (List.map f xs) in
     List.concat ds, List.concat stmts
+
+let rec strip_par_p (p : M.pat) : M.pat =
+  match p.it with
+  | M.ParP p' -> strip_par_p p'
+  | _         -> p
 
 let rec unit (u : M.comp_unit) : prog Diag.result =
   Diag.(
@@ -493,7 +502,8 @@ and stmt ctxt (s : M.exp) : seqn =
                                      !!(CallE("$Inv",  [self ctxt s.at]))))] in
      !!([],
         [ !!(WhileS(exp ctxt e, invs''', stmt ctxt s1')) ])
-
+  | M.(SwitchE(scrut, cs)) ->
+      !!(switch_stmts ctxt s.at scrut cs)
   | M.(AssignE({it = VarE x; _}, e2)) ->
       let lval = (match fst (Env.find x.it ctxt.ids) with
                  | Local -> LValueVar (!!! (x.at) (x.it))
@@ -531,6 +541,48 @@ and stmt ctxt (s : M.exp) : seqn =
       !!(ds, stmts @ [stmt])
   | _ ->
      unsupported s.at (Arrange.exp s)
+
+(* Translate switch(scrut){...}. *)
+and switch_stmts ctxt at (scrut : M.exp) (cases : M.case list) : seqn' =
+  match cases with
+  | [] -> [], []
+  | c :: cs -> begin
+      let (!!) a = !!! (c.at) a in
+      let {M.pat = p; M.exp = e} = c.it in
+      let conds, p_scope, (p_ds, p_stmts) = pat_match ctxt scrut p in
+      let local_ctxt = add_locals ctxt p_scope in
+      let {it = (e_ds, e_stmts);_} = stmt local_ctxt e in
+      let the = (p_ds @ e_ds, p_stmts @ e_stmts) in
+      let els = switch_stmts ctxt at scrut cs in
+      [], [!!(IfS(conjoin conds at, !!the, !!els))]
+    end
+
+and pat_match ctxt (scrut : M.exp) (p : M.pat) : exp list * (id * T.typ) list * seqn' =
+  let (!!) a = !!! (p.at) a in
+  match (strip_par_p p).it with
+  | M.(TagP(l, p')) ->
+    let e_scrut = exp ctxt scrut in
+    let cond = !!(FldAcc (e_scrut, !!("is" ^ l.it))) in
+    let p_scope = unwrap_tup_vars_pat p' in
+    let ds = List.map (fun (x, t) -> !!(x, tr_typ t)) p_scope in
+    let fld_assign_stmt i lval = begin
+      let rhs = !!(FldAcc (e_scrut, !!(l.it ^ "$" ^ string_of_int i))) in
+      !!(assign_stmt lval rhs)
+    end in
+    let stmts = List.mapi (fun i (x, t) -> fld_assign_stmt i (LValueUninitVar x)) p_scope in
+    [cond], p_scope, (ds, stmts)
+  | _ -> unsupported p.at (Arrange.pat p)
+
+and unwrap_tup_vars_pat (p : M.pat) : (id * T.typ) list =
+  match (strip_par_p p).it with
+  | M.TupP ps -> List.map unwrap_var_pat ps
+  | _         -> [unwrap_var_pat p]
+
+and unwrap_var_pat (p : M.pat) : (id * T.typ) =
+  match (strip_par_p p).it with
+  | M.VarP x         -> id x, p.note
+  | M.AnnotP (p', t) -> fst (unwrap_var_pat p'), t.note
+  | _                -> unsupported p.at (Arrange.pat p)
 
 (* Translate assignment a:=b or initialization. May create temporary variables
    if the LHS is a field or if the RHS is an array. *)
