@@ -27,9 +27,9 @@ let rec pp_prog ppf p =
 
 and pp_item ppf i =
   match i.it with
-  | AdtI (name, params, cons) ->
+  | AdtI (id, params, cons) ->
     fprintf ppf "@[<2>adt %s@;%a@;%a@]"
-      name
+      id.it
       pp_adt_params params
       pp_adt_cons cons
   | FieldI (id, typ) ->
@@ -54,7 +54,7 @@ and pp_adt_params ppf = function
       fprintf ppf "[%a]"
         (pp_print_list pp_adt_param ~pp_sep:comma) params
 
-and pp_adt_param ppf param = fprintf ppf "%s" param
+and pp_adt_param ppf param = fprintf ppf "%s" param.it
 
 and pp_adt_cons ppf cons =
   fprintf ppf "@[<v 2>{ %a }@]"
@@ -62,12 +62,12 @@ and pp_adt_cons ppf cons =
 
 and pp_adt_con ppf con =
   fprintf ppf "%s@[(%a)@]"
-    con.con_name
+    con.con_name.it
     (pp_print_list ~pp_sep:comma pp_adt_con_field) (List.mapi (fun i fld -> con, i, fld) con.con_fields)
 
 and pp_adt_con_field ppf (con, i, con_field) =
   fprintf ppf "%s$%s : %a"
-    con.con_name
+    con.con_name.it
     (string_of_int i)
     pp_typ con_field
 
@@ -123,10 +123,10 @@ and pp_typ ppf t =
   | RefT -> pr ppf "Ref"
   | ArrayT -> pr ppf "Array"
   | TupleT -> pr ppf "Tuple"
-  | ConT(name, []) -> fprintf ppf "%s" name
-  | ConT(name, ts) ->
+  | ConT(con, []) -> fprintf ppf "%s" con.it
+  | ConT(con, ts) ->
       fprintf ppf "@[%s[%a]@]"
-        name
+        con.it
         (pp_print_list ~pp_sep:comma pp_typ) ts
 
 and pp_exp ppf exp =

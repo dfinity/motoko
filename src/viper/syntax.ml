@@ -11,12 +11,12 @@ type prog = (item list, info) Source.annotated_phrase
 and item = (item', info) Source.annotated_phrase
 and item' =
   (* | import path *)
-  | AdtI of string * string list * adt_con list
+  | AdtI of id * id list * adt_con list
   | FieldI of id * typ
   | MethodI of id * par list * par list * exp list * exp list * seqn option
   | InvariantI of string * exp
 
-and adt_con = { con_name : string; con_fields : typ list }
+and adt_con = { con_name : id; con_fields : typ list }
 
 and par = id * typ
 
@@ -101,5 +101,5 @@ and typ' =
   | RefT
   | ArrayT
   | TupleT
-  | ConT of string * typ list
+  | ConT of id * typ list
 
