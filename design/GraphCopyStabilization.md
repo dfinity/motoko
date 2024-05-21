@@ -66,7 +66,7 @@ dfx deploy CANISTER_ID
 3. Complete the explicit destabilization after the upgrade:
 
 ```
-dfx canister call CANISTER_ID __motoko_destabilze_after_upgrade "()"
+dfx canister call CANISTER_ID __motoko_destabilize_after_upgrade "()"
 ```
 
 * An assertion checks that the caller is the canister owner or a canister controller.
@@ -113,7 +113,7 @@ The format is also versioned to allow future refinements of the graph copy algor
 ## Specific Aspects
 * Field hashes in objects are serialized in a blob. On deserialization, the hash blob is allocated in the dynamic heap. Same-typed objects that have been created by the same program version share the same hash blob.
 * Stable records can dynamically contain non-stable fields due to structural sub-typing. A dummy value can be serialized for such fields as a new program version can no longer access this field through the stable types.
-* For backwards compatibility, old Candid destabilzation is still supported when upgrading from a program that used older compiler version.
+* For backwards compatibility, old Candid destabilization is still supported when upgrading from a program that used older compiler version.
 * Incremental GC: Serialization needs to consider Brooks forwarding pointers (not to be confused with the Cheney's forwarding information), while deserialization can deal with partitioned heap that can have internal fragmentation (free space at partition ends).
 * The partitioned heap prevents linear scanning of the heap, especially in the presence of large objects that can be placed at a higher partition than subsequently allocated normal-sized objects. For this reason, a scan stack is allocated in the main memory, remembering the deserialized objects that still need to be scanned. With this, the deserialization does not need to make any assumptions of the heap structure (e.g. monotonically increasing allocations, free space markers, empty heap on deserialization start etc.).
 * If actor fields are promoted to the `Any` type in a new program version, their content is released in that variable to allow memory reclamation.

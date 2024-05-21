@@ -70,7 +70,7 @@ pub unsafe fn start_graph_stabilization<M: Memory>(
 ) {
     assert!(STABILIZATION_STATE.is_none());
     assert!(is_gc_stopped());
-    let stable_memory_pages = stable_mem::size();
+    let stable_memory_pages = stable_mem::size(); // Backup the virtual size.
     let serialized_data_start = stable_memory_pages * PAGE_SIZE;
     let serialization = Serialization::start(mem, stable_actor, serialized_data_start);
     STABILIZATION_STATE = Some(StabilizationState::new(
@@ -174,7 +174,9 @@ pub unsafe fn start_graph_destabilization<M: Memory>(
     if !memory_compatible(mem, &mut old_type_descriptor, &mut new_type_descriptor) {
         rts_trap_with("Memory-incompatible program upgrade");
     }
+    // Restore the virtual size.
     moc_stable_mem_set_size(metadata.serialized_data_start / PAGE_SIZE);
+
     // Stop the GC until the incremental graph destabilization has been completed.
     stop_gc();
 

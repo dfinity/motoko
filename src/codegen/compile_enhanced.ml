@@ -5159,7 +5159,7 @@ module IC = struct
 
   let async_method_name = Type.(motoko_async_helper_fld.lab)
   let gc_trigger_method_name = Type.(motoko_gc_trigger_fld.lab)
-  
+ 
   let is_self_call env =
     let (set_len_self, get_len_self) = new_local env "len_self" in
     let (set_len_caller, get_len_caller) = new_local env "len_caller" in
@@ -6065,6 +6065,24 @@ module RTS_Exports = struct
     E.add_export env (nr {
       name = Lib.Utf8.decode "ic0_stable64_size";
       edesc = nr (FuncExport (nr ic0_stable64_size_fi))
+    });
+
+    let ic0_stable64_grow_fi =
+      match E.mode env with
+      | Flags.ICMode | Flags.RefMode ->
+        E.reuse_import env "ic0" "stable64_grow"
+      | Flags.WASIMode | Flags.WasmMode ->
+        E.add_fun env "ic0_stable64_grow" (
+          Func.of_body env ["newPages", I64Type] [I64Type]
+            (fun env ->
+              when_stable_memory_required_else_trap env (fun () ->
+                G.i (LocalGet (nr 0l)) ^^
+                StableMem.stable64_grow env))
+          )
+    in
+    E.add_export env (nr {
+      name = Lib.Utf8.decode "ic0_stable64_grow";
+      edesc = nr (FuncExport (nr ic0_stable64_grow_fi))
     });
 
     let moc_stable_mem_grow_fi =
@@ -8115,7 +8133,7 @@ invariant type constructors in a single pass.
 end (* Serialization *)
 
 (* OldStabilization as migration code: 
-  Deserializing a last time from Candid-serailized stable objects into the stable heap:
+  Deserializing a last time from Candid-serialized stable objects into the stable heap:
    * stable variables; and
    * virtual stable memory.
    c.f.
@@ -8571,7 +8589,7 @@ module GraphCopyStabilization = struct
   let graph_stabilization_increment env =
     E.call_import env "rts" "graph_stabilization_increment" ^^ Bool.from_rts_int32
 
-  let start_graph_destabilization env actor_type complete_initialization =
+  let start_graph_destabilization env actor_type =
     EnhancedOrthogonalPersistence.create_type_descriptor env actor_type ^^
     E.call_import env "rts" "start_graph_destabilization"
 
@@ -9586,7 +9604,7 @@ module IncrementalGraphStabilization = struct
       is_stabilization_completed env ^^
       E.if0
         begin
-          (* Sucessful completion of the async stabilzation sequence. *)
+          (* Sucessful completion of the async stabilization sequence. *)
           IC.static_nullary_reply env
           (* Skip garbage collection. *)
           (* Stay in lifecycle state `InStabilization`. *)
@@ -9705,7 +9723,7 @@ module IncrementalGraphStabilization = struct
           call_async_destabilization env
         end
         begin
-          (* Send static reply of sucessful async destabilzation sequence. *)
+          (* Send static reply of sucessful async destabilization sequence. *)
           IC.static_nullary_reply env
           (* Stay in lifecycle state `InDestabilization`. *)
         end)
@@ -9752,10 +9770,9 @@ module IncrementalGraphStabilization = struct
     end
 
   let partial_destabilization_on_upgrade env actor_type =
-    let complete_initialization = set_destabilized_actor env ^^ complete_graph_destabilization env in
     (* TODO: Verify that the post_upgrade hook cannot be directly called by the IC *)
     (* Garbage collection is disabled in `start_graph_destabilization` until destabilization has completed. *)
-    GraphCopyStabilization.start_graph_destabilization env actor_type complete_initialization ^^
+    GraphCopyStabilization.start_graph_destabilization env actor_type ^^
     get_destabilized_actor env ^^
     compile_test I64Op.Eqz ^^
     E.if0
@@ -9843,7 +9860,7 @@ module Persistence = struct
     compile_eq_const StableMem.version_graph_copy_regions ^^
     G.i (Binary (Wasm_exts.Values.I64 I64Op.Or))
 
-  let use_enhancecd_orthogonal_persistence env =
+  let use_enhanced_orthogonal_persistence env =
     get_persistence_version env ^^
     compile_eq_const StableMem.version_stable_heap_no_regions ^^
     get_persistence_version env ^^
@@ -9865,7 +9882,7 @@ module Persistence = struct
       end
 
   let load env actor_type =
-    use_enhancecd_orthogonal_persistence env ^^
+    use_enhanced_orthogonal_persistence env ^^
     (E.if1 I64Type
       (EnhancedOrthogonalPersistence.load env actor_type)
       begin
