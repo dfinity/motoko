@@ -33,8 +33,6 @@ pub trait ScanStream {
     fn read<T>(&mut self) -> T;
     // Read raw data from the stream.
     fn raw_read(&mut self, data_address: usize, length: usize);
-    // Go back in the stream.
-    fn rewind(&mut self, length: usize);
     // Skip data in the stream.
     fn skip(&mut self, length: usize);
     // Overwrite the value right before the stream position.
@@ -102,11 +100,6 @@ impl ScanStream for StableMemoryStream {
             ic0_stable64_read(data_address as u64, self.scan_address, length as u64);
         }
         self.scan_address += length as u64;
-    }
-
-    fn rewind(&mut self, length: usize) {
-        debug_assert!(length as u64 <= self.scan_address);
-        self.scan_address -= length as u64;
     }
 
     fn skip(&mut self, length: usize) {
