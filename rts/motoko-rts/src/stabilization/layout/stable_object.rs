@@ -46,7 +46,8 @@ impl Serializer<Object> for StableObject {
         stable_memory: &mut StableMemoryStream,
         main_object: *mut Object,
     ) {
-        for index in 0..main_object.size() {
+        let object_size = get_object_size(stable_memory, main_object);
+        for index in 0..object_size {
             let main_field = main_object.get(index);
             let stable_field = StableValue::serialize(main_field);
             stable_memory.write(&stable_field);
