@@ -408,7 +408,7 @@ let switch_variantE exp1 cases typ1 =
     at = no_region;
     note = Note.{ def with
       typ = typ1;
-      eff = List.fold_left max_eff (eff exp1) (List.map (fun (l,p,e) -> eff e) cases)
+      eff = List.(map (fun (l,p,e) -> eff e) cases |> fold_left max_eff (eff exp1))
     }
   }
 
@@ -432,7 +432,7 @@ let switch_textE exp1 cases (pat, exp2) typ1 =
     note = Note.{
       def with
       typ = typ1;
-      eff = List.fold_left max_eff (eff exp1) (List.map (fun c -> eff c.it.exp) cs)
+      eff = List.(map (fun c -> eff c.it.exp) cs |> fold_left max_eff (eff exp1))
     }
   }
 
