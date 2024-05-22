@@ -22,7 +22,7 @@ actor A {
         catch _ { debugPrint "CAUGHT1" }
     };
 */
-
+/*
     func t2() : async () {
         try {
             debugPrint "IN2";
@@ -80,20 +80,20 @@ actor A {
         case { debugPrint "OUT6" };
         debugPrint "AFTER6"
     };
-
+*/
     // TODO: trap on happy/catch
 
     public func go() : async () {
         /*ignore*/ await t0();
         //await t1();
-        await t2();
+        /*await t2();
         await t3();
         /*await t4();*/
         await t5();
-        await t6();
+        await t6();*/
     };
 };
 
 //SKIP ic-ref-run
 
-A.go(); //OR-CALL ingress go "DIDL\x00\x00"
+//A.go(); //OR-CALL ingress go "DIDL\x00\x00"

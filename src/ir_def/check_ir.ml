@@ -365,13 +365,13 @@ let rec check_exp env (exp:Ir.exp) : unit =
   (* helpers *)
   let check p = check env exp.at p in
   let (<:) t1 t2 =
-(*  try *)
+  try
       check_sub env exp.at t1 t2
-(*  with e ->
+  with e ->
      (Printf.eprintf "(in here):\n%s"
         (Wasm.Sexpr.to_string 80 (Arrange_ir.exp exp));
       raise e)
-*)
+
   in
   (* check for aliasing *)
   if exp.note.Note.check_run = env.check_run
@@ -549,7 +549,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
       check (T.shared (T.seq ots)) "DeserializeOpt is not defined for operand type";
       typ exp1 <: T.blob;
       T.Opt (T.seq ots) <: t
-    | CPSAwait (s, cont_typ), [a; kr] ->
+    | CPSAwait (s, cont_typ), [a; krc] ->
       let (_, t1) =
         try T.as_async_sub s T.Non (T.normalize (typ a))
         with _ -> error env exp.at "CPSAwait expect async arg, found %s" (T.string_of_typ (typ a))
@@ -560,7 +560,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
            (match ts2 with
             | [] -> ()
             | _ -> error env exp.at "CPSAwait answer type error");
-           typ kr <: T.Tup [cont_typ; T.Func(T.Local, T.Returns, [], [T.catch], ts2)];
+           typ krc <: T.Tup [cont_typ; T.Func(T.Local, T.Returns, [], [T.catch], ts2); cont_typ(* BETTER: T.Func(T.Local, T.Returns, [], [], ts2)*)];
            t1 <: T.seq ts1;
            T.seq ts2 <: t;
          end;

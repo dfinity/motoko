@@ -42,6 +42,8 @@ let fulfillT as_seq typ = T.Func(T.Local, T.Returns, [], as_seq typ, [])
 
 let failT = T.Func(T.Local, T.Returns, [], [T.catch], [])
 
+(*let cleanupT = T.Func(T.Local, T.Returns, [], [], [])*)
+
 let t_async_fut as_seq t =
   T.Func (T.Local, T.Returns, [], [fulfillT as_seq t; failT],
     [T.sum [
@@ -57,9 +59,9 @@ let new_asyncT =
   T.Func (
     T.Local,
     T.Returns,
-    [ { var = "T"; sort = T.Type; bound = T.Any } ],
+    [ { var = "TX"; sort = T.Type; bound = T.Any } ],
     [],
-    new_async_ret unary (T.Var ("T", 0)))
+    new_async_ret unary (T.Var ("TX", 0)))
 
 let new_asyncE () =
   varE (var "@new_async" new_asyncT)
@@ -81,6 +83,7 @@ let new_nary_async_reply ts =
       let v = fresh_var "v" u in
       let k = fresh_var "k" (contT u T.unit) in
       let r = fresh_var "r" (err_contT T.unit) in
+      let c = fresh_var "c" T.(contT unit unit) in
       [k; r] -->* (
         varE unary_async -*-
           (tupE [
@@ -117,7 +120,7 @@ let new_nary_async_reply ts =
     fresh_var "reject" (typ_of_var fail)
   in
     (async, reply, reject),
-      blockE [letP (tupP [varP unary_async; varP unary_fulfill; varP fail])  call_new_async]
+      blockE [letP (tupP [varP unary_async; varP unary_fulfill; varP fail]) call_new_async]
         (tupE [nary_async; nary_reply; varE fail])
 
 
@@ -248,30 +251,30 @@ let transform prog =
     | VarE id -> exp'
     | AssignE (exp1, exp2) ->
       AssignE (t_lexp exp1, t_exp exp2)
-    | PrimE (CPSAwait (Fut, cont_typ), [a; kr]) ->
+    | PrimE (CPSAwait (Fut, cont_typ), [a; krc]) ->
       begin match cont_typ with
         | Func(_, _, [], _, []) ->
           (* unit answer type, from await in `async {}` *)
-          (ensureNamed (t_exp kr) (fun vkr ->
+          (ensureNamed (t_exp krc) (fun vkrc ->
             let schedule = fresh_var "schedule" (T.Func(T.Local, T.Returns, [], [], [])) in
-            switch_variantE (t_exp a -*- varE vkr)
+            switch_variantE (t_exp a -*- varE vkrc)
               [ ("suspend", wildP,
                   unitE()); (* suspend *)
                 ("schedule", varP schedule, (* resume later *)
                   (* try await async (); schedule() catch e -> r(e) *)
                  (let v = fresh_var "call" T.unit in
                   letE v
-                    (selfcallE [] (ic_replyE [] (unitE())) (varE schedule) (projE (varE vkr) 1))
-                    (check_call_perform_status (varE v) (fun e -> projE (varE vkr) 1 -*- e))))
+                    (selfcallE [] (ic_replyE [] (unitE())) (varE schedule) (projE (varE vkrc) 1))
+                    (check_call_perform_status (varE v) (fun e -> projE (varE vkrc) 1 -*- e))))
               ]
               T.unit
           )).it
         | _ -> assert false
       end
-    | PrimE (CPSAwait (Cmp, cont_typ), [a; kr]) ->
+    | PrimE (CPSAwait (Cmp, cont_typ), [a; krc]) ->
       begin match cont_typ with
       | Func(_, _, [], _, []) ->
-         (t_exp a -*- t_exp kr).it
+         (t_exp a -*- t_exp krc).it
       | _ -> assert false
       end
     | PrimE (CPSAsync (Fut, t), [exp1]) ->
@@ -308,7 +311,7 @@ let transform prog =
       let v_ret = fresh_var "v" t_ret in
       let v_fail = fresh_var "e" t_fail in
       ([v_ret; v_fail] -->* (callE (t_exp exp1) [t0] (tupE [varE v_ret; varE v_fail]))).it
-    | PrimE (CallPrim typs, [exp1; exp2]) when is_awaitable_func exp1 ->
+    | PrimE (CallPrim typs, [exp1; exp2]) when is_awaitable_func exp1 ->(* HERE *)
       let ts1,ts2 =
         match typ exp1 with
         | T.Func (T.Shared _, T.Promises, tbs, ts1, ts2) ->
@@ -318,14 +321,14 @@ let transform prog =
       in
       let exp1' = t_exp exp1 in
       let exp2' = t_exp exp2 in
-      let ((nary_async, nary_reply, reject), def) =
+      let ((nary_async, nary_reply, reject(*, cleanup*)), def) =
         new_nary_async_reply ts2
       in
       (blockE (
-        letP (tupP [varP nary_async; varP nary_reply; varP reject]) def ::
+        letP (tupP [varP nary_async; varP nary_reply; varP reject(*; varP cleanup*)]) def ::
         let_eta exp1' (fun v1 ->
           let_seq ts1 exp2' (fun vs ->
-            [ expD (ic_callE v1 (seqE (List.map varE vs)) (varE nary_reply) (varE reject)) ]
+            [ expD (ic_callE v1 (seqE (List.map varE vs)) (varE nary_reply) (varE reject) (varE reject)) ]
            )
           )
          )

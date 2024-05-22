@@ -473,8 +473,9 @@ and c_exp' context exp k =
       | T.Triv ->
         cps_awaitE s (typ_of_var k) (t_exp context exp1) kr
       | T.Await ->
+        let krc = tupE [varE k; varE r; varE k(* FIXME: cleanups*)] in
         c_exp context exp1
-          (meta (typ exp1) (fun v1 -> (cps_awaitE s (typ_of_var k) (varE v1) kr)))
+          (meta (typ exp1) (fun v1 -> (cps_awaitE s (typ_of_var k) (varE v1) krc)))
     ))
   | DeclareE (id, typ, exp1) ->
     unary context k (fun v1 -> e (DeclareE (id, typ, varE v1))) exp1

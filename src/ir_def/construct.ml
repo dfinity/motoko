@@ -183,8 +183,8 @@ let ic_rejectE e =
     note = Note.{ def with typ = T.unit; eff = eff e }
   }
 
-let ic_callE f e k r =
-  let es = [f; e; k; r] in
+let ic_callE f e k r c =
+  let es = [f; e; k; r(*; c*)] in
   let effs = List.map eff es in
   let eff = List.fold_left max_eff T.Triv effs in
   { it = PrimE (ICCallPrim, es);
@@ -192,7 +192,7 @@ let ic_callE f e k r =
     note = Note.{ def with typ = T.unit; eff = eff }
   }
 
-let ic_call_rawE p m a k r =
+let ic_call_rawE p m a k r = (* FIXME *)
   let es = [p; m; a; k; r] in
   let effs = List.map eff es in
   let eff = List.fold_left max_eff T.Triv effs in
@@ -637,7 +637,7 @@ let answerT typ : T.typ =
   | T.Func (T.Local, T.Returns, [], ts1, ts2) -> T.seq ts2
   | _ -> assert false
 
-let cpsT typ ans_typ = T.(Func (Local, Returns, [], [contT typ ans_typ; err_contT ans_typ], as_seq ans_typ))
+let cpsT typ ans_typ = T.(Func (Local, Returns, [], [contT typ ans_typ; err_contT ans_typ; contT T.unit ans_typ], as_seq ans_typ))
 
 (* Sequence expressions *)
 
