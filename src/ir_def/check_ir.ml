@@ -22,7 +22,7 @@ let typ = E.typ
 
 let immute_typ p =
   assert (not (T.is_mut (typ p)));
-  (typ p)
+  typ p
 
 (* Scope *)
 
