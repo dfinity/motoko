@@ -3001,7 +3001,7 @@ sig
   (* word from SR.Vanilla, trapping, unsigned semantics *)
   val to_word32 : E.t -> G.t
   val to_word64 : E.t -> G.t
-  val to_word32_with : E.t -> G.t (* with error message on stack (ptr/len) *)
+  val to_word32_with : E.t -> G.t -> G.t (* with error message on stack (ptr/len) *)
 
   (* word from SR.Vanilla, lossy, raw bits *)
   val truncate_to_word32 : E.t -> G.t
@@ -3677,21 +3677,19 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       (get_a ^^ BitTagged.untag_i32 __LINE__ env Type.Int) (*TBR*)
       (get_a ^^ Num.to_word32 env)
 
-  let to_word32_with env =
+  let to_word32_with env get_err_msg =
     let set_a, get_a = new_local env "a" in
-    let set_err_msg, get_err_msg = new_local env "err_msg" in
-    set_err_msg ^^ set_a ^^
-    get_a ^^
+    set_a ^^ get_a ^^
     BitTagged.if_tagged_scalar env [I32Type]
       (get_a ^^ BitTagged.untag_i32 __LINE__ env Type.Int) (* TBR *)
-      (get_a ^^ get_err_msg ^^ Num.to_word32_with env)
+      (get_a ^^ Num.to_word32_with env get_err_msg)
 end
 
 module BigNumLibtommath : BigNumType = struct
 
   let to_word32 env = E.call_import env "rts" "bigint_to_word32_trap"
   let to_word64 env = E.call_import env "rts" "bigint_to_word64_trap"
-  let to_word32_with env = E.call_import env "rts" "bigint_to_word32_trap_with"
+  let to_word32_with env get_err_msg = get_err_msg ^^ E.call_import env "rts" "bigint_to_word32_trap_with"
 
   let truncate_to_word32 env = E.call_import env "rts" "bigint_to_word32_wrap"
   let truncate_to_word64 env = E.call_import env "rts" "bigint_to_word64_wrap"
@@ -4460,8 +4458,7 @@ module Arr = struct
     Func.share_code2 Func.Never env "Array.idx_bigint" (("array", I32Type), ("idx", I32Type)) [I32Type] (fun env get_array get_idx ->
       get_array ^^
       get_idx ^^
-      Blob.lit env "Array index out of bounds" ^^
-      BigNum.to_word32_with env ^^
+      BigNum.to_word32_with env (Blob.lit env "Array index out of bounds") ^^
       idx env
   )
 
@@ -11117,8 +11114,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_as env ae SR.Vanilla e0 ^^
     compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) e1 ^^
     compile_exp_as env ae SR.Vanilla e2 ^^
-    Blob.lit env "Blob size out of bounds" ^^
-    BigNum.to_word32_with env ^^
+    BigNum.to_word32_with env (Blob.lit env "Blob size out of bounds") ^^
     Region.load_blob env
 
   | OtherPrim ("regionStoreBlob"), [e0; e1; e2] ->
@@ -11454,8 +11450,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla,
     compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) e1 ^^
     compile_exp_as env ae SR.Vanilla e2 ^^
-    Blob.lit env "Blob size out of bounds" ^^
-    BigNum.to_word32_with env ^^
+    BigNum.to_word32_with env (Blob.lit env "Blob size out of bounds") ^^
     StableMemoryInterface.load_blob env
 
   | OtherPrim "stableMemoryStoreBlob", [e1; e2] ->
