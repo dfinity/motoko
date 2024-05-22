@@ -311,7 +311,7 @@ let transform prog =
       let v_ret = fresh_var "v" t_ret in
       let v_fail = fresh_var "e" t_fail in
       ([v_ret; v_fail] -->* (callE (t_exp exp1) [t0] (tupE [varE v_ret; varE v_fail]))).it
-    | PrimE (CallPrim typs, [exp1; exp2]) when is_awaitable_func exp1 ->(* HERE *)
+    | PrimE (CallPrim typs (Some cleanup), [exp1; exp2]) when is_awaitable_func exp1 ->(* HERE *)
       let ts1,ts2 =
         match typ exp1 with
         | T.Func (T.Shared _, T.Promises, tbs, ts1, ts2) ->
@@ -334,7 +334,8 @@ let transform prog =
          )
          (varE nary_async))
         .it
-    | PrimE (OtherPrim "call_raw", [exp1; exp2; exp3]) ->
+    | PrimE (OtherPrim "call_raw_cleanup", [exp1; exp2; exp3; cleanup]) ->
+    | PrimE (CleanupPrim (OtherPrim "call_raw", cleanup), [exp1; exp2; exp3]) ->
       let exp1' = t_exp exp1 in
       let exp2' = t_exp exp2 in
       let exp3' = t_exp exp3 in
