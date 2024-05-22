@@ -21,7 +21,7 @@ let is_triv phrase = eff phrase = T.Triv
 let effect_exp (exp: exp) : T.eff = eff exp
 
 let is_async_call p exps =
-  match (p, exps) with
+  match p, exps with
   | CallPrim _, [exp1; _] ->
     T.is_shared_func (typ exp1) ||
     T.is_local_async_func (typ exp1)

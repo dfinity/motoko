@@ -42,8 +42,6 @@ let fulfillT as_seq typ = T.Func(T.Local, T.Returns, [], as_seq typ, [])
 
 let failT = T.Func(T.Local, T.Returns, [], [T.catch], [])
 
-(*let cleanupT = T.Func(T.Local, T.Returns, [], [], [])*)
-
 let t_async_fut as_seq t =
   T.Func (T.Local, T.Returns, [], [fulfillT as_seq t; failT],
     [T.sum [
@@ -59,9 +57,9 @@ let new_asyncT =
   T.Func (
     T.Local,
     T.Returns,
-    [ { var = "TX"; sort = T.Type; bound = T.Any } ],
+    [ { var = "T"; sort = T.Type; bound = T.Any } ],
     [],
-    new_async_ret unary (T.Var ("TX", 0)))
+    new_async_ret unary (T.Var ("T", 0)))
 
 let new_asyncE () =
   varE (var "@new_async" new_asyncT)
@@ -83,7 +81,6 @@ let new_nary_async_reply ts =
       let v = fresh_var "v" u in
       let k = fresh_var "k" (contT u T.unit) in
       let r = fresh_var "r" (err_contT T.unit) in
-      let c = fresh_var "c" T.(contT unit unit) in
       [k; r] -->* (
         varE unary_async -*-
           (tupE [
@@ -311,31 +308,30 @@ let transform prog =
       let v_ret = fresh_var "v" t_ret in
       let v_fail = fresh_var "e" t_fail in
       ([v_ret; v_fail] -->* (callE (t_exp exp1) [t0] (tupE [varE v_ret; varE v_fail]))).it
-    | PrimE (CallPrim typs (Some cleanup), [exp1; exp2]) when is_awaitable_func exp1 ->(* HERE *)
+    | PrimE (CallPrim typs, (exp1 :: exp2 :: _)) when is_awaitable_func exp1 ->(* HERE *)
       let ts1,ts2 =
         match typ exp1 with
         | T.Func (T.Shared _, T.Promises, tbs, ts1, ts2) ->
           List.map (fun t -> t_typ (T.open_ typs t)) ts1,
           List.map (fun t -> t_typ (T.open_ typs t)) ts2
-        | _ -> assert(false)
+        | _ -> assert false
       in
       let exp1' = t_exp exp1 in
       let exp2' = t_exp exp2 in
-      let ((nary_async, nary_reply, reject(*, cleanup*)), def) =
+      let ((nary_async, nary_reply, reject), def) =
         new_nary_async_reply ts2
       in
       (blockE (
-        letP (tupP [varP nary_async; varP nary_reply; varP reject(*; varP cleanup*)]) def ::
+        letP (tupP [varP nary_async; varP nary_reply; varP reject]) def ::
         let_eta exp1' (fun v1 ->
           let_seq ts1 exp2' (fun vs ->
-            [ expD (ic_callE v1 (seqE (List.map varE vs)) (varE nary_reply) (varE reject) (varE reject)) ]
+            [expD (ic_callE v1 (seqE (List.map varE vs)) (varE nary_reply) (varE reject) (varE reject(* REALLY: Some cleanup *)))]
            )
           )
          )
          (varE nary_async))
         .it
-    | PrimE (OtherPrim "call_raw_cleanup", [exp1; exp2; exp3; cleanup]) ->
-    | PrimE (CleanupPrim (OtherPrim "call_raw", cleanup), [exp1; exp2; exp3]) ->
+    | PrimE (OtherPrim "call_raw", [exp1; exp2; exp3]) ->(* HERE *)
       let exp1' = t_exp exp1 in
       let exp2' = t_exp exp2 in
       let exp3' = t_exp exp3 in
@@ -345,7 +341,7 @@ let transform prog =
           let_eta exp1' (fun v1 ->
           let_eta exp2' (fun v2 ->
           let_eta exp3' (fun v3 ->
-            [ expD (ic_call_rawE v1 v2 v3 (varE nary_reply) (varE reject)) ]
+            [expD (ic_call_rawE v1 v2 v3 (varE nary_reply) (varE reject) (varE reject(* REALLY: Some cleanup *))) ]
             )
           ))
          )

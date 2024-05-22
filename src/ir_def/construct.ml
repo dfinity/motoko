@@ -117,8 +117,7 @@ let primE prim es =
     | OtherPrim "is_controller" -> T.bool
     | _ -> assert false (* implement more as needed *)
   in
-  let effs = List.map eff es in
-  let eff = List.fold_left max_eff T.Triv effs in
+  let eff = List.(map eff es |> fold_left max_eff T.Triv) in
   { it = PrimE (prim, es);
     at = no_region;
     note = Note.{ def with typ; eff }
@@ -184,21 +183,19 @@ let ic_rejectE e =
   }
 
 let ic_callE f e k r c =
-  let es = [f; e; k; r(*; c*)] in
-  let effs = List.map eff es in
-  let eff = List.fold_left max_eff T.Triv effs in
-  { it = PrimE (ICCallPrim, es);
+  let es = [f; e; k; r] in
+  let eff = List.(map eff es |> fold_left max_eff T.Triv) in
+  { it = PrimE (ICCallPrim (*c*), es);
     at = no_region;
-    note = Note.{ def with typ = T.unit; eff = eff }
+    note = Note.{ def with typ = T.unit; eff }
   }
 
-let ic_call_rawE p m a k r = (* FIXME *)
+let ic_call_rawE p m a k r c = (* FIXME *)
   let es = [p; m; a; k; r] in
-  let effs = List.map eff es in
-  let eff = List.fold_left max_eff T.Triv effs in
-  { it = PrimE (ICCallRawPrim, es);
+  let eff = List.(map eff es |> fold_left max_eff T.Triv) in
+  { it = PrimE (ICCallRawPrim (*c*), es);
     at = no_region;
-    note = Note.{ def with typ = T.unit; eff = eff }
+    note = Note.{ def with typ = T.unit; eff }
   }
 
 (* tuples *)
@@ -245,9 +242,8 @@ let blockE decs exp =
   match decs' with
   | [] -> exp
   | _ ->
-    let es = List.map dec_eff decs' in
     let typ = typ exp in
-    let eff =  List.fold_left max_eff (eff exp) es in
+    let eff =  List.(map dec_eff decs' |> fold_left max_eff (eff exp)) in
     { it = BlockE (decs', exp);
       at = no_region;
       note = Note.{ def with typ; eff }
@@ -442,8 +438,7 @@ let switch_textE exp1 cases (pat, exp2) typ1 =
 
 
 let tupE exps =
-  let effs = List.map eff exps in
-  let eff = List.fold_left max_eff T.Triv effs in
+  let eff = List.(map eff exps |> fold_left max_eff T.Triv) in
   { it = PrimE (TupPrim, exps);
     at = no_region;
     note = Note.{ def with typ = T.Tup (List.map typ exps); eff };
