@@ -276,7 +276,8 @@ module Const = struct
     | Message of int32 (* anonymous message, only temporary *)
     | Obj of (string * t) list
     | Unit
-    | Array of t list (* also tuples, but not nullary *) (*TODO: add Tuple constructor *)
+    | Array of t list (* immutable arrays *)
+    | Tuple of t list (* non-nullary tuples *)
     | Tag of (string * t)
     | Opt of t
     | Lit of lit
@@ -8786,6 +8787,9 @@ module StackRep = struct
     | Const.Unit -> Tuple.unit_vanilla_lit env
     | Const.Array cs ->
       let ptrs = List.map (materialize_const_t env) cs in
+      Arr.vanilla_lit env Tagged.I ptrs
+    | Const.Tuple cs ->
+      let ptrs = List.map (materialize_const_t env) cs in
       Arr.vanilla_lit env Tagged.T ptrs
     | Const.Tag (i, c) ->
       let ptr = materialize_const_t env c in
@@ -8846,7 +8850,7 @@ module StackRep = struct
        compile_const_64 n
     | Const (_, Const.Lit (Const.Float64 f)), UnboxedFloat64 -> Float.compile_unboxed_const f
     | Const c, UnboxedTuple 0 -> G.nop
-    | Const (_, Const.Array cs), UnboxedTuple n ->
+    | Const (_, Const.Tuple cs), UnboxedTuple n ->
       assert (n = List.length cs);
       G.concat_map (fun c -> compile_unboxed_const (materialize_const_t env c)) cs
     | _, _ ->
@@ -12521,15 +12525,18 @@ and compile_const_exp env pre_ae exp : Const.t * (E.t -> VarEnv.t -> unit) =
   | PrimE (ProjPrim i, [e]) ->
     let (object_ct, fill) = compile_const_exp env pre_ae e in
     let cs = match object_ct with
-      | _, Const.Array cs -> cs
+      | _, Const.Tuple cs -> cs
       | _ -> fatal "compile_const_exp/ProjE: not a static tuple" in
     (List.nth cs i, fill)
   | LitE l -> Const.(t_of_v (Lit (const_lit_of_lit l))), (fun _ _ -> ())
   | PrimE (TupPrim, []) -> Const.t_of_v Const.Unit, (fun _ _ -> ())
-  | PrimE (ArrayPrim (Const, _), es)
-  | PrimE (TupPrim, es) ->
+  | PrimE (ArrayPrim (Const, _), es) ->
     let (cs, fills) = List.split (List.map (compile_const_exp env pre_ae) es) in
     Const.(t_of_v (Array cs)),
+    (fun env ae -> List.iter (fun fill -> fill env ae) fills)
+  | PrimE (TupPrim, es) ->
+    let (cs, fills) = List.split (List.map (compile_const_exp env pre_ae) es) in
+    Const.(t_of_v (Tuple cs)),
     (fun env ae -> List.iter (fun fill -> fill env ae) fills)
   | PrimE (TagPrim i, [e]) ->
     let (arg_ct, fill) = compile_const_exp env pre_ae e in
@@ -12575,7 +12582,7 @@ and destruct_const_pat ae pat const : VarEnv.t option = match pat.it with
     if l = None then destruct_const_pat ae p2 const
     else l
   | TupP ps ->
-    let cs = match const with (_, Const.Array cs) -> cs | (_, Const.Unit) -> [] | _ -> assert false in
+    let cs = match const with (_, Const.Tuple cs) -> cs | (_, Const.Unit) -> [] | _ -> assert false in
     let go ae p c = match ae with
       | Some ae -> destruct_const_pat ae p c
       | _ -> None in
