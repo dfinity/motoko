@@ -172,7 +172,7 @@ unsafe extern "C" fn text_to_buf(mut s: Value, mut buf: *mut u8) {
 unsafe extern "C" fn stream_write_text(stream: *mut Stream, mut s: Value) {
     loop {
         let s_ptr = s.as_obj();
-        if s_ptr.tag() == TAG_BLOB_T {
+        if s_ptr.tag() == TAG_BLOB_B || s_ptr.tag() == TAG_BLOB_T {
             let blob = s_ptr.as_blob();
             stream.cache_bytes(blob.payload_addr(), blob.len());
             break;
@@ -188,7 +188,7 @@ unsafe extern "C" fn stream_write_text(stream: *mut Stream, mut s: Value) {
 #[ic_mem_fn]
 pub unsafe fn blob_of_text<M: Memory>(mem: &mut M, s: Value) -> Value {
     let obj = s.as_obj();
-    if obj.tag() == TAG_BLOB_T ||obj.tag() == TAG_BLOB_B || obj.tag() == TAG_BLOB_P {
+    if obj.tag() == TAG_BLOB_T {
         s
     } else {
         let concat = obj.as_concat();
