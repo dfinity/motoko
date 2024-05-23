@@ -13,7 +13,7 @@ use motoko_rts::{
         time::BoundedTime,
     },
     memory::{alloc_array, alloc_blob, Memory},
-    types::{Array, Blob, Bytes, Obj, Tag, Value, Words, TAG_ARRAY_M, TAG_BLOB_B},
+    types::{Array, Blob, Bytes, Obj, Tag, Value, Words, TAG_ARRAY_I, TAG_ARRAY_M, TAG_ARRAY_T, TAG_BLOB_B, TAG_BLOB_T, TAG_BLOB_P},
 };
 
 use crate::{gc::utils::WORD_SIZE, memory::TestMemory};
@@ -308,7 +308,7 @@ unsafe fn iterate_large_partition(
     let mut time = BoundedTime::new(0);
     while iterator.has_object() {
         let object = iterator.current_object();
-        assert_eq!(object.tag(), TAG_BLOB);
+        assert_eq!(object.tag(), TAG_BLOB_B);
         let size = block_size(object as *const Tag);
         detected_sizes.push(size);
         time.tick();

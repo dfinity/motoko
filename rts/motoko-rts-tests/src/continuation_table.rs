@@ -22,7 +22,7 @@ pub unsafe fn test() {
             + N as u32 * size_of::<Blob>().to_bytes().as_u32(),
     ));
 
-    let pointers: [Value; N] = from_fn(|_| alloc_blob(&mut heap, TAB_BLOB_B, Bytes(0)));
+    let pointers: [Value; N] = from_fn(|_| alloc_blob(&mut heap, TAG_BLOB_B, Bytes(0)));
 
     let mut references: [u32; N] = [0; N];
     for i in 0..N {
