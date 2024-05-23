@@ -63,4 +63,4 @@ actor {
 //SKIP run-ir
 // too slow on ic-ref-run:
 //SKIP comp-ref
-//xCALL ingress test "DIDL\x00\x00"
+//xCALL ingress test RElETAAA
