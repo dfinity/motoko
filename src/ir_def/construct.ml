@@ -636,8 +636,7 @@ let cpsT typ ans_typ = T.(Func (Local, Returns, [], [contT typ ans_typ; err_cont
 
 (* Sequence expressions *)
 
-let seqE es =
-  match es with
+let seqE = function
   | [e] -> e
   | es -> tupE es
 

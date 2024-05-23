@@ -285,7 +285,7 @@ func @equal_array<T>(eq : (T, T) -> Bool, a : [T], b : [T]) : Bool {
 };
 
 type @Cont<T> = T -> () ;
-type @Async<TF> = (@Cont<TF>,@Cont<Error>) -> {
+type @Async<T> = (@Cont<T>,@Cont<Error>) -> {
   #suspend;
   #schedule : () -> ();
 };
@@ -307,15 +307,15 @@ func @getSystemRefund() : @Refund {
   return (prim "cyclesRefunded" : () -> Nat) ();
 };
 
-func @new_async<TM <: Any>() : (@Async<TM>, @Cont<TM>, @Cont<Error>) {
-  let w_null = func(r : @Refund, t : TM) { };
+func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>) {
+  let w_null = func(r : @Refund, t : T) { };
   let r_null = func(_ : Error) {};
-  var result : ?(@Result<TM>) = null;
-  var ws : @Waiter<TM> = w_null;
+  var result : ?(@Result<T>) = null;
+  var ws : @Waiter<T> = w_null;
   var rs : @Cont<Error> = r_null;
   let getRefund = @cycles != 0;
 
-  func fulfill(t : TM) {
+  func fulfill(t : T) {
     switch result {
       case null {
         let refund = if getRefund @getSystemRefund() else 0;
@@ -342,14 +342,14 @@ func @new_async<TM <: Any>() : (@Async<TM>, @Cont<TM>, @Cont<Error>) {
     };
   };
 
-  func enqueue(k : @Cont<TM>, r : @Cont<Error>) : {
+  func enqueue(k : @Cont<T>, r : @Cont<Error>) : {
     #suspend;
     #schedule : () -> ();
   } {
     switch result {
       case null {
         let ws_ = ws;
-        ws := func(r : @Refund, t : TM) {
+        ws := func(r : @Refund, t : T) {
           ws_(r, t);
           @reset_cycles();
           @refund := r;

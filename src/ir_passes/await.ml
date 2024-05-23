@@ -493,7 +493,7 @@ and c_exp' context exp k =
           (k -@- varE v)
           (fun e -> r -@- e))
     in
-    nary context k' (fun vs -> e (PrimE (p, vs))) exps
+    nary context k' (fun vs -> e (PrimE (p, vs))) (exps @ [unitE ()(* FOR NOW *)])
   | PrimE (p, exps) ->
     nary context k (fun vs -> e (PrimE (p, vs))) exps
 

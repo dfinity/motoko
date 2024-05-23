@@ -248,30 +248,30 @@ let transform prog =
     | VarE id -> exp'
     | AssignE (exp1, exp2) ->
       AssignE (t_lexp exp1, t_exp exp2)
-    | PrimE (CPSAwait (Fut, cont_typ), [a; krc]) ->
+    | PrimE (CPSAwait (Fut, cont_typ), [a; kr(*; c*)]) ->
       begin match cont_typ with
         | Func(_, _, [], _, []) ->
           (* unit answer type, from await in `async {}` *)
-          (ensureNamed (t_exp krc) (fun vkrc ->
+          (ensureNamed (t_exp kr) (fun vkr ->
             let schedule = fresh_var "schedule" (T.Func(T.Local, T.Returns, [], [], [])) in
-            switch_variantE (t_exp a -*- varE vkrc)
+            switch_variantE (t_exp a -*- varE vkr)
               [ ("suspend", wildP,
                   unitE()); (* suspend *)
                 ("schedule", varP schedule, (* resume later *)
                   (* try await async (); schedule() catch e -> r(e) *)
                  (let v = fresh_var "call" T.unit in
                   letE v
-                    (selfcallE [] (ic_replyE [] (unitE())) (varE schedule) (projE (varE vkrc) 1))
-                    (check_call_perform_status (varE v) (fun e -> projE (varE vkrc) 1 -*- e))))
+                    (selfcallE [] (*c*) (ic_replyE [] (unitE())) (varE schedule) (projE (varE vkr) 1))
+                    (check_call_perform_status (varE v) (fun e -> projE (varE vkr) 1 -*- e))))
               ]
               T.unit
           )).it
         | _ -> assert false
       end
-    | PrimE (CPSAwait (Cmp, cont_typ), [a; krc]) ->
+    | PrimE (CPSAwait (Cmp, cont_typ), [a; kr]) ->
       begin match cont_typ with
       | Func(_, _, [], _, []) ->
-         (t_exp a -*- t_exp krc).it
+         (t_exp a -*- t_exp kr).it
       | _ -> assert false
       end
     | PrimE (CPSAsync (Fut, t), [exp1]) ->
