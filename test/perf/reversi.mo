@@ -273,11 +273,11 @@ actor {
 
 //CALL ingress reset RElETAAA
 //CALL ingress board RElETAAA
-//CALL ingress place 0x4449444C00037c7c7c010204
+//CALL ingress place RElETAADfHx8AQIE
 //CALL ingress board RElETAAA
-//CALL ingress place 0x4449444C00037c7c7c020203
+//CALL ingress place RElETAADfHx8AgID
 //CALL ingress board RElETAAA
-//CALL ingress place 0x4449444C00037c7c7c010402
+//CALL ingress place RElETAADfHx8AQQC
 //CALL ingress board RElETAAA
 
 //SKIP run

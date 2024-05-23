@@ -261,10 +261,10 @@ shared({caller = creator}) actor class DAO() = Self {
 
 //CALL query list_proposals 0x4449444C0000
 //CALL query sample_dummy_proposal 0x4449444C0000
-//CALL ingress submit_proposal 0x4449444c026c03e1edeb4a71b3c4b1f20468c7ebc4d009016d7b01000564756d6d79010a0000000000000000010100
+//CALL ingress submit_proposal RElETAJsA+Ht60pxs8Sx8gRox+vE0AkBbXsBAAVkdW1teQEKAAAAAAAAAAABAQA=
 //CALL query account_balance 0x4449444C0000
 //CALL query sample_transfer_proposal 0x4449444C0000
-//CALL ingress submit_proposal 0x4449444c026c03e1edeb4a71b3c4b1f20468c7ebc4d009016d7b0100087472616e73666572010a000000000000000001012a4449444c026c02fbca0168d8a38ca80d016c01b9ef9380087d0100010a00000000000000000101b0ea01
+//CALL ingress submit_proposal RElETAJsA+Ht60pxs8Sx8gRox+vE0AkBbXsBAAh0cmFuc2ZlcgEKAAAAAAAAAAABASpESURMAmwC+8oBaNijjKgNAWwBue+TgAh9AQABCgAAAAAAAAAAAQGw6gE=
 //CALL query list_proposals 0x4449444C0000
 //CALL query list_accounts 0x4449444C0000
 
@@ -273,6 +273,6 @@ shared({caller = creator}) actor class DAO() = Self {
 //CALL query get_proposal 0x4449444c00017d0f
 
 //CALL query sample_vote 0x4449444C0000
-//CALL ingress vote 0x4449444c026c02ea99cff204018882e69c0a7d6b02c1c0017fa7d2f0027f01000101
-//CALL ingress vote 0x4449444c026c02ea99cff204018882e69c0a7d6b02c1c0017fa7d2f0027f01000101
+//CALL ingress vote RElETAJsAuqZz/IEAYiC5pwKfWsCwcABf6fS8AJ/AQABAQ==
+//CALL ingress vote RElETAJsAuqZz/IEAYiC5pwKfWsCwcABf6fS8AJ/AQABAQ==
 //CALL query get_proposal 0x4449444c00017d01

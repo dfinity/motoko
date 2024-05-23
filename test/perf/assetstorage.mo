@@ -34,7 +34,7 @@ shared({caller = creator}) actor class () {
 };
 
 //CALL query list 0x4449444C0000
-//CALL ingress store 0x4449444C016d7b02710004414243440400010203
+//CALL ingress store RElETAFtewJxAARBQkNEBAABAgM=
 //CALL query list 0x4449444C0000
 //CALL query retrieve 0x4449444C0001710441424344
 

@@ -45,10 +45,10 @@ actor a {
   };
 };
 
-await a.drill(42); //OR-CALL ingress drill "DIDL\x00\x01\x7B\x2A"
-await a.go(true); //OR-CALL ingress go "DIDL\x00\x01\x7E\x01"
-await a.go(false); //OR-CALL ingress go "DIDL\x00\x01\x7E\x00"
-await a.go(true); //OR-CALL ingress go "DIDL\x00\x01\x7E\x01"
+await a.drill(42); //OR-CALL ingress drill RElETAABeyo=
+await a.go(true); //OR-CALL ingress go RElETAABfgE=
+await a.go(false); //OR-CALL ingress go RElETAABfgA=
+await a.go(true); //OR-CALL ingress go RElETAABfgE=
 
 //SKIP run
 //SKIP run-low
