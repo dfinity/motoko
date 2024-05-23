@@ -25,8 +25,18 @@ export LANG=C.UTF-8
 # and this helps (default is 2MB)
 export RUST_MIN_STACK=$((10*1024*1024))
 
-WASM="${1}"
-SCRIPT="${2}"
+# PocketIC creates canisters with this ID:
+ID="tqzl2-p7777-77776-aaaaa-cai"
+BASE64ID="///////AAAABAQ=="
+
+if [ "${1: -5}" = ".drun" ]
+then
+  WASM=""
+  SCRIPT="$(LANG=C perl -npe 's,\$ID,'$ID',g' ${1})"
+else
+  WASM="${1}"
+  SCRIPT="${2}"
+fi
 
 PORT_FILE=$(mktemp)
 ${PIC} --port-file ${PORT_FILE} --ttl 30 >/dev/null 2>&333 &
@@ -38,10 +48,6 @@ do
     break
   fi
 done
-
-# PocketIC creates canisters with this ID:
-ID="tqzl2-p7777-77776-aaaaa-cai"
-BASE64ID="///////AAAABAQ=="
 
 INSTANCE_ID=$(curl -X POST -H 'Content-Type: application/json' "http://localhost:${PORT}/instances" -d '{"nns": {"state_config": "New", "instruction_config": "Production", "dts_flag": "Enabled"}, "sns": {"state_config": "New", "instruction_config": "Production", "dts_flag": "Enabled"}, "ii": null, "fiduciary": null, "bitcoin": null, "system": [], "application": [{"state_config": "New", "instruction_config": "Production", "dts_flag": "Enabled"}]}' | jq -r ".Created.instance_id")
 PIC_URL="http://localhost:${PORT}/instances/${INSTANCE_ID}"
