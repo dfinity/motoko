@@ -28,6 +28,7 @@ PERF=no
 VIPER=no
 WASMTIME_OPTIONS="-C cache=n -W nan-canonicalization=y -W multi-memory -W bulk-memory"
 WRAP_drun=$(realpath $(dirname $0)/drun-wrapper.sh)
+POSTPROCESS=$(realpath $(dirname $0)/drun-postprocess.sh)
 WRAP_ic_ref_run=$(realpath $(dirname $0)/ic-ref-run-wrapper.sh)
 SKIP_RUNNING=${SKIP_RUNNING:-no}
 SKIP_VALIDATE=${SKIP_VALIDATE:-no}
@@ -395,7 +396,7 @@ do
           if [ $DTESTS = yes ]
           then
             if [ $HAVE_drun = yes ]; then
-              run_if wasm drun-run $WRAP_drun $out/$base.wasm $mangled
+              run_if wasm drun-run $WRAP_drun $out/$base.wasm $mangled 2>/dev/null 222> /dev/null 333>&1 | $POSTPROCESS
             fi
             if [ $HAVE_ic_ref_run = yes ]; then
               run_if ref.wasm ic-ref-run $WRAP_ic_ref_run $out/$base.ref.wasm $mangled
@@ -403,13 +404,13 @@ do
           elif [ $PERF = yes ]
           then
             if [ $HAVE_drun = yes ]; then
-              run_if wasm drun-run $WRAP_drun $out/$base.wasm $mangled 222> $out/$base.metrics
+              run_if wasm drun-run $WRAP_drun $out/$base.wasm $mangled 2>/dev/null 222> $out/$base.metrics 333>&1 | $POSTPROCESS
               if [ -e $out/$base.metrics -a -n "$PERF_OUT" ]
               then
                 echo -n "gas/$base;" >> $PERF_OUT;
                 cat $out/$base.metrics >> $PERF_OUT;
               fi
-              run_if opt.wasm drun-run-opt $WRAP_drun $out/$base.opt.wasm $mangled
+              run_if opt.wasm drun-run-opt $WRAP_drun $out/$base.opt.wasm $mangled 2>/dev/null 222> /dev/null 333>&1 | $POSTPROCESS
             fi
           else
             run_if wasm wasm-run wasmtime run $WASMTIME_OPTIONS $out/$base.wasm
