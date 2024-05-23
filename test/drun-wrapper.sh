@@ -10,6 +10,8 @@
 #   (for run.sh -p; post-processing happening in run.sh)
 #
 
+PIC=$(realpath $(dirname $0)/pocket-ic)
+
 if [ -z "$1" ]
 then
   echo "Usage: $0 <name>.wasm [call-script]"
@@ -27,7 +29,7 @@ WASM="${1}"
 SCRIPT="${2}"
 
 PORT_FILE=$(mktemp)
-pocket-ic --port-file ${PORT_FILE} --ttl 30 >/dev/null 2>&333 &
+${PIC} --port-file ${PORT_FILE} --ttl 30 >/dev/null 2>&333 &
 while [ true ]
 do
   PORT=$(cat ${PORT_FILE})
