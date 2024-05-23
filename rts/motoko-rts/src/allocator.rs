@@ -24,7 +24,8 @@ unsafe impl GlobalAlloc for EphemeralAllocator {
         let min_align = (align + word_size - 1) / word_size * word_size;
         let blob_size = size + min_align - word_size;
         let blob =
-            alloc_blob::<ic::IcMemory>(&mut ic::IcMemory, TAG_BLOB_B, Bytes(blob_size as u32)).as_blob_mut();
+            alloc_blob::<ic::IcMemory>(&mut ic::IcMemory, TAG_BLOB_B, Bytes(blob_size as u32))
+                .as_blob_mut();
         let payload_address = blob.payload_addr() as usize;
         let aligned_address = (payload_address + min_align - 1) / min_align * min_align;
 

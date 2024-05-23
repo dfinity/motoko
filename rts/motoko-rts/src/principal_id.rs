@@ -98,7 +98,11 @@ pub unsafe fn base32_of_checksummed_blob<M: Memory>(mem: &mut M, b: Value) -> Va
     let n = b.as_blob().len();
     let mut data = b.as_blob().payload_const();
 
-    let r = alloc_blob(mem, TAG_BLOB_T /*?*/, Bytes((n.as_u32() + 4 + 4) / 5 * 8)); // contains padding
+    let r = alloc_blob(
+        mem,
+        TAG_BLOB_T, /*?*/
+        Bytes((n.as_u32() + 4 + 4) / 5 * 8),
+    ); // contains padding
     let blob = r.as_blob_mut();
     let dest = blob.payload_addr();
 

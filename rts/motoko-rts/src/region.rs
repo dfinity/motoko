@@ -1,7 +1,7 @@
 use crate::barriers::{allocation_barrier, init_with_barrier, write_with_barrier};
 use crate::memory::{alloc_blob, Memory};
 use crate::trap_with_prefix;
-use crate::types::{size_of, Blob, Bytes, Region, Value, TAG_REGION, TAG_BLOB_B};
+use crate::types::{size_of, Blob, Bytes, Region, Value, TAG_BLOB_B, TAG_REGION};
 
 // Versions
 // Should agree with constants StableMem.version_no_stable_memory etc. in compile.ml
@@ -524,7 +524,11 @@ pub unsafe fn region_recover<M: Memory>(mem: &mut M, rid: &RegionId) -> Value {
     debug_assert!(page_count < (u32::MAX - (PAGES_IN_BLOCK - 1)));
 
     let block_count = (page_count + PAGES_IN_BLOCK - 1) / PAGES_IN_BLOCK;
-    let vec_pages = alloc_blob(mem, TAG_BLOB_B, Bytes(block_count * bytes_of::<u16>() as u32));
+    let vec_pages = alloc_blob(
+        mem,
+        TAG_BLOB_B,
+        Bytes(block_count * bytes_of::<u16>() as u32),
+    );
 
     let av = AccessVector(vec_pages.as_blob_mut());
     let mut recovered_blocks = 0;

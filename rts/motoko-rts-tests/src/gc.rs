@@ -285,8 +285,12 @@ fn check_dynamic_heap(
                     .as_usize();
             } else {
                 if incremental {
-                    assert!(tag == TAG_ARRAY_I || tag == TAG_ARRAY_M || tag == TAG_ARRAY_T
-                            || tag >= TAG_ARRAY_SLICE_MIN);
+                    assert!(
+                        tag == TAG_ARRAY_I
+                            || tag == TAG_ARRAY_M
+                            || tag == TAG_ARRAY_T
+                            || tag >= TAG_ARRAY_SLICE_MIN
+                    );
                 } else {
                     assert!(tag == TAG_ARRAY_I || tag == TAG_ARRAY_M || tag == TAG_ARRAY_T)
                 }

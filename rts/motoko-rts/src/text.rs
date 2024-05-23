@@ -30,7 +30,9 @@ use crate::barriers::allocation_barrier;
 use crate::mem_utils::memcpy_bytes;
 use crate::memory::{alloc_blob, Memory};
 use crate::rts_trap_with;
-use crate::types::{size_of, Blob, Bytes, Concat, Stream, Value, TAG_BLOB_T, TAG_BLOB_B, TAG_CONCAT};
+use crate::types::{
+    size_of, Blob, Bytes, Concat, Stream, Value, TAG_BLOB_B, TAG_BLOB_T, TAG_CONCAT,
+};
 
 use alloc::string::String;
 use core::cmp::{min, Ordering};

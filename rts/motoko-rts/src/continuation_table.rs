@@ -42,7 +42,7 @@ static mut N_CONTINUATIONS: u32 = 0;
 static mut FREE_SLOT: u32 = 0;
 
 unsafe fn create_continuation_table<M: Memory>(mem: &mut M) {
-    TABLE = alloc_array(mem, TAG_ARRAY_M,  INITIAL_SIZE);
+    TABLE = alloc_array(mem, TAG_ARRAY_M, INITIAL_SIZE);
     FREE_SLOT = 0;
     N_CONTINUATIONS = 0;
 

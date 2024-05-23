@@ -16,7 +16,7 @@ use crate::barriers::allocation_barrier;
 use crate::memory::{alloc_array, Memory};
 use crate::rts_trap_with;
 use crate::text::decode_code_point;
-use crate::types::{Array, Value, TAG_BLOB_T, TAG_ARRAY_T, TAG_CONCAT};
+use crate::types::{Array, Value, TAG_ARRAY_T, TAG_BLOB_T, TAG_CONCAT};
 
 use motoko_rts_macros::ic_mem_fn;
 
