@@ -39,7 +39,7 @@ else
 fi
 
 PORT_FILE=$(mktemp)
-${PIC} --port-file ${PORT_FILE} --ttl 30 >/dev/null 2>&333 &
+${PIC} --port-file ${PORT_FILE} --ttl 10 >/dev/null 2>&333 &
 while [ true ]
 do
   PORT=$(cat ${PORT_FILE})
