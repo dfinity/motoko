@@ -5,5 +5,5 @@ actor a {
   };
 };
 
-a.go(); //OR-CALL ingress go 0x4449444C0000
-a.go(); //OR-CALL ingress go 0x4449444C0000
+a.go(); //OR-CALL ingress go RElETAAA
+a.go(); //OR-CALL ingress go RElETAAA

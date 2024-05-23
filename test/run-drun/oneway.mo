@@ -68,6 +68,6 @@ actor a {
 
 };
 
-ignore (a.go()); //OR-CALL ingress go 0x4449444C0000
+ignore (a.go()); //OR-CALL ingress go RElETAAA
 
 

@@ -13,6 +13,6 @@ actor a {
   };
 };
 
-a.foo1(); //OR-CALL ingress foo1 0x4449444C0000
-a.foo2(); //OR-CALL ingress foo2 0x4449444C0000
+a.foo1(); //OR-CALL ingress foo1 RElETAAA
+a.foo2(); //OR-CALL ingress foo2 RElETAAA
 

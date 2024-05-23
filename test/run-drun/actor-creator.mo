@@ -14,5 +14,5 @@ shared({caller = creator}) actor class C() {
 
 };
 
-let c = await C(); ignore c.c1(); //OR-CALL ingress c1 0x4449444C0000
-ignore c.c2(); //OR-CALL ingress c2 0x4449444C0000
+let c = await C(); ignore c.c1(); //OR-CALL ingress c1 RElETAAA
+ignore c.c2(); //OR-CALL ingress c2 RElETAAA

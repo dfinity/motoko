@@ -22,5 +22,5 @@ actor A {
 
 };
 
-A.Test() //OR-CALL ingress Test 0x4449444C0000
+A.Test() //OR-CALL ingress Test RElETAAA
 

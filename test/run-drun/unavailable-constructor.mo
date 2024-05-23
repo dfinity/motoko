@@ -10,5 +10,5 @@ actor class C() {
 
 };
 
-ignore (await C()).m() //OR-CALL ingress m 0x4449444C0000
+ignore (await C()).m() //OR-CALL ingress m RElETAAA
 

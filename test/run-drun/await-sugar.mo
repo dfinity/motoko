@@ -99,7 +99,7 @@ public func test() : async () {
 
 };
 
-A.test(); //OR-CALL ingress test 0x4449444C0000
+A.test(); //OR-CALL ingress test RElETAAA
 //SKIP comp
 
 
