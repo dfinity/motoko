@@ -126,7 +126,9 @@ let optimize : instr list -> instr list = fun is ->
         when Option.is_some (combine_shifts const op (opl, cl, opr, cr.it)) ->
       go l' (Option.get (combine_shifts const op (opl, cl, opr, cr.it)) @ r')
     (* Null shifts can be eliminated *)
-    | l', {it = Const {it = (I32 0l | I64 0L); _}; _} :: {it = Binary (I32 I32Op.(Shl|ShrS|ShrU)); _} :: r' ->
+    | l', {it = Const {it = I32 0l; _}; _} :: {it = Binary (I32 I32Op.(Shl|ShrS|ShrU)); _} :: r' ->
+      go l' r'
+    | l', {it = Const {it = I64 0L; _}; _} :: {it = Binary (I64 I64Op.(Shl|ShrS|ShrU)); _} :: r' ->
       go l' r'
     (* Widen followed by narrow is pointless - but not the opposite! *)
     | {it = Convert (I64 I64Op.(ExtendSI32 | ExtendUI32)); _} :: l', {it = Convert (I32 I32Op.WrapI64); _} :: r' -> 
