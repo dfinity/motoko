@@ -43,4 +43,4 @@ actor {
 //SKIP run-ir
 //SKIP comp-ref
 
-//CALL upgrade ""
+//CALL upgrade

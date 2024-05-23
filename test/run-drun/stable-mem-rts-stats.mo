@@ -17,6 +17,6 @@ actor {
 //SKIP run-ir
 // too slow on ic-ref-run:
 //SKIP comp-ref
-//CALL upgrade ""
-//CALL upgrade ""
-//CALL upgrade ""
+//CALL upgrade
+//CALL upgrade
+//CALL upgrade

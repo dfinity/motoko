@@ -83,11 +83,11 @@ actor {
 // too slow on ic-ref-run:
 //SKIP comp-ref
 
-//CALL upgrade ""
+//CALL upgrade
 //CALL ingress testBounds "DIDL\x00\x00"
-//CALL upgrade ""
+//CALL upgrade
 //CALL ingress testBounds "DIDL\x00\x00"
-//CALL upgrade ""
+//CALL upgrade
 //CALL ingress testBounds "DIDL\x00\x00"
-//CALL upgrade ""
+//CALL upgrade
 

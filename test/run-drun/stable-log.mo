@@ -79,7 +79,7 @@ actor {
 
 //CALL ingress populate "DIDL\x00\x00"
 //CALL ingress readAll "DIDL\x00\x00"
-//CALL upgrade ""
+//CALL upgrade
 //CALL ingress populate "DIDL\x00\x00"
 //CALL ingress readAll "DIDL\x00\x00"
 //CALL ingress readExtra "DIDL\x00\x00"

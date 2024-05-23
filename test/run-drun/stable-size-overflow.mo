@@ -20,5 +20,5 @@ actor {
 //SKIP run-low
 //SKIP run-ir
 
-//CALL upgrade ""
+//CALL upgrade
 
