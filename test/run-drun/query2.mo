@@ -35,7 +35,7 @@ actor counter = {
    assert c3 == 4;
   };
 };
-counter.go(); //OR-CALL ingress go "DIDL\x00\x00"
+counter.go(); //OR-CALL ingress go RElETAAA
 
 
 /* Disabled, while we don’t have first-class shared functions

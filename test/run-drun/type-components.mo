@@ -30,5 +30,5 @@ actor a {
 
 };
 
-await a.go(); //OR-CALL ingress go "DIDL\x00\x00"
+await a.go(); //OR-CALL ingress go RElETAAA
 

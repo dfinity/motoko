@@ -10,7 +10,7 @@ actor a {
     assert false;
   }
 };
-a.go(); //OR-CALL ingress go "DIDL\x00\x00"
+a.go(); //OR-CALL ingress go RElETAAA
 
 
 // disabled, because hard to use Prim from inner actor

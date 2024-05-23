@@ -26,7 +26,7 @@ actor a {
     Prim.debugPrint("go 5: " # debug_show Prim.rts_callback_table_count());
   };
 };
-a.go(); //OR-CALL ingress go "DIDL\x00\x00"
+a.go(); //OR-CALL ingress go RElETAAA
 
 //SKIP run
 //SKIP run-low

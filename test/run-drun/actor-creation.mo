@@ -20,6 +20,6 @@ actor a {
   Prim.debugPrint ("a created");
 };
 
-a.foo(); //OR-CALL ingress foo "DIDL\x00\x00"
+a.foo(); //OR-CALL ingress foo RElETAAA
 //SKIP comp
 //SKIP comp-ref

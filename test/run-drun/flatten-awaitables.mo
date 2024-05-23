@@ -114,4 +114,4 @@ let a = actor {
     Prim.debugPrint "15";
   };
 };
-a.go(); //OR-CALL ingress go "DIDL\x00\x00"
+a.go(); //OR-CALL ingress go RElETAAA

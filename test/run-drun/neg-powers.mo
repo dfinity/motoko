@@ -232,7 +232,7 @@ actor a {
 
   }
 };
-a.go(); //OR-CALL ingress go "DIDL\x00\x00"
+a.go(); //OR-CALL ingress go RElETAAA
 
 // not useful, we don't do rollback properly in the interpreter
 //SKIP run

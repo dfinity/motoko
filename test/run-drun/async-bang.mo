@@ -77,4 +77,4 @@ actor a {
 
 };
 
-a.go(); //OR-CALL ingress go "DIDL\x00\x00"
+a.go(); //OR-CALL ingress go RElETAAA

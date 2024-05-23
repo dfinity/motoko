@@ -15,4 +15,4 @@ actor a {
 //    assert b1 != b2 // might fail, but not likely except on drun!
   };
 };
-await a.go(); //OR-CALL ingress go "DIDL\x00\x00"
+await a.go(); //OR-CALL ingress go RElETAAA

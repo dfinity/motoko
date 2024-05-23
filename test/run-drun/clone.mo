@@ -41,4 +41,4 @@ actor Cloner {
 //SKIP run
 //SKIP run-ir
 //SKIP run-low
-ignore Cloner.test(); //OR-CALL ingress test "DIDL\x00\x00"
+ignore Cloner.test(); //OR-CALL ingress test RElETAAA

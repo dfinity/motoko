@@ -4,5 +4,5 @@ import Prim "mo:⛔";
 actor Bad {
   public func Bad (){ Prim.debugPrint "ok"};
 };
-Bad.Bad(); //OR-CALL ingress Bad "DIDL\x00\x00"
+Bad.Bad(); //OR-CALL ingress Bad RElETAAA
 

@@ -68,6 +68,6 @@ actor Test {
      - parameterising Client on s:IServer argument complains about non-closed actor (expected acc. to Joachim, pending system changes)
 */
 
-Test.go(); //OR-CALL ingress go "DIDL\x00\x00"
+Test.go(); //OR-CALL ingress go RElETAAA
 //SKIP comp
 //SKIP comp-ref

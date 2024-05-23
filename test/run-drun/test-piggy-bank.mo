@@ -38,7 +38,7 @@ actor Alice {
 
 };
 
-Alice.test(); //OR-CALL ingress test "DIDL\x00\x00"
+Alice.test(); //OR-CALL ingress test RElETAAA
 
 //SKIP run
 //SKIP run-ir

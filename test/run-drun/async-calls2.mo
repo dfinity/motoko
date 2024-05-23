@@ -11,4 +11,4 @@ actor a {
 
   public func go() { assert (x == false); bump(); assert (x == false); is_true(); };
 };
-a.go(); //OR-CALL ingress go "DIDL\x00\x00"
+a.go(); //OR-CALL ingress go RElETAAA

@@ -52,6 +52,6 @@ actor Test {
   }
 };
 
-Test.go(); //OR-CALL ingress go "DIDL\x00\x00"
+Test.go(); //OR-CALL ingress go RElETAAA
 //SKIP comp
 //SKIP comp-ref

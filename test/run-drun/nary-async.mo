@@ -108,5 +108,5 @@ actor a {
   };
 };
 
-ignore(a.go1()); //OR-CALL ingress go1 "DIDL\x00\x00"
-ignore(a.go2()); //OR-CALL ingress go2 "DIDL\x00\x00"
+ignore(a.go1()); //OR-CALL ingress go1 RElETAAA
+ignore(a.go2()); //OR-CALL ingress go2 RElETAAA

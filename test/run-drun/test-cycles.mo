@@ -94,7 +94,7 @@ actor client {
 
 };
 
-client.go(); //OR-CALL ingress go "DIDL\x00\x00"
+client.go(); //OR-CALL ingress go RElETAAA
 
 //SKIP run
 //SKIP run-ir

@@ -34,7 +34,7 @@ actor a {
     assert (+s2-s0 > 4 * +length - reserve);
   };
 };
-a.go(); //OR-CALL ingress go "DIDL\x00\x00"
+a.go(); //OR-CALL ingress go RElETAAA
 
 //SKIP run
 //SKIP run-low

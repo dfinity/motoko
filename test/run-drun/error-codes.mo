@@ -63,7 +63,7 @@ actor a {
   }
 };
 
-ignore(a.go()); //OR-CALL ingress go "DIDL\x00\x00"
+ignore(a.go()); //OR-CALL ingress go RElETAAA
 
 //SKIP run
 //SKUP run-ir

@@ -76,6 +76,6 @@ actor a {
   };
 };
 
-await a.evaluate(); //OR-CALL ingress evaluate "DIDL\x00\x00"
-await a.evaluateAsync(); //OR-CALL ingress evaluateAsync "DIDL\x00\x00"
-await a.evaluateAsyncStar(); //OR-CALL ingress evaluateAsyncStar "DIDL\x00\x00"
+await a.evaluate(); //OR-CALL ingress evaluate RElETAAA
+await a.evaluateAsync(); //OR-CALL ingress evaluateAsync RElETAAA
+await a.evaluateAsyncStar(); //OR-CALL ingress evaluateAsyncStar RElETAAA

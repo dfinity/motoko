@@ -32,7 +32,7 @@ actor a {
     }
   };
 };
-ignore a.go_tt(); //OR-CALL ingress go_tt "DIDL\x00\x00"
-ignore a.go_ta(); //OR-CALL ingress go_ta "DIDL\x00\x00"
-ignore a.go_at(); //OR-CALL ingress go_at "DIDL\x00\x00"
-ignore a.go_aa(); //OR-CALL ingress go_aa "DIDL\x00\x00"
+ignore a.go_tt(); //OR-CALL ingress go_tt RElETAAA
+ignore a.go_ta(); //OR-CALL ingress go_ta RElETAAA
+ignore a.go_at(); //OR-CALL ingress go_at RElETAAA
+ignore a.go_aa(); //OR-CALL ingress go_aa RElETAAA

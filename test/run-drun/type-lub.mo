@@ -131,4 +131,4 @@ actor a {
     func f2(e : E2, f : F2) : [F2] { ignore([e, f]); [e, f] };
   }
 };
-a.go(); //OR-CALL ingress go "DIDL\x00\x00"
+a.go(); //OR-CALL ingress go RElETAAA
