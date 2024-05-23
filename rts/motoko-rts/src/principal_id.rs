@@ -5,7 +5,7 @@ use crate::mem_utils::memcpy_bytes;
 use crate::memory::{alloc_blob, Memory};
 use crate::rts_trap_with;
 use crate::text::{blob_compare, blob_of_text};
-use crate::types::{Bytes, Value, TAG_BLOB_B, TAG_BLOB_P, TAG_BLOB_T};
+use crate::types::{Bytes, Value, TAG_BLOB_B, TAG_BLOB_T};
 
 use motoko_rts_macros::ic_mem_fn;
 
@@ -98,7 +98,7 @@ pub unsafe fn base32_of_checksummed_blob<M: Memory>(mem: &mut M, b: Value) -> Va
     let n = b.as_blob().len();
     let mut data = b.as_blob().payload_const();
 
-    let r = alloc_blob(mem, TAG_BLOB_P, Bytes((n.as_u32() + 4 + 4) / 5 * 8)); // contains padding
+    let r = alloc_blob(mem, TAG_BLOB_T /*?*/, Bytes((n.as_u32() + 4 + 4) / 5 * 8)); // contains padding
     let blob = r.as_blob_mut();
     let dest = blob.payload_addr();
 

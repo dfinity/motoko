@@ -30,7 +30,7 @@ use crate::barriers::allocation_barrier;
 use crate::mem_utils::memcpy_bytes;
 use crate::memory::{alloc_blob, Memory};
 use crate::rts_trap_with;
-use crate::types::{size_of, Blob, Bytes, Concat, Stream, Value, TAG_BLOB_T, TAG_BLOB_B, TAG_BLOB_P, TAG_CONCAT};
+use crate::types::{size_of, Blob, Bytes, Concat, Stream, Value, TAG_BLOB_T, TAG_BLOB_B, TAG_CONCAT};
 
 use alloc::string::String;
 use core::cmp::{min, Ordering};
@@ -335,7 +335,8 @@ pub unsafe extern "C" fn text_compare(s1: Value, s2: Value) -> i32 {
     }
 }
 
-pub(crate) unsafe fn blob_compare(s1: Value, s2: Value) -> i32 {
+#[no_mangle]
+pub unsafe extern "C" fn blob_compare(s1: Value, s2: Value) -> i32 {
     let n1 = text_size(s1);
     let n2 = text_size(s2);
     let n = min(n1, n2);

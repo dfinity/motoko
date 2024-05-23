@@ -1,7 +1,7 @@
 use motoko_rts::{
     gc::incremental::array_slicing::slice_array,
     memory::alloc_array,
-    types::{Words, TAG_ARRAY, TAG_ARRAY_SLICE_MIN},
+    types::{Words, TAG_ARRAY_M, TAG_ARRAY_SLICE_MIN},
 };
 
 use crate::memory::TestMemory;
@@ -27,7 +27,7 @@ unsafe fn test_array_slicing(mem: &mut TestMemory, array_length: u32) {
         let new_offset = slice_array(array);
         assert!(new_offset > last_offset || array.len() == 0 && new_offset == 0);
         last_offset = new_offset;
-        if (*array).header.tag == TAG_ARRAY {
+        if (*array).header.tag == TAG_ARRAY_M {
             break;
         }
         assert!((*array).header.tag >= TAG_ARRAY_SLICE_MIN);
