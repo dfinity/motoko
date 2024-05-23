@@ -1697,7 +1697,6 @@ module BitTagged = struct
   (* Note: `true` is not handled here, needs specific check where needed. *)
   let if_tagged_scalar env retty is1 is2 =
     compile_bitand_const 0x1L ^^
-    compile_eq_const 0x1L ^^
     E.if_ env retty is2 is1
 
   (* With two bit-tagged pointers on the stack, decide
@@ -1708,7 +1707,6 @@ module BitTagged = struct
   let if_both_tagged_scalar env retty is1 is2 =
     G.i (Binary (Wasm_exts.Values.I64 I64Op.Or)) ^^
     compile_bitand_const 0x1L ^^
-    compile_eq_const 0x1L ^^
     E.if_ env retty is2 is1
 
   let ubits_of pty = TaggingScheme.ubits_of pty
@@ -3045,20 +3043,16 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     (* Check whether both arguments `a` and `b` are scalars that fit within 32 bit.
         This is to guarantee overflow-free 64-bit arithmetics, such as `add`, `sub`, or `mul`.
         However, this does not work for `pow` as it can overflow for smaller arguments. *)
-    (* check that both arguments are scalars, none a skewed pointers *)
+    (* check with a combined bit mask that:
+       - (and `0x1`) Both arguments are scalars, none a skewed pointers
+       - (and `0xFFFF_FFFF_0000_0000`) Both arguments fit in 32-bit
+    TODO: Precise tag for Int has 2 bits -> 
+       Check if we could permit one or two more bits in the `0xFFFF_FFFF_0000_0000` bit mask. *)
     get_a ^^ get_b ^^
     G.i (Binary (Wasm_exts.Values.I64 I64Op.Or)) ^^
-    compile_bitand_const 0x1L ^^
-    compile_eq_const 0x0L ^^
-    get_a ^^ get_b ^^
-    (* check that their values fit into 32 bits *)
-    G.i (Binary (Wasm_exts.Values.I64 I64Op.Or)) ^^
-    (* TODO: Precise tag for Int has 2 bits -> 
-       Check if we could permit one or two more bits in the following bit mask. *)
-    compile_bitand_const 0xFFFF_FFFF_0000_0000L ^^
-    compile_eq_const 0x0L ^^
-    G.i (Binary (Wasm_exts.Values.I64 I64Op.And))
-
+    compile_bitand_const 0xFFFF_FFFF_0000_0001L ^^
+    compile_eq_const 0x0L
+    
   (* creates a boxed bignum from a signed i64 *)
   let box env =
     let ubitsL = Int64.of_int(BitTagged.ubits_of Type.Int) in

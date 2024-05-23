@@ -17,6 +17,11 @@ let combine_shifts const op = function
     if (l >= 0 && l < 32 && r >= 0 && r < 32 && l + r < 32) then
       Some [{const with it = Const {cl with it = I32 (Int32.add l' r')}}; {op with it = Binary (I32 opl)}]
     else None
+  | I64 opl, ({it = I64 l'; _} as cl), I64 opr, I64 r' when opl = opr ->
+    let l, r = Int64.(to_int l', to_int r') in
+    if (l >= 0 && l < 64 && r >= 0 && r < 64 && l + r < 64) then
+      Some [{const with it = Const {cl with it = I64 (Int64.add l' r')}}; {op with it = Binary (I64 opl)}]
+    else None
   | _ -> None
 
 (* Some simple peephole optimizations, to make the output code look less stupid *)
@@ -91,6 +96,8 @@ let optimize : instr list -> instr list = fun is ->
     (* LSBit masking before `If` is `Ctz` and switched `If` legs *)
     | ({ it = Binary (I32 I32Op.And); _} as a) :: { it = Const {it = I32 1l; _}; _} :: l', ({it = If (res,then_,else_); _} as i) :: r' ->
       go ({a with it = Unary (I32 I32Op.Ctz)} :: l') ({i with it = If (res,else_,then_)} :: r')
+    | ({ it = Binary (I64 I64Op.And); _} as a) :: { it = Const {it = I64 1L; _}; _} :: l', ({it = If (res,then_,else_); _} as i) :: r' ->
+      go ({a with it = Unary (I64 I64Op.Ctz)} :: l') ({i with it = If (res,else_,then_)} :: r')
     (* `If` blocks after pushed constants are simplifiable *)
     | { it = Const {it = I32 0l; _}; _} :: l', ({it = If (res,_,else_); _} as i) :: r' ->
       go l' ({i with it = Block (res, else_)} :: r')
@@ -114,12 +121,31 @@ let optimize : instr list -> instr list = fun is ->
       ({it = Const cr; _} as const) :: ({it = Binary opr; _} as op) :: r'
         when Option.is_some (combine_shifts const op (opl, cl, opr, cr.it)) ->
       go l' (Option.get (combine_shifts const op (opl, cl, opr, cr.it)) @ r')
+    | {it = Binary (I64 I64Op.(Shl|ShrS|ShrU) as opl); _} :: {it = Const cl; _} :: l',
+      ({it = Const cr; _} as const) :: ({it = Binary opr; _} as op) :: r'
+        when Option.is_some (combine_shifts const op (opl, cl, opr, cr.it)) ->
+      go l' (Option.get (combine_shifts const op (opl, cl, opr, cr.it)) @ r')
     (* Null shifts can be eliminated *)
-    | l', {it = Const {it = I32 0l; _}; _} :: {it = Binary (I32 I32Op.(Shl|ShrS|ShrU)); _} :: r' ->
+    | l', {it = Const {it = (I32 0l | I64 0L); _}; _} :: {it = Binary (I32 I32Op.(Shl|ShrS|ShrU)); _} :: r' ->
       go l' r'
     (* Widen followed by narrow is pointless - but not the opposite! *)
     | {it = Convert (I64 I64Op.(ExtendSI32 | ExtendUI32)); _} :: l', {it = Convert (I32 I32Op.WrapI64); _} :: r' -> 
       go l' r'
+    (* Constant bitwise `and` evaluation *)
+    | l', {it = Const {it = I64 cl; _}; _} :: {it = Const {it = I64 cr; _}; _} :: {it = Binary (I64 I64Op.And); at} :: r' ->
+      let combined = {it = Const {it = I64 (Int64.logand cl cr); at}; at} in
+      go l' (combined :: r')
+    (* Constant bitwise `or` evaluation *)
+    | l', {it = Const {it = I64 cl; _}; _} :: {it = Const {it = I64 cr; _}; _} :: {it = Binary (I64 I64Op.Or); at} :: r' ->
+      let combined = {it = Const {it = I64 (Int64.logor cl cr); at}; at} in
+      go l' (combined :: r')
+    (* Widen followed by I64.Eqz can be simplified to I32.Eqz *)
+    | l', {it = Convert (I64 I64Op.(ExtendSI32 | ExtendUI32)); _} :: {it = Test (I64 I64Op.Eqz); at} :: r' ->
+      go l' ({it = Test (I32 I32Op.Eqz); at} :: r')
+    (* Narrow a constant *)
+    | l', {it = Const {it = I64 c; _}; at} :: {it = Convert (I32 I32Op.WrapI64); _} :: r' ->
+      let narrowed = {it = Const {it = I32 (Int64.to_int32 c); at}; at} in
+      go l' (narrowed :: r')
     (* Look further *)
     | _, i::r' -> go (i::l) r'
     (* Done looking *)
