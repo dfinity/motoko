@@ -325,7 +325,7 @@ let transform prog =
         letP (tupP [varP nary_async; varP nary_reply; varP reject]) def ::
         let_eta exp1' (fun v1 ->
           let_seq ts1 exp2' (fun vs ->
-            [expD (ic_callE v1 (seqE (List.map varE vs)) (varE nary_reply) (varE reject) (varE reject(* REALLY: Some cleanup *)))]
+            [expD (ic_callE v1 (seqE (List.map varE vs)) (varE nary_reply) (varE reject) (Some reject(* REALLY: Some cleanup *)))]
            )
           )
          )

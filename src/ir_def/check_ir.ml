@@ -599,7 +599,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
       T.Non <: t
     | ICCallerPrim, [] ->
       T.caller <: t
-    | ICCallPrim, [exp1; exp2; k; r] ->
+    | ICCallPrim _, [exp1; exp2; k; r] ->
       let t1 = T.promote (typ exp1) in
       begin match t1 with
       | T.Func (sort, T.Replies, _ (*TBR*), arg_tys, ret_tys) ->
