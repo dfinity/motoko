@@ -1,7 +1,7 @@
 use crate::memory::TestMemory;
 
 use motoko_rts::principal_id::{blob_of_principal, principal_of_blob};
-use motoko_rts::text::{text_compare, text_of_ptr_size, text_of_str, blob_compare};
+use motoko_rts::text::{blob_compare, text_compare, text_of_ptr_size, text_of_str};
 use motoko_rts::types::{Bytes, Words};
 
 pub unsafe fn test() {

@@ -327,15 +327,14 @@ impl Value {
     }
 
     pub unsafe fn is_blob(self) -> bool {
-       let tag = self.tag();
-       tag == TAG_BLOB_B || tag == TAG_BLOB_T || tag == TAG_BLOB_P
+        let tag = self.tag();
+        tag == TAG_BLOB_B || tag == TAG_BLOB_T || tag == TAG_BLOB_P
     }
 
     pub unsafe fn is_array(self) -> bool {
-       let tag = self.tag();
-       tag == TAG_ARRAY_I || tag == TAG_ARRAY_M || tag == TAG_ARRAY_T || tag >= TAG_ARRAY_SLICE_MIN
+        let tag = self.tag();
+        tag == TAG_ARRAY_I || tag == TAG_ARRAY_M || tag == TAG_ARRAY_T || tag >= TAG_ARRAY_SLICE_MIN
     }
-
 
     /// Get the pointer as `Obj` using forwarding. In debug mode panics if the value is not a pointer.
     pub unsafe fn as_obj(self) -> *mut Obj {
@@ -526,7 +525,7 @@ impl Obj {
 
     pub unsafe fn as_blob(self: *mut Self) -> *mut Blob {
         debug_assert!(
-             self.tag() == TAG_BLOB_B || self.tag() == TAG_BLOB_T || self.tag() == TAG_BLOB_P
+            self.tag() == TAG_BLOB_B || self.tag() == TAG_BLOB_T || self.tag() == TAG_BLOB_P
         );
         self as *mut Blob
     }

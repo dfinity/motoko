@@ -13,7 +13,10 @@ use motoko_rts::{
         time::BoundedTime,
     },
     memory::{alloc_array, alloc_blob, Memory},
-    types::{Array, Blob, Bytes, Obj, Tag, Value, Words, TAG_ARRAY_I, TAG_ARRAY_M, TAG_ARRAY_T, TAG_BLOB_B, TAG_BLOB_T, TAG_BLOB_P},
+    types::{
+        Array, Blob, Bytes, Obj, Tag, Value, Words, TAG_ARRAY_I, TAG_ARRAY_M, TAG_ARRAY_T,
+        TAG_BLOB_B, TAG_BLOB_P, TAG_BLOB_T,
+    },
 };
 
 use crate::{gc::utils::WORD_SIZE, memory::TestMemory};
@@ -415,7 +418,9 @@ unsafe fn block_size(block: *const Tag) -> usize {
         TAG_ARRAY_I | TAG_ARRAY_M | TAG_ARRAY_T => {
             size_of::<Array>() + (block as *const Array).len() as usize * WORD_SIZE as usize
         }
-        TAG_BLOB_B | TAG_BLOB_T | TAG_BLOB_P => size_of::<Blob>() + (block as *const Blob).len().as_usize(),
+        TAG_BLOB_B | TAG_BLOB_T | TAG_BLOB_P => {
+            size_of::<Blob>() + (block as *const Blob).len().as_usize()
+        }
         _ => unimplemented!(),
     }
 }
