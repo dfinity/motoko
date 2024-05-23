@@ -1,0 +1,163 @@
+/* BEGIN PRELUDE */
+/* Array encoding */
+domain Array {
+  function $loc(a: Array, i: Int): Ref
+  function $size(a: Array): Int
+  function $loc_inv1(r: Ref): Array
+  function $loc_inv2(r: Ref): Int
+  axiom $all_diff_array { forall a: Array, i: Int :: {$loc(a, i)} $loc_inv1($loc(a, i)) == a && $loc_inv2($loc(a, i)) == i }
+  axiom $size_nonneg { forall a: Array :: $size(a) >= 0 }
+}
+define $array_acc(a, t, p) forall j: Int :: 0 <= j && j < $size(a) ==> acc($loc(a, j).t, p)
+define $array_untouched(a, t) forall j: Int :: 0 <= j && j < $size(a) ==> $loc(a, j).t == old($loc(a, j).t)
+define $array_init(a, t, x) forall i : Int :: 0 <= i && i < $size(a) ==> $loc(a, i).t == x
+/* Tuple encoding */
+domain Tuple {
+  function $prj(a: Tuple, i: Int): Ref
+  function $prj_inv1(r: Ref): Tuple
+  function $prj_inv2(r: Ref): Int
+  axiom $all_diff_tuple { forall a: Tuple, i: Int :: {$prj(a, i)} $prj_inv1($prj(a, i)) == a && $prj_inv2($prj(a, i)) == i }
+}
+/* Option encoding */
+adt Option[T] {
+  None()
+  Some(some$0: T)
+}
+/* Typed references */
+field $int: Int
+field $bool: Bool
+field $ref: Ref
+field $array: Array
+field $tuple: Tuple
+field $option_int: Option[Int]
+field $option_bool: Option[Bool]
+field $option_array: Option[Array]
+field $option_tuple: Option[Tuple]
+/* END PRELUDE */
+
+define $Perm($Self) (true)
+define $Inv($Self) (true)
+method __init__($Self: Ref)
+    
+    requires $Perm($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { 
+       
+    }
+method label_expressions($Self: Ref)
+    
+    requires $Perm($Self)
+    ensures $Perm($Self)
+    { var simple_label: Int
+      var implicit_leave: Int
+      var block_label_early_expr: Tuple
+      var $t_block_label_early_expr_2: Tuple
+      var block_label_expr: Tuple
+      var $t_block_label_expr_2: Tuple
+      var v: Int
+      var mut_label: Tuple
+      var mut_label_2: Tuple
+      simple_label := 42;
+      goto $lbl$simple;
+      label $lbl$simple;
+      assert (simple_label == 42);
+      implicit_leave := 42;
+      goto $lbl$implicit;
+      label $lbl$implicit;
+      assert (implicit_leave == 42);
+      if (true)
+         { var $t_block_label_early_expr: Tuple
+           inhale (acc(($prj($t_block_label_early_expr, 0)).$int,write) && 
+              acc(($prj($t_block_label_early_expr, 1)).$int,write));
+           ($prj($t_block_label_early_expr, 0)).$int := 42;
+           ($prj($t_block_label_early_expr, 1)).$int := 42;
+           exhale acc(($prj($t_block_label_early_expr, 0)).$int,wildcard);
+           inhale acc(($prj($t_block_label_early_expr, 0)).$int,wildcard);
+           exhale acc(($prj($t_block_label_early_expr, 1)).$int,wildcard);
+           inhale acc(($prj($t_block_label_early_expr, 1)).$int,wildcard);
+           block_label_early_expr := $t_block_label_early_expr;
+           goto $lbl$block; 
+         };
+      inhale (acc(($prj($t_block_label_early_expr_2, 0)).$int,write) && 
+         acc(($prj($t_block_label_early_expr_2, 1)).$int,write));
+      ($prj($t_block_label_early_expr_2, 0)).$int := 24;
+      ($prj($t_block_label_early_expr_2, 1)).$int := 24;
+      exhale acc(($prj($t_block_label_early_expr_2, 0)).$int,wildcard);
+      inhale acc(($prj($t_block_label_early_expr_2, 0)).$int,wildcard);
+      exhale acc(($prj($t_block_label_early_expr_2, 1)).$int,wildcard);
+      inhale acc(($prj($t_block_label_early_expr_2, 1)).$int,wildcard);
+      block_label_early_expr := $t_block_label_early_expr_2;
+      goto $lbl$block;
+      label $lbl$block;
+      assert ((($prj(block_label_early_expr, 0)).$int == 42) && (($prj(block_label_early_expr,
+                                                                   1)).$int == 42));
+      if (false)
+         { var $t_block_label_expr: Tuple
+           inhale (acc(($prj($t_block_label_expr, 0)).$int,write) && 
+              acc(($prj($t_block_label_expr, 1)).$int,write));
+           ($prj($t_block_label_expr, 0)).$int := 42;
+           ($prj($t_block_label_expr, 1)).$int := 42;
+           exhale acc(($prj($t_block_label_expr, 0)).$int,wildcard);
+           inhale acc(($prj($t_block_label_expr, 0)).$int,wildcard);
+           exhale acc(($prj($t_block_label_expr, 1)).$int,wildcard);
+           inhale acc(($prj($t_block_label_expr, 1)).$int,wildcard);
+           block_label_expr := $t_block_label_expr;
+           goto $lbl$block_2; 
+         };
+      inhale (acc(($prj($t_block_label_expr_2, 0)).$int,write) && acc(
+                                                                   ($prj($t_block_label_expr_2,
+                                                                    1)).$int,write));
+      ($prj($t_block_label_expr_2, 0)).$int := 24;
+      ($prj($t_block_label_expr_2, 1)).$int := 24;
+      exhale acc(($prj($t_block_label_expr_2, 0)).$int,wildcard);
+      inhale acc(($prj($t_block_label_expr_2, 0)).$int,wildcard);
+      exhale acc(($prj($t_block_label_expr_2, 1)).$int,wildcard);
+      inhale acc(($prj($t_block_label_expr_2, 1)).$int,wildcard);
+      block_label_expr := $t_block_label_expr_2;
+      goto $lbl$block_2;
+      label $lbl$block_2;
+      assert ((($prj(block_label_expr, 0)).$int == 24) && (($prj(block_label_expr,
+                                                             1)).$int == 24));
+      v := 0;
+      if (true)
+         { 
+           v := 42;
+           goto $lbl$mutability; 
+         };
+      v := 100;
+      label $lbl$mutability;
+      assert (v == 42);
+      v := 0;
+      if (false)
+         { 
+           v := 42;
+           goto $lbl$mutability_2; 
+         };
+      v := 100;
+      label $lbl$mutability_2;
+      assert (v == 100);
+      label $Ret; 
+    }
+method loops($Self: Ref)
+    
+    requires $Perm($Self)
+    ensures $Perm($Self)
+    { var i: Int
+      i := 0;
+      while ((i < 5))
+         invariant (i < 3)
+         invariant ($Perm($Self) && $Inv($Self))
+         { 
+           label $lbl$continue$while_loop;
+           i := (i + 1);
+           if ((i == 3))
+              { 
+                goto $lbl$while_loop; 
+              };
+           goto $lbl$continue$while_loop;
+           i := 100; 
+         };
+      label $lbl$while_loop;
+      label $Ret; 
+    }

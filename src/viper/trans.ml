@@ -7,7 +7,8 @@ module T = Mo_types.Type
 module M = Mo_def.Syntax
 module Arrange = Mo_def.Arrange
 
-module Stamps = Env.Make(String)
+module String_map = Env.Make(String)
+module Stamps = String_map
 
 (* symbol generation *)
 
@@ -106,6 +107,8 @@ type ctxt =
   { self : string option;
     imports : imported_module Imports.t;
     ids : (sort * T.t) T.Env.t;
+    label_to_tmp_var : id String_map.t; (* Motoko label -> associated tmp variable *)
+    label_to_vpr_label : string String_map.t; (* Motoko label -> Viper label *)
     ghost_items : (ctxt -> item) list ref;
     ghost_inits : (ctxt -> seqn') list ref;
     ghost_perms : (ctxt -> Source.region -> exp) list ref;
@@ -177,7 +180,14 @@ let rec unit (u : M.comp_unit) : prog Diag.result =
     reset_stamps();
     try return (unit' u) with
     | Unsupported (at, desc) -> error at "0" "viper" ("translation to viper failed:\n"^desc)
-    | _ -> error u.it.M.body.at "1" "viper" "translation to viper failed"
+    | exn ->
+      error
+        u.it.M.body.at
+        "1"
+        "viper"
+        (Format.asprintf
+          "translation to viper failed. Reason: %s"
+          (Printexc.to_string exn))
   )
 
 and unit' (u : M.comp_unit) : prog =
@@ -188,6 +198,8 @@ and unit' (u : M.comp_unit) : prog =
       self = None;
       imports = tr_imports imports;
       ids = Env.empty;
+      label_to_tmp_var = String_map.empty;
+      label_to_vpr_label = String_map.empty;
       ghost_items = ref [];
       ghost_inits = ref [];
       ghost_perms = ref [];
@@ -472,6 +484,31 @@ and dec ctxt d =
   | _ ->
      unsupported d.at (Arrange.dec d)
 
+and compile_while
+  ctxt
+  ?(label_id : M.id option)
+  ~(at : region)
+  ~(pred : M.exp)
+  ~(body : M.exp)
+  () : seqn =
+  let (!!) p = !!! at p in
+  let (invs, body) = extract_loop_invariants body in
+  let invs = List.map (exp ctxt) invs in
+  let invs = local_access_preds ctxt @ invs in
+  let invs = invs @ [!!(AndE(!!(CallE("$Perm", [self ctxt at])),
+                             !!(CallE("$Inv",  [self ctxt at]))))] in
+  let pred = exp ctxt pred in
+  let body =
+    match label_id with
+    | Some label_id ->
+      let label, ctxt = loop_label ctxt label_id in
+      let stmts = stmt ctxt body in
+      let decls, stmts = stmts.it in
+      !!(decls, !!(LabelS label) :: stmts)
+    | None -> stmt ctxt body
+  in
+  !!([], [ !!(WhileS(pred, invs, body)) ])
+
 and stmt ctxt (s : M.exp) : seqn =
   let (!!) p = !!! (s.at) p in
   match s.it with
@@ -540,23 +577,18 @@ and stmt ctxt (s : M.exp) : seqn =
           !!(InhaleS (!!(AndE(!!(CallE("$Perm", [self ctxt at])),
                               !!(CallE("$Inv", [self ctxt at]))))));
         ])
-  | M.WhileE(e, s1) ->
-     let (invs, s1') = extract_loop_invariants s1 in
-     let invs' = List.map (fun inv -> exp ctxt inv) invs in
-     let invs'' = local_access_preds ctxt @ invs' in
-     let invs''' = invs'' @ [!!(AndE(!!(CallE("$Perm", [self ctxt s.at])),
-                                     !!(CallE("$Inv",  [self ctxt s.at]))))] in
-     !!([],
-        [ !!(WhileS(exp ctxt e, invs''', stmt ctxt s1')) ])
+  | M.WhileE(e, { it = M.LabelE (cont_label_id, _typ, s1); _}) ->
+      compile_while ~label_id:cont_label_id ~at:s.at ~pred:e ~body:s1 ctxt ()
+  | M.WhileE(e, s1) -> compile_while ~at:s.at ~pred:e ~body:s1 ctxt ()
   | M.(SwitchE(scrut, cs)) ->
       !!(switch_stmts ctxt s.at scrut cs)
   | M.(AssignE({it = VarE x; _}, e2)) ->
-      let lval = (match fst (Env.find x.it ctxt.ids) with
-                 | Local -> LValueVar (!!! (x.at) (x.it))
-                 | Field -> LValueFld (self ctxt x.at, id x)
-                 | _ -> unsupported s.at (Arrange.exp s)
-                 ) in
-      !!(assign_stmts ctxt s.at lval e2)
+      let lval =
+        match fst (Env.find x.it ctxt.ids) with
+        | Local -> LValueVar (!!! (x.at) (x.it))
+        | Field -> LValueFld (self ctxt x.at, id x)
+        | _ -> unsupported s.at (Arrange.exp s)
+      in !!(assign_stmts ctxt s.at lval e2)
   | M.(AssignE({it = IdxE (e1, e2);_}, e3)) ->
       let lval = LValueFld (array_loc ctxt s.at e1 e2 e3.note.M.note_typ) in
       !!(assign_stmts ctxt s.at lval e3)
@@ -585,6 +617,30 @@ and stmt ctxt (s : M.exp) : seqn =
       let ds, stmts = assign_stmts ctxt s.at lval e in
       let stmt = !!(GotoS(!!! (Source.no_region) "$Ret")) in
       !!(ds, stmts @ [stmt])
+  | M.LabelE (label_id, typ, e) ->
+      let label_id, ctxt = loop_label ctxt label_id in
+      let label = !!! Source.no_region (LabelS label_id) in
+      let stmts = stmt ctxt e in
+      let decls, stmts = stmts.it in
+      let stmts = stmts @ [ label ] in
+      !!(decls, stmts)
+  | M.BreakE (label_id, { it = M.TupE []; _ }) ->
+    (* Loop case *)
+    let label_name = String_map.find label_id.it ctxt.label_to_vpr_label in
+    !!([], [ !!(GotoS !!label_name) ])
+  | M.BreakE (label_id, ret) ->
+    (* Expression case *)
+    let stmts =
+      match String_map.find_opt label_id.it ctxt.label_to_tmp_var with
+      | None -> stmt ctxt ret
+      | Some x ->
+        let lvalue = LValueVar x in
+        let stmts = assign_stmts ctxt ret.at lvalue ret in
+        !!stmts
+    in
+    let decls, stmts = stmts.it in
+    let label_name = String_map.find label_id.it ctxt.label_to_vpr_label in
+    !!(decls, stmts @ [ !!(GotoS !!label_name) ])
   | _ ->
      unsupported s.at (Arrange.exp s)
 
@@ -697,6 +753,9 @@ and assign_stmts ctxt at (lval : lvalue) (e : M.exp) : seqn' =
     via_tmp_var lval t (fun x ->
       let lhs = !!(LocalVar (x, tr_typ t)) in
       [], tuple_alloc at ctxt lhs (tuple_elem_ts t) es)
+  | M.{ it = LabelE (label_id, ret_typ, e); note; _ } ->
+    via_tmp_var lval t (fun x ->
+      label_expr_alloc ~label_id ~label_type:ret_typ ~label_rhs:e ~label_note:note at ctxt x)
   | _ ->
     [], [!!(assign_stmt lval (exp ctxt e))]
 
@@ -850,6 +909,18 @@ and rets t_opt =
 
 and id id = { it = id.it; at = id.at; note = NoInfo }
 
+and loop_label ctxt loop_label =
+  let label_name =
+    match String.split_on_char ' ' loop_label.it with
+    | ["continue"; name] -> "continue$" ^ name
+    | _ -> loop_label.it
+  in
+  let label_name = fresh_id ("$lbl$" ^ label_name) in
+  let ctxt =
+    { ctxt with label_to_vpr_label = String_map.add loop_label.it label_name ctxt.label_to_vpr_label }
+  in
+  id { loop_label with it = label_name }, ctxt
+
 and tr_typ typ =
   { it = tr_typ' typ;
     at = Source.no_region;
@@ -947,3 +1018,65 @@ and tuple_alloc at ctxt lhs ts es : stmt list =
 and tuple_prj ctxt at e1 e2 t =
   prjE at (exp ctxt e1) (exp ctxt e2) (typed_field t)
 
+and label_expr_alloc ~label_id ~label_type ~label_rhs ~label_note at ctxt lhs : seqn' =
+  let ctxt =
+    match label_type.it with
+    | M.TupT [] -> ctxt
+    | _ -> { ctxt with label_to_tmp_var = String_map.add label_id.it lhs ctxt.label_to_tmp_var }
+  in
+  let wrap_break exp =
+    match label_type.it, exp.it with
+    | M.TupT [], _ | _, M.BreakE _ ->
+    (* Here is a hack: instead of assigning a unit expression
+       we'll just treat them as statements. The next Motoko's code
+
+       {[
+         let x = label unit_lbl : () { break unit_lbl(v := 42); unreachable_expr; };
+       ]}
+
+       would be translated to
+
+       {[
+         v := 42;
+         goto unit_lbl;
+         unreachable_expr;
+         label unit_lbl;
+       ]} *)
+      exp
+    | _ -> { exp with it = M.BreakE (label_id, exp) }
+  in
+  let label_rhs =
+    match label_rhs.it with
+    | M.BlockE decs ->
+      (* In case of block expression we want to wrap the last one
+         with [break] if it's not wrapped yet.
+
+         {[
+          let x = label lbl : t {
+            stmt1;
+            stmt2;
+            ret_expr
+          }
+         ]}
+
+         Example above would be mapped to
+
+         {[
+          let x = label lbl : t {
+            stmt1;
+            stmt2;
+            break lbl(ret_expr);
+          }
+         ]} *)
+      let decs = map_last decs ~f:(fun dec ->
+        match dec.it with
+        | M.ExpD exp ->
+          let exp = wrap_break exp in
+          { dec with it = M.ExpD exp }
+        | _ -> dec) in
+      { label_rhs with it = M.BlockE decs }
+    | _ -> wrap_break label_rhs
+  in
+  let label = M.{ it = LabelE (label_id, label_type, label_rhs); at; note = label_note } in
+  let label_tr = stmt ctxt label in
+  label_tr.it
