@@ -29,7 +29,7 @@ let is_async_call p exps =
     true
   | _ -> false
 
-(* infer the effect of an expression, assuming all sub-expressions are correctly effect-annotated es*)
+(* infer the effect of an expression, assuming all sub-expressions are correctly effect-annotated *)
 
 let rec infer_effect_prim p exps =
   match p, exps with
