@@ -1,54 +1,64 @@
 #!/usr/bin/env bash
 
-CONFIG=$(realpath $(dirname $0)/drun.json5)
-
 #
-# This script wraps drun to
+# This script wraps PocketIC to
 #
 # * extract the methods calls from comments in the second argument
 #   (typically the test source files)
 # * adds the right canister ids as the destination to these calls
-# * writes prometheus metrics to file descriptor 222
+# * writes canister cycles balance to file descriptor 222
 #   (for run.sh -p; post-processing happening in run.sh)
 #
-
 
 if [ -z "$1" ]
 then
   echo "Usage: $0 <name>.wasm [call-script]"
-  echo "or"
-  echo "Usage: $0 <name>.drun"
   exit 1
 fi
 
 export LANG=C.UTF-8
-
-# this could be used to delay drun to make it more deterministic, but
-# it doesn't work reliably and slows down the test significantly.
-# so until DFN-1269 fixes this properly, let's just not run
-# affected tests on drun (only ic-ref-run).
-EXTRA_BATCHES=1
 
 # on darwin, I have seen
 #   thread 'MR Batch Processor' has overflowed its stack
 # and this helps (default is 2MB)
 export RUST_MIN_STACK=$((10*1024*1024))
 
-# drun creates canisters with this ID:
-ID=rwlgt-iiaaa-aaaaa-aaaaa-cai
+# PocketIC creates canisters with this ID:
+WASM="${1}"
+ID="tqzl2-p7777-77776-aaaaa-cai"
+BASE64ID="///////AAAABAQ=="
 
-if [ "${1: -5}" = ".drun" ]
+INSTANCE_ID=$(curl -X POST -H 'Content-Type: application/json' http://localhost:8000/instances -d '{"nns": {"state_config": "New", "instruction_config": "Production", "dts_flag": "Enabled"}, "sns": {"state_config": "New", "instruction_config": "Production", "dts_flag": "Enabled"}, "ii": null, "fiduciary": null, "bitcoin": null, "system": [], "application": [{"state_config": "New", "instruction_config": "Production", "dts_flag": "Enabled"}]}' | jq -r ".Created.instance_id")
+PIC_URL="http://localhost:8000/instances/${INSTANCE_ID}"
+PIC_INGRESS="${PIC_URL}/update/execute_ingress_message"
+
+CREATE_PAYLOAD=$(echo "(record {})" | didc encode | xxd -r -p | base64 | tr -d '\n')
+
+curl -X POST -H "Content-Type: application/json" "${PIC_INGRESS}" -d "{\"sender\": \"BA==\", \"canister_id\": \"\", \"effective_principal\": {\"CanisterId\": \"${BASE64ID}\"}, \"method\": \"provisional_create_canister_with_cycles\", \"payload\": \"${CREATE_PAYLOAD}\"}"
+
+INSTALL_PAYLOAD=$(echo "(record {
+  mode=variant { install };
+  canister_id=principal\"${ID}\";
+  wasm_module=blob\"$(hexdump -ve '1/1 "%.2x"' "${WASM}" | sed 's/../\\&/g')\";
+  arg=blob\"DIDL\00\00\";
+})" | didc encode | xxd -r -p | base64 | tr -d '\n')
+
+curl -X POST -H "Content-Type: application/json" "${PIC_INGRESS}" -d "{\"sender\": \"BA==\", \"canister_id\": \"\", \"effective_principal\": {\"CanisterId\": \"${BASE64ID}\"}, \"method\": \"install_code\", \"payload\": \"${INSTALL_PAYLOAD}\"}"
+
+UPGRADE_PAYLOAD=$(echo "(record {
+  mode=variant { upgrade };
+  canister_id=principal\"${ID}\";
+  wasm_module=blob\"$(hexdump -ve '1/1 "%.2x"' "${WASM}" | sed 's/../\\&/g')\";
+  arg=blob\"DIDL\00\00\";
+})" | didc encode | xxd -r -p | base64 | tr -d '\n')
+
+if [ -n "$2" ]
 then
-  # work around different IDs in ic-ref-run and drun
-  ( echo "create"
-    LANG=C perl -npe 's,\$ID,'$ID',g' $1
-  ) | drun -c "$CONFIG" --extra-batches $EXTRA_BATCHES /dev/stdin
-else
-  ( echo "create"
-    echo "install $ID $1 0x"
-    if [ -n "$2" ]
-    then
-      LANG=C perl -ne 'print "$1 '$ID' $2\n" if m,^//CALL (ingress|query) (.*),;print "upgrade '$ID' '"$1"' 0x\n" if m,^//CALL upgrade,; ' $2
-    fi
-  ) | drun -c "$CONFIG" --extra-batches $EXTRA_BATCHES /dev/stdin
+  eval $(LANG=C perl -ne 'print q#curl -X POST -H "Content-Type: application/json" "'"${PIC_INGRESS}"'" -d "{\"sender\": \"BA==\", \"canister_id\": \"'"${BASE64ID}"'\", \"effective_principal\": \"None\", \"method\": \"# . "$2" . q#\", \"payload\": \"# . "$3" . q#\"}"# . " && " if m,^//CALL (ingress|query) ([^ ]*) (.*),;print q#curl -X POST -H "Content-Type: application/json" "'"${PIC_INGRESS}"'" -d "{\"sender\": \"BA==\", \"canister_id\": \"\", \"effective_principal\": {\"CanisterId\": \"'"${BASE64ID}"'\"}, \"method\": \"# . "install_code" . q#\", \"payload\": \"# . "'"${UPGRADE_PAYLOAD}"'" . q#\"}"# . " && " if m,^//CALL upgrade,;' $2) true
 fi
+
+PIC_CYCLES="${PIC_URL}/read/get_cycles"
+
+REMAINING_CYCLES=$(curl -X POST -H "Content-Type: application/json" "${PIC_CYCLES}" -d "{\"canister_id\": \"${BASE64ID}\"}" | jq -r ".cycles")
+USED_CYCLES="$((100000000000000-${REMAINING_CYCLES}))"
+echo ${USED_CYCLES} > /dev/fd/222

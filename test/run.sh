@@ -406,7 +406,8 @@ do
               run_if wasm drun-run $WRAP_drun $out/$base.wasm $mangled 222> $out/$base.metrics
               if [ -e $out/$base.metrics -a -n "$PERF_OUT" ]
               then
-                LANG=C perl -ne "print \"gas/$base;\$1\n\" if /^scheduler_(?:cycles|instructions)_consumed_per_round_sum (\\d+)\$/" $out/$base.metrics >> $PERF_OUT;
+                echo -n "gas/$base;" >> $PERF_OUT;
+                cat $out/$base.metrics >> $PERF_OUT;
               fi
               run_if opt.wasm drun-run-opt $WRAP_drun $out/$base.opt.wasm $mangled
             fi

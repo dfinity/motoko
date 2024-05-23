@@ -50,11 +50,22 @@ jobs:
 
     - run: nix-env -iA nix-build-uncached -f nix/
 
-    - name: "pre-build `drun`"
-      if: startsWith(github.head_ref, 'update/ic-')
+    - name: "Download PocketIC server (ubuntu-latest)"
+      if: ${{ matrix.os }} == "ubuntu-latest"
       run: |
-        nix-build --max-jobs 1 -A drun
-        nix-store --gc --print-roots | grep /motoko/
+        curl -L "https://github.com/dfinity/pocketic/releases/download/4.0.0/pocket-ic-x86_64-linux.gz" -o pocket-ic.gz
+
+    - name: "Download PocketIC server (macos-12)"
+      if: ${{ matrix.os }} == "macos-12"
+      run: |
+        curl -L "https://github.com/dfinity/pocketic/releases/download/4.0.0/pocket-ic-x86_64-darwin.gz" -o pocket-ic.gz
+
+    - name: "Start PocketIC server"
+      if: ${{ matrix.os }} == "ubuntu-latest"
+      run: |
+        gzip -d pocket-ic.gz
+        chmod +x pocket-ic
+        ./pocket-ic --port 8000 --ttl 2592000
 
     - name: "nix-build"
       run: nix-build-uncached --max-jobs 4 -A all-systems-go -build-flags -L
