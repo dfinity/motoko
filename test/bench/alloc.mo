@@ -22,6 +22,6 @@ actor _alloc {
 //SKIP run
 //SKIP run-ir
 //SKIP ic-ref-run
-//CALL ingress go 0x4449444C0000
-//CALL ingress go 0x4449444C0000
-//CALL ingress go 0x4449444C0000
+//CALL ingress go RElETAAA
+//CALL ingress go RElETAAA
+//CALL ingress go RElETAAA

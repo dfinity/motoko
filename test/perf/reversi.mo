@@ -271,14 +271,14 @@ actor {
     init();
 };
 
-//CALL ingress reset 0x4449444C0000
-//CALL ingress board 0x4449444C0000
+//CALL ingress reset RElETAAA
+//CALL ingress board RElETAAA
 //CALL ingress place 0x4449444C00037c7c7c010204
-//CALL ingress board 0x4449444C0000
+//CALL ingress board RElETAAA
 //CALL ingress place 0x4449444C00037c7c7c020203
-//CALL ingress board 0x4449444C0000
+//CALL ingress board RElETAAA
 //CALL ingress place 0x4449444C00037c7c7c010402
-//CALL ingress board 0x4449444C0000
+//CALL ingress board RElETAAA
 
 //SKIP run
 //SKIP run-ir

@@ -7,4 +7,4 @@ actor {
     ignore SHA256.sha256(Array.tabulate(128*1024, Nat8.fromIntWrap));
   }
 }
-//CALL ingress go 0x4449444C0000
+//CALL ingress go RElETAAA

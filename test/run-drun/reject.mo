@@ -25,9 +25,9 @@ actor {
 
 }
 
-//CALL ingress reject1 0x4449444C0000
-//CALL ingress reject2 0x4449444C0000
-//CALL ingress reject3 0x4449444C0000
+//CALL ingress reject1 RElETAAA
+//CALL ingress reject2 RElETAAA
+//CALL ingress reject3 RElETAAA
 
 //SKIP run
 //SKIP run-ir

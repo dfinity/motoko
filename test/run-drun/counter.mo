@@ -12,8 +12,8 @@ actor {
     return c
   };
 }
-//CALL ingress inc 0x4449444C0000
-//CALL ingress inc 0x4449444C0000
-//CALL ingress inc 0x4449444C0000
-//CALL ingress printCounter 0x4449444C0000
-//CALL ingress get 0x4449444C0000
+//CALL ingress inc RElETAAA
+//CALL ingress inc RElETAAA
+//CALL ingress inc RElETAAA
+//CALL ingress printCounter RElETAAA
+//CALL ingress get RElETAAA

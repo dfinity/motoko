@@ -17,8 +17,8 @@ actor {
   }
 
 }
-//CALL ingress foo1 0x4449444C0000
-//CALL ingress foo2 0x4449444C0000
+//CALL ingress foo1 RElETAAA
+//CALL ingress foo2 RElETAAA
 
 
 // SKIP run

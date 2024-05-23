@@ -33,5 +33,5 @@ actor Bignum {
     }
 }
 
-//CALL ingress go 0x4449444C0000
-//CALL ingress candid 0x4449444C0000
+//CALL ingress go RElETAAA
+//CALL ingress candid RElETAAA

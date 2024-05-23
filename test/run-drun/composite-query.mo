@@ -39,7 +39,7 @@ actor Composites {
 }
 
 //SKIP ic-ref-run
-//CALL ingress init 0x4449444C0000
+//CALL ingress init RElETAAA
 //CALL query q 0x4449444C0000
 //CALL query cq1 0x4449444C0000
 //CALL query cq2 0x4449444C0000

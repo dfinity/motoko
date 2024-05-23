@@ -32,7 +32,7 @@ actor {
 
 }
 //SKIP ic-ref-run
-//CALL ingress repeat 0x4449444C0000
-//CALL ingress get 0x4449444C0000
-//CALL ingress repeatUntil 0x4449444C0000
-//CALL ingress get 0x4449444C0000
+//CALL ingress repeat RElETAAA
+//CALL ingress get RElETAAA
+//CALL ingress repeatUntil RElETAAA
+//CALL ingress get RElETAAA

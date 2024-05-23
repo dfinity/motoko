@@ -14,12 +14,12 @@ actor {
 };
 
 //CALL query get 0x4449444C0000
-//CALL ingress get 0x4449444C0000
+//CALL ingress get RElETAAA
 
-//CALL ingress set 0x4449444C0000
+//CALL ingress set RElETAAA
 
 //CALL query get 0x4449444C0000
-//CALL ingress get 0x4449444C0000
+//CALL ingress get RElETAAA
 
 //SKIP run
 //SKIP run-ir

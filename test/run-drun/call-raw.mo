@@ -102,9 +102,9 @@ actor self {
 //SKIP run
 //SKIP run-low
 //SKIP run-ir
-//CALL ingress sint 0x4449444C0000
-//CALL ingress snat 0x4449444C0000
-//CALL ingress stext 0x4449444C0000
-//CALL ingress stuple 0x4449444C0000
-//CALL ingress go 0x4449444C0000
+//CALL ingress sint RElETAAA
+//CALL ingress snat RElETAAA
+//CALL ingress stext RElETAAA
+//CALL ingress stuple RElETAAA
+//CALL ingress go RElETAAA
 
