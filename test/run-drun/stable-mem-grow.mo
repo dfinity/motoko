@@ -53,9 +53,9 @@ actor {
 //SKIP comp-ref
 
 //CALL upgrade
-//CALL ingress testGrow "DIDL\x00\x00"
+//CALL ingress testGrow RElETAAA
 //CALL upgrade
-//CALL ingress testGrow "DIDL\x00\x00"
+//CALL ingress testGrow RElETAAA
 //CALL upgrade
-//CALL ingress testGrow "DIDL\x00\x00"
+//CALL ingress testGrow RElETAAA
 //CALL upgrade

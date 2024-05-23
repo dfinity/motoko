@@ -25,4 +25,4 @@ actor This : actor { type U = Nat; beep : () -> async () } {
   public func check() : async ()  { await This.ok() }; // check no curtailment this
 
 }
-//CALL ingress ok "DIDL\x00\x00"
+//CALL ingress ok RElETAAA

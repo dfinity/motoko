@@ -16,13 +16,13 @@ actor {
   };
 }
 //CALL query check "DIDL\x00\x01\x7d\x01"
-//CALL ingress inc "DIDL\x00\x00"
+//CALL ingress inc RElETAAA
 //CALL query check "DIDL\x00\x01\x7d\x02"
-//CALL ingress inc "DIDL\x00\x00"
+//CALL ingress inc RElETAAA
 //CALL query check "DIDL\x00\x01\x7d\x03"
 //CALL upgrade
 //CALL query check "DIDL\x00\x01\x7d\x03"
-//CALL ingress inc "DIDL\x00\x00"
+//CALL ingress inc RElETAAA
 //CALL query check "DIDL\x00\x01\x7d\x04"
 
 //SKIP run

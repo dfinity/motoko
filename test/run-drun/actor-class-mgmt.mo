@@ -120,7 +120,7 @@ actor a {
 
 }
 
-//CALL ingress go "DIDL\x00\x00"
+//CALL ingress go RElETAAA
 //SKIP run
 //SKIP run-ir
 //SKIP run-low

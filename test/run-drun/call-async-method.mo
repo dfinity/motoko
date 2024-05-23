@@ -1,6 +1,6 @@
 actor a {
 };
-//CALL ingress __motoko_async_helper "DIDL\x00\x00"
+//CALL ingress __motoko_async_helper RElETAAA
 
 //SKIP run
 //SKIP run-ir

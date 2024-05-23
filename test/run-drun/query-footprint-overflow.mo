@@ -28,7 +28,7 @@ actor footprint = {
 
 };
 
-//CALL ingress delegate "DIDL\x00\x00"
+//CALL ingress delegate RElETAAA
 
 //SKIP run
 //SKIP run-ir

@@ -77,9 +77,9 @@ actor {
 // too slow on ic-ref-run:
 //SKIP comp-ref
 
-//CALL ingress populate "DIDL\x00\x00"
-//CALL ingress readAll "DIDL\x00\x00"
+//CALL ingress populate RElETAAA
+//CALL ingress readAll RElETAAA
 //CALL upgrade
-//CALL ingress populate "DIDL\x00\x00"
-//CALL ingress readAll "DIDL\x00\x00"
-//CALL ingress readExtra "DIDL\x00\x00"
+//CALL ingress populate RElETAAA
+//CALL ingress readAll RElETAAA
+//CALL ingress readExtra RElETAAA

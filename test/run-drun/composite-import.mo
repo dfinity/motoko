@@ -25,8 +25,8 @@ actor {
   };
 
 };
-//CALL ingress go1 "DIDL\x00\x00"
-//CALL ingress go2 "DIDL\x00\x00"
+//CALL ingress go1 RElETAAA
+//CALL ingress go2 RElETAAA
 //CALL query cq "DIDL\x00\x00"
 
 //SKIP run

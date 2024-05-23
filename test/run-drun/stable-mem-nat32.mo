@@ -83,10 +83,10 @@ actor {
 //SKIP comp-ref
 
 //CALL upgrade
-//CALL ingress testBounds "DIDL\x00\x00"
+//CALL ingress testBounds RElETAAA
 //CALL upgrade
-//CALL ingress testBounds "DIDL\x00\x00"
+//CALL ingress testBounds RElETAAA
 //CALL upgrade
-//CALL ingress testBounds "DIDL\x00\x00"
+//CALL ingress testBounds RElETAAA
 //CALL upgrade
 

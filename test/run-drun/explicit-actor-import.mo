@@ -15,9 +15,9 @@ actor a {
   public func go2() : async (actor {}) = async await (imported1_go());
   public func go3() : async (actor {}) = async await (imported2_go());
 };
-//CALL ingress go "DIDL\x00\x00"
-//CALL ingress go2 "DIDL\x00\x00"
-//CALL ingress go3 "DIDL\x00\x00"
+//CALL ingress go RElETAAA
+//CALL ingress go2 RElETAAA
+//CALL ingress go3 RElETAAA
 
 
 //SKIP run

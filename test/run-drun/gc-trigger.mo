@@ -28,9 +28,9 @@ actor {
 //SKIP run
 //SKIP run-low
 //SKIP run-ir
-//CALL ingress createGarbage "DIDL\x00\x00"
+//CALL ingress createGarbage RElETAAA
 //CALL query checkBeforeGC "DIDL\x00\x00"
-//CALL ingress __motoko_gc_trigger "DIDL\x00\x00"
-//CALL ingress __motoko_gc_trigger "DIDL\x00\x00"
-//CALL ingress __motoko_gc_trigger "DIDL\x00\x00"
+//CALL ingress __motoko_gc_trigger RElETAAA
+//CALL ingress __motoko_gc_trigger RElETAAA
+//CALL ingress __motoko_gc_trigger RElETAAA
 //CALL query checkAfterGC "DIDL\x00\x00"

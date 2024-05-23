@@ -12,4 +12,4 @@ actor a {
     ignore await opt();
   };
 }
-//CALL ingress go "DIDL\x00\x00"
+//CALL ingress go RElETAAA

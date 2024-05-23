@@ -99,5 +99,5 @@ actor {
 // too slow on ic-ref-run:
 //SKIP comp-ref
 
-//CALL ingress go "DIDL\x00\x00"
+//CALL ingress go RElETAAA
 

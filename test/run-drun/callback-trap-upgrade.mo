@@ -19,11 +19,11 @@ actor this {
 
   Prim.debugPrint ("init'ed");
 }
-//CALL ingress stats "DIDL\x00\x00"
-//CALL ingress go "DIDL\x00\x00"
-//CALL ingress stats "DIDL\x00\x00"
+//CALL ingress stats RElETAAA
+//CALL ingress go RElETAAA
+//CALL ingress stats RElETAAA
 //CALL upgrade
-//CALL ingress stats "DIDL\x00\x00"
+//CALL ingress stats RElETAAA
 
 //SKIP run
 //SKIP run-ir

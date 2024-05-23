@@ -36,4 +36,4 @@ actor {
 //SKIP run-ir
 //SKIP ic-ref-run
 
-//CALL ingress go "DIDL\x00\x00"
+//CALL ingress go RElETAAA

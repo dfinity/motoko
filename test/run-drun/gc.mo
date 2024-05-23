@@ -35,8 +35,8 @@ actor {
   };
 }
 
-//CALL ingress testBytes "DIDL\x00\x00"
-//CALL ingress testChars "DIDL\x00\x00"
-//CALL ingress testArray "DIDL\x00\x00"
-//CALL ingress testArrayMut "DIDL\x00\x00"
+//CALL ingress testBytes RElETAAA
+//CALL ingress testChars RElETAAA
+//CALL ingress testArray RElETAAA
+//CALL ingress testArrayMut RElETAAA
 

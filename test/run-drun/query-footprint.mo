@@ -28,10 +28,10 @@ actor footprint = {
     }
 };
 
-//CALL ingress __motoko_stable_var_info "DIDL\x00\x00"
+//CALL ingress __motoko_stable_var_info RElETAAA
 //CALL query __motoko_stable_var_info "DIDL\x00\x00"
-//CALL ingress delegate "DIDL\x00\x00"
-//CALL ingress delegate "DIDL\x00\x00"
+//CALL ingress delegate RElETAAA
+//CALL ingress delegate RElETAAA
 
 //SKIP run
 //SKIP run-ir

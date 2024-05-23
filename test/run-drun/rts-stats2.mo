@@ -46,9 +46,9 @@ actor a {
 //SKIP run-low
 //SKIP run-ir
 
-//CALL ingress foo "DIDL\x00\x00"
-//CALL ingress check_A "DIDL\x00\x00"
-//CALL ingress check_A "DIDL\x00\x00"
-//CALL ingress bar "DIDL\x00\x00"
-//CALL ingress check_B "DIDL\x00\x00"
-//CALL ingress check_B "DIDL\x00\x00"
+//CALL ingress foo RElETAAA
+//CALL ingress check_A RElETAAA
+//CALL ingress check_A RElETAAA
+//CALL ingress bar RElETAAA
+//CALL ingress check_B RElETAAA
+//CALL ingress check_B RElETAAA
