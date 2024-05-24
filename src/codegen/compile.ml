@@ -9149,39 +9149,39 @@ module FuncDec = struct
     ))
 
   let message_start env sort = match sort with
-      | Type.Shared Type.Write ->
-        Lifecycle.trans env Lifecycle.InUpdate
-      | Type.Shared Type.Query ->
-        Lifecycle.trans env Lifecycle.InQuery
-      | Type.Shared Type.Composite ->
-        Lifecycle.trans env Lifecycle.InComposite
+      | Type.(Shared Write) ->
+        Lifecycle.(trans env InUpdate)
+      | Type.(Shared Query) ->
+        Lifecycle.(trans env InQuery)
+      | Type.(Shared Composite) ->
+        Lifecycle.(trans env InComposite)
       | _ -> assert false
 
   let message_cleanup env sort = match sort with
-      | Type.Shared Type.Write ->
+      | Type.(Shared Write) ->
         GC.collect_garbage env ^^
-        Lifecycle.trans env Lifecycle.Idle
-      | Type.Shared Type.Query ->
-        Lifecycle.trans env Lifecycle.PostQuery
-      | Type.Shared Type.Composite ->
+        Lifecycle.(trans env Idle)
+      | Type.(Shared Query) ->
+        Lifecycle.(trans env PostQuery)
+      | Type.(Shared Composite) ->
         (* Stay in composite query state such that callbacks of 
         composite queries can also use the memory reserve. 
         The state is isolated since memory changes of queries 
         are rolled back by the IC runtime system. *)
-        Lifecycle.trans env Lifecycle.InComposite
+        Lifecycle.(trans env InComposite)
       | _ -> assert false
 
   let callback_start env =
-    Lifecycle.is_in env Lifecycle.InComposite ^^
+    Lifecycle.(is_in env InComposite) ^^
     G.if0
       (G.nop)
-      (message_start env (Type.Shared Type.Write))
+      (message_start env Type.(Shared Write))
 
   let callback_cleanup env =
-    Lifecycle.is_in env Lifecycle.InComposite ^^
+    Lifecycle.(is_in env InComposite) ^^
     G.if0
       (G.nop)
-      (message_cleanup env (Type.Shared Type.Write))
+      (message_cleanup env Type.(Shared Write))
   
   let compile_const_message outer_env outer_ae sort control args mk_body ret_tys at : E.func_with_names =
     let ae0 = VarEnv.mk_fun_ae outer_ae in
