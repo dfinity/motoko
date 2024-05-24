@@ -19,7 +19,7 @@ pub unsafe fn slice_array(array: *mut Array) -> u32 {
         (*array).header.tag = (sort << 30) | new_start;
         new_start
     } else {
-        (*array).header.tag = TAG_ARRAY_I + sort * 2; // TODO: restore original tag somehow
+        (*array).header.tag = TAG_ARRAY_I + sort * 2; // restore original tag
         array.len()
     }
 }
