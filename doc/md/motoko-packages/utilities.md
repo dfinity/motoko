@@ -36,7 +36,7 @@ sidebar_position: 7
 
 - [`prng`](https://mops.one/prng): Statistical pseudo-random number generators.
 
-- [random](https://mops.one/random): Generate random data.
+- [`random`](https://mops.one/random): Generate random data.
 
 - [`random-class`](https://mops.one/random-class): Random number generator objects.
 
