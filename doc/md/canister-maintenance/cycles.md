@@ -7,7 +7,7 @@ sidebar_position: 1
 
 ## Overview
 
-Usage of a canister's resources on ICP is measured and paid for in [cycles](/docs/current/developer-docs/getting-started/cycles/converting_icp_tokens_into_cycles).
+Usage of a canister's resources on ICP is measured and paid for in [cycles](/docs/current/developer-docs/defi/cycles/converting_icp_tokens_into_cycles).
 
 In Motoko programs deployed on ICP, each actor represents a canister and has an associated balance of cycles. The ownership of cycles can be transferred between actors. Cycles are selectively sent and received through shared function calls. A caller can choose to transfer cycles with a call, and a callee can choose to accept cycles that are made available by the caller. Unless explicitly instructed, no cycles are transferred by callers or accepted by callees.
 
