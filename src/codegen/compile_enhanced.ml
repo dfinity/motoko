@@ -1706,7 +1706,6 @@ module BitTagged = struct
   (* Note: `true` is not handled here, needs specific check where needed. *)
   let if_tagged_scalar env retty is1 is2 =
     compile_bitand_const 0x1L ^^
-    compile_eq_const 0x1L ^^
     E.if_ env retty is2 is1
 
   (* With two bit-tagged pointers on the stack, decide
@@ -1717,7 +1716,6 @@ module BitTagged = struct
   let if_both_tagged_scalar env retty is1 is2 =
     G.i (Binary (Wasm_exts.Values.I64 I64Op.Or)) ^^
     compile_bitand_const 0x1L ^^
-    compile_eq_const 0x1L ^^
     E.if_ env retty is2 is1
 
   let ubits_of pty = TaggingScheme.ubits_of pty
@@ -2880,7 +2878,7 @@ module type BigNumType =
 sig
   (* word from SR.Vanilla, trapping, unsigned semantics *)
   val to_word64 : E.t -> G.t
-  val to_word64_with : E.t -> G.t (* with error message on stack (ptr/len) *)
+  val to_word64_with : E.t -> G.t -> G.t (* with error message on stack (ptr/len) *)
 
   (* word from SR.Vanilla, lossy, raw bits *)
   val truncate_to_word32 : E.t -> G.t
@@ -3054,20 +3052,16 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
     (* Check whether both arguments `a` and `b` are scalars that fit within 32 bit.
         This is to guarantee overflow-free 64-bit arithmetics, such as `add`, `sub`, or `mul`.
         However, this does not work for `pow` as it can overflow for smaller arguments. *)
-    (* check that both arguments are scalars, none a skewed pointers *)
+    (* check with a combined bit mask that:
+       - (and `0x1`) Both arguments are scalars, none a skewed pointers
+       - (and `0xFFFF_FFFF_0000_0000`) Both arguments fit in 32-bit
+    TODO: Precise tag for Int has 2 bits -> 
+       Check if we could permit one or two more bits in the `0xFFFF_FFFF_0000_0000` bit mask. *)
     get_a ^^ get_b ^^
     G.i (Binary (Wasm_exts.Values.I64 I64Op.Or)) ^^
-    compile_bitand_const 0x1L ^^
-    compile_eq_const 0x0L ^^
-    get_a ^^ get_b ^^
-    (* check that their values fit into 32 bits *)
-    G.i (Binary (Wasm_exts.Values.I64 I64Op.Or)) ^^
-    (* TODO: Precise tag for Int has 2 bits -> 
-       Check if we could permit one or two more bits in the following bit mask. *)
-    compile_bitand_const 0xFFFF_FFFF_0000_0000L ^^
-    compile_eq_const 0x0L ^^
-    G.i (Binary (Wasm_exts.Values.I64 I64Op.And))
-
+    compile_bitand_const 0xFFFF_FFFF_0000_0001L ^^
+    compile_eq_const 0x0L
+    
   (* creates a boxed bignum from a signed i64 *)
   let box env =
     let ubitsL = Int64.of_int(BitTagged.ubits_of Type.Int) in
@@ -3518,20 +3512,18 @@ module MakeCompact (Num : BigNumType) : BigNumType = struct
       (get_a ^^ BitTagged.untag __LINE__ env Type.Int)
       (get_a ^^ Num.to_word64 env)
 
-  let to_word64_with env =
+  let to_word64_with env get_err_msg =
     let set_a, get_a = new_local env "a" in
-    let set_err_msg, get_err_msg = new_local env "err_msg" in
-    set_err_msg ^^ set_a ^^
-    get_a ^^
+    set_a ^^ get_a ^^
     BitTagged.if_tagged_scalar env [I64Type]
       (get_a ^^ BitTagged.untag __LINE__ env Type.Int)
-      (get_a ^^ get_err_msg ^^ Num.to_word64_with env)
+      (get_a ^^ Num.to_word64_with env get_err_msg)
 end
 
 module BigNumLibtommath : BigNumType = struct
 
   let to_word64 env = E.call_import env "rts" "bigint_to_word64_trap"
-  let to_word64_with env = E.call_import env "rts" "bigint_to_word64_trap_with"
+  let to_word64_with env get_err_msg = get_err_msg ^^ E.call_import env "rts" "bigint_to_word64_trap_with"
 
   let truncate_to_word32 env = E.call_import env "rts" "bigint_to_word32_wrap" ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
   let truncate_to_word64 env = E.call_import env "rts" "bigint_to_word64_wrap"
@@ -4332,8 +4324,7 @@ module Arr = struct
     Func.share_code2 Func.Never env "Array.idx_bigint" (("array", I64Type), ("idx", I64Type)) [I64Type] (fun env get_array get_idx ->
       get_array ^^
       get_idx ^^
-      Blob.lit env "Array index out of bounds" ^^
-      BigNum.to_word64_with env ^^
+      BigNum.to_word64_with env (Blob.lit env "Array index out of bounds") ^^
       idx env
   )
 
@@ -11502,8 +11493,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_as env ae SR.Vanilla e0 ^^
     compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) e1 ^^
     compile_exp_as env ae SR.Vanilla e2 ^^
-    Blob.lit env "Blob size out of bounds" ^^
-    BigNum.to_word64_with env ^^
+    BigNum.to_word64_with env (Blob.lit env "Blob size out of bounds") ^^
     Region.load_blob env
 
   | OtherPrim ("regionStoreBlob"), [e0; e1; e2] ->
@@ -11868,8 +11858,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla,
     compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) e1 ^^
     compile_exp_as env ae SR.Vanilla e2 ^^
-    Blob.lit env "Blob size out of bounds" ^^
-    BigNum.to_word64_with env ^^
+    BigNum.to_word64_with env (Blob.lit env "Blob size out of bounds") ^^
     StableMemoryInterface.load_blob env
 
   | OtherPrim "stableMemoryStoreBlob", [e1; e2] ->
@@ -12217,7 +12206,7 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
       get_k
       get_r
       add_cycles
-  | ActorE (ds, fs, _, _, _) ->
+  | ActorE (ds, fs, _, _) ->
     fatal "Local actors not supported by backend"
   | NewObjE (Type.(Object | Module | Memory) as _sort, fs, _) ->
     (*
@@ -12756,9 +12745,8 @@ and compile_init_func mod_env ((cu, flavor) : Ir.prog) =
       let _ae, codeW = compile_decs env VarEnv.empty_ae ds Freevars.S.empty in
       codeW G.nop
     )
-  | ActorU (as_opt, ds, fs, up, actor_type, build_stable_actor) ->
-    let stable_actor_type = actor_type.stable_actor_type in
-    main_actor as_opt mod_env ds fs up stable_actor_type build_stable_actor
+  | ActorU (as_opt, ds, fs, up, t) ->
+    main_actor as_opt mod_env ds fs up
 
 and export_actor_field env  ae (f : Ir.field) =
   (* A public actor field is guaranteed to be compiled as a PublicMethod *)
@@ -12784,7 +12772,9 @@ and export_actor_field env  ae (f : Ir.field) =
   })
 
 (* Main actor *)
-and main_actor as_opt mod_env ds fs up stable_actor_type build_stable_actor =
+and main_actor as_opt mod_env ds fs up =
+  let stable_actor_type = up.stable_type in
+  let build_stable_actor = up.stable_record in
   IncrementalGraphStabilization.define_methods mod_env stable_actor_type;
 
   (* Export metadata *)
@@ -12794,7 +12784,7 @@ and main_actor as_opt mod_env ds fs up stable_actor_type build_stable_actor =
 
   Func.define_built_in mod_env IC.initialize_main_actor_function_name [] [] (fun env ->
     let ae0 = VarEnv.empty_ae in
-    let captured = Freevars.captured_vars (Freevars.actor ds fs up build_stable_actor) in
+    let captured = Freevars.captured_vars (Freevars.actor ds fs up) in
     (* Add any params to the environment *)
     (* Captured ones need to go into static memory, the rest into locals *)
     let args = match as_opt with None -> [] | Some as_ -> as_ in

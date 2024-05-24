@@ -57,9 +57,6 @@ type arg = (string, Type.typ) Source.annotated_phrase
 
 type exp = exp' phrase
 
-(* builder of the stable actor record for persistence, after running the preupgrade method *)
-and build_stable_actor = exp
-
 and exp' =
   | PrimE of (prim * exp list)                 (* primitive *)
   | VarE of id                                 (* variable *)
@@ -76,7 +73,7 @@ and exp' =
   | FuncE of                                   (* function *)
       string * Type.func_sort * Type.control * typ_bind list * arg list * Type.typ list * exp
   | SelfCallE of Type.typ list * exp * exp * exp (* essentially ICCallPrim (FuncE shared…) *)
-  | ActorE of dec list * field list * system * Type.typ * build_stable_actor (* actor *)
+  | ActorE of dec list * field list * system * Type.typ (* actor *)
   | NewObjE of Type.obj_sort * field list * Type.typ  (* make an object *)
   | TryE of exp * case list                    (* try/catch *)
 
@@ -87,7 +84,9 @@ and system = {
   postupgrade : exp;
   heartbeat : exp;
   timer : exp; (* TODO: use an option type: (Default of exp | UserDefined of exp) option *)
-  inspect : exp
+  inspect : exp;
+  stable_record: exp;
+  stable_type: Type.typ;
 }
 
 and candid = {
@@ -249,7 +248,7 @@ type actor_type = {
 type comp_unit =
   | LibU of dec list * exp
   | ProgU of dec list
-  | ActorU of arg list option * dec list * field list * system * actor_type * build_stable_actor (* actor (class) *)
+  | ActorU of arg list option * dec list * field list * system * Type.typ (* actor (class) *)
      
 
 type prog = comp_unit * flavor

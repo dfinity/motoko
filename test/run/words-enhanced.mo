@@ -11,11 +11,11 @@ assert (0 : Nat64 == 0);
 // CHECK: i64.const 424342
 assert not (424342 : Nat64 == 1);
 
-// CHECK: i64.const 1823395079520256
+// CHECK: i64.const {{1823394005778432|1823395079520256}}
 assert not (424542 : Nat32 == 1);
 assert not (3 : Nat32 == 0);
 assert (0 : Nat32 == 0);
-// CHECK: i64.const 1824683569709056
+// CHECK: i64.const {{1824682495967232|1824683569709056}}
 assert not (424842 : Nat32 == 1);
 
 func printBit(a : Bool) { Prim.debugPrint(if a "set" else "clear") };
@@ -176,9 +176,9 @@ do {
 // CHECK: call $checkpointDelta
     checkpointDelta();
 // this is the value of a
-// CHECK: i64.const 1285566587381743616
+// CHECK: i64.const {{1285496218637565952|1285566587381743616}}
 // this is the value of b
-// CHECK: i64.const 2040693581152256
+// CHECK: i64.const {{1970324836974592|2040693581152256}}
 // This is not a native Wasm i64 multiplication, we need to shift one of the args left by 16 bits!
 // CHECK: i64.const 48
 // CHECK-NEXT: i64.shr_u
@@ -199,7 +199,7 @@ do {
 // CHECK: call $checkpointEcho
    checkpointEcho();
 // this is the value of b
-// CHECK: i64.const 2040693581152256
+// CHECK: i64.const {{1970324836974592|2040693581152256}}
 // This is not a native Wasm i32 left shift, we need to shift the second arg left by 16 bits and clamp it to 4 bits!
 // CHECK: i64.const 48
 // CHECK-NEXT: i64.shr_u
@@ -219,14 +219,14 @@ do {
 // CHECK: call $checkpointFoxtrot
    checkpointFoxtrot();
 // this is the value of b
-// CHECK: i64.const 2040693581152256
+// CHECK: i64.const {{1970324836974592|2040693581152256}}
 // CHECK: call $printN16ln
     printN16ln(c <<> b);
 
 // CHECK: call $checkpointGolf
    checkpointGolf();
 // this is the value of b
-// CHECK: i64.const 2040693581152256
+// CHECK: i64.const {{1970324836974592|2040693581152256}}
 // CHECK: i64.rotr
     printN16ln(c <>> b);
     printI16ln(Prim.popcntInt16 d); // -15 = 0xfff1 = 0b1111_1111_1111_0001 (population = 13)
@@ -266,7 +266,7 @@ do {
 // CHECK: call $checkpointHotel
     checkpointHotel();
 // this is the value of b
-// CHECK: i64.const 522417556774977536
+// CHECK: i64.const {{504403158265495552|522417556774977536}}
 // This is not a native Wasm i64 multiplication, we need to shift one of the args left by 56 bits!
 // CHECK: i64.const 56
 // CHECK-NEXT: i64.shr_u
@@ -285,7 +285,7 @@ do {
 // CHECK: call $checkpointIndia
     checkpointIndia();
 // this is the value of b
-// CHECK: i64.const 522417556774977536
+// CHECK: i64.const {{504403158265495552|522417556774977536}}
 // This is not a native Wasm i64 left shift, we need to shift the second arg left by 56 bits and clamp it to 3 bits!
 // CHECK: i64.const 56
 // CHECK-NEXT: i64.shr_u
@@ -305,11 +305,11 @@ do {
 // CHECK: call $checkpointJuliett
     checkpointJuliett();
 // this is the value of b
-// CHECK: i64.const 522417556774977536
+// CHECK: i64.const {{504403158265495552|522417556774977536}}
 // CHECK: call $printN8ln
     printN8ln(c <<> b);
 // this is the value of b
-// CHECK: i64.const 522417556774977536
+// CHECK: i64.const {{504403158265495552|522417556774977536}}
 // CHECK: call $printN8ln
     printN8ln(c <>> b);
     printI8ln(Prim.popcntInt8 d); // -15 = 0xf1 = 0b1111_0001 (population = 5)
