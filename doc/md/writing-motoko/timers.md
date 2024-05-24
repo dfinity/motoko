@@ -6,7 +6,7 @@ sidebar_position: 26
 
 ## Overview
 
-ICP canisters can set an arbitrary number of single-expiration or recurring timers. See the [`Timer.mo`](../base/Timer.md) module in the base library.
+On ICP, canisters can set recurring timers that execute a piece of code after a specified period of time or regular interval. Times in Motoko are implemented using the [`Timer.mo`](../base/Timer.md) module, and return a `TimerId`. `TimerId`s are unique for each timer instance. A canister can contain multiple timers. 
 
 ## Example
 
