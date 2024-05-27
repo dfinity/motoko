@@ -3,7 +3,9 @@ use crate::memory::TestMemory;
 
 use motoko_rts::constants::WORD_SIZE;
 use motoko_rts::gc::incremental::mark_bitmap::{MarkBitmap, BITMAP_ITERATION_END};
-use motoko_rts::gc::incremental::partitioned_heap::PARTITION_SIZE;
+use motoko_rts::gc::incremental::partitioned_heap::{
+    PARTITION_CAPACITY, PARTITION_DESCRIPTOR_SIZE, PARTITION_SIZE,
+};
 use motoko_rts::memory::Memory;
 use motoko_rts::types::{Bytes, Value};
 
@@ -14,7 +16,7 @@ use proptest::test_runner::{Config, TestCaseResult, TestRunner};
 
 pub unsafe fn test() {
     println!("  Testing mark bitmap ...");
-    let bitmap_size = Bytes(PARTITION_SIZE as u32).to_words();
+    let bitmap_size = Bytes(PARTITION_CAPACITY as u32).to_words();
     let mut mem = TestMemory::new(bitmap_size);
     let bitmap_pointer = mem.alloc_words(bitmap_size);
 
@@ -56,7 +58,7 @@ fn test_mark_proptest(bitmap_pointer: Value, bits: Vec<u16>) -> TestCaseResult {
 }
 
 fn address_of_bit(bit: u16) -> usize {
-    bit as usize * WORD_SIZE as usize
+    (bit as usize * WORD_SIZE as usize) + PARTITION_DESCRIPTOR_SIZE
 }
 
 fn test_mark(bitmap_pointer: Value, mut bits: Vec<u16>) {

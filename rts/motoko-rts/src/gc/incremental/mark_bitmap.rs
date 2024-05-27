@@ -24,11 +24,11 @@ use core::{mem::size_of, ptr::null_mut};
 
 use crate::{constants::WORD_SIZE, mem_utils::memzero, types::Bytes};
 
-use super::partitioned_heap::PARTITION_SIZE;
+use super::partitioned_heap::{PARTITION_CAPACITY, PARTITION_DESCRIPTOR_SIZE, PARTITION_SIZE};
 
 const BITMAP_FRACTION: usize = (WORD_SIZE * u8::BITS) as usize;
 
-pub const BITMAP_SIZE: usize = PARTITION_SIZE / BITMAP_FRACTION;
+pub const BITMAP_SIZE: usize = (PARTITION_CAPACITY + BITMAP_FRACTION - 1) / BITMAP_FRACTION;
 
 /// Partition-associated mark bitmap.
 pub struct MarkBitmap {
@@ -64,8 +64,9 @@ impl MarkBitmap {
 
     fn word_index(&self, offset_in_partition: usize) -> usize {
         debug_assert_eq!(offset_in_partition % WORD_SIZE as usize, 0);
+        debug_assert!(offset_in_partition >= PARTITION_DESCRIPTOR_SIZE);
         debug_assert!(offset_in_partition < PARTITION_SIZE);
-        offset_in_partition / (WORD_SIZE as usize)
+        (offset_in_partition - PARTITION_DESCRIPTOR_SIZE) / (WORD_SIZE as usize)
     }
 
     /// Check whether the object at defined address offset in the partition is marked.
@@ -148,7 +149,7 @@ impl BitmapIterator {
         if self.next_bit_index == BITMAP_ITERATION_END {
             return BITMAP_ITERATION_END;
         } else {
-            (self.next_bit_index - 1) * WORD_SIZE as usize
+            ((self.next_bit_index - 1) * WORD_SIZE as usize) + PARTITION_DESCRIPTOR_SIZE
         }
     }
 

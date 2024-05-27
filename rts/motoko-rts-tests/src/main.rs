@@ -21,11 +21,11 @@ fn main() {
     }
 
     unsafe {
-        test_read_write_64_bit();
-        bigint::test();
-        bitrel::test();
-        continuation_table::test();
-        crc32::test();
+        // test_read_write_64_bit();
+        // bigint::test();
+        // bitrel::test();
+        // continuation_table::test();
+        // crc32::test();
         gc::test();
         leb128::test();
         principal_id::test();

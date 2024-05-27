@@ -171,17 +171,21 @@ fn initialize_gc(_heap: &mut MotokoHeap) {}
 
 #[incremental_gc]
 fn initialize_gc(heap: &mut MotokoHeap) {
-    use motoko_rts::gc::incremental::{get_partitioned_heap, IncrementalGC};
+    use motoko_rts::gc::incremental::{
+        get_partitioned_heap, partitioned_heap::PARTITION_DESCRIPTOR_SIZE, IncrementalGC,
+    };
     unsafe {
         IncrementalGC::initialize(heap, heap.heap_base_address());
         let allocation_size = heap.heap_ptr_address() - heap.heap_base_address();
-
         // Synchronize the partitioned heap with one big combined allocation by starting from the base pointer as the heap pointer.
         let result =
             get_partitioned_heap().allocate(heap, Bytes(allocation_size as u32).to_words());
         // Check that the heap pointer (here equals base pointer) is unchanged, i.e. no partition switch has happened.
         // This is a restriction in the unit test where `MotokoHeap` only supports contiguous bump allocation during initialization.
-        assert_eq!(result.get_ptr(), heap.heap_base_address());
+        assert_eq!(
+            result.get_ptr(),
+            heap.heap_base_address() + PARTITION_DESCRIPTOR_SIZE
+        );
     }
 }
 

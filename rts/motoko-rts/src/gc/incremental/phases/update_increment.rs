@@ -62,7 +62,7 @@ impl<'a> UpdateIncrement<'a> {
         while self.iterator.has_partition() {
             let partition = self.iterator.current_partition(&self.heap);
             if partition.to_be_updated() {
-                self.update_partition(partition);
+                self.update_partition(&partition);
                 if self.time.is_over() {
                     // Resume updating the same partition later.
                     break;

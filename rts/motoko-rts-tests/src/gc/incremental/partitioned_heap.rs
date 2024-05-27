@@ -7,8 +7,8 @@ use std::{
 use motoko_rts::{
     gc::incremental::{
         partitioned_heap::{
-            Partition, PartitionedHeap, PartitionedHeapIterator, PARTITION_SIZE,
-            SURVIVAL_RATE_THRESHOLD,
+            Partition, PartitionedHeap, PartitionedHeapIterator, PARTITION_CAPACITY,
+            PARTITION_SIZE, SURVIVAL_RATE_THRESHOLD,
         },
         time::BoundedTime,
     },
@@ -81,7 +81,7 @@ unsafe fn iterate_heap(
         assert!(!partition.to_be_evacuated());
         assert!(!partition.has_large_content());
         assert!(!partition.is_temporary());
-        iterate_partition(partition, iterator, set, time);
+        iterate_partition(&partition, iterator, set, time);
         if time.is_over() {
             break;
         }
@@ -169,7 +169,7 @@ unsafe fn count_objects(heap: &PartitionedHeap) -> usize {
         let partition = iterator.current_partition(heap);
         assert!(!partition.is_free());
         assert!(!partition.to_be_evacuated());
-        count += count_objects_in_partition(partition, &mut iterator);
+        count += count_objects_in_partition(&partition, &mut iterator);
         iterator.next_partition(heap);
     }
     reset_progress();
@@ -234,7 +234,7 @@ unsafe fn test_survival_rate(heap: &mut PartitionedHeap) {
         let dynamic_partition_size =
             PARTITION_SIZE - partition.dynamic_space_start() % PARTITION_SIZE;
         let expected_survival_rate =
-            occupied_space(partition) as f64 / dynamic_partition_size as f64;
+            occupied_space(&partition) as f64 / dynamic_partition_size as f64;
         assert!(f64::abs(partition.survival_rate() - expected_survival_rate) < 1e6);
         let expected_evacuation = !heap.is_allocation_partition(partition.get_index())
             && partition.survival_rate() <= SURVIVAL_RATE_THRESHOLD;
@@ -245,8 +245,8 @@ unsafe fn test_survival_rate(heap: &mut PartitionedHeap) {
 
 unsafe fn test_large_size_scenario() {
     println!("    Test large allocations...");
-    const LARGE: usize = PARTITION_SIZE + WORD_SIZE;
-    const EXTRA_LARGE: usize = 2 * PARTITION_SIZE;
+    const LARGE: usize = PARTITION_CAPACITY + WORD_SIZE;
+    const EXTRA_LARGE: usize = PARTITION_CAPACITY + PARTITION_SIZE;
     test_allocation_sizes(&[32, PARTITION_SIZE, 16], 3);
     test_allocation_sizes(&[28, LARGE, 20], 3);
     test_allocation_sizes(&[24, LARGE, LARGE, 36], 5);
@@ -382,7 +382,7 @@ impl PartitionedTestHeap {
     pub fn new(size: usize) -> PartitionedTestHeap {
         let mut memory = TestMemory::new(Bytes(size as u32).to_words());
         let heap_base = memory.heap_base();
-        let inner = unsafe { PartitionedHeap::new(&mut memory, heap_base) };
+        let inner = PartitionedHeap::new(&mut memory, heap_base);
         PartitionedTestHeap { memory, inner }
     }
 
