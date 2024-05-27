@@ -578,9 +578,19 @@ and switch_stmts ctxt at (scrut : M.exp) (cases : M.case list) : seqn' =
 and pat_match ctxt (scrut : M.exp) (p : M.pat) : exp list * (id * T.typ) list * seqn' =
   let (!!) a = !!! (p.at) a in
   match (strip_par_p p).it with
+  | M.AnnotP (p, _typ) -> pat_match ctxt scrut p
   | M.LitP lit ->
     begin match !lit with
     | M.NullLit -> [isNoneE (p.at) (exp ctxt scrut)], [], ([], [])
+    | M.BoolLit b ->
+      let e_scrut = exp ctxt scrut in
+      let rhs = !!(BoolLitE b) in
+      [ !!(EqCmpE (e_scrut, rhs)) ], [], ([], [])
+    | M.NatLit n | M.IntLit n ->
+      let e_scrut = exp ctxt scrut in
+      let rhs = !!(IntLitE n) in
+      [ !!(EqCmpE (e_scrut, rhs)) ], [], ([], [])
+    | M.PreLit _ -> failwith "Expected PreLit to be eliminated after typing"
     | _         -> unsupported (p.at) (Arrange.lit !lit)
     end
   | M.OptP p' ->
@@ -611,6 +621,7 @@ and pat_match ctxt (scrut : M.exp) (p : M.pat) : exp list * (id * T.typ) list * 
     end in
     let stmts = List.mapi (fun i (x, t) -> fld_assign_stmt i (LValueUninitVar x)) p_scope in
     [cond], p_scope, (ds, stmts)
+  | M.WildP -> [], [], ([], [])
   | _ -> unsupported p.at (Arrange.pat p)
 
 and unwrap_tup_vars_pat (p : M.pat) : (id * T.typ) list =
