@@ -97,3 +97,9 @@ The shared `log(t)` function encodes its [`Text`](../base/Text.md) argument as a
 The shared `readLast(count)` query reads up to `count` messages from the log, traversing the log in reverse from `base`.
 
 Because `StableLog` allocates and maintains its (potentially large) log data directly in stable memory and uses just a small and fixed amount of storage for actual stable variables (here `base`), upgrading `StableLog` to a new implementation (perhaps to provide more functionality) should not consume too many cycles, regardless of the current size of the log.
+
+## Mops packages for stable memory
+
+- [`memory-buffer`](https://mops.one/memory-buffer): Persistent buffer implementation.
+
+- [`memory-hashtable`](https://mops.one/memory-hashtable): A library for storing, updating, deleting, and retrieving a single blob-value per key.
