@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-CONFIG=$(realpath $(dirname $0)/drun.json5)
-
 #
 # This script wraps drun to
 #
@@ -23,26 +21,20 @@ fi
 
 export LANG=C.UTF-8
 
-# this could be used to delay drun to make it more deterministic, but
-# it doesn't work reliably and slows down the test significantly.
-# so until DFN-1269 fixes this properly, let's just not run
-# affected tests on drun (only ic-ref-run).
-EXTRA_BATCHES=1
-
 # on darwin, I have seen
 #   thread 'MR Batch Processor' has overflowed its stack
 # and this helps (default is 2MB)
 export RUST_MIN_STACK=$((10*1024*1024))
 
 # drun creates canisters with this ID:
-ID=rwlgt-iiaaa-aaaaa-aaaaa-cai
+ID=lxzze-o7777-77777-aaaaa-cai
 
 if [ "${1: -5}" = ".drun" ]
 then
   # work around different IDs in ic-ref-run and drun
   ( echo "create"
     LANG=C perl -npe 's,\$ID,'$ID',g' $1
-  ) | drun -c "$CONFIG" --extra-batches $EXTRA_BATCHES /dev/stdin
+  ) | drun --cycles-used-file /dev/fd/222 /dev/stdin
 else
   ( echo "create"
     echo "install $ID $1 0x"
@@ -50,5 +42,5 @@ else
     then
       LANG=C perl -ne 'print "$1 '$ID' $2\n" if m,^//CALL (ingress|query) (.*),;print "upgrade '$ID' '"$1"' 0x\n" if m,^//CALL upgrade,; ' $2
     fi
-  ) | drun -c "$CONFIG" --extra-batches $EXTRA_BATCHES /dev/stdin
+  ) | drun --cycles-used-file /dev/fd/222 /dev/stdin
 fi

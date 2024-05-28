@@ -55,7 +55,7 @@ for file in perf/*.mo; do
   wasm-profiler-instrument --ic-system-api -i "_profile_build/$base.wasm" -o "_profile_build/$base.instrumented.wasm"
 
   # qr.mo takes far too long with profiling instrumentation, so limit runtime
-  timeout 20s ./drun-wrapper.sh "_profile_build/$base.instrumented.wasm" "$file" |&
+  timeout 20s ./drun-wrapper.sh "_profile_build/$base.instrumented.wasm" "$file" 222>/dev/null |&
     wasm-profiler-postproc flamegraph "_profile_build/$base.instrumented.wasm" \
     > "_profile_build/$base.flamegraph"
 
