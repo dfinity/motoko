@@ -1,12 +1,13 @@
 //! Partitioned heap used in incremental GC for compacting evacuation.
 //! The heap is divided in equal sized partitions of a large size `PARTITION_SIZE`.
-//! The first partition(s) may contain a static heap space with static objects that are never moved.
-//! Beyond the static objects of a partition, the dynamic heap space starts with `dynamic_size`.
+//! Some partitions contain a static (pinned) heap space that is never moved.
+//! This is used for static objects at the beginning of the heap or for a partition table.
+//! Beyond the static space of a partition, the dynamic heap space starts with `dynamic_size`.
 //!
-//! Heap layout, with N = `MAX_PARTITIONS`:
-//! ┌───────────────┬───────────────┬───────────────┬───────────────┐
-//! │  partition 0  │  partition 1  |      ...      | partition N-1 |
-//! └───────────────┴───────────────┴───────────────┴───────────────┘
+//! Heap layout, with a dynamic number of partitions:
+//! ┌───────────────┬───────────────┬───────────────┐
+//! │  partition 0  │  partition 1  |      ...      |
+//! └───────────────┴───────────────┴───────────────┘
 //!
 //! Partition layout:
 //! ┌───────────────┬───────────────┬───────────────┐
@@ -17,6 +18,15 @@
 //! by using efficient bump allocation inside the allocation partition.
 //! Whenever a partition is full or has insufficient space to accommodate a new allocation,
 //! a new empty partition is selected for allocation.
+//!
+//! A linked list of partition tables allows dynamic growth of the heap memory even in 64-bit address
+//! space. The first partition table is placed in the record of the partitioned heap. Subsequent
+//! partition tables reside in the static space of a partition.
+//!
+//! ┌─────────────────────┐ extension ┌─────────────────────┐ extension
+//! │   Partition table   │---------->│   Partition table   │----------> ...
+//! └─────────────────────┘           └─────────────────────┘
+//! (in `PartitionedHeap`)              (in static space)
 //!
 //! On garbage collection, partitions are selected for evacuation by prioritizing high-garbage
 //! partitions. The live objects of the partitions selected for evacuation are moved out to
@@ -38,10 +48,18 @@
 //! of the last partition of a huge object is not used for further small object allocations,
 //! which implies limited internal fragmentation.
 
-use core::{array::from_fn, ops::Range, ptr::null_mut};
+use core::{
+    array::from_fn,
+    iter::Iterator,
+    ops::Range,
+    ptr::{null, null_mut},
+};
 
 use crate::{
-    gc::incremental::mark_bitmap::BITMAP_ITERATION_END, memory::Memory, rts_trap_with, types::*,
+    gc::incremental::mark_bitmap::BITMAP_ITERATION_END,
+    memory::{alloc_blob, Memory},
+    rts_trap_with,
+    types::*,
 };
 
 use super::{
@@ -58,14 +76,14 @@ use super::{
 ///    allocated in that granularity and GC is then triggered later.
 pub const PARTITION_SIZE: usize = 64 * 1024 * 1024;
 
-// TODO: Redesign for 64-bit support by using a dynamic partition list.
-/// Currently limited to 64 GB.
-pub const MAXIMUM_MEMORY_SIZE: Bytes<usize> = Bytes(64 * 1024 * 1024 * 1024);
+/// Number of entries per partition tables.
+/// Tables are linearly linked, allowing the usage of the entire address space.
+const PARTITIONS_PER_TABLE: usize = 64; // 4 GB of space for 64 MB partitions.
 
-/// Total number of partitions in the memory.
+/// Maximum number of partitions in the memory.
 /// For simplicity, the last partition is left unused, to avoid a numeric overflow when
 /// computing the end address of the last partition.
-const MAX_PARTITIONS: usize = (MAXIMUM_MEMORY_SIZE.0 / PARTITION_SIZE) - 1;
+const MAX_PARTITIONS: usize = usize::MAX / PARTITION_SIZE;
 
 /// Partitions are only evacuated if the space occupation of alive objects in the partition
 /// is greater than this threshold.
@@ -231,6 +249,7 @@ impl Partition {
 #[repr(C)]
 pub struct PartitionedHeapIterator {
     partition_index: usize,
+    number_of_partitions: usize,
     bitmap_iterator: Option<BitmapIterator>,
     visit_large_object: bool,
 }
@@ -239,6 +258,7 @@ impl PartitionedHeapIterator {
     pub fn new(heap: &PartitionedHeap) -> PartitionedHeapIterator {
         let mut iterator = PartitionedHeapIterator {
             partition_index: 0,
+            number_of_partitions: heap.number_of_partitions,
             bitmap_iterator: None,
             visit_large_object: false,
         };
@@ -249,7 +269,7 @@ impl PartitionedHeapIterator {
 
     fn skip_empty_partitions(&mut self, heap: &PartitionedHeap) {
         loop {
-            if self.partition_index == MAX_PARTITIONS {
+            if self.partition_index == self.number_of_partitions {
                 return;
             }
             let partition = heap.get_partition(self.partition_index);
@@ -261,16 +281,16 @@ impl PartitionedHeapIterator {
     }
 
     pub fn has_partition(&self) -> bool {
-        self.partition_index < MAX_PARTITIONS
+        self.partition_index < self.number_of_partitions
     }
 
     pub fn current_partition<'a>(&self, heap: &'a PartitionedHeap) -> &'a Partition {
-        debug_assert!(self.partition_index < MAX_PARTITIONS);
+        debug_assert!(self.partition_index < self.number_of_partitions);
         heap.get_partition(self.partition_index)
     }
 
     pub unsafe fn next_partition(&mut self, heap: &PartitionedHeap) {
-        debug_assert!(self.partition_index < MAX_PARTITIONS);
+        debug_assert!(self.partition_index < self.number_of_partitions);
         let partition = heap.get_partition(self.partition_index);
         let number_of_partitions = if partition.has_large_content() {
             let large_object = partition.dynamic_space_start() as *mut Obj;
@@ -284,8 +304,8 @@ impl PartitionedHeapIterator {
     }
 
     fn start_object_iteration(&mut self, heap: &PartitionedHeap) {
-        debug_assert!(self.partition_index <= MAX_PARTITIONS);
-        if self.partition_index == MAX_PARTITIONS {
+        debug_assert!(self.partition_index <= self.number_of_partitions);
+        if self.partition_index == self.number_of_partitions {
             self.bitmap_iterator = None;
             self.visit_large_object = false;
         } else {
@@ -336,11 +356,102 @@ impl PartitionedHeapIterator {
     }
 }
 
+/// Resides in the static space of a partition, such that it is never moved.
+#[repr(C)]
+struct PartitionTable {
+    partitions: [Partition; PARTITIONS_PER_TABLE],
+    extension: *mut PartitionTable,
+}
+
+const PARTITION_TABLE_SIZE: usize = core::mem::size_of::<PartitionTable>();
+
+impl PartitionTable {
+    /// The start index is the first partition index in the table.
+    /// The static space starts at the first partition entry of the partition table.
+    pub fn new(start_index: usize, static_space: usize) -> PartitionTable {
+        let completely_static_partitions = static_space / PARTITION_SIZE;
+        let partitions = from_fn(|offset| Partition {
+            index: start_index + offset,
+            free: true,
+            large_content: false,
+            marked_size: 0,
+            static_size: if offset < completely_static_partitions {
+                PARTITION_SIZE
+            } else if offset == completely_static_partitions {
+                static_space % PARTITION_SIZE
+            } else {
+                0
+            },
+            dynamic_size: 0,
+            bitmap: MarkBitmap::new(),
+            temporary: false,
+            evacuate: false,
+            update: false,
+        });
+        PartitionTable {
+            partitions,
+            extension: null_mut(),
+        }
+    }
+
+    /// The table address must point to static partition space.
+    /// The start index is the first partition index in the table.
+    /// The static space starts at the first partition entry of the partition table.
+    pub unsafe fn allocate(
+        table_address: usize,
+        start_index: usize,
+        static_space: usize,
+    ) -> *mut PartitionTable {
+        let table = table_address as *mut PartitionTable;
+        *table = Self::new(start_index, static_space);
+        table
+    }
+}
+
+struct PartitionIterator {
+    table: *mut PartitionTable,
+    index: usize,
+}
+
+impl PartitionIterator {
+    pub fn new(heap: &mut PartitionedHeap) -> PartitionIterator {
+        let first_table = &mut heap.partition_table as *mut PartitionTable;
+        PartitionIterator {
+            table: first_table,
+            index: 0,
+        }
+    }
+}
+
+impl Iterator for PartitionIterator {
+    type Item = &'static mut Partition;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        debug_assert_ne!(self.table, null_mut());
+        if self.index > MAX_PARTITIONS {
+            return None;
+        }
+        let table_offset = self.index % PARTITIONS_PER_TABLE;
+        unsafe {
+            if self.index > 0 && table_offset == 0 {
+                self.table = (*self.table).extension;
+                if self.table == null_mut() {
+                    return None;
+                }
+            }
+            let partition = &mut (*self.table).partitions[table_offset];
+            self.index += 1;
+            Some(partition)
+        }
+    }
+}
+
 /// Partitioned heap used by the incremental GC.
 /// Use a long-term representation by relying on C layout.
 #[repr(C)]
 pub struct PartitionedHeap {
-    partitions: [Partition; MAX_PARTITIONS],
+    partition_table: PartitionTable,
+    number_of_partitions: usize,
     heap_base: usize,
     allocation_index: usize, // Index of the partition currently used for allocations.
     free_partitions: usize,  // Number of free partitions.
@@ -354,30 +465,17 @@ pub struct PartitionedHeap {
 
 impl PartitionedHeap {
     pub unsafe fn new<M: Memory>(mem: &mut M, heap_base: usize) -> PartitionedHeap {
+        let number_of_partitions = PARTITIONS_PER_TABLE;
         let allocation_index = heap_base / PARTITION_SIZE;
+        let mut partition_table = PartitionTable::new(0, heap_base);
+        for index in 0..allocation_index + 1 {
+            partition_table.partitions[index].free = false;
+        }
         mem.grow_memory((allocation_index + 1) * PARTITION_SIZE);
-        let partitions = from_fn(|index| Partition {
-            index,
-            free: index > allocation_index,
-            large_content: false,
-            marked_size: 0,
-            static_size: if index < allocation_index {
-                PARTITION_SIZE
-            } else if index == allocation_index {
-                heap_base % PARTITION_SIZE
-            } else {
-                0
-            },
-            dynamic_size: 0,
-            bitmap: MarkBitmap::new(),
-            temporary: false,
-            evacuate: false,
-            update: false,
-        });
-        debug_assert!(allocation_index <= MAX_PARTITIONS);
-        let free_partitions = MAX_PARTITIONS - allocation_index - 1;
+        let free_partitions = number_of_partitions - allocation_index - 1;
         PartitionedHeap {
-            partitions,
+            partition_table,
+            number_of_partitions,
             heap_base,
             allocation_index,
             free_partitions,
@@ -390,40 +488,125 @@ impl PartitionedHeap {
         }
     }
 
+    fn partitions(&mut self) -> PartitionIterator {
+        PartitionIterator::new(self)
+    }
+
     pub fn is_initialized(&self) -> bool {
-        self.partitions[0].index == 0
+        self.number_of_partitions > 0
     }
 
     pub fn base_address(&self) -> usize {
         self.heap_base
     }
 
+    unsafe fn get_extension_table(&self, partition_index: usize) -> *mut PartitionTable {
+        debug_assert!(partition_index >= PARTITIONS_PER_TABLE);
+        let mut index = partition_index - PARTITIONS_PER_TABLE;
+        let mut table = self.partition_table.extension;
+        while index >= PARTITIONS_PER_TABLE {
+            index -= PARTITIONS_PER_TABLE;
+            debug_assert_ne!((*table).extension, null_mut());
+            table = (*table).extension;
+        }
+        table
+    }
+
+    unsafe fn get_partition_table(&self, partition_index: usize) -> *const PartitionTable {
+        let first_table = &self.partition_table as *const PartitionTable;
+        debug_assert_ne!(first_table, null());
+        if partition_index < PARTITIONS_PER_TABLE {
+            first_table
+        } else {
+            self.get_extension_table(partition_index)
+        }
+    }
+
+    unsafe fn mutable_partition_table(&mut self, partition_index: usize) -> *mut PartitionTable {
+        let first_table = &mut self.partition_table as *mut PartitionTable;
+        debug_assert_ne!(first_table, null_mut());
+        if partition_index < PARTITIONS_PER_TABLE {
+            first_table
+        } else {
+            self.get_extension_table(partition_index)
+        }
+    }
+
     pub fn get_partition(&self, index: usize) -> &Partition {
-        &self.partitions[index]
+        unsafe {
+            let table = self.get_partition_table(index);
+            let offset = index % PARTITIONS_PER_TABLE;
+            &(*table).partitions[offset]
+        }
     }
 
     fn mutable_partition(&mut self, index: usize) -> &mut Partition {
-        &mut self.partitions[index]
+        unsafe {
+            let table = self.mutable_partition_table(index);
+            let offset = index % PARTITIONS_PER_TABLE;
+            &mut (*table).partitions[offset]
+        }
     }
 
-    unsafe fn allocate_temporary_partition(&mut self) -> &mut Partition {
-        for partition in &mut self.partitions {
+    unsafe fn add_partition_table<M: Memory>(&mut self, mem: &mut M) {
+        debug_assert!(self.number_of_partitions > 0);
+        let last_table = self.mutable_partition_table(self.number_of_partitions - 1);
+        debug_assert_ne!(last_table, null_mut());
+        debug_assert_eq!((*last_table).extension, null_mut());
+        let table_address = self.number_of_partitions * PARTITION_SIZE;
+        mem.grow_memory(table_address + PARTITION_SIZE);
+        (*last_table).extension = PartitionTable::allocate(
+            table_address,
+            self.number_of_partitions,
+            PARTITION_TABLE_SIZE,
+        );
+        // The partition table is small enough such that all partitions contain free space.
+        debug_assert!(PARTITION_TABLE_SIZE < PARTITION_SIZE);
+        self.free_partitions += PARTITIONS_PER_TABLE;
+        self.number_of_partitions += PARTITIONS_PER_TABLE;
+        self.precomputed_heap_size += PARTITION_TABLE_SIZE;
+    }
+
+    unsafe fn allocate_partition<M: Memory, F: Fn(&mut Self) -> Option<usize>>(
+        &mut self,
+        mem: &mut M,
+        find_partition: &F,
+    ) -> usize {
+        let mut result = find_partition(self);
+        if result.is_none() {
+            self.add_partition_table(mem);
+            result = find_partition(self);
+        }
+        if result.is_none() {
+            rts_trap_with("Cannot grow memory");
+        }
+        result.unwrap()
+    }
+
+    fn scan_for_temporary_partition(&mut self) -> Option<usize> {
+        for partition in self.partitions() {
             if partition.is_completely_free() {
-                debug_assert_eq!(partition.dynamic_size, 0);
-                partition.free = false;
-                partition.temporary = true;
-                debug_assert!(self.free_partitions > 0);
-                self.free_partitions -= 1;
-                return partition;
+                return Some(partition.index);
             }
         }
-        rts_trap_with("Cannot grow memory");
+        None
+    }
+
+    unsafe fn allocate_temporary_partition<M: Memory>(&mut self, mem: &mut M) -> &mut Partition {
+        let index = self.allocate_partition(mem, &Self::scan_for_temporary_partition);
+        debug_assert!(self.free_partitions > 0);
+        self.free_partitions -= 1;
+        let partition = self.mutable_partition(index);
+        debug_assert_eq!(partition.dynamic_size, 0);
+        partition.free = false;
+        partition.temporary = true;
+        partition
     }
 
     /// The returned bitmap address is guaranteed to be 64-bit-aligned.
     unsafe fn allocate_bitmap<M: Memory>(&mut self, mem: &mut M) -> *mut u8 {
         if self.bitmap_allocation_pointer % PARTITION_SIZE == 0 {
-            let partition = self.allocate_temporary_partition();
+            let partition = self.allocate_temporary_partition(mem);
             mem.grow_memory(partition.end_address());
             self.bitmap_allocation_pointer = partition.start_address();
         }
@@ -472,7 +655,7 @@ impl PartitionedHeap {
         debug_assert_eq!(self.bitmap_allocation_pointer, 0);
         debug_assert!(!self.gc_running);
         self.gc_running = true;
-        for partition_index in 0..MAX_PARTITIONS {
+        for partition_index in 0..self.number_of_partitions {
             let partition = self.get_partition(partition_index);
             if partition.has_dynamic_space() && !partition.has_large_content() {
                 let bitmap_address = self.allocate_bitmap(mem);
@@ -484,11 +667,9 @@ impl PartitionedHeap {
         }
     }
 
-    pub fn plan_evacuations(&mut self) {
-        let ranked_partitions = self.rank_partitions_by_garbage();
+    pub unsafe fn plan_evacuations<M: Memory>(&mut self, mem: &mut M) {
         debug_assert_eq!(
-            self.partitions
-                .iter()
+            self.partitions()
                 .filter(|partition| partition.is_free())
                 .count(),
             self.free_partitions
@@ -499,7 +680,9 @@ impl PartitionedHeap {
         let reserved_partitions =
             (self.free_partitions + EVACUATION_FRACTION - 1) / EVACUATION_FRACTION;
         let mut evacuation_space = reserved_partitions * PARTITION_SIZE;
-        for index in ranked_partitions {
+        let ranked_partitions = self.rank_partitions_by_garbage(mem);
+        for rank in 0..self.number_of_partitions {
+            let index = *ranked_partitions.add(rank);
             if index != self.allocation_index && self.get_partition(index).is_evacuation_candidate()
             {
                 let partition = self.mutable_partition(index);
@@ -515,26 +698,40 @@ impl PartitionedHeap {
         }
     }
 
-    fn rank_partitions_by_garbage(&self) -> [usize; MAX_PARTITIONS] {
-        let mut ranked_partitions: [usize; MAX_PARTITIONS] = from_fn(|index| index);
-        sort(&mut ranked_partitions, &|left, right| {
-            self.get_partition(left)
-                .garbage_amount()
-                .cmp(&self.get_partition(right).garbage_amount())
-                .reverse()
-        });
+    unsafe fn temporary_array<M: Memory>(mem: &mut M, length: usize) -> *mut usize {
+        // No post allocation barrier as this RTS-internal blob can be collected by the GC.
+        let blob = alloc_blob(mem, Words(length).to_bytes());
+        let payload = blob.as_blob_mut().payload_addr();
+        payload as *mut usize
+    }
+
+    unsafe fn rank_partitions_by_garbage<M: Memory>(&self, mem: &mut M) -> *mut usize {
+        let ranked_partitions = Self::temporary_array(mem, self.number_of_partitions);
+        for index in 0..self.number_of_partitions {
+            *ranked_partitions.add(index) = index;
+        }
+        sort(
+            ranked_partitions,
+            self.number_of_partitions,
+            &|left, right| {
+                self.get_partition(left)
+                    .garbage_amount()
+                    .cmp(&self.get_partition(right).garbage_amount())
+                    .reverse()
+            },
+        );
         ranked_partitions
     }
 
     pub fn plan_updates(&mut self) {
-        for partition in &mut self.partitions {
+        for partition in self.partitions() {
             debug_assert!(!partition.update);
             partition.update = !partition.is_free() && !partition.evacuate;
         }
     }
 
     pub unsafe fn complete_collection(&mut self) {
-        for partition in &mut self.partitions {
+        for partition in self.partitions() {
             let marked_size = partition.marked_size;
             partition.update = false;
             partition.marked_size = 0;
@@ -563,15 +760,24 @@ impl PartitionedHeap {
     }
 
     fn allocation_partition(&self) -> &Partition {
-        &self.partitions[self.allocation_index]
+        self.get_partition(self.allocation_index)
     }
 
     fn mut_allocation_partition(&mut self) -> &mut Partition {
-        &mut self.partitions[self.allocation_index]
+        self.mutable_partition(self.allocation_index)
     }
 
     pub fn is_allocation_partition(&self, index: usize) -> bool {
         self.allocation_index == index
+    }
+
+    fn scan_for_free_partition(&mut self, requested_space: usize) -> Option<usize> {
+        for partition in self.partitions() {
+            if partition.free && partition.free_size() >= requested_space {
+                return Some(partition.index);
+            }
+        }
+        None
     }
 
     unsafe fn allocate_free_partition<M: Memory>(
@@ -584,25 +790,23 @@ impl PartitionedHeap {
         } else {
             null_mut()
         };
-        for partition in &mut self.partitions {
-            if partition.free && partition.free_size() >= requested_space {
-                debug_assert_eq!(partition.dynamic_size, 0);
-                partition.free = false;
-                debug_assert!(self.free_partitions > 0);
-                self.free_partitions -= 1;
-                if bitmap_address != null_mut() {
-                    partition.bitmap.assign(bitmap_address);
-                }
-                return partition;
-            }
+        let index = self.allocate_partition(mem, &|context| {
+            context.scan_for_free_partition(requested_space)
+        });
+        debug_assert!(self.free_partitions > 0);
+        self.free_partitions -= 1;
+        let partition = self.mutable_partition(index);
+        debug_assert_eq!(partition.dynamic_size, 0);
+        partition.free = false;
+        if bitmap_address != null_mut() {
+            partition.bitmap.assign(bitmap_address);
         }
-        rts_trap_with("Cannot grow memory");
+        partition
     }
 
-    fn check_occupied_size(&self) {
+    fn check_occupied_size(&mut self) {
         debug_assert_eq!(
-            self.partitions
-                .iter()
+            self.partitions()
                 .map(|partition| partition.static_size + partition.dynamic_size)
                 .sum::<usize>(),
             self.occupied_size().as_usize()
@@ -675,7 +879,9 @@ impl PartitionedHeap {
         let number_of_partitions = (size + PARTITION_SIZE - 1) / PARTITION_SIZE;
         debug_assert!(number_of_partitions > 0);
 
-        let first_index = self.find_large_space(number_of_partitions);
+        let first_index = self.allocate_partition(mem, &|context| {
+            context.scan_for_large_space(number_of_partitions)
+        });
         let last_index = first_index + number_of_partitions - 1;
 
         debug_assert!(self.free_partitions >= number_of_partitions);
@@ -706,19 +912,20 @@ impl PartitionedHeap {
         Value::from_ptr(first_partition.dynamic_space_start())
     }
 
-    unsafe fn find_large_space(&self, number_of_partitions: usize) -> usize {
+    unsafe fn scan_for_large_space(&self, number_of_partitions: usize) -> Option<usize> {
         let mut start_of_free_range = 0;
-        for index in 0..MAX_PARTITIONS {
+        let partition_count = self.number_of_partitions;
+        for index in 0..partition_count {
             // Invariant: [start_of_free_range .. index) contains only free partitions.
             if self.get_partition(index).is_completely_free() {
                 if index + 1 - start_of_free_range >= number_of_partitions {
-                    return start_of_free_range;
+                    return Some(start_of_free_range);
                 }
             } else {
                 start_of_free_range = index + 1;
             }
         }
-        rts_trap_with("Cannot grow memory");
+        None
     }
 
     unsafe fn occupied_partition_range(large_object: *mut Obj) -> Range<usize> {
@@ -736,7 +943,7 @@ impl PartitionedHeap {
 
     pub unsafe fn collect_large_objects(&mut self) {
         let mut index = 0;
-        while index < MAX_PARTITIONS {
+        while index < self.number_of_partitions {
             let partition = self.get_partition(index);
             if partition.has_large_content() {
                 debug_assert!(!partition.free);
@@ -771,20 +978,20 @@ impl PartitionedHeap {
     #[inline(never)]
     unsafe fn mark_large_object(&mut self, object: *mut Obj) -> bool {
         let range = Self::occupied_partition_range(object);
-        if self.partitions[range.start].marked_size > 0 {
+        if self.get_partition(range.start).marked_size > 0 {
             return false;
         }
         for index in range.start..range.end - 1 {
-            self.partitions[index].marked_size = PARTITION_SIZE;
+            self.mutable_partition(index).marked_size = PARTITION_SIZE;
         }
         let object_size = block_size(object as usize).to_bytes().as_usize();
-        self.partitions[range.end - 1].marked_size = object_size % PARTITION_SIZE;
+        self.mutable_partition(range.end - 1).marked_size = object_size % PARTITION_SIZE;
         true
     }
 
     #[cfg(debug_assertions)]
     unsafe fn is_large_object_marked(&self, object: *mut Obj) -> bool {
         let range = Self::occupied_partition_range(object);
-        self.partitions[range.start].marked_size > 0
+        self.get_partition(range.start).marked_size > 0
     }
 }
