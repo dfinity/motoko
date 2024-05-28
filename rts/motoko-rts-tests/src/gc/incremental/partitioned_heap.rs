@@ -115,7 +115,7 @@ unsafe fn iterate_partition(
 unsafe fn test_evacuation_plan(heap: &mut PartitionedTestHeap, occupied_partitions: usize) {
     println!("    Test evacuation plan...");
     unmark_all_objects(heap);
-    heap.inner.plan_evacuations();
+    heap.inner.plan_evacuations(&mut heap.memory);
     let mut iterator = PartitionedHeapIterator::new(&heap.inner);
     while iterator.has_partition() {
         let partition = iterator.current_partition(&heap.inner);
@@ -200,6 +200,11 @@ unsafe fn count_objects_in_partition(
 
 fn test_close_partition(heap: &mut PartitionedTestHeap) {
     println!("    Test close partition...");
+    // Due to Rust borrow check restrictions, preceding `plan_evacuations`
+    // allocates directly in `heap.memory` without synchronizing the heap
+    // pointer in `heap`. Therefore, re-align the heap pointer of `heap`
+    // with `heap.memory`.
+    heap.allocate_blob(0);
     test_close_partition_multi_word(heap);
     test_close_partition_single_word(heap);
 }
@@ -274,7 +279,7 @@ unsafe fn test_allocation_sizes(sizes: &[usize], number_of_partitions: usize) {
     );
     iterate_large_objects(&heap.inner, sizes);
     unmark_all_objects(&mut heap);
-    heap.inner.plan_evacuations();
+    heap.inner.plan_evacuations(&mut heap.memory);
     heap.inner.collect_large_objects();
     heap.inner.complete_collection();
     heap.inner.start_collection(&mut heap.memory, &mut time);
@@ -383,6 +388,7 @@ impl PartitionedTestHeap {
         let mut memory = TestMemory::new(Bytes(size as u32).to_words());
         let heap_base = memory.heap_base();
         let inner = unsafe { PartitionedHeap::new(&mut memory, heap_base) };
+        assert_eq!(inner.base_address(), heap_base);
         PartitionedTestHeap { memory, inner }
     }
 

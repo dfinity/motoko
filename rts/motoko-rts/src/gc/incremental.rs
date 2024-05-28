@@ -262,7 +262,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         debug_assert!(self.mark_completed());
         MarkIncrement::<M>::complete_phase(self.state);
         self.state.phase = Phase::Evacuate;
-        EvacuationIncrement::<M>::start_phase(self.state);
+        EvacuationIncrement::<M>::start_phase(self.mem, self.state);
     }
 
     unsafe fn evacuation_completed(&self) -> bool {
