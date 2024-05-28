@@ -69,12 +69,13 @@ let new_async t =
   let async = fresh_var "async" (typ (projE call_new_async 0)) in
   let fulfill = fresh_var "fulfill" (typ (projE call_new_async 1)) in
   let fail = fresh_var "fail" (typ (projE call_new_async 2)) in
-  (async, fulfill, fail), call_new_async
+  let clean = fresh_var "clean" (typ (projE call_new_async 3)) in
+  (async, fulfill, fail, clean), call_new_async
 
 let new_nary_async_reply ts =
   (* The async implementation isn't n-ary *)
   let t = T.seq ts in
-  let (unary_async, unary_fulfill, fail), call_new_async = new_async t in
+  let (unary_async, unary_fulfill, fail, clean), call_new_async = new_async t in
   (* construct the n-ary async value, coercing the continuation, if necessary *)
   let nary_async =
     let coerce u =
@@ -111,14 +112,15 @@ let new_nary_async_reply ts =
     in
     vs -->* (varE unary_fulfill -*- seq_of_vs)
   in
-  let async,reply,reject =
+  let async, reply, reject, cleanup =
     fresh_var "async" (typ nary_async),
     fresh_var "reply" (typ nary_reply),
-    fresh_var "reject" (typ_of_var fail)
+    fresh_var "reject" (typ_of_var fail),
+    fresh_var "cleanup" (typ_of_var fail)
   in
-    (async, reply, reject),
-      blockE [letP (tupP [varP unary_async; varP unary_fulfill; varP fail]) call_new_async]
-        (tupE [nary_async; nary_reply; varE fail])
+    (async, reply, reject, cleanup),
+      blockE [letP (tupP [varP unary_async; varP unary_fulfill; varP fail; varP clean]) call_new_async] 
+        (tupE [nary_async; nary_reply; varE fail; varE clean])
 
 
 let let_eta e scope =
@@ -280,7 +282,7 @@ let transform prog =
         | Func(_,_, [tb], [Func(_, _, [], ts1, []); _], []) ->
           tb, List.map t_typ (List.map (T.open_ [t]) ts1)
         | t -> assert false in
-      let ((nary_async, nary_reply, reject), def) =
+      let (nary_async, nary_reply, reject, clean), def =
         new_nary_async_reply ts1
       in
       ( blockE [
@@ -318,7 +320,7 @@ let transform prog =
       in
       let exp1' = t_exp exp1 in
       let exp2' = t_exp exp2 in
-      let ((nary_async, nary_reply, reject), def) =
+      let (nary_async, nary_reply, reject, clean), def =
         new_nary_async_reply ts2
       in
       (blockE (
@@ -335,7 +337,7 @@ let transform prog =
       let exp1' = t_exp exp1 in
       let exp2' = t_exp exp2 in
       let exp3' = t_exp exp3 in
-      let ((nary_async, nary_reply, reject), def) = new_nary_async_reply [T.blob] in
+      let (nary_async, nary_reply, reject, clean), def = new_nary_async_reply [T.blob] in
       (blockE (
         letP (tupP [varP nary_async; varP nary_reply; varP reject]) def ::
           let_eta exp1' (fun v1 ->

@@ -307,7 +307,7 @@ func @getSystemRefund() : @Refund {
   return (prim "cyclesRefunded" : () -> Nat) ();
 };
 
-func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>) {
+func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>, @Cont<Nat32>) {
   let w_null = func(r : @Refund, t : T) { };
   let r_null = func(_ : Error) {};
   var result : ?(@Result<T>) = null;
@@ -342,6 +342,9 @@ func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>) {
     };
   };
 
+  func clean(_ : Nat32) {
+  };
+
   func enqueue(k : @Cont<T>, r : @Cont<Error>) : {
     #suspend;
     #schedule : () -> ();
@@ -373,7 +376,7 @@ func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>) {
     };
   };
 
-  (enqueue, fulfill, fail)
+  (enqueue, fulfill, fail, clean)
 };
 
 // Subset of IC management canister interface required for our use
