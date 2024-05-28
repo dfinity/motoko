@@ -12,6 +12,20 @@
         "url": "https://github.com/dfinity/candid/archive/331217bae379cbebfa531a140f2186c99fae1425.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
+    "drun-darwin": {
+        "rev": "a6707c42691fccbe3d90dcd596637172a926ce02",
+        "sha256": "1cqq0nraxr5bwmnaafmdxq3jfpf09k8ichg4qdz1mjwq25q2zmg5",
+        "type": "file",
+        "url": "https://download.dfinity.systems/ic/a6707c42691fccbe3d90dcd596637172a926ce02/binaries/x86_64-darwin/drun.gz",
+        "url_template": "https://download.dfinity.systems/ic/<rev>/binaries/x86_64-darwin/drun.gz"
+    },
+    "drun-linux": {
+        "rev": "a6707c42691fccbe3d90dcd596637172a926ce02",
+        "sha256": "079fc85c1d58ynjar3rpwnr4q5jdq0xyg3m0f3ky55afs8i60nji",
+        "type": "file",
+        "url": "https://download.dfinity.systems/ic/a6707c42691fccbe3d90dcd596637172a926ce02/binaries/x86_64-linux/drun.gz",
+        "url_template": "https://download.dfinity.systems/ic/<rev>/binaries/x86_64-linux/drun.gz"
+    },
     "esm": {
         "builtin": false,
         "sha256": "116k10q9v0yzpng9bgdx3xrjm2kppma2db62mnbilbi66dvrvz9q",
@@ -146,5 +160,19 @@
         "url": "https://github.com/flowtype/ocaml-vlq/archive/115bf0fef38018f31ac6386fef17a00bd8307218.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz",
         "version": "v0.2.0"
+    },
+    "pocket-ic-darwin": {
+        "rev": "a6707c42691fccbe3d90dcd596637172a926ce02",
+        "sha256": "0ad03nmx9lkasirdzafyn98jyxfgq4j9vysr2r0r864ck1jrllz6",
+        "type": "file",
+        "url": "https://download.dfinity.systems/ic/a6707c42691fccbe3d90dcd596637172a926ce02/binaries/x86_64-darwin/pocket-ic.gz",
+        "url_template": "https://download.dfinity.systems/ic/<rev>/binaries/x86_64-darwin/pocket-ic.gz"
+    },
+    "pocket-ic-linux": {
+        "rev": "a6707c42691fccbe3d90dcd596637172a926ce02",
+        "sha256": "0kwixswzx28bwgbs75acp9dzhikijk6121rgpvvjgc4xn7qx58jb",
+        "type": "file",
+        "url": "https://download.dfinity.systems/ic/a6707c42691fccbe3d90dcd596637172a926ce02/binaries/x86_64-linux/pocket-ic.gz",
+        "url_template": "https://download.dfinity.systems/ic/<rev>/binaries/x86_64-linux/pocket-ic.gz"
     }
 }
