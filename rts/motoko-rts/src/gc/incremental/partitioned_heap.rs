@@ -78,7 +78,8 @@ pub const PARTITION_SIZE: usize = 64 * 1024 * 1024;
 
 /// Number of entries per partition table.
 /// Tables are linearly linked, allowing the usage of the entire address space.
-const PARTITIONS_PER_TABLE: usize = 64; // 4 GB of space for 64 MB partitions.
+/// Maximum contiguous space is `(PARTITION_PER_TABLE - 1) * PARTITION_SIZE`.
+const PARTITIONS_PER_TABLE: usize = 128; // 8 GB of space for 64 MB partitions.
 
 /// Maximum number of partitions in the memory.
 /// For simplicity, the last partition is left unused, to avoid a numeric overflow when
