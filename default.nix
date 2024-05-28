@@ -824,6 +824,9 @@ EOF
       ));
 
     shellHook = llvmEnv + ''
+      cp -f $DRUN ./bin/drun.gz; gzip -d ./bin/drun.gz; chmod u+x ./bin/drun
+      cp -f $POCKET_IC ./bin/pocket-ic.gz; gzip -d ./bin/pocket-ic.gz; chmod u+x ./bin/pocket-ic
+      export POCKET_IC_BIN=${toString ./bin/pocket-ic}
       # Include our wrappers in the PATH
       export PATH="${toString ./bin}:$PATH"
       # some cleanup of environment variables otherwise set by nix-shell
@@ -838,6 +841,8 @@ EOF
     MOTOKO_BASE = base-src;
     CANDID_TESTS = "${nixpkgs.sources.candid}/test";
     VIPER_SERVER = "${viperServer}";
+    DRUN = "${if nixpkgs.stdenv.isDarwin then nixpkgs.sources.drun-darwin else nixpkgs.sources.drun-linux}";
+    POCKET_IC = "${if nixpkgs.stdenv.isDarwin then nixpkgs.sources.pocket-ic-darwin else nixpkgs.sources.pocket-ic-linux}";
 
     # allow building this as a derivation, so that hydra builds and caches
     # the dependencies of shell.
