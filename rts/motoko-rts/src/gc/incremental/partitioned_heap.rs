@@ -76,7 +76,7 @@ use super::{
 ///    allocated in that granularity and GC is then triggered later.
 pub const PARTITION_SIZE: usize = 64 * 1024 * 1024;
 
-/// Number of entries per partition tables.
+/// Number of entries per partition table.
 /// Tables are linearly linked, allowing the usage of the entire address space.
 const PARTITIONS_PER_TABLE: usize = 64; // 4 GB of space for 64 MB partitions.
 
@@ -356,7 +356,9 @@ impl PartitionedHeapIterator {
     }
 }
 
-/// Resides in the static space of a partition, such that it is never moved.
+/// The first table is part of the static `PartionedHeap` record.
+/// Extension tables reside in the static space of a partition.
+/// Therefore, partition tables are never moved in memory.
 #[repr(C)]
 struct PartitionTable {
     partitions: [Partition; PARTITIONS_PER_TABLE],
@@ -914,8 +916,7 @@ impl PartitionedHeap {
 
     unsafe fn scan_for_large_space(&self, number_of_partitions: usize) -> Option<usize> {
         let mut start_of_free_range = 0;
-        let partition_count = self.number_of_partitions;
-        for index in 0..partition_count {
+        for index in 0..self.number_of_partitions {
             // Invariant: [start_of_free_range .. index) contains only free partitions.
             if self.get_partition(index).is_completely_free() {
                 if index + 1 - start_of_free_range >= number_of_partitions {

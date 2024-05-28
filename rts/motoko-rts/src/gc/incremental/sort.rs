@@ -13,6 +13,7 @@ pub unsafe fn sort<Compare: Fn(usize, usize) -> Ordering>(
 }
 
 /// Special version of quicksort by Niklaus Wirth: https://people.inf.ethz.ch/wirth/AD.pdf, pages 65/66.
+/// Sorting `array[start..end+1]`, i.e. `start` and `end` are inclusive indices.
 unsafe fn quicksort<Compare: Fn(usize, usize) -> Ordering>(
     array: *mut usize,
     start: usize,
