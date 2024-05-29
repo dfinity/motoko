@@ -81,12 +81,13 @@ let rec t_async context exp =
    (* add the implicit return label *)
    let k_ret = fresh_cont (typ exp1) T.unit in
    let k_fail = fresh_err_cont T.unit in
+   let k_clean = fresh_err_cont T.unit in
    let context' =
      LabelEnv.add Return (Cont (ContVar k_ret))
        (LabelEnv.singleton Throw (Cont (ContVar k_fail)))
    in
      cps_asyncE s typ1 (typ exp1)
-       (forall [tb] ([k_ret; k_fail] -->*
+       (forall [tb] ([k_ret; k_fail; k_clean] -->*
           (c_exp context' exp1 (ContVar k_ret))))
  |  _ -> assert false
 
@@ -442,6 +443,7 @@ and c_exp' context exp k =
     (* add the implicit return label *)
     let k_ret = fresh_cont (typ exp1) T.unit in
     let k_fail = fresh_err_cont T.unit in
+    let k_clean = fresh_err_cont T.unit(*FIXME*) in
     let context' =
       LabelEnv.add Return (Cont (ContVar k_ret))
         (LabelEnv.singleton Throw (Cont (ContVar k_fail)))
@@ -452,7 +454,7 @@ and c_exp' context exp k =
     in
     let cps_async =
       cps_asyncE T.Fut typ1 (typ exp1)
-        (forall [tb] ([k_ret; k_fail] -->*
+        (forall [tb] ([k_ret; k_fail; k_clean] -->*
           (c_exp context' exp1 (ContVar k_ret)))) in
     let k' = meta (typ cps_async)
       (fun v ->

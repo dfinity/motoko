@@ -51,7 +51,7 @@ let t_async_fut as_seq t =
       ("schedule", T.Func(T.Local, T.Returns, [], [], []))]])
 
 let t_async_cmp as_seq t =
-  T.Func (T.Local, T.Returns, [], [fulfillT as_seq t; failT; cleanT], [])
+  T.Func (T.Local, T.Returns, [], [fulfillT as_seq t; failT; failT(*FIXME: cleanT*)], [])
 
 let new_async_ret as_seq t = [t_async_fut as_seq t; fulfillT as_seq t; failT; cleanT]
 
@@ -274,16 +274,16 @@ let transform prog =
           )).it
         | _ -> assert false
       end
-    | PrimE (CPSAwait (Cmp, cont_typ), [a; kr]) ->
+    | PrimE (CPSAwait (Cmp, cont_typ), [a; krc]) ->
       begin match cont_typ with
       | Func(_, _, [], _, []) ->
-         (t_exp a -*- t_exp kr).it
+         (t_exp a -*- t_exp krc).it
       | _ -> assert false
       end
     | PrimE (CPSAsync (Fut, t), [exp1]) ->
       let t0 = t_typ t in
       let tb, ts1 = match typ exp1 with
-        | Func(_,_, [tb], [Func(_, _, [], ts1, []); _], []) ->
+        | Func(_,_, [tb], [Func(_, _, [], ts1, []); _; _], []) ->
           tb, List.map t_typ (List.map (T.open_ [t]) ts1)
         | t -> assert false in
       let (nary_async, nary_reply, reject, clean), def =
@@ -305,7 +305,7 @@ let transform prog =
     | PrimE (CPSAsync (Cmp, t), [exp1]) ->
       let t0 = t_typ t in
       let tb, t_ret, t_fail = match typ exp1 with
-        | Func(_,_, [tb], [t_ret; t_fail], _ ) ->
+        | Func(_,_, [tb], [t_ret; t_fail; t_clean], _ ) ->
           tb,
           t_typ (T.open_ [t] t_ret),
           t_typ (T.open_ [t] t_fail)
@@ -313,7 +313,8 @@ let transform prog =
       in
       let v_ret = fresh_var "v" t_ret in
       let v_fail = fresh_var "e" t_fail in
-      ([v_ret; v_fail] -->* (callE (t_exp exp1) [t0] (tupE [varE v_ret; varE v_fail; varE v_fail(*FIXME?*)]))).it
+      let v_clean = fresh_var "c" t_fail(*FIXME*) in
+      ([v_ret; v_fail; v_clean] -->* (callE (t_exp exp1) [t0] (tupE [varE v_ret; varE v_fail; varE v_clean]))).it
     | PrimE (CallPrim typs, (exp1 :: exp2 :: _)) when is_awaitable_func exp1 ->(* HERE *)
       let ts1,ts2 =
         match typ exp1 with
@@ -393,7 +394,7 @@ let transform prog =
               let t1, contT = match typ cps with
                 | Func (_,_,
                     [tb],
-                    [Func(_, _, [], ts1, []) as contT; _],
+                    [Func(_, _, [], ts1, []) as contT; _; _],
                     []) ->
                   (t_typ (T.seq (List.map (T.open_ [t0]) ts1)),t_typ (T.open_ [t0] contT))
                 | t -> assert false in
