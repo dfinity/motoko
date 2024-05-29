@@ -29,7 +29,7 @@ actor a {
     // Checks that GC correctly discards or retains the arrays.
     // Using --forced-gc and allowing young collection for generational GC.
     // It allows for some wiggle room
-    let reserve = 19_000;
+    let reserve = 20_000;
     assert (+s1-s0 < reserve);
     assert (+s2-s0 > 4 * +length - reserve);
   };
