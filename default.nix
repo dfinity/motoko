@@ -20,6 +20,36 @@ let ic-ref-run =
       cp ${ic-hs-pkgs.ic-hs}/bin/ic-ref-run $out/bin
   ''; in
 
+
+let POCKET_IC = if nixpkgs.stdenv.isDarwin then nixpkgs.sources.pocket-ic-darwin else nixpkgs.sources.pocket-ic-linux; in
+let DRUN = if nixpkgs.stdenv.isDarwin then nixpkgs.sources.drun-darwin else nixpkgs.sources.drun-linux; in
+let drun =
+  nixpkgs.runCommandNoCC "drun" {} ''
+      mkdir -p $out/bin
+      cp -f ${POCKET_IC} $out/bin/pocket-ic.gz
+      gzip -d $out/bin/pocket-ic.gz
+      chmod u+x $out/bin/pocket-ic
+      cp -f ${DRUN} $out/bin/drun.gz
+      gzip -d $out/bin/drun.gz
+      chmod u+x $out/bin/drun
+  ''; in
+/*
+let drun = stdenv.mkDerivation {
+    name = "drun";
+    src = [];
+    phases = [ "installPhase" ];
+    installPhase = ''
+      mkdir -p $out/bin
+      cp -f ${POCKET_IC} $out/bin/pocket-ic.gz
+      gzip -d $out/bin/pocket-ic.gz
+      chmod u+x $out/bin/pocket-ic
+      cp -f ${DRUN} $out/bin/drun.gz
+      gzip -d $out/bin/drun.gz
+      chmod u+x $out/bin/drun
+    '';
+  }; in
+*/
+
 let haskellPackages = nixpkgs.haskellPackages.override {
       overrides = import nix/haskell-packages.nix nixpkgs subpath;
     }; in
@@ -308,6 +338,8 @@ rec {
 
   inherit ic-ref-run;
 
+  inherit drun;
+
   tests = let
     testDerivationArgs = {
       # by default, an empty source directory. how to best get an empty directory?
@@ -405,7 +437,7 @@ rec {
 
     qc = testDerivation {
       buildInputs =
-        [ moc wasmtime haskellPackages.qc-motoko nixpkgs.drun ];
+        [ moc wasmtime haskellPackages.qc-motoko drun ];
       checkPhase = ''
         export LANG=C.utf8 # for haskell
         qc-motoko${nixpkgs.lib.optionalString (replay != 0)
@@ -446,7 +478,7 @@ rec {
       src = test_src "perf";
       buildInputs =
         (with nixpkgs; [ perl wabt wasm-profiler-instrument wasm-profiler-postproc flamegraph-bin ]) ++
-        [ moc nixpkgs.drun ];
+        [ moc drun ];
       checkPhase = ''
         patchShebangs .
         type -p moc && moc --version
@@ -495,11 +527,11 @@ rec {
       run        = test_subdir "run"        [ moc ] ;
       run-dbg    = snty_subdir "run"        [ moc ] ;
       # ic-ref-run = test_subdir "run-drun"   [ moc ic-ref-run ];
-      drun       = test_subdir "run-drun"   [ moc nixpkgs.drun ];
-      drun-dbg   = snty_subdir "run-drun"   [ moc nixpkgs.drun ];
-      drun-compacting-gc = snty_compacting_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
-      drun-generational-gc = snty_generational_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
-      drun-incremental-gc = snty_incremental_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
+      drun       = test_subdir "run-drun"   [ moc drun ];
+      drun-dbg   = snty_subdir "run-drun"   [ moc drun ];
+      drun-compacting-gc = snty_compacting_gc_subdir "run-drun" [ moc drun ] ;
+      drun-generational-gc = snty_generational_gc_subdir "run-drun" [ moc drun ] ;
+      drun-incremental-gc = snty_incremental_gc_subdir "run-drun" [ moc drun ] ;
       fail       = test_subdir "fail"       [ moc ];
       repl       = test_subdir "repl"       [ moc ];
       ld         = test_subdir "ld"         ([ mo-ld ] ++ ldTestDeps);
@@ -507,8 +539,8 @@ rec {
       mo-idl     = test_subdir "mo-idl"     [ moc didc ];
       trap       = test_subdir "trap"       [ moc ];
       run-deser  = test_subdir "run-deser"  [ deser ];
-      perf       = perf_subdir "perf"       [ moc nixpkgs.drun ];
-      bench      = perf_subdir "bench"      [ moc nixpkgs.drun ic-wasm ];
+      perf       = perf_subdir "perf"       [ moc drun ];
+      bench      = perf_subdir "bench"      [ moc drun ic-wasm ];
       # viper      = test_subdir "viper"      [ moc nixpkgs.which nixpkgs.openjdk nixpkgs.z3 ];
       inherit qc lsp unit candid profiling-graphs coverage;
     }) // { recurseForDerivations = true; };
@@ -565,7 +597,7 @@ rec {
       recurseForDerivations = true;
     };
 
-  inherit (nixpkgs) drun wabt wasmtime wasm nix-update;
+  inherit (nixpkgs) /* drun */ wabt wasmtime wasm nix-update;
 
   filecheck = nixpkgs.runCommandNoCC "FileCheck" {} ''
     mkdir -p $out/bin
@@ -824,9 +856,9 @@ EOF
       ));
 
     shellHook = llvmEnv + ''
-      cp -f $DRUN ./bin/drun.gz; gzip -d ./bin/drun.gz; chmod u+x ./bin/drun
-      cp -f $POCKET_IC ./bin/pocket-ic.gz; gzip -d ./bin/pocket-ic.gz; chmod u+x ./bin/pocket-ic
-      export POCKET_IC_BIN=${toString ./bin/pocket-ic}
+       # cp -f $DRUN ./bin/drun.gz; gzip -d ./bin/drun.gz; chmod u+x ./bin/drun
+       # cp -f $POCKET_IC ./bin/pocket-ic.gz; gzip -d ./bin/pocket-ic.gz; chmod u+x ./bin/pocket-ic
+       # export POCKET_IC_BIN=${toString ./bin/pocket-ic}
       # Include our wrappers in the PATH
       export PATH="${toString ./bin}:$PATH"
       # some cleanup of environment variables otherwise set by nix-shell
@@ -841,8 +873,9 @@ EOF
     MOTOKO_BASE = base-src;
     CANDID_TESTS = "${nixpkgs.sources.candid}/test";
     VIPER_SERVER = "${viperServer}";
-    DRUN = "${if nixpkgs.stdenv.isDarwin then nixpkgs.sources.drun-darwin else nixpkgs.sources.drun-linux}";
-    POCKET_IC = "${if nixpkgs.stdenv.isDarwin then nixpkgs.sources.pocket-ic-darwin else nixpkgs.sources.pocket-ic-linux}";
+    #DRUN = "${if nixpkgs.stdenv.isDarwin then nixpkgs.sources.drun-darwin else nixpkgs.sources.drun-linux}";
+    #POCKET_IC = "${if nixpkgs.stdenv.isDarwin then nixpkgs.sources.pocket-ic-darwin else nixpkgs.sources.pocket-ic-linux}";
+    DRUN= "${drun}";
 
     # allow building this as a derivation, so that hydra builds and caches
     # the dependencies of shell.
