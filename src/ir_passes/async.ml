@@ -45,7 +45,7 @@ let failT = T.Func(T.Local, T.Returns, [], [T.catch], [])
 let cleanT = T.Func(T.Local, T.Returns, [], [T.nat32(*FIXME*)], [])
 
 let t_async_fut as_seq t =
-  T.Func (T.Local, T.Returns, [], [fulfillT as_seq t; failT; cleanT],
+  T.Func (T.Local, T.Returns, [], [fulfillT as_seq t; failT; failT(*FIXME: cleanT, actually ()->()*)],
     [T.sum [
       ("suspend", T.unit);
       ("schedule", T.Func(T.Local, T.Returns, [], [], []))]])
@@ -68,7 +68,7 @@ let new_asyncE () =
 
 let new_async t =
   let call_new_async = callE (new_asyncE ()) [t] (unitE()) in
-  let async = fresh_var "async" (typ (projE call_new_async 0)) in
+  let async = fresh_var "asyncX"(*FIXME: revert*) (typ (projE call_new_async 0)) in
   let fulfill = fresh_var "fulfill" (typ (projE call_new_async 1)) in
   let fail = fresh_var "fail" (typ (projE call_new_async 2)) in
   let clean = fresh_var "clean" (typ (projE call_new_async 3)) in
@@ -84,12 +84,13 @@ let new_nary_async_reply ts =
       let v = fresh_var "v" u in
       let k = fresh_var "k" (contT u T.unit) in
       let r = fresh_var "r" (err_contT T.unit) in
-      [k; r] -->* (
+      let c = fresh_var "c" (err_contT T.unit(*FIXME: contT T.nat32 T.unit*)) in
+      [k; r; c] -->* (
         varE unary_async -*-
           (tupE [
              [v] -->* (varE k -*- varE v);
              varE r;
-             varE r(*FIXME*)
+             varE c;
           ])
       )
     in
@@ -119,7 +120,7 @@ let new_nary_async_reply ts =
     fresh_var "async" (typ nary_async),
     fresh_var "reply" (typ nary_reply),
     fresh_var "reject" (typ_of_var fail),
-    fresh_var "cleanup" (typ_of_var fail(*FIXME*))
+    fresh_var "cleanup" (typ_of_var clean)
   in
     (async, reply, reject, cleanup),
       blockE [letP (tupP [varP unary_async; varP unary_fulfill; varP fail; varP clean]) call_new_async]
