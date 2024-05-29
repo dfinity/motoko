@@ -42,16 +42,18 @@ let fulfillT as_seq typ = T.Func(T.Local, T.Returns, [], as_seq typ, [])
 
 let failT = T.Func(T.Local, T.Returns, [], [T.catch], [])
 
+let cleanT = T.Func(T.Local, T.Returns, [], [T.nat32(*FIXME*)], [])
+
 let t_async_fut as_seq t =
-  T.Func (T.Local, T.Returns, [], [fulfillT as_seq t; failT],
+  T.Func (T.Local, T.Returns, [], [fulfillT as_seq t; failT; cleanT],
     [T.sum [
       ("suspend", T.unit);
       ("schedule", T.Func(T.Local, T.Returns, [], [], []))]])
 
 let t_async_cmp as_seq t =
-  T.Func (T.Local, T.Returns, [], [fulfillT as_seq t; failT], [])
+  T.Func (T.Local, T.Returns, [], [fulfillT as_seq t; failT; cleanT], [])
 
-let new_async_ret as_seq t = [t_async_fut as_seq t; fulfillT as_seq t; failT]
+let new_async_ret as_seq t = [t_async_fut as_seq t; fulfillT as_seq t; failT; cleanT]
 
 let new_asyncT =
   T.Func (
@@ -86,7 +88,8 @@ let new_nary_async_reply ts =
         varE unary_async -*-
           (tupE [
              [v] -->* (varE k -*- varE v);
-             varE r
+             varE r;
+             varE r(*FIXME*)
           ])
       )
     in
@@ -116,10 +119,10 @@ let new_nary_async_reply ts =
     fresh_var "async" (typ nary_async),
     fresh_var "reply" (typ nary_reply),
     fresh_var "reject" (typ_of_var fail),
-    fresh_var "cleanup" (typ_of_var fail)
+    fresh_var "cleanup" (typ_of_var fail(*FIXME*))
   in
     (async, reply, reject, cleanup),
-      blockE [letP (tupP [varP unary_async; varP unary_fulfill; varP fail; varP clean]) call_new_async] 
+      blockE [letP (tupP [varP unary_async; varP unary_fulfill; varP fail; varP clean]) call_new_async]
         (tupE [nary_async; nary_reply; varE fail; varE clean])
 
 
@@ -250,21 +253,21 @@ let transform prog =
     | VarE id -> exp'
     | AssignE (exp1, exp2) ->
       AssignE (t_lexp exp1, t_exp exp2)
-    | PrimE (CPSAwait (Fut, cont_typ), [a; kr(*; c*)]) ->
+    | PrimE (CPSAwait (Fut, cont_typ), [a; krc]) ->
       begin match cont_typ with
         | Func(_, _, [], _, []) ->
           (* unit answer type, from await in `async {}` *)
-          (ensureNamed (t_exp kr) (fun vkr ->
+          (ensureNamed (t_exp krc) (fun vkrc ->
             let schedule = fresh_var "schedule" (T.Func(T.Local, T.Returns, [], [], [])) in
-            switch_variantE (t_exp a -*- varE vkr)
+            switch_variantE (t_exp a -*- varE vkrc)
               [ ("suspend", wildP,
                   unitE()); (* suspend *)
                 ("schedule", varP schedule, (* resume later *)
                   (* try await async (); schedule() catch e -> r(e) *)
                  (let v = fresh_var "call" T.unit in
                   letE v
-                    (selfcallE [] (*c*) (ic_replyE [] (unitE())) (varE schedule) (projE (varE vkr) 1))
-                    (check_call_perform_status (varE v) (fun e -> projE (varE vkr) 1 -*- e))))
+                    (selfcallE [] (ic_replyE [] (unitE())) (varE schedule) (projE (varE vkrc) 1))
+                    (check_call_perform_status (varE v) (fun e -> projE (varE vkrc) 1 -*- e))))
               ]
               T.unit
           )).it
@@ -286,14 +289,14 @@ let transform prog =
         new_nary_async_reply ts1
       in
       ( blockE [
-          letP (tupP [varP nary_async; varP nary_reply; varP reject]) def;
+          letP (tupP [varP nary_async; varP nary_reply; varP reject; varP clean]) def;
           let ic_reply = (* flatten v, here and below? *)
             let v = fresh_var "v" (T.seq ts1) in
             v --> (ic_replyE ts1 (varE v)) in
           let ic_reject =
             let e = fresh_var "e" T.catch in
             [e] -->* (ic_rejectE (errorMessageE (varE e))) in
-          let exp' = callE (t_exp exp1) [t0] (tupE [ic_reply; ic_reject]) in
+          let exp' = callE (t_exp exp1) [t0] (tupE [ic_reply; ic_reject; ic_reject(*FIXME?*)]) in
           expD (selfcallE ts1 exp' (varE nary_reply) (varE reject))
         ]
         (varE nary_async)
@@ -309,7 +312,7 @@ let transform prog =
       in
       let v_ret = fresh_var "v" t_ret in
       let v_fail = fresh_var "e" t_fail in
-      ([v_ret; v_fail] -->* (callE (t_exp exp1) [t0] (tupE [varE v_ret; varE v_fail]))).it
+      ([v_ret; v_fail] -->* (callE (t_exp exp1) [t0] (tupE [varE v_ret; varE v_fail; varE v_fail(*FIXME?*)]))).it
     | PrimE (CallPrim typs, (exp1 :: exp2 :: _)) when is_awaitable_func exp1 ->(* HERE *)
       let ts1,ts2 =
         match typ exp1 with
@@ -324,7 +327,7 @@ let transform prog =
         new_nary_async_reply ts2
       in
       (blockE (
-        letP (tupP [varP nary_async; varP nary_reply; varP reject]) def ::
+        letP (tupP [varP nary_async; varP nary_reply; varP reject; varP clean]) def ::
         let_eta exp1' (fun v1 ->
           let_seq ts1 exp2' (fun vs ->
             [expD (ic_callE v1 (seqE (List.map varE vs)) (varE nary_reply) (varE reject) (Some reject(* REALLY: Some cleanup *)))]
@@ -399,7 +402,7 @@ let transform prog =
               let r =
                 let e = fresh_var "e" T.catch in
                 [e] -->* (ic_rejectE (errorMessageE (varE e))) in
-              let exp' = callE (t_exp cps) [t0] (tupE [k;r]) in
+              let exp' = callE (t_exp cps) [t0] (tupE [k; r; r(*FIXME*)]) in
               FuncE (x, T.Shared s', Replies, typbinds', args', ret_tys, exp')
             (* oneway, always with `ignore(async _)` body *)
             | Returns,
@@ -428,7 +431,7 @@ let transform prog =
               let r =
                 let e = fresh_var "e" T.catch in
                 [e] -->* tupE [] in (* discard error *)
-              let exp' = callE (t_exp cps) [t0] (tupE [k;r]) in
+              let exp' = callE (t_exp cps) [t0] (tupE [k; r; r(*FIXME*)]) in
               FuncE (x, T.Shared s', Returns, typbinds', args', ret_tys, exp')
             | Returns, _ ->
               assert false

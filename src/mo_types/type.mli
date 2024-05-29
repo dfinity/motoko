@@ -89,6 +89,7 @@ val is_shared_sort : 'a shared -> bool
 val unit : typ
 val bool : typ
 val nat : typ
+val nat32 : typ
 val nat64 : typ
 val int : typ
 val text : typ

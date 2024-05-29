@@ -468,13 +468,13 @@ and c_exp' context exp k =
     in
     letcont r (fun r ->
     letcont k (fun k ->
-      let kr = tupE [varE k; varE r] in
+      let krc = tupE [varE k; varE r; varE r(*FIXME*)] in
       match eff exp1 with
       | T.Triv ->
-        cps_awaitE s (typ_of_var k) (t_exp context exp1) kr
+        cps_awaitE s (typ_of_var k) (t_exp context exp1) krc
       | T.Await ->
         c_exp context exp1
-          (meta (typ exp1) (fun v1 -> (cps_awaitE s (typ_of_var k) (varE v1) kr)))
+          (meta (typ exp1) (fun v1 -> (cps_awaitE s (typ_of_var k) (varE v1) krc)))
     ))
   | DeclareE (id, typ, exp1) ->
     unary context k (fun v1 -> e (DeclareE (id, typ, varE v1))) exp1

@@ -285,7 +285,7 @@ func @equal_array<T>(eq : (T, T) -> Bool, a : [T], b : [T]) : Bool {
 };
 
 type @Cont<T> = T -> () ;
-type @Async<T> = (@Cont<T>,@Cont<Error>) -> {
+type @Async<T> = (@Cont<T>, @Cont<Error>, @Cont<Nat32>) -> {
   #suspend;
   #schedule : () -> ();
 };
@@ -345,7 +345,7 @@ func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>, @Cont<Nat32>) 
   func clean(_ : Nat32) {
   };
 
-  func enqueue(k : @Cont<T>, r : @Cont<Error>) : {
+  func enqueue(k : @Cont<T>, r : @Cont<Error>, c : @Cont<Nat32>) : {
     #suspend;
     #schedule : () -> ();
   } {
