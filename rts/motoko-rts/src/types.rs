@@ -593,32 +593,31 @@ impl Array {
         (*self).len
     }
 
-    pub unsafe fn sort(self: *const Self) -> u32 {
+    pub unsafe fn base_tag(self: *const Self) -> Tag {
         if (*self).header.tag >= TAG_ARRAY_SLICE_MIN {
-            (*self).header.tag >> 30
-        }
-        else {
-           ((*self).header.tag - TAG_ARRAY_I) / 2
+            TAG_ARRAY_I + ((*self).header.tag >> 30) * 2
+        } else {
+            (*self).header.tag
         }
     }
 
-    pub unsafe fn get_slice_start(self: *const Self) -> (u32, u32) {
+    pub unsafe fn get_slice_start(self: *const Self) -> (Tag, u32) {
         if (*self).header.tag >= TAG_ARRAY_SLICE_MIN {
-           ((*self).header.tag >> 30, (*self).header.tag << 2 >> 2)
+            let tag = TAG_ARRAY_I + ((*self).header.tag >> 30) * 2;
+            (tag, (*self).header.tag << 2 >> 2)
+        } else {
+            ((*self).header.tag, 0)
         }
-        else {
-           (((*self).header.tag - TAG_ARRAY_I) / 2, 0)
-        }
     }
 
-    pub unsafe fn set_slice_start(self: *mut Self, sort: u32, start: u32) -> ()     {
-        (*self).header.tag = sort << 30 | start
+    pub unsafe fn set_slice_start(self: *mut Self, base_tag: Tag, start: u32) -> () {
+        let compressed_tag = (base_tag - TAG_ARRAY_I) / 2;
+        (*self).header.tag = compressed_tag << 30 | start
     }
 
-    pub unsafe fn restore_tag(self: *mut Self, sort: u32) -> () {
-        (*self).header.tag = TAG_ARRAY_I + sort * 2
+    pub unsafe fn restore_tag(self: *mut Self, base_tag: Tag) -> () {
+        (*self).header.tag = base_tag;
     }
-
 }
 
 #[rustfmt::skip]
