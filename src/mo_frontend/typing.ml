@@ -55,9 +55,10 @@ type env =
     check_unused : bool;
     used_identifiers : S.t ref;
     unused_warnings : unused_warnings ref;
+    viper_mode : bool;
   }
 
-let env_of_scope msgs scope =
+let env_of_scope ?(viper_mode=false) msgs scope =
   { vals = available scope.Scope.val_env;
     libs = scope.Scope.lib_env;
     typs = scope.Scope.typ_env;
@@ -76,6 +77,7 @@ let env_of_scope msgs scope =
     check_unused = true;
     used_identifiers = ref S.empty;
     unused_warnings = ref [];
+    viper_mode;
   }
 
 let use_identifier env id =
@@ -1115,7 +1117,7 @@ and infer_exp' f env exp : T.typ =
   if not env.pre then begin
     assert (T.normalize t' <> T.Pre);
     let e = A.infer_effect_exp exp in
-    exp.note <- {note_typ = t'; note_eff = e}
+    exp.note <- {note_typ = if env.viper_mode then t' else T.normalize t'; note_eff = e}
   end;
   t'
 
@@ -2926,12 +2928,12 @@ and infer_dec_valdecs env dec : Scope.t =
 
 (* Programs *)
 
-let infer_prog scope pkg_opt async_cap prog : (T.typ * Scope.t) Diag.result =
+let infer_prog ?(viper_mode=false) scope pkg_opt async_cap prog : (T.typ * Scope.t) Diag.result =
   Diag.with_message_store
     (fun msgs ->
       recover_opt
         (fun prog ->
-          let env0 = env_of_scope msgs scope in
+          let env0 = env_of_scope ~viper_mode msgs scope in
           let env = {
              env0 with async = async_cap;
           } in
@@ -2949,12 +2951,12 @@ let is_actor_dec d =
     obj_sort.it = T.Actor
   | _ -> false
 
-let check_actors scope progs : unit Diag.result =
+let check_actors ?(viper_mode=false) scope progs : unit Diag.result =
   Diag.with_message_store
     (fun msgs ->
       recover_opt (fun progs ->
         let prog = (CompUnit.combine_progs progs).it in
-        let env = env_of_scope msgs scope in
+        let env = env_of_scope ~viper_mode msgs scope in
         let rec go ds = function
           | [] -> ()
           | (d::ds') when is_actor_dec d ->
