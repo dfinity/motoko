@@ -44,8 +44,9 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
         }
 
         TAG_ARRAY_I | TAG_ARRAY_M | TAG_ARRAY_T | TAG_ARRAY_SLICE_MIN.. => {
+            let (_, slice_start) = slice_start(tag);
             let array = obj as *mut Array;
-            let (_, slice_start) = array.get_slice_start();
+            debug_assert!(slice_start <= array.len());
             let array_payload = array.payload_addr();
             let stop = visit_field_range(ctx, slice_start, array);
             debug_assert!(stop <= array.len());

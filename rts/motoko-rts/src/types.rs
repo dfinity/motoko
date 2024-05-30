@@ -489,6 +489,40 @@ pub const TAG_FREE_SPACE: Tag = 49;
 //            higher than all other tags defined above
 pub const TAG_ARRAY_SLICE_MIN: Tag = 50;
 
+pub fn slice_tag(array_tag: Tag, slice_start: u32) -> Tag {
+    debug_assert!(array_tag == TAG_ARRAY_I || array_tag == TAG_ARRAY_M || array_tag == TAG_ARRAY_T);
+    debug_assert!(slice_start >= TAG_ARRAY_SLICE_MIN && slice_start < (1 << 30));
+    (((array_tag - TAG_ARRAY_I) / 2) << 30) | slice_start
+}
+
+pub fn slice_start(tag: Tag) -> (Tag, u32) {
+    debug_assert!(
+        tag == TAG_ARRAY_I
+            || tag == TAG_ARRAY_M
+            || tag == TAG_ARRAY_T
+            || tag >= TAG_ARRAY_SLICE_MIN
+    );
+    if tag >= TAG_ARRAY_SLICE_MIN {
+        (TAG_ARRAY_I + (tag >> 30) * 2, tag << 2 >> 2)
+    } else {
+        (tag, 0)
+    }
+}
+
+pub fn base_array_tag(tag: Tag) -> Tag {
+    debug_assert!(
+        tag == TAG_ARRAY_I
+            || tag == TAG_ARRAY_M
+            || tag == TAG_ARRAY_T
+            || tag >= TAG_ARRAY_SLICE_MIN
+    );
+    if tag >= TAG_ARRAY_SLICE_MIN {
+        TAG_ARRAY_I + (tag >> 30) * 2
+    } else {
+        tag
+    }
+}
+
 // Common parts of any object. Other object pointers can be coerced into a pointer to this.
 #[repr(C)] // See the note at the beginning of this module
 pub struct Obj {
@@ -594,29 +628,19 @@ impl Array {
     }
 
     pub unsafe fn base_tag(self: *const Self) -> Tag {
-        if (*self).header.tag >= TAG_ARRAY_SLICE_MIN {
-            TAG_ARRAY_I + ((*self).header.tag >> 30) * 2
-        } else {
-            (*self).header.tag
-        }
+        base_array_tag((*self).header.tag)
     }
 
     pub unsafe fn get_slice_start(self: *const Self) -> (Tag, u32) {
-        if (*self).header.tag >= TAG_ARRAY_SLICE_MIN {
-            let tag = TAG_ARRAY_I + ((*self).header.tag >> 30) * 2;
-            (tag, (*self).header.tag << 2 >> 2)
-        } else {
-            ((*self).header.tag, 0)
-        }
+        slice_start((*self).header.tag)
     }
 
-    pub unsafe fn set_slice_start(self: *mut Self, base_tag: Tag, start: u32) -> () {
-        let compressed_tag = (base_tag - TAG_ARRAY_I) / 2;
-        (*self).header.tag = compressed_tag << 30 | start
+    pub unsafe fn set_slice_start(self: *mut Self, array_tag: Tag, start: u32) -> () {
+        (*self).header.tag = slice_tag(array_tag, start)
     }
 
-    pub unsafe fn restore_tag(self: *mut Self, base_tag: Tag) -> () {
-        (*self).header.tag = base_tag;
+    pub unsafe fn restore_tag(self: *mut Self, array_tag: Tag) -> () {
+        (*self).header.tag = array_tag;
     }
 }
 
