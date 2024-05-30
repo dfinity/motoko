@@ -872,9 +872,12 @@ EOF
         ] ++ lib.optional stdenv.isDarwin darwin.apple_sdk.frameworks.Security
       ));
 
-    shellHook = llvmEnv + ''
-       # cp -f $DRUN ./bin/drun.gz; gzip -d ./bin/drun.gz; chmod u+x ./bin/drun
-       # cp -f $POCKET_IC ./bin/pocket-ic.gz; gzip -d ./bin/pocket-ic.gz; chmod u+x ./bin/pocket-ic
+    shellHook =
+      # for drun, pocket-c
+      let LD_LIBRARY_PATH = nixpkgs.lib.makeLibraryPath [ nixpkgs.lzma nixpkgs.stdenv.cc.cc ]; in
+      llvmEnv + ''
+      # for drun, pocket-c
+      export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}
       export POCKET_IC_BIN=${drun}/bin/pocket-ic
       # Include our wrappers in the PATH
       export PATH="${toString ./bin}:$PATH"
