@@ -23,32 +23,38 @@ let ic-ref-run =
 
 let POCKET_IC = if nixpkgs.stdenv.isDarwin then nixpkgs.sources.pocket-ic-darwin else nixpkgs.sources.pocket-ic-linux; in
 let DRUN = if nixpkgs.stdenv.isDarwin then nixpkgs.sources.drun-darwin else nixpkgs.sources.drun-linux; in
+/*
 let drun =
   nixpkgs.runCommandNoCC "drun" {} ''
       mkdir -p $out/bin
       cp -f ${POCKET_IC} $out/bin/pocket-ic.gz
       gzip -d $out/bin/pocket-ic.gz
-      chmod u+x $out/bin/pocket-ic
+      chmod +x $out/bin/pocket-ic
       cp -f ${DRUN} $out/bin/drun.gz
       gzip -d $out/bin/drun.gz
-      chmod u+x $out/bin/drun
+      chmod +x $out/bin/drun
   ''; in
-/*
+*/
 let drun = stdenv.mkDerivation {
     name = "drun";
     src = [];
     phases = [ "installPhase" ];
+    buildInputs = [ nixpkgs.lzma nixpkgs.stdenv.cc.cc ];
     installPhase = ''
       mkdir -p $out/bin
       cp -f ${POCKET_IC} $out/bin/pocket-ic.gz
       gzip -d $out/bin/pocket-ic.gz
-      chmod u+x $out/bin/pocket-ic
+      chmod u+w $out/bin/pocket-ic
+      ${nixpkgs.patchelf}/bin/patchelf --set-interpreter ${nixpkgs.glibc}/lib/ld-linux-x86-64.so.2 $out/bin/pocket-ic
+      chmod +x $out/bin/pocket-ic
       cp -f ${DRUN} $out/bin/drun.gz
       gzip -d $out/bin/drun.gz
-      chmod u+x $out/bin/drun
+      chmod u+w $out/bin/drun
+      ${nixpkgs.patchelf}/bin/patchelf --set-interpreter ${nixpkgs.glibc}/lib/ld-linux-x86-64.so.2 $out/bin/drun
+      chmod +x $out/bin/drun
     '';
   }; in
-*/
+
 
 let haskellPackages = nixpkgs.haskellPackages.override {
       overrides = import nix/haskell-packages.nix nixpkgs subpath;
@@ -338,7 +344,7 @@ rec {
 
   inherit ic-ref-run;
 
-  inherit drun;
+#  inherit drun;
 
   tests = let
     testDerivationArgs = {
@@ -351,7 +357,8 @@ rec {
 
     testDerivationDeps =
       (with nixpkgs; [ wabt bash perl getconf moreutils nodejs-18_x ]) ++
-      [ filecheck wasmtime ];
+      [ filecheck wasmtime ] ++
+      [ nixpkgs.lzma nixpkgs.stdenv.cc.cc ];
 
 
     # extra deps for test/ld
@@ -376,6 +383,7 @@ rec {
       };
 
     test_subdir = dir: deps:
+      let LD_LIBRARY_PATH = nixpkgs.lib.makeLibraryPath [ nixpkgs.lzma nixpkgs.stdenv.cc.cc ]; in
       testDerivation {
         src = test_src dir;
         buildInputs = deps ++ testDerivationDeps;
@@ -383,6 +391,15 @@ rec {
         checkPhase = ''
             patchShebangs .
             ${llvmEnv}
+            export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}
+            export PATH=${drun}/bin:$PATH
+            echo $PATH
+            #ldd ${drun}/bin/drun
+            #ldd ${drun}/bin/pocket-ic
+            pocket-ic --version
+            drun --help
+            export RUST_BACKTRACE=full
+            export POCKET_IC_BIN=${drun}/bin/pocket-ic
             export ESM=${nixpkgs.sources.esm}
             export VIPER_SERVER=${viperServer}
             type -p moc && moc --version
@@ -858,7 +875,7 @@ EOF
     shellHook = llvmEnv + ''
        # cp -f $DRUN ./bin/drun.gz; gzip -d ./bin/drun.gz; chmod u+x ./bin/drun
        # cp -f $POCKET_IC ./bin/pocket-ic.gz; gzip -d ./bin/pocket-ic.gz; chmod u+x ./bin/pocket-ic
-       # export POCKET_IC_BIN=${toString ./bin/pocket-ic}
+      export POCKET_IC_BIN=${drun}/bin/pocket-ic
       # Include our wrappers in the PATH
       export PATH="${toString ./bin}:$PATH"
       # some cleanup of environment variables otherwise set by nix-shell
