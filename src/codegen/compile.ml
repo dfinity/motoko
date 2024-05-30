@@ -12224,10 +12224,12 @@ and compile_lit_pat env l =
   | CharLit _ ->
     compile_lit_as env SR.Vanilla l ^^
     compile_eq env Type.(Prim Char)
-  | TextLit t
-  | BlobLit t ->
+  | TextLit t ->
     compile_lit_as env SR.Vanilla l ^^
     Text.compare env Operator.EqOp
+  | BlobLit t ->
+    compile_lit_as env SR.Vanilla l ^^
+    Blob.compare env (Some Operator.EqOp)
   | FloatLit _ ->
     todo_trap env "compile_lit_pat" (Arrange_ir.lit l)
 
