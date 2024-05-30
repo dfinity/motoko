@@ -102,8 +102,10 @@ method copy_xarray($Self: Ref)
     ensures $Perm($Self)
     ensures ($size($Res) == $size(($Self).xarray))
     ensures $array_acc($Res, $int, write)
-    { var t: Array
+    { var length: Int
+      var t: Array
       var i: Int
+      length := $size(($Self).xarray);
       inhale $array_acc(t, $int, write);
       inhale ($size(t) == 5);
       ($loc(t, 0)).$int := 0;
@@ -112,11 +114,14 @@ method copy_xarray($Self: Ref)
       ($loc(t, 3)).$int := 0;
       ($loc(t, 4)).$int := 0;
       i := 0;
-      while ((i < 5))
+      while ((i < length))
+         invariant (i >= 0)
          invariant $array_acc(t, $int, write)
          invariant ($Perm($Self) && $Inv($Self))
          { 
-           ($loc(t, i)).$int := ($loc(($Self).xarray, i)).$int; 
+           assert (i < length);
+           ($loc(t, i)).$int := ($loc(($Self).xarray, i)).$int;
+           i := (i + 1); 
          };
       $Res := t;
       goto $Ret;

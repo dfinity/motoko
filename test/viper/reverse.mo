@@ -3,10 +3,14 @@ actor Reverse {
 
   private func copy_xarray(): [var Nat] {
     assert:return (var:return).size() == xarray.size();
+    let length = xarray.size();
     let t = [var 0, 0, 0, 0, 0];
     var i = 0;
-    while (i < 5) {
+    while (i < length) {
+        assert:loop:invariant (i >= 0);
+        assert:system (i < length);
         t[i] := xarray[i];
+        i := i + 1;
     };
     return t;
   };
