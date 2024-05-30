@@ -9,6 +9,11 @@ actor Variants {
     #swapped : Pair<B, A>;
   };
 
+  private func getBW(): BW {
+    let x : BW = #Black;
+    return x;
+  };
+
   func idPair<A, B>(p: Pair<A, B>) : Pair<A, B> {
     return p;
   };
