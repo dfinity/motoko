@@ -852,6 +852,7 @@ EOF
         builtins.attrValues coverage_bins;
       in with nixpkgs;
       [ ic-wasm ] ++
+      [ nixpkgs.lzma nixpkgs.stdenv.cc.cc ] ++
       lib.lists.unique (builtins.filter (i: !(builtins.elem i dont_build)) (
         commonBuildInputs nixpkgs ++
         rts.buildInputs ++
