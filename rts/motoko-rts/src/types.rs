@@ -592,6 +592,33 @@ impl Array {
     pub unsafe fn len(self: *const Self) -> u32 {
         (*self).len
     }
+
+    pub unsafe fn sort(self: *const Self) -> u32 {
+        if (*self).header.tag >= TAG_ARRAY_SLICE_MIN {
+            (*self).header.tag >> 30
+        }
+        else {
+           ((*self).header.tag - TAG_ARRAY_I) / 2
+        }
+    }
+
+    pub unsafe fn get_slice_start(self: *const Self) -> (u32, u32) {
+        if (*self).header.tag >= TAG_ARRAY_SLICE_MIN {
+           ((*self).header.tag >> 30, (*self).header.tag << 2 >> 2)
+        }
+        else {
+           (((*self).header.tag - TAG_ARRAY_I) / 2, 0)
+        }
+    }
+
+    pub unsafe fn set_slice_start(self: *mut Self, sort: u32, start: u32) -> ()     {
+        (*self).header.tag = sort << 30 | start
+    }
+
+    pub unsafe fn restore_tag(self: *mut Self, sort: u32) -> () {
+        (*self).header.tag = TAG_ARRAY_I + sort * 2
+    }
+
 }
 
 #[rustfmt::skip]

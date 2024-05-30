@@ -296,21 +296,16 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
             |gc, slice_start, array| {
                 const SLICE_INCREMENT: u32 = 255;
                 debug_assert!(SLICE_INCREMENT >= TAG_ARRAY_SLICE_MIN);
-                let tag = (*array).header.tag;
-                let sort = if tag >= TAG_ARRAY_SLICE_MIN {
-                    tag >> 30
-                } else {
-                    (tag - TAG_ARRAY_I) / 2
-                };
+                let sort = array.sort();
                 if array.len() - slice_start > SLICE_INCREMENT {
                     let new_start = slice_start + SLICE_INCREMENT;
                     // Remember to visit the array suffix later, store the next visit offset in the tag.
-                    (*array).header.tag = (sort << 30) | new_start;
+                    array.set_slice_start(sort, new_start);
                     push_mark_stack(gc.heap.mem, array as usize);
                     new_start
                 } else {
                     // No further visits of this array. Restore the tag.
-                    (*array).header.tag = TAG_ARRAY_I + sort * 2; // restore original tag
+                    array.restore_tag(sort); // restore original tag
                     array.len()
                 }
             },
