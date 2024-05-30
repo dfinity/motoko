@@ -95,6 +95,16 @@ adt BW  { Black()
 adt Pair [A, B]
   { ordered(ordered$0 : A, ordered$1 : B)
     swapped(swapped$0 : Pair[B, A]) }
+method getBW($Self: Ref)
+     returns ($Res: BW)
+    requires $Perm($Self)
+    ensures $Perm($Self)
+    { var x: BW
+      x := Black();
+      $Res := x;
+      goto $Ret;
+      label $Ret; 
+    }
 method get($Self: Ref)
      returns ($Res: Pair[Int, BW])
     requires $Perm($Self)

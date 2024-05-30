@@ -1132,7 +1132,7 @@ and infer_exp' f env exp : T.typ =
   if not env.pre then begin
     assert (T.normalize t' <> T.Pre);
     let e = A.infer_effect_exp exp in
-    exp.note <- {note_typ = T.normalize t'; note_eff = e}
+    exp.note <- {note_typ = t'; note_eff = e}
   end;
   t'
 
