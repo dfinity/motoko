@@ -14,8 +14,9 @@ use motoko_rts::{
     },
     memory::{alloc_array, alloc_blob, Memory},
     types::{
-        Array, Blob, Bytes, Obj, Tag, Value, Words, TAG_ARRAY_I, TAG_ARRAY_M, TAG_ARRAY_T,
-        TAG_BLOB_B, TAG_BLOB_P, TAG_BLOB_T,
+        Array, Blob, Bytes, Obj, Tag, Value, Words,
+        TAG_ARRAY_I, TAG_ARRAY_M, TAG_ARRAY_T, TAG_ARRAY_S,
+        TAG_BLOB_B, TAG_BLOB_P, TAG_BLOB_T, TAG_BLOB_A
     },
 };
 
@@ -415,10 +416,10 @@ impl PartitionedTestHeap {
 
 unsafe fn block_size(block: *const Tag) -> usize {
     match *block {
-        TAG_ARRAY_I | TAG_ARRAY_M | TAG_ARRAY_T => {
+        TAG_ARRAY_I | TAG_ARRAY_M | TAG_ARRAY_T | TAG_ARRAY_S => {
             size_of::<Array>() + (block as *const Array).len() as usize * WORD_SIZE as usize
         }
-        TAG_BLOB_B | TAG_BLOB_T | TAG_BLOB_P => {
+        TAG_BLOB_B | TAG_BLOB_T | TAG_BLOB_P | TAG_BLOB_A => {
             size_of::<Blob>() + (block as *const Blob).len().as_usize()
         }
         _ => unimplemented!(),

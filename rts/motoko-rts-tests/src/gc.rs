@@ -289,10 +289,14 @@ fn check_dynamic_heap(
                         tag == TAG_ARRAY_I
                             || tag == TAG_ARRAY_M
                             || tag == TAG_ARRAY_T
+                            || tag == TAG_ARRAY_S
                             || tag >= TAG_ARRAY_SLICE_MIN
                     );
                 } else {
-                    assert!(tag == TAG_ARRAY_I || tag == TAG_ARRAY_M || tag == TAG_ARRAY_T)
+                    assert!(tag == TAG_ARRAY_I
+                            || tag == TAG_ARRAY_M
+                            || tag == TAG_ARRAY_T
+                            || tag == TAG_ARRAY_S)
                 }
 
                 if is_forwarded {

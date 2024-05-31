@@ -33,12 +33,13 @@ fn test_push_pop() {
         .unwrap();
 }
 
-static TAGS: [Tag; 22] = [
+static TAGS: [Tag; 24] = [
     TAG_OBJECT,
     TAG_OBJ_IND,
     TAG_ARRAY_I,
     TAG_ARRAY_M,
     TAG_ARRAY_T,
+    TAG_ARRAY_S,
     TAG_BITS64_U,
     TAG_BITS64_S,
     TAG_BITS64_F,
@@ -49,6 +50,7 @@ static TAGS: [Tag; 22] = [
     TAG_BLOB_B,
     TAG_BLOB_T,
     TAG_BLOB_P,
+    TAG_BLOB_A,
     TAG_FWD_PTR,
     TAG_BITS32_U,
     TAG_BITS32_S,
