@@ -398,7 +398,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
   | PrimE (p, es) ->
     List.iter (check_exp env) es;
     begin match p, es with
-    | CallPrim insts, (exp1 :: exp2 :: _) when List.length es <= 3 ->
+    | CallPrim insts, [exp1; exp2] ->
       begin match T.promote (typ exp1) with
         | T.Func (sort, control, tbs, arg_tys, ret_tys) ->
           check_inst_bounds env tbs insts exp.at;
@@ -410,12 +410,6 @@ let rec check_exp env (exp:Ir.exp) : unit =
           end;
           typ exp2 <: t_arg;
           t_ret <: t;
-        (* TODO: when after await.ml AND length es == 3 then check that exp3 is ()->() *)
-          if List.length es = 3 then
-            begin
-              assert (not env.flavor.has_await);
-              typ (List.nth es 2) <:  T.unit
-            end
         | T.Non -> () (* dead code, not much to check here *)
         | t1 -> error env exp1.at "expected function type, but expression produces type\n  %s"
              (T.string_of_typ_expand t1)

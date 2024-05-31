@@ -45,13 +45,13 @@ let failT = T.Func(T.Local, T.Returns, [], [T.catch], [])
 let cleanT = T.Func(T.Local, T.Returns, [], [T.nat32(*FIXME*)], [])
 
 let t_async_fut as_seq t =
-  T.Func (T.Local, T.Returns, [], [fulfillT as_seq t; failT; failT(*FIXME: cleanT, actually ()->()*)],
+  T.Func (T.Local, T.Returns, [], [fulfillT as_seq t; failT; failT(*FIXME: actually ()->()*)],
     [T.sum [
       ("suspend", T.unit);
       ("schedule", T.Func(T.Local, T.Returns, [], [], []))]])
 
 let t_async_cmp as_seq t =
-  T.Func (T.Local, T.Returns, [], [fulfillT as_seq t; failT; failT(*FIXME: cleanT*)], [])
+  T.Func (T.Local, T.Returns, [], [fulfillT as_seq t; failT; failT(*FIXME: finallyT*)], [])
 
 let new_async_ret as_seq t = [t_async_fut as_seq t; fulfillT as_seq t; failT; cleanT]
 
@@ -347,11 +347,11 @@ let transform prog =
       let exp3' = t_exp exp3 in
       let (nary_async, nary_reply, reject, clean), def = new_nary_async_reply [T.blob] in
       (blockE (
-        letP (tupP [varP nary_async; varP nary_reply; varP reject]) def ::
+        letP (tupP [varP nary_async; varP nary_reply; varP reject; varP clean]) def ::
           let_eta exp1' (fun v1 ->
           let_eta exp2' (fun v2 ->
           let_eta exp3' (fun v3 ->
-            [expD (ic_call_rawE v1 v2 v3 (varE nary_reply) (varE reject) (varE reject(* REALLY: Some cleanup *))) ]
+            [expD (ic_call_rawE v1 v2 v3 (varE nary_reply) (varE reject) (varE clean)) ]
             )
           ))
          )
@@ -429,7 +429,7 @@ let transform prog =
               let t1, contT = match typ cps with
                 | Func (_, _,
                     [tb],
-                    [Func(_, _, [], ts1, []) as contT; _],
+                    [Func(_, _, [], ts1, []) as contT; _; _],
                     []) ->
                   (t_typ (T.seq (List.map (T.open_ [t0]) ts1)),t_typ (T.open_ [t0] contT))
                 | t -> assert false in
