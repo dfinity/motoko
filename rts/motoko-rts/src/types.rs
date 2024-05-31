@@ -328,12 +328,12 @@ impl Value {
 
     pub unsafe fn is_blob(self) -> bool {
         let tag = self.tag();
-        tag == TAG_BLOB_B || tag == TAG_BLOB_T || tag == TAG_BLOB_P
+        tag == TAG_BLOB_B || tag == TAG_BLOB_T || tag == TAG_BLOB_P || tag == TAG_BLOB_A
     }
 
     pub unsafe fn is_array(self) -> bool {
         let tag = self.tag();
-        tag == TAG_ARRAY_I || tag == TAG_ARRAY_M || tag == TAG_ARRAY_T || tag >= TAG_ARRAY_SLICE_MIN
+        tag == TAG_ARRAY_I || tag == TAG_ARRAY_M || tag == TAG_ARRAY_T || tag == TAG_ARRAY_S || tag >= TAG_ARRAY_SLICE_MIN
     }
 
     /// Get the pointer as `Obj` using forwarding. In debug mode panics if the value is not a pointer.
@@ -460,26 +460,28 @@ pub const TAG_OBJ_IND: Tag = 3;
 pub const TAG_ARRAY_I: Tag = 5;
 pub const TAG_ARRAY_M: Tag = 7;
 pub const TAG_ARRAY_T: Tag = 9;
-pub const TAG_BITS64_U: Tag = 11;
-pub const TAG_BITS64_S: Tag = 13;
-pub const TAG_BITS64_F: Tag = 15;
-pub const TAG_MUTBOX: Tag = 17;
-pub const TAG_CLOSURE: Tag = 19;
-pub const TAG_SOME: Tag = 21;
-pub const TAG_VARIANT: Tag = 23;
-pub const TAG_BLOB_B: Tag = 25;
-pub const TAG_BLOB_T: Tag = 27;
-pub const TAG_BLOB_P: Tag = 29;
-pub const TAG_FWD_PTR: Tag = 31; // Only used by the copying GC - not to be confused with forwarding pointer in the header used for incremental GC.
-pub const TAG_BITS32_U: Tag = 33;
-pub const TAG_BITS32_S: Tag = 35;
-pub const TAG_BITS32_F: Tag = 37;
-pub const TAG_BIGINT: Tag = 39;
-pub const TAG_CONCAT: Tag = 41;
-pub const TAG_REGION: Tag = 43;
-pub const TAG_NULL: Tag = 45;
-pub const TAG_ONE_WORD_FILLER: Tag = 47;
-pub const TAG_FREE_SPACE: Tag = 49;
+pub const TAG_ARRAY_S: Tag = 11;
+pub const TAG_BITS64_U: Tag = 13;
+pub const TAG_BITS64_S: Tag = 15;
+pub const TAG_BITS64_F: Tag = 17;
+pub const TAG_MUTBOX: Tag = 19;
+pub const TAG_CLOSURE: Tag = 21;
+pub const TAG_SOME: Tag = 23;
+pub const TAG_VARIANT: Tag = 25;
+pub const TAG_BLOB_B: Tag = 27;
+pub const TAG_BLOB_T: Tag = 29;
+pub const TAG_BLOB_P: Tag = 31;
+pub const TAG_BLOB_A: Tag  = 33;
+pub const TAG_FWD_PTR: Tag = 35; // Only used by the copying GC - not to be confused with forwarding pointer in the header used for incremental GC.
+pub const TAG_BITS32_U: Tag = 37;
+pub const TAG_BITS32_S: Tag = 39;
+pub const TAG_BITS32_F: Tag = 41;
+pub const TAG_BIGINT: Tag = 43;
+pub const TAG_CONCAT: Tag = 45;
+pub const TAG_REGION: Tag = 47;
+pub const TAG_NULL: Tag = 49;
+pub const TAG_ONE_WORD_FILLER: Tag = 51;
+pub const TAG_FREE_SPACE: Tag = 53;
 
 // Special value to visit only a range of array fields.
 // This and all values above it are reserved and mean
@@ -487,10 +489,14 @@ pub const TAG_FREE_SPACE: Tag = 49;
 // purposes of `visit_pointer_fields`.
 // Invariant: the value of this (pseudo-)tag must be
 //            higher than all other tags defined above
-pub const TAG_ARRAY_SLICE_MIN: Tag = 50;
+pub const TAG_ARRAY_SLICE_MIN: Tag = 54;
 
 pub fn slice_tag(array_tag: Tag, slice_start: u32) -> Tag {
-    debug_assert!(array_tag == TAG_ARRAY_I || array_tag == TAG_ARRAY_M || array_tag == TAG_ARRAY_T);
+    debug_assert!(array_tag == TAG_ARRAY_I
+                  || array_tag == TAG_ARRAY_M
+                  || array_tag == TAG_ARRAY_T
+                  || array_tag == TAG_ARRAY_S
+    );
     debug_assert!(slice_start >= TAG_ARRAY_SLICE_MIN && slice_start < (1 << 30));
     (((array_tag - TAG_ARRAY_I) / 2) << 30) | slice_start
 }
@@ -500,6 +506,7 @@ pub fn slice_start(tag: Tag) -> (Tag, u32) {
         tag == TAG_ARRAY_I
             || tag == TAG_ARRAY_M
             || tag == TAG_ARRAY_T
+            || tag == TAG_ARRAY_S
             || tag >= TAG_ARRAY_SLICE_MIN
     );
     if tag >= TAG_ARRAY_SLICE_MIN {
@@ -514,6 +521,7 @@ pub fn base_array_tag(tag: Tag) -> Tag {
         tag == TAG_ARRAY_I
             || tag == TAG_ARRAY_M
             || tag == TAG_ARRAY_T
+            || tag == TAG_ARRAY_S
             || tag >= TAG_ARRAY_SLICE_MIN
     );
     if tag >= TAG_ARRAY_SLICE_MIN {
@@ -1010,7 +1018,7 @@ pub(crate) unsafe fn block_size(address: usize) -> Words<u32> {
 
         // `block_size` is not used during the incremental mark phase and
         // therefore, does not support array slicing.
-        TAG_ARRAY_I | TAG_ARRAY_M | TAG_ARRAY_T => {
+        TAG_ARRAY_I | TAG_ARRAY_M | TAG_ARRAY_T | TAG_ARRAY_S => {
             let array = address as *mut Array;
             let size = array.len();
             size_of::<Array>() + Words(size)
@@ -1030,7 +1038,7 @@ pub(crate) unsafe fn block_size(address: usize) -> Words<u32> {
 
         TAG_VARIANT => size_of::<Variant>(),
 
-        TAG_BLOB_B | TAG_BLOB_T | TAG_BLOB_P => {
+        TAG_BLOB_B | TAG_BLOB_T | TAG_BLOB_P | TAG_BLOB_A => {
             let blob = address as *mut Blob;
             size_of::<Blob>() + blob.len().to_words()
         }

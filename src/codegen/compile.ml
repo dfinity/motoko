@@ -1999,9 +1999,20 @@ module Tagged = struct
      so update all!
    *)
 
-  type bits_sort = U | S | F
-  type array_sort = M | I | T
-  type blob_sort = B | T | P
+  type bits_sort =
+    | U (* signed *)
+    | S (* unsigned *)
+    | F (* float *)
+  type array_sort =
+    | I (* [ T ] *)
+    | M (* [var T ] *)
+    | T (* (T,+) *)
+    | S (* shared ... -> ... *)
+  type blob_sort =
+    |  B (* Blob *)
+    | T (* Text *)
+    | P (* Principal *)
+    | A (* actor { ... } *)
 
   type [@warning "-37"] tag  =
     | Object
@@ -2036,27 +2047,29 @@ module Tagged = struct
     | Array I -> 5l
     | Array M -> 7l
     | Array T -> 9l
-    | Bits64 U -> 11l
-    | Bits64 S -> 13l
-    | Bits64 F -> 15l
-    | MutBox -> 17l
-    | Closure -> 19l
-    | Some -> 21l
-    | Variant -> 23l
-    | Blob B -> 25l
-    | Blob T -> 27l
-    | Blob P -> 29l
-    | Indirection -> 31l
-    | Bits32 U -> 33l
-    | Bits32 S -> 35l
-    | Bits32 F -> 37l
-    | BigInt -> 39l
-    | Concat -> 41l
-    | Region -> 43l
-    | Null -> 45l
-    | OneWordFiller -> 47l
-    | FreeSpace -> 49l
-    | ArraySliceMinimum -> 50l
+    | Array S -> 11l
+    | Bits64 U -> 13l
+    | Bits64 S -> 15l
+    | Bits64 F -> 17l
+    | MutBox -> 19l
+    | Closure -> 21l
+    | Some -> 23l
+    | Variant -> 25l
+    | Blob B -> 27l
+    | Blob T -> 29l
+    | Blob P -> 31l
+    | Blob A -> 33l
+    | Indirection -> 35l
+    | Bits32 U -> 37l
+    | Bits32 S -> 39l
+    | Bits32 F -> 41l
+    | BigInt -> 43l
+    | Concat -> 45l
+    | Region -> 47l
+    | Null -> 49l
+    | OneWordFiller -> 51l
+    | FreeSpace -> 53l
+    | ArraySliceMinimum -> 54l
     (* Next two tags won't be seen by the GC, so no need to set the lowest bit
        for `CoercionFailure` and `StableSeen` *)
     | CoercionFailure -> 0xfffffffel
@@ -5427,8 +5440,13 @@ module IC = struct
   (* Actor reference on the stack *)
   let actor_public_field env name =
     (* simply tuple canister name and function name *)
+    Tagged.(sanity_check_tag env (Blob A)) ^^
     Blob.lit env Tagged.T name ^^
-    Tuple.from_stack env 2
+    Func.share_code2 Func.Never env "actor_public_field" (("actor", I32Type), ("func", I32Type)) [] (
+      fun env get_actor get_func ->
+      Arr.lit env Tagged.S [get_actor; get_func]
+   )
+
 
   let fail_assert env at =
     let open Source in
@@ -7395,7 +7413,7 @@ module MakeSerialization (Strm : Stream) = struct
         get_x
       in
 
-      let read_principal () =
+      let read_principal sort () =
         let (set_len, get_len) = new_local env "len" in
         let (set_x, get_x) = new_local env "x" in
         ReadBuf.read_leb128 env get_data_buf ^^ set_len ^^
@@ -7406,7 +7424,7 @@ module MakeSerialization (Strm : Stream) = struct
         get_len ^^ compile_unboxed_const 29l ^^ G.i (Compare (Wasm.Values.I32 I32Op.LeU)) ^^
         E.else_trap_with env "IDL error: principal too long" ^^
 
-        Blob.alloc env Tagged.P get_len ^^ set_x ^^
+        Blob.alloc env sort get_len ^^ set_x ^^
         get_x ^^ Blob.payload_ptr_unskewed env ^^
         ReadBuf.read_blob env get_data_buf get_len ^^
         get_x
@@ -7427,7 +7445,7 @@ module MakeSerialization (Strm : Stream) = struct
       let read_actor_data () =
         read_byte_tagged
           [ E.trap_with env "IDL error: unexpected actor reference"
-          ; read_principal ()
+          ; read_principal Tagged.A ()
           ]
       in
 
@@ -7681,7 +7699,7 @@ module MakeSerialization (Strm : Stream) = struct
         begin
           read_byte_tagged
             [ E.trap_with env "IDL error: unexpected principal reference"
-            ; read_principal ()
+            ; read_principal Tagged.P ()
             ]
         end
       | Prim Text ->
@@ -7907,9 +7925,11 @@ module MakeSerialization (Strm : Stream) = struct
           (with_composite_typ idl_func (fun _get_typ_buf ->
             read_byte_tagged
               [ E.trap_with env "IDL error: unexpected function reference"
-              ; read_actor_data () ^^
-                read_text () ^^
-                Tuple.from_stack env 2
+              ; let (set_actor, get_actor) = new_local env "actor" in
+                let (set_func, get_func) = new_local env "func" in
+                read_actor_data () ^^ set_actor ^^
+                read_text () ^^ set_func ^^
+                Arr.lit env Tagged.S [get_actor; get_func]
               ]))
           (skip get_idltyp ^^
            coercion_failed "IDL error: incompatible function type")
@@ -11774,9 +11794,9 @@ and compile_prim_invocation (env : E.t) ae p es at =
     StableMemoryInterface.grow env
 
   | OtherPrim "stableVarQuery", [] ->
-    SR.UnboxedTuple 2,
+    SR.Vanilla,
     IC.get_self_reference env ^^
-    Blob.lit env Tagged.T Type.(motoko_stable_var_info_fld.lab)
+    IC.actor_public_field env Type.(motoko_stable_var_info_fld.lab)
 
   (* Other prims, binary*)
   | OtherPrim "Array.init", [_;_] ->
