@@ -1,8 +1,7 @@
 use motoko_rts::{
     gc::incremental::array_slicing::slice_array,
     memory::alloc_array,
-    types::{Tag, Words,
-            TAG_ARRAY_I, TAG_ARRAY_M, TAG_ARRAY_T, TAG_ARRAY_S, TAG_ARRAY_SLICE_MIN },
+    types::{Tag, Words, TAG_ARRAY_I, TAG_ARRAY_M, TAG_ARRAY_S, TAG_ARRAY_SLICE_MIN, TAG_ARRAY_T},
 };
 
 use crate::memory::TestMemory;
