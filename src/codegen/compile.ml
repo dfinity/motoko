@@ -2129,6 +2129,21 @@ module Tagged = struct
     load_forwarding_pointer env ^^
     Heap.load_field tag_field
 
+  let sanity_check_tag env tag =
+    let tag = int_of_tag tag in
+    let name = "sanity_check_tag_" ^ Int32.to_string tag in
+    if TaggingScheme.debug || !Flags.sanity then
+      Func.share_code1 Func.Always env name ("obj", I32Type) [I32Type]
+        (fun env get_obj ->
+         get_obj ^^
+         load_tag env  ^^
+         compile_unboxed_const tag ^^
+         G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
+         E.else_trap_with env name ^^
+         get_obj)
+    else
+      G.nop
+
   let check_forwarding env unskewed =
     (if !Flags.gc_strategy = Flags.Incremental then
       let name = "check_forwarding_" ^ if unskewed then "unskewed" else "skewed" in
@@ -2624,7 +2639,10 @@ module BoxedWord64 = struct
       get_n ^^
       BitTagged.if_tagged_scalar env [I64Type]
         (get_n ^^ BitTagged.untag __LINE__ env pty)
-        (get_n ^^ Tagged.load_forwarding_pointer env ^^ Tagged.load_field64 env (payload_field env))
+        (get_n ^^
+         Tagged.load_forwarding_pointer env ^^
+         Tagged.(sanity_check_tag env (heap_tag env pty)) ^^
+         Tagged.load_field64 env (payload_field env))
     )
 end (* BoxedWord64 *)
 
@@ -2760,7 +2778,10 @@ module BoxedSmallWord = struct
       get_n ^^
       BitTagged.if_tagged_scalar env [I32Type]
         (get_n ^^ BitTagged.untag_i32 __LINE__ env pty)
-        (get_n ^^ Tagged.load_forwarding_pointer env ^^ Tagged.load_field env (payload_field env))
+        (get_n ^^
+         Tagged.load_forwarding_pointer env ^^
+         Tagged.(sanity_check_tag env (heap_tag env pty)) ^^
+         Tagged.load_field env (payload_field env))
     )
 
   let _lit env pty n = compile_unboxed_const n ^^ box env pty
@@ -3025,7 +3046,10 @@ module Float = struct
     Tagged.allocation_barrier env
   )
 
-  let unbox env = Tagged.load_forwarding_pointer env ^^ Tagged.load_field_float64 env (payload_field env)
+  let unbox env =
+    Tagged.load_forwarding_pointer env ^^
+    Tagged.(sanity_check_tag env (Bits64 F)) ^^
+    Tagged.load_field_float64 env (payload_field env)
 
 end (* Float *)
 
@@ -4265,7 +4289,7 @@ module Blob = struct
   let alloc env sort len =
     compile_unboxed_const Tagged.(int_of_tag (Blob sort)) ^^
     len ^^
-    E.call_import env "rts" "alloc_blob" ^^ (*TODO sorts!*)
+    E.call_import env "rts" "alloc_blob" ^^
     (* uninitialized blob payload is allowed by the barrier *)
     Tagged.allocation_barrier env
 
@@ -4871,6 +4895,7 @@ module Tuple = struct
   (* Expects on the stack the pointer to the array. *)
   let load_n env n =
     Tagged.load_forwarding_pointer env ^^
+    Tagged.(sanity_check_tag env (Array T)) ^^
     Tagged.load_field env (Int32.add (Arr.header_size env) n)
 
   (* Takes n elements of the stack and produces an argument tuple *)
