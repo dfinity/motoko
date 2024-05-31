@@ -296,8 +296,11 @@ let transform prog =
             v --> (ic_replyE ts1 (varE v)) in
           let ic_reject =
             let e = fresh_var "e" T.catch in
-            [e] -->* (ic_rejectE (errorMessageE (varE e))) in
-          let exp' = callE (t_exp exp1) [t0] (tupE [ic_reply; ic_reject; ic_reject(*FIXME?*)]) in
+            [e] -->* ic_rejectE (errorMessageE (varE e)) in
+          let ic_cleanup =
+            let c = fresh_var "c" T.catch in
+            [c] -->* ic_rejectE (errorMessageE (varE c))(*FIXME*) in
+          let exp' = callE (t_exp exp1) [t0] (tupE [ic_reply; ic_reject; ic_cleanup]) in
           expD (selfcallE ts1 exp' (varE nary_reply) (varE reject))
         ]
         (varE nary_async)
@@ -314,7 +317,7 @@ let transform prog =
       let v_ret = fresh_var "v" t_ret in
       let v_fail = fresh_var "e" t_fail in
       let v_clean = fresh_var "c" t_fail(*FIXME*) in
-      ([v_ret; v_fail; v_clean] -->* (callE (t_exp exp1) [t0] (tupE [varE v_ret; varE v_fail; varE v_clean]))).it
+      ([v_ret; v_fail; v_clean] -->* callE (t_exp exp1) [t0] (tupE [varE v_ret; varE v_fail; varE v_clean])).it
     | PrimE (CallPrim typs, (exp1 :: exp2 :: _)) when is_awaitable_func exp1 ->(* HERE *)
       let ts1,ts2 =
         match typ exp1 with
@@ -403,8 +406,11 @@ let transform prog =
                 v --> (ic_replyE ret_tys (varE v)) in
               let r =
                 let e = fresh_var "e" T.catch in
-                [e] -->* (ic_rejectE (errorMessageE (varE e))) in
-              let exp' = callE (t_exp cps) [t0] (tupE [k; r; r(*FIXME*)]) in
+                [e] -->* ic_rejectE (errorMessageE (varE e)) in
+              let cl =
+                let c = fresh_var "c" T.catch in
+                [c] -->* ic_rejectE (errorMessageE (varE c))(*FIXME*) in
+              let exp' = callE (t_exp cps) [t0] (tupE [k; r; cl]) in
               FuncE (x, T.Shared s', Replies, typbinds', args', ret_tys, exp')
             (* oneway, always with `ignore(async _)` body *)
             | Returns,
@@ -433,7 +439,10 @@ let transform prog =
               let r =
                 let e = fresh_var "e" T.catch in
                 [e] -->* tupE [] in (* discard error *)
-              let exp' = callE (t_exp cps) [t0] (tupE [k; r; r(*FIXME*)]) in
+              let cl =
+                let e = fresh_var "e" T.catch in
+                [e] -->* tupE [](*FIXME*) in (* discard error *)
+              let exp' = callE (t_exp cps) [t0] (tupE [k; r; cl]) in
               FuncE (x, T.Shared s', Returns, typbinds', args', ret_tys, exp')
             | Returns, _ ->
               assert false
