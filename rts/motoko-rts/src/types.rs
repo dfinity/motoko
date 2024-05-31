@@ -333,7 +333,11 @@ impl Value {
 
     pub unsafe fn is_array(self) -> bool {
         let tag = self.tag();
-        tag == TAG_ARRAY_I || tag == TAG_ARRAY_M || tag == TAG_ARRAY_T || tag == TAG_ARRAY_S || tag >= TAG_ARRAY_SLICE_MIN
+        tag == TAG_ARRAY_I
+            || tag == TAG_ARRAY_M
+            || tag == TAG_ARRAY_T
+            || tag == TAG_ARRAY_S
+            || tag >= TAG_ARRAY_SLICE_MIN
     }
 
     /// Get the pointer as `Obj` using forwarding. In debug mode panics if the value is not a pointer.
@@ -471,7 +475,7 @@ pub const TAG_VARIANT: Tag = 25;
 pub const TAG_BLOB_B: Tag = 27;
 pub const TAG_BLOB_T: Tag = 29;
 pub const TAG_BLOB_P: Tag = 31;
-pub const TAG_BLOB_A: Tag  = 33;
+pub const TAG_BLOB_A: Tag = 33;
 pub const TAG_FWD_PTR: Tag = 35; // Only used by the copying GC - not to be confused with forwarding pointer in the header used for incremental GC.
 pub const TAG_BITS32_U: Tag = 37;
 pub const TAG_BITS32_S: Tag = 39;
@@ -492,10 +496,11 @@ pub const TAG_FREE_SPACE: Tag = 53;
 pub const TAG_ARRAY_SLICE_MIN: Tag = 54;
 
 pub fn slice_tag(array_tag: Tag, slice_start: u32) -> Tag {
-    debug_assert!(array_tag == TAG_ARRAY_I
-                  || array_tag == TAG_ARRAY_M
-                  || array_tag == TAG_ARRAY_T
-                  || array_tag == TAG_ARRAY_S
+    debug_assert!(
+        array_tag == TAG_ARRAY_I
+            || array_tag == TAG_ARRAY_M
+            || array_tag == TAG_ARRAY_T
+            || array_tag == TAG_ARRAY_S
     );
     debug_assert!(slice_start >= TAG_ARRAY_SLICE_MIN && slice_start < (1 << 30));
     (((array_tag - TAG_ARRAY_I) / 2) << 30) | slice_start

@@ -14,9 +14,8 @@ use motoko_rts::{
     },
     memory::{alloc_array, alloc_blob, Memory},
     types::{
-        Array, Blob, Bytes, Obj, Tag, Value, Words,
-        TAG_ARRAY_I, TAG_ARRAY_M, TAG_ARRAY_T, TAG_ARRAY_S,
-        TAG_BLOB_B, TAG_BLOB_P, TAG_BLOB_T, TAG_BLOB_A
+        Array, Blob, Bytes, Obj, Tag, Value, Words, TAG_ARRAY_I, TAG_ARRAY_M, TAG_ARRAY_S,
+        TAG_ARRAY_T, TAG_BLOB_A, TAG_BLOB_B, TAG_BLOB_P, TAG_BLOB_T,
     },
 };
 
