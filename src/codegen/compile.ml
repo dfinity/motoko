@@ -4329,6 +4329,22 @@ module Blob = struct
       get_x
     )
 
+  let copy env src_sort dst_sort =
+    let name = Printf.sprintf "blob_copy_%s_%s"
+                 (Int32.to_string (Tagged.int_of_tag (Tagged.Blob src_sort)))
+                 (Int32.to_string (Tagged.int_of_tag (Tagged.Blob dst_sort)))
+    in
+    Func.share_code1 Func.Never env name ("src", I32Type) [I32Type] (
+      fun env get_src ->
+       let (set_dst, get_dst) = new_local env "dst" in
+       alloc env dst_sort (get_src ^^ len env) ^^ set_dst ^^
+       get_dst ^^ payload_ptr_unskewed env ^^
+       get_src ^^ Tagged.sanity_check_tag env (Tagged.Blob src_sort) ^^
+       as_ptr_len env ^^
+       Heap.memcpy env ^^
+       get_dst
+    )
+
   let of_size_copy env sort get_size_fun copy_fun offset_fun =
     let (set_len, get_len) = new_local env "len" in
     let (set_blob, get_blob) = new_local env "blob" in
@@ -11692,6 +11708,13 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Unreachable,
     compile_exp_vanilla env ae e ^^
     IC.trap_text env
+
+  | OtherPrim "blobToPrincipal", e ->
+    const_sr SR.Vanilla (Blob.copy env Tagged.B Tagged.P)
+  | OtherPrim "principalToBlob", e ->
+    const_sr SR.Vanilla (Blob.copy env Tagged.P Tagged.B)
+  | OtherPrim "actorToPrincipal", e ->
+    const_sr SR.Vanilla (Blob.copy env Tagged.A Tagged.P)
 
   | OtherPrim "blobToArray", e ->
     const_sr SR.Vanilla (Arr.ofBlob env Tagged.I)
