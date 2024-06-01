@@ -307,15 +307,15 @@ func time() : Nat64 = (prim "time" : () -> Nat64)();
 
 // Principal
 
-func blobOfPrincipal(id : Principal) : Blob = (prim "cast" : Principal -> Blob) id; /* FIXME */
+func blobOfPrincipal(id : Principal) : Blob = (prim "principalToBlob" : Principal -> Blob) id;
 func principalOfBlob(act : Blob) : Principal {
   if (act.size() > 29) {
     trap("blob too long for principal");
   };
-  (prim "cast" : Blob -> Principal) act; /* FIXME */
+  (prim "blobToPrincipal" : Blob -> Principal) act;
 };
 
-func principalOfActor(act : actor {}) : Principal = (prim "cast" : (actor {}) -> Principal) act; //* FIXME */
+func principalOfActor(act : actor {}) : Principal = (prim "actorToPrincipal" : (actor {}) -> Principal) act;
 func isController(p : Principal) : Bool = (prim "is_controller" : Principal -> Bool) p;
 func canisterVersion() : Nat64 = (prim "canister_version" : () -> Nat64)();
 
