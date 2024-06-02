@@ -314,6 +314,10 @@ do
     else
       TEST_MOC_ARGS=$EXTRA_MOC_ARGS
     fi
+    if [ $VIPER = 'yes' ]
+    then
+      TEST_MOC_ARGS="$TEST_MOC_ARGS --package base pkg/base"
+    fi
     moc_with_flags="env $moc_extra_env moc $moc_extra_flags $TEST_MOC_ARGS"
 
     # Typecheck

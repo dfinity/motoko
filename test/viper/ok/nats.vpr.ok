@@ -10,6 +10,7 @@ domain Array {
 }
 define $array_acc(a, t, p) forall j: Int :: 0 <= j && j < $size(a) ==> acc($loc(a, j).t, p)
 define $array_untouched(a, t) forall j: Int :: 0 <= j && j < $size(a) ==> $loc(a, j).t == old($loc(a, j).t)
+define $array_init(a, t, x) forall i : Int :: 0 <= i && i < $size(a) ==> $loc(a, i).t == x
 /* Tuple encoding */
 domain Tuple {
   function $prj(a: Tuple, i: Int): Ref

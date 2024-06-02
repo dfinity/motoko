@@ -1,2 +1,2 @@
-  [0] Postcondition of __init__ might not hold. Assertion $Self.u might not hold. (assertions.vpr@46.13--46.24)
-  [1] Assert might fail. Assertion $Self.u ==> $Self.v > 0 might not hold. (assertions.vpr@64.15--64.44)
+  [0] Postcondition of __init__ might not hold. Assertion $Self.u might not hold. (assertions.vpr@47.13--47.24)
+  [1] Assert might fail. Assertion $Self.u ==> $Self.v > 0 might not hold. (assertions.vpr@65.15--65.44)
