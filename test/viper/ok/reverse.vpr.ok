@@ -10,6 +10,7 @@ domain Array {
 }
 define $array_acc(a, t, p) forall j: Int :: 0 <= j && j < $size(a) ==> acc($loc(a, j).t, p)
 define $array_untouched(a, t) forall j: Int :: 0 <= j && j < $size(a) ==> $loc(a, j).t == old($loc(a, j).t)
+define $array_init(a, t, x) forall i : Int :: 0 <= i && i < $size(a) ==> $loc(a, i).t == x
 /* Tuple encoding */
 domain Tuple {
   function $prj(a: Tuple, i: Int): Ref
@@ -115,13 +116,10 @@ method copy_xarray($Self: Ref)
       var t: Array
       var i: Int
       length := $size(($Self).xarray);
+      assert (length >= 0);
       inhale $array_acc(t, $int, write);
-      inhale ($size(t) == 5);
-      ($loc(t, 0)).$int := 0;
-      ($loc(t, 1)).$int := 0;
-      ($loc(t, 2)).$int := 0;
-      ($loc(t, 3)).$int := 0;
-      ($loc(t, 4)).$int := 0;
+      inhale ($size(t) == length);
+      inhale $array_init(t, $int, 0);
       i := 0;
       while ((i < length))
          invariant $array_acc(t, $int, write)

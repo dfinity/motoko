@@ -1,3 +1,4 @@
+import Array "mo:base/Array";
 import Prim "mo:⛔";
 
 // @verify
@@ -7,7 +8,7 @@ actor Reverse {
   private func copy_xarray(): [var Nat] {
     assert:return (var:return).size() == xarray.size();
     let length = xarray.size();
-    let t = [var 0, 0, 0, 0, 0];
+    let t = Array.init<Nat>(length, 0);
     var i = 0;
     while (i < length) {
         assert:loop:invariant (i >= 0);

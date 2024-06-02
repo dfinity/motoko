@@ -95,10 +95,16 @@ let lvalue_str (lval : lvalue) : string =
   | LValueUninitVar x -> x.it
   | LValueFld fld -> (snd fld).it
 
+type imported_module =
+  | IM_Prim         (* mo:⛔ *)
+  | IM_base_Array   (* mo:base/Array *)
+
 module Env = T.Env
+module Imports = Map.Make(String)
 
 type ctxt =
   { self : string option;
+    imports : imported_module Imports.t;
     ids : (sort * T.t) T.Env.t;
     ghost_items : (ctxt -> item) list ref;
     ghost_inits : (ctxt -> seqn') list ref;
@@ -178,7 +184,15 @@ and unit' (u : M.comp_unit) : prog =
   let { M.imports; M.body } = u.it in
   match body.it with
   | M.ActorU(id_opt, decs) ->
-    let ctxt = { self = None; ids = Env.empty; ghost_items = ref []; ghost_inits = ref []; ghost_perms = ref []; ghost_conc = ref [] } in
+    let ctxt = {
+      self = None;
+      imports = tr_imports imports;
+      ids = Env.empty;
+      ghost_items = ref [];
+      ghost_inits = ref [];
+      ghost_perms = ref [];
+      ghost_conc = ref []
+    } in
     let ctxt', perms, inits, mk_is = dec_fields ctxt decs in
     let is' = List.map (fun mk_i -> mk_i ctxt') mk_is in
     (* given is', compute ghost_is *)
@@ -250,6 +264,20 @@ and unit' (u : M.comp_unit) : prog =
     !!! (body.at) is
   | _ -> assert false
 
+and tr_imports (imps : M.import list) : imported_module Imports.t =
+  List.fold_left
+    (fun acc imp ->
+      let k, v = tr_import imp in
+      Imports.add k v acc)
+    Imports.empty
+    imps
+
+and tr_import (imp : M.import) : (string * imported_module) =
+  match imp.it with
+  | ({it=M.VarP s;_}, "mo:⛔", _) -> (s.it, IM_Prim)
+  | ({it=M.VarP s;_}, "mo:base/Array", _) -> (s.it, IM_base_Array)
+  | (p, _, _) -> unsupported p.at (Arrange.pat p)
+
 and dec_fields (ctxt : ctxt) (ds : M.dec_field list) =
   match ds with
   | [] ->
@@ -271,7 +299,7 @@ and dec_field ctxt d =
 and static_invariants at lhs e =
   match e.it with
  | M.AnnotE (e, _) -> static_invariants at lhs e
- | M.ArrayE (_, es) -> [array_size_inv at lhs (List.length es)]
+ | M.ArrayE (_, es) -> [array_size_inv at lhs (intLitE at (List.length es))]
  | _ -> []
 
 and dec_field' ctxt d =
@@ -643,6 +671,20 @@ and assign_stmts ctxt at (lval : lvalue) (e : M.exp) : seqn' =
   match e with
   | M.({it=TupE [];_}) -> [], []
   | M.({it=AnnotE (e, _);_}) -> assign_stmts ctxt at lval e
+  | M.({it=CallE ({it=M.DotE ({it=M.VarE(m);_}, {it="init";_});_}, _inst, args);_})
+      when Imports.find_opt (m.it) ctxt.imports = Some(IM_base_Array)
+      ->
+    begin match args with
+    | M.({it=TupE([e1;e2]); _}) ->
+      fld_via_tmp_var lval t (fun x ->
+        let lhs = !!(LocalVar (x, tr_typ t)) in
+        [], [ !!(AssertS !!(GeCmpE (exp ctxt e1, intLitE at 0)))
+            ; !!(InhaleS (array_acc at lhs (array_elem_t t)))
+            ; !!(InhaleS (array_size_inv at lhs (exp ctxt e1)))
+            ; !!(InhaleS (array_init_const at lhs (array_elem_t t) (exp ctxt e2))) ]
+      )
+    | _ -> unsupported args.at (Arrange.exp args)
+    end
   | M.({it = CallE({it = VarE m; _}, inst, args); _}) ->
     fld_via_tmp_var lval t (fun x ->
       let self_var = self ctxt m.at in
@@ -759,7 +801,10 @@ and exp ctxt e =
      !!(match e.it with
         | M.TupE es -> CallE (tag.it, List.map (exp ctxt) es)
         | _ -> CallE (tag.it, [exp ctxt e]))
-  | M.CallE ({ it = M.DotE (_, { it = "forall" | "exists" as predicate_name; _ }); _ }, _inst, { it = M.FuncE (_, _, _, pattern, _, _, e); note; _ }) ->
+  | M.CallE ({ it = M.DotE ({it=M.VarE(m);_}, {it=predicate_name;_}); _ }, _inst, { it = M.FuncE (_, _, _, pattern, _, _, e); note; _ })
+    when Imports.find_opt (m.it) ctxt.imports = Some(IM_Prim)
+      && (predicate_name = "forall" || predicate_name = "exists")
+    ->
     let binders = extract_binders pattern in
     let typs =
       match M.(note.note_typ) with
@@ -845,7 +890,7 @@ and typed_field t =
   | _ -> unsupported Source.no_region (Mo_types.Arrange_type.typ t)
 
 and array_size_inv at lhs n =
-  !!! at (EqCmpE (sizeE at lhs, intLitE at n))
+  !!! at (EqCmpE (sizeE at lhs, n))
 
 and array_acc at lhs t =
   match T.normalize t with
@@ -865,10 +910,14 @@ and array_alloc at ctxt lhs t es : stmt list =
      | T.Mut _ -> []
      | _       -> [ExhaleS (array_acc at lhs t); InhaleS (array_acc at lhs t)])in
   let stmts = [ InhaleS (array_acc at lhs (T.Mut t))
-              ; InhaleS (array_size_inv at lhs (List.length es))]
+              ; InhaleS (array_size_inv at lhs (intLitE at (List.length es)))]
               @ init_array
               @ reset_perm
   in List.map (!!) stmts
+
+and array_init_const at lhs t x =
+  let (!!) p = !!! at p in
+  !! (CallE ("$array_init", [lhs; !!(FldE (typed_field t)); x]))
 
 and array_loc ctxt at e1 e2 t =
   locE at (exp ctxt e1) (exp ctxt e2) (typed_field t)
