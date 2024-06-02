@@ -433,7 +433,7 @@ and dec ctxt d =
     add_locals ctxt (unwrap_tup_vars_pat p),
     fun ctxt' ->
       let conds, _, (ds, stmts) = pat_match ctxt' scrut p in
-      let irrefutable = (conds == []) in
+      let irrefutable = (conds = []) in
       if not irrefutable then failwith "impossible: tuple patterns must be irrefutable" else
       ds, stmts
   | M.(ExpD e) -> (* TODO: restrict to e of unit type? *)

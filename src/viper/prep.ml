@@ -33,7 +33,7 @@ let mono_calls_visitor (stk : mono_goal Stack.t) : visitor =
   { visit_exp = (function
     | {it = CallE({it = VarE v; at = v_at; note = v_note},inst,e); at; note} ->
         let goal = { mg_id = v.it; mg_typs = inst.note } in
-        let _ = (if goal.mg_typs == [] then () else Stack.push goal stk) in
+        let _ = (if goal.mg_typs = [] then () else Stack.push goal stk) in
         let s = string_of_mono_goal goal in
         {it = CallE({it = VarE (s @@ v_at); at=v_at; note=v_note},
                     {it = None; at=inst.at; note = []}, e); at; note}
@@ -87,7 +87,7 @@ let mk_template_dec_field (df : dec_field) : dec_field_template option =
                       at=fn_at;
                       note=fn_note},
                  None)) ->
-      if tp == [] then None else
+      if tp = [] then None else
       Some({dft_id = x;
             dft_mk = fun typs ->
               let env = init_subst_env tp typs in
