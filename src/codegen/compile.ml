@@ -2142,9 +2142,11 @@ module Tagged = struct
     load_forwarding_pointer env ^^
     Heap.load_field tag_field
 
-  let sanity_check_tag env tag =
+  let sanity_check_tag line env tag =
     let tag = int_of_tag tag in
-    let name = "sanity_check_tag_" ^ Int32.to_string tag in
+    let name = "sanity_check_tag_" ^ Int32.to_string tag ^
+                 (if TaggingScheme.debug then Int.to_string line else "")
+    in
     if TaggingScheme.debug || !Flags.sanity then
       Func.share_code1 Func.Always env name ("obj", I32Type) [I32Type]
         (fun env get_obj ->
@@ -2654,7 +2656,7 @@ module BoxedWord64 = struct
         (get_n ^^ BitTagged.untag __LINE__ env pty)
         (get_n ^^
          Tagged.load_forwarding_pointer env ^^
-         Tagged.(sanity_check_tag env (heap_tag env pty)) ^^
+         Tagged.(sanity_check_tag __LINE__ env (heap_tag env pty)) ^^
          Tagged.load_field64 env (payload_field env))
     )
 end (* BoxedWord64 *)
@@ -2793,7 +2795,7 @@ module BoxedSmallWord = struct
         (get_n ^^ BitTagged.untag_i32 __LINE__ env pty)
         (get_n ^^
          Tagged.load_forwarding_pointer env ^^
-         Tagged.(sanity_check_tag env (heap_tag env pty)) ^^
+         Tagged.(sanity_check_tag __LINE__ env (heap_tag env pty)) ^^
          Tagged.load_field env (payload_field env))
     )
 
@@ -3061,7 +3063,7 @@ module Float = struct
 
   let unbox env =
     Tagged.load_forwarding_pointer env ^^
-    Tagged.(sanity_check_tag env (Bits64 F)) ^^
+    Tagged.(sanity_check_tag __LINE__ env (Bits64 F)) ^^
     Tagged.load_field_float64 env (payload_field env)
 
 end (* Float *)
@@ -4339,7 +4341,7 @@ module Blob = struct
        let (set_dst, get_dst) = new_local env "dst" in
        alloc env dst_sort (get_src ^^ len env) ^^ set_dst ^^
        get_dst ^^ payload_ptr_unskewed env ^^
-       get_src ^^ Tagged.sanity_check_tag env (Tagged.Blob src_sort) ^^
+       get_src ^^ Tagged.sanity_check_tag __LINE__ env (Tagged.Blob src_sort) ^^
        as_ptr_len env ^^
        Heap.memcpy env ^^
        get_dst
@@ -4924,7 +4926,7 @@ module Tuple = struct
   (* Expects on the stack the pointer to the array. *)
   let load_n env n =
     Tagged.load_forwarding_pointer env ^^
-    Tagged.(sanity_check_tag env (Array T)) ^^
+    Tagged.(sanity_check_tag __LINE__ env (Array T)) ^^
     Tagged.load_field env (Int32.add (Arr.header_size env) n)
 
   (* Takes n elements of the stack and produces an argument tuple *)
@@ -5357,7 +5359,7 @@ module IC = struct
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
       Func.share_code0 Func.Never env "canister_self" [I32Type] (fun env ->
-        Blob.of_size_copy env Tagged.P
+        Blob.of_size_copy env Tagged.A
           (fun env -> system_call env "canister_self_size")
           (fun env -> system_call env "canister_self_copy")
           (fun env -> compile_unboxed_const 0l)
@@ -5456,7 +5458,7 @@ module IC = struct
   (* Actor reference on the stack *)
   let actor_public_field env name =
     (* simply tuple canister name and function name *)
-    Tagged.(sanity_check_tag env (Blob A)) ^^
+    Tagged.(sanity_check_tag __LINE__ env (Blob A)) ^^
     Blob.lit env Tagged.T name ^^
     Func.share_code2 Func.Never env "actor_public_field" (("actor", I32Type), ("func", I32Type)) [] (
       fun env get_actor get_func ->
@@ -11709,11 +11711,11 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_vanilla env ae e ^^
     IC.trap_text env
 
-  | OtherPrim "blobToPrincipal", e ->
+  | OtherPrim "principalOfBlob", e ->
     const_sr SR.Vanilla (Blob.copy env Tagged.B Tagged.P)
-  | OtherPrim "principalToBlob", e ->
+  | OtherPrim "blobOfPrincipal", e ->
     const_sr SR.Vanilla (Blob.copy env Tagged.P Tagged.B)
-  | OtherPrim "actorToPrincipal", e ->
+  | OtherPrim "principalOfActor", e ->
     const_sr SR.Vanilla (Blob.copy env Tagged.A Tagged.P)
 
   | OtherPrim "blobToArray", e ->
@@ -11871,7 +11873,8 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_unboxed_const 29l ^^
     G.i (Compare (Wasm.Values.I32 I32Op.LeU)) ^^
     E.else_trap_with env "blob too long for actor principal" ^^
-    get_blob
+    get_blob ^^
+    Blob.copy env Tagged.B Tagged.A
 
   | SelfRef _, [] ->
     SR.Vanilla, IC.get_self_reference env
