@@ -60,7 +60,9 @@ method reverseArray$Nat($Self: Ref, a: Array)
     requires $array_acc(a, $int, write)
     ensures $Perm($Self)
     ensures $array_acc(a, $int, write)
-    ensures ($size(a) == $size(old(a)))
+    ensures ($size(a) == old($size(a)))
+    ensures forall k : Int :: (((0 <= k) && (k < $size(a))) ==> (($loc(a, k)).$int == 
+            old(($loc(a, (($size(a) - 1) - k))).$int)))
     { var b: Array
       var length: Int
       var i: Int
@@ -80,10 +82,17 @@ method reverseArray$Nat($Self: Ref, a: Array)
       i := (length - 1);
       j := 0;
       while ((i > j))
-         invariant ((i < length) && (i >= 0))
-         invariant ((j < length) && (j >= 0))
          invariant $array_acc(b, $int, wildcard)
          invariant $array_acc(a, $int, write)
+         invariant ((i < length) && (i >= 0))
+         invariant ((j < length) && (j >= 0))
+         invariant (i == (($size(a) - 1) - j))
+         invariant forall k : Int :: (((j <= k) && (k <= i)) ==> (($loc(a, k)).$int == 
+                   old(($loc(a, k)).$int)))
+         invariant forall k : Int :: (((0 <= k) && (k < j)) ==> (($loc(a, k)).$int == 
+                   old(($loc(a, (($size(a) - 1) - k))).$int)))
+         invariant forall k : Int :: (((i < k) && (k < $size(a))) ==> (
+                   ($loc(a, k)).$int == old(($loc(a, (($size(a) - 1) - k))).$int)))
          invariant ($Perm($Self) && $Inv($Self))
          { var tmp: Int
            tmp := ($loc(a, i)).$int;
@@ -115,8 +124,8 @@ method copy_xarray($Self: Ref)
       ($loc(t, 4)).$int := 0;
       i := 0;
       while ((i < length))
-         invariant (i >= 0)
          invariant $array_acc(t, $int, write)
+         invariant (i >= 0)
          invariant ($Perm($Self) && $Inv($Self))
          { 
            assert (i < length);

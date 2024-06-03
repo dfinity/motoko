@@ -55,6 +55,8 @@ and exp' =
   | AccE of fldacc * exp   (* acc((rcvr: exp).field, (exp: perm_amount)) *)
   | FldE of string               (* top-level field name, e.g. to be passed as a macro argument *)
   | CallE of string * exp list   (* macro or func call *)
+  | ForallE of (id * typ) list * exp
+  | ExistsE of (id * typ) list * exp
 
 and perm = (perm', info) Source.annotated_phrase
 
@@ -86,7 +88,7 @@ and stmt' =
   | WhileS of exp * invariants * seqn
   | LabelS of id
   | GotoS of id
-  (* TODO: these are temporary helper terms  that should not appear in the final translation 
+  (* TODO: these are temporary helper terms  that should not appear in the final translation
        we should avoid introducing them in the first place if possible, so they can be removed *)
   | PreconditionS of exp
   | PostconditionS of exp

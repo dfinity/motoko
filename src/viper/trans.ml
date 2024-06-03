@@ -515,7 +515,7 @@ and stmt ctxt (s : M.exp) : seqn =
   | M.WhileE(e, s1) ->
      let (invs, s1') = extract_loop_invariants s1 in
      let invs' = List.map (fun inv -> exp ctxt inv) invs in
-     let invs'' = invs' @ local_access_preds ctxt in
+     let invs'' = local_access_preds ctxt @ invs' in
      let invs''' = invs'' @ [!!(AndE(!!(CallE("$Perm", [self ctxt s.at])),
                                      !!(CallE("$Inv",  [self ctxt s.at]))))] in
      !!([],
@@ -759,8 +759,36 @@ and exp ctxt e =
      !!(match e.it with
         | M.TupE es -> CallE (tag.it, List.map (exp ctxt) es)
         | _ -> CallE (tag.it, [exp ctxt e]))
+  | M.CallE ({ it = M.DotE (_, { it = "forall" | "exists" as predicate_name; _ }); _ }, _inst, { it = M.FuncE (_, _, _, pattern, _, _, e); note; _ }) ->
+    let binders = extract_binders pattern in
+    let typs =
+      match M.(note.note_typ) with
+      | T.Func (_, _, _, [ T.Tup args ], _) -> args
+      | T.Func (_, _, _, [ arg ], _) -> [ arg ]
+      | _ -> []
+    in
+    let typed_binders =
+      List.fold_left2
+        (fun acc b t -> (id b, t) :: acc)
+        [] binders typs
+    in
+    let ctxt = add_locals ctxt typed_binders in
+    let typed_binders = List.map (fun (b, t) -> (b, tr_typ t)) typed_binders in
+    let e = exp ctxt e in
+    (match predicate_name with
+    | "forall" -> !!(ForallE (typed_binders, e))
+    | "exists" -> !!(ExistsE (typed_binders, e))
+    | _ -> assert false)
   | _ ->
      unsupported e.at (Arrange.exp e)
+
+and extract_binders pattern =
+  match pattern.it with
+  | M.AnnotP ({ it = M.VarP binder; _ }, _) | M.VarP binder ->
+    [ binder ]
+  | M.ParP pattern -> extract_binders pattern
+  | M.TupP pats -> List.concat_map extract_binders pats
+  | _ -> []
 
 and rets t_opt =
   let (!!) p = !!! Source.no_region p in

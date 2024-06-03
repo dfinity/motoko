@@ -1,3 +1,6 @@
+import Prim "mo:⛔";
+
+// @verify
 actor Reverse {
   var xarray : [var Nat] = [var 1, 2, 3, 4, 5];
 
@@ -16,7 +19,9 @@ actor Reverse {
   };
 
   private func reverseArray<T>(a : [var T]) : () {
-    assert:return a.size() == (old a).size();
+    assert:return a.size() == (old (a.size()));
+    assert:return Prim.forall<Nat>(
+      func (k : Nat) = (0 <= k and k < a.size()) implies a[k] == (old (a[a.size() - 1 - k])));
     let b = [1, 2, 4]; // space variable to test loop invariant deducing
     var length = a.size();
     if (length == 0) {
@@ -28,6 +33,13 @@ actor Reverse {
     while (i > j) {
       assert:loop:invariant (i < length and i >= 0);
       assert:loop:invariant (j < length and j >= 0);
+      assert:loop:invariant (i == a.size() - 1 - j);
+      assert:loop:invariant Prim.forall<Nat>(
+        func (k : Nat) = (j <= k and k <= i) implies a[k] == (old (a[k])));
+      assert:loop:invariant Prim.forall<Nat>(
+        func (k : Nat) = (0 <= k and k < j) implies a[k] == (old (a[a.size() - 1 - k])));
+      assert:loop:invariant Prim.forall<Nat>(
+        func (k : Nat) = (i < k and k < a.size()) implies a[k] == (old (a[a.size() - 1 - k])));
       var tmp = a[i];
       a[i] := a[j];
       a[j] := tmp;
@@ -36,7 +48,7 @@ actor Reverse {
     };
     return;
   };
-  
+
   public func reverse() : async () {
     var a = copy_xarray();
     reverseArray(a);
