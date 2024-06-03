@@ -9460,29 +9460,29 @@ module FuncDec = struct
     | _ ->
       E.trap_with env (Printf.sprintf "cannot perform %s when running locally" purpose)
 
-  let ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r =
+  let ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r get_c =
     ic_call_threaded
       env
       "remote call"
       get_meth_pair
-      (closures_to_reply_reject_callbacks env ts2 [get_k; get_r])
+      (closures_to_reply_reject_callbacks env ts2 [get_k; get_r; get_c])
       (fun _ -> get_arg ^^ Serialization.serialize env ts1)
 
-  let ic_call_raw env get_meth_pair get_arg get_k get_r =
+  let ic_call_raw env get_meth_pair get_arg get_k get_r get_c =
     ic_call_threaded
       env
       "raw call"
       get_meth_pair
-      (closures_to_raw_reply_reject_callbacks env [get_k; get_r])
+      (closures_to_raw_reply_reject_callbacks env [get_k; get_r; get_c])
       (fun _ -> get_arg ^^ Blob.as_ptr_len env)
 
-  let ic_self_call env ts get_meth_pair get_future get_k get_r =
+  let ic_self_call env ts get_meth_pair get_future get_k get_r get_c =
     ic_call_threaded
       env
       "self call"
       get_meth_pair
       (* Storing the tuple away, future_array_index = 2, keep in sync with rts/continuation_table.rs *)
-      (closures_to_reply_reject_callbacks env ts [get_k; get_r; get_future])
+      (closures_to_reply_reject_callbacks env ts [get_k; get_r; get_c; get_future])
       (fun get_cb_index ->
         get_cb_index ^^
         BoxedSmallWord.box env Type.Nat32 ^^
@@ -11784,7 +11784,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | ICCallerPrim, [] ->
     SR.Vanilla, IC.caller env
 
-  | ICCallPrim _, [f;e;k;r] ->
+  | ICCallPrim _, [f;e;k;r;c] ->
     SR.unit, begin
     (* TBR: Can we do better than using the notes? *)
     let _, _, _, ts1, _ = Type.as_func f.note.Note.typ in
@@ -11793,12 +11793,14 @@ and compile_prim_invocation (env : E.t) ae p es at =
     let (set_arg, get_arg) = new_local env "arg" in
     let (set_k, get_k) = new_local env "k" in
     let (set_r, get_r) = new_local env "r" in
+    let (set_c, get_c) = new_local env "c" in
     let add_cycles = Internals.add_cycles env ae in
     compile_exp_vanilla env ae f ^^ set_meth_pair ^^
     compile_exp_vanilla env ae e ^^ set_arg ^^
     compile_exp_vanilla env ae k ^^ set_k ^^
     compile_exp_vanilla env ae r ^^ set_r ^^
-    FuncDec.ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r add_cycles
+    compile_exp_vanilla env ae c ^^ set_c(*FIXME*) ^^
+    FuncDec.ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r get_c add_cycles
     end
   | ICCallRawPrim, [p;m;a;k;r] ->
     SR.unit, begin
@@ -11814,7 +11816,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_vanilla env ae a ^^ set_arg ^^
     compile_exp_vanilla env ae k ^^ set_k ^^
     compile_exp_vanilla env ae r ^^ set_r ^^
-    FuncDec.ic_call_raw env get_meth_pair get_arg get_k get_r add_cycles
+    FuncDec.ic_call_raw env get_meth_pair get_arg get_k get_r get_r(*FIXME*) add_cycles
     end
 
   | ICMethodNamePrim, [] ->
@@ -12044,6 +12046,7 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
       get_future
       get_k
       get_r
+      get_r (*FIXME*)
       add_cycles
   | ActorE (ds, fs, _, _) ->
     fatal "Local actors not supported by backend"

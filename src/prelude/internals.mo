@@ -343,6 +343,7 @@ func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>, @Cont<Nat32>) 
   };
 
   func clean(_ : Nat32) {
+      (prim "print" : Text -> ()) "CLEANUP"
   };
 
   func enqueue(k : @Cont<T>, r : @Cont<Error>, c : @Cont<Error/*FIXME: unit*/>) : {

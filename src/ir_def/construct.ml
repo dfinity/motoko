@@ -183,9 +183,9 @@ let ic_rejectE e =
   }
 
 let ic_callE f e k r c =
-  let es = [f; e; k; r] in
+  let es = [f; e; k; r; c] in
   let eff = List.(map eff es |> fold_left max_eff T.Triv) in
-  { it = PrimE (ICCallPrim (Option.map id_of_var c), es);
+  { it = PrimE (ICCallPrim (Option.map id_of_var None(*FIXME: revert*)), es);
     at = no_region;
     note = Note.{ def with typ = T.unit; eff }
   }
