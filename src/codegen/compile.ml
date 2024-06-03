@@ -9481,7 +9481,7 @@ module FuncDec = struct
       env
       "self call"
       get_meth_pair
-      (* Storing the tuple away, future_array_index = 2, keep in sync with rts/continuation_table.rs *)
+      (* Storing the tuple away, future_array_index = 3, keep in sync with rts/continuation_table.rs *)
       (closures_to_reply_reject_callbacks env ts [get_k; get_r; get_c; get_future])
       (fun get_cb_index ->
         get_cb_index ^^
