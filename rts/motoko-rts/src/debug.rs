@@ -204,7 +204,7 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
                 (*variant).field.get_raw()
             );
         }
-        TAG_BLOB_B | TAG_BLOB_T | TAG_BLOB_P => {
+        TAG_BLOB_B | TAG_BLOB_T | TAG_BLOB_P | TAG_BLOB_A => {
             let blob = obj.as_blob();
             let _ = write!(buf, "<Blob len={:#x}>", blob.len().as_u32());
         }
