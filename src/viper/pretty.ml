@@ -88,6 +88,9 @@ and pp_decl ppf decl =
     id.it
     pp_typ typ
 
+and pp_binder ppf (id, typ) =
+    fprintf ppf "@[%s : %a@]" id.it pp_typ typ
+
 and pp_pres ppf exps =
    fprintf ppf "@[<v 0>%a@]" (pp_print_list pp_pre) exps
 
@@ -166,6 +169,8 @@ and pp_exp ppf exp =
     fprintf ppf "@[old(%a)@]" pp_exp e
   | PermE p -> pp_perm ppf p
   | AccE (fldacc, perm) -> fprintf ppf "@[acc(%a,%a)@]" pp_fldacc fldacc pp_exp perm
+  | ForallE (binders, exp) -> fprintf ppf "@[forall %a :: %a@]" (pp_print_list ~pp_sep:comma pp_binder) binders pp_exp exp
+  | ExistsE (binders, exp) -> fprintf ppf "@[exists %a :: %a@]" (pp_print_list ~pp_sep:comma pp_binder) binders pp_exp exp
   | _ -> fprintf ppf "@[// pretty printer not implemented for node at %s@]" (string_of_region exp.at)
 
 and pp_perm ppf perm =
