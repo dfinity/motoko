@@ -797,15 +797,17 @@ let rec check_exp env (exp:Ir.exp) : unit =
       , tbs, List.map (T.close cs) ts1, List.map (T.close cs) ret_tys
       ) in
     fun_ty <: t
-  | SelfCallE (ts, exp_f, exp_k, exp_r) ->
+  | SelfCallE (ts, exp_f, exp_k, exp_r, exp_c) ->
     check (not env.flavor.Ir.has_async_typ) "SelfCallE in async flavor";
     List.iter (check_typ env) ts;
     check_exp { env with lvl = NotTopLvl } exp_f;
     check_exp env exp_k;
     check_exp env exp_r;
+    check_exp env exp_c;
     typ exp_f <: T.unit;
     typ exp_k <: T.Func (T.Local, T.Returns, [], ts, []);
     typ exp_r <: T.Func (T.Local, T.Returns, [], [T.error], []);
+    typ exp_c <: T.Func (T.Local, T.Returns, [], [T.error(*FIXME*)], []);
   | ActorE (ds, fs,
       { preupgrade; postupgrade; meta; heartbeat; timer; inspect }, t0) ->
     (* TODO: check meta *)

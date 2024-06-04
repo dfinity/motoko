@@ -119,7 +119,7 @@ let rec exp e : f = match e.it with
   | ActorE (ds, fs, u, _)  -> actor ds fs u
   | NewObjE (_, fs, _)  -> fields fs
   | TryE (e, cs, cl)    -> exp e ++ cases cs ++ (match cl with Some e -> exp e | _ -> M.empty)
-  | SelfCallE (_, e1, e2, e3) -> under_lambda (exp e1) ++ exp e2 ++ exp e3
+  | SelfCallE (_, e1, e2, e3, e4) -> under_lambda (exp e1) ++ exps [e2; e3; e4]
 
 and actor ds fs u = close (decs ds +++ fields fs +++ system u)
 

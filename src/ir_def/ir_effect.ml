@@ -77,10 +77,11 @@ and infer_effect_exp (exp: exp) : T.eff =
     effect_exp exp1
   | FuncE _ ->
     T.Triv
-  | SelfCallE (_, _, exp1, exp2) ->
+  | SelfCallE (_, _, exp1, exp2, exp3) ->
     let e1 = effect_exp exp1 in
     let e2 = effect_exp exp2 in
-    max_eff e1 e2
+    let e3 = effect_exp exp3 in
+    max_eff e1 (max_eff e2 e3)
   | ActorE _ ->
     T.Triv
   | NewObjE _ ->

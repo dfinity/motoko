@@ -527,7 +527,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       define_id env id v';
       k V.unit
       )
-  | SelfCallE (ts, exp_f, exp_k, exp_r) ->
+  | SelfCallE (ts, exp_f, exp_k, exp_r, exp_c) ->
     assert (not env.flavor.has_async_typ);
     (* see code for FuncE *)
     let cc = { sort = T.Shared T.Write; control = T.Replies; n_args = 0; n_res = List.length ts } in
@@ -537,6 +537,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     (* see code for ICCallPrim *)
     interpret_exp env exp_k (fun kv ->
     interpret_exp env exp_r (fun rv ->
+    (*FIXME: interpret_exp env exp_c (fun cv ->*)
         let _call_conv, f = V.as_func v in
         last_region := exp.at; (* in case the following throws *)
         let vc = context env in

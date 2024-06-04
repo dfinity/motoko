@@ -1,12 +1,12 @@
 import { debugPrint; error } =  "mo:prim";
 
 actor A {
-    func m() : async () {
+    public func m() : async () {
     };
     
 
     func t0() : async () {
-        try { debugPrint "IN"; await m(); }
+        try { debugPrint "IN"; await m(); assert false }
         case { debugPrint "OUT" };
     };
 

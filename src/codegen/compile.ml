@@ -9383,7 +9383,17 @@ module FuncDec = struct
     (* result is a function that accepts a list of closure getters, from which
        the first and second must be the reply and reject continuations. *)
     fun closure_getters ->
-      let (set_cb_index, get_cb_index) = new_local env "cb_index" in
+    let (set_cb_index, get_cb_index) = new_local env "cb_index" in
+    assert (List.length closure_getters > 2);
+
+(*
+        List.nth closure_getters 2 ^^
+        Closure.prepare_closure_call env ^^
+        compile_unboxed_zero ^^
+        List.nth closure_getters 2 ^^
+        Closure.call_closure env 1 0 ^^
+ *)
+    
       Arr.lit env closure_getters ^^
       ContinuationTable.remember env ^^
       set_cb_index ^^
@@ -9414,9 +9424,11 @@ module FuncDec = struct
         Arr.load_field env 2l ^^ (* get the cleanup closure *)
         let set_closure, get_closure = new_local env "closure" in
         set_closure ^^ get_closure ^^
+          IC._compile_static_print env "HEY" ^^
         Closure.prepare_closure_call env ^^
         compile_unboxed_zero ^^
         get_closure ^^
+          IC._compile_static_print env "HEY2" ^^
         Closure.call_closure env 1 0);
     compile_unboxed_const (E.add_fun_ptr env (E.built_in env name))
 
@@ -12031,11 +12043,12 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
     let return_arity = List.length return_tys in
     let mk_body env1 ae1 = compile_exp_as env1 ae1 (StackRep.of_arity return_arity) e in
     FuncDec.lit env ae x sort control captured args mk_body return_tys exp.at
-  | SelfCallE (ts, exp_f, exp_k, exp_r) ->
+  | SelfCallE (ts, exp_f, exp_k, exp_r, exp_c) ->
     SR.unit,
     let (set_future, get_future) = new_local env "future" in
     let (set_k, get_k) = new_local env "k" in
     let (set_r, get_r) = new_local env "r" in
+    let (set_c, get_c) = new_local env "c" in
     let mk_body env1 ae1 = compile_exp_as env1 ae1 SR.unit exp_f in
     let captured = Freevars.captured exp_f in
     let add_cycles = Internals.add_cycles env ae in
@@ -12045,6 +12058,7 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
 
     compile_exp_vanilla env ae exp_k ^^ set_k ^^
     compile_exp_vanilla env ae exp_r ^^ set_r ^^
+    compile_exp_vanilla env ae exp_c ^^ set_c ^^
 
     FuncDec.ic_self_call env ts
       IC.(get_self_reference env ^^
@@ -12052,7 +12066,7 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
       get_future
       get_k
       get_r
-      get_r (*FIXME*)
+      get_c
       add_cycles
   | ActorE (ds, fs, _, _) ->
     fatal "Local actors not supported by backend"
