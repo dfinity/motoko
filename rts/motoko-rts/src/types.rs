@@ -403,7 +403,7 @@ impl Value {
     /// In debug mode panics if the value is not a pointer or the
     /// pointed object is not a `Blob`.
     pub unsafe fn as_stream(self) -> *mut Stream {
-        debug_assert!(self.is_blob());
+        debug_assert_eq!(self.tag(), TAG_BLOB_B);
         self.check_forwarding_pointer();
         self.forward().get_ptr() as *mut Stream
     }
@@ -461,25 +461,25 @@ pub type Tag = u32;
 // locations in mark-compact GC. (Reminder: objects and fields are word aligned)
 pub const TAG_OBJECT: Tag = 1;
 pub const TAG_OBJ_IND: Tag = 3;
-pub const TAG_ARRAY_I: Tag = 5;
-pub const TAG_ARRAY_M: Tag = 7;
-pub const TAG_ARRAY_T: Tag = 9;
-pub const TAG_ARRAY_S: Tag = 11;
-pub const TAG_BITS64_U: Tag = 13;
-pub const TAG_BITS64_S: Tag = 15;
-pub const TAG_BITS64_F: Tag = 17;
+pub const TAG_ARRAY_I: Tag = 5;   // Immutable Array ([T])
+pub const TAG_ARRAY_M: Tag = 7;   // Mutable Array ([var T])
+pub const TAG_ARRAY_T: Tag = 9;   // Non-nullary Tuple ((T,+))
+pub const TAG_ARRAY_S: Tag = 11;  // Shared function pairing TAG_BLOB_A with TAG_BLOB_T (shared ... -> ...)
+pub const TAG_BITS64_U: Tag = 13; // Unsigned (Nat64)
+pub const TAG_BITS64_S: Tag = 15; // Signed (Int64)
+pub const TAG_BITS64_F: Tag = 17; // Float
 pub const TAG_MUTBOX: Tag = 19;
 pub const TAG_CLOSURE: Tag = 21;
 pub const TAG_SOME: Tag = 23;
 pub const TAG_VARIANT: Tag = 25;
-pub const TAG_BLOB_B: Tag = 27;
-pub const TAG_BLOB_T: Tag = 29;
-pub const TAG_BLOB_P: Tag = 31;
-pub const TAG_BLOB_A: Tag = 33;
+pub const TAG_BLOB_B: Tag = 27;   // Blob of Bytes (Blob)
+pub const TAG_BLOB_T: Tag = 29;   // Blob of Utf8 (Text)
+pub const TAG_BLOB_P: Tag = 31;   // Principal (Principal)
+pub const TAG_BLOB_A: Tag = 33;   // Actor (actor {})
 pub const TAG_FWD_PTR: Tag = 35; // Only used by the copying GC - not to be confused with forwarding pointer in the header used for incremental GC.
-pub const TAG_BITS32_U: Tag = 37;
-pub const TAG_BITS32_S: Tag = 39;
-pub const TAG_BITS32_F: Tag = 41;
+pub const TAG_BITS32_U: Tag = 37; // Unsigned (Nat32)
+pub const TAG_BITS32_S: Tag = 39; // Signed (Int32)
+pub const TAG_BITS32_F: Tag = 41; // Reserved (Float32)
 pub const TAG_BIGINT: Tag = 43;
 pub const TAG_CONCAT: Tag = 45;
 pub const TAG_REGION: Tag = 47;
