@@ -285,20 +285,9 @@ fn check_dynamic_heap(
                     .as_usize();
             } else {
                 if incremental {
-                    assert!(
-                        tag == TAG_ARRAY_I
-                            || tag == TAG_ARRAY_M
-                            || tag == TAG_ARRAY_T
-                            || tag == TAG_ARRAY_S
-                            || tag >= TAG_ARRAY_SLICE_MIN
-                    );
+                    assert!(is_array_or_slice_tag(tag));
                 } else {
-                    assert!(
-                        tag == TAG_ARRAY_I
-                            || tag == TAG_ARRAY_M
-                            || tag == TAG_ARRAY_T
-                            || tag == TAG_ARRAY_S
-                    )
+                    assert!(is_base_array_tag(tag))
                 }
 
                 if is_forwarded {

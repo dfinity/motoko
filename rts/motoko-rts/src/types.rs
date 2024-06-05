@@ -328,7 +328,7 @@ impl Value {
 
     pub unsafe fn is_blob(self) -> bool {
         let tag = self.tag();
-        tag == TAG_BLOB_B || tag == TAG_BLOB_T || tag == TAG_BLOB_P || tag == TAG_BLOB_A
+        is_blob_tag(tag)
     }
 
     pub unsafe fn is_array(self) -> bool {
@@ -494,6 +494,10 @@ pub const TAG_ARRAY_SLICE_MIN: Tag = 54;
 
 pub const TAG_SPACING: Tag = 2;
 
+pub fn is_blob_tag(tag: Tag) -> bool {
+    tag == TAG_BLOB_B || tag == TAG_BLOB_T || tag == TAG_BLOB_P || tag == TAG_BLOB_A
+}
+
 pub fn is_base_array_tag(tag: Tag) -> bool {
     tag == TAG_ARRAY_I || tag == TAG_ARRAY_M || tag == TAG_ARRAY_T || tag == TAG_ARRAY_S
 }
@@ -574,9 +578,7 @@ impl Obj {
     }
 
     pub unsafe fn as_blob(self: *mut Self) -> *mut Blob {
-        debug_assert!(
-            self.tag() == TAG_BLOB_B || self.tag() == TAG_BLOB_T || self.tag() == TAG_BLOB_P
-        );
+        debug_assert!(is_blob_tag(self.tag()));
         self as *mut Blob
     }
 
