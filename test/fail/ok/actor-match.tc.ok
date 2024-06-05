@@ -1,2 +1,4 @@
 actor-match.mo:7.8-7.14: type error [M0114], object pattern cannot consume actor type
   actor {f : shared () -> (); g : shared () -> ()}
+actor-match.mo:7.9-7.10: warning [M0198], unused field f in object pattern (delete or rewrite as `f = _`)
+actor-match.mo:7.12-7.13: warning [M0198], unused field g in object pattern (delete or rewrite as `g = _`)

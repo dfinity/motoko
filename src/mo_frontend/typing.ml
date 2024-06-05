@@ -1509,13 +1509,13 @@ and infer_exp'' env exp : T.typ =
     t
   | SwitchE (exp1, cases) ->
     let t1 = infer_exp_promote env exp1 in
-    let t = infer_cases env t1 T.Non cases in
+    let t = infer_cases env true t1 T.Non cases in
     if not env.pre then
       coverage_cases "switch" env cases t1 exp.at;
     t
   | TryE (exp1, cases) ->
     let t1 = infer_exp env exp1 in
-    let t2 = infer_cases env T.catch T.Non cases in
+    let t2 = infer_cases env false T.catch T.Non cases in
     if not env.pre then begin
       check_ErrorCap env "try" exp.at;
       coverage_cases "try handler" env cases T.catch exp.at
@@ -1975,15 +1975,17 @@ and infer_call env exp1 inst exp2 at t_expect_opt =
 
 (* Cases *)
 
-and infer_cases env t_pat t cases : T.typ =
-  List.fold_left (infer_case env t_pat) t cases
+and infer_cases env check_unused t_pat t cases : T.typ =
+  List.fold_left (infer_case env check_unused t_pat) t cases
 
-and infer_case env t_pat t case =
+and infer_case env check_unused t_pat t case =
   let {pat; exp} = case.it in
   let ve = check_pat env t_pat pat in
   let initial_usage = enter_scope env in
   let t' = recover_with T.Non (infer_exp (adjoin_vals env ve)) exp in
-  leave_scope env ve initial_usage;
+  if check_unused then
+    leave_scope env ve initial_usage
+  else ();
   let t'' = T.lub t t' in
   if not env.pre && inconsistent t'' [t; t'] then
     warn env case.at "M0101"
@@ -1998,8 +2000,11 @@ and check_cases env t_pat t cases =
 
 and check_case env t_pat t case =
   let {pat; exp} = case.it in
+  let initial_usage = enter_scope env in
   let ve = check_pat env t_pat pat in
-  recover (check_exp (adjoin_vals env ve) t) exp
+  let t' = recover (check_exp (adjoin_vals env ve) t) exp in
+  leave_scope env ve initial_usage;
+  t'
 
 and inconsistent t ts =
   T.opaque t && not (List.exists T.opaque ts)
