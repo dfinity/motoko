@@ -807,7 +807,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     typ exp_f <: T.unit;
     typ exp_k <: T.Func (T.Local, T.Returns, [], ts, []);
     typ exp_r <: T.Func (T.Local, T.Returns, [], [T.error], []);
-    typ exp_c <: T.Func (T.Local, T.Returns, [], [T.nat32], []);
+    typ exp_c <: T.Func (T.Local, T.Returns, [], [T.nat32(*FIXME*)], []);
   | ActorE (ds, fs,
       { preupgrade; postupgrade; meta; heartbeat; timer; inspect }, t0) ->
     (* TODO: check meta *)

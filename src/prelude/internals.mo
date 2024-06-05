@@ -307,6 +307,8 @@ func @getSystemRefund() : @Refund {
   return (prim "cyclesRefunded" : () -> Nat) ();
 };
 
+func @shout() = (prim "print" : Text -> ()) "CLEANUP";
+
 func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>, @Cont<Nat32>) {
   let w_null = func(r : @Refund, t : T) { };
   let r_null = func(_ : Error) {};
@@ -343,7 +345,7 @@ func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>, @Cont<Nat32>) 
   };
 
   func clean(_ : Nat32) {
-      (prim "print" : Text -> ()) "CLEANUP"
+      @shout(); (prim "print" : Text -> ()) "EXTERN";
   };
 
   func enqueue(k : @Cont<T>, r : @Cont<Error>, c : @Cont<Error/*FIXME: unit*/>) : {

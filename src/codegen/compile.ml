@@ -9424,11 +9424,9 @@ module FuncDec = struct
         Arr.load_field env 2l ^^ (* get the cleanup closure *)
         let set_closure, get_closure = new_local env "closure" in
         set_closure ^^ get_closure ^^
-          IC._compile_static_print env "HEY" ^^
         Closure.prepare_closure_call env ^^
         compile_unboxed_zero ^^
         get_closure ^^
-          IC._compile_static_print env "HEY2" ^^
         Closure.call_closure env 1 0);
     compile_unboxed_const (E.add_fun_ptr env (E.built_in env name))
 

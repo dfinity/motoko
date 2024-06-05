@@ -38,30 +38,30 @@ let unary typ = [typ]
 
 let nary typ = T.as_seq typ
 
-let fulfillT as_seq typ = T.Func(T.Local, T.Returns, [], as_seq typ, [])
+let fulfillT as_seq typ = T.(Func(Local, Returns, [], as_seq typ, []))
 
-let failT = T.Func(T.Local, T.Returns, [], [T.catch], [])
+let failT = T.(Func(Local, Returns, [], [catch], []))
 
-let cleanT = T.Func(T.Local, T.Returns, [], [T.nat32(*FIXME*)], [])
+let cleanT = T.(Func(Local, Returns, [], [nat32(*FIXME*)], []))
 
 let t_async_fut as_seq t =
-  T.Func (T.Local, T.Returns, [], [fulfillT as_seq t; failT; failT(*FIXME: actually ()->()*)],
-    [T.sum [
-      ("suspend", T.unit);
-      ("schedule", T.Func(T.Local, T.Returns, [], [], []))]])
+  T.(Func (Local, Returns, [], [fulfillT as_seq t; failT; failT(*FIXME: actually ()->()*)],
+           [sum [
+                ("suspend", unit);
+                ("schedule", Func(Local, Returns, [], [], []))]]))
 
 let t_async_cmp as_seq t =
-  T.Func (T.Local, T.Returns, [], [fulfillT as_seq t; failT; failT(*FIXME: finallyT*)], [])
+  T.(Func (Local, Returns, [], [fulfillT as_seq t; failT; failT(*FIXME: finallyT*)], []))
 
 let new_async_ret as_seq t = [t_async_fut as_seq t; fulfillT as_seq t; failT; cleanT]
 
 let new_asyncT =
-  T.Func (
-    T.Local,
-    T.Returns,
-    [ { var = "T"; sort = T.Type; bound = T.Any } ],
-    [],
-    new_async_ret unary (T.Var ("T", 0)))
+  (Func (
+       Local,
+       Returns,
+       [ { var = "T"; sort = Type; bound = Any } ],
+       [],
+       new_async_ret unary (Var ("T", 0))))
 
 let new_asyncE () =
   varE (var "@new_async" new_asyncT)
@@ -267,8 +267,10 @@ let transform prog =
                   (* try await async (); schedule() catch e -> r(e) *)
                  (let v = fresh_var "call" T.unit in
                   let n = fresh_var "nat" T.nat32 in
+                  let shoutT = T.(Func (Local, Returns, [], [], [])) in
                   letE v
-                    (selfcallE [] (ic_replyE [] (unitE())) (varE schedule) (projE (varE vkrc) 1) ([n] -->* unitE ()(*projE (varE vkrc) 2*)))
+                  (selfcallE [] (ic_replyE [] (unitE())) (varE schedule) (projE (varE vkrc) 1)
+                     ([n] -->* (varE (var "@shout" shoutT) -*- unitE ())(*projE (varE vkrc) 2*)))
                     (check_call_perform_status (varE v) (fun e -> projE (varE vkrc) 1 -*- e))))
               ]
               T.unit
