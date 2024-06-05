@@ -27,7 +27,7 @@ use core::ptr::null;
 use motoko_rts_macros::is_incremental_gc;
 use motoko_rts_macros::*;
 
-use crate::constants::WORD_SIZE;
+use crate::constants::{MAX_ARRAY_SIZE, WORD_SIZE};
 use crate::rts_trap_with;
 
 pub fn size_of<T>() -> Words<u32> {
@@ -333,11 +333,7 @@ impl Value {
 
     pub unsafe fn is_array(self) -> bool {
         let tag = self.tag();
-        tag == TAG_ARRAY_I
-            || tag == TAG_ARRAY_M
-            || tag == TAG_ARRAY_T
-            || tag == TAG_ARRAY_S
-            || tag >= TAG_ARRAY_SLICE_MIN
+        is_array_or_slice_tag(tag)
     }
 
     /// Get the pointer as `Obj` using forwarding. In debug mode panics if the value is not a pointer.
@@ -489,51 +485,57 @@ pub const TAG_FREE_SPACE: Tag = 53;
 
 // Special value to visit only a range of array fields.
 // This and all values above it are reserved and mean
-// a slice of an array object (i.e. start index) for
+// a slice of an array object (i.e. compressed array tag + start index) for
 // purposes of `visit_pointer_fields`.
+// The top two bits encode the original array tag, the remaining bits are the start index of the slice.
 // Invariant: the value of this (pseudo-)tag must be
 //            higher than all other tags defined above
 pub const TAG_ARRAY_SLICE_MIN: Tag = 54;
 
+pub const TAG_SPACING: Tag = 2;
+
+pub fn is_base_array_tag(tag: Tag) -> bool {
+    tag == TAG_ARRAY_I || tag == TAG_ARRAY_M || tag == TAG_ARRAY_T || tag == TAG_ARRAY_S
+}
+
+pub fn is_array_or_slice_tag(tag: Tag) -> bool {
+    is_base_array_tag(tag) || tag >= TAG_ARRAY_SLICE_MIN
+}
+
+#[inline]
+pub fn start_of_slice(tag: Tag) -> u32 {
+    tag << 2 >> 2
+}
+
+#[inline]
+pub fn tag_of_slice(tag: Tag) -> Tag {
+    TAG_ARRAY_I + (tag >> (usize::BITS - 2)) * TAG_SPACING
+}
+
 pub fn slice_tag(array_tag: Tag, slice_start: u32) -> Tag {
-    debug_assert!(
-        array_tag == TAG_ARRAY_I
-            || array_tag == TAG_ARRAY_M
-            || array_tag == TAG_ARRAY_T
-            || array_tag == TAG_ARRAY_S
-    );
-    debug_assert!(slice_start >= TAG_ARRAY_SLICE_MIN && slice_start < (1 << 30));
-    (((array_tag - TAG_ARRAY_I) / 2) << 30) | slice_start
+    debug_assert!(is_base_array_tag(array_tag));
+    debug_assert!(slice_start >= TAG_ARRAY_SLICE_MIN && slice_start <= MAX_ARRAY_SIZE);
+    (((array_tag - TAG_ARRAY_I) / TAG_SPACING) << (usize::BITS - 2)) | slice_start
 }
 
 pub fn slice_start(tag: Tag) -> (Tag, u32) {
-    debug_assert!(
-        tag == TAG_ARRAY_I
-            || tag == TAG_ARRAY_M
-            || tag == TAG_ARRAY_T
-            || tag == TAG_ARRAY_S
-            || tag >= TAG_ARRAY_SLICE_MIN
-    );
+    debug_assert!(is_array_or_slice_tag(tag));
     if tag >= TAG_ARRAY_SLICE_MIN {
-        (TAG_ARRAY_I + (tag >> 30) * 2, tag << 2 >> 2)
+        (tag_of_slice(tag), start_of_slice(tag))
     } else {
         (tag, 0)
     }
 }
 
 pub fn base_array_tag(tag: Tag) -> Tag {
-    debug_assert!(
-        tag == TAG_ARRAY_I
-            || tag == TAG_ARRAY_M
-            || tag == TAG_ARRAY_T
-            || tag == TAG_ARRAY_S
-            || tag >= TAG_ARRAY_SLICE_MIN
-    );
-    if tag >= TAG_ARRAY_SLICE_MIN {
-        TAG_ARRAY_I + (tag >> 30) * 2
+    debug_assert!(is_array_or_slice_tag(tag));
+    let base = if tag >= TAG_ARRAY_SLICE_MIN {
+        tag_of_slice(tag)
     } else {
         tag
-    }
+    };
+    debug_assert!(is_base_array_tag(base));
+    base
 }
 
 // Common parts of any object. Other object pointers can be coerced into a pointer to this.
@@ -649,10 +651,12 @@ impl Array {
     }
 
     pub unsafe fn set_slice_start(self: *mut Self, array_tag: Tag, start: u32) -> () {
+        debug_assert!(is_base_array_tag(array_tag));
         (*self).header.tag = slice_tag(array_tag, start)
     }
 
     pub unsafe fn restore_tag(self: *mut Self, array_tag: Tag) -> () {
+        debug_assert!(is_base_array_tag(array_tag));
         (*self).header.tag = array_tag;
     }
 }
