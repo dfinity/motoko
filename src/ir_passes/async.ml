@@ -266,8 +266,9 @@ let transform prog =
                 ("schedule", varP schedule, (* resume later *)
                   (* try await async (); schedule() catch e -> r(e) *)
                  (let v = fresh_var "call" T.unit in
+                  let n = fresh_var "nat" T.nat32 in
                   letE v
-                    (selfcallE [] (ic_replyE [] (unitE())) (varE schedule) (projE (varE vkrc) 1) (projE (varE vkrc) 2))
+                    (selfcallE [] (ic_replyE [] (unitE())) (varE schedule) (projE (varE vkrc) 1) ([n] -->* unitE ()(*projE (varE vkrc) 2*)))
                     (check_call_perform_status (varE v) (fun e -> projE (varE vkrc) 1 -*- e))))
               ]
               T.unit
