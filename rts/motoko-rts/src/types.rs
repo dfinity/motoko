@@ -515,6 +515,7 @@ pub fn tag_of_slice(tag: Tag) -> Tag {
 pub fn slice_tag(array_tag: Tag, slice_start: u32) -> Tag {
     debug_assert!(is_base_array_tag(array_tag));
     debug_assert!(slice_start >= TAG_ARRAY_SLICE_MIN && slice_start <= MAX_ARRAY_SIZE);
+    debug_assert!((array_tag - TAG_ARRAY_I) % TAG_SPACING == 0);
     (((array_tag - TAG_ARRAY_I) / TAG_SPACING) << (usize::BITS - 2)) | slice_start
 }
 
