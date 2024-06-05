@@ -8,16 +8,17 @@ actor Tuple {
         let a = t.0;
         let b = t.1;
         let t1 = (a, b);
-        assert t == t1;
+        assert:system t.0 == t1.0 and t.1 == t1.1;
         var t2 = (1, 2): (Int, Int);
         t2 := (3, 4);
-        // assert t2 != (1, 2);
-        assert t2.0 != 1 and t2.1 != 2;
-        // assert t2 == (3, 4);
-        assert t2.0 == 3 and t2.1 == 4;
+        // assert:system t2 != (1, 2);
+        assert:system t2.0 != 1 and t2.1 != 2;
+        // assert:system t2 == (3, 4);
+        assert:system t2.0 == 3 and t2.1 == 4;
     };
 
     private func getTuple(): (Int, Bool) {
+        assert:return (var:return).0 == 42 and (var:return).1 == false;
         return (42, false);
     };
 
@@ -41,9 +42,9 @@ actor Tuple {
 
     private func callTuple(): () {
         let t = getTuple();
-        assert t.0 == 42 and t.1 == false;
+        assert:system t.0 == 42 and t.1 == false;
         let (a, b) = t;
-        assert a == 42 and b == false;
+        assert:system a == 42 and b == false;
     };
 
     public func changeField(): async () {
