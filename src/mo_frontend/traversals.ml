@@ -54,8 +54,8 @@ let rec over_exp (f : exp -> exp) (exp : exp) : exp = match exp.it with
      f { exp with it = ArrayE (x, List.map (over_exp f) exps) }
   | BlockE ds ->
      f { exp with it = BlockE (List.map (over_dec f) ds) }
-  | ObjBlockE (x, dfs) ->
-     f { exp with it = ObjBlockE (x, List.map (over_dec_field f) dfs) }
+  | ObjBlockE (x, t, dfs) ->
+     f { exp with it = ObjBlockE (x, t, List.map (over_dec_field f) dfs) }
   | ObjE (bases, efs) ->
      f { exp with it = ObjE (List.map (over_exp f) bases, List.map (over_exp_field f) efs) }
   | IfE (exp1, exp2, exp3) ->

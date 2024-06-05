@@ -113,8 +113,10 @@ val compare : value -> value -> int
 
 (* Pretty Printing *)
 
-val pp_val : int -> Format.formatter -> value -> unit
-val pp_def : int -> Format.formatter -> def -> unit
+(* NB: Pass Type.Non to print value at full dynamic, not static, type. *)
+val pp_val : int -> Format.formatter -> (Type.typ * value) -> unit
+val pp_def : int -> Format.formatter -> (Type.typ * def) -> unit
 
-val string_of_val : int -> value -> string
-val string_of_def : int -> def -> string
+(* NB: Pass Type.Non to print value at full dynamic, not static, type. *)
+val string_of_val : int -> Type.typ -> value -> string
+val string_of_def : int -> Type.typ -> def -> string

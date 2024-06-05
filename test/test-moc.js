@@ -147,6 +147,13 @@ const astString = JSON.stringify(
   Motoko.parseMotoko(Motoko.readFile("ast.mo"))
 );
 
+// Run interpreter
+assert.deepStrictEqual(Motoko.run([], "actor.mo"), {
+  stdout: "`ys6dh-5cjiq-5dc` : actor {main : shared query () -> async A__9<Text>}\n",
+  stderr: "",
+  result: { error: null },
+});
+
 // Check doc comments
 assert.match(astString, /"name":"\*","args":\["Program comment\\n      multi-line"/);
 assert.match(astString, /"name":"\*","args":\["Type comment"/);
@@ -170,4 +177,41 @@ service : {
   main: () -> (T) query;
 }
 `.trim() + '\n';
-assert.deepStrictEqual(Motoko.candid('ast.mo'), {diagnostics: [], code: candid});
+assert.deepStrictEqual(Motoko.candid('ast.mo'), {
+  diagnostics: [
+    {
+      category: 'type',
+      code: 'M0194',
+      message: 'unused identifier Prim (delete or rename to wildcard `_` or `_Prim`)',
+      range: {
+        end: {
+          character: 13,
+          line: 3
+        },
+        start: {
+          character: 9,
+          line: 3
+        }
+      },
+      severity: 2,
+      source: 'ast.mo'
+    },
+    {
+      category: 'type',
+      code: 'M0194',
+      message: 'unused identifier M (delete or rename to wildcard `_` or `_M`)',
+      range: {
+        end: {
+          character: 12,
+          line: 13
+        },
+        start: {
+          character: 11,
+          line: 13
+        }
+      },
+      severity: 2,
+      source: 'ast.mo'
+    }
+  ], code: candid
+});

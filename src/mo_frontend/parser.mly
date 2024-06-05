@@ -82,13 +82,11 @@ let assign_op lhs rhs_f at =
   | [] -> e
   | ds -> BlockE (ds @ [ExpD e @? e.at]) @? at
 
-let annot_exp e t_opt =
-  match t_opt with
+let annot_exp e = function
   | None -> e
   | Some t -> AnnotE(e, t) @? span t.at e.at
 
-let annot_pat p t_opt =
-  match t_opt with
+let annot_pat p = function
   | None -> p
   | Some t -> AnnotP(p, t) @! span t.at p.at
 
@@ -110,7 +108,7 @@ let is_sugared_func_or_module dec = match dec.it with
   | LetD({it = VarP _; _} as pat, exp, None) ->
     dec.at = pat.at && pat.at = exp.at &&
     (match exp.it with
-    | ObjBlockE (sort, _) ->
+    | ObjBlockE (sort, _, _) ->
       sort.it = Type.Module
     | FuncE _ ->
       true
@@ -137,7 +135,6 @@ let desugar_func_body sp x t_opt (is_sugar, e) =
     | Type.Shared _, (None | Some { it = TupT []; _}) ->
       true, ignore_asyncE (scope_bind x.it e.at) e
     | _, _ -> (true, e)
-
 
 let share_typ t =
   match t.it with
@@ -175,29 +172,36 @@ let share_stab stab_opt dec =
      | _ -> None)
   | _ -> stab_opt
 
+let ensure_system_cap (df : dec_field) =
+  match df.it.dec.it with
+    | LetD ({ it = VarP { it = "preupgrade" | "postupgrade"; _}; _} as pat, ({ it = FuncE (x, sp, tbs, p, t_opt, s, e); _ } as value), other) ->
+      let it = LetD (pat, { value with it = FuncE (x, sp, ensure_scope_bind "" tbs, p, t_opt, s, e) }, other) in
+      { df with it = { df.it with dec = { df.it.dec with it } } }
+    | _ -> df
+
 let share_dec_field (df : dec_field) =
   match df.it.vis.it with
   | Public _ ->
     {df with it = {df.it with
       dec = share_dec df.it.dec;
       stab = share_stab df.it.stab df.it.dec}}
-  | _ ->
-    if is_sugared_func_or_module (df.it.dec) then
-      {df with it =
-        {df.it with stab =
+  | System -> ensure_system_cap df
+  | _ when is_sugared_func_or_module (df.it.dec) ->
+    {df with it =
+       {df.it with stab =
           match df.it.stab with
           | None -> Some (Flexible @@ df.it.dec.at)
           | some -> some}
-      }
-    else df
+    }
+  | _ -> df
 
-and objblock s dec_fields =
+and objblock s ty dec_fields =
   List.iter (fun df ->
     match df.it.vis.it, df.it.dec.it with
     | Public _, ClassD (_, id, _, _, _, _, _, _) when is_anon_id id ->
       syntax_error df.it.dec.at "M0158" "a public class cannot be anonymous, please provide a name"
     | _ -> ()) dec_fields;
-  ObjBlockE(s, dec_fields)
+  ObjBlockE(s, ty, dec_fields)
 
 %}
 
@@ -455,15 +459,20 @@ inst :
   | (* empty *)
     { { it = None; at = no_region; note = [] } }
   | LT ts=seplist(typ, COMMA) GT
-    { { it = Some ts; at = at $sloc; note = [] } }
+    { { it = Some (false, ts); at = at $sloc; note = [] } }
+  | LT SYSTEM ts=preceded(COMMA, typ)* GT
+    { { it = Some (true, ts); at = at $sloc; note = [] } }
 
-
-%inline typ_params_opt :
+%inline type_typ_params_opt :
   | (* empty *) { [] }
   | LT ts=seplist(typ_bind, COMMA) GT { ts }
 
+%inline typ_params_opt :
+  | ts=type_typ_params_opt { ts }
+  | LT SYSTEM ts=preceded(COMMA, typ_bind)* GT { ensure_scope_bind "" ts }
+
 typ_field :
-  | TYPE c=typ_id  tps=typ_params_opt EQ t=typ
+  | TYPE c=typ_id  tps=type_typ_params_opt EQ t=typ
     { TypF (c, tps, t) @@ at $sloc }
   | mut=var_opt x=id COLON t=typ
     { ValF (x, t, mut) @@ at $sloc }
@@ -850,20 +859,23 @@ dec_nonvar :
   | LET p=pat EQ e=exp(ob)
     { let p', e' = normalize_let p e in
       LetD (p', e', None) @? at $sloc }
-  | TYPE x=typ_id tps=typ_params_opt EQ t=typ
+  | TYPE x=typ_id tps=type_typ_params_opt EQ t=typ
     { TypD(x, tps, t) @? at $sloc }
-  | s=obj_sort xf=id_opt EQ? efs=obj_body
-    { let named, x = xf "object" $sloc in
+  | s=obj_sort xf=id_opt t=annot_opt EQ? efs=obj_body
+    { let sort = Type.(match s.it with
+                       | Actor -> "actor" | Module -> "module" | Object -> "object"
+                       | _ -> assert false) in
+      let named, x = xf sort $sloc in
       let e =
         if s.it = Type.Actor then
           AwaitE
             (Type.Fut,
              AsyncE(Type.Fut, scope_bind (anon_id "async" (at $sloc)) (at $sloc),
-              (objblock s (List.map share_dec_field efs) @? (at $sloc)))
-             @? at $sloc)
-        else objblock s efs
+                    objblock s t (List.map share_dec_field efs) @? at $sloc)
+             @? at $sloc) @? at $sloc
+        else objblock s t efs @? at $sloc
       in
-      let_or_exp named x e (at $sloc) }
+      let_or_exp named x e.it e.at }
   | sp=shared_pat_opt FUNC xf=id_opt
       tps=typ_params_opt p=pat_plain t=annot_opt fb=func_body
     { (* This is a hack to support local func declarations that return a computed async.
@@ -941,7 +953,7 @@ parse_module_header :
   | start import_list EOF {}
 
 typ_dec :
-  | TYPE x=typ_id tps=typ_params_opt EQ t=typ
+  | TYPE x=typ_id tps=type_typ_params_opt EQ t=typ
     { TypD(x, tps, t) @? at $sloc }
 
 stab_field :

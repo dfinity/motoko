@@ -4,7 +4,7 @@ queue_rules:
       - "#approved-reviews-by>=1"
       - "#changes-requested-reviews-by=0"
       - status-success=tests (ubuntu-latest)
-      - status-success=tests (macos-latest)
+      - status-success=tests (macos-12)
 
 pull_request_rules:
   - name: Automatic merge (squash)
@@ -12,7 +12,7 @@ pull_request_rules:
       - "#approved-reviews-by>=1"
       - "#changes-requested-reviews-by=0"
       - status-success=tests (ubuntu-latest)
-      - status-success=tests (macos-latest)
+      - status-success=tests (macos-12)
       - base=master
       - label=automerge-squash
     actions:
@@ -27,7 +27,7 @@ pull_request_rules:
   - name: Automatically closing successful trials
     conditions:
       - status-success=tests (ubuntu-latest)
-      - status-success=tests (macos-latest)
+      - status-success=tests (macos-12)
       - label=autoclose
     actions:
       close:

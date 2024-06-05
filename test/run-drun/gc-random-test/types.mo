@@ -2,10 +2,12 @@ import Prim "mo:prim";
 import Array "array";
 import Random "random";
 import Values "values";
+import Region "../stable-region/Region";
 
 module {
     public type RandomType = {
         name : Text;
+        allocationLimit : ?Nat;
         instantiate(random : Random.Random) : Values.RandomValue;
         readReferences(source : Values.RandomValue) : [Values.RandomValue];
         append(target : Values.RandomValue, value : Values.RandomValue) : Bool;
@@ -18,7 +20,7 @@ module {
     };
 
     public func allocationTypes() : [RandomType] {
-        [RandomObjectType, RandomArrayType, RandomBlobType, RandomBoxType, RandomTextType, RandomOptionType];
+        [RandomObjectType, RandomArrayType, RandomBlobType, RandomBoxType, RandomTextType, RandomOptionType, RandomRegionType];
     };
 
     public func getType(value : Values.RandomValue) : RandomType {
@@ -30,6 +32,7 @@ module {
             case (#box _) RandomBoxType;
             case (#text _) RandomTextType;
             case (#option _) RandomOptionType;
+            case (#region _) RandomRegionType;
         };
     };
 
@@ -57,6 +60,7 @@ module {
 
     public object NoneType {
         public let name = "none";
+        public let allocationLimit : ?Nat = null;
 
         public func instantiate(_random : Random.Random) : Values.RandomValue {
             Prim.trap("unsupported");
@@ -98,6 +102,7 @@ module {
 
     public object RandomObjectType {
         public let name = "object";
+        public let allocationLimit : ?Nat = null;
 
         public func instantiate(random : Random.Random) : Values.RandomValue {
             let number = random.next();
@@ -182,6 +187,7 @@ module {
 
     public object RandomArrayType {
         public let name = "array";
+        public let allocationLimit : ?Nat = null;
 
         public func instantiate(random : Random.Random) : Values.RandomValue {
             let maxLength = 100_000;
@@ -287,6 +293,7 @@ module {
 
     public object RandomBlobType {
         public let name = "blob";
+        public let allocationLimit : ?Nat = null;
 
         public func instantiate(random : Random.Random) : Values.RandomValue {
             let maxLength = 128 * 1024 * 1024;
@@ -341,6 +348,7 @@ module {
 
     public object RandomBoxType {
         public let name = "box";
+        public let allocationLimit : ?Nat = null;
 
         public func instantiate(random : Random.Random) : Values.RandomValue {
             let randomBigInt : Int = (random.next() * 2 ** 64 + random.next() * 2 ** 32 + random.next()) * -1 * random.next() % 2;
@@ -357,15 +365,15 @@ module {
             #box randomBox;
         };
 
-        public func readReferences(source : Values.RandomValue) : [Values.RandomValue] {
+        public func readReferences(_source : Values.RandomValue) : [Values.RandomValue] {
             [];
         };
 
-        public func append(target : Values.RandomValue, value : Values.RandomValue) : Bool {
+        public func append(_target : Values.RandomValue, _value : Values.RandomValue) : Bool {
             false;
         };
 
-        public func randomWrite(random : Random.Random, target : Values.RandomValue, value : Values.RandomValue) {};
+        public func randomWrite(_random : Random.Random, _target : Values.RandomValue, _value : Values.RandomValue) {};
 
         public func randomCheck(_random : Random.Random, value : Values.RandomValue) {
             let box = cast(value);
@@ -404,6 +412,7 @@ module {
 
     public object RandomTextType {
         public let name = "text";
+        public let allocationLimit : ?Nat = null;
 
         public func instantiate(random : Random.Random) : Values.RandomValue {
             var text = "";
@@ -414,8 +423,6 @@ module {
                 text #= "CONCATENATE-" # Prim.charToText(Prim.nat32ToChar(Prim.natToNat32(random.next() % 0xD800)));
                 count += 1;
             };
-            let randomFloat = Prim.intToFloat(random.next() * -1 * random.next() % 2) / Prim.intToFloat(random.next());
-            let randomInt64 = Prim.intToInt64Wrap((random.next() * 2 ** 32 + random.next() * -1 * random.next() % 2));
             let randomText = {
                 var randomText = text;
                 checkText = text;
@@ -423,15 +430,15 @@ module {
             #text randomText;
         };
 
-        public func readReferences(source : Values.RandomValue) : [Values.RandomValue] {
+        public func readReferences(_source : Values.RandomValue) : [Values.RandomValue] {
             [];
         };
 
-        public func append(target : Values.RandomValue, value : Values.RandomValue) : Bool {
+        public func append(_target : Values.RandomValue, _value : Values.RandomValue) : Bool {
             false;
         };
 
-        public func randomWrite(random : Random.Random, target : Values.RandomValue, value : Values.RandomValue) {};
+        public func randomWrite(_random : Random.Random, _target : Values.RandomValue, _value : Values.RandomValue) {};
 
         public func randomCheck(_random : Random.Random, value : Values.RandomValue) {
             let text = cast(value);
@@ -477,6 +484,7 @@ module {
 
     public object RandomOptionType {
         public let name = "option";
+        public let allocationLimit : ?Nat = null;
 
         public func instantiate(random : Random.Random) : Values.RandomValue {
             let types = allocationTypes();
@@ -495,11 +503,11 @@ module {
             };
         };
 
-        public func append(target : Values.RandomValue, value : Values.RandomValue) : Bool {
+        public func append(_target : Values.RandomValue, _value : Values.RandomValue) : Bool {
             false;
         };
 
-        public func randomWrite(random : Random.Random, target : Values.RandomValue, value : Values.RandomValue) {};
+        public func randomWrite(_random : Random.Random, _target : Values.RandomValue, _value : Values.RandomValue) {};
 
         public func randomCheck(random : Random.Random, value : Values.RandomValue) {
             let option = cast(value);
@@ -546,6 +554,76 @@ module {
         func cast(value : Values.RandomValue) : Values.RandomOption {
             switch value {
                 case (#option randomOption) randomOption;
+                case _ Prim.trap("invalid cast");
+            };
+        };
+    };
+
+    public object RandomRegionType {
+        public let name = "region";
+        public let allocationLimit = ?32752; // 32 * 1024 minus 16 reserved ids
+
+        public func instantiate(random : Random.Random) : Values.RandomValue {
+            let PageSize = Prim.natToNat64(64 * 1024);
+            let maxPages = 128;
+            let pageCount = Prim.natToNat64(1 + random.next() % maxPages);
+            let region = Region.new();
+            let checkValue = Prim.natToNat8(random.next() % 2 ** 8);
+            let result = Region.grow(region, pageCount);
+            assert (result != 0xFFFF_FFFF_FFFF_FFFF);
+            Region.storeNat8(region, 0, checkValue);
+            Region.storeNat8(region, pageCount * PageSize - 2, checkValue);
+            #region {
+                region;
+                checkSize = pageCount;
+                checkValue;
+            };
+        };
+
+        public func readReferences(_source : Values.RandomValue) : [Values.RandomValue] {
+            [];
+        };
+
+        public func append(_target : Values.RandomValue, _value : Values.RandomValue) : Bool {
+            false;
+        };
+
+        public func randomWrite(_random : Random.Random, _target : Values.RandomValue, _value : Values.RandomValue) {};
+
+        public func randomCheck(_random : Random.Random, value : Values.RandomValue) {
+            let PageSize = Prim.natToNat64(64 * 1024);
+            let regionValue = cast(value);
+            let region = regionValue.region;
+            assert (Region.size(region) == regionValue.checkSize);
+            assert (Region.loadNat8(region, 0) == regionValue.checkValue);
+            assert (Region.loadNat8(region, regionValue.checkSize * PageSize - 2) == regionValue.checkValue);
+        };
+
+        public func identical(left : Values.RandomValue, right : Values.RandomValue) : Bool {
+            let leftRegion = cast(left).region;
+            let rightRegion = cast(right).region;
+            Region.id(leftRegion) == Region.id(rightRegion);
+        };
+
+        public func hash(value : Values.RandomValue) : Nat {
+            let regionValue = cast(value);
+            let region = regionValue.region;
+            Prim.nat64ToNat(Region.size(region)) * 2 ** 8 + Prim.nat8ToNat(regionValue.checkValue);
+        };
+
+        public func text(value : Values.RandomValue) : Text {
+            shortText(value);
+        };
+
+        public func shortText(value : Values.RandomValue) : Text {
+            let regionValue = cast(value);
+            let region = regionValue.region;
+            "region(size = " # debug_show (Region.size(region)) # ")";
+        };
+
+        func cast(value : Values.RandomValue) : Values.RandomRegion {
+            switch value {
+                case (#region randomRegion) randomRegion;
                 case _ Prim.trap("invalid cast");
             };
         };

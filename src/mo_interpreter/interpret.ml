@@ -92,8 +92,8 @@ let trace fmt =
     Printf.printf "%s%s\n%!" (String.make (2 * !trace_depth) ' ') s
   ) fmt
 
-let string_of_val env = V.string_of_val env.flags.print_depth
-let string_of_def flags = V.string_of_def flags.print_depth
+let string_of_val env = V.string_of_val env.flags.print_depth T.Non
+let string_of_def flags = V.string_of_def flags.print_depth T.Non
 let string_of_arg env = function
   | V.Tup _ as v -> string_of_val env v
   | v -> "(" ^ string_of_val env v ^ ")"
@@ -424,8 +424,8 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | ImportE (f, ri) ->
     (match !ri with
     | Unresolved -> assert false
-    | LibPath fp ->
-      k (find fp env.libs)
+    | LibPath {path; _} ->
+      k (find path env.libs)
     | IDLPath _ -> trap exp.at "actor import"
     | PrimPath -> k (find "@prim" env.libs)
     )
@@ -482,7 +482,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | _ -> assert false)
   | ProjE (exp1, n) ->
     interpret_exp env exp1 (fun v1 -> k (List.nth (V.as_tup v1) n))
-  | ObjBlockE (obj_sort, dec_fields) ->
+  | ObjBlockE (obj_sort, _, dec_fields) ->
     interpret_obj env obj_sort.it dec_fields k
   | ObjE (exp_bases, exp_fields) ->
     let fields fld_env = interpret_exp_fields env exp_fields fld_env (fun env -> k (V.Obj env)) in

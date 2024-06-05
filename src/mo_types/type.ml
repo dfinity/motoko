@@ -1358,17 +1358,10 @@ let motoko_gc_trigger_fld =
     src = empty_src;
   }
 
-let get_candid_interface_fld =
-  { lab = "__get_candid_interface_tmp_hack";
-    typ = Func(Shared Query, Promises, [scope_bind], [], [text]);
-    src = empty_src;
-  }
-
 let well_known_actor_fields = [
     motoko_async_helper_fld;
     motoko_stable_var_info_fld;
     motoko_gc_trigger_fld;
-    get_candid_interface_fld
   ]
 
 let decode_msg_typ tfs =
@@ -1516,7 +1509,7 @@ and can_omit n t =
     | Obj (_, fs) | Variant fs -> List.for_all (fun f -> go i f.typ) fs
     | Func (s, c, tbs, ts1, ts2) ->
       let i' = i+List.length tbs in
-      List.for_all (fun tb -> (go i' tb.bound)) tbs &&
+      List.for_all (fun tb -> go i' tb.bound) tbs &&
       List.for_all (go i') ts1 &&
       List.for_all (go i') ts2
     | Typ c -> true (* assumes type defs are closed *)
@@ -1609,14 +1602,16 @@ and pp_typ_nobin vs ppf t =
       if sugar then
         List.tl vs', List.tl tbs
       else
-        vs', tbs
+        match tbs with
+        | { sort = Scope; _ } :: _ -> ("system", List.hd vs' |> snd) :: List.tl vs', tbs
+        | _ -> vs', tbs
     in
     let vs'vs = vs' @ vs in
     fprintf ppf "@[<2>%s%a%a ->@ %a@]"
       (string_of_func_sort s)
-      (pp_binds (vs'vs) vs'') tbs'
-      (sequence (pp_typ_un (vs'vs))) ts1
-      (pp_control_cod sugar c (vs'vs)) ts2
+      (pp_binds vs'vs vs'') tbs'
+      (sequence (pp_typ_un vs'vs)) ts1
+      (pp_control_cod sugar c vs'vs) ts2
   | t ->
      pp_typ_pre vs ppf t
 
@@ -1672,7 +1667,7 @@ and vars_of_binds vs bs =
 and name_of_var vs v =
   match vs with
   | [] -> v
-  | v'::vs' -> name_of_var vs' (if (fst v) = (fst v') then (fst v, snd v + 1) else v)
+  | v'::vs' -> name_of_var vs' (if fst v = fst v' then (fst v, snd v + 1) else v)
 
 and pp_bind vs ppf (v, {bound; _}) =
   if bound = Any then

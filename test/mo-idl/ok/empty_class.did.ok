@@ -1,5 +1,5 @@
-type anon_class_1_1 = 
+type _anon_class_1_1 = 
  service {
    dec: () -> () oneway;
  };
-service : () -> anon_class_1_1
+service : () -> _anon_class_1_1

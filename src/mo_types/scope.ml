@@ -2,7 +2,12 @@ module T = Type
 
 (* Scopes *)
 
-type val_env = T.typ T.Env.t
+(* For improved warning messages during unused detection:
+   - An identifier of a declaration can be renamed, e.g. prefixed by '_'.
+   - The field identifier in a field pattern cannot be renamed but can be bound to a new pattern. *)
+type val_kind = Declaration | FieldReference
+
+type val_env = (T.typ * Source.region * val_kind) T.Env.t
 type lib_env = T.typ T.Env.t
 type typ_env = T.con T.Env.t
 type con_env = T.ConSet.t
