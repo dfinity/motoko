@@ -95,7 +95,8 @@ method localTuple($Self: Ref)
       inhale acc(($prj(t1, 0)).$int,wildcard);
       exhale acc(($prj(t1, 1)).$int,wildcard);
       inhale acc(($prj(t1, 1)).$int,wildcard);
-      assume (t == t1);
+      assert ((($prj(t, 0)).$int == ($prj(t1, 0)).$int) && (($prj(t, 1)).$int == 
+         ($prj(t1, 1)).$int));
       inhale (acc(($prj(t2, 0)).$int,write) && acc(($prj(t2, 1)).$int,write));
       ($prj(t2, 0)).$int := 1;
       ($prj(t2, 1)).$int := 2;
@@ -111,8 +112,8 @@ method localTuple($Self: Ref)
       exhale acc(($prj($t_t2, 1)).$int,wildcard);
       inhale acc(($prj($t_t2, 1)).$int,wildcard);
       t2 := $t_t2;
-      assume ((($prj(t2, 0)).$int != 1) && (($prj(t2, 1)).$int != 2));
-      assume ((($prj(t2, 0)).$int == 3) && (($prj(t2, 1)).$int == 4));
+      assert ((($prj(t2, 0)).$int != 1) && (($prj(t2, 1)).$int != 2));
+      assert ((($prj(t2, 0)).$int == 3) && (($prj(t2, 1)).$int == 4));
       label $Ret; 
     }
 method getTuple($Self: Ref)
@@ -120,6 +121,7 @@ method getTuple($Self: Ref)
     requires $Perm($Self)
     ensures $Perm($Self)
     ensures (acc(($prj($Res, 0)).$int,wildcard) && acc(($prj($Res, 1)).$bool,wildcard))
+    ensures ((($prj($Res, 0)).$int == 42) && (($prj($Res, 1)).$bool == false))
     { 
       inhale (acc(($prj($Res, 0)).$int,write) && acc(($prj($Res, 1)).$bool,write));
       ($prj($Res, 0)).$int := 42;
@@ -187,10 +189,10 @@ method callTuple($Self: Ref)
       var a: Int
       var b: Bool
       t := getTuple($Self);
-      assume ((($prj(t, 0)).$int == 42) && (($prj(t, 1)).$bool == false));
+      assert ((($prj(t, 0)).$int == 42) && (($prj(t, 1)).$bool == false));
       a := ($prj(t, 0)).$int;
       b := ($prj(t, 1)).$bool;
-      assume ((a == 42) && (b == false));
+      assert ((a == 42) && (b == false));
       label $Ret; 
     }
 method changeField($Self: Ref)

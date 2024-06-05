@@ -314,7 +314,7 @@ and dec_field' ctxt d =
         let arg_preds = local_access_preds ctxt'' in
         let ret_preds, ret = rets t_opt in
         let pres = arg_preds @ pres in
-        let posts = arg_preds @ posts @ ret_preds in
+        let posts = arg_preds @ ret_preds @ posts in
         let stmts'' = stmts' @ [!!! Source.no_region (LabelS(!!! (Source.no_region) "$Ret"))] in
         (MethodI(id f, (self_id, !!! Source.no_region RefT)::method_args', ret, pres, posts, Some { stmts with it = fst stmts.it, stmts'' } ),
         PublicFunction f.it)
@@ -341,7 +341,7 @@ and dec_field' ctxt d =
         let arg_preds = local_access_preds ctxt'' in
         let ret_preds, ret = rets t_opt in
         let pres = arg_preds @ pres in
-        let posts = arg_preds @ posts @ ret_preds in
+        let posts = arg_preds @ ret_preds @ posts in
         let stmts'' = stmts' @ [!!! Source.no_region (LabelS(!!! (Source.no_region) "$Ret"))] in
         (MethodI(id f, (self_id, !!! Source.no_region RefT)::method_args', ret, pres, posts, Some { stmts with it = fst stmts.it, stmts'' } ),
         PrivateFunction f.it)
