@@ -2236,63 +2236,6 @@ module Tagged = struct
     set_tag ^^
     go cases
 
-  (* like branch_default but also pushes the scrutinee on the stack for the
-   * branch's consumption *)
-  let _branch_default_with env retty def cases =
-    let (set_o, get_o) = new_local env "o" in
-    let prep (t, code) = (t, get_o ^^ code)
-    in set_o ^^ get_o ^^ branch_default env retty def (List.map prep cases)
-(*
-  (* like branch_default_with but the tag is known statically *)
-  let branch_with env retty = function
-    | [] -> G.i Unreachable
-    | [_, code] -> code
-    | (_, code) :: cases ->
-       let (set_o, get_o) = new_local env "o" in
-       let prep (t, code) = (t, get_o ^^ code)
-       in set_o ^^ get_o ^^ branch_default env retty (get_o ^^ code) (List.map prep cases)
-
-  (* Can a value of this type be represented by a heap object with this tag? *)
-  (* Needs to be conservative, i.e. return `true` if unsure *)
-  (* This function can also be used as assertions in a lint mode, e.g. in compile_exp *)
-  let can_have_tag ty tag =
-    let open Mo_types.Type in
-    match (tag : tag) with
-    | Region ->
-      begin match normalize ty with
-      | (Con _ | Any) -> true
-      | (Prim Region) -> true
-      | (Prim _ | Obj _ | Array _ | Tup _ | Opt _ | Variant _ | Func _ | Non) -> false
-      | (Pre | Async _ | Mut _ | Var _ | Typ _) -> assert false
-      end
-    | Array ->
-      begin match normalize ty with
-      | (Con _ | Any) -> true
-      | (Array _ | Tup _) -> true
-      | (Prim _ |  Obj _ | Opt _ | Variant _ | Func _ | Non) -> false
-      | (Pre | Async _ | Mut _ | Var _ | Typ _) -> assert false
-      end
-    | Blob  ->
-      begin match normalize ty with
-      | (Con _ | Any) -> true
-      | (Prim (Text|Blob|Principal)) -> true
-      | (Prim _ | Obj _ | Array _ | Tup _ | Opt _ | Variant _ | Func _ | Non) -> false
-      | (Pre | Async _ | Mut _ | Var _ | Typ _) -> assert false
-      end
-    | Object ->
-      begin match normalize ty with
-      | (Con _ | Any) -> true
-      | (Obj _) -> true
-      | (Prim _ | Array _ | Tup _ | Opt _ | Variant _ | Func _ | Non) -> false
-      | (Pre | Async _ | Mut _ | Var _ | Typ _) -> assert false
-      end
-    | _ -> true
-
-  (* like branch_with but with type information to statically skip some branches *)
-  let _branch_typed_with env ty retty branches =
-    branch_with env retty (List.filter (fun (tag,c) -> can_have_tag ty tag) branches)
-
- *)
   let allocation_barrier env =
     (if !Flags.gc_strategy = Flags.Incremental then
       E.call_import env "rts" "allocation_barrier"
