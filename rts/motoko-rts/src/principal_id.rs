@@ -98,11 +98,7 @@ pub unsafe fn base32_of_checksummed_blob<M: Memory>(mem: &mut M, b: Value) -> Va
     let n = b.as_blob().len();
     let mut data = b.as_blob().payload_const();
 
-    let r = alloc_blob(
-        mem,
-        TAG_BLOB_T, /*?*/
-        Bytes((n.as_u32() + 4 + 4) / 5 * 8),
-    ); // contains padding
+    let r = alloc_blob(mem, TAG_BLOB_T, Bytes((n.as_u32() + 4 + 4) / 5 * 8)); // contains padding
     let blob = r.as_blob_mut();
     let dest = blob.payload_addr();
 
@@ -189,7 +185,7 @@ pub unsafe fn base32_to_blob<M: Memory>(mem: &mut M, b: Value) -> Value {
     let mut data = b.as_blob().payload_const();
 
     // Every group of 8 characters will yield 5 bytes
-    let r = alloc_blob(mem, TAG_BLOB_T, Bytes(((n.as_u32() + 7) / 8) * 5)); // we deal with padding later
+    let r = alloc_blob(mem, TAG_BLOB_B, Bytes(((n.as_u32() + 7) / 8) * 5)); // we deal with padding later
     let blob = r.as_blob_mut();
     let dest = blob.payload_addr();
 
@@ -287,4 +283,16 @@ pub unsafe fn blob_of_principal<M: Memory>(mem: &mut M, t: Value) -> Value {
     }
 
     allocation_barrier(stripped)
+}
+
+// for testing
+pub unsafe fn blob_of_ptr_size<M: Memory>(mem: &mut M, buf: *const u8, n: Bytes<u32>) -> Value {
+    let blob = alloc_blob(mem, TAG_BLOB_B, n);
+    let payload_addr = blob.as_blob_mut().payload_addr();
+    memcpy_bytes(payload_addr as usize, buf as usize, n);
+    allocation_barrier(blob)
+}
+
+pub unsafe fn blob_of_str<M: Memory>(mem: &mut M, s: &str) -> Value {
+    blob_of_ptr_size(mem, s.as_ptr(), Bytes(s.len() as u32))
 }
