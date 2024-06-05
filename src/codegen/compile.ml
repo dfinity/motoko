@@ -4707,7 +4707,7 @@ module Arr = struct
   let alloc env array_sort len =
     compile_unboxed_const Tagged.(int_of_tag (Array array_sort)) ^^
     len ^^
-    E.call_import env "rts" "alloc_array" (* TODO *)
+    E.call_import env "rts" "alloc_array"
 
   let iterate env get_array body =
     let (set_boundary, get_boundary) = new_local env "boundary" in
@@ -7562,11 +7562,11 @@ module MakeSerialization (Strm : Stream) = struct
             *)
             get_thing ^^ set_result ^^
             get_memo ^^ get_result ^^ store_unskewed_ptr ^^
-            get_memo ^^ compile_add_const 4l ^^ Blob.lit env Tagged.T (typ_hash t) ^^ store_unskewed_ptr
+            get_memo ^^ compile_add_const 4l ^^ Blob.lit env Tagged.B (typ_hash t) ^^ store_unskewed_ptr
           )
           end begin
           (* Decoded before. Check type hash *)
-          ReadBuf.read_word32 env get_data_buf ^^ Blob.lit env Tagged.T (typ_hash t) ^^
+          ReadBuf.read_word32 env get_data_buf ^^ Blob.lit env Tagged.B (typ_hash t) ^^
           G.i (Compare (Wasm.Values.I32 I32Op.Eq)) ^^
           E.else_trap_with env ("Stable memory error: Aliased at wrong type, expected: " ^ typ_hash t)
         end ^^
