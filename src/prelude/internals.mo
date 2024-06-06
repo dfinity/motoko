@@ -308,6 +308,7 @@ func @getSystemRefund() : @Refund {
 };
 
 func @shout() = (prim "print" : Text -> ()) "CLEANUP";
+func @shout2(_ : Error) = (prim "print" : Text -> ()) "CLEANUP_E";
 
 func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>, @Cont<Nat32>) {
   let w_null = func(r : @Refund, t : T) { };
