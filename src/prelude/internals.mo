@@ -345,14 +345,20 @@ func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>, @Cont<Nat32>) 
     };
   };
 
+  var cleanup : Error -> () = @shout2;
+
   func clean(_ : Nat32) {
-      @shout(); (prim "print" : Text -> ()) "EXTERN";
+    (prim "print" : Text -> ()) "EXTERN";
+
+    cleanup ((prim "cast" : ({#call_error : {err_code : Nat32}}, Text) -> Error)
+    (#call_error {err_code = 0 : Nat32}, "HAHA"));
   };
 
   func enqueue(k : @Cont<T>, r : @Cont<Error>, c : @Cont<Error/*FIXME: unit*/>) : {
     #suspend;
     #schedule : () -> ();
   } {
+    cleanup := c;
     switch result {
       case null {
         let ws_ = ws;
