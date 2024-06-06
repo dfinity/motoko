@@ -478,3 +478,13 @@ func regionStoreBlob(r : Region, offset : Nat64, val :  Blob) : () =
 let call_raw = @call_raw;
 
 func performanceCounter(counter : Nat32) : Nat64 = (prim "performanceCounter" : (Nat32) -> Nat64) counter;
+
+// predicates for motoko-san
+
+func forall<T>(f: T -> Bool): Bool {
+  (prim "forall" : <T>(T -> Bool) -> Bool) <T>(f);
+};
+
+func exists<T>(f: T -> Bool): Bool {
+  (prim "exists" : <T>(T -> Bool) -> Bool) <T>(f);
+};

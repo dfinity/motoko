@@ -1,0 +1,1 @@
+private.mo:11.16-11.22: warning [M0194], unused identifier reward (delete or rename to wildcard `_` or `_reward`)

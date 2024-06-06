@@ -1,0 +1,2 @@
+odd-even.mo:5.8-5.11: warning [M0194], unused identifier odd (delete or rename to wildcard `_` or `_odd`)
+odd-even.mo:11.8-11.12: warning [M0194], unused identifier even (delete or rename to wildcard `_` or `_even`)

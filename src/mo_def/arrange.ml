@@ -104,6 +104,7 @@ module Make (Cfg : Config) = struct
     | DebugE e            -> "DebugE"  $$ [exp e]
     | BreakE (i, e)       -> "BreakE"  $$ [id i; exp e]
     | RetE e              -> "RetE"    $$ [exp e]
+    | ResVarE             -> Atom "ResVarE"
     | AsyncE (Type.Fut, tb, e) -> "AsyncE"  $$ [typ_bind tb; exp e]
     | AsyncE (Type.Cmp, tb, e) -> "AsyncE*" $$ [typ_bind tb; exp e]
     | AwaitE (Type.Fut, e)     -> "AwaitE"  $$ [exp e]
@@ -116,6 +117,7 @@ module Make (Cfg : Config) = struct
     | AssertE (Loop_entry, e)    -> "Loop_entry" $$ [exp e]
     | AssertE (Loop_continue, e) -> "Loop_continue" $$ [exp e]
     | AssertE (Loop_exit, e)     -> "Loop_exit" $$ [exp e]
+    | AssertE (Loop_invariant, e)-> "Loop_invariant" $$ [exp e]
     | AssertE (Concurrency s, e) -> "Concurrency"^s $$ [exp e]
     | AnnotE (e, t)       -> "AnnotE"  $$ [exp e; typ t]
     | OptE e              -> "OptE"    $$ [exp e]

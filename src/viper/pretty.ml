@@ -1,5 +1,6 @@
 open Source
 open Syntax
+open Prelude
 
 open Format
 
@@ -26,6 +27,11 @@ let rec pp_prog ppf p =
 
 and pp_item ppf i =
   match i.it with
+  | AdtI (id, params, cons) ->
+    fprintf ppf "@[<2>adt %s@;%a@;%a@]"
+      id.it
+      pp_adt_params params
+      pp_adt_cons cons
   | FieldI (id, typ) ->
     fprintf ppf "@[<2>field %s:@ %a@]"
       id.it
@@ -41,6 +47,29 @@ and pp_item ppf i =
       pp_block_opt bo
   | InvariantI (inv_name, e) -> (* TODO: srcloc mapping *)
     fprintf ppf "@[<2>define %s($Self) (%a)@]" inv_name pp_exp e
+
+and pp_adt_params ppf = function
+  | []     -> ()
+  | params ->
+      fprintf ppf "[%a]"
+        (pp_print_list pp_adt_param ~pp_sep:comma) params
+
+and pp_adt_param ppf param = fprintf ppf "%s" param.it
+
+and pp_adt_cons ppf cons =
+  fprintf ppf "@[<v 2>{ %a }@]"
+    (pp_print_list pp_adt_con) cons
+
+and pp_adt_con ppf con =
+  fprintf ppf "%s@[(%a)@]"
+    con.con_name.it
+    (pp_print_list ~pp_sep:comma pp_adt_con_field) (List.mapi (fun i fld -> con, i, fld) con.con_fields)
+
+and pp_adt_con_field ppf (con, i, con_field) =
+  fprintf ppf "%s$%s : %a"
+    con.con_name.it
+    (string_of_int i)
+    pp_typ con_field
 
 and pp_block_opt ppf = function
   | None -> ()
@@ -58,6 +87,9 @@ and pp_decl ppf decl =
     fprintf ppf "@[<v 0>var %s: %a@]"
     id.it
     pp_typ typ
+
+and pp_binder ppf (id, typ) =
+    fprintf ppf "@[%s : %a@]" id.it pp_typ typ
 
 and pp_pres ppf exps =
    fprintf ppf "@[<v 0>%a@]" (pp_print_list pp_pre) exps
@@ -92,6 +124,14 @@ and pp_typ ppf t =
   | IntT -> pr ppf "Int"
   | BoolT -> pr ppf "Bool"
   | RefT -> pr ppf "Ref"
+  | ArrayT -> pr ppf "Array"
+  | TupleT -> pr ppf "Tuple"
+  | OptionT t -> fprintf ppf "@[Option[%a]@]" pp_typ t
+  | ConT(con, []) -> fprintf ppf "%s" con.it
+  | ConT(con, ts) ->
+      fprintf ppf "@[%s[%a]@]"
+        con.it
+        (pp_print_list ~pp_sep:comma pp_typ) ts
 
 and pp_exp ppf exp =
   match exp.it with
@@ -99,8 +139,10 @@ and pp_exp ppf exp =
      fprintf ppf "%s" id.it
   | FldAcc fldacc ->
      pp_fldacc ppf fldacc
-  | MacroCall (m, e) ->
-     fprintf ppf "@[%s(%a)@]" m pp_exp e
+  | FldE s ->
+     fprintf ppf "%s" s
+  | CallE (m, es) ->
+     fprintf ppf "@[%s(%a)@]" m (pp_print_list pp_exp ~pp_sep:comma) es
   | NotE e ->
      fprintf ppf "@[(!%a)@]" pp_exp e
   | MinusE e ->
@@ -127,6 +169,8 @@ and pp_exp ppf exp =
     fprintf ppf "@[old(%a)@]" pp_exp e
   | PermE p -> pp_perm ppf p
   | AccE (fldacc, perm) -> fprintf ppf "@[acc(%a,%a)@]" pp_fldacc fldacc pp_exp perm
+  | ForallE (binders, exp) -> fprintf ppf "@[forall %a :: %a@]" (pp_print_list ~pp_sep:comma pp_binder) binders pp_exp exp
+  | ExistsE (binders, exp) -> fprintf ppf "@[exists %a :: %a@]" (pp_print_list ~pp_sep:comma pp_binder) binders pp_exp exp
   | _ -> fprintf ppf "@[// pretty printer not implemented for node at %s@]" (string_of_region exp.at)
 
 and pp_perm ppf perm =
@@ -138,7 +182,7 @@ and pp_perm ppf perm =
 
 and pp_stmt ppf stmt =
   marks := stmt.at :: !marks;
-  fprintf ppf "\017%a\019"
+  fprintf ppf "\017%a\019;"
     pp_stmt' stmt.it
 
 and pp_stmt' ppf = function
@@ -152,9 +196,10 @@ and pp_stmt' ppf = function
       pp_exp exp1
       pp_seqn s1
       pp_seqn s2
-  | WhileS (exp, _, s) -> (* TODO: Invariant *)
-    fprintf ppf "@[<v 2>while (%a) {@ %a}@]"
+  | WhileS (exp, invs, s) ->
+    fprintf ppf "@[<v 2>while (%a)@;@[<v 0>%a@]@;%a@]"
       pp_exp exp
+      (pp_print_list pp_loop_inv) invs
       pp_seqn s
   | VarAssignS (id, exp) ->
     fprintf ppf "@[<v 2>%s := %a@]"
@@ -187,37 +232,32 @@ and pp_stmt' ppf = function
       max
       pp_exp exp
   | MethodCallS (rs, m, args) ->
-    let () = match rs with
-    | [] -> ()
-    | r :: rs ->
-      let () = fprintf ppf "@[%s@]" r.it in
-      List.iter (fun r ->
-        fprintf ppf ", @[%s@]" r.it
-      ) rs
-    in
     let () = if rs != [] then
-      fprintf ppf " := "
+      fprintf ppf "@[%a@] := " (pp_print_list ~pp_sep:comma pp_res_var) rs
     in
     let () = fprintf ppf "@[%s(@]" m.it in
-    let () = match args with
-    | [] -> ()
-    | arg :: args ->
-      let () = fprintf ppf "@[%a@]" pp_exp arg in
-      fprintf ppf "@[%a@]" (pp_print_list ~pp_sep:comma pp_exp) args
-    in
+    let () = fprintf ppf "@[%a@]" (pp_print_list ~pp_sep:comma pp_exp) args in
     fprintf ppf ")"
-  | LabelS (_, _) -> failwith "LabelS?"
+  | LabelS lbl ->
+      fprintf ppf "@[label %s@]" lbl.it
+  | GotoS lbl ->
+      fprintf ppf "@[goto %s@]" lbl.it
+
+and pp_res_var ppf r = fprintf ppf "%s" r.it
 
 and pp_fldacc ppf fldacc =
   match fldacc with
   | (exp1, id) ->
     fprintf ppf "@[(%a).%s@]" pp_exp exp1 id.it
 
+and pp_loop_inv ppf inv =
+    fprintf ppf "invariant %a" pp_exp inv
+
 let prog_mapped file p =
     marks := [];
     let b = Buffer.create 16 in
     let ppf = Format.formatter_of_buffer b in
-    Format.fprintf ppf "@[%a@]" pp_prog p;
+    Format.fprintf ppf "@[%s@]@.@.@[%a@]" prelude pp_prog p;
     Format.pp_print_flush ppf ();
     let in_file { left; right } =
       let left, right = { left with file }, { right with file } in

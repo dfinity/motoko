@@ -186,6 +186,7 @@ and exp' =
   | LabelE of id * typ * exp                   (* label *)
   | BreakE of id * exp                         (* break *)
   | RetE of exp                                (* return *)
+  | ResVarE                                    (* name of result *)
   | DebugE of exp                              (* debugging *)
   | AsyncE of async_sort * typ_bind * exp      (* future / computation *)
   | AwaitE of async_sort * exp                 (* await *)
@@ -201,7 +202,7 @@ and exp' =
 *)
 
 and assert_kind =
-  | Runtime | Static | Invariant | Precondition | Postcondition | Concurrency of string | Loop_entry | Loop_continue | Loop_exit
+  | Runtime | Static | Invariant | Precondition | Postcondition | Concurrency of string | Loop_entry | Loop_continue | Loop_exit | Loop_invariant
 
 and dec_field = dec_field' Source.phrase
 and dec_field' = {dec : dec; vis : vis; stab: stab option}
