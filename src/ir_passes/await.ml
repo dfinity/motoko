@@ -51,7 +51,7 @@ let precont k thunk =
     MetaCont (typ, fun v -> finally (cont v))
 
 (* Named labels for break, special labels for return and throw *)
-type label = Return | Throw | Named of string
+type label = Return | Throw | Cleanup | Named of string
 
 let ( -@- ) k exp2 =
   match k with
@@ -400,8 +400,10 @@ and c_exp' context exp k =
         | Cont k -> Cont (precont k exp2)
         | Label -> assert false
       in
-      let context' = LabelEnv.mapi (function | Return | Named _ -> lab | Throw -> fun c -> c) context in
+      let context' = LabelEnv.mapi (function | Return | Named _ -> lab | Cleanup | Throw -> fun c -> c) context in
       let context'' = LabelEnv.add Throw (Cont (ContVar throw)) context' in
+      let c = match LabelEnv.find_opt Cleanup context'' with Some c -> c | None -> Cont (ContVar (var "@shout" (err_contT T.unit))) in
+      let context''' = LabelEnv.add Cleanup (lab c) context'' in
       blockE
         [ let e = fresh_var "e" T.catch in
           funcD throw e {
@@ -410,7 +412,7 @@ and c_exp' context exp k =
             note = Note.{ def with typ = typ_cases cases'; eff = T.Await; (* shouldn't matter *) }
           }
         ]
-        (c_exp context'' exp1 (ContVar k))
+        (c_exp context''' exp1 (ContVar k))
     ))
   | LoopE exp1 ->
     c_loop context k exp1
@@ -468,16 +470,22 @@ and c_exp' context exp k =
       | Some (Cont r) -> r
       | _ -> assert false
     in
+    let c = match LabelEnv.find_opt Cleanup context with
+      | Some (Cont r) -> r
+      | None -> ContVar (var "@shout" (err_contT T.unit))
+      | _ -> assert false
+    in
     letcont r (fun r ->
     letcont k (fun k ->
-      let krc = tupE [varE k; varE r; varE r(*FIXME*)] in
+    letcont c (fun c ->
+      let krc = tupE [varE k; varE r; varE c] in
       match eff exp1 with
       | T.Triv ->
         cps_awaitE s (typ_of_var k) (t_exp context exp1) krc
       | T.Await ->
         c_exp context exp1
           (meta (typ exp1) (fun v1 -> (cps_awaitE s (typ_of_var k) (varE v1) krc)))
-    ))
+    )))
   | DeclareE (id, typ, exp1) ->
     unary context k (fun v1 -> e (DeclareE (id, typ, varE v1))) exp1
   | DefineE (id, mut, exp1) ->
