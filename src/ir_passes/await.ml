@@ -20,7 +20,7 @@ type kont = ContVar of var
 let meta typ exp =
   let expanded = ref false in
   let exp v =
-    assert (not(!expanded));
+    assert (not !expanded);
     expanded := true;
     exp v
   in
