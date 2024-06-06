@@ -2,4 +2,3 @@ issue2062.mo:2.3-3.11: type error [M0096], expression of type
   ()
 cannot produce expected type
   Nat
-issue2062.mo:1.6-1.9: warning [M0194], unused identifier fac (delete or rename to wildcard `_` or `_fac`)

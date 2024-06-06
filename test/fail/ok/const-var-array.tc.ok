@@ -1,3 +1,2 @@
 const-var-array.mo:1.17-1.22: type error [M0091], mutable array expression cannot produce expected type
   [Nat]
-const-var-array.mo:1.5-1.6: warning [M0194], unused identifier a (delete or rename to wildcard `_` or `_a`)
