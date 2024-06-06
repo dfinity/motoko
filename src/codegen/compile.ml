@@ -9383,17 +9383,7 @@ module FuncDec = struct
     (* result is a function that accepts a list of closure getters, from which
        the first and second must be the reply and reject continuations. *)
     fun closure_getters ->
-    let (set_cb_index, get_cb_index) = new_local env "cb_index" in
-    assert (List.length closure_getters > 2);
-
-(*
-        List.nth closure_getters 2 ^^
-        Closure.prepare_closure_call env ^^
-        compile_unboxed_zero ^^
-        List.nth closure_getters 2 ^^
-        Closure.call_closure env 1 0 ^^
- *)
-    
+      let set_cb_index, get_cb_index = new_local env "cb_index" in
       Arr.lit env closure_getters ^^
       ContinuationTable.remember env ^^
       set_cb_index ^^
@@ -11815,7 +11805,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_vanilla env ae e ^^ set_arg ^^
     compile_exp_vanilla env ae k ^^ set_k ^^
     compile_exp_vanilla env ae r ^^ set_r ^^
-    compile_exp_vanilla env ae c ^^ set_c(*FIXME*) ^^
+    compile_exp_vanilla env ae c ^^ set_c ^^
     FuncDec.ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r get_c add_cycles
     end
   | ICCallRawPrim, [p;m;a;k;r] ->
