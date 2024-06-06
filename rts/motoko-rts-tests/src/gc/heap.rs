@@ -497,7 +497,7 @@ fn create_dynamic_heap(
         let mut heap_offset = continuation_table_offset;
 
         let continuation_table_address = u32::try_from(heap_start + heap_offset).unwrap();
-        write_word(dynamic_heap, heap_offset, TAG_ARRAY_M); // TODO: TBR
+        write_word(dynamic_heap, heap_offset, TAG_ARRAY_M);
         heap_offset += WORD_SIZE;
 
         if incremental {
