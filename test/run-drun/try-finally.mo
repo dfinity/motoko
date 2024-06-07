@@ -6,7 +6,7 @@ actor A {
 
     func t0() : async () {
         try { debugPrint "IN"; await m(); assert false }
-        case { debugPrint "OUT" };
+        finally { debugPrint "OUT" };
     };
 
 /*  nested `try` won't work
@@ -16,7 +16,7 @@ actor A {
                 debugPrint "IN1";
                 throw error "IN1";
             }
-            case { debugPrint "OUT1" };
+            finally { debugPrint "OUT1" };
         }
         catch _ { debugPrint "CAUGHT1" }
     };
@@ -28,7 +28,7 @@ actor A {
             throw error "IN2";
         }
         else catch _ { debugPrint "CAUGHT2" }
-        case { debugPrint "OUT2" };
+        finally { debugPrint "OUT2" };
     };
 
     //TODO: func t2t() : async Int { ... }
@@ -39,7 +39,7 @@ actor A {
             await m();
             return;
         }
-        case { debugPrint "OUT3" };
+        finally { debugPrint "OUT3" };
     };
 /*
     // check that finally not running twice
@@ -47,7 +47,7 @@ actor A {
         try {
             debugPrint "IN4";
         }
-        case { debugPrint "OUT4" };
+        finally { debugPrint "OUT4" };
         return;
     };
 */
@@ -59,7 +59,7 @@ actor A {
             break out;
             debugPrint "DEAD5";
         }
-        case { debugPrint "OUT5" };
+        finally { debugPrint "OUT5" };
         debugPrint "AFTER5"
     };
 
@@ -73,10 +73,10 @@ actor A {
                 debugPrint "InnerLIVE6";
                 break out;
                 debugPrint "InnerDEAD6";
-            } case { debugPrint "InnerOUT6" };
+            } finally { debugPrint "InnerOUT6" };
             debugPrint "DEAD6";
         }
-        case { debugPrint "OUT6" };
+        finally { debugPrint "OUT6" };
         debugPrint "AFTER6"
     };
 */

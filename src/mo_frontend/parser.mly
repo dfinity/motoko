@@ -210,7 +210,7 @@ and objblock s ty dec_fields =
 %token LET VAR
 %token LPAR RPAR LBRACKET RBRACKET LCURLY RCURLY
 %token AWAIT AWAITSTAR ASYNC ASYNCSTAR BREAK CASE CATCH CONTINUE DO LABEL DEBUG
-%token IF IGNORE IN ELSE SWITCH LOOP WHILE FOR RETURN TRY THROW WITH
+%token IF IGNORE IN ELSE SWITCH LOOP WHILE FOR RETURN TRY THROW FINALLY WITH
 %token ARROW ASSIGN
 %token FUNC TYPE OBJECT ACTOR CLASS PUBLIC PRIVATE SHARED SYSTEM QUERY
 %token SEMICOLON SEMICOLON_EOL COMMA COLON SUB DOT QUEST BANG
@@ -709,9 +709,9 @@ exp_un(B) :
     { IfE(b, e1, e2) @? at $sloc }
   | TRY e1=exp_nest c=catch
     { TryE(e1, [c], None) @? at $sloc }
-  | TRY e1=exp_nest CASE e2=exp_nest (* FIXME: needs a different keyword, provisional *)
+  | TRY e1=exp_nest FINALLY e2=exp_nest (* FIXME: needs a different keyword (`DO`?), provisional *)
     { TryE(e1, [], Some e2) @? at $sloc }
-  | TRY e1=exp_nest ELSE c=catch CASE e2=exp_nest (* FIXME: maximal kludge, just to avoid YACC errors *)
+  | TRY e1=exp_nest ELSE c=catch FINALLY e2=exp_nest
     { TryE(e1, [c], Some e2) @? at $sloc }
 (* TODO: enable multi-branch TRY (already supported by compiler)
   | TRY e=exp_nest LCURLY cs=seplist(case, semicolon) RCURLY
