@@ -1,5 +1,12 @@
 # Motoko compiler changelog
 
+## 0.11.2 (to come)
+
+* motoko (`moc`)
+
+  * bugfix: Fix the detection of unused declarations in switch and catch cases (#4560).
+  * improvement: Only warn on unused identifiers if type checking is error-free (#4560).
+
 ## 0.11.1 (2024-03-15)
 
 * motoko (`moc`)
