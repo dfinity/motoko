@@ -2,4 +2,3 @@ M0127.mo:2.3-2.40: type error [M0127], system function preupgrade is declared wi
   <system>Bool -> ()
 instead of expected type
   <system>() -> ()
-M0127.mo:2.26-2.29: warning [M0194], unused identifier foo (delete or rename to wildcard `_` or `_foo`)

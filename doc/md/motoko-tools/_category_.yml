@@ -1,0 +1,4 @@
+position: 5
+label: 'Motoko tools'
+collapsible: true # make the category collapsible
+collapsed: true 

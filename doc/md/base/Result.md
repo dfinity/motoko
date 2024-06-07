@@ -151,3 +151,21 @@ func assertErr(r : Result<Any, Any>)
 ```
 
 Asserts that its argument is an `#err` result, traps otherwise.
+
+## Function `fromUpper`
+``` motoko no-repl
+func fromUpper<Ok, Err>(result : {#Ok : Ok; #Err : Err}) : Result<Ok, Err>
+```
+
+Converts an upper cased `#Ok`, `#Err` result type into a lowercased `#ok`, `#err` result type.
+On the IC, a common convention is to use `#Ok` and `#Err` as the variants of a result type,
+but in Motoko, we use `#ok` and `#err` instead.
+
+## Function `toUpper`
+``` motoko no-repl
+func toUpper<Ok, Err>(result : Result<Ok, Err>) : {#Ok : Ok; #Err : Err}
+```
+
+Converts a lower cased `#ok`, `#err` result type into an upper cased `#Ok`, `#Err` result type.
+On the IC, a common convention is to use `#Ok` and `#Err` as the variants of a result type,
+but in Motoko, we use `#ok` and `#err` instead.
