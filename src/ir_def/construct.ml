@@ -185,15 +185,15 @@ let ic_rejectE e =
 let ic_callE f e k r c =
   let es = [f; e; k; r; c] in
   let eff = List.(map eff es |> fold_left max_eff T.Triv) in
-  { it = PrimE (ICCallPrim (Option.map id_of_var None(*FIXME: revert*)), es);
+  { it = PrimE (ICCallPrim, es);
     at = no_region;
     note = Note.{ def with typ = T.unit; eff }
   }
 
-let ic_call_rawE p m a k r c = (* FIXME *)
-  let es = [p; m; a; k; r] in
+let ic_call_rawE p m a k r c =
+  let es = [p; m; a; k; r; c] in
   let eff = List.(map eff es |> fold_left max_eff T.Triv) in
-  { it = PrimE (ICCallRawPrim (*c*), es);
+  { it = PrimE (ICCallRawPrim, es);
     at = no_region;
     note = Note.{ def with typ = T.unit; eff }
   }

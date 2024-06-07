@@ -11790,7 +11790,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | ICCallerPrim, [] ->
     SR.Vanilla, IC.caller env
 
-  | ICCallPrim _, [f;e;k;r;c] ->
+  | ICCallPrim, [f;e;k;r;c] ->
     SR.unit, begin
     (* TBR: Can we do better than using the notes? *)
     let _, _, _, ts1, _ = Type.as_func f.note.Note.typ in
@@ -11808,12 +11808,13 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_vanilla env ae c ^^ set_c ^^
     FuncDec.ic_call env ts1 ts2 get_meth_pair get_arg get_k get_r get_c add_cycles
     end
-  | ICCallRawPrim, [p;m;a;k;r] ->
+  | ICCallRawPrim, [p;m;a;k;r;c] ->
     SR.unit, begin
-    let (set_meth_pair, get_meth_pair) = new_local env "meth_pair" in
-    let (set_arg, get_arg) = new_local env "arg" in
-    let (set_k, get_k) = new_local env "k" in
-    let (set_r, get_r) = new_local env "r" in
+    let set_meth_pair, get_meth_pair = new_local env "meth_pair" in
+    let set_arg, get_arg = new_local env "arg" in
+    let set_k, get_k = new_local env "k" in
+    let set_r, get_r = new_local env "r" in
+    let set_c, get_c = new_local env "c" in
     let add_cycles = Internals.add_cycles env ae in
     compile_exp_vanilla env ae p ^^
     compile_exp_vanilla env ae m ^^ Text.to_blob env ^^
@@ -11822,7 +11823,8 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_vanilla env ae a ^^ set_arg ^^
     compile_exp_vanilla env ae k ^^ set_k ^^
     compile_exp_vanilla env ae r ^^ set_r ^^
-    FuncDec.ic_call_raw env get_meth_pair get_arg get_k get_r get_r(*FIXME*) add_cycles
+    compile_exp_vanilla env ae c ^^ set_c ^^
+    FuncDec.ic_call_raw env get_meth_pair get_arg get_k get_r get_c add_cycles
     end
 
   | ICMethodNamePrim, [] ->

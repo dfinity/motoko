@@ -594,28 +594,29 @@ let rec check_exp env (exp:Ir.exp) : unit =
       T.Non <: t
     | ICCallerPrim, [] ->
       T.caller <: t
-    | ICCallPrim _, [exp1; exp2; k; r; c] ->
+    | ICCallPrim, [exp1; exp2; k; r; c] ->
       let t1 = T.promote (typ exp1) in
       begin match t1 with
       | T.Func (sort, T.Replies, _ (*TBR*), arg_tys, ret_tys) ->
         let t_arg = T.seq arg_tys in
         typ exp2 <: t_arg;
         check_concrete env exp.at t_arg;
-        typ k <: T.Func (T.Local, T.Returns, [], ret_tys, []);
-        typ r <: T.Func (T.Local, T.Returns, [], [T.error], []);
-        typ c <: T.Func (T.Local, T.Returns, [], [T.nat32], []);
+        typ k <: T.(Func (Local, Returns, [], ret_tys, []));
+        typ r <: T.(Func (Local, Returns, [], [error], []));
+        typ c <: T.(Func (Local, Returns, [], [nat32(*FIXME*)], []));
       | T.Non -> () (* dead code, not much to check here *)
       | _ ->
          error env exp1.at "expected function type, but expression produces type\n  %s"
            (T.string_of_typ_expand t1)
       end
       (* TODO: T.unit <: t ? *)
-    | ICCallRawPrim, [exp1; exp2; exp3; k; r] ->
+    | ICCallRawPrim, [exp1; exp2; exp3; k; r; c] ->
       typ exp1 <: T.principal;
       typ exp2 <: T.text;
       typ exp3 <: T.blob;
-      typ k <: T.Func (T.Local, T.Returns, [], [T.blob], []);
-      typ r <: T.Func (T.Local, T.Returns, [], [T.error], []);
+      typ k <: T.(Func (Local, Returns, [], [blob], []));
+      typ r <: T.(Func (Local, Returns, [], [error], []));
+      typ c <: T.(Func (Local, Returns, [], [nat32(*FIXME*)], []));
       T.unit <: t
     | ICMethodNamePrim, [] ->
       T.text <: t

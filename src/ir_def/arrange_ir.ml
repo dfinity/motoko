@@ -111,7 +111,7 @@ and prim = function
   | ICReplyPrim ts    -> "ICReplyPrim" $$ List.map typ ts
   | ICRejectPrim      -> Atom "ICRejectPrim"
   | ICCallerPrim      -> Atom "ICCallerPrim"
-  | ICCallPrim _      -> Atom "ICCallPrim"
+  | ICCallPrim        -> Atom "ICCallPrim"
   | ICCallRawPrim     -> Atom "ICCallRawPrim"
   | ICMethodNamePrim  -> Atom "ICMethodNamePrim"
   | ICStableWrite t   -> "ICStableWrite" $$ [typ t]
