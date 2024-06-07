@@ -125,3 +125,20 @@ info: installed dfx 0.7.2
 info: set default version to dfx 0.7.2
 ```
 
+### Pass flags to `moc` in `dfx.json`
+
+You can pass flags directly to `moc` by adding an `args` field in your Motoko canister's description in your project's `dfx.json` file:
+
+Here is an example `dfx.json` canister configuration that uses `args`:
+
+```json
+...
+  "canisters": {
+    "hello": {
+      "type": "motoko",
+      "main": "src/hello/main.mo",
+      "args": "-v --compacting-gc -no-check-ir"
+    },
+  }
+...
+```
