@@ -3,7 +3,7 @@ use crate::{
     types::{Region, Value, TAG_REGION},
 };
 
-use super::{Serializer, StableValue, StaticScanner};
+use super::{Serializer, StableObjectKind, StableValue, StaticScanner};
 
 #[repr(C)]
 pub struct StableRegion {
@@ -35,7 +35,12 @@ impl Serializer<Region> for StableRegion {
         }
     }
 
-    unsafe fn deserialize_static_part(&self, target_region: *mut Region) {
+    unsafe fn deserialize_static_part(
+        &self,
+        target_region: *mut Region,
+        object_kind: StableObjectKind,
+    ) {
+        debug_assert_eq!(object_kind, StableObjectKind::Region);
         (*target_region).header.tag = TAG_REGION;
         (*target_region)
             .header

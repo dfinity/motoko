@@ -9,7 +9,9 @@ use crate::stabilization::serialization::SerializationContext;
 use crate::tommath_bindings::mp_digit;
 use crate::types::{size_of, BigInt, Bytes, Value, TAG_BIGINT};
 
-use super::{round_to_u64, Serializer, StableToSpace, StableValue, StaticScanner};
+use super::{
+    round_to_u64, Serializer, StableObjectKind, StableToSpace, StableValue, StaticScanner,
+};
 
 // Tom's math library, as configured for Motoko RTS, encodes a big numbers as an array of 32-bit
 // elements, where each element stores 28 bits of the number while its highest 4 bits are zero.
@@ -137,14 +139,24 @@ impl Serializer<BigInt> for StableBigInt {
             .skip(rounded_length as usize);
     }
 
-    unsafe fn allocate_deserialized<M: Memory>(&self, main_memory: &mut M) -> Value {
+    unsafe fn allocate_deserialized<M: Memory>(
+        &self,
+        main_memory: &mut M,
+        object_kind: StableObjectKind,
+    ) -> Value {
+        debug_assert_eq!(object_kind, StableObjectKind::BigInt);
         let elements = self.deserialized_elements();
         let payload = mp_calloc(main_memory, elements, Bytes(ELEMENT_SIZE)) as *mut mp_digit;
         let bigint = BigInt::from_payload(payload);
         Value::from_ptr(bigint as usize)
     }
 
-    unsafe fn deserialize_static_part(&self, target_bigint: *mut BigInt) {
+    unsafe fn deserialize_static_part(
+        &self,
+        target_bigint: *mut BigInt,
+        object_kind: StableObjectKind,
+    ) {
+        debug_assert_eq!(object_kind, StableObjectKind::BigInt);
         debug_assert_eq!((*target_bigint).header.tag, TAG_BIGINT);
         let elements = self.deserialized_elements();
         debug_assert_eq!((*target_bigint).mp_int.alloc as usize, elements);

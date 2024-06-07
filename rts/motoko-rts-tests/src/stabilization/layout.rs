@@ -8,11 +8,19 @@ pub unsafe fn test() {
 
 fn test_stable_tags() {
     for object_kind in [
-        StableObjectKind::Array,
+        StableObjectKind::ArrayImmutable,
+        StableObjectKind::ArrayMutable,
+        StableObjectKind::ArrayTuple,
+        StableObjectKind::ArraySharedFunction,
         StableObjectKind::MutBox,
         StableObjectKind::Object,
-        StableObjectKind::Blob,
-        StableObjectKind::Bits64,
+        StableObjectKind::BlobBytes,
+        StableObjectKind::BlobText,
+        StableObjectKind::BlobPrincipal,
+        StableObjectKind::BlobActor,
+        StableObjectKind::Bits64Unsigned,
+        StableObjectKind::Bits64Signed,
+        StableObjectKind::Bits64Float,
         StableObjectKind::Region,
         StableObjectKind::Variant,
         StableObjectKind::Concat,

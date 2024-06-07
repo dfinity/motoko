@@ -29,9 +29,10 @@ use crate::{
     memory::Memory,
     rts_trap_with,
     types::{
-        size_of, Tag, Value, TAG_ARRAY, TAG_ARRAY_SLICE_MIN, TAG_BIGINT, TAG_BITS64, TAG_BLOB,
-        TAG_CONCAT, TAG_MUTBOX, TAG_OBJECT, TAG_OBJ_IND, TAG_REGION, TAG_SOME, TAG_VARIANT,
-        TRUE_VALUE,
+        base_array_tag, size_of, Tag, Value, TAG_ARRAY_I, TAG_ARRAY_M, TAG_ARRAY_S,
+        TAG_ARRAY_SLICE_MIN, TAG_ARRAY_T, TAG_BIGINT, TAG_BITS64_F, TAG_BITS64_S, TAG_BITS64_U,
+        TAG_BLOB_A, TAG_BLOB_B, TAG_BLOB_P, TAG_BLOB_T, TAG_CONCAT, TAG_MUTBOX, TAG_OBJECT,
+        TAG_OBJ_IND, TAG_REGION, TAG_SOME, TAG_VARIANT, TRUE_VALUE,
     },
 };
 
@@ -64,19 +65,27 @@ mod stable_variant;
 
 /// Different kinds of objects used in the stable format.
 #[repr(u64)]
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub enum StableObjectKind {
-    Array = 1,
-    MutBox = 2,
-    Object = 3,
-    Blob = 4,
-    Bits64 = 5,
-    Region = 6,
-    Variant = 7,
-    Concat = 8,
-    BigInt = 9,
-    ObjInd = 10,
-    Some = 11,
+    ArrayImmutable = 1,
+    ArrayMutable = 2,
+    ArrayTuple = 3,
+    ArraySharedFunction = 4,
+    MutBox = 5,
+    Object = 6,
+    BlobBytes = 7,
+    BlobText = 8,
+    BlobPrincipal = 9,
+    BlobActor = 10,
+    Bits64Unsigned = 11,
+    Bits64Signed = 12,
+    Bits64Float = 13,
+    Region = 14,
+    Variant = 15,
+    Concat = 16,
+    BigInt = 17,
+    ObjInd = 18,
+    Some = 19,
 }
 
 #[repr(C)]
@@ -90,11 +99,19 @@ impl StableObjectKind {
 
 impl StableTag {
     pub fn decode(&self) -> StableObjectKind {
-        const STABLE_TAG_ARRAY: u64 = StableObjectKind::Array as u64;
+        const STABLE_TAG_ARRAY_IMMUTABLE: u64 = StableObjectKind::ArrayImmutable as u64;
+        const STABLE_TAG_ARRAY_MUTABLE: u64 = StableObjectKind::ArrayMutable as u64;
+        const STABLE_TAG_ARRAY_TUPLE: u64 = StableObjectKind::ArrayTuple as u64;
+        const STABLE_TAG_ARRAY_SHARED_FUNCTION: u64 = StableObjectKind::ArraySharedFunction as u64;
         const STABLE_TAG_MUTBOX: u64 = StableObjectKind::MutBox as u64;
         const STABLE_TAG_OBJECT: u64 = StableObjectKind::Object as u64;
-        const STABLE_TAG_BLOB: u64 = StableObjectKind::Blob as u64;
-        const STABLE_TAG_BITS64: u64 = StableObjectKind::Bits64 as u64;
+        const STABLE_TAG_BLOB_BYTES: u64 = StableObjectKind::BlobBytes as u64;
+        const STABLE_TAG_BLOB_TEXT: u64 = StableObjectKind::BlobText as u64;
+        const STABLE_TAG_BLOB_PRINCIPAL: u64 = StableObjectKind::BlobPrincipal as u64;
+        const STABLE_TAG_BLOB_ACTOR: u64 = StableObjectKind::BlobActor as u64;
+        const STABLE_TAG_BITS64_UNSIGNED: u64 = StableObjectKind::Bits64Unsigned as u64;
+        const STABLE_TAG_BITS64_SIGNED: u64 = StableObjectKind::Bits64Signed as u64;
+        const STABLE_TAG_BITS64_FLOAT: u64 = StableObjectKind::Bits64Float as u64;
         const STABLE_TAG_REGION: u64 = StableObjectKind::Region as u64;
         const STABLE_TAG_VARIANT: u64 = StableObjectKind::Variant as u64;
         const STABLE_TAG_CONCAT: u64 = StableObjectKind::Concat as u64;
@@ -102,11 +119,19 @@ impl StableTag {
         const STABLE_TAG_OBJIND: u64 = StableObjectKind::ObjInd as u64;
         const STABLE_TAG_SOME: u64 = StableObjectKind::Some as u64;
         match self.0 {
-            STABLE_TAG_ARRAY => StableObjectKind::Array,
+            STABLE_TAG_ARRAY_IMMUTABLE => StableObjectKind::ArrayImmutable,
+            STABLE_TAG_ARRAY_MUTABLE => StableObjectKind::ArrayMutable,
+            STABLE_TAG_ARRAY_TUPLE => StableObjectKind::ArrayTuple,
+            STABLE_TAG_ARRAY_SHARED_FUNCTION => StableObjectKind::ArraySharedFunction,
             STABLE_TAG_MUTBOX => StableObjectKind::MutBox,
             STABLE_TAG_OBJECT => StableObjectKind::Object,
-            STABLE_TAG_BLOB => StableObjectKind::Blob,
-            STABLE_TAG_BITS64 => StableObjectKind::Bits64,
+            STABLE_TAG_BLOB_BYTES => StableObjectKind::BlobBytes,
+            STABLE_TAG_BLOB_TEXT => StableObjectKind::BlobText,
+            STABLE_TAG_BLOB_PRINCIPAL => StableObjectKind::BlobPrincipal,
+            STABLE_TAG_BLOB_ACTOR => StableObjectKind::BlobActor,
+            STABLE_TAG_BITS64_UNSIGNED => StableObjectKind::Bits64Unsigned,
+            STABLE_TAG_BITS64_SIGNED => StableObjectKind::Bits64Signed,
+            STABLE_TAG_BITS64_FLOAT => StableObjectKind::Bits64Float,
             STABLE_TAG_REGION => StableObjectKind::Region,
             STABLE_TAG_VARIANT => StableObjectKind::Variant,
             STABLE_TAG_CONCAT => StableObjectKind::Concat,
@@ -123,11 +148,24 @@ impl StableObjectKind {
         match tag {
             // During the marking phase of the incremental GC, the mutator can see
             // array slice information in the object tag.
-            TAG_ARRAY | TAG_ARRAY_SLICE_MIN.. => StableObjectKind::Array,
+            TAG_ARRAY_I | TAG_ARRAY_M | TAG_ARRAY_T | TAG_ARRAY_S | TAG_ARRAY_SLICE_MIN.. => {
+                match base_array_tag(tag) {
+                    TAG_ARRAY_I => StableObjectKind::ArrayImmutable,
+                    TAG_ARRAY_M => StableObjectKind::ArrayMutable,
+                    TAG_ARRAY_T => StableObjectKind::ArrayTuple,
+                    TAG_ARRAY_S => StableObjectKind::ArraySharedFunction,
+                    _ => unreachable!("invalid array tag"),
+                }
+            }
             TAG_MUTBOX => StableObjectKind::MutBox,
             TAG_OBJECT => StableObjectKind::Object,
-            TAG_BLOB => StableObjectKind::Blob,
-            TAG_BITS64 => StableObjectKind::Bits64,
+            TAG_BLOB_B => StableObjectKind::BlobBytes,
+            TAG_BLOB_T => StableObjectKind::BlobText,
+            TAG_BLOB_P => StableObjectKind::BlobPrincipal,
+            TAG_BLOB_A => StableObjectKind::BlobActor,
+            TAG_BITS64_U => StableObjectKind::Bits64Unsigned,
+            TAG_BITS64_S => StableObjectKind::Bits64Signed,
+            TAG_BITS64_F => StableObjectKind::Bits64Float,
             TAG_REGION => StableObjectKind::Region,
             TAG_VARIANT => StableObjectKind::Variant,
             TAG_CONCAT => StableObjectKind::Concat,
@@ -251,11 +289,15 @@ where
     ) {
     }
 
-    unsafe fn allocate_deserialized<M: Memory>(&self, main_memory: &mut M) -> Value {
+    unsafe fn allocate_deserialized<M: Memory>(
+        &self,
+        main_memory: &mut M,
+        _object_kind: StableObjectKind,
+    ) -> Value {
         main_memory.alloc_words(size_of::<T>())
     }
 
-    unsafe fn deserialize_static_part(&self, target_object: *mut T);
+    unsafe fn deserialize_static_part(&self, target_object: *mut T, object_kind: StableObjectKind);
 
     unsafe fn deserialize_dynamic_part<M: Memory>(
         &self,
@@ -270,12 +312,13 @@ where
         main_memory: &mut M,
         stable_memory: &StableMemoryAccess,
         stable_object: StableValue,
+        object_kind: StableObjectKind,
     ) -> Value {
         let stable_address = stable_object.payload_address();
         let stable_static_part = stable_memory.read::<Self>(stable_address);
-        let target = stable_static_part.allocate_deserialized(main_memory);
+        let target = stable_static_part.allocate_deserialized(main_memory, object_kind);
         let target_object = target.get_ptr() as *mut T;
-        stable_static_part.deserialize_static_part(target_object);
+        stable_static_part.deserialize_static_part(target_object, object_kind);
         stable_static_part.deserialize_dynamic_part(
             main_memory,
             stable_memory,
@@ -313,11 +356,19 @@ pub fn scan_serialized<
     }
     let tag = context.serialization.to_space().read::<StableTag>();
     match tag.decode() {
-        StableObjectKind::Array => StableArray::scan_serialized(context, translate),
+        StableObjectKind::ArrayImmutable
+        | StableObjectKind::ArrayMutable
+        | StableObjectKind::ArrayTuple
+        | StableObjectKind::ArraySharedFunction => StableArray::scan_serialized(context, translate),
         StableObjectKind::MutBox => StableMutBox::scan_serialized(context, translate),
         StableObjectKind::Object => StableObject::scan_serialized(context, translate),
-        StableObjectKind::Blob => StableBlob::scan_serialized(context, translate),
-        StableObjectKind::Bits64 => StableBits64::scan_serialized(context, translate),
+        StableObjectKind::BlobBytes
+        | StableObjectKind::BlobText
+        | StableObjectKind::BlobPrincipal
+        | StableObjectKind::BlobActor => StableBlob::scan_serialized(context, translate),
+        StableObjectKind::Bits64Unsigned
+        | StableObjectKind::Bits64Signed
+        | StableObjectKind::Bits64Float => StableBits64::scan_serialized(context, translate),
         StableObjectKind::Region => StableRegion::scan_serialized(context, translate),
         StableObjectKind::Variant => StableVariant::scan_serialized(context, translate),
         StableObjectKind::Concat => StableConcat::scan_serialized(context, translate),
@@ -329,11 +380,21 @@ pub fn scan_serialized<
 
 pub unsafe fn serialize(stable_memory: &mut StableMemoryStream, main_object: Value) {
     match StableObjectKind::deserialize(main_object.tag()) {
-        StableObjectKind::Array => StableArray::serialize(stable_memory, main_object),
+        StableObjectKind::ArrayImmutable
+        | StableObjectKind::ArrayMutable
+        | StableObjectKind::ArrayTuple
+        | StableObjectKind::ArraySharedFunction => {
+            StableArray::serialize(stable_memory, main_object)
+        }
         StableObjectKind::MutBox => StableMutBox::serialize(stable_memory, main_object),
         StableObjectKind::Object => StableObject::serialize(stable_memory, main_object),
-        StableObjectKind::Blob => StableBlob::serialize(stable_memory, main_object),
-        StableObjectKind::Bits64 => StableBits64::serialize(stable_memory, main_object),
+        StableObjectKind::BlobBytes
+        | StableObjectKind::BlobText
+        | StableObjectKind::BlobPrincipal
+        | StableObjectKind::BlobActor => StableBlob::serialize(stable_memory, main_object),
+        StableObjectKind::Bits64Unsigned
+        | StableObjectKind::Bits64Signed
+        | StableObjectKind::Bits64Float => StableBits64::serialize(stable_memory, main_object),
         StableObjectKind::Region => StableRegion::serialize(stable_memory, main_object),
         StableObjectKind::Variant => StableVariant::serialize(stable_memory, main_object),
         StableObjectKind::Concat => StableConcat::serialize(stable_memory, main_object),
@@ -349,39 +410,48 @@ pub unsafe fn deserialize<M: Memory>(
     stable_object: StableValue,
 ) -> Value {
     let tag = stable_memory.read::<StableTag>(stable_object.to_stable_address());
-    match tag.decode() {
-        StableObjectKind::Array => {
-            StableArray::deserialize(main_memory, stable_memory, stable_object)
+    let object_kind = tag.decode();
+    match object_kind {
+        StableObjectKind::ArrayImmutable
+        | StableObjectKind::ArrayMutable
+        | StableObjectKind::ArrayTuple
+        | StableObjectKind::ArraySharedFunction => {
+            StableArray::deserialize(main_memory, stable_memory, stable_object, object_kind)
         }
         StableObjectKind::MutBox => {
-            StableMutBox::deserialize(main_memory, stable_memory, stable_object)
+            StableMutBox::deserialize(main_memory, stable_memory, stable_object, object_kind)
         }
         StableObjectKind::Object => {
-            StableObject::deserialize(main_memory, stable_memory, stable_object)
+            StableObject::deserialize(main_memory, stable_memory, stable_object, object_kind)
         }
-        StableObjectKind::Blob => {
-            StableBlob::deserialize(main_memory, stable_memory, stable_object)
+        StableObjectKind::BlobBytes
+        | StableObjectKind::BlobText
+        | StableObjectKind::BlobPrincipal
+        | StableObjectKind::BlobActor => {
+            StableBlob::deserialize(main_memory, stable_memory, stable_object, object_kind)
         }
-        StableObjectKind::Bits64 => {
-            StableBits64::deserialize(main_memory, stable_memory, stable_object)
+        StableObjectKind::Bits64Unsigned
+        | StableObjectKind::Bits64Signed
+        | StableObjectKind::Bits64Float => {
+            StableBits64::deserialize(main_memory, stable_memory, stable_object, object_kind)
         }
         StableObjectKind::Region => {
-            StableRegion::deserialize(main_memory, stable_memory, stable_object)
+            StableRegion::deserialize(main_memory, stable_memory, stable_object, object_kind)
         }
         StableObjectKind::Variant => {
-            StableVariant::deserialize(main_memory, stable_memory, stable_object)
+            StableVariant::deserialize(main_memory, stable_memory, stable_object, object_kind)
         }
         StableObjectKind::Concat => {
-            StableConcat::deserialize(main_memory, stable_memory, stable_object)
+            StableConcat::deserialize(main_memory, stable_memory, stable_object, object_kind)
         }
         StableObjectKind::BigInt => {
-            StableBigInt::deserialize(main_memory, stable_memory, stable_object)
+            StableBigInt::deserialize(main_memory, stable_memory, stable_object, object_kind)
         }
         StableObjectKind::ObjInd => {
-            StableObjInd::deserialize(main_memory, stable_memory, stable_object)
+            StableObjInd::deserialize(main_memory, stable_memory, stable_object, object_kind)
         }
         StableObjectKind::Some => {
-            StableSome::deserialize(main_memory, stable_memory, stable_object)
+            StableSome::deserialize(main_memory, stable_memory, stable_object, object_kind)
         }
     }
 }

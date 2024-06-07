@@ -3,7 +3,7 @@ use crate::{
     types::{Value, Variant, TAG_VARIANT},
 };
 
-use super::{Serializer, StableValue, StaticScanner};
+use super::{Serializer, StableObjectKind, StableValue, StaticScanner};
 
 #[repr(C)]
 pub struct StableVariant {
@@ -33,7 +33,12 @@ impl Serializer<Variant> for StableVariant {
         }
     }
 
-    unsafe fn deserialize_static_part(&self, target_variant: *mut Variant) {
+    unsafe fn deserialize_static_part(
+        &self,
+        target_variant: *mut Variant,
+        object_kind: StableObjectKind,
+    ) {
+        debug_assert_eq!(object_kind, StableObjectKind::Variant);
         (*target_variant).header.tag = TAG_VARIANT;
         (*target_variant)
             .header

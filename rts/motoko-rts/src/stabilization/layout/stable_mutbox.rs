@@ -3,7 +3,7 @@ use crate::{
     types::{MutBox, Value, TAG_MUTBOX},
 };
 
-use super::{Serializer, StableValue, StaticScanner};
+use super::{Serializer, StableObjectKind, StableValue, StaticScanner};
 
 #[repr(C)]
 pub struct StableMutBox {
@@ -31,7 +31,12 @@ impl Serializer<MutBox> for StableMutBox {
         }
     }
 
-    unsafe fn deserialize_static_part(&self, target_mutbox: *mut MutBox) {
+    unsafe fn deserialize_static_part(
+        &self,
+        target_mutbox: *mut MutBox,
+        object_kind: StableObjectKind,
+    ) {
+        debug_assert_eq!(object_kind, StableObjectKind::MutBox);
         (*target_mutbox).header.tag = TAG_MUTBOX;
         (*target_mutbox)
             .header

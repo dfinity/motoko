@@ -3,7 +3,7 @@ use crate::{
     types::{Some, Value, TAG_SOME},
 };
 
-use super::{Serializer, StableValue, StaticScanner};
+use super::{Serializer, StableObjectKind, StableValue, StaticScanner};
 
 #[repr(C)]
 pub struct StableSome {
@@ -31,7 +31,12 @@ impl Serializer<Some> for StableSome {
         }
     }
 
-    unsafe fn deserialize_static_part(&self, target_some: *mut Some) {
+    unsafe fn deserialize_static_part(
+        &self,
+        target_some: *mut Some,
+        object_kind: StableObjectKind,
+    ) {
+        debug_assert_eq!(object_kind, StableObjectKind::Some);
         (*target_some).header.tag = TAG_SOME;
         (*target_some)
             .header

@@ -3,7 +3,7 @@ use crate::{
     types::{ObjInd, Value, TAG_OBJ_IND},
 };
 
-use super::{Serializer, StableValue, StaticScanner};
+use super::{Serializer, StableObjectKind, StableValue, StaticScanner};
 
 #[repr(C)]
 pub struct StableObjInd {
@@ -31,7 +31,12 @@ impl Serializer<ObjInd> for StableObjInd {
         }
     }
 
-    unsafe fn deserialize_static_part(&self, target_obj_ind: *mut ObjInd) {
+    unsafe fn deserialize_static_part(
+        &self,
+        target_obj_ind: *mut ObjInd,
+        object_kind: StableObjectKind,
+    ) {
+        debug_assert_eq!(object_kind, StableObjectKind::ObjInd);
         (*target_obj_ind).header.tag = TAG_OBJ_IND;
         (*target_obj_ind)
             .header

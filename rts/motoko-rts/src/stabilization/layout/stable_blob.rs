@@ -7,11 +7,12 @@ use crate::{
             SerializationContext,
         },
     },
-    types::{size_of, Blob, Bytes, Value, TAG_BLOB},
+    types::{size_of, Blob, Bytes, Tag, Value, TAG_BLOB_A, TAG_BLOB_B, TAG_BLOB_P, TAG_BLOB_T},
 };
 
 use super::{
-    round_to_u64, write_padding_u64, Serializer, StableToSpace, StableValue, StaticScanner,
+    round_to_u64, write_padding_u64, Serializer, StableObjectKind, StableToSpace, StableValue,
+    StaticScanner,
 };
 
 #[repr(C)]
@@ -66,13 +67,22 @@ impl Serializer<Blob> for StableBlob {
             .skip(rounded_length as usize);
     }
 
-    unsafe fn allocate_deserialized<M: Memory>(&self, main_memory: &mut M) -> Value {
+    unsafe fn allocate_deserialized<M: Memory>(
+        &self,
+        main_memory: &mut M,
+        object_kind: StableObjectKind,
+    ) -> Value {
+        let blob_tag = decode_blob_tag(object_kind);
         let blob_length = self.byte_length as usize;
-        alloc_blob(main_memory, Bytes(blob_length))
+        alloc_blob(main_memory, blob_tag, Bytes(blob_length))
     }
 
-    unsafe fn deserialize_static_part(&self, target_blob: *mut Blob) {
-        debug_assert_eq!((*target_blob).header.tag, TAG_BLOB);
+    unsafe fn deserialize_static_part(
+        &self,
+        target_blob: *mut Blob,
+        object_kind: StableObjectKind,
+    ) {
+        debug_assert_eq!((*target_blob).header.tag, decode_blob_tag(object_kind));
         debug_assert_eq!((*target_blob).len.as_usize(), self.byte_length as usize);
     }
 
@@ -88,5 +98,15 @@ impl Serializer<Blob> for StableBlob {
         let target_payload = target_blob.payload_addr() as usize;
         let blob_length = self.byte_length as usize;
         stable_memory.raw_read(source_payload, target_payload, blob_length);
+    }
+}
+
+fn decode_blob_tag(object_kind: StableObjectKind) -> Tag {
+    match object_kind {
+        StableObjectKind::BlobBytes => TAG_BLOB_B,
+        StableObjectKind::BlobText => TAG_BLOB_T,
+        StableObjectKind::BlobPrincipal => TAG_BLOB_P,
+        StableObjectKind::BlobActor => TAG_BLOB_A,
+        _ => unreachable!("invalid stable blob tag"),
     }
 }
