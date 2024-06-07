@@ -61,4 +61,4 @@ const _: () =
     assert!(TAG_ARRAY_I < TAG_ARRAY_M && TAG_ARRAY_M < TAG_ARRAY_T && TAG_ARRAY_T < TAG_ARRAY_S);
 // 2-bits suffice to encode base array tag in slice, remaining bits suffice to encode slice start.
 const _: () = assert!((TAG_ARRAY_S - TAG_ARRAY_I) / 2 < 4);
-const _: () = assert!(MAX_ARRAY_SIZE < (1 << (usize::BITS - 2)));
+const _: () = assert!(MAX_ARRAY_LENGTH_FOR_ITERATOR < (1 << (usize::BITS - 2)));
