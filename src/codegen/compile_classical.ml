@@ -2059,25 +2059,25 @@ module Tagged = struct
   let int_of_tag = function
     | Object -> 1l
     | ObjInd -> 3l
-    | Array I -> 5L
-    | Array M -> 7L
-    | Array T -> 9L
-    | Array S -> 11L
-    | Bits64 U -> 13L
-    | Bits64 S -> 15L
-    | Bits64 F -> 17L
-    | MutBox -> 19L
-    | Closure -> 21L
-    | Some -> 23L
-    | Variant -> 25L
-    | Blob B -> 27L
-    | Blob T -> 29L
-    | Blob P -> 31L
-    | Blob A -> 33L
-    | Indirection -> 35L
-    | BigInt -> 37L
-    | Concat -> 39L
-    | Region -> 41L
+    | Array I -> 5l
+    | Array M -> 7l
+    | Array T -> 9l
+    | Array S -> 11l
+    | Bits64 U -> 13l
+    | Bits64 S -> 15l
+    | Bits64 F -> 17l
+    | MutBox -> 19l
+    | Closure -> 21l
+    | Some -> 23l
+    | Variant -> 25l
+    | Blob B -> 27l
+    | Blob T -> 29l
+    | Blob P -> 31l
+    | Blob A -> 33l
+    | Indirection -> 35l
+    | BigInt -> 37l
+    | Concat -> 39l
+    | Region -> 41l
     (* Only used during 32-bit classical persistence mode. *)
     | Bits32 U -> 43l
     | Bits32 S -> 45l
