@@ -95,3 +95,11 @@ The shared `add(blob)` function allocates enough stable memory to store the give
 The shared `get(index)` query reads anywhere from the log without traversing any unrelated memory.
 
 `StableLog` allocates and maintains its potentially large log data directly in stable memory and uses a small and fixed amount of storage for actual stable variables. Upgrading `StableLog` to a new implementation should not consume many cycles, regardless of the current size of the log.
+
+## Mops packages for stable regions
+
+- [`memory-region`](https://mops.one/memory-region): A library for abstraction over the `Region` type that supports reusing deallocated memory.
+
+- [`stable-enum`](https://mops.one/stable-enum): Enumerations implemented in stable regions.
+
+- [`stable-buffer`](https://mops.one/stable-buffer): Buffers implemented in stable regions.
