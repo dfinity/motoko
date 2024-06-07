@@ -570,7 +570,7 @@ fn create_static_heap(
     // root.
     let array_addr = u32::try_from(heap.as_ptr() as usize).unwrap();
     let mut offset = 0;
-    write_word(heap, offset, TAG_ARRAY_M); // TODO: TBR
+    write_word(heap, offset, TAG_ARRAY_M);
     offset += WORD_SIZE;
 
     if incremental {
