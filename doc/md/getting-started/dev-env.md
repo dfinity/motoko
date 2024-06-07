@@ -137,7 +137,7 @@ Here is an example `dfx.json` canister configuration that uses `args`:
     "hello": {
       "type": "motoko",
       "main": "src/hello/main.mo",
-      "args": "-v --compacting-gc -no-check-ir"
+      "args": "-v --incremental-gc"
     },
   }
 ...
