@@ -48,13 +48,13 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v4
-    - uses: cachix/install-nix-action@v26
-    - uses: cachix/cachix-action@v14
+    - uses: cachix/install-nix-action@v27
+    - uses: cachix/cachix-action@v15
       if: startsWith(github.ref, 'refs/heads/')
       with:
         name: ic-hs-test
         # NB: No auth token, we don’t want to push new stuff here
-    - uses: cachix/cachix-action@v14
+    - uses: cachix/cachix-action@v15
       if: startsWith(github.ref, 'refs/tags/')
       with:
         name: ic-hs-test
@@ -74,8 +74,8 @@ jobs:
     needs: [ changelog, build ]
     steps:
     - uses: actions/checkout@v4
-    - uses: cachix/install-nix-action@v26
-    - uses: cachix/cachix-action@v14
+    - uses: cachix/install-nix-action@v27
+    - uses: cachix/cachix-action@v15
       with:
         name: ic-hs-test
         # NB: No auth token, we don’t expect to push new stuff here
