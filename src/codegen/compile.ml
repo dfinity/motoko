@@ -4120,7 +4120,7 @@ module Object = struct
         List.sort compare in
       let hash_blob =
         let hash_payload = StaticBytes.[ i32s hashes ] in
-        Blob.constant env Tagged.T (StaticBytes.as_bytes hash_payload)
+        Blob.constant env Tagged.B (StaticBytes.as_bytes hash_payload)
       in
       
       (fun env -> 
@@ -6318,13 +6318,13 @@ module Serialization = struct
   let get_global_type_offsets env =
     Tagged.share env (fun env -> 
       let descriptor = get_global_type_descriptor env in
-      Blob.load_data_segment env Tagged.T E.(descriptor.type_offsets_segment) (get_type_offsets_length env)
+      Blob.load_data_segment env Tagged.B E.(descriptor.type_offsets_segment) (get_type_offsets_length env)
     )
 
   let get_global_idl_types env =
     Tagged.share env (fun env -> 
       let descriptor = get_global_type_descriptor env in
-      Blob.load_data_segment env Tagged.T E.(descriptor.idl_types_segment) (get_idl_types_length env)
+      Blob.load_data_segment env Tagged.B E.(descriptor.idl_types_segment) (get_idl_types_length env)
     )
   
   module Registers = struct
@@ -8437,7 +8437,7 @@ module Persistence = struct
     let serialized_offsets = StaticBytes.(as_bytes [i32s (List.map Int32.of_int type_offsets)]) in
     assert (type_indices = [0l]);
     Blob.lit env Tagged.B candid_type_desc ^^
-    Blob.lit env Tagged.T serialized_offsets ^^
+    Blob.lit env Tagged.B serialized_offsets ^^
     E.call_import env "rts" "register_stable_type"
 
   let create_actor env actor_type get_field_value =
