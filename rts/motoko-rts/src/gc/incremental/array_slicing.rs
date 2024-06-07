@@ -8,14 +8,13 @@ use crate::types::*;
 pub unsafe fn slice_array(array: *mut Array) -> usize {
     const SLICE_INCREMENT: usize = 128;
     debug_assert!(SLICE_INCREMENT >= TAG_ARRAY_SLICE_MIN);
-    let tag = (*array).header.tag;
-    let slice_start = if tag >= TAG_ARRAY_SLICE_MIN { tag } else { 0 };
+    let (base_tag, slice_start) = array.get_slice_start();
     if array.len() - slice_start > SLICE_INCREMENT {
         let new_start = slice_start + SLICE_INCREMENT;
-        (*array).header.tag = new_start;
+        array.set_slice_start(base_tag, new_start);
         new_start
     } else {
-        (*array).header.tag = TAG_ARRAY;
+        array.restore_tag(base_tag);
         array.len()
     }
 }
