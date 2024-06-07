@@ -113,4 +113,3 @@ Because `StableLog` allocates and maintains its (potentially large) log data dir
 - [motoko-dht](https://github.com/enzoh/motoko-dht): A distributed hash table sample.
 
 - [motoko-document-db](https://github.com/DepartureLabsIC/motoko-document-db): A document database sample.
-
