@@ -103,6 +103,8 @@ Want to get started building with Motoko? Check out some of these sample project
 
 - [ICP developer journey](https://internetcomputer.org/docs/current/tutorials/developer-journey/): A 36-part series focused on Motoko development for ICP canisters.
 
+- [Motoko Auction summer camp example](https://github.com/luc-blaeser/auction).
+
 - [Motoko book](https://github.com/Web3NL/motoko-book): An educational book on Motoko.
 
 - [Motoko Bootcamp](https://github.com/motoko-bootcamp/education): Lessons and lectures on Motoko development.
