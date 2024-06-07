@@ -71,7 +71,7 @@ actor A {
         finally { debugPrint "OUT5" };
         debugPrint "AFTER5"
     };
-
+*/
     func t6() : async () {
         debugPrint "BEFORE6";
         label out try {
@@ -88,8 +88,9 @@ actor A {
         finally { debugPrint "OUT6" };
         debugPrint "AFTER6"
     };
-*/
+
     // TODO: trap on happy/catch
+    // TODO: trap after repeated `await`
 
     public func go() : async () {
         try /*ignore*/ await t0() catch _ {};
@@ -98,8 +99,8 @@ actor A {
         /*await t2();
         await t3();
         /*await t4();*/
-        await t5();
-        await t6();*/
+        await t5();*/
+        await t6();
     };
 };
 
