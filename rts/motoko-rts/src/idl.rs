@@ -5,7 +5,7 @@ use crate::idl_trap_with;
 use crate::leb128::{leb128_decode, sleb128_decode};
 use crate::memory::{alloc_blob, Memory};
 use crate::persistence::compatibility::TypeDescriptor;
-use crate::types::{Value, Words};
+use crate::types::{Value, Words, TAG_BLOB_B};
 use crate::utf8::utf8_validate;
 
 use core::cmp::min;
@@ -125,7 +125,7 @@ unsafe fn parse_fields(mode: CompatibilityMode, buf: *mut Buf, n_types: u32) {
 // NB. This function assumes the allocation does not need to survive GC
 // Therefore, no post allocation barrier is applied.
 unsafe fn alloc<M: Memory>(mem: &mut M, size: Words<u32>) -> *mut u8 {
-    alloc_blob(mem, size.to_bytes())
+    alloc_blob(mem, TAG_BLOB_B, size.to_bytes())
         .as_blob_mut()
         .payload_addr()
 }

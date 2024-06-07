@@ -348,7 +348,7 @@ fn create_dynamic_heap(
 
             // Store object header
             let address = u32::try_from(heap_start + heap_offset).unwrap();
-            write_word(dynamic_heap, heap_offset, TAG_ARRAY);
+            write_word(dynamic_heap, heap_offset, TAG_ARRAY_M);
             heap_offset += WORD_SIZE;
 
             write_word(dynamic_heap, heap_offset, make_pointer(address)); // forwarding pointer
@@ -414,7 +414,7 @@ fn create_dynamic_heap(
     }
     let static_root_array_address = u32::try_from(heap_start + heap_offset).unwrap();
     {
-        write_word(dynamic_heap, heap_offset, TAG_ARRAY);
+        write_word(dynamic_heap, heap_offset, TAG_ARRAY_M);
         heap_offset += WORD_SIZE;
 
         write_word(
@@ -436,7 +436,7 @@ fn create_dynamic_heap(
 
     let continuation_table_address = u32::try_from(heap_start + heap_offset).unwrap();
     {
-        write_word(dynamic_heap, heap_offset, TAG_ARRAY);
+        write_word(dynamic_heap, heap_offset, TAG_ARRAY_M);
         heap_offset += WORD_SIZE;
 
         write_word(
