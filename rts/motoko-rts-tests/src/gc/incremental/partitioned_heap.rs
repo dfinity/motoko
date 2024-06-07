@@ -15,7 +15,10 @@ use motoko_rts::{
         IncrementalGC,
     },
     memory::{alloc_array, alloc_blob, Memory},
-    types::{Array, Blob, Bytes, Obj, Tag, Value, Words, TAG_ARRAY, TAG_BLOB},
+    types::{
+        Array, Blob, Bytes, Obj, Tag, Value, Words, TAG_ARRAY_I, TAG_ARRAY_M, TAG_ARRAY_S,
+        TAG_ARRAY_T, TAG_BLOB_A, TAG_BLOB_B, TAG_BLOB_P, TAG_BLOB_T,
+    },
 };
 
 use crate::{gc::utils::WORD_SIZE, memory::TestMemory};
@@ -322,7 +325,7 @@ unsafe fn iterate_large_partition(
     let mut time = BoundedTime::new(0);
     while iterator.has_object() {
         let object = iterator.current_object();
-        assert_eq!(object.tag(), TAG_BLOB);
+        assert_eq!(object.tag(), TAG_BLOB_B);
         let size = block_size(object as *const Tag);
         detected_sizes.push(size);
         time.tick();
@@ -413,7 +416,7 @@ impl PartitionedTestHeap {
 
     pub fn allocate_array(&mut self, elements: &[Value]) -> Value {
         unsafe {
-            let array = alloc_array(self, elements.len());
+            let array = alloc_array(self, TAG_ARRAY_M, elements.len());
             for index in 0..elements.len() {
                 let raw_array = array.as_array();
                 raw_array.set(index, elements[index], self);
@@ -423,14 +426,18 @@ impl PartitionedTestHeap {
     }
 
     pub fn allocate_blob(&mut self, size: usize) -> Value {
-        unsafe { alloc_blob(self, Bytes(size)) }
+        unsafe { alloc_blob(self, TAG_BLOB_B, Bytes(size)) }
     }
 }
 
 unsafe fn block_size(block: *const Tag) -> usize {
     match *block {
-        TAG_ARRAY => size_of::<Array>() + (block as *const Array).len() * WORD_SIZE,
-        TAG_BLOB => size_of::<Blob>() + (block as *const Blob).len().as_usize(),
+        TAG_ARRAY_I | TAG_ARRAY_M | TAG_ARRAY_T | TAG_ARRAY_S => {
+            size_of::<Array>() + (block as *const Array).len() * WORD_SIZE
+        }
+        TAG_BLOB_B | TAG_BLOB_T | TAG_BLOB_P | TAG_BLOB_A => {
+            size_of::<Blob>() + (block as *const Blob).len().as_usize()
+        }
         _ => unimplemented!(),
     }
 }

@@ -165,7 +165,7 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
             let obj_ind = obj as *const ObjInd;
             let _ = write!(buf, "<ObjInd field={:#x}>", (*obj_ind).field.get_raw());
         }
-        TAG_ARRAY | TAG_ARRAY_SLICE_MIN.. => {
+        TAG_ARRAY_I | TAG_ARRAY_M | TAG_ARRAY_T | TAG_ARRAY_S | TAG_ARRAY_SLICE_MIN.. => {
             let array = obj as *mut Array;
             let _ = write!(buf, "<Array len={:#x}", (*array).len);
 
@@ -179,7 +179,7 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
                 let _ = write!(buf, ">");
             }
         }
-        TAG_BITS64 => {
+        TAG_BITS64_U | TAG_BITS64_S | TAG_BITS64_F => {
             let bits64 = obj as *const Bits64;
             let _ = write!(buf, "<Bits64 {:#x}>", (*bits64).bits);
         }
@@ -204,7 +204,7 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
                 (*variant).field.get_raw()
             );
         }
-        TAG_BLOB => {
+        TAG_BLOB_B | TAG_BLOB_T | TAG_BLOB_P | TAG_BLOB_A => {
             let blob = obj.as_blob();
             let _ = write!(buf, "<Blob len={:#x}>", blob.len().as_usize());
         }
