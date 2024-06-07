@@ -7,7 +7,7 @@ use crate::types::{Blob, Words};
 use core::ptr::null_mut;
 
 /// Initial stack size
-pub const INIT_STACK_SIZE: Words<u32> = Words(64);
+pub const INIT_STACK_SIZE: Words<usize> = Words(64);
 
 /// Pointer to the `blob` object for the mark stack. Used to get the capacity of the stack.
 static mut STACK_BLOB_PTR: *mut Blob = null_mut();
@@ -43,13 +43,13 @@ pub unsafe fn free_mark_stack() {
 
 /// Doubles the stack size
 pub unsafe fn grow_stack<M: Memory>(mem: &mut M) {
-    let stack_cap: Words<u32> = STACK_BLOB_PTR.len().to_words();
+    let stack_cap: Words<usize> = STACK_BLOB_PTR.len().to_words();
     let p = mem.alloc_words(stack_cap).get_ptr() as *mut usize;
 
     // Make sure nothing was allocated after the stack
     assert_eq!(STACK_TOP, p);
 
-    let new_cap: Words<u32> = stack_cap * 2;
+    let new_cap: Words<usize> = stack_cap * 2;
     (*STACK_BLOB_PTR).len = new_cap.to_bytes();
     STACK_TOP = STACK_BASE.add(new_cap.as_usize());
 }

@@ -457,7 +457,6 @@ and export_footprint self_id expr =
   )],
   [{ it = I.{ name = lab; var = v }; at = no_region; note = typ }])
 
-
 and build_actor at ts self_id es obj_typ =
   let candid = build_candid ts obj_typ in
   let fs = build_fields obj_typ in
@@ -500,7 +499,7 @@ and build_actor at ts self_id es obj_typ =
     let vs = fresh_vars "v" (List.map (fun f -> f.T.typ) fields) in
     blockE
       ((match call_system_func_opt "preupgrade" es obj_typ with
-        | Some call -> [ expD (primE (I.ICPerformGC) []); expD call]
+        | Some call -> [ expD call]
         | None -> []) @
          [letP (seqP (List.map varP vs)) (* dereference any mutable vars, option 'em all *)
             (seqE (List.map (fun (i,t) -> optE (varE (var i t))) ids))])
@@ -515,7 +514,7 @@ and build_actor at ts self_id es obj_typ =
   let footprint_d, footprint_f = export_footprint self_id (with_stable_vars (fun e -> e)) in
   I.(ActorE (footprint_d @ ds', footprint_f @ fs,
      { meta;
-       preupgrade = with_stable_vars (fun e -> primE (I.ICStableWrite ty) [e]);
+       preupgrade = (primE (I.ICStableWrite ty) []);
        postupgrade =
          (match call_system_func_opt "postupgrade" es obj_typ with
           | Some call -> call
@@ -535,10 +534,11 @@ and build_actor at ts self_id es obj_typ =
        inspect =
          (match call_system_func_opt "inspect" es obj_typ with
           | Some call -> call
-          | None -> tupE [])
+          | None -> tupE []);
+       stable_record = with_stable_vars (fun e -> e);
+       stable_type = ty;
      },
      obj_typ))
-
 
 and stabilize stab_opt d =
   let s = match stab_opt with None -> S.Flexible | Some s -> s.it  in
@@ -962,7 +962,7 @@ let import_compiled_class (lib : S.comp_unit) wasm : import_declaration =
   let c', _ = T.as_con (List.hd cs') in
   let install_actor_helper = var "@install_actor_helper"
     T.(Func (Local, Returns, [scope_bind],
-      [install_arg_typ; blob; blob],
+      [install_arg_typ; bool; blob; blob],
       [Async(Cmp, Var (default_scope_var, 0), principal)]))
   in
   let wasm_blob = fresh_var "wasm_blob" T.blob in
@@ -982,6 +982,7 @@ let import_compiled_class (lib : S.comp_unit) wasm : import_declaration =
           (callE (varE install_actor_helper) cs'
             (tupE [
               install_arg;
+              boolE ((!Mo_config.Flags.enhanced_orthogonal_persistence)); 
               varE wasm_blob;
               primE (Ir.SerializePrim ts1') [seqE (List.map varE vs)]])))
         (primE (Ir.CastPrim (T.principal, t_actor)) [varE principal]))
@@ -1053,18 +1054,22 @@ let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
         T.promote rng
       | _ -> assert false
     in
+    let actor_expression = build_actor u.at ts (Some self_id) fields obj_typ in
     let e = wrap {
-       it = build_actor u.at ts (Some self_id) fields obj_typ;
+       it = actor_expression;
        at = no_region;
        note = Note.{ def with typ = obj_typ } }
     in
     begin match e.it with
-    | I.ActorE(ds, fs, u, t) -> I.ActorU (Some args, ds, fs, u, t)
+    | I.ActorE(ds, fs, u, t) ->
+      I.ActorU (Some args, ds, fs, u, t)
     | _ -> assert false
     end
   | S.ActorU (self_id, fields) ->
-    begin match build_actor u.at [] self_id fields u.note.S.note_typ with
-    | I.ActorE (ds, fs, u, t) -> I.ActorU (None, ds, fs, u, t)
+    let actor_expression = build_actor u.at [] self_id fields u.note.S.note_typ in
+    begin match actor_expression with
+    | I.ActorE (ds, fs, u, t) ->
+        I.ActorU (None, ds, fs, u, t)
     | _ -> assert false
     end
 

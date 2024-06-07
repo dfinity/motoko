@@ -1,0 +1,17 @@
+# ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
+# SKIP ic-ref-run
+install $ID stabilize-recursive-type/version0.mo ""
+ingress $ID increase "DIDL\x00\x01\x7d\x0F"
+ingress $ID check "DIDL\x00\x00"
+ingress $ID __motoko_stabilize_before_upgrade "DIDL\x00\x01\x7d\x0F"
+upgrade $ID stabilize-recursive-type/version0.mo ""
+ingress $ID increase "DIDL\x00\x01\x7d\x0F"
+ingress $ID check "DIDL\x00\x00"
+ingress $ID __motoko_stabilize_before_upgrade "DIDL\x00\x01\x7d\x0F"
+upgrade $ID stabilize-recursive-type/version1.mo ""
+ingress $ID increase "DIDL\x00\x01\x7d\x0F"
+ingress $ID check "DIDL\x00\x00"
+ingress $ID __motoko_stabilize_before_upgrade "DIDL\x00\x01\x7d\x0F"
+upgrade $ID stabilize-recursive-type/version1.mo ""
+ingress $ID increase "DIDL\x00\x01\x7d\x0F"
+ingress $ID check "DIDL\x00\x00"

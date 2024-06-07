@@ -32,7 +32,7 @@ actor a {
 
    system func preupgrade() {
      Prim.debugPrint "preupgrade!";
-     fillMB(768);
+     fillMB(500); // Reduce because `drun` otherwise fails with `Ingress message did not finish executing within 10000 batches`.
    };
 
    system func postupgrade() {

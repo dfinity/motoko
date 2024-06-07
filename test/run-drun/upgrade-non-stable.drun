@@ -1,0 +1,11 @@
+# ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
+# SKIP ic-ref-run
+install $ID upgrade-non-stable/version0.mo ""
+ingress $ID print "DIDL\x00\x00"
+upgrade $ID upgrade-non-stable/version0.mo ""
+ingress $ID print "DIDL\x00\x00"
+upgrade $ID upgrade-non-stable/version1.mo ""
+ingress $ID print "DIDL\x00\x00"
+upgrade $ID upgrade-non-stable/version1.mo ""
+ingress $ID print "DIDL\x00\x00"
+upgrade $ID upgrade-non-stable/version0.mo ""

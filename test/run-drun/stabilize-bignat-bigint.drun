@@ -1,0 +1,31 @@
+# ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
+# SKIP ic-ref-run
+install $ID stabilize-bignat-bigint/version0.mo ""
+ingress $ID modify "DIDL\x00\x00"
+ingress $ID print "DIDL\x00\x00"
+# Enhanced Orthogonal Persistence
+upgrade $ID stabilize-bignat-bigint/version0.mo ""
+ingress $ID modify "DIDL\x00\x00"
+ingress $ID print "DIDL\x00\x00"
+# Graph-Copy-Based Stabilization
+ingress $ID __motoko_stabilize_before_upgrade "DIDL\x00\x00"
+upgrade $ID stabilize-bignat-bigint/version0.mo ""
+ingress $ID modify "DIDL\x00\x00"
+ingress $ID print "DIDL\x00\x00"
+# Graph-Copy-Based Stabilization
+ingress $ID __motoko_stabilize_before_upgrade "DIDL\x00\x00"
+upgrade $ID stabilize-bignat-bigint/version1.mo ""
+ingress $ID modify "DIDL\x00\x00"
+ingress $ID print "DIDL\x00\x00"
+# Graph-Copy-Based Stabilization
+ingress $ID __motoko_stabilize_before_upgrade "DIDL\x00\x00"
+upgrade $ID stabilize-bignat-bigint/version1.mo ""
+ingress $ID modify "DIDL\x00\x00"
+ingress $ID print "DIDL\x00\x00"
+# Enhanced Orthogonal Persistence
+upgrade $ID stabilize-bignat-bigint/version1.mo ""
+ingress $ID modify "DIDL\x00\x00"
+ingress $ID print "DIDL\x00\x00"
+# Graph-Copy-Based Stabilization
+ingress $ID __motoko_stabilize_before_upgrade "DIDL\x00\x00"
+upgrade $ID stabilize-bignat-bigint/version0.mo ""

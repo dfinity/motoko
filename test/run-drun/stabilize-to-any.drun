@@ -1,0 +1,15 @@
+# ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
+# SKIP ic-ref-run
+install $ID stabilize-to-any/version0.mo ""
+ingress $ID check "DIDL\x00\x00"
+ingress $ID __motoko_stabilize_before_upgrade "DIDL\x00\x00"
+upgrade $ID stabilize-to-any/version1.mo ""
+ingress $ID __motoko_gc_trigger "DIDL\x00\x00"
+ingress $ID check "DIDL\x00\x00"
+ingress $ID __motoko_stabilize_before_upgrade "DIDL\x00\x00"
+upgrade $ID stabilize-to-any/version2.mo ""
+ingress $ID __motoko_gc_trigger "DIDL\x00\x00"
+ingress $ID check "DIDL\x00\x00"
+ingress $ID __motoko_stabilize_before_upgrade "DIDL\x00\x00"
+upgrade $ID stabilize-to-any/version2.mo ""
+ingress $ID check "DIDL\x00\x00"

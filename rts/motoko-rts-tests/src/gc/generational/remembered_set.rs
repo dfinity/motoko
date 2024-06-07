@@ -6,7 +6,7 @@ use motoko_rts::gc::remembered_set::{
 };
 use motoko_rts::types::{Value, Words};
 
-const GROW_LIMIT: u32 = INITIAL_TABLE_LENGTH * OCCUPATION_THRESHOLD_PERCENT / 100;
+const GROW_LIMIT: usize = INITIAL_TABLE_LENGTH * OCCUPATION_THRESHOLD_PERCENT / 100;
 
 pub unsafe fn test() {
     println!("  Testing remembered set ...");
@@ -24,17 +24,17 @@ pub unsafe fn test() {
     test_remembered_set(128 * GROW_LIMIT);
 }
 
-unsafe fn test_remembered_set(amount: u32) {
+unsafe fn test_remembered_set(amount: usize) {
     test_insert_iterate(amount);
     test_duplicates(amount);
     test_collisions(amount);
 }
 
-unsafe fn test_insert_iterate(amount: u32) {
+unsafe fn test_insert_iterate(amount: usize) {
     let mut mem = TestMemory::new(Words(2 * amount + 1024 * 1024));
 
     let mut remembered_set = RememberedSet::new(&mut mem);
-    let mut test_set: HashSet<u32> = HashSet::new();
+    let mut test_set: HashSet<usize> = HashSet::new();
     // start at 1 since 0 is the null ptr and not stored in the remembered set
     for value in 1..amount + 1 {
         remembered_set.insert(&mut mem, Value::from_raw(value));
@@ -51,7 +51,7 @@ unsafe fn test_insert_iterate(amount: u32) {
     assert!(!iterator.has_next());
 }
 
-unsafe fn test_duplicates(amount: u32) {
+unsafe fn test_duplicates(amount: usize) {
     let mut mem = TestMemory::new(Words(2 * amount + 1024 * 1024));
 
     let mut remembered_set = RememberedSet::new(&mut mem);
@@ -67,16 +67,16 @@ unsafe fn test_duplicates(amount: u32) {
     }
 }
 
-unsafe fn test_collisions(amount: u32) {
+unsafe fn test_collisions(amount: usize) {
     let mut mem = TestMemory::new(Words(2 * amount + 1024 * 1024));
 
     let mut remembered_set = RememberedSet::new(&mut mem);
-    let mut test_set: HashSet<u32> = HashSet::new();
+    let mut test_set: HashSet<usize> = HashSet::new();
 
     // start at 1 since 0 is the null ptr and not stored in the remembered set
     for index in 1..amount + 1 {
-        const FACTOR: u32 = 1024 * 1024;
-        let value = if index <= u32::MAX / FACTOR {
+        const FACTOR: usize = 1024 * 1024;
+        let value = if index <= usize::MAX / FACTOR {
             index * FACTOR
         } else {
             index

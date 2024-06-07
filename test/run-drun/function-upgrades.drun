@@ -1,0 +1,9 @@
+# ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
+install $ID function-upgrades/version0.mo ""
+upgrade $ID function-upgrades/version0.mo ""
+upgrade $ID function-upgrades/version1.mo ""
+upgrade $ID function-upgrades/version1.mo ""
+upgrade $ID function-upgrades/version2.mo ""
+upgrade $ID function-upgrades/version3.mo ""
+upgrade $ID function-upgrades/version4.mo ""
+upgrade $ID function-upgrades/version1.mo ""

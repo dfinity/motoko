@@ -1,4 +1,4 @@
-//MOC-FLAG --compacting-gc --rts-stack-pages 32 -measure-rts-stack
+//MOC-FLAG -measure-rts-stack
 import { errorMessage; debugPrint; } = "mo:⛔";
 
 actor {
@@ -37,9 +37,9 @@ actor {
             done := true
           }
         };
-        
+
         assert(i > expectedMinimumSize);
-        
+
         let b = to_candid(l);
         debugPrint("serialized");
 

@@ -26,7 +26,7 @@ DTESTS=no
 IDL=no
 PERF=no
 VIPER=no
-WASMTIME_OPTIONS="-C cache=n -W nan-canonicalization=y -W multi-memory -W bulk-memory"
+WASMTIME_OPTIONS="-C cache=n -W nan-canonicalization=y -W memory64 -W multi-memory -W bulk-memory"
 WRAP_drun=$(realpath $(dirname $0)/drun-wrapper.sh)
 WRAP_ic_ref_run=$(realpath $(dirname $0)/ic-ref-run-wrapper.sh)
 SKIP_RUNNING=${SKIP_RUNNING:-no}
@@ -185,10 +185,11 @@ then
       HAVE_drun=no
     fi
   fi
-  if ic-wasm --help >& /dev/null
-  then
-    HAVE_ic_wasm=yes
-  fi
+  # TODO: Re-enable when ic_wasm supports Wasm64 and passive data segments
+  # if ic-wasm --help >& /dev/null
+  # then
+  #   HAVE_ic_wasm=yes
+  # fi
 fi
 
 if [ $DTESTS = yes ]
@@ -254,15 +255,6 @@ do
 
   case $ext in
   "mo")
-    if grep -q "//INCREMENTAL-GC-ONLY" $base.mo
-    then
-      if [[ $EXTRA_MOC_ARGS != *"--incremental-gc"* ]]
-      then
-        $ECHO " Skipped (non-incremental GC)"
-        continue
-      fi
-    fi
-
     # extra flags (allow shell variables there)
     moc_extra_flags="$(eval echo $(grep '//MOC-FLAG' $base.mo | cut -c11- | paste -sd' '))"
     moc_extra_env="$(eval echo $(grep '//MOC-ENV' $base.mo | cut -c10- | paste -sd' '))"
@@ -271,6 +263,22 @@ do
       TEST_MOC_ARGS="--force-gc $EXTRA_MOC_ARGS"
     else
       TEST_MOC_ARGS=$EXTRA_MOC_ARGS
+    fi
+    if grep -q "//ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY" $base.mo
+    then
+      if [[ $EXTRA_MOC_ARGS != *"--enhanced-orthogonal-persistence"* ]]
+      then
+        $ECHO " Skipped (not applicable to enhanced orthogonal persistence)"
+        continue
+      fi
+    fi
+    if grep -q "//CLASSICAL-PERSISTENCE-ONLY" $base.mo
+    then
+      if [[ $EXTRA_MOC_ARGS == *"--enhanced-orthogonal-persistence"* ]]
+      then
+        $ECHO " Skipped (not applicable to classical persistence)"
+        continue
+      fi
     fi
     moc_with_flags="env $moc_extra_env moc $moc_extra_flags $TEST_MOC_ARGS"
 
@@ -370,8 +378,8 @@ do
 
         if [ "$SKIP_VALIDATE" != yes ]
         then
-          run_if wasm valid wasm-validate --enable-multi-memory $out/$base.wasm
-          run_if ref.wasm valid-ref wasm-validate --enable-multi-memory $out/$base.ref.wasm
+          run_if wasm valid wasm-validate --enable-memory64 --enable-multi-memory $out/$base.wasm
+          run_if ref.wasm valid-ref wasm-validate --enable-memory64 --enable-multi-memory $out/$base.ref.wasm
         fi
 
         if [ -e $out/$base.wasm ]
@@ -382,7 +390,7 @@ do
             if grep -F -q CHECK $mangled
             then
               $ECHO -n " [FileCheck]"
-              wasm2wat --enable-multi-memory --no-check $out/$base.wasm > $out/$base.wat
+              wasm2wat --enable-memory64 --enable-multi-memory --no-check $out/$base.wasm > $out/$base.wat
               cat $out/$base.wat | FileCheck $mangled > $out/$base.filecheck 2>&1
               diff_files="$diff_files $base.filecheck"
             fi
@@ -446,15 +454,28 @@ do
       then
         continue
       fi
-
-      if grep -q "# *INCREMENTAL-GC-ONLY" $(basename $file)
+      if grep -q "# ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY" $(basename $file)
       then
-        if [[ $EXTRA_MOC_ARGS != *"--incremental-gc"* ]]
-        then 
+        if [[ $EXTRA_MOC_ARGS != *"--enhanced-orthogonal-persistence"* ]]
+        then
           continue
         fi
       fi
-
+      if grep -q "# CLASSICAL-PERSISTENCE-ONLY" $(basename $file)
+      then
+        if [[ $EXTRA_MOC_ARGS == *"--enhanced-orthogonal-persistence"* ]]
+        then
+          continue
+        fi
+      fi
+      if grep -q "# DEFAULT-GC-ONLY" $(basename $file)
+      then
+        if [[ $EXTRA_MOC_ARGS == *"--copying-gc"* ]] || [[ $EXTRA_MOC_ARGS == *"--compacting-gc"* ]] || [[ $EXTRA_MOC_ARGS == *"--generational-gc"* ]] || [[ $EXTRA_MOC_ARGS == *"--incremental-gc"* ]]
+        then
+          continue
+        fi
+      fi
+      
       have_var_name="HAVE_${runner//-/_}"
       if [ ${!have_var_name} != yes ]
       then
@@ -506,7 +527,7 @@ do
 
     if [ -e $out/$base.linked.wasm ]
     then
-        run wasm2wat wasm2wat $out/$base.linked.wasm -o $out/$base.linked.wat
+        run wasm2wat wasm2wat --enable-memory64 $out/$base.linked.wasm -o $out/$base.linked.wat
         diff_files="$diff_files $base.linked.wat"
     fi
   ;;

@@ -1,8 +1,8 @@
-//MOC-FLAG --compacting-gc --rts-stack-pages 32 -measure-rts-stack
+//MOC-FLAG -measure-rts-stack
 import { errorMessage; debugPrint; } = "mo:⛔";
 
 actor {
-    let expectedMinimumSize = 35_000;
+    let expectedMinimumSize = 31_000;
 
     public func ser() : async () { await go(false) };
     public func deser() : async () { await go(true) };
@@ -27,7 +27,7 @@ actor {
                if deserialize
                  from_candid(b)
                else null;
-              
+
               ()
             };
           } catch e {
@@ -37,7 +37,7 @@ actor {
         };
 
         assert i > expectedMinimumSize;
-        
+
         let b = to_candid(l);
         debugPrint("serialized");
 

@@ -12,9 +12,12 @@ use crate::constants::WORD_SIZE;
 use crate::mem_utils::memcpy_words;
 use crate::memory::Memory;
 use crate::types::*;
-use crate::visitor::{pointer_to_dynamic_heap, visit_pointer_fields};
+use crate::visitor::{classical::pointer_to_dynamic_heap, visit_pointer_fields};
 
 use motoko_rts_macros::ic_mem_fn;
+
+// Only designed for 32-bit.
+const _: () = assert!(core::mem::size_of::<usize>() == core::mem::size_of::<u32>());
 
 #[no_mangle]
 #[cfg(feature = "ic")]
@@ -27,7 +30,7 @@ unsafe fn schedule_compacting_gc<M: Memory>(mem: &mut M) {
     // 512 MiB slack for mark stack + allocation area for the next message
     let slack: u64 = 512 * 1024 * 1024;
     let heap_size_bytes: u64 =
-        u64::from(crate::constants::WASM_HEAP_SIZE.as_u32()) * u64::from(WORD_SIZE);
+        crate::constants::WASM32_HEAP_SIZE.as_usize() as u64 * WORD_SIZE as u64;
     // Larger than necessary to keep things simple
     let max_bitmap_size_bytes = heap_size_bytes / 32;
     // NB. `max_live` is evaluated in compile time to a constant
@@ -53,9 +56,9 @@ unsafe fn compacting_gc<M: Memory>(mem: &mut M) {
         crate::continuation_table::continuation_table_loc(),
         crate::region::region0_get_ptr_loc(),
         // note_live_size
-        |live_size| ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, live_size),
+        |live_size| linear_memory::MAX_LIVE = ::core::cmp::max(linear_memory::MAX_LIVE, live_size),
         // note_reclaimed
-        |reclaimed| linear_memory::RECLAIMED += Bytes(u64::from(reclaimed.as_u32())),
+        |reclaimed| linear_memory::RECLAIMED += Bytes(reclaimed.as_usize() as u64),
     );
 
     linear_memory::LAST_HP = linear_memory::get_hp_unskewed();
@@ -65,8 +68,8 @@ pub unsafe fn compacting_gc_internal<
     M: Memory,
     GetHp: Fn() -> usize,
     SetHp: Fn(usize),
-    NoteLiveSize: Fn(Bytes<u32>),
-    NoteReclaimed: Fn(Bytes<u32>),
+    NoteLiveSize: Fn(Bytes<usize>),
+    NoteReclaimed: Fn(Bytes<usize>),
 >(
     mem: &mut M,
     heap_base: usize,
@@ -78,7 +81,7 @@ pub unsafe fn compacting_gc_internal<
     note_live_size: NoteLiveSize,
     note_reclaimed: NoteReclaimed,
 ) {
-    let old_hp = get_hp() as u32;
+    let old_hp = get_hp();
 
     assert_eq!(heap_base % 32, 0);
 
@@ -92,25 +95,25 @@ pub unsafe fn compacting_gc_internal<
         region0_ptr_loc,
     );
 
-    let reclaimed = old_hp - (get_hp() as u32);
+    let reclaimed = old_hp - get_hp();
     note_reclaimed(Bytes(reclaimed));
 
     let live = get_hp() - heap_base;
-    note_live_size(Bytes(live as u32));
+    note_live_size(Bytes(live));
 }
 
 unsafe fn mark_compact<M: Memory, SetHp: Fn(usize)>(
     mem: &mut M,
     set_hp: SetHp,
     heap_base: usize,
-    heap_end: u32,
+    heap_end: usize,
     static_roots: Value,
     continuation_table_ptr_loc: *mut Value,
     region0_ptr_loc: *mut Value,
 ) {
-    let mem_size = Bytes(heap_end - heap_base as u32);
+    let mem_size = Bytes(heap_end - heap_base);
 
-    alloc_bitmap(mem, mem_size, heap_base as u32 / WORD_SIZE);
+    alloc_bitmap(mem, mem_size, heap_base / WORD_SIZE);
     alloc_mark_stack(mem);
 
     mark_static_roots(mem, static_roots, heap_base);
@@ -150,7 +153,7 @@ unsafe fn mark_static_roots<M: Memory>(mem: &mut M, static_roots: Value, heap_ba
 
 unsafe fn mark_object<M: Memory>(mem: &mut M, obj: Value) {
     let obj_tag = obj.tag();
-    let obj = obj.get_ptr() as u32;
+    let obj = obj.get_ptr();
 
     // Check object alignment to avoid undefined behavior. See also static_checks module.
     debug_assert_eq!(obj % WORD_SIZE, 0);
@@ -163,7 +166,7 @@ unsafe fn mark_object<M: Memory>(mem: &mut M, obj: Value) {
     }
 
     set_bit(obj_idx);
-    push_mark_stack(mem, obj as usize, obj_tag);
+    push_mark_stack(mem, obj, obj_tag);
 }
 
 unsafe fn mark_stack<M: Memory>(mem: &mut M, heap_base: usize) {
@@ -188,7 +191,7 @@ unsafe fn mark_fields<M: Memory>(mem: &mut M, obj: *mut Obj, obj_tag: Tag, heap_
             }
         },
         |mem, slice_start, arr| {
-            const SLICE_INCREMENT: u32 = 127;
+            const SLICE_INCREMENT: usize = 127;
             debug_assert!(SLICE_INCREMENT >= TAG_ARRAY_SLICE_MIN);
             if arr.len() - slice_start > SLICE_INCREMENT {
                 let new_start = slice_start + SLICE_INCREMENT;
@@ -278,7 +281,7 @@ unsafe fn thread(field: *mut Value) {
     let pointed = (*field).as_obj();
     let pointed_header = pointed.tag();
     *field = Value::from_raw(pointed_header);
-    (*pointed).tag = field as u32;
+    (*pointed).tag = field as usize;
 }
 
 /// Unthread all references at given header, replacing with `new_loc`. Restores object header.

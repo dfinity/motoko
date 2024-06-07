@@ -42,12 +42,12 @@ use crate::types::{size_of, Blob, Bytes, Stream, Value, TAG_BLOB};
 
 use motoko_rts_macros::ic_mem_fn;
 
-const MAX_STREAM_SIZE: Bytes<u32> = Bytes((1 << 30) - 1);
-const INITIAL_STREAM_FILLED: Bytes<u32> = Bytes(32);
-const STREAM_CHUNK_SIZE: Bytes<u32> = Bytes(128);
+const MAX_STREAM_SIZE: Bytes<usize> = Bytes((1 << 30) - 1);
+const INITIAL_STREAM_FILLED: Bytes<usize> = Bytes(32);
+const STREAM_CHUNK_SIZE: Bytes<usize> = Bytes(128);
 
 #[ic_mem_fn]
-pub unsafe fn alloc_stream<M: Memory>(mem: &mut M, size: Bytes<u32>) -> *mut Stream {
+pub unsafe fn alloc_stream<M: Memory>(mem: &mut M, size: Bytes<usize>) -> *mut Stream {
     debug_assert_eq!(
         INITIAL_STREAM_FILLED,
         (size_of::<Stream>() - size_of::<Blob>()).to_bytes()
@@ -92,15 +92,15 @@ impl Stream {
         }
     }
 
-    fn no_backing_store(self: *mut Self, _ptr: *const u8, _n: Bytes<u32>) {
+    fn no_backing_store(self: *mut Self, _ptr: *const u8, _n: Bytes<usize>) {
         assert!(false)
     }
 
     #[cfg(feature = "ic")]
-    fn send_to_stable(self: *mut Self, ptr: *const u8, n: Bytes<u32>) {
+    fn send_to_stable(self: *mut Self, ptr: *const u8, n: Bytes<usize>) {
         unsafe {
-            let next_ptr64 = self.read_ptr64() + n.as_u32() as u64;
-            ic0_stable64_write(self.read_ptr64(), ptr as u64, n.as_u32() as u64);
+            let next_ptr64 = self.read_ptr64() + n.as_usize() as u64;
+            ic0_stable64_write(self.read_ptr64(), ptr as u64, n.as_usize() as u64);
             self.write_ptr64(next_ptr64);
         }
     }
@@ -120,7 +120,7 @@ impl Stream {
 
     /// Ingest a number of bytes into the stream.
     #[export_name = "stream_write"]
-    pub fn cache_bytes(self: *mut Self, ptr: *const u8, n: Bytes<u32>) {
+    pub fn cache_bytes(self: *mut Self, ptr: *const u8, n: Bytes<usize>) {
         unsafe {
             if self.read_limit64() != 0 && n > STREAM_CHUNK_SIZE
                 || (*self).filled + n > (*self).header.len
@@ -147,7 +147,7 @@ impl Stream {
             if (*self).filled >= (*self).header.len {
                 self.flush()
             }
-            self.as_blob_mut().set((*self).filled.as_u32(), byte);
+            self.as_blob_mut().set((*self).filled.as_usize(), byte);
             (*self).filled += Bytes(1)
         }
     }
@@ -155,7 +155,7 @@ impl Stream {
     /// Return a pointer to a reserved area of the cache and advance the
     /// fill indicator beyond it.
     #[export_name = "stream_reserve"]
-    pub fn reserve(self: *mut Self, bytes: Bytes<u32>) -> *mut u8 {
+    pub fn reserve(self: *mut Self, bytes: Bytes<usize>) -> *mut u8 {
         unsafe {
             if (*self).filled + bytes > (*self).header.len {
                 self.flush()

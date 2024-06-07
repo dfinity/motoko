@@ -10,7 +10,9 @@ use motoko_rts::{
             Partition, PartitionedHeap, PartitionedHeapIterator, PARTITION_SIZE,
             SURVIVAL_RATE_THRESHOLD,
         },
+        set_incremental_gc_state,
         time::BoundedTime,
+        IncrementalGC,
     },
     memory::{alloc_array, alloc_blob, Memory},
     types::{Array, Blob, Bytes, Obj, Tag, Value, Words, TAG_ARRAY, TAG_BLOB},
@@ -18,7 +20,8 @@ use motoko_rts::{
 
 use crate::{gc::utils::WORD_SIZE, memory::TestMemory};
 
-const NUMBER_OF_OBJECTS: usize = 2 * PARTITION_SIZE / 16;
+const OBJECT_SIZE: usize = size_of::<Array>() + WORD_SIZE;
+const NUMBER_OF_OBJECTS: usize = 2 * PARTITION_SIZE / OBJECT_SIZE;
 const HEAP_SIZE: usize = 4 * PARTITION_SIZE;
 
 pub unsafe fn test() {
@@ -39,6 +42,7 @@ unsafe fn test_normal_size_scenario() {
     test_survival_rate(&mut heap.inner);
     test_freeing_partitions(&mut heap, HEAP_SIZE / PARTITION_SIZE + 1);
     test_close_partition(&mut heap);
+    set_incremental_gc_state(None);
 }
 
 fn test_allocation_partitions(heap: &PartitionedHeap, number_of_partitions: usize) {
@@ -97,10 +101,9 @@ unsafe fn iterate_partition(
 ) {
     while iterator.has_object() {
         let object = iterator.current_object();
-        //println!("FOUND {:#x} {}", object as usize, set.len());
         let array = Value::from_ptr(object as usize).as_array();
         let content = array.get(0).get_scalar();
-        let inserted = set.insert(content as usize);
+        let inserted = set.insert(content);
         assert!(inserted);
         progress(set.len(), NUMBER_OF_OBJECTS);
         assert_eq!(partition.get_index(), object as usize / PARTITION_SIZE);
@@ -147,8 +150,6 @@ unsafe fn test_freeing_partitions(heap: &mut PartitionedTestHeap, occupied_parti
     heap.inner.complete_collection();
 }
 
-const OBJECT_SIZE: usize = size_of::<Array>() + WORD_SIZE;
-
 unsafe fn test_reallocations(heap: &mut PartitionedTestHeap) {
     println!("    Test reallocations...");
     let mut time = BoundedTime::new(0);
@@ -186,7 +187,7 @@ unsafe fn count_objects_in_partition(
         let object = iterator.current_object();
         assert_eq!(partition.get_index(), object as usize / PARTITION_SIZE);
         let array = Value::from_ptr(object as usize).as_array();
-        let content = array.get(0).get_scalar() as usize;
+        let content = array.get(0).get_scalar();
         assert!(content < NUMBER_OF_OBJECTS);
         time.tick();
         count += 1;
@@ -247,17 +248,29 @@ unsafe fn test_large_size_scenario() {
     println!("    Test large allocations...");
     const LARGE: usize = PARTITION_SIZE + WORD_SIZE;
     const EXTRA_LARGE: usize = 2 * PARTITION_SIZE;
-    test_allocation_sizes(&[32, PARTITION_SIZE, 16], 3);
-    test_allocation_sizes(&[28, LARGE, 20], 3);
-    test_allocation_sizes(&[24, LARGE, LARGE, 36], 5);
-    test_allocation_sizes(&[24, EXTRA_LARGE, 16], 3);
-    test_allocation_sizes(&[24, EXTRA_LARGE, LARGE, 16], 6);
-    test_allocation_sizes(&[24, EXTRA_LARGE, 32, LARGE, 16], 6);
+    test_allocation_sizes(&[8 * WORD_SIZE, PARTITION_SIZE, 4 * WORD_SIZE], 3);
+    test_allocation_sizes(&[7 * WORD_SIZE, LARGE, 5 * WORD_SIZE], 3);
+    test_allocation_sizes(&[6 * WORD_SIZE, LARGE, LARGE, 9 * WORD_SIZE], 5);
+    test_allocation_sizes(&[6 * WORD_SIZE, EXTRA_LARGE, 4 * WORD_SIZE], 3);
+    test_allocation_sizes(&[6 * WORD_SIZE, EXTRA_LARGE, LARGE, 4 * WORD_SIZE], 6);
+    test_allocation_sizes(
+        &[
+            6 * WORD_SIZE,
+            EXTRA_LARGE,
+            8 * WORD_SIZE,
+            LARGE,
+            4 * WORD_SIZE,
+        ],
+        6,
+    );
 }
 
 unsafe fn test_allocation_sizes(sizes: &[usize], number_of_partitions: usize) {
     let total_partitions = number_of_partitions + 1; // Plus temporary partition.
     let mut heap = PartitionedTestHeap::new(total_partitions * PARTITION_SIZE);
+    let heap_base = heap.heap_base();
+    let state = IncrementalGC::initial_gc_state(&mut heap, heap_base);
+    set_incremental_gc_state(Some(state));
     assert!(heap.inner.occupied_size().as_usize() < PARTITION_SIZE + heap.heap_base());
     let mut time = BoundedTime::new(0);
     heap.inner.start_collection(&mut heap.memory, &mut time);
@@ -279,7 +292,8 @@ unsafe fn test_allocation_sizes(sizes: &[usize], number_of_partitions: usize) {
     heap.inner.complete_collection();
     heap.inner.start_collection(&mut heap.memory, &mut time);
     iterate_large_objects(&heap.inner, &[]);
-    assert!(heap.inner.occupied_size().as_usize() < PARTITION_SIZE + heap.heap_base())
+    assert!(heap.inner.occupied_size().as_usize() < PARTITION_SIZE + heap.heap_base());
+    set_incremental_gc_state(None);
 }
 
 unsafe fn unmark_all_objects(heap: &mut PartitionedTestHeap) {
@@ -329,9 +343,12 @@ unsafe fn occupied_space(partition: &Partition) -> usize {
     occupied_space
 }
 
-fn create_test_heap() -> PartitionedTestHeap {
+unsafe fn create_test_heap() -> PartitionedTestHeap {
     println!("    Create test heap...");
     let mut heap = PartitionedTestHeap::new(HEAP_SIZE);
+    let heap_base = heap.heap_base();
+    let state = IncrementalGC::initial_gc_state(&mut heap, heap_base);
+    set_incremental_gc_state(Some(state));
     let mut time = BoundedTime::new(0);
     unsafe {
         heap.inner.start_collection(&mut heap.memory, &mut time);
@@ -348,7 +365,7 @@ fn create_test_heap() -> PartitionedTestHeap {
 fn allocate_objects(heap: &mut PartitionedTestHeap) {
     for index in 0..NUMBER_OF_OBJECTS {
         progress(index + 1, NUMBER_OF_OBJECTS);
-        let value = Value::from_scalar(index as u32);
+        let value = Value::from_scalar(index);
         let array = heap.allocate_array(&[value]);
         unsafe {
             let object = array.get_ptr() as *mut Obj;
@@ -380,7 +397,7 @@ pub struct PartitionedTestHeap {
 
 impl PartitionedTestHeap {
     pub fn new(size: usize) -> PartitionedTestHeap {
-        let mut memory = TestMemory::new(Bytes(size as u32).to_words());
+        let mut memory = TestMemory::new(Bytes(size).to_words());
         let heap_base = memory.heap_base();
         let inner = unsafe { PartitionedHeap::new(&mut memory, heap_base) };
         PartitionedTestHeap { memory, inner }
@@ -396,39 +413,37 @@ impl PartitionedTestHeap {
 
     pub fn allocate_array(&mut self, elements: &[Value]) -> Value {
         unsafe {
-            let array = alloc_array(self, elements.len() as u32);
+            let array = alloc_array(self, elements.len());
             for index in 0..elements.len() {
                 let raw_array = array.as_array();
-                raw_array.set_scalar(index as u32, elements[index]);
+                raw_array.set(index, elements[index], self);
             }
             array
         }
     }
 
     pub fn allocate_blob(&mut self, size: usize) -> Value {
-        unsafe { alloc_blob(self, Bytes(size as u32)) }
+        unsafe { alloc_blob(self, Bytes(size)) }
     }
 }
 
 unsafe fn block_size(block: *const Tag) -> usize {
     match *block {
-        TAG_ARRAY => {
-            size_of::<Array>() + (block as *const Array).len() as usize * WORD_SIZE as usize
-        }
+        TAG_ARRAY => size_of::<Array>() + (block as *const Array).len() * WORD_SIZE,
         TAG_BLOB => size_of::<Blob>() + (block as *const Blob).len().as_usize(),
         _ => unimplemented!(),
     }
 }
 
 impl Memory for PartitionedTestHeap {
-    unsafe fn alloc_words(&mut self, size: Words<u32>) -> Value {
+    unsafe fn alloc_words(&mut self, size: Words<usize>) -> Value {
         let result = self.inner.allocate(&mut self.memory, size);
         self.memory
             .set_heap_pointer(result.get_ptr() + size.to_bytes().as_usize());
         result
     }
 
-    unsafe fn grow_memory(&mut self, _ptr: u64) {
-        unreachable!();
+    unsafe fn grow_memory(&mut self, ptr: usize) {
+        assert!(ptr <= self.memory.heap_end());
     }
 }

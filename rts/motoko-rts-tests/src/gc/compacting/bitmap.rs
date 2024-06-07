@@ -28,7 +28,7 @@ pub unsafe fn test() {
     });
 
     proptest_runner
-        .run(&bit_index_vec_strategy(), |bits| {
+        .run(&bit_index_vector_strategy(), |bits| {
             // Max bit idx = 65,534, requires 2048 words. Add 2 words for Blob header (header +
             // length).
             let mut mem = TestMemory::new(Words(2051));
@@ -38,22 +38,20 @@ pub unsafe fn test() {
 
     println!("    Testing bit iteration");
     proptest_runner
-        .run(&bit_index_set_strategy(), |bits| {
-            // Same as above
+        .run(&bit_index_vector_strategy(), |bits| {
+            let mut hash_set = HashSet::new();
+            for value in bits {
+                hash_set.insert(value);
+            }
             let mut mem = TestMemory::new(Words(2051));
-            test_bit_iter(&mut mem, bits)
+            test_bit_iter(&mut mem, hash_set)
         })
         .unwrap();
 }
 
 /// Generates vectors of bit indices
-fn bit_index_vec_strategy() -> impl Strategy<Value = Vec<u16>> {
+fn bit_index_vector_strategy() -> impl Strategy<Value = Vec<u16>> {
     proptest::collection::vec(0u16..u16::MAX, 0..1_000)
-}
-
-/// Same as `bit_index_vec_strategy`, but generates sets
-fn bit_index_set_strategy() -> impl Strategy<Value = HashSet<u16>> {
-    proptest::collection::hash_set(0u16..u16::MAX, 0..1_000)
 }
 
 fn test_set_get_proptest<M: Memory>(mem: &mut M, bits: Vec<u16>) -> TestCaseResult {
@@ -68,13 +66,13 @@ fn test_set_get<M: Memory>(mem: &mut M, mut bits: Vec<u16>) -> Result<(), String
     unsafe {
         alloc_bitmap(
             mem,
-            Bytes((u32::from(*bits.iter().max().unwrap()) + 1) * WORD_SIZE),
+            Bytes((*bits.iter().max().unwrap() as usize + 1) * WORD_SIZE),
             0,
         );
 
         for bit in &bits {
-            set_bit(u32::from(*bit));
-            if !get_bit(u32::from(*bit)) {
+            set_bit(*bit as usize);
+            if !get_bit(*bit as usize) {
                 return Err("set-get error".to_string());
             }
         }
@@ -86,14 +84,14 @@ fn test_set_get<M: Memory>(mem: &mut M, mut bits: Vec<u16>) -> Result<(), String
             // Bits from the last set bit up to current bit should be 0
             if let Some(last_bit) = last_bit {
                 for i in last_bit + 1..bit {
-                    if get_bit(u32::from(i)) {
+                    if get_bit(i as usize) {
                         return Err(format!("get_bit({}) of unset bit is true", i));
                     }
                 }
             }
 
             // Current bit should be set
-            if !get_bit(u32::from(bit)) {
+            if !get_bit(bit as usize) {
                 return Err("get_bit of set bit is false".to_string());
             }
 
@@ -108,16 +106,19 @@ fn test_set_get<M: Memory>(mem: &mut M, mut bits: Vec<u16>) -> Result<(), String
 
 fn test_bit_iter<M: Memory>(mem: &mut M, bits: HashSet<u16>) -> TestCaseResult {
     // If the max bit is N, the heap size is at least N+1 words
-    let heap_size = Words(u32::from(
-        bits.iter().max().map(|max_bit| max_bit + 1).unwrap_or(0),
-    ))
+    let heap_size = Words(
+        bits.iter()
+            .max()
+            .map(|max_bit| *max_bit as usize + 1)
+            .unwrap_or(0),
+    )
     .to_bytes();
 
     unsafe {
         alloc_bitmap(mem, heap_size, 0);
 
         for bit in bits.iter() {
-            set_bit(u32::from(*bit));
+            set_bit(*bit as usize);
         }
 
         let mut bits_sorted = bits.into_iter().collect::<Vec<_>>();
@@ -134,7 +135,7 @@ fn test_bit_iter<M: Memory>(mem: &mut M, bits: HashSet<u16>) -> TestCaseResult {
                     ));
                 }
                 map_bit => {
-                    if map_bit != u32::from(vec_bit) {
+                    if map_bit != vec_bit as usize {
                         return Err(TestCaseError::Fail(
                             format!(
                                 "bitmap iterator yields {}, but actual bit is {}",

@@ -35,7 +35,7 @@ With this piece of information you can run the identical test locally,
 using the following `nix-build` invocation from your `motoko`
 directory:
 ``` shell
-$ nix-build -A tests --arg replay 232458
+$ nix-build -A tests.qc --arg replay 232458
 ```
 
 ## Running in `moc` and `wasm-interp`

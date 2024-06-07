@@ -1,0 +1,18 @@
+# ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
+# SKIP ic-ref-run
+install $ID tuple-upgrades/version0.mo ""
+ingress $ID print "DIDL\x00\x00"
+upgrade $ID tuple-upgrades/version0.mo ""
+ingress $ID print "DIDL\x00\x00"
+upgrade $ID tuple-upgrades/version1.mo ""
+ingress $ID print "DIDL\x00\x00"
+upgrade $ID tuple-upgrades/version1.mo ""
+ingress $ID print "DIDL\x00\x00"
+upgrade $ID tuple-upgrades/version2.mo ""
+upgrade $ID tuple-upgrades/version3.mo ""
+upgrade $ID tuple-upgrades/version4.mo ""
+upgrade $ID tuple-upgrades/version5.mo ""
+upgrade $ID tuple-upgrades/version0.mo ""
+ingress $ID print "DIDL\x00\x00"
+upgrade $ID tuple-upgrades/version0.mo ""
+ingress $ID print "DIDL\x00\x00"

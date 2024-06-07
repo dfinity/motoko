@@ -1,0 +1,7 @@
+# ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
+install $ID blob-array-mismatch/version0.mo ""
+upgrade $ID blob-array-mismatch/version0.mo ""
+upgrade $ID blob-array-mismatch/version1.mo ""
+reinstall $ID blob-array-mismatch/version1.mo ""
+upgrade $ID blob-array-mismatch/version1.mo ""
+upgrade $ID blob-array-mismatch/version0.mo ""
