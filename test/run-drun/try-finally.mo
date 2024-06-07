@@ -1,12 +1,21 @@
-import { debugPrint; error } =  "mo:prim";
+import { debugPrint; error; call_raw; principalOfActor } =  "mo:⛔";
 
 actor A {
     func m() : async () {
     };
 
+    public func raw() : async () {
+    };
+
     func t0() : async () {
         try { debugPrint "IN"; await m(); assert false }
         finally { debugPrint "OUT" };
+    };
+
+    func t0r() : async () {
+        let p = principalOfActor A;
+        try { debugPrint "INr"; ignore await call_raw(p, "raw", to_candid()); assert false }
+        finally { debugPrint "OUTr" };
     };
 
 /*  nested `try` won't work
@@ -83,7 +92,8 @@ actor A {
     // TODO: trap on happy/catch
 
     public func go() : async () {
-        /*ignore*/ await t0();
+        try /*ignore*/ await t0() catch _ {};
+        try await t0r() catch _ {};
         //await t1();
         /*await t2();
         await t3();
