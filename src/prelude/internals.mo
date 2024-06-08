@@ -308,7 +308,22 @@ func @getSystemRefund() : @Refund {
 };
 
 func @shout() = (prim "print" : Text -> ()) "CLEANUP";
-func @shout2(_ : Error) = (prim "print" : Text -> ()) "CLEANUP_E";
+
+let @FIXME_err = (prim "cast" : ({#call_error : {err_code : Nat32}}, Text) -> Error) (#call_error {err_code = 0 : Nat32}, "HAHA");
+func @shout2(e : Error) {
+    type ErrorCode = {
+        #system_fatal;
+        #system_transient;
+        #destination_invalid;
+        #canister_reject;
+        #canister_error;
+        #future : Nat32;
+        #call_error : { err_code : Nat32 };
+    };
+    func errorCode(e : Error) : ErrorCode = ((prim "cast" : Error -> (ErrorCode, Text)) e).0;
+    assert errorCode @FIXME_err == errorCode e;
+    (prim "print" : Text -> ()) "CLEANUP_E"
+};
 
 func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>, @Cont<Nat32>) {
   let w_null = func(r : @Refund, t : T) { };
@@ -350,8 +365,7 @@ func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>, @Cont<Nat32>) 
   func clean(_ : Nat32) {
     (prim "print" : Text -> ()) "EXTERN";
 
-    cleanup ((prim "cast" : ({#call_error : {err_code : Nat32}}, Text) -> Error)
-    (#call_error {err_code = 0 : Nat32}, "HAHA"));
+    cleanup @FIXME_err;
   };
 
   func enqueue(k : @Cont<T>, r : @Cont<Error>, c : @Cont<Error/*FIXME: unit*/>) : {
