@@ -22,6 +22,15 @@ actor Tuple {
         return (42, false);
     };
 
+    private func getLargeTuple():
+        (Int, Bool, Int, Int, Bool,
+         Int, Bool, Int, Bool, (Int, Bool))
+    {
+        let t = getTuple();
+        return (1, true, 2, 3, false,
+                4, true, 5, false, t);
+    };
+
     private func tupleArg(a: (Bool, Bool)): Bool {
         return a.0 and a.1;
     };

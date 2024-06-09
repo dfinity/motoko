@@ -102,7 +102,7 @@ and typ' =
   | BoolT
   | RefT
   | ArrayT
-  | TupleT
+  | TupleT of typ list
   | OptionT of typ
   | ConT of id * typ list
 

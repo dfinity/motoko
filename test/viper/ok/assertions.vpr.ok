@@ -12,12 +12,6 @@ define $array_acc(a, t, p) forall j: Int :: 0 <= j && j < $size(a) ==> acc($loc(
 define $array_untouched(a, t) forall j: Int :: 0 <= j && j < $size(a) ==> $loc(a, j).t == old($loc(a, j).t)
 define $array_init(a, t, x) forall i : Int :: 0 <= i && i < $size(a) ==> $loc(a, i).t == x
 /* Tuple encoding */
-domain Tuple {
-  function $prj(a: Tuple, i: Int): Ref
-  function $prj_inv1(r: Ref): Tuple
-  function $prj_inv2(r: Ref): Int
-  axiom $all_diff_tuple { forall a: Tuple, i: Int :: {$prj(a, i)} $prj_inv1($prj(a, i)) == a && $prj_inv2($prj(a, i)) == i }
-}
 /* Option encoding */
 adt Option[T] {
   None()
@@ -28,11 +22,9 @@ field $int: Int
 field $bool: Bool
 field $ref: Ref
 field $array: Array
-field $tuple: Tuple
 field $option_int: Option[Int]
 field $option_bool: Option[Bool]
 field $option_array: Option[Array]
-field $option_tuple: Option[Tuple]
 /* END PRELUDE */
 
 field $message_async: Int
