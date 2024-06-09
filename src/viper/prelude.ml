@@ -1,5 +1,6 @@
-let prelude : string = {prelude|/* BEGIN PRELUDE */
-/* Array encoding */
+open Common
+
+let prelude_array_encoding : string = {prelude|/* Array encoding */
 domain Array {
   function $loc(a: Array, i: Int): Ref
   function $size(a: Array): Int
@@ -10,27 +11,59 @@ domain Array {
 }
 define $array_acc(a, t, p) forall j: Int :: 0 <= j && j < $size(a) ==> acc($loc(a, j).t, p)
 define $array_untouched(a, t) forall j: Int :: 0 <= j && j < $size(a) ==> $loc(a, j).t == old($loc(a, j).t)
-define $array_init(a, t, x) forall i : Int :: 0 <= i && i < $size(a) ==> $loc(a, i).t == x
-/* Tuple encoding */
-domain Tuple {
-  function $prj(a: Tuple, i: Int): Ref
-  function $prj_inv1(r: Ref): Tuple
-  function $prj_inv2(r: Ref): Int
-  axiom $all_diff_tuple { forall a: Tuple, i: Int :: {$prj(a, i)} $prj_inv1($prj(a, i)) == a && $prj_inv2($prj(a, i)) == i }
-}
-/* Option encoding */
+define $array_init(a, t, x) forall i : Int :: 0 <= i && i < $size(a) ==> $loc(a, i).t == x|prelude}
+
+let pp_tup_decl_param  ppf i = Format.fprintf ppf "T%d" i
+let pp_tup_decl_params ppf = function
+  | 0 -> ()
+  | n ->
+      let comma ppf () = Format.fprintf ppf ",@ " in
+      Format.fprintf ppf "[%a]"
+        (Format.pp_print_list pp_tup_decl_param ~pp_sep:comma) (List.init n Fun.id)
+
+let pp_tup_decl_con_field n ppf i =
+  Format.fprintf ppf "%s : %a"
+    (tup_prj_name n i)
+    pp_tup_decl_param i
+let pp_tup_decl_con ppf n =
+  let comma ppf () = Format.fprintf ppf ",@ " in
+  Format.fprintf ppf "%s@[(%a)@]"
+    (tup_con_name n)
+    (Format.pp_print_list ~pp_sep:comma (pp_tup_decl_con_field n)) (List.init n Fun.id)
+
+let pp_tup_decl n =
+  Format.asprintf "@[<2>adt Tuple$%d@;%a@;@[<v 2>{ %a }@]@]"
+    n
+    pp_tup_decl_params n
+    pp_tup_decl_con n
+
+let prelude_tuple_encoding (tuple_arities : IntSet.t) : string =
+  String.concat "\n"
+  ("/* Tuple encoding */" ::
+    List.map pp_tup_decl (IntSet.elements tuple_arities))
+
+let prelude_option_encoding : string = {prelude|/* Option encoding */
 adt Option[T] {
   None()
   Some(some$0: T)
-}
-/* Typed references */
+}|prelude}
+
+let prelude_typed_references : string = {prelude|/* Typed references */
 field $int: Int
 field $bool: Bool
 field $ref: Ref
 field $array: Array
-field $tuple: Tuple
 field $option_int: Option[Int]
 field $option_bool: Option[Bool]
-field $option_array: Option[Array]
-field $option_tuple: Option[Tuple]
-/* END PRELUDE */|prelude}
+field $option_array: Option[Array]|prelude}
+
+let prelude reqs: string =
+  String.concat "\n"
+  [
+    "/* BEGIN PRELUDE */";
+    prelude_array_encoding;
+    prelude_tuple_encoding !(reqs.tuple_arities);
+    prelude_option_encoding;
+    prelude_typed_references;
+    "/* END PRELUDE */"
+  ]

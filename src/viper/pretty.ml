@@ -125,7 +125,11 @@ and pp_typ ppf t =
   | BoolT -> pr ppf "Bool"
   | RefT -> pr ppf "Ref"
   | ArrayT -> pr ppf "Array"
-  | TupleT -> pr ppf "Tuple"
+  | TupleT [] -> pr ppf "Tuple$0"
+  | TupleT ts ->
+      fprintf ppf "@[Tuple$%d[%a]@]"
+        (List.length ts)
+        (pp_print_list ~pp_sep:comma pp_typ) ts
   | OptionT t -> fprintf ppf "@[Option[%a]@]" pp_typ t
   | ConT(con, []) -> fprintf ppf "%s" con.it
   | ConT(con, ts) ->
@@ -253,11 +257,11 @@ and pp_fldacc ppf fldacc =
 and pp_loop_inv ppf inv =
     fprintf ppf "invariant %a" pp_exp inv
 
-let prog_mapped file p =
+let prog_mapped file tuple_arities p =
     marks := [];
     let b = Buffer.create 16 in
     let ppf = Format.formatter_of_buffer b in
-    Format.fprintf ppf "@[%s@]@.@.@[%a@]" prelude pp_prog p;
+    Format.fprintf ppf "@[%s@]@.@.@[%a@]" (prelude tuple_arities) pp_prog p;
     Format.pp_print_flush ppf ();
     let in_file { left; right } =
       let left, right = { left with file }, { right with file } in
@@ -294,4 +298,4 @@ let prog_mapped file p =
         List.fold_left tighten None mapping in
     Buffer.contents b, lookup
 
-let prog p = fst (prog_mapped "" p)
+let prog tuple_arities p = fst (prog_mapped "" tuple_arities p)

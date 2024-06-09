@@ -513,8 +513,9 @@ let viper_files' parsefn files : viper_result =
   let* () = Typing.check_actors ~viper_mode:true senv progs in
   let prog = CompUnit.combine_progs progs in
   let u = CompUnit.comp_unit_of_prog false prog in
-  let* v = Viper.Trans.unit (Viper.Prep.prep_unit u) in
-  let s = Viper.Pretty.prog_mapped "" v in
+  let reqs = Viper.Common.init_reqs () in
+  let* v = Viper.Trans.unit reqs (Viper.Prep.prep_unit u) in
+  let s = Viper.Pretty.prog_mapped "" reqs v in
   Diag.return s
 
 let viper_files files : viper_result =

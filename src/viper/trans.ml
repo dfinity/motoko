@@ -63,9 +63,6 @@ let arrayAccE at lhs field_name perm =
   let (!!) p = !!! at p in
   !! (CallE ("$array_acc", [lhs; !!(FldE field_name); !!(PermE(!! perm))]))
 
-let prjE at tuple_e ix_e field_name =
-  !!! at (CallE ("$prj", [tuple_e; ix_e])), !!! at field_name
-
 let someE at x_e =
   !!! at (CallE ("Some", [x_e]))
 let noneE at =
@@ -109,6 +106,7 @@ type ctxt =
     ids : (sort * T.t) T.Env.t;
     label_to_tmp_var : id String_map.t; (* Motoko label -> associated tmp variable *)
     label_to_vpr_label : string String_map.t; (* Motoko label -> Viper label *)
+    reqs : reqs; (* requirements for the prelude *)
     ghost_items : (ctxt -> item) list ref;
     ghost_inits : (ctxt -> seqn') list ref;
     ghost_perms : (ctxt -> Source.region -> exp) list ref;
@@ -175,10 +173,10 @@ let rec strip_par_p (p : M.pat) : M.pat =
   | M.ParP p' -> strip_par_p p'
   | _         -> p
 
-let rec unit (u : M.comp_unit) : prog Diag.result =
+let rec unit reqs (u : M.comp_unit) : prog Diag.result =
   Diag.(
     reset_stamps();
-    try return (unit' u) with
+    try return (unit' reqs u) with
     | Unsupported (at, desc) -> error at "0" "viper" ("translation to viper failed:\n"^desc)
     | exn ->
       error
@@ -190,7 +188,7 @@ let rec unit (u : M.comp_unit) : prog Diag.result =
           (Printexc.to_string exn))
   )
 
-and unit' (u : M.comp_unit) : prog =
+and unit' reqs (u : M.comp_unit) : prog =
   let { M.imports; M.body } = u.it in
   match body.it with
   | M.ActorU(id_opt, decs) ->
@@ -200,6 +198,7 @@ and unit' (u : M.comp_unit) : prog =
       ids = Env.empty;
       label_to_tmp_var = String_map.empty;
       label_to_vpr_label = String_map.empty;
+      reqs = reqs;
       ghost_items = ref [];
       ghost_inits = ref [];
       ghost_perms = ref [];
@@ -323,8 +322,8 @@ and dec_field' ctxt d =
       let adt_con con = begin
         { con_name = !!! Source.no_region con.T.lab;
           con_fields = match con.T.typ with
-            | T.Tup ts -> List.map tr_typ ts
-            | t -> [tr_typ t]
+            | T.Tup ts -> List.map (tr_typ ctxt) ts
+            | t -> [tr_typ ctxt t]
         }
       end in
       AdtI ({ typ_id with note = NoInfo },
@@ -342,7 +341,7 @@ and dec_field' ctxt d =
         let open Either in
         let self_id = !!! (Source.no_region) "$Self" in
         let method_args = args p in
-        let method_args' = List.map (fun (id, t) -> id, tr_typ t) method_args in
+        let method_args' = List.map (fun (id, t) -> id, tr_typ ctxt' t) method_args in
         let ctxt'' = { ctxt'
           with self = Some self_id.it;
                ids = List.fold_left (fun env (id, t) -> Env.add id.it (Local, t) env) ctxt.ids method_args }
@@ -352,7 +351,7 @@ and dec_field' ctxt d =
         let pres, stmts' = List.partition_map (function { it = PreconditionS exp; _ } -> Left exp | s -> Right s) (snd stmts.it) in
         let posts, stmts' = List.partition_map (function { it = PostconditionS exp; _ } -> Left exp | s -> Right s) stmts' in
         let arg_preds = local_access_preds ctxt'' in
-        let ret_preds, ret = rets t_opt in
+        let ret_preds, ret = rets ctxt'' t_opt in
         let pres = arg_preds @ pres in
         let posts = arg_preds @ ret_preds @ posts in
         let stmts'' = stmts' @ [!!! Source.no_region (LabelS(!!! (Source.no_region) "$Ret"))] in
@@ -369,7 +368,7 @@ and dec_field' ctxt d =
         let open Either in
         let self_id = !!! (Source.no_region) "$Self" in
         let method_args = args p in
-        let method_args' = List.map (fun (id, t) -> id, tr_typ t) method_args in
+        let method_args' = List.map (fun (id, t) -> id, tr_typ ctxt' t) method_args in
         let ctxt'' = { ctxt'
           with self = Some self_id.it;
                ids = List.fold_left (fun env (id, t) -> Env.add id.it (Local, t) env) ctxt.ids method_args }
@@ -379,7 +378,7 @@ and dec_field' ctxt d =
         let pres, stmts' = List.partition_map (function { it = PreconditionS exp; _ } -> Left exp | s -> Right s) (snd stmts.it) in
         let posts, stmts' = List.partition_map (function { it = PostconditionS exp; _ } -> Left exp | s -> Right s) stmts' in
         let arg_preds = local_access_preds ctxt'' in
-        let ret_preds, ret = rets t_opt in
+        let ret_preds, ret = rets ctxt'' t_opt in
         let pres = arg_preds @ pres in
         let posts = arg_preds @ ret_preds @ posts in
         let stmts'' = stmts' @ [!!! Source.no_region (LabelS(!!! (Source.no_region) "$Ret"))] in
@@ -401,7 +400,7 @@ and dec_field' ctxt d =
           let at = span x.at e.at in
           assign_stmts ctxt' at (LValueFld (fldacc ctxt')) e),
       (fun ctxt' ->
-        (FieldI(id x, tr_typ t),
+        (FieldI(id x, tr_typ ctxt' t),
         NoInfo))
   (* invariants *)
   | M.(ExpD { it = AssertE (Invariant, e); at; _ }) ->
@@ -427,7 +426,6 @@ and arg p = match p.it with
 and access_pred lhs t =
   match T.normalize t with
   | T.Array elem_t -> Some (array_acc Source.no_region lhs elem_t)
-  | T.Tup   ts     -> Some (tuple_acc Source.no_region lhs ts WildcardP) (* tuples are immutable *)
   | _ -> None
 
 (* Get access predicates for all local variables in current scope *)
@@ -436,7 +434,7 @@ and local_access_preds ctxt =
   let preds = Env.fold (fun id info preds ->
       match info with
       | (Local, t) ->
-        let pred = access_pred !!(LocalVar (!!id, tr_typ t)) t in
+        let pred = access_pred !!(LocalVar (!!id, tr_typ ctxt t)) t in
         pred |: preds
       | _ -> preds)
     ctxt.ids []
@@ -466,7 +464,7 @@ and dec ctxt d =
     { ctxt with ids = Env.add x.it (Local, e.note.M.note_typ) ctxt.ids },
     fun ctxt' ->
       let lval = LValueUninitVar (id x) in
-      let d = !!(id x, tr_typ e.note.M.note_typ) in
+      let d = !!(id x, tr_typ ctxt' e.note.M.note_typ) in
       let ds, stmts = assign_stmts ctxt' d.at lval e in
       (d :: ds, stmts)
   | M.LetD ({it=M.TupP _;_} as p, scrut, None) ->
@@ -681,15 +679,14 @@ and pat_match ctxt (scrut : M.exp) (p : M.pat) : exp list * (id * T.typ) list * 
     let e_scrut = exp ctxt scrut in
     let cond = isSomeE (p.at) e_scrut in
     let x, t = unwrap_var_pat p' in
-    let ds = [!!(x, tr_typ t)] in
+    let ds = [!!(x, tr_typ ctxt t)] in
     let stmts = [!!(assign_stmt (LValueUninitVar x) (fromSomeE (scrut.at) e_scrut))] in
     [cond], [(x, t)], (ds, stmts)
   | M.(TupP ps) ->
-    let e_scrut = exp ctxt scrut in
     let p_scope = unwrap_tup_vars_pat p in
-    let ds = List.map (fun (x, t) -> !!(x, tr_typ t)) p_scope in
+    let ds = List.map (fun (x, t) -> !!(x, tr_typ ctxt t)) p_scope in
     let tup_prj_assign_stmt i lval t = begin
-      let rhs = !!(FldAcc (prjE (p.at) e_scrut (intLitE p.at i) (typed_field t))) in
+      let rhs = prjE ctxt (p.at) scrut i in
       !!(assign_stmt lval rhs)
     end in
     let stmts = List.mapi (fun i (x, t) -> tup_prj_assign_stmt i (LValueUninitVar x) t) p_scope in
@@ -698,7 +695,7 @@ and pat_match ctxt (scrut : M.exp) (p : M.pat) : exp list * (id * T.typ) list * 
     let e_scrut = exp ctxt scrut in
     let cond = !!(FldAcc (e_scrut, !!("is" ^ l.it))) in
     let p_scope = unwrap_tup_vars_pat p' in
-    let ds = List.map (fun (x, t) -> !!(x, tr_typ t)) p_scope in
+    let ds = List.map (fun (x, t) -> !!(x, tr_typ ctxt t)) p_scope in
     let fld_assign_stmt i lval = begin
       let rhs = !!(FldAcc (e_scrut, !!(l.it ^ "$" ^ string_of_int i))) in
       !!(assign_stmt lval rhs)
@@ -732,8 +729,8 @@ and assign_stmts ctxt at (lval : lvalue) (e : M.exp) : seqn' =
       ->
     begin match args with
     | M.({it=TupE([e1;e2]); _}) ->
-      fld_via_tmp_var lval t (fun x ->
-        let lhs = !!(LocalVar (x, tr_typ t)) in
+      fld_via_tmp_var ctxt lval t (fun x ->
+        let lhs = !!(LocalVar (x, tr_typ ctxt t)) in
         [], [ !!(AssertS !!(GeCmpE (exp ctxt e1, intLitE at 0)))
             ; !!(InhaleS (array_acc at lhs (array_elem_t t)))
             ; !!(InhaleS (array_size_inv at lhs (exp ctxt e1)))
@@ -742,19 +739,15 @@ and assign_stmts ctxt at (lval : lvalue) (e : M.exp) : seqn' =
     | _ -> unsupported args.at (Arrange.exp args)
     end
   | M.({it = CallE({it = VarE m; _}, inst, args); _}) ->
-    fld_via_tmp_var lval t (fun x ->
+    fld_via_tmp_var ctxt lval t (fun x ->
       let self_var = self ctxt m.at in
       [], [ !!(MethodCallS ([x], id m, self_var :: call_args ctxt args)) ])
   | M.({it=ArrayE(mut, es); _}) ->
-    via_tmp_var lval t (fun x ->
-      let lhs = !!(LocalVar (x, tr_typ t)) in
+    via_tmp_var ctxt lval t (fun x ->
+      let lhs = !!(LocalVar (x, tr_typ ctxt t)) in
       [], array_alloc at ctxt lhs (array_elem_t t) es)
-  | M.({it=TupE(es); _}) ->
-    via_tmp_var lval t (fun x ->
-      let lhs = !!(LocalVar (x, tr_typ t)) in
-      [], tuple_alloc at ctxt lhs (tuple_elem_ts t) es)
   | M.{ it = LabelE (label_id, ret_typ, e); note; _ } ->
-    via_tmp_var lval t (fun x ->
+    via_tmp_var ctxt lval t (fun x ->
       label_expr_alloc ~label_id ~label_type:ret_typ ~label_rhs:e ~label_note:note at ctxt x)
   | _ ->
     [], [!!(assign_stmt lval (exp ctxt e))]
@@ -765,19 +758,19 @@ and assign_stmt (lval : lvalue) (e : exp) : stmt' =
     | LValueUninitVar x -> VarAssignS(x, e)
     | LValueFld fld     -> FieldAssignS(fld, e)
 
-and fld_via_tmp_var (lval : lvalue) (t : T.typ) (f : id -> seqn') : seqn' =
+and fld_via_tmp_var ctxt (lval : lvalue) (t : T.typ) (f : id -> seqn') : seqn' =
   match lval with
   | LValueVar x       -> f x
   | LValueUninitVar x -> f x
-  | LValueFld _       -> via_tmp_var lval t f
+  | LValueFld _       -> via_tmp_var ctxt lval t f
 
-and via_tmp_var (lval : lvalue) (t : T.typ) (f : id -> seqn') : seqn' =
+and via_tmp_var ctxt (lval : lvalue) (t : T.typ) (f : id -> seqn') : seqn' =
   match lval with
   | LValueUninitVar x -> f x  (* initialization never needs a tmp variable *)
   | _ ->
     let (!!) p = !!! Source.no_region p in
     let tmp_id = !! (fresh_id ("$t_" ^ lvalue_str lval)) in
-    let tmp_typ = tr_typ t in
+    let tmp_typ = tr_typ ctxt t in
     let tmp_e = !! (LocalVar (tmp_id, tmp_typ)) in
     let d = !! (tmp_id, tmp_typ) in
     let ds, stmts = f tmp_id in
@@ -798,7 +791,7 @@ and exp ctxt e =
     begin
      match Env.find x.it ctxt.ids with
      | Local, t ->
-        !!(LocalVar (id x, tr_typ t))
+        !!(LocalVar (id x, tr_typ ctxt t))
      | Field, _ ->
         !!(FldAcc (self ctxt x.at, id x))
      | _ ->
@@ -853,13 +846,17 @@ and exp ctxt e =
   | M.IdxE (e1, e2) ->
      !!(FldAcc (array_loc ctxt e.at e1 e2 e_t))
   | M.ProjE (e, i) ->
-     !!(FldAcc (prjE e.at (exp ctxt e) (intLitE e.at i) (typed_field e_t)))
+     prjE ctxt e.at e i
   | M.OptE e ->
      someE (e.at) (exp ctxt e)
   | M.TagE (tag, e) ->
      !!(match e.it with
         | M.TupE es -> CallE (tag.it, List.map (exp ctxt) es)
         | _ -> CallE (tag.it, [exp ctxt e]))
+  | M.TupE es ->
+      let n = List.length es in
+      ctxt.reqs.tuple_arities := IntSet.add n !(ctxt.reqs.tuple_arities);
+      !!(CallE (tup_con_name n, List.map (exp ctxt) es))
   | M.CallE ({ it = M.DotE ({it=M.VarE(m);_}, {it=predicate_name;_}); _ }, _inst, { it = M.FuncE (_, _, _, pattern, _, _, e); note; _ })
     when Imports.find_opt (m.it) ctxt.imports = Some(IM_Prim)
       && (predicate_name = "forall" || predicate_name = "exists")
@@ -877,7 +874,7 @@ and exp ctxt e =
         [] binders typs
     in
     let ctxt = add_locals ctxt typed_binders in
-    let typed_binders = List.map (fun (b, t) -> (b, tr_typ t)) typed_binders in
+    let typed_binders = List.map (fun (b, t) -> (b, tr_typ ctxt t)) typed_binders in
     let e = exp ctxt e in
     (match predicate_name with
     | "forall" -> !!(ForallE (typed_binders, e))
@@ -894,7 +891,7 @@ and extract_binders pattern =
   | M.TupP pats -> List.concat_map extract_binders pats
   | _ -> []
 
-and rets t_opt =
+and rets ctxt t_opt =
   let (!!) p = !!! Source.no_region p in
   match t_opt with
   | None -> [], []
@@ -903,8 +900,8 @@ and rets t_opt =
      | T.Tup [] -> [], []
      | T.Async (T.Fut, _, _) -> [], []
      | typ ->
-        let pred = access_pred !!(LocalVar (!!"$Res", tr_typ typ)) typ in
-        pred |: [], [(!!"$Res", tr_typ  typ)]
+        let pred = access_pred !!(LocalVar (!!"$Res", tr_typ ctxt typ)) typ in
+        pred |: [], [(!!"$Res", tr_typ ctxt typ)]
     )
 
 and id id = { it = id.it; at = id.at; note = NoInfo }
@@ -921,19 +918,26 @@ and loop_label ctxt loop_label =
   in
   id { loop_label with it = label_name }, ctxt
 
-and tr_typ typ =
-  { it = tr_typ' typ;
+and prjE ctxt at e i =
+  let n = List.length (tuple_elem_ts e.note.M.note_typ) in
+  ctxt.reqs.tuple_arities := IntSet.add n !(ctxt.reqs.tuple_arities);
+  !!! at (FldAcc (exp ctxt e, !!! at (tup_prj_name n i)))
+
+and tr_typ ctxt typ =
+  { it = tr_typ' ctxt typ;
     at = Source.no_region;
     note = NoInfo }
-and tr_typ' typ =
+and tr_typ' ctxt typ =
   match typ, T.normalize typ with
   | _, T.Prim T.Int -> IntT
   | _, T.Prim T.Nat -> IntT    (* Viper has no native support for Nat, so translate to Int *)
   | _, T.Prim T.Bool -> BoolT
   | _, T.Array _ -> ArrayT     (* Viper arrays are not parameterised by element type *)
-  | _, T.Tup   _ -> TupleT     (* Viper tuples are not parameterised by element type *)
-  | _, T.Opt   t -> OptionT (tr_typ t)
-  | T.Con (con, ts), _ -> ConT (!!! Source.no_region (Mo_types.Cons.name con), List.map tr_typ ts)
+  | _, T.Opt   t -> OptionT (tr_typ ctxt t)
+  | _, T.Tup  ts ->
+    ctxt.reqs.tuple_arities := IntSet.add (List.length ts) !(ctxt.reqs.tuple_arities);
+    TupleT (List.map (tr_typ ctxt) ts)
+  | T.Con (con, ts), _ -> ConT (!!! Source.no_region (Mo_types.Cons.name con), List.map (tr_typ ctxt) ts)
   | _, t -> unsupported Source.no_region (Mo_types.Arrange_type.typ t)
 
 and is_mut t =
@@ -992,31 +996,6 @@ and array_init_const at lhs t x =
 
 and array_loc ctxt at e1 e2 t =
   locE at (exp ctxt e1) (exp ctxt e2) (typed_field t)
-
-and tuple_acc at lhs ts perm =
-  (* TODO tuple: think about general recursive scheme *)
-  let ps = List.mapi (fun i t -> accE at ~perm (prjE at lhs (intLitE at i) (typed_field t))) ts in
-  conjoin ps at
-
-and tuple_alloc at ctxt lhs ts es : stmt list =
-  let tsi = List.mapi (fun i t -> i, t) ts in
-  let init_tuple =
-    List.map2 (fun e (i, t) ->
-      FieldAssignS (prjE at lhs (intLitE at i) (typed_field t), exp ctxt e)
-    ) es tsi in
-  let reset_perms =
-    List.concat_map (fun (i, t) ->
-      let r = prjE at lhs (intLitE at i) (typed_field t) in
-      if is_mut t then [] else [ ExhaleS (accE at r ~perm:WildcardP)
-                               ; InhaleS (accE at r ~perm:WildcardP)]
-    ) tsi in
-  let stmts = [ InhaleS (tuple_acc at lhs ts FullP)]
-              @ init_tuple
-              @ reset_perms
-  in List.map (!!! at) stmts
-
-and tuple_prj ctxt at e1 e2 t =
-  prjE at (exp ctxt e1) (exp ctxt e2) (typed_field t)
 
 and label_expr_alloc ~label_id ~label_type ~label_rhs ~label_note at ctxt lhs : seqn' =
   let ctxt =
