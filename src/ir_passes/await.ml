@@ -50,7 +50,7 @@ let precont k thunk =
   | MetaCont (typ, cont) ->
     MetaCont (typ, fun v -> finally (cont v))
 
-(* Named labels for break, special labels for return and throw *)
+(* Named labels for break, special labels for return, throw and cleanup *)
 type label = Return | Throw | Cleanup | Named of string
 
 let ( -@- ) k exp2 =
