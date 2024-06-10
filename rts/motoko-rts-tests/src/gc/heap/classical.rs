@@ -116,7 +116,7 @@ fn create_dynamic_heap(
 
             // Store object header
             let address = heap_start + heap_offset;
-            write_word(dynamic_heap, heap_offset, TAG_ARRAY);
+            write_word(dynamic_heap, heap_offset, TAG_ARRAY_M);
             heap_offset += WORD_SIZE;
 
             if incremental {
@@ -165,7 +165,7 @@ fn create_dynamic_heap(
         let mut heap_offset = continuation_table_offset;
 
         let continuation_table_address = heap_start + heap_offset;
-        write_word(dynamic_heap, heap_offset, TAG_ARRAY);
+        write_word(dynamic_heap, heap_offset, TAG_ARRAY_M);
         heap_offset += WORD_SIZE;
 
         if incremental {
@@ -238,7 +238,7 @@ fn create_static_heap(
     // root.
     let array_addr = heap.as_ptr() as usize;
     let mut offset = 0;
-    write_word(heap, offset, TAG_ARRAY);
+    write_word(heap, offset, TAG_ARRAY_M);
     offset += WORD_SIZE;
 
     if incremental {

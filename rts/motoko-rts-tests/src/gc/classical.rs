@@ -204,7 +204,7 @@ pub fn check_dynamic_heap(
 
             let is_forwarded = forward != make_pointer(address);
 
-            if incremental && tag == TAG_BLOB {
+            if incremental && tag == TAG_BLOB_B {
                 assert!(!is_forwarded);
                 // in-heap mark stack blobs
                 let length = read_word(heap, offset);
@@ -218,9 +218,9 @@ pub fn check_dynamic_heap(
                     .as_usize();
             } else {
                 if incremental {
-                    assert!(tag == TAG_ARRAY || tag >= TAG_ARRAY_SLICE_MIN);
+                    assert!(is_array_or_slice_tag(tag));
                 } else {
-                    assert_eq!(tag, TAG_ARRAY);
+                    assert!(is_base_array_tag(tag));
                 }
 
                 if is_forwarded {
@@ -334,7 +334,7 @@ pub fn check_dynamic_heap(
 
 fn check_continuation_table(mut offset: usize, continuation_table: &[ObjectIdx], heap: &[u8]) {
     let table_addr = heap.as_ptr() as usize + offset;
-    assert_eq!(read_word(heap, offset), TAG_ARRAY);
+    assert_eq!(read_word(heap, offset), TAG_ARRAY_M);
     offset += WORD_SIZE;
 
     if is_incremental_gc!() {

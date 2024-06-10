@@ -38,7 +38,7 @@ use crate::mem_utils::memcpy_bytes;
 use crate::memory::{alloc_blob, Memory};
 use crate::rts_trap_with;
 use crate::tommath_bindings::{mp_div_2d, mp_int};
-use crate::types::{size_of, Blob, Bytes, Stream, Value, TAG_BLOB};
+use crate::types::{size_of, Blob, Bytes, Stream, Value, TAG_BLOB_B};
 
 use motoko_rts_macros::ic_mem_fn;
 
@@ -55,7 +55,7 @@ pub unsafe fn alloc_stream<M: Memory>(mem: &mut M, size: Bytes<usize>) -> *mut S
     if size > MAX_STREAM_SIZE {
         rts_trap_with("alloc_stream: Cache too large");
     }
-    let ptr = alloc_blob(mem, size + INITIAL_STREAM_FILLED);
+    let ptr = alloc_blob(mem, TAG_BLOB_B, size + INITIAL_STREAM_FILLED);
     let stream = ptr.as_stream();
     stream.write_ptr64(0);
     stream.write_start64(0);
@@ -195,7 +195,7 @@ impl Stream {
         (*self).header.len = INITIAL_STREAM_FILLED - size_of::<Blob>().to_bytes();
         (*self).filled -= INITIAL_STREAM_FILLED;
         let blob = (self.cache_addr() as *mut Blob).sub(1);
-        (*blob).header.tag = TAG_BLOB;
+        (*blob).header.tag = TAG_BLOB_B;
         let ptr = Value::from_ptr(blob as usize);
         (*blob).header.init_forward(ptr);
         debug_assert_eq!(blob.len(), (*self).filled);

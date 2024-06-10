@@ -177,9 +177,10 @@ unsafe extern "C" fn text_to_buf(mut s: Value, mut buf: *mut u8) {
 #[no_mangle]
 #[classical_persistence]
 unsafe extern "C" fn stream_write_text(stream: *mut Stream, mut s: Value) {
+    use crate::types::TAG_BLOB_B;
     loop {
         let s_ptr = s.as_obj();
-        if s_ptr.tag() == TAG_BLOB {
+        if s_ptr.tag() == TAG_BLOB_B || s_ptr.tag() == TAG_BLOB_T {
             let blob = s_ptr.as_blob();
             stream.cache_bytes(blob.payload_addr(), blob.len());
             break;

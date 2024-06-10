@@ -42,9 +42,10 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
             }
         }
 
-        TAG_ARRAY | TAG_ARRAY_SLICE_MIN.. => {
-            let slice_start = if tag >= TAG_ARRAY_SLICE_MIN { tag } else { 0 };
+        TAG_ARRAY_I | TAG_ARRAY_M | TAG_ARRAY_T | TAG_ARRAY_S | TAG_ARRAY_SLICE_MIN.. => {
+            let (_, slice_start) = slice_start(tag);
             let array = obj as *mut Array;
+            debug_assert!(slice_start <= array.len());
             let array_payload = array.payload_addr();
             let stop = visit_field_range(ctx, slice_start, array);
             debug_assert!(stop <= array.len());
@@ -119,7 +120,8 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
             }
         }
 
-        TAG_BITS64 | TAG_BITS32 | TAG_BLOB | TAG_BIGINT => {
+        TAG_BITS64_U | TAG_BITS64_S | TAG_BITS64_F | TAG_BITS32_U | TAG_BITS32_S | TAG_BITS32_F
+        | TAG_BLOB_B | TAG_BLOB_T | TAG_BLOB_P | TAG_BLOB_A | TAG_BIGINT => {
             // These don't have pointers, skip
         }
 

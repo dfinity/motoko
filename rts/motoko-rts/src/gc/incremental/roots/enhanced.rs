@@ -57,9 +57,9 @@ unsafe fn static_variables_location() -> *mut Value {
 pub unsafe fn initialize_static_variables<M: crate::memory::Memory>(mem: &mut M, amount: usize) {
     use crate::barriers::write_with_barrier;
     use crate::memory::alloc_array;
-    use crate::types::NULL_POINTER;
+    use crate::types::{NULL_POINTER, TAG_ARRAY_M};
 
-    let variables = alloc_array(mem, amount);
+    let variables = alloc_array(mem, TAG_ARRAY_M, amount);
     let array = variables.as_array();
     for index in 0..amount {
         array.initialize(index, NULL_POINTER, mem);

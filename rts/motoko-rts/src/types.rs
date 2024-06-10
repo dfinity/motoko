@@ -402,7 +402,7 @@ impl Value {
     /// pointed object is not a `Blob`.
     #[classical_persistence]
     pub unsafe fn as_stream(self) -> *mut Stream {
-        debug_assert_eq!(self.tag(), TAG_BLOB);
+        debug_assert_eq!(self.tag(), TAG_BLOB_B);
         self.check_forwarding_pointer();
         self.forward().get_ptr() as *mut Stream
     }
@@ -1241,7 +1241,7 @@ pub(crate) unsafe fn block_size(address: usize) -> Words<usize> {
         TAG_REGION => size_of::<Region>(),
 
         #[cfg(not(feature = "enhanced_orthogonal_persistence"))]
-        TAG_BITS32 => size_of::<Bits32>(),
+        TAG_BITS32_U | TAG_BITS32_S | TAG_BITS32_F => size_of::<Bits32>(),
 
         #[cfg(not(feature = "enhanced_orthogonal_persistence"))]
         TAG_NULL => size_of::<Null>(),

@@ -1,6 +1,7 @@
 //! A stack for marking heap objects (for GC). Adopted from mark & compact GC.
 //! Simplified to only store object pointers without tags.
 
+use crate::gc::generational::TAG_BLOB_B;
 use crate::memory::{alloc_blob, Memory};
 use crate::types::{Blob, Words};
 
@@ -27,7 +28,7 @@ pub unsafe fn alloc_mark_stack<M: Memory>(mem: &mut M) {
 
     // Allocating an actual object here to not break dump_heap
     // No post allocation barrier as this RTS-internal blob will be collected by the GC.
-    STACK_BLOB_PTR = alloc_blob(mem, INIT_STACK_SIZE.to_bytes()).get_ptr() as *mut Blob;
+    STACK_BLOB_PTR = alloc_blob(mem, TAG_BLOB_B, INIT_STACK_SIZE.to_bytes()).get_ptr() as *mut Blob;
     STACK_BASE = STACK_BLOB_PTR.payload_addr() as *mut usize;
     STACK_PTR = STACK_BASE;
     STACK_TOP = STACK_BASE.add(INIT_STACK_SIZE.as_usize());
