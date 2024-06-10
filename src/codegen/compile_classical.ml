@@ -12126,7 +12126,7 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
       get_k
       get_r
       add_cycles
-  | ActorE (ds, fs, _, _, _) ->
+  | ActorE (ds, fs, _, _) ->
     fatal "Local actors not supported by backend"
   | NewObjE (Type.(Object | Module | Memory) as _sort, fs, _) ->
     (*
@@ -12668,8 +12668,8 @@ and compile_init_func mod_env ((cu, flavor) : Ir.prog) =
       let _ae, codeW = compile_decs env VarEnv.empty_ae ds Freevars.S.empty in
       codeW G.nop
     )
-  | ActorU (as_opt, ds, fs, up, _t, build_stable_actor) ->
-    main_actor as_opt mod_env ds fs up build_stable_actor
+  | ActorU (as_opt, ds, fs, up, t) ->
+    main_actor as_opt mod_env ds fs up
 
 and export_actor_field env  ae (f : Ir.field) =
   (* A public actor field is guaranteed to be compiled as a PublicMethod *)
@@ -12695,11 +12695,12 @@ and export_actor_field env  ae (f : Ir.field) =
   })
 
 (* Main actor *)
-and main_actor as_opt mod_env ds fs up build_stable_actor =
+and main_actor as_opt mod_env ds fs up =
   Func.define_built_in mod_env "init" [] [] (fun env ->
+    let build_stable_actor = up.stable_record in
     let ae0 = VarEnv.empty_ae in
 
-    let captured = Freevars.captured_vars (Freevars.actor ds fs up build_stable_actor) in
+    let captured = Freevars.captured_vars (Freevars.actor ds fs up) in
     (* Add any params to the environment *)
     (* Captured ones need to go into static memory, the rest into locals *)
     let args = match as_opt with None -> [] | Some as_ -> as_ in
