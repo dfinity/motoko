@@ -1,7 +1,7 @@
 use crate::barriers::{allocation_barrier, init_with_barrier, write_with_barrier};
 use crate::memory::{alloc_blob, Memory};
 use crate::trap_with_prefix;
-use crate::types::{size_of, Blob, Bytes, Region, Value, TAG_REGION};
+use crate::types::{size_of, Blob, Bytes, Region, Value, TAG_BLOB_B, TAG_REGION};
 
 // Versions
 // Should agree with constants in StableMem in compile.ml
@@ -527,7 +527,7 @@ pub unsafe fn region_new<M: Memory>(mem: &mut M) -> Value {
 
     meta_data::total_allocated_regions::set(next_id + 1);
 
-    let vec_pages = alloc_blob(mem, Bytes(0));
+    let vec_pages = alloc_blob(mem, TAG_BLOB_B, Bytes(0));
     allocation_barrier(vec_pages);
     let r_ptr = alloc_region(mem, next_id, 0, vec_pages);
 
@@ -563,6 +563,7 @@ pub unsafe fn region_recover<M: Memory>(mem: &mut M, rid: &RegionId) -> Value {
     let block_count = (page_count + PAGES_IN_BLOCK - 1) / PAGES_IN_BLOCK;
     let vec_pages = alloc_blob(
         mem,
+        TAG_BLOB_B,
         Bytes(block_count as usize * bytes_of::<u16>() as usize),
     );
 
@@ -720,7 +721,8 @@ pub(crate) unsafe fn region_migration_from_some_stable_memory<M: Memory>(mem: &m
     // Temp for the head block, which we move to be physically last.
     // NB: no allocation_barrier is required: header_val is temporary and can be reclaimed by the next GC increment/run.
     // TODO: instead of allocating an 8MB blob, just stack-allocate a tmp page and zero page, and transfer/zero-init via the stack, using a loop.
-    let header_val = crate::memory::alloc_blob(mem, crate::types::Bytes(header_len as usize));
+    let header_val =
+        crate::memory::alloc_blob(mem, TAG_BLOB_B, crate::types::Bytes(header_len as usize));
     let header_blob = header_val.as_blob_mut();
     let header_bytes =
         core::slice::from_raw_parts_mut(header_blob.payload_addr(), header_len as usize);
@@ -950,6 +952,7 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
 
     let new_vec_pages = alloc_blob(
         mem,
+        TAG_BLOB_B,
         Bytes(new_block_count as usize * meta_data::bytes_of::<u16>() as usize),
     );
     let old_vec_byte_count = old_block_count * meta_data::bytes_of::<u16>() as u32;
@@ -1137,7 +1140,7 @@ pub(crate) unsafe fn region_load_blob<M: Memory>(
     offset: u64,
     len: usize,
 ) -> Value {
-    let blob_val = crate::memory::alloc_blob(mem, crate::types::Bytes(len as usize));
+    let blob_val = crate::memory::alloc_blob(mem, TAG_BLOB_B, crate::types::Bytes(len as usize));
     let blob = blob_val.as_blob_mut();
 
     if len < (isize::MAX as usize) {

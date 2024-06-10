@@ -8,10 +8,10 @@ use crate::{
             ArraySlice, SerializationContext,
         },
     },
-    types::{size_of, Array, Value, TAG_ARRAY},
+    types::{size_of, Array, Tag, Value, TAG_ARRAY_I, TAG_ARRAY_M, TAG_ARRAY_S, TAG_ARRAY_T},
 };
 
-use super::{Serializer, StableToSpace, StableValue, StaticScanner};
+use super::{Serializer, StableObjectKind, StableToSpace, StableValue, StaticScanner};
 
 #[repr(C)]
 pub struct StableArray {
@@ -60,13 +60,22 @@ impl Serializer<Array> for StableArray {
         }
     }
 
-    unsafe fn allocate_deserialized<M: Memory>(&self, main_memory: &mut M) -> Value {
+    unsafe fn allocate_deserialized<M: Memory>(
+        &self,
+        main_memory: &mut M,
+        object_kind: StableObjectKind,
+    ) -> Value {
+        let array_tag = decode_array_tag(object_kind);
         let array_length = self.array_length as usize;
-        alloc_array(main_memory, array_length)
+        alloc_array(main_memory, array_tag, array_length)
     }
 
-    unsafe fn deserialize_static_part(&self, target_array: *mut Array) {
-        debug_assert_eq!((*target_array).header.tag, TAG_ARRAY);
+    unsafe fn deserialize_static_part(
+        &self,
+        target_array: *mut Array,
+        object_kind: StableObjectKind,
+    ) {
+        debug_assert_eq!((*target_array).header.tag, decode_array_tag(object_kind));
         debug_assert_eq!((*target_array).len as u64, self.array_length);
     }
 
@@ -85,6 +94,16 @@ impl Serializer<Array> for StableArray {
             target_array.set_raw(index, element.deserialize());
             element_address += size_of::<StableValue>().to_bytes().as_usize() as u64;
         }
+    }
+}
+
+fn decode_array_tag(object_kind: StableObjectKind) -> Tag {
+    match object_kind {
+        StableObjectKind::ArrayImmutable => TAG_ARRAY_I,
+        StableObjectKind::ArrayMutable => TAG_ARRAY_M,
+        StableObjectKind::ArrayTuple => TAG_ARRAY_T,
+        StableObjectKind::ArraySharedFunction => TAG_ARRAY_S,
+        _ => unreachable!("invalid stable array tag"),
     }
 }
 

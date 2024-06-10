@@ -5,7 +5,7 @@ use motoko_rts_macros::{
     non_incremental_gc, uses_enhanced_orthogonal_persistence,
 };
 
-use crate::types::*;
+use crate::{constants::MAX_ARRAY_LENGTH_FOR_ITERATOR, types::*};
 
 use core::mem::{align_of, size_of};
 
@@ -85,6 +85,14 @@ const _: () = assert!(align_of::<Bits64>() == WORD_SIZE);
 const _: () = assert!(align_of::<OneWordFiller>() == WORD_SIZE);
 const _: () = assert!(align_of::<FreeSpace>() == WORD_SIZE);
 const _: () = assert!(align_of::<FwdPtr>() == WORD_SIZE);
+
+// Array slicing
+// TAG_ARRAY_I is smallest tag
+const _: () =
+    assert!(TAG_ARRAY_I < TAG_ARRAY_M && TAG_ARRAY_M < TAG_ARRAY_T && TAG_ARRAY_T < TAG_ARRAY_S);
+// 2-bits suffice to encode base array tag in slice, remaining bits suffice to encode slice start.
+const _: () = assert!((TAG_ARRAY_S - TAG_ARRAY_I) / 2 < 4);
+const _: () = assert!(MAX_ARRAY_LENGTH_FOR_ITERATOR < (1 << (usize::BITS - 2)));
 
 // Check that the incremental GC is used with enhanced orthogonal persistence.
 const _: () = assert!(!uses_enhanced_orthogonal_persistence!() || is_incremental_gc!());

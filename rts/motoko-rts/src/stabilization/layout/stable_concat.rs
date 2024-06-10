@@ -3,7 +3,7 @@ use crate::{
     types::{Bytes, Concat, Value, TAG_CONCAT},
 };
 
-use super::{Serializer, StableValue, StaticScanner};
+use super::{Serializer, StableObjectKind, StableValue, StaticScanner};
 
 #[repr(C)]
 pub struct StableConcat {
@@ -36,7 +36,12 @@ impl Serializer<Concat> for StableConcat {
         }
     }
 
-    unsafe fn deserialize_static_part(&self, target_concat: *mut Concat) {
+    unsafe fn deserialize_static_part(
+        &self,
+        target_concat: *mut Concat,
+        object_kind: StableObjectKind,
+    ) {
+        debug_assert_eq!(object_kind, StableObjectKind::Concat);
         let n_bytes = Bytes(self.number_of_bytes as usize);
         (*target_concat).header.tag = TAG_CONCAT;
         (*target_concat)

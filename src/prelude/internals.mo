@@ -443,7 +443,7 @@ func @install_actor_helper(
         (#install, principal1)
       };
       case (#reinstall actor1) {
-        (#reinstall, (prim "cast" : (actor {}) -> Principal) actor1)
+        (#reinstall, (prim "principalOfActor" : (actor {}) -> Principal) actor1)
       };
       case (#upgrade actor2) {
         let wasm_memory_persistence = if enhanced_orthogonal_persistence { 
@@ -454,11 +454,11 @@ func @install_actor_helper(
         let upgradeOptions = {
           wasm_memory_persistence;
         };
-        ((#upgrade (?upgradeOptions)), (prim "cast" : (actor {}) -> Principal) actor2)
+        ((#upgrade (?upgradeOptions)), (prim "principalOfActor" : (actor {}) -> Principal) actor2)
       };
       case (#upgrade_with_persistence { wasm_memory_persistence; canister } ) {
         let upgradeOptions = { wasm_memory_persistence = ?wasm_memory_persistence };
-        ((#upgrade (?upgradeOptions)), (prim "cast" : (actor {}) -> Principal) canister)
+        ((#upgrade (?upgradeOptions)), (prim "principalOfActor" : (actor {}) -> Principal) canister)
       };
     };
   await @ic00.install_code {

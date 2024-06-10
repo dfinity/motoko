@@ -72,12 +72,22 @@ impl Serializer<Object> for StableObject {
         }
     }
 
-    unsafe fn allocate_deserialized<M: Memory>(&self, main_memory: &mut M) -> Value {
+    unsafe fn allocate_deserialized<M: Memory>(
+        &self,
+        main_memory: &mut M,
+        object_kind: StableObjectKind,
+    ) -> Value {
+        debug_assert_eq!(object_kind, StableObjectKind::Object);
         let total_size = size_of::<Object>() + Words(self.size as usize);
         main_memory.alloc_words(total_size)
     }
 
-    unsafe fn deserialize_static_part(&self, target_object: *mut Object) {
+    unsafe fn deserialize_static_part(
+        &self,
+        target_object: *mut Object,
+        object_kind: StableObjectKind,
+    ) {
+        debug_assert_eq!(object_kind, StableObjectKind::Object);
         (*target_object).header.tag = TAG_OBJECT;
         (*target_object)
             .header
@@ -123,7 +133,7 @@ fn get_object_size(stable_memory: &StableMemoryStream, main_object: *mut Object)
             let target_location = (*(main_hash_blob.get_ptr() as *mut FwdPtr)).fwd;
             let stable_offset = target_location.get_ptr() as u64;
             let stable_hash_blob = stable_memory.read_preceding::<HashBlob>(stable_offset);
-            assert!(stable_hash_blob.tag.decode() == StableObjectKind::Blob);
+            assert!(stable_hash_blob.tag.decode() == StableObjectKind::BlobBytes);
             let hash_blob_length = stable_hash_blob.header.byte_length() as usize;
             let hash_entry_length = size_of::<u64>().to_bytes().as_usize();
             debug_assert_eq!(hash_blob_length % hash_entry_length, 0);

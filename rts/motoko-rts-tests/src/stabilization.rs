@@ -16,7 +16,7 @@ use motoko_rts::{
     stabilization::{
         deserialization::Deserialization, graph_copy::GraphCopy, serialization::Serialization,
     },
-    types::{Value, Words},
+    types::{Value, Words, TAG_ARRAY_M},
 };
 use oorandom::Rand32;
 
@@ -84,7 +84,7 @@ impl RandomHeap {
     fn clear_continuation_table(&mut self) {
         let table_pointer = self.memory.continuation_table_variable_address() as *mut Value;
         unsafe {
-            *table_pointer = alloc_array(&mut self.memory, 0);
+            *table_pointer = alloc_array(&mut self.memory, TAG_ARRAY_M, 0);
         }
     }
 

@@ -19,7 +19,7 @@ use crate::{
     },
     rts_trap_with,
     stable_mem::read_persistence_version,
-    types::{Value, TAG_BLOB},
+    types::{Value, TAG_BLOB_B},
 };
 
 use self::compatibility::TypeDescriptor;
@@ -205,7 +205,8 @@ pub unsafe fn register_stable_type<M: Memory>(
     new_candid_data: Value,
     new_type_offsets: Value,
 ) {
-    assert_eq!(new_candid_data.tag(), TAG_BLOB);
+    assert_eq!(new_candid_data.tag(), TAG_BLOB_B);
+    assert_eq!(new_type_offsets.tag(), TAG_BLOB_B);
     let mut new_type = TypeDescriptor::new(new_candid_data, new_type_offsets);
     let metadata = PersistentMetadata::get();
     let old_type = &mut (*metadata).stable_type;

@@ -38,7 +38,7 @@ use crate::{
         get_version, ic0_stable64_read, ic0_stable64_size, ic0_stable64_write, read_u32, read_u64,
         set_version, write_u32, write_u64, PAGE_SIZE,
     },
-    types::{size_of, Bytes, Value},
+    types::{size_of, Bytes, Tag, Value, TAG_BLOB_B},
 };
 
 use super::performance::InstructionMeter;
@@ -112,10 +112,10 @@ impl StabilizationMetadata {
         length
     }
 
-    fn read_blob<M: Memory>(mem: &mut M, offset: &mut u64) -> Value {
+    fn read_blob<M: Memory>(mem: &mut M, tag: Tag, offset: &mut u64) -> Value {
         let length = Self::read_length(offset);
         unsafe {
-            let value = alloc_blob(mem, Bytes(length as usize));
+            let value = alloc_blob(mem, tag, Bytes(length as usize));
             ic0_stable64_read(
                 value.as_blob_mut().payload_addr() as u64,
                 *offset,
@@ -129,8 +129,8 @@ impl StabilizationMetadata {
     }
 
     fn load_type_descriptor<M: Memory>(mem: &mut M, offset: &mut u64) -> TypeDescriptor {
-        let candid_data = Self::read_blob(mem, offset);
-        let type_offsets = Self::read_blob(mem, offset);
+        let candid_data = Self::read_blob(mem, TAG_BLOB_B, offset);
+        let type_offsets = Self::read_blob(mem, TAG_BLOB_B, offset);
         TypeDescriptor::new(candid_data, type_offsets)
     }
 

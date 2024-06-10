@@ -55,11 +55,12 @@ pub trait Memory {
 /// Note: After initialization, the post allocation barrier needs to be applied to all mutator objects.
 /// For RTS-internal blobs that can be collected by the next GC run, the post allocation barrier can be omitted.
 #[ic_mem_fn]
-pub unsafe fn alloc_blob<M: Memory>(mem: &mut M, size: Bytes<usize>) -> Value {
+pub unsafe fn alloc_blob<M: Memory>(mem: &mut M, tag: Tag, size: Bytes<usize>) -> Value {
+    debug_assert!(tag == TAG_BLOB_B || tag == TAG_BLOB_T || tag == TAG_BLOB_P || tag == TAG_BLOB_A);
     let ptr = mem.alloc_words(size_of::<Blob>() + size.to_words());
     // NB. Cannot use `as_blob` here as we didn't write the header yet
     let blob = ptr.get_ptr() as *mut Blob;
-    (*blob).header.tag = TAG_BLOB;
+    (*blob).header.tag = tag;
     (*blob).header.init_forward(ptr);
     (*blob).len = size;
 
@@ -69,13 +70,16 @@ pub unsafe fn alloc_blob<M: Memory>(mem: &mut M, size: Bytes<usize>) -> Value {
 /// Allocate a new array.
 /// Note: After initialization, the post allocation barrier needs to be applied to all mutator objects.
 #[ic_mem_fn]
-pub unsafe fn alloc_array<M: Memory>(mem: &mut M, len: usize) -> Value {
+pub unsafe fn alloc_array<M: Memory>(mem: &mut M, tag: Tag, len: usize) -> Value {
+    debug_assert!(
+        tag == TAG_ARRAY_I || tag == TAG_ARRAY_M || tag == TAG_ARRAY_T || tag == TAG_ARRAY_S
+    );
     assert!(len <= MAX_ARRAY_LENGTH_FOR_ITERATOR);
 
     let skewed_ptr = mem.alloc_words(size_of::<Array>() + Words(len));
 
     let ptr: *mut Array = skewed_ptr.get_ptr() as *mut Array;
-    (*ptr).header.tag = TAG_ARRAY;
+    (*ptr).header.tag = tag;
     (*ptr).header.init_forward(skewed_ptr);
     (*ptr).len = len;
 
