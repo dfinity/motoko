@@ -103,3 +103,13 @@ Because `StableLog` allocates and maintains its (potentially large) log data dir
 - [`memory-buffer`](https://mops.one/memory-buffer): Persistent buffer implementation.
 
 - [`memory-hashtable`](https://mops.one/memory-hashtable): A library for storing, updating, deleting, and retrieving a single blob-value per key.
+
+## Samples
+
+- [motoko-bucket](https://github.com/PrimLabs/Bucket): A key value database library that uses stable memory.
+
+- [motoko-cdn](https://github.com/gabrielnic/motoko-cdn): An auto-scaling storage solution.
+
+- [motoko-dht](https://github.com/enzoh/motoko-dht): A distributed hash table sample.
+
+- [motoko-document-db](https://github.com/DepartureLabsIC/motoko-document-db): A document database sample.
