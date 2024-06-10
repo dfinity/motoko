@@ -18,6 +18,11 @@ actor A {
         finally { debugPrint "OUTr" };
     };
 
+    func t0d() : async () {
+        try { debugPrint "INd"; let fut = m(); await fut; debugPrint "AGAINd"; await fut; assert false }
+        finally { debugPrint "OUTd" };
+    };
+
 /*  nested `try` won't work
     func t1() : async () {
         try {
@@ -95,6 +100,7 @@ actor A {
     public func go() : async () {
         try /*ignore*/ await t0() catch _ {};
         try await t0r() catch _ {};
+        try await t0d() catch _ {};
         //await t1();
         /*await t2();
         await t3();
