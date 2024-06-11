@@ -4,13 +4,13 @@ actor A {
 
     func _t0() : async () {
         try { await m() }
-        else catch _ {}
+        catch _ {}
         finally { ignore m() } // BAD: no effects allowed!
     };
 
     func _t1() : async () {
         try { await m() }
-        else catch _ {}
+        catch _ {}
         finally { 42 } // BAD: should return unit.
     }
 

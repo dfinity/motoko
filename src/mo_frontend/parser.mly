@@ -244,8 +244,8 @@ and objblock s ty dec_fields =
 
 %nonassoc IMPLIES (* see assertions.mly *)
 
-%nonassoc RETURN_NO_ARG IF_NO_ELSE LOOP_NO_WHILE
-%nonassoc ELSE WHILE
+%nonassoc RETURN_NO_ARG IF_NO_ELSE LOOP_NO_WHILE TRY_CATCH_NO_FINALLY
+%nonassoc ELSE WHILE FINALLY
 
 %left COLON
 %left PIPE
@@ -707,12 +707,12 @@ exp_un(B) :
     { IfE(b, e1, TupE([]) @? at $sloc) @? at $sloc }
   | IF b=exp_nullary(ob) e1=exp_nest ELSE e2=exp_nest
     { IfE(b, e1, e2) @? at $sloc }
-  | TRY e1=exp_nest c=catch
+  | TRY e1=exp_nest c=catch %prec TRY_CATCH_NO_FINALLY
     { TryE(e1, [c], None) @? at $sloc }
+  | TRY e1=exp_nest c=catch FINALLY e2=exp_nest
+    { TryE(e1, [c], Some e2) @? at $sloc }
   | TRY e1=exp_nest FINALLY e2=exp_nest (* FIXME: needs a different keyword (`DO`?), provisional *)
     { TryE(e1, [], Some e2) @? at $sloc }
-  | TRY e1=exp_nest ELSE c=catch FINALLY e2=exp_nest (* FIXME: elim `else`*)
-    { TryE(e1, [c], Some e2) @? at $sloc }
 (* TODO: enable multi-branch TRY (already supported by compiler)
   | TRY e=exp_nest LCURLY cs=seplist(case, semicolon) RCURLY
     { TryE(e, cs) @? at $sloc }
