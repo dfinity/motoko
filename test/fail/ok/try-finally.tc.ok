@@ -1,0 +1,4 @@
+try-finally.mo:14.19-14.21: type error [M0050], literal of type
+  Nat
+does not have expected type
+  ()
