@@ -113,6 +113,9 @@ type ctxt =
     ghost_conc : (ctxt -> exp -> exp) list ref;
   }
 
+(* All text literals are injectively mapped into int values *)
+let text_literals : (string, int) Hashtbl.t = Hashtbl.create 32
+
 let add_locals ctxt (locals : (id * T.typ) list) =
   let add (x, t) = Env.add x.it (Local, t) in
   { ctxt with ids = List.fold_right add locals ctxt.ids }
@@ -121,6 +124,17 @@ let self ctxt at =
   match ctxt.self with
   | Some id -> !!! at (LocalVar (!!! at id,!!! at RefT))
   | _ -> failwith "no self"
+
+let tr_string_literal at str =
+  let str_id =
+    match Hashtbl.find_opt text_literals str with
+    | None ->
+      let fresh_str_id = Hashtbl.length text_literals in
+      Hashtbl.add text_literals str fresh_str_id;
+      fresh_str_id
+    | Some id -> id
+  in
+  intLitE at str_id
 
 let rec extract_invariants : item list -> (par -> invariants -> invariants) = function
   | [] -> fun _ x -> x
@@ -672,8 +686,12 @@ and pat_match ctxt (scrut : M.exp) (p : M.pat) : exp list * (id * T.typ) list * 
       let e_scrut = exp ctxt scrut in
       let rhs = !!(IntLitE n) in
       [ !!(EqCmpE (e_scrut, rhs)) ], [], ([], [])
+    | M.TextLit str ->
+      let e_scrut = exp ctxt scrut in
+      let rhs = tr_string_literal p.at str in
+      [ !!(EqCmpE (e_scrut, rhs)) ], [], ([], [])
     | M.PreLit _ -> failwith "Expected PreLit to be eliminated after typing"
-    | _         -> unsupported (p.at) (Arrange.lit !lit)
+    | _          -> unsupported (p.at) (Arrange.lit !lit)
     end
   | M.OptP p' ->
     let e_scrut = exp ctxt scrut in
@@ -812,6 +830,8 @@ and exp ctxt e =
        !!(IntLitE i)
     | M.NullLit ->
        noneE (e.at)
+    | M.TextLit str ->
+      tr_string_literal e.at str
     | _ ->
        unsupported e.at (Arrange.exp e)
     end
@@ -834,6 +854,7 @@ and exp ctxt e =
       | MulOp -> MulE (e1, e2)
       | DivOp -> DivE (e1, e2)
       | ModOp -> ModE (e1, e2)
+      | CatOp -> CallE ("$concat", [e1; e2])
       | _ -> unsupported e.at (Arrange.exp e))
   | M.OrE (e1, e2) ->
      !!(OrE (exp ctxt e1, exp ctxt e2))
@@ -931,6 +952,7 @@ and tr_typ' ctxt typ =
   match typ, T.normalize typ with
   | _, T.Prim T.Int -> IntT
   | _, T.Prim T.Nat -> IntT    (* Viper has no native support for Nat, so translate to Int *)
+  | _, T.Prim T.Text -> IntT   (* Viper has no native support for Text, so translate to uninterpreted Int values *)
   | _, T.Prim T.Bool -> BoolT
   | _, T.Array _ -> ArrayT     (* Viper arrays are not parameterised by element type *)
   | _, T.Opt   t -> OptionT (tr_typ ctxt t)
@@ -962,6 +984,7 @@ and typed_field t =
   | T.Prim T.Int  -> "$int"
   | T.Prim T.Nat  -> "$int"  (* Viper has no native support for Nat, so translate to Int *)
   | T.Prim T.Bool -> "$bool"
+  | T.Prim T.Text -> "$text"
   | _ -> unsupported Source.no_region (Mo_types.Arrange_type.typ t)
 
 and array_size_inv at lhs n =
