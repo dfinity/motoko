@@ -13,4 +13,6 @@ actor A {
         else catch _ {}
         finally { 42 } // BAD: should return unit.
     }
+
+    // TODO: Nat resulting `try`
 }

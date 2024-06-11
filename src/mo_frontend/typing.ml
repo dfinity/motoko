@@ -1828,7 +1828,10 @@ and check_exp' env0 t exp : T.typ =
     if not env.pre then
       begin match exp2_opt with
       | None -> ()
-      | Some exp2 -> check_exp_strong env T.unit exp2
+      | Some exp2 ->
+        check_exp_strong env T.unit exp2;
+        if exp2.note.note_eff <> T.Triv then
+          local_error env exp2.at "M0199" "a cleanup clause must not send messages";
       end;
     t
   (* TODO: allow shared with one scope par *)
