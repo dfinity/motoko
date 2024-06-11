@@ -17,9 +17,12 @@ adt Option[T] {
   None()
   Some(some$0: T)
 }
+/* Text encoding */
+function $concat(a: Int, b: Int): Int
 /* Typed references */
 field $int: Int
 field $bool: Bool
+field $text: Int
 field $ref: Ref
 field $array: Array
 field $option_int: Option[Int]

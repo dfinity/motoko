@@ -48,9 +48,13 @@ adt Option[T] {
   Some(some$0: T)
 }|prelude}
 
+let prelude_text_encoding : string = {prelude|/* Text encoding */
+function $concat(a: Int, b: Int): Int|prelude}
+
 let prelude_typed_references : string = {prelude|/* Typed references */
 field $int: Int
 field $bool: Bool
+field $text: Int
 field $ref: Ref
 field $array: Array
 field $option_int: Option[Int]
@@ -64,6 +68,7 @@ let prelude reqs: string =
     prelude_array_encoding;
     prelude_tuple_encoding !(reqs.tuple_arities);
     prelude_option_encoding;
+    prelude_text_encoding;
     prelude_typed_references;
     "/* END PRELUDE */"
   ]
