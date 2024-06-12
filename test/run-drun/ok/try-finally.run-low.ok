@@ -5,14 +5,14 @@ IR has aliasing (or Check_ir visits nodes twice):
 IR has aliasing (or Check_ir visits nodes twice):
 (PrimE TupPrim)
 IR has aliasing (or Check_ir visits nodes twice):
-(PrimE (CallPrim) (VarE $$thunk/8/0) (PrimE TupPrim))
+(PrimE (CallPrim) (VarE $$thunk/10/0) (PrimE TupPrim))
 IR has aliasing (or Check_ir visits nodes twice):
-(VarE $$thunk/8/0)
+(VarE $$thunk/10/0)
 IR has aliasing (or Check_ir visits nodes twice):
 (PrimE TupPrim)
 IR has aliasing (or Check_ir visits nodes twice):
-(PrimE (CallPrim) (VarE $$thunk/7/0) (PrimE TupPrim))
+(PrimE (CallPrim) (VarE $$thunk/9/0) (PrimE TupPrim))
 IR has aliasing (or Check_ir visits nodes twice):
-(VarE $$thunk/7/0)
+(VarE $$thunk/9/0)
 IR has aliasing (or Check_ir visits nodes twice):
 (PrimE TupPrim)

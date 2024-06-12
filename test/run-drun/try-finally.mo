@@ -35,7 +35,7 @@ actor A {
         catch _ { debugPrint "CAUGHT1" }
     };
 */
-/*
+
     func t2() : async () {
         try {
             debugPrint "IN2";
@@ -45,8 +45,16 @@ actor A {
         finally { debugPrint "OUT2" };
     };
 
-    //TODO: func t2t() : async Int { ... }
-
+    func t2i() : async Int {
+        try {
+            debugPrint "IN2i";
+            await async ();
+            throw error "IN2i";
+        }
+        catch _ { debugPrint "CAUGHT2i"; 42 }
+        finally { debugPrint "OUT2i" };
+    };
+/*
     func t3() : async () {
         try {
             debugPrint "IN3";
@@ -139,8 +147,9 @@ actor A {
         try await t0r() catch _ {};
         try await t0d() catch _ {};
         //await t1();
-        /*await t2();
-        await t3();
+        await t2();
+        ignore await t2i();
+        /*await t3();
         /*await t4();*/
         await t5();*/
         await t6();

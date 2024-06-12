@@ -363,8 +363,6 @@ func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>, @Cont<Nat32>) 
   var cleanup : Error -> () = @shout2;
 
   func clean(_ : Nat32) {
-    (prim "print" : Text -> ()) "EXTERN";
-
     cleanup @FIXME_err;
   };
 

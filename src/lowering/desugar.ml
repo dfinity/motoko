@@ -218,9 +218,7 @@ and exp' at note = function
   | S.SwitchE (e1, cs) -> I.SwitchE (exp e1, cases cs)
   | S.TryE (e1, cs, None) -> I.TryE (exp e1, cases cs, None)
   | S.TryE (e1, cs, Some e2) ->
-    assert (T.is_unit note.Note.typ); (* NOPE!*)
     let thunk = T.(funcE ("$FIXME") Local Returns [] [] [] (exp e2)) in
-    (*let post e1 = blockE [expD e1] (exp e2) in*)
     assert T.(is_func thunk.note.Note.typ);
     let th = fresh_var "thunk" thunk.note.Note.typ in
     let post e1 =
