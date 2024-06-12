@@ -1,0 +1,5 @@
+Ill-typed intermediate code after Async Lowering (use -v to see dumped IR):
+(unknown location): IR type error [M0000], subtype violation:
+  (() -> (), Error -> ())
+  (None -> (), Error -> ())
+

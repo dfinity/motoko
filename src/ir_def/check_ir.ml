@@ -365,13 +365,13 @@ let rec check_exp env (exp:Ir.exp) : unit =
   (* helpers *)
   let check p = check env exp.at p in
   let (<:) t1 t2 =
-(*  try *)
-      check_sub env exp.at t1 t2
-(*  with e ->
+    try
+       check_sub env exp.at t1 t2
+    with e ->
      (Printf.eprintf "(in here):\n%s"
         (Wasm.Sexpr.to_string 80 (Arrange_ir.exp exp));
       raise e)
-*)
+
   in
   (* check for aliasing *)
   if exp.note.Note.check_run = env.check_run
