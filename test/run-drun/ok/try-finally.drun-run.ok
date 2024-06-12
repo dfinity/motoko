@@ -1,16 +1,17 @@
 ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
 ingress Completed: Reply: 0x4449444c0000
 debug.print: IN
+debug.print: EXTERN
 debug.print: OUT
-debug.print: IN2
-debug.print: CAUGHT2
-debug.print: OUT2
-debug.print: IN3
-debug.print: OUT3
-debug.print: BEFORE5
-debug.print: IN5
-debug.print: OUT5
-debug.print: AFTER5
+debug.print: CLEANUP_E
+debug.print: INr
+debug.print: EXTERN
+debug.print: OUTr
+debug.print: CLEANUP_E
+debug.print: INd
+debug.print: AGAINd
+debug.print: OUTd
+debug.print: CLEANUP_E
 debug.print: BEFORE6
 debug.print: IN6
 debug.print: InnerIN6

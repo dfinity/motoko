@@ -1,18 +1,6 @@
-IN
-OUT
-IN2
-CAUGHT2
-OUT2
-IN3
-OUT3
-BEFORE5
-IN5
-OUT5
-AFTER5
-BEFORE6
-IN6
-InnerIN6
-InnerLIVE6
-InnerOUT6
-OUT6
-AFTER6
+IR has aliasing (or Check_ir visits nodes twice):
+(PrimE (CallPrim) (VarE $$thunk/2/0) (PrimE TupPrim))
+IR has aliasing (or Check_ir visits nodes twice):
+(VarE $$thunk/2/0)
+IR has aliasing (or Check_ir visits nodes twice):
+(PrimE TupPrim)
