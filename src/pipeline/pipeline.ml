@@ -650,6 +650,9 @@ let show_translation =
 let eq_translation =
   transform_if "Translate polymorphic equality" Eq.transform
 
+let recombination =
+  transform_if "Recombine identical values" Recomb.transform
+
 let analyze analysis_name analysis prog name =
   phase analysis_name name;
   analysis prog;
@@ -667,6 +670,8 @@ let ir_passes mode prog_ir name =
   let prog_ir = async_lowering mode !Flags.async_lowering prog_ir name in
   let prog_ir = tailcall_optimization true prog_ir name in
   analyze "constness analysis" Const.analyze prog_ir name;
+  (* transformations that may introduce casts *)
+  let prog_ir = recombination true prog_ir name in
   prog_ir
 
 
