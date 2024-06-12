@@ -1,4 +1,3 @@
-(* a change *)
 (*
 This module is the backend of the Motoko compiler. It takes a program in
 the intermediate representation (ir.ml), and produces a WebAssembly module,
