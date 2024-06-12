@@ -18,4 +18,20 @@ try-finally.mo:82.19-93.38: warning [M0145], this try handler of type
   Error
 does not cover value
   _
+try-finally.mo:101.13-107.50: warning [M0145], this try handler of type
+  Error
+does not cover value
+  _
+try-finally.mo:99.19-110.39: warning [M0145], this try handler of type
+  Error
+does not cover value
+  _
+try-finally.mo:118.13-127.50: warning [M0145], this try handler of type
+  Error
+does not cover value
+  _
+try-finally.mo:116.19-130.39: warning [M0145], this try handler of type
+  Error
+does not cover value
+  _
 try-finally.mo:1.22-1.27: warning [M0198], unused field error in object pattern (delete or rewrite as `error = _`)

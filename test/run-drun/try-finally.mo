@@ -94,6 +94,43 @@ actor A {
         debugPrint "AFTER6"
     };
 
+    func t6t() : async () {
+        debugPrint "BEFORE6t";
+        label out try {
+            debugPrint "IN6t";
+            try {
+                debugPrint "InnerIN6t";
+                await m();
+                debugPrint "InnerLIVE6t";
+                assert false;
+                debugPrint "InnerDEAD6t";
+            } finally { debugPrint "InnerOUT6t" };
+            debugPrint "DEAD6t";
+        }
+        finally { debugPrint "OUT6t" };
+        debugPrint "AFTER6t"
+    };
+
+    func t6d() : async () {
+        debugPrint "BEFORE6d";
+        label out try {
+            debugPrint "IN6d";
+            try {
+                debugPrint "InnerIN6d";
+                let fut = m();
+                await fut;
+                debugPrint "InnerLIVE6d";
+                await fut;
+                debugPrint "InnerLIVESTILL6d";
+                assert false;
+                debugPrint "InnerDEAD6d";
+            } finally { debugPrint "InnerOUT6d" };
+            debugPrint "DEAD6d";
+        }
+        finally { debugPrint "OUT6d" };
+        debugPrint "AFTER6d"
+    };
+
     // TODO: trap on happy/catch
     // TODO: trap after repeated `await`
 
@@ -107,6 +144,8 @@ actor A {
         /*await t4();*/
         await t5();*/
         await t6();
+        try await t6t() catch _ {};
+        try await t6d() catch _ {};
     };
 };
 

@@ -19,4 +19,20 @@ debug.print: InnerLIVE6
 debug.print: InnerOUT6
 debug.print: OUT6
 debug.print: AFTER6
+debug.print: BEFORE6t
+debug.print: IN6t
+debug.print: InnerIN6t
+debug.print: InnerLIVE6t
+debug.print: EXTERN
+debug.print: InnerOUT6t
+debug.print: OUT6t
+debug.print: CLEANUP_E
+debug.print: BEFORE6d
+debug.print: IN6d
+debug.print: InnerIN6d
+debug.print: InnerLIVE6d
+debug.print: InnerLIVESTILL6d
+debug.print: InnerOUT6d
+debug.print: OUT6d
+debug.print: CLEANUP_E
 ingress Completed: Reply: 0x4449444c0000
