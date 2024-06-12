@@ -456,6 +456,8 @@ module E = struct
 
     (* requires stable memory (and emulation on wasm targets) *)
     requires_stable_memory : bool ref;
+
+    custom_rts_functions : string list ref; (* RTS functions defined in the custom section `rts:custom-functions` *)
   }
 
 
@@ -494,6 +496,7 @@ module E = struct
     local_names = ref [];
     features = ref FeatureSet.empty;
     requires_stable_memory = ref false;
+    custom_rts_functions = ref [];
   }
 
   (* This wraps Mo_types.Hash.hash to also record which labels we have seen,
@@ -1263,6 +1266,20 @@ module RTS = struct
       incremental_gc_imports env
     else
       non_incremental_gc_imports env;
+
+    (* Custom RTS functions *)
+    Option.iter Wasm_exts.CustomModule.(fun (m : extended_module) ->
+      env.E.custom_rts_functions := m.rts.custom_functions;
+      let module_ = m.module_ in
+      List.iter (fun export ->
+        let name = string_of_name export.Wasm.Source.it.Wasm_exts.Ast.name in
+        if List.mem name !(env.E.custom_rts_functions) then
+          (match export_type Wasm.Source.{it = module_; at = no_region} export with
+          | ExternFuncType (FuncType (inputs, outputs)) ->
+            E.add_func_import env "rts" name inputs outputs
+          | _ -> ())
+      ) module_.exports) env.E.rts;
+
     ()
 
 end (* RTS *)
@@ -6154,18 +6171,84 @@ module RTS_Exports = struct
    *)
   let system_exports env =
 
-    (* Value constructors *)
+    (* Helper functions *)
 
-    let int_from_i32_fi = E.add_fun env "int_from_i32" (
+    let export_fun env name f =
+      let fi = E.add_fun env name f in
+      E.add_export env (nr {
+        name = Lib.Utf8.decode name;
+        edesc = nr (FuncExport (nr fi))
+      });
+    in
+
+    (* Value conversions *)
+
+    export_fun env "int_from_i32" (
       Func.of_body env ["v", I32Type] [I32Type] (fun env ->
-        let get_v = G.i (LocalGet (nr 0l)) in
-        get_v ^^ BigNum.from_signed_word32 env
-      )
-    ) in
-    E.add_export env (nr {
-      name = Lib.Utf8.decode "int_from_i32";
-      edesc = nr (FuncExport (nr int_from_i32_fi))
-    });
+        G.i (LocalGet (nr 0l)) ^^
+        BigNum.from_signed_word32 env));
+
+    export_fun env "int8_from_i8" (
+      Func.of_body env ["v", I32Type] [I32Type] (fun env ->
+        G.i (LocalGet (nr 0l)) ^^
+        TaggedSmallWord.msb_adjust Type.Int8 ^^
+        TaggedSmallWord.tag env Type.Int8));
+    export_fun env "nat8_from_u8" (
+      Func.of_body env ["v", I32Type] [I32Type] (fun env ->
+        G.i (LocalGet (nr 0l)) ^^
+        TaggedSmallWord.msb_adjust Type.Nat8 ^^
+        TaggedSmallWord.tag env Type.Nat8));
+    export_fun env "int16_from_i16" (
+      Func.of_body env ["v", I32Type] [I32Type] (fun env ->
+        G.i (LocalGet (nr 0l)) ^^
+        TaggedSmallWord.msb_adjust Type.Int16 ^^
+        TaggedSmallWord.tag env Type.Int16));
+    export_fun env "nat16_from_u16" (
+      Func.of_body env ["v", I32Type] [I32Type] (fun env ->
+        G.i (LocalGet (nr 0l)) ^^
+        TaggedSmallWord.msb_adjust Type.Nat16 ^^
+        TaggedSmallWord.tag env Type.Nat16));
+    export_fun env "int32_from_i32" (
+      Func.of_body env ["v", I32Type] [I32Type] (fun env ->
+        G.i (LocalGet (nr 0l)) ^^ BoxedSmallWord.box env Type.Int32));
+    export_fun env "nat32_from_u32" (
+      Func.of_body env ["v", I32Type] [I32Type] (fun env ->
+        G.i (LocalGet (nr 0l)) ^^ BoxedSmallWord.box env Type.Nat32));
+    export_fun env "int64_from_i64" (
+      Func.of_body env ["v", I64Type] [I32Type] (fun env ->
+        G.i (LocalGet (nr 0l)) ^^ BoxedWord64.box env Type.Int64));
+    export_fun env "nat64_from_u64" (
+      Func.of_body env ["v", I64Type] [I32Type] (fun env ->
+        G.i (LocalGet (nr 0l)) ^^ BoxedWord64.box env Type.Nat64));
+
+    export_fun env "i8_from_int8" (
+      Func.of_body env ["v", I32Type] [I32Type] (fun env ->
+        G.i (LocalGet (nr 0l)) ^^ TaggedSmallWord.lsb_adjust Type.Int8));
+    export_fun env "u8_from_nat8" (
+      Func.of_body env ["v", I32Type] [I32Type] (fun env ->
+        G.i (LocalGet (nr 0l)) ^^ TaggedSmallWord.lsb_adjust Type.Nat8));
+    export_fun env "i16_from_int16" (
+      Func.of_body env ["v", I32Type] [I32Type] (fun env ->
+        G.i (LocalGet (nr 0l)) ^^ TaggedSmallWord.lsb_adjust Type.Int16));
+    export_fun env "u16_from_nat16" (
+      Func.of_body env ["v", I32Type] [I32Type] (fun env ->
+        G.i (LocalGet (nr 0l)) ^^ TaggedSmallWord.lsb_adjust Type.Nat16));
+    export_fun env "i32_from_int32" (
+      Func.of_body env ["v", I32Type] [I32Type] (fun env ->
+        G.i (LocalGet (nr 0l)) ^^ BoxedSmallWord.unbox env Type.Int32));
+    export_fun env "u32_from_nat32" (
+      Func.of_body env ["v", I32Type] [I32Type] (fun env ->
+        G.i (LocalGet (nr 0l)) ^^ BoxedSmallWord.unbox env Type.Nat32));
+    export_fun env "i64_from_int64" (
+      Func.of_body env ["v", I32Type] [I64Type] (fun env ->
+        G.i (LocalGet (nr 0l)) ^^ BoxedWord64.unbox env Type.Int64));
+    export_fun env "u64_from_nat64" (
+      Func.of_body env ["v", I32Type] [I64Type] (fun env ->
+        G.i (LocalGet (nr 0l)) ^^ BoxedWord64.unbox env Type.Int64));
+
+    export_fun env "unit" (
+      Func.of_body env [] [I32Type] (fun env ->
+        Tuple.compile_unit env));
 
     (* Traps *)
 
@@ -11730,6 +11813,17 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | OtherPrim "btstInt64", [_;_] ->
     const_sr (SR.UnboxedWord64 Type.Int64) (Word64.btst_kernel env)
 
+  (* Custom RTS functions *)
+  | OtherPrim s, _ when String.length s > 4 && String.sub s 0 4 = "rts:" ->
+    let s' = String.sub s 4 (String.length s - 4) in
+    if List.mem s' !(env.E.custom_rts_functions) then
+      const_sr SR.Vanilla (E.call_import env "rts" s')
+    else (
+      (* TODO: type checking error *)
+      Printf.printf "%s" (Diag.string_of_message (
+        Diag.error_message at "M0199" "RTS" (Printf.sprintf "custom function '%s' not found" s')));
+      exit 1)
+
   (* Coercions for abstract types *)
   | CastPrim (_,_), [e] ->
     compile_exp env ae e
@@ -12789,11 +12883,14 @@ and conclude_module env set_serialization_globals start_fi_o =
       motoko = {
         labels = E.get_labs env;
         stable_types = !(env.E.stable_types);
-        compiler = metadata "motoko:compiler" (Lib.Option.get Source_id.release Source_id.id)
+        compiler = metadata "motoko:compiler" (Lib.Option.get Source_id.release Source_id.id);
       };
       candid = {
         args = !(env.E.args);
         service = !(env.E.service);
+      };
+      rts = {
+        custom_functions = !(env.E.custom_rts_functions);
       };
       source_mapping_url = None;
       wasm_features = E.get_features env;

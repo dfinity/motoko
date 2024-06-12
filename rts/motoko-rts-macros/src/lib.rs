@@ -1,5 +1,7 @@
 use proc_macro::TokenStream;
-use quote::quote;
+use quote::{quote, ToTokens};
+
+const DEBUG: bool = false;
 
 /// This macro is used to generate monomorphic versions of allocating RTS functions, to allow
 /// calling such functions in generated code. Example:
@@ -166,4 +168,163 @@ pub fn non_incremental_gc(attr: TokenStream, input: TokenStream) -> TokenStream 
 #[proc_macro]
 pub fn is_incremental_gc(_item: TokenStream) -> TokenStream {
     "cfg!(feature = \"incremental_gc\")".parse().unwrap()
+}
+
+enum ArgSort {
+    Value,
+    Memory,
+}
+
+/// Utility macro to implement traits for n-length tuples.
+#[proc_macro_attribute]
+pub fn tuple_macro(attr: TokenStream, input: TokenStream) -> TokenStream {
+    let args = syn::parse_macro_input!(attr with syn::punctuated::Punctuated::<syn::LitInt, syn::Token![,]>::parse_terminated);
+    assert_eq!(args.len(), 2, "Unexpected number of args for `tuple_macro`");
+    let min_length: u32 = args[0].base10_parse().expect("`min_length`");
+    let max_length: u32 = args[1].base10_parse().expect("`max_length`");
+
+    let macro_rules = syn::parse_macro_input!(input as syn::ItemMacro);
+    let macro_ident = &macro_rules.ident;
+
+    // Generated tokens
+    let mut output = quote!(
+        #macro_rules
+    );
+    let mut parts = quote!();
+    for i in 0..max_length {
+        let length = i + 1;
+
+        let ident = syn::Ident::new(&format!("T{i}"), proc_macro2::Span::call_site());
+        let index_syn = syn::LitInt::new(&i.to_string(), proc_macro2::Span::call_site());
+        let length_syn = syn::LitInt::new(&length.to_string(), proc_macro2::Span::call_site());
+
+        let part = quote!(#ident = #index_syn);
+        parts = if i == 0 { part } else { quote!(#parts, #part) };
+
+        if length >= min_length {
+            output = quote!(
+                #output
+                #macro_ident!(#length_syn; #parts);
+            );
+        }
+    }
+    if DEBUG {
+        // Show resolved macro expansion
+        return syn::Error::new_spanned(quote!(), format!("`#[tuple_macro]` expansion:\n{}", output))
+            .to_compile_error()
+            .into();
+    }
+    output.into()
+}
+
+/// This macro wraps `#[ic_mem_fn]` with automatic type conversions for
+/// Motoko types using traits defined in the `motoko_rts::custom` module.
+#[proc_macro_attribute]
+pub fn motoko(attr: TokenStream, input: TokenStream) -> TokenStream {
+    let ic_mem_attr: proc_macro2::TokenStream = attr.into();
+
+    // Wrapped function
+    let mut fun = syn::parse_macro_input!(input as syn::ItemFn);
+    let fn_ident = &fun.sig.ident;
+    let fn_name = fn_ident.to_string();
+    let fn_params: Vec<(ArgSort, syn::Ident, syn::Type)> = fun
+        .sig
+        .inputs
+        .iter_mut()
+        .enumerate()
+        .map(|(i, arg)| match arg {
+            syn::FnArg::Receiver(_) => {
+                // TODO: replace panic with macro error message
+                panic!("IC functions can't have receivers (`&self`, `&mut self`, etc.)")
+            }
+            syn::FnArg::Typed(pat) => {
+                let mut sort = ArgSort::Value;
+                pat.attrs.retain(|attr| {
+                    if attr.meta.to_token_stream().to_string() == "memory" {
+                        sort = ArgSort::Memory;
+                        false
+                    } else {
+                        true
+                    }
+                });
+                (
+                    sort,
+                    syn::Ident::new(&format!("arg{}", i), proc_macro2::Span::call_site()),
+                    (*pat.ty).clone(),
+                )
+            }
+        })
+        .collect();
+
+    // Motoko parameters
+    let params: Vec<proc_macro2::TokenStream> = fn_params
+        .iter()
+        .filter_map(|(sort, ident, _ty)| match sort {
+            ArgSort::Value => Some(quote!(#ident: crate::types::Value)),
+            ArgSort::Memory => None,
+        })
+        .collect();
+
+    // Memory parameter
+    let memory_ident = syn::Ident::new("memory", proc_macro2::Span::call_site());
+
+    // Motoko -> Rust conversions
+    let arg_conversions: Vec<proc_macro2::TokenStream> = fn_params
+        .iter()
+        .filter_map(|(sort, ident, _)| match sort {
+            ArgSort::Value => Some(quote!(
+                let #ident = crate::custom::FromValue::from_value(#ident, #memory_ident).unwrap()
+            )),
+            ArgSort::Memory => None,
+        })
+        .collect();
+
+    // Motoko args
+    let args: Vec<proc_macro2::TokenStream> = fn_params
+        .iter()
+        .map(|(sort, ident, _)| match sort {
+            ArgSort::Value => quote!(#ident),
+            ArgSort::Memory => quote!(#memory_ident),
+        })
+        .collect();
+
+    // Motoko return value
+    let ret = quote!(crate::types::Value);
+
+    // Wrapper function
+    let mut wrap_fn = fun.clone();
+    wrap_fn.sig.ident = syn::Ident::new(&format!("__motoko_{}", fn_ident), fn_ident.span());
+    let wrap_fn_ident = &wrap_fn.sig.ident;
+
+    // Custom section
+    let custom_section_ident = syn::Ident::new(
+        &format!("CUSTOM_SECTION_{}", fn_ident.to_string().to_uppercase()),
+        fn_ident.span(),
+    );
+    let custom_section_content = format!("{};", fn_name);
+    let custom_section_len = custom_section_content.len();
+    let custom_section_bytes =
+        syn::LitByteStr::new(custom_section_content.as_bytes(), fn_ident.span());
+
+    // Generated tokens
+    let output = quote!(
+        #wrap_fn
+
+        #[crate::ic_mem_fn(#ic_mem_attr)]
+        unsafe fn #fn_ident<M: crate::memory::Memory>(#memory_ident: &mut M, #(#params,)*) -> #ret {
+            #(#arg_conversions;)*
+            let ret = #wrap_fn_ident(#(#args,)*);
+            crate::custom::IntoValue::into_value(ret, #memory_ident).unwrap()
+        }
+
+        #[link_section = "rts:custom-functions"]
+        static #custom_section_ident: [u8; #custom_section_len] = *#custom_section_bytes;
+    );
+    if DEBUG {
+        // Show resolved macro expansion
+        return syn::Error::new_spanned(quote!(), format!("`#[motoko]` expansion:\n{}", output))
+            .to_compile_error()
+            .into();
+    }
+    output.into()
 }

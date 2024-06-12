@@ -28,6 +28,7 @@ pub mod buf;
 mod char;
 pub mod constants;
 pub mod continuation_table;
+mod custom;
 #[cfg(feature = "ic")]
 mod float;
 pub mod gc;
