@@ -402,7 +402,7 @@ and c_exp' context exp k =
       in
       let context' = LabelEnv.mapi (function | Return | Named _ -> lab | Cleanup | Throw -> fun c -> c) context in
       let context'' = LabelEnv.add Throw (Cont (ContVar throw)) context' in
-      let c = match LabelEnv.find_opt Cleanup context'' with Some c -> c | None -> Cont (ContVar (var "@shout2" (err_contT T.unit))) in
+      let c = match LabelEnv.find_opt Cleanup context'' with Some c -> c | None -> Cont (ContVar (var "@shout2" T.(contT unit unit))) in
       let context''' = LabelEnv.add Cleanup (lab c) context'' in
       blockE
         [ let e = fresh_var "e" T.catch in
@@ -445,7 +445,7 @@ and c_exp' context exp k =
     (* add the implicit return label *)
     let k_ret = fresh_cont (typ exp1) T.unit in
     let k_fail = fresh_err_cont T.unit in
-    let k_clean = fresh_err_cont T.unit(*FIXME*) in
+    let k_clean = fresh_cont T.unit T.unit in
     let context' =
       LabelEnv.add Return (Cont (ContVar k_ret))
         (LabelEnv.singleton Throw (Cont (ContVar k_fail)))
@@ -472,7 +472,7 @@ and c_exp' context exp k =
     in
     let c = match LabelEnv.find_opt Cleanup context with
       | Some (Cont r) -> r
-      | None -> ContVar (var "@shout2" (err_contT T.unit))
+      | None -> ContVar (var "@shout2" T.(contT unit unit))
       | _ -> assert false
     in
     letcont r (fun r ->

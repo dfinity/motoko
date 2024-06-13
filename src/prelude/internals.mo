@@ -285,7 +285,7 @@ func @equal_array<T>(eq : (T, T) -> Bool, a : [T], b : [T]) : Bool {
 };
 
 type @Cont<T> = T -> () ;
-type @Async<T> = (@Cont<T>, @Cont<Error>, @Cont<Error/*FIXME: unit*/>) -> {
+type @Async<T> = (@Cont<T>, @Cont<Error>, () -> ()) -> {
   #suspend;
   #schedule : () -> ();
 };
@@ -307,10 +307,10 @@ func @getSystemRefund() : @Refund {
   return (prim "cyclesRefunded" : () -> Nat) ();
 };
 
-func @shout() = (prim "print" : Text -> ()) "CLEANUP";
+//func @shout() = (prim "print" : Text -> ()) "CLEANUP";
 
-let @FIXME_err = (prim "cast" : ({#call_error : {err_code : Nat32}}, Text) -> Error) (#call_error {err_code = 0 : Nat32}, "HAHA");
-func @shout2(e : Error) {
+//let @FIXME_err = (prim "cast" : ({#call_error : {err_code : Nat32}}, Text) -> Error) (#call_error {err_code = 0 : Nat32}, "HAHA");
+func @shout2(/*e : Error*/) {
     type ErrorCode = {
         #system_fatal;
         #system_transient;
@@ -320,8 +320,8 @@ func @shout2(e : Error) {
         #future : Nat32;
         #call_error : { err_code : Nat32 };
     };
-    func errorCode(e : Error) : ErrorCode = ((prim "cast" : Error -> (ErrorCode, Text)) e).0;
-    assert errorCode @FIXME_err == errorCode e;
+    //func errorCode(e : Error) : ErrorCode = ((prim "cast" : Error -> (ErrorCode, Text)) e).0;
+    //assert errorCode @FIXME_err == errorCode e;
     (prim "print" : Text -> ()) "CLEANUP_E"
 };
 
@@ -360,13 +360,13 @@ func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>, @Cont<Nat32>) 
     };
   };
 
-  var cleanup : Error -> () = @shout2;
+  var cleanup : () -> () = @shout2;
 
   func clean(_ : Nat32) {
-    cleanup @FIXME_err;
+      cleanup();
   };
 
-  func enqueue(k : @Cont<T>, r : @Cont<Error>, c : @Cont<Error/*FIXME: unit*/>) : {
+  func enqueue(k : @Cont<T>, r : @Cont<Error>, c : () -> ()) : {
     #suspend;
     #schedule : () -> ();
   } {

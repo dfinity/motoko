@@ -560,7 +560,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
            (match ts2 with
             | [] -> ()
             | _ -> error env exp.at "CPSAwait answer type error");
-           typ krc <: T.Tup [cont_typ; T.Func(T.Local, T.Returns, [], [T.catch], ts2); T.Func(T.Local, T.Returns, [], [T.catch], ts2)(*FIXME*)];
+           typ krc <: T.Tup [cont_typ; T.Func(T.Local, T.Returns, [], [T.catch], ts2); T.Func(T.Local, T.Returns, [], [], ts2)];
            t1 <: T.seq ts1;
            T.seq ts2 <: t;
          end;
@@ -572,7 +572,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
         T.Func(T.Local,T.Returns, [tb],
           [T.Func(T.Local, T.Returns, [], ts1, []);
            T.Func(T.Local, T.Returns, [], [t_error], []);
-           T.Func(T.Local, T.Returns, [], [t_errorFIXME], [])(*FIXME*)],
+           T.Func(T.Local, T.Returns, [], _(*FIXME: why not []?*), [])],
           []) ->
          T.catch <: t_error;
          T.Async(s, t0, Type.open_ [t0] (T.seq ts1)) <: t

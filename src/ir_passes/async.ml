@@ -45,13 +45,13 @@ let failT = T.(Func(Local, Returns, [], [catch], []))
 let cleanT = T.(Func(Local, Returns, [], [nat32(*FIXME*)], []))
 
 let t_async_fut as_seq t =
-  T.(Func (Local, Returns, [], [fulfillT as_seq t; failT; failT(*FIXME: actually ()->()*)],
+  T.(Func (Local, Returns, [], [fulfillT as_seq t; failT; Func(Local, Returns, [], [], [])],
            [sum [
                 ("suspend", unit);
                 ("schedule", Func(Local, Returns, [], [], []))]]))
 
 let t_async_cmp as_seq t =
-  T.(Func (Local, Returns, [], [fulfillT as_seq t; failT; failT(*FIXME: finallyT*)], []))
+  T.(Func (Local, Returns, [], [fulfillT as_seq t; failT; Func(Local, Returns, [], [], [])], []))
 
 let new_async_ret as_seq t = [t_async_fut as_seq t; fulfillT as_seq t; failT; cleanT]
 
@@ -68,7 +68,7 @@ let new_asyncE () =
 
 let new_async t =
   let call_new_async = callE (new_asyncE ()) [t] (unitE()) in
-  let async = fresh_var "asyncX"(*FIXME: revert*) (typ (projE call_new_async 0)) in
+  let async = fresh_var "async" (typ (projE call_new_async 0)) in
   let fulfill = fresh_var "fulfill" (typ (projE call_new_async 1)) in
   let fail = fresh_var "fail" (typ (projE call_new_async 2)) in
   let clean = fresh_var "clean" (typ (projE call_new_async 3)) in
@@ -83,8 +83,8 @@ let new_nary_async_reply ts =
     let coerce u =
       let v = fresh_var "v" u in
       let k = fresh_var "k" (contT u T.unit) in
-      let r = fresh_var "r" (err_contT T.unit) in
-      let c = fresh_var "c" (err_contT T.unit(*FIXME: contT T.nat32 T.unit*)) in
+      let r = fresh_var "rX" (err_contT T.unit) in
+      let c = fresh_var "c" (Func(Local, Returns, [], [], [])) in
       [k; r; c] -->* (
         varE unary_async -*-
           (tupE [
@@ -269,7 +269,7 @@ let transform prog =
                   let n = fresh_var "nat" T.nat32 in
                   letE v
                   (selfcallE [] (ic_replyE [] (unitE())) (varE schedule) (projE (varE vkrc) 1)
-                     ([n] -->* (projE (varE vkrc) 2 -*- varE (var "@FIXME_err" T.error) )))
+                     ([n] -->* (projE (varE vkrc) 2 -*- unitE ())))
                     (check_call_perform_status (varE v) (fun e -> projE (varE vkrc) 1 -*- e))))
               ]
               T.unit
@@ -300,8 +300,7 @@ let transform prog =
             let e = fresh_var "e" T.catch in
             [e] -->* ic_rejectE (errorMessageE (varE e)) in
           let ic_cleanup =
-            let c = fresh_var "c" T.catch in
-            [c] -->* ic_rejectE (errorMessageE (varE c))(*FIXME*) in
+            [] -->* unitE () in
           let exp' = callE (t_exp exp1) [t0] (tupE [ic_reply; ic_reject; ic_cleanup]) in
           expD (selfcallE ts1 exp' (varE nary_reply) (varE reject) (varE clean))
         ]
@@ -318,9 +317,9 @@ let transform prog =
       in
       let v_ret = fresh_var "v" t_ret in
       let v_fail = fresh_var "e" t_fail in
-      let v_clean = fresh_var "c" t_fail(*FIXME*) in
+      let v_clean = fresh_var "c" (Func(Local, Returns, [], [], [])) in
       ([v_ret; v_fail; v_clean] -->* callE (t_exp exp1) [t0] (tupE [varE v_ret; varE v_fail; varE v_clean])).it
-    | PrimE (CallPrim typs, (exp1 :: exp2 :: _)) when is_awaitable_func exp1 ->(* HERE *)
+    | PrimE (CallPrim typs, (exp1 :: exp2 :: _)) when is_awaitable_func exp1 ->
       let ts1,ts2 =
         match typ exp1 with
         | T.Func (T.Shared _, T.Promises, tbs, ts1, ts2) ->
@@ -410,8 +409,7 @@ let transform prog =
                 let e = fresh_var "e" T.catch in
                 [e] -->* ic_rejectE (errorMessageE (varE e)) in
               let cl =
-                let c = fresh_var "c" T.catch in
-                [c] -->* ic_rejectE (errorMessageE (varE c))(*FIXME*) in
+                [] -->* unitE () in
               let exp' = callE (t_exp cps) [t0] (tupE [k; r; cl]) in
               FuncE (x, T.Shared s', Replies, typbinds', args', ret_tys, exp')
             (* oneway, always with `ignore(async _)` body *)
@@ -440,10 +438,9 @@ let transform prog =
                 v --> tupE [] in (* discard return *)
               let r =
                 let e = fresh_var "e" T.catch in
-                [e] -->* tupE [] in (* discard error *)
+                [e] -->* tupE [] in
               let cl =
-                let e = fresh_var "e" T.catch in
-                [e] -->* tupE [](*FIXME*) in (* discard error *)
+                [] -->* unitE () in
               let exp' = callE (t_exp cps) [t0] (tupE [k; r; cl]) in
               FuncE (x, T.Shared s', Returns, typbinds', args', ret_tys, exp')
             | Returns, _ ->
