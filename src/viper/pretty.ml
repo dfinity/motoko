@@ -255,7 +255,8 @@ and pp_fldacc ppf fldacc =
     fprintf ppf "@[(%a).%s@]" pp_exp exp1 id.it
 
 and pp_loop_inv ppf inv =
-    fprintf ppf "invariant %a" pp_exp inv
+    marks := inv.at :: !marks;
+    fprintf ppf "\017invariant %a\019" pp_exp inv
 
 let prog_mapped file tuple_arities p =
     marks := [];
