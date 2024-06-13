@@ -1,0 +1,21 @@
+--- try-finally.run
++++ try-finally.run-low
+@@ -0,0 +1,18 @@
++IR has aliasing (or Check_ir visits nodes twice):
++(PrimE (CallPrim) (VarE $$thunk/2/0) (PrimE TupPrim))
++IR has aliasing (or Check_ir visits nodes twice):
++(VarE $$thunk/2/0)
++IR has aliasing (or Check_ir visits nodes twice):
++(PrimE TupPrim)
++IR has aliasing (or Check_ir visits nodes twice):
++(PrimE (CallPrim) (VarE $$thunk/10/0) (PrimE TupPrim))
++IR has aliasing (or Check_ir visits nodes twice):
++(VarE $$thunk/10/0)
++IR has aliasing (or Check_ir visits nodes twice):
++(PrimE TupPrim)
++IR has aliasing (or Check_ir visits nodes twice):
++(PrimE (CallPrim) (VarE $$thunk/9/0) (PrimE TupPrim))
++IR has aliasing (or Check_ir visits nodes twice):
++(VarE $$thunk/9/0)
++IR has aliasing (or Check_ir visits nodes twice):
++(PrimE TupPrim)

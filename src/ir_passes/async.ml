@@ -83,7 +83,7 @@ let new_nary_async_reply ts =
     let coerce u =
       let v = fresh_var "v" u in
       let k = fresh_var "k" (contT u T.unit) in
-      let r = fresh_var "rX" (err_contT T.unit) in
+      let r = fresh_var "r" (err_contT T.unit) in
       let c = fresh_var "c" (Func(Local, Returns, [], [], [])) in
       [k; r; c] -->* (
         varE unary_async -*-
@@ -259,7 +259,7 @@ let transform prog =
         | Func(_, _, [], _, []) ->
           (* unit answer type, from await in `async {}` *)
           (ensureNamed (t_exp krc) (fun vkrc ->
-            let schedule = fresh_var "schedule" (T.Func(T.Local, T.Returns, [], [], [])) in
+            let schedule = fresh_var "schedule" (Func(Local, Returns, [], [], [])) in
             switch_variantE (t_exp a -*- varE vkrc)
               [ ("suspend", wildP,
                   unitE()); (* suspend *)
@@ -308,16 +308,17 @@ let transform prog =
       ).it
     | PrimE (CPSAsync (Cmp, t), [exp1]) ->
       let t0 = t_typ t in
-      let tb, t_ret, t_fail = match typ exp1 with
+      let tb, t_ret, t_fail, t_clean = match typ exp1 with
         | Func(_,_, [tb], [t_ret; t_fail; t_clean], _ ) ->
           tb,
           t_typ (T.open_ [t] t_ret),
-          t_typ (T.open_ [t] t_fail)
+          t_typ (T.open_ [t] t_fail),
+          t_typ (T.open_ [t] t_clean)
         | t -> assert false
       in
       let v_ret = fresh_var "v" t_ret in
       let v_fail = fresh_var "e" t_fail in
-      let v_clean = fresh_var "c" (Func(Local, Returns, [], [], [])) in
+      let v_clean = fresh_var "c" t_clean in
       ([v_ret; v_fail; v_clean] -->* callE (t_exp exp1) [t0] (tupE [varE v_ret; varE v_fail; varE v_clean])).it
     | PrimE (CallPrim typs, (exp1 :: exp2 :: _)) when is_awaitable_func exp1 ->
       let ts1,ts2 =
@@ -396,7 +397,7 @@ let transform prog =
                 | PrimE (CPSAsync (Type.Fut, t0), [cps]) -> t_typ t0, cps
                 | _ -> assert false in
               let t1, contT = match typ cps with
-                | Func (_,_,
+                | Func (_, _,
                     [tb],
                     [Func(_, _, [], ts1, []) as contT; _; _],
                     []) ->

@@ -81,7 +81,7 @@ let rec t_async context exp =
    (* add the implicit return label *)
    let k_ret = fresh_cont (typ exp1) T.unit in
    let k_fail = fresh_err_cont T.unit in
-   let k_clean = fresh_err_cont T.unit in
+   let k_clean = fresh_cont T.unit T.unit in
    let context' =
      LabelEnv.add Return (Cont (ContVar k_ret))
        (LabelEnv.singleton Throw (Cont (ContVar k_fail)))

@@ -572,7 +572,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
         T.Func(T.Local,T.Returns, [tb],
           [T.Func(T.Local, T.Returns, [], ts1, []);
            T.Func(T.Local, T.Returns, [], [t_error], []);
-           T.Func(T.Local, T.Returns, [], _(*FIXME: why not []?*), [])],
+           T.Func(T.Local, T.Returns, [], [], [])],
           []) ->
          T.catch <: t_error;
          T.Async(s, t0, Type.open_ [t0] (T.seq ts1)) <: t
