@@ -85,7 +85,7 @@ let new_nary_async_reply ts =
       let v = fresh_var "v" u in
       let k = fresh_var "k" (contT u unit) in
       let r = fresh_var "r" (err_contT unit) in
-      let c = fresh_var "c" (contT unit unit) in
+      let c = fresh_var "c" bail_contT in
       [k; r; c] -->* (
         varE unary_async -*-
           (tupE [

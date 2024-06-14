@@ -402,7 +402,7 @@ and c_exp' context exp k =
       in
       let context' = LabelEnv.mapi (function | Return | Named _ -> lab | Cleanup | Throw -> fun c -> c) context in
       let context'' = LabelEnv.add Throw (Cont (ContVar throw)) context' in
-      let c = match LabelEnv.find_opt Cleanup context'' with Some c -> c | None -> Cont (ContVar (var "@cleanup" T.(contT unit unit))) in
+      let c = match LabelEnv.find_opt Cleanup context'' with Some c -> c | None -> Cont (ContVar (var "@cleanup" bail_contT)) in
       let context''' = LabelEnv.add Cleanup (lab c) context'' in
       blockE
         [ let e = fresh_var "e" T.catch in
@@ -472,7 +472,7 @@ and c_exp' context exp k =
     in
     let c = match LabelEnv.find_opt Cleanup context with
       | Some (Cont r) -> r
-      | None -> ContVar (var "@cleanup" T.(contT unit unit))
+      | None -> ContVar (var "@cleanup" bail_contT)
       | _ -> assert false
     in
     letcont r (fun r ->

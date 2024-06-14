@@ -728,7 +728,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     typ exp1 <: t;
     check_cases env T.catch t cases;
     Option.iter (check_exp env) exp2;
-    Option.iter T.(fun exp2 -> typ exp2 <: Construct.contT unit unit) exp2
+    Option.iter (fun exp2 -> typ exp2 <: Construct.bail_contT) exp2
   | LoopE exp1 ->
     check_exp { env with lvl = NotTopLvl } exp1;
     typ exp1 <: T.unit;
