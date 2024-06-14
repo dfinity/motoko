@@ -627,9 +627,9 @@ let contT typ ans_typ = T.(Func (Local, Returns, [], as_seq typ, as_seq ans_typ)
 
 let err_contT ans_typ =  T.(Func (Local, Returns, [], [catch], as_seq ans_typ))
 
-let bail_contT = T.(contT unit unit)
+let bail_contT = T.(contT unit unit) (* when `await`ing *)
 
-let clean_contT =  T.(Func (Local, Returns, [], [], []))
+let clean_contT = bail_contT (* last-resort replica callback *)
 
 let answerT typ : T.typ =
   match typ with
