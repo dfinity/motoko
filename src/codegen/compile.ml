@@ -9415,9 +9415,8 @@ module FuncDec = struct
         let set_closure, get_closure = new_local env "closure" in
         set_closure ^^ get_closure ^^
         Closure.prepare_closure_call env ^^
-        compile_unboxed_zero ^^
         get_closure ^^
-        Closure.call_closure env 1 0);
+        Closure.call_closure env 0 0);
     compile_unboxed_const (E.add_fun_ptr env (E.built_in env name))
 
   let ic_call_threaded env purpose get_meth_pair push_continuations

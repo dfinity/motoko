@@ -311,7 +311,7 @@ func @cleanup() {
     (prim "print" : Text -> ()) "CLEANUP_E"
 };
 
-func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>, @Cont<Nat32>) {
+func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>, () -> ()) {
   let w_null = func(r : @Refund, t : T) { };
   let r_null = func(_ : Error) {};
   var result : ?(@Result<T>) = null;
@@ -348,7 +348,7 @@ func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>, @Cont<Nat32>) 
 
   var cleanup : () -> () = @cleanup;
 
-  func clean(_ : Nat32) {
+  func clean() {
       cleanup();
   };
 

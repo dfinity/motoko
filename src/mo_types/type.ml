@@ -312,7 +312,6 @@ let compare_field f1 f2 =
 let unit = Tup []
 let bool = Prim Bool
 let nat = Prim Nat
-let nat32X = Prim Nat32
 let nat64 = Prim Nat64
 let int = Prim Int
 let text = Prim Text

@@ -629,7 +629,7 @@ let err_contT ans_typ =  T.(Func (Local, Returns, [], [catch], as_seq ans_typ))
 
 let bail_contT = T.(contT unit unit)
 
-let clean_contT =  T.(Func (Local, Returns, [], [nat32X(*FIXME*)], []))
+let clean_contT =  T.(Func (Local, Returns, [], [], []))
 
 let answerT typ : T.typ =
   match typ with
