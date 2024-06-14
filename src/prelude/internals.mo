@@ -307,21 +307,7 @@ func @getSystemRefund() : @Refund {
   return (prim "cyclesRefunded" : () -> Nat) ();
 };
 
-//func @shout() = (prim "print" : Text -> ()) "CLEANUP";
-
-//let @FIXME_err = (prim "cast" : ({#call_error : {err_code : Nat32}}, Text) -> Error) (#call_error {err_code = 0 : Nat32}, "HAHA");
-func @shout2(/*e : Error*/) {
-    type ErrorCode = {
-        #system_fatal;
-        #system_transient;
-        #destination_invalid;
-        #canister_reject;
-        #canister_error;
-        #future : Nat32;
-        #call_error : { err_code : Nat32 };
-    };
-    //func errorCode(e : Error) : ErrorCode = ((prim "cast" : Error -> (ErrorCode, Text)) e).0;
-    //assert errorCode @FIXME_err == errorCode e;
+func @cleanup() {
     (prim "print" : Text -> ()) "CLEANUP_E"
 };
 
@@ -360,7 +346,7 @@ func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>, @Cont<Nat32>) 
     };
   };
 
-  var cleanup : () -> () = @shout2;
+  var cleanup : () -> () = @cleanup;
 
   func clean(_ : Nat32) {
       cleanup();
