@@ -560,7 +560,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
            (match ts2 with
             | [] -> ()
             | _ -> error env exp.at "CPSAwait answer type error");
-           typ krc <: T.Tup T.[cont_typ; Construct.err_contT (Tup ts2); Func(Local, Returns, [], [], ts2)];
+           typ krc <: T.Tup T.[cont_typ; Construct.err_contT (Tup ts2); Construct.bail_contT];
            t1 <: T.seq ts1;
            T.seq ts2 <: t;
          end;
@@ -603,7 +603,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
         check_concrete env exp.at t_arg;
         typ k <: T.(Construct.contT (Tup ret_tys) unit);
         typ r <: T.(Construct.err_contT unit);
-        typ c <: T.(Func (Local, Returns, [], [nat32(*FIXME*)], []));
+        typ c <: Construct.clean_contT;
       | T.Non -> () (* dead code, not much to check here *)
       | _ ->
          error env exp1.at "expected function type, but expression produces type\n  %s"
@@ -616,7 +616,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
       typ exp3 <: T.blob;
       typ k <: T.(Construct.contT blob unit);
       typ r <: T.(Construct.err_contT unit);
-      typ c <: T.(Func (Local, Returns, [], [nat32(*FIXME*)], []));
+      typ c <: Construct.clean_contT;
       T.unit <: t
     | ICMethodNamePrim, [] ->
       T.text <: t
@@ -808,7 +808,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     typ exp_f <: T.unit;
     typ exp_k <: T.(Construct.contT (Tup ts) unit);
     typ exp_r <: T.(Construct.err_contT unit);
-    typ exp_c <: T.Func (T.Local, T.Returns, [], [T.nat32(*FIXME*)], []);
+    typ exp_c <: Construct.clean_contT;
   | ActorE (ds, fs,
       { preupgrade; postupgrade; meta; heartbeat; timer; inspect }, t0) ->
     (* TODO: check meta *)

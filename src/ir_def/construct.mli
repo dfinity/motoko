@@ -127,6 +127,8 @@ val let_no_shadow : var -> exp -> dec list -> dec list
 
 val contT : typ -> typ -> typ
 val err_contT : typ -> typ
+val bail_contT : typ
+val clean_contT : typ
 val answerT : typ -> typ (* answer type of a continuation type *)
 
 val cpsT : typ -> typ -> typ

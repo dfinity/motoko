@@ -40,10 +40,10 @@ let nary typ = as_seq typ
 
 let fulfillT as_seq typ = Func(Local, Returns, [], as_seq typ, [])
 
-let failT = Func (Local, Returns, [], [catch], [])
-let bailT = Func (Local, Returns, [], [], [])
+let failT = err_contT unit
+let bailT = bail_contT
 
-let cleanT = Func (Local, Returns, [], [nat32(*FIXME*)], [])
+let cleanT = clean_contT
 
 let t_async_fut as_seq t =
   Func (Local, Returns, [], [fulfillT as_seq t; failT; bailT],
@@ -267,7 +267,7 @@ let transform prog =
                 ("schedule", varP schedule, (* resume later *)
                   (* try await async (); schedule() catch e -> r(e) *)
                  (let v = fresh_var "call" unit in
-                  let n = fresh_var "nat" nat32 in
+                  let n = fresh_var "nat" nat32X in
                   letE v
                   (selfcallE [] (ic_replyE [] (unitE())) (varE schedule) (projE (varE vkrc) 1)
                      ([n] -->* (projE (varE vkrc) 2 -*- unitE ())))
