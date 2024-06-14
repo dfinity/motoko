@@ -560,7 +560,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
            (match ts2 with
             | [] -> ()
             | _ -> error env exp.at "CPSAwait answer type error");
-           typ krc <: T.Tup [cont_typ; T.Func(T.Local, T.Returns, [], [T.catch], ts2); T.Func(T.Local, T.Returns, [], [], ts2)];
+           typ krc <: T.Tup T.[cont_typ; Construct.err_contT (Tup ts2); Func(Local, Returns, [], [], ts2)];
            t1 <: T.seq ts1;
            T.seq ts2 <: t;
          end;
@@ -569,13 +569,13 @@ let rec check_exp env (exp:Ir.exp) : unit =
       check (env.flavor.has_async_typ) "CPSAwait in post-async flavor";
     | CPSAsync (s, t0), [exp] ->
       (match typ exp with
-        T.Func(T.Local,T.Returns, [tb],
-          [T.Func(T.Local, T.Returns, [], ts1, []);
-           T.Func(T.Local, T.Returns, [], [t_error], []);
-           T.Func(T.Local, T.Returns, [], [], [])],
-          []) ->
-         T.catch <: t_error;
-         T.Async(s, t0, Type.open_ [t0] (T.seq ts1)) <: t
+       | T.Func (T.Local, T.Returns, [tb],
+                 T.[Func (Local, Returns, [], ts1, []);
+                    Func (Local, Returns, [], [t_error], []);
+                    Func (Local, Returns, [], [], [])],
+                 []) ->
+          T.catch <: t_error;
+          T.Async(s, t0, T.open_ [t0] (T.seq ts1)) <: t
        | _ -> error env exp.at "CPSAsync unexpected typ");
       check (not (env.flavor.has_await)) "CPSAsync await flavor";
       check (env.flavor.has_async_typ) "CPSAsync in post-async flavor";
@@ -601,8 +601,8 @@ let rec check_exp env (exp:Ir.exp) : unit =
         let t_arg = T.seq arg_tys in
         typ exp2 <: t_arg;
         check_concrete env exp.at t_arg;
-        typ k <: T.(Func (Local, Returns, [], ret_tys, []));
-        typ r <: T.(Func (Local, Returns, [], [error], []));
+        typ k <: T.(Construct.contT (Tup ret_tys) unit);
+        typ r <: T.(Construct.err_contT unit);
         typ c <: T.(Func (Local, Returns, [], [nat32(*FIXME*)], []));
       | T.Non -> () (* dead code, not much to check here *)
       | _ ->
@@ -614,8 +614,8 @@ let rec check_exp env (exp:Ir.exp) : unit =
       typ exp1 <: T.principal;
       typ exp2 <: T.text;
       typ exp3 <: T.blob;
-      typ k <: T.(Func (Local, Returns, [], [blob], []));
-      typ r <: T.(Func (Local, Returns, [], [error], []));
+      typ k <: T.(Construct.contT blob unit);
+      typ r <: T.(Construct.err_contT unit);
       typ c <: T.(Func (Local, Returns, [], [nat32(*FIXME*)], []));
       T.unit <: t
     | ICMethodNamePrim, [] ->
@@ -728,7 +728,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     typ exp1 <: t;
     check_cases env T.catch t cases;
     Option.iter (check_exp env) exp2;
-    Option.iter (fun exp2 -> typ exp2 <: T.(Func (Local, Returns, [], [], []))) exp2
+    Option.iter T.(fun exp2 -> typ exp2 <: Construct.contT unit unit) exp2
   | LoopE exp1 ->
     check_exp { env with lvl = NotTopLvl } exp1;
     typ exp1 <: T.unit;
@@ -806,8 +806,8 @@ let rec check_exp env (exp:Ir.exp) : unit =
     check_exp env exp_r;
     check_exp env exp_c;
     typ exp_f <: T.unit;
-    typ exp_k <: T.Func (T.Local, T.Returns, [], ts, []);
-    typ exp_r <: T.Func (T.Local, T.Returns, [], [T.error], []);
+    typ exp_k <: T.(Construct.contT (Tup ts) unit);
+    typ exp_r <: T.(Construct.err_contT unit);
     typ exp_c <: T.Func (T.Local, T.Returns, [], [T.nat32(*FIXME*)], []);
   | ActorE (ds, fs,
       { preupgrade; postupgrade; meta; heartbeat; timer; inspect }, t0) ->

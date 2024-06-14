@@ -41,17 +41,18 @@ let nary typ = as_seq typ
 let fulfillT as_seq typ = Func(Local, Returns, [], as_seq typ, [])
 
 let failT = Func (Local, Returns, [], [catch], [])
+let bailT = Func (Local, Returns, [], [], [])
 
 let cleanT = Func (Local, Returns, [], [nat32(*FIXME*)], [])
 
 let t_async_fut as_seq t =
-  Func (Local, Returns, [], [fulfillT as_seq t; failT; Func(Local, Returns, [], [], [])],
+  Func (Local, Returns, [], [fulfillT as_seq t; failT; bailT],
         [sum [
              ("suspend", unit);
              ("schedule", Func(Local, Returns, [], [], []))]])
 
 let t_async_cmp as_seq t =
-  Func (Local, Returns, [], [fulfillT as_seq t; failT; Func(Local, Returns, [], [], [])], [])
+  Func (Local, Returns, [], [fulfillT as_seq t; failT; bailT], [])
 
 let new_async_ret as_seq t = [t_async_fut as_seq t; fulfillT as_seq t; failT; cleanT]
 
@@ -84,7 +85,7 @@ let new_nary_async_reply ts =
       let v = fresh_var "v" u in
       let k = fresh_var "k" (contT u unit) in
       let r = fresh_var "r" (err_contT unit) in
-      let c = fresh_var "c" (Func (Local, Returns, [], [], [])) in
+      let c = fresh_var "c" (contT unit unit) in
       [k; r; c] -->* (
         varE unary_async -*-
           (tupE [
