@@ -10582,7 +10582,6 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
   begin match p, es with
   (* Calls *)
-  | CallPrim _, [e1; e2; _] (* FIXME just ignore the third (cleanup stack) arg for now *)
   | CallPrim _, [e1; e2] ->
     let sort, control, _, arg_tys, ret_tys = Type.as_func e1.note.Note.typ in
     let n_args = List.length arg_tys in
