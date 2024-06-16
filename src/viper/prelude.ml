@@ -51,15 +51,15 @@ adt Option[T] {
 let prelude_text_encoding : string = {prelude|/* Text encoding */
 function $concat(a: Int, b: Int): Int|prelude}
 
-let prelude_typed_references : string = {prelude|/* Typed references */
-field $int: Int
-field $bool: Bool
-field $text: Int
-field $ref: Ref
-field $array: Array
-field $option_int: Option[Int]
-field $option_bool: Option[Bool]
-field $option_array: Option[Array]|prelude}
+let pp_typed_field (name, typ) =
+  Format.asprintf "@[<2>field %s:@ %a@]"
+      name
+      Pretty.pp_typ typ
+
+let prelude_typed_references typed_fields : string =
+  String.concat "\n"
+  ("/* Typed references */" ::
+    List.map pp_typed_field (StrMap.bindings typed_fields))
 
 let prelude reqs: string =
   String.concat "\n"
@@ -69,6 +69,6 @@ let prelude reqs: string =
     prelude_tuple_encoding !(reqs.tuple_arities);
     prelude_option_encoding;
     prelude_text_encoding;
-    prelude_typed_references;
+    prelude_typed_references !(reqs.typed_fields);
     "/* END PRELUDE */"
   ]

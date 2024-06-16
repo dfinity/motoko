@@ -1,2 +1,2 @@
-Parse warning: In macro $Perm, the following parameters were defined but not used: $Self  (label-break-continue.vpr@35.1)
-Parse warning: In macro $Inv, the following parameters were defined but not used: $Self  (label-break-continue.vpr@36.1)
+Parse warning: In macro $Perm, the following parameters were defined but not used: $Self  (label-break-continue.vpr@27.1)
+Parse warning: In macro $Inv, the following parameters were defined but not used: $Self  (label-break-continue.vpr@28.1)

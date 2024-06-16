@@ -1,6 +1,5 @@
 open Source
 open Syntax
-open Prelude
 
 open Format
 
@@ -258,11 +257,11 @@ and pp_loop_inv ppf inv =
     marks := inv.at :: !marks;
     fprintf ppf "\017invariant %a\019" pp_exp inv
 
-let prog_mapped file tuple_arities p =
+let prog_mapped file prelude p =
     marks := [];
     let b = Buffer.create 16 in
     let ppf = Format.formatter_of_buffer b in
-    Format.fprintf ppf "@[%s@]@.@.@[%a@]" (prelude tuple_arities) pp_prog p;
+    Format.fprintf ppf "@[%s@]@.@.@[%a@]" prelude pp_prog p;
     Format.pp_print_flush ppf ();
     let in_file { left; right } =
       let left, right = { left with file }, { right with file } in
@@ -299,4 +298,4 @@ let prog_mapped file tuple_arities p =
         List.fold_left tighten None mapping in
     Buffer.contents b, lookup
 
-let prog tuple_arities p = fst (prog_mapped "" tuple_arities p)
+let prog prelude p = fst (prog_mapped "" prelude p)

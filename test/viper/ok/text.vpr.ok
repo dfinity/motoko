@@ -22,13 +22,6 @@ adt Option[T] {
 function $concat(a: Int, b: Int): Int
 /* Typed references */
 field $int: Int
-field $bool: Bool
-field $text: Int
-field $ref: Ref
-field $array: Array
-field $option_int: Option[Int]
-field $option_bool: Option[Bool]
-field $option_array: Option[Array]
 /* END PRELUDE */
 
 define $Perm($Self) (((true && acc(($Self).fld1,write)) && acc(($Self).fld2,write)))
@@ -62,13 +55,13 @@ method array_text($Self: Ref)
     requires $Perm($Self)
     ensures $Perm($Self)
     { var arr: Array
-      inhale $array_acc(arr, $text, write);
+      inhale $array_acc(arr, $int, write);
       inhale ($size(arr) == 2);
-      ($loc(arr, 0)).$text := 2;
-      ($loc(arr, 1)).$text := 2;
-      ($loc(arr, 0)).$text := 0;
-      ($loc(arr, 1)).$text := 1;
-      assert ((($loc(arr, 0)).$text == 0) && (($loc(arr, 1)).$text == 1));
+      ($loc(arr, 0)).$int := 2;
+      ($loc(arr, 1)).$int := 2;
+      ($loc(arr, 0)).$int := 0;
+      ($loc(arr, 1)).$int := 1;
+      assert ((($loc(arr, 0)).$int == 0) && (($loc(arr, 1)).$int == 1));
       label $Ret; 
     }
 method tuple_text($Self: Ref)
