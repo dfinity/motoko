@@ -20,9 +20,17 @@ module IntSet = Set.Make(struct
   let compare = compare
 end)
 
+module StrMap = Map.Make(String)
+
 (* Requirements arising from the translated code. In trans.ml we collect those
    requirements, in prelude.ml we generate definitons to satisfy them. *)
-type reqs = { tuple_arities : IntSet.t ref }
+type reqs =
+  { tuple_arities : IntSet.t ref
+  ; typed_fields : Syntax.typ StrMap.t ref
+  }
 
-let init_reqs () = { tuple_arities = ref IntSet.empty }
+let init_reqs () =
+  { tuple_arities = ref IntSet.empty
+  ; typed_fields = ref StrMap.empty
+  }
 

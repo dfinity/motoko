@@ -187,6 +187,11 @@ let rec strip_par_p (p : M.pat) : M.pat =
   | M.ParP p' -> strip_par_p p'
   | _         -> p
 
+let rec strip_mut_t (t : T.typ) : T.typ =
+  match t with
+  | T.Mut t' -> strip_mut_t t'
+  | _        -> t
+
 let rec unit reqs (u : M.comp_unit) : prog Diag.result =
   Diag.(
     reset_stamps();
@@ -406,7 +411,7 @@ and dec_field' ctxt d =
       let lhs = fun ctxt' -> !!! Source.no_region (FldAcc (fldacc ctxt')) in
       let perms ctxt' at =
             conjoin ([ accE at (self ctxt' at, id x) ]
-                     @ (access_pred (lhs ctxt') t |: [])
+                     @ (access_pred ctxt' (lhs ctxt') t |: [])
                      @ static_invariants at (lhs ctxt') e) at in
       { ctxt with ids = Env.add x.it (Field, t) ctxt.ids },
       Some perms, (* perm *)
@@ -437,9 +442,9 @@ and arg p = match p.it with
         | _ -> unsupported p.at (Arrange.pat p))
   | _ -> unsupported p.at (Arrange.pat p)
 
-and access_pred lhs t =
+and access_pred ctxt lhs t =
   match T.normalize t with
-  | T.Array elem_t -> Some (array_acc Source.no_region lhs elem_t)
+  | T.Array elem_t -> Some (array_acc Source.no_region ctxt lhs elem_t)
   | _ -> None
 
 (* Get access predicates for all local variables in current scope *)
@@ -448,7 +453,7 @@ and local_access_preds ctxt =
   let preds = Env.fold (fun id info preds ->
       match info with
       | (Local, t) ->
-        let pred = access_pred !!(LocalVar (!!id, tr_typ ctxt t)) t in
+        let pred = access_pred ctxt !!(LocalVar (!!id, tr_typ ctxt t)) t in
         pred |: preds
       | _ -> preds)
     ctxt.ids []
@@ -750,9 +755,9 @@ and assign_stmts ctxt at (lval : lvalue) (e : M.exp) : seqn' =
       fld_via_tmp_var ctxt lval t (fun x ->
         let lhs = !!(LocalVar (x, tr_typ ctxt t)) in
         [], [ !!(AssertS !!(GeCmpE (exp ctxt e1, intLitE at 0)))
-            ; !!(InhaleS (array_acc at lhs (array_elem_t t)))
+            ; !!(InhaleS (array_acc at ctxt lhs (array_elem_t t)))
             ; !!(InhaleS (array_size_inv at lhs (exp ctxt e1)))
-            ; !!(InhaleS (array_init_const at lhs (array_elem_t t) (exp ctxt e2))) ]
+            ; !!(InhaleS (array_init_const at ctxt lhs (array_elem_t t) (exp ctxt e2))) ]
       )
     | _ -> unsupported args.at (Arrange.exp args)
     end
@@ -921,7 +926,7 @@ and rets ctxt t_opt =
      | T.Tup [] -> [], []
      | T.Async (T.Fut, _, _) -> [], []
      | typ ->
-        let pred = access_pred !!(LocalVar (!!"$Res", tr_typ ctxt typ)) typ in
+        let pred = access_pred ctxt !!(LocalVar (!!"$Res", tr_typ ctxt typ)) typ in
         pred |: [], [(!!"$Res", tr_typ ctxt typ)]
     )
 
@@ -978,22 +983,29 @@ and tuple_elem_ts t =
   | t -> failwith "tuple_elem_ts: expected tuple type"
 
 (* name of field of typed reference *)
-and typed_field t =
-  match T.normalize t  with
-  | T.Mut elem_t -> typed_field elem_t
-  | T.Prim T.Int  -> "$int"
-  | T.Prim T.Nat  -> "$int"  (* Viper has no native support for Nat, so translate to Int *)
-  | T.Prim T.Bool -> "$bool"
-  | T.Prim T.Text -> "$text"
-  | _ -> unsupported Source.no_region (Mo_types.Arrange_type.typ t)
+and typed_field ctxt t =
+  let t' = tr_typ ctxt (strip_mut_t t) in
+  let name = type_field_name t' in
+  ctxt.reqs.typed_fields := StrMap.add name t' !(ctxt.reqs.typed_fields);
+  name
+
+and type_field_name t =
+  match t.it with
+  | IntT  -> "$int"
+  | BoolT -> "$bool"
+  | RefT  -> "$ref"
+  | ArrayT -> "$array"
+  | TupleT ts  -> "$tuple" ^ string_of_int (List.length ts) ^ String.concat "" (List.map type_field_name ts)
+  | OptionT t' -> "$option" ^ type_field_name t'
+  | ConT (con, ts) -> "$c_" ^ con.it ^ String.concat "" (List.map type_field_name ts)
 
 and array_size_inv at lhs n =
   !!! at (EqCmpE (sizeE at lhs, n))
 
-and array_acc at lhs t =
+and array_acc at ctxt lhs t =
   match T.normalize t with
-  | T.Mut _-> arrayAccE at lhs (typed_field t) FullP
-  | _      -> arrayAccE at lhs (typed_field t) WildcardP
+  | T.Mut _-> arrayAccE at lhs (typed_field ctxt t) FullP
+  | _      -> arrayAccE at lhs (typed_field ctxt t) WildcardP
 
 (* Allocate array on the LHS expression.
    Note: array_alloc assumes that the array is uninitialized. Assignment to
@@ -1001,24 +1013,24 @@ and array_acc at lhs t =
 and array_alloc at ctxt lhs t es : stmt list =
   let (!!) p = !!! at p in
   let init_array = List.mapi (fun i e ->
-    FieldAssignS (locE at lhs (intLitE at i) (typed_field t), exp ctxt e)) es in
+    FieldAssignS (locE at lhs (intLitE at i) (typed_field ctxt t), exp ctxt e)) es in
   (* InhaleS (!! (FldAcc (locE at lhs (intLitE at i) (typed_field t))) === e)) es in *)
   let reset_perm =
     (match T.normalize t with
      | T.Mut _ -> []
-     | _       -> [ExhaleS (array_acc at lhs t); InhaleS (array_acc at lhs t)])in
-  let stmts = [ InhaleS (array_acc at lhs (T.Mut t))
+     | _       -> [ExhaleS (array_acc at ctxt lhs t); InhaleS (array_acc at ctxt lhs t)])in
+  let stmts = [ InhaleS (array_acc at ctxt lhs (T.Mut t))
               ; InhaleS (array_size_inv at lhs (intLitE at (List.length es)))]
               @ init_array
               @ reset_perm
   in List.map (!!) stmts
 
-and array_init_const at lhs t x =
+and array_init_const at ctxt lhs t x =
   let (!!) p = !!! at p in
-  !! (CallE ("$array_init", [lhs; !!(FldE (typed_field t)); x]))
+  !! (CallE ("$array_init", [lhs; !!(FldE (typed_field ctxt t)); x]))
 
 and array_loc ctxt at e1 e2 t =
-  locE at (exp ctxt e1) (exp ctxt e2) (typed_field t)
+  locE at (exp ctxt e1) (exp ctxt e2) (typed_field ctxt t)
 
 and label_expr_alloc ~label_id ~label_type ~label_rhs ~label_note at ctxt lhs : seqn' =
   let ctxt =
