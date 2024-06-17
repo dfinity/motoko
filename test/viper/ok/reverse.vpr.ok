@@ -23,11 +23,10 @@ function $concat(a: Int, b: Int): Int
 field $int: Int
 /* END PRELUDE */
 
-define $Perm($Self) ((true && (acc(($Self).xarray,write) && ($array_acc(
-                                                             ($Self).xarray,
-                                                             $int, write) && (
-  $size(($Self).xarray) == 5)))))
-define $Inv($Self) (true)
+define $Perm($Self) ((true && (acc(($Self).xarray,write) && $array_acc(
+                                                            ($Self).xarray,
+                                                            $int, write))))
+define $Inv($Self) (invariant_8($Self))
 method __init__($Self: Ref)
     
     requires $Perm($Self)
@@ -50,6 +49,7 @@ method reverseArray$Nat($Self: Ref, a: Array)
     requires ($size(($Self).xarray) == 5)
     ensures $Perm($Self)
     ensures $array_acc(a, $int, write)
+    ensures ($size(($Self).xarray) == 5)
     ensures ($size(a) == old($size(a)))
     ensures forall k : Int :: (((0 <= k) && (k < $size(a))) ==> (($loc(a, k)).$int == 
             old(($loc(a, (($size(a) - 1) - k))).$int)))
@@ -96,11 +96,14 @@ method reverseArray$Nat($Self: Ref, a: Array)
       label $Ret; 
     }
 field xarray: Array
+define invariant_8($Self) (($size(($Self).xarray) == 5))
 method copy_xarray($Self: Ref)
      returns ($Res: Array)
     requires $Perm($Self)
+    requires ($size(($Self).xarray) == 5)
     ensures $Perm($Self)
     ensures $array_acc($Res, $int, write)
+    ensures ($size(($Self).xarray) == 5)
     ensures ($size($Res) == $size(($Self).xarray))
     { var length: Int
       var t: Array

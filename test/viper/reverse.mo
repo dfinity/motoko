@@ -5,7 +5,13 @@ import Prim "mo:⛔";
 actor Reverse {
   var xarray : [var Nat] = [var 1, 2, 3, 4, 5];
 
+  assert:invariant xarray.size() == 5;
+
   private func copy_xarray(): [var Nat] {
+    // actor invariant is preserved:
+    assert:func xarray.size() == 5;
+    assert:return xarray.size() == 5;
+    
     assert:return (var:return).size() == xarray.size();
     let length = xarray.size();
     let t = Array.init<Nat>(length, 0);
@@ -20,7 +26,9 @@ actor Reverse {
   };
 
   private func reverseArray<T>(a : [var T]) : () {
+    // actor invariant is preserved:
     assert:func xarray.size() == 5;
+    assert:return xarray.size() == 5;
 
     assert:return a.size() == (old (a.size()));
     assert:return Prim.forall<Nat>(

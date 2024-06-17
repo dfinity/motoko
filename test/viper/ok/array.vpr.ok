@@ -24,16 +24,13 @@ field $bool: Bool
 field $int: Int
 /* END PRELUDE */
 
-define $Perm($Self) (((((true && (acc(($Self).immut_arr,write) && ($array_acc(
-                                                                   ($Self).immut_arr,
-                                                                   $int,
-                                                                   wildcard) && (
-  $size(($Self).immut_arr) == 1)))) && (acc(($Self).arr,write) && ($array_acc(
-                                                                   ($Self).arr,
-                                                                   $int,
-                                                                   write) && (
-  $size(($Self).arr) == 2)))) && acc(($Self).f,write)) && acc(($Self).count,write)))
-define $Inv($Self) (true)
+define $Perm($Self) (((((true && (acc(($Self).immut_arr,write) && $array_acc(
+                                                                  ($Self).immut_arr,
+                                                                  $int,
+                                                                  wildcard))) && (
+  acc(($Self).arr,write) && $array_acc(($Self).arr, $int, write))) && 
+  acc(($Self).f,write)) && acc(($Self).count,write)))
+define $Inv($Self) (invariant_11($Self))
 method __init__($Self: Ref)
     
     requires $Perm($Self)
@@ -59,6 +56,7 @@ field immut_arr: Array
 field arr: Array
 field f: Int
 field count: Int
+define invariant_11($Self) (($size(($Self).arr) == 2))
 method foo($Self: Ref)
      returns ($Res: Int)
     requires $Perm($Self)

@@ -8,6 +8,8 @@ actor {
     var f : Int = 2;
     var count : Int = 42;
 
+    assert:invariant arr.size() == 2;
+
     public func foo(): async Int {
         // declarations
         var vi_a : [Int] = (([1] : [Int]) : [Int]);
