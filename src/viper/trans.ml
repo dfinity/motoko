@@ -138,8 +138,8 @@ let rec extract_loop_invariants (e : M.exp) : (M.exp list * M.exp) =
   | _ -> ([], e)
 and extract_loop_invariants' (ds : M.dec list) (acc : M.exp list) : (M.exp list * M.dec list) =
   match ds with
-  | M.({ it = ExpD ({ it = AssertE (Loop_invariant, inv); _ }); _ }) :: ds ->
-      extract_loop_invariants' ds (inv :: acc)
+  | M.({ it = ExpD ({ it = AssertE (Loop_invariant, inv); at = assert_at; _ }); _ }) :: ds ->
+      extract_loop_invariants' ds ({ inv with at = assert_at } :: acc)
   | _ -> (List.rev acc, ds)
 
 let rec extract_concurrency (seq : seqn) : stmt' list * seqn =
