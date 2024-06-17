@@ -5957,7 +5957,7 @@ module RTS_Exports = struct
     });
 
     let rts_trap_fi = E.add_fun env "rts_trap" (
-      (* `libc` stil uses 32-bit length parameter for `rts_trap` *)
+      (* `libc` still uses 32-bit length parameter for `rts_trap` *)
       Func.of_body env ["str", I64Type; "len", I32Type] [] (fun env ->
         let get_str = G.i (LocalGet (nr 0l)) in
         let get_len = G.i (LocalGet (nr 1l)) in
