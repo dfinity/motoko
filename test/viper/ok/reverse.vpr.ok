@@ -51,8 +51,8 @@ method reverseArray$Nat($Self: Ref, a: Array)
     ensures $array_acc(a, $int, write)
     ensures ($size(($Self).xarray) == 5)
     ensures ($size(a) == old($size(a)))
-    ensures forall k : Int :: (((0 <= k) && (k < $size(a))) ==> (($loc(a, k)).$int == 
-            old(($loc(a, (($size(a) - 1) - k))).$int)))
+    ensures (forall k : Int :: (((0 <= k) && (k < $size(a))) ==> (($loc(a, k)).$int == 
+            old(($loc(a, (($size(a) - 1) - k))).$int))))
     { var b: Array
       var length: Int
       var i: Int
@@ -79,13 +79,15 @@ method reverseArray$Nat($Self: Ref, a: Array)
          invariant ((i < length) && (i >= 0))
          invariant ((j < length) && (j >= 0))
          invariant (i == (($size(a) - 1) - j))
-         invariant forall k : Int :: (((j <= k) && (k <= i)) ==> (($loc(a,
+         invariant (forall k : Int :: (((j <= k) && (k <= i)) ==> ((
+                                                                    $loc(a,
                                                                     k)).$int == 
-                    old(($loc(a, k)).$int)))
-         invariant forall k : Int :: (((0 <= k) && (k < j)) ==> (($loc(a, k)).$int == 
-                    old(($loc(a, (($size(a) - 1) - k))).$int)))
-         invariant forall k : Int :: (((i < k) && (k < $size(a))) ==> (
-                    ($loc(a, k)).$int == old(($loc(a, (($size(a) - 1) - k))).$int)))
+                    old(($loc(a, k)).$int))))
+         invariant (forall k : Int :: (((0 <= k) && (k < j)) ==> (($loc(a,
+                                                                    k)).$int == 
+                    old(($loc(a, (($size(a) - 1) - k))).$int))))
+         invariant (forall k : Int :: (((i < k) && (k < $size(a))) ==> (
+                    ($loc(a, k)).$int == old(($loc(a, (($size(a) - 1) - k))).$int))))
          { var tmp: Int
            tmp := ($loc(a, i)).$int;
            ($loc(a, i)).$int := ($loc(a, j)).$int;

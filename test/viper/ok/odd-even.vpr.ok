@@ -38,7 +38,7 @@ method odd($Self: Ref, n: Int)
     requires ((n % 2) == 1)
     ensures $Perm($Self)
     { 
-      assert exists k : Int :: (((2 * k) + 1) == n);
+      assert (exists k : Int :: (((2 * k) + 1) == n));
       $Res := n;
       goto $Ret;
       label $Ret; 
@@ -49,7 +49,7 @@ method even($Self: Ref, n: Int)
     requires ((n % 2) == 0)
     ensures $Perm($Self)
     { 
-      assert exists k : Int :: ((2 * k) == n);
+      assert (exists k : Int :: ((2 * k) == n));
       $Res := n;
       goto $Ret;
       label $Ret; 
