@@ -28,23 +28,3 @@ typed-labels.mo:24.24-24.64: type error [M0096], expression of type
 cannot produce expected type
   Nat
 typed-labels.mo:25.33-25.34: type error [M0083], unbound label c
-typed-labels.mo:3.5-3.7: warning [M0194], unused identifier a0 (delete or rename to wildcard `_` or `_a0`)
-typed-labels.mo:4.5-4.7: warning [M0194], unused identifier b0 (delete or rename to wildcard `_` or `_b0`)
-typed-labels.mo:5.5-5.7: warning [M0194], unused identifier c0 (delete or rename to wildcard `_` or `_c0`)
-typed-labels.mo:6.5-6.7: warning [M0194], unused identifier d0 (delete or rename to wildcard `_` or `_d0`)
-typed-labels.mo:7.5-7.7: warning [M0194], unused identifier e0 (delete or rename to wildcard `_` or `_e0`)
-typed-labels.mo:9.5-9.7: warning [M0194], unused identifier a1 (delete or rename to wildcard `_` or `_a1`)
-typed-labels.mo:10.5-10.7: warning [M0194], unused identifier b1 (delete or rename to wildcard `_` or `_b1`)
-typed-labels.mo:11.5-11.7: warning [M0194], unused identifier c1 (delete or rename to wildcard `_` or `_c1`)
-typed-labels.mo:12.5-12.7: warning [M0194], unused identifier d1 (delete or rename to wildcard `_` or `_d1`)
-typed-labels.mo:13.5-13.7: warning [M0194], unused identifier e1 (delete or rename to wildcard `_` or `_e1`)
-typed-labels.mo:15.5-15.7: warning [M0194], unused identifier a2 (delete or rename to wildcard `_` or `_a2`)
-typed-labels.mo:16.5-16.7: warning [M0194], unused identifier b2 (delete or rename to wildcard `_` or `_b2`)
-typed-labels.mo:17.5-17.7: warning [M0194], unused identifier c2 (delete or rename to wildcard `_` or `_c2`)
-typed-labels.mo:18.5-18.7: warning [M0194], unused identifier d2 (delete or rename to wildcard `_` or `_d2`)
-typed-labels.mo:19.5-19.7: warning [M0194], unused identifier e2 (delete or rename to wildcard `_` or `_e2`)
-typed-labels.mo:21.5-21.7: warning [M0194], unused identifier a3 (delete or rename to wildcard `_` or `_a3`)
-typed-labels.mo:22.5-22.7: warning [M0194], unused identifier b3 (delete or rename to wildcard `_` or `_b3`)
-typed-labels.mo:23.5-23.7: warning [M0194], unused identifier c3 (delete or rename to wildcard `_` or `_c3`)
-typed-labels.mo:24.5-24.7: warning [M0194], unused identifier d3 (delete or rename to wildcard `_` or `_d3`)
-typed-labels.mo:25.5-25.7: warning [M0194], unused identifier e3 (delete or rename to wildcard `_` or `_e3`)
