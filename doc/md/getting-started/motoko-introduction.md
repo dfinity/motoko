@@ -94,36 +94,3 @@ For scenarios that can’t be solved using stable variables alone, Motoko provid
 ## Getting started
 
 Get started with Motoko by [setting up your developer environment](dev-env.md) and creating a simple [Hello, world!](quickstart.md) program.
-
-## Sample apps
-
-
-For projects that use the Motoko programming language, see [Motoko sample projects](https://github.com/dfinity/examples/tree/master/motoko).
-
--   [Calculator: simple functions](https://github.com/dfinity/examples/tree/master/motoko/calc)
-
--   [Counter](https://github.com/dfinity/examples/tree/master/motoko/counter)
-
--   [Echo](https://github.com/dfinity/examples/tree/master/motoko/echo)
-
--   [Factorial](https://github.com/dfinity/examples/tree/master/motoko/factorial)
-
--   [Hello, cycles](https://github.com/dfinity/examples/tree/master/motoko/hello_cycles)
-
--   [Hello, world](https://github.com/dfinity/examples/tree/master/motoko/hello-world)
-
--   [Game of Life: upgrades](https://github.com/dfinity/examples/tree/master/motoko/life)
-
--   [Phone book](https://github.com/dfinity/examples/tree/master/motoko/phone-book)
-
--   [Publish and subscribe](https://github.com/dfinity/examples/tree/master/motoko/pub-sub)
-
--   [Quicksort](https://github.com/dfinity/examples/tree/master/motoko/quicksort)
-
--   [Random maze using cryptographic randomness](https://github.com/dfinity/examples/tree/master/motoko/random_maze)
-
--   [To-do checklist](https://github.com/dfinity/examples/tree/master/motoko/simple-to-do)
-
--   [Superheroes database](https://github.com/dfinity/examples/tree/master/motoko/superheroes)
-
--   [whoami](https://github.com/dfinity/examples/tree/master/motoko/whoami)
