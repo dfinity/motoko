@@ -10,7 +10,7 @@ domain Array {
 }
 define $array_acc(a, t, p) forall j: Int :: 0 <= j && j < $size(a) ==> acc($loc(a, j).t, p)
 define $array_untouched(a, t) forall j: Int :: 0 <= j && j < $size(a) ==> $loc(a, j).t == old($loc(a, j).t)
-define $array_init(a, t, x) forall i : Int :: 0 <= i && i < $size(a) ==> $loc(a, i).t == x
+define $array_init(a, t, x) forall i : Int :: {$loc(a, i).t} 0 <= i && i < $size(a) ==> $loc(a, i).t == x
 /* Tuple encoding */
 adt Tuple$2 [T0, T1] { Tup$2(tup$2$0 : T0, tup$2$1 : T1) }
 /* Option encoding */
