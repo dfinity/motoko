@@ -23,7 +23,7 @@ html:
         # TODO: perhaps use node and remark-cli to compile out remark plugins first or use docusaurus to build site properly
 	rm -rf html
 	mkdir -p html
-	for f in md/*.md; do pandoc -f gfm --toc -t html -s --metadata title="$$f" -o html/$$(basename $$f .md).html $$f; done
+	for f in md/*/*.md; do pandoc -f gfm --toc -t html -s --metadata title="$$f" -o html/$$(basename $$f .md).html $$f; done
 
 
 preview:

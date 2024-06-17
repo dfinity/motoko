@@ -146,7 +146,7 @@ func append<X>(array1 : [X], array2 : [X]) : [X]
 ```
 
 Create a new array by appending the values of `array1` and `array2`.
-@deprecated `Array.append` copies its arguments and has linear complexity;
+Note that `Array.append` copies its arguments and has linear complexity;
 when used in a loop, consider using a `Buffer`, and `Buffer.append`, instead.
 
 ```motoko include=import

@@ -1,0 +1,4 @@
+position: 6
+label: 'Motoko packages'
+collapsible: true # make the category collapsible
+collapsed: true

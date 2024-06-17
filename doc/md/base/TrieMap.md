@@ -4,6 +4,11 @@ The class wraps and manipulates an underyling hash trie, found in the `Trie`
 module. The trie is a binary tree in which the position of elements in the
 tree are determined using the hash of the elements.
 
+LIMITATIONS: This data structure allows at most MAX_LEAF_SIZE=8 hash collisions:
+attempts to insert more than MAX_LEAF_SIZE keys (whether directly via `put` or indirectly via other operations) with the same hash value will trap.
+This limitation is inherited from the underlying `Trie` data structure.
+
+
 Note: The `class` `TrieMap` exposes the same interface as `HashMap`.
 
 Creating a map:
