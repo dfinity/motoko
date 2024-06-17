@@ -358,7 +358,7 @@ func stableMemorySize() : Nat64 = (prim "stableMemorySize" : () -> Nat64)();
 func stableMemoryGrow(pages : Nat64) : Nat64 = (prim "stableMemoryGrow" : Nat64 -> Nat64) pages;
 /// @deprecated Please use the Region library instead: https://internetcomputer.org/docs/current/motoko/main/stable-memory/stable-regions/#the-region-library
 func stableMemoryLoadNat32(offset : Nat64) : Nat32 = (prim "stableMemoryLoadNat32" : Nat64 -> Nat32) offset;
-/// @deprecated Please use the Regions library instead: https://internetcomputer.org/docs/current/motoko/main/stable-memory/stable-regions/#the-region-library
+/// @deprecated Please use the Region library instead: https://internetcomputer.org/docs/current/motoko/main/stable-memory/stable-regions/#the-region-library
 func stableMemoryStoreNat32(offset : Nat64, val : Nat32) : () = (prim "stableMemoryStoreNat32" : (Nat64, Nat32) -> ())(offset, val);
 /// @deprecated Please use the Region library instead: https://internetcomputer.org/docs/current/motoko/main/stable-memory/stable-regions/#the-region-library
 func stableMemoryLoadNat8(offset : Nat64) : Nat8 = (prim "stableMemoryLoadNat8" : Nat64 -> Nat8) offset;
