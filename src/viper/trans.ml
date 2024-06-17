@@ -326,12 +326,6 @@ and dec_field ctxt d =
       let (i, info) = mk_i ctxt' in
       (^^^) (d.at) i info)
 
-and static_invariants at lhs e =
-  match e.it with
- | M.AnnotE (e, _) -> static_invariants at lhs e
- | M.ArrayE (_, es) -> [array_size_inv at lhs (intLitE at (List.length es))]
- | _ -> []
-
 and dec_field' ctxt d =
   match d.M.dec.it with
   (* type declarations*)
@@ -411,8 +405,7 @@ and dec_field' ctxt d =
       let lhs = fun ctxt' -> !!! Source.no_region (FldAcc (fldacc ctxt')) in
       let perms ctxt' at =
             conjoin ([ accE at (self ctxt' at, id x) ]
-                     @ (access_pred ctxt' (lhs ctxt') t |: [])
-                     @ static_invariants at (lhs ctxt') e) at in
+                     @ (access_pred ctxt' (lhs ctxt') t |: [])) at in
       { ctxt with ids = Env.add x.it (Field, t) ctxt.ids },
       Some perms, (* perm *)
       Some (fun ctxt' -> (* init *)
