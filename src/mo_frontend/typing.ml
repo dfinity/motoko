@@ -1368,9 +1368,10 @@ and infer_exp'' env exp : T.typ =
         "cannot infer type of forward field reference %s"
         id.it
     | t ->
-      Option.iter
-        (warn env exp.at "M0154" "field %s is deprecated:\n%s" id.it)
-        (T.lookup_val_deprecation id.it tfs);
+      if not env.pre then
+        Option.iter
+          (warn env exp.at "M0154" "field %s is deprecated:\n%s" id.it)
+          (T.lookup_val_deprecation id.it tfs);
       t
     | exception Invalid_argument _ ->
       error env exp1.at "M0072"
