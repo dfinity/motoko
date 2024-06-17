@@ -834,10 +834,10 @@ impl Blob {
     }
 }
 
-/// Note: Do not declare 64-bit fields, as otherwise, the objects are expected to be 64-bit aligned.
-/// This is not the case in the current heap design.
-/// Moreover, fields would also get 64-bit aligned causing implicit paddding.
-
+/// NOTE: The stream is not used by enhanced orthogonal persistence and is designed for 32-bit only.
+/// Do not declare 64-bit fields for 32-bit stream, as otherwise, the objects are expected to be 64-bit
+/// aligned which is not the case in 32-bit heap. Moreover, fields would also get 64-bit aligned causing
+/// implicit paddding on 32-bit memory.
 #[repr(C)] // See the note at the beginning of this module
 #[classical_persistence]
 pub struct Stream {

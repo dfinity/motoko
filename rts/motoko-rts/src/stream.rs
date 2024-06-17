@@ -1,4 +1,5 @@
-//! The implementation of streaming serialisation
+//! The implementation of streaming serialisation.
+//! Only used for 32-bit classical persistence.
 //!
 //! When serialising Motoko stable variables to stable memory we used to first completely
 //! fill up an in-heap buffer and then copy that wholesale into stable memory. This can be
@@ -12,7 +13,7 @@
 //!
 //!
 
-// Layout of a stream node:
+// Layout of a stream node (32-bit only):
 //
 // ┌────────────┬─────┬─────────┬───────┬─────────┬─────────┬───────────┬────────┬──────────┐
 // │ obj header │ len │ padding | ptr64 │ start64 │ limit64 │ outputter │ filled │ cache... │
@@ -41,6 +42,10 @@ use crate::tommath_bindings::{mp_div_2d, mp_int};
 use crate::types::{size_of, Blob, Bytes, Stream, Value, TAG_BLOB};
 
 use motoko_rts_macros::ic_mem_fn;
+
+/// NOTE: The stream implementation assumes 32-bit memory and has not been ported to 64-bit.
+/// It is not used by enhanced orthogonal persistence.
+const _: () = assert!(usize::BITS == 32);
 
 const MAX_STREAM_SIZE: Bytes<usize> = Bytes((1 << 30) - 1);
 const INITIAL_STREAM_FILLED: Bytes<usize> = Bytes(32);
