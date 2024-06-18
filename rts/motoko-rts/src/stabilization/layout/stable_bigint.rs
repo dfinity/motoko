@@ -1,7 +1,6 @@
 use crate::bigint::mp_calloc;
 use crate::memory::Memory;
 use crate::stabilization::deserialization::stable_memory_access::StableMemoryAccess;
-use crate::stabilization::layout::write_padding_u64;
 use crate::stabilization::serialization::stable_memory_stream::{
     ScanStream, StableMemoryStream, WriteStream,
 };
@@ -11,10 +10,10 @@ use crate::types::{size_of, BigInt, Bytes, Value, TAG_BIGINT};
 
 use super::{round_to_u64, Serializer, StableToSpace, StableValue, StaticScanner};
 
-// Tom's math library, as configured for Motoko RTS, encodes a big numbers as an array of 32-bit
-// elements, where each element stores 28 bits of the number while its highest 4 bits are zero.
-// Similar to the little endian encoding, the element array starts with the least significant 28 bits,
-// with each subsequent element covering the next higher 28 bits.
+// Tom's math library, as configured for Motoko RTS, encodes a big numbers as an array of 64-bit
+// elements, where each element stores 60 bits of the number while its highest 4 bits are zero.
+// Similar to the little endian encoding, the element array starts with the least significant 60 bits,
+// with each subsequent element covering the next higher 60 bits.
 
 // Tom's math library functions `mp_to_sbin` and `mp_from_sbin` imply temporary object allocations
 // which could be problematic when memory is short.
@@ -25,13 +24,13 @@ pub struct StableBigInt {
     is_negative: bool, // Sign bit.
     number_of_bits: Bits, // Number of used bits in the payload.
 
-                       // Dynamically sized payload of the big integer stored in little endian format.
-                       // Zero padding to align to the next `u64`.
+                       // Dynamically sized payload of the big integer number as
+                       // little endian encoded series of 60 bits packed in 64-bit elements.
 }
 
-const USED_BITS_PER_ELEMENT: u32 = 28;
-// Note: Do not use `types::size_of()` as it rounds to 64-bit words.
-const ELEMENT_SIZE: usize = core::mem::size_of::<u32>();
+type ElementType = u64;
+const USED_BITS_PER_ELEMENT: u32 = 60;
+const ELEMENT_SIZE: usize = core::mem::size_of::<ElementType>();
 
 #[repr(C)]
 struct Bits(u64);
@@ -56,7 +55,7 @@ impl StableBigInt {
         let last_element = unsafe { *main_object.payload_addr().add(used_elements - 1) };
         debug_assert_ne!(last_element, 0);
         debug_assert_eq!(last_element >> USED_BITS_PER_ELEMENT, 0);
-        let last_bits = u32::BITS - last_element.leading_zeros();
+        let last_bits = ElementType::BITS - last_element.leading_zeros();
         Bits((used_elements - 1) as u64 * USED_BITS_PER_ELEMENT as u64 + last_bits as u64)
     }
 
@@ -93,19 +92,20 @@ impl Serializer<BigInt> for StableBigInt {
         let payload = main_object.payload_addr();
         let mut written_bytes = 0;
         let mut element_index = 0;
-        let mut element = 0;
+        let mut element: ElementType = 0;
         let mut pending_bits = 0;
-        let mut next_element = 0;
+        let mut next_element: ElementType = 0;
         let mut next_pending_bits = 0;
 
         while written_bytes < total_bytes {
-            while pending_bits < u32::BITS && element_index < total_elements {
+            while pending_bits < ElementType::BITS && element_index < total_elements {
                 debug_assert_eq!(next_pending_bits, 0);
                 next_element = *payload.add(element_index);
                 element_index += 1;
                 debug_assert_eq!(next_element >> USED_BITS_PER_ELEMENT, 0);
                 element |= next_element << pending_bits;
-                let consumed_bits = core::cmp::min(USED_BITS_PER_ELEMENT, u32::BITS - pending_bits);
+                let consumed_bits =
+                    core::cmp::min(USED_BITS_PER_ELEMENT, ElementType::BITS - pending_bits);
                 pending_bits += consumed_bits;
                 next_element >>= consumed_bits;
                 next_pending_bits = USED_BITS_PER_ELEMENT - consumed_bits;
@@ -118,7 +118,7 @@ impl Serializer<BigInt> for StableBigInt {
         }
         debug_assert!(pending_bits == 0 || element == 0);
         debug_assert_eq!(element_index, total_elements);
-        write_padding_u64(stable_memory, written_bytes);
+        debug_assert_eq!(written_bytes % core::mem::size_of::<u64>(), 0);
     }
 
     fn scan_serialized_dynamic<
@@ -168,7 +168,7 @@ impl Serializer<BigInt> for StableBigInt {
 
         let mut read_offset = 0;
         let mut element_index = 0;
-        let mut element = 0;
+        let mut element: ElementType = 0;
         let mut pending_bits = 0;
         let mut next_byte = 0;
         let mut next_pending_bits = 0;
@@ -178,7 +178,7 @@ impl Serializer<BigInt> for StableBigInt {
                 debug_assert_eq!(next_pending_bits, 0);
                 next_byte = stable_memory.read::<u8>(source_payload + read_offset as u64);
                 read_offset += 1;
-                element |= (next_byte as u32) << pending_bits;
+                element |= (next_byte as ElementType) << pending_bits;
                 element &= (1 << USED_BITS_PER_ELEMENT) - 1;
                 let consumed_bits = core::cmp::min(u8::BITS, USED_BITS_PER_ELEMENT - pending_bits);
                 pending_bits += consumed_bits;
@@ -191,7 +191,7 @@ impl Serializer<BigInt> for StableBigInt {
             }
             *target_payload.add(element_index) = element; // little endian
             element_index += 1;
-            element = next_byte as u32;
+            element = next_byte as ElementType;
             pending_bits = next_pending_bits;
             next_pending_bits = 0;
         }

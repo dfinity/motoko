@@ -44,8 +44,7 @@ MUSL_WASI_SYSROOT ?= $(MUSLSRC)/../../sysroot
 # manager
 #
 
-TOMMATH_FLAGS = \
-  -DMP_32BIT \
+TOMMATH_FLAGS_COMMON = \
   -DMP_MALLOC=mp_malloc \
   -DMP_REALLOC=mp_realloc \
   -DMP_CALLOC=mp_calloc \
@@ -54,7 +53,13 @@ TOMMATH_FLAGS = \
   -DMP_FIXED_CUTOFFS \
   -DMP_PREC=4 \
   -DMP_NO_FILE \
-  -D__STDC_IEC_559__ \
+  -D__STDC_IEC_559__
+
+TOMMATH_FLAGS_32 = $(TOMMATH_FLAGS_COMMON) \
+  -DMP_32BIT
+
+TOMMATH_FLAGS_64 = $(TOMMATH_FLAGS_COMMON) \
+  -DMP_64BIT
 
 # Note: the above __STDC_IEC_559__ define is somewhat of a misnomer
 #       as only IEEE 754 features are used.
@@ -165,10 +170,10 @@ TOMMATH_WASM_64_O=$(TOMMATHFILES:%=_build/wasm64/tommath_%.o)
 TOMMATH_WASM_64_A=_build/libtommath_wasm64.a
 
 _build/wasm32/tommath_%.o: bn_%.c | _build/wasm32
-	$(WASM_CLANG) $(CLANG_FLAGS_32) $(TOMMATH_FLAGS) $< --output $@
+	$(WASM_CLANG) $(CLANG_FLAGS_32) $(TOMMATH_FLAGS_32) $< --output $@
 
 _build/wasm64/tommath_%.o: bn_%.c | _build/wasm64
-	$(WASM_CLANG) $(CLANG_FLAGS_64) $(TOMMATH_FLAGS) $< --output $@
+	$(WASM_CLANG) $(CLANG_FLAGS_64) $(TOMMATH_FLAGS_64) $< --output $@
 
 $(TOMMATH_WASM_32_A): $(TOMMATH_WASM_32_O)
 	llvm-ar rcs $@ $^
@@ -246,19 +251,21 @@ TOMMATH_BIND_OPTIONS = \
 	    --blocklist-type __int64_t \
 	    --blocklist-type __uint32_t \
 	    --blocklist-type __uint64_t \
-		-- $(TOMMATH_FLAGS)
+
 
 $(TOMMATH_BINDINGS_RS_32): | _build/wasm32
 	bindgen $(TOMMATHSRC)/tommath.h \
 	    -o $@ \
 	    --ctypes-prefix=libc \
-		$(TOMMATH_BIND_OPTIONS)
+		$(TOMMATH_BIND_OPTIONS) \
+		-- $(TOMMATH_FLAGS_32)
 
 $(TOMMATH_BINDINGS_RS_64): | _build/wasm64
 	bindgen $(TOMMATHSRC)/tommath.h \
 	    -o $@ \
 	    --ctypes-prefix="crate::libc_declarations" \
-		$(TOMMATH_BIND_OPTIONS)
+		$(TOMMATH_BIND_OPTIONS) \
+		-- $(TOMMATH_FLAGS_64)
 
 	# Whitelist parameters used as libtommath.h has lots of definitions that we don't
 	# need. Blacklist parameters are used because bindgen still generates unused type

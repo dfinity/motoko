@@ -925,7 +925,7 @@ pub struct BigInt {
     /// The data pointer (mp_int.dp) is irrelevant, and will be changed to point to
     /// the data within this object before it is used.
     /// (NB: If we have a non-moving GC, we can make this an invariant)
-    /// NOTE: `mp_int` originates from 32-bit libc implementation:
+    /// NOTE: `mp_int` originates from 64-bit Tom's math library implementation.
     /// Layout in 64-bit memory:
     /// ```
     /// pub struct mp_int { // Total size 24
@@ -938,6 +938,8 @@ pub struct BigInt {
     /// ```
     pub mp_int: mp_int,
     // data follows ..
+    // Array of `mp_int` with length `alloc`.
+    // Each `mp_int` has byte size 8.
 }
 
 impl BigInt {
