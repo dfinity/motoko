@@ -707,8 +707,6 @@ module E = struct
   let then_trap_with env msg = if0 (trap_with env msg) G.nop
   let else_trap_with env msg = if0 G.nop (trap_with env msg)
 
-  let word_size = 8L
-
   let add_data_segment (env : t) data : int32 =
     let index = List.length !(env.data_segments) in
     env.data_segments := !(env.data_segments) @ [ data ];
@@ -3560,39 +3558,29 @@ module BigNumLibtommath : BigNumType = struct
     let n = Big_int.abs_big_int n in
 
     let limbs =
-      (* see MP_DIGIT_BIT *)
-      let twoto28 = Big_int.power_int_positive_int 2 28 in
+      (* see MP_DIGIT_BIT for MP_64BIT *)
+      let twoto60 = Big_int.power_int_positive_int 2 60 in
       let rec go n =
         if Big_int.sign_big_int n = 0
         then []
         else
-          let (a, b) = Big_int.quomod_big_int n twoto28 in
-          StaticBytes.[ I32 (Big_int.int32_of_big_int b) ] @ go a
+          let (a, b) = Big_int.quomod_big_int n twoto60 in
+          StaticBytes.[ I64 (Big_int.int64_of_big_int b) ] @ go a
       in go n
     in
 
-    let rec pad input = 
-      let length = List.length input in
-      if (Int.rem length (Int64.to_int E.word_size)) = 0 then 
-        input 
-      else
-        pad (input @ StaticBytes.[ I32 0l ]) 
-    in
-
-    let limbs_with_padding = pad limbs in
-
-    (* how many 32 bit digits *)
+    (* how many 64 bit digits *)
     let size = Int32.of_int (List.length limbs) in  
 
     (* cf. mp_int in tommath.h *)
-    (* libc is still using 32-bit sizes *)
+    (* Tom's math library is compiled with 64-bit `mp_digit` size. *)
     let payload = StaticBytes.[
       I32 size; (* used *)
       I32 size; (* size; relying on Heap.word_size == size_of(mp_digit) *)
       I32 sign;
       I32 0l; (* padding because of 64-bit alignment of subsequent pointer *)
       I64 0L; (* dp; this will be patched in BigInt::mp_int_ptr in the RTS when used *)
-    ] @ limbs_with_padding 
+    ] @ limbs
     in
 
     Tagged.shared_object env (fun env ->
