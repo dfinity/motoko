@@ -2,7 +2,7 @@
 This source file loads the RTS Wasm files via the environment
 variables. This is for local development (e.g. inside `nix-shell`). The nix
 build of `moc` will statically replace this file with one that just embeds
-RTS Wasm file as a static string, to produce a fully self-contained `moc`
+RTS Wasm files as static strings, to produce a fully self-contained `moc`
 binary for distribution.
 *)
 
