@@ -925,21 +925,30 @@ pub struct BigInt {
     /// The data pointer (mp_int.dp) is irrelevant, and will be changed to point to
     /// the data within this object before it is used.
     /// (NB: If we have a non-moving GC, we can make this an invariant)
-    /// NOTE: `mp_int` originates from 64-bit Tom's math library implementation.
-    /// Layout in 64-bit memory:
+    /// NOTE: `mp_int` originates from Tom's math library implementation.
+    /// Layout in 64-bit memory (with enhanced orthogonal persistence):
     /// ```
     /// pub struct mp_int { // Total size 24
     ///   pub used: c_int, // Offset 0, size 4
-    ///   pub alloc: c_int, // Offset 4, size 8
+    ///   pub alloc: c_int, // Offset 4, size 4
     ///   pub sign: mp_sign, // Offset 8, size 4
     ///   _padding: u32, // Implicit padding to align subsequent 64-bit pointer
     ///   pub dp: *mut mp_digit, // Offset 16, size 8
     /// }
     /// ```
+    /// Layout in 32-bit memory (with classical persistence):
+    /// ```
+    /// pub struct mp_int { // Total size 24
+    ///   pub used: c_int, // Offset 0, size 4
+    ///   pub alloc: c_int, // Offset 4, size 4
+    ///   pub sign: mp_sign, // Offset 8, size 4
+    ///   pub dp: *mut mp_digit, // Offset 12, size 4
+    /// }
+    /// ```
     pub mp_int: mp_int,
     // data follows ..
     // Array of `mp_int` with length `alloc`.
-    // Each `mp_int` has byte size 8.
+    // Each `mp_int` has byte size `size_of<usize>()`.
 }
 
 impl BigInt {

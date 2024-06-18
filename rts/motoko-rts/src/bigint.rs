@@ -306,24 +306,36 @@ unsafe extern "C" fn bigint_of_int64(j: i64) -> Value {
 #[cfg(feature = "ic")]
 #[no_mangle]
 unsafe extern "C" fn bigint_of_float64(j: f64) -> Value {
-    // handle fast path: some numbers (when rounded towards zero by `j as i64`).
-    // may be represented as `Int` without resorting to heap allocation, i.e.
-    // in the range `-4611686018427387904 == -2 ** 62 <= j as i64 < 2 ** 62 == 4611686018427387904`
-    // considering that the two most significant bits are reserved for the `BigInt` scalar tag.
-    // The closest binary64 float representations in IEEE 754 for the boundaries are:
-    // Lower boundary approximation >= -2 ** 62:
-    //   `f64::from_bits(0xC3CF_FFFF_FFFF_FFFF`) == -4611686018427387400 > -4611686018427387904
-    // Upper boundary approximation < 2 ** 62:
-    //   `f64::from_bits(0x43CF_FFFF_FFFF_FFFF) == 4611686018427387400 < 4611686018427387904.
-    // IEEE754 double precision encoding:
-    // ┌───────────────┬────────────────────────┬─────────────────────────┐
-    // │ sign (bit 63) │ exponent (bits 52..62) |  mantissa (bits 0..51)  |
-    // └───────────────┴────────────────────────┴─────────────────────────┘
-    // The exponent has a bias of 1023:
-    // * Example: Exponent 61 is encoded 0x43C == 1023 + 61.
-    // The mantissa has an implicit extra most significant bit 1.
-    // * Example: Mantissa `F_FFFF_FFFF_FFFF` actually represents `1F_FFFF_FFFF_FFFF`
-    if j >= -4611686018427387400.0f64 && j <= 4611686018427387400.0f64 {
+    // Fast path: Determine when the integer numbers can be represented as a compact (unboxed) `Int`.
+    let is_compact = match usize::BITS {
+        u64::BITS => {
+            // The integer can be represented in compact 64-bit scalar if it is in the range 
+            // `-4611686018427387904 == -2 ** 62 <= j as i64 < 2 ** 62 == 4611686018427387904`, by
+            // considering that the two most significant bits are reserved for the `BigInt` scalar tag.
+            // The closest binary64 float representations in IEEE 754 for the boundaries are:
+            // Lower boundary approximation >= -2 ** 62:
+            //   `f64::from_bits(0xC3CF_FFFF_FFFF_FFFF`) == -4611686018427387400 > -4611686018427387904
+            // Upper boundary approximation < 2 ** 62:
+            //   `f64::from_bits(0x43CF_FFFF_FFFF_FFFF) == 4611686018427387400 < 4611686018427387904.
+            // IEEE754 double precision encoding:
+            // ┌───────────────┬────────────────────────┬─────────────────────────┐
+            // │ sign (bit 63) │ exponent (bits 52..62) |  mantissa (bits 0..51)  |
+            // └───────────────┴────────────────────────┴─────────────────────────┘
+            // The exponent has a bias of 1023:
+            // * Example: Exponent 61 is encoded 0x43C == 1023 + 61.
+            // The mantissa has an implicit extra most significant bit 1.
+            // * Example: Mantissa `F_FFFF_FFFF_FFFF` actually represents `1F_FFFF_FFFF_FFFF`.
+            j >= -4611686018427387400.0f64 && j <= 4611686018427387400.0f64
+        }
+        u32::BITS => {
+            // The integer can be represented in compact 32-bit scalar if it is in the range 
+            // `-1073741824 == 0xc0000000 <= j as i32 <= 0x3fffffff == 1073741823`, by
+            // considering that the two most significant bits are reserved for the `BigInt` scalar tag.
+            j < 1073741824.0 && j > -1073741825.0
+        }
+        _ => unreachable!()
+    };
+    if is_compact {
         // defer to generated code to create compact or boxed Int value
         return int_from_isize(j as isize);
     }
