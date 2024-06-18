@@ -10,8 +10,9 @@ use crate::types::{size_of, BigInt, Bytes, Value, TAG_BIGINT};
 
 use super::{round_to_u64, Serializer, StableToSpace, StableValue, StaticScanner};
 
-// Tom's math library, as configured for Motoko RTS, encodes a big numbers as an array of 64-bit
-// elements, where each element stores 60 bits of the number while its highest 4 bits are zero.
+// Tom's math library, as configured for Motoko RTS with 64-bit enhanced orthogonal persistence,
+// encodes a big numbers as an array of 64-bit elements, where each element stores 60 bits of the
+// number while its highest 4 bits are zero.
 // Similar to the little endian encoding, the element array starts with the least significant 60 bits,
 // with each subsequent element covering the next higher 60 bits.
 
@@ -31,6 +32,10 @@ pub struct StableBigInt {
 type ElementType = u64;
 const USED_BITS_PER_ELEMENT: u32 = 60;
 const ELEMENT_SIZE: usize = core::mem::size_of::<ElementType>();
+
+// Assumes 64-bit representation for both Tom's math library and main memory.
+const _: () = assert!(usize::BITS == ElementType::BITS);
+const _: () = assert!(core::mem::size_of::<mp_digit>() == core::mem::size_of::<ElementType>());
 
 #[repr(C)]
 struct Bits(u64);

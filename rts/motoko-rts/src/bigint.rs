@@ -309,7 +309,7 @@ unsafe extern "C" fn bigint_of_float64(j: f64) -> Value {
     // Fast path: Determine when the integer numbers can be represented as a compact (unboxed) `Int`.
     let is_compact = match usize::BITS {
         u64::BITS => {
-            // The integer can be represented in compact 64-bit scalar if it is in the range 
+            // The integer can be represented in compact 64-bit scalar if it is in the range
             // `-4611686018427387904 == -2 ** 62 <= j as i64 < 2 ** 62 == 4611686018427387904`, by
             // considering that the two most significant bits are reserved for the `BigInt` scalar tag.
             // The closest binary64 float representations in IEEE 754 for the boundaries are:
@@ -328,12 +328,12 @@ unsafe extern "C" fn bigint_of_float64(j: f64) -> Value {
             j >= -4611686018427387400.0f64 && j <= 4611686018427387400.0f64
         }
         u32::BITS => {
-            // The integer can be represented in compact 32-bit scalar if it is in the range 
+            // The integer can be represented in compact 32-bit scalar if it is in the range
             // `-1073741824 == 0xc0000000 <= j as i32 <= 0x3fffffff == 1073741823`, by
             // considering that the two most significant bits are reserved for the `BigInt` scalar tag.
             j < 1073741824.0 && j > -1073741825.0
         }
-        _ => unreachable!()
+        _ => unreachable!(),
     };
     if is_compact {
         // defer to generated code to create compact or boxed Int value
