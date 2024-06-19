@@ -1697,14 +1697,6 @@ and check_exp' env0 t exp : T.typ =
   let env = {env0 with in_prog = false; in_actor = false; context = exp.it :: env0.context } in
   match exp.it, t with
   | PrimE s, T.Func _ ->
-    if not env.pre &&
-       not !(env.reported_experimental_stable_memory) &&
-       not !Flags.experimental_stable_memory &&
-       Lib.String.starts_with "stableMemory" s
-    then begin
-      env.reported_experimental_stable_memory := true;
-      error env exp.at "M0199" "use of deprecated `ExperimentalStableMemory.mo`; use library `Region.mo` instead or use `moc` flag --legacy-experimental-stable-memory";
-    end;
     t
   | LitE lit, _ ->
     check_lit env t lit exp.at;
