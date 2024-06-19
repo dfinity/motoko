@@ -50,3 +50,4 @@ let rtti = ref false
 let trap_on_call_error = ref false
 let use_stable_regions = ref false
 let share_code = ref false
+let experimental_stable_memory = ref false
