@@ -218,14 +218,14 @@ and exp' at note = function
   | S.SwitchE (e1, cs) -> I.SwitchE (exp e1, cases cs)
   | S.TryE (e1, cs, None) -> I.TryE (exp e1, cases cs, None)
   | S.TryE (e1, cs, Some e2) ->
-    let thunk = T.(funcE ("$FIXME") Local Returns [] [] [] (exp e2)) in
+    let thunk = T.(funcE ("$cleanup") Local Returns [] [] [] (exp e2)) in
     assert T.(is_func thunk.note.Note.typ);
     let th = fresh_var "thunk" thunk.note.Note.typ in
-    let post e1 =
-      let v = fresh_var "res" note.Note.typ in
-      blockE [letD v e1; expD (varE th -*- unitE ())] (varE v) in
-    (blockE [letD th thunk] (* use funcD for thunk? *)
-      { e1 with it = I.TryE (exp e1 |> post, cases_map post cs, Some (varE th)); note }).it
+    let v = fresh_var "res" note.Note.typ in
+    (blockE [ letD th thunk
+            ; letD v { e1 with it = I.TryE (exp e1, cases cs, Some (varE th)); note }
+            ; expD (varE th -*- unitE ())
+            ] (varE v)).it
   | S.WhileE (e1, e2) -> (whileE (exp e1) (exp e2)).it
   | S.LoopE (e1, None) -> I.LoopE (exp e1)
   | S.LoopE (e1, Some e2) -> (loopWhileE (exp e1) (exp e2)).it
@@ -786,8 +786,6 @@ and dec' at n = function
     I.LetD (varPat, fn)
 
 and cases cs = List.map (case (fun x -> x)) cs
-
-and cases_map f cs = List.map (case f) cs
 
 and case f c = phrase (case' f) c
 
