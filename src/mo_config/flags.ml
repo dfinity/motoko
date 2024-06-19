@@ -50,4 +50,6 @@ let rtti = ref false
 let trap_on_call_error = ref false
 let use_stable_regions = ref false
 let share_code = ref false
-let experimental_stable_memory = ref false
+let experimental_stable_memory_default = 1
+(* _ < 1: error; _ = 1: warn, _ > 1: allow *)
+let experimental_stable_memory = ref experimental_stable_memory_default

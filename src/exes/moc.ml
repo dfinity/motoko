@@ -166,9 +166,9 @@ let argspec = [
   Arg.Unit (fun () -> Flags.force_gc := true),
   " disable GC scheduling, always do GC after an update message (for testing)";
 
-  "--legacy-experimental-stable-memory",
-  Arg.Unit (fun () -> Flags.experimental_stable_memory := true),
-  " enable support for the deprecated `ExperimentalStableMemory.mo` library";
+  "--experimental-stable-memory",
+  Arg.Set_int Flags.experimental_stable_memory,
+  " <n> select support for the deprecated `ExperimentalStableMemory.mo` library (n<1: error, n == 1: warn, n > 1: allow) (default " ^ (Int.to_string Flags.max_stable_pages_default) ^ ")";
 
   "--max-stable-pages",
   Arg.Set_int Flags.max_stable_pages,

@@ -3,11 +3,12 @@ let internals = [%blob "prelude/internals.mo"]
 let timers_api = [%blob "prelude/timers-api.mo"]
 let stable_memory_api = [%blob "prelude/stable-memory-api.mo"]
 let prim_module' = [%blob "prelude/prim.mo"]
-let prim_module ~timers:required ~legacy_experimental_stable_memory:legacy=
+let prim_module ~timers:required ~experimental_stable_memory:level=
   prim_module' ^
-  (if legacy
-   then String.map (function '@' -> ' ' | c -> c) stable_memory_api (* disable deprecation *)
-   else stable_memory_api (* deprecate use of Prims *)) ^
+  (if level < 1 then "(* no stable memory *)" (* no prims *)
+   else if level = 1
+   then stable_memory_api (* deprecated prims *)
+   else String.map (function '@' -> ' ' | c -> c) stable_memory_api) ^ (* undeprecated prims *)
   (if required
    then timers_api
    else "")

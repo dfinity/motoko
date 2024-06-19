@@ -2279,7 +2279,7 @@ and check_pat_fields env t tfs pfs ve at : Scope.val_env =
     | _ ->
       if T.is_mut typ then
         error env pf.at "M0120" "cannot pattern match mutable field %s" lab;
-      Option.iter (warn env pf.at "M0154" "type field %s is deprecated:\n%s" lab) src.T.depr;
+      Option.iter (warn env pf.at "M0154" "field %s is deprecated:\n%s" lab) src.T.depr;
       let val_kind = kind_of_field_pattern pf in
       let ve1 = check_pat_aux env typ pf.it.pat val_kind in
       let ve' =
