@@ -23,10 +23,10 @@ actor A {
         finally { debugPrint "OUTd" };
     };
 
-/*  nested `try` won't work
+/*  nested `try` won't work yet
     func t1() : async () {
         try {
-            try {
+            do {
                 debugPrint "IN1";
                 throw error "IN1";
             }
