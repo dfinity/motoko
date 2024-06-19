@@ -373,7 +373,7 @@ and c_exp' context exp k =
         ]
         (c_exp context' exp1 (ContVar k))
     ))
-  | TryE (exp1, cases, Some ({it = VarE id2; _} as exp2)) ->
+  | TryE (exp1, cases, Some (id2, typ2)) ->
     (* TODO: do we need to reify f? *)
     let f = match LabelEnv.find Throw context with Cont f -> f | _ -> assert false in
     letcont f (fun f ->
@@ -397,7 +397,7 @@ and c_exp' context exp k =
         }] in
       let throw = fresh_err_cont (answerT (typ_of_var k)) in
       let lab = function
-        | Cont k -> Cont (precont k (varE (var id2 (typ exp2))))
+        | Cont k -> Cont (precont k (varE (var id2 typ2)))
         | Label -> assert false
       in
       let context' = LabelEnv.mapi (function | Return | Named _ -> lab | Cleanup | Throw -> fun c -> c) context in

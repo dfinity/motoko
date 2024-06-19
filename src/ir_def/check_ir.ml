@@ -721,14 +721,13 @@ let rec check_exp env (exp:Ir.exp) : unit =
         warn env exp.at "the cases in this switch do not cover all possible values";
  *)
     check_cases env t1 t cases
-  | TryE (exp1, cases, exp2) ->
+  | TryE (exp1, cases, vt) ->
     check env.flavor.has_await "try in non-await flavor";
     check (env.async <> None) "misplaced try";
     check_exp env exp1;
     typ exp1 <: t;
     check_cases env T.catch t cases;
-    Option.iter (check_exp env) exp2;
-    Option.iter (fun exp2 -> typ exp2 <: Construct.bail_contT) exp2
+    Option.iter (fun (_, t) -> t <: Construct.bail_contT) vt
   | LoopE exp1 ->
     check_exp { env with lvl = NotTopLvl } exp1;
     typ exp1 <: T.unit;

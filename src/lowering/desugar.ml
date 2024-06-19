@@ -223,7 +223,7 @@ and exp' at note = function
     let th = fresh_var "thunk" thunk.note.Note.typ in
     let v = fresh_var "res" note.Note.typ in
     (blockE [ letD th thunk
-            ; letD v { e1 with it = I.TryE (exp e1, cases cs, Some (varE th)); note }
+            ; letD v { e1 with it = I.TryE (exp e1, cases cs, Some (id_of_var th, typ_of_var th)); note }
             ; expD (varE th -*- unitE ())
             ] (varE v)).it
   | S.WhileE (e1, e2) -> (whileE (exp e1) (exp e2)).it

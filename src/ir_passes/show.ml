@@ -271,14 +271,14 @@ and t_exp' env = function
         cases
     in
     SwitchE (t_exp env exp1, cases')
-  | TryE (exp1, cases, exp2) ->
+  | TryE (exp1, cases, vt) ->
     let cases' =
       List.map
         (fun {it = {pat;exp}; at; note} ->
           {it = {pat; exp = t_exp env exp}; at; note})
         cases
     in
-    TryE (t_exp env exp1, cases', Option.map (t_exp env) exp2)
+    TryE (t_exp env exp1, cases', vt)
   | LoopE exp1 ->
     LoopE (t_exp env exp1)
   | LabelE (id, typ, exp1) ->

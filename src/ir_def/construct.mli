@@ -21,8 +21,8 @@ val nextN : Type.lab
 
 type var
 
-val var : string -> typ -> var
-val id_of_var : var -> string
+val var : id -> typ -> var
+val id_of_var : var -> id
 val typ_of_var : var -> typ
 val arg_of_var : var -> arg
 val var_of_arg : arg -> var
