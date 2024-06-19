@@ -1,0 +1,8 @@
+stable-mem.mo:7.4-7.27: warning [M0154], field stableMemoryGrow is deprecated:
+Please use the Region library instead: https://internetcomputer.org/docs/current/motoko/main/stable-memory/stable-regions/#the-region-library or compile with flag `--experimental-stable-memory 2` to disable this warning.
+stable-mem.mo:8.4-8.37: warning [M0154], field stableMemoryLoadNat16 is deprecated:
+Please use the Region library instead: https://internetcomputer.org/docs/current/motoko/main/stable-memory/stable-regions/#the-region-library or compile with flag `--experimental-stable-memory 2` to disable this warning.
+stable-mem.mo:6.4-6.27: warning [M0154], field stableMemorySize is deprecated:
+Please use the Region library instead: https://internetcomputer.org/docs/current/motoko/main/stable-memory/stable-regions/#the-region-library or compile with flag `--experimental-stable-memory 2` to disable this warning.
+stable-mem.mo:9.4-9.39: warning [M0154], field stableMemoryStoreNat16 is deprecated:
+Please use the Region library instead: https://internetcomputer.org/docs/current/motoko/main/stable-memory/stable-regions/#the-region-library or compile with flag `--experimental-stable-memory 2` to disable this warning.
