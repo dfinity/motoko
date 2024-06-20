@@ -492,10 +492,21 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exp env exp1 (fun v1 ->
       interpret_cases env cases exp.at v1 k
     )
-  | TryE (exp1, cases, _TODO) ->
+  | TryE (exp1, cases, None) ->
     let k' = fun v1 -> interpret_catches env cases exp.at v1 k in
     let env' = { env with throws = Some k' } in
     interpret_exp env' exp1 k
+  | TryE (exp1, cases, Some (id, ty)) ->
+    let exp2 = Construct.(varE (var id ty)) in
+    let k' v1 =
+      let cleanup v2 = interpret_exp env exp2 (fun _ -> k v2) in
+      interpret_catches env cases exp.at v1 cleanup in
+    let out ret v = interpret_exp env exp2 (fun _ -> ret v) in
+    let env' = { env with throws = Some k'
+                        ; rets = Option.map out env.rets
+                        ; labs = V.Env.map out env.labs } in
+    let k'' v2 = interpret_exp env' exp2 (fun _ -> k v2) in
+    interpret_exp env' exp1 k''
   | LoopE exp1 ->
     interpret_exp env exp1 (fun v -> V.as_unit v; interpret_exp env exp k)
   | LabelE (id, _typ, exp1) ->
