@@ -182,7 +182,8 @@ impl GraphCopy<StableValue, Value, u32> for Deserialization {
     }
 
     fn reset_time(&mut self) {
-        self.limit.reset();
+        let limit = unsafe { moc_stabilization_instruction_limit() };
+        self.limit.reset(limit);
     }
 }
 

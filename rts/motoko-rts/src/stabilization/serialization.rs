@@ -187,7 +187,8 @@ impl GraphCopy<Value, StableValue, u32> for Serialization {
     }
 
     fn reset_time(&mut self) {
-        self.limit.reset();
+        let limit = unsafe { moc_stabilization_instruction_limit() };
+        self.limit.reset(limit);
     }
 }
 

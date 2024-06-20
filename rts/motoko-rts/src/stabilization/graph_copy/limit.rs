@@ -68,8 +68,8 @@ impl InstructionLimit {
         self.exceeded
     }
 
-    pub fn reset(&mut self) {
-        *self = Self::new(self.limit);
+    pub fn reset(&mut self, limit: u64) {
+        *self = Self::new(limit);
     }
 
     fn instruction_counter() -> u64 {
