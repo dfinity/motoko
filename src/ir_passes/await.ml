@@ -39,7 +39,7 @@ let letcont k scope =
 
 (* pre-compose a continuation with a call to a `finally`-thunk *)
 let precont k thunk =
-  let finally = blockE [expD (thunk -*- unitE ())] in
+  let finally e = blockE [expD (thunk -*- unitE ())] e in
   match k with
   | ContVar k' ->
      let typ = match typ_of_var k' with
