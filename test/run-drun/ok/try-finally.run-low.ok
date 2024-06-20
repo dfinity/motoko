@@ -1,6 +1,0 @@
-IR has aliasing (or Check_ir visits nodes twice):
-(VarE $$thunk/2/0)
-IR has aliasing (or Check_ir visits nodes twice):
-(VarE $$thunk/10/0)
-IR has aliasing (or Check_ir visits nodes twice):
-(VarE $$thunk/9/0)
