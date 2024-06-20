@@ -51,7 +51,7 @@ pub trait GraphCopy<S: Copy, T: Copy, P: Copy + Default> {
     fn reset_time(&mut self);
 
     /// Determine whether the time of copy increment has been exceeded.
-    fn time_over(&self) -> bool;
+    fn time_over(&mut self) -> bool;
 
     /// Lazy evacuation of a single object.
     /// Triggered for each pointer that is patched in the `scan()` function.

@@ -31,6 +31,10 @@ actor {
         Prim.debugPrint("Initialize flexible text");
         "Flexible text"
     };
+    // To trigger incremental serialization/deserialization
+    stable var _largeStableArray = do {
+         Prim.Array_tabulate<Nat>(100_000, func (index) { index });
+    };
 
     public func print() : async () {
         Prim.debugPrint(debug_show (flexibleNat));

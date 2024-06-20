@@ -176,11 +176,23 @@ impl GraphCopy<StableValue, Value, u32> for Deserialization {
         clear_stable_memory(self.stable_start, self.stable_size);
     }
 
-    fn time_over(&self) -> bool {
-        self.limit.is_exceeded()
+    fn time_over(&mut self) -> bool {
+        let processed_memory = unsafe { deserialized_size() as u64 };
+        self.limit.is_exceeded(processed_memory)
     }
 
     fn reset_time(&mut self) {
         self.limit.reset();
     }
+}
+
+#[cfg(feature = "ic")]
+unsafe fn deserialized_size() -> usize {
+    crate::memory::ic::get_heap_size().as_usize()
+}
+
+// Injection point for RTS unit testing.
+#[cfg(not(feature = "ic"))]
+extern "C" {
+    fn deserialized_size() -> usize;
 }

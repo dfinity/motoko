@@ -1,5 +1,4 @@
 import Prim "mo:⛔";
-import UpgradeTarget "upgrade-target";
 
 actor class AccessTester(
     other : actor {
