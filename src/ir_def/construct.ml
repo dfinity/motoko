@@ -15,7 +15,7 @@ let nextN = "next"
 
 (* Identifiers *)
 
-type var = (id * T.typ)
+type var = id * T.typ
 
 let var id typ = (id, typ)
 
