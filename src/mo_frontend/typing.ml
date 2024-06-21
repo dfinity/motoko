@@ -55,7 +55,7 @@ type env =
     check_unused : bool;
     used_identifiers : S.t ref;
     unused_warnings : unused_warnings ref;
-    reported_experimental_stable_memory : bool ref;
+    reported_stable_memory : bool ref;
   }
 
 let env_of_scope msgs scope =
@@ -77,7 +77,7 @@ let env_of_scope msgs scope =
     check_unused = true;
     used_identifiers = ref S.empty;
     unused_warnings = ref [];
-    reported_experimental_stable_memory = ref false;
+    reported_stable_memory = ref false;
   }
 
 let use_identifier env id =
@@ -147,6 +147,23 @@ let warn env at code fmt =
 
 let info env at fmt =
   Format.kasprintf (fun s -> Diag.add_msg env.msgs (type_info at s)) fmt
+
+let check_deprecation env at desc id depr =
+  match depr with
+  | Some ("M0199" as code) ->
+    if !(env.reported_stable_memory) then ()
+    else begin
+      env.reported_stable_memory := true;
+      (match compare !Flags.experimental_stable_memory 0 with
+       | -1 -> error
+       | 0 -> warn
+       | _ -> fun _ _ _ _ -> ())
+       env at code
+       "This code uses deprecated `ExperimentalStableMemory`. Please use the `Region` library instead: https://internetcomputer.org/docs/current/motoko/main/stable-memory/stable-regions/#the-region-library or compile with flag `--experimental-stable-memory 1` to disable this warning."
+    end
+  | Some msg ->
+    warn env at "M0154" "%s %s is deprecated:\n%s" desc id msg
+  | None -> ()
 
 let flag_of_compile_mode mode =
   match mode with
@@ -409,9 +426,7 @@ and check_typ_path' env path : T.con =
     let s, fs = check_obj_path env path' in
     match T.lookup_typ_field id.it fs with
       | c ->
-        Option.iter
-          (warn env path.at "M0154" "type field %s is deprecated:\n%s" id.it)
-          (T.lookup_typ_deprecation id.it fs);
+        check_deprecation env path.at "type field" id.it (T.lookup_typ_deprecation id.it fs);
         c
       | exception Invalid_argument _ ->
         error env id.at "M0030" "type field %s does not exist in type%a"
@@ -1371,9 +1386,7 @@ and infer_exp'' env exp : T.typ =
         id.it
     | t ->
       if not env.pre then
-        Option.iter
-          (warn env exp.at "M0154" "field %s is deprecated:\n%s" id.it)
-          (T.lookup_val_deprecation id.it tfs);
+        check_deprecation env exp.at "field" id.it (T.lookup_val_deprecation id.it tfs);
       t
     | exception Invalid_argument _ ->
       error env exp1.at "M0072"
@@ -2279,7 +2292,7 @@ and check_pat_fields env t tfs pfs ve at : Scope.val_env =
     | _ ->
       if T.is_mut typ then
         error env pf.at "M0120" "cannot pattern match mutable field %s" lab;
-      Option.iter (warn env pf.at "M0154" "field %s is deprecated:\n%s" lab) src.T.depr;
+      check_deprecation env pf.at "field" lab src.T.depr;
       let val_kind = kind_of_field_pattern pf in
       let ve1 = check_pat_aux env typ pf.it.pat val_kind in
       let ve' =

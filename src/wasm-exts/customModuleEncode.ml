@@ -135,10 +135,7 @@ let encode (em : extended_module) =
       let source_code =
         try
           if filename = "prelude" then Prelude.prelude else
-          if filename = "prim" then
-            Prelude.prim_module
-              ~timers: !Mo_config.Flags.global_timer
-              ~experimental_stable_memory: !Mo_config.Flags.experimental_stable_memory
+          if filename = "prim" then Prelude.prim_module  ~timers: !Mo_config.Flags.global_timer
           else
           (*
           Here we opportunistically see if we can find the source file

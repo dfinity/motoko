@@ -168,7 +168,7 @@ let argspec = [
 
   "--experimental-stable-memory",
   Arg.Set_int Flags.experimental_stable_memory,
-  " <n> select support for the deprecated `ExperimentalStableMemory.mo` library (n < 1: error, n == 1: warn, n > 1: allow) (default " ^ (Int.to_string Flags.experimental_stable_memory_default) ^ ")";
+  " <n> select support for the deprecated `ExperimentalStableMemory.mo` library (n < 0: error, n == 0: warn, n > 0: allow) (default " ^ (Int.to_string Flags.experimental_stable_memory_default) ^ ")";
 
   "--max-stable-pages",
   Arg.Set_int Flags.max_stable_pages,

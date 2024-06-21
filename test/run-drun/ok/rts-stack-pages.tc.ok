@@ -1,11 +1,2 @@
-rts-stack-pages.mo:8.12-8.33: warning [M0154], field stableMemoryGrow is deprecated:
-Please use the Region library instead: https://internetcomputer.org/docs/current/motoko/main/stable-memory/stable-regions/#the-region-library or compile with flag `--experimental-stable-memory 2` to disable this warning.
-rts-stack-pages.mo:9.11-9.32: warning [M0154], field stableMemorySize is deprecated:
-Please use the Region library instead: https://internetcomputer.org/docs/current/motoko/main/stable-memory/stable-regions/#the-region-library or compile with flag `--experimental-stable-memory 2` to disable this warning.
-rts-stack-pages.mo:22.8-22.35: warning [M0154], field stableMemoryStoreNat32 is deprecated:
-Please use the Region library instead: https://internetcomputer.org/docs/current/motoko/main/stable-memory/stable-regions/#the-region-library or compile with flag `--experimental-stable-memory 2` to disable this warning.
-rts-stack-pages.mo:23.16-23.41: warning [M0154], field stableMemoryLoadBlob is deprecated:
-Please use the Region library instead: https://internetcomputer.org/docs/current/motoko/main/stable-memory/stable-regions/#the-region-library or compile with flag `--experimental-stable-memory 2` to disable this warning.
-rts-stack-pages.mo:24.16-24.41: warning [M0154], field stableMemoryLoadBlob is deprecated:
-Please use the Region library instead: https://internetcomputer.org/docs/current/motoko/main/stable-memory/stable-regions/#the-region-library or compile with flag `--experimental-stable-memory 2` to disable this warning.
+rts-stack-pages.mo:8.12-8.33: warning [M0199], This code uses deprecated `ExperimentalStableMemory`. Please use the `Region` library instead: https://internetcomputer.org/docs/current/motoko/main/stable-memory/stable-regions/#the-region-library or compile with flag `--experimental-stable-memory 1` to disable this warning.
 rts-stack-pages.mo:8.8-8.9: warning [M0194], unused identifier x (delete or rename to wildcard `_` or `_x`)

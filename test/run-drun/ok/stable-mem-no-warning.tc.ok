@@ -51,7 +51,7 @@ Usage: moc [option] [file ...]
   --compacting-gc  use compacting GC
   --copying-gc  use copying GC (default)
   --force-gc  disable GC scheduling, always do GC after an update message (for testing)
-  --experimental-stable-memory  <n> select support for the deprecated `ExperimentalStableMemory.mo` library (n<1: error, n == 1: warn, n > 1: allow) (default 65536)
+  --experimental-stable-memory  <n> select support for the deprecated `ExperimentalStableMemory.mo` library (n < 0: error, n == 0: warn, n > 0: allow) (default 0)
   --max-stable-pages <n>  set maximum number of pages available for library `ExperimentalStableMemory.mo` (default 65536)
   --experimental-field-aliasing  enable experimental support for aliasing of var fields
   --experimental-rtti  enable experimental support for precise runtime type information (to assess performance changes only)
