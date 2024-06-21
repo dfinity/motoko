@@ -20,6 +20,8 @@ actor Reverse {
   };
 
   private func reverseArray<T>(a : [var T]) : () {
+    assert:func xarray.size() == 5;
+
     assert:return a.size() == (old (a.size()));
     assert:return Prim.forall<Nat>(
       func (k : Nat) = (0 <= k and k < a.size()) implies a[k] == (old (a[a.size() - 1 - k])));

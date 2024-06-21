@@ -47,6 +47,7 @@ method reverseArray$Nat($Self: Ref, a: Array)
     
     requires $Perm($Self)
     requires $array_acc(a, $int, write)
+    requires ($size(($Self).xarray) == 5)
     ensures $Perm($Self)
     ensures $array_acc(a, $int, write)
     ensures ($size(a) == old($size(a)))

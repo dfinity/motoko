@@ -336,7 +336,7 @@ and dec_field' ctxt d =
   match d.M.dec.it with
   (* type declarations*)
   | M.(TypD (typ_id, typ_binds, {note = T.Variant cons;_})) ->
-    ctxt, None, None, fun _ ->
+    ctxt, None, None, fun ctxt ->
       let adt_param tb = id tb.it.M.var in
       let adt_con con = begin
         { con_name = !!! Source.no_region con.T.lab;
@@ -356,21 +356,21 @@ and dec_field' ctxt d =
       { ctxt with ids = Env.add f.it (Method, note) ctxt.ids },
       None, (* no perm *)
       None, (* no init *)
-      fun ctxt' ->
+      fun ctxt ->
         let open Either in
         let self_id = !!! (Source.no_region) "$Self" in
         let method_args = args p in
-        let method_args' = List.map (fun (id, t) -> id, tr_typ ctxt' t) method_args in
-        let ctxt'' = { ctxt'
+        let method_args' = List.map (fun (id, t) -> id, tr_typ ctxt t) method_args in
+        let ctxt = { ctxt
           with self = Some self_id.it;
                ids = List.fold_left (fun env (id, t) -> Env.add id.it (Local, t) env) ctxt.ids method_args }
         in
-        let stmts = stmt ctxt'' e in
+        let stmts = stmt ctxt e in
         let _, stmts = extract_concurrency stmts in
         let pres, stmts' = List.partition_map (function { it = PreconditionS exp; _ } -> Left exp | s -> Right s) (snd stmts.it) in
         let posts, stmts' = List.partition_map (function { it = PostconditionS exp; _ } -> Left exp | s -> Right s) stmts' in
-        let arg_preds = local_access_preds ctxt'' in
-        let ret_preds, ret = rets ctxt'' t_opt in
+        let arg_preds = local_access_preds ctxt in
+        let ret_preds, ret = rets ctxt t_opt in
         let pres = arg_preds @ pres in
         let posts = arg_preds @ ret_preds @ posts in
         let stmts'' = stmts' @ [!!! Source.no_region (LabelS(!!! (Source.no_region) "$Ret"))] in
@@ -383,21 +383,21 @@ and dec_field' ctxt d =
       { ctxt with ids = Env.add f.it (Method, note) ctxt.ids },
       None, (* no perm *)
       None, (* no init *)
-      fun ctxt' ->
+      fun ctxt ->
         let open Either in
         let self_id = !!! (Source.no_region) "$Self" in
         let method_args = args p in
-        let method_args' = List.map (fun (id, t) -> id, tr_typ ctxt' t) method_args in
-        let ctxt'' = { ctxt'
+        let method_args' = List.map (fun (id, t) -> id, tr_typ ctxt t) method_args in
+        let ctxt = { ctxt
           with self = Some self_id.it;
                ids = List.fold_left (fun env (id, t) -> Env.add id.it (Local, t) env) ctxt.ids method_args }
         in
-        let stmts = stmt ctxt'' e in
+        let stmts = stmt ctxt e in
         let _, stmts = extract_concurrency stmts in
         let pres, stmts' = List.partition_map (function { it = PreconditionS exp; _ } -> Left exp | s -> Right s) (snd stmts.it) in
         let posts, stmts' = List.partition_map (function { it = PostconditionS exp; _ } -> Left exp | s -> Right s) stmts' in
-        let arg_preds = local_access_preds ctxt'' in
-        let ret_preds, ret = rets ctxt'' t_opt in
+        let arg_preds = local_access_preds ctxt in
+        let ret_preds, ret = rets ctxt t_opt in
         let pres = arg_preds @ pres in
         let posts = arg_preds @ ret_preds @ posts in
         let stmts'' = stmts' @ [!!! Source.no_region (LabelS(!!! (Source.no_region) "$Ret"))] in
@@ -418,16 +418,16 @@ and dec_field' ctxt d =
       Some (fun ctxt' -> (* init *)
           let at = span x.at e.at in
           assign_stmts ctxt' at (LValueFld (fldacc ctxt')) e),
-      (fun ctxt' ->
-        (FieldI(id x, tr_typ ctxt' t),
+      (fun ctxt ->
+        (FieldI(id x, tr_typ ctxt t),
         NoInfo))
   (* invariants *)
   | M.(ExpD { it = AssertE (Invariant, e); at; _ }) ->
       ctxt,
       None, (* no perm *)
       None, (* no init *)
-      fun ctxt' ->
-        (InvariantI (Printf.sprintf "invariant_%d" at.left.line, exp { ctxt' with self = Some "$Self" }  e), NoInfo)
+      fun ctxt ->
+        (InvariantI (Printf.sprintf "invariant_%d" at.left.line, exp { ctxt with self = Some "$Self" }  e), NoInfo)
   | _ ->
      unsupported d.M.dec.at (Arrange.dec d.M.dec)
 
