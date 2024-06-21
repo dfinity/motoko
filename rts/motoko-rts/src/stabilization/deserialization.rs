@@ -2,7 +2,7 @@ mod scan_stack;
 pub mod stable_memory_access;
 
 use crate::{
-    constants::WASM_PAGE_SIZE,
+    constants::MB,
     memory::Memory,
     stabilization::deserialization::scan_stack::STACK_EMPTY,
     types::{FwdPtr, Tag, Value, TAG_ARRAY, TAG_ARRAY_SLICE_MIN, TAG_FWD_PTR},
@@ -188,11 +188,15 @@ impl GraphCopy<StableValue, Value, u32> for Deserialization {
     }
 
     fn cleanup(&mut self) {
+        // Optimum value according to experimental measurements:
+        // Smallest chunk size that does not cause noticeable performance regression.
+        // The granularity is still small enough to meet the instruction limit.
+        const MAX_CHUNK_SIZE: u64 = MB as u64;
         debug_assert!(!self.cleanup_completed());
         let end = self.stable_end();
         assert!(self.clear_position < end);
         let remainder = end - self.clear_position;
-        let chunk = core::cmp::min(WASM_PAGE_SIZE.as_usize() as u64, remainder);
+        let chunk = core::cmp::min(MAX_CHUNK_SIZE, remainder);
         clear_stable_memory(self.clear_position, chunk);
         self.clear_position += chunk;
     }
