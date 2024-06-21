@@ -26,7 +26,7 @@ pub mod ic;
 use core::cmp::min;
 
 use crate::{
-    constants::WASM_PAGE_SIZE,
+    constants::KB,
     rts_trap_with,
     stable_mem::{self, ic0_stable64_write, PAGE_SIZE},
 };
@@ -43,8 +43,13 @@ extern "C" {
 // Must be a non-skewed value such that the GC also ignores this value.
 const DUMMY_VALUE: StableValue = StableValue::from_raw(0);
 
+/// Note: This is called incrementally in smaller chunks by the destabilization
+/// as it may otherwise exceed the instruction limit.
 fn clear_stable_memory(start: u64, length: u64) {
-    const CHUNK_SIZE: usize = WASM_PAGE_SIZE.as_usize();
+    // Optimal point for the two cost functions, according to experimental measurements:
+    // * Smaller chunks cause more stable API calls that incur costs.
+    // * Larger chunks cause higher chunk zero-initialization costs.
+    const CHUNK_SIZE: usize = KB;
     let empty_chunk = [0u8; CHUNK_SIZE];
     let mut position = start;
     let end = start + length;
