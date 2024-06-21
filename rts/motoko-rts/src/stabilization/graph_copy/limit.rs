@@ -8,9 +8,11 @@ use crate::{constants::KB, stabilization::ic0_performance_counter};
 /// Heuristic approach: The logic only occasionally
 /// synchronizes the actual instruction counter after a
 /// defined granularity of work:
-/// * A certain amount of memory has been processed
-///   (written stable memory during stabilization or
-///    allocated main memory during destabilization), or,
+/// * A certain amount of memory has been processed:
+///     - During stabilization: Written stable memory.
+///     - During destabilization: Allocated main memory
+///       and cleared stable memory (during completion),
+///   or,
 /// * A certain number of `is_exceeded` calls has
 ///   been made.
 /// Once the limit has been exceeded, the heuristics

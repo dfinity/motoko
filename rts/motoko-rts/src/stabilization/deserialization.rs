@@ -2,6 +2,7 @@ mod scan_stack;
 pub mod stable_memory_access;
 
 use crate::{
+    constants::WASM_PAGE_SIZE,
     memory::Memory,
     stabilization::deserialization::scan_stack::STACK_EMPTY,
     types::{FwdPtr, Tag, Value, TAG_ARRAY, TAG_ARRAY_SLICE_MIN, TAG_FWD_PTR},
@@ -24,6 +25,7 @@ pub struct Deserialization {
     stable_size: u64,
     stable_root: Option<Value>,
     limit: InstructionLimit,
+    clear_position: u64,
 }
 
 /// Helper type to pass serialization context instead of closures.
@@ -52,6 +54,8 @@ impl<'a, M: Memory> DeserializationContext<'a, M> {
 ///     deserialization.copy_increment();
 /// }
 /// ```
+/// Note: The deserialized memory is cleared as final process, using an incremental
+/// mechanism to avoid instruction limit exceeding.
 impl Deserialization {
     /// Start the deserialization, followed by a series of copy increments.
     pub fn start<M: Memory>(mem: &mut M, stable_start: u64, stable_size: u64) -> Deserialization {
@@ -65,6 +69,7 @@ impl Deserialization {
             stable_size,
             stable_root: None,
             limit,
+            clear_position: stable_start,
         };
         deserialization.start(mem, StableValue::serialize(Value::from_ptr(0)));
         deserialization
@@ -111,6 +116,10 @@ impl Deserialization {
                 }
             },
         );
+    }
+
+    fn stable_end(&self) -> u64 {
+        self.stable_start.checked_add(self.stable_size).unwrap()
     }
 }
 
@@ -168,16 +177,31 @@ impl GraphCopy<StableValue, Value, u32> for Deserialization {
         }
     }
 
-    fn is_completed(&self) -> bool {
+    fn scanning_completed(&self) -> bool {
         unsafe { self.scan_stack.is_empty() }
     }
 
-    fn complete(&mut self) {
-        clear_stable_memory(self.stable_start, self.stable_size);
+    fn cleanup_completed(&self) -> bool {
+        debug_assert!(self.scanning_completed());
+        debug_assert!(self.clear_position <= self.stable_end());
+        self.clear_position >= self.stable_end()
+    }
+
+    fn cleanup(&mut self) {
+        debug_assert!(!self.cleanup_completed());
+        let end = self.stable_end();
+        assert!(self.clear_position < end);
+        let remainder = end - self.clear_position;
+        let chunk = core::cmp::min(WASM_PAGE_SIZE.as_usize() as u64, remainder);
+        clear_stable_memory(self.clear_position, chunk);
+        self.clear_position += chunk;
     }
 
     fn time_over(&mut self) -> bool {
-        let processed_memory = unsafe { deserialized_size() as u64 };
+        let deserialized_memory = unsafe { deserialized_size() as u64 };
+        debug_assert!(self.clear_position >= self.stable_start);
+        let cleared_memory = self.clear_position - self.stable_start;
+        let processed_memory = deserialized_memory + cleared_memory;
         self.limit.is_exceeded(processed_memory)
     }
 

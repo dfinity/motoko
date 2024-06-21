@@ -174,7 +174,7 @@ impl GraphCopy<Value, StableValue, u32> for Serialization {
         );
     }
 
-    fn is_completed(&self) -> bool {
+    fn scanning_completed(&self) -> bool {
         self.to_space.scan_completed()
     }
 

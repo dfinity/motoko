@@ -43,6 +43,8 @@ extern "C" {
 // Must be a non-skewed value such that the GC also ignores this value.
 const DUMMY_VALUE: StableValue = StableValue::from_raw(0);
 
+/// Note: This is called incrementally in smaller chunks by the destabilization
+/// as it may otherwise exceed the instruction limit.
 fn clear_stable_memory(start: u64, length: u64) {
     const CHUNK_SIZE: usize = WASM_PAGE_SIZE.as_usize();
     let empty_chunk = [0u8; CHUNK_SIZE];
