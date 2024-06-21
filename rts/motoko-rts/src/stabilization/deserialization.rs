@@ -218,7 +218,7 @@ impl GraphCopy<StableValue, Value, u32> for Deserialization {
 
 #[cfg(feature = "ic")]
 unsafe fn deserialized_size() -> usize {
-    crate::memory::ic::get_heap_size().as_usize()
+    crate::memory::ic::partitioned_memory::get_heap_size().as_usize()
 }
 
 // Injection point for RTS unit testing.
