@@ -442,7 +442,7 @@ fn create_dynamic_heap(
 
             // Store object header
             let address = u32::try_from(heap_start + heap_offset).unwrap();
-            write_word(dynamic_heap, heap_offset, TAG_ARRAY);
+            write_word(dynamic_heap, heap_offset, TAG_ARRAY_M);
             heap_offset += WORD_SIZE;
 
             if incremental {
@@ -497,7 +497,7 @@ fn create_dynamic_heap(
         let mut heap_offset = continuation_table_offset;
 
         let continuation_table_address = u32::try_from(heap_start + heap_offset).unwrap();
-        write_word(dynamic_heap, heap_offset, TAG_ARRAY);
+        write_word(dynamic_heap, heap_offset, TAG_ARRAY_M);
         heap_offset += WORD_SIZE;
 
         if incremental {
@@ -570,7 +570,7 @@ fn create_static_heap(
     // root.
     let array_addr = u32::try_from(heap.as_ptr() as usize).unwrap();
     let mut offset = 0;
-    write_word(heap, offset, TAG_ARRAY);
+    write_word(heap, offset, TAG_ARRAY_M);
     offset += WORD_SIZE;
 
     if incremental {
