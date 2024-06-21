@@ -174,7 +174,7 @@ impl GraphCopy<Value, StableValue, u32> for Serialization {
         );
     }
 
-    fn is_completed(&self) -> bool {
+    fn scanning_completed(&self) -> bool {
         self.to_space.scan_completed()
     }
 
@@ -182,12 +182,13 @@ impl GraphCopy<Value, StableValue, u32> for Serialization {
         self.to_space.close();
     }
 
-    fn time_over(&self) -> bool {
-        self.limit.is_exceeded()
+    fn time_over(&mut self) -> bool {
+        self.limit.is_exceeded(self.serialized_data_length())
     }
 
     fn reset_time(&mut self) {
-        self.limit.reset();
+        let limit = unsafe { moc_stabilization_instruction_limit() };
+        self.limit.reset(limit);
     }
 }
 

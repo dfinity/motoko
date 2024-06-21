@@ -39,6 +39,13 @@ pub fn ic0_performance_counter(_counter: u32) -> u64 {
     0
 }
 
+// This is only called for graph copy increment limit testing.
+// Not used during RTS testing.
+#[no_mangle]
+pub fn deserialized_size() -> usize {
+    0
+}
+
 fn reset_gc<M: Memory>(memory: &mut M, heap_base_address: usize) {
     use motoko_rts::gc::incremental::{set_incremental_gc_state, IncrementalGC};
 

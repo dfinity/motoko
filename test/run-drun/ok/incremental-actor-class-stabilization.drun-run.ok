@@ -2,11 +2,11 @@ ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a000000000000000001
 ingress Completed: Reply: 0x4449444c0000
 debug.print: 1_234_567_890_123_456_789_012_345_678_901_234_567_890
 debug.print: "Test actor"
-debug.print: 10_000
+debug.print: 100_000
 debug.print: 1_234_567_890_123_456_789_012_345_678_901_234_567_890
 debug.print: -1_234_567_890_123_456_789_012_345_678_901_234_567_890
 debug.print: "Test actor"
-debug.print: 10_000
+debug.print: 100_000
 debug.print: PRE-UPGRADE HOOK!
 debug.print: IC0503: Canister rrkah-fqaaa-aaaaa-aaaaq-cai trapped explicitly: Messages are blocked during stabilization
 debug.print: Upgrade
@@ -18,5 +18,5 @@ debug.print: 0
 debug.print: 1_234_567_890_123_456_789_012_345_678_901_234_567_890
 debug.print: -1_234_567_890_123_456_789_012_345_678_901_234_567_890
 debug.print: "Test actor"
-debug.print: 10_000
+debug.print: 100_000
 ingress Completed: Reply: 0x4449444c0000
