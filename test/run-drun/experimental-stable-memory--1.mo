@@ -1,4 +1,4 @@
-//MOC-FLAG --experimental-stable-memory 2
+//MOC-FLAG --experimental-stable-memory -1
 import P "mo:⛔";
 
 import {stableMemoryGrow= _} "mo:⛔";
