@@ -4,14 +4,14 @@
 
 * motoko (`moc`)
 
-  * bugfix: Fix the detection of unused declarations in switch and catch cases (#4560).
-  * improvement: Only warn on unused identifiers if type checking is error-free (#4560).
-  * deprecate use of experimental stable memory (ESM) (#4573).
+  * deprecation: Deprecate use of base library 'ExperimentalStableMemory' (ESM) (#4573).
     New `moc` flag `--experimental-stable-memory <n>` controls the level of deprecation:
     * n < 0: error on use of stable memory primitives.
     * n = 0: warn on use of stable memory primitives.
     * n > 1: warning-less use of stable memory primitives (for legacy applications).
-    Users of ESM may migrate their code to use isolated regions instead.
+    Users of ESM should consider migrating their code to use isolated regions (library 'Region.mo') instead.
+  * bugfix: Fix the detection of unused declarations in switch and catch cases (#4560).
+  * improvement: Only warn on unused identifiers if type checking is error-free (#4560).
 
 ## 0.11.1 (2024-03-15)
 

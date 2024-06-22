@@ -159,7 +159,7 @@ let check_deprecation env at desc id depr =
        | 0 -> warn
        | _ -> fun _ _ _ _ -> ())
        env at code
-       "This code uses deprecated `ExperimentalStableMemory`. Please use the `Region` library instead: https://internetcomputer.org/docs/current/motoko/main/stable-memory/stable-regions/#the-region-library or compile with flag `--experimental-stable-memory 1` to disable this warning."
+       "this code is (or uses) the deprecated library `ExperimentalStableMemory`.\nPlease use the `Region` library instead: https://internetcomputer.org/docs/current/motoko/main/stable-memory/stable-regions/#the-region-library or compile with flag `--experimental-stable-memory 1` to suppress this message."
     end
   | Some msg ->
     warn env at "M0154" "%s %s is deprecated:\n%s" desc id msg
