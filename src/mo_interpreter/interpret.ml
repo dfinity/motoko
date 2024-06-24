@@ -632,7 +632,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     let env' = { env with throws = Some k'
                         ; rets = Option.map out env.rets
                         ; labs = V.Env.map out env.labs } in
-    let k'' v2 = interpret_exp env' exp2 (fun _ -> k v2) in
+    let k'' v2 = interpret_exp env exp2 (fun _ -> k v2) in
     interpret_exp env' exp1 k''
   | WhileE (exp1, exp2) ->
     let k_continue = fun v -> V.as_unit v; interpret_exp env exp k in
