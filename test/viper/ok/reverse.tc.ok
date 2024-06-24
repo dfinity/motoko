@@ -1,7 +1,7 @@
-reverse.mo:42.13-42.23: warning [M0155], operator may trap for inferred type
+reverse.mo:43.13-43.23: warning [M0155], operator may trap for inferred type
   Nat
-reverse.mo:47.35-47.47: warning [M0155], operator may trap for inferred type
+reverse.mo:49.35-49.47: warning [M0155], operator may trap for inferred type
   Nat
-reverse.mo:47.35-47.51: warning [M0155], operator may trap for inferred type
+reverse.mo:49.35-49.51: warning [M0155], operator may trap for inferred type
   Nat
-reverse.mo:36.9-36.10: warning [M0194], unused identifier b (delete or rename to wildcard `_` or `_b`)
+reverse.mo:37.9-37.10: warning [M0194], unused identifier b (delete or rename to wildcard `_` or `_b`)

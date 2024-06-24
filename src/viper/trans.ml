@@ -503,10 +503,12 @@ and compile_while
   () : seqn =
   let (!!) p = !!! at p in
   let (invs, body) = extract_loop_invariants body in
-  let invs = List.map (exp ctxt) invs in
-  let invs = local_access_preds ctxt @ invs in
-  let invs = invs @ [!!(AndE(!!(CallE("$Perm", [self ctxt at])),
-                             !!(CallE("$Inv",  [self ctxt at]))))] in
+  let invs = (* TODO: automatic adding invariant into loop require more pondering*)
+             (* [!!(AndE(!!(CallE("$Perm", [self ctxt at])), *) 
+             (*          !!(CallE("$Inv",  [self ctxt at]))))] *)
+             [!!(CallE("$Perm", [self ctxt at]))]
+             @ local_access_preds ctxt
+             @ List.map (exp ctxt) invs in
   let pred = exp ctxt pred in
   let body =
     match label_id with

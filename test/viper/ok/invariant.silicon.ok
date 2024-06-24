@@ -1,1 +1,2 @@
   [0] Postcondition of __init__ might not hold. Assertion $Self.count > 0 might not hold. (invariant.vpr@31.13--31.24)
+  [1] Postcondition of loops might not hold. Assertion $Self.count > 0 might not hold. (invariant.vpr@58.13--58.24)
