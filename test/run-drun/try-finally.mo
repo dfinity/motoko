@@ -74,6 +74,14 @@ actor A {
         return;
     };
 
+    func t4f() : async () {
+        try {
+            debugPrint "IN4f";
+            await m();
+        }
+        finally { debugPrint "OUT4f"; return };
+    };
+
     func t5() : async () {
         debugPrint "BEFORE5";
         label out try {
@@ -150,6 +158,7 @@ actor A {
         ignore await t2i();
         await t3();
         await t4();
+        await t4f();
         await t5();
         await t6();
 
