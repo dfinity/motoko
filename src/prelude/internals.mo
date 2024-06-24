@@ -308,7 +308,7 @@ func @getSystemRefund() : @Refund {
 };
 
 func @cleanup() {
-    (prim "print" : Text -> ()) "CLEANUP_E"
+    // outmost cleanup action
 };
 
 func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>, () -> ()) {
