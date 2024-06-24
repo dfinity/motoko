@@ -72,8 +72,10 @@ method reverseArray$Nat($Self: Ref, a: Array)
       i := (length - 1);
       j := 0;
       while ((i > j))
+         invariant $Perm($Self)
          invariant $array_acc(b, $int, wildcard)
          invariant $array_acc(a, $int, write)
+         invariant ($size(($Self).xarray) == 5)
          invariant ((i < length) && (i >= 0))
          invariant ((j < length) && (j >= 0))
          invariant (i == (($size(a) - 1) - j))
@@ -84,7 +86,6 @@ method reverseArray$Nat($Self: Ref, a: Array)
                     old(($loc(a, (($size(a) - 1) - k))).$int)))
          invariant forall k : Int :: (((i < k) && (k < $size(a))) ==> (
                     ($loc(a, k)).$int == old(($loc(a, (($size(a) - 1) - k))).$int)))
-         invariant ($Perm($Self) && $Inv($Self))
          { var tmp: Int
            tmp := ($loc(a, i)).$int;
            ($loc(a, i)).$int := ($loc(a, j)).$int;
@@ -115,9 +116,10 @@ method copy_xarray($Self: Ref)
       inhale $array_init(t, $int, 0);
       i := 0;
       while ((i < length))
+         invariant $Perm($Self)
          invariant $array_acc(t, $int, write)
+         invariant ($size(($Self).xarray) == 5)
          invariant (i >= 0)
-         invariant ($Perm($Self) && $Inv($Self))
          { 
            assert (i < length);
            ($loc(t, i)).$int := ($loc(($Self).xarray, i)).$int;

@@ -98,8 +98,8 @@ method loops($Self: Ref)
     { var i: Int
       i := 0;
       while ((i < 5))
+         invariant $Perm($Self)
          invariant (i < 3)
-         invariant ($Perm($Self) && $Inv($Self))
          { 
            label $lbl$continue$while_loop;
            i := (i + 1);

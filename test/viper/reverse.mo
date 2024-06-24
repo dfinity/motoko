@@ -17,6 +17,7 @@ actor Reverse {
     let t = Array.init<Nat>(length, 0);
     var i = 0;
     while (i < length) {
+        assert:loop:invariant xarray.size() == 5; // actor invariant
         assert:loop:invariant (i >= 0);
         assert:system (i < length);
         t[i] := xarray[i];
@@ -42,6 +43,7 @@ actor Reverse {
     var i = length - 1;
     var j = 0;
     while (i > j) {
+      assert:loop:invariant xarray.size() == 5; // actor invariant
       assert:loop:invariant (i < length and i >= 0);
       assert:loop:invariant (j < length and j >= 0);
       assert:loop:invariant (i == a.size() - 1 - j);
