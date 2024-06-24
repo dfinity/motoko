@@ -8,6 +8,8 @@ debug.print: CAUGHT2i
 debug.print: OUT2i
 debug.print: IN3
 debug.print: OUT3
+debug.print: IN4
+debug.print: OUT4
 debug.print: BEFORE5
 debug.print: IN5
 debug.print: OUT5

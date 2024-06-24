@@ -63,16 +63,17 @@ actor A {
         }
         finally { debugPrint "OUT3" };
     };
-/*
-    // check that finally not running twice
+
+    // check that finally is not running twice
     func t4() : async () {
         try {
             debugPrint "IN4";
+            await m();
         }
         finally { debugPrint "OUT4" };
         return;
     };
-*/
+
     func t5() : async () {
         debugPrint "BEFORE5";
         label out try {
@@ -148,7 +149,7 @@ actor A {
         await t2();
         ignore await t2i();
         await t3();
-        /*await t4();*/
+        await t4();
         await t5();
         await t6();
 
