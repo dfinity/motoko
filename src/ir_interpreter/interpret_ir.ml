@@ -497,6 +497,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     let env' = { env with throws = Some k' } in
     interpret_exp env' exp1 k
   | TryE (exp1, cases, Some (id, ty)) ->
+    assert env.flavor.has_await;
     let exp2 = Construct.(varE (var id ty)) in
     let k' v1 =
       let cleanup v2 = interpret_exp env exp2 (fun _ -> k v2) in
