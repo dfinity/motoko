@@ -46,7 +46,7 @@ pub trait Memory {
 /// For RTS-internal blobs that can be collected by the next GC run, the post allocation barrier can be omitted.
 #[ic_mem_fn]
 pub unsafe fn alloc_blob<M: Memory>(mem: &mut M, tag: u32, size: Bytes<u32>) -> Value {
-    debug_assert!(tag == TAG_BLOB_B || tag == TAG_BLOB_T || tag == TAG_BLOB_P || tag == TAG_BLOB_A);
+    debug_assert!(is_blob_tag(tag));
     let ptr = mem.alloc_words(size_of::<Blob>() + size.to_words());
     // NB. Cannot use `as_blob` here as we didn't write the header yet
     let blob = ptr.get_ptr() as *mut Blob;
@@ -61,9 +61,7 @@ pub unsafe fn alloc_blob<M: Memory>(mem: &mut M, tag: u32, size: Bytes<u32>) -> 
 /// Note: After initialization, the post allocation barrier needs to be applied to all mutator objects.
 #[ic_mem_fn]
 pub unsafe fn alloc_array<M: Memory>(mem: &mut M, tag: u32, len: u32) -> Value {
-    debug_assert!(
-        tag == TAG_ARRAY_I || tag == TAG_ARRAY_M || tag == TAG_ARRAY_T || tag == TAG_ARRAY_S
-    );
+    debug_assert!(is_base_array_tag(tag));
     // Array payload should not be larger than half of the memory
     if len > MAX_ARRAY_SIZE {
         rts_trap_with("Array allocation too large");
