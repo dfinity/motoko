@@ -143,9 +143,7 @@ actor A {
     // TODO: trap after repeated `await`
 
     public func go() : async () {
-        try /*ignore*/ await t0() catch _ {};
-        try await t0r() catch _ {};
-        try await t0d() catch _ {};
+        // These don't trap (for the interpreters)
         //await t1();
         await t2();
         ignore await t2i();
@@ -153,6 +151,11 @@ actor A {
         /*await t4();*/
         await t5();
         await t6();
+
+        // These trap, and only work on drun
+        try /*ignore*/ await t0() catch _ {};
+        try await t0r() catch _ {};
+        try await t0d() catch _ {};
         try await t6t() catch _ {};
         try await t6d() catch _ {};
     };
