@@ -4388,8 +4388,7 @@ module Text = struct
     get_blob ^^ Blob.as_ptr_len env ^^
     E.call_import env "rts" "utf8_valid" ^^
     G.if1 I32Type
-      (get_blob ^^ Blob.as_ptr_len env ^^
-       of_ptr_size env ^^ (* creates text blob *)
+      (get_blob ^^ Blob.copy env Tagged.B Tagged.T ^^
        set_blob ^^
        Opt.inject_simple env get_blob)
       (Opt.null_lit env)
