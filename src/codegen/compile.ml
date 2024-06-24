@@ -1998,7 +1998,6 @@ module Tagged = struct
 
   type [@warning "-37"] tag  =
     | Object
-    | ObjInd (* The indirection used for object fields *)
     | Array (* Also a tuple *)
     | Bits64 (* Contains a 64 bit number *)
     | MutBox (* used for mutable heap-allocated variables *)
@@ -2025,23 +2024,22 @@ module Tagged = struct
      bits unset) *)
   let int_of_tag = function
     | Object -> 1l
-    | ObjInd -> 3l
-    | Array -> 5l
-    | Bits64 -> 7l
-    | MutBox -> 9l
-    | Closure -> 11l
-    | Some -> 13l
-    | Variant -> 15l
-    | Blob -> 17l
-    | Indirection -> 19l
-    | Bits32 -> 21l
-    | BigInt -> 23l
-    | Concat -> 25l
-    | Region -> 27l
-    | Null -> 29l
-    | OneWordFiller -> 31l
-    | FreeSpace -> 33l
-    | ArraySliceMinimum -> 34l
+    | Array -> 3l
+    | Bits64 -> 5l
+    | MutBox -> 7l
+    | Closure -> 9l
+    | Some -> 11l
+    | Variant -> 13l
+    | Blob -> 15l
+    | Indirection -> 17l
+    | Bits32 -> 19l
+    | BigInt -> 21l
+    | Concat -> 23l
+    | Region -> 25l
+    | Null -> 27l
+    | OneWordFiller -> 29l
+    | FreeSpace -> 31l
+    | ArraySliceMinimum -> 32l
     (* Next two tags won't be seen by the GC, so no need to set the lowest bit
        for `CoercionFailure` and `StableSeen` *)
     | CoercionFailure -> 0xfffffffel
@@ -4009,7 +4007,7 @@ module Object = struct
          │   ┌──────────────────────────┘
          │   ↓
          │  ╶─┬────────┬─────────────┐
-         │    │ ObjInd │ field1_data │
+         │    │ MutBox │ field1_data │
          ↓    └────────┴─────────────┘
         ╶─┬─────────────┬─────────────┬───┐
           │ field1_hash │ field2_hash │ … │
@@ -4023,10 +4021,16 @@ module Object = struct
 
     The field2_data for immutable fields is a vanilla word.
 
-    The field1_data for mutable fields are pointers to either an ObjInd, or a
-    MutBox (they have the same layout). This indirection is a consequence of
-    how we compile object literals with `await` instructions, as these mutable
-    fields need to be able to alias local mutable variables.
+    The field1_data for mutable fields are pointers to a MutBox. This indirection 
+    is a consequence of how we compile object literals with `await` instructions, 
+    as these mutable fields need to be able to alias local mutable variables, e.g.
+    `{ public let f = 1; await async (); public let var v = 2}`.
+    Other use cases are object constructors with public and private mutable fields, 
+    where the physical record only wraps the public fields.
+    Moreover, closures can selectively capture the individual fields instead of 
+    the containing object.
+    Finally, Candid stabilization/destabilization also relies on the indirection 
+    of mutable fields, to reserve and store alias information in those locations.
 
     We could alternatively switch to an allocate-first approach in the
     await-translation of objects, and get rid of this indirection -- if it were
@@ -6856,8 +6860,6 @@ module MakeSerialization (Strm : Stream) = struct
         get_tag ^^ compile_eq_const Tagged.(int_of_tag StableSeen) ^^
         get_tag ^^ compile_eq_const Tagged.(int_of_tag MutBox) ^^
         G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
-        get_tag ^^ compile_eq_const Tagged.(int_of_tag ObjInd) ^^
-        G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
         get_tag ^^ compile_eq_const Tagged.(int_of_tag Array) ^^
         G.i (Binary (Wasm.Values.I32 I32Op.Or)) ^^
         get_tag ^^ compile_eq_const Tagged.(int_of_tag Region) ^^
@@ -7009,8 +7011,6 @@ module MakeSerialization (Strm : Stream) = struct
           (* Sanity Checks *)
           get_tag ^^ compile_eq_const Tagged.(int_of_tag MutBox) ^^
           E.then_trap_with env "unvisited mutable data in serialize_go (MutBox)" ^^
-          get_tag ^^ compile_eq_const Tagged.(int_of_tag ObjInd) ^^
-          E.then_trap_with env "unvisited mutable data in serialize_go (ObjInd)" ^^
           get_tag ^^ compile_eq_const Tagged.(int_of_tag Array) ^^
           E.then_trap_with env "unvisited mutable data in serialize_go (Array)" ^^
           get_tag ^^ compile_eq_const Tagged.(int_of_tag Region) ^^
@@ -7870,7 +7870,7 @@ module MakeSerialization (Strm : Stream) = struct
       | Mut t ->
         read_alias env (Mut t) (fun get_arg_typ on_alloc ->
           let (set_result, get_result) = new_local env "result" in
-          Tagged.obj env Tagged.ObjInd [ compile_unboxed_const 0l ] ^^ set_result ^^
+          MutBox.alloc env ^^ set_result ^^
           on_alloc get_result ^^
           get_result ^^
           get_arg_typ ^^ go env t ^^
@@ -8123,15 +8123,15 @@ Why different? Because we need to alias arrays as a whole (we can’t even alias
 their fields, as they are manifestly part of the array heap structure), but
 aliasing records does not work, as aliased record values may appear at
 different types (due to subtyping), and Candid serialization is type-driven.
-Luckily records put all mutable fields behind an indirection (ObjInd), so this
+Luckily records put all mutable fields behind an indirection (MutBox), so this
 works.
 
 The type-driven code in this module treats `Type.Mut` to always refer to an
-`ObjInd`; for arrays the mutable case is handled directly.
+`MutBox`; for arrays the mutable case is handled directly.
 
 To detect and preserve aliasing, these steps are taken:
 
- * In `buffer_size`, when we see a mutable thing (`Array` or `ObjInd`), the
+ * In `buffer_size`, when we see a mutable thing (`Array` or `MutBox`), the
    first time, we mark it by setting the heap tag to `StableSeen`.
    This way, when we see it a second time, we can skip the value in the size
    calculation.
