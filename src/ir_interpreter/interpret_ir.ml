@@ -498,16 +498,14 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exp env' exp1 k
   | TryE (exp1, cases, Some (id, ty)) ->
     assert env.flavor.has_await;
-    let exp2 = Construct.(varE (var id ty)) in
+    let exp2 = Construct.(varE (var id ty) -*- unitE ()) in
     let k' v1 =
-      let cleanup v2 = interpret_exp env exp2 (fun _ -> k v2) in
-      interpret_catches env cases exp.at v1 cleanup in
-    let out ret v = interpret_exp env exp2 (fun _ -> ret v) in
-    let k'' v2 = interpret_exp env exp2 (fun _ -> k v2) in
+      interpret_catches env cases exp.at v1 k in
+    let out ret v = interpret_exp env exp2 (fun u -> V.as_unit u; ret v) in
     let env' = { env with throws = Some k'
                         ; rets = Option.map out env.rets
                         ; labs = V.Env.map out env.labs } in
-    interpret_exp env' exp1 k''
+    interpret_exp env' exp1 k
   | LoopE exp1 ->
     interpret_exp env exp1 (fun v -> V.as_unit v; interpret_exp env exp k)
   | LabelE (id, _typ, exp1) ->

@@ -5,17 +5,21 @@ IN2i
 CAUGHT2i
 OUT2i
 IN3
+OUT3
 IN4
 OUT4
 IN4f
 OUT4f
 BEFORE5
 IN5
+OUT5
 AFTER5
 BEFORE6
 IN6
 InnerIN6
 InnerLIVE6
+InnerOUT6
+OUT6
 AFTER6
 IN
 try-finally.mo:11.43-11.55: execution error, assertion failure
