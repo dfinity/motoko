@@ -16,6 +16,12 @@ debug.print: OUT2
 debug.print: IN2i
 debug.print: CAUGHT2i
 debug.print: OUT2i
+debug.print: IN3
+debug.print: OUT3
+debug.print: BEFORE5
+debug.print: IN5
+debug.print: OUT5
+debug.print: AFTER5
 debug.print: BEFORE6
 debug.print: IN6
 debug.print: InnerIN6

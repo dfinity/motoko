@@ -10,6 +10,14 @@ try-finally.mo:22.9-23.38: warning [M0145], this try handler of type
   Error
 does not cover value
   _
+try-finally.mo:59.9-64.38: warning [M0145], this try handler of type
+  Error
+does not cover value
+  _
+try-finally.mo:78.19-84.38: warning [M0145], this try handler of type
+  Error
+does not cover value
+  _
 try-finally.mo:92.13-98.49: warning [M0145], this try handler of type
   Error
 does not cover value

@@ -54,7 +54,7 @@ actor A {
         catch _ { debugPrint "CAUGHT2i"; 42 }
         finally { debugPrint "OUT2i" };
     };
-/*
+
     func t3() : async () {
         try {
             debugPrint "IN3";
@@ -84,7 +84,7 @@ actor A {
         finally { debugPrint "OUT5" };
         debugPrint "AFTER5"
     };
-*/
+
     func t6() : async () {
         debugPrint "BEFORE6";
         label out try {
@@ -149,9 +149,9 @@ actor A {
         //await t1();
         await t2();
         ignore await t2i();
-        /*await t3();
+        await t3();
         /*await t4();*/
-        await t5();*/
+        await t5();
         await t6();
         try await t6t() catch _ {};
         try await t6d() catch _ {};
