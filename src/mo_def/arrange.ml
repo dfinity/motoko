@@ -125,7 +125,8 @@ module Make (Cfg : Config) = struct
     | PrimE p             -> "PrimE"   $$ [Atom p]
     | ImportE (f, _fp)    -> "ImportE" $$ [Atom f]
     | ThrowE e            -> "ThrowE"  $$ [exp e]
-    | TryE (e, cs)        -> "TryE"    $$ [exp e] @ List.map catch cs
+    | TryE (e, cs, None)  -> "TryE"    $$ [exp e] @ List.map catch cs
+    | TryE (e, cs, Some _)-> "TryE FINALLY" $$ [exp e] @ List.map catch cs (* FIXME *)
     | IgnoreE e           -> "IgnoreE" $$ [exp e]))
 
   and exps es = List.map exp es

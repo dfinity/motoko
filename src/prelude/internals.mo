@@ -285,7 +285,7 @@ func @equal_array<T>(eq : (T, T) -> Bool, a : [T], b : [T]) : Bool {
 };
 
 type @Cont<T> = T -> () ;
-type @Async<T> = (@Cont<T>,@Cont<Error>) -> {
+type @Async<T> = (@Cont<T>, @Cont<Error>, () -> ()) -> {
   #suspend;
   #schedule : () -> ();
 };
@@ -307,7 +307,11 @@ func @getSystemRefund() : @Refund {
   return (prim "cyclesRefunded" : () -> Nat) ();
 };
 
-func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>) {
+func @cleanup() {
+    // outmost cleanup action
+};
+
+func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>, () -> ()) {
   let w_null = func(r : @Refund, t : T) { };
   let r_null = func(_ : Error) {};
   var result : ?(@Result<T>) = null;
@@ -342,10 +346,17 @@ func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>) {
     };
   };
 
-  func enqueue(k : @Cont<T>, r : @Cont<Error>) : {
+  var cleanup : () -> () = @cleanup;
+
+  func clean() {
+      cleanup();
+  };
+
+  func enqueue(k : @Cont<T>, r : @Cont<Error>, c : () -> ()) : {
     #suspend;
     #schedule : () -> ();
   } {
+    cleanup := c;
     switch result {
       case null {
         let ws_ = ws;
@@ -373,7 +384,7 @@ func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>) {
     };
   };
 
-  (enqueue, fulfill, fail)
+  (enqueue, fulfill, fail, clean)
 };
 
 // Subset of IC management canister interface required for our use

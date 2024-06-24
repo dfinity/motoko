@@ -338,7 +338,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         let id = V.as_blob v1 in
         begin match V.Env.find_opt id !(env.actor_env) with
         (* not quite correct: On the platform, you can invoke and get a reject *)
-        | None -> trap exp.at "Unkown actor \"%s\"" id
+        | None -> trap exp.at "Unknown actor \"%s\"" id
         | Some actor_value ->
           let fs = V.as_obj actor_value in
           match V.Env.find_opt n fs with
@@ -446,7 +446,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         let reject = Option.get env.rejects in
         let e = V.Tup [V.Variant ("canister_reject", V.unit); v1] in
         Scheduler.queue (fun () -> reject e)
-      | ICCallPrim, [v1; v2; kv; rv] ->
+      | ICCallPrim, [v1; v2; kv; rv; _cv(*FIXME*)] ->
         let call_conv, f = V.as_func v1 in
         check_call_conv (List.hd es) call_conv;
         check_call_conv_arg env exp v2 call_conv;
@@ -492,9 +492,19 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exp env exp1 (fun v1 ->
       interpret_cases env cases exp.at v1 k
     )
-  | TryE (exp1, cases) ->
+  | TryE (exp1, cases, None) ->
     let k' = fun v1 -> interpret_catches env cases exp.at v1 k in
     let env' = { env with throws = Some k' } in
+    interpret_exp env' exp1 k
+  | TryE (exp1, cases, Some (id, ty)) ->
+    assert env.flavor.has_await;
+    let exp2 = Construct.(varE (var id ty) -*- unitE ()) in
+    let k' v1 =
+      interpret_catches env cases exp.at v1 k in
+    let out ret v = interpret_exp env exp2 (fun u -> V.as_unit u; ret v) in
+    let env' = { env with throws = Some k'
+                        ; rets = Option.map out env.rets
+                        ; labs = V.Env.map out env.labs } in
     interpret_exp env' exp1 k
   | LoopE exp1 ->
     interpret_exp env exp1 (fun v -> V.as_unit v; interpret_exp env exp k)
@@ -527,7 +537,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       define_id env id v';
       k V.unit
       )
-  | SelfCallE (ts, exp_f, exp_k, exp_r) ->
+  | SelfCallE (ts, exp_f, exp_k, exp_r, exp_c) ->
     assert (not env.flavor.has_async_typ);
     (* see code for FuncE *)
     let cc = { sort = T.Shared T.Write; control = T.Replies; n_args = 0; n_res = List.length ts } in
@@ -537,6 +547,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     (* see code for ICCallPrim *)
     interpret_exp env exp_k (fun kv ->
     interpret_exp env exp_r (fun rv ->
+    (*FIXME: interpret_exp env exp_c (fun cv ->*)
         let _call_conv, f = V.as_func v in
         last_region := exp.at; (* in case the following throws *)
         let vc = context env in

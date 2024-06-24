@@ -73,6 +73,7 @@ let is_motoko_keyword = function
   | "do"
   | "else"
   | "false"
+  | "finally"
   | "flexible"
   | "for"
   | "from_candid"

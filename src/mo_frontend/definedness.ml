@@ -117,7 +117,8 @@ let rec exp msgs e : f = match e.it with
   | OldE e              -> exp msgs e
   | IfE (e1, e2, e3)    -> exps msgs [e1; e2; e3]
   | SwitchE (e, cs)     -> exp msgs e ++ cases msgs cs
-  | TryE (e, cs)        -> exp msgs e ++ cases msgs cs
+  | TryE (e, cs, None)  -> exp msgs e ++ cases msgs cs
+  | TryE (e, cs, Some f)-> exps msgs [e; f] ++ cases msgs cs
   | WhileE (e1, e2)     -> exps msgs [e1; e2]
   | LoopE (e1, None)    -> exp msgs e1
   | LoopE (e1, Some e2) -> exps msgs [e1; e2]

@@ -118,8 +118,8 @@ let transform prog =
       LabelE (id, t_typ typ, t_exp exp1)
     | AsyncE (s, tb, exp1, typ) ->
       AsyncE (s, t_typ_bind tb, t_exp exp1, t_typ typ)
-    | TryE (exp1, cases) ->
-      TryE (t_exp exp1, List.map t_case cases)
+    | TryE (exp1, cases, vt) ->
+      TryE (t_exp exp1, List.map t_case cases, vt)
     | DeclareE (id, typ, exp1) ->
       DeclareE (id, t_typ typ, t_exp exp1)
     | DefineE (id, mut ,exp1) ->

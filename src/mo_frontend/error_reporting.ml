@@ -20,6 +20,7 @@ let terminal2token (type a) (symbol : a terminal) : token =
       | T_TYPE -> TYPE
       | T_TRY -> TRY
       | T_THROW -> THROW
+      | T_FINALLY -> FINALLY
       | T_TEXT -> TEXT "..."
       | T_SWITCH -> SWITCH
       | T_SUBOP -> SUBOP
