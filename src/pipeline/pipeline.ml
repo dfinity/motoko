@@ -297,14 +297,18 @@ let prim_error phase (msgs : Diag.messages) =
 let check_prim () : Syntax.lib * stat_env =
   let lexer = Lexing.from_string (Prelude.prim_module ~timers:!Flags.global_timer) in
   let parse = Parser.Incremental.parse_prog in
-
   match parse_with Lexer.mode_priv lexer parse prim_name with
   | Error es -> prim_error "parsing" es
   | Ok (prog, _ws) ->
     let open Syntax in
     let open Source in
     let senv0 = initial_stat_env in
-    let fs = List.map (fun d -> {vis = Public None @@ no_region; dec = d; stab = None} @@ d.at) prog.it in
+    (* Propagate deprecations *)
+    let fs = List.map (fun d ->
+      let trivia = Trivia.find_trivia prog.note.trivia d.at in
+      let depr = Trivia.deprecated_of_trivia_info trivia in
+      {vis = Public depr @@ no_region; dec = d; stab = None} @@ d.at) prog.it
+    in
     let body = {it = ModuleU (None, fs); at = no_region; note = empty_typ_note} in
     let lib = {
       it = { imports = []; body };
