@@ -62,13 +62,12 @@ and pp_adt_cons ppf cons =
 and pp_adt_con ppf con =
   fprintf ppf "%s@[(%a)@]"
     con.con_name.it
-    (pp_print_list ~pp_sep:comma pp_adt_con_field) (List.mapi (fun i fld -> con, i, fld) con.con_fields)
+    (pp_print_list ~pp_sep:comma pp_adt_con_field) con.con_fields
 
-and pp_adt_con_field ppf (con, i, con_field) =
-  fprintf ppf "%s$%s : %a"
-    con.con_name.it
-    (string_of_int i)
-    pp_typ con_field
+and pp_adt_con_field ppf (field_name, field_type) =
+  fprintf ppf "%s : %a"
+    field_name.it
+    pp_typ field_type
 
 and pp_block_opt ppf = function
   | None -> ()

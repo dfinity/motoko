@@ -16,7 +16,7 @@ and item' =
   | MethodI of id * par list * par list * exp list * exp list * seqn option
   | InvariantI of string * exp
 
-and adt_con = { con_name : id; con_fields : typ list }
+and adt_con = { con_name : id; con_fields : (id * typ) list }
 
 and par = id * typ
 
