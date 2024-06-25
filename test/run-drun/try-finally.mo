@@ -175,7 +175,28 @@ actor A {
             debugPrint "DEAD6d";
         }
         finally { debugPrint "OUT6d" };
-        debugPrint "AFTER6d"
+        debugPrint "AFTERDEAD6d"
+    };
+
+    // `await*` tests
+    func t7() : async* () {
+        debugPrint "BEFORE7";
+        label out try {
+            debugPrint "IN7";
+            try {
+                debugPrint "InnerIN7";
+                let fut = m();
+                await fut;
+                debugPrint "InnerLIVE7";
+                await fut;
+                debugPrint "InnerLIVESTILL7";
+                assert false;
+                debugPrint "InnerDEAD7";
+            } finally { debugPrint "InnerOUT7" };
+            debugPrint "DEAD7";
+        }
+        finally { debugPrint "OUT7" };
+        debugPrint "AFTERDEAD7"
     };
 
     public func go() : async () {
@@ -197,6 +218,7 @@ actor A {
         try await t6c() catch _ {};
         try await t6t() catch _ {};
         try await t6d() catch _ {};
+        try await* t7() catch _ {};
     };
 };
 

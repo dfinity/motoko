@@ -53,4 +53,11 @@ debug.print: InnerLIVE6d
 debug.print: InnerLIVESTILL6d
 debug.print: InnerOUT6d
 debug.print: OUT6d
-ingress Completed: Reply: 0x4449444c0000
+debug.print: BEFORE7
+debug.print: IN7
+debug.print: InnerIN7
+debug.print: InnerLIVE7
+debug.print: InnerLIVESTILL7
+debug.print: InnerOUT7
+debug.print: OUT7
+ingress Err: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: assertion failed at try-finally.mo:193.17-193.29
