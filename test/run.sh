@@ -268,7 +268,7 @@ do
     then
       if [[ $EXTRA_MOC_ARGS != *"--enhanced-orthogonal-persistence"* ]]
       then
-        $ECHO " Skipped (not applicable to enhanced orthogonal persistence)"
+        $ECHO " Skipped (not applicable to classical orthogonal persistence)"
         continue
       fi
     fi
@@ -276,7 +276,7 @@ do
     then
       if [[ $EXTRA_MOC_ARGS == *"--enhanced-orthogonal-persistence"* ]]
       then
-        $ECHO " Skipped (not applicable to classical persistence)"
+        $ECHO " Skipped (not applicable to enhanced persistence)"
         continue
       fi
     fi
