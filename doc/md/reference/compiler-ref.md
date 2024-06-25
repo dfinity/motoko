@@ -33,7 +33,7 @@ You can use the following options with the `moc` command.
 | `-c`                                      | Compile to WebAssembly.                                                                                                                               |
 | `--check`                                 | Performs type checking only.                                                                                                                          |
 | `--compacting-gc`                         | Use compacting GC.                                                                                                                                    |
-| `--copying-gc`                            | Use copying GC (default).                                                                                                                             |
+| `--copying-gc`                            | Use copying GC.                                                                                                                                       |
 | `--debug`                                 | Respects debug expressions in the source (the default).                                                                                               |
 | `--error-detail <n>`                      | Set level of error message detail for syntax errors, n in \[0..3\] (default 2).                                                                       |
 | `-fno-shared-code`                        | Do not share low-level utility code: larger code size but decreased cycle consumption (default).                                                      |
@@ -42,7 +42,7 @@ You can use the following options with the `moc` command.
 | `-help`,`--help`                          | Displays usage information.                                                                                                                           |
 | `--hide-warnings`                         | Hides compiler warnings.                                                                                                                              |
 | `-Werror`                                 | Treat warnings as errors.                                                                                                                             |
-| `--incremental-gc`                        | Use incremental GC                                                                                                                                    |
+| `--incremental-gc`                        | Use incremental GC (default)                                                                                                                          |
 | `--idl`                                   | Compile binary and emit Candid IDL specification to `.did` file.                                                                                      |
 | `-i`                                      | Runs the compiler in an interactive read–eval–print loop (REPL) shell so you can evaluate program execution (implies -r).                             |
 | `--map`                                   | Outputs a JavaScript source map.                                                                                                                      |

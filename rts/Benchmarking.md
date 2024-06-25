@@ -97,7 +97,7 @@ clone motoko-base and update the path above with the path to your clone.
 - `<wasm file name>`: Name of the generated .wasm file. Make sure to add some
   prefix/suffixes to this binary to describe the compile flags. E.g.
   `cancan_copying_gc_my_awesome_patch_tweaked_scheduling_wow.wasm`.
-- `<gc strategy>`: `--copying-gc` or `--compacting-gc`.
+- `<gc strategy>`: `--incremental-gc`, `--generational-gc`, `--copying-gc`, or `--compacting-gc`.
 
 ## Writing a drun script
 
