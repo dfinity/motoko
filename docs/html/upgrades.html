@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>md/canister-maintenance/upgrades.md</title>
+  <style>
+    html {
+      color: #1a1a1a;
+      background-color: #fdfdfd;
+    }
+    body {
+      margin: 0 auto;
+      max-width: 36em;
+      padding-left: 50px;
+      padding-right: 50px;
+      padding-top: 50px;
+      padding-bottom: 50px;
+      hyphens: auto;
+      overflow-wrap: break-word;
+      text-rendering: optimizeLegibility;
+      font-kerning: normal;
+    }
+    @media (max-width: 600px) {
+      body {
+        font-size: 0.9em;
+        padding: 12px;
+      }
+      h1 {
+        font-size: 1.8em;
+      }
+    }
+    @media print {
+      html {
+        background-color: white;
+      }
+      body {
+        background-color: transparent;
+        color: black;
+        font-size: 12pt;
+      }
+      p, h2, h3 {
+        orphans: 3;
+        widows: 3;
+      }
+      h2, h3, h4 {
+        page-break-after: avoid;
+      }
+    }
+    p {
+      margin: 1em 0;
+    }
+    a {
+      color: #1a1a1a;
+    }
+    a:visited {
+      color: #1a1a1a;
+    }
+    img {
+      max-width: 100%;
+    }
+    svg {
+      height: auto;
+      max-width: 100%;
+    }
+    h1, h2, h3, h4, h5, h6 {
+      margin-top: 1.4em;
+    }
+    h5, h6 {
+      font-size: 1em;
+      font-style: italic;
+    }
+    h6 {
+      font-weight: normal;
+    }
+    ol, ul {
+      padding-left: 1.7em;
+      margin-top: 1em;
+    }
+    li > ol, li > ul {
+      margin-top: 0;
+    }
+    blockquote {
+      margin: 1em 0 1em 1.7em;
+      padding-left: 1em;
+      border-left: 2px solid #e6e6e6;
+      color: #606060;
+    }
+    code {
+      font-family: Menlo, Monaco, Consolas, 'Lucida Console', monospace;
+      font-size: 85%;
+      margin: 0;
+      hyphens: manual;
+    }
+    pre {
+      margin: 1em 0;
+      overflow: auto;
+    }
+    pre code {
+      padding: 0;
+      overflow: visible;
+      overflow-wrap: normal;
+    }
+    .sourceCode {
+     background-color: transparent;
+     overflow: visible;
+    }
+    hr {
+      background-color: #1a1a1a;
+      border: none;
+      height: 1px;
+      margin: 1em 0;
+    }
+    table {
+      margin: 1em 0;
+      border-collapse: collapse;
+      width: 100%;
+      overflow-x: auto;
+      display: block;
+      font-variant-numeric: lining-nums tabular-nums;
+    }
+    table caption {
+      margin-bottom: 0.75em;
+    }
+    tbody {
+      margin-top: 0.5em;
+      border-top: 1px solid #1a1a1a;
+      border-bottom: 1px solid #1a1a1a;
+    }
+    th {
+      border-top: 1px solid #1a1a1a;
+      padding: 0.25em 0.5em 0.25em 0.5em;
+    }
+    td {
+      padding: 0.125em 0.5em 0.25em 0.5em;
+    }
+    header {
+      margin-bottom: 4em;
+      text-align: center;
+    }
+    #TOC li {
+      list-style: none;
+    }
+    #TOC ul {
+      padding-left: 1.3em;
+    }
+    #TOC > ul {
+      padding-left: 0;
+    }
+    #TOC a:not(:hover) {
+      text-decoration: none;
+    }
+    code{white-space: pre-wrap;}
+    span.smallcaps{font-variant: small-caps;}
+    div.columns{display: flex; gap: min(4vw, 1.5em);}
+    div.column{flex: auto; overflow-x: auto;}
+    div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+    /* The extra [class] is a hack that increases specificity enough to
+       override a similar rule in reveal.js */
+    ul.task-list[class]{list-style: none;}
+    ul.task-list li input[type="checkbox"] {
+      font-size: inherit;
+      width: 0.8em;
+      margin: 0 0.8em 0.2em -1.6em;
+      vertical-align: middle;
+    }
+    .display.math{display: block; text-align: center; margin: 0.5rem auto;}
+  </style>
+  <!--[if lt IE 9]>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv-printshiv.min.js"></script>
+  <![endif]-->
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">md/canister-maintenance/upgrades.md</h1>
+</header>
+<nav id="TOC" role="doc-toc">
+<ul>
+<li><a href="#stable-variables-and-upgrade-methods"
+id="toc-stable-variables-and-upgrade-methods">Stable variables and
+upgrade methods</a>
+<ul>
+<li><a href="#overview" id="toc-overview">Overview</a></li>
+<li><a href="#declaring-stable-variables"
+id="toc-declaring-stable-variables">Declaring stable variables</a></li>
+<li><a href="#preupgrade-and-postupgrade-system-methods"
+id="toc-preupgrade-and-postupgrade-system-methods">Preupgrade and
+postupgrade system methods</a></li>
+<li><a href="#typing" id="toc-typing">Typing</a></li>
+<li><a href="#converting-non-stable-types-into-stable-types"
+id="toc-converting-non-stable-types-into-stable-types">Converting
+non-stable types into stable types</a></li>
+<li><a href="#stable-type-signatures"
+id="toc-stable-type-signatures">Stable type signatures</a></li>
+<li><a href="#upgrade-safety" id="toc-upgrade-safety">Upgrade
+safety</a></li>
+<li><a href="#metadata-sections" id="toc-metadata-sections">Metadata
+sections</a></li>
+<li><a href="#upgrading-a-deployed-actor-or-canister"
+id="toc-upgrading-a-deployed-actor-or-canister">Upgrading a deployed
+actor or canister</a></li>
+</ul></li>
+</ul>
+</nav>
+<h1 id="stable-variables-and-upgrade-methods">Stable variables and
+upgrade methods</h1>
+<h2 id="overview">Overview</h2>
+<p>One key feature of ICP is its ability to persist canister state using
+WebAssembly memory and globals rather than a traditional database. This
+means that the entire state of a canister is restored before and saved
+after each message, without explicit user instruction. This automatic
+and user-transparent preservation of state between messages is called
+<strong>orthogonal persistence</strong>.</p>
+<p>Though convenient, orthogonal persistence poses a challenge when it
+comes to upgrading the code of a canister. Without an explicit
+representation of the canister’s state, how does one transfer any
+application data from the retired canister to its replacement? For
+example, if you want to deploy a new version of a user registration
+canister to fix an issue or add functionality, you need to ensure that
+existing registrations survive the upgrade process.</p>
+<p>Accommodating upgrades without data loss requires some new facility
+to <strong>migrate</strong> a canister’s crucial data to the upgraded
+canister. ICP's persistence model allows a canister to save and restore
+long-lived data to dedicated <strong>stable memory</strong> that, unlike
+ordinary canister memory, is not cleared but retained across an upgrade.
+This facility allows a canister to transfer data in bulk to its
+replacement canister, provided that data is placed in stable memory,
+either throughout its lifetime, or just before an upgrade.</p>
+<p>Motoko provides high-level support for preserving state that
+leverages stable memory. This feature, called <strong>stable
+storage</strong>, is designed to accommodate changes to both the
+application data and the Motoko compiler used to produce the application
+code.</p>
+<p>Utilizing stable storage depends on the developer anticipating and
+indicating the data to retain after an upgrade. Depending on the
+application, the data you decide to persist might be some, all, or none
+of a given actor’s state.</p>
+<h2 id="declaring-stable-variables">Declaring stable variables</h2>
+<p>In an actor, you can configure a variable to use stable storage
+through the <code>stable</code> keyword modifier in the variable’s
+declaration.</p>
+<p>More precisely, every <code>let</code> and <code>var</code> variable
+declaration in an actor can specify whether the variable is
+<code>stable</code> or <code>flexible</code>. If you don’t provide a
+modifier, the variable is declared as <code>flexible</code> by
+default.</p>
+<p>The following is a simple example of how to declare a stable counter
+that can be upgraded while preserving the counter’s value:</p>
+<pre class="motoko"><code></code></pre>
+<p>:::note</p>
+<p>You can only use the <code>stable</code> or <code>flexible</code>
+modifier on <code>let</code> and <code>var</code> declarations that are
+<strong>actor fields</strong>. You cannot use these modifiers anywhere
+else in your program.</p>
+<p>:::</p>
+<p>When you first compile and deploy a canister, all flexible and stable
+variables in the actor are initialized in sequence. When you deploy a
+canister using the <code>upgrade</code> mode, all stable variables that
+existed in the previous version of the actor are pre-initialized with
+their old values. After the stable variables are initialized with their
+previous values, the remaining flexible and newly-added stable variables
+are initialized in sequence.</p>
+<h2 id="preupgrade-and-postupgrade-system-methods">Preupgrade and
+postupgrade system methods</h2>
+<p>Declaring a variable to be <code>stable</code> requires its type to
+be stable too. Since not all types are stable, some variables cannot be
+declared <code>stable</code>.</p>
+<p>As a simple example, consider the following <code>Registry</code>
+actor:</p>
+<pre class="motoko"><code></code></pre>
+<p>This actor assigns sequential identifiers to <a
+href="../base/Text.md"><code>Text</code></a> values, using the size of
+the underlying <code>map</code> object to determine the next identifier.
+Like other actors, it relies on orthogonal persistence to maintain the
+state of the hashmap between calls.</p>
+<p>This example would like to make the <code>Register</code> upgradable
+without the upgrade losing any existing registrations, but its state,
+<code>map</code>, has a proper object type that contains member
+functions, so the <code>map</code> variable cannot be declared
+<code>stable</code>.</p>
+<p>For scenarios like this that can’t be solved using stable variables
+alone, Motoko supports user-defined upgrade hooks that run immediately
+before and after an upgrade. These upgrade hooks allow you to migrate
+state between unrestricted flexible variables to more restricted stable
+variables. These hooks are declared as <code>system</code> functions
+with special names, <code>preugrade</code> and <code>postupgrade</code>.
+Both functions must have type <code>: () → ()</code>.</p>
+<p>The <code>preupgrade</code> method lets you make a final update to
+stable variables before the runtime commits their values to stable
+memory and performs an upgrade. The <code>postupgrade</code> method is
+run after an upgrade has initialized the replacement actor, including
+its stable variables, but before executing any shared function call or
+message on that actor.</p>
+<p>The following example introduces a new stable variable,
+<code>entries</code>, to save and restore the entries of the unstable
+hash table:</p>
+<pre class="motoko"><code></code></pre>
+<p>Note that the type of <code>entries</code>, being an array of <a
+href="../base/Text.md"><code>Text</code></a> and <a
+href="../base/Nat.md"><code>Nat</code></a> pairs, is indeed a stable
+type.</p>
+<p>In this example, the <code>preupgrade</code> system method writes the
+current <code>map</code> entries to <code>entries</code> before
+<code>entries</code> is saved to stable memory. The
+<code>postupgrade</code> system method resets <code>entries</code> to
+the empty array after <code>map</code> has been populated from
+<code>entries</code>.</p>
+<h2 id="typing">Typing</h2>
+<p>Because the compiler must ensure that stable variables are both
+compatible with and meaningful in the replacement program after an
+upgrade, every <code>stable</code> variable must have a stable type. A
+type is stable if the type obtained by ignoring any <code>var</code>
+modifiers within it is shared.</p>
+<p>The only difference between stable types and shared types is the
+former’s support for mutation. Like shared types, stable types are
+restricted to first-order data, excluding local functions and structures
+built from local functions, such as objects. This exclusion of functions
+is required because the meaning of a function value, consisting of both
+data and code, cannot easily be preserved across an upgrade. The meaning
+of plain data, mutable or not, can be.</p>
+<p>:::note</p>
+<p>In general, object types are not stable because they can contain
+local functions. However, a plain record of stable data is a special
+case of object types that are stable. Moreover, references to actors and
+shared functions are also stable, allowing you to preserve their values
+across upgrades. For example, you can preserve the state record of a set
+of actors or shared function callbacks subscribing to a service.</p>
+<p>:::</p>
+<h2 id="converting-non-stable-types-into-stable-types">Converting
+non-stable types into stable types</h2>
+<p>For variables that do not have a stable type, there are two options
+for making them stable:</p>
+<ol type="1">
+<li>Use a <code>stable</code> module for the type, such as:</li>
+</ol>
+<ul>
+<li><a
+href="https://github.com/canscale/StableBuffer">StableBuffer</a></li>
+<li><a
+href="https://github.com/canscale/StableHashMap">StableHashMap</a></li>
+<li><a
+href="https://github.com/canscale/StableRBTree">StableRBTree</a></li>
+</ul>
+<ol start="2" type="1">
+<li>You can convert the variable to another type that is stable, such as
+the following example that converts a <code>Buffer</code> to an
+<code>Array</code>:</li>
+</ol>
+<pre class="motoko"><code>let theProjectsBuffer : Buffer.Buffer = Buffer.Buffer(theProjectsNew.size());
+
+for (x in theProjectsNew.vals()) {
+
+theProjectsBuffer.add(x);
+
+};
+
+theProjectsBuffer.add(newProject);
+
+return theProjectsBuffer.toArray();</code></pre>
+<p>Here is another example that takes a <code>HashMap</code> type and
+creates a stable <code>Array</code>:</p>
+<pre class="motoko"><code>private var canisters: HashMap.HashMap&lt;Principal, CanisterId&gt; = HashMap.HashMap&lt;Principal, CanisterId&gt;(10, isPrincipalEqual, Principal.hash);
+
+private stable var upgradeCanisters : [(Principal, CanisterId)] = [];
+
+system func preupgrade() {
+        upgradeCanisters := Iter.toArray(canisters.entries());
+    };
+
+    system func postupgrade() {
+        canisters := HashMap.fromIter&lt;Principal, CanisterId&gt;(upgradeCanisters.vals(), 10, isPrincipalEqual, Principal.hash);
+        upgradeCanisters := [];
+    };</code></pre>
+<h2 id="stable-type-signatures">Stable type signatures</h2>
+<p>The collection of stable variable declarations in an actor can be
+summarized in a stable signature.</p>
+<p>The textual representation of an actor’s stable signature resembles
+the internals of a Motoko actor type:</p>
+<pre class="motoko"><code>actor {
+  stable x : Nat;
+  stable var y : Int;
+  stable z : [var Nat];
+};</code></pre>
+<p>It specifies the names, types and mutability of the actor’s stable
+fields, possibly preceded by relevant Motoko type declarations.</p>
+<p>:::tip</p>
+<p>You can emit the stable signature of the main actor or actor class to
+a <code>.most</code> file using <code>moc</code> compiler option
+<code>--stable-types</code>. You should never need to author your own
+<code>.most</code> file.</p>
+<p>:::</p>
+<p>A stable signature <code>&lt;stab-sig1&gt;</code> is
+stable-compatible with signature <code>&lt;stab-sig2&gt;</code>, if:</p>
+<ul>
+<li><p>Every immutable field <code>stable &lt;id&gt; : T</code> in
+<code>&lt;stab-sig1&gt;</code> has a matching field
+<code>stable &lt;id&gt; : U</code> in <code>&lt;stab-sig2&gt;</code>
+with <code>T &lt;: U</code>.</p></li>
+<li><p>Every mutable field <code>stable var &lt;id&gt; : T</code> in
+<code>&lt;stab-sig1&gt;</code> has a matching field
+<code>stable var &lt;id&gt; : U</code> in <code>&lt;stab-sig2&gt;</code>
+with <code>T &lt;: U</code>.</p></li>
+</ul>
+<p>Note that <code>&lt;stab-sig2&gt;</code> may contain additional
+fields. Typically, <code>&lt;stab-sig1&gt;</code> is the signature of an
+older version while <code>&lt;stab-sig2&gt;</code> is the signature of a
+newer version.</p>
+<p>The subtyping condition on stable fields ensures that the final value
+of some field can be consumed as the initial value of that field in the
+upgraded code.</p>
+<p>:::tip</p>
+<p>You can check the stable-compatibility of two <code>.most</code>
+files containing stable signatures, using <code>moc</code> compiler
+option <code>--stable-compatible file1.most file2.most</code>.</p>
+<p>:::</p>
+<p>:::note</p>
+<p>The stable-compatible relation is quite conservative. In the future,
+it may be relaxed to accommodate a change in field mutability and/or
+abandoning fields from <code>&lt;stab-sig1&gt;</code> but with a
+warning.</p>
+<p>:::</p>
+<h2 id="upgrade-safety">Upgrade safety</h2>
+<p>Before upgrading a deployed canister, you should ensure that the
+upgrade is safe and will not:</p>
+<ul>
+<li><p>Break existing clients due to a Candid interface change.</p></li>
+<li><p>Discard Motoko stable state due to an incompatible change in
+stable declarations.</p></li>
+</ul>
+<p>A Motoko canister upgrade is safe provided:</p>
+<ul>
+<li><p>The canister’s Candid interface evolves to a Candid
+subtype.</p></li>
+<li><p>The canister’s Motoko stable signature evolves to a
+stable-compatible one.</p></li>
+</ul>
+<p>Upgrade safety does not guarantee that the upgrade process will
+succeed, as it can still fail due to resource constraints. However, it
+should at least ensure that a successful upgrade will not break Candid
+type compatibility with existing clients or unexpectedly lose data that
+was marked <code>stable</code>.</p>
+<p>:::tip</p>
+<p>You can check valid Candid subtyping between two services described
+in <code>.did</code> files using the <a
+href="https://github.com/dfinity/candid"><code>didc</code> tool</a> with
+argument <code>check file1.did file2.did</code>.</p>
+<p>:::</p>
+<h2 id="metadata-sections">Metadata sections</h2>
+<p>The Motoko compiler embeds the Candid interface and stable signature
+of a canister as canister metadata, recorded in additional Wasm custom
+sections of a compiled binary.</p>
+<p>This metadata can be selectively exposed by ICP and used by tools
+such as <code>dfx</code> to verify upgrade compatibility.</p>
+<h2 id="upgrading-a-deployed-actor-or-canister">Upgrading a deployed
+actor or canister</h2>
+<p>After you have deployed a Motoko actor with the appropriate
+<code>stable</code> variables or <code>preupgrade</code> and
+<code>postupgrade</code> system methods, you can use the
+<code>dfx canister install</code> command with the
+<code>--mode=upgrade</code> option to upgrade an already deployed
+version. For information about upgrading a deployed canister, see <a
+href="/docs/current/developer-docs/smart-contracts/maintain/upgrade">upgrade
+a canister smart contract</a>.</p>
+<p><code>dfx canister install --mode=upgrade</code> checks that the
+interface is compatible, and if not, show this message and ask if you
+want to continue:</p>
+<pre><code>let msg = format!(&quot;Candid interface compatibility check failed for canister &#39;{}&#39;.\nYou are making a BREAKING change. Other canisters or frontend clients relying on your canister may stop working.\n\n&quot;, canister_info.get_name()) + &amp;err;</code></pre>
+</body>
+</html>
