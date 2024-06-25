@@ -138,6 +138,26 @@ actor A {
         debugPrint "AFTER6t"
     };
 
+    func t6c() : async () {
+        debugPrint "BEFORE6c";
+        label out try {
+            debugPrint "IN6c";
+            try {
+                debugPrint "InnerIN6c";
+                await m();
+                debugPrint "InnerLIVE6c";
+                throw error "InnerIN6c";
+            } catch _ {
+                debugPrint "InnerCATCH6c";
+                assert false;
+                debugPrint "DEADCATCH6c";
+            } finally { debugPrint "InnerOUT6c" };
+            debugPrint "DEAD6c";
+        }
+        finally { debugPrint "OUT6c" };
+        debugPrint "AFTER6c"
+    };
+
     func t6d() : async () {
         debugPrint "BEFORE6d";
         label out try {
@@ -174,6 +194,7 @@ actor A {
         try await t0r() catch _ {};
         try await t0d() catch _ {};
         try await t2t() catch _ {};
+        try await t6c() catch _ {};
         try await t6t() catch _ {};
         try await t6d() catch _ {};
     };

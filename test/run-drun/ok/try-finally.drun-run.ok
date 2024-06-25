@@ -33,6 +33,13 @@ debug.print: OUTd
 debug.print: IN2t
 debug.print: CAUGHT2t
 debug.print: OUT2t
+debug.print: BEFORE6c
+debug.print: IN6c
+debug.print: InnerIN6c
+debug.print: InnerLIVE6c
+debug.print: InnerCATCH6c
+debug.print: InnerOUT6c
+debug.print: OUT6c
 debug.print: BEFORE6t
 debug.print: IN6t
 debug.print: InnerIN6t
