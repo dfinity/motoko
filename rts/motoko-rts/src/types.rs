@@ -446,22 +446,21 @@ pub type Tag = u32;
 // Tags need to have the lowest bit set, to allow distinguishing a header (tag) from object
 // locations in mark-compact GC. (Reminder: objects and fields are word aligned)
 pub const TAG_OBJECT: Tag = 1;
-pub const TAG_OBJ_IND: Tag = 3;
-pub const TAG_ARRAY: Tag = 5;
-pub const TAG_BITS64: Tag = 7;
-pub const TAG_MUTBOX: Tag = 9;
-pub const TAG_CLOSURE: Tag = 11;
-pub const TAG_SOME: Tag = 13;
-pub const TAG_VARIANT: Tag = 15;
-pub const TAG_BLOB: Tag = 17;
-pub const TAG_FWD_PTR: Tag = 19; // Only used by the copying GC - not to be confused with forwarding pointer in the header used for incremental GC.
-pub const TAG_BITS32: Tag = 21;
-pub const TAG_BIGINT: Tag = 23;
-pub const TAG_CONCAT: Tag = 25;
-pub const TAG_REGION: Tag = 27;
-pub const TAG_NULL: Tag = 29;
-pub const TAG_ONE_WORD_FILLER: Tag = 31;
-pub const TAG_FREE_SPACE: Tag = 33;
+pub const TAG_ARRAY: Tag = 3;
+pub const TAG_BITS64: Tag = 5;
+pub const TAG_MUTBOX: Tag = 7;
+pub const TAG_CLOSURE: Tag = 9;
+pub const TAG_SOME: Tag = 11;
+pub const TAG_VARIANT: Tag = 13;
+pub const TAG_BLOB: Tag = 15;
+pub const TAG_FWD_PTR: Tag = 17; // Only used by the copying GC - not to be confused with forwarding pointer in the header used for incremental GC.
+pub const TAG_BITS32: Tag = 19;
+pub const TAG_BIGINT: Tag = 21;
+pub const TAG_CONCAT: Tag = 23;
+pub const TAG_REGION: Tag = 25;
+pub const TAG_NULL: Tag = 27;
+pub const TAG_ONE_WORD_FILLER: Tag = 29;
+pub const TAG_FREE_SPACE: Tag = 31;
 
 // Special value to visit only a range of array fields.
 // This and all values above it are reserved and mean
@@ -469,7 +468,7 @@ pub const TAG_FREE_SPACE: Tag = 33;
 // purposes of `visit_pointer_fields`.
 // Invariant: the value of this (pseudo-)tag must be
 //            higher than all other tags defined above
-pub const TAG_ARRAY_SLICE_MIN: Tag = 34;
+pub const TAG_ARRAY_SLICE_MIN: Tag = 32;
 
 // Common parts of any object. Other object pointers can be coerced into a pointer to this.
 #[repr(C)] // See the note at the beginning of this module
@@ -615,12 +614,6 @@ impl Object {
     pub(crate) unsafe fn get(self: *mut Self, idx: u32) -> Value {
         *self.payload_addr().add(idx as usize)
     }
-}
-
-#[repr(C)] // See the note at the beginning of this module
-pub struct ObjInd {
-    pub header: Obj,
-    pub field: Value,
 }
 
 #[repr(C)] // See the note at the beginning of this module
@@ -935,8 +928,6 @@ pub(crate) unsafe fn block_size(address: usize) -> Words<u32> {
             let size = object.size();
             size_of::<Object>() + Words(size)
         }
-
-        TAG_OBJ_IND => size_of::<ObjInd>(),
 
         // `block_size` is not used during the incremental mark phase and
         // therefore, does not support array slicing.
