@@ -30,6 +30,9 @@ debug.print: OUTr
 debug.print: INd
 debug.print: AGAINd
 debug.print: OUTd
+debug.print: IN2t
+debug.print: CAUGHT2t
+debug.print: OUT2t
 debug.print: BEFORE6t
 debug.print: IN6t
 debug.print: InnerIN6t

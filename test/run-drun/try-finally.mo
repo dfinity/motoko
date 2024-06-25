@@ -55,6 +55,16 @@ actor A {
         finally { debugPrint "OUT2i" };
     };
 
+    func t2t() : async () {
+        try {
+            debugPrint "IN2t";
+            await m();
+            throw error "IN2t";
+        }
+        catch _ { debugPrint "CAUGHT2t"; assert false }
+        finally { debugPrint "OUT2t" };
+    };
+
     func t3() : async () {
         try {
             debugPrint "IN3";
@@ -148,9 +158,6 @@ actor A {
         debugPrint "AFTER6d"
     };
 
-    // TODO: trap on happy/catch
-    // TODO: trap after repeated `await`
-
     public func go() : async () {
         // These don't trap (for the interpreters)
         //await t1();
@@ -166,6 +173,7 @@ actor A {
         try /*ignore*/ await t0() catch _ {};
         try await t0r() catch _ {};
         try await t0d() catch _ {};
+        try await t2t() catch _ {};
         try await t6t() catch _ {};
         try await t6d() catch _ {};
     };
