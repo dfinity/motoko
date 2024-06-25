@@ -10,6 +10,8 @@ module Arrange = Mo_def.Arrange
 module String_map = Env.Make(String)
 module Stamps = String_map
 
+module Type_map = Env.Make (T.Ord)
+
 (* symbol generation *)
 
 let stamps : int Stamps.t ref = ref Stamps.empty
@@ -107,6 +109,7 @@ type ctxt =
     label_to_tmp_var : id String_map.t; (* Motoko label -> associated tmp variable *)
     label_to_vpr_label : string String_map.t; (* Motoko label -> Viper label *)
     reqs : reqs; (* requirements for the prelude *)
+    type_to_record_ctor : id Type_map.t;
     ghost_items : (ctxt -> item) list ref;
     ghost_inits : (ctxt -> seqn') list ref;
     ghost_perms : (ctxt -> Source.region -> exp) list ref;
@@ -192,6 +195,25 @@ let rec strip_mut_t (t : T.typ) : T.typ =
   | T.Mut t' -> strip_mut_t t'
   | _        -> t
 
+let record_ctor_tag = "$RecordCtor_"
+
+let mk_record_ctor (typ_id : M.typ_id) : id =
+  let name = Format.asprintf "%s%s" record_ctor_tag typ_id.it in
+  !!! Source.no_region name
+
+let get_record_name ctxt (typ : T.typ) : string =
+  let tag_len = String.length record_ctor_tag in
+  let record_ctor_name = (Type_map.find typ ctxt.type_to_record_ctor).it in
+  String.sub record_ctor_name tag_len (String.length record_ctor_name - tag_len)
+
+let mk_record_field ~record_name ~fld_name =
+  Format.asprintf "$%s$%s" record_name fld_name
+
+let get_record_field ctxt (typ : T.typ) (fld : M.id) : M.id =
+  let record_name = get_record_name ctxt typ in
+  let fld_name = mk_record_field ~record_name ~fld_name:fld.it in
+  { fld with it = fld_name }
+
 let rec unit reqs (u : M.comp_unit) : prog Diag.result =
   Diag.(
     reset_stamps();
@@ -218,6 +240,7 @@ and unit' reqs (u : M.comp_unit) : prog =
       label_to_tmp_var = String_map.empty;
       label_to_vpr_label = String_map.empty;
       reqs = reqs;
+      type_to_record_ctor = Type_map.empty;
       ghost_items = ref [];
       ghost_inits = ref [];
       ghost_perms = ref [];
@@ -333,15 +356,38 @@ and dec_field' ctxt d =
     ctxt, None, None, fun ctxt ->
       let adt_param tb = id tb.it.M.var in
       let adt_con con = begin
-        { con_name = !!! Source.no_region con.T.lab;
+        let con_name = !!! Source.no_region con.T.lab in
+        let mk_field_name i = !!! Source.no_region (Format.asprintf "%s$%i" con.T.lab i) in
+        { con_name;
           con_fields = match con.T.typ with
-            | T.Tup ts -> List.map (tr_typ ctxt) ts
-            | t -> [tr_typ ctxt t]
+            | T.Tup ts -> List.mapi (fun i t -> mk_field_name i, tr_typ ctxt t) ts
+            | t -> [mk_field_name 0, tr_typ ctxt t]
         }
       end in
       AdtI ({ typ_id with note = NoInfo },
             List.map adt_param typ_binds,
             List.map adt_con cons),
+      NoInfo
+  | M.(TypD (typ_id, typ_binds, { note = T.Obj (T.Object, flds) as typ; _ })) ->
+    let con_name = mk_record_ctor typ_id in
+    { ctxt with type_to_record_ctor = Type_map.add typ con_name ctxt.type_to_record_ctor },
+    None,
+    None,
+    fun ctxt ->
+      let adt_param tb = id tb.it.M.var in
+      let adt_field field =
+        let field_name = !!! Source.no_region (mk_record_field ~record_name:typ_id.it ~fld_name:field.T.lab) in
+        let field_typ = tr_typ ctxt field.T.typ in
+        field_name, field_typ
+      in
+      let adt_con =
+        { con_name;
+          con_fields = List.map adt_field flds
+        }
+      in
+      AdtI ({ typ_id with note = NoInfo },
+            List.map adt_param typ_binds,
+            [ adt_con ]),
       NoInfo
   (* async functions *)
   | M.(LetD ({it=VarP f;note;_},
@@ -504,7 +550,7 @@ and compile_while
   let (!!) p = !!! at p in
   let (invs, body) = extract_loop_invariants body in
   let invs = (* TODO: automatic adding invariant into loop require more pondering*)
-             (* [!!(AndE(!!(CallE("$Perm", [self ctxt at])), *) 
+             (* [!!(AndE(!!(CallE("$Perm", [self ctxt at])), *)
              (*          !!(CallE("$Inv",  [self ctxt at]))))] *)
              [!!(CallE("$Perm", [self ctxt at]))]
              @ local_access_preds ctxt
@@ -720,6 +766,22 @@ and pat_match ctxt (scrut : M.exp) (p : M.pat) : exp list * (id * T.typ) list * 
     end in
     let stmts = List.mapi (fun i (x, t) -> fld_assign_stmt i (LValueUninitVar x)) p_scope in
     [cond], p_scope, (ds, stmts)
+  | M.ObjP pat_fields ->
+    let e_scrut = exp ctxt scrut in
+    let p_scope = List.map (fun M.{ it = { id = _; pat }; _ } -> unwrap_var_pat pat) pat_fields in
+    let ds = List.map (fun (x, t) -> !!(x, tr_typ ctxt t)) p_scope in
+    let fld_assign_stmt lval fld_name =
+      let rhs = !!(FldAcc (e_scrut, id fld_name)) in
+      !!(assign_stmt lval rhs)
+    in
+    let stmts =
+      List.map2
+        (fun M.{ it = { id = fld_name; pat = _ }; _ } (x, _) ->
+          let fld_name = get_record_field ctxt (T.normalize p.note) fld_name in
+          fld_assign_stmt (LValueUninitVar x) fld_name)
+        pat_fields p_scope
+    in
+    [], p_scope, (ds, stmts)
   | M.WildP -> [], [], ([], [])
   | _ -> unsupported p.at (Arrange.pat p)
 
@@ -874,6 +936,27 @@ and exp ctxt e =
      !!(match e.it with
         | M.TupE es -> CallE (tag.it, List.map (exp ctxt) es)
         | _ -> CallE (tag.it, [exp ctxt e]))
+  | M.ObjE ([], flds) ->
+    (match T.normalize e.note.M.note_typ with
+    | T.Obj (T.Object, typ_flds) as t ->
+      let record_ctor_name = Type_map.find t ctxt.type_to_record_ctor in
+      let flds = List.map (fun M.{ it = { mut; id; exp }; _} ->
+        match mut.it with
+        | M.Const -> id.it, exp
+        | M.Var -> unsupported mut.at (Arrange.exp e)) flds
+      in
+      let args = List.map (fun T.{ lab; _ } ->
+        let rhs_exp = List.assoc lab flds in
+        exp ctxt rhs_exp) typ_flds
+      in
+      !!(CallE (record_ctor_name.it, args))
+    | T.Obj _ -> unsupported e.at (Arrange.exp e)
+    | _ -> assert false)
+  | M.DotE (proj, fld) when Type_map.mem (T.normalize proj.note.M.note_typ) ctxt.type_to_record_ctor ->
+    let proj_t = T.normalize proj.note.M.note_typ in
+    let proj = exp ctxt proj in
+    let fld = id (get_record_field ctxt proj_t fld) in
+    !!(FldAcc (proj, fld))
   | M.TupE es ->
       let n = List.length es in
       ctxt.reqs.tuple_arities := IntSet.add n !(ctxt.reqs.tuple_arities);
@@ -949,7 +1032,8 @@ and tr_typ ctxt typ =
     at = Source.no_region;
     note = NoInfo }
 and tr_typ' ctxt typ =
-  match typ, T.normalize typ with
+  let norm_typ = T.normalize typ in
+  match typ, norm_typ with
   | _, T.Prim T.Int -> IntT
   | _, T.Prim T.Nat -> IntT    (* Viper has no native support for Nat, so translate to Int *)
   | _, T.Prim T.Text -> IntT   (* Viper has no native support for Text, so translate to uninterpreted Int values *)
@@ -959,6 +1043,9 @@ and tr_typ' ctxt typ =
   | _, T.Tup  ts ->
     ctxt.reqs.tuple_arities := IntSet.add (List.length ts) !(ctxt.reqs.tuple_arities);
     TupleT (List.map (tr_typ ctxt) ts)
+  | _, T.Obj (T.Object, flds) ->
+    let record_name = get_record_name ctxt norm_typ in
+    ConT (!!! Source.no_region record_name, [])
   | T.Con (con, ts), _ -> ConT (!!! Source.no_region (Mo_types.Cons.name con), List.map (tr_typ ctxt) ts)
   | _, t -> unsupported Source.no_region (Mo_types.Arrange_type.typ t)
 
