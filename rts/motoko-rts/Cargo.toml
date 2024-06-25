@@ -26,7 +26,6 @@ ic = []
 memory_check = []
 
 [dependencies]
-# libc = { version = "0.2.139", default_features = false }
 motoko-rts-macros = { path = "../motoko-rts-macros" }
 
 [profile.dev]
