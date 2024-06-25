@@ -61,3 +61,5 @@ let stabilization_instruction_limit_default = {
   update_call = 18_000_000_000; (* 20 billion limit with 10% reserve *)
 }
 let stabilization_instruction_limit = ref stabilization_instruction_limit_default
+let experimental_stable_memory_default = 0 (* _ < 0: error; _ = 0: warn, _ > 0: allow *)
+let experimental_stable_memory = ref experimental_stable_memory_default

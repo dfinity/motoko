@@ -28,13 +28,6 @@ MUSLFILES_32 = \
   __rem_pio2 __rem_pio2_large __sin __cos __tan \
   stubs
 
-MUSLFILES_64 = \
-   pow_data exp_data log_data \
-   floor scalbn frexp strlen strnlen memcpy memset memchr memcmp \
-   __math_oflow __math_uflow __math_xflow __math_divzero __math_invalid \
-   __rem_pio2 __rem_pio2_large __sin __cos __tan \
-   stubs
-
 TOMMATHSRC ?= $(CURDIR)/../../libtommath
 MUSLSRC ?= $(CURDIR)/../../wasi-libc/libc-top-half/musl
 MUSL_WASI_SYSROOT ?= $(MUSLSRC)/../../sysroot
@@ -103,12 +96,6 @@ MUSL_FLAGS_32 = \
   -D__NEED_locale_t \
   -Dsqrt=__builtin_sqrt \
   -Dfabs=__builtin_fabs
-
-# libc does not yet have a 64-bit port, using 32-bit version instead.
-MUSL_FLAGS_64 = $(MUSL_FLAGS_32) \
-  -mbulk-memory \
-  -DBULK_MEMORY_THRESHOLD=32
-
 #
 # clang flags
 #
@@ -154,7 +141,7 @@ RTS_EMSCRIPTEN_64_DEBUG=$(RTS_EMSCRIPTEN_64)
 RTS_EMSCRIPTEN_64_RELEASE=$(RTS_EMSCRIPTEN_64) -O2
 
 #
-# Let make automatically search these directorys (tommath and musl) for .c files
+# Let make automatically search these directories (tommath and musl) for .c files
 #
 
 vpath %.c $(MUSLSRC)/src/math $(MUSLSRC)/src/stdio $(MUSLSRC)/src/string $(MUSLSRC)/src/ctype $(TOMMATHSRC)
@@ -190,23 +177,10 @@ $(TOMMATH_WASM_64_A): $(TOMMATH_WASM_64_O)
 MUSL_WASM_32_O=$(MUSLFILES_32:%=_build/wasm32/musl_%.o)
 MUSL_WASM_32_A=_build/libmusl_wasm32.a
 
-MUSL_WASM_64_O=$(MUSLFILES_64:%=_build/wasm64/musl_%.o)
-MUSL_WASM_64_A=_build/libmusl_wasm64.a
-
 _build/wasm32/musl_%.o: %.c | _build/wasm32
 	$(WASM_CLANG) $(CLANG_FLAGS_32) $(MUSL_FLAGS_32) $< --output $@
 
-_build/wasm64/musl_%.bc: %.c | _build/wasm64
-	$(WASM_CLANG) $(CLANG_FLAGS_64) $(MUSL_FLAGS_64) -emit-llvm $< --output $@
-
-_build/wasm64/musl_%.o: _build/wasm64/musl_%.bc
-	$(RTS_EMSCRIPTEN_64_RELEASE) -o $@ $< 
-
 $(MUSL_WASM_32_A): $(MUSL_WASM_32_O)
-	llvm-ar rcs $@ $^
-	llvm-ranlib $@
-
-$(MUSL_WASM_64_A): $(MUSL_WASM_64_O)
 	llvm-ar rcs $@ $^
 	llvm-ranlib $@
 
@@ -428,8 +402,10 @@ test64: $(TEST_DEPENDENCIES_64)
 
 # These symbols from musl are used by the code generator directly
 
-EXPORTED_SYMBOLS_COMMON=\
+EXPORTED_SYMBOLS=\
   __wasm_call_ctors \
+  memcpy \
+  memcmp \
   tan \
   asin \
   acos \
@@ -442,24 +418,16 @@ EXPORTED_SYMBOLS_COMMON=\
   fmod \
   log
 
-EXPORTED_SYMBOLS_32=$(EXPORTED_SYMBOLS_COMMON) \
-  memcpy \
-  memcmp
-
-EXPORTED_SYMBOLS_64=$(EXPORTED_SYMBOLS_COMMON) \
-  memcmp
-
-
 WASM_A_DEPENDENCIES_32=$(TOMMATH_WASM_32_A) $(MUSL_WASM_32_A)
 LINKER_OPTIONS_32=\
   --import-memory --shared --no-entry --gc-sections \
-  $(EXPORTED_SYMBOLS_32:%=--export=%) \
+  $(EXPORTED_SYMBOLS:%=--export=%) \
   --whole-archive
 
-WASM_A_DEPENDENCIES_64=$(TOMMATH_WASM_64_A) $(MUSL_WASM_64_A)
+WASM_A_DEPENDENCIES_64=$(TOMMATH_WASM_64_A)
 LINKER_OPTIONS_64=\
   -mwasm64 --import-memory --shared --no-entry --gc-sections \
-  $(EXPORTED_SYMBOLS_64:%=--export=%) \
+  $(EXPORTED_SYMBOLS:%=--export=%) \
   --whole-archive
 
 

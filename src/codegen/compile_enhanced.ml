@@ -1140,6 +1140,7 @@ module RTS = struct
     E.add_func_import env "rts" "set_static_variable" [I64Type; I64Type] [];
     E.add_func_import env "rts" "set_upgrade_instructions" [I64Type] [];
     E.add_func_import env "rts" "get_upgrade_instructions" [] [I64Type];
+    E.add_func_import env "rts" "memcpy" [I64Type; I64Type; I64Type] [I64Type]; (* standard libc memcpy *)
     E.add_func_import env "rts" "memcmp" [I64Type; I64Type; I64Type] [I32Type];
     E.add_func_import env "rts" "version" [] [I64Type];
     E.add_func_import env "rts" "parse_idl_header" [I32Type; I64Type; I64Type; I64Type; I64Type] [];
@@ -1376,7 +1377,7 @@ module Heap = struct
 
   (* Convenience functions related to memory *)
   (* Copying bytes (works on unskewed memory addresses) *)
-  let memcpy env = G.i MemoryCopy
+  let memcpy env = E.call_import env "rts" "memcpy" ^^ G.i Drop
   (* Comparing bytes (works on unskewed memory addresses) *)
   let memcmp env = E.call_import env "rts" "memcmp" ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))
 
