@@ -56,7 +56,7 @@ Oftentimes, these goals are difficult to achieve fully or can be in conflict wit
 
 * *Modules.* Motoko also features a simple module system, where modules are essentially a restricted form of object that must be stateless. Modules can contain type definitions, but not (currently) abstract them, i.e., hide their implementation. A Motoko compilation unit is either a module, or a top-level actor or actor class definition that can be imported as if it was contained in a module.
 
-* *Canonical type system.* Motoko's type system, at its core, is a fairly canonical typed lambda calculus with primitive types, labeled products and sums (i.e., objects and variants), first-class function types, polymorphism (i.e., generics), and structural recursive subtyping with top and bottom types. Type theory experts will recognise the close similarity to (Kernel) System F<:. Type checking mostly follows a strict bidirectional discipline, with only a few exceptions regarding optional inference of polymorphic type instantiation, overloaded operators, and multiple passes to account for recursive declarations.
+* *Canonical type system.* Motoko's type system, at its core, is a fairly canonical typed lambda calculus with primitive types, labeled products and sums (i.e., objects and variants), first-class function types, polymorphism (i.e., generics), and structural recursive subtyping with top and bottom types. Type theory experts will recognise the close similarity to (Kernel) System F\<:. Type checking mostly follows a strict bidirectional discipline, with only a few exceptions regarding optional inference of polymorphic type instantiation, overloaded operators, and multiple passes to account for recursive declarations.
 
 * *Shared types.* Motoko distinguishes a subset of types that are "sharable". These are those types whose values can be serialised, compared, or otherwise be inspected transparently. They include primitive types, immutable aggregates (arrays, objects, variants) whose components are shared, and references to actors or shared functions.
 
@@ -413,7 +413,7 @@ The relation `<:infer` infers the rhs type substitution, as for implict type arg
 Challenge: One issue with the above is that `T1` does not generally determine all type parameters of `chain`, particularly the ones only occurring in the result type `T'`. It may be necessary to type-check `exp!` in analysis mode, though that could be inconvenient.
 
 
-#### Bindings in `or`-Patterns
+#### Bindings in `or`-Patterns ([#3807](https://github.com/dfinity/motoko/pull/3807))
 
 When using `or`-patterns, it is possible to bind a variable in the alternatives. This is useful to avoid `case` repetitions:
 ```
@@ -621,7 +621,7 @@ Note: the obvious "solution", namely storing closure environments inside the ori
 
 #### Upgrades and Memory
 
-The most difficult problem to solve in the programming model of the IC by far is the question of safe and robust upgrades. Motoko currently uses the IC's _stable memory_ API to serialise the entire heap of an actor into stable memory before an upgrade, and restore it afterwards. The crucial point of this is that the serialised format is fixed and not dependent on the compiler version. Consequently, it is perfectly fine if the new version of the actor has been compiled with a different (typically newer) compiler version that potentially uses a differen memory layout internally (e.g., a new garbage collector).
+The most difficult problem to solve in the programming model of the IC by far is the question of safe and robust upgrades. Motoko currently uses the IC's _stable memory_ API to serialise the entire heap of an actor into stable memory before an upgrade, and restore it afterwards. The crucial point of this is that the serialised format is fixed and not dependent on the compiler version. Consequently, it is perfectly fine if the new version of the actor has been compiled with a different (typically newer) compiler version that potentially uses a different memory layout internally (e.g., a new garbage collector).
 
 The drawback is that this serialisation/deserialisation step is expensive. Worse, it may even run out of cycles.
 

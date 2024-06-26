@@ -29,3 +29,7 @@ pub unsafe extern "C" fn legacy_memcpy(to: usize, from: usize, n: Bytes<u32>) {
 pub unsafe extern "C" fn legacy_memset(dest: usize, c: i32, n: Bytes<u32>) {
     libc::memset(dest as *mut _, c, n.as_usize());
 }
+
+pub(crate) unsafe fn memzero_bytes(to: usize, n: Bytes<u32>) {
+    libc::memset(to as *mut _, 0, n.as_usize());
+}

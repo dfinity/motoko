@@ -1,0 +1,4 @@
+async-obj-mut.mo:8.11-8.12: warning [M0194], unused identifier b (delete or rename to wildcard `_` or `_b`)
+async-obj-mut.mo:9.11-9.12: warning [M0194], unused identifier c (delete or rename to wildcard `_` or `_c`)
+async-obj-mut.mo:11.11-11.12: warning [M0194], unused identifier e (delete or rename to wildcard `_` or `_e`)
+async-obj-mut.mo:12.11-12.12: warning [M0194], unused identifier f (delete or rename to wildcard `_` or `_f`)

@@ -361,7 +361,7 @@ is rejected because, once annotated:
   }
 ```
 
-since `$1 <> $` and `$2` <> `$`.
+since `$1 <> $` and `$2` \<\> `$`.
 
 ### Imperative deadlock
 

@@ -13,11 +13,11 @@ var @cycles : Nat = 0;
 
 // Function called by backend to add funds to call.
 // DO NOT RENAME without modifying compilation.
-func @add_cycles() {
+func @add_cycles<system>() {
   let cycles = @cycles;
   @reset_cycles();
   if (cycles != 0) {
-    (prim "cyclesAdd" : (Nat) -> ()) (cycles);
+    (prim "cyclesAdd" : Nat -> ()) (cycles);
   }
 };
 
@@ -581,7 +581,7 @@ func @timer_helper() : async () {
 
 var @lastTimerId = 0;
 
-func @setTimer(delayNanos : Nat64, recurring : Bool, job : () -> async ()) : (id : Nat) {
+func @setTimer<system>(delayNanos : Nat64, recurring : Bool, job : () -> async ()) : (id : Nat) {
   @lastTimerId += 1;
   let id = @lastTimerId;
   let now = (prim "time" : () -> Nat64) ();

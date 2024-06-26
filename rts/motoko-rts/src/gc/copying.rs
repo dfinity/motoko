@@ -36,6 +36,7 @@ unsafe fn copying_gc<M: Memory>(mem: &mut M) {
         |hp| linear_memory::set_hp_unskewed(hp),
         ic::get_static_roots(),
         crate::continuation_table::continuation_table_loc(),
+        crate::region::region0_get_ptr_loc(),
         // note_live_size
         |live_size| ic::MAX_LIVE = ::core::cmp::max(ic::MAX_LIVE, live_size),
         // note_reclaimed
@@ -58,6 +59,7 @@ pub unsafe fn copying_gc_internal<
     mut set_hp: SetHp,
     static_roots: Value,
     continuation_table_ptr_loc: *mut Value,
+    region0_ptr_loc: *mut Value,
     note_live_size: NoteLiveSize,
     note_reclaimed: NoteReclaimed,
 ) {
@@ -76,6 +78,16 @@ pub unsafe fn copying_gc_internal<
             begin_from_space,
             begin_to_space,
             continuation_table_ptr_loc as usize,
+        );
+    }
+
+    if (*region0_ptr_loc).is_ptr() {
+        // Region0 is not always a pointer during GC?
+        evac(
+            mem,
+            begin_from_space,
+            begin_to_space,
+            region0_ptr_loc as usize,
         );
     }
 

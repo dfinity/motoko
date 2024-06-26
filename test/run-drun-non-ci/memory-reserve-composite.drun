@@ -1,0 +1,6 @@
+# INCREMENTAL-GC-ONLY
+# SKIP ic-ref-run
+install $ID memory-reserve-composite/memory-reserve-composite.mo ""
+ingress $ID prepare1 "DIDL\x00\x00"
+ingress $ID prepare2 "DIDL\x00\x00"
+query $ID allocateInCompositeQuery "DIDL\x00\x00"

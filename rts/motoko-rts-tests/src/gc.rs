@@ -142,6 +142,7 @@ fn test_gc(
         heap.heap_base_offset(),
         heap.heap_ptr_offset(),
         heap.continuation_table_ptr_offset(),
+        heap.region0_ptr_offset(),
     );
 
     for round in 0..3 {
@@ -150,6 +151,7 @@ fn test_gc(
         let heap_base_offset = heap.heap_base_offset();
         let heap_ptr_offset = heap.heap_ptr_offset();
         let continuation_table_ptr_offset = heap.continuation_table_ptr_offset();
+        let region0_ptr_offset = heap.region0_ptr_offset();
         check_dynamic_heap(
             check_all_reclaimed, // check for unreachable objects
             refs,
@@ -159,6 +161,7 @@ fn test_gc(
             heap_base_offset,
             heap_ptr_offset,
             continuation_table_ptr_offset,
+            region0_ptr_offset,
         );
     }
 }
@@ -214,6 +217,7 @@ fn check_dynamic_heap(
     heap_base_offset: usize,
     heap_ptr_offset: usize,
     continuation_table_ptr_offset: usize,
+    region0_ptr_offset: usize,
 ) {
     let incremental = cfg!(feature = "incremental_gc");
     let objects_map: FxHashMap<ObjectIdx, &[ObjectIdx]> = objects
@@ -229,6 +233,8 @@ fn check_dynamic_heap(
 
     let continuation_table_addr = unskew_pointer(read_word(heap, continuation_table_ptr_offset));
     let continuation_table_offset = continuation_table_addr as usize - heap.as_ptr() as usize;
+
+    let region0_addr = unskew_pointer(read_word(heap, region0_ptr_offset));
 
     while offset < heap_ptr_offset {
         let object_offset = offset;
@@ -270,6 +276,13 @@ fn check_dynamic_heap(
                 // in-heap mark stack blobs
                 let length = read_word(heap, offset);
                 offset += WORD_SIZE + length as usize;
+            } else if tag == TAG_REGION {
+                if !is_forwarded {
+                    assert_eq!(address, region0_addr as usize);
+                }
+                offset += (size_of::<Region>() - size_of::<Obj>())
+                    .to_bytes()
+                    .as_usize();
             } else {
                 if incremental {
                     assert!(tag == TAG_ARRAY || tag >= TAG_ARRAY_SLICE_MIN);
@@ -446,6 +459,7 @@ impl GC {
     fn run(&self, heap: &mut MotokoHeap, _round: usize) -> bool {
         let heap_base = heap.heap_base_address();
         let static_roots = Value::from_ptr(heap.static_root_array_address());
+        let mut region_0 = Value::from_scalar(0);
         let continuation_table_ptr_address = heap.continuation_table_ptr_address() as *mut Value;
 
         let heap_1 = heap.clone();
@@ -463,6 +477,7 @@ impl GC {
                         move |hp| heap_2.set_heap_ptr_address(hp as usize),
                         static_roots,
                         continuation_table_ptr_address,
+                        &mut region_0,
                         // note_live_size
                         |_live_size| {},
                         // note_reclaimed
@@ -483,6 +498,7 @@ impl GC {
                         move |hp| heap_2.set_heap_ptr_address(hp as usize),
                         static_roots,
                         continuation_table_ptr_address,
+                        &mut region_0,
                         // note_live_size
                         |_live_size| {},
                         // note_reclaimed
@@ -493,10 +509,12 @@ impl GC {
             }
 
             GC::Generational => {
-                use motoko_rts::gc::generational::{
+                use motoko_rts::gc::{
+                    generational::{
+                        write_barrier::{LAST_HP, REMEMBERED_SET},
+                        GenerationalGC, Strategy,
+                    },
                     remembered_set::RememberedSet,
-                    write_barrier::{LAST_HP, REMEMBERED_SET},
-                    GenerationalGC, Strategy,
                 };
 
                 let strategy = match _round {
@@ -515,6 +533,7 @@ impl GC {
                     let roots = motoko_rts::gc::generational::Roots {
                         static_roots,
                         continuation_table_ptr_loc: continuation_table_ptr_address,
+                        region0_ptr_loc: &mut region_0,
                     };
                     let gc_heap = motoko_rts::gc::generational::Heap {
                         mem: heap,
@@ -536,6 +555,7 @@ impl GC {
     fn run(&self, heap: &mut MotokoHeap, _round: usize) -> bool {
         let static_roots = Value::from_ptr(heap.static_root_array_address());
         let continuation_table_ptr_address = heap.continuation_table_ptr_address() as *mut Value;
+        let region0_ptr_address = heap.region0_ptr_address() as *mut Value;
 
         match self {
             GC::Incremental => unsafe {
@@ -545,6 +565,7 @@ impl GC {
                     let roots = motoko_rts::gc::incremental::roots::Roots {
                         static_roots,
                         continuation_table_location: continuation_table_ptr_address,
+                        region0_ptr_location: region0_ptr_address,
                     };
                     IncrementalGC::instance(heap, incremental_gc_state())
                         .empty_call_stack_increment(roots);

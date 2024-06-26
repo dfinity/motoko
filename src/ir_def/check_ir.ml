@@ -78,8 +78,8 @@ let initial_env flavor : env =
     labs = T.Env.empty;
     rets = None;
     async = Async_cap.(match initial_cap() with
-                       | (NullCap | ErrorCap) -> None
-                       | (QueryCap c | AwaitCap c | AsyncCap c | CompositeCap c | CompositeAwaitCap c) -> Some c);
+                       | NullCap | ErrorCap -> None
+                       | QueryCap c | AwaitCap c | AsyncCap c | CompositeCap c | CompositeAwaitCap c | SystemCap c -> Some c);
     seen = ref T.ConSet.empty;
     check_run;
   }
@@ -451,7 +451,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     | OptPrim, [exp1] ->
       T.Opt (typ exp1) <: t
     | TagPrim i, [exp1] ->
-      T.Variant [{T.lab = i; typ = typ exp1; depr = None}] <: t
+      T.Variant [{T.lab = i; typ = typ exp1; src = T.empty_src}] <: t
     | ActorDotPrim n, [exp1]
     | DotPrim n, [exp1] ->
       begin
@@ -482,20 +482,20 @@ let rec check_exp env (exp:Ir.exp) : unit =
       in
       typ exp2 <: T.nat;
       T.as_immut t2 <: t
-    | GetPastArrayOffset _, [exp1] ->
+    | GetLastArrayOffset, [exp1] ->
       let t1 = T.promote (typ exp1) in
       ignore
         (try T.as_array_sub t1 with
          | Invalid_argument _ ->
            error env exp1.at "expected array type, but expression produces type\n  %s"
              (T.string_of_typ_expand t1));
-      T.nat <: t
-    | NextArrayOffset _, [exp1] ->
+      T.int <: t
+    | NextArrayOffset, [exp1] ->
       typ exp1 <: T.nat;
       T.nat <: t
-    | ValidArrayOffset, [exp1; exp2] ->
-      typ exp1 <: T.nat;
-      typ exp2 <: T.nat;
+    | EqArrayOffset, [exp1; exp2] ->
+      typ exp1 <: T.int;
+      typ exp2 <: T.int;
       T.bool <: t
     | BreakPrim id, [exp1] ->
       begin
@@ -1037,7 +1037,7 @@ and check_pat_fields env t = List.iter (check_pat_field env t)
 
 and check_pat_field env t (pf : pat_field) =
   let lab = pf.it.name in
-  let tf = T.{lab; typ = pf.it.pat.note; depr = None} in
+  let tf = T.{lab; typ = pf.it.pat.note; src = empty_src} in
   let s, tfs = T.as_obj_sub [lab] t in
   let (<:) = check_sub env pf.it.pat.at in
   t <: T.Obj (s, [tf]);
@@ -1072,7 +1072,7 @@ and type_exp_field env s f : T.field =
     check env f.at ((s = T.Actor) ==> T.is_shared_func t)
       "public actor field must have shared function type";
   end;
-  T.{lab = name; typ = t; depr = None}
+  T.{lab = name; typ = t; src = empty_src}
 
 (* Declarations *)
 

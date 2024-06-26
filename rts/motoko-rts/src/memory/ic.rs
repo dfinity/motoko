@@ -16,6 +16,7 @@ use motoko_rts_macros::*;
 extern "C" {
     fn get_heap_base() -> usize;
     pub(crate) fn get_static_roots() -> Value;
+    fn keep_memory_reserve() -> bool;
 }
 
 pub(crate) unsafe fn get_aligned_heap_base() -> usize {
@@ -35,12 +36,21 @@ unsafe extern "C" fn get_max_live_size() -> Bytes<u32> {
 /// `Memory` implementation allocates in Wasm heap with Wasm `memory.grow` instruction.
 pub struct IcMemory;
 
-/// Page allocation. Ensures that the memory up to, but excluding, the given pointer is allocated,
-/// with the slight exception of not allocating the extra page for address 0xFFFF_0000.
-unsafe fn grow_memory(ptr: u64) {
-    debug_assert_eq!(0xFFFF_0000, usize::MAX - WASM_PAGE_SIZE.as_usize() + 1);
-    if ptr > 0xFFFF_0000 {
-        // spare the last wasm memory page
+/// Page allocation. Ensures that the memory up to, but excluding, the given pointer is allocated.
+/// Ensure a memory reserve of at least one Wasm page depending on the canister state.
+/// `memory_reserve`: A memory reserve in bytes ensured during update and initialization calls.
+//  For use by queries and upgrade calls. The reserve may vary depending on the GC and the phase of the GC.
+unsafe fn grow_memory(ptr: u64, memory_reserve: usize) {
+    const LAST_PAGE_LIMIT: usize = 0xFFFF_0000;
+    debug_assert_eq!(LAST_PAGE_LIMIT, usize::MAX - WASM_PAGE_SIZE.as_usize() + 1);
+    let limit = if keep_memory_reserve() {
+        // Spare a memory reserve during update and initialization calls for use by queries and upgrades.
+        usize::MAX - memory_reserve + 1
+    } else {
+        // Spare the last Wasm memory page on queries and upgrades to support the Rust call stack boundary checks.
+        LAST_PAGE_LIMIT
+    };
+    if ptr > limit as u64 {
         rts_trap_with("Cannot grow memory")
     };
     let page_size = u64::from(WASM_PAGE_SIZE.as_u32());

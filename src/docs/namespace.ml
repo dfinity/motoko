@@ -32,7 +32,7 @@ let from_module =
         | Syntax.ExpD _ -> acc
         | Syntax.LetD
             ( { it = Syntax.VarP id; _ },
-              { it = Syntax.ObjBlockE (_, decs); _ },
+              { it = Syntax.ObjBlockE (_, _, decs); _ },
               _ ) ->
             let mk_nested x = mk_xref (Xref.XNested (id.it, x)) in
             {

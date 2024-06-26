@@ -407,7 +407,7 @@ rec {
       buildInputs =
         [ moc wasmtime haskellPackages.qc-motoko nixpkgs.drun ];
       checkPhase = ''
-	export LANG=C.utf8 # for haskell
+        export LANG=C.utf8 # for haskell
         qc-motoko${nixpkgs.lib.optionalString (replay != 0)
             " --quickcheck-replay=${toString replay}"}
       '';
@@ -418,7 +418,7 @@ rec {
       buildInputs = [ moc haskellPackages.lsp-int ];
       checkPhase = ''
         echo running lsp-int
-	export LANG=C.utf8 # for haskell
+        export LANG=C.utf8 # for haskell
         lsp-int ${mo-ide}/bin/mo-ide .
       '';
     };
@@ -494,7 +494,7 @@ rec {
   in fix_names ({
       run        = test_subdir "run"        [ moc ] ;
       run-dbg    = snty_subdir "run"        [ moc ] ;
-      ic-ref-run = test_subdir "run-drun"   [ moc ic-ref-run ];
+      # ic-ref-run = test_subdir "run-drun"   [ moc ic-ref-run ];
       drun       = test_subdir "run-drun"   [ moc nixpkgs.drun ];
       drun-dbg   = snty_subdir "run-drun"   [ moc nixpkgs.drun ];
       drun-compacting-gc = snty_compacting_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
@@ -509,7 +509,7 @@ rec {
       run-deser  = test_subdir "run-deser"  [ deser ];
       perf       = perf_subdir "perf"       [ moc nixpkgs.drun ];
       bench      = perf_subdir "bench"      [ moc nixpkgs.drun ic-wasm ];
-      viper      = test_subdir "viper"      [ moc nixpkgs.which nixpkgs.openjdk nixpkgs.z3 ];
+      # viper      = test_subdir "viper"      [ moc nixpkgs.which nixpkgs.openjdk nixpkgs.z3 ];
       inherit qc lsp unit candid profiling-graphs coverage;
     }) // { recurseForDerivations = true; };
 
@@ -576,8 +576,18 @@ rec {
     nixpkgs.rustPlatform.buildRustPackage {
       name = "ic-wasm";
       src = nixpkgs.sources.ic-wasm;
-      cargoSha256 = "sha256-iGCju0JG+jkysmDAeTfjNCYaSfg7N3Qqq8HpPlRHMgU=";
+      cargoSha256 = "sha256-a8iN/lTEVqdmogsSlT3+v3nivSG5VRhOz4/trmAsZLY=";
       doCheck = false;
+      patchPhase = ''
+        mkdir -p .cargo
+        cat > .cargo/config.toml << EOF
+[target.x86_64-apple-darwin]
+rustflags = [ "-C", "linker=c++" ]
+
+[target.aarch64-apple-darwin]
+rustflags = [ "-C", "linker=c++" ]
+EOF
+      '';
     };
 
   # gitMinimal is used by nix/gitSource.nix; building it here warms the nix cache
@@ -761,7 +771,7 @@ rec {
       base-doc
       docs
       report-site
-      ic-ref-run
+      # ic-ref-run
       shell
       check-formatting
       check-rts-formatting

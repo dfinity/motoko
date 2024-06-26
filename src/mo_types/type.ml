@@ -38,6 +38,7 @@ type prim =
   | Blob (* IR use: Packed representation, vec u8 IDL type *)
   | Error
   | Principal
+  | Region
 
 type t = typ
 and typ =
@@ -61,12 +62,15 @@ and scope = typ
 and bind_sort = Scope | Type
 
 and bind = {var : var; sort: bind_sort; bound : typ}
-and field = {lab : lab; typ : typ; depr : string option}
+and src = {depr : string option; region : Source.region}
+and field = {lab : lab; typ : typ; src : src}
 
 and con = kind Cons.t
 and kind =
   | Def of bind list * typ
   | Abs of bind list * typ
+
+let empty_src = {depr = None; region = Source.no_region}
 
 (* Efficient comparison *)
 let tag_prim = function
@@ -88,6 +92,7 @@ let tag_prim = function
   | Blob -> 15
   | Error -> 16
   | Principal -> 17
+  | Region -> 18
 
 let tag_func_sort = function
   | Local -> 0
@@ -153,10 +158,10 @@ let compare_bind_sort s1 s2 =
   | Type, Scope -> -1
   | Scope, Type -> 1
 
-let compare_depr d1 d2 =
-  match (d1, d2) with
+let compare_src s1 s2 =
+  match (s1.depr, s2.depr) with
   | None, None -> 0
-  | Some s1, Some s2 -> String.compare s1 s2
+  | Some d1, Some d2 -> String.compare d1 d2
   | None, Some _ -> -1
   | _ -> 1
 
@@ -234,7 +239,7 @@ and compare_fld fld1 fld2 =
   match String.compare fld1.lab fld2.lab with
   | 0 ->
     (match compare_typ fld1.typ fld2.typ with
-     | 0 -> compare_depr fld1.depr fld2.depr
+     | 0 -> compare_src fld1.src fld2.src
      | ord -> ord)
   | ord -> ord
 
@@ -314,10 +319,11 @@ let blob = Prim Blob
 let error = Prim Error
 let char = Prim Char
 let principal = Prim Principal
+let region = Prim Region
 
 let fields flds =
   List.sort compare_field
-    (List.map (fun (lab, typ) -> {lab; typ; depr = None}) flds)
+    (List.map (fun (lab, typ) -> {lab; typ; src = empty_src}) flds)
 
 let obj sort flds =
   Obj (sort, fields flds)
@@ -326,19 +332,19 @@ let sum flds =
   Variant (fields flds)
 
 let throwErrorCodes = List.sort compare_field [
-  { lab = "canister_reject"; typ = unit; depr = None}
+  { lab = "canister_reject"; typ = unit; src = empty_src}
 ]
 
-let call_error = Obj(Object,[{ lab = "err_code"; typ = Prim Nat32; depr = None }])
+let call_error = Obj(Object,[{ lab = "err_code"; typ = Prim Nat32; src = empty_src}])
 
 let catchErrorCodes = List.sort compare_field (
   throwErrorCodes @ [
-    { lab = "system_fatal"; typ = unit; depr = None};
-    { lab = "system_transient"; typ = unit; depr = None};
-    { lab = "destination_invalid"; typ = unit; depr = None};
-    { lab = "canister_error"; typ = unit; depr = None};
-    { lab = "future"; typ = Prim Nat32; depr = None};
-    { lab = "call_error"; typ = call_error; depr = None};
+    { lab = "system_fatal"; typ = unit; src = empty_src};
+    { lab = "system_transient"; typ = unit; src = empty_src};
+    { lab = "destination_invalid"; typ = unit; src = empty_src};
+    { lab = "canister_error"; typ = unit; src = empty_src};
+    { lab = "future"; typ = Prim Nat32; src = empty_src};
+    { lab = "call_error"; typ = call_error; src = empty_src};
   ])
 
 let throw = Prim Error
@@ -347,7 +353,7 @@ let catch = Prim Error
 (* Shared call context *)
 
 let caller = principal
-let ctxt = Obj (Object,[{ lab = "caller"; typ = caller; depr = None}])
+let ctxt = Obj (Object,[{ lab = "caller"; typ = caller; src = empty_src}])
 
 let prim = function
   | "Null" -> Null
@@ -368,6 +374,7 @@ let prim = function
   | "Blob" -> Blob
   | "Error" -> Error
   | "Principal" -> Principal
+  | "Region" -> Region
   | s -> raise (Invalid_argument ("Type.prim: " ^ s))
 
 let seq = function [t] -> t | ts -> Tup ts
@@ -381,7 +388,7 @@ let codom c to_scope ts2 =  match c with
 
 let iter_obj t =
   Obj (Object,
-    [{lab = "next"; typ = Func (Local, Returns, [], [], [Opt t]); depr = None}])
+    [{lab = "next"; typ = Func (Local, Returns, [], [], [Opt t]); src = empty_src}])
 
 
 (* Shifting *)
@@ -409,8 +416,8 @@ let rec shift i n t =
 and shift_bind i n tb =
   {tb with bound = shift i n tb.bound}
 
-and shift_field i n {lab; typ; depr} =
-  {lab; typ = shift i n typ; depr}
+and shift_field i n {lab; typ; src} =
+  {lab; typ = shift i n typ; src}
 
 (*
 and shift_kind i n k =
@@ -460,8 +467,8 @@ let rec subst sigma t =
 and subst_bind sigma tb =
   { tb with bound = subst sigma tb.bound}
 
-and subst_field sigma {lab; typ; depr} =
-  {lab; typ = subst sigma typ; depr}
+and subst_field sigma {lab; typ; src} =
+  {lab; typ = subst sigma typ; src}
 
 (*
 and subst_kind sigma k =
@@ -510,8 +517,8 @@ let rec open' i ts t =
 and open_bind i ts tb  =
   {tb with bound = open' i ts tb.bound}
 
-and open_field i ts {lab; typ; depr} =
-  {lab; typ = open' i ts typ; depr}
+and open_field i ts {lab; typ; src} =
+  {lab; typ = open' i ts typ; src}
 
 (*
 and open_kind i ts k =
@@ -615,11 +622,11 @@ let as_prim_sub p t = match promote t with
   | _ -> invalid "as_prim_sub"
 let as_obj_sub ls t = match promote t with
   | Obj (s, tfs) -> s, tfs
-  | Non -> Object, List.map (fun l -> {lab = l; typ = Non; depr = None}) ls
+  | Non -> Object, List.map (fun l -> {lab = l; typ = Non; src = empty_src}) ls
   | _ -> invalid "as_obj_sub"
 let as_variant_sub l t = match promote t with
   | Variant tfs -> tfs
-  | Non -> [{lab = l; typ = Non; depr = None}]
+  | Non -> [{lab = l; typ = Non; src = empty_src}]
   | _ -> invalid "as_variant_sub"
 let as_array_sub t = match promote t with
   | Array t -> t
@@ -687,13 +694,13 @@ let lookup_typ_field l tfs =
 let lookup_val_deprecation l tfs =
   let is_lab = function {typ = Typ _; _} -> false | {lab; _} -> lab = l in
   match List.find_opt is_lab tfs with
-  | Some tf -> tf.depr
+  | Some {src = {depr; _}; _} -> depr
   | None -> invalid "lookup_val_deprecation"
 
 let lookup_typ_deprecation l tfs =
   let is_lab = function {typ = Typ _; lab; _} -> lab = l | _ -> false in
   match List.find_opt is_lab tfs with
-  | Some tf -> tf.depr
+  | Some {src = {depr; _}; _} -> depr
   | _ -> invalid "lookup_typ_deprecation"
 
 
@@ -704,7 +711,7 @@ let rec span = function
   | Con _ as t -> span (promote t)
   | Prim Null -> Some 1
   | Prim Bool -> Some 2
-  | Prim (Nat | Int | Float | Text | Blob | Error | Principal) -> None
+  | Prim (Nat | Int | Float | Text | Blob | Error | Principal | Region) -> None
   | Prim (Nat8 | Int8) -> Some 0x100
   | Prim (Nat16 | Int16) -> Some 0x10000
   | Prim (Nat32 | Int32 | Nat64 | Int64 | Char) -> None  (* for all practical purposes *)
@@ -755,7 +762,7 @@ and cons_con inTyp c cs =
 and cons_bind inTyp tb cs =
   cons' inTyp tb.bound cs
 
-and cons_field inTyp {lab; typ; depr} cs =
+and cons_field inTyp {lab; typ; src} cs =
   cons' inTyp typ cs
 
 and cons_kind' inTyp k cs =
@@ -813,6 +820,7 @@ let serializable allow_mut t =
       match t with
       | Var _ | Pre -> assert false
       | Prim Error -> false
+      | Prim Region -> allow_mut (* stable, but not shared *)
       | Any | Non | Prim _ | Typ _ -> true
       | Async _ -> false
       | Mut t -> allow_mut && go t
@@ -1297,7 +1305,7 @@ and combine_fields rel lubs glbs fs1 fs2 =
     | _ ->
       match combine rel lubs glbs f1.typ f2.typ with
       | typ ->
-       {lab = f1.lab; typ; depr = None} :: combine_fields rel lubs glbs fs1' fs2'
+       {lab = f1.lab; typ; src = empty_src} :: combine_fields rel lubs glbs fs1' fs2'
       | exception Mismatch when rel == lubs ->
         combine_fields rel lubs glbs fs1' fs2'
 
@@ -1311,7 +1319,7 @@ and combine_tags rel lubs glbs fs1 fs2 =
     | +1 -> cons_if (rel == lubs) f2 (combine_tags rel lubs glbs fs1 fs2')
     | _ ->
       let typ = combine rel lubs glbs f1.typ f2.typ in
-      {lab = f1.lab; typ; depr = None} :: combine_tags rel lubs glbs fs1' fs2'
+      {lab = f1.lab; typ; src = empty_src} :: combine_tags rel lubs glbs fs1' fs2'
 
 let lub t1 t2 = let lubs = ref M.empty in combine lubs lubs (ref M.empty) t1 t2
 let glb t1 t2 = let glbs = ref M.empty in combine glbs (ref M.empty) glbs t1 t2
@@ -1333,27 +1341,27 @@ let scope_bind = { var = default_scope_var; sort = Scope; bound = scope_bound }
 let motoko_async_helper_fld =
   { lab = "__motoko_async_helper";
     typ = Func(Shared Write, Promises, [scope_bind], [Prim Nat32], []);
-    depr = None;
+    src = empty_src;
   }
 
 let motoko_stable_var_info_fld =
   { lab = "__motoko_stable_var_info";
     typ =
       Func(Shared Query, Promises, [scope_bind], [],
-        [ Obj(Object, [{lab = "size"; typ = nat64; depr = None}]) ]);
-    depr = None;
+        [ Obj(Object, [{lab = "size"; typ = nat64; src = empty_src}]) ]);
+    src = empty_src;
   }
 
-let get_candid_interface_fld =
-  { lab = "__get_candid_interface_tmp_hack";
-    typ = Func(Shared Query, Promises, [scope_bind], [], [text]);
-    depr = None;
+let motoko_gc_trigger_fld =
+  { lab = "__motoko_gc_trigger";
+    typ = Func(Shared Write, Promises, [scope_bind], [], []);
+    src = empty_src;
   }
 
 let well_known_actor_fields = [
     motoko_async_helper_fld;
     motoko_stable_var_info_fld;
-    get_candid_interface_fld
+    motoko_gc_trigger_fld;
   ]
 
 let decode_msg_typ tfs =
@@ -1365,7 +1373,7 @@ let decode_msg_typ tfs =
            typ =
              Func(Local, Returns, [], [],
                List.map (open_ (List.map (fun _ -> Non) tbs)) ts1);
-           depr = None }
+           src = empty_src }
        | _ -> None)
      tfs))
 
@@ -1418,6 +1426,7 @@ let string_of_prim = function
   | Blob -> "Blob"
   | Error -> "Error"
   | Principal -> "Principal"
+  | Region -> "Region"
 
 let string_of_obj_sort = function
   | Object -> ""
@@ -1500,7 +1509,7 @@ and can_omit n t =
     | Obj (_, fs) | Variant fs -> List.for_all (fun f -> go i f.typ) fs
     | Func (s, c, tbs, ts1, ts2) ->
       let i' = i+List.length tbs in
-      List.for_all (fun tb -> (go i' tb.bound)) tbs &&
+      List.for_all (fun tb -> go i' tb.bound) tbs &&
       List.for_all (go i') ts1 &&
       List.for_all (go i') ts2
     | Typ c -> true (* assumes type defs are closed *)
@@ -1593,14 +1602,16 @@ and pp_typ_nobin vs ppf t =
       if sugar then
         List.tl vs', List.tl tbs
       else
-        vs', tbs
+        match tbs with
+        | { sort = Scope; _ } :: _ -> ("system", List.hd vs' |> snd) :: List.tl vs', tbs
+        | _ -> vs', tbs
     in
     let vs'vs = vs' @ vs in
     fprintf ppf "@[<2>%s%a%a ->@ %a@]"
       (string_of_func_sort s)
-      (pp_binds (vs'vs) vs'') tbs'
-      (sequence (pp_typ_un (vs'vs))) ts1
-      (pp_control_cod sugar c (vs'vs)) ts2
+      (pp_binds vs'vs vs'') tbs'
+      (sequence (pp_typ_un vs'vs)) ts1
+      (pp_control_cod sugar c vs'vs) ts2
   | t ->
      pp_typ_pre vs ppf t
 
@@ -1626,7 +1637,7 @@ and pp_typ' vs ppf t =
   (* No cases for syntactic _ And _ & _ Or _ (already desugared) *)
   | t -> pp_typ_nobin vs ppf t
 
-and pp_field vs ppf {lab; typ; depr} =
+and pp_field vs ppf {lab; typ; src} =
   match typ with
   | Typ c ->
     let op, sbs, st = pps_of_kind' vs (Cons.kind c) in
@@ -1636,14 +1647,14 @@ and pp_field vs ppf {lab; typ; depr} =
   | _ ->
     fprintf ppf "@[<2>%s :@ %a@]" lab (pp_typ' vs) typ
 
-and pp_stab_field vs ppf {lab; typ; depr} =
+and pp_stab_field vs ppf {lab; typ; src} =
   match typ with
   | Mut t' ->
     fprintf ppf "@[<2>stable var %s :@ %a@]" lab (pp_typ' vs) t'
   | _ ->
     fprintf ppf "@[<2>stable %s :@ %a@]" lab (pp_typ' vs) typ
 
-and pp_tag vs ppf {lab; typ; depr} =
+and pp_tag vs ppf {lab; typ; src} =
   match typ with
   | Tup [] -> fprintf ppf "#%s" lab
   | _ ->
@@ -1656,7 +1667,7 @@ and vars_of_binds vs bs =
 and name_of_var vs v =
   match vs with
   | [] -> v
-  | v'::vs' -> name_of_var vs' (if (fst v) = (fst v') then (fst v, snd v + 1) else v)
+  | v'::vs' -> name_of_var vs' (if fst v = fst v' then (fst v, snd v + 1) else v)
 
 and pp_bind vs ppf (v, {bound; _}) =
   if bound = Any then
@@ -1719,7 +1730,7 @@ and pp_stab_sig ppf sig_ =
       (List.map (fun c ->
         { lab = string_of_con c;
           typ = Typ c;
-          depr = None }) ds)
+          src = empty_src }) ds)
   in
   let pp_stab_fields ppf sig_ =
     fprintf ppf "@[<v 2>%s{@;<0 0>%a@;<0 -2>}@]"

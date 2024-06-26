@@ -94,6 +94,7 @@ let pick_val vs = function
   | T.Blob
   | T.Error
   | T.Principal
+  | T.Region
   | T.Float -> Any
 
 let rec expand_notval t n vs : desc list =
@@ -125,7 +126,7 @@ let rec expand_nottag tfs n ls : desc list =
 (* TODO: pretty print *)
 let rec string_of_desc t = function
   | Any -> "_"
-  | Val v -> V.string_of_val 100 v
+  | Val v -> V.string_of_val 100 t v
   | NotVal vs -> string_of_descs t (expand_notval (T.promote t) 0 vs)
   | Tup descs ->
     let ts = T.as_tup_sub (List.length descs) t in
@@ -140,7 +141,7 @@ let rec string_of_desc t = function
   | Tag (desc, l) ->
     let t' = T.lookup_val_field l (T.as_variant_sub l t) in
     if T.sub t' T.unit then "#" ^ l
-    else if T.is_tup t' then "#" ^ l ^ string_of_desc t' desc
+    else if T.is_tup t' then "#" ^ l ^ " " ^ string_of_desc t' desc
     else "#" ^ l ^ "(" ^ string_of_desc t' desc ^ ")"
   | NotTag ls ->
     let tfs = T.as_variant (T.promote t) in

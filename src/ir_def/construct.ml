@@ -95,9 +95,9 @@ let primE prim es =
     | ICStableSize _ -> T.nat64
     | IdxPrim
     | DerefArrayOffset -> T.(as_immut (as_array_sub (List.hd es).note.Note.typ))
-    | ValidArrayOffset -> T.bool
-    | NextArrayOffset _
-    | GetPastArrayOffset _ -> T.nat
+    | EqArrayOffset -> T.bool
+    | NextArrayOffset -> T.nat
+    | GetLastArrayOffset -> T.int
     | IcUrlOfBlob -> T.text
     | ActorOfIdBlob t -> t
     | BinPrim (t, _) -> t
@@ -220,7 +220,7 @@ let optE e =
 
 let tagE i e =
  { it = PrimE (TagPrim i, [e]);
-   note = Note.{ def with typ = T.Variant [{T.lab = i; typ = typ e; depr = None}]; eff = eff e };
+   note = Note.{ def with typ = T.Variant [{T.lab = i; typ = typ e; src = T.empty_src}]; eff = eff e };
    at = no_region;
  }
 
@@ -263,6 +263,12 @@ let natE n =
   { it = LitE (NatLit n);
     at = no_region;
     note = Note.{ def with typ = T.nat }
+  }
+
+let intE n =
+  { it = LitE (IntLit n);
+    at = no_region;
+    note = Note.{ def with typ = T.int }
   }
 
 let textE s =

@@ -8,6 +8,11 @@
     proc_macro_hygiene
 )]
 
+// c.f. https://os.phil-opp.com/heap-allocation/#dynamic-memory
+extern crate alloc;
+#[cfg(feature = "ic")]
+pub mod allocator;
+
 #[macro_use]
 mod print;
 
@@ -32,6 +37,9 @@ pub mod leb128;
 pub mod mem_utils;
 pub mod memory;
 pub mod principal_id;
+pub mod region;
+//#[cfg(feature = "ic")]
+mod stable_mem;
 mod static_checks;
 pub mod stream;
 pub mod text;

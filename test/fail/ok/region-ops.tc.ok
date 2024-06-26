@@ -1,0 +1,22 @@
+region-ops.mo:4.3-4.11: type error [M0060], operator is not defined for operand types
+  Region
+and
+  Region
+region-ops.mo:8.3-8.11: type error [M0060], operator is not defined for operand types
+  Region
+and
+  Region
+region-ops.mo:12.3-12.13: type error [M0060], operator is not defined for operand types
+  ?Region
+and
+  ?Region
+region-ops.mo:16.3-16.13: type error [M0060], operator is not defined for operand types
+  ?Region
+and
+  ?Region
+region-ops.mo:20.3-20.15: type error [M0173], to_candid argument must have shared type, but instead has non-shared type
+  Region
+region-ops.mo:24.20-24.33: type error [M0174], from_candid produces an optional shared type, not type
+  ?Region
+region-ops.mo:28.19-28.25: type error [M0033], async has non-shared content type
+  Region

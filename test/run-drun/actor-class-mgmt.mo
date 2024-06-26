@@ -70,24 +70,24 @@ actor a {
       await Cycles.provisional_top_up_actor(a, 100_000_000_000_000);
 
     do {
-      Cycles.add(2_000_000_000_000);
+      Cycles.add<system>(2_000_000_000_000);
       let c0 = await
         Cs.C (0, ?(Prim.principalOfActor a));
       assert ({args = 0; upgrades = 0} == (await c0.observe()));
 
-      Cycles.add(2_000_000_000_000);
+      Cycles.add<system>(2_000_000_000_000);
       let c1 = await
         (system Cs.C)(#new default_settings)(1, null);
       assert ({args = 1; upgrades = 0} == (await c1.observe()));
       assert (c1 != c0);
 
-      Cycles.add(2_000_000_000_000);
+      Cycles.add<system>(2_000_000_000_000);
       let c2 = await
         (system Cs.C)(#new settings)(2, null);
       assert ({args = 2; upgrades = 0} == (await c2.observe()));
       assert (c2 != c1);
 
-      Cycles.add(2_000_000_000_000);
+      Cycles.add<system>(2_000_000_000_000);
       let {canister_id = p} = await
          ic00.create_canister default_settings;
       // no need to add cycles

@@ -41,8 +41,11 @@
 use core::{array::from_fn, ops::Range, ptr::null_mut};
 
 use crate::{
-    constants::WASM_MEMORY_BYTE_SIZE, gc::incremental::mark_bitmap::BITMAP_ITERATION_END,
-    memory::Memory, rts_trap_with, types::*,
+    constants::{MB, WASM_MEMORY_BYTE_SIZE},
+    gc::incremental::mark_bitmap::BITMAP_ITERATION_END,
+    memory::Memory,
+    rts_trap_with,
+    types::*,
 };
 
 use super::{
@@ -57,7 +60,7 @@ use super::{
 ///    due to the increased frequency of large object handling.
 /// -> Large partitions above 32 MB are a waste for small programs, since the WASM memory is
 ///    allocated in that granularity and GC is then triggered later.
-pub const PARTITION_SIZE: usize = 32 * 1024 * 1024;
+pub const PARTITION_SIZE: usize = 32 * MB;
 
 /// Total number of partitions in the memory.
 /// For simplicity, the last partition is left unused, to avoid a numeric overflow when
@@ -354,6 +357,7 @@ pub struct PartitionedHeap {
     bitmap_allocation_pointer: usize, // Free pointer for allocating the next mark bitmap.
     gc_running: bool, // Create bitmaps for partitions when allocated during active GC.
     precomputed_heap_size: usize, // Occupied heap size, excluding the dynamic heap in the allocation partition.
+    evacuated_size: usize, // Size of all evacuated objects during a GC run. Serves for accurate total allocation statistics.
 }
 
 /// Optimization: Avoiding `Option` or `LazyCell`.
@@ -367,6 +371,7 @@ pub const UNINITIALIZED_HEAP: PartitionedHeap = PartitionedHeap {
     bitmap_allocation_pointer: 0,
     gc_running: false,
     precomputed_heap_size: 0,
+    evacuated_size: 0,
 };
 
 impl PartitionedHeap {
@@ -403,6 +408,7 @@ impl PartitionedHeap {
             bitmap_allocation_pointer: 0,
             gc_running: false,
             precomputed_heap_size: heap_base,
+            evacuated_size: 0,
         }
     }
 
@@ -526,6 +532,7 @@ impl PartitionedHeap {
                 evacuation_space -= partition.marked_size();
                 partition.evacuate = true;
                 self.evacuating = true;
+                debug_assert_eq!(self.evacuated_size, 0);
             }
         }
     }
@@ -566,6 +573,7 @@ impl PartitionedHeap {
             }
         }
         self.evacuating = false;
+        self.evacuated_size = 0;
         self.bitmap_allocation_pointer = 0;
         debug_assert!(self.gc_running);
         self.gc_running = false;
@@ -629,6 +637,16 @@ impl PartitionedHeap {
 
     pub fn reclaimed_size(&self) -> Bytes<u64> {
         Bytes(self.reclaimed)
+    }
+
+    pub fn increase_evacuated_size(&mut self, size: Words<u32>) {
+        self.evacuated_size += size.to_bytes().as_usize();
+    }
+
+    pub fn total_allocated_size(&self) -> Bytes<u64> {
+        debug_assert!(self.evacuated_size <= self.occupied_size().as_usize());
+        let heap_size_without_evacuations = self.occupied_size().as_usize() - self.evacuated_size;
+        Bytes(heap_size_without_evacuations as u64) + self.reclaimed_size()
     }
 
     pub unsafe fn allocate<M: Memory>(&mut self, mem: &mut M, words: Words<u32>) -> Value {

@@ -8,7 +8,7 @@ unsafe extern "C" fn get_reclaimed() -> Bytes<u64> {
 
 #[no_mangle]
 pub unsafe extern "C" fn get_total_allocations() -> Bytes<u64> {
-    Bytes(u64::from(get_heap_size().as_u32())) + get_reclaimed()
+    crate::gc::incremental::get_partitioned_heap().total_allocated_size()
 }
 
 #[no_mangle]
@@ -24,6 +24,7 @@ impl Memory for IcMemory {
 
     #[inline(never)]
     unsafe fn grow_memory(&mut self, ptr: u64) {
-        super::grow_memory(ptr);
+        let memory_reserve = crate::gc::incremental::memory_reserve();
+        super::grow_memory(ptr, memory_reserve);
     }
 }

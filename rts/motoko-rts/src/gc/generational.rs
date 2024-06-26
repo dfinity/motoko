@@ -6,7 +6,6 @@
 //! Compaction is based on the existing Motoko RTS threaded mark & compact GC.
 
 pub mod mark_stack;
-pub mod remembered_set;
 #[cfg(feature = "memory_check")]
 mod sanity_checks;
 pub mod write_barrier;
@@ -48,6 +47,7 @@ unsafe fn generational_gc<M: Memory>(mem: &mut M) {
     let old_limits = get_limits();
     let roots = Roots {
         static_roots: ic::get_static_roots(),
+        region0_ptr_loc: crate::region::region0_get_ptr_loc(),
         continuation_table_ptr_loc: crate::continuation_table::continuation_table_loc(),
     };
     let heap = Heap {
@@ -117,7 +117,8 @@ static mut OLD_GENERATION_THRESHOLD: usize = 32 * 1024 * 1024;
 static mut PASSED_CRITICAL_LIMIT: bool = false;
 
 #[cfg(feature = "ic")]
-const CRITICAL_MEMORY_LIMIT: usize = (4096 - 512) * 1024 * 1024;
+const CRITICAL_MEMORY_LIMIT: usize =
+    (4096 - 512) * 1024 * 1024 - crate::memory::GENERAL_MEMORY_RESERVE;
 
 #[cfg(feature = "ic")]
 unsafe fn decide_strategy(limits: &Limits) -> Option<Strategy> {
@@ -160,6 +161,7 @@ pub struct Heap<'a, M: Memory> {
 pub struct Roots {
     pub static_roots: Value,
     pub continuation_table_ptr_loc: *mut Value,
+    pub region0_ptr_loc: *mut Value,
     // For possible future additional roots, please extend the functionality in:
     // * `mark_root_set`
     // * `thread_initial_phase`
@@ -221,6 +223,11 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
         let continuation_table = *self.heap.roots.continuation_table_ptr_loc;
         if continuation_table.is_ptr() && continuation_table.get_ptr() >= self.generation_base() {
             self.mark_object(continuation_table);
+        }
+
+        let region0 = *self.heap.roots.region0_ptr_loc;
+        if region0.is_ptr() && region0.get_ptr() >= self.generation_base() {
+            self.mark_object(region0);
         }
 
         if self.strategy == Strategy::Young {
@@ -365,6 +372,11 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
             self.thread(self.heap.roots.continuation_table_ptr_loc);
         }
 
+        let region0 = *self.heap.roots.region0_ptr_loc;
+        if region0.is_ptr() && region0.get_ptr() >= self.generation_base() {
+            self.thread(self.heap.roots.region0_ptr_loc);
+        }
+
         // For the young generation GC run, the forward pointers from the old generation must be threaded too.
         if self.strategy == Strategy::Young {
             self.thread_old_generation_pointers();
@@ -505,7 +517,7 @@ impl<'a, M: Memory> GenerationalGC<'a, M> {
             (*(header as *mut Value)) = Value::from_ptr(new_location);
             header = tmp;
         }
-        assert!(header >= TAG_OBJECT && header <= TAG_NULL);
+        debug_assert!(header >= TAG_OBJECT && header <= TAG_NULL);
         (*object).tag = header;
     }
 
