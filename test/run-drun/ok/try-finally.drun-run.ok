@@ -23,6 +23,9 @@ debug.print: InnerLIVE6
 debug.print: InnerOUT6
 debug.print: OUT6
 debug.print: AFTER6
+debug.print: IN8
+debug.print: CAUGHT8
+debug.print: OUT8
 debug.print: IN
 debug.print: OUT
 debug.print: INr

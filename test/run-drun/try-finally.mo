@@ -199,6 +199,17 @@ actor A {
         debugPrint "AFTERDEAD7"
     };
 
+    func t8() : async () {
+        try {
+            debugPrint "IN8";
+            // await* async* throw error "IN8"
+            // https://github.com/dfinity/motoko/issues/4578
+            await* async* { throw error "IN8"; () }
+        }
+        catch _ { debugPrint "CAUGHT8" }
+        finally { debugPrint "OUT8" };
+    };
+
     public func go() : async () {
         // These don't trap (for the interpreters)
         //await t1();
@@ -209,6 +220,7 @@ actor A {
         await t4f();
         await t5();
         await t6();
+        await t8();
 
         // These trap, and only work on drun
         try /*ignore*/ await t0() catch _ {};
