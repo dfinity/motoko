@@ -516,9 +516,9 @@ impl PartitionedHeap {
     }
 
     unsafe fn get_partition_table(&self, partition_index: usize) -> *const PartitionTable {
-        let first_table = &self.partition_table as *const PartitionTable;
-        debug_assert_ne!(first_table, null());
         if partition_index < PARTITIONS_PER_TABLE {
+            let first_table = &self.partition_table as *const PartitionTable;
+            debug_assert_ne!(first_table, null());
             first_table
         } else {
             self.get_extension_table(partition_index)
@@ -526,13 +526,7 @@ impl PartitionedHeap {
     }
 
     unsafe fn mutable_partition_table(&mut self, partition_index: usize) -> *mut PartitionTable {
-        let first_table = &mut self.partition_table as *mut PartitionTable;
-        debug_assert_ne!(first_table, null_mut());
-        if partition_index < PARTITIONS_PER_TABLE {
-            first_table
-        } else {
-            self.get_extension_table(partition_index)
-        }
+        self.get_partition_table(partition_index) as *mut PartitionTable
     }
 
     pub fn get_partition(&self, index: usize) -> &Partition {
