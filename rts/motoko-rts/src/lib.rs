@@ -49,6 +49,10 @@ pub mod types;
 pub mod utf8;
 mod visitor;
 
+use core::u32::MAX;
+
+use libc::{c_void, memcpy};
+use memory::{alloc_blob, Memory};
 use types::Bytes;
 
 use motoko_rts_macros::*;
@@ -139,4 +143,35 @@ fn panic(info: &core::panic::PanicInfo) -> ! {
 
         rts_trap_with("RTS panicked");
     }
+}
+
+
+const MAX_SIZE: u32 = 1024 * 1024;
+const SIZE_INCREMENT: u32 = 64;
+const PERFORMANCE_MEASUREMENT_COST: u64 = 200;
+
+#[ic_mem_fn]
+unsafe fn benchmark<M: Memory>(mem: &mut M) {
+    let source = alloc_blob(mem, Bytes(MAX_SIZE)).as_blob_mut().payload_addr();
+    let target = alloc_blob(mem, Bytes(MAX_SIZE)).as_blob_mut().payload_addr();
+
+    println!(100, "MEMCPY BENCHMARK");
+    for increment in 1..MAX_SIZE / SIZE_INCREMENT {
+        let chunk_size = increment * SIZE_INCREMENT;
+        let elapsed = benchmark_kernel(target as *mut c_void, source as *const c_void, chunk_size as usize);
+        println!(100, " MEASUREMENT={}, {}", chunk_size, elapsed);
+    }
+}
+
+#[no_mangle]
+#[inline(never)]
+unsafe fn benchmark_kernel(target: *mut c_void, source: *const c_void, size: usize) -> u64 {
+    let start = ic0_performance_counter(0);
+    memcpy(target, source, size);
+    let stop = ic0_performance_counter(0);
+    stop - start - PERFORMANCE_MEASUREMENT_COST
+}
+
+extern "C" {
+    fn ic0_performance_counter(mode: u32) -> u64;
 }

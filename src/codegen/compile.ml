@@ -1123,6 +1123,7 @@ module RTS = struct
 
   (* The connection to the C and Rust parts of the RTS *)
   let system_imports env =
+    E.add_func_import env "rts" "benchmark" [] [];
     E.add_func_import env "rts" "legacy_memcpy" [I32Type; I32Type; I32Type] [];
     E.add_func_import env "rts" "legacy_memset" [I32Type; I32Type; I32Type] [];
     E.add_func_import env "rts" "memcmp" [I32Type; I32Type; I32Type] [I32Type];
@@ -5175,6 +5176,7 @@ module IC = struct
     let empty_f = Func.of_body env [] [] (fun env ->
       Lifecycle.trans env Lifecycle.InInit ^^
       G.i (Call (nr (E.built_in env "init"))) ^^
+      E.call_import env "rts" "benchmark" ^^
       GC.collect_garbage env ^^
       Lifecycle.trans env Lifecycle.Idle
 
@@ -6373,7 +6375,21 @@ module RTS_Exports = struct
     E.add_export env (nr {
       name = Lib.Utf8.decode "moc_stable_mem_set_version";
       edesc = nr (FuncExport (nr moc_stable_mem_set_version_fi))
-    })
+    });
+
+    let ic0_performance_counter_fi =
+      if E.mode env = Flags.WASIMode then
+        E.add_fun env "ic0_performance_counter" (
+            Func.of_body env ["number", I32Type] [I64Type]
+              (fun env ->
+                E.trap_with env "ic0_performance_counter is not supposed to be called in WASI"
+              )
+          )
+      else E.reuse_import env "ic0" "performance_counter" in
+    E.add_export env (nr {
+      name = Lib.Utf8.decode "ic0_performance_counter";
+      edesc = nr (FuncExport (nr ic0_performance_counter_fi))
+    });
 
 end (* RTS_Exports *)
 
