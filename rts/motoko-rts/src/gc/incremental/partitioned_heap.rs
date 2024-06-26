@@ -697,7 +697,7 @@ impl PartitionedHeap {
 
     unsafe fn temporary_array<M: Memory>(mem: &mut M, length: usize) -> *mut usize {
         // No post allocation barrier as this RTS-internal blob can be collected by the GC.
-        let blob = alloc_blob(mem, Words(length).to_bytes());
+        let blob = alloc_blob(mem, TAG_BLOB_B, Words(length).to_bytes());
         let payload = blob.as_blob_mut().payload_addr();
         payload as *mut usize
     }
