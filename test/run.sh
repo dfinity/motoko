@@ -395,7 +395,7 @@ do
           if [ $DTESTS = yes ]
           then
             if [ $HAVE_drun = yes ]; then
-              run_if wasm drun-run $WRAP_drun $out/$base.wasm $mangled
+              run_if wasm drun-run $WRAP_drun $out/$base.wasm $mangled 222>/dev/null
             fi
             if [ $HAVE_ic_ref_run = yes ]; then
               run_if ref.wasm ic-ref-run $WRAP_ic_ref_run $out/$base.ref.wasm $mangled
@@ -403,12 +403,13 @@ do
           elif [ $PERF = yes ]
           then
             if [ $HAVE_drun = yes ]; then
-              run_if wasm drun-run $WRAP_drun $out/$base.wasm $mangled 222> $out/$base.metrics
+              run_if wasm drun-run $WRAP_drun $out/$base.wasm $mangled 222>$out/$base.metrics
               if [ -e $out/$base.metrics -a -n "$PERF_OUT" ]
               then
-                LANG=C perl -ne "print \"gas/$base;\$1\n\" if /^scheduler_(?:cycles|instructions)_consumed_per_round_sum (\\d+)\$/" $out/$base.metrics >> $PERF_OUT;
+                CYCLES_USED="$(awk -F':' '{sum+=$2;} END {print sum;}' $out/$base.metrics)";
+                echo "gas/$base;$CYCLES_USED" >> $PERF_OUT;
               fi
-              run_if opt.wasm drun-run-opt $WRAP_drun $out/$base.opt.wasm $mangled
+              run_if opt.wasm drun-run-opt $WRAP_drun $out/$base.opt.wasm $mangled 222>/dev/null
             fi
           else
             run_if wasm wasm-run wasmtime run $WASMTIME_OPTIONS $out/$base.wasm
