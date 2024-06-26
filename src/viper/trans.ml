@@ -984,6 +984,8 @@ and exp ctxt e =
     | "forall" -> !!(ForallE (typed_binders, e))
     | "exists" -> !!(ExistsE (typed_binders, e))
     | _ -> assert false)
+  | M.CallE ({ it = M.DotE ({it=M.VarE(m);_}, {it="Ret";_}); _ }, _, _)
+    when Imports.find_opt (m.it) ctxt.imports = Some(IM_Prim) -> !!(FldE "$Res")
   | _ ->
      unsupported e.at (Arrange.exp e)
 

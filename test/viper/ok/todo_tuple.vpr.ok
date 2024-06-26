@@ -139,7 +139,10 @@ method getTodo($Self: Ref, id: Int)
                                                                     ($Self).todos,
                                                                     i)).$tuple3$int$int$c_State))))
     ensures ((exists i : Int :: (((0 <= i) && (i < ($Self).num)) && (
-             (($loc(($Self).todos, i)).$tuple3$int$int$c_State).tup$3$0 == id))) ==> true)
+             (($loc(($Self).todos, i)).$tuple3$int$int$c_State).tup$3$0 == id))) ==> 
+      (exists i : Int :: (((0 <= i) && (i < ($Self).num)) && (Some(($loc(
+                                                                    ($Self).todos,
+                                                                    i)).$tuple3$int$int$c_State) == $Res))))
     ensures $Inv($Self)
     { var i: Int
       var res: Option[Tuple$3[Int, Int, State]]

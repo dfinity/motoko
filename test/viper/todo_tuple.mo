@@ -6,7 +6,7 @@ import Array "mo:base/Array";
 actor Assistant {
   // type ToDo = (Nat, Text, State); // (id, desc, completed)
   public type State = { #TODO; #DONE };
-  
+
   var todos : [var (Nat, Text, State)] = [var ];
   var num : Nat = 0;
   var nextId : Nat = 1;
@@ -16,7 +16,7 @@ actor Assistant {
   private func resize(n: Nat) {
     // Actor's invariant is preserved:
     assert:func 0 <= num and num <= todos.size();
-    assert:return 0 <= num and num <= todos.size(); 
+    assert:return 0 <= num and num <= todos.size();
     // unchanged fields:
     assert:return num == (old(num)) and nextId == (old(nextId));
     // functional specification:
@@ -52,10 +52,9 @@ actor Assistant {
     assert:return todos.size() == (old(todos.size()));
     assert:return Prim.forall<Nat>(func i =
       (0 <= i and i < (old(todos.size())) implies todos[i] == (old(todos[i]))));
-    // BUG: var:return here have type State
-    // assert:return Prim.forall<Nat>(func i {
-    //   0 <= i and i < (old(todos.size())) implies todos[i] == (var:return)[i])});
     // TODO: is not supported yet, do it manually (as in reverse.mo)
+    // assert:return Prim.forall<Nat>(func i =
+    //   (0 <= i and i < (old(todos.size())) implies todos[i] == Prim.Ret<[Nat, Text, State]>()[i]));
     // let new_array = Array.tabulate<(Nat, Text, State)>(num, func i = todos[i]);
     let new_array : [(Nat, Text, State)] = [(0, "", #TODO)];
     return new_array;
@@ -66,10 +65,9 @@ actor Assistant {
     assert:return todos.size() == (old(todos.size()));
     assert:return Prim.forall<Nat>(func i =
       (0 <= i and i < (old(todos.size())) implies todos[i] == (old(todos[i]))));
-    assert:return (Prim.exists<Nat>(func i = (0 <= i and i < num and todos[i].0 == id)) 
+    assert:return (Prim.exists<Nat>(func i = (0 <= i and i < num and todos[i].0 == id))
                    implies
-                   // BUG: problem with type of the (var:return)
-                   true); // Prim.exists<Nat>(func i = (0 <= i and i < num and todos[i] == (var:return))));
+                   Prim.exists<Nat>(func i = (0 <= i and i < num and ?todos[i] == Prim.Ret<?(Nat, Text, State)>())));
     var i : Nat = 0;
     var res : ?(Nat, Text, State) = null;
     label l while (i < num) {
@@ -126,7 +124,7 @@ actor Assistant {
       assert:loop:invariant todos.size() == (old(todos.size()));
       assert:loop:invariant Prim.forall<Nat>(func ii =
         (i <= ii and ii < todos.size() implies todos[ii] == (old(todos[ii]))));
-      
+
       assert:loop:invariant Prim.forall<Nat>(func ii =
         (0 <= ii and ii < i and todos[ii].0 != id implies todos[ii] == (old(todos[ii]))));
       assert:loop:invariant Prim.forall<Nat>(func ii =

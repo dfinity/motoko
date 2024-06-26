@@ -52,10 +52,9 @@ actor Assistant {
     assert:return todos.size() == (old(todos.size()));
     assert:return Prim.forall<Nat>(func i =
       (0 <= i and i < (old(todos.size())) implies todos[i] == (old(todos[i]))));
-    // BUG: var:return here have type State
-    // assert:return Prim.forall<Nat>(func i {
-    //   0 <= i and i < (old(todos.size())) implies todos[i] == (var:return)[i])});
     // TODO: is not supported yet, do it manually (as in reverse.mo)
+    // assert:return Prim.forall<Nat>(func i =
+    //   (0 <= i and i < (old(todos.size())) implies todos[i] == Prim.Ret<[ToDo]>()[i]));
     // let new_array = Array.tabulate<(Nat, Text, State)>(num, func i = todos[i]);
     let new_array : [ToDo] = [ { id = 0; desc = ""; completed = #TODO } ];
     return new_array;
@@ -68,8 +67,7 @@ actor Assistant {
       (0 <= i and i < (old(todos.size())) implies todos[i] == (old(todos[i]))));
     assert:return (Prim.exists<Nat>(func i = (0 <= i and i < num and todos[i].id == id))
                    implies
-                   // BUG: problem with type of the (var:return)
-                   true); // Prim.exists<Nat>(func i = (0 <= i and i < num and todos[i] == (var:return))));
+                   Prim.exists<Nat>(func i = (0 <= i and i < num and ?todos[i] == Prim.Ret<?ToDo>())));
     var i : Nat = 0;
     var res : ?ToDo = null;
     label l while (i < num) {
