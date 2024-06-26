@@ -488,3 +488,7 @@ func forall<T>(f: T -> Bool): Bool {
 func exists<T>(f: T -> Bool): Bool {
   (prim "exists" : <T>(T -> Bool) -> Bool) <T>(f);
 };
+
+func Ret<T>(): T {
+  (prim "viperRet" : <T>() -> T) ();
+};

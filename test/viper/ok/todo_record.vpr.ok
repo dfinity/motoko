@@ -128,7 +128,10 @@ method getTodo($Self: Ref, id: Int)
     ensures (forall i : Int :: (((0 <= i) && (i < old($size(($Self).todos)))) ==> (
             ($loc(($Self).todos, i)).$c_ToDo == old(($loc(($Self).todos, i)).$c_ToDo))))
     ensures ((exists i : Int :: (((0 <= i) && (i < ($Self).num)) && (
-             (($loc(($Self).todos, i)).$c_ToDo).$ToDo$id == id))) ==> true)
+             (($loc(($Self).todos, i)).$c_ToDo).$ToDo$id == id))) ==> 
+      (exists i : Int :: (((0 <= i) && (i < ($Self).num)) && (Some(($loc(
+                                                                    ($Self).todos,
+                                                                    i)).$c_ToDo) == $Res))))
     ensures $Inv($Self)
     { var i: Int
       var res: Option[ToDo]

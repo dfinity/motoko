@@ -12,6 +12,7 @@ no-timer-set.mo:3.10-3.18: type error [M0119], object field setTimer is not cont
       };
     Array_init : <T>(Nat, T) -> [var T];
     Array_tabulate : <T>(Nat, Nat -> T) -> [T];
+    Ret : <T>() -> T;
     Types :
       module {
         type Any = Any;
