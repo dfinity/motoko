@@ -296,8 +296,7 @@ format:
 clean:
 	rm -rf \
 	  _build \
-	  mo-rts.wasm \
-	  mo-rts-debug.wasm \
+	  mo-rts*.wasm \
 	  motoko-rts/target \
 	  motoko-rts-tests/target \
 	  motoko-rts-macros/target \

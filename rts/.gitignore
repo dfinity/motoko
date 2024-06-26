@@ -1,3 +1,2 @@
-mo-rts.wasm
-mo-rts-debug.wasm
+mo-rts*.wasm
 _build

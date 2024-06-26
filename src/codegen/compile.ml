@@ -4078,7 +4078,6 @@ module Object = struct
      The hash blob needs to be tracked by the GC, but not the content of the hash blob.
      This is because the hash values are plain numbers that would look like skewed pointers.ters.
      The hash_ptr is skewed.
-     TODO: Optimize by sharing the hash blob for objects of the same type.
  
      The field2_data for immutable fields is a vanilla word.
  
