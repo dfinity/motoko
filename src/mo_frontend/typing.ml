@@ -1832,6 +1832,8 @@ and check_exp' env0 t exp : T.typ =
         check_exp_strong env T.unit exp2;
         if exp2.note.note_eff <> T.Triv then
           local_error env exp2.at "M0199" "a cleanup clause must not send messages";
+        if exp1.note.note_eff <> T.Await then
+          warn env exp2.at "M0299" "why cleanup clause";
       end;
     t
   (* TODO: allow shared with one scope par *)

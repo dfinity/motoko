@@ -210,6 +210,28 @@ actor A {
         finally { debugPrint "OUT8" };
     };
 
+    func t8i() : async () {
+        // see: https://github.com/dfinity/motoko/issues/4578
+        func inner() : async* () = async* { throw error "IN8i" };
+
+        try {
+            debugPrint "IN8i";
+            await* inner()
+        }
+        catch _ { debugPrint "CAUGHT8i" }
+        finally { debugPrint "OUT8i" };
+    };
+
+    func t8t() : async () {
+        func inner() : async* () = async* { debugPrint "InnerIN8t"; await m(); assert true };
+
+        try {
+            debugPrint "IN8t";
+            await* inner()
+        }
+        finally { debugPrint "OUT8t" };
+    };
+
     public func go() : async () {
         // These don't trap (for the interpreters)
         //await t1();
@@ -221,6 +243,7 @@ actor A {
         await t5();
         await t6();
         await t8();
+        await t8i();
 
         // These trap, and only work on drun
         try /*ignore*/ await t0() catch _ {};
@@ -230,7 +253,9 @@ actor A {
         try await t6c() catch _ {};
         try await t6t() catch _ {};
         try await t6d() catch _ {};
-        try await* t7() catch _ {};
+        try await t8t() catch _ {};
+        /// caveat: t7 won't return!
+        try await* t7() catch _ {} finally debugPrint "It's over";
     };
 };
 

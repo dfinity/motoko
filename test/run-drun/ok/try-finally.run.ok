@@ -24,5 +24,8 @@ AFTER6
 IN8
 CAUGHT8
 OUT8
+IN8i
+CAUGHT8i
+OUT8i
 IN
 try-finally.mo:11.43-11.55: execution error, assertion failure

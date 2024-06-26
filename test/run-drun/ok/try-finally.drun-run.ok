@@ -26,6 +26,9 @@ debug.print: AFTER6
 debug.print: IN8
 debug.print: CAUGHT8
 debug.print: OUT8
+debug.print: IN8i
+debug.print: CAUGHT8i
+debug.print: OUT8i
 debug.print: IN
 debug.print: OUT
 debug.print: INr
@@ -56,6 +59,9 @@ debug.print: InnerLIVE6d
 debug.print: InnerLIVESTILL6d
 debug.print: InnerOUT6d
 debug.print: OUT6d
+debug.print: IN8t
+debug.print: InnerIN8t
+debug.print: OUT8t
 debug.print: BEFORE7
 debug.print: IN7
 debug.print: InnerIN7
