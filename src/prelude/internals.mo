@@ -17,7 +17,7 @@ func @add_cycles<system>() {
   let cycles = @cycles;
   @reset_cycles();
   if (cycles != 0) {
-    (prim "cyclesAdd" : <system>Nat -> ()) (cycles);
+    (prim "cyclesAdd" : Nat -> ()) (cycles);
   }
 };
 
@@ -430,7 +430,7 @@ func @install_actor_helper(
     switch install_arg {
       case (#new settings) {
         let available = (prim "cyclesAvailable" : () -> Nat) ();
-        let accepted = (prim "cyclesAccept" : <system>Nat -> Nat) (available);
+        let accepted = (prim "cyclesAccept" : Nat -> Nat) (available);
         let sender_canister_version = ?(prim "canister_version" : () -> Nat64)();
         @cycles += accepted;
         let { canister_id } =
@@ -441,17 +441,17 @@ func @install_actor_helper(
         (#install, principal1)
       };
       case (#reinstall actor1) {
-        (#reinstall, (prim "cast" : (actor {}) -> Principal) actor1)
+        (#reinstall, (prim "principalOfActor" : (actor {}) -> Principal) actor1)
       };
       case (#upgrade actor2) {
         let upgradeOptions = {
           wasm_memory_persistence = ?(#Keep);
         };
-        ((#upgrade (?upgradeOptions)), (prim "cast" : (actor {}) -> Principal) actor2)
+        ((#upgrade (?upgradeOptions)), (prim "principalOfActor" : (actor {}) -> Principal) actor2)
       };
       case (#upgrade_with_persistence { wasm_memory_persistence; canister } ) {
         let upgradeOptions = { wasm_memory_persistence = ?wasm_memory_persistence };
-        ((#upgrade (?upgradeOptions)), (prim "cast" : (actor {}) -> Principal) canister)
+        ((#upgrade (?upgradeOptions)), (prim "principalOfActor" : (actor {}) -> Principal) canister)
       };
     };
   await @ic00.install_code {
@@ -470,7 +470,7 @@ func @install_actor_helper(
 // that Prim.createActor was mentioned on the forum and might be in use. (#3420)
 func @create_actor_helper(wasm_module : Blob, arg : Blob) : async Principal = async {
   let available = (prim "cyclesAvailable" : () -> Nat) ();
-  let accepted = (prim "cyclesAccept" : <system>Nat -> Nat) (available);
+  let accepted = (prim "cyclesAccept" : Nat -> Nat) (available);
   let sender_canister_version = ?(prim "canister_version" : () -> Nat64)();
   @cycles += accepted;
   let { canister_id } =

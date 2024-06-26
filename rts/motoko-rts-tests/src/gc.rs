@@ -254,7 +254,7 @@ fn check_dynamic_heap(
             if tag == TAG_MUTBOX {
                 // MutBoxes of static root array, will be scanned indirectly when checking the static root array.
                 offset += WORD_SIZE;
-            } else if tag == TAG_BLOB {
+            } else if tag == TAG_BLOB_B {
                 assert!(!is_forwarded);
                 // in-heap mark stack blobs
                 let length = read_word(heap, offset);
@@ -267,7 +267,7 @@ fn check_dynamic_heap(
                     .to_bytes()
                     .as_usize();
             } else {
-                assert!(tag == TAG_ARRAY || tag >= TAG_ARRAY_SLICE_MIN);
+                assert!(is_array_or_slice_tag(tag));
 
                 if is_forwarded {
                     let forward_offset = forward - heap.as_ptr() as usize;
@@ -405,7 +405,7 @@ fn compute_reachable_objects(
 
 fn check_static_root_array(mut offset: usize, roots: &[ObjectIdx], heap: &[u8]) {
     let array_address = heap.as_ptr() as usize + offset;
-    assert_eq!(read_word(heap, offset), TAG_ARRAY);
+    assert_eq!(read_word(heap, offset), TAG_ARRAY_M);
     offset += WORD_SIZE;
 
     assert_eq!(read_word(heap, offset), make_pointer(array_address));
@@ -439,7 +439,7 @@ fn read_mutbox_field(mutbox_address: usize, heap: &[u8]) -> usize {
 
 fn check_continuation_table(mut offset: usize, continuation_table: &[ObjectIdx], heap: &[u8]) {
     let table_addr = heap.as_ptr() as usize + offset;
-    assert_eq!(read_word(heap, offset), TAG_ARRAY);
+    assert_eq!(read_word(heap, offset), TAG_ARRAY_M);
     offset += WORD_SIZE;
 
     assert_eq!(read_word(heap, offset), make_pointer(table_addr));
@@ -459,7 +459,7 @@ fn check_continuation_table(mut offset: usize, continuation_table: &[ObjectIdx],
 
 fn read_object_id(object_address: usize, heap: &[u8]) -> ObjectIdx {
     let tag = read_word(heap, object_address - heap.as_ptr() as usize);
-    assert!(tag == TAG_ARRAY || tag >= TAG_ARRAY_SLICE_MIN);
+    assert!(is_array_or_slice_tag(tag));
 
     // Skip object header for idx
     let idx_address = object_address + size_of::<Array>().to_bytes().as_usize();

@@ -25,7 +25,7 @@ use crate::tommath_bindings::{mp_digit, mp_int};
 use core::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
 use core::ptr::null;
 
-use crate::constants::WORD_SIZE;
+use crate::constants::{MAX_ARRAY_LENGTH_FOR_ITERATOR, WORD_SIZE};
 use crate::rts_trap_with;
 
 pub fn size_of<T>() -> Words<usize> {
@@ -311,6 +311,16 @@ impl Value {
         tag != TAG_FWD_PTR && tag != TAG_ONE_WORD_FILLER && tag != TAG_FREE_SPACE
     }
 
+    pub unsafe fn is_blob(self) -> bool {
+        let tag = self.tag();
+        is_blob_tag(tag)
+    }
+
+    pub unsafe fn is_array(self) -> bool {
+        let tag = self.tag();
+        is_array_or_slice_tag(tag)
+    }
+
     /// Get the pointer as `Obj` using forwarding. In debug mode panics if the value is not a pointer.
     pub unsafe fn as_obj(self) -> *mut Obj {
         debug_assert!(self.get().is_ptr());
@@ -328,7 +338,7 @@ impl Value {
     /// Get the pointer as `Array` using forwarding. In debug mode panics if the value is not a pointer or the
     /// pointed object is not an `Array`.
     pub unsafe fn as_array(self) -> *mut Array {
-        debug_assert!(self.tag() == TAG_ARRAY || self.tag() >= TAG_ARRAY_SLICE_MIN);
+        debug_assert!(self.is_array());
         self.check_forwarding_pointer();
         self.forward().get_ptr() as *mut Array
     }
@@ -365,14 +375,14 @@ impl Value {
     /// Get the pointer as `Blob` using forwarding. In debug mode panics if the value is not a pointer or the
     /// pointed object is not a `Blob`.
     pub unsafe fn as_blob(self) -> *const Blob {
-        debug_assert_eq!(self.tag(), TAG_BLOB);
+        debug_assert!(self.is_blob());
         self.check_forwarding_pointer();
         self.forward().get_ptr() as *const Blob
     }
 
     /// Get the pointer as mutable `Blob` using forwarding.
     pub unsafe fn as_blob_mut(self) -> *mut Blob {
-        debug_assert_eq!(self.tag(), TAG_BLOB);
+        debug_assert!(self.is_blob());
         self.check_forwarding_pointer();
         self.forward().get_ptr() as *mut Blob
     }
@@ -431,33 +441,94 @@ pub type Tag = usize;
 // Odd tag numbers are historically expected by the mark-compact GC (for pointer threading).
 pub const TAG_OBJECT: Tag = 1;
 pub const TAG_OBJ_IND: Tag = 3;
-pub const TAG_ARRAY: Tag = 5;
-pub const TAG_BITS64: Tag = 7;
-pub const TAG_MUTBOX: Tag = 9;
-pub const TAG_CLOSURE: Tag = 11;
-pub const TAG_SOME: Tag = 13;
-pub const TAG_VARIANT: Tag = 15;
-pub const TAG_BLOB: Tag = 17;
-pub const TAG_FWD_PTR: Tag = 19; // Only used by the copying GC - not to be confused with forwarding pointer in the header used for incremental GC.
-pub const TAG_BIGINT: Tag = 21;
-pub const TAG_CONCAT: Tag = 23;
-pub const TAG_REGION: Tag = 25;
-pub const TAG_ONE_WORD_FILLER: Tag = 27;
-pub const TAG_FREE_SPACE: Tag = 29;
+pub const TAG_ARRAY_I: Tag = 5; // Immutable Array ([T])
+pub const TAG_ARRAY_M: Tag = 7; // Mutable Array ([var T])
+pub const TAG_ARRAY_T: Tag = 9; // Non-nullary Tuple ((T,+))
+pub const TAG_ARRAY_S: Tag = 11; // Shared function pairing TAG_BLOB_A with TAG_BLOB_T (shared ... -> ...)
+pub const TAG_BITS64_U: Tag = 13; // Unsigned (Nat64)
+pub const TAG_BITS64_S: Tag = 15; // Signed (Int64)
+pub const TAG_BITS64_F: Tag = 17; // Float
+pub const TAG_MUTBOX: Tag = 19;
+pub const TAG_CLOSURE: Tag = 21;
+pub const TAG_SOME: Tag = 23;
+pub const TAG_VARIANT: Tag = 25;
+pub const TAG_BLOB_B: Tag = 27; // Blob of Bytes (Blob)
+pub const TAG_BLOB_T: Tag = 29; // Blob of Utf8 (Text)
+pub const TAG_BLOB_P: Tag = 31; // Principal (Principal)
+pub const TAG_BLOB_A: Tag = 33; // Actor (actor {})
+pub const TAG_FWD_PTR: Tag = 35; // Only used by the copying GC - not to be confused with forwarding pointer in the header used for incremental GC.
+pub const TAG_BIGINT: Tag = 37;
+pub const TAG_CONCAT: Tag = 39;
+pub const TAG_REGION: Tag = 41;
+pub const TAG_ONE_WORD_FILLER: Tag = 43;
+pub const TAG_FREE_SPACE: Tag = 45;
 
 // Special value to visit only a range of array fields.
 // This and all values above it are reserved and mean
-// a slice of an array object (i.e. start index) for
+// a slice of an array object (i.e. compressed array tag + start index) for
 // purposes of `visit_pointer_fields`.
+// The top two bits encode the original array tag, the remaining bits are the start index of the slice.
 // Invariant: the value of this (pseudo-)tag must be
 //            higher than all other tags defined above.
 // Note: The minimum value can be even, as it only denotes
 // a lower boundary to distinguish slice information from
 // the actual tag values.
-pub const TAG_ARRAY_SLICE_MIN: Tag = 30;
+pub const TAG_ARRAY_SLICE_MIN: Tag = 46;
+pub const TAG_SPACING: Tag = 2;
 
 pub fn is_object_tag(tag: Tag) -> bool {
     tag >= TAG_OBJECT && tag <= TAG_REGION
+}
+
+pub fn is_blob_tag(tag: Tag) -> bool {
+    tag == TAG_BLOB_B || tag == TAG_BLOB_T || tag == TAG_BLOB_P || tag == TAG_BLOB_A
+}
+
+pub fn is_base_array_tag(tag: Tag) -> bool {
+    tag == TAG_ARRAY_I || tag == TAG_ARRAY_M || tag == TAG_ARRAY_T || tag == TAG_ARRAY_S
+}
+
+pub fn is_array_or_slice_tag(tag: Tag) -> bool {
+    is_base_array_tag(tag) || tag >= TAG_ARRAY_SLICE_MIN
+}
+
+#[inline]
+pub fn start_of_slice(tag: Tag) -> usize {
+    tag << 2 >> 2
+}
+
+#[inline]
+pub fn tag_of_slice(tag: Tag) -> Tag {
+    TAG_ARRAY_I + (tag >> (usize::BITS - 2)) * TAG_SPACING
+}
+
+pub fn slice_tag(array_tag: Tag, slice_start: usize) -> Tag {
+    debug_assert!(is_base_array_tag(array_tag));
+    debug_assert!(
+        slice_start >= TAG_ARRAY_SLICE_MIN && slice_start <= MAX_ARRAY_LENGTH_FOR_ITERATOR
+    );
+    debug_assert!((array_tag - TAG_ARRAY_I) % TAG_SPACING == 0);
+    (((array_tag - TAG_ARRAY_I) / TAG_SPACING) << (usize::BITS - 2)) | slice_start
+}
+
+pub fn slice_start(tag: Tag) -> (Tag, usize) {
+    debug_assert!(is_array_or_slice_tag(tag));
+    if tag >= TAG_ARRAY_SLICE_MIN {
+        (tag_of_slice(tag), start_of_slice(tag))
+    } else {
+        (tag, 0)
+    }
+}
+
+pub fn base_array_tag(tag: Tag) -> Tag {
+    debug_assert!(is_array_or_slice_tag(tag));
+    let base = if tag >= TAG_ARRAY_SLICE_MIN {
+        tag_of_slice(tag)
+    } else {
+        tag
+    };
+    debug_assert!(is_base_array_tag(base));
+    base
 }
 
 // Common parts of any object. Other object pointers can be coerced into a pointer to this.
@@ -483,7 +554,7 @@ impl Obj {
     }
 
     pub unsafe fn as_blob(self: *mut Self) -> *mut Blob {
-        debug_assert_eq!(self.tag(), TAG_BLOB);
+        debug_assert!(is_blob_tag(self.tag()));
         self as *mut Blob
     }
 
@@ -540,6 +611,24 @@ impl Array {
 
     pub unsafe fn len(self: *const Self) -> usize {
         (*self).len
+    }
+
+    pub unsafe fn base_tag(self: *const Self) -> Tag {
+        base_array_tag((*self).header.tag)
+    }
+
+    pub unsafe fn get_slice_start(self: *const Self) -> (Tag, usize) {
+        slice_start((*self).header.tag)
+    }
+
+    pub unsafe fn set_slice_start(self: *mut Self, array_tag: Tag, start: usize) {
+        debug_assert!(is_base_array_tag(array_tag));
+        (*self).header.tag = slice_tag(array_tag, start)
+    }
+
+    pub unsafe fn restore_tag(self: *mut Self, array_tag: Tag) {
+        debug_assert!(is_base_array_tag(array_tag));
+        (*self).header.tag = array_tag;
     }
 }
 
@@ -689,7 +778,7 @@ pub struct BigInt {
     /// The data pointer (mp_int.dp) is irrelevant, and will be changed to point to
     /// the data within this object before it is used.
     /// (NB: If we have a non-moving GC, we can make this an invariant)
-    /// NOTE: `mp_int` originates from 32-bit libc implementation:
+    /// NOTE: `mp_int` originates from 64-bit Tom's math library implementation.
     /// Layout in 64-bit memory:
     /// ```
     /// pub struct mp_int { // Total size 24
@@ -702,6 +791,8 @@ pub struct BigInt {
     /// ```
     pub mp_int: mp_int,
     // data follows ..
+    // Array of `mp_int` with length `alloc`.
+    // Each `mp_int` has byte size 8.
 }
 
 impl BigInt {
@@ -817,13 +908,13 @@ pub(crate) unsafe fn block_size(address: usize) -> Words<usize> {
 
         // `block_size` is not used during the incremental mark phase and
         // therefore, does not support array slicing.
-        TAG_ARRAY => {
+        TAG_ARRAY_I | TAG_ARRAY_M | TAG_ARRAY_T | TAG_ARRAY_S => {
             let array = address as *mut Array;
             let size = array.len();
             size_of::<Array>() + Words(size)
         }
 
-        TAG_BITS64 => size_of::<Bits64>(),
+        TAG_BITS64_U | TAG_BITS64_S | TAG_BITS64_F => size_of::<Bits64>(),
 
         TAG_MUTBOX => size_of::<MutBox>(),
 
@@ -837,7 +928,7 @@ pub(crate) unsafe fn block_size(address: usize) -> Words<usize> {
 
         TAG_VARIANT => size_of::<Variant>(),
 
-        TAG_BLOB => {
+        TAG_BLOB_B | TAG_BLOB_T | TAG_BLOB_P | TAG_BLOB_A => {
             let blob = address as *mut Blob;
             size_of::<Blob>() + blob.len().to_words()
         }

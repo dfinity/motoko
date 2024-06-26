@@ -8,7 +8,7 @@ use crate::{
     constants::WORD_SIZE,
     idl::TypeVariance,
     memory::{alloc_blob, Memory},
-    types::{Value, Words},
+    types::{Value, Words, TAG_BLOB_B},
 };
 
 const DEFAULT_VALUE: Value = Value::from_scalar(0);
@@ -80,7 +80,7 @@ impl TypeDescriptor {
     // be used during a single IC message when no GC increment is running in between.
     pub unsafe fn build_type_table<M: Memory>(&mut self, mem: &mut M) -> *mut *mut u8 {
         let type_count = self.type_count();
-        let temporary_blob = alloc_blob(mem, Words(type_count).to_bytes());
+        let temporary_blob = alloc_blob(mem, TAG_BLOB_B, Words(type_count).to_bytes());
         let offset_table = self.type_offsets.as_blob().payload_const() as *const usize;
         let type_table = temporary_blob.as_blob_mut().payload_addr() as *mut *mut u8;
         let candid_data = self.candid_data.as_blob_mut().payload_addr();
@@ -114,7 +114,7 @@ unsafe fn create_type_check_cache<M: Memory>(
     let new_type_count = new_type.type_count();
     let words = Words(BitRel::words(old_type_count, new_type_count));
     let byte_length = words.to_bytes();
-    let blob_value = alloc_blob(mem, byte_length);
+    let blob_value = alloc_blob(mem, TAG_BLOB_B, byte_length);
     let ptr = blob_value.as_blob_mut().payload_addr() as *mut usize;
     let end = blob_value
         .as_blob()

@@ -30,7 +30,7 @@
 use crate::barriers::{allocation_barrier, write_with_barrier};
 use crate::memory::{alloc_array, Memory};
 use crate::rts_trap_with;
-use crate::types::Value;
+use crate::types::{Value, TAG_ARRAY_M};
 
 use motoko_rts_macros::ic_mem_fn;
 
@@ -50,7 +50,7 @@ static mut N_CONTINUATIONS: usize = 0;
 static mut FREE_SLOT: usize = 0;
 
 unsafe fn create_continuation_table<M: Memory>(mem: &mut M) {
-    TABLE = alloc_array(mem, INITIAL_SIZE);
+    TABLE = alloc_array(mem, TAG_ARRAY_M, INITIAL_SIZE);
     FREE_SLOT = 0;
     N_CONTINUATIONS = 0;
 
@@ -69,7 +69,7 @@ unsafe fn double_continuation_table<M: Memory>(mem: &mut M) {
 
     let new_size = old_size * 2;
 
-    let new_table = alloc_array(mem, new_size);
+    let new_table = alloc_array(mem, TAG_ARRAY_M, new_size);
     let new_array = new_table.as_array();
 
     for i in 0..old_size {

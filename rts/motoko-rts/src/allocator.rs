@@ -3,7 +3,7 @@
 use alloc::alloc::{GlobalAlloc, Layout};
 //use core::ptr::null_mut;
 use crate::memory::{alloc_blob, ic};
-use crate::types::Bytes;
+use crate::types::{Bytes, TAG_BLOB_B};
 
 pub struct EphemeralAllocator;
 
@@ -23,7 +23,8 @@ unsafe impl GlobalAlloc for EphemeralAllocator {
         let word_size = crate::constants::WORD_SIZE;
         let min_align = (align + word_size - 1) / word_size * word_size;
         let blob_size = size + min_align - word_size;
-        let blob = alloc_blob::<ic::IcMemory>(&mut ic::IcMemory, Bytes(blob_size)).as_blob_mut();
+        let blob = alloc_blob::<ic::IcMemory>(&mut ic::IcMemory, TAG_BLOB_B, Bytes(blob_size))
+            .as_blob_mut();
         let payload_address = blob.payload_addr() as usize;
         let aligned_address = (payload_address + min_align - 1) / min_align * min_align;
 
