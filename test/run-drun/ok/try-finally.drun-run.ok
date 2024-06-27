@@ -69,4 +69,5 @@ debug.print: InnerLIVE7
 debug.print: InnerLIVESTILL7
 debug.print: InnerOUT7
 debug.print: OUT7
+debug.print: It's over
 ingress Err: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: assertion failed at try-finally.mo:193.17-193.29

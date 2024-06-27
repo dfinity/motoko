@@ -83,8 +83,9 @@ let rec t_async context exp =
    let k_fail = fresh_err_cont T.unit in
    let k_clean = fresh_cont T.unit T.unit in
    let context' =
-     LabelEnv.add Return (Cont (ContVar k_ret))
-       (LabelEnv.singleton Throw (Cont (ContVar k_fail)))
+     LabelEnv.add Cleanup (Cont (ContVar k_clean))
+       (LabelEnv.add Return (Cont (ContVar k_ret))
+          (LabelEnv.singleton Throw (Cont (ContVar k_fail))))
    in
      cps_asyncE s typ1 (typ exp1)
        (forall [tb] ([k_ret; k_fail; k_clean] -->*
@@ -447,8 +448,9 @@ and c_exp' context exp k =
     let k_fail = fresh_err_cont T.unit in
     let k_clean = fresh_cont T.unit T.unit in
     let context' =
-      LabelEnv.add Return (Cont (ContVar k_ret))
-        (LabelEnv.singleton Throw (Cont (ContVar k_fail)))
+      LabelEnv.add Cleanup (Cont (ContVar k_clean))
+        (LabelEnv.add Return (Cont (ContVar k_ret))
+           (LabelEnv.singleton Throw (Cont (ContVar k_fail))))
     in
     let r = match LabelEnv.find_opt Throw context with
       | Some (Cont r) -> r
