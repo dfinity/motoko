@@ -14,7 +14,8 @@
     intervening `await`, the replica-provided state rewinding mechanism stays in charge of
     the cleanup.
 
-    The relevant security best practices are accessible at https://internetcomputer.org/docs/current/developer-docs/security/security-best-practices/inter-canister-calls#recommendation
+    The relevant security best practices are accessible at
+    https://internetcomputer.org/docs/current/developer-docs/security/security-best-practices/inter-canister-calls#recommendation
 
     BREAKING CHANGE (Minor): `finally` is now a reserved keyword,
     programs using this identifier will break.
