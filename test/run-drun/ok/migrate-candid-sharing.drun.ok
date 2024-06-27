@@ -1,0 +1,8 @@
+ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
+debug.print: INITIALIZED: 100
+ingress Completed: Reply: 0x4449444c0000
+debug.print: INITIALIZED: 100
+ingress Completed: Reply: 0x4449444c0000
+debug.print: INITIALIZED: 100
+ingress Completed: Reply: 0x4449444c0000
+ingress Err: IC0504: Missing upgrade option: Enhanced orthogonal persistence requires the `wasm_memory_persistence` upgrade option.

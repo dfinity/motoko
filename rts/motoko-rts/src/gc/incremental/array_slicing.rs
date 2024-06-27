@@ -5,8 +5,8 @@ use crate::types::*;
 /// This helps:
 /// * Ensure bounded increments when visiting fields on large arrays.
 /// * Prevent mark stack overflows on large arrays.
-pub unsafe fn slice_array(array: *mut Array) -> u32 {
-    const SLICE_INCREMENT: u32 = 128;
+pub unsafe fn slice_array(array: *mut Array) -> usize {
+    const SLICE_INCREMENT: usize = 128;
     debug_assert!(SLICE_INCREMENT >= TAG_ARRAY_SLICE_MIN);
     let (base_tag, slice_start) = array.get_slice_start();
     if array.len() - slice_start > SLICE_INCREMENT {

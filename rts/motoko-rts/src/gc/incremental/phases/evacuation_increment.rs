@@ -17,11 +17,11 @@ pub struct EvacuationIncrement<'a, M: Memory> {
 }
 
 impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
-    pub unsafe fn start_phase(state: &mut State) {
+    pub unsafe fn start_phase(mem: &mut M, state: &mut State) {
         debug_assert!(state.iterator_state.is_none());
         let heap = &mut state.partitioned_heap;
         state.iterator_state = Some(PartitionedHeapIterator::new(heap));
-        heap.plan_evacuations();
+        heap.plan_evacuations(mem);
     }
 
     pub unsafe fn complete_phase(state: &mut State) {

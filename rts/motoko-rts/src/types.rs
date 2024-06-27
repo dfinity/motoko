@@ -25,29 +25,27 @@ use crate::tommath_bindings::{mp_digit, mp_int};
 use core::ops::{Add, AddAssign, Div, Mul, Sub, SubAssign};
 use core::ptr::null;
 
-use crate::constants::{MAX_ARRAY_SIZE, WORD_SIZE};
+use crate::constants::{MAX_ARRAY_LENGTH_FOR_ITERATOR, WORD_SIZE};
 use crate::rts_trap_with;
 
-pub fn size_of<T>() -> Words<u32> {
-    Bytes(::core::mem::size_of::<T>() as u32).to_words()
+pub fn size_of<T>() -> Words<usize> {
+    Bytes(::core::mem::size_of::<T>()).to_words()
 }
 
-/// The unit "words": `Words(123u32)` means 123 words.
+// TODO: Refactor by removing the generic type from `Words` and `Bytes`.
+
+/// The unit "words": `Words(123)` means 123 words.
 #[repr(transparent)]
 #[derive(PartialEq, Eq, Clone, Copy, PartialOrd, Ord)]
 pub struct Words<A>(pub A);
 
-impl Words<u32> {
-    pub fn to_bytes(self) -> Bytes<u32> {
+impl Words<usize> {
+    pub fn to_bytes(self) -> Bytes<usize> {
         Bytes(self.0 * WORD_SIZE)
     }
 
-    pub fn as_u32(self) -> u32 {
-        self.0
-    }
-
     pub fn as_usize(self) -> usize {
-        self.0 as usize
+        self.0
     }
 }
 
@@ -95,30 +93,26 @@ impl<A: SubAssign> SubAssign for Words<A> {
     }
 }
 
-impl From<Bytes<u32>> for Words<u32> {
-    fn from(bytes: Bytes<u32>) -> Words<u32> {
+impl From<Bytes<usize>> for Words<usize> {
+    fn from(bytes: Bytes<usize>) -> Words<usize> {
         bytes.to_words()
     }
 }
 
-/// The unit "bytes": `Bytes(123u32)` means 123 bytes.
+/// The unit "bytes": `Bytes(123)` means 123 bytes.
 #[repr(transparent)]
 #[derive(Debug, PartialEq, Eq, Clone, Copy, PartialOrd, Ord)]
 pub struct Bytes<A>(pub A);
 
-impl Bytes<u32> {
+impl Bytes<usize> {
     // Rounds up
-    pub fn to_words(self) -> Words<u32> {
+    pub fn to_words(self) -> Words<usize> {
         // Rust issue for adding ceiling_div: https://github.com/rust-lang/rfcs/issues/2844
         Words((self.0 + WORD_SIZE - 1) / WORD_SIZE)
     }
 
-    pub fn as_u32(self) -> u32 {
-        self.0
-    }
-
     pub fn as_usize(self) -> usize {
-        self.0 as usize
+        self.0
     }
 }
 
@@ -150,24 +144,24 @@ impl<A: SubAssign> SubAssign for Bytes<A> {
     }
 }
 
-impl From<Words<u32>> for Bytes<u32> {
-    fn from(words: Words<u32>) -> Bytes<u32> {
+impl From<Words<usize>> for Bytes<usize> {
+    fn from(words: Words<usize>) -> Bytes<usize> {
         words.to_bytes()
     }
 }
 
 // The `true` value. The only scalar value that has the lowest bit set.
-pub const TRUE_VALUE: u32 = 0x1;
+pub const TRUE_VALUE: usize = 0x1;
 
 /// Constant sentinel pointer value for fast null tests.
 /// Points to the last unallocated Wasm page.
 /// See also `compile.ml` for other reserved sentinel values.
-pub const NULL_POINTER: Value = Value::from_raw(0xffff_fffb);
+pub const NULL_POINTER: Value = Value::from_raw(0xffff_ffff_ffff_fffb);
 
 /// A value in a heap slot
 #[repr(transparent)]
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub struct Value(u32);
+pub struct Value(usize);
 
 /// A view of `Value` for analyzing the slot contents.
 pub enum PtrOrScalar {
@@ -175,7 +169,7 @@ pub enum PtrOrScalar {
     Ptr(usize),
 
     /// Slot is an unboxed scalar value
-    Scalar(u32),
+    Scalar(usize),
 }
 
 impl PtrOrScalar {
@@ -193,26 +187,26 @@ impl Value {
     pub const fn from_ptr(ptr: usize) -> Self {
         // Cannot use `debug_assert_eq` in const yet, so using `debug_assert`
         debug_assert!(ptr & 0b1 == 0b0);
-        Value(skew(ptr) as u32)
+        Value(skew(ptr))
     }
 
     /// Create a value from a scalar
-    pub const fn from_scalar(value: u32) -> Self {
+    pub const fn from_scalar(value: usize) -> Self {
         // Cannot use `debug_assert_eq` in const yet, so using `debug_assert`
-        debug_assert!(value >> 31 == 0);
+        debug_assert!(value >> (usize::BITS - 1) == 0);
         Value(value << 1)
     }
 
     /// Create a value from a signed scalar. The scalar must be obtained with `get_signed_scalar`.
     /// Using `get_scalar` will return an incorrect scalar.
-    pub fn from_signed_scalar(value: i32) -> Self {
+    pub fn from_signed_scalar(value: isize) -> Self {
         debug_assert_eq!(value, value << 1 >> 1);
-        Value((value << 1) as u32)
+        Value((value << 1) as usize)
     }
 
     /// Create a value from raw representation. Useful when e.g. temporarily writing invalid values
     /// to object fields in garbage collection.
-    pub const fn from_raw(raw: u32) -> Self {
+    pub const fn from_raw(raw: usize) -> Self {
         Value(raw)
     }
 
@@ -225,7 +219,7 @@ impl Value {
     /// cycle.
     pub fn get(&self) -> PtrOrScalar {
         if is_ptr(self.0) {
-            PtrOrScalar::Ptr(unskew(self.0 as usize))
+            PtrOrScalar::Ptr(unskew(self.0))
         } else {
             PtrOrScalar::Scalar(self.0 >> 1)
         }
@@ -233,7 +227,7 @@ impl Value {
 
     /// Get the raw value
     #[inline]
-    pub fn get_raw(&self) -> u32 {
+    pub fn get_raw(&self) -> usize {
         self.0
     }
 
@@ -249,23 +243,23 @@ impl Value {
 
     /// Assumes that the value is a scalar and returns the scalar value. In debug mode panics if
     /// the value is not a scalar.
-    pub fn get_scalar(&self) -> u32 {
+    pub fn get_scalar(&self) -> usize {
         debug_assert!(self.get().is_scalar());
         self.0 >> 1
     }
 
     /// Assumes that the value is a signed scalar and returns the scalar value. In debug mode
     /// panics if the value is not a scalar.
-    pub fn get_signed_scalar(&self) -> i32 {
+    pub fn get_signed_scalar(&self) -> isize {
         debug_assert!(self.get().is_scalar());
-        self.0 as i32 >> 1
+        self.0 as isize >> 1
     }
 
     /// Assumes that the value is a pointer and returns the pointer value. In debug mode panics if
     /// the value is not a pointer.
     pub fn get_ptr(self) -> usize {
         debug_assert!(self.get().is_ptr());
-        unskew(self.0 as usize)
+        unskew(self.0)
     }
 
     /// Check that the forwarding pointer is valid.
@@ -401,29 +395,29 @@ impl Value {
         self.forward().get_ptr() as *mut BigInt
     }
 
-    pub fn as_tiny(self) -> i32 {
+    pub fn as_tiny(self) -> isize {
         debug_assert!(self.is_scalar());
-        self.0 as i32 >> 1
+        self.0 as isize >> 1
     }
 
     // optimized version of `value.is_non_null_ptr() && value.get_ptr() >= address`
     // value is a non-null pointer equal or greater than the unskewed address > 1
     #[inline]
     pub fn points_to_or_beyond(&self, address: usize) -> bool {
-        debug_assert!(address > TRUE_VALUE as usize);
+        debug_assert!(address > TRUE_VALUE);
         let raw = self.get_raw();
-        is_skewed(raw) && unskew(raw as usize) >= address && *self != NULL_POINTER
+        is_skewed(raw) && unskew(raw) >= address && *self != NULL_POINTER
     }
 }
 
 #[inline]
 /// Returns whether a raw value is representing a pointer. Useful when using `Value::get_raw`.
-pub fn is_ptr(value: u32) -> bool {
+pub fn is_ptr(value: usize) -> bool {
     is_skewed(value) && value != TRUE_VALUE
 }
 
 #[inline]
-pub const fn is_skewed(value: u32) -> bool {
+pub const fn is_skewed(value: usize) -> bool {
     value & 0b1 != 0
 }
 
@@ -440,10 +434,11 @@ pub const fn unskew(value: usize) -> usize {
 // NOTE: We don't create an enum for tags as we can never assume to do exhaustive pattern match on
 // tags, because of heap corruptions and other bugs (in the code generator or RTS, or maybe because
 // of an unsafe API usage).
-pub type Tag = u32;
+pub type Tag = usize;
 
 // Tags need to have the lowest bit set, to allow distinguishing a header (tag) from object
-// locations in mark-compact GC. (Reminder: objects and fields are word aligned)
+// locations in mark-compact GC. (Reminder: objects and fields are word aligned).
+// Odd tag numbers are historically expected by the mark-compact GC (for pointer threading).
 pub const TAG_OBJECT: Tag = 1;
 pub const TAG_OBJ_IND: Tag = 3;
 pub const TAG_ARRAY_I: Tag = 5; // Immutable Array ([T])
@@ -462,14 +457,11 @@ pub const TAG_BLOB_T: Tag = 29; // Blob of Utf8 (Text)
 pub const TAG_BLOB_P: Tag = 31; // Principal (Principal)
 pub const TAG_BLOB_A: Tag = 33; // Actor (actor {})
 pub const TAG_FWD_PTR: Tag = 35; // Only used by the copying GC - not to be confused with forwarding pointer in the header used for incremental GC.
-pub const TAG_BITS32_U: Tag = 37; // Unsigned (Nat32)
-pub const TAG_BITS32_S: Tag = 39; // Signed (Int32)
-pub const TAG_BITS32_F: Tag = 41; // Reserved (Float32)
-pub const TAG_BIGINT: Tag = 43;
-pub const TAG_CONCAT: Tag = 45;
-pub const TAG_REGION: Tag = 47;
-pub const TAG_ONE_WORD_FILLER: Tag = 49;
-pub const TAG_FREE_SPACE: Tag = 51;
+pub const TAG_BIGINT: Tag = 37;
+pub const TAG_CONCAT: Tag = 39;
+pub const TAG_REGION: Tag = 41;
+pub const TAG_ONE_WORD_FILLER: Tag = 43;
+pub const TAG_FREE_SPACE: Tag = 45;
 
 // Special value to visit only a range of array fields.
 // This and all values above it are reserved and mean
@@ -477,8 +469,11 @@ pub const TAG_FREE_SPACE: Tag = 51;
 // purposes of `visit_pointer_fields`.
 // The top two bits encode the original array tag, the remaining bits are the start index of the slice.
 // Invariant: the value of this (pseudo-)tag must be
-//            higher than all other tags defined above
-pub const TAG_ARRAY_SLICE_MIN: Tag = 52;
+//            higher than all other tags defined above.
+// Note: The minimum value can be even, as it only denotes
+// a lower boundary to distinguish slice information from
+// the actual tag values.
+pub const TAG_ARRAY_SLICE_MIN: Tag = 46;
 pub const TAG_SPACING: Tag = 2;
 
 pub fn is_object_tag(tag: Tag) -> bool {
@@ -498,7 +493,7 @@ pub fn is_array_or_slice_tag(tag: Tag) -> bool {
 }
 
 #[inline]
-pub fn start_of_slice(tag: Tag) -> u32 {
+pub fn start_of_slice(tag: Tag) -> usize {
     tag << 2 >> 2
 }
 
@@ -507,14 +502,16 @@ pub fn tag_of_slice(tag: Tag) -> Tag {
     TAG_ARRAY_I + (tag >> (usize::BITS - 2)) * TAG_SPACING
 }
 
-pub fn slice_tag(array_tag: Tag, slice_start: u32) -> Tag {
+pub fn slice_tag(array_tag: Tag, slice_start: usize) -> Tag {
     debug_assert!(is_base_array_tag(array_tag));
-    debug_assert!(slice_start >= TAG_ARRAY_SLICE_MIN && slice_start <= MAX_ARRAY_SIZE);
+    debug_assert!(
+        slice_start >= TAG_ARRAY_SLICE_MIN && slice_start <= MAX_ARRAY_LENGTH_FOR_ITERATOR
+    );
     debug_assert!((array_tag - TAG_ARRAY_I) % TAG_SPACING == 0);
     (((array_tag - TAG_ARRAY_I) / TAG_SPACING) << (usize::BITS - 2)) | slice_start
 }
 
-pub fn slice_start(tag: Tag) -> (Tag, u32) {
+pub fn slice_start(tag: Tag) -> (Tag, usize) {
     debug_assert!(is_array_or_slice_tag(tag));
     if tag >= TAG_ARRAY_SLICE_MIN {
         (tag_of_slice(tag), start_of_slice(tag))
@@ -571,9 +568,9 @@ impl Obj {
 #[repr(C)] // See the note at the beginning of this module
 pub struct Array {
     pub header: Obj,
-    pub len: u32, // number of elements
+    pub len: usize, // number of elements
 
-    // Array elements follow, each u32 sized. We can't have variable-sized structs in Rust so we
+    // Array elements follow, each of `usize` width. We can't have variable-sized structs in Rust so we
     // can't add a field here for the elements.
     // https://doc.rust-lang.org/nomicon/exotic-sizes.html
 }
@@ -583,7 +580,7 @@ impl Array {
         self.offset(1) as *mut Value // skip array header
     }
 
-    pub unsafe fn get(self: *mut Self, idx: u32) -> Value {
+    pub unsafe fn get(self: *mut Self, idx: usize) -> Value {
         let slot_addr = self.element_address(idx);
         *(slot_addr as *const Value)
     }
@@ -592,7 +589,7 @@ impl Array {
     /// Uses a generational post-update barrier on pointer writes.
     /// No incremental pre-update barrier as the previous value is undefined.
     /// Resolve pointer forwarding for the written value if necessary.
-    pub unsafe fn initialize<M: Memory>(self: *mut Self, idx: u32, value: Value, mem: &mut M) {
+    pub unsafe fn initialize<M: Memory>(self: *mut Self, idx: usize, value: Value, mem: &mut M) {
         let slot_addr = self.element_address(idx) as *mut Value;
         init_with_barrier(mem, slot_addr, value);
     }
@@ -601,18 +598,18 @@ impl Array {
     /// The written and overwritten value can be a scalar or a pointer.
     /// Applies an incremental pre-update barrier when needed.
     /// Resolves pointer forwarding for the written value.
-    pub unsafe fn set<M: Memory>(self: *mut Self, idx: u32, value: Value, mem: &mut M) {
+    pub unsafe fn set<M: Memory>(self: *mut Self, idx: usize, value: Value, mem: &mut M) {
         let slot_addr = self.element_address(idx) as *mut Value;
         write_with_barrier(mem, slot_addr, value);
     }
 
     #[inline]
-    unsafe fn element_address(self: *const Self, idx: u32) -> usize {
+    unsafe fn element_address(self: *const Self, idx: usize) -> usize {
         debug_assert!(self.len() > idx);
-        self.payload_addr() as usize + (idx * WORD_SIZE) as usize
+        self.payload_addr() as usize + idx * WORD_SIZE
     }
 
-    pub unsafe fn len(self: *const Self) -> u32 {
+    pub unsafe fn len(self: *const Self) -> usize {
         (*self).len
     }
 
@@ -620,11 +617,11 @@ impl Array {
         base_array_tag((*self).header.tag)
     }
 
-    pub unsafe fn get_slice_start(self: *const Self) -> (Tag, u32) {
+    pub unsafe fn get_slice_start(self: *const Self) -> (Tag, usize) {
         slice_start((*self).header.tag)
     }
 
-    pub unsafe fn set_slice_start(self: *mut Self, array_tag: Tag, start: u32) {
+    pub unsafe fn set_slice_start(self: *mut Self, array_tag: Tag, start: usize) {
         debug_assert!(is_base_array_tag(array_tag));
         (*self).header.tag = slice_tag(array_tag, start)
     }
@@ -639,21 +636,9 @@ impl Array {
 #[repr(C)] // See the note at the beginning of this module
 pub struct Region {
     pub header: Obj,
-    // 64-bit id split into lower and upper halves for alignment reasons
-    pub id_lower: u32,
-    pub id_upper: u32,
-    pub page_count: u32,
+    pub id: usize,
+    pub page_count: usize,
     pub vec_pages: Value, // Blob of u16's (each a page block ID).
-}
-
-impl Region {
-    pub unsafe fn write_id64(self: *mut Self, value: u64) {
-        write64(&mut (*self).id_lower, &mut (*self).id_upper, value);
-    }
-
-    pub unsafe fn read_id64(self: *mut Self) -> u64 {
-        read64((*self).id_lower, (*self).id_upper)
-    }
 }
 
 #[repr(C)] // See the note at the beginning of this module
@@ -672,15 +657,15 @@ impl Object {
     }
 
     /// Number of fields in the object.
-    pub(crate) unsafe fn size(self: *mut Self) -> u32 {
-        let hash_blob_length = (*self).hash_blob.as_blob().len().as_u32();
+    pub(crate) unsafe fn size(self: *mut Self) -> usize {
+        let hash_blob_length = (*self).hash_blob.as_blob().len().as_usize();
         debug_assert_eq!(hash_blob_length % WORD_SIZE, 0);
         hash_blob_length / WORD_SIZE
     }
 
     #[cfg(debug_assertions)]
-    pub(crate) unsafe fn get(self: *mut Self, idx: u32) -> Value {
-        *self.payload_addr().add(idx as usize)
+    pub(crate) unsafe fn get(self: *mut Self, idx: usize) -> Value {
+        *self.payload_addr().add(idx)
     }
 }
 
@@ -693,9 +678,9 @@ pub struct ObjInd {
 #[repr(C)] // See the note at the beginning of this module
 pub struct Closure {
     pub header: Obj,
-    pub funid: u32,
-    pub size: u32, // number of elements
-                   // other stuff follows ...
+    pub funid: usize,
+    pub size: usize, // number of elements
+                     // other stuff follows ...
 }
 
 impl Closure {
@@ -703,7 +688,7 @@ impl Closure {
         self.offset(1) as *mut Value // skip closure header
     }
 
-    pub(crate) unsafe fn size(self: *mut Self) -> u32 {
+    pub(crate) unsafe fn size(self: *mut Self) -> usize {
         (*self).size
     }
 }
@@ -711,7 +696,7 @@ impl Closure {
 #[repr(C)] // See the note at the beginning of this module
 pub struct Blob {
     pub header: Obj,
-    pub len: Bytes<u32>,
+    pub len: Bytes<usize>,
     // data follows ..
 }
 
@@ -724,16 +709,16 @@ impl Blob {
         self.add(1) as *mut u8 // skip blob header
     }
 
-    pub unsafe fn len(self: *const Self) -> Bytes<u32> {
+    pub unsafe fn len(self: *const Self) -> Bytes<usize> {
         (*self).len
     }
 
-    pub unsafe fn get(self: *const Self, idx: u32) -> u8 {
-        *self.payload_const().add(idx as usize)
+    pub unsafe fn get(self: *const Self, idx: usize) -> u8 {
+        *self.payload_const().add(idx)
     }
 
-    pub unsafe fn set(self: *mut Self, idx: u32, byte: u8) {
-        *self.payload_addr().add(idx as usize) = byte;
+    pub unsafe fn set(self: *mut Self, idx: usize, byte: u8) {
+        *self.payload_addr().add(idx) = byte;
     }
 
     pub unsafe fn payload_addr_u16(self: *mut Self) -> *mut u16 {
@@ -744,16 +729,16 @@ impl Blob {
         self.add(1) as *mut u16 // skip blob header
     }
 
-    pub unsafe fn get_u16(self: *const Self, idx: u32) -> u16 {
-        *self.payload_const_u16().add(idx as usize)
+    pub unsafe fn get_u16(self: *const Self, idx: usize) -> u16 {
+        *self.payload_const_u16().add(idx)
     }
 
-    pub unsafe fn set_u16(self: *mut Self, idx: u32, value: u16) {
-        *self.payload_addr_u16().add(idx as usize) = value;
+    pub unsafe fn set_u16(self: *mut Self, idx: usize, value: u16) {
+        *self.payload_addr_u16().add(idx) = value;
     }
 
     /// Shrink blob to the given size. Slop after the new size is filled with filler objects.
-    pub unsafe fn shrink(self: *mut Self, new_len: Bytes<u32>) {
+    pub unsafe fn shrink(self: *mut Self, new_len: Bytes<usize>) {
         let current_len_words = self.len().to_words();
         let new_len_words = new_len.to_words();
 
@@ -762,32 +747,19 @@ impl Blob {
         let slop = current_len_words - new_len_words;
 
         if slop == Words(1) {
-            let filler = (self.payload_addr() as *mut u32).add(new_len_words.as_usize())
+            let filler = (self.payload_addr() as *mut usize).add(new_len_words.as_usize())
                 as *mut OneWordFiller;
             (*filler).tag = TAG_ONE_WORD_FILLER;
         } else if slop != Words(0) {
             debug_assert!(slop >= size_of::<FreeSpace>());
             let filler =
-                (self.payload_addr() as *mut u32).add(new_len_words.as_usize()) as *mut FreeSpace;
+                (self.payload_addr() as *mut usize).add(new_len_words.as_usize()) as *mut FreeSpace;
             (*filler).tag = TAG_FREE_SPACE;
             (*filler).words = slop - size_of::<FreeSpace>();
         }
 
         (*self).len = new_len;
     }
-}
-
-// Note: Do not declare 64-bit fields, as otherwise, the objects are expected to be 64-bit aligned.
-// This is not the case in the current heap design.
-// Moreover, fields would also get 64-bit aligned causing implicit paddding.
-
-pub fn read64(lower: u32, upper: u32) -> u64 {
-    ((upper as u64) << u32::BITS) | lower as u64
-}
-
-pub fn write64(lower: &mut u32, upper: &mut u32, value: u64) {
-    *upper = (value >> u32::BITS) as u32;
-    *lower = (value & u32::MAX as u64) as u32;
 }
 
 /// Only used by the copying GC - not to be confused with the forwarding pointer in the general object header
@@ -806,13 +778,26 @@ pub struct BigInt {
     /// The data pointer (mp_int.dp) is irrelevant, and will be changed to point to
     /// the data within this object before it is used.
     /// (NB: If we have a non-moving GC, we can make this an invariant)
+    /// NOTE: `mp_int` originates from 64-bit Tom's math library implementation.
+    /// Layout in 64-bit memory:
+    /// ```
+    /// pub struct mp_int { // Total size 24
+    ///   pub used: c_int, // Offset 0, size 4
+    ///   pub alloc: c_int, // Offset 4, size 8
+    ///   pub sign: mp_sign, // Offset 8, size 4
+    ///   _padding: u32, // Implicit padding to align subsequent 64-bit pointer
+    ///   pub dp: *mut mp_digit, // Offset 16, size 8
+    /// }
+    /// ```
     pub mp_int: mp_int,
     // data follows ..
+    // Array of `mp_int` with length `alloc`.
+    // Each `mp_int` has byte size 8.
 }
 
 impl BigInt {
-    pub unsafe fn len(self: *mut Self) -> Bytes<u32> {
-        Bytes(((*self).mp_int.alloc as usize * core::mem::size_of::<mp_digit>()) as u32)
+    pub unsafe fn len(self: *mut Self) -> Bytes<usize> {
+        Bytes((*self).mp_int.alloc as usize * core::mem::size_of::<mp_digit>())
     }
 
     pub unsafe fn payload_addr(self: *mut Self) -> *mut mp_digit {
@@ -824,7 +809,7 @@ impl BigInt {
     }
 
     pub unsafe fn from_payload(ptr: *mut mp_digit) -> *mut Self {
-        let bigint = (ptr as *mut u32).sub(size_of::<BigInt>().as_usize()) as *mut BigInt;
+        let bigint = (ptr as *mut usize).sub(size_of::<BigInt>().as_usize()) as *mut BigInt;
         bigint.forward()
     }
 
@@ -858,14 +843,14 @@ pub struct Some {
 #[repr(C)] // See the note at the beginning of this module
 pub struct Variant {
     pub header: Obj,
-    pub tag: u32,
+    pub tag: usize,
     pub field: Value,
 }
 
 #[repr(C)] // See the note at the beginning of this module
 pub struct Concat {
     pub header: Obj,
-    pub n_bytes: Bytes<u32>,
+    pub n_bytes: Bytes<usize>,
     pub text1: Value,
     pub text2: Value,
 }
@@ -883,22 +868,7 @@ impl Concat {
 #[repr(C)] // See the note at the beginning of this module
 pub struct Bits64 {
     pub header: Obj,
-    // We have two 32-bit fields instead of one 64-bit to avoid aligning the fields on 64-bit
-    // boundary.
-    bits_lo: u32,
-    bits_hi: u32,
-}
-
-impl Bits64 {
-    pub fn bits(&self) -> u64 {
-        (u64::from(self.bits_hi) << 32) | u64::from(self.bits_lo)
-    }
-}
-
-#[repr(C)] // See the note at the beginning of this module
-pub struct Bits32 {
-    pub header: Obj,
-    pub bits: u32,
+    pub bits: usize,
 }
 
 /// Marks one word empty space in heap
@@ -911,12 +881,12 @@ pub struct OneWordFiller {
 #[repr(C)] // See the note at the beginning of this module
 pub struct FreeSpace {
     pub tag: Tag,
-    pub words: Words<u32>,
+    pub words: Words<usize>,
 }
 
 impl FreeSpace {
     /// Size of the free space (includes object header)
-    pub unsafe fn size(self: *mut Self) -> Words<u32> {
+    pub unsafe fn size(self: *mut Self) -> Words<usize> {
         (*self).words + size_of::<FreeSpace>()
     }
 }
@@ -925,7 +895,7 @@ impl FreeSpace {
 /// Handles both objects with header and forwarding pointer
 /// and special blocks such as `OneWordFiller`, `FwdPtr`, and `FreeSpace`
 /// that do not have a forwarding pointer.
-pub(crate) unsafe fn block_size(address: usize) -> Words<u32> {
+pub(crate) unsafe fn block_size(address: usize) -> Words<usize> {
     let tag = *(address as *mut Tag);
     match tag {
         TAG_OBJECT => {
@@ -966,8 +936,6 @@ pub(crate) unsafe fn block_size(address: usize) -> Words<u32> {
         TAG_FWD_PTR => {
             rts_trap_with("object_size: forwarding pointer");
         }
-
-        TAG_BITS32_U | TAG_BITS32_S | TAG_BITS32_F => size_of::<Bits32>(),
 
         TAG_BIGINT => {
             let bigint = address as *mut BigInt;

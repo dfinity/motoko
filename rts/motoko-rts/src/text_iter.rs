@@ -18,8 +18,8 @@ use crate::types::{Value, TAG_ARRAY_T, TAG_BLOB_T, TAG_CONCAT};
 
 use motoko_rts_macros::ic_mem_fn;
 
-const TODO_TEXT_IDX: u32 = 0;
-const TODO_LINK_IDX: u32 = 1;
+const TODO_TEXT_IDX: usize = 0;
+const TODO_LINK_IDX: usize = 1;
 
 /// Find the left-most leaf of a text, putting all the others onto a list. Used to enforce the
 /// invariant about TEXT_ITER_BLOB to be a blob.
@@ -44,9 +44,9 @@ unsafe fn find_leaf<M: Memory>(mem: &mut M, mut text: Value, todo: *mut Value) -
     text
 }
 
-const ITER_BLOB_IDX: u32 = 0;
-const ITER_POS_IDX: u32 = 1;
-const ITER_TODO_IDX: u32 = 2;
+const ITER_BLOB_IDX: usize = 0;
+const ITER_POS_IDX: usize = 1;
+const ITER_TODO_IDX: usize = 2;
 
 // Use non-pointer sentinel value as `null` to allow simpler visitor logic.
 // Anlogous to the design of `continuation_table` and `persistence`.
@@ -59,7 +59,7 @@ pub unsafe fn text_iter<M: Memory>(mem: &mut M, text: Value) -> Value {
     let array = iter.as_array();
 
     // Initialize the TODO field first, to be able to use it use the location to `find_leaf`
-    let todo_addr = array.payload_addr().add(ITER_TODO_IDX as usize) as *mut _;
+    let todo_addr = array.payload_addr().add(ITER_TODO_IDX) as *mut _;
     *todo_addr = NO_OBJECT;
 
     // Initialize position field
@@ -76,13 +76,13 @@ pub unsafe fn text_iter<M: Memory>(mem: &mut M, text: Value) -> Value {
 
 /// Returns whether the iterator is finished
 #[no_mangle]
-pub unsafe extern "C" fn text_iter_done(iter: Value) -> u32 {
+pub unsafe extern "C" fn text_iter_done(iter: Value) -> usize {
     let array = iter.as_array();
     let pos = array.get(ITER_POS_IDX).get_scalar();
     let blob = array.get(ITER_BLOB_IDX).as_blob();
     let todo = array.get(ITER_TODO_IDX);
 
-    if pos >= blob.len().as_u32() && todo == NO_OBJECT {
+    if pos >= blob.len().as_usize() && todo == NO_OBJECT {
         1
     } else {
         0
@@ -98,7 +98,7 @@ pub unsafe fn text_iter_next<M: Memory>(mem: &mut M, iter: Value) -> u32 {
     let pos = iter_array.get(ITER_POS_IDX).get_scalar();
 
     // If we are at the end of the current blob, find the next blob
-    if pos >= blob.len().as_u32() {
+    if pos >= blob.len().as_usize() {
         let todo = iter_array.get(ITER_TODO_IDX);
 
         if todo == NO_OBJECT {
@@ -117,7 +117,7 @@ pub unsafe fn text_iter_next<M: Memory>(mem: &mut M, iter: Value) -> u32 {
 
             todo_array.set(TODO_TEXT_IDX, (*concat).text2, mem);
             iter_array.set(ITER_POS_IDX, Value::from_scalar(0), mem);
-            let todo_addr = iter_array.payload_addr().add(ITER_TODO_IDX as usize);
+            let todo_addr = iter_array.payload_addr().add(ITER_TODO_IDX);
 
             iter_array.set(
                 ITER_BLOB_IDX,
@@ -140,8 +140,8 @@ pub unsafe fn text_iter_next<M: Memory>(mem: &mut M, iter: Value) -> u32 {
     } else {
         // We are not at the end, read the next character from the blob
         let blob_payload = blob.payload_const();
-        let mut step: u32 = 0;
-        let char = decode_code_point(blob_payload.add(pos as usize), &mut step as *mut u32);
+        let mut step = 0;
+        let char = decode_code_point(blob_payload.add(pos), &mut step as *mut usize);
         iter_array.set(ITER_POS_IDX, Value::from_scalar(pos + step), mem);
         char
     }
