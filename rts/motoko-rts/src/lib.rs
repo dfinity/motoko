@@ -38,14 +38,14 @@ pub mod gc;
 mod idl;
 pub mod leb128;
 mod libc_declarations;
-mod mem_utils;
+pub mod mem_utils;
 pub mod memory;
 #[cfg(feature = "ic")]
 pub mod persistence;
 pub mod principal_id;
 #[cfg(feature = "ic")]
 pub mod region;
-#[cfg(feature = "ic")]
+pub mod stabilization;
 mod stable_mem;
 mod static_checks;
 pub mod text;

@@ -58,6 +58,7 @@ unsafe fn schedule_incremental_gc<M: Memory>(mem: &mut M) {
 unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
     use self::roots::root_set;
     let state = get_incremental_gc_state();
+    assert!(state.phase != Phase::Stop);
     if state.phase == Phase::Pause {
         record_gc_start::<M>();
     }
@@ -148,6 +149,7 @@ const INCREMENT_ALLOCATION_FACTOR: usize = 50; // Additional time factor per con
 #[derive(PartialEq)]
 #[repr(C)]
 enum Phase {
+    Stop,     // GC stopped during canister upgrade and explicit stabilization/destabilization.
     Pause,    // Inactive, waiting for the next GC run.
     Mark,     // Incremental marking.
     Evacuate, // Incremental evacuation compaction.
@@ -422,6 +424,26 @@ pub unsafe fn get_incremental_gc_state() -> &'static mut State {
 #[cfg(feature = "ic")]
 pub unsafe fn get_max_live_size() -> Bytes<usize> {
     get_incremental_gc_state().statistics.max_live
+}
+
+/// Stop the GC. Called before stabilzation and destabilization.
+pub unsafe fn stop_gc() {
+    let state = get_incremental_gc_state();
+    state.phase = Phase::Stop;
+}
+
+/// Resume the stopped GC. Called after completed destabilization.
+pub unsafe fn resume_gc() {
+    let state = get_incremental_gc_state();
+    assert!(state.phase == Phase::Stop);
+    state.phase = Phase::Pause;
+    // The allocation during destabilization should not count as concurrent
+    // mutator allocation. Therefore, reset the allocation count.
+    state.allocation_count = 0;
+}
+
+pub unsafe fn is_gc_stopped() -> bool {
+    get_incremental_gc_state().phase == Phase::Stop
 }
 
 /// For RTS unit testing only.
