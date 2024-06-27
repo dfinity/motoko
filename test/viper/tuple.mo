@@ -1,3 +1,7 @@
+// @verify
+
+import Prim "mo:⛔";
+
 actor Tuple {
 
     let fld1 = (1, false);
@@ -18,7 +22,7 @@ actor Tuple {
     };
 
     private func getTuple(): (Int, Bool) {
-        assert:return (var:return).0 == 42 and (var:return).1 == false;
+        assert:return Prim.Ret<(Int, Bool)>().0 == 42 and Prim.Ret<(Int, Bool)>().1 == false;
         return (42, false);
     };
 

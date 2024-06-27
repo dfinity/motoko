@@ -11,8 +11,8 @@ actor Reverse {
     // actor invariant is preserved:
     assert:func xarray.size() == 5;
     assert:return xarray.size() == 5;
-    
-    assert:return (var:return).size() == xarray.size();
+
+    assert:return Prim.Ret<[var Nat]>().size() == xarray.size();
     let length = xarray.size();
     let t = Array.init<Nat>(length, 0);
     var i = 0;

@@ -53,7 +53,6 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
     T.Await
   | PrimE _
   | VarE _
-  | ResVarE
   | LitE _
   | ImportE _
   | FuncE _ ->

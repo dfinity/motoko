@@ -672,7 +672,6 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     if !Mo_config.Flags.release_mode then k V.unit else interpret_exp env exp1 k
   | RetE exp1 ->
     interpret_exp env exp1 (Option.get env.rets)
-  | ResVarE -> assert false (* var:return syntax only occurs in motoko-san assertions *)
   | ThrowE exp1 ->
     interpret_exp env exp1 (Option.get env.throws)
   | AsyncE (T.Fut, _, exp1) ->
