@@ -1,5 +1,3 @@
-import P = "mo:⛔";
+import Prim = "mo:⛔";
 
-ignore P.componentCall(123);
-
-assert false;
+ignore Prim.componentCall(123);
