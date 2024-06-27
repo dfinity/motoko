@@ -102,7 +102,7 @@ impl<'a, M: Memory> MemoryChecker<'a, M> {
             object.tag(),
             |gc, field_address| {
                 let value = *field_address;
-                if value.is_ptr() {
+                if value.is_non_null_ptr() {
                     gc.check_object(value);
                 } else {
                     gc.check_object_header(value);
@@ -114,7 +114,7 @@ impl<'a, M: Memory> MemoryChecker<'a, M> {
 
     unsafe fn check_object_header(&self, object: Value) {
         let tag = object.tag();
-        assert!(tag >= TAG_OBJECT && tag <= TAG_NULL);
+        assert!(is_object_tag(tag));
         object.check_forwarding_pointer();
         if let CheckerMode::UpdateCompletion = self.mode {
             // Forwarding is no longer allowed on a completed GC.
