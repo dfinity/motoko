@@ -86,12 +86,11 @@ unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
 
 #[cfg(feature = "ic")]
 #[enhanced_orthogonal_persistence]
-const CRITICAL_HEAP_LIMIT: Bytes<usize> =
-    Bytes((crate::memory::MAXIMUM_MEMORY_SIZE.0 / 10 * 8) as usize); // 80%
+const CRITICAL_HEAP_LIMIT: Bytes<usize> = Bytes(crate::memory::ic::MAIN_MEMORY_LIMIT.0 / 10 * 8); // 80%
 
 #[cfg(feature = "ic")]
 #[enhanced_orthogonal_persistence]
-const MEDIUM_HEAP_LIMIT: Bytes<usize> = Bytes((crate::memory::MAXIMUM_MEMORY_SIZE.0 / 2) as usize); // 50%
+const MEDIUM_HEAP_LIMIT: Bytes<usize> = Bytes(crate::memory::ic::MAIN_MEMORY_LIMIT.0 / 2); // 50%
 
 #[cfg(feature = "ic")]
 #[classical_persistence]
@@ -326,7 +325,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         debug_assert!(self.mark_completed());
         MarkIncrement::<M>::complete_phase(self.state);
         self.state.phase = Phase::Evacuate;
-        EvacuationIncrement::<M>::start_phase(self.state);
+        EvacuationIncrement::<M>::start_phase(self.mem, self.state);
     }
 
     unsafe fn evacuation_completed(&self) -> bool {
