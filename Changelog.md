@@ -8,7 +8,7 @@
     resource deallocation (e.g. acquired locks, etc.) and similar cleanups in the
     presence of control-flow expressions (`return`, `break`, `continue`, `throw`).
 
-    Note: `finally`-expressions that are in scope will be executed even if an execution
+    _Note_: `finally`-expressions that are in scope will be executed even if an execution
     path _following_ an `await`-expression traps. This behaviour, not available before,
     allows programmers writing last-resort cleanups. For trapping execution paths _without_ an
     intervening `await`, the replica-provided state rewinding mechanism stays in charge of
