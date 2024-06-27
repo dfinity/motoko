@@ -11256,7 +11256,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     if not !Flags.import_component then (
       Printf.printf "%s" (Diag.string_of_message (
         Diag.error_message at "M0200" "import" (Printf.sprintf "component import is unavailable (pass `-import-component` flag)")));
-      exit 1);
+        exit 1);
     SR.UnboxedWord32 Type.Nat32,
     compile_exp_as env ae (SR.UnboxedWord32 Type.Nat32) e ^^
     E.call_import env "component" "call"
