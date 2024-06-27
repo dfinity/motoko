@@ -316,10 +316,8 @@ let transform prog =
           t_typ (T.open_ [t] t_clean)
         | t -> assert false
       in
-      let v_ret = fresh_var "v" t_ret in
-      let v_fail = fresh_var "e" t_fail in
-      let v_clean = fresh_var "c" t_clean in
-      ([v_ret; v_fail; v_clean] -->* callE (t_exp exp1) [t0] (tupE [varE v_ret; varE v_fail; varE v_clean])).it
+      let v_ret, v_fail, v_clean = fresh_var "v" t_ret, fresh_var "e" t_fail, fresh_var "c" t_clean in
+      ([v_ret; v_fail; v_clean] -->* callE (t_exp exp1) [t0] (List.map varE [v_ret; v_fail; v_clean] |> tupE)).it
     | PrimE (CallPrim typs, [exp1; exp2]) when is_awaitable_func exp1 ->
       let ts1,ts2 =
         match typ exp1 with
