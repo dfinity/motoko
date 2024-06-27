@@ -877,7 +877,6 @@ and exp ctxt e =
      | _ ->
         unsupported e.at (Arrange.exp e)
     end
-  | M.ResVarE -> !!(FldE "$Res")
   | M.AnnotE(a, b) ->
     exp ctxt a
   | M.CallE ({it=M.DotE (e1, {it="size";_});_}, _inst, {it=M.TupE ([]);at;_})

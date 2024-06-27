@@ -1,5 +1,7 @@
 // @verify
 
+import Prim "mo:⛔";
+
 actor Record {
   type R  = { aa: Int; b: Text; };
   type R1 = { aa: Int; b: Text; };
@@ -26,7 +28,7 @@ actor Record {
   };
 
   func get_record(): R {
-    assert:return (var:return) == { aa = 100; b = "aaa" };
+    assert:return Prim.Ret<R>() == { aa = 100; b = "aaa" };
     return { aa = 100; b = "aaa" };
   };
 
@@ -37,7 +39,7 @@ actor Record {
 
   func record_arg(r: R): R {
     assert:func r.aa == 100;
-    assert:return (var:return).aa == 100;
+    assert:return Prim.Ret<R>().aa == 100;
     return { aa = 100; b = "aaa" };
   };
 
@@ -47,7 +49,7 @@ actor Record {
   };
 
   func match_on_record(): Int {
-    assert:return (var:return) == 42;
+    assert:return Prim.Ret<Int>() == 42;
 
     let r = get_record();
     switch r {

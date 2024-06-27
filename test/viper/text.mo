@@ -1,3 +1,7 @@
+// @verify
+
+import Prim "mo:⛔";
+
 actor Text {
   let fld1 = "42";
   var fld2 = "42";
@@ -25,7 +29,7 @@ actor Text {
   };
 
   func get_text(): Text {
-    assert:return (var:return) == "foo";
+    assert:return Prim.Ret<Text>() == "foo";
     return "foo";
   };
 
@@ -41,7 +45,7 @@ actor Text {
 
   func text_arg(txt: Text): Text {
     assert:func txt == "abc";
-    assert:return (var:return) == "abc" # "42";
+    assert:return Prim.Ret<Text>() == "abc" # "42";
     return txt # "42";
   };
 
@@ -51,7 +55,7 @@ actor Text {
   };
 
   func match_on_text(): Int {
-    assert:return (var:return) == 42;
+    assert:return Prim.Ret<Int>() == 42;
 
     let txt = get_text();
     switch txt {

@@ -93,8 +93,8 @@ actor Assistant {
     assert:return 0 <= num and num <= todos.size(); // actor invariant (rise it earler)
     assert:return num == (old(num)) + 1;
     assert:return nextId == (old(nextId)) + 1;
-    assert:return (var:return) == (old(nextId));
-    assert:return todos[num-1] == (var:return, description, #TODO);
+    assert:return Prim.Ret<Nat>() == (old(nextId));
+    assert:return todos[num-1] == (Prim.Ret<Nat>(), description, #TODO);
     assert:return Prim.forall<Nat>(func i =
       (0 <= i and i+1 < num implies todos[i] == (old(todos[i]))));
     let id = nextId;

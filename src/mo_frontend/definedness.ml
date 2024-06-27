@@ -93,7 +93,6 @@ let rec exp msgs e : f = match e.it with
   (* The rest remaining cases just collect the uses of subexpressions: *)
   | LitE _ | ActorUrlE _
   | PrimE _ | ImportE _ -> M.empty
-  | ResVarE             -> M.empty
   | UnE (_, uo, e)      -> exp msgs e
   | BinE (_, e1, bo, e2)-> exps msgs [e1; e2]
   | RelE (_, e1, ro, e2)-> exps msgs [e1; e2]
