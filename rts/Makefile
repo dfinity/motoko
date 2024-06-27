@@ -112,7 +112,7 @@ CLANG_FLAGS = \
 
 .PHONY: all
 
-all: mo-rts.wasm mo-rts-debug.wasm mo-rts-incremental.wasm mo-rts-incremental-debug.wasm
+all: mo-rts.wasm mo-rts-debug.wasm
 
 _build:
 	mkdir -p $@
@@ -226,26 +226,15 @@ RTS_RELEASE_BUILD=$(RTS_BUILD) --release
 RTS_DEBUG_TARGET=motoko-rts/target/wasm32-unknown-emscripten/debug/libmotoko_rts.a
 RTS_RELEASE_TARGET=motoko-rts/target/wasm32-unknown-emscripten/release/libmotoko_rts.a
 
-RTS_RUST_NON_INCREMENTAL_WASM_A=_build/wasm/libmotoko_rts.a
-RTS_RUST_NON_INCREMENTAL_DEBUG_WASM_A=_build/wasm/libmotoko_rts_debug.a
+RTS_RUST_WASM_A=_build/wasm/libmotoko_rts.a
+RTS_RUST_DEBUG_WASM_A=_build/wasm/libmotoko_rts_debug.a
 
-RTS_RUST_INCREMENTAL_WASM_A=_build/wasm/libmotoko_rts_incremental.a
-RTS_RUST_INCREMENTAL_DEBUG_WASM_A=_build/wasm/libmotoko_rts_incremental_debug.a
-
-$(RTS_RUST_NON_INCREMENTAL_WASM_A): $(RTS_DEPENDENCIES)
+$(RTS_RUST_WASM_A): $(RTS_DEPENDENCIES)
 	$(RTS_RELEASE_BUILD)
 	cp $(RTS_RELEASE_TARGET) $@
 
-$(RTS_RUST_NON_INCREMENTAL_DEBUG_WASM_A): $(RTS_DEPENDENCIES)
+$(RTS_RUST_DEBUG_WASM_A): $(RTS_DEPENDENCIES)
 	$(RTS_DEBUG_BUILD)
-	cp $(RTS_DEBUG_TARGET) $@
-
-$(RTS_RUST_INCREMENTAL_WASM_A): $(RTS_DEPENDENCIES)
-	$(RTS_RELEASE_BUILD) --features incremental_gc
-	cp $(RTS_RELEASE_TARGET) $@
-
-$(RTS_RUST_INCREMENTAL_DEBUG_WASM_A): $(RTS_DEPENDENCIES)
-	$(RTS_DEBUG_BUILD) --features incremental_gc
 	cp $(RTS_DEBUG_TARGET) $@
 
 #
@@ -254,18 +243,12 @@ $(RTS_RUST_INCREMENTAL_DEBUG_WASM_A): $(RTS_DEPENDENCIES)
 
 TEST_DEPENDENCIES=$(TOMMATH_WASM_A) $(TOMMATH_BINDINGS_RS)
 TEST_BUILD=cd motoko-rts-tests && cargo build --target=wasm32-wasi
-TEST_RUN=wasmtime --disable-cache motoko-rts-tests/target/wasm32-wasi/debug/motoko-rts-tests.wasm
+TEST_RUN=wasmtime -C cache=n -W nan-canonicalization=y motoko-rts-tests/target/wasm32-wasi/debug/motoko-rts-tests.wasm
 
 .PHONY: test
 
-test: test-non-incremental test-incremental
-
-test-non-incremental: $(TEST_DEPENDENCIES)
+test: $(TEST_DEPENDENCIES)
 	$(TEST_BUILD)
-	$(TEST_RUN)
-
-test-incremental: $(TEST_DEPENDENCIES)
-	$(TEST_BUILD) --features incremental_gc
 	$(TEST_RUN)
 
 #
@@ -295,22 +278,12 @@ LINKER_OPTIONS=\
   $(EXPORTED_SYMBOLS:%=--export=%) \
   --whole-archive
 
-mo-rts.wasm: $(RTS_RUST_NON_INCREMENTAL_WASM_A) $(WASM_A_DEPENDENCIES)
+mo-rts.wasm: $(RTS_RUST_WASM_A) $(WASM_A_DEPENDENCIES)
 	$(WASM_LD) -o $@ \
 		$(LINKER_OPTIONS) \
 		$+
 
-mo-rts-debug.wasm: $(RTS_RUST_NON_INCREMENTAL_DEBUG_WASM_A) $(WASM_A_DEPENDENCIES)
-	$(WASM_LD) -o $@ \
-		$(LINKER_OPTIONS) \
-		$+
-
-mo-rts-incremental.wasm: $(RTS_RUST_INCREMENTAL_WASM_A) $(WASM_A_DEPENDENCIES)
-	$(WASM_LD) -o $@ \
-		$(LINKER_OPTIONS) \
-		$+
-
-mo-rts-incremental-debug.wasm: $(RTS_RUST_INCREMENTAL_DEBUG_WASM_A) $(WASM_A_DEPENDENCIES)
+mo-rts-debug.wasm: $(RTS_RUST_DEBUG_WASM_A) $(WASM_A_DEPENDENCIES)
 	$(WASM_LD) -o $@ \
 		$(LINKER_OPTIONS) \
 		$+
@@ -323,10 +296,7 @@ format:
 clean:
 	rm -rf \
 	  _build \
-	  mo-rts.wasm \
-	  mo-rts-debug.wasm \
-	  mo-rts-incremental.wasm \
-	  mo-rts-incremental-debug.wasm \
+	  mo-rts*.wasm \
 	  motoko-rts/target \
 	  motoko-rts-tests/target \
 	  motoko-rts-macros/target \

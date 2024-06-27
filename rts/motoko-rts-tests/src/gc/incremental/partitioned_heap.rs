@@ -10,10 +10,15 @@ use motoko_rts::{
             Partition, PartitionedHeap, PartitionedHeapIterator, PARTITION_SIZE,
             SURVIVAL_RATE_THRESHOLD,
         },
+        set_incremental_gc_state,
         time::BoundedTime,
+        IncrementalGC,
     },
     memory::{alloc_array, alloc_blob, Memory},
-    types::{Array, Blob, Bytes, Obj, Tag, Value, Words, TAG_ARRAY, TAG_BLOB},
+    types::{
+        Array, Blob, Bytes, Obj, Tag, Value, Words, TAG_ARRAY_I, TAG_ARRAY_M, TAG_ARRAY_S,
+        TAG_ARRAY_T, TAG_BLOB_A, TAG_BLOB_B, TAG_BLOB_P, TAG_BLOB_T,
+    },
 };
 
 use crate::{gc::utils::WORD_SIZE, memory::TestMemory};
@@ -39,6 +44,7 @@ unsafe fn test_normal_size_scenario() {
     test_survival_rate(&mut heap.inner);
     test_freeing_partitions(&mut heap, HEAP_SIZE / PARTITION_SIZE + 1);
     test_close_partition(&mut heap);
+    set_incremental_gc_state(None);
 }
 
 fn test_allocation_partitions(heap: &PartitionedHeap, number_of_partitions: usize) {
@@ -258,6 +264,9 @@ unsafe fn test_large_size_scenario() {
 unsafe fn test_allocation_sizes(sizes: &[usize], number_of_partitions: usize) {
     let total_partitions = number_of_partitions + 1; // Plus temporary partition.
     let mut heap = PartitionedTestHeap::new(total_partitions * PARTITION_SIZE);
+    let heap_base = heap.heap_base();
+    let state = IncrementalGC::initial_gc_state(&mut heap, heap_base);
+    set_incremental_gc_state(Some(state));
     assert!(heap.inner.occupied_size().as_usize() < PARTITION_SIZE + heap.heap_base());
     let mut time = BoundedTime::new(0);
     heap.inner.start_collection(&mut heap.memory, &mut time);
@@ -279,7 +288,8 @@ unsafe fn test_allocation_sizes(sizes: &[usize], number_of_partitions: usize) {
     heap.inner.complete_collection();
     heap.inner.start_collection(&mut heap.memory, &mut time);
     iterate_large_objects(&heap.inner, &[]);
-    assert!(heap.inner.occupied_size().as_usize() < PARTITION_SIZE + heap.heap_base())
+    assert!(heap.inner.occupied_size().as_usize() < PARTITION_SIZE + heap.heap_base());
+    set_incremental_gc_state(None);
 }
 
 unsafe fn unmark_all_objects(heap: &mut PartitionedTestHeap) {
@@ -308,7 +318,7 @@ unsafe fn iterate_large_partition(
     let mut time = BoundedTime::new(0);
     while iterator.has_object() {
         let object = iterator.current_object();
-        assert_eq!(object.tag(), TAG_BLOB);
+        assert_eq!(object.tag(), TAG_BLOB_B);
         let size = block_size(object as *const Tag);
         detected_sizes.push(size);
         time.tick();
@@ -329,9 +339,12 @@ unsafe fn occupied_space(partition: &Partition) -> usize {
     occupied_space
 }
 
-fn create_test_heap() -> PartitionedTestHeap {
+unsafe fn create_test_heap() -> PartitionedTestHeap {
     println!("    Create test heap...");
     let mut heap = PartitionedTestHeap::new(HEAP_SIZE);
+    let heap_base = heap.heap_base();
+    let state = IncrementalGC::initial_gc_state(&mut heap, heap_base);
+    set_incremental_gc_state(Some(state));
     let mut time = BoundedTime::new(0);
     unsafe {
         heap.inner.start_collection(&mut heap.memory, &mut time);
@@ -396,26 +409,28 @@ impl PartitionedTestHeap {
 
     pub fn allocate_array(&mut self, elements: &[Value]) -> Value {
         unsafe {
-            let array = alloc_array(self, elements.len() as u32);
+            let array = alloc_array(self, TAG_ARRAY_M, elements.len() as u32);
             for index in 0..elements.len() {
                 let raw_array = array.as_array();
-                raw_array.set_scalar(index as u32, elements[index]);
+                raw_array.set(index as u32, elements[index], self);
             }
             array
         }
     }
 
     pub fn allocate_blob(&mut self, size: usize) -> Value {
-        unsafe { alloc_blob(self, Bytes(size as u32)) }
+        unsafe { alloc_blob(self, TAG_BLOB_B, Bytes(size as u32)) }
     }
 }
 
 unsafe fn block_size(block: *const Tag) -> usize {
     match *block {
-        TAG_ARRAY => {
+        TAG_ARRAY_I | TAG_ARRAY_M | TAG_ARRAY_T | TAG_ARRAY_S => {
             size_of::<Array>() + (block as *const Array).len() as usize * WORD_SIZE as usize
         }
-        TAG_BLOB => size_of::<Blob>() + (block as *const Blob).len().as_usize(),
+        TAG_BLOB_B | TAG_BLOB_T | TAG_BLOB_P | TAG_BLOB_A => {
+            size_of::<Blob>() + (block as *const Blob).len().as_usize()
+        }
         _ => unimplemented!(),
     }
 }
@@ -428,7 +443,7 @@ impl Memory for PartitionedTestHeap {
         result
     }
 
-    unsafe fn grow_memory(&mut self, _ptr: u64) {
-        unreachable!();
+    unsafe fn grow_memory(&mut self, ptr: u64) {
+        assert!(ptr as usize <= self.memory.heap_end());
     }
 }

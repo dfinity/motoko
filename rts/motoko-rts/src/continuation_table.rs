@@ -1,5 +1,10 @@
 //! This file implements the data structure the Motoko runtime uses to keep track of outstanding
-//! continuations. It needs to support the following operations
+//! continuations.
+//!
+//! The structure is re-initialized on canister upgrades. This is why it is not part of the
+//! persistent metadata, cf. `persistence::PersistentMetadata`.
+//!
+//! It needs to support the following operations
 //!
 //!  1. Adding a continuation (any heap pointer) and getting an index (i32)
 //!  2. Looking up a continuation by index, which also frees it
@@ -22,14 +27,17 @@
 //! the free list. Since all indices are relative to the payload begin, they stay valid. We never
 //! shrink the table.
 
-use crate::barriers::allocation_barrier;
+use crate::barriers::{allocation_barrier, write_with_barrier};
 use crate::memory::{alloc_array, Memory};
 use crate::rts_trap_with;
-use crate::types::Value;
+use crate::types::{Value, TAG_ARRAY_M};
 
 use motoko_rts_macros::ic_mem_fn;
 
 const INITIAL_SIZE: u32 = 256;
+
+// The static variables are re-initialized on canister upgrades and therefore not part of the
+// persistent metadata.
 
 // Skewed pointer to the `Array` object. This needs to be a skewed pointer to be able to pass its
 // location to the GC.
@@ -42,13 +50,13 @@ static mut N_CONTINUATIONS: u32 = 0;
 static mut FREE_SLOT: u32 = 0;
 
 unsafe fn create_continuation_table<M: Memory>(mem: &mut M) {
-    TABLE = alloc_array(mem, INITIAL_SIZE);
+    TABLE = alloc_array(mem, TAG_ARRAY_M, INITIAL_SIZE);
     FREE_SLOT = 0;
     N_CONTINUATIONS = 0;
 
     let table = TABLE.as_array();
     for i in 0..INITIAL_SIZE {
-        table.set_scalar(i, Value::from_scalar(i + 1));
+        table.set(i, Value::from_scalar(i + 1), mem);
     }
     allocation_barrier(TABLE);
 }
@@ -61,8 +69,8 @@ unsafe fn double_continuation_table<M: Memory>(mem: &mut M) {
 
     let new_size = old_size * 2;
 
-    TABLE = alloc_array(mem, new_size);
-    let new_array = TABLE.as_array();
+    let new_table = alloc_array(mem, TAG_ARRAY_M, new_size);
+    let new_array = new_table.as_array();
 
     for i in 0..old_size {
         let old_value = old_array.get(i);
@@ -70,9 +78,12 @@ unsafe fn double_continuation_table<M: Memory>(mem: &mut M) {
     }
 
     for i in old_size..new_size {
-        new_array.set_scalar(i, Value::from_scalar(i + 1));
+        new_array.set(i, Value::from_scalar(i + 1), mem);
     }
-    allocation_barrier(TABLE);
+    allocation_barrier(new_table);
+
+    let location = &mut TABLE as *mut Value;
+    write_with_barrier(mem, location, new_table);
 }
 
 pub unsafe fn table_initialized() -> bool {
@@ -100,7 +111,7 @@ pub unsafe fn remember_continuation<M: Memory>(mem: &mut M, ptr: Value) -> u32 {
 
     FREE_SLOT = table.get(idx).get_scalar();
 
-    table.set_pointer(idx, ptr, mem);
+    table.set(idx, ptr, mem);
 
     N_CONTINUATIONS += 1;
 
@@ -130,8 +141,8 @@ pub unsafe extern "C" fn peek_future_continuation(idx: u32) -> Value {
     ptr.as_array().get(FUTURE_ARRAY_INDEX)
 }
 
-#[no_mangle]
-pub unsafe fn recall_continuation(idx: u32) -> Value {
+#[ic_mem_fn]
+pub unsafe fn recall_continuation<M: Memory>(mem: &mut M, idx: u32) -> Value {
     if !table_initialized() {
         rts_trap_with("recall_continuation: Continuation table not allocated");
     }
@@ -144,7 +155,7 @@ pub unsafe fn recall_continuation(idx: u32) -> Value {
 
     let ptr = table.get(idx);
 
-    table.set_scalar(idx, Value::from_scalar(FREE_SLOT));
+    table.set(idx, Value::from_scalar(FREE_SLOT), mem);
 
     FREE_SLOT = idx;
 

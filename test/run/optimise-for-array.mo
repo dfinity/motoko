@@ -6,13 +6,13 @@ import Prim "mo:⛔";
 // FHECK: (local $check0 i32)
 
 // FHECK-NOT:  call $@immut_array_size
-// DON'TFHECK: i32.load offset=(5 or 9) 
+// DON'TFHECK: i32.load offset=9
 // FHECK:      i32.load offset= 
 // FHECK:      i32.const 2
 // FHECK:      i32.shl
 // FHECK:      i32.lt_u
 // FHECK:      i32.add
-// DON'TFHECK: i32.load offset=(9 or 13)
+// DON'TFHECK: i32.load offset=13
 // FHECK:      local.tee $check0
 // FHECK-NEXT: call $print_text
 // FHECK:      i32.const 4
@@ -21,13 +21,13 @@ for (check0 in ["hello", "world"].vals()) { Prim.debugPrint check0 };
 
 
 // FHECK-NOT:  call $@mut_array_size
-// DON'TFHECK: i32.load offset=(5 or 9)
+// DON'TFHECK: i32.load offset=9
 // FHECK:      i32.load offset=
 // FHECK:      i32.const 2
 // FHECK-NEXT: i32.shl
 // FHECK:      i32.lt_u
 // FHECK:      i32.add
-// DON'TFHECK: i32.load offset=(9 or 13)
+// DON'TFHECK: i32.load offset=13
 // FHECK:      i32.load offset=
 // FHECK-NEXT: local.tee $check1
 // FHECK-NEXT: call $print_text
@@ -36,7 +36,7 @@ for (check1 in [var "hello", "mutable", "world"].vals()) { Prim.debugPrint check
 let array = [var "hello", "remutable", "world"];
 array[1] := "mutable";
 // FHECK-NOT:   call $@immut_array_size
-// DON'TFHECK:  i32.load offset=(5 or 9)
+// DON'TFHECK:  i32.load offset=9
 // FHECK:       i32.load offset=
 // FHECK:       i32.const 2
 // FHECK:       i32.shl
@@ -48,13 +48,13 @@ array[1] := "mutable";
 for (check2 in array.vals()) { Prim.debugPrint check2 };
 
 // FHECK-NOT:  call $@immut_array_size
-// DON'TFHECK: i32.load offset=(5 or 9)
+// DON'TFHECK: i32.load offset=9
 // FHECK:      i32.load offset=
 // FHECK:      i32.const 2
 // FHECK:      i32.shl
 // FHECK:      i32.lt_u
 // FHECK:      i32.add
-// DON'TFHECK: i32.load offset=(9 or 13)
+// DON'TFHECK: i32.load offset=13
 // FHECK:      i32.load offset=
 // FHECK-NEXT: local.tee $check3
 // interfering parentheses don't disturb us
@@ -95,7 +95,7 @@ check6[1] := "mutable";
 // this passes the IR type check, which demonstrates that no name capture happens
 for (check6 in check6.vals()) { ignore check6 };
 
-// DON'TFHECK: i32.load offset=(5 or 9)
+// DON'TFHECK: i32.load offset=9
 // FHECK:      i32.load offset=
 // FHECK:      i32.const 2
 // FHECK:      i32.shl
@@ -104,7 +104,7 @@ for (check7 in [].vals(Prim.debugPrint "want to see you")) { };
 
 // FHECK:      local.set $num8
 // FHECK-NOT:  call $@immut_array_size
-// DON'TFHECK: i32.load offset=(5 or 9)
+// DON'TFHECK: i32.load offset=9
 // FHECK:      i32.load offset=
 // FHECK:      i32.const 1
 // FHECK:      i32.shl

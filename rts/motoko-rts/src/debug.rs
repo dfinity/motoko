@@ -23,11 +23,11 @@ pub unsafe extern "C" fn print_value(value: Value) {
 pub unsafe fn dump_heap(
     heap_base: u32,
     hp: u32,
-    static_roots: Value,
-    continuation_table_loc: *mut Value,
+    static_root_location: *mut Value,
+    continuation_table_location: *mut Value,
 ) {
-    print_continuation_table(continuation_table_loc);
-    print_static_roots(static_roots);
+    print_continuation_table(continuation_table_location);
+    print_static_roots(*static_root_location);
     print_heap(heap_base, hp);
 }
 
@@ -52,7 +52,7 @@ pub(crate) unsafe fn print_continuation_table(continuation_tbl_loc: *mut Value) 
 
     for i in 0..len {
         let elem = arr.get(i);
-        if elem.is_ptr() {
+        if elem.is_non_null_ptr() {
             let _ = write!(&mut write_buf, "{}: ", i);
             print_boxed_object(&mut write_buf, elem.get_ptr());
             print(&write_buf);
@@ -123,13 +123,13 @@ unsafe fn print_tagged_scalar(buf: &mut WriteBuf, p: u32) {
 pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
     let _ = write!(buf, "{:#x}: ", p);
 
-    let forward = (*(p as *mut Value)).forward();
+    let obj = p as *mut Obj;
+    let forward = (*obj).forward;
     if forward.get_ptr() != p {
         let _ = write!(buf, "<forwarded to {:#x}>", forward.get_ptr());
         return;
     }
 
-    let obj = p as *mut Obj;
     let tag = obj.tag();
 
     if tag == 0 {
@@ -142,8 +142,8 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
             let _ = write!(
                 buf,
                 "<Object size={:#x} hash_ptr={:#x} field=[",
-                (*object).size,
-                (*object).hash_ptr
+                object.size(),
+                (*object).hash_blob.get_raw()
             );
             for i in 0..object.size() {
                 let val = object.get(i);
@@ -155,7 +155,7 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
                     let _ = write!(buf, ")");
                 }
 
-                if i != (*object).size - 1 {
+                if i != object.size() - 1 {
                     let _ = write!(buf, ",");
                 }
             }
@@ -165,7 +165,7 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
             let obj_ind = obj as *const ObjInd;
             let _ = write!(buf, "<ObjInd field={:#x}>", (*obj_ind).field.get_raw());
         }
-        TAG_ARRAY | TAG_ARRAY_SLICE_MIN.. => {
+        TAG_ARRAY_I | TAG_ARRAY_M | TAG_ARRAY_T | TAG_ARRAY_S | TAG_ARRAY_SLICE_MIN.. => {
             let array = obj as *mut Array;
             let _ = write!(buf, "<Array len={:#x}", (*array).len);
 
@@ -179,7 +179,7 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
                 let _ = write!(buf, ">");
             }
         }
-        TAG_BITS64 => {
+        TAG_BITS64_U | TAG_BITS64_S | TAG_BITS64_F => {
             let bits64 = obj as *const Bits64;
             let _ = write!(buf, "<Bits64 {:#x}>", (*bits64).bits());
         }
@@ -204,7 +204,7 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
                 (*variant).field.get_raw()
             );
         }
-        TAG_BLOB => {
+        TAG_BLOB_B | TAG_BLOB_T | TAG_BLOB_P | TAG_BLOB_A => {
             let blob = obj.as_blob();
             let _ = write!(buf, "<Blob len={:#x}>", blob.len().as_u32());
         }
@@ -212,7 +212,7 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
             let ind = obj as *const FwdPtr;
             let _ = write!(buf, "<Forwarding to {:#x}>", (*ind).fwd.get_raw());
         }
-        TAG_BITS32 => {
+        TAG_BITS32_U | TAG_BITS32_S | TAG_BITS32_F => {
             let bits32 = obj as *const Bits32;
             let _ = write!(buf, "<Bits32 {:#x}>", (*bits32).bits);
         }

@@ -1,13 +1,16 @@
 use crate::barriers::{allocation_barrier, init_with_barrier, write_with_barrier};
 use crate::memory::{alloc_blob, Memory};
 use crate::trap_with_prefix;
-use crate::types::{size_of, Blob, Bytes, Region, Value, TAG_REGION};
+use crate::types::{size_of, Blob, Bytes, Region, Value, TAG_BLOB_B, TAG_REGION};
 
 // Versions
-// Should agree with constants StableMem.version_no_stable_memory etc. in compile.ml
-const VERSION_NO_STABLE_MEMORY: u32 = 0; // never manifest in serialized form
-const VERSION_SOME_STABLE_MEMORY: u32 = 1;
-const VERSION_REGIONS: u32 = 2;
+// Should agree with constants in StableMem in compile.ml
+// Version 0 to 2 are legacy.
+pub const LEGACY_VERSION_NO_STABLE_MEMORY: u32 = 0; // Never manifests in serialized form
+pub const LEGACY_VERSION_SOME_STABLE_MEMORY: u32 = 1;
+pub const LEGACY_VERSION_REGIONS: u32 = 2;
+pub const VERSION_STABLE_HEAP_NO_REGIONS: u32 = 3;
+pub const VERSION_STABLE_HEAP_REGIONS: u32 = 4;
 
 const _: () = assert!(meta_data::size::PAGES_IN_BLOCK <= u8::MAX as u32);
 const _: () = assert!(meta_data::max::BLOCKS <= u16::MAX);
@@ -45,6 +48,9 @@ pub struct RegionObject(pub *mut Region);
 const NIL_REGION_ID: u64 = 0;
 
 const LAST_RESERVED_REGION_ID: u64 = 15;
+
+/// All this global state gets reinitialized after an upgrade.
+/// Therefore, it is not included in the persistent metadata.
 
 // Mirrored field from stable memory, for handling upgrade logic.
 pub(crate) static mut REGION_TOTAL_ALLOCATED_BLOCKS: u32 = 0;
@@ -469,14 +475,14 @@ pub(crate) unsafe fn region0_get_ptr_loc() -> *mut Value {
 #[ic_mem_fn]
 pub unsafe fn region_new<M: Memory>(mem: &mut M) -> Value {
     match crate::stable_mem::get_version() {
-        VERSION_NO_STABLE_MEMORY => {
-            assert_eq!(crate::stable_mem::size(), 0);
-            region_migration_from_no_stable_memory(mem);
+        VERSION_STABLE_HEAP_REGIONS => {}
+        VERSION_STABLE_HEAP_NO_REGIONS => {
+            if crate::stable_mem::size() == 0 {
+                region_migration_from_no_stable_memory(mem);
+            } else {
+                region_migration_from_some_stable_memory(mem);
+            }
         }
-        VERSION_SOME_STABLE_MEMORY => {
-            region_migration_from_some_stable_memory(mem);
-        }
-        VERSION_REGIONS => {}
         _ => {
             assert!(false);
         }
@@ -490,7 +496,7 @@ pub unsafe fn region_new<M: Memory>(mem: &mut M) -> Value {
 
     meta_data::total_allocated_regions::set(next_id + 1);
 
-    let vec_pages = alloc_blob(mem, Bytes(0));
+    let vec_pages = alloc_blob(mem, TAG_BLOB_B, Bytes(0));
     allocation_barrier(vec_pages);
     let r_ptr = alloc_region(mem, next_id, 0, vec_pages);
 
@@ -524,7 +530,11 @@ pub unsafe fn region_recover<M: Memory>(mem: &mut M, rid: &RegionId) -> Value {
     debug_assert!(page_count < (u32::MAX - (PAGES_IN_BLOCK - 1)));
 
     let block_count = (page_count + PAGES_IN_BLOCK - 1) / PAGES_IN_BLOCK;
-    let vec_pages = alloc_blob(mem, Bytes(block_count * bytes_of::<u16>() as u32));
+    let vec_pages = alloc_blob(
+        mem,
+        TAG_BLOB_B,
+        Bytes(block_count * bytes_of::<u16>() as u32),
+    );
 
     let av = AccessVector(vec_pages.as_blob_mut());
     let mut recovered_blocks = 0;
@@ -552,7 +562,7 @@ pub(crate) unsafe fn region_migration_from_no_stable_memory<M: Memory>(mem: &mut
     use crate::stable_mem::{get_version, grow, size, write};
     use meta_data::size::{PAGES_IN_BLOCK, PAGE_IN_BYTES};
 
-    assert!(get_version() == VERSION_NO_STABLE_MEMORY);
+    assert!(get_version() == VERSION_STABLE_HEAP_NO_REGIONS);
     assert_eq!(size(), 0);
 
     // pages required for meta_data (9/ 960KiB), much less than PAGES_IN_BLOCK (128/ 8MB) for a full block
@@ -582,7 +592,7 @@ pub(crate) unsafe fn region_migration_from_no_stable_memory<M: Memory>(mem: &mut
     // Write magic header
     write_magic();
 
-    crate::stable_mem::set_version(VERSION_REGIONS);
+    crate::stable_mem::set_version(VERSION_STABLE_HEAP_REGIONS);
 
     // Region 0 -- classic API for stable memory, as a dedicated region.
     REGION_0 = region_new(mem);
@@ -659,7 +669,7 @@ pub(crate) unsafe fn region_migration_from_some_stable_memory<M: Memory>(mem: &m
     // Temp for the head block, which we move to be physically last.
     // NB: no allocation_barrier is required: header_val is temporary and can be reclaimed by the next GC increment/run.
     // TODO: instead of allocating an 8MB blob, just stack-allocate a tmp page and zero page, and transfer/zero-init via the stack, using a loop.
-    let header_val = crate::memory::alloc_blob(mem, crate::types::Bytes(header_len));
+    let header_val = crate::memory::alloc_blob(mem, TAG_BLOB_B, crate::types::Bytes(header_len));
     let header_blob = header_val.as_blob_mut();
     let header_bytes =
         core::slice::from_raw_parts_mut(header_blob.payload_addr(), header_len as usize);
@@ -706,7 +716,7 @@ pub(crate) unsafe fn region_migration_from_some_stable_memory<M: Memory>(mem: &m
         meta_data::block_region_table::set(BlockId(i), Some((RegionId(0), rank, page_count)))
     }
 
-    crate::stable_mem::set_version(VERSION_REGIONS);
+    crate::stable_mem::set_version(VERSION_STABLE_HEAP_REGIONS);
 
     /* "Recover" the region data into a heap object. */
     REGION_0 = region_recover(mem, &RegionId(0));
@@ -761,23 +771,20 @@ pub(crate) unsafe fn region_migration_from_regions_plus<M: Memory>(mem: &mut M) 
 #[ic_mem_fn(ic_only)]
 pub(crate) unsafe fn region_init<M: Memory>(mem: &mut M, use_stable_regions: u32) {
     match crate::stable_mem::get_version() {
-        VERSION_NO_STABLE_MEMORY => {
-            assert!(crate::stable_mem::size() == 0);
+        VERSION_STABLE_HEAP_NO_REGIONS => {
             if use_stable_regions != 0 {
-                region_migration_from_no_stable_memory(mem);
-                debug_assert!(meta_data::offset::FREE < BLOCK_BASE);
-                debug_assert!(BLOCK_BASE == meta_data::offset::BASE_LOW);
-            };
+                if crate::stable_mem::size() == 0 {
+                    region_migration_from_no_stable_memory(mem);
+                    debug_assert!(meta_data::offset::FREE < BLOCK_BASE);
+                    debug_assert!(BLOCK_BASE == meta_data::offset::BASE_LOW);
+                } else {
+                    region_migration_from_some_stable_memory(mem);
+                    debug_assert!(meta_data::offset::FREE < BLOCK_BASE);
+                    debug_assert!(BLOCK_BASE == meta_data::offset::BASE_HIGH);
+                }
+            }
         }
-        VERSION_SOME_STABLE_MEMORY => {
-            assert!(crate::stable_mem::size() > 0);
-            if use_stable_regions != 0 {
-                region_migration_from_some_stable_memory(mem);
-                debug_assert!(meta_data::offset::FREE < BLOCK_BASE);
-                debug_assert!(BLOCK_BASE == meta_data::offset::BASE_HIGH);
-            };
-        }
-        _ => {
+        VERSION_STABLE_HEAP_REGIONS => {
             region_migration_from_regions_plus(mem); //check format & recover region0
             debug_assert!(meta_data::offset::FREE < BLOCK_BASE);
             debug_assert!(
@@ -785,6 +792,7 @@ pub(crate) unsafe fn region_init<M: Memory>(mem: &mut M, use_stable_regions: u32
                     || BLOCK_BASE == meta_data::offset::BASE_HIGH
             );
         }
+        _ => assert!(false),
     }
 }
 
@@ -855,6 +863,7 @@ pub unsafe fn region_grow<M: Memory>(mem: &mut M, r: Value, new_pages: u64) -> u
 
     let new_vec_pages = alloc_blob(
         mem,
+        TAG_BLOB_B,
         Bytes(new_block_count * meta_data::bytes_of::<u16>() as u32),
     );
     let old_vec_byte_count = old_block_count * meta_data::bytes_of::<u16>() as u32;
@@ -1042,7 +1051,7 @@ pub(crate) unsafe fn region_load_blob<M: Memory>(
     offset: u64,
     len: u32,
 ) -> Value {
-    let blob_val = crate::memory::alloc_blob(mem, crate::types::Bytes(len));
+    let blob_val = crate::memory::alloc_blob(mem, TAG_BLOB_B, crate::types::Bytes(len));
     let blob = blob_val.as_blob_mut();
 
     if len < (isize::MAX as u32) {

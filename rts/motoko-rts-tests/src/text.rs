@@ -1,6 +1,6 @@
 //! Text and text iterator tests
 
-use crate::memory::TestMemory;
+use crate::memory::{initialize_test_memory, reset_test_memory, TestMemory};
 
 use motoko_rts::memory::Memory;
 use motoko_rts::text::{
@@ -8,7 +8,7 @@ use motoko_rts::text::{
     text_singleton, text_size,
 };
 use motoko_rts::text_iter::{text_iter, text_iter_done, text_iter_next};
-use motoko_rts::types::{Bytes, Value, Words, TAG_BLOB};
+use motoko_rts::types::{Bytes, Value, Words, TAG_BLOB_T};
 
 use std::convert::TryFrom;
 
@@ -48,7 +48,7 @@ impl<'a, M: Memory> Iterator for TextIter<'a, M> {
 pub unsafe fn test() {
     println!("Testing text and text iterators ...");
 
-    let mut mem = TestMemory::new(Words(1024 * 1024));
+    let mut mem = initialize_test_memory();
 
     println!("  Testing decode_code_point and text_singleton for ASCII");
     for i in 0..=255u32 {
@@ -68,7 +68,7 @@ pub unsafe fn test() {
     for i in 0..8 {
         let str = &STR[0..i + 1];
         let text = text_of_str(&mut mem, str);
-        assert_eq!(text.tag(), TAG_BLOB);
+        assert_eq!(text.tag(), TAG_BLOB_T);
         let iter = TextIter::from_text(&mut mem, text);
         assert_eq!(iter.collect::<String>(), str);
     }
@@ -93,6 +93,8 @@ pub unsafe fn test() {
             },
         )
         .unwrap();
+
+    reset_test_memory();
 }
 
 unsafe fn concat1<M: Memory>(mem: &mut M) {

@@ -1,7 +1,7 @@
 //! Compile-time assertions to make sure object layouts are as expected
 
+use crate::constants::*;
 use crate::types::*;
-use motoko_rts_macros::*;
 
 use core::mem::{align_of, size_of};
 
@@ -11,12 +11,7 @@ use core::mem::{align_of, size_of};
 const WORD_SIZE: usize = crate::constants::WORD_SIZE as usize;
 
 #[allow(unused)]
-#[incremental_gc]
 const HEADER_SIZE: usize = 2 * WORD_SIZE;
-
-#[allow(unused)]
-#[non_incremental_gc]
-const HEADER_SIZE: usize = WORD_SIZE;
 
 // We cannot use `assert_eq` below as `assert_eq` is not const yet
 
@@ -35,7 +30,6 @@ const _: () = assert!(size_of::<MutBox>() == HEADER_SIZE + 1 * WORD_SIZE);
 const _: () = assert!(size_of::<Some>() == HEADER_SIZE + 1 * WORD_SIZE);
 const _: () = assert!(size_of::<Variant>() == HEADER_SIZE + 2 * WORD_SIZE);
 const _: () = assert!(size_of::<Concat>() == HEADER_SIZE + 3 * WORD_SIZE);
-const _: () = assert!(size_of::<Null>() == HEADER_SIZE);
 const _: () = assert!(size_of::<Bits32>() == HEADER_SIZE + 1 * WORD_SIZE);
 const _: () = assert!(size_of::<Bits64>() == HEADER_SIZE + 2 * WORD_SIZE);
 
@@ -55,9 +49,16 @@ const _: () = assert!(align_of::<MutBox>() == WORD_SIZE);
 const _: () = assert!(align_of::<Some>() == WORD_SIZE);
 const _: () = assert!(align_of::<Variant>() == WORD_SIZE);
 const _: () = assert!(align_of::<Concat>() == WORD_SIZE);
-const _: () = assert!(align_of::<Null>() == WORD_SIZE);
 const _: () = assert!(align_of::<Bits32>() == WORD_SIZE);
 const _: () = assert!(align_of::<Bits64>() == WORD_SIZE);
 const _: () = assert!(align_of::<OneWordFiller>() == WORD_SIZE);
 const _: () = assert!(align_of::<FreeSpace>() == WORD_SIZE);
 const _: () = assert!(align_of::<FwdPtr>() == WORD_SIZE);
+
+// Array slicing
+// TAG_ARRAY_I is smallest tag
+const _: () =
+    assert!(TAG_ARRAY_I < TAG_ARRAY_M && TAG_ARRAY_M < TAG_ARRAY_T && TAG_ARRAY_T < TAG_ARRAY_S);
+// 2-bits suffice to encode base array tag in slice, remaining bits suffice to encode slice start.
+const _: () = assert!((TAG_ARRAY_S - TAG_ARRAY_I) / 2 < 4);
+const _: () = assert!(MAX_ARRAY_SIZE < (1 << (usize::BITS - 2)));
