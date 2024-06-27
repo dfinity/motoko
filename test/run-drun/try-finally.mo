@@ -257,8 +257,19 @@ actor A {
         /// caveat: t7 won't return!
         try await* t7() catch _ {} finally debugPrint "It's over";
     };
+
+    public func go2() : async () {
+        /// caveat: the `await*` won't return!
+        try await* async* {
+            await m();
+            debugPrint "go2";
+            assert false }
+        catch _ {}
+        finally debugPrint "It's so over";
+    }
 };
 
 //SKIP ic-ref-run
 
 A.go(); //OR-CALL ingress go "DIDL\x00\x00"
+//CALL ingress go2 "DIDL\x00\x00"
