@@ -1,1 +1,1 @@
-import-component.mo:3.8-3.28: RTS error [M0199], component import is unavailable (pass `-import-component` flag)
+import-component.mo:3.8-3.28: RTS error [M0200], component import is unavailable (pass `-import-component` flag)
