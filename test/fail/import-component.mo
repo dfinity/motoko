@@ -1,5 +1,5 @@
 import P = "mo:⛔";
 
-ignore P.callComponent(123);
+ignore P.componentCall(123);
 
 assert false;
