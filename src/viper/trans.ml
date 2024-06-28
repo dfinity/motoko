@@ -562,7 +562,7 @@ and compile_while
       let label, ctxt = loop_label ctxt label_id in
       let stmts = stmt ctxt body in
       let decls, stmts = stmts.it in
-      !!(decls, !!(LabelS label) :: stmts)
+      !!(decls, stmts @ [ !!(LabelS label) ])
     | None -> stmt ctxt body
   in
   !!([], [ !!(WhileS(pred, invs, body)) ])

@@ -178,12 +178,12 @@ method getTodo($Self: Ref, id: Int)
          None()))
          invariant ((res != None()) ==> (res == Some(($loc(($Self).todos, i)).$c_ToDo)))
          { 
-           label $lbl$continue$l;
            if (((($loc(($Self).todos, i)).$c_ToDo).$ToDo$id == id))
               { 
                 res := Some(($loc(($Self).todos, i)).$c_ToDo);
                 goto $lbl$l; 
-              }; 
+              };
+           label $lbl$continue$l; 
          };
       label $lbl$l;
       $Res := Tup$2(res, i);

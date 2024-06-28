@@ -160,12 +160,12 @@ method getTodo($Self: Ref, id: Int)
                     old(($loc(($Self).todos, ii)).$tuple3$int$int$c_State))))
          invariant ((0 <= i) && (i <= ($Self).num))
          { 
-           label $lbl$continue$l;
            if (((($loc(($Self).todos, i)).$tuple3$int$int$c_State).tup$3$0 == id))
               { 
                 res := Some(($loc(($Self).todos, i)).$tuple3$int$int$c_State);
                 goto $lbl$l; 
-              }; 
+              };
+           label $lbl$continue$l; 
          };
       label $lbl$l;
       $Res := res;
