@@ -491,6 +491,12 @@ impl PartitionedHeap {
         }
     }
 
+    pub fn maximum_mark_bitmap_size(&self) -> usize {
+        debug_assert!(self.free_partitions <= self.number_of_partitions);
+        let used_partitions = self.number_of_partitions - self.free_partitions;
+        used_partitions * BITMAP_SIZE
+    }
+
     fn partitions(&mut self) -> PartitionIterator {
         PartitionIterator::new(self)
     }

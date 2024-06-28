@@ -10,7 +10,7 @@ use crate::{
     barriers::write_with_barrier,
     constants::{KB, MB},
     gc::incremental::State,
-    memory::Memory,
+    memory::{ic::allocate_wasm_memory, Memory},
     persistence::compatibility::memory_compatible,
     region::{
         LEGACY_VERSION_NO_STABLE_MEMORY, LEGACY_VERSION_REGIONS, LEGACY_VERSION_SOME_STABLE_MEMORY,
@@ -105,7 +105,7 @@ impl PersistentMetadata {
 /// Initialize fresh persistent memory after the canister installation or
 /// reuse the persistent memory on a canister upgrade.
 pub unsafe fn initialize_memory<M: Memory>(mem: &mut M) {
-    mem.grow_memory(HEAP_START);
+    allocate_wasm_memory(HEAP_START);
     let metadata = PersistentMetadata::get();
     if use_enhanced_orthogonal_persistence() && metadata.is_initialized() {
         metadata.check_version();
