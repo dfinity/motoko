@@ -11252,7 +11252,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_as env ae SR.UnboxedFloat64 e ^^
     E.call_import env "rts" "log" (* musl *)
 
-  | OtherPrim "componentCall", [e] ->
+  | OtherPrim "wit:component:call", [e] ->
     assert !Flags.import_component;
     SR.UnboxedWord32 Type.Nat32,
     compile_exp_as env ae (SR.UnboxedWord32 Type.Nat32) e ^^
