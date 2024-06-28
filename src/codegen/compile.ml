@@ -11254,8 +11254,8 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
   | OtherPrim "wit:component:call", [e] ->
     assert !Flags.import_component;
-    SR.UnboxedWord32 Type.Nat32,
-    compile_exp_as env ae (SR.UnboxedWord32 Type.Nat32) e ^^
+    SR.Vanilla,
+    compile_exp_as env ae Sr.Vanilla e ^^
     E.call_import env "component" "call"
 
   (* Other prims, nullary *)
@@ -12826,7 +12826,7 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
 
   (* Wasm component model *)
   if !Flags.import_component then
-    E.add_func_import env "component" "call" [I32Type] [I32Type];
+    E.add_func_import env "component" "call" [I32Type; I32Type] [I32Type];
 
   compile_init_func env prog;
   let start_fi_o = match E.mode env with
