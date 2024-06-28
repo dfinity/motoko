@@ -446,13 +446,13 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         let reject = Option.get env.rejects in
         let e = V.Tup [V.Variant ("canister_reject", V.unit); v1] in
         Scheduler.queue (fun () -> reject e)
-      | ICCallPrim, [v1; v2; kv; rv; _cv(*FIXME*)] ->
+      | ICCallPrim, [v1; v2; kv; rv; cv] ->
         let call_conv, f = V.as_func v1 in
         check_call_conv (List.hd es) call_conv;
         check_call_conv_arg env exp v2 call_conv;
         last_region := exp.at; (* in case the following throws *)
         let vc = context env in
-        f (V.Tup[vc; kv; rv]) v2 k
+        f (V.Tup[vc; kv; rv; cv]) v2 k
       | ICCallerPrim, [] ->
         k env.caller
       | ICStableRead t, [] ->
@@ -547,11 +547,11 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     (* see code for ICCallPrim *)
     interpret_exp env exp_k (fun kv ->
     interpret_exp env exp_r (fun rv ->
-    (*FIXME: interpret_exp env exp_c (fun cv ->*)
+    interpret_exp env exp_c (fun cv ->
         let _call_conv, f = V.as_func v in
         last_region := exp.at; (* in case the following throws *)
         let vc = context env in
-        f (V.Tup[vc; kv; rv]) (V.Tup []) k))
+        f (V.Tup[vc; kv; rv; cv]) (V.Tup []) k)))
   | FuncE (x, (T.Shared _ as sort), (T.Replies as control), _typbinds, args, ret_typs, e) ->
     assert (not env.flavor.has_async_typ);
     let cc = { sort; control; n_args = List.length args; n_res = List.length ret_typs } in
@@ -833,7 +833,7 @@ and interpret_func env at sort x args f c v (k : V.value V.cont) =
 
 and interpret_message env at x args f c v (k : V.value V.cont) =
   let v_caller, v_reply, v_reject = match V.as_tup c with
-    | [v_caller; v_reply; v_reject] -> v_caller, v_reply, v_reject
+    | [v_caller; v_reply; v_reject; _v_cleanup] -> v_caller, v_reply, v_reject
     | _ -> assert false
   in
   if env.flags.trace then trace "%s%s" x (string_of_arg env v);
