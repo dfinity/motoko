@@ -267,6 +267,11 @@ func arctan2(y : Float, x : Float) : Float = (prim "fatan2" : (Float, Float) -> 
 func exp(f : Float) : Float = (prim "fexp" : Float -> Float) f;
 func log(f : Float) : Float = (prim "flog" : Float -> Float) f;
 
+// Wasm component model functions
+
+/// @deprecated M0200
+func componentCall(n : Nat32) : Nat32 = (prim "wit:component:call" : Nat32 -> Nat32) n;
+
 // Array utilities
 
 func Array_init<T>(len : Nat, x : T) : [var T] {

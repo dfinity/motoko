@@ -11252,6 +11252,12 @@ and compile_prim_invocation (env : E.t) ae p es at =
     compile_exp_as env ae SR.UnboxedFloat64 e ^^
     E.call_import env "rts" "log" (* musl *)
 
+  | OtherPrim "wit:component:call", [e] ->
+    assert !Flags.import_component;
+    SR.UnboxedWord32 Type.Nat32,
+    compile_exp_as env ae (SR.UnboxedWord32 Type.Nat32) e ^^
+    E.call_import env "component" "call"
+
   (* Other prims, nullary *)
 
   | SystemTimePrim, [] ->
@@ -12817,6 +12823,10 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
 
   IC.system_imports env;
   RTS.system_imports env;
+
+  (* Wasm component model *)
+  if !Flags.import_component then
+    E.add_func_import env "component" "call" [I32Type] [I32Type];
 
   compile_init_func env prog;
   let start_fi_o = match E.mode env with

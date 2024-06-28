@@ -109,6 +109,9 @@ let argspec = [
   "-wasi-system-api",
     Arg.Unit (fun () -> Flags.(compile_mode := WASIMode)),
       " use the WASI system API (wasmtime)";
+  "-import-component",
+    Arg.Unit (fun () -> Flags.(import_component := true)),
+      " enable calling an external Wasm component";
   "-ref-system-api",
   Arg.Unit (fun () -> Flags.(compile_mode := RefMode)),
       " use the reference implementation of the Internet Computer system API (ic-ref-run)";

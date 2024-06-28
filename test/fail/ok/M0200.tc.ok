@@ -1,0 +1,1 @@
+M0200.mo:3.8-3.26: type error [M0200], component import is unavailable (pass `-import-component` flag)
