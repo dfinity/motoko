@@ -478,10 +478,10 @@ and c_exp' context exp k =
       | None -> ContVar (var "@cleanup" bail_contT)
       | _ -> assert false
     in
+    letcont c (fun c ->
     letcont r (fun r ->
     letcont k (fun k ->
-    letcont c (fun c ->
-      let krc = tupE [varE k; varE r; varE c] in
+      let krc = List.map varE [k; r; c] |> tupE in
       match eff exp1 with
       | T.Triv ->
         cps_awaitE s (typ_of_var k) (t_exp context exp1) krc
