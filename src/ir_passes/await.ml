@@ -397,14 +397,17 @@ and c_exp' context exp k =
              note = ()
         }] in
       let throw = fresh_err_cont (answerT (typ_of_var k)) in
-      let lab = function
+      let pre = function
         | Cont k -> Cont (precont k (var id2 typ2))
         | Label -> assert false
       in
-      let context' = LabelEnv.mapi (function | Return | Named _ -> lab | Cleanup | Throw -> fun c -> c) context in
+      let context' = LabelEnv.mapi (function | Return | Named _ | Cleanup -> pre
+                                             | Throw -> fun c -> c) context in
       let context'' = LabelEnv.add Throw (Cont (ContVar throw)) context' in
-      let c = match LabelEnv.find_opt Cleanup context'' with Some c -> c | None -> Cont (ContVar (var "@cleanup" bail_contT)) in
-      let context''' = LabelEnv.add Cleanup (lab c) context'' in
+      let c = match LabelEnv.find_opt Cleanup context'' with
+        | None -> Cont (ContVar (var "@cleanup" bail_contT))
+        | Some c -> c in
+      let context''' = LabelEnv.add Cleanup c context'' in
       blockE
         [ let e = fresh_var "e" T.catch in
           funcD throw e {
