@@ -232,6 +232,14 @@ actor A {
         finally { debugPrint "OUT8t" };
     };
 
+    func t9() : async* () {
+        try {
+            debugPrint "IN9";
+            await m()
+        }
+        finally { debugPrint "OUT9" };
+    };
+
     public func go() : async () {
         // These don't trap (for the interpreters)
         //await t1();
@@ -244,6 +252,7 @@ actor A {
         await t6();
         await t8();
         await t8i();
+        await* t9();
 
         // These trap, and only work on drun
         try /*ignore*/ await t0() catch _ {};

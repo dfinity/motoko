@@ -375,6 +375,8 @@ and c_exp' context exp k =
         (c_exp context' exp1 (ContVar k))
     ))
   | TryE (exp1, cases, Some (id2, typ2)) ->
+    (* assert that a surrounding `AwaitPrim _` has set up a `Cleanup` cont *)
+    ignore (LabelEnv.find Cleanup context);
     (* TODO: do we need to reify f? *)
     let f = match LabelEnv.find Throw context with Cont f -> f | _ -> assert false in
     letcont f (fun f ->
@@ -404,10 +406,6 @@ and c_exp' context exp k =
       let context' = LabelEnv.mapi (function | Return | Named _ | Cleanup -> pre
                                              | Throw -> fun c -> c) context in
       let context'' = LabelEnv.add Throw (Cont (ContVar throw)) context' in
-      let c = match LabelEnv.find_opt Cleanup context'' with
-        | None -> Cont (ContVar (var "@cleanup" bail_contT))
-        | Some c -> c in
-      let context''' = LabelEnv.add Cleanup c context'' in
       blockE
         [ let e = fresh_var "e" T.catch in
           funcD throw e {
@@ -416,7 +414,7 @@ and c_exp' context exp k =
             note = Note.{ def with typ = typ_cases cases'; eff = T.Await; (* shouldn't matter *) }
           }
         ]
-        (c_exp context''' exp1 (ContVar k))
+        (c_exp context'' exp1 (ContVar k))
     ))
   | LoopE exp1 ->
     c_loop context k exp1
