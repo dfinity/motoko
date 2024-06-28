@@ -269,6 +269,7 @@ func log(f : Float) : Float = (prim "flog" : Float -> Float) f;
 
 // Wasm component model functions
 
+/// @deprecated M0200
 func componentCall(n : Nat32) : Nat32 = (prim "componentCall" : Nat32 -> Nat32) n;
 
 // Array utilities
