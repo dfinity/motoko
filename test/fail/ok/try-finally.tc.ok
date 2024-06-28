@@ -1,5 +1,6 @@
-try-finally.mo:8.17-8.31: type error [M0199], a cleanup clause must not send messages
-try-finally.mo:14.19-14.21: type error [M0050], literal of type
+try-finally.mo:10.17-10.31: type error [M0199], a cleanup clause must not send messages
+try-finally.mo:16.17-16.39: type error [M0199], a cleanup clause must not send messages
+try-finally.mo:22.19-22.21: type error [M0050], literal of type
   Nat
 does not have expected type
   ()

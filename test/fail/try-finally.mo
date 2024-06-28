@@ -1,3 +1,5 @@
+import { error } =  "mo:⛔";
+
 actor A {
     func m() : async () {
     };
@@ -9,6 +11,12 @@ actor A {
     };
 
     func _t1() : async () {
+        try { await m() }
+        catch _ {}
+        finally { throw error "Nope" } // BAD: has effect.
+    };
+
+    func _t2() : async () {
         try { await m() }
         catch _ {}
         finally { 42 } // BAD: should return unit.
