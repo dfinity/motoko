@@ -101,14 +101,14 @@ method loops($Self: Ref)
          invariant $Perm($Self)
          invariant (i < 3)
          { 
-           label $lbl$continue$while_loop;
            i := (i + 1);
            if ((i == 3))
               { 
                 goto $lbl$while_loop; 
               };
            goto $lbl$continue$while_loop;
-           i := 100; 
+           i := 100;
+           label $lbl$continue$while_loop; 
          };
       label $lbl$while_loop;
       label $Ret; 
