@@ -4,7 +4,7 @@ import Prim "mo:⛔";
 import Array "mo:base/Array";
 
 actor Assistant {
-  type ToDo =  { id: Nat; desc: Text; completed: State };
+  type ToDo =  { id: Nat; desc: Text; state: State };
   public type State = { #TODO; #DONE };
 
   var todos : [var ToDo] = [var ];
@@ -29,7 +29,7 @@ actor Assistant {
       (0 <= i and i < (old(todos.size())) implies todos[i] == (old(todos[i]))));
     if (n <= todos.size())
       return;
-    let new_array = Array.init<ToDo>(n, { id = 0; desc = ""; completed = #TODO });
+    let new_array = Array.init<ToDo>(n, { id = 0; desc = ""; state = #TODO });
     var i: Nat = 0;
     while (i < todos.size()) {
       // actor invariant:
@@ -60,7 +60,7 @@ actor Assistant {
     // assert:return Prim.forall<Nat>(func i =
     //   (0 <= i and i < (old(todos.size())) implies todos[i] == Prim.Ret<[ToDo]>()[i]));
     // let new_array = Array.tabulate<(Nat, Text, State)>(num, func i = todos[i]);
-    let new_array : [ToDo] = [ { id = 0; desc = ""; completed = #TODO } ];
+    let new_array : [ToDo] = [ { id = 0; desc = ""; state = #TODO } ];
     return new_array;
   };
 
@@ -104,14 +104,14 @@ actor Assistant {
     assert:return num == (old(num)) + 1;
     assert:return nextId == (old(nextId)) + 1;
     assert:return Prim.Ret<Nat>() == (old(nextId));
-    assert:return todos[num-1] == ({ id = Prim.Ret<Nat>(); desc = description; completed = #TODO });
+    assert:return todos[num-1] == ({ id = Prim.Ret<Nat>(); desc = description; state = #TODO });
     assert:return Prim.forall<Nat>(func i =
       (0 <= i and i < num-1 implies todos[i] == (old(todos[i]))));
     let id = nextId;
     if (num >= todos.size()) {
       resize(num * 2+1);
     };
-    todos[num] := { id = id; desc = description; completed = #TODO };
+    todos[num] := { id = id; desc = description; state = #TODO };
     num += 1;
     nextId += 1;
     return id;
@@ -123,7 +123,7 @@ actor Assistant {
     assert:return Prim.forall<Nat>(func i =
       ((0 <= i and i < num and todos[i].id != id) implies todos[i] == (old(todos[i])) ));
     assert:return Prim.forall<Nat>(func i =
-      ((0 <= i and i < num and todos[i].id == id) implies todos[i].completed == #DONE ));
+      ((0 <= i and i < num and todos[i].id == id) implies todos[i].state == #DONE ));
     var i : Nat = 0;
     while (i < num) {
       // actor invariant
@@ -139,12 +139,12 @@ actor Assistant {
       assert:loop:invariant Prim.forall<Nat>(func ii =
         (0 <= ii and ii < i and todos[ii].id != id implies todos[ii] == (old(todos[ii]))));
       assert:loop:invariant Prim.forall<Nat>(func ii =
-        (0 <= ii and ii < i and todos[ii].id == id implies todos[ii].completed == #DONE));
+        (0 <= ii and ii < i and todos[ii].id == id implies todos[ii].state == #DONE));
       // let (taskId, taskDesc, _) = todos[i]; // TODO: requires recursive patterns
       switch (todos[i]) {
-        case({ id = taskId; desc = taskDesc; /* _ */completed = (_completed: State) }) {
+        case({ id = taskId; desc = taskDesc; /* _ */state = (_state: State) }) {
           if (taskId == id) {
-            todos[i] := { id = taskId; desc = taskDesc; completed = #DONE };
+            todos[i] := { id = taskId; desc = taskDesc; state = #DONE };
           };
           i += 1;
         };
@@ -171,7 +171,7 @@ actor Assistant {
         ((0 <= ii and ii < num) implies todos[ii] == (old(todos[ii])) ));
       let todo: ToDo = todos[i];
       output := output # "\n" # todo.desc;
-      switch (todo.completed) {
+      switch (todo.state) {
        case (#DONE) { output := output # " ✔"; };
        case (#TODO) { output := output # " ❌"; };
       }
@@ -179,17 +179,17 @@ actor Assistant {
     return output # "\n";
   };
 
-  public func clearCompleted() : async () {
+  public func clearstate() : async () {
     assert:return num <= (old(num));
     assert:return nextId == (old(nextId));
     assert:return todos.size() == (old(todos.size()));
     assert:return Prim.forall<Nat>(func i =
-      (0 <= i and i < (old(num)) and (old(todos[i].completed)) == #TODO
+      (0 <= i and i < (old(num)) and (old(todos[i].state)) == #TODO
       implies Prim.exists<Nat> (func k =
             ( 0 <= k and k < todos.size() and todos[k] == (old(todos[i])) )) ));
     assert:return Prim.forall<Nat>(func i =
-      (0 <= i and i < num implies todos[i].completed == #TODO));
-    let new_array = Array.init<ToDo>(todos.size(), { id = 0; desc = ""; completed = #TODO });
+      (0 <= i and i < num implies todos[i].state == #TODO));
+    let new_array = Array.init<ToDo>(todos.size(), { id = 0; desc = ""; state = #TODO });
     var i: Nat = 0;
     var j: Nat = 0;
     while (i < num) {
@@ -207,13 +207,13 @@ actor Assistant {
       assert:loop:invariant j <= i;
       assert:loop:invariant 0 <= j and j <= num;
       assert:loop:invariant Prim.forall<Nat>(func ii =
-        (0 <= ii and ii < i and todos[ii].completed == #TODO
+        (0 <= ii and ii < i and todos[ii].state == #TODO
          implies Prim.exists<Nat>(func k =
                   (0 <= k and k < j and new_array[k] == todos[ii] ))));
       assert:loop:invariant Prim.forall<Nat>(func ii =
-        (0 <= ii and ii < j implies new_array[ii].completed == #TODO ));
+        (0 <= ii and ii < j implies new_array[ii].state == #TODO ));
       assert:loop:invariant Prim.forall<Nat>(func ii = (0 <= ii and ii < j) implies new_array[ii].id < nextId);
-      if (todos[i].completed == #TODO) {
+      if (todos[i].state == #TODO) {
         new_array[j] := todos[i];
         j += 1;
       };
