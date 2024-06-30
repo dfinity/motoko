@@ -12,11 +12,14 @@ actor Assistant {
   var nextId : Nat = 1;
 
   assert:invariant 0 <= num and num <= todos.size();
+  assert:invariant Prim.forall<Nat>(func i = (0 <= i and i < num) implies todos[i].id < nextId);
 
   private func resize(n: Nat) {
     // Actor's invariant is preserved:
     assert:func 0 <= num and num <= todos.size();
     assert:return 0 <= num and num <= todos.size();
+    assert:func Prim.forall<Nat>(func i = (0 <= i and i < num) implies todos[i].id < nextId);
+    assert:return Prim.forall<Nat>(func i = (0 <= i and i < num) implies todos[i].id < nextId);
     // unchanged fields:
     assert:return num == (old(num)) and nextId == (old(nextId));
     // functional specification:
@@ -31,6 +34,7 @@ actor Assistant {
     while (i < todos.size()) {
       // actor invariant:
       assert:loop:invariant 0 <= num and num <= todos.size();
+      assert:loop:invariant Prim.forall<Nat>(func ii = (0 <= ii and ii < num) implies todos[ii].id < nextId);
       // unchanged fields:
       assert:loop:invariant num == (old(num)) and nextId == (old(nextId));
       assert:loop:invariant 0 <= i and i <= todos.size();
@@ -60,19 +64,23 @@ actor Assistant {
     return new_array;
   };
 
-  public query func getTodo(id : Nat): async ?ToDo {
+  public query func getTodo(id : Nat): async (?ToDo, Nat) {
     assert:return num == (old(num)) and nextId == (old(nextId));
     assert:return todos.size() == (old(todos.size()));
     assert:return Prim.forall<Nat>(func i =
       (0 <= i and i < (old(todos.size())) implies todos[i] == (old(todos[i]))));
     assert:return (Prim.exists<Nat>(func i = (0 <= i and i < num and todos[i].id == id))
                    implies
-                   Prim.exists<Nat>(func i = (0 <= i and i < num and ?todos[i] == Prim.Ret<?ToDo>())));
+                   Prim.exists<Nat>(func i = (0 <= i and i < num and ?todos[i] == Prim.Ret<(?ToDo, Nat)>().0)));
+    assert:return (Prim.Ret<(?ToDo, Nat)>().0 == null) == (Prim.forall<Nat>(func i = (0 <= i and i < num implies todos[i].id != id)));
+    assert:return (Prim.Ret<(?ToDo, Nat)>().0 != null) implies 0 <= Prim.Ret<(?ToDo, Nat)>().1 and Prim.Ret<(?ToDo, Nat)>().1 < todos.size();
+    assert:return (Prim.Ret<(?ToDo, Nat)>().0 != null) implies (Prim.Ret<(?ToDo, Nat)>().0 == ?(todos[Prim.Ret<(?ToDo, Nat)>().1]));
     var i : Nat = 0;
     var res : ?ToDo = null;
     label l while (i < num) {
       // actor invariant:
       assert:loop:invariant 0 <= num and num <= todos.size();
+      assert:loop:invariant Prim.forall<Nat>(func ii = (0 <= ii and ii < num) implies todos[ii].id < nextId);
       // fields unchanged:
       assert:loop:invariant num == (old(num)) and nextId == (old(nextId));
       // functional specification:
@@ -80,12 +88,14 @@ actor Assistant {
       assert:loop:invariant Prim.forall<Nat>(func ii =
         (0 <= ii and ii < (old(todos.size())) implies todos[ii] == (old(todos[ii]))));
       assert:loop:invariant 0 <= i and i <= num;
+      assert:loop:invariant (Prim.forall<Nat>(func j = (0 <= j and j < i implies todos[j].id != id))) == (res == null);
+      assert:loop:invariant (res != null) implies (res == ?(todos[i]));
       if (todos[i].id == id) {
         res := ?todos[i];
         break l;
       };
     };
-    return res;
+    return (res, i);
   };
 
   // Returns the ID that was given to the ToDo item
@@ -96,7 +106,7 @@ actor Assistant {
     assert:return Prim.Ret<Nat>() == (old(nextId));
     assert:return todos[num-1] == ({ id = Prim.Ret<Nat>(); desc = description; completed = #TODO });
     assert:return Prim.forall<Nat>(func i =
-      (0 <= i and i+1 < num implies todos[i] == (old(todos[i]))));
+      (0 <= i and i < num-1 implies todos[i] == (old(todos[i]))));
     let id = nextId;
     if (num >= todos.size()) {
       resize(num * 2+1);
@@ -118,6 +128,7 @@ actor Assistant {
     while (i < num) {
       // actor invariant
       assert:loop:invariant 0 <= num and num <= todos.size();
+      assert:loop:invariant Prim.forall<Nat>(func ii = (0 <= ii and ii < num) implies todos[ii].id < nextId);
       // functional specifications:
       assert:loop:invariant 0 <= i and i <= todos.size();
       assert:loop:invariant num == (old(num)) and nextId == (old(nextId));
@@ -151,6 +162,7 @@ actor Assistant {
     while (i < num) {
       // actor invariant
       assert:loop:invariant 0 <= num and num <= todos.size();
+      assert:loop:invariant Prim.forall<Nat>(func ii = (0 <= ii and ii < num) implies todos[ii].id < nextId);
       // unchanged fields:
       assert:loop:invariant num == (old(num)) and nextId == (old(nextId));
       assert:loop:invariant todos.size() == (old(todos.size()));
@@ -183,6 +195,7 @@ actor Assistant {
     while (i < num) {
       // actor invariant
       assert:loop:invariant 0 <= num and num <= todos.size();
+      assert:loop:invariant Prim.forall<Nat>(func ii = (0 <= ii and ii < num) implies todos[ii].id < nextId);
       // unchanged fields:
       assert:loop:invariant num == (old(num)) and nextId == (old(nextId));
       assert:loop:invariant todos.size() == (old(todos.size()));
@@ -199,6 +212,7 @@ actor Assistant {
                   (0 <= k and k < j and new_array[k] == todos[ii] ))));
       assert:loop:invariant Prim.forall<Nat>(func ii =
         (0 <= ii and ii < j implies new_array[ii].completed == #TODO ));
+      assert:loop:invariant Prim.forall<Nat>(func ii = (0 <= ii and ii < j) implies new_array[ii].id < nextId);
       if (todos[i].completed == #TODO) {
         new_array[j] := todos[i];
         j += 1;

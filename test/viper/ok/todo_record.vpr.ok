@@ -12,6 +12,7 @@ define $array_acc(a, t, p) forall j: Int :: 0 <= j && j < $size(a) ==> acc($loc(
 define $array_untouched(a, t) forall j: Int :: 0 <= j && j < $size(a) ==> $loc(a, j).t == old($loc(a, j).t)
 define $array_init(a, t, x) forall i : Int :: {$loc(a, i).t} 0 <= i && i < $size(a) ==> $loc(a, i).t == x
 /* Tuple encoding */
+adt Tuple$2 [T0, T1] { Tup$2(tup$2$0 : T0, tup$2$1 : T1) }
 /* Option encoding */
 adt Option[T] {
   None()
@@ -27,7 +28,7 @@ define $Perm($Self) ((((true && (acc(($Self).todos,write) && $array_acc(
                                                              ($Self).todos,
                                                              $c_ToDo, write))) && 
   acc(($Self).num,write)) && acc(($Self).nextId,write)))
-define $Inv($Self) (invariant_14($Self))
+define $Inv($Self) ((invariant_14($Self) && invariant_15($Self)))
 method __init__($Self: Ref)
     
     requires $Perm($Self)
@@ -50,12 +51,19 @@ field num: Int
 field nextId: Int
 define invariant_14($Self) (((0 <= ($Self).num) && (($Self).num <= $size(
                                                                    ($Self).todos))))
+define invariant_15($Self) ((forall i : Int :: (((0 <= i) && (i < ($Self).num)) ==> (
+                            (($loc(($Self).todos, i)).$c_ToDo).$ToDo$id < 
+                            ($Self).nextId))))
 method resize($Self: Ref, n: Int)
     
     requires $Perm($Self)
     requires ((0 <= ($Self).num) && (($Self).num <= $size(($Self).todos)))
+    requires (forall i : Int :: (((0 <= i) && (i < ($Self).num)) ==> (
+             (($loc(($Self).todos, i)).$c_ToDo).$ToDo$id < ($Self).nextId)))
     ensures $Perm($Self)
     ensures ((0 <= ($Self).num) && (($Self).num <= $size(($Self).todos)))
+    ensures (forall i : Int :: (((0 <= i) && (i < ($Self).num)) ==> (
+            (($loc(($Self).todos, i)).$c_ToDo).$ToDo$id < ($Self).nextId)))
     ensures ((($Self).num == old(($Self).num)) && (($Self).nextId == 
       old(($Self).nextId)))
     ensures ($size(($Self).todos) >= n)
@@ -77,6 +85,8 @@ method resize($Self: Ref, n: Int)
          invariant $Perm($Self)
          invariant $array_acc(new_array, $c_ToDo, write)
          invariant ((0 <= ($Self).num) && (($Self).num <= $size(($Self).todos)))
+         invariant (forall ii : Int :: (((0 <= ii) && (ii < ($Self).num)) ==> (
+                    (($loc(($Self).todos, ii)).$c_ToDo).$ToDo$id < ($Self).nextId)))
          invariant ((($Self).num == old(($Self).num)) && (($Self).nextId == 
          old(($Self).nextId)))
          invariant ((0 <= i) && (i <= $size(($Self).todos)))
@@ -118,7 +128,7 @@ method getTodos($Self: Ref)
       label $Ret; 
     }
 method getTodo($Self: Ref, id: Int)
-     returns ($Res: Option[ToDo])
+     returns ($Res: Tuple$2[Option[ToDo], Int])
     requires $Perm($Self)
     requires $Inv($Self)
     ensures $Perm($Self)
@@ -131,7 +141,18 @@ method getTodo($Self: Ref, id: Int)
              (($loc(($Self).todos, i)).$c_ToDo).$ToDo$id == id))) ==> 
       (exists i : Int :: (((0 <= i) && (i < ($Self).num)) && (Some(($loc(
                                                                     ($Self).todos,
-                                                                    i)).$c_ToDo) == $Res))))
+                                                                    i)).$c_ToDo) == 
+      ($Res).tup$2$0))))
+    ensures ((($Res).tup$2$0 == None()) == (forall i : Int :: (((0 <= i) && (i < 
+                                           ($Self).num)) ==> ((($loc(
+                                                                ($Self).todos,
+                                                                i)).$c_ToDo).$ToDo$id != id))))
+    ensures ((($Res).tup$2$0 != None()) ==> ((0 <= ($Res).tup$2$1) && (
+      ($Res).tup$2$1 < $size(($Self).todos))))
+    ensures ((($Res).tup$2$0 != None()) ==> (($Res).tup$2$0 == Some((
+                                                                    $loc(
+                                                                    ($Self).todos,
+                                                                    ($Res).tup$2$1)).$c_ToDo)))
     ensures $Inv($Self)
     { var i: Int
       var res: Option[ToDo]
@@ -140,6 +161,8 @@ method getTodo($Self: Ref, id: Int)
       while ((i < ($Self).num))
          invariant $Perm($Self)
          invariant ((0 <= ($Self).num) && (($Self).num <= $size(($Self).todos)))
+         invariant (forall ii : Int :: (((0 <= ii) && (ii < ($Self).num)) ==> (
+                    (($loc(($Self).todos, ii)).$c_ToDo).$ToDo$id < ($Self).nextId)))
          invariant ((($Self).num == old(($Self).num)) && (($Self).nextId == 
          old(($Self).nextId)))
          invariant ($size(($Self).todos) == old($size(($Self).todos)))
@@ -148,6 +171,13 @@ method getTodo($Self: Ref, id: Int)
                     ($loc(($Self).todos, ii)).$c_ToDo == old(($loc(($Self).todos,
                                                               ii)).$c_ToDo))))
          invariant ((0 <= i) && (i <= ($Self).num))
+         invariant ((forall j : Int :: (((0 <= j) && (j < i)) ==> ((
+                                                                    (
+                                                                    $loc(
+                                                                    ($Self).todos,
+                                                                    j)).$c_ToDo).$ToDo$id != id))) == (res == 
+         None()))
+         invariant ((res != None()) ==> (res == Some(($loc(($Self).todos, i)).$c_ToDo)))
          { 
            label $lbl$continue$l;
            if (((($loc(($Self).todos, i)).$c_ToDo).$ToDo$id == id))
@@ -157,7 +187,7 @@ method getTodo($Self: Ref, id: Int)
               }; 
          };
       label $lbl$l;
-      $Res := res;
+      $Res := Tup$2(res, i);
       goto $Ret;
       label $Ret; 
     }
@@ -174,7 +204,7 @@ method addTodo($Self: Ref, description: Int)
                                                                  TODO(),
                                                                  description,
                                                                  $Res))
-    ensures (forall i : Int :: (((0 <= i) && ((i + 1) < ($Self).num)) ==> (
+    ensures (forall i : Int :: (((0 <= i) && (i < (($Self).num - 1))) ==> (
             ($loc(($Self).todos, i)).$c_ToDo == old(($loc(($Self).todos, i)).$c_ToDo))))
     ensures $Inv($Self)
     { var id: Int
@@ -211,6 +241,8 @@ method completeTodo($Self: Ref, id: Int)
       while ((i < ($Self).num))
          invariant $Perm($Self)
          invariant ((0 <= ($Self).num) && (($Self).num <= $size(($Self).todos)))
+         invariant (forall ii : Int :: (((0 <= ii) && (ii < ($Self).num)) ==> (
+                    (($loc(($Self).todos, ii)).$c_ToDo).$ToDo$id < ($Self).nextId)))
          invariant ((0 <= i) && (i <= $size(($Self).todos)))
          invariant ((($Self).num == old(($Self).num)) && (($Self).nextId == 
          old(($Self).nextId)))
@@ -263,6 +295,8 @@ method showTodos($Self: Ref)
       while ((i < ($Self).num))
          invariant $Perm($Self)
          invariant ((0 <= ($Self).num) && (($Self).num <= $size(($Self).todos)))
+         invariant (forall ii : Int :: (((0 <= ii) && (ii < ($Self).num)) ==> (
+                    (($loc(($Self).todos, ii)).$c_ToDo).$ToDo$id < ($Self).nextId)))
          invariant ((($Self).num == old(($Self).num)) && (($Self).nextId == 
          old(($Self).nextId)))
          invariant ($size(($Self).todos) == old($size(($Self).todos)))
@@ -318,6 +352,8 @@ method clearCompleted($Self: Ref)
          invariant $Perm($Self)
          invariant $array_acc(new_array, $c_ToDo, write)
          invariant ((0 <= ($Self).num) && (($Self).num <= $size(($Self).todos)))
+         invariant (forall ii : Int :: (((0 <= ii) && (ii < ($Self).num)) ==> (
+                    (($loc(($Self).todos, ii)).$c_ToDo).$ToDo$id < ($Self).nextId)))
          invariant ((($Self).num == old(($Self).num)) && (($Self).nextId == 
          old(($Self).nextId)))
          invariant ($size(($Self).todos) == old($size(($Self).todos)))
@@ -338,6 +374,8 @@ method clearCompleted($Self: Ref)
          invariant (forall ii : Int :: (((0 <= ii) && (ii < j)) ==> (
                     (($loc(new_array, ii)).$c_ToDo).$ToDo$completed == 
                     TODO())))
+         invariant (forall ii : Int :: (((0 <= ii) && (ii < j)) ==> (
+                    (($loc(new_array, ii)).$c_ToDo).$ToDo$id < ($Self).nextId)))
          { 
            if (((($loc(($Self).todos, i)).$c_ToDo).$ToDo$completed == 
               TODO()))
