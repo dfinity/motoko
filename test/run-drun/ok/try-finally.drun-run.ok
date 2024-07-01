@@ -1,5 +1,7 @@
 ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
 ingress Completed: Reply: 0x4449444c0000
+debug.print: INt
+debug.print: OUTt
 debug.print: IN2
 debug.print: CAUGHT2
 debug.print: OUT2
@@ -10,8 +12,6 @@ debug.print: IN3
 debug.print: OUT3
 debug.print: IN4
 debug.print: OUT4
-debug.print: IN4f
-debug.print: OUT4f
 debug.print: BEFORE5
 debug.print: IN5
 debug.print: OUT5
@@ -72,7 +72,7 @@ debug.print: InnerLIVESTILL7
 debug.print: InnerOUT7
 debug.print: OUT7
 debug.print: It's over
-ingress Err: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: assertion failed at try-finally.mo:193.17-193.29
+ingress Err: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: assertion failed at try-finally.mo:190.17-190.29
 debug.print: go2
 debug.print: It's so over
-ingress Err: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: assertion failed at try-finally.mo:275.13-275.25
+ingress Err: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: assertion failed at try-finally.mo:272.13-272.25

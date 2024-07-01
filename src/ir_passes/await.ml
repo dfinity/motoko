@@ -382,7 +382,8 @@ and c_exp' context exp k =
     letcont f (fun f ->
     letcont k (fun k ->
     match eff exp1 with
-    | T.Triv -> assert false (* FIXME: maybe lift this later? *)
+    | T.Triv ->
+      varE k -*- t_exp context exp1
     | T.Await ->
       let error = fresh_var "v" T.catch in
       let cases' =
