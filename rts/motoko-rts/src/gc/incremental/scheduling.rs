@@ -12,17 +12,32 @@
 //! A heuristics for capacity probing is used to determine minimum amount of memory capacity.
 //! This is necessary because the IC does not provide runtime information about the implemented
 //! Wasm memory capacity in 64-bit. This capacity may also increase over time with newer IC versions.
+
 use crate::gc::incremental::{get_incremental_gc_state, partitioned_heap::PARTITION_SIZE};
-use crate::memory::ic::{
-    get_heap_size, get_total_allocations, minimum_memory_capacity, probe_wasm_memory,
-};
+use crate::memory::ic::partitioned_memory::{get_heap_size, get_total_allocations};
 use crate::types::Bytes;
+use motoko_rts_macros::{classical_persistence, enhanced_orthogonal_persistence};
 
 struct HeapThresholds {
     critical_heap_limit: Bytes<usize>,
     medium_heap_limit: Bytes<usize>,
 }
 
+#[classical_persistence]
+impl HeapThresholds {
+    unsafe fn get() -> HeapThresholds {
+        use crate::constants::{GB, MB};
+
+        const CRITICAL_HEAP_LIMIT: Bytes<usize> = Bytes(2 * GB + 256 * MB);
+        const MEDIUM_HEAP_LIMIT: Bytes<usize> = Bytes(1 * GB);
+        HeapThresholds {
+            critical_heap_limit: CRITICAL_HEAP_LIMIT,
+            medium_heap_limit: MEDIUM_HEAP_LIMIT,
+        }
+    }
+}
+
+#[enhanced_orthogonal_persistence]
 impl HeapThresholds {
     /// Heuristics: Determine the threshold values of the heap size to schedule a new GC start.
     /// Note:
@@ -31,6 +46,8 @@ impl HeapThresholds {
     /// This is to avoid unnecessary heavy GC scheduling when approaching a supposed memory limit
     /// that can actually be extended.
     unsafe fn get() -> HeapThresholds {
+        use crate::memory::ic::enhanced_memory::{minimum_memory_capacity, probe_wasm_memory};
+
         let thresholds = HeapThresholds::get_without_probing();
         let heap_size = get_heap_size();
         // Only if the heap size seems to be critically low, try to expand the Wasm memory beyond the
@@ -49,6 +66,8 @@ impl HeapThresholds {
     /// The critical limit is 80% of the currently known memory size.
     /// The medium limit is 50% of the currently known memory size.
     unsafe fn get_without_probing() -> HeapThresholds {
+        use crate::memory::ic::enhanced_memory::minimum_memory_capacity;
+
         let available_memory = minimum_memory_capacity().as_usize();
         let critical_heap_limit = Bytes(available_memory / 10 * 8); // 80%
         let medium_heap_limit: Bytes<usize> = Bytes(available_memory / 2); // 50%
