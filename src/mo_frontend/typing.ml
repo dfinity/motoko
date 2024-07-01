@@ -1520,14 +1520,10 @@ and infer_exp'' env exp : T.typ =
     let t1 = infer_exp env exp1 in
     let t2 = infer_cases env T.catch T.Non cases in
     if not env.pre then begin
+      Option.iter (check_exp_strong { env with rets = None; labs = T.Env.empty } T.unit) exp2_opt;
       check_ErrorCap env "try" exp.at;
       coverage_cases "try handler" env cases T.catch exp.at
     end;
-    if not env.pre then
-      begin match exp2_opt with
-      | None -> ()
-      | Some exp2 -> check_exp_strong env T.unit exp2
-      end;
     T.lub t1 t2
   | WhileE (exp1, exp2) ->
     if not env.pre then begin
@@ -1832,7 +1828,7 @@ and check_exp' env0 t exp : T.typ =
       begin match exp2_opt with
       | None -> ()
       | Some exp2 ->
-        check_exp_strong env T.unit exp2;
+        check_exp_strong { env with rets = None; labs = T.Env.empty } T.unit exp2;
         if exp2.note.note_eff <> T.Triv then
           local_error env exp2.at "M0199" "a cleanup clause must not send messages";
         if exp1.note.note_eff <> T.Await then

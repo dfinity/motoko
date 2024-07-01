@@ -4,3 +4,5 @@ try-finally.mo:22.19-22.21: type error [M0050], literal of type
   Nat
 does not have expected type
   ()
+try-finally.mo:28.19-28.25: type error [M0085], misplaced return
+try-finally.mo:34.25-34.28: type error [M0083], unbound label out

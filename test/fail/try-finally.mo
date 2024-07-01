@@ -20,7 +20,18 @@ actor A {
         try { await m() }
         catch _ {}
         finally { 42 } // BAD: should return unit.
-    }
+    };
 
-    // TODO: Nat resulting `try`
+    func _t3r() : async () {
+        try { await m() }
+        catch _ {}
+        finally { return } // BAD: no outward edges allowed!
+    };
+
+    func _t3l() : async () {
+        label out try { await m() }
+        catch _ {}
+        finally { break out } // BAD: no outward edges allowed!
+    };
+
 }
