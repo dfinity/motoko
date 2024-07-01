@@ -18,7 +18,7 @@ pub struct IcMemory;
 /// Wasm page (for Rust call stack overflow detection, see `compile.ml`).
 const GUARANTEED_MEMORY_CAPACITY: usize = 4 * GB - WASM_PAGE_SIZE.0;
 
-/// Assumption (not correctness-critical): The IC offers main memory in multiple of 2 GB.
+/// Assumption (not correctness-critical): The IC offers main memory in multiples of 2 GB.
 /// This helps to avoid overly frequent memory probing when the heap grows.
 /// The capacity granularity only serves as a heuristics for GC scheduling.
 const IC_MEMORY_CAPACITY_GRANULARITY: usize = 2 * GB;
@@ -41,8 +41,8 @@ impl Memory for IcMemory {
                 rts_trap_with("Cannot grow memory");
             }
             // The reserve will be pre-allocated as a way to check the main memory capacity.
-            // As the reserve can be substantial, this is only done when memory demand has
-            // grown beyond `GUARANTEED_MEMORY_CAPACITY`.
+            // As the reserve can be relatively large for small heaps, this is only done when 
+            // the memory demand exceeds `GUARANTEED_MEMORY_CAPACITY`.
             ptr + reserve
         } else {
             // If the allocation pointer plus reserve fits within the guaranteed memory capacity,
@@ -75,7 +75,7 @@ pub unsafe extern "C" fn get_max_live_size() -> Bytes<usize> {
 
 /// Supposed minimum memory capacity used for GC scheduling heuristics.
 /// The result may increase after time. This is because the actual capacity is
-/// not known upfront and can only derived by memory allocation probing.
+/// not known in advance and can only be derived by memory allocation probing.
 /// Moreover, the IC may increase the canister main memory capacity in newer versions.
 pub(crate) fn minimum_memory_capacity() -> Bytes<usize> {
     let allocated_memory = wasm64::memory_size(0) * WASM_PAGE_SIZE.as_usize();
