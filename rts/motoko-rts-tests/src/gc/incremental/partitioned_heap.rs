@@ -277,7 +277,7 @@ unsafe fn test_allocation_sizes(sizes: &[usize], number_of_partitions: usize) {
     let total_partitions = number_of_partitions + 1; // Plus temporary partition.
     let mut heap = PartitionedTestHeap::new(total_partitions * PARTITION_SIZE);
     let heap_base = heap.heap_base();
-    let state = IncrementalGC::initial_gc_state(&mut heap, heap_base);
+    let state = IncrementalGC::<PartitionedTestHeap>::initial_gc_state(heap_base);
     set_incremental_gc_state(Some(state));
     assert!(heap.inner.occupied_size().as_usize() < PARTITION_SIZE + heap.heap_base());
     let mut time = BoundedTime::new(0);
@@ -355,7 +355,7 @@ unsafe fn create_test_heap() -> PartitionedTestHeap {
     println!("    Create test heap...");
     let mut heap = PartitionedTestHeap::new(HEAP_SIZE);
     let heap_base = heap.heap_base();
-    let state = IncrementalGC::initial_gc_state(&mut heap, heap_base);
+    let state = IncrementalGC::<PartitionedTestHeap>::initial_gc_state(heap_base);
     set_incremental_gc_state(Some(state));
     let mut time = BoundedTime::new(0);
     unsafe {
@@ -405,9 +405,9 @@ pub struct PartitionedTestHeap {
 
 impl PartitionedTestHeap {
     pub fn new(size: usize) -> PartitionedTestHeap {
-        let mut memory = TestMemory::new(Bytes(size).to_words());
+        let memory = TestMemory::new(Bytes(size).to_words());
         let heap_base = memory.heap_base();
-        let inner = unsafe { PartitionedHeap::new(&mut memory, heap_base) };
+        let inner = PartitionedHeap::new(heap_base);
         assert_eq!(inner.base_address(), heap_base);
         PartitionedTestHeap { memory, inner }
     }
