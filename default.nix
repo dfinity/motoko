@@ -198,7 +198,7 @@ rec {
         name = "motoko-rts-deps";
         src = subpath ./rts;
         sourceRoot = "rts/motoko-rts-tests";
-        sha256 = "sha256-YEw2AFi15JVKP7owsPDoBT3qSegOO90FRn2qoUBAICw=";
+        sha256 = "sha256-prLZVOWV3BFb8/nKHyqZw8neJyBu1gs5d0D56DsDV2o=";
         copyLockfile = true;
       };
 
@@ -261,8 +261,12 @@ rec {
 
       installPhase = ''
         mkdir -p $out/rts
-        cp mo-rts.wasm $out/rts
-        cp mo-rts-debug.wasm $out/rts
+        cp mo-rts-non-incremental.wasm $out/rts
+        cp mo-rts-non-incremental-debug.wasm $out/rts
+        cp mo-rts-incremental.wasm $out/rts
+        cp mo-rts-incremental-debug.wasm $out/rts
+        cp mo-rts-eop.wasm $out/rts
+        cp mo-rts-eop-debug.wasm $out/rts
       '';
 
       # This needs to be self-contained. Remove mention of nix path in debug
@@ -272,7 +276,17 @@ rec {
           -t ${nixpkgs.rustc-nightly} \
           -t ${rtsDeps} \
           -t ${rustStdDeps} \
-          $out/rts/mo-rts.wasm $out/rts/mo-rts-debug.wasm
+          $out/rts/mo-rts-non-incremental.wasm $out/rts/mo-rts-non-incremental-debug.wasm
+        remove-references-to \
+          -t ${nixpkgs.rustc-nightly} \
+          -t ${rtsDeps} \
+          -t ${rustStdDeps} \
+          $out/rts/mo-rts-incremental.wasm $out/rts/mo-rts-incremental-debug.wasm
+        remove-references-to \
+          -t ${nixpkgs.rustc-nightly} \
+          -t ${rtsDeps} \
+          -t ${rustStdDeps} \
+          $out/rts/mo-rts-eop.wasm $out/rts/mo-rts-eop-debug.wasm
       '';
 
       allowedRequisites = [];
@@ -361,6 +375,31 @@ rec {
     snty_subdir = dir: deps:
       (test_subdir dir deps).overrideAttrs {
           EXTRA_MOC_ARGS = "--sanity-checks";
+      };
+
+    snty_compacting_gc_subdir = dir: deps:
+      (test_subdir dir deps).overrideAttrs {
+          EXTRA_MOC_ARGS = "--sanity-checks --compacting-gc";
+      };
+
+    snty_generational_gc_subdir = dir: deps:
+      (test_subdir dir deps).overrideAttrs {
+          EXTRA_MOC_ARGS = "--sanity-checks --generational-gc";
+      };
+
+    snty_incremental_gc_subdir = dir: deps:
+      (test_subdir dir deps).overrideAttrs {
+          EXTRA_MOC_ARGS = "--sanity-checks --incremental-gc";
+      };
+
+    enhanced_orthogonal_persistence_subdir = dir: deps:
+      (test_subdir dir deps).overrideAttrs {
+          EXTRA_MOC_ARGS = "--enhanced-orthogonal-persistence";
+      };
+
+    snty_enhanced_orthogonal_persistence_subdir = dir: deps:
+      (test_subdir dir deps).overrideAttrs {
+          EXTRA_MOC_ARGS = "--sanity-checks --enhanced-orthogonal-persistence";
       };
 
     perf_subdir = dir: deps:
@@ -474,15 +513,27 @@ rec {
   in fix_names ({
       run        = test_subdir "run"        [ moc ] ;
       run-dbg    = snty_subdir "run"        [ moc ] ;
+      run-eop-release = enhanced_orthogonal_persistence_subdir "run" [ moc ];
+      run-eop-debug = snty_enhanced_orthogonal_persistence_subdir "run" [ moc ];
       # ic-ref-run = test_subdir "run-drun"   [ moc ic-ref-run ];
       drun       = test_subdir "run-drun"   [ moc nixpkgs.drun ];
       drun-dbg   = snty_subdir "run-drun"   [ moc nixpkgs.drun ];
+      drun-compacting-gc = snty_compacting_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
+      drun-generational-gc = snty_generational_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
+      drun-incremental-gc = snty_incremental_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
+      drun-eop-release = enhanced_orthogonal_persistence_subdir "run-drun" [ moc nixpkgs.drun ] ;
+      drun-eop-debug = snty_enhanced_orthogonal_persistence_subdir "run-drun" [ moc nixpkgs.drun ] ;
       fail       = test_subdir "fail"       [ moc ];
+      fail-eop   = enhanced_orthogonal_persistence_subdir "fail"       [ moc ];
       repl       = test_subdir "repl"       [ moc ];
+      repl-eop   = enhanced_orthogonal_persistence_subdir "repl"       [ moc ];
       ld         = test_subdir "ld"         ([ mo-ld ] ++ ldTestDeps);
+      ld-eop     = enhanced_orthogonal_persistence_subdir "ld" ([ mo-ld ] ++ ldTestDeps);
       idl        = test_subdir "idl"        [ didc ];
       mo-idl     = test_subdir "mo-idl"     [ moc didc ];
+      mo-idl-eop = enhanced_orthogonal_persistence_subdir "mo-idl" [ moc didc ];
       trap       = test_subdir "trap"       [ moc ];
+      trap-eop   = enhanced_orthogonal_persistence_subdir "trap" [ moc ];
       run-deser  = test_subdir "run-deser"  [ deser ];
       perf       = perf_subdir "perf"       [ moc nixpkgs.drun ];
       bench      = perf_subdir "bench"      [ moc nixpkgs.drun ic-wasm ];

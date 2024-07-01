@@ -1,3 +1,4 @@
+//ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
 //MOC-FLAG --stabilization-instruction-limit=10000
 
 import Prim "mo:prim";

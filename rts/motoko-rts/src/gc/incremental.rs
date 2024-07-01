@@ -11,7 +11,9 @@
 //! retained across upgrades and therefore be stored part of the
 //! persistent metadata, cf. `persistence::PersistentMetadata`.
 
-use motoko_rts_macros::ic_mem_fn;
+#[cfg(feature = "ic")]
+use motoko_rts_macros::classical_persistence;
+use motoko_rts_macros::{enhanced_orthogonal_persistence, ic_mem_fn};
 
 use crate::{memory::Memory, types::*, visitor::visit_pointer_fields};
 
@@ -40,9 +42,23 @@ pub mod time;
 
 #[ic_mem_fn(ic_only)]
 unsafe fn initialize_incremental_gc<M: Memory>(mem: &mut M) {
-    use crate::persistence::initialize_memory;
+    initialize(mem);
+}
 
+#[cfg(feature = "ic")]
+#[enhanced_orthogonal_persistence]
+unsafe fn initialize<M: Memory>(mem: &mut M) {
+    use crate::persistence::initialize_memory;
     initialize_memory(mem);
+}
+
+#[cfg(feature = "ic")]
+#[classical_persistence]
+unsafe fn initialize<M: Memory>(mem: &mut M) {
+    use crate::memory::ic;
+
+    let state = STATE.get_mut();
+    *state = IncrementalGC::<M>::initial_gc_state(mem, ic::get_aligned_heap_base());
 }
 
 #[ic_mem_fn(ic_only)]
@@ -69,17 +85,35 @@ unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
 }
 
 #[cfg(feature = "ic")]
+#[enhanced_orthogonal_persistence]
+const CRITICAL_HEAP_LIMIT: Bytes<usize> = Bytes(crate::memory::ic::MAIN_MEMORY_LIMIT.0 / 10 * 8); // 80%
+
+#[cfg(feature = "ic")]
+#[enhanced_orthogonal_persistence]
+const MEDIUM_HEAP_LIMIT: Bytes<usize> = Bytes(crate::memory::ic::MAIN_MEMORY_LIMIT.0 / 2); // 50%
+
+#[cfg(feature = "ic")]
+#[classical_persistence]
+use crate::constants::GB;
+
+#[cfg(feature = "ic")]
+#[classical_persistence]
+const CRITICAL_HEAP_LIMIT: Bytes<usize> = Bytes(2 * GB + 256 * MB);
+
+#[cfg(feature = "ic")]
+#[classical_persistence]
+const MEDIUM_HEAP_LIMIT: Bytes<usize> = Bytes(1 * GB);
+
+#[cfg(feature = "ic")]
 unsafe fn should_start() -> bool {
     use self::partitioned_heap::PARTITION_SIZE;
-    use crate::memory::ic;
+    use crate::memory::ic::partitioned_memory;
 
-    const CRITICAL_HEAP_LIMIT: Bytes<usize> = Bytes(ic::MAIN_MEMORY_LIMIT.0 / 10 * 8); // 80%
     const CRITICAL_GROWTH_THRESHOLD: f64 = 0.01;
-    const MEDIUM_HEAP_LIMIT: Bytes<usize> = Bytes(ic::MAIN_MEMORY_LIMIT.0 / 2); // 50%
     const MEDIUM_GROWTH_THRESHOLD: f64 = 0.35;
     const LOW_GROWTH_THRESHOLD: f64 = 0.65;
 
-    let heap_size = ic::get_heap_size();
+    let heap_size = partitioned_memory::get_heap_size();
     let growth_threshold = if heap_size > CRITICAL_HEAP_LIMIT {
         CRITICAL_GROWTH_THRESHOLD
     } else if heap_size > MEDIUM_HEAP_LIMIT {
@@ -88,7 +122,7 @@ unsafe fn should_start() -> bool {
         LOW_GROWTH_THRESHOLD
     };
 
-    let current_allocations = ic::get_total_allocations();
+    let current_allocations = partitioned_memory::get_total_allocations();
     let state = get_incremental_gc_state();
     debug_assert!(current_allocations >= state.statistics.last_allocations);
     let absolute_growth = current_allocations - state.statistics.last_allocations;
@@ -98,19 +132,18 @@ unsafe fn should_start() -> bool {
 
 #[cfg(feature = "ic")]
 unsafe fn record_gc_start<M: Memory>() {
-    use crate::memory::ic;
+    use crate::memory::ic::partitioned_memory;
 
     let state = get_incremental_gc_state();
-    state.statistics.last_allocations = ic::get_total_allocations();
+    state.statistics.last_allocations = partitioned_memory::get_total_allocations();
 }
 
 #[cfg(feature = "ic")]
 unsafe fn record_gc_stop<M: Memory>() {
-    use crate::memory::ic;
-    use crate::persistence::HEAP_START;
+    use crate::memory::ic::{self, partitioned_memory};
 
-    let heap_size = ic::get_heap_size();
-    let static_size = Bytes(HEAP_START);
+    let heap_size = partitioned_memory::get_heap_size();
+    let static_size = Bytes(ic::get_aligned_heap_base());
     debug_assert!(heap_size >= static_size);
     let dynamic_size = heap_size - static_size;
     let state = get_incremental_gc_state();
@@ -120,7 +153,7 @@ unsafe fn record_gc_stop<M: Memory>() {
 // Persistent GC statistics used for scheduling and diagnostics.
 struct Statistics {
     // Total number of allocation at the start of the last GC run.
-    last_allocations: Bytes<usize>,
+    last_allocations: Bytes<u64>,
     // Maximum heap size the end of a GC run.
     max_live: Bytes<usize>,
 }
@@ -167,6 +200,21 @@ pub struct State {
     iterator_state: Option<PartitionedHeapIterator>,
     statistics: Statistics,
 }
+
+/// GC state retained over multiple GC increments.
+#[classical_persistence]
+#[cfg(feature = "ic")]
+static mut STATE: core::cell::RefCell<State> = core::cell::RefCell::new(State {
+    phase: Phase::Pause,
+    partitioned_heap: self::partitioned_heap::UNINITIALIZED_HEAP,
+    allocation_count: 0,
+    mark_state: None,
+    iterator_state: None,
+    statistics: Statistics {
+        last_allocations: Bytes(0),
+        max_live: Bytes(0),
+    },
+});
 
 /// Temporary state during message execution, not part of the persistent metadata.
 static mut RUNNING_GC_INCREMENT: bool = false;
@@ -329,7 +377,10 @@ unsafe fn pre_write_barrier<M: Memory>(mem: &mut M, state: &mut State, overwritt
         if overwritten_value.points_to_or_beyond(base_address) {
             let mut time = BoundedTime::new(0);
             let mut increment = MarkIncrement::instance(mem, state, &mut time);
+
+            #[enhanced_orthogonal_persistence]
             debug_assert_ne!(overwritten_value, NULL_POINTER);
+
             increment.mark_object(overwritten_value);
         }
     }
@@ -396,6 +447,7 @@ unsafe fn update_new_allocation(state: &State, new_object: Value) {
             &mut (),
             object,
             object.tag(),
+            state.partitioned_heap.base_address(),
             |_, field| {
                 *field = (*field).forward_if_possible();
             },
@@ -417,8 +469,15 @@ pub unsafe fn get_partitioned_heap() -> &'static mut PartitionedHeap {
 }
 
 #[cfg(feature = "ic")]
+#[enhanced_orthogonal_persistence]
 pub unsafe fn get_incremental_gc_state() -> &'static mut State {
     crate::persistence::get_incremental_gc_state()
+}
+
+#[cfg(feature = "ic")]
+#[classical_persistence]
+pub unsafe fn get_incremental_gc_state() -> &'static mut State {
+    STATE.get_mut()
 }
 
 #[cfg(feature = "ic")]
@@ -446,6 +505,16 @@ pub unsafe fn is_gc_stopped() -> bool {
     get_incremental_gc_state().phase == Phase::Stop
 }
 
+/// Safety guard before Candid-stabilization with classical persistence.
+/// For graph copying, a different GC stop function is used, see
+/// `stabilization::ic::stop_gc_before_stabilization()`.
+#[classical_persistence]
+#[cfg(feature = "ic")]
+#[no_mangle]
+unsafe extern "C" fn stop_gc_on_upgrade() {
+    stop_gc();
+}
+
 /// For RTS unit testing only.
 #[cfg(not(feature = "ic"))]
 static mut TEST_GC_STATE: Option<State> = None;
@@ -467,19 +536,35 @@ pub unsafe fn set_incremental_gc_state(state: Option<State>) {
 }
 
 #[cfg(feature = "ic")]
+#[enhanced_orthogonal_persistence]
 use crate::constants::GB;
 
 /// Additional memory reserve in bytes for the GC.
 /// * To allow mark bitmap allocation, i.e. max. 128 MB in 4 GB address space.
 /// * 1.875 GB of free space for evacuations/compactions.
 #[cfg(feature = "ic")]
+#[enhanced_orthogonal_persistence]
 const GC_MEMORY_RESERVE: usize = 2 * GB;
+
+#[classical_persistence]
+#[cfg(feature = "ic")]
+use crate::constants::MB;
+
+/// Additional memory reserve in bytes for the GC.
+/// * To allow mark bitmap allocation, i.e. max. 128 MB in 4 GB address space.
+/// * 512 MB of free space for evacuations/compactions.
+#[classical_persistence]
+#[cfg(feature = "ic")]
+const GC_MEMORY_RESERVE: usize = (128 + 512) * MB;
 
 #[cfg(feature = "ic")]
 pub unsafe fn memory_reserve() -> usize {
-    if RUNNING_GC_INCREMENT {
+    use crate::memory::GENERAL_MEMORY_RESERVE;
+
+    let additional_reserve = if RUNNING_GC_INCREMENT {
         0
     } else {
         GC_MEMORY_RESERVE
-    }
+    };
+    GENERAL_MEMORY_RESERVE + additional_reserve
 }

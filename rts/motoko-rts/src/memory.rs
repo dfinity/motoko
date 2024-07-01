@@ -2,7 +2,28 @@
 pub mod ic;
 use crate::{constants::MAX_ARRAY_LENGTH_FOR_ITERATOR, types::*};
 
+use motoko_rts_macros::classical_persistence;
+use motoko_rts_macros::enhanced_orthogonal_persistence;
 use motoko_rts_macros::ic_mem_fn;
+
+#[cfg(feature = "ic")]
+use crate::constants::MB;
+
+#[enhanced_orthogonal_persistence]
+use crate::constants::GB;
+
+// TODO: Redesign for 64-bit support by using a dynamic partition list.
+/// Currently limited to 64 GB.
+#[enhanced_orthogonal_persistence]
+pub const MAXIMUM_MEMORY_SIZE: Bytes<u64> = Bytes(64u64 * GB as u64);
+
+#[classical_persistence]
+pub const MAXIMUM_MEMORY_SIZE: Bytes<u64> = Bytes(usize::MAX as u64);
+
+// Memory reserve in bytes ensured during update and initialization calls.
+// For use by queries and upgrade calls.
+#[cfg(feature = "ic")]
+pub(crate) const GENERAL_MEMORY_RESERVE: usize = 256 * MB;
 
 /// A trait for heap allocation. RTS functions allocate in heap via this trait.
 ///

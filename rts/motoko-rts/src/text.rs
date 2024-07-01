@@ -27,7 +27,6 @@
 // size of the text.
 
 use crate::barriers::allocation_barrier;
-use crate::libc_declarations::memcmp;
 use crate::mem_utils::memcpy_bytes;
 use crate::memory::{alloc_blob, Memory};
 use crate::rts_trap_with;
@@ -36,6 +35,12 @@ use crate::types::{size_of, Blob, Bytes, Concat, Value, TAG_BLOB_T, TAG_CONCAT};
 use alloc::string::String;
 use core::cmp::{min, Ordering};
 use core::{slice, str};
+use motoko_rts_macros::classical_persistence;
+
+use crate::libc_declarations::memcmp;
+
+#[classical_persistence]
+use crate::types::Stream;
 
 use motoko_rts_macros::ic_mem_fn;
 
@@ -165,6 +170,24 @@ unsafe extern "C" fn text_to_buf(mut s: Value, mut buf: *mut u8) {
                 next_crumb = new_crumb;
                 s = s1;
             }
+        }
+    }
+}
+
+#[no_mangle]
+#[classical_persistence]
+unsafe extern "C" fn stream_write_text(stream: *mut Stream, mut s: Value) {
+    use crate::types::TAG_BLOB_B;
+    loop {
+        let s_ptr = s.as_obj();
+        if s_ptr.tag() == TAG_BLOB_B || s_ptr.tag() == TAG_BLOB_T {
+            let blob = s_ptr.as_blob();
+            stream.cache_bytes(blob.payload_addr(), blob.len());
+            break;
+        } else {
+            let concat = s_ptr.as_concat();
+            stream_write_text(stream, concat.text1());
+            s = concat.text2()
         }
     }
 }

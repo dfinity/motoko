@@ -1,3 +1,4 @@
+//ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
 // test allocation beyond the 32-bit address space
 import P "mo:⛔";
 do {
