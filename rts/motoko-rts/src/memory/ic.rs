@@ -41,7 +41,7 @@ impl Memory for IcMemory {
                 rts_trap_with("Cannot grow memory");
             }
             // The reserve will be pre-allocated as a way to check the main memory capacity.
-            // As the reserve can be relatively large for small heaps, this is only done when 
+            // As the reserve can be relatively large for small heaps, this is only done when
             // the memory demand exceeds `GUARANTEED_MEMORY_CAPACITY`.
             ptr + reserve
         } else {
