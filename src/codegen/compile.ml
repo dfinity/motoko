@@ -11254,8 +11254,10 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
   | OtherPrim "wit:component:call", [e] ->
     assert !Flags.import_component;
-    SR.Vanilla,
-    compile_exp_as env ae Sr.Vanilla e ^^
+    SR.UnboxedWord32 Type.Nat32,
+    (* compile_exp_as env ae SR.Vanilla e ^^ *)
+    compile_unboxed_const 0l ^^
+    compile_unboxed_const 0l ^^
     E.call_import env "component" "call"
 
   (* Other prims, nullary *)
