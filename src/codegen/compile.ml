@@ -3038,7 +3038,7 @@ module ReadBuf = struct
     set_end get_buf
       (get_ptr get_buf ^^ get_size ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)))
 
-  let alloc env f = Stack.with_words env "buf" 2l f
+  let alloc env f = Stack.with_words env "buf" 4l f
 
   let advance get_buf get_delta =
     set_ptr get_buf (get_ptr get_buf ^^ get_delta ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)))
