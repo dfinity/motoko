@@ -59,7 +59,7 @@ pub(crate) fn minimum_memory_capacity() -> Bytes<usize> {
 pub(crate) unsafe fn allocate_wasm_memory(memory_size: Bytes<usize>) {
     const LAST_PAGE_LIMIT: usize = 0xFFFF_FFFF_FFFF_0000;
     debug_assert_eq!(LAST_PAGE_LIMIT, usize::MAX - WASM_PAGE_SIZE.as_usize() + 1);
-    // Never allocate the last page (Rust call stack overflow detection, see `compile.ml`).
+    // Never allocate the last page (shadow call stack overflow detection, see `compile.ml`).
     if memory_size.as_usize() > LAST_PAGE_LIMIT {
         rts_trap_with("Cannot grow memory");
     }
