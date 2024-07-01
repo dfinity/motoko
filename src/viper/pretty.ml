@@ -93,13 +93,15 @@ and pp_pres ppf exps =
    fprintf ppf "@[<v 0>%a@]" (pp_print_list pp_pre) exps
 
 and pp_pre ppf exp =
-   fprintf ppf "@[<v 2>requires %a@]" pp_exp exp
+   marks := exp.at :: !marks;
+   fprintf ppf "\017@[<v 2>requires %a@]\019" pp_exp exp
 
 and pp_posts ppf exps =
    fprintf ppf "@[<v 0>%a@]" (pp_print_list pp_post) exps
 
 and pp_post ppf exp =
-   fprintf ppf "@[<v 2>ensures %a@]" pp_exp exp
+   marks := exp.at :: !marks;
+   fprintf ppf "\017@[<v 2>ensures %a@]\019" pp_exp exp
 
 and pp_local ppf (id, typ) =
   fprintf ppf "@[<2>%s: %a@]"

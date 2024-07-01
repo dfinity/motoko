@@ -51,8 +51,9 @@ method reverseArray$Nat($Self: Ref, a: Array)
     ensures $array_acc(a, $int, write)
     ensures ($size(($Self).xarray) == 5)
     ensures ($size(a) == old($size(a)))
-    ensures (forall k : Int :: (((0 <= k) && (k < $size(a))) ==> (($loc(a, k)).$int == 
-            old(($loc(a, (($size(a) - 1) - k))).$int))))
+    ensures (forall k : Int :: (((0 <= k) && (k < $size(a))) ==> (($loc(a,
+                                                                    k)).$int == 
+             old(($loc(a, (($size(a) - 1) - k))).$int))))
     { var b: Array
       var length: Int
       var i: Int

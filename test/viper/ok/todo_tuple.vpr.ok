@@ -56,14 +56,14 @@ method resize($Self: Ref, n: Int)
     ensures $Perm($Self)
     ensures ((0 <= ($Self).num) && (($Self).num <= $size(($Self).todos)))
     ensures ((($Self).num == old(($Self).num)) && (($Self).nextId == 
-      old(($Self).nextId)))
+       old(($Self).nextId)))
     ensures ($size(($Self).todos) >= n)
     ensures (old($size(($Self).todos)) <= $size(($Self).todos))
     ensures (forall i : Int :: (((0 <= i) && (i < old($size(($Self).todos)))) ==> (
-            ($loc(($Self).todos, i)).$tuple3$int$int$c_State == old((
-                                                                    $loc(
-                                                                    ($Self).todos,
-                                                                    i)).$tuple3$int$int$c_State))))
+             ($loc(($Self).todos, i)).$tuple3$int$int$c_State == old(
+                                                                 ($loc(
+                                                                  ($Self).todos,
+                                                                  i)).$tuple3$int$int$c_State))))
     { var new_array: Array
       var i: Int
       if ((n <= $size(($Self).todos)))
@@ -107,13 +107,13 @@ method getTodos($Self: Ref)
     ensures $Perm($Self)
     ensures $array_acc($Res, $tuple3$int$int$c_State, wildcard)
     ensures ((($Self).num == old(($Self).num)) && (($Self).nextId == 
-      old(($Self).nextId)))
+       old(($Self).nextId)))
     ensures ($size(($Self).todos) == old($size(($Self).todos)))
     ensures (forall i : Int :: (((0 <= i) && (i < old($size(($Self).todos)))) ==> (
-            ($loc(($Self).todos, i)).$tuple3$int$int$c_State == old((
-                                                                    $loc(
-                                                                    ($Self).todos,
-                                                                    i)).$tuple3$int$int$c_State))))
+             ($loc(($Self).todos, i)).$tuple3$int$int$c_State == old(
+                                                                 ($loc(
+                                                                  ($Self).todos,
+                                                                  i)).$tuple3$int$int$c_State))))
     ensures $Inv($Self)
     { var new_array: Array
       inhale $array_acc(new_array, $tuple3$int$int$c_State, write);
@@ -131,16 +131,17 @@ method getTodo($Self: Ref, id: Int)
     requires $Inv($Self)
     ensures $Perm($Self)
     ensures ((($Self).num == old(($Self).num)) && (($Self).nextId == 
-      old(($Self).nextId)))
+       old(($Self).nextId)))
     ensures ($size(($Self).todos) == old($size(($Self).todos)))
     ensures (forall i : Int :: (((0 <= i) && (i < old($size(($Self).todos)))) ==> (
-            ($loc(($Self).todos, i)).$tuple3$int$int$c_State == old((
-                                                                    $loc(
-                                                                    ($Self).todos,
-                                                                    i)).$tuple3$int$int$c_State))))
+             ($loc(($Self).todos, i)).$tuple3$int$int$c_State == old(
+                                                                 ($loc(
+                                                                  ($Self).todos,
+                                                                  i)).$tuple3$int$int$c_State))))
     ensures ((exists i : Int :: (((0 <= i) && (i < ($Self).num)) && (
-             (($loc(($Self).todos, i)).$tuple3$int$int$c_State).tup$3$0 == id))) ==> 
-      (exists i : Int :: (((0 <= i) && (i < ($Self).num)) && (Some(($loc(
+              (($loc(($Self).todos, i)).$tuple3$int$int$c_State).tup$3$0 == id))) ==> 
+       (exists i : Int :: (((0 <= i) && (i < ($Self).num)) && (Some((
+                                                                    $loc(
                                                                     ($Self).todos,
                                                                     i)).$tuple3$int$int$c_State) == $Res))))
     ensures $Inv($Self)
@@ -182,12 +183,12 @@ method addTodo($Self: Ref, description: Int)
     ensures (($Self).nextId == (old(($Self).nextId) + 1))
     ensures ($Res == old(($Self).nextId))
     ensures (($loc(($Self).todos, (($Self).num - 1))).$tuple3$int$int$c_State == 
-      Tup$3($Res, description, TODO()))
+       Tup$3($Res, description, TODO()))
     ensures (forall i : Int :: (((0 <= i) && ((i + 1) < ($Self).num)) ==> (
-            ($loc(($Self).todos, i)).$tuple3$int$int$c_State == old((
-                                                                    $loc(
-                                                                    ($Self).todos,
-                                                                    i)).$tuple3$int$int$c_State))))
+             ($loc(($Self).todos, i)).$tuple3$int$int$c_State == old(
+                                                                 ($loc(
+                                                                  ($Self).todos,
+                                                                  i)).$tuple3$int$int$c_State))))
     ensures $Inv($Self)
     { var id: Int
       id := ($Self).nextId;
@@ -209,18 +210,18 @@ method completeTodo($Self: Ref, id: Int)
     requires $Inv($Self)
     ensures $Perm($Self)
     ensures ((($Self).num == old(($Self).num)) && (($Self).nextId == 
-      old(($Self).nextId)))
+       old(($Self).nextId)))
     ensures ($size(($Self).todos) == old($size(($Self).todos)))
     ensures (forall i : Int :: ((((0 <= i) && (i < ($Self).num)) && (
-            (($loc(($Self).todos, i)).$tuple3$int$int$c_State).tup$3$0 != id)) ==> (
-            ($loc(($Self).todos, i)).$tuple3$int$int$c_State == old((
-                                                                    $loc(
-                                                                    ($Self).todos,
-                                                                    i)).$tuple3$int$int$c_State))))
+             (($loc(($Self).todos, i)).$tuple3$int$int$c_State).tup$3$0 != id)) ==> (
+             ($loc(($Self).todos, i)).$tuple3$int$int$c_State == old(
+                                                                 ($loc(
+                                                                  ($Self).todos,
+                                                                  i)).$tuple3$int$int$c_State))))
     ensures (forall i : Int :: ((((0 <= i) && (i < ($Self).num)) && (
-            (($loc(($Self).todos, i)).$tuple3$int$int$c_State).tup$3$0 == id)) ==> (
-            (($loc(($Self).todos, i)).$tuple3$int$int$c_State).tup$3$2 == 
-            DONE())))
+             (($loc(($Self).todos, i)).$tuple3$int$int$c_State).tup$3$0 == id)) ==> (
+             (($loc(($Self).todos, i)).$tuple3$int$int$c_State).tup$3$2 == 
+             DONE())))
     ensures $Inv($Self)
     { var i: Int
       i := 0;
@@ -266,13 +267,13 @@ method showTodos($Self: Ref)
     requires $Inv($Self)
     ensures $Perm($Self)
     ensures ((($Self).num == old(($Self).num)) && (($Self).nextId == 
-      old(($Self).nextId)))
+       old(($Self).nextId)))
     ensures ($size(($Self).todos) == old($size(($Self).todos)))
     ensures (forall i : Int :: (((0 <= i) && (i < ($Self).num)) ==> (
-            ($loc(($Self).todos, i)).$tuple3$int$int$c_State == old((
-                                                                    $loc(
-                                                                    ($Self).todos,
-                                                                    i)).$tuple3$int$int$c_State))))
+             ($loc(($Self).todos, i)).$tuple3$int$int$c_State == old(
+                                                                 ($loc(
+                                                                  ($Self).todos,
+                                                                  i)).$tuple3$int$int$c_State))))
     ensures $Inv($Self)
     { var output: Int
       var i: Int
@@ -314,14 +315,14 @@ method clearCompleted($Self: Ref)
     ensures (($Self).nextId == old(($Self).nextId))
     ensures ($size(($Self).todos) == old($size(($Self).todos)))
     ensures (forall i : Int :: ((((0 <= i) && (i < old(($Self).num))) && (
-            old((($loc(($Self).todos, i)).$tuple3$int$int$c_State).tup$3$2) == 
-            TODO())) ==> (exists k : Int :: (((0 <= k) && (k < $size(
-                                                               ($Self).todos))) && (
-                         ($loc(($Self).todos, k)).$tuple3$int$int$c_State == 
-                         old(($loc(($Self).todos, i)).$tuple3$int$int$c_State))))))
+             old((($loc(($Self).todos, i)).$tuple3$int$int$c_State).tup$3$2) == 
+             TODO())) ==> (exists k : Int :: (((0 <= k) && (k < $size(
+                                                                ($Self).todos))) && (
+                          ($loc(($Self).todos, k)).$tuple3$int$int$c_State == 
+                          old(($loc(($Self).todos, i)).$tuple3$int$int$c_State))))))
     ensures (forall i : Int :: (((0 <= i) && (i < ($Self).num)) ==> (
-            (($loc(($Self).todos, i)).$tuple3$int$int$c_State).tup$3$2 == 
-            TODO())))
+             (($loc(($Self).todos, i)).$tuple3$int$int$c_State).tup$3$2 == 
+             TODO())))
     ensures $Inv($Self)
     { var new_array: Array
       var i: Int

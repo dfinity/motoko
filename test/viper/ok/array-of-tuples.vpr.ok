@@ -60,17 +60,17 @@ method set_nested_mut_arr($Self: Ref, arr: Array)
     
     requires $Perm($Self)
     requires $array_acc(arr, $option$tuple2$option$int$tuple2$bool$bool,
-             write)
+              write)
     ensures $Perm($Self)
     ensures $array_acc(arr, $option$tuple2$option$int$tuple2$bool$bool,
-            write)
+             write)
     ensures ((($size(arr) >= 2) && (($loc(arr, 0)).$option$tuple2$option$int$tuple2$bool$bool == 
-      old(($loc(arr, 0)).$option$tuple2$option$int$tuple2$bool$bool))) && (
-      ($loc(arr, 1)).$option$tuple2$option$int$tuple2$bool$bool == Some(
-                                                                   Tup$2(
-                                                                   Some(42),
-                                                                   Tup$2(true,
-                                                                   true)))))
+       old(($loc(arr, 0)).$option$tuple2$option$int$tuple2$bool$bool))) && (
+       ($loc(arr, 1)).$option$tuple2$option$int$tuple2$bool$bool == Some(
+                                                                    Tup$2(
+                                                                    Some(42),
+                                                                    Tup$2(true,
+                                                                    true)))))
     { 
       assume ($size(arr) >= 2);
       ($loc(arr, 1)).$option$tuple2$option$int$tuple2$bool$bool := Some(
