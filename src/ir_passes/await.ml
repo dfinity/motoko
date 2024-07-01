@@ -351,14 +351,14 @@ and c_exp' context exp k =
       let error = fresh_var "v" T.catch  in
       let cases' =
         List.map
-          (fun {it = {pat;exp}; at; note} ->
+          (fun {it = { pat; exp }; at; note} ->
             let exp' = match eff exp with
-              | T.Triv -> varE k -*- (t_exp context exp)
+              | T.Triv -> varE k -*- t_exp context exp
               | T.Await -> c_exp context exp (ContVar k)
             in
-            { it = {pat;exp = exp' }; at; note })
+            { it = { pat; exp = exp' }; at; note })
           cases
-        @ [{ it = {pat = varP error; exp = varE f -*- varE error};
+        @ [{ it = { pat = varP error; exp = varE f -*- varE error };
              at = no_region;
              note = ()
         }] in
@@ -375,6 +375,12 @@ and c_exp' context exp k =
         (c_exp context' exp1 (ContVar k))
     ))
   | TryE (exp1, cases, Some (id2, typ2)) ->
+    let pre = function
+      | Cont k -> Cont (precont k (var id2 typ2))
+      | Label -> assert false in
+    (* All control-flow out must pass through the `finally` thunk *)
+    let context = LabelEnv.mapi (function | Return | Named _ | Cleanup -> pre
+                                          | Throw -> fun c -> c) context in
     (* assert that a surrounding `AwaitPrim _` has set up a `Cleanup` cont *)
     ignore (LabelEnv.find Cleanup context);
     (* TODO: do we need to reify f? *)
@@ -388,25 +394,19 @@ and c_exp' context exp k =
       let error = fresh_var "v" T.catch in
       let cases' =
         List.map
-          (fun {it = {pat;exp}; at; note} ->
+          (fun {it = { pat; exp }; at; note} ->
             let exp' = match eff exp with
-              | T.Triv -> varE k -*- (t_exp context exp)
+              | T.Triv -> varE k -*- t_exp context exp
               | T.Await -> c_exp context exp (ContVar k)
             in
             { it = { pat; exp = exp' }; at; note })
           cases
-        @ [{ it = {pat = varP error; exp = varE f -*- varE error};
+        @ [{ it = { pat = varP error; exp = varE f -*- varE error };
              at = no_region;
              note = ()
         }] in
       let throw = fresh_err_cont (answerT (typ_of_var k)) in
-      let pre = function
-        | Cont k -> Cont (precont k (var id2 typ2))
-        | Label -> assert false
-      in
-      let context' = LabelEnv.mapi (function | Return | Named _ | Cleanup -> pre
-                                             | Throw -> fun c -> c) context in
-      let context'' = LabelEnv.add Throw (Cont (ContVar throw)) context' in
+      let context' = LabelEnv.add Throw (Cont (ContVar throw)) context in
       blockE
         [ let e = fresh_var "e" T.catch in
           funcD throw e {
@@ -415,7 +415,7 @@ and c_exp' context exp k =
             note = Note.{ def with typ = typ_cases cases'; eff = T.Await; (* shouldn't matter *) }
           }
         ]
-        (c_exp context'' exp1 (ContVar k))
+        (c_exp context' exp1 (ContVar k))
     ))
   | LoopE exp1 ->
     c_loop context k exp1

@@ -17,6 +17,16 @@ actor A {
         finally { debugPrint "OUTt" };
     };
 
+    func t0l() : async () {
+        label out try { debugPrint "INl"; break out }
+        finally { debugPrint "OUTl" };
+    };
+
+    func t0e() : async () {
+        label out try { debugPrint "INe"; return () }
+        finally { debugPrint "OUTe" };
+    };
+
     func t0r() : async () {
         let p = principalOfActor A;
         try { debugPrint "INr"; ignore await call_raw(p, "raw", to_candid()); assert false }
@@ -240,6 +250,8 @@ actor A {
     public func go() : async () {
         // These don't trap (for the interpreters)
         await t0t();
+        await t0l();
+        await t0e();
         //await t1();
         await t2();
         ignore await t2i();
