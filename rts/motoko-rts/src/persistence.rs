@@ -9,7 +9,7 @@ use motoko_rts_macros::ic_mem_fn;
 use crate::{
     barriers::write_with_barrier,
     constants::{KB, MB},
-    gc::incremental::State,
+    gc::incremental::{partitioned_heap::allocate_initial_memory, State},
     memory::Memory,
     persistence::compatibility::memory_compatible,
     region::{
@@ -19,7 +19,7 @@ use crate::{
     },
     rts_trap_with,
     stable_mem::read_persistence_version,
-    types::{Value, TAG_BLOB_B},
+    types::{Bytes, Value, TAG_BLOB_B},
 };
 
 use self::compatibility::TypeDescriptor;
@@ -91,13 +91,13 @@ impl PersistentMetadata {
         }
     }
 
-    unsafe fn initialize<M: Memory>(self: *mut Self, mem: &mut M) {
+    unsafe fn initialize<M: Memory>(self: *mut Self) {
         use crate::gc::incremental::IncrementalGC;
         (*self).fingerprint = FINGERPRINT;
         (*self).version = VERSION;
         (*self).stable_actor = DEFAULT_VALUE;
         (*self).stable_type = TypeDescriptor::default();
-        (*self).incremental_gc_state = IncrementalGC::initial_gc_state(mem, HEAP_START);
+        (*self).incremental_gc_state = IncrementalGC::<M>::initial_gc_state(HEAP_START);
         (*self).upgrade_instructions = 0;
     }
 }
@@ -105,14 +105,13 @@ impl PersistentMetadata {
 /// Initialize fresh persistent memory after the canister installation or reuse
 /// the persistent memory on a canister upgrade if enhanced orthogonal persistence
 /// is active. For graph-copy-based destabilization, the memory is reinitialized.
-#[cfg(feature = "ic")]
-pub unsafe fn initialize_memory<M: Memory>(mem: &mut M) {
-    mem.grow_memory(HEAP_START);
+pub unsafe fn initialize_memory<M: Memory>() {
+    allocate_initial_memory(Bytes(HEAP_START));
     let metadata = PersistentMetadata::get();
     if use_enhanced_orthogonal_persistence() && metadata.is_initialized() {
         metadata.check_version();
     } else {
-        metadata.initialize(mem);
+        metadata.initialize::<M>();
     }
 }
 
@@ -126,15 +125,6 @@ unsafe fn use_enhanced_orthogonal_persistence() -> bool {
         | LEGACY_VERSION_REGIONS => false,
         _ => rts_trap_with("Unsupported persistence version"),
     }
-}
-
-/// Used for graph-copy-based stabilization. Clears main memory and deserializes
-/// stable objects from stable memory.
-/// Note: Incremental destabilization needs to stop the GC after `reset_memory`.
-pub unsafe fn reset_memory<M: Memory>(mem: &mut M) {
-    mem.grow_memory(HEAP_START);
-    let metadata = PersistentMetadata::get();
-    metadata.initialize(mem);
 }
 
 /// Returns the stable sub-record of the actor of the upgraded canister version.

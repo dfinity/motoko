@@ -114,6 +114,11 @@ impl Bytes<usize> {
     pub const fn as_usize(self) -> usize {
         self.0
     }
+
+    /// Rust `next_multiple_of` is unstable, see https://github.com/rust-lang/rust/issues/88581.
+    pub fn next_multiple_of(self, multiple: usize) -> Self {
+        Bytes((self.0 + multiple - 1) / multiple * multiple)
+    }
 }
 
 impl<A: Add<Output = A>> Add for Bytes<A> {
