@@ -8,12 +8,43 @@ pub struct Buf {
     pub ptr: *mut u8,
     /// Pointer to the end of the buffer
     pub end: *mut u8,
+    pub decoding_quota: usize,
+    pub skipping_quota: usize,
 }
 
 impl Buf {
     #[cfg(feature = "ic")]
     pub(crate) unsafe fn advance(self: *mut Self, n: u32) {
         advance(self, n)
+    }
+
+    #[cfg(feature = "ic")]
+    pub(crate) unsafe fn add_cost(self: *mut Self, skip: bool, cost: usize) {
+        if (*self).decoding_quota > 0 {
+            let cost = if skip { cost * 50 } else { cost };
+            if (*self).decoding_quota < cost {
+                idl_trap_with("decoding cost exceeds the limit");
+            }
+            (*self).decoding_quota = (*self).decoding_quota - cost;
+        }
+        if skip {
+            if (*self).skipping_quota > 0 {
+                if (*self).skipping_quota < cost {
+                    idl_trap_with("skipping cost exceeds the limit")
+                }
+                (*self).skipping_quota = (*self).skipping_quota - cost;
+            }
+        }
+    }
+
+    #[cfg(feature = "ic")]
+    pub(crate) unsafe fn add_decode_cost(self: *mut Self, cost: usize) {
+        self.add_cost(false, cost);
+    }
+
+    #[cfg(feature = "ic")]
+    pub(crate) unsafe fn add_skip_cost(self: *mut Self, cost: usize) {
+        self.add_cost(true, cost);
     }
 }
 
@@ -59,8 +90,32 @@ unsafe fn advance(buf: *mut Buf, n: u32) {
 pub(crate) unsafe extern "C" fn skip_leb128(buf: *mut Buf) {
     loop {
         let byte = read_byte(buf);
+        buf.add_skip_cost(1); // TBR
         if byte & 0b1000_0000 == 0 {
             break;
         }
     }
+}
+
+#[cfg(feature = "ic")]
+#[no_mangle]
+pub(crate) unsafe extern "C" fn add_decode_cost(buf: *mut Buf, cost: usize) {
+    buf.add_decode_cost(cost);
+}
+
+#[cfg(feature = "ic")]
+#[no_mangle]
+pub(crate) unsafe extern "C" fn add_skip_cost(buf: *mut Buf, cost: usize) {
+    buf.add_skip_cost(cost);
+}
+
+#[cfg(feature = "ic")]
+#[no_mangle]
+pub(crate) unsafe extern "C" fn set_quotas(
+    buf: *mut Buf,
+    decoding_quota: usize,
+    skipping_quota: usize,
+) {
+    (*buf).decoding_quota = decoding_quota;
+    (*buf).skipping_quota = skipping_quota;
 }

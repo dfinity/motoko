@@ -247,6 +247,8 @@ unsafe fn parse_idl_header<M: Memory>(
         let mut tmp_buf = Buf {
             end: (*buf).end,
             ptr: *typtbl.add(i as usize),
+            decoding_quota: 0,
+            skipping_quota: 0,
         };
 
         let ty = sleb128_decode(&mut tmp_buf);
@@ -263,6 +265,8 @@ unsafe fn parse_idl_header<M: Memory>(
                 let mut tmp_buf2 = Buf {
                     end: (*buf).end,
                     ptr: *typtbl.add(t as usize),
+                    decoding_quota: 0,
+                    skipping_quota: 0,
                 };
                 let mty = sleb128_decode(&mut tmp_buf2);
                 if mty != IDL_CON_func {
@@ -293,11 +297,13 @@ unsafe fn read_byte_tag(buf: *mut Buf) -> u8 {
 
 unsafe fn skip_blob(buf: *mut Buf) {
     let len = leb128_decode(buf);
+    buf.add_skip_cost(len as usize);
     buf.advance(len);
 }
 
 unsafe fn skip_text(buf: *mut Buf) {
     let (len, p) = leb128_decode_ptr(buf);
+    buf.add_skip_cost(1 + len as usize);
     buf.advance(len); // advance first; does the bounds check
     utf8_validate(p as *const _, len);
 }
@@ -335,23 +341,30 @@ unsafe extern "C" fn skip_any(buf: *mut Buf, typtbl: *mut *mut u8, t: i32, depth
     if t < 0 {
         // Primitive type
         match t {
-            IDL_PRIM_null | IDL_PRIM_reserved => {}
+            IDL_PRIM_null | IDL_PRIM_reserved => {
+                buf.add_skip_cost(1);
+            }
             IDL_PRIM_bool => {
+                buf.add_skip_cost(1);
                 read_byte_tag(buf);
             }
             IDL_PRIM_nat | IDL_PRIM_int => {
                 skip_leb128(buf);
             }
             IDL_PRIM_nat8 | IDL_PRIM_int8 => {
+                buf.add_skip_cost(1);
                 buf.advance(1);
             }
             IDL_PRIM_nat16 | IDL_PRIM_int16 => {
+                buf.add_skip_cost(2);
                 buf.advance(2);
             }
             IDL_PRIM_nat32 | IDL_PRIM_int32 | IDL_PRIM_float32 => {
+                buf.add_skip_cost(4);
                 buf.advance(4);
             }
             IDL_PRIM_nat64 | IDL_PRIM_int64 | IDL_PRIM_float64 => {
+                buf.add_skip_cost(8);
                 buf.advance(8);
             }
             IDL_PRIM_text => skip_text(buf),
@@ -359,11 +372,13 @@ unsafe extern "C" fn skip_any(buf: *mut Buf, typtbl: *mut *mut u8, t: i32, depth
                 idl_trap_with("skip_any: encountered empty");
             }
             IDL_REF_principal => {
+                buf.add_skip_cost(1);
                 if read_byte_tag(buf) != 0 {
                     skip_blob(buf);
                 }
             }
             IDL_EXT_region => {
+                buf.add_skip_cost(12);
                 buf.advance(12); // id (u64) & page_count (u32)
                 skip_blob(buf); // vec_pages
             }
@@ -376,6 +391,8 @@ unsafe extern "C" fn skip_any(buf: *mut Buf, typtbl: *mut *mut u8, t: i32, depth
         let mut tb = Buf {
             ptr: *typtbl.add(t as usize),
             end: (*buf).end,
+            decoding_quota: 0,
+            skipping_quota: 0,
         };
         let tc = sleb128_decode(&mut tb);
         match tc {
@@ -536,6 +553,8 @@ unsafe fn is_opt_reserved(typtbl: *mut *mut u8, end: *mut u8, t: i32) -> bool {
     let mut tb = Buf {
         ptr: *typtbl.add(t as usize),
         end: end,
+        decoding_quota: 0,
+        skipping_quota: 0,
     };
 
     t = sleb128_decode(&mut tb);
@@ -580,6 +599,8 @@ unsafe fn sub(
             *typtbl1.add(t1 as usize)
         },
         end: end1,
+        decoding_quota: 0,
+        skipping_quota: 0,
     };
 
     let u1 = if t1 >= 0 {
@@ -596,6 +617,8 @@ unsafe fn sub(
             *typtbl2.add(t2 as usize)
         },
         end: end2,
+        decoding_quota: 0,
+        skipping_quota: 0,
     };
 
     let u2 = if t2 >= 0 {

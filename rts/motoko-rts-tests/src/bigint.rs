@@ -73,6 +73,8 @@ unsafe fn test_bigint_leb128(n: Value) {
     let mut buf_ = Buf {
         ptr: buf.as_mut_ptr(),
         end: buf.as_mut_ptr().add(100),
+        decoding_quota: 0,
+        skipping_quota: 0,
     };
     bigint_leb128_encode(n, buf.as_mut_ptr());
     let n2 = bigint_leb128_decode(&mut buf_ as *mut _);
@@ -88,6 +90,8 @@ unsafe fn test_bigint_sleb128(n: Value) {
     let mut buf_ = Buf {
         ptr: buf.as_mut_ptr(),
         end: buf.as_mut_ptr().add(100),
+        decoding_quota: 0,
+        skipping_quota: 0,
     };
     let n2 = bigint_sleb128_decode(&mut buf_ as *mut _);
     assert!(bigint_eq(n, n2));

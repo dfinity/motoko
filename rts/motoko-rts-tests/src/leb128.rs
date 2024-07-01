@@ -67,6 +67,8 @@ fn roundtrip_signed(val: i32) -> TestCaseResult {
         let mut buf_ = Buf {
             ptr: buf.as_mut_ptr(),
             end: buf.as_mut_ptr().add(100),
+            decoding_quota: 0,
+            skipping_quota: 0,
         };
 
         match sleb128_decode_checked(&mut buf_) {
@@ -94,6 +96,8 @@ fn roundtrip_unsigned(val: u32) -> TestCaseResult {
         let mut buf_ = Buf {
             ptr: buf.as_mut_ptr(),
             end: buf.as_mut_ptr().add(100),
+            decoding_quota: 0,
+            skipping_quota: 0,
         };
 
         match leb128_decode_checked(&mut buf_) {
@@ -117,6 +121,8 @@ unsafe fn check_signed_decode_overflow(buf: &[u8]) {
     let mut buf_ = Buf {
         ptr: buf.as_ptr() as *mut _,
         end: buf.as_ptr().add(buf.len()) as *mut _,
+        decoding_quota: 0,
+        skipping_quota: 0,
     };
 
     assert_eq!(sleb128_decode_checked(&mut buf_), None);
@@ -126,6 +132,8 @@ unsafe fn check_unsigned_decode_overflow(buf: &[u8]) {
     let mut buf_ = Buf {
         ptr: buf.as_ptr() as *mut _,
         end: buf.as_ptr().add(buf.len()) as *mut _,
+        decoding_quota: 0,
+        skipping_quota: 0,
     };
 
     assert_eq!(leb128_decode_checked(&mut buf_), None);
