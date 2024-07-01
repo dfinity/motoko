@@ -70,8 +70,8 @@ pub unsafe fn initialize_test_memory() -> TestMemory {
     use motoko_rts::gc::incremental::partitioned_heap::PARTITION_SIZE;
     use motoko_rts::gc::incremental::{set_incremental_gc_state, IncrementalGC};
 
-    let mut memory = TestMemory::new(Bytes(PARTITION_SIZE).to_words());
-    let state = IncrementalGC::initial_gc_state(&mut memory, 0);
+    let memory = TestMemory::new(Bytes(PARTITION_SIZE).to_words());
+    let state = IncrementalGC::<TestMemory>::initial_gc_state(0);
     set_incremental_gc_state(Some(state));
     memory
 }
