@@ -128,15 +128,6 @@ unsafe fn use_enhanced_orthogonal_persistence() -> bool {
     }
 }
 
-/// Used for graph-copy-based stabilization. Clears main memory and deserializes
-/// stable objects from stable memory.
-/// Note: Incremental destabilization needs to stop the GC after `reset_memory`.
-pub unsafe fn reset_memory<M: Memory>(mem: &mut M) {
-    mem.grow_memory(HEAP_START);
-    let metadata = PersistentMetadata::get();
-    metadata.initialize(mem);
-}
-
 /// Returns the stable sub-record of the actor of the upgraded canister version.
 /// Returns scalar 0 if no actor is stored after on a fresh memory.
 #[no_mangle]
