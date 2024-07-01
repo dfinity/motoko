@@ -8,7 +8,7 @@ use crate::{
     memory::Memory,
     persistence::{
         compatibility::{memory_compatible, TypeDescriptor},
-        reset_memory, set_upgrade_instructions,
+        set_upgrade_instructions,
     },
     rts_trap_with,
     stabilization::ic::metadata::StabilizationMetadata,
@@ -134,14 +134,6 @@ struct DestabilizationState {
     stabilization_statistics: UpgradeStatistics,
     completed: bool,
     instruction_meter: InstructionMeter,
-}
-
-/// To be called as very first step when graph-copy-based destabilization is applied.
-/// Note: No dynamic allocations must occur prior to this operation.
-pub unsafe fn clear_memory_for_graph_destabilization<M: Memory>(mem: &mut M) {
-    reset_memory(mem);
-    // Stop the GC until the incremental destabilization has been completed.
-    stop_gc();
 }
 
 static mut DESTABILIZATION_STATE: Option<DestabilizationState> = None;
