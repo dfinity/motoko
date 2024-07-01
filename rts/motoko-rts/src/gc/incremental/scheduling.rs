@@ -14,7 +14,7 @@
 //! Wasm memory capacity in 64-bit. This capacity may also increase over time with newer IC versions.
 use crate::gc::incremental::{get_incremental_gc_state, partitioned_heap::PARTITION_SIZE};
 use crate::memory::ic::{
-    get_heap_size, get_total_allocations, minimum_memory_capacity, probe_wasm_memory_allocation,
+    get_heap_size, get_total_allocations, minimum_memory_capacity, probe_wasm_memory,
 };
 use crate::types::Bytes;
 
@@ -36,7 +36,7 @@ impl HeapThresholds {
         // Only if the heap size seems to be critically low, try to expand the Wasm memory beyond the
         // assumed current available memory.
         if heap_size > thresholds.critical_heap_limit
-            && probe_wasm_memory_allocation(Bytes(minimum_memory_capacity() + 1))
+            && probe_wasm_memory(minimum_memory_capacity() + Bytes(1))
         {
             // Obtain the extended heap thresholds.
             HeapThresholds::get_without_probing()
@@ -49,7 +49,7 @@ impl HeapThresholds {
     /// The critical limit is 80% of the currently known memory size.
     /// The medium limit is 50% of the currently known memory size.
     unsafe fn get_without_probing() -> HeapThresholds {
-        let available_memory = minimum_memory_capacity();
+        let available_memory = minimum_memory_capacity().as_usize();
         let critical_heap_limit = Bytes(available_memory / 10 * 8); // 80%
         let medium_heap_limit: Bytes<usize> = Bytes(available_memory / 2); // 50%
         HeapThresholds {

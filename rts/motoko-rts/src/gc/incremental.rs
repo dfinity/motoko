@@ -41,10 +41,10 @@ pub mod sort;
 pub mod time;
 
 #[ic_mem_fn(ic_only)]
-unsafe fn initialize_incremental_gc<M: Memory>(mem: &mut M) {
+unsafe fn initialize_incremental_gc<M: Memory>(_mem: &mut M) {
     use crate::persistence::initialize_memory;
 
-    initialize_memory(mem);
+    initialize_memory::<M>();
 }
 
 #[ic_mem_fn(ic_only)]
@@ -154,8 +154,8 @@ pub struct IncrementalGC<'a, M: Memory> {
 impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     /// (Re-)Initialize the entire incremental garbage collector.
     /// Called on a runtime system start with incremental GC and also during RTS testing.
-    pub unsafe fn initial_gc_state(mem: &'a mut M, heap_base: usize) -> State {
-        let partitioned_heap = PartitionedHeap::new(mem, heap_base);
+    pub unsafe fn initial_gc_state(heap_base: usize) -> State {
+        let partitioned_heap = PartitionedHeap::new(heap_base);
         let statistics = Statistics {
             last_allocations: Bytes(0),
             max_live: Bytes(0),

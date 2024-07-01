@@ -49,7 +49,7 @@ impl Memory for IcMemory {
             // the reserve is already guaranteed and we can skip the pre-allocation of the reserve.
             ptr
         };
-        allocate_wasm_memory(memory_demand);
+        allocate_wasm_memory(Bytes(memory_demand));
     }
 }
 
@@ -77,27 +77,22 @@ pub unsafe extern "C" fn get_max_live_size() -> Bytes<usize> {
 /// The result may increase after time. This is because the actual capacity is
 /// not known upfront and can only derived by memory allocation probing.
 /// Moreover, the IC may increase the canister main memory capacity in newer versions.
-pub(crate) fn minimum_memory_capacity() -> usize {
+pub(crate) fn minimum_memory_capacity() -> Bytes<usize> {
     let allocated_memory = wasm64::memory_size(0) * WASM_PAGE_SIZE.as_usize();
     let unrounded_capacity = max(allocated_memory, GUARANTEED_MEMORY_CAPACITY);
-    next_multiple_of(unrounded_capacity, IC_MEMORY_CAPACITY_GRANULARITY)
-}
-
-/// Rust `next_multiple_of` is unstable, see https://github.com/rust-lang/rust/issues/88581.
-fn next_multiple_of(value: usize, multiple: usize) -> usize {
-    (value + multiple - 1) / multiple * multiple
+    Bytes(unrounded_capacity).next_multiple_of(IC_MEMORY_CAPACITY_GRANULARITY)
 }
 
 /// Grow memory without memory reserve. Used during RTS initialization and by the ordinary
 /// reserve-conscious memory-grow operation (`Memory::grow_memory`).
-pub(crate) unsafe fn allocate_wasm_memory(memory_demand: usize) {
+pub(crate) unsafe fn allocate_wasm_memory(memory_size: Bytes<usize>) {
     const LAST_PAGE_LIMIT: usize = 0xFFFF_FFFF_FFFF_0000;
     debug_assert_eq!(LAST_PAGE_LIMIT, usize::MAX - WASM_PAGE_SIZE.as_usize() + 1);
     // Never allocate the last page (Rust call stack overflow detection, see `compile.ml`).
-    if memory_demand > LAST_PAGE_LIMIT {
+    if memory_size.as_usize() > LAST_PAGE_LIMIT {
         rts_trap_with("Cannot grow memory");
     }
-    if !probe_wasm_memory_allocation(Bytes(memory_demand)) {
+    if !probe_wasm_memory(memory_size) {
         // replica signals that there is not enough memory
         rts_trap_with("Cannot grow memory");
     }
@@ -106,7 +101,7 @@ pub(crate) unsafe fn allocate_wasm_memory(memory_demand: usize) {
 /// Try to allocate an amount of Wasm memory by growing the Wasm memory space if needed.
 /// Returns true if the memory has been allocated and is available.
 /// Otherwise, it returns false if there does not exist enough Wasm memory.
-pub(crate) unsafe fn probe_wasm_memory_allocation(memory_size: Bytes<usize>) -> bool {
+pub(crate) unsafe fn probe_wasm_memory(memory_size: Bytes<usize>) -> bool {
     let page_size = WASM_PAGE_SIZE.as_usize();
     let total_pages_needed = (memory_size.as_usize() + page_size - 1) / page_size;
     let current_pages = wasm64::memory_size(0);
