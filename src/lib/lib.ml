@@ -502,10 +502,7 @@ end
 
 module Option =
 struct
-  let get o x =
-    match o with
-    | Some y -> y
-    | None -> x
+  let get o x = Option.value o ~default:x
 
   let map2 (f : 'a -> 'b -> 'c) (a : 'a option) (b : 'b option) =
     match a, b with
