@@ -39,17 +39,22 @@ pub struct IcMemory;
 /// Page allocation. Ensures that the memory up to, but excluding, the given pointer is allocated.
 /// Ensure a memory reserve of at least one Wasm page depending on the canister state.
 /// `memory_reserve`: A memory reserve in bytes ensured during update and initialization calls.
-//  For use by queries and upgrade calls. The reserve may vary depending on the GC and the phase of the GC.
+/// For use by queries and upgrade calls. The reserve may vary depending on the GC and the phase of the GC.
 unsafe fn grow_memory(ptr: u64, memory_reserve: usize) {
     const LAST_PAGE_LIMIT: usize = 0xFFFF_0000;
     debug_assert_eq!(LAST_PAGE_LIMIT, usize::MAX - WASM_PAGE_SIZE.as_usize() + 1);
+    // In any case, the last Wasm memory page is reserved to guard against shadow call stack overflows.
+    // This call stack is used both by the Rust runtime system implementation and by the compiler backend,
+    // see module `Stack` in `compile.ml`. This requires function activation frames to be less than the
+    // Wasm page size.
     let limit = if keep_memory_reserve() {
-        // Spare a memory reserve during update and initialization calls for use by queries and upgrades.
-        usize::MAX - memory_reserve + 1
+        // Spare an additional reserve during update and initialization calls for use by queries and upgrades.
+        debug_assert!(memory_reserve <= LAST_PAGE_LIMIT);
+        LAST_PAGE_LIMIT - memory_reserve
     } else {
-        // Spare the last Wasm memory page on queries and upgrades to support the Rust call stack boundary checks.
         LAST_PAGE_LIMIT
     };
+    // The pointer is one byte larger than the memory size to be allocated, see the comment above.
     if ptr > limit as u64 {
         rts_trap_with("Cannot grow memory")
     };
