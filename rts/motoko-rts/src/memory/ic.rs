@@ -40,6 +40,7 @@ pub struct IcMemory;
 /// Ensure a memory reserve of at least one Wasm page depending on the canister state.
 /// `memory_reserve`: A memory reserve in bytes ensured during update and initialization calls.
 /// For use by queries and upgrade calls. The reserve may vary depending on the GC and the phase of the GC.
+#[inline(always)]
 unsafe fn grow_memory(ptr: u64, memory_reserve: usize) {
     const LAST_PAGE_LIMIT: usize = 0xFFFF_0000;
     debug_assert_eq!(LAST_PAGE_LIMIT, usize::MAX - WASM_PAGE_SIZE.as_usize() + 1);
