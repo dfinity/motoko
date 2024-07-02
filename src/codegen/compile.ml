@@ -1127,6 +1127,8 @@ module RTS = struct
     E.add_func_import env "rts" "memcmp" [I32Type; I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "version" [] [I32Type];
     E.add_func_import env "rts" "parse_idl_header" [I32Type; I32Type; I32Type; I32Type; I32Type] [];
+    E.add_func_import env "rts" "idl_set_quotas" [I32Type; I32Type; I32Type] [];
+    E.add_func_import env "rts" "idl_decode_cost" [I32Type; I32Type] [];
     E.add_func_import env "rts" "idl_sub_buf_words" [I32Type; I32Type] [I32Type];
     E.add_func_import env "rts" "idl_sub_buf_init" [I32Type; I32Type; I32Type] [];
     E.add_func_import env "rts" "idl_sub"
@@ -3038,7 +3040,16 @@ module ReadBuf = struct
     set_end get_buf
       (get_ptr get_buf ^^ get_size ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)))
 
-  let alloc env f = Stack.with_words env "buf" 4l f
+  let alloc env f = Stack.with_words env "buf" 4l
+    (fun get_read_buf ->
+       (* set quotas to none *)
+       get_read_buf ^^ compile_unboxed_zero ^^ compile_unboxed_zero ^^
+       E.call_import env "rts" "idl_set_quotas" ^^
+       f get_read_buf)
+
+  let decode_cost env get_buf get_cost =
+    get_buf ^^ get_cost ^^
+    E.call_import env "rts" "idl_decode_cost"
 
   let advance get_buf get_delta =
     set_ptr get_buf (get_ptr get_buf ^^ get_delta ^^ G.i (Binary (Wasm.Values.I32 I32Op.Add)))

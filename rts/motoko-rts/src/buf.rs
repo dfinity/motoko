@@ -99,19 +99,19 @@ pub(crate) unsafe extern "C" fn skip_leb128(buf: *mut Buf) {
 
 #[cfg(feature = "ic")]
 #[no_mangle]
-pub(crate) unsafe extern "C" fn add_decode_cost(buf: *mut Buf, cost: usize) {
+pub(crate) unsafe extern "C" fn idl_decode_cost(buf: *mut Buf, cost: usize) {
     buf.add_decode_cost(cost);
 }
 
 #[cfg(feature = "ic")]
 #[no_mangle]
-pub(crate) unsafe extern "C" fn add_skip_cost(buf: *mut Buf, cost: usize) {
+pub(crate) unsafe extern "C" fn idl_skip_cost(buf: *mut Buf, cost: usize) {
     buf.add_skip_cost(cost);
 }
 
 #[cfg(feature = "ic")]
 #[no_mangle]
-pub(crate) unsafe extern "C" fn set_quotas(
+pub(crate) unsafe extern "C" fn idl_set_quotas(
     buf: *mut Buf,
     decoding_quota: usize,
     skipping_quota: usize,

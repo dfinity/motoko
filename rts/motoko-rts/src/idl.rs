@@ -532,6 +532,7 @@ unsafe extern "C" fn find_field(
     tag: u32,
     n: *mut u8,
 ) -> u32 {
+    //TODO costs?
     while *n > 0 {
         let last_p = (*tb).ptr;
         let this_tag = leb128_decode(tb);
@@ -554,6 +555,7 @@ unsafe extern "C" fn find_field(
 
 #[no_mangle]
 unsafe extern "C" fn skip_fields(tb: *mut Buf, buf: *mut Buf, typtbl: *mut *mut u8, n: *mut u8) {
+    //TODO costs?
     while *n > 0 {
         skip_leb128(tb);
         let it = sleb128_decode(tb);
