@@ -89,8 +89,8 @@ unsafe fn advance(buf: *mut Buf, n: u32) {
 #[no_mangle]
 pub(crate) unsafe extern "C" fn skip_leb128(buf: *mut Buf) {
     loop {
-        let byte = read_byte(buf);
         buf.add_skip_cost(1); // TBR
+        let byte = read_byte(buf);
         if byte & 0b1000_0000 == 0 {
             break;
         }
