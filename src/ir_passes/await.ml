@@ -341,41 +341,6 @@ and c_exp' context exp k =
                at = exp.at;
                note = Note.{ exp.note with typ = typ' } }))
     end)
-  | TryE (exp1, cases, None) ->
-    (* TODO: do we need to reify f? *)
-    let f = match LabelEnv.find Throw context with Cont f -> f | _ -> assert false in
-    letcont f (fun f ->
-    letcont k (fun k ->
-    match eff exp1 with
-    | T.Triv ->
-      varE k -*- t_exp context exp1
-    | T.Await ->
-      let error = fresh_var "v" T.catch  in
-      let cases' =
-        List.map
-          (fun {it = { pat; exp }; at; note} ->
-            let exp' = match eff exp with
-              | T.Triv -> varE k -*- t_exp context exp
-              | T.Await -> c_exp context exp (ContVar k)
-            in
-            { it = { pat; exp = exp' }; at; note })
-          cases
-        @ [{ it = { pat = varP error; exp = varE f -*- varE error };
-             at = no_region;
-             note = ()
-        }] in
-      let throw = fresh_err_cont (answerT (typ_of_var k)) in
-      let context' = LabelEnv.add Throw (Cont (ContVar throw)) context in
-      blockE
-        [ let e = fresh_var "e" T.catch in
-          funcD throw e {
-            it = SwitchE (varE e, cases');
-            at = exp.at;
-            note = Note.{ def with typ = typ_cases cases'; eff = T.Await; (* shouldn't matter *) }
-          }
-        ]
-        (c_exp context' exp1 (ContVar k))
-    ))
   | TryE (exp1, cases, finally_opt) ->
     let pre = function
       | Cont k -> (match finally_opt with
