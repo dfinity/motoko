@@ -12,6 +12,8 @@ let fresh_cont typ ans_typ = fresh_var "k" (contT typ ans_typ)
 
 let fresh_err_cont ans_typ  = fresh_var "r" (err_contT ans_typ)
 
+let fresh_bail_cont ans_typ = fresh_var "b" bail_contT
+
 (* continuations, syntactic and meta-level *)
 
 type kont = ContVar of var
@@ -81,7 +83,7 @@ let rec t_async context exp =
    (* add the implicit return label *)
    let k_ret = fresh_cont (typ exp1) T.unit in
    let k_fail = fresh_err_cont T.unit in
-   let k_clean = fresh_cont T.unit T.unit in
+   let k_clean = fresh_bail_cont T.unit in
    let context' =
      LabelEnv.add Cleanup (Cont (ContVar k_clean))
        (LabelEnv.add Return (Cont (ContVar k_ret))
@@ -374,15 +376,18 @@ and c_exp' context exp k =
         ]
         (c_exp context' exp1 (ContVar k))
     ))
-  | TryE (exp1, cases, Some (id2, typ2)) ->
+  | TryE (exp1, cases, finally_opt) ->
     let pre = function
-      | Cont k -> Cont (precont k (var id2 typ2))
+      | Cont k -> (match finally_opt with
+                   | Some (id2, typ2) -> Cont (precont k (var id2 typ2))
+                   | None -> Cont k)
       | Label -> assert false in
     (* All control-flow out must pass through the `finally` thunk *)
     let context = LabelEnv.mapi (function | Return | Named _ | Cleanup -> pre
                                           | Throw -> fun c -> c) context in
     (* assert that a surrounding `AwaitPrim _` has set up a `Cleanup` cont *)
-    ignore (LabelEnv.find Cleanup context);
+    if finally_opt <> None
+    then ignore (LabelEnv.find Cleanup context);
     (* TODO: do we need to reify f? *)
     let f = match LabelEnv.find Throw context with Cont f -> f | _ -> assert false in
     letcont f (fun f ->
@@ -448,7 +453,7 @@ and c_exp' context exp k =
     (* add the implicit return label *)
     let k_ret = fresh_cont (typ exp1) T.unit in
     let k_fail = fresh_err_cont T.unit in
-    let k_clean = fresh_cont T.unit T.unit in
+    let k_clean = fresh_bail_cont T.unit in
     let context' =
       LabelEnv.add Cleanup (Cont (ContVar k_clean))
         (LabelEnv.add Return (Cont (ContVar k_ret))
