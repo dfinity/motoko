@@ -25,9 +25,10 @@ shared({caller = creator}) actor class DAO() = Self {
     stable var next_proposal_id : Nat = 0;
     stable var system_params : Types.SystemParams = init.system_params;
 
-    system func heartbeat() : async () {
-        await execute_accepted_proposals();
-    };
+    // Disabled because it leads to non-deterministic performance measurements.
+    // system func heartbeat() : async () {
+    //     await execute_accepted_proposals();
+    // };
 
     func account_get(id : Principal) : ?Types.Tokens = Trie.get(accounts, Types.account_key(id), Principal.equal);
     func account_put(id : Principal, tokens : Types.Tokens) {
@@ -197,7 +198,7 @@ shared({caller = creator}) actor class DAO() = Self {
     };
 
     /// Execute all accepted proposals
-    func execute_accepted_proposals() : async () {
+    public func execute_accepted_proposals() : async () {
         let accepted_proposals = Trie.filter(proposals, func (_ : Nat, proposal : Types.Proposal) : Bool = proposal.state == #accepted);
         // Update proposal state, so that it won't be picked up by the next heartbeat
         for ((id, proposal) in Trie.iter(accepted_proposals)) {
@@ -267,6 +268,7 @@ shared({caller = creator}) actor class DAO() = Self {
 //CALL ingress submit_proposal 0x4449444c026c03e1edeb4a71b3c4b1f20468c7ebc4d009016d7b0100087472616e73666572010a000000000000000001012a4449444c026c02fbca0168d8a38ca80d016c01b9ef9380087d0100010a00000000000000000101b0ea01
 //CALL query list_proposals 0x4449444C0000
 //CALL query list_accounts 0x4449444C0000
+//CALL ingress execute_accepted_proposals 0x4449444C0000
 
 //CALL query get_proposal 0x4449444c00017d00
 //CALL query get_proposal 0x4449444c00017d01
@@ -276,3 +278,4 @@ shared({caller = creator}) actor class DAO() = Self {
 //CALL ingress vote 0x4449444c026c02ea99cff204018882e69c0a7d6b02c1c0017fa7d2f0027f01000101
 //CALL ingress vote 0x4449444c026c02ea99cff204018882e69c0a7d6b02c1c0017fa7d2f0027f01000101
 //CALL query get_proposal 0x4449444c00017d01
+//CALL ingress execute_accepted_proposals 0x4449444C0000
