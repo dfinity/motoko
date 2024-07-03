@@ -5,3 +5,4 @@ assert:return true;
 
 // `invariant` is a keyword in verification mode only
 assert:invariant true;
+assert:loop:invariant true;
