@@ -61,7 +61,7 @@ module StableMemory {
 }
 ```
 
-NOTE: Motoko's `Nat32` value are always boxed - it might be more efficient to use `Nat` which is unboxed for 30(?)-bit values.
+NOTE: Motoko's `Nat32` value are always boxed - it might be more efficient to use [`Nat`](../base/Nat.md) which is unboxed for 30(?)-bit values.
 
 
 ```

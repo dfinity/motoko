@@ -8,8 +8,22 @@ _stable variables_, whose persistence mechanism also uses (real) IC stable memor
 It is also fully compatible with existing uses of the `ExperimentalStableMemory` library, which has a similar interface, but,
 only supported a single memory region, without isolation between different applications.
 
-Memory is allocated, using `grow(region, pages)`, sequentially and on demand, in units of 64KiB logical pages, starting with 0 allocated pages.
-New pages are zero initialized.
+The `Region` type is stable and can be used in stable data structures.
+
+A new, empty `Region` is allocated using function `new()`.
+
+Regions are stateful objects and can be distinguished by the numeric identifier returned by function `id(region)`.
+Every region owns an initially empty, but growable sequence of virtual IC stable memory pages. 
+The current size, in pages, of a region is returned by function `size(region)`.
+The size of a region determines the range, [ 0, ..., size(region)*2^16 ), of valid byte-offsets into the region; these offsets are used as the source and destination of `load`/`store` operations on the region.
+
+Memory is allocated to a region, using function `grow(region, pages)`, sequentially and on demand, in units of 64KiB logical pages, starting with 0 allocated pages.
+A call to `grow` may succeed, returning the previous size of the region, or fail, returning a sentinel value. New pages are zero initialized.
+
+A size of a region can only grow and never shrink.
+In addition, the stable memory pages allocated to a region will *not* be reclaimed by garbage collection, even
+if the region object itself becomes unreachable. 
+
 Growth is capped by a soft limit on physical page count controlled by compile-time flag
 `--max-stable-pages <n>` (the default is 65536, or 4GiB).
 

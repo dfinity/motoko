@@ -57,7 +57,7 @@ let add_msgs s ms = s := List.rev ms @ !s
 let get_msgs s = List.rev !s
 
 let has_errors : messages -> bool =
-  List.fold_left (fun b msg -> b || msg.sev == Error) false
+  List.exists (fun msg -> msg.sev == Error)
 
 let string_of_message msg =
   let code = match msg.sev, msg.code with
@@ -76,6 +76,8 @@ let print_message msg =
   else Printf.eprintf "%s%!" (string_of_message msg)
 
 let print_messages = List.iter print_message
+
+let is_error_free (ms: msg_store) = not (has_errors (get_msgs ms))
 
 let with_message_store f =
   let s = ref [] in

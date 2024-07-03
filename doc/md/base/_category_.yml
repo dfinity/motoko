@@ -1,0 +1,5 @@
+position: 9
+label: 'Motoko base library'
+collapsible: true # make the category collapsible
+collapsed: true 
+

@@ -55,6 +55,7 @@ type env =
     check_unused : bool;
     used_identifiers : S.t ref;
     unused_warnings : unused_warnings ref;
+    reported_stable_memory : bool ref;
   }
 
 let env_of_scope msgs scope =
@@ -76,6 +77,7 @@ let env_of_scope msgs scope =
     check_unused = true;
     used_identifiers = ref S.empty;
     unused_warnings = ref [];
+    reported_stable_memory = ref false;
   }
 
 let use_identifier env id =
@@ -146,6 +148,23 @@ let warn env at code fmt =
 let info env at fmt =
   Format.kasprintf (fun s -> Diag.add_msg env.msgs (type_info at s)) fmt
 
+let check_deprecation env at desc id depr =
+  match depr with
+  | Some ("M0199" as code) ->
+    if !(env.reported_stable_memory) then ()
+    else begin
+      env.reported_stable_memory := true;
+      (match compare !Flags.experimental_stable_memory 0 with
+       | -1 -> error
+       | 0 -> warn
+       | _ -> fun _ _ _ _ -> ())
+       env at code
+       "this code is (or uses) the deprecated library `ExperimentalStableMemory`.\nPlease use the `Region` library instead: https://internetcomputer.org/docs/current/motoko/main/stable-memory/stable-regions/#the-region-library or compile with flag `--experimental-stable-memory 1` to suppress this message."
+    end
+  | Some msg ->
+    warn env at "M0154" "%s %s is deprecated:\n%s" desc id msg
+  | None -> ()
+
 let flag_of_compile_mode mode =
   match mode with
   | Flags.ICMode -> ""
@@ -205,7 +224,7 @@ let ignore_warning_for_id id =
     false
 
 let detect_unused env inner_identifiers =
-  if env.check_unused then
+  if not env.pre && env.check_unused then
     T.Env.iter (fun id (_, at, kind) ->
       if (not (ignore_warning_for_id id)) && (is_unused_identifier env id) then
         add_unused_warning env (id, at, kind)
@@ -407,9 +426,7 @@ and check_typ_path' env path : T.con =
     let s, fs = check_obj_path env path' in
     match T.lookup_typ_field id.it fs with
       | c ->
-        Option.iter
-          (warn env path.at "M0154" "type field %s is deprecated:\n%s" id.it)
-          (T.lookup_typ_deprecation id.it fs);
+        check_deprecation env path.at "type field" id.it (T.lookup_typ_deprecation id.it fs);
         c
       | exception Invalid_argument _ ->
         error env id.at "M0030" "type field %s does not exist in type%a"
@@ -1371,9 +1388,8 @@ and infer_exp'' env exp : T.typ =
         "cannot infer type of forward field reference %s"
         id.it
     | t ->
-      Option.iter
-        (warn env exp.at "M0154" "field %s is deprecated:\n%s" id.it)
-        (T.lookup_val_deprecation id.it tfs);
+      if not env.pre then
+        check_deprecation env exp.at "field" id.it (T.lookup_val_deprecation id.it tfs);
       t
     | exception Invalid_argument _ ->
       error env exp1.at "M0072"
@@ -1830,7 +1846,7 @@ and check_exp' env0 t exp : T.typ =
       | Some exp2 ->
         check_exp_strong { env with rets = None; labs = T.Env.empty } T.unit exp2;
         if exp2.note.note_eff <> T.Triv then
-          local_error env exp2.at "M0199" "a cleanup clause must not send messages";
+          local_error env exp2.at "M0200" "a cleanup clause must not send messages";
       end;
     t
   (* TODO: allow shared with one scope par *)
@@ -2010,8 +2026,11 @@ and check_cases env t_pat t cases =
 
 and check_case env t_pat t case =
   let {pat; exp} = case.it in
+  let initial_usage = enter_scope env in
   let ve = check_pat env t_pat pat in
-  recover (check_exp (adjoin_vals env ve) t) exp
+  let t' = recover (check_exp (adjoin_vals env ve) t) exp in
+  leave_scope env ve initial_usage;
+  t'
 
 and inconsistent t ts =
   T.opaque t && not (List.exists T.opaque ts)
@@ -2285,7 +2304,7 @@ and check_pat_fields env t tfs pfs ve at : Scope.val_env =
     | _ ->
       if T.is_mut typ then
         error env pf.at "M0120" "cannot pattern match mutable field %s" lab;
-      Option.iter (warn env pf.at "M0154" "type field %s is deprecated:\n%s" lab) src.T.depr;
+      check_deprecation env pf.at "field" lab src.T.depr;
       let val_kind = kind_of_field_pattern pf in
       let ve1 = check_pat_aux env typ pf.it.pat val_kind in
       let ve' =
@@ -2943,7 +2962,7 @@ let infer_prog scope pkg_opt async_cap prog : (T.typ * Scope.t) Diag.result =
              env0 with async = async_cap;
           } in
           let res = infer_block env prog.it prog.at true in
-          if pkg_opt = None then emit_unused_warnings env;
+          if pkg_opt = None && Diag.is_error_free msgs then emit_unused_warnings env;
           res
         ) prog
     )
@@ -3023,7 +3042,7 @@ let check_lib scope pkg_opt lib : Scope.t Diag.result =
               (* this shouldn't really happen, as an imported program should be rewritten to a module *)
               error env cub.at "M0000" "compiler bug: expected a module or actor class but found a program, i.e. a sequence of declarations"
           in
-          if pkg_opt = None then emit_unused_warnings env;
+          if pkg_opt = None && Diag.is_error_free msgs then emit_unused_warnings env;
           Scope.lib lib.note.filename imp_typ
         ) lib
     )
