@@ -53,6 +53,14 @@ Motoko permits user-defined types and each of the following non-primitive value 
 
 For precise language definitions of primitive and non-primitive values, see the [language reference](../reference/language-manual).
 
+### Objects, records and their extension mechanisms
+
+Objects are aggregate data made from *labelled* constituent data. In their most general form, objects can contain named values (`let` and `var`) as well as methods (`func`) acting on them. Objects are written with a leading keyword `object` followed by an optional name and the block comprising its constituents. Only `public` constituents contribute to the object's type.
+
+In many cases objects are used as simply containers of data, which we refer to as *records*. When building records, Motoko has a simplified syntax to offer, where semicolon-separated labelled fields are placed in braces. The labels are identifiers (with a leading `var` when the field is mutable) followed by `=` and the initial value. All fields are public, and contribute to the record's type.
+
+Furthermore, syntactic forms are provided for building new records from existing ones and/or adding new fields (or replacing existing ones). The *base* records/objects are separated by the `and` keyword and can be followed by `with` and semicolon-separated additional (or overwriting) fields. Again, the bases and fields are wrapped in braces, indicating record formation. When the bases have overlapping fields (considering their types) then a disambiguating field overwrite must be provided. The original bases remain unmodified, and thus we refer to this as functional record combination and extension.
+
 ## Printing values
 
 The function `print`, from base library [`Debug`](../base/Debug.md), accepts a text string of type [`Text`](../base/Text.md) as input, and produces the unit value of unit type or `()`, as its output.
@@ -102,6 +110,12 @@ Unit-type restrictions can be ignored by explicitly using the `ignore` keyword t
 A declaration list is not itself an expression, so you cannot declare another variable with its final value.
 
 **Block expressions** can be formed from a list of declarations by enclosing it with matching curly braces. Blocks are only allowed as sub-expressions of control flow expressions like `if`, `loop`, `case`, etc. A block expression produces a value and, when enclosed in parentheses, can occur within some larger, compound expression.
+
+:::note
+
+A particular form of blocks are provided for convenience when processing data that may be missing or incomplete. These are described under [option blocks](../writing-motoko/pattern-matching.md#option-blocks).
+
+:::
 
 In all other places, `do { … }` is used to represent block expressions and distinguish blocks from object literals. For example, `do {}` is the empty block of type `()`, while `{}` is an empty record of record type `{}`. This block form preserves the autonomy of the declaration list and its choice of variable names. This means that variables' scopes may nest, but they may not interfere as they nest. Language theorists call this idea **lexical scoping**.
 
@@ -177,7 +191,7 @@ Because the meaning of execution is ill-defined after a faulting trap, execution
 
 :::note
 
-Traps that occur within actor messages are more subtle: they don’t abort the entire actor, but prevent that particular message from proceeding, rolling back any yet uncommitted state changes. Other messages on the actor will continue execution.
+Traps that occur within actor messages are more subtle: they don’t abort the entire actor, but prevent that particular message from proceeding, rolling back any yet uncommitted state changes. Other messages on the actor will continue execution. This has subtle security implications, so be sure to consult the relevant [security recommendations](https://internetcomputer.org/docs/current/developer-docs/security/security-best-practices/inter-canister-calls#recommendation).
 
 :::
 
@@ -199,3 +213,19 @@ assert n % 2 == 0; // traps when n not even
 ```
 
 Because an assertion may succeed, and thus proceed with execution, it may only be used in context where a value of type `()` is expected.
+
+### The `system` capability
+
+Smart contracts (i.e. Motoko `actor`s) may generally give home to concepts corresponding to real-world value, the loss of which can be detrimental. Most such concepts are mobile, and can be transferred through message sends. In order to a library to be able to send a message, the corresponding function must be imported and possess an `async` (or `async*`) type. Calling such functions is only possible when the send capability is given (by the callee also having such a type).
+
+Naturally, the programmer must be careful granting send privileges to third-party libraries (resp. functions therein) and review for potential security breaches if she choses to do so.
+
+There is a special class of functions, however, which can be called from code that does not possess send capability, but registers a callback that does. This kind of *capability elevation* is possible when adding timers (e.g. `setTimer` in `base`). To harden the `actor` against supply-chain attacks (malicious sends masquerading behind a capability-starved call interface to third-party code), Motoko allows to declare functions that can potentially lead to capability elevation to require a `system` capability.
+
+The `system` capability originates from the top-level actor and can be passed to functions (that expect it) by specifying a pseudo-type parameter `<system, ...>` which must appear at the call site. Similarly, functions demanding the `system` capability declare it in their signature:
+
+``` motoko
+func elevate<system>(ref : Int, callback : Int -> async* ()) {
+    ignore Timer.setTimer<system>(#seconds 0, func() : async () { await* callback ref })
+}
+```
