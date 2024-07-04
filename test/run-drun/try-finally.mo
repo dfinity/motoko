@@ -51,6 +51,22 @@ actor A {
     };
 */
 
+    func t1t() : async () {
+        debugPrint "BEFORE1t";
+        try {
+            debugPrint "IN1t";
+            try {
+                debugPrint "IN1tInner";
+                throw error "IN1tInner";
+            }
+            catch e { debugPrint "CAUGHT1tInner"; throw e }
+            finally { debugPrint "OUT1tInner" };
+        }
+        catch _ { debugPrint "CAUGHT1t" }
+        finally { debugPrint "OUT1t" };
+        debugPrint "AFTER1t"
+    };
+
     func t2() : async () {
         try {
             debugPrint "IN2";
@@ -273,6 +289,7 @@ actor A {
         await t0l();
         await t0e();
         //await t1();
+        await t1t();
         await t2();
         await t2r();
         await t2b();

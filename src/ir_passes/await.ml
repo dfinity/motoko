@@ -342,13 +342,15 @@ and c_exp' context exp k =
                note = Note.{ exp.note with typ = typ' } }))
     end)
   | TryE (exp1, cases, finally_opt) ->
-    let pre = function
-      | Cont k -> (match finally_opt with
-                   | Some (id2, typ2) -> Cont (precont k (var id2 typ2))
-                   | None -> Cont k)
+     let pre k =
+       match finally_opt with
+       | Some (id2, typ2) -> precont k (var id2 typ2)
+       | None -> k in
+    let pre' = function
+      | Cont k -> Cont (pre k)
       | Label -> assert false in
-    (* All control-flow out must pass through the `finally` thunk *)
-    let context = LabelEnv.mapi (function | Return | Named _ | Cleanup -> pre
+    (* All control-flow out must pass through the potential `finally` thunk *)
+    let context = LabelEnv.mapi (function | Return | Named _ | Cleanup -> pre'
                                           | Throw -> fun c -> c) context in
     (* assert that a surrounding `AwaitPrim _` has set up a `Cleanup` cont *)
     if finally_opt <> None
@@ -356,7 +358,7 @@ and c_exp' context exp k =
     (* TODO: do we need to reify f? *)
     let f = match LabelEnv.find Throw context with Cont f -> f | _ -> assert false in
     letcont f (fun f ->
-    letcont k (fun k ->
+    letcont (pre k) (fun k ->
     match eff exp1 with
     | T.Triv ->
       varE k -*- t_exp context exp1

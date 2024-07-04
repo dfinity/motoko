@@ -221,11 +221,9 @@ and exp' at note = function
     let thunk = T.(funcE ("$cleanup") Local Returns [] [] [] (exp e2)) in
     assert T.(is_func thunk.note.Note.typ);
     let th = fresh_var "thunk" thunk.note.Note.typ in
-    let v = fresh_var "res" note.Note.typ in
-    (blockE [ letD th thunk
-            ; letD v { e1 with it = I.TryE (exp e1, cases cs, Some (id_of_var th, typ_of_var th)); note }
-            ; expD (varE th -*- unitE ())
-            ] (varE v)).it
+    (blockE
+       [ letD th thunk ]
+       { e1 with it = I.TryE (exp e1, cases cs, Some (id_of_var th, typ_of_var th)); note }).it
   | S.WhileE (e1, e2) -> (whileE (exp e1) (exp e2)).it
   | S.LoopE (e1, None) -> I.LoopE (exp e1)
   | S.LoopE (e1, Some e2) -> (loopWhileE (exp e1) (exp e2)).it

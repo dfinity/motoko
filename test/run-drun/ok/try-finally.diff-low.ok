@@ -1,0 +1,13 @@
+--- try-finally.run
++++ try-finally.run-low
+@@ -16,8 +16,10 @@
+ OUT2
+ IN2r
+ CAUGHT2r
++OUT2r
+ IN2b
+ CAUGHT2b
++OUT2b
+ AFTER2b
+ IN2i
+ CAUGHT2i
