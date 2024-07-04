@@ -427,10 +427,10 @@ func @install_actor_helper(
         (#install, principal1)
       };
       case (#reinstall actor1) {
-        (#reinstall, (prim "cast" : (actor {}) -> Principal) actor1)
+        (#reinstall, (prim "principalOfActor" : (actor {}) -> Principal) actor1)
       };
       case (#upgrade actor2) {
-        (#upgrade, (prim "cast" : (actor {}) -> Principal) actor2)
+        (#upgrade, (prim "principalOfActor" : (actor {}) -> Principal) actor2)
       }
     };
   await @ic00.install_code {
