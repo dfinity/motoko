@@ -6,7 +6,7 @@
  INl
  OUTl
  INe
-@@ -9,11 +8,9 @@
+@@ -9,25 +8,19 @@
  IN1tInner
  CAUGHT1tInner
  CAUGHT1t
@@ -17,8 +17,10 @@
 -OUT2
  IN2r
  CAUGHT2r
+-OUT2r
  IN2b
-@@ -21,11 +18,9 @@
+ CAUGHT2b
+-OUT2b
  AFTER2b
  IN2i
  CAUGHT2i
@@ -30,7 +32,7 @@
  BEFORE5
  IN5
  OUT5
-@@ -39,11 +34,8 @@
+@@ -41,11 +34,8 @@
  AFTER6
  IN8
  CAUGHT8
