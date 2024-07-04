@@ -9,7 +9,7 @@
 //! * Low: The heap is below 50% of the memory capacity.
 //!   - Schedule a GC start with a frequency of 65% of the heap growth.
 //!
-//! A heuristics for capacity probing is used to determine minimum amount of memory capacity.
+//! A heuristics for capacity probing is used to determine the minimum amount of memory capacity.
 //! This is necessary because the IC does not provide runtime information about the implemented
 //! Wasm memory capacity in 64-bit. This capacity may also increase over time with newer IC versions.
 
