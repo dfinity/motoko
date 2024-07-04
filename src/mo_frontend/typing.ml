@@ -1838,10 +1838,10 @@ and check_exp' env0 t exp : T.typ =
     check_cases env t1 t cases;
     coverage_cases "switch" env cases t1 exp.at;
     t
-  | TryE (exp1, cases_opt, exp2_opt), _ ->
+  | TryE (exp1, catch_opt, exp2_opt), _ ->
     check_ErrorCap env "try" exp.at;
     check_exp env t exp1;
-    (match cases_opt with
+    (match catch_opt with
      | None -> ()
      | Some case ->
         check_cases env T.catch t [case];
