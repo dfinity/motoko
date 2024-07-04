@@ -473,13 +473,15 @@ pub const TAG_BLOB_T: Tag = 29; // Blob of Utf8 (Text)
 pub const TAG_BLOB_P: Tag = 31; // Principal (Principal)
 pub const TAG_BLOB_A: Tag = 33; // Actor (actor {})
 pub const TAG_FWD_PTR: Tag = 35; // Only used by the copying GC - not to be confused with forwarding pointer in the header used for incremental GC.
-pub const TAG_BITS32_U: Tag = 37; // Unsigned (Nat32)
-pub const TAG_BITS32_S: Tag = 39; // Signed (Int32)
-pub const TAG_BITS32_F: Tag = 41; // Reserved (Float32)
-pub const TAG_BIGINT: Tag = 43;
-pub const TAG_CONCAT: Tag = 45;
-pub const TAG_REGION: Tag = 47;
+pub const TAG_BIGINT: Tag = 37;
+pub const TAG_CONCAT: Tag = 39;
+pub const TAG_REGION: Tag = 41;
+// only in 32-bit classical mode
+pub const TAG_BITS32_U: Tag = 43; // Unsigned (Nat32)
+pub const TAG_BITS32_S: Tag = 45; // Signed (Int32)
+pub const TAG_BITS32_F: Tag = 47; // Reserved (Float32)
 pub const TAG_NULL: Tag = 49;
+// rts-internal
 pub const TAG_ONE_WORD_FILLER: Tag = 51;
 pub const TAG_FREE_SPACE: Tag = 53;
 
