@@ -1,3 +1,5 @@
+module OrigList = List
+
 module Format =
 struct
   let with_str_formatter f x =
@@ -504,7 +506,9 @@ module Option =
 struct
   let get o x = Option.value o ~default:x
 
-  let map2 (f : 'a -> 'b -> 'c) (a : 'a option) (b : 'b option) =
+  let exists f o = Option.to_list o |> OrigList.exists f
+
+  let map2 f a b =
     match a, b with
     | Some a, Some b -> Some (f a b)
     | _ -> None

@@ -708,12 +708,12 @@ exp_un(B) :
   | IF b=exp_nullary(ob) e1=exp_nest ELSE e2=exp_nest
     { IfE(b, e1, e2) @? at $sloc }
   | TRY e1=exp_nest c=catch %prec TRY_CATCH_NO_FINALLY
-    { TryE(e1, [c], None) @? at $sloc }
+    { TryE(e1, Some c, None) @? at $sloc }
   | TRY e1=exp_nest c=catch FINALLY e2=exp_nest
-    { TryE(e1, [c], Some e2) @? at $sloc }
-  | TRY e1=exp_nest FINALLY e2=exp_nest (* FIXME: needs a different keyword (`DO`?), provisional *)
-    { TryE(e1, [], Some e2) @? at $sloc }
-(* TODO: enable multi-branch TRY (already supported by compiler)
+    { TryE(e1, Some c, Some e2) @? at $sloc }
+  | TRY e1=exp_nest FINALLY e2=exp_nest
+    { TryE(e1, None, Some e2) @? at $sloc }
+(* NOPE TODO: enable multi-branch TRY (already supported by compiler)
   | TRY e=exp_nest LCURLY cs=seplist(case, semicolon) RCURLY
     { TryE(e, cs) @? at $sloc }
 *)

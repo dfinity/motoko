@@ -629,8 +629,12 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         { env with rets = Option.map pre env.rets
                  ; labs = V.Env.map pre env.labs
                  ; throws = Option.map pre env.throws } in
-    let k' v1 = interpret_catches env cases exp.at v1 k in
-    interpret_exp { env with throws = Some k' } exp1 k
+    let env' = match cases with
+      | None -> env
+      | Some case ->
+        let k' v1 = interpret_catches env [case] exp.at v1 k in
+        { env with throws = Some k' } in
+    interpret_exp env' exp1 k
   | WhileE (exp1, exp2) ->
     let k_continue = fun v -> V.as_unit v; interpret_exp env exp k in
     interpret_exp env exp1 (fun v1 ->
