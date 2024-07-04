@@ -37,8 +37,8 @@ pub(crate) unsafe fn grow_memory(ptr: usize, memory_reserve: usize) {
             // grown beyond `GUARANTEED_MEMORY_CAPACITY`.
             ptr + memory_reserve
         } else {
-            // If the allocation pointer plus reserve fits within the guaranteed memory capacity,
-            // the reserve is already guaranteed and we can skip the pre-allocation of the reserve.
+            // Either no reserve is needed or there is enough guaranteed memory capacity for the reserve,
+            // we can skip the pre-allocation of a reserve.
             ptr
         };
     allocate_wasm_memory(Bytes(memory_demand));
