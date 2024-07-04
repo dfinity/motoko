@@ -15,7 +15,7 @@ let nextN = "next"
 
 (* Identifiers *)
 
-type var = (string * T.typ)
+type var = id * T.typ
 
 let var id typ = (id, typ)
 
@@ -117,8 +117,7 @@ let primE prim es =
     | OtherPrim "is_controller" -> T.bool
     | _ -> assert false (* implement more as needed *)
   in
-  let effs = List.map eff es in
-  let eff = List.fold_left max_eff T.Triv effs in
+  let eff = List.(map eff es |> fold_left max_eff T.Triv) in
   { it = PrimE (prim, es);
     at = no_region;
     note = Note.{ def with typ; eff }
@@ -183,22 +182,20 @@ let ic_rejectE e =
     note = Note.{ def with typ = T.unit; eff = eff e }
   }
 
-let ic_callE f e k r =
-  let es = [f; e; k; r] in
-  let effs = List.map eff es in
-  let eff = List.fold_left max_eff T.Triv effs in
+let ic_callE f e k r c =
+  let es = [f; e; k; r; c] in
+  let eff = List.(map eff es |> fold_left max_eff T.Triv) in
   { it = PrimE (ICCallPrim, es);
     at = no_region;
-    note = Note.{ def with typ = T.unit; eff = eff }
+    note = Note.{ def with typ = T.unit; eff }
   }
 
-let ic_call_rawE p m a k r =
-  let es = [p; m; a; k; r] in
-  let effs = List.map eff es in
-  let eff = List.fold_left max_eff T.Triv effs in
+let ic_call_rawE p m a k r c =
+  let es = [p; m; a; k; r; c] in
+  let eff = List.(map eff es |> fold_left max_eff T.Triv) in
   { it = PrimE (ICCallRawPrim, es);
     at = no_region;
-    note = Note.{ def with typ = T.unit; eff = eff }
+    note = Note.{ def with typ = T.unit; eff }
   }
 
 (* tuples *)
@@ -245,9 +242,8 @@ let blockE decs exp =
   match decs' with
   | [] -> exp
   | _ ->
-    let es = List.map dec_eff decs' in
     let typ = typ exp in
-    let eff =  List.fold_left max_eff (eff exp) es in
+    let eff =  List.(map dec_eff decs' |> fold_left max_eff (eff exp)) in
     { it = BlockE (decs', exp);
       at = no_region;
       note = Note.{ def with typ; eff }
@@ -313,7 +309,7 @@ let funcE name sort ctrl typ_binds args typs exp =
   }
 
 let callE exp1 typs exp2 =
-  let typ =  match T.promote (typ exp1) with
+  let typ = match T.promote (typ exp1) with
     | T.Func (_sort, control, _, _, ret_tys) ->
       T.codom control (fun () -> List.hd typs) (List.map (T.open_ typs) ret_tys)
     | T.Non -> T.Non
@@ -412,7 +408,7 @@ let switch_variantE exp1 cases typ1 =
     at = no_region;
     note = Note.{ def with
       typ = typ1;
-      eff = List.fold_left max_eff (eff exp1) (List.map (fun (l,p,e) -> eff e) cases)
+      eff = List.(map (fun (l,p,e) -> eff e) cases |> fold_left max_eff (eff exp1))
     }
   }
 
@@ -436,14 +432,13 @@ let switch_textE exp1 cases (pat, exp2) typ1 =
     note = Note.{
       def with
       typ = typ1;
-      eff = List.fold_left max_eff (eff exp1) (List.map (fun c -> eff c.it.exp) cs)
+      eff = List.(map (fun c -> eff c.it.exp) cs |> fold_left max_eff (eff exp1))
     }
   }
 
 
 let tupE exps =
-  let effs = List.map eff exps in
-  let eff = List.fold_left max_eff T.Triv effs in
+  let eff = List.(map eff exps |> fold_left max_eff T.Triv) in
   { it = PrimE (TupPrim, exps);
     at = no_region;
     note = Note.{ def with typ = T.Tup (List.map typ exps); eff };
@@ -632,17 +627,20 @@ let contT typ ans_typ = T.(Func (Local, Returns, [], as_seq typ, as_seq ans_typ)
 
 let err_contT ans_typ =  T.(Func (Local, Returns, [], [catch], as_seq ans_typ))
 
+let bail_contT = T.(contT unit unit) (* when `await`ing *)
+
+let clean_contT = bail_contT (* last-resort replica callback *)
+
 let answerT typ : T.typ =
   match typ with
   | T.Func (T.Local, T.Returns, [], ts1, ts2) -> T.seq ts2
   | _ -> assert false
 
-let cpsT typ ans_typ = T.(Func (Local, Returns, [], [contT typ ans_typ; err_contT ans_typ], as_seq ans_typ))
+let cpsT typ ans_typ = T.(Func (Local, Returns, [], [contT typ ans_typ; err_contT ans_typ; bail_contT], as_seq ans_typ))
 
 (* Sequence expressions *)
 
-let seqE es =
-  match es with
+let seqE = function
   | [e] -> e
   | es -> tupE es
 
