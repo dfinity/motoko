@@ -18,7 +18,7 @@ static mut SNAPSHOT: *mut Blob = null_mut();
 pub unsafe fn take_snapshot<M: Memory>(heap: &mut Heap<M>) {
     let length = Bytes(heap.limits.free as u32);
     // No post allocation barrier as this RTS-internal blob will be collected by the GC.
-    let blob = alloc_blob(heap.mem, length).get_ptr() as *mut Blob;
+    let blob = alloc_blob(heap.mem, TAG_BLOB_B, length).get_ptr() as *mut Blob;
     memcpy_bytes(blob.payload_addr() as usize, 0, length);
     SNAPSHOT = blob;
 }
