@@ -1,0 +1,80 @@
+try-finally.mo:11.9-12.37: warning [M0145], this try handler of type
+  Error
+does not cover value
+  _
+try-finally.mo:16.9-17.38: warning [M0145], this try handler of type
+  Error
+does not cover value
+  _
+try-finally.mo:21.19-22.38: warning [M0145], this try handler of type
+  Error
+does not cover value
+  _
+try-finally.mo:26.19-27.38: warning [M0145], this try handler of type
+  Error
+does not cover value
+  _
+try-finally.mo:32.9-33.38: warning [M0145], this try handler of type
+  Error
+does not cover value
+  _
+try-finally.mo:37.9-38.38: warning [M0145], this try handler of type
+  Error
+does not cover value
+  _
+try-finally.mo:84.9-89.38: warning [M0145], this try handler of type
+  Error
+does not cover value
+  _
+try-finally.mo:94.9-98.38: warning [M0145], this try handler of type
+  Error
+does not cover value
+  _
+try-finally.mo:104.19-110.38: warning [M0145], this try handler of type
+  Error
+does not cover value
+  _
+try-finally.mo:118.13-124.49: warning [M0145], this try handler of type
+  Error
+does not cover value
+  _
+try-finally.mo:116.19-127.38: warning [M0145], this try handler of type
+  Error
+does not cover value
+  _
+try-finally.mo:135.13-141.50: warning [M0145], this try handler of type
+  Error
+does not cover value
+  _
+try-finally.mo:133.19-144.39: warning [M0145], this try handler of type
+  Error
+does not cover value
+  _
+try-finally.mo:150.19-164.39: warning [M0145], this try handler of type
+  Error
+does not cover value
+  _
+try-finally.mo:172.13-181.50: warning [M0145], this try handler of type
+  Error
+does not cover value
+  _
+try-finally.mo:170.19-184.39: warning [M0145], this try handler of type
+  Error
+does not cover value
+  _
+try-finally.mo:193.13-202.49: warning [M0145], this try handler of type
+  Error
+does not cover value
+  _
+try-finally.mo:191.19-205.38: warning [M0145], this try handler of type
+  Error
+does not cover value
+  _
+try-finally.mo:235.9-239.39: warning [M0145], this try handler of type
+  Error
+does not cover value
+  _
+try-finally.mo:243.9-247.38: warning [M0145], this try handler of type
+  Error
+does not cover value
+  _

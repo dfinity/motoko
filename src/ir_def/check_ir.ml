@@ -22,7 +22,7 @@ let typ = E.typ
 
 let immute_typ p =
   assert (not (T.is_mut (typ p)));
-  (typ p)
+  typ p
 
 (* Scope *)
 
@@ -365,13 +365,13 @@ let rec check_exp env (exp:Ir.exp) : unit =
   (* helpers *)
   let check p = check env exp.at p in
   let (<:) t1 t2 =
-(*  try *)
+  try
       check_sub env exp.at t1 t2
-(*  with e ->
+  with e ->
      (Printf.eprintf "(in here):\n%s"
         (Wasm.Sexpr.to_string 80 (Arrange_ir.exp exp));
       raise e)
-*)
+
   in
   (* check for aliasing *)
   if exp.note.Note.check_run = env.check_run
@@ -409,7 +409,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
             check_concrete env exp.at t_ret;
           end;
           typ exp2 <: t_arg;
-          t_ret <: t
+          t_ret <: t;
         | T.Non -> () (* dead code, not much to check here *)
         | t1 -> error env exp1.at "expected function type, but expression produces type\n  %s"
              (T.string_of_typ_expand t1)
@@ -549,7 +549,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
       check (T.shared (T.seq ots)) "DeserializeOpt is not defined for operand type";
       typ exp1 <: T.blob;
       T.Opt (T.seq ots) <: t
-    | CPSAwait (s, cont_typ), [a; kr] ->
+    | CPSAwait (s, cont_typ), [a; krc] ->
       let (_, t1) =
         try T.as_async_sub s T.Non (T.normalize (typ a))
         with _ -> error env exp.at "CPSAwait expect async arg, found %s" (T.string_of_typ (typ a))
@@ -560,7 +560,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
            (match ts2 with
             | [] -> ()
             | _ -> error env exp.at "CPSAwait answer type error");
-           typ kr <: T.Tup [cont_typ; T.Func(T.Local, T.Returns, [], [T.catch], ts2)];
+           typ krc <: T.Tup T.[cont_typ; Construct.err_contT (Tup ts2); Construct.bail_contT];
            t1 <: T.seq ts1;
            T.seq ts2 <: t;
          end;
@@ -569,12 +569,13 @@ let rec check_exp env (exp:Ir.exp) : unit =
       check (env.flavor.has_async_typ) "CPSAwait in post-async flavor";
     | CPSAsync (s, t0), [exp] ->
       (match typ exp with
-        T.Func(T.Local,T.Returns, [tb],
-          [T.Func(T.Local, T.Returns, [], ts1, []);
-           T.Func(T.Local, T.Returns, [], [t_error], [])],
-          []) ->
-         T.catch <: t_error;
-         T.Async(s, t0, Type.open_ [t0] (T.seq ts1)) <: t
+       | T.Func (T.Local, T.Returns, [tb],
+                 T.[Func (Local, Returns, [], ts1, []);
+                    Func (Local, Returns, [], [t_error], []);
+                    Func (Local, Returns, [], [], [])],
+                 []) ->
+          T.catch <: t_error;
+          T.Async(s, t0, T.open_ [t0] (T.seq ts1)) <: t
        | _ -> error env exp.at "CPSAsync unexpected typ");
       check (not (env.flavor.has_await)) "CPSAsync await flavor";
       check (env.flavor.has_async_typ) "CPSAsync in post-async flavor";
@@ -593,27 +594,29 @@ let rec check_exp env (exp:Ir.exp) : unit =
       T.Non <: t
     | ICCallerPrim, [] ->
       T.caller <: t
-    | ICCallPrim, [exp1; exp2; k; r] ->
+    | ICCallPrim, [exp1; exp2; k; r; c] ->
       let t1 = T.promote (typ exp1) in
       begin match t1 with
       | T.Func (sort, T.Replies, _ (*TBR*), arg_tys, ret_tys) ->
         let t_arg = T.seq arg_tys in
         typ exp2 <: t_arg;
         check_concrete env exp.at t_arg;
-        typ k <: T.Func (T.Local, T.Returns, [], ret_tys, []);
-        typ r <: T.Func (T.Local, T.Returns, [], [T.error], []);
+        typ k <: T.(Construct.contT (Tup ret_tys) unit);
+        typ r <: T.(Construct.err_contT unit);
+        typ c <: Construct.clean_contT;
       | T.Non -> () (* dead code, not much to check here *)
       | _ ->
          error env exp1.at "expected function type, but expression produces type\n  %s"
            (T.string_of_typ_expand t1)
       end
       (* TODO: T.unit <: t ? *)
-    | ICCallRawPrim, [exp1; exp2; exp3; k; r] ->
+    | ICCallRawPrim, [exp1; exp2; exp3; k; r; c] ->
       typ exp1 <: T.principal;
       typ exp2 <: T.text;
       typ exp3 <: T.blob;
-      typ k <: T.Func (T.Local, T.Returns, [], [T.blob], []);
-      typ r <: T.Func (T.Local, T.Returns, [], [T.error], []);
+      typ k <: T.(Construct.contT blob unit);
+      typ r <: T.(Construct.err_contT unit);
+      typ c <: Construct.clean_contT;
       T.unit <: t
     | ICMethodNamePrim, [] ->
       T.text <: t
@@ -717,12 +720,13 @@ let rec check_exp env (exp:Ir.exp) : unit =
         warn env exp.at "the cases in this switch do not cover all possible values";
  *)
     check_cases env t1 t cases
-  | TryE (exp1, cases) ->
+  | TryE (exp1, cases, vt) ->
     check env.flavor.has_await "try in non-await flavor";
     check (env.async <> None) "misplaced try";
     check_exp env exp1;
     typ exp1 <: t;
     check_cases env T.catch t cases;
+    Option.iter (fun (_, t) -> t <: Construct.bail_contT) vt
   | LoopE exp1 ->
     check_exp { env with lvl = NotTopLvl } exp1;
     typ exp1 <: T.unit;
@@ -792,15 +796,17 @@ let rec check_exp env (exp:Ir.exp) : unit =
       , tbs, List.map (T.close cs) ts1, List.map (T.close cs) ret_tys
       ) in
     fun_ty <: t
-  | SelfCallE (ts, exp_f, exp_k, exp_r) ->
+  | SelfCallE (ts, exp_f, exp_k, exp_r, exp_c) ->
     check (not env.flavor.Ir.has_async_typ) "SelfCallE in async flavor";
     List.iter (check_typ env) ts;
     check_exp { env with lvl = NotTopLvl } exp_f;
     check_exp env exp_k;
     check_exp env exp_r;
+    check_exp env exp_c;
     typ exp_f <: T.unit;
-    typ exp_k <: T.Func (T.Local, T.Returns, [], ts, []);
-    typ exp_r <: T.Func (T.Local, T.Returns, [], [T.error], []);
+    typ exp_k <: T.(Construct.contT (Tup ts) unit);
+    typ exp_r <: T.(Construct.err_contT unit);
+    typ exp_c <: Construct.clean_contT;
   | ActorE (ds, fs,
       { preupgrade; postupgrade; meta; heartbeat; timer; inspect; stable_record; stable_type }, t0) ->
     (* TODO: check meta *)

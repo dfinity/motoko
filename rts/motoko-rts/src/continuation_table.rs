@@ -120,7 +120,7 @@ pub unsafe fn remember_continuation<M: Memory>(mem: &mut M, ptr: Value) -> usize
 
 // Position of the future in explicit self-send ContinuationTable entries
 // Invariant: keep this synchronised with compiler.ml (see future_array_index)
-const FUTURE_ARRAY_INDEX: usize = 2;
+const FUTURE_ARRAY_INDEX: usize = 3;
 
 #[no_mangle]
 pub unsafe extern "C" fn peek_future_continuation(idx: usize) -> Value {
