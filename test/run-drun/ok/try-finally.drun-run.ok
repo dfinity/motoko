@@ -10,6 +10,7 @@ debug.print: BEFORE1t
 debug.print: IN1t
 debug.print: IN1tInner
 debug.print: CAUGHT1tInner
+debug.print: OUT1tInner
 debug.print: CAUGHT1t
 debug.print: OUT1t
 debug.print: AFTER1t

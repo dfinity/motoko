@@ -350,8 +350,8 @@ and c_exp' context exp k =
       | Cont k -> Cont (pre k)
       | Label -> assert false in
     (* All control-flow out must pass through the potential `finally` thunk *)
-    let context = LabelEnv.mapi (function | Return | Named _ | Cleanup -> pre'
-                                          | Throw -> fun c -> c) context in
+    let context = LabelEnv.mapi (function | Return | Named _ | Cleanup
+                                          | Throw -> pre') context in
     (* assert that a surrounding `AwaitPrim _` has set up a `Cleanup` cont *)
     if finally_opt <> None
     then ignore (LabelEnv.find Cleanup context);
