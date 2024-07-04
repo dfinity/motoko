@@ -21,7 +21,7 @@ let is_triv phrase = eff phrase = T.Triv
 let effect_exp (exp: exp) : T.eff = eff exp
 
 let is_async_call p exps =
-  match (p, exps) with
+  match p, exps with
   | CallPrim _, [exp1; _] ->
     T.is_shared_func (typ exp1) ||
     T.is_local_async_func (typ exp1)
@@ -29,7 +29,7 @@ let is_async_call p exps =
     true
   | _ -> false
 
-(* infer the effect of an expression, assuming all sub-expressions are correctly effect-annotated es*)
+(* infer the effect of an expression, assuming all sub-expressions are correctly effect-annotated *)
 
 let rec infer_effect_prim p exps =
   match p, exps with
@@ -77,10 +77,11 @@ and infer_effect_exp (exp: exp) : T.eff =
     effect_exp exp1
   | FuncE _ ->
     T.Triv
-  | SelfCallE (_, _, exp1, exp2) ->
+  | SelfCallE (_, _, exp1, exp2, exp3) ->
     let e1 = effect_exp exp1 in
     let e2 = effect_exp exp2 in
-    max_eff e1 e2
+    let e3 = effect_exp exp3 in
+    max_eff e1 (max_eff e2 e3)
   | ActorE _ ->
     T.Triv
   | NewObjE _ ->
