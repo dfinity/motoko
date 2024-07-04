@@ -8,6 +8,10 @@ use crate::types::{Bytes, Value, Words};
 use core::arch::wasm64;
 use core::cmp::max;
 
+extern "C" {
+    fn keep_memory_reserve() -> bool;
+}
+
 /// Provides a `Memory` implementation, to be used in functions compiled for IC or WASI. The
 /// `Memory` implementation allocates in Wasm heap with Wasm `memory.grow` instruction.
 pub struct IcMemory;
@@ -35,7 +39,7 @@ impl Memory for IcMemory {
     unsafe fn grow_memory(&mut self, ptr: usize) {
         let reserve = memory_reserve();
         debug_assert!(reserve <= GUARANTEED_MEMORY_CAPACITY);
-        let memory_demand = if ptr > GUARANTEED_MEMORY_CAPACITY - reserve {
+        let memory_demand = if keep_memory_reserve() && ptr > GUARANTEED_MEMORY_CAPACITY - reserve {
             // Detect overflow of `ptr + reserve`.
             if ptr > usize::MAX - reserve {
                 rts_trap_with("Cannot grow memory");
@@ -45,8 +49,8 @@ impl Memory for IcMemory {
             // the memory demand exceeds `GUARANTEED_MEMORY_CAPACITY`.
             ptr + reserve
         } else {
-            // If the allocation pointer plus reserve fits within the guaranteed memory capacity,
-            // the reserve is already guaranteed and we can skip the pre-allocation of the reserve.
+            // Either no reserve is needed or there is enough guaranteed memory capacity for the reserve,
+            // we can skip the pre-allocation of a reserve.
             ptr
         };
         allocate_wasm_memory(Bytes(memory_demand));
