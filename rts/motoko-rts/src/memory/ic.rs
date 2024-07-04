@@ -50,7 +50,7 @@ impl Memory for IcMemory {
             ptr + reserve
         } else {
             // Either no reserve is needed or there is enough guaranteed memory capacity for the reserve,
-            // we can skip the pre-allocation of a reserve.
+            // such that we can skip the pre-allocation of a reserve.
             ptr
         };
         allocate_wasm_memory(Bytes(memory_demand));
