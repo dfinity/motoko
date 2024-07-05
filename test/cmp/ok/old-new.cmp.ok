@@ -1,1 +1,7 @@
+(unknown location): warning [M0169], stable variable config_royalty_address of previous type
+  var Text
+ will be discarded. This may cause data loss. Are you sure?
+(unknown location): warning [M0169], stable variable config_royalty_fee of previous type
+  var Nat64
+ will be discarded. This may cause data loss. Are you sure?
 TRUE

@@ -1,1 +1,7 @@
+(unknown location): warning [M0169], stable variable x of previous type
+  Nat
+ will be discarded. This may cause data loss. Are you sure?
+(unknown location): warning [M0169], stable variable z of previous type
+  Bool
+ will be discarded. This may cause data loss. Are you sure?
 TRUE

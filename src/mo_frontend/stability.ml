@@ -10,7 +10,16 @@ let cat = "Compatibility"
    c.f. (simpler) Types.match_sig.
 *)
 
+let display_typ = Lib.Format.display Type.pp_typ
+
 let display_typ_expand = Lib.Format.display Type.pp_typ_expand
+
+let warning_discard s tf =
+  Diag.add_msg s
+    (Diag.warning_message Source.no_region "M0169" cat
+      (Format.asprintf "stable variable %s of previous type%a\n will be discarded. This may cause data loss. Are you sure?"
+        tf.lab
+        display_typ tf.typ))
 
 let error_sub s tf1 tf2 =
   Diag.add_msg s
@@ -21,8 +30,9 @@ let error_sub s tf1 tf2 =
         display_typ_expand tf2.typ))
 
 (* Relaxed rules with enhanced orthogonal persistence for more flexible upgrades.
-   - Mutability of stable fields can be changed (because they are never aliased).
-   - Stable fields can be dropped (abandoning the transitivity property of upgrades).
+   - Mutability of stable fields can be changed because they are never aliased.
+   - Stable fields can be dropped, however, with a warning of potential data loss. 
+     For this, we give up the transitivity property of upgrades.
 
    Upgrade transitivity means that an upgrade from a program A to B and then from B to C 
    should have the same effect as directly upgrading from A to C. If B discards a field 
@@ -34,8 +44,11 @@ let match_stab_sig tfs1 tfs2 : unit Diag.result =
   (* Assume that tfs1 and tfs2 are sorted. *)
   let res = Diag.with_message_store (fun s ->
     let rec go tfs1 tfs2 = match tfs1, tfs2 with
-      | [], _ | _, [] -> 
-        (* same amount of fields, new fields, or dropped fields ok *)
+      | [], _ -> 
+        Some () (* no or additional fields ok *)
+      | tf1 :: tfs1', [] ->
+        (* dropping fields is allowed, but with a warning *)
+        warning_discard s tf1;
         Some ()
       | tf1::tfs1', tf2::tfs2' ->
         (match Type.compare_field tf1 tf2 with
@@ -44,7 +57,9 @@ let match_stab_sig tfs1 tfs2 : unit Diag.result =
               error_sub s tf1 tf2;
             go tfs1' tfs2'
         | -1 ->
-          go tfs1' tfs2 (* dropped field ok, recurse of tfs1' *)
+          (* dropped field is allowed with warning, recurse of tfs1' *)
+          warning_discard s tf1;
+          go tfs1' tfs2 
         | _ ->
           go tfs1 tfs2' (* new field ok, recurse on tfs2' *)
         )
