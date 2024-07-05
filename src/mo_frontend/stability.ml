@@ -56,12 +56,12 @@ let match_stab_sig tfs1 tfs2 : unit Diag.result =
             if not (sub (as_immut tf1.typ) (as_immut tf2.typ)) then
               error_sub s tf1 tf2;
             go tfs1' tfs2'
-        | -1 ->
-          (* dropped field is allowed with warning, recurse of tfs1' *)
-          warning_discard s tf1;
-          go tfs1' tfs2 
-        | _ ->
-          go tfs1 tfs2' (* new field ok, recurse on tfs2' *)
+         | -1 ->
+           (* dropped field is allowed with warning, recurse of tfs1' *)
+           warning_discard s tf1;
+           go tfs1' tfs2 
+         | _ ->
+           go tfs1 tfs2' (* new field ok, recurse on tfs2' *)
         )
     in go tfs1 tfs2)
   in
