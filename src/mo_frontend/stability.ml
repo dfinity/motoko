@@ -22,7 +22,7 @@ let error_sub s tf1 tf2 =
 
 (* Relaxed rules with enhanced orthogonal persistence for more flexible upgrades.
    - Mutability of stable fields can be changed (because they are never aliased).
-   - Stable fields can be dropped (abdandoning the transitivity property of upgrades).
+   - Stable fields can be dropped (abandoning the transitivity property of upgrades).
 
    Upgrade transitivity means that an upgrade from a program A to B and then from B to C 
    should have the same effect as directly upgrading from A to C. If B discards a field 
