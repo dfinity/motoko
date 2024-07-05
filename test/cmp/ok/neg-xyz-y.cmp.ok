@@ -1,7 +1,1 @@
-(unknown location): Compatibility error [M0169], stable variable x of previous type
-  Nat
-cannot be discarded; promote to type `Any` instead
-(unknown location): Compatibility error [M0169], stable variable z of previous type
-  Bool
-cannot be discarded; promote to type `Any` instead
-FALSE
+TRUE

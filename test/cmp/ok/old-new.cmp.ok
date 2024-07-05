@@ -1,7 +1,1 @@
-(unknown location): Compatibility error [M0169], stable variable config_royalty_address of previous type
-  var Text
-cannot be discarded; promote to type `Any` instead
-(unknown location): Compatibility error [M0169], stable variable config_royalty_fee of previous type
-  var Nat64
-cannot be discarded; promote to type `Any` instead
-FALSE
+TRUE

@@ -1821,22 +1821,18 @@ let _ = str := string_of_typ
 
 let rec match_stab_sig tfs1 tfs2 =
   (* Assume that tfs1 and tfs2 are sorted. *)
-  (* Should we insist on monotonic preservation of fields, or relax? *)
   match tfs1, tfs2 with
-  | [], _ ->
-    true (* no or additional fields ok *)
-  | _, [] ->
-    false (* true, should we allow fields to be dropped *)
+  | [], _ | _, [] ->
+    (* same amount of fields, new fields, or dropped fields ok *)
+    true
   | tf1::tfs1', tf2::tfs2' ->
     (match compare_field tf1 tf2 with
      | 0 ->
-       is_mut tf1.typ = is_mut tf2.typ &&
        sub (as_immut tf1.typ) (as_immut tf2.typ) &&
-         (* should we enforce equal mutability or not? Seems unncessary
-            since upgrade is read-once *)
        match_stab_sig tfs1' tfs2'
      | -1 ->
-       false (* match_sig tfs1' tfs2', should we allow fields to be dropped *)
+       (* dropped field ok *)
+       match_stab_sig tfs1' tfs2
      | _ ->
        (* new field ok *)
        match_stab_sig tfs1 tfs2'
