@@ -44,7 +44,7 @@ let match_stab_sig tfs1 tfs2 : unit Diag.result =
   (* Assume that tfs1 and tfs2 are sorted. *)
   let res = Diag.with_message_store (fun s ->
     let rec go tfs1 tfs2 = match tfs1, tfs2 with
-      | [], _ -> 
+      | [], _ ->
         Some () (* no or additional fields ok *)
       | tf1 :: tfs1', [] ->
         (* dropping fields is allowed, but with a warning *)
