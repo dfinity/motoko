@@ -1,10 +1,8 @@
-//! Option type with a fixed C-representation.
-//! This is used as a long-term option type in the persistent metata,
-//! such as the garbage collector state.
+//! Customized option type with a fixed C-representation.
 //! As the native Rust type may change in future Rust releases,
-//! the Motoko runtime system uses its own dedicated `Option` type
-//! with a fixed long-term representation. This is used in the persistent
-//! metadata, such as in the garbage collector state.
+//! the Motoko runtime system uses its own dedicated `StableOption` 
+//! type with a fixed long-term representation. This is used in the 
+//! persistent metadata, such as in the garbage collector state.
 //! See:
 //! * `gc::incremental::State`
 //! * `gc::partitioned_heap::PartitionedHeapIterator`
