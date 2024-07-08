@@ -2,7 +2,6 @@
 
 use super::Memory;
 use crate::constants::{GB, WASM_PAGE_SIZE};
-use crate::gc::incremental::memory_reserve;
 use crate::rts_trap_with;
 use crate::types::{Bytes, Value, Words};
 use core::arch::wasm64;
@@ -34,7 +33,7 @@ impl Memory for IcMemory {
     }
 
     /// Page allocation. Ensures that the memory up to, but excluding, the given pointer is allocated.
-    /// Ensure a memory reserve for the incremental GC.
+    /// Ensure a memory reserve of at least one Wasm page depending on the canister state.
     #[inline(never)]
     unsafe fn grow_memory(&mut self, ptr: usize) {
         let reserve = memory_reserve();
