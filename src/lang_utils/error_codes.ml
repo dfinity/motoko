@@ -174,6 +174,7 @@ let error_codes : (string * string option) list =
     "M0168", None; (* Type union or intersection on forward types *)
     "M0169", None; (* Stable variable will be discarded. This may cause data loss. *)
     "M0170", None; (* Stable variable must subtype *)
+    (* "M0171" DEFUNCT Stable variable changing mutability *)
     "M0172", None; (* to_candid produces Blob, not -- *)
     "M0173", None; (* to_candid arg must have shared type, not -- *)
     "M0174", None; (* from_candid produces an optional shared, not -- *)
