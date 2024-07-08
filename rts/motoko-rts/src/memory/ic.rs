@@ -36,7 +36,7 @@ impl Memory for IcMemory {
     /// Ensure a memory reserve of at least one Wasm page depending on the canister state.
     #[inline(never)]
     unsafe fn grow_memory(&mut self, ptr: usize) {
-        let reserve = memory_reserve();
+        let reserve = crate::gc::incremental::memory_reserve();
         debug_assert!(reserve <= GUARANTEED_MEMORY_CAPACITY);
         let memory_demand = if keep_memory_reserve() && ptr > GUARANTEED_MEMORY_CAPACITY - reserve {
             // Detect overflow of `ptr + reserve`.
