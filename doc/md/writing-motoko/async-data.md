@@ -6,7 +6,6 @@ sidebar_position: 5
 
 ## Overview
 
-
 On ICP, communication between canisters is asynchronous. Sending a message together with a callback from one canister to another schedules a request in the receiver. Completion of the request triggers the callback to the sender, allowing the sender to process the result.
 
 In Motoko, sending an ICP asynchronous message is abstracted as calling a shared function that returns an asynchronous result.
@@ -86,3 +85,12 @@ For example, the implementation of `bump()` above is guaranteed to increment and
 ```
 
 Each `await` suspends execution, allowing an interloper to change the state of the actor. By design, the explicit `await`s make the potential points of interference clear to the reader.
+
+## Mops packages for async data flow
+
+- [`maf`](https://mops.one/maf) and [`mal`](https://mops.one/mal): Async data deliveries.
+
+- [`rxmo`](https://mops.one/rxmo): A library for reactive programming using observables, making it easier to compose asynchronous or callback-based code.
+
+- [`star`](https://mops.one/star): Used for handling asynchronous behavior and traps using async* functions.
+

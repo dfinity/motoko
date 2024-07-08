@@ -15,7 +15,10 @@ use motoko_rts::{
         IncrementalGC,
     },
     memory::{alloc_array, alloc_blob, Memory},
-    types::{Array, Blob, Bytes, Obj, Tag, Value, Words, TAG_ARRAY, TAG_BLOB},
+    types::{
+        Array, Blob, Bytes, Obj, Tag, Value, Words, TAG_ARRAY_I, TAG_ARRAY_M, TAG_ARRAY_S,
+        TAG_ARRAY_T, TAG_BLOB_A, TAG_BLOB_B, TAG_BLOB_P, TAG_BLOB_T,
+    },
 };
 
 use crate::{gc::utils::WORD_SIZE, memory::TestMemory};
@@ -118,7 +121,7 @@ unsafe fn iterate_partition(
 unsafe fn test_evacuation_plan(heap: &mut PartitionedTestHeap, occupied_partitions: usize) {
     println!("    Test evacuation plan...");
     unmark_all_objects(heap);
-    heap.inner.plan_evacuations();
+    heap.inner.plan_evacuations(&mut heap.memory);
     let mut iterator = PartitionedHeapIterator::new(&heap.inner);
     while iterator.has_partition() {
         let partition = iterator.current_partition(&heap.inner);
@@ -201,6 +204,11 @@ unsafe fn count_objects_in_partition(
 
 fn test_close_partition(heap: &mut PartitionedTestHeap) {
     println!("    Test close partition...");
+    // Due to Rust borrow check restrictions, preceding `plan_evacuations`
+    // allocates directly in `heap.memory` without synchronizing the heap
+    // pointer in `heap`. Therefore, re-align the heap pointer of `heap`
+    // with `heap.memory`.
+    heap.allocate_blob(0);
     test_close_partition_multi_word(heap);
     test_close_partition_single_word(heap);
 }
@@ -287,7 +295,7 @@ unsafe fn test_allocation_sizes(sizes: &[usize], number_of_partitions: usize) {
     );
     iterate_large_objects(&heap.inner, sizes);
     unmark_all_objects(&mut heap);
-    heap.inner.plan_evacuations();
+    heap.inner.plan_evacuations(&mut heap.memory);
     heap.inner.collect_large_objects();
     heap.inner.complete_collection();
     heap.inner.start_collection(&mut heap.memory, &mut time);
@@ -322,7 +330,7 @@ unsafe fn iterate_large_partition(
     let mut time = BoundedTime::new(0);
     while iterator.has_object() {
         let object = iterator.current_object();
-        assert_eq!(object.tag(), TAG_BLOB);
+        assert_eq!(object.tag(), TAG_BLOB_B);
         let size = block_size(object as *const Tag);
         detected_sizes.push(size);
         time.tick();
@@ -400,6 +408,7 @@ impl PartitionedTestHeap {
         let mut memory = TestMemory::new(Bytes(size).to_words());
         let heap_base = memory.heap_base();
         let inner = unsafe { PartitionedHeap::new(&mut memory, heap_base) };
+        assert_eq!(inner.base_address(), heap_base);
         PartitionedTestHeap { memory, inner }
     }
 
@@ -413,7 +422,7 @@ impl PartitionedTestHeap {
 
     pub fn allocate_array(&mut self, elements: &[Value]) -> Value {
         unsafe {
-            let array = alloc_array(self, elements.len());
+            let array = alloc_array(self, TAG_ARRAY_M, elements.len());
             for index in 0..elements.len() {
                 let raw_array = array.as_array();
                 raw_array.set(index, elements[index], self);
@@ -423,14 +432,18 @@ impl PartitionedTestHeap {
     }
 
     pub fn allocate_blob(&mut self, size: usize) -> Value {
-        unsafe { alloc_blob(self, Bytes(size)) }
+        unsafe { alloc_blob(self, TAG_BLOB_B, Bytes(size)) }
     }
 }
 
 unsafe fn block_size(block: *const Tag) -> usize {
     match *block {
-        TAG_ARRAY => size_of::<Array>() + (block as *const Array).len() * WORD_SIZE,
-        TAG_BLOB => size_of::<Blob>() + (block as *const Blob).len().as_usize(),
+        TAG_ARRAY_I | TAG_ARRAY_M | TAG_ARRAY_T | TAG_ARRAY_S => {
+            size_of::<Array>() + (block as *const Array).len() * WORD_SIZE
+        }
+        TAG_BLOB_B | TAG_BLOB_T | TAG_BLOB_P | TAG_BLOB_A => {
+            size_of::<Blob>() + (block as *const Blob).len().as_usize()
+        }
         _ => unimplemented!(),
     }
 }

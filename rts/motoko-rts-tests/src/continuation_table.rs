@@ -6,7 +6,7 @@ use motoko_rts::continuation_table::{
     continuation_count, recall_continuation, remember_continuation,
 };
 use motoko_rts::memory::alloc_blob;
-use motoko_rts::types::{Bytes, Value};
+use motoko_rts::types::{Bytes, Value, TAG_BLOB_B};
 
 pub unsafe fn test() {
     println!("Testing continuation table ...");
@@ -17,7 +17,7 @@ pub unsafe fn test() {
 
     let mut heap = initialize_test_memory();
 
-    let pointers: [Value; N] = from_fn(|_| alloc_blob(&mut heap, Bytes(0)));
+    let pointers: [Value; N] = from_fn(|_| alloc_blob(&mut heap, TAG_BLOB_B, Bytes(0)));
 
     let mut references: [usize; N] = [0; N];
     for i in 0..N {

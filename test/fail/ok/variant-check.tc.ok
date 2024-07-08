@@ -2,5 +2,3 @@ variant-check.mo:6.23-6.26: type error [M0096], expression of type
   Nat
 cannot produce expected type
   Nat8
-variant-check.mo:3.6-3.9: warning [M0194], unused identifier foo (delete or rename to wildcard `_` or `_foo`)
-variant-check.mo:6.6-6.9: warning [M0194], unused identifier bar (delete or rename to wildcard `_` or `_bar`)

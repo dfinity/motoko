@@ -69,12 +69,12 @@ unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
 
 #[cfg(feature = "ic")]
 unsafe fn should_start() -> bool {
-    use self::partitioned_heap::{MAXIMUM_MEMORY_SIZE, PARTITION_SIZE};
+    use self::partitioned_heap::PARTITION_SIZE;
     use crate::memory::ic;
 
-    const CRITICAL_HEAP_LIMIT: Bytes<usize> = Bytes(MAXIMUM_MEMORY_SIZE.0 / 10 * 8); // 80%
+    const CRITICAL_HEAP_LIMIT: Bytes<usize> = Bytes(ic::MAIN_MEMORY_LIMIT.0 / 10 * 8); // 80%
     const CRITICAL_GROWTH_THRESHOLD: f64 = 0.01;
-    const MEDIUM_HEAP_LIMIT: Bytes<usize> = Bytes(MAXIMUM_MEMORY_SIZE.0 / 2); // 50%
+    const MEDIUM_HEAP_LIMIT: Bytes<usize> = Bytes(ic::MAIN_MEMORY_LIMIT.0 / 2); // 50%
     const MEDIUM_GROWTH_THRESHOLD: f64 = 0.35;
     const LOW_GROWTH_THRESHOLD: f64 = 0.65;
 
@@ -275,7 +275,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         debug_assert!(self.mark_completed());
         MarkIncrement::<M>::complete_phase(self.state);
         self.state.phase = Phase::Evacuate;
-        EvacuationIncrement::<M>::start_phase(self.state);
+        EvacuationIncrement::<M>::start_phase(self.mem, self.state);
     }
 
     unsafe fn evacuation_completed(&self) -> bool {

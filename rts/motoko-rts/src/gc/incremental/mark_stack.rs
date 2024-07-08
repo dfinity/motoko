@@ -29,7 +29,7 @@
 use core::ptr::null_mut;
 
 use crate::memory::{alloc_blob, Memory};
-use crate::types::{size_of, Blob, Value};
+use crate::types::{size_of, Blob, Value, TAG_BLOB_B};
 
 #[repr(C)]
 pub struct MarkStack {
@@ -97,8 +97,8 @@ impl MarkStack {
 
     unsafe fn new_table<M: Memory>(mem: &mut M, previous: *mut StackTable) -> *mut StackTable {
         // No post allocation barrier as this RTS-internal blob will be collected by the GC.
-        let table =
-            alloc_blob(mem, size_of::<StackTable>().to_bytes()).as_blob_mut() as *mut StackTable;
+        let table = alloc_blob(mem, TAG_BLOB_B, size_of::<StackTable>().to_bytes()).as_blob_mut()
+            as *mut StackTable;
         (*table).previous = previous;
         (*table).next = null_mut();
         if previous != null_mut() {

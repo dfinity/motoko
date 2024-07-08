@@ -1,13 +1,13 @@
 // This module is only enabled when compiling the RTS for IC or WASI.
 
 use super::Memory;
-use crate::constants::WASM_PAGE_SIZE;
-use crate::gc::incremental::memory_reserve;
-use crate::gc::incremental::partitioned_heap::MAXIMUM_MEMORY_SIZE;
+use crate::constants::{GB, WASM_PAGE_SIZE};
 use crate::rts_trap_with;
 use crate::types::{Bytes, Value, Words};
 use core::arch::wasm64;
-use core::cmp::min;
+
+// TODO: Can we inspect the maximum main memory limit from the IC?
+pub const MAIN_MEMORY_LIMIT: Bytes<usize> = Bytes(400 * GB);
 
 /// Provides a `Memory` implementation, to be used in functions compiled for IC or WASI. The
 /// `Memory` implementation allocates in Wasm heap with Wasm `memory.grow` instruction.
@@ -20,16 +20,20 @@ impl Memory for IcMemory {
     }
 
     /// Page allocation. Ensures that the memory up to, but excluding, the given pointer is allocated.
-    /// Ensure a memory reserve for the incremental GC.
+    /// Ensure a memory reserve of at least one Wasm page depending on the canister state.
     #[inline(never)]
     unsafe fn grow_memory(&mut self, ptr: usize) {
         const LAST_PAGE_LIMIT: usize = 0xFFFF_FFFF_FFFF_0000;
         debug_assert_eq!(LAST_PAGE_LIMIT, usize::MAX - WASM_PAGE_SIZE.as_usize() + 1);
-        debug_assert!(memory_reserve() <= MAXIMUM_MEMORY_SIZE.as_usize());
-        let limit = min(
-            LAST_PAGE_LIMIT,
-            MAXIMUM_MEMORY_SIZE.as_usize() - memory_reserve(),
-        );
+        // Spare a memory reserve for use by the GC.
+        let memory_reserve = crate::gc::incremental::memory_reserve();
+        // In any case, the last Wasm memory page is reserved to guard against shadow call stack overflows.
+        // This call stack is used both by the Rust runtime system implementation and by the compiler backend,
+        // see module `Stack` in `compile.ml`. This requires function activation frames to be less than the
+        // Wasm page size.
+        debug_assert!(memory_reserve <= LAST_PAGE_LIMIT);
+        let limit = LAST_PAGE_LIMIT - memory_reserve;
+        // The pointer is one byte larger than the memory size to be allocated, see the comment above.
         if ptr > limit {
             rts_trap_with("Cannot grow memory")
         };
