@@ -10894,13 +10894,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
   | ICStableSize t, [e] ->
     SR.UnboxedWord64 Type.Nat64,
-    let (tydesc, _, _) = Serialization.(type_desc env Candid [t]) in
-    let tydesc_len = Int32.of_int (String.length tydesc) in
-    compile_exp_vanilla env ae e ^^
-    Serialization.buffer_size env t ^^
-    G.i Drop ^^
-    compile_add_const tydesc_len ^^
-    G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32))
+    E.trap_with env "Deprecated with enhanced orthogonal persistence"
 
   (* Other prims, unary *)
 
