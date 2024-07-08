@@ -11,7 +11,7 @@
     * n > 1: warning-less use of stable memory primitives (for legacy applications).
     Users of ESM should consider migrating their code to use isolated regions (library `Region.mo`) instead.
 
-  * bugfix: Fix the detection of unused declarations in switch and catch alternatives (#4560).
+  * bugfix: Fix the detection of unused declarations in `switch` and `catch` alternatives (#4560).
 
   * improvement: Only warn on unused identifiers if type checking is error-free (#4561).
 
