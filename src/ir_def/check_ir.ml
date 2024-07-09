@@ -560,7 +560,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
            (match ts2 with
             | [] -> ()
             | _ -> error env exp.at "CPSAwait answer type error");
-           typ krc <: T.Tup T.[cont_typ; Construct.err_contT (Tup ts2); Construct.bail_contT];
+           typ krc <: T.(Tup Construct.[cont_typ; err_contT (Tup ts2); bail_contT]);
            t1 <: T.seq ts1;
            T.seq ts2 <: t;
          end;
