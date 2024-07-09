@@ -365,6 +365,11 @@ and c_exp' context exp k =
       c_exp context exp1 (ContVar k)
     | T.Await ->
       let error = fresh_var "v" T.catch in
+      let rethrow = { it = { pat = varP error; exp = varE f -*- varE error };
+                      at = no_region;
+                      note = ()
+                    } in
+      let omit_rethrow = List.exists (fun {it = {pat; exp}; _} -> Ir_utils.is_irrefutable pat) cases in
       let cases' =
         List.map
           (fun {it = { pat; exp }; at; note} ->
@@ -374,10 +379,7 @@ and c_exp' context exp k =
             in
             { it = { pat; exp = exp' }; at; note })
           cases
-        @ [{ it = { pat = varP error; exp = varE f -*- varE error };
-             at = no_region;
-             note = ()
-        }] in
+        @ if omit_rethrow then [] else [rethrow] in
       let throw = fresh_err_cont (answerT (typ_of_var k)) in
       let context' = LabelEnv.add Throw (Cont (ContVar throw)) context in
       blockE
