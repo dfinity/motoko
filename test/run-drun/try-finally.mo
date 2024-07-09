@@ -38,18 +38,20 @@ actor A {
         finally { debugPrint "OUTd" };
     };
 
-/*  nested `try` won't work yet
     func t1() : async () {
+        debugPrint "BEFORE1";
         try {
-            do {
-                debugPrint "IN1";
-                throw error "IN1";
+            debugPrint "IN1";
+            try {
+                debugPrint "IN1Inner";
+                throw error "IN1Inner";
             }
-            finally { debugPrint "OUT1" };
+            finally { debugPrint "OUT1Inner" };
         }
         catch _ { debugPrint "CAUGHT1" }
+        finally { debugPrint "OUT1" };
+        debugPrint "AFTER1"
     };
-*/
 
     func t1t() : async () {
         debugPrint "BEFORE1t";
@@ -288,7 +290,7 @@ actor A {
         await t0t();
         await t0l();
         await t0e();
-        //await t1();
+        await t1();
         await t1t();
         await t2();
         await t2r();

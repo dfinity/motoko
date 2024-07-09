@@ -361,6 +361,8 @@ and c_exp' context exp k =
     match eff exp1 with
     | T.Triv ->
       varE k -*- t_exp context exp1
+    | T.Await when cases = [] ->
+      c_exp context exp1 (ContVar k)
     | T.Await ->
       let error = fresh_var "v" T.catch in
       let cases' =

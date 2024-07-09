@@ -6,6 +6,13 @@ debug.print: INl
 debug.print: OUTl
 debug.print: INe
 debug.print: OUTe
+debug.print: BEFORE1
+debug.print: IN1
+debug.print: IN1Inner
+debug.print: OUT1Inner
+debug.print: CAUGHT1
+debug.print: OUT1
+debug.print: AFTER1
 debug.print: BEFORE1t
 debug.print: IN1t
 debug.print: IN1tInner
@@ -91,7 +98,7 @@ debug.print: InnerLIVESTILL7
 debug.print: InnerOUT7
 debug.print: OUT7
 debug.print: It's over
-ingress Err: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: assertion failed at try-finally.mo:236.17-236.29
+ingress Err: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: assertion failed at try-finally.mo:238.17-238.29
 debug.print: go2
 debug.print: It's so over
-ingress Err: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: assertion failed at try-finally.mo:323.13-323.25
+ingress Err: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: assertion failed at try-finally.mo:325.13-325.25
