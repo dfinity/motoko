@@ -1538,7 +1538,7 @@ and infer_exp'' env exp : T.typ =
     if not env.pre then begin
       Option.iter (check_exp_strong { env with rets = None; labs = T.Env.empty } T.unit) exp2_opt;
       check_ErrorCap env "try" exp.at;
-      coverage_cases "try handler" env cases T.catch exp.at
+      if cases <> [] then coverage_cases "try handler" env cases T.catch exp.at
     end;
     T.lub t1 t2
   | WhileE (exp1, exp2) ->
@@ -1839,7 +1839,8 @@ and check_exp' env0 t exp : T.typ =
     check_ErrorCap env "try" exp.at;
     check_exp env t exp1;
     check_cases env T.catch t cases;
-    coverage_cases "try handler" env cases T.catch exp.at;
+    if cases <> []
+    then coverage_cases "try handler" env cases T.catch exp.at;
     if not env.pre then
       begin match exp2_opt with
       | None -> ()
