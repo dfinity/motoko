@@ -1,4 +1,4 @@
-module OrigList = List
+module StdList = List
 
 module Format =
 struct
@@ -506,7 +506,7 @@ module Option =
 struct
   let get o x = Option.value o ~default:x
 
-  let exists f o = Option.to_list o |> OrigList.exists f
+  let exists f o = Option.to_list o |> StdList.exists f
 
   let map2 f a b =
     match a, b with
