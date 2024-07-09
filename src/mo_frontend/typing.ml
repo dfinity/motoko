@@ -959,12 +959,9 @@ let rec is_explicit_exp e =
   | ObjBlockE (_, _, dfs) ->
     List.for_all (fun (df : dec_field) -> is_explicit_dec df.it.dec) dfs
   | ArrayE (_, es) -> List.exists is_explicit_exp es
-  | SwitchE (e1, cs) ->
+  | SwitchE (e1, cs) | TryE (e1, cs, None) ->
     is_explicit_exp e1 &&
     List.exists (fun (c : case) -> is_explicit_exp c.it.exp) cs
-  | TryE (e1, cs, None) ->
-    is_explicit_exp e1 &&
-    Lib.Option.exists (fun (c : case) -> is_explicit_exp c.it.exp) cs
   | TryE (e1, cs, Some e2) ->
     is_explicit_exp { e with it = TryE (e1, cs, None) } &&
     is_explicit_exp e2
@@ -1537,11 +1534,11 @@ and infer_exp'' env exp : T.typ =
     t
   | TryE (exp1, cases, exp2_opt) ->
     let t1 = infer_exp env exp1 in
-    let t2 = infer_cases env T.catch T.Non (Option.to_list cases) in
+    let t2 = infer_cases env T.catch T.Non cases in
     if not env.pre then begin
       Option.iter (check_exp_strong { env with rets = None; labs = T.Env.empty } T.unit) exp2_opt;
       check_ErrorCap env "try" exp.at;
-      Option.iter (fun case -> coverage_cases "try handler" env [case] T.catch exp.at) cases
+      coverage_cases "try handler" env cases T.catch exp.at
     end;
     T.lub t1 t2
   | WhileE (exp1, exp2) ->
@@ -1838,14 +1835,11 @@ and check_exp' env0 t exp : T.typ =
     check_cases env t1 t cases;
     coverage_cases "switch" env cases t1 exp.at;
     t
-  | TryE (exp1, catch_opt, exp2_opt), _ ->
+  | TryE (exp1, cases, exp2_opt), _ ->
     check_ErrorCap env "try" exp.at;
     check_exp env t exp1;
-    (match catch_opt with
-     | None -> ()
-     | Some case ->
-        check_cases env T.catch t [case];
-        coverage_cases "try handler" env [case] T.catch exp.at);
+    check_cases env T.catch t cases;
+    coverage_cases "try handler" env cases T.catch exp.at;
     if not env.pre then
       begin match exp2_opt with
       | None -> ()
