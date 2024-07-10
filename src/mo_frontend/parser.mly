@@ -703,6 +703,12 @@ exp_un(B) :
       BreakE(x', TupE([]) @? no_region) @? at $sloc }
   | DEBUG e=exp_nest
     { DebugE(e) @? at $sloc }
+  | LPAR base=exp_post(ob)? WITH fs=seplist(exp_field, semicolon) RPAR e=exp_nest (* parentheticals to qualify message sends *)
+    { match e.it with
+      | CallE _
+      | AsyncE (Type.Fut, _, _) -> e
+      | _ -> { e with it = ObjE(Option.to_list base, fs) }
+    }
   | IF b=exp_nullary(ob) e1=exp_nest %prec IF_NO_ELSE
     { IfE(b, e1, TupE([]) @? at $sloc) @? at $sloc }
   | IF b=exp_nullary(ob) e1=exp_nest ELSE e2=exp_nest

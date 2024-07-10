@@ -214,6 +214,7 @@
     'break' <id> <exp_nullary>?
     'continue' <id>
     'debug' <exp_nest>
+    '(' <exp_post>? 'with' <list(<exp_field>, ';')> ')' <exp_nest>
     'if' <exp_nullary> <exp_nest>
     'if' <exp_nullary> <exp_nest> 'else' <exp_nest>
     'try' <exp_nest> <catch>
