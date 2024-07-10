@@ -93,7 +93,8 @@ let primE prim es =
     | ICStableRead t -> t
     | ICMethodNamePrim -> T.text
     | ICPerformGC
-    | ICStableWrite _ -> T.unit
+    | ICStableWrite _
+    | SystemCyclesAddPrim -> T.unit
     | ICStableSize _ -> T.nat64
     | IdxPrim
     | DerefArrayOffset -> T.(as_immut (as_array_sub (List.hd es).note.Note.typ))
@@ -371,7 +372,7 @@ let dotE exp name typ =
   { it = PrimE (DotPrim name, [exp]);
     at = no_region;
     note = Note.{ def with
-      typ = typ;
+      typ;
       eff = eff exp
     }
   }
