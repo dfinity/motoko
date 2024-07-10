@@ -4664,16 +4664,15 @@ module IC = struct
     Blob.lit env Tagged.T "" ^^
     set_call_perform_message env
 
-  let i32s n = Lib.List.make n I32Type
   let i64s n = Lib.List.make n I64Type
 
   let import_ic0 env =
       E.add_func_import env "ic0" "accept_message" [] [];
       E.add_func_import env "ic0" "call_data_append" (i64s 2) [];
       E.add_func_import env "ic0" "call_cycles_add128" (i64s 2) [];
-      E.add_func_import env "ic0" "call_new" [I64Type; I64Type; I64Type; I64Type; I32Type; I32Type; I32Type; I32Type] [];
+      E.add_func_import env "ic0" "call_new" (i64s 8) [];
       E.add_func_import env "ic0" "call_perform" [] [I32Type];
-      E.add_func_import env "ic0" "call_on_cleanup" (i32s 2) [];
+      E.add_func_import env "ic0" "call_on_cleanup" (i64s 2) [];
       E.add_func_import env "ic0" "canister_cycle_balance128" [I64Type] [];
       E.add_func_import env "ic0" "canister_self_copy" (i64s 3) [];
       E.add_func_import env "ic0" "canister_self_size" [] [I64Type];
@@ -9084,12 +9083,11 @@ module FuncDec = struct
             IC.system_call env "msg_arg_data_copy")
            (fun env -> compile_unboxed_const 0L)))
     in
-    Func.define_built_in env reply_name ["env", I32Type] [] (fun env ->
+    Func.define_built_in env reply_name ["env", I64Type] [] (fun env ->
         message_start env (Type.Shared Type.Write) ^^
         (* Look up continuation *)
         let (set_closure, get_closure) = new_local env "closure" in
         G.i (LocalGet (nr 0l)) ^^
-        G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
         ContinuationTable.recall env ^^
         Arr.load_field env 0L ^^ (* get the reply closure *)
         set_closure ^^
@@ -9106,12 +9104,11 @@ module FuncDec = struct
       );
 
     let reject_name = "@reject_callback" in
-    Func.define_built_in env reject_name ["env", I32Type] [] (fun env ->
+    Func.define_built_in env reject_name ["env", I64Type] [] (fun env ->
         message_start env (Type.Shared Type.Write) ^^
         (* Look up continuation *)
         let (set_closure, get_closure) = new_local env "closure" in
         G.i (LocalGet (nr 0l)) ^^
-        G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
         ContinuationTable.recall env ^^
         Arr.load_field env 1L ^^ (* get the reject closure *)
         set_closure ^^
@@ -9131,16 +9128,15 @@ module FuncDec = struct
     (* result is a function that accepts a list of closure getters, from which
        the first and second must be the reply and reject continuations. *)
     fun closure_getters ->
-      let (set_cb_index, get_cb_index) = new_local32 env "cb_index" in
+      let (set_cb_index, get_cb_index) = new_local env "cb_index" in
       Arr.lit env Tagged.T closure_getters ^^
       ContinuationTable.remember env ^^
-      G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
       set_cb_index ^^
 
       (* return arguments for the ic.call *)
-      compile_const_32 (E.add_fun_ptr env (E.built_in env reply_name)) ^^
+      compile_unboxed_const (Wasm.I64_convert.extend_i32_u (E.add_fun_ptr env (E.built_in env reply_name))) ^^
       get_cb_index ^^
-      compile_const_32 (E.add_fun_ptr env (E.built_in env reject_name)) ^^
+      compile_unboxed_const (Wasm.I64_convert.extend_i32_u (E.add_fun_ptr env (E.built_in env reject_name))) ^^
       get_cb_index
 
   let closures_to_reply_reject_callbacks env ts =
@@ -9153,16 +9149,15 @@ module FuncDec = struct
        way, the callback, when it comes back, will (safely) trap, even if the
        module has completely changed in between. This way, one-way calls do not
        get in the way of safe instantaneous upgrades *)
-    compile_const_32 0xFFFF_FFFFl (* 32-bit -1l *)
+    compile_unboxed_const 0xFFFF_FFFFL (* IC does not support -1 in 64-bit, thus use zero-extended 32-bit -1 *)
 
   let cleanup_callback env =
     let name = "@cleanup_callback" in
-    Func.define_built_in env name ["env", I32Type] [] (fun env ->
+    Func.define_built_in env name ["env", I64Type] [] (fun env ->
         G.i (LocalGet (nr 0l)) ^^
-        G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
         ContinuationTable.recall env ^^
         G.i Drop);
-    compile_const_32 (E.add_fun_ptr env (E.built_in env name))
+    compile_unboxed_const (Wasm.I64_convert.extend_i32_u (E.add_fun_ptr env (E.built_in env name)))
 
   let ic_call_threaded env purpose get_meth_pair push_continuations
     add_data add_cycles =
@@ -9170,7 +9165,7 @@ module FuncDec = struct
     | Flags.ICMode
     | Flags.RefMode ->
       let message = Printf.sprintf "could not perform %s" purpose in
-      let (set_cb_index, get_cb_index) = new_local32 env "cb_index" in
+      let (set_cb_index, get_cb_index) = new_local env "cb_index" in
       (* The callee *)
       get_meth_pair ^^ Arr.load_field env 0L ^^ Blob.as_ptr_len env ^^
       (* The method name *)
@@ -9184,7 +9179,7 @@ module FuncDec = struct
       get_cb_index ^^
       IC.system_call env "call_on_cleanup" ^^
       (* the data *)
-      add_data (get_cb_index ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32))) ^^
+      add_data get_cb_index ^^
       IC.system_call env "call_data_append" ^^
       (* the cycles *)
       add_cycles ^^
@@ -9204,7 +9199,7 @@ module FuncDec = struct
           E.trap_with env message
         else
         (* Recall (don't leak) continuations *)
-        get_cb_index ^^ G.i (Convert (Wasm_exts.Values.I64 I64Op.ExtendUI32)) ^^
+        get_cb_index ^^
         ContinuationTable.recall env ^^
         G.i Drop
       end
@@ -9252,10 +9247,10 @@ module FuncDec = struct
       get_meth_pair ^^ Arr.load_field env 1L ^^ Blob.as_ptr_len env ^^
       (* The reply callback *)
       ignoring_callback env ^^
-      compile_const_32 0l ^^
+      compile_unboxed_const 0L ^^
       (* The reject callback *)
       ignoring_callback env ^^
-      compile_const_32 0l ^^
+      compile_unboxed_const 0L ^^
       IC.system_call env "call_new" ^^
       (* the data *)
       get_arg ^^ Serialization.serialize env ts ^^
