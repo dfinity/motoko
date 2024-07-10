@@ -94,11 +94,11 @@ and assignEs vars exp : dec list =
 and exp' env e  : exp' = match e.it with
   | VarE _ | LitE _     -> e.it
   | AssignE (e1, e2)    -> AssignE (lexp env e1, exp env e2)
-  | PrimE (CallPrim (insts, pars), [e1; e2])  ->
+  | PrimE (CallPrim (insts, pars), [e1; e2]) ->
     begin match e1.it, env with
     | VarE f1, { tail_pos = true;
                  info = Some { func; typ_binds; temps; label; tail_called } }
-         when f1 = func && are_generic_insts typ_binds insts  ->
+         when f1 = func && are_generic_insts typ_binds insts ->
       tail_called := true;
       (blockE (assignEs temps (exp env e2)) (breakE label (unitE ()))).it
     | _,_-> PrimE (CallPrim (insts, pars), [exp env e1; exp env e2])
@@ -136,7 +136,7 @@ and lexp env le : lexp = {le with it = lexp' env le}
 
 and lexp' env le : lexp' = match le.it with
   | VarLE i -> VarLE i
-  | DotLE (e, sn)  -> DotLE (exp env e, sn)
+  | DotLE (e, sn) -> DotLE (exp env e, sn)
   | IdxLE (e1, e2) -> IdxLE (exp env e1, exp env e2)
 
 and args env as_ =
@@ -256,7 +256,7 @@ and block env ds exp =
 and comp_unit env = function
   | LibU _ -> raise (Invalid_argument "cannot compile library")
   | ProgU ds -> ProgU (snd (decs env ds))
-  | ActorU (as_opt, ds, fs, u, t)  ->
+  | ActorU (as_opt, ds, fs, u, t) ->
     let u = { u with preupgrade = exp env u.preupgrade; postupgrade = exp env u.postupgrade } in
     ActorU (as_opt, snd (decs env ds), fs, u, t)
 
