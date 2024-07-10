@@ -310,7 +310,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | PrimE (p, es) ->
     interpret_exps env es [] (fun vs ->
       match p, vs with
-      | CallPrim typs, [v1; v2] ->
+      | CallPrim (typs, _), [v1; v2] ->
         let call_conv, f = V.as_func v1 in
         check_call_conv (List.hd es) call_conv;
         check_call_conv_arg env exp v2 call_conv;

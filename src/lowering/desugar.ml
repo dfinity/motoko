@@ -205,7 +205,7 @@ and exp' at note = function
     I.PrimE (I.OtherPrim "blob_size", [exp e1])
   (* Normal call *)
   | S.CallE (_FIXME, e1, inst, e2) ->
-    I.PrimE (I.CallPrim inst.note, [exp e1; exp e2])
+    I.PrimE (I.CallPrim (inst.note, Option.(value ~default:(recordE []) (map exp _FIXME))), [exp e1; exp e2])
   | S.BlockE [] -> (unitE ()).it
   | S.BlockE [{it = S.ExpD e; _}] -> (exp e).it
   | S.BlockE ds -> I.BlockE (block (T.is_unit note.Note.typ) ds)

@@ -94,14 +94,14 @@ and assignEs vars exp : dec list =
 and exp' env e  : exp' = match e.it with
   | VarE _ | LitE _     -> e.it
   | AssignE (e1, e2)    -> AssignE (lexp env e1, exp env e2)
-  | PrimE (CallPrim insts, [e1; e2])  ->
+  | PrimE (CallPrim (insts, pars), [e1; e2])  ->
     begin match e1.it, env with
     | VarE f1, { tail_pos = true;
                  info = Some { func; typ_binds; temps; label; tail_called } }
          when f1 = func && are_generic_insts typ_binds insts  ->
       tail_called := true;
       (blockE (assignEs temps (exp env e2)) (breakE label (unitE ()))).it
-    | _,_-> PrimE (CallPrim insts, [exp env e1; exp env e2])
+    | _,_-> PrimE (CallPrim (insts, pars), [exp env e1; exp env e2])
     end
   | BlockE (ds, e)      -> BlockE (block env ds e)
   | IfE (e1, e2, e3)    -> IfE (exp env e1, tailexp env e2, tailexp env e3)

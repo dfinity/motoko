@@ -312,6 +312,8 @@ let funcE name sort ctrl typ_binds args typs exp =
     note = Note.{ def with typ; eff = T.Triv };
   }
 
+let recordE' = ref (fun _ -> nullE ()) (* gets correctly filled below *)
+
 let callE exp1 typs exp2 =
   let typ =  match T.promote (typ exp1) with
     | T.Func (_sort, control, _, _, ret_tys) ->
@@ -319,7 +321,7 @@ let callE exp1 typs exp2 =
     | T.Non -> T.Non
     | _ -> raise (Invalid_argument "callE expect a function")
   in
-  let p = CallPrim typs in
+  let p = CallPrim (typs, !recordE' []) in
   let es = [exp1; exp2] in
   { it = PrimE (p, es);
     at = no_region;
@@ -351,7 +353,7 @@ let orE : Ir.exp -> Ir.exp -> Ir.exp = fun e1 e2 ->
 let impliesE : Ir.exp -> Ir.exp -> Ir.exp = fun e1 e2 ->
   orE (notE e1) e2
 let oldE : Ir.exp -> Ir.exp = fun e ->
-  { it = (primE (CallPrim [typ e]) [e]).it;
+  { it = (primE (CallPrim ([typ e], !recordE' [])) [e]).it;
     at = no_region;
     note = Note.{ def with
       typ = typ e;
@@ -770,6 +772,8 @@ let objE sort typ_flds flds =
   go [] [] [] flds
 
 let recordE flds = objE T.Object [] flds
+
+let _ = recordE' := recordE
 
 let check_call_perform_status success mk_failure =
   ifE
