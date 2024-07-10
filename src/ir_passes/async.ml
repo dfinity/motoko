@@ -339,9 +339,7 @@ let transform prog =
          (varE nary_async))
         .it
     | PrimE (OtherPrim "call_raw", [exp1; exp2; exp3]) ->
-      let exp1' = t_exp exp1 in
-      let exp2' = t_exp exp2 in
-      let exp3' = t_exp exp3 in
+      let exp1', exp2', exp3' = t_exp exp1, t_exp exp2, t_exp exp3 in
       let ((nary_async, nary_reply, reject), def) = new_nary_async_reply [T.blob] in
       (blockE (
         letP (tupVarsP [nary_async; nary_reply; reject]) def ::
