@@ -39,6 +39,7 @@ val typ_arg : con -> bind_sort -> typ -> typ_bind
 
 val varP : var -> pat
 val tupP :  pat list -> pat
+val tupVarsP : var list -> pat
 val wildP : pat
 
 val seqP : pat list -> pat

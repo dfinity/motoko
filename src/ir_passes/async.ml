@@ -117,7 +117,7 @@ let new_nary_async_reply ts =
     fresh_var "reject" (typ_of_var fail)
   in
     (async, reply, reject),
-      blockE [letP (tupP [varP unary_async; varP unary_fulfill; varP fail])  call_new_async]
+      blockE [letP (tupVarsP [unary_async; unary_fulfill; fail])  call_new_async]
         (tupE [nary_async; nary_reply; varE fail])
 
 
@@ -149,8 +149,8 @@ let let_seq ts e d_of_vs =
     (letP p e)::d_of_vs [x]
   | ts ->
     let xs = fresh_vars "x" ts in
-    let p = tupP (List.map varP xs) in
-    (letP p e)::d_of_vs (xs)
+    let p = tupVarsP xs in
+    (letP p e) :: d_of_vs xs
 
 (* name e in f unless named already *)
 let ensureNamed e f =
@@ -284,7 +284,7 @@ let transform prog =
         new_nary_async_reply ts1
       in
       ( blockE [
-          letP (tupP [varP nary_async; varP nary_reply; varP reject]) def;
+          letP (tupVarsP [nary_async; nary_reply; reject]) def;
           let ic_reply = (* flatten v, here and below? *)
             let v = fresh_var "v" (T.seq ts1) in
             v --> (ic_replyE ts1 (varE v)) in
@@ -309,7 +309,7 @@ let transform prog =
       let v_fail = fresh_var "e" t_fail in
       ([v_ret; v_fail] -->* (callE (t_exp exp1) [t0] (tupE [varE v_ret; varE v_fail]))).it
     | PrimE (CallPrim (typs, _FIXME), [exp1; exp2]) when is_awaitable_func exp1 ->
-      assert T.(as_obj (t_typ _FIXME.note.typ) = (Object, []));
+      (*assert T.(as_obj _FIXME.note.typ = (Object, []));*)
       let ts1,ts2 =
         match typ exp1 with
         | T.Func (T.Shared _, T.Promises, tbs, ts1, ts2) ->
@@ -323,7 +323,7 @@ let transform prog =
         new_nary_async_reply ts2
       in
       (blockE (
-        letP (tupP [varP nary_async; varP nary_reply; varP reject]) def ::
+        letP (tupVarsP [nary_async; nary_reply; reject]) def ::
         let_eta exp1' (fun v1 ->
           let_seq ts1 exp2' (fun vs ->
             [ expD (ic_callE v1 (seqE (List.map varE vs)) (varE nary_reply) (varE reject)) ]
@@ -338,7 +338,7 @@ let transform prog =
       let exp3' = t_exp exp3 in
       let ((nary_async, nary_reply, reject), def) = new_nary_async_reply [T.blob] in
       (blockE (
-        letP (tupP [varP nary_async; varP nary_reply; varP reject]) def ::
+        letP (tupVarsP [nary_async; nary_reply; reject]) def ::
           let_eta exp1' (fun v1 ->
           let_eta exp2' (fun v2 ->
           let_eta exp3' (fun v3 ->

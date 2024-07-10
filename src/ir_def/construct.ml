@@ -62,6 +62,8 @@ let tupP pats =
     note = T.Tup (List.map (fun p -> p.note) pats);
     at = no_region }
 
+let tupVarsP vs = List.map varP vs |> tupP
+
 let seqP ps =
   match ps with
   | [p] -> p
