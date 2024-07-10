@@ -947,7 +947,7 @@ let rec is_explicit_exp e =
     true
   | LitE l -> is_explicit_lit !l
   | UnE (_, _, e1) | OptE e1 | DoOptE e1
-  | ProjE (e1, _) | DotE (e1, _) | BangE e1 | IdxE (e1, _) | CallE (e1, _, _)
+  | ProjE (e1, _) | DotE (e1, _) | BangE e1 | IdxE (e1, _) | CallE (_(*FIXME: correct?*), e1, _, _)
   | LabelE (_, _, e1) | AsyncE (_, _, e1) | AwaitE (_, e1) ->
     is_explicit_exp e1
   | BinE (_, e1, _, e2) | IfE (_, e1, e2) ->
@@ -1483,7 +1483,7 @@ and infer_exp'' env exp : T.typ =
     end;
     let ts1 = match pat.it with TupP _ -> T.seq_of_tup t1 | _ -> [t1] in
     T.Func (sort, c, T.close_binds cs tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2)
-  | CallE (exp1, inst, exp2) ->
+  | CallE (_FIXME, exp1, inst, exp2) ->
     infer_call env exp1 inst exp2 exp.at None
   | BlockE decs ->
     let t, _ = infer_block env decs exp.at false in
@@ -1868,7 +1868,7 @@ and check_exp' env0 t exp : T.typ =
     in
     check_exp_strong (adjoin_vals env' ve2) t2 exp;
     t
-  | CallE (exp1, inst, exp2), _ ->
+  | CallE (_FIXME, exp1, inst, exp2), _ ->
     let t' = infer_call env exp1 inst exp2 exp.at (Some t) in
     if not (T.sub t' t) then
       local_error env0 exp.at "M0096"

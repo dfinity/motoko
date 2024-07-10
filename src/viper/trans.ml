@@ -416,7 +416,7 @@ and stmt ctxt (s : M.exp) : seqn =
   | M.AssertE (M.Runtime, e) ->
     !!([],
        [ !!(AssumeS (exp ctxt e)) ])
-  | M.(CallE({it = VarE m; _}, inst, {it = TupE args; _})) ->
+  | M.(CallE(_, {it = VarE m; _}, inst, {it = TupE args; _})) ->
     !!([],
        [ !!(MethodCallS ([], id m,
        let self_var = self ctxt m.at in

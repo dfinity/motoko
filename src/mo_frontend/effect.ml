@@ -49,7 +49,7 @@ let effect_exp (exp:Syntax.exp) : T.eff = eff exp
 (* infer the effect of an expression, assuming all sub-expressions are correctly effect-annotated es *)
 let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
   match exp.it with
-  | CallE (exp1, inst, exp2) when is_async_call exp1 inst exp2 ->
+  | CallE (_FIXME, exp1, inst, exp2) when is_async_call exp1 inst exp2 ->
     T.Await
   | PrimE _
   | VarE _
@@ -81,7 +81,7 @@ let rec infer_effect_exp (exp:Syntax.exp) : T.eff =
   | IdxE (exp1, exp2)
   | RelE (_, exp1, _, exp2)
   | AssignE (exp1, exp2)
-  | CallE (exp1, _, exp2)
+  | CallE (_(*FIXME*), exp1, _, exp2)
   | AndE (exp1, exp2)
   | OrE (exp1, exp2)
   | ImpliesE (exp1, exp2)

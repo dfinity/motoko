@@ -123,7 +123,7 @@ and exp' at note = function
     let tys = List.map (T.open_ vars) res_tys in
     I.FuncE (name, s, control, tbs', args, tys, wrap (exp e))
   (* Primitive functions in the prelude have particular shapes *)
-  | S.CallE ({it=S.AnnotE ({it=S.PrimE p;_}, _);note;_}, _, e)
+  | S.CallE (None, {it=S.AnnotE ({it=S.PrimE p;_}, _);note;_}, _, e)
     when Lib.String.chop_prefix "num_conv" p <> None ->
     begin match String.split_on_char '_' p with
     | ["num"; "conv"; s1; s2] ->
@@ -132,7 +132,7 @@ and exp' at note = function
       I.PrimE (I.NumConvTrapPrim (p1, p2), [exp e])
     | _ -> assert false
     end
-  | S.CallE ({it=S.AnnotE ({it=S.PrimE p;_}, _);note;_}, _, e)
+  | S.CallE (None, {it=S.AnnotE ({it=S.PrimE p;_}, _);note;_}, _, e)
     when Lib.String.chop_prefix "num_wrap" p <> None ->
     begin match String.split_on_char '_' p with
     | ["num"; "wrap"; s1; s2] ->
@@ -141,70 +141,70 @@ and exp' at note = function
       I.PrimE (I.NumConvWrapPrim (p1, p2), [exp e])
     | _ -> assert false
     end
-  | S.CallE ({it=S.AnnotE ({it=S.PrimE "decodeUtf8";_},_);_}, _, e) ->
+  | S.CallE (None, {it=S.AnnotE ({it=S.PrimE "decodeUtf8";_},_);_}, _, e) ->
     I.PrimE (I.DecodeUtf8, [exp e])
-  | S.CallE ({it=S.AnnotE ({it=S.PrimE "encodeUtf8";_},_);_}, _, e) ->
+  | S.CallE (None, {it=S.AnnotE ({it=S.PrimE "encodeUtf8";_},_);_}, _, e) ->
     I.PrimE (I.EncodeUtf8, [exp e])
-  | S.CallE ({it=S.AnnotE ({it=S.PrimE "cast";_}, _);note;_}, _, e) ->
+  | S.CallE (None, {it=S.AnnotE ({it=S.PrimE "cast";_}, _);note;_}, _, e) ->
     begin match note.S.note_typ with
     | T.Func (T.Local, T.Returns, [], ts1, ts2) ->
       I.PrimE (I.CastPrim (T.seq ts1, T.seq ts2), [exp e])
     | _ -> assert false
     end
-  | S.CallE ({it=S.AnnotE ({it=S.PrimE "serialize";_}, _);note;_}, _, e) ->
+  | S.CallE (None, {it=S.AnnotE ({it=S.PrimE "serialize";_}, _);note;_}, _, e) ->
     begin match note.S.note_typ with
     | T.Func (T.Local, T.Returns, [], ts1, ts2) ->
       I.PrimE (I.SerializePrim ts1, [exp e])
     | _ -> assert false
     end
-  | S.CallE ({it=S.AnnotE ({it=S.PrimE "deserialize";_}, _);note;_}, _, e) ->
+  | S.CallE (None, {it=S.AnnotE ({it=S.PrimE "deserialize";_}, _);note;_}, _, e) ->
     begin match note.S.note_typ with
     | T.Func (T.Local, T.Returns, [], ts1, ts2) ->
       I.PrimE (I.DeserializePrim ts2, [exp e])
     | _ -> assert false
     end
-  | S.CallE ({it=S.AnnotE ({it=S.PrimE "caller";_},_);_}, _, {it=S.TupE es;_}) ->
+  | S.CallE (None, {it=S.AnnotE ({it=S.PrimE "caller";_},_);_}, _, {it=S.TupE es;_}) ->
     assert (es = []);
     I.PrimE (I.ICCallerPrim, [])
-  | S.CallE ({it=S.AnnotE ({it=S.PrimE "time";_},_);_}, _, {it=S.TupE es;_}) ->
+  | S.CallE (None, {it=S.AnnotE ({it=S.PrimE "time";_},_);_}, _, {it=S.TupE es;_}) ->
     assert (es = []);
     I.PrimE (I.SystemTimePrim, [])
   (* Cycles *)
-  | S.CallE ({it=S.AnnotE ({it=S.PrimE "cyclesBalance";_},_);_}, _, {it=S.TupE es;_}) ->
+  | S.CallE (None, {it=S.AnnotE ({it=S.PrimE "cyclesBalance";_},_);_}, _, {it=S.TupE es;_}) ->
     assert (es = []);
     I.PrimE (I.SystemCyclesBalancePrim, [])
-  | S.CallE ({it=S.AnnotE ({it=S.PrimE "cyclesAvailable";_},_);_}, _, {it=S.TupE es;_}) ->
+  | S.CallE (None, {it=S.AnnotE ({it=S.PrimE "cyclesAvailable";_},_);_}, _, {it=S.TupE es;_}) ->
     assert (es = []);
     I.PrimE (I.SystemCyclesAvailablePrim, [])
-  | S.CallE ({it=S.AnnotE ({it=S.PrimE "cyclesRefunded";_},_);_}, _, {it=S.TupE es;_}) ->
+  | S.CallE (None, {it=S.AnnotE ({it=S.PrimE "cyclesRefunded";_},_);_}, _, {it=S.TupE es;_}) ->
     assert (es = []);
     I.PrimE (I.SystemCyclesRefundedPrim, [])
-  | S.CallE ({it=S.AnnotE ({it=S.PrimE "cyclesAccept";_},_);_}, _, e) ->
+  | S.CallE (None, {it=S.AnnotE ({it=S.PrimE "cyclesAccept";_},_);_}, _, e) ->
     I.PrimE (I.SystemCyclesAcceptPrim, [exp e])
-  | S.CallE ({it=S.AnnotE ({it=S.PrimE "cyclesAdd";_},_);_}, _, e) ->
+  | S.CallE (None, {it=S.AnnotE ({it=S.PrimE "cyclesAdd";_},_);_}, _, e) ->
     I.PrimE (I.SystemCyclesAddPrim, [exp e])
   (* Certified data *)
-  | S.CallE ({it=S.AnnotE ({it=S.PrimE "setCertifiedData";_},_);_}, _, e) ->
+  | S.CallE (None, {it=S.AnnotE ({it=S.PrimE "setCertifiedData";_},_);_}, _, e) ->
     I.PrimE (I.SetCertifiedData, [exp e])
-  | S.CallE ({it=S.AnnotE ({it=S.PrimE "getCertificate";_},_);_}, _, {it=S.TupE es;_}) ->
+  | S.CallE (None, {it=S.AnnotE ({it=S.PrimE "getCertificate";_},_);_}, _, {it=S.TupE es;_}) ->
     I.PrimE (I.GetCertificate, [])
   (* Other *)
-  | S.CallE ({it=S.AnnotE ({it=S.PrimE p;_},_);_}, _, {it=S.TupE es;_}) ->
+  | S.CallE (None, {it=S.AnnotE ({it=S.PrimE p;_},_);_}, _, {it=S.TupE es;_}) ->
     I.PrimE (I.OtherPrim p, exps es)
-  | S.CallE ({it=S.AnnotE ({it=S.PrimE p;_},_);_}, _, e) ->
+  | S.CallE (None, {it=S.AnnotE ({it=S.PrimE p;_},_);_}, _, e) ->
     I.PrimE (I.OtherPrim p, [exp e])
   (* Optimizing array.size() *)
-  | S.CallE ({it=S.DotE (e1, proj); _}, _, {it=S.TupE [];_})
+  | S.CallE (None, {it=S.DotE (e1, proj); _}, _, {it=S.TupE [];_})
       when T.is_array e1.note.S.note_typ && proj.it = "size" ->
     I.PrimE (I.OtherPrim "array_len", [exp e1])
-  | S.CallE ({it=S.DotE (e1, proj); _}, _, {it=S.TupE [];_})
+  | S.CallE (None, {it=S.DotE (e1, proj); _}, _, {it=S.TupE [];_})
       when T.(is_prim Text) e1.note.S.note_typ && proj.it = "size" ->
     I.PrimE (I.OtherPrim "text_len", [exp e1])
-  | S.CallE ({it=S.DotE (e1, proj); _}, _, {it=S.TupE [];_})
+  | S.CallE (None, {it=S.DotE (e1, proj); _}, _, {it=S.TupE [];_})
       when T.(is_prim Blob) e1.note.S.note_typ && proj.it = "size" ->
     I.PrimE (I.OtherPrim "blob_size", [exp e1])
   (* Normal call *)
-  | S.CallE (e1, inst, e2) ->
+  | S.CallE (_FIXME, e1, inst, e2) ->
     I.PrimE (I.CallPrim inst.note, [exp e1; exp e2])
   | S.BlockE [] -> (unitE ()).it
   | S.BlockE [{it = S.ExpD e; _}] -> (exp e).it
@@ -220,7 +220,7 @@ and exp' at note = function
   | S.WhileE (e1, e2) -> (whileE (exp e1) (exp e2)).it
   | S.LoopE (e1, None) -> I.LoopE (exp e1)
   | S.LoopE (e1, Some e2) -> (loopWhileE (exp e1) (exp e2)).it
-  | S.ForE (p, {it=S.CallE ({it=S.DotE (arr, proj); _}, _, e1); _}, e2)
+  | S.ForE (p, {it=S.CallE (None, {it=S.DotE (arr, proj); _}, _, e1); _}, e2)
       when T.is_array arr.note.S.note_typ && (proj.it = "vals" || proj.it = "keys")
     -> (transform_for_to_while p arr proj e1 e2).it
   | S.ForE (p, e1, e2) -> (forE (pat p) (exp e1) (exp e2)).it

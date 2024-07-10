@@ -605,7 +605,7 @@ exp_post(B) :
   | e=exp_post(B) DOT x=id
     { DotE(e, x) @? at $sloc }
   | e1=exp_post(B) inst=inst e2=exp_nullary(ob)
-    { CallE(e1, inst, e2) @? at $sloc }
+    { CallE(None, e1, inst, e2) @? at $sloc }
   | e1=exp_post(B) BANG
     { BangE(e1) @? at $sloc }
   | LPAR SYSTEM e1=exp_post(B) DOT x=id RPAR

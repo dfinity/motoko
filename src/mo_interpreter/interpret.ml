@@ -570,7 +570,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | T.Shared _ -> make_message env name exp.note.note_typ v
       | T.Local -> v
     in k v'
-  | CallE (exp1, typs, exp2) ->
+  | CallE (_FIXME, exp1, typs, exp2) ->
     interpret_exp env exp1 (fun v1 ->
       interpret_exp env exp2 (fun v2 ->
         let call_conv, f = V.as_func v1 in

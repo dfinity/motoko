@@ -31,8 +31,8 @@ let rec over_exp (f : exp -> exp) (exp : exp) : exp = match exp.it with
      f { exp with it = RelE (x, over_exp f exp1, y, over_exp f exp2) }
   | AssignE (exp1, exp2) ->
      f { exp with it = AssignE (over_exp f exp1, over_exp f exp2) }
-  | CallE (exp1, x, exp2) ->
-     f { exp with it = CallE (over_exp f exp1, x, over_exp f exp2) }
+  | CallE (par_opt, exp1, x, exp2) ->
+     f { exp with it = CallE (Option.map (over_exp f) par_opt, over_exp f exp1, x, over_exp f exp2) }
   | AndE (exp1, exp2) ->
      f { exp with it = AndE (over_exp f exp1, over_exp f exp2) }
   | OrE (exp1, exp2) ->
