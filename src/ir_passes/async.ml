@@ -290,7 +290,7 @@ let transform prog =
             v --> (ic_replyE ts1 (varE v)) in
           let ic_reject =
             let e = fresh_var "e" T.catch in
-            [e] -->* (ic_rejectE (errorMessageE (varE e))) in
+            e --> (ic_rejectE (errorMessageE (varE e))) in
           let exp' = callE (t_exp exp1) [t0] (tupE [ic_reply; ic_reject]) in
           expD (selfcallE ts1 exp' (varE nary_reply) (varE reject))
         ]
@@ -309,6 +309,7 @@ let transform prog =
       let v_fail = fresh_var "e" t_fail in
       ([v_ret; v_fail] -->* (callE (t_exp exp1) [t0] (tupE [varE v_ret; varE v_fail]))).it
     | PrimE (CallPrim (typs, _FIXME), [exp1; exp2]) when is_awaitable_func exp1 ->
+      assert T.(as_obj (t_typ _FIXME.note.typ) = (Object, []));
       let ts1,ts2 =
         match typ exp1 with
         | T.Func (T.Shared _, T.Promises, tbs, ts1, ts2) ->
@@ -396,7 +397,7 @@ let transform prog =
                 v --> (ic_replyE ret_tys (varE v)) in
               let r =
                 let e = fresh_var "e" T.catch in
-                [e] -->* (ic_rejectE (errorMessageE (varE e))) in
+                e --> (ic_rejectE (errorMessageE (varE e))) in
               let exp' = callE (t_exp cps) [t0] (tupE [k;r]) in
               FuncE (x, T.Shared s', Replies, typbinds', args', ret_tys, exp')
             (* oneway, always with `ignore(async _)` body *)
@@ -425,7 +426,7 @@ let transform prog =
                 v --> tupE [] in (* discard return *)
               let r =
                 let e = fresh_var "e" T.catch in
-                [e] -->* tupE [] in (* discard error *)
+                e --> tupE [] in (* discard error *)
               let exp' = callE (t_exp cps) [t0] (tupE [k;r]) in
               FuncE (x, T.Shared s', Returns, typbinds', args', ret_tys, exp')
             | Returns, _ ->

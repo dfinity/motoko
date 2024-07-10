@@ -204,8 +204,8 @@ and exp' at note = function
       when T.(is_prim Blob) e1.note.S.note_typ && proj.it = "size" ->
     I.PrimE (I.OtherPrim "blob_size", [exp e1])
   (* Normal call *)
-  | S.CallE (_FIXME, e1, inst, e2) ->
-    I.PrimE (I.CallPrim (inst.note, Option.(value ~default:(recordE []) (map exp _FIXME))), [exp e1; exp e2])
+  | S.CallE (par_opt, e1, inst, e2) ->
+    I.PrimE (I.CallPrim (inst.note, Option.(value ~default:(recordE []) (map exp par_opt))), [exp e1; exp e2])
   | S.BlockE [] -> (unitE ()).it
   | S.BlockE [{it = S.ExpD e; _}] -> (exp e).it
   | S.BlockE ds -> I.BlockE (block (T.is_unit note.Note.typ) ds)

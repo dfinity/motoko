@@ -1484,6 +1484,7 @@ and infer_exp'' env exp : T.typ =
     let ts1 = match pat.it with TupP _ -> T.seq_of_tup t1 | _ -> [t1] in
     T.Func (sort, c, T.close_binds cs tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2)
   | CallE (_FIXME, exp1, inst, exp2) ->
+    ignore (Option.map (infer_exp env) _FIXME);
     infer_call env exp1 inst exp2 exp.at None
   | BlockE decs ->
     let t, _ = infer_block env decs exp.at false in
@@ -1869,6 +1870,7 @@ and check_exp' env0 t exp : T.typ =
     check_exp_strong (adjoin_vals env' ve2) t2 exp;
     t
   | CallE (_FIXME, exp1, inst, exp2), _ ->
+    ignore (Option.map (infer_exp env) _FIXME);
     let t' = infer_call env exp1 inst exp2 exp.at (Some t) in
     if not (T.sub t' t) then
       local_error env0 exp.at "M0096"

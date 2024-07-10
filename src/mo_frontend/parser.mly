@@ -705,7 +705,8 @@ exp_un(B) :
     { DebugE(e) @? at $sloc }
   | LPAR base=exp_post(ob)? WITH fs=seplist(exp_field, semicolon) RPAR e=exp_nest (* parentheticals to qualify message sends *)
     { match e.it with
-      | CallE _
+      | CallE (None, f, is, args) ->
+        { e with it = CallE (Some (ObjE(Option.to_list base, fs) @? e.at), f, is, args) }
       | AsyncE (Type.Fut, _, _) -> e
       | _ -> { e with it = ObjE(Option.to_list base, fs) }
     }
