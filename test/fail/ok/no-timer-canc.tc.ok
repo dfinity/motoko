@@ -73,7 +73,7 @@ no-timer-canc.mo:3.10-3.21: type error [M0119], object field cancelTimer is not 
     clzNat32 : Nat32 -> Nat32;
     clzNat64 : Nat64 -> Nat64;
     clzNat8 : Nat8 -> Nat8;
-    componentCall : Nat32 -> Nat32;
+    componentCall : Blob -> Nat32;
     cos : Float -> Float;
     createActor : (Blob, Blob) -> async Principal;
     ctzInt16 : Int16 -> Int16;
