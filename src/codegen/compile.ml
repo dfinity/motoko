@@ -1258,7 +1258,7 @@ module RTS = struct
     E.add_func_import env "rts" "stream_split" [I32Type] [I32Type];
     E.add_func_import env "rts" "stream_shutdown" [I32Type] [];
     E.add_func_import env "rts" "stream_reserve" [I32Type; I32Type] [I32Type];
-    E.add_func_import env "rts" "blob_of_cabi_list_u8" [I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "blob_of_cabi" [I32Type] [I32Type];
     if !Flags.gc_strategy = Flags.Incremental then
       incremental_gc_imports env
     else
@@ -11255,13 +11255,20 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | OtherPrim "wit:component:call", [e] ->
     assert !Flags.import_component;
     SR.UnboxedWord32 Type.Nat32,
-    compile_exp_as env ae SR.Vanilla e ^^
+    (* Read blob pointer and length *)
     let set_blob, get_blob = new_local env "blob" in
-    set_blob ^^
+    compile_exp_as env ae SR.Vanilla e ^^ set_blob ^^
+    (* Allocate return value *)
+    let set_ret, get_ret = new_local env "ret" in
+    (* TODO: optimize *)
+    Blob.lit env "\x00\x00" ^^ set_ret ^^
+    (* Call component export *)
     get_blob ^^ Blob.payload_ptr_unskewed env ^^
     get_blob ^^ Blob.len env ^^
+    get_ret ^^ Blob.payload_ptr_unskewed env ^^
     E.call_import env "component" "call" ^^
-    E.call_import env "rts" "blob_of_cabi_list_u8"
+    get_ret ^^
+    E.call_import env "rts" "blob_of_cabi"
 
   (* Other prims, nullary *)
 
@@ -12831,7 +12838,7 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
 
   (* Wasm component model *)
   if !Flags.import_component then
-    E.add_func_import env "component" "call" [I32Type; I32Type] [I32Type];
+    E.add_func_import env "component" "call" [I32Type; I32Type; I32Type] [];
 
   compile_init_func env prog;
   let start_fi_o = match E.mode env with
