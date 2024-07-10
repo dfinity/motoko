@@ -16,6 +16,7 @@ actor class Cloneable(
   public func someMethod() : async () {
     state += 1;
     Prim.debugPrint(debug_show(state));
+    Prim.debugPrint(debug_show Cycles.available());
   };
 
   // our clone methods, indirecting through makeCloneable

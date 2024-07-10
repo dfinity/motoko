@@ -18,9 +18,10 @@ actor Cloner {
       await Cycles.provisional_top_up_actor(Cloner, 100_000_000_000_000);
 
       // create the original Cloneable object
-      Cycles.add<system>(10_000_000_000_000);
-      let c0 : Lib.Cloneable = await makeCloneable(0);
-      await c0.someMethod(); // prints 1
+      Cycles.add<system>(10_000_000_000_000); // FIXME: remove (arrives in `async.ml`)
+      let c0 : Lib.Cloneable = await (with cycles = 10_000_000_000_000) makeCloneable(0);
+      Cycles.add<system>(41_000_000); // FIXME: remove
+      await (with cycles = 42_000_000) c0.someMethod(); // prints 1
       Prim.debugPrint(debug_show(Prim.principalOfActor c0));
 
       // create some proper clones

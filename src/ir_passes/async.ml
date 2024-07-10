@@ -323,17 +323,16 @@ let transform prog =
       in
       let (Object, pars_fs) = T.(as_obj pars.note.typ) in
       assert Type.(pars_fs = [] || sub pars.note.typ (Obj(Object, [{ lab = "cycles"; typ = nat; src = empty_src}])));
-      (*assert T.(as_obj _FIXME.note.typ = (Object, []));*)
       let hasCycles = Type.(sub pars.note.typ (Obj(Object, [{ lab = "cycles"; typ = nat; src = empty_src}]))) in
-      let addCycles = function
+      let storeCycles = function
         | true -> fun decs ->
-                  expD (primE SystemCyclesAddPrim [dotE pars "cycles" T.nat]) :: decs
+                  expD T.(dotE pars "cycles" nat |> assignE (var "@cycles" (Mut nat))) :: decs
         | false -> fun decs -> decs in
       (blockE (
         letP (tupVarsP [nary_async; nary_reply; reject]) def ::
         let_eta exp1' (fun v1 ->
           let_seq ts1 exp2' (fun vs ->
-            addCycles hasCycles [ expD (ic_callE v1 (seqE (List.map varE vs)) (varE nary_reply) (varE reject)) ]
+            storeCycles hasCycles [ expD (ic_callE v1 (seqE (List.map varE vs)) (varE nary_reply) (varE reject)) ]
            )
           )
          )
