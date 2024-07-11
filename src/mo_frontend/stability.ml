@@ -49,7 +49,7 @@ let match_stab_sig tfs1 tfs2 : unit Diag.result =
       | tf1 :: tfs1', [] ->
         (* dropping fields is allowed, but with a warning *)
         warning_discard s tf1;
-        Some ()
+        go tfs1' []
       | tf1::tfs1', tf2::tfs2' ->
         (match Type.compare_field tf1 tf2 with
          | 0 ->
