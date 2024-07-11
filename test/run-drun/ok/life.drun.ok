@@ -35,7 +35,6 @@ O      O     O     O O O       O
      OO OO        OOO           
     O O OO       O              
 
-Ok: Reply: 0x4449444c0000
 debug.print: upgraded!
 ingress Completed: Reply: 0x4449444c0000
 debug.print: 
@@ -72,7 +71,6 @@ O      O     O     O O O       O
      OO OO        OOO           
     O O OO       O              
 
-Ok: Reply: 0x4449444c0000
 ingress Completed: Reply: 0x4449444c0000
 debug.print: 
      O O  O    O                
@@ -108,7 +106,6 @@ O O            O       OO   O OO
  O  O     O  O  O            O  
     O O  O O  OO                
 
-Ok: Reply: 0x4449444c0000
 debug.print: upgraded!
 ingress Completed: Reply: 0x4449444c0000
 debug.print: 
@@ -145,7 +142,6 @@ O O            O       OO   O OO
  O  O     O  O  O            O  
     O O  O O  OO                
 
-Ok: Reply: 0x4449444c0000
 ingress Completed: Reply: 0x4449444c0000
 debug.print: 
      O     O  OO         O      
@@ -181,7 +177,6 @@ O O
 OO  O OO  O  O  O            OO 
     O O  O O  OOO               
 
-Ok: Reply: 0x4449444c0000
 debug.print: upgraded!
 ingress Completed: Reply: 0x4449444c0000
 debug.print: 
@@ -218,8 +213,13 @@ O O
 OO  O OO  O  O  O            OO 
     O O  O O  OOO               
 
-Ok: Reply: 0x4449444c0000
 ingress Completed: Reply: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
 debug.print: 
 O                               
    OOO                          

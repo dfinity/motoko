@@ -5,10 +5,8 @@ debug.print: init'ed 0
 debug.print: postupgrade 0
 ingress Completed: Reply: 0x4449444c0000
 debug.print: a
-Ok: Reply: 0x4449444c0000
 ingress Completed: Reply: 0x4449444c0000
 debug.print: aa
-Ok: Reply: 0x4449444c0000
 ingress Completed: Reply: 0x4449444c0000
 debug.print: preupgrade 0
 debug.print: init'ed 1
@@ -16,15 +14,17 @@ debug.print: postupgrade 1
 ingress Completed: Reply: 0x4449444c0000
 debug.print: 3
 debug.print: aaa
-Ok: Reply: 0x4449444c0000
 ingress Completed: Reply: 0x4449444c0000
 debug.print: 4
 debug.print: aaa
-Ok: Reply: 0x4449444c0000
 debug.print: preupgrade 1
 debug.print: init'ed 2
 debug.print: postupgrade 2
 ingress Completed: Reply: 0x4449444c0000
-Ok: Reply: 0x4449444c0000
 ingress Completed: Reply: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
 Ok: Reply: 0x4449444c0000
