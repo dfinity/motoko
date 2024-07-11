@@ -11783,7 +11783,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | ICCallerPrim, [] ->
     SR.Vanilla, IC.caller env
 
-  | ICCallPrim _, [f;e;k;r] ->
+  | ICCallPrim setup, [f;e;k;r] ->
     SR.unit, begin
     (* TBR: Can we do better than using the notes? *)
     let _, _, _, ts1, _ = Type.as_func f.note.Note.typ in
@@ -11792,7 +11792,9 @@ and compile_prim_invocation (env : E.t) ae p es at =
     let (set_arg, get_arg) = new_local env "arg" in
     let (set_k, get_k) = new_local env "k" in
     let (set_r, get_r) = new_local env "r" in
-    let add_cycles = Internals.add_cycles env ae in
+    let add_cycles = match setup with
+      | None -> Internals.add_cycles env ae
+      | Some exp -> compile_exp_vanilla env ae exp ^^ G.i Drop in
     compile_exp_vanilla env ae f ^^ set_meth_pair ^^
     compile_exp_vanilla env ae e ^^ set_arg ^^
     compile_exp_vanilla env ae k ^^ set_k ^^

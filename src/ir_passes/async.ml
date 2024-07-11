@@ -328,11 +328,18 @@ let transform prog =
         | true -> fun decs ->
                   expD T.(dotE pars "cycles" nat |> assignE (var "@cycles" (Mut nat))) :: decs
         | false -> fun decs -> decs in
+
+
+      let setup = if hasCycles
+        then Some (primE SystemCyclesAddPrim [dotE pars "cycles" T.nat])
+        else None in
+                                                                             
+
       (blockE (
         letP (tupVarsP [nary_async; nary_reply; reject]) def ::
         let_eta exp1' (fun v1 ->
           let_seq ts1 exp2' (fun vs ->
-              storeCycles hasCycles [ expD (ic_callE None(*FIXME*) v1 (seqE (List.map varE vs)) (varE nary_reply) (varE reject)) ]
+              storeCycles false [ expD (ic_callE setup v1 (seqE (List.map varE vs)) (varE nary_reply) (varE reject)) ]
            )
           )
          )

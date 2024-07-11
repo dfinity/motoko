@@ -141,7 +141,7 @@ val seqE : exp list -> exp
 val (-->) : var -> exp -> exp
 val (-->*) : var list -> exp -> exp (* n-ary local *)
 val forall : typ_bind list -> exp -> exp (* generalization *)
-val (-*-) : exp -> exp -> exp       (* application *)
+val (-*-) : exp -> exp -> exp (* application *)
 
 (* Objects *)
 
