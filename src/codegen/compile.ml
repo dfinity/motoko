@@ -11255,20 +11255,20 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
   | OtherPrim "wit:component:call", [e] ->
     assert !Flags.import_component;
-    SR.UnboxedWord32 Type.Nat32,
+    SR.Vanilla,
     (* Read blob pointer and length *)
     let set_blob, get_blob = new_local env "blob" in
     compile_exp_as env ae SR.Vanilla e ^^ set_blob ^^
     (* Allocate return value *)
     let set_ret, get_ret = new_local env "ret" in
-    (* TODO: optimize *)
+    (* TODO: optimize? *)
     Blob.lit env "\x00\x00" ^^ set_ret ^^
     (* Call component export *)
     get_blob ^^ Blob.payload_ptr_unskewed env ^^
     get_blob ^^ Blob.len env ^^
     get_ret ^^ Blob.payload_ptr_unskewed env ^^
     E.call_import env "component" "call" ^^
-    get_ret ^^
+    get_ret ^^ Blob.payload_ptr_unskewed env ^^
     E.call_import env "rts" "blob_of_cabi"
 
   (* Other prims, nullary *)

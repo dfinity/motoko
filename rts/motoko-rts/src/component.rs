@@ -6,16 +6,18 @@ use crate::{
     types::Value,
     Bytes,
 };
+use alloc as alloc_crate;
+use core::convert::TryInto;
 use motoko_rts_macros::ic_mem_fn;
 
 /// Convert a Canonical ABI `list<u8>` pointer to a Motoko `Blob`.
 #[ic_mem_fn]
-unsafe fn blob_of_cabi<M: Memory>(mem: &mut M, ret: *const u32) -> Value {
-    let items = *ret as *const u8; // Note: 32-bit address
+unsafe fn blob_of_cabi<M: Memory>(mem: &mut M, ret: *const usize) -> Value {
+    let items = *ret as *const u8;
     let len = *ret.add(1);
 
-    // TODO: reuse memory space from `cabi_realloc`?
-    let value = alloc_blob(mem, Bytes(len));
+    // TODO: reuse Blob from `cabi_realloc`?
+    let value = alloc_blob(mem, Bytes(len.try_into().unwrap())); // Checked conversion from `usize` to `u32`
     let blob = value.as_blob_mut();
     let dest = blob.payload_addr();
     for i in 0..len as usize {
@@ -34,7 +36,7 @@ unsafe fn cabi_realloc<M: Memory>(
     align: usize,
     new_len: usize,
 ) -> *mut u8 {
-    use ::alloc::alloc::{self, Layout};
+    use alloc_crate::alloc::{self, Layout};
 
     let layout;
     let ptr = if old_len == 0 {
