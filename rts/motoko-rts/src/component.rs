@@ -14,7 +14,7 @@ unsafe fn blob_of_cabi<M: Memory>(mem: &mut M, ret: *const u32) -> Value {
     let items = *ret as *const u8; // Note: 32-bit address
     let len = *ret.add(1);
 
-    // TODO: use existing Blob from `cabi_realloc`?
+    // TODO: reuse memory space from `cabi_realloc`?
     let value = alloc_blob(mem, Bytes(len));
     let blob = value.as_blob_mut();
     let dest = blob.payload_addr();
@@ -51,5 +51,5 @@ unsafe fn cabi_realloc<M: Memory>(
     if ptr.is_null() {
         unreachable!();
     }
-    return ptr;
+    ptr
 }
