@@ -480,6 +480,9 @@ let assignE v exp2 =
     note = Note.{ def with typ = T.unit; eff = eff exp2 };
   }
 
+let assignVarE v exp =
+  assignE (var v T.(Mut (typ exp |> as_immut))) exp
+
 let labelE l typ exp =
   { it = LabelE (l, typ, exp);
     at = no_region;

@@ -326,12 +326,14 @@ let transform prog =
       let hasCycles = Type.(sub pars.note.typ (Obj(Object, [{ lab = "cycles"; typ = nat; src = empty_src}]))) in
       let storeCycles = function
         | true -> fun decs ->
-                  expD T.(dotE pars "cycles" nat |> assignE (var "@cycles" (Mut nat))) :: decs
+                  expD (dotE pars "cycles" T.nat |> assignVarE "@cycles") :: decs
         | false -> fun decs -> decs in
 
 
       let setup = if hasCycles
-        then Some (primE SystemCyclesAddPrim [dotE pars "cycles" T.nat])
+        then Some (thenE
+                     (natE Mo_values.Numerics.Nat.zero |> assignVarE "@cycles")
+                     (primE SystemCyclesAddPrim [dotE pars "cycles" T.nat]))
         else None in
                                                                              
 
@@ -339,7 +341,7 @@ let transform prog =
         letP (tupVarsP [nary_async; nary_reply; reject]) def ::
         let_eta exp1' (fun v1 ->
           let_seq ts1 exp2' (fun vs ->
-              storeCycles false [ expD (ic_callE setup v1 (seqE (List.map varE vs)) (varE nary_reply) (varE reject)) ]
+              (*storeCycles false*) [ expD (ic_callE setup v1 (seqE (List.map varE vs)) (varE nary_reply) (varE reject)) ]
            )
           )
          )
