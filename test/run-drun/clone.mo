@@ -8,6 +8,7 @@ actor Cloner {
    // passing itself as first argument, using available funds
    public shared func makeCloneable(init : Nat): async Lib.Cloneable {
       let accepted = Cycles.accept<system>(Cycles.available());
+      Prim.debugPrint(debug_show {accepted});
       Cycles.add<system>(accepted); // FIXME: remove
       await (with cycles = accepted) Lib.Cloneable(makeCloneable, init);
    };
