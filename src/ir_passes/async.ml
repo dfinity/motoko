@@ -332,7 +332,7 @@ let transform prog =
         letP (tupVarsP [nary_async; nary_reply; reject]) def ::
         let_eta exp1' (fun v1 ->
           let_seq ts1 exp2' (fun vs ->
-            storeCycles hasCycles [ expD (ic_callE v1 (seqE (List.map varE vs)) (varE nary_reply) (varE reject)) ]
+              storeCycles hasCycles [ expD (ic_callE None(*FIXME*) v1 (seqE (List.map varE vs)) (varE nary_reply) (varE reject)) ]
            )
           )
          )
