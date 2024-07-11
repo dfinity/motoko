@@ -323,13 +323,8 @@ let transform prog =
         new_nary_async_reply ts2
       in
       let (Object, pars_fs) = T.(as_obj pars.note.typ) in
-      assert Type.(pars_fs = [] || sub pars.note.typ (Obj(Object, [{ lab = "cycles"; typ = nat; src = empty_src}])));
       let hasCycles = Type.(sub pars.note.typ (Obj(Object, [{ lab = "cycles"; typ = nat; src = empty_src}]))) in
-      let storeCycles = function
-        | true -> fun decs ->
-                  expD (dotE pars "cycles" T.nat |> assignVarE "@cycles") :: decs
-        | false -> fun decs -> decs in
-
+      assert (pars_fs = [] || hasCycles); (* FIXME: remove *)
 
       let setup = if hasCycles
         then Some (thenE
@@ -342,7 +337,7 @@ let transform prog =
         letP (tupVarsP [nary_async; nary_reply; reject]) def ::
         let_eta exp1' (fun v1 ->
           let_seq ts1 exp2' (fun vs ->
-              (*storeCycles false*) [ expD (ic_callE setup v1 (seqE (List.map varE vs)) (varE nary_reply) (varE reject)) ]
+              [ expD (ic_callE setup v1 (seqE (List.map varE vs)) (varE nary_reply) (varE reject)) ]
            )
           )
          )
