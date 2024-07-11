@@ -93,7 +93,7 @@ and prim = function
   | IcUrlOfBlob       -> Atom "IcUrlOfBlob"
   | SelfRef t         -> "SelfRef"    $$ [typ t]
   | SystemTimePrim    -> Atom "SystemTimePrim"
-  | SystemCyclesAddPrim -> Atom "SystemCyclesAcceptPrim"
+  | SystemCyclesAddPrim -> Atom "SystemCyclesAddPrim"
   | SystemCyclesAcceptPrim -> Atom "SystemCyclesAcceptPrim"
   | SystemCyclesAvailablePrim -> Atom "SystemCyclesAvailablePrim"
   | SystemCyclesBalancePrim -> Atom "SystemCyclesBalancePrim"
