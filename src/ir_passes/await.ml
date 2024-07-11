@@ -594,7 +594,7 @@ and t_comp_unit context = function
         let e = fresh_var "e" T.catch in
         ProgU [
           funcD throw e (assertE (falseE ()));
-          expD (c_block context' ds (tupE []) (meta (T.unit) (fun v1 -> tupE [])))
+          expD (c_block context' ds (tupE []) (meta T.unit (fun v1 -> tupE [])))
         ]
     end
   | ActorU (as_opt, ds, ids, { meta = m; preupgrade; postupgrade; heartbeat; timer; inspect}, t) ->
@@ -619,7 +619,7 @@ and t_ignore_throw context exp =
      { (blockE [
           funcD throw e (tupE[]);
         ]
-        (c_exp context' exp (meta (T.unit) (fun v1 -> tupE []))))
+        (c_exp context' exp (meta T.unit (fun v1 -> tupE []))))
        (* timer logic requires us to preserve any source location,
           or timer won't be initialized in compile.ml *)
        with at = exp.at
