@@ -1258,8 +1258,9 @@ module RTS = struct
     E.add_func_import env "rts" "stream_split" [I32Type] [I32Type];
     E.add_func_import env "rts" "stream_shutdown" [I32Type] [];
     E.add_func_import env "rts" "stream_reserve" [I32Type; I32Type] [I32Type];
-    E.add_func_import env "rts" "blob_of_cabi" [I32Type] [I32Type];
-    E.add_func_import env "rts" "cabi_realloc" [I32Type; I32Type; I32Type; I32Type] [I32Type];
+    if !Flags.import_component then (
+      E.add_func_import env "rts" "blob_of_cabi" [I32Type] [I32Type];
+      E.add_func_import env "rts" "cabi_realloc" [I32Type; I32Type; I32Type; I32Type] [I32Type]);
     if !Flags.gc_strategy = Flags.Incremental then
       incremental_gc_imports env
     else
@@ -5260,7 +5261,6 @@ module IC = struct
       edesc = nr (FuncExport (nr post_upgrade_fi))
     })
 
-
   let get_self_reference env =
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
@@ -6339,19 +6339,6 @@ module RTS_Exports = struct
       name = Lib.Utf8.decode "moc_stable_mem_set_version";
       edesc = nr (FuncExport (nr moc_stable_mem_set_version_fi))
     });
-
-    let cabi_realloc =
-      E.add_fun env "cabi_realloc" (
-        Func.of_body env ["ptr", I32Type; "len", I32Type; "align", I32Type; "new_len", I32Type] [I32Type]
-          (fun env ->
-            E.call_import env "rts" "cabi_realloc"
-          )
-        )
-    in
-    E.add_export env (nr {
-      name = Lib.Utf8.decode "cabi_realloc";
-      edesc = nr (FuncExport (nr cabi_realloc))
-    })
 
 end (* RTS_Exports *)
 
@@ -12850,7 +12837,7 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
   IC.system_imports env;
   RTS.system_imports env;
 
-  (* Wasm component model *)
+  (* Wasm Component Model *)
   if !Flags.import_component then
     E.add_func_import env "component" "call" [I32Type; I32Type; I32Type] [];
 

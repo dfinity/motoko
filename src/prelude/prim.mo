@@ -267,7 +267,7 @@ func arctan2(y : Float, x : Float) : Float = (prim "fatan2" : (Float, Float) -> 
 func exp(f : Float) : Float = (prim "fexp" : Float -> Float) f;
 func log(f : Float) : Float = (prim "flog" : Float -> Float) f;
 
-// Wasm component model functions
+// Wasm Component Model functions
 
 /// @deprecated M0200
 func componentCall(value : Blob) : Blob = (prim "wit:component:call" : Blob -> Blob) value;
