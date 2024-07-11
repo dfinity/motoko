@@ -255,9 +255,9 @@ let replace_obj_pat pfs pats =
 
 (* Helper for transforming prims, without missing embedded typs and ids *)
 
-let map_prim t_typ t_id p =
+let map_prim t_typ t_id t_exp p =
   match p with
-  | CallPrim (ts, _FIXME) -> CallPrim (List.map t_typ ts, _FIXME)
+  | CallPrim (ts, par) -> CallPrim (List.map t_typ ts, t_exp par)
   | UnPrim (ot, op) -> UnPrim (t_typ ot, op)
   | BinPrim (ot, op) -> BinPrim (t_typ ot, op)
   | RelPrim (ot, op) -> RelPrim (t_typ ot, op)
@@ -307,9 +307,9 @@ let map_prim t_typ t_id p =
   | ICPerformGC
   | ICRejectPrim
   | ICCallerPrim
-  | ICCallPrim _ (* FIXME: how to transform this? *)
   | ICCallRawPrim
   | ICMethodNamePrim -> p
+  | ICCallPrim setup -> ICCallPrim (Option.map t_exp setup)
   | ICStableWrite t -> ICStableWrite (t_typ t)
   | ICStableRead t -> ICStableRead (t_typ t)
   | ICStableSize t -> ICStableSize (t_typ t)
