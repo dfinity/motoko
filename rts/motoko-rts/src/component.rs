@@ -13,7 +13,7 @@ use motoko_rts_macros::ic_mem_fn;
 /// Convert a Canonical ABI `list<u8>` pointer to a Motoko `Blob`.
 #[ic_mem_fn]
 unsafe fn blob_of_cabi<M: Memory>(mem: &mut M, ret: *const usize) -> Value {
-    let items = *ret as *const u8;
+    let content = *ret as *const u8;
     let len = *ret.add(1);
 
     // TODO: reuse Blob from `cabi_realloc`?
@@ -21,7 +21,7 @@ unsafe fn blob_of_cabi<M: Memory>(mem: &mut M, ret: *const usize) -> Value {
     let blob = value.as_blob_mut();
     let dest = blob.payload_addr();
     for i in 0..len as usize {
-        *dest.add(i) = *items.add(i);
+        *dest.add(i) = *content.add(i);
     }
     allocation_barrier(value)
 }

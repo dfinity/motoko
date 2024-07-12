@@ -11262,7 +11262,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     (* Allocate return value *)
     let set_ret, get_ret = new_local env "ret" in
     (* TODO: optimize? *)
-    Blob.lit env "\x00\x00" ^^ set_ret ^^
+    Blob.lit env "\x00\x00\x00\x00\x00\x00\x00\x00" ^^ set_ret ^^ (* pointer, length *)
     (* Call component export *)
     get_blob ^^ Blob.payload_ptr_unskewed env ^^
     get_blob ^^ Blob.len env ^^
