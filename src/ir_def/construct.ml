@@ -363,12 +363,15 @@ let rec conjE : Ir.exp list -> Ir.exp = function
   | [x] -> x
   | (x::xs) -> andE x (conjE xs)
 
-let dotE exp name typ =
+let dotE exp fname typ =
+  let field = function
+    | {it={name;var}; _} when fname = name -> Some var
+    | _ -> None in
   match exp.it with
-  | NewObjE (_, [{it={name=n;var=v}; _}], _) when n = name -> varE (var v typ)
-  | BlockE ([{it=LetD ({it=VarP v}, _)}] as defs, {it=NewObjE (_, [{it={name=n;var=v'}; _}], _)}) when v = v' && n = name -> { exp with it = BlockE (defs, varE (var v typ)) }
+  | NewObjE (_, fs, _) when List.find_map field fs <> None -> var (List.find_map field fs |> Option.get) typ |> varE
+  | BlockE ([{it=LetD ({it=VarP v}, _)}] as defs, {it=NewObjE (_, [{it={name;var=v'}; _}], _)}) when v = v' && name = fname -> { exp with it = BlockE (defs, varE (var v typ)) }
   | _ ->
-  { it = PrimE (DotPrim name, [exp]);
+  { it = PrimE (DotPrim fname, [exp]);
     at = no_region;
     note = Note.{ def with
       typ = typ;
