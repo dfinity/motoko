@@ -364,6 +364,10 @@ let rec conjE : Ir.exp list -> Ir.exp = function
   | (x::xs) -> andE x (conjE xs)
 
 let dotE exp name typ =
+  match exp.it with
+  | NewObjE (_, [{it={name=n;var=v}; _}], _) when n = name -> varE (var v typ)
+  | BlockE ([{it=LetD ({it=VarP v}, _)}] as defs, {it=NewObjE (_, [{it={name=n;var=v'}; _}], _)}) when v = v' && n = name -> { exp with it = BlockE (defs, varE (var v typ)) }
+  | _ ->
   { it = PrimE (DotPrim name, [exp]);
     at = no_region;
     note = Note.{ def with
