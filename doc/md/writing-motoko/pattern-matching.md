@@ -18,7 +18,7 @@ The following table summarizes the different ways of pattern matching.
 | Named                      | `age`, `x`                      | Everywhere | No                                    | Introduces identifiers into a new scope  |
 | Wildcard                   | `_`                             | Everywhere | No                                    |                                          |
 | Typed                      | `age : Nat`                     | Everywhere | Conditional                           |                                          |
-| Option                     | `?0`, `?val`                    | Everywhere | Yes                                   |                                          |
+| Option                     | `?0`, `?val`                    | Everywhere | Yes                                   | See also [option blocks](#option-blocks-for-streamlined-processing-of-optional-data) |
 | Tuple                      | `( component0, component1, …​ )` | Everywhere | Conditional                           | Must have at least two components        |
 | Object                     | `{ fieldA; fieldB; …​ }`         | Everywhere | Conditional                           | Allowed to mention a subset of fields    |
 | Field                      | `age`, `count = 0`              | Object     | Conditional                           | `age` is short for `age = age`           |
