@@ -57,7 +57,7 @@ For precise language definitions of primitive and non-primitive values, see the 
 
 Objects are aggregate data made from *labeled* constituent data. In their most general form, objects can contain named values (`let` and `var`) as well as methods (`func`) that act on them. Objects are written with the leading keyword `object` followed by an optional name and the block comprising its constituents. Only `public` constituents contribute to the object's type.
 
-In many cases, objects are used as simple containers of data, which are referred to as *records*. When building records, Motoko has a simplified syntax to offer where semicolon-separated label fields are placed in braces. The labels are identifiers (with a leading `var` when the field is mutable), followed by `=` and the initial value. All fields are public and contribute to the record's type.
+In many cases, objects are used as simple containers of data, which are referred to as *records*. When building records, Motoko has a simplified syntax to offer where semicolon-separated named fields are placed in braces. The labels are identifiers (with a leading `var` when the field is mutable), followed by `=` and the initial value. All fields are public and contribute to the record's type.
 
 Furthermore, syntactic forms are provided for building new records from existing ones, adding new fields, or replacing existing ones. The *base* records and objects are separated by the `and` keyword and can be followed by `with` and semicolon-separated additional (or overwriting) fields. The bases and fields are wrapped in braces, indicating record formation. When the bases have overlapping fields (considering their types), then a disambiguating field overwrite must be provided. The original bases remain unmodified, and thus we refer to this as a functional record combination and extension.
 
@@ -213,3 +213,19 @@ assert n % 2 == 0; // traps when n not even
 ```
 
 Because an assertion may succeed, and thus proceed with execution, it may only be used in context where a value of type `()` is expected.
+
+### The `system` capability
+
+Smart contracts (i.e., Motoko `actor`s) may generally contain assets that correspond to real-world value, the loss of which can be detrimental. Many such assets are mobile and can be transferred through message sending. In order for a library to be able to send a message, the corresponding function must be imported and possess an `async` (or `async*`) type. Calling such functions is only possible when the send capability is given by the callee, also having such a type.
+
+Naturally, the programmer must be careful when granting send privileges to third-party libraries (resp. functions therein) and reviewing for potential security breaches if they choose to do so.
+
+There is a special class of functions, however, that can be called from code that does not possess send capability but registers a callback that does. This kind of *capability elevation* is possible when adding timers (e.g. `setTimer` in `base`). To harden the `actor` against supply-chain attacks (malicious sends masquerading behind a capability-starved call interface to third-party code), Motoko allows to declare functions that can potentially lead to capability elevation to require a `system` capability.
+
+The `system` capability originates from the top-level actor and can be passed to functions that expect it by specifying a pseudo-type parameter `<system, ...>` which must appear at the call site. Similarly, functions demanding the `system` capability declare it in their signature:
+
+``` motoko
+func elevate<system>(ref : Int, callback : Int -> async* ()) {
+    ignore Timer.setTimer<system>(#seconds 0, func() : async () { await* callback ref })
+}
+```
