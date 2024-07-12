@@ -60,5 +60,5 @@ methods or functions that don't declare their need of system capability.
 
 For more details, see the [language manual](../reference/language-manual#type-arguments).
 
-For details on migrating code from earlier Motoko versions, see this [guide](../migration/0.11.0-migration-guide).
+For details on migrating code from earlier Motoko versions, see this [guide](../migration-guides/0.11.0-migration-guide).
 
