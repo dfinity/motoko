@@ -12,8 +12,3 @@ bang-fail.mo:18.17-18.19: type error [M0096], expression of type
   ()
 cannot produce expected type
   Nat
-bang-fail.mo:1.6-1.12: warning [M0194], unused identifier wrong1 (delete or rename to wildcard `_` or `_wrong1`)
-bang-fail.mo:5.6-5.12: warning [M0194], unused identifier wrong2 (delete or rename to wildcard `_` or `_wrong2`)
-bang-fail.mo:9.6-9.12: warning [M0194], unused identifier wrong3 (delete or rename to wildcard `_` or `_wrong3`)
-bang-fail.mo:13.6-13.12: warning [M0194], unused identifier wrong4 (delete or rename to wildcard `_` or `_wrong4`)
-bang-fail.mo:17.6-17.12: warning [M0194], unused identifier wrong5 (delete or rename to wildcard `_` or `_wrong5`)

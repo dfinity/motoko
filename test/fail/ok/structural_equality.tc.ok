@@ -32,5 +32,3 @@ and
   B
 at common supertype
   Any
-structural_equality.mo:12.6-12.10: warning [M0194], unused identifier myEq (delete or rename to wildcard `_` or `_myEq`)
-structural_equality.mo:13.6-13.11: warning [M0194], unused identifier myEq2 (delete or rename to wildcard `_` or `_myEq2`)
