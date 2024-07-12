@@ -105,6 +105,8 @@ To detect the possibility of such runtime failures, the Motoko compiler checks f
 
 ## Refutable patterns and dealing with non-matching data
 
+IMPROVE ME
+
 Developers may only be interested in specially formed data with a desire to directly handle all non-matching forms. The `let`-`else` construct is designed precisely for this purpose. Whereas the regular destructuring `let` allows to focus on a single given pattern, it invariably traps if the right-hand side data doesn't match it, which is warned at compilation. The `else` clause gives the programmer a way to deal with refuted matches, such as bailing out of the process or logging a message before trapping. As such, `let`-`else` is similar to a two-`case` `switch` in a compact form that additionally doesn't force the indentation of the processing logic following it.
 
 The below example illustrates how you can write a non-indenting `if`-`else` by resorting to a `let`-`else` in your code:
@@ -120,6 +122,6 @@ The expression (or block) following the `else` must be of type `None` signifying
 
 ## Option blocks for streamlined processing of optional data
 
-Pattern matching on optional data (of type `?T`) is a preferred technique for avoiding the dreaded `null`-exeption problems known from other languages. However, `switch`-ing  on several options can lead to tedious coding and deeply nested sources. To remedy these problems, Motoko provides *option blocks* (`do ? { ... }`) that allow safe unwrapping of options using a postfix `!` operator. Every use of the `!` in the block corresponds to a `switch` on some option, with the additional short-circuiting behavior that if `!` is applied to a `null` value, the entire block stops evaluation and immediately returns `null`.
+Pattern matching on optional data (of type `?T`) is a preferred technique for avoiding the dreaded `null`-exception problems known from other languages. However, `switch`-ing on several options can be tedious and can lead to deeply nested code. To address this issue, Motoko provides *option blocks* (`do ? { ... }`) that allow safe unwrapping of options using a postfix `!` operator. Every use of the `!` in the block corresponds to a `switch` on some option, with the additional short-circuiting behavior that if `!` is applied to a `null` value, the entire block stops evaluation and immediately returns `null`.
 
 For an example, see [option blocks and null breaks](control-flow#option-blocks-and-null-breaks).
