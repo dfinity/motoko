@@ -110,8 +110,10 @@ Developers may only be interested in specially formed data with a desire to dire
 The below example illustrates how you can write a non-indenting `if`-`else` by resorting to a `let`-`else` in your code:
 
 ``` motoko
-let true = isLoggedIn(customer) else return;
-// process message for logged-in customer
+func getName(optionalName : ?Text) : Text {
+  let ?name = optionalName else return "Unknown";
+  name
+}
 ```
 
 The expression (or block) following the `else` must be of type `None` signifying that its execution trajectory mustn't contribute to the code immediately following the `let` declaration.
@@ -119,3 +121,5 @@ The expression (or block) following the `else` must be of type `None` signifying
 ## Option blocks for streamlined processing of optional data
 
 Pattern matching on optional data (of type `?T`) is a preferred technique for avoiding the dreaded `null`-exeption problems known from other languages. However, `switch`-ing  on several options can lead to tedious coding and deeply nested sources. To remedy these problems, Motoko provides *option blocks* (`do ? { ... }`) that allow safe unwrapping of options using a postfix `!` operator. Every use of the `!` in the block corresponds to a `switch` on some option, with the additional short-circuiting behavior that if `!` is applied to a `null` value, the entire block stops evaluation and immediately returns `null`.
+
+For an example, see [option blocks and null breaks](control-flow#option-blocks-and-null-breaks).
