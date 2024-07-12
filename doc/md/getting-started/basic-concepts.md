@@ -113,7 +113,7 @@ A declaration list is not itself an expression, so you cannot declare another va
 
 :::note
 
-A particular form of blocks are provided for convenience when processing data that may be missing or incomplete. These are described under [option blocks](../writing-motoko/pattern-matching.md#option-blocks).
+A particular form of blocks are provided for convenience when processing data that may be missing or incomplete. These are described under [option blocks](../writing-motoko/pattern-matching.md#option-blocks-for-streamlined-processing-of-optional-data).
 
 :::
 
