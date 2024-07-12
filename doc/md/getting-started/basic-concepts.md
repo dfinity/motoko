@@ -55,7 +55,7 @@ For precise language definitions of primitive and non-primitive values, see the 
 
 ### Objects, records and their extension mechanisms
 
-Objects are aggregate data made from *labelled* constituent data. In their most general form, objects can contain named values (`let` and `var`) as well as methods (`func`) acting on them. Objects are written with a leading keyword `object` followed by an optional name and the block comprising its constituents. Only `public` constituents contribute to the object's type.
+Objects are aggregate data made from *labeled* constituent data. In their most general form, objects can contain named values (`let` and `var`) as well as methods (`func`) that act on them. Objects are written with the leading keyword `object` followed by an optional name and the block comprising its constituents. Only `public` constituents contribute to the object's type.
 
 In many cases objects are used as simply containers of data, which we refer to as *records*. When building records, Motoko has a simplified syntax to offer, where semicolon-separated labelled fields are placed in braces. The labels are identifiers (with a leading `var` when the field is mutable) followed by `=` and the initial value. All fields are public, and contribute to the record's type.
 
