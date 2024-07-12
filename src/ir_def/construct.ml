@@ -367,13 +367,17 @@ let rec dotE exp fname typ =
   let field = function
     | { it = {name;var}; _ } when fname = name -> Some var
     | _ -> None in
+  let needed precious = function
+    | { it = LetD ({ it = VarP id; _ }, { it = LitE _; _ }); _ }
+    | { it = VarD (id, _, { it = LitE _; _ }); _ } -> id = precious
+    | _ -> true in
   match exp.it with
   | NewObjE (_, fs, _) when List.find_map field fs <> None ->
     var (List.find_map field fs |> Option.get) typ |> varE
-  | BlockE (defs, ({ it=NewObjE (_, fs, _); _ } as obj)) ->
-    assert (List.find_map field fs <> None); (* type-safety *)
+  | BlockE (defs, ({ it = NewObjE (_, fs, _); _ } as obj)) ->
+    let [@warning "-8"] Some precious = List.find_map field fs in (* type-safety *)
     { exp with
-      it = BlockE (defs, dotE obj fname typ);
+      it = BlockE (List.filter (needed precious) defs, dotE obj fname typ);
       note = Note.{ exp.note with typ }
     }
   | _ ->
