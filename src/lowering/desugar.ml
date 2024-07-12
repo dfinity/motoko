@@ -637,7 +637,7 @@ and obj obj_typ efs bases =
   let ds', fs' = concat_map gap (T.as_obj obj_typ |> snd) |> split in
   let obj_e = newObjE T.Object (append fs fs') obj_typ in
   let decs = append base_decs (append (filter_map (fun o -> o) ds) ds') in
-  if decs = [] then obj_e.it else I.BlockE(decs, obj_e)
+  (blockE decs obj_e).it
 
 and typ_binds tbs = List.map typ_bind tbs
 
