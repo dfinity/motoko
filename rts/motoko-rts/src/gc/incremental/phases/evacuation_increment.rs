@@ -6,6 +6,7 @@ use crate::{
     },
     mem_utils::memcpy_words,
     memory::Memory,
+    stable_option::StableOption,
     types::*,
 };
 
@@ -20,13 +21,13 @@ impl<'a, M: Memory + 'a> EvacuationIncrement<'a, M> {
     pub unsafe fn start_phase(state: &mut State) {
         debug_assert!(state.iterator_state.is_none());
         let heap = &mut state.partitioned_heap;
-        state.iterator_state = Some(PartitionedHeapIterator::new(heap));
+        state.iterator_state = StableOption::Some(PartitionedHeapIterator::new(heap));
         heap.plan_evacuations();
     }
 
     pub unsafe fn complete_phase(state: &mut State) {
         debug_assert!(Self::evacuation_completed(state));
-        state.iterator_state = None;
+        state.iterator_state = StableOption::None;
     }
 
     pub unsafe fn evacuation_completed(state: &State) -> bool {

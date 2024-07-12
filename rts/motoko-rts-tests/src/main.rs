@@ -8,6 +8,7 @@ mod gc;
 mod leb128;
 mod memory;
 mod principal_id;
+mod stable_option;
 mod text;
 mod utf8;
 
@@ -28,6 +29,7 @@ fn main() {
         gc::test();
         leb128::test();
         principal_id::test();
+        stable_option::test();
         text::test();
         utf8::test();
     }
