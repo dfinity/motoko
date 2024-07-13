@@ -363,6 +363,13 @@ let rec conjE : Ir.exp list -> Ir.exp = function
   | [x] -> x
   | (x::xs) -> andE x (conjE xs)
 
+
+
+
+type dl = int Freevars.M.t
+module MI = Env.Make(Int)
+
+
 let rec dotE exp fname typ =
   let field = function
     | { it = {name;var}; _ } when fname = name -> Some var
@@ -374,16 +381,29 @@ let rec dotE exp fname typ =
     | { it = PrimE (( DotPrim _ | ActorDotPrim _ | ProjPrim _
                     | CastPrim _ | OptPrim | TagPrim _ | ArrayPrim _
                     | TupPrim ), exps); _ } -> List.for_all trapless exps
+    | _ -> false
+  and ltrapless = function
+    | { it = (VarLE _); _ } -> true
     | _ -> false in
   let needed precious = function
     | { it = LetD ({ it = VarP id; _ }, exp); _ }
     | { it = VarD (id, _, exp); _ } when trapless exp -> id = precious
+    | { it = RefD (id, _, lexp); _ } when ltrapless lexp -> id = precious
     | _ -> true in
+
+
+  let fds = List.mapi (fun i d -> i, Freevars.dec d) in
+
   match exp.it with
   | NewObjE (_, fs, _) when List.find_map field fs <> None ->
     var (List.find_map field fs |> Option.get) typ |> varE
   | BlockE (defs, ({ it = NewObjE (_, fs, _); _ } as obj)) ->
     let [@warning "-8"] Some precious = List.find_map field fs in (* type-safety *)
+    let fds = fds defs in
+    (* construct maps from line number to free variables and
+       from defs to line numbers *)
+    let dls = List.map (fun (i, (_, d)) -> Freevars.M.map (fun _ -> i) d) fds in
+    let lfs = List.concat_map (fun (i, fd) -> let fs = Freevars.close fd in (Freevars.M.keys fs |> List.map (fun f -> (i, f)))) fds |> MI.from_list in
     { exp with
       it = BlockE (List.filter (needed precious) defs, dotE obj fname typ);
       note = Note.{ exp.note with typ }
