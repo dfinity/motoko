@@ -378,10 +378,10 @@ let rec dotE exp fname typ =
   and ltrapless = function
     | { it = (VarLE _); _ } -> true
     | _ -> false in
-  let needed precious = function
+  let needed precious l = function
     | { it = LetD ({ it = VarP id; _ }, exp); _ }
-    | { it = VarD (id, _, exp); _ } when trapless exp -> id = precious
-    | { it = RefD (id, _, lexp); _ } when ltrapless lexp -> id = precious
+    | { it = VarD (id, _, exp); _ } when trapless exp -> precious id l
+    | { it = RefD (id, _, lexp); _ } when ltrapless lexp -> precious id l
     | _ -> true in
   match exp.it with
   | NewObjE (_, fs, _) when List.find_map field fs <> None ->
@@ -405,15 +405,15 @@ let rec dotE exp fname typ =
       let preciousLines' =
         LS.elements preciousLines
         |> concat_map (fun l -> FM.find l lfs)
-        |> map (fun f -> Freevars.M.find_opt f dls)
-        |> filter_map (fun l -> l) (* FIXME: JOIN?? *)
+        |> filter_map (fun f -> Freevars.M.find_opt f dls)
         |> LS.of_list in
       if LS.(diff preciousLines' preciousLines |> is_empty) then preciousLines
       else fix preciousLines'
     in
-    (* FIXME: REMOVE! *)ignore (Freevars.M.find_opt precious dls |> Option.to_list |> LS.of_list |> fix);
+    let (* FIXME: Compute this lazily? *)preciousLines = Freevars.M.find_opt precious dls |> Option.to_list |> LS.of_list |> fix in
+    let is_precious id l = id = precious || LS.mem l preciousLines in
     { exp with
-      it = BlockE (filter (needed precious) defs, dotE obj fname typ);
+      it = BlockE (filteri (needed is_precious) defs, dotE obj fname typ);
       note = Note.{ exp.note with typ }
     }
   | _ ->
