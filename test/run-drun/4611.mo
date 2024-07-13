@@ -18,6 +18,7 @@ actor A {
             fuzz = "Noise";
             effectful = call();
             evaluated = rec;
+            record = { rec; bool };
             recdot = rec.text;
             tuple = (rec.text, char);
             tupledot = (rec.text, char).1;

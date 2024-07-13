@@ -368,7 +368,7 @@ let rec dotE exp fname typ =
     | { it = {name;var}; _ } when fname = name -> Some var
     | _ -> None in
   let rec trapless = function
-    | { it = (LitE _ | VarE _); _ } -> true
+    | { it = (LitE _ | VarE _ | NewObjE _); _ } -> true
     | { it = IfE (i, t, e); _ } -> List.for_all trapless [i; t; e]
     | { it = LabelE (_, _, e); _ } -> trapless e
     | { it = PrimE (( DotPrim _ | ActorDotPrim _ | ProjPrim _
