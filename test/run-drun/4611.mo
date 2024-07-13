@@ -1,6 +1,7 @@
 import Prim "mo:⛔";
 
-actor {
+actor A {
+    public func method() {};
     var bool = true;
     let text = "Hello World!";
     let char = 'C';
@@ -17,7 +18,13 @@ actor {
             fuzz = "Noise";
             effectful = call();
             evaluated = rec;
-            recdot = rec.text
+            recdot = rec.text;
+            tuple = (rec.text, char);
+            tupledot = (rec.text, char).1;
+            option = ?char;
+            array = [char, "D"];
+            //actordot = A.method;
+            tag = #tag rec;
         }.char
     };
     let summary = debug_show { rec; mrec; nrec };

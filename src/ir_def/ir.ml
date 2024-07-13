@@ -127,7 +127,7 @@ and prim =
   | IdxPrim                           (* array indexing *)
   | BreakPrim of id                   (* break *)
   | RetPrim                           (* return *)
-  | AwaitPrim of Type.async_sort       (* await/await* *)
+  | AwaitPrim of Type.async_sort      (* await/await* *)
   | AssertPrim                        (* assertion *)
   | ThrowPrim                         (* throw *)
   | ShowPrim of Type.typ              (* debug_show *)

@@ -368,9 +368,10 @@ let rec dotE exp fname typ =
     | { it = {name;var}; _ } when fname = name -> Some var
     | _ -> None in
   let rec trapless = function
-    | { it = LitE _; _ }
-    | { it = VarE _; _ } -> true
-    | { it = PrimE (DotPrim _, [exp]); _ } -> trapless exp
+    | { it = (LitE _ | VarE _); _ } -> true
+    | { it = PrimE (( DotPrim _ | ActorDotPrim _ | ProjPrim _
+                    | CastPrim _ | OptPrim | TagPrim _ | ArrayPrim _
+                    | TupPrim ), exps); _ } -> List.for_all trapless exps
     | _ -> false in
   let needed precious = function
     | { it = LetD ({ it = VarP id; _ }, exp); _ }
