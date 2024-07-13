@@ -20,6 +20,7 @@ actor A {
             evaluated = rec;
             record = { rec; bool };
             recdot = rec.text;
+            objdot = (object { let (a, c) = (42, 25); public let b = a }).b;
             tuple = (rec.text, char);
             tupledot = (rec.text, char).1;
             option = ?char;
