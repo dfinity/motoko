@@ -389,13 +389,13 @@ let rec dotE exp fname typ =
   | BlockE (defs, ({ it = NewObjE (_, fs, _); _ } as obj)) ->
     let open List in
     let [@warning "-8"] Some precious = find_map field fs in (* type-safety *)
-    let fds = mapi (fun i d -> i, Freevars.dec d) defs in
+    let fds = map Freevars.dec defs in
     (* construct maps from line number to free variables and
        from defs to line numbers *)
-    let dls = map (fun (i, (_, d)) -> Freevars.M.map (fun _ -> i) d) fds
+    let dls = mapi (fun i (_, d) -> Freevars.M.map (fun _ -> i) d) fds
               |> Freevars.M.disjoint_unions in
     let module FM = Env.Make(Int) in
-    let lfs = map (fun (i, fd) ->
+    let lfs = mapi (fun i fd ->
                   let fs = Freevars.close fd in
                   (Freevars.M.keys fs |> fun fs -> (i, fs))) fds
               |> FM.from_list in
