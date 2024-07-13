@@ -22,9 +22,12 @@ actor A {
             tuple = (rec.text, char);
             tupledot = (rec.text, char).1;
             option = ?char;
-            array = [char, "D"];
-            //actordot = A.method;
+            array = [char, 'D'];
+            //actordot = A.method : shared () -> ();
             tag = #tag rec;
+            annot = ?char : ?Char;
+            ite = if bool text else "Nope";
+            labeled = label l ();
         }.char
     };
     let summary = debug_show { rec; mrec; nrec };

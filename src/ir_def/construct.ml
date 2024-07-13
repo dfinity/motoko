@@ -369,6 +369,8 @@ let rec dotE exp fname typ =
     | _ -> None in
   let rec trapless = function
     | { it = (LitE _ | VarE _); _ } -> true
+    | { it = IfE (i, t, e); _ } -> List.for_all trapless [i; t; e]
+    | { it = LabelE (_, _, e); _ } -> trapless e
     | { it = PrimE (( DotPrim _ | ActorDotPrim _ | ProjPrim _
                     | CastPrim _ | OptPrim | TagPrim _ | ArrayPrim _
                     | TupPrim ), exps); _ } -> List.for_all trapless exps
