@@ -29,6 +29,7 @@ actor A {
             annot = ?char : ?Char;
             ite = if bool text else "Nope";
             labeled = label l ();
+            function = func () = ();
         }.char
     };
     let summary = debug_show { rec; mrec; nrec };
