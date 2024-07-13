@@ -367,9 +367,14 @@ let rec dotE exp fname typ =
   let field = function
     | { it = {name;var}; _ } when fname = name -> Some var
     | _ -> None in
+  let rec trapless = function
+    | { it = LitE _; _ }
+    | { it = VarE _; _ } -> true
+    | { it = PrimE (DotPrim _, [exp]); _ } -> trapless exp
+    | _ -> false in
   let needed precious = function
-    | { it = LetD ({ it = VarP id; _ }, { it = LitE _; _ }); _ }
-    | { it = VarD (id, _, { it = LitE _; _ }); _ } -> id = precious
+    | { it = LetD ({ it = VarP id; _ }, exp); _ }
+    | { it = VarD (id, _, exp); _ } when trapless exp -> id = precious
     | _ -> true in
   match exp.it with
   | NewObjE (_, fs, _) when List.find_map field fs <> None ->
