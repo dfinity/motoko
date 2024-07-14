@@ -10590,8 +10590,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     let call_as_prim = match fun_sr, sort with
       | SR.Const (_, Const.Fun (mk_fi, Const.PrimWrapper prim)), _ ->
          begin match n_args, e2.it with
-         | 0, _ -> true
-         | 1, _ -> true
+         | (0 | 1), _ -> true
          | n, PrimE (TupPrim, es) when List.length es = n -> true
          | _, _ -> false
          end
