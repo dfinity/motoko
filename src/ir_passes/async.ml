@@ -78,16 +78,9 @@ let new_nary_async_reply ts =
   (* construct the n-ary async value, coercing the continuation, if necessary *)
   let nary_async =
     let coerce u =
-      let v = fresh_var "v" u in
       let k = fresh_var "k" (contT u T.unit) in
-      let r = fresh_var "r" (err_contT T.unit) in
-      [k; r] -->* (
-        varE unary_async -*-
-          (tupE [
-             varE (var "@coerce_cont" (k --> ([v] -->* unitE()) |> typ)) -*- varE k;
-             varE r
-          ])
-      )
+      varE (var "@coerce_and_cont" (unary_async --> ([k; fail] -->* (varE unary_async -*- tupE [varE unary_fulfill; varE fail])) |> typ))
+      -*- varE unary_async
     in
     match ts with
     | [t1] ->
