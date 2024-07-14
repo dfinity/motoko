@@ -307,6 +307,8 @@ func @getSystemRefund() : @Refund {
   return (prim "cyclesRefunded" : () -> Nat) ();
 };
 
+func @coerce_cont(k : () -> ()) : @Cont<()> = func() = k ();
+
 func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>) {
   let w_null = func(r : @Refund, t : T) { };
   let r_null = func(_ : Error) {};
