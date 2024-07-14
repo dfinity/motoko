@@ -84,7 +84,7 @@ let new_nary_async_reply ts =
       [k; r] -->* (
         varE unary_async -*-
           (tupE [
-             [v] -->* (varE k -*- varE v);
+             varE (var "@coerce_cont" (k --> ([v] -->* unitE()) |> typ)) -*- varE k;
              varE r
           ])
       )
