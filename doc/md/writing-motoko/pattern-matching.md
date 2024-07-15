@@ -105,7 +105,6 @@ To detect the possibility of such runtime failures, the Motoko compiler checks f
 
 ## Refutable patterns and dealing with non-matching data
 
-IMPROVE ME
 
 The `let`-`else` construct in Motoko is designed for developers who want to work with a specific pattern of data while  handling all non-matching data on a different control-flow path. Unlike the standard destructuring `let`, which traps (and triggers a compile-time warning) when the data doesn't match the expected pattern, `let`-`else` provides a way to manage refuted matches. This construct allows programmers to gracefully handle mismatches, such as exiting the current function or logging a message before trapping.
 
