@@ -66,18 +66,6 @@ actor a {
        Prim.debugPrint a;
        Prim.debugPrint b;
     };
-<<<<<<< Updated upstream
-=======
-    Prim.debugPrint (debug_show (await p()));
-    Prim.debugPrint (debug_show (await async (1, "two", '3')));
-    await async ();
-    type unit = ();
-    func u() : unit {};
-    await async u();
-    type triple = (Nat, Text, Char);
-    func t(n : Nat, t : Text, c : Char) : triple = (n, t, c);
-    Prim.debugPrint (debug_show (await async t(1, "two", '3')));
->>>>>>> Stashed changes
 
     ignore(await a);
     ignore(await b);
