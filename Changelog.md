@@ -4,7 +4,7 @@
 
 * motoko (`moc`)
 
-  * feat: `motoko-san` contributions by Serokell. Now able to verify some simple but non-trivial actors.
+  * feat: `motoko-san` contributions by Serokell. Now able to verify some simple but non-trivial actors
     (thanks to the entire Serokell team) (#4500).
 
   * bugfix: Corrects the interpreter (and compiler) to recognise certain type parameters as callable function types (#4617).
