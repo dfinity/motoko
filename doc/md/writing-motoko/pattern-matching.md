@@ -124,6 +124,11 @@ In a `let-else` construct, the expression or block following the `else` keyword 
 
 ## Option blocks for streamlined processing of optional data
 
-Motoko offers a preferred method for handling optional data (of type `?T`) through pattern matching, which helps avoid the notorious `null`-exception issues common in other programming languages. However, using multiple switch statements on various options can become cumbersome and result in deeply nested, hard-to-read code. To address this, Motoko introduces a feature called "option blocks," written as `do ? { ... }`. These blocks allow for safe unwrapping of optional values using a postfix `!` operator. Each use of `!` within the block is equivalent to a switch statement on an option, but with an added benefit: if `!` is applied to a `null` value, the entire block immediately halts execution and returns `null`. This short-circuiting behavior simplifies the handling of multiple optional values in a more concise and readable manner.
+Motoko offers a preferred method for handling optional data (of type `?T`) through pattern matching, which helps avoid the notorious `null`-exception issues common in other programming languages. 
+However, using multiple switch statements on several options can become cumbersome and result in deeply nested, hard-to-read code. 
+To address this, Motoko introduces a feature called *option blocks*, written as `do ? { ... }`. 
+These blocks allow for safe unwrapping of optional values using a postfix `!` operator.
+ Each use of `!` within the block is equivalent to a switch statement on an option, but with an added benefit: if `!` is applied to a `null` value,  the entire block immediately abandons execution and returns `null`. 
+This short-circuiting behavior simplifies the handling of multiple optional values in a more concise and readable manner.
 
 For an example, see [option blocks and null breaks](control-flow#option-blocks-and-null-breaks).
