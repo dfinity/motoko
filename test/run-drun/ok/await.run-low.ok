@@ -16,10 +16,12 @@ cnt: 2 i: 2
 cnt: 3 i: 4
 cnt: 4 i: 5
 cnt: 5 i: 10
+("fst", "snd")
 .
 cnt: 6 i: 3
 cnt: 7 i: 6
 cnt: 8 i: 11
+(1, "two", '3')
 .
 cnt: 9 i: 7
 cnt: 10 i: 12

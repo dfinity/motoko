@@ -94,23 +94,37 @@ let new_nary_async_reply ts =
   let (unary_async, unary_fulfill, fail), call_new_async = new_async t in
   (* construct the n-ary async value, coercing the continuation, if necessary *)
   let nary_async =
+    let coerce u =
+      let v = fresh_var "v" u in
+      let k = fresh_var "k" (contT u T.unit) in
+      let r = fresh_var "r" (err_contT T.unit) in
+      [k; r] -->* (
+        varE unary_async -*-
+          (tupE [
+             [v] -->* (varE k -*- varE v);
+             varE r
+          ])
+      )
+    in
     match ts with
     | [t1] ->
       begin match T.normalize t1 with
       | T.Tup [] ->
-        varE (var "@coerce_and_cont0" coerce_and_cont0T) -*- varE unary_async
-      | T.Tup [t; u] ->
-        callE (varE (var "@coerce_and_cont2" coerce_and_cont2T)) [t; u] (varE unary_async)
+        varE (var "@coerce_and_cont00" coerce_and_cont0T) -*- varE unary_async
+      | T.Tup ([_; _] as tu) ->
+        callE (varE (var "@coerce_and_cont2" coerce_and_cont2T)) tu (varE unary_async)
       (* TODO(#3740): find a better fix than PR #3741 *)
       (* HACK *)
-     | T.Tup _ -> failwith "GEN TUPLE"
-     | _ ->
+      | T.Tup _ -> coerce t1
+      | _ ->
         varE unary_async
       end
     | [] ->
       varE (var "@coerce_and_cont0" coerce_and_cont0T) -*- varE unary_async
-    | [t; u] ->
-      callE (varE (var "@coerce_and_cont2" coerce_and_cont2T)) [t; u] (varE unary_async)
+    | [_; _] ->
+      callE (varE (var "@coerce_and_cont2" coerce_and_cont2T)) ts (varE unary_async)
+    | _ ->
+      coerce t
   in
   (* construct the n-ary reply callback that take a *sequence* of values to fulfill the async *)
   let nary_reply =
