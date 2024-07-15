@@ -307,12 +307,17 @@ func @getSystemRefund() : @Refund {
   return (prim "cyclesRefunded" : () -> Nat) ();
 };
 
-func @coerce_and_cont(a : @Async<()>) :
+func @coerce_and_cont2<T <: Any, U <: Any>(a : @Async<(T, U)>) :
+  (k : (T, U) -> (), r : @Cont<Error>) -> {
+    #suspend;
+    #schedule : () -> ()
+  } = func(k, r) = a(func tup = k tup, r);
+
+func @coerce_and_cont0(a : @Async<()>) :
   (k : () -> (), r : @Cont<Error>) -> {
-                          #suspend;
-                          #schedule : () -> ()
-                      } =
-  func(k, r) = a(func() = k(), r);
+    #suspend;
+    #schedule : () -> ()
+  } = func(k, r) = a(func() = k(), r);
 
 func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>) {
   let w_null = func(r : @Refund, t : T) { };
