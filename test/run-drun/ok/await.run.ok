@@ -25,3 +25,4 @@ cnt: 9 i: 7
 cnt: 10 i: 12
 e-exit
 g-exit
+(1, "two", '3')

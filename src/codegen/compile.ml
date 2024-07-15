@@ -10577,12 +10577,22 @@ and compile_prim_invocation (env : E.t) ae p es at =
   begin match p, es with
   (* Calls *)
   | CallPrim _, [e1; e2] ->
-    let sort, control, _, arg_tys, ret_tys = Type.as_func e1.note.Note.typ in
+    let sort, control, _, arg_tys, ret_tys = Type.(as_func (promote e1.note.Note.typ)) in
     let n_args = List.length arg_tys in
     let return_arity = match control with
       | Type.Returns -> List.length ret_tys
       | Type.Replies -> 0
       | Type.Promises -> assert false in
+(*
+    let sort, _, arg_ty, ret_ty = Type.as_func_sub Type.Local 0 e1.note.Note.typ in
+    let n_args = match arg_ty with
+      | Type.Tup arg_tys -> List.length arg_tys
+      | _ -> 1 in
+    let return_arity = match ret_ty with
+      | Type.Tup ret_tys -> List.length ret_tys
+      | Async _ -> assert false
+      | _ -> 1 in
+ *)
 
     let fun_sr, code1 = compile_exp env ae e1 in
 
