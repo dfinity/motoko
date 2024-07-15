@@ -319,7 +319,7 @@ method showTodos($Self: Ref)
       goto $Ret;
       label $Ret; 
     }
-method clearstate($Self: Ref)
+method clearCompleted($Self: Ref)
     
     requires $Perm($Self)
     requires $Inv($Self)

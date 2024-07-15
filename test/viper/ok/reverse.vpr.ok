@@ -46,25 +46,16 @@ method reverseArray$Nat($Self: Ref, a: Array)
     
     requires $Perm($Self)
     requires $array_acc(a, $int, write)
-    requires ($size(($Self).xarray) == 5)
     ensures $Perm($Self)
     ensures $array_acc(a, $int, write)
-    ensures ($size(($Self).xarray) == 5)
+    ensures ($size(($Self).xarray) == old($size(($Self).xarray)))
     ensures ($size(a) == old($size(a)))
     ensures (forall k : Int :: (((0 <= k) && (k < $size(a))) ==> (($loc(a,
                                                                     k)).$int == 
              old(($loc(a, (($size(a) - 1) - k))).$int))))
-    { var b: Array
-      var length: Int
+    { var length: Int
       var i: Int
       var j: Int
-      inhale $array_acc(b, $int, write);
-      inhale ($size(b) == 3);
-      ($loc(b, 0)).$int := 1;
-      ($loc(b, 1)).$int := 2;
-      ($loc(b, 2)).$int := 4;
-      exhale $array_acc(b, $int, wildcard);
-      inhale $array_acc(b, $int, wildcard);
       length := $size(a);
       if ((length == 0))
          { 
@@ -74,9 +65,8 @@ method reverseArray$Nat($Self: Ref, a: Array)
       j := 0;
       while ((i > j))
          invariant $Perm($Self)
-         invariant $array_acc(b, $int, wildcard)
          invariant $array_acc(a, $int, write)
-         invariant ($size(($Self).xarray) == 5)
+         invariant ($size(($Self).xarray) == old($size(($Self).xarray)))
          invariant ((i < length) && (i >= 0))
          invariant ((j < length) && (j >= 0))
          invariant (i == (($size(a) - 1) - j))

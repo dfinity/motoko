@@ -56,7 +56,8 @@ actor Assistant {
     assert:return todos.size() == (old(todos.size()));
     assert:return Prim.forall<Nat>(func i =
       (0 <= i and i < (old(todos.size())) implies todos[i] == (old(todos[i]))));
-    // TODO: is not supported yet, do it manually (as in reverse.mo)
+    // TODO: Array.tabulate is not supported yet, do it manually (as in reverse.mo)
+    // Alternative: support Array.freeze
     // assert:return Prim.forall<Nat>(func i =
     //   (0 <= i and i < (old(todos.size())) implies todos[i] == Prim.Ret<[ToDo]>()[i]));
     // let new_array = Array.tabulate<(Nat, Text, State)>(num, func i = todos[i]);
@@ -179,7 +180,7 @@ actor Assistant {
     return output # "\n";
   };
 
-  public func clearstate() : async () {
+  public func clearCompleted() : async () {
     assert:return num <= (old(num));
     assert:return nextId == (old(nextId));
     assert:return todos.size() == (old(todos.size()));
