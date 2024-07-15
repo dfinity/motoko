@@ -106,7 +106,7 @@ To detect the possibility of such runtime failures, the Motoko compiler checks f
 ## Refutable patterns and dealing with non-matching data
 
 
-The `let`-`else` construct in Motoko is designed for developers who want to work with a specific pattern of data while  handling all non-matching data on a different control-flow path. Unlike the standard destructuring `let`, which traps (and triggers a compile-time warning) when the data doesn't match the expected pattern, `let`-`else` provides a way to manage refuted matches. This construct allows programmers to gracefully handle mismatches, such as exiting the current function or logging a message before trapping.
+The `let`-`else` construct in Motoko is designed for developers who want to work with a specific pattern of data while handling all non-matching data on a different control flow path. Unlike the standard destructuring `let`, which traps (and triggers a compile-time warning) when the data doesn't match the expected pattern, `let`-`else` provides a way to manage refuted matches. This construct allows programmers to gracefully handle mismatches, such as exiting the current function or logging a message before trapping.
 
 `let`-`else` can be seen as a more compact version of a two-case `switch` statement. It has the added benefit of not requiring indentation for the code that follows it, which can improve readability. This feature enables developers to write non-indenting `if`-`else`-like structures in their code.
 
@@ -127,7 +127,7 @@ Motoko offers a preferred method for handling optional data (of type `?T`) throu
 However, using multiple switch statements on several options can become cumbersome and result in deeply nested, hard-to-read code. 
 To address this, Motoko introduces a feature called *option blocks*, written as `do ? { ... }`. 
 These blocks allow for safe unwrapping of optional values using a postfix `!` operator.
- Each use of `!` within the block is equivalent to a switch statement on an option, but with an added benefit: if `!` is applied to a `null` value,  the entire block immediately abandons execution and returns `null`. 
+Each use of `!` within the block is equivalent to a switch statement on an option, but with an added benefit: if `!` is applied to a `null` value,  the entire block immediately abandons execution and returns `null`. 
 This short-circuiting behavior simplifies the handling of multiple optional values in a more concise and readable manner.
 
 For an example, see [option blocks and null breaks](control-flow#option-blocks-and-null-breaks).

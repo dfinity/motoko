@@ -1,4 +1,8 @@
-# System Capability
+---
+sidebar_position: 25
+---
+
+# System capability
 
 The `system` capability in Motoko is used to control access to sensitive system functions and prevent potential misuse of these functions.
 It serves as a safety mechanism to ensure that developers are explicitly aware when they are using or granting access to powerful system-level operations.
@@ -25,7 +29,7 @@ For instance, `ExperimentalCycles.add` has been revised from having type `Nat ->
 reflecting the new system capability requirement.
 
 To use system capabilities in your code, you must now explicitly declare them when required,
-and should explicitly supply when granting permission to a callee.
+and should explicitly supply them when granting permission to a callee.
 
 Functions that need to use system capabilities must include the `system` pseudo-type parameter.
 It's important to note that `system`, if specified, must be the first parameter in function or class declarations.
@@ -55,8 +59,8 @@ asynchronous functions, async expressions, local functions or classes
 declared with the `system` pseudo-type parameter, and the preupgrade
 and postupgrade system functions.
 
-However, they are not available in query methods or composite query
-methods or functions that don't declare their need of system capability.
+However, they are not available in query methods, composite query
+methods, or functions that don't declare their need of system capability.
 
 For more details, see the [language manual](../reference/language-manual#type-arguments).
 

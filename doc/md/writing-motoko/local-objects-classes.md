@@ -273,16 +273,15 @@ func Bits(n : Nat) : Bits = object {
 
 ## Object combination and extension
 
-As well as letting you construct a single object from a simple record and more complicated object block,
-Motoko also provides syntax for building new objects from existing ones, adding new fields, or replacing existing fields.
+Motoko allows you to construct a single object from a simple record and a more complicated object block, while also providing syntax for building new objects from existing ones, adding new fields, or replacing existing fields.
 The *base* records and objects are separated by the `and` keyword and can be followed by `with` and semicolon-separated additional (or overriden) fields.
 The bases and fields are enclosed in braces, indicating record formation.
 When the bases have overlapping fields (according to their types), then a disambiguating field overwrite must be provided.
-The original bases are never modified, instead, their fields are copied to create a new object, and thus we refer to this as a functional object combination and extension.
+The original bases are never modified; instead, their fields are copied to create a new object, and thus we refer to this as a functional object combination and extension.
 
 Here are some simple examples:
 
-1. Object Combination with `and`:
+1. Object combination with `and`:
    The `and` keyword combines two or more objects.
 
 ``` motoko
@@ -293,7 +292,7 @@ let employedPerson = { person and employee };
 // employeePerson now has: name, id, and department
 ```
 
-2. Object Extension with `with`:
+2. Object extension with `with`:
    The `with` keyword allows you to add new fields or override existing ones.
 
 ``` motoko
