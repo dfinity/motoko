@@ -109,7 +109,7 @@ IMPROVE ME
 
 Developers may only be interested in specially formed data with a desire to directly handle all non-matching forms. The `let`-`else` construct is designed precisely for this purpose. Whereas the regular destructuring `let` allows to focus on a single given pattern, it invariably traps if the right-hand side data doesn't match it, which is warned at compilation. The `else` clause gives the programmer a way to deal with refuted matches, such as bailing out of the process or logging a message before trapping. As such, `let`-`else` is similar to a two-`case` `switch` in a compact form that additionally doesn't force the indentation of the processing logic following it.
 
-The below example illustrates how you can write a non-indenting `if`-`else` by resorting to a `let`-`else` in your code:
+Here's an example demonstrating how to use `let`-`else` to avoid a less readable, indentation-increasing `switch`:
 
 ``` motoko
 func getName(optionalName : ?Text) : Text {
