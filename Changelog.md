@@ -1,5 +1,11 @@
 # Motoko compiler changelog
 
+## 0.11.3 (2024-07-XX)
+
+* motoko (`moc`)
+
+  * bugfix: Corrects the interpreter (and compiler) to recognise certain type parameters as callable function types (#4617).
+
 ## 0.11.2 (2024-07-06)
 
 * motoko (`moc`)
