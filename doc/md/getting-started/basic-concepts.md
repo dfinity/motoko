@@ -53,14 +53,6 @@ Motoko permits user-defined types and each of the following non-primitive value 
 
 For precise language definitions of primitive and non-primitive values, see the [language reference](../reference/language-manual).
 
-### Objects, records and their extension mechanisms
-
-Objects are aggregate data made from *labeled* constituent data. In their most general form, objects can contain named values (`let` and `var`) as well as methods (`func`) that act on them. Objects are written with the leading keyword `object` followed by an optional name and the block comprising its constituents. Only `public` constituents contribute to the object's type.
-
-In many cases, objects are used as simple containers of data, which are referred to as *records*. When building records, Motoko has a simplified syntax to offer where semicolon-separated named fields are placed in braces. The labels are identifiers (with a leading `var` when the field is mutable), followed by `=` and the initial value. All fields are public and contribute to the record's type.
-
-Furthermore, syntactic forms are provided for building new records from existing ones, adding new fields, or replacing existing ones. The *base* records and objects are separated by the `and` keyword and can be followed by `with` and semicolon-separated additional (or overwriting) fields. The bases and fields are wrapped in braces, indicating record formation. When the bases have overlapping fields (considering their types), then a disambiguating field overwrite must be provided. The original bases remain unmodified, and thus we refer to this as a functional record combination and extension.
-
 ## Printing values
 
 The function `print`, from base library [`Debug`](../base/Debug.md), accepts a text string of type [`Text`](../base/Text.md) as input, and produces the unit value of unit type or `()`, as its output.

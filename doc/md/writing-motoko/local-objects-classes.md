@@ -271,3 +271,56 @@ func Bits(n : Nat) : Bits = object {
 ```
 
 
+## Object combination and extension
+
+As well as letting you construct a single object from a simple record and more complicated object block,
+Motoko also provides syntax for building new objects from existing ones, adding new fields, or replacing existing fields.
+The *base* records and objects are separated by the `and` keyword and can be followed by `with` and semicolon-separated additional (or overriden) fields.
+The bases and fields are enclosed in braces, indicating record formation.
+When the bases have overlapping fields (according to their types), then a disambiguating field overwrite must be provided.
+The original bases are never modified, instead, their fields are copied to create a new object, and thus we refer to this as a functional object combination and extension.
+
+Here are some simple examples:
+
+1. Object Combination with `and`:
+   The `and` keyword combines two or more objects.
+
+``` motoko
+let person = { name = "Alice"; };
+let employee = { id = 123; department = "Engineering" };
+
+let employedPerson = { person and employee };
+// employeePerson now has: name, id, and department
+```
+
+2. Object Extension with `with`:
+   The `with` keyword allows you to add new fields or override existing ones.
+
+``` motoko
+let person = { name = "Alice" };
+
+let agedPerson = { person with age = 30 };
+
+// agedPersion now has: name and age
+```
+
+3. Combining `and` and `with`:
+   You can use both `and` and `with` together for more complex object manipulations.
+
+``` motoko
+let person = { name = "Alice" };
+let employee = { id = 123; department = "Engineering" };
+
+let employedPersonWithAge = { person and employee with age = 30 };
+// employedPersionWithAge now has: name, id, department and age
+```
+
+Key points to remember:
+- When using `and`, if there are conflicting field names in the bases, the conflict must be resolved using a `with` field.
+- The `with` clause is used to disambiguate field labels, define new fields, override existing fields, add new `var` fields, or redefine existing `var` fields to prevent aliasing.
+- You must explicitly override any `var` fields from base objects to prevent introducing aliases.
+
+This syntax provides a convenient way to create modular and reusable code in Motoko, allowing developers to build complex objects from simpler components and
+extend existing objects with new functionality.
+
+For more details, see the [language manual](../reference/language-manual#object-combinationextension).
