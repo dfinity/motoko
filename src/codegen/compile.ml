@@ -10583,16 +10583,6 @@ and compile_prim_invocation (env : E.t) ae p es at =
       | Type.Returns -> List.length ret_tys
       | Type.Replies -> 0
       | Type.Promises -> assert false in
-(*
-    let sort, _, arg_ty, ret_ty = Type.as_func_sub Type.Local 0 e1.note.Note.typ in
-    let n_args = match arg_ty with
-      | Type.Tup arg_tys -> List.length arg_tys
-      | _ -> 1 in
-    let return_arity = match ret_ty with
-      | Type.Tup ret_tys -> List.length ret_tys
-      | Async _ -> assert false
-      | _ -> 1 in
- *)
 
     let fun_sr, code1 = compile_exp env ae e1 in
 
