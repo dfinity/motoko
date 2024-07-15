@@ -118,7 +118,7 @@ func getName(optionalName : ?Text) : Text {
 }
 ```
 
-The expression (or block) following the `else` must be of type `None` signifying that its execution trajectory mustn't contribute to the code immediately following the `let` declaration.
+In a `let-else` construct, the expression or block following the `else` keyword must have type `None`. This indicates that its execution cannot enter the code following the `let` declaration but must change the flow of control, typically by returning early, breaking to some enclosing label or trapping.
 
 ## Option blocks for streamlined processing of optional data
 
