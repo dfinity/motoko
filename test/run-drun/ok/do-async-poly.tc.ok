@@ -1,10 +1,10 @@
 do-async-poly.mo:8.42-8.43: type error [M0033], async has non-shared content type
-  T__20
+  T__27
 do-async-poly.mo:13.42-13.43: type error [M0033], async has non-shared content type
-  T__21
+  T__28
 do-async-poly.mo:18.44-18.45: type error [M0033], async has non-shared content type
-  T__22
+  T__29
 do-async-poly.mo:22.42-22.43: type error [M0033], async has non-shared content type
-  T__23
+  T__30
 do-async-poly.mo:26.43-26.44: type error [M0033], async has non-shared content type
-  T__24
+  T__31
