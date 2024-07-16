@@ -1889,19 +1889,24 @@ and check_exp' env0 t exp : T.typ =
     t
   | _ ->
     let t' = infer_exp env0 exp in
-    let u, u', u'' =
-      if T.(is_func t && is_func t')
-      then
-        T.(let s, c, tbs, ts1, ts2 = as_func t in Func (s, c, tbs, [seq ts1], [seq ts2])),
-        T.(let s, c, tbs, ts1, ts2 = as_func t' in Func (s, c, tbs, [seq ts1], [seq ts2])),
-        t
-      else t, t', t' in
+    let u, u' =
+      let open T in
+      if is_func t && is_func t' then
+        let transfer_arity from toh = match from, List.map normalize toh with
+          | [_], _ -> [seq toh]
+          | _, [Tup ts] -> ts
+          | _, _ -> toh in
+        let s, c, tbs, ts1, ts2 = as_func t in
+        let dom, cod = transfer_arity ts1, transfer_arity ts2 in
+        Func (s, c, tbs, ts1, ts2),
+        let s, c, tbs, ts1, ts2 = as_func t' in Func (s, c, tbs, dom ts1, cod ts2)
+      else t, t' in
     if not (T.sub u' u) then
       local_error env0 exp.at "M0096"
         "expression of type%a\ncannot produce expected type%a"
         display_typ_expand t'
         display_typ_expand t;
-    u''
+    u'
 
 and check_exp_field env (ef : exp_field) fts =
   let { mut; id; exp } = ef.it in
