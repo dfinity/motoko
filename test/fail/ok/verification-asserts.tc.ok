@@ -8,3 +8,4 @@ verification-asserts.mo:7.8-7.17: syntax error [M0001], unexpected token 'invari
   invariant <exp_nest>
   func <exp_nest>
   <nat> : async <exp_nest>
+  loop : invariant <exp_nest>

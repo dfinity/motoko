@@ -60,4 +60,4 @@ Call the `location` method in the program and pass your `city` argument using th
 dfx canister call favorite_cities location '(vec {"San Francisco";"Paris";"Rome"})'
 ```
 
-The command uses the Candid interface description syntax `(vec { val1; val2; val3; })` to return a vector of values. For more information about the Candid interface description language, see the [Candid](/docs/current/developer-docs/smart-contracts/candid/index) language guide.
+The command uses the Candid interface description syntax `(vec { val1; val2; val3; })` to return a vector of values. For more information about the Candid interface description language, see the [Candid](https://internetcomputer.org/docs/current/developer-docs/smart-contracts/candid/candid-concepts) language guide.

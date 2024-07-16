@@ -600,11 +600,11 @@ and exp_field obj_typ ef =
     in
     assert (not (T.is_mut typ));
     let e = exp e in
-    let id', d = match e.it with
+    let id', d_opt = match e.it with
     | I.VarE v -> var v typ, None
     | _ -> let id' = fresh_var id.it typ in id', Some (letD id' e) in
     let f = { it = I.{ name = id.it; var = id_of_var id' }; at = no_region; note = typ } in
-    (d, f)
+    (d_opt, f)
 
 and obj obj_typ efs bases =
   let open List in
