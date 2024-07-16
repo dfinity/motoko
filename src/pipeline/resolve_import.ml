@@ -138,11 +138,12 @@ let resolve_lib_import at full_path : (string, Diag.message) result =
   then Ok full_path
   else Error (err_file_does_not_exist' at full_path)
 
-let add_lib_import msgs imported ri_ref at full_path =
-  match resolve_lib_import at full_path with
+let add_lib_import msgs imported ri_ref at lib_path =
+  match resolve_lib_import at lib_path.path with
   | Ok full_path -> begin
-      ri_ref := LibPath full_path;
-      imported := RIM.add (LibPath full_path) at !imported
+      let ri = LibPath {lib_path with path = full_path} in
+      ri_ref := ri;
+      imported := RIM.add ri at !imported
     end
   | Error err ->
      Diag.add_msg msgs err
@@ -174,10 +175,13 @@ let resolve_import_string msgs base actor_idl_path aliases packages imported (f,
   match Url.parse f with
   | Ok (Url.Relative path) ->
     (* TODO support importing local .did file *)
-    add_lib_import msgs imported ri_ref at (in_base base path)
+    add_lib_import msgs imported ri_ref at
+      { path = in_base base path; package = None }
   | Ok (Url.Package (pkg,path)) ->
     begin match M.find_opt pkg packages with
-    | Some pkg_path -> add_lib_import msgs imported ri_ref at (in_base pkg_path path)
+    | Some pkg_path ->
+      add_lib_import msgs imported ri_ref at
+        { path = in_base pkg_path path; package = Some pkg }
     | None -> err_package_not_defined msgs at pkg
     end
   | Ok (Url.Ic bytes) ->

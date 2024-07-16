@@ -33,7 +33,7 @@ let print_ce =
   )
 
 let print_stat_ve =
-  Type.Env.iter (fun x t ->
+  Type.Env.iter (fun x (t, _, _) ->
     let t' = Type.as_immut t in
     Format.printf "@[<hv 2>%s %s :@ %a@]@."
       (if t == t' then "let" else "var") x
@@ -43,7 +43,7 @@ let print_stat_ve =
 let print_dyn_ve scope =
   Value.Env.iter (fun x d ->
     let open Type in
-    let t = Env.find x scope.Scope.val_env in
+    let (t, _, _) = Env.find x scope.Scope.val_env in
     let t' = as_immut t in
     match normalize t' with
     | Obj (Module, fs) ->
@@ -53,16 +53,16 @@ let print_dyn_ve scope =
       Format.printf "@[<hv 2>%s %s :@ %a =@ %a@]@."
         (if t == t' then "let" else "var") x
         Type.pp_typ t'
-        (Value.pp_def !Flags.print_depth) d
+        (Value.pp_def !Flags.print_depth) (t', d)
   )
 
 let print_scope senv scope dve =
   print_ce scope.Scope.con_env;
   print_dyn_ve senv dve
 
-let print_val _senv v t =
+let print_val _senv t v =
   Format.printf "@[<hv 2>%a :@ %a@]@."
-    (Value.pp_val !Flags.print_depth) v
+    (Value.pp_val !Flags.print_depth) (t, v)
     Type.pp_typ t
 
 
@@ -180,10 +180,10 @@ let async_cap_of_prog prog =
      else
        Async_cap.initial_cap()
 
-let infer_prog senv async_cap prog : (Type.typ * Scope.scope) Diag.result =
+let infer_prog pkg_opt senv async_cap prog : (Type.typ * Scope.scope) Diag.result =
   let filename = prog.Source.note.Syntax.filename in
   phase "Checking" filename;
-  let r = Typing.infer_prog senv async_cap prog in
+  let r = Typing.infer_prog pkg_opt senv async_cap prog in
   if !Flags.trace && !Flags.verbose then begin
     match r with
     | Ok ((_, scope), _) ->
@@ -204,15 +204,15 @@ let rec check_progs senv progs : Scope.scope Diag.result =
   | prog::progs' ->
     let open Diag.Syntax in
     let async_cap = async_cap_of_prog prog in
-    let* _t, sscope = infer_prog senv async_cap prog in
+    let* _t, sscope = infer_prog senv None async_cap prog in
     let senv' = Scope.adjoin senv sscope in
     check_progs senv' progs'
 
-let check_lib senv lib : Scope.scope Diag.result =
+let check_lib senv pkg_opt lib : Scope.scope Diag.result =
   let filename = lib.Source.note.Syntax.filename in
   phase "Checking" (Filename.basename filename);
   let open Diag.Syntax in
-  let* sscope = Typing.check_lib senv lib in
+  let* sscope = Typing.check_lib senv pkg_opt lib in
   phase "Definedness" (Filename.basename filename);
   let* () = Definedness.check_lib lib in
   Diag.return sscope
@@ -235,7 +235,7 @@ let check_builtin what src senv0 : Syntax.prog * stat_env =
   match parse_with Lexer.mode_priv lexer parse what with
   | Error es -> builtin_error "parsing" what es
   | Ok (prog, _ws) ->
-    match infer_prog senv0 Async_cap.NullCap prog with
+    match infer_prog senv0 None Async_cap.NullCap prog with
     | Error es -> builtin_error "checking" what es
     | Ok ((_t, sscope), _ws) ->
       let senv1 = Scope.adjoin senv0 sscope in
@@ -297,21 +297,25 @@ let prim_error phase (msgs : Diag.messages) =
 let check_prim () : Syntax.lib * stat_env =
   let lexer = Lexing.from_string (Prelude.prim_module ~timers:!Flags.global_timer) in
   let parse = Parser.Incremental.parse_prog in
-
   match parse_with Lexer.mode_priv lexer parse prim_name with
   | Error es -> prim_error "parsing" es
   | Ok (prog, _ws) ->
     let open Syntax in
     let open Source in
     let senv0 = initial_stat_env in
-    let fs = List.map (fun d -> {vis = Public None @@ no_region; dec = d; stab = None} @@ d.at) prog.it in
+    (* Propagate deprecations *)
+    let fs = List.map (fun d ->
+      let trivia = Trivia.find_trivia prog.note.trivia d.at in
+      let depr = Trivia.deprecated_of_trivia_info trivia in
+      {vis = Public depr @@ no_region; dec = d; stab = None} @@ d.at) prog.it
+    in
     let body = {it = ModuleU (None, fs); at = no_region; note = empty_typ_note} in
     let lib = {
       it = { imports = []; body };
       at = no_region;
       note = { filename = "@prim"; trivia = Trivia.empty_triv_table }
     } in
-    match check_lib senv0 lib with
+    match check_lib senv0 None lib with
     | Error es -> prim_error "checking" es
     | Ok (sscope, _ws) ->
       let senv1 = Scope.adjoin senv0 sscope in
@@ -355,7 +359,7 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
   let senv = ref senv0 in
   let libs = ref [] in
 
-  let rec go ri = match ri.Source.it with
+  let rec go pkg_opt ri = match ri.Source.it with
     | Syntax.PrimPath ->
       (* a bit of a hack, lib_env should key on resolved_import *)
       if Type.Env.mem "@prim" !senv.Scope.lib_env then
@@ -366,7 +370,7 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
         senv := Scope.adjoin !senv sscope;
         Diag.return ()
     | Syntax.Unresolved -> assert false
-    | Syntax.LibPath f ->
+    | Syntax.(LibPath {path = f; package = lib_pkg_opt}) ->
       if Type.Env.mem f !senv.Scope.lib_env then
         Diag.return ()
       else if mem ri.Source.it !pending then
@@ -381,9 +385,10 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
         let* prog, base = parsefn ri.Source.at f in
         let* () = Static.prog prog in
         let* more_imports = ResolveImport.resolve (resolve_flags ()) prog base in
-        let* () = go_set more_imports in
+        let cur_pkg_opt = if lib_pkg_opt <> None then lib_pkg_opt else pkg_opt in
+        let* () = go_set cur_pkg_opt more_imports in
         let lib = lib_of_prog f prog in
-        let* sscope = check_lib !senv lib in
+        let* sscope = check_lib !senv cur_pkg_opt lib in
         libs := lib :: !libs; (* NB: Conceptually an append *)
         senv := Scope.adjoin !senv sscope;
         pending := remove ri.Source.it !pending;
@@ -412,9 +417,9 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
           let sscope = Scope.lib f actor in
           senv := Scope.adjoin !senv sscope;
           Diag.return ()
-  and go_set todo = Diag.traverse_ go todo
+  and go_set pkg_opt todo = Diag.traverse_ (go pkg_opt) todo
   in
-  Diag.map (fun () -> (List.rev !libs, !senv)) (go_set imports)
+  Diag.map (fun () -> (List.rev !libs, !senv)) (go_set None imports)
 
 let load_progs parsefn files senv : load_result =
   let open Diag.Syntax in
@@ -431,7 +436,7 @@ let load_decl parse_one senv : load_decl_result =
   let* parsed = parse_one in
   let* prog, libs = resolve_prog parsed in
   let* libs, senv' = chase_imports parse_file senv libs in
-  let* t, sscope = infer_prog senv' (Async_cap.(AwaitCap top_cap)) prog in
+  let* t, sscope = infer_prog senv' (Some "<toplevel>") (Async_cap.(AwaitCap top_cap)) prog in
   let senv'' = Scope.adjoin senv' sscope in
   Diag.return (libs, prog, senv'', t, sscope)
 
@@ -558,7 +563,7 @@ let is_exp dec = match dec.Source.it with Syntax.ExpD _ -> true | _ -> false
 
 let output_scope (senv, _) t v sscope dscope =
   print_scope senv sscope dscope.Interpret.val_env;
-  if v <> Value.unit then print_val senv v t
+  if v <> Value.unit then print_val senv t v
 
 let run_stdin lexer (senv, denv) : env option =
   match Diag.flush_messages (load_decl (parse_lexer lexer) senv) with
@@ -592,9 +597,7 @@ let run_stdin_from_file files file : Value.value option =
     Diag.flush_messages (load_decl (parse_file Source.no_region file) senv) in
   let denv' = interpret_libs denv libs in
   let* (v, dscope) = interpret_prog denv' prog in
-  Format.printf "@[<hv 2>%a :@ %a@]@."
-    (Value.pp_val 10) v
-    Type.pp_typ t;
+  print_val senv t v;
   Some v
 
 let run_files_and_stdin files =

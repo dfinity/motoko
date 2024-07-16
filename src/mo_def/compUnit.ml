@@ -18,6 +18,12 @@ let as_actor_def e =
     fields, note, at
   | _ -> assert false
 
+let is_module_def e =
+  let open Source in
+  match e.it with
+  | ObjBlockE ({ it = Type.Module; _}, _, _) -> true
+  | _ -> false
+
 (* Happens after parsing, before type checking *)
 let comp_unit_of_prog as_lib (prog : prog) : comp_unit =
   let open Source in
@@ -55,7 +61,12 @@ let comp_unit_of_prog as_lib (prog : prog) : comp_unit =
       if as_lib
       then
         (* Deprecated syntax, see Typing.check_lib *)
-        let fs = List.map (fun d -> {vis = Public None @@ no_region; dec = d; stab = None} @@ d.at) ds' in
+        (* Propagate deprecations *)
+        let fs = List.map (fun d ->
+          let trivia = Trivia.find_trivia prog.note.trivia d.at in
+          let depr = Trivia.deprecated_of_trivia_info trivia in
+          {vis = Public depr @@ no_region; dec = d; stab = None} @@ d.at) ds'
+        in
         finish imports {it = ModuleU (None, fs); at = no_region; note = empty_typ_note}
       else finish imports { it = ProgU ds; note = prog_typ_note; at = no_region }
   in

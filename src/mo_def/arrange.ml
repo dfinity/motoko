@@ -133,7 +133,8 @@ module Make (Cfg : Config) = struct
 
   and inst inst = match inst.it with
     | None -> []
-    | Some ts -> List.map typ ts
+    | Some (false, ts) -> List.map typ ts
+    | Some (true, ts) -> Atom "system" :: List.map typ ts
 
   and pat p = source p.at (annot_typ p.note (match p.it with
     | WildP           -> Atom "WildP"
@@ -145,7 +146,7 @@ module Make (Cfg : Config) = struct
     | SignP (uo, l)   -> "SignP"      $$ [Arrange_ops.unop uo ; lit !l]
     | OptP p          -> "OptP"       $$ [pat p]
     | TagP (i, p)     -> "TagP"       $$ [tag i; pat p]
-    | AltP (p1, p2)    -> "AltP"       $$ [pat p1; pat p2]
+    | AltP (p1, p2)   -> "AltP"       $$ [pat p1; pat p2]
     | ParP p          -> "ParP"       $$ [pat p]))
 
   and lit = function

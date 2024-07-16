@@ -1,0 +1,3 @@
+error-codes.mo:8.16-8.23: warning [M0194], unused identifier invalid (delete or rename to wildcard `_` or `_invalid`)
+error-codes.mo:47.24-47.25: warning [M0194], unused identifier n (delete or rename to wildcard `_` or `_n`)
+error-codes.mo:48.28-48.36: warning [M0194], unused identifier err_code (delete or rename to wildcard `_` or `_err_code`)

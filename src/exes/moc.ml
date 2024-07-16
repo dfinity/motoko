@@ -166,6 +166,10 @@ let argspec = [
   Arg.Unit (fun () -> Flags.force_gc := true),
   " disable GC scheduling, always do GC after an update message (for testing)";
 
+  "--experimental-stable-memory",
+  Arg.Set_int Flags.experimental_stable_memory,
+  " <n> select support for the deprecated `ExperimentalStableMemory.mo` library (n < 0: error, n == 0: warn, n > 0: allow) (default " ^ (Int.to_string Flags.experimental_stable_memory_default) ^ ")";
+
   "--max-stable-pages",
   Arg.Set_int Flags.max_stable_pages,
   "<n>  set maximum number of pages available for library `ExperimentalStableMemory.mo` (default " ^ (Int.to_string Flags.max_stable_pages_default) ^ ")";
@@ -173,6 +177,10 @@ let argspec = [
   "--experimental-field-aliasing",
   Arg.Unit (fun () -> Flags.experimental_field_aliasing := true),
   " enable experimental support for aliasing of var fields";
+
+  "--experimental-rtti",
+  Arg.Unit (fun () -> Flags.rtti := true),
+  " enable experimental support for precise runtime type information (to assess performance changes only)";
 
   "--rts-stack-pages",
   Arg.Set_int Flags.rts_stack_pages,

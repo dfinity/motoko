@@ -61,7 +61,7 @@ module StableMemory {
 }
 ```
 
-NOTE: Motoko's `Nat32` value are always boxed - it might be more efficient to use `Nat` which is unboxed for 30(?)-bit values.
+NOTE: Motoko's `Nat32` value are always boxed - it might be more efficient to use [`Nat`](../base/Nat.md) which is unboxed for 30(?)-bit values.
 
 
 ```
@@ -176,7 +176,7 @@ Stable memory layout (during execution):
 
 During execution, stable variables aren't maintained in stable memory - they are on the Motoko heap.
 
-Stable memory layout (between upgrades), assuming stable variable encoding `v == {fs:vs}`, a record value of record type {fs:Ts}.
+Stable memory layout (between upgrades), assuming stable variable encoding `v == {fs:vs}`, a record value of record type `{fs:Ts}`.
 
 NOTE: A program with no stable variables still writes an empty record value `v = {}`.
 

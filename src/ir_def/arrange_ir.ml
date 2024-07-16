@@ -69,10 +69,10 @@ and prim = function
   | ActorDotPrim n    -> "ActorDotPrim" $$ [Atom n]
   | ArrayPrim (m, t)  -> "ArrayPrim"  $$ [mut m; typ t]
   | IdxPrim           -> Atom "IdxPrim"
-  | NextArrayOffset _ -> Atom "NextArrayOffset"
-  | ValidArrayOffset  -> Atom "ValidArrayOffset"
+  | NextArrayOffset   -> Atom "NextArrayOffset"
+  | EqArrayOffset     -> Atom "EqArrayOffset"
   | DerefArrayOffset  -> Atom "DerefArrayOffset"
-  | GetPastArrayOffset _ -> Atom "GetPastArrayOffset"
+  | GetLastArrayOffset -> Atom "GetLastArrayOffset"
   | BreakPrim i       -> "BreakPrim"  $$ [id i]
   | RetPrim           -> Atom "RetPrim"
   | AwaitPrim Type.Fut -> Atom "AwaitPrim"
@@ -93,7 +93,7 @@ and prim = function
   | IcUrlOfBlob       -> Atom "IcUrlOfBlob"
   | SelfRef t         -> "SelfRef"    $$ [typ t]
   | SystemTimePrim    -> Atom "SystemTimePrim"
-  | SystemCyclesAddPrim -> Atom "SystemCyclesAcceptPrim"
+  | SystemCyclesAddPrim -> Atom "SystemCyclesAddPrim"
   | SystemCyclesAcceptPrim -> Atom "SystemCyclesAcceptPrim"
   | SystemCyclesAvailablePrim -> Atom "SystemCyclesAvailablePrim"
   | SystemCyclesBalancePrim -> Atom "SystemCyclesBalancePrim"

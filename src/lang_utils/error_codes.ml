@@ -197,4 +197,10 @@ let error_codes : (string * string option) list =
     "M0191", None; (* Code requires Wasm features ... to execute *)
     "M0192", None; (* Object/Actor/Module body type mismatch *)
     "M0193", None; (* Can't declare actor class to have `async*` result *)
+    "M0194", Some([%blob "lang_utils/error_codes/M0194.md"]); (* Unused identifier warning *)
+    "M0195", Some([%blob "lang_utils/error_codes/M0195.md"]); (* warn that `system` capability is implicitly supplied *)
+    "M0196", None; (* `system` capability supplied but not required *)
+    "M0197", Some([%blob "lang_utils/error_codes/M0197.md"]); (* `system` capability required *)
+    "M0198", Some([%blob "lang_utils/error_codes/M0198.md"]); (* Unused field pattern warning *)
+    "M0199", Some([%blob "lang_utils/error_codes/M0199.md"]); (* Deprecate experimental stable memory *)
   ]

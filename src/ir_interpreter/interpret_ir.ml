@@ -80,8 +80,8 @@ let trace fmt =
     Printf.printf "%s%s\n%!" (String.make (2 * !trace_depth) ' ') s
   ) fmt
 
-let string_of_val env = V.string_of_val env.flags.print_depth
-let string_of_def flags = V.string_of_def flags.print_depth
+let string_of_val env = V.string_of_val env.flags.print_depth T.Non
+let string_of_def flags = V.string_of_def flags.print_depth T.Non
 let string_of_arg env = function
   | V.Tup _ as v -> string_of_val env v
   | v -> "(" ^ string_of_val env v ^ ")"
@@ -354,12 +354,12 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | (IdxPrim | DerefArrayOffset), [v1; v2] ->
         k (try (V.as_array v1).(Numerics.Int.to_int (V.as_int v2))
            with Invalid_argument s -> trap exp.at "%s" s)
-      | NextArrayOffset _, [v1] ->
+      | NextArrayOffset , [v1] ->
         k (V.Int Numerics.Nat.(of_int ((to_int (V.as_int v1)) + 1)))
-      | ValidArrayOffset, [v1; v2] ->
-        k (V.Bool Numerics.Nat.(to_int (V.as_int v1) < to_int (V.as_int v2)))
-      | GetPastArrayOffset _, [v1] ->
-        k (V.Int Numerics.Nat.(of_int (Array.length (V.as_array v1))))
+      | EqArrayOffset, [v1; v2] ->
+        k (V.Bool Numerics.Int.(to_int (V.as_int v1) = to_int (V.as_int v2)))
+      | GetLastArrayOffset,  [v1] ->
+        k (V.Int Numerics.Int.(of_int (Array.length (V.as_array v1) - 1)))
       | BreakPrim id, [v1] -> find id env.labs v1
       | RetPrim, [v1] -> Option.get env.rets v1
       | ThrowPrim, [v1] -> Option.get env.throws v1
@@ -643,7 +643,7 @@ and match_args at args v : val_env =
   | _ ->
     let vs = V.as_tup v in
     if (List.length vs <> List.length args) then
-      failwith (Printf.sprintf "%s %s" (Source.string_of_region at) (V.string_of_val 0 v));
+      failwith (Printf.sprintf "%s %s" (Source.string_of_region at) (V.string_of_val 0 T.Non v));
     List.fold_left V.Env.adjoin V.Env.empty (List.map2 match_arg args vs)
 
 (* Patterns *)

@@ -15,8 +15,7 @@ module {
     private let INCREASE_FACTOR_DENOM = 2;
     private let DECREASE_THRESHOLD = 4; // Don't decrease capacity too early to avoid thrashing
     private let DECREASE_FACTOR = 2;
-    private let DEFAULT_CAPACITY = 8;
-
+    
     private func newCapacity(oldCapacity : Nat) : Nat {
         if (oldCapacity == 0) {
             1;

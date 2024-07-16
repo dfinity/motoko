@@ -6,8 +6,8 @@ actor a {
 
   let balance : () -> Nat = Prim.cyclesBalance;
   let available : () -> Nat = Prim.cyclesAvailable;
-  let accept : Nat-> Nat = Prim.cyclesAccept;
-  let add : Nat -> () = Prim.cyclesAdd;
+  let accept : <system>Nat -> Nat = Prim.cyclesAccept;
+  let add : <system>Nat -> () = Prim.cyclesAdd;
 
   let refunded : () -> Nat = Prim.cyclesRefunded;
 
@@ -34,23 +34,23 @@ actor a {
 
      // detect immediate overflow of add
      try (await async {
-       add(0x1_00000000_00000000_00000000_00000000);
+       add<system>(0x1_00000000_00000000_00000000_00000000);
        assert false;
      })
      catch (e) {Prim.debugPrint(Prim.errorMessage(e))};
 
      // detect incremental overflow of add
      try (await async {
-       add(0xFFFFFFFF_FFFFFFFF_FFFFFFFFF_FFFFFFF);
+       add<system>(0xFFFFFFFF_FFFFFFFF_FFFFFFFFF_FFFFFFF);
        Prim.debugPrint("ok");
-       add(0x1);
+       add<system>(0x1);
        assert false;
      })
      catch (e) { Prim.debugPrint(Prim.errorMessage(e)) };
 
      // detect accept overflow
      try (await async {
-       let _ = accept(0x1_00000000_00000000_00000000_00000000);
+       let _ = accept<system>(0x1_00000000_00000000_00000000_00000000);
        assert false;
      })
      catch (e) { Prim.debugPrint(Prim.errorMessage(e)) };
@@ -78,7 +78,7 @@ actor a {
          Prim.debugPrint("can't top up more");
          return; // give up on test
        };
-       add(amount);
+       add<system>(amount);
        Prim.debugPrint(debug_show({added = amount}));
        try {
          await test(amount);

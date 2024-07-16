@@ -269,33 +269,46 @@ and transform_for_to_while p arr_exp proj e1 e2 =
   (* for (p in (arr_exp : [_]).proj(e1)) e2 when proj in {"keys", "vals"}
      ~~>
      let arr = arr_exp ;
-     let size = arr.size(e1) ;
-     var indx = 0 ;
-     label l loop {
-       if indx < size
-       then { let p = arr[indx]; e2; indx += 1 }
-       else { break l }
-     } *)
+     let last = arr.size(e1) : Int - 1 ;
+     var indx = 0;
+     if (last == -1) { }
+     else {
+       label l loop {
+         let p = arr[indx]; /* sans bound check */
+         e2;
+         if (indx == last)
+         else { break l }
+         then { indx += 1 }
+       }
+     }
+  *)
   let arr_typ = arr_exp.note.note_typ in
   let arrv = fresh_var "arr" arr_typ in
   let indx = fresh_var "indx" T.(Mut nat) in
-  let spacing, indexing_exp = match proj.it with
-    | "vals" -> I.ElementSize, primE I.DerefArrayOffset [varE arrv; varE indx]
-    | "keys" -> I.One, varE indx
+  let indexing_exp = match proj.it with
+    | "vals" -> primE I.DerefArrayOffset [varE arrv; varE indx]
+    | "keys" -> varE indx
     | _ -> assert false in
-  let size_exp = primE I.(GetPastArrayOffset spacing) [varE arrv] in
-  let size = fresh_var "size" T.nat in
+  let last = fresh_var "last" T.int in
+  let lab = fresh_id "done" () in
   blockE
     [ letD arrv (exp arr_exp)
     ; expD (exp e1)
-    ; letD size size_exp
+    ; letD last (primE I.GetLastArrayOffset [varE arrv]) (* -1 for empty array *)
     ; varD indx (natE Numerics.Nat.zero)]
-    (whileE (primE I.ValidArrayOffset
-               [varE indx; varE size])
-       (blockE [ letP (pat p) indexing_exp
-               ; expD (exp e2)]
-          (assignE indx
-             (primE I.(NextArrayOffset spacing) [varE indx]))))
+    (ifE (primE I.EqArrayOffset [varE last; intE (Numerics.Int.of_int (-1))])
+      (* empty array, do nothing *)
+      (unitE())
+      (labelE lab T.unit (
+        loopE (
+          (blockE
+            [ letP (pat p) indexing_exp
+            ; expD (exp e2)]
+           (ifE (primE I.EqArrayOffset [varE indx; varE last])
+             (* last, exit loop *)
+             (breakE lab (tupE []))
+             (* else increment and continue *)
+             (assignE indx (primE I.NextArrayOffset [varE indx]))))))))
 
 and mut m = match m.it with
   | S.Const -> Ir.Const
@@ -399,8 +412,11 @@ and call_system_func_opt name es obj_typ =
                 (unitE ())
                 (primE (Ir.OtherPrim "trap")
                   [textE "canister_inspect_message explicitly refused message"]))
-        | _name ->
-          callE (varE (var id.it note)) [] (tupE []))
+        | name ->
+           let inst = match name with
+             | "preupgrade" | "postupgrade" -> [T.scope_bound]
+             | _ -> [] in
+          callE (varE (var id.it note)) inst (tupE []))
     | _ -> None) es
 and build_candid ts obj_typ =
   let open Idllib in
@@ -1006,7 +1022,7 @@ let transform_import (i : S.import) : import_declaration =
   assert (t <> T.Pre);
   let rhs = match !ir with
     | S.Unresolved -> raise (Invalid_argument ("Unresolved import " ^ f))
-    | S.LibPath fp ->
+    | S.LibPath {path = fp; _} ->
       varE (var (id_of_full_path fp) t)
     | S.PrimPath ->
       varE (var (id_of_full_path "@prim") t)
