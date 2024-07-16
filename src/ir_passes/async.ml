@@ -71,6 +71,23 @@ let new_async t =
   let fail = fresh_var "fail" (typ (projE call_new_async 2)) in
   (async, fulfill, fail), call_new_async
 
+let coerce_and_cont0T =
+  T.Func (
+    T.Local,
+    T.Returns,
+    [],
+    [t_async_fut unary T.unit],
+    [t_async_fut nary T.unit])
+
+let coerce_and_cont2T =
+  let t = T.(Tup [Var ("T", 0); Var ("U", 1)]) in
+  T.Func (
+    T.Local,
+    T.Returns,
+    [ { var = "T"; sort = T.Type; bound = T.Any }; { var = "U"; sort = T.Type; bound = T.Any } ],
+    [t_async_fut unary t],
+    [t_async_fut nary t])
+
 let new_nary_async_reply ts =
   (* The async implementation isn't n-ary *)
   let t = T.seq ts in
@@ -91,16 +108,22 @@ let new_nary_async_reply ts =
     in
     match ts with
     | [t1] ->
-      begin
-      match T.normalize t1 with
-      | T.Tup _ ->
-        (* TODO(#3740): find a better fix than PR #3741 *)
-        (* HACK *)
-        coerce t1
+      begin match T.normalize t1 with
+      | T.Tup [] ->
+        varE (var "@coerce_and_cont00" coerce_and_cont0T) -*- varE unary_async
+      | T.Tup ([_; _] as tu) ->
+        callE (varE (var "@coerce_and_cont2" coerce_and_cont2T)) tu (varE unary_async)
+      (* TODO(#3740): find a better fix than PR #3741 *)
+      (* HACK *)
+      | T.Tup _ -> coerce t1
       | _ ->
         varE unary_async
       end
-    | ts1 ->
+    | [] ->
+      varE (var "@coerce_and_cont0" coerce_and_cont0T) -*- varE unary_async
+    | [_; _] ->
+      callE (varE (var "@coerce_and_cont2" coerce_and_cont2T)) ts (varE unary_async)
+    | _ ->
       coerce t
   in
   (* construct the n-ary reply callback that take a *sequence* of values to fulfill the async *)

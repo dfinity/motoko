@@ -66,6 +66,9 @@ actor a {
        Prim.debugPrint a;
        Prim.debugPrint b;
     };
+    Prim.debugPrint (debug_show (await p()));
+    Prim.debugPrint (debug_show (await async (1, "two", '3')));
+    await async ();
 
     ignore(await a);
     ignore(await b);

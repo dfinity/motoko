@@ -18,10 +18,12 @@ debug.print: cnt: 2 i: 2
 debug.print: cnt: 3 i: 4
 debug.print: cnt: 4 i: 5
 debug.print: cnt: 5 i: 10
+debug.print: ("fst", "snd")
 debug.print: .
 debug.print: cnt: 6 i: 3
 debug.print: cnt: 7 i: 6
 debug.print: cnt: 8 i: 11
+debug.print: (1, "two", '3')
 debug.print: .
 debug.print: cnt: 9 i: 7
 debug.print: cnt: 10 i: 12
