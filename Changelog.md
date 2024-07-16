@@ -1,8 +1,11 @@
 # Motoko compiler changelog
 
-## 0.11.3 (2024-07-XX)
+## 0.11.3 (2024-07-16)
 
 * motoko (`moc`)
+
+  * feat: `motoko-san` contributions by Serokell. Now able to verify some simple but non-trivial actors
+    (thanks to the entire Serokell team) (#4500).
 
   * bugfix: Corrects the interpreter (and compiler) to recognise certain type parameters as callable function types (#4617).
 
