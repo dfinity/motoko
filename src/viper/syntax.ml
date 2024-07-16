@@ -11,13 +11,17 @@ type prog = (item list, info) Source.annotated_phrase
 and item = (item', info) Source.annotated_phrase
 and item' =
   (* | import path *)
+  | AdtI of id * id list * adt_con list
   | FieldI of id * typ
   | MethodI of id * par list * par list * exp list * exp list * seqn option
   | InvariantI of string * exp
 
+and adt_con = { con_name : id; con_fields : (id * typ) list }
+
 and par = id * typ
 
-and seqn = (decl list * stmt list, info) Source.annotated_phrase
+and seqn = (seqn', info) Source.annotated_phrase
+and seqn' = decl list * stmt list
 
 and decl = (id * typ, info) Source.annotated_phrase
 
@@ -49,7 +53,10 @@ and exp' =
   | FldAcc of fldacc
   | PermE of perm          (* perm_amount *)
   | AccE of fldacc * exp   (* acc((rcvr: exp).field, (exp: perm_amount)) *)
-  | MacroCall of string * exp
+  | FldE of string               (* top-level field name, e.g. to be passed as a macro argument *)
+  | CallE of string * exp list   (* macro or func call *)
+  | ForallE of (id * typ) list * exp
+  | ExistsE of (id * typ) list * exp
 
 and perm = (perm', info) Source.annotated_phrase
 
@@ -79,8 +86,9 @@ and stmt' =
   | FieldAssignS of fldacc * exp
   | IfS of exp * seqn * seqn
   | WhileS of exp * invariants * seqn
-  | LabelS of id * invariants
-  (* TODO: these are temporary helper terms  that should not appear in the final translation 
+  | LabelS of id
+  | GotoS of id
+  (* TODO: these are temporary helper terms  that should not appear in the final translation
        we should avoid introducing them in the first place if possible, so they can be removed *)
   | PreconditionS of exp
   | PostconditionS of exp
@@ -93,4 +101,8 @@ and typ' =
   | IntT
   | BoolT
   | RefT
+  | ArrayT
+  | TupleT of typ list
+  | OptionT of typ
+  | ConT of id * typ list
 
