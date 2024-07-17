@@ -98,6 +98,7 @@ and prim = function
   | SystemCyclesAvailablePrim -> Atom "SystemCyclesAvailablePrim"
   | SystemCyclesBalancePrim -> Atom "SystemCyclesBalancePrim"
   | SystemCyclesRefundedPrim -> Atom "SystemCyclesRefundedPrim"
+  | ICCyclesPrim -> Atom "ICCyclesPrim"
   | SetCertifiedData  -> Atom "SetCertifiedData"
   | GetCertificate    -> Atom "GetCertificate"
   | OtherPrim s       -> Atom s

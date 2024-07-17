@@ -156,6 +156,7 @@ and prim =
   | SystemCyclesAvailablePrim
   | SystemCyclesBalancePrim
   | SystemCyclesRefundedPrim
+  | ICCyclesPrim                      (* cycles to send by parenthetical *)
   | SetCertifiedData
   | GetCertificate
 
@@ -297,6 +298,7 @@ let map_prim t_typ t_id t_exp p =
   | SystemCyclesAvailablePrim
   | SystemCyclesBalancePrim
   | SystemCyclesRefundedPrim
+  | ICCyclesPrim
   | SetCertifiedData
   | GetCertificate
   | OtherPrim _ -> p

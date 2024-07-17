@@ -1,3 +1,4 @@
+//MOC-FLAG -dl
 import Prim "mo:⛔";
 import Cycles "cycles/cycles";
 import Lib "clone/cloneable";

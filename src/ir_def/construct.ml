@@ -111,6 +111,7 @@ let primE prim es =
     | SystemCyclesAcceptPrim -> T.nat
     | DeserializePrim ts -> T.seq ts
     | DeserializeOptPrim ts -> T.Opt (T.seq ts)
+    | ICCyclesPrim -> T.(Opt (Obj (Object, [(* FIXME *)])))
     | OtherPrim "trap" -> T.Non
     | OtherPrim "call_perform_status" -> T.(Prim Nat32)
     | OtherPrim "call_perform_message" -> T.text

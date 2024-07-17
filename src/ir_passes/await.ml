@@ -75,6 +75,9 @@ let rec t_async context exp =
      cps_asyncE s typ1 (typ exp1)
        (forall [tb] ([k_ret; k_fail] -->*
           (c_exp context' exp1 (ContVar k_ret))))
+     |> if s = Fut
+        then thenE (primE ICCyclesPrim [])
+        else fun e -> e
  |  _ -> assert false
 
 (* Trivial translation of pure terms (eff = T.Triv) *)

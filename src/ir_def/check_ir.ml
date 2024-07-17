@@ -549,6 +549,11 @@ let rec check_exp env (exp:Ir.exp) : unit =
       check (T.shared (T.seq ots)) "DeserializeOpt is not defined for operand type";
       typ exp1 <: T.blob;
       T.Opt (T.seq ots) <: t
+
+
+    | ICCyclesPrim, [] -> () (* FIXME *)
+
+
     | CPSAwait (s, cont_typ), [a; kr] ->
       let (_, t1) =
         try T.as_async_sub s T.Non (T.normalize (typ a))
