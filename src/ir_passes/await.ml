@@ -72,12 +72,9 @@ let rec t_async context exp =
      LabelEnv.add Return (Cont (ContVar k_ret))
        (LabelEnv.add Throw (Cont (ContVar k_fail)) LabelEnv.empty)
    in
-     cps_asyncE s typ1 (typ exp1)
+     cps_asyncE s typ1 (primE ICCyclesPrim []) (typ exp1)
        (forall [tb] ([k_ret; k_fail] -->*
           (c_exp context' exp1 (ContVar k_ret))))
-     |> if s = Fut
-        then thenE (primE ICCyclesPrim [])
-        else fun e -> e
  |  _ -> assert false
 
 (* Trivial translation of pure terms (eff = T.Triv) *)
@@ -406,7 +403,7 @@ and c_exp' context exp k =
       | None -> assert false
     in
     let cps_async =
-      cps_asyncE T.Fut typ1 (typ exp1)
+      cps_asyncE T.Fut typ1 (primE ICCyclesPrim []) (typ exp1)
         (forall [tb] ([k_ret; k_fail] -->*
           (c_exp context' exp1 (ContVar k_ret)))) in
     let k' = meta (typ cps_async)

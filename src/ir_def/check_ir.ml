@@ -572,7 +572,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
        | _ -> error env exp.at "CPSAwait bad cont");
       check (not (env.flavor.has_await)) "CPSAwait await flavor";
       check (env.flavor.has_async_typ) "CPSAwait in post-async flavor";
-    | CPSAsync (s, t0), [exp] ->
+    | CPSAsync (s, t0, _FIXME), [exp] ->
       (match typ exp with
         T.Func(T.Local,T.Returns, [tb],
           [T.Func(T.Local, T.Returns, [], ts1, []);

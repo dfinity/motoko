@@ -157,8 +157,14 @@ let awaitE s e =
     note = Note.{ def with typ; eff = T.Await }
   }
 
-let cps_asyncE s typ1 typ2 e =
-  { it = PrimE (CPSAsync (s, typ1), [e]);
+let nullE () =
+  { it = LitE NullLit;
+    at = no_region;
+    note = Note.{ def with typ = T.Prim T.Null }
+  }
+
+let cps_asyncE s typ1 par typ2 e =
+  { it = PrimE (CPSAsync (s, typ1, if s = Fut then par else nullE ()), [e]);
     at = no_region;
     note = Note.{ def with typ = T.Async (s, typ1, typ2); eff = eff e }
   }
@@ -291,12 +297,6 @@ let boolE b =
   { it = LitE (BoolLit b);
     at = no_region;
     note = Note.{ def with typ = T.bool }
-  }
-
-let nullE () =
-  { it = LitE NullLit;
-    at = no_region;
-    note = Note.{ def with typ = T.Prim T.Null }
   }
 
 

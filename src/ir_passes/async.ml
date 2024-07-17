@@ -268,7 +268,7 @@ let transform prog =
          ((t_exp a) -*- (t_exp kr)).it
       | _ -> assert false
       end
-    | PrimE (CPSAsync (Fut, t), [exp1]) ->
+    | PrimE (CPSAsync (Fut, t, _FIXME), [exp1]) ->
       let t0 = t_typ t in
       let tb, ts1 = match typ exp1 with
         | Func(_,_, [tb], [Func(_, _, [], ts1, []); _], []) ->
@@ -290,7 +290,7 @@ let transform prog =
         ]
         (varE nary_async)
       ).it
-    | PrimE (CPSAsync (Cmp, t), [exp1]) ->
+    | PrimE (CPSAsync (Cmp, t, _), [exp1]) ->
       let t0 = t_typ t in
       let tb, t_ret, t_fail = match typ exp1 with
         | Func(_,_, [tb], [t_ret; t_fail], _ ) ->
@@ -385,7 +385,7 @@ let transform prog =
               let args' = t_args args in
               let typbinds' = t_typ_binds typbinds in
               let t0, cps = match exp.it with
-                | PrimE (CPSAsync (Type.Fut, t0), [cps]) -> t_typ t0, cps
+                | PrimE (CPSAsync (Fut, t0, _FIXME), [cps]) -> t_typ t0, cps
                 | _ -> assert false in
               let t1, contT = match typ cps with
                 | Func (_,_,
@@ -414,7 +414,7 @@ let transform prog =
               let args' = t_args args in
               let typbinds' = t_typ_binds typbinds in
               let t0, cps = match exp.it with
-                | PrimE (CPSAsync (Type.Fut, t0), [cps]) -> t_typ t0, cps (* TBR *)
+                | PrimE (CPSAsync (Fut, t0, _FIXME), [cps]) -> t_typ t0, cps (* TBR *)
                 | _ -> assert false in
               let t1, contT = match typ cps with
                 | Func (_, _,

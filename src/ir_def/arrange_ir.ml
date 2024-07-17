@@ -104,8 +104,8 @@ and prim = function
   | OtherPrim s       -> Atom s
   | CPSAwait (Type.Fut, t) -> "CPSAwait" $$ [typ t]
   | CPSAwait (Type.Cmp, t) -> "CPSAwait*" $$ [typ t]
-  | CPSAsync (Type.Fut, t) -> "CPSAsync" $$ [typ t]
-  | CPSAsync (Type.Cmp, t) -> "CPSAsync*" $$ [typ t]
+  | CPSAsync (Type.Fut, t, par) -> "CPSAsync" $$ [typ t] @ [exp par]
+  | CPSAsync (Type.Cmp, t, _) -> "CPSAsync*" $$ [typ t]
   | ICArgDataPrim     -> Atom "ICArgDataPrim"
   | ICStableSize t    -> "ICStableSize" $$ [typ t]
   | ICPerformGC       -> Atom "ICPerformGC"

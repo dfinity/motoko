@@ -164,7 +164,7 @@ and prim =
   (* backend stuff *)
   | CPSAwait of Type.async_sort * Type.typ
                                       (* typ is the current continuation type of cps translation *)
-  | CPSAsync of Type.async_sort * Type.typ
+  | CPSAsync of Type.async_sort * Type.typ * exp
   | ICPerformGC
   | ICReplyPrim of Type.typ list
   | ICRejectPrim
@@ -303,7 +303,7 @@ let map_prim t_typ t_id t_exp p =
   | GetCertificate
   | OtherPrim _ -> p
   | CPSAwait (s, t) -> CPSAwait (s, t_typ t)
-  | CPSAsync (s, t) -> CPSAsync (s, t_typ t)
+  | CPSAsync (s, t, par) -> CPSAsync (s, t_typ t, t_exp par)
   | ICReplyPrim ts -> ICReplyPrim (List.map t_typ ts)
   | ICArgDataPrim
   | ICPerformGC
