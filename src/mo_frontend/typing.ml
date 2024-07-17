@@ -828,8 +828,31 @@ and check_typ_bounds env (tbs : T.bind list) (ts : T.typ list) ats at =
     match tbs', ts', ats' with
     | tb::tbs', t::ts', at'::ats' ->
       if not env.pre then
-        let u = T.open_ ts tb.T.bound in
-        if not (T.sub t u) then
+        let open T in
+        let u = open_ ts tb.T.bound in
+        let t', u' = 
+
+
+
+      if is_func t && is_func u then
+        let transfer_arity from toh = match from, List.map normalize toh with
+          | [_], _ -> [seq toh]
+          | _, [Tup ts] -> ts
+          | _, _ -> toh in
+        let s, c, tbs, ts1, ts2 = as_func t in
+        let dom, cod = transfer_arity ts1, transfer_arity ts2 in
+        Func (s, c, tbs, ts1, ts2),
+        let s, c, tbs, ts1, ts2 = as_func u in Func (s, c, tbs, dom ts1, cod ts2)
+      else t, u in
+
+
+
+
+
+
+
+
+          if not (sub t' u') then
           local_error env at' "M0046"
             "type argument%a\ndoes not match parameter bound%a"
             display_typ_expand t
