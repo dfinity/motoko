@@ -30,18 +30,18 @@ let string_of_mono_goal (g : mono_goal) : string =
     | _ -> unsupported Source.no_region (Mo_types.Arrange_type.typ t)) g.mg_typs)
 
 let mono_calls_visitor (stk : mono_goal Stack.t) : visitor =
-  { visit_exp = (function
-    | {it = CallE({it = VarE v; at = v_at; note = v_note},inst,e); at; note} ->
-        let goal = { mg_id = v.it; mg_typs = inst.note } in
-        let _ = (if goal.mg_typs = [] then () else Stack.push goal stk) in
-        let s = string_of_mono_goal goal in
-        {it = CallE({it = VarE (s @@ v_at); at=v_at; note=v_note},
-                    {it = None; at=inst.at; note = []}, e); at; note}
-    | e -> e);
-    visit_typ = (fun t -> t);
+  { visit_typ = (fun t -> t);
     visit_pat = (fun p -> p);
     visit_dec = (fun d -> d);
     visit_inst = (fun i -> i);
+    visit_exp = function
+      | {it = CallE(_, {it = VarE v; at = v_at; note = v_note},inst,e); _} as exp ->
+         let goal = { mg_id = v.it; mg_typs = inst.note } in
+         let _ = (if goal.mg_typs = [] then () else Stack.push goal stk) in
+         let s = string_of_mono_goal goal in
+         {exp with it = CallE(None, {it = VarE (s @@ v_at); at=v_at; note=v_note},
+                              {it = None; at=inst.at; note = []}, e)}
+      | e -> e
   }
 
 let mono_calls_dec_field (df : dec_field) : (mono_goal list * dec_field) =
