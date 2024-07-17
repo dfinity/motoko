@@ -1068,6 +1068,7 @@ and type_exp_field env s f : T.field =
     with Not_found -> error env f.at "field typing for %s not found" name
   in
   assert (t <> T.Pre);
+  let t = T.(match f.note with Mut _ -> t | _ -> as_immut t) in
   check_sub env f.at t f.note;
   if not (T.is_typ t) then begin
     check env f.at ((s = T.Actor) ==> T.is_shared_func t)
