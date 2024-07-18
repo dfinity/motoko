@@ -2550,7 +2550,8 @@ Because the [`Error`](../base/Error.md) type is opaque, the pattern match cannot
 
 :::
 
-The `try` expression can be endowed with a cleanup clause (and optionally omitting the `catch`) to facilitate structured rollback of temporary state changes (e.g. locks).
+The `try` expression can be provided with a `finally` cleanup clause to facilitate structured rollback of temporary state changes (e.g. to release a lock). 
+The preceding `catch` clause may be omitted in the presence of a `finally` clause.
 
 This form is `try <block-or-exp1> (catch <pat> <block-or-exp2>)? finally <block-or-exp3>`, and evaluation proceeds as above with the crucial addition that every control-flow path leaving `<block-or-exp1>` or `<block-or-exp2>` will execute the unit-valued `<block-or-exp3>` before the entire `try` expression obtains its value. The cleanup expression will additionaly also be executed when the processing after an intervening `await` (directly, or indirectly as `await*`) traps.
 
