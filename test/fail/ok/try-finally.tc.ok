@@ -1,5 +1,6 @@
-try-finally.mo:10.17-10.31: type error [M0200], a cleanup clause must not send messages
-try-finally.mo:16.17-16.39: type error [M0200], a cleanup clause must not send messages
+try-finally.mo:10.26-10.29: type error [M0047], send capability required, but not available
+ (need an enclosing async expression or function body)
+try-finally.mo:16.19-16.37: type error [M0039], misplaced throw
 try-finally.mo:22.19-22.21: type error [M0050], literal of type
   Nat
 does not have expected type
