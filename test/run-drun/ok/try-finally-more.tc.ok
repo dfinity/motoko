@@ -1,9 +1,0 @@
-try-finally-more.mo:7.21-7.28: warning [M0145], this pattern of type
-  (Nat, Nat, Nat)
-does not cover value
-  (1, 2, 0 or 1 or _) or
-  (1, 0 or 1 or _, _) or
-  (0 or 2 or _, _, _)
-try-finally-more.mo:1.29-1.37: warning [M0198], unused field call_raw in object pattern (delete or rewrite as `call_raw = _`)
-try-finally-more.mo:1.39-1.55: warning [M0198], unused field principalOfActor in object pattern (delete or rewrite as `principalOfActor = _`)
-try-finally-more.mo:12.17-12.18: warning [M0194], unused identifier e (delete or rename to wildcard `_` or `_e`)
