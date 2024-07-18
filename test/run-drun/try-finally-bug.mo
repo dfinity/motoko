@@ -3,11 +3,10 @@ import { debugPrint; error; call_raw; principalOfActor } =  "mo:⛔";
 actor A {
 
     func t0() : async () {
-      try { }
-//        catch e {}
+      let () = try { }
         finally {
-         ignore async {};
-       } : ();
+          ignore async {};
+       };
     };
 
     public func go() : async () {
