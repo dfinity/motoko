@@ -10577,7 +10577,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
   begin match p, es with
   (* Calls *)
-  | CallPrim _, [e1; e2] ->
+  | CallPrim (_, par), [e1; e2] ->
     let sort, control, _, arg_tys, ret_tys = Type.(as_func (promote e1.note.Note.typ)) in
     let n_args = List.length arg_tys in
     let return_arity = match control with
@@ -10622,7 +10622,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
          StackRep.of_arity return_arity,
 
          code1 ^^
-         compile_unboxed_zero ^^ (* A dummy closure *)
+         (assert (Type.as_obj par.note.typ = (Object, []));compile_unboxed_zero) ^^ (* A dummy closure *)
          compile_exp_as env ae (StackRep.of_arity n_args) e2 ^^ (* the args *)
          G.i (Call (nr (mk_fi ()))) ^^
          FakeMultiVal.load env (Lib.List.make return_arity I32Type)
