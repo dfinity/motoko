@@ -268,7 +268,7 @@ let transform prog =
          ((t_exp a) -*- (t_exp kr)).it
       | _ -> assert false
       end
-    | PrimE (CPSAsync (Fut, t, _FIXME), [exp1]) ->
+    | PrimE (CPSAsync (Fut, t, cyc), [exp1]) ->
       let t0 = t_typ t in
       let tb, ts1 = match typ exp1 with
         | Func(_,_, [tb], [Func(_, _, [], ts1, []); _], []) ->
@@ -286,7 +286,7 @@ let transform prog =
             let e = fresh_var "e" T.catch in
             e --> (ic_rejectE (errorMessageE (varE e))) in
           let exp' = callE (t_exp exp1) [t0] (tupE [ic_reply; ic_reject]) in
-          expD (selfcallE ts1 exp' (varE nary_reply) (varE reject))
+          expD (selfcallE ts1 exp' (varE nary_reply) (varE reject) |> thenE cyc)
         ]
         (varE nary_async)
       ).it
