@@ -610,7 +610,11 @@ and interpret_fields env fs =
     let ve =
       List.fold_left
         (fun ve (f : field) ->
-          V.Env.disjoint_add f.it.name (Lib.Promise.value (find f.it.var env.vals)) ve
+         let v = match f.note, Lib.Promise.value (find f.it.var env.vals) with
+           | T.Mut _, v -> v
+           | _, V.Mut v -> !v (* immutable field, read mutable box *)
+           | _, v -> v in
+         V.Env.disjoint_add f.it.name v ve
         ) V.Env.empty fs in
     V.Obj ve
 

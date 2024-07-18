@@ -18,7 +18,7 @@ The following table summarizes the different ways of pattern matching.
 | Named                      | `age`, `x`                      | Everywhere | No                                    | Introduces identifiers into a new scope  |
 | Wildcard                   | `_`                             | Everywhere | No                                    |                                          |
 | Typed                      | `age : Nat`                     | Everywhere | Conditional                           |                                          |
-| Option                     | `?0`, `?val`                    | Everywhere | Yes                                   |                                          |
+| Option                     | `?0`, `?val`                    | Everywhere | Yes                                   | See also [option blocks](#option-blocks-for-streamlined-processing-of-optional-data) |
 | Tuple                      | `( component0, component1, …​ )` | Everywhere | Conditional                           | Must have at least two components        |
 | Object                     | `{ fieldA; fieldB; …​ }`         | Everywhere | Conditional                           | Allowed to mention a subset of fields    |
 | Field                      | `age`, `count = 0`              | Object     | Conditional                           | `age` is short for `age = age`           |
@@ -100,6 +100,22 @@ Some types contain just a single value. We call these singleton types. Examples 
 
 ### Exhaustiveness (coverage) checking
 
-
 At runtime, a switch expression may wind up scrutinizing a value to which none of its alternative patterns apply, generating an undesired trap.
-To detect the possibility of such runtime failures, the Motoko compiler checks for the exhaustiveness of pattern matching by keeping track of the covered shape of the scrutinee. The compiler issues a warning for any non-covered scrutinees. Motoko even constructs a helpful example of a scrutinee that is not matched. A useful by-product of the exhaustiveness check is that it identifies and warns about dead or redundant alternatives that can never be matched.
+To detect the possibility of such runtime failures, the Motoko compiler checks for the exhaustiveness of pattern matching by keeping track of the covered shape of the scrutinee. The compiler issues a warning for any non-covered scrutinees. Motoko even constructs a helpful example of a scrutinee that is not matched. A useful by-product of the exhaustiveness check is that it identifies and warns the developer about dead or redundant alternatives that can never be matched.
+
+## Refutable patterns and dealing with non-matching data
+
+Developers may only be interested in specially formed data with a desire to directly handle all non-matching forms. The `let`-`else` construct is designed precisely for this purpose. Whereas the regular destructuring `let` allows to focus on a single given pattern, it invariably traps if the right-hand side data doesn't match it, which is warned at compilation. The `else` clause gives the programmer a way to deal with refuted matches, such as bailing out of the process or logging a message before trapping. As such, `let`-`else` is similar to a two-`case` `switch` in a compact form that additionally doesn't force the indentation of the processing logic following it.
+
+The below example illustrates how you can write a non-indenting `if`-`else` by resorting to a `let`-`else` in your code:
+
+``` motoko
+let true = isLoggedIn(customer) else return;
+// process message for logged-in customer
+```
+
+The expression (or block) following the `else` must be of type `None` signifying that its execution trajectory mustn't contribute to the code immediately following the `let` declaration.
+
+## Option blocks for streamlined processing of optional data
+
+Pattern matching on optional data (of type `?T`) is a preferred technique for avoiding the dreaded `null`-exeption problems known from other languages. However, `switch`-ing  on several options can lead to tedious coding and deeply nested sources. To remedy these problems, Motoko provides *option blocks* (`do ? { ... }`) that allow safe unwrapping of options using a postfix `!` operator. Every use of the `!` in the block corresponds to a `switch` on some option, with the additional short-circuiting behavior that if `!` is applied to a `null` value, the entire block stops evaluation and immediately returns `null`.

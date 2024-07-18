@@ -12,6 +12,7 @@ no-timer-set.mo:3.10-3.18: type error [M0119], object field setTimer is not cont
       };
     Array_init : <T>(Nat, T) -> [var T];
     Array_tabulate : <T>(Nat, Nat -> T) -> [T];
+    Ret : <T>() -> T;
     Types :
       module {
         type Any = Any;
@@ -97,6 +98,7 @@ no-timer-set.mo:3.10-3.18: type error [M0119], object field setTimer is not cont
     error : Text -> Error;
     errorCode : Error -> ErrorCode;
     errorMessage : Error -> Text;
+    exists : <T>(T -> Bool) -> Bool;
     exp : Float -> Float;
     floatAbs : Float -> Float;
     floatCeil : Float -> Float;
@@ -111,6 +113,7 @@ no-timer-set.mo:3.10-3.18: type error [M0119], object field setTimer is not cont
     floatToInt64 : Float -> Int64;
     floatToText : Float -> Text;
     floatTrunc : Float -> Float;
+    forall : <T>(T -> Bool) -> Bool;
     getCertificate : () -> ?Blob;
     hashBlob : Blob -> Nat32;
     idlHash : Text -> Nat32;
