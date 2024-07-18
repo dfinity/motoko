@@ -498,7 +498,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | None -> k, env
       | Some (id, ty) ->
         let exp2 = Construct.(varE (var id ty) -*- unitE ()) in
-        let pre k v = interpret_exp env exp2 (fun _ -> k v) in
+        let pre k v = interpret_exp env exp2 (fun v2 -> V.as_unit v2; k v) in
         pre k,
         { env with rets = Option.map pre env.rets
                  ; labs = V.Env.map pre env.labs
