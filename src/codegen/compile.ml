@@ -2406,12 +2406,13 @@ module Opt = struct
             ( get_x ) (* true literal, no wrapping *)
             ( get_x ^^ Tagged.branch_default env [I32Type]
               ( get_x ) (* default tag, no wrapping *)
-              [ Tagged.Null,
+              Tagged.
+              [ Null,
                 (* NB: even ?null does not require allocation: We use a static
                   singleton for that: *)
                 compile_unboxed_const (vanilla_lit env (null_vanilla_lit env))
-              ; Tagged.Some,
-                Tagged.obj env Tagged.Some [get_x]
+              ; Some,
+                obj env Some [get_x]
               ]
             )
         )
@@ -11850,6 +11851,12 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla, Cycles.available env
   | SystemCyclesRefundedPrim, [] ->
     SR.Vanilla, Cycles.refunded env
+  | ICCyclesPrim, [] ->
+    SR.Vanilla,
+    Opt.(inject_simple env (G.i (LocalGet (nr 0l))) ^^
+         null_lit env) ^^
+    G.i (LocalGet (nr 0l)) ^^
+    G.i Select
 
   | SetCertifiedData, [e1] ->
     SR.unit, compile_exp_vanilla env ae e1 ^^ IC.set_certified_data env
