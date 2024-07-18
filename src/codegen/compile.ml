@@ -10622,7 +10622,9 @@ and compile_prim_invocation (env : E.t) ae p es at =
          StackRep.of_arity return_arity,
 
          code1 ^^
-         (assert (Type.as_obj par.note.typ = (Object, []));compile_unboxed_zero) ^^ (* A dummy closure *)
+         Type.(match as_obj par.note.Note.typ with
+         | Object, [] -> compile_unboxed_zero (* a dummy closure *)
+         |  _ -> compile_exp_vanilla env ae par) ^^ (* parenthetical *)
          compile_exp_as env ae (StackRep.of_arity n_args) e2 ^^ (* the args *)
          G.i (Call (nr (mk_fi ()))) ^^
          FakeMultiVal.load env (Lib.List.make return_arity I32Type)
