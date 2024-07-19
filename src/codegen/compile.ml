@@ -1258,6 +1258,7 @@ module RTS = struct
     E.add_func_import env "rts" "stream_split" [I32Type] [I32Type];
     E.add_func_import env "rts" "stream_shutdown" [I32Type] [];
     E.add_func_import env "rts" "stream_reserve" [I32Type; I32Type] [I32Type];
+    E.add_func_import env "rts" "stream_stable_dest" [I32Type; I64Type; I64Type] [];
     if !Flags.import_component then (
       E.add_func_import env "rts" "blob_of_cabi" [I32Type] [I32Type];
       E.add_func_import env "rts" "cabi_realloc" [I32Type; I32Type; I32Type; I32Type] [I32Type]);
