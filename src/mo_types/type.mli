@@ -236,6 +236,8 @@ val glb : typ -> typ -> typ
 
 (* First-order substitution *)
 
+val subst : typ ConEnv.t -> typ -> typ
+
 val close : con list -> typ -> typ
 val close_binds : con list -> bind list -> bind list
 
