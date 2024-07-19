@@ -1,4 +1,4 @@
 unsupported.mo:5.7-5.8: warning [M0194], unused identifier x (delete or rename to wildcard `_` or `_x`)
-unsupported.mo:5.3-5.13: viper error [0], translation to viper failed:
-(LetD (VarP x) (LitE (TextLit )))
+unsupported.mo:5.17-5.20: viper error [0], translation to viper failed:
+(LitE (CharLit 97))
 
