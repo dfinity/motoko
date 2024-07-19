@@ -1,7 +1,0 @@
---- 4611.run
-+++ 4611.run-ir
-@@ -1,3 +1,3 @@
- {mrec = {bool = true; text = "Hello World!"}; rec = {bool = true; text = "Hello World!"}}
- {aool = (); bool = false}
--{bool = false; cool = ()}
-+{bool = true; cool = ()}
