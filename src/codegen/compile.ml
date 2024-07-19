@@ -5266,6 +5266,7 @@ module IC = struct
       edesc = nr (FuncExport (nr post_upgrade_fi))
     })
 
+
   let get_self_reference env =
     match E.mode env with
     | Flags.ICMode | Flags.RefMode ->
@@ -6343,7 +6344,7 @@ module RTS_Exports = struct
     E.add_export env (nr {
       name = Lib.Utf8.decode "moc_stable_mem_set_version";
       edesc = nr (FuncExport (nr moc_stable_mem_set_version_fi))
-    });
+    })
 
 end (* RTS_Exports *)
 
