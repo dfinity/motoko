@@ -74,7 +74,7 @@ no-timer-set.mo:3.10-3.18: type error [M0119], object field setTimer is not cont
     clzNat32 : Nat32 -> Nat32;
     clzNat64 : Nat64 -> Nat64;
     clzNat8 : Nat8 -> Nat8;
-    componentCall : Blob -> Nat32;
+    componentCall : Blob -> Blob;
     cos : Float -> Float;
     createActor : (Blob, Blob) -> async Principal;
     ctzInt16 : Int16 -> Int16;
