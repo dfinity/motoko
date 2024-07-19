@@ -218,7 +218,7 @@ and binary context k binE e1 e2 =
     assert false
 
 and nary context k naryE es =
-  let rec nary_aux vs es  =
+  let rec nary_aux vs es =
     match es with
     | [] -> k -@- naryE (List.rev vs)
     | [e1] when eff e1 = T.Triv ->
