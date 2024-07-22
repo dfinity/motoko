@@ -4616,7 +4616,7 @@ module Lifecycle = struct
     | InPreUpgrade -> [Idle]
     | PostPreUpgrade -> [InPreUpgrade]
     | InPostUpgrade -> [InInit]
-    | InComposite -> [Idle]
+    | InComposite -> [Idle; InComposite]
 
   let get env =
     compile_unboxed_const (ptr ()) ^^
@@ -4642,6 +4642,10 @@ module Lifecycle = struct
         ) ^^
       set env new_state
     )
+
+  let is_in env state =
+    get env ^^
+    compile_eq_const (int_of_state state)
 
 end (* Lifecycle *)
 
@@ -5927,6 +5931,21 @@ module RTS_Exports = struct
     E.add_export env (nr {
       name = Lib.Utf8.decode "rts_trap";
       edesc = nr (FuncExport (nr rts_trap_fi))
+    });
+
+    (* Keep a memory reserve when in update or init state. 
+    This reserve can be used by queries, composite queries, and upgrades. *)
+    let keep_memory_reserve_fi = E.add_fun env "keep_memory_reserve" (
+      Func.of_body env [] [I32Type] (fun env ->
+        Lifecycle.(is_in int_of_state InUpdate) ^^
+        Lifecycle.(is_in int_of_state InInit) ^^
+        G.i (Binary (Wasm_exts.Values.I64 I64Op.Or)) ^^
+        Bool.to_rts_int32
+      )
+    ) in
+    E.add_export env (nr {
+      name = Lib.Utf8.decode "keep_memory_reserve";
+      edesc = nr (FuncExport (nr keep_memory_reserve_fi))
     });
 
     let when_stable_memory_required_else_trap env code =
@@ -8930,8 +8949,24 @@ module FuncDec = struct
       | Type.Shared Type.Query ->
         Lifecycle.trans env Lifecycle.PostQuery
       | Type.Shared Type.Composite ->
-        Lifecycle.trans env Lifecycle.Idle
+        (* Stay in composite query state such that callbacks of 
+        composite queries can also use the memory reserve. 
+        The state is isolated since memory changes of queries 
+        are rolled back by the IC runtime system. *)
+        Lifecycle.trans env Lifecycle.InComposite
       | _ -> assert false
+
+  let callback_start env =
+    Lifecycle.is_in env Lifecycle.InComposite ^^
+    E.if0
+      (G.nop)
+      (message_start env (Type.Shared Type.Write))
+
+  let callback_cleanup env =
+    Lifecycle.is_in env Lifecycle.InComposite ^^
+    E.if0
+      (G.nop)
+      (message_cleanup env (Type.Shared Type.Write))
 
   let compile_const_message outer_env outer_ae sort control args mk_body ret_tys at : E.func_with_names =
     let ae0 = VarEnv.mk_fun_ae outer_ae in
@@ -9093,7 +9128,7 @@ module FuncDec = struct
            (fun env -> compile_unboxed_const 0L)))
     in
     Func.define_built_in env reply_name ["env", I32Type] [] (fun env ->
-        message_start env (Type.Shared Type.Write) ^^
+        callback_start env ^^
         (* Look up continuation *)
         let (set_closure, get_closure) = new_local env "closure" in
         G.i (LocalGet (nr 0l)) ^^
@@ -9110,12 +9145,12 @@ module FuncDec = struct
         get_closure ^^
         Closure.call_closure env arity 0 ^^
 
-        message_cleanup env (Type.Shared Type.Write)
+        callback_cleanup env
       );
 
     let reject_name = "@reject_callback" in
     Func.define_built_in env reject_name ["env", I32Type] [] (fun env ->
-        message_start env (Type.Shared Type.Write) ^^
+        callback_start env ^^
         (* Look up continuation *)
         let (set_closure, get_closure) = new_local env "closure" in
         G.i (LocalGet (nr 0l)) ^^
@@ -9133,7 +9168,7 @@ module FuncDec = struct
         get_closure ^^
         Closure.call_closure env 1 0 ^^
 
-        message_cleanup env (Type.Shared Type.Write)
+        callback_cleanup env
       );
 
     (* result is a function that accepts a list of closure getters, from which
