@@ -180,7 +180,7 @@ actor A {
             debugPrint "DEAD6t";
         }
         finally { debugPrint "OUT6t" };
-        debugPrint "AFTER6t"
+        debugPrint "AFTERDEAD6t"
     };
 
     func t6c() : async () {
