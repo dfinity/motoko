@@ -26,7 +26,11 @@ _Motoko-san_ is a prototype code-level verifier for Motoko. The project started 
   | [Testing](#Testing)
   | [File structure](#Struct)
 
-**[Currently supported features](#Subset)**
+**[Currently supported features](#Subset) —**
+    [Types and operations](#SupportedTypes)
+  | [Declarations](#SupportedDecls)
+  | [Expressions](#SupportedExprs)
+  | [Static code specification](#SupportedSpec)
 
 **[Further information](#Further)**
 
@@ -53,6 +57,7 @@ Formal code specifications are written as part of the Motoko source code. These 
   * specify that the property `exp` is _intended_ to hold when this block execution begins. 
   * require that the tool actually _checks_ whether this assumption holds (given this actor's entire source code)
 * `assert:system (exp : Bool);` — a _static assertion_ that asks the verifier to prove that the property `exp` holds. Useful while designing code-level canister specifications.
+* `assert:loop:invariant (exp : Bool);` — a _loop invariant_ specifies that the property `exp` is intended to hold at the start and at the end of each iteration of a loop
 
 Note: the above syntax is provisional. It has been used so far to avoid introducing breaking changes to the Motoko grammar. In the future, _Motoko-san_ may switch to bespoke syntax for code specifications.
 
@@ -124,8 +129,9 @@ After modifying the code and recompiling `moc`, don't forget to test the changes
 [nix-shell:motoko]$ make -C test/viper
 ```
 
-Each test case consists of a (formally specified) Motoko source file, say, `$TEST` (e.g., `invariant.mo`) and the expected test results, represented via a triplet of files:
+Each test case consists of a (formally specified) Motoko source file, say, `$TEST` (e.g., `invariant.mo`) and the expected test results, represented via a set of files:
 * `test/viper/ok/$TEST.vpr.ok` — what the Motoko compiler is expected to generate; this should be a Viper program.
+* `test/viper/ok/$TEST.vpr.stderr.ok` — diagnostic messages (warnings) emitted by the Motoko compiler. No file if stderr is empty.
 * `test/viper/ok/$TEST.silicon.ok` — verification errors reported by the Viper tool. For example:
     ```
     [0] Postcondition of __init__ might not hold. Assertion $Self.count > 0 might not hold. (invariant.vpr@7.13--7.24)
@@ -144,7 +150,8 @@ The implementation of _Motoko-san_ consists of the following source files:
 * `src/viper/syntax.ml` — the Viper AST implementation.
 * `src/viper/pretty.ml` — the Viper pretty printer. Used for serializing Viper AST into text.
 * `src/viper/trans.ml` — the Motoko-to-Viper translation. Implements the logic of _Motoko-san_.
-
+* `src/viper/prep.ml` —  the Motoko-to-Motoko pass that prepares the unit for translation.
+* `src/viper/prelude.ml` - the Viper prelude generation. Creates common types and functions.
 
 Currently supported language features
 -------------------------------------
@@ -160,74 +167,340 @@ Below, we summarize the language features that _Motoko-san_ currently supports. 
   
     Extending to actor classes and modules is _simple_.
 
-* **Primitive types** — Only integer and Boolean types are supported (including literals of these types):
-  
-  * `Bool`: `not`, `or`, `and`, `implies` (short circuiting semantics)
+* **Types and operations**
+<a name="SupportedTypes"></a>
+    * Type `Bool`
+        * Literals: `true`, `false`
+        * Operations: `not`, `or`, `and`, `implies` (short circuiting semantics)
 
-  * `Int`: `+`, `/`, `*`, `-`, `%`
+    * Type `Int`
+        * Literals: `0`, `23`, `-5`, etc
+        * Operations: `+`, `/`, `*`, `-`, `%`
 
-  * Relations: `==`, `!=`, `<`, `>`, `>=`, `<=`
+    * Type `Nat`
+        * Supported via translation to `Int` (sound because `Nat` is a
+          subtype of `Int` and typechecking precedes verification)
+          Exploiting positiveness during verification is _simple_.
 
-  Supporting `Text`, `Nat`, `Int32`, tuples, record, and variants is _simple_.
+    * Type `Text`
+        * Literals: `""`, `"Hello"`
+        * Operations: `+`
 
-    Supporting `Option<T>` types is _trivial_.
+        Note: in current translation the verifier does not evaluate text expressions. So only simple symbolic reductions could be performed. For example:
+        ```motoko
+        let x = "Hello";
+        let y = ", world!";
+        let z = x + y;
+        assert:system x + y == z; // pass
+        assert:system x + y == "Hello, world!" // fail
+        ```
+
+    * Relations on `Bool`, `Int`, `Nat`
+        * `==`, `!=`, `<`, `>`, `>=`, `<=`
+
+    * Array types `[T]` and `[var T]`
+        * Construction: `[]`, `[x]`, `[x, y, z]`, `[var x, y, z]`, etc
+        * Indexing: `a[i]`, can be used on the LHS of an assignment
+        * Operations: `a.size()`
+        * Functions from `mo:base/Array`:
+          * `Array.init`
+          * `Array.freeze` is _trivial_
+          * `Array.tabulate` is _easy_ in limited forms.
+
+        * **Limitations:**
+          * Arrays should not coincide. For example if you want to pass an array field into a private function it cause an error:
+            ```motoko
+            actor A {
+              var x: [Int];
+              private func foo(y: [Int]): () {
+                // reason of the error is that two arrays refering same memory:
+                // 1. y -- argument
+                // 2. x -- actor field
+              }
+
+              public func bar(): async () {
+                 foo(x); // error
+              }
+            }
+            ```
+            There are workarounds that are _easy_ but the general problem is _hard_.
+          * `T` cannot be heap-depended value e.g. another array. It requires more complex permissions and has to work around [the receiver injectiveness](https://viper.ethz.ch/tutorial/#receiver-expressions-and-injectivity).
+            Overcoming is _hard_ and may require change permission encoding (to set-based model).
+          * Due to similar reasons array cannot be an inner type e.g. tuple of array.
+            Difficulty of overcoming of this depends on the outer type e.g. for tuples it is _easy_ while for variants probably it is not so.
+
+    * Tuple types `(T₁, T₂)`, `(T₁, T₂, T₃)`, etc
+        * Construction: `(a, b)`, `(a, b, c)`, etc
+        * Projections: `x.1`, `x.2`, etc
+        * Deconstruction by pattern matching:
+
+            * `let (a, b) = x`
+            * `switch x { case (a, b) ... }`
+
+          Nested matching is _simple_, but it is _not_ supported, i.e. subpatterns for tuple
+          elements `a`, `b`, `c` in `(a, b, c)` must all be variable patterns.
+
+    * Option types `Option<T>`
+        * Construction: `null`, `?a`
+        * Deconstruction by pattern matching:
+
+          ```motoko
+          switch x {
+              case null ...;
+              case (?a) ...;
+          }
+          ```
+
+          Nested matching is _not_ supported, i.e. the subpattern `a` in `?a`
+          must be a variable pattern.
+
+    * Variant types `{ #A; #B : T₁; #C : (T₂, T₃) }` (with limitations)
+        * Construction: `#A`, `#B(x)`, `#C(x, y)`
+        * Deconstruction by pattern matching:
+
+          ```motoko
+          switch x {
+              case #A ...;
+              case #B(x) ...;
+              case #C(x, y) ...;
+          }
+          ```
+
+          Nested matching is _not_ supported, i.e. the subpatterns `x`, `y` in
+          `#B(x)` and `#C(x, y)` must all be variable patterns.
+
+        * Generic and recursive variants are supported, e.g.
+
+          ```motoko
+          type List<T> = { #Nil; #Cons : (T, List<T>) }
+          ```
+
+        * Limitation 1: Nominal equality. In the Viper translation, equality
+          of variant types is not _structural_ (as in normal Motoko programs)
+          but _nominal_.
+          * One consequence of this is that a variant type may not be used
+            directly but must be bound to a name:
+
+            ```motoko
+            type N = { #A; #B }
+            ```
+
+            Instead of using `{ #A; #B }` in type signatures, one must always
+            refer to this variant by its name `N`.
+          * Furthermore, given two identical variant declarations, they are
+            treated as distinct in the translation:
+
+             ```motoko
+             type N = { #A; #B }
+             type M = { #A; #B }   // M ≠ N
+             ```
+
+          * Motoko's type checker has not been modified to account for
+            nominal equality of variants, so type inference is not reliable:
+            if a variant is bound to a variable in `let`, `var`, or `case`, the
+            bound variable must be explicitly annotated with the named type of
+            the variant.
+        * Limitation 2: Tuple components. If the type associated with a
+          constructor is a tuple, its components must be specified individually.
+          That is:
+
+          ```motoko
+          type N = { #Con: (Int, Bool) }
+
+          let x = #Con(10, true)   // supported
+
+          let p = (10, true)
+          let x = #Con(p)          // not supported
+          ```
+    * Record types (immutable) `{ a: T₁; b: T₂}`
+      * Construction: `let t = {a = x; b = y}`
+      * Field access: `t.a`, `t.b`
+      * Pattern matching:
+
+        ```motoko
+        switch r {
+            case { a = x; b}
+        }
+        ```
+      * **Limitations**
+        * Nominal equality (see variant's limitations)
+
+    Supporting `Int32` is _simple_.
 
     Supporting `async` types is _hard_.
 
     Supporting `Float`, function types, co-inductive, mutually recursive, and sub-typing is _hard_.
 
-    Supporting container types and generic types, e.g., arrays (`[var T]`) and `HashMap<K, V>`, is _hard_.
+    Supporting container types and generic types, e.g. `HashMap<K, V>`, is _hard_.
 
 * **Declarations**
-  
+<a name="SupportedDecls"></a>
     * **Actor fields**
         * Mutable: `var x = ...`
         * Immutable: `let y = ...`
         * Fields may _not_ be initialized via block expressions: `let z = { ... };`
 
-    * **Functions** — Only functions of `()` and `async ()` type with no arguments are supported:
+    * **Functions** — Functions of multiple arguments are supported:
 
-        `public shared func claim() : async () = { ... };`
+        ```motoko
+        // public func, the result is async
+        public func f(a: Int, b: Bool) : async [Bool] { ... };
 
-        `private func reward() : () = { ... };`
+        // private func, no async
+        func g(a: Int, b: Bool) : [Bool] { ... };
+        ```
 
-        Supporting function arguments and return values is _simple_.
+        If a function result type is non-`()`, it must be returned using the
+        `return` statement.
 
-    * **Local declarations** — Only local variable declarations with trivial left-hand side are supported:
+        Polymorphism is supported in private functions only:
 
-        `var x = ...;` and `let y = ...;`
+        ```motoko
+        func firstValue<T, U>(a : T, _b : U) : T { ... };
+        ```
 
-        Supporting pattern matching declarations (e.g., `let (a, b) = ...;`) is _simple_.
+        In the Viper translation, a polymorphic function is treated as a
+        template: each instantiation of its type parameters creates a new copy
+        of the function definition, where the parameters have been instantiated
+        to concrete types. The call sites are modified to use the monomorphised
+        version. The instantiations are found by traversing the static call
+        graph within the actor.
+
+    * **Local declarations** — Local variables are declared with `var` or `let`:
+
+        ```motoko
+        var x = ...;
+        let y = ...;
+        ```
+
+        Furthermore, `let`-declarations may pattern match on a tuple:
+
+        ```motoko
+        let (a, b) = ...;
+        ```
 
 * **Statements**
 
     * `()`-typed block statements and sequential composition:
 
-        `{ var x = 0 : Int; x := x + 1; }`
+        ```motoko
+        {
+            var x = 0 : Int;
+            x := x + 1;
+        }
+        ```
 
         Supporting `let y = do { let y = 1 : Int; y + y };` is _simple_.
 
     * Runtime assertions: `assert i <= MAX;`
 
-    * Assignments (to local variables and actor fields): `x := x + 1`
-    
+    * Assignments (to local variables, actor fields, and array elements):
+
+      ```motoko
+      x := x + 1;         // x   is a local variable
+      fld := fld + 1;     // fld is an actor field
+      a[i] := a[i] + 1;   // a   is an array
+      ```
+
     * `if-[else]` statements
-  
-        Supporting pattern-matching is conceptually _simple_.
-    
-    * `while` loops (loop invariants are not currently supported)
 
-        Supporting `for` loops is _simple_.
+    * Pattern-matching: `switch(e)`
 
-        Supporting `break` and `continue` is _simple_.
-    
+      ```motoko
+      switch (x) {
+          case null { .. };
+          case (?a) {
+            switch(a) {
+              case 1: { .. };
+              case 2: { .. };
+              case _: { .. };
+            }
+          };
+      };
+      ```
+
+      Nested matching is _not_ supported yet (simplifying Motoko-Motoko pass is missed).
+
+    * Return statements `return e;`
+
+      Early exit from a function is also supported:
+
+      ```motoko
+      if (length == 0) {
+        return a;   // conditional early exit
+      };
+      return a;     // normal exit
+      ```
+
+    * `while` loops and loop invariants
+
+      ```motoko
+      while (cond) {
+          assert:loop:invariant (e1);
+          assert:loop:invariant (e2);
+          ...
+      };
+      ```
+
+      The loop invariant assertions must precede all other statements in the
+      loop body. Note that loops are not transparent in the Viper so right after loop execution only loop invariants considered held. That's why even actor invariant should be repeated for now.
+
+      `break` and `continue` is supported. For example:
+      ```motoko
+      label l while (cond) {
+         while (true) {
+            if (..) break l;
+            if (..) continue l;
+         }
+      }
+      ```
+
+      Supporting `for` loops is _simple_.
+
+    * Labeled expressions:
+
+      ```motoko
+      let x = label exit: Int {
+          if (..) exit(-1);
+          ...
+      };
+      ```
+
+    * Method calls `f(a,b,c);`
+
+      ```motoko
+      f1(e);           // standalone method call
+      let c1 = f2(e);  // method call in let-declaration
+      var c2 = f3(e);  // method call in var-declaration
+      c2 := f4(e);     // method call in assignment
+      return f5(e);    // method call in return statement
+      ```
+
+      Limitiation: at the moment, only one method call per statement is allowed. Nested calls `f(g(x), h(y)))` must be rewritten using temporary variables:
+
+      ```motoko
+      let a = g(x);
+      let b = h(y);
+      f(a, b);
+      ```
+
     * `await async { ... }` — Asynchronous code blocks that are immediately awaited on.
 
         Supporting general `await`s and `async`s is _hard_.
 
         Supporting async function calls is _simple_.
 
+* **Expressions**
+<a name="SupportedExprs"></a>
+    * `x` — local variables, function arguments, actor fields.
+    * `e2 <op> e2` — binary operations (see [types](#SupportedTypes) for details).
+    * access to elements of an array `a[i]`, tuple `t.0` or record `a.f`.
+    * method call is _simple_ since could be boiled down to statement via simple Motoko-Motoko pass.
+    * `if`-expression is _simple_.
+    * `switch`-expression is _simple_ since boiled down to series of `if`.
+
 * **Static code specifications** — Note that the syntax is provisional:
+<a name="SupportedSpec"></a>
 
     * `assert:invariant` — Canister-level invariants
     
@@ -240,33 +513,53 @@ Below, we summarize the language features that _Motoko-san_ currently supports. 
     * `assert:func` — Function preconditions
     
     * `assert:return` — Function postconditions. 
-    
-        * These may refer to variables in the _initial_ state of the function call using the syntax `(old <exp>)`, for example:
 
-            ```motoko
-            var x : Int;
-            private func dec() : () {
-                x -= 1;
-                assert:return x < old(x);
-            };
-            ```
-
-            is equivalent to
-
-            ```motoko
-            var x : Int;
-            private func dec() : () {
-                let old_x = x;
-                x -= 1;
-                assert:return x < old_x;
-            };
-            ```
-    
     * `assert:system` — Compile-time assertions
     
-    **Loop invariants** — Extension is _simple_.
+    * `assert:loop:invariant` — Loop invariants
     
-    **Pure functions** — The tool could be easily extended with a keyword, e.g., `@pure`, to specify functions that are verifier to be side-effect free; such functions could be used inside other code specifications, e.g., `assert:invariant is_okay()` for some `@pure func is_okay() : Bool`.
+    **Expressions in assertions** — Note that using the syntax bellow outside of assertions causes undefined behavior.
+
+    * `e1 implies e2` refers to logical implication.
+
+    * `old(e)` — refers to value of the expression `e` in the _initial_ state of the function call. Could be used in postconditions or loop invariants to verify changes that are made. For example:
+
+      ```motoko
+      var x : Int;
+      private func dec() : () {
+          x -= 1;
+      assert:return x < old(x);
+      };
+      ```
+
+      is equivalent to
+
+      ```motoko
+      var x : Int;
+      private func dec() : () {
+          let old_x = x;
+          x -= 1;
+          assert:return x < old_x;
+      };
+      ```
+
+    * `Prim.Forall<T>(func x ..)` and `Prim.Exists<T>(func x ..)` — refers ∀ and ∃ quantifiers. For example:
+
+      ```motoko
+      private func fill_array(x: [var Bool], val: Bool): () {
+         assert:return Prim.Forall<Nat>(func i = (0 <= i and i < x.size() implies a[i] == val));
+      }
+      ```
+    * `Prim.Ret<T>()` — refers to the result value of a function. It's temporal syntax and requires to manually annotate type of the value. Example:
+
+      ```motoko
+      private func create_array(n: Nat): [var Nat] {
+         assert:return (Prim.Ret<[var Nat]>).size() == n;
+         ...
+      }
+      ```
+    * **Pure functions** — The tool could be easily extended with a keyword, e.g., `@pure`, to specify functions that are verifier to be side-effect free; such functions could be used inside other code specifications, e.g., `assert:invariant is_okay()` for some `@pure func is_okay() : Bool`.
+
 
 Further information
 -------------------

@@ -1,0 +1,115 @@
+/* BEGIN PRELUDE */
+/* Array encoding */
+domain Array {
+  function $loc(a: Array, i: Int): Ref
+  function $size(a: Array): Int
+  function $loc_inv1(r: Ref): Array
+  function $loc_inv2(r: Ref): Int
+  axiom $all_diff_array { forall a: Array, i: Int :: {$loc(a, i)} $loc_inv1($loc(a, i)) == a && $loc_inv2($loc(a, i)) == i }
+  axiom $size_nonneg { forall a: Array :: $size(a) >= 0 }
+}
+define $array_acc(a, t, p) forall j: Int :: 0 <= j && j < $size(a) ==> acc($loc(a, j).t, p)
+define $array_untouched(a, t) forall j: Int :: 0 <= j && j < $size(a) ==> $loc(a, j).t == old($loc(a, j).t)
+define $array_init(a, t, x) forall i : Int :: {$loc(a, i).t} 0 <= i && i < $size(a) ==> $loc(a, i).t == x
+/* Tuple encoding */
+adt Tuple$0  { Tup$0() }
+adt Tuple$2 [T0, T1] { Tup$2(tup$2$0 : T0, tup$2$1 : T1) }
+/* Option encoding */
+adt Option[T] {
+  None()
+  Some(some$0: T)
+}
+/* Text encoding */
+function $concat(a: Int, b: Int): Int
+/* Typed references */
+/* END PRELUDE */
+
+define $Perm($Self) (true)
+define $Inv($Self) (true)
+method __init__($Self: Ref)
+    
+    requires $Perm($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { 
+       
+    }
+method label_expressions($Self: Ref)
+    
+    requires $Perm($Self)
+    ensures $Perm($Self)
+    { var simple_label: Int
+      var implicit_leave: Int
+      var block_label_early_expr: Tuple$2[Int, Int]
+      var block_label_expr: Tuple$2[Int, Int]
+      var v: Int
+      var mut_label: Tuple$0
+      var mut_label_2: Tuple$0
+      simple_label := 42;
+      goto $lbl$simple;
+      label $lbl$simple;
+      assert (simple_label == 42);
+      implicit_leave := 42;
+      goto $lbl$implicit;
+      label $lbl$implicit;
+      assert (implicit_leave == 42);
+      if (true)
+         { 
+           block_label_early_expr := Tup$2(42, 42);
+           goto $lbl$block; 
+         };
+      block_label_early_expr := Tup$2(24, 24);
+      goto $lbl$block;
+      label $lbl$block;
+      assert (((block_label_early_expr).tup$2$0 == 42) && ((block_label_early_expr).tup$2$1 == 42));
+      if (false)
+         { 
+           block_label_expr := Tup$2(42, 42);
+           goto $lbl$block_2; 
+         };
+      block_label_expr := Tup$2(24, 24);
+      goto $lbl$block_2;
+      label $lbl$block_2;
+      assert (((block_label_expr).tup$2$0 == 24) && ((block_label_expr).tup$2$1 == 24));
+      v := 0;
+      if (true)
+         { 
+           v := 42;
+           goto $lbl$mutability; 
+         };
+      v := 100;
+      label $lbl$mutability;
+      assert (v == 42);
+      v := 0;
+      if (false)
+         { 
+           v := 42;
+           goto $lbl$mutability_2; 
+         };
+      v := 100;
+      label $lbl$mutability_2;
+      assert (v == 100);
+      label $Ret; 
+    }
+method loops($Self: Ref)
+    
+    requires $Perm($Self)
+    ensures $Perm($Self)
+    { var i: Int
+      i := 0;
+      while ((i < 5))
+         invariant $Perm($Self)
+         invariant (i < 3)
+         { 
+           i := (i + 1);
+           if ((i == 3))
+              { 
+                goto $lbl$while_loop; 
+              };
+           goto $lbl$continue$while_loop;
+           i := 100;
+           label $lbl$continue$while_loop; 
+         };
+      label $lbl$while_loop;
+      label $Ret; 
+    }

@@ -6,10 +6,10 @@ open Scope
 
 val initial_scope : scope
 
-val infer_prog : scope -> string option -> Async_cap.async_cap -> Syntax.prog -> (typ * scope) Diag.result
+val infer_prog : ?viper_mode:bool -> scope -> string option -> Async_cap.async_cap -> Syntax.prog -> (typ * scope) Diag.result
 
 val check_lib : scope -> string option -> Syntax.lib -> scope Diag.result
-val check_actors : scope -> Syntax.prog list -> unit Diag.result
+val check_actors : ?viper_mode:bool -> scope -> Syntax.prog list -> unit Diag.result
 val check_stab_sig : scope -> Syntax.stab_sig -> (field list) Diag.result
 
 val heartbeat_type : typ

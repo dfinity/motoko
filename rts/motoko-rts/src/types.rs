@@ -445,31 +445,30 @@ pub type Tag = u32;
 // Tags need to have the lowest bit set, to allow distinguishing a header (tag) from object
 // locations in mark-compact GC. (Reminder: objects and fields are word aligned)
 pub const TAG_OBJECT: Tag = 1;
-pub const TAG_OBJ_IND: Tag = 3;
-pub const TAG_ARRAY_I: Tag = 5; // Immutable Array ([T])
-pub const TAG_ARRAY_M: Tag = 7; // Mutable Array ([var T])
-pub const TAG_ARRAY_T: Tag = 9; // Non-nullary Tuple ((T,+))
-pub const TAG_ARRAY_S: Tag = 11; // Shared function pairing TAG_BLOB_A with TAG_BLOB_T (shared ... -> ...)
-pub const TAG_BITS64_U: Tag = 13; // Unsigned (Nat64)
-pub const TAG_BITS64_S: Tag = 15; // Signed (Int64)
-pub const TAG_BITS64_F: Tag = 17; // Float
-pub const TAG_MUTBOX: Tag = 19;
-pub const TAG_CLOSURE: Tag = 21;
-pub const TAG_SOME: Tag = 23;
-pub const TAG_VARIANT: Tag = 25;
-pub const TAG_BLOB_B: Tag = 27; // Blob of Bytes (Blob)
-pub const TAG_BLOB_T: Tag = 29; // Blob of Utf8 (Text)
-pub const TAG_BLOB_P: Tag = 31; // Principal (Principal)
-pub const TAG_BLOB_A: Tag = 33; // Actor (actor {})
-pub const TAG_FWD_PTR: Tag = 35; // Only used by the copying GC - not to be confused with forwarding pointer in the header used for incremental GC.
-pub const TAG_BITS32_U: Tag = 37; // Unsigned (Nat32)
-pub const TAG_BITS32_S: Tag = 39; // Signed (Int32)
-pub const TAG_BITS32_F: Tag = 41; // Reserved (Float32)
-pub const TAG_BIGINT: Tag = 43;
-pub const TAG_CONCAT: Tag = 45;
-pub const TAG_REGION: Tag = 47;
-pub const TAG_ONE_WORD_FILLER: Tag = 49;
-pub const TAG_FREE_SPACE: Tag = 51;
+pub const TAG_ARRAY_I: Tag = 3; // Immutable Array ([T])
+pub const TAG_ARRAY_M: Tag = 5; // Mutable Array ([var T])
+pub const TAG_ARRAY_T: Tag = 7; // Non-nullary Tuple ((T,+))
+pub const TAG_ARRAY_S: Tag = 9; // Shared function pairing TAG_BLOB_A with TAG_BLOB_T (shared ... -> ...)
+pub const TAG_BITS64_U: Tag = 11; // Unsigned (Nat64)
+pub const TAG_BITS64_S: Tag = 13; // Signed (Int64)
+pub const TAG_BITS64_F: Tag = 15; // Float
+pub const TAG_MUTBOX: Tag = 17;
+pub const TAG_CLOSURE: Tag = 19;
+pub const TAG_SOME: Tag = 21;
+pub const TAG_VARIANT: Tag = 23;
+pub const TAG_BLOB_B: Tag = 25; // Blob of Bytes (Blob)
+pub const TAG_BLOB_T: Tag = 27; // Blob of Utf8 (Text)
+pub const TAG_BLOB_P: Tag = 29; // Principal (Principal)
+pub const TAG_BLOB_A: Tag = 31; // Actor (actor {})
+pub const TAG_FWD_PTR: Tag = 33; // Only used by the copying GC - not to be confused with forwarding pointer in the header used for incremental GC.
+pub const TAG_BITS32_U: Tag = 35; // Unsigned (Nat32)
+pub const TAG_BITS32_S: Tag = 37; // Signed (Int32)
+pub const TAG_BITS32_F: Tag = 39; // Reserved (Float32)
+pub const TAG_BIGINT: Tag = 41;
+pub const TAG_CONCAT: Tag = 43;
+pub const TAG_REGION: Tag = 45;
+pub const TAG_ONE_WORD_FILLER: Tag = 47;
+pub const TAG_FREE_SPACE: Tag = 49;
 
 // Special value to visit only a range of array fields.
 // This and all values above it are reserved and mean
@@ -478,7 +477,7 @@ pub const TAG_FREE_SPACE: Tag = 51;
 // The top two bits encode the original array tag, the remaining bits are the start index of the slice.
 // Invariant: the value of this (pseudo-)tag must be
 //            higher than all other tags defined above
-pub const TAG_ARRAY_SLICE_MIN: Tag = 52;
+pub const TAG_ARRAY_SLICE_MIN: Tag = 50;
 pub const TAG_SPACING: Tag = 2;
 
 pub fn is_object_tag(tag: Tag) -> bool {
@@ -682,12 +681,6 @@ impl Object {
     pub(crate) unsafe fn get(self: *mut Self, idx: u32) -> Value {
         *self.payload_addr().add(idx as usize)
     }
-}
-
-#[repr(C)] // See the note at the beginning of this module
-pub struct ObjInd {
-    pub header: Obj,
-    pub field: Value,
 }
 
 #[repr(C)] // See the note at the beginning of this module
@@ -933,8 +926,6 @@ pub(crate) unsafe fn block_size(address: usize) -> Words<u32> {
             let size = object.size();
             size_of::<Object>() + Words(size)
         }
-
-        TAG_OBJ_IND => size_of::<ObjInd>(),
 
         // `block_size` is not used during the incremental mark phase and
         // therefore, does not support array slicing.
