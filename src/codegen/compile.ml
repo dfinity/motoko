@@ -5131,7 +5131,7 @@ module IC = struct
     )
 
   (* For debugging *)
-  let _compile_static_print env s =
+  let compile_static_print env s =
     Blob.lit_ptr_len env s ^^ print_ptr_len env
 
   let ic_trap env = system_call env "trap"
@@ -6341,7 +6341,12 @@ module RTS_Exports = struct
     E.add_export env (nr {
       name = Lib.Utf8.decode "moc_stable_mem_set_version";
       edesc = nr (FuncExport (nr moc_stable_mem_set_version_fi))
-    })
+      });
+
+    E.add_export env (nr {
+        name = Lib.Utf8.decode "idl_limit_check";
+        edesc = nr (FuncExport (nr (E.built_in env "idl_limit_check")))
+      })
 
 end (* RTS_Exports *)
 
@@ -6531,15 +6536,7 @@ module MakeSerialization (Strm : Stream) = struct
     G.i (GlobalGet (nr (E.get_global env "__typtbl_idltyps")))
 
   module Registers = struct
-    let register_globals env =
-      E.add_global32 env "@@rel_buf_opt" Mutable 0l;
-      E.add_global32 env "@@data_buf" Mutable 0l;
-      E.add_global32 env "@@ref_buf" Mutable 0l;
-      E.add_global32 env "@@typtbl" Mutable 0l;
-      E.add_global32 env "@@typtbl_end" Mutable 0l;
-      E.add_global32 env "@@typtbl_size" Mutable 0l
-
-    let get_rel_buf_opt env =
+   let get_rel_buf_opt env =
       G.i (GlobalGet (nr (E.get_global env "@@rel_buf_opt")))
     let set_rel_buf_opt env =
       G.i (GlobalSet (nr (E.get_global env "@@rel_buf_opt")))
@@ -6568,6 +6565,53 @@ module MakeSerialization (Strm : Stream) = struct
       G.i (GlobalGet (nr (E.get_global env "@@typtbl_size")))
     let set_typtbl_size env =
       G.i (GlobalSet (nr (E.get_global env "@@typtbl_size")))
+
+    let get_limit_counter env =
+      G.i (GlobalGet (nr (E.get_global env "@@limit_counter")))
+    let set_limit_counter env =
+      G.i (GlobalSet (nr (E.get_global env "@@limit_counter")))
+
+    let get_instruction_limit env =
+      G.i (GlobalGet (nr (E.get_global env "@@instruction_limit")))
+    let set_instruction_limit env =
+      G.i (GlobalSet (nr (E.get_global env "@@instruction_limit")))
+
+    let idl_limit_check env =
+      G.i (Call (nr (E.built_in env "idl_limit_check")))
+
+    let register_globals env =
+      E.add_global32 env "@@rel_buf_opt" Mutable 0l;
+      E.add_global32 env "@@data_buf" Mutable 0l;
+      E.add_global32 env "@@ref_buf" Mutable 0l;
+      E.add_global32 env "@@typtbl" Mutable 0l;
+      E.add_global32 env "@@typtbl_end" Mutable 0l;
+      E.add_global32 env "@@typtbl_size" Mutable 0l;
+      E.add_global32 env "@@limit_counter" Mutable 32l;
+      E.add_global64 env "@@instruction_limit" Mutable 0L;
+      Func.define_built_in env "idl_limit_check" [] [] (fun env ->
+          (* IC.compile_static_print env "idl_limit_check" ^^ *)
+          match E.mode env with
+          | Flags.ICMode | Flags.RefMode ->
+            get_limit_counter env ^^
+            G.if0
+            begin (* non-zero: Decrement counter *)
+              get_limit_counter env ^^
+              compile_sub_const 1l ^^
+              set_limit_counter env
+            end
+            begin (* zero: check limit and reset counter *)
+              compile_unboxed_const 0l ^^
+              IC.performance_counter env ^^
+              get_instruction_limit env ^^
+              G.i (Compare (Wasm.Values.I32 I32Op.LeU)) ^^
+              E.else_trap_with env "IDL error: exceeded instruction limit" ^^
+              compile_unboxed_const 32l ^^
+              set_limit_counter env
+            end
+          | Flags.WASIMode | Flags.WasmMode  -> G.nop
+
+      ) (* TBC *)
+
   end
 
   open Typ_hash
@@ -7223,6 +7267,10 @@ module MakeSerialization (Strm : Stream) = struct
       let get_typtbl = Registers.get_typtbl env in
       let get_typtbl_end = Registers.get_typtbl_end env in
       let get_typtbl_size = Registers.get_typtbl_size env in
+
+      (* Check instruction limit *)
+
+      Registers.idl_limit_check env ^^
 
       (* Check recursion depth (protects against empty record etc.) *)
       (* Factor 2 because at each step, the expected type could go through one
@@ -8009,7 +8057,8 @@ module MakeSerialization (Strm : Stream) = struct
                 get_ref_buf ^^ Registers.set_ref_buf env ^^
                 get_typtbl_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl env ^^
                 get_maintyps_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl_end env ^^
-                get_typtbl_size_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl_size env
+                get_typtbl_size_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl_size env ^^
+                compile_const_64 (-1L) ^^ Registers.set_instruction_limit env
               end ^^
               (* set up variable frame arguments *)
               Stack.with_frame env "frame_ptr" 3l (fun () ->
