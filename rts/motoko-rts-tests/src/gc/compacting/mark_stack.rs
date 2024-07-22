@@ -33,9 +33,8 @@ fn test_push_pop() {
         .unwrap();
 }
 
-static TAGS: [Tag; 24] = [
+static TAGS: [Tag; 23] = [
     TAG_OBJECT,
-    TAG_OBJ_IND,
     TAG_ARRAY_I,
     TAG_ARRAY_M,
     TAG_ARRAY_T,

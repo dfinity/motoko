@@ -208,8 +208,8 @@ static mut STATE: core::cell::RefCell<State> = core::cell::RefCell::new(State {
     phase: Phase::Pause,
     partitioned_heap: self::partitioned_heap::UNINITIALIZED_HEAP,
     allocation_count: 0,
-    mark_state: None,
-    iterator_state: None,
+    mark_state: StableOption::None,
+    iterator_state: StableOption::None,
     statistics: Statistics {
         last_allocations: Bytes(0),
         max_live: Bytes(0),
