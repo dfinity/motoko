@@ -490,20 +490,19 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exp env exp1 (fun v1 ->
       interpret_cases env cases exp.at v1 k
     )
-  | TryE (exp1, cases, None) ->
-    let k' = fun v1 -> interpret_catches env cases exp.at v1 k in
-    let env' = { env with throws = Some k' } in
-    interpret_exp env' exp1 k
-  | TryE (exp1, cases, Some (id, ty)) ->
+  | TryE (exp1, cases, finally_opt) ->
     assert env.flavor.has_await;
-    let exp2 = Construct.(varE (var id ty) -*- unitE ()) in
-    let k' v1 =
-      interpret_catches env cases exp.at v1 k in
-    let out ret v = interpret_exp env exp2 (fun u -> V.as_unit u; ret v) in
-    let env' = { env with throws = Some k'
-                        ; rets = Option.map out env.rets
-                        ; labs = V.Env.map out env.labs } in
-    interpret_exp env' exp1 k
+    let k, env = match finally_opt with
+      | None -> k, env
+      | Some (id, ty) ->
+        let exp2 = Construct.(varE (var id ty) -*- unitE ()) in
+        let pre k v = interpret_exp env exp2 (fun v2 -> V.as_unit v2; k v) in
+        pre k,
+        { env with rets = Option.map pre env.rets
+                 ; labs = V.Env.map pre env.labs
+                 ; throws = Option.map pre env.throws } in
+    let k' v1 = interpret_catches env cases exp.at v1 k in
+    interpret_exp { env with throws = Some k' } exp1 k
   | LoopE exp1 ->
     interpret_exp env exp1 (fun v -> V.as_unit v; interpret_exp env exp k)
   | LabelE (id, _typ, exp1) ->

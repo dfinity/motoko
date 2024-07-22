@@ -91,7 +91,7 @@ The following keywords are reserved and may not be used as identifiers:
 ``` bnf
 
 actor and assert async async* await await* break case catch class
-composite continue debug debug_show do else flexible false for
+composite continue debug debug_show do else false flexible finally for
 from_candid func if ignore import in module not null object or label
 let loop private public query return shared stable switch system throw
 to_candid true try type var while with
@@ -514,6 +514,9 @@ The syntax of an expression is as follows:
   await* <block-or-exp>                          Await a delayed computation (only in async)
   throw <exp>                                    Raise an error (only in async)
   try <block-or-exp> catch <pat> <block-or-exp>  Catch an error (only in async)
+  try <block-or-exp> finally <block-or-exp>      Guard with cleanup
+  try <block-or-exp> catch <pat> <block-or-exp> finally <block-or-exp>
+                                                 Catch an error (only in async) and cleanup
   assert <block-or-exp>                          Assertion
   <exp> : <typ>                                  Type annotation
   <dec>                                          Declaration
@@ -2546,6 +2549,11 @@ Expression `try <block-or-exp1> catch <pat> <block-or-exp2>` evaluates `<block-o
 Because the [`Error`](../base/Error.md) type is opaque, the pattern match cannot fail. Typing ensures that `<pat>` is an irrefutable wildcard or identifier pattern.
 
 :::
+
+The `try` expression can be provided with a `finally` cleanup clause to facilitate structured rollback of temporary state changes (e.g. to release a lock). 
+The preceding `catch` clause may be omitted in the presence of a `finally` clause.
+
+This form is `try <block-or-exp1> (catch <pat> <block-or-exp2>)? finally <block-or-exp3>`, and evaluation proceeds as above with the crucial addition that every control-flow path leaving `<block-or-exp1>` or `<block-or-exp2>` will execute the unit-valued `<block-or-exp3>` before the entire `try` expression obtains its value. The cleanup expression will additionaly also be executed when the processing after an intervening `await` (directly, or indirectly as `await*`) traps.
 
 See [Error type](#error-type).
 

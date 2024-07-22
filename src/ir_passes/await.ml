@@ -344,26 +344,34 @@ and c_exp' context exp k =
                note = Note.{ exp.note with typ = typ' } }))
     end)
   | TryE (exp1, cases, finally_opt) ->
-    let pre = function
-      | Cont k -> (match finally_opt with
-                   | Some (id2, typ2) -> Cont (precont k (var id2 typ2))
-                   | None -> Cont k)
+     let pre k =
+       match finally_opt with
+       | Some (id2, typ2) -> precont k (var id2 typ2)
+       | None -> k in
+    let pre' = function
+      | Cont k -> Cont (pre k)
       | Label -> assert false in
-    (* All control-flow out must pass through the `finally` thunk *)
-    let context = LabelEnv.mapi (function | Return | Named _ | Cleanup -> pre
-                                          | Throw -> fun c -> c) context in
+    (* All control-flow out must pass through the potential `finally` thunk *)
+    let context = LabelEnv.map pre' context in
     (* assert that a surrounding `AwaitPrim _` has set up a `Cleanup` cont *)
     if finally_opt <> None
     then ignore (LabelEnv.find Cleanup context);
     (* TODO: do we need to reify f? *)
     let f = match LabelEnv.find Throw context with Cont f -> f | _ -> assert false in
     letcont f (fun f ->
-    letcont k (fun k ->
+    letcont (pre k) (fun k ->
     match eff exp1 with
     | T.Triv ->
       varE k -*- t_exp context exp1
+    | T.Await when cases = [] ->
+      c_exp context exp1 (ContVar k)
     | T.Await ->
       let error = fresh_var "v" T.catch in
+      let rethrow = { it = { pat = varP error; exp = varE f -*- varE error };
+                      at = no_region;
+                      note = ()
+                    } in
+      let omit_rethrow = List.exists (fun {it = {pat; exp}; _} -> Ir_utils.is_irrefutable pat) cases in
       let cases' =
         List.map
           (fun {it = { pat; exp }; at; note} ->
@@ -373,10 +381,7 @@ and c_exp' context exp k =
             in
             { it = { pat; exp = exp' }; at; note })
           cases
-        @ [{ it = { pat = varP error; exp = varE f -*- varE error };
-             at = no_region;
-             note = ()
-        }] in
+        @ if omit_rethrow then [] else [rethrow] in
       let throw = fresh_err_cont (answerT (typ_of_var k)) in
       let context' = LabelEnv.add Throw (Cont (ContVar throw)) context in
       blockE

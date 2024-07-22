@@ -341,7 +341,7 @@ let transform prog =
          )
          (varE nary_async))
         .it
-    | PrimE (OtherPrim "call_raw", [exp1; exp2; exp3]) ->(* HERE *)
+    | PrimE (OtherPrim "call_raw", [exp1; exp2; exp3]) ->
       let exp1' = t_exp exp1 in
       let exp2' = t_exp exp2 in
       let exp3' = t_exp exp3 in

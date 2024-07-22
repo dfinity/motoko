@@ -365,13 +365,13 @@ let rec check_exp env (exp:Ir.exp) : unit =
   (* helpers *)
   let check p = check env exp.at p in
   let (<:) t1 t2 =
-  try
+(*  try *)
       check_sub env exp.at t1 t2
-  with e ->
+(*  with e ->
      (Printf.eprintf "(in here):\n%s"
         (Wasm.Sexpr.to_string 80 (Arrange_ir.exp exp));
       raise e)
-
+*)
   in
   (* check for aliasing *)
   if exp.note.Note.check_run = env.check_run
@@ -409,7 +409,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
             check_concrete env exp.at t_ret;
           end;
           typ exp2 <: t_arg;
-          t_ret <: t;
+          t_ret <: t
         | T.Non -> () (* dead code, not much to check here *)
         | t1 -> error env exp1.at "expected function type, but expression produces type\n  %s"
              (T.string_of_typ_expand t1)
@@ -560,7 +560,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
            (match ts2 with
             | [] -> ()
             | _ -> error env exp.at "CPSAwait answer type error");
-           typ krc <: T.Tup T.[cont_typ; Construct.err_contT (Tup ts2); Construct.bail_contT];
+           typ krc <: T.(Tup Construct.[cont_typ; err_contT (seq ts2); bail_contT]);
            t1 <: T.seq ts1;
            T.seq ts2 <: t;
          end;
