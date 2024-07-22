@@ -46,17 +46,17 @@ pub fn deserialized_size() -> usize {
     0
 }
 
-fn reset_gc<M: Memory>(heap_base_address: usize) {
+fn reset_gc(heap_base_address: usize) {
     use motoko_rts::gc::incremental::{set_incremental_gc_state, IncrementalGC};
 
     unsafe {
-        let state = IncrementalGC::<M>::initial_gc_state(heap_base_address);
+        let state = IncrementalGC::<MotokoHeap>::initial_gc_state(heap_base_address);
         set_incremental_gc_state(Some(state));
     }
 }
 
 fn clear_heap(heap: &mut MotokoHeap) {
-    reset_gc::<MotokoHeap>(heap.heap_base_address());
+    reset_gc(heap.heap_base_address());
 }
 
 fn reset_memory() {
@@ -65,7 +65,7 @@ fn reset_memory() {
 }
 
 fn reset_main_memory() {
-    reset_gc::<TestMemory>(0);
+    reset_gc(0);
 }
 
 struct RandomHeap {
