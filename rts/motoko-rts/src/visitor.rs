@@ -113,14 +113,6 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
             }
         }
 
-        TAG_OBJ_IND => {
-            let obj_ind = obj as *mut ObjInd;
-            let field_addr = &mut (*obj_ind).field;
-            if is_non_null_pointer_field(field_addr) {
-                visit_ptr_field(ctx, field_addr);
-            }
-        }
-
         TAG_BITS64_U | TAG_BITS64_S | TAG_BITS64_F | TAG_BLOB_B | TAG_BLOB_T | TAG_BLOB_P
         | TAG_BLOB_A | TAG_BIGINT => {
             // These don't have pointers, skip

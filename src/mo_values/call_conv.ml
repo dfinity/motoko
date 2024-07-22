@@ -22,7 +22,7 @@ let async_cc s n m = { sort = Shared s; control = Promises; n_args = n; n_res = 
 let replies_cc s n m = { sort = Shared s; control = Replies; n_args = n; n_res = m}
 
 let call_conv_of_typ typ =
-  match typ with
+  match promote typ with
   | Func (sort, control, tbds, dom, res) ->
     { sort; control; n_args = List.length dom; n_res = List.length res }
   | Non ->

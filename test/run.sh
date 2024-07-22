@@ -140,6 +140,48 @@ function run () {
   return $ret
 }
 
+# 'run_stderr' is a variant of 'run' that redirects stdout and stderr into
+# separate files instead of merging them. It was created by copy&paste and
+# applying minor tweaks. If the 'run' function is changed, it is quite likely
+# that 'run_stderr' requires similar changes.
+#
+# Separation of stdout/stderr is necessary when e.g. producing .vpr files so
+# that diagnostic messages don't get interspersed with the generated Viper code.
+function run_stderr () {
+  # first argument: extension of the output file
+  # remaining argument: command line
+  # uses from scope: $out, $file, $base, $diff_files
+
+  local ext="$1"
+  shift
+
+  if grep -q "^//SKIP $ext$" $(basename $file); then return 1; fi
+
+  if test -e $out/$base.$ext
+  then
+    echo "Output $ext already exists."
+    exit 1
+  fi
+
+  $ECHO -n " [$ext]"
+  "$@" > $out/$base.$ext 2>$out/$base.$ext.stderr
+  local ret=$?
+
+  if [ $ret != 0 ]
+  then echo "Return code $ret" >> $out/$base.$ext.ret
+  else rm -f $out/$base.$ext.ret
+  fi
+  diff_files="$diff_files $base.$ext.ret"
+
+  normalize $out/$base.$ext.stderr
+  diff_files="$diff_files $base.$ext.stderr"
+
+  normalize $out/$base.$ext
+  diff_files="$diff_files $base.$ext"
+
+  return $ret
+}
+
 function run_if () {
   # first argument: a file extension
   # remaining argument: passed to run
@@ -264,6 +306,10 @@ do
     else
       TEST_MOC_ARGS=$EXTRA_MOC_ARGS
     fi
+    if [ $VIPER = 'yes' ]
+    then
+      TEST_MOC_ARGS="$TEST_MOC_ARGS --package base pkg/base"
+    fi
     moc_with_flags="env $moc_extra_env moc $moc_extra_flags $TEST_MOC_ARGS"
 
     # Typecheck
@@ -286,7 +332,7 @@ do
         fi
       elif [ $VIPER = 'yes' ]
       then
-        run vpr $moc_with_flags --viper $base.mo -o $out/$base.vpr
+        run_stderr vpr $moc_with_flags --viper $base.mo -o $out/$base.vpr
         vpr_succeeded=$?
 
         normalize $out/$base.vpr

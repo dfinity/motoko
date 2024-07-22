@@ -1,0 +1,5 @@
+ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
+debug.print: {mrec = {bool = true; text = "Hello World!"}; rec = {bool = true; text = "Hello World!"}}
+debug.print: {aool = (); bool = false}
+debug.print: {bool = false; cool = ()}
+ingress Completed: Reply: 0x4449444c0000

@@ -8,6 +8,7 @@ use crate::{
         State,
     },
     memory::Memory,
+    stable_option::StableOption,
     types::*,
     visitor::visit_pointer_fields,
 };
@@ -32,7 +33,7 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
         state.partitioned_heap.start_collection(mem, time);
         debug_assert!(state.mark_state.is_none());
         let mark_stack = MarkStack::new(mem);
-        state.mark_state = Some(MarkState {
+        state.mark_state = StableOption::Some(MarkState {
             mark_stack,
             complete: false,
         });
@@ -40,7 +41,7 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
 
     pub unsafe fn complete_phase(state: &mut State) {
         debug_assert!(Self::mark_completed(state));
-        state.mark_state = None;
+        state.mark_state = StableOption::None;
     }
 
     pub unsafe fn mark_completed(state: &State) -> bool {

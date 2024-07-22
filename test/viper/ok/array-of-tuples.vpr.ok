@@ -1,0 +1,101 @@
+/* BEGIN PRELUDE */
+/* Array encoding */
+domain Array {
+  function $loc(a: Array, i: Int): Ref
+  function $size(a: Array): Int
+  function $loc_inv1(r: Ref): Array
+  function $loc_inv2(r: Ref): Int
+  axiom $all_diff_array { forall a: Array, i: Int :: {$loc(a, i)} $loc_inv1($loc(a, i)) == a && $loc_inv2($loc(a, i)) == i }
+  axiom $size_nonneg { forall a: Array :: $size(a) >= 0 }
+}
+define $array_acc(a, t, p) forall j: Int :: 0 <= j && j < $size(a) ==> acc($loc(a, j).t, p)
+define $array_untouched(a, t) forall j: Int :: 0 <= j && j < $size(a) ==> $loc(a, j).t == old($loc(a, j).t)
+define $array_init(a, t, x) forall i : Int :: {$loc(a, i).t} 0 <= i && i < $size(a) ==> $loc(a, i).t == x
+/* Tuple encoding */
+adt Tuple$2 [T0, T1] { Tup$2(tup$2$0 : T0, tup$2$1 : T1) }
+/* Option encoding */
+adt Option[T] {
+  None()
+  Some(some$0: T)
+}
+/* Text encoding */
+function $concat(a: Int, b: Int): Int
+/* Typed references */
+field $option$tuple2$option$int$tuple2$bool$bool:
+  Option[Tuple$2[Option[Int], Tuple$2[Bool, Bool]]]
+field $tuple2$int$bool: Tuple$2[Int, Bool]
+/* END PRELUDE */
+
+define $Perm($Self) (true)
+define $Inv($Self) (true)
+method __init__($Self: Ref)
+    
+    requires $Perm($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { 
+       
+    }
+method get_tup_arr($Self: Ref)
+     returns ($Res: Array)
+    requires $Perm($Self)
+    requires $Inv($Self)
+    ensures $Perm($Self)
+    ensures $array_acc($Res, $tuple2$int$bool, wildcard)
+    ensures $Inv($Self)
+    { var x1: Tuple$2[Int, Bool]
+      var x2: Tuple$2[Int, Bool]
+      x1 := Tup$2(42, true);
+      x2 := Tup$2(0, false);
+      inhale $array_acc($Res, $tuple2$int$bool, write);
+      inhale ($size($Res) == 2);
+      ($loc($Res, 0)).$tuple2$int$bool := x1;
+      ($loc($Res, 1)).$tuple2$int$bool := x2;
+      exhale $array_acc($Res, $tuple2$int$bool, wildcard);
+      inhale $array_acc($Res, $tuple2$int$bool, wildcard);
+      goto $Ret;
+      label $Ret; 
+    }
+method set_nested_mut_arr($Self: Ref, arr: Array)
+    
+    requires $Perm($Self)
+    requires $array_acc(arr, $option$tuple2$option$int$tuple2$bool$bool,
+              write)
+    ensures $Perm($Self)
+    ensures $array_acc(arr, $option$tuple2$option$int$tuple2$bool$bool,
+             write)
+    ensures ((($size(arr) >= 2) && (($loc(arr, 0)).$option$tuple2$option$int$tuple2$bool$bool == 
+       old(($loc(arr, 0)).$option$tuple2$option$int$tuple2$bool$bool))) && (
+       ($loc(arr, 1)).$option$tuple2$option$int$tuple2$bool$bool == Some(
+                                                                    Tup$2(
+                                                                    Some(42),
+                                                                    Tup$2(true,
+                                                                    true)))))
+    { 
+      assume ($size(arr) >= 2);
+      ($loc(arr, 1)).$option$tuple2$option$int$tuple2$bool$bool := Some(
+                                                                    Tup$2(
+                                                                    Some(42),
+                                                                    Tup$2(true,
+                                                                    true)));
+      label $Ret; 
+    }
+method check_arr($Self: Ref)
+    
+    requires $Perm($Self)
+    requires $Inv($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { var arr: Array
+      inhale $array_acc(arr, $option$tuple2$option$int$tuple2$bool$bool,
+              write);
+      inhale ($size(arr) == 2);
+      ($loc(arr, 0)).$option$tuple2$option$int$tuple2$bool$bool := None();
+      ($loc(arr, 1)).$option$tuple2$option$int$tuple2$bool$bool := None();
+      set_nested_mut_arr($Self, arr);
+      assert (($loc(arr, 0)).$option$tuple2$option$int$tuple2$bool$bool == 
+         None());
+      assert (($loc(arr, 1)).$option$tuple2$option$int$tuple2$bool$bool == 
+         Some(Tup$2(Some(42), Tup$2(true, true))));
+      label $Ret; 
+    }
