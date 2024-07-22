@@ -61,6 +61,7 @@ use crate::{
     gc::incremental::mark_bitmap::BITMAP_ITERATION_END,
     memory::{alloc_blob, Memory},
     rts_trap_with,
+    stable_option::StableOption,
     types::*,
 };
 
@@ -272,7 +273,7 @@ impl Partition {
 pub struct PartitionedHeapIterator {
     partition_index: usize,
     number_of_partitions: usize,
-    bitmap_iterator: Option<BitmapIterator>,
+    bitmap_iterator: StableOption<BitmapIterator>,
     visit_large_object: bool,
 }
 
@@ -281,7 +282,7 @@ impl PartitionedHeapIterator {
         let mut iterator = PartitionedHeapIterator {
             partition_index: 0,
             number_of_partitions: heap.number_of_partitions,
-            bitmap_iterator: None,
+            bitmap_iterator: StableOption::None,
             visit_large_object: false,
         };
         iterator.skip_empty_partitions(heap);
@@ -328,15 +329,15 @@ impl PartitionedHeapIterator {
     fn start_object_iteration(&mut self, heap: &PartitionedHeap) {
         debug_assert!(self.partition_index <= self.number_of_partitions);
         if self.partition_index == self.number_of_partitions {
-            self.bitmap_iterator = None;
+            self.bitmap_iterator = StableOption::None;
             self.visit_large_object = false;
         } else {
             let partition = heap.get_partition(self.partition_index);
             if partition.has_large_content() {
-                self.bitmap_iterator = None;
+                self.bitmap_iterator = StableOption::None;
                 self.visit_large_object = partition.marked_size() > 0
             } else {
-                self.bitmap_iterator = Some(partition.get_bitmap().iterate());
+                self.bitmap_iterator = StableOption::Some(partition.get_bitmap().iterate());
                 self.visit_large_object = false;
             }
         }

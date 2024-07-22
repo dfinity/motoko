@@ -16,6 +16,8 @@ extern crate alloc;
 #[cfg(feature = "ic")]
 pub mod allocator;
 
+pub mod stable_option;
+
 #[macro_use]
 mod print;
 

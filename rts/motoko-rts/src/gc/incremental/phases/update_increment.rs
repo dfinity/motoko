@@ -8,6 +8,7 @@ use crate::{
         time::BoundedTime,
         Roots, State,
     },
+    stable_option::StableOption,
     types::*,
     visitor::visit_pointer_fields,
 };
@@ -23,14 +24,14 @@ impl<'a> UpdateIncrement<'a> {
     pub unsafe fn start_phase(state: &mut State) {
         debug_assert!(state.iterator_state.is_none());
         let heap = &mut state.partitioned_heap;
-        state.iterator_state = Some(PartitionedHeapIterator::new(heap));
+        state.iterator_state = StableOption::Some(PartitionedHeapIterator::new(heap));
         heap.collect_large_objects();
         heap.plan_updates();
     }
 
     pub unsafe fn complete_phase(state: &mut State) {
         debug_assert!(Self::update_completed(state));
-        state.iterator_state = None;
+        state.iterator_state = StableOption::None;
         state.partitioned_heap.complete_collection();
     }
 

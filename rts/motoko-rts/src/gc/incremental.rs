@@ -15,7 +15,7 @@
 use motoko_rts_macros::classical_persistence;
 use motoko_rts_macros::{enhanced_orthogonal_persistence, ic_mem_fn};
 
-use crate::{memory::Memory, types::*, visitor::visit_pointer_fields};
+use crate::{memory::Memory, stable_option::StableOption, types::*, visitor::visit_pointer_fields};
 
 use self::{
     partitioned_heap::{PartitionedHeap, PartitionedHeapIterator},
@@ -196,8 +196,8 @@ pub struct State {
     phase: Phase,
     partitioned_heap: PartitionedHeap,
     allocation_count: usize, // Number of allocations during an active GC run.
-    mark_state: Option<MarkState>,
-    iterator_state: Option<PartitionedHeapIterator>,
+    mark_state: StableOption<MarkState>,
+    iterator_state: StableOption<PartitionedHeapIterator>,
     statistics: Statistics,
 }
 
@@ -240,8 +240,8 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
             phase: Phase::Pause,
             partitioned_heap,
             allocation_count: 0,
-            mark_state: None,
-            iterator_state: None,
+            mark_state: StableOption::None,
+            iterator_state: StableOption::None,
             statistics,
         }
     }

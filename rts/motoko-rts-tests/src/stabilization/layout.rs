@@ -25,7 +25,6 @@ fn test_stable_tags() {
         StableObjectKind::Variant,
         StableObjectKind::Concat,
         StableObjectKind::BigInt,
-        StableObjectKind::ObjInd,
         StableObjectKind::Some,
     ] {
         assert!(object_kind.encode().decode() == object_kind);

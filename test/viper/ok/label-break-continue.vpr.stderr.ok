@@ -1,0 +1,4 @@
+label-break-continue.mo:4.8-4.25: warning [M0194], unused identifier label_expressions (delete or rename to wildcard `_` or `_label_expressions`)
+label-break-continue.mo:24.9-24.18: warning [M0194], unused identifier mut_label (delete or rename to wildcard `_` or `_mut_label`)
+label-break-continue.mo:31.9-31.20: warning [M0194], unused identifier mut_label_2 (delete or rename to wildcard `_` or `_mut_label_2`)
+label-break-continue.mo:38.8-38.13: warning [M0194], unused identifier loops (delete or rename to wildcard `_` or `_loops`)

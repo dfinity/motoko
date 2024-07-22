@@ -1,0 +1,147 @@
+/* BEGIN PRELUDE */
+/* Array encoding */
+domain Array {
+  function $loc(a: Array, i: Int): Ref
+  function $size(a: Array): Int
+  function $loc_inv1(r: Ref): Array
+  function $loc_inv2(r: Ref): Int
+  axiom $all_diff_array { forall a: Array, i: Int :: {$loc(a, i)} $loc_inv1($loc(a, i)) == a && $loc_inv2($loc(a, i)) == i }
+  axiom $size_nonneg { forall a: Array :: $size(a) >= 0 }
+}
+define $array_acc(a, t, p) forall j: Int :: 0 <= j && j < $size(a) ==> acc($loc(a, j).t, p)
+define $array_untouched(a, t) forall j: Int :: 0 <= j && j < $size(a) ==> $loc(a, j).t == old($loc(a, j).t)
+define $array_init(a, t, x) forall i : Int :: {$loc(a, i).t} 0 <= i && i < $size(a) ==> $loc(a, i).t == x
+/* Tuple encoding */
+adt Tuple$2 [T0, T1] { Tup$2(tup$2$0 : T0, tup$2$1 : T1) }
+/* Option encoding */
+adt Option[T] {
+  None()
+  Some(some$0: T)
+}
+/* Text encoding */
+function $concat(a: Int, b: Int): Int
+/* Typed references */
+field $c_R1: R1
+/* END PRELUDE */
+
+define $Perm($Self) (((((true && acc(($Self).fld1,write)) && acc(($Self).fld2,write)) && 
+  acc(($Self).empty,write)) && acc(($Self).aa,write)))
+define $Inv($Self) (true)
+method __init__($Self: Ref)
+    
+    requires $Perm($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { 
+      ($Self).fld1 := $RecordCtor_R1(42, 3);
+      ($Self).fld2 := $RecordCtor_R1(42, 3);
+      ($Self).empty := $RecordCtor_R1(0, 4);
+      ($Self).aa := 42; 
+    }
+adt R  { $RecordCtor_R($R$aa : Int, $R$b : Int) }
+adt R1  { $RecordCtor_R1($R1$aa : Int, $R1$b : Int) }
+field fld1: R1
+field fld2: R1
+field empty: R1
+field aa: Int
+method array_record($Self: Ref)
+    
+    requires $Perm($Self)
+    ensures $Perm($Self)
+    { var arr: Array
+      inhale $array_acc(arr, $c_R1, write);
+      inhale ($size(arr) == 2);
+      ($loc(arr, 0)).$c_R1 := ($Self).empty;
+      ($loc(arr, 1)).$c_R1 := ($Self).empty;
+      ($loc(arr, 0)).$c_R1 := $RecordCtor_R1(100, 0);
+      ($loc(arr, 1)).$c_R1 := $RecordCtor_R1(200, 1);
+      assert ((($loc(arr, 0)).$c_R1 == $RecordCtor_R1(100, 0)) && ((
+                                                                    $loc(arr,
+                                                                    1)).$c_R1 == 
+         $RecordCtor_R1(200, 1)));
+      label $Ret; 
+    }
+method tuple_record($Self: Ref)
+    
+    requires $Perm($Self)
+    ensures $Perm($Self)
+    { var tup: Tuple$2[R1, R1]
+      tup := Tup$2($RecordCtor_R1(100, 0), $RecordCtor_R1(200, 1));
+      assert (((tup).tup$2$0 == $RecordCtor_R1(100, 0)) && ((tup).tup$2$1 == 
+         $RecordCtor_R1(200, 1)));
+      label $Ret; 
+    }
+method get_record($Self: Ref)
+     returns ($Res: R1)
+    requires $Perm($Self)
+    ensures $Perm($Self)
+    ensures ($Res == $RecordCtor_R1(100, 0))
+    { 
+      $Res := $RecordCtor_R1(100, 0);
+      goto $Ret;
+      label $Ret; 
+    }
+method call_record($Self: Ref)
+    
+    requires $Perm($Self)
+    ensures $Perm($Self)
+    { var res: R1
+      res := get_record($Self);
+      assert ((res).$R1$b == 0);
+      label $Ret; 
+    }
+method record_arg($Self: Ref, r: R1)
+     returns ($Res: R1)
+    requires $Perm($Self)
+    requires ((r).$R1$aa == 100)
+    ensures $Perm($Self)
+    ensures (($Res).$R1$aa == 100)
+    { 
+      $Res := $RecordCtor_R1(100, 0);
+      goto $Ret;
+      label $Ret; 
+    }
+method pass_record($Self: Ref)
+    
+    requires $Perm($Self)
+    ensures $Perm($Self)
+    { var res: R1
+      res := record_arg($Self, $RecordCtor_R1(100, 2));
+      assert ((res).$R1$aa == 100);
+      label $Ret; 
+    }
+method match_on_record($Self: Ref)
+     returns ($Res: Int)
+    requires $Perm($Self)
+    ensures $Perm($Self)
+    ensures ($Res == 42)
+    { var r: R1
+      r := get_record($Self);
+      if (true)
+         { var number: Int
+           var b: Int
+           var c: Int
+           number := (r).$R1$aa;
+           b := (r).$R1$b;
+           c := b;
+           $Res := (number - 58);
+           goto $Ret; 
+         };
+      label $Ret; 
+    }
+method record_types_are_structural($Self: Ref)
+    
+    requires $Perm($Self)
+    ensures $Perm($Self)
+    { var r: R1
+      var r1: R1
+      r := $RecordCtor_R1(100, 0);
+      r1 := $RecordCtor_R1(100, 0);
+      assert (r == r1);
+      label $Ret; 
+    }
+adt RecursiveRecord1 
+  { $RecordCtor_RecursiveRecord1($RecursiveRecord1$x : Option[RecursiveRecord1],
+                                $RecursiveRecord1$y : Option[RecursiveRecord2]) }
+adt RecursiveRecord2 
+  { $RecordCtor_RecursiveRecord2($RecursiveRecord2$x : Option[RecursiveRecord1]) }

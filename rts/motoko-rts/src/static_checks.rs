@@ -36,7 +36,6 @@ const _: () = assert!(size_of::<usize>() == WORD_SIZE);
 // Check that sizes of structs are as expected by the compiler
 // (Expectations are all over the place, e.g. `header_size` definitions in `compile.ml`, calls to `static_closure`, etc.)
 const _: () = assert!(size_of::<Obj>() == HEADER_SIZE);
-const _: () = assert!(size_of::<ObjInd>() == HEADER_SIZE + 1 * WORD_SIZE);
 const _: () = assert!(size_of::<Closure>() == HEADER_SIZE + 2 * WORD_SIZE);
 const _: () = assert!(size_of::<Array>() == HEADER_SIZE + 1 * WORD_SIZE);
 const _: () = assert!(size_of::<Blob>() == HEADER_SIZE + 1 * WORD_SIZE);
@@ -72,7 +71,6 @@ const _: () = assert!(size_of::<FwdPtr>() == 2 * WORD_SIZE);
 // Check that objects need to be aligned on word boundaries. Having a different alignment
 // restriction on object type would require changing allocation routines for it.
 const _: () = assert!(align_of::<Obj>() == WORD_SIZE);
-const _: () = assert!(align_of::<ObjInd>() == WORD_SIZE);
 const _: () = assert!(align_of::<Closure>() == WORD_SIZE);
 const _: () = assert!(align_of::<Blob>() == WORD_SIZE);
 const _: () = assert!(align_of::<Array>() == WORD_SIZE);

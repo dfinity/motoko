@@ -174,10 +174,6 @@ pub(crate) unsafe fn print_boxed_object(buf: &mut WriteBuf, p: usize) {
             }
             let _ = write!(buf, "]>");
         }
-        TAG_OBJ_IND => {
-            let obj_ind = obj as *const ObjInd;
-            let _ = write!(buf, "<ObjInd field={:#x}>", (*obj_ind).field.get_raw());
-        }
         TAG_ARRAY_I | TAG_ARRAY_M | TAG_ARRAY_T | TAG_ARRAY_S | TAG_ARRAY_SLICE_MIN.. => {
             let array = obj as *mut Array;
             let _ = write!(buf, "<Array len={:#x}", (*array).len);
