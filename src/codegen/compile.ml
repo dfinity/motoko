@@ -1896,7 +1896,6 @@ module Tagged = struct
 
   type [@warning "-37"] tag  =
     | Object
-    | ObjInd (* The indirection used for object fields *)
     | Array of array_sort (* Also a tuple *)
     | Bits64 of bits_sort (* Contains a 64 bit number *)
     | MutBox (* used for mutable heap-allocated variables *)
@@ -1921,29 +1920,28 @@ module Tagged = struct
      bits unset) *)
   let int_of_tag = function
     | Object -> 1L
-    | ObjInd -> 3L
-    | Array I -> 5L
-    | Array M -> 7L
-    | Array T -> 9L
-    | Array S -> 11L
-    | Bits64 U -> 13L
-    | Bits64 S -> 15L
-    | Bits64 F -> 17L
-    | MutBox -> 19L
-    | Closure -> 21L
-    | Some -> 23L
-    | Variant -> 25L
-    | Blob B -> 27L
-    | Blob T -> 29L
-    | Blob P -> 31L
-    | Blob A -> 33L
-    | Indirection -> 35L
-    | BigInt -> 37L
-    | Concat -> 39L
-    | Region -> 41L
-    | OneWordFiller -> 43L
-    | FreeSpace -> 45L
-    | ArraySliceMinimum -> 46L
+    | Array I -> 3L
+    | Array M -> 5L
+    | Array T -> 7L
+    | Array S -> 9L
+    | Bits64 U -> 11L
+    | Bits64 S -> 13L
+    | Bits64 F -> 15L
+    | MutBox -> 17L
+    | Closure -> 19L
+    | Some -> 21L
+    | Variant -> 23L
+    | Blob B -> 25L
+    | Blob T -> 27L
+    | Blob P -> 29L
+    | Blob A -> 31L
+    | Indirection -> 33L
+    | BigInt -> 35L
+    | Concat -> 37L
+    | Region -> 39L
+    | OneWordFiller -> 41L
+    | FreeSpace -> 43L
+    | ArraySliceMinimum -> 44L
     (* Next two tags won't be seen by the GC, so no need to set the lowest bit
        for `CoercionFailure` and `StableSeen` *)
     | CoercionFailure -> 0xffff_ffff_ffff_fffeL
@@ -3898,7 +3896,7 @@ module Object = struct
           │   ┌───────────────┘
           │   ↓
           │  ╶─┬────────┬─────────────┐
-          │    │ ObjInd │ field1_data │
+          │    │ MutBox │ field1_data │
           ↓    └────────┴─────────────┘
           ┌─────────────┬─────────────┬─────────────┬───┐
           │ blob header │ field1_hash │ field2_hash │ … │
@@ -3914,10 +3912,17 @@ module Object = struct
  
      The field2_data for immutable fields is a vanilla word.
  
-     The field1_data for mutable fields are pointers to either an ObjInd, or a
-     MutBox (they have the same layout). This indirection is a consequence of
-     how we compile object literals with `await` instructions, as these mutable
-     fields need to be able to alias local mutable variables.
+     The field1_data for mutable fields are pointers to a MutBox. This indirection 
+     is a consequence of how we compile object literals with `await` instructions, 
+     as these mutable fields need to be able to alias local mutable variables, e.g.
+     `{ public let f = 1; await async (); public let var v = 2}`.
+     Other use cases are object constructors with public and private mutable fields, 
+     where the physical record only wraps the public fields.
+     Moreover, closures can selectively capture the individual fields instead of 
+     the containing object.
+     Finally, classical Candid stabilization/destabilization also relies on the 
+     indirection of mutable fields, to reserve and store alias information in those 
+     locations.
  
      We could alternatively switch to an allocate-first approach in the
      await-translation of objects, and get rid of this indirection -- if it were
@@ -6591,8 +6596,6 @@ module Serialization = struct
         get_tag ^^ compile_eq_const Tagged.(int_of_tag StableSeen) ^^
         get_tag ^^ compile_eq_const Tagged.(int_of_tag MutBox) ^^
         G.i (Binary (Wasm_exts.Values.I64 I64Op.Or)) ^^
-        get_tag ^^ compile_eq_const Tagged.(int_of_tag ObjInd) ^^
-        G.i (Binary (Wasm_exts.Values.I64 I64Op.Or)) ^^
         get_tag ^^ compile_eq_const Tagged.(int_of_tag (Array M)) ^^
         G.i (Binary (Wasm_exts.Values.I64 I64Op.Or)) ^^
         get_tag ^^ compile_eq_const Tagged.(int_of_tag Region) ^^
@@ -6746,8 +6749,6 @@ module Serialization = struct
           (* Sanity Checks *)
           get_tag ^^ compile_eq_const Tagged.(int_of_tag MutBox) ^^
           E.then_trap_with env "unvisited mutable data in serialize_go (MutBox)" ^^
-          get_tag ^^ compile_eq_const Tagged.(int_of_tag ObjInd) ^^
-          E.then_trap_with env "unvisited mutable data in serialize_go (ObjInd)" ^^
           get_tag ^^ compile_eq_const Tagged.(int_of_tag (Array M)) ^^
           E.then_trap_with env "unvisited mutable data in serialize_go (Array)" ^^
           get_tag ^^ compile_eq_const Tagged.(int_of_tag Region) ^^
@@ -7648,7 +7649,7 @@ module Serialization = struct
       | Mut t ->
         read_alias env (Mut t) (fun get_arg_typ on_alloc ->
           let (set_result, get_result) = new_local env "result" in
-          Tagged.obj env Tagged.ObjInd [ compile_unboxed_const 0L ] ^^ set_result ^^
+          MutBox.alloc env ^^ set_result ^^
           on_alloc get_result ^^
           get_result ^^
           get_arg_typ ^^ go env t ^^
@@ -7930,15 +7931,15 @@ Why different? Because we need to alias arrays as a whole (we can’t even alias
 their fields, as they are manifestly part of the array heap structure), but
 aliasing records does not work, as aliased record values may appear at
 different types (due to subtyping), and Candid serialization is type-driven.
-Luckily records put all mutable fields behind an indirection (ObjInd), so this
+Luckily records put all mutable fields behind an indirection (MutBox), so this
 works.
 
 The type-driven code in this module treats `Type.Mut` to always refer to an
-`ObjInd`; for arrays the mutable case is handled directly.
+`MutBox`; for arrays the mutable case is handled directly.
 
 To detect and preserve aliasing, these steps are taken:
 
- * In `buffer_size`, when we see a mutable thing (`Array` or `ObjInd`), the
+ * In `buffer_size`, when we see a mutable thing (`Array` or `MutBox`), the
    first time, we mark it by setting the heap tag to `StableSeen`.
    This way, when we see it a second time, we can skip the value in the size
    calculation.
@@ -10266,7 +10267,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
   begin match p, es with
   (* Calls *)
   | CallPrim _, [e1; e2] ->
-    let sort, control, _, arg_tys, ret_tys = Type.as_func e1.note.Note.typ in
+    let sort, control, _, arg_tys, ret_tys = Type.(as_func (promote e1.note.Note.typ)) in
     let n_args = List.length arg_tys in
     let return_arity = match control with
       | Type.Returns -> List.length ret_tys

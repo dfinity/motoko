@@ -486,7 +486,7 @@ rec {
       run-deser  = test_subdir "run-deser"  [ deser ];
       perf       = perf_subdir "perf"       [ moc nixpkgs.drun ];
       bench      = perf_subdir "bench"      [ moc nixpkgs.drun ic-wasm ];
-      # viper      = test_subdir "viper"      [ moc nixpkgs.which nixpkgs.openjdk nixpkgs.z3 ];
+      viper      = test_subdir "viper"      [ moc nixpkgs.which nixpkgs.openjdk nixpkgs.z3_4_12 ];
       # TODO: profiling-graph is excluded because the underlying partity_wasm is deprecated and does not support passive data segments and memory64.
       inherit qc lsp unit candid coverage;
     }) // { recurseForDerivations = true; };
@@ -795,7 +795,7 @@ EOF
           niv
           nix-update
           rlwrap # for `rlwrap moc`
-          openjdk z3 # for viper dev
+          openjdk z3_4_12 # for viper dev
           difftastic
         ] ++ lib.optional stdenv.isDarwin darwin.apple_sdk.frameworks.Security
       ));
