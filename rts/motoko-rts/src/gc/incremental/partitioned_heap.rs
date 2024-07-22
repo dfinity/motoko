@@ -468,14 +468,13 @@ pub struct PartitionedHeap {
 }
 
 impl PartitionedHeap {
-    pub unsafe fn new<M: Memory>(mem: &mut M, heap_base: usize) -> PartitionedHeap {
+    pub fn new(heap_base: usize) -> PartitionedHeap {
         let number_of_partitions = PARTITIONS_PER_TABLE;
         let allocation_index = heap_base / PARTITION_SIZE;
         let mut partition_table = PartitionTable::new(0, heap_base);
         for index in 0..allocation_index + 1 {
             partition_table.partitions[index].free = false;
         }
-        mem.grow_memory((allocation_index + 1) * PARTITION_SIZE);
         let free_partitions = number_of_partitions - allocation_index - 1;
         PartitionedHeap {
             partition_table,
@@ -490,6 +489,12 @@ impl PartitionedHeap {
             precomputed_heap_size: heap_base,
             evacuated_size: 0,
         }
+    }
+
+    pub fn maximum_mark_bitmap_size(&self) -> usize {
+        debug_assert!(self.free_partitions <= self.number_of_partitions);
+        let used_partitions = self.number_of_partitions - self.free_partitions;
+        used_partitions * BITMAP_SIZE
     }
 
     fn partitions(&mut self) -> PartitionIterator {
@@ -991,4 +996,12 @@ impl PartitionedHeap {
         let range = Self::occupied_partition_range(object);
         self.get_partition(range.start).marked_size > 0
     }
+}
+
+#[cfg(feature = "ic")]
+pub(crate) unsafe fn allocate_initial_memory(heap_base: Bytes<usize>) {
+    use crate::memory::ic::allocate_wasm_memory;
+
+    let memory_size = heap_base.next_multiple_of(PARTITION_SIZE);
+    allocate_wasm_memory(memory_size);
 }
