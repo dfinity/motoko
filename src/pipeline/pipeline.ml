@@ -180,10 +180,10 @@ let async_cap_of_prog prog =
      else
        Async_cap.initial_cap()
 
-let infer_prog pkg_opt senv async_cap prog : (Type.typ * Scope.scope) Diag.result =
+let infer_prog ?(viper_mode=false) pkg_opt senv async_cap prog : (Type.typ * Scope.scope) Diag.result =
   let filename = prog.Source.note.Syntax.filename in
   phase "Checking" filename;
-  let r = Typing.infer_prog pkg_opt senv async_cap prog in
+  let r = Typing.infer_prog ~viper_mode pkg_opt senv async_cap prog in
   if !Flags.trace && !Flags.verbose then begin
     match r with
     | Ok ((_, scope), _) ->
@@ -198,15 +198,15 @@ let infer_prog pkg_opt senv async_cap prog : (Type.typ * Scope.scope) Diag.resul
   let* () = Definedness.check_prog prog in
   Diag.return t_sscope
 
-let rec check_progs senv progs : Scope.scope Diag.result =
+let rec check_progs ?(viper_mode=false) senv progs : Scope.scope Diag.result =
   match progs with
   | [] -> Diag.return senv
   | prog::progs' ->
     let open Diag.Syntax in
     let async_cap = async_cap_of_prog prog in
-    let* _t, sscope = infer_prog senv None async_cap prog in
+    let* _t, sscope = infer_prog ~viper_mode senv None async_cap prog in
     let senv' = Scope.adjoin senv sscope in
-    check_progs senv' progs'
+    check_progs ~viper_mode senv' progs'
 
 let check_lib senv pkg_opt lib : Scope.scope Diag.result =
   let filename = lib.Source.note.Syntax.filename in
@@ -297,14 +297,18 @@ let prim_error phase (msgs : Diag.messages) =
 let check_prim () : Syntax.lib * stat_env =
   let lexer = Lexing.from_string (Prelude.prim_module ~timers:!Flags.global_timer) in
   let parse = Parser.Incremental.parse_prog in
-
   match parse_with Lexer.mode_priv lexer parse prim_name with
   | Error es -> prim_error "parsing" es
   | Ok (prog, _ws) ->
     let open Syntax in
     let open Source in
     let senv0 = initial_stat_env in
-    let fs = List.map (fun d -> {vis = Public None @@ no_region; dec = d; stab = None} @@ d.at) prog.it in
+    (* Propagate deprecations *)
+    let fs = List.map (fun d ->
+      let trivia = Trivia.find_trivia prog.note.trivia d.at in
+      let depr = Trivia.deprecated_of_trivia_info trivia in
+      {vis = Public depr @@ no_region; dec = d; stab = None} @@ d.at) prog.it
+    in
     let body = {it = ModuleU (None, fs); at = no_region; note = empty_typ_note} in
     let lib = {
       it = { imports = []; body };
@@ -417,14 +421,14 @@ let chase_imports parsefn senv0 imports : (Syntax.lib list * Scope.scope) Diag.r
   in
   Diag.map (fun () -> (List.rev !libs, !senv)) (go_set None imports)
 
-let load_progs parsefn files senv : load_result =
+let load_progs ?(viper_mode=false) parsefn files senv : load_result =
   let open Diag.Syntax in
   let* parsed = Diag.traverse (parsefn Source.no_region) files in
   let* rs = resolve_progs parsed in
   let progs' = List.map fst rs in
   let libs = List.concat_map snd rs in
   let* libs, senv' = chase_imports parsefn senv libs in
-  let* senv'' = check_progs senv' progs' in
+  let* senv'' = check_progs ~viper_mode senv' progs' in
   Diag.return (libs, progs', senv'')
 
 let load_decl parse_one senv : load_decl_result =
@@ -505,12 +509,13 @@ type viper_result = (string * (Source.region -> Source.region option)) Diag.resu
 
 let viper_files' parsefn files : viper_result =
   let open Diag.Syntax in
-  let* libs, progs, senv = load_progs parsefn files initial_stat_env in
-  let* () = Typing.check_actors senv progs in
+  let* libs, progs, senv = load_progs ~viper_mode:true parsefn files initial_stat_env in
+  let* () = Typing.check_actors ~viper_mode:true senv progs in
   let prog = CompUnit.combine_progs progs in
   let u = CompUnit.comp_unit_of_prog false prog in
-  let* v = Viper.Trans.unit u in
-  let s = Viper.Pretty.prog_mapped "" v in
+  let reqs = Viper.Common.init_reqs () in
+  let* v = Viper.Trans.unit reqs (Viper.Prep.prep_unit u) in
+  let s = Viper.Pretty.prog_mapped "" (Viper.Prelude.prelude reqs) v in
   Diag.return s
 
 let viper_files files : viper_result =

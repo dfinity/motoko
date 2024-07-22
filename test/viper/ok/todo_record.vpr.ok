@@ -1,0 +1,384 @@
+/* BEGIN PRELUDE */
+/* Array encoding */
+domain Array {
+  function $loc(a: Array, i: Int): Ref
+  function $size(a: Array): Int
+  function $loc_inv1(r: Ref): Array
+  function $loc_inv2(r: Ref): Int
+  axiom $all_diff_array { forall a: Array, i: Int :: {$loc(a, i)} $loc_inv1($loc(a, i)) == a && $loc_inv2($loc(a, i)) == i }
+  axiom $size_nonneg { forall a: Array :: $size(a) >= 0 }
+}
+define $array_acc(a, t, p) forall j: Int :: 0 <= j && j < $size(a) ==> acc($loc(a, j).t, p)
+define $array_untouched(a, t) forall j: Int :: 0 <= j && j < $size(a) ==> $loc(a, j).t == old($loc(a, j).t)
+define $array_init(a, t, x) forall i : Int :: {$loc(a, i).t} 0 <= i && i < $size(a) ==> $loc(a, i).t == x
+/* Tuple encoding */
+adt Tuple$2 [T0, T1] { Tup$2(tup$2$0 : T0, tup$2$1 : T1) }
+/* Option encoding */
+adt Option[T] {
+  None()
+  Some(some$0: T)
+}
+/* Text encoding */
+function $concat(a: Int, b: Int): Int
+/* Typed references */
+field $c_ToDo: ToDo
+/* END PRELUDE */
+
+define $Perm($Self) ((((true && (acc(($Self).todos,write) && $array_acc(
+                                                             ($Self).todos,
+                                                             $c_ToDo, write))) && 
+  acc(($Self).num,write)) && acc(($Self).nextId,write)))
+define $Inv($Self) ((invariant_14($Self) && invariant_15($Self)))
+method __init__($Self: Ref)
+    
+    requires $Perm($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { var $t_todos: Array
+      inhale $array_acc($t_todos, $c_ToDo, write);
+      inhale ($size($t_todos) == 0);
+      ($Self).todos := $t_todos;
+      ($Self).num := 0;
+      ($Self).nextId := 1; 
+    }
+adt ToDo 
+  { $RecordCtor_ToDo($ToDo$desc : Int, $ToDo$id : Int, $ToDo$state : State) }
+adt State  { DONE()
+             TODO() }
+field todos: Array
+field num: Int
+field nextId: Int
+define invariant_14($Self) (((0 <= ($Self).num) && (($Self).num <= $size(
+                                                                   ($Self).todos))))
+define invariant_15($Self) ((forall i : Int :: (((0 <= i) && (i < ($Self).num)) ==> (
+                            (($loc(($Self).todos, i)).$c_ToDo).$ToDo$id < 
+                            ($Self).nextId))))
+method resize($Self: Ref, n: Int)
+    
+    requires $Perm($Self)
+    requires ((0 <= ($Self).num) && (($Self).num <= $size(($Self).todos)))
+    requires (forall i : Int :: (((0 <= i) && (i < ($Self).num)) ==> (
+              (($loc(($Self).todos, i)).$c_ToDo).$ToDo$id < ($Self).nextId)))
+    ensures $Perm($Self)
+    ensures ((0 <= ($Self).num) && (($Self).num <= $size(($Self).todos)))
+    ensures (forall i : Int :: (((0 <= i) && (i < ($Self).num)) ==> (
+             (($loc(($Self).todos, i)).$c_ToDo).$ToDo$id < ($Self).nextId)))
+    ensures ((($Self).num == old(($Self).num)) && (($Self).nextId == 
+       old(($Self).nextId)))
+    ensures ($size(($Self).todos) >= n)
+    ensures (old($size(($Self).todos)) <= $size(($Self).todos))
+    ensures (forall i : Int :: (((0 <= i) && (i < old($size(($Self).todos)))) ==> (
+             ($loc(($Self).todos, i)).$c_ToDo == old(($loc(($Self).todos, i)).$c_ToDo))))
+    { var new_array: Array
+      var i: Int
+      if ((n <= $size(($Self).todos)))
+         { 
+           goto $Ret; 
+         };
+      assert (n >= 0);
+      inhale $array_acc(new_array, $c_ToDo, write);
+      inhale ($size(new_array) == n);
+      inhale $array_init(new_array, $c_ToDo, $RecordCtor_ToDo(0, 0, TODO()));
+      i := 0;
+      while ((i < $size(($Self).todos)))
+         invariant $Perm($Self)
+         invariant $array_acc(new_array, $c_ToDo, write)
+         invariant ((0 <= ($Self).num) && (($Self).num <= $size(($Self).todos)))
+         invariant (forall ii : Int :: (((0 <= ii) && (ii < ($Self).num)) ==> (
+                    (($loc(($Self).todos, ii)).$c_ToDo).$ToDo$id < ($Self).nextId)))
+         invariant ((($Self).num == old(($Self).num)) && (($Self).nextId == 
+         old(($Self).nextId)))
+         invariant ((0 <= i) && (i <= $size(($Self).todos)))
+         invariant ($size(($Self).todos) < $size(new_array))
+         invariant ($size(($Self).todos) == old($size(($Self).todos)))
+         invariant (forall ii : Int :: (((0 <= ii) && (ii < old($size(
+                                                                 ($Self).todos)))) ==> (
+                    ($loc(($Self).todos, ii)).$c_ToDo == old(($loc(($Self).todos,
+                                                              ii)).$c_ToDo))))
+         invariant (forall ii : Int :: (((0 <= ii) && (ii < i)) ==> (
+                    ($loc(($Self).todos, ii)).$c_ToDo == ($loc(new_array, ii)).$c_ToDo)))
+         { 
+           ($loc(new_array, i)).$c_ToDo := ($loc(($Self).todos, i)).$c_ToDo;
+           i := (i + 1); 
+         };
+      ($Self).todos := new_array;
+      label $Ret; 
+    }
+method getTodos($Self: Ref)
+     returns ($Res: Array)
+    requires $Perm($Self)
+    requires $Inv($Self)
+    ensures $Perm($Self)
+    ensures $array_acc($Res, $c_ToDo, wildcard)
+    ensures ((($Self).num == old(($Self).num)) && (($Self).nextId == 
+       old(($Self).nextId)))
+    ensures ($size(($Self).todos) == old($size(($Self).todos)))
+    ensures (forall i : Int :: (((0 <= i) && (i < old($size(($Self).todos)))) ==> (
+             ($loc(($Self).todos, i)).$c_ToDo == old(($loc(($Self).todos, i)).$c_ToDo))))
+    ensures $Inv($Self)
+    { var new_array: Array
+      inhale $array_acc(new_array, $c_ToDo, write);
+      inhale ($size(new_array) == 1);
+      ($loc(new_array, 0)).$c_ToDo := $RecordCtor_ToDo(0, 0, TODO());
+      exhale $array_acc(new_array, $c_ToDo, wildcard);
+      inhale $array_acc(new_array, $c_ToDo, wildcard);
+      $Res := new_array;
+      goto $Ret;
+      label $Ret; 
+    }
+method getTodo($Self: Ref, id: Int)
+     returns ($Res: Tuple$2[Option[ToDo], Int])
+    requires $Perm($Self)
+    requires $Inv($Self)
+    ensures $Perm($Self)
+    ensures ((($Self).num == old(($Self).num)) && (($Self).nextId == 
+       old(($Self).nextId)))
+    ensures ($size(($Self).todos) == old($size(($Self).todos)))
+    ensures (forall i : Int :: (((0 <= i) && (i < old($size(($Self).todos)))) ==> (
+             ($loc(($Self).todos, i)).$c_ToDo == old(($loc(($Self).todos, i)).$c_ToDo))))
+    ensures ((exists i : Int :: (((0 <= i) && (i < ($Self).num)) && (
+              (($loc(($Self).todos, i)).$c_ToDo).$ToDo$id == id))) ==> 
+       (exists i : Int :: (((0 <= i) && (i < ($Self).num)) && (Some((
+                                                                    $loc(
+                                                                    ($Self).todos,
+                                                                    i)).$c_ToDo) == 
+       ($Res).tup$2$0))))
+    ensures ((($Res).tup$2$0 == None()) == (forall i : Int :: (((0 <= i) && (i < 
+                                            ($Self).num)) ==> ((($loc(
+                                                                 ($Self).todos,
+                                                                 i)).$c_ToDo).$ToDo$id != id))))
+    ensures ((($Res).tup$2$0 != None()) ==> ((0 <= ($Res).tup$2$1) && (
+       ($Res).tup$2$1 < $size(($Self).todos))))
+    ensures ((($Res).tup$2$0 != None()) ==> (($Res).tup$2$0 == Some(
+                                                                ($loc(
+                                                                 ($Self).todos,
+                                                                 ($Res).tup$2$1)).$c_ToDo)))
+    ensures $Inv($Self)
+    { var i: Int
+      var res: Option[ToDo]
+      i := 0;
+      res := None();
+      while ((i < ($Self).num))
+         invariant $Perm($Self)
+         invariant ((0 <= ($Self).num) && (($Self).num <= $size(($Self).todos)))
+         invariant (forall ii : Int :: (((0 <= ii) && (ii < ($Self).num)) ==> (
+                    (($loc(($Self).todos, ii)).$c_ToDo).$ToDo$id < ($Self).nextId)))
+         invariant ((($Self).num == old(($Self).num)) && (($Self).nextId == 
+         old(($Self).nextId)))
+         invariant ($size(($Self).todos) == old($size(($Self).todos)))
+         invariant (forall ii : Int :: (((0 <= ii) && (ii < old($size(
+                                                                 ($Self).todos)))) ==> (
+                    ($loc(($Self).todos, ii)).$c_ToDo == old(($loc(($Self).todos,
+                                                              ii)).$c_ToDo))))
+         invariant ((0 <= i) && (i <= ($Self).num))
+         invariant ((forall j : Int :: (((0 <= j) && (j < i)) ==> ((
+                                                                    (
+                                                                    $loc(
+                                                                    ($Self).todos,
+                                                                    j)).$c_ToDo).$ToDo$id != id))) == (res == 
+         None()))
+         invariant ((res != None()) ==> (res == Some(($loc(($Self).todos, i)).$c_ToDo)))
+         { 
+           if (((($loc(($Self).todos, i)).$c_ToDo).$ToDo$id == id))
+              { 
+                res := Some(($loc(($Self).todos, i)).$c_ToDo);
+                goto $lbl$l; 
+              };
+           label $lbl$continue$l; 
+         };
+      label $lbl$l;
+      $Res := Tup$2(res, i);
+      goto $Ret;
+      label $Ret; 
+    }
+method addTodo($Self: Ref, description: Int)
+     returns ($Res: Int)
+    requires $Perm($Self)
+    requires $Inv($Self)
+    ensures $Perm($Self)
+    ensures ((0 <= ($Self).num) && (($Self).num <= $size(($Self).todos)))
+    ensures (($Self).num == (old(($Self).num) + 1))
+    ensures (($Self).nextId == (old(($Self).nextId) + 1))
+    ensures ($Res == old(($Self).nextId))
+    ensures (($loc(($Self).todos, (($Self).num - 1))).$c_ToDo == $RecordCtor_ToDo(description,
+                                                                  $Res,
+                                                                  TODO()))
+    ensures (forall i : Int :: (((0 <= i) && (i < (($Self).num - 1))) ==> (
+             ($loc(($Self).todos, i)).$c_ToDo == old(($loc(($Self).todos, i)).$c_ToDo))))
+    ensures $Inv($Self)
+    { var id: Int
+      id := ($Self).nextId;
+      if ((($Self).num >= $size(($Self).todos)))
+         { 
+           resize($Self, ((($Self).num * 2) + 1)); 
+         };
+      ($loc(($Self).todos, ($Self).num)).$c_ToDo := $RecordCtor_ToDo(description,
+                                                     id, TODO());
+      ($Self).num := (($Self).num + 1);
+      ($Self).nextId := (($Self).nextId + 1);
+      $Res := id;
+      goto $Ret;
+      label $Ret; 
+    }
+method completeTodo($Self: Ref, id: Int)
+    
+    requires $Perm($Self)
+    requires $Inv($Self)
+    ensures $Perm($Self)
+    ensures ((($Self).num == old(($Self).num)) && (($Self).nextId == 
+       old(($Self).nextId)))
+    ensures ($size(($Self).todos) == old($size(($Self).todos)))
+    ensures (forall i : Int :: ((((0 <= i) && (i < ($Self).num)) && (
+             (($loc(($Self).todos, i)).$c_ToDo).$ToDo$id != id)) ==> (
+             ($loc(($Self).todos, i)).$c_ToDo == old(($loc(($Self).todos, i)).$c_ToDo))))
+    ensures (forall i : Int :: ((((0 <= i) && (i < ($Self).num)) && (
+             (($loc(($Self).todos, i)).$c_ToDo).$ToDo$id == id)) ==> (
+             (($loc(($Self).todos, i)).$c_ToDo).$ToDo$state == DONE())))
+    ensures $Inv($Self)
+    { var i: Int
+      i := 0;
+      while ((i < ($Self).num))
+         invariant $Perm($Self)
+         invariant ((0 <= ($Self).num) && (($Self).num <= $size(($Self).todos)))
+         invariant (forall ii : Int :: (((0 <= ii) && (ii < ($Self).num)) ==> (
+                    (($loc(($Self).todos, ii)).$c_ToDo).$ToDo$id < ($Self).nextId)))
+         invariant ((0 <= i) && (i <= $size(($Self).todos)))
+         invariant ((($Self).num == old(($Self).num)) && (($Self).nextId == 
+         old(($Self).nextId)))
+         invariant ($size(($Self).todos) == old($size(($Self).todos)))
+         invariant (forall ii : Int :: (((i <= ii) && (ii < $size(($Self).todos))) ==> (
+                    ($loc(($Self).todos, ii)).$c_ToDo == old(($loc(($Self).todos,
+                                                              ii)).$c_ToDo))))
+         invariant (forall ii : Int :: ((((0 <= ii) && (ii < i)) && (
+                    (($loc(($Self).todos, ii)).$c_ToDo).$ToDo$id != id)) ==> (
+                    ($loc(($Self).todos, ii)).$c_ToDo == old(($loc(($Self).todos,
+                                                              ii)).$c_ToDo))))
+         invariant (forall ii : Int :: ((((0 <= ii) && (ii < i)) && (
+                    (($loc(($Self).todos, ii)).$c_ToDo).$ToDo$id == id)) ==> (
+                    (($loc(($Self).todos, ii)).$c_ToDo).$ToDo$state == 
+                    DONE())))
+         { 
+           if (true)
+              { var taskId: Int
+                var taskDesc: Int
+                var _state: State
+                taskId := (($loc(($Self).todos, i)).$c_ToDo).$ToDo$id;
+                taskDesc := (($loc(($Self).todos, i)).$c_ToDo).$ToDo$desc;
+                _state := (($loc(($Self).todos, i)).$c_ToDo).$ToDo$state;
+                if ((taskId == id))
+                   { 
+                     ($loc(($Self).todos, i)).$c_ToDo := $RecordCtor_ToDo(taskDesc,
+                                                          taskId, DONE()); 
+                   };
+                i := (i + 1); 
+              }; 
+         };
+      label $Ret; 
+    }
+method showTodos($Self: Ref)
+     returns ($Res: Int)
+    requires $Perm($Self)
+    requires $Inv($Self)
+    ensures $Perm($Self)
+    ensures ((($Self).num == old(($Self).num)) && (($Self).nextId == 
+       old(($Self).nextId)))
+    ensures ($size(($Self).todos) == old($size(($Self).todos)))
+    ensures (forall i : Int :: (((0 <= i) && (i < ($Self).num)) ==> (
+             ($loc(($Self).todos, i)).$c_ToDo == old(($loc(($Self).todos, i)).$c_ToDo))))
+    ensures $Inv($Self)
+    { var output: Int
+      var i: Int
+      output := 1;
+      i := 0;
+      while ((i < ($Self).num))
+         invariant $Perm($Self)
+         invariant ((0 <= ($Self).num) && (($Self).num <= $size(($Self).todos)))
+         invariant (forall ii : Int :: (((0 <= ii) && (ii < ($Self).num)) ==> (
+                    (($loc(($Self).todos, ii)).$c_ToDo).$ToDo$id < ($Self).nextId)))
+         invariant ((($Self).num == old(($Self).num)) && (($Self).nextId == 
+         old(($Self).nextId)))
+         invariant ($size(($Self).todos) == old($size(($Self).todos)))
+         invariant (forall ii : Int :: (((0 <= ii) && (ii < ($Self).num)) ==> (
+                    ($loc(($Self).todos, ii)).$c_ToDo == old(($loc(($Self).todos,
+                                                              ii)).$c_ToDo))))
+         { var todo: ToDo
+           todo := ($loc(($Self).todos, i)).$c_ToDo;
+           output := $concat($concat(output, 2), (todo).$ToDo$desc);
+           if (((todo).$ToDo$state).isDONE)
+              { 
+                output := $concat(output, 3); 
+              }else
+              { 
+                if (((todo).$ToDo$state).isTODO)
+                   { 
+                     output := $concat(output, 4); 
+                   }; 
+              }; 
+         };
+      $Res := $concat(output, 2);
+      goto $Ret;
+      label $Ret; 
+    }
+method clearCompleted($Self: Ref)
+    
+    requires $Perm($Self)
+    requires $Inv($Self)
+    ensures $Perm($Self)
+    ensures (($Self).num <= old(($Self).num))
+    ensures (($Self).nextId == old(($Self).nextId))
+    ensures ($size(($Self).todos) == old($size(($Self).todos)))
+    ensures (forall i : Int :: ((((0 <= i) && (i < old(($Self).num))) && (
+             old((($loc(($Self).todos, i)).$c_ToDo).$ToDo$state) == TODO())) ==> 
+             (exists k : Int :: (((0 <= k) && (k < $size(($Self).todos))) && (
+             ($loc(($Self).todos, k)).$c_ToDo == old(($loc(($Self).todos, i)).$c_ToDo))))))
+    ensures (forall i : Int :: (((0 <= i) && (i < ($Self).num)) ==> (
+             (($loc(($Self).todos, i)).$c_ToDo).$ToDo$state == TODO())))
+    ensures $Inv($Self)
+    { var new_array: Array
+      var i: Int
+      var j: Int
+      assert ($size(($Self).todos) >= 0);
+      inhale $array_acc(new_array, $c_ToDo, write);
+      inhale ($size(new_array) == $size(($Self).todos));
+      inhale $array_init(new_array, $c_ToDo, $RecordCtor_ToDo(0, 0, TODO()));
+      i := 0;
+      j := 0;
+      while ((i < ($Self).num))
+         invariant $Perm($Self)
+         invariant $array_acc(new_array, $c_ToDo, write)
+         invariant ((0 <= ($Self).num) && (($Self).num <= $size(($Self).todos)))
+         invariant (forall ii : Int :: (((0 <= ii) && (ii < ($Self).num)) ==> (
+                    (($loc(($Self).todos, ii)).$c_ToDo).$ToDo$id < ($Self).nextId)))
+         invariant ((($Self).num == old(($Self).num)) && (($Self).nextId == 
+         old(($Self).nextId)))
+         invariant ($size(($Self).todos) == old($size(($Self).todos)))
+         invariant (forall ii : Int :: (((0 <= ii) && (ii < old($size(
+                                                                 ($Self).todos)))) ==> (
+                    ($loc(($Self).todos, ii)).$c_ToDo == old(($loc(($Self).todos,
+                                                              ii)).$c_ToDo))))
+         invariant (($Self).num <= $size(new_array))
+         invariant ((0 <= i) && (i <= ($Self).num))
+         invariant (j <= i)
+         invariant ((0 <= j) && (j <= ($Self).num))
+         invariant (forall ii : Int :: ((((0 <= ii) && (ii < i)) && (
+                    (($loc(($Self).todos, ii)).$c_ToDo).$ToDo$state == 
+                    TODO())) ==> (exists k : Int :: (((0 <= k) && (k < j)) && (
+                                 ($loc(new_array, k)).$c_ToDo == ($loc(
+                                                                  ($Self).todos,
+                                                                  ii)).$c_ToDo)))))
+         invariant (forall ii : Int :: (((0 <= ii) && (ii < j)) ==> (
+                    (($loc(new_array, ii)).$c_ToDo).$ToDo$state == TODO())))
+         invariant (forall ii : Int :: (((0 <= ii) && (ii < j)) ==> (
+                    (($loc(new_array, ii)).$c_ToDo).$ToDo$id < ($Self).nextId)))
+         { 
+           if (((($loc(($Self).todos, i)).$c_ToDo).$ToDo$state == TODO()))
+              { 
+                ($loc(new_array, j)).$c_ToDo := ($loc(($Self).todos, i)).$c_ToDo;
+                j := (j + 1); 
+              };
+           i := (i + 1); 
+         };
+      ($Self).todos := new_array;
+      ($Self).num := j;
+      label $Ret; 
+    }

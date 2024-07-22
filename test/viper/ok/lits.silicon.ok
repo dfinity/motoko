@@ -1,0 +1,2 @@
+Parse warning: In macro $Perm, the following parameters were defined but not used: $Self  (lits.vpr@25.1)
+Parse warning: In macro $Inv, the following parameters were defined but not used: $Self  (lits.vpr@26.1)

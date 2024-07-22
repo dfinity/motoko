@@ -1,0 +1,3 @@
+{mrec = {bool = true; text = "Hello World!"}; rec = {bool = true; text = "Hello World!"}}
+{aool = (); bool = false}
+{bool = false; cool = ()}

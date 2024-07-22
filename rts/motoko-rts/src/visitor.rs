@@ -113,14 +113,6 @@ pub unsafe fn visit_pointer_fields<C, F, G>(
             }
         }
 
-        TAG_OBJ_IND => {
-            let obj_ind = obj as *mut ObjInd;
-            let field_addr = &mut (*obj_ind).field;
-            if pointer_to_dynamic_heap(field_addr, heap_base) {
-                visit_ptr_field(ctx, field_addr);
-            }
-        }
-
         TAG_BITS32_U | TAG_BITS32_S | TAG_BITS32_F | TAG_BITS64_U | TAG_BITS64_S | TAG_BITS64_F
         | TAG_BLOB_B | TAG_BLOB_T | TAG_BLOB_P | TAG_BLOB_A | TAG_BIGINT => {
             // These don't have pointers, skip

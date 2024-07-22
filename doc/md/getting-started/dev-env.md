@@ -82,6 +82,8 @@ https://github.com/dfinity/sdk/blob/<VERSION>/nix/sources.json#L144
 
 Replace `<VERSION>` with the IC SDK release version, such as `0.14.2`.
 
+## Custom developer environment
+
 ### Specifying a custom version of the compiler
 
 To specify a custom version of the Motoko compiler to be used with `dfx`, you can use the package manager `mops` or `vessel`.
@@ -110,4 +112,33 @@ For example, to use base library version `0.9.0`, use the command:
 
 ```
 mops add base@0.9.0 && mops install
+```
+
+### Specifying a custom version of `dfx`
+
+To specify a custom version of `dfx`, you can use the [`dfxvm` tool](/docs/current/developer-docs/developer-tools/cli-tools/dfxvm/docs/cli-reference/dfxvm/dfxvm-default). To set a default `dfx` version to be used in your project, run the command:
+
+```
+$ dfxvm default 0.7.2
+...
+info: installed dfx 0.7.2
+info: set default version to dfx 0.7.2
+```
+
+### Pass flags to `moc` in `dfx.json`
+
+You can pass flags directly to `moc` by adding an `args` field in your Motoko canister's description in your project's `dfx.json` file:
+
+Here is an example `dfx.json` canister configuration that uses `args`:
+
+```json
+...
+  "canisters": {
+    "hello": {
+      "type": "motoko",
+      "main": "src/hello/main.mo",
+      "args": "-v --incremental-gc"
+    },
+  }
+...
 ```

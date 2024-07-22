@@ -1,3 +1,27 @@
+/* BEGIN PRELUDE */
+/* Array encoding */
+domain Array {
+  function $loc(a: Array, i: Int): Ref
+  function $size(a: Array): Int
+  function $loc_inv1(r: Ref): Array
+  function $loc_inv2(r: Ref): Int
+  axiom $all_diff_array { forall a: Array, i: Int :: {$loc(a, i)} $loc_inv1($loc(a, i)) == a && $loc_inv2($loc(a, i)) == i }
+  axiom $size_nonneg { forall a: Array :: $size(a) >= 0 }
+}
+define $array_acc(a, t, p) forall j: Int :: 0 <= j && j < $size(a) ==> acc($loc(a, j).t, p)
+define $array_untouched(a, t) forall j: Int :: 0 <= j && j < $size(a) ==> $loc(a, j).t == old($loc(a, j).t)
+define $array_init(a, t, x) forall i : Int :: {$loc(a, i).t} 0 <= i && i < $size(a) ==> $loc(a, i).t == x
+/* Tuple encoding */
+/* Option encoding */
+adt Option[T] {
+  None()
+  Some(some$0: T)
+}
+/* Text encoding */
+function $concat(a: Int, b: Int): Int
+/* Typed references */
+/* END PRELUDE */
+
 field $message_async_4: Int
 field $message_async_2: Int
 field $message_async: Int
@@ -14,10 +38,10 @@ method __init__($Self: Ref)
     ensures $Perm($Self)
     ensures $Inv($Self)
     { 
-      ($Self).flag := false
-      ($Self).$message_async_4 := 0
-      ($Self).$message_async_2 := 0
-      ($Self).$message_async := 0 
+      ($Self).flag := false;
+      ($Self).$message_async_4 := 0;
+      ($Self).$message_async_2 := 0;
+      ($Self).$message_async := 0; 
     }
 field flag: Bool
 method claim($Self: Ref)
@@ -27,46 +51,47 @@ method claim($Self: Ref)
     ensures $Perm($Self)
     ensures $Inv($Self)
     { 
-      ($Self).flag := true
-      ($Self).flag := false
-      ($Self).$message_async := (($Self).$message_async + 1)
-      exhale ($Perm($Self) && $Inv($Self))
+      ($Self).flag := true;
+      ($Self).flag := false;
+      ($Self).$message_async := (($Self).$message_async + 1);
+      exhale ($Perm($Self) && $Inv($Self));
       { 
-         inhale ($Perm($Self) && ($Inv($Self) && (($Self).$message_async > 0)))
-         ($Self).$message_async := (($Self).$message_async - 1)
+         inhale ($Perm($Self) && ($Inv($Self) && (($Self).$message_async > 0)));
+         ($Self).$message_async := (($Self).$message_async - 1);
          { 
-            ($Self).flag := true
-            ($Self).flag := false
-            ($Self).flag := ($Self).flag 
-          }
-         exhale ($Perm($Self) && $Inv($Self)) 
-       }
-      inhale ($Perm($Self) && $Inv($Self))
+            ($Self).flag := true;
+            ($Self).flag := false;
+            ($Self).flag := ($Self).flag; 
+          };
+         exhale ($Perm($Self) && $Inv($Self)); 
+       };
+      inhale ($Perm($Self) && $Inv($Self));
       if (($Self).flag)
          { 
-           ($Self).$message_async_4 := (($Self).$message_async_4 + 1)
-           exhale ($Perm($Self) && $Inv($Self))
+           ($Self).$message_async_4 := (($Self).$message_async_4 + 1);
+           exhale ($Perm($Self) && $Inv($Self));
            { 
-              inhale ($Perm($Self) && ($Inv($Self) && (($Self).$message_async_4 > 0)))
-              ($Self).$message_async_4 := (($Self).$message_async_4 - 1)
+              inhale ($Perm($Self) && ($Inv($Self) && (($Self).$message_async_4 > 0)));
+              ($Self).$message_async_4 := (($Self).$message_async_4 - 1);
               { 
-                 ($Self).flag := false 
-               }
-              exhale ($Perm($Self) && $Inv($Self)) 
-            }
-           inhale ($Perm($Self) && $Inv($Self)) 
+                 ($Self).flag := false; 
+               };
+              exhale ($Perm($Self) && $Inv($Self)); 
+            };
+           inhale ($Perm($Self) && $Inv($Self)); 
          }else
          { 
-           ($Self).$message_async_2 := (($Self).$message_async_2 + 1)
-           exhale ($Perm($Self) && $Inv($Self))
+           ($Self).$message_async_2 := (($Self).$message_async_2 + 1);
+           exhale ($Perm($Self) && $Inv($Self));
            { 
-              inhale ($Perm($Self) && ($Inv($Self) && (($Self).$message_async_2 > 0)))
-              ($Self).$message_async_2 := (($Self).$message_async_2 - 1)
+              inhale ($Perm($Self) && ($Inv($Self) && (($Self).$message_async_2 > 0)));
+              ($Self).$message_async_2 := (($Self).$message_async_2 - 1);
               { 
-                 ($Self).flag := false 
-               }
-              exhale ($Perm($Self) && $Inv($Self)) 
-            }
-           inhale ($Perm($Self) && $Inv($Self)) 
-         } 
+                 ($Self).flag := false; 
+               };
+              exhale ($Perm($Self) && $Inv($Self)); 
+            };
+           inhale ($Perm($Self) && $Inv($Self)); 
+         };
+      label $Ret; 
     }

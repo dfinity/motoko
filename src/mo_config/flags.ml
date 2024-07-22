@@ -51,3 +51,5 @@ let trap_on_call_error = ref false
 let use_stable_regions = ref false
 let enhanced_orthogonal_persistence = ref false
 let share_code = ref false
+let experimental_stable_memory_default = 0 (* _ < 0: error; _ = 0: warn, _ > 0: allow *)
+let experimental_stable_memory = ref experimental_stable_memory_default

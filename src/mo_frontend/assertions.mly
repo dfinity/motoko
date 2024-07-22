@@ -40,6 +40,8 @@ let is_verification () =
     { is_verification () &&& AssertE(Static, e) @? at $sloc }
   | ASSERT COLON INVARIANT e=exp_nest
     { is_verification () &&& AssertE(Invariant, e) @? at $sloc }
+  | ASSERT COLON LOOP COLON INVARIANT e=exp_nest
+    { is_verification () &&& AssertE(Loop_invariant, e) @? at $sloc }
   | ASSERT COLON FUNC e=exp_nest
     { is_verification () &&& AssertE(Precondition, e) @? at $sloc }
   | ASSERT COLON RETURN e=exp_nest

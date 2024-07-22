@@ -1,0 +1,7 @@
+array.mo:6.9-6.18: warning [M0194], unused identifier immut_arr (delete or rename to wildcard `_` or `_immut_arr`)
+array.mo:8.9-8.10: warning [M0194], unused identifier f (delete or rename to wildcard `_` or `_f`)
+array.mo:9.9-9.14: warning [M0194], unused identifier count (delete or rename to wildcard `_` or `_count`)
+array.mo:45.18-45.22: warning [M0194], unused identifier baz2 (delete or rename to wildcard `_` or `_baz2`)
+array.mo:50.18-50.21: warning [M0194], unused identifier bar (delete or rename to wildcard `_` or `_bar`)
+array.mo:54.11-54.12: warning [M0194], unused identifier z (delete or rename to wildcard `_` or `_z`)
+array.mo:62.11-62.12: warning [M0194], unused identifier z (delete or rename to wildcard `_` or `_z`)
