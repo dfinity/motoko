@@ -11,10 +11,10 @@
     presence of control-flow expressions (`return`, `break`, `continue`, `throw`).
 
     _Note_: `finally`-expressions that are in scope will be executed even if an execution
-    path _following_ an `await`-expression traps. This feature, not available before in Motoko,
+    path _following_ an `await`-expression traps. This feature, formerly not available in Motoko,
     allows programmers to implement cleanups even in the presence of traps. For trapping 
-    execution paths prior to any `await`, the replica-provided state roll back mechanism must 
-    ensure no cleanup is required.
+    execution paths prior to any `await`, the replica-provided state roll-back mechanism 
+    ensures that no cleanup is required.
 
     The relevant security best practices are accessible at
     https://internetcomputer.org/docs/current/developer-docs/security/security-best-practices/inter-canister-calls#recommendation
