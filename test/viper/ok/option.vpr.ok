@@ -1,0 +1,121 @@
+/* BEGIN PRELUDE */
+/* Array encoding */
+domain Array {
+  function $loc(a: Array, i: Int): Ref
+  function $size(a: Array): Int
+  function $loc_inv1(r: Ref): Array
+  function $loc_inv2(r: Ref): Int
+  axiom $all_diff_array { forall a: Array, i: Int :: {$loc(a, i)} $loc_inv1($loc(a, i)) == a && $loc_inv2($loc(a, i)) == i }
+  axiom $size_nonneg { forall a: Array :: $size(a) >= 0 }
+}
+define $array_acc(a, t, p) forall j: Int :: 0 <= j && j < $size(a) ==> acc($loc(a, j).t, p)
+define $array_untouched(a, t) forall j: Int :: 0 <= j && j < $size(a) ==> $loc(a, j).t == old($loc(a, j).t)
+define $array_init(a, t, x) forall i : Int :: {$loc(a, i).t} 0 <= i && i < $size(a) ==> $loc(a, i).t == x
+/* Tuple encoding */
+/* Option encoding */
+adt Option[T] {
+  None()
+  Some(some$0: T)
+}
+/* Text encoding */
+function $concat(a: Int, b: Int): Int
+/* Typed references */
+/* END PRELUDE */
+
+define $Perm($Self) (((true && acc(($Self).fld1,write)) && acc(($Self).fld2,write)))
+define $Inv($Self) (true)
+method __init__($Self: Ref)
+    
+    requires $Perm($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { 
+      ($Self).fld1 := None();
+      ($Self).fld2 := Some(true); 
+    }
+field fld1: Option[Int]
+field fld2: Option[Bool]
+method localOption($Self: Ref)
+    
+    requires $Perm($Self)
+    requires $Inv($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { var t1: Option[Int]
+      var t2: Option[Int]
+      var t3: Option[Int]
+      var t4: Option[Int]
+      var a2: Int
+      t1 := None();
+      t2 := Some(42);
+      t3 := None();
+      t4 := Some(32);
+      a2 := 0;
+      if ((t1).isNone)
+         { 
+           a2 := 0; 
+         }else
+         { 
+           if ((t1).isSome)
+              { var x: Int
+                x := (t1).some$0;
+                a2 := x; 
+              }; 
+         };
+      label $Ret; 
+    }
+method getOption($Self: Ref)
+     returns ($Res: Option[Bool])
+    requires $Perm($Self)
+    ensures $Perm($Self)
+    { 
+      $Res := Some(false);
+      goto $Ret;
+      label $Ret; 
+    }
+method takeOption($Self: Ref, a: Option[Int])
+     returns ($Res: Int)
+    requires $Perm($Self)
+    ensures $Perm($Self)
+    { 
+      if ((a).isNone)
+         { 
+           $Res := 0;
+           goto $Ret; 
+         }else
+         { 
+           if ((a).isSome)
+              { var x: Int
+                x := (a).some$0;
+                $Res := x;
+                goto $Ret; 
+              }; 
+         };
+      label $Ret; 
+    }
+method passOption($Self: Ref)
+    
+    requires $Perm($Self)
+    ensures $Perm($Self)
+    { var a2: Int
+      a2 := takeOption($Self, None());
+      label $Ret; 
+    }
+method callTuple($Self: Ref)
+    
+    requires $Perm($Self)
+    ensures $Perm($Self)
+    { var x: Option[Bool]
+      x := getOption($Self);
+      label $Ret; 
+    }
+method changeField($Self: Ref)
+    
+    requires $Perm($Self)
+    requires $Inv($Self)
+    ensures $Perm($Self)
+    ensures $Inv($Self)
+    { 
+      ($Self).fld2 := None();
+      label $Ret; 
+    }

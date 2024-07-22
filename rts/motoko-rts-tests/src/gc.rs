@@ -189,7 +189,7 @@ fn initialize_gc(heap: &mut MotokoHeap) {
     };
     use motoko_rts::types::Bytes;
     unsafe {
-        let state = IncrementalGC::initial_gc_state(heap, heap.heap_base_address());
+        let state = IncrementalGC::<MotokoHeap>::initial_gc_state(heap.heap_base_address());
         set_incremental_gc_state(Some(state));
         let allocation_size = heap.heap_ptr_address() - heap.heap_base_address();
 
