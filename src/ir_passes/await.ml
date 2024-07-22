@@ -45,8 +45,7 @@ let precont k vthunk =
   match k with
   | ContVar k' ->
      let typ = match typ_of_var k' with
-       | T.(Func (Local, Returns, [], [], _)) -> T.unit
-       | T.(Func (Local, Returns, [], [typ], _)) -> typ
+       | T.(Func (Local, Returns, [], ts1, _)) -> T.seq ts1
        | _ -> assert false in
     MetaCont (typ, fun v -> finally (varE k' -*- varE v))
   | MetaCont (typ, cont) ->
