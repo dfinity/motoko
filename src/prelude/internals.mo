@@ -309,7 +309,6 @@ func @getSystemRefund() : @Refund {
 
 // trivial cleanup action
 func @cleanup() {
-    // outmost cleanup action
 };
 
 func @new_async<T <: Any>() : (@Async<T>, @Cont<T>, @Cont<Error>, () -> ()) {
