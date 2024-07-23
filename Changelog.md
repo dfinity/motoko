@@ -9,8 +9,8 @@
     A trailing `finally` clause to `try`/`catch` expressions facilitates structured
     resource deallocation (e.g. acquired locks, etc.) and similar cleanups in the
     presence of control-flow expressions (`return`, `break`, `continue`, `throw`).
-    Another change is that in presence of `finally` the `catch` clause becomes
-    optional and potential errors fall through to the enclosing `catch`.
+    Additionally, in presence of `finally` the `catch` clause becomes optional and
+    potential errors fall through to any enclosing `catch`.
 
     _Note_: `finally`-expressions that are in scope will be executed even if an execution
     path _following_ an `await`-expression traps. This feature, formerly not available in Motoko,
