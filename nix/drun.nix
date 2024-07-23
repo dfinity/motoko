@@ -20,10 +20,10 @@ pkgs:
         outputHashes = {
           "build-info-0.0.27" = "sha256-SkwWwDNrTsntkNiCv6rsyTFGazhpRDnKtVzPpYLKF9U=";
           "cloudflare-0.11.0" = "sha256-bJYiypmDI4KEy/VWt/7UcOv+g2CZLb9qUA9c1xlLxhM=";
+          "ic-agent-0.36.0" = "sha256-vDONIVjz0cwVgiszVRIjTKcqRUMHdVwTURflAMqmzHM=";
           "icrc1-test-env-0.1.1" = "sha256-2PB7e64Owin/Eji3k8UoeWs+pfDfOOTaAyXjvjOZ/4g=";
           "jsonrpc-0.12.1" = "sha256-3FtdZlt2PqVDkE5iKWYIp1eiIELsaYlUPRSP2Xp8ejM=";
           "lmdb-rkv-0.14.99" = "sha256-5WcUzapkrc/s3wCBNCuUDhtbp17n67rTbm2rx0qtITg=";
-          "ic-agent-0.36.0" = "sha256-vDONIVjz0cwVgiszVRIjTKcqRUMHdVwTURflAMqmzHM=";
         };
       };
 
