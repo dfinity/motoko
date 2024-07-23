@@ -140,7 +140,8 @@ val seqE : exp list -> exp
 val (-->) : var -> exp -> exp
 val (-->*) : var list -> exp -> exp (* n-ary local *)
 val forall : typ_bind list -> exp -> exp (* generalization *)
-val (-*-) : exp -> exp -> exp       (* application *)
+val named : string -> exp -> exp (* renaming a function *)
+val (-*-) : exp -> exp -> exp (* application *)
 
 (* Objects *)
 

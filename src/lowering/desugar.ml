@@ -218,7 +218,7 @@ and exp' at note = function
   | S.SwitchE (e1, cs) -> I.SwitchE (exp e1, cases cs)
   | S.TryE (e1, cs, None) -> I.TryE (exp e1, cases cs, None)
   | S.TryE (e1, cs, Some e2) ->
-    let thunk = T.(funcE ("$cleanup") Local Returns [] [] [] (exp e2)) in
+    let thunk = [] -->* exp e2 |> named "$cleanup" in
     assert T.(is_func thunk.note.Note.typ);
     let th = fresh_var "thunk" thunk.note.Note.typ in
     (blockE

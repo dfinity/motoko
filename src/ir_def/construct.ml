@@ -664,7 +664,7 @@ let forall tbs e =
  let cs = List.map (fun tb -> tb.it.con) tbs in
  match e.it, e.note.Note.typ with
  | FuncE (n, s, c1, [], xs, ts, exp),
-   T.Func ( _, c2, [], ts1, ts2) ->
+   T.Func (_, c2, [], ts1, ts2) ->
    { e with
      it = FuncE(n, s, c1, tbs, xs, ts, exp);
      note = Note.{ e.note with
@@ -674,6 +674,14 @@ let forall tbs e =
      }
    }
  | _ -> assert false
+
+(* changing display name of e.g. local lambda *)
+let named displ e =
+  match e.it with
+  | FuncE (_, s, c1, [], xs, ts, exp)
+    -> { e with it = FuncE (displ, s, c1, [], xs, ts, exp) }
+  | _ -> assert false
+
 
 (* Lambda application (monomorphic) *)
 
