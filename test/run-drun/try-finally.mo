@@ -1,4 +1,4 @@
-import { debugPrint; error; call_raw; principalOfActor } =  "mo:⛔";
+import { debugPrint; error; errorMessage; call_raw; principalOfActor } =  "mo:⛔";
 
 actor A {
     func m() : async () {
@@ -303,6 +303,8 @@ actor A {
         await t8();
         await t8i();
         await* t9();
+        try await async { throw error "From the other side"; /* issues/4578 */() }
+        catch e { debugPrint (errorMessage e) };
 
         // These trap, and only work on drun
         try /*ignore*/ await t0() catch _ {};
@@ -313,6 +315,21 @@ actor A {
         try await t6t() catch _ {};
         try await t6d() catch _ {};
         try await t8t() catch _ {};
+
+        // other side problem tests
+        try await async {
+            debugPrint "OTHER SIDE";
+            try {
+                ignore await async { 42 };
+                assert false
+            }
+            finally debugPrint "OTHER SIDE: CLEANING UP";
+            debugPrint "OTHER SIDE: DEAD";
+        }
+        catch e { debugPrint (errorMessage e) };
+        try await async { assert false }
+        catch e { debugPrint (errorMessage e) };
+
         /// caveat: t7 won't return!
         try await* t7() catch _ {} finally debugPrint "It's over";
     };

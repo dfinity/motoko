@@ -55,5 +55,6 @@ CAUGHT8i
 OUT8i
 IN9
 OUT9
+From the other side
 IN
 try-finally.mo:11.43-11.55: execution error, assertion failure
