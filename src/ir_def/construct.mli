@@ -131,8 +131,6 @@ val bail_contT : typ
 val clean_contT : typ
 val answerT : typ -> typ (* answer type of a continuation type *)
 
-val cpsT : typ -> typ -> typ
-
 (* Sequence expressions *)
 
 val seqE : exp list -> exp

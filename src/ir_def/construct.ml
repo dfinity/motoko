@@ -636,8 +636,6 @@ let answerT typ : T.typ =
   | T.Func (T.Local, T.Returns, [], ts1, ts2) -> T.seq ts2
   | _ -> assert false
 
-let cpsT typ ans_typ = T.(Func (Local, Returns, [], [contT typ ans_typ; err_contT ans_typ; bail_contT], as_seq ans_typ))
-
 (* Sequence expressions *)
 
 let seqE = function
