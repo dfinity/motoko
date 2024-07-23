@@ -5,34 +5,34 @@ debug.print: init'ed 0
 debug.print: initial version: 2
 ingress Completed: Reply: 0x4449444c0000
 debug.print: a
+Ok: Reply: 0x4449444c0000
 ingress Completed: Reply: 0x4449444c0000
 debug.print: aa
+Ok: Reply: 0x4449444c0000
 ingress Completed: Reply: 0x4449444c0000
 debug.print: init'ed 1
 debug.print: current version: 5
 ingress Completed: Reply: 0x4449444c0000
 debug.print: 3
 debug.print: aaa
+Ok: Reply: 0x4449444c0000
 ingress Completed: Reply: 0x4449444c0000
 debug.print: 4
 debug.print: aaa
+Ok: Reply: 0x4449444c0000
 debug.print: init'ed 2
 ingress Completed: Reply: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
 ingress Completed: Reply: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
 debug.print: init'ed 3
 ingress Completed: Reply: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
 ingress Completed: Reply: 0x4449444c0000
 ingress Completed: Reply: 0x4449444c0000
 debug.print: init'ed 4
 debug.print: timer endpoint in 4
 ingress Completed: Reply: 0x4449444c0000
+Ok: Reply: 0x4449444c0000
 ingress Completed: Reply: 0x4449444c0000
-Ok: Reply: 0x4449444c0000
-Ok: Reply: 0x4449444c0000
-Ok: Reply: 0x4449444c0000
-Ok: Reply: 0x4449444c0000
-Ok: Reply: 0x4449444c0000
-Ok: Reply: 0x4449444c0000
-Ok: Reply: 0x4449444c0000
-Ok: Reply: 0x4449444c0000
 Ok: Reply: 0x4449444c0000
