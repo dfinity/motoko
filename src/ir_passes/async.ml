@@ -298,7 +298,7 @@ let transform prog =
             v --> (ic_replyE ts1 (varE v)) in
           let ic_reject =
             let e = fresh_var "e" catch in
-            [e] -->* ic_rejectE (errorMessageE (varE e)) in
+            e --> ic_rejectE (errorMessageE (varE e)) in
           let ic_cleanup =
             [] -->* unitE () in
           let exp' = callE (t_exp exp1) [t0] (tupE [ic_reply; ic_reject; ic_cleanup]) in
@@ -406,7 +406,7 @@ let transform prog =
                 v --> (ic_replyE ret_tys (varE v)) in
               let r =
                 let e = fresh_var "e" catch in
-                [e] -->* ic_rejectE (errorMessageE (varE e)) in
+                e --> ic_rejectE (errorMessageE (varE e)) in
               let cl =
                 [] -->* unitE () in
               let exp' = callE (t_exp cps) [t0] (tupE [k; r; cl]) in
@@ -437,13 +437,12 @@ let transform prog =
                 v --> tupE [] in (* discard return *)
               let r =
                 let e = fresh_var "e" catch in
-                [e] -->* tupE [] in
+                e --> tupE [] in
               let cl =
                 [] -->* unitE () in
               let exp' = callE (t_exp cps) [t0] (tupE [k; r; cl]) in
               FuncE (x, Shared s', Returns, typbinds', args', ret_tys, exp')
-            | Returns, _ -> assert false
-            | Replies, _ -> assert false
+            | (Returns | Replies), _ -> assert false
           end
       end
     | ActorE (ds, fs, {meta; preupgrade; postupgrade; heartbeat; timer; inspect}, typ) ->
