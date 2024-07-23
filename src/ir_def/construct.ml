@@ -753,7 +753,8 @@ let unreachableE () =
   loopE (unitE ())
 
 let objE sort typ_flds flds =
-  let rec go ds fields fld_tys = function
+  let rec go ds fields fld_tys flds =
+    match flds with
     | [] ->
       blockE
         (List.rev ds)
@@ -762,17 +763,13 @@ let objE sort typ_flds flds =
               ((List.map (fun (id,c) -> (id, T.Typ c)) typ_flds)
                @ fld_tys)))
     | (lab, exp)::flds ->
-      let v, addv = match exp.it with
-        | VarE v -> var v (typ exp), fun _ ds -> ds
-        | _ ->
-          let v = fresh_var lab (typ exp) in
-          v, fun exp ds -> letD v exp :: ds in
+      let v = fresh_var lab (typ exp) in
       let field = {
         it = {name = lab; var = id_of_var v};
         at = no_region;
         note = typ exp
       } in
-      go (addv exp ds) (field::fields) ((lab, typ exp)::fld_tys) flds
+      go ((letD v exp)::ds) (field::fields) ((lab, typ exp)::fld_tys) flds
   in
   go [] [] [] flds
 
