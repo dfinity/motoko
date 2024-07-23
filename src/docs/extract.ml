@@ -28,10 +28,7 @@ and function_arg_doc = {
   doc : string option;
 }
 
-and value_sort =
-  | Let
-  | Var
-
+and value_sort = Let | Var
 and value_doc = { sort : value_sort; name : string; typ : Syntax.typ option }
 
 and type_doc = {
@@ -121,8 +118,9 @@ struct
     | { it = Syntax.TupP args; _ } -> List.filter_map extract_args args
     | _ -> []
 
-  let extract_value_doc : value_sort -> Syntax.exp -> string -> declaration_doc =
-    fun sort exp name ->
+  let extract_value_doc : value_sort -> Syntax.exp -> string -> declaration_doc
+      =
+   fun sort exp name ->
     match exp.it with
     | Syntax.FuncE (_, _, type_args, args, typ, _, _) ->
         let args_doc = extract_func_args args in
@@ -136,42 +134,40 @@ struct
     (tf, Trivia.doc_comment_of_trivia_info (Env.find_trivia at))
 
   let rec extract_doc mk_xref = function
-  | Source.
-      {
-        it = Syntax.LetD ({ it = Syntax.VarP { it = name; _ }; _ }, rhs, _);
-        _;
-      } -> (
-      match rhs with
-      | Source.{ it = Syntax.ObjBlockE (sort, _, fields); _ } ->
-          let mk_field_xref xref = mk_xref (Xref.XClass (name, xref)) in
-          Some
-            ( mk_xref (Xref.XType name),
-              Object
-                {
-                  name;
-                  fields =
-                    List.filter_map (extract_dec_field mk_field_xref) fields;
-                  sort;
-                } )
-      | _ -> Some (mk_xref (Xref.XValue name), extract_value_doc Let rhs name))
-  | Source.
-      {
-        it = Syntax.VarD ({ it = name; _ }, rhs);
-        _;
-      } -> (
-      match rhs with
-      | Source.{ it = Syntax.ObjBlockE (sort, _, fields); _ } ->
-          let mk_field_xref xref = mk_xref (Xref.XClass (name, xref)) in
-          Some
-            ( mk_xref (Xref.XType name),
-              Object
-                {
-                  name;
-                  fields =
-                    List.filter_map (extract_dec_field mk_field_xref) fields;
-                  sort;
-                } )
-      | _ -> Some (mk_xref (Xref.XValue name), extract_value_doc Var rhs name))
+    | Source.
+        {
+          it = Syntax.LetD ({ it = Syntax.VarP { it = name; _ }; _ }, rhs, _);
+          _;
+        } -> (
+        match rhs with
+        | Source.{ it = Syntax.ObjBlockE (sort, _, fields); _ } ->
+            let mk_field_xref xref = mk_xref (Xref.XClass (name, xref)) in
+            Some
+              ( mk_xref (Xref.XType name),
+                Object
+                  {
+                    name;
+                    fields =
+                      List.filter_map (extract_dec_field mk_field_xref) fields;
+                    sort;
+                  } )
+        | _ -> Some (mk_xref (Xref.XValue name), extract_value_doc Let rhs name)
+        )
+    | Source.{ it = Syntax.VarD ({ it = name; _ }, rhs); _ } -> (
+        match rhs with
+        | Source.{ it = Syntax.ObjBlockE (sort, _, fields); _ } ->
+            let mk_field_xref xref = mk_xref (Xref.XClass (name, xref)) in
+            Some
+              ( mk_xref (Xref.XType name),
+                Object
+                  {
+                    name;
+                    fields =
+                      List.filter_map (extract_dec_field mk_field_xref) fields;
+                    sort;
+                  } )
+        | _ -> Some (mk_xref (Xref.XValue name), extract_value_doc Var rhs name)
+        )
     | Source.{ it = Syntax.TypD (name, ty_args, typ); _ } ->
         let doc_typ =
           match typ.it with
