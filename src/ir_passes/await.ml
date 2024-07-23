@@ -448,21 +448,21 @@ and c_exp' context exp k =
       | Some (Cont r) -> r
       | _ -> assert false
     in
-    let c = match LabelEnv.find_opt Cleanup context with
+    let b = match LabelEnv.find_opt Cleanup context with
       | Some (Cont r) -> r
       | None -> ContVar (var "@cleanup" bail_contT)
       | _ -> assert false
     in
-    letcont c (fun c ->
+    letcont b (fun b ->
     letcont r (fun r ->
     letcont k (fun k ->
-      let krc = List.map varE [k; r; c] |> tupE in
+      let krb = List.map varE [k; r; b] |> tupE in
       match eff exp1 with
       | T.Triv ->
-        cps_awaitE s (typ_of_var k) (t_exp context exp1) krc
+        cps_awaitE s (typ_of_var k) (t_exp context exp1) krb
       | T.Await ->
         c_exp context exp1
-          (meta (typ exp1) (fun v1 -> (cps_awaitE s (typ_of_var k) (varE v1) krc)))
+          (meta (typ exp1) (fun v1 -> (cps_awaitE s (typ_of_var k) (varE v1) krb)))
     )))
   | DeclareE (id, typ, exp1) ->
     unary context k (fun v1 -> e (DeclareE (id, typ, varE v1))) exp1
