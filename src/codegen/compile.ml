@@ -6576,6 +6576,22 @@ module MakeSerialization (Strm : Stream) = struct
     let set_instruction_limit env =
       G.i (GlobalSet (nr (E.get_global env "@@instruction_limit")))
 
+    let reset_instruction_limit env =
+      match E.mode env with
+      | Flags.ICMode | Flags.RefMode ->
+        compile_unboxed_const 0l ^^
+        IC.performance_counter env ^^
+        compile_const_64 1_000_000L ^^ (* TUNE *)
+        G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
+        set_instruction_limit env
+      | Flags.WASIMode | Flags.WasmMode  ->
+        compile_const_64 (-1L) ^^
+        set_instruction_limit env
+
+
+    (* interval for checking instruction counter *)
+    let idl_limit_interval = 1l (* TUNE *)
+
     let idl_limit_check env =
       G.i (Call (nr (E.built_in env "idl_limit_check")))
 
@@ -6586,10 +6602,10 @@ module MakeSerialization (Strm : Stream) = struct
       E.add_global32 env "@@typtbl" Mutable 0l;
       E.add_global32 env "@@typtbl_end" Mutable 0l;
       E.add_global32 env "@@typtbl_size" Mutable 0l;
-      E.add_global32 env "@@limit_counter" Mutable 32l;
+      E.add_global32 env "@@limit_counter" Mutable idl_limit_interval;
       E.add_global64 env "@@instruction_limit" Mutable 0L;
       Func.define_built_in env "idl_limit_check" [] [] (fun env ->
-          (* IC.compile_static_print env "idl_limit_check" ^^ *)
+          (*          IC.compile_static_print env "idl_limit_check" ^^ *)
           match E.mode env with
           | Flags.ICMode | Flags.RefMode ->
             get_limit_counter env ^^
@@ -6603,9 +6619,10 @@ module MakeSerialization (Strm : Stream) = struct
               compile_unboxed_const 0l ^^
               IC.performance_counter env ^^
               get_instruction_limit env ^^
-              G.i (Compare (Wasm.Values.I32 I32Op.LeU)) ^^
+              G.i (Compare (Wasm.Values.I64 I64Op.LeU)) ^^
               E.else_trap_with env "IDL error: exceeded instruction limit" ^^
-              compile_unboxed_const 32l ^^
+              (* Reset counter *)
+              compile_unboxed_const idl_limit_interval ^^
               set_limit_counter env
             end
           | Flags.WASIMode | Flags.WasmMode  -> G.nop
@@ -8058,7 +8075,7 @@ module MakeSerialization (Strm : Stream) = struct
                 get_typtbl_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl env ^^
                 get_maintyps_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl_end env ^^
                 get_typtbl_size_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl_size env ^^
-                compile_const_64 (-1L) ^^ Registers.set_instruction_limit env
+                Registers.reset_instruction_limit env
               end ^^
               (* set up variable frame arguments *)
               Stack.with_frame env "frame_ptr" 3l (fun () ->

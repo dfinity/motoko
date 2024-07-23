@@ -11,6 +11,11 @@ use core::cmp::min;
 
 use motoko_rts_macros::ic_mem_fn;
 
+extern "C" {
+    // check instruction decoding limit, exported by moc
+    pub fn idl_limit_check();
+}
+
 //
 // IDL constants
 //
@@ -331,6 +336,8 @@ unsafe extern "C" fn skip_any(buf: *mut Buf, typtbl: *mut *mut u8, t: i32, depth
     if depth > 100 {
         idl_trap_with("skip_any: too deeply nested record");
     }
+
+    idl_limit_check(); //check decoding limits
 
     if t < 0 {
         // Primitive type
