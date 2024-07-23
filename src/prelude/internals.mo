@@ -307,6 +307,7 @@ func @getSystemRefund() : @Refund {
   return (prim "cyclesRefunded" : () -> Nat) ();
 };
 
+// trivial cleanup action
 func @cleanup() {
     // outmost cleanup action
 };
