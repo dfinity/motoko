@@ -299,8 +299,7 @@ let transform prog =
           let ic_reject =
             let e = fresh_var "e" catch in
             e --> ic_rejectE (errorMessageE (varE e)) in
-          let ic_cleanup =
-            [] -->* unitE () in
+          let ic_cleanup = varE (var "@cleanup" clean_contT) in
           let exp' = callE (t_exp exp1) [t0] (tupE [ic_reply; ic_reject; ic_cleanup]) in
           expD (selfcallE ts1 exp' (varE nary_reply) (varE reject) (varE clean))
         ]
@@ -407,8 +406,7 @@ let transform prog =
               let r =
                 let e = fresh_var "e" catch in
                 e --> ic_rejectE (errorMessageE (varE e)) in
-              let cl =
-                [] -->* unitE () in
+              let cl = varE (var "@cleanup" clean_contT) in
               let exp' = callE (t_exp cps) [t0] (tupE [k; r; cl]) in
               FuncE (x, Shared s', Replies, typbinds', args', ret_tys, exp')
             (* oneway, always with `ignore(async _)` body *)
@@ -438,8 +436,7 @@ let transform prog =
               let r =
                 let e = fresh_var "e" catch in
                 e --> tupE [] in
-              let cl =
-                [] -->* unitE () in
+              let cl = varE (var "@cleanup" clean_contT) in
               let exp' = callE (t_exp cps) [t0] (tupE [k; r; cl]) in
               FuncE (x, Shared s', Returns, typbinds', args', ret_tys, exp')
             | (Returns | Replies), _ -> assert false
