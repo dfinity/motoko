@@ -5131,7 +5131,7 @@ module IC = struct
     )
 
   (* For debugging *)
-  let compile_static_print env s =
+  let _compile_static_print env s =
     Blob.lit_ptr_len env s ^^ print_ptr_len env
 
   let ic_trap env = system_call env "trap"
@@ -6590,7 +6590,7 @@ module MakeSerialization (Strm : Stream) = struct
 
 
     (* interval for checking instruction counter *)
-    let idl_limit_interval = 1l (* TUNE *)
+    let idl_limit_interval = 32l (* TUNE *)
 
     let idl_limit_check env =
       G.i (Call (nr (E.built_in env "idl_limit_check")))
