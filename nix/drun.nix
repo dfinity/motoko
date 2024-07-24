@@ -44,6 +44,9 @@ EOF
 
         cd -
 
+        # static linking of libunwind fails on Linux
+        rm rs/monitoring/backtrace/build.rs
+
         mkdir -p .cargo
         cat > .cargo/config.toml << EOF
 [target.x86_64-apple-darwin]
