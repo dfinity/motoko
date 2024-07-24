@@ -330,6 +330,14 @@ actor A {
         try await async { assert false }
         catch e { debugPrint (errorMessage e) };
 
+        // fall-through test
+        var done = false;
+        try {
+            try { throw error "foo" }
+            finally { done := true }
+        } catch e { debugPrint ("OUTER CAUGHT: " # errorMessage e) };
+        assert done;
+
         /// caveat: t7 won't return!
         try await* t7() catch _ {} finally debugPrint "It's over";
     };
