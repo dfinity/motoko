@@ -961,10 +961,10 @@ let rec is_explicit_exp e =
   | ObjBlockE (_, _, dfs) ->
     List.for_all (fun (df : dec_field) -> is_explicit_dec df.it.dec) dfs
   | ArrayE (_, es) -> List.exists is_explicit_exp es
-  | SwitchE (e1, cs) | TryE (e1, cs, None) ->
+  | SwitchE (e1, cs) ->
     is_explicit_exp e1 &&
     List.exists (fun (c : case) -> is_explicit_exp c.it.exp) cs
-  | TryE (e1, cs, Some _) ->
+  | TryE (e1, cs, _) ->
     is_explicit_exp e1 &&
     (cs = [] || List.exists (fun (c : case) -> is_explicit_exp c.it.exp) cs)
   | BlockE ds -> List.for_all is_explicit_dec ds
