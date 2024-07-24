@@ -10,7 +10,7 @@
     resource deallocation (e.g. acquired locks, etc.) and similar cleanups in the
     presence of control-flow expressions (`return`, `break`, `continue`, `throw`).
     Additionally, in presence of `finally` the `catch` clause becomes optional and
-    potential errors fall through to any enclosing `catch`.
+    and any uncaught error from the `try` block will be propagated, after executing the `finally` block.
 
     _Note_: `finally`-expressions that are in scope will be executed even if an execution
     path _following_ an `await`-expression traps. This feature, formerly not available in Motoko,
