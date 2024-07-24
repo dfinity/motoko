@@ -341,18 +341,17 @@ and c_exp' context exp k =
                note = Note.{ exp.note with typ = typ' } }))
     end)
   | TryE (exp1, cases, finally_opt) ->
-     let pre k =
-       match finally_opt with
-       | Some (id2, typ2) -> precont k (var id2 typ2)
-       | None -> k in
+    let pre k =
+      match finally_opt with
+      | Some (id2, typ2) -> precont k (var id2 typ2)
+      | None -> k in
     let pre' = function
       | Cont k -> Cont (pre k)
       | Label -> assert false in
     (* All control-flow out must pass through the potential `finally` thunk *)
     let context = LabelEnv.map pre' context in
-    (* assert that a surrounding `AwaitPrim _` has set up a `Cleanup` cont *)
-    if finally_opt <> None
-    then ignore (LabelEnv.find Cleanup context);
+    (* assert that a context (top-level or async) has set up a `Cleanup` cont *)
+    assert (LabelEnv.find_opt Cleanup context <> None);
     (* TODO: do we need to reify f? *)
     let f = match LabelEnv.find Throw context with Cont f -> f | _ -> assert false in
     letcont f (fun f ->
@@ -450,7 +449,6 @@ and c_exp' context exp k =
     in
     let b = match LabelEnv.find_opt Cleanup context with
       | Some (Cont r) -> r
-      | None -> ContVar (var "@cleanup" bail_contT)
       | _ -> assert false
     in
     letcont b (fun b ->
@@ -624,7 +622,9 @@ and t_comp_unit context = function
         ProgU (t_decs context ds)
       | T.Await ->
         let throw = fresh_err_cont T.unit in
-        let context' = LabelEnv.add Throw (Cont (ContVar throw)) context in
+        let context' =
+          LabelEnv.add Cleanup (Cont (ContVar (var "@cleanup" bail_contT)))
+            (LabelEnv.add Throw (Cont (ContVar throw)) context) in
         let e = fresh_var "e" T.catch in
         ProgU [
           funcD throw e (assertE (falseE ()));
@@ -648,7 +648,9 @@ and t_ignore_throw context exp =
      exp
   | _ ->
      let throw = fresh_err_cont T.unit in
-     let context' = LabelEnv.add Throw (Cont (ContVar throw)) context in
+     let context' =
+       LabelEnv.add Cleanup (Cont (ContVar (var "@cleanup" bail_contT)))
+         (LabelEnv.add Throw (Cont (ContVar throw)) context) in
      let e = fresh_var "e" T.catch in
      { (blockE [
           funcD throw e (tupE[]);
