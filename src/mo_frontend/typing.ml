@@ -964,9 +964,9 @@ let rec is_explicit_exp e =
   | SwitchE (e1, cs) | TryE (e1, cs, None) ->
     is_explicit_exp e1 &&
     List.exists (fun (c : case) -> is_explicit_exp c.it.exp) cs
-  | TryE (e1, cs, Some e2) ->
-    is_explicit_exp { e with it = TryE (e1, cs, None) } &&
-    is_explicit_exp e2
+  | TryE (e1, cs, Some _) ->
+    is_explicit_exp e1 &&
+    (cs = [] || List.exists (fun (c : case) -> is_explicit_exp c.it.exp) cs)
   | BlockE ds -> List.for_all is_explicit_dec ds
   | FuncE (_, _, _, p, t_opt, _, _) -> is_explicit_pat p && t_opt <> None
   | LoopE (_, e_opt) -> e_opt <> None
