@@ -56,8 +56,10 @@ let precont k vthunk =
       | T.(Func (Local, Returns, [], ts1, _)) -> T.seq ts1
       | _ -> assert false in
     metaX 7770 typ (fun c v -> finally c (varE k' -*- varE v))
-  | MetaCont (typ, cont) ->
-    metaX 8880 typ (fun c v -> finally c (cont v))
+  | MetaCont (typ, cont) when false ->
+    metaX 8880 typ (fun c v -> cont v)
+  | MetaCont (typ, _) when true ->
+    metaX 8880 typ (fun c v -> letcont k (fun k' -> finally c (varE k' -*- varE v)))
 
 (* Named labels for break, special labels for return, throw and cleanup *)
 type label = Return | Throw | Cleanup | Named of string
