@@ -28305,72 +28305,41 @@
                                   (LetD (VarP $u/48) (PrimE TupPrim))
                                   (BlockE
                                     (LetD
-                                      (VarP $k/15)
+                                      (VarP $k/14)
                                       (FuncE
-                                        $k/15
+                                        $k/14
                                         Local
                                         Returns
                                         (params $v/39)
                                         ()
                                         (BlockE
+                                          (LetD WildP (LitE (IntLit 7_772)))
                                           (LetD
-                                            (VarP $k/14)
-                                            (FuncE
-                                              $k/14
-                                              Local
-                                              Returns
-                                              (params $v/40)
-                                              ()
-                                              (BlockE
-                                                (LetD
-                                                  WildP
-                                                  (LitE (IntLit 7_772))
-                                                )
-                                                (LetD
-                                                  WildP
-                                                  (PrimE
-                                                    (CallPrim)
-                                                    (VarE $$thunk/0/0)
-                                                    (PrimE TupPrim)
-                                                  )
-                                                )
-                                                (PrimE
-                                                  (CallPrim)
-                                                  (VarE $r/6)
-                                                  (VarE $v/40)
-                                                )
-                                              )
-                                            )
-                                          )
-                                          (BlockE
-                                            (LetD WildP (LitE (IntLit 8_881)))
-                                            (LetD
-                                              WildP
-                                              (PrimE
-                                                (CallPrim)
-                                                (VarE $$thunk/1/0)
-                                                (PrimE TupPrim)
-                                              )
-                                            )
+                                            WildP
                                             (PrimE
                                               (CallPrim)
-                                              (VarE $k/14)
-                                              (VarE $v/39)
+                                              (VarE $$thunk/0/0)
+                                              (PrimE TupPrim)
                                             )
+                                          )
+                                          (PrimE
+                                            (CallPrim)
+                                            (VarE $r/6)
+                                            (VarE $v/39)
                                           )
                                         )
                                       )
                                     )
                                     (BlockE
                                       (LetD
-                                        (VarP $k/16)
+                                        (VarP $k/15)
                                         (FuncE
-                                          $k/16
+                                          $k/15
                                           Local
                                           Returns
                                           ()
                                           (BlockE
-                                            (LetD (VarP $v/41) (PrimE TupPrim))
+                                            (LetD (VarP $v/40) (PrimE TupPrim))
                                             (BlockE
                                               (LetD WildP (LitE (IntLit 7_771)))
                                               (LetD
@@ -28384,7 +28353,7 @@
                                               (PrimE
                                                 (CallPrim)
                                                 (VarE $k/13)
-                                                (VarE $v/41)
+                                                (VarE $v/40)
                                               )
                                             )
                                           )
@@ -28394,7 +28363,7 @@
                                         $$thunk/2/0
                                         (BlockE
                                           (LetD
-                                            (VarP $v/42)
+                                            (VarP $v/41)
                                             (FuncE
                                               $cleanup
                                               Local
@@ -28412,7 +28381,7 @@
                                             (DefineE
                                               $$thunk/2/0
                                               Const
-                                              (VarE $v/42)
+                                              (VarE $v/41)
                                             )
                                           )
                                           (BlockE
@@ -28424,121 +28393,45 @@
                                               )
                                               (BlockE
                                                 (LetD
-                                                  (VarP $k/19)
+                                                  (VarP $k/16)
                                                   (FuncE
-                                                    $k/19
+                                                    $k/16
                                                     Local
                                                     Returns
-                                                    (params $v/43)
+                                                    (params $v/42)
                                                     ()
                                                     (BlockE
                                                       (LetD
-                                                        (VarP $k/18)
-                                                        (FuncE
-                                                          $k/18
-                                                          Local
-                                                          Returns
-                                                          (params $v/44)
-                                                          ()
-                                                          (BlockE
-                                                            (LetD
-                                                              (VarP $k/17)
-                                                              (FuncE
-                                                                $k/17
-                                                                Local
-                                                                Returns
-                                                                (params $v/45)
-                                                                ()
-                                                                (BlockE
-                                                                  (LetD
-                                                                    WildP
-                                                                    (LitE
-                                                                      (IntLit
-                                                                        7_773
-                                                                      )
-                                                                    )
-                                                                  )
-                                                                  (LetD
-                                                                    WildP
-                                                                    (PrimE
-                                                                      (CallPrim)
-                                                                      (VarE
-                                                                        $$thunk/0/0
-                                                                      )
-                                                                      (PrimE
-                                                                        TupPrim
-                                                                      )
-                                                                    )
-                                                                  )
-                                                                  (PrimE
-                                                                    (CallPrim)
-                                                                    (VarE $r/6)
-                                                                    (VarE $v/45)
-                                                                  )
-                                                                )
-                                                              )
-                                                            )
-                                                            (BlockE
-                                                              (LetD
-                                                                WildP
-                                                                (LitE
-                                                                  (IntLit 8_882)
-                                                                )
-                                                              )
-                                                              (LetD
-                                                                WildP
-                                                                (PrimE
-                                                                  (CallPrim)
-                                                                  (VarE
-                                                                    $$thunk/1/0
-                                                                  )
-                                                                  (PrimE
-                                                                    TupPrim
-                                                                  )
-                                                                )
-                                                              )
-                                                              (PrimE
-                                                                (CallPrim)
-                                                                (VarE $k/17)
-                                                                (VarE $v/44)
-                                                              )
-                                                            )
-                                                          )
-                                                        )
+                                                        WildP
+                                                        (LitE (IntLit 7_773))
                                                       )
-                                                      (BlockE
-                                                        (LetD
-                                                          WildP
-                                                          (LitE (IntLit 8_881))
-                                                        )
-                                                        (LetD
-                                                          WildP
-                                                          (PrimE
-                                                            (CallPrim)
-                                                            (VarE $$thunk/2/0)
-                                                            (PrimE TupPrim)
-                                                          )
-                                                        )
+                                                      (LetD
+                                                        WildP
                                                         (PrimE
                                                           (CallPrim)
-                                                          (VarE $k/18)
-                                                          (VarE $v/43)
+                                                          (VarE $$thunk/0/0)
+                                                          (PrimE TupPrim)
                                                         )
+                                                      )
+                                                      (PrimE
+                                                        (CallPrim)
+                                                        (VarE $r/6)
+                                                        (VarE $v/42)
                                                       )
                                                     )
                                                   )
                                                 )
                                                 (BlockE
                                                   (LetD
-                                                    (VarP $k/20)
+                                                    (VarP $k/17)
                                                     (FuncE
-                                                      $k/20
+                                                      $k/17
                                                       Local
                                                       Returns
                                                       ()
                                                       (BlockE
                                                         (LetD
-                                                          (VarP $v/46)
+                                                          (VarP $v/43)
                                                           (PrimE TupPrim)
                                                         )
                                                         (BlockE
@@ -28558,8 +28451,8 @@
                                                           )
                                                           (PrimE
                                                             (CallPrim)
-                                                            (VarE $k/16)
-                                                            (VarE $v/46)
+                                                            (VarE $k/15)
+                                                            (VarE $v/43)
                                                           )
                                                         )
                                                       )
@@ -28567,7 +28460,7 @@
                                                   )
                                                   (PrimE
                                                     (CallPrim)
-                                                    (VarE $k/20)
+                                                    (VarE $k/17)
                                                     (PrimE TupPrim)
                                                   )
                                                 )
@@ -30271,7 +30164,7 @@
         $lambda
         Local
         Returns
-        (params $v/47 $e/1 $c/0)
+        (params $v/44 $e/1 $c/0)
         ()
         (PrimE
           (CallPrim $__2257)
@@ -30382,7 +30275,7 @@
                                               $lambda
                                               Local
                                               Returns
-                                              (params $k/21 $r/7 $b/6)
+                                              (params $k/18 $r/7 $b/6)
                                               {#schedule : () -> (); #suspend}
                                               (PrimE
                                                 (CallPrim)
@@ -30393,12 +30286,12 @@
                                                     $lambda
                                                     Local
                                                     Returns
-                                                    (params $v/50)
+                                                    (params $v/47)
                                                     ()
                                                     (PrimE
                                                       (CallPrim)
-                                                      (VarE $k/21)
-                                                      (VarE $v/50)
+                                                      (VarE $k/18)
+                                                      (VarE $v/47)
                                                     )
                                                   )
                                                   (VarE $r/7)
@@ -30480,7 +30373,7 @@
                                     )
                                     (BlockE
                                       (LetD
-                                        (VarP $v/49)
+                                        (VarP $v/46)
                                         (PrimE
                                           TupPrim
                                           (VarE $k/1)
@@ -30492,7 +30385,7 @@
                                         (PrimE
                                           (CallPrim)
                                           (VarE $u/7)
-                                          (VarE $v/49)
+                                          (VarE $v/46)
                                         )
                                         (case
                                           (TagP suspend WildP)
@@ -30512,7 +30405,7 @@
                                                 (VarE $schedule/1)
                                                 (PrimE
                                                   (ProjPrim 1)
-                                                  (VarE $v/49)
+                                                  (VarE $v/46)
                                                 )
                                                 (FuncE
                                                   $lambda
@@ -30523,7 +30416,7 @@
                                                     (CallPrim)
                                                     (PrimE
                                                       (ProjPrim 2)
-                                                      (VarE $v/49)
+                                                      (VarE $v/46)
                                                     )
                                                     (PrimE TupPrim)
                                                   )
@@ -30541,7 +30434,7 @@
                                                 (CallPrim)
                                                 (PrimE
                                                   (ProjPrim 1)
-                                                  (VarE $v/49)
+                                                  (VarE $v/46)
                                                 )
                                                 (PrimE
                                                   (CallPrim)
@@ -30824,7 +30717,7 @@
                                                       )
                                                       (BlockE
                                                         (LetD
-                                                          (VarP $v/48)
+                                                          (VarP $v/45)
                                                           (PrimE
                                                             TupPrim
                                                             (VarE $k/3)
@@ -30836,7 +30729,7 @@
                                                           (PrimE
                                                             (CallPrim)
                                                             (VarE $u/14)
-                                                            (VarE $v/48)
+                                                            (VarE $v/45)
                                                           )
                                                           (case
                                                             (TagP suspend WildP)
@@ -30864,7 +30757,7 @@
                                                                   )
                                                                   (PrimE
                                                                     (ProjPrim 1)
-                                                                    (VarE $v/48)
+                                                                    (VarE $v/45)
                                                                   )
                                                                   (FuncE
                                                                     $lambda
@@ -30878,7 +30771,7 @@
                                                                           2
                                                                         )
                                                                         (VarE
-                                                                          $v/48
+                                                                          $v/45
                                                                         )
                                                                       )
                                                                       (PrimE
@@ -30903,7 +30796,7 @@
                                                                   (CallPrim)
                                                                   (PrimE
                                                                     (ProjPrim 1)
-                                                                    (VarE $v/48)
+                                                                    (VarE $v/45)
                                                                   )
                                                                   (PrimE
                                                                     (CallPrim)
@@ -30987,7 +30880,7 @@
               )
             )
           )
-          (PrimE TupPrim (VarE $v/47) (VarE $e/1) (VarE $c/0))
+          (PrimE TupPrim (VarE $v/44) (VarE $e/1) (VarE $c/0))
         )
       )
     )
@@ -31243,7 +31136,7 @@
                                                                     Local
                                                                     Returns
                                                                     (params
-                                                                      $k/22
+                                                                      $k/19
                                                                       $r/8
                                                                       $b/7
                                                                     )
@@ -31260,17 +31153,17 @@
                                                                           Local
                                                                           Returns
                                                                           (params
-                                                                            $v/54
+                                                                            $v/51
                                                                           )
                                                                           ()
                                                                           (PrimE
                                                                             (CallPrim
                                                                             )
                                                                             (VarE
-                                                                              $k/22
+                                                                              $k/19
                                                                             )
                                                                             (VarE
-                                                                              $v/54
+                                                                              $v/51
                                                                             )
                                                                           )
                                                                         )
@@ -31401,7 +31294,7 @@
                                                           )
                                                           (BlockE
                                                             (LetD
-                                                              (VarP $v/53)
+                                                              (VarP $v/50)
                                                               (PrimE
                                                                 TupPrim
                                                                 (VarE $k/5)
@@ -31413,7 +31306,7 @@
                                                               (PrimE
                                                                 (CallPrim)
                                                                 (VarE $u/22)
-                                                                (VarE $v/53)
+                                                                (VarE $v/50)
                                                               )
                                                               (case
                                                                 (TagP
@@ -31451,7 +31344,7 @@
                                                                           1
                                                                         )
                                                                         (VarE
-                                                                          $v/53
+                                                                          $v/50
                                                                         )
                                                                       )
                                                                       (FuncE
@@ -31467,7 +31360,7 @@
                                                                               2
                                                                             )
                                                                             (VarE
-                                                                              $v/53
+                                                                              $v/50
                                                                             )
                                                                           )
                                                                           (PrimE
@@ -31497,7 +31390,7 @@
                                                                           1
                                                                         )
                                                                         (VarE
-                                                                          $v/53
+                                                                          $v/50
                                                                         )
                                                                       )
                                                                       (PrimE
@@ -31637,7 +31530,7 @@
                                                 )
                                                 (BlockE
                                                   (LetD
-                                                    (VarP $v/52)
+                                                    (VarP $v/49)
                                                     (PrimE
                                                       TupPrim
                                                       (VarE $k/6)
@@ -31649,7 +31542,7 @@
                                                     (PrimE
                                                       (CallPrim)
                                                       (VarE $u/23)
-                                                      (VarE $v/52)
+                                                      (VarE $v/49)
                                                     )
                                                     (case
                                                       (TagP suspend WildP)
@@ -31672,7 +31565,7 @@
                                                             (VarE $schedule/2)
                                                             (PrimE
                                                               (ProjPrim 1)
-                                                              (VarE $v/52)
+                                                              (VarE $v/49)
                                                             )
                                                             (FuncE
                                                               $lambda
@@ -31683,7 +31576,7 @@
                                                                 (CallPrim)
                                                                 (PrimE
                                                                   (ProjPrim 2)
-                                                                  (VarE $v/52)
+                                                                  (VarE $v/49)
                                                                 )
                                                                 (PrimE TupPrim)
                                                               )
@@ -31703,7 +31596,7 @@
                                                             (CallPrim)
                                                             (PrimE
                                                               (ProjPrim 1)
-                                                              (VarE $v/52)
+                                                              (VarE $v/49)
                                                             )
                                                             (PrimE
                                                               (CallPrim)
@@ -31748,9 +31641,9 @@
                   $lambda
                   Local
                   Returns
-                  (params $v/51)
+                  (params $v/48)
                   ()
-                  (PrimE (ICReplyPrim Principal) (VarE $v/51))
+                  (PrimE (ICReplyPrim Principal) (VarE $v/48))
                 )
                 (FuncE
                   $lambda
@@ -31912,11 +31805,11 @@
                         )
                         (BlockE
                           (LetD
-                            (VarP $v/56)
+                            (VarP $v/53)
                             (PrimE TupPrim (VarE $k/7) (VarE $r/3) (VarE $b/2))
                           )
                           (SwitchE
-                            (PrimE (CallPrim) (VarE $u/24) (VarE $v/56))
+                            (PrimE (CallPrim) (VarE $u/24) (VarE $v/53))
                             (case (TagP suspend WildP) (PrimE TupPrim))
                             (case
                               (TagP schedule (VarP $schedule/4))
@@ -31927,7 +31820,7 @@
                                     ()
                                     (PrimE (ICReplyPrim) (PrimE TupPrim))
                                     (VarE $schedule/4)
-                                    (PrimE (ProjPrim 1) (VarE $v/56))
+                                    (PrimE (ProjPrim 1) (VarE $v/53))
                                     (FuncE
                                       $lambda
                                       Local
@@ -31935,7 +31828,7 @@
                                       ()
                                       (PrimE
                                         (CallPrim)
-                                        (PrimE (ProjPrim 2) (VarE $v/56))
+                                        (PrimE (ProjPrim 2) (VarE $v/53))
                                         (PrimE TupPrim)
                                       )
                                     )
@@ -31950,7 +31843,7 @@
                                   (VarE $call/4)
                                   (PrimE
                                     (CallPrim)
-                                    (PrimE (ProjPrim 1) (VarE $v/56))
+                                    (PrimE (ProjPrim 1) (VarE $v/53))
                                     (PrimE
                                       (CallPrim)
                                       (VarE @call_error)
@@ -31978,9 +31871,9 @@
                   $lambda
                   Local
                   Returns
-                  (params $v/55)
+                  (params $v/52)
                   ()
-                  (PrimE (ICReplyPrim Blob) (VarE $v/55))
+                  (PrimE (ICReplyPrim Blob) (VarE $v/52))
                 )
                 (FuncE
                   $lambda
@@ -32214,7 +32107,7 @@
                 $lambda
                 Local
                 Returns
-                (params $k/23 $r/9 $b/8)
+                (params $k/20 $r/9 $b/8)
                 {#schedule : () -> (); #suspend}
                 (PrimE
                   (CallPrim)
@@ -32225,9 +32118,9 @@
                       $lambda
                       Local
                       Returns
-                      (params $v/57)
+                      (params $v/54)
                       ()
-                      (PrimE (CallPrim) (VarE $k/23) (VarE $v/57))
+                      (PrimE (CallPrim) (VarE $k/20) (VarE $v/54))
                     )
                     (VarE $r/9)
                     (VarE $b/8)
@@ -33651,8 +33544,8 @@
                   Returns
                   ()
                   (BlockE
-                    (LetD (VarP $v/58) (PrimE TupPrim))
-                    (PrimE (ICReplyPrim) (VarE $v/58))
+                    (LetD (VarP $v/55) (PrimE TupPrim))
+                    (PrimE (ICReplyPrim) (VarE $v/55))
                   )
                 )
                 (FuncE
@@ -36462,9 +36355,9 @@
             $lambda
             Local
             Returns
-            (params $v/59)
+            (params $v/56)
             ()
-            (PrimE (ICReplyPrim {size : Nat64}) (VarE $v/59))
+            (PrimE (ICReplyPrim {size : Nat64}) (VarE $v/56))
           )
           (FuncE
             $lambda
@@ -36613,69 +36506,41 @@
                               (LetD (VarP $u/48) (PrimE TupPrim))
                               (BlockE
                                 (LetD
-                                  (VarP $k/15)
+                                  (VarP $k/14)
                                   (FuncE
-                                    $k/15
+                                    $k/14
                                     Local
                                     Returns
                                     (params $v/39)
                                     ()
                                     (BlockE
+                                      (LetD WildP (LitE (IntLit 7_772)))
                                       (LetD
-                                        (VarP $k/14)
-                                        (FuncE
-                                          $k/14
-                                          Local
-                                          Returns
-                                          (params $v/40)
-                                          ()
-                                          (BlockE
-                                            (LetD WildP (LitE (IntLit 7_772)))
-                                            (LetD
-                                              WildP
-                                              (PrimE
-                                                (CallPrim)
-                                                (VarE $$thunk/0/0)
-                                                (PrimE TupPrim)
-                                              )
-                                            )
-                                            (PrimE
-                                              (CallPrim)
-                                              (VarE $r/6)
-                                              (VarE $v/40)
-                                            )
-                                          )
-                                        )
-                                      )
-                                      (BlockE
-                                        (LetD WildP (LitE (IntLit 8_881)))
-                                        (LetD
-                                          WildP
-                                          (PrimE
-                                            (CallPrim)
-                                            (VarE $$thunk/1/0)
-                                            (PrimE TupPrim)
-                                          )
-                                        )
+                                        WildP
                                         (PrimE
                                           (CallPrim)
-                                          (VarE $k/14)
-                                          (VarE $v/39)
+                                          (VarE $$thunk/0/0)
+                                          (PrimE TupPrim)
                                         )
+                                      )
+                                      (PrimE
+                                        (CallPrim)
+                                        (VarE $r/6)
+                                        (VarE $v/39)
                                       )
                                     )
                                   )
                                 )
                                 (BlockE
                                   (LetD
-                                    (VarP $k/16)
+                                    (VarP $k/15)
                                     (FuncE
-                                      $k/16
+                                      $k/15
                                       Local
                                       Returns
                                       ()
                                       (BlockE
-                                        (LetD (VarP $v/41) (PrimE TupPrim))
+                                        (LetD (VarP $v/40) (PrimE TupPrim))
                                         (BlockE
                                           (LetD WildP (LitE (IntLit 7_771)))
                                           (LetD
@@ -36689,7 +36554,7 @@
                                           (PrimE
                                             (CallPrim)
                                             (VarE $k/13)
-                                            (VarE $v/41)
+                                            (VarE $v/40)
                                           )
                                         )
                                       )
@@ -36699,7 +36564,7 @@
                                     $$thunk/2/0
                                     (BlockE
                                       (LetD
-                                        (VarP $v/42)
+                                        (VarP $v/41)
                                         (FuncE
                                           $cleanup
                                           Local
@@ -36714,7 +36579,7 @@
                                       )
                                       (LetD
                                         WildP
-                                        (DefineE $$thunk/2/0 Const (VarE $v/42))
+                                        (DefineE $$thunk/2/0 Const (VarE $v/41))
                                       )
                                       (BlockE
                                         (LetD (VarP $u/49) (PrimE TupPrim))
@@ -36722,115 +36587,45 @@
                                           (LetD (VarP $u/50) (PrimE TupPrim))
                                           (BlockE
                                             (LetD
-                                              (VarP $k/19)
+                                              (VarP $k/16)
                                               (FuncE
-                                                $k/19
+                                                $k/16
                                                 Local
                                                 Returns
-                                                (params $v/43)
+                                                (params $v/42)
                                                 ()
                                                 (BlockE
                                                   (LetD
-                                                    (VarP $k/18)
-                                                    (FuncE
-                                                      $k/18
-                                                      Local
-                                                      Returns
-                                                      (params $v/44)
-                                                      ()
-                                                      (BlockE
-                                                        (LetD
-                                                          (VarP $k/17)
-                                                          (FuncE
-                                                            $k/17
-                                                            Local
-                                                            Returns
-                                                            (params $v/45)
-                                                            ()
-                                                            (BlockE
-                                                              (LetD
-                                                                WildP
-                                                                (LitE
-                                                                  (IntLit 7_773)
-                                                                )
-                                                              )
-                                                              (LetD
-                                                                WildP
-                                                                (PrimE
-                                                                  (CallPrim)
-                                                                  (VarE
-                                                                    $$thunk/0/0
-                                                                  )
-                                                                  (PrimE
-                                                                    TupPrim
-                                                                  )
-                                                                )
-                                                              )
-                                                              (PrimE
-                                                                (CallPrim)
-                                                                (VarE $r/6)
-                                                                (VarE $v/45)
-                                                              )
-                                                            )
-                                                          )
-                                                        )
-                                                        (BlockE
-                                                          (LetD
-                                                            WildP
-                                                            (LitE
-                                                              (IntLit 8_882)
-                                                            )
-                                                          )
-                                                          (LetD
-                                                            WildP
-                                                            (PrimE
-                                                              (CallPrim)
-                                                              (VarE $$thunk/1/0)
-                                                              (PrimE TupPrim)
-                                                            )
-                                                          )
-                                                          (PrimE
-                                                            (CallPrim)
-                                                            (VarE $k/17)
-                                                            (VarE $v/44)
-                                                          )
-                                                        )
-                                                      )
-                                                    )
+                                                    WildP
+                                                    (LitE (IntLit 7_773))
                                                   )
-                                                  (BlockE
-                                                    (LetD
-                                                      WildP
-                                                      (LitE (IntLit 8_881))
-                                                    )
-                                                    (LetD
-                                                      WildP
-                                                      (PrimE
-                                                        (CallPrim)
-                                                        (VarE $$thunk/2/0)
-                                                        (PrimE TupPrim)
-                                                      )
-                                                    )
+                                                  (LetD
+                                                    WildP
                                                     (PrimE
                                                       (CallPrim)
-                                                      (VarE $k/18)
-                                                      (VarE $v/43)
+                                                      (VarE $$thunk/0/0)
+                                                      (PrimE TupPrim)
                                                     )
+                                                  )
+                                                  (PrimE
+                                                    (CallPrim)
+                                                    (VarE $r/6)
+                                                    (VarE $v/42)
                                                   )
                                                 )
                                               )
                                             )
                                             (BlockE
                                               (LetD
-                                                (VarP $k/20)
+                                                (VarP $k/17)
                                                 (FuncE
-                                                  $k/20
+                                                  $k/17
                                                   Local
                                                   Returns
                                                   ()
                                                   (BlockE
                                                     (LetD
-                                                      (VarP $v/46)
+                                                      (VarP $v/43)
                                                       (PrimE TupPrim)
                                                     )
                                                     (BlockE
@@ -36848,8 +36643,8 @@
                                                       )
                                                       (PrimE
                                                         (CallPrim)
-                                                        (VarE $k/16)
-                                                        (VarE $v/46)
+                                                        (VarE $k/15)
+                                                        (VarE $v/43)
                                                       )
                                                     )
                                                   )
@@ -36857,7 +36652,7 @@
                                               )
                                               (PrimE
                                                 (CallPrim)
-                                                (VarE $k/20)
+                                                (VarE $k/17)
                                                 (PrimE TupPrim)
                                               )
                                             )
@@ -36886,7 +36681,7 @@
             Local
             Returns
             ()
-            (BlockE (LetD (VarP $v/60) (PrimE TupPrim)) (PrimE TupPrim))
+            (BlockE (LetD (VarP $v/57) (PrimE TupPrim)) (PrimE TupPrim))
           )
           (FuncE $lambda Local Returns (params $e/6) () (PrimE TupPrim))
           (VarE @cleanup)
@@ -38570,7 +38365,7 @@
         $lambda
         Local
         Returns
-        (params $v/47 $e/1 $c/0)
+        (params $v/44 $e/1 $c/0)
         ()
         (PrimE
           (CallPrim $__2257)
@@ -38681,7 +38476,7 @@
                                               $lambda
                                               Local
                                               Returns
-                                              (params $k/21 $r/7 $b/6)
+                                              (params $k/18 $r/7 $b/6)
                                               {#schedule : () -> (); #suspend}
                                               (PrimE
                                                 (CallPrim)
@@ -38692,12 +38487,12 @@
                                                     $lambda
                                                     Local
                                                     Returns
-                                                    (params $v/50)
+                                                    (params $v/47)
                                                     ()
                                                     (PrimE
                                                       (CallPrim)
-                                                      (VarE $k/21)
-                                                      (VarE $v/50)
+                                                      (VarE $k/18)
+                                                      (VarE $v/47)
                                                     )
                                                   )
                                                   (VarE $r/7)
@@ -38779,7 +38574,7 @@
                                     )
                                     (BlockE
                                       (LetD
-                                        (VarP $v/49)
+                                        (VarP $v/46)
                                         (PrimE
                                           TupPrim
                                           (VarE $k/1)
@@ -38791,7 +38586,7 @@
                                         (PrimE
                                           (CallPrim)
                                           (VarE $u/7)
-                                          (VarE $v/49)
+                                          (VarE $v/46)
                                         )
                                         (case
                                           (TagP suspend WildP)
@@ -38811,7 +38606,7 @@
                                                 (VarE $schedule/1)
                                                 (PrimE
                                                   (ProjPrim 1)
-                                                  (VarE $v/49)
+                                                  (VarE $v/46)
                                                 )
                                                 (FuncE
                                                   $lambda
@@ -38822,7 +38617,7 @@
                                                     (CallPrim)
                                                     (PrimE
                                                       (ProjPrim 2)
-                                                      (VarE $v/49)
+                                                      (VarE $v/46)
                                                     )
                                                     (PrimE TupPrim)
                                                   )
@@ -38840,7 +38635,7 @@
                                                 (CallPrim)
                                                 (PrimE
                                                   (ProjPrim 1)
-                                                  (VarE $v/49)
+                                                  (VarE $v/46)
                                                 )
                                                 (PrimE
                                                   (CallPrim)
@@ -39123,7 +38918,7 @@
                                                       )
                                                       (BlockE
                                                         (LetD
-                                                          (VarP $v/48)
+                                                          (VarP $v/45)
                                                           (PrimE
                                                             TupPrim
                                                             (VarE $k/3)
@@ -39135,7 +38930,7 @@
                                                           (PrimE
                                                             (CallPrim)
                                                             (VarE $u/14)
-                                                            (VarE $v/48)
+                                                            (VarE $v/45)
                                                           )
                                                           (case
                                                             (TagP suspend WildP)
@@ -39163,7 +38958,7 @@
                                                                   )
                                                                   (PrimE
                                                                     (ProjPrim 1)
-                                                                    (VarE $v/48)
+                                                                    (VarE $v/45)
                                                                   )
                                                                   (FuncE
                                                                     $lambda
@@ -39177,7 +38972,7 @@
                                                                           2
                                                                         )
                                                                         (VarE
-                                                                          $v/48
+                                                                          $v/45
                                                                         )
                                                                       )
                                                                       (PrimE
@@ -39202,7 +38997,7 @@
                                                                   (CallPrim)
                                                                   (PrimE
                                                                     (ProjPrim 1)
-                                                                    (VarE $v/48)
+                                                                    (VarE $v/45)
                                                                   )
                                                                   (PrimE
                                                                     (CallPrim)
@@ -39286,7 +39081,7 @@
               )
             )
           )
-          (PrimE TupPrim (VarE $v/47) (VarE $e/1) (VarE $c/0))
+          (PrimE TupPrim (VarE $v/44) (VarE $e/1) (VarE $c/0))
         )
       )
     )
@@ -39542,7 +39337,7 @@
                                                                     Local
                                                                     Returns
                                                                     (params
-                                                                      $k/22
+                                                                      $k/19
                                                                       $r/8
                                                                       $b/7
                                                                     )
@@ -39559,17 +39354,17 @@
                                                                           Local
                                                                           Returns
                                                                           (params
-                                                                            $v/54
+                                                                            $v/51
                                                                           )
                                                                           ()
                                                                           (PrimE
                                                                             (CallPrim
                                                                             )
                                                                             (VarE
-                                                                              $k/22
+                                                                              $k/19
                                                                             )
                                                                             (VarE
-                                                                              $v/54
+                                                                              $v/51
                                                                             )
                                                                           )
                                                                         )
@@ -39700,7 +39495,7 @@
                                                           )
                                                           (BlockE
                                                             (LetD
-                                                              (VarP $v/53)
+                                                              (VarP $v/50)
                                                               (PrimE
                                                                 TupPrim
                                                                 (VarE $k/5)
@@ -39712,7 +39507,7 @@
                                                               (PrimE
                                                                 (CallPrim)
                                                                 (VarE $u/22)
-                                                                (VarE $v/53)
+                                                                (VarE $v/50)
                                                               )
                                                               (case
                                                                 (TagP
@@ -39750,7 +39545,7 @@
                                                                           1
                                                                         )
                                                                         (VarE
-                                                                          $v/53
+                                                                          $v/50
                                                                         )
                                                                       )
                                                                       (FuncE
@@ -39766,7 +39561,7 @@
                                                                               2
                                                                             )
                                                                             (VarE
-                                                                              $v/53
+                                                                              $v/50
                                                                             )
                                                                           )
                                                                           (PrimE
@@ -39796,7 +39591,7 @@
                                                                           1
                                                                         )
                                                                         (VarE
-                                                                          $v/53
+                                                                          $v/50
                                                                         )
                                                                       )
                                                                       (PrimE
@@ -39936,7 +39731,7 @@
                                                 )
                                                 (BlockE
                                                   (LetD
-                                                    (VarP $v/52)
+                                                    (VarP $v/49)
                                                     (PrimE
                                                       TupPrim
                                                       (VarE $k/6)
@@ -39948,7 +39743,7 @@
                                                     (PrimE
                                                       (CallPrim)
                                                       (VarE $u/23)
-                                                      (VarE $v/52)
+                                                      (VarE $v/49)
                                                     )
                                                     (case
                                                       (TagP suspend WildP)
@@ -39971,7 +39766,7 @@
                                                             (VarE $schedule/2)
                                                             (PrimE
                                                               (ProjPrim 1)
-                                                              (VarE $v/52)
+                                                              (VarE $v/49)
                                                             )
                                                             (FuncE
                                                               $lambda
@@ -39982,7 +39777,7 @@
                                                                 (CallPrim)
                                                                 (PrimE
                                                                   (ProjPrim 2)
-                                                                  (VarE $v/52)
+                                                                  (VarE $v/49)
                                                                 )
                                                                 (PrimE TupPrim)
                                                               )
@@ -40002,7 +39797,7 @@
                                                             (CallPrim)
                                                             (PrimE
                                                               (ProjPrim 1)
-                                                              (VarE $v/52)
+                                                              (VarE $v/49)
                                                             )
                                                             (PrimE
                                                               (CallPrim)
@@ -40047,9 +39842,9 @@
                   $lambda
                   Local
                   Returns
-                  (params $v/51)
+                  (params $v/48)
                   ()
-                  (PrimE (ICReplyPrim Principal) (VarE $v/51))
+                  (PrimE (ICReplyPrim Principal) (VarE $v/48))
                 )
                 (FuncE
                   $lambda
@@ -40211,11 +40006,11 @@
                         )
                         (BlockE
                           (LetD
-                            (VarP $v/56)
+                            (VarP $v/53)
                             (PrimE TupPrim (VarE $k/7) (VarE $r/3) (VarE $b/2))
                           )
                           (SwitchE
-                            (PrimE (CallPrim) (VarE $u/24) (VarE $v/56))
+                            (PrimE (CallPrim) (VarE $u/24) (VarE $v/53))
                             (case (TagP suspend WildP) (PrimE TupPrim))
                             (case
                               (TagP schedule (VarP $schedule/4))
@@ -40226,7 +40021,7 @@
                                     ()
                                     (PrimE (ICReplyPrim) (PrimE TupPrim))
                                     (VarE $schedule/4)
-                                    (PrimE (ProjPrim 1) (VarE $v/56))
+                                    (PrimE (ProjPrim 1) (VarE $v/53))
                                     (FuncE
                                       $lambda
                                       Local
@@ -40234,7 +40029,7 @@
                                       ()
                                       (PrimE
                                         (CallPrim)
-                                        (PrimE (ProjPrim 2) (VarE $v/56))
+                                        (PrimE (ProjPrim 2) (VarE $v/53))
                                         (PrimE TupPrim)
                                       )
                                     )
@@ -40249,7 +40044,7 @@
                                   (VarE $call/4)
                                   (PrimE
                                     (CallPrim)
-                                    (PrimE (ProjPrim 1) (VarE $v/56))
+                                    (PrimE (ProjPrim 1) (VarE $v/53))
                                     (PrimE
                                       (CallPrim)
                                       (VarE @call_error)
@@ -40277,9 +40072,9 @@
                   $lambda
                   Local
                   Returns
-                  (params $v/55)
+                  (params $v/52)
                   ()
-                  (PrimE (ICReplyPrim Blob) (VarE $v/55))
+                  (PrimE (ICReplyPrim Blob) (VarE $v/52))
                 )
                 (FuncE
                   $lambda
@@ -40549,7 +40344,7 @@
                 $lambda
                 Local
                 Returns
-                (params $k/23 $r/9 $b/8)
+                (params $k/20 $r/9 $b/8)
                 {#schedule : () -> (); #suspend}
                 (PrimE
                   (CallPrim)
@@ -40560,9 +40355,9 @@
                       $lambda
                       Local
                       Returns
-                      (params $v/57)
+                      (params $v/54)
                       ()
-                      (PrimE (CallPrim) (VarE $k/23) (VarE $v/57))
+                      (PrimE (CallPrim) (VarE $k/20) (VarE $v/54))
                     )
                     (VarE $r/9)
                     (VarE $b/8)
@@ -41986,8 +41781,8 @@
                   Returns
                   ()
                   (BlockE
-                    (LetD (VarP $v/58) (PrimE TupPrim))
-                    (PrimE (ICReplyPrim) (VarE $v/58))
+                    (LetD (VarP $v/55) (PrimE TupPrim))
+                    (PrimE (ICReplyPrim) (VarE $v/55))
                   )
                 )
                 (FuncE
@@ -44797,9 +44592,9 @@
             $lambda
             Local
             Returns
-            (params $v/59)
+            (params $v/56)
             ()
-            (PrimE (ICReplyPrim {size : Nat64}) (VarE $v/59))
+            (PrimE (ICReplyPrim {size : Nat64}) (VarE $v/56))
           )
           (FuncE
             $lambda
@@ -44948,69 +44743,41 @@
                               (LetD (VarP $u/48) (PrimE TupPrim))
                               (BlockE
                                 (LetD
-                                  (VarP $k/15)
+                                  (VarP $k/14)
                                   (FuncE
-                                    $k/15
+                                    $k/14
                                     Local
                                     Returns
                                     (params $v/39)
                                     ()
                                     (BlockE
+                                      (LetD WildP (LitE (IntLit 7_772)))
                                       (LetD
-                                        (VarP $k/14)
-                                        (FuncE
-                                          $k/14
-                                          Local
-                                          Returns
-                                          (params $v/40)
-                                          ()
-                                          (BlockE
-                                            (LetD WildP (LitE (IntLit 7_772)))
-                                            (LetD
-                                              WildP
-                                              (PrimE
-                                                (CallPrim)
-                                                (VarE $$thunk/0/0)
-                                                (PrimE TupPrim)
-                                              )
-                                            )
-                                            (PrimE
-                                              (CallPrim)
-                                              (VarE $r/6)
-                                              (VarE $v/40)
-                                            )
-                                          )
-                                        )
-                                      )
-                                      (BlockE
-                                        (LetD WildP (LitE (IntLit 8_881)))
-                                        (LetD
-                                          WildP
-                                          (PrimE
-                                            (CallPrim)
-                                            (VarE $$thunk/1/0)
-                                            (PrimE TupPrim)
-                                          )
-                                        )
+                                        WildP
                                         (PrimE
                                           (CallPrim)
-                                          (VarE $k/14)
-                                          (VarE $v/39)
+                                          (VarE $$thunk/0/0)
+                                          (PrimE TupPrim)
                                         )
+                                      )
+                                      (PrimE
+                                        (CallPrim)
+                                        (VarE $r/6)
+                                        (VarE $v/39)
                                       )
                                     )
                                   )
                                 )
                                 (BlockE
                                   (LetD
-                                    (VarP $k/16)
+                                    (VarP $k/15)
                                     (FuncE
-                                      $k/16
+                                      $k/15
                                       Local
                                       Returns
                                       ()
                                       (BlockE
-                                        (LetD (VarP $v/41) (PrimE TupPrim))
+                                        (LetD (VarP $v/40) (PrimE TupPrim))
                                         (BlockE
                                           (LetD WildP (LitE (IntLit 7_771)))
                                           (LetD
@@ -45024,7 +44791,7 @@
                                           (PrimE
                                             (CallPrim)
                                             (VarE $k/13)
-                                            (VarE $v/41)
+                                            (VarE $v/40)
                                           )
                                         )
                                       )
@@ -45034,7 +44801,7 @@
                                     $$thunk/2/0
                                     (BlockE
                                       (LetD
-                                        (VarP $v/42)
+                                        (VarP $v/41)
                                         (FuncE
                                           $cleanup
                                           Local
@@ -45049,7 +44816,7 @@
                                       )
                                       (LetD
                                         WildP
-                                        (DefineE $$thunk/2/0 Const (VarE $v/42))
+                                        (DefineE $$thunk/2/0 Const (VarE $v/41))
                                       )
                                       (BlockE
                                         (LetD (VarP $u/49) (PrimE TupPrim))
@@ -45057,115 +44824,45 @@
                                           (LetD (VarP $u/50) (PrimE TupPrim))
                                           (BlockE
                                             (LetD
-                                              (VarP $k/19)
+                                              (VarP $k/16)
                                               (FuncE
-                                                $k/19
+                                                $k/16
                                                 Local
                                                 Returns
-                                                (params $v/43)
+                                                (params $v/42)
                                                 ()
                                                 (BlockE
                                                   (LetD
-                                                    (VarP $k/18)
-                                                    (FuncE
-                                                      $k/18
-                                                      Local
-                                                      Returns
-                                                      (params $v/44)
-                                                      ()
-                                                      (BlockE
-                                                        (LetD
-                                                          (VarP $k/17)
-                                                          (FuncE
-                                                            $k/17
-                                                            Local
-                                                            Returns
-                                                            (params $v/45)
-                                                            ()
-                                                            (BlockE
-                                                              (LetD
-                                                                WildP
-                                                                (LitE
-                                                                  (IntLit 7_773)
-                                                                )
-                                                              )
-                                                              (LetD
-                                                                WildP
-                                                                (PrimE
-                                                                  (CallPrim)
-                                                                  (VarE
-                                                                    $$thunk/0/0
-                                                                  )
-                                                                  (PrimE
-                                                                    TupPrim
-                                                                  )
-                                                                )
-                                                              )
-                                                              (PrimE
-                                                                (CallPrim)
-                                                                (VarE $r/6)
-                                                                (VarE $v/45)
-                                                              )
-                                                            )
-                                                          )
-                                                        )
-                                                        (BlockE
-                                                          (LetD
-                                                            WildP
-                                                            (LitE
-                                                              (IntLit 8_882)
-                                                            )
-                                                          )
-                                                          (LetD
-                                                            WildP
-                                                            (PrimE
-                                                              (CallPrim)
-                                                              (VarE $$thunk/1/0)
-                                                              (PrimE TupPrim)
-                                                            )
-                                                          )
-                                                          (PrimE
-                                                            (CallPrim)
-                                                            (VarE $k/17)
-                                                            (VarE $v/44)
-                                                          )
-                                                        )
-                                                      )
-                                                    )
+                                                    WildP
+                                                    (LitE (IntLit 7_773))
                                                   )
-                                                  (BlockE
-                                                    (LetD
-                                                      WildP
-                                                      (LitE (IntLit 8_881))
-                                                    )
-                                                    (LetD
-                                                      WildP
-                                                      (PrimE
-                                                        (CallPrim)
-                                                        (VarE $$thunk/2/0)
-                                                        (PrimE TupPrim)
-                                                      )
-                                                    )
+                                                  (LetD
+                                                    WildP
                                                     (PrimE
                                                       (CallPrim)
-                                                      (VarE $k/18)
-                                                      (VarE $v/43)
+                                                      (VarE $$thunk/0/0)
+                                                      (PrimE TupPrim)
                                                     )
+                                                  )
+                                                  (PrimE
+                                                    (CallPrim)
+                                                    (VarE $r/6)
+                                                    (VarE $v/42)
                                                   )
                                                 )
                                               )
                                             )
                                             (BlockE
                                               (LetD
-                                                (VarP $k/20)
+                                                (VarP $k/17)
                                                 (FuncE
-                                                  $k/20
+                                                  $k/17
                                                   Local
                                                   Returns
                                                   ()
                                                   (BlockE
                                                     (LetD
-                                                      (VarP $v/46)
+                                                      (VarP $v/43)
                                                       (PrimE TupPrim)
                                                     )
                                                     (BlockE
@@ -45183,8 +44880,8 @@
                                                       )
                                                       (PrimE
                                                         (CallPrim)
-                                                        (VarE $k/16)
-                                                        (VarE $v/46)
+                                                        (VarE $k/15)
+                                                        (VarE $v/43)
                                                       )
                                                     )
                                                   )
@@ -45192,7 +44889,7 @@
                                               )
                                               (PrimE
                                                 (CallPrim)
-                                                (VarE $k/20)
+                                                (VarE $k/17)
                                                 (PrimE TupPrim)
                                               )
                                             )
@@ -45221,7 +44918,7 @@
             Local
             Returns
             ()
-            (BlockE (LetD (VarP $v/60) (PrimE TupPrim)) (PrimE TupPrim))
+            (BlockE (LetD (VarP $v/57) (PrimE TupPrim)) (PrimE TupPrim))
           )
           (FuncE $lambda Local Returns (params $e/6) () (PrimE TupPrim))
           (VarE @cleanup)
