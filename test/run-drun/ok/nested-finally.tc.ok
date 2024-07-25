@@ -1,0 +1,4 @@
+nested-finally.mo:2.22-2.27: warning [M0198], unused field error in object pattern (delete or rewrite as `error = _`)
+nested-finally.mo:2.29-2.41: warning [M0198], unused field errorMessage in object pattern (delete or rewrite as `errorMessage = _`)
+nested-finally.mo:2.43-2.51: warning [M0198], unused field call_raw in object pattern (delete or rewrite as `call_raw = _`)
+nested-finally.mo:2.53-2.69: warning [M0198], unused field principalOfActor in object pattern (delete or rewrite as `principalOfActor = _`)
