@@ -42,49 +42,49 @@ actor this {
     assert_low_cost();
   };
 
-  public func vec_null_not_ignored(a: [?Nat]) : async () {
+  public func vec_null_not_ignored(_ : [?Nat]) : async () {
     assert_low_cost();
   };
 
-  public func vec_reserved_not_ignored(a: [Any]) : async () {
-    assert_low_cost();
-  };
-
-  // this test may be broken
-  public func zero_sized_record_not_ignored(a: [{_0_: Null; _1_: {_0_:Any}; _2_: {}}]) : async () {
-    assert_low_cost();
-  };
-
-  public func vec_vec_null_not_ignored(a: [[Null]]) : async () {
+  public func vec_reserved_not_ignored(_ : [Any]) : async () {
     assert_low_cost();
   };
 
   // this test may be broken
-  public func vec_record_emp_not_ignored(a: [{}]) : async () {
+  public func zero_sized_record_not_ignored(_ : [{_0_: Null; _1_: {_0_:Any}; _2_: {}}]) : async () {
     assert_low_cost();
   };
 
-  public func vec_null_subtyping(o: ?Nat) : async () {
+  public func vec_vec_null_not_ignored(_ : [[Null]]) : async () {
     assert_low_cost();
   };
 
-  public func vec_reserved_subtyping(o: ?Nat) : async () {
+  // this test may be broken
+  public func vec_record_emp_not_ignored(_ : [{}]) : async () {
     assert_low_cost();
   };
 
-  public func zero_sized_record_subtyping(o: ?Nat) : async () {
+  public func vec_null_subtyping(_ : ?Nat) : async () {
     assert_low_cost();
   };
 
-  public func vec_vec_null_subtyping(a: [?Nat]) : async () {
+  public func vec_reserved_subtyping(_ : ?Nat) : async () {
     assert_low_cost();
   };
 
-  public func vec_record_emp_subtyping(a: ?Nat) : async () {
+  public func zero_sized_record_subtyping(_ : ?Nat) : async () {
     assert_low_cost();
   };
 
-  public func vec_opt_record_with_2_20_null_subtyping(a: [?{}]) : async () {
+  public func vec_vec_null_subtyping(_ : [?Nat]) : async () {
+    assert_low_cost();
+  };
+
+  public func vec_record_emp_subtyping(_ : ?Nat) : async () {
+    assert_low_cost();
+  };
+
+  public func vec_opt_record_with_2_20_null_subtyping(_ : [?{}]) : async () {
     assert_low_cost();
   };
 
@@ -102,7 +102,6 @@ actor this {
   };
 
   public func go() : async () {
-    let p = principalOfActor(this);
 
     // Plain decoding (unused arguments)
     await* test("vec_null_extra_argument", [
