@@ -1,3 +1,4 @@
+//MOC-FLAG -dl
 import { debugPrint; error; errorMessage; call_raw; principalOfActor } =  "mo:⛔";
 
 actor A {

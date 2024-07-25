@@ -28,6 +28,14 @@ let meta typ exp =
   in
   MetaCont (typ, exp)
 
+let metaX start typ expX =
+  let expanded = ref start in
+  let exp v =
+    expanded := 1 + !expanded;
+    expX !expanded v
+  in
+  MetaCont (typ, exp)
+
 (* reify a continuation as syntax *)
 let letcont k scope =
   match k with
@@ -41,15 +49,15 @@ let letcont k scope =
 
 (* pre-compose a continuation with a call to a `finally`-thunk *)
 let precont k vthunk =
-  let finally e = blockE [expD (varE vthunk -*- unitE ())] e in
+  let finally c e = blockE [expD (Mo_values.Numerics.Int.of_int c |> intE); expD (varE vthunk -*- unitE ())] e in
   match k with
   | ContVar k' ->
-     let typ = match typ_of_var k' with
-       | T.(Func (Local, Returns, [], ts1, _)) -> T.seq ts1
-       | _ -> assert false in
-    MetaCont (typ, fun v -> finally (varE k' -*- varE v))
+    let typ = match typ_of_var k' with
+      | T.(Func (Local, Returns, [], ts1, _)) -> T.seq ts1
+      | _ -> assert false in
+    metaX 7770 typ (fun c v -> finally c (varE k' -*- varE v))
   | MetaCont (typ, cont) ->
-    MetaCont (typ, fun v -> finally (cont v))
+    metaX 8880 typ (fun c v -> finally c (cont v))
 
 (* Named labels for break, special labels for return, throw and cleanup *)
 type label = Return | Throw | Cleanup | Named of string
