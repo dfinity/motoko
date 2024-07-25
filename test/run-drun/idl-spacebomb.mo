@@ -11,39 +11,46 @@ actor this {
     t
   };
 
-
   public func vec_null_extra_argument() : async () {
     debugPrint("vec_null_extra_argument");
+    debugPrint(debug_show {cycles = performanceCounter(0)});
   };
 
   public func vec_reserved_extra_argument() : async () {
     debugPrint("vec_reserved_extra_argument");
+    debugPrint(debug_show {cycles = performanceCounter(0)});
   };
 
   public func zero_sized_record_extra_argument() : async () {
     debugPrint("zero_sized_record_extra_argument");
+    debugPrint(debug_show {cycles = performanceCounter(0)});
   };
 
   public func vec_null_not_ignored(a: [?Nat]) : async () {
     debugPrint("vec_null_not_ignored");
+    debugPrint(debug_show {cycles = performanceCounter(0)});
   };
 
   public func vec_reserved_not_ignored(a: [Any]) : async () {
     debugPrint("vec_reserved_not_ignored");
+    debugPrint(debug_show {cycles = performanceCounter(0)});
   };
 
   // this test may be broken
   public func zero_sized_record_not_ignored(a: [{_0_: Null; _1_: {_0_:Any}; _2_: {}}]) : async () {
     debugPrint("zero_sized_record_not_ignored");
+    debugPrint(debug_show {cycles = performanceCounter(0)});
   };
 
   public func vec_vec_null_not_ignored(a: [[Null]]) : async () {
     debugPrint("vec_vec_null_not_ignored");
+    debugPrint(debug_show {cycles = performanceCounter(0)});
   };
 
   // this test may be broken
   public func vec_record_emp_not_ignored(a: [{}]) : async () {
     debugPrint("vec_record_emp_not_ignored");
+     debugPrint(debug_show {cycles = performanceCounter(0)});
   };
 
   public func vec_null_subtyping(o: ?Nat) : async () {
@@ -80,29 +87,36 @@ actor this {
     let p = principalOfActor(this);
 
     // Plain decoding (unused arguments)
-    debugPrint("vec_null_extra_argument");
-    try {
-      ignore await call_raw(p, "vec_null_extra_argument","DIDL\01\6d\7f\01\00\80\94\eb\dc\03");
-    }
-    catch e {
-      debugPrint( debug_show {vec_null_extra_argument = errorMessage(e)});
+    do {
+      debugPrint("vec_null_extra_argument");
+      try {
+        ignore await call_raw(p, "vec_null_extra_argument","DIDL\01\6d\7f\01\00\80\94\eb\dc\03");
+      }
+      catch e {
+        debugPrint( debug_show {vec_null_extra_argument = errorMessage(e)});
+      }
     };
 
-    debugPrint("vec_reserved_extra_argument");
-    try {
-      ignore await call_raw(p, "vec_reserved_extra_argument", "DIDL\01\6d\70\01\00\80\94\eb\dc\03");
-    }
-    catch e {
-      debugPrint( debug_show {vec_reserved_extra_argument = errorMessage(e)});
+    do {
+      debugPrint("vec_reserved_extra_argument");
+      try {
+        ignore await call_raw(p, "vec_reserved_extra_argument", "DIDL\01\6d\70\01\00\80\94\eb\dc\03" );
+      }
+      catch e {
+        debugPrint( debug_show {vec_reserved_extra_argument = errorMessage(e)});
+      }
     };
 
-    debugPrint("zero_sized_record_extra_argument");
-    try {
-      ignore await call_raw(p, "zero_sized_record_extra_argument", "DIDL\04\6c\03\01\7f\02\01\03\02\6c\01\01\70\6c\00\6d\00\01\03\80\94\eb\dc\03");
-    }
-    catch e {
-      debugPrint( debug_show {zero_sized_record_extra_argument = errorMessage(e)});
+    do {
+      debugPrint("zero_sized_record_extra_argument");
+      try {
+        ignore await call_raw(p, "zero_sized_record_extra_argument", "DIDL\04\6c\03\01\7f\02\01\03\02\6c\01\01\70\6c\00\6d\00\01\03\80\94\eb\dc\03");
+      }
+      catch e {
+        debugPrint( debug_show {zero_sized_record_extra_argument = errorMessage(e)});
+      }
     };
+
 
     // TBC from spacebomb.test.did
 
