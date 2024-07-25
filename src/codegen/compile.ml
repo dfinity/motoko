@@ -6583,7 +6583,7 @@ module MakeSerialization (Strm : Stream) = struct
         G.if1 I64Type begin (* Candid deserialization *)
           compile_unboxed_const 0l ^^
           IC.performance_counter env ^^
-          compile_const_64 1_000_000L ^^ (* TUNE *)
+          compile_const_64 50_000_000L ^^ (* TUNE *)
           G.i (Binary (Wasm.Values.I64 I64Op.Add))
         end
         begin (* Extended candid/ Destabilization *)

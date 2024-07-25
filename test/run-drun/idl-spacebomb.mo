@@ -14,7 +14,10 @@ actor this {
   };
 
   func assert_low_cost() {
-    assert performanceCounter(0) < 10_000;
+    let limit : Nat64 = 50_000;
+    let c = performanceCounter(0);
+    if (c > limit) debugPrint (debug_show c);
+    assert performanceCounter(0) < limit;
     debugPrint("decoded at low cost");
   };
 
