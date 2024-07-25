@@ -53,6 +53,7 @@ s/UNDERSCORE/\'_\'/g
 s/TYPE/\'type\'/g
 s/TRY/\'try\'/g
 s/THROW/\'throw\'/g
+s/FINALLY/\'finally\'/g
 s/TEXT/<text>/g
 s/SWITCH/\'switch\'/g
 s/SUBOP/\'-\'/g

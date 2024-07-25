@@ -216,7 +216,14 @@ and exp' at note = function
   | S.OldE e -> (oldE (exp e)).it
   | S.IfE (e1, e2, e3) -> I.IfE (exp e1, exp e2, exp e3)
   | S.SwitchE (e1, cs) -> I.SwitchE (exp e1, cases cs)
-  | S.TryE (e1, cs) -> I.TryE (exp e1, cases cs)
+  | S.TryE (e1, cs, None) -> I.TryE (exp e1, cases cs, None)
+  | S.TryE (e1, cs, Some e2) ->
+    let thunk = [] -->* exp e2 |> named "$cleanup" in
+    assert T.(is_func thunk.note.Note.typ);
+    let th = fresh_var "thunk" thunk.note.Note.typ in
+    (blockE
+       [ letD th thunk ]
+       { e1 with it = I.TryE (exp e1, cases cs, Some (id_of_var th, typ_of_var th)); note }).it
   | S.WhileE (e1, e2) -> (whileE (exp e1) (exp e2)).it
   | S.LoopE (e1, None) -> I.LoopE (exp e1)
   | S.LoopE (e1, Some e2) -> (loopWhileE (exp e1) (exp e2)).it
@@ -776,11 +783,11 @@ and dec' at n = function
     } in
     I.LetD (varPat, fn)
 
-and cases cs = List.map case cs
+and cases cs = List.map (case (fun x -> x)) cs
 
-and case c = phrase case' c
+and case f c = phrase (case' f) c
 
-and case' c = S.{ I.pat = pat c.pat; I.exp = exp c.exp }
+and case' f c = S.{ I.pat = pat c.pat; I.exp = f (exp c.exp) }
 
 and pats ps = List.map pat ps
 
