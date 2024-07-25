@@ -11,91 +11,96 @@ actor this {
     t
   };
 
+  func assert_low_cost() {
+    assert performanceCounter(0) < 10_000;
+    debugPrint("decoded at low cost");
+  };
+
   public func vec_null_extra_argument() : async () {
     debugPrint("vec_null_extra_argument");
-    debugPrint(debug_show {cycles = performanceCounter(0)});
+    assert_low_cost();
   };
 
   public func vec_reserved_extra_argument() : async () {
     debugPrint("vec_reserved_extra_argument");
-    debugPrint(debug_show {cycles = performanceCounter(0)});
+    assert_low_cost();
   };
 
   public func zero_sized_record_extra_argument() : async () {
     debugPrint("zero_sized_record_extra_argument");
-    debugPrint(debug_show {cycles = performanceCounter(0)});
+    assert_low_cost();
   };
 
   public func vec_vec_null_extra_argument() : async () {
     debugPrint("vec_vec_null_extra_argument");
-    debugPrint(debug_show {cycles = performanceCounter(0)});
+    assert_low_cost();
   };
 
   public func vec_record_emp_extra_argument() : async () {
     debugPrint("vec_record_emp_extra_argument");
-    debugPrint(debug_show {cycles = performanceCounter(0)});
+    assert_low_cost();
   };
 
   public func vec_opt_record_with_2_20_null_extra_argument() : async () {
     debugPrint("vec_opt_record_with_2_20_null_extra_argument");
-    debugPrint(debug_show {cycles = performanceCounter(0)});
+    assert_low_cost();
   };
 
   public func vec_null_not_ignored(a: [?Nat]) : async () {
     debugPrint("vec_null_not_ignored");
-    debugPrint(debug_show {cycles = performanceCounter(0)});
+    assert_low_cost();
   };
 
   public func vec_reserved_not_ignored(a: [Any]) : async () {
     debugPrint("vec_reserved_not_ignored");
-    debugPrint(debug_show {cycles = performanceCounter(0)});
+    assert_low_cost();
   };
 
   // this test may be broken
   public func zero_sized_record_not_ignored(a: [{_0_: Null; _1_: {_0_:Any}; _2_: {}}]) : async () {
     debugPrint("zero_sized_record_not_ignored");
-    debugPrint(debug_show {cycles = performanceCounter(0)});
+    assert_low_cost();
   };
 
   public func vec_vec_null_not_ignored(a: [[Null]]) : async () {
     debugPrint("vec_vec_null_not_ignored");
-    debugPrint(debug_show {cycles = performanceCounter(0)});
+    assert_low_cost();
   };
 
   // this test may be broken
   public func vec_record_emp_not_ignored(a: [{}]) : async () {
     debugPrint("vec_record_emp_not_ignored");
-     debugPrint(debug_show {cycles = performanceCounter(0)});
+     assert_low_cost();
   };
 
   public func vec_null_subtyping(o: ?Nat) : async () {
     debugPrint("vec_null_subtyping");
-    debugPrint(debug_show {cycles = performanceCounter(0)});
+    assert_low_cost();
   };
 
   public func vec_reserved_subtyping(o: ?Nat) : async () {
     debugPrint("vec_reserved_subtyping");
-    debugPrint(debug_show {cycles = performanceCounter(0)});
+    assert_low_cost();
   };
 
   public func zero_sized_record_subtyping(o: ?Nat) : async () {
     debugPrint("vec_zero_sized_record_subtyping");
-    debugPrint(debug_show {cycles = performanceCounter(0)});
+    assert_low_cost();
   };
 
   public func vec_vec_null_subtyping(a: [?Nat]) : async () {
     debugPrint("vec_vec_null_subtyping");
-    debugPrint(debug_show {cycles = performanceCounter(0)});
+    assert_low_cost();
   };
 
   public func vec_record_emp_subtyping(a: ?Nat) : async () {
     debugPrint("vec_record_emp_subtyping");
-    debugPrint(debug_show {cycles = performanceCounter(0)});
+    assert_low_cost();
   };
 
   public func vec_opt_record_with_2_20_null_subtyping(a: [?{}]) : async () {
     debugPrint("vec_opt_record_with_2_20_null_subtyping");
-    debugPrint(debug_show {cycles = performanceCounter(0)});
+    assert_low_cost();
   };
 
   public func go() : async () {
