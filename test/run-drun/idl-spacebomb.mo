@@ -2,13 +2,15 @@ import { debugPrint; errorMessage; call_raw; principalOfActor; charToText; perfo
 
 actor this {
 
-  func debugBlob(b : Blob) {
+  func toHex(b : Blob) : Text {
     let s = debug_show b;
     var t = "";
     for (c in s.chars()) {
-       if (c != '\\') { t #= charToText(c) }
+       if (not (c == '\"' or c == '\\')) {
+         t #= charToText(c)
+       }
     };
-    debugPrint(t);
+    t
   };
 
   func assert_low_cost() {
@@ -86,285 +88,116 @@ actor this {
     assert_low_cost();
   };
 
+  func test(m : Text, blobs : [Blob]) : async* () {
+    let p = principalOfActor(this);
+    for (blob in blobs.vals()) {
+      debugPrint (debug_show { function = m; hex = toHex blob});
+      try {
+        ignore await call_raw(p, m, blob);
+      }
+      catch e {
+        debugPrint(errorMessage(e));
+      }
+    }
+  };
+
   public func go() : async () {
     let p = principalOfActor(this);
 
     // Plain decoding (unused arguments)
-    do {
-      debugPrint("vec_null_extra_argument");
-      try {
-        ignore await call_raw(p, "vec_null_extra_argument","DIDL\01\6d\7f\01\00\80\94\eb\dc\03");
-      }
-      catch e {
-        debugPrint(errorMessage(e));
-      }
-    };
+    await* test("vec_null_extra_argument", [
+       "DIDL\01\6d\7f\01\00\80\94\eb\dc\03"
+    ]);
 
-    do {
-      debugPrint("vec_reserved_extra_argument");
-      try {
-        ignore await call_raw(p, "vec_reserved_extra_argument", "DIDL\01\6d\70\01\00\80\94\eb\dc\03" );
-      }
-      catch e {
-        debugPrint(errorMessage(e));
-      }
-    };
+    await* test("vec_reserved_extra_argument", [
+      "DIDL\01\6d\70\01\00\80\94\eb\dc\03"
+    ]);
 
-    do {
-      debugPrint("zero_sized_record_extra_argument");
-      try {
-        ignore await call_raw(p, "zero_sized_record_extra_argument", "DIDL\04\6c\03\01\7f\02\01\03\02\6c\01\01\70\6c\00\6d\00\01\03\80\94\eb\dc\03");
-      }
-      catch e {
-        debugPrint(errorMessage(e));
-      }
-    };
+    await* test("zero_sized_record_extra_argument", [
+       "DIDL\04\6c\03\01\7f\02\01\03\02\6c\01\01\70\6c\00\6d\00\01\03\80\94\eb\dc\03"
+    ]);
 
-
-    do {
-      debugPrint("vec_vec_null_extra_argument");
-      let blobs = [
+    await* test("vec_vec_null_extra_argument", [
          "DIDL\02\6d\01\6d\7f\01\00\05\ff\ff\3f\ff\ff\3f\ff\ff\3f\ff\ff\3f\ff\ff\3f"
-      ] : [Blob];
-      for (blob in blobs.vals()) {
-        try {
-          ignore await call_raw(p, "vec_vec_null_extra_argument", blob);
-        }
-        catch e {
-          debugPrint(errorMessage(e));
-        };
-      }
-    };
+    ]);
 
-    do { // is this test broken?
-      debugPrint("vec_record_emp_extra_argument");
-      let blobs = [
+    await* test("vec_record_emp_extra_argument", [
         "DIDL\03\6c\01\d6\fc\a7\02\01\6d\02\6c\00\01\00\80\ad\e2\04"
-      ] : [Blob];
-      for (blob in blobs.vals()) {
-        try {
-          ignore await call_raw(p, "vec_record_emp_extra_argument", blob);
-        }
-        catch e {
-          debugPrint(errorMessage(e));
-        };
-      }
-    };
+    ]);
 
-    do {
-      debugPrint("vec_opt_record_with_2_20_null_extra_argument");
-      let blobs = [
+    await* test("vec_opt_record_with_2_20_null_extra_argument", [
         "DIDL\17\6c\02\01\7f\02\7f\6c\02\01\00\02\00\6c\02\00\01\01\01\6c\02\00\02\01\02\6c\02\00\03\01\03\6c\02\00\04\01\04\6c\02\00\05\01\05\6c\02\00\06\01\06\6c\02\00\07\01\07\6c\02\00\08\01\08\6c\02\00\09\01\09\6c\02\00\0a\01\0a\6c\02\00\0b\01\0b\6c\02\00\0c\01\0c\6c\02\00\0d\02\0d\6c\02\00\0e\01\0e\6c\02\00\0f\01\0f\6c\02\00\10\01\10\6c\02\00\11\01\11\6c\02\00\12\01\12\6c\02\00\13\01\13\6e\14\6d\15\01\16\05\01\01\01\01\01"
-      ] : [Blob];
-      for (blob in blobs.vals()) {
-        try {
-          ignore await call_raw(p, "vec_opt_record_with_2_20_null_extra_argument", blob);
-        }
-        catch e {
-          debugPrint(errorMessage(e));
-        };
-      }
-    };
+    ]);
 
     // Decoding to actual type
 
-    do {
-      debugPrint("vec_null_not_ignored");
-      let blobs : [Blob] = [
-        "DIDL\01\6d\7f\01\00\80\94\eb\dc\03" : Blob,
-        "DIDL\01\6d\7f\01\00\80\ad\e2\04" : Blob,
-        "DIDL\01\6d\7f\01\00\ff\ff\3f" : Blob,
-        "DIDL\01\6d\7f\01\00\80\bf\18" : Blob,
-      ];
-      for (blob in blobs.vals()) {
-        try {
-          ignore await call_raw(p, "vec_null_not_ignored", blob);
-        }
-        catch e {
-          debugPrint(errorMessage(e));
-        };
-      }
-    };
+    await* test("vec_null_not_ignored", [
+        "DIDL\01\6d\7f\01\00\80\94\eb\dc\03",
+        "DIDL\01\6d\7f\01\00\80\ad\e2\04",
+        "DIDL\01\6d\7f\01\00\ff\ff\3f",
+        "DIDL\01\6d\7f\01\00\80\bf\18"
+    ]);
 
-    do {
-      debugPrint("vec_reserved_not_ignored");
-      let blobs : [Blob] = [
+    await* test("vec_reserved_not_ignored", [
          "DIDL\01\6d\70\01\00\80\94\eb\dc\03" : Blob,
          "DIDL\01\6d\70\01\00\80\ad\e2\04" : Blob,
          "DIDL\01\6d\70\01\00\ff\ff\3f" : Blob,
          "DIDL\01\6d\70\01\00\80\bf\18" : Blob,
-      ];
-      for (blob in blobs.vals()) {
-        try {
-          ignore await call_raw(p, "vec_reserved_not_ignored", blob);
-        }
-        catch e {
-          debugPrint(errorMessage(e));
-        };
-       }
-    };
+    ]);
 
-
-    do {
-      debugPrint("zero_sized_record_not_ignored (BROKEN TEST?)");
-      let blobs = [
+    debugPrint("BROKEN TEST?");
+    await* test("zero_sized_record_not_ignored", [
          "DIDL\04\6c\03\01\7f\02\01\03\02\6c\01\01\70\6c\00\6d\00\01\03\80\94\eb\dc\03",
          "DIDL\04\6c\03\01\7f\02\01\03\02\6c\01\01\70\6c\00\6d\00\01\03\80\ad\e2\04",
          "DIDL\04\6c\03\01\7f\02\01\03\02\6c\01\01\70\6c\00\6d\00\01\03\ff\ff\3f",
          "DIDL\04\6c\03\01\7f\02\01\03\02\6c\01\01\70\6c\00\6d\00\01\03\80\b5\18",
-      ] : [Blob];
-      for (blob in blobs.vals()) {
-        debugBlob(blob);
-        try {
-          ignore await call_raw(p, "zero_sized_record_not_ignored", blob);
-        }
-        catch e {
-          debugPrint(errorMessage(e));
-        };
-      }
-    };
+    ]);
 
-    do {
-      debugPrint("vec_vec_null_not_ignored");
-      let blobs = [
+    await* test("vec_vec_null_not_ignored", [
          "DIDL\02\6d\01\6d\7f\01\00\05\ff\ff\3f\ff\ff\3f\ff\ff\3f\ff\ff\3f\ff\ff\3f"
-      ] : [Blob];
-      for (blob in blobs.vals()) {
-        debugBlob(blob);
-        try {
-          ignore await call_raw(p, "vec_vec_null_not_ignored", blob);
-        }
-        catch e {
-          debugPrint(errorMessage(e));
-        };
-      }
-    };
+    ]);
 
-    do { // is this test broken?
-      debugPrint("vec_record_emp_not_ignored (BROKEN TEST?)");
-      let blobs = [
+    debugPrint("BROKEN TEST?");
+    await* test("vec_record_emp_not_ignored", [
         "DIDL\03\6c\01\d6\fc\a7\02\01\6d\02\6c\00\01\00\80\ad\e2\04"
-      ] : [Blob];
-      for (blob in blobs.vals()) {
-        debugBlob(blob);
-        try {
-          ignore await call_raw(p, "vec_record_emp_not_ignored", blob);
-        }
-        catch e {
-          debugPrint(errorMessage(e));
-        };
-      }
-    };
+    ]);
 
     // Decoding under opt
-    do {
-      debugPrint("vec_null_subtyping");
-      let blobs : [Blob] = [
+    await* test("vec_null_subtyping", [
         "DIDL\01\6d\7f\01\00\80\94\eb\dc\03" : Blob,
         "DIDL\01\6d\7f\01\00\80\ad\e2\04" : Blob,
         "DIDL\01\6d\7f\01\00\ff\ff\3f" : Blob,
         "DIDL\01\6d\7f\01\00\80\bf\18" : Blob,
-      ];
-      for (blob in blobs.vals()) {
-        debugBlob(blob);
-        try {
-          ignore await call_raw(p, "vec_null_subtyping", blob);
-        }
-        catch e {
-          debugPrint(errorMessage(e));
-        };
-      }
-    };
+    ]);
 
-    do {
-      debugPrint("vec_reserved_subtyping");
-      let blobs : [Blob] = [
+    await* test("vec_reserved_subtyping", [
         "DIDL\01\6d\70\01\00\80\94\eb\dc\03" : Blob,
         "DIDL\01\6d\70\01\00\80\ad\e2\04" : Blob,
         "DIDL\01\6d\70\01\00\ff\ff\3f" : Blob,
         "DIDL\01\6d\70\01\00\80\bf\18" : Blob,
-      ];
-      for (blob in blobs.vals()) {
-        debugBlob(blob);
-        try {
-          ignore await call_raw(p, "vec_reserved_subtyping", blob);
-        }
-        catch e {
-          debugPrint(errorMessage(e));
-        };
-      }
-    };
+    ]);
 
-    do {
-      debugPrint("zero_sized_record_subtyping (BROKEN TEST?)");
-      let blobs = [
+    debugPrint("BROKEN TEST?");
+    await* test("zero_sized_record_subtyping", [
          "DIDL\04\6c\03\01\7f\02\01\03\02\6c\01\01\70\6c\00\6d\00\01\03\80\94\eb\dc\03",
          "DIDL\04\6c\03\01\7f\02\01\03\02\6c\01\01\70\6c\00\6d\00\01\03\80\ad\e2\04",
          "DIDL\04\6c\03\01\7f\02\01\03\02\6c\01\01\70\6c\00\6d\00\01\03\ff\ff\3f",
          "DIDL\04\6c\03\01\7f\02\01\03\02\6c\01\01\70\6c\00\6d\00\01\03\80\b5\18",
-      ] : [Blob];
-      for (blob in blobs.vals()) {
-        debugBlob(blob);
-        try {
-          ignore await call_raw(p, "zero_sized_record_subtyping", blob);
-        }
-        catch e {
-          debugPrint(errorMessage(e));
-        };
-      }
-    };
+    ]);
 
-    do {
-      debugPrint("vec_vec_null_subtyping");
-      let blobs = [
+    await* test("vec_vec_null_subtyping", [
          "DIDL\02\6d\01\6d\7f\01\00\05\ff\ff\3f\ff\ff\3f\ff\ff\3f\ff\ff\3f\ff\ff\3f"
-      ] : [Blob];
-      for (blob in blobs.vals()) {
-        debugBlob(blob);
-        try {
-          ignore await call_raw(p, "vec_vec_null_subtyping", blob);
-        }
-        catch e {
-          debugPrint(errorMessage(e));
-        };
-      }
-    };
+    ]);
 
+    debugPrint("BROKEN TEST?");
+    await* test("vec_record_emp_subtyping", [
+         "DIDL\03\6c\01\d6\fc\a7\02\01\6d\02\6c\00\01\00\80\ad\e2\04"
+    ]);
 
-    do { // is this test broken?
-      debugPrint("vec_record_emp_subtyping (BROKEN TEST?)");
-      let blobs = [
-        "DIDL\03\6c\01\d6\fc\a7\02\01\6d\02\6c\00\01\00\80\ad\e2\04"
-      ] : [Blob];
-      for (blob in blobs.vals()) {
-        debugBlob(blob);
-        try {
-          ignore await call_raw(p, "vec_record_emp_subtyping", blob);
-        }
-        catch e {
-          debugPrint(errorMessage(e));
-        };
-      }
-    };
-
-    do {
-      debugPrint("vec_opt_record_with_2_20_null_subtyping");
-      let blobs = [
+    await* test("vec_opt_record_with_2_20_null_subtyping", [
         "DIDL\17\6c\02\01\7f\02\7f\6c\02\01\00\02\00\6c\02\00\01\01\01\6c\02\00\02\01\02\6c\02\00\03\01\03\6c\02\00\04\01\04\6c\02\00\05\01\05\6c\02\00\06\01\06\6c\02\00\07\01\07\6c\02\00\08\01\08\6c\02\00\09\01\09\6c\02\00\0a\01\0a\6c\02\00\0b\01\0b\6c\02\00\0c\01\0c\6c\02\00\0d\02\0d\6c\02\00\0e\01\0e\6c\02\00\0f\01\0f\6c\02\00\10\01\10\6c\02\00\11\01\11\6c\02\00\12\01\12\6c\02\00\13\01\13\6e\14\6d\15\01\16\05\01\01\01\01\01"
-      ] : [Blob];
-      for (blob in blobs.vals()) {
-        debugBlob(blob);
-        try {
-          ignore await call_raw(p, "vec_opt_record_with_2_20_null_subtyping", blob);
-        }
-        catch e {
-          debugPrint(errorMessage(e));
-        };
-      }
-    };
+    ]);
 
-
-    // TBC from spacebomb.test.did
 }
 
 }
