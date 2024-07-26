@@ -39,17 +39,18 @@ let letcont k scope =
     blockE [funcD k' v e] (* at this point, I'm really worried about variable capture *)
             (scope k')
 
+let finally vthunk e = blockE [expD (varE vthunk -*- unitE ())] e
+              
 (* pre-compose a continuation with a call to a `finally`-thunk *)
 let precont k vthunk =
-  let finally e = blockE [expD (varE vthunk -*- unitE ())] e in
   match k with
   | ContVar k' ->
      let typ = match typ_of_var k' with
        | T.(Func (Local, Returns, [], ts1, _)) -> T.seq ts1
        | _ -> assert false in
-    MetaCont (typ, fun v -> finally (varE k' -*- varE v))
+    MetaCont (typ, fun v -> finally vthunk (varE k' -*- varE v))
   | MetaCont (typ, cont) ->
-    MetaCont (typ, fun v -> finally (cont v))
+    MetaCont (typ, fun v -> finally vthunk (cont v))
 
     
 
@@ -71,13 +72,11 @@ let ( -@- ) k exp2 =
 
 module LabelEnv = Env.Make(struct type t = label let compare = compare end)
 
-
 module PatEnv = Env.Make(String)
 
 type label_sort = Cont of kont | Label
 
 let preconts context vthunk scope =
-  let finally e = blockE [expD (varE vthunk -*- unitE ())] e in
   let (ds, ctxt) = LabelEnv.fold
      (fun lab sort (ds, ctxt) ->
        match sort with
@@ -87,13 +86,13 @@ let preconts context vthunk scope =
            | T.(Func (Local, Returns, [], ts1, _)) -> T.seq ts1
            | _ -> assert false in
          let v = fresh_var "v" typ0 in
-         let e = finally (varE k -*- varE v) in
+         let e = finally vthunk (varE k -*- varE v) in
          let k' = fresh_cont typ0 (typ e) in
          (funcD k' v e :: ds,
           LabelEnv.add lab (Cont (ContVar k')) ctxt)
        | Cont (MetaCont (typ0, cont)) ->
          let v = fresh_var "v" typ0 in
-         let e = finally (cont v) in
+         let e = finally vthunk (cont v) in
          let k' = fresh_cont typ0 (typ e) in
          (funcD k' v e :: ds,
           LabelEnv.add lab (Cont (ContVar k')) ctxt))
