@@ -6536,7 +6536,7 @@ module MakeSerialization (Strm : Stream) = struct
     G.i (GlobalGet (nr (E.get_global env "__typtbl_idltyps")))
 
   module Registers = struct
-   let get_rel_buf_opt env =
+    let get_rel_buf_opt env =
       G.i (GlobalGet (nr (E.get_global env "@@rel_buf_opt")))
     let set_rel_buf_opt env =
       G.i (GlobalSet (nr (E.get_global env "@@rel_buf_opt")))
@@ -6566,6 +6566,11 @@ module MakeSerialization (Strm : Stream) = struct
     let set_typtbl_size env =
       G.i (GlobalSet (nr (E.get_global env "@@typtbl_size")))
 
+    let get_pseudo_instruction_counter env =
+      G.i (GlobalGet (nr (E.get_global env "@@pseudo_instruction_counter")))
+    let set_pseudo_instruction_counter env =
+      G.i (GlobalSet (nr (E.get_global env "@@pseudo_instruction_counter")))
+
     let get_limit_counter env =
       G.i (GlobalGet (nr (E.get_global env "@@limit_counter")))
     let set_limit_counter env =
@@ -6576,27 +6581,40 @@ module MakeSerialization (Strm : Stream) = struct
     let set_instruction_limit env =
       G.i (GlobalSet (nr (E.get_global env "@@instruction_limit")))
 
-    let reset_instruction_limit env get_rel_buf_opt =
-      match E.mode env with
-      | Flags.ICMode | Flags.RefMode ->
-        get_rel_buf_opt ^^
-        G.if1 I64Type begin (* Candid deserialization *)
-          compile_unboxed_const 0l ^^
-          IC.performance_counter env ^^
-          compile_const_64 50_000_000L ^^ (* TUNE *)
-          G.i (Binary (Wasm.Values.I64 I64Op.Add))
-        end
-        begin (* Extended candid/ Destabilization *)
-          compile_const_64 (-1L)  (* essentially infinite *)
-        end ^^
-        set_instruction_limit env
-      | Flags.WASIMode | Flags.WasmMode  ->
-        compile_const_64 (-1L) ^^
-        set_instruction_limit env
-
-
     (* interval for checking instruction counter *)
     let idl_limit_interval = 32l (* TUNE *)
+    let idl_limit = 50_000_000L (* TUNE *)
+    let idl_pseudo_cost = 100L (* TUNE *)
+
+    let idl_instruction_counter env =
+      match E.mode env with
+      | Flags.ICMode | Flags.RefMode ->
+        compile_unboxed_const 0l ^^
+        IC.performance_counter env
+      | Flags.WASIMode | Flags.WasmMode  ->
+        get_pseudo_instruction_counter env
+
+    let simulate_instruction_counter env =
+      match E.mode env with
+      | Flags.ICMode | Flags.RefMode ->
+        G.nop
+      | Flags.WASIMode | Flags.WasmMode  ->
+        get_pseudo_instruction_counter env ^^
+        compile_const_64 idl_pseudo_cost ^^
+        G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
+        set_pseudo_instruction_counter env
+
+    let reset_instruction_limit env get_rel_buf_opt =
+      get_rel_buf_opt ^^
+      G.if0 begin (* Candid deserialization *)
+        idl_instruction_counter env ^^
+        compile_const_64 idl_limit ^^
+        G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
+        set_instruction_limit env
+      end
+      begin (* Extended candid/ Destabilization *)
+         G.nop
+      end
 
     let idl_limit_check env =
       G.i (Call (nr (E.built_in env "idl_limit_check")))
@@ -6609,35 +6627,35 @@ module MakeSerialization (Strm : Stream) = struct
       E.add_global32 env "@@typtbl_end" Mutable 0l;
       E.add_global32 env "@@typtbl_size" Mutable 0l;
       E.add_global32 env "@@limit_counter" Mutable idl_limit_interval;
+      (match E.mode env with
+      | Flags.ICMode | Flags.RefMode ->
+        ()
+      | Flags.WASIMode | Flags.WasmMode ->
+        E.add_global64 env "@@pseudo_instruction_counter" Mutable 0L);
       E.add_global64 env "@@instruction_limit" Mutable 0L;
       Func.define_built_in env "idl_limit_check" [] [] (fun env ->
-          match E.mode env with
-          | Flags.ICMode | Flags.RefMode ->
-            get_rel_buf_opt env ^^
-            G.if0 begin (* Candid deserialization *)
-              get_limit_counter env ^^
-              G.if0
-              begin (* non-zero: Decrement counter *)
-                get_limit_counter env ^^
-                compile_sub_const 1l ^^
-                set_limit_counter env
-              end
-              begin (* zero: Check limit and reset counter *)
-                compile_unboxed_const 0l ^^
-                IC.performance_counter env ^^
-                get_instruction_limit env ^^
-                G.i (Compare (Wasm.Values.I64 I64Op.LeU)) ^^
-                E.else_trap_with env "IDL error: exceeded instruction limit" ^^
-                (* Reset counter *)
-                compile_unboxed_const idl_limit_interval ^^
-                set_limit_counter env
-              end
-            end begin (* Extended Candid/Destabilization *)
-              G.nop
-            end
-          | Flags.WASIMode | Flags.WasmMode  -> G.nop
-
-      ) (* TBC *)
+        get_rel_buf_opt env ^^
+        G.if0 begin (* Candid deserialization *)
+          get_limit_counter env ^^
+          G.if0
+          begin (* non-zero: Decrement counter *)
+            get_limit_counter env ^^
+            compile_sub_const 1l ^^
+            set_limit_counter env
+          end
+          begin (* zero: Check limit and reset counter *)
+            idl_instruction_counter env ^^
+            get_instruction_limit env ^^
+            G.i (Compare (Wasm.Values.I64 I64Op.LeU)) ^^
+            E.else_trap_with env "IDL error: exceeded instruction limit" ^^
+            (* Reset counter *)
+            compile_unboxed_const idl_limit_interval ^^
+            set_limit_counter env
+          end ^^
+          simulate_instruction_counter env
+        end begin (* Extended Candid/Destabilization *)
+          G.nop
+        end)
 
   end
 
