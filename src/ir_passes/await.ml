@@ -39,8 +39,6 @@ let letcont k scope =
     blockE [funcD k' v e] (* at this point, I'm really worried about variable capture *)
             (scope k')
 
-let finally vthunk e = blockE [expD (varE vthunk -*- unitE ())] e
-
 (* Named labels for break, special labels for return, throw and cleanup *)
 type label = Return | Throw | Cleanup | Named of string
 
@@ -63,22 +61,26 @@ module PatEnv = Env.Make(String)
 
 type label_sort = Cont of var | Label
 
+let precompose typ0 vthunk cont =
+    let v = fresh_var "v" typ0 in
+    let e = blockE [expD (varE vthunk -*- unitE ())] (cont v) in
+    let k' = fresh_cont typ0 (typ e) in
+    (k', funcD k' v e)
+
 let preconts context vthunk scope =
   let (ds, ctxt) = LabelEnv.fold
-    (fun lab sort (ds, ctxt) ->
-      match sort with
-      | Label -> assert false
-      | Cont k ->
-        let typ0 = match typ_of_var k with
-          | T.(Func (Local, Returns, [], ts1, _)) -> T.seq ts1
-          | _ -> assert false in
-        let v = fresh_var "v" typ0 in
-        let e = finally vthunk (varE k -*- varE v) in
-        let k' = fresh_cont typ0 (typ e) in
-        (funcD k' v e :: ds,
-         LabelEnv.add lab (Cont k') ctxt))
-    context
-    ([], LabelEnv.empty)
+     (fun lab sort (ds, ctxt) ->
+       match sort with
+       | Label -> assert false
+       | Cont k ->
+         let typ0 = match typ_of_var k with
+           | T.(Func (Local, Returns, [], ts1, _)) -> T.seq ts1
+           | _ -> assert false in
+         let (k', d) = precompose typ0 vthunk (fun v -> varE k -*- varE v) in
+         (d :: ds,
+          LabelEnv.add lab (Cont (ContVar k')) ctxt)
+     context
+     ([], LabelEnv.empty)
   in
   blockE ds (scope ctxt)
 
@@ -357,10 +359,8 @@ and c_exp' context exp k =
         let typ0 = match typ_of_var k with
           | T.(Func (Local, Returns, [], ts1, _)) -> T.seq ts1
           | _ -> assert false in
-        let v = fresh_var "v" typ0 in
-        let e = finally vthunk (varE k -*- varE v) in
-        let k' = fresh_cont typ0 (typ e) in
-        blockE [funcD k' v e] (scope k')
+        let (k', d) = precompose typ0 vthunk (fun v -> varE k -*- varE v) in
+        blockE [d] (scope k')
       | None ->
         scope k in
     let finalise context scope =
