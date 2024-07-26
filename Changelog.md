@@ -1,6 +1,6 @@
 # Motoko compiler changelog
 
-## 0.12.0 (to come)
+## 0.12.0 (2024-07-26)
 
 * motoko (`moc`)
 
@@ -23,6 +23,8 @@
 
     BREAKING CHANGE (Minor): `finally` is now a reserved keyword,
     programs using this identifier will break.
+
+  * bugfix: `mo-doc` will now generate correct entries for `public` variables (#4626).
 
 ## 0.11.3 (2024-07-16)
 
