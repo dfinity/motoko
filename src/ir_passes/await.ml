@@ -100,7 +100,7 @@ let preconts context vthunk scope =
      context
      ([], LabelEnv.empty)
   in
-  blockE ds (scope context)
+  blockE ds (scope ctxt)
 
 let typ_cases cases = List.fold_left (fun t case -> T.lub t (typ case.it.exp)) T.Non cases
 
@@ -374,11 +374,19 @@ and c_exp' context exp k =
       match finally_opt with
       | Some (id2, typ2) -> precont k (var id2 typ2)
       | None -> k in
+(*
     let pre' = function
       | Cont k -> Cont (pre k)
       | Label -> assert false in
     (* All control-flow out must pass through the potential `finally` thunk *)
     let context = LabelEnv.map pre' context in
+*)
+    let finalise context scope =
+      match finally_opt with
+      | Some (id2, typ2) -> preconts context (var id2 typ2) scope
+      | None -> scope context
+    in
+    finalise context (fun context ->
     (* assert that a context (top-level or async) has set up a `Cleanup` cont *)
     assert (LabelEnv.find_opt Cleanup context <> None);
     (* TODO: do we need to reify f? *)
@@ -418,7 +426,7 @@ and c_exp' context exp k =
           }
         ]
         (c_exp context' exp1 (ContVar k))
-    ))
+    )))
   | LoopE exp1 ->
     c_loop context k exp1
   | LabelE (id, _typ, exp1) ->
