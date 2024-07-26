@@ -3,7 +3,7 @@
 ## Upcoming
 
 * motoko (`moc`)
-  * feat: `__motoko_runtime_information()` as privileged query for runtime statistics.
+  * debugging: `__motoko_runtime_information()` as privileged query for runtime statistics.
 
     Exposing a privileged system-level query function `__motoko_runtime_information()` 
     that reports the current runtime statistics of the canister, such as the heap size, 
