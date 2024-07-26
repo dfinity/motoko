@@ -1,14 +1,17 @@
-use crate::{constants::{GB, KB}, stabilization::ic0_performance_counter};
+use crate::{
+    constants::{GB, KB},
+    stabilization::ic0_performance_counter,
+};
 
 /// Maximum amount of memory that is processed per increment.
-/// The IC configures a maximum of 2 GB of stable memory that can 
+/// The IC configures a maximum of 2 GB of stable memory that can
 /// be accessed per message. We keep a conservative reserve of 1 GB.
 const MEMORY_PROCESSING_LIMIT_PER_INCREMENT: u64 = GB as u64;
 
 /// Execution limit for the graph copy increment.
 /// Monitoring the message instruction counter and
 /// the amount of processed memory.
-/// The latter is relevant to avoid exceeding the limit 
+/// The latter is relevant to avoid exceeding the limit
 /// of how much stable memory be accessed in a message.
 /// Optimization: Avoiding frequent repeated calls to
 /// `ic0_performance_counter()` as this incurs 200
@@ -66,7 +69,8 @@ impl ExecutionLimit {
     pub fn is_exceeded(&mut self, processed_memory: u64) -> bool {
         debug_assert!(self.initial_processed_memory <= processed_memory);
         // Check the memory limit.
-        if processed_memory - self.initial_processed_memory > MEMORY_PROCESSING_LIMIT_PER_INCREMENT {
+        if processed_memory - self.initial_processed_memory > MEMORY_PROCESSING_LIMIT_PER_INCREMENT
+        {
             return true;
         }
         // Check the instruction limit.
