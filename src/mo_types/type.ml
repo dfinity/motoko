@@ -1358,6 +1358,28 @@ let motoko_gc_trigger_fld =
     src = empty_src;
   }
 
+let motoko_runtime_information_type =
+  Obj(Object, [
+    (* Fields must be sorted by label *)
+    {lab = "callbackTableCount"; typ = nat; src = empty_src};
+    {lab = "callbackTableSize"; typ = nat; src = empty_src};
+    {lab = "heapSize"; typ = nat; src = empty_src};
+    {lab = "logicalStableMemorySize"; typ = nat; src = empty_src};
+    {lab = "maxLiveSize"; typ = nat; src = empty_src};
+    {lab = "maxStackSize"; typ = nat; src = empty_src};
+    {lab = "memorySize"; typ = nat; src = empty_src};
+    {lab = "reclaimed"; typ = nat; src = empty_src};
+    {lab = "stableMemorySize"; typ = nat; src = empty_src};
+    {lab = "totalAllocation"; typ = nat; src = empty_src};
+  ])
+
+let motoko_runtime_information_fld =
+  { lab = "__motoko_runtime_information";
+    typ = Func(Shared Query, Promises, [scope_bind], [], 
+      [ motoko_runtime_information_type ]);
+    src = empty_src;
+  }
+
 let well_known_actor_fields = [
     motoko_async_helper_fld;
     motoko_stable_var_info_fld;
