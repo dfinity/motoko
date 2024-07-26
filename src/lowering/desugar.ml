@@ -468,57 +468,48 @@ and export_runtime_information self_id =
   let open T in
   let {lab;typ;_} = motoko_runtime_information_fld in
   let v = "$"^lab in
-  let rts_memory_size = fresh_var "memorySize" T.nat in
-  let rts_heap_size = fresh_var "heapSize" T.nat in
-  let rts_total_allocation = fresh_var "totalAllocation" T.nat in
-  let rts_reclaimed = fresh_var "reclaimed" T.nat in
-  let rts_max_live_size = fresh_var "maxLiveSize" T.nat in
-  let rts_stable_memory_size = fresh_var "stableMemorySize" T.nat in
-  let rts_logical_stable_memory_size = fresh_var "logicalStableMemorySize" T.nat in
-  let rts_max_stack_size = fresh_var "maxStackSize" T.nat in
-  let rts_callback_table_count = fresh_var "callbackTableCount" T.nat in
-  let rts_callback_table_size = fresh_var "callbackTableSize" T.nat in
   let scope_con1 = Cons.fresh "T1" (Abs ([], scope_bound)) in
   let scope_con2 = Cons.fresh "T2" (Abs ([], Any)) in
   let bind1  = typ_arg scope_con1 Scope scope_bound in
   let bind2 = typ_arg scope_con2 Scope scope_bound in
+  let statistics = [
+    ("memorySize", "rts_memory_size");
+    ("heapSize", "rts_heap_size");
+    ("totalAllocation", "rts_total_allocation");
+    ("reclaimed", "rts_reclaimed");
+    ("maxLiveSize", "rts_max_live_size");
+    ("stableMemorySize", "rts_stable_memory_size");
+    ("logicalStableMemorySize", "rts_logical_stable_memory_size");
+    ("maxStackSize", "rts_max_stack_size");
+    ("callbackTableCount", "rts_callback_table_count");
+    ("callbackTableSize", "rts_callback_table_size")
+  ] in
+  let field_names = List.map (fun (name, _) -> name) statistics in
+  let fields = List.map (fun name -> fresh_var name T.nat) field_names in
   (* Use an object return type to allow adding more data in future. *)
   let ret_typ = motoko_runtime_information_type in
   let caller = fresh_var "caller" caller in
+  let rts_functions = List.map(fun (_, name) -> name) statistics in
   ([ letD (var v typ) (
        funcE v (Shared Query) Promises [bind1] [] [ret_typ] (
            (asyncE T.Fut bind2
-              (blockE [
-                   letD caller (primE I.ICCallerPrim []);
-                   expD (ifE (orE 
-                        (primE (I.RelPrim (principal, Operator.EqOp)) [varE caller; selfRefE principal])
-                        (primE (I.OtherPrim "is_controller") [varE caller]))
-                      (unitE()) 
-                      (primE (Ir.OtherPrim "trap")
-                        [textE "Unauthorized call of __motoko_runtime_information"]));
-                   letD rts_memory_size (primE (I.OtherPrim "rts_memory_size") []);
-                   letD rts_heap_size (primE (I.OtherPrim "rts_heap_size") []);
-                   letD rts_total_allocation (primE (I.OtherPrim "rts_total_allocation") []);
-                   letD rts_reclaimed (primE (I.OtherPrim "rts_reclaimed") []);
-                   letD rts_max_live_size (primE (I.OtherPrim "rts_max_live_size") []);
-                   letD rts_stable_memory_size (primE (I.OtherPrim "rts_stable_memory_size") []);
-                   letD rts_logical_stable_memory_size (primE (I.OtherPrim "rts_logical_stable_memory_size") []);
-                   letD rts_max_stack_size (primE (I.OtherPrim "rts_max_stack_size") []);
-                   letD rts_callback_table_count (primE (I.OtherPrim "rts_callback_table_count") []);
-                   letD rts_callback_table_size (primE (I.OtherPrim "rts_callback_table_size") [])
-                 ]
-                 (newObjE T.Object [
-                    { it = Ir.{name = "memorySize"; var = id_of_var rts_memory_size}; at = no_region; note = T.nat };
-                    { it = Ir.{name = "heapSize"; var = id_of_var rts_heap_size}; at = no_region; note = T.nat };
-                    { it = Ir.{name = "totalAllocation"; var = id_of_var rts_total_allocation}; at = no_region; note = T.nat };
-                    { it = Ir.{name = "reclaimed"; var = id_of_var rts_reclaimed}; at = no_region; note = T.nat };
-                    { it = Ir.{name = "maxLiveSize"; var = id_of_var rts_max_live_size}; at = no_region; note = T.nat };
-                    { it = Ir.{name = "stableMemorySize"; var = id_of_var rts_stable_memory_size}; at = no_region; note = T.nat };
-                    { it = Ir.{name = "logicalStableMemorySize"; var = id_of_var rts_logical_stable_memory_size}; at = no_region; note = T.nat };
-                    { it = Ir.{name = "maxStackSize"; var = id_of_var rts_max_stack_size}; at = no_region; note = T.nat };
-                    { it = Ir.{name = "callbackTableCount"; var = id_of_var rts_callback_table_count}; at = no_region; note = T.nat };
-                    { it = Ir.{name = "callbackTableSize"; var = id_of_var rts_callback_table_size}; at = no_region; note = T.nat };
-                  ] ret_typ))
+              (blockE ([
+                  letD caller (primE I.ICCallerPrim []);
+                  expD (ifE (orE 
+                      (primE (I.RelPrim (principal, Operator.EqOp)) [varE caller; selfRefE principal])
+                      (primE (I.OtherPrim "is_controller") [varE caller]))
+                    (unitE()) 
+                    (primE (Ir.OtherPrim "trap")
+                      [textE "Unauthorized call of __motoko_runtime_information"]))
+                  ] @
+                  (List.map2 (fun field rts_function -> 
+                    letD field (primE (I.OtherPrim rts_function) [])) 
+                    fields rts_functions))
+                (newObjE T.Object 
+                  (List.map2 (fun name field -> 
+                      { it = Ir.{name; var = id_of_var field}; at = no_region; note = T.nat }) 
+                    field_names fields
+                  ) ret_typ))
               (Con (scope_con1, []))))
   )],
   [{ it = I.{ name = lab; var = v }; at = no_region; note = typ }])
