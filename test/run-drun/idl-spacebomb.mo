@@ -116,7 +116,7 @@ actor this {
     ]);
 
     await* test("zero_sized_record_extra_argument", [
-       "DIDL\04\6c\03\01\7f\02\01\03\02\6c\01\01\70\6c\00\6d\00\01\03\80\94\eb\dc\03"
+       "DIDL\04\6c\03\00\7f\01\01\02\02\6c\01\00\70\6c\00\6d\00\01\03\80\94\eb\dc\03"
     ]);
 
     await* test("vec_vec_null_extra_argument", [
@@ -124,7 +124,7 @@ actor this {
     ]);
 
     await* test("vec_record_emp_extra_argument", [
-        "DIDL\03\6c\01\d6\fc\a7\02\01\6d\02\6c\00\01\00\80\ad\e2\04"
+        "DIDL\02\6d\01\6c\00\01\00\80\ad\e2\04"
     ]);
 
     await* test("vec_opt_record_with_2_20_null_extra_argument", [
@@ -149,10 +149,10 @@ actor this {
 
     debugPrint("BROKEN TEST?");
     await* test("zero_sized_record_not_ignored", [
-         "DIDL\04\6c\03\01\7f\02\01\03\02\6c\01\01\70\6c\00\6d\00\01\03\80\94\eb\dc\03",
-         "DIDL\04\6c\03\01\7f\02\01\03\02\6c\01\01\70\6c\00\6d\00\01\03\80\ad\e2\04",
-         "DIDL\04\6c\03\01\7f\02\01\03\02\6c\01\01\70\6c\00\6d\00\01\03\ff\ff\3f",
-         "DIDL\04\6c\03\01\7f\02\01\03\02\6c\01\01\70\6c\00\6d\00\01\03\80\b5\18",
+         "DIDL\04\6c\03\00\7f\01\01\02\02\6c\01\00\70\6c\00\6d\00\01\03\80\94\eb\dc\03",
+         "DIDL\04\6c\03\00\7f\01\01\02\02\6c\01\00\70\6c\00\6d\00\01\03\80\ad\e2\04",
+         "DIDL\04\6c\03\00\7f\01\01\02\02\6c\01\00\70\6c\00\6d\00\01\03\ff\ff\3f",
+         "DIDL\04\6c\03\00\7f\01\01\02\02\6c\01\00\70\6c\00\6d\00\01\03\80\b5\18",
     ]);
 
     await* test("vec_vec_null_not_ignored", [
@@ -161,7 +161,7 @@ actor this {
 
     debugPrint("BROKEN TEST?");
     await* test("vec_record_emp_not_ignored", [
-        "DIDL\03\6c\01\d6\fc\a7\02\01\6d\02\6c\00\01\00\80\ad\e2\04"
+        "DIDL\02\6d\01\6c\00\01\00\80\ad\e2\04"
     ]);
 
     // Decoding under opt
@@ -181,10 +181,10 @@ actor this {
 
     debugPrint("BROKEN TEST?");
     await* test("zero_sized_record_subtyping", [
-         "DIDL\04\6c\03\01\7f\02\01\03\02\6c\01\01\70\6c\00\6d\00\01\03\80\94\eb\dc\03",
-         "DIDL\04\6c\03\01\7f\02\01\03\02\6c\01\01\70\6c\00\6d\00\01\03\80\ad\e2\04",
-         "DIDL\04\6c\03\01\7f\02\01\03\02\6c\01\01\70\6c\00\6d\00\01\03\ff\ff\3f",
-         "DIDL\04\6c\03\01\7f\02\01\03\02\6c\01\01\70\6c\00\6d\00\01\03\80\b5\18",
+         "DIDL\04\6c\03\00\7f\01\01\02\02\6c\01\00\70\6c\00\6d\00\01\03\80\94\eb\dc\03",
+         "DIDL\04\6c\03\00\7f\01\01\02\02\6c\01\00\70\6c\00\6d\00\01\03\80\ad\e2\04",
+         "DIDL\04\6c\03\00\7f\01\01\02\02\6c\01\00\70\6c\00\6d\00\01\03\ff\ff\3f",
+         "DIDL\04\6c\03\00\7f\01\01\02\02\6c\01\00\70\6c\00\6d\00\01\03\80\b5\18",
     ]);
 
     await* test("vec_vec_null_subtyping", [
@@ -193,7 +193,7 @@ actor this {
 
     debugPrint("BROKEN TEST?");
     await* test("vec_record_emp_subtyping", [
-         "DIDL\03\6c\01\d6\fc\a7\02\01\6d\02\6c\00\01\00\80\ad\e2\04"
+         "DIDL\02\6d\01\6c\00\01\00\80\ad\e2\04"
     ]);
 
     await* test("vec_opt_record_with_2_20_null_subtyping", [
