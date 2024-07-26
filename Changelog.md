@@ -3,12 +3,12 @@
 ## Upcoming
 
 * motoko (`moc`)
-  * feat: `__motoko_runtime_information()` query for canister owner and controllers.
+  * feat: `__motoko_runtime_information()` as privileged query for runtime statistics.
 
     Exposing a privileged system-level query function `__motoko_runtime_information()` 
     that reports the current runtime statistics of the canister, such as the heap size, 
     the total number of allocated objects, the total amount of reclaimed memory and more.
-    This is useful becaused several statistics of the reported information cannot be 
+    This is useful because several statistics of the reported information cannot be 
     inspected on the IC replica dashboard as they are internal to the Motoko runtime system. 
     This query is only authorized to the canister controllers and self-calls of the canister.
 
