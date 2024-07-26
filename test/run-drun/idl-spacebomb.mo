@@ -1,5 +1,25 @@
 import { debugPrint; errorMessage; call_raw; principalOfActor; charToText; performanceCounter } "mo:⛔";
 
+// Space bomb tests
+
+// Messages in this test all take a lot of time, memory and stack space to decode.
+// With infinite resources, these are all valid Candid messages.
+// When using Candid in a resource limited environment, for example one consensus round in a blockchain,
+// an implementation with self-metering should reject these messages relatively early
+// without going through the whole deserialisation process.
+
+// \80\94\eb\dc\03  is 1000_000_000
+// \80\ad\e2\04     is   10_000_000
+// \ff\ff\3f        is    1_048_575
+// \80\b5\18        is      400_000
+
+// Tests manually ported from Candid test suite
+// https://github.com/dfinity/candid/blob/master/test/spacebomb.test.did
+
+// Currently we cannot run this particular Candid test suite
+// because we rely on IC performance_counter(0) to limit execution.
+// and the test suite is run on wasmtime (sans perf counter).
+
 actor this {
 
   func toHex(b : Blob) : Text {
@@ -132,7 +152,6 @@ actor this {
     ]);
 
     // Decoding to actual type
-
     await* test("vec_null_not_ignored", [
         "DIDL\01\6d\7f\01\00\80\94\eb\dc\03",
         "DIDL\01\6d\7f\01\00\80\ad\e2\04",
@@ -147,7 +166,6 @@ actor this {
          "DIDL\01\6d\70\01\00\80\bf\18" : Blob,
     ]);
 
-    debugPrint("BROKEN TEST?");
     await* test("zero_sized_record_not_ignored", [
          "DIDL\04\6c\03\00\7f\01\01\02\02\6c\01\00\70\6c\00\6d\00\01\03\80\94\eb\dc\03",
          "DIDL\04\6c\03\00\7f\01\01\02\02\6c\01\00\70\6c\00\6d\00\01\03\80\ad\e2\04",
@@ -159,7 +177,6 @@ actor this {
          "DIDL\02\6d\01\6d\7f\01\00\05\ff\ff\3f\ff\ff\3f\ff\ff\3f\ff\ff\3f\ff\ff\3f"
     ]);
 
-    debugPrint("BROKEN TEST?");
     await* test("vec_record_emp_not_ignored", [
         "DIDL\02\6d\01\6c\00\01\00\80\ad\e2\04"
     ]);
@@ -179,7 +196,6 @@ actor this {
         "DIDL\01\6d\70\01\00\80\bf\18" : Blob,
     ]);
 
-    debugPrint("BROKEN TEST?");
     await* test("zero_sized_record_subtyping", [
          "DIDL\04\6c\03\00\7f\01\01\02\02\6c\01\00\70\6c\00\6d\00\01\03\80\94\eb\dc\03",
          "DIDL\04\6c\03\00\7f\01\01\02\02\6c\01\00\70\6c\00\6d\00\01\03\80\ad\e2\04",
@@ -191,7 +207,6 @@ actor this {
          "DIDL\02\6d\01\6d\7f\01\00\05\ff\ff\3f\ff\ff\3f\ff\ff\3f\ff\ff\3f\ff\ff\3f"
     ]);
 
-    debugPrint("BROKEN TEST?");
     await* test("vec_record_emp_subtyping", [
          "DIDL\02\6d\01\6c\00\01\00\80\ad\e2\04"
     ]);
