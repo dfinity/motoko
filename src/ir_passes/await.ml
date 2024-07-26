@@ -131,14 +131,14 @@ and t_exp' context exp =
   | PrimE (BreakPrim id, [exp1]) ->
     begin
       match LabelEnv.find_opt (Named id) context with
-      | Some (Cont k) -> (retE ((ContVar k) -@- t_exp context exp1)).it
+      | Some (Cont k) -> (retE (varE k -*- t_exp context exp1)).it
       | Some Label -> (breakE id (t_exp context exp1)).it
       | None -> assert false
     end
   | PrimE (RetPrim, [exp1]) ->
     begin
       match LabelEnv.find_opt Return context with
-      | Some (Cont k) -> (retE ((ContVar k) -@- t_exp context exp1)).it
+      | Some (Cont k) -> (retE (varE k -*- t_exp context exp1)).it
       | Some Label -> (retE (t_exp context exp1)).it
       | None -> assert false
     end
@@ -371,9 +371,7 @@ and c_exp' context exp k =
     finalise context (fun context ->
     (* assert that a context (top-level or async) has set up a `Cleanup` cont *)
     assert (LabelEnv.find_opt Cleanup context <> None);
-    (* TODO: do we need to reify f? *)
     let f = match LabelEnv.find Throw context with Cont f -> f | _ -> assert false in
-    letcont (ContVar f) (fun f ->
     letcont k (fun k ->
     precont k (fun k ->
     match eff exp1 with
@@ -409,7 +407,7 @@ and c_exp' context exp k =
           }
         ]
         (c_exp context' exp1 (ContVar k))
-    ))))
+    )))
   | LoopE exp1 ->
     c_loop context k exp1
   | LabelE (id, _typ, exp1) ->
@@ -459,7 +457,7 @@ and c_exp' context exp k =
       (fun v ->
         check_call_perform_status
           (k -@- varE v)
-          (fun e -> (ContVar r) -@- e))
+          (fun e -> varE r -*- e))
     in
     k' -@- cps_async
   | PrimE (AwaitPrim s, [exp1]) ->
@@ -471,8 +469,6 @@ and c_exp' context exp k =
       | Some (Cont r) -> r
       | _ -> assert false
     in
-    letcont (ContVar b) (fun b ->
-    letcont (ContVar r) (fun r ->
     letcont k (fun k ->
       let krb = List.map varE [k; r; b] |> tupE in
       match eff exp1 with
@@ -481,7 +477,7 @@ and c_exp' context exp k =
       | T.Await ->
         c_exp context exp1
           (meta (typ exp1) (fun v1 -> (cps_awaitE s (typ_of_var k) (varE v1) krb)))
-    )))
+    )
   | DeclareE (id, typ, exp1) ->
     unary context k (fun v1 -> e (DeclareE (id, typ, varE v1))) exp1
   | DefineE (id, mut, exp1) ->
@@ -497,7 +493,7 @@ and c_exp' context exp k =
       (fun v ->
         check_call_perform_status
           (k -@- varE v)
-          (fun e -> (ContVar r) -@- e))
+          (fun e -> varE r -*- e))
     in
     nary context k' (fun vs -> e (PrimE (p, vs))) exps
   | PrimE (p, exps) ->
