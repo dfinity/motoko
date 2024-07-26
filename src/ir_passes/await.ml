@@ -61,9 +61,12 @@ module PatEnv = Env.Make(String)
 
 type label_sort = Cont of var | Label
 
-let precompose typ0 vthunk cont =
+let precompose vthunk k =
+    let typ0 = match typ_of_var k with
+     | T.(Func (Local, Returns, [], ts1, _)) -> T.seq ts1
+     | _ -> assert false in
     let v = fresh_var "v" typ0 in
-    let e = blockE [expD (varE vthunk -*- unitE ())] (cont v) in
+    let e = blockE [expD (varE vthunk -*- unitE ())] (varE k -*- varE v) in
     let k' = fresh_cont typ0 (typ e) in
     (k', funcD k' v e)
 
@@ -73,12 +76,9 @@ let preconts context vthunk scope =
        match sort with
        | Label -> assert false
        | Cont k ->
-         let typ0 = match typ_of_var k with
-           | T.(Func (Local, Returns, [], ts1, _)) -> T.seq ts1
-           | _ -> assert false in
-         let (k', d) = precompose typ0 vthunk (fun v -> varE k -*- varE v) in
+         let (k', d) = precompose vthunk k in
          (d :: ds,
-          LabelEnv.add lab (Cont (ContVar k')) ctxt)
+          LabelEnv.add lab (Cont k') ctxt))
      context
      ([], LabelEnv.empty)
   in
@@ -356,10 +356,7 @@ and c_exp' context exp k =
       match finally_opt with
       | Some (id2, typ2) ->
         let vthunk = var id2 typ2 in
-        let typ0 = match typ_of_var k with
-          | T.(Func (Local, Returns, [], ts1, _)) -> T.seq ts1
-          | _ -> assert false in
-        let (k', d) = precompose typ0 vthunk (fun v -> varE k -*- varE v) in
+        let (k', d) = precompose vthunk k in
         blockE [d] (scope k')
       | None ->
         scope k in
