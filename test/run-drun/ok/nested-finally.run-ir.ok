@@ -5356,7 +5356,28 @@
                           )
                         )
                       )
-                      (TryE (PrimE TupPrim) ; $thunk/2)
+                      (TryE
+                        (BlockE
+                          (LetD
+                            WildP
+                            (PrimE
+                              AwaitPrim
+                              (AsyncE
+                                ($@anon-async-8.29 Any)
+                                (PrimE TupPrim)
+                                $foo
+                              )
+                            )
+                          )
+                          (IfE
+                            (LitE (BoolLit true))
+                            (PrimE RetPrim (PrimE TupPrim))
+                            (PrimE RetPrim (PrimE TupPrim))
+                          )
+                        )
+                        ;
+                        $thunk/2
+                      )
                     )
                     ;
                     $thunk/1
@@ -10736,7 +10757,28 @@
                           )
                         )
                       )
-                      (TryE (PrimE TupPrim) ; $thunk/2)
+                      (TryE
+                        (BlockE
+                          (LetD
+                            WildP
+                            (PrimE
+                              AwaitPrim
+                              (AsyncE
+                                ($@anon-async-8.29__2 Any)
+                                (PrimE TupPrim)
+                                $foo__2
+                              )
+                            )
+                          )
+                          (IfE
+                            (LitE (BoolLit true))
+                            (PrimE RetPrim (PrimE TupPrim))
+                            (PrimE RetPrim (PrimE TupPrim))
+                          )
+                        )
+                        ;
+                        $thunk/2
+                      )
                     )
                     ;
                     $thunk/1
@@ -16116,7 +16158,28 @@
                           )
                         )
                       )
-                      (TryE (PrimE TupPrim) ; $thunk/2)
+                      (TryE
+                        (BlockE
+                          (LetD
+                            WildP
+                            (PrimE
+                              AwaitPrim
+                              (AsyncE
+                                ($@anon-async-8.29__2 Any)
+                                (PrimE TupPrim)
+                                $foo__2
+                              )
+                            )
+                          )
+                          (IfE
+                            (LitE (BoolLit true))
+                            (PrimE RetPrim (PrimE TupPrim))
+                            (PrimE RetPrim (PrimE TupPrim))
+                          )
+                        )
+                        ;
+                        $thunk/2
+                      )
                     )
                     ;
                     $thunk/1
@@ -21496,7 +21559,28 @@
                           )
                         )
                       )
-                      (TryE (PrimE TupPrim) ; $thunk/2)
+                      (TryE
+                        (BlockE
+                          (LetD
+                            WildP
+                            (PrimE
+                              AwaitPrim
+                              (AsyncE
+                                ($@anon-async-8.29__2 Any)
+                                (PrimE TupPrim)
+                                $foo__2
+                              )
+                            )
+                          )
+                          (IfE
+                            (LitE (BoolLit true))
+                            (PrimE RetPrim (PrimE TupPrim))
+                            (PrimE RetPrim (PrimE TupPrim))
+                          )
+                        )
+                        ;
+                        $thunk/2
+                      )
                     )
                     ;
                     $thunk/1
@@ -26970,7 +27054,28 @@
                           )
                         )
                       )
-                      (TryE (PrimE TupPrim) ; $thunk/2)
+                      (TryE
+                        (BlockE
+                          (LetD
+                            WildP
+                            (PrimE
+                              AwaitPrim
+                              (AsyncE
+                                ($@anon-async-8.29__2 Any)
+                                (PrimE TupPrim)
+                                $foo__2
+                              )
+                            )
+                          )
+                          (IfE
+                            (LitE (BoolLit true))
+                            (PrimE RetPrim (PrimE TupPrim))
+                            (PrimE RetPrim (PrimE TupPrim))
+                          )
+                        )
+                        ;
+                        $thunk/2
+                      )
                     )
                     ;
                     $thunk/1

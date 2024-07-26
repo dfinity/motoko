@@ -5,7 +5,7 @@ actor {
     public func foo() {
         try {
             try {
-                try {}
+                try { await async (); if true return else return }
                 finally { debugPrint "OUT2" }
             }
             finally { debugPrint "OUT1" }

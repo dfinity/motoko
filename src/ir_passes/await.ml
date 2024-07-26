@@ -57,7 +57,7 @@ let precont k vthunk =
       | _ -> assert false in
     metaX 7770 typ (fun c v -> finally c (varE k' -*- varE v))
   | MetaCont (typ, cont) when true ->
-    metaX 8880 typ (fun c v -> cont v)
+     (*assert false; *)Printf.eprintf "metaX\n";metaX 8880 typ (fun c v -> cont v)
   | MetaCont (typ, _) when false ->
     metaX 8880 typ (fun c v -> letcont k (fun k' -> finally c (varE k' -*- varE v)))
 
@@ -355,11 +355,11 @@ and c_exp' context exp k =
       match finally_opt with
       | Some (id2, typ2) -> precont k (var id2 typ2)
       | None -> k in
-    let pre' = function
-      | Cont k -> Cont (pre k)
+    let pre' key = function
+      | Cont k -> Printf.eprintf "MApping %s\n" (match key with | Return -> "Return" | Throw -> "Throw" | Cleanup -> "Cleanup" | _ -> "DUNNO"); Cont (pre k)
       | Label -> assert false in
     (* All control-flow out must pass through the potential `finally` thunk *)
-    let context = LabelEnv.map pre' context in
+    let context = LabelEnv.mapi pre' context in
     (* assert that a context (top-level or async) has set up a `Cleanup` cont *)
     assert (LabelEnv.find_opt Cleanup context <> None);
     (* TODO: do we need to reify f? *)
