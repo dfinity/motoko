@@ -61,14 +61,14 @@ module LabelEnv = Env.Make(struct type t = label let compare = compare end)
 
 module PatEnv = Env.Make(String)
 
-type label_sort = Cont of kont | Label
+type label_sort = Cont of var | Label
 
 let preconts context vthunk scope =
   let (ds, ctxt) = LabelEnv.fold
      (fun lab sort (ds, ctxt) ->
        match sort with
        | Label -> assert false
-       | Cont (ContVar k) ->
+       | Cont k ->
          let typ0 = match typ_of_var k with
            | T.(Func (Local, Returns, [], ts1, _)) -> T.seq ts1
            | _ -> assert false in
@@ -76,13 +76,7 @@ let preconts context vthunk scope =
          let e = finally vthunk (varE k -*- varE v) in
          let k' = fresh_cont typ0 (typ e) in
          (funcD k' v e :: ds,
-          LabelEnv.add lab (Cont (ContVar k')) ctxt)
-       | Cont (MetaCont (typ0, cont)) ->
-         let v = fresh_var "v" typ0 in
-         let e = finally vthunk (cont v) in
-         let k' = fresh_cont typ0 (typ e) in
-         (funcD k' v e :: ds,
-          LabelEnv.add lab (Cont (ContVar k')) ctxt))
+          LabelEnv.add lab (Cont k') ctxt))
      context
      ([], LabelEnv.empty)
   in
@@ -99,9 +93,9 @@ let rec t_async context exp =
    let k_fail = fresh_err_cont T.unit in
    let k_clean = fresh_bail_cont T.unit in
    let context' =
-     LabelEnv.add Cleanup (Cont (ContVar k_clean))
-       (LabelEnv.add Return (Cont (ContVar k_ret))
-          (LabelEnv.singleton Throw (Cont (ContVar k_fail))))
+     LabelEnv.add Cleanup (Cont k_clean)
+       (LabelEnv.add Return (Cont k_ret)
+          (LabelEnv.singleton Throw (Cont k_fail)))
    in
      cps_asyncE s typ1 (typ exp1)
        (forall [tb] ([k_ret; k_fail; k_clean] -->*
@@ -137,14 +131,14 @@ and t_exp' context exp =
   | PrimE (BreakPrim id, [exp1]) ->
     begin
       match LabelEnv.find_opt (Named id) context with
-      | Some (Cont k) -> (retE (k -@- t_exp context exp1)).it
+      | Some (Cont k) -> (retE ((ContVar k) -@- t_exp context exp1)).it
       | Some Label -> (breakE id (t_exp context exp1)).it
       | None -> assert false
     end
   | PrimE (RetPrim, [exp1]) ->
     begin
       match LabelEnv.find_opt Return context with
-      | Some (Cont k) -> (retE (k -@- t_exp context exp1)).it
+      | Some (Cont k) -> (retE ((ContVar k) -@- t_exp context exp1)).it
       | Some Label -> (retE (t_exp context exp1)).it
       | None -> assert false
     end
@@ -379,7 +373,7 @@ and c_exp' context exp k =
     assert (LabelEnv.find_opt Cleanup context <> None);
     (* TODO: do we need to reify f? *)
     let f = match LabelEnv.find Throw context with Cont f -> f | _ -> assert false in
-    letcont f (fun f ->
+    letcont (ContVar f) (fun f ->
     letcont k (fun k ->
     precont k (fun k ->
     match eff exp1 with
@@ -405,7 +399,7 @@ and c_exp' context exp k =
           cases
         @ if omit_rethrow then [] else [rethrow] in
       let throw = fresh_err_cont (answerT (typ_of_var k)) in
-      let context' = LabelEnv.add Throw (Cont (ContVar throw)) context in
+      let context' = LabelEnv.add Throw (Cont throw) context in
       blockE
         [ let e = fresh_var "e" T.catch in
           funcD throw e {
@@ -421,24 +415,24 @@ and c_exp' context exp k =
   | LabelE (id, _typ, exp1) ->
     letcont k
       (fun k ->
-        let context' = LabelEnv.add (Named id) (Cont (ContVar k)) context in
+        let context' = LabelEnv.add (Named id) (Cont k) context in
         c_exp context' exp1 (ContVar k)) (* TODO optimize me, if possible *)
   | PrimE (BreakPrim id, [exp1]) ->
     begin
       match LabelEnv.find_opt (Named id) context with
-      | Some (Cont k') -> c_exp context exp1 k'
+      | Some (Cont k') -> c_exp context exp1 (ContVar k')
       | _ -> assert false
     end
   | PrimE (RetPrim, [exp1]) ->
     begin
       match LabelEnv.find_opt Return context with
-      | Some (Cont k') -> c_exp context exp1 k'
+      | Some (Cont k') -> c_exp context exp1 (ContVar k')
       | _ -> assert false
     end
   | PrimE (ThrowPrim, [exp1]) ->
     begin
       match LabelEnv.find_opt Throw context with
-      | Some (Cont k') -> c_exp context exp1 k'
+      | Some (Cont k') -> c_exp context exp1 (ContVar k')
       | _ -> assert false
     end
   | AsyncE (T.Cmp, tb, exp1, typ1) ->
@@ -449,9 +443,9 @@ and c_exp' context exp k =
     let k_fail = fresh_err_cont T.unit in
     let k_clean = fresh_bail_cont T.unit in
     let context' =
-      LabelEnv.add Cleanup (Cont (ContVar k_clean))
-        (LabelEnv.add Return (Cont (ContVar k_ret))
-           (LabelEnv.singleton Throw (Cont (ContVar k_fail))))
+      LabelEnv.add Cleanup (Cont k_clean)
+        (LabelEnv.add Return (Cont k_ret)
+           (LabelEnv.singleton Throw (Cont k_fail)))
     in
     let r = match LabelEnv.find_opt Throw context with
       | Some (Cont r) -> r
@@ -465,7 +459,7 @@ and c_exp' context exp k =
       (fun v ->
         check_call_perform_status
           (k -@- varE v)
-          (fun e -> r -@- e))
+          (fun e -> (ContVar r) -@- e))
     in
     k' -@- cps_async
   | PrimE (AwaitPrim s, [exp1]) ->
@@ -477,8 +471,8 @@ and c_exp' context exp k =
       | Some (Cont r) -> r
       | _ -> assert false
     in
-    letcont b (fun b ->
-    letcont r (fun r ->
+    letcont (ContVar b) (fun b ->
+    letcont (ContVar r) (fun r ->
     letcont k (fun k ->
       let krb = List.map varE [k; r; b] |> tupE in
       match eff exp1 with
@@ -503,7 +497,7 @@ and c_exp' context exp k =
       (fun v ->
         check_call_perform_status
           (k -@- varE v)
-          (fun e -> r -@- e))
+          (fun e -> (ContVar r) -@- e))
     in
     nary context k' (fun vs -> e (PrimE (p, vs))) exps
   | PrimE (p, exps) ->
@@ -649,8 +643,8 @@ and t_comp_unit context = function
       | T.Await ->
         let throw = fresh_err_cont T.unit in
         let context' =
-          LabelEnv.add Cleanup (Cont (ContVar (var "@cleanup" bail_contT)))
-            (LabelEnv.add Throw (Cont (ContVar throw)) context) in
+          LabelEnv.add Cleanup (Cont (var "@cleanup" bail_contT))
+            (LabelEnv.add Throw (Cont throw) context) in
         let e = fresh_var "e" T.catch in
         ProgU [
           funcD throw e (assertE (falseE ()));
@@ -675,8 +669,8 @@ and t_ignore_throw context exp =
   | _ ->
      let throw = fresh_err_cont T.unit in
      let context' =
-       LabelEnv.add Cleanup (Cont (ContVar (var "@cleanup" bail_contT)))
-         (LabelEnv.add Throw (Cont (ContVar throw)) context) in
+       LabelEnv.add Cleanup (Cont (var "@cleanup" bail_contT))
+         (LabelEnv.add Throw (Cont throw) context) in
      let e = fresh_var "e" T.catch in
      { (blockE [
           funcD throw e (tupE[]);
