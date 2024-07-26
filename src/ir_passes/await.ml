@@ -47,13 +47,13 @@ type label = Return | Throw | Cleanup | Named of string
 let ( -@- ) k exp2 =
   match k with
   | ContVar v ->
-     varE v -*- exp2
+    varE v -*- exp2
   | MetaCont (typ0, k) ->
-     match exp2.it with
-     | VarE v -> k (var v (typ exp2))
-     | _ ->
-        let u = fresh_var "u" typ0 in
-        letE u exp2 (k u)
+    match exp2.it with
+    | VarE v -> k (var v (typ exp2))
+    | _ ->
+      let u = fresh_var "u" typ0 in
+      letE u exp2 (k u)
 
 (* Label environments *)
 
@@ -65,20 +65,20 @@ type label_sort = Cont of var | Label
 
 let preconts context vthunk scope =
   let (ds, ctxt) = LabelEnv.fold
-     (fun lab sort (ds, ctxt) ->
-       match sort with
-       | Label -> assert false
-       | Cont k ->
-         let typ0 = match typ_of_var k with
-           | T.(Func (Local, Returns, [], ts1, _)) -> T.seq ts1
-           | _ -> assert false in
-         let v = fresh_var "v" typ0 in
-         let e = finally vthunk (varE k -*- varE v) in
-         let k' = fresh_cont typ0 (typ e) in
-         (funcD k' v e :: ds,
-          LabelEnv.add lab (Cont k') ctxt))
-     context
-     ([], LabelEnv.empty)
+    (fun lab sort (ds, ctxt) ->
+      match sort with
+      | Label -> assert false
+      | Cont k ->
+        let typ0 = match typ_of_var k with
+          | T.(Func (Local, Returns, [], ts1, _)) -> T.seq ts1
+          | _ -> assert false in
+        let v = fresh_var "v" typ0 in
+        let e = finally vthunk (varE k -*- varE v) in
+        let k' = fresh_cont typ0 (typ e) in
+        (funcD k' v e :: ds,
+         LabelEnv.add lab (Cont k') ctxt))
+    context
+    ([], LabelEnv.empty)
   in
   blockE ds (scope ctxt)
 
