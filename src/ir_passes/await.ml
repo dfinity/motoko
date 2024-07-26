@@ -40,19 +40,6 @@ let letcont k scope =
             (scope k')
 
 let finally vthunk e = blockE [expD (varE vthunk -*- unitE ())] e
-              
-(* pre-compose a continuation with a call to a `finally`-thunk *)
-let precont k vthunk =
-  match k with
-  | ContVar k' ->
-     let typ = match typ_of_var k' with
-       | T.(Func (Local, Returns, [], ts1, _)) -> T.seq ts1
-       | _ -> assert false in
-    MetaCont (typ, fun v -> finally vthunk (varE k' -*- varE v))
-  | MetaCont (typ, cont) ->
-    MetaCont (typ, fun v -> finally vthunk (cont v))
-
-    
 
 (* Named labels for break, special labels for return, throw and cleanup *)
 type label = Return | Throw | Cleanup | Named of string
@@ -369,17 +356,19 @@ and c_exp' context exp k =
                note = Note.{ exp.note with typ = typ' } }))
     end)
   | TryE (exp1, cases, finally_opt) ->
-    let pre k =
+    let precont k scope =
       match finally_opt with
-      | Some (id2, typ2) -> precont k (var id2 typ2)
-      | None -> k in
-(*
-    let pre' = function
-      | Cont k -> Cont (pre k)
-      | Label -> assert false in
-    (* All control-flow out must pass through the potential `finally` thunk *)
-    let context = LabelEnv.map pre' context in
-*)
+      | Some (id2, typ2) ->
+        let vthunk = var id2 typ2 in
+        let typ0 = match typ_of_var k with
+          | T.(Func (Local, Returns, [], ts1, _)) -> T.seq ts1
+          | _ -> assert false in
+        let v = fresh_var "v" typ0 in
+        let e = finally vthunk (varE k -*- varE v) in
+        let k' = fresh_cont typ0 (typ e) in
+        blockE [funcD k' v e] (scope k')
+      | None ->
+        scope k in
     let finalise context scope =
       match finally_opt with
       | Some (id2, typ2) -> preconts context (var id2 typ2) scope
@@ -391,7 +380,8 @@ and c_exp' context exp k =
     (* TODO: do we need to reify f? *)
     let f = match LabelEnv.find Throw context with Cont f -> f | _ -> assert false in
     letcont f (fun f ->
-    letcont (pre k) (fun k ->
+    letcont k (fun k ->
+    precont k (fun k ->
     match eff exp1 with
     | T.Triv ->
       varE k -*- t_exp context exp1
@@ -425,7 +415,7 @@ and c_exp' context exp k =
           }
         ]
         (c_exp context' exp1 (ContVar k))
-    )))
+    ))))
   | LoopE exp1 ->
     c_loop context k exp1
   | LabelE (id, _typ, exp1) ->
