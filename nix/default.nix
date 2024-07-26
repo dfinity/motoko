@@ -108,9 +108,9 @@ let
           };
         })
 
-        # Rust 1.69
+        # Rust stable
         (self: super: let
-          rust-channel = self.moz_overlay.rustChannelOf { date = "2023-04-20"; channel = "stable"; };
+          rust-channel = self.moz_overlay.rustChannelOf { version = "1.78.0"; channel = "stable"; };
         in {
           rustPlatform_moz_stable = self.makeRustPlatform {
             rustc = rust-channel.rust;
