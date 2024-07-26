@@ -51,6 +51,8 @@ let precont k vthunk =
   | MetaCont (typ, cont) ->
     MetaCont (typ, fun v -> finally (cont v))
 
+    
+
 (* Named labels for break, special labels for return, throw and cleanup *)
 type label = Return | Throw | Cleanup | Named of string
 
@@ -69,9 +71,36 @@ let ( -@- ) k exp2 =
 
 module LabelEnv = Env.Make(struct type t = label let compare = compare end)
 
+
 module PatEnv = Env.Make(String)
 
 type label_sort = Cont of kont | Label
+
+let preconts context vthunk scope =
+  let finally e = blockE [expD (varE vthunk -*- unitE ())] e in
+  let (ds, ctxt) = LabelEnv.fold
+     (fun lab sort (ds, ctxt) ->
+       match sort with
+       | Label -> assert false
+       | Cont (ContVar k) ->
+         let typ0 = match typ_of_var k with
+           | T.(Func (Local, Returns, [], ts1, _)) -> T.seq ts1
+           | _ -> assert false in
+         let v = fresh_var "v" typ0 in
+         let e = finally (varE k -*- varE v) in
+         let k' = fresh_cont typ0 (typ e) in
+         (funcD k' v e :: ds,
+          LabelEnv.add lab (Cont (ContVar k')) ctxt)
+       | Cont (MetaCont (typ0, cont)) ->
+         let v = fresh_var "v" typ0 in
+         let e = finally (cont v) in
+         let k' = fresh_cont typ0 (typ e) in
+         (funcD k' v e :: ds,
+          LabelEnv.add lab (Cont (ContVar k')) ctxt))
+     context
+     ([], LabelEnv.empty)
+  in
+  blockE ds (scope context)
 
 let typ_cases cases = List.fold_left (fun t case -> T.lub t (typ case.it.exp)) T.Non cases
 
