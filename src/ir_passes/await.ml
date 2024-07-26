@@ -63,8 +63,8 @@ type label_sort = Cont of var | Label
 
 let precompose vthunk k =
     let typ0 = match typ_of_var k with
-     | T.(Func (Local, Returns, [], ts1, _)) -> T.seq ts1
-     | _ -> assert false in
+      | T.(Func (Local, Returns, [], ts1, _)) -> T.seq ts1
+      | _ -> assert false in
     let v = fresh_var "v" typ0 in
     let e = blockE [expD (varE vthunk -*- unitE ())] (varE k -*- varE v) in
     let k' = fresh_cont typ0 (typ e) in
