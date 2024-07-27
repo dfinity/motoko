@@ -392,7 +392,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
       try T.Env.find id env.vals
       with Not_found -> error env exp.at "unbound variable %s" id
     in
-    T.as_immut(* FIXME: not?*) typ <: t
+    typ <: t
   | LitE lit ->
     T.Prim (type_lit env lit exp.at) <: t
   | PrimE (p, es) ->

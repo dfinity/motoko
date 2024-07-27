@@ -76,7 +76,9 @@ let wildP =
 (* Primitives *)
 
 let varE (id, typ) =
-  { it = VarE id; at = no_region; note = Note.{ def with typ = T.as_immut typ } }
+  if T.is_mut typ
+  then { it = PrimE (MutReadPrim id, []); at = no_region; note = Note.{ def with typ = T.as_immut typ } }
+  else { it = VarE id; at = no_region; note = Note.{ def with typ } }
 
 let varLE (id, typ) =
   { it = VarLE id; at = no_region; note = typ }
