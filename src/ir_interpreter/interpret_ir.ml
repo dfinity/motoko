@@ -316,6 +316,11 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         check_call_conv_arg env exp v2 call_conv;
         last_region := exp.at; (* in case the following throws *)
         f (context env) v2 k
+      | MutReadPrim id, [] ->
+        (match Lib.Promise.value_opt (find id env.vals) with
+         | Some v -> k v
+         | None -> trap exp.at "accessing identifier before its definition"
+        )
       | UnPrim (ot, op), [v1] ->
         k (try Operator.unop op ot v1 with Invalid_argument s -> trap exp.at "%s" s)
       | BinPrim (ot, op), [v1; v2] ->

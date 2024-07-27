@@ -42,7 +42,7 @@ let phrase' f x =
 
 let typed_phrase' f x =
   let n' = typ_note x.note in
-  { x with it = f x.at n' x.it; note = n' }
+  { x with it = f x.at n' x.note.note_mut x.it; note = n' }
 
 
 let rec exps es = List.map exp es
@@ -53,7 +53,8 @@ and exp e =
     | S.AnnotE (e', t) -> exp e'
     | _ -> typed_phrase' exp' e
 
-and exp' at note = function
+and exp' at note mut' = function
+  | S.VarE i when mut' -> I.PrimE (I.MutReadPrim i.it, [])
   | S.VarE i -> I.VarE i.it
   | S.ActorUrlE e ->
     I.(PrimE (ActorOfIdBlob note.Note.typ, [url e at]))

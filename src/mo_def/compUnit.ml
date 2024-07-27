@@ -106,10 +106,10 @@ let decs_of_lib (cu : comp_unit) =
       pat,
       { it = ImportE (fp, ri);
         at;
-        note = { note_typ = note; note_eff = Type.Triv} },
+        note = { empty_typ_note with note_typ = note } },
       None);
       at;
-      note = { note_typ = note; note_eff = Type.Triv } }) imports
+      note = { empty_typ_note with note_typ = note } }) imports
   in
   import_decs,
   match cub.it with

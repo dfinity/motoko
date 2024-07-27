@@ -114,6 +114,7 @@ all call-by-value. Many passes can treat them uniformly, so they are unified
 using the PrimE node. *)
 and prim =
   | CallPrim of Type.typ list         (* function call *)
+  | MutReadPrim of id                 (* read mutable variable *)
   | UnPrim of Type.typ * unop         (* unary operator *)
   | BinPrim of Type.typ * binop       (* binary operator *)
   | RelPrim of Type.typ * relop       (* relational operator *)
@@ -258,6 +259,7 @@ let replace_obj_pat pfs pats =
 let map_prim t_typ t_id p =
   match p with
   | CallPrim ts -> CallPrim (List.map t_typ ts)
+  | MutReadPrim id -> MutReadPrim (t_id id)
   | UnPrim (ot, op) -> UnPrim (t_typ ot, op)
   | BinPrim (ot, op) -> BinPrim (t_typ ot, op)
   | RelPrim (ot, op) -> RelPrim (t_typ ot, op)
