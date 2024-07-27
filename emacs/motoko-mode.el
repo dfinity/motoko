@@ -47,6 +47,7 @@
                  "debug"
                  "debug_show"
                  "else"
+                 "finally"
                  "flexible"
                  "for"
                  "from_candid"

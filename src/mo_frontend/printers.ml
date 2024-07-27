@@ -26,6 +26,7 @@ let string_of_symbol = function
   | X (T T_TYPE) -> "type"
   | X (T T_TRY) -> "try"
   | X (T T_THROW) -> "throw"
+  | X (T T_FINALLY) -> "finally"
   | X (T T_TEXT) -> "<text>"
   | X (T T_SWITCH) -> "switch"
   | X (T T_SUBOP) -> unop "-"

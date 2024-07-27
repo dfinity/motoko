@@ -961,9 +961,12 @@ let rec is_explicit_exp e =
   | ObjBlockE (_, _, dfs) ->
     List.for_all (fun (df : dec_field) -> is_explicit_dec df.it.dec) dfs
   | ArrayE (_, es) -> List.exists is_explicit_exp es
-  | SwitchE (e1, cs) | TryE (e1, cs) ->
+  | SwitchE (e1, cs) ->
     is_explicit_exp e1 &&
     List.exists (fun (c : case) -> is_explicit_exp c.it.exp) cs
+  | TryE (e1, cs, _) ->
+    is_explicit_exp e1 &&
+    (cs = [] || List.exists (fun (c : case) -> is_explicit_exp c.it.exp) cs)
   | BlockE ds -> List.for_all is_explicit_dec ds
   | FuncE (_, _, _, p, t_opt, _, _) -> is_explicit_pat p && t_opt <> None
   | LoopE (_, e_opt) -> e_opt <> None
@@ -1532,12 +1535,14 @@ and infer_exp'' env exp : T.typ =
     if not env.pre then
       coverage_cases "switch" env cases t1 exp.at;
     t
-  | TryE (exp1, cases) ->
+  | TryE (exp1, cases, exp2_opt) ->
     let t1 = infer_exp env exp1 in
     let t2 = infer_cases env T.catch T.Non cases in
     if not env.pre then begin
       check_ErrorCap env "try" exp.at;
-      coverage_cases "try handler" env cases T.catch exp.at
+      if cases <> [] then
+        coverage_cases "try handler" env cases T.catch exp.at;
+      Option.iter (check_exp_strong { env with async = C.NullCap; rets = None; labs = T.Env.empty } T.unit) exp2_opt
     end;
     T.lub t1 t2
   | WhileE (exp1, exp2) ->
@@ -1834,11 +1839,14 @@ and check_exp' env0 t exp : T.typ =
     check_cases env t1 t cases;
     coverage_cases "switch" env cases t1 exp.at;
     t
-  | TryE (exp1, cases), _ ->
+  | TryE (exp1, cases, exp2_opt), _ ->
     check_ErrorCap env "try" exp.at;
     check_exp env t exp1;
     check_cases env T.catch t cases;
-    coverage_cases "try handler" env cases T.catch exp.at;
+    if cases <> []
+    then coverage_cases "try handler" env cases T.catch exp.at;
+    if not env.pre then
+      Option.iter (check_exp_strong { env with async = C.NullCap; rets = None; labs = T.Env.empty; } T.unit) exp2_opt;
     t
   (* TODO: allow shared with one scope par *)
   | FuncE (_, shared_pat,  [], pat, typ_opt, _sugar, exp), T.Func (s, c, [], ts1, ts2) ->

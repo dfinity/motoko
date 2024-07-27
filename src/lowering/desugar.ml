@@ -216,7 +216,14 @@ and exp' at note = function
   | S.OldE e -> (oldE (exp e)).it
   | S.IfE (e1, e2, e3) -> I.IfE (exp e1, exp e2, exp e3)
   | S.SwitchE (e1, cs) -> I.SwitchE (exp e1, cases cs)
-  | S.TryE (e1, cs) -> I.TryE (exp e1, cases cs)
+  | S.TryE (e1, cs, None) -> I.TryE (exp e1, cases cs, None)
+  | S.TryE (e1, cs, Some e2) ->
+    let thunk = [] -->* exp e2 |> named "$cleanup" in
+    assert T.(is_func thunk.note.Note.typ);
+    let th = fresh_var "thunk" thunk.note.Note.typ in
+    (blockE
+       [ letD th thunk ]
+       { e1 with it = I.TryE (exp e1, cases cs, Some (id_of_var th, typ_of_var th)); note }).it
   | S.WhileE (e1, e2) -> (whileE (exp e1) (exp e2)).it
   | S.LoopE (e1, None) -> I.LoopE (exp e1)
   | S.LoopE (e1, Some e2) -> (loopWhileE (exp e1) (exp e2)).it
@@ -592,19 +599,17 @@ and exp_field obj_typ ef =
     let id' = fresh_var id.it typ in
     let d = varD id' (exp e) in
     let f = { it = I.{ name = id.it; var = id_of_var id' }; at = no_region; note = typ } in
-    (Some d, f)
+    (d, f)
   | S.Const ->
     let typ = match T.lookup_val_field_opt id.it fts with
       | Some typ -> typ
       | None -> e.note.S.note_typ
     in
     assert (not (T.is_mut typ));
-    let e = exp e in
-    let id', d_opt = match e.it with
-    | I.VarE v -> var v typ, None
-    | _ -> let id' = fresh_var id.it typ in id', Some (letD id' e) in
+    let id' = fresh_var id.it typ in
+    let d = letD id' (exp e) in
     let f = { it = I.{ name = id.it; var = id_of_var id' }; at = no_region; note = typ } in
-    (d_opt, f)
+    (d, f)
 
 and obj obj_typ efs bases =
   let open List in
@@ -636,8 +641,7 @@ and obj obj_typ efs bases =
   let ds, fs = map (exp_field obj_typ) efs |> split in
   let ds', fs' = concat_map gap (T.as_obj obj_typ |> snd) |> split in
   let obj_e = newObjE T.Object (append fs fs') obj_typ in
-  let decs = append base_decs (append (filter_map (fun o -> o) ds) ds') in
-  (blockE decs obj_e).it
+  I.BlockE(append base_decs (append ds ds'), obj_e)
 
 and typ_binds tbs = List.map typ_bind tbs
 
@@ -779,11 +783,11 @@ and dec' at n = function
     } in
     I.LetD (varPat, fn)
 
-and cases cs = List.map case cs
+and cases cs = List.map (case (fun x -> x)) cs
 
-and case c = phrase case' c
+and case f c = phrase (case' f) c
 
-and case' c = S.{ I.pat = pat c.pat; I.exp = exp c.exp }
+and case' f c = S.{ I.pat = pat c.pat; I.exp = f (exp c.exp) }
 
 and pats ps = List.map pat ps
 

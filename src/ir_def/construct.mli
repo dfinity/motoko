@@ -21,8 +21,8 @@ val nextN : Type.lab
 
 type var
 
-val var : string -> typ -> var
-val id_of_var : var -> string
+val var : id -> typ -> var
+val id_of_var : var -> id
 val typ_of_var : var -> typ
 val arg_of_var : var -> arg
 val var_of_arg : arg -> var
@@ -56,8 +56,8 @@ val cps_asyncE : async_sort -> typ -> exp -> typ -> exp -> exp
 val cps_awaitE : async_sort -> typ -> exp -> exp -> exp
 val ic_replyE : typ list -> exp -> exp
 val ic_rejectE : exp -> exp
-val ic_callE : exp option -> exp -> exp -> exp -> exp -> exp
-val ic_call_rawE : exp -> exp -> exp -> exp -> exp -> exp
+val ic_callE : exp option -> exp -> exp -> exp -> exp -> exp -> exp
+val ic_call_rawE : exp -> exp -> exp -> exp -> exp -> exp -> exp
 val projE : exp -> int -> exp
 val optE : exp -> exp
 val tagE : id -> exp -> exp
@@ -129,9 +129,9 @@ val let_no_shadow : var -> exp -> dec list -> dec list
 
 val contT : typ -> typ -> typ
 val err_contT : typ -> typ
+val bail_contT : typ
+val clean_contT : typ
 val answerT : typ -> typ (* answer type of a continuation type *)
-
-val cpsT : typ -> typ -> typ
 
 (* Sequence expressions *)
 
@@ -142,6 +142,7 @@ val seqE : exp list -> exp
 val (-->) : var -> exp -> exp
 val (-->*) : var list -> exp -> exp (* n-ary local *)
 val forall : typ_bind list -> exp -> exp (* generalization *)
+val named : string -> exp -> exp (* renaming a function *)
 val (-*-) : exp -> exp -> exp (* application *)
 
 (* Objects *)

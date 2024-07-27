@@ -1,5 +1,31 @@
 # Motoko compiler changelog
 
+## 0.12.0 (2024-07-26)
+
+* motoko (`moc`)
+
+  * feat: `finally` clauses for `try` expressions (#4507).
+
+    A trailing `finally` clause to `try`/`catch` expressions facilitates structured
+    resource deallocation (e.g. acquired locks, etc.) and similar cleanups in the
+    presence of control-flow expressions (`return`, `break`, `continue`, `throw`).
+    Additionally, in presence of `finally` the `catch` clause becomes optional and
+    and any uncaught error from the `try` block will be propagated, after executing the `finally` block.
+
+    _Note_: `finally`-expressions that are in scope will be executed even if an execution
+    path _following_ an `await`-expression traps. This feature, formerly not available in Motoko,
+    allows programmers to implement cleanups even in the presence of traps. For trapping 
+    execution paths prior to any `await`, the replica-provided state roll-back mechanism 
+    ensures that no cleanup is required.
+
+    The relevant security best practices are accessible at
+    https://internetcomputer.org/docs/current/developer-docs/security/security-best-practices/inter-canister-calls#recommendation
+
+    BREAKING CHANGE (Minor): `finally` is now a reserved keyword,
+    programs using this identifier will break.
+
+  * bugfix: `mo-doc` will now generate correct entries for `public` variables (#4626).
+
 ## 0.11.3 (2024-07-16)
 
 * motoko (`moc`)
