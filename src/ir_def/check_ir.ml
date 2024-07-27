@@ -392,6 +392,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
       try T.Env.find id env.vals
       with Not_found -> error env exp.at "unbound variable %s" id
     in
+    assert (not (T.is_mut typ));
     typ <: t
   | LitE lit ->
     T.Prim (type_lit env lit exp.at) <: t
@@ -419,7 +420,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
         try T.Env.find id env.vals
         with Not_found -> error env exp.at "unbound variable %s" id
       in
-      (* FIXME assert (T.is_mut typ);*)
+      assert (T.is_mut typ);
       T.as_immut typ <: t
     | UnPrim (ot, op), [exp1] ->
       check (Operator.has_unop op ot) "unary operator is not defined for operand type";
