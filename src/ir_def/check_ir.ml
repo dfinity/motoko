@@ -388,7 +388,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
   (* check typing *)
   begin match exp.it with
   | VarE id ->
-    let { typ; loc_known; const } =
+    let { typ; _ } =
       try T.Env.find id env.vals
       with Not_found -> error env exp.at "unbound variable %s" id
     in
@@ -416,7 +416,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
              (T.string_of_typ_expand t1)
       end
     | MutReadPrim id, [] ->
-      let { typ; loc_known; const } =
+      let { typ; _ } =
         try T.Env.find id env.vals
         with Not_found -> error env exp.at "unbound variable %s" id
       in
