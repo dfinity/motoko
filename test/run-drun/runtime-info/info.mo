@@ -2,6 +2,10 @@ import Prim "mo:prim";
 
 module {
     public type RuntimeInformation = {
+        compilerVersion : Text;
+        rtsVersion : Text;
+        garbageCollector : Text;
+        sanityChecks : Bool;
         memorySize : Nat;
         heapSize : Nat;
         totalAllocation : Nat;

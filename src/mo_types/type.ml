@@ -1363,12 +1363,16 @@ let motoko_runtime_information_type =
     (* Fields must be sorted by label *)
     {lab = "callbackTableCount"; typ = nat; src = empty_src};
     {lab = "callbackTableSize"; typ = nat; src = empty_src};
+    {lab = "compilerVersion"; typ = text; src = empty_src};
+    {lab = "garbageCollector"; typ = text; src = empty_src};
     {lab = "heapSize"; typ = nat; src = empty_src};
     {lab = "logicalStableMemorySize"; typ = nat; src = empty_src};
     {lab = "maxLiveSize"; typ = nat; src = empty_src};
     {lab = "maxStackSize"; typ = nat; src = empty_src};
     {lab = "memorySize"; typ = nat; src = empty_src};
     {lab = "reclaimed"; typ = nat; src = empty_src};
+    {lab = "rtsVersion"; typ = text; src = empty_src};
+    {lab = "sanityChecks"; typ = bool; src = empty_src};
     {lab = "stableMemorySize"; typ = nat; src = empty_src};
     {lab = "totalAllocation"; typ = nat; src = empty_src};
   ])

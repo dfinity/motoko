@@ -472,24 +472,36 @@ and export_runtime_information self_id =
   let scope_con2 = Cons.fresh "T2" (Abs ([], Any)) in
   let bind1  = typ_arg scope_con1 Scope scope_bound in
   let bind2 = typ_arg scope_con2 Scope scope_bound in
-  let statistics = [
-    ("memorySize", "rts_memory_size");
-    ("heapSize", "rts_heap_size");
-    ("totalAllocation", "rts_total_allocation");
-    ("reclaimed", "rts_reclaimed");
-    ("maxLiveSize", "rts_max_live_size");
-    ("stableMemorySize", "rts_stable_memory_size");
-    ("logicalStableMemorySize", "rts_logical_stable_memory_size");
-    ("maxStackSize", "rts_max_stack_size");
-    ("callbackTableCount", "rts_callback_table_count");
-    ("callbackTableSize", "rts_callback_table_size")
+  let gc_strategy = 
+    let open Mo_config in
+    let strategy = match !Flags.gc_strategy with
+    | Flags.MarkCompact -> "compacting"
+    | Flags.Copying -> "copying"
+    | Flags.Generational -> "generational"
+    | Flags.Incremental -> "incremental" in
+    if !Flags.force_gc then (Printf.sprintf "%s force" strategy) else strategy
+  in
+  let prim_call function_name = primE (I.OtherPrim function_name) [] in
+  let information = [
+    ("compilerVersion", textE (Lib.Option.get Source_id.release Source_id.id), T.text);
+    ("garbageCollector", textE gc_strategy, T.text);
+    ("rtsVersion", prim_call "rts_version", T.text);
+    ("sanityChecks", boolE !Mo_config.Flags.sanity, T.bool);
+    ("memorySize", prim_call "rts_memory_size", T.nat);
+    ("heapSize", prim_call "rts_heap_size", T.nat);
+    ("totalAllocation", prim_call "rts_total_allocation", T.nat);
+    ("reclaimed", prim_call "rts_reclaimed", T.nat);
+    ("maxLiveSize", prim_call "rts_max_live_size", T.nat);
+    ("stableMemorySize", prim_call "rts_stable_memory_size", T.nat);
+    ("logicalStableMemorySize", prim_call "rts_logical_stable_memory_size", T.nat);
+    ("maxStackSize", prim_call "rts_max_stack_size", T.nat);
+    ("callbackTableCount", prim_call "rts_callback_table_count", T.nat);
+    ("callbackTableSize", prim_call "rts_callback_table_size", T.nat)
   ] in
-  let field_names = List.map (fun (name, _) -> name) statistics in
-  let fields = List.map (fun name -> fresh_var name T.nat) field_names in
+  let fields = List.map (fun (name, _, typ) -> fresh_var name typ) information in
   (* Use an object return type to allow adding more data in future. *)
   let ret_typ = motoko_runtime_information_type in
   let caller = fresh_var "caller" caller in
-  let rts_functions = List.map(fun (_, name) -> name) statistics in
   ([ letD (var v typ) (
        funcE v (Shared Query) Promises [bind1] [] [ret_typ] (
            (asyncE T.Fut bind2
@@ -502,13 +514,13 @@ and export_runtime_information self_id =
                     (primE (Ir.OtherPrim "trap")
                       [textE "Unauthorized call of __motoko_runtime_information"]))
                   ] @
-                  (List.map2 (fun field rts_function -> 
-                    letD field (primE (I.OtherPrim rts_function) [])) 
-                    fields rts_functions))
-                (newObjE T.Object 
-                  (List.map2 (fun name field -> 
-                      { it = Ir.{name; var = id_of_var field}; at = no_region; note = T.nat }) 
-                    field_names fields
+                  (List.map2 (fun field (_, load_info, _) -> 
+                    letD field load_info
+                  ) fields information))
+                (newObjE T.Object
+                  (List.map2 (fun field (name, _, typ) -> 
+                      { it = Ir.{name; var = id_of_var field}; at = no_region; note = typ }) 
+                    fields information
                   ) ret_typ))
               (Con (scope_con1, []))))
   )],

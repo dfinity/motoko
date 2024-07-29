@@ -115,6 +115,7 @@ let primE prim es =
     | OtherPrim "blob_size"
     | OtherPrim "text_len" -> T.nat
     | OtherPrim "is_controller" -> T.bool
+    | OtherPrim "rts_version" -> T.text
     | OtherPrim "rts_memory_size" -> T.nat
     | OtherPrim "rts_heap_size" -> T.nat
     | OtherPrim "rts_total_allocation" -> T.nat
