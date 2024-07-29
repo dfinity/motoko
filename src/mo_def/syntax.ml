@@ -262,10 +262,9 @@ type lib = comp_unit
 
 let (@@) = Source.(@@)
 let (@~) = Source.(@~)
-let (@?) it at = Source.{it; at; note = empty_typ_note}
-let (@!) it at = Source.{it; at; note = Type.Pre}
-let (@=) it at = Source.{it; at; note = None}
-
+let (@?) it at = Source.annotate empty_typ_note it at
+let (@!) it at = Source.annotate Type.Pre it at
+let (@=) it at = Source.annotate None it at
 
 (* NB: This function is currently unused *)
 let string_of_lit = function
