@@ -1137,8 +1137,8 @@ and infer_exp' f env exp : T.typ =
   if not env.pre then begin
     let t'' = T.normalize t' in
     assert (t'' <> T.Pre);
-    let e = A.infer_effect_exp exp in
-    exp.note <- {note_typ = if env.viper_mode then t' else t''; note_eff = e; note_mut = T.is_mut t}
+    let note_eff = A.infer_effect_exp exp in
+    exp.note <- {note_typ = if env.viper_mode then t' else t''; note_eff}
   end;
   t'
 

@@ -6,9 +6,9 @@ open Operator
 
 (* Notes *)
 
-type typ_note = {note_typ : Type.typ; note_eff : Type.eff; note_mut : bool}
+type typ_note = {note_typ : Type.typ; note_eff : Type.eff}
 
-let empty_typ_note = {note_typ = Type.Pre; note_eff = Type.Triv; note_mut = false}
+let empty_typ_note = {note_typ = Type.Pre; note_eff = Type.Triv}
 
 (* Resolved imports (filled in separately after parsing) *)
 
