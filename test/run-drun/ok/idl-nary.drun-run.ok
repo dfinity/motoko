@@ -8,6 +8,8 @@ Ok: Reply: 0x4449444c016c0400710171027103710100034f6e650354776f05546872656504466
 Ok: Reply: 0x4449444c016c0400710171027103710100034f6e650354776f05546872656504466f7572
 Ok: Reply: 0x4449444c016c0400710171027103710100034f6e650354776f05546872656504466f7572
 Ok: Reply: 0x4449444c016c0400710171027103710100034f6e650354776f05546872656504466f7572
-Err: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: IDL error: too few arguments ttt
-Err: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: IDL error: left-over bytes ttt
+Err: IC0503: Error from Canister rwlgt-iiaaa-aaaaa-aaaaa-cai: Canister called `ic0.trap` with message: IDL error: too few arguments ttt.
+Consider gracefully handling failures from this canister or altering the canister to handle exceptions. See documentation: http://internetcomputer.org/docs/current/references/execution-errors#trapped-explicitly
+Err: IC0503: Error from Canister rwlgt-iiaaa-aaaaa-aaaaa-cai: Canister called `ic0.trap` with message: IDL error: left-over bytes ttt.
+Consider gracefully handling failures from this canister or altering the canister to handle exceptions. See documentation: http://internetcomputer.org/docs/current/references/execution-errors#trapped-explicitly
 Ok: Reply: 0x4449444c000471717171034f6e650354776f05546872656504466f7572

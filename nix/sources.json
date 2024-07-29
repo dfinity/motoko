@@ -21,15 +21,15 @@
         "version": "3.2.25"
     },
     "ic": {
-        "branch": "pull/143/head",
+        "branch": "luc/latest-ic-wasm64-test",
         "description": "Internet Computer blockchain source: the client/replica software run by nodes",
         "homepage": "",
-        "owner": "dfinity",
+        "owner": "luc-blaeser",
         "repo": "ic",
-        "rev": "31f02c1b08aef1c6ee4c1b6bb9d25c21c5a4ff41",
-        "sha256": "04k278900kv082axrgv6vga0n8sw6c3lcc9298ih9gjyx8hanfb1",
+        "rev": "7921f5f3dc0d9fb774e3222f8ff6b1c00a086f1a",
+        "sha256": "1ykawbpaqnf1y508vh81m30p813ykmnbffxc3p0hw0p0k1ynq6zz",
         "type": "tarball",
-        "url": "https://github.com/dfinity/ic/archive/31f02c1b08aef1c6ee4c1b6bb9d25c21c5a4ff41.tar.gz",
+        "url": "https://github.com/luc-blaeser/ic/archive/7921f5f3dc0d9fb774e3222f8ff6b1c00a086f1a.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
     "ic-hs": {
