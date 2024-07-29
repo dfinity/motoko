@@ -12,6 +12,8 @@ val string_of_region : region -> string
 val span : region -> region -> region
 val between : region -> region -> region
 
+val annotate : 'b -> 'a -> region -> ('a, 'b) annotated_phrase
 val (@@) : 'a -> region -> 'a phrase
+val (@~) : 'a -> region -> ('a, bool) annotated_phrase
 
 exception ParseError of region * string

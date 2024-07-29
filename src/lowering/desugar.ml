@@ -54,8 +54,8 @@ and exp e =
     | _ -> typed_phrase' exp' e
 
 and exp' at note mut' = function
-  | S.VarE i when mut' -> I.PrimE (I.MutReadPrim i.it, [])
-  | S.VarE i -> I.VarE i.it
+  | S.VarE i when mut' -> assert (mut' = i.note); I.PrimE (I.MutReadPrim i.it, [])
+  | S.VarE i -> assert (mut' = i.note); I.VarE i.it
   | S.ActorUrlE e ->
     I.(PrimE (ActorOfIdBlob note.Note.typ, [url e at]))
   | S.LitE l -> I.LitE (lit !l)

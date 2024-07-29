@@ -1158,7 +1158,7 @@ and infer_exp'' env exp : T.typ =
       if !Flags.compiled then
         error env id.at "M0056" "variable %s is in scope but not available in compiled code" id.it
       else t
-    | Some (t, _, _, Available) -> t
+    | Some (t, _, _, Available) -> id.note <- T.is_mut t; t
     | None ->
       error env id.at "M0057" "unbound variable %s" id.it
     )

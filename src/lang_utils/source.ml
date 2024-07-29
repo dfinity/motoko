@@ -3,7 +3,9 @@ type region = {left : pos; right : pos}
 type ('a, 'b) annotated_phrase = {at : region; it : 'a; mutable note: 'b}
 type 'a phrase = ('a, unit) annotated_phrase
 
-let (@@) it at = {it; at; note = ()}
+let annotate note it at = {it; at; note}
+let (@@) it at = annotate () it at
+let (@~) it at = annotate false it at
 
 (* Positions and regions *)
 
@@ -27,4 +29,3 @@ let string_of_region r =
 (* generic parse error *)
 
 exception ParseError of region * string
-

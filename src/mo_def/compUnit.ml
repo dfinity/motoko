@@ -91,7 +91,7 @@ let obj_decs obj_sort at note id_opt fields =
         None);
       at; note
     };
-    { it = ExpD { it = VarE id; at; note };
+    { it = ExpD { it = VarE (id.it @~ id.at); at; note };
       at; note }
     ]
 
