@@ -9,7 +9,9 @@ jobs:
       matrix:
         labels: [ dind-small, macos-12 ]
       fail-fast: false
-    runs-on: 
+    container:
+        image: ghcr.io/dfinity/ic-build@sha256:e16e14fd3b3cb14c0374a766abc0546461c6ee630d6eab67af92b5f107d0e093
+    runs-on:
       labels: ${{ matrix.labels }}
     steps:
     - uses: actions/checkout@v4
