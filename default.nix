@@ -29,11 +29,11 @@ let haskellPackages = nixpkgs.haskellPackages.override {
     }; in
 let
   rtsBuildInputs = with nixpkgs; [
-    # pulls in clang (wrapped) and clang-13 (unwrapped)
-    llvmPackages_13.clang
+    # pulls in clang (wrapped) and clang-18 (unwrapped)
+    llvmPackages_18.clang
     # pulls in wasm-ld
-    llvmPackages_13.lld
-    llvmPackages_13.bintools
+    llvmPackages_18.lld
+    llvmPackages_18.bintools
     rustc-nightly
     cargo-nightly
     wasmtime
@@ -47,17 +47,17 @@ let
   llvmEnv = ''
     # When compiling to wasm, we want to have more control over the flags,
     # so we do not use the nix-provided wrapper in clang
-    export WASM_CLANG="clang-13"
+    export WASM_CLANG="clang-18"
     export WASM_LD=wasm-ld
     # because we use the unwrapped clang, we have to pass in some flags/paths
     # that otherwise the wrapped clang would take care for us
-    export WASM_CLANG_LIB="${nixpkgs.llvmPackages_13.clang-unwrapped.lib}"
+    export WASM_CLANG_LIB="${nixpkgs.llvmPackages_18.clang-unwrapped.lib}"
 
     # When compiling natively, we want to use `clang` (which is a nixpkgs
     # provided wrapper that sets various include paths etc).
     # But for some reason it does not handle building for Wasm well, so
-    # there we use plain clang-13. There is no stdlib there anyways.
-    export CLANG="${nixpkgs.clang_13}/bin/clang"
+    # there we use plain clang-18. There is no stdlib there anyways.
+    export CLANG="${nixpkgs.clang_18}/bin/clang"
   '';
 in
 

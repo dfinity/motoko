@@ -1,8 +1,8 @@
 SHELL:=bash -O globstar
 
-CLANG ?= clang-13
-WASM_CLANG ?= clang-13
-WASM_LD ?= wasm-ld-13
+CLANG ?= clang-18
+WASM_CLANG ?= clang-18
+WASM_LD ?= wasm-ld-18
 
 #
 # We manually list all the .c files of libtommath that we care about.
@@ -74,11 +74,15 @@ TOMMATH_FLAGS_64 = $(TOMMATH_FLAGS_COMMON) \
 
 MUSL_FLAGS_32 = \
   -isystem $(MUSLSRC)/arch/wasm32 \
+  -isystem $(MUSLSRC)/arch/wasm32/bits/alltypes.h.in \
   -isystem $(MUSLSRC)/src/include \
   -isystem $(MUSLSRC)/src/internal \
+  -isystem $(MUSLSRC)/include \
   -isystem $(MUSL_WASI_SYSROOT)/include \
   -I $(MUSLSRC)/../headers/private \
   -I $(MUSLSRC)/src/include \
+  -I $(MUSLSRC)/include \
+  -I musl \
   -D_ERRNO_H -DEOVERFLOW=75 -DEINVAL=22 \
   -Derrno='(*({ static int bla = 0; &bla; }))' \
   -DNL_ARGMAX=9 \
