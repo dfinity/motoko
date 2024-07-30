@@ -39,3 +39,5 @@ sidebar_position: 5
 - [`icrc-nft-mo`](https://mops.one/icrc-nft-mo): An ICRC NFT library.
 
 - [`origyn-nft`](https://mops.one/origyn-nft): The reference implementation for the ORIGYN NFT.
+
+<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />
