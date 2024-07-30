@@ -366,7 +366,7 @@ and c_exp' context exp k =
       | None -> scope context
     in
     finalise context (fun context ->
-    (* assert that a context (top-level or async) has set up a `Cleanup` cont *)
+    (* assert that a context (top-level or async) has set up a `Cleanup` and `Throw` cont *)
     assert (LabelEnv.find_opt Cleanup context <> None);
     let f = match LabelEnv.find Throw context with Cont f -> f | _ -> assert false in
     letcont k (fun k ->
