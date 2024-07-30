@@ -258,6 +258,7 @@ let remove_non_ic_exports (em : extended_module) : extended_module =
    exported in the final module *)
   let is_ic_export (exp : export) =
     Lib.String.chop_prefix "canister_" (Lib.Utf8.encode exp.it.name) <> None ||
+    (!Mo_config.Flags.import_component && Lib.String.chop_prefix "cabi_" (Lib.Utf8.encode exp.it.name) <> None) || (* Wasm Component Model *)
     "_start" = Lib.Utf8.encode exp.it.name
   in
 

@@ -162,7 +162,10 @@ let check_deprecation env at desc id depr =
        | _ -> fun _ _ _ _ -> ())
        env at code
        "this code is (or uses) the deprecated library `ExperimentalStableMemory`.\nPlease use the `Region` library instead: https://internetcomputer.org/docs/current/motoko/main/stable-memory/stable-regions/#the-region-library or compile with flag `--experimental-stable-memory 1` to suppress this message."
-    end
+      end
+  | Some ("M0200" as code) ->
+    if not !Flags.import_component then
+      error env at code "component import is unavailable (pass `-import-component` flag)"
   | Some msg ->
     warn env at "M0154" "%s %s is deprecated:\n%s" desc id msg
   | None -> ()

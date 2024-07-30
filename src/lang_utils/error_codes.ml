@@ -203,4 +203,5 @@ let error_codes : (string * string option) list =
     "M0197", Some([%blob "lang_utils/error_codes/M0197.md"]); (* `system` capability required *)
     "M0198", Some([%blob "lang_utils/error_codes/M0198.md"]); (* Unused field pattern warning *)
     "M0199", Some([%blob "lang_utils/error_codes/M0199.md"]); (* Deprecate experimental stable memory *)
+    "M0200", Some([%blob "lang_utils/error_codes/M0200.md"]); (* Component import is unavailable *)
   ]
