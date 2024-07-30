@@ -56,9 +56,10 @@ type env =
     used_identifiers : S.t ref;
     unused_warnings : unused_warnings ref;
     reported_stable_memory : bool ref;
+    viper_mode : bool;
   }
 
-let env_of_scope msgs scope =
+let env_of_scope ?(viper_mode=false) msgs scope =
   { vals = available scope.Scope.val_env;
     libs = scope.Scope.lib_env;
     typs = scope.Scope.typ_env;
@@ -78,6 +79,7 @@ let env_of_scope msgs scope =
     used_identifiers = ref S.empty;
     unused_warnings = ref [];
     reported_stable_memory = ref false;
+    viper_mode;
   }
 
 let use_identifier env id =
@@ -959,9 +961,12 @@ let rec is_explicit_exp e =
   | ObjBlockE (_, _, dfs) ->
     List.for_all (fun (df : dec_field) -> is_explicit_dec df.it.dec) dfs
   | ArrayE (_, es) -> List.exists is_explicit_exp es
-  | SwitchE (e1, cs) | TryE (e1, cs) ->
+  | SwitchE (e1, cs) ->
     is_explicit_exp e1 &&
     List.exists (fun (c : case) -> is_explicit_exp c.it.exp) cs
+  | TryE (e1, cs, _) ->
+    is_explicit_exp e1 &&
+    (cs = [] || List.exists (fun (c : case) -> is_explicit_exp c.it.exp) cs)
   | BlockE ds -> List.for_all is_explicit_dec ds
   | FuncE (_, _, _, p, t_opt, _, _) -> is_explicit_pat p && t_opt <> None
   | LoopE (_, e_opt) -> e_opt <> None
@@ -1132,7 +1137,7 @@ and infer_exp' f env exp : T.typ =
   if not env.pre then begin
     assert (T.normalize t' <> T.Pre);
     let e = A.infer_effect_exp exp in
-    exp.note <- {note_typ = T.normalize t'; note_eff = e}
+    exp.note <- {note_typ = if env.viper_mode then t' else T.normalize t'; note_eff = e}
   end;
   t'
 
@@ -1529,12 +1534,14 @@ and infer_exp'' env exp : T.typ =
     if not env.pre then
       coverage_cases "switch" env cases t1 exp.at;
     t
-  | TryE (exp1, cases) ->
+  | TryE (exp1, cases, exp2_opt) ->
     let t1 = infer_exp env exp1 in
     let t2 = infer_cases env T.catch T.Non cases in
     if not env.pre then begin
       check_ErrorCap env "try" exp.at;
-      coverage_cases "try handler" env cases T.catch exp.at
+      if cases <> [] then
+        coverage_cases "try handler" env cases T.catch exp.at;
+      Option.iter (check_exp_strong { env with async = C.NullCap; rets = None; labs = T.Env.empty } T.unit) exp2_opt
     end;
     T.lub t1 t2
   | WhileE (exp1, exp2) ->
@@ -1831,11 +1838,14 @@ and check_exp' env0 t exp : T.typ =
     check_cases env t1 t cases;
     coverage_cases "switch" env cases t1 exp.at;
     t
-  | TryE (exp1, cases), _ ->
+  | TryE (exp1, cases, exp2_opt), _ ->
     check_ErrorCap env "try" exp.at;
     check_exp env t exp1;
     check_cases env T.catch t cases;
-    coverage_cases "try handler" env cases T.catch exp.at;
+    if cases <> []
+    then coverage_cases "try handler" env cases T.catch exp.at;
+    if not env.pre then
+      Option.iter (check_exp_strong { env with async = C.NullCap; rets = None; labs = T.Env.empty; } T.unit) exp2_opt;
     t
   (* TODO: allow shared with one scope par *)
   | FuncE (_, shared_pat,  [], pat, typ_opt, _sugar, exp), T.Func (s, c, [], ts1, ts2) ->
@@ -2561,7 +2571,7 @@ and infer_dec env dec : T.typ =
   let t =
   match dec.it with
   | ExpD exp -> infer_exp env exp
-  | LetD (pat, exp, None) -> 
+  | LetD (pat, exp, None) ->
     (* For developer convenience, ignore top-level actor and module identifiers in unused detection. *)
     (if env.in_prog && (CompUnit.is_actor_def exp || CompUnit.is_module_def exp) then
       match pat.it with
@@ -2940,12 +2950,12 @@ and infer_dec_valdecs env dec : Scope.t =
 
 (* Programs *)
 
-let infer_prog scope pkg_opt async_cap prog : (T.typ * Scope.t) Diag.result =
+let infer_prog ?(viper_mode=false) scope pkg_opt async_cap prog : (T.typ * Scope.t) Diag.result =
   Diag.with_message_store
     (fun msgs ->
       recover_opt
         (fun prog ->
-          let env0 = env_of_scope msgs scope in
+          let env0 = env_of_scope ~viper_mode msgs scope in
           let env = {
              env0 with async = async_cap;
           } in
@@ -2963,12 +2973,12 @@ let is_actor_dec d =
     obj_sort.it = T.Actor
   | _ -> false
 
-let check_actors scope progs : unit Diag.result =
+let check_actors ?(viper_mode=false) scope progs : unit Diag.result =
   Diag.with_message_store
     (fun msgs ->
       recover_opt (fun progs ->
         let prog = (CompUnit.combine_progs progs).it in
-        let env = env_of_scope msgs scope in
+        let env = env_of_scope ~viper_mode msgs scope in
         let rec go ds = function
           | [] -> ()
           | (d::ds') when is_actor_dec d ->

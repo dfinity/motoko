@@ -193,15 +193,14 @@ and exp' =
   | AnnotE of exp * typ                        (* type annotation *)
   | ImportE of (string * resolved_import ref)  (* import statement *)
   | ThrowE of exp                              (* throw exception *)
-  | TryE of exp * case list                    (* catch exception *)
+  | TryE of exp * case list * exp option       (* catch exception / finally *)
   | IgnoreE of exp                             (* ignore *)
 (*
-  | FinalE of exp * exp                        (* finally *)
   | AtomE of string                            (* atom *)
 *)
 
 and assert_kind =
-  | Runtime | Static | Invariant | Precondition | Postcondition | Concurrency of string | Loop_entry | Loop_continue | Loop_exit
+  | Runtime | Static | Invariant | Precondition | Postcondition | Concurrency of string | Loop_entry | Loop_continue | Loop_exit | Loop_invariant
 
 and dec_field = dec_field' Source.phrase
 and dec_field' = {dec : dec; vis : vis; stab: stab option}

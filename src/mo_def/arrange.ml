@@ -116,6 +116,7 @@ module Make (Cfg : Config) = struct
     | AssertE (Loop_entry, e)    -> "Loop_entry" $$ [exp e]
     | AssertE (Loop_continue, e) -> "Loop_continue" $$ [exp e]
     | AssertE (Loop_exit, e)     -> "Loop_exit" $$ [exp e]
+    | AssertE (Loop_invariant, e)-> "Loop_invariant" $$ [exp e]
     | AssertE (Concurrency s, e) -> "Concurrency"^s $$ [exp e]
     | AnnotE (e, t)       -> "AnnotE"  $$ [exp e; typ t]
     | OptE e              -> "OptE"    $$ [exp e]
@@ -125,7 +126,8 @@ module Make (Cfg : Config) = struct
     | PrimE p             -> "PrimE"   $$ [Atom p]
     | ImportE (f, _fp)    -> "ImportE" $$ [Atom f]
     | ThrowE e            -> "ThrowE"  $$ [exp e]
-    | TryE (e, cs)        -> "TryE"    $$ [exp e] @ List.map catch cs
+    | TryE (e, cs, None)  -> "TryE"    $$ [exp e] @ List.map catch cs
+    | TryE (e, cs, Some f)-> "TryE"    $$ [exp e] @ List.map catch cs @ Atom ";" :: [exp f]
     | IgnoreE e           -> "IgnoreE" $$ [exp e]))
 
   and exps es = List.map exp es

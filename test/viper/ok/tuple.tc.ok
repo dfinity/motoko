@@ -1,0 +1,6 @@
+tuple.mo:29.18-29.31: warning [M0194], unused identifier getLargeTuple (delete or rename to wildcard `_` or `_getLargeTuple`)
+tuple.mo:46.18-46.27: warning [M0194], unused identifier passTuple (delete or rename to wildcard `_` or `_passTuple`)
+tuple.mo:49.13-49.14: warning [M0194], unused identifier r (delete or rename to wildcard `_` or `_r`)
+tuple.mo:53.13-53.15: warning [M0194], unused identifier r2 (delete or rename to wildcard `_` or `_r2`)
+tuple.mo:56.18-56.27: warning [M0194], unused identifier callTuple (delete or rename to wildcard `_` or `_callTuple`)
+tuple.mo:64.13-64.14: warning [M0194], unused identifier x (delete or rename to wildcard `_` or `_x`)
