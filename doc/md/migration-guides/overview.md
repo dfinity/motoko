@@ -9,3 +9,5 @@ New versions of Motoko may introduce breaking changes that are not backwards com
 ## Migration guides
 
 - [0.11.0 Migration guide](0.11.0-migration-guide.md)
+
+<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />
