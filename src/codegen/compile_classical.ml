@@ -12876,7 +12876,7 @@ and conclude_module env set_serialization_globals start_fi_o =
   let emodule =
     let open Wasm_exts.CustomModule in
     { module_;
-      dylink = None;
+      dylink0 = [];
       name = { empty_name_section with function_names =
                  List.mapi (fun i (f,n,_) -> Int32.(add ni' (of_int i), n)) funcs;
                locals_names =

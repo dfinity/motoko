@@ -23,10 +23,9 @@ TOMMATHFILES = \
 
 MUSLFILES_32 = \
   pow pow_data sin cos tan asin acos atan atan2 exp exp_data log log_data fmod \
-  floor scalbn frexp strlen strnlen memcpy memset memchr memcmp snprintf vsnprintf vfprintf \
+  floor scalbn frexp strlen strnlen memcpy memset memchr memcmp snprintf vsnprintf \
   __math_oflow __math_uflow __math_xflow __math_divzero __math_invalid \
-  __rem_pio2 __rem_pio2_large __sin __cos __tan \
-  stubs
+  __rem_pio2 __rem_pio2_large __sin __cos __tan
 
 TOMMATHSRC ?= $(CURDIR)/../../libtommath
 MUSLSRC ?= $(CURDIR)/../../wasi-libc/libc-top-half/musl
