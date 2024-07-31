@@ -14,6 +14,10 @@
 
     ```
     __motoko_runtime_information : () -> {
+        compilerVersion : Text;
+        rtsVersion : Text;
+        garbageCollector : Text;
+        sanityChecks : Nat;
         memorySize : Nat;
         heapSize : Nat;
         totalAllocation : Nat;
