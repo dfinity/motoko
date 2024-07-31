@@ -323,3 +323,5 @@ This syntax provides a convenient way to create modular and reusable code in Mot
 extend existing objects with new functionality.
 
 For more details, see the [language manual](../reference/language-manual#object-combinationextension).
+
+<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />

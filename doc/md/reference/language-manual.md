@@ -2705,3 +2705,6 @@ In general, this means that an expression of a more specific type may appear whe
 ## References
 
 -   **IEEE Standard for Floating-Point Arithmetic**, in IEEE Std 754-2019 (Revision of IEEE 754-2008), vol., no., pp.1-84, 22 July 2019, doi: 10.1109/IEEESTD.2019.8766229.
+
+
+<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />

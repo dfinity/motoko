@@ -205,3 +205,5 @@ assert n % 2 == 0; // traps when n not even
 ```
 
 Because an assertion may succeed, and thus proceed with execution, it may only be used in context where a value of type `()` is expected.
+
+<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />

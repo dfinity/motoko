@@ -131,3 +131,5 @@ Each use of `!` within the block is equivalent to a switch statement on an optio
 This short-circuiting behavior simplifies the handling of multiple optional values in a more concise and readable manner.
 
 For an example, see [option blocks and null breaks](control-flow#option-blocks-and-null-breaks).
+
+<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />
