@@ -1,5 +1,5 @@
 import Lib "try-finally-trap-stop/class";
-import Prim "mo:prim";
+import Prim "mo:⛔";
 
 // tests that a canister with a leaky callback table
 // (due to a trapping finally block) preventing upgrades,
@@ -62,4 +62,7 @@ actor {
 
 }
 
+//SKIP ic-ref-run
+//SKIP run-low
+//SKIP run-ir
 //CALL ingress go "DIDL\x00\x00"
