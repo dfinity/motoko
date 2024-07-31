@@ -7,8 +7,8 @@ import Prim "mo:⛔";
 actor {
 
   let ic00 = actor "aaaaa-aa" : actor {
-    stop_canister : { canister_id : Principal} -> async ();
-    start_canister : { canister_id : Principal} -> async ();
+    stop_canister : { canister_id : Principal } -> async ();
+    start_canister : { canister_id : Principal } -> async ();
   };
 
   public func go() : async () {
