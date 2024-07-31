@@ -2561,6 +2561,7 @@ The code within a `finally` block should terminate promptly and not trap.
 A trapping finally block will fail to free its callback table slot which
 can prevent a future upgrade.
 In this situation, the canister should be explicitly stopped before re-attempting the upgrade.
+In addition, care should be taken to release any resources that may have remained acquired due to the trap.
 The canister may be re-started after the upgrade.
 
 :::
