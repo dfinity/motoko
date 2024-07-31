@@ -1,4 +1,4 @@
-import { debugPrint; error; call_raw; principalOfActor; rts_callback_table_count } =  "mo:⛔";
+import { debugPrint; rts_callback_table_count } =  "mo:⛔";
 
 actor A {
 
@@ -15,8 +15,7 @@ actor A {
 
   public func show() : async () {
     debugPrint(debug_show
-      { rts_callback_table_count = rts_callback_table_count()
-    });
+      { rts_callback_table_count = rts_callback_table_count() });
   };
 
 

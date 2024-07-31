@@ -2,6 +2,7 @@ ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a000000000000000001
 ingress Completed: Reply: 0x4449444c0000
 debug.print: {rts_callback_table_count = 0}
 debug.print: trap in finally!
+debug.print: trap in finally!
 debug.print: {rts_callback_table_count = 1}
 debug.print: canister running
 debug.print: Canister rrkah-fqaaa-aaaaa-aaaaq-cai trapped explicitly: canister_pre_upgrade attempted with outstanding message callbacks (try stopping the canister before upgrade)

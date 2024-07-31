@@ -6,7 +6,6 @@ actor class C() {
   public func leak() : async () {
     try {
       await async ();
-      assert false
     }
     finally {
       debugPrint("trap in finally!");
