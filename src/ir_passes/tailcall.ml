@@ -92,7 +92,7 @@ and assignEs vars exp : dec list =
     List.mapi (fun i v -> expD (assignE v (projE (varE v) i))) vars
 
 and exp' env e  : exp' = match e.it with
-  | (VarE (Const, _) | LitE _) as it -> it
+  | (VarE (_, _) | LitE _) as it -> it
   | AssignE (e1, e2)    -> AssignE (lexp env e1, exp env e2)
   | PrimE (CallPrim insts, [e1; e2])  ->
     begin match e1.it, env with

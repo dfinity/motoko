@@ -252,7 +252,7 @@ let transform prog =
     let exp' = exp.it in
     match exp' with
     | LitE _
-    | VarE (Const, _) -> exp'
+    | VarE (_, _) -> exp'
     | AssignE (exp1, exp2) ->
       AssignE (t_lexp exp1, t_exp exp2)
     | PrimE (CPSAwait (Fut, cont_typ), [a; krb]) ->
