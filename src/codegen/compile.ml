@@ -8071,6 +8071,16 @@ module MakeSerialization (Strm : Stream) = struct
 
       (* Allocate memo table, if necessary *)
       with_rel_buf_opt env extended (get_typtbl_size_ptr ^^ load_unskewed_ptr) (fun get_rel_buf_opt ->
+      begin
+        (* set up invariant register arguments *)
+        get_rel_buf_opt ^^ Registers.set_rel_buf_opt env ^^
+        get_data_buf ^^ Registers.set_data_buf env ^^
+        get_ref_buf ^^ Registers.set_ref_buf env ^^
+        get_typtbl_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl env ^^
+        get_maintyps_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl_end env ^^
+        get_typtbl_size_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl_size env ^^
+        Registers.reset_instruction_limit env get_rel_buf_opt
+      end ^^
 
       (* set up a dedicated read buffer for the list of main types *)
       ReadBuf.alloc env (fun get_main_typs_buf ->
@@ -8095,16 +8105,6 @@ module MakeSerialization (Strm : Stream) = struct
           G.if1 I32Type
            (default_or_trap ("IDL error: too few arguments " ^ ts_name))
            (begin
-              begin
-                (* set up invariant register arguments *)
-                get_rel_buf_opt ^^ Registers.set_rel_buf_opt env ^^
-                get_data_buf ^^ Registers.set_data_buf env ^^
-                get_ref_buf ^^ Registers.set_ref_buf env ^^
-                get_typtbl_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl env ^^
-                get_maintyps_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl_end env ^^
-                get_typtbl_size_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl_size env ^^
-                Registers.reset_instruction_limit env get_rel_buf_opt
-              end ^^
               (* set up variable frame arguments *)
               Stack.with_frame env "frame_ptr" 3l (fun () ->
                 (* idltyp *)
