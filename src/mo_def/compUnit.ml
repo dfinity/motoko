@@ -2,6 +2,7 @@ open Mo_types
 
 open Syntax
 
+let (@~) it at = Source.annotate Const it at
 
 (* Compilation unit detection *)
 

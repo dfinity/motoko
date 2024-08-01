@@ -5,7 +5,6 @@ type 'a phrase = ('a, unit) annotated_phrase
 
 let annotate note it at = {it; at; note}
 let (@@) it at = annotate () it at
-let (@~) it at = annotate false it at
 
 (* Positions and regions *)
 

@@ -22,7 +22,7 @@ type resolved_import =
 (* Identifiers *)
 
 type id = string Source.phrase
-type idm = (string, bool) Source.annotated_phrase
+(* type idm, see below *)
 type typ_id = (string, Type.con option) Source.annotated_phrase
 
 
@@ -33,6 +33,7 @@ type func_sort = Type.func_sort Source.phrase
 
 type mut = mut' Source.phrase
 and mut' = Const | Var
+and idm = (string, mut') Source.annotated_phrase
 
 and path = (path', Type.typ) Source.annotated_phrase
 and path' =
@@ -261,7 +262,7 @@ type lib = comp_unit
 (* Helpers *)
 
 let (@@) = Source.(@@)
-let (@~) = Source.(@~)
+let (@~) it at = Source.annotate Const it at
 let (@?) it at = Source.annotate empty_typ_note it at
 let (@!) it at = Source.annotate Type.Pre it at
 let (@=) it at = Source.annotate None it at
