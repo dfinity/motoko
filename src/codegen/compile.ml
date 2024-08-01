@@ -11915,7 +11915,7 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
 
   | PrimE (p, es) ->
     compile_prim_invocation (env : E.t) ae p es exp.at
-  | VarE var ->
+  | VarE (_, var) ->
     Var.get_val env ae var
   | AssignE (e1,e2) ->
     SR.unit,
@@ -12446,7 +12446,7 @@ and compile_const_exp env pre_ae exp : Const.t * (E.t -> VarEnv.t -> unit) =
       | Type.Local, Type.Returns, [], PrimE (prim, prim_args) when
           inlineable_prim prim &&
           List.length args = List.length prim_args &&
-          List.for_all2 (fun p a -> a.it = VarE p.it) args prim_args ->
+          List.for_all2 (fun p a -> a.it = VarE (Const, p.it)) args prim_args ->
         Const.PrimWrapper prim
       | _, _, _, _ -> Const.Complicated
     in
@@ -12469,7 +12469,7 @@ and compile_const_exp env pre_ae exp : Const.t * (E.t -> VarEnv.t -> unit) =
       let ae' = extend ae in
       fill1 env ae';
       fill2 env ae')
-  | VarE v ->
+  | VarE (_, v) ->
     let c =
       match VarEnv.lookup_var pre_ae v with
       | Some (VarEnv.Const c) -> c

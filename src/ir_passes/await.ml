@@ -48,7 +48,7 @@ let ( -@- ) k exp2 =
     varE v -*- exp2
   | MetaCont (typ0, k) ->
     match exp2.it with
-    | VarE v -> k (var v (typ exp2))
+    | VarE (Const, v) -> k (var v (typ exp2))
     | _ ->
       let u = fresh_var "u" typ0 in
       letE u exp2 (k u)

@@ -202,8 +202,7 @@ and t_exp env (e : Ir.exp) =
   { e with it = t_exp' env e.it }
 
 and t_exp' env = function
-  | LitE l -> LitE l
-  | VarE id -> VarE id
+  | (LitE _ | VarE _) as e -> e
   | PrimE (RelPrim (ot, Operator.EqOp), [exp1; exp2]) when T.singleton ot ->
     (* Handle singletons here, but beware of side-effects *)
     let e1 = t_exp env exp1 in

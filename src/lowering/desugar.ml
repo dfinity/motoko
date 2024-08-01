@@ -55,7 +55,7 @@ and exp e =
 
 and exp' at note = function
   | S.VarE {it; note = true; _} -> I.PrimE (I.MutReadPrim it, [])
-  | S.VarE i -> I.VarE i.it
+  | S.VarE i -> I.(VarE (Const, i.it))
   | S.ActorUrlE e ->
     I.(PrimE (ActorOfIdBlob note.Note.typ, [url e at]))
   | S.LitE l -> I.LitE (lit !l)

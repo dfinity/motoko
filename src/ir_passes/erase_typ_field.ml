@@ -101,7 +101,7 @@ let transform prog =
     let exp' = exp.it in
     match exp' with
     | LitE _ -> exp'
-    | VarE id -> exp'
+    | VarE (_, id) -> exp'
     | AssignE (exp1, exp2) ->
       AssignE (t_lexp exp1, t_exp exp2)
     | PrimE (p, exps) ->
