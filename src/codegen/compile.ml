@@ -10659,10 +10659,6 @@ and compile_prim_invocation (env : E.t) ae p es at =
          FuncDec.ic_call_one_shot env ts get_meth_pair get_arg add_cycles
     end
 
-  (* Mutable read *)
-  | MutReadPrim var, [] ->
-    Var.get_val env ae var
-
   (* Operators *)
   | UnPrim (_, Operator.PosOp), [e1] -> compile_exp env ae e1
   | UnPrim (t, op), [e1] ->

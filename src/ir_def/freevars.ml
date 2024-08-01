@@ -103,7 +103,6 @@ let fields fs = unions (fun f ->
 ) fs
 
 let rec exp e : f = match e.it with
-  | PrimE (MutReadPrim i, [])
   | VarE (_, i)         -> id i
   | LitE l              -> M.empty
   | PrimE (_, es)       -> exps es

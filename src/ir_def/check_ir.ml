@@ -394,6 +394,13 @@ let rec check_exp env (exp:Ir.exp) : unit =
     in
     assert (not (T.is_mut typ));
     typ <: t
+  | VarE (Var, id) ->
+    let { typ; _ } =
+      try T.Env.find id env.vals
+      with Not_found -> error env exp.at "unbound variable %s" id
+    in
+    assert (T.is_mut typ);
+    T.as_immut typ <: t
   | LitE lit ->
     T.Prim (type_lit env lit exp.at) <: t
   | PrimE (p, es) ->
@@ -415,13 +422,6 @@ let rec check_exp env (exp:Ir.exp) : unit =
         | t1 -> error env exp1.at "expected function type, but expression produces type\n  %s"
              (T.string_of_typ_expand t1)
       end
-    | MutReadPrim id, [] ->
-      let { typ; _ } =
-        try T.Env.find id env.vals
-        with Not_found -> error env exp.at "unbound variable %s" id
-      in
-      assert (T.is_mut typ);
-      T.as_immut typ <: t
     | UnPrim (ot, op), [exp1] ->
       check (Operator.has_unop op ot) "unary operator is not defined for operand type";
       typ exp1 <: ot;

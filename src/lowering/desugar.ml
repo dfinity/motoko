@@ -54,7 +54,7 @@ and exp e =
     | _ -> typed_phrase' exp' e
 
 and exp' at note = function
-  | S.VarE {it; note = true; _} -> I.PrimE (I.MutReadPrim it, [])
+  | S.VarE {it; note = true; _} -> I.VarE (I.Var, it)
   | S.VarE i -> I.(VarE (Const, i.it))
   | S.ActorUrlE e ->
     I.(PrimE (ActorOfIdBlob note.Note.typ, [url e at]))
