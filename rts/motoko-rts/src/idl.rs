@@ -319,9 +319,9 @@ unsafe fn skip_any_vec(buf: *mut Buf, typtbl: *mut *mut u8, t: i32, count: u32) 
         // makes no progress. No point in calling it over and over again.
         // (This is easier to detect this way than by analyzing the type table,
         // where we’d have to chase single-field-records.)
-       for _ in 1..count {
-          idl_limit_check();
-       }
+        for _ in 1..count {
+            idl_limit_check();
+        }
     }
     for _ in 1..count {
         skip_any(buf, typtbl, t, 0);
