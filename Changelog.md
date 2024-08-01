@@ -1,5 +1,37 @@
 # Motoko compiler changelog
 
+## Upcoming
+
+* motoko (`moc`)
+  * debugging: `__motoko_runtime_information()` as privileged query for runtime statistics.
+
+    Exposing a privileged system-level query function `__motoko_runtime_information()` 
+    that reports the current runtime statistics of the canister, such as the heap size, 
+    the total number of allocated objects, the total amount of reclaimed memory and more.
+    This is useful because several statistics of the reported information cannot be 
+    inspected on the IC replica dashboard as they are internal to the Motoko runtime system. 
+    This query is only authorized to the canister controllers and self-calls of the canister.
+
+    ```
+    __motoko_runtime_information : () -> {
+        compilerVersion : Text;
+        rtsVersion : Text;
+        garbageCollector : Text;
+        sanityChecks : Nat;
+        memorySize : Nat;
+        heapSize : Nat;
+        totalAllocation : Nat;
+        reclaimed : Nat;
+        maxLiveSize : Nat;
+        stableMemorySize : Nat;
+        logicalStableMemorySize : Nat;
+        maxStackSize : Nat;
+        callbackTableCount : Nat;
+        callbackTableSize : Nat;
+    }
+    ```
+
+
 ## 0.12.0 (2024-07-26)
 
 * motoko (`moc`)

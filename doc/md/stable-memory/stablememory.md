@@ -31,3 +31,5 @@ New applications should use the `Region` library: it offers additional isolation
 - [motoko-dht](https://github.com/enzoh/motoko-dht): A distributed hash table sample.
 
 - [motoko-document-db](https://github.com/DepartureLabsIC/motoko-document-db): A document database sample.
+
+<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />

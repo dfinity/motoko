@@ -465,6 +465,67 @@ and export_footprint self_id expr =
   )],
   [{ it = I.{ name = lab; var = v }; at = no_region; note = typ }])
 
+and export_runtime_information self_id =
+  let open T in
+  let {lab;typ;_} = motoko_runtime_information_fld in
+  let v = "$"^lab in
+  let scope_con1 = Cons.fresh "T1" (Abs ([], scope_bound)) in
+  let scope_con2 = Cons.fresh "T2" (Abs ([], Any)) in
+  let bind1  = typ_arg scope_con1 Scope scope_bound in
+  let bind2 = typ_arg scope_con2 Scope scope_bound in
+  let gc_strategy = 
+    let open Mo_config in
+    let strategy = match !Flags.gc_strategy with
+    | Flags.MarkCompact -> "compacting"
+    | Flags.Copying -> "copying"
+    | Flags.Generational -> "generational"
+    | Flags.Incremental -> "incremental" in
+    if !Flags.force_gc then (Printf.sprintf "%s force" strategy) else strategy
+  in
+  let prim_call function_name = primE (I.OtherPrim function_name) [] in
+  let information = [
+    ("compilerVersion", textE (Lib.Option.get Source_id.release Source_id.id), T.text);
+    ("garbageCollector", textE gc_strategy, T.text);
+    ("rtsVersion", prim_call "rts_version", T.text);
+    ("sanityChecks", boolE !Mo_config.Flags.sanity, T.bool);
+    ("memorySize", prim_call "rts_memory_size", T.nat);
+    ("heapSize", prim_call "rts_heap_size", T.nat);
+    ("totalAllocation", prim_call "rts_total_allocation", T.nat);
+    ("reclaimed", prim_call "rts_reclaimed", T.nat);
+    ("maxLiveSize", prim_call "rts_max_live_size", T.nat);
+    ("stableMemorySize", prim_call "rts_stable_memory_size", T.nat);
+    ("logicalStableMemorySize", prim_call "rts_logical_stable_memory_size", T.nat);
+    ("maxStackSize", prim_call "rts_max_stack_size", T.nat);
+    ("callbackTableCount", prim_call "rts_callback_table_count", T.nat);
+    ("callbackTableSize", prim_call "rts_callback_table_size", T.nat)
+  ] in
+  let fields = List.map (fun (name, _, typ) -> fresh_var name typ) information in
+  (* Use an object return type to allow adding more data in future. *)
+  let ret_typ = motoko_runtime_information_type in
+  let caller = fresh_var "caller" caller in
+  ([ letD (var v typ) (
+       funcE v (Shared Query) Promises [bind1] [] [ret_typ] (
+           (asyncE T.Fut bind2
+              (blockE ([
+                  letD caller (primE I.ICCallerPrim []);
+                  expD (ifE (orE 
+                      (primE (I.RelPrim (principal, Operator.EqOp)) [varE caller; selfRefE principal])
+                      (primE (I.OtherPrim "is_controller") [varE caller]))
+                    (unitE()) 
+                    (primE (Ir.OtherPrim "trap")
+                      [textE "Unauthorized call of __motoko_runtime_information"]))
+                  ] @
+                  (List.map2 (fun field (_, load_info, _) -> 
+                    letD field load_info
+                  ) fields information))
+                (newObjE T.Object
+                  (List.map2 (fun field (name, _, typ) -> 
+                      { it = Ir.{name; var = id_of_var field}; at = no_region; note = typ }) 
+                    fields information
+                  ) ret_typ))
+              (Con (scope_con1, []))))
+  )],
+  [{ it = I.{ name = lab; var = v }; at = no_region; note = typ }])
 
 and build_actor at ts self_id es obj_typ =
   let candid = build_candid ts obj_typ in
@@ -521,7 +582,8 @@ and build_actor at ts self_id es obj_typ =
                ) fields vs)
             ty)) in
   let footprint_d, footprint_f = export_footprint self_id (with_stable_vars (fun e -> e)) in
-  I.(ActorE (footprint_d @ ds', footprint_f @ fs,
+  let runtime_info_d, runtime_info_f = export_runtime_information self_id in
+  I.(ActorE (footprint_d @ runtime_info_d @ ds', footprint_f @ runtime_info_f @ fs,
      { meta;
        preupgrade = with_stable_vars (fun e -> primE (I.ICStableWrite ty) [e]);
        postupgrade =

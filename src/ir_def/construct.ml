@@ -117,6 +117,17 @@ let primE prim es =
     | OtherPrim "blob_size"
     | OtherPrim "text_len" -> T.nat
     | OtherPrim "is_controller" -> T.bool
+    | OtherPrim "rts_version" -> T.text
+    | OtherPrim "rts_memory_size" -> T.nat
+    | OtherPrim "rts_heap_size" -> T.nat
+    | OtherPrim "rts_total_allocation" -> T.nat
+    | OtherPrim "rts_reclaimed" -> T.nat
+    | OtherPrim "rts_max_live_size" -> T.nat
+    | OtherPrim "rts_stable_memory_size" -> T.nat
+    | OtherPrim "rts_logical_stable_memory_size" -> T.nat
+    | OtherPrim "rts_max_stack_size" -> T.nat
+    | OtherPrim "rts_callback_table_count" -> T.nat
+    | OtherPrim "rts_callback_table_size" -> T.nat
     | _ -> assert false (* implement more as needed *)
   in
   let eff = List.(map eff es |> fold_left max_eff T.Triv) in

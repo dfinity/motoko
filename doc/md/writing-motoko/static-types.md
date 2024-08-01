@@ -15,3 +15,6 @@ To execute, Motoko statically compiles to WebAssembly, a portable binary format 
 This is often summarized with the phrase ["well-typed Motoko programs don’t go wrong"](../getting-started/basic-concepts.md#type-soundness), meaning that the only operations that will be performed on data are those permitted by its static type.
 
 Dynamic testing can check properties that are beyond the reach of the Motoko type system. The Motoko type system is intentionally not advanced. Rather, the type system of Motoko integrates standard concepts from modern, but well-understood, [type systems](../getting-started/motoko-introduction) to provide an approachable, expressive, yet safe language for programming general-purpose, distributed applications.
+
+
+<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />
