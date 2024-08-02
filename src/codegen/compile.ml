@@ -6341,7 +6341,12 @@ module RTS_Exports = struct
     E.add_export env (nr {
       name = Lib.Utf8.decode "moc_stable_mem_set_version";
       edesc = nr (FuncExport (nr moc_stable_mem_set_version_fi))
-    })
+      });
+
+    E.add_export env (nr {
+        name = Lib.Utf8.decode "idl_limit_check";
+        edesc = nr (FuncExport (nr (E.built_in env "idl_limit_check")))
+      })
 
 end (* RTS_Exports *)
 
@@ -6531,14 +6536,6 @@ module MakeSerialization (Strm : Stream) = struct
     G.i (GlobalGet (nr (E.get_global env "__typtbl_idltyps")))
 
   module Registers = struct
-    let register_globals env =
-      E.add_global32 env "@@rel_buf_opt" Mutable 0l;
-      E.add_global32 env "@@data_buf" Mutable 0l;
-      E.add_global32 env "@@ref_buf" Mutable 0l;
-      E.add_global32 env "@@typtbl" Mutable 0l;
-      E.add_global32 env "@@typtbl_end" Mutable 0l;
-      E.add_global32 env "@@typtbl_size" Mutable 0l
-
     let get_rel_buf_opt env =
       G.i (GlobalGet (nr (E.get_global env "@@rel_buf_opt")))
     let set_rel_buf_opt env =
@@ -6568,6 +6565,98 @@ module MakeSerialization (Strm : Stream) = struct
       G.i (GlobalGet (nr (E.get_global env "@@typtbl_size")))
     let set_typtbl_size env =
       G.i (GlobalSet (nr (E.get_global env "@@typtbl_size")))
+
+    let get_pseudo_instruction_counter env =
+      G.i (GlobalGet (nr (E.get_global env "@@pseudo_instruction_counter")))
+    let set_pseudo_instruction_counter env =
+      G.i (GlobalSet (nr (E.get_global env "@@pseudo_instruction_counter")))
+
+    let get_limit_counter env =
+      G.i (GlobalGet (nr (E.get_global env "@@limit_counter")))
+    let set_limit_counter env =
+      G.i (GlobalSet (nr (E.get_global env "@@limit_counter")))
+
+    let get_instruction_limit env =
+      G.i (GlobalGet (nr (E.get_global env "@@instruction_limit")))
+    let set_instruction_limit env =
+      G.i (GlobalSet (nr (E.get_global env "@@instruction_limit")))
+
+    (* interval for checking instruction counter *)
+    let idl_limit_interval = 32l (* TUNE *)
+    let idl_limit = 50_000_000L (* TUNE *)
+    let idl_pseudo_cost = 100L (* TUNE *)
+
+    let idl_instruction_counter env =
+      match E.mode env with
+      | Flags.ICMode | Flags.RefMode ->
+        compile_unboxed_const 0l ^^
+        IC.performance_counter env
+      | Flags.WASIMode | Flags.WasmMode  ->
+        get_pseudo_instruction_counter env
+
+    let simulate_instruction_counter env =
+      match E.mode env with
+      | Flags.ICMode | Flags.RefMode ->
+        G.nop
+      | Flags.WASIMode | Flags.WasmMode  ->
+        get_pseudo_instruction_counter env ^^
+        compile_const_64 idl_pseudo_cost ^^
+        G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
+        set_pseudo_instruction_counter env
+
+    let reset_instruction_limit env get_rel_buf_opt =
+      get_rel_buf_opt ^^
+      G.if0 begin (* Candid deserialization *)
+        idl_instruction_counter env ^^
+        compile_const_64 idl_limit ^^
+        G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
+        set_instruction_limit env
+      end
+      begin (* Extended candid/ Destabilization *)
+         G.nop
+      end
+
+    let idl_limit_check env =
+      G.i (Call (nr (E.built_in env "idl_limit_check")))
+
+    let register_globals env =
+      E.add_global32 env "@@rel_buf_opt" Mutable 0l;
+      E.add_global32 env "@@data_buf" Mutable 0l;
+      E.add_global32 env "@@ref_buf" Mutable 0l;
+      E.add_global32 env "@@typtbl" Mutable 0l;
+      E.add_global32 env "@@typtbl_end" Mutable 0l;
+      E.add_global32 env "@@typtbl_size" Mutable 0l;
+      E.add_global32 env "@@limit_counter" Mutable idl_limit_interval;
+      (match E.mode env with
+      | Flags.ICMode | Flags.RefMode ->
+        ()
+      | Flags.WASIMode | Flags.WasmMode ->
+        E.add_global64 env "@@pseudo_instruction_counter" Mutable 0L);
+      E.add_global64 env "@@instruction_limit" Mutable 0L;
+      Func.define_built_in env "idl_limit_check" [] [] (fun env ->
+        get_rel_buf_opt env ^^
+        G.if0 begin (* Candid deserialization *)
+          get_limit_counter env ^^
+          G.if0
+          begin (* non-zero: Decrement counter *)
+            get_limit_counter env ^^
+            compile_sub_const 1l ^^
+            set_limit_counter env
+          end
+          begin (* zero: Check limit and reset counter *)
+            idl_instruction_counter env ^^
+            get_instruction_limit env ^^
+            G.i (Compare (Wasm.Values.I64 I64Op.LeU)) ^^
+            E.else_trap_with env "IDL error: exceeded instruction limit" ^^
+            (* Reset counter *)
+            compile_unboxed_const idl_limit_interval ^^
+            set_limit_counter env
+          end ^^
+          simulate_instruction_counter env
+        end begin (* Extended Candid/Destabilization *)
+          G.nop
+        end)
+
   end
 
   open Typ_hash
@@ -7224,6 +7313,10 @@ module MakeSerialization (Strm : Stream) = struct
       let get_typtbl_end = Registers.get_typtbl_end env in
       let get_typtbl_size = Registers.get_typtbl_size env in
 
+      (* Check instruction limit *)
+
+      Registers.idl_limit_check env ^^
+
       (* Check recursion depth (protects against empty record etc.) *)
       (* Factor 2 because at each step, the expected type could go through one
          level of opt that is not present in the value type
@@ -7642,7 +7735,7 @@ module MakeSerialization (Strm : Stream) = struct
               end
               begin
                 match normalize t with
-                | Opt _ | Any -> Opt.null_lit env
+                | Prim Null | Opt _ | Any -> Opt.null_lit env
                 | _ -> coercion_failed "IDL error: did not find tuple field in record"
               end
           ) ts ^^
@@ -7671,7 +7764,7 @@ module MakeSerialization (Strm : Stream) = struct
                   end
                 begin
                   match normalize f.typ with
-                  | Opt _ | Any -> Opt.null_lit env
+                  | Prim Null | Opt _ | Any -> Opt.null_lit env
                   | _ -> coercion_failed (Printf.sprintf "IDL error: did not find field %s in record" f.lab)
                 end
           ) (sort_by_hash fs)) ^^
@@ -7978,6 +8071,16 @@ module MakeSerialization (Strm : Stream) = struct
 
       (* Allocate memo table, if necessary *)
       with_rel_buf_opt env extended (get_typtbl_size_ptr ^^ load_unskewed_ptr) (fun get_rel_buf_opt ->
+      begin
+        (* set up invariant register arguments *)
+        get_rel_buf_opt ^^ Registers.set_rel_buf_opt env ^^
+        get_data_buf ^^ Registers.set_data_buf env ^^
+        get_ref_buf ^^ Registers.set_ref_buf env ^^
+        get_typtbl_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl env ^^
+        get_maintyps_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl_end env ^^
+        get_typtbl_size_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl_size env ^^
+        Registers.reset_instruction_limit env get_rel_buf_opt
+      end ^^
 
       (* set up a dedicated read buffer for the list of main types *)
       ReadBuf.alloc env (fun get_main_typs_buf ->
@@ -7988,7 +8091,7 @@ module MakeSerialization (Strm : Stream) = struct
         G.concat_map (fun t ->
           let can_recover, default_or_trap = Type.(
             match normalize t with
-            | Opt _ | Any ->
+            | Prim Null | Opt _ | Any ->
               (Bool.lit true, fun msg -> Opt.null_lit env)
             | _ ->
               (get_can_recover, fun msg ->
@@ -8002,15 +8105,6 @@ module MakeSerialization (Strm : Stream) = struct
           G.if1 I32Type
            (default_or_trap ("IDL error: too few arguments " ^ ts_name))
            (begin
-              begin
-                (* set up invariant register arguments *)
-                get_rel_buf_opt ^^ Registers.set_rel_buf_opt env ^^
-                get_data_buf ^^ Registers.set_data_buf env ^^
-                get_ref_buf ^^ Registers.set_ref_buf env ^^
-                get_typtbl_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl env ^^
-                get_maintyps_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl_end env ^^
-                get_typtbl_size_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl_size env
-              end ^^
               (* set up variable frame arguments *)
               Stack.with_frame env "frame_ptr" 3l (fun () ->
                 (* idltyp *)
