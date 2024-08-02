@@ -322,6 +322,7 @@ unsafe fn skip_any_vec(buf: *mut Buf, typtbl: *mut *mut u8, t: i32, count: u32) 
         for _ in 1..count {
             idl_limit_check();
         }
+        return;
     }
     for _ in 1..count {
         skip_any(buf, typtbl, t, 0);
