@@ -7,6 +7,7 @@ The changes are:
  * Support for additional custom sections
  * Manual selective support for bulk-memory operations `memory_copy` and `memory_fill` (WebAssembly/spec@7fa2f20).
  * Support for passive data segments (incl. `MemoryInit`).
+ * Support for table index in `call_indirect` (reference-types proposal).
 
 The code is otherwise as untouched as possible, so that we can relatively
 easily apply diffs from the original code (possibly manually).
@@ -305,9 +306,9 @@ let rec instr s =
 
   | 0x10 -> call (at var s)
   | 0x11 ->
+    let y = at var s in
     let x = at var s in
-    expect 0x00 s "zero flag expected";
-    call_indirect x
+    call_indirect x y
 
   | 0x12 | 0x13 | 0x14 | 0x15 | 0x16 | 0x17 | 0x18 | 0x19 as b -> illegal s pos b
 

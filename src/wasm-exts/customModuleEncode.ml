@@ -8,6 +8,7 @@ The changes are:
  * Support for additional custom sections
  * Manual selective support for bulk-memory operations `memory_copy` and `memory_fill` (WebAssembly/spec@7fa2f20).
  * Support for passive data segments (incl. `MemoryInit`).
+ * Support for table index in `call_indirect` (reference-types proposal).
 
 The code is otherwise as untouched as possible, so that we can relatively
 easily apply diffs from the original code (possibly manually).
@@ -420,7 +421,7 @@ let encode (em : extended_module) =
       | BrTable (xs, x) -> op 0x0e; vec var xs; var x
       | Return -> op 0x0f
       | Call x -> op 0x10; var x
-      | CallIndirect x -> op 0x11; var x; u8 0x00
+      | CallIndirect (x, y) -> op 0x11; var y; var x
 
       | Drop -> op 0x1a
       | Select -> op 0x1b

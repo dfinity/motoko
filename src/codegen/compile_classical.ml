@@ -2544,7 +2544,8 @@ module Closure = struct
     Tagged.load_forwarding_pointer env ^^
     Tagged.load_field env (funptr_field env) ^^
     (* All done: Call! *)
-    G.i (CallIndirect (nr ty)) ^^
+    let table_index = 0l in
+    G.i (CallIndirect (nr table_index, nr ty)) ^^
     FakeMultiVal.load env (Lib.List.make n_res I32Type)
 
   let static_closure env fi : int32 =

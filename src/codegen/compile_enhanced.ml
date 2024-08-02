@@ -2333,7 +2333,8 @@ module Closure = struct
     Tagged.load_field env funptr_field ^^
     G.i (Convert (Wasm_exts.Values.I32 I32Op.WrapI64)) ^^
     (* All done: Call! *)
-    G.i (CallIndirect (nr ty)) ^^
+    let table_index = 0l in
+    G.i (CallIndirect (nr table_index, nr ty)) ^^
     FakeMultiVal.load env (Lib.List.make n_res I64Type)
 
   let constant env get_fi =
