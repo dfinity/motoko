@@ -92,12 +92,12 @@ and assignEs vars exp : dec list =
     List.mapi (fun i v -> expD (assignE v (projE (varE v) i))) vars
 
 and exp' env e  : exp' = match e.it with
-  | (VarE _ | LitE _) as it -> it
+  | (VarE (_, _) | LitE _) as it -> it
   | AssignE (e1, e2)    -> AssignE (lexp env e1, exp env e2)
   | PrimE (CallPrim insts, [e1; e2])  ->
     begin match e1.it, env with
-    | VarE f1, { tail_pos = true;
-                 info = Some { func; typ_binds; temps; label; tail_called } }
+    | VarE (_, f1), { tail_pos = true;
+                      info = Some { func; typ_binds; temps; label; tail_called } }
          when f1 = func && are_generic_insts typ_binds insts  ->
       tail_called := true;
       (blockE (assignEs temps (exp env e2)) (breakE label (unitE ()))).it

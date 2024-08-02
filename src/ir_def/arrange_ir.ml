@@ -13,7 +13,7 @@ let prim_ty p = typ (Type.Prim p)
 let kind k = Atom (Type.string_of_kind k)
 
 let rec exp e = match e.it with
-  | VarE i              -> "VarE"    $$ [id i]
+  | VarE (_, i)         -> "VarE"    $$ [id i] (* FIXME: EXPOSE *)
   | LitE l              -> "LitE"    $$ [lit l]
   | PrimE (p, es)       -> "PrimE"   $$ [prim p] @ List.map exp es
   | AssignE (le1, e2)   -> "AssignE" $$ [lexp le1; exp e2]

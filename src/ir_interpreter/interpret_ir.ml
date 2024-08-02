@@ -300,7 +300,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   last_env := env;
   Profiler.bump_region exp.at ;
   match exp.it with
-  | VarE id ->
+  | VarE (_, id) ->
     (match Lib.Promise.value_opt (find id env.vals) with
     | Some v -> k v
     | None -> trap exp.at "accessing identifier before its definition"

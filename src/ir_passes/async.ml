@@ -130,7 +130,7 @@ let new_nary_async_reply ts =
 
 let let_eta e scope =
   match e.it with
-  | VarE _ -> scope e (* pure, so reduce *)
+  | VarE (Const, _) -> scope e (* pure, so reduce *)
   | _  ->
     let f = fresh_var "x" (typ e) in
     letD f e :: (scope (varE f)) (* maybe impure; sequence *)
@@ -162,7 +162,7 @@ let let_seq ts e d_of_vs =
 (* name e in f unless named already *)
 let ensureNamed e f =
   match e.it with
-  | VarE v -> f (var v (typ e))
+  | VarE (Const, v) -> f (var v (typ e))
   | _ ->
     let v = fresh_var "v" (typ e) in
     blockE [letD v e] (f v)
@@ -251,8 +251,8 @@ let transform prog =
   and t_exp' (exp:exp) =
     let exp' = exp.it in
     match exp' with
-    | LitE _ -> exp'
-    | VarE id -> exp'
+    | LitE _
+    | VarE (_, _) -> exp'
     | AssignE (exp1, exp2) ->
       AssignE (t_lexp exp1, t_exp exp2)
     | PrimE (CPSAwait (Fut, cont_typ), [a; krb]) ->

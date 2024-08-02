@@ -35,7 +35,7 @@ let apply_sign op l = Syntax.(match op, l with
 let phrase f x = { x with it = f x.it }
 
 let typ_note : S.typ_note -> Note.t =
-  fun S.{ note_typ; note_eff } -> Note.{ def with typ = note_typ; eff = note_eff }
+  fun S.{ note_typ; note_eff; _ } -> Note.{ def with typ = note_typ; eff = note_eff }
 
 let phrase' f x =
   { x with it = f x.at x.note x.it }
@@ -54,7 +54,7 @@ and exp e =
     | _ -> typed_phrase' exp' e
 
 and exp' at note = function
-  | S.VarE i -> I.VarE i.it
+  | S.VarE i -> I.VarE ((match i.note with Var -> I.Var | Const -> I.Const), i.it)
   | S.ActorUrlE e ->
     I.(PrimE (ActorOfIdBlob note.Note.typ, [url e at]))
   | S.LitE l -> I.LitE (lit !l)

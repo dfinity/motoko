@@ -30,7 +30,7 @@ let rec prim rho p =
 
 and exp rho e  =  {e with it = exp' rho e.it}
 and exp' rho = function
-  | VarE i              -> VarE (id rho i)
+  | VarE (m, i)         -> VarE (m, id rho i)
   | LitE _ as e         -> e
   | PrimE (p, es)       -> PrimE (prim rho p, List.map (exp rho) es)
   | ActorE (ds, fs, { meta; preupgrade; postupgrade; heartbeat; timer; inspect }, t) ->

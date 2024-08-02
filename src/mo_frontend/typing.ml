@@ -1135,9 +1135,10 @@ and infer_exp' f env exp : T.typ =
   assert (t <> T.Pre);
   let t' = f t in
   if not env.pre then begin
-    assert (T.normalize t' <> T.Pre);
-    let e = A.infer_effect_exp exp in
-    exp.note <- {note_typ = if env.viper_mode then t' else T.normalize t'; note_eff = e}
+    let t'' = T.normalize t' in
+    assert (t'' <> T.Pre);
+    let note_eff = A.infer_effect_exp exp in
+    exp.note <- {note_typ = if env.viper_mode then t' else t''; note_eff}
   end;
   t'
 
@@ -1157,7 +1158,7 @@ and infer_exp'' env exp : T.typ =
       if !Flags.compiled then
         error env id.at "M0056" "variable %s is in scope but not available in compiled code" id.it
       else t
-    | Some (t, _, _, Available) -> t
+    | Some (t, _, _, Available) -> id.note <- (if T.is_mut t then Var else Const); t
     | None ->
       error env id.at "M0057" "unbound variable %s" id.it
     )
@@ -1711,7 +1712,7 @@ and check_exp env t exp =
   assert (t <> T.Pre);
   let t' = check_exp' env (T.normalize t) exp in
   let e = A.infer_effect_exp exp in
-  exp.note <- {note_typ = t'; note_eff = e}
+  exp.note <- {exp.note with note_typ = t'; note_eff = e}
 
 and check_exp' env0 t exp : T.typ =
   let env = {env0 with in_prog = false; in_actor = false; context = exp.it :: env0.context } in
@@ -2638,7 +2639,7 @@ and infer_dec env dec : T.typ =
     T.unit
   in
   let eff = A.infer_effect_dec dec in
-  dec.note <- {note_typ = t; note_eff = eff};
+  dec.note <- {empty_typ_note with note_typ = t; note_eff = eff};
   t
 
 
@@ -3002,7 +3003,7 @@ let check_lib scope pkg_opt lib : Scope.t Diag.result =
           let (imp_ds, ds) = CompUnit.decs_of_lib lib in
           let typ, _ = infer_block env (imp_ds @ ds) lib.at false in
           List.iter2 (fun import imp_d -> import.note <- imp_d.note.note_typ) imports imp_ds;
-          cub.note <- {note_typ = typ; note_eff = T.Triv};
+          cub.note <- {empty_typ_note with note_typ = typ};
           let imp_typ = match cub.it with
             | ModuleU _ ->
               if cub.at = no_region then begin

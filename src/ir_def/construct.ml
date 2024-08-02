@@ -76,7 +76,9 @@ let wildP =
 (* Primitives *)
 
 let varE (id, typ) =
-  { it = VarE id; at = no_region; note = Note.{ def with typ = T.as_immut typ } }
+  { it = VarE ((if T.is_mut typ then Var else Const), id)
+  ; at = no_region
+  ; note = Note.{ def with typ = T.as_immut typ } }
 
 let varLE (id, typ) =
   { it = VarLE id; at = no_region; note = typ }

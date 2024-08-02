@@ -387,12 +387,19 @@ let rec check_exp env (exp:Ir.exp) : unit =
     "inferred effect not a subtype of expected effect";
   (* check typing *)
   begin match exp.it with
-  | VarE id ->
-    let { typ; loc_known; const } =
+  | VarE (m, id) ->
+    let { typ; _ } =
       try T.Env.find id env.vals
       with Not_found -> error env exp.at "unbound variable %s" id
     in
-    T.as_immut typ <: t
+    begin match m with
+    | Const ->
+       assert (not (T.is_mut typ));
+       typ <: t
+    | Var ->
+       assert (T.is_mut typ);
+       T.as_immut typ <: t
+    end
   | LitE lit ->
     T.Prim (type_lit env lit exp.at) <: t
   | PrimE (p, es) ->
@@ -851,7 +858,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
   if exp.note.Note.const
   then begin
     match exp.it with
-    | VarE id -> check_var "VarE" id
+    | VarE (Const, id) -> check_var "VarE" id
     | FuncE (x, s, c, tp, as_ , ts, body) ->
       check (s = T.Local) "constant FuncE cannot be of shared sort";
       if env.lvl = NotTopLvl then
