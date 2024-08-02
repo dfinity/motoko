@@ -670,7 +670,7 @@ let (-->*) xs exp =
   nary_funcE "$lambda" fun_ty xs exp
 
 let close_typ_binds cs tbs =
-  List.map (fun {it = {con; sort; bound}; _} -> {T.var = Cons.name con; sort=sort; bound = T.close cs bound}) tbs
+  List.map (fun {it = {con; sort; bound}; _} -> {T.var = Cons.name con; sort; bound = T.close cs bound}) tbs
 
 (* polymorphic, n-ary local lambda *)
 let forall tbs e =
@@ -776,7 +776,7 @@ let objE sort typ_flds flds =
                @ fld_tys)))
     | (lab, exp)::flds ->
       let v, addv = match exp.it with
-        | VarE v -> var v (typ exp), fun _ ds -> ds
+        | VarE (Const, v) -> var v (typ exp), fun _ ds -> ds
         | _ ->
           let v = fresh_var lab (typ exp) in
           v, fun exp ds -> letD v exp :: ds in
