@@ -22,7 +22,7 @@ type resolved_import =
 (* Identifiers *)
 
 type id = string Source.phrase
-(* type idm, see below *)
+(* type id_ref, see below *)
 type typ_id = (string, Type.con option) Source.annotated_phrase
 
 
@@ -33,7 +33,7 @@ type func_sort = Type.func_sort Source.phrase
 
 type mut = mut' Source.phrase
 and mut' = Const | Var
-and idm = (string, mut') Source.annotated_phrase
+and id_ref = (string, mut') Source.annotated_phrase
 
 and path = (path', Type.typ) Source.annotated_phrase
 and path' =
@@ -151,7 +151,7 @@ type sugar = bool (* Is the source of a function body a block `<block>`,
 type exp = (exp', typ_note) Source.annotated_phrase
 and exp' =
   | PrimE of string                            (* primitive *)
-  | VarE of idm                                (* variable *)
+  | VarE of id_ref                             (* variable *)
   | LitE of lit ref                            (* literal *)
   | ActorUrlE of exp                           (* actor reference *)
   | UnE of op_typ * unop * exp                 (* unary operator *)

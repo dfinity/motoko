@@ -644,7 +644,7 @@ and stmt ctxt (s : M.exp) : seqn =
       let lval =
         match fst (Env.find x.it ctxt.ids) with
         | Local -> LValueVar (!!! (x.at) (x.it))
-        | Field -> LValueFld (self ctxt x.at, idm x)
+        | Field -> LValueFld (self ctxt x.at, id_ref x)
         | _ -> unsupported s.at (Arrange.exp s)
       in !!(assign_stmts ctxt s.at lval e2)
   | M.(AssignE({it = IdxE (e1, e2);_}, e3)) ->
@@ -667,7 +667,7 @@ and stmt ctxt (s : M.exp) : seqn =
        [ !!(AssumeS (exp ctxt e)) ])
   | M.(CallE({it = VarE m; _}, inst, args)) ->
     !!([],
-       [ !!(MethodCallS ([], idm m,
+       [ !!(MethodCallS ([], id_ref m,
        let self_var = self ctxt m.at in
        self_var :: call_args ctxt args))])
   | M.RetE e ->
@@ -821,7 +821,7 @@ and assign_stmts ctxt at (lval : lvalue) (e : M.exp) : seqn' =
   | M.({it = CallE({it = VarE m; _}, inst, args); _}) ->
     fld_via_tmp_var ctxt lval t (fun x ->
       let self_var = self ctxt m.at in
-      [], [ !!(MethodCallS ([x], idm m, self_var :: call_args ctxt args)) ])
+      [], [ !!(MethodCallS ([x], id_ref m, self_var :: call_args ctxt args)) ])
   | M.({it=ArrayE(mut, es); _}) ->
     via_tmp_var ctxt lval t (fun x ->
       let lhs = !!(LocalVar (x, tr_typ ctxt t)) in
@@ -871,9 +871,9 @@ and exp ctxt e =
     begin
      match Env.find x.it ctxt.ids with
      | Local, t ->
-        !!(LocalVar (idm x, tr_typ ctxt t))
+        !!(LocalVar (id_ref x, tr_typ ctxt t))
      | Field, _ ->
-        !!(FldAcc (self ctxt x.at, idm x))
+        !!(FldAcc (self ctxt x.at, id_ref x))
      | _ ->
         unsupported e.at (Arrange.exp e)
     end
@@ -1010,7 +1010,7 @@ and rets ctxt t_opt =
     )
 
 and id id = Source.annotate NoInfo id.it id.at
-and idm id = Source.annotate NoInfo id.it id.at
+and id_ref id = Source.annotate NoInfo id.it id.at
 
 and loop_label ctxt loop_label =
   let label_name =
