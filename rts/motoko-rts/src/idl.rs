@@ -534,9 +534,9 @@ unsafe extern "C" fn skip_fields(tb: *mut Buf, buf: *mut Buf, typtbl: *mut *mut 
     }
 }
 
-unsafe fn is_opt_reserved(typtbl: *mut *mut u8, end: *mut u8, t: i32) -> bool {
+unsafe fn is_null_opt_reserved(typtbl: *mut *mut u8, end: *mut u8, t: i32) -> bool {
     if is_primitive_type(false, t) {
-        return t == IDL_PRIM_reserved;
+        return t == IDL_PRIM_null || t == IDL_PRIM_reserved;
     }
 
     // unfold t
@@ -638,7 +638,7 @@ unsafe fn sub(
                 for _ in 0..in1 {
                     let t11 = sleb128_decode(&mut tb1);
                     if in2 == 0 {
-                        if !is_opt_reserved(typtbl1, end1, t11) {
+                        if !is_null_opt_reserved(typtbl1, end1, t11) {
                             break 'return_false;
                         }
                     } else {
@@ -660,7 +660,7 @@ unsafe fn sub(
                 for _ in 0..out2 {
                     let t21 = sleb128_decode(&mut tb2);
                     if out1 == 0 {
-                        if !is_opt_reserved(typtbl2, end2, t21) {
+                        if !is_null_opt_reserved(typtbl2, end2, t21) {
                             break 'return_false;
                         }
                     } else {
@@ -718,7 +718,7 @@ unsafe fn sub(
                     let t21 = sleb128_decode(&mut tb2);
                     if n1 == 0 {
                         // check all remaining fields optional
-                        if !is_opt_reserved(typtbl2, end2, t21) {
+                        if !is_null_opt_reserved(typtbl2, end2, t21) {
                             break 'return_false;
                         }
                         continue;
@@ -734,7 +734,7 @@ unsafe fn sub(
                         }
                     };
                     if tag1 > tag2 {
-                        if !is_opt_reserved(typtbl2, end2, t21) {
+                        if !is_null_opt_reserved(typtbl2, end2, t21) {
                             // missing, non_opt field
                             break 'return_false;
                         }

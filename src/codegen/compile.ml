@@ -7735,7 +7735,7 @@ module MakeSerialization (Strm : Stream) = struct
               end
               begin
                 match normalize t with
-                | Opt _ | Any -> Opt.null_lit env
+                | Prim Null | Opt _ | Any -> Opt.null_lit env
                 | _ -> coercion_failed "IDL error: did not find tuple field in record"
               end
           ) ts ^^
@@ -7764,7 +7764,7 @@ module MakeSerialization (Strm : Stream) = struct
                   end
                 begin
                   match normalize f.typ with
-                  | Opt _ | Any -> Opt.null_lit env
+                  | Prim Null | Opt _ | Any -> Opt.null_lit env
                   | _ -> coercion_failed (Printf.sprintf "IDL error: did not find field %s in record" f.lab)
                 end
           ) (sort_by_hash fs)) ^^
@@ -8091,7 +8091,7 @@ module MakeSerialization (Strm : Stream) = struct
         G.concat_map (fun t ->
           let can_recover, default_or_trap = Type.(
             match normalize t with
-            | Opt _ | Any ->
+            | Prim Null | Opt _ | Any ->
               (Bool.lit true, fun msg -> Opt.null_lit env)
             | _ ->
               (get_can_recover, fun msg ->
