@@ -11867,10 +11867,24 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla, Cycles.refunded env
   | ICCyclesPrim, [] ->
     SR.Vanilla,
-    Opt.(inject_simple env (G.i (LocalGet (nr 0l))) ^^
-         null_lit env) ^^
-    G.i (LocalGet (nr 0l)) ^^
-    G.i Select
+    G.i (LocalGet (nr 0l)) ^^ (* closed-over bindings *)
+    G.if1 I32Type
+      begin
+        G.i (LocalGet (nr 0l)) ^^
+        Tagged.branch_with env [I32Type]
+          [ Tagged.Closure,
+            G.i Drop ^^
+            Opt.null_lit env
+          ; Tagged.Array,
+            Opt.inject_simple env (Arr.load_field env 0l) ^^
+            G.i (LocalGet (nr 0l)) ^^
+            Arr.load_field env 1l ^^
+            G.i (LocalSet (nr 0l))
+          ; Tagged.Object,
+            Opt.inject_simple env G.nop
+          ]
+      end
+      (Opt.null_lit env)
 
   | SetCertifiedData, [e1] ->
     SR.unit, compile_exp_vanilla env ae e1 ^^ IC.set_certified_data env
