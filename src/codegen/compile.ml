@@ -2213,31 +2213,27 @@ module Tagged = struct
     match (tag : tag) with
     | Region ->
       begin match normalize ty with
-      | (Con _ | Any) -> true
-      | (Prim Region) -> true
-      | (Prim _ | Obj _ | Array _ | Tup _ | Opt _ | Variant _ | Func _ | Non) -> false
-      | (Pre | Async _ | Mut _ | Var _ | Typ _) -> assert false
+      | Con _ | Any | Prim Region -> true
+      | Prim _ | Obj _ | Array _ | Tup _ | Opt _ | Variant _ | Func _ | Non -> false
+      | Pre | Async _ | Mut _ | Var _ | Typ _ -> assert false
       end
     | Array ->
       begin match normalize ty with
-      | (Con _ | Any) -> true
-      | (Array _ | Tup _) -> true
-      | (Prim _ |  Obj _ | Opt _ | Variant _ | Func _ | Non) -> false
-      | (Pre | Async _ | Mut _ | Var _ | Typ _) -> assert false
+      | Con _ | Any | Array _ | Tup _ -> true
+      | Prim _ | Obj _ | Opt _ | Variant _ | Func _ | Non -> false
+      | Pre | Async _ | Mut _ | Var _ | Typ _ -> assert false
       end
     | Blob ->
       begin match normalize ty with
-      | (Con _ | Any) -> true
-      | (Prim (Text|Blob|Principal)) -> true
-      | (Prim _ | Obj _ | Array _ | Tup _ | Opt _ | Variant _ | Func _ | Non) -> false
-      | (Pre | Async _ | Mut _ | Var _ | Typ _) -> assert false
+      | Con _ | Any | Prim (Text | Blob | Principal) -> true
+      | Prim _ | Obj _ | Array _ | Tup _ | Opt _ | Variant _ | Func _ | Non -> false
+      | Pre | Async _ | Mut _ | Var _ | Typ _ -> assert false
       end
     | Object ->
       begin match normalize ty with
-      | (Con _ | Any) -> true
-      | (Obj _) -> true
-      | (Prim _ | Array _ | Tup _ | Opt _ | Variant _ | Func _ | Non) -> false
-      | (Pre | Async _ | Mut _ | Var _ | Typ _) -> assert false
+      | Con _ | Any | Obj _ -> true
+      | Prim _ | Array _ | Tup _ | Opt _ | Variant _ | Func _ | Non -> false
+      | Pre | Async _ | Mut _ | Var _ | Typ _ -> assert false
       end
     | _ -> true
 
