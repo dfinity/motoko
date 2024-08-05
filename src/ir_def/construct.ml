@@ -159,7 +159,7 @@ let awaitE s e =
 let nullE () =
   { it = LitE NullLit;
     at = no_region;
-    note = Note.{ def with typ = T.Prim T.Null }
+    note = Note.{ def with typ = T.(Prim Null) }
   }
 
 let cps_asyncE s typ1 par typ2 e =
