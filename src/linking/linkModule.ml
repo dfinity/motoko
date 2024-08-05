@@ -344,6 +344,33 @@ let calculate_renaming n_imports1 n_things1 n_imports2 resolved12 resolved21 : (
 
 (* AST traversals *)
 
+(* Rust generates invalid Wasm64 code: `call_indirect` uses 64-bit 
+   offset arguments, while the table is still 32-bit. 
+   Currently, wasmtime does also not yet support `table64`. 
+   Therefore, narrow the offset argument down to 32-bit. *)
+let patch_rust_wasm64 = fun m ->
+  let phrase_one_to_many f x = List.map (fun y -> { x with it = y }) (f x.it) in
+
+  let rec instr' = function
+    | CallIndirect (ti, tv) -> [
+        Convert (Wasm_exts.Values.I32 I32Op.WrapI64);
+        CallIndirect (ti, tv)
+    ]
+    | Block (ty, is) -> [Block (ty, instrs is)]
+    | Loop (ty, is) -> [Loop (ty, instrs is)]
+    | If (ty, is1, is2) -> [If (ty, instrs is1, instrs is2)]
+    | i -> [i]
+  and instr (i: instr) : instr list = phrase_one_to_many instr' i
+  and instrs (is : instr list) : instr list = List.flatten (List.map instr is) in
+
+  let func' f = { f with body = instrs f.body } in
+  let func = phrase func' in
+  let funcs = List.map func in
+
+  { m with
+    funcs = funcs m.funcs;
+  }
+
 let rename_funcs rn : module_' -> module_' = fun m ->
   let var' = rn in
   let var = phrase var' in
@@ -969,12 +996,14 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
   let lib_table_start = align_i32 dylink0_mem_info.table_alignment old_table_size in
 
   let uses_memory64 = uses_memory64 em1.module_ in
-
+  
   (* Fill in memory and table base pointers *)
   let dm2 = em2.module_
     |> fill_memory_base_import lib_heap_start uses_memory64
     |> fill_table_base_import lib_table_start uses_memory64 in
-    
+  
+  let dm2 = if uses_memory64 then patch_rust_wasm64 dm2 else dm2 in
+
   let got_imports = collect_got_imports dm2 in
   
   (* Link functions *)
