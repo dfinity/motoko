@@ -10642,7 +10642,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
          set_clos ^^
          Type.(match as_obj par.note.Note.typ, ret_tys with
          | (Object, []), _ -> get_clos (* just the closure *)
-         |  _, [ret] when is_async ret -> Arr.lit env [compile_exp_vanilla env ae par; get_clos] (* parenthetical: pass a pair *)
+         |  _, [ret] when is_async_fut ret -> Arr.lit env [compile_exp_vanilla env ae par; get_clos] (* parenthetical: pass a pair *)
          | _ -> get_clos) ^^ (* just the closure *)
          compile_exp_as env ae (StackRep.of_arity n_args) e2 ^^
          get_clos ^^
