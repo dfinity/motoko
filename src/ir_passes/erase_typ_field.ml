@@ -83,7 +83,7 @@ let transform prog =
         Type.set_kind clone (t_kind (Cons.kind c));
         clone
 
-  and t_prim p = Ir.map_prim t_typ (fun id -> id) p
+  and t_prim p = Ir.map_prim t_typ Fun.id p
 
   and t_field {lab; typ; src} =
     { lab; typ = t_typ typ; src }
