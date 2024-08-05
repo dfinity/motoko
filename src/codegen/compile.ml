@@ -10640,9 +10640,10 @@ and compile_prim_invocation (env : E.t) ae p es at =
          code1 ^^ StackRep.adjust env fun_sr SR.Vanilla ^^
          Closure.prepare_closure_call env ^^ (* FIXME: move to front elsewhere too *)
          set_clos ^^
-         Type.(match as_obj par.note.Note.typ with
-         | Object, [] -> get_clos (* just the closure *)
-         |  _ -> Arr.lit env [compile_exp_vanilla env ae par; get_clos]) ^^ (* parenthetical: pass a pair *)
+         Type.(match as_obj par.note.Note.typ, ret_tys with
+         | (Object, []), _ -> get_clos (* just the closure *)
+         |  _, [ret] when is_async ret -> Arr.lit env [compile_exp_vanilla env ae par; get_clos] (* parenthetical: pass a pair *)
+         | _ -> get_clos) ^^ (* just the closure *)
          compile_exp_as env ae (StackRep.of_arity n_args) e2 ^^
          get_clos ^^
          Closure.call_closure env n_args return_arity
