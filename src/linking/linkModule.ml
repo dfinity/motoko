@@ -770,13 +770,12 @@ let mk_i64_global (i : int64) =
   { gtype = Wasm_exts.Types.GlobalType (Wasm_exts.Types.I64Type, Wasm_exts.Types.Immutable);
     value = [mk_i64_const i] @@ no_region }
 
-type got_func = { 
+type got_func = {
   function_index: int32;
 }
 
 type got_mem = {
   exported_global_index: int32;
-  global_type: Wasm_exts.Types.global_type;
 }
 
 type got_kind =
@@ -785,8 +784,13 @@ type got_kind =
 
 type got_import = {
   global_index: int32;
+  global_type: Wasm_exts.Types.global_type;
   kind: got_kind;
 }
+
+let get_global_type import = match import.it.idesc.it with
+  | GlobalImport global_type -> global_type
+  | _ -> raise (LinkError "GOT.mem import is not global")
 
 let resolve_got_func global_index import m =
   let name = import.it.item_name in
@@ -795,9 +799,10 @@ let resolve_got_func global_index import m =
     | None -> raise (LinkError (Format.sprintf "Can't find export for GOT.func import %s" (Lib.Utf8.encode name)))
     | Some export_idx -> export_idx.it
   in
-  assert (is_global_import import.it.idesc.it);
+  let global_type = get_global_type import in
   {
     global_index;
+    global_type;
     kind = GotFunc { function_index }
   }
 
@@ -808,13 +813,11 @@ let resolve_got_mem global_index import m =
     | None -> raise (LinkError (Format.sprintf "Can't find export for GOT.mem import %s" (Lib.Utf8.encode name)))
     | Some export_idx -> export_idx.it
   in
-  let global_type = match import.it.idesc.it with
-  | GlobalImport global_type -> global_type
-  | _ -> raise (LinkError "GOT.mem import is not global")
-  in
+  let global_type = get_global_type import in
   {
     global_index;
-    kind = GotMem { exported_global_index; global_type }
+    global_type;
+    kind = GotMem { exported_global_index }
   }
 
 let collect_got_imports (m : module_') : got_import list =
@@ -831,9 +834,9 @@ let collect_got_imports (m : module_') : got_import list =
       (false, next_index, got_mem :: imports)
     else
       (* Implementation restriction: No normal imported globals after GOT globals.
-      If this would be required in the future, the GOT globals cannot simply be 
-      moved to the beginning of the module's global section because the global 
-      indices would then change and the global accesses in the AST would need 
+      If this would be required in the future, the GOT globals cannot simply be
+      moved to the beginning of the module's global section because the global
+      indices would then change and the global accesses in the AST would need
       to be patched. *)
       (assert allow_normal_globals;
       let continue_index =
@@ -848,52 +851,58 @@ let collect_got_imports (m : module_') : got_import list =
 
 (* `table_size` is the size of the table in the merged module before adding GOT.func functions *)
 let replace_got_imports (table_size : int32) (imports: got_import list) (m : module_') : module_' =
-  (* Add functions imported from GOT.func to the table, change GOT.func globals to refer 
+  (* Add functions imported from GOT.func to the table, change GOT.func globals to refer
      to the table index of their corresponding function. *)
-  let got_func_imports = List.filter_map (function 
-      | { global_index; kind = GotFunc { function_index } } -> Some (global_index, function_index)
+  let got_func_imports = List.filter_map (function
+      | { global_index; global_type; kind = GotFunc { function_index } } ->
+        Some (global_index, global_type, function_index)
       | _ -> None
-    ) imports 
+    ) imports
   in
-  let elements = List.map 
-    (fun (_, function_index) -> function_index @@ no_region)
+  let elements = List.map
+    (fun (_, _, function_index) -> function_index @@ no_region)
     got_func_imports
   in
-  let function_globals = List.mapi (fun offset (global_index, _) -> 
-      (global_index, mk_i32_global (Int32.add table_size (Int32.of_int offset)))) 
-    got_func_imports 
+  let offset_global global_type offset = Wasm_exts.Types.(match global_type with
+    | GlobalType (I32Type, _) -> mk_i32_global (Int32.of_int offset)
+    | GlobalType (I64Type, _) -> mk_i64_global (Int64.of_int offset)
+    | _ -> raise (LinkError "GOT.func global type is not supported"))
   in
-  let element_section = 
+  let function_globals = List.mapi (fun offset (global_index, global_type, _) ->
+      (global_index, offset_global global_type offset))
+    got_func_imports
+  in
+  let element_section =
     (* Do not add an empty element section if no GOT.func exist in the module *)
     if got_func_imports = [] then None
-    else 
-      Some { 
-        index = 0l @@ no_region; 
-        offset = [ mk_i32_const table_size ] @@ no_region; 
+    else
+      Some {
+        index = 0l @@ no_region;
+        offset = [ mk_i32_const table_size ] @@ no_region;
         init = elements
       }
   in
-  (* Patch AST such that GOT.mem global accesses refer to the corresponding exported global. 
-     Allocate dummy globals in place of the original GOT.mem to maintain the global numbering. *) 
-  let memory_imports = List.filter_map (function 
-      | { global_index; kind = GotMem { exported_global_index; global_type } } -> 
+  (* Patch AST such that GOT.mem global accesses refer to the corresponding exported global.
+     Allocate dummy globals in place of the original GOT.mem to maintain the global numbering. *)
+  let memory_imports = List.filter_map (function
+      | { global_index; global_type; kind = GotMem { exported_global_index } } ->
         Some (global_index, global_type, exported_global_index)
       | _ -> None
-    ) imports 
+    ) imports
   in
   let dummy_global = Wasm_exts.Types.(function
-    | GlobalType (I32Type, _) -> mk_i32_global 1230l (* TODO: Change back to 0l *)
-    | GlobalType (I64Type, _) -> mk_i64_global 1230L (* TODO: Change back to 0L *)
+    | GlobalType (I32Type, _) -> mk_i32_global 0l
+    | GlobalType (I64Type, _) -> mk_i64_global 0L
     | _ -> raise (LinkError "GOT.mem global type is not supported"))
   in
-  let dummy_globals = List.map 
-    (fun (global_index, global_type, _) -> (global_index, dummy_global global_type)) 
+  let dummy_globals = List.map
+    (fun (global_index, global_type, _) -> (global_index, dummy_global global_type))
     memory_imports
   in
   let redirected_index global_index = List.find_map
     (fun (imported_index, _, exported_index) ->
       if imported_index = global_index then Some exported_index
-      else None) 
+      else None)
     memory_imports
   in
   let patched_module = rename_globals (fun old_idx ->
@@ -910,7 +919,7 @@ let replace_got_imports (table_size : int32) (imports: got_import list) (m : mod
     |> List.map (fun (_, global) -> global @@ no_region)
   in
   (* Move GOT globals from import section to the beginning of module's global section.
-     The movement is based on the following assumption that is checked in `collect_got_imports`: 
+     The movement is based on the following assumption that is checked in `collect_got_imports`:
      No normal globals succeed the GOT globals in the import section. *)
   { patched_module with
     elems = new_elements;
@@ -1172,16 +1181,17 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
 
   (* Rename global and function indices in GOT stuff *)
   let got_imports =
-    List.map (function 
-      | { global_index; kind = GotFunc { function_index }} ->
-        { global_index = globals2 global_index; 
+    List.map (function
+      | { global_index; global_type; kind = GotFunc { function_index }} ->
+        { global_index = globals2 global_index;
+          global_type;
           kind = GotFunc { function_index = funs2 function_index }
         }
-      | { global_index; kind = GotMem { exported_global_index; global_type }} ->
+      | { global_index; global_type; kind = GotMem { exported_global_index }} ->
         { global_index = globals2 global_index;
-          kind = GotMem { 
+          global_type;
+          kind = GotMem {
             exported_global_index = globals2 exported_global_index;
-            global_type
           }
         }
     ) got_imports
