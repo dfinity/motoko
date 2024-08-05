@@ -1,0 +1,8 @@
+idl-limits.mo:10.8-10.9: warning [M0145], this pattern of type
+  Nat64
+does not cover value
+  1 or 2 or _
+idl-limits.mo:17.10-17.12: warning [M0145], this pattern of type
+  ?[Blob]
+does not cover value
+  null
