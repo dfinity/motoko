@@ -251,7 +251,7 @@ let transform prog =
       at = exp.at;
     }
 
-  and t_prim p = Ir.map_prim t_typ (fun id -> id) t_exp p
+  and t_prim p = Ir.map_prim t_typ Fun.id t_exp p
 
   and t_exp' (exp:exp) =
     let exp' = exp.it in
