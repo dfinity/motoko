@@ -6584,6 +6584,7 @@ module MakeSerialization (Strm : Stream) = struct
     (* interval for checking instruction counter *)
     let idl_limit_interval = 32l (* TUNE *)
     let idl_limit_factor = 1000L (* TUNE *)
+    let idl_limit_bias = 10_000_000L (* TUNE *)
     let idl_pseudo_cost = 100L (* TUNE *)
 
     let idl_instruction_counter env =
@@ -6613,6 +6614,8 @@ module MakeSerialization (Strm : Stream) = struct
         G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
         compile_const_64 idl_limit_factor^^
         G.i (Binary (Wasm.Values.I64 I64Op.Mul)) ^^
+        compile_const_64 idl_limit_bias ^^
+        G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^            
         G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
         set_instruction_limit env
       end
