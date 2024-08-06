@@ -9101,17 +9101,21 @@ end (* Var *)
    that requires top-level cps conversion;
    use new prims instead *)
 module Internals = struct
-  let call_prelude_function env ae var =
+  let call_prelude_function_with_args env ae var args =
     match VarEnv.lookup_var ae var with
     | Some (VarEnv.Const (_, Const.Fun (mk_fi, _))) ->
        compile_unboxed_zero ^^ (* A dummy closure *)
+       args ^^
        G.i (Call (nr (mk_fi ())))
     | _ -> assert false
+
+  let call_prelude_function env ae var =
+    call_prelude_function_with_args env ae var G.nop
 
   let add_cycles env ae = call_prelude_function env ae "@add_cycles"
   let reset_cycles env ae = call_prelude_function env ae "@reset_cycles"
   let reset_refund env ae = call_prelude_function env ae "@reset_refund"
-  let pass_cycles env ae = call_prelude_function env ae "@pass_cycles"
+  let pass_cycles env ae = call_prelude_function_with_args env ae "@pass_cycles"
 end
 
 (* This comes late because it also deals with messages *)
@@ -12066,8 +12070,8 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
     let add_cycles = match cyc.it with
       | LitE NullLit -> Internals.add_cycles env ae (* legacy *)
       | _ when Type.(sub cyc.note.Note.typ (Opt (Obj (Object, [{ lab = "cycles"; typ = nat; src = empty_src}])))) ->
-        compile_exp_vanilla env ae cyc ^^ Internals.pass_cycles env ae
-      | _ -> Opt.null_lit env ^^ Internals.pass_cycles env ae in
+        Internals.pass_cycles env ae (compile_exp_vanilla env ae cyc)
+      | _ -> Internals.pass_cycles env ae (Opt.null_lit env) in
     FuncDec.async_body env ae ts captured mk_body exp.at ^^
     Tagged.load_forwarding_pointer env ^^
     set_future ^^
