@@ -1104,9 +1104,8 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
     List.map (fun (ty, _) -> ty @@ no_region)
   in
 
-  (* Inject call to "__wasm_call_ctors" *)
-  let add_call_ctors =
-    match NameMap.find_opt (Lib.Utf8.decode "__wasm_call_ctors") fun_exports2 with
+  let add_initial_call function_name =
+    match NameMap.find_opt (Lib.Utf8.decode function_name) fun_exports2 with
     | None -> fun em -> em
     | Some fi -> prepend_to_start (funs2 fi) (add_or_get_ty (Wasm_exts.Types.FuncType ([], [])))
   in
@@ -1168,7 +1167,7 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
       let inject_in_func code = phrase (inject_in_func' code) in
       let patch_functions functions = 
         List.mapi (fun index func -> 
-          if index = local_start_function then 
+          if index = local_start_function then
             inject_in_func load_passive_segments func
           else func
         ) functions
@@ -1197,13 +1196,15 @@ let link (em1 : extended_module) libname (em2 : extended_module) =
     |> rename_funcs funs2
     |> rename_globals globals2
     |> remove_export is_fun_export "__wasm_call_ctors"
+    |> remove_export is_fun_export "__wasm_apply_data_relocs"
     )
     ( em2.name
     |> remove_fun_imports_name_section fun_resolved21
     |> rename_funcs_name_section funs2
     )
     type_indices
-  |> add_call_ctors
+  |> add_initial_call "__wasm_call_ctors" (* second call *)
+  |> add_initial_call "__wasm_apply_data_relocs" (* very first call before `__wasm_call_ctors` *)
   |> remove_non_ic_exports (* only sane if no additional files get linked in *)
   |> (if uses_memory64 then map_module (load_rts_data_segments dm2_data_segment_offset dm2.datas) else (fun m -> m))
   in
