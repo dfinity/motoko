@@ -5,25 +5,24 @@ import Prim "mo:prim";
 // exceeding the candid decoding limit
 actor {
 
-   let r = Region.new();
-   let pages : Nat64 = 1;
-   let 0 = Region.grow(r, pages);
-   let page = Region.loadBlob(r, 0, Prim.nat64ToNat(pages*65536-1));
+   let page : [Nat16] =
+   Prim.Array_tabulate<Nat16>(65536/4, func i {
+       Prim.natToNat16(i)});
 
    var cnt = 0;
-   label l while (cnt < 256) {
-     let a = Prim.Array_tabulate<Blob>(cnt*16, func i {page});
+   label l while (cnt < 64) {
+     let a = Prim.Array_tabulate<[Nat16]>(cnt*16, func i {page});
      let b = to_candid (a);
      if (b.size() > 10_000_000)  break l;
      Prim.debugPrint(debug_show {bytes=b.size()});
      let c1 = Prim.performanceCounter(0);
-     let ?_ = from_candid b : ?[Blob];
+     let ?_ = from_candid b : ?[[Nat16]];
      let c2 = Prim.performanceCounter(0);
      let diff = c2 - c1;
      Prim.debugPrint(debug_show {
        bytes = b.size();
        MB = cnt;
-       instrs = diff ;
+       instrs = diff;
        instr_per_byte = Prim.nat64ToNat diff / b.size()
      });
      cnt += 1;
