@@ -1,42 +1,42 @@
 ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
 debug.print: {bytes = 12}
-debug.print: {MB = 0; bytes = 12; instr_per_byte = 194; instrs = 2_331}
+debug.print: {MB = 0; bytes = 12; instr_per_byte = 198; instrs = 2_384}
 debug.print: {bytes = 524_348}
-debug.print: {MB = 1; bytes = 524_348; instr_per_byte = 86; instrs = 45_447_595}
+debug.print: {MB = 1; bytes = 524_348; instr_per_byte = 87; instrs = 45_813_072}
 debug.print: {bytes = 1_048_684}
-debug.print: {MB = 2; bytes = 1_048_684; instr_per_byte = 86; instrs = 90_892_859}
+debug.print: {MB = 2; bytes = 1_048_684; instr_per_byte = 87; instrs = 91_623_760}
 debug.print: {bytes = 1_573_020}
-debug.print: {MB = 3; bytes = 1_573_020; instr_per_byte = 86; instrs = 136_338_331}
+debug.print: {MB = 3; bytes = 1_573_020; instr_per_byte = 87; instrs = 137_434_702}
 debug.print: {bytes = 2_097_356}
-debug.print: {MB = 4; bytes = 2_097_356; instr_per_byte = 86; instrs = 181_783_595}
+debug.print: {MB = 4; bytes = 2_097_356; instr_per_byte = 87; instrs = 183_245_390}
 debug.print: {bytes = 2_621_692}
-debug.print: {MB = 5; bytes = 2_621_692; instr_per_byte = 86; instrs = 227_228_859}
+debug.print: {MB = 5; bytes = 2_621_692; instr_per_byte = 87; instrs = 229_056_078}
 debug.print: {bytes = 3_146_028}
-debug.print: {MB = 6; bytes = 3_146_028; instr_per_byte = 86; instrs = 272_674_331}
+debug.print: {MB = 6; bytes = 3_146_028; instr_per_byte = 87; instrs = 274_867_020}
 debug.print: {bytes = 3_670_364}
-debug.print: {MB = 7; bytes = 3_670_364; instr_per_byte = 86; instrs = 318_119_595}
+debug.print: {MB = 7; bytes = 3_670_364; instr_per_byte = 87; instrs = 320_677_708}
 debug.print: {bytes = 4_194_701}
-debug.print: {MB = 8; bytes = 4_194_701; instr_per_byte = 86; instrs = 363_564_898}
+debug.print: {MB = 8; bytes = 4_194_701; instr_per_byte = 87; instrs = 366_488_435}
 debug.print: {bytes = 4_719_037}
-debug.print: {MB = 9; bytes = 4_719_037; instr_per_byte = 86; instrs = 409_010_162}
+debug.print: {MB = 9; bytes = 4_719_037; instr_per_byte = 87; instrs = 412_299_123}
 debug.print: {bytes = 5_243_373}
-debug.print: {MB = 10; bytes = 5_243_373; instr_per_byte = 86; instrs = 454_455_426}
+debug.print: {MB = 10; bytes = 5_243_373; instr_per_byte = 87; instrs = 458_109_811}
 debug.print: {bytes = 5_767_709}
-debug.print: {MB = 11; bytes = 5_767_709; instr_per_byte = 86; instrs = 499_900_898}
+debug.print: {MB = 11; bytes = 5_767_709; instr_per_byte = 87; instrs = 503_920_753}
 debug.print: {bytes = 6_292_045}
-debug.print: {MB = 12; bytes = 6_292_045; instr_per_byte = 86; instrs = 545_346_162}
+debug.print: {MB = 12; bytes = 6_292_045; instr_per_byte = 87; instrs = 549_731_441}
 debug.print: {bytes = 6_816_381}
-debug.print: {MB = 13; bytes = 6_816_381; instr_per_byte = 86; instrs = 590_791_426}
+debug.print: {MB = 13; bytes = 6_816_381; instr_per_byte = 87; instrs = 595_542_129}
 debug.print: {bytes = 7_340_717}
-debug.print: {MB = 14; bytes = 7_340_717; instr_per_byte = 86; instrs = 636_236_690}
+debug.print: {MB = 14; bytes = 7_340_717; instr_per_byte = 87; instrs = 641_352_817}
 debug.print: {bytes = 7_865_053}
-debug.print: {MB = 15; bytes = 7_865_053; instr_per_byte = 86; instrs = 681_682_162}
+debug.print: {MB = 15; bytes = 7_865_053; instr_per_byte = 87; instrs = 687_163_759}
 debug.print: {bytes = 8_389_389}
-debug.print: {MB = 16; bytes = 8_389_389; instr_per_byte = 86; instrs = 727_127_426}
+debug.print: {MB = 16; bytes = 8_389_389; instr_per_byte = 87; instrs = 732_974_447}
 debug.print: {bytes = 8_913_725}
-debug.print: {MB = 17; bytes = 8_913_725; instr_per_byte = 86; instrs = 772_572_690}
+debug.print: {MB = 17; bytes = 8_913_725; instr_per_byte = 87; instrs = 778_785_135}
 debug.print: {bytes = 9_438_061}
-debug.print: {MB = 18; bytes = 9_438_061; instr_per_byte = 86; instrs = 818_018_162}
+debug.print: {MB = 18; bytes = 9_438_061; instr_per_byte = 87; instrs = 824_596_077}
 debug.print: {bytes = 9_962_397}
-debug.print: {MB = 19; bytes = 9_962_397; instr_per_byte = 86; instrs = 863_463_218}
+debug.print: {MB = 19; bytes = 9_962_397; instr_per_byte = 87; instrs = 870_406_511}
 ingress Completed: Reply: 0x4449444c0000

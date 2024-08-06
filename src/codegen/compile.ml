@@ -6581,11 +6581,19 @@ module MakeSerialization (Strm : Stream) = struct
     let set_instruction_limit env =
       G.i (GlobalSet (nr (E.get_global env "@@instruction_limit")))
 
+    let get_allocation_limit env =
+      G.i (GlobalGet (nr (E.get_global env "@@allocation_limit")))
+    let set_allocation_limit env =
+      G.i (GlobalSet (nr (E.get_global env "@@allocation_limit")))
+
     (* interval for checking instruction counter *)
     let idl_limit_interval = 32l (* TUNE *)
-    let idl_limit_factor = 1000L (* TUNE *)
-    let idl_limit_bias = 10_000_000L (* TUNE *)
+    let idl_instruction_factor = 1000L (* TUNE *)
+    let idl_instruction_bias = 10_000_000L (* TUNE *)
     let idl_pseudo_cost = 100L (* TUNE *)
+    let scale bytes = Int64.mul bytes (Int64.of_int32(Int32.div Heap.word_size 4l))
+    let idl_allocation_factor = scale(64L) (* TUNE *)
+    let idl_allocation_bias = scale(1_000_000L) (* TUNE *)
 
     let idl_instruction_counter env =
       match E.mode env with
@@ -6608,16 +6616,28 @@ module MakeSerialization (Strm : Stream) = struct
     let reset_instruction_limit env get_blob get_rel_buf_opt =
       get_rel_buf_opt ^^
       G.if0 begin (* Candid deserialization *)
+        (* set instruction limit *)
         idl_instruction_counter env ^^
         get_blob ^^
         Blob.len env ^^
         G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-        compile_const_64 idl_limit_factor^^
+        compile_const_64 idl_instruction_factor ^^
         G.i (Binary (Wasm.Values.I64 I64Op.Mul)) ^^
-        compile_const_64 idl_limit_bias ^^
-        G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^            
+        compile_const_64 idl_instruction_bias ^^
         G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
-        set_instruction_limit env
+        G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
+        set_instruction_limit env ^^
+        (* set allocation limit *)
+        Heap.get_total_allocation env ^^
+        get_blob ^^
+        Blob.len env ^^
+        G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+        compile_const_64 idl_allocation_factor ^^
+        G.i (Binary (Wasm.Values.I64 I64Op.Mul)) ^^
+        compile_const_64 idl_allocation_bias ^^
+        G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
+        G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
+        set_allocation_limit env
       end
       begin (* Extended candid/ Destabilization *)
          G.nop
@@ -6640,6 +6660,7 @@ module MakeSerialization (Strm : Stream) = struct
       | Flags.WASIMode | Flags.WasmMode ->
         E.add_global64 env "@@pseudo_instruction_counter" Mutable 0L);
       E.add_global64 env "@@instruction_limit" Mutable 0L;
+      E.add_global64 env "@@allocation_limit" Mutable 0L;
       Func.define_built_in env "idl_limit_check" [] [] (fun env ->
         get_rel_buf_opt env ^^
         G.if0 begin (* Candid deserialization *)
@@ -6655,6 +6676,10 @@ module MakeSerialization (Strm : Stream) = struct
             get_instruction_limit env ^^
             G.i (Compare (Wasm.Values.I64 I64Op.LeU)) ^^
             E.else_trap_with env "IDL error: exceeded instruction limit" ^^
+            Heap.get_total_allocation env ^^
+            get_allocation_limit env ^^
+            G.i (Compare (Wasm.Values.I64 I64Op.LeU)) ^^
+            E.else_trap_with env "IDL error: exceeded allocation limit" ^^
             (* Reset counter *)
             compile_unboxed_const idl_limit_interval ^^
             set_limit_counter env
