@@ -6583,7 +6583,7 @@ module MakeSerialization (Strm : Stream) = struct
 
     (* interval for checking instruction counter *)
     let idl_limit_interval = 32l (* TUNE *)
-    let idl_limit_factor = 200L (* TUNE *)
+    let idl_limit_factor = 1000L (* TUNE *)
     let idl_pseudo_cost = 100L (* TUNE *)
 
     let idl_instruction_counter env =
