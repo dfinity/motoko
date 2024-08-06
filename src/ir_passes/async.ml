@@ -273,7 +273,7 @@ let transform prog =
                   (* try await async (); schedule() catch e -> r(e) *)
                  (let v = fresh_var "call" unit in
                   letE v
-                    (selfcallE (recordE []) [] (ic_replyE [] (unitE())) (varE schedule) (projE (varE vkrb) 1)
+                    (selfcallE ((*FIXME: what here? *) nullE ()) [] (ic_replyE [] (unitE())) (varE schedule) (projE (varE vkrb) 1)
                        ([] -->* (projE (varE vkrb) 2 -*- unitE ())))
                     (check_call_perform_status (varE v) (fun e -> projE (varE vkrb) 1 -*- e))))
               ]
