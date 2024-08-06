@@ -891,8 +891,8 @@ let replace_got_imports (table_size : int32) (imports: got_import list) (m : mod
     got_func_imports
   in
   let offset_global global_type offset = Wasm_exts.Types.(match global_type with
-    | GlobalType (I32Type, _) -> mk_i32_global (Int32.of_int offset)
-    | GlobalType (I64Type, _) -> mk_i64_global (Int64.of_int offset)
+    | GlobalType (I32Type, _) -> mk_i32_global (Int32.add table_size (Int32.of_int offset))
+    | GlobalType (I64Type, _) -> mk_i64_global (Int64.add (Int64.of_int32 table_size) (Int64.of_int offset))
     | _ -> raise (LinkError "GOT.func global type is not supported"))
   in
   let function_globals = List.mapi (fun offset (global_index, global_type, _) ->
