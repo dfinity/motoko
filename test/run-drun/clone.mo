@@ -1,4 +1,3 @@
-//MOC-FLAG -dl
 import Prim "mo:⛔";
 import Cycles "cycles/cycles";
 import Lib "clone/cloneable";
@@ -10,7 +9,6 @@ actor Cloner {
    public shared func makeCloneable(init : Nat): async Lib.Cloneable {
       let accepted = Cycles.accept<system>(Cycles.available());
       Prim.debugPrint(debug_show {accepted});
-      Cycles.add<system>(accepted); // FIXME: remove
       await (with cycles = accepted) Lib.Cloneable(makeCloneable, init);
    };
 
