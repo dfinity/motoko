@@ -1,4 +1,3 @@
-//CLASSICAL-PERSISTENCE-ONLY
 import Prim "mo:⛔";
 
 let pi = 3.141592653589793238;
@@ -30,11 +29,4 @@ Prim.debugPrint(Prim.floatToFormattedText(pi, 16, 2));
 Prim.debugPrint(Prim.floatToFormattedText(pi, 17, 2));
 Prim.debugPrint(Prim.floatToFormattedText(pi, 20, 2));
 
-Prim.debugPrint "hex Float";
-Prim.debugPrint(Prim.floatToFormattedText(pi, 0, 3));
-Prim.debugPrint(Prim.floatToFormattedText(pi, 1, 3));
-Prim.debugPrint(Prim.floatToFormattedText(pi, 4, 3));
-Prim.debugPrint(Prim.floatToFormattedText(pi, 9, 3));
-Prim.debugPrint(Prim.floatToFormattedText(pi, 16, 3));
-Prim.debugPrint(Prim.floatToFormattedText(pi, 17, 3));
-Prim.debugPrint(Prim.floatToFormattedText(pi, 20, 3));
+// Hex Float is no longer supported
