@@ -10,10 +10,6 @@ pub(crate) type c_char = i8;
 pub(crate) type c_int = i32;
 
 #[classical_persistence]
-#[cfg(feature = "ic")]
-pub(crate) type c_double = f64;
-
-#[classical_persistence]
 pub(crate) unsafe fn memcpy(dest: *mut c_void, src: *const c_void, n: size_t) -> *mut c_void {
     libc::memcpy(dest, src, n)
 }

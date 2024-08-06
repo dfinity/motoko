@@ -1,8 +1,8 @@
 SHELL:=bash -O globstar
 
-CLANG ?= clang-13
-WASM_CLANG ?= clang-13
-WASM_LD ?= wasm-ld-13
+CLANG ?= clang-18
+WASM_CLANG ?= clang-18
+WASM_LD ?= wasm-ld-18
 
 #
 # We manually list all the .c files of libtommath that we care about.
@@ -23,10 +23,9 @@ TOMMATHFILES = \
 
 MUSLFILES_32 = \
   pow pow_data sin cos tan asin acos atan atan2 exp exp_data log log_data fmod \
-  floor scalbn frexp strlen strnlen memcpy memset memchr memcmp snprintf vsnprintf vfprintf \
+  floor scalbn frexp strlen strnlen memcpy memset memchr memcmp memmove \
   __math_oflow __math_uflow __math_xflow __math_divzero __math_invalid \
-  __rem_pio2 __rem_pio2_large __sin __cos __tan \
-  stubs
+  __rem_pio2 __rem_pio2_large __sin __cos __tan
 
 TOMMATHSRC ?= $(CURDIR)/../../libtommath
 MUSLSRC ?= $(CURDIR)/../../wasi-libc/libc-top-half/musl
@@ -76,9 +75,12 @@ MUSL_FLAGS_32 = \
   -isystem $(MUSLSRC)/arch/wasm32 \
   -isystem $(MUSLSRC)/src/include \
   -isystem $(MUSLSRC)/src/internal \
+  -isystem $(MUSLSRC)/include \
   -isystem $(MUSL_WASI_SYSROOT)/include \
   -I $(MUSLSRC)/../headers/private \
   -I $(MUSLSRC)/src/include \
+  -I $(MUSLSRC)/include \
+  -I musl \
   -D_ERRNO_H -DEOVERFLOW=75 -DEINVAL=22 \
   -Derrno='(*({ static int bla = 0; &bla; }))' \
   -DNL_ARGMAX=9 \
