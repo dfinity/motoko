@@ -24,8 +24,8 @@ module ConRenaming = E.Make(struct type t = con let compare = Cons.compare end)
 
 (* Helpers *)
 
-let selfcallE ts e1 e2 e3 e4 =
-  { it = SelfCallE (ts, e1, e2, e3, e4);
+let selfcallE (cyc : exp) ts e1 e2 e3 e4 =
+  { it = SelfCallE (cyc, ts, e1, e2, e3, e4);
     at = no_region;
     note = Note.{ def with typ = unit } }
 
@@ -273,7 +273,7 @@ let transform prog =
                   (* try await async (); schedule() catch e -> r(e) *)
                  (let v = fresh_var "call" unit in
                   letE v
-                    (selfcallE [] (ic_replyE [] (unitE())) (varE schedule) (projE (varE vkrb) 1)
+                    (selfcallE (recordE []) [] (ic_replyE [] (unitE())) (varE schedule) (projE (varE vkrb) 1)
                        ([] -->* (projE (varE vkrb) 2 -*- unitE ())))
                     (check_call_perform_status (varE v) (fun e -> projE (varE vkrb) 1 -*- e))))
               ]
@@ -306,7 +306,7 @@ let transform prog =
             e --> ic_rejectE (errorMessageE (varE e)) in
           let ic_cleanup = varE (var "@cleanup" clean_contT) in
           let exp' = callE (t_exp exp1) [t0] (tupE [ic_reply; ic_reject; ic_cleanup]) in
-          expD (selfcallE ts1 exp' (varE nary_reply) (varE reject) (varE clean) |> thenE cyc)
+          expD (selfcallE cyc ts1 exp' (varE nary_reply) (varE reject) (varE clean))
         ]
         (varE nary_async)
       ).it

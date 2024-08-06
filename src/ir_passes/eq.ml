@@ -248,8 +248,8 @@ and t_exp' env = function
     DefineE (id, mut, t_exp env exp1)
   | NewObjE (sort, ids, t) ->
     NewObjE (sort, ids, t)
-  | SelfCallE (ts, e1, e2, e3, e4) ->
-    SelfCallE (ts, t_exp env e1, t_exp env e2, t_exp env e3, t_exp env e4)
+  | SelfCallE (cyc, ts, e1, e2, e3, e4) ->
+    SelfCallE (t_exp env cyc, ts, t_exp env e1, t_exp env e2, t_exp env e3, t_exp env e4)
   | ActorE (ds, fields, {meta; preupgrade; postupgrade; heartbeat; timer; inspect}, typ) ->
     (* Until Actor expressions become their own units,
        we repeat what we do in `comp_unit` below *)

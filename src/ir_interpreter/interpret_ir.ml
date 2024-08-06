@@ -538,7 +538,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       define_id env id v';
       k V.unit
       )
-  | SelfCallE (ts, exp_f, exp_k, exp_r, exp_c) ->
+  | SelfCallE (_FIXME, ts, exp_f, exp_k, exp_r, exp_c) ->
     assert (not env.flavor.has_async_typ);
     (* see code for FuncE *)
     let cc = { sort = T.Shared T.Write; control = T.Replies; n_args = 0; n_res = List.length ts } in

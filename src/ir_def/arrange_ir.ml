@@ -28,7 +28,7 @@ let rec exp e = match e.it with
   | DefineE (i, m, e1)  -> "DefineE" $$ [id i; mut m; exp e1]
   | FuncE (x, s, c, tp, as_, ts, e) ->
     "FuncE" $$ [Atom x; func_sort s; control c] @ List.map typ_bind tp @ args as_ @ [ typ (Type.seq ts); exp e]
-  | SelfCallE (ts, exp_f, exp_k, exp_r, exp_c) ->
+  | SelfCallE (_FIXME, ts, exp_f, exp_k, exp_r, exp_c) ->
     "SelfCallE" $$ [typ (Type.seq ts); exp exp_f; exp exp_k; exp exp_r; exp exp_c]
   | ActorE (ds, fs, u, t) -> "ActorE"  $$ List.map dec ds @ fields fs @ [system u; typ t]
   | NewObjE (s, fs, t)  -> "NewObjE" $$ (Arrange_type.obj_sort s :: fields fs @ [typ t])

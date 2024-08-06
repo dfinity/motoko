@@ -147,7 +147,7 @@ let rec exp lvl (env : env) e : Lbool.t =
       exp_ lvl env e2;
       exp_ lvl env e3;
       surely_false
-    | SelfCallE (_, e1, e2, e3, e4) ->
+    | SelfCallE (_FIXME, _, e1, e2, e3, e4) ->
       exp_ NotTopLvl env e1;
       exp_ lvl env e2;
       exp_ lvl env e3;

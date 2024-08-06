@@ -803,7 +803,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
       , tbs, List.map (T.close cs) ts1, List.map (T.close cs) ret_tys
       ) in
     fun_ty <: t
-  | SelfCallE (ts, exp_f, exp_k, exp_r, exp_c) ->
+  | SelfCallE (_FIXME, ts, exp_f, exp_k, exp_r, exp_c) ->
     check (not env.flavor.Ir.has_async_typ) "SelfCallE in async flavor";
     List.iter (check_typ env) ts;
     check_exp { env with lvl = NotTopLvl } exp_f;
