@@ -6583,7 +6583,7 @@ module MakeSerialization (Strm : Stream) = struct
 
     (* interval for checking instruction counter *)
     let idl_limit_interval = 32l (* TUNE *)
-    let idl_limit = 50_000_000L (* TUNE *)
+    let idl_limit_factor = 200L (* TUNE *)
     let idl_pseudo_cost = 100L (* TUNE *)
 
     let idl_instruction_counter env =
@@ -6604,11 +6604,15 @@ module MakeSerialization (Strm : Stream) = struct
         G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
         set_pseudo_instruction_counter env
 
-    let reset_instruction_limit env get_rel_buf_opt =
+    let reset_instruction_limit env get_blob get_rel_buf_opt =
       get_rel_buf_opt ^^
       G.if0 begin (* Candid deserialization *)
         idl_instruction_counter env ^^
-        compile_const_64 idl_limit ^^
+        get_blob ^^
+        Blob.len env ^^
+        G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+        compile_const_64 idl_limit_factor^^
+        G.i (Binary (Wasm.Values.I64 I64Op.Mul)) ^^
         G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
         set_instruction_limit env
       end
@@ -8079,7 +8083,7 @@ module MakeSerialization (Strm : Stream) = struct
         get_typtbl_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl env ^^
         get_maintyps_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl_end env ^^
         get_typtbl_size_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl_size env ^^
-        Registers.reset_instruction_limit env get_rel_buf_opt
+        Registers.reset_instruction_limit env get_blob get_rel_buf_opt
       end ^^
 
       (* set up a dedicated read buffer for the list of main types *)

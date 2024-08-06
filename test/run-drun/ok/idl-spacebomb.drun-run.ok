@@ -47,8 +47,7 @@ debug.print: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: ID
 debug.print: {function = "vec_null_subtyping"; hex = "4449444C016D7F0100FFFF3F"}
 debug.print: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: IDL error: exceeded instruction limit
 debug.print: {function = "vec_null_subtyping"; hex = "4449444C016D7F010080BF18"}
-debug.print: 40_775_934
-debug.print: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: assertion failed at idl-spacebomb.mo:40.5-40.41
+debug.print: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: IDL error: exceeded instruction limit
 debug.print: {function = "vec_reserved_subtyping"; hex = "4449444C016D7001008094EBDC03"}
 debug.print: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: IDL error: exceeded instruction limit
 debug.print: {function = "vec_reserved_subtyping"; hex = "4449444C016D70010080ADE204"}
@@ -56,8 +55,7 @@ debug.print: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: ID
 debug.print: {function = "vec_reserved_subtyping"; hex = "4449444C016D700100FFFF3F"}
 debug.print: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: IDL error: exceeded instruction limit
 debug.print: {function = "vec_reserved_subtyping"; hex = "4449444C016D70010080BF18"}
-debug.print: 40_775_934
-debug.print: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: assertion failed at idl-spacebomb.mo:40.5-40.41
+debug.print: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: IDL error: exceeded instruction limit
 debug.print: {function = "zero_sized_record_subtyping"; hex = "4449444C046C03007F010102026C0100706C006D0001038094EBDC03"}
 debug.print: IC0503: Canister rwlgt-iiaaa-aaaaa-aaaaa-cai trapped explicitly: IDL error: exceeded instruction limit
 debug.print: {function = "zero_sized_record_subtyping"; hex = "4449444C046C03007F010102026C0100706C006D00010380ADE204"}
