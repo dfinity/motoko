@@ -22,8 +22,9 @@ actor {
      Prim.debugPrint(debug_show {
        bytes = b.size();
        MB = cnt;
-       instrs = diff;
-       instr_per_byte = Prim.nat64ToNat diff / b.size()
+// too noisy for tests
+//       instrs = diff;
+//       instr_per_byte = Prim.nat64ToNat diff / b.size()
      });
      cnt += 1;
    };
