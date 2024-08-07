@@ -8,10 +8,15 @@ module T = Mo_types.Type
    but I prefer to keep it mostly separate for now *)
 
 let max_eff e1 e2 =
-  match e1,e2 with
+  match e1, e2 with
   | T.Triv, T.Triv -> T.Triv
   | _ , T.Await -> T.Await
   | T.Await, _ -> T.Await
+
+let max_effs' seed = List.fold_left max_eff seed
+let max_effs es = max_effs' T.Triv es
+let map_max_effs' seed f l = max_effs' seed (List.map f l)
+let map_max_effs f l = map_max_effs' T.Triv f l
 
 let typ phrase = phrase.note.Note.typ
 let eff phrase = phrase.note.Note.eff
@@ -40,7 +45,7 @@ let rec infer_effect_prim p exps =
     if is_async_call p exps then
       T.Await
     else
-      List.fold_left max_eff T.Triv (List.map eff exps)
+      map_max_effs eff exps
 
 and infer_effect_exp (exp: exp) : T.eff =
   match exp.it with
@@ -54,8 +59,7 @@ and infer_effect_exp (exp: exp) : T.eff =
   | PrimE (p, exps) ->
     infer_effect_prim p exps
   | BlockE (ds, exp) ->
-    let es = List.map effect_dec ds in
-    List.fold_left max_eff (effect_exp exp) es
+    map_max_effs' (effect_exp exp) effect_dec ds
   | IfE (exp1, exp2, exp3) ->
     let e1 = effect_exp exp1 in
     let e2 = effect_exp exp2 in
@@ -102,6 +106,4 @@ and effect_dec dec = match dec.it with
 
 let infer_effect_dec = effect_dec
 
-let infer_effect_decs ds =
-  let es = List.map effect_dec ds in
-  List.fold_left max_eff T.Triv es
+let infer_effect_decs = map_max_effs effect_dec
