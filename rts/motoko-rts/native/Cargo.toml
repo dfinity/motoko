@@ -14,7 +14,7 @@ classical_persistence = ["libc"]
 enhanced_orthogonal_persistence = ["incremental_gc"]
 
 [dependencies]
-libc = { version = "0.2.112", default=features = false, optional = true }
+libc = { version = "0.2.112", default-features = false, optional = true }
 motoko-rts-macros = { path = "../../motoko-rts-macros" }
 
 [profile.dev]
