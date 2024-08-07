@@ -6,3 +6,4 @@ idl-limits.mo:20.10-20.12: warning [M0145], this pattern of type
   ?[Blob]
 does not cover value
   null
+idl-limits.mo:22.10-22.14: warning [M0194], unused identifier diff (delete or rename to wildcard `_` or `_diff`)
