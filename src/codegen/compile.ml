@@ -6581,10 +6581,30 @@ module MakeSerialization (Strm : Stream) = struct
     let set_instruction_limit env =
       G.i (GlobalSet (nr (E.get_global env "@@instruction_limit")))
 
+    let get_instruction_factor env =
+      G.i (GlobalGet (nr (E.get_global env "@@instruction_factor")))
+    let set_instruction_factor env =
+      G.i (GlobalSet (nr (E.get_global env "@@instruction_factor")))
+
+    let get_instruction_bias env =
+      G.i (GlobalGet (nr (E.get_global env "@@instruction_bias")))
+    let set_instruction_bias env =
+      G.i (GlobalSet (nr (E.get_global env "@@instruction_bias")))
+
     let get_allocation_limit env =
       G.i (GlobalGet (nr (E.get_global env "@@allocation_limit")))
     let set_allocation_limit env =
       G.i (GlobalSet (nr (E.get_global env "@@allocation_limit")))
+
+    let get_allocation_factor env =
+      G.i (GlobalGet (nr (E.get_global env "@@allocation_factor")))
+    let set_allocation_factor env =
+      G.i (GlobalSet (nr (E.get_global env "@@allocation_factor")))
+
+    let get_allocation_bias env =
+      G.i (GlobalGet (nr (E.get_global env "@@allocation_bias")))
+    let set_allocation_bias env =
+      G.i (GlobalSet (nr (E.get_global env "@@allocation_bias")))
 
     (* interval for checking instruction counter *)
     let idl_limit_interval = 32l (* TUNE *)
@@ -6621,9 +6641,9 @@ module MakeSerialization (Strm : Stream) = struct
         get_blob ^^
         Blob.len env ^^
         G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-        compile_const_64 idl_instruction_factor ^^
+        get_instruction_factor env ^^
         G.i (Binary (Wasm.Values.I64 I64Op.Mul)) ^^
-        compile_const_64 idl_instruction_bias ^^
+        get_instruction_bias env ^^
         G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
         G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
         set_instruction_limit env ^^
@@ -6632,9 +6652,9 @@ module MakeSerialization (Strm : Stream) = struct
         get_blob ^^
         Blob.len env ^^
         G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-        compile_const_64 idl_allocation_factor ^^
+        get_allocation_factor env ^^
         G.i (Binary (Wasm.Values.I64 I64Op.Mul)) ^^
-        compile_const_64 idl_allocation_bias ^^
+        get_allocation_bias env ^^
         G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
         G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
         set_allocation_limit env
@@ -6654,6 +6674,10 @@ module MakeSerialization (Strm : Stream) = struct
       E.add_global32 env "@@typtbl_end" Mutable 0l;
       E.add_global32 env "@@typtbl_size" Mutable 0l;
       E.add_global32 env "@@limit_counter" Mutable idl_limit_interval;
+      E.add_global64 env "@@instruction_factor" Mutable idl_instruction_factor;
+      E.add_global64 env "@@instruction_bias" Mutable idl_instruction_bias;
+      E.add_global64 env "@@allocation_factor" Mutable idl_allocation_factor;
+      E.add_global64 env "@@allocation_bias" Mutable idl_allocation_bias;
       (match E.mode env with
       | Flags.ICMode | Flags.RefMode ->
         ()
@@ -11855,6 +11879,28 @@ and compile_prim_invocation (env : E.t) ae p es at =
     const_sr (SR.UnboxedWord64 Type.Nat64) (Word64.btst_kernel env)
   | OtherPrim "btstInt64", [_;_] ->
     const_sr (SR.UnboxedWord64 Type.Int64) (Word64.btst_kernel env)
+
+  | OtherPrim "setCandidLimits", [e1; e2; e3; e4] ->
+    SR.unit,
+    compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) e1 ^^
+    Serialization.Registers.set_instruction_factor env ^^
+    compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) e2 ^^
+    Serialization.Registers.set_instruction_bias env ^^
+    compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) e3 ^^
+    Serialization.Registers.set_allocation_factor env ^^
+    compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) e4 ^^
+    Serialization.Registers.set_allocation_bias env
+
+  | OtherPrim "getCandidLimits", [] ->
+    SR.UnboxedTuple 4,
+    Serialization.Registers.get_instruction_factor env ^^
+    BoxedWord64.box env Type.Nat64 ^^
+    Serialization.Registers.get_instruction_bias env ^^
+    BoxedWord64.box env Type.Nat64 ^^
+    Serialization.Registers.get_allocation_factor env ^^
+    BoxedWord64.box env Type.Nat64 ^^
+    Serialization.Registers.get_allocation_bias env ^^
+    BoxedWord64.box env Type.Nat64
 
   (* Coercions for abstract types *)
   | CastPrim (_,_), [e] ->
