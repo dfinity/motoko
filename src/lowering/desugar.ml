@@ -236,7 +236,7 @@ and exp' at note = function
   | S.BreakE (l, e) -> (breakE l.it (exp e)).it
   | S.RetE e -> (retE (exp e)).it
   | S.ThrowE e -> I.PrimE (I.ThrowPrim, [exp e])
-  | S.AsyncE (s, tb, e) ->
+  | S.AsyncE (_FIXME, s, tb, e) ->
     I.AsyncE (s, typ_bind tb, exp e,
       match note.Note.typ with
       | T.Async (_, t, _) -> t

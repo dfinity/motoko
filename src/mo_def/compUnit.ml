@@ -8,13 +8,13 @@ open Syntax
 let is_actor_def e =
   let open Source in
   match e.it with
-  | AwaitE (Type.Fut, { it = AsyncE (Type.Fut, _, {it = ObjBlockE ({ it = Type.Actor; _}, _t, _fields); _ }) ; _  }) -> true
+  | AwaitE (Type.Fut, { it = AsyncE (_, Type.Fut, _, {it = ObjBlockE ({ it = Type.Actor; _}, _t, _fields); _ }) ; _  }) -> true
   | _ -> false
 
 let as_actor_def e =
   let open Source in
   match e.it with
-  | AwaitE (Type.Fut, { it = AsyncE (Type.Fut, _, {it = ObjBlockE ({ it = Type.Actor; _}, _t, fields); note; at }) ; _  }) ->
+  | AwaitE (Type.Fut, { it = AsyncE (_, Type.Fut, _, {it = ObjBlockE ({ it = Type.Actor; _}, _t, fields); note; at }) ; _  }) ->
     fields, note, at
   | _ -> assert false
 

@@ -675,9 +675,9 @@ exp_un(B) :
   | RETURN e=exp(ob)
     { RetE(e) @? at $sloc }
   | ASYNC e=exp_nest
-    { AsyncE(Type.Fut, scope_bind (anon_id "async" (at $sloc)) (at $sloc), e) @? at $sloc }
+    { AsyncE(None, Type.Fut, scope_bind (anon_id "async" (at $sloc)) (at $sloc), e) @? at $sloc }
   | ASYNCSTAR e=exp_nest
-    { AsyncE(Type.Cmp, scope_bind (anon_id "async*" (at $sloc)) (at $sloc), e) @? at $sloc }
+    { AsyncE(None, Type.Cmp, scope_bind (anon_id "async*" (at $sloc)) (at $sloc), e) @? at $sloc }
   | AWAIT e=exp_nest
     { AwaitE(Type.Fut, e) @? at $sloc }
   | AWAITSTAR e=exp_nest
@@ -707,8 +707,9 @@ exp_un(B) :
     { match e.it with
       | CallE (None, f, is, args) ->
         { e with it = CallE (Some (ObjE(Option.to_list base, fs) @? e.at), f, is, args) }
-      | AsyncE (Type.Fut, _, _) -> e
-      | _ -> { e with it = ObjE(Option.to_list base, fs) }
+      | AsyncE (None, Type.Fut, binds, exp) ->
+        { e with it = AsyncE (Some (ObjE(Option.to_list base, fs) @? e.at), Type.Fut, binds, exp) }
+      | _ -> { e with it = ObjE(Option.to_list base, fs) } (* FIXME: meh *)
     }
   | IF b=exp_nullary(ob) e1=exp_nest %prec IF_NO_ELSE
     { IfE(b, e1, TupE([]) @? at $sloc) @? at $sloc }
@@ -881,7 +882,7 @@ dec_nonvar :
         if s.it = Type.Actor then
           AwaitE
             (Type.Fut,
-             AsyncE(Type.Fut, scope_bind (anon_id "async" (at $sloc)) (at $sloc),
+             AsyncE(None, Type.Fut, scope_bind (anon_id "async" (at $sloc)) (at $sloc),
                     objblock s t (List.map share_dec_field efs) @? at $sloc)
              @? at $sloc) @? at $sloc
         else objblock s t efs @? at $sloc
