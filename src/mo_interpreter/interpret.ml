@@ -1075,7 +1075,7 @@ let import_lib env lib =
   let { body = cub; _ } = lib.it in
   match cub.it with
   | Syntax.ModuleU _ ->
-    fun v -> v
+    Fun.id
   | Syntax.ActorClassU (_sp, id, _tbs, _p, _typ, _self_id, _dec_fields) ->
     fun v -> V.Obj (V.Env.from_list
       [ (id.it, v);

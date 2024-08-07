@@ -26,7 +26,7 @@ let arg_bind rho a =
   ({a with it = i'}, Renaming.add a.it i' rho)
 
 let rec prim rho p =
-  Ir.map_prim (fun t -> t) (id rho) p (* rename BreakPrim id etc *)
+  Ir.map_prim Fun.id (id rho) p (* rename BreakPrim id etc *)
 
 and exp rho e  =  {e with it = exp' rho e.it}
 and exp' rho = function

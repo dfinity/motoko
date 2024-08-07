@@ -311,7 +311,7 @@ let check_ids env kind member ids = Lib.List.iter_pairs
 
 let infer_mut mut : T.typ -> T.typ =
   match mut.it with
-  | Const -> fun t -> t
+  | Const -> Fun.id
   | Var -> fun t -> T.Mut t
 
 
