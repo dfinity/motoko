@@ -241,7 +241,7 @@ and t_exp' env = function
     LoopE (t_exp env exp1)
   | LabelE (id, typ, exp1) ->
     LabelE (id, typ, t_exp env exp1)
-  | AsyncE (s, tb, e, typ) -> AsyncE (s, tb, t_exp env e, typ)
+  | AsyncE (par, s, tb, e, typ) -> AsyncE (t_exp env par, s, tb, t_exp env e, typ)
   | DeclareE (id, typ, exp1) ->
     DeclareE (id, typ, t_exp env exp1)
   | DefineE (id, mut ,exp1) ->

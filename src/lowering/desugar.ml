@@ -237,7 +237,7 @@ and exp' at note = function
   | S.RetE e -> (retE (exp e)).it
   | S.ThrowE e -> I.PrimE (I.ThrowPrim, [exp e])
   | S.AsyncE (_FIXME, s, tb, e) ->
-    I.AsyncE (s, typ_bind tb, exp e,
+    I.AsyncE (recordE [], s, typ_bind tb, exp e,
       match note.Note.typ with
       | T.Async (_, t, _) -> t
       | _ -> assert false)
@@ -924,12 +924,12 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
   let wrap_under_async e =
     if T.is_shared_sort sort
     then match control, e.it with
-      | (T.Promises, Ir.AsyncE (s, tb, e', t)) ->
-        { e with it = Ir.AsyncE (s, tb, wrap_po e', t) }
+      | (T.Promises, Ir.AsyncE (par, s, tb, e', t)) ->
+        { e with it = Ir.AsyncE (par, s, tb, wrap_po e', t) }
       | T.Returns, Ir.BlockE (
-          [{ it = Ir.LetD ({ it = Ir.WildP; _} as pat, ({ it = Ir.AsyncE (T.Fut, tb,e',t); _} as exp)); _ }],
+          [{ it = Ir.LetD ({ it = Ir.WildP; _} as pat, ({ it = Ir.AsyncE (par, T.Fut, tb,e',t); _} as exp)); _ }],
           ({ it = Ir.PrimE (Ir.TupPrim, []); _} as unit)) ->
-        blockE [letP pat {exp with it = Ir.AsyncE (T.Fut, tb,wrap_po e',t)} ] unit
+        blockE [letP pat {exp with it = Ir.AsyncE (par, T.Fut, tb, wrap_po e',t)} ] unit
       | _, Ir.ActorE _ -> wrap_po e
       | _ -> assert false
     else

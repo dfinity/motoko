@@ -77,7 +77,7 @@ let typ_cases cases = List.fold_left (fun t case -> T.lub t (typ case.it.exp)) T
 
 let rec t_async context exp =
   match exp.it with
-  | AsyncE (s, tb, exp1, typ1) ->
+  | AsyncE (_FIXME, s, tb, exp1, typ1) ->
    let exp1 = R.exp R.Renaming.empty exp1 in (* rename all bound vars apart *) (*Why?*)
    (* add the implicit return label *)
    let k_ret = fresh_cont (typ exp1) T.unit in
@@ -133,9 +133,9 @@ and t_exp' context exp =
       | Some Label -> (retE (t_exp context exp1)).it
       | None -> assert false
     end
-  | AsyncE (T.Cmp, _, _, _) ->
+  | AsyncE (_, T.Cmp, _, _, _) ->
      (t_async context exp).it
-  | AsyncE (T.Fut, _, _, _) ->
+  | AsyncE (_, T.Fut, _, _, _) ->
      assert false  (* must have effect T.Await *)
   | TryE _ -> assert false (* these never have effect T.Triv *)
   | DeclareE (id, typ, exp1) ->
@@ -415,9 +415,9 @@ and c_exp' context exp k =
       | Some (Cont k') -> c_exp context exp1 k'
       | _ -> assert false
     end
-  | AsyncE (T.Cmp, tb, exp1, typ1) ->
+  | AsyncE (_, T.Cmp, tb, exp1, typ1) ->
     assert false (* must have effect T.Triv, handled by first case *)
-  | AsyncE (T.Fut, tb, exp1, typ1) ->
+  | AsyncE (_FIXME, T.Fut, tb, exp1, typ1) ->
     (* add the implicit return label *)
     let k_ret = fresh_cont (typ exp1) T.unit in
     let k_fail = fresh_err_cont T.unit in

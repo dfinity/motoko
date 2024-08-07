@@ -66,7 +66,7 @@ and exp' =
   | SwitchE of exp * case list                 (* switch *)
   | LoopE of exp                               (* do-while loop *)
   | LabelE of id * Type.typ * exp              (* label *)
-  | AsyncE of Type.async_sort * typ_bind * exp * Type.typ        (* async/async* *)
+  | AsyncE of exp * Type.async_sort * typ_bind * exp * Type.typ (* async/async* *)
   | DeclareE of id * Type.typ * exp            (* local promise *)
   | DefineE of id * mut * exp                  (* promise fulfillment *)
   | FuncE of                                   (* function *)

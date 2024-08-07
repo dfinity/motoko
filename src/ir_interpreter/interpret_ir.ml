@@ -512,7 +512,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | LabelE (id, _typ, exp1) ->
     let env' = {env with labs = V.Env.add id k env.labs} in
     interpret_exp env' exp1 k
-  | AsyncE (Type.Fut, _, exp1, _) ->
+  | AsyncE (_FIXME, Type.Fut, _, exp1, _) ->
     assert env.flavor.has_await;
     async env
       exp.at
@@ -520,7 +520,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         let env' = { env with labs = V.Env.empty; rets = Some k'; throws = Some r }
         in interpret_exp env' exp1 k')
       k
-  | AsyncE (Type.Cmp, _, exp1, _) ->
+  | AsyncE (_, Type.Cmp, _, exp1, _) ->
     assert env.flavor.has_await;
     k (V.Comp (fun k' r ->
       let env' = { env with labs = V.Env.empty; rets = Some k'; throws = Some r }

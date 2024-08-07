@@ -744,7 +744,7 @@ let rec check_exp env (exp:Ir.exp) : unit =
     check_exp (add_lab env id t0) exp1;
     typ exp1 <: t0;
     t0 <: t
-  | AsyncE (s, tb, exp1, t0) ->
+  | AsyncE (_FIXME, s, tb, exp1, t0) ->
     check env.flavor.has_await "async expression in non-await flavor";
     check_typ env t0;
     let c, tb, ce = check_open_typ_bind env tb in

@@ -141,14 +141,6 @@ let assertE e =
   }
 
 
-let asyncE s typ_bind e typ1 =
-  { it = AsyncE (s, typ_bind, e, typ1);
-    at = no_region;
-    note =
-      Note.{ def with typ = T.Async (s, typ1, typ e);
-                      eff = T.(if s = Fut then Await else Triv) }
-  }
-
 let awaitE s e =
   let (s, _ , typ) = T.as_async (T.normalize (typ e)) in
   { it = PrimE (AwaitPrim s, [e]);
@@ -313,6 +305,14 @@ let funcE name sort ctrl typ_binds args typs exp =
   }
 
 let recordE' = ref (fun _ -> nullE ()) (* gets correctly filled below *)
+
+let asyncE s typ_bind e typ1 =
+  { it = AsyncE (!recordE' [], s, typ_bind, e, typ1);
+    at = no_region;
+    note =
+      Note.{ def with typ = T.Async (s, typ1, typ e);
+                      eff = T.(if s = Fut then Await else Triv) }
+  }
 
 let callE exp1 typs exp2 =
   let typ = match T.promote (typ exp1) with
