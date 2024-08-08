@@ -300,7 +300,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   last_env := env;
   Profiler.bump_region exp.at ;
   match exp.it with
-  | VarE id ->
+  | VarE (_, id) ->
     (match Lib.Promise.value_opt (find id env.vals) with
     | Some v -> k v
     | None -> trap exp.at "accessing identifier before its definition"
@@ -338,7 +338,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         let id = V.as_blob v1 in
         begin match V.Env.find_opt id !(env.actor_env) with
         (* not quite correct: On the platform, you can invoke and get a reject *)
-        | None -> trap exp.at "Unkown actor \"%s\"" id
+        | None -> trap exp.at "Unknown actor \"%s\"" id
         | Some actor_value ->
           let fs = V.as_obj actor_value in
           match V.Env.find_opt n fs with
@@ -446,13 +446,13 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         let reject = Option.get env.rejects in
         let e = V.Tup [V.Variant ("canister_reject", V.unit); v1] in
         Scheduler.queue (fun () -> reject e)
-      | ICCallPrim, [v1; v2; kv; rv] ->
+      | ICCallPrim, [v1; v2; kv; rv; cv] ->
         let call_conv, f = V.as_func v1 in
         check_call_conv (List.hd es) call_conv;
         check_call_conv_arg env exp v2 call_conv;
         last_region := exp.at; (* in case the following throws *)
         let vc = context env in
-        f (V.Tup[vc; kv; rv]) v2 k
+        f (V.Tup[vc; kv; rv; cv]) v2 k
       | ICCallerPrim, [] ->
         k env.caller
       | ICStableRead t, [] ->
@@ -492,10 +492,19 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exp env exp1 (fun v1 ->
       interpret_cases env cases exp.at v1 k
     )
-  | TryE (exp1, cases) ->
-    let k' = fun v1 -> interpret_catches env cases exp.at v1 k in
-    let env' = { env with throws = Some k' } in
-    interpret_exp env' exp1 k
+  | TryE (exp1, cases, finally_opt) ->
+    assert env.flavor.has_await;
+    let k, env = match finally_opt with
+      | None -> k, env
+      | Some (id, ty) ->
+        let exp2 = Construct.(varE (var id ty) -*- unitE ()) in
+        let pre k v = interpret_exp env exp2 (fun v2 -> V.as_unit v2; k v) in
+        pre k,
+        { env with rets = Option.map pre env.rets
+                 ; labs = V.Env.map pre env.labs
+                 ; throws = Option.map pre env.throws } in
+    let k' v1 = interpret_catches env cases exp.at v1 k in
+    interpret_exp { env with throws = Some k' } exp1 k
   | LoopE exp1 ->
     interpret_exp env exp1 (fun v -> V.as_unit v; interpret_exp env exp k)
   | LabelE (id, _typ, exp1) ->
@@ -527,7 +536,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       define_id env id v';
       k V.unit
       )
-  | SelfCallE (ts, exp_f, exp_k, exp_r) ->
+  | SelfCallE (ts, exp_f, exp_k, exp_r, exp_c) ->
     assert (not env.flavor.has_async_typ);
     (* see code for FuncE *)
     let cc = { sort = T.Shared T.Write; control = T.Replies; n_args = 0; n_res = List.length ts } in
@@ -537,10 +546,11 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     (* see code for ICCallPrim *)
     interpret_exp env exp_k (fun kv ->
     interpret_exp env exp_r (fun rv ->
+    interpret_exp env exp_c (fun cv ->
         let _call_conv, f = V.as_func v in
         last_region := exp.at; (* in case the following throws *)
         let vc = context env in
-        f (V.Tup[vc; kv; rv]) (V.Tup []) k))
+        f (V.Tup[vc; kv; rv; cv]) (V.Tup []) k)))
   | FuncE (x, (T.Shared _ as sort), (T.Replies as control), _typbinds, args, ret_typs, e) ->
     assert (not env.flavor.has_async_typ);
     let cc = { sort; control; n_args = List.length args; n_res = List.length ret_typs } in
@@ -600,11 +610,7 @@ and interpret_fields env fs =
     let ve =
       List.fold_left
         (fun ve (f : field) ->
-         let v = match f.note, Lib.Promise.value (find f.it.var env.vals) with
-           | T.Mut _, v -> v
-           | _, V.Mut v -> !v (* immutable field, read mutable box *)
-           | _, v -> v in
-         V.Env.disjoint_add f.it.name v ve
+          V.Env.disjoint_add f.it.name (Lib.Promise.value (find f.it.var env.vals)) ve
         ) V.Env.empty fs in
     V.Obj ve
 
@@ -826,7 +832,7 @@ and interpret_func env at sort x args f c v (k : V.value V.cont) =
 
 and interpret_message env at x args f c v (k : V.value V.cont) =
   let v_caller, v_reply, v_reject = match V.as_tup c with
-    | [v_caller; v_reply; v_reject] -> v_caller, v_reply, v_reject
+    | [v_caller; v_reply; v_reject; _v_cleanup] -> v_caller, v_reply, v_reject
     | _ -> assert false
   in
   if env.flags.trace then trace "%s%s" x (string_of_arg env v);

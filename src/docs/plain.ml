@@ -237,7 +237,8 @@ let rec declaration_header :
   | Value value_doc ->
       title buf lvl (Printf.sprintf "Value `%s`" value_doc.name);
       begin_block buf;
-      bprintf buf "let %s" value_doc.name;
+      let sort = match value_doc.sort with Let -> "let" | Var -> "var" in
+      bprintf buf "%s %s" sort value_doc.name;
       opt_typ buf value_doc.typ;
       end_block buf;
       doc_comment ()

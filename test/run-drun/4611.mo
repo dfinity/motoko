@@ -38,4 +38,7 @@ actor A {
     };
     let summary = debug_show { rec; mrec; nrec };
     Prim.debugPrint summary;
+    // check that all executions work the same way
+    Prim.debugPrint (debug_show { bool; aool = (bool := false) });
+    Prim.debugPrint (debug_show { bool; cool = (bool := true) });
 }

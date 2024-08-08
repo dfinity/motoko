@@ -21,3 +21,5 @@ sidebar_position: 1
 - [`sha2`](https://mops.one/sha2): An optimized implementation of all SHA2 functions.
 
 - [`sha3`](https://mops.one/sha3): A Motoko SHA3/Keccak library.
+
+<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />

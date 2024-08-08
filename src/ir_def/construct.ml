@@ -15,7 +15,7 @@ let nextN = "next"
 
 (* Identifiers *)
 
-type var = (string * T.typ)
+type var = id * T.typ
 
 let var id typ = (id, typ)
 
@@ -76,7 +76,9 @@ let wildP =
 (* Primitives *)
 
 let varE (id, typ) =
-  { it = VarE id; at = no_region; note = Note.{ def with typ = T.as_immut typ } }
+  { it = VarE ((if T.is_mut typ then Var else Const), id)
+  ; at = no_region
+  ; note = Note.{ def with typ = T.as_immut typ } }
 
 let varLE (id, typ) =
   { it = VarLE id; at = no_region; note = typ }
@@ -115,10 +117,20 @@ let primE prim es =
     | OtherPrim "blob_size"
     | OtherPrim "text_len" -> T.nat
     | OtherPrim "is_controller" -> T.bool
+    | OtherPrim "rts_version" -> T.text
+    | OtherPrim "rts_memory_size" -> T.nat
+    | OtherPrim "rts_heap_size" -> T.nat
+    | OtherPrim "rts_total_allocation" -> T.nat
+    | OtherPrim "rts_reclaimed" -> T.nat
+    | OtherPrim "rts_max_live_size" -> T.nat
+    | OtherPrim "rts_stable_memory_size" -> T.nat
+    | OtherPrim "rts_logical_stable_memory_size" -> T.nat
+    | OtherPrim "rts_max_stack_size" -> T.nat
+    | OtherPrim "rts_callback_table_count" -> T.nat
+    | OtherPrim "rts_callback_table_size" -> T.nat
     | _ -> assert false (* implement more as needed *)
   in
-  let effs = List.map eff es in
-  let eff = List.fold_left max_eff T.Triv effs in
+  let eff = map_max_effs eff es in
   { it = PrimE (prim, es);
     at = no_region;
     note = Note.{ def with typ; eff }
@@ -183,22 +195,20 @@ let ic_rejectE e =
     note = Note.{ def with typ = T.unit; eff = eff e }
   }
 
-let ic_callE f e k r =
-  let es = [f; e; k; r] in
-  let effs = List.map eff es in
-  let eff = List.fold_left max_eff T.Triv effs in
+let ic_callE f e k r c =
+  let es = [f; e; k; r; c] in
+  let eff = map_max_effs eff es in
   { it = PrimE (ICCallPrim, es);
     at = no_region;
-    note = Note.{ def with typ = T.unit; eff = eff }
+    note = Note.{ def with typ = T.unit; eff }
   }
 
-let ic_call_rawE p m a k r =
-  let es = [p; m; a; k; r] in
-  let effs = List.map eff es in
-  let eff = List.fold_left max_eff T.Triv effs in
+let ic_call_rawE p m a k r c =
+  let es = [p; m; a; k; r; c] in
+  let eff = map_max_effs eff es in
   { it = PrimE (ICCallRawPrim, es);
     at = no_region;
-    note = Note.{ def with typ = T.unit; eff = eff }
+    note = Note.{ def with typ = T.unit; eff }
   }
 
 (* tuples *)
@@ -245,9 +255,8 @@ let blockE decs exp =
   match decs' with
   | [] -> exp
   | _ ->
-    let es = List.map dec_eff decs' in
     let typ = typ exp in
-    let eff =  List.fold_left max_eff (eff exp) es in
+    let eff = map_max_effs' (eff exp) dec_eff decs' in
     { it = BlockE (decs', exp);
       at = no_region;
       note = Note.{ def with typ; eff }
@@ -313,7 +322,7 @@ let funcE name sort ctrl typ_binds args typs exp =
   }
 
 let callE exp1 typs exp2 =
-  let typ =  match T.promote (typ exp1) with
+  let typ = match T.promote (typ exp1) with
     | T.Func (_sort, control, _, _, ret_tys) ->
       T.codom control (fun () -> List.hd typs) (List.map (T.open_ typs) ret_tys)
     | T.Non -> T.Non
@@ -465,7 +474,7 @@ let switch_variantE exp1 cases typ1 =
     at = no_region;
     note = Note.{ def with
       typ = typ1;
-      eff = List.fold_left max_eff (eff exp1) (List.map (fun (l,p,e) -> eff e) cases)
+      eff = map_max_effs' (eff exp1) (fun (_, _, e) -> eff e) cases
     }
   }
 
@@ -489,14 +498,13 @@ let switch_textE exp1 cases (pat, exp2) typ1 =
     note = Note.{
       def with
       typ = typ1;
-      eff = List.fold_left max_eff (eff exp1) (List.map (fun c -> eff c.it.exp) cs)
+      eff = map_max_effs' (eff exp1) (fun c -> eff c.it.exp) cs
     }
   }
 
 
 let tupE exps =
-  let effs = List.map eff exps in
-  let eff = List.fold_left max_eff T.Triv effs in
+  let eff = map_max_effs eff exps in
   { it = PrimE (TupPrim, exps);
     at = no_region;
     note = Note.{ def with typ = T.Tup (List.map typ exps); eff };
@@ -685,17 +693,18 @@ let contT typ ans_typ = T.(Func (Local, Returns, [], as_seq typ, as_seq ans_typ)
 
 let err_contT ans_typ =  T.(Func (Local, Returns, [], [catch], as_seq ans_typ))
 
+let bail_contT = T.(contT unit unit) (* when `await`ing *)
+
+let clean_contT = bail_contT (* last-resort replica callback *)
+
 let answerT typ : T.typ =
   match typ with
   | T.Func (T.Local, T.Returns, [], ts1, ts2) -> T.seq ts2
   | _ -> assert false
 
-let cpsT typ ans_typ = T.(Func (Local, Returns, [], [contT typ ans_typ; err_contT ans_typ], as_seq ans_typ))
-
 (* Sequence expressions *)
 
-let seqE es =
-  match es with
+let seqE = function
   | [e] -> e
   | es -> tupE es
 
@@ -714,14 +723,14 @@ let (-->*) xs exp =
   nary_funcE "$lambda" fun_ty xs exp
 
 let close_typ_binds cs tbs =
-  List.map (fun {it = {con; sort; bound}; _} -> {T.var = Cons.name con; sort=sort; bound = T.close cs bound}) tbs
+  List.map (fun {it = {con; sort; bound}; _} -> {T.var = Cons.name con; sort; bound = T.close cs bound}) tbs
 
 (* polymorphic, n-ary local lambda *)
 let forall tbs e =
  let cs = List.map (fun tb -> tb.it.con) tbs in
  match e.it, e.note.Note.typ with
  | FuncE (n, s, c1, [], xs, ts, exp),
-   T.Func ( _, c2, [], ts1, ts2) ->
+   T.Func (_, c2, [], ts1, ts2) ->
    { e with
      it = FuncE(n, s, c1, tbs, xs, ts, exp);
      note = Note.{ e.note with
@@ -731,6 +740,14 @@ let forall tbs e =
      }
    }
  | _ -> assert false
+
+(* changing display name of e.g. local lambda *)
+let named displ e =
+  match e.it with
+  | FuncE (_, s, c1, [], xs, ts, exp)
+    -> { e with it = FuncE (displ, s, c1, [], xs, ts, exp) }
+  | _ -> assert false
+
 
 (* Lambda application (monomorphic) *)
 
@@ -808,20 +825,20 @@ let objE sort typ_flds flds =
         (List.rev ds)
         (newObjE sort fields
            (T.obj sort
-              ((List.map (fun (id,c) -> (id, T.Typ c)) typ_flds)
+              (List.map (fun (id, c) -> (id, T.Typ c)) typ_flds
                @ fld_tys)))
     | (lab, exp)::flds ->
-      let v, addv = match exp.it with
-        | VarE v -> var v (typ exp), fun _ ds -> ds
+      let v, ds = match exp.it with
+        | VarE (Const, v) -> var v (typ exp), ds
         | _ ->
           let v = fresh_var lab (typ exp) in
-          v, fun exp ds -> letD v exp :: ds in
+          v, letD v exp :: ds in
       let field = {
         it = {name = lab; var = id_of_var v};
         at = no_region;
         note = typ exp
       } in
-      go (addv exp ds) (field::fields) ((lab, typ exp)::fld_tys) flds
+      go ds (field::fields) ((lab, typ exp)::fld_tys) flds
   in
   go [] [] [] flds
 

@@ -96,6 +96,7 @@ sig
     val (and+) : 'a option -> 'b option -> ('a * 'b) option
   end
   val get : 'a option -> 'a -> 'a
+  val exists : ('a -> bool) -> 'a option -> bool
   val map2 : ('a -> 'b -> 'c) -> 'a option -> 'b option -> 'c option
 end
 

@@ -26,11 +26,11 @@ let arg_bind rho a =
   ({a with it = i'}, Renaming.add a.it i' rho)
 
 let rec prim rho p =
-  Ir.map_prim (fun t -> t) (id rho) p (* rename BreakPrim id etc *)
+  Ir.map_prim Fun.id (id rho) p (* rename BreakPrim id etc *)
 
 and exp rho e  =  {e with it = exp' rho e.it}
 and exp' rho = function
-  | VarE i              -> VarE (id rho i)
+  | VarE (m, i)         -> VarE (m, id rho i)
   | LitE _ as e         -> e
   | PrimE (p, es)       -> PrimE (prim rho p, List.map (exp rho) es)
   | ActorE (ds, fs, { meta; preupgrade; postupgrade; heartbeat; timer; inspect }, t) ->
@@ -63,9 +63,9 @@ and exp' rho = function
      let e' = exp rho' e in
      FuncE (x, s, c, tp, p', ts, e')
   | NewObjE (s, fs, t)  -> NewObjE (s, fields rho fs, t)
-  | TryE (e, cs)        -> TryE (exp rho e, cases rho cs)
-  | SelfCallE (ts, e1, e2, e3) ->
-     SelfCallE (ts, exp rho e1, exp rho e2, exp rho e3)
+  | TryE (e, cs, cl)    -> TryE (exp rho e, cases rho cs, Option.map (fun (v, t) -> id rho v, t) cl)
+  | SelfCallE (ts, e1, e2, e3, e4) ->
+     SelfCallE (ts, exp rho e1, exp rho e2, exp rho e3, exp rho e4)
 
 and lexp rho le = {le with it = lexp' rho le.it}
 and lexp' rho = function
