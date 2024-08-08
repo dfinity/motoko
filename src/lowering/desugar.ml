@@ -702,10 +702,10 @@ and obj obj_typ efs bases =
         let f = { it = I.{ name = lab; var = id_of_var id }; at = no_region; note = typ } in
         [d, f] in
 
-  let ds, fs = map (exp_field obj_typ) efs |> split in
+  let dss, fs = map (exp_field obj_typ) efs |> split in
   let ds', fs' = concat_map gap (T.as_obj obj_typ |> snd) |> split in
   let obj_e = newObjE T.Object (append fs fs') obj_typ in
-  let decs = append base_decs (append (flatten ds) ds') in
+  let decs = append base_decs (append (flatten dss) ds') in
   (blockE decs obj_e).it
 
 and typ_binds tbs = List.map typ_bind tbs
