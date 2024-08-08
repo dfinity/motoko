@@ -772,10 +772,10 @@ let objE sort typ_flds flds =
         (List.rev ds)
         (newObjE sort fields
            (T.obj sort
-              ((List.map (fun (id,c) -> (id, T.Typ c)) typ_flds)
+              (List.map (fun (id, c) -> (id, T.Typ c)) typ_flds
                @ fld_tys)))
     | (lab, exp)::flds ->
-      let v, ds1 = match exp.it with
+      let v, ds = match exp.it with
         | VarE (Const, v) -> var v (typ exp), ds
         | _ ->
           let v = fresh_var lab (typ exp) in
@@ -785,7 +785,7 @@ let objE sort typ_flds flds =
         at = no_region;
         note = typ exp
       } in
-      go ds1 (field::fields) ((lab, typ exp)::fld_tys) flds
+      go ds (field::fields) ((lab, typ exp)::fld_tys) flds
   in
   go [] [] [] flds
 
