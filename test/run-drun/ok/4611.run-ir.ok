@@ -1,5 +1,4 @@
-{mrec = {bool = true; text = "Hello World!"}; rec = {bool = true; text = "Hello World!"}}
+Effect
+{mrec = {bool = true; text = "Hello World!"}; nrec = {bool = false; char = 'C'; text = "Hello World!"}; rec = {bool = true; text = "Hello World!"}}
 {aool = (); bool = false}
 {bool = false; cool = ()}
-Effect
-{mrec = {bool = true; text = "Hello World!"}; nrec = {bool = true; char = 'C'; text = "Hello World!"}; rec = {bool = true; text = "Hello World!"}}

@@ -1,7 +1,6 @@
 ingress Completed: Reply: 0x4449444c016c01b3c4b1f204680100010a00000000000000000101
-debug.print: {mrec = {bool = true; text = "Hello World!"}; rec = {bool = true; text = "Hello World!"}}
+debug.print: Effect
+debug.print: {mrec = {bool = true; text = "Hello World!"}; nrec = {bool = false; char = 'C'; text = "Hello World!"}; rec = {bool = true; text = "Hello World!"}}
 debug.print: {aool = (); bool = false}
 debug.print: {bool = false; cool = ()}
-debug.print: Effect
-debug.print: {mrec = {bool = true; text = "Hello World!"}; nrec = {bool = true; char = 'C'; text = "Hello World!"}; rec = {bool = true; text = "Hello World!"}}
 ingress Completed: Reply: 0x4449444c0000

@@ -1,5 +1,4 @@
 import Prim "mo:⛔";
-
 actor A {
     public func method() {};
     var bool = true;
@@ -9,7 +8,6 @@ actor A {
     stable let mrec = { var bool; var text };
     bool := false;
     assert mrec.bool;  // check no aliasing between bool and mrec.bool
-    let summary = debug_show { rec; mrec };
     // projecting a field from a var-built record
     // sometimes the compiler will do this
     func call() : Bool { Prim.debugPrint "Effect"; bool };
