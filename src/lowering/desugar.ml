@@ -661,17 +661,19 @@ and exp_field obj_typ ef =
     let id' = fresh_var id.it typ in
     let d = varD id' (exp e) in
     let f = { it = I.{ name = id.it; var = id_of_var id' }; at = no_region; note = typ } in
-    (d, f)
+    ([d], f)
   | S.Const ->
     let typ = match T.lookup_val_field_opt id.it fts with
       | Some typ -> typ
       | None -> e.note.S.note_typ
     in
     assert (not (T.is_mut typ));
-    let id' = fresh_var id.it typ in
-    let d = letD id' (exp e) in
+    let e = exp e in
+    let id', ds = match e.it with
+    | I.(VarE (Const, v)) -> var v typ, []
+    | _ -> let id' = fresh_var id.it typ in id', [letD id' e] in
     let f = { it = I.{ name = id.it; var = id_of_var id' }; at = no_region; note = typ } in
-    (d, f)
+    (ds, f)
 
 and obj obj_typ efs bases =
   let open List in
@@ -700,10 +702,11 @@ and obj obj_typ efs bases =
         let f = { it = I.{ name = lab; var = id_of_var id }; at = no_region; note = typ } in
         [d, f] in
 
-  let ds, fs = map (exp_field obj_typ) efs |> split in
+  let dss, fs = map (exp_field obj_typ) efs |> split in
   let ds', fs' = concat_map gap (T.as_obj obj_typ |> snd) |> split in
   let obj_e = newObjE T.Object (append fs fs') obj_typ in
-  I.BlockE(append base_decs (append ds ds'), obj_e)
+  let decs = append base_decs (append (flatten dss) ds') in
+  (blockE decs obj_e).it
 
 and typ_binds tbs = List.map typ_bind tbs
 

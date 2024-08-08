@@ -670,7 +670,7 @@ let (-->*) xs exp =
   nary_funcE "$lambda" fun_ty xs exp
 
 let close_typ_binds cs tbs =
-  List.map (fun {it = {con; sort; bound}; _} -> {T.var = Cons.name con; sort=sort; bound = T.close cs bound}) tbs
+  List.map (fun {it = {con; sort; bound}; _} -> {T.var = Cons.name con; sort; bound = T.close cs bound}) tbs
 
 (* polymorphic, n-ary local lambda *)
 let forall tbs e =
@@ -766,23 +766,26 @@ let unreachableE () =
   loopE (unitE ())
 
 let objE sort typ_flds flds =
-  let rec go ds fields fld_tys flds =
-    match flds with
+  let rec go ds fields fld_tys = function
     | [] ->
       blockE
         (List.rev ds)
         (newObjE sort fields
            (T.obj sort
-              ((List.map (fun (id,c) -> (id, T.Typ c)) typ_flds)
+              (List.map (fun (id, c) -> (id, T.Typ c)) typ_flds
                @ fld_tys)))
     | (lab, exp)::flds ->
-      let v = fresh_var lab (typ exp) in
+      let v, ds = match exp.it with
+        | VarE (Const, v) -> var v (typ exp), ds
+        | _ ->
+          let v = fresh_var lab (typ exp) in
+          v, letD v exp :: ds in
       let field = {
         it = {name = lab; var = id_of_var v};
         at = no_region;
         note = typ exp
       } in
-      go ((letD v exp)::ds) (field::fields) ((lab, typ exp)::fld_tys) flds
+      go ds (field::fields) ((lab, typ exp)::fld_tys) flds
   in
   go [] [] [] flds
 
