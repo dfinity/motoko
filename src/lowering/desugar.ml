@@ -236,8 +236,11 @@ and exp' at note = function
   | S.BreakE (l, e) -> (breakE l.it (exp e)).it
   | S.RetE e -> (retE (exp e)).it
   | S.ThrowE e -> I.PrimE (I.ThrowPrim, [exp e])
-  | S.AsyncE (_FIXME, s, tb, e) ->
-    I.AsyncE (recordE [], s, typ_bind tb, exp e,
+  | S.AsyncE (par_opt, s, tb, e) ->
+    let par = match par_opt with
+      | None -> recordE []
+      | Some par -> exp par in
+    I.AsyncE (par, s, typ_bind tb, exp e,
       match note.Note.typ with
       | T.Async (_, t, _) -> t
       | _ -> assert false)
