@@ -1,9 +1,12 @@
 # Motoko compiler changelog
 
-## Upcoming
+## 0.12.1 (2024-08-08)
 
 * motoko (`moc`)
-  * debugging: `__motoko_runtime_information()` as privileged query for runtime statistics.
+
+  * Added a new command-line flag `--print-source-on-error` to print source code context on error (#4650).
+
+  * debugging: `__motoko_runtime_information()` as privileged query for runtime statistics (#4635).
 
     Exposing a privileged system-level query function `__motoko_runtime_information()` 
     that reports the current runtime statistics of the canister, such as the heap size, 
@@ -12,7 +15,7 @@
     inspected on the IC replica dashboard as they are internal to the Motoko runtime system. 
     This query is only authorized to the canister controllers and self-calls of the canister.
 
-    ```
+    ``` Motoko
     __motoko_runtime_information : () -> {
         compilerVersion : Text;
         rtsVersion : Text;
@@ -30,7 +33,6 @@
         callbackTableSize : Nat;
     }
     ```
-
 
 ## 0.12.0 (2024-07-26)
 
