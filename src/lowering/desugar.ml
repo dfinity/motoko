@@ -24,11 +24,11 @@ let id_of_full_path (fp : string) : string =
 
 let apply_sign op l = Syntax.(match op, l with
   | PosOp, l -> l
-  | NegOp, (NatLit n | IntLit n) -> IntLit (Numerics.Int.sub Numerics.Int.zero n)
-  | NegOp, Int8Lit n -> Int8Lit (Numerics.Int_8.sub Numerics.Int_8.zero n)
-  | NegOp, Int16Lit n -> Int16Lit (Numerics.Int_16.sub Numerics.Int_16.zero n)
-  | NegOp, Int32Lit n -> Int32Lit (Numerics.Int_32.sub Numerics.Int_32.zero n)
-  | NegOp, Int64Lit n -> Int64Lit (Numerics.Int_64.sub Numerics.Int_64.zero n)
+  | NegOp, (NatLit n | IntLit n) -> IntLit Numerics.Int.(sub zero n)
+  | NegOp, Int8Lit n -> Int8Lit Numerics.Int_8.(sub zero n)
+  | NegOp, Int16Lit n -> Int16Lit Numerics.Int_16.(sub zero n)
+  | NegOp, Int32Lit n -> Int32Lit Numerics.Int_32.(sub zero n)
+  | NegOp, Int64Lit n -> Int64Lit Numerics.Int_64.(sub zero n)
   | _, _ -> raise (Invalid_argument "Invalid signed pattern")
   )
 
@@ -580,7 +580,7 @@ and build_actor at ts self_id es obj_typ =
                    note = f.T.typ }
                ) fields vs)
             ty)) in
-  let footprint_d, footprint_f = export_footprint self_id (with_stable_vars (fun e -> e)) in
+  let footprint_d, footprint_f = export_footprint self_id (with_stable_vars Fun.id) in
   let runtime_info_d, runtime_info_f = export_runtime_information self_id in
   I.(ActorE (footprint_d @ runtime_info_d @ ds', footprint_f @ runtime_info_f @ fs,
      { meta;
@@ -848,7 +848,7 @@ and dec' at n = function
     } in
     I.LetD (varPat, fn)
 
-and cases cs = List.map (case (fun x -> x)) cs
+and cases cs = List.map (case Fun.id) cs
 
 and case f c = phrase (case' f) c
 
@@ -935,11 +935,11 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
     | S.AnnotP _ | S.ParP _ -> assert false
     | S.VarP i when not must_wrap ->
       { i with note = p.note },
-      (fun e -> e)
+      Fun.id
     | S.WildP ->
       let v = fresh_var "param" p.note in
       arg_of_var v,
-      (fun e -> e)
+      Fun.id
     |  _ ->
       let v = fresh_var "param" p.note in
       arg_of_var v,
@@ -952,18 +952,18 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
     | _, S.WildP ->
       let vs = fresh_vars "ignored" tys in
       List.map arg_of_var vs,
-      (fun e -> e)
+      Fun.id
     | 1, _ ->
       let a, wrap = to_arg p in
       [a], wrap
     | 0, S.TupP [] ->
-      [] , (fun e -> e)
+      [], Fun.id
     | _, S.TupP ps ->
       assert (List.length ps = n_args);
       List.fold_right (fun p (args, wrap) ->
         let (a, wrap1) = to_arg p in
         (a::args, fun e -> wrap1 (wrap e))
-      ) ps ([], fun e -> e)
+      ) ps ([], Fun.id)
     | _, _ ->
       let vs = fresh_vars "param" tys in
       List.map arg_of_var vs,

@@ -38,10 +38,10 @@ let mono_calls_visitor (stk : mono_goal Stack.t) : visitor =
         {it = CallE({it = VarE (s @~ v_at); at=v_at; note=v_note},
                     {it = None; at=inst.at; note = []}, e); at; note}
     | e -> e);
-    visit_typ = (fun t -> t);
-    visit_pat = (fun p -> p);
-    visit_dec = (fun d -> d);
-    visit_inst = (fun i -> i);
+    visit_typ = Fun.id;
+    visit_pat = Fun.id;
+    visit_dec = Fun.id;
+    visit_inst = Fun.id;
   }
 
 let mono_calls_dec_field (df : dec_field) : (mono_goal list * dec_field) =
