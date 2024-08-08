@@ -252,7 +252,7 @@ and nary context k naryE es =
       k -@- naryE (List.rev (t_exp context e1 :: vs))
     | e1 :: es ->
       match eff e1, e1.it with
-      | T.Triv, VarE (Const, _) ->
+      | _, VarE (Const, _) ->
         nary_aux (e1 :: vs) es
       | T.Triv, _ ->
         let v1 = fresh_var "v" (typ e1) in
