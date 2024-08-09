@@ -54,7 +54,7 @@ let funcT (sort, tbs, t1, t2) =
   | _ -> FuncT(sort, tbs, t1, t2)
 
 
-let dup_var x = VarE (x.it @@ x.at) @? x.at
+let dup_var x = VarE (x.it @~ x.at) @? x.at
 
 let name_exp e =
   match e.it with
@@ -99,7 +99,7 @@ let rec normalize_let p e =
 
 let let_or_exp named x e' at =
   if named
-  then LetD(VarP(x) @! at, e' @? at, None) @? at
+  then LetD(VarP x @! at, e' @? at, None) @? at
        (* If you change the above regions,
           modify is_sugared_func_or_module to match *)
   else ExpD(e' @? at) @? at
@@ -587,11 +587,11 @@ exp_nullary(B) :
   | e=exp_plain
     { e }
   | x=id
-    { VarE(x) @? at $sloc }
+    { VarE (x.it @~ x.at) @? at $sloc }
   | PRIM s=TEXT
     { PrimE(s) @? at $sloc }
   | UNDERSCORE
-    { VarE ("_" @@ at $sloc) @? at $sloc }
+    { VarE ("_" @~ at $sloc) @? at $sloc }
 
 exp_post(B) :
   | e=exp_nullary(B)
@@ -775,7 +775,7 @@ catch :
 
 exp_field :
   | m=var_opt x=id t=annot_opt
-    { let e = VarE(x.it @@ x.at) @? x.at in
+    { let e = VarE (x.it @~ x.at) @? x.at in
       { mut = m; id = x; exp = annot_exp e t; } @@ at $sloc }
   | m=var_opt x=id t=annot_opt EQ e=exp(ob)
     { { mut = m; id = x; exp = annot_exp e t; } @@ at $sloc }

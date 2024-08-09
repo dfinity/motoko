@@ -78,7 +78,9 @@ let wildP =
 (* Primitives *)
 
 let varE (id, typ) =
-  { it = VarE id; at = no_region; note = Note.{ def with typ = T.as_immut typ } }
+  { it = VarE ((if T.is_mut typ then Var else Const), id)
+  ; at = no_region
+  ; note = Note.{ def with typ = T.as_immut typ } }
 
 let varLE (id, typ) =
   { it = VarLE id; at = no_region; note = typ }
@@ -119,6 +121,17 @@ let primE prim es =
     | OtherPrim "blob_size"
     | OtherPrim "text_len" -> T.nat
     | OtherPrim "is_controller" -> T.bool
+    | OtherPrim "rts_version" -> T.text
+    | OtherPrim "rts_memory_size" -> T.nat
+    | OtherPrim "rts_heap_size" -> T.nat
+    | OtherPrim "rts_total_allocation" -> T.nat
+    | OtherPrim "rts_reclaimed" -> T.nat
+    | OtherPrim "rts_max_live_size" -> T.nat
+    | OtherPrim "rts_stable_memory_size" -> T.nat
+    | OtherPrim "rts_logical_stable_memory_size" -> T.nat
+    | OtherPrim "rts_max_stack_size" -> T.nat
+    | OtherPrim "rts_callback_table_count" -> T.nat
+    | OtherPrim "rts_callback_table_size" -> T.nat
     | _ -> assert false (* implement more as needed *)
   in
   let eff = map_max_effs eff es in
@@ -666,7 +679,7 @@ let (-->*) xs exp =
   nary_funcE "$lambda" fun_ty xs exp
 
 let close_typ_binds cs tbs =
-  List.map (fun {it = {con; sort; bound}; _} -> {T.var = Cons.name con; sort=sort; bound = T.close cs bound}) tbs
+  List.map (fun {it = {con; sort; bound}; _} -> {T.var = Cons.name con; sort; bound = T.close cs bound}) tbs
 
 (* polymorphic, n-ary local lambda *)
 let forall tbs e =
@@ -762,23 +775,26 @@ let unreachableE () =
   loopE (unitE ())
 
 let objE sort typ_flds flds =
-  let rec go ds fields fld_tys flds =
-    match flds with
+  let rec go ds fields fld_tys = function
     | [] ->
       blockE
         (List.rev ds)
         (newObjE sort fields
            (T.obj sort
-              ((List.map (fun (id,c) -> (id, T.Typ c)) typ_flds)
+              (List.map (fun (id, c) -> (id, T.Typ c)) typ_flds
                @ fld_tys)))
     | (lab, exp)::flds ->
-      let v = fresh_var lab (typ exp) in
+      let v, ds = match exp.it with
+        | VarE (Const, v) -> var v (typ exp), ds
+        | _ ->
+          let v = fresh_var lab (typ exp) in
+          v, letD v exp :: ds in
       let field = {
         it = {name = lab; var = id_of_var v};
         at = no_region;
         note = typ exp
       } in
-      go ((letD v exp)::ds) (field::fields) ((lab, typ exp)::fld_tys) flds
+      go ds (field::fields) ((lab, typ exp)::fld_tys) flds
   in
   go [] [] [] flds
 

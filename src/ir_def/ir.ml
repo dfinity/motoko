@@ -58,7 +58,7 @@ type arg = (string, Type.typ) Source.annotated_phrase
 type exp = exp' phrase
 and exp' =
   | PrimE of (prim * exp list)                 (* primitive *)
-  | VarE of id                                 (* variable *)
+  | VarE of mut * id                           (* variable *)
   | LitE of lit                                (* literal *)
   | AssignE of lexp * exp                      (* assignment *)
   | BlockE of (dec list * exp)                 (* block *)

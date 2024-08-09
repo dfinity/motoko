@@ -26,3 +26,5 @@ It is only possible to `throw` or `try/catch` errors in an asynchronous context.
 These rules also mean that local functions cannot directly call shared functions or `await` futures.
 
 (The same restrictions apply to `await*` and `async*` expressions.)
+
+<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />

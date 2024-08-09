@@ -100,3 +100,5 @@ To start writing Motoko code, start by reading the in-depth documentation for so
 - [Caller identification](caller-id.md)
 
 The Motoko programming language continues to evolve with each release of the [IC SDK](https://internetcomputer.org/docs/current/developer-docs/setup/install) and with ongoing updates to the Motoko compiler. Check back regularly to try new features and see what’s changed.
+
+<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />

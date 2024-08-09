@@ -30,14 +30,14 @@ let string_of_mono_goal (g : mono_goal) : string =
     | _ -> unsupported Source.no_region (Mo_types.Arrange_type.typ t)) g.mg_typs)
 
 let mono_calls_visitor (stk : mono_goal Stack.t) : visitor =
-  { visit_typ = (fun t -> t);
-    visit_pat = (fun p -> p);
-    visit_dec = (fun d -> d);
-    visit_inst = (fun i -> i);
+  { visit_typ = Fun.id;
+    visit_pat = Fun.id;
+    visit_dec = Fun.id;
+    visit_inst = Fun.id;
     visit_exp = function
-      | {it = CallE(_, {it = VarE v; at = v_at; note = v_note},inst,e); _} as exp ->
+      | {it = CallE(_, {it = VarE v; at = v_at; note = v_note}, inst, e); _} as exp ->
          let goal = { mg_id = v.it; mg_typs = inst.note } in
-         let _ = (if goal.mg_typs = [] then () else Stack.push goal stk) in
+         if goal.mg_typs <> [] then Stack.push goal stk;
          let s = string_of_mono_goal goal in
          {exp with it = CallE(None, {it = VarE (s @@ v_at); at=v_at; note=v_note},
                               {it = None; at=inst.at; note = []}, e)}

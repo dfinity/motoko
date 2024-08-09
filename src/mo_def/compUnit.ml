@@ -2,6 +2,7 @@ open Mo_types
 
 open Syntax
 
+let (@~) it at = Source.annotate Const it at
 
 (* Compilation unit detection *)
 
@@ -91,7 +92,7 @@ let obj_decs obj_sort at note id_opt fields =
         None);
       at; note
     };
-    { it = ExpD { it = VarE id; at; note };
+    { it = ExpD { it = VarE (id.it @~ id.at); at; note };
       at; note }
     ]
 
@@ -106,10 +107,10 @@ let decs_of_lib (cu : comp_unit) =
       pat,
       { it = ImportE (fp, ri);
         at;
-        note = { note_typ = note; note_eff = Type.Triv} },
+        note = { empty_typ_note with note_typ = note } },
       None);
       at;
-      note = { note_typ = note; note_eff = Type.Triv } }) imports
+      note = { empty_typ_note with note_typ = note } }) imports
   in
   import_decs,
   match cub.it with

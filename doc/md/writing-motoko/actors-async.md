@@ -151,3 +151,5 @@ Consider the following stateful `Atomicity` actor:
 Calling the shared function `atomic()` will fail with an error, since the last statement causes a trap. However, the trap leaves the mutable variable `s` with value `0`, not `1`, and variable `pinged` with value `false`, not `true`. This is because the trap happens before the method `atomic` has executed an `await`, or exited with a result. Even though `atomic` calls `ping()`, `ping()` is queued until the next commit point.
 
 Calling the shared function `nonAtomic()` will also fail with an error due to a trap. In this function, the trap leaves the variable `s` with value `3`, not `0`, and variable `pinged` with value `true`, not `false`. This is because each `await` commits its preceding side-effects, including message sends. Even though `f` is complete by the second await, this await also forces a commit of the state, suspends execution and allows for interleaved processing of other messages to this actor.
+
+<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />

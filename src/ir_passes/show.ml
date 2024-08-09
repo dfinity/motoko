@@ -249,8 +249,7 @@ and t_exp env (e : Ir.exp) =
   { e with it = t_exp' env e.it }
 
 and t_exp' env = function
-  | LitE l -> LitE l
-  | VarE id -> VarE id
+  | (LitE _ | VarE _) as e -> e
   | PrimE (ShowPrim ot, [exp1]) ->
     let t' = T.normalize ot in
     add_type env t';
