@@ -74,3 +74,5 @@ func factorial(n : Nat) : ?Nat {
 Check out Motoko's [base library source code](https://github.com/dfinity/motoko-base/tree/master/src) for additional examples and best practices. 
 
 The source code for `mo-doc` is available in the [dfinity/motoko](https://github.com/dfinity/motoko/tree/master/src/docs) GitHub repository. Contributions are welcome!
+
+<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />

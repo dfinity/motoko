@@ -109,7 +109,7 @@ let lookup_module (project_root : string) (path : string) (index : t) :
       let mic_id = Flags.M.find_opt alias index.ic_aliases in
       let _ =
         Debug.log "lookup_module.ic_alias.ic_id"
-          (string_of_option (fun x -> x) mic_id)
+          (string_of_option Fun.id mic_id)
       in
       let* id = mic_id in
       let lookup_path = ic_id_to_lookup index.actor_idl_path project_root id in
@@ -366,7 +366,7 @@ let make_index_inner project_root vfs entry_points : t Diag.result =
         index_from_scope project_root (empty project_root) libs scope
   in
   let actor_paths = scan_actors () in
-  let _ = Debug.log "Actor paths" (string_of_list (fun x -> x) actor_paths) in
+  let _ = Debug.log "Actor paths" (string_of_list Fun.id actor_paths) in
   let actor_env =
     List.fold_left
       (fun acc f ->

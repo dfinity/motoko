@@ -13,6 +13,7 @@ let trace = ref false
 let verbose = ref false
 let print_warnings = ref true
 let warnings_are_errors = ref false
+let print_source_on_error = ref false
 let print_depth = ref 2
 let release_mode = ref false
 let compile_mode = ref ICMode
