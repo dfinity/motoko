@@ -3,8 +3,9 @@ import { errorMessage; debugPrint; setCandidLimits} = "mo:⛔";
 
 actor {
     let expectedMinimumSize = 31_000;
-    setCandidLimits<system>{ instructions = {factor = 0; bias = 5_000_000_000 };
-                             allocations = {factor = 0; bias = 5_000_000_000 } };
+    setCandidLimits<system>{ numerator = 0;
+                             denominator = 1;
+                             bias = 1_000_000 };
     public func ser() : async () { await go(false) };
     public func deser() : async () { await go(true) };
 

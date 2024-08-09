@@ -6566,101 +6566,65 @@ module MakeSerialization (Strm : Stream) = struct
     let set_typtbl_size env =
       G.i (GlobalSet (nr (E.get_global env "@@typtbl_size")))
 
-    let get_pseudo_instruction_counter env =
-      G.i (GlobalGet (nr (E.get_global env "@@pseudo_instruction_counter")))
-    let set_pseudo_instruction_counter env =
-      G.i (GlobalSet (nr (E.get_global env "@@pseudo_instruction_counter")))
+    let get_value_counter env =
+      G.i (GlobalGet (nr (E.get_global env "@@value_counter")))
+    let set_value_counter env =
+      G.i (GlobalSet (nr (E.get_global env "@@value_counter")))
 
-    let get_limit_counter env =
-      G.i (GlobalGet (nr (E.get_global env "@@limit_counter")))
-    let set_limit_counter env =
-      G.i (GlobalSet (nr (E.get_global env "@@limit_counter")))
+    let get_value_limit env =
+      G.i (GlobalGet (nr (E.get_global env "@@value_limit")))
+    let set_value_limit env =
+      G.i (GlobalSet (nr (E.get_global env "@@value_limit")))
 
-    let get_instruction_limit env =
-      G.i (GlobalGet (nr (E.get_global env "@@instruction_limit")))
-    let set_instruction_limit env =
-      G.i (GlobalSet (nr (E.get_global env "@@instruction_limit")))
+    let get_value_numerator env =
+      G.i (GlobalGet (nr (E.get_global env "@@value_numerator")))
+    let set_value_numerator env =
+      G.i (GlobalSet (nr (E.get_global env "@@value_numerator")))
 
-    let get_instruction_factor env =
-      G.i (GlobalGet (nr (E.get_global env "@@instruction_factor")))
-    let set_instruction_factor env =
-      G.i (GlobalSet (nr (E.get_global env "@@instruction_factor")))
+    let get_value_denominator env =
+      G.i (GlobalGet (nr (E.get_global env "@@value_denominator")))
+    let set_value_denominator env =
+      G.i (GlobalSet (nr (E.get_global env "@@value_denominator")))
 
-    let get_instruction_bias env =
-      G.i (GlobalGet (nr (E.get_global env "@@instruction_bias")))
-    let set_instruction_bias env =
-      G.i (GlobalSet (nr (E.get_global env "@@instruction_bias")))
-
-    let get_allocation_limit env =
-      G.i (GlobalGet (nr (E.get_global env "@@allocation_limit")))
-    let set_allocation_limit env =
-      G.i (GlobalSet (nr (E.get_global env "@@allocation_limit")))
-
-    let get_allocation_factor env =
-      G.i (GlobalGet (nr (E.get_global env "@@allocation_factor")))
-    let set_allocation_factor env =
-      G.i (GlobalSet (nr (E.get_global env "@@allocation_factor")))
-
-    let get_allocation_bias env =
-      G.i (GlobalGet (nr (E.get_global env "@@allocation_bias")))
-    let set_allocation_bias env =
-      G.i (GlobalSet (nr (E.get_global env "@@allocation_bias")))
+    let get_value_bias env =
+      G.i (GlobalGet (nr (E.get_global env "@@value_bias")))
+    let set_value_bias env =
+      G.i (GlobalSet (nr (E.get_global env "@@value_bias")))
 
     (* interval for checking instruction counter *)
-    let idl_limit_interval = 32l (* TUNE *)
-    let idl_instruction_factor = 1000L (* TUNE *)
-    let idl_instruction_bias = 10_000_000L (* TUNE *)
-    let idl_pseudo_cost = 100L (* TUNE *)
-    let scale bytes = Int64.mul bytes (Int64.of_int32(Int32.div Heap.word_size 4l))
-    let idl_allocation_factor = scale(64L) (* TUNE *)
-    let idl_allocation_bias = scale(1_000_000L) (* TUNE *)
+    let idl_value_numerator = 1L
+    let idl_value_denominator = 1L
+    let idl_value_bias = 1024L
 
-    let idl_instruction_counter env =
-      match E.mode env with
-      | Flags.ICMode | Flags.RefMode ->
-        compile_unboxed_const 0l ^^
-        IC.performance_counter env
-      | Flags.WASIMode | Flags.WasmMode  ->
-        get_pseudo_instruction_counter env
+    let idl_value_counter env =
+        get_value_counter env
 
-    let simulate_instruction_counter env =
-      match E.mode env with
-      | Flags.ICMode | Flags.RefMode ->
-        G.nop
-      | Flags.WASIMode | Flags.WasmMode  ->
-        get_pseudo_instruction_counter env ^^
-        compile_const_64 idl_pseudo_cost ^^
+    let bump_value_counter env =
+        get_value_counter env ^^
+        compile_const_64 1L ^^
         G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
-        set_pseudo_instruction_counter env
+        set_value_counter env
 
-    let reset_instruction_limit env get_blob get_rel_buf_opt =
+    let reset_value_limit env get_blob get_rel_buf_opt =
       get_rel_buf_opt ^^
-      G.if0 begin (* Candid deserialization *)
+      G.if0
+      begin (* Candid deserialization *)
         (* set instruction limit *)
-        idl_instruction_counter env ^^
+        idl_value_counter env ^^
         get_blob ^^
         Blob.len env ^^
         G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-        get_instruction_factor env ^^
+        get_value_numerator env ^^
         G.i (Binary (Wasm.Values.I64 I64Op.Mul)) ^^
-        get_instruction_bias env ^^
+        get_value_denominator env ^^
+        G.i (Binary (Wasm.Values.I64 I64Op.DivU)) ^^
+        get_value_bias env ^^
         G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
         G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
-        set_instruction_limit env ^^
-        (* set allocation limit *)
-        Heap.get_total_allocation env ^^
-        get_blob ^^
-        Blob.len env ^^
-        G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
-        get_allocation_factor env ^^
-        G.i (Binary (Wasm.Values.I64 I64Op.Mul)) ^^
-        get_allocation_bias env ^^
-        G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
-        G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
-        set_allocation_limit env
+        set_value_limit env
       end
       begin (* Extended candid/ Destabilization *)
-         G.nop
+        G.nop
       end
 
     let idl_limit_check env =
@@ -6673,42 +6637,19 @@ module MakeSerialization (Strm : Stream) = struct
       E.add_global32 env "@@typtbl" Mutable 0l;
       E.add_global32 env "@@typtbl_end" Mutable 0l;
       E.add_global32 env "@@typtbl_size" Mutable 0l;
-      E.add_global32 env "@@limit_counter" Mutable idl_limit_interval;
-      E.add_global64 env "@@instruction_factor" Mutable idl_instruction_factor;
-      E.add_global64 env "@@instruction_bias" Mutable idl_instruction_bias;
-      E.add_global64 env "@@allocation_factor" Mutable idl_allocation_factor;
-      E.add_global64 env "@@allocation_bias" Mutable idl_allocation_bias;
-      (match E.mode env with
-      | Flags.ICMode | Flags.RefMode ->
-        ()
-      | Flags.WASIMode | Flags.WasmMode ->
-        E.add_global64 env "@@pseudo_instruction_counter" Mutable 0L);
-      E.add_global64 env "@@instruction_limit" Mutable 0L;
-      E.add_global64 env "@@allocation_limit" Mutable 0L;
+      E.add_global64 env "@@value_denominator" Mutable idl_value_denominator;
+      E.add_global64 env "@@value_numerator" Mutable idl_value_numerator;
+      E.add_global64 env "@@value_bias" Mutable idl_value_bias;
+      E.add_global64 env "@@value_counter" Mutable 0L;
+      E.add_global64 env "@@value_limit" Mutable 0L;
       Func.define_built_in env "idl_limit_check" [] [] (fun env ->
         get_rel_buf_opt env ^^
         G.if0 begin (* Candid deserialization *)
-          get_limit_counter env ^^
-          G.if0
-          begin (* non-zero: Decrement counter *)
-            get_limit_counter env ^^
-            compile_sub_const 1l ^^
-            set_limit_counter env
-          end
-          begin (* zero: Check limit and reset counter *)
-            idl_instruction_counter env ^^
-            get_instruction_limit env ^^
-            G.i (Compare (Wasm.Values.I64 I64Op.LeU)) ^^
-            E.else_trap_with env "IDL error: exceeded instruction limit" ^^
-            Heap.get_total_allocation env ^^
-            get_allocation_limit env ^^
-            G.i (Compare (Wasm.Values.I64 I64Op.LeU)) ^^
-            E.else_trap_with env "IDL error: exceeded allocation limit" ^^
-            (* Reset counter *)
-            compile_unboxed_const idl_limit_interval ^^
-            set_limit_counter env
-          end ^^
-          simulate_instruction_counter env
+          idl_value_counter env ^^
+          get_value_limit env ^^
+          G.i (Compare (Wasm.Values.I64 I64Op.LeU)) ^^
+          E.else_trap_with env "IDL error: exceeded value limit" ^^
+          bump_value_counter env
         end begin (* Extended Candid/Destabilization *)
           G.nop
         end)
@@ -8135,7 +8076,7 @@ module MakeSerialization (Strm : Stream) = struct
         get_typtbl_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl env ^^
         get_maintyps_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl_end env ^^
         get_typtbl_size_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl_size env ^^
-        Registers.reset_instruction_limit env get_blob get_rel_buf_opt
+        Registers.reset_value_limit env get_blob get_rel_buf_opt
       end ^^
 
       (* set up a dedicated read buffer for the list of main types *)
@@ -11880,26 +11821,22 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | OtherPrim "btstInt64", [_;_] ->
     const_sr (SR.UnboxedWord64 Type.Int64) (Word64.btst_kernel env)
 
-  | OtherPrim "setCandidLimits", [e1; e2; e3; e4] ->
+  | OtherPrim "setCandidLimits", [e1; e2; e3] ->
     SR.unit,
     compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) e1 ^^
-    Serialization.Registers.set_instruction_factor env ^^
+    Serialization.Registers.set_value_numerator env ^^
     compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) e2 ^^
-    Serialization.Registers.set_instruction_bias env ^^
+    Serialization.Registers.set_value_denominator env ^^
     compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) e3 ^^
-    Serialization.Registers.set_allocation_factor env ^^
-    compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) e4 ^^
-    Serialization.Registers.set_allocation_bias env
+    Serialization.Registers.set_value_bias env
 
   | OtherPrim "getCandidLimits", [] ->
-    SR.UnboxedTuple 4,
-    Serialization.Registers.get_instruction_factor env ^^
+    SR.UnboxedTuple 3,
+    Serialization.Registers.get_value_numerator env ^^
     BoxedWord64.box env Type.Nat64 ^^
-    Serialization.Registers.get_instruction_bias env ^^
+    Serialization.Registers.get_value_denominator env ^^
     BoxedWord64.box env Type.Nat64 ^^
-    Serialization.Registers.get_allocation_factor env ^^
-    BoxedWord64.box env Type.Nat64 ^^
-    Serialization.Registers.get_allocation_bias env ^^
+    Serialization.Registers.get_value_bias env ^^
     BoxedWord64.box env Type.Nat64
 
   (* Coercions for abstract types *)
