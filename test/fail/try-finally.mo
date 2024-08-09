@@ -1,4 +1,4 @@
-import { error } =  "mo:⛔";
+import { error } = "mo:⛔";
 
 actor A {
     func m() : async () {
@@ -10,10 +10,16 @@ actor A {
         finally { ignore m() } // BAD: no effects allowed!
     };
 
-    func _t1() : async () {
+    func _t1a() : async () {
         try { await m() }
         catch _ {}
         finally { throw error "Nope" } // BAD: has effect.
+    };
+
+    func _t1b() : async () {
+        try { await m() }
+        catch _ {}
+        finally { ignore async {} } // BAD: has effect. Weird error...
     };
 
     func _t2() : async () {
@@ -33,5 +39,4 @@ actor A {
         catch _ {}
         finally { break out } // BAD: no outward edges allowed!
     };
-
 }
