@@ -33,7 +33,7 @@ and exp' rho = function
   | VarE (m, i)         -> VarE (m, id rho i)
   | LitE _ as e         -> e
   | PrimE (p, es)       -> PrimE (prim rho p, List.map (exp rho) es)
-  | ActorE (ds, fs, { meta; preupgrade; postupgrade; heartbeat; timer; inspect }, t) ->
+  | ActorE (ds, fs, { meta; preupgrade; postupgrade; heartbeat; timer; inspect; stable_record; stable_type}, t) ->
     let ds', rho' = decs rho ds in
     ActorE
       (ds',
@@ -44,8 +44,11 @@ and exp' rho = function
         heartbeat = exp rho' heartbeat;
         timer = exp rho' timer;
         inspect = exp rho' inspect;
+        stable_type = stable_type;
+        stable_record = exp rho' stable_record;
        },
        t)
+
   | AssignE (e1, e2)    -> AssignE (lexp rho e1, exp rho e2)
   | BlockE (ds, e1)     -> let ds', rho' = decs rho ds
                            in BlockE (ds', exp rho' e1)
@@ -197,7 +200,7 @@ let comp_unit rho cu = match cu with
   | LibU (ds, e) ->
     let ds', rho' = decs rho ds
     in LibU (ds', exp rho' e)
-  | ActorU (as_opt, ds, fs, { meta; preupgrade; postupgrade; heartbeat; timer; inspect }, t) ->
+  | ActorU (as_opt, ds, fs, { meta; preupgrade; postupgrade; heartbeat; timer; inspect; stable_record; stable_type }, t) ->
     let as_opt', rho' = match as_opt with
       | None -> None, rho
       | Some as_ ->
@@ -212,4 +215,6 @@ let comp_unit rho cu = match cu with
         heartbeat = exp rho'' heartbeat;
         timer = exp rho'' timer;
         inspect = exp rho'' inspect;
+        stable_record = exp rho'' stable_record;
+        stable_type = stable_type;
       }, t)

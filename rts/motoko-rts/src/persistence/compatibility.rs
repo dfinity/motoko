@@ -38,10 +38,12 @@ impl TypeDescriptor {
         }
     }
 
-    pub unsafe fn new(candid_data: Value, type_offsets: Value) -> Self {
-        Self {
-            candid_data: candid_data.forward_if_possible(),
-            type_offsets: type_offsets.forward_if_possible(),
+    pub fn new(candid_data: Value, type_offsets: Value) -> Self {
+        unsafe {
+            Self {
+                candid_data: candid_data.forward_if_possible(),
+                type_offsets: type_offsets.forward_if_possible(),
+            }
         }
     }
 
@@ -51,6 +53,14 @@ impl TypeDescriptor {
 
     pub fn assert_initialized(&self) {
         assert!(self.candid_data != DEFAULT_VALUE && self.type_offsets != DEFAULT_VALUE);
+    }
+
+    pub fn candid_data(&self) -> Value {
+        self.candid_data
+    }
+
+    pub fn type_offsets(&self) -> Value {
+        self.type_offsets
     }
 
     // GC root if part of the persistent stable type

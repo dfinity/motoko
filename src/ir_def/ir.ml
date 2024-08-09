@@ -56,6 +56,7 @@ type arg = (string, Type.typ) Source.annotated_phrase
 (* Expressions *)
 
 type exp = exp' phrase
+
 and exp' =
   | PrimE of (prim * exp list)                 (* primitive *)
   | VarE of mut * id                           (* variable *)
@@ -83,7 +84,9 @@ and system = {
   postupgrade : exp;
   heartbeat : exp;
   timer : exp; (* TODO: use an option type: (Default of exp | UserDefined of exp) option *)
-  inspect : exp
+  inspect : exp;
+  stable_record: exp;
+  stable_type: Type.typ;
 }
 
 and candid = {
@@ -232,6 +235,13 @@ let full_flavor () : flavor = {
   has_poly_eq = true;
 }
 
+type actor_type = {
+  (* original actor type, including all actor fields *)
+  transient_actor_type: Type.typ;
+  (* record of stable actor fields used for persistence,
+     the fields are without mutability distinctions *)
+  stable_actor_type: Type.typ
+}
 
 (* Program *)
 
@@ -239,6 +249,7 @@ type comp_unit =
   | LibU of dec list * exp
   | ProgU of dec list
   | ActorU of arg list option * dec list * field list * system * Type.typ (* actor (class) *)
+     
 
 type prog = comp_unit * flavor
 
@@ -313,4 +324,3 @@ let map_prim t_typ t_id p =
   | ICStableWrite t -> ICStableWrite (t_typ t)
   | ICStableRead t -> ICStableRead (t_typ t)
   | ICStableSize t -> ICStableSize (t_typ t)
-

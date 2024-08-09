@@ -564,7 +564,7 @@ and build_actor at ts self_id es obj_typ =
     let vs = fresh_vars "v" (List.map (fun f -> f.T.typ) fields) in
     blockE
       ((match call_system_func_opt "preupgrade" es obj_typ with
-        | Some call -> [ expD (primE (I.ICPerformGC) []); expD call]
+        | Some call -> [ expD call]
         | None -> []) @
          [letP (seqP (List.map varP vs)) (* dereference any mutable vars, option 'em all *)
             (seqE (List.map (fun (i,t) -> optE (varE (var i t))) ids))])
@@ -580,7 +580,7 @@ and build_actor at ts self_id es obj_typ =
   let runtime_info_d, runtime_info_f = export_runtime_information self_id in
   I.(ActorE (footprint_d @ runtime_info_d @ ds', footprint_f @ runtime_info_f @ fs,
      { meta;
-       preupgrade = with_stable_vars (fun e -> primE (I.ICStableWrite ty) [e]);
+       preupgrade = (primE (I.ICStableWrite ty) []);
        postupgrade =
          (match call_system_func_opt "postupgrade" es obj_typ with
           | Some call -> call
@@ -600,10 +600,11 @@ and build_actor at ts self_id es obj_typ =
        inspect =
          (match call_system_func_opt "inspect" es obj_typ with
           | Some call -> call
-          | None -> tupE [])
+          | None -> tupE []);
+       stable_record = with_stable_vars (fun e -> e);
+       stable_type = ty;
      },
      obj_typ))
-
 
 and stabilize stab_opt d =
   let s = match stab_opt with None -> S.Flexible | Some s -> s.it  in
@@ -1121,18 +1122,22 @@ let transform_unit_body (u : S.comp_unit_body) : Ir.comp_unit =
         T.promote rng
       | _ -> assert false
     in
+    let actor_expression = build_actor u.at ts (Some self_id) fields obj_typ in
     let e = wrap {
-       it = build_actor u.at ts (Some self_id) fields obj_typ;
+       it = actor_expression;
        at = no_region;
        note = Note.{ def with typ = obj_typ } }
     in
     begin match e.it with
-    | I.ActorE(ds, fs, u, t) -> I.ActorU (Some args, ds, fs, u, t)
+    | I.ActorE(ds, fs, u, t) ->
+      I.ActorU (Some args, ds, fs, u, t)
     | _ -> assert false
     end
   | S.ActorU (self_id, fields) ->
-    begin match build_actor u.at [] self_id fields u.note.S.note_typ with
-    | I.ActorE (ds, fs, u, t) -> I.ActorU (None, ds, fs, u, t)
+    let actor_expression = build_actor u.at [] self_id fields u.note.S.note_typ in
+    begin match actor_expression with
+    | I.ActorE (ds, fs, u, t) ->
+        I.ActorU (None, ds, fs, u, t)
     | _ -> assert false
     end
 

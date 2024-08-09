@@ -5,15 +5,18 @@
 //
 // To convert an offset into an address, add heap array's address to the offset.
 
-mod heap;
+pub mod heap;
 mod incremental;
-mod random;
-mod utils;
+pub mod random;
+pub mod utils;
 
 use heap::MotokoHeap;
 use utils::{get_scalar_value, make_pointer, read_word, unskew_pointer, ObjectIdx, WORD_SIZE};
 
-use motoko_rts::types::*;
+use motoko_rts::{
+    gc::incremental::{get_partitioned_heap, partitioned_heap::PARTITION_SIZE},
+    types::*,
+};
 
 use std::fmt::Write;
 
@@ -24,7 +27,7 @@ pub fn test() {
 
     println!("  Testing pre-defined heaps...");
     for test_heap in test_heaps() {
-        test_gcs(&test_heap);
+        run_gc_test(&test_heap);
     }
 
     println!("  Testing random heaps...");
@@ -79,41 +82,46 @@ fn test_heaps() -> Vec<TestHeap> {
 
 fn test_random_heap(seed: u64, max_objects: usize) {
     let random_heap = random::generate(seed, max_objects);
-    test_gcs(&random_heap);
+    run_gc_test(&random_heap);
 }
 
 // All fields are vectors to preserve ordering. Objects are allocated/ added to root arrays etc. in
 // the same order they appear in these vectors. Each object in `heap` should have a unique index,
 // which is checked when creating the heap.
 #[derive(Debug)]
-struct TestHeap {
-    heap: Vec<(ObjectIdx, Vec<ObjectIdx>)>,
-    roots: Vec<ObjectIdx>,
-    continuation_table: Vec<ObjectIdx>,
+pub struct TestHeap {
+    pub heap: Vec<(ObjectIdx, Vec<ObjectIdx>)>,
+    pub roots: Vec<ObjectIdx>,
+    pub continuation_table: Vec<ObjectIdx>,
 }
 
-/// Test all GC implementations with the given heap
-fn test_gcs(heap_descr: &TestHeap) {
-    test_gc(
-        &heap_descr.heap,
-        &heap_descr.roots,
-        &heap_descr.continuation_table,
-    );
+impl TestHeap {
+    pub fn build(&self, free_space: usize) -> MotokoHeap {
+        MotokoHeap::new(
+            &self.heap,
+            &self.roots,
+            &self.continuation_table,
+            free_space,
+        )
+    }
+}
+
+fn run_gc_test(test_heap: &TestHeap) {
+    test_gc(test_heap);
     reset_gc();
 }
 
-fn test_gc(
-    refs: &[(ObjectIdx, Vec<ObjectIdx>)],
-    roots: &[ObjectIdx],
-    continuation_table: &[ObjectIdx],
-) {
-    let mut heap = MotokoHeap::new(refs, roots, continuation_table);
+fn test_gc(test_heap: &TestHeap) {
+    let mut heap = test_heap.build(0);
+    let refs = &test_heap.heap;
+    let roots = &test_heap.roots;
+    let continuation_table = &test_heap.continuation_table;
 
     initialize_gc(&mut heap);
 
     // Check `create_dynamic_heap` sanity
     check_dynamic_heap(
-        false, // before gc
+        CheckMode::Reachability,
         refs,
         roots,
         continuation_table,
@@ -134,7 +142,11 @@ fn test_gc(
         let continuation_table_variable_offset = heap.continuation_table_variable_offset();
         let region0_ptr_offset = heap.region0_pointer_variable_offset();
         check_dynamic_heap(
-            check_all_reclaimed, // check for unreachable objects
+            if check_all_reclaimed {
+                CheckMode::AllReclaimed
+            } else {
+                CheckMode::Reachability
+            },
             refs,
             roots,
             continuation_table,
@@ -149,9 +161,7 @@ fn test_gc(
 }
 
 fn initialize_gc(heap: &mut MotokoHeap) {
-    use motoko_rts::gc::incremental::{
-        get_partitioned_heap, set_incremental_gc_state, IncrementalGC,
-    };
+    use motoko_rts::gc::incremental::{set_incremental_gc_state, IncrementalGC};
     unsafe {
         let state = IncrementalGC::<MotokoHeap>::initial_gc_state(heap.heap_base_address());
         set_incremental_gc_state(Some(state));
@@ -172,6 +182,17 @@ fn reset_gc() {
     }
 }
 
+#[derive(Debug, PartialEq)]
+pub enum CheckMode {
+    /// Check reachability of all necessary objects.
+    Reachability,
+    /// Check the reachability of all necessary objects and
+    /// that all garbage objects have been reclaimed.
+    AllReclaimed,
+    /// Check valid dynamic heap after stabilization.
+    Stabilzation,
+}
+
 /// Check the dynamic heap:
 ///
 /// - All (and in post-gc mode, only) reachable objects should be in the heap. Reachable objects
@@ -181,8 +202,8 @@ fn reset_gc() {
 ///   indices Y and Z in the `objects` map, it should point to objects with indices Y and Z on the
 ///   heap.
 ///
-fn check_dynamic_heap(
-    post_gc: bool,
+pub fn check_dynamic_heap(
+    mode: CheckMode,
     objects: &[(ObjectIdx, Vec<ObjectIdx>)],
     roots: &[ObjectIdx],
     continuation_table: &[ObjectIdx],
@@ -266,6 +287,8 @@ fn check_dynamic_heap(
                 offset += (size_of::<Region>() - size_of::<Obj>())
                     .to_bytes()
                     .as_usize();
+            } else if mode == CheckMode::Stabilzation && tag == TAG_MUTBOX {
+                offset += WORD_SIZE;
             } else {
                 assert!(is_array_or_slice_tag(tag));
 
@@ -303,6 +326,7 @@ fn check_dynamic_heap(
 
                     for field_idx in 1..n_fields {
                         let field = read_word(heap, offset);
+
                         offset += WORD_SIZE;
 
                         // Get index of the object pointed by the field
@@ -324,6 +348,8 @@ fn check_dynamic_heap(
                 }
             }
         }
+
+        skip_empty_partition_space(heap, &mut offset, heap_ptr_offset);
     }
 
     // At this point we've checked that all seen objects point to the expected objects (as
@@ -345,14 +371,12 @@ fn check_dynamic_heap(
     if !missing_objects.is_empty() {
         write!(
             &mut error_message,
-            "Reachable objects missing in the {} heap: {:?}",
-            if post_gc { "post-gc" } else { "pre-gc" },
-            missing_objects,
+            "{mode:?}: Reachable objects missing in the heap: {missing_objects:?}",
         )
         .unwrap();
     }
 
-    if post_gc {
+    if mode == CheckMode::AllReclaimed {
         // Unreachable objects that we've seen in the heap
         let extra_objects: Vec<ObjectIdx> = seen_objects
             .difference(&reachable_objects)
@@ -375,6 +399,19 @@ fn check_dynamic_heap(
 
     if !error_message.is_empty() {
         panic!("{}", error_message);
+    }
+}
+
+fn skip_empty_partition_space(heap: &[u8], offset: &mut usize, heap_ptr_offset: usize) {
+    let heap_start = heap.as_ptr() as usize;
+    while *offset < heap_ptr_offset {
+        let address = *offset + heap_start;
+        let partition_index = address / PARTITION_SIZE;
+        let partition = unsafe { get_partitioned_heap().get_partition(partition_index) };
+        if address < partition.dynamic_space_end() {
+            return;
+        }
+        *offset = (partition_index + 1) * PARTITION_SIZE - heap_start;
     }
 }
 

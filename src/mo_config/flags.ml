@@ -4,6 +4,11 @@ module M = Map.Make(String)
 
 type compile_mode = WasmMode | ICMode | RefMode | WASIMode
 
+type instruction_limits = {
+  upgrade: int;
+  update_call: int;
+}
+
 let trace = ref false
 let verbose = ref false
 let print_warnings = ref true
@@ -46,5 +51,10 @@ let rtti = ref true
 let trap_on_call_error = ref false
 let use_stable_regions = ref false
 let share_code = ref false
+let stabilization_instruction_limit_default = {
+  upgrade = 180_000_000_000; (* 200 billion limit with 10% reserve *)
+  update_call = 18_000_000_000; (* 20 billion limit with 10% reserve *)
+}
+let stabilization_instruction_limit = ref stabilization_instruction_limit_default
 let experimental_stable_memory_default = 0 (* _ < 0: error; _ = 0: warn, _ > 0: allow *)
 let experimental_stable_memory = ref experimental_stable_memory_default

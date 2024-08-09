@@ -77,7 +77,7 @@ enum CompatibilityMode {
     PureCandid,
     /// Candidish stabilization (old stabilization format).
     CandidishStabilization,
-    /// Memory compatibility of orthogonal persistence.
+    /// Memory compatibility of orthogonal persistence (with or without graph copying).
     MemoryCompatibility,
 }
 
@@ -624,7 +624,7 @@ unsafe fn remember_memory_check(cache: &BitRel, variance: TypeVariance, t1: usiz
     }
 }
 
-/// Memory compatibility check for orthogonal persistence.
+/// Memory compatibility check for orthogonal persistence (with or without graph copying).
 /// Checks whether the new type (`typetbl2`) is compatible to the old type (`typetbl1`).
 /// The implementation is similar to the Candid sub-type test `sub()` below, however,
 /// with some relevant differences w.r.t. the permitted type relations:

@@ -102,11 +102,7 @@ impl<'a, M: Memory> MemoryChecker<'a, M> {
             object.tag(),
             |gc, field_address| {
                 let value = *field_address;
-                if value.is_non_null_ptr() {
-                    gc.check_object(value);
-                } else {
-                    gc.check_object_header(value);
-                }
+                gc.check_object(value);
             },
             |_, _, array| array.len(),
         );
