@@ -501,22 +501,24 @@ let call_raw = @call_raw;
 
 func performanceCounter(counter : Nat32) : Nat64 = (prim "performanceCounter" : (Nat32) -> Nat64) counter;
 
-
 // Candid configuration
 func setCandidLimits<system> (
-  { instructions: { factor: Nat64; bias : Nat64 };
-    allocations: { factor: Nat64; bias : Nat64 } }
+  { numerator:  Nat64;
+    denominator:  Nat64;
+    bias: Nat64 }
   ) {
-  (prim "setCandidLimits" : (Nat64, Nat64, Nat64, Nat64) -> ())
-    (instructions.factor, instructions.bias, allocations.factor, allocations.bias)
+  (prim "setCandidLimits" : (Nat64, Nat64, Nat64) -> ())
+    (numerator, denominator, bias)
 };
 
 func getCandidLimits<system>() :
-  { instructions: { factor: Nat64; bias : Nat64};
-    allocations: { factor: Nat64; bias : Nat64 } } {
-     let (f1, b1, f2, b2) = (prim "getCandidLimits" : () -> (Nat64, Nat64, Nat64, Nat64)) ();
-     { instructions = { factor = f1; bias = b1 };
-       allocations  = { factor = f2; bias = b2 } }
+  { numerator:  Nat64;
+    denominator:  Nat64;
+    bias: Nat64 } {
+     let (numerator, denominator, bias) = (prim "getCandidLimits" : () -> (Nat64, Nat64, Nat64)) ();
+  { numerator;
+    denominator;
+    bias }
 };
 
 // predicates for motoko-san
