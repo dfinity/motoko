@@ -1,0 +1,4025 @@
+<?xml version="1.0" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg version="1.1" width="1200" height="342" onload="init(evt)" viewBox="0 0 1200 342" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<!-- Flame graph stack visualization. See https://github.com/brendangregg/FlameGraph for latest version, and http://www.brendangregg.com/flamegraphs.html for examples. -->
+<!-- NOTES:  -->
+<defs>
+	<linearGradient id="background" y1="0" y2="1" x1="0" x2="0" >
+		<stop stop-color="#eeeeee" offset="5%" />
+		<stop stop-color="#eeeeb0" offset="95%" />
+	</linearGradient>
+</defs>
+<style type="text/css">
+	text { font-family:Verdana; font-size:12px; fill:rgb(0,0,0); }
+	#search { opacity:0.1; cursor:pointer; }
+	#search:hover, #search.show { opacity:1; }
+	#subtitle { text-anchor:middle; font-color:rgb(160,160,160); }
+	#title { text-anchor:middle; font-size:17px}
+	#unzoom { cursor:pointer; }
+	#frames > *:hover { stroke:black; stroke-width:0.5; cursor:pointer; }
+	.hide { display:none; }
+	.parent { opacity:0.5; }
+</style>
+<script type="text/ecmascript">
+<![CDATA[
+	"use strict";
+	var details, searchbtn, unzoombtn, matchedtxt, svg, searching;
+	function init(evt) {
+		details = document.getElementById("details").firstChild;
+		searchbtn = document.getElementById("search");
+		unzoombtn = document.getElementById("unzoom");
+		matchedtxt = document.getElementById("matched");
+		svg = document.getElementsByTagName("svg")[0];
+		searching = 0;
+	}
+
+	window.addEventListener("click", function(e) {
+		var target = find_group(e.target);
+		if (target) {
+			if (target.nodeName == "a") {
+				if (e.ctrlKey === false) return;
+				e.preventDefault();
+			}
+			if (target.classList.contains("parent")) unzoom();
+			zoom(target);
+		}
+		else if (e.target.id == "unzoom") unzoom();
+		else if (e.target.id == "search") search_prompt();
+	}, false)
+
+	// mouse-over for info
+	// show
+	window.addEventListener("mouseover", function(e) {
+		var target = find_group(e.target);
+		if (target) details.nodeValue = "Function: " + g_to_text(target);
+	}, false)
+
+	// clear
+	window.addEventListener("mouseout", function(e) {
+		var target = find_group(e.target);
+		if (target) details.nodeValue = ' ';
+	}, false)
+
+	// ctrl-F for search
+	window.addEventListener("keydown",function (e) {
+		if (e.keyCode === 114 || (e.ctrlKey && e.keyCode === 70)) {
+			e.preventDefault();
+			search_prompt();
+		}
+	}, false)
+
+	// functions
+	function find_child(node, selector) {
+		var children = node.querySelectorAll(selector);
+		if (children.length) return children[0];
+		return;
+	}
+	function find_group(node) {
+		var parent = node.parentElement;
+		if (!parent) return;
+		if (parent.id == "frames") return node;
+		return find_group(parent);
+	}
+	function orig_save(e, attr, val) {
+		if (e.attributes["_orig_" + attr] != undefined) return;
+		if (e.attributes[attr] == undefined) return;
+		if (val == undefined) val = e.attributes[attr].value;
+		e.setAttribute("_orig_" + attr, val);
+	}
+	function orig_load(e, attr) {
+		if (e.attributes["_orig_"+attr] == undefined) return;
+		e.attributes[attr].value = e.attributes["_orig_" + attr].value;
+		e.removeAttribute("_orig_"+attr);
+	}
+	function g_to_text(e) {
+		var text = find_child(e, "title").firstChild.nodeValue;
+		return (text)
+	}
+	function g_to_func(e) {
+		var func = g_to_text(e);
+		// if there's any manipulation we want to do to the function
+		// name before it's searched, do it here before returning.
+		return (func);
+	}
+	function update_text(e) {
+		var r = find_child(e, "rect");
+		var t = find_child(e, "text");
+		var w = parseFloat(r.attributes.width.value) -3;
+		var txt = find_child(e, "title").textContent.replace(/\([^(]*\)$/,"");
+		t.attributes.x.value = parseFloat(r.attributes.x.value) + 3;
+
+		// Smaller than this size won't fit anything
+		if (w < 2 * 12 * 0.59) {
+			t.textContent = "";
+			return;
+		}
+
+		t.textContent = txt;
+		// Fit in full text width
+		if (/^ *$/.test(txt) || t.getSubStringLength(0, txt.length) < w)
+			return;
+
+		for (var x = txt.length - 2; x > 0; x--) {
+			if (t.getSubStringLength(0, x + 2) <= w) {
+				t.textContent = txt.substring(0, x) + "..";
+				return;
+			}
+		}
+		t.textContent = "";
+	}
+
+	// zoom
+	function zoom_reset(e) {
+		if (e.attributes != undefined) {
+			orig_load(e, "x");
+			orig_load(e, "width");
+		}
+		if (e.childNodes == undefined) return;
+		for (var i = 0, c = e.childNodes; i < c.length; i++) {
+			zoom_reset(c[i]);
+		}
+	}
+	function zoom_child(e, x, ratio) {
+		if (e.attributes != undefined) {
+			if (e.attributes.x != undefined) {
+				orig_save(e, "x");
+				e.attributes.x.value = (parseFloat(e.attributes.x.value) - x - 10) * ratio + 10;
+				if (e.tagName == "text")
+					e.attributes.x.value = find_child(e.parentNode, "rect[x]").attributes.x.value + 3;
+			}
+			if (e.attributes.width != undefined) {
+				orig_save(e, "width");
+				e.attributes.width.value = parseFloat(e.attributes.width.value) * ratio;
+			}
+		}
+
+		if (e.childNodes == undefined) return;
+		for (var i = 0, c = e.childNodes; i < c.length; i++) {
+			zoom_child(c[i], x - 10, ratio);
+		}
+	}
+	function zoom_parent(e) {
+		if (e.attributes) {
+			if (e.attributes.x != undefined) {
+				orig_save(e, "x");
+				e.attributes.x.value = 10;
+			}
+			if (e.attributes.width != undefined) {
+				orig_save(e, "width");
+				e.attributes.width.value = parseInt(svg.width.baseVal.value) - (10 * 2);
+			}
+		}
+		if (e.childNodes == undefined) return;
+		for (var i = 0, c = e.childNodes; i < c.length; i++) {
+			zoom_parent(c[i]);
+		}
+	}
+	function zoom(node) {
+		var attr = find_child(node, "rect").attributes;
+		var width = parseFloat(attr.width.value);
+		var xmin = parseFloat(attr.x.value);
+		var xmax = parseFloat(xmin + width);
+		var ymin = parseFloat(attr.y.value);
+		var ratio = (svg.width.baseVal.value - 2 * 10) / width;
+
+		// XXX: Workaround for JavaScript float issues (fix me)
+		var fudge = 0.0001;
+
+		unzoombtn.classList.remove("hide");
+
+		var el = document.getElementById("frames").children;
+		for (var i = 0; i < el.length; i++) {
+			var e = el[i];
+			var a = find_child(e, "rect").attributes;
+			var ex = parseFloat(a.x.value);
+			var ew = parseFloat(a.width.value);
+			var upstack;
+			// Is it an ancestor
+			if (0 == 0) {
+				upstack = parseFloat(a.y.value) > ymin;
+			} else {
+				upstack = parseFloat(a.y.value) < ymin;
+			}
+			if (upstack) {
+				// Direct ancestor
+				if (ex <= xmin && (ex+ew+fudge) >= xmax) {
+					e.classList.add("parent");
+					zoom_parent(e);
+					update_text(e);
+				}
+				// not in current path
+				else
+					e.classList.add("hide");
+			}
+			// Children maybe
+			else {
+				// no common path
+				if (ex < xmin || ex + fudge >= xmax) {
+					e.classList.add("hide");
+				}
+				else {
+					zoom_child(e, xmin, ratio);
+					update_text(e);
+				}
+			}
+		}
+	}
+	function unzoom() {
+		unzoombtn.classList.add("hide");
+		var el = document.getElementById("frames").children;
+		for(var i = 0; i < el.length; i++) {
+			el[i].classList.remove("parent");
+			el[i].classList.remove("hide");
+			zoom_reset(el[i]);
+			update_text(el[i]);
+		}
+	}
+
+	// search
+	function reset_search() {
+		var el = document.querySelectorAll("#frames rect");
+		for (var i = 0; i < el.length; i++) {
+			orig_load(el[i], "fill")
+		}
+	}
+	function search_prompt() {
+		if (!searching) {
+			var term = prompt("Enter a search term (regexp " +
+			    "allowed, eg: ^ext4_)", "");
+			if (term != null) {
+				search(term)
+			}
+		} else {
+			reset_search();
+			searching = 0;
+			searchbtn.classList.remove("show");
+			searchbtn.firstChild.nodeValue = "Search"
+			matchedtxt.classList.add("hide");
+			matchedtxt.firstChild.nodeValue = ""
+		}
+	}
+	function search(term) {
+		var re = new RegExp(term);
+		var el = document.getElementById("frames").children;
+		var matches = new Object();
+		var maxwidth = 0;
+		for (var i = 0; i < el.length; i++) {
+			var e = el[i];
+			var func = g_to_func(e);
+			var rect = find_child(e, "rect");
+			if (func == null || rect == null)
+				continue;
+
+			// Save max width. Only works as we have a root frame
+			var w = parseFloat(rect.attributes.width.value);
+			if (w > maxwidth)
+				maxwidth = w;
+
+			if (func.match(re)) {
+				// highlight
+				var x = parseFloat(rect.attributes.x.value);
+				orig_save(rect, "fill");
+				rect.attributes.fill.value = "rgb(230,0,230)";
+
+				// remember matches
+				if (matches[x] == undefined) {
+					matches[x] = w;
+				} else {
+					if (w > matches[x]) {
+						// overwrite with parent
+						matches[x] = w;
+					}
+				}
+				searching = 1;
+			}
+		}
+		if (!searching)
+			return;
+
+		searchbtn.classList.add("show");
+		searchbtn.firstChild.nodeValue = "Reset Search";
+
+		// calculate percent matched, excluding vertical overlap
+		var count = 0;
+		var lastx = -1;
+		var lastw = 0;
+		var keys = Array();
+		for (k in matches) {
+			if (matches.hasOwnProperty(k))
+				keys.push(k);
+		}
+		// sort the matched frames by their x location
+		// ascending, then width descending
+		keys.sort(function(a, b){
+			return a - b;
+		});
+		// Step through frames saving only the biggest bottom-up frames
+		// thanks to the sort order. This relies on the tree property
+		// where children are always smaller than their parents.
+		var fudge = 0.0001;	// JavaScript floating point
+		for (var k in keys) {
+			var x = parseFloat(keys[k]);
+			var w = matches[keys[k]];
+			if (x >= lastx + lastw - fudge) {
+				count += w;
+				lastx = x;
+				lastw = w;
+			}
+		}
+		// display matched percent
+		matchedtxt.classList.remove("hide");
+		var pct = 100 * count / maxwidth;
+		if (pct != 100) pct = pct.toFixed(1)
+		matchedtxt.firstChild.nodeValue = "Matched: " + pct + "%";
+	}
+]]>
+</script>
+<rect x="0.0" y="0" width="1200.0" height="342.0" fill="url(#background)"  />
+<text id="title" x="600.00" y="24" >dao.mo</text>
+<text id="details" x="10.00" y="325" > </text>
+<text id="unzoom" x="10.00" y="24" class="hide">Reset Zoom</text>
+<text id="search" x="1090.00" y="24" >Search</text>
+<text id="matched" x="1090.00" y="325" > </text>
+<g id="frames">
+<g >
+<title>obj_idx&lt;0&gt; (52 samples, 0.01%)</title><rect x="844.6" y="213" width="0.1" height="15.0" fill="rgb(247,139,46)" rx="2" ry="2" />
+<text  x="847.56" y="223.5" ></text>
+</g>
+<g >
+<title>memcpy (118 samples, 0.02%)</title><rect x="969.5" y="165" width="0.2" height="15.0" fill="rgb(248,144,48)" rx="2" ry="2" />
+<text  x="972.50" y="175.5" ></text>
+</g>
+<g >
+<title>leb128_decode (208 samples, 0.04%)</title><rect x="825.1" y="229" width="0.4" height="15.0" fill="rgb(250,149,49)" rx="2" ry="2" />
+<text  x="828.11" y="239.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;r(amount_e8s:N)&gt; (108 samples, 0.02%)</title><rect x="512.9" y="213" width="0.3" height="15.0" fill="rgb(238,118,36)" rx="2" ry="2" />
+<text  x="515.94" y="223.5" ></text>
+</g>
+<g >
+<title>obj_idx&lt;1&gt; (72 samples, 0.01%)</title><rect x="1106.6" y="149" width="0.1" height="15.0" fill="rgb(246,139,45)" rx="2" ry="2" />
+<text  x="1109.57" y="159.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;P&gt; (170 samples, 0.03%)</title><rect x="841.5" y="197" width="0.4" height="15.0" fill="rgb(248,156,47)" rx="2" ry="2" />
+<text  x="844.52" y="207.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;B&gt; (417 samples, 0.07%)</title><rect x="806.7" y="165" width="0.9" height="15.0" fill="rgb(251,156,51)" rx="2" ry="2" />
+<text  x="809.72" y="175.5" ></text>
+</g>
+<g >
+<title>leaf (387 samples, 0.07%)</title><rect x="593.3" y="165" width="0.8" height="15.0" fill="rgb(238,152,36)" rx="2" ry="2" />
+<text  x="596.30" y="175.5" ></text>
+</g>
+<g >
+<title>del (594 samples, 0.10%)</title><rect x="886.9" y="149" width="1.3" height="15.0" fill="rgb(236,219,34)" rx="2" ry="2" />
+<text  x="889.92" y="159.5" ></text>
+</g>
+<g >
+<title>@anon-func-165.17 (618 samples, 0.11%)</title><rect x="817.8" y="213" width="1.3" height="15.0" fill="rgb(233,146,31)" rx="2" ry="2" />
+<text  x="820.83" y="223.5" ></text>
+</g>
+<g >
+<title>memcpy (149 samples, 0.03%)</title><rect x="808.0" y="133" width="0.3" height="15.0" fill="rgb(248,144,48)" rx="2" ry="2" />
+<text  x="810.96" y="143.5" ></text>
+</g>
+<g >
+<title>account_get (1,312 samples, 0.23%)</title><rect x="1098.1" y="245" width="2.7" height="15.0" fill="rgb(237,164,35)" rx="2" ry="2" />
+<text  x="1101.10" y="255.5" ></text>
+</g>
+<g >
+<title>Array_tabulate (382 samples, 0.07%)</title><rect x="822.7" y="213" width="0.8" height="15.0" fill="rgb(245,150,45)" rx="2" ry="2" />
+<text  x="825.67" y="223.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;r(amount_e8s:N)&gt; (368 samples, 0.06%)</title><rect x="805.7" y="181" width="0.7" height="15.0" fill="rgb(238,156,36)" rx="2" ry="2" />
+<text  x="808.67" y="191.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;v(err:t,ok:N)&gt; (188 samples, 0.03%)</title><rect x="870.6" y="213" width="0.4" height="15.0" fill="rgb(238,118,36)" rx="2" ry="2" />
+<text  x="873.61" y="223.5" ></text>
+</g>
+<g >
+<title>obj_idx&lt;1&gt; (216 samples, 0.04%)</title><rect x="757.4" y="149" width="0.5" height="15.0" fill="rgb(246,139,45)" rx="2" ry="2" />
+<text  x="760.41" y="159.5" ></text>
+</g>
+<g >
+<title>leb128_encode (77 samples, 0.01%)</title><rect x="513.3" y="181" width="0.2" height="15.0" fill="rgb(250,149,49)" rx="2" ry="2" />
+<text  x="516.32" y="191.5" ></text>
+</g>
+<g >
+<title>memcpy (3,984 samples, 0.70%)</title><rect x="671.4" y="229" width="8.2" height="15.0" fill="rgb(248,144,48)" rx="2" ry="2" />
+<text  x="674.36" y="239.5" ></text>
+</g>
+<g >
+<title>leb128_decode (208 samples, 0.04%)</title><rect x="279.7" y="229" width="0.4" height="15.0" fill="rgb(250,149,49)" rx="2" ry="2" />
+<text  x="282.71" y="239.5" ></text>
+</g>
+<g >
+<title>$lambda (3,666 samples, 0.64%)</title><rect x="190.2" y="261" width="7.5" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="193.16" y="271.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (138 samples, 0.02%)</title><rect x="778.7" y="197" width="0.3" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="781.73" y="207.5" ></text>
+</g>
+<g >
+<title>fromList (377 samples, 0.07%)</title><rect x="1109.8" y="165" width="0.7" height="15.0" fill="rgb(232,184,30)" rx="2" ry="2" />
+<text  x="1112.75" y="175.5" ></text>
+</g>
+<g >
+<title>memcpy (1,928 samples, 0.34%)</title><rect x="457.8" y="229" width="4.0" height="15.0" fill="rgb(248,144,48)" rx="2" ry="2" />
+<text  x="460.79" y="239.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;P&gt; (88 samples, 0.02%)</title><rect x="777.1" y="181" width="0.2" height="15.0" fill="rgb(248,118,47)" rx="2" ry="2" />
+<text  x="780.12" y="191.5" ></text>
+</g>
+<g >
+<title>motoko_rts::types::block_size::haa6e1a3c5243bd1b (131 samples, 0.02%)</title><rect x="527.3" y="229" width="0.3" height="15.0" fill="rgb(232,127,30)" rx="2" ry="2" />
+<text  x="530.29" y="239.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (69 samples, 0.01%)</title><rect x="1097.4" y="149" width="0.2" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="1100.43" y="159.5" ></text>
+</g>
+<g >
+<title>fromList (261 samples, 0.05%)</title><rect x="535.3" y="165" width="0.5" height="15.0" fill="rgb(232,184,30)" rx="2" ry="2" />
+<text  x="538.27" y="175.5" ></text>
+</g>
+<g >
+<title>enqueue (212 samples, 0.04%)</title><rect x="321.3" y="229" width="0.5" height="15.0" fill="rgb(242,205,40)" rx="2" ry="2" />
+<text  x="324.32" y="239.5" ></text>
+</g>
+<g >
+<title>replace (715 samples, 0.13%)</title><rect x="877.7" y="149" width="1.5" height="15.0" fill="rgb(252,175,52)" rx="2" ry="2" />
+<text  x="880.71" y="159.5" ></text>
+</g>
+<g >
+<title>@deserialize_go&lt;P&gt; (416 samples, 0.07%)</title><rect x="973.4" y="229" width="0.9" height="15.0" fill="rgb(248,176,47)" rx="2" ry="2" />
+<text  x="976.41" y="239.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (138 samples, 0.02%)</title><rect x="894.4" y="197" width="0.3" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="897.37" y="207.5" ></text>
+</g>
+<g >
+<title>@eq&lt;v(accepted:u,executing:u,failed:t,open:u,rejected:u,succeeded:u)&gt; (324 samples, 0.06%)</title><rect x="586.0" y="165" width="0.7" height="15.0" fill="rgb(236,171,34)" rx="2" ry="2" />
+<text  x="589.04" y="175.5" ></text>
+</g>
+<g >
+<title>alloc_blob (152 samples, 0.03%)</title><rect x="844.7" y="229" width="0.3" height="15.0" fill="rgb(239,128,38)" rx="2" ry="2" />
+<text  x="847.66" y="239.5" ></text>
+</g>
+<g >
+<title>memcmp (480 samples, 0.08%)</title><rect x="504.8" y="261" width="1.0" height="15.0" fill="rgb(238,144,36)" rx="2" ry="2" />
+<text  x="507.85" y="271.5" ></text>
+</g>
+<g >
+<title>compacting_gc (88,409 samples, 15.49%)</title><rect x="322.1" y="261" width="182.7" height="15.0" fill="rgb(227,149,24)" rx="2" ry="2" />
+<text  x="325.08" y="271.5" >compacting_gc</text>
+</g>
+<g >
+<title>obj_idx&lt;0&gt; (1,184 samples, 0.21%)</title><rect x="809.7" y="181" width="2.4" height="15.0" fill="rgb(247,139,46)" rx="2" ry="2" />
+<text  x="812.66" y="191.5" ></text>
+</g>
+<g >
+<title>@serialize&lt;vr(owner:P,tokens:r(amount_e8s:N))&gt; (1,287 samples, 0.23%)</title><rect x="776.6" y="229" width="2.6" height="15.0" fill="rgb(239,156,37)" rx="2" ry="2" />
+<text  x="779.59" y="239.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;vr(owner:P,tokens:r(amount_e8s:N))&gt; (411 samples, 0.07%)</title><rect x="776.8" y="213" width="0.8" height="15.0" fill="rgb(239,118,37)" rx="2" ry="2" />
+<text  x="779.78" y="223.5" ></text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::mark_object::hb81f6542e95ca663 (4,094 samples, 0.72%)</title><rect x="176.3" y="229" width="8.5" height="15.0" fill="rgb(238,127,36)" rx="2" ry="2" />
+<text  x="179.34" y="239.5" ></text>
+</g>
+<g >
+<title>$lambda (23,033 samples, 4.04%)</title><rect x="713.5" y="261" width="47.6" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="716.46" y="271.5" >$lam..</text>
+</g>
+<g >
+<title>leb128_decode (104 samples, 0.02%)</title><rect x="894.7" y="213" width="0.2" height="15.0" fill="rgb(250,149,49)" rx="2" ry="2" />
+<text  x="897.66" y="223.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (276 samples, 0.05%)</title><rect x="767.3" y="229" width="0.5" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="770.26" y="239.5" ></text>
+</g>
+<g >
+<title>$lambda (2,350 samples, 0.41%)</title><rect x="774.4" y="245" width="4.8" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="777.39" y="255.5" ></text>
+</g>
+<g >
+<title>leb128_decode (208 samples, 0.04%)</title><rect x="764.9" y="245" width="0.5" height="15.0" fill="rgb(250,149,49)" rx="2" ry="2" />
+<text  x="767.94" y="255.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;&gt; (572 samples, 0.10%)</title><rect x="833.6" y="261" width="1.2" height="15.0" fill="rgb(242,176,41)" rx="2" ry="2" />
+<text  x="836.58" y="271.5" ></text>
+</g>
+<g >
+<title>filter (1,243 samples, 0.22%)</title><rect x="585.0" y="213" width="2.6" height="15.0" fill="rgb(240,183,38)" rx="2" ry="2" />
+<text  x="588.03" y="223.5" ></text>
+</g>
+<g >
+<title>$lambda (16,061 samples, 2.81%)</title><rect x="790.3" y="261" width="33.2" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="793.26" y="271.5" >$l..</text>
+</g>
+<g >
+<title>iter (552 samples, 0.10%)</title><rect x="588.6" y="245" width="1.1" height="15.0" fill="rgb(240,143,38)" rx="2" ry="2" />
+<text  x="591.55" y="255.5" ></text>
+</g>
+<g >
+<title>alloc_blob (152 samples, 0.03%)</title><rect x="536.4" y="245" width="0.3" height="15.0" fill="rgb(239,128,38)" rx="2" ry="2" />
+<text  x="539.37" y="255.5" ></text>
+</g>
+<g >
+<title>memcpy (134 samples, 0.02%)</title><rect x="808.7" y="133" width="0.3" height="15.0" fill="rgb(248,144,48)" rx="2" ry="2" />
+<text  x="811.70" y="143.5" ></text>
+</g>
+<g >
+<title>leb128_decode (52 samples, 0.01%)</title><rect x="976.9" y="229" width="0.1" height="15.0" fill="rgb(250,149,49)" rx="2" ry="2" />
+<text  x="979.86" y="239.5" ></text>
+</g>
+<g >
+<title>proposal_put (1,595 samples, 0.28%)</title><rect x="591.9" y="229" width="3.3" height="15.0" fill="rgb(234,184,31)" rx="2" ry="2" />
+<text  x="594.86" y="239.5" ></text>
+</g>
+<g >
+<title>motoko_rts::idl::parse_fields::h7550309913b4db63 (2,746 samples, 0.48%)</title><rect x="1123.8" y="229" width="5.6" height="15.0" fill="rgb(240,127,39)" rx="2" ry="2" />
+<text  x="1126.75" y="239.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;v(accepted:u,executing:u,failed:t,open:u,rejected:u,succeeded:u)&gt; (104 samples, 0.02%)</title><rect x="1093.4" y="197" width="0.2" height="15.0" fill="rgb(236,118,34)" rx="2" ry="2" />
+<text  x="1096.41" y="207.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;&gt; (572 samples, 0.10%)</title><rect x="784.4" y="261" width="1.2" height="15.0" fill="rgb(242,176,41)" rx="2" ry="2" />
+<text  x="787.44" y="271.5" ></text>
+</g>
+<g >
+<title>$lambda (2,464 samples, 0.43%)</title><rect x="828.5" y="261" width="5.1" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="831.49" y="271.5" ></text>
+</g>
+<g >
+<title>del (297 samples, 0.05%)</title><rect x="1103.0" y="165" width="0.6" height="15.0" fill="rgb(236,219,34)" rx="2" ry="2" />
+<text  x="1105.95" y="175.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (69 samples, 0.01%)</title><rect x="980.7" y="229" width="0.1" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="983.69" y="239.5" ></text>
+</g>
+<g >
+<title>next (126 samples, 0.02%)</title><rect x="193.6" y="181" width="0.3" height="15.0" fill="rgb(230,219,27)" rx="2" ry="2" />
+<text  x="196.60" y="191.5" ></text>
+</g>
+<g >
+<title>memcmp (194 samples, 0.03%)</title><rect x="538.3" y="229" width="0.4" height="15.0" fill="rgb(238,144,36)" rx="2" ry="2" />
+<text  x="541.34" y="239.5" ></text>
+</g>
+<g >
+<title>text_of_ptr_size (532 samples, 0.09%)</title><rect x="895.7" y="213" width="1.1" height="15.0" fill="rgb(245,171,44)" rx="2" ry="2" />
+<text  x="898.69" y="223.5" ></text>
+</g>
+<g >
+<title>obj_idx&lt;0&gt; (306 samples, 0.05%)</title><rect x="731.0" y="165" width="0.6" height="15.0" fill="rgb(247,139,46)" rx="2" ry="2" />
+<text  x="733.96" y="175.5" ></text>
+</g>
+<g >
+<title>map (126 samples, 0.02%)</title><rect x="814.5" y="245" width="0.3" height="15.0" fill="rgb(240,99,39)" rx="2" ry="2" />
+<text  x="817.55" y="255.5" ></text>
+</g>
+<g >
+<title>proposal_key (362 samples, 0.06%)</title><rect x="592.0" y="213" width="0.7" height="15.0" fill="rgb(243,184,42)" rx="2" ry="2" />
+<text  x="594.97" y="223.5" ></text>
+</g>
+<g >
+<title>motoko_rts::types::block_size::haa6e1a3c5243bd1b (990 samples, 0.17%)</title><rect x="1187.8" y="229" width="2.1" height="15.0" fill="rgb(232,127,30)" rx="2" ry="2" />
+<text  x="1190.83" y="239.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (69 samples, 0.01%)</title><rect x="113.5" y="245" width="0.2" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="116.54" y="255.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (69 samples, 0.01%)</title><rect x="785.7" y="245" width="0.1" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="788.66" y="255.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (69 samples, 0.01%)</title><rect x="845.2" y="213" width="0.2" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="848.24" y="223.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;N&gt; (123 samples, 0.02%)</title><rect x="513.2" y="197" width="0.3" height="15.0" fill="rgb(250,156,49)" rx="2" ry="2" />
+<text  x="516.22" y="207.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;v(err:t,ok:u)&gt; (2,303 samples, 0.40%)</title><rect x="197.7" y="261" width="4.8" height="15.0" fill="rgb(236,176,34)" rx="2" ry="2" />
+<text  x="200.74" y="271.5" ></text>
+</g>
+<g >
+<title>memset (111 samples, 0.02%)</title><rect x="524.6" y="229" width="0.2" height="15.0" fill="rgb(237,144,35)" rx="2" ry="2" />
+<text  x="527.60" y="239.5" ></text>
+</g>
+<g >
+<title>del (241 samples, 0.04%)</title><rect x="878.7" y="133" width="0.5" height="15.0" fill="rgb(236,219,34)" rx="2" ry="2" />
+<text  x="881.69" y="143.5" ></text>
+</g>
+<g >
+<title>recursiveReplace (592 samples, 0.10%)</title><rect x="535.1" y="197" width="1.3" height="15.0" fill="rgb(252,178,52)" rx="2" ry="2" />
+<text  x="538.15" y="207.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;r(id:N,payload:r(canister_id:P,message:B,method:t),proposer:P,state:v(accepted:u,executing:u,failed:t,open:u,rejected:u,succeeded:u),timestamp:I,voters:9=?(P!9),votes_no:11=r(amount_e8s:N),votes_yes:!11)&gt; (3,330 samples, 0.58%)</title><rect x="796.2" y="197" width="6.8" height="15.0" fill="rgb(242,118,40)" rx="2" ry="2" />
+<text  x="799.16" y="207.5" ></text>
+</g>
+<g >
+<title>alloc_blob (76 samples, 0.01%)</title><rect x="971.9" y="245" width="0.2" height="15.0" fill="rgb(239,128,38)" rx="2" ry="2" />
+<text  x="974.91" y="255.5" ></text>
+</g>
+<g >
+<title>memcpy (1,364 samples, 0.24%)</title><rect x="1168.1" y="229" width="2.8" height="15.0" fill="rgb(248,144,48)" rx="2" ry="2" />
+<text  x="1171.07" y="239.5" ></text>
+</g>
+<g >
+<title>memcpy (330 samples, 0.06%)</title><rect x="895.8" y="197" width="0.7" height="15.0" fill="rgb(248,144,48)" rx="2" ry="2" />
+<text  x="898.77" y="207.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;N&gt; (169 samples, 0.03%)</title><rect x="738.9" y="181" width="0.3" height="15.0" fill="rgb(250,156,49)" rx="2" ry="2" />
+<text  x="741.86" y="191.5" ></text>
+</g>
+<g >
+<title>sample_dummy_proposal (4,212 samples, 0.74%)</title><rect x="826.3" y="277" width="8.7" height="15.0" fill="rgb(226,141,23)" rx="2" ry="2" />
+<text  x="829.28" y="287.5" ></text>
+</g>
+<g >
+<title>put (1,177 samples, 0.21%)</title><rect x="195.3" y="165" width="2.4" height="15.0" fill="rgb(234,152,31)" rx="2" ry="2" />
+<text  x="198.29" y="175.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (69 samples, 0.01%)</title><rect x="785.5" y="229" width="0.1" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="788.48" y="239.5" ></text>
+</g>
+<g >
+<title>parse_idl_header (532 samples, 0.09%)</title><rect x="824.7" y="245" width="1.1" height="15.0" fill="rgb(243,149,41)" rx="2" ry="2" />
+<text  x="827.73" y="255.5" ></text>
+</g>
+<g >
+<title>obj_idx&lt;0&gt; (102 samples, 0.02%)</title><rect x="840.5" y="197" width="0.2" height="15.0" fill="rgb(247,139,46)" rx="2" ry="2" />
+<text  x="843.52" y="207.5" ></text>
+</g>
+<g >
+<title>leb128_encode (55 samples, 0.01%)</title><rect x="844.4" y="181" width="0.1" height="15.0" fill="rgb(250,149,49)" rx="2" ry="2" />
+<text  x="847.41" y="191.5" ></text>
+</g>
+<g >
+<title>proposal_put (2,753 samples, 0.48%)</title><rect x="873.5" y="213" width="5.7" height="15.0" fill="rgb(234,184,31)" rx="2" ry="2" />
+<text  x="876.50" y="223.5" ></text>
+</g>
+<g >
+<title>sleb128_decode (138 samples, 0.02%)</title><rect x="280.8" y="245" width="0.2" height="15.0" fill="rgb(250,128,49)" rx="2" ry="2" />
+<text  x="283.76" y="255.5" ></text>
+</g>
+<g >
+<title>memcpy (680 samples, 0.12%)</title><rect x="523.2" y="229" width="1.4" height="15.0" fill="rgb(248,144,48)" rx="2" ry="2" />
+<text  x="526.20" y="239.5" ></text>
+</g>
+<g >
+<title>memcpy (86 samples, 0.02%)</title><rect x="513.8" y="213" width="0.2" height="15.0" fill="rgb(248,144,48)" rx="2" ry="2" />
+<text  x="516.83" y="223.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (69 samples, 0.01%)</title><rect x="516.7" y="229" width="0.1" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="519.69" y="239.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;r(id:N,payload:r(canister_id:P,message:B,method:t),proposer:P,state:v(accepted:u,executing:u,failed:t,open:u,rejected:u,succeeded:u),timestamp:I,voters:9=?(P!9),votes_no:11=r(amount_e8s:N),votes_yes:!11)&gt; (5,269 samples, 0.92%)</title><rect x="724.9" y="197" width="10.9" height="15.0" fill="rgb(242,118,40)" rx="2" ry="2" />
+<text  x="727.89" y="207.5" ></text>
+</g>
+<g >
+<title>parse_idl_header (532 samples, 0.09%)</title><rect x="596.4" y="245" width="1.1" height="15.0" fill="rgb(243,149,41)" rx="2" ry="2" />
+<text  x="599.42" y="255.5" ></text>
+</g>
+<g >
+<title>memcpy (249 samples, 0.04%)</title><rect x="841.0" y="181" width="0.5" height="15.0" fill="rgb(248,144,48)" rx="2" ry="2" />
+<text  x="844.01" y="191.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;&gt; (572 samples, 0.10%)</title><rect x="845.7" y="261" width="1.1" height="15.0" fill="rgb(242,176,41)" rx="2" ry="2" />
+<text  x="848.66" y="271.5" ></text>
+</g>
+<g >
+<title>vote (55,318 samples, 9.69%)</title><rect x="1075.6" y="277" width="114.4" height="15.0" fill="rgb(244,135,43)" rx="2" ry="2" />
+<text  x="1078.64" y="287.5" >vote</text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (69 samples, 0.01%)</title><rect x="112.7" y="229" width="0.1" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="115.67" y="239.5" ></text>
+</g>
+<g >
+<title>obj_idx&lt;1&gt; (72 samples, 0.01%)</title><rect x="1100.6" y="149" width="0.1" height="15.0" fill="rgb(246,139,45)" rx="2" ry="2" />
+<text  x="1103.59" y="159.5" ></text>
+</g>
+<g >
+<title>leaf (387 samples, 0.07%)</title><rect x="195.9" y="117" width="0.8" height="15.0" fill="rgb(238,152,36)" rx="2" ry="2" />
+<text  x="198.87" y="127.5" ></text>
+</g>
+<g >
+<title>obj_idx&lt;0&gt; (108 samples, 0.02%)</title><rect x="741.2" y="165" width="0.2" height="15.0" fill="rgb(247,139,46)" rx="2" ry="2" />
+<text  x="744.22" y="175.5" ></text>
+</g>
+<g >
+<title>memcpy (57 samples, 0.01%)</title><rect x="737.7" y="117" width="0.2" height="15.0" fill="rgb(248,144,48)" rx="2" ry="2" />
+<text  x="740.74" y="127.5" ></text>
+</g>
+<g >
+<title>obj_idx&lt;0&gt; (102 samples, 0.02%)</title><rect x="832.8" y="197" width="0.3" height="15.0" fill="rgb(247,139,46)" rx="2" ry="2" />
+<text  x="835.84" y="207.5" ></text>
+</g>
+<g >
+<title>fromList (638 samples, 0.11%)</title><rect x="876.4" y="133" width="1.3" height="15.0" fill="rgb(232,184,30)" rx="2" ry="2" />
+<text  x="879.35" y="143.5" ></text>
+</g>
+<g >
+<title>obj_idx&lt;0&gt; (72 samples, 0.01%)</title><rect x="584.2" y="213" width="0.1" height="15.0" fill="rgb(247,139,46)" rx="2" ry="2" />
+<text  x="587.19" y="223.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (69 samples, 0.01%)</title><rect x="854.3" y="229" width="0.1" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="857.30" y="239.5" ></text>
+</g>
+<g >
+<title>alloc_blob (304 samples, 0.05%)</title><rect x="769.1" y="261" width="0.6" height="15.0" fill="rgb(239,128,38)" rx="2" ry="2" />
+<text  x="772.05" y="271.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;r(amount_e8s:N)&gt; (376 samples, 0.07%)</title><rect x="797.9" y="181" width="0.8" height="15.0" fill="rgb(238,118,36)" rx="2" ry="2" />
+<text  x="800.95" y="191.5" ></text>
+</g>
+<g >
+<title>memcpy (100 samples, 0.02%)</title><rect x="833.4" y="213" width="0.2" height="15.0" fill="rgb(248,144,48)" rx="2" ry="2" />
+<text  x="836.37" y="223.5" ></text>
+</g>
+<g >
+<title>replace (1,068 samples, 0.19%)</title><rect x="885.9" y="165" width="2.3" height="15.0" fill="rgb(252,175,52)" rx="2" ry="2" />
+<text  x="888.94" y="175.5" ></text>
+</g>
+<g >
+<title>obj_idx&lt;0&gt; (252 samples, 0.04%)</title><rect x="1103.9" y="245" width="0.5" height="15.0" fill="rgb(247,139,46)" rx="2" ry="2" />
+<text  x="1106.88" y="255.5" ></text>
+</g>
+<g >
+<title>hash (347 samples, 0.06%)</title><rect x="970.5" y="213" width="0.7" height="15.0" fill="rgb(241,130,40)" rx="2" ry="2" />
+<text  x="973.45" y="223.5" ></text>
+</g>
+<g >
+<title>link_start (1,079 samples, 0.19%)</title><rect x="769.9" y="277" width="2.2" height="15.0" fill="rgb(239,129,37)" rx="2" ry="2" />
+<text  x="772.88" y="287.5" ></text>
+</g>
+<g >
+<title>transfer (55,488 samples, 9.72%)</title><rect x="960.9" y="277" width="114.7" height="15.0" fill="rgb(241,158,40)" rx="2" ry="2" />
+<text  x="963.93" y="287.5" >transfer</text>
+</g>
+<g >
+<title>memcpy (104 samples, 0.02%)</title><rect x="853.0" y="213" width="0.3" height="15.0" fill="rgb(248,144,48)" rx="2" ry="2" />
+<text  x="856.05" y="223.5" ></text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::compacting_gc::h416bfa181cd1565b (88,397 samples, 15.49%)</title><rect x="322.1" y="245" width="182.7" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="325.10" y="255.5" >motoko_rts::gc::mark_co..</text>
+</g>
+<g >
+<title>memset (390 samples, 0.07%)</title><rect x="461.8" y="229" width="0.8" height="15.0" fill="rgb(237,144,35)" rx="2" ry="2" />
+<text  x="464.78" y="239.5" ></text>
+</g>
+<g >
+<title>motoko_rts::types::block_size::haa6e1a3c5243bd1b (2,094 samples, 0.37%)</title><rect x="500.5" y="229" width="4.3" height="15.0" fill="rgb(232,127,30)" rx="2" ry="2" />
+<text  x="503.52" y="239.5" ></text>
+</g>
+<g >
+<title>motoko_rts::idl::parse_fields::h7550309913b4db63 (621 samples, 0.11%)</title><rect x="200.5" y="229" width="1.3" height="15.0" fill="rgb(240,127,39)" rx="2" ry="2" />
+<text  x="203.50" y="239.5" ></text>
+</g>
+<g >
+<title>motoko_rts::idl::parse_fields::h7550309913b4db63 (2,108 samples, 0.37%)</title><rect x="904.3" y="229" width="4.4" height="15.0" fill="rgb(240,127,39)" rx="2" ry="2" />
+<text  x="907.34" y="239.5" ></text>
+</g>
+<g >
+<title>replace (490 samples, 0.09%)</title><rect x="594.1" y="165" width="1.1" height="15.0" fill="rgb(252,175,52)" rx="2" ry="2" />
+<text  x="597.14" y="175.5" ></text>
+</g>
+<g >
+<title>memcpy (171 samples, 0.03%)</title><rect x="739.8" y="149" width="0.3" height="15.0" fill="rgb(248,144,48)" rx="2" ry="2" />
+<text  x="742.79" y="159.5" ></text>
+</g>
+<g >
+<title>@callback&lt;(v(err:t,ok:u))&gt; (36,360 samples, 6.37%)</title><rect x="187.0" y="277" width="75.2" height="15.0" fill="rgb(239,194,37)" rx="2" ry="2" />
+<text  x="190.03" y="287.5" >@callbac..</text>
+</g>
+<g >
+<title>get (852 samples, 0.15%)</title><rect x="1105.0" y="229" width="1.8" height="15.0" fill="rgb(237,170,35)" rx="2" ry="2" />
+<text  x="1108.03" y="239.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;P&gt; (505 samples, 0.09%)</title><rect x="743.4" y="165" width="1.0" height="15.0" fill="rgb(248,156,47)" rx="2" ry="2" />
+<text  x="746.38" y="175.5" ></text>
+</g>
+<g >
+<title>proposal_put (1,595 samples, 0.28%)</title><rect x="194.4" y="181" width="3.3" height="15.0" fill="rgb(234,184,31)" rx="2" ry="2" />
+<text  x="197.43" y="191.5" ></text>
+</g>
+<g >
+<title>put (786 samples, 0.14%)</title><rect x="534.7" y="229" width="1.7" height="15.0" fill="rgb(234,152,31)" rx="2" ry="2" />
+<text  x="537.74" y="239.5" ></text>
+</g>
+<g >
+<title>leb128_decode (234 samples, 0.04%)</title><rect x="198.9" y="229" width="0.5" height="15.0" fill="rgb(250,149,49)" rx="2" ry="2" />
+<text  x="201.88" y="239.5" ></text>
+</g>
+<g >
+<title>deduct_proposal_submission_deposit (4,480 samples, 0.78%)</title><rect x="879.2" y="245" width="9.2" height="15.0" fill="rgb(233,207,30)" rx="2" ry="2" />
+<text  x="882.19" y="255.5" ></text>
+</g>
+<g >
+<title>motoko_rts::types::block_size::haa6e1a3c5243bd1b (1,227 samples, 0.21%)</title><rect x="701.7" y="229" width="2.5" height="15.0" fill="rgb(232,127,30)" rx="2" ry="2" />
+<text  x="704.66" y="239.5" ></text>
+</g>
+<g >
+<title>next (1,104 samples, 0.19%)</title><rect x="819.8" y="197" width="2.3" height="15.0" fill="rgb(230,219,27)" rx="2" ry="2" />
+<text  x="822.84" y="207.5" ></text>
+</g>
+<g >
+<title>Array_tabulate (191 samples, 0.03%)</title><rect x="784.0" y="213" width="0.4" height="15.0" fill="rgb(245,150,45)" rx="2" ry="2" />
+<text  x="787.05" y="223.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (138 samples, 0.02%)</title><rect x="872.5" y="229" width="0.3" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="875.49" y="239.5" ></text>
+</g>
+<g >
+<title>$lambda (1,914 samples, 0.34%)</title><rect x="849.3" y="245" width="4.0" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="852.31" y="255.5" ></text>
+</g>
+<g >
+<title>B_add (81 samples, 0.01%)</title><rect x="877.4" y="69" width="0.2" height="15.0" fill="rgb(253,143,53)" rx="2" ry="2" />
+<text  x="880.43" y="79.5" ></text>
+</g>
+<g >
+<title>obj_idx&lt;0&gt; (72 samples, 0.01%)</title><rect x="882.3" y="133" width="0.1" height="15.0" fill="rgb(247,139,46)" rx="2" ry="2" />
+<text  x="885.28" y="143.5" ></text>
+</g>
+<g >
+<title>equalKey (120 samples, 0.02%)</title><rect x="754.6" y="197" width="0.2" height="15.0" fill="rgb(248,177,48)" rx="2" ry="2" />
+<text  x="757.56" y="207.5" ></text>
+</g>
+<g >
+<title>alloc_blob (152 samples, 0.03%)</title><rect x="574.5" y="213" width="0.4" height="15.0" fill="rgb(239,128,38)" rx="2" ry="2" />
+<text  x="577.54" y="223.5" ></text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::bitmap::BitmapIter::next::hf82f793b43efcee0 (2,291 samples, 0.40%)</title><rect x="947.0" y="229" width="4.7" height="15.0" fill="rgb(235,127,33)" rx="2" ry="2" />
+<text  x="950.00" y="239.5" ></text>
+</g>
+<g >
+<title>hash (87 samples, 0.02%)</title><rect x="514.2" y="197" width="0.2" height="15.0" fill="rgb(241,130,40)" rx="2" ry="2" />
+<text  x="517.21" y="207.5" ></text>
+</g>
+<g >
+<title>text_to_buf (402 samples, 0.07%)</title><rect x="1094.0" y="181" width="0.8" height="15.0" fill="rgb(242,171,41)" rx="2" ry="2" />
+<text  x="1097.00" y="191.5" ></text>
+</g>
+<g >
+<title>add (418 samples, 0.07%)</title><rect x="781.2" y="197" width="0.9" height="15.0" fill="rgb(253,156,53)" rx="2" ry="2" />
+<text  x="784.22" y="207.5" ></text>
+</g>
+<g >
+<title>sleb128_encode (224 samples, 0.04%)</title><rect x="804.4" y="165" width="0.4" height="15.0" fill="rgb(250,128,49)" rx="2" ry="2" />
+<text  x="807.36" y="175.5" ></text>
+</g>
+<g >
+<title>init (6,957 samples, 1.22%)</title><rect x="527.6" y="261" width="14.3" height="15.0" fill="rgb(236,161,34)" rx="2" ry="2" />
+<text  x="530.56" y="271.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;P&gt; (335 samples, 0.06%)</title><rect x="807.6" y="165" width="0.7" height="15.0" fill="rgb(248,156,47)" rx="2" ry="2" />
+<text  x="810.58" y="175.5" ></text>
+</g>
+<g >
+<title>text_to_buf (96 samples, 0.02%)</title><rect x="842.0" y="181" width="0.2" height="15.0" fill="rgb(242,171,41)" rx="2" ry="2" />
+<text  x="845.02" y="191.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (138 samples, 0.02%)</title><rect x="911.1" y="245" width="0.2" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="914.05" y="255.5" ></text>
+</g>
+<g >
+<title>find_field (1,012 samples, 0.18%)</title><rect x="1118.5" y="229" width="2.1" height="15.0" fill="rgb(241,177,40)" rx="2" ry="2" />
+<text  x="1121.46" y="239.5" ></text>
+</g>
+<g >
+<title>text_singleton (180 samples, 0.03%)</title><rect x="1097.2" y="181" width="0.4" height="15.0" fill="rgb(248,171,47)" rx="2" ry="2" />
+<text  x="1100.20" y="191.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;vr(id:N,payload:r(canister_id:P,message:B,method:t),proposer:P,state:v(accepted:u,executing:u,failed:t,open:u,rejected:u,succeeded:u),timestamp:I,voters:10=?(P!10),votes_no:12=r(amount_e8s:N),votes_yes:!12)&gt; (4,416 samples, 0.77%)</title><rect x="803.0" y="213" width="9.2" height="15.0" fill="rgb(241,156,39)" rx="2" ry="2" />
+<text  x="806.05" y="223.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;B&gt; (123 samples, 0.02%)</title><rect x="778.0" y="165" width="0.2" height="15.0" fill="rgb(251,156,51)" rx="2" ry="2" />
+<text  x="780.96" y="175.5" ></text>
+</g>
+<g >
+<title>compute_crc32 (104 samples, 0.02%)</title><rect x="883.4" y="165" width="0.2" height="15.0" fill="rgb(245,149,44)" rx="2" ry="2" />
+<text  x="886.37" y="175.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;I&gt; (102 samples, 0.02%)</title><rect x="797.2" y="181" width="0.2" height="15.0" fill="rgb(243,118,42)" rx="2" ry="2" />
+<text  x="800.21" y="191.5" ></text>
+</g>
+<g >
+<title>fulfill (3,648 samples, 0.64%)</title><rect x="190.2" y="245" width="7.5" height="15.0" fill="rgb(224,178,21)" rx="2" ry="2" />
+<text  x="193.20" y="255.5" ></text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::mark_object::hb81f6542e95ca663 (2,338 samples, 0.41%)</title><rect x="255.7" y="229" width="4.9" height="15.0" fill="rgb(238,127,36)" rx="2" ry="2" />
+<text  x="258.72" y="239.5" ></text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::bitmap::BitmapIter::next::hf82f793b43efcee0 (1,678 samples, 0.29%)</title><rect x="252.3" y="229" width="3.4" height="15.0" fill="rgb(235,127,33)" rx="2" ry="2" />
+<text  x="255.25" y="239.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;0=?(P!0)&gt; (298 samples, 0.05%)</title><rect x="737.2" y="181" width="0.7" height="15.0" fill="rgb(242,156,41)" rx="2" ry="2" />
+<text  x="740.24" y="191.5" ></text>
+</g>
+<g >
+<title>parse_idl_header (1,223 samples, 0.21%)</title><rect x="199.8" y="245" width="2.6" height="15.0" fill="rgb(243,149,41)" rx="2" ry="2" />
+<text  x="202.83" y="255.5" ></text>
+</g>
+<g >
+<title>$lambda (1,373 samples, 0.24%)</title><rect x="190.8" y="181" width="2.8" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="193.76" y="191.5" ></text>
+</g>
+<g >
+<title>iter (138 samples, 0.02%)</title><rect x="779.2" y="245" width="0.3" height="15.0" fill="rgb(240,143,38)" rx="2" ry="2" />
+<text  x="782.25" y="255.5" ></text>
+</g>
+<g >
+<title>find (594 samples, 0.10%)</title><rect x="881.3" y="165" width="1.3" height="15.0" fill="rgb(248,177,48)" rx="2" ry="2" />
+<text  x="884.35" y="175.5" ></text>
+</g>
+<g >
+<title>alloc_blob (76 samples, 0.01%)</title><rect x="17.5" y="261" width="0.1" height="15.0" fill="rgb(239,128,38)" rx="2" ry="2" />
+<text  x="20.47" y="271.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (138 samples, 0.02%)</title><rect x="17.0" y="165" width="0.3" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="20.05" y="175.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (138 samples, 0.02%)</title><rect x="552.1" y="181" width="0.3" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="555.10" y="191.5" ></text>
+</g>
+<g >
+<title>obj_idx&lt;0&gt; (102 samples, 0.02%)</title><rect x="842.2" y="197" width="0.2" height="15.0" fill="rgb(247,139,46)" rx="2" ry="2" />
+<text  x="845.22" y="207.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (138 samples, 0.02%)</title><rect x="319.7" y="181" width="0.3" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="322.75" y="191.5" ></text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::mark_stack::push_mark_stack::h1f99226b92d7e984 (1,512 samples, 0.26%)</title><rect x="181.7" y="213" width="3.1" height="15.0" fill="rgb(244,127,43)" rx="2" ry="2" />
+<text  x="184.68" y="223.5" ></text>
+</g>
+<g >
+<title>obj_idx&lt;0&gt; (72 samples, 0.01%)</title><rect x="757.9" y="181" width="0.1" height="15.0" fill="rgb(247,139,46)" rx="2" ry="2" />
+<text  x="760.86" y="191.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;P&gt; (176 samples, 0.03%)</title><rect x="799.3" y="165" width="0.3" height="15.0" fill="rgb(248,118,47)" rx="2" ry="2" />
+<text  x="802.28" y="175.5" ></text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::mark_stack::push_mark_stack::h1f99226b92d7e984 (54 samples, 0.01%)</title><rect x="260.6" y="229" width="0.1" height="15.0" fill="rgb(244,127,43)" rx="2" ry="2" />
+<text  x="263.56" y="239.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (276 samples, 0.05%)</title><rect x="812.2" y="197" width="0.6" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="815.23" y="207.5" ></text>
+</g>
+<g >
+<title>$lambda (3,844 samples, 0.67%)</title><rect x="964.2" y="261" width="7.9" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="967.16" y="271.5" ></text>
+</g>
+<g >
+<title>fromList (522 samples, 0.09%)</title><rect x="884.8" y="149" width="1.1" height="15.0" fill="rgb(232,184,30)" rx="2" ry="2" />
+<text  x="887.79" y="159.5" ></text>
+</g>
+<g >
+<title>proposal_get (3,493 samples, 0.61%)</title><rect x="753.9" y="245" width="7.2" height="15.0" fill="rgb(237,184,35)" rx="2" ry="2" />
+<text  x="756.85" y="255.5" ></text>
+</g>
+<g >
+<title>obj_idx&lt;0&gt; (102 samples, 0.02%)</title><rect x="831.6" y="197" width="0.2" height="15.0" fill="rgb(247,139,46)" rx="2" ry="2" />
+<text  x="834.58" y="207.5" ></text>
+</g>
+<g >
+<title>memset (195 samples, 0.03%)</title><rect x="251.9" y="229" width="0.4" height="15.0" fill="rgb(237,144,35)" rx="2" ry="2" />
+<text  x="254.85" y="239.5" ></text>
+</g>
+<g >
+<title>get (358 samples, 0.06%)</title><rect x="971.2" y="229" width="0.7" height="15.0" fill="rgb(237,170,35)" rx="2" ry="2" />
+<text  x="974.17" y="239.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (138 samples, 0.02%)</title><rect x="896.5" y="181" width="0.3" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="899.50" y="191.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (138 samples, 0.02%)</title><rect x="574.1" y="181" width="0.3" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="577.11" y="191.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;N&gt; (127 samples, 0.02%)</title><rect x="727.2" y="181" width="0.3" height="15.0" fill="rgb(250,118,49)" rx="2" ry="2" />
+<text  x="730.22" y="191.5" ></text>
+</g>
+<g >
+<title>hashNat8 (206 samples, 0.04%)</title><rect x="1108.7" y="197" width="0.5" height="15.0" fill="rgb(237,130,35)" rx="2" ry="2" />
+<text  x="1111.73" y="207.5" ></text>
+</g>
+<g >
+<title>memcpy (88 samples, 0.02%)</title><rect x="970.1" y="213" width="0.2" height="15.0" fill="rgb(248,144,48)" rx="2" ry="2" />
+<text  x="973.08" y="223.5" ></text>
+</g>
+<g >
+<title>obj_idx&lt;0&gt; (52 samples, 0.01%)</title><rect x="778.6" y="181" width="0.1" height="15.0" fill="rgb(247,139,46)" rx="2" ry="2" />
+<text  x="781.56" y="191.5" ></text>
+</g>
+<g >
+<title>obj_idx&lt;0&gt; (54 samples, 0.01%)</title><rect x="586.8" y="181" width="0.1" height="15.0" fill="rgb(247,139,46)" rx="2" ry="2" />
+<text  x="589.82" y="191.5" ></text>
+</g>
+<g >
+<title>B_add (54 samples, 0.01%)</title><rect x="819.1" y="213" width="0.1" height="15.0" fill="rgb(253,143,53)" rx="2" ry="2" />
+<text  x="822.10" y="223.5" ></text>
+</g>
+<g >
+<title>get (470 samples, 0.08%)</title><rect x="514.4" y="229" width="1.0" height="15.0" fill="rgb(237,170,35)" rx="2" ry="2" />
+<text  x="517.39" y="239.5" ></text>
+</g>
+<g >
+<title>filter (2,021 samples, 0.35%)</title><rect x="584.4" y="245" width="4.2" height="15.0" fill="rgb(240,183,38)" rx="2" ry="2" />
+<text  x="587.38" y="255.5" ></text>
+</g>
+<g >
+<title>@deserialize_go&lt;r(amount:r(amount_e8s:N),to:P)&gt; (2,251 samples, 0.39%)</title><rect x="972.8" y="245" width="4.6" height="15.0" fill="rgb(237,176,35)" rx="2" ry="2" />
+<text  x="975.75" y="255.5" ></text>
+</g>
+<g >
+<title>rec (261 samples, 0.05%)</title><rect x="593.6" y="101" width="0.5" height="15.0" fill="rgb(232,178,30)" rx="2" ry="2" />
+<text  x="596.56" y="111.5" ></text>
+</g>
+<g >
+<title>leb128_decode (52 samples, 0.01%)</title><rect x="834.1" y="245" width="0.1" height="15.0" fill="rgb(250,149,49)" rx="2" ry="2" />
+<text  x="837.10" y="255.5" ></text>
+</g>
+<g >
+<title>obj_idx&lt;0&gt; (72 samples, 0.01%)</title><rect x="1106.4" y="149" width="0.2" height="15.0" fill="rgb(247,139,46)" rx="2" ry="2" />
+<text  x="1109.42" y="159.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;r(canister_id:P,message:B,method:t)&gt; (2,258 samples, 0.40%)</title><rect x="741.4" y="181" width="4.7" height="15.0" fill="rgb(237,156,35)" rx="2" ry="2" />
+<text  x="744.44" y="191.5" ></text>
+</g>
+<g >
+<title>@deserialize_go&lt;P&gt; (643 samples, 0.11%)</title><rect x="893.9" y="229" width="1.3" height="15.0" fill="rgb(248,176,47)" rx="2" ry="2" />
+<text  x="896.89" y="239.5" ></text>
+</g>
+<g >
+<title>toArray (4,186 samples, 0.73%)</title><rect x="814.8" y="245" width="8.7" height="15.0" fill="rgb(239,160,37)" rx="2" ry="2" />
+<text  x="817.81" y="255.5" ></text>
+</g>
+<g >
+<title>memcpy (72 samples, 0.01%)</title><rect x="552.4" y="197" width="0.1" height="15.0" fill="rgb(248,144,48)" rx="2" ry="2" />
+<text  x="555.38" y="207.5" ></text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::mark_object::hb81f6542e95ca663 (6,028 samples, 1.06%)</title><rect x="1060.4" y="229" width="12.5" height="15.0" fill="rgb(238,127,36)" rx="2" ry="2" />
+<text  x="1063.41" y="239.5" ></text>
+</g>
+<g >
+<title>memcpy (57 samples, 0.01%)</title><rect x="778.1" y="149" width="0.1" height="15.0" fill="rgb(248,144,48)" rx="2" ry="2" />
+<text  x="781.09" y="159.5" ></text>
+</g>
+<g >
+<title>put (1,105 samples, 0.19%)</title><rect x="1101.3" y="229" width="2.3" height="15.0" fill="rgb(234,152,31)" rx="2" ry="2" />
+<text  x="1104.28" y="239.5" ></text>
+</g>
+<g >
+<title>int_from_i32 (60 samples, 0.01%)</title><rect x="764.5" y="213" width="0.1" height="15.0" fill="rgb(241,164,39)" rx="2" ry="2" />
+<text  x="767.52" y="223.5" ></text>
+</g>
+<g >
+<title>leb128_decode (104 samples, 0.02%)</title><rect x="596.2" y="245" width="0.2" height="15.0" fill="rgb(250,149,49)" rx="2" ry="2" />
+<text  x="599.20" y="255.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;P&gt; (450 samples, 0.08%)</title><rect x="739.2" y="181" width="0.9" height="15.0" fill="rgb(248,156,47)" rx="2" ry="2" />
+<text  x="742.21" y="191.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;P&gt; (88 samples, 0.02%)</title><rect x="843.3" y="213" width="0.2" height="15.0" fill="rgb(248,118,47)" rx="2" ry="2" />
+<text  x="846.29" y="223.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;B&gt; (80 samples, 0.01%)</title><rect x="799.1" y="165" width="0.2" height="15.0" fill="rgb(251,118,51)" rx="2" ry="2" />
+<text  x="802.12" y="175.5" ></text>
+</g>
+<g >
+<title>bigint_leb128_decode_word64 (116 samples, 0.02%)</title><rect x="1115.0" y="213" width="0.2" height="15.0" fill="rgb(237,113,36)" rx="2" ry="2" />
+<text  x="1118.01" y="223.5" ></text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::mark_stack::push_mark_stack::h1f99226b92d7e984 (4,077 samples, 0.71%)</title><rect x="491.3" y="213" width="8.4" height="15.0" fill="rgb(244,127,43)" rx="2" ry="2" />
+<text  x="494.30" y="223.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;v(err:t,ok:v(accepted:u,executing:u,failed:t,open:u,rejected:u,succeeded:u))&gt; (707 samples, 0.12%)</title><rect x="1093.6" y="213" width="1.5" height="15.0" fill="rgb(239,156,37)" rx="2" ry="2" />
+<text  x="1096.63" y="223.5" ></text>
+</g>
+<g >
+<title>leaf (271 samples, 0.05%)</title><rect x="535.2" y="181" width="0.6" height="15.0" fill="rgb(238,152,36)" rx="2" ry="2" />
+<text  x="538.25" y="191.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (138 samples, 0.02%)</title><rect x="193.2" y="133" width="0.3" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="196.17" y="143.5" ></text>
+</g>
+<g >
+<title>@deserialize_go&lt;B&gt; (781 samples, 0.14%)</title><rect x="110.2" y="245" width="1.6" height="15.0" fill="rgb(251,176,51)" rx="2" ry="2" />
+<text  x="113.16" y="255.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;r(owner:P,tokens:r(amount_e8s:N))&gt; (317 samples, 0.06%)</title><rect x="777.0" y="197" width="0.6" height="15.0" fill="rgb(239,118,37)" rx="2" ry="2" />
+<text  x="779.98" y="207.5" ></text>
+</g>
+<g >
+<title>leb128_encode (77 samples, 0.01%)</title><rect x="778.4" y="149" width="0.1" height="15.0" fill="rgb(250,149,49)" rx="2" ry="2" />
+<text  x="781.36" y="159.5" ></text>
+</g>
+<g >
+<title>leb128_decode (208 samples, 0.04%)</title><rect x="903.8" y="229" width="0.4" height="15.0" fill="rgb(250,149,49)" rx="2" ry="2" />
+<text  x="906.81" y="239.5" ></text>
+</g>
+<g >
+<title>leb128_decode (208 samples, 0.04%)</title><rect x="596.8" y="229" width="0.4" height="15.0" fill="rgb(250,149,49)" rx="2" ry="2" />
+<text  x="599.80" y="239.5" ></text>
+</g>
+<g >
+<title>sleb128_decode (138 samples, 0.02%)</title><rect x="975.7" y="213" width="0.3" height="15.0" fill="rgb(250,128,49)" rx="2" ry="2" />
+<text  x="978.70" y="223.5" ></text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::mark_stack::push_mark_stack::h1f99226b92d7e984 (54 samples, 0.01%)</title><rect x="184.8" y="229" width="0.1" height="15.0" fill="rgb(244,127,43)" rx="2" ry="2" />
+<text  x="187.80" y="239.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (138 samples, 0.02%)</title><rect x="892.0" y="197" width="0.3" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="895.05" y="207.5" ></text>
+</g>
+<g >
+<title>@serialize&lt;&gt; (343 samples, 0.06%)</title><rect x="192.9" y="165" width="0.7" height="15.0" fill="rgb(242,156,41)" rx="2" ry="2" />
+<text  x="195.89" y="175.5" ></text>
+</g>
+<g >
+<title>@serialize&lt;v(err:t,ok:u)&gt; (471 samples, 0.08%)</title><rect x="108.5" y="181" width="1.0" height="15.0" fill="rgb(236,156,34)" rx="2" ry="2" />
+<text  x="111.53" y="191.5" ></text>
+</g>
+<g >
+<title>compute_crc32 (52 samples, 0.01%)</title><rect x="534.6" y="181" width="0.1" height="15.0" fill="rgb(245,149,44)" rx="2" ry="2" />
+<text  x="537.56" y="191.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;N&gt; (3,820 samples, 0.67%)</title><rect x="761.1" y="261" width="7.9" height="15.0" fill="rgb(250,176,49)" rx="2" ry="2" />
+<text  x="764.07" y="271.5" ></text>
+</g>
+<g >
+<title>core::str::converts::from_utf8::hcecad2a92968d2cb (456 samples, 0.08%)</title><rect x="896.9" y="197" width="0.9" height="15.0" fill="rgb(239,133,38)" rx="2" ry="2" />
+<text  x="899.90" y="207.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;r(amount_e8s:N)&gt; (628 samples, 0.11%)</title><rect x="740.1" y="181" width="1.3" height="15.0" fill="rgb(238,156,36)" rx="2" ry="2" />
+<text  x="743.14" y="191.5" ></text>
+</g>
+<g >
+<title>remember_continuation (82 samples, 0.01%)</title><rect x="321.9" y="229" width="0.2" height="15.0" fill="rgb(247,184,46)" rx="2" ry="2" />
+<text  x="324.91" y="239.5" ></text>
+</g>
+<g >
+<title>list_accounts (6,646 samples, 1.16%)</title><rect x="772.1" y="277" width="13.8" height="15.0" fill="rgb(238,113,36)" rx="2" ry="2" />
+<text  x="775.11" y="287.5" ></text>
+</g>
+<g >
+<title>motoko_rts::principal_id::principal_of_blob::h6560fd4a9cbb47b9 (1,140 samples, 0.20%)</title><rect x="539.1" y="229" width="2.4" height="15.0" fill="rgb(226,127,24)" rx="2" ry="2" />
+<text  x="542.12" y="239.5" ></text>
+</g>
+<g >
+<title>alloc_blob (152 samples, 0.03%)</title><rect x="320.2" y="213" width="0.3" height="15.0" fill="rgb(239,128,38)" rx="2" ry="2" />
+<text  x="323.19" y="223.5" ></text>
+</g>
+<g >
+<title>put (1,177 samples, 0.21%)</title><rect x="592.7" y="213" width="2.5" height="15.0" fill="rgb(234,152,31)" rx="2" ry="2" />
+<text  x="595.72" y="223.5" ></text>
+</g>
+<g >
+<title>memcpy (57 samples, 0.01%)</title><rect x="1094.7" y="149" width="0.1" height="15.0" fill="rgb(248,144,48)" rx="2" ry="2" />
+<text  x="1097.71" y="159.5" ></text>
+</g>
+<g >
+<title>alloc_blob (76 samples, 0.01%)</title><rect x="981.7" y="261" width="0.2" height="15.0" fill="rgb(239,128,38)" rx="2" ry="2" />
+<text  x="984.71" y="271.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_array::hfb4dad1bf9425cf5 (73 samples, 0.01%)</title><rect x="781.8" y="149" width="0.2" height="15.0" fill="rgb(244,127,43)" rx="2" ry="2" />
+<text  x="784.80" y="159.5" ></text>
+</g>
+<g >
+<title>memcpy (341 samples, 0.06%)</title><rect x="16.3" y="165" width="0.7" height="15.0" fill="rgb(248,144,48)" rx="2" ry="2" />
+<text  x="19.31" y="175.5" ></text>
+</g>
+<g >
+<title>$lambda (2,404 samples, 0.42%)</title><rect x="828.6" y="245" width="5.0" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="831.61" y="255.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;v(no:u,yes:u)&gt; (92 samples, 0.02%)</title><rect x="851.9" y="197" width="0.2" height="15.0" fill="rgb(236,118,34)" rx="2" ry="2" />
+<text  x="854.93" y="207.5" ></text>
+</g>
+<g >
+<title>Array_init (229 samples, 0.04%)</title><rect x="818.3" y="181" width="0.5" height="15.0" fill="rgb(236,150,34)" rx="2" ry="2" />
+<text  x="821.34" y="191.5" ></text>
+</g>
+<g >
+<title>link_start (81 samples, 0.01%)</title><rect x="771.9" y="261" width="0.2" height="15.0" fill="rgb(239,129,37)" rx="2" ry="2" />
+<text  x="774.94" y="271.5" ></text>
+</g>
+<g >
+<title>B_sub (70 samples, 0.01%)</title><rect x="821.6" y="181" width="0.2" height="15.0" fill="rgb(228,124,25)" rx="2" ry="2" />
+<text  x="824.64" y="191.5" ></text>
+</g>
+<g >
+<title>toArray (2,311 samples, 0.40%)</title><rect x="779.7" y="245" width="4.7" height="15.0" fill="rgb(239,160,37)" rx="2" ry="2" />
+<text  x="782.66" y="255.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;r(amount:r(amount_e8s:N),to:P)&gt; (317 samples, 0.06%)</title><rect x="843.1" y="229" width="0.7" height="15.0" fill="rgb(237,118,35)" rx="2" ry="2" />
+<text  x="846.15" y="239.5" ></text>
+</g>
+<g >
+<title>sleb128_decode (207 samples, 0.04%)</title><rect x="201.9" y="229" width="0.5" height="15.0" fill="rgb(250,128,49)" rx="2" ry="2" />
+<text  x="204.93" y="239.5" ></text>
+</g>
+<g >
+<title>rec (744 samples, 0.13%)</title><rect x="1099.3" y="197" width="1.5" height="15.0" fill="rgb(232,178,30)" rx="2" ry="2" />
+<text  x="1102.28" y="207.5" ></text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::bitmap::BitmapIter::next::hf82f793b43efcee0 (3,025 samples, 0.53%)</title><rect x="1171.6" y="229" width="6.3" height="15.0" fill="rgb(235,127,33)" rx="2" ry="2" />
+<text  x="1174.62" y="239.5" ></text>
+</g>
+<g >
+<title>account_key (338 samples, 0.06%)</title><rect x="880.0" y="213" width="0.7" height="15.0" fill="rgb(243,164,42)" rx="2" ry="2" />
+<text  x="883.01" y="223.5" ></text>
+</g>
+<g >
+<title>obj_idx&lt;0&gt; (1,776 samples, 0.31%)</title><rect x="732.1" y="181" width="3.7" height="15.0" fill="rgb(247,139,46)" rx="2" ry="2" />
+<text  x="735.11" y="191.5" ></text>
+</g>
+<g >
+<title>@deserialize_go&lt;B&gt; (1,154 samples, 0.20%)</title><rect x="891.5" y="229" width="2.4" height="15.0" fill="rgb(251,176,51)" rx="2" ry="2" />
+<text  x="894.51" y="239.5" ></text>
+</g>
+<g >
+<title>$lambda (1,373 samples, 0.24%)</title><rect x="549.7" y="229" width="2.8" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="552.69" y="239.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (138 samples, 0.02%)</title><rect x="574.6" y="197" width="0.3" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="577.57" y="207.5" ></text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::compacting_gc::h416bfa181cd1565b (4,633 samples, 0.81%)</title><rect x="518.0" y="245" width="9.6" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="520.98" y="255.5" ></text>
+</g>
+<g >
+<title>leb128_encode (60 samples, 0.01%)</title><rect x="806.2" y="149" width="0.1" height="15.0" fill="rgb(250,149,49)" rx="2" ry="2" />
+<text  x="809.16" y="159.5" ></text>
+</g>
+<g >
+<title>peek_future_continuation (82 samples, 0.01%)</title><rect x="505.8" y="261" width="0.2" height="15.0" fill="rgb(247,187,46)" rx="2" ry="2" />
+<text  x="508.84" y="271.5" ></text>
+</g>
+<g >
+<title>sleb128_decode (276 samples, 0.05%)</title><rect x="768.4" y="245" width="0.6" height="15.0" fill="rgb(250,128,49)" rx="2" ry="2" />
+<text  x="771.40" y="255.5" ></text>
+</g>
+<g >
+<title>utf8_validate (508 samples, 0.09%)</title><rect x="896.8" y="213" width="1.0" height="15.0" fill="rgb(245,124,45)" rx="2" ry="2" />
+<text  x="899.79" y="223.5" ></text>
+</g>
+<g >
+<title>hash (174 samples, 0.03%)</title><rect x="1098.5" y="197" width="0.4" height="15.0" fill="rgb(241,130,40)" rx="2" ry="2" />
+<text  x="1101.51" y="207.5" ></text>
+</g>
+<g >
+<title>leb128_decode (52 samples, 0.01%)</title><rect x="111.9" y="245" width="0.1" height="15.0" fill="rgb(250,149,49)" rx="2" ry="2" />
+<text  x="114.85" y="255.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;r(amount_e8s:N)&gt; (168 samples, 0.03%)</title><rect x="778.2" y="181" width="0.4" height="15.0" fill="rgb(238,156,36)" rx="2" ry="2" />
+<text  x="781.21" y="191.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;B&gt; (94 samples, 0.02%)</title><rect x="799.5" y="149" width="0.1" height="15.0" fill="rgb(251,118,51)" rx="2" ry="2" />
+<text  x="802.45" y="159.5" ></text>
+</g>
+<g >
+<title>remember_continuation (4,030 samples, 0.71%)</title><rect x="574.9" y="213" width="8.3" height="15.0" fill="rgb(247,184,46)" rx="2" ry="2" />
+<text  x="577.86" y="223.5" ></text>
+</g>
+<g >
+<title>account_get (796 samples, 0.14%)</title><rect x="970.3" y="245" width="1.6" height="15.0" fill="rgb(237,164,35)" rx="2" ry="2" />
+<text  x="973.27" y="255.5" ></text>
+</g>
+<g >
+<title>B_add (54 samples, 0.01%)</title><rect x="1110.4" y="101" width="0.1" height="15.0" fill="rgb(253,143,53)" rx="2" ry="2" />
+<text  x="1113.37" y="111.5" ></text>
+</g>
+<g >
+<title>@serialize&lt;r(proposal_id:N,vote:v(no:u,yes:u))&gt; (856 samples, 0.15%)</title><rect x="851.5" y="229" width="1.8" height="15.0" fill="rgb(239,156,37)" rx="2" ry="2" />
+<text  x="854.49" y="239.5" ></text>
+</g>
+<g >
+<title>obj_idx&lt;0&gt; (1,184 samples, 0.21%)</title><rect x="800.6" y="181" width="2.4" height="15.0" fill="rgb(247,139,46)" rx="2" ry="2" />
+<text  x="803.60" y="191.5" ></text>
+</g>
+<g >
+<title>alloc_blob (76 samples, 0.01%)</title><rect x="113.5" y="261" width="0.2" height="15.0" fill="rgb(239,128,38)" rx="2" ry="2" />
+<text  x="116.53" y="271.5" ></text>
+</g>
+<g >
+<title>leb128_decode (104 samples, 0.02%)</title><rect x="516.5" y="229" width="0.2" height="15.0" fill="rgb(250,149,49)" rx="2" ry="2" />
+<text  x="519.48" y="239.5" ></text>
+</g>
+<g >
+<title>@anon-func-192.5 (154 samples, 0.03%)</title><rect x="594.8" y="133" width="0.4" height="15.0" fill="rgb(246,146,45)" rx="2" ry="2" />
+<text  x="597.83" y="143.5" ></text>
+</g>
+<g >
+<title>bigint_leb128_decode_word64 (98 samples, 0.02%)</title><rect x="974.9" y="197" width="0.2" height="15.0" fill="rgb(237,113,36)" rx="2" ry="2" />
+<text  x="977.85" y="207.5" ></text>
+</g>
+<g >
+<title>account_key (169 samples, 0.03%)</title><rect x="534.3" y="229" width="0.4" height="15.0" fill="rgb(243,164,42)" rx="2" ry="2" />
+<text  x="537.32" y="239.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;B&gt; (281 samples, 0.05%)</title><rect x="807.7" y="149" width="0.6" height="15.0" fill="rgb(251,156,51)" rx="2" ry="2" />
+<text  x="810.69" y="159.5" ></text>
+</g>
+<g >
+<title>$lambda (22,737 samples, 3.98%)</title><rect x="548.1" y="261" width="47.1" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="551.15" y="271.5" >$lam..</text>
+</g>
+<g >
+<title>compute_crc32 (304 samples, 0.05%)</title><rect x="970.5" y="181" width="0.7" height="15.0" fill="rgb(245,149,44)" rx="2" ry="2" />
+<text  x="973.54" y="191.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;P&gt; (176 samples, 0.03%)</title><rect x="797.6" y="181" width="0.3" height="15.0" fill="rgb(248,118,47)" rx="2" ry="2" />
+<text  x="800.58" y="191.5" ></text>
+</g>
+<g >
+<title>account_get (1,312 samples, 0.23%)</title><rect x="879.9" y="229" width="2.8" height="15.0" fill="rgb(237,164,35)" rx="2" ry="2" />
+<text  x="882.94" y="239.5" ></text>
+</g>
+<g >
+<title>B_add (54 samples, 0.01%)</title><rect x="593.9" y="85" width="0.2" height="15.0" fill="rgb(253,143,53)" rx="2" ry="2" />
+<text  x="596.94" y="95.5" ></text>
+</g>
+<g >
+<title>equal (122 samples, 0.02%)</title><rect x="887.6" y="117" width="0.3" height="15.0" fill="rgb(224,177,21)" rx="2" ry="2" />
+<text  x="890.60" y="127.5" ></text>
+</g>
+<g >
+<title>rec (1,869 samples, 0.33%)</title><rect x="584.7" y="229" width="3.9" height="15.0" fill="rgb(232,178,30)" rx="2" ry="2" />
+<text  x="587.69" y="239.5" ></text>
+</g>
+<g >
+<title>@digits_dec (251 samples, 0.04%)</title><rect x="1097.1" y="197" width="0.5" height="15.0" fill="rgb(234,164,32)" rx="2" ry="2" />
+<text  x="1100.05" y="207.5" ></text>
+</g>
+<g >
+<title>alloc_blob (304 samples, 0.05%)</title><rect x="871.5" y="213" width="0.6" height="15.0" fill="rgb(239,128,38)" rx="2" ry="2" />
+<text  x="874.47" y="223.5" ></text>
+</g>
+<g >
+<title>leb128_decode (104 samples, 0.02%)</title><rect x="279.0" y="245" width="0.2" height="15.0" fill="rgb(250,149,49)" rx="2" ry="2" />
+<text  x="282.03" y="255.5" ></text>
+</g>
+<g >
+<title>leb128_decode (52 samples, 0.01%)</title><rect x="977.5" y="245" width="0.1" height="15.0" fill="rgb(250,149,49)" rx="2" ry="2" />
+<text  x="980.48" y="255.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;B&gt; (315 samples, 0.06%)</title><rect x="840.9" y="197" width="0.6" height="15.0" fill="rgb(251,156,51)" rx="2" ry="2" />
+<text  x="843.87" y="207.5" ></text>
+</g>
+<g >
+<title>sleb128_decode (138 samples, 0.02%)</title><rect x="1131.1" y="245" width="0.3" height="15.0" fill="rgb(250,128,49)" rx="2" ry="2" />
+<text  x="1134.14" y="255.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (69 samples, 0.01%)</title><rect x="846.7" y="229" width="0.1" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="849.70" y="239.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (138 samples, 0.02%)</title><rect x="1131.5" y="245" width="0.3" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="1134.49" y="255.5" ></text>
+</g>
+<g >
+<title>memcpy (62 samples, 0.01%)</title><rect x="17.3" y="181" width="0.2" height="15.0" fill="rgb(248,144,48)" rx="2" ry="2" />
+<text  x="20.33" y="191.5" ></text>
+</g>
+<g >
+<title>find (920 samples, 0.16%)</title><rect x="880.7" y="197" width="2.0" height="15.0" fill="rgb(248,177,48)" rx="2" ry="2" />
+<text  x="883.75" y="207.5" ></text>
+</g>
+<g >
+<title>alloc_blob (152 samples, 0.03%)</title><rect x="17.0" y="181" width="0.3" height="15.0" fill="rgb(239,128,38)" rx="2" ry="2" />
+<text  x="20.02" y="191.5" ></text>
+</g>
+<g >
+<title>recursiveReplace (1,529 samples, 0.27%)</title><rect x="876.0" y="165" width="3.2" height="15.0" fill="rgb(252,178,52)" rx="2" ry="2" />
+<text  x="879.03" y="175.5" ></text>
+</g>
+<g >
+<title>find_field (253 samples, 0.04%)</title><rect x="975.1" y="213" width="0.5" height="15.0" fill="rgb(241,177,40)" rx="2" ry="2" />
+<text  x="978.06" y="223.5" ></text>
+</g>
+<g >
+<title>parse_idl_header (732 samples, 0.13%)</title><rect x="279.2" y="245" width="1.6" height="15.0" fill="rgb(243,149,41)" rx="2" ry="2" />
+<text  x="282.25" y="255.5" ></text>
+</g>
+<g >
+<title>proposal_put (1,595 samples, 0.28%)</title><rect x="1108.3" y="245" width="3.3" height="15.0" fill="rgb(234,184,31)" rx="2" ry="2" />
+<text  x="1111.29" y="255.5" ></text>
+</g>
+<g >
+<title>sample_transfer_proposal (5,843 samples, 1.02%)</title><rect x="835.0" y="277" width="12.1" height="15.0" fill="rgb(226,141,23)" rx="2" ry="2" />
+<text  x="837.99" y="287.5" ></text>
+</g>
+<g >
+<title>leb128_decode (104 samples, 0.02%)</title><rect x="978.2" y="229" width="0.2" height="15.0" fill="rgb(250,149,49)" rx="2" ry="2" />
+<text  x="981.22" y="239.5" ></text>
+</g>
+<g >
+<title>leb128_decode (104 samples, 0.02%)</title><rect x="200.3" y="229" width="0.2" height="15.0" fill="rgb(250,149,49)" rx="2" ry="2" />
+<text  x="203.26" y="239.5" ></text>
+</g>
+<g >
+<title>obj_idx&lt;1&gt; (90 samples, 0.02%)</title><rect x="1104.4" y="245" width="0.2" height="15.0" fill="rgb(246,139,45)" rx="2" ry="2" />
+<text  x="1107.40" y="255.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;B&gt; (732 samples, 0.13%)</title><rect x="741.9" y="165" width="1.5" height="15.0" fill="rgb(251,156,51)" rx="2" ry="2" />
+<text  x="744.87" y="175.5" ></text>
+</g>
+<g >
+<title>sleb128_decode (552 samples, 0.10%)</title><rect x="1128.3" y="213" width="1.1" height="15.0" fill="rgb(250,128,49)" rx="2" ry="2" />
+<text  x="1131.29" y="223.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;v(err:t,ok:u)&gt; (299 samples, 0.05%)</title><rect x="969.2" y="213" width="0.6" height="15.0" fill="rgb(236,156,34)" rx="2" ry="2" />
+<text  x="972.15" y="223.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;v(err:t,ok:u)&gt; (65 samples, 0.01%)</title><rect x="108.9" y="165" width="0.1" height="15.0" fill="rgb(236,156,34)" rx="2" ry="2" />
+<text  x="111.87" y="175.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;v(err:t,ok:u)&gt; (130 samples, 0.02%)</title><rect x="968.9" y="213" width="0.3" height="15.0" fill="rgb(236,118,34)" rx="2" ry="2" />
+<text  x="971.88" y="223.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (276 samples, 0.05%)</title><rect x="958.7" y="229" width="0.6" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="961.73" y="239.5" ></text>
+</g>
+<g >
+<title>rec (145 samples, 0.03%)</title><rect x="1102.1" y="117" width="0.3" height="15.0" fill="rgb(232,178,30)" rx="2" ry="2" />
+<text  x="1105.12" y="127.5" ></text>
+</g>
+<g >
+<title>memcpy (2,380 samples, 0.42%)</title><rect x="246.9" y="229" width="5.0" height="15.0" fill="rgb(248,144,48)" rx="2" ry="2" />
+<text  x="249.93" y="239.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;r(amount_e8s:N)&gt; (108 samples, 0.02%)</title><rect x="777.3" y="181" width="0.2" height="15.0" fill="rgb(238,118,36)" rx="2" ry="2" />
+<text  x="780.30" y="191.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;&gt; (572 samples, 0.10%)</title><rect x="853.3" y="261" width="1.1" height="15.0" fill="rgb(242,176,41)" rx="2" ry="2" />
+<text  x="856.26" y="271.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;0=?(P!0)&gt; (56 samples, 0.01%)</title><rect x="797.1" y="181" width="0.1" height="15.0" fill="rgb(242,118,41)" rx="2" ry="2" />
+<text  x="800.09" y="191.5" ></text>
+</g>
+<g >
+<title>find (348 samples, 0.06%)</title><rect x="971.2" y="213" width="0.7" height="15.0" fill="rgb(248,177,48)" rx="2" ry="2" />
+<text  x="974.19" y="223.5" ></text>
+</g>
+<g >
+<title>equalKey (60 samples, 0.01%)</title><rect x="881.0" y="181" width="0.1" height="15.0" fill="rgb(248,177,48)" rx="2" ry="2" />
+<text  x="883.99" y="191.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;N&gt; (123 samples, 0.02%)</title><rect x="778.3" y="165" width="0.2" height="15.0" fill="rgb(250,156,49)" rx="2" ry="2" />
+<text  x="781.27" y="175.5" ></text>
+</g>
+<g >
+<title>@anon-func-192.5 (396 samples, 0.07%)</title><rect x="1099.9" y="165" width="0.8" height="15.0" fill="rgb(246,146,45)" rx="2" ry="2" />
+<text  x="1102.92" y="175.5" ></text>
+</g>
+<g >
+<title>alloc_blob (76 samples, 0.01%)</title><rect x="785.6" y="261" width="0.2" height="15.0" fill="rgb(239,128,38)" rx="2" ry="2" />
+<text  x="788.64" y="271.5" ></text>
+</g>
+<g >
+<title>memset (195 samples, 0.03%)</title><rect x="82.4" y="229" width="0.4" height="15.0" fill="rgb(237,144,35)" rx="2" ry="2" />
+<text  x="85.40" y="239.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (138 samples, 0.02%)</title><rect x="844.7" y="213" width="0.3" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="847.69" y="223.5" ></text>
+</g>
+<g >
+<title>memcpy (179 samples, 0.03%)</title><rect x="973.9" y="213" width="0.4" height="15.0" fill="rgb(248,144,48)" rx="2" ry="2" />
+<text  x="976.90" y="223.5" ></text>
+</g>
+<g >
+<title>obj_idx&lt;0&gt; (108 samples, 0.02%)</title><rect x="729.0" y="165" width="0.2" height="15.0" fill="rgb(247,139,46)" rx="2" ry="2" />
+<text  x="732.00" y="175.5" ></text>
+</g>
+<g >
+<title>filter (324 samples, 0.06%)</title><rect x="586.9" y="197" width="0.7" height="15.0" fill="rgb(240,183,38)" rx="2" ry="2" />
+<text  x="589.93" y="207.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;vr(owner:P,tokens:r(amount_e8s:N))&gt; (516 samples, 0.09%)</title><rect x="777.6" y="213" width="1.1" height="15.0" fill="rgb(239,156,37)" rx="2" ry="2" />
+<text  x="780.63" y="223.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (69 samples, 0.01%)</title><rect x="110.4" y="213" width="0.2" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="113.43" y="223.5" ></text>
+</g>
+<g >
+<title>@eq&lt;v(accepted:u,executing:u,failed:t,open:u,rejected:u,succeeded:u)&gt; (132 samples, 0.02%)</title><rect x="587.3" y="149" width="0.2" height="15.0" fill="rgb(236,171,34)" rx="2" ry="2" />
+<text  x="590.25" y="159.5" ></text>
+</g>
+<g >
+<title>leb128_decode (345 samples, 0.06%)</title><rect x="976.1" y="213" width="0.8" height="15.0" fill="rgb(250,149,49)" rx="2" ry="2" />
+<text  x="979.14" y="223.5" ></text>
+</g>
+<g >
+<title>list_proposals (19,557 samples, 3.43%)</title><rect x="785.9" y="277" width="40.4" height="15.0" fill="rgb(235,113,33)" rx="2" ry="2" />
+<text  x="788.85" y="287.5" >lis..</text>
+</g>
+<g >
+<title>account_get (656 samples, 0.11%)</title><rect x="514.0" y="245" width="1.4" height="15.0" fill="rgb(237,164,35)" rx="2" ry="2" />
+<text  x="517.00" y="255.5" ></text>
+</g>
+<g >
+<title>proposal_key (362 samples, 0.06%)</title><rect x="194.5" y="165" width="0.8" height="15.0" fill="rgb(243,184,42)" rx="2" ry="2" />
+<text  x="197.54" y="175.5" ></text>
+</g>
+<g >
+<title>@serialize&lt;&gt; (343 samples, 0.06%)</title><rect x="551.8" y="213" width="0.7" height="15.0" fill="rgb(242,156,41)" rx="2" ry="2" />
+<text  x="554.82" y="223.5" ></text>
+</g>
+<g >
+<title>@call_raw (10,781 samples, 1.89%)</title><rect x="298.4" y="229" width="22.3" height="15.0" fill="rgb(225,194,22)" rx="2" ry="2" />
+<text  x="301.38" y="239.5" >@..</text>
+</g>
+<g >
+<title>hash (95 samples, 0.02%)</title><rect x="534.5" y="213" width="0.2" height="15.0" fill="rgb(241,130,40)" rx="2" ry="2" />
+<text  x="537.47" y="223.5" ></text>
+</g>
+<g >
+<title>equal (122 samples, 0.02%)</title><rect x="1100.2" y="149" width="0.2" height="15.0" fill="rgb(224,177,21)" rx="2" ry="2" />
+<text  x="1103.19" y="159.5" ></text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::mark_stack::push_mark_stack::h1f99226b92d7e984 (54 samples, 0.01%)</title><rect x="1072.9" y="229" width="0.1" height="15.0" fill="rgb(244,127,43)" rx="2" ry="2" />
+<text  x="1075.87" y="239.5" ></text>
+</g>
+<g >
+<title>account_balance (5,285 samples, 0.93%)</title><rect x="506.1" y="277" width="11.0" height="15.0" fill="rgb(251,164,51)" rx="2" ry="2" />
+<text  x="509.13" y="287.5" ></text>
+</g>
+<g >
+<title>leb128_decode (52 samples, 0.01%)</title><rect x="199.7" y="245" width="0.1" height="15.0" fill="rgb(250,149,49)" rx="2" ry="2" />
+<text  x="202.72" y="255.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;r(proposal_id:N,vote:v(no:u,yes:u))&gt; (9,322 samples, 1.63%)</title><rect x="1112.2" y="261" width="19.2" height="15.0" fill="rgb(239,176,37)" rx="2" ry="2" />
+<text  x="1115.15" y="271.5" ></text>
+</g>
+<g >
+<title>@anon-func-192.5 (396 samples, 0.07%)</title><rect x="881.8" y="149" width="0.8" height="15.0" fill="rgb(246,146,45)" rx="2" ry="2" />
+<text  x="884.76" y="159.5" ></text>
+</g>
+<g >
+<title>equal (122 samples, 0.02%)</title><rect x="882.0" y="133" width="0.3" height="15.0" fill="rgb(224,177,21)" rx="2" ry="2" />
+<text  x="885.03" y="143.5" ></text>
+</g>
+<g >
+<title>leaf (426 samples, 0.07%)</title><rect x="587.6" y="213" width="0.9" height="15.0" fill="rgb(238,152,36)" rx="2" ry="2" />
+<text  x="590.60" y="223.5" ></text>
+</g>
+<g >
+<title>bigint_leb128_decode_word64 (232 samples, 0.04%)</title><rect x="764.2" y="229" width="0.4" height="15.0" fill="rgb(237,113,36)" rx="2" ry="2" />
+<text  x="767.17" y="239.5" ></text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::compacting_gc::h416bfa181cd1565b (35,381 samples, 6.20%)</title><rect x="113.7" y="245" width="73.1" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="116.69" y="255.5" >motoko_r..</text>
+</g>
+<g >
+<title>@buffer_size&lt;u&gt; (54 samples, 0.01%)</title><rect x="732.0" y="165" width="0.1" height="15.0" fill="rgb(243,118,42)" rx="2" ry="2" />
+<text  x="735.00" y="175.5" ></text>
+</g>
+<g >
+<title>account_key (338 samples, 0.06%)</title><rect x="1098.2" y="229" width="0.7" height="15.0" fill="rgb(243,164,42)" rx="2" ry="2" />
+<text  x="1101.17" y="239.5" ></text>
+</g>
+<g >
+<title>recursiveReplace (983 samples, 0.17%)</title><rect x="1109.6" y="197" width="2.0" height="15.0" fill="rgb(252,178,52)" rx="2" ry="2" />
+<text  x="1112.55" y="207.5" ></text>
+</g>
+<g >
+<title>leb128_decode (104 samples, 0.02%)</title><rect x="895.5" y="213" width="0.2" height="15.0" fill="rgb(250,149,49)" rx="2" ry="2" />
+<text  x="898.47" y="223.5" ></text>
+</g>
+<g >
+<title>sleb128_encode (336 samples, 0.06%)</title><rect x="738.2" y="165" width="0.7" height="15.0" fill="rgb(250,128,49)" rx="2" ry="2" />
+<text  x="741.17" y="175.5" ></text>
+</g>
+<g >
+<title>proposal_get (1,610 samples, 0.28%)</title><rect x="1105.0" y="245" width="3.3" height="15.0" fill="rgb(237,184,35)" rx="2" ry="2" />
+<text  x="1107.96" y="255.5" ></text>
+</g>
+<g >
+<title>hashNat8 (206 samples, 0.04%)</title><rect x="592.3" y="181" width="0.4" height="15.0" fill="rgb(237,130,35)" rx="2" ry="2" />
+<text  x="595.29" y="191.5" ></text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::compacting_gc::h416bfa181cd1565b (28,703 samples, 5.03%)</title><rect x="202.7" y="245" width="59.3" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="205.67" y="255.5" >motoko..</text>
+</g>
+<g >
+<title>blob_of_ptr_size (223 samples, 0.04%)</title><rect x="845.2" y="245" width="0.5" height="15.0" fill="rgb(245,110,44)" rx="2" ry="2" />
+<text  x="848.19" y="255.5" ></text>
+</g>
+<g >
+<title>account_put (2,660 samples, 0.47%)</title><rect x="882.7" y="229" width="5.5" height="15.0" fill="rgb(234,164,31)" rx="2" ry="2" />
+<text  x="885.65" y="239.5" ></text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::compacting_gc::h416bfa181cd1565b (41,045 samples, 7.19%)</title><rect x="17.6" y="245" width="84.9" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="20.64" y="255.5" >motoko_rt..</text>
+</g>
+<g >
+<title>@serialize_go&lt;t&gt; (340 samples, 0.06%)</title><rect x="808.3" y="165" width="0.7" height="15.0" fill="rgb(244,156,43)" rx="2" ry="2" />
+<text  x="811.27" y="175.5" ></text>
+</g>
+<g >
+<title>alloc_blob (152 samples, 0.03%)</title><rect x="193.1" y="149" width="0.4" height="15.0" fill="rgb(239,128,38)" rx="2" ry="2" />
+<text  x="196.14" y="159.5" ></text>
+</g>
+<g >
+<title>hashNat8 (412 samples, 0.07%)</title><rect x="874.4" y="165" width="0.8" height="15.0" fill="rgb(237,130,35)" rx="2" ry="2" />
+<text  x="877.37" y="175.5" ></text>
+</g>
+<g >
+<title>B_add (54 samples, 0.01%)</title><rect x="818.8" y="181" width="0.1" height="15.0" fill="rgb(253,143,53)" rx="2" ry="2" />
+<text  x="821.81" y="191.5" ></text>
+</g>
+<g >
+<title>@anon-func-192.5 (308 samples, 0.05%)</title><rect x="1106.1" y="165" width="0.6" height="15.0" fill="rgb(246,146,45)" rx="2" ry="2" />
+<text  x="1109.08" y="175.5" ></text>
+</g>
+<g >
+<title>memcpy (72 samples, 0.01%)</title><rect x="832.3" y="165" width="0.2" height="15.0" fill="rgb(248,144,48)" rx="2" ry="2" />
+<text  x="835.34" y="175.5" ></text>
+</g>
+<g >
+<title>@anon-func-202.57 (426 samples, 0.07%)</title><rect x="585.9" y="181" width="0.9" height="15.0" fill="rgb(229,146,26)" rx="2" ry="2" />
+<text  x="588.94" y="191.5" ></text>
+</g>
+<g >
+<title>alloc_blob (152 samples, 0.03%)</title><rect x="892.0" y="213" width="0.3" height="15.0" fill="rgb(239,128,38)" rx="2" ry="2" />
+<text  x="895.02" y="223.5" ></text>
+</g>
+<g >
+<title>motoko_rts::types::block_size::haa6e1a3c5243bd1b (792 samples, 0.14%)</title><rect x="185.2" y="229" width="1.6" height="15.0" fill="rgb(232,127,30)" rx="2" ry="2" />
+<text  x="188.20" y="239.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;t&gt; (221 samples, 0.04%)</title><rect x="969.3" y="197" width="0.4" height="15.0" fill="rgb(244,156,43)" rx="2" ry="2" />
+<text  x="972.28" y="207.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;t&gt; (56 samples, 0.01%)</title><rect x="1093.3" y="197" width="0.1" height="15.0" fill="rgb(244,118,43)" rx="2" ry="2" />
+<text  x="1096.30" y="207.5" ></text>
+</g>
+<g >
+<title>memcpy (114 samples, 0.02%)</title><rect x="779.0" y="213" width="0.2" height="15.0" fill="rgb(248,144,48)" rx="2" ry="2" />
+<text  x="782.01" y="223.5" ></text>
+</g>
+<g >
+<title>$lambda (3,537 samples, 0.62%)</title><rect x="508.3" y="261" width="7.4" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="511.34" y="271.5" ></text>
+</g>
+<g >
+<title>memcpy (226 samples, 0.04%)</title><rect x="744.0" y="133" width="0.4" height="15.0" fill="rgb(248,144,48)" rx="2" ry="2" />
+<text  x="746.96" y="143.5" ></text>
+</g>
+<g >
+<title>next (574 samples, 0.10%)</title><rect x="782.6" y="197" width="1.2" height="15.0" fill="rgb(230,219,27)" rx="2" ry="2" />
+<text  x="785.58" y="207.5" ></text>
+</g>
+<g >
+<title>@eq&lt;v(accepted:u,executing:u,failed:t,open:u,rejected:u,succeeded:u)&gt; (234 samples, 0.04%)</title><rect x="1096.3" y="245" width="0.5" height="15.0" fill="rgb(236,171,34)" rx="2" ry="2" />
+<text  x="1099.31" y="255.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;N&gt; (188 samples, 0.03%)</title><rect x="805.9" y="165" width="0.4" height="15.0" fill="rgb(250,156,49)" rx="2" ry="2" />
+<text  x="808.89" y="175.5" ></text>
+</g>
+<g >
+<title>obj_idx&lt;0&gt; (90 samples, 0.02%)</title><rect x="590.9" y="229" width="0.2" height="15.0" fill="rgb(247,139,46)" rx="2" ry="2" />
+<text  x="593.92" y="239.5" ></text>
+</g>
+<g >
+<title>$lambda (1,857 samples, 0.33%)</title><rect x="13.6" y="213" width="3.9" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="16.62" y="223.5" ></text>
+</g>
+<g >
+<title>hash (306 samples, 0.05%)</title><rect x="1108.5" y="213" width="0.7" height="15.0" fill="rgb(241,130,40)" rx="2" ry="2" />
+<text  x="1111.52" y="223.5" ></text>
+</g>
+<g >
+<title>$lambda (3,972 samples, 0.70%)</title><rect x="1088.1" y="245" width="8.2" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="1091.10" y="255.5" ></text>
+</g>
+<g >
+<title>parse_idl_header (266 samples, 0.05%)</title><rect x="846.3" y="245" width="0.5" height="15.0" fill="rgb(243,149,41)" rx="2" ry="2" />
+<text  x="849.29" y="255.5" ></text>
+</g>
+<g >
+<title>memset (225 samples, 0.04%)</title><rect x="1052.5" y="229" width="0.5" height="15.0" fill="rgb(237,144,35)" rx="2" ry="2" />
+<text  x="1055.50" y="239.5" ></text>
+</g>
+<g >
+<title>rec (1,548 samples, 0.27%)</title><rect x="754.8" y="197" width="3.2" height="15.0" fill="rgb(232,178,30)" rx="2" ry="2" />
+<text  x="757.80" y="207.5" ></text>
+</g>
+<g >
+<title>sleb128_decode (138 samples, 0.02%)</title><rect x="111.5" y="229" width="0.3" height="15.0" fill="rgb(250,128,49)" rx="2" ry="2" />
+<text  x="114.49" y="239.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;N&gt; (108 samples, 0.02%)</title><rect x="871.2" y="197" width="0.2" height="15.0" fill="rgb(250,156,49)" rx="2" ry="2" />
+<text  x="874.18" y="207.5" ></text>
+</g>
+<g >
+<title>memcpy (100 samples, 0.02%)</title><rect x="842.7" y="213" width="0.3" height="15.0" fill="rgb(248,144,48)" rx="2" ry="2" />
+<text  x="845.75" y="223.5" ></text>
+</g>
+<g >
+<title>@serialize&lt;r(amount_e8s:N)&gt; (608 samples, 0.11%)</title><rect x="512.7" y="229" width="1.3" height="15.0" fill="rgb(238,156,36)" rx="2" ry="2" />
+<text  x="515.75" y="239.5" ></text>
+</g>
+<g >
+<title>hashNat8 (206 samples, 0.04%)</title><rect x="194.9" y="133" width="0.4" height="15.0" fill="rgb(237,130,35)" rx="2" ry="2" />
+<text  x="197.87" y="143.5" ></text>
+</g>
+<g >
+<title>$loop/1 (1,551 samples, 0.27%)</title><rect x="190.7" y="197" width="3.2" height="15.0" fill="rgb(233,126,31)" rx="2" ry="2" />
+<text  x="193.66" y="207.5" ></text>
+</g>
+<g >
+<title>obj_idx&lt;1&gt; (72 samples, 0.01%)</title><rect x="882.4" y="133" width="0.2" height="15.0" fill="rgb(246,139,45)" rx="2" ry="2" />
+<text  x="885.43" y="143.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;v(err:t,ok:u)&gt; (72 samples, 0.01%)</title><rect x="108.7" y="165" width="0.2" height="15.0" fill="rgb(236,118,34)" rx="2" ry="2" />
+<text  x="111.72" y="175.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;N&gt; (80 samples, 0.01%)</title><rect x="870.8" y="197" width="0.2" height="15.0" fill="rgb(250,118,49)" rx="2" ry="2" />
+<text  x="873.84" y="207.5" ></text>
+</g>
+<g >
+<title>compacting_gc (23,927 samples, 4.19%)</title><rect x="911.3" y="261" width="49.5" height="15.0" fill="rgb(227,149,24)" rx="2" ry="2" />
+<text  x="914.34" y="271.5" >comp..</text>
+</g>
+<g >
+<title>iterate (2,478 samples, 0.43%)</title><rect x="817.3" y="229" width="5.1" height="15.0" fill="rgb(245,143,45)" rx="2" ry="2" />
+<text  x="820.29" y="239.5" ></text>
+</g>
+<g >
+<title>Blob.compare_eq (53 samples, 0.01%)</title><rect x="515.1" y="133" width="0.1" height="15.0" fill="rgb(239,126,38)" rx="2" ry="2" />
+<text  x="518.07" y="143.5" ></text>
+</g>
+<g >
+<title>obj_idx&lt;0&gt; (72 samples, 0.01%)</title><rect x="806.3" y="165" width="0.1" height="15.0" fill="rgb(247,139,46)" rx="2" ry="2" />
+<text  x="809.28" y="175.5" ></text>
+</g>
+<g >
+<title>replace (1,851 samples, 0.32%)</title><rect x="875.4" y="181" width="3.8" height="15.0" fill="rgb(252,175,52)" rx="2" ry="2" />
+<text  x="878.36" y="191.5" ></text>
+</g>
+<g >
+<title>obj_idx&lt;0&gt; (72 samples, 0.01%)</title><rect x="1100.4" y="149" width="0.2" height="15.0" fill="rgb(247,139,46)" rx="2" ry="2" />
+<text  x="1103.44" y="159.5" ></text>
+</g>
+<g >
+<title>memset (195 samples, 0.03%)</title><rect x="170.6" y="229" width="0.5" height="15.0" fill="rgb(237,144,35)" rx="2" ry="2" />
+<text  x="173.65" y="239.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (138 samples, 0.02%)</title><rect x="825.5" y="229" width="0.3" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="828.54" y="239.5" ></text>
+</g>
+<g >
+<title>@anon-func-192.5 (682 samples, 0.12%)</title><rect x="756.4" y="165" width="1.5" height="15.0" fill="rgb(246,146,45)" rx="2" ry="2" />
+<text  x="759.45" y="175.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;t&gt; (474 samples, 0.08%)</title><rect x="1093.8" y="197" width="1.0" height="15.0" fill="rgb(244,156,43)" rx="2" ry="2" />
+<text  x="1096.85" y="207.5" ></text>
+</g>
+<g >
+<title>leaf (658 samples, 0.12%)</title><rect x="876.3" y="149" width="1.4" height="15.0" fill="rgb(238,152,36)" rx="2" ry="2" />
+<text  x="879.31" y="159.5" ></text>
+</g>
+<g >
+<title>memcpy (65 samples, 0.01%)</title><rect x="842.1" y="165" width="0.1" height="15.0" fill="rgb(248,144,48)" rx="2" ry="2" />
+<text  x="845.09" y="175.5" ></text>
+</g>
+<g >
+<title>alloc_blob (304 samples, 0.05%)</title><rect x="812.2" y="213" width="0.6" height="15.0" fill="rgb(239,128,38)" rx="2" ry="2" />
+<text  x="815.17" y="223.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;r(canister_id:P,message:B,method:t)&gt; (1,434 samples, 0.25%)</title><rect x="806.4" y="181" width="3.0" height="15.0" fill="rgb(237,156,35)" rx="2" ry="2" />
+<text  x="809.43" y="191.5" ></text>
+</g>
+<g >
+<title>obj_idx&lt;0&gt; (52 samples, 0.01%)</title><rect x="777.5" y="181" width="0.1" height="15.0" fill="rgb(247,139,46)" rx="2" ry="2" />
+<text  x="780.52" y="191.5" ></text>
+</g>
+<g >
+<title>compacting_gc (35,387 samples, 6.20%)</title><rect x="113.7" y="261" width="73.1" height="15.0" fill="rgb(227,149,24)" rx="2" ry="2" />
+<text  x="116.68" y="271.5" >compacti..</text>
+</g>
+<g >
+<title>@serialize_go&lt;r(amount_e8s:N)&gt; (146 samples, 0.03%)</title><rect x="844.3" y="213" width="0.3" height="15.0" fill="rgb(238,156,36)" rx="2" ry="2" />
+<text  x="847.26" y="223.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (69 samples, 0.01%)</title><rect x="834.6" y="229" width="0.2" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="837.62" y="239.5" ></text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::bitmap::BitmapIter::next::hf82f793b43efcee0 (6,735 samples, 1.18%)</title><rect x="462.6" y="229" width="13.9" height="15.0" fill="rgb(235,127,33)" rx="2" ry="2" />
+<text  x="465.59" y="239.5" ></text>
+</g>
+<g >
+<title>rec (251 samples, 0.04%)</title><rect x="1101.9" y="149" width="0.5" height="15.0" fill="rgb(232,178,30)" rx="2" ry="2" />
+<text  x="1104.91" y="159.5" ></text>
+</g>
+<g >
+<title>leaf (387 samples, 0.07%)</title><rect x="1109.7" y="181" width="0.8" height="15.0" fill="rgb(238,152,36)" rx="2" ry="2" />
+<text  x="1112.73" y="191.5" ></text>
+</g>
+<g >
+<title>rec (618 samples, 0.11%)</title><rect x="876.4" y="117" width="1.3" height="15.0" fill="rgb(232,178,30)" rx="2" ry="2" />
+<text  x="879.39" y="127.5" ></text>
+</g>
+<g >
+<title>hash (87 samples, 0.02%)</title><rect x="1101.1" y="197" width="0.2" height="15.0" fill="rgb(241,130,40)" rx="2" ry="2" />
+<text  x="1104.10" y="207.5" ></text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::mark_object::hb81f6542e95ca663 (11,230 samples, 1.97%)</title><rect x="476.5" y="229" width="23.2" height="15.0" fill="rgb(238,127,36)" rx="2" ry="2" />
+<text  x="479.51" y="239.5" >m..</text>
+</g>
+<g >
+<title>parse_idl_header (266 samples, 0.05%)</title><rect x="785.1" y="245" width="0.5" height="15.0" fill="rgb(243,149,41)" rx="2" ry="2" />
+<text  x="788.07" y="255.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (138 samples, 0.02%)</title><rect x="320.2" y="197" width="0.3" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="323.22" y="207.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;r(canister_id:P,message:B,method:t)&gt; (824 samples, 0.14%)</title><rect x="840.7" y="213" width="1.7" height="15.0" fill="rgb(237,156,35)" rx="2" ry="2" />
+<text  x="843.73" y="223.5" ></text>
+</g>
+<g >
+<title>B_sub (70 samples, 0.01%)</title><rect x="879.8" y="229" width="0.1" height="15.0" fill="rgb(228,124,25)" rx="2" ry="2" />
+<text  x="882.79" y="239.5" ></text>
+</g>
+<g >
+<title>__wasm_apply_data_relocs (981 samples, 0.17%)</title><rect x="769.9" y="245" width="2.0" height="15.0" fill="rgb(244,119,43)" rx="2" ry="2" />
+<text  x="772.92" y="255.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;v(err:t,ok:N)&gt; (224 samples, 0.04%)</title><rect x="871.0" y="213" width="0.5" height="15.0" fill="rgb(238,156,36)" rx="2" ry="2" />
+<text  x="874.00" y="223.5" ></text>
+</g>
+<g >
+<title>@deserialize_go&lt;n32&gt; (118 samples, 0.02%)</title><rect x="278.6" y="245" width="0.3" height="15.0" fill="rgb(242,176,41)" rx="2" ry="2" />
+<text  x="281.64" y="255.5" ></text>
+</g>
+<g >
+<title>obj_idx&lt;0&gt; (306 samples, 0.05%)</title><rect x="745.5" y="165" width="0.6" height="15.0" fill="rgb(247,139,46)" rx="2" ry="2" />
+<text  x="748.47" y="175.5" ></text>
+</g>
+<g >
+<title>text_to_buf (88 samples, 0.02%)</title><rect x="1094.6" y="165" width="0.2" height="15.0" fill="rgb(242,171,41)" rx="2" ry="2" />
+<text  x="1097.64" y="175.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (138 samples, 0.02%)</title><rect x="538.8" y="229" width="0.3" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="541.84" y="239.5" ></text>
+</g>
+<g >
+<title>compacting_gc (28,102 samples, 4.92%)</title><rect x="1131.8" y="261" width="58.1" height="15.0" fill="rgb(227,149,24)" rx="2" ry="2" />
+<text  x="1134.78" y="271.5" >compac..</text>
+</g>
+<g >
+<title>@serialize&lt;n32&gt; (362 samples, 0.06%)</title><rect x="319.4" y="213" width="0.8" height="15.0" fill="rgb(242,156,41)" rx="2" ry="2" />
+<text  x="322.44" y="223.5" ></text>
+</g>
+<g >
+<title>leb128_decode (104 samples, 0.02%)</title><rect x="112.4" y="229" width="0.2" height="15.0" fill="rgb(250,149,49)" rx="2" ry="2" />
+<text  x="115.40" y="239.5" ></text>
+</g>
+<g >
+<title>@new_async (289 samples, 0.05%)</title><rect x="320.7" y="229" width="0.6" height="15.0" fill="rgb(238,181,36)" rx="2" ry="2" />
+<text  x="323.69" y="239.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;v(err:t,ok:v(accepted:u,executing:u,failed:t,open:u,rejected:u,succeeded:u))&gt; (288 samples, 0.05%)</title><rect x="1093.0" y="213" width="0.6" height="15.0" fill="rgb(239,118,37)" rx="2" ry="2" />
+<text  x="1096.03" y="223.5" ></text>
+</g>
+<g >
+<title>fromList (377 samples, 0.07%)</title><rect x="195.9" y="101" width="0.8" height="15.0" fill="rgb(232,184,30)" rx="2" ry="2" />
+<text  x="198.90" y="111.5" ></text>
+</g>
+<g >
+<title>sleb128_decode (276 samples, 0.05%)</title><rect x="112.8" y="229" width="0.6" height="15.0" fill="rgb(250,128,49)" rx="2" ry="2" />
+<text  x="115.81" y="239.5" ></text>
+</g>
+<g >
+<title>memcpy (102 samples, 0.02%)</title><rect x="845.0" y="229" width="0.2" height="15.0" fill="rgb(248,144,48)" rx="2" ry="2" />
+<text  x="847.98" y="239.5" ></text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::mark_stack::push_mark_stack::h1f99226b92d7e984 (2,295 samples, 0.40%)</title><rect x="696.2" y="213" width="4.8" height="15.0" fill="rgb(244,127,43)" rx="2" ry="2" />
+<text  x="699.23" y="223.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;&gt; (572 samples, 0.10%)</title><rect x="515.7" y="261" width="1.1" height="15.0" fill="rgb(242,176,41)" rx="2" ry="2" />
+<text  x="518.65" y="271.5" ></text>
+</g>
+<g >
+<title>hash (306 samples, 0.05%)</title><rect x="592.1" y="197" width="0.6" height="15.0" fill="rgb(241,130,40)" rx="2" ry="2" />
+<text  x="595.09" y="207.5" ></text>
+</g>
+<g >
+<title>B_add (54 samples, 0.01%)</title><rect x="873.4" y="213" width="0.1" height="15.0" fill="rgb(253,143,53)" rx="2" ry="2" />
+<text  x="876.38" y="223.5" ></text>
+</g>
+<g >
+<title>alloc_blob (152 samples, 0.03%)</title><rect x="825.9" y="261" width="0.3" height="15.0" fill="rgb(239,128,38)" rx="2" ry="2" />
+<text  x="828.87" y="271.5" ></text>
+</g>
+<g >
+<title>alloc_blob (152 samples, 0.03%)</title><rect x="894.3" y="213" width="0.4" height="15.0" fill="rgb(239,128,38)" rx="2" ry="2" />
+<text  x="897.34" y="223.5" ></text>
+</g>
+<g >
+<title>proposal_key (724 samples, 0.13%)</title><rect x="873.7" y="197" width="1.5" height="15.0" fill="rgb(243,184,42)" rx="2" ry="2" />
+<text  x="876.73" y="207.5" ></text>
+</g>
+<g >
+<title>rec (367 samples, 0.06%)</title><rect x="593.3" y="133" width="0.8" height="15.0" fill="rgb(232,178,30)" rx="2" ry="2" />
+<text  x="596.34" y="143.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;N&gt; (132 samples, 0.02%)</title><rect x="798.3" y="165" width="0.3" height="15.0" fill="rgb(250,118,49)" rx="2" ry="2" />
+<text  x="801.30" y="175.5" ></text>
+</g>
+<g >
+<title>alloc_blob (76 samples, 0.01%)</title><rect x="516.9" y="261" width="0.1" height="15.0" fill="rgb(239,128,38)" rx="2" ry="2" />
+<text  x="519.85" y="271.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_array::hfb4dad1bf9425cf5 (146 samples, 0.03%)</title><rect x="823.2" y="181" width="0.3" height="15.0" fill="rgb(244,127,43)" rx="2" ry="2" />
+<text  x="826.16" y="191.5" ></text>
+</g>
+<g >
+<title>equalKey (60 samples, 0.01%)</title><rect x="1105.3" y="197" width="0.1" height="15.0" fill="rgb(248,177,48)" rx="2" ry="2" />
+<text  x="1108.31" y="207.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;r(amount:r(amount_e8s:N),to:P)&gt; (416 samples, 0.07%)</title><rect x="843.8" y="229" width="0.9" height="15.0" fill="rgb(237,156,35)" rx="2" ry="2" />
+<text  x="846.80" y="239.5" ></text>
+</g>
+<g >
+<title>$lambda (4,898 samples, 0.86%)</title><rect x="774.3" y="261" width="10.1" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="777.32" y="271.5" ></text>
+</g>
+<g >
+<title>text_concat (200 samples, 0.04%)</title><rect x="1111.7" y="245" width="0.5" height="15.0" fill="rgb(232,171,30)" rx="2" ry="2" />
+<text  x="1114.74" y="255.5" ></text>
+</g>
+<g >
+<title>next (804 samples, 0.14%)</title><rect x="782.2" y="213" width="1.6" height="15.0" fill="rgb(230,219,27)" rx="2" ry="2" />
+<text  x="785.18" y="223.5" ></text>
+</g>
+<g >
+<title>$lambda (1,930 samples, 0.34%)</title><rect x="849.3" y="261" width="4.0" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="852.27" y="271.5" ></text>
+</g>
+<g >
+<title>memcpy (77 samples, 0.01%)</title><rect x="841.7" y="165" width="0.2" height="15.0" fill="rgb(248,144,48)" rx="2" ry="2" />
+<text  x="844.72" y="175.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_array::hfb4dad1bf9425cf5 (73 samples, 0.01%)</title><rect x="583.0" y="197" width="0.2" height="15.0" fill="rgb(244,127,43)" rx="2" ry="2" />
+<text  x="586.04" y="207.5" ></text>
+</g>
+<g >
+<title>sleb128_decode (207 samples, 0.04%)</title><rect x="980.3" y="213" width="0.4" height="15.0" fill="rgb(250,128,49)" rx="2" ry="2" />
+<text  x="983.26" y="223.5" ></text>
+</g>
+<g >
+<title>leb128_decode (104 samples, 0.02%)</title><rect x="1121.8" y="245" width="0.2" height="15.0" fill="rgb(250,149,49)" rx="2" ry="2" />
+<text  x="1124.80" y="255.5" ></text>
+</g>
+<g >
+<title>memcpy (50 samples, 0.01%)</title><rect x="1097.3" y="165" width="0.1" height="15.0" fill="rgb(248,144,48)" rx="2" ry="2" />
+<text  x="1100.30" y="175.5" ></text>
+</g>
+<g >
+<title>hash (612 samples, 0.11%)</title><rect x="874.0" y="181" width="1.2" height="15.0" fill="rgb(241,130,40)" rx="2" ry="2" />
+<text  x="876.96" y="191.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;B&gt; (94 samples, 0.02%)</title><rect x="797.8" y="165" width="0.1" height="15.0" fill="rgb(251,118,51)" rx="2" ry="2" />
+<text  x="800.75" y="175.5" ></text>
+</g>
+<g >
+<title>rec (406 samples, 0.07%)</title><rect x="876.8" y="85" width="0.9" height="15.0" fill="rgb(232,178,30)" rx="2" ry="2" />
+<text  x="879.83" y="95.5" ></text>
+</g>
+<g >
+<title>lenClamp (310 samples, 0.05%)</title><rect x="885.2" y="117" width="0.7" height="15.0" fill="rgb(239,149,38)" rx="2" ry="2" />
+<text  x="888.23" y="127.5" ></text>
+</g>
+<g >
+<title>obj_idx&lt;0&gt; (72 samples, 0.01%)</title><rect x="822.3" y="213" width="0.1" height="15.0" fill="rgb(247,139,46)" rx="2" ry="2" />
+<text  x="825.27" y="223.5" ></text>
+</g>
+<g >
+<title>@text_of_Nat (546 samples, 0.10%)</title><rect x="1096.8" y="229" width="1.1" height="15.0" fill="rgb(230,151,28)" rx="2" ry="2" />
+<text  x="1099.81" y="239.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;N&gt; (80 samples, 0.01%)</title><rect x="797.4" y="181" width="0.2" height="15.0" fill="rgb(250,118,49)" rx="2" ry="2" />
+<text  x="800.42" y="191.5" ></text>
+</g>
+<g >
+<title>put (1,917 samples, 0.34%)</title><rect x="875.2" y="197" width="4.0" height="15.0" fill="rgb(234,152,31)" rx="2" ry="2" />
+<text  x="878.22" y="207.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;r(canister_id:P,message:B,method:t)&gt; (762 samples, 0.13%)</title><rect x="798.7" y="181" width="1.6" height="15.0" fill="rgb(237,118,35)" rx="2" ry="2" />
+<text  x="801.72" y="191.5" ></text>
+</g>
+<g >
+<title>@serialize&lt;?r(id:N,payload:r(canister_id:P,message:B,method:t),proposer:P,state:v(accepted:u,executing:u,failed:t,open:u,rejected:u,succeeded:u),timestamp:I,voters:10=?(P!10),votes_no:12=r(amount_e8s:N),votes_yes:!12)&gt; (14,622 samples, 2.56%)</title><rect x="723.6" y="229" width="30.3" height="15.0" fill="rgb(241,156,39)" rx="2" ry="2" />
+<text  x="726.62" y="239.5" >@s..</text>
+</g>
+<g >
+<title>obj_idx&lt;0&gt; (126 samples, 0.02%)</title><rect x="821.8" y="181" width="0.2" height="15.0" fill="rgb(247,139,46)" rx="2" ry="2" />
+<text  x="824.78" y="191.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (138 samples, 0.02%)</title><rect x="597.2" y="229" width="0.3" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="600.23" y="239.5" ></text>
+</g>
+<g >
+<title>leb128_decode (52 samples, 0.01%)</title><rect x="110.6" y="229" width="0.1" height="15.0" fill="rgb(250,149,49)" rx="2" ry="2" />
+<text  x="113.58" y="239.5" ></text>
+</g>
+<g >
+<title>@anon-func-1271.15 (226 samples, 0.04%)</title><rect x="587.1" y="181" width="0.5" height="15.0" fill="rgb(237,146,35)" rx="2" ry="2" />
+<text  x="590.13" y="191.5" ></text>
+</g>
+<g >
+<title>@anon-func-1271.15 (606 samples, 0.11%)</title><rect x="585.7" y="197" width="1.2" height="15.0" fill="rgb(237,146,35)" rx="2" ry="2" />
+<text  x="588.68" y="207.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;P&gt; (150 samples, 0.03%)</title><rect x="777.9" y="181" width="0.3" height="15.0" fill="rgb(248,156,47)" rx="2" ry="2" />
+<text  x="780.90" y="191.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (276 samples, 0.05%)</title><rect x="701.1" y="229" width="0.6" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="704.09" y="239.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (276 samples, 0.05%)</title><rect x="871.5" y="197" width="0.6" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="874.52" y="207.5" ></text>
+</g>
+<g >
+<title>leb128_decode (546 samples, 0.10%)</title><rect x="1116.3" y="213" width="1.2" height="15.0" fill="rgb(250,149,49)" rx="2" ry="2" />
+<text  x="1119.35" y="223.5" ></text>
+</g>
+<g >
+<title>memcpy (74 samples, 0.01%)</title><rect x="574.4" y="197" width="0.1" height="15.0" fill="rgb(248,144,48)" rx="2" ry="2" />
+<text  x="577.39" y="207.5" ></text>
+</g>
+<g >
+<title>account_key (169 samples, 0.03%)</title><rect x="514.0" y="229" width="0.4" height="15.0" fill="rgb(243,164,42)" rx="2" ry="2" />
+<text  x="517.04" y="239.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;B&gt; (1,939 samples, 0.34%)</title><rect x="109.5" y="261" width="4.0" height="15.0" fill="rgb(251,176,51)" rx="2" ry="2" />
+<text  x="112.52" y="271.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;v(accepted:u,executing:u,failed:t,open:u,rejected:u,succeeded:u)&gt; (227 samples, 0.04%)</title><rect x="746.1" y="181" width="0.5" height="15.0" fill="rgb(236,156,34)" rx="2" ry="2" />
+<text  x="749.11" y="191.5" ></text>
+</g>
+<g >
+<title>get (940 samples, 0.16%)</title><rect x="880.7" y="213" width="2.0" height="15.0" fill="rgb(237,170,35)" rx="2" ry="2" />
+<text  x="883.71" y="223.5" ></text>
+</g>
+<g >
+<title>canister_init (12,058 samples, 2.11%)</title><rect x="517.1" y="277" width="24.9" height="15.0" fill="rgb(236,106,34)" rx="2" ry="2" />
+<text  x="520.06" y="287.5" >c..</text>
+</g>
+<g >
+<title>find (460 samples, 0.08%)</title><rect x="514.4" y="213" width="1.0" height="15.0" fill="rgb(248,177,48)" rx="2" ry="2" />
+<text  x="517.41" y="223.5" ></text>
+</g>
+<g >
+<title>sleb128_decode (207 samples, 0.04%)</title><rect x="977.0" y="229" width="0.4" height="15.0" fill="rgb(250,128,49)" rx="2" ry="2" />
+<text  x="979.98" y="239.5" ></text>
+</g>
+<g >
+<title>memcpy (1,136 samples, 0.20%)</title><rect x="751.5" y="213" width="2.4" height="15.0" fill="rgb(248,144,48)" rx="2" ry="2" />
+<text  x="754.50" y="223.5" ></text>
+</g>
+<g >
+<title>obj_idx&lt;3&gt; (54 samples, 0.01%)</title><rect x="1104.7" y="245" width="0.1" height="15.0" fill="rgb(243,139,42)" rx="2" ry="2" />
+<text  x="1107.66" y="255.5" ></text>
+</g>
+<g >
+<title>rec (367 samples, 0.06%)</title><rect x="195.9" y="85" width="0.8" height="15.0" fill="rgb(232,178,30)" rx="2" ry="2" />
+<text  x="198.92" y="95.5" ></text>
+</g>
+<g >
+<title>find (506 samples, 0.09%)</title><rect x="1105.7" y="181" width="1.0" height="15.0" fill="rgb(248,177,48)" rx="2" ry="2" />
+<text  x="1108.67" y="191.5" ></text>
+</g>
+<g >
+<title>leb128_decode (351 samples, 0.06%)</title><rect x="200.7" y="213" width="0.8" height="15.0" fill="rgb(250,149,49)" rx="2" ry="2" />
+<text  x="203.72" y="223.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (69 samples, 0.01%)</title><rect x="515.4" y="229" width="0.1" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="518.38" y="239.5" ></text>
+</g>
+<g >
+<title>sample_vote (3,678 samples, 0.64%)</title><rect x="847.1" y="277" width="7.6" height="15.0" fill="rgb(244,141,43)" rx="2" ry="2" />
+<text  x="850.07" y="287.5" ></text>
+</g>
+<g >
+<title>replace (490 samples, 0.09%)</title><rect x="1110.6" y="181" width="1.0" height="15.0" fill="rgb(252,175,52)" rx="2" ry="2" />
+<text  x="1113.57" y="191.5" ></text>
+</g>
+<g >
+<title>compacting_gc (51,430 samples, 9.01%)</title><rect x="597.9" y="261" width="106.3" height="15.0" fill="rgb(227,149,24)" rx="2" ry="2" />
+<text  x="600.87" y="271.5" >compacting_gc</text>
+</g>
+<g >
+<title>obj_idx&lt;0&gt; (204 samples, 0.04%)</title><rect x="799.9" y="165" width="0.4" height="15.0" fill="rgb(247,139,46)" rx="2" ry="2" />
+<text  x="802.88" y="175.5" ></text>
+</g>
+<g >
+<title>leb128_decode (104 samples, 0.02%)</title><rect x="892.3" y="213" width="0.2" height="15.0" fill="rgb(250,149,49)" rx="2" ry="2" />
+<text  x="895.33" y="223.5" ></text>
+</g>
+<g >
+<title>hashNat8 (843 samples, 0.15%)</title><rect x="759.3" y="197" width="1.8" height="15.0" fill="rgb(237,130,35)" rx="2" ry="2" />
+<text  x="762.33" y="207.5" ></text>
+</g>
+<g >
+<title>update_proposal_state (1,868 samples, 0.33%)</title><rect x="591.3" y="245" width="3.9" height="15.0" fill="rgb(245,150,45)" rx="2" ry="2" />
+<text  x="594.29" y="255.5" ></text>
+</g>
+<g >
+<title>@anon-func-192.5 (74 samples, 0.01%)</title><rect x="879.0" y="117" width="0.1" height="15.0" fill="rgb(246,146,45)" rx="2" ry="2" />
+<text  x="881.96" y="127.5" ></text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::bitmap::BitmapIter::next::hf82f793b43efcee0 (438 samples, 0.08%)</title><rect x="524.8" y="229" width="0.9" height="15.0" fill="rgb(235,127,33)" rx="2" ry="2" />
+<text  x="527.83" y="239.5" ></text>
+</g>
+<g >
+<title>leb128_encode (152 samples, 0.03%)</title><rect x="740.9" y="149" width="0.3" height="15.0" fill="rgb(250,149,49)" rx="2" ry="2" />
+<text  x="743.90" y="159.5" ></text>
+</g>
+<g >
+<title>motoko_rts::types::block_size::haa6e1a3c5243bd1b (976 samples, 0.17%)</title><rect x="100.5" y="229" width="2.0" height="15.0" fill="rgb(232,127,30)" rx="2" ry="2" />
+<text  x="103.48" y="239.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;N&gt; (212 samples, 0.04%)</title><rect x="728.6" y="165" width="0.4" height="15.0" fill="rgb(250,118,49)" rx="2" ry="2" />
+<text  x="731.56" y="175.5" ></text>
+</g>
+<g >
+<title>memcpy (176 samples, 0.03%)</title><rect x="872.1" y="213" width="0.4" height="15.0" fill="rgb(248,144,48)" rx="2" ry="2" />
+<text  x="875.09" y="223.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;t&gt; (56 samples, 0.01%)</title><rect x="969.0" y="197" width="0.2" height="15.0" fill="rgb(244,118,43)" rx="2" ry="2" />
+<text  x="972.04" y="207.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (69 samples, 0.01%)</title><rect x="834.8" y="245" width="0.1" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="837.80" y="255.5" ></text>
+</g>
+<g >
+<title>replace (1,144 samples, 0.20%)</title><rect x="592.8" y="197" width="2.4" height="15.0" fill="rgb(252,175,52)" rx="2" ry="2" />
+<text  x="595.79" y="207.5" ></text>
+</g>
+<g >
+<title>next (1,476 samples, 0.26%)</title><rect x="819.2" y="213" width="3.1" height="15.0" fill="rgb(230,219,27)" rx="2" ry="2" />
+<text  x="822.22" y="223.5" ></text>
+</g>
+<g >
+<title>lenClamp (155 samples, 0.03%)</title><rect x="535.5" y="133" width="0.3" height="15.0" fill="rgb(239,149,38)" rx="2" ry="2" />
+<text  x="538.49" y="143.5" ></text>
+</g>
+<g >
+<title>memset (351 samples, 0.06%)</title><rect x="1170.9" y="229" width="0.7" height="15.0" fill="rgb(237,144,35)" rx="2" ry="2" />
+<text  x="1173.89" y="239.5" ></text>
+</g>
+<g >
+<title>proposal_key (1,485 samples, 0.26%)</title><rect x="758.0" y="229" width="3.1" height="15.0" fill="rgb(243,184,42)" rx="2" ry="2" />
+<text  x="761.00" y="239.5" ></text>
+</g>
+<g >
+<title>sleb128_decode (276 samples, 0.05%)</title><rect x="1117.9" y="213" width="0.6" height="15.0" fill="rgb(250,128,49)" rx="2" ry="2" />
+<text  x="1120.89" y="223.5" ></text>
+</g>
+<g >
+<title>alloc_blob (76 samples, 0.01%)</title><rect x="973.6" y="213" width="0.2" height="15.0" fill="rgb(239,128,38)" rx="2" ry="2" />
+<text  x="976.63" y="223.5" ></text>
+</g>
+<g >
+<title>map (63 samples, 0.01%)</title><rect x="779.5" y="245" width="0.2" height="15.0" fill="rgb(240,99,39)" rx="2" ry="2" />
+<text  x="782.53" y="255.5" ></text>
+</g>
+<g >
+<title>blob_of_principal (2,332 samples, 0.41%)</title><rect x="536.7" y="245" width="4.8" height="15.0" fill="rgb(228,110,25)" rx="2" ry="2" />
+<text  x="539.68" y="255.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;P&gt; (88 samples, 0.02%)</title><rect x="726.7" y="149" width="0.2" height="15.0" fill="rgb(248,118,47)" rx="2" ry="2" />
+<text  x="729.72" y="159.5" ></text>
+</g>
+<g >
+<title>find (832 samples, 0.15%)</title><rect x="1105.1" y="213" width="1.7" height="15.0" fill="rgb(248,177,48)" rx="2" ry="2" />
+<text  x="1108.07" y="223.5" ></text>
+</g>
+<g >
+<title>leb128_decode (52 samples, 0.01%)</title><rect x="785.0" y="245" width="0.1" height="15.0" fill="rgb(250,149,49)" rx="2" ry="2" />
+<text  x="787.97" y="255.5" ></text>
+</g>
+<g >
+<title>alloc_array (80 samples, 0.01%)</title><rect x="781.8" y="165" width="0.2" height="15.0" fill="rgb(239,128,37)" rx="2" ry="2" />
+<text  x="784.79" y="175.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;B&gt; (141 samples, 0.02%)</title><rect x="727.7" y="165" width="0.3" height="15.0" fill="rgb(251,118,51)" rx="2" ry="2" />
+<text  x="730.73" y="175.5" ></text>
+</g>
+<g >
+<title>@serialize&lt;v(err:t,ok:N)&gt; (1,080 samples, 0.19%)</title><rect x="870.2" y="229" width="2.3" height="15.0" fill="rgb(238,156,36)" rx="2" ry="2" />
+<text  x="873.22" y="239.5" ></text>
+</g>
+<g >
+<title>find (185 samples, 0.03%)</title><rect x="971.5" y="181" width="0.4" height="15.0" fill="rgb(248,177,48)" rx="2" ry="2" />
+<text  x="974.49" y="191.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;P&gt; (150 samples, 0.03%)</title><rect x="737.5" y="149" width="0.4" height="15.0" fill="rgb(248,156,47)" rx="2" ry="2" />
+<text  x="740.55" y="159.5" ></text>
+</g>
+<g >
+<title>idl_sub_buf_init (52 samples, 0.01%)</title><rect x="902.2" y="245" width="0.1" height="15.0" fill="rgb(236,184,34)" rx="2" ry="2" />
+<text  x="905.17" y="255.5" ></text>
+</g>
+<g >
+<title>Blob.compare_eq (106 samples, 0.02%)</title><rect x="887.6" y="101" width="0.3" height="15.0" fill="rgb(239,126,38)" rx="2" ry="2" />
+<text  x="890.63" y="111.5" ></text>
+</g>
+<g >
+<title>lenClamp (155 samples, 0.03%)</title><rect x="1102.1" y="133" width="0.3" height="15.0" fill="rgb(239,149,38)" rx="2" ry="2" />
+<text  x="1105.10" y="143.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;B&gt; (141 samples, 0.02%)</title><rect x="730.3" y="149" width="0.3" height="15.0" fill="rgb(251,118,51)" rx="2" ry="2" />
+<text  x="733.32" y="159.5" ></text>
+</g>
+<g >
+<title>hash (95 samples, 0.02%)</title><rect x="1101.1" y="213" width="0.2" height="15.0" fill="rgb(241,130,40)" rx="2" ry="2" />
+<text  x="1104.08" y="223.5" ></text>
+</g>
+<g >
+<title>alloc_blob (304 samples, 0.05%)</title><rect x="1095.1" y="213" width="0.6" height="15.0" fill="rgb(239,128,38)" rx="2" ry="2" />
+<text  x="1098.09" y="223.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;n32&gt; (1,790 samples, 0.31%)</title><rect x="277.3" y="261" width="3.7" height="15.0" fill="rgb(242,176,41)" rx="2" ry="2" />
+<text  x="280.35" y="271.5" ></text>
+</g>
+<g >
+<title>text_to_buf (292 samples, 0.05%)</title><rect x="744.9" y="149" width="0.6" height="15.0" fill="rgb(242,171,41)" rx="2" ry="2" />
+<text  x="747.87" y="159.5" ></text>
+</g>
+<g >
+<title>replace (534 samples, 0.09%)</title><rect x="1102.5" y="181" width="1.1" height="15.0" fill="rgb(252,175,52)" rx="2" ry="2" />
+<text  x="1105.46" y="191.5" ></text>
+</g>
+<g >
+<title>motoko_rts::principal_id::enc_stash::hade07e1e4d51be16 (386 samples, 0.07%)</title><rect x="540.7" y="213" width="0.8" height="15.0" fill="rgb(239,127,37)" rx="2" ry="2" />
+<text  x="543.68" y="223.5" ></text>
+</g>
+<g >
+<title>__motoko_async_helper (117,997 samples, 20.67%)</title><rect x="262.2" y="277" width="243.9" height="15.0" fill="rgb(243,151,41)" rx="2" ry="2" />
+<text  x="265.20" y="287.5" >__motoko_async_helper</text>
+</g>
+<g >
+<title>@serialize_go&lt;0=(P?!0)&gt; (205 samples, 0.04%)</title><rect x="737.4" y="165" width="0.5" height="15.0" fill="rgb(242,156,41)" rx="2" ry="2" />
+<text  x="740.43" y="175.5" ></text>
+</g>
+<g >
+<title>submit_proposal (51,398 samples, 9.00%)</title><rect x="854.7" y="277" width="106.2" height="15.0" fill="rgb(226,148,23)" rx="2" ry="2" />
+<text  x="857.67" y="287.5" >submit_proposal</text>
+</g>
+<g >
+<title>next (574 samples, 0.10%)</title><rect x="583.2" y="229" width="1.2" height="15.0" fill="rgb(230,219,27)" rx="2" ry="2" />
+<text  x="586.19" y="239.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;vr(id:N,payload:r(canister_id:P,message:B,method:t),proposer:P,state:v(accepted:u,executing:u,failed:t,open:u,rejected:u,succeeded:u),timestamp:I,voters:10=?(P!10),votes_no:12=r(amount_e8s:N),votes_yes:!12)&gt; (3,504 samples, 0.61%)</title><rect x="795.8" y="213" width="7.2" height="15.0" fill="rgb(241,118,39)" rx="2" ry="2" />
+<text  x="798.80" y="223.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;t&gt; (112 samples, 0.02%)</title><rect x="799.6" y="165" width="0.3" height="15.0" fill="rgb(244,118,43)" rx="2" ry="2" />
+<text  x="802.65" y="175.5" ></text>
+</g>
+<g >
+<title>obj_idx&lt;0&gt; (54 samples, 0.01%)</title><rect x="541.5" y="245" width="0.1" height="15.0" fill="rgb(247,139,46)" rx="2" ry="2" />
+<text  x="544.50" y="255.5" ></text>
+</g>
+<g >
+<title>compute_crc32 (104 samples, 0.02%)</title><rect x="1098.7" y="181" width="0.2" height="15.0" fill="rgb(245,149,44)" rx="2" ry="2" />
+<text  x="1101.66" y="191.5" ></text>
+</g>
+<g >
+<title>Blob.compare_eq (106 samples, 0.02%)</title><rect x="882.1" y="117" width="0.2" height="15.0" fill="rgb(239,126,38)" rx="2" ry="2" />
+<text  x="885.06" y="127.5" ></text>
+</g>
+<g >
+<title>parse_idl_header (688 samples, 0.12%)</title><rect x="112.0" y="245" width="1.4" height="15.0" fill="rgb(243,149,41)" rx="2" ry="2" />
+<text  x="114.96" y="255.5" ></text>
+</g>
+<g >
+<title>alloc_blob (152 samples, 0.03%)</title><rect x="574.1" y="197" width="0.3" height="15.0" fill="rgb(239,128,38)" rx="2" ry="2" />
+<text  x="577.08" y="207.5" ></text>
+</g>
+<g >
+<title>alloc_blob (152 samples, 0.03%)</title><rect x="552.1" y="197" width="0.3" height="15.0" fill="rgb(239,128,38)" rx="2" ry="2" />
+<text  x="555.07" y="207.5" ></text>
+</g>
+<g >
+<title>alloc_blob (152 samples, 0.03%)</title><rect x="319.7" y="197" width="0.3" height="15.0" fill="rgb(239,128,38)" rx="2" ry="2" />
+<text  x="322.72" y="207.5" ></text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::mark_stack::push_mark_stack::h1f99226b92d7e984 (1,890 samples, 0.33%)</title><rect x="96.2" y="213" width="3.9" height="15.0" fill="rgb(244,127,43)" rx="2" ry="2" />
+<text  x="99.17" y="223.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;r(amount_e8s:N)&gt; (168 samples, 0.03%)</title><rect x="513.2" y="213" width="0.3" height="15.0" fill="rgb(238,156,36)" rx="2" ry="2" />
+<text  x="516.17" y="223.5" ></text>
+</g>
+<g >
+<title>get (1,940 samples, 0.34%)</title><rect x="754.0" y="229" width="4.0" height="15.0" fill="rgb(237,170,35)" rx="2" ry="2" />
+<text  x="756.99" y="239.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;r(canister_id:P,message:B,method:t)&gt; (374 samples, 0.07%)</title><rect x="831.0" y="213" width="0.8" height="15.0" fill="rgb(237,118,35)" rx="2" ry="2" />
+<text  x="834.01" y="223.5" ></text>
+</g>
+<g >
+<title>sleb128_decode (138 samples, 0.02%)</title><rect x="199.4" y="229" width="0.2" height="15.0" fill="rgb(250,128,49)" rx="2" ry="2" />
+<text  x="202.36" y="239.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;B&gt; (138 samples, 0.02%)</title><rect x="832.2" y="181" width="0.3" height="15.0" fill="rgb(251,156,51)" rx="2" ry="2" />
+<text  x="835.20" y="191.5" ></text>
+</g>
+<g >
+<title>memset (312 samples, 0.05%)</title><rect x="946.4" y="229" width="0.6" height="15.0" fill="rgb(237,144,35)" rx="2" ry="2" />
+<text  x="949.35" y="239.5" ></text>
+</g>
+<g >
+<title>@anon-func-192.5 (72 samples, 0.01%)</title><rect x="971.7" y="165" width="0.2" height="15.0" fill="rgb(246,146,45)" rx="2" ry="2" />
+<text  x="974.73" y="175.5" ></text>
+</g>
+<g >
+<title>@anon-func-365.15 (1,910 samples, 0.33%)</title><rect x="13.5" y="229" width="4.0" height="15.0" fill="rgb(237,146,35)" rx="2" ry="2" />
+<text  x="16.52" y="239.5" ></text>
+</g>
+<g >
+<title>$loop/1 (17,040 samples, 2.99%)</title><rect x="549.1" y="245" width="35.3" height="15.0" fill="rgb(233,126,31)" rx="2" ry="2" />
+<text  x="552.15" y="255.5" >$l..</text>
+</g>
+<g >
+<title>$lambda (1,848 samples, 0.32%)</title><rect x="966.4" y="245" width="3.9" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="969.45" y="255.5" ></text>
+</g>
+<g >
+<title>obj_idx&lt;0&gt; (52 samples, 0.01%)</title><rect x="852.6" y="197" width="0.1" height="15.0" fill="rgb(247,139,46)" rx="2" ry="2" />
+<text  x="855.63" y="207.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;r(amount_e8s:N)&gt; (578 samples, 0.10%)</title><rect x="728.0" y="181" width="1.2" height="15.0" fill="rgb(238,118,36)" rx="2" ry="2" />
+<text  x="731.02" y="191.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;v(accepted:u,executing:u,failed:t,open:u,rejected:u,succeeded:u)&gt; (248 samples, 0.04%)</title><rect x="731.6" y="181" width="0.5" height="15.0" fill="rgb(236,118,34)" rx="2" ry="2" />
+<text  x="734.60" y="191.5" ></text>
+</g>
+<g >
+<title>hash (1,243 samples, 0.22%)</title><rect x="758.5" y="213" width="2.6" height="15.0" fill="rgb(241,130,40)" rx="2" ry="2" />
+<text  x="761.50" y="223.5" ></text>
+</g>
+<g >
+<title>obj_idx&lt;0&gt; (72 samples, 0.01%)</title><rect x="798.6" y="165" width="0.1" height="15.0" fill="rgb(247,139,46)" rx="2" ry="2" />
+<text  x="801.58" y="175.5" ></text>
+</g>
+<g >
+<title>leaf (271 samples, 0.05%)</title><rect x="1101.9" y="181" width="0.5" height="15.0" fill="rgb(238,152,36)" rx="2" ry="2" />
+<text  x="1104.86" y="191.5" ></text>
+</g>
+<g >
+<title>@new_async (289 samples, 0.05%)</title><rect x="318.8" y="213" width="0.6" height="15.0" fill="rgb(238,181,36)" rx="2" ry="2" />
+<text  x="321.84" y="223.5" ></text>
+</g>
+<g >
+<title>@show&lt;N&gt; (554 samples, 0.10%)</title><rect x="1096.8" y="245" width="1.1" height="15.0" fill="rgb(250,147,49)" rx="2" ry="2" />
+<text  x="1099.80" y="255.5" ></text>
+</g>
+<g >
+<title>rec (290 samples, 0.05%)</title><rect x="885.3" y="101" width="0.6" height="15.0" fill="rgb(232,178,30)" rx="2" ry="2" />
+<text  x="888.27" y="111.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;N&gt; (358 samples, 0.06%)</title><rect x="740.5" y="165" width="0.7" height="15.0" fill="rgb(250,156,49)" rx="2" ry="2" />
+<text  x="743.48" y="175.5" ></text>
+</g>
+<g >
+<title>alloc_blob (152 samples, 0.03%)</title><rect x="597.6" y="261" width="0.3" height="15.0" fill="rgb(239,128,38)" rx="2" ry="2" />
+<text  x="600.56" y="271.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;0=(P?!0)&gt; (173 samples, 0.03%)</title><rect x="726.5" y="165" width="0.4" height="15.0" fill="rgb(242,118,41)" rx="2" ry="2" />
+<text  x="729.54" y="175.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;r(canister_id:P,message:B,method:t)&gt; (613 samples, 0.11%)</title><rect x="831.8" y="213" width="1.3" height="15.0" fill="rgb(237,156,35)" rx="2" ry="2" />
+<text  x="834.79" y="223.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;t&gt; (508 samples, 0.09%)</title><rect x="744.4" y="165" width="1.1" height="15.0" fill="rgb(244,156,43)" rx="2" ry="2" />
+<text  x="747.42" y="175.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (69 samples, 0.01%)</title><rect x="202.5" y="245" width="0.2" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="205.51" y="255.5" ></text>
+</g>
+<g >
+<title>memcpy (114 samples, 0.02%)</title><rect x="805.4" y="149" width="0.3" height="15.0" fill="rgb(248,144,48)" rx="2" ry="2" />
+<text  x="808.43" y="159.5" ></text>
+</g>
+<g >
+<title>fromList (261 samples, 0.05%)</title><rect x="1101.9" y="165" width="0.5" height="15.0" fill="rgb(232,184,30)" rx="2" ry="2" />
+<text  x="1104.88" y="175.5" ></text>
+</g>
+<g >
+<title>memcpy (74 samples, 0.01%)</title><rect x="320.0" y="197" width="0.2" height="15.0" fill="rgb(248,144,48)" rx="2" ry="2" />
+<text  x="323.03" y="207.5" ></text>
+</g>
+<g >
+<title>alloc_blob (76 samples, 0.01%)</title><rect x="846.9" y="261" width="0.1" height="15.0" fill="rgb(239,128,38)" rx="2" ry="2" />
+<text  x="849.86" y="271.5" ></text>
+</g>
+<g >
+<title>replace (1,144 samples, 0.20%)</title><rect x="195.4" y="149" width="2.3" height="15.0" fill="rgb(252,175,52)" rx="2" ry="2" />
+<text  x="198.36" y="159.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (69 samples, 0.01%)</title><rect x="201.8" y="229" width="0.1" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="204.79" y="239.5" ></text>
+</g>
+<g >
+<title>memcpy (299 samples, 0.05%)</title><rect x="807.0" y="149" width="0.6" height="15.0" fill="rgb(248,144,48)" rx="2" ry="2" />
+<text  x="809.96" y="159.5" ></text>
+</g>
+<g >
+<title>execute_proposal (14,721 samples, 2.58%)</title><rect x="552.8" y="229" width="30.4" height="15.0" fill="rgb(226,155,23)" rx="2" ry="2" />
+<text  x="555.76" y="239.5" >ex..</text>
+</g>
+<g >
+<title>@serialize_go&lt;B&gt; (123 samples, 0.02%)</title><rect x="737.6" y="133" width="0.3" height="15.0" fill="rgb(251,156,51)" rx="2" ry="2" />
+<text  x="740.60" y="143.5" ></text>
+</g>
+<g >
+<title>motoko_rts::idl::check_typearg::h7a69986705540d34 (96 samples, 0.02%)</title><rect x="1128.1" y="213" width="0.2" height="15.0" fill="rgb(241,127,39)" rx="2" ry="2" />
+<text  x="1131.09" y="223.5" ></text>
+</g>
+<g >
+<title>memcpy (69 samples, 0.01%)</title><rect x="832.7" y="165" width="0.1" height="15.0" fill="rgb(248,144,48)" rx="2" ry="2" />
+<text  x="835.70" y="175.5" ></text>
+</g>
+<g >
+<title>@deserialize_go&lt;r(amount_e8s:N)&gt; (832 samples, 0.15%)</title><rect x="974.3" y="229" width="1.7" height="15.0" fill="rgb(238,176,36)" rx="2" ry="2" />
+<text  x="977.27" y="239.5" ></text>
+</g>
+<g >
+<title>obj_idx&lt;0&gt; (204 samples, 0.04%)</title><rect x="809.0" y="165" width="0.4" height="15.0" fill="rgb(247,139,46)" rx="2" ry="2" />
+<text  x="811.97" y="175.5" ></text>
+</g>
+<g >
+<title>alloc_blob (152 samples, 0.03%)</title><rect x="109.0" y="165" width="0.3" height="15.0" fill="rgb(239,128,38)" rx="2" ry="2" />
+<text  x="112.01" y="175.5" ></text>
+</g>
+<g >
+<title>@anon-func-192.5 (396 samples, 0.07%)</title><rect x="887.3" y="133" width="0.9" height="15.0" fill="rgb(246,146,45)" rx="2" ry="2" />
+<text  x="890.33" y="143.5" ></text>
+</g>
+<g >
+<title>compacting_gc (28,709 samples, 5.03%)</title><rect x="202.7" y="261" width="59.3" height="15.0" fill="rgb(227,149,24)" rx="2" ry="2" />
+<text  x="205.66" y="271.5" >compac..</text>
+</g>
+<g >
+<title>sleb128_decode (69 samples, 0.01%)</title><rect x="202.4" y="245" width="0.1" height="15.0" fill="rgb(250,128,49)" rx="2" ry="2" />
+<text  x="205.36" y="255.5" ></text>
+</g>
+<g >
+<title>compute_crc32 (52 samples, 0.01%)</title><rect x="514.3" y="181" width="0.1" height="15.0" fill="rgb(245,149,44)" rx="2" ry="2" />
+<text  x="517.28" y="191.5" ></text>
+</g>
+<g >
+<title>execute_accepted_proposals (78,523 samples, 13.76%)</title><rect x="542.0" y="277" width="162.3" height="15.0" fill="rgb(235,155,33)" rx="2" ry="2" />
+<text  x="544.99" y="287.5" >execute_accepted_pro..</text>
+</g>
+<g >
+<title>@serialize_go&lt;t&gt; (172 samples, 0.03%)</title><rect x="832.5" y="197" width="0.3" height="15.0" fill="rgb(244,156,43)" rx="2" ry="2" />
+<text  x="835.49" y="207.5" ></text>
+</g>
+<g >
+<title>alloc_blob (76 samples, 0.01%)</title><rect x="202.5" y="261" width="0.2" height="15.0" fill="rgb(239,128,38)" rx="2" ry="2" />
+<text  x="205.50" y="271.5" ></text>
+</g>
+<g >
+<title>rec (261 samples, 0.05%)</title><rect x="196.1" y="53" width="0.6" height="15.0" fill="rgb(232,178,30)" rx="2" ry="2" />
+<text  x="199.14" y="63.5" ></text>
+</g>
+<g >
+<title>@deserialize_go&lt;t&gt; (1,266 samples, 0.22%)</title><rect x="895.2" y="229" width="2.6" height="15.0" fill="rgb(244,176,43)" rx="2" ry="2" />
+<text  x="898.22" y="239.5" ></text>
+</g>
+<g >
+<title>hash (190 samples, 0.03%)</title><rect x="1098.5" y="213" width="0.4" height="15.0" fill="rgb(241,130,40)" rx="2" ry="2" />
+<text  x="1101.48" y="223.5" ></text>
+</g>
+<g >
+<title>parse_idl_header (4,414 samples, 0.77%)</title><rect x="1122.0" y="245" width="9.1" height="15.0" fill="rgb(243,149,41)" rx="2" ry="2" />
+<text  x="1125.01" y="255.5" ></text>
+</g>
+<g >
+<title>toArray (470 samples, 0.08%)</title><rect x="822.5" y="229" width="1.0" height="15.0" fill="rgb(239,160,37)" rx="2" ry="2" />
+<text  x="825.49" y="239.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;P&gt; (165 samples, 0.03%)</title><rect x="832.1" y="197" width="0.4" height="15.0" fill="rgb(248,156,47)" rx="2" ry="2" />
+<text  x="835.15" y="207.5" ></text>
+</g>
+<g >
+<title>alloc_blob (152 samples, 0.03%)</title><rect x="911.0" y="261" width="0.3" height="15.0" fill="rgb(239,128,38)" rx="2" ry="2" />
+<text  x="914.03" y="271.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;N&gt; (108 samples, 0.02%)</title><rect x="804.8" y="181" width="0.3" height="15.0" fill="rgb(250,156,49)" rx="2" ry="2" />
+<text  x="807.83" y="191.5" ></text>
+</g>
+<g >
+<title>obj_idx&lt;0&gt; (108 samples, 0.02%)</title><rect x="757.2" y="149" width="0.2" height="15.0" fill="rgb(247,139,46)" rx="2" ry="2" />
+<text  x="760.19" y="159.5" ></text>
+</g>
+<g >
+<title>sleb128_decode (69 samples, 0.01%)</title><rect x="981.5" y="245" width="0.2" height="15.0" fill="rgb(250,128,49)" rx="2" ry="2" />
+<text  x="984.55" y="255.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;P&gt; (170 samples, 0.03%)</title><rect x="843.9" y="213" width="0.4" height="15.0" fill="rgb(248,156,47)" rx="2" ry="2" />
+<text  x="846.90" y="223.5" ></text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::mark_stack::push_mark_stack::h1f99226b92d7e984 (243 samples, 0.04%)</title><rect x="526.5" y="213" width="0.5" height="15.0" fill="rgb(244,127,43)" rx="2" ry="2" />
+<text  x="529.50" y="223.5" ></text>
+</g>
+<g >
+<title>memcpy (53 samples, 0.01%)</title><rect x="832.0" y="181" width="0.1" height="15.0" fill="rgb(248,144,48)" rx="2" ry="2" />
+<text  x="835.04" y="191.5" ></text>
+</g>
+<g >
+<title>$lambda (2,674 samples, 0.47%)</title><rect x="837.4" y="245" width="5.6" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="840.43" y="255.5" ></text>
+</g>
+<g >
+<title>@anon-func-192.5 (198 samples, 0.03%)</title><rect x="1103.2" y="149" width="0.4" height="15.0" fill="rgb(246,146,45)" rx="2" ry="2" />
+<text  x="1106.16" y="159.5" ></text>
+</g>
+<g >
+<title>$lambda (19,584 samples, 3.43%)</title><rect x="281.6" y="245" width="40.5" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="284.59" y="255.5" >$la..</text>
+</g>
+<g >
+<title>@buffer_size&lt;P&gt; (264 samples, 0.05%)</title><rect x="727.5" y="181" width="0.5" height="15.0" fill="rgb(248,118,47)" rx="2" ry="2" />
+<text  x="730.48" y="191.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_array::hfb4dad1bf9425cf5 (73 samples, 0.01%)</title><rect x="784.3" y="181" width="0.1" height="15.0" fill="rgb(244,127,43)" rx="2" ry="2" />
+<text  x="787.29" y="191.5" ></text>
+</g>
+<g >
+<title>memcpy (77 samples, 0.01%)</title><rect x="844.1" y="181" width="0.2" height="15.0" fill="rgb(248,144,48)" rx="2" ry="2" />
+<text  x="847.10" y="191.5" ></text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::bitmap::BitmapIter::next::hf82f793b43efcee0 (3,153 samples, 0.55%)</title><rect x="82.8" y="229" width="6.5" height="15.0" fill="rgb(235,127,33)" rx="2" ry="2" />
+<text  x="85.81" y="239.5" ></text>
+</g>
+<g >
+<title>equal (61 samples, 0.01%)</title><rect x="515.0" y="149" width="0.2" height="15.0" fill="rgb(224,177,21)" rx="2" ry="2" />
+<text  x="518.05" y="159.5" ></text>
+</g>
+<g >
+<title>sleb128_decode (552 samples, 0.10%)</title><rect x="901.0" y="229" width="1.2" height="15.0" fill="rgb(250,128,49)" rx="2" ry="2" />
+<text  x="904.03" y="239.5" ></text>
+</g>
+<g >
+<title>equalKey (60 samples, 0.01%)</title><rect x="884.3" y="181" width="0.1" height="15.0" fill="rgb(248,177,48)" rx="2" ry="2" />
+<text  x="887.26" y="191.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;t&gt; (56 samples, 0.01%)</title><rect x="831.5" y="197" width="0.1" height="15.0" fill="rgb(244,118,43)" rx="2" ry="2" />
+<text  x="834.46" y="207.5" ></text>
+</g>
+<g >
+<title>obj_idx&lt;0&gt; (52 samples, 0.01%)</title><rect x="852.1" y="197" width="0.1" height="15.0" fill="rgb(247,139,46)" rx="2" ry="2" />
+<text  x="855.12" y="207.5" ></text>
+</g>
+<g >
+<title>idl_sub_buf_init (104 samples, 0.02%)</title><rect x="764.6" y="245" width="0.3" height="15.0" fill="rgb(236,184,34)" rx="2" ry="2" />
+<text  x="767.65" y="255.5" ></text>
+</g>
+<g >
+<title>@anon-func-192.5 (198 samples, 0.03%)</title><rect x="514.9" y="165" width="0.4" height="15.0" fill="rgb(246,146,45)" rx="2" ry="2" />
+<text  x="517.91" y="175.5" ></text>
+</g>
+<g >
+<title>push (55 samples, 0.01%)</title><rect x="1111.6" y="245" width="0.1" height="15.0" fill="rgb(236,156,34)" rx="2" ry="2" />
+<text  x="1114.58" y="255.5" ></text>
+</g>
+<g >
+<title>find (297 samples, 0.05%)</title><rect x="514.7" y="181" width="0.6" height="15.0" fill="rgb(248,177,48)" rx="2" ry="2" />
+<text  x="517.71" y="191.5" ></text>
+</g>
+<g >
+<title>fromList (377 samples, 0.07%)</title><rect x="593.3" y="149" width="0.8" height="15.0" fill="rgb(232,184,30)" rx="2" ry="2" />
+<text  x="596.32" y="159.5" ></text>
+</g>
+<g >
+<title>motoko_rts::types::block_size::haa6e1a3c5243bd1b (728 samples, 0.13%)</title><rect x="959.3" y="229" width="1.5" height="15.0" fill="rgb(232,127,30)" rx="2" ry="2" />
+<text  x="962.30" y="239.5" ></text>
+</g>
+<g >
+<title>compute_crc32 (104 samples, 0.02%)</title><rect x="880.5" y="165" width="0.2" height="15.0" fill="rgb(245,149,44)" rx="2" ry="2" />
+<text  x="883.49" y="175.5" ></text>
+</g>
+<g >
+<title>alloc_blob (152 samples, 0.03%)</title><rect x="513.5" y="213" width="0.3" height="15.0" fill="rgb(239,128,38)" rx="2" ry="2" />
+<text  x="516.51" y="223.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;v(accepted:u,executing:u,failed:t,open:u,rejected:u,succeeded:u)&gt; (97 samples, 0.02%)</title><rect x="1094.8" y="197" width="0.2" height="15.0" fill="rgb(236,156,34)" rx="2" ry="2" />
+<text  x="1097.83" y="207.5" ></text>
+</g>
+<g >
+<title>alloc_blob (152 samples, 0.03%)</title><rect x="833.1" y="213" width="0.3" height="15.0" fill="rgb(239,128,38)" rx="2" ry="2" />
+<text  x="836.05" y="223.5" ></text>
+</g>
+<g >
+<title>hashNat8 (412 samples, 0.07%)</title><rect x="1107.4" y="197" width="0.9" height="15.0" fill="rgb(237,130,35)" rx="2" ry="2" />
+<text  x="1110.44" y="207.5" ></text>
+</g>
+<g >
+<title>leaf (542 samples, 0.09%)</title><rect x="884.7" y="165" width="1.2" height="15.0" fill="rgb(238,152,36)" rx="2" ry="2" />
+<text  x="887.75" y="175.5" ></text>
+</g>
+<g >
+<title>obj_idx&lt;1&gt; (72 samples, 0.01%)</title><rect x="888.0" y="117" width="0.2" height="15.0" fill="rgb(246,139,45)" rx="2" ry="2" />
+<text  x="891.00" y="127.5" ></text>
+</g>
+<g >
+<title>sleb128_decode (138 samples, 0.02%)</title><rect x="910.7" y="245" width="0.3" height="15.0" fill="rgb(250,128,49)" rx="2" ry="2" />
+<text  x="913.70" y="255.5" ></text>
+</g>
+<g >
+<title>memcpy (548 samples, 0.10%)</title><rect x="742.2" y="149" width="1.2" height="15.0" fill="rgb(248,144,48)" rx="2" ry="2" />
+<text  x="745.25" y="159.5" ></text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::bitmap::BitmapIter::next::hf82f793b43efcee0 (3,601 samples, 0.63%)</title><rect x="1053.0" y="229" width="7.4" height="15.0" fill="rgb(235,127,33)" rx="2" ry="2" />
+<text  x="1055.96" y="239.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;&gt; (1,144 samples, 0.20%)</title><rect x="823.5" y="261" width="2.3" height="15.0" fill="rgb(242,176,41)" rx="2" ry="2" />
+<text  x="826.46" y="271.5" ></text>
+</g>
+<g >
+<title>leb128_decode (52 samples, 0.01%)</title><rect x="846.2" y="245" width="0.1" height="15.0" fill="rgb(250,149,49)" rx="2" ry="2" />
+<text  x="849.18" y="255.5" ></text>
+</g>
+<g >
+<title>leb128_decode (208 samples, 0.04%)</title><rect x="1123.3" y="229" width="0.4" height="15.0" fill="rgb(250,149,49)" rx="2" ry="2" />
+<text  x="1126.27" y="239.5" ></text>
+</g>
+<g >
+<title>memcpy (376 samples, 0.07%)</title><rect x="892.5" y="213" width="0.8" height="15.0" fill="rgb(248,144,48)" rx="2" ry="2" />
+<text  x="895.55" y="223.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;t&gt; (168 samples, 0.03%)</title><rect x="841.9" y="197" width="0.3" height="15.0" fill="rgb(244,156,43)" rx="2" ry="2" />
+<text  x="844.88" y="207.5" ></text>
+</g>
+<g >
+<title>leb128_decode (215 samples, 0.04%)</title><rect x="975.1" y="197" width="0.5" height="15.0" fill="rgb(250,149,49)" rx="2" ry="2" />
+<text  x="978.14" y="207.5" ></text>
+</g>
+<g >
+<title>sleb128_decode (414 samples, 0.07%)</title><rect x="907.8" y="213" width="0.9" height="15.0" fill="rgb(250,128,49)" rx="2" ry="2" />
+<text  x="910.85" y="223.5" ></text>
+</g>
+<g >
+<title>obj_idx&lt;0&gt; (72 samples, 0.01%)</title><rect x="783.6" y="181" width="0.1" height="15.0" fill="rgb(247,139,46)" rx="2" ry="2" />
+<text  x="786.58" y="191.5" ></text>
+</g>
+<g >
+<title>text_to_buf (196 samples, 0.03%)</title><rect x="808.6" y="149" width="0.4" height="15.0" fill="rgb(242,171,41)" rx="2" ry="2" />
+<text  x="811.57" y="159.5" ></text>
+</g>
+<g >
+<title>memcpy (88 samples, 0.02%)</title><rect x="109.3" y="165" width="0.2" height="15.0" fill="rgb(248,144,48)" rx="2" ry="2" />
+<text  x="112.32" y="175.5" ></text>
+</g>
+<g >
+<title>Buffer (534 samples, 0.09%)</title><rect x="779.8" y="229" width="1.1" height="15.0" fill="rgb(241,127,40)" rx="2" ry="2" />
+<text  x="782.80" y="239.5" ></text>
+</g>
+<g >
+<title>@anon-func-202.57 (166 samples, 0.03%)</title><rect x="587.2" y="165" width="0.4" height="15.0" fill="rgb(229,146,26)" rx="2" ry="2" />
+<text  x="590.22" y="175.5" ></text>
+</g>
+<g >
+<title>leb128_decode (52 samples, 0.01%)</title><rect x="516.2" y="245" width="0.1" height="15.0" fill="rgb(250,149,49)" rx="2" ry="2" />
+<text  x="519.18" y="255.5" ></text>
+</g>
+<g >
+<title>memcpy (3,436 samples, 0.60%)</title><rect x="939.2" y="229" width="7.2" height="15.0" fill="rgb(248,144,48)" rx="2" ry="2" />
+<text  x="942.25" y="239.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;N&gt; (101 samples, 0.02%)</title><rect x="844.3" y="197" width="0.2" height="15.0" fill="rgb(250,156,49)" rx="2" ry="2" />
+<text  x="847.31" y="207.5" ></text>
+</g>
+<g >
+<title>leb128_decode (104 samples, 0.02%)</title><rect x="902.3" y="245" width="0.2" height="15.0" fill="rgb(250,149,49)" rx="2" ry="2" />
+<text  x="905.32" y="255.5" ></text>
+</g>
+<g >
+<title>hash (306 samples, 0.05%)</title><rect x="194.7" y="149" width="0.6" height="15.0" fill="rgb(241,130,40)" rx="2" ry="2" />
+<text  x="197.66" y="159.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;r(canister_id:P,message:B,method:t)&gt; (1,150 samples, 0.20%)</title><rect x="729.2" y="181" width="2.4" height="15.0" fill="rgb(237,118,35)" rx="2" ry="2" />
+<text  x="732.22" y="191.5" ></text>
+</g>
+<g >
+<title>obj_idx&lt;0&gt; (108 samples, 0.02%)</title><rect x="888.2" y="229" width="0.2" height="15.0" fill="rgb(247,139,46)" rx="2" ry="2" />
+<text  x="891.15" y="239.5" ></text>
+</g>
+<g >
+<title>$getState/0 (188 samples, 0.03%)</title><rect x="533.7" y="245" width="0.4" height="15.0" fill="rgb(234,145,32)" rx="2" ry="2" />
+<text  x="536.70" y="255.5" ></text>
+</g>
+<g >
+<title>$lambda (1,651 samples, 0.29%)</title><rect x="510.6" y="245" width="3.4" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="513.59" y="255.5" ></text>
+</g>
+<g >
+<title>proposal_key (362 samples, 0.06%)</title><rect x="1108.4" y="229" width="0.8" height="15.0" fill="rgb(243,184,42)" rx="2" ry="2" />
+<text  x="1111.40" y="239.5" ></text>
+</g>
+<g >
+<title>text_to_buf (149 samples, 0.03%)</title><rect x="969.4" y="181" width="0.3" height="15.0" fill="rgb(242,171,41)" rx="2" ry="2" />
+<text  x="972.43" y="191.5" ></text>
+</g>
+<g >
+<title>replace (2,144 samples, 0.38%)</title><rect x="883.7" y="197" width="4.5" height="15.0" fill="rgb(252,175,52)" rx="2" ry="2" />
+<text  x="886.72" y="207.5" ></text>
+</g>
+<g >
+<title>obj_idx&lt;1&gt; (54 samples, 0.01%)</title><rect x="586.7" y="165" width="0.1" height="15.0" fill="rgb(246,139,45)" rx="2" ry="2" />
+<text  x="589.71" y="175.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;B&gt; (369 samples, 0.06%)</title><rect x="739.4" y="165" width="0.7" height="15.0" fill="rgb(251,156,51)" rx="2" ry="2" />
+<text  x="742.38" y="175.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (276 samples, 0.05%)</title><rect x="769.1" y="245" width="0.6" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="772.11" y="255.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (138 samples, 0.02%)</title><rect x="1103.6" y="229" width="0.3" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="1106.59" y="239.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (69 samples, 0.01%)</title><rect x="846.9" y="245" width="0.1" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="849.88" y="255.5" ></text>
+</g>
+<g >
+<title>get (940 samples, 0.16%)</title><rect x="1098.9" y="229" width="1.9" height="15.0" fill="rgb(237,170,35)" rx="2" ry="2" />
+<text  x="1101.87" y="239.5" ></text>
+</g>
+<g >
+<title>find (594 samples, 0.10%)</title><rect x="1099.5" y="181" width="1.2" height="15.0" fill="rgb(248,177,48)" rx="2" ry="2" />
+<text  x="1102.51" y="191.5" ></text>
+</g>
+<g >
+<title>@deserialize_go&lt;N&gt; (159 samples, 0.03%)</title><rect x="974.7" y="213" width="0.4" height="15.0" fill="rgb(250,176,49)" rx="2" ry="2" />
+<text  x="977.73" y="223.5" ></text>
+</g>
+<g >
+<title>rec (367 samples, 0.06%)</title><rect x="1109.8" y="149" width="0.7" height="15.0" fill="rgb(232,178,30)" rx="2" ry="2" />
+<text  x="1112.78" y="159.5" ></text>
+</g>
+<g >
+<title>parse_idl_header (1,464 samples, 0.26%)</title><rect x="765.4" y="245" width="3.0" height="15.0" fill="rgb(243,149,41)" rx="2" ry="2" />
+<text  x="768.37" y="255.5" ></text>
+</g>
+<g >
+<title>B_add (54 samples, 0.01%)</title><rect x="885.7" y="85" width="0.1" height="15.0" fill="rgb(253,143,53)" rx="2" ry="2" />
+<text  x="888.71" y="95.5" ></text>
+</g>
+<g >
+<title>get_proposal (31,713 samples, 5.56%)</title><rect x="704.3" y="277" width="65.6" height="15.0" fill="rgb(226,170,23)" rx="2" ry="2" />
+<text  x="707.32" y="287.5" >get_pro..</text>
+</g>
+<g >
+<title>leb128_decode (52 samples, 0.01%)</title><rect x="973.8" y="213" width="0.1" height="15.0" fill="rgb(250,149,49)" rx="2" ry="2" />
+<text  x="976.79" y="223.5" ></text>
+</g>
+<g >
+<title>obj_idx&lt;0&gt; (1,776 samples, 0.31%)</title><rect x="746.6" y="181" width="3.6" height="15.0" fill="rgb(247,139,46)" rx="2" ry="2" />
+<text  x="749.58" y="191.5" ></text>
+</g>
+<g >
+<title>recall_continuation (62 samples, 0.01%)</title><rect x="102.5" y="261" width="0.1" height="15.0" fill="rgb(247,178,46)" rx="2" ry="2" />
+<text  x="105.49" y="271.5" ></text>
+</g>
+<g >
+<title>sleb128_decode (138 samples, 0.02%)</title><rect x="280.5" y="229" width="0.3" height="15.0" fill="rgb(250,128,49)" rx="2" ry="2" />
+<text  x="283.48" y="239.5" ></text>
+</g>
+<g >
+<title>$lambda (11,401 samples, 2.00%)</title><rect x="790.4" y="245" width="23.6" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="793.41" y="255.5" >$..</text>
+</g>
+<g >
+<title>@serialize&lt;vr(id:N,payload:r(canister_id:P,message:B,method:t),proposer:P,state:v(accepted:u,executing:u,failed:t,open:u,rejected:u,succeeded:u),timestamp:I,voters:10=?(P!10),votes_no:12=r(amount_e8s:N),votes_yes:!12)&gt; (8,980 samples, 1.57%)</title><rect x="795.4" y="229" width="18.6" height="15.0" fill="rgb(241,156,39)" rx="2" ry="2" />
+<text  x="798.41" y="239.5" ></text>
+</g>
+<g >
+<title>rec (174 samples, 0.03%)</title><rect x="588.1" y="149" width="0.4" height="15.0" fill="rgb(232,178,30)" rx="2" ry="2" />
+<text  x="591.12" y="159.5" ></text>
+</g>
+<g >
+<title>leb128_decode (104 samples, 0.02%)</title><rect x="1120.6" y="229" width="0.2" height="15.0" fill="rgb(250,149,49)" rx="2" ry="2" />
+<text  x="1123.55" y="239.5" ></text>
+</g>
+<g >
+<title>sleb128_decode (690 samples, 0.12%)</title><rect x="1129.7" y="229" width="1.4" height="15.0" fill="rgb(250,128,49)" rx="2" ry="2" />
+<text  x="1132.71" y="239.5" ></text>
+</g>
+<g >
+<title>@serialize&lt;r(canister_id:P,message:B,method:t)&gt; (1,558 samples, 0.27%)</title><rect x="839.7" y="229" width="3.3" height="15.0" fill="rgb(237,156,35)" rx="2" ry="2" />
+<text  x="842.73" y="239.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;?r(id:N,payload:r(canister_id:P,message:B,method:t),proposer:P,state:v(accepted:u,executing:u,failed:t,open:u,rejected:u,succeeded:u),timestamp:I,voters:10=?(P!10),votes_no:12=r(amount_e8s:N),votes_yes:!12)&gt; (5,504 samples, 0.96%)</title><rect x="724.4" y="213" width="11.4" height="15.0" fill="rgb(241,118,39)" rx="2" ry="2" />
+<text  x="727.40" y="223.5" ></text>
+</g>
+<g >
+<title>alloc_blob (152 samples, 0.03%)</title><rect x="842.4" y="213" width="0.3" height="15.0" fill="rgb(239,128,38)" rx="2" ry="2" />
+<text  x="845.43" y="223.5" ></text>
+</g>
+<g >
+<title>@callback&lt;(B)&gt; (40,799 samples, 7.15%)</title><rect x="102.7" y="277" width="84.3" height="15.0" fill="rgb(238,194,36)" rx="2" ry="2" />
+<text  x="105.68" y="287.5" >@callback..</text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::mark_stack::push_mark_stack::h1f99226b92d7e984 (54 samples, 0.01%)</title><rect x="100.1" y="229" width="0.1" height="15.0" fill="rgb(244,127,43)" rx="2" ry="2" />
+<text  x="103.08" y="239.5" ></text>
+</g>
+<g >
+<title>parse_idl_header (3,948 samples, 0.69%)</title><rect x="902.5" y="245" width="8.2" height="15.0" fill="rgb(243,149,41)" rx="2" ry="2" />
+<text  x="905.54" y="255.5" ></text>
+</g>
+<g >
+<title>hash (87 samples, 0.02%)</title><rect x="534.5" y="197" width="0.2" height="15.0" fill="rgb(241,130,40)" rx="2" ry="2" />
+<text  x="537.49" y="207.5" ></text>
+</g>
+<g >
+<title>sleb128_decode (69 samples, 0.01%)</title><rect x="113.4" y="245" width="0.1" height="15.0" fill="rgb(250,128,49)" rx="2" ry="2" />
+<text  x="116.38" y="255.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;I&gt; (153 samples, 0.03%)</title><rect x="726.9" y="181" width="0.3" height="15.0" fill="rgb(243,118,42)" rx="2" ry="2" />
+<text  x="729.90" y="191.5" ></text>
+</g>
+<g >
+<title>motoko_rts::types::block_size::haa6e1a3c5243bd1b (509 samples, 0.09%)</title><rect x="261.0" y="229" width="1.0" height="15.0" fill="rgb(232,127,30)" rx="2" ry="2" />
+<text  x="263.95" y="239.5" ></text>
+</g>
+<g >
+<title>hash (174 samples, 0.03%)</title><rect x="883.2" y="181" width="0.4" height="15.0" fill="rgb(241,130,40)" rx="2" ry="2" />
+<text  x="886.22" y="191.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (138 samples, 0.02%)</title><rect x="540.4" y="213" width="0.3" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="543.40" y="223.5" ></text>
+</g>
+<g >
+<title>rec (261 samples, 0.05%)</title><rect x="1110.0" y="117" width="0.5" height="15.0" fill="rgb(232,178,30)" rx="2" ry="2" />
+<text  x="1112.99" y="127.5" ></text>
+</g>
+<g >
+<title>sleb128_decode (276 samples, 0.05%)</title><rect x="893.3" y="213" width="0.6" height="15.0" fill="rgb(250,128,49)" rx="2" ry="2" />
+<text  x="896.32" y="223.5" ></text>
+</g>
+<g >
+<title>Blob.compare_eq (53 samples, 0.01%)</title><rect x="1103.3" y="117" width="0.1" height="15.0" fill="rgb(239,126,38)" rx="2" ry="2" />
+<text  x="1106.31" y="127.5" ></text>
+</g>
+<g >
+<title>iterate (1,457 samples, 0.26%)</title><rect x="780.9" y="229" width="3.0" height="15.0" fill="rgb(245,143,45)" rx="2" ry="2" />
+<text  x="783.91" y="239.5" ></text>
+</g>
+<g >
+<title>Buffer (1,068 samples, 0.19%)</title><rect x="815.1" y="229" width="2.2" height="15.0" fill="rgb(241,127,40)" rx="2" ry="2" />
+<text  x="818.09" y="239.5" ></text>
+</g>
+<g >
+<title>leb128_decode (416 samples, 0.07%)</title><rect x="766.3" y="229" width="0.9" height="15.0" fill="rgb(250,149,49)" rx="2" ry="2" />
+<text  x="769.30" y="239.5" ></text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::mark_stack::push_mark_stack::h1f99226b92d7e984 (918 samples, 0.16%)</title><rect x="258.7" y="213" width="1.9" height="15.0" fill="rgb(244,127,43)" rx="2" ry="2" />
+<text  x="261.66" y="223.5" ></text>
+</g>
+<g >
+<title>hash (190 samples, 0.03%)</title><rect x="883.2" y="197" width="0.4" height="15.0" fill="rgb(241,130,40)" rx="2" ry="2" />
+<text  x="886.19" y="207.5" ></text>
+</g>
+<g >
+<title>__wasm_call_ctors (987 samples, 0.17%)</title><rect x="769.9" y="261" width="2.0" height="15.0" fill="rgb(239,119,38)" rx="2" ry="2" />
+<text  x="772.90" y="271.5" ></text>
+</g>
+<g >
+<title>replace (271 samples, 0.05%)</title><rect x="535.8" y="181" width="0.6" height="15.0" fill="rgb(252,175,52)" rx="2" ry="2" />
+<text  x="538.81" y="191.5" ></text>
+</g>
+<g >
+<title>@anon-func-365.15 (1,585 samples, 0.28%)</title><rect x="106.2" y="229" width="3.3" height="15.0" fill="rgb(237,146,35)" rx="2" ry="2" />
+<text  x="109.24" y="239.5" ></text>
+</g>
+<g >
+<title>find_field (1,426 samples, 0.25%)</title><rect x="897.8" y="229" width="3.0" height="15.0" fill="rgb(241,177,40)" rx="2" ry="2" />
+<text  x="900.84" y="239.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (138 samples, 0.02%)</title><rect x="908.7" y="229" width="0.3" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="911.70" y="239.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;v(accepted:u,executing:u,failed:t,open:u,rejected:u,succeeded:u)&gt; (144 samples, 0.03%)</title><rect x="800.3" y="181" width="0.3" height="15.0" fill="rgb(236,118,34)" rx="2" ry="2" />
+<text  x="803.30" y="191.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;P&gt; (88 samples, 0.02%)</title><rect x="831.3" y="197" width="0.2" height="15.0" fill="rgb(248,118,47)" rx="2" ry="2" />
+<text  x="834.28" y="207.5" ></text>
+</g>
+<g >
+<title>account_key (169 samples, 0.03%)</title><rect x="1100.9" y="229" width="0.4" height="15.0" fill="rgb(243,164,42)" rx="2" ry="2" />
+<text  x="1103.93" y="239.5" ></text>
+</g>
+<g >
+<title>motoko_rts::idl::check_typearg::h7a69986705540d34 (82 samples, 0.01%)</title><rect x="907.7" y="213" width="0.1" height="15.0" fill="rgb(241,127,39)" rx="2" ry="2" />
+<text  x="910.68" y="223.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (138 samples, 0.02%)</title><rect x="852.8" y="197" width="0.2" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="855.76" y="207.5" ></text>
+</g>
+<g >
+<title>alloc_blob (76 samples, 0.01%)</title><rect x="845.2" y="229" width="0.2" height="15.0" fill="rgb(239,128,38)" rx="2" ry="2" />
+<text  x="848.23" y="239.5" ></text>
+</g>
+<g >
+<title>proposal_key (724 samples, 0.13%)</title><rect x="1106.8" y="229" width="1.5" height="15.0" fill="rgb(243,184,42)" rx="2" ry="2" />
+<text  x="1109.79" y="239.5" ></text>
+</g>
+<g >
+<title>fulfill (2,046 samples, 0.36%)</title><rect x="13.2" y="245" width="4.3" height="15.0" fill="rgb(224,178,21)" rx="2" ry="2" />
+<text  x="16.24" y="255.5" ></text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::mark_stack::push_mark_stack::h1f99226b92d7e984 (2,187 samples, 0.38%)</title><rect x="1068.3" y="213" width="4.6" height="15.0" fill="rgb(244,127,43)" rx="2" ry="2" />
+<text  x="1071.35" y="223.5" ></text>
+</g>
+<g >
+<title>idl_sub_buf_init (52 samples, 0.01%)</title><rect x="1121.7" y="245" width="0.1" height="15.0" fill="rgb(236,184,34)" rx="2" ry="2" />
+<text  x="1124.65" y="255.5" ></text>
+</g>
+<g >
+<title>rec (372 samples, 0.07%)</title><rect x="514.6" y="197" width="0.8" height="15.0" fill="rgb(232,178,30)" rx="2" ry="2" />
+<text  x="517.59" y="207.5" ></text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::bitmap::BitmapIter::next::hf82f793b43efcee0 (3,901 samples, 0.68%)</title><rect x="680.3" y="229" width="8.1" height="15.0" fill="rgb(235,127,33)" rx="2" ry="2" />
+<text  x="683.32" y="239.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (138 samples, 0.02%)</title><rect x="281.1" y="245" width="0.3" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="284.08" y="255.5" ></text>
+</g>
+<g >
+<title>$lambda (13,193 samples, 2.31%)</title><rect x="861.2" y="261" width="27.3" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="864.25" y="271.5" >$..</text>
+</g>
+<g >
+<title>@serialize&lt;v(err:t,ok:u)&gt; (763 samples, 0.13%)</title><rect x="968.7" y="229" width="1.6" height="15.0" fill="rgb(236,156,34)" rx="2" ry="2" />
+<text  x="971.69" y="239.5" ></text>
+</g>
+<g >
+<title>recall_continuation (62 samples, 0.01%)</title><rect x="186.8" y="261" width="0.2" height="15.0" fill="rgb(247,178,46)" rx="2" ry="2" />
+<text  x="189.84" y="271.5" ></text>
+</g>
+<g >
+<title>all (570,787 samples, 100%)</title><rect x="10.0" y="293" width="1180.0" height="15.0" fill="rgb(255,230,55)" rx="2" ry="2" />
+<text  x="13.00" y="303.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (69 samples, 0.01%)</title><rect x="17.5" y="245" width="0.1" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="20.49" y="255.5" ></text>
+</g>
+<g >
+<title>$lambda (3,168 samples, 0.56%)</title><rect x="865.9" y="245" width="6.6" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="868.91" y="255.5" ></text>
+</g>
+<g >
+<title>compute_crc32 (52 samples, 0.01%)</title><rect x="1101.2" y="181" width="0.1" height="15.0" fill="rgb(245,149,44)" rx="2" ry="2" />
+<text  x="1104.17" y="191.5" ></text>
+</g>
+<g >
+<title>equalKey (60 samples, 0.01%)</title><rect x="875.9" y="165" width="0.1" height="15.0" fill="rgb(248,177,48)" rx="2" ry="2" />
+<text  x="878.90" y="175.5" ></text>
+</g>
+<g >
+<title>$k/24 (1,532 samples, 0.27%)</title><rect x="106.3" y="213" width="3.2" height="15.0" fill="rgb(237,106,35)" rx="2" ry="2" />
+<text  x="109.34" y="223.5" ></text>
+</g>
+<g >
+<title>leb128_decode (104 samples, 0.02%)</title><rect x="824.5" y="245" width="0.2" height="15.0" fill="rgb(250,149,49)" rx="2" ry="2" />
+<text  x="827.51" y="255.5" ></text>
+</g>
+<g >
+<title>@callback (44,833 samples, 7.85%)</title><rect x="10.0" y="277" width="92.7" height="15.0" fill="rgb(242,194,40)" rx="2" ry="2" />
+<text  x="13.00" y="287.5" >@callback</text>
+</g>
+<g >
+<title>anon_async (19,696 samples, 3.45%)</title><rect x="281.4" y="261" width="40.7" height="15.0" fill="rgb(238,164,36)" rx="2" ry="2" />
+<text  x="284.36" y="271.5" >ano..</text>
+</g>
+<g >
+<title>leb128_decode (104 samples, 0.02%)</title><rect x="900.8" y="229" width="0.2" height="15.0" fill="rgb(250,149,49)" rx="2" ry="2" />
+<text  x="903.79" y="239.5" ></text>
+</g>
+<g >
+<title>$lambda (1,739 samples, 0.30%)</title><rect x="105.9" y="261" width="3.6" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="108.92" y="271.5" ></text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::bitmap::BitmapIter::next::hf82f793b43efcee0 (2,558 samples, 0.45%)</title><rect x="171.1" y="229" width="5.2" height="15.0" fill="rgb(235,127,33)" rx="2" ry="2" />
+<text  x="174.05" y="239.5" ></text>
+</g>
+<g >
+<title>memset (351 samples, 0.06%)</title><rect x="679.6" y="229" width="0.7" height="15.0" fill="rgb(237,144,35)" rx="2" ry="2" />
+<text  x="682.59" y="239.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (138 samples, 0.02%)</title><rect x="109.0" y="149" width="0.3" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="112.04" y="159.5" ></text>
+</g>
+<g >
+<title>account_key (421 samples, 0.07%)</title><rect x="970.3" y="229" width="0.9" height="15.0" fill="rgb(243,164,42)" rx="2" ry="2" />
+<text  x="973.30" y="239.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (138 samples, 0.02%)</title><rect x="184.9" y="229" width="0.3" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="187.92" y="239.5" ></text>
+</g>
+<g >
+<title>leb128_decode (52 samples, 0.01%)</title><rect x="975.6" y="213" width="0.1" height="15.0" fill="rgb(250,149,49)" rx="2" ry="2" />
+<text  x="978.58" y="223.5" ></text>
+</g>
+<g >
+<title>memcpy (128 samples, 0.02%)</title><rect x="845.4" y="229" width="0.3" height="15.0" fill="rgb(248,144,48)" rx="2" ry="2" />
+<text  x="848.39" y="239.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;B&gt; (424 samples, 0.07%)</title><rect x="743.5" y="149" width="0.9" height="15.0" fill="rgb(251,156,51)" rx="2" ry="2" />
+<text  x="746.55" y="159.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (138 samples, 0.02%)</title><rect x="1073.0" y="229" width="0.3" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="1075.98" y="239.5" ></text>
+</g>
+<g >
+<title>leb128_decode (104 samples, 0.02%)</title><rect x="785.3" y="229" width="0.2" height="15.0" fill="rgb(250,149,49)" rx="2" ry="2" />
+<text  x="788.27" y="239.5" ></text>
+</g>
+<g >
+<title>parse_idl_header (266 samples, 0.05%)</title><rect x="853.9" y="245" width="0.5" height="15.0" fill="rgb(243,149,41)" rx="2" ry="2" />
+<text  x="856.89" y="255.5" ></text>
+</g>
+<g >
+<title>@deserialize_go&lt;r(proposal_id:N,vote:v(no:u,yes:u))&gt; (3,968 samples, 0.70%)</title><rect x="1113.4" y="245" width="8.3" height="15.0" fill="rgb(239,176,37)" rx="2" ry="2" />
+<text  x="1116.45" y="255.5" ></text>
+</g>
+<g >
+<title>recursiveReplace (983 samples, 0.17%)</title><rect x="593.1" y="181" width="2.1" height="15.0" fill="rgb(252,178,52)" rx="2" ry="2" />
+<text  x="596.12" y="191.5" ></text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::mark_object::hb81f6542e95ca663 (4,540 samples, 0.80%)</title><rect x="1177.9" y="229" width="9.4" height="15.0" fill="rgb(238,127,36)" rx="2" ry="2" />
+<text  x="1180.87" y="239.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (138 samples, 0.02%)</title><rect x="513.5" y="197" width="0.3" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="516.54" y="207.5" ></text>
+</g>
+<g >
+<title>hash (95 samples, 0.02%)</title><rect x="514.2" y="213" width="0.2" height="15.0" fill="rgb(241,130,40)" rx="2" ry="2" />
+<text  x="517.19" y="223.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (138 samples, 0.02%)</title><rect x="842.5" y="197" width="0.2" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="845.46" y="207.5" ></text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::mark_stack::push_mark_stack::h1f99226b92d7e984 (1,782 samples, 0.31%)</title><rect x="1183.6" y="213" width="3.7" height="15.0" fill="rgb(244,127,43)" rx="2" ry="2" />
+<text  x="1186.57" y="223.5" ></text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::compacting_gc::h416bfa181cd1565b (45,323 samples, 7.94%)</title><rect x="981.9" y="245" width="93.7" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="984.88" y="255.5" >motoko_rts:..</text>
+</g>
+<g >
+<title>alloc_array (80 samples, 0.01%)</title><rect x="818.6" y="165" width="0.2" height="15.0" fill="rgb(239,128,37)" rx="2" ry="2" />
+<text  x="821.65" y="175.5" ></text>
+</g>
+<g >
+<title>@deserialize_go&lt;N&gt; (238 samples, 0.04%)</title><rect x="1114.8" y="229" width="0.4" height="15.0" fill="rgb(250,176,49)" rx="2" ry="2" />
+<text  x="1117.75" y="239.5" ></text>
+</g>
+<g >
+<title>@anon-func-81.66 (3,033 samples, 0.53%)</title><rect x="872.9" y="229" width="6.3" height="15.0" fill="rgb(230,146,27)" rx="2" ry="2" />
+<text  x="875.92" y="239.5" ></text>
+</g>
+<g >
+<title>B_add (54 samples, 0.01%)</title><rect x="196.5" y="37" width="0.1" height="15.0" fill="rgb(253,143,53)" rx="2" ry="2" />
+<text  x="199.51" y="47.5" ></text>
+</g>
+<g >
+<title>rec (744 samples, 0.13%)</title><rect x="881.1" y="181" width="1.6" height="15.0" fill="rgb(232,178,30)" rx="2" ry="2" />
+<text  x="884.11" y="191.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;r(id:N,payload:r(canister_id:P,message:B,method:t),proposer:P,state:v(accepted:u,executing:u,failed:t,open:u,rejected:u,succeeded:u),timestamp:I,voters:9=?(P!9),votes_no:11=r(amount_e8s:N),votes_yes:!11)&gt; (4,234 samples, 0.74%)</title><rect x="803.4" y="197" width="8.7" height="15.0" fill="rgb(242,156,40)" rx="2" ry="2" />
+<text  x="806.36" y="207.5" ></text>
+</g>
+<g >
+<title>memcpy (169 samples, 0.03%)</title><rect x="894.9" y="213" width="0.3" height="15.0" fill="rgb(248,144,48)" rx="2" ry="2" />
+<text  x="897.87" y="223.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;B&gt; (143 samples, 0.03%)</title><rect x="841.6" y="181" width="0.3" height="15.0" fill="rgb(251,156,51)" rx="2" ry="2" />
+<text  x="844.58" y="191.5" ></text>
+</g>
+<g >
+<title>put (1,177 samples, 0.21%)</title><rect x="1109.2" y="229" width="2.4" height="15.0" fill="rgb(234,152,31)" rx="2" ry="2" />
+<text  x="1112.15" y="239.5" ></text>
+</g>
+<g >
+<title>account_put (1,330 samples, 0.23%)</title><rect x="1100.8" y="245" width="2.8" height="15.0" fill="rgb(234,164,31)" rx="2" ry="2" />
+<text  x="1103.82" y="255.5" ></text>
+</g>
+<g >
+<title>@deserialize_go&lt;v(err:t,ok:u)&gt; (610 samples, 0.11%)</title><rect x="198.4" y="245" width="1.2" height="15.0" fill="rgb(236,176,34)" rx="2" ry="2" />
+<text  x="201.38" y="255.5" ></text>
+</g>
+<g >
+<title>$lambda (19,440 samples, 3.41%)</title><rect x="713.7" y="245" width="40.2" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="716.66" y="255.5" >$la..</text>
+</g>
+<g >
+<title>@serialize_go&lt;r(id:N,payload:r(canister_id:P,message:B,method:t),proposer:P,state:v(accepted:u,executing:u,failed:t,open:u,rejected:u,succeeded:u),timestamp:I,voters:9=?(P!9),votes_no:11=r(amount_e8s:N),votes_yes:!11)&gt; (6,814 samples, 1.19%)</title><rect x="736.2" y="197" width="14.0" height="15.0" fill="rgb(242,156,40)" rx="2" ry="2" />
+<text  x="739.16" y="207.5" ></text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::compacting_gc::h416bfa181cd1565b (23,915 samples, 4.19%)</title><rect x="911.4" y="245" width="49.4" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="914.36" y="255.5" >moto..</text>
+</g>
+<g >
+<title>text_to_buf (100 samples, 0.02%)</title><rect x="832.6" y="181" width="0.2" height="15.0" fill="rgb(242,171,41)" rx="2" ry="2" />
+<text  x="835.64" y="191.5" ></text>
+</g>
+<g >
+<title>compacting_gc (41,051 samples, 7.19%)</title><rect x="17.6" y="261" width="84.9" height="15.0" fill="rgb(227,149,24)" rx="2" ry="2" />
+<text  x="20.63" y="271.5" >compactin..</text>
+</g>
+<g >
+<title>alloc_blob (76 samples, 0.01%)</title><rect x="515.4" y="245" width="0.1" height="15.0" fill="rgb(239,128,38)" rx="2" ry="2" />
+<text  x="518.36" y="255.5" ></text>
+</g>
+<g >
+<title>replace (1,072 samples, 0.19%)</title><rect x="1101.3" y="213" width="2.3" height="15.0" fill="rgb(252,175,52)" rx="2" ry="2" />
+<text  x="1104.35" y="223.5" ></text>
+</g>
+<g >
+<title>@deserialize_go&lt;u&gt; (56 samples, 0.01%)</title><rect x="1116.2" y="213" width="0.1" height="15.0" fill="rgb(243,176,42)" rx="2" ry="2" />
+<text  x="1119.23" y="223.5" ></text>
+</g>
+<g >
+<title>find_field (421 samples, 0.07%)</title><rect x="976.0" y="229" width="0.9" height="15.0" fill="rgb(241,177,40)" rx="2" ry="2" />
+<text  x="978.99" y="239.5" ></text>
+</g>
+<g >
+<title>lenClamp (271 samples, 0.05%)</title><rect x="196.1" y="69" width="0.6" height="15.0" fill="rgb(239,149,38)" rx="2" ry="2" />
+<text  x="199.11" y="79.5" ></text>
+</g>
+<g >
+<title>obj_idx&lt;0&gt; (52 samples, 0.01%)</title><rect x="843.7" y="213" width="0.1" height="15.0" fill="rgb(247,139,46)" rx="2" ry="2" />
+<text  x="846.70" y="223.5" ></text>
+</g>
+<g >
+<title>leb128_decode (860 samples, 0.15%)</title><rect x="1118.8" y="213" width="1.8" height="15.0" fill="rgb(250,149,49)" rx="2" ry="2" />
+<text  x="1121.77" y="223.5" ></text>
+</g>
+<g >
+<title>alloc_blob (76 samples, 0.01%)</title><rect x="110.4" y="229" width="0.2" height="15.0" fill="rgb(239,128,38)" rx="2" ry="2" />
+<text  x="113.42" y="239.5" ></text>
+</g>
+<g >
+<title>rec (502 samples, 0.09%)</title><rect x="884.8" y="133" width="1.1" height="15.0" fill="rgb(232,178,30)" rx="2" ry="2" />
+<text  x="887.83" y="143.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (138 samples, 0.02%)</title><rect x="825.9" y="245" width="0.3" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="828.90" y="255.5" ></text>
+</g>
+<g >
+<title>hash (190 samples, 0.03%)</title><rect x="880.3" y="197" width="0.4" height="15.0" fill="rgb(241,130,40)" rx="2" ry="2" />
+<text  x="883.32" y="207.5" ></text>
+</g>
+<g >
+<title>@serialize&lt;r(amount:r(amount_e8s:N),to:P)&gt; (1,081 samples, 0.19%)</title><rect x="843.0" y="245" width="2.2" height="15.0" fill="rgb(237,156,35)" rx="2" ry="2" />
+<text  x="845.95" y="255.5" ></text>
+</g>
+<g >
+<title>rec (656 samples, 0.11%)</title><rect x="1105.4" y="197" width="1.4" height="15.0" fill="rgb(232,178,30)" rx="2" ry="2" />
+<text  x="1108.43" y="207.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;0=?(P!0)&gt; (298 samples, 0.05%)</title><rect x="726.3" y="181" width="0.6" height="15.0" fill="rgb(242,118,41)" rx="2" ry="2" />
+<text  x="729.28" y="191.5" ></text>
+</g>
+<g >
+<title>@anon-func-365.15 (3,512 samples, 0.62%)</title><rect x="190.5" y="229" width="7.2" height="15.0" fill="rgb(237,146,35)" rx="2" ry="2" />
+<text  x="193.48" y="239.5" ></text>
+</g>
+<g >
+<title>toArray (235 samples, 0.04%)</title><rect x="784.0" y="229" width="0.4" height="15.0" fill="rgb(239,160,37)" rx="2" ry="2" />
+<text  x="786.96" y="239.5" ></text>
+</g>
+<g >
+<title>@deserialize_go&lt;r(canister_id:P,message:B,method:t)&gt; (5,977 samples, 1.05%)</title><rect x="889.8" y="245" width="12.4" height="15.0" fill="rgb(237,176,35)" rx="2" ry="2" />
+<text  x="892.82" y="255.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;r(canister_id:P,message:B,method:t)&gt; (388 samples, 0.07%)</title><rect x="839.9" y="213" width="0.8" height="15.0" fill="rgb(237,118,35)" rx="2" ry="2" />
+<text  x="842.93" y="223.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;B&gt; (143 samples, 0.03%)</title><rect x="844.0" y="197" width="0.3" height="15.0" fill="rgb(251,156,51)" rx="2" ry="2" />
+<text  x="846.96" y="207.5" ></text>
+</g>
+<g >
+<title>@deserialize_go&lt;N&gt; (476 samples, 0.08%)</title><rect x="763.7" y="245" width="0.9" height="15.0" fill="rgb(250,176,49)" rx="2" ry="2" />
+<text  x="766.66" y="255.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (276 samples, 0.05%)</title><rect x="1095.1" y="197" width="0.6" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="1098.15" y="207.5" ></text>
+</g>
+<g >
+<title>parse_idl_header (1,915 samples, 0.34%)</title><rect x="977.6" y="245" width="3.9" height="15.0" fill="rgb(243,149,41)" rx="2" ry="2" />
+<text  x="980.59" y="255.5" ></text>
+</g>
+<g >
+<title>alloc_blob (152 samples, 0.03%)</title><rect x="281.0" y="261" width="0.4" height="15.0" fill="rgb(239,128,38)" rx="2" ry="2" />
+<text  x="284.05" y="271.5" ></text>
+</g>
+<g >
+<title>@serialize&lt;r(canister_id:P,message:B,method:t)&gt; (1,333 samples, 0.23%)</title><rect x="830.8" y="229" width="2.8" height="15.0" fill="rgb(237,156,35)" rx="2" ry="2" />
+<text  x="833.82" y="239.5" ></text>
+</g>
+<g >
+<title>@anon-func-116.7 (68 samples, 0.01%)</title><rect x="823.0" y="197" width="0.1" height="15.0" fill="rgb(239,146,38)" rx="2" ry="2" />
+<text  x="825.99" y="207.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (69 samples, 0.01%)</title><rect x="971.9" y="229" width="0.2" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="974.93" y="239.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (138 samples, 0.02%)</title><rect x="536.4" y="229" width="0.3" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="539.40" y="239.5" ></text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::mark_object::hb81f6542e95ca663 (612 samples, 0.11%)</title><rect x="525.7" y="229" width="1.3" height="15.0" fill="rgb(238,127,36)" rx="2" ry="2" />
+<text  x="528.74" y="239.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;t&gt; (56 samples, 0.01%)</title><rect x="840.4" y="197" width="0.1" height="15.0" fill="rgb(244,118,43)" rx="2" ry="2" />
+<text  x="843.40" y="207.5" ></text>
+</g>
+<g >
+<title>leb128_decode (52 samples, 0.01%)</title><rect x="853.8" y="245" width="0.1" height="15.0" fill="rgb(250,149,49)" rx="2" ry="2" />
+<text  x="856.79" y="255.5" ></text>
+</g>
+<g >
+<title>leb128_decode (1,198 samples, 0.21%)</title><rect x="898.3" y="213" width="2.5" height="15.0" fill="rgb(250,149,49)" rx="2" ry="2" />
+<text  x="901.31" y="223.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;v(no:u,yes:u)&gt; (85 samples, 0.01%)</title><rect x="852.4" y="197" width="0.2" height="15.0" fill="rgb(236,156,34)" rx="2" ry="2" />
+<text  x="855.45" y="207.5" ></text>
+</g>
+<g >
+<title>obj_idx&lt;0&gt; (72 samples, 0.01%)</title><rect x="887.9" y="117" width="0.1" height="15.0" fill="rgb(247,139,46)" rx="2" ry="2" />
+<text  x="890.85" y="127.5" ></text>
+</g>
+<g >
+<title>hash (174 samples, 0.03%)</title><rect x="880.3" y="181" width="0.4" height="15.0" fill="rgb(241,130,40)" rx="2" ry="2" />
+<text  x="883.35" y="191.5" ></text>
+</g>
+<g >
+<title>alloc_blob (152 samples, 0.03%)</title><rect x="872.5" y="245" width="0.3" height="15.0" fill="rgb(239,128,38)" rx="2" ry="2" />
+<text  x="875.46" y="255.5" ></text>
+</g>
+<g >
+<title>alloc_array (80 samples, 0.01%)</title><rect x="784.3" y="197" width="0.1" height="15.0" fill="rgb(239,128,37)" rx="2" ry="2" />
+<text  x="787.28" y="207.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;B&gt; (246 samples, 0.04%)</title><rect x="805.2" y="165" width="0.5" height="15.0" fill="rgb(251,156,51)" rx="2" ry="2" />
+<text  x="808.16" y="175.5" ></text>
+</g>
+<g >
+<title>Array_init (229 samples, 0.04%)</title><rect x="781.5" y="181" width="0.5" height="15.0" fill="rgb(236,150,34)" rx="2" ry="2" />
+<text  x="784.48" y="191.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;B&gt; (127 samples, 0.02%)</title><rect x="729.8" y="165" width="0.3" height="15.0" fill="rgb(251,118,51)" rx="2" ry="2" />
+<text  x="732.81" y="175.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (138 samples, 0.02%)</title><rect x="597.6" y="245" width="0.3" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="600.59" y="255.5" ></text>
+</g>
+<g >
+<title>$k/22 (3,459 samples, 0.61%)</title><rect x="190.6" y="213" width="7.1" height="15.0" fill="rgb(240,106,39)" rx="2" ry="2" />
+<text  x="193.57" y="223.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;I&gt; (486 samples, 0.09%)</title><rect x="737.9" y="181" width="1.0" height="15.0" fill="rgb(243,156,42)" rx="2" ry="2" />
+<text  x="740.86" y="191.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;r(owner:P,tokens:r(amount_e8s:N))&gt; (418 samples, 0.07%)</title><rect x="777.8" y="197" width="0.9" height="15.0" fill="rgb(239,156,37)" rx="2" ry="2" />
+<text  x="780.80" y="207.5" ></text>
+</g>
+<g >
+<title>leb128_decode (104 samples, 0.02%)</title><rect x="846.5" y="229" width="0.2" height="15.0" fill="rgb(250,149,49)" rx="2" ry="2" />
+<text  x="849.48" y="239.5" ></text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::mark_object::hb81f6542e95ca663 (5,202 samples, 0.91%)</title><rect x="89.3" y="229" width="10.8" height="15.0" fill="rgb(238,127,36)" rx="2" ry="2" />
+<text  x="92.33" y="239.5" ></text>
+</g>
+<g >
+<title>replace (1,144 samples, 0.20%)</title><rect x="1109.2" y="213" width="2.4" height="15.0" fill="rgb(252,175,52)" rx="2" ry="2" />
+<text  x="1112.22" y="223.5" ></text>
+</g>
+<g >
+<title>sleb128_decode (345 samples, 0.06%)</title><rect x="980.8" y="229" width="0.7" height="15.0" fill="rgb(250,128,49)" rx="2" ry="2" />
+<text  x="983.83" y="239.5" ></text>
+</g>
+<g >
+<title>leb128_decode (1,302 samples, 0.23%)</title><rect x="905.0" y="213" width="2.7" height="15.0" fill="rgb(250,149,49)" rx="2" ry="2" />
+<text  x="907.98" y="223.5" ></text>
+</g>
+<g >
+<title>@serialize&lt;v(err:t,ok:v(accepted:u,executing:u,failed:t,open:u,rejected:u,succeeded:u))&gt; (1,775 samples, 0.31%)</title><rect x="1092.6" y="229" width="3.7" height="15.0" fill="rgb(239,156,37)" rx="2" ry="2" />
+<text  x="1095.64" y="239.5" ></text>
+</g>
+<g >
+<title>skip_leb128 (200 samples, 0.04%)</title><rect x="1117.5" y="213" width="0.4" height="15.0" fill="rgb(237,120,35)" rx="2" ry="2" />
+<text  x="1120.47" y="223.5" ></text>
+</g>
+<g >
+<title>rec (386 samples, 0.07%)</title><rect x="587.7" y="181" width="0.8" height="15.0" fill="rgb(232,178,30)" rx="2" ry="2" />
+<text  x="590.68" y="191.5" ></text>
+</g>
+<g >
+<title>@text_of_num (535 samples, 0.09%)</title><rect x="1096.8" y="213" width="1.1" height="15.0" fill="rgb(230,151,27)" rx="2" ry="2" />
+<text  x="1099.84" y="223.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (276 samples, 0.05%)</title><rect x="499.9" y="229" width="0.6" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="502.95" y="239.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (276 samples, 0.05%)</title><rect x="1187.3" y="229" width="0.5" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="1190.26" y="239.5" ></text>
+</g>
+<g >
+<title>alloc_blob (152 samples, 0.03%)</title><rect x="969.8" y="213" width="0.3" height="15.0" fill="rgb(239,128,38)" rx="2" ry="2" />
+<text  x="972.77" y="223.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (138 samples, 0.02%)</title><rect x="280.2" y="229" width="0.3" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="283.19" y="239.5" ></text>
+</g>
+<g >
+<title>lenClamp (271 samples, 0.05%)</title><rect x="1110.0" y="133" width="0.5" height="15.0" fill="rgb(239,149,38)" rx="2" ry="2" />
+<text  x="1112.97" y="143.5" ></text>
+</g>
+<g >
+<title>obj_idx&lt;0&gt; (72 samples, 0.01%)</title><rect x="822.1" y="197" width="0.2" height="15.0" fill="rgb(247,139,46)" rx="2" ry="2" />
+<text  x="825.12" y="207.5" ></text>
+</g>
+<g >
+<title>del (253 samples, 0.04%)</title><rect x="594.6" y="149" width="0.6" height="15.0" fill="rgb(236,219,34)" rx="2" ry="2" />
+<text  x="597.63" y="159.5" ></text>
+</g>
+<g >
+<title>@anon-func-192.5 (154 samples, 0.03%)</title><rect x="197.4" y="85" width="0.3" height="15.0" fill="rgb(246,146,45)" rx="2" ry="2" />
+<text  x="200.41" y="95.5" ></text>
+</g>
+<g >
+<title>fromList (406 samples, 0.07%)</title><rect x="587.6" y="197" width="0.9" height="15.0" fill="rgb(232,184,30)" rx="2" ry="2" />
+<text  x="590.64" y="207.5" ></text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::compacting_gc::h416bfa181cd1565b (51,418 samples, 9.01%)</title><rect x="597.9" y="245" width="106.3" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="600.90" y="255.5" >motoko_rts::g..</text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (69 samples, 0.01%)</title><rect x="854.5" y="245" width="0.1" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="857.48" y="255.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;r(canister_id:P,message:B,method:t)&gt; (10,865 samples, 1.90%)</title><rect x="888.5" y="261" width="22.5" height="15.0" fill="rgb(237,176,35)" rx="2" ry="2" />
+<text  x="891.52" y="271.5" >@..</text>
+</g>
+<g >
+<title>sleb128_decode (828 samples, 0.15%)</title><rect x="909.0" y="229" width="1.7" height="15.0" fill="rgb(250,128,49)" rx="2" ry="2" />
+<text  x="911.99" y="239.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;P&gt; (300 samples, 0.05%)</title><rect x="805.1" y="181" width="0.6" height="15.0" fill="rgb(248,156,47)" rx="2" ry="2" />
+<text  x="808.05" y="191.5" ></text>
+</g>
+<g >
+<title>del (253 samples, 0.04%)</title><rect x="197.2" y="101" width="0.5" height="15.0" fill="rgb(236,219,34)" rx="2" ry="2" />
+<text  x="200.20" y="111.5" ></text>
+</g>
+<g >
+<title>rec (260 samples, 0.05%)</title><rect x="971.4" y="197" width="0.5" height="15.0" fill="rgb(232,178,30)" rx="2" ry="2" />
+<text  x="974.37" y="207.5" ></text>
+</g>
+<g >
+<title>@serialize&lt;B&gt; (762 samples, 0.13%)</title><rect x="15.9" y="197" width="1.6" height="15.0" fill="rgb(251,156,51)" rx="2" ry="2" />
+<text  x="18.88" y="207.5" ></text>
+</g>
+<g >
+<title>idl_sub_buf_init (52 samples, 0.01%)</title><rect x="596.1" y="245" width="0.1" height="15.0" fill="rgb(236,184,34)" rx="2" ry="2" />
+<text  x="599.05" y="255.5" ></text>
+</g>
+<g >
+<title>equal (61 samples, 0.01%)</title><rect x="1103.3" y="133" width="0.1" height="15.0" fill="rgb(224,177,21)" rx="2" ry="2" />
+<text  x="1106.29" y="143.5" ></text>
+</g>
+<g >
+<title>idl_sub_buf_init (52 samples, 0.01%)</title><rect x="824.4" y="245" width="0.1" height="15.0" fill="rgb(236,184,34)" rx="2" ry="2" />
+<text  x="827.36" y="255.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;&gt; (1,144 samples, 0.20%)</title><rect x="595.2" y="261" width="2.3" height="15.0" fill="rgb(242,176,41)" rx="2" ry="2" />
+<text  x="598.15" y="271.5" ></text>
+</g>
+<g >
+<title>recursiveReplace (1,822 samples, 0.32%)</title><rect x="884.4" y="181" width="3.8" height="15.0" fill="rgb(252,178,52)" rx="2" ry="2" />
+<text  x="887.38" y="191.5" ></text>
+</g>
+<g >
+<title>lenClamp (271 samples, 0.05%)</title><rect x="593.5" y="117" width="0.6" height="15.0" fill="rgb(239,149,38)" rx="2" ry="2" />
+<text  x="596.54" y="127.5" ></text>
+</g>
+<g >
+<title>put (2,210 samples, 0.39%)</title><rect x="883.6" y="213" width="4.6" height="15.0" fill="rgb(234,152,31)" rx="2" ry="2" />
+<text  x="886.58" y="223.5" ></text>
+</g>
+<g >
+<title>alloc_blob (152 samples, 0.03%)</title><rect x="852.7" y="213" width="0.3" height="15.0" fill="rgb(239,128,38)" rx="2" ry="2" />
+<text  x="855.73" y="223.5" ></text>
+</g>
+<g >
+<title>compacting_gc (4,639 samples, 0.81%)</title><rect x="518.0" y="261" width="9.6" height="15.0" fill="rgb(227,149,24)" rx="2" ry="2" />
+<text  x="520.97" y="271.5" ></text>
+</g>
+<g >
+<title>replace (753 samples, 0.13%)</title><rect x="534.8" y="213" width="1.6" height="15.0" fill="rgb(252,175,52)" rx="2" ry="2" />
+<text  x="537.81" y="223.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (138 samples, 0.02%)</title><rect x="527.0" y="229" width="0.3" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="530.00" y="239.5" ></text>
+</g>
+<g >
+<title>alloc_blob (152 samples, 0.03%)</title><rect x="1131.5" y="261" width="0.3" height="15.0" fill="rgb(239,128,38)" rx="2" ry="2" />
+<text  x="1134.47" y="271.5" ></text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::mark_stack::push_mark_stack::h1f99226b92d7e984 (54 samples, 0.01%)</title><rect x="701.0" y="229" width="0.1" height="15.0" fill="rgb(244,127,43)" rx="2" ry="2" />
+<text  x="703.98" y="239.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;B&gt; (105 samples, 0.02%)</title><rect x="831.9" y="197" width="0.2" height="15.0" fill="rgb(251,156,51)" rx="2" ry="2" />
+<text  x="834.93" y="207.5" ></text>
+</g>
+<g >
+<title>alloc_blob (76 samples, 0.01%)</title><rect x="854.5" y="261" width="0.1" height="15.0" fill="rgb(239,128,38)" rx="2" ry="2" />
+<text  x="857.47" y="271.5" ></text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::mark_object::hb81f6542e95ca663 (6,092 samples, 1.07%)</title><rect x="688.4" y="229" width="12.6" height="15.0" fill="rgb(238,127,36)" rx="2" ry="2" />
+<text  x="691.38" y="239.5" ></text>
+</g>
+<g >
+<title>find (920 samples, 0.16%)</title><rect x="1098.9" y="213" width="1.9" height="15.0" fill="rgb(248,177,48)" rx="2" ry="2" />
+<text  x="1101.91" y="223.5" ></text>
+</g>
+<g >
+<title>@anon-func-192.5 (154 samples, 0.03%)</title><rect x="1111.3" y="149" width="0.3" height="15.0" fill="rgb(246,146,45)" rx="2" ry="2" />
+<text  x="1114.27" y="159.5" ></text>
+</g>
+<g >
+<title>Blob.compare_eq (106 samples, 0.02%)</title><rect x="1100.2" y="133" width="0.2" height="15.0" fill="rgb(239,126,38)" rx="2" ry="2" />
+<text  x="1103.22" y="143.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;B&gt; (407 samples, 0.07%)</title><rect x="16.2" y="181" width="0.8" height="15.0" fill="rgb(251,156,51)" rx="2" ry="2" />
+<text  x="19.18" y="191.5" ></text>
+</g>
+<g >
+<title>hash (612 samples, 0.11%)</title><rect x="1107.0" y="213" width="1.3" height="15.0" fill="rgb(241,130,40)" rx="2" ry="2" />
+<text  x="1110.02" y="223.5" ></text>
+</g>
+<g >
+<title>rec (251 samples, 0.04%)</title><rect x="535.3" y="149" width="0.5" height="15.0" fill="rgb(232,178,30)" rx="2" ry="2" />
+<text  x="538.29" y="159.5" ></text>
+</g>
+<g >
+<title>recursiveReplace (911 samples, 0.16%)</title><rect x="1101.7" y="197" width="1.9" height="15.0" fill="rgb(252,178,52)" rx="2" ry="2" />
+<text  x="1104.68" y="207.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;I&gt; (324 samples, 0.06%)</title><rect x="804.2" y="181" width="0.6" height="15.0" fill="rgb(243,156,42)" rx="2" ry="2" />
+<text  x="807.16" y="191.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;r(proposal_id:N,vote:v(no:u,yes:u))&gt; (260 samples, 0.05%)</title><rect x="851.7" y="213" width="0.5" height="15.0" fill="rgb(239,118,37)" rx="2" ry="2" />
+<text  x="854.69" y="223.5" ></text>
+</g>
+<g >
+<title>alloc_blob (76 samples, 0.01%)</title><rect x="834.8" y="261" width="0.1" height="15.0" fill="rgb(239,128,38)" rx="2" ry="2" />
+<text  x="837.78" y="271.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (138 samples, 0.02%)</title><rect x="260.7" y="229" width="0.3" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="263.67" y="239.5" ></text>
+</g>
+<g >
+<title>find (1,900 samples, 0.33%)</title><rect x="754.1" y="213" width="3.9" height="15.0" fill="rgb(248,177,48)" rx="2" ry="2" />
+<text  x="757.08" y="223.5" ></text>
+</g>
+<g >
+<title>remember_continuation (82 samples, 0.01%)</title><rect x="320.5" y="213" width="0.2" height="15.0" fill="rgb(247,184,46)" rx="2" ry="2" />
+<text  x="323.50" y="223.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (552 samples, 0.10%)</title><rect x="750.4" y="197" width="1.1" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="753.36" y="207.5" ></text>
+</g>
+<g >
+<title>memcpy (171 samples, 0.03%)</title><rect x="1094.3" y="165" width="0.3" height="15.0" fill="rgb(248,144,48)" rx="2" ry="2" />
+<text  x="1097.29" y="175.5" ></text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::compacting_gc::h416bfa181cd1565b (28,090 samples, 4.92%)</title><rect x="1131.8" y="245" width="58.1" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="1134.80" y="255.5" >motoko..</text>
+</g>
+<g >
+<title>@deserialize_go&lt;v(no:u,yes:u)&gt; (1,554 samples, 0.27%)</title><rect x="1115.2" y="229" width="3.3" height="15.0" fill="rgb(236,176,34)" rx="2" ry="2" />
+<text  x="1118.25" y="239.5" ></text>
+</g>
+<g >
+<title>lenClamp (194 samples, 0.03%)</title><rect x="588.1" y="165" width="0.4" height="15.0" fill="rgb(239,149,38)" rx="2" ry="2" />
+<text  x="591.08" y="175.5" ></text>
+</g>
+<g >
+<title>fulfill (1,721 samples, 0.30%)</title><rect x="106.0" y="245" width="3.5" height="15.0" fill="rgb(224,178,21)" rx="2" ry="2" />
+<text  x="108.96" y="255.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;?r(id:N,payload:r(canister_id:P,message:B,method:t),proposer:P,state:v(accepted:u,executing:u,failed:t,open:u,rejected:u,succeeded:u),timestamp:I,voters:10=?(P!10),votes_no:12=r(amount_e8s:N),votes_yes:!12)&gt; (6,998 samples, 1.23%)</title><rect x="735.8" y="213" width="14.4" height="15.0" fill="rgb(241,156,39)" rx="2" ry="2" />
+<text  x="738.78" y="223.5" ></text>
+</g>
+<g >
+<title>alloc_blob (152 samples, 0.03%)</title><rect x="1103.6" y="245" width="0.3" height="15.0" fill="rgb(239,128,38)" rx="2" ry="2" />
+<text  x="1106.57" y="255.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;P&gt; (88 samples, 0.02%)</title><rect x="840.2" y="197" width="0.2" height="15.0" fill="rgb(248,118,47)" rx="2" ry="2" />
+<text  x="843.22" y="207.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_array::hfb4dad1bf9425cf5 (73 samples, 0.01%)</title><rect x="818.7" y="149" width="0.1" height="15.0" fill="rgb(244,127,43)" rx="2" ry="2" />
+<text  x="821.66" y="159.5" ></text>
+</g>
+<g >
+<title>alloc_blob (608 samples, 0.11%)</title><rect x="750.2" y="213" width="1.3" height="15.0" fill="rgb(239,128,38)" rx="2" ry="2" />
+<text  x="753.25" y="223.5" ></text>
+</g>
+<g >
+<title>motoko_rts::idl::parse_fields::h7550309913b4db63 (1,081 samples, 0.19%)</title><rect x="978.5" y="229" width="2.2" height="15.0" fill="rgb(240,127,39)" rx="2" ry="2" />
+<text  x="981.46" y="239.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (138 samples, 0.02%)</title><rect x="100.2" y="229" width="0.3" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="103.19" y="239.5" ></text>
+</g>
+<g >
+<title>recall_continuation (62 samples, 0.01%)</title><rect x="262.0" y="261" width="0.1" height="15.0" fill="rgb(247,178,46)" rx="2" ry="2" />
+<text  x="265.01" y="271.5" ></text>
+</g>
+<g >
+<title>sleb128_decode (138 samples, 0.02%)</title><rect x="201.5" y="213" width="0.3" height="15.0" fill="rgb(250,128,49)" rx="2" ry="2" />
+<text  x="204.50" y="223.5" ></text>
+</g>
+<g >
+<title>del (253 samples, 0.04%)</title><rect x="1111.1" y="165" width="0.5" height="15.0" fill="rgb(236,219,34)" rx="2" ry="2" />
+<text  x="1114.06" y="175.5" ></text>
+</g>
+<g >
+<title>$lambda (2,064 samples, 0.36%)</title><rect x="13.2" y="261" width="4.3" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="16.20" y="271.5" ></text>
+</g>
+<g >
+<title>leb128_decode (104 samples, 0.02%)</title><rect x="834.4" y="229" width="0.2" height="15.0" fill="rgb(250,149,49)" rx="2" ry="2" />
+<text  x="837.40" y="239.5" ></text>
+</g>
+<g >
+<title>iter (276 samples, 0.05%)</title><rect x="814.0" y="245" width="0.5" height="15.0" fill="rgb(240,143,38)" rx="2" ry="2" />
+<text  x="816.98" y="255.5" ></text>
+</g>
+<g >
+<title>add (532 samples, 0.09%)</title><rect x="817.9" y="197" width="1.1" height="15.0" fill="rgb(253,156,53)" rx="2" ry="2" />
+<text  x="820.93" y="207.5" ></text>
+</g>
+<g >
+<title>recursiveReplace (983 samples, 0.17%)</title><rect x="195.7" y="133" width="2.0" height="15.0" fill="rgb(252,178,52)" rx="2" ry="2" />
+<text  x="198.69" y="143.5" ></text>
+</g>
+<g >
+<title>$lambda (4,095 samples, 0.72%)</title><rect x="837.2" y="261" width="8.5" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="840.19" y="271.5" ></text>
+</g>
+<g >
+<title>account_key (338 samples, 0.06%)</title><rect x="882.9" y="213" width="0.7" height="15.0" fill="rgb(243,164,42)" rx="2" ry="2" />
+<text  x="885.88" y="223.5" ></text>
+</g>
+<g >
+<title>idl_sub_buf_init (52 samples, 0.01%)</title><rect x="278.9" y="245" width="0.1" height="15.0" fill="rgb(236,184,34)" rx="2" ry="2" />
+<text  x="281.88" y="255.5" ></text>
+</g>
+<g >
+<title>@deserialize&lt;r(amount:r(amount_e8s:N),to:P)&gt; (4,636 samples, 0.81%)</title><rect x="972.1" y="261" width="9.6" height="15.0" fill="rgb(237,176,35)" rx="2" ry="2" />
+<text  x="975.11" y="271.5" ></text>
+</g>
+<g >
+<title>chain (3,103 samples, 0.54%)</title><rect x="872.8" y="245" width="6.4" height="15.0" fill="rgb(247,129,46)" rx="2" ry="2" />
+<text  x="875.77" y="255.5" ></text>
+</g>
+<g >
+<title>memcpy (568 samples, 0.10%)</title><rect x="812.8" y="213" width="1.2" height="15.0" fill="rgb(248,144,48)" rx="2" ry="2" />
+<text  x="815.80" y="223.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;r(proposal_id:N,vote:v(no:u,yes:u))&gt; (246 samples, 0.04%)</title><rect x="852.2" y="213" width="0.5" height="15.0" fill="rgb(239,156,37)" rx="2" ry="2" />
+<text  x="855.22" y="223.5" ></text>
+</g>
+<g >
+<title>find (1,248 samples, 0.22%)</title><rect x="755.3" y="181" width="2.6" height="15.0" fill="rgb(248,177,48)" rx="2" ry="2" />
+<text  x="758.28" y="191.5" ></text>
+</g>
+<g >
+<title>replace (490 samples, 0.09%)</title><rect x="196.7" y="117" width="1.0" height="15.0" fill="rgb(252,175,52)" rx="2" ry="2" />
+<text  x="199.71" y="127.5" ></text>
+</g>
+<g >
+<title>memcpy (72 samples, 0.01%)</title><rect x="193.5" y="149" width="0.1" height="15.0" fill="rgb(248,144,48)" rx="2" ry="2" />
+<text  x="196.45" y="159.5" ></text>
+</g>
+<g >
+<title>alloc_array (160 samples, 0.03%)</title><rect x="823.1" y="197" width="0.4" height="15.0" fill="rgb(239,128,37)" rx="2" ry="2" />
+<text  x="826.13" y="207.5" ></text>
+</g>
+<g >
+<title>motoko_rts::types::block_size::haa6e1a3c5243bd1b (1,118 samples, 0.20%)</title><rect x="1073.3" y="229" width="2.3" height="15.0" fill="rgb(232,127,30)" rx="2" ry="2" />
+<text  x="1076.27" y="239.5" ></text>
+</g>
+<g >
+<title>leb128_decode (1,666 samples, 0.29%)</title><rect x="1124.6" y="213" width="3.5" height="15.0" fill="rgb(250,149,49)" rx="2" ry="2" />
+<text  x="1127.64" y="223.5" ></text>
+</g>
+<g >
+<title>lenClamp (426 samples, 0.07%)</title><rect x="876.8" y="101" width="0.9" height="15.0" fill="rgb(239,149,38)" rx="2" ry="2" />
+<text  x="879.79" y="111.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (138 samples, 0.02%)</title><rect x="1129.4" y="229" width="0.3" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="1132.43" y="239.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (69 samples, 0.01%)</title><rect x="973.6" y="197" width="0.2" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="976.65" y="207.5" ></text>
+</g>
+<g >
+<title>parse_idl_header (266 samples, 0.05%)</title><rect x="516.3" y="245" width="0.5" height="15.0" fill="rgb(243,149,41)" rx="2" ry="2" />
+<text  x="519.28" y="255.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;N&gt; (61 samples, 0.01%)</title><rect x="852.3" y="197" width="0.1" height="15.0" fill="rgb(250,156,49)" rx="2" ry="2" />
+<text  x="855.32" y="207.5" ></text>
+</g>
+<g >
+<title>next (700 samples, 0.12%)</title><rect x="589.7" y="245" width="1.4" height="15.0" fill="rgb(230,219,27)" rx="2" ry="2" />
+<text  x="592.70" y="255.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (138 samples, 0.02%)</title><rect x="969.8" y="197" width="0.3" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="972.80" y="207.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (69 samples, 0.01%)</title><rect x="981.7" y="245" width="0.2" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="984.73" y="255.5" ></text>
+</g>
+<g >
+<title>sleb128_decode (414 samples, 0.07%)</title><rect x="1120.8" y="229" width="0.9" height="15.0" fill="rgb(250,128,49)" rx="2" ry="2" />
+<text  x="1123.79" y="239.5" ></text>
+</g>
+<g >
+<title>@anon-func-165.17 (461 samples, 0.08%)</title><rect x="781.2" y="213" width="0.9" height="15.0" fill="rgb(233,146,31)" rx="2" ry="2" />
+<text  x="784.17" y="223.5" ></text>
+</g>
+<g >
+<title>enqueue (106 samples, 0.02%)</title><rect x="552.5" y="229" width="0.3" height="15.0" fill="rgb(242,205,40)" rx="2" ry="2" />
+<text  x="555.54" y="239.5" ></text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::mark_object::hb81f6542e95ca663 (3,384 samples, 0.59%)</title><rect x="951.7" y="229" width="7.0" height="15.0" fill="rgb(238,127,36)" rx="2" ry="2" />
+<text  x="954.73" y="239.5" ></text>
+</g>
+<g >
+<title>parse_idl_header (266 samples, 0.05%)</title><rect x="834.2" y="245" width="0.6" height="15.0" fill="rgb(243,149,41)" rx="2" ry="2" />
+<text  x="837.21" y="255.5" ></text>
+</g>
+<g >
+<title>memcpy (199 samples, 0.03%)</title><rect x="745.1" y="133" width="0.4" height="15.0" fill="rgb(248,144,48)" rx="2" ry="2" />
+<text  x="748.06" y="143.5" ></text>
+</g>
+<g >
+<title>leb128_decode (664 samples, 0.12%)</title><rect x="978.8" y="213" width="1.4" height="15.0" fill="rgb(250,149,49)" rx="2" ry="2" />
+<text  x="981.81" y="223.5" ></text>
+</g>
+<g >
+<title>compacting_gc (45,329 samples, 7.94%)</title><rect x="981.9" y="261" width="93.7" height="15.0" fill="rgb(227,149,24)" rx="2" ry="2" />
+<text  x="984.87" y="271.5" >compacting_gc</text>
+</g>
+<g >
+<title>memcpy (288 samples, 0.05%)</title><rect x="1095.7" y="213" width="0.6" height="15.0" fill="rgb(248,144,48)" rx="2" ry="2" />
+<text  x="1098.72" y="223.5" ></text>
+</g>
+<g >
+<title>motoko_rts::text::alloc_text_blob::h38617f18505d9ec7 (82 samples, 0.01%)</title><rect x="1097.4" y="165" width="0.2" height="15.0" fill="rgb(242,127,41)" rx="2" ry="2" />
+<text  x="1100.40" y="175.5" ></text>
+</g>
+<g >
+<title>leb128_decode (104 samples, 0.02%)</title><rect x="854.1" y="229" width="0.2" height="15.0" fill="rgb(250,149,49)" rx="2" ry="2" />
+<text  x="857.09" y="239.5" ></text>
+</g>
+<g >
+<title>accounts_fromArray (1,101 samples, 0.19%)</title><rect x="534.1" y="245" width="2.3" height="15.0" fill="rgb(239,164,37)" rx="2" ry="2" />
+<text  x="537.09" y="255.5" ></text>
+</g>
+<g >
+<title>memcpy (392 samples, 0.07%)</title><rect x="110.7" y="229" width="0.8" height="15.0" fill="rgb(248,144,48)" rx="2" ry="2" />
+<text  x="113.68" y="239.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;P&gt; (264 samples, 0.05%)</title><rect x="730.1" y="165" width="0.5" height="15.0" fill="rgb(248,118,47)" rx="2" ry="2" />
+<text  x="733.07" y="175.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (69 samples, 0.01%)</title><rect x="516.9" y="245" width="0.1" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="519.87" y="255.5" ></text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::mark_stack::push_mark_stack::h1f99226b92d7e984 (108 samples, 0.02%)</title><rect x="499.7" y="229" width="0.2" height="15.0" fill="rgb(244,127,43)" rx="2" ry="2" />
+<text  x="502.73" y="239.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;t&gt; (168 samples, 0.03%)</title><rect x="730.6" y="165" width="0.4" height="15.0" fill="rgb(244,118,43)" rx="2" ry="2" />
+<text  x="733.62" y="175.5" ></text>
+</g>
+<g >
+<title>$lambda (14,552 samples, 2.55%)</title><rect x="1082.1" y="261" width="30.1" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="1085.07" y="271.5" >$l..</text>
+</g>
+<g >
+<title>sleb128_decode (276 samples, 0.05%)</title><rect x="767.8" y="229" width="0.6" height="15.0" fill="rgb(250,128,49)" rx="2" ry="2" />
+<text  x="770.83" y="239.5" ></text>
+</g>
+<g >
+<title>@buffer_size&lt;r(amount_e8s:N)&gt; (108 samples, 0.02%)</title><rect x="843.5" y="213" width="0.2" height="15.0" fill="rgb(238,118,36)" rx="2" ry="2" />
+<text  x="846.47" y="223.5" ></text>
+</g>
+<g >
+<title>B_add (54 samples, 0.01%)</title><rect x="1097.9" y="245" width="0.2" height="15.0" fill="rgb(253,143,53)" rx="2" ry="2" />
+<text  x="1100.94" y="255.5" ></text>
+</g>
+<g >
+<title>equalKey (60 samples, 0.01%)</title><rect x="1099.2" y="197" width="0.1" height="15.0" fill="rgb(248,177,48)" rx="2" ry="2" />
+<text  x="1102.15" y="207.5" ></text>
+</g>
+<g >
+<title>$lambda (1,514 samples, 0.27%)</title><rect x="106.4" y="197" width="3.1" height="15.0" fill="rgb(240,133,38)" rx="2" ry="2" />
+<text  x="109.37" y="207.5" ></text>
+</g>
+<g >
+<title>update_proposal_state (1,868 samples, 0.33%)</title><rect x="193.9" y="197" width="3.8" height="15.0" fill="rgb(245,150,45)" rx="2" ry="2" />
+<text  x="196.86" y="207.5" ></text>
+</g>
+<g >
+<title>@serialize_go&lt;v(accepted:u,executing:u,failed:t,open:u,rejected:u,succeeded:u)&gt; (130 samples, 0.02%)</title><rect x="809.4" y="181" width="0.3" height="15.0" fill="rgb(236,156,34)" rx="2" ry="2" />
+<text  x="812.40" y="191.5" ></text>
+</g>
+<g >
+<title>rec (145 samples, 0.03%)</title><rect x="535.5" y="117" width="0.3" height="15.0" fill="rgb(232,178,30)" rx="2" ry="2" />
+<text  x="538.51" y="127.5" ></text>
+</g>
+<g >
+<title>motoko_rts::text::alloc_text_blob::h38617f18505d9ec7 (164 samples, 0.03%)</title><rect x="896.5" y="197" width="0.3" height="15.0" fill="rgb(242,127,41)" rx="2" ry="2" />
+<text  x="899.45" y="207.5" ></text>
+</g>
+<g >
+<title>hash (339 samples, 0.06%)</title><rect x="970.5" y="197" width="0.7" height="15.0" fill="rgb(241,130,40)" rx="2" ry="2" />
+<text  x="973.47" y="207.5" ></text>
+</g>
+<g >
+<title>@serialize&lt;n32&gt; (362 samples, 0.06%)</title><rect x="573.8" y="213" width="0.7" height="15.0" fill="rgb(242,156,41)" rx="2" ry="2" />
+<text  x="576.80" y="223.5" ></text>
+</g>
+<g >
+<title>@new_async (289 samples, 0.05%)</title><rect x="573.2" y="213" width="0.6" height="15.0" fill="rgb(238,181,36)" rx="2" ry="2" />
+<text  x="576.20" y="223.5" ></text>
+</g>
+<g >
+<title>motoko_rts::memory::alloc_blob::hb6bafdc2f27d446b (138 samples, 0.02%)</title><rect x="833.1" y="197" width="0.3" height="15.0" fill="rgb(227,127,24)" rx="2" ry="2" />
+<text  x="836.08" y="207.5" ></text>
+</g>
+<g >
+<title>obj_idx&lt;0&gt; (72 samples, 0.01%)</title><rect x="591.1" y="245" width="0.2" height="15.0" fill="rgb(247,139,46)" rx="2" ry="2" />
+<text  x="594.14" y="255.5" ></text>
+</g>
+<g >
+<title>alloc_blob (152 samples, 0.03%)</title><rect x="778.7" y="213" width="0.3" height="15.0" fill="rgb(239,128,38)" rx="2" ry="2" />
+<text  x="781.70" y="223.5" ></text>
+</g>
+<g >
+<title>motoko_rts::gc::mark_compact::mark_stack::push_mark_stack::h1f99226b92d7e984 (1,323 samples, 0.23%)</title><rect x="956.0" y="213" width="2.7" height="15.0" fill="rgb(244,127,43)" rx="2" ry="2" />
+<text  x="958.99" y="223.5" ></text>
+</g>
+</g>
+</svg>
