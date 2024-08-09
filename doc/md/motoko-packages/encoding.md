@@ -23,3 +23,5 @@ sidebar_position: 4
 - [`serde`](https://mops.one/serde): Serialization and deserialization.
 
 - [`xml`](https://mops.one/xml): Encode and decode XML.
+
+<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />

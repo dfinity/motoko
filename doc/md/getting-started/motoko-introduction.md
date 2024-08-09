@@ -94,3 +94,5 @@ For scenarios that can’t be solved using stable variables alone, Motoko provid
 ## Getting started
 
 Get started with Motoko by [setting up your developer environment](dev-env.md) and creating a simple [Hello, world!](quickstart.md) program.
+
+<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />

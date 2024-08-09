@@ -55,6 +55,7 @@ let argspec = [
     set_mode Compile ()), (* similar to --stable-types *)
       " compile and emit Candid IDL specification to `.did` file";
   "--print-deps", Arg.Unit (set_mode PrintDeps), " prints the dependencies for a given source file";
+  "--print-source-on-error", Arg.Set Flags.print_source_on_error, " prints the source code for error messages";
   "--explain", Arg.String (fun c -> explain_code := c; set_mode Explain ()), " provides a detailed explanation of an error message";
   "-o", Arg.Set_string out_file, "<file>  output file";
 

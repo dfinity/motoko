@@ -94,3 +94,4 @@ Each `await` suspends execution, allowing an interloper to change the state of t
 
 - [`star`](https://mops.one/star): Used for handling asynchronous behavior and traps using async* functions.
 
+<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />
