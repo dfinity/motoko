@@ -1,5 +1,7 @@
+# CLASSICAL-PERSISTENCE-ONLY
+# DEFAULT-GC-ONLY
 # SKIP ic-ref-run
-install $ID migrate-candid-sharing/old-stabilization.wasm ""
+install $ID migrate-candid-sharing/old-stabilization.mo ""
 upgrade $ID migrate-candid-sharing/new-stabilization.mo ""
 upgrade $ID migrate-candid-sharing/new-stabilization.mo ""
-upgrade $ID migrate-candid-sharing/old-stabilization.wasm ""
+upgrade $ID migrate-candid-sharing/old-stabilization.mo ""

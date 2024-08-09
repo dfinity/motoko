@@ -1,3 +1,4 @@
+//CLASSICAL-PERSISTENCE-ONLY
 import { stableVarQuery } "mo:⛔";
 
 actor footprint = {

@@ -64,15 +64,6 @@ actor a {
     };
   };
 
-  type IncrementalStabilization = actor {
-    __motoko_stabilize_before_upgrade : () -> async ();
-    __motoko_destabilize_after_upgrade : () -> async ();
-  };
-
-  func useIncrementalStabilization(a : actor {}) : IncrementalStabilization {
-    actor (debug_show (Prim.principalOfActor(a))) : IncrementalStabilization;
-  };
-
   public func go () : async () {
     // To get lots of cycles in both drun and ic-ref-run
     if (Cycles.balance() == 0)
@@ -107,36 +98,16 @@ actor a {
       assert (c3 != c2);
 
       // no need to add cycles
-      // upgrade by using enhanced orthogonal persistence
       let c4 = await
         (system Cs.C)(#upgrade c3)(4, null);
       assert ({args = 4; upgrades = 1} == (await c4.observe()));
       assert (c4 == c3);
 
-      // upgrade by using graph-copy-based stabilization
-      await useIncrementalStabilization(c4).__motoko_stabilize_before_upgrade();
+      // no need to add cycles
       let c5 = await
-        (system Cs.C)(#upgrade c4)(5, null);
-      await useIncrementalStabilization(c5).__motoko_destabilize_after_upgrade();
-      assert ({args = 5; upgrades = 2} == (await c5.observe()));
+        (system Cs.C)(#reinstall c4)(5, null);
+      assert ({args = 5; upgrades = 0} == (await c5.observe()));
       assert (c5 == c4);
-
-      let c6 = await
-        (system Cs.C)(#upgrade_with_persistence { wasm_memory_persistence = #Keep ; canister = c5 })(6, null);
-      assert ({args = 6; upgrades = 3} == (await c6.observe()));
-      assert (c6 == c5);
-
-      // no need to add cycles
-      let c7 = await
-        (system Cs.C)(#reinstall c6)(7, null);
-      assert ({args = 7; upgrades = 0} == (await c7.observe()));
-      assert (c7 == c6);
-
-      // no need to add cycles
-      let c8 = await
-        (system Cs.C)(#upgrade_with_persistence { wasm_memory_persistence = #Replace ; canister = c7 })(8, null);
-      assert ({args = 8; upgrades = 0} == (await c8.observe()));
-      assert (c8 == c7);
 
       let info = await ic00.canister_info {
           canister_id = p;

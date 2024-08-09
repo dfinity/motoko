@@ -10,7 +10,7 @@ actor Self {
     };
 
     func validGC(strategy : Text) : Bool {
-        for (name in ["copying", "compacting", "generational", "incremental"].vals()) {
+        for (name in ["copying", "compacting", "generational", "incremental", "default"].vals()) {
             if (strategy == name # " force") {
                 return true;
             };

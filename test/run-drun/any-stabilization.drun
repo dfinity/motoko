@@ -1,3 +1,4 @@
+# ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
 # SKIP ic-ref-run
 install $ID any-stabilization/version0.mo ""
 ingress $ID __motoko_stabilize_before_upgrade "DIDL\x00\x01\x7d\x0F"

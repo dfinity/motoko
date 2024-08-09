@@ -15,13 +15,13 @@ func specials(one : { #one : Nat }, two : { #c0; #c1 }) {
 specials(#one 42, #c1)
 
 //CHECK: func $specials
-//CHECK-NOT: i64.const 5544550
+//CHECK-NOT: {{i32|i64}}.const 5544550
 //CHECK: local.set $count
 
-//CHECK: i64.const 22125
+//CHECK: {{i32|i64}}.const 22125
 //CHECK: local.set $count
 
-//CHECK-NOT: i64.const 22126
+//CHECK-NOT: {{i32|i64}}.const 22126
 //CHECK: local.set $count
 
-//CHECK: i64.const 494
+//CHECK: {{i32.const 246|i64.const 494}}

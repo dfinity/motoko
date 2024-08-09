@@ -1,3 +1,4 @@
+# ENHANCED-ORTHOGONAL-PERSISTENCE-ONLY
 # SKIP ic-ref-run
 install $ID upgrade-service/version0.mo ""
 ingress $ID initialize "DIDL\x00\x00"

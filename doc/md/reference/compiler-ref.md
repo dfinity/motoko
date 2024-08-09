@@ -32,14 +32,19 @@ You can use the following options with the `moc` command.
 | `--args0 <file>`                          | Read additional `NUL` separated command line arguments from `<file>`.                                                                                 |
 | `-c`                                      | Compile to WebAssembly.                                                                                                                               |
 | `--check`                                 | Performs type checking only.                                                                                                                          |
+| `--compacting-gc`                         | Use compacting GC (not supported with enhanced orthogonal persistence).                                                                               |
+| `--copying-gc`                            | Use copying GC (default with classical persistence, not supported with enhanced orthogonal persistence).                                              |
 | `--debug`                                 | Respects debug expressions in the source (the default).                                                                                               |
+| `--enhanced-orthogonal-persistence`       | Use enhanced orthogonal persistence (experimental): Scalable and fast upgrades using a persistent 64-bit main memory.                                 |
 | `--error-detail <n>`                      | Set level of error message detail for syntax errors, n in \[0..3\] (default 2).                                                                       |
 | `--experimental-stable-memory <n>`        | Select support for the deprecated `ExperimentalStableMemory.mo` library (n < 0: error, n = 0: warn, n > 0: allow) (default 0).                        |
 | `-fno-shared-code`                        | Do not share low-level utility code: larger code size but decreased cycle consumption (default).                                                      |
+| `--generational-gc`                       | Use generational GC (not supported with enhanced orthogonal persistence)                                                                              |
 | `-fshared-code`                           | Do share low-level utility code: smaller code size but increased cycle consumption.                                                                   |
 | `-help`,`--help`                          | Displays usage information.                                                                                                                           |
 | `--hide-warnings`                         | Hides compiler warnings.                                                                                                                              |
 | `-Werror`                                 | Treat warnings as errors.                                                                                                                             |
+| `--incremental-gc`                        | Use incremental GC (default of enhanced orthogonal persistence, also available for classical persistence)                                             |
 | `--idl`                                   | Compile binary and emit Candid IDL specification to `.did` file.                                                                                      |
 | `-i`                                      | Runs the compiler in an interactive read–eval–print loop (REPL) shell so you can evaluate program execution (implies -r).                             |
 | `--map`                                   | Outputs a JavaScript source map.                                                                                                                      |
@@ -57,6 +62,7 @@ You can use the following options with the `moc` command.
 | `--stable-regions`                        | Force eager initialization of stable regions metadata (for testing purposes); consumes between 386KiB or 8MiB of additional physical stable memory, depending on current use of ExperimentalStableMemory. |
 | `--stable-types`                          | Compile binary and emit signature of stable types to `.most` file.                                                                                    |
 | `--stable-compatible <pre> <post>`        | Test upgrade compatibility between stable-type signatures `<pre>` and `<post>`.                                                                       |
+| `--rts-stack-pages <n>`                   | Set maximum number of pages available for runtime system stack (only supported with classical persistence, default 32).                               |
 | `--trap-on-call-error`                    | Trap, don't throw an [`Error`](../base/Error.md), when an IC call fails due to destination queue full or freezing threshold is crossed.               |
 |                                           | Emulates behaviour of moc versions < 0.8.0.                                                                                                           |
 | `-t`                                      | Activates tracing in interpreter.                                                                                                                     |

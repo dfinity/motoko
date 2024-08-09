@@ -105,7 +105,6 @@ impl PersistentMetadata {
 /// Initialize fresh persistent memory after the canister installation or reuse
 /// the persistent memory on a canister upgrade if enhanced orthogonal persistence
 /// is active. For graph-copy-based destabilization, the memory is reinitialized.
-#[cfg(feature = "ic")]
 pub unsafe fn initialize_memory<M: Memory>() {
     allocate_initial_memory(Bytes(HEAP_START));
     let metadata = PersistentMetadata::get();
