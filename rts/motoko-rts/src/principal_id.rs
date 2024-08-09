@@ -5,7 +5,7 @@ use crate::mem_utils::memcpy_bytes;
 use crate::memory::{alloc_blob, Memory};
 use crate::rts_trap_with;
 use crate::text::{blob_compare, blob_of_text};
-use crate::types::{Bytes, Value, TAG_BLOB};
+use crate::types::{Bytes, Value, TAG_BLOB_B, TAG_BLOB_T};
 
 use motoko_rts_macros::ic_mem_fn;
 
@@ -13,7 +13,7 @@ use motoko_rts_macros::ic_mem_fn;
 
 #[no_mangle]
 pub unsafe extern "C" fn compute_crc32(blob: Value) -> u32 {
-    if blob.tag() != TAG_BLOB {
+    if !blob.is_blob() {
         panic!("compute_crc32: Blob expected");
     }
 
@@ -98,7 +98,7 @@ pub unsafe fn base32_of_checksummed_blob<M: Memory>(mem: &mut M, b: Value) -> Va
     let n = b.as_blob().len();
     let mut data = b.as_blob().payload_const();
 
-    let r = alloc_blob(mem, Bytes((n.as_u32() + 4 + 4) / 5 * 8)); // contains padding
+    let r = alloc_blob(mem, TAG_BLOB_T, Bytes((n.as_u32() + 4 + 4) / 5 * 8)); // contains padding
     let blob = r.as_blob_mut();
     let dest = blob.payload_addr();
 
@@ -185,7 +185,7 @@ pub unsafe fn base32_to_blob<M: Memory>(mem: &mut M, b: Value) -> Value {
     let mut data = b.as_blob().payload_const();
 
     // Every group of 8 characters will yield 5 bytes
-    let r = alloc_blob(mem, Bytes(((n.as_u32() + 7) / 8) * 5)); // we deal with padding later
+    let r = alloc_blob(mem, TAG_BLOB_B, Bytes(((n.as_u32() + 7) / 8) * 5)); // we deal with padding later
     let blob = r.as_blob_mut();
     let dest = blob.payload_addr();
 
@@ -225,7 +225,7 @@ unsafe fn base32_to_principal<M: Memory>(mem: &mut M, b: Value) -> Value {
     let mut data = blob.payload_const();
 
     // Every group of 5 characters will yield 6 bytes (due to the hypen)
-    let r = alloc_blob(mem, Bytes(((n.as_u32() + 4) / 5) * 6));
+    let r = alloc_blob(mem, TAG_BLOB_T, Bytes(((n.as_u32() + 4) / 5) * 6));
     let blob = r.as_blob_mut();
     let mut dest = blob.payload_addr();
 
@@ -269,7 +269,7 @@ pub unsafe fn blob_of_principal<M: Memory>(mem: &mut M, t: Value) -> Value {
         rts_trap_with("blob_of_principal: principal too short");
     }
 
-    let stripped = alloc_blob(mem, bytes_len - Bytes(4));
+    let stripped = alloc_blob(mem, TAG_BLOB_B, bytes_len - Bytes(4));
     memcpy_bytes(
         stripped.as_blob_mut().payload_addr() as usize,
         bytes.as_blob().payload_const().add(4) as usize,
@@ -283,4 +283,16 @@ pub unsafe fn blob_of_principal<M: Memory>(mem: &mut M, t: Value) -> Value {
     }
 
     allocation_barrier(stripped)
+}
+
+// for testing
+pub unsafe fn blob_of_ptr_size<M: Memory>(mem: &mut M, buf: *const u8, n: Bytes<u32>) -> Value {
+    let blob = alloc_blob(mem, TAG_BLOB_B, n);
+    let payload_addr = blob.as_blob_mut().payload_addr();
+    memcpy_bytes(payload_addr as usize, buf as usize, n);
+    allocation_barrier(blob)
+}
+
+pub unsafe fn blob_of_str<M: Memory>(mem: &mut M, s: &str) -> Value {
+    blob_of_ptr_size(mem, s.as_ptr(), Bytes(s.len() as u32))
 }

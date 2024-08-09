@@ -6,6 +6,7 @@ use crate::{
         time::BoundedTime,
         Roots, State,
     },
+    stable_option::StableOption,
     types::*,
     visitor::visit_pointer_fields,
 };
@@ -21,14 +22,14 @@ impl<'a> UpdateIncrement<'a> {
     pub unsafe fn start_phase(state: &mut State) {
         debug_assert!(state.iterator_state.is_none());
         let heap = &mut state.partitioned_heap;
-        state.iterator_state = Some(PartitionedHeapIterator::new(heap));
+        state.iterator_state = StableOption::Some(PartitionedHeapIterator::new(heap));
         heap.collect_large_objects();
         heap.plan_updates();
     }
 
     pub unsafe fn complete_phase(state: &mut State) {
         debug_assert!(Self::update_completed(state));
-        state.iterator_state = None;
+        state.iterator_state = StableOption::None;
         state.partitioned_heap.complete_collection();
     }
 
@@ -49,8 +50,9 @@ impl<'a> UpdateIncrement<'a> {
     }
 
     pub unsafe fn update_roots(&mut self, roots: Roots) {
-        visit_roots(roots, self.heap.base_address(), self, |gc, field| {
+        visit_roots(roots, self, |gc, field| {
             let value = *field;
+            debug_assert_ne!(value, NULL_POINTER);
             if value.is_forwarded() {
                 *field = value.forward_if_possible();
             }
@@ -106,7 +108,6 @@ impl<'a> UpdateIncrement<'a> {
                 self,
                 object,
                 object.tag(),
-                self.heap.base_address(),
                 |gc, field_address| {
                     *field_address = (*field_address).forward_if_possible();
                     gc.time.tick();

@@ -8,10 +8,13 @@ use crate::{
         State,
     },
     memory::Memory,
+    stable_option::StableOption,
     types::*,
     visitor::visit_pointer_fields,
 };
 
+/// Use a long-term representation by relying on C layout.
+#[repr(C)]
 pub struct MarkState {
     mark_stack: MarkStack,
     complete: bool,
@@ -30,7 +33,7 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
         state.partitioned_heap.start_collection(mem, time);
         debug_assert!(state.mark_state.is_none());
         let mark_stack = MarkStack::new(mem);
-        state.mark_state = Some(MarkState {
+        state.mark_state = StableOption::Some(MarkState {
             mark_stack,
             complete: false,
         });
@@ -38,7 +41,7 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
 
     pub unsafe fn complete_phase(state: &mut State) {
         debug_assert!(Self::mark_completed(state));
-        state.mark_state = None;
+        state.mark_state = StableOption::None;
     }
 
     pub unsafe fn mark_completed(state: &State) -> bool {
@@ -64,7 +67,7 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
     }
 
     pub unsafe fn mark_roots(&mut self, roots: Roots) {
-        visit_roots(roots, self.heap.base_address(), self, |gc, field| {
+        visit_roots(roots, self, |gc, field| {
             gc.mark_object(*field);
             gc.time.tick();
         });
@@ -78,7 +81,7 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
         }
         loop {
             let value = self.mark_stack.pop();
-            debug_assert!(value.is_ptr());
+            debug_assert!(value.is_non_null_ptr());
             if value == STACK_EMPTY {
                 self.complete_marking();
                 return;
@@ -95,15 +98,14 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
 
     pub unsafe fn mark_object(&mut self, value: Value) {
         self.time.tick();
+        debug_assert_ne!(value, NULL_POINTER);
         debug_assert!((value.get_ptr() >= self.heap.base_address()));
         debug_assert!(!value.is_forwarded());
         let object = value.as_obj();
         if self.heap.mark_object(object) {
             // A write barrier after a completed mark phase must see the object as already marked.
             debug_assert!(!*self.complete);
-            debug_assert!(
-                object.tag() >= crate::types::TAG_OBJECT && object.tag() <= crate::types::TAG_NULL
-            );
+            debug_assert!(is_object_tag(object.tag()));
             self.mark_stack.push(self.mem, value);
         }
     }
@@ -113,7 +115,6 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
             self,
             object,
             object.tag(),
-            self.heap.base_address(),
             |gc, field_address| {
                 let field_value = *field_address;
                 gc.mark_object(field_value);

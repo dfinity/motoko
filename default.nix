@@ -257,8 +257,6 @@ rec {
         mkdir -p $out/rts
         cp mo-rts.wasm $out/rts
         cp mo-rts-debug.wasm $out/rts
-        cp mo-rts-incremental.wasm $out/rts
-        cp mo-rts-incremental-debug.wasm $out/rts
       '';
 
       # This needs to be self-contained. Remove mention of nix path in debug
@@ -269,11 +267,6 @@ rec {
           -t ${rtsDeps} \
           -t ${rustStdDeps} \
           $out/rts/mo-rts.wasm $out/rts/mo-rts-debug.wasm
-        remove-references-to \
-          -t ${nixpkgs.rustc-nightly} \
-          -t ${rtsDeps} \
-          -t ${rustStdDeps} \
-          $out/rts/mo-rts-incremental.wasm $out/rts/mo-rts-incremental-debug.wasm
       '';
 
       allowedRequisites = [];
@@ -363,26 +356,6 @@ rec {
       (test_subdir dir deps).overrideAttrs {
           EXTRA_MOC_ARGS = "--sanity-checks";
       };
-      
-    generational_gc_subdir = dir: deps:
-      (test_subdir dir deps).overrideAttrs {
-          EXTRA_MOC_ARGS = "--generational-gc";
-      };
-
-    snty_compacting_gc_subdir = dir: deps:
-      (test_subdir dir deps).overrideAttrs {
-          EXTRA_MOC_ARGS = "--sanity-checks --compacting-gc";
-      };
-
-    snty_generational_gc_subdir = dir: deps:
-      (test_subdir dir deps).overrideAttrs {
-          EXTRA_MOC_ARGS = "--sanity-checks --generational-gc";
-      };
-
-    snty_incremental_gc_subdir = dir: deps:
-      (test_subdir dir deps).overrideAttrs {
-          EXTRA_MOC_ARGS = "--sanity-checks --incremental-gc";
-      };
 
     perf_subdir = dir: deps:
       (test_subdir dir deps).overrideAttrs (args: {
@@ -442,23 +415,24 @@ rec {
       '';
     };
 
-    profiling-graphs = testDerivation {
-      src = test_src "perf";
-      buildInputs =
-        (with nixpkgs; [ perl wabt wasm-profiler-instrument wasm-profiler-postproc flamegraph-bin ]) ++
-        [ moc nixpkgs.drun ];
-      checkPhase = ''
-        patchShebangs .
-        type -p moc && moc --version
-        type -p drun && drun --help
-        ./profile-report.sh
-      '';
-      installPhase = ''
-        mv _profile $out;
-        mkdir -p $out/nix-support
-        echo "report flamegraphs $out index.html" >> $out/nix-support/hydra-build-products
-      '';
-    };
+    # wasm-profiler is not compatible with passive data segments
+    # profiling-graphs = testDerivation {
+    #  src = test_src "perf";
+    #  buildInputs =
+    #    (with nixpkgs; [ perl wabt wasm-profiler-instrument wasm-profiler-postproc flamegraph-bin ]) ++
+    #    [ moc nixpkgs.drun ];
+    #  checkPhase = ''
+    #    patchShebangs .
+    #    type -p moc && moc --version
+    #    type -p drun && drun --help
+    #    ./profile-report.sh
+    #  '';
+    #  installPhase = ''
+    #    mv _profile $out;
+    #    mkdir -p $out/nix-support
+    #    echo "report flamegraphs $out index.html" >> $out/nix-support/hydra-build-products
+    #  '';
+    #};
 
 
     fix_names = builtins.mapAttrs (name: deriv:
@@ -497,9 +471,6 @@ rec {
       # ic-ref-run = test_subdir "run-drun"   [ moc ic-ref-run ];
       drun       = test_subdir "run-drun"   [ moc nixpkgs.drun ];
       drun-dbg   = snty_subdir "run-drun"   [ moc nixpkgs.drun ];
-      drun-compacting-gc = snty_compacting_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
-      drun-generational-gc = snty_generational_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
-      drun-incremental-gc = snty_incremental_gc_subdir "run-drun" [ moc nixpkgs.drun ] ;
       fail       = test_subdir "fail"       [ moc ];
       repl       = test_subdir "repl"       [ moc ];
       ld         = test_subdir "ld"         ([ mo-ld ] ++ ldTestDeps);
@@ -510,7 +481,8 @@ rec {
       perf       = perf_subdir "perf"       [ moc nixpkgs.drun ];
       bench      = perf_subdir "bench"      [ moc nixpkgs.drun ic-wasm ];
       viper      = test_subdir "viper"      [ moc nixpkgs.which nixpkgs.openjdk nixpkgs.z3_4_12 ];
-      inherit qc lsp unit candid profiling-graphs coverage;
+      # TODO: profiling-graph is excluded because the underlying partity_wasm is deprecated and does not support passive data segments.
+      inherit qc lsp unit candid coverage;
     }) // { recurseForDerivations = true; };
 
   samples = stdenv.mkDerivation {
@@ -702,15 +674,13 @@ EOF
     mkdir -p $out
     ln -s ${base-doc} $out/base-doc
     ln -s ${docs} $out/docs
-    ln -s ${tests.profiling-graphs} $out/flamegraphs
     ln -s ${tests.coverage} $out/coverage
     cd $out;
     # generate a simple index.html, listing the entry points
     ( echo docs/overview-slides.html;
       echo docs/html/motoko.html;
       echo base-doc/
-      echo coverage/
-      echo flamegraphs/ ) | \
+      echo coverage/ ) | \
       tree -H . -l --fromfile -T "Motoko build reports" > index.html
   '';
 
