@@ -6,9 +6,9 @@ use crate::{
 
 use motoko_rts_macros::ic_mem_fn;
 
-const ITER_BLOB_IDX: u32 = 0;
+const ITER_BLOB_IDX: usize = 0;
 
-const ITER_POS_IDX: u32 = 1;
+const ITER_POS_IDX: usize = 1;
 
 /// Returns iterator for the given blob
 #[ic_mem_fn]
@@ -29,7 +29,7 @@ unsafe fn blob_iter<M: crate::memory::Memory>(mem: &mut M, blob: Value) -> Value
 
 /// Returns whether the iterator is finished
 #[no_mangle]
-unsafe extern "C" fn blob_iter_done(iter: Value) -> u32 {
+unsafe extern "C" fn blob_iter_done(iter: Value) -> usize {
     let iter_array = iter.as_array();
 
     let blob = iter_array.get(ITER_BLOB_IDX);
@@ -40,7 +40,7 @@ unsafe extern "C" fn blob_iter_done(iter: Value) -> u32 {
 
 /// Reads next byte, advances the iterator
 #[ic_mem_fn]
-unsafe fn blob_iter_next<M: Memory>(mem: &mut M, iter: Value) -> u32 {
+unsafe fn blob_iter_next<M: Memory>(mem: &mut M, iter: Value) -> usize {
     let iter_array = iter.as_array();
 
     let blob = iter_array.get(ITER_BLOB_IDX);

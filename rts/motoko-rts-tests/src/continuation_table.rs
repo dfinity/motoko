@@ -19,21 +19,21 @@ pub unsafe fn test() {
 
     let pointers: [Value; N] = from_fn(|_| alloc_blob(&mut heap, TAG_BLOB_B, Bytes(0)));
 
-    let mut references: [u32; N] = [0; N];
+    let mut references: [usize; N] = [0; N];
     for i in 0..N {
         references[i] = remember_continuation(&mut heap, pointers[i]);
-        assert_eq!(continuation_count(), (i + 1) as u32);
+        assert_eq!(continuation_count(), i + 1);
     }
 
     for i in 0..N / 2 {
         let c = recall_continuation(&mut heap, references[i]);
         assert_eq!(c.get_ptr(), pointers[i].get_ptr());
-        assert_eq!(continuation_count(), (N - i - 1) as u32);
+        assert_eq!(continuation_count(), N - i - 1);
     }
 
     for i in 0..N / 2 {
         references[i] = remember_continuation(&mut heap, pointers[i]);
-        assert_eq!(continuation_count(), (N / 2 + i + 1) as u32);
+        assert_eq!(continuation_count(), N / 2 + i + 1);
     }
 
     for i in (0..N).rev() {
@@ -41,7 +41,7 @@ pub unsafe fn test() {
             recall_continuation(&mut heap, references[i]).get_ptr(),
             pointers[i].get_ptr(),
         );
-        assert_eq!(continuation_count(), i as u32);
+        assert_eq!(continuation_count(), i);
     }
 
     reset_test_memory();

@@ -35,21 +35,23 @@ mod phases;
 pub mod roots;
 #[cfg(feature = "memory_check")]
 pub mod sanity_checks;
+#[cfg(feature = "ic")]
+mod scheduling;
 pub mod sort;
 pub mod time;
 
 #[ic_mem_fn(ic_only)]
-unsafe fn initialize_incremental_gc<M: Memory>(mem: &mut M) {
+unsafe fn initialize_incremental_gc<M: Memory>(_mem: &mut M) {
     use crate::persistence::initialize_memory;
 
-    initialize_memory(mem);
+    initialize_memory::<M>();
 }
 
 #[ic_mem_fn(ic_only)]
 unsafe fn schedule_incremental_gc<M: Memory>(mem: &mut M) {
     let state = get_incremental_gc_state();
     let running = state.phase != Phase::Pause;
-    if running || should_start() {
+    if running || scheduling::should_start_gc() {
         incremental_gc(mem);
     }
 }
@@ -68,35 +70,6 @@ unsafe fn incremental_gc<M: Memory>(mem: &mut M) {
 }
 
 #[cfg(feature = "ic")]
-unsafe fn should_start() -> bool {
-    use self::partitioned_heap::PARTITION_SIZE;
-    use crate::constants::GB;
-    use crate::memory::ic;
-
-    const CRITICAL_HEAP_LIMIT: Bytes<u32> = Bytes((2 * GB + 256 * MB) as u32);
-    const CRITICAL_GROWTH_THRESHOLD: f64 = 0.01;
-    const MEDIUM_HEAP_LIMIT: Bytes<u32> = Bytes(1 * GB as u32);
-    const MEDIUM_GROWTH_THRESHOLD: f64 = 0.35;
-    const LOW_GROWTH_THRESHOLD: f64 = 0.65;
-
-    let heap_size = ic::get_heap_size();
-    let growth_threshold = if heap_size > CRITICAL_HEAP_LIMIT {
-        CRITICAL_GROWTH_THRESHOLD
-    } else if heap_size > MEDIUM_HEAP_LIMIT {
-        MEDIUM_GROWTH_THRESHOLD
-    } else {
-        LOW_GROWTH_THRESHOLD
-    };
-
-    let current_allocations = ic::get_total_allocations();
-    let state = get_incremental_gc_state();
-    debug_assert!(current_allocations >= state.statistics.last_allocations);
-    let absolute_growth = current_allocations - state.statistics.last_allocations;
-    let relative_growth = absolute_growth.0 as f64 / heap_size.as_usize() as f64;
-    relative_growth > growth_threshold && heap_size.as_usize() >= PARTITION_SIZE
-}
-
-#[cfg(feature = "ic")]
 unsafe fn record_gc_start<M: Memory>() {
     use crate::memory::ic;
 
@@ -110,7 +83,7 @@ unsafe fn record_gc_stop<M: Memory>() {
     use crate::persistence::HEAP_START;
 
     let heap_size = ic::get_heap_size();
-    let static_size = Bytes(HEAP_START as u32);
+    let static_size = Bytes(HEAP_START);
     debug_assert!(heap_size >= static_size);
     let dynamic_size = heap_size - static_size;
     let state = get_incremental_gc_state();
@@ -120,9 +93,9 @@ unsafe fn record_gc_stop<M: Memory>() {
 // Persistent GC statistics used for scheduling and diagnostics.
 struct Statistics {
     // Total number of allocation at the start of the last GC run.
-    last_allocations: Bytes<u64>,
+    last_allocations: Bytes<usize>,
     // Maximum heap size the end of a GC run.
-    max_live: Bytes<u32>,
+    max_live: Bytes<usize>,
 }
 
 /// GC phases per run. Each of the following phases is performed in potentially multiple increments.
@@ -181,8 +154,8 @@ pub struct IncrementalGC<'a, M: Memory> {
 impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
     /// (Re-)Initialize the entire incremental garbage collector.
     /// Called on a runtime system start with incremental GC and also during RTS testing.
-    pub unsafe fn initial_gc_state(mem: &'a mut M, heap_base: usize) -> State {
-        let partitioned_heap = PartitionedHeap::new(mem, heap_base);
+    pub unsafe fn initial_gc_state(heap_base: usize) -> State {
+        let partitioned_heap = PartitionedHeap::new(heap_base);
         let statistics = Statistics {
             last_allocations: Bytes(0),
             max_live: Bytes(0),
@@ -276,7 +249,7 @@ impl<'a, M: Memory + 'a> IncrementalGC<'a, M> {
         debug_assert!(self.mark_completed());
         MarkIncrement::<M>::complete_phase(self.state);
         self.state.phase = Phase::Evacuate;
-        EvacuationIncrement::<M>::start_phase(self.state);
+        EvacuationIncrement::<M>::start_phase(self.mem, self.state);
     }
 
     unsafe fn evacuation_completed(&self) -> bool {
@@ -421,7 +394,7 @@ pub unsafe fn get_incremental_gc_state() -> &'static mut State {
 }
 
 #[cfg(feature = "ic")]
-pub unsafe fn get_max_live_size() -> Bytes<u32> {
+pub unsafe fn get_max_live_size() -> Bytes<usize> {
     get_incremental_gc_state().statistics.max_live
 }
 
@@ -446,22 +419,15 @@ pub unsafe fn set_incremental_gc_state(state: Option<State>) {
 }
 
 #[cfg(feature = "ic")]
-use crate::constants::MB;
-
-/// Additional memory reserve in bytes for the GC.
-/// * To allow mark bitmap allocation, i.e. max. 128 MB in 4 GB address space.
-/// * 512 MB of free space for evacuations/compactions.
-#[cfg(feature = "ic")]
-const GC_MEMORY_RESERVE: usize = (128 + 512) * MB;
-
-#[cfg(feature = "ic")]
 pub unsafe fn memory_reserve() -> usize {
-    use crate::memory::GENERAL_MEMORY_RESERVE;
+    use partitioned_heap::PARTITION_SIZE;
 
-    let additional_reserve = if RUNNING_GC_INCREMENT {
+    if RUNNING_GC_INCREMENT {
         0
     } else {
-        GC_MEMORY_RESERVE
-    };
-    GENERAL_MEMORY_RESERVE + additional_reserve
+        // Ensure there are 4 free partitions for evacuation.
+        const EVACUATION_RESERVE: usize = 4 * PARTITION_SIZE;
+        // Reserve space for the mark bitmap and the evacuation space.
+        get_partitioned_heap().maximum_mark_bitmap_size() + EVACUATION_RESERVE
+    }
 }

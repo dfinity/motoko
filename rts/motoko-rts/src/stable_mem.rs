@@ -7,17 +7,17 @@ extern "C" {
     #[cfg(feature = "ic")]
     pub fn ic0_stable64_size() -> u64; // physical memory size
                                        // (virtual) stable_mem operations implemented by moc
-    pub fn moc_stable_mem_get_version() -> u32;
-    pub fn moc_stable_mem_set_version(version: u32);
+    pub fn moc_stable_mem_get_version() -> usize;
+    pub fn moc_stable_mem_set_version(version: usize);
     pub fn moc_stable_mem_size() -> u64;
     pub fn moc_stable_mem_grow(additional_pages: u64) -> u64;
 }
 
-pub fn get_version() -> u32 {
+pub fn get_version() -> usize {
     unsafe { moc_stable_mem_get_version() }
 }
 
-pub fn set_version(version: u32) {
+pub fn set_version(version: usize) {
     unsafe { moc_stable_mem_set_version(version) }
 }
 
@@ -91,7 +91,7 @@ pub fn write_u64(offset: u64, n: u64) {
 
 #[cfg(feature = "ic")]
 #[no_mangle]
-pub extern "C" fn read_persistence_version() -> u32 {
+pub extern "C" fn read_persistence_version() -> usize {
     use crate::region::{LEGACY_VERSION_NO_STABLE_MEMORY, VERSION_STABLE_HEAP_NO_REGIONS};
 
     let physical_pages = unsafe { ic0_stable64_size() };
@@ -104,7 +104,8 @@ pub extern "C" fn read_persistence_version() -> u32 {
         // It stores non-zero marker at address 0 -> Legacy version 0.
         return LEGACY_VERSION_NO_STABLE_MEMORY;
     }
+    // Note: Do not use `types::size_of()` as it rounds to 64-bit words.
     let address = physical_pages * PAGE_SIZE - core::mem::size_of::<u32>() as u64;
     let version = read_u32(address);
-    version
+    version as usize
 }

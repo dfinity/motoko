@@ -124,7 +124,7 @@ impl<'a, M: Memory + 'a> MarkIncrement<'a, M> {
                 if (*array).header.tag >= TAG_ARRAY_SLICE_MIN {
                     gc.mark_stack.push(gc.mem, Value::from_ptr(array as usize));
                 }
-                gc.time.advance(1 + (length - slice_start) as usize);
+                gc.time.advance(1 + length - slice_start);
                 length
             },
         );

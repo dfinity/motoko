@@ -1,9 +1,11 @@
 (*
-This module originated as a copy of interpreter/binary/encode.ml in the
+This module originated as a copy of interpreter/binary/decode.ml in the
 reference implementation.
+With adjustments from memory64.
 
 The changes are:
  * Support for additional custom sections
+ * Manual selective support for bulk-memory operations `memory_copy` and `memory_fill` (WebAssembly/spec@7fa2f20).
  * Support for passive data segments (incl. `MemoryInit`).
 
 The code is otherwise as untouched as possible, so that we can relatively
@@ -18,14 +20,13 @@ TODO:
 
 module Error = Wasm.Error
 module Source = Wasm.Source
-module I32 = Wasm.I32
-module I64 = Wasm.I64
 module F32 = Wasm.F32
 module F64 = Wasm.F64
 module I32_convert = Wasm.I32_convert
 module I64_convert = Wasm.I64_convert
 module Utf8 = Lib.Utf8
 open CustomModule
+open Types
 
 (* Decoding stream *)
 
@@ -125,8 +126,8 @@ let rec vsN n s =
   then (if b land 0x40 = 0 then x else Int64.(logor x (logxor (-1L) 0x7fL)))
   else Int64.(logor x (shift_left (vsN (n - 7) s) 7))
 
-let vu1 s = Int64.to_int (vuN 1 s)
 let vu32 s = Int64.to_int32 (vuN 32 s)
+let vu64 s = vuN 64 s
 let vs7 s = Int64.to_int (vsN 7 s)
 let vs32 s = Int64.to_int32 (vsN 32 s)
 let vs33 s = I32_convert.wrap_i64 (vsN 33 s)
@@ -140,7 +141,6 @@ let len32 s =
   if I32.le_u n (Int32.of_int (len s)) then Int32.to_int n else
     error s pos "length out of bounds"
 
-let bool s = (vu1 s = 1)
 let string s = let n = len32 s in get_string n s
 let rec list f n s = if n = 0 then [] else let x = f s in x :: list f (n - 1) s
 let opt f b s = if b then Some (f s) else None
@@ -161,7 +161,7 @@ let sized (f : int -> stream -> 'a) (s : stream) =
 
 (* Types *)
 
-open Wasm.Types
+open Types
 
 let value_type s =
   match vs7 s with
@@ -186,19 +186,23 @@ let func_type s =
   | _ -> error s (pos s - 1) "malformed function type"
 
 let limits vu s =
-  let has_max = bool s in
+  let flags = u8 s in
+  require (flags land 0xfa = 0) s (pos s - 1) "malformed limits flags";
+  let has_max = (flags land 1 = 1) in
+  let is64 = (flags land 4 = 4) in
   let min = vu s in
   let max = opt vu has_max s in
-  {min; max}
+  {min; max}, is64
 
 let table_type s =
   let t = elem_type s in
-  let lim = limits vu32 s in
+  let lim, is64 = limits vu32 s in
+  require (not is64) s (pos s - 1) "tables cannot have 64-bit indices";
   TableType (lim, t)
 
 let memory_type s =
-  let lim = limits vu32 s in
-  MemoryType lim
+  let lim, is64 = limits vu64 s in
+  MemoryType (lim, if is64 then I64IndexType else I32IndexType)
 
 let mutability s =
   match u8 s with
@@ -226,7 +230,7 @@ let zero s = expect 0x00 s "zero byte expected"
 let memop s =
   let align = vu32 s in
   require (I32.le_u align 32l) s (pos s - 1) "malformed memop flags";
-  let offset = vu32 s in
+  let offset = vu64 s in
   Int32.to_int align, offset
 
 let block_type s =
@@ -246,6 +250,10 @@ let math_prefix s =
   | 0x05 -> i64_trunc_sat_f32_u
   | 0x06 -> i64_trunc_sat_f64_s
   | 0x07 -> i64_trunc_sat_f64_u
+  (* Manual extension for specific bulk-memory operations *)
+  | 0x0a -> zero s; zero s; memory_copy
+  | 0x0b -> zero s; memory_fill
+  (* End of manual extension *)
   (* Manual extension for passive data segments *)
   | 0x08 ->
     let x = at var s in
