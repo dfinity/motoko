@@ -88,3 +88,6 @@ service : {
 - [Top level API](https://github.com/dfinity/node-motoko?tab=readme-ov-file#top-level-api)
 
 - [File API](https://github.com/dfinity/node-motoko?tab=readme-ov-file#file-api)
+
+
+<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />

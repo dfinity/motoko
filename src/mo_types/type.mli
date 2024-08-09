@@ -263,12 +263,14 @@ val match_stab_sig : field list -> field list -> bool
 
 val string_of_stab_sig : field list -> string
 
+val motoko_runtime_information_type : typ
 
 (* Well-known fields *)
 
 val motoko_async_helper_fld : field
 val motoko_stable_var_info_fld : field
 val motoko_gc_trigger_fld : field
+val motoko_runtime_information_fld : field
 
 val well_known_actor_fields : field list
 val decode_msg_typ : field list -> typ

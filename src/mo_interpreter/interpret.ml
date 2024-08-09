@@ -511,7 +511,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | V.Blob aid when T.sub exp1.note.note_typ (T.Obj (T.Actor, [])) ->
         begin match V.Env.find_opt aid !(env.actor_env) with
         (* not quite correct: On the platform, you can invoke and get a reject *)
-        | None -> trap exp.at "Unkown actor \"%s\"" aid
+        | None -> trap exp.at "Unknown actor \"%s\"" aid
         | Some actor_value ->
           let fs = V.as_obj actor_value in
           match V.Env.find_opt id.it fs with
@@ -620,10 +620,17 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exp env exp1 (fun v1 ->
       interpret_cases env cases exp.at v1 k
       )
-  | TryE (exp1, cases) ->
-    let k' = fun v1 -> interpret_catches env cases exp.at v1 k in
-    let env' = { env with throws = Some k' } in
-    interpret_exp env' exp1 k
+  | TryE (exp1, cases, exp2_opt) ->
+    let k, env = match exp2_opt with
+      | None -> k, env
+      | Some exp2 ->
+        let pre k v = interpret_exp env exp2 (fun v2 -> V.as_unit v2; k v) in
+        pre k,
+        { env with rets = Option.map pre env.rets
+                 ; labs = V.Env.map pre env.labs
+                 ; throws = Option.map pre env.throws } in
+    let k' v1 = interpret_catches env cases exp.at v1 k in
+    interpret_exp { env with throws = Some k' } exp1 k
   | WhileE (exp1, exp2) ->
     let k_continue = fun v -> V.as_unit v; interpret_exp env exp k in
     interpret_exp env exp1 (fun v1 ->
@@ -1068,7 +1075,7 @@ let import_lib env lib =
   let { body = cub; _ } = lib.it in
   match cub.it with
   | Syntax.ModuleU _ ->
-    fun v -> v
+    Fun.id
   | Syntax.ActorClassU (_sp, id, _tbs, _p, _typ, _self_id, _dec_fields) ->
     fun v -> V.Obj (V.Env.from_list
       [ (id.it, v);

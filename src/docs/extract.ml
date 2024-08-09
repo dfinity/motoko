@@ -28,7 +28,8 @@ and function_arg_doc = {
   doc : string option;
 }
 
-and value_doc = { name : string; typ : Syntax.typ option }
+and value_sort = Let | Var
+and value_doc = { sort : value_sort; name : string; typ : Syntax.typ option }
 
 and type_doc = {
   name : string;
@@ -117,14 +118,15 @@ struct
     | { it = Syntax.TupP args; _ } -> List.filter_map extract_args args
     | _ -> []
 
-  let extract_let_doc : Syntax.exp -> string -> declaration_doc =
-   fun exp name ->
+  let extract_value_doc : value_sort -> Syntax.exp -> string -> declaration_doc
+      =
+   fun sort exp name ->
     match exp.it with
     | Syntax.FuncE (_, _, type_args, args, typ, _, _) ->
         let args_doc = extract_func_args args in
         Function { name; typ; type_args; args = args_doc }
-    | Syntax.AnnotE (e, ty) -> Value { name; typ = Some ty }
-    | _ -> Value { name; typ = None }
+    | Syntax.AnnotE (e, ty) -> Value { sort; name; typ = Some ty }
+    | _ -> Value { sort; name; typ = None }
 
   let extract_obj_field_doc :
       Syntax.typ_field -> Syntax.typ_field * string option =
@@ -149,7 +151,23 @@ struct
                       List.filter_map (extract_dec_field mk_field_xref) fields;
                     sort;
                   } )
-        | _ -> Some (mk_xref (Xref.XValue name), extract_let_doc rhs name))
+        | _ -> Some (mk_xref (Xref.XValue name), extract_value_doc Let rhs name)
+        )
+    | Source.{ it = Syntax.VarD ({ it = name; _ }, rhs); _ } -> (
+        match rhs with
+        | Source.{ it = Syntax.ObjBlockE (sort, _, fields); _ } ->
+            let mk_field_xref xref = mk_xref (Xref.XClass (name, xref)) in
+            Some
+              ( mk_xref (Xref.XType name),
+                Object
+                  {
+                    name;
+                    fields =
+                      List.filter_map (extract_dec_field mk_field_xref) fields;
+                    sort;
+                  } )
+        | _ -> Some (mk_xref (Xref.XValue name), extract_value_doc Var rhs name)
+        )
     | Source.{ it = Syntax.TypD (name, ty_args, typ); _ } ->
         let doc_typ =
           match typ.it with
