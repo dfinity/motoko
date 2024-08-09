@@ -474,11 +474,7 @@ and export_runtime_information self_id =
   let bind2 = typ_arg scope_con2 Scope scope_bound in
   let gc_strategy = 
     let open Mo_config in
-    let strategy = match !Flags.gc_strategy with
-    | Flags.MarkCompact -> "compacting"
-    | Flags.Copying -> "copying"
-    | Flags.Generational -> "generational"
-    | Flags.Incremental -> "incremental" in
+    let strategy = "incremental" in
     if !Flags.force_gc then (Printf.sprintf "%s force" strategy) else strategy
   in
   let prim_call function_name = primE (I.OtherPrim function_name) [] in
