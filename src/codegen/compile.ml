@@ -6566,15 +6566,10 @@ module MakeSerialization (Strm : Stream) = struct
     let set_typtbl_size env =
       G.i (GlobalSet (nr (E.get_global env "@@typtbl_size")))
 
-    let get_value_counter env =
-      G.i (GlobalGet (nr (E.get_global env "@@value_counter")))
-    let set_value_counter env =
-      G.i (GlobalSet (nr (E.get_global env "@@value_counter")))
-
-    let get_value_limit env =
-      G.i (GlobalGet (nr (E.get_global env "@@value_limit")))
-    let set_value_limit env =
-      G.i (GlobalSet (nr (E.get_global env "@@value_limit")))
+    let get_value_quota env =
+      G.i (GlobalGet (nr (E.get_global env "@@value_quota")))
+    let set_value_quota env =
+      G.i (GlobalSet (nr (E.get_global env "@@value_quota")))
 
     let get_value_numerator env =
       G.i (GlobalGet (nr (E.get_global env "@@value_numerator")))
@@ -6596,21 +6591,11 @@ module MakeSerialization (Strm : Stream) = struct
     let idl_value_denominator = 1L
     let idl_value_bias = 1024L
 
-    let idl_value_counter env =
-        get_value_counter env
-
-    let bump_value_counter env =
-        get_value_counter env ^^
-        compile_const_64 1L ^^
-        G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
-        set_value_counter env
-
     let reset_value_limit env get_blob get_rel_buf_opt =
       get_rel_buf_opt ^^
       G.if0
       begin (* Candid deserialization *)
         (* set instruction limit *)
-        idl_value_counter env ^^
         get_blob ^^
         Blob.len env ^^
         G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
@@ -6620,8 +6605,7 @@ module MakeSerialization (Strm : Stream) = struct
         G.i (Binary (Wasm.Values.I64 I64Op.DivU)) ^^
         get_value_bias env ^^
         G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
-        G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
-        set_value_limit env
+        set_value_quota env
       end
       begin (* Extended candid/ Destabilization *)
         G.nop
@@ -6640,16 +6624,21 @@ module MakeSerialization (Strm : Stream) = struct
       E.add_global64 env "@@value_denominator" Mutable idl_value_denominator;
       E.add_global64 env "@@value_numerator" Mutable idl_value_numerator;
       E.add_global64 env "@@value_bias" Mutable idl_value_bias;
-      E.add_global64 env "@@value_counter" Mutable 0L;
-      E.add_global64 env "@@value_limit" Mutable 0L;
-      Func.define_built_in env "idl_limit_check" [] [] (fun env ->
+      E.add_global64 env "@@value_quota" Mutable 0L;
+      Func.define_built_in env "idl_limit_check" ["env", I32Type] [] (fun env ->
         get_rel_buf_opt env ^^
         G.if0 begin (* Candid deserialization *)
-          idl_value_counter env ^^
-          get_value_limit env ^^
-          G.i (Compare (Wasm.Values.I64 I64Op.LeU)) ^^
-          E.else_trap_with env "IDL error: exceeded value limit" ^^
-          bump_value_counter env
+          get_value_quota env ^^
+          G.i (LocalGet (nr 0l)) ^^ (* count of values *)
+          G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+          G.i (Compare (Wasm.Values.I64 I64Op.LtU)) ^^
+          E.then_trap_with env "IDL error: exceeded value limit" ^^
+          (* quota -= count *)
+          get_value_quota env ^^
+          G.i (LocalGet (nr 0l)) ^^
+          G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+          G.i (Binary (Wasm.Values.I64 I64Op.Sub)) ^^
+          set_value_quota env
         end begin (* Extended Candid/Destabilization *)
           G.nop
         end)
@@ -7312,6 +7301,7 @@ module MakeSerialization (Strm : Stream) = struct
 
       (* Check instruction limit *)
 
+      compile_unboxed_const 1l ^^
       Registers.idl_limit_check env ^^
 
       (* Check recursion depth (protects against empty record etc.) *)

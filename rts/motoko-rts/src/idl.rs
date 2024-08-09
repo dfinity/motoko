@@ -13,7 +13,7 @@ use motoko_rts_macros::ic_mem_fn;
 
 extern "C" {
     // check instruction decoding limit, exported by moc
-    pub fn idl_limit_check();
+    pub fn idl_limit_check(value_count: u32);
 }
 
 //
@@ -319,9 +319,7 @@ unsafe fn skip_any_vec(buf: *mut Buf, typtbl: *mut *mut u8, t: i32, count: u32) 
         // makes no progress. No point in calling it over and over again.
         // (This is easier to detect this way than by analyzing the type table,
         // where we’d have to chase single-field-records.)
-        for _ in 1..count {
-            idl_limit_check();
-        }
+        idl_limit_check(count - 1);
         return;
     }
     for _ in 1..count {
@@ -340,7 +338,7 @@ unsafe extern "C" fn skip_any(buf: *mut Buf, typtbl: *mut *mut u8, t: i32, depth
         idl_trap_with("skip_any: too deeply nested record");
     }
 
-    idl_limit_check(); //check decoding limits
+    idl_limit_check(1); //check decoding limits
 
     if t < 0 {
         // Primitive type
