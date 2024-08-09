@@ -310,7 +310,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | PrimE (p, es) ->
     interpret_exps env es [] (fun vs ->
       match p, vs with
-      | CallPrim typs, [v1; v2] ->
+      | CallPrim (typs, _), [v1; v2] ->
         let call_conv, f = V.as_func v1 in
         check_call_conv (List.hd es) call_conv;
         check_call_conv_arg env exp v2 call_conv;
@@ -446,13 +446,15 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         let reject = Option.get env.rejects in
         let e = V.Tup [V.Variant ("canister_reject", V.unit); v1] in
         Scheduler.queue (fun () -> reject e)
-      | ICCallPrim, [v1; v2; kv; rv; cv] ->
+      | ICCallPrim _, [v1; v2; kv; rv; cv] ->
         let call_conv, f = V.as_func v1 in
         check_call_conv (List.hd es) call_conv;
         check_call_conv_arg env exp v2 call_conv;
         last_region := exp.at; (* in case the following throws *)
         let vc = context env in
         f (V.Tup[vc; kv; rv; cv]) v2 k
+      | ICCyclesPrim, [] ->
+        k V.Null
       | ICCallerPrim, [] ->
         k env.caller
       | ICStableRead t, [] ->
@@ -510,7 +512,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
   | LabelE (id, _typ, exp1) ->
     let env' = {env with labs = V.Env.add id k env.labs} in
     interpret_exp env' exp1 k
-  | AsyncE (Type.Fut, _, exp1, _) ->
+  | AsyncE (_FIXME, Type.Fut, _, exp1, _) ->
     assert env.flavor.has_await;
     async env
       exp.at
@@ -518,7 +520,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
         let env' = { env with labs = V.Env.empty; rets = Some k'; throws = Some r }
         in interpret_exp env' exp1 k')
       k
-  | AsyncE (Type.Cmp, _, exp1, _) ->
+  | AsyncE (_, Type.Cmp, _, exp1, _) ->
     assert env.flavor.has_await;
     k (V.Comp (fun k' r ->
       let env' = { env with labs = V.Env.empty; rets = Some k'; throws = Some r }
@@ -536,7 +538,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       define_id env id v';
       k V.unit
       )
-  | SelfCallE (ts, exp_f, exp_k, exp_r, exp_c) ->
+  | SelfCallE (_FIXME, ts, exp_f, exp_k, exp_r, exp_c) ->
     assert (not env.flavor.has_async_typ);
     (* see code for FuncE *)
     let cc = { sort = T.Shared T.Write; control = T.Replies; n_args = 0; n_res = List.length ts } in

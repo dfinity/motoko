@@ -82,7 +82,7 @@ let rec exp msgs e : f = match e.it with
   (* Eager uses are either first-class uses of a variable: *)
   | VarE i              -> M.singleton i.it Eager
   (* Or anything that is occurring in a call (as this may call a closure): *)
-  | CallE (e1, ts, e2)  -> eagerify (exps msgs [e1; e2])
+  | CallE (_FIXME, e1, ts, e2) -> eagerify (exps msgs [e1; e2])
   (* And break, return, throw can be thought of as calling a continuation: *)
   | BreakE (i, e)       -> eagerify (exp msgs e)
   | RetE e              -> eagerify (exp msgs e)
@@ -125,7 +125,7 @@ let rec exp msgs e : f = match e.it with
   | ForE (p, e1, e2)    -> exp msgs e1 ++ (exp msgs e2 /// pat msgs p)
   | LabelE (i, t, e)    -> exp msgs e
   | DebugE e            -> exp msgs e
-  | AsyncE (_, _, e)    -> exp msgs e
+  | AsyncE (_FIXME, _, _, e) -> exp msgs e
   | AwaitE (_, e)       -> exp msgs e
   | AssertE (_, e)      -> exp msgs e
   | AnnotE (e, t)       -> exp msgs e

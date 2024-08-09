@@ -949,8 +949,8 @@ let rec is_explicit_exp e =
     true
   | LitE l -> is_explicit_lit !l
   | UnE (_, _, e1) | OptE e1 | DoOptE e1
-  | ProjE (e1, _) | DotE (e1, _) | BangE e1 | IdxE (e1, _) | CallE (e1, _, _)
-  | LabelE (_, _, e1) | AsyncE (_, _, e1) | AwaitE (_, e1) ->
+  | ProjE (e1, _) | DotE (e1, _) | BangE e1 | IdxE (e1, _) | CallE (_(*FIXME: correct?*), e1, _, _)
+  | LabelE (_, _, e1) | AsyncE (_, _, _, e1) | AwaitE (_, e1) ->
     is_explicit_exp e1
   | BinE (_, e1, _, e2) | IfE (_, e1, e2) ->
     is_explicit_exp e1 || is_explicit_exp e2
@@ -1489,7 +1489,8 @@ and infer_exp'' env exp : T.typ =
     end;
     let ts1 = match pat.it with TupP _ -> T.seq_of_tup t1 | _ -> [t1] in
     T.Func (sort, c, T.close_binds cs tbs, List.map (T.close cs) ts1, List.map (T.close cs) ts2)
-  | CallE (exp1, inst, exp2) ->
+  | CallE (_FIXME, exp1, inst, exp2) ->
+    ignore (Option.map (infer_exp env) _FIXME);
     infer_call env exp1 inst exp2 exp.at None
   | BlockE decs ->
     let t, _ = infer_block env decs exp.at false in
@@ -1616,8 +1617,8 @@ and infer_exp'' env exp : T.typ =
       check_exp_strong env T.throw exp1
     end;
     T.Non
-  | AsyncE (s, typ_bind, exp1) ->
-    error_in [Flags.WASIMode; Flags.WasmMode] env exp1.at "M0086"
+  | AsyncE (_, s, typ_bind, exp1) ->
+    error_in Flags.[WASIMode; WasmMode] env exp1.at "M0086"
       "async expressions are not supported";
     let t1, next_cap = check_AsyncCap env "async expression" exp.at in
     let c, tb, ce, cs = check_typ_bind env typ_bind in
@@ -1792,8 +1793,8 @@ and check_exp' env0 t exp : T.typ =
         display_typ_expand (T.Array t');
     List.iter (check_exp env (T.as_immut t')) exps;
     t
-  | AsyncE (s1, tb, exp1), T.Async (s2, t1', t') ->
-    error_in [Flags.WASIMode; Flags.WasmMode] env exp1.at "M0086"
+  | AsyncE (_FIXME, s1, tb, exp1), T.Async (s2, t1', t') ->
+    error_in Flags.[WASIMode; WasmMode] env exp1.at "M0086"
       "async expressions are not supported";
     let t1, next_cap = check_AsyncCap env "async expression" exp.at in
     if s1 <> s2 then begin
@@ -1879,7 +1880,8 @@ and check_exp' env0 t exp : T.typ =
     in
     check_exp_strong (adjoin_vals env' ve2) t2 exp;
     t
-  | CallE (exp1, inst, exp2), _ ->
+  | CallE (_FIXME, exp1, inst, exp2), _ ->
+    ignore (Option.map (infer_exp env) _FIXME);
     let t' = infer_call env exp1 inst exp2 exp.at (Some t) in
     if not (T.sub t' t) then
       local_error env0 exp.at "M0096"
@@ -2713,7 +2715,7 @@ and gather_dec env scope dec : Scope.t =
   | LetD (
       {it = VarP id; _},
       ( {it = ObjBlockE (obj_sort, _, dec_fields); at; _}
-      | {it = AwaitE (_,{ it = AsyncE (_, _, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, _, dec_fields); at; _}) ; _  }); _ }),
+      | {it = AwaitE (_,{ it = AsyncE (_, _, _, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, _, dec_fields); at; _}) ; _  }); _ }),
        _
     ) ->
     let decs = List.map (fun df -> df.it.dec) dec_fields in
@@ -2801,7 +2803,7 @@ and infer_dec_typdecs env dec : Scope.t =
   | LetD (
       {it = VarP id; _},
       ( {it = ObjBlockE (obj_sort, _t, dec_fields); at; _}
-      | {it = AwaitE (_, { it = AsyncE (_, _, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, _t, dec_fields); at; _}) ; _  }); _ }),
+      | {it = AwaitE (_, { it = AsyncE (_, _, _, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, _t, dec_fields); at; _}) ; _  }); _ }),
         _
     ) ->
     let decs = List.map (fun {it = {vis; dec; _}; _} -> dec) dec_fields in
@@ -2887,7 +2889,7 @@ and infer_dec_valdecs env dec : Scope.t =
   | LetD (
       {it = VarP id; _} as pat,
       ( {it = ObjBlockE (obj_sort, _t, dec_fields); at; _}
-      | {it = AwaitE (_, { it = AsyncE (_, _, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, _t, dec_fields); at; _}) ; _ }); _ }),
+      | {it = AwaitE (_, { it = AsyncE (_, _, _, {it = ObjBlockE ({ it = Type.Actor; _} as obj_sort, _t, dec_fields); at; _}) ; _ }); _ }),
         _
     ) ->
     let decs = List.map (fun df -> df.it.dec) dec_fields in

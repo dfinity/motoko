@@ -69,9 +69,9 @@ and infer_effect_exp (exp: exp) : T.eff =
     let e1 = effect_exp exp1 in
     let e2 = effect_cases cases in
     max_eff e1 e2
-  | AsyncE (T.Fut, _, _, _) ->
+  | AsyncE (_, T.Fut, _, _, _) ->
     T.Await
-  | AsyncE (T.Cmp, _, _, _) ->
+  | AsyncE (_, T.Cmp, _, _, _) ->
     T.Triv
   | TryE _ ->
     T.Await
@@ -81,7 +81,7 @@ and infer_effect_exp (exp: exp) : T.eff =
     effect_exp exp1
   | FuncE _ ->
     T.Triv
-  | SelfCallE (_, _, exp1, exp2, exp3) ->
+  | SelfCallE (_FIXME, _, _, exp1, exp2, exp3) ->
     let e1 = effect_exp exp1 in
     let e2 = effect_exp exp2 in
     let e3 = effect_exp exp3 in

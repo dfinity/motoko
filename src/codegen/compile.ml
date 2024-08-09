@@ -2213,31 +2213,27 @@ module Tagged = struct
     match (tag : tag) with
     | Region ->
       begin match normalize ty with
-      | (Con _ | Any) -> true
-      | (Prim Region) -> true
-      | (Prim _ | Obj _ | Array _ | Tup _ | Opt _ | Variant _ | Func _ | Non) -> false
-      | (Pre | Async _ | Mut _ | Var _ | Typ _) -> assert false
+      | Con _ | Any | Prim Region -> true
+      | Prim _ | Obj _ | Array _ | Tup _ | Opt _ | Variant _ | Func _ | Non -> false
+      | Pre | Async _ | Mut _ | Var _ | Typ _ -> assert false
       end
     | Array ->
       begin match normalize ty with
-      | (Con _ | Any) -> true
-      | (Array _ | Tup _) -> true
-      | (Prim _ |  Obj _ | Opt _ | Variant _ | Func _ | Non) -> false
-      | (Pre | Async _ | Mut _ | Var _ | Typ _) -> assert false
+      | Con _ | Any | Array _ | Tup _ -> true
+      | Prim _ | Obj _ | Opt _ | Variant _ | Func _ | Non -> false
+      | Pre | Async _ | Mut _ | Var _ | Typ _ -> assert false
       end
     | Blob ->
       begin match normalize ty with
-      | (Con _ | Any) -> true
-      | (Prim (Text|Blob|Principal)) -> true
-      | (Prim _ | Obj _ | Array _ | Tup _ | Opt _ | Variant _ | Func _ | Non) -> false
-      | (Pre | Async _ | Mut _ | Var _ | Typ _) -> assert false
+      | Con _ | Any | Prim (Text | Blob | Principal) -> true
+      | Prim _ | Obj _ | Array _ | Tup _ | Opt _ | Variant _ | Func _ | Non -> false
+      | Pre | Async _ | Mut _ | Var _ | Typ _ -> assert false
       end
     | Object ->
       begin match normalize ty with
-      | (Con _ | Any) -> true
-      | (Obj _) -> true
-      | (Prim _ | Array _ | Tup _ | Opt _ | Variant _ | Func _ | Non) -> false
-      | (Pre | Async _ | Mut _ | Var _ | Typ _) -> assert false
+      | Con _ | Any | Obj _ -> true
+      | Prim _ | Array _ | Tup _ | Opt _ | Variant _ | Func _ | Non -> false
+      | Pre | Async _ | Mut _ | Var _ | Typ _ -> assert false
       end
     | _ -> true
 
@@ -2406,12 +2402,13 @@ module Opt = struct
             ( get_x ) (* true literal, no wrapping *)
             ( get_x ^^ Tagged.branch_default env [I32Type]
               ( get_x ) (* default tag, no wrapping *)
-              [ Tagged.Null,
+              Tagged.
+              [ Null,
                 (* NB: even ?null does not require allocation: We use a static
                   singleton for that: *)
                 compile_unboxed_const (vanilla_lit env (null_vanilla_lit env))
-              ; Tagged.Some,
-                Tagged.obj env Tagged.Some [get_x]
+              ; Some,
+                obj env Some [get_x]
               ]
             )
         )
@@ -2535,7 +2532,7 @@ module Closure = struct
       I32Type :: Lib.List.make n_args I32Type,
       FakeMultiVal.ty (Lib.List.make n_res I32Type))) in
     (* get the table index *)
-    Tagged.load_forwarding_pointer env ^^
+    (*Tagged.load_forwarding_pointer env ^^ FIXME: NOT needed, accessing immut slots*)
     Tagged.load_field env (funptr_field env) ^^
     (* All done: Call! *)
     G.i (CallIndirect (nr ty)) ^^
@@ -9104,16 +9101,21 @@ end (* Var *)
    that requires top-level cps conversion;
    use new prims instead *)
 module Internals = struct
-  let call_prelude_function env ae var =
+  let call_prelude_function_with_args env ae var args =
     match VarEnv.lookup_var ae var with
     | Some (VarEnv.Const (_, Const.Fun (mk_fi, _))) ->
        compile_unboxed_zero ^^ (* A dummy closure *)
+       args ^^
        G.i (Call (nr (mk_fi ())))
     | _ -> assert false
+
+  let call_prelude_function env ae var =
+    call_prelude_function_with_args env ae var G.nop
 
   let add_cycles env ae = call_prelude_function env ae "@add_cycles"
   let reset_cycles env ae = call_prelude_function env ae "@reset_cycles"
   let reset_refund env ae = call_prelude_function env ae "@reset_refund"
+  let pass_cycles env ae = call_prelude_function_with_args env ae "@pass_cycles"
 end
 
 (* This comes late because it also deals with messages *)
@@ -10581,7 +10583,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
   begin match p, es with
   (* Calls *)
-  | CallPrim _, [e1; e2] ->
+  | CallPrim (_, par), [e1; e2] ->
     let sort, control, _, arg_tys, ret_tys = Type.(as_func (promote e1.note.Note.typ)) in
     let n_args = List.length arg_tys in
     let return_arity = match control with
@@ -10595,8 +10597,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
     let call_as_prim = match fun_sr, sort with
       | SR.Const (_, Const.Fun (mk_fi, Const.PrimWrapper prim)), _ ->
          begin match n_args, e2.it with
-         | 0, _ -> true
-         | 1, _ -> true
+         | (0 | 1), _ -> true
          | n, PrimE (TupPrim, es) when List.length es = n -> true
          | _, _ -> false
          end
@@ -10627,7 +10628,9 @@ and compile_prim_invocation (env : E.t) ae p es at =
          StackRep.of_arity return_arity,
 
          code1 ^^
-         compile_unboxed_zero ^^ (* A dummy closure *)
+         Type.(match as_obj par.note.Note.typ with
+         | Object, [] -> compile_unboxed_zero (* a dummy closure *)
+         |  _ -> compile_exp_vanilla env ae par) ^^ (* parenthetical *)
          compile_exp_as env ae (StackRep.of_arity n_args) e2 ^^ (* the args *)
          G.i (Call (nr (mk_fi ()))) ^^
          FakeMultiVal.load env (Lib.List.make return_arity I32Type)
@@ -10636,9 +10639,12 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
          StackRep.of_arity return_arity,
          code1 ^^ StackRep.adjust env fun_sr SR.Vanilla ^^
+         Closure.prepare_closure_call env ^^ (* FIXME: move to front elsewhere too *)
          set_clos ^^
-         get_clos ^^
-         Closure.prepare_closure_call env ^^
+         Type.(match as_obj par.note.Note.typ, ret_tys with
+         | (Object, []), _ -> get_clos (* just the closure *)
+         |  _, [ret] when is_async_fut ret -> Arr.lit env [compile_exp_vanilla env ae par; get_clos] (* parenthetical: pass a pair *)
+         | _ -> get_clos) ^^ (* just the closure *)
          compile_exp_as env ae (StackRep.of_arity n_args) e2 ^^
          get_clos ^^
          Closure.call_closure env n_args return_arity
@@ -11788,7 +11794,7 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | ICCallerPrim, [] ->
     SR.Vanilla, IC.caller env
 
-  | ICCallPrim, [f;e;k;r;c] ->
+  | ICCallPrim setup, [f;e;k;r;c] ->
     SR.unit, begin
     (* TBR: Can we do better than using the notes? *)
     let _, _, _, ts1, _ = Type.as_func f.note.Note.typ in
@@ -11798,7 +11804,9 @@ and compile_prim_invocation (env : E.t) ae p es at =
     let (set_k, get_k) = new_local env "k" in
     let (set_r, get_r) = new_local env "r" in
     let (set_c, get_c) = new_local env "c" in
-    let add_cycles = Internals.add_cycles env ae in
+    let add_cycles = match setup with
+      | None -> Internals.add_cycles env ae
+      | Some exp -> compile_exp_vanilla env ae exp ^^ G.i Drop in
     compile_exp_vanilla env ae f ^^ set_meth_pair ^^
     compile_exp_vanilla env ae e ^^ set_arg ^^
     compile_exp_vanilla env ae k ^^ set_k ^^
@@ -11858,6 +11866,26 @@ and compile_prim_invocation (env : E.t) ae p es at =
     SR.Vanilla, Cycles.available env
   | SystemCyclesRefundedPrim, [] ->
     SR.Vanilla, Cycles.refunded env
+  | ICCyclesPrim, [] ->
+    SR.Vanilla,
+    G.i (LocalGet (nr 0l)) ^^ (* closed-over bindings *)
+    G.if1 I32Type
+      begin
+        G.i (LocalGet (nr 0l)) ^^
+        Tagged.branch_with env [I32Type]
+          [ Tagged.Closure,
+            G.i Drop ^^
+            Opt.null_lit env
+          ; Tagged.Array,
+            Opt.inject_simple env (Arr.load_field env 0l) ^^
+            G.i (LocalGet (nr 0l)) ^^
+            Arr.load_field env 1l ^^
+            G.i (LocalSet (nr 0l))
+          ; Tagged.Object,
+            Opt.inject_simple env G.nop
+          ]
+      end
+      (Opt.null_lit env)
 
   | SetCertifiedData, [e1] ->
     SR.unit, compile_exp_vanilla env ae e1 ^^ IC.set_certified_data env
@@ -12031,7 +12059,7 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
     let return_arity = List.length return_tys in
     let mk_body env1 ae1 = compile_exp_as env1 ae1 (StackRep.of_arity return_arity) e in
     FuncDec.lit env ae x sort control captured args mk_body return_tys exp.at
-  | SelfCallE (ts, exp_f, exp_k, exp_r, exp_c) ->
+  | SelfCallE (cyc, ts, exp_f, exp_k, exp_r, exp_c) ->
     SR.unit,
     let (set_future, get_future) = new_local env "future" in
     let (set_k, get_k) = new_local env "k" in
@@ -12039,7 +12067,11 @@ and compile_exp_with_hint (env : E.t) ae sr_hint exp =
     let (set_c, get_c) = new_local env "c" in
     let mk_body env1 ae1 = compile_exp_as env1 ae1 SR.unit exp_f in
     let captured = Freevars.captured exp_f in
-    let add_cycles = Internals.add_cycles env ae in
+    let add_cycles = match cyc.it with
+      | LitE NullLit -> Internals.add_cycles env ae (* legacy *)
+      | _ when Type.(sub cyc.note.Note.typ (Opt (Obj (Object, [{ lab = "cycles"; typ = nat; src = empty_src}])))) ->
+        Internals.pass_cycles env ae (compile_exp_vanilla env ae cyc)
+      | _ -> Internals.pass_cycles env ae (Opt.null_lit env) in
     FuncDec.async_body env ae ts captured mk_body exp.at ^^
     Tagged.load_forwarding_pointer env ^^
     set_future ^^

@@ -87,7 +87,7 @@ module Make (Cfg : Config) = struct
         Atom (if sugar then "" else "=");
         exp e'
       ]
-    | CallE (e1, ts, e2)  -> "CallE"   $$ [exp e1] @ inst ts @ [exp e2]
+    | CallE (_FIXME, e1, ts, e2)  -> "CallE"   $$ [exp e1] @ inst ts @ [exp e2]
     | BlockE ds           -> "BlockE"  $$ List.map dec ds
     | NotE e              -> "NotE"    $$ [exp e]
     | AndE (e1, e2)       -> "AndE"    $$ [exp e1; exp e2]
@@ -104,8 +104,9 @@ module Make (Cfg : Config) = struct
     | DebugE e            -> "DebugE"  $$ [exp e]
     | BreakE (i, e)       -> "BreakE"  $$ [id i; exp e]
     | RetE e              -> "RetE"    $$ [exp e]
-    | AsyncE (Type.Fut, tb, e) -> "AsyncE"  $$ [typ_bind tb; exp e]
-    | AsyncE (Type.Cmp, tb, e) -> "AsyncE*" $$ [typ_bind tb; exp e]
+    | AsyncE (None, Type.Fut, tb, e) -> "AsyncE" $$ [typ_bind tb; exp e]
+    | AsyncE (Some par, Type.Fut, tb, e) -> "AsyncE()" $$ [exp par; typ_bind tb; exp e]
+    | AsyncE (None, Type.Cmp, tb, e) -> "AsyncE*" $$ [typ_bind tb; exp e]
     | AwaitE (Type.Fut, e)     -> "AwaitE"  $$ [exp e]
     | AwaitE (Type.Cmp, e)     -> "AwaitE*" $$ [exp e]
     | AssertE (Runtime, e)       -> "AssertE" $$ [exp e]

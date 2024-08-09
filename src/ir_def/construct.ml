@@ -62,6 +62,8 @@ let tupP pats =
     note = T.Tup (List.map (fun p -> p.note) pats);
     at = no_region }
 
+let tupVarsP vs = List.map varP vs |> tupP
+
 let seqP ps =
   match ps with
   | [p] -> p
@@ -93,7 +95,8 @@ let primE prim es =
     | ICStableRead t -> t
     | ICMethodNamePrim -> T.text
     | ICPerformGC
-    | ICStableWrite _ -> T.unit
+    | ICStableWrite _
+    | SystemCyclesAddPrim -> T.unit
     | ICStableSize _ -> T.nat64
     | IdxPrim
     | DerefArrayOffset -> T.(as_immut (as_array_sub (List.hd es).note.Note.typ))
@@ -110,6 +113,7 @@ let primE prim es =
     | SystemCyclesAcceptPrim -> T.nat
     | DeserializePrim ts -> T.seq ts
     | DeserializeOptPrim ts -> T.Opt (T.seq ts)
+    | ICCyclesPrim -> T.(Opt (Obj (Object, [{ lab = "cycles"; typ = nat; src = empty_src}])))
     | OtherPrim "trap" -> T.Non
     | OtherPrim "call_perform_status" -> T.(Prim Nat32)
     | OtherPrim "call_perform_message" -> T.text
@@ -150,14 +154,6 @@ let assertE e =
   }
 
 
-let asyncE s typ_bind e typ1 =
-  { it = AsyncE (s, typ_bind, e, typ1);
-    at = no_region;
-    note =
-      Note.{ def with typ = T.Async (s, typ1, typ e);
-                      eff = T.(if s = Fut then Await else Triv) }
-  }
-
 let awaitE s e =
   let (s, _ , typ) = T.as_async (T.normalize (typ e)) in
   { it = PrimE (AwaitPrim s, [e]);
@@ -165,8 +161,14 @@ let awaitE s e =
     note = Note.{ def with typ; eff = T.Await }
   }
 
-let cps_asyncE s typ1 typ2 e =
-  { it = PrimE (CPSAsync (s, typ1), [e]);
+let nullE () =
+  { it = LitE NullLit;
+    at = no_region;
+    note = Note.{ def with typ = T.(Prim Null) }
+  }
+
+let cps_asyncE s typ1 par typ2 e =
+  { it = PrimE (CPSAsync (s, typ1, if s = Fut then par else nullE ()), [e]);
     at = no_region;
     note = Note.{ def with typ = T.Async (s, typ1, typ2); eff = eff e }
   }
@@ -195,10 +197,10 @@ let ic_rejectE e =
     note = Note.{ def with typ = T.unit; eff = eff e }
   }
 
-let ic_callE f e k r c =
+let ic_callE s f e k r c =
   let es = [f; e; k; r; c] in
   let eff = map_max_effs eff es in
-  { it = PrimE (ICCallPrim, es);
+  { it = PrimE (ICCallPrim s, es);
     at = no_region;
     note = Note.{ def with typ = T.unit; eff }
   }
@@ -298,12 +300,6 @@ let boolE b =
     note = Note.{ def with typ = T.bool }
   }
 
-let nullE () =
-  { it = LitE NullLit;
-    at = no_region;
-    note = Note.{ def with typ = T.Prim T.Null }
-  }
-
 
 (* Functions *)
 
@@ -321,6 +317,16 @@ let funcE name sort ctrl typ_binds args typs exp =
     note = Note.{ def with typ; eff = T.Triv };
   }
 
+let recordE' = ref (fun _ -> nullE ()) (* gets correctly filled below *)
+
+let asyncE s typ_bind e typ1 =
+  { it = AsyncE (!recordE' [], s, typ_bind, e, typ1);
+    at = no_region;
+    note =
+      Note.{ def with typ = T.Async (s, typ1, typ e);
+                      eff = T.(if s = Fut then Await else Triv) }
+  }
+
 let callE exp1 typs exp2 =
   let typ = match T.promote (typ exp1) with
     | T.Func (_sort, control, _, _, ret_tys) ->
@@ -328,7 +334,7 @@ let callE exp1 typs exp2 =
     | T.Non -> T.Non
     | _ -> raise (Invalid_argument "callE expect a function")
   in
-  let p = CallPrim typs in
+  let p = CallPrim (typs, !recordE' []) in
   let es = [exp1; exp2] in
   { it = PrimE (p, es);
     at = no_region;
@@ -360,7 +366,7 @@ let orE : Ir.exp -> Ir.exp -> Ir.exp = fun e1 e2 ->
 let impliesE : Ir.exp -> Ir.exp -> Ir.exp = fun e1 e2 ->
   orE (notE e1) e2
 let oldE : Ir.exp -> Ir.exp = fun e ->
-  { it = (primE (CallPrim [typ e]) [e]).it;
+  { it = (primE (CallPrim ([typ e], !recordE' [])) [e]).it;
     at = no_region;
     note = Note.{ def with
       typ = typ e;
@@ -376,7 +382,7 @@ let dotE exp name typ =
   { it = PrimE (DotPrim name, [exp]);
     at = no_region;
     note = Note.{ def with
-      typ = typ;
+      typ;
       eff = eff exp
     }
   }
@@ -482,6 +488,9 @@ let assignE v exp2 =
     at = no_region;
     note = Note.{ def with typ = T.unit; eff = eff exp2 };
   }
+
+let assignVarE v exp =
+  assignE (var v T.(Mut (typ exp |> as_immut))) exp
 
 let labelE l typ exp =
   { it = LabelE (l, typ, exp);
@@ -790,6 +799,8 @@ let objE sort typ_flds flds =
   go [] [] [] flds
 
 let recordE flds = objE T.Object [] flds
+
+let _ = recordE' := recordE
 
 let check_call_perform_status success mk_failure =
   ifE

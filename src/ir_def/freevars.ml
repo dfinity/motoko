@@ -112,14 +112,14 @@ let rec exp e : f = match e.it with
   | SwitchE (e, cs)     -> exp e ++ cases cs
   | LoopE e1            -> exp e1
   | LabelE (i, t, e)    -> exp e
-  | AsyncE (_, _, e, _) -> exp e
+  | AsyncE (par, _, _, e, _) -> exp par ++ exp e
   | DeclareE (i, t, e)  -> exp e  // i
   | DefineE (i, m, e)   -> id i ++ exp e
   | FuncE (x, s, c, tp, as_, t, e) -> under_lambda (exp e /// args as_)
   | ActorE (ds, fs, u, _)  -> actor ds fs u
   | NewObjE (_, fs, _)  -> fields fs
   | TryE (e, cs, cl)    -> exp e ++ cases cs ++ (match cl with Some (v, _) -> id v | _ -> M.empty)
-  | SelfCallE (_, e1, e2, e3, e4) -> under_lambda (exp e1) ++ exps [e2; e3; e4]
+  | SelfCallE (_FIXME, _, e1, e2, e3, e4) -> under_lambda (exp e1) ++ exps [e2; e3; e4]
 
 and actor ds fs u = close (decs ds +++ fields fs +++ system u)
 
