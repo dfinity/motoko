@@ -24,18 +24,18 @@ let id_of_full_path (fp : string) : string =
 
 let apply_sign op l = Syntax.(match op, l with
   | PosOp, l -> l
-  | NegOp, (NatLit n | IntLit n) -> IntLit (Numerics.Int.sub Numerics.Int.zero n)
-  | NegOp, Int8Lit n -> Int8Lit (Numerics.Int_8.sub Numerics.Int_8.zero n)
-  | NegOp, Int16Lit n -> Int16Lit (Numerics.Int_16.sub Numerics.Int_16.zero n)
-  | NegOp, Int32Lit n -> Int32Lit (Numerics.Int_32.sub Numerics.Int_32.zero n)
-  | NegOp, Int64Lit n -> Int64Lit (Numerics.Int_64.sub Numerics.Int_64.zero n)
+  | NegOp, (NatLit n | IntLit n) -> IntLit Numerics.Int.(sub zero n)
+  | NegOp, Int8Lit n -> Int8Lit Numerics.Int_8.(sub zero n)
+  | NegOp, Int16Lit n -> Int16Lit Numerics.Int_16.(sub zero n)
+  | NegOp, Int32Lit n -> Int32Lit Numerics.Int_32.(sub zero n)
+  | NegOp, Int64Lit n -> Int64Lit Numerics.Int_64.(sub zero n)
   | _, _ -> raise (Invalid_argument "Invalid signed pattern")
   )
 
 let phrase f x = { x with it = f x.it }
 
 let typ_note : S.typ_note -> Note.t =
-  fun S.{ note_typ; note_eff } -> Note.{ def with typ = note_typ; eff = note_eff }
+  fun S.{ note_typ; note_eff; _ } -> Note.{ def with typ = note_typ; eff = note_eff }
 
 let phrase' f x =
   { x with it = f x.at x.note x.it }
@@ -54,7 +54,7 @@ and exp e =
     | _ -> typed_phrase' exp' e
 
 and exp' at note = function
-  | S.VarE i -> I.VarE i.it
+  | S.VarE i -> I.VarE ((match i.note with Var -> I.Var | Const -> I.Const), i.it)
   | S.ActorUrlE e ->
     I.(PrimE (ActorOfIdBlob note.Note.typ, [url e at]))
   | S.LitE l -> I.LitE (lit !l)
@@ -216,7 +216,14 @@ and exp' at note = function
   | S.OldE e -> (oldE (exp e)).it
   | S.IfE (e1, e2, e3) -> I.IfE (exp e1, exp e2, exp e3)
   | S.SwitchE (e1, cs) -> I.SwitchE (exp e1, cases cs)
-  | S.TryE (e1, cs) -> I.TryE (exp e1, cases cs)
+  | S.TryE (e1, cs, None) -> I.TryE (exp e1, cases cs, None)
+  | S.TryE (e1, cs, Some e2) ->
+    let thunk = [] -->* exp e2 |> named "$cleanup" in
+    assert T.(is_func thunk.note.Note.typ);
+    let th = fresh_var "thunk" thunk.note.Note.typ in
+    (blockE
+       [ letD th thunk ]
+       { e1 with it = I.TryE (exp e1, cases cs, Some (id_of_var th, typ_of_var th)); note }).it
   | S.WhileE (e1, e2) -> (whileE (exp e1) (exp e2)).it
   | S.LoopE (e1, None) -> I.LoopE (exp e1)
   | S.LoopE (e1, Some e2) -> (loopWhileE (exp e1) (exp e2)).it
@@ -457,6 +464,67 @@ and export_footprint self_id expr =
   )],
   [{ it = I.{ name = lab; var = v }; at = no_region; note = typ }])
 
+and export_runtime_information self_id =
+  let open T in
+  let {lab;typ;_} = motoko_runtime_information_fld in
+  let v = "$"^lab in
+  let scope_con1 = Cons.fresh "T1" (Abs ([], scope_bound)) in
+  let scope_con2 = Cons.fresh "T2" (Abs ([], Any)) in
+  let bind1  = typ_arg scope_con1 Scope scope_bound in
+  let bind2 = typ_arg scope_con2 Scope scope_bound in
+  let gc_strategy = 
+    let open Mo_config in
+    let strategy = match !Flags.gc_strategy with
+    | Flags.MarkCompact -> "compacting"
+    | Flags.Copying -> "copying"
+    | Flags.Generational -> "generational"
+    | Flags.Incremental -> "incremental" in
+    if !Flags.force_gc then (Printf.sprintf "%s force" strategy) else strategy
+  in
+  let prim_call function_name = primE (I.OtherPrim function_name) [] in
+  let information = [
+    ("compilerVersion", textE (Lib.Option.get Source_id.release Source_id.id), T.text);
+    ("garbageCollector", textE gc_strategy, T.text);
+    ("rtsVersion", prim_call "rts_version", T.text);
+    ("sanityChecks", boolE !Mo_config.Flags.sanity, T.bool);
+    ("memorySize", prim_call "rts_memory_size", T.nat);
+    ("heapSize", prim_call "rts_heap_size", T.nat);
+    ("totalAllocation", prim_call "rts_total_allocation", T.nat);
+    ("reclaimed", prim_call "rts_reclaimed", T.nat);
+    ("maxLiveSize", prim_call "rts_max_live_size", T.nat);
+    ("stableMemorySize", prim_call "rts_stable_memory_size", T.nat);
+    ("logicalStableMemorySize", prim_call "rts_logical_stable_memory_size", T.nat);
+    ("maxStackSize", prim_call "rts_max_stack_size", T.nat);
+    ("callbackTableCount", prim_call "rts_callback_table_count", T.nat);
+    ("callbackTableSize", prim_call "rts_callback_table_size", T.nat)
+  ] in
+  let fields = List.map (fun (name, _, typ) -> fresh_var name typ) information in
+  (* Use an object return type to allow adding more data in future. *)
+  let ret_typ = motoko_runtime_information_type in
+  let caller = fresh_var "caller" caller in
+  ([ letD (var v typ) (
+       funcE v (Shared Query) Promises [bind1] [] [ret_typ] (
+           (asyncE T.Fut bind2
+              (blockE ([
+                  letD caller (primE I.ICCallerPrim []);
+                  expD (ifE (orE 
+                      (primE (I.RelPrim (principal, Operator.EqOp)) [varE caller; selfRefE principal])
+                      (primE (I.OtherPrim "is_controller") [varE caller]))
+                    (unitE()) 
+                    (primE (Ir.OtherPrim "trap")
+                      [textE "Unauthorized call of __motoko_runtime_information"]))
+                  ] @
+                  (List.map2 (fun field (_, load_info, _) -> 
+                    letD field load_info
+                  ) fields information))
+                (newObjE T.Object
+                  (List.map2 (fun field (name, _, typ) -> 
+                      { it = Ir.{name; var = id_of_var field}; at = no_region; note = typ }) 
+                    fields information
+                  ) ret_typ))
+              (Con (scope_con1, []))))
+  )],
+  [{ it = I.{ name = lab; var = v }; at = no_region; note = typ }])
 
 and build_actor at ts self_id es obj_typ =
   let candid = build_candid ts obj_typ in
@@ -512,8 +580,9 @@ and build_actor at ts self_id es obj_typ =
                    note = f.T.typ }
                ) fields vs)
             ty)) in
-  let footprint_d, footprint_f = export_footprint self_id (with_stable_vars (fun e -> e)) in
-  I.(ActorE (footprint_d @ ds', footprint_f @ fs,
+  let footprint_d, footprint_f = export_footprint self_id (with_stable_vars Fun.id) in
+  let runtime_info_d, runtime_info_f = export_runtime_information self_id in
+  I.(ActorE (footprint_d @ runtime_info_d @ ds', footprint_f @ runtime_info_f @ fs,
      { meta;
        preupgrade = with_stable_vars (fun e -> primE (I.ICStableWrite ty) [e]);
        postupgrade =
@@ -592,17 +661,19 @@ and exp_field obj_typ ef =
     let id' = fresh_var id.it typ in
     let d = varD id' (exp e) in
     let f = { it = I.{ name = id.it; var = id_of_var id' }; at = no_region; note = typ } in
-    (d, f)
+    ([d], f)
   | S.Const ->
     let typ = match T.lookup_val_field_opt id.it fts with
       | Some typ -> typ
       | None -> e.note.S.note_typ
     in
     assert (not (T.is_mut typ));
-    let id' = fresh_var id.it typ in
-    let d = letD id' (exp e) in
+    let e = exp e in
+    let id', ds = match e.it with
+    | I.(VarE (Const, v)) -> var v typ, []
+    | _ -> let id' = fresh_var id.it typ in id', [letD id' e] in
     let f = { it = I.{ name = id.it; var = id_of_var id' }; at = no_region; note = typ } in
-    (d, f)
+    (ds, f)
 
 and obj obj_typ efs bases =
   let open List in
@@ -631,10 +702,11 @@ and obj obj_typ efs bases =
         let f = { it = I.{ name = lab; var = id_of_var id }; at = no_region; note = typ } in
         [d, f] in
 
-  let ds, fs = map (exp_field obj_typ) efs |> split in
+  let dss, fs = map (exp_field obj_typ) efs |> split in
   let ds', fs' = concat_map gap (T.as_obj obj_typ |> snd) |> split in
   let obj_e = newObjE T.Object (append fs fs') obj_typ in
-  I.BlockE(append base_decs (append ds ds'), obj_e)
+  let decs = append base_decs (append (flatten dss) ds') in
+  (blockE decs obj_e).it
 
 and typ_binds tbs = List.map typ_bind tbs
 
@@ -776,11 +848,11 @@ and dec' at n = function
     } in
     I.LetD (varPat, fn)
 
-and cases cs = List.map case cs
+and cases cs = List.map (case Fun.id) cs
 
-and case c = phrase case' c
+and case f c = phrase (case' f) c
 
-and case' c = S.{ I.pat = pat c.pat; I.exp = exp c.exp }
+and case' f c = S.{ I.pat = pat c.pat; I.exp = f (exp c.exp) }
 
 and pats ps = List.map pat ps
 
@@ -863,11 +935,11 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
     | S.AnnotP _ | S.ParP _ -> assert false
     | S.VarP i when not must_wrap ->
       { i with note = p.note },
-      (fun e -> e)
+      Fun.id
     | S.WildP ->
       let v = fresh_var "param" p.note in
       arg_of_var v,
-      (fun e -> e)
+      Fun.id
     |  _ ->
       let v = fresh_var "param" p.note in
       arg_of_var v,
@@ -880,18 +952,18 @@ and to_args typ po p : Ir.arg list * (Ir.exp -> Ir.exp) * T.control * T.typ list
     | _, S.WildP ->
       let vs = fresh_vars "ignored" tys in
       List.map arg_of_var vs,
-      (fun e -> e)
+      Fun.id
     | 1, _ ->
       let a, wrap = to_arg p in
       [a], wrap
     | 0, S.TupP [] ->
-      [] , (fun e -> e)
+      [], Fun.id
     | _, S.TupP ps ->
       assert (List.length ps = n_args);
       List.fold_right (fun p (args, wrap) ->
         let (a, wrap1) = to_arg p in
         (a::args, fun e -> wrap1 (wrap e))
-      ) ps ([], fun e -> e)
+      ) ps ([], Fun.id)
     | _, _ ->
       let vs = fresh_vars "param" tys in
       List.map arg_of_var vs,

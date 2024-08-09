@@ -55,3 +55,6 @@ sidebar_position: 6
 | M0195      | A function that demands elevated (system) capabilities was called without manifestly passing the capability. |
 | M0197      | A function that requires (system) capabilities was called in a context that does not provide them. |
 | M0198      | A field identifier was specified in an object pattern without referencing this identifier later. |
+
+
+<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />

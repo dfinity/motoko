@@ -68,7 +68,12 @@ let string_of_message msg =
     | Error -> Printf.sprintf "%s error" msg.cat
     | Warning -> "warning"
     | Info -> "info" in
-  Printf.sprintf "%s: %s%s, %s\n" (Source.string_of_region msg.at) label code msg.text
+  let src = if !Flags.print_source_on_error then
+    match Source.read_region_with_markers msg.at with
+    | Some(src) -> Printf.sprintf "> %s\n\n" src
+    | None -> ""
+  else "" in
+  Printf.sprintf "%s: %s%s, %s\n%s" (Source.string_of_region msg.at) label code msg.text src
 
 let print_message msg =
   if msg.sev <> Error && not !Flags.print_warnings

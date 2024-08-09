@@ -108,3 +108,5 @@ Want to get started building with Motoko? Check out some of these sample project
 - [Motoko book](https://github.com/Web3NL/motoko-book): An educational book on Motoko.
 
 - [Motoko Bootcamp](https://github.com/motoko-bootcamp/education): Lessons and lectures on Motoko development.
+
+<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />

@@ -105,17 +105,31 @@ To detect the possibility of such runtime failures, the Motoko compiler checks f
 
 ## Refutable patterns and dealing with non-matching data
 
-Developers may only be interested in specially formed data with a desire to directly handle all non-matching forms. The `let`-`else` construct is designed precisely for this purpose. Whereas the regular destructuring `let` allows to focus on a single given pattern, it invariably traps if the right-hand side data doesn't match it, which is warned at compilation. The `else` clause gives the programmer a way to deal with refuted matches, such as bailing out of the process or logging a message before trapping. As such, `let`-`else` is similar to a two-`case` `switch` in a compact form that additionally doesn't force the indentation of the processing logic following it.
 
-The below example illustrates how you can write a non-indenting `if`-`else` by resorting to a `let`-`else` in your code:
+The `let`-`else` construct in Motoko is designed for developers who want to work with a specific pattern of data while handling all non-matching data on a different control flow path. Unlike the standard destructuring `let`, which traps (and triggers a compile-time warning) when the data doesn't match the expected pattern, `let`-`else` provides a way to manage refuted matches. This construct allows programmers to gracefully handle mismatches, such as exiting the current function or logging a message before trapping.
+
+`let`-`else` can be seen as a more compact version of a two-case `switch` statement. It has the added benefit of not requiring indentation for the code that follows it, which can improve readability. This feature enables developers to write non-indenting `if`-`else`-like structures in their code.
+
+Here's an example demonstrating how to use `let`-`else` to avoid a less readable, indentation-increasing `switch`:
 
 ``` motoko
-let true = isLoggedIn(customer) else return;
-// process message for logged-in customer
+func getName(optionalName : ?Text) : Text {
+  let ?name = optionalName else return "Unknown";
+  name
+}
 ```
 
-The expression (or block) following the `else` must be of type `None` signifying that its execution trajectory mustn't contribute to the code immediately following the `let` declaration.
+In a `let-else` construct, the expression or block following the `else` keyword must have type `None`. This indicates that its execution cannot enter the code following the `let` declaration but must change the flow of control, typically by returning early, breaking to some enclosing label or trapping.
 
 ## Option blocks for streamlined processing of optional data
 
-Pattern matching on optional data (of type `?T`) is a preferred technique for avoiding the dreaded `null`-exeption problems known from other languages. However, `switch`-ing  on several options can lead to tedious coding and deeply nested sources. To remedy these problems, Motoko provides *option blocks* (`do ? { ... }`) that allow safe unwrapping of options using a postfix `!` operator. Every use of the `!` in the block corresponds to a `switch` on some option, with the additional short-circuiting behavior that if `!` is applied to a `null` value, the entire block stops evaluation and immediately returns `null`.
+Motoko offers a preferred method for handling optional data (of type `?T`) through pattern matching, which helps avoid the notorious `null`-exception issues common in other programming languages. 
+However, using multiple switch statements on several options can become cumbersome and result in deeply nested, hard-to-read code. 
+To address this, Motoko introduces a feature called *option blocks*, written as `do ? { ... }`. 
+These blocks allow for safe unwrapping of optional values using a postfix `!` operator.
+Each use of `!` within the block is equivalent to a switch statement on an option, but with an added benefit: if `!` is applied to a `null` value,  the entire block immediately abandons execution and returns `null`. 
+This short-circuiting behavior simplifies the handling of multiple optional values in a more concise and readable manner.
+
+For an example, see [option blocks and null breaks](control-flow#option-blocks-and-null-breaks).
+
+<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />

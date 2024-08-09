@@ -55,3 +55,5 @@ Simple actor declarations do not let you access their installer. If you need acc
 :::
 
 Principals support equality, ordering, and hashing, so you can efficiently store principals in containers for functions such as maintaining an allow or deny list. More operations on principals are available in the [principal](../base/Principal.md) base library.
+
+<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />

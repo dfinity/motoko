@@ -40,7 +40,7 @@ let error_codes : (string * string option) list =
     "M0034", None; (* Shared constructor has non-shared parameter type *)
     "M0035", None; (* Invalid return type for shared function *)
     "M0036", None; (* Invalid return type for shared query function *)
-    "M0037", None; (* Misplaced async expression *)
+    "M0037", Some([%blob "lang_utils/error_codes/M0037.md"]); (* Misplaced async expression *)
     "M0038", None; (* Misplaced await *)
     "M0039", None; (* Misplaced try/throw/catch *)
     "M0040", None; (* Unknown primitive type *)
