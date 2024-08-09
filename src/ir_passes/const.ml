@@ -100,7 +100,7 @@ let set_lazy_const e lb =
 let rec exp lvl (env : env) e : Lbool.t =
   let lb =
     match e.it with
-    | VarE v -> (find v env).const
+    | VarE (_, v) -> (find v env).const (*FIXME: use the mutability marker?*)
     | FuncE (x, s, c, tp, as_ , ts, body) ->
       exp_ NotTopLvl (args NotTopLvl env as_) body;
       begin match s, lvl with
@@ -147,14 +147,20 @@ let rec exp lvl (env : env) e : Lbool.t =
       exp_ lvl env e2;
       exp_ lvl env e3;
       surely_false
-    | SelfCallE (_, e1, e2, e3) ->
+    | SelfCallE (_, e1, e2, e3, e4) ->
       exp_ NotTopLvl env e1;
       exp_ lvl env e2;
       exp_ lvl env e3;
+      exp_ lvl env e4;
       surely_false
-    | SwitchE (e1, cs) | TryE (e1, cs) ->
+    | SwitchE (e1, cs) | TryE (e1, cs, None) ->
       exp_ lvl env e1;
       List.iter (case_ lvl env) cs;
+      surely_false
+    | TryE (e1, cs, Some (v, t)) ->
+      exp_ lvl env e1;
+      List.iter (case_ lvl env) cs;
+      exp_ lvl env Construct.(var v t |> varE);
       surely_false
     | NewObjE _ -> (* mutable objects *)
       surely_false

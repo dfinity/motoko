@@ -81,7 +81,7 @@ Labeled common expressions don’t allow `continue`. In terms of typing, both `<
 
 ## Option blocks and null breaks
 
-Motoko lets you opt in to `null` values, tracking possible occurrences of `null` values using option types of the form `?T`. This is to both to encourage you to avoid using `null` values when possible, and to consider the possibility of `null` values when necessary. Motoko simplifies the handling of option types with some dedicated syntax: option blocks and null breaks.
+Motoko lets you opt in to `null` values, tracking possible occurrences of `null` values using option types of the form `?T`. This is both to encourage you to avoid using `null` values when possible, and to consider the possibility of `null` values when necessary. Motoko simplifies the handling of option types with some dedicated syntax: option blocks and null breaks.
 
 The option block, `do ? <block>`, produces a value of type `?T`, when block `<block>` has type `T` and, importantly, introduces the possibility of a break from `<block>`. Within a `do ? <block>`, the null break `<exp> !`, tests whether the result of the expression, `<exp>`, of unrelated option type, `?U`, is `null`. If the result `<exp>` is `null`, control immediately exits the `do ? <block>` with value `null`. Otherwise, the result of `<exp>` must be an option value `?v`, and evaluation of `<exp> !` proceeds with its contents, `v` of type `U`.
 
@@ -202,3 +202,5 @@ Many built-in data structures come with pre-defined iterators. Below table lists
 
 
 User-defined data structures can define their own iterators. As long they conform with the `Iter<A>` type for some element type `A`, these behave like the built-in ones and can be consumed with ordinary `for`-loops.
+
+<img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />

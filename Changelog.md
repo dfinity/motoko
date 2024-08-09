@@ -1,5 +1,65 @@
 # Motoko compiler changelog
 
+## 0.12.1 (2024-08-08)
+
+* motoko (`moc`)
+
+  * Added a new command-line flag `--print-source-on-error` to print source code context on error (#4650).
+
+  * debugging: `__motoko_runtime_information()` as privileged query for runtime statistics (#4635).
+
+    Exposing a privileged system-level query function `__motoko_runtime_information()` 
+    that reports the current runtime statistics of the canister, such as the heap size, 
+    the total number of allocated objects, the total amount of reclaimed memory and more.
+    This is useful because several statistics of the reported information cannot be 
+    inspected on the IC replica dashboard as they are internal to the Motoko runtime system. 
+    This query is only authorized to the canister controllers and self-calls of the canister.
+
+    ``` Motoko
+    __motoko_runtime_information : () -> {
+        compilerVersion : Text;
+        rtsVersion : Text;
+        garbageCollector : Text;
+        sanityChecks : Nat;
+        memorySize : Nat;
+        heapSize : Nat;
+        totalAllocation : Nat;
+        reclaimed : Nat;
+        maxLiveSize : Nat;
+        stableMemorySize : Nat;
+        logicalStableMemorySize : Nat;
+        maxStackSize : Nat;
+        callbackTableCount : Nat;
+        callbackTableSize : Nat;
+    }
+    ```
+
+## 0.12.0 (2024-07-26)
+
+* motoko (`moc`)
+
+  * feat: `finally` clauses for `try` expressions (#4507).
+
+    A trailing `finally` clause to `try`/`catch` expressions facilitates structured
+    resource deallocation (e.g. acquired locks, etc.) and similar cleanups in the
+    presence of control-flow expressions (`return`, `break`, `continue`, `throw`).
+    Additionally, in presence of `finally` the `catch` clause becomes optional and
+    and any uncaught error from the `try` block will be propagated, after executing the `finally` block.
+
+    _Note_: `finally`-expressions that are in scope will be executed even if an execution
+    path _following_ an `await`-expression traps. This feature, formerly not available in Motoko,
+    allows programmers to implement cleanups even in the presence of traps. For trapping 
+    execution paths prior to any `await`, the replica-provided state roll-back mechanism 
+    ensures that no cleanup is required.
+
+    The relevant security best practices are accessible at
+    https://internetcomputer.org/docs/current/developer-docs/security/security-best-practices/inter-canister-calls#recommendation
+
+    BREAKING CHANGE (Minor): `finally` is now a reserved keyword,
+    programs using this identifier will break.
+
+  * bugfix: `mo-doc` will now generate correct entries for `public` variables (#4626).
+
 ## 0.11.3 (2024-07-16)
 
 * motoko (`moc`)

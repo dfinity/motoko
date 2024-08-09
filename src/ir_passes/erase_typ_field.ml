@@ -83,7 +83,7 @@ let transform prog =
         Type.set_kind clone (t_kind (Cons.kind c));
         clone
 
-  and t_prim p = Ir.map_prim t_typ (fun id -> id) p
+  and t_prim p = Ir.map_prim t_typ Fun.id p
 
   and t_field {lab; typ; src} =
     { lab; typ = t_typ typ; src }
@@ -100,8 +100,8 @@ let transform prog =
   and t_exp' (exp : exp) =
     let exp' = exp.it in
     match exp' with
-    | LitE _ -> exp'
-    | VarE id -> exp'
+    | LitE _
+    | VarE _ -> exp'
     | AssignE (exp1, exp2) ->
       AssignE (t_lexp exp1, t_exp exp2)
     | PrimE (p, exps) ->
@@ -118,8 +118,8 @@ let transform prog =
       LabelE (id, t_typ typ, t_exp exp1)
     | AsyncE (s, tb, exp1, typ) ->
       AsyncE (s, t_typ_bind tb, t_exp exp1, t_typ typ)
-    | TryE (exp1, cases) ->
-      TryE (t_exp exp1, List.map t_case cases)
+    | TryE (exp1, cases, vt) ->
+      TryE (t_exp exp1, List.map t_case cases, vt)
     | DeclareE (id, typ, exp1) ->
       DeclareE (id, t_typ typ, t_exp exp1)
     | DefineE (id, mut ,exp1) ->

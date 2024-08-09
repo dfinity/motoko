@@ -92,12 +92,12 @@ and assignEs vars exp : dec list =
     List.mapi (fun i v -> expD (assignE v (projE (varE v) i))) vars
 
 and exp' env e  : exp' = match e.it with
-  | VarE _ | LitE _     -> e.it
+  | (VarE (_, _) | LitE _) as it -> it
   | AssignE (e1, e2)    -> AssignE (lexp env e1, exp env e2)
   | PrimE (CallPrim insts, [e1; e2])  ->
     begin match e1.it, env with
-    | VarE f1, { tail_pos = true;
-                 info = Some { func; typ_binds; temps; label; tail_called } }
+    | VarE (_, f1), { tail_pos = true;
+                      info = Some { func; typ_binds; temps; label; tail_called } }
          when f1 = func && are_generic_insts typ_binds insts  ->
       tail_called := true;
       (blockE (assignEs temps (exp env e2)) (breakE label (unitE ()))).it
@@ -106,7 +106,7 @@ and exp' env e  : exp' = match e.it with
   | BlockE (ds, e)      -> BlockE (block env ds e)
   | IfE (e1, e2, e3)    -> IfE (exp env e1, tailexp env e2, tailexp env e3)
   | SwitchE (e, cs)     -> SwitchE (exp env e, cases env cs)
-  | TryE (e, cs)        -> TryE (exp env e, cases env cs) (* TBR *)
+  | TryE (e, cs, vt)    -> TryE (exp env e, cases env cs, vt) (* TBR *)
   | LoopE e1            -> LoopE (exp env e1)
   | LabelE (i, t, e)    -> let env1 = bind env i None in
                            LabelE(i, t, exp env1 e)
@@ -120,12 +120,13 @@ and exp' env e  : exp' = match e.it with
     let env2 = args env1 as_ in
     let exp0' = tailexp env2 exp0 in
     FuncE (x, s, c, tbs, as_, ret_tys, exp0')
-  | SelfCallE (ts, exp1, exp2, exp3) ->
+  | SelfCallE (ts, exp1, exp2, exp3, exp4) ->
     let env1 = { tail_pos = true; info = None} in
     let exp1' = tailexp env1 exp1 in
     let exp2' = exp env exp2 in
     let exp3' = exp env exp3 in
-    SelfCallE (ts, exp1', exp2', exp3')
+    let exp4' = exp env exp4 in
+    SelfCallE (ts, exp1', exp2', exp3', exp4')
   | ActorE (ds, fs, u, t, build_stable_actor) ->
     let u = { u with preupgrade = exp env u.preupgrade; postupgrade = exp env u.postupgrade } in
     let build_stable_actor = exp env build_stable_actor in

@@ -58,7 +58,7 @@ type arg = (string, Type.typ) Source.annotated_phrase
 type exp = exp' phrase
 and exp' =
   | PrimE of (prim * exp list)                 (* primitive *)
-  | VarE of id                                 (* variable *)
+  | VarE of mut * id                           (* variable *)
   | LitE of lit                                (* literal *)
   | AssignE of lexp * exp                      (* assignment *)
   | BlockE of (dec list * exp)                 (* block *)
@@ -71,10 +71,10 @@ and exp' =
   | DefineE of id * mut * exp                  (* promise fulfillment *)
   | FuncE of                                   (* function *)
       string * Type.func_sort * Type.control * typ_bind list * arg list * Type.typ list * exp
-  | SelfCallE of Type.typ list * exp * exp * exp (* essentially ICCallPrim (FuncE shared…) *)
+  | SelfCallE of Type.typ list * exp * exp * exp * exp (* essentially ICCallPrim (FuncE shared…) *)
   | ActorE of dec list * field list * system * Type.typ * exp (* actor *)
-  | NewObjE of Type.obj_sort * field list * Type.typ  (* make an object *)
-  | TryE of exp * case list                    (* try/catch *)
+  | NewObjE of Type.obj_sort * field list * Type.typ     (* make an object *)
+  | TryE of exp * case list * (id * Type.typ) option (* try/catch/cleanup *)
 
 and system = {
   meta : meta;

@@ -103,7 +103,7 @@ let fields fs = unions (fun f ->
 ) fs
 
 let rec exp e : f = match e.it with
-  | VarE i              -> id i
+  | VarE (_, i)         -> id i
   | LitE l              -> M.empty
   | PrimE (_, es)       -> exps es
   | AssignE (e1, e2)    -> lexp e1 ++ exp e2
@@ -118,8 +118,8 @@ let rec exp e : f = match e.it with
   | FuncE (x, s, c, tp, as_, t, e) -> under_lambda (exp e /// args as_)
   | ActorE (ds, fs, u, _, e)  -> actor ds fs u e
   | NewObjE (_, fs, _)  -> fields fs
-  | TryE (e, cs)        -> exp e ++ cases cs
-  | SelfCallE (_, e1, e2, e3) -> under_lambda (exp e1) ++ exp e2 ++ exp e3
+  | TryE (e, cs, cl)    -> exp e ++ cases cs ++ (match cl with Some (v, _) -> id v | _ -> M.empty)
+  | SelfCallE (_, e1, e2, e3, e4) -> under_lambda (exp e1) ++ exps [e2; e3; e4]
 
 and actor ds fs u build_stable_actor = close (decs ds +++ fields fs +++ system u +++ under_lambda (exp build_stable_actor))
 
