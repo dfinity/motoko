@@ -39,7 +39,7 @@ let mono_calls_visitor (stk : mono_goal Stack.t) : visitor =
          let goal = { mg_id = v.it; mg_typs = inst.note } in
          if goal.mg_typs <> [] then Stack.push goal stk;
          let s = string_of_mono_goal goal in
-         {exp with it = CallE(None, {it = VarE (s @@ v_at); at=v_at; note=v_note},
+         {exp with it = CallE(None, {it = VarE (s @~ v_at); at=v_at; note=v_note},
                               {it = None; at=inst.at; note = []}, e)}
       | e -> e
   }
