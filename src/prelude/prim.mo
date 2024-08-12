@@ -503,19 +503,19 @@ func performanceCounter(counter : Nat32) : Nat64 = (prim "performanceCounter" : 
 
 // Candid configuration
 func setCandidLimits<system> (
-  { numerator:  Nat64;
-    denominator:  Nat64;
-    bias: Nat64 }
+  { numerator:  Nat32;
+    denominator:  Nat32;
+    bias: Nat32 }
   ) {
-  (prim "setCandidLimits" : (Nat64, Nat64, Nat64) -> ())
+  (prim "setCandidLimits" : (Nat32, Nat32, Nat32) -> ())
     (numerator, denominator, bias)
 };
 
 func getCandidLimits<system>() :
-  { numerator:  Nat64;
-    denominator:  Nat64;
-    bias: Nat64 } {
-     let (numerator, denominator, bias) = (prim "getCandidLimits" : () -> (Nat64, Nat64, Nat64)) ();
+  { numerator:  Nat32;
+    denominator:  Nat32;
+    bias: Nat32 } {
+  let (numerator, denominator, bias) = (prim "getCandidLimits" : () -> (Nat32, Nat32, Nat32)) ();
   { numerator;
     denominator;
     bias }

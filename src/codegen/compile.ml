@@ -6587,9 +6587,9 @@ module MakeSerialization (Strm : Stream) = struct
       G.i (GlobalSet (nr (E.get_global env "@@value_bias")))
 
     (* interval for checking instruction counter *)
-    let idl_value_numerator = 1L
-    let idl_value_denominator = 1L
-    let idl_value_bias = 1024L
+    let idl_value_numerator = 1l
+    let idl_value_denominator = 1l
+    let idl_value_bias = 1024l
 
     let reset_value_limit env get_blob get_rel_buf_opt =
       get_rel_buf_opt ^^
@@ -6600,10 +6600,13 @@ module MakeSerialization (Strm : Stream) = struct
         Blob.len env ^^
         G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
         get_value_numerator env ^^
+        G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
         G.i (Binary (Wasm.Values.I64 I64Op.Mul)) ^^
         get_value_denominator env ^^
+        G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
         G.i (Binary (Wasm.Values.I64 I64Op.DivU)) ^^
         get_value_bias env ^^
+        G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
         G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
         set_value_quota env
       end
@@ -6621,9 +6624,9 @@ module MakeSerialization (Strm : Stream) = struct
       E.add_global32 env "@@typtbl" Mutable 0l;
       E.add_global32 env "@@typtbl_end" Mutable 0l;
       E.add_global32 env "@@typtbl_size" Mutable 0l;
-      E.add_global64 env "@@value_denominator" Mutable idl_value_denominator;
-      E.add_global64 env "@@value_numerator" Mutable idl_value_numerator;
-      E.add_global64 env "@@value_bias" Mutable idl_value_bias;
+      E.add_global32 env "@@value_denominator" Mutable idl_value_denominator;
+      E.add_global32 env "@@value_numerator" Mutable idl_value_numerator;
+      E.add_global32 env "@@value_bias" Mutable idl_value_bias;
       E.add_global64 env "@@value_quota" Mutable 0L;
       Func.define_built_in env "idl_limit_check" ["env", I32Type] [] (fun env ->
         get_rel_buf_opt env ^^
@@ -11813,21 +11816,23 @@ and compile_prim_invocation (env : E.t) ae p es at =
 
   | OtherPrim "setCandidLimits", [e1; e2; e3] ->
     SR.unit,
-    compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) e1 ^^
+    compile_exp_as env ae (SR.UnboxedWord32 Type.Nat32) e1 ^^
     Serialization.Registers.set_value_numerator env ^^
-    compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) e2 ^^
+    compile_exp_as env ae (SR.UnboxedWord32 Type.Nat32) e2 ^^
     Serialization.Registers.set_value_denominator env ^^
-    compile_exp_as env ae (SR.UnboxedWord64 Type.Nat64) e3 ^^
+    Serialization.Registers.get_value_denominator env ^^
+    E.else_trap_with env "Candid limit denominator cannot be zero" ^^
+    compile_exp_as env ae (SR.UnboxedWord32 Type.Nat32) e3 ^^
     Serialization.Registers.set_value_bias env
 
   | OtherPrim "getCandidLimits", [] ->
     SR.UnboxedTuple 3,
     Serialization.Registers.get_value_numerator env ^^
-    BoxedWord64.box env Type.Nat64 ^^
+    BoxedSmallWord.box env Type.Nat32 ^^
     Serialization.Registers.get_value_denominator env ^^
-    BoxedWord64.box env Type.Nat64 ^^
+    BoxedSmallWord.box env Type.Nat32 ^^
     Serialization.Registers.get_value_bias env ^^
-    BoxedWord64.box env Type.Nat64
+    BoxedSmallWord.box env Type.Nat32
 
   (* Coercions for abstract types *)
   | CastPrim (_,_), [e] ->
