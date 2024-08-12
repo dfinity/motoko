@@ -1617,9 +1617,10 @@ and infer_exp'' env exp : T.typ =
       check_exp_strong env T.throw exp1
     end;
     T.Non
-  | AsyncE (_, s, typ_bind, exp1) ->
+  | AsyncE (par_opt, s, typ_bind, exp1) ->
     error_in Flags.[WASIMode; WasmMode] env exp1.at "M0086"
       "async expressions are not supported";
+    ignore (Option.map (infer_exp env) par_opt); (* TODO: in restricted environment? *)
     let t1, next_cap = check_AsyncCap env "async expression" exp.at in
     let c, tb, ce, cs = check_typ_bind env typ_bind in
     let ce_scope = T.Env.add T.default_scope_var c ce in (* pun scope var with c *)
