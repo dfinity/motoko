@@ -1,6 +1,0 @@
-idl-limits-fine.mo:19.10-19.12: warning [M0145], this pattern of type
-  ?[[Nat16]]
-does not cover value
-  null
-idl-limits-fine.mo:1.8-1.14: warning [M0194], unused identifier Region (delete or rename to wildcard `_` or `_Region`)
-idl-limits-fine.mo:21.10-21.14: warning [M0194], unused identifier diff (delete or rename to wildcard `_` or `_diff`)
