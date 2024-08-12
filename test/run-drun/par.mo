@@ -1,3 +1,6 @@
+import { debugPrint } "mo:⛔";
+import Cycles = "cycles/cycles";
+
 actor {
 
     func foo(next : () -> async ()) : async () {
@@ -11,7 +14,8 @@ actor {
     public func oneshot() {
     };
 
-    public func test(): async () {
+    public func test() : async () {
+        debugPrint "test()";
         let message = "Hi!";
 
         func closA() : async Nat {
@@ -30,7 +34,6 @@ actor {
             message.size() + 1
           };
 */
-        assert 42 == 42;
         assert 3 == (await (with cycles = 101) closA());
         assert 3 == (await (with cycles = 102) closB());
 
@@ -40,9 +43,17 @@ actor {
         bar(func() : async () = async { assert message == "Hi!" });
     };
 
-
     public func test2() : async () {
-        await (with cycles = 1042) async { }
-        
+        debugPrint "test2()";
+        await (with cycles = 1042) async { assert Cycles.available() == 0/*FIXME: WHY?*/ };
+        await (with cycles = 3042) (with cycles = 4042) async { assert Cycles.available() == 0/*FIXME: WHY?*/ };
     }
 }
+
+// testing
+//SKIP run
+//SKIP run-ir
+//SKIP run-low
+
+//CALL ingress test "DIDL\x00\x00"
+//CALL ingress test2 "DIDL\x00\x00"

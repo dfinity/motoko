@@ -705,11 +705,11 @@ exp_un(B) :
     { DebugE(e) @? at $sloc }
   | LPAR base=exp_post(ob)? WITH fs=seplist(exp_field, semicolon) RPAR e=exp_nest (* parentheticals to qualify message sends *)
     { match e.it with
-      | CallE (None, f, is, args) ->
-        { e with it = CallE (Some (ObjE(Option.to_list base, fs) @? e.at), f, is, args) }
-      | AsyncE (None, Type.Fut, binds, exp) ->
-        { e with it = AsyncE (Some (ObjE(Option.to_list base, fs) @? e.at), Type.Fut, binds, exp) }
-      | _ -> { e with it = ObjE(Option.to_list base, fs) } (* FIXME: meh *)
+      | CallE (base0_opt, f, is, args) ->
+        { e with it = CallE (Some (ObjE (Option.(to_list base0_opt @ to_list base), fs) @? e.at), f, is, args) }
+      | AsyncE (base0_opt, Type.Fut, binds, exp) ->
+        { e with it = AsyncE (Some (ObjE (Option.(to_list base0_opt @ to_list base), fs) @? e.at), Type.Fut, binds, exp) }
+      | _ -> e (* FIXME: meh, can we emit a warning? *)
     }
   | IF b=exp_nullary(ob) e1=exp_nest %prec IF_NO_ELSE
     { IfE(b, e1, TupE([]) @? at $sloc) @? at $sloc }
