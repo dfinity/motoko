@@ -406,6 +406,7 @@ test64: $(TEST_DEPENDENCIES_64)
 
 EXPORTED_SYMBOLS=\
   __wasm_call_ctors \
+  __wasm_apply_data_relocs \
   memcpy \
   memcmp \
   tan \
