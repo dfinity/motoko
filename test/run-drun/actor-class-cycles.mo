@@ -19,7 +19,8 @@ actor a {
       Prim.debugPrint(debug_show({ iteration = i }));
       Prim.debugPrint(debug_show({ balance = round(Cycles.balance()) }));
       let c = await {
-        Cycles.add<system>((i + 1) * 10_000_000_000_000);
+        //Cycles.add<system>((i + 1) * 10_000_000_000_000); FIXME: this should still work without a parenthetical
+          (with cycles = (i + 1) * 10_000_000_000_000)
 	Lib.C();
       };
       let {current = cur; initial = init} = await c.balance();
