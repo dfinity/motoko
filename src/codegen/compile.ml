@@ -6536,6 +6536,24 @@ module MakeSerialization (Strm : Stream) = struct
     G.i (GlobalGet (nr (E.get_global env "__typtbl_idltyps")))
 
   module Registers = struct
+
+    (* interval for checking instruction counter *)
+    let idl_value_numerator = 1l
+    let idl_value_denominator = 1l
+    let idl_value_bias = 1024l
+
+    let register_globals env =
+      E.add_global32 env "@@rel_buf_opt" Mutable 0l;
+      E.add_global32 env "@@data_buf" Mutable 0l;
+      E.add_global32 env "@@ref_buf" Mutable 0l;
+      E.add_global32 env "@@typtbl" Mutable 0l;
+      E.add_global32 env "@@typtbl_end" Mutable 0l;
+      E.add_global32 env "@@typtbl_size" Mutable 0l;
+      E.add_global32 env "@@value_denominator" Mutable idl_value_denominator;
+      E.add_global32 env "@@value_numerator" Mutable idl_value_numerator;
+      E.add_global32 env "@@value_bias" Mutable idl_value_bias;
+      E.add_global64 env "@@value_quota" Mutable 0L
+
     let get_rel_buf_opt env =
       G.i (GlobalGet (nr (E.get_global env "@@rel_buf_opt")))
     let set_rel_buf_opt env =
@@ -6586,11 +6604,6 @@ module MakeSerialization (Strm : Stream) = struct
     let set_value_bias env =
       G.i (GlobalSet (nr (E.get_global env "@@value_bias")))
 
-    (* interval for checking instruction counter *)
-    let idl_value_numerator = 1l
-    let idl_value_denominator = 1l
-    let idl_value_bias = 1024l
-
     let reset_value_limit env get_blob get_rel_buf_opt =
       get_rel_buf_opt ^^
       G.if0
@@ -6626,20 +6639,7 @@ module MakeSerialization (Strm : Stream) = struct
         G.nop
       end
 
-    let idl_limit_check env =
-      G.i (Call (nr (E.built_in env "idl_limit_check")))
-
-    let register_globals env =
-      E.add_global32 env "@@rel_buf_opt" Mutable 0l;
-      E.add_global32 env "@@data_buf" Mutable 0l;
-      E.add_global32 env "@@ref_buf" Mutable 0l;
-      E.add_global32 env "@@typtbl" Mutable 0l;
-      E.add_global32 env "@@typtbl_end" Mutable 0l;
-      E.add_global32 env "@@typtbl_size" Mutable 0l;
-      E.add_global32 env "@@value_denominator" Mutable idl_value_denominator;
-      E.add_global32 env "@@value_numerator" Mutable idl_value_numerator;
-      E.add_global32 env "@@value_bias" Mutable idl_value_bias;
-      E.add_global64 env "@@value_quota" Mutable 0L;
+    let define_idl_limit_check env =
       Func.define_built_in env "idl_limit_check" ["env", I32Type] [] (fun env ->
         get_rel_buf_opt env ^^
         G.if0 begin (* Candid deserialization *)
@@ -6657,6 +6657,9 @@ module MakeSerialization (Strm : Stream) = struct
         end begin (* Extended Candid/Destabilization *)
           G.nop
         end)
+
+    let idl_limit_check env =
+      G.i (Call (nr (E.built_in env "idl_limit_check")))
 
   end
 
@@ -12927,6 +12930,7 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
   GC.register_globals env;
   StableMem.register_globals env;
   Serialization.Registers.register_globals env;
+  Serialization.Registers.define_idl_limit_check env;
 
   (* See Note [Candid subtype checks] *)
   let set_serialization_globals = Serialization.register_delayed_globals env in
