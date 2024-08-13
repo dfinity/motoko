@@ -6596,6 +6596,7 @@ module MakeSerialization (Strm : Stream) = struct
       G.if0
       begin (* Candid deserialization *)
         (* set instruction limit *)
+        let (set_product, get_product) = new_local64 env "product" in
         get_blob ^^
         Blob.len env ^^
         G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
@@ -6605,10 +6606,21 @@ module MakeSerialization (Strm : Stream) = struct
         get_value_denominator env ^^
         G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
         G.i (Binary (Wasm.Values.I64 I64Op.DivU)) ^^
+        set_product ^^
+        get_product ^^
         get_value_bias env ^^
         G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
         G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
-        set_value_quota env
+        set_value_quota env ^^
+        (* saturate value_quota on overflow *)
+        get_value_quota env ^^
+        get_product ^^
+        G.i (Compare (Wasm.Values.I64 I64Op.LtU)) ^^
+        G.if0 begin
+          compile_const_64 (-1L) ^^
+          set_value_quota env
+        end
+          G.nop
       end
       begin (* Extended candid/ Destabilization *)
         G.nop
