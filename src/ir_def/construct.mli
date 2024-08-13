@@ -144,6 +144,7 @@ val (-->*) : var list -> exp -> exp (* n-ary local *)
 val forall : typ_bind list -> exp -> exp (* generalization *)
 val named : string -> exp -> exp (* renaming a function *)
 val (-*-) : exp -> exp -> exp (* application *)
+val parenthetical : exp -> exp -> exp
 
 (* Objects *)
 

@@ -320,7 +320,7 @@ let funcE name sort ctrl typ_binds args typs exp =
 let recordE' = ref (fun _ -> nullE ()) (* gets correctly filled below *)
 
 let asyncE s typ_bind e typ1 =
-  { it = AsyncE (!recordE' [], s, typ_bind, e, typ1);
+  { it = AsyncE (None, s, typ_bind, e, typ1);
     at = no_region;
     note =
       Note.{ def with typ = T.Async (s, typ1, typ e);
@@ -344,6 +344,10 @@ let callE exp1 typs exp2 =
     }
   }
 
+let parenthetical par = function
+  | { it = PrimE (CallPrim (typs, _), es); _ } as e when true ->
+    { e with it = PrimE (CallPrim (typs, par), es) }
+  | e -> Printf.eprintf "PAR? %s\n" (Wasm.Sexpr.to_string 180 (Arrange_ir.exp e)); e
 
 let ifE exp1 exp2 exp3 =
   { it = IfE (exp1, exp2, exp3);
