@@ -87,7 +87,7 @@ We resolve GOT imports in two steps:
   that refers to the new table element.
 
   For each `GOT.mem`, we patch all accesses to this global in the module's AST to 
-  refer to the global that impplements the data pointer as determined in the first 
+  refer to the global that implements the data pointer as determined in the first 
   step. The `GOT.mem` import is replaced by a dummy global that only serves to
   maintain the the numbering of the globals.
   Note that we don't reuse table entries when a function is already in the
