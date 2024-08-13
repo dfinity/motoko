@@ -6608,7 +6608,8 @@ module MakeSerialization (Strm : Stream) = struct
       get_rel_buf_opt ^^
       G.if0
       begin (* Candid deserialization *)
-        (* set instruction limit *)
+        (* Set instruction limit *)
+        (* Use 32-bit factors and terms to (mostly) avoid 64-bit overflow *)
         let (set_product, get_product) = new_local64 env "product" in
         get_blob ^^
         Blob.len env ^^
@@ -6625,7 +6626,7 @@ module MakeSerialization (Strm : Stream) = struct
         G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
         G.i (Binary (Wasm.Values.I64 I64Op.Add)) ^^
         set_value_quota env ^^
-        (* saturate value_quota on overflow *)
+        (* Saturate value_quota on overflow *)
         get_value_quota env ^^
         get_product ^^
         G.i (Compare (Wasm.Values.I64 I64Op.LtU)) ^^
@@ -6640,18 +6641,16 @@ module MakeSerialization (Strm : Stream) = struct
       end
 
     let define_idl_limit_check env =
-      Func.define_built_in env "idl_limit_check" ["env", I32Type] [] (fun env ->
+      Func.define_built_in env "idl_limit_check" ["env", I64Type] [] (fun env ->
         get_rel_buf_opt env ^^
         G.if0 begin (* Candid deserialization *)
           get_value_quota env ^^
-          G.i (LocalGet (nr 0l)) ^^ (* count of values *)
-          G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+          G.i (LocalGet (nr 0l)) ^^ (* Count of values *)
           G.i (Compare (Wasm.Values.I64 I64Op.LtU)) ^^
           E.then_trap_with env "IDL error: exceeded value limit" ^^
           (* quota -= count *)
           get_value_quota env ^^
           G.i (LocalGet (nr 0l)) ^^
-          G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
           G.i (Binary (Wasm.Values.I64 I64Op.Sub)) ^^
           set_value_quota env
         end begin (* Extended Candid/Destabilization *)
