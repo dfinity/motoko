@@ -27,14 +27,15 @@ in
 let haskellPackages = nixpkgs.haskellPackages.override {
       overrides = import nix/haskell-packages.nix nixpkgs subpath;
     }; in
-let patched-wasm-ld = stdenv.mkDerivation {
-    name = "wasm-ld";
-    src = nixpkgs.fetchFromGitHub {
+let llvm_sources = nixpkgs.fetchFromGitHub {
       owner = "llvm";
       repo = "llvm-project";
       rev = "llvmorg-18.1.8";
       sha256 = "sha256-iiZKMRo/WxJaBXct9GdAcAT3cz9d9pnAcO1mmR6oPNE=";
-    };
+    }; in
+let patched-wasm-ld = stdenv.mkDerivation {
+    name = "wasm-ld";
+    src = llvm_sources;
     nativeBuildInputs = with nixpkgs; [ cmake ninja ];
     buildInputs = with nixpkgs; [ llvmPackages_18.libllvm libxml2 ];
 
@@ -64,9 +65,24 @@ EOF
 
     outputs = [ "out" ];
   }; in
+# Selectively build llvm binary tools.
+# Exclude wasm-ld, as this is patched separately.
+let llvm_bintools = stdenv.mkDerivation {
+    name = "llvm_bintools";
+    src = llvm_sources;
+    nativeBuildInputs = with nixpkgs; [ cmake ninja python3 ];
+    buildInputs = with nixpkgs; [ llvmPackages_18.libllvm libxml2 ];
+
+    preConfigure = ''
+      cd llvm
+    '';
+
+    outputs = [ "out" ];
+  }; in
 let
   rtsBuildInputs = with nixpkgs; [
     llvmPackages_18.clang
+    llvm_bintools
     patched-wasm-ld
     rustc-nightly
     cargo-nightly
