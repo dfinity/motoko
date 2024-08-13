@@ -275,7 +275,9 @@ let rec html_of_declaration : env -> Xref.t -> Extract.declaration_doc -> t =
   | Value value_doc ->
       h4 ~cls:"value-declaration" ~id
         (code
-           (keyword "public let "
+           (keyword "public "
+           ++ keyword
+                (match value_doc.sort with Let -> "let " | Var -> "var ")
            ++ fn_name value_doc.name
            ++ string " : "
            ++ Option.fold ~none:empty ~some:(html_of_type env) value_doc.typ))

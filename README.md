@@ -3,6 +3,8 @@
 
 A safe, simple, actor-based programming language for authoring [Internet Computer](https://internetcomputer.org/) (IC) canister smart contracts.
 
+![Motoko Logo](https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e)
+
 ## User Documentation & Samples
 
 * [Building, installing, and developing on Motoko](Building.md).
