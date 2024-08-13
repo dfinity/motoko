@@ -387,7 +387,6 @@ let prim trap =
       fun _ v k -> k unit
   | "getCandidLimits" ->
       fun _ v k -> k (Tup [
-        Nat64 Numerics.Nat64.zero; Nat64 Numerics.Nat64.zero;
-        Nat64 Numerics.Nat64.zero; Nat64 Numerics.Nat64.zero])
+        Nat32 Numerics.Nat32.zero; Nat32 Numerics.Nat32.zero; Nat32 Numerics.Nat32.zero])
 
   | s -> trap.trap ("Value.prim: " ^ s)
