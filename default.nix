@@ -371,7 +371,7 @@ rec {
 
     # extra deps for test/ld
     ldTestDeps =
-      with nixpkgs; [ llvmPackages_13.bintools llvmPackages_13.clang ];
+      with nixpkgs; [ patched-wasm-ld llvmPackages_18.clang ];
 
     testDerivation = args:
       stdenv.mkDerivation (testDerivationArgs // args);
