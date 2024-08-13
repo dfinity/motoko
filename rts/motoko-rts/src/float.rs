@@ -7,7 +7,7 @@ use motoko_rts_macros::ic_mem_fn;
 // The meaning of the `mode` parameter is documented in motoko-base, function Float.format()
 #[ic_mem_fn]
 pub unsafe fn float_fmt<M: Memory>(mem: &mut M, a: f64, prec: usize, mode: usize) -> Value {
-    // prec and mode are tagged small words (`Nat8`s), so we shift 56 or 24 bits. 
+    // prec and mode are tagged small words (`Nat8`s), so we shift 56 or 24 bits.
     // See `TaggedSmallWord.bits_of_type` in `compile_enhanced.ml` or `compile_classical.ml`.
     const SHIFT: u32 = usize::BITS - 8;
     let mode = mode >> SHIFT;
