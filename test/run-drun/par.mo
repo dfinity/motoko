@@ -34,6 +34,13 @@ actor {
             message.size() + 1
           };
 */
+
+/*      //Rule this out?
+        func closD() : async Nat = (with cycles = 765) async {
+            message.size()
+        };    
+*/
+
         assert 3 == (await (with cycles = 101) closA());
         assert 3 == (await (with cycles = 102) closB());
 
