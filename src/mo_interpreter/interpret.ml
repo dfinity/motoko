@@ -570,7 +570,7 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
       | T.Shared _ -> make_message env name exp.note.note_typ v
       | T.Local -> v
     in k v'
-  | CallE (exp1, typs, exp2) ->
+  | CallE (_FIXME, exp1, typs, exp2) ->
     interpret_exp env exp1 (fun v1 ->
       interpret_exp env exp2 (fun v2 ->
         let call_conv, f = V.as_func v1 in
@@ -681,14 +681,14 @@ and interpret_exp_mut env exp (k : V.value V.cont) =
     interpret_exp env exp1 (Option.get env.rets)
   | ThrowE exp1 ->
     interpret_exp env exp1 (Option.get env.throws)
-  | AsyncE (T.Fut, _, exp1) ->
+  | AsyncE (_FIXME, T.Fut, _, exp1) ->
     async env
       exp.at
       (fun k' r ->
         let env' = {env with labs = V.Env.empty; rets = Some k'; throws = Some r}
         in interpret_exp env' exp1 k')
       k
-  | AsyncE (T.Cmp, _, exp1) ->
+  | AsyncE (_FIXME, T.Cmp, _, exp1) ->
     k (V.Comp (fun k' r ->
       let env' = {env with labs = V.Env.empty; rets = Some k'; throws = Some r}
       in interpret_exp env' exp1 k'))
