@@ -311,6 +311,7 @@ unsafe fn skip_any_vec(buf: *mut Buf, typtbl: *mut *mut u8, t: i32, count: u32) 
     if count == 0 {
         return;
     }
+    idl_limit_check(false, count as u64);
     let ptr_before = (*buf).ptr;
     skip_any(buf, typtbl, t, 0);
     let ptr_after = (*buf).ptr;
