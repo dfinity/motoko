@@ -87,7 +87,8 @@ module Make (Cfg : Config) = struct
         Atom (if sugar then "" else "=");
         exp e'
       ]
-    | CallE (_FIXME, e1, ts, e2)  -> "CallE"   $$ [exp e1] @ inst ts @ [exp e2]
+    | CallE (None, e1, ts, e2)  -> "CallE"      $$ [exp e1] @ inst ts @ [exp e2]
+    | CallE (Some par, e1, ts, e2) -> "CallE()" $$ [exp par] @ [exp e1] @ inst ts @ [exp e2]
     | BlockE ds           -> "BlockE"  $$ List.map dec ds
     | NotE e              -> "NotE"    $$ [exp e]
     | AndE (e1, e2)       -> "AndE"    $$ [exp e1; exp e2]
