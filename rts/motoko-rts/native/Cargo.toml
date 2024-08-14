@@ -12,6 +12,8 @@ path = "../src/lib.rs"
 incremental_gc = []
 classical_persistence = ["libc"]
 enhanced_orthogonal_persistence = ["incremental_gc"]
+ic = [] # Not used by RTS unit tests
+memory_check = []
 
 [dependencies]
 libc = { version = "0.2.112", default-features = false, optional = true }

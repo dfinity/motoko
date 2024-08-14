@@ -440,13 +440,13 @@ WASM_A_DEPENDENCIES_32=$(TOMMATH_WASM_32_A) $(MUSL_WASM_32_A)
 LINKER_OPTIONS_32=\
   --import-memory --shared --no-entry --gc-sections \
   $(EXPORTED_SYMBOLS:%=--export=%) \
-  --whole-archive
+  --whole-archive --experimental-pic
 
 WASM_A_DEPENDENCIES_64=$(TOMMATH_WASM_64_A)
 LINKER_OPTIONS_64=\
   -mwasm64 --import-memory --shared --no-entry --gc-sections \
   $(EXPORTED_SYMBOLS:%=--export=%) \
-  --whole-archive
+  --whole-archive --experimental-pic
 
 
 mo-rts-non-incremental.wasm: $(RTS_RUST_NON_INCREMENTAL_WASM_32_A) $(WASM_A_DEPENDENCIES_32)
