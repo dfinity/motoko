@@ -98,7 +98,7 @@ and effect_cases cases =
 and effect_dec dec = match dec.it with
   | LetD (_, e) | VarD (_, _, e) -> effect_exp e
   | RefD (_, _, { it = DotLE (e, _); _ }) -> effect_exp e
-  | RefD (_, _, _) -> assert false
+  | RefD _ -> assert false
 
 let infer_effect_dec = effect_dec
 
