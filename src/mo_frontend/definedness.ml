@@ -82,7 +82,7 @@ let rec exp msgs e : f = match e.it with
   (* Eager uses are either first-class uses of a variable: *)
   | VarE i              -> M.singleton i.it Eager
   (* Or anything that is occurring in a call (as this may call a closure): *)
-  | CallE (_FIXME, e1, ts, e2) -> eagerify (exps msgs [e1; e2])
+  | CallE (par_opt, e1, _ts, e2) -> eagerify (Option.to_list par_opt @ [e1; e2] |> exps msgs)
   (* And break, return, throw can be thought of as calling a continuation: *)
   | BreakE (i, e)       -> eagerify (exp msgs e)
   | RetE e              -> eagerify (exp msgs e)
@@ -111,8 +111,8 @@ let rec exp msgs e : f = match e.it with
   | IdxE (e1, e2)       -> exps msgs [e1; e2]
   | BlockE ds           -> group msgs (decs msgs ds)
   | NotE e              -> exp msgs e
-  | AndE (e1, e2)       -> exps msgs [e1; e2]
-  | OrE (e1, e2)        -> exps msgs [e1; e2]
+  | AndE (e1, e2)
+  | OrE (e1, e2)
   | ImpliesE (e1, e2)   -> exps msgs [e1; e2]
   | OldE e              -> exp msgs e
   | IfE (e1, e2, e3)    -> exps msgs [e1; e2; e3]
@@ -123,16 +123,17 @@ let rec exp msgs e : f = match e.it with
   | LoopE (e1, None)    -> exp msgs e1
   | LoopE (e1, Some e2) -> exps msgs [e1; e2]
   | ForE (p, e1, e2)    -> exp msgs e1 ++ (exp msgs e2 /// pat msgs p)
-  | LabelE (i, t, e)    -> exp msgs e
-  | DebugE e            -> exp msgs e
-  | AsyncE (_FIXME, _, _, e) -> exp msgs e
-  | AwaitE (_, e)       -> exp msgs e
-  | AssertE (_, e)      -> exp msgs e
-  | AnnotE (e, t)       -> exp msgs e
-  | OptE e              -> exp msgs e
-  | DoOptE e            -> exp msgs e
-  | BangE e             -> exp msgs e
-  | TagE (_, e)         -> exp msgs e
+  | AsyncE (Some par, _, _, e) -> exps msgs [par; e]
+  | LabelE (_, _, e)
+  | DebugE e
+  | AsyncE (None, _, _, e)
+  | AwaitE (_, e)
+  | AssertE (_, e)
+  | AnnotE (e, _)
+  | OptE e
+  | DoOptE e
+  | BangE e
+  | TagE (_, e)
   | IgnoreE e           -> exp msgs e
 
 and exps msgs es : f = unions (exp msgs) es
