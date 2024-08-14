@@ -6641,18 +6641,23 @@ module MakeSerialization (Strm : Stream) = struct
       end
 
     let define_idl_limit_check env =
-      Func.define_built_in env "idl_limit_check" ["env", I64Type] [] (fun env ->
+      Func.define_built_in env "idl_limit_check"
+        [("decrement", I32Type); ("count", I64Type)] [] (fun env ->
         get_rel_buf_opt env ^^
         G.if0 begin (* Candid deserialization *)
           get_value_quota env ^^
-          G.i (LocalGet (nr 0l)) ^^ (* Count of values *)
+          G.i (LocalGet (nr 1l)) ^^ (* Count of values *)
           G.i (Compare (Wasm.Values.I64 I64Op.LtU)) ^^
           E.then_trap_with env "IDL error: exceeded value limit" ^^
-          (* quota -= count *)
-          get_value_quota env ^^
+          (* if (decrement) quota -= count *)
           G.i (LocalGet (nr 0l)) ^^
-          G.i (Binary (Wasm.Values.I64 I64Op.Sub)) ^^
-          set_value_quota env
+          G.if0 begin
+             get_value_quota env ^^
+             G.i (LocalGet (nr 1l)) ^^
+             G.i (Binary (Wasm.Values.I64 I64Op.Sub)) ^^
+             set_value_quota env
+           end
+             G.nop
         end begin (* Extended Candid/Destabilization *)
           G.nop
         end)
@@ -7316,7 +7321,8 @@ module MakeSerialization (Strm : Stream) = struct
       let get_typtbl_end = Registers.get_typtbl_end env in
       let get_typtbl_size = Registers.get_typtbl_size env in
 
-      (* Check idl limit *)
+      (* Decrement and check idl quota *)
+      compile_unboxed_const 1l ^^
       compile_const_64 1L ^^
       Registers.idl_limit_check env ^^
 
@@ -7829,6 +7835,10 @@ module MakeSerialization (Strm : Stream) = struct
           ReadBuf.read_sleb128 env get_typ_buf ^^
           set_arg_typ ^^
           ReadBuf.read_leb128 env get_data_buf ^^ set_len ^^
+          (* Don't decrement just check quota *)
+          compile_unboxed_const 0l ^^
+          get_len ^^ G.i (Convert (Wasm.Values.I64 I64Op.ExtendUI32)) ^^
+          Registers.idl_limit_check env ^^
           get_len ^^ Arr.alloc env ^^ set_x ^^
           get_len ^^ from_0_to_n env (fun get_i ->
           get_x ^^ get_i ^^ Arr.unsafe_idx env ^^
