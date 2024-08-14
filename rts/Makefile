@@ -138,9 +138,24 @@ _build/wasm32:
 # Common configuration
 # 
 
-RTS_EMSCRIPTEN_64=emcc -c --target=wasm64-unknown-emscripten -fpic
-RTS_EMSCRIPTEN_64_DEBUG=$(RTS_EMSCRIPTEN_64)
-RTS_EMSCRIPTEN_64_RELEASE=$(RTS_EMSCRIPTEN_64) -O2
+# Arguments obtained by Emscripten 3.1.64 `emcc -c --target=wasm64-unknown-emscripten -fpic --verbose`.
+RTS_LL_64=$(CLANG) -cc1 -triple wasm64-unknown-emscripten -emit-obj -disable-free \
+	-clear-ast-before-backend -disable-llvm-verifier -discard-value-names \
+	-mrelocation-model pic -pic-level 1 -mframe-pointer=none \
+	-ffp-contract=on -fno-rounding-math -mconstructor-aliases \
+	-target-feature +mutable-globals -target-cpu generic \
+	-fvisibility=hidden -debugger-tuning=gdb \
+	-target-linker-version 609 -nostdsysteminc \
+	-resource-dir $(WASM_CLANG_LIB)/lib/clang/19/ \
+	-Werror=implicit-function-declaration -ferror-limit 19 \
+	-fgnuc-version=4.2.1 -fskip-odr-check-in-gmf -fignore-exceptions \
+	-fcolor-diagnostics -vectorize-loops -vectorize-slp \
+	-iwithsysroot/include/fakesdl -iwithsysroot/include/compat \
+	-mllvm -combiner-global-alias-analysis=false \
+	-mllvm -enable-emscripten-sjlj -mllvm -disable-lsr \
+	-Wno-override-module
+RTS_LL_64_DEBUG=$(RTS_LL_64)
+RTS_LL_64_RELEASE=$(RTS_LL_64) -O2
 
 #
 # Let make automatically search these directories (tommath and musl) for .c files
@@ -347,28 +362,28 @@ COMPILER_BUILTINS_WASM_64_A=$(BUILD_64_FOLDER)/compiler_builtins.o
 COMPILER_BUILTINS_DEBUG_WASM_64_A=$(BUILD_64_FOLDER)/compiler_builtins_debug.o
 
 $(RTS_RUST_WASM_64_A): $(RTS_RUST_LLVM_IR_64)
-	$(RTS_EMSCRIPTEN_64_RELEASE) -o $@ $+
+	$(RTS_LL_64_RELEASE) -o $@ -x ir $+
 
 $(RTS_RUST_DEBUG_WASM_64_A): $(RTS_RUST_DEBUG_LLVM_IR_64)
-	$(RTS_EMSCRIPTEN_64_DEBUG) -o $@ $+
+	$(RTS_LL_64_DEBUG) -o $@ -x ir $+
 
 $(CORE_WASM_64_A): $(CORE_RELEASE_LLVM_IR_64)
-	$(RTS_EMSCRIPTEN_64_RELEASE) -o $@ $+
+	$(RTS_LL_64_RELEASE) -o $@ -x ir $+
 
 $(CORE_DEBUG_WASM_64_A): $(CORE_DEBUG_LLVM_IR_64)
-	$(RTS_EMSCRIPTEN_64_DEBUG) -o $@ $+
+	$(RTS_LL_64_DEBUG) -o $@ -x ir $+
 
 $(ALLOC_WASM_64_A): $(ALLOC_RELEASE_LLVM_IR_64)
-	$(RTS_EMSCRIPTEN_64_RELEASE) -o $@ $+
+	$(RTS_LL_64_RELEASE) -o $@ -x ir $+
 
 $(ALLOC_DEBUG_WASM_64_A): $(ALLOC_DEBUG_LLVM_IR_64)
-	$(RTS_EMSCRIPTEN_64_DEBUG) -o $@ $+
+	$(RTS_LL_64_DEBUG) -o $@ -x ir $+
 
 $(COMPILER_BUILTINS_WASM_64_A): $(COMPILER_BUILTINS_RELEASE_LLVM_IR_64)
-	$(RTS_EMSCRIPTEN_64_RELEASE) -o $@ $+
+	$(RTS_LL_64_RELEASE) -o $@ -x ir $+
 
 $(COMPILER_BUILTINS_DEBUG_WASM_64_A): $(COMPILER_BUILTINS_DEBUG_LLVM_IR_64)
-	$(RTS_EMSCRIPTEN_64_DEBUG) -o $@ $+
+	$(RTS_LL_64_DEBUG) -o $@ -x ir $+
 
 #
 # The test suite

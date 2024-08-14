@@ -20,10 +20,6 @@ let ic-ref-run =
       cp ${ic-hs-pkgs.ic-hs}/bin/ic-ref-run $out/bin
   ''; in
 
-let
-  nixos-unstable = import nixpkgs.sources.nixpkgs-unstable {};
-in
-
 let haskellPackages = nixpkgs.haskellPackages.override {
       overrides = import nix/haskell-packages.nix nixpkgs subpath;
     }; in
@@ -89,7 +85,6 @@ let
     wasmtime
     rust-bindgen
     python3
-    nixos-unstable.emscripten
   ] ++ pkgs.lib.optional pkgs.stdenv.isDarwin [
     libiconv
   ];

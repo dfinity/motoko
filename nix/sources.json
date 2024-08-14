@@ -132,19 +132,6 @@
         "url": "https://github.com/mozilla/nixpkgs-mozilla/archive/1ca9ee7192f973fd67b0988bdd77b8c11ae245a6.tar.gz",
         "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz"
     },
-    "nixpkgs-unstable": {
-        "branch": "nixpkgs-unstable",
-        "description": "Nix Packages collection & NixOS",
-        "homepage": "",
-        "owner": "NixOS",
-        "repo": "nixpkgs",
-        "rev": "038fb464fcfa79b4f08131b07f2d8c9a6bcc4160",
-        "sha256": "1dk7gna5v9h0d8f8a3vb029msljj6w4zrlm3wybahndcswhynpaj",
-        "type": "tarball",
-        "url": "https://github.com/NixOS/nixpkgs/archive/038fb464fcfa79b4f08131b07f2d8c9a6bcc4160.tar.gz",
-        "url_template": "https://github.com/<owner>/<repo>/archive/<rev>.tar.gz",
-        "version": "=24.05"
-    },
     "ocaml-vlq": {
         "branch": "v0.2.0",
         "builtin": false,
