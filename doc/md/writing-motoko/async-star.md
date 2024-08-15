@@ -5,26 +5,21 @@ sidebar_position: 27
 # Abstracting asynchronous code
 
 
-Functions are an abstraction mechanism.
-A function allows you to name a computation and re-use that computation at different locations
-with your code, simply by invoking the name of the function.
-When the function takes parameters, you can tailor the computation to different call sites
-by providing different arguments.
+Functions are an abstraction mechanism, allowing you to name a computation and re-use that computation in different locations within your code simply by invoking the name of that function. When the function takes parameters, you can tailor the computation to different call sites by providing different arguments.
 
 Programmers often improve their code by re-factoring common patterns of code into
 a single, reusable function.
 
-In TKO, you might want to refactor code that involves asynchronous operations such as sending messages or awaiting futures.
-Motoko's type system prevents you from using an ordinary function for this, because ordinary functions are not allowed to send messages nor await.
+In Motoko, you might want to refactor code that involves asynchronous operations such as sending messages or awaiting futures.
+Motoko's type system prevents you from using an ordinary function for this because ordinary functions are not allowed to send messages nor await.
 You can, however, define a local, asynchronous function containing the asynchronous code, and then replace all occurrences of the pattern by an `await` of a call to that function.
 
-Though this can work, it has some overheads and pitfalls.
-Each call of the function involves sending an additional message to the actor itself.
-In addition, ever call must be awaited, significantly adding to the cost
-of the code it abstracts.
-Each of these await involves suspending the execution of the awaiter until
-a reply is available, allowing more interleavings, and thus more interference,
-with the execution of other, concurrent messages.
+Though this can work, it has some overhead and pitfalls:
+- Each call of the function involves sending an additional message to the actor itself.
+
+- Every call must be awaited, significantly adding to the cost of the code it abstracts.
+
+- Each await involves suspending the execution of the awaiter until a reply is available, allowing more interleavings, and thus more interference, with the execution of other concurrent messages.
 
 Consider the following code that does some logging to a remote canister.
 
@@ -64,8 +59,7 @@ actor class (Logger : actor { log : Text -> async () }) {
 }
 ```
 
-While this typechecks and runs, the code for `doStuff()` is now much less efficient than the original code, since each call to `maybeLog` function involves an additional
-`await` that suspends the execution of `doStuff()`, even when the `logging` flag is `false`.
+While this typechecks and runs, the code for `doStuff()` is now much less efficient than the original code, since each call to `maybeLog` function involves an additional `await` that suspends the execution of `doStuff()`, even when the `logging` flag is `false`.
 The semantics of this code is also slightly different, since the value of the logging variable could, in principle, change between the call to `maybeLog` and the execution of its body, depending on the rest of the actor code.
 
 A safer refactoring passes the current state of the `logging` variable with each call:
@@ -93,16 +87,15 @@ actor class (Logger : actor { log : Text -> async () }) {
 To avoid the overhead and dangers of additional awaits, Motoko offers computation types, `async* T`, that, like future types, `async T`, can abstract asynchronous tasks.
 
 Just as an `async` expression is used to create a future (by scheduling the execution of its body), an `async*` expression is used to create a computation (by delaying the execution of its body).
-And just like `await` is used to consume the result of a future, `await*` is used to produce the result of a computation (by demanding another execution of its body).
+Similar to how `await` is used to consume the result of a future, `await*` is used to produce the result of a computation (by demanding another execution of its body).
 
-From a typing perspective, futures and computations are very similar. Where they differ is in their dynamic behaviour: a future is a stateful object that holds the result of a scheduled, asynchronous task while a computation is just an inert value describing a task.
+From a typing perspective, futures and computations are very similar. Where they differ is in their dynamic behavior: a future is a stateful object that holds the result of a scheduled, asynchronous task while a computation is just an inert value describing a task.
 
-Unlike `await` on a future, `await*` on a computation does not suspend the awaiter, it just immediately executes the computation, much like an ordinary  function call.
+Unlike `await` on a future, `await*` on a computation does not suspend the awaiter, it just immediately executes the computation much like an ordinary function call.
 This means that awaiting an `async*` value only suspends its execution (to complete asynchronously), if the body of the `async*` does a proper `await`.
-The `*` on these expressions is meant to indicate that the computation may involve 0 or more ordinary `await` expressions,
-and thus may be interleaved with the execution of other messages.
+The `*` on these expressions is meant to indicate that the computation may involve 0 or more ordinary `await` expressions, and thus may be interleaved with the execution of other messages.
 
-To create an `async*` value you can just use an `async*` expression, but, more typically, you'll declare a local function that returns an `async*` type.
+To create an `async*` value, you can just use an `async*` expression, but more typically, you'll declare a local function that returns an `async*` type.
 
 To compute the result of an `async*` computation, you just use an `await*`.
 
@@ -139,28 +132,27 @@ import Debug "mo:base/Debug"
 func clap() { Debug.print("clap") }
 ```
 
-Now, using futures, the code:
+Now, using futures, the code will clap once:
 
 ``` motoko include=clap
 let future = async { clap() };
 ```
 
-claps once. That remains the case, no matter how often you await `future`.
-For example,
+This remains the case, no matter how often you await `future`.
+For example:
 
 ``` motoko include=clap
 let future = async { clap() };
 await future;
 await future;
 ```
-only claps once.
 
-Using computations, on the other hand, the definition:
+Using computations, on the other hand, the following definition has no effect on its own:
 
 ``` motoko include=clap
 let computation = async* { clap() };
 ```
-has no effect on its own, but
+But, the following example will clap twice:
 
 ``` motoko include=clap
 let computation = async* { clap() };
@@ -168,14 +160,13 @@ await* computation;
 await* computation;
 ```
 
-claps twice.
 
 
 :::danger
 
-You should use `async*`/`await*` star with care. An ordinary `await` is a commit point in Motoko: all your state changes will be committed at the `await`, before suspension.
+You should use `async*`/`await*` star with care. An ordinary `await` is a commit point in Motoko: all your state changes will be committed at the `await` before suspension.
 An `await*`, on the other hand, is not a commit point (since its body may not await at all, or commit at some indefinite point).
-This means that traps within the awaited computation,  may roll back the state of the actor to the last commit point *before* the `await*`, not to the state at the `await*` itself.
+This means that traps within the awaited computation may roll back the state of the actor to the last commit point *before* the `await*`, not to the state at the `await*` itself.
 
 :::
 
