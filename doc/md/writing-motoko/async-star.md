@@ -37,8 +37,8 @@ actor class (Logger : actor { log : Text -> async () }) {
 }
 ```
 
-It would be nice to refactor this code to use a helper function `maybeLog`.
-Because communicating with the `Logger` canister involves sending a message, the `maybeLog` function needs to be asynchronous.
+To avoid repetition of the logging logic, it would be nice to refactor this code to use a helper function `maybeLog`.
+The `maybeLog` function needs to be asynchronous because communicating with the `Logger` canister involves sending a message.
 
 
 ``` motoko
