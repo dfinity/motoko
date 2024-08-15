@@ -99,6 +99,8 @@ To create an `async*` value, you can just use an `async*` expression, but more t
 
 To compute the result of an `async*` computation, you just use an `await*`.
 
+Here's how we can refactor our original class to be clearer, efficient and have the same meaning, using computations instead of futures:
+
 ``` motoko
 actor class (Logger : actor { log : Text -> async () }) {
 
