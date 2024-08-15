@@ -12,7 +12,7 @@ a single, reusable function.
 
 In Motoko, you might want to refactor code that involves asynchronous operations such as sending messages or awaiting futures.
 Motoko's type system prevents you from using an ordinary function for this because ordinary functions are not allowed to send messages nor await.
-You can, however, define a local, asynchronous function containing the asynchronous code, and then replace all occurrences of the pattern by an `await` of a call to that function.
+You can, however, define a local, asynchronous function containing the asynchronous code, and then replace all occurrences of the pattern by a call to that function. Since these calls return futures, each call must be enclosed in an `await` to extract its future's result.
 
 Though this can work, it has some overhead and pitfalls:
 - Each call of the function involves sending an additional message to the actor itself.
