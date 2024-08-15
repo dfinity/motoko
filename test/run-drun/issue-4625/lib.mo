@@ -1,0 +1,3 @@
+module {
+    public type X = ();
+}

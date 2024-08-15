@@ -1,0 +1,4 @@
+issue-4625.mo:11.14-11.18: type error [M0096], expression of type
+  actor {type X = Null; f : shared X__1 -> async ()}
+cannot produce expected type
+  actor {f : shared X -> async ()}
