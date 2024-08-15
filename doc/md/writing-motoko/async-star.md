@@ -5,16 +5,16 @@ sidebar_position: 27
 # Abstracting asynchronous code
 
 
-Funtions are an abstraction mechanism.
+Functions are an abstraction mechanism.
 A function allows you to name a computation and re-use that computation at different locations
 with your code, simply by invoking the name of the function.
 When the function takes parameters, you can tailor the computation to different call sites
 by providing different arguments.
 
 Programmers often improve their code by re-factoring common patterns of code into
-a single, re-useable function.
+a single, reusable function.
 
-In Motoko, you might want to refactor code that involves asynchronous operations such as sending messages or awaiting futures.
+In TKO, you might want to refactor code that involves asynchronous operations such as sending messages or awaiting futures.
 Motoko's type system prevents you from using an ordinary function for this, because ordinary functions are not allowed to send messages nor await.
 You can, however, define a local, asynchronous function containing the asynchronous code, and then replace all occurrences of the pattern by an `await` of a call to that function.
 
@@ -66,7 +66,7 @@ actor class (Logger : actor { log : Text -> async () }) {
 
 While this typechecks and runs, the code for `doStuff()` is now much less efficient than the original code, since each call to `maybeLog` function involves an additional
 `await` that suspends the execution of `doStuff()`, even when the `logging` flag is `false`.
-The semantics of this code is also slightly different, since the value of the logging variable could,in principle, change between the call to `maybeLog` and the execution of its body, depending on the rest of the actor code.
+The semantics of this code is also slightly different, since the value of the logging variable could, in principle, change between the call to `maybeLog` and the execution of its body, depending on the rest of the actor code.
 
 A safer refactoring passes the current state of the `logging` variable with each call:
 
@@ -95,17 +95,16 @@ To avoid the overhead and dangers of additional awaits, Motoko offers computatio
 Just as an `async` expression is used to create a future (by scheduling the execution of its body), an `async*` expression is used to create a computation (by delaying the execution of its body).
 And just like `await` is used to consume the result of a future, `await*` is used to produce the result of a computation (by demanding another execution of its body).
 
-From a typing perspective, futures and computations are very similar. Where they differ is in their dynamic behaviour: a future is a stateful object that holds the result of a sheduled, asynchronous task while a computation is just an inert value describing a task.
+From a typing perspective, futures and computations are very similar. Where they differ is in their dynamic behaviour: a future is a stateful object that holds the result of a scheduled, asynchronous task while a computation is just an inert value describing a task.
 
-Unlike `await` on a future, `await*` on a computiation doesn't suspend the awaiter, it just immediately executes the computation, much like an ordinary  function call.
-This means that awaiting an `async*` value only suspends its execution to complete asynchronously, if the body of the `async*` does a proper `await`.
-
-To create an `async*` value you can just use an `async*` expression, but more more typicaly, you'll declare a local function that returns an
-`async*` type.
-
-To compute the result of an `async*` computation, you just use an `await*`.
+Unlike `await` on a future, `await*` on a computation does not suspend the awaiter, it just immediately executes the computation, much like an ordinary  function call.
+This means that awaiting an `async*` value only suspends its execution (to complete asynchronously), if the body of the `async*` does a proper `await`.
 The `*` on these expressions is meant to indicate that the computation may involve 0 or more ordinary `await` expressions,
 and thus may be interleaved with the execution of other messages.
+
+To create an `async*` value you can just use an `async*` expression, but, more typically, you'll declare a local function that returns an `async*` type.
+
+To compute the result of an `async*` computation, you just use an `await*`.
 
 ``` motoko
 actor class (Logger : actor { log : Text -> async () }) {
@@ -131,7 +130,6 @@ Awaiting the same future another time will always produce the original result: t
 
 On the other hand, calling the `async*` version of `maybeLog` will do nothing unless the result is `await*`-ed, and `await*`-ing the same computation several times will repeat
 the computation each time.
-
 
 For another example, suppose we define a
 clap function with the side-effect of printing "clap".
@@ -187,7 +185,7 @@ See the language manual for more details on the [`async*` type](../reference/lan
 
 ## Mops packages for computations
 
-- [`star`](https://mops.one/star): Used for handling asynchronous behavior and traps using async* functions.
+- [`star`](https://mops.one/star): Used for handling asynchronous behavior and traps using `async*` functions.
 
 <img src="https://github.com/user-attachments/assets/844ca364-4d71-42b3-aaec-4a6c3509ee2e" alt="Logo" width="150" height="150" />
 
