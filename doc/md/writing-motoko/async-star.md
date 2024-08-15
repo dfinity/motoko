@@ -166,7 +166,7 @@ await* computation;
 
 :::danger
 
-You should use `async*`/`await*` star with care. An ordinary `await` is a commit point in Motoko: all your state changes will be committed at the `await` before suspension.
+You should use `async*`/`await*` with care. An ordinary `await` is a commit point in Motoko: all your state changes will be committed at the `await` before suspension.
 An `await*`, on the other hand, is not a commit point (since its body may not await at all, or commit at some indefinite point).
 This means that traps within the awaited computation may roll back the state of the actor to the last commit point *before* the `await*`, not to the state at the `await*` itself.
 
