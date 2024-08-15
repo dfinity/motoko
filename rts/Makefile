@@ -138,18 +138,15 @@ _build/wasm32:
 # Common configuration
 # 
 
-# Arguments obtained by Emscripten 3.1.64 `emcc -c --target=wasm64-unknown-emscripten -fpic --verbose`.
-RTS_LL_64=$(CLANG) -cc1 -triple wasm64-unknown-emscripten -emit-obj -disable-free \
-	-clear-ast-before-backend -disable-llvm-verifier -discard-value-names \
+# Arguments obtained by Emscripten 3.1.64:
+# `emcc -c --target=wasm64-unknown-emscripten -fpic --verbose`
+# while skipping unneeded arguments.
+RTS_LL_64=$(CLANG) -cc1 -triple wasm64-unknown-emscripten -emit-obj \
 	-mrelocation-model pic -pic-level 1 -mframe-pointer=none \
 	-ffp-contract=on -fno-rounding-math -mconstructor-aliases \
-	-target-feature +mutable-globals -target-cpu generic \
-	-fvisibility=hidden -debugger-tuning=gdb \
-	-target-linker-version 609 -nostdsysteminc \
+	-target-feature +mutable-globals -fvisibility=hidden \
 	-resource-dir $(WASM_CLANG_LIB)/lib/clang/19/ \
-	-Werror=implicit-function-declaration -ferror-limit 19 \
-	-fgnuc-version=4.2.1 -fskip-odr-check-in-gmf -fignore-exceptions \
-	-fcolor-diagnostics -vectorize-loops -vectorize-slp \
+	-Werror=implicit-function-declaration \
 	-iwithsysroot/include/fakesdl -iwithsysroot/include/compat \
 	-mllvm -combiner-global-alias-analysis=false \
 	-mllvm -enable-emscripten-sjlj -mllvm -disable-lsr \
