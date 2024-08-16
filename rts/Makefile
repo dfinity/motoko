@@ -145,7 +145,6 @@ RTS_LL_64=$(CLANG) -cc1 -triple wasm64-unknown-emscripten -emit-obj \
 	-mrelocation-model pic -pic-level 1 -mframe-pointer=none \
 	-ffp-contract=on -fno-rounding-math -mconstructor-aliases \
 	-target-feature +mutable-globals -fvisibility=hidden \
-	-resource-dir $(WASM_CLANG_LIB)/lib/clang/19/ \
 	-Werror=implicit-function-declaration \
 	-iwithsysroot/include/fakesdl -iwithsysroot/include/compat \
 	-mllvm -combiner-global-alias-analysis=false \
