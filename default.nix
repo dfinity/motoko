@@ -85,6 +85,7 @@ let
     wasmtime
     rust-bindgen
     python3
+    binaryen
   ] ++ pkgs.lib.optional pkgs.stdenv.isDarwin [
     libiconv
   ];
