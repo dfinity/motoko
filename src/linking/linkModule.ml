@@ -841,11 +841,13 @@ let collect_got_imports (m : module_') : got_import list =
       moved to the beginning of the module's global section because the global
       indices would then change and the global accesses in the AST would need
       to be patched. *)
-      (assert allow_normal_globals;
       let continue_index =
-        if is_global_import import.it.idesc.it then next_index else global_index
+        if is_global_import import.it.idesc.it then 
+          (assert allow_normal_globals;    
+          next_index)
+        else global_index
       in
-      (true, continue_index, imports))
+      (allow_normal_globals, continue_index, imports)
   in
   let (_, _, got_imports) =
     List.fold_left get_got_import (true, 0l, []) m.imports
