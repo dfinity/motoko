@@ -501,6 +501,26 @@ let call_raw = @call_raw;
 
 func performanceCounter(counter : Nat32) : Nat64 = (prim "performanceCounter" : (Nat32) -> Nat64) counter;
 
+// Candid configuration
+func setCandidLimits<system> (
+  { numerator:  Nat32;
+    denominator:  Nat32;
+    bias: Nat32 }
+  ) {
+  (prim "setCandidLimits" : (Nat32, Nat32, Nat32) -> ())
+    (numerator, denominator, bias)
+};
+
+func getCandidLimits<system>() :
+  { numerator:  Nat32;
+    denominator:  Nat32;
+    bias: Nat32 } {
+  let (numerator, denominator, bias) = (prim "getCandidLimits" : () -> (Nat32, Nat32, Nat32)) ();
+  { numerator;
+    denominator;
+    bias }
+};
+
 // predicates for motoko-san
 
 func forall<T>(f: T -> Bool): Bool {

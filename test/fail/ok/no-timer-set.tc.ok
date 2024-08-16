@@ -114,6 +114,8 @@ no-timer-set.mo:3.10-3.18: type error [M0119], object field setTimer is not cont
     floatToText : Float -> Text;
     floatTrunc : Float -> Float;
     forall : <T>(T -> Bool) -> Bool;
+    getCandidLimits :
+      <system>() -> {bias : Nat32; denominator : Nat32; numerator : Nat32};
     getCertificate : () -> ?Blob;
     hashBlob : Blob -> Nat32;
     idlHash : Text -> Nat32;
@@ -214,6 +216,8 @@ no-timer-set.mo:3.10-3.18: type error [M0119], object field setTimer is not cont
     rts_stable_memory_size : () -> Nat;
     rts_total_allocation : () -> Nat;
     rts_version : () -> Text;
+    setCandidLimits :
+      <system>{bias : Nat32; denominator : Nat32; numerator : Nat32} -> ();
     setCertifiedData : Blob -> ();
     shiftLeft : (Nat, Nat32) -> Nat;
     shiftRight : (Nat, Nat32) -> Nat;
