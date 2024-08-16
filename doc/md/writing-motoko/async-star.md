@@ -134,7 +134,7 @@ import Debug "mo:base/Debug"
 func clap() { Debug.print("clap") }
 ```
 
-Now, using futures, the code will clap once:
+Now, using futures, this code will clap once:
 
 ``` motoko include=clap
 let future = async { clap() };
