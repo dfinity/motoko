@@ -1611,7 +1611,9 @@ module Bool = struct
     | true -> 1L (* or any other non-zero value *)
 
   let lit b = compile_unboxed_const (vanilla_lit b)
-
+  
+  let lit_rts_int32 b = compile_const_32 (Int64.to_int32 (vanilla_lit b))
+  
   let neg = compile_test I64Op.Eqz
 
   let from_rts_int32 = 
@@ -6071,7 +6073,12 @@ module RTS_Exports = struct
     E.add_export env (nr {
       name = Lib.Utf8.decode "moc_stable_mem_set_version";
       edesc = nr (FuncExport (nr moc_stable_mem_set_version_fi))
-    })
+      });
+
+    E.add_export env (nr {
+        name = Lib.Utf8.decode "idl_limit_check";
+        edesc = nr (FuncExport (nr (E.built_in env "idl_limit_check")))
+      })
 
 end (* RTS_Exports *)
 
@@ -6233,6 +6240,12 @@ module Serialization = struct
     )
       
   module Registers = struct
+
+    (* interval for checking instruction counter *)
+    let idl_value_numerator = 1L
+    let idl_value_denominator = 1L
+    let idl_value_bias = 1024L
+
     let register_globals env =
       E.add_global64 env "@@rel_buf_opt" Mutable 0L;
       E.add_global64 env "@@data_buf" Mutable 0L;
@@ -6242,7 +6255,11 @@ module Serialization = struct
       E.add_global64 env "@@typtbl_size" Mutable 0L;
       E.add_global64 env "@@global_typtbl" Mutable 0L;
       E.add_global64 env "@@global_typtbl_end" Mutable 0L;
-      E.add_global64 env "@@global_typtbl_size" Mutable 0L
+      E.add_global64 env "@@global_typtbl_size" Mutable 0L;
+      E.add_global64 env "@@value_denominator" Mutable idl_value_denominator;
+      E.add_global64 env "@@value_numerator" Mutable idl_value_numerator;
+      E.add_global64 env "@@value_bias" Mutable idl_value_bias;
+      E.add_global64 env "@@value_quota" Mutable 0L
 
     let get_rel_buf_opt env =
       G.i (GlobalGet (nr (E.get_global env "@@rel_buf_opt")))
@@ -6300,6 +6317,107 @@ module Serialization = struct
       compile_unboxed_const 0L ^^ set_global_typtbl env ^^
       compile_unboxed_const 0L ^^ set_global_typtbl_end env ^^
       compile_unboxed_const 0L ^^ set_global_typtbl_size env (* also reset for symmetry, even if no pointer *)
+
+    let get_value_quota env =
+      G.i (GlobalGet (nr (E.get_global env "@@value_quota")))
+    let set_value_quota env =
+      G.i (GlobalSet (nr (E.get_global env "@@value_quota")))
+
+    let get_value_numerator env =
+      G.i (GlobalGet (nr (E.get_global env "@@value_numerator")))
+    let set_value_numerator env =
+      G.i (GlobalSet (nr (E.get_global env "@@value_numerator")))
+
+    let get_value_denominator env =
+      G.i (GlobalGet (nr (E.get_global env "@@value_denominator")))
+    let set_value_denominator env =
+      G.i (GlobalSet (nr (E.get_global env "@@value_denominator")))
+
+    let get_value_bias env =
+      G.i (GlobalGet (nr (E.get_global env "@@value_bias")))
+    let set_value_bias env =
+      G.i (GlobalSet (nr (E.get_global env "@@value_bias")))
+
+    let reset_value_limit env get_blob get_rel_buf_opt =
+      get_rel_buf_opt ^^
+      E.if0
+      begin (* Candid deserialization *)
+        (* Set instruction limit *)
+        let (set_product, get_product) = new_local env "product" in
+        let (set_len, get_len) = new_local env "len" in
+        get_blob ^^
+        Blob.len env ^^
+        set_len ^^
+
+        get_len ^^
+        get_value_numerator env ^^
+        G.i (Binary (Wasm_exts.Values.I64 I64Op.Mul)) ^^
+        get_value_denominator env ^^
+        G.i (Binary (Wasm_exts.Values.I64 I64Op.DivU)) ^^
+        set_product ^^
+
+        get_value_numerator env ^^ (* check overflow for non-zero numerator *)
+        (E.if0 begin
+          (* Saturate multiplication `len * idl_value_numerator` on overflow.
+             Ignore `idl_value_denomminator` on overflow. *)  
+          compile_unboxed_const (-1L) ^^ (* u64::MAX *)
+          get_value_numerator env ^^ (* non-zero! *)
+          G.i (Binary (Wasm_exts.Values.I64 I64Op.DivU)) ^^
+          get_len ^^
+          compile_comparison I64Op.LtU ^^
+          (E.if0 begin
+            compile_unboxed_const (-1L) ^^ (* u64::MAX *)
+            set_product
+          end
+            G.nop)
+        end
+          G.nop) ^^
+
+        get_product ^^
+        get_value_bias env ^^
+        G.i (Binary (Wasm_exts.Values.I64 I64Op.Add)) ^^
+        set_value_quota env ^^
+
+        (* Saturate value_quota on overflow *)
+        get_value_quota env ^^
+        get_product ^^
+        compile_comparison I64Op.LtU ^^
+        E.if0 begin
+          compile_unboxed_const (-1L) ^^ (* u64::MAX *)
+          set_value_quota env
+        end
+          G.nop
+      end
+      begin (* Extended candid/ Destabilization *)
+        G.nop
+      end
+
+    let define_idl_limit_check env =
+      Func.define_built_in env "idl_limit_check"
+        [("decrement", I32Type); ("count", I64Type)] [] (fun env ->
+        get_rel_buf_opt env ^^
+        E.if0 begin (* Candid deserialization *)
+          get_value_quota env ^^
+          G.i (LocalGet (nr 1l)) ^^ (* Count of values *)
+          compile_comparison I64Op.LtU ^^
+          E.then_trap_with env "IDL error: exceeded value limit" ^^
+          (* if (decrement) quota -= count *)
+          G.i (LocalGet (nr 0l)) ^^
+          Bool.from_rts_int32 ^^
+          E.if0 begin
+             get_value_quota env ^^
+             G.i (LocalGet (nr 1l)) ^^
+             G.i (Binary (Wasm_exts.Values.I64 I64Op.Sub)) ^^
+             set_value_quota env
+           end
+             G.nop
+        end begin (* Extended Candid/Destabilization *)
+          G.nop
+        end)
+
+    let idl_limit_check env =
+      G.i (Call (nr (E.built_in env "idl_limit_check")))
+
   end
 
   open Typ_hash
@@ -6986,6 +7104,11 @@ module Serialization = struct
       let _get_typtbl_end = Registers.get_typtbl_end env in
       let get_typtbl_size = Registers.get_typtbl_size env in
 
+      (* Decrement and check idl quota *)
+      Bool.lit_rts_int32 true ^^
+      compile_unboxed_const 1L ^^
+      Registers.idl_limit_check env ^^
+
       (* Check recursion depth (protects against empty record etc.) *)
       (* Factor 2 because at each step, the expected type could go through one
          level of opt that is not present in the value type
@@ -7445,7 +7568,7 @@ module Serialization = struct
               end
               begin
                 match normalize t with
-                | Opt _ | Any -> Opt.null_lit env
+                | Prim Null | Opt _ | Any -> Opt.null_lit env
                 | _ -> coercion_failed "IDL error: did not find tuple field in record"
               end
           ) ts ^^
@@ -7475,7 +7598,7 @@ module Serialization = struct
                   end
                 begin
                   match normalize f.typ with
-                  | Opt _ | Any -> Opt.null_lit env
+                  | Prim Null | Opt _ | Any -> Opt.null_lit env
                   | _ -> coercion_failed (Printf.sprintf "IDL error: did not find field %s in record" f.lab)
                 end
           ) (sort_by_hash fs)) ^^
@@ -7537,6 +7660,10 @@ module Serialization = struct
           ReadBuf.read_sleb128 env get_typ_buf ^^
           set_arg_typ ^^
           ReadBuf.read_leb128 env get_data_buf ^^ set_len ^^
+          (* Don't decrement just check quota *)
+          Bool.lit_rts_int32 false ^^
+          get_len ^^
+          Registers.idl_limit_check env ^^
           Arr.alloc env Tagged.I get_len ^^ set_x ^^
           get_len ^^ from_0_to_n env (fun get_i ->
           get_x ^^ get_i ^^ Arr.unsafe_idx env ^^
@@ -7794,6 +7921,19 @@ module Serialization = struct
         (get_typtbl_size_ptr ^^ load_unskewed_ptr)
         (get_global_typtbl_size_ptr ^^ load_unskewed_ptr)
         (fun get_rel_buf_opt ->
+      begin
+        (* set up invariant register arguments *)
+        get_rel_buf_opt ^^ Registers.set_rel_buf_opt env ^^
+        get_data_buf ^^ Registers.set_data_buf env ^^
+        get_ref_buf ^^ Registers.set_ref_buf env ^^
+        get_typtbl_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl env ^^
+        get_maintyps_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl_end env ^^
+        get_typtbl_size_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl_size env ^^
+        get_global_typtbl_ptr ^^ load_unskewed_ptr ^^ Registers.set_global_typtbl env ^^
+        get_global_typtbl_end_ptr ^^ load_unskewed_ptr ^^ Registers.set_global_typtbl_end env ^^
+        get_global_typtbl_size_ptr ^^ load_unskewed_ptr ^^ Registers.set_global_typtbl_size env ^^
+        Registers.reset_value_limit env get_blob get_rel_buf_opt
+      end ^^
 
       (* set up a dedicated read buffer for the list of main types *)
       ReadBuf.alloc env (fun get_main_typs_buf ->
@@ -7804,7 +7944,7 @@ module Serialization = struct
         G.concat_map (fun t ->
           let can_recover, default_or_trap = Type.(
             match normalize t with
-            | Opt _ | Any ->
+            | Prim Null | Opt _ | Any ->
               (Bool.lit true, fun msg -> Opt.null_lit env)
             | _ ->
               (get_can_recover, fun msg ->
@@ -7818,18 +7958,6 @@ module Serialization = struct
           E.if1 I64Type
            (default_or_trap ("IDL error: too few arguments " ^ ts_name))
            (begin
-              begin
-                (* set up invariant register arguments *)
-                get_rel_buf_opt ^^ Registers.set_rel_buf_opt env ^^
-                get_data_buf ^^ Registers.set_data_buf env ^^
-                get_ref_buf ^^ Registers.set_ref_buf env ^^
-                get_typtbl_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl env ^^
-                get_maintyps_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl_end env ^^
-                get_typtbl_size_ptr ^^ load_unskewed_ptr ^^ Registers.set_typtbl_size env ^^
-                get_global_typtbl_ptr ^^ load_unskewed_ptr ^^ Registers.set_global_typtbl env ^^
-                get_global_typtbl_end_ptr ^^ load_unskewed_ptr ^^ Registers.set_global_typtbl_end env ^^
-                get_global_typtbl_size_ptr ^^ load_unskewed_ptr ^^ Registers.set_global_typtbl_size env
-              end ^^
               (* set up variable frame arguments *)
               Stack.with_frame env "frame_ptr" 3L (fun () ->
                 (* idltyp *)
@@ -11423,6 +11551,32 @@ and compile_prim_invocation (env : E.t) ae p es at =
   | OtherPrim "btstInt64", [_;_] ->
     const_sr (SR.UnboxedWord64 Type.Int64) (Word64.btst_kernel env)
 
+  | OtherPrim "setCandidLimits", [e1; e2; e3] ->
+    SR.unit,
+    compile_exp_as env ae (SR.UnboxedWord64 Type.Nat32) e1 ^^
+    TaggedSmallWord.lsb_adjust Type.Nat32 ^^
+    Serialization.Registers.set_value_numerator env ^^
+    compile_exp_as env ae (SR.UnboxedWord64 Type.Nat32) e2 ^^
+    TaggedSmallWord.lsb_adjust Type.Nat32 ^^
+    Serialization.Registers.set_value_denominator env ^^
+    Serialization.Registers.get_value_denominator env ^^
+    E.else_trap_with env "Candid limit denominator cannot be zero" ^^
+    compile_exp_as env ae (SR.UnboxedWord64 Type.Nat32) e3 ^^
+    TaggedSmallWord.lsb_adjust Type.Nat32 ^^
+    Serialization.Registers.set_value_bias env
+
+  | OtherPrim "getCandidLimits", [] ->
+    SR.UnboxedTuple 3,
+    Serialization.Registers.get_value_numerator env ^^
+    TaggedSmallWord.msb_adjust Type.Nat32 ^^
+    TaggedSmallWord.tag env Type.Nat32 ^^
+    Serialization.Registers.get_value_denominator env ^^
+    TaggedSmallWord.msb_adjust Type.Nat32 ^^
+    TaggedSmallWord.tag env Type.Nat32 ^^
+    Serialization.Registers.get_value_bias env ^^
+    TaggedSmallWord.msb_adjust Type.Nat32 ^^
+    TaggedSmallWord.tag env Type.Nat32
+
   (* Coercions for abstract types *)
   | CastPrim (_,_), [e] ->
     compile_exp env ae e
@@ -12510,6 +12664,7 @@ let compile mode rts (prog : Ir.prog) : Wasm_exts.CustomModule.extended_module =
   GC.register_globals env;
   StableMem.register_globals env;
   Serialization.Registers.register_globals env;
+  Serialization.Registers.define_idl_limit_check env;
 
   (* See Note [Candid subtype checks] *)
   let set_serialization_globals = Serialization.register_delayed_globals env in

@@ -1,9 +1,11 @@
 //MOC-FLAG -measure-rts-stack
-import { errorMessage; debugPrint; } = "mo:⛔";
+import { errorMessage; debugPrint; setCandidLimits} = "mo:⛔";
 
 actor {
     let expectedMinimumSize = 31_000;
-
+    setCandidLimits<system>{ numerator = 0;
+                             denominator = 1;
+                             bias = 1_000_000 };
     public func ser() : async () { await go(false) };
     public func deser() : async () { await go(true) };
 
